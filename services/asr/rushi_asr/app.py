@@ -1,8 +1,14 @@
 from __future__ import annotations
 
 import os
+import shutil
+import tempfile
+from pathlib import Path
 
-from fastapi import FastAPI
+from fastapi import FastAPI, File, HTTPException, UploadFile
+from fastapi.middleware.cors import CORSMiddleware
+
+from rushi_asr.engine import transcribe_upload
 
 _DEFAULT_HOST = "127.0.0.1"
 _DEFAULT_PORT = 8741
@@ -18,6 +24,14 @@ def _loopback_only(host: str) -> None:
 
 def create_app() -> FastAPI:
     app = FastAPI(title="rushi-asr", version="0.1.0")
+    # Local loopback service: desktop / Vite dev may POST from another origin.
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=["*"],
+        allow_credentials=False,
+        allow_methods=["*"],
+        allow_headers=["*"],
+    )
 
     @app.get("/")
     def root() -> dict[str, str]:
@@ -25,7 +39,7 @@ def create_app() -> FastAPI:
         return {
             "service": "rushi-asr",
             "health": "/health",
-            "transcribe": "POST /v1/transcribe",
+            "transcribe": "POST /v1/transcribe (multipart field: file)",
         }
 
     @app.get("/health")
@@ -33,11 +47,19 @@ def create_app() -> FastAPI:
         return {"status": "ok", "service": "rushi-asr"}
 
     @app.post("/v1/transcribe")
-    def transcribe_stub() -> dict[str, str]:
-        return {
-            "text": "",
-            "note": "stub: wire FunASR / SenseVoice / Whisper in a later milestone",
-        }
+    async def transcribe(file: UploadFile = File(...)) -> dict[str, object]:
+        if not file.filename:
+            raise HTTPException(status_code=400, detail="missing file name")
+        suffix = Path(file.filename).suffix
+        tmp = tempfile.mkdtemp(prefix="rushi_asr_")
+        tmp_path = Path(tmp)
+        try:
+            in_path = tmp_path / f"upload{suffix or '.bin'}"
+            in_path.write_bytes(await file.read())
+            result = transcribe_upload(in_path, tmp_path)
+            return result.model_dump()
+        finally:
+            shutil.rmtree(tmp, ignore_errors=True)
 
     return app
 

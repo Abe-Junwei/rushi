@@ -13,7 +13,7 @@
 | 路径 | 说明 |
 |------|------|
 | [`apps/desktop`](./apps/desktop) | **Tauri 2 + React（Vite）** 桌面壳；默认通过 `VITE_ASR_BASE_URL`（示例见 [`apps/desktop/.env.example`](./apps/desktop/.env.example)）请求本地 ASR。 |
-| [`services/asr`](./services/asr) | **Python FastAPI** 占位服务：默认 `127.0.0.1:8741`，`GET /health`、`POST /v1/transcribe`（见该目录 README）。 |
+| [`services/asr`](./services/asr) | **Python FastAPI**：`GET /health`；`POST /v1/transcribe`（multipart `file`）走 FFmpeg 规范化 + **stub / 可选 FunASR**，JSON 契约见 `apps/desktop/src/contracts/transcription.ts`。 |
 
 ## 本地开发
 
@@ -48,6 +48,12 @@ npm run desktop:dev
 | `npm run desktop:dev` / `npm run desktop:build` | Tauri 开发 / 打包 |
 
 Python 单测：`cd services/asr && pip install -e ".[dev]" && python -m pytest`。
+
+P0 批量冒烟（需已启动 `python -m rushi_asr`，且本机有 `ffmpeg` + `curl`）：
+
+```bash
+bash scripts/p0-sample-batch.sh 10
+```
 
 ## 与 Jieyu 的文档链接
 

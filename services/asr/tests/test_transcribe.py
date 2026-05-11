@@ -1,0 +1,54 @@
+from __future__ import annotations
+
+import shutil
+import subprocess
+from pathlib import Path
+
+import pytest
+from fastapi.testclient import TestClient
+
+from rushi_asr.app import create_app
+from rushi_asr import ffmpeg_audio
+
+
+@pytest.fixture
+def client() -> TestClient:
+    return TestClient(create_app())
+
+
+@pytest.mark.skipif(not ffmpeg_audio.ffmpeg_available(), reason="ffmpeg not on PATH")
+def test_transcribe_wav_returns_contract(client: TestClient, tmp_path: Path) -> None:
+    wav = tmp_path / "tone.wav"
+    subprocess.run(
+        [
+            shutil.which("ffmpeg") or "ffmpeg",
+            "-hide_banner",
+            "-nostdin",
+            "-f",
+            "lavfi",
+            "-i",
+            "sine=frequency=880:duration=0.25",
+            "-y",
+            str(wav),
+        ],
+        check=True,
+        capture_output=True,
+    )
+    res = client.post(
+        "/v1/transcribe",
+        files={"file": ("tone.wav", wav.read_bytes(), "audio/wav")},
+    )
+    assert res.status_code == 200
+    body = res.json()
+    assert body["schema_version"] == "1"
+    assert body["engine"] == "stub"
+    assert isinstance(body["warnings"], list)
+    assert len(body["segments"]) >= 1
+    seg0 = body["segments"][0]
+    assert "start_sec" in seg0 and "end_sec" in seg0
+    assert seg0["confidence"] is None or isinstance(seg0["confidence"], (int, float))
+
+
+def test_transcribe_requires_multipart_file(client: TestClient) -> None:
+    res = client.post("/v1/transcribe")
+    assert res.status_code == 422
