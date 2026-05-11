@@ -6,6 +6,8 @@
 
 **`pyproject.toml` 在本目录**，不要在仓库根目录用 `pip install -e .` 代替本包（根目录另有占位元包，不含 `rushi_asr`）。在仓库根请执行：`pip install -e "./services/asr"`。
 
+**不要**把本包装进与 Open WebUI / TensorFlow / langchain 等**共用的** Python 环境：会升级 `pydantic`、`numpy` 并产生 resolver 冲突。请始终在本目录下 `python3 -m venv .venv` 后 `source .venv/bin/activate` 再 `pip install -e .`；或从仓库根执行 `bash scripts/bootstrap-asr-venv.sh`。启动用 **`python -m rushi_asr`**（venv 内）或 **`python3 -m rushi_asr`**（已对准该解释器时）。
+
 ```bash
 cd services/asr
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate

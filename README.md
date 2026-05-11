@@ -19,25 +19,33 @@
 
 前置：**Node 20+**、**Rust（stable）+ 各 OS Tauri 前置依赖**（见 [Tauri 官方文档](https://tauri.app/start/prerequisites/)）、**Python 3.11+**。
 
-**Python 可安装包在 `services/asr/`**，不在仓库根。若在根目录执行 `pip install -e .`，只会装上占位元包 `rushi-repo-root`，**不会出现** `python -m rushi_asr`。请用下面任一方式安装 **rushi-asr**：
+**Python 可安装包在 `services/asr/`**，不在仓库根。若在根目录执行 `pip install -e .`，只会装上占位元包 `rushi-repo-root`，**不会出现** `rushi_asr`。
+
+**务必使用独立 venv**，不要装在与 **Open WebUI、TensorFlow、langchain** 等共用的环境里：否则 pip 会升级 `pydantic` / `numpy` 等，既污染全局，也会触发你看到的 dependency conflicts。
 
 ```bash
-# 在仓库根（推荐路径写清楚）
-pip install -e "./services/asr"
-
-# 或先进入子目录
-cd services/asr && pip install -e .
+# 一键：在 services/asr/.venv 里安装并隔离（推荐）
+bash scripts/bootstrap-asr-venv.sh
+source services/asr/.venv/bin/activate
+python -m rushi_asr
 ```
+
+手动等价步骤（macOS 通常只有 `python3`，没有 `python`；**激活 venv 后** 里会有 `python`）：
+
+```bash
+cd services/asr
+python3 -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -e .
+python -m rushi_asr
+```
+
+未激活 venv 时可直接：`python3 -m rushi_asr`（仅当该 `python3` 对应的环境里已安装 `rushi-asr`）。
 
 ```bash
 # 1）安装前端工作区依赖（仓库根目录）
 npm ci
 
-# 2）终端 A：启动 ASR（示例：在子目录建 venv）
-cd services/asr
-python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -e .
-python -m rushi_asr
+# 2）终端 A：启动 ASR — 见上文「独立 venv」；勿用与 Open WebUI 等共用的全局 pip
 
 # 3）终端 B：启动桌面（Tauri + Vite）
 cd /path/to/Rushi
