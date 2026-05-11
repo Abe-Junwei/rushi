@@ -4,6 +4,8 @@
 
 ## 运行
 
+**`pyproject.toml` 在本目录**，不要在仓库根目录用 `pip install -e .` 代替本包（根目录另有占位元包，不含 `rushi_asr`）。在仓库根请执行：`pip install -e "./services/asr"`。
+
 ```bash
 cd services/asr
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate

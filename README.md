@@ -19,11 +19,21 @@
 
 前置：**Node 20+**、**Rust（stable）+ 各 OS Tauri 前置依赖**（见 [Tauri 官方文档](https://tauri.app/start/prerequisites/)）、**Python 3.11+**。
 
+**Python 可安装包在 `services/asr/`**，不在仓库根。若在根目录执行 `pip install -e .`，只会装上占位元包 `rushi-repo-root`，**不会出现** `python -m rushi_asr`。请用下面任一方式安装 **rushi-asr**：
+
+```bash
+# 在仓库根（推荐路径写清楚）
+pip install -e "./services/asr"
+
+# 或先进入子目录
+cd services/asr && pip install -e .
+```
+
 ```bash
 # 1）安装前端工作区依赖（仓库根目录）
 npm ci
 
-# 2）终端 A：启动 ASR 占位服务
+# 2）终端 A：启动 ASR（示例：在子目录建 venv）
 cd services/asr
 python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
 pip install -e .
@@ -47,7 +57,7 @@ npm run desktop:dev
 | `npm run build` | `tsc` + Vite 生产构建（不含完整 `tauri build` 安装包） |
 | `npm run desktop:dev` / `npm run desktop:build` | Tauri 开发 / 打包 |
 
-Python 单测：`cd services/asr && pip install -e ".[dev]" && python -m pytest`。
+Python 单测：`pip install -e "./services/asr[dev]" && cd services/asr && python -m pytest`（或先 `cd services/asr` 再 `pip install -e ".[dev]"`）。
 
 P0 批量冒烟（需已启动 `python -m rushi_asr`，且本机有 `ffmpeg` + `curl`）：
 

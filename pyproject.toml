@@ -1,0 +1,18 @@
+[build-system]
+requires = ["hatchling>=1.24"]
+build-backend = "hatchling.build"
+
+# 仅用于避免在仓库根执行 `pip install -e .` 时报「不是 Python 项目」。
+# 可编辑安装 ASR 请使用：`pip install -e "./services/asr"`（见 README）。
+
+[project]
+name = "rushi-repo-root"
+version = "0.0.0"
+description = "Monorepo marker; real package is rushi-asr under services/asr"
+readme = "README.md"
+requires-python = ">=3.11"
+license = { text = "ISC" }
+authors = [{ name = "沂南灵创技术服务中心" }]
+
+[tool.hatch.build.targets.wheel]
+packages = ["rushi_repo_stub"]
