@@ -2,8 +2,15 @@
   "name": "rushi",
   "private": true,
   "description": "如是我闻 — 本地中文转写与校对（独立仓）",
+  "workspaces": ["apps/desktop"],
   "scripts": {
-    "check:doc-links": "node scripts/check-internal-doc-links.mjs"
+    "check:doc-links": "node scripts/check-internal-doc-links.mjs",
+    "desktop:dev": "npm run tauri dev -w @rushi/desktop",
+    "desktop:build": "npm run tauri build -w @rushi/desktop",
+    "lint": "npm run lint -w @rushi/desktop",
+    "test": "npm run test -w @rushi/desktop",
+    "typecheck": "npm run typecheck -w @rushi/desktop",
+    "build": "npm run build -w @rushi/desktop"
   },
   "engines": {
     "node": ">=20"

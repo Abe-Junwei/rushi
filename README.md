@@ -8,6 +8,47 @@
 
 版权：见根目录 [`LICENSE`](./LICENSE)（Copyright (c) **沂南灵创技术服务中心**，ISC）。
 
+## 目录（骨架）
+
+| 路径 | 说明 |
+|------|------|
+| [`apps/desktop`](./apps/desktop) | **Tauri 2 + React（Vite）** 桌面壳；默认通过 `VITE_ASR_BASE_URL`（示例见 [`apps/desktop/.env.example`](./apps/desktop/.env.example)）请求本地 ASR。 |
+| [`services/asr`](./services/asr) | **Python FastAPI** 占位服务：默认 `127.0.0.1:8741`，`GET /health`、`POST /v1/transcribe`（见该目录 README）。 |
+
+## 本地开发
+
+前置：**Node 20+**、**Rust（stable）+ 各 OS Tauri 前置依赖**（见 [Tauri 官方文档](https://tauri.app/start/prerequisites/)）、**Python 3.11+**。
+
+```bash
+# 1）安装前端工作区依赖（仓库根目录）
+npm ci
+
+# 2）终端 A：启动 ASR 占位服务
+cd services/asr
+python -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -e .
+python -m rushi_asr
+
+# 3）终端 B：启动桌面（Tauri + Vite）
+cd /path/to/Rushi
+npm run desktop:dev
+```
+
+仅调试前端 UI（无 Tauri、不调用 Rust）：`cd apps/desktop && npm run dev`。
+
+## 常用命令（根目录）
+
+| 命令 | 作用 |
+|------|------|
+| `npm run check:doc-links` | 校验 Markdown 内相对链接 |
+| `npm run lint` | ESLint（`apps/desktop`） |
+| `npm run typecheck` | TypeScript |
+| `npm run test` | Vitest |
+| `npm run build` | `tsc` + Vite 生产构建（不含完整 `tauri build` 安装包） |
+| `npm run desktop:dev` / `npm run desktop:build` | Tauri 开发 / 打包 |
+
+Python 单测：`cd services/asr && pip install -e ".[dev]" && python -m pytest`。
+
 ## 与 Jieyu 的文档链接
 
 以下路径假设 **Rushi** 与 **Jieyu** 位于同一父目录 `（50）开发/` 下（与当前本机布局一致）。若你单独克隆 Rushi，请将 Jieyu 克隆为同级目录或自行调整链接。
@@ -24,10 +65,10 @@
 - [`LICENSE`](./LICENSE) — ISC（与 Jieyu 一致，便于手抄兼容片段）。
 - [`AGENTS.md`](./AGENTS.md) — 代理与人的工作契约骨架（链向 Jieyu 对齐策略与 `copilot-instructions.md`）。
 - [`CONTRIBUTING.md`](./CONTRIBUTING.md) — 贡献与拷贝 Jieyu 代码时的许可注意。
+- [`docs/adr/`](./docs/adr/) — ADR（如 [`0001`](./docs/adr/0001-independent-repo-default-sqlite-python-asr.md) 独立仓 / SQLite / Python ASR）。
 
-## 下一步
+## 下一步（产品 / 工程）
 
-- **已完成（初始化清单）**：最小 CI（[`/.github/workflows/ci.yml`](./.github/workflows/ci.yml) 文档链接检查）、首条 ADR（[`docs/adr/0001-independent-repo-default-sqlite-python-asr.md`](./docs/adr/0001-independent-repo-default-sqlite-python-asr.md)）。
-- **待办**：引入应用代码与 Tauri / Python 推理侧目录后，补齐 `typecheck`、单测与 ESLint 等门禁（见对齐策略 §6.3）。
-
-本地校验文档链接：`npm run check:doc-links`（若已克隆同级 `Jieyu`，会校验指向该仓的相对链接是否可解析）。
+- 按计划书 **P0**：导入音视频、FFmpeg 抽轨、与 ASR 契约对齐（`TranscriptionProvider` 等以本仓为真源）。
+- 编排层遵守 [`../Jieyu/copilot-instructions.md`](../Jieyu/copilot-instructions.md) 节选纪律：**controller / service** 下沉，避免 mega-hook 与壳层误接。
+- CI 已含文档链接、前端 lint/typecheck/test/build、`cargo check`、Python pytest；后续可加 **`tauri build` 打包容器**、E2E、架构 ratchet 等。

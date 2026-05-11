@@ -1,0 +1,94 @@
+.shell {
+  max-width: 40rem;
+  margin: 0 auto;
+  padding: 1.5rem 1.25rem 2rem;
+  font-family: system-ui, sans-serif;
+  line-height: 1.5;
+  color: #1a1a1a;
+  background: #fafafa;
+  min-height: 100vh;
+}
+
+.shell-header {
+  margin-bottom: 1.25rem;
+}
+
+.shell-title {
+  margin: 0;
+  font-size: 1.5rem;
+  font-weight: 650;
+}
+
+.shell-sub {
+  margin: 0.25rem 0 0;
+  color: #555;
+  font-size: 0.95rem;
+}
+
+.panel {
+  padding: 1rem 1rem 1.1rem;
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 6%);
+}
+
+.panel-title {
+  margin: 0 0 0.5rem;
+  font-size: 1.1rem;
+}
+
+.panel-meta {
+  margin: 0 0 0.75rem;
+  font-size: 0.9rem;
+  color: #444;
+}
+
+.panel-meta code,
+.panel-hint code,
+.shell-footer code {
+  font-size: 0.85em;
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  background: #f0f0f0;
+}
+
+.primary {
+  padding: 0.45rem 0.9rem;
+  font-size: 0.95rem;
+  border-radius: 8px;
+  border: none;
+  background: #2563eb;
+  color: #fff;
+  cursor: pointer;
+}
+
+.primary:hover {
+  background: #1d4ed8;
+}
+
+.panel-status {
+  margin: 0.75rem 0 0.25rem;
+  font-size: 0.95rem;
+}
+
+.panel-pre {
+  margin: 0.5rem 0 0;
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  background: #f4f4f5;
+  font-size: 0.8rem;
+  overflow: auto;
+  max-height: 12rem;
+}
+
+.panel-hint {
+  margin: 0.85rem 0 0;
+  font-size: 0.85rem;
+  color: #666;
+}
+
+.shell-footer {
+  margin-top: 1.5rem;
+  font-size: 0.85rem;
+  color: #666;
+}

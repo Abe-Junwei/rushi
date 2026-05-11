@@ -15,4 +15,4 @@
 - 提交信息使用完整句子，说明「改了什么、为何」。
 - 编排层不堆重业务逻辑；单模块复杂度要有意识控制（纪律见 [`../Jieyu/copilot-instructions.md`](../Jieyu/copilot-instructions.md) 节选）。
 
-CI 已包含 **文档相对链接** 检查（`npm run check:doc-links`，于 GitHub Actions 中同命令）。应用代码落地后请补齐 `typecheck`、单测与 ESLint 等与评审约定。
+CI 包含：文档相对链接（`npm run check:doc-links`）、桌面端 `lint` / `typecheck` / `test` / `build`、`cargo check`（`apps/desktop/src-tauri`）、`services/asr` 的 **pytest**。提交前建议在仓库根目录跑一遍 `npm ci` 后的上述 npm 脚本，并在 `services/asr` 运行 `python -m pytest`。

@@ -2,6 +2,11 @@
 *.log
 .env
 .env.*
+!.env.example
 node_modules/
 dist/
 target/
+.venv/
+__pycache__/
+*.egg-info/
+.python-version
