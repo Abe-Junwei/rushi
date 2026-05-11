@@ -56,6 +56,18 @@ npm run desktop:dev
 
 仅调试前端 UI（无 Tauri、不调用 Rust）：`cd apps/desktop && npm run dev`。
 
+**若 `npm run desktop:dev` 报错 `cargo metadata` / `No such file or directory (os error 2)`**：当前终端里没有 `cargo`。先执行 `command -v cargo`；若没有输出：
+
+1. **若已用 rustup 装过 Rust**（本机常见）：把 Cargo 加入 PATH（可写入 `~/.zshrc` 长期生效）：
+
+   ```bash
+   . "$HOME/.cargo/env"
+   ```
+
+   然后再 `npm run desktop:dev`。
+
+2. **若从未安装**：按 [Rust 安装](https://rustup.rs/) 安装后**新开一个终端**，或同样执行上面的 `. "$HOME/.cargo/env"`。
+
 ## 常用命令（根目录）
 
 | 命令 | 作用 |
