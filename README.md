@@ -23,8 +23,10 @@
 
 **务必使用独立 venv**，不要装在与 **Open WebUI、TensorFlow、langchain** 等共用的环境里：否则 pip 会升级 `pydantic` / `numpy` 等，既污染全局，也会触发你看到的 dependency conflicts。
 
+`pip install -e …` **在同一个 venv 里只需做一次**；以后每次启动服务只需 `source …/activate` 再 `python -m rushi_asr`。只有改了依赖、`pyproject.toml`、或重建了 `.venv` 才需要再装。
+
 ```bash
-# 一键：在 services/asr/.venv 里安装并隔离（推荐）
+# 一键：在 services/asr/.venv 里安装并隔离（推荐，仅首次或重建 venv 后）
 bash scripts/bootstrap-asr-venv.sh
 source services/asr/.venv/bin/activate
 python -m rushi_asr
