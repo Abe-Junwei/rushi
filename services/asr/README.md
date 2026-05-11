@@ -7,7 +7,7 @@
 ```bash
 cd services/asr
 python -m venv .venv && source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install -e ".[dev]"  # 含 pytest；运行服务仅需 pip install -e .
+`pip install -e .`（注意末尾 **`.`** 表示当前目录；写成 `pip install -e` 会报错）。开发跑测试用 `pip install -e ".[dev]"`。
 python -m rushi_asr
 ```
 

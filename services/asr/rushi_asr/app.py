@@ -19,6 +19,15 @@ def _loopback_only(host: str) -> None:
 def create_app() -> FastAPI:
     app = FastAPI(title="rushi-asr", version="0.1.0")
 
+    @app.get("/")
+    def root() -> dict[str, str]:
+        """Avoid silent 404 when opening http://127.0.0.1:8741/ in a browser."""
+        return {
+            "service": "rushi-asr",
+            "health": "/health",
+            "transcribe": "POST /v1/transcribe",
+        }
+
     @app.get("/health")
     def health() -> dict[str, str]:
         return {"status": "ok", "service": "rushi-asr"}
