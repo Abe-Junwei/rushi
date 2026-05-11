@@ -17,6 +17,12 @@
 
 本仓 [`docs/architecture/README.md`](./docs/architecture/README.md) 中有从 `docs/` 子路径出发的等价链接。
 
+## 仓库内文档
+
+- [`LICENSE`](./LICENSE) — ISC（与 Jieyu 一致，便于手抄兼容片段）。
+- [`AGENTS.md`](./AGENTS.md) — 代理与人的工作契约骨架（链向 Jieyu 对齐策略与 `copilot-instructions.md`）。
+- [`CONTRIBUTING.md`](./CONTRIBUTING.md) — 贡献与拷贝 Jieyu 代码时的许可注意。
+
 ## 下一步
 
-按对齐策略文档中的 **初始化清单** 补齐：`LICENSE`、`AGENTS.md`、工程约束节选、最小 CI、首条 ADR，再开始应用代码与 Tauri/Python 推理侧目录。
+按对齐策略中的 **初始化清单** 继续补齐：**最小 CI**、**首条 ADR**，再开始应用代码与 Tauri / Python 推理侧目录。
