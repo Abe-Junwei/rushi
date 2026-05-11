@@ -47,6 +47,8 @@ def test_transcribe_wav_returns_contract(client: TestClient, tmp_path: Path) -> 
     seg0 = body["segments"][0]
     assert "start_sec" in seg0 and "end_sec" in seg0
     assert seg0["confidence"] is None or isinstance(seg0["confidence"], (int, float))
+    assert seg0.get("low_confidence") is True
+    assert seg0.get("detail")
 
 
 def test_transcribe_requires_multipart_file(client: TestClient) -> None:

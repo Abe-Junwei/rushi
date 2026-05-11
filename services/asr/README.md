@@ -45,3 +45,7 @@ pytest
 ```
 
 （含需 **ffmpeg** 的集成用例；CI 已安装 ffmpeg。）
+
+## P0 验收
+
+见仓库根 [`docs/execution/p0-acceptance.md`](../../docs/execution/p0-acceptance.md) 与脚本 `scripts/p0-acceptance.sh`、`scripts/generate-p0-chinese-samples-macos.sh`。

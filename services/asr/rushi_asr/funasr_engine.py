@@ -64,13 +64,14 @@ def _segments_from_sentence_info(sentence_info: list[dict[str, Any]]) -> list[Tr
             conf_f = float(conf) if conf is not None else None
         except (TypeError, ValueError):
             conf_f = None
+        low = bool(row.get("low_confidence")) or (conf_f is None)
         segs.append(
             TranscriptionSegment(
                 start_sec=max(0.0, s),
                 end_sec=max(0.0, e),
                 text=text,
                 confidence=conf_f,
-                low_confidence=bool(row.get("low_confidence")),
+                low_confidence=low,
             ),
         )
     return segs
@@ -103,12 +104,15 @@ def transcribe_with_funasr(wav_path: Path, duration_sec: float | None) -> tuple[
 
     text = str(r0.get("text") or "").strip()
     dur = duration_sec if duration_sec is not None else 0.0
+    # 有全文但无 sentence_info：标为单段回退；无文本时标低置信便于验收区分「引擎无输出」
+    low = not bool(text)
     return [
         TranscriptionSegment(
             start_sec=0.0,
             end_sec=max(dur, 0.01),
             text=text,
             confidence=None,
-            detail="single_segment_fallback",
+            low_confidence=low,
+            detail="single_segment_fallback" if text else "funasr_empty_text",
         ),
     ], engine

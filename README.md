@@ -81,11 +81,14 @@ npm run desktop:dev
 
 Python 单测：`pip install -e "./services/asr[dev]" && cd services/asr && python -m pytest`（或先 `cd services/asr` 再 `pip install -e ".[dev]"`）。
 
-P0 批量冒烟（需已启动 `python -m rushi_asr`，且本机有 `ffmpeg` + `curl`）：
+**P0 验收（计划书 §8，本仓真源见 [`docs/execution/p0-acceptance.md`](./docs/execution/p0-acceptance.md)）**
 
-```bash
-bash scripts/p0-sample-batch.sh 10
-```
+1. 启动 ASR（独立 venv，`python -m rushi_asr`）。
+2. 准备 **10 条** `fixtures/p0-samples/*.wav`：macOS 可 `bash scripts/generate-p0-chinese-samples-macos.sh`（需系统中文语音 + ffmpeg）。
+3. `bash scripts/p0-acceptance.sh`（默认只校验 **契约 + 时间段 + 可降级置信度**；stub 下文本可为空）。
+4. 若已配置 FunASR 且要求每条有中文文本：`export P0_REQUIRE_NONEMPTY_TEXT=1` 后再跑第 3 步。
+
+合成正弦波快速冒烟（不要求中文文本）：`bash scripts/p0-sample-batch.sh 10`。
 
 ## 与 Jieyu 的文档链接
 

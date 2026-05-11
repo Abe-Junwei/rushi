@@ -154,7 +154,14 @@
 }
 
 .seg-text {
+  max-width: 12rem;
+  word-break: break-word;
+}
+
+.seg-detail {
   max-width: 14rem;
+  font-size: 0.75rem;
+  color: #52525b;
   word-break: break-word;
 }
 

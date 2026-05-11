@@ -12,14 +12,15 @@ log = logging.getLogger(__name__)
 
 
 def _stub_segments(duration_sec: float | None) -> tuple[list[TranscriptionSegment], str]:
+    """Pipeline OK but no ASR model: empty text with explicit low-confidence (P0 可降级置信度)."""
     end = duration_sec if duration_sec is not None and duration_sec > 0 else 0.01
     seg = TranscriptionSegment(
         start_sec=0.0,
         end_sec=float(end),
         text="",
         confidence=None,
-        low_confidence=False,
-        detail="stub: set RUSHI_FUNASR_MODEL and install optional [funasr] for real ASR",
+        low_confidence=True,
+        detail="stub: 未配置 FunASR；安装 pip install -e \".[funasr]\" 并设置 RUSHI_FUNASR_MODEL 以输出中文识别",
     )
     return [seg], "stub"
 

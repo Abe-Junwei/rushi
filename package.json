@@ -10,7 +10,8 @@
     "lint": "npm run lint -w @rushi/desktop",
     "test": "npm run test -w @rushi/desktop",
     "typecheck": "npm run typecheck -w @rushi/desktop",
-    "build": "npm run build -w @rushi/desktop"
+    "build": "npm run build -w @rushi/desktop",
+    "p0:acceptance": "bash scripts/p0-acceptance.sh"
   },
   "engines": {
     "node": ">=20"

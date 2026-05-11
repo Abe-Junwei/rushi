@@ -10,3 +10,8 @@ target/
 __pycache__/
 *.egg-info/
 .python-version
+
+# P0 本地生成的中文试听样本（不提交二进制）
+fixtures/p0-samples/*.wav
+fixtures/p0-samples/*.aiff
+fixtures/p0-samples/*.caf

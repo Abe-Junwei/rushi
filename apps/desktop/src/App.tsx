@@ -143,6 +143,8 @@ export default function App() {
                   <th>end</th>
                   <th>text</th>
                   <th>conf.</th>
+                  <th>低置信</th>
+                  <th>备注</th>
                 </tr>
               </thead>
               <tbody>
@@ -153,6 +155,8 @@ export default function App() {
                     <td>{s.end_sec.toFixed(3)}</td>
                     <td className="seg-text">{s.text ? s.text : <span className="muted">（空）</span>}</td>
                     <td>{s.confidence === null || s.confidence === undefined ? "—" : s.confidence.toFixed(2)}</td>
+                    <td>{s.low_confidence ? "是" : "否"}</td>
+                    <td className="seg-detail">{s.detail ?? "—"}</td>
                   </tr>
                 ))}
               </tbody>
