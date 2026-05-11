@@ -27,4 +27,7 @@
 
 ## 下一步
 
-按对齐策略中的 **初始化清单** 继续补齐：**最小 CI**、**首条 ADR**，再开始应用代码与 Tauri / Python 推理侧目录。
+- **已完成（初始化清单）**：最小 CI（[`/.github/workflows/ci.yml`](./.github/workflows/ci.yml) 文档链接检查）、首条 ADR（[`docs/adr/0001-independent-repo-default-sqlite-python-asr.md`](./docs/adr/0001-independent-repo-default-sqlite-python-asr.md)）。
+- **待办**：引入应用代码与 Tauri / Python 推理侧目录后，补齐 `typecheck`、单测与 ESLint 等门禁（见对齐策略 §6.3）。
+
+本地校验文档链接：`npm run check:doc-links`（若已克隆同级 `Jieyu`，会校验指向该仓的相对链接是否可解析）。

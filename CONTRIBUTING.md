@@ -15,4 +15,4 @@
 - 提交信息使用完整句子，说明「改了什么、为何」。
 - 编排层不堆重业务逻辑；单模块复杂度要有意识控制（纪律见 [`../Jieyu/copilot-instructions.md`](../Jieyu/copilot-instructions.md) 节选）。
 
-CI 与更细粒度清单将在首条工具链 PR 中补齐；在此之前以本地 `typecheck` / 测试与评审约定为准。
+CI 已包含 **文档相对链接** 检查（`npm run check:doc-links`，于 GitHub Actions 中同命令）。应用代码落地后请补齐 `typecheck`、单测与 ESLint 等与评审约定。
