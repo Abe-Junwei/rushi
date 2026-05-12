@@ -53,14 +53,19 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
-      - name: Linux packages for Tauri (cargo check)
+      - name: Linux packages for Tauri (cargo check + user-guide PDF)
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev pandoc wkhtmltopdf
 
       - name: Cargo check (Tauri shell)
         working-directory: apps/desktop/src-tauri
         run: cargo check --all-targets
+
+      - name: Tauri build (deb bundle smoke)
+        working-directory: apps/desktop
+        run: npm run tauri -- build -- --bundles deb
+        timeout-minutes: 25
 
   asr:
     runs-on: ubuntu-latest
@@ -76,10 +81,48 @@ jobs:
         with:
           python-version: "3.12"
 
-      - name: Install rushi-asr (dev)
-        working-directory: services/asr
-        run: pip install -e ".[dev]"
+      - name: rushi-asr venv + pytest (same as npm run asr:test)
+        run: bash scripts/run-asr-pytest.sh -q
 
-      - name: Pytest
+      - name: Start rushi-asr (stub) for P4 manifest eval
         working-directory: services/asr
-        run: python -m pytest
+        run: |
+          # shellcheck source=/dev/null
+          source .venv/bin/activate
+          nohup python -m rushi_asr > /tmp/rushi-asr-ci.log 2>&1 &
+          echo $! > /tmp/rushi-asr-ci.pid
+          ok=0
+          for _ in $(seq 1 40); do
+            if curl -sf http://127.0.0.1:8741/health >/dev/null; then
+              ok=1
+              break
+            fi
+            sleep 0.5
+          done
+          if [ "$ok" != 1 ]; then
+            echo "ASR did not become healthy in time"
+            cat /tmp/rushi-asr-ci.log || true
+            exit 1
+          fi
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - name: Playwright E2E (loopback /health)
+        env:
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
+        run: |
+          npm ci
+          npm run desktop:test:e2e
+
+      - name: P4 eval manifest batch (p4-eval-run.py)
+        run: python3 scripts/p4-eval-run.py
+
+      - name: Stop rushi-asr
+        if: always()
+        run: |
+          if [ -f /tmp/rushi-asr-ci.pid ]; then
+            kill "$(cat /tmp/rushi-asr-ci.pid)" 2>/dev/null || true
+          fi

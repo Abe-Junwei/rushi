@@ -1,0 +1,28 @@
+# Optional heavy build: FunASR sidecar onedir (long, large artifacts).
+# Trigger: manual (workflow_dispatch). Not part of default PR CI.
+name: asr-sidecar-build-nightly
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  linux-sidecar-smoke:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+
+      - name: Install ffmpeg (sidecar bundle)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y ffmpeg
+
+      - name: Build Linux x86_64 FunASR sidecar (PyInstaller)
+        run: bash scripts/build-asr-sidecar-unix.sh
+        timeout-minutes: 120
