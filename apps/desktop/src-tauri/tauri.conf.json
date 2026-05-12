@@ -6,7 +6,7 @@
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1420",
-    "beforeBuildCommand": "npm run build",
+    "beforeBuildCommand": "npm run build && npm run build:user-guide-pdf",
     "frontendDist": "../dist"
   },
   "app": {
@@ -18,12 +18,21 @@
       }
     ],
     "security": {
-      "csp": null
+      "csp": null,
+      "assetProtocol": {
+        "enable": true,
+        "scope": ["$APPDATA/**"]
+      }
     }
   },
   "bundle": {
     "active": true,
     "targets": "all",
+    "resources": [
+      "resources/user-guide-zh.md",
+      "resources/user-guide-zh.pdf",
+      "resources/bundled-asr"
+    ],
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

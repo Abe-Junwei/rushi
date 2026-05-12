@@ -1,0 +1,30 @@
+import { describe, expect, it } from "vitest";
+import { formatSrt, formatSrtTime, formatTxt, type ExportSegment } from "./exportFormatters";
+
+describe("formatSrtTime", () => {
+  it("formats zero", () => {
+    expect(formatSrtTime(0)).toBe("00:00:00,000");
+  });
+
+  it("formats with milliseconds", () => {
+    expect(formatSrtTime(1.5)).toBe("00:00:01,500");
+  });
+});
+
+describe("formatTxt / formatSrt", () => {
+  const segs: ExportSegment[] = [
+    { idx: 0, start_sec: 0, end_sec: 1, text: "甲" },
+    { idx: 1, start_sec: 1, end_sec: 2.5, text: "乙" },
+  ];
+
+  it("joins txt lines", () => {
+    expect(formatTxt(segs)).toBe("甲\n乙");
+  });
+
+  it("builds srt cues", () => {
+    const s = formatSrt(segs);
+    expect(s).toContain("1\n");
+    expect(s).toContain("-->");
+    expect(s).toContain("甲");
+  });
+});

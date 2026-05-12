@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
 import { createHttpAsrProvider } from "./api/httpAsrProvider";
+import { ProjectP1Panel } from "./components/ProjectP1Panel";
 import { asrBaseUrl, asrHealthUrl } from "./config/env";
 import type { TranscriptionResult } from "./contracts";
 import "./App.css";
@@ -73,7 +74,7 @@ export default function App() {
     <main className="shell">
       <header className="shell-header">
         <h1 className="shell-title">如是我闻</h1>
-        <p className="shell-sub">本地转写与校对（P0 原型）</p>
+        <p className="shell-sub">本地转写与校对（P0 原型 + P1–P4 工作台）</p>
       </header>
 
       <section className="panel">
@@ -164,6 +165,8 @@ export default function App() {
           </div>
         ) : null}
       </section>
+
+      <ProjectP1Panel />
 
       <footer className="shell-footer">
         壳版本（Rust）：<code>{shellVersion}</code>

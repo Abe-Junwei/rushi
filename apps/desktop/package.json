@@ -6,10 +6,13 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc --noEmit && vite build",
+    "build:user-guide-pdf": "bash ../../scripts/build-user-guide-pdf.sh",
     "typecheck": "tsc --noEmit",
     "preview": "vite preview",
     "lint": "eslint .",
     "test": "vitest run",
+    "test:e2e": "playwright test",
+    "check:doc-links": "node ../../scripts/check-internal-doc-links.mjs",
     "tauri": "tauri"
   },
   "dependencies": {
@@ -19,6 +22,7 @@
   },
   "devDependencies": {
     "@eslint/js": "^9.28.0",
+    "@playwright/test": "^1.52.0",
     "@tauri-apps/cli": "^2",
     "@types/react": "^19.1.8",
     "@types/react-dom": "^19.1.6",

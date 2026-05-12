@@ -12,3 +12,8 @@ export function asrBaseUrl(): string {
 export function asrHealthUrl(base: string = asrBaseUrl()): string {
   return `${base.replace(/\/$/, "")}/health`;
 }
+
+/** True when UI targets the default loopback ASR (same as bundled sidecar). */
+export function isDefaultBundledAsrTarget(): boolean {
+  return asrBaseUrl() === DEFAULT_ASR_BASE_URL;
+}

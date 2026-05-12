@@ -11,7 +11,15 @@
     "test": "npm run test -w @rushi/desktop",
     "typecheck": "npm run typecheck -w @rushi/desktop",
     "build": "npm run build -w @rushi/desktop",
-    "p0:acceptance": "bash scripts/p0-acceptance.sh"
+    "p0:acceptance": "bash scripts/p0-acceptance.sh",
+    "p4:eval-placeholders": "bash scripts/p4-eval-generate-placeholders.sh",
+    "p4:eval-run": "python3 scripts/p4-eval-run.py",
+    "asr:test": "bash scripts/run-asr-pytest.sh",
+    "desktop:test:e2e": "npm run test:e2e -w @rushi/desktop",
+    "asr:build-sidecar-unix": "bash scripts/build-asr-sidecar-unix.sh",
+    "asr:build-sidecar-windows-cpu": "powershell -ExecutionPolicy Bypass -File scripts/build-asr-sidecar-windows.ps1",
+    "asr:build-sidecar-windows-cuda": "powershell -ExecutionPolicy Bypass -File scripts/build-asr-sidecar-windows.ps1 -Variant Cuda",
+    "asr:regen-sidecar-locks": "bash scripts/regen-sidecar-cpu-lock.sh && bash scripts/regen-sidecar-cuda-win-lock.sh"
   },
   "engines": {
     "node": ">=20"
