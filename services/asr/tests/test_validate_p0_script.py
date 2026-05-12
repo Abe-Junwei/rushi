@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import json
+import os
 import subprocess
 import sys
 from pathlib import Path
@@ -40,6 +41,70 @@ def test_validate_accepts_stub_like_payload() -> None:
         cwd=str(ROOT),
     )
     assert p.returncode == 0, p.stderr
+
+
+@pytest.mark.skipif(not SCRIPT.is_file(), reason="validate script missing")
+def test_validate_accepts_stub_empty_segments_with_warning() -> None:
+    payload = {
+        "schema_version": "1",
+        "segments": [],
+        "full_text": "",
+        "engine": "stub",
+        "duration_sec": 0.5,
+        "warnings": ["stub_no_placeholder_segment: no placeholder"],
+    }
+    p = subprocess.run(
+        [sys.executable, str(SCRIPT)],
+        input=json.dumps(payload),
+        capture_output=True,
+        text=True,
+        check=False,
+        cwd=str(ROOT),
+    )
+    assert p.returncode == 0, p.stderr
+
+
+@pytest.mark.skipif(not SCRIPT.is_file(), reason="validate script missing")
+def test_validate_rejects_empty_segments_for_non_stub() -> None:
+    payload = {
+        "schema_version": "1",
+        "segments": [],
+        "full_text": "",
+        "engine": "funasr+iic/SenseVoiceSmall",
+        "duration_sec": 0.5,
+        "warnings": [],
+    }
+    p = subprocess.run(
+        [sys.executable, str(SCRIPT)],
+        input=json.dumps(payload),
+        capture_output=True,
+        text=True,
+        check=False,
+        cwd=str(ROOT),
+    )
+    assert p.returncode != 0
+
+
+@pytest.mark.skipif(not SCRIPT.is_file(), reason="validate script missing")
+def test_validate_rejects_empty_segments_in_strict_mode() -> None:
+    payload = {
+        "schema_version": "1",
+        "segments": [],
+        "full_text": "",
+        "engine": "stub",
+        "duration_sec": 0.5,
+        "warnings": ["stub_no_placeholder_segment: no placeholder"],
+    }
+    p = subprocess.run(
+        [sys.executable, str(SCRIPT)],
+        input=json.dumps(payload),
+        capture_output=True,
+        text=True,
+        check=False,
+        cwd=str(ROOT),
+        env={**os.environ, "P0_REQUIRE_NONEMPTY_TEXT": "1"},
+    )
+    assert p.returncode != 0
 
 
 @pytest.mark.skipif(not SCRIPT.is_file(), reason="validate script missing")

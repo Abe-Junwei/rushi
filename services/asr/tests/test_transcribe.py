@@ -43,12 +43,10 @@ def test_transcribe_wav_returns_contract(client: TestClient, tmp_path: Path) -> 
     assert body["schema_version"] == "1"
     assert body["engine"] == "stub"
     assert isinstance(body["warnings"], list)
-    assert len(body["segments"]) >= 1
-    seg0 = body["segments"][0]
-    assert "start_sec" in seg0 and "end_sec" in seg0
-    assert seg0["confidence"] is None or isinstance(seg0["confidence"], (int, float))
-    assert seg0.get("low_confidence") is True
-    assert seg0.get("detail")
+    assert body["segments"] == []
+    assert any(
+        isinstance(w, str) and w.startswith("stub_no_placeholder_segment") for w in body["warnings"]
+    )
 
 
 def test_transcribe_requires_multipart_file(client: TestClient) -> None:

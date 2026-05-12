@@ -5,8 +5,9 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from fastapi import FastAPI, File, Form, HTTPException, UploadFile
+from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
 from fastapi.middleware.cors import CORSMiddleware
+from starlette.concurrency import run_in_threadpool
 
 from rushi_asr.engine import transcribe_upload
 from rushi_asr.model_cache_env import apply_models_root_env
@@ -14,6 +15,10 @@ from rushi_asr.runtime_caps import get_runtime_caps
 
 _DEFAULT_HOST = "127.0.0.1"
 _DEFAULT_PORT = 8741
+_TOKEN_HEADER = "x-rushi-local-token"
+# Guard against OOM / abuse on loopback (adjust via env if needed).
+_MAX_UPLOAD_BYTES = int(os.environ.get("RUSHI_MAX_UPLOAD_BYTES", str(512 * 1024 * 1024)))
+_READ_CHUNK = 1024 * 1024
 
 
 def _loopback_only(host: str) -> None:
@@ -24,15 +29,26 @@ def _loopback_only(host: str) -> None:
         )
 
 
+def _require_local_token(request: Request) -> None:
+    """Optional local token gate for mutating endpoints (set RUSHI_LOCAL_TOKEN to enable)."""
+    configured = os.environ.get("RUSHI_LOCAL_TOKEN", "").strip()
+    if not configured:
+        return
+    token = request.headers.get(_TOKEN_HEADER, "").strip()
+    if token != configured:
+        raise HTTPException(status_code=401, detail="invalid_local_token")
+
+
 def create_app() -> FastAPI:
     apply_models_root_env()
     app = FastAPI(title="rushi-asr", version="0.1.0")
     # Local loopback service: desktop / Vite dev may POST from another origin.
     app.add_middleware(
         CORSMiddleware,
-        allow_origins=["*"],
+        allow_origins=["tauri://localhost", "http://localhost", "http://127.0.0.1"],
+        allow_origin_regex=r"^https?://(localhost|127\.0\.0\.1)(:\d+)?$",
         allow_credentials=False,
-        allow_methods=["*"],
+        allow_methods=["GET", "POST", "OPTIONS"],
         allow_headers=["*"],
     )
 
@@ -54,8 +70,9 @@ def create_app() -> FastAPI:
         return body
 
     @app.post("/v1/models/prepare-default")
-    def prepare_default_model_endpoint() -> dict[str, object]:
+    def prepare_default_model_endpoint(request: Request) -> dict[str, object]:
         """Prefetch default FunASR model into MODELSCOPE_CACHE (may take minutes; loopback-only)."""
+        _require_local_token(request)
         try:
             import funasr  # noqa: F401, PLC0415
         except ImportError:
@@ -79,8 +96,9 @@ def create_app() -> FastAPI:
         return body
 
     @app.post("/v1/models/prepare-default/async")
-    def prepare_default_model_async_endpoint() -> dict[str, object]:
+    def prepare_default_model_async_endpoint(request: Request) -> dict[str, object]:
         """Start background prefetch; poll ``GET /v1/models/prepare-status``."""
+        _require_local_token(request)
         try:
             import funasr  # noqa: F401, PLC0415
         except ImportError:
@@ -98,21 +116,32 @@ def create_app() -> FastAPI:
 
     @app.post("/v1/transcribe")
     async def transcribe(
+        request: Request,
         file: UploadFile = File(...),
         hotwords: str | None = Form(default=None),
     ) -> dict[str, object]:
+        _require_local_token(request)
         if not file.filename:
             raise HTTPException(status_code=400, detail="missing file name")
         suffix = Path(file.filename).suffix
-        tmp = tempfile.mkdtemp(prefix="rushi_asr_")
+        tmp = await run_in_threadpool(lambda: tempfile.mkdtemp(prefix="rushi_asr_"))
         tmp_path = Path(tmp)
         try:
             in_path = tmp_path / f"upload{suffix or '.bin'}"
-            in_path.write_bytes(await file.read())
-            result = transcribe_upload(in_path, tmp_path, hotwords=hotwords)
+            total = 0
+            with in_path.open("wb") as out:
+                while True:
+                    chunk = await file.read(_READ_CHUNK)
+                    if not chunk:
+                        break
+                    total += len(chunk)
+                    if total > _MAX_UPLOAD_BYTES:
+                        raise HTTPException(status_code=413, detail="upload_too_large")
+                    out.write(chunk)
+            result = await run_in_threadpool(transcribe_upload, in_path, tmp_path, hotwords)
             return result.model_dump()
         finally:
-            shutil.rmtree(tmp, ignore_errors=True)
+            await run_in_threadpool(shutil.rmtree, str(tmp_path), True)
 
     return app
 

@@ -33,9 +33,25 @@ def main() -> None:
     if data.get("error"):
         _fail(f"result.error set: {data['error']}")
 
+    engine = str(data.get("engine") or "")
+    warnings = data.get("warnings")
+    if not isinstance(warnings, list):
+        _fail("warnings must be an array")
+
     segs = data.get("segments")
-    if not isinstance(segs, list) or len(segs) < 1:
-        _fail("segments must be a non-empty array")
+    if not isinstance(segs, list):
+        _fail("segments must be an array")
+    if len(segs) < 1:
+        if require_nonempty:
+            _fail("segments empty while P0_REQUIRE_NONEMPTY_TEXT=1")
+        # 当前 stub 实现可能返回空语段（不注入整轨占位），由 warning 明确降级原因。
+        if not (
+            engine == "stub"
+            and any(isinstance(w, str) and w.startswith("stub_no_placeholder_segment") for w in warnings)
+        ):
+            _fail("segments must be non-empty unless engine=stub with explicit placeholder warning")
+        print("OK", 0, "segments", "engine=", engine, "require_text=", require_nonempty)
+        return
 
     for i, s in enumerate(segs):
         if not isinstance(s, dict):
@@ -66,10 +82,7 @@ def main() -> None:
         if require_nonempty and not str(s.get("text") or "").strip():
             _fail(f"segment {i} empty text (set FunASR or unset P0_REQUIRE_NONEMPTY_TEXT)")
 
-    if not isinstance(data.get("warnings"), list):
-        _fail("warnings must be an array")
-
-    print("OK", len(segs), "segments", "engine=", data.get("engine"), "require_text=", require_nonempty)
+    print("OK", len(segs), "segments", "engine=", engine, "require_text=", require_nonempty)
 
 
 if __name__ == "__main__":

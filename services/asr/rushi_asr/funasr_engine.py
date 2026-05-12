@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import logging
 import os
+import threading
 from pathlib import Path
 from typing import Any
 
@@ -17,29 +18,36 @@ from rushi_asr.schemas import TranscriptionSegment
 log = logging.getLogger(__name__)
 
 _model_singleton: Any = None
+_model_init_lock = threading.Lock()
+_inference_lock = threading.Lock()
+
+_ALLOWED_FUNASR_LANG = frozenset({"zh", "en", "ja", "ko", "yue", "auto"})
 
 
 def _get_model(model_id: str) -> Any:
     global _model_singleton
     if _model_singleton is not None:
         return _model_singleton
-    try:
-        from funasr import AutoModel
-    except ImportError as e:
-        raise RuntimeError("funasr_not_installed") from e
+    with _model_init_lock:
+        if _model_singleton is not None:
+            return _model_singleton
+        try:
+            from funasr import AutoModel
+        except ImportError as e:
+            raise RuntimeError("funasr_not_installed") from e
 
-    device = os.environ.get("RUSHI_FUNASR_DEVICE", "cpu")
-    kwargs: dict[str, Any] = {"model": model_id, "trust_remote_code": True, "device": device}
-    vad = os.environ.get("RUSHI_FUNASR_VAD_MODEL", "fsmn-vad").strip()
-    if vad:
-        kwargs["vad_model"] = vad
-        kwargs["vad_kwargs"] = {
-            "max_single_segment_time": int(os.environ.get("RUSHI_FUNASR_VAD_MAX_MS", "30000")),
-        }
+        device = os.environ.get("RUSHI_FUNASR_DEVICE", "cpu")
+        kwargs: dict[str, Any] = {"model": model_id, "trust_remote_code": True, "device": device}
+        vad = os.environ.get("RUSHI_FUNASR_VAD_MODEL", "fsmn-vad").strip()
+        if vad:
+            kwargs["vad_model"] = vad
+            kwargs["vad_kwargs"] = {
+                "max_single_segment_time": int(os.environ.get("RUSHI_FUNASR_VAD_MAX_MS", "30000")),
+            }
 
-    log.info("loading FunASR model %s device=%s", model_id, device)
-    _model_singleton = AutoModel(**kwargs)
-    return _model_singleton
+        log.info("loading FunASR model %s device=%s", model_id, device)
+        _model_singleton = AutoModel(**kwargs)
+        return _model_singleton
 
 
 def _segments_from_sentence_info(sentence_info: list[dict[str, Any]]) -> list[TranscriptionSegment]:
@@ -55,8 +63,8 @@ def _segments_from_sentence_info(sentence_info: list[dict[str, Any]]) -> list[Tr
             e = float(end)
         except (TypeError, ValueError):
             continue
-        # Heuristic: values > 1000 treated as milliseconds
-        if s > 2000 or e > 2000:
+        # Heuristic: values clearly in ms domain; avoid single threshold at 2000 alone.
+        if s >= 500.0 or e >= 500.0:
             s, e = s / 1000.0, e / 1000.0
         text = str(row.get("text") or row.get("spk") or "").strip()
         conf = row.get("confidence")
@@ -66,10 +74,14 @@ def _segments_from_sentence_info(sentence_info: list[dict[str, Any]]) -> list[Tr
         except (TypeError, ValueError):
             conf_f = None
         low = bool(row.get("low_confidence")) or (conf_f is None)
+        if conf_f is not None:
+            conf_f = max(0.0, min(1.0, conf_f))
+        lo = max(0.0, min(s, e))
+        hi = max(0.0, max(s, e))
         segs.append(
             TranscriptionSegment(
-                start_sec=max(0.0, s),
-                end_sec=max(0.0, e),
+                start_sec=lo,
+                end_sec=max(lo, hi),
                 text=text,
                 confidence=conf_f,
                 low_confidence=low,
@@ -80,7 +92,7 @@ def _segments_from_sentence_info(sentence_info: list[dict[str, Any]]) -> list[Tr
 
 def transcribe_with_funasr(
     wav_path: Path,
-    duration_sec: float | None,
+    _duration_sec: float | None,
     hotwords: str | None = None,
     out_warnings: list[str] | None = None,
 ) -> tuple[list[TranscriptionSegment], str]:
@@ -94,29 +106,39 @@ def transcribe_with_funasr(
         raise RuntimeError("funasr_model_not_configured")
 
     model = _get_model(model_id)
-    language = os.environ.get("RUSHI_FUNASR_LANGUAGE", "zh").strip() or "zh"
+    raw_lang = os.environ.get("RUSHI_FUNASR_LANGUAGE", "zh").strip() or "zh"
+    language = raw_lang if raw_lang in _ALLOWED_FUNASR_LANG else "zh"
+    if language != raw_lang and out_warnings is not None:
+        out_warnings.append(f"funasr_language_fallback:{raw_lang!r}->{language!r}")
     hw = (hotwords or "").strip() or None
 
     def _warn(msg: str) -> None:
         if out_warnings is not None:
             out_warnings.append(msg)
 
-    try:
-        if hw:
-            try:
-                res = model.generate(
-                    input=str(wav_path),
-                    language=language,
-                    merge_vad=True,
-                    hotword=hw,
-                )
-            except TypeError:
-                _warn("hotword_param_unsupported")
+    with _inference_lock:
+        try:
+            if hw:
+                try:
+                    res = model.generate(
+                        input=str(wav_path),
+                        language=language,
+                        merge_vad=True,
+                        hotword=hw,
+                    )
+                except TypeError:
+                    _warn("hotword_param_unsupported")
+                    res = model.generate(input=str(wav_path), language=language, merge_vad=True)
+            else:
                 res = model.generate(input=str(wav_path), language=language, merge_vad=True)
-        else:
-            res = model.generate(input=str(wav_path), language=language, merge_vad=True)
-    except TypeError:
-        res = model.generate(input=str(wav_path))
+        except TypeError:
+            try:
+                res = model.generate(input=str(wav_path))
+            except Exception as e:  # noqa: BLE001
+                raise RuntimeError(f"funasr_generate_failed:{e!s}") from e
+        except Exception as e:  # noqa: BLE001
+            raise RuntimeError(f"funasr_generate_failed:{e!s}") from e
+
     if not res or not isinstance(res, list):
         raise RuntimeError("funasr_empty_result")
 
@@ -129,16 +151,12 @@ def transcribe_with_funasr(
             return segs, engine
 
     text = str(r0.get("text") or "").strip()
-    dur = duration_sec if duration_sec is not None else 0.0
-    # 有全文但无 sentence_info：标为单段回退；无文本时标低置信便于验收区分「引擎无输出」
-    low = not bool(text)
-    return [
-        TranscriptionSegment(
-            start_sec=0.0,
-            end_sec=max(dur, 0.01),
-            text=text,
-            confidence=None,
-            low_confidence=low,
-            detail="single_segment_fallback" if text else "funasr_empty_text",
-        ),
-    ], engine
+    if not text:
+        _warn("funasr_no_sentence_segments")
+        return [], engine
+    # 有全文但无 sentence_info：与解语一致，不自动建整轨占位语段（避免「一条占满时长」）
+    _warn(
+        "funasr_no_timestamps: 模型返回全文但无分句时间戳；未创建语段。"
+        "请换用输出 sentence_info 的模型/参数，或在桌面端波形上拖选新建语段。"
+    )
+    return [], engine

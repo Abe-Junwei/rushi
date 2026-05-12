@@ -29,13 +29,15 @@ def verify_manifest(model_dir: Path, manifest: dict[str, Any]) -> None:
         want = entry.get("sha256")
         if not isinstance(rel, str) or not isinstance(want, str):
             raise ValueError("manifest_entry_invalid")
+        model_dir_res = model_dir.resolve()
         fp = (model_dir / rel).resolve()
-        if not str(fp).startswith(str(model_dir.resolve())):
-            raise ValueError("manifest_path_escape")
+        fp.relative_to(model_dir_res)
         if not fp.is_file():
             raise FileNotFoundError(f"missing:{rel}")
         h = hashlib.sha256()
-        h.update(fp.read_bytes())
+        with fp.open("rb") as f:
+            for chunk in iter(lambda: f.read(1024 * 1024), b""):
+                h.update(chunk)
         got = h.hexdigest()
         if got.lower() != want.lower():
             raise ValueError(f"sha256_mismatch:{rel}")

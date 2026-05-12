@@ -47,6 +47,7 @@ python -m rushi_asr
 
 - `ASR_HOST`（默认 `127.0.0.1`）
 - `ASR_PORT`（默认 `8741`）
+- `RUSHI_LOCAL_TOKEN`（可选；设置后对写接口启用本地 token 校验，请在请求头带 `x-rushi-local-token`）
 
 ## 依赖
 
@@ -69,6 +70,12 @@ python -m rushi_asr
 - `GET /v1/models/prepare-status` — 查询异步准备状态：`phase` 为 `idle` | `running` | `done` | `error`；`done` 时含 `result`（与同步成功体同形），`error` 时含 `message`。
 - **桌面一键安装（可选）**：仓库根脚本 `scripts/install-funasr-for-desktop.sh` 会在 `services/asr/.venv` 中执行 `pip install -e ".[funasr]"`；需本机已有 **Python 3**、**网络**与足够磁盘；**不会**代替用户设置 `RUSHI_FUNASR_MODEL`，也**不会**自动重启 ASR 进程。
 - `POST /v1/transcribe` — `multipart/form-data`：字段 **`file`**（必填）；可选字段 **`hotwords`**（UTF-8 文本，空格分隔热词，供 FunASR `generate(..., hotword=...)`；**stub 或未走 FunASR 时忽略**，并在 `warnings` 中加入 `hotwords_ignored_stub`）。响应为 **TranscriptionResult** JSON（`schema_version: "1"`）。
+
+若设置了 `RUSHI_LOCAL_TOKEN`，以下写接口都需要请求头 `x-rushi-local-token: <token>`，否则返回 **401**：
+
+- `POST /v1/transcribe`
+- `POST /v1/models/prepare-default`
+- `POST /v1/models/prepare-default/async`
 
 ## 测试
 

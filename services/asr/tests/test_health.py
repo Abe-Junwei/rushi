@@ -34,3 +34,33 @@ def test_health_ok() -> None:
     assert "funasr_default_model_cached" in body
     assert body["transcription_mode"] in ("funasr", "stub")
     assert isinstance(body.get("funasr_model_id"), str)
+
+
+def test_optional_local_token_blocks_mutating_endpoints(monkeypatch) -> None:
+    monkeypatch.setenv("RUSHI_LOCAL_TOKEN", "secret")
+    app = create_app()
+    client = TestClient(app)
+
+    prep = client.post("/v1/models/prepare-default/async")
+    assert prep.status_code == 401
+    assert prep.json().get("detail") == "invalid_local_token"
+
+    transcribe = client.post(
+        "/v1/transcribe",
+        files={"file": ("x.wav", b"RIFF", "audio/wav")},
+    )
+    assert transcribe.status_code == 401
+    assert transcribe.json().get("detail") == "invalid_local_token"
+
+
+def test_optional_local_token_allows_when_header_matches(monkeypatch) -> None:
+    monkeypatch.setenv("RUSHI_LOCAL_TOKEN", "secret")
+    app = create_app()
+    client = TestClient(app)
+
+    prep = client.post(
+        "/v1/models/prepare-default/async",
+        headers={"x-rushi-local-token": "secret"},
+    )
+    # With valid token, request should pass token gate and enter normal endpoint path.
+    assert prep.status_code != 401

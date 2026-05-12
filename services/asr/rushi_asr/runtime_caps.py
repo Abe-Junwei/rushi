@@ -8,17 +8,21 @@ from rushi_asr import ffmpeg_audio
 from rushi_asr.defaults import effective_funasr_model_id, funasr_model_explicit_from_env
 from rushi_asr.model_prepare import default_model_cached_guess
 
+_FUNASR_IMPORT_OK: bool | None = None
+
 
 def get_runtime_caps() -> dict[str, object]:
     """Lightweight introspection for desktop auto-detect (no FunASR model load)."""
+    global _FUNASR_IMPORT_OK
     ffmpeg_ok = ffmpeg_audio.ffmpeg_available()
-    funasr_import_ok = False
-    try:
-        import funasr  # noqa: F401, PLC0415 — optional heavy dep
+    if _FUNASR_IMPORT_OK is None:
+        try:
+            import funasr  # noqa: F401, PLC0415 — optional heavy dep
 
-        funasr_import_ok = True
-    except ImportError:
-        pass
+            _FUNASR_IMPORT_OK = True
+        except ImportError:
+            _FUNASR_IMPORT_OK = False
+    funasr_import_ok = bool(_FUNASR_IMPORT_OK)
 
     model = effective_funasr_model_id()
     funasr_model_configured = bool(model)
