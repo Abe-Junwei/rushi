@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import type { P1OnlineTranscribeBridgePayload } from "../services/stt/sttOnlineProviderContract";
 
 export interface ProjectSummary {
   id: string;
@@ -79,10 +80,15 @@ export async function p1ProjectSaveSegments(projectId: string, segments: Segment
   return invoke<void>("p1_project_save_segments", { projectId, segments });
 }
 
-export async function p1ProjectRunTranscribe(projectId: string, asrBaseUrl?: string | null): Promise<RunTranscribeOutcome> {
+export async function p1ProjectRunTranscribe(
+  projectId: string,
+  asrBaseUrl?: string | null,
+  online?: P1OnlineTranscribeBridgePayload | null,
+): Promise<RunTranscribeOutcome> {
   return invoke<RunTranscribeOutcome>("p1_project_run_transcribe", {
     projectId,
     asrBaseUrl: asrBaseUrl ?? null,
+    online: online ?? null,
   });
 }
 

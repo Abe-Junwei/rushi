@@ -1,16 +1,26 @@
 import { convertFileSrc } from "@tauri-apps/api/core";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { asrBaseUrl, asrHealthUrl, isDefaultBundledAsrTarget } from "../config/env";
 import { deriveTranscribeHints } from "../services/asrTranscribeHints";
 import { formatSrt, formatTxt, type ExportSegment } from "../services/exportFormatters";
 import type { AsrHealthCapabilities, ProjectDetail, ProjectSummary, SegmentDto } from "../tauri/p1Api";
 import * as p1 from "../tauri/p1Api";
+import {
+  isSttOnlineEnabledButIncomplete,
+  tryBuildP1OnlineTranscribeBridgePayload,
+} from "../services/stt/sttOnlineProviderContract";
 import { p3ExportDocx, type P3DocxExportMode } from "../tauri/p3ExportDocxApi";
 import { p4ExportDiagnosticBundle } from "../tauri/p4DiagnosticApi";
 import { describePrepareModelFailure, type PrepareModelFailureCopy } from "./prepareModelDownloadCopy";
+import { buildSplitPair, mergeTwoSegments, reindexSegments } from "./p1SegmentListHelpers";
 
 function cloneSegments(segs: SegmentDto[]): SegmentDto[] {
   return segs.map((s) => ({ ...s }));
+}
+
+function roundSec3(x: number): number {
+  return Math.round(x * 1000) / 1000;
 }
 
 /** 避免默认文件名含路径分隔符等非法字符。 */
@@ -20,6 +30,12 @@ function safeExportBasename(name: string, ext: "txt" | "srt" | "docx"): string {
 }
 
 export type AsrHealthState = "checking" | "ok" | "error";
+
+/** 与 `busy` 同时为真；`busy` 为假时为 null。 */
+export type P1BusyReason = "create" | "load" | "transcribe" | "save" | "delete" | "install_funasr";
+
+/** 忙状态：`busy` 与 `reason` 原子更新，避免读到不一致组合。 */
+type P1BusyPack = { busy: boolean; reason: P1BusyReason | null };
 
 export function parseAsrHealthJson(data: unknown): AsrHealthCapabilities | null {
   if (!data || typeof data !== "object") return null;
@@ -67,17 +83,83 @@ export function useProjectP1Controller() {
   const [prepareModelProgress, setPrepareModelProgress] = useState(0);
   const [prepareModelFailure, setPrepareModelFailure] = useState<PrepareModelFailureCopy | null>(null);
   const [transcribeHints, setTranscribeHints] = useState<string[]>([]);
-  const [busy, setBusy] = useState(false);
+  const [busyPack, setBusyPack] = useState<P1BusyPack>({ busy: false, reason: null });
+  const busy = busyPack.busy;
+  const busyReason = busyPack.reason;
+  const beginBusy = useCallback((reason: P1BusyReason) => {
+    setBusyPack({ busy: true, reason });
+  }, []);
+  const endBusy = useCallback(() => {
+    setBusyPack({ busy: false, reason: null });
+  }, []);
   const [newName, setNewName] = useState("未命名项目");
   const [pickedPath, setPickedPath] = useState<string | null>(null);
+  const [sttOnlineBridgeEpoch, setSttOnlineBridgeEpoch] = useState(0);
+  const sttOnlineBridgeReady = useMemo(
+    () => tryBuildP1OnlineTranscribeBridgePayload() !== null,
+    [sttOnlineBridgeEpoch],
+  );
+  const bumpSttOnlineRuntimeChanged = useCallback(() => {
+    setSttOnlineBridgeEpoch((n) => n + 1);
+  }, []);
   const undoStack = useRef<SegmentDto[][]>([]);
+  const redoStack = useRef<SegmentDto[][]>([]);
+  const textEditUndoRef = useRef<{ idx: number; atMs: number } | null>(null);
   const segmentsRef = useRef(segments);
   segmentsRef.current = segments;
 
+  /** 波形 region 拖拽中：live 已 pushUndo 时，commit 不再重复入栈。 */
+  const segmentBoundsLiveGestureRef = useRef(false);
+  const prepareModelAbortRef = useRef<AbortController | null>(null);
+
+  useEffect(() => {
+    return () => {
+      prepareModelAbortRef.current?.abort();
+    };
+  }, []);
+
+  /** 将语段卡正文输入框当前值写回 `segments`（与本地 draft 一致），供保存/合并等读最新正文。 */
+  const flushP1SegmentTextDraftsFromDom = useCallback(() => {
+    const prev = segmentsRef.current;
+    const updates: { idx: number; text: string }[] = [];
+    prev.forEach((s, i) => {
+      const row = document.querySelector(`[data-p1-seg-row="${i}"]`);
+      const ta = row?.querySelector<HTMLTextAreaElement | HTMLInputElement>("textarea, input.p1-seg-text");
+      if (!ta || ta.value === s.text) return;
+      updates.push({ idx: i, text: ta.value });
+    });
+    if (updates.length === 0) return;
+    flushSync(() => {
+      setSegments((cur) => {
+        let next = cur;
+        for (const { idx, text } of updates) {
+          if (idx < 0 || idx >= cur.length) continue;
+          const seg = cur[idx];
+          if (!seg || seg.text === text) continue;
+          if (next === cur) next = [...cur];
+          next[idx] = { ...seg, text };
+        }
+        return next;
+      });
+    });
+  }, []);
+
   const pushUndo = useCallback(() => {
+    redoStack.current = [];
     undoStack.current.push(cloneSegments(segmentsRef.current));
     if (undoStack.current.length > 40) undoStack.current.shift();
   }, []);
+
+  const pushUndoForTextEdit = useCallback(
+    (idx: number) => {
+      const now = Date.now();
+      const prev = textEditUndoRef.current;
+      const shouldSnapshot = !prev || prev.idx !== idx || now - prev.atMs > 1200;
+      if (shouldSnapshot) pushUndo();
+      textEditUndoRef.current = { idx, atMs: now };
+    },
+    [pushUndo],
+  );
 
   const refreshProjects = useCallback(async () => {
     try {
@@ -108,7 +190,7 @@ export function useProjectP1Controller() {
     setAsrCaps(null);
     const url = asrHealthUrl();
     try {
-      const res = await fetch(url, { method: "GET" });
+      const res = await fetch(url, { method: "GET", signal: AbortSignal.timeout(8000) });
       if (res.ok) {
         let data: unknown;
         try {
@@ -116,7 +198,14 @@ export function useProjectP1Controller() {
         } catch {
           data = null;
         }
-        setAsrCaps(parseAsrHealthJson(data));
+        const parsed = parseAsrHealthJson(data);
+        if (!parsed) {
+          setAsrHealth("error");
+          setAsrHealthDetail(`无法解析 ${url} 的能力字段（响应格式不符合 rushi-asr /health 契约）。`);
+          await refreshBundledAsrDiag();
+          return;
+        }
+        setAsrCaps(parsed);
         setAsrHealth("ok");
         await refreshBundledAsrDiag();
         return;
@@ -149,7 +238,10 @@ export function useProjectP1Controller() {
   }, [asrHealth, asrHealthDetail, bundledAsrDiag]);
 
   const prepareDefaultFunasrModel = useCallback(async () => {
-    const base = asrBaseUrl().replace(/\/$/, "");
+    prepareModelAbortRef.current?.abort();
+    const ac = new AbortController();
+    prepareModelAbortRef.current = ac;
+    const base = asrBaseUrl().replace(/\/+$/, "");
     const urlAsync = `${base}/v1/models/prepare-default/async`;
     const urlStatus = `${base}/v1/models/prepare-status`;
     const deadlineMs = 900_000;
@@ -171,7 +263,7 @@ export function useProjectP1Controller() {
       setPrepareModelProgress(Math.min(92, 6 + Math.floor((elapsed / deadlineMs) * 86)));
     };
     try {
-      const start = await fetch(urlAsync, { method: "POST" });
+      const start = await fetch(urlAsync, { method: "POST", signal: ac.signal });
       const sj = (await start.json().catch(() => ({}))) as Record<string, unknown>;
       if (!start.ok) {
         const d = sj.detail;
@@ -188,8 +280,9 @@ export function useProjectP1Controller() {
         setFunasrInstallMessage("已有模型下载任务在进行，正在同步进度…");
       }
       while (Date.now() < deadline) {
+        if (ac.signal.aborted) return;
         bumpProgress();
-        const stRes = await fetch(urlStatus);
+        const stRes = await fetch(urlStatus, { signal: ac.signal });
         const st = (await stRes.json().catch(() => ({}))) as Record<string, unknown>;
         const phase = typeof st.phase === "string" ? st.phase : "?";
         if (phase === "running") {
@@ -229,11 +322,22 @@ export function useProjectP1Controller() {
           setPrepareModelFailure(describePrepareModelFailure(code));
           return;
         }
-        await new Promise((r) => setTimeout(r, 1000));
+        await new Promise<void>((r, rej) => {
+          const t = setTimeout(r, 1000);
+          ac.signal.addEventListener(
+            "abort",
+            () => {
+              clearTimeout(t);
+              rej(new DOMException("Aborted", "AbortError"));
+            },
+            { once: true },
+          );
+        });
       }
       setFunasrInstallMessage("");
       setPrepareModelFailure(describePrepareModelFailure("client_timeout"));
-    } catch {
+    } catch (e) {
+      if (e instanceof DOMException && e.name === "AbortError") return;
       setFunasrInstallMessage("");
       setPrepareModelFailure(describePrepareModelFailure("fetch_failed"));
     } finally {
@@ -263,10 +367,15 @@ export function useProjectP1Controller() {
   }, []);
 
   const applyDetail = useCallback((d: ProjectDetail) => {
+    segmentBoundsLiveGestureRef.current = false;
     setCurrent(d);
     setSegments(cloneSegments(d.segments));
     setSelectedIdx(0);
     setTranscribeHints([]);
+    setPickedPath(null);
+    undoStack.current = [];
+    redoStack.current = [];
+    textEditUndoRef.current = null;
     try {
       setAudioSrc(convertFileSrc(d.audio_storage_path));
     } catch {
@@ -278,10 +387,14 @@ export function useProjectP1Controller() {
     setError("");
     try {
       const p = await p1.p1PickAudioPath();
-      setPickedPath(p);
+      setPickedPath(p ?? null);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
+  }, []);
+
+  const clearPickedAudio = useCallback(() => {
+    setPickedPath(null);
   }, []);
 
   const createProject = useCallback(async () => {
@@ -289,7 +402,7 @@ export function useProjectP1Controller() {
       setError("请先选择音频文件。");
       return;
     }
-    setBusy(true);
+    beginBusy("create");
     setError("");
     try {
       const d = await p1.p1ProjectCreate(newName.trim() || "未命名项目", pickedPath);
@@ -298,13 +411,13 @@ export function useProjectP1Controller() {
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
-      setBusy(false);
+      endBusy();
     }
-  }, [pickedPath, newName, applyDetail, refreshProjects]);
+  }, [pickedPath, newName, applyDetail, refreshProjects, beginBusy, endBusy]);
 
   const loadProject = useCallback(
     async (id: string) => {
-      setBusy(true);
+      beginBusy("load");
       setError("");
       try {
         const d = await p1.p1ProjectLoad(id);
@@ -312,19 +425,26 @@ export function useProjectP1Controller() {
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
       } finally {
-        setBusy(false);
+        endBusy();
       }
     },
-    [applyDetail],
+    [applyDetail, beginBusy, endBusy],
   );
 
   const runTranscribe = useCallback(async () => {
     if (!current) return;
-    setBusy(true);
+    if (isSttOnlineEnabledButIncomplete()) {
+      setError(
+        "已启用在线 STT：请在「环境与 ASR」中选择厂商、填写 API Key 并点击保存在线配置；自建网关还须填写 HTTPS 转写 URL。OpenAI / AssemblyAI 可留空 URL 使用默认端点。",
+      );
+      return;
+    }
+    beginBusy("transcribe");
     setError("");
     setTranscribeHints([]);
     try {
-      const out = await p1.p1ProjectRunTranscribe(current.id, asrBaseUrl());
+      const online = tryBuildP1OnlineTranscribeBridgePayload();
+      const out = await p1.p1ProjectRunTranscribe(current.id, asrBaseUrl(), online ?? null);
       applyDetail(out.detail);
       const hints = deriveTranscribeHints(out.engine, out.warnings, out.detail.segments);
       if (import.meta.env.DEV && hints.length > 0) {
@@ -335,35 +455,61 @@ export function useProjectP1Controller() {
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
-      setBusy(false);
+      endBusy();
     }
-  }, [current, applyDetail, refreshAsrHealth]);
+  }, [current, applyDetail, refreshAsrHealth, beginBusy, endBusy]);
 
   const saveSegments = useCallback(async () => {
     if (!current) return;
-    setBusy(true);
+    beginBusy("save");
     setError("");
     try {
-      const normalized = segments.map((s, i) => ({ ...s, idx: i }));
+      flushP1SegmentTextDraftsFromDom();
+      const normalized = segmentsRef.current.map((s, i) => ({ ...s, idx: i }));
       await p1.p1ProjectSaveSegments(current.id, normalized);
-      undoStack.current = [];
       const d = await p1.p1ProjectLoad(current.id);
       applyDetail(d);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
-      setBusy(false);
+      endBusy();
     }
-  }, [current, segments, applyDetail]);
+  }, [current, applyDetail, flushP1SegmentTextDraftsFromDom, beginBusy, endBusy]);
 
   const undo = useCallback(() => {
     const prev = undoStack.current.pop();
-    if (prev) setSegments(prev);
+    if (!prev) return;
+    redoStack.current.push(cloneSegments(segmentsRef.current));
+    if (redoStack.current.length > 40) redoStack.current.shift();
+    textEditUndoRef.current = null;
+    setSegments(prev);
   }, []);
 
-  const updateSegmentText = useCallback((idx: number, text: string) => {
-    setSegments((prev) => prev.map((s, i) => (i === idx ? { ...s, text } : s)));
+  const redo = useCallback(() => {
+    const next = redoStack.current.pop();
+    if (!next) return;
+    undoStack.current.push(cloneSegments(segmentsRef.current));
+    if (undoStack.current.length > 40) undoStack.current.shift();
+    textEditUndoRef.current = null;
+    setSegments(next);
   }, []);
+
+  const updateSegmentText = useCallback(
+    (idx: number, text: string) => {
+      const prev = segmentsRef.current;
+      const cur = prev[idx];
+      if (!cur || cur.text === text) return;
+      pushUndoForTextEdit(idx);
+      setSegments((p) => {
+        const c = p[idx];
+        if (!c || c.text === text) return p;
+        const out = [...p];
+        out[idx] = { ...c, text };
+        return out;
+      });
+    },
+    [pushUndoForTextEdit],
+  );
 
   const updateSegmentTime = useCallback(
     (idx: number, field: "start_sec" | "end_sec", value: number) => {
@@ -373,93 +519,287 @@ export function useProjectP1Controller() {
     [pushUndo],
   );
 
+  const updateSegmentBounds = useCallback(
+    (idx: number, startSec: number, endSec: number, phase: "live" | "commit" = "commit") => {
+      const prev = segmentsRef.current;
+      const s = prev[idx];
+      if (!s) return;
+      let lo = Math.min(startSec, endSec);
+      let hi = Math.max(startSec, endSec);
+      const prevSeg = prev[idx - 1];
+      const nextSeg = prev[idx + 1];
+      if (prevSeg) lo = Math.max(lo, prevSeg.end_sec + 1e-6);
+      if (nextSeg) hi = Math.min(hi, nextSeg.start_sec - 1e-6);
+      lo = roundSec3(lo);
+      hi = roundSec3(hi);
+      if (hi <= lo + 0.02) {
+        if (phase === "commit") segmentBoundsLiveGestureRef.current = false;
+        return;
+      }
+      if (Math.abs(s.start_sec - lo) < 0.0005 && Math.abs(s.end_sec - hi) < 0.0005) {
+        if (phase === "commit") segmentBoundsLiveGestureRef.current = false;
+        return;
+      }
+
+      if (phase === "live") {
+        if (!segmentBoundsLiveGestureRef.current) {
+          segmentBoundsLiveGestureRef.current = true;
+          pushUndo();
+        }
+        setSegments((p) => p.map((x, i) => (i === idx ? { ...x, start_sec: lo, end_sec: hi } : x)));
+        return;
+      }
+
+      const hadLiveGesture = segmentBoundsLiveGestureRef.current;
+      segmentBoundsLiveGestureRef.current = false;
+      if (!hadLiveGesture) pushUndo();
+      setSegments((p) => p.map((x, i) => (i === idx ? { ...x, start_sec: lo, end_sec: hi } : x)));
+    },
+    [pushUndo],
+  );
+
   const splitAtSelection = useCallback(() => {
-    if (segments.length === 0) return;
-    const i = Math.min(selectedIdx, segments.length - 1);
-    const s = segments[i];
+    flushP1SegmentTextDraftsFromDom();
+    const segs = segmentsRef.current;
+    if (segs.length === 0) return;
+    const i = Math.min(selectedIdx, segs.length - 1);
+    const s = segs[i];
+    if (!s) return;
     const mid = (s.start_sec + s.end_sec) / 2;
-    if (mid <= s.start_sec + 0.02 || mid >= s.end_sec - 0.02) {
+    const pair = buildSplitPair(s, mid);
+    if (!pair) {
       setError("语段太短，无法拆分。");
       return;
     }
     setError("");
     pushUndo();
-    const left: SegmentDto = { ...s, end_sec: mid, text: s.text };
-    const right: SegmentDto = {
-      idx: s.idx + 1,
-      start_sec: mid,
-      end_sec: s.end_sec,
-      text: "",
-      confidence: null,
-      low_confidence: false,
-      detail: null,
-    };
     setSegments((prev) => {
       const out = [...prev];
-      out.splice(i, 1, left, right);
-      return out.map((x, j) => ({ ...x, idx: j }));
+      out.splice(i, 1, pair.left, pair.right);
+      return reindexSegments(out);
     });
     setSelectedIdx(i + 1);
-  }, [segments, selectedIdx, pushUndo]);
+  }, [flushP1SegmentTextDraftsFromDom, selectedIdx, pushUndo]);
+
+  const splitAtPlayhead = useCallback(
+    (timeSec: number) => {
+      flushP1SegmentTextDraftsFromDom();
+      const t = roundSec3(timeSec);
+      const segs = segmentsRef.current;
+      const i = segs.findIndex((s) => t > s.start_sec + 0.02 && t < s.end_sec - 0.02);
+      if (i < 0) {
+        setError("指针时间不在任一语段内，无法拆分。");
+        return;
+      }
+      const s = segs[i];
+      if (!s) return;
+      const pair = buildSplitPair(s, t);
+      if (!pair) {
+        setError("语段太短，无法在该时间拆分。");
+        return;
+      }
+      setError("");
+      pushUndo();
+      setSegments((prev) => {
+        const out = [...prev];
+        out.splice(i, 1, pair.left, pair.right);
+        return reindexSegments(out);
+      });
+      setSelectedIdx(i + 1);
+    },
+    [flushP1SegmentTextDraftsFromDom, pushUndo],
+  );
+
+  const mergeWithPrevAt = useCallback(
+    (idx: number) => {
+      if (idx <= 0) return;
+      flushP1SegmentTextDraftsFromDom();
+      const segs = segmentsRef.current;
+      const a = segs[idx - 1];
+      const b = segs[idx];
+      if (!a || !b) return;
+      pushUndo();
+      const merged = mergeTwoSegments(a, b);
+      setSegments((p) => {
+        const out = [...p];
+        out.splice(idx - 1, 2, merged);
+        return reindexSegments(out);
+      });
+      setSelectedIdx(idx - 1);
+    },
+    [flushP1SegmentTextDraftsFromDom, pushUndo],
+  );
+
+  const mergeWithNextAt = useCallback(
+    (idx: number) => {
+      flushP1SegmentTextDraftsFromDom();
+      const segs = segmentsRef.current;
+      if (idx >= segs.length - 1) return;
+      const a = segs[idx];
+      const b = segs[idx + 1];
+      if (!a || !b) return;
+      pushUndo();
+      const merged = mergeTwoSegments(a, b);
+      setSegments((p) => {
+        const out = [...p];
+        out.splice(idx, 2, merged);
+        return reindexSegments(out);
+      });
+      setSelectedIdx(idx);
+    },
+    [flushP1SegmentTextDraftsFromDom, pushUndo],
+  );
+
+  const mergeWithPrev = useCallback(() => {
+    mergeWithPrevAt(selectedIdx);
+  }, [mergeWithPrevAt, selectedIdx]);
 
   const mergeWithNext = useCallback(() => {
-    if (selectedIdx >= segments.length - 1) return;
-    pushUndo();
-    const a = segments[selectedIdx];
-    const b = segments[selectedIdx + 1];
-    const confA = a.confidence ?? null;
-    const confB = b.confidence ?? null;
-    const merged: SegmentDto = {
-      idx: a.idx,
-      start_sec: a.start_sec,
-      end_sec: b.end_sec,
-      text: `${a.text}\n${b.text}`.trim(),
-      confidence:
-        confA != null && confB != null ? Math.min(confA, confB) : (confA ?? confB ?? null),
-      low_confidence: Boolean(a.low_confidence || b.low_confidence),
-      detail: [a.detail, b.detail].filter(Boolean).join(" / ") || null,
-    };
-    setSegments((prev) => {
-      const out = [...prev];
-      out.splice(selectedIdx, 2, merged);
-      return out.map((x, j) => ({ ...x, idx: j }));
-    });
-  }, [segments, selectedIdx, pushUndo]);
+    mergeWithNextAt(selectedIdx);
+  }, [mergeWithNextAt, selectedIdx]);
+
+  const deleteSegmentAt = useCallback(
+    (idx: number) => {
+      flushP1SegmentTextDraftsFromDom();
+      const segs = segmentsRef.current;
+      if (idx < 0 || idx >= segs.length) return;
+      setError("");
+      pushUndo();
+      setSegments((prev) => reindexSegments(prev.filter((_, j) => j !== idx)));
+      setSelectedIdx((prev) => {
+        const nextLen = segs.length - 1;
+        if (nextLen <= 0) return 0;
+        let next = prev;
+        if (idx < prev) next -= 1;
+        else if (idx === prev) next = Math.min(prev, nextLen - 1);
+        return Math.max(0, Math.min(next, nextLen - 1));
+      });
+    },
+    [flushP1SegmentTextDraftsFromDom, pushUndo],
+  );
+
+  /** 在当前语段之后插入一条空白语段（需与下一条之间留有间隙） */
+  const insertSegmentAfter = useCallback(
+    (idx: number) => {
+      flushP1SegmentTextDraftsFromDom();
+      const segs = segmentsRef.current;
+      if (idx < 0 || idx >= segs.length) return;
+      const a = segs[idx];
+      const b = segs[idx + 1];
+      if (!a) return;
+      const startSec = a.end_sec;
+      let endSec: number;
+      if (b) {
+        const gap = b.start_sec - a.end_sec;
+        if (!Number.isFinite(gap) || gap < 0.12) {
+          setError("与下一条无足够间隙：请在波形区拖动语段边界留出空档后再插入。");
+          return;
+        }
+        endSec = a.end_sec + Math.min(Math.max(gap * 0.45, 0.08), 2);
+      } else {
+        endSec = a.end_sec + 1;
+      }
+      if (endSec <= startSec + 0.04) {
+        setError("无法插入：时间范围无效。");
+        return;
+      }
+      setError("");
+      pushUndo();
+      const newSeg: SegmentDto = {
+        idx: 0,
+        start_sec: startSec,
+        end_sec: endSec,
+        text: "",
+        confidence: null,
+        low_confidence: false,
+        detail: null,
+      };
+      setSegments((prev) => {
+        const out = [...prev.slice(0, idx + 1), newSeg, ...prev.slice(idx + 1)];
+        return reindexSegments(out);
+      });
+      setSelectedIdx(idx + 1);
+    },
+    [flushP1SegmentTextDraftsFromDom, pushUndo],
+  );
+
+  /** 波形上拖选的时间范围插入一条新语段（不与已有区间重叠） */
+  const insertSegmentFromTimeRange = useCallback(
+    (startSec: number, endSec: number) => {
+      if (busy) return;
+      flushP1SegmentTextDraftsFromDom();
+      const lo = roundSec3(Math.min(startSec, endSec));
+      const hi = roundSec3(Math.max(startSec, endSec));
+      if (hi <= lo + 0.05) {
+        setError("选区过短。");
+        return;
+      }
+      const segs = segmentsRef.current;
+      for (const s of segs) {
+        if (lo < s.end_sec && hi > s.start_sec) {
+          setError("选区与已有语段重叠。");
+          return;
+        }
+      }
+      setError("");
+      pushUndo();
+      let insertAt = segs.findIndex((s) => s.start_sec > lo);
+      if (insertAt === -1) insertAt = segs.length;
+      const newSeg: SegmentDto = {
+        idx: 0,
+        start_sec: lo,
+        end_sec: hi,
+        text: "",
+        confidence: null,
+        low_confidence: false,
+        detail: null,
+      };
+      setSegments((prev) => {
+        const out = [...prev.slice(0, insertAt), newSeg, ...prev.slice(insertAt)];
+        return reindexSegments(out);
+      });
+      setSelectedIdx(insertAt);
+    },
+    [busy, flushP1SegmentTextDraftsFromDom, pushUndo],
+  );
 
   const exportTxt = useCallback(async () => {
     if (!current) return;
     setError("");
-    const rows: ExportSegment[] = segments.map((s, i) => ({ ...s, idx: i }));
+    flushP1SegmentTextDraftsFromDom();
+    const rows: ExportSegment[] = segmentsRef.current.map((s, i) => ({ ...s, idx: i }));
     try {
       await p1.p1ExportTextFile(safeExportBasename(current.name, "txt"), formatTxt(rows));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
-  }, [current, segments]);
+  }, [current, flushP1SegmentTextDraftsFromDom]);
 
   const exportSrt = useCallback(async () => {
     if (!current) return;
     setError("");
-    const rows: ExportSegment[] = segments.map((s, i) => ({ ...s, idx: i }));
+    flushP1SegmentTextDraftsFromDom();
+    const rows: ExportSegment[] = segmentsRef.current.map((s, i) => ({ ...s, idx: i }));
     try {
       await p1.p1ExportTextFile(safeExportBasename(current.name, "srt"), formatSrt(rows));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
-  }, [current, segments]);
+  }, [current, flushP1SegmentTextDraftsFromDom]);
 
   const exportDocx = useCallback(
     async (mode: P3DocxExportMode) => {
       if (!current) return;
       setError("");
-      const normalized: SegmentDto[] = segments.map((s, i) => ({ ...s, idx: i }));
+      flushP1SegmentTextDraftsFromDom();
+      const normalized: SegmentDto[] = segmentsRef.current.map((s, i) => ({ ...s, idx: i }));
       try {
         await p3ExportDocx(safeExportBasename(current.name, "docx"), current.name, mode, normalized);
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
       }
     },
-    [current, segments],
+    [current, flushP1SegmentTextDraftsFromDom],
   );
 
   const exportDiagnosticBundle = useCallback(async () => {
@@ -472,7 +812,7 @@ export function useProjectP1Controller() {
   }, []);
 
   const installFunasrDepsInteractive = useCallback(async () => {
-    setBusy(true);
+    beginBusy("install_funasr");
     setError("");
     setPrepareModelFailure(null);
     setFunasrInstallMessage("");
@@ -493,9 +833,9 @@ export function useProjectP1Controller() {
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
-      setBusy(false);
+      endBusy();
     }
-  }, [refreshAsrHealth]);
+  }, [refreshAsrHealth, beginBusy, endBusy]);
 
   const copyFunasrManualCommands = useCallback(async () => {
     try {
@@ -509,24 +849,28 @@ export function useProjectP1Controller() {
   const deleteProject = useCallback(
     async (id: string) => {
       if (!window.confirm("确定删除该项目及本地音频副本？")) return;
-      setBusy(true);
+      beginBusy("delete");
       setError("");
       try {
         await p1.p1ProjectDelete(id);
         if (current?.id === id) {
+          segmentBoundsLiveGestureRef.current = false;
           setCurrent(null);
           setSegments([]);
           setAudioSrc(null);
           setTranscribeHints([]);
+          undoStack.current = [];
+          redoStack.current = [];
+          textEditUndoRef.current = null;
         }
         await refreshProjects();
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
       } finally {
-        setBusy(false);
+        endBusy();
       }
     },
-    [current, refreshProjects],
+    [current, refreshProjects, beginBusy, endBusy],
   );
 
   return {
@@ -541,6 +885,8 @@ export function useProjectP1Controller() {
     asrHealthDetail: asrHealthDetailDisplay,
     bundledAsrDiag,
     asrCaps,
+    sttOnlineBridgeReady,
+    bumpSttOnlineRuntimeChanged,
     funasrInstallMessage,
     prepareModelBusy,
     prepareModelProgress,
@@ -553,20 +899,31 @@ export function useProjectP1Controller() {
     installFunasrDepsInteractive,
     copyFunasrManualCommands,
     busy,
+    busyReason,
     newName,
     setNewName,
     pickedPath,
     refreshProjects,
     pickAudio,
+    clearPickedAudio,
     createProject,
     loadProject,
     runTranscribe,
     saveSegments,
     undo,
+    redo,
     updateSegmentText,
     updateSegmentTime,
+    updateSegmentBounds,
     splitAtSelection,
+    splitAtPlayhead,
     mergeWithNext,
+    mergeWithPrev,
+    mergeWithNextAt,
+    mergeWithPrevAt,
+    deleteSegmentAt,
+    insertSegmentAfter,
+    insertSegmentFromTimeRange,
     exportTxt,
     exportSrt,
     exportDocx,

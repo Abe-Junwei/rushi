@@ -4,6 +4,8 @@ export interface SegmentLike {
   text?: string | null;
 }
 
+const CORRECTION_RULE_HINT_PREFIX = "correction_rule_hint:";
+
 export function deriveTranscribeHints(engine: string, warnings: string[], segments: SegmentLike[]): string[] {
   const hints: string[] = [];
   const eng = engine.toLowerCase();
@@ -24,6 +26,13 @@ export function deriveTranscribeHints(engine: string, warnings: string[], segmen
     hints.push(
       "本次拉取到的语段正文均为空：常见于 stub 或引擎未输出文本。请查看 ASR 日志，并确认 FunASR 已安装且模型权重已下载。",
     );
+  }
+  for (const w of warnings) {
+    if (!w.startsWith(CORRECTION_RULE_HINT_PREFIX)) continue;
+    const pair = w.slice(CORRECTION_RULE_HINT_PREFIX.length);
+    const [beforeText, afterText] = pair.split("->");
+    if (!beforeText || !afterText) continue;
+    hints.push(`检测到历史错词：建议将“${beforeText}”修正为“${afterText}”。`);
   }
   return hints;
 }

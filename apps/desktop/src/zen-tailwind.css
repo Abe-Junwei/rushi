@@ -1,0 +1,12 @@
+/* 仅 utilities：避免 preflight 与 App.css 壳层冲突 */
+@tailwind utilities;
+
+/** 确认创建页：抵消 WebKit 自动填充黄底，避免看起来像配色错误 */
+.p1-confirm-project-input:-webkit-autofill,
+.p1-confirm-project-input:-webkit-autofill:hover,
+.p1-confirm-project-input:-webkit-autofill:focus {
+  -webkit-text-fill-color: rgb(55 65 81);
+  border: 2px solid #e5c19d;
+  box-shadow: 0 0 0 1000px #ffffff inset;
+  transition: background-color 9999s ease-out;
+}

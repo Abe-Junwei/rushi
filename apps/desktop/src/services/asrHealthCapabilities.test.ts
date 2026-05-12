@@ -20,4 +20,12 @@ describe("parseAsrHealthJson", () => {
     expect(caps!.funasr_default_model_cached).toBe(false);
     expect(caps!.rushi_models_root).toBe("/tmp/models");
   });
+
+  it("returns null for invalid payload", () => {
+    const caps = parseAsrHealthJson({
+      status: "ok",
+      service: "other-service",
+    });
+    expect(caps).toBeNull();
+  });
 });

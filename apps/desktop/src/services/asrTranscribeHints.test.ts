@@ -16,4 +16,13 @@ describe("deriveTranscribeHints", () => {
     const h = deriveTranscribeHints("funasr+x", [], [{ text: "" }, { text: "  " }]);
     expect(h.some((x) => x.includes("均为空"))).toBe(true);
   });
+
+  it("surfaces correction-rule hint warnings", () => {
+    const h = deriveTranscribeHints(
+      "funasr+x",
+      ["correction_rule_hint:安波那那->安那般那"],
+      [{ text: "安波那那" }],
+    );
+    expect(h.some((x) => x.includes("安波那那") && x.includes("安那般那"))).toBe(true);
+  });
 });

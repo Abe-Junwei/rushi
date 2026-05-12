@@ -14,12 +14,13 @@ export interface TranscriptionSegment {
   text: string;
   /**
    * Engine confidence in [0, 1] when known; `null` when unknown or not applicable (e.g. stub).
+   * May be omitted in JSON (Rust / serde default).
    */
-  confidence: number | null;
+  confidence?: number | null;
   /** True when engine marks low confidence or heuristic fallback. */
   low_confidence?: boolean;
-  /** Optional per-segment note (e.g. stub / post-process). */
-  detail?: string;
+  /** Optional per-segment note (e.g. stub / post-process). May serialize as JSON `null`. */
+  detail?: string | null;
 }
 
 export interface TranscriptionError {
@@ -40,25 +41,49 @@ export interface TranscriptionResult {
   engine: string;
   /** Duration of normalized audio in seconds, if known. */
   duration_sec: number | null;
-  error?: TranscriptionError;
+  error?: TranscriptionError | null;
   warnings: string[];
 }
 
 /** Client-side contract for calling a local or remote ASR HTTP service. */
 export interface TranscriptionProvider {
   readonly id: string;
+  /** Whether this provider can consume hotword bias directly in recognition requests. */
+  readonly supportsHotwordBias: boolean;
+  /** Lightweight reachability probe for environment diagnostics. */
+  isAvailable?(): Promise<boolean>;
   transcribeFile(file: File, signal?: AbortSignal): Promise<TranscriptionResult>;
+}
+
+function isTranscriptionError(v: unknown): v is TranscriptionError {
+  if (!v || typeof v !== "object") return false;
+  const e = v as Record<string, unknown>;
+  return typeof e.code === "string" && typeof e.message === "string";
+}
+
+function isTranscriptionSegment(v: unknown): v is TranscriptionSegment {
+  if (!v || typeof v !== "object") return false;
+  const s = v as Record<string, unknown>;
+  if (typeof s.start_sec !== "number" || !Number.isFinite(s.start_sec)) return false;
+  if (typeof s.end_sec !== "number" || !Number.isFinite(s.end_sec)) return false;
+  if (typeof s.text !== "string") return false;
+  const c = s.confidence;
+  if (c !== undefined && c !== null && typeof c !== "number") return false;
+  if (s.low_confidence !== undefined && typeof s.low_confidence !== "boolean") return false;
+  const d = s.detail;
+  if (d !== undefined && d !== null && typeof d !== "string") return false;
+  return true;
 }
 
 export function isTranscriptionResult(value: unknown): value is TranscriptionResult {
   if (!value || typeof value !== "object") return false;
   const o = value as Record<string, unknown>;
-  return (
-    o.schema_version === TRANSCRIPTION_RESULT_SCHEMA_VERSION &&
-    Array.isArray(o.segments) &&
-    typeof o.full_text === "string" &&
-    typeof o.engine === "string" &&
-    (o.duration_sec === null || typeof o.duration_sec === "number") &&
-    Array.isArray(o.warnings)
-  );
+  if (o.schema_version !== TRANSCRIPTION_RESULT_SCHEMA_VERSION) return false;
+  if (!Array.isArray(o.segments) || !o.segments.every(isTranscriptionSegment)) return false;
+  if (typeof o.full_text !== "string") return false;
+  if (typeof o.engine !== "string") return false;
+  if (o.duration_sec !== null && typeof o.duration_sec !== "number") return false;
+  if (o.error !== undefined && o.error !== null && !isTranscriptionError(o.error)) return false;
+  if (!Array.isArray(o.warnings) || !o.warnings.every((w) => typeof w === "string")) return false;
+  return true;
 }

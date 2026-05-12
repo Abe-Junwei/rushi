@@ -9,6 +9,10 @@ describe("formatSrtTime", () => {
   it("formats with milliseconds", () => {
     expect(formatSrtTime(1.5)).toBe("00:00:01,500");
   });
+
+  it("carries millisecond overflow into next second", () => {
+    expect(formatSrtTime(1.9996)).toBe("00:00:02,000");
+  });
 });
 
 describe("formatTxt / formatSrt", () => {

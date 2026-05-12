@@ -14,8 +14,9 @@ function pad(n: number, w: number): string {
 /** SRT timestamp `HH:MM:SS,mmm` */
 export function formatSrtTime(seconds: number): string {
   if (!Number.isFinite(seconds) || seconds < 0) seconds = 0;
-  const ms = Math.round((seconds % 1) * 1000);
-  const total = Math.floor(seconds);
+  const totalMs = Math.round(seconds * 1000);
+  const ms = totalMs % 1000;
+  const total = Math.floor(totalMs / 1000);
   const h = Math.floor(total / 3600);
   const m = Math.floor((total % 3600) / 60);
   const s = total % 60;
@@ -24,7 +25,7 @@ export function formatSrtTime(seconds: number): string {
 
 /** Plain text: one segment per line (no timestamps). */
 export function formatTxt(segments: ExportSegment[]): string {
-  return segments.map((s) => s.text).join("\n");
+  return segments.map((s) => s.text ?? "").join("\n");
 }
 
 /** SubRip: index + timestamps + blank line between cues. */
@@ -35,7 +36,7 @@ export function formatSrt(segments: ExportSegment[]): string {
     const n = i + 1;
     const start = formatSrtTime(s.start_sec);
     const end = formatSrtTime(s.end_sec);
-    parts.push(`${n}\n${start} --> ${end}\n${s.text.replace(/\r\n/g, "\n").trimEnd()}\n`);
+    parts.push(`${n}\n${start} --> ${end}\n${(s.text ?? "").replace(/\r\n/g, "\n").trimEnd()}\n`);
   }
   return parts.join("\n");
 }
