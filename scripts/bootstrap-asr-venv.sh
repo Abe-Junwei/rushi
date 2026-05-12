@@ -18,10 +18,13 @@ python3 -m venv .venv
 # shellcheck source=/dev/null
 source .venv/bin/activate
 python -m pip install -U pip
-python -m pip install -e "."
+python -m pip install -e ".[dev]"
 
 echo ""
-echo "Done. Start ASR (inside this venv, \`python\` is available):"
+echo "Done (includes dev: pytest / httpx). Run tests: python -m pytest"
+echo "Or from repo root: npm run asr:test"
+echo ""
+echo "Start ASR (inside this venv, \`python\` is available):"
 echo "  source \"$ASR/.venv/bin/activate\""
 echo "  python -m rushi_asr"
 echo ""

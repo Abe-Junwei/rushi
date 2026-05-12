@@ -4,18 +4,50 @@ from __future__ import annotations
 
 import shutil
 import subprocess
+import sys
 from pathlib import Path
 
 
+def _pyinstaller_bundle_dir() -> Path | None:
+    """PyInstaller onedir: ffmpeg/ffprobe are placed next to the main executable."""
+    if not getattr(sys, "frozen", False):
+        return None
+    return Path(sys.executable).resolve().parent
+
+
+def _bundled_binary(*names: str) -> str | None:
+    d = _pyinstaller_bundle_dir()
+    if d is None:
+        return None
+    for n in names:
+        p = d / n
+        if p.is_file():
+            return str(p)
+    return None
+
+
 def ffmpeg_path() -> str:
-    return shutil.which("ffmpeg") or "ffmpeg"
+    p = _bundled_binary("ffmpeg", "ffmpeg.exe")
+    if p is not None:
+        return p
+    w = shutil.which("ffmpeg")
+    return w if w else "ffmpeg"
 
 
 def ffprobe_path() -> str:
-    return shutil.which("ffprobe") or "ffprobe"
+    p = _bundled_binary("ffprobe", "ffprobe.exe")
+    if p is not None:
+        return p
+    w = shutil.which("ffprobe")
+    return w if w else "ffprobe"
 
 
 def ffmpeg_available() -> bool:
+    if _pyinstaller_bundle_dir() is not None:
+        return (
+            _bundled_binary("ffmpeg", "ffmpeg.exe") is not None
+            and _bundled_binary("ffprobe", "ffprobe.exe") is not None
+        )
     return shutil.which("ffmpeg") is not None and shutil.which("ffprobe") is not None
 
 

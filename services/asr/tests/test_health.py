@@ -13,6 +13,8 @@ def test_root_ok() -> None:
     body = res.json()
     assert body["service"] == "rushi-asr"
     assert body["health"] == "/health"
+    assert "prepare_model" in body
+    assert "prepare_model_async" in body
 
 
 def test_health_ok() -> None:
@@ -20,4 +22,15 @@ def test_health_ok() -> None:
     client = TestClient(app)
     res = client.get("/health")
     assert res.status_code == 200
-    assert res.json() == {"status": "ok", "service": "rushi-asr"}
+    body = res.json()
+    assert body["status"] == "ok"
+    assert body["service"] == "rushi-asr"
+    assert "ffmpeg_ok" in body
+    assert "funasr_import_ok" in body
+    assert "funasr_model_configured" in body
+    assert "funasr_model_explicit_from_env" in body
+    assert "funasr_ready" in body
+    assert "rushi_models_root" in body
+    assert "funasr_default_model_cached" in body
+    assert body["transcription_mode"] in ("funasr", "stub")
+    assert isinstance(body.get("funasr_model_id"), str)

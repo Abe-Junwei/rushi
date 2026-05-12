@@ -1,0 +1,3 @@
+# Linux x86_64 CPU sidecar — same pins as macOS arm64 CPU lock; pip resolves manylinux wheels.
+# Regenerate: run `bash scripts/regen-sidecar-cpu-lock.sh` on macOS (arm64 lock is source of truth), then keep this `-r` if still valid.
+-r requirements-sidecar-cpu-macos-arm64.lock

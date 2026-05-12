@@ -1,0 +1,36 @@
+{
+  "schema_version": "1",
+  "description": "P4 评测清单：向 items 追加条目并放置对应 wav；reference_transcript 可为空（仅跑通转写不写 CER）。",
+  "items": [
+    {
+      "id": "clear-placeholder",
+      "category": "clear",
+      "audio_relpath": "samples/clear.wav",
+      "reference_transcript": ""
+    },
+    {
+      "id": "far-field-placeholder",
+      "category": "far_field",
+      "audio_relpath": "samples/far_field.wav",
+      "reference_transcript": ""
+    },
+    {
+      "id": "noisy-placeholder",
+      "category": "noisy",
+      "audio_relpath": "samples/noisy.wav",
+      "reference_transcript": ""
+    },
+    {
+      "id": "qa-placeholder",
+      "category": "qa",
+      "audio_relpath": "samples/qa.wav",
+      "reference_transcript": ""
+    },
+    {
+      "id": "term-dense-placeholder",
+      "category": "term_dense",
+      "audio_relpath": "samples/term_dense.wav",
+      "reference_transcript": ""
+    }
+  ]
+}

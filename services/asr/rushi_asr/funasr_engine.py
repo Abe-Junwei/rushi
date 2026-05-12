@@ -11,6 +11,7 @@ import os
 from pathlib import Path
 from typing import Any
 
+from rushi_asr.defaults import effective_funasr_model_id
 from rushi_asr.schemas import TranscriptionSegment
 
 log = logging.getLogger(__name__)
@@ -77,18 +78,43 @@ def _segments_from_sentence_info(sentence_info: list[dict[str, Any]]) -> list[Tr
     return segs
 
 
-def transcribe_with_funasr(wav_path: Path, duration_sec: float | None) -> tuple[list[TranscriptionSegment], str]:
+def transcribe_with_funasr(
+    wav_path: Path,
+    duration_sec: float | None,
+    hotwords: str | None = None,
+    out_warnings: list[str] | None = None,
+) -> tuple[list[TranscriptionSegment], str]:
     """
     Returns (segments, engine_label). Raises RuntimeError on hard failures.
+
+    ``hotwords``: space-separated bias string for FunASR ``hotword=`` when supported.
     """
-    model_id = os.environ.get("RUSHI_FUNASR_MODEL", "").strip()
+    model_id = effective_funasr_model_id()
     if not model_id:
         raise RuntimeError("funasr_model_not_configured")
 
     model = _get_model(model_id)
     language = os.environ.get("RUSHI_FUNASR_LANGUAGE", "zh").strip() or "zh"
+    hw = (hotwords or "").strip() or None
+
+    def _warn(msg: str) -> None:
+        if out_warnings is not None:
+            out_warnings.append(msg)
+
     try:
-        res = model.generate(input=str(wav_path), language=language, merge_vad=True)
+        if hw:
+            try:
+                res = model.generate(
+                    input=str(wav_path),
+                    language=language,
+                    merge_vad=True,
+                    hotword=hw,
+                )
+            except TypeError:
+                _warn("hotword_param_unsupported")
+                res = model.generate(input=str(wav_path), language=language, merge_vad=True)
+        else:
+            res = model.generate(input=str(wav_path), language=language, merge_vad=True)
     except TypeError:
         res = model.generate(input=str(wav_path))
     if not res or not isinstance(res, list):

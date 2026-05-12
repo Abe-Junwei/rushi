@@ -1,0 +1,6 @@
+{
+  "schema_version": "1",
+  "completed": [],
+  "pending": ["samples/clear.wav", "samples/noisy.wav"],
+  "last_error": null
+}

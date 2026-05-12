@@ -1,0 +1,4 @@
+# Windows x64 CPU-only sidecar (`rushi-asr-sidecar.exe`): same pins as macOS CPU lock;
+# pip resolves win_amd64 wheels. Regenerate on Windows if resolver differs:
+#   bash ../scripts/regen-sidecar-cpu-lock.sh   (Git Bash) or re-run steps in README.
+-r requirements-sidecar-cpu-macos-arm64.lock

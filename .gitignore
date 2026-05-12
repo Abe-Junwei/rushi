@@ -15,3 +15,22 @@ __pycache__/
 fixtures/p0-samples/*.wav
 fixtures/p0-samples/*.aiff
 fixtures/p0-samples/*.caf
+
+# P4 评测占位 wav（本地 `npm run p4:eval-placeholders` 生成，不提交）
+fixtures/p4-eval/samples/*.wav
+
+# PyInstaller 侧车 ASR（由 scripts/build-asr-sidecar-* 生成，体积大，不提交）
+apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar/
+apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar-cuda/
+services/asr/.venv-sidecar-build/
+services/asr/.venv-sidecar-build-cuda/
+# 本地生成 lockfile / 依赖矩阵用 venv（含 torch 等，文件极多；勿提交、勿让 IDE 全量索引）
+services/asr/.venv-lockgen-cpu/
+services/asr/rushi-asr-sidecar.spec
+services/asr/rushi-asr-sidecar-cuda.spec
+services/asr/build/
+services/asr/dist/
+services/asr/third_party/ffmpeg/darwin-arm64/
+services/asr/third_party/ffmpeg/darwin-x64/
+services/asr/third_party/ffmpeg/win32-x64/
+services/asr/third_party/ffmpeg/linux-x64/

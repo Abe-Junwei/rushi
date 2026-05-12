@@ -1,0 +1,4 @@
+# macOS x86_64 CPU+MPS: same version pins as arm64; PyPI resolves Intel wheels.
+# Regenerate on an Intel/Rosetta host if anything fails to resolve:
+#   bash ../scripts/regen-sidecar-cpu-lock.sh
+-r requirements-sidecar-cpu-macos-arm64.lock
