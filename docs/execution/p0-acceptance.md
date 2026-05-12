@@ -48,3 +48,5 @@ python3 scripts/validate_p0_transcription_result.py < response.json
 ## 与「第一阶段」关系
 
 产品「第一阶段」= 计划书 **P0–P3** 全部完成；本文仅覆盖 **P0 技术原型** 在本仓的可重复验收。进入 **P1** 见计划书 §8 P1（项目、播放、时间轴、导出等）。
+
+**阶段 A（自动化部分）**：一次完整跑通记录见 [`phase-a-evidence-2026-05-12.md`](./phase-a-evidence-2026-05-12.md)；热词真值表见 [`../architecture/asr-hotword-bias-truth.md`](../architecture/asr-hotword-bias-truth.md)。
