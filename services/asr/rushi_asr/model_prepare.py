@@ -103,7 +103,15 @@ def prepare_default_model() -> dict[str, Any]:
         raise RuntimeError("modelscope_not_installed") from e
 
     log.info("model_prepare: snapshot_download %s", DEFAULT_FUNASR_MODEL_ID)
-    model_dir = Path(snapshot_download(DEFAULT_FUNASR_MODEL_ID))
+    # snapshot_download 底层未暴露 timeout；通过 socket 全局超时兜底。
+    import socket
+
+    old_timeout = socket.getdefaulttimeout()
+    socket.setdefaulttimeout(600)  # 10 min
+    try:
+        model_dir = Path(snapshot_download(DEFAULT_FUNASR_MODEL_ID))
+    finally:
+        socket.setdefaulttimeout(old_timeout)
     _maybe_verify_manifest(model_dir)
     return {
         "status": "ok",

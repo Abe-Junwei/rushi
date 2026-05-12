@@ -35,6 +35,7 @@ urlencoding = "2.1"
 http = "1"
 flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
 tungstenite = { version = "0.24", default-features = false, features = [
+  "handshake",
   "rustls-tls-webpki-roots",
 ] }
 docx-rs = "0.4"

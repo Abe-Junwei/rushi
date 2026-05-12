@@ -13,8 +13,10 @@ import {
 import { p3ExportDocx, type P3DocxExportMode } from "../tauri/p3ExportDocxApi";
 import { p4ExportDiagnosticBundle } from "../tauri/p4DiagnosticApi";
 import { describePrepareModelFailure, type PrepareModelFailureCopy } from "./prepareModelDownloadCopy";
+import { safeExportBasename } from "../utils/safeExportBasename";
 import { buildSplitPair, mergeTwoSegments, reindexSegments } from "./p1SegmentListHelpers";
 
+/** 浅拷贝语段数组（SegmentDto 为平面结构，浅拷贝即够用）。 */
 function cloneSegments(segs: SegmentDto[]): SegmentDto[] {
   return segs.map((s) => ({ ...s }));
 }
@@ -24,11 +26,6 @@ function roundSec3(x: number): number {
 }
 
 /** 避免默认文件名含路径分隔符等非法字符。 */
-function safeExportBasename(name: string, ext: "txt" | "srt" | "docx"): string {
-  const base = name.replace(/[/\\?%*:|"<>]/g, "_").trim() || "export";
-  return `${base}.${ext}`;
-}
-
 export type AsrHealthState = "checking" | "ok" | "error";
 
 /** 与 `busy` 同时为真；`busy` 为假时为 null。 */
@@ -224,6 +221,8 @@ export function useProjectP1Controller() {
     void refreshAsrHealth();
   }, [refreshAsrHealth]);
 
+
+
   const asrHealthDetailDisplay = useMemo(() => {
     if (asrHealth !== "error") return asrHealthDetail;
     if (
@@ -345,6 +344,19 @@ export function useProjectP1Controller() {
       setPrepareModelProgress(0);
     }
   }, [refreshAsrHealth]);
+
+  /** 应用启动/ASR 就绪后：若模型未缓存，后台自动开始下载，不阻塞用户操作。 */
+  useEffect(() => {
+    if (!asrCaps) return;
+    if (
+      asrCaps.funasr_ready &&
+      !asrCaps.funasr_default_model_cached &&
+      !prepareModelBusy &&
+      !prepareModelFailure
+    ) {
+      void prepareDefaultFunasrModel();
+    }
+  }, [asrCaps, prepareModelBusy, prepareModelFailure, prepareDefaultFunasrModel]);
 
   const retryBundledAsrSidecar = useCallback(async () => {
     setError("");

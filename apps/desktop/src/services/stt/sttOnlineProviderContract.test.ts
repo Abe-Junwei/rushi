@@ -9,6 +9,7 @@ import {
   setSttOnlineApiKeyInMemory,
   sttOnlineProvidersByMarket,
   tryBuildP1OnlineTranscribeBridgePayload,
+  resolveShellNativeSttAdapterId,
 } from "./sttOnlineProviderContract";
 
 function mockLocalStorage(initial: Record<string, string>) {
@@ -73,6 +74,14 @@ describe("sttOnlineProvidersByMarket", () => {
     const ids = sttOnlineProvidersByMarket("china").map((d) => d.id);
     expect(ids).toContain("aliyun-nls");
     expect(ids).toContain("tencent-asr");
+  });
+
+  it("lists free-tier-noted providers before others within each market", () => {
+    const china = sttOnlineProvidersByMarket("china").map((d) => d.id);
+    expect(china.indexOf("aispeech")).toBe(china.length - 1);
+
+    const globalIds = sttOnlineProvidersByMarket("global").map((d) => d.id);
+    expect(globalIds[globalIds.length - 1]).toBe("custom-proxy");
   });
 });
 
@@ -182,6 +191,84 @@ describe("tryBuildP1OnlineTranscribeBridgePayload", () => {
     expect(p?.nativeAdapter).toBe("deepgramListen");
     expect(p?.transcribeUrl).toBe("");
     expect(p?.authorization).toBe("Bearer dg-key");
+  });
+
+  it("resolves china native adapters", () => {
+    expect(resolveShellNativeSttAdapterId("iflytek-speech")).toBe("iflytekIatWs");
+    expect(resolveShellNativeSttAdapterId("huawei-sis")).toBe("huaweiSisShortAudio");
+    expect(resolveShellNativeSttAdapterId("volcengine-speech")).toBe("volcengineBigmodelNostreamWs");
+    expect(resolveShellNativeSttAdapterId("aispeech")).toBe("aispeechLasrSentenceV2");
+  });
+
+  it("builds iflytek payload with pipe secret and app id", () => {
+    vi.stubGlobal(
+      "localStorage",
+      mockLocalStorage({
+        [STT_ONLINE_PROVIDER_STORAGE_KEYS.enabled]: "true",
+        [STT_ONLINE_PROVIDER_STORAGE_KEYS.selectedProviderId]: "iflytek-speech",
+        [STT_ONLINE_PROVIDER_STORAGE_KEYS.appKey]: "appid-123",
+        [STT_ONLINE_PROVIDER_STORAGE_KEYS.timeoutMs]: "120000",
+      }),
+    );
+    setSttOnlineApiKeyInMemory("apikeyxxx|secretxxx");
+    const p = tryBuildP1OnlineTranscribeBridgePayload();
+    expect(p?.nativeAdapter).toBe("iflytekIatWs");
+    expect(p?.appKey).toBe("appid-123");
+    expect(p?.authorization).toBe("apikeyxxx|secretxxx");
+  });
+
+  it("builds huawei-sis native payload with pipe AK/SK and project id", () => {
+    vi.stubGlobal(
+      "localStorage",
+      mockLocalStorage({
+        [STT_ONLINE_PROVIDER_STORAGE_KEYS.enabled]: "true",
+        [STT_ONLINE_PROVIDER_STORAGE_KEYS.selectedProviderId]: "huawei-sis",
+        [STT_ONLINE_PROVIDER_STORAGE_KEYS.appKey]: "proj-abc",
+        [STT_ONLINE_PROVIDER_STORAGE_KEYS.timeoutMs]: "120000",
+      }),
+    );
+    setSttOnlineApiKeyInMemory("AKID|SECRETKEY");
+    const p = tryBuildP1OnlineTranscribeBridgePayload();
+    expect(p?.nativeAdapter).toBe("huaweiSisShortAudio");
+    expect(p?.appKey).toBe("proj-abc");
+    expect(p?.authorization).toBe("Bearer AKID|SECRETKEY");
+    expect(p?.transcribeUrl).toBe("");
+  });
+
+  it("builds aispeech native payload with bearer api key", () => {
+    vi.stubGlobal(
+      "localStorage",
+      mockLocalStorage({
+        [STT_ONLINE_PROVIDER_STORAGE_KEYS.enabled]: "true",
+        [STT_ONLINE_PROVIDER_STORAGE_KEYS.selectedProviderId]: "aispeech",
+        [STT_ONLINE_PROVIDER_STORAGE_KEYS.appKey]: "product-99",
+        [STT_ONLINE_PROVIDER_STORAGE_KEYS.timeoutMs]: "120000",
+      }),
+    );
+    setSttOnlineApiKeyInMemory("lasr-key");
+    const p = tryBuildP1OnlineTranscribeBridgePayload();
+    expect(p?.nativeAdapter).toBe("aispeechLasrSentenceV2");
+    expect(p?.appKey).toBe("product-99");
+    expect(p?.authorization).toBe("Bearer lasr-key");
+    expect(p?.transcribeUrl).toBe("");
+  });
+
+  it("builds volcengine-speech native payload with bearer token", () => {
+    vi.stubGlobal(
+      "localStorage",
+      mockLocalStorage({
+        [STT_ONLINE_PROVIDER_STORAGE_KEYS.enabled]: "true",
+        [STT_ONLINE_PROVIDER_STORAGE_KEYS.selectedProviderId]: "volcengine-speech",
+        [STT_ONLINE_PROVIDER_STORAGE_KEYS.appKey]: "app-key-volc",
+        [STT_ONLINE_PROVIDER_STORAGE_KEYS.timeoutMs]: "120000",
+      }),
+    );
+    setSttOnlineApiKeyInMemory("access-token-xyz");
+    const p = tryBuildP1OnlineTranscribeBridgePayload();
+    expect(p?.nativeAdapter).toBe("volcengineBigmodelNostreamWs");
+    expect(p?.appKey).toBe("app-key-volc");
+    expect(p?.authorization).toBe("Bearer access-token-xyz");
+    expect(p?.transcribeUrl).toBe("");
   });
 
   it("builds baidu native payload when API Key persisted and secret in memory", () => {

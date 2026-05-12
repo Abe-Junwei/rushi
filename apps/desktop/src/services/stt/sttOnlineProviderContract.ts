@@ -40,6 +40,11 @@ export interface SttOnlineProviderDefinition {
   persistedAppKeyFieldLabel?: string;
   /** 典型网关或区域基址示例，用于占位提示（用户仍须填 HTTPS 完整转写 URL 或自建代理） */
   defaultEndpointExample?: string;
+  /**
+   * 若厂商常见提供新用户试用 / 免费额度，填简短备注；`sttOnlineProvidersByMarket` 会将其排在分组列表前。
+   * 文案勿写死具体金额，以各控制台为准。
+   */
+  freeTierNote?: string;
 }
 
 export interface ExternalSttOnlineRuntimeConfig {
@@ -177,6 +182,7 @@ export const STT_ONLINE_PROVIDER_DEFINITIONS: SttOnlineProviderDefinition[] = [
     requiresPersistedAppKey: true,
     persistedAppKeyFieldLabel: "NLS AppKey（可持久化）",
     defaultEndpointExample: "https://nls-gateway-cn-shanghai.aliyuncs.com/stream/v1/asr",
+    freeTierNote: "（新用户多含试用/免费额，以控制台为准）",
   },
   {
     id: "tencent-asr",
@@ -192,6 +198,7 @@ export const STT_ONLINE_PROVIDER_DEFINITIONS: SttOnlineProviderDefinition[] = [
     requiresPersistedAppKey: true,
     persistedAppKeyFieldLabel: "SecretId（可持久化）",
     defaultEndpointExample: "https://asr.tencentcloudapi.com/",
+    freeTierNote: "（新用户多含试用/免费额，以控制台为准）",
   },
   {
     id: "baidu-speech",
@@ -207,12 +214,13 @@ export const STT_ONLINE_PROVIDER_DEFINITIONS: SttOnlineProviderDefinition[] = [
     requiresPersistedAppKey: true,
     persistedAppKeyFieldLabel: "API Key（可持久化，对应 client_id）",
     defaultEndpointExample: "https://vop.baidu.com/server_api",
+    freeTierNote: "（开放平台常见有免费调用额，以控制台为准）",
   },
   {
     id: "iflytek-speech",
     label: "科大讯飞语音识别",
     description:
-      "开放平台语音听写 / 大模型识别等；常见为 AppId + API Key/Secret 签名或 WebSocket。根密钥仅内存，AppId 可持久化。",
+      "语音听写 WebAPI v2（iat-api.xfyun.cn）；壳内 WebSocket + HMAC 鉴权。AppId 持久化；内存填 `APIKey|APISecret`（控制台 WebAPI 密钥）。当前壳实现仅支持 WAV/PCM 16k 单声道。",
     docsUrl: "https://www.xfyun.cn/doc/asr/voicedictation/API.html",
     authStyle: "header",
     headerName: "Authorization",
@@ -222,41 +230,52 @@ export const STT_ONLINE_PROVIDER_DEFINITIONS: SttOnlineProviderDefinition[] = [
     market: "china",
     requiresPersistedAppKey: true,
     persistedAppKeyFieldLabel: "讯飞 AppId（可持久化）",
+    freeTierNote: "（新应用常见有试用/免费额，以控制台为准）",
   },
   {
     id: "huawei-sis",
     label: "华为云语音交互服务（SIS）",
     description:
-      "一句话识别等；区域终端节点 + ProjectId，Token 常通过 IAM 获取。建议网关统一签发与归一化响应。",
+      "RecognizeShortAudio；壳内 SDK-HMAC-SHA256。ProjectId 持久化；内存 `AccessKeyId|SecretAccessKey`；endpoint 可填区域 HTTPS 基址（示例 cn-north-4）。",
     docsUrl: "https://support.huaweicloud.com/api-sisapi/sis_03_0021.html",
     authStyle: "bearer",
     defaultTimeoutMs: 120_000,
     capabilities: { batchRest: true, streaming: true, asyncJob: false, segmentTimestamps: true },
     experimental: true,
     market: "china",
+    requiresPersistedAppKey: true,
+    persistedAppKeyFieldLabel: "ProjectId（可持久化）",
+    defaultEndpointExample: "https://sis-ext.cn-north-4.myhuaweicloud.com",
+    freeTierNote: "（新账号多含试用/免费额，以控制台为准）",
   },
   {
     id: "volcengine-speech",
     label: "火山引擎（字节）语音识别",
     description:
-      "豆包语音等大模型流式/非流式识别；鉴权与端点以火山引擎控制台为准，多需 AK/SK 签名中间层。",
+      "豆包大模型 ASR v3（bigmodel_nostream WebSocket）；壳内二进制帧。AppId 持久化；内存填控制台 Access Token；可选 endpoint 填 Resource-Id（默认 volc.bigasr.sauc.duration）。",
     docsUrl: "https://www.volcengine.com/docs/6561/79817",
     authStyle: "bearer",
     defaultTimeoutMs: 120_000,
     capabilities: { batchRest: true, streaming: true, asyncJob: false, segmentTimestamps: true },
     experimental: true,
     market: "china",
+    requiresPersistedAppKey: true,
+    persistedAppKeyFieldLabel: "X-Api-App-Key（AppId，可持久化）",
+    freeTierNote: "（新用户多含试用/赠额，以控制台为准）",
   },
   {
     id: "aispeech",
     label: "思必驰（AISpeech）",
-    description: "端侧/云端对话式识别与企业方案为主；接入形态依合同与控制台，建议经自建代理对接 Rushi。",
-    docsUrl: "https://www.aispeech.com/",
+    description:
+      "DUI 一句话 LASR v2（lasr.duiopen.com）；壳内 multipart。ProductId 持久化；内存填云对云 apiKey。",
+    docsUrl: "https://cloud.aispeech.com/docs/ct_asr_sentence",
     authStyle: "bearer",
     defaultTimeoutMs: 120_000,
     capabilities: { batchRest: true, streaming: true, asyncJob: false, segmentTimestamps: true },
     experimental: true,
     market: "china",
+    requiresPersistedAppKey: true,
+    persistedAppKeyFieldLabel: "ProductId（可持久化）",
   },
   {
     id: "openai",
@@ -273,6 +292,7 @@ export const STT_ONLINE_PROVIDER_DEFINITIONS: SttOnlineProviderDefinition[] = [
     },
     experimental: false,
     market: "global",
+    freeTierNote: "（新账户或活动期或有试用额，以平台账单为准）",
   },
   {
     id: "assemblyai",
@@ -290,6 +310,7 @@ export const STT_ONLINE_PROVIDER_DEFINITIONS: SttOnlineProviderDefinition[] = [
     },
     experimental: false,
     market: "global",
+    freeTierNote: "（开发者常见有免费试用额，以控制台为准）",
   },
   {
     id: "deepgram",
@@ -306,6 +327,7 @@ export const STT_ONLINE_PROVIDER_DEFINITIONS: SttOnlineProviderDefinition[] = [
     },
     experimental: false,
     market: "global",
+    freeTierNote: "（新账户常见有免费试用额，以控制台为准）",
   },
   {
     id: "google-cloud-stt",
@@ -322,6 +344,7 @@ export const STT_ONLINE_PROVIDER_DEFINITIONS: SttOnlineProviderDefinition[] = [
     },
     experimental: true,
     market: "global",
+    freeTierNote: "（GCP 新用户常见含试用额，以结算为准）",
   },
   {
     id: "azure-speech",
@@ -339,6 +362,7 @@ export const STT_ONLINE_PROVIDER_DEFINITIONS: SttOnlineProviderDefinition[] = [
     },
     experimental: true,
     market: "global",
+    freeTierNote: "（Azure 新订阅常见含试用额，以门户为准）",
   },
   {
     id: "custom-proxy",
@@ -359,8 +383,26 @@ export const STT_ONLINE_PROVIDER_DEFINITIONS: SttOnlineProviderDefinition[] = [
   },
 ];
 
+/** 下拉框等处的展示文案：名称 + 实验标记 + 免费额备注（若有）。 */
+export function formatSttOnlineProviderSelectLabel(d: SttOnlineProviderDefinition): string {
+  let s = d.label;
+  if (d.experimental) s += "（实验）";
+  if (d.freeTierNote) s += ` ${d.freeTierNote}`;
+  return s;
+}
+
 export function sttOnlineProvidersByMarket(market: SttOnlineMarket): SttOnlineProviderDefinition[] {
-  return STT_ONLINE_PROVIDER_DEFINITIONS.filter((d) => d.market === market);
+  const list = STT_ONLINE_PROVIDER_DEFINITIONS.filter((d) => d.market === market);
+  const withIndex = list.map((d, definitionOrder) => ({
+    d,
+    definitionOrder,
+    freeFirst: d.freeTierNote ? 1 : 0,
+  }));
+  withIndex.sort((a, b) => {
+    if (b.freeFirst !== a.freeFirst) return b.freeFirst - a.freeFirst;
+    return a.definitionOrder - b.definitionOrder;
+  });
+  return withIndex.map((x) => x.d);
 }
 
 export function getSttOnlineProviderDefinition(id: string): SttOnlineProviderDefinition | undefined {
@@ -431,7 +473,11 @@ export type P1OnlineNativeAdapterId =
   | "deepgramListen"
   | "tencentAsr"
   | "azureConversationV1"
-  | "googleSpeechV1";
+  | "googleSpeechV1"
+  | "iflytekIatWs"
+  | "huaweiSisShortAudio"
+  | "aispeechLasrSentenceV2"
+  | "volcengineBigmodelNostreamWs";
 
 /** 所选厂商是否由桌面壳内置 HTTP 直连（可省略自定义 endpoint，由 Rust 填默认 URL）。 */
 export function resolveShellNativeSttAdapterId(providerId: string): P1OnlineNativeAdapterId | null {
@@ -452,6 +498,14 @@ export function resolveShellNativeSttAdapterId(providerId: string): P1OnlineNati
       return "azureConversationV1";
     case "google-cloud-stt":
       return "googleSpeechV1";
+    case "iflytek-speech":
+      return "iflytekIatWs";
+    case "huawei-sis":
+      return "huaweiSisShortAudio";
+    case "aispeech":
+      return "aispeechLasrSentenceV2";
+    case "volcengine-speech":
+      return "volcengineBigmodelNostreamWs";
     default:
       return null;
   }

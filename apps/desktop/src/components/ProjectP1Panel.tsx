@@ -17,6 +17,9 @@ const btnPrimary =
   "rounded px-3 py-1.5 text-xs font-medium bg-zen-saffron text-white shadow-sm transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40";
 const btnSecondary =
   "rounded border border-black/10 bg-white/60 px-3 py-1.5 text-xs text-zen-ink transition-colors hover:border-zen-saffron/35 hover:text-zen-saffron disabled:cursor-not-allowed disabled:opacity-40";
+/** 顶栏 / 侧栏 / 欢迎区「在线 STT Provider」独立入口 */
+const btnOnlineSttEntry =
+  "inline-flex shrink-0 items-center justify-center rounded-lg border border-zen-saffron/35 bg-white/80 px-3 py-1.5 text-xs font-medium text-zen-saffron shadow-sm transition-colors hover:border-zen-saffron/55 hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-saffron/40 disabled:cursor-not-allowed disabled:opacity-40";
 const field =
   "block w-full rounded border border-black/10 bg-white/80 px-2 py-1 text-xs text-zen-ink outline-none transition-colors focus:border-zen-saffron/45 focus:ring-1 focus:ring-zen-saffron/20 disabled:cursor-not-allowed disabled:opacity-40";
 
@@ -107,6 +110,7 @@ export function ProjectP1Panel() {
   const c = useProjectP1Controller();
   const gl = useGlossaryP2Controller();
   const [envOpen, setEnvOpen] = useState(false);
+  const [onlineSttFocusSeq, setOnlineSttFocusSeq] = useState(0);
   const [exportKey, setExportKey] = useState("");
   const [busyElapsedSec, setBusyElapsedSec] = useState(0);
 
@@ -193,6 +197,11 @@ export function ProjectP1Panel() {
   const busyCopy = busyOverlayCopy(c.busyReason);
   const showAsrBanner = workspacePhase === "A" && c.asrHealth === "error" && !c.sttOnlineBridgeReady;
 
+  const openOnlineSttProvider = () => {
+    setEnvOpen(true);
+    setOnlineSttFocusSeq((n) => n + 1);
+  };
+
   const onExportSelect = (key: string) => {
     setExportKey("");
     switch (key) {
@@ -275,6 +284,15 @@ export function ProjectP1Panel() {
                 <div className="relative h-5 w-9 shrink-0 rounded-full bg-gray-300 after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-app-accent peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-app-accent/50" />
               </label>
             </div>
+            <button
+              type="button"
+              className={btnOnlineSttEntry}
+              disabled={c.busy}
+              onClick={openOnlineSttProvider}
+              aria-controls="p1-online-stt-provider"
+            >
+              在线 STT Provider
+            </button>
             <code className="hidden max-w-[12rem] truncate font-mono text-[10px] text-zen-indigo xl:inline">{asrBaseUrl()}</code>
           </div>
         </header>
@@ -299,6 +317,15 @@ export function ProjectP1Panel() {
               <span className="pointer-events-none absolute inset-0 rounded-[34px] bg-[#d1cbc4] transition-colors peer-checked:bg-brand-orange" />
               <span className="pointer-events-none absolute bottom-[3px] left-[3px] h-4 w-4 rounded-full bg-white transition-transform peer-checked:translate-x-[22px]" />
             </label>
+            <button
+              type="button"
+              className={`${btnOnlineSttEntry} border-brand-orange/40 text-gray-700 hover:text-brand-orange`}
+              disabled={c.busy}
+              onClick={openOnlineSttProvider}
+              aria-controls="p1-online-stt-provider"
+            >
+              在线 STT Provider
+            </button>
           </div>
         </header>
       ) : (
@@ -337,6 +364,15 @@ export function ProjectP1Panel() {
             >
               {envOpen ? "收起环境与 ASR" : "环境与 ASR"}
             </button>
+            <button
+              type="button"
+              className={btnOnlineSttEntry}
+              disabled={c.busy}
+              onClick={openOnlineSttProvider}
+              aria-controls="p1-online-stt-provider"
+            >
+              在线 STT Provider
+            </button>
             <code className="hidden max-w-[12rem] truncate text-[10px] text-zen-indigo lg:inline">{asrBaseUrl()}</code>
           </div>
         </header>
@@ -374,6 +410,7 @@ export function ProjectP1Panel() {
             retryBundledAsrSidecar={c.retryBundledAsrSidecar}
             openAppDataFolder={c.openAppDataFolder}
             onSttOnlineRuntimeChanged={c.bumpSttOnlineRuntimeChanged}
+            focusOnlineSttSeq={onlineSttFocusSeq}
           />
         </div>
       ) : null}
@@ -413,6 +450,21 @@ export function ProjectP1Panel() {
               </button>
             </div>
           </div>
+
+          {workspacePhase === "C" ? (
+            <div className="rounded-lg border border-zen-saffron/30 bg-white/50 p-2 shadow-sm">
+              <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-zen-stone">在线转写</p>
+              <button
+                type="button"
+                className={`${btnOnlineSttEntry} w-full`}
+                disabled={c.busy}
+                onClick={openOnlineSttProvider}
+                aria-controls="p1-online-stt-provider"
+              >
+                在线 STT Provider
+              </button>
+            </div>
+          ) : null}
 
           {workspacePhase === "C" ? (
             <>
@@ -518,6 +570,17 @@ export function ProjectP1Panel() {
                 >
                   新建项目（选择音频）
                 </button>
+                <div className="mt-6 flex justify-center px-2">
+                  <button
+                    type="button"
+                    className={`${btnOnlineSttEntry} w-full max-w-sm sm:w-auto`}
+                    disabled={c.busy}
+                    onClick={openOnlineSttProvider}
+                    aria-controls="p1-online-stt-provider"
+                  >
+                    在线 STT Provider（实验）
+                  </button>
+                </div>
               </section>
 
               <section className="w-full" data-purpose="projects-list-container">
@@ -664,10 +727,19 @@ export function ProjectP1Panel() {
                   横向滚动与上方波形对齐；所有语段在同一条时间轨上按起止时间摆放，时间重叠则自动分行错开。
                 </p>
                 <div className="flex flex-wrap justify-center gap-2">
-                  <button type="button" className={btnPrimary} disabled={c.busy} onClick={() => void c.runTranscribe()}>
-                    从 ASR 拉取语段
+                  <button
+                    type="button"
+                    className={btnPrimary}
+                    disabled={c.busy || c.prepareModelBusy}
+                    onClick={() => void c.runTranscribe()}
+                  >
+                    {c.prepareModelBusy ? "模型准备中…" : "从 ASR 拉取语段"}
                   </button>
-                  <span className="self-center text-[10px] text-zen-stone">（可能需数分钟）</span>
+                  <span className="self-center text-[10px] text-zen-stone">
+                    {c.prepareModelBusy
+                      ? "首次使用需下载模型，后台进行中，可继续编辑"
+                      : "（可能需数分钟）"}
+                  </span>
                   <button type="button" className={btnPrimary} disabled={c.busy} onClick={() => void c.saveSegments()}>
                     保存到 SQLite
                   </button>

@@ -71,7 +71,7 @@ fn rushi_value(
     })
 }
 
-fn audio_bytes_and_format(path: &Path) -> Result<(Vec<u8>, &'static str), String> {
+pub(crate) fn audio_bytes_and_format(path: &Path) -> Result<(Vec<u8>, &'static str), String> {
     let bytes = fs::read(path).map_err(|e| format!("读取音频: {e}"))?;
     let ext = path
         .extension()
@@ -721,10 +721,14 @@ pub fn dispatch_native(
     log: &impl Fn(&str),
 ) -> Result<serde_json::Value, String> {
     let raw_url = bridge.transcribe_url.trim();
-    if !raw_url.is_empty() && !is_allowed_stt_transcribe_url(raw_url) {
-        return Err(
-            "在线转写 URL 须为 https，或 http 且主机为 localhost / 127.0.0.1 / ::1".to_string(),
-        );
+    if !raw_url.is_empty() {
+        let looks_http =
+            raw_url.starts_with("http://") || raw_url.starts_with("https://");
+        if looks_http && !is_allowed_stt_transcribe_url(raw_url) {
+            return Err(
+                "在线转写 URL 须为 https，或 http 且主机为 localhost / 127.0.0.1 / ::1".to_string(),
+            );
+        }
     }
     match adapter {
         "baiduSpeech" => transcribe_baidu(client, audio_path, bridge, timeout, log),
@@ -733,6 +737,19 @@ pub fn dispatch_native(
         "tencentAsr" => transcribe_tencent(client, audio_path, bridge, timeout, log),
         "azureConversationV1" => transcribe_azure_conversation(client, audio_path, bridge, timeout, log),
         "googleSpeechV1" => transcribe_google(client, audio_path, bridge, timeout, log),
+        "iflytekIatWs" => crate::china_stt_shell::transcribe_iflytek_iat_ws(audio_path, bridge, timeout, log),
+        "huaweiSisShortAudio" => {
+            crate::china_stt_shell::transcribe_huawei_sis_short(client, audio_path, bridge, timeout, log)
+        }
+        "aispeechLasrSentenceV2" => {
+            crate::china_stt_shell::transcribe_aispeech_lasr(client, audio_path, bridge, timeout, log)
+        }
+        "volcengineBigmodelNostreamWs" => crate::china_stt_shell::transcribe_volcengine_bigmodel_nostream_ws(
+            audio_path,
+            bridge,
+            timeout,
+            log,
+        ),
         _ => Err(format!("未知 native_adapter: {adapter}")),
     }
 }

@@ -235,9 +235,11 @@ fn collect_correction_rule_hints(
 
 fn open_db(state: &DbState) -> Result<Connection, String> {
     let conn = Connection::open(&state.db_path).map_err(|e| e.to_string())?;
-    conn.execute("PRAGMA foreign_keys = ON;", [])
+    // 勿对 `PRAGMA busy_timeout = …` 使用 `execute()`：SQLite 会返回一行（新超时值），rusqlite 会报
+    // "Execute returned results - did you mean to call query?"。
+    conn.pragma_update(None, "foreign_keys", "ON")
         .map_err(|e| e.to_string())?;
-    conn.execute("PRAGMA busy_timeout = 5000;", [])
+    conn.busy_timeout(Duration::from_millis(5000))
         .map_err(|e| e.to_string())?;
     Ok(conn)
 }
@@ -296,6 +298,8 @@ pub struct RunTranscribeOutcome {
     pub warnings: Vec<String>,
 }
 
+static BLOCKING_CLIENT: std::sync::OnceLock<reqwest::blocking::Client> = std::sync::OnceLock::new();
+
 fn post_transcribe_multipart(
     st: &DbState,
     url: &str,
@@ -313,11 +317,13 @@ fn post_transcribe_multipart(
         }
         f
     };
-    let client = reqwest::blocking::Client::builder()
-        .timeout(timeout)
-        .build()
-        .map_err(|e| e.to_string())?;
-    let mut req = client.post(url).multipart(form);
+    let client = BLOCKING_CLIENT.get_or_init(|| {
+        reqwest::blocking::Client::builder()
+            .timeout(std::time::Duration::from_secs(30))
+            .build()
+            .expect("reqwest blocking client build")
+    });
+    let mut req = client.post(url).multipart(form).timeout(timeout);
     if let Some(a) = authorization {
         let t = a.trim();
         if !t.is_empty() {
@@ -967,7 +973,11 @@ fn p1_project_run_transcribe_inner(
                 | "deepgramListen"
                 | "tencentAsr"
                 | "azureConversationV1"
-                | "googleSpeechV1"),
+                | "googleSpeechV1"
+                | "iflytekIatWs"
+                | "huaweiSisShortAudio"
+                | "aispeechLasrSentenceV2"
+                | "volcengineBigmodelNostreamWs"),
             ) => {
                 let client = crate::stt_native::http_client();
                 let log = |line: &str| append_desktop_log_line(&st, line);

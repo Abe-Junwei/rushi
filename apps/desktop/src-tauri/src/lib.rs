@@ -1,4 +1,5 @@
 mod asr_sidecar;
+mod china_stt_shell;
 mod db;
 mod export_docx;
 mod online_stt_bridge;

@@ -54,16 +54,22 @@ Rushi 已在 `apps/desktop/src/contracts/transcription.ts` 定义 **`Transcripti
 
 - `apps/desktop/src/services/stt/sttOnlineProviderContract.ts`：在线 STT 的 **定义表、运行时配置读写、HTTPS 校验、健康探测**（与解语 acoustic 合约同构，命名空间为 `rushi.stt.online.*`）。  
 - `apps/desktop/src-tauri/src/stt_native.rs`：百度 / 阿里云 NLS / Deepgram / 腾讯云 / Azure 对话 v1 / Google v1 等 **壳内直连** 与 `dispatch_native`。  
+- `apps/desktop/src-tauri/src/china_stt_shell.rs`：讯飞 WebSocket 听写、华为 SIS 短音频、思必驰 LASR v2、火山豆包大模型 ASR WebSocket 等 **壳内直连**。
 - `apps/desktop/src-tauri/src/online_stt_bridge.rs`：`P1OnlineTranscribeBridge` 反序列化与 `transcribeUrl` 安全校验。
 - 单元测试：`apps/desktop/src/services/stt/sttOnlineProviderContract.test.ts`（URL 策略与 `tryBuild` 载荷等）。在环境面板启用「在线 STT（实验）」并填写内存 API Key 后，主舞台「从 ASR 拉取语段」会调用 Tauri `p1_project_run_transcribe`。载荷非空时：
 
 - 选择 **OpenAI** 或 **AssemblyAI**：Rust 内建 **厂商原生 HTTP**（OpenAI `audio/transcriptions` + `verbose_json`；AssemblyAI v2 `upload` + `transcript` 轮询），再归一为 **`TranscriptionResult`（schema_version 1）**；URL 可留空以使用默认 `api.openai.com` / `api.assemblyai.com`。
-- 选择 **百度 / 阿里云 NLS / 腾讯云 / Deepgram / Azure Speech（对话 v1）/ Google Speech-to-Text v1**：Rust 模块 `stt_native` 内 **壳直连**（`native_adapter`：`baiduSpeech`、`aliyunNls`、`tencentAsr`、`deepgramListen`、`azureConversationV1`、`googleSpeechV1`）；`transcribeUrl` 可留空则使用各厂商默认 HTTPS 端点，非空时仍须通过 `is_allowed_stt_transcribe_url`（仅 HTTPS 或本机 HTTP）。凭证分层与 `sttOnlineProviderContract` 一致：**根密钥 / Token 仅内存**，AppKey / SecretId / API Key 等可持久化到 `appKey`。
-- **讯飞 / 华为 / 火山 / 思必驰** 与 **自定义代理**：仍须配置 **与本机 rushi-asr 兼容的** `POST` 完整 URL（`multipart`：`file` + 可选 `hotwords`）；响应须已为 Rushi JSON 契约。若配置了持久化 **AppKey**，Tauri 会额外附带请求头 **`X-Rushi-Stt-App-Key`**，供网关读取后与厂商 API 组合。
+- 选择 **百度 / 阿里云 NLS / 腾讯云 / Deepgram / Azure Speech（对话 v1）/ Google Speech-to-Text v1 / 讯飞 / 华为 SIS / 思必驰 LASR v2 / 火山豆包大模型 ASR（WebSocket）**：Rust 模块 `stt_native`（含 `china_stt_shell`）内 **壳直连**（`native_adapter`：`baiduSpeech`、`aliyunNls`、`tencentAsr`、`deepgramListen`、`azureConversationV1`、`googleSpeechV1`、`iflytekIatWs`、`huaweiSisShortAudio`、`aispeechLasrSentenceV2`、`volcengineBigmodelNostreamWs`）。`transcribeUrl` 可留空则使用各厂商默认端点；非空时若为 **HTTPS 或本机 HTTP** 则作为覆盖 URL。**火山** 若 `endpoint` 不是 URL 而是一段 Resource-Id 字符串，壳会将其当作 `X-Api-Resource-Id` 使用。凭证分层与 `sttOnlineProviderContract` 一致：**根密钥 / Token 仅内存**，应用级标识可持久化到 `appKey`。
+- **国内壳直连 — 内存凭证形状（`|` 分隔，与 UI 说明一致）**  
+  - **讯飞**：`APIKey|APISecret`（`authStyle: header`，无 `Bearer` 前缀）。  
+  - **华为**：`AccessKeyId|SecretAccessKey`（`Bearer` 前缀若被粘贴进内存字段，壳侧会剥离后再拆分）。  
+  - **思必驰**：单段云对云 **apiKey**（Bearer 由合约 `tryBuild` 加上）。  
+  - **火山**：控制台 **Access Token**（Bearer）。
+- **自定义代理**：须配置 **与本机 rushi-asr 兼容的** `POST` 完整 URL（`multipart`：`file` + 可选 `hotwords`）；响应须已为 Rushi JSON 契约。若配置了持久化 **AppKey**，Tauri 会额外附带请求头 **`X-Rushi-Stt-App-Key`**，供网关读取后与厂商 API 组合。
 
 未启用或载荷不完整时仍走本机 `asrBaseUrl + /v1/transcribe`。
 
-**可按需扩展**：OpenAI 模型名 UI、AssemblyAI 细粒度 Job 参数、Azure/Google 区域端点选择、华为/火山等壳内签名实现。
+**可按需扩展**：OpenAI 模型名 UI、AssemblyAI 细粒度 Job 参数、Azure/Google 区域端点选择、各国内厂商长音频与模型版本选项。
 
 ## 4. 建议的首批 Provider 实现顺序（工程角度）
 
