@@ -15,6 +15,7 @@ use std::sync::Mutex;
 use std::time::Duration;
 
 use serde::Serialize;
+use serde_json::Value;
 use tauri::{AppHandle, Manager};
 
 use crate::DbState;
@@ -141,10 +142,45 @@ fn bundled_sidecar_try_order(resource_root: &Path) -> Vec<PathBuf> {
     bundled_cpu_executable(resource_root).into_iter().collect()
 }
 
-fn health_ok_blocking() -> bool {
-    reqwest::blocking::get(ASR_HEALTH_URL)
-        .map(|r| r.status().is_success())
-        .unwrap_or(false)
+fn reap_bundled_sidecar_if_exited(handle: &AppHandle) {
+    let Some(s) = handle.try_state::<AsrSidecarState>() else {
+        return;
+    };
+    let Ok(mut g) = s.0.lock() else {
+        return;
+    };
+    if let Some(ref mut child) = *g {
+        match child.try_wait() {
+            Ok(Some(_)) => {
+                *g = None;
+            }
+            Ok(None) | Err(_) => {}
+        }
+    }
+}
+
+/// True when `GET /health` returns JSON that looks like **this** rushi-asr (not merely "something on :8741").
+fn bundled_health_looks_like_rushi_asr() -> bool {
+    let Ok(resp) = reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(2))
+        .build()
+        .unwrap_or_else(|_| reqwest::blocking::Client::new())
+        .get(ASR_HEALTH_URL)
+        .send()
+    else {
+        return false;
+    };
+    if !resp.status().is_success() {
+        return false;
+    }
+    let Ok(text) = resp.text() else {
+        return false;
+    };
+    let Ok(v): Result<Value, _> = serde_json::from_str(&text) else {
+        return false;
+    };
+    v.get("service").and_then(|s| s.as_str()) == Some("rushi-asr")
+        && v.get("status").and_then(|s| s.as_str()) == Some("ok")
 }
 
 fn spawn_sidecar(exe: &Path, handle: &AppHandle) -> std::io::Result<Child> {
@@ -181,9 +217,11 @@ fn spawn_sidecar(exe: &Path, handle: &AppHandle) -> std::io::Result<Child> {
 }
 
 fn wait_health_store_child(handle: &AppHandle, mut child: Child) -> bool {
+    reap_bundled_sidecar_if_exited(handle);
     for _ in 0..80 {
         std::thread::sleep(Duration::from_millis(250));
-        if !health_ok_blocking() {
+        reap_bundled_sidecar_if_exited(handle);
+        if !bundled_health_looks_like_rushi_asr() {
             continue;
         }
         match handle.try_state::<AsrSidecarState>() {
@@ -215,6 +253,7 @@ pub fn try_start_bundled(handle: &AppHandle) {
     if std::env::var("RUSHI_SKIP_BUNDLED_ASR").ok().as_deref() == Some("1") {
         return;
     }
+    reap_bundled_sidecar_if_exited(handle);
     let Ok(res_dir) = handle.path().resource_dir() else {
         return;
     };
@@ -222,7 +261,7 @@ pub fn try_start_bundled(handle: &AppHandle) {
     if candidates.is_empty() {
         return;
     }
-    if health_ok_blocking() {
+    if bundled_health_looks_like_rushi_asr() {
         eprintln!(
             "[rushi-asr-sidecar] {} already healthy; skip bundled start.",
             ASR_HEALTH_URL

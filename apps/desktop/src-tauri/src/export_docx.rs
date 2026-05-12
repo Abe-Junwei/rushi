@@ -7,10 +7,27 @@ use docx_rs::*;
 
 use crate::p1::SegmentDto;
 
+/// Escape text embedded in WordprocessingML runs (minimal subset).
+fn escape_docx_text(s: &str) -> String {
+    let mut out = String::with_capacity(s.len());
+    for ch in s.chars() {
+        match ch {
+            '&' => out.push_str("&amp;"),
+            '<' => out.push_str("&lt;"),
+            '>' => out.push_str("&gt;"),
+            '"' => out.push_str("&quot;"),
+            _ => out.push(ch),
+        }
+    }
+    out
+}
+
+const MAX_LECTURE_BODY_CHARS: usize = 2_000_000;
+
 fn build_docx_bytes(title: &str, export_mode: &str, segments: &[SegmentDto]) -> Result<Vec<u8>, String> {
     let mut doc = Docx::new();
     doc = doc.add_paragraph(
-        Paragraph::new().add_run(Run::new().bold().size(40).add_text(sanitize_title(title))),
+        Paragraph::new().add_run(Run::new().bold().size(40).add_text(escape_docx_text(&sanitize_title(title)))),
     );
     doc = doc.add_paragraph(Paragraph::new());
 
@@ -26,19 +43,27 @@ fn build_docx_bytes(title: &str, export_mode: &str, segments: &[SegmentDto]) -> 
                     body.push_str("\n\n");
                 }
                 body.push_str(t);
+                if body.len() > MAX_LECTURE_BODY_CHARS {
+                    body.truncate(MAX_LECTURE_BODY_CHARS);
+                    while !body.is_empty() && !body.is_char_boundary(body.len()) {
+                        body.pop();
+                    }
+                    body.push_str("\n\n…（正文过长已截断，请改用「逐字稿」导出或分批导出）");
+                    break;
+                }
             }
             if body.is_empty() {
                 body.push_str("（无正文）");
             }
-            doc = doc.add_paragraph(Paragraph::new().add_run(Run::new().size(24).add_text(body)));
+            doc = doc.add_paragraph(Paragraph::new().add_run(Run::new().size(24).add_text(escape_docx_text(&body))));
         }
         _ => {
             for s in segments {
                 let meta = format!("[{:.2} – {:.2}]", s.start_sec, s.end_sec);
                 doc = doc.add_paragraph(
-                    Paragraph::new().add_run(Run::new().size(20).color("666666").add_text(meta)),
+                    Paragraph::new().add_run(Run::new().size(20).color("666666").add_text(escape_docx_text(&meta))),
                 );
-                let mut run = Run::new().size(24).add_text(s.text.clone());
+                let mut run = Run::new().size(24).add_text(escape_docx_text(&s.text));
                 if s.low_confidence {
                     run = run.highlight("yellow");
                 }

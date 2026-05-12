@@ -4,11 +4,11 @@
 use std::fs::{self, File};
 use std::io::{Read, Seek, SeekFrom, Write};
 use std::ops::Deref;
-use std::path::Path;
+use std::path::{Path, PathBuf};
 
 use rusqlite::{Connection, OpenFlags};
 use tauri::State;
-use zip::write::FileOptions;
+use zip::write::SimpleFileOptions;
 use zip::CompressionMethod;
 use zip::ZipWriter;
 
@@ -17,8 +17,8 @@ use crate::DbState;
 const MAX_DB_BYTES: u64 = 5 * 1024 * 1024;
 const MAX_LOG_TAIL_BYTES: usize = 256 * 1024;
 
-fn zip_opts() -> FileOptions {
-    FileOptions::default().compression_method(CompressionMethod::Deflated)
+fn zip_opts() -> SimpleFileOptions {
+    SimpleFileOptions::default().compression_method(CompressionMethod::Deflated)
 }
 
 #[tauri::command]
@@ -32,7 +32,8 @@ pub fn p4_export_diagnostic_bundle(state: State<DbState>) -> Result<Option<Strin
         return Ok(None);
     };
 
-    let file = File::create(&zip_path).map_err(|e| format!("创建 zip 失败: {e}"))?;
+    let tmp_path: PathBuf = zip_path.with_extension("zip.part");
+    let file = File::create(&tmp_path).map_err(|e| format!("创建 zip 失败: {e}"))?;
     let mut zip = ZipWriter::new(file);
 
     let version = env!("CARGO_PKG_VERSION");
@@ -97,7 +98,15 @@ pub fn p4_export_diagnostic_bundle(state: State<DbState>) -> Result<Option<Strin
         if let Ok(rd) = fs::read_dir(&logs_dir) {
             for ent in rd.flatten() {
                 let p = ent.path();
-                if !p.is_file() {
+                let Ok(sm) = fs::symlink_metadata(&p) else {
+                    continue;
+                };
+                if sm.file_type().is_symlink() {
+                    let name = p.file_name().and_then(|n| n.to_str()).unwrap_or("?");
+                    logs_note.push_str(&format!("skip symlink: {name}\n"));
+                    continue;
+                }
+                if !sm.is_file() {
                     continue;
                 }
                 let is_log = p
@@ -145,7 +154,14 @@ pub fn p4_export_diagnostic_bundle(state: State<DbState>) -> Result<Option<Strin
     )
     .map_err(|e| e.to_string())?;
 
-    zip.finish().map_err(|e| e.to_string())?;
+    zip.finish().map_err(|e| {
+        let _ = fs::remove_file(&tmp_path);
+        e.to_string()
+    })?;
+    fs::rename(&tmp_path, &zip_path).map_err(|e| {
+        let _ = fs::remove_file(&tmp_path);
+        format!("无法将诊断包移动到目标路径: {e}")
+    })?;
     Ok(Some(zip_path.to_string_lossy().to_string()))
 }
 
