@@ -117,6 +117,9 @@ jobs:
           npm ci
           npm run desktop:test:e2e
 
+      - name: P4 eval placeholder wav (manifest paths; not in git)
+        run: bash scripts/p4-eval-generate-placeholders.sh
+
       - name: P4 eval manifest batch (p4-eval-run.py)
         run: python3 scripts/p4-eval-run.py
 
