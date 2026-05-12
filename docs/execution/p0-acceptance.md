@@ -23,7 +23,9 @@
 bash scripts/p0-acceptance.sh
 ```
 
-默认 **`P0_REQUIRE_NONEMPTY_TEXT=0`**：校验 **JSON 契约 + 时间段 + 可降级置信度**（stub 下文本可为空，但 `low_confidence` / `detail` 必有说明）。
+默认 **`P0_REQUIRE_NONEMPTY_TEXT=0`**：校验 **JSON 契约 + 时间段 + 可降级置信度**。stub 下允许两条降级路径：
+- 返回语段但正文为空（并带 `low_confidence` / `detail`），或
+- 返回空语段数组并在 `warnings` 中给出 `stub_no_placeholder_segment` 说明。
 
 若已配置 FunASR 且要求 **每条必须有中文文本**：
 
