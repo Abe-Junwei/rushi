@@ -1,0 +1,408 @@
+import { useCallback, useRef } from "react";
+import { flushSync } from "react-dom";
+import type { SegmentDto } from "../tauri/p1Api";
+import { buildSplitPair, mergeTwoSegments, reindexSegments } from "./p1SegmentListHelpers";
+
+/** 浅拷贝语段数组（SegmentDto 为平面结构，浅拷贝即够用）。 */
+function cloneSegments(segs: SegmentDto[]): SegmentDto[] {
+  return segs.map((s) => ({ ...s }));
+}
+
+function roundSec3(x: number): number {
+  return Math.round(x * 1000) / 1000;
+}
+
+export interface SegmentMutationApi {
+  pushUndo: () => void;
+  undo: () => void;
+  redo: () => void;
+  updateSegmentText: (idx: number, text: string) => void;
+  updateSegmentTime: (idx: number, field: "start_sec" | "end_sec", value: number) => void;
+  updateSegmentBounds: (idx: number, startSec: number, endSec: number, phase?: "live" | "commit") => void;
+  splitAtSelection: (selectedIdx: number) => void;
+  splitAtPlayhead: (timeSec: number) => void;
+  mergeWithPrev: (selectedIdx: number) => void;
+  mergeWithNext: (selectedIdx: number) => void;
+  mergeWithPrevAt: (idx: number) => void;
+  mergeWithNextAt: (idx: number) => void;
+  deleteSegmentAt: (idx: number) => void;
+  insertSegmentAfter: (idx: number) => void;
+  insertSegmentFromTimeRange: (startSec: number, endSec: number) => void;
+  flushP1SegmentTextDraftsFromDom: () => void;
+  resetMutationHistory: () => void;
+}
+
+export interface SegmentMutationDeps {
+  segmentsRef: React.MutableRefObject<SegmentDto[]>;
+  setSegments: React.Dispatch<React.SetStateAction<SegmentDto[]>>;
+  selectedIdxRef: React.MutableRefObject<number>;
+  setSelectedIdx: React.Dispatch<React.SetStateAction<number>>;
+  setError: (msg: string) => void;
+  busy: boolean;
+}
+
+export function useSegmentMutationController(deps: SegmentMutationDeps): SegmentMutationApi {
+  const { segmentsRef, setSegments, setSelectedIdx, setError, busy } = deps;
+  // selectedIdxRef is kept in interface for caller symmetry but not used directly
+  void deps.selectedIdxRef;
+
+  const undoStack = useRef<SegmentDto[][]>([]);
+  const redoStack = useRef<SegmentDto[][]>([]);
+  const textEditUndoRef = useRef<{ idx: number; atMs: number } | null>(null);
+  const segmentBoundsLiveGestureRef = useRef(false);
+
+  const resetMutationHistory = useCallback(() => {
+    undoStack.current = [];
+    redoStack.current = [];
+    textEditUndoRef.current = null;
+    segmentBoundsLiveGestureRef.current = false;
+  }, []);
+
+  const pushUndo = useCallback(() => {
+    redoStack.current = [];
+    undoStack.current.push(cloneSegments(segmentsRef.current));
+    if (undoStack.current.length > 40) undoStack.current.shift();
+  }, [segmentsRef]);
+
+  const pushUndoForTextEdit = useCallback(
+    (idx: number) => {
+      const now = Date.now();
+      const prev = textEditUndoRef.current;
+      const shouldSnapshot = !prev || prev.idx !== idx || now - prev.atMs > 1200;
+      if (shouldSnapshot) pushUndo();
+      textEditUndoRef.current = { idx, atMs: now };
+    },
+    [pushUndo],
+  );
+
+  /** 将语段卡正文输入框当前值写回 `segments`（与本地 draft 一致），供保存/合并等读最新正文。 */
+  const flushP1SegmentTextDraftsFromDom = useCallback(() => {
+    const prev = segmentsRef.current;
+    const updates: { idx: number; text: string }[] = [];
+    prev.forEach((s, i) => {
+      const row = document.querySelector(`[data-p1-seg-row="${i}"]`);
+      const ta = row?.querySelector<HTMLTextAreaElement | HTMLInputElement>("textarea, input.p1-seg-text");
+      if (!ta || ta.value === s.text) return;
+      updates.push({ idx: i, text: ta.value });
+    });
+    if (updates.length === 0) return;
+    flushSync(() => {
+      setSegments((cur) => {
+        let next = cur;
+        for (const { idx, text } of updates) {
+          if (idx < 0 || idx >= cur.length) continue;
+          const seg = cur[idx];
+          if (!seg || seg.text === text) continue;
+          if (next === cur) next = [...cur];
+          next[idx] = { ...seg, text };
+        }
+        return next;
+      });
+    });
+  }, [segmentsRef, setSegments]);
+
+  const undo = useCallback(() => {
+    const prev = undoStack.current.pop();
+    if (!prev) return;
+    redoStack.current.push(cloneSegments(segmentsRef.current));
+    if (redoStack.current.length > 40) redoStack.current.shift();
+    textEditUndoRef.current = null;
+    setSegments(prev);
+  }, [segmentsRef, setSegments]);
+
+  const redo = useCallback(() => {
+    const next = redoStack.current.pop();
+    if (!next) return;
+    undoStack.current.push(cloneSegments(segmentsRef.current));
+    if (undoStack.current.length > 40) undoStack.current.shift();
+    textEditUndoRef.current = null;
+    setSegments(next);
+  }, [segmentsRef, setSegments]);
+
+  const updateSegmentText = useCallback(
+    (idx: number, text: string) => {
+      const prev = segmentsRef.current;
+      const cur = prev[idx];
+      if (!cur || cur.text === text) return;
+      pushUndoForTextEdit(idx);
+      setSegments((p) => {
+        const c = p[idx];
+        if (!c || c.text === text) return p;
+        const out = [...p];
+        out[idx] = { ...c, text };
+        return out;
+      });
+    },
+    [segmentsRef, setSegments, pushUndoForTextEdit],
+  );
+
+  const updateSegmentTime = useCallback(
+    (idx: number, field: "start_sec" | "end_sec", value: number) => {
+      pushUndo();
+      setSegments((prev) => prev.map((s, i) => (i === idx ? { ...s, [field]: value } : s)));
+    },
+    [pushUndo, setSegments],
+  );
+
+  const updateSegmentBounds = useCallback(
+    (idx: number, startSec: number, endSec: number, phase: "live" | "commit" = "commit") => {
+      const prev = segmentsRef.current;
+      const s = prev[idx];
+      if (!s) return;
+      let lo = Math.min(startSec, endSec);
+      let hi = Math.max(startSec, endSec);
+      const prevSeg = prev[idx - 1];
+      const nextSeg = prev[idx + 1];
+      if (prevSeg) lo = Math.max(lo, prevSeg.end_sec + 1e-6);
+      if (nextSeg) hi = Math.min(hi, nextSeg.start_sec - 1e-6);
+      lo = roundSec3(lo);
+      hi = roundSec3(hi);
+      if (hi <= lo + 0.02) {
+        if (phase === "commit") segmentBoundsLiveGestureRef.current = false;
+        return;
+      }
+      if (Math.abs(s.start_sec - lo) < 0.0005 && Math.abs(s.end_sec - hi) < 0.0005) {
+        if (phase === "commit") segmentBoundsLiveGestureRef.current = false;
+        return;
+      }
+
+      if (phase === "live") {
+        if (!segmentBoundsLiveGestureRef.current) {
+          segmentBoundsLiveGestureRef.current = true;
+          pushUndo();
+        }
+        setSegments((p) => p.map((x, i) => (i === idx ? { ...x, start_sec: lo, end_sec: hi } : x)));
+        return;
+      }
+
+      const hadLiveGesture = segmentBoundsLiveGestureRef.current;
+      segmentBoundsLiveGestureRef.current = false;
+      if (!hadLiveGesture) pushUndo();
+      setSegments((p) => p.map((x, i) => (i === idx ? { ...x, start_sec: lo, end_sec: hi } : x)));
+    },
+    [segmentsRef, setSegments, pushUndo],
+  );
+
+  const splitAtSelection = useCallback((selectedIdx: number) => {
+    flushP1SegmentTextDraftsFromDom();
+    const segs = segmentsRef.current;
+    if (segs.length === 0) return;
+    const i = Math.min(selectedIdx, segs.length - 1);
+    const s = segs[i];
+    if (!s) return;
+    const mid = (s.start_sec + s.end_sec) / 2;
+    const pair = buildSplitPair(s, mid);
+    if (!pair) {
+      setError("语段太短，无法拆分。");
+      return;
+    }
+    setError("");
+    pushUndo();
+    setSegments((prev) => {
+      const out = [...prev];
+      out.splice(i, 1, pair.left, pair.right);
+      return reindexSegments(out);
+    });
+    setSelectedIdx(i + 1);
+  }, [flushP1SegmentTextDraftsFromDom, segmentsRef, setSegments, setSelectedIdx, setError, pushUndo]);
+
+  const splitAtPlayhead = useCallback(
+    (timeSec: number) => {
+      flushP1SegmentTextDraftsFromDom();
+      const t = roundSec3(timeSec);
+      const segs = segmentsRef.current;
+      const i = segs.findIndex((s) => t > s.start_sec + 0.02 && t < s.end_sec - 0.02);
+      if (i < 0) {
+        setError("指针时间不在任一语段内，无法拆分。");
+        return;
+      }
+      const s = segs[i];
+      if (!s) return;
+      const pair = buildSplitPair(s, t);
+      if (!pair) {
+        setError("语段太短，无法在该时间拆分。");
+        return;
+      }
+      setError("");
+      pushUndo();
+      setSegments((prev) => {
+        const out = [...prev];
+        out.splice(i, 1, pair.left, pair.right);
+        return reindexSegments(out);
+      });
+      setSelectedIdx(i + 1);
+    },
+    [flushP1SegmentTextDraftsFromDom, segmentsRef, setSegments, setSelectedIdx, setError, pushUndo],
+  );
+
+  const mergeWithPrevAt = useCallback(
+    (idx: number) => {
+      if (idx <= 0) return;
+      flushP1SegmentTextDraftsFromDom();
+      const segs = segmentsRef.current;
+      const a = segs[idx - 1];
+      const b = segs[idx];
+      if (!a || !b) return;
+      pushUndo();
+      const merged = mergeTwoSegments(a, b);
+      setSegments((p) => {
+        const out = [...p];
+        out.splice(idx - 1, 2, merged);
+        return reindexSegments(out);
+      });
+      setSelectedIdx(idx - 1);
+    },
+    [flushP1SegmentTextDraftsFromDom, segmentsRef, setSegments, setSelectedIdx, pushUndo],
+  );
+
+  const mergeWithNextAt = useCallback(
+    (idx: number) => {
+      flushP1SegmentTextDraftsFromDom();
+      const segs = segmentsRef.current;
+      if (idx >= segs.length - 1) return;
+      const a = segs[idx];
+      const b = segs[idx + 1];
+      if (!a || !b) return;
+      pushUndo();
+      const merged = mergeTwoSegments(a, b);
+      setSegments((p) => {
+        const out = [...p];
+        out.splice(idx, 2, merged);
+        return reindexSegments(out);
+      });
+      setSelectedIdx(idx);
+    },
+    [flushP1SegmentTextDraftsFromDom, segmentsRef, setSegments, setSelectedIdx, pushUndo],
+  );
+
+  const mergeWithPrev = useCallback((selectedIdx: number) => {
+    mergeWithPrevAt(selectedIdx);
+  }, [mergeWithPrevAt]);
+
+  const mergeWithNext = useCallback((selectedIdx: number) => {
+    mergeWithNextAt(selectedIdx);
+  }, [mergeWithNextAt]);
+
+  const deleteSegmentAt = useCallback(
+    (idx: number) => {
+      flushP1SegmentTextDraftsFromDom();
+      const segs = segmentsRef.current;
+      if (idx < 0 || idx >= segs.length) return;
+      setError("");
+      pushUndo();
+      setSegments((prev) => reindexSegments(prev.filter((_, j) => j !== idx)));
+      setSelectedIdx((prev) => {
+        const nextLen = segs.length - 1;
+        if (nextLen <= 0) return 0;
+        let next = prev;
+        if (idx < prev) next -= 1;
+        else if (idx === prev) next = Math.min(prev, nextLen - 1);
+        return Math.max(0, Math.min(next, nextLen - 1));
+      });
+    },
+    [flushP1SegmentTextDraftsFromDom, segmentsRef, setSegments, setSelectedIdx, setError, pushUndo],
+  );
+
+  const insertSegmentAfter = useCallback(
+    (idx: number) => {
+      flushP1SegmentTextDraftsFromDom();
+      const segs = segmentsRef.current;
+      if (idx < 0 || idx >= segs.length) return;
+      const a = segs[idx];
+      const b = segs[idx + 1];
+      if (!a) return;
+      const startSec = a.end_sec;
+      let endSec: number;
+      if (b) {
+        const gap = b.start_sec - a.end_sec;
+        if (!Number.isFinite(gap) || gap < 0.12) {
+          setError("与下一条无足够间隙：请在波形区拖动语段边界留出空档后再插入。");
+          return;
+        }
+        endSec = a.end_sec + Math.min(Math.max(gap * 0.45, 0.08), 2);
+      } else {
+        endSec = a.end_sec + 1;
+      }
+      if (endSec <= startSec + 0.04) {
+        setError("无法插入：时间范围无效。");
+        return;
+      }
+      setError("");
+      pushUndo();
+      const newSeg: SegmentDto = {
+        idx: 0,
+        start_sec: startSec,
+        end_sec: endSec,
+        text: "",
+        confidence: null,
+        low_confidence: false,
+        detail: null,
+      };
+      setSegments((prev) => {
+        const out = [...prev.slice(0, idx + 1), newSeg, ...prev.slice(idx + 1)];
+        return reindexSegments(out);
+      });
+      setSelectedIdx(idx + 1);
+    },
+    [flushP1SegmentTextDraftsFromDom, segmentsRef, setSegments, setSelectedIdx, setError, pushUndo],
+  );
+
+  const insertSegmentFromTimeRange = useCallback(
+    (startSec: number, endSec: number) => {
+      if (busy) return;
+      flushP1SegmentTextDraftsFromDom();
+      const lo = roundSec3(Math.min(startSec, endSec));
+      const hi = roundSec3(Math.max(startSec, endSec));
+      if (hi <= lo + 0.05) {
+        setError("选区过短。");
+        return;
+      }
+      const segs = segmentsRef.current;
+      for (const s of segs) {
+        if (lo < s.end_sec && hi > s.start_sec) {
+          setError("选区与已有语段重叠。");
+          return;
+        }
+      }
+      setError("");
+      pushUndo();
+      let insertAt = segs.findIndex((s) => s.start_sec > lo);
+      if (insertAt === -1) insertAt = segs.length;
+      const newSeg: SegmentDto = {
+        idx: 0,
+        start_sec: lo,
+        end_sec: hi,
+        text: "",
+        confidence: null,
+        low_confidence: false,
+        detail: null,
+      };
+      setSegments((prev) => {
+        const out = [...prev.slice(0, insertAt), newSeg, ...prev.slice(insertAt)];
+        return reindexSegments(out);
+      });
+      setSelectedIdx(insertAt);
+    },
+    [busy, flushP1SegmentTextDraftsFromDom, segmentsRef, setSegments, setSelectedIdx, setError, pushUndo],
+  );
+
+  return {
+    pushUndo,
+    undo,
+    redo,
+    updateSegmentText,
+    updateSegmentTime,
+    updateSegmentBounds,
+    splitAtSelection,
+    splitAtPlayhead,
+    mergeWithPrev,
+    mergeWithNext,
+    mergeWithPrevAt,
+    mergeWithNextAt,
+    deleteSegmentAt,
+    insertSegmentAfter,
+    insertSegmentFromTimeRange,
+    flushP1SegmentTextDraftsFromDom,
+    resetMutationHistory,
+  };
+}

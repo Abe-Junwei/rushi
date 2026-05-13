@@ -448,7 +448,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
       onCreate(lo, hi);
     };
 
-    const unsub = rp.on("region-created", onRegionCreated as (...args: unknown[]) => void);
+    const unsub = rp.on("region-created", onRegionCreated);
 
     return () => {
       unsub();
@@ -537,13 +537,13 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
   );
 
   const playSegmentAtIndex = useCallback(
-    async (idx: number) => {
+    (idx: number) => {
       const rp = regionsRef.current;
       if (!rp || !isReady) return;
       const regs = rp.getRegions();
       const r = regs.find((x) => parseSegmentRegionId(x.id) === idx);
       if (!r) return;
-      await r.play(true);
+      r.play(true);
     },
     [isReady],
   );

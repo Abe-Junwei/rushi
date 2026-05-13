@@ -1,7 +1,8 @@
 /** 避免默认文件名含路径分隔符、控制字符、Windows 保留名等非法字符。 */
 export function safeExportBasename(name: string, ext: "txt" | "srt" | "docx"): string {
   // 1) 控制字符与常见文件系统非法字符
-  let base = name.replace(/[\x00-\x1f\/\\?%*:|:|"<>]/g, "_");
+  // eslint-disable-next-line no-control-regex
+  let base = name.replace(/[\x00-\x1f/\\?%*:|"<>]/g, "_");
   // 2) 连续下划线压缩
   base = base.replace(/_+/g, "_");
   // 3) 首尾空格与句点（Windows 保留名/隐藏文件风险）

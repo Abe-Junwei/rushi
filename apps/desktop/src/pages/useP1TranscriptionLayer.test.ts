@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
+import { P1_TIMELINE_PX_PER_SEC } from "./useP1TranscriptionLayer";
 import {
   assignP1SegmentOverlapLanes,
   computeP1SegmentLaneRowPx,
   computeP1TimelineWidthPx,
   P1_SEGMENT_LANE_ROW_PX,
-  P1_TIMELINE_PX_PER_SEC,
-} from "./useP1TranscriptionLayer";
+} from "../utils/p1SegmentLayout";
 
 describe("assignP1SegmentOverlapLanes", () => {
   it("returns empty for no segments", () => {

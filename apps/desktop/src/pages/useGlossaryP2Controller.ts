@@ -2,6 +2,8 @@ import { useCallback, useEffect, useState } from "react";
 import type { GlossaryTermDto } from "../tauri/p2GlossaryApi";
 import * as g from "../tauri/p2GlossaryApi";
 
+export type GlossaryP2ControllerApi = ReturnType<typeof useGlossaryP2Controller>;
+
 export function useGlossaryP2Controller() {
   const [terms, setTerms] = useState<GlossaryTermDto[]>([]);
   const [newTerm, setNewTerm] = useState("");

@@ -16,6 +16,7 @@ function formatHttpDetail(detail: unknown): string {
   try {
     return JSON.stringify(detail);
   } catch {
+    // eslint-disable-next-line @typescript-eslint/no-base-to-string
     return String(detail);
   }
 }
