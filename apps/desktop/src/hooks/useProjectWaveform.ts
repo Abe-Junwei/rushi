@@ -6,18 +6,8 @@ import type { SegmentDto } from "../tauri/p1Api";
 import { formatMediaTime } from "../utils/formatMediaTime";
 import { p1WaveformBoundsSignature, roundSec3 } from "../utils/p1BoundsSignature";
 import { p1WaveformRegionFillColor } from "../utils/p1SegmentChrome";
-
-const REGION_ID_PREFIX = "rushi-seg-";
-
-export function segmentRegionId(index: number): string {
-  return `${REGION_ID_PREFIX}${index}`;
-}
-
-export function parseSegmentRegionId(id: string): number | null {
-  if (!id.startsWith(REGION_ID_PREFIX)) return null;
-  const n = Number(id.slice(REGION_ID_PREFIX.length));
-  return Number.isInteger(n) && n >= 0 ? n : null;
-}
+import { parseSegmentRegionId, segmentRegionId, REGION_ID_PREFIX } from "../utils/waveformRegionId";
+import { useWaveformPlayback } from "./useWaveformPlayback";
 
 export type UseProjectWaveformOptions = {
   mediaUrl: string | null;
@@ -74,6 +64,8 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
+
+  const playback = useWaveformPlayback(wsRef, containerRef, isReady, minPxPerSecRef);
 
   const boundsSig = useMemo(() => p1WaveformBoundsSignature(segments), [segments]);
 
@@ -477,65 +469,6 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     paint(selectedIdx);
   }, [selectedIdx, isReady, disabled]);
 
-  const seek = useCallback((timeSec: number) => {
-    const ws = wsRef.current;
-    if (!ws || !isReady) return;
-    const d = ws.getDuration() || 0;
-    ws.setTime(Math.max(0, Math.min(timeSec, d > 0 ? d : timeSec)));
-  }, [isReady]);
-
-  const togglePlay = useCallback(async () => {
-    const ws = wsRef.current;
-    if (!ws || !isReady) return;
-    if (ws.isPlaying()) ws.pause();
-    else await ws.play();
-  }, [isReady]);
-
-  const getScrollLeft = useCallback((): number => {
-    const ws = wsRef.current;
-    if (!ws || !isReady) return 0;
-    return ws.getScroll();
-  }, [isReady]);
-
-  const setScrollLeft = useCallback(
-    (pixels: number) => {
-      const ws = wsRef.current;
-      if (!ws || !isReady) return;
-      ws.setScroll(pixels);
-    },
-    [isReady],
-  );
-
-  const getPlayheadTime = useCallback((): number => {
-    const ws = wsRef.current;
-    if (!ws || !isReady) return 0;
-    return ws.getCurrentTime();
-  }, [isReady]);
-
-  const seekByDelta = useCallback(
-    (deltaSec: number) => {
-      const ws = wsRef.current;
-      if (!ws || !isReady) return;
-      ws.skip(deltaSec);
-    },
-    [isReady],
-  );
-
-  const clientXToTimeSec = useCallback(
-    (clientX: number): number => {
-      const ws = wsRef.current;
-      const el = containerRef.current;
-      if (!ws || !el || !isReady) return 0;
-      const rect = el.getBoundingClientRect();
-      const relPx = clientX - rect.left + ws.getScroll();
-      const mps = optsRef.current.minPxPerSec ?? 56;
-      const dur = ws.getDuration() || 0;
-      const t = relPx / mps;
-      return Math.max(0, Math.min(t, dur));
-    },
-    [isReady],
-  );
-
   const playSegmentAtIndex = useCallback(
     (idx: number) => {
       const rp = regionsRef.current;
@@ -555,13 +488,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     isPlaying,
     duration,
     currentTime,
-    seek,
-    togglePlay,
-    getScrollLeft,
-    setScrollLeft,
-    getPlayheadTime,
-    seekByDelta,
-    clientXToTimeSec,
+    ...playback,
     playSegmentAtIndex,
     formatMediaTime,
     destroyWave,

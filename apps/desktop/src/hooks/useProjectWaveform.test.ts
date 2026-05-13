@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseSegmentRegionId, segmentRegionId } from "./useProjectWaveform";
+import { parseSegmentRegionId, segmentRegionId } from "../utils/waveformRegionId";
 
 describe("segmentRegionId / parseSegmentRegionId", () => {
   it("round-trips indices", () => {

@@ -69,6 +69,8 @@ export function ProjectP1Panel() {
     pointerTimeSec: number;
   } | null>(null);
 
+  const { segments, busy } = c;
+
   const workspacePhase = useMemo<"A" | "B" | "C">(() => {
     if (!c.current && c.pickedPath) return "B";
     if (c.current) return "C";
@@ -110,12 +112,12 @@ export function ProjectP1Panel() {
       segmentCtxMenu
         ? buildP1SegmentContextMenuItems({
             segmentIdx: segmentCtxMenu.segmentIdx,
-            segments: c.segments,
-            busy: c.busy,
+            segments,
+            busy,
             pointerTimeSec: segmentCtxMenu.pointerTimeSec,
           })
         : [],
-    [segmentCtxMenu, c.segments, c.busy],
+    [segmentCtxMenu, segments, busy],
   );
 
   const onSegmentCtxMenuSelect = (key: P1SegmentContextMenuKey) => {

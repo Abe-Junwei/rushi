@@ -77,6 +77,7 @@ export function useAsrBridgeController(): AsrBridgeApi {
 
   const sttOnlineBridgeReady = useMemo(
     () => tryBuildP1OnlineTranscribeBridgePayload() !== null,
+    // eslint-disable-next-line react-hooks/exhaustive-deps
     [sttOnlineBridgeEpoch],
   );
 

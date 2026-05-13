@@ -2,11 +2,7 @@ import { useCallback, useRef } from "react";
 import { flushSync } from "react-dom";
 import type { SegmentDto } from "../tauri/p1Api";
 import { buildSplitPair, mergeTwoSegments, reindexSegments } from "./p1SegmentListHelpers";
-
-/** 浅拷贝语段数组（SegmentDto 为平面结构，浅拷贝即够用）。 */
-function cloneSegments(segs: SegmentDto[]): SegmentDto[] {
-  return segs.map((s) => ({ ...s }));
-}
+import { useSegmentUndoRedo } from "./useSegmentUndoRedo";
 
 function roundSec3(x: number): number {
   return Math.round(x * 1000) / 1000;
@@ -46,34 +42,11 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
   // selectedIdxRef is kept in interface for caller symmetry but not used directly
   void deps.selectedIdxRef;
 
-  const undoStack = useRef<SegmentDto[][]>([]);
-  const redoStack = useRef<SegmentDto[][]>([]);
-  const textEditUndoRef = useRef<{ idx: number; atMs: number } | null>(null);
   const segmentBoundsLiveGestureRef = useRef(false);
 
-  const resetMutationHistory = useCallback(() => {
-    undoStack.current = [];
-    redoStack.current = [];
-    textEditUndoRef.current = null;
-    segmentBoundsLiveGestureRef.current = false;
-  }, []);
+  const undoRedo = useSegmentUndoRedo(segmentsRef, setSegments);
 
-  const pushUndo = useCallback(() => {
-    redoStack.current = [];
-    undoStack.current.push(cloneSegments(segmentsRef.current));
-    if (undoStack.current.length > 40) undoStack.current.shift();
-  }, [segmentsRef]);
-
-  const pushUndoForTextEdit = useCallback(
-    (idx: number) => {
-      const now = Date.now();
-      const prev = textEditUndoRef.current;
-      const shouldSnapshot = !prev || prev.idx !== idx || now - prev.atMs > 1200;
-      if (shouldSnapshot) pushUndo();
-      textEditUndoRef.current = { idx, atMs: now };
-    },
-    [pushUndo],
-  );
+  const { pushUndo, pushUndoForTextEdit, undo, redo } = undoRedo;
 
   /** 将语段卡正文输入框当前值写回 `segments`（与本地 draft 一致），供保存/合并等读最新正文。 */
   const flushP1SegmentTextDraftsFromDom = useCallback(() => {
@@ -101,23 +74,7 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
     });
   }, [segmentsRef, setSegments]);
 
-  const undo = useCallback(() => {
-    const prev = undoStack.current.pop();
-    if (!prev) return;
-    redoStack.current.push(cloneSegments(segmentsRef.current));
-    if (redoStack.current.length > 40) redoStack.current.shift();
-    textEditUndoRef.current = null;
-    setSegments(prev);
-  }, [segmentsRef, setSegments]);
 
-  const redo = useCallback(() => {
-    const next = redoStack.current.pop();
-    if (!next) return;
-    undoStack.current.push(cloneSegments(segmentsRef.current));
-    if (undoStack.current.length > 40) undoStack.current.shift();
-    textEditUndoRef.current = null;
-    setSegments(next);
-  }, [segmentsRef, setSegments]);
 
   const updateSegmentText = useCallback(
     (idx: number, text: string) => {
@@ -403,6 +360,6 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
     insertSegmentAfter,
     insertSegmentFromTimeRange,
     flushP1SegmentTextDraftsFromDom,
-    resetMutationHistory,
+    resetMutationHistory: undoRedo.reset,
   };
 }
