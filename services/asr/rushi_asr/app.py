@@ -70,7 +70,7 @@ def create_app() -> FastAPI:
         return body
 
     @app.post("/v1/models/prepare-default")
-    def prepare_default_model_endpoint(request: Request) -> dict[str, object]:
+    async def prepare_default_model_endpoint(request: Request) -> dict[str, object]:
         """Prefetch default FunASR model into MODELSCOPE_CACHE (may take minutes; loopback-only)."""
         _require_local_token(request)
         try:
@@ -81,7 +81,7 @@ def create_app() -> FastAPI:
         from rushi_asr.model_prepare import prepare_default_model
 
         try:
-            body = prepare_default_model()
+            body = await run_in_threadpool(prepare_default_model)
         except (RuntimeError, ValueError, FileNotFoundError) as e:
             code = str(e)
             if code == "model_prepare_disk_full":

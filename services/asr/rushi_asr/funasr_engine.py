@@ -26,8 +26,6 @@ _ALLOWED_FUNASR_LANG = frozenset({"zh", "en", "ja", "ko", "yue", "auto"})
 
 def _get_model(model_id: str) -> Any:
     global _model_singleton
-    if _model_singleton is not None:
-        return _model_singleton
     with _model_init_lock:
         if _model_singleton is not None:
             return _model_singleton
