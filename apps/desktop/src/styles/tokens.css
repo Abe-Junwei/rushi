@@ -1,0 +1,34 @@
+/**
+ * CSS 自定义属性 — 与 tailwind.config.js / src/config/tokens.ts 同源。
+ * 供独立 CSS 模块引用（避免各文件中硬编码 hex 发散）。
+ */
+
+:root {
+  --zen-ink: #2c2c2c;
+  --zen-paper: #f2efe8;
+  --zen-saffron: #c58a43;
+  --zen-saffron-mid: #d49a5b;
+  --zen-stone: #8e8e8e;
+  --zen-indigo: #3d4f5d;
+  --zen-cinnabar: #963530;
+  --zen-ochre: #eae0c5;
+  --zen-success: #4ade80;
+
+  --gray-200: #e4e4e7;
+  --gray-300: #cccccc;
+  --gray-500: #555555;
+  --gray-600: #444444;
+
+  --stone-600: #57534e;
+  --stone-700: #5a5652;
+
+  --text-muted: #666666;
+  --red-700: #b91c1c;
+  --amber-800: #92400e;
+  --slate-100: #e8ecf0;
+  --slate-200: #dde4ec;
+  --near-black: #1a1a1a;
+  --near-white: #fafafa;
+  --brown-800: #4a3f35;
+  --brand-input-border: #e5c19d;
+}

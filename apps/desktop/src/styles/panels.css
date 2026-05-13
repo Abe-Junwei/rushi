@@ -1,0 +1,85 @@
+/* 通用面板与信息展示 */
+.panel {
+  padding: 1rem 1rem 1.1rem;
+  border-radius: 10px;
+  background: white;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 6%);
+}
+
+.panel-spaced {
+  margin-top: 1rem;
+}
+
+.panel-title {
+  margin: 0 0 0.5rem;
+  font-size: 1.1rem;
+}
+
+.panel-meta {
+  margin: 0 0 0.75rem;
+  font-size: 0.9rem;
+  color: var(--gray-600);
+}
+
+.panel-meta code,
+.panel-hint code {
+  font-size: 0.85em;
+  padding: 0.1em 0.35em;
+  border-radius: 4px;
+  background: #f4f4f5;
+}
+
+.panel-status {
+  margin: 0.75rem 0 0.25rem;
+  font-size: 0.95rem;
+}
+
+.panel-pre {
+  margin: 0.5rem 0 0;
+  padding: 0.65rem 0.75rem;
+  border-radius: 8px;
+  background: #f4f4f5;
+  font-size: 0.8rem;
+  overflow: auto;
+  max-height: 12rem;
+}
+
+.panel-hint {
+  margin: 0.85rem 0 0;
+  font-size: 0.85rem;
+  color: var(--text-muted);
+}
+
+.panel-err {
+  margin: 0.6rem 0 0;
+  color: var(--red-700);
+  font-size: 0.9rem;
+}
+
+.panel-warn {
+  margin: 0.5rem 0 0;
+  padding-left: 1.2rem;
+  color: var(--amber-800);
+  font-size: 0.85rem;
+}
+
+.row-gap {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 0.75rem;
+}
+
+.tx-meta {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 0.75rem 1rem;
+  margin-top: 0.75rem;
+  font-size: 0.85rem;
+  color: var(--gray-600);
+}
+
+.muted {
+  color: var(--zen-stone);
+  font-style: normal;
+}

@@ -13,8 +13,8 @@
   overflow-y: auto;
   padding: 6px;
   border-radius: 12px;
-  background: color-mix(in srgb, #f2efe8 96%, #fff);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, #2c2c2c 6%, transparent);
+  background: color-mix(in srgb, var(--zen-paper) 96%, #fff);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--zen-ink) 6%, transparent);
 }
 
 .p1-stt-provider-group {
@@ -51,7 +51,7 @@
   font-weight: 600;
   letter-spacing: 0.12em;
   text-transform: uppercase;
-  color: #8e8e8e;
+  color: var(--zen-stone);
 }
 
 .p1-stt-provider-group:first-child .p1-stt-provider-group-title {
@@ -67,11 +67,11 @@
   justify-content: flex-start;
   gap: 8px;
   width: 100%;
-  border: 1px solid color-mix(in srgb, #2c2c2c 10%, transparent);
+  border: 1px solid color-mix(in srgb, var(--zen-ink) 10%, transparent);
   border-radius: 10px;
-  background: color-mix(in srgb, #fff 90%, #e8ecf0);
+  background: color-mix(in srgb, #fff 90%, var(--slate-100));
   padding: 8px 10px;
-  color: #2c2c2c;
+  color: var(--zen-ink);
   text-align: left;
   cursor: pointer;
   transition:
@@ -82,20 +82,20 @@
 }
 
 .p1-stt-provider-card:focus-visible {
-  outline: 2px solid color-mix(in srgb, #3d4f5d 55%, transparent);
+  outline: 2px solid color-mix(in srgb, var(--zen-indigo) 55%, transparent);
   outline-offset: 2px;
 }
 
 .p1-stt-provider-card:hover:not(:disabled) {
-  border-color: color-mix(in srgb, #3d4f5d 34%, #ccc);
-  background: color-mix(in srgb, #fff 78%, #e8ecf0);
+  border-color: color-mix(in srgb, var(--zen-indigo) 34%, var(--gray-300));
+  background: color-mix(in srgb, #fff 78%, var(--slate-100));
   transform: translateY(-1px);
 }
 
 .p1-stt-provider-card--selected {
-  border-color: color-mix(in srgb, #3d4f5d 44%, #ccc);
-  background: color-mix(in srgb, #fff 72%, #dde4ec);
-  box-shadow: inset 0 0 0 1px color-mix(in srgb, #3d4f5d 28%, transparent);
+  border-color: color-mix(in srgb, var(--zen-indigo) 44%, var(--gray-300));
+  background: color-mix(in srgb, #fff 72%, var(--slate-200));
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--zen-indigo) 28%, transparent);
 }
 
 .p1-stt-provider-card:disabled {
@@ -117,7 +117,7 @@
   font-size: 12px;
   font-weight: 600;
   line-height: 1.35;
-  color: #2c2c2c;
+  color: var(--zen-ink);
   overflow: hidden;
   display: -webkit-box;
   -webkit-line-clamp: 2;
@@ -130,14 +130,14 @@
   font-weight: 600;
   line-height: 1.3;
   white-space: nowrap;
-  color: #3d4f5d;
+  color: var(--zen-indigo);
 }
 
 .p1-stt-provider-card__desc {
   margin: 0;
   font-size: 11px;
   line-height: 1.55;
-  color: #8e8e8e;
+  color: var(--zen-stone);
   display: -webkit-box;
   -webkit-line-clamp: 2;
   -webkit-box-orient: vertical;
@@ -158,11 +158,11 @@
   font-size: 10px;
   font-weight: 500;
   line-height: 1.3;
-  background: color-mix(in srgb, #2c2c2c 5%, transparent);
-  color: #5a5652;
+  background: color-mix(in srgb, var(--zen-ink) 5%, transparent);
+  color: var(--stone-700);
 }
 
 .p1-stt-provider-chip--accent {
-  background: color-mix(in srgb, #c58a43 22%, #fff);
-  color: #4a3f35;
+  background: color-mix(in srgb, var(--zen-saffron) 22%, #fff);
+  color: var(--brown-800);
 }

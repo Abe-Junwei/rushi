@@ -6,7 +6,7 @@
 .p1-confirm-project-input:-webkit-autofill:hover,
 .p1-confirm-project-input:-webkit-autofill:focus {
   -webkit-text-fill-color: rgb(55 65 81);
-  border: 2px solid #e5c19d;
-  box-shadow: 0 0 0 1000px #ffffff inset;
+  border: 2px solid var(--brand-input-border);
+  box-shadow: 0 0 0 1000px white inset;
   transition: background-color 9999s ease-out;
 }

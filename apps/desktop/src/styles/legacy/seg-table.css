@@ -1,0 +1,39 @@
+/* 旧版语段表格（逐步迁移到组件级样式） */
+.seg-table-wrap {
+  margin-top: 0.75rem;
+  overflow: auto;
+  max-height: 16rem;
+  border-radius: 8px;
+  background: #f4f4f5;
+}
+
+.seg-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 0.8rem;
+}
+
+.seg-table th,
+.seg-table td {
+  padding: 0.35rem 0.5rem;
+  text-align: left;
+  vertical-align: top;
+}
+
+.seg-table th {
+  background: var(--gray-200);
+  position: sticky;
+  top: 0;
+}
+
+.seg-text {
+  max-width: 12rem;
+  word-break: break-word;
+}
+
+.seg-detail {
+  max-width: 14rem;
+  font-size: 0.75rem;
+  color: var(--gray-600);
+  word-break: break-word;
+}

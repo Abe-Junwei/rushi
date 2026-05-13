@@ -1,0 +1,111 @@
+/* P1 波形区：解语 BottomToolbarSection + waveform-zoom-bar / icon-btn 布局与尺度（配色贴合 zen-paper / saffron） */
+.p1-waveform-zoom-toolbar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  min-height: 42px;
+  min-width: 0;
+  padding: 8px 14px;
+  border-radius: 10px;
+  margin-top: 8px;
+  background: var(--zen-paper);
+}
+
+.p1-waveform-zoom-bar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex: 1;
+  min-width: 0;
+}
+
+.p1-toolbar-sep {
+  width: 1px;
+  height: 14px;
+  flex-shrink: 0;
+  border-radius: 1px;
+  background: rgb(0 0 0 / 12%);
+}
+
+.p1-icon-btn {
+  box-sizing: border-box;
+  display: inline-flex;
+  height: 34px;
+  min-width: 34px;
+  align-items: center;
+  justify-content: center;
+  padding: 0;
+  border: 1px solid rgb(0 0 0 / 12%);
+  border-radius: 10px;
+  background: white;
+  color: var(--zen-ink);
+  cursor: pointer;
+  box-shadow: 0 1px 2px rgb(0 0 0 / 5%);
+}
+
+.p1-icon-btn-compact {
+  min-width: 30px;
+  width: 30px;
+}
+
+.p1-icon-btn:hover:not(:disabled) {
+  border-color: rgb(212 154 91 / 45%);
+  background: rgb(255 255 255 / 95%);
+}
+
+.p1-icon-btn:focus-visible {
+  outline: 2px solid rgb(212 154 91 / 55%);
+  outline-offset: 2px;
+}
+
+.p1-icon-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.p1-icon-btn-label {
+  font-size: 10px;
+  font-weight: 700;
+  line-height: 1;
+  letter-spacing: 0.02em;
+}
+
+.p1-waveform-zoom-slider {
+  width: clamp(120px, 18vw, 240px);
+  min-width: 0;
+  flex-shrink: 1;
+  cursor: pointer;
+  accent-color: var(--zen-saffron-mid);
+}
+
+.p1-waveform-zoom-slider:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.p1-waveform-zoom-value {
+  flex-shrink: 0;
+  min-width: 3.25rem;
+  text-align: right;
+  font-size: 13px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--stone-600);
+}
+
+.p1-waveform-zoom-px {
+  flex-shrink: 0;
+  font-size: 11px;
+}
+
+@media (max-width: 1024px) {
+  .p1-waveform-zoom-bar {
+    flex-wrap: wrap;
+    row-gap: 4px;
+  }
+
+  .p1-waveform-zoom-value {
+    min-width: 2.75rem;
+  }
+}
