@@ -1,0 +1,90 @@
+/**
+ * Plugin loader.
+ *
+ * Loads plugin ES modules (built-in via static import or external via dynamic import),
+ * invokes their `activate(context)` entry point, and tracks lifecycle.
+ */
+
+import type { PluginContext, PluginManifest, PluginModule } from "./types";
+import { createPluginContext } from "./context";
+import { registryUnregister } from "./registry";
+
+interface LoadedPlugin {
+  manifest: PluginManifest;
+  module: PluginModule;
+  context: PluginContext;
+  handles: string[];
+}
+
+const loaded = new Map<string, LoadedPlugin>();
+
+/** Load a plugin from its manifest. */
+export async function loadPlugin(manifest: PluginManifest): Promise<void> {
+  if (loaded.has(manifest.id)) {
+    console.warn(`[plugin] ${manifest.id} already loaded; skipping.`);
+    return;
+  }
+
+  const mod = (await import(/* @vite-ignore */ manifest.entry)) as {
+    default?: PluginModule;
+    activate?: PluginModule["activate"];
+  };
+
+  const pluginModule: PluginModule = mod.default ?? (mod as unknown as PluginModule);
+  if (typeof pluginModule.activate !== "function") {
+    throw new Error(`Plugin ${manifest.id} does not export an activate() function.`);
+  }
+
+  const ctx = createPluginContext(manifest);
+  const handles: string[] = [];
+
+  // Patch ctx.register so we can track handles for this plugin.
+  const origRegister = ctx.register.bind(ctx);
+  ctx.register = (c) => {
+    const h = origRegister(c);
+    handles.push(h);
+    return h;
+  };
+
+  await pluginModule.activate(ctx);
+  loaded.set(manifest.id, { manifest, module: pluginModule, context: ctx, handles });
+  console.warn(`[plugin] loaded ${manifest.id}`);
+}
+
+/** Unload a plugin by id. */
+export async function unloadPlugin(id: string): Promise<void> {
+  const entry = loaded.get(id);
+  if (!entry) {
+    console.warn(`[plugin] ${id} not loaded; cannot unload.`);
+    return;
+  }
+
+  // Unregister every handle.
+  for (const h of entry.handles) {
+    registryUnregister(h);
+  }
+
+  if (typeof entry.module.deactivate === "function") {
+    await entry.module.deactivate();
+  }
+
+  loaded.delete(id);
+  console.warn(`[plugin] unloaded ${id}`);
+}
+
+/** Load multiple plugins in parallel. */
+export async function loadPlugins(manifests: PluginManifest[]): Promise<void> {
+  await Promise.all(manifests.map((m) => loadPlugin(m).catch((e) => {
+    console.error(`[plugin] failed to load ${m.id}:`, e);
+  })));
+}
+
+/** Return ids of currently loaded plugins. */
+export function loadedPluginIds(): string[] {
+  return Array.from(loaded.keys());
+}
+
+/** Hard reset: unload everything. */
+export async function unloadAllPlugins(): Promise<void> {
+  await Promise.all(Array.from(loaded.keys()).map((id) => unloadPlugin(id)));
+}
