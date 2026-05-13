@@ -2,8 +2,9 @@
   "name": "rushi",
   "private": true,
   "description": "如是我闻 — 本地中文转写与校对（独立仓）",
-  "workspaces": ["apps/desktop"],
+  "workspaces": ["apps/desktop", "packages/wasm-waveform"],
   "scripts": {
+    "prepare": "cd apps/desktop && husky",
     "check:doc-links": "node scripts/check-internal-doc-links.mjs",
     "desktop:dev": "npm run tauri dev -w @rushi/desktop",
     "desktop:build": "npm run tauri build -w @rushi/desktop",
@@ -11,6 +12,7 @@
     "test": "npm run test -w @rushi/desktop",
     "typecheck": "npm run typecheck -w @rushi/desktop",
     "build": "npm run build -w @rushi/desktop",
+    "test:all": "npm run test && npm run asr:test && cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml",
     "p0:acceptance": "bash scripts/p0-acceptance.sh",
     "p4:eval-placeholders": "bash scripts/p4-eval-generate-placeholders.sh",
     "p4:eval-run": "python3 scripts/p4-eval-run.py",
@@ -22,6 +24,7 @@
     "asr:regen-sidecar-locks": "bash scripts/regen-sidecar-cpu-lock.sh && bash scripts/regen-sidecar-cuda-win-lock.sh"
   },
   "engines": {
-    "node": ">=20"
+    "node": ">=22",
+    "npm": ">=10"
   }
 }

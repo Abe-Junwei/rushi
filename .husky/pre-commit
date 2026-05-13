@@ -1,0 +1,4 @@
+cd apps/desktop
+npx lint-staged
+cd ../..
+node scripts/check-architecture-guard.mjs

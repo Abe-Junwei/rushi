@@ -8,19 +8,24 @@ export default tseslint.config(
   { ignores: ["dist", "src-tauri/target"] },
   {
     extends: [js.configs.recommended, ...tseslint.configs.recommended],
-    files: ["vite.config.ts", "vitest.config.ts"],
+    files: ["vite.config.ts", "vitest.config.ts", "playwright.config.ts", "tests/**/*.ts"],
     languageOptions: {
       ecmaVersion: 2022,
       globals: globals.node,
+      parser: tseslint.parser,
     },
   },
   {
-    extends: [js.configs.recommended, ...tseslint.configs.recommended],
-    files: ["**/*.{ts,tsx}"],
-    ignores: ["vite.config.ts", "vitest.config.ts"],
+    extends: [js.configs.recommended, ...tseslint.configs.recommendedTypeChecked],
+    files: ["src/**/*.{ts,tsx}"],
     languageOptions: {
       ecmaVersion: 2022,
       globals: globals.browser,
+      parser: tseslint.parser,
+      parserOptions: {
+        project: "./tsconfig.json",
+        tsconfigRootDir: import.meta.dirname,
+      },
     },
     plugins: {
       "react-hooks": reactHooks,
@@ -29,6 +34,12 @@ export default tseslint.config(
     rules: {
       ...reactHooks.configs.recommended.rules,
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
+      // 防止浮空 Promise
+      "@typescript-eslint/no-floating-promises": ["error", { ignoreVoid: true }],
+      // 防止 Promise 误用
+      "@typescript-eslint/no-misused-promises": "error",
+      // 生产代码不留 console.log
+      "no-console": ["warn", { allow: ["warn", "error"] }],
     },
   },
 );

@@ -10,7 +10,7 @@ name = "rushi-repo-root"
 version = "0.0.0"
 description = "Monorepo marker; real package is rushi-asr under services/asr"
 readme = "README.md"
-requires-python = ">=3.11"
+requires-python = "~=3.12"
 license = { text = "ISC" }
 authors = [{ name = "沂南灵创技术服务中心" }]
 
