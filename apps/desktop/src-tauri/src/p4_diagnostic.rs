@@ -64,7 +64,8 @@ pub fn p4_export_diagnostic_bundle(state: State<DbState>) -> Result<Option<Strin
 
     zip.start_file("database-readme.txt", zip_opts())
         .map_err(|e| e.to_string())?;
-    zip.write_all(db_note.as_bytes()).map_err(|e| e.to_string())?;
+    zip.write_all(db_note.as_bytes())
+        .map_err(|e| e.to_string())?;
 
     if include_db {
         let bytes = fs::read(&st.db_path).map_err(|e| e.to_string())?;
@@ -117,7 +118,10 @@ pub fn p4_export_diagnostic_bundle(state: State<DbState>) -> Result<Option<Strin
                 if !is_log {
                     continue;
                 }
-                let name = p.file_name().and_then(|n| n.to_str()).unwrap_or("unknown.log");
+                let name = p
+                    .file_name()
+                    .and_then(|n| n.to_str())
+                    .unwrap_or("unknown.log");
                 match read_file_tail_utf8(&p, MAX_LOG_TAIL_BYTES) {
                     Ok(content) => {
                         let zip_name = format!("logs/{name}");
@@ -185,10 +189,7 @@ fn zip_recent_edit_log_tsv(conn: &Connection, zip: &mut ZipWriter<File>) -> Resu
     let mut body = String::from("id\tproject_id\tat_ms\tkind\tdetail\n");
     for row in rows {
         let (id, pid, at_ms, kind, detail) = row.map_err(|e| e.to_string())?;
-        let detail_esc = detail
-            .replace('\t', " ")
-            .replace('\n', " ")
-            .replace('\r', " ");
+        let detail_esc = detail.replace(['\t', '\n', '\r'], " ");
         body.push_str(&format!("{id}\t{pid}\t{at_ms}\t{kind}\t{detail_esc}\n"));
     }
     zip.start_file("recent_edit_log.tsv", zip_opts())
@@ -200,7 +201,7 @@ fn zip_recent_edit_log_tsv(conn: &Connection, zip: &mut ZipWriter<File>) -> Resu
 fn read_file_tail_utf8(path: &Path, max_bytes: usize) -> std::io::Result<String> {
     let mut f = File::open(path)?;
     let len = f.metadata()?.len() as usize;
-    let start = if len > max_bytes { len - max_bytes } else { 0 };
+    let start = len.saturating_sub(max_bytes);
     let mut buf = vec![0u8; len.saturating_sub(start)];
     if start > 0 {
         f.seek(SeekFrom::Start(start as u64))?;

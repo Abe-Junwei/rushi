@@ -70,6 +70,7 @@ pub fn migrate(conn: &Connection) -> rusqlite::Result<()> {
     conn.execute_batch(
         r#"
         PRAGMA foreign_keys = ON;
+        PRAGMA busy_timeout = 5000;
 
         CREATE TABLE IF NOT EXISTS projects (
             id TEXT PRIMARY KEY NOT NULL,
@@ -106,4 +107,63 @@ pub fn migrate(conn: &Connection) -> rusqlite::Result<()> {
     migrate_glossary_p2(conn)?;
     migrate_correction_memory_p2(conn)?;
     Ok(())
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use rusqlite::Connection;
+
+    #[test]
+    fn migrate_creates_all_tables() {
+        let conn = Connection::open_in_memory().unwrap();
+        migrate(&conn).unwrap();
+
+        let tables: Vec<String> = conn
+            .prepare("SELECT name FROM sqlite_master WHERE type='table'")
+            .unwrap()
+            .query_map([], |row| row.get(0))
+            .unwrap()
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+
+        assert!(tables.contains(&"projects".to_string()));
+        assert!(tables.contains(&"segments".to_string()));
+        assert!(tables.contains(&"edit_log".to_string()));
+        assert!(tables.contains(&"glossary_terms".to_string()));
+        assert!(tables.contains(&"correction_memory".to_string()));
+    }
+
+    #[test]
+    fn migrate_segments_p2_adds_columns() {
+        let conn = Connection::open_in_memory().unwrap();
+        // 先创建基础 schema（不含 P2 列）
+        conn.execute_batch(
+            r#"
+            CREATE TABLE segments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                project_id TEXT NOT NULL,
+                idx INTEGER NOT NULL,
+                start_sec REAL NOT NULL,
+                end_sec REAL NOT NULL,
+                text TEXT NOT NULL DEFAULT ''
+            );
+            "#,
+        )
+        .unwrap();
+
+        migrate_segments_p2(&conn).unwrap();
+
+        let cols = table_columns(&conn, "segments").unwrap();
+        assert!(cols.contains(&"confidence".to_string()));
+        assert!(cols.contains(&"low_confidence".to_string()));
+        assert!(cols.contains(&"detail".to_string()));
+    }
+
+    #[test]
+    fn migrate_is_idempotent() {
+        let conn = Connection::open_in_memory().unwrap();
+        migrate(&conn).unwrap();
+        migrate(&conn).unwrap(); // 不应报错
+    }
 }

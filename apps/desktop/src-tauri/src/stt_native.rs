@@ -118,7 +118,10 @@ pub fn transcribe_baidu(
         urlencoding::encode(secret)
     );
     log("INFO baidu token fetch");
-    let tr = client.get(&token_url).timeout(Duration::from_secs(30)).send();
+    let tr = client
+        .get(&token_url)
+        .timeout(Duration::from_secs(30))
+        .send();
     let tr = tr.map_err(|e| format!("百度 token 请求失败: {e}"))?;
     if !tr.status().is_success() {
         return Err(format!("百度 token HTTP {}", tr.status()));
@@ -137,7 +140,7 @@ pub fn transcribe_baidu(
     } else {
         url
     };
-    let dev_pid = if fmt == "wav" || fmt == "pcm" { 1537 } else { 1537 };
+    let dev_pid = 1537;
     let rate = 16000;
     let body = json!({
         "format": fmt,
@@ -169,7 +172,10 @@ pub fn transcribe_baidu(
     let j: serde_json::Value = resp.json().map_err(|e| e.to_string())?;
     let err_no = j.get("err_no").and_then(|x| x.as_i64()).unwrap_or(-1);
     if err_no != 0 {
-        let msg = j.get("err_msg").and_then(|x| x.as_str()).unwrap_or("识别失败");
+        let msg = j
+            .get("err_msg")
+            .and_then(|x| x.as_str())
+            .unwrap_or("识别失败");
         return Err(format!("百度 err_no={err_no}: {msg}"));
     }
     let arr = j
@@ -177,7 +183,11 @@ pub fn transcribe_baidu(
         .and_then(|r| r.as_array())
         .cloned()
         .unwrap_or_default();
-    let full_text: String = arr.iter().filter_map(|x| x.as_str()).collect::<Vec<_>>().join("");
+    let full_text: String = arr
+        .iter()
+        .filter_map(|x| x.as_str())
+        .collect::<Vec<_>>()
+        .join("");
     let warnings: Vec<String> = Vec::new();
     Ok(rushi_value(
         vec![],
@@ -216,7 +226,7 @@ pub fn transcribe_aliyun_nls(
         base
     };
     let (bytes, fmt) = audio_bytes_and_format(audio_path)?;
-    let sample = if fmt == "pcm" { "16000" } else { "16000" };
+    let sample = "16000";
     let url = format!(
         "{}?appkey={}&format={}&sample_rate={}",
         base.trim_end_matches('?'),
@@ -399,7 +409,8 @@ fn tencent_tc3_authorization(
 ) -> Result<String, String> {
     let service = "asr";
     let algorithm = "TC3-HMAC-SHA256";
-    let date = Utc.timestamp_opt(timestamp, 0)
+    let date = Utc
+        .timestamp_opt(timestamp, 0)
         .single()
         .ok_or_else(|| "时间戳无效".to_string())?
         .format("%Y-%m-%d")
@@ -412,11 +423,11 @@ fn tencent_tc3_authorization(
         action.to_lowercase()
     );
     let signed_headers = "content-type;host;x-tc-action";
-    let canonical_request = format!(
-        "POST\n/\n\n{canonical_headers}\n{signed_headers}\n{hashed_request_payload}"
-    );
+    let canonical_request =
+        format!("POST\n/\n\n{canonical_headers}\n{signed_headers}\n{hashed_request_payload}");
     let hashed_canonical_request = sha256_hex(canonical_request.as_bytes());
-    let string_to_sign = format!("{algorithm}\n{timestamp}\n{credential_scope}\n{hashed_canonical_request}");
+    let string_to_sign =
+        format!("{algorithm}\n{timestamp}\n{credential_scope}\n{hashed_canonical_request}");
 
     let secret_date = hmac_sha256(format!("TC3{secret_key}").as_bytes(), date.as_bytes());
     let secret_service = hmac_sha256(&secret_date, service.as_bytes());
@@ -468,7 +479,9 @@ pub fn transcribe_tencent(
     });
     let payload = serde_json::to_string(&body).map_err(|e| e.to_string())?;
     let timestamp = Utc::now().timestamp();
-    let authorization = tencent_tc3_authorization(secret_id, secret_key, host, action, version, &payload, timestamp)?;
+    let authorization = tencent_tc3_authorization(
+        secret_id, secret_key, host, action, version, &payload, timestamp,
+    )?;
 
     log("INFO tencent SentenceRecognition");
     let url = "https://asr.tencentcloudapi.com/";
@@ -573,7 +586,10 @@ pub fn transcribe_azure_conversation(
         .to_ascii_lowercase();
     let text_body = resp.text().map_err(|e| e.to_string())?;
     if !status.is_success() {
-        return Err(format!("Azure HTTP {status}: {}", text_body.chars().take(400).collect::<String>()));
+        return Err(format!(
+            "Azure HTTP {status}: {}",
+            text_body.chars().take(400).collect::<String>()
+        ));
     }
     let full_text = if ctype.contains("json") {
         let j: serde_json::Value = serde_json::from_str(&text_body).map_err(|e| e.to_string())?;
@@ -722,9 +738,10 @@ pub fn dispatch_native(
 ) -> Result<serde_json::Value, String> {
     let raw_url = bridge.transcribe_url.trim();
     if !raw_url.is_empty() {
-        let looks_http =
-            raw_url.starts_with("http://") || raw_url.starts_with("https://");
-        if looks_http && !is_allowed_stt_transcribe_url(raw_url) {
+        let scheme_ok = url::Url::parse(raw_url)
+            .map(|u| matches!(u.scheme(), "http" | "https"))
+            .unwrap_or(false);
+        if scheme_ok && !is_allowed_stt_transcribe_url(raw_url) {
             return Err(
                 "在线转写 URL 须为 https，或 http 且主机为 localhost / 127.0.0.1 / ::1".to_string(),
             );
@@ -735,21 +752,24 @@ pub fn dispatch_native(
         "aliyunNls" => transcribe_aliyun_nls(client, audio_path, bridge, timeout, log),
         "deepgramListen" => transcribe_deepgram(client, audio_path, bridge, timeout, log),
         "tencentAsr" => transcribe_tencent(client, audio_path, bridge, timeout, log),
-        "azureConversationV1" => transcribe_azure_conversation(client, audio_path, bridge, timeout, log),
+        "azureConversationV1" => {
+            transcribe_azure_conversation(client, audio_path, bridge, timeout, log)
+        }
         "googleSpeechV1" => transcribe_google(client, audio_path, bridge, timeout, log),
-        "iflytekIatWs" => crate::china_stt_shell::transcribe_iflytek_iat_ws(audio_path, bridge, timeout, log),
-        "huaweiSisShortAudio" => {
-            crate::china_stt_shell::transcribe_huawei_sis_short(client, audio_path, bridge, timeout, log)
+        "iflytekIatWs" => {
+            crate::china_stt_shell::transcribe_iflytek_iat_ws(audio_path, bridge, timeout, log)
         }
-        "aispeechLasrSentenceV2" => {
-            crate::china_stt_shell::transcribe_aispeech_lasr(client, audio_path, bridge, timeout, log)
-        }
-        "volcengineBigmodelNostreamWs" => crate::china_stt_shell::transcribe_volcengine_bigmodel_nostream_ws(
-            audio_path,
-            bridge,
-            timeout,
-            log,
+        "huaweiSisShortAudio" => crate::china_stt_shell::transcribe_huawei_sis_short(
+            client, audio_path, bridge, timeout, log,
         ),
+        "aispeechLasrSentenceV2" => crate::china_stt_shell::transcribe_aispeech_lasr(
+            client, audio_path, bridge, timeout, log,
+        ),
+        "volcengineBigmodelNostreamWs" => {
+            crate::china_stt_shell::transcribe_volcengine_bigmodel_nostream_ws(
+                audio_path, bridge, timeout, log,
+            )
+        }
         _ => Err(format!("未知 native_adapter: {adapter}")),
     }
 }

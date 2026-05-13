@@ -35,3 +35,46 @@ pub fn is_allowed_stt_transcribe_url(raw: &str) -> bool {
         _ => false,
     }
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn allows_https_urls() {
+        assert!(is_allowed_stt_transcribe_url(
+            "https://api.openai.com/v1/audio/transcriptions"
+        ));
+        assert!(is_allowed_stt_transcribe_url("https://example.com/"));
+    }
+
+    #[test]
+    fn allows_localhost_http() {
+        assert!(is_allowed_stt_transcribe_url(
+            "http://127.0.0.1:8741/v1/transcribe"
+        ));
+        assert!(is_allowed_stt_transcribe_url("http://localhost:3000/api"));
+    }
+
+    #[test]
+    fn rejects_non_local_http() {
+        assert!(!is_allowed_stt_transcribe_url("http://evil.com/"));
+        assert!(!is_allowed_stt_transcribe_url("http://192.168.1.1/"));
+    }
+
+    #[test]
+    fn rejects_malformed_urls() {
+        assert!(!is_allowed_stt_transcribe_url("not-a-url"));
+        assert!(!is_allowed_stt_transcribe_url(""));
+        assert!(!is_allowed_stt_transcribe_url("ftp://example.com/"));
+    }
+
+    #[test]
+    fn rejects_ssrf_bypass_attempts() {
+        // 旧版 starts_with 风格校验会被绕过的 case
+        assert!(!is_allowed_stt_transcribe_url(
+            "http://127.0.0.1:80@evil.com/"
+        ));
+        assert!(!is_allowed_stt_transcribe_url("http://localhost.evil.com/"));
+    }
+}

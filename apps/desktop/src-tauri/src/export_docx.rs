@@ -24,10 +24,19 @@ fn escape_docx_text(s: &str) -> String {
 
 const MAX_LECTURE_BODY_CHARS: usize = 2_000_000;
 
-fn build_docx_bytes(title: &str, export_mode: &str, segments: &[SegmentDto]) -> Result<Vec<u8>, String> {
+fn build_docx_bytes(
+    title: &str,
+    export_mode: &str,
+    segments: &[SegmentDto],
+) -> Result<Vec<u8>, String> {
     let mut doc = Docx::new();
     doc = doc.add_paragraph(
-        Paragraph::new().add_run(Run::new().bold().size(40).add_text(escape_docx_text(&sanitize_title(title)))),
+        Paragraph::new().add_run(
+            Run::new()
+                .bold()
+                .size(40)
+                .add_text(escape_docx_text(&sanitize_title(title))),
+        ),
     );
     doc = doc.add_paragraph(Paragraph::new());
 
@@ -55,13 +64,20 @@ fn build_docx_bytes(title: &str, export_mode: &str, segments: &[SegmentDto]) -> 
             if body.is_empty() {
                 body.push_str("（无正文）");
             }
-            doc = doc.add_paragraph(Paragraph::new().add_run(Run::new().size(24).add_text(escape_docx_text(&body))));
+            doc = doc.add_paragraph(
+                Paragraph::new().add_run(Run::new().size(24).add_text(escape_docx_text(&body))),
+            );
         }
         _ => {
             for s in segments {
                 let meta = format!("[{:.2} – {:.2}]", s.start_sec, s.end_sec);
                 doc = doc.add_paragraph(
-                    Paragraph::new().add_run(Run::new().size(20).color("666666").add_text(escape_docx_text(&meta))),
+                    Paragraph::new().add_run(
+                        Run::new()
+                            .size(20)
+                            .color("666666")
+                            .add_text(escape_docx_text(&meta)),
+                    ),
                 );
                 let mut run = Run::new().size(24).add_text(escape_docx_text(&s.text));
                 if s.low_confidence {
@@ -99,7 +115,11 @@ pub fn p3_export_docx(
     segments: Vec<SegmentDto>,
 ) -> Result<Option<String>, String> {
     let mode = export_mode.trim();
-    let mode = if mode == "lecture" { "lecture" } else { "verbatim" };
+    let mode = if mode == "lecture" {
+        "lecture"
+    } else {
+        "verbatim"
+    };
     let bytes = build_docx_bytes(&title, mode, &segments)?;
     let picked = rfd::FileDialog::new()
         .set_file_name(&default_filename)

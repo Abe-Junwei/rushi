@@ -119,8 +119,7 @@ fn iflytek_auth_url(hosturl: &str, api_key: &str, api_secret: &str) -> Result<Ur
     let auth_origin = format!(
         r#"api_key="{api_key}", algorithm="hmac-sha256", headers="host date request-line", signature="{sig}""#
     );
-    let authorization =
-        base64::engine::general_purpose::STANDARD.encode(auth_origin.as_bytes());
+    let authorization = base64::engine::general_purpose::STANDARD.encode(auth_origin.as_bytes());
     let mut u = ul;
     u.query_pairs_mut()
         .append_pair("authorization", &authorization)
@@ -178,8 +177,10 @@ pub fn transcribe_iflytek_iat_ws(
         .as_str()
         .into_client_request()
         .map_err(|e| format!("讯飞握手请求: {e}"))?;
-    req.headers_mut()
-        .insert("Host", HeaderValue::from_str(u.host_str().unwrap_or("")).map_err(|e| e.to_string())?);
+    req.headers_mut().insert(
+        "Host",
+        HeaderValue::from_str(u.host_str().unwrap_or("")).map_err(|e| e.to_string())?,
+    );
 
     let (mut ws, _resp) = tungstenite::connect(req).map_err(|e| format!("讯飞 WebSocket: {e}"))?;
 
@@ -277,6 +278,7 @@ pub fn transcribe_iflytek_iat_ws(
 
 // --- 华为云 SIS + SDK-HMAC-SHA256 ---
 
+#[allow(clippy::too_many_arguments)]
 fn huawei_authorization(
     sk: &str,
     ak: &str,
@@ -306,9 +308,8 @@ fn huawei_authorization(
     let hashed_canonical = sha256_hex(canonical_request.as_bytes());
     let string_to_sign = format!("SDK-HMAC-SHA256\n{x_sdk_date}\n{hashed_canonical}");
     let sig = hex::encode(hmac_sha256(sk.as_bytes(), string_to_sign.as_bytes()));
-    let auth = format!(
-        "SDK-HMAC-SHA256 Access={ak}, SignedHeaders={signed_headers}, Signature={sig}"
-    );
+    let auth =
+        format!("SDK-HMAC-SHA256 Access={ak}, SignedHeaders={signed_headers}, Signature={sig}");
     Ok((x_sdk_date, auth))
 }
 
@@ -340,7 +341,9 @@ pub fn transcribe_huawei_sis_short(
         base
     };
     let u = Url::parse(base).map_err(|e| format!("华为 endpoint URL: {e}"))?;
-    let host = u.host_str().ok_or_else(|| "华为 endpoint 缺少 host".to_string())?;
+    let host = u
+        .host_str()
+        .ok_or_else(|| "华为 endpoint 缺少 host".to_string())?;
     let scheme = u.scheme();
 
     let (bytes, ext) = crate::stt_native::audio_bytes_and_format(audio_path)?;
@@ -510,7 +513,10 @@ pub fn transcribe_aispeech_lasr(
     let j: serde_json::Value = resp.json().map_err(|e| e.to_string())?;
     let errno = j.get("errno").and_then(|x| x.as_i64()).unwrap_or(-1);
     if errno != 0 {
-        let err = j.get("error").and_then(|x| x.as_str()).unwrap_or("识别失败");
+        let err = j
+            .get("error")
+            .and_then(|x| x.as_str())
+            .unwrap_or("识别失败");
         return Err(format!("思必驰 errno={errno}: {err}"));
     }
     let data = j.get("data").cloned().unwrap_or(json!({}));
@@ -520,7 +526,11 @@ pub fn transcribe_aispeech_lasr(
         for s in segs {
             let bg = s.get("bg").and_then(|x| x.as_i64()).unwrap_or(0) as f64 / 1000.0;
             let ed = s.get("ed").and_then(|x| x.as_i64()).unwrap_or(0) as f64 / 1000.0;
-            let t = s.get("onebest").and_then(|x| x.as_str()).unwrap_or("").trim();
+            let t = s
+                .get("onebest")
+                .and_then(|x| x.as_str())
+                .unwrap_or("")
+                .trim();
             if !t.is_empty() {
                 full.push_str(t);
                 segments.push(json!({
@@ -536,7 +546,11 @@ pub fn transcribe_aispeech_lasr(
     if full.is_empty() {
         if let Some(arr) = data.get("result").and_then(|x| x.as_array()) {
             for r in arr {
-                let t = r.get("onebest").and_then(|x| x.as_str()).unwrap_or("").trim();
+                let t = r
+                    .get("onebest")
+                    .and_then(|x| x.as_str())
+                    .unwrap_or("")
+                    .trim();
                 if !t.is_empty() {
                     full.push_str(t);
                 }
@@ -559,7 +573,13 @@ const VOLC_MSG_FULL_CLIENT: u8 = 0x01;
 const VOLC_MSG_AUDIO_ONLY: u8 = 0x02;
 const VOLC_MSG_FULL_SERVER: u8 = 0x09;
 
-fn volc_hdr(version: u8, message_type: u8, flags: u8, serialization: u8, compression: u8) -> [u8; 4] {
+fn volc_hdr(
+    version: u8,
+    message_type: u8,
+    flags: u8,
+    serialization: u8,
+    compression: u8,
+) -> [u8; 4] {
     [
         version << 4,
         (message_type << 4) | (flags & 0x0f),
@@ -649,10 +669,15 @@ pub fn transcribe_volcengine_bigmodel_nostream_ws(
         .as_deref()
         .map(|s| s.trim().strip_prefix("Bearer ").unwrap_or(s).trim())
         .filter(|s| !s.is_empty())
-        .ok_or_else(|| "火山引擎：请在内存凭证中填写 X-Api-Access-Key（控制台 Access Token）".to_string())?;
+        .ok_or_else(|| {
+            "火山引擎：请在内存凭证中填写 X-Api-Access-Key（控制台 Access Token）".to_string()
+        })?;
 
     let res_id_raw = bridge.transcribe_url.trim();
-    let resource_id = if res_id_raw.is_empty() || res_id_raw.starts_with("http") {
+    let is_http_url = url::Url::parse(res_id_raw)
+        .map(|u| matches!(u.scheme(), "http" | "https"))
+        .unwrap_or(false);
+    let resource_id = if res_id_raw.is_empty() || is_http_url {
         "volc.bigasr.sauc.duration"
     } else {
         res_id_raw
@@ -756,12 +781,17 @@ pub fn transcribe_volcengine_bigmodel_nostream_ws(
                             let start_ms = u
                                 .get("start_time")
                                 .and_then(|x| x.as_f64())
-                                .or_else(|| u.get("start_time").and_then(|x| x.as_i64().map(|n| n as f64)))
+                                .or_else(|| {
+                                    u.get("start_time")
+                                        .and_then(|x| x.as_i64().map(|n| n as f64))
+                                })
                                 .unwrap_or(0.0);
                             let end_ms = u
                                 .get("end_time")
                                 .and_then(|x| x.as_f64())
-                                .or_else(|| u.get("end_time").and_then(|x| x.as_i64().map(|n| n as f64)))
+                                .or_else(|| {
+                                    u.get("end_time").and_then(|x| x.as_i64().map(|n| n as f64))
+                                })
                                 .unwrap_or(start_ms);
                             segments.push(json!({
                                 "start_sec": start_ms / 1000.0,

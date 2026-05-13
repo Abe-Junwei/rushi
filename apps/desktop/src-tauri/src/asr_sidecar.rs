@@ -45,12 +45,10 @@ fn write_launch_report(handle: &AppHandle, report: BundledAsrLaunchReport) {
 }
 
 #[tauri::command]
-pub fn bundled_asr_launch_report(state: tauri::State<BundledAsrLaunchState>) -> BundledAsrLaunchReport {
-    state
-        .0
-        .lock()
-        .map(|g| g.clone())
-        .unwrap_or_default()
+pub fn bundled_asr_launch_report(
+    state: tauri::State<BundledAsrLaunchState>,
+) -> BundledAsrLaunchReport {
+    state.0.lock().map(|g| g.clone()).unwrap_or_default()
 }
 
 fn validate_bundled_exe(exe: &Path) -> Option<PathBuf> {
@@ -75,10 +73,7 @@ fn sidecar_exe_path(resource_root: &Path, onedir: &str, stem: &str) -> Option<Pa
 
 #[cfg(not(target_os = "windows"))]
 fn sidecar_exe_path(resource_root: &Path, onedir: &str, stem: &str) -> Option<PathBuf> {
-    let exe = resource_root
-        .join("bundled-asr")
-        .join(onedir)
-        .join(stem);
+    let exe = resource_root.join("bundled-asr").join(onedir).join(stem);
     validate_bundled_exe(&exe)
 }
 
@@ -107,10 +102,7 @@ fn windows_cuda_probe_ok() -> bool {
 
 #[cfg(target_os = "windows")]
 fn bundled_sidecar_try_order(resource_root: &Path) -> Vec<PathBuf> {
-    let force_cpu = std::env::var("RUSHI_FORCE_BUNDLED_ASR_CPU")
-        .ok()
-        .as_deref()
-        == Some("1");
+    let force_cpu = std::env::var("RUSHI_FORCE_BUNDLED_ASR_CPU").ok().as_deref() == Some("1");
     let cpu = bundled_cpu_executable(resource_root);
     let cuda = bundled_cuda_executable(resource_root);
     let mut out = Vec::new();
@@ -150,13 +142,15 @@ fn reap_bundled_sidecar_if_exited(handle: &AppHandle) {
         return;
     };
     if let Some(ref mut child) = *g {
-        match child.try_wait() {
-            Ok(Some(_)) => {
-                *g = None;
-            }
-            Ok(None) | Err(_) => {}
+        if let Ok(Some(_)) = child.try_wait() {
+            *g = None;
         }
     }
+}
+
+fn is_rushi_asr_health_json(v: &Value) -> bool {
+    v.get("service").and_then(|s| s.as_str()) == Some("rushi-asr")
+        && v.get("status").and_then(|s| s.as_str()) == Some("ok")
 }
 
 /// True when `GET /health` returns JSON that looks like **this** rushi-asr (not merely "something on :8741").
@@ -179,8 +173,7 @@ fn bundled_health_looks_like_rushi_asr() -> bool {
     let Ok(v): Result<Value, _> = serde_json::from_str(&text) else {
         return false;
     };
-    v.get("service").and_then(|s| s.as_str()) == Some("rushi-asr")
-        && v.get("status").and_then(|s| s.as_str()) == Some("ok")
+    is_rushi_asr_health_json(&v)
 }
 
 fn spawn_sidecar(exe: &Path, handle: &AppHandle) -> std::io::Result<Child> {
@@ -239,7 +232,10 @@ fn wait_health_store_child(handle: &AppHandle, mut child: Child) -> bool {
                 return false;
             }
         }
-        eprintln!("[rushi-asr-sidecar] started bundled ASR at {}", ASR_HEALTH_URL);
+        eprintln!(
+            "[rushi-asr-sidecar] started bundled ASR at {}",
+            ASR_HEALTH_URL
+        );
         return true;
     }
     let _ = child.kill();
@@ -344,5 +340,56 @@ pub fn stop_bundled(handle: &AppHandle) {
     if let Some(mut c) = g.take() {
         let _ = c.kill();
         let _ = c.wait();
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use serde_json::json;
+
+    #[test]
+    fn recognizes_valid_health_json() {
+        let v = json!({
+            "service": "rushi-asr",
+            "status": "ok",
+            "transcription_mode": "funasr"
+        });
+        assert!(is_rushi_asr_health_json(&v));
+    }
+
+    #[test]
+    fn rejects_wrong_service() {
+        let v = json!({
+            "service": "other-service",
+            "status": "ok"
+        });
+        assert!(!is_rushi_asr_health_json(&v));
+    }
+
+    #[test]
+    fn rejects_non_ok_status() {
+        let v = json!({
+            "service": "rushi-asr",
+            "status": "loading"
+        });
+        assert!(!is_rushi_asr_health_json(&v));
+    }
+
+    #[test]
+    fn rejects_missing_fields() {
+        let v = json!({ "status": "ok" });
+        assert!(!is_rushi_asr_health_json(&v));
+
+        let v = json!({ "service": "rushi-asr" });
+        assert!(!is_rushi_asr_health_json(&v));
+    }
+
+    #[test]
+    fn launch_report_default_is_not_attempted() {
+        let report = BundledAsrLaunchReport::default();
+        assert!(!report.attempted);
+        assert!(!report.success);
+        assert!(report.detail.is_none());
     }
 }
