@@ -1,12 +1,10 @@
-use super::types::BLOCKING_CLIENT;
+use super::types::HTTP_CLIENT;
 use super::utils::append_desktop_log_line;
 use crate::online_stt_bridge::{is_allowed_stt_transcribe_url, P1OnlineTranscribeBridge};
 use crate::DbState;
-use reqwest::blocking::multipart;
 use rusqlite::Connection;
 use std::fs;
 use std::path::Path;
-use std::thread;
 use std::time::{Duration, Instant};
 
 /// 术语表拼接为 FunASR 期望的空格分隔热词串（与 ASR `hotwords` 表单字段对齐）。
@@ -41,7 +39,7 @@ pub fn glossary_hotwords_joined(conn: &Connection) -> Result<String, String> {
     Ok(s)
 }
 
-pub fn post_transcribe_multipart(
+pub async fn post_transcribe_multipart(
     st: &DbState,
     url: &str,
     audio_path: &Path,
@@ -50,19 +48,21 @@ pub fn post_transcribe_multipart(
     app_key: Option<&str>,
     timeout: std::time::Duration,
 ) -> Result<serde_json::Value, String> {
-    let part = multipart::Part::file(audio_path).map_err(|e| e.to_string())?;
+    let bytes = std::fs::read(audio_path).map_err(|e| e.to_string())?;
+    let part = reqwest::multipart::Part::bytes(bytes)
+        .file_name(audio_path.file_name().unwrap_or_default().to_string_lossy().into_owned());
     let form = {
-        let mut f = multipart::Form::new().part("file", part);
+        let mut f = reqwest::multipart::Form::new().part("file", part);
         if !hotwords.is_empty() {
             f = f.text("hotwords", hotwords);
         }
         f
     };
-    let client = BLOCKING_CLIENT.get_or_init(|| {
-        reqwest::blocking::Client::builder()
+    let client = HTTP_CLIENT.get_or_init(|| {
+        reqwest::Client::builder()
             .timeout(std::time::Duration::from_secs(30))
             .build()
-            .expect("reqwest blocking client build")
+            .expect("reqwest async client build")
     });
     let mut req = client.post(url).multipart(form).timeout(timeout);
     if let Some(a) = authorization {
@@ -77,18 +77,18 @@ pub fn post_transcribe_multipart(
             req = req.header("X-Rushi-Stt-App-Key", t);
         }
     }
-    let resp = req.send().map_err(|e| {
+    let resp = req.send().await.map_err(|e| {
         append_desktop_log_line(st, &format!("ERROR transcribe connect {e}"));
         format!("ASR 请求失败: {e}")
     })?;
     let status = resp.status();
     if !status.is_success() {
-        let body = resp.text().unwrap_or_default();
+        let body = resp.text().await.unwrap_or_default();
         let snippet: String = body.chars().take(500).collect();
         append_desktop_log_line(st, &format!("ERROR transcribe http {} {}", status, snippet));
         return Err(format!("ASR HTTP {}: {}", status, snippet));
     }
-    resp.json().map_err(|e| {
+    resp.json().await.map_err(|e| {
         append_desktop_log_line(st, &format!("ERROR transcribe json {e}"));
         e.to_string()
     })
@@ -309,7 +309,7 @@ pub fn assemblyai_transcript_json_to_rushi(
     }))
 }
 
-pub fn transcribe_openai_native(
+pub async fn transcribe_openai_native(
     st: &DbState,
     audio_path: &Path,
     hotwords: &str,
@@ -334,8 +334,10 @@ pub fn transcribe_openai_native(
     if !auth_ok {
         return Err("OpenAI 转写需要 Authorization（Bearer Token）。".to_string());
     }
-    let part = multipart::Part::file(audio_path).map_err(|e| e.to_string())?;
-    let mut form = multipart::Form::new()
+    let bytes = std::fs::read(audio_path).map_err(|e| e.to_string())?;
+    let part = reqwest::multipart::Part::bytes(bytes)
+        .file_name(audio_path.file_name().unwrap_or_default().to_string_lossy().into_owned());
+    let mut form = reqwest::multipart::Form::new()
         .part("file", part)
         .text("model", "whisper-1")
         .text("response_format", "verbose_json");
@@ -355,13 +357,13 @@ pub fn transcribe_openai_native(
         }
     }
     append_desktop_log_line(st, "INFO transcribe openai_native");
-    let resp = req.send().map_err(|e| {
+    let resp = req.send().await.map_err(|e| {
         append_desktop_log_line(st, &format!("ERROR openai transcribe connect {e}"));
         format!("OpenAI 请求失败: {e}")
     })?;
     let status = resp.status();
     if !status.is_success() {
-        let body = resp.text().unwrap_or_default();
+        let body = resp.text().await.unwrap_or_default();
         let snippet: String = body.chars().take(500).collect();
         append_desktop_log_line(
             st,
@@ -369,14 +371,14 @@ pub fn transcribe_openai_native(
         );
         return Err(format!("OpenAI HTTP {}: {}", status, snippet));
     }
-    let val: serde_json::Value = resp.json().map_err(|e| {
+    let val: serde_json::Value = resp.json().await.map_err(|e| {
         append_desktop_log_line(st, &format!("ERROR openai transcribe json {e}"));
         e.to_string()
     })?;
     openai_verbose_json_to_rushi(&val)
 }
 
-pub fn transcribe_assemblyai_native(
+pub async fn transcribe_assemblyai_native(
     st: &DbState,
     audio_path: &Path,
     o: &P1OnlineTranscribeBridge,
@@ -408,14 +410,15 @@ pub fn transcribe_assemblyai_native(
         .header("Content-Type", "application/octet-stream")
         .body(bytes)
         .send()
+        .await
         .map_err(|e| format!("AssemblyAI 上传失败: {e}"))?;
     if !upload_res.status().is_success() {
         let status = upload_res.status();
-        let body = upload_res.text().unwrap_or_default();
+        let body = upload_res.text().await.unwrap_or_default();
         let snippet: String = body.chars().take(400).collect();
         return Err(format!("AssemblyAI 上传 HTTP {status}: {snippet}"));
     }
-    let upload_json: serde_json::Value = upload_res.json().map_err(|e| e.to_string())?;
+    let upload_json: serde_json::Value = upload_res.json().await.map_err(|e| e.to_string())?;
     let audio_url = upload_json
         .get("upload_url")
         .and_then(|x| x.as_str())
@@ -428,14 +431,15 @@ pub fn transcribe_assemblyai_native(
         .header("Content-Type", "application/json")
         .json(&serde_json::json!({ "audio_url": audio_url }))
         .send()
+        .await
         .map_err(|e| format!("AssemblyAI 创建任务失败: {e}"))?;
     if !create_res.status().is_success() {
         let status = create_res.status();
-        let body = create_res.text().unwrap_or_default();
+        let body = create_res.text().await.unwrap_or_default();
         let snippet: String = body.chars().take(400).collect();
         return Err(format!("AssemblyAI 创建转写 HTTP {status}: {snippet}"));
     }
-    let created: serde_json::Value = create_res.json().map_err(|e| e.to_string())?;
+    let created: serde_json::Value = create_res.json().await.map_err(|e| e.to_string())?;
     let tid = created
         .get("id")
         .and_then(|x| x.as_str())
@@ -444,20 +448,21 @@ pub fn transcribe_assemblyai_native(
         if Instant::now() > deadline {
             return Err("AssemblyAI 轮询超时".to_string());
         }
-        thread::sleep(Duration::from_secs(2));
+        tokio::time::sleep(Duration::from_secs(2)).await;
         let poll = client
             .get(format!("{base}/v2/transcript/{tid}"))
             .timeout(Duration::from_secs(30))
             .header("authorization", auth)
             .send()
+            .await
             .map_err(|e| format!("AssemblyAI 轮询失败: {e}"))?;
         if !poll.status().is_success() {
             let status = poll.status();
-            let body = poll.text().unwrap_or_default();
+            let body = poll.text().await.unwrap_or_default();
             let snippet: String = body.chars().take(400).collect();
             return Err(format!("AssemblyAI 状态 HTTP {status}: {snippet}"));
         }
-        let j: serde_json::Value = poll.json().map_err(|e| e.to_string())?;
+        let j: serde_json::Value = poll.json().await.map_err(|e| e.to_string())?;
         match j.get("status").and_then(|s| s.as_str()) {
             Some("completed") => {
                 append_desktop_log_line(st, "INFO transcribe assemblyai_completed");

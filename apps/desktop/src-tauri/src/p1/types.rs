@@ -7,7 +7,7 @@ pub struct RunTranscribeOutcome {
     pub warnings: Vec<String>,
 }
 
-pub static BLOCKING_CLIENT: std::sync::OnceLock<reqwest::blocking::Client> =
+pub static HTTP_CLIENT: std::sync::OnceLock<reqwest::Client> =
     std::sync::OnceLock::new();
 
 #[derive(Debug, Serialize)]

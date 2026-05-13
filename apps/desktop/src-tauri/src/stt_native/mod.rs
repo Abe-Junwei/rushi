@@ -16,15 +16,15 @@ use std::sync::OnceLock;
 
 use crate::online_stt_bridge::{is_allowed_stt_transcribe_url, P1OnlineTranscribeBridge};
 
-static HTTP: OnceLock<reqwest::blocking::Client> = OnceLock::new();
+static HTTP: OnceLock<reqwest::Client> = OnceLock::new();
 
-pub fn http_client() -> &'static reqwest::blocking::Client {
+pub fn http_client() -> &'static reqwest::Client {
     HTTP.get_or_init(|| {
-        reqwest::blocking::Client::builder()
+        reqwest::Client::builder()
             .pool_idle_timeout(Duration::from_secs(90))
             .connect_timeout(Duration::from_secs(20))
             .build()
-            .expect("reqwest blocking client")
+            .expect("reqwest async client")
     })
 }
 
@@ -95,9 +95,9 @@ pub(crate) fn audio_bytes_and_format(path: &Path) -> Result<(Vec<u8>, &'static s
     Ok((bytes, fmt))
 }
 
-pub fn dispatch_native(
+pub async fn dispatch_native(
     adapter: &str,
-    client: &reqwest::blocking::Client,
+    client: &reqwest::Client,
     audio_path: &Path,
     bridge: &P1OnlineTranscribeBridge,
     timeout: Duration,
@@ -115,23 +115,23 @@ pub fn dispatch_native(
         }
     }
     match adapter {
-        "baiduSpeech" => baidu::transcribe_baidu(client, audio_path, bridge, timeout, log),
-        "aliyunNls" => aliyun::transcribe_aliyun_nls(client, audio_path, bridge, timeout, log),
-        "deepgramListen" => deepgram::transcribe_deepgram(client, audio_path, bridge, timeout, log),
-        "tencentAsr" => tencent::transcribe_tencent(client, audio_path, bridge, timeout, log),
+        "baiduSpeech" => baidu::transcribe_baidu(client, audio_path, bridge, timeout, log).await,
+        "aliyunNls" => aliyun::transcribe_aliyun_nls(client, audio_path, bridge, timeout, log).await,
+        "deepgramListen" => deepgram::transcribe_deepgram(client, audio_path, bridge, timeout, log).await,
+        "tencentAsr" => tencent::transcribe_tencent(client, audio_path, bridge, timeout, log).await,
         "azureConversationV1" => {
-            azure::transcribe_azure_conversation(client, audio_path, bridge, timeout, log)
+            azure::transcribe_azure_conversation(client, audio_path, bridge, timeout, log).await
         }
-        "googleSpeechV1" => google::transcribe_google(client, audio_path, bridge, timeout, log),
+        "googleSpeechV1" => google::transcribe_google(client, audio_path, bridge, timeout, log).await,
         "iflytekIatWs" => {
             crate::china_stt_shell::iflytek::transcribe_iflytek_iat_ws(audio_path, bridge, timeout, log)
         }
         "huaweiSisShortAudio" => crate::china_stt_shell::huawei::transcribe_huawei_sis_short(
             client, audio_path, bridge, timeout, log,
-        ),
+        ).await,
         "aispeechLasrSentenceV2" => crate::china_stt_shell::aispeech::transcribe_aispeech_lasr(
             client, audio_path, bridge, timeout, log,
-        ),
+        ).await,
         "volcengineBigmodelNostreamWs" => {
             crate::china_stt_shell::volcengine::transcribe_volcengine_bigmodel_nostream_ws(
                 audio_path, bridge, timeout, log,

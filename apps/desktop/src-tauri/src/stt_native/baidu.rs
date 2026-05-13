@@ -10,8 +10,8 @@ use super::audio_bytes_and_format;
 use super::rushi_value;
 
 /// 百度：持久化 API Key（bridge.app_key）+ 内存 Secret Key（authorization 原文，无 Bearer）。
-pub fn transcribe_baidu(
-    client: &reqwest::blocking::Client,
+pub async fn transcribe_baidu(
+    client: &reqwest::Client,
     audio_path: &Path,
     bridge: &P1OnlineTranscribeBridge,
     timeout: Duration,
@@ -39,12 +39,13 @@ pub fn transcribe_baidu(
     let tr = client
         .get(&token_url)
         .timeout(Duration::from_secs(30))
-        .send();
+        .send()
+        .await;
     let tr = tr.map_err(|e| format!("百度 token 请求失败: {e}"))?;
     if !tr.status().is_success() {
         return Err(format!("百度 token HTTP {}", tr.status()));
     }
-    let tj: serde_json::Value = tr.json().map_err(|e| e.to_string())?;
+    let tj: serde_json::Value = tr.json().await.map_err(|e| e.to_string())?;
     let token = tj
         .get("access_token")
         .and_then(|x| x.as_str())
@@ -77,17 +78,18 @@ pub fn transcribe_baidu(
         .header("Content-Type", "application/json")
         .json(&body)
         .send()
+        .await
         .map_err(|e| format!("百度识别请求失败: {e}"))?;
     if !resp.status().is_success() {
         let status = resp.status();
-        let t = resp.text().unwrap_or_default();
+        let t = resp.text().await.unwrap_or_default();
         return Err(format!(
             "百度识别 HTTP {}: {}",
             status,
             t.chars().take(400).collect::<String>()
         ));
     }
-    let j: serde_json::Value = resp.json().map_err(|e| e.to_string())?;
+    let j: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
     let err_no = j.get("err_no").and_then(|x| x.as_i64()).unwrap_or(-1);
     if err_no != 0 {
         let msg = j

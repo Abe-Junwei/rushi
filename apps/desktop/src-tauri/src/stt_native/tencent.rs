@@ -53,8 +53,8 @@ fn tencent_tc3_authorization(
 }
 
 /// 腾讯云：`app_key`=SecretId，内存 authorization=SecretKey（无 Bearer）。
-pub fn transcribe_tencent(
-    client: &reqwest::blocking::Client,
+pub async fn transcribe_tencent(
+    client: &reqwest::Client,
     audio_path: &Path,
     bridge: &P1OnlineTranscribeBridge,
     timeout: Duration,
@@ -109,17 +109,18 @@ pub fn transcribe_tencent(
         .header("X-TC-Region", "ap-shanghai")
         .body(payload)
         .send()
+        .await
         .map_err(|e| format!("腾讯云请求失败: {e}"))?;
     if !resp.status().is_success() {
         let status = resp.status();
-        let t = resp.text().unwrap_or_default();
+        let t = resp.text().await.unwrap_or_default();
         return Err(format!(
             "腾讯云 HTTP {}: {}",
             status,
             t.chars().take(500).collect::<String>()
         ));
     }
-    let j: serde_json::Value = resp.json().map_err(|e| e.to_string())?;
+    let j: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
     let resp_inner = j.get("Response").cloned().unwrap_or(j);
     if let Some(err) = resp_inner.get("Error") {
         let code = err.get("Code").and_then(|x| x.as_str()).unwrap_or("?");

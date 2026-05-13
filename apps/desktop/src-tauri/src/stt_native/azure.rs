@@ -19,8 +19,8 @@ fn azure_display_text(xml: &str) -> Option<String> {
 }
 
 /// Azure 对话识别 v1：内存凭证为 `Ocp-Apim-Subscription-Key`；`transcribe_url` 为完整 v1 URL（可含 language）。
-pub fn transcribe_azure_conversation(
-    client: &reqwest::blocking::Client,
+pub async fn transcribe_azure_conversation(
+    client: &reqwest::Client,
     audio_path: &Path,
     bridge: &P1OnlineTranscribeBridge,
     timeout: Duration,
@@ -53,6 +53,7 @@ pub fn transcribe_azure_conversation(
         .header("Accept", "application/json")
         .body(bytes)
         .send()
+        .await
         .map_err(|e| format!("Azure 请求失败: {e}"))?;
     let status = resp.status();
     let ctype = resp
@@ -61,7 +62,7 @@ pub fn transcribe_azure_conversation(
         .and_then(|v| v.to_str().ok())
         .unwrap_or("")
         .to_ascii_lowercase();
-    let text_body = resp.text().map_err(|e| e.to_string())?;
+    let text_body = resp.text().await.map_err(|e| e.to_string())?;
     if !status.is_success() {
         return Err(format!(
             "Azure HTTP {status}: {}",

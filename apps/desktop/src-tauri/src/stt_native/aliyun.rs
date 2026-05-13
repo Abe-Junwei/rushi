@@ -7,8 +7,8 @@ use super::audio_bytes_and_format;
 use super::rushi_value;
 
 /// 阿里云 NLS 一句话识别：`app_key`=AppKey，`authorization`=X-NLS-Token（原文）。
-pub fn transcribe_aliyun_nls(
-    client: &reqwest::blocking::Client,
+pub async fn transcribe_aliyun_nls(
+    client: &reqwest::Client,
     audio_path: &Path,
     bridge: &P1OnlineTranscribeBridge,
     timeout: Duration,
@@ -51,17 +51,18 @@ pub fn transcribe_aliyun_nls(
         .header("Content-Type", "application/octet-stream")
         .body(bytes)
         .send()
+        .await
         .map_err(|e| format!("阿里云 NLS 请求失败: {e}"))?;
     if !resp.status().is_success() {
         let status = resp.status();
-        let t = resp.text().unwrap_or_default();
+        let t = resp.text().await.unwrap_or_default();
         return Err(format!(
             "阿里云 NLS HTTP {}: {}",
             status,
             t.chars().take(400).collect::<String>()
         ));
     }
-    let j: serde_json::Value = resp.json().map_err(|e| e.to_string())?;
+    let j: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
     let status = j.get("status").and_then(|x| x.as_i64()).unwrap_or(-1);
     if status != 20000000 {
         let msg = j

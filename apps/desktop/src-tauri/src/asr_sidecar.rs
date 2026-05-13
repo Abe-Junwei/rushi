@@ -155,25 +155,25 @@ fn is_rushi_asr_health_json(v: &Value) -> bool {
 
 /// True when `GET /health` returns JSON that looks like **this** rushi-asr (not merely "something on :8741").
 fn bundled_health_looks_like_rushi_asr() -> bool {
-    let Ok(resp) = reqwest::blocking::Client::builder()
-        .timeout(Duration::from_secs(2))
-        .build()
-        .unwrap_or_else(|_| reqwest::blocking::Client::new())
-        .get(ASR_HEALTH_URL)
-        .send()
-    else {
-        return false;
-    };
-    if !resp.status().is_success() {
-        return false;
-    }
-    let Ok(text) = resp.text() else {
-        return false;
-    };
-    let Ok(v): Result<Value, _> = serde_json::from_str(&text) else {
-        return false;
-    };
-    is_rushi_asr_health_json(&v)
+    tauri::async_runtime::block_on(async {
+        let client = reqwest::Client::builder()
+            .timeout(Duration::from_secs(2))
+            .build()
+            .unwrap_or_else(|_| reqwest::Client::new());
+        let Ok(resp) = client.get(ASR_HEALTH_URL).send().await else {
+            return false;
+        };
+        if !resp.status().is_success() {
+            return false;
+        }
+        let Ok(text) = resp.text().await else {
+            return false;
+        };
+        let Ok(v): Result<Value, _> = serde_json::from_str(&text) else {
+            return false;
+        };
+        is_rushi_asr_health_json(&v)
+    })
 }
 
 fn spawn_sidecar(exe: &Path, handle: &AppHandle) -> std::io::Result<Child> {

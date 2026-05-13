@@ -25,8 +25,8 @@ fn parse_google_time(s: &str) -> Option<f64> {
 }
 
 /// Google Speech-to-Text v1 `speech:recognize`：内存凭证为 API Key，请求头 `X-Goog-Api-Key`。
-pub fn transcribe_google(
-    client: &reqwest::blocking::Client,
+pub async fn transcribe_google(
+    client: &reqwest::Client,
     audio_path: &Path,
     bridge: &P1OnlineTranscribeBridge,
     timeout: Duration,
@@ -69,17 +69,18 @@ pub fn transcribe_google(
         .header("Content-Type", "application/json")
         .json(&body)
         .send()
+        .await
         .map_err(|e| format!("Google 请求失败: {e}"))?;
     if !resp.status().is_success() {
         let status = resp.status();
-        let t = resp.text().unwrap_or_default();
+        let t = resp.text().await.unwrap_or_default();
         return Err(format!(
             "Google HTTP {}: {}",
             status,
             t.chars().take(500).collect::<String>()
         ));
     }
-    let j: serde_json::Value = resp.json().map_err(|e| e.to_string())?;
+    let j: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
     let mut full_text = String::new();
     let mut segments: Vec<serde_json::Value> = Vec::new();
     if let Some(results) = j.get("results").and_then(|r| r.as_array()) {

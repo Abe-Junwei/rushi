@@ -45,8 +45,8 @@ fn huawei_authorization(
     Ok((x_sdk_date, auth))
 }
 
-pub fn transcribe_huawei_sis_short(
-    client: &reqwest::blocking::Client,
+pub async fn transcribe_huawei_sis_short(
+    client: &reqwest::Client,
     audio_path: &Path,
     bridge: &P1OnlineTranscribeBridge,
     timeout: Duration,
@@ -120,16 +120,17 @@ pub fn transcribe_huawei_sis_short(
         .header("Authorization", auth)
         .body(payload)
         .send()
+        .await
         .map_err(|e| format!("华为请求失败: {e}"))?;
     if !resp.status().is_success() {
         let st = resp.status();
-        let t = resp.text().unwrap_or_default();
+        let t = resp.text().await.unwrap_or_default();
         return Err(format!(
             "华为 SIS HTTP {st}: {}",
             t.chars().take(400).collect::<String>()
         ));
     }
-    let j: serde_json::Value = resp.json().map_err(|e| e.to_string())?;
+    let j: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
     if let Some(ec) = j.get("error_code").and_then(|x| x.as_str()) {
         let em = j.get("error_msg").and_then(|x| x.as_str()).unwrap_or("");
         return Err(format!("华为 SIS {ec}: {em}"));

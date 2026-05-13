@@ -8,8 +8,8 @@ use crate::online_stt_bridge::P1OnlineTranscribeBridge;
 use super::rushi_value;
 
 /// Deepgram：Bearer + multipart 文件；`transcribe_url` 可含 query（如 model）。
-pub fn transcribe_deepgram(
-    client: &reqwest::blocking::Client,
+pub async fn transcribe_deepgram(
+    client: &reqwest::Client,
     audio_path: &Path,
     bridge: &P1OnlineTranscribeBridge,
     timeout: Duration,
@@ -35,8 +35,10 @@ pub fn transcribe_deepgram(
     } else {
         url
     };
-    let part = reqwest::blocking::multipart::Part::file(audio_path).map_err(|e| e.to_string())?;
-    let form = reqwest::blocking::multipart::Form::new().part("audio", part);
+    let bytes = std::fs::read(audio_path).map_err(|e| e.to_string())?;
+    let part = reqwest::multipart::Part::bytes(bytes)
+        .file_name(audio_path.file_name().unwrap_or_default().to_string_lossy().into_owned());
+    let form = reqwest::multipart::Form::new().part("audio", part);
     log("INFO deepgram listen");
     let resp = client
         .post(url)
@@ -44,17 +46,18 @@ pub fn transcribe_deepgram(
         .header("Authorization", auth)
         .multipart(form)
         .send()
+        .await
         .map_err(|e| format!("Deepgram 请求失败: {e}"))?;
     if !resp.status().is_success() {
         let status = resp.status();
-        let t = resp.text().unwrap_or_default();
+        let t = resp.text().await.unwrap_or_default();
         return Err(format!(
             "Deepgram HTTP {}: {}",
             status,
             t.chars().take(400).collect::<String>()
         ));
     }
-    let j: serde_json::Value = resp.json().map_err(|e| e.to_string())?;
+    let j: serde_json::Value = resp.json().await.map_err(|e| e.to_string())?;
     let alt = j
         .pointer("/results/channels/0/alternatives/0")
         .ok_or_else(|| "Deepgram 响应缺少 results.channels[0].alternatives[0]".to_string())?;
