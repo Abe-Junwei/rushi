@@ -1,6 +1,4 @@
 import { useEffect, useMemo, useState } from "react";
-import { asrBaseUrl } from "../config/env";
-
 import { useP1TranscriptionLayer } from "../pages/useP1TranscriptionLayer";
 import { buildP1SegmentContextMenuItems, type P1SegmentContextMenuKey } from "../utils/p1SegmentContextMenuModel";
 import { P1EnvironmentPanel } from "./P1EnvironmentPanel";
@@ -8,33 +6,13 @@ import { P1ConfirmCreateView } from "./P1ConfirmCreateView";
 import { P1EditorView } from "./P1EditorView";
 import { P1ProjectSidebar } from "./P1ProjectSidebar";
 import { P1WelcomeView } from "./P1WelcomeView";
+import { P1ProjectHeader } from "./P1ProjectHeader";
 import { useGlossaryP2Controller } from "../pages/useGlossaryP2Controller";
 import type { P1BusyReason } from "../pages/useProjectP1Controller";
 import { useProjectP1Controller } from "../pages/useProjectP1Controller";
 
 const btnSecondary =
   "rounded border border-black/10 bg-white/60 px-3 py-1.5 text-xs text-zen-ink transition-colors hover:border-zen-saffron/35 hover:text-zen-saffron disabled:cursor-not-allowed disabled:opacity-40";
-const btnOnlineSttEntry =
-  "inline-flex shrink-0 items-center justify-center rounded-lg border border-zen-saffron/35 bg-white/80 px-3 py-1.5 text-xs font-medium text-zen-saffron shadow-sm transition-colors hover:border-zen-saffron/55 hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-saffron/40 disabled:cursor-not-allowed disabled:opacity-40";
-
-/** 欢迎顶栏：亮绿 / 红（与 Stitch 稿一致） */
-function WelcomeStatusDot({ ok }: { ok: boolean }) {
-  return (
-    <span
-      className={`mr-1 inline-block h-1.5 w-1.5 shrink-0 rounded-full ${ok ? "bg-zen-success" : "bg-red-500"}`}
-      aria-hidden
-    />
-  );
-}
-
-function StatusDot({ ok }: { ok: boolean }) {
-  return (
-    <span
-      className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${ok ? "bg-zen-saffron" : "bg-zen-cinnabar"}`}
-      aria-hidden
-    />
-  );
-}
 
 function busyOverlayCopy(reason: P1BusyReason | null): { title: string; hint: string } {
   switch (reason) {
@@ -183,145 +161,17 @@ export function ProjectP1Panel() {
             : "border border-black/[0.08] bg-zen-paper text-zen-ink",
       ].join(" ")}
     >
-      {workspacePhase === "A" ? (
-        <header
-          className="flex shrink-0 flex-wrap items-center justify-between gap-4 px-8 py-8 sm:px-12"
-          data-purpose="navigation-bar"
-        >
-          <div className="text-2xl font-serif font-bold tracking-wider text-app-text-main" data-purpose="site-logo">
-            如是我闻
-          </div>
-          <div className="flex flex-wrap items-center justify-end gap-3 sm:gap-4" data-purpose="status-controls">
-            <div className="flex flex-wrap items-center gap-2 rounded-full bg-black/5 p-1 px-3">
-              {c.asrHealth === "ok" && c.asrCaps ? (
-                <>
-                  <span className="inline-flex items-center rounded-full bg-transparent px-1.5 py-0.5 text-xs text-zen-gray-500">
-                    <WelcomeStatusDot ok={c.asrCaps.ffmpeg_ok} />
-                    FFmpeg
-                  </span>
-                  <span className="inline-flex items-center rounded-full bg-transparent px-1.5 py-0.5 text-xs text-zen-gray-500">
-                    <WelcomeStatusDot ok={c.asrCaps.funasr_import_ok} />
-                    FunASR
-                  </span>
-                  <span className="inline-flex items-center rounded-full bg-transparent px-1.5 py-0.5 text-xs text-zen-gray-500">
-                    <WelcomeStatusDot ok={c.asrCaps.funasr_ready} />
-                    转写就绪
-                  </span>
-                </>
-              ) : c.asrHealth === "checking" ? (
-                <span className="text-xs text-app-text-muted">正在检测 ASR…</span>
-              ) : c.asrHealth === "error" && c.sttOnlineBridgeReady ? (
-                <span className="text-xs text-app-text-muted">本机 ASR 未连接 · 在线 STT 已就绪</span>
-              ) : c.asrHealth === "error" ? (
-                <span className="text-xs text-red-600">ASR 不可达</span>
-              ) : null}
-            </div>
-            <div className="flex items-center gap-3 rounded-full bg-black/5 px-4 py-1.5" data-purpose="toggle-container">
-              <span className="text-xs font-medium text-app-text-muted">环境与 ASR</span>
-              <label className="relative inline-flex cursor-pointer items-center">
-                <input
-                  type="checkbox"
-                  className="peer sr-only"
-                  checked={envOpen}
-                  onChange={() => setEnvOpen((v) => !v)}
-                  aria-expanded={envOpen}
-                />
-                <div className="relative h-5 w-9 shrink-0 rounded-full bg-gray-300 after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-app-accent peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-app-accent/50" />
-              </label>
-            </div>
-            <button
-              type="button"
-              className={btnOnlineSttEntry}
-              disabled={c.busy}
-              onClick={openOnlineSttProvider}
-              aria-controls="p1-online-stt-provider"
-            >
-              在线 STT Provider
-            </button>
-            <code className="hidden max-w-[12rem] truncate font-mono text-[10px] text-zen-indigo xl:inline">{asrBaseUrl()}</code>
-          </div>
-        </header>
-      ) : workspacePhase === "B" ? (
-        <header
-          className="flex shrink-0 w-full max-w-7xl items-center justify-between gap-4 self-center px-8 py-8"
-          data-purpose="main-header"
-        >
-          <div className="text-2xl font-bold tracking-wider text-gray-800 font-serif" data-purpose="site-logo">
-            如是我闻
-          </div>
-          <div className="flex items-center gap-3 font-sans text-sm text-gray-500">
-            <span>环境 ASR</span>
-            <label className="relative inline-block h-[22px] w-[44px] shrink-0 cursor-pointer">
-              <input
-                type="checkbox"
-                className="peer sr-only"
-                checked={envOpen}
-                onChange={() => setEnvOpen((v) => !v)}
-                aria-expanded={envOpen}
-              />
-              <span className="pointer-events-none absolute inset-0 rounded-[34px] bg-zen-ochre transition-colors peer-checked:bg-brand-orange" />
-              <span className="pointer-events-none absolute bottom-[3px] left-[3px] h-4 w-4 rounded-full bg-white transition-transform peer-checked:translate-x-[22px]" />
-            </label>
-            <button
-              type="button"
-              className={`${btnOnlineSttEntry} border-brand-orange/40 text-gray-700 hover:text-brand-orange`}
-              disabled={c.busy}
-              onClick={openOnlineSttProvider}
-              aria-controls="p1-online-stt-provider"
-            >
-              在线 STT Provider
-            </button>
-          </div>
-        </header>
-      ) : (
-        <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-black/[0.06] bg-white/40 px-4 py-2 backdrop-blur-sm">
-          <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
-            <span className="text-[11px] font-medium tracking-[0.18em] text-zen-stone">如是我闻 · 本地校对</span>
-            {c.asrHealth === "ok" && c.asrCaps ? (
-              <div className="flex flex-wrap items-center gap-3 text-[10px] text-zen-stone">
-                <span className="flex items-center gap-1.5">
-                  <StatusDot ok={c.asrCaps.ffmpeg_ok} />
-                  FFmpeg
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <StatusDot ok={c.asrCaps.funasr_import_ok} />
-                  FunASR
-                </span>
-                <span className="flex items-center gap-1.5">
-                  <StatusDot ok={c.asrCaps.funasr_ready} />
-                  转写就绪
-                </span>
-              </div>
-            ) : c.asrHealth === "checking" ? (
-              <span className="text-[10px] text-zen-stone">正在检测 ASR…</span>
-            ) : c.asrHealth === "error" && c.sttOnlineBridgeReady ? (
-              <span className="text-[10px] text-zen-stone">本机 ASR 未连接 · 在线 STT 已就绪</span>
-            ) : c.asrHealth === "error" ? (
-              <span className="text-[10px] text-zen-cinnabar">ASR 不可达</span>
-            ) : null}
-          </div>
-          <div className="flex shrink-0 flex-wrap items-center gap-2">
-            <button
-              type="button"
-              className={`${btnSecondary} text-[11px]`}
-              onClick={() => setEnvOpen((v) => !v)}
-              aria-expanded={envOpen}
-            >
-              {envOpen ? "收起环境与 ASR" : "环境与 ASR"}
-            </button>
-            <button
-              type="button"
-              className={btnOnlineSttEntry}
-              disabled={c.busy}
-              onClick={openOnlineSttProvider}
-              aria-controls="p1-online-stt-provider"
-            >
-              在线 STT Provider
-            </button>
-            <code className="hidden max-w-[12rem] truncate text-[10px] text-zen-indigo lg:inline">{asrBaseUrl()}</code>
-          </div>
-        </header>
-      )}
+      <P1ProjectHeader
+        workspacePhase={workspacePhase}
+        asrHealth={c.asrHealth}
+        asrCaps={c.asrCaps}
+        asrHealthDetail={c.asrHealthDetail}
+        sttOnlineBridgeReady={c.sttOnlineBridgeReady}
+        busy={c.busy}
+        envOpen={envOpen}
+        setEnvOpen={setEnvOpen}
+        onOpenOnlineStt={openOnlineSttProvider}
+      />
 
       {c.error ? (
         <p className="mx-4 mt-3 shrink-0 rounded border border-zen-cinnabar/25 bg-zen-cinnabar/10 px-3 py-2 text-sm text-zen-cinnabar">

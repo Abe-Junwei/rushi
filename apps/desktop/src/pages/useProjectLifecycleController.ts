@@ -2,17 +2,15 @@ import { convertFileSrc } from "@tauri-apps/api/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { asrBaseUrl } from "../config/env";
 import { deriveTranscribeHints } from "../services/asrTranscribeHints";
-import { formatSrt, formatTxt, type ExportSegment } from "../services/exportFormatters";
 import { isSttOnlineEnabledButIncomplete, tryBuildP1OnlineTranscribeBridgePayload } from "../services/stt/sttOnlineProviderContract";
 import type { ProjectDetail, ProjectSummary, SegmentDto } from "../tauri/p1Api";
 import * as p1 from "../tauri/p1Api";
-import { p3ExportDocx, type P3DocxExportMode } from "../tauri/p3ExportDocxApi";
-import { p4ExportDiagnosticBundle } from "../tauri/p4DiagnosticApi";
-import { safeExportBasename } from "../utils/safeExportBasename";
+import { type P3DocxExportMode } from "../tauri/p3ExportDocxApi";
+import { useP1ExportController } from "./useP1ExportController";
+import { useProjectCrudController, type P1BusyReason } from "./useProjectCrudController";
 import { useSegmentMutationController } from "./useSegmentMutationController";
 
-/** 忙状态：`busy` 与 `reason` 原子更新，避免读到不一致组合。 */
-export type P1BusyReason = "create" | "load" | "transcribe" | "save" | "delete" | "install_funasr";
+export type { P1BusyReason };
 type P1BusyPack = { busy: boolean; reason: P1BusyReason | null };
 
 function cloneSegments(segs: SegmentDto[]): SegmentDto[] {
@@ -51,7 +49,6 @@ export interface ProjectLifecycleApi {
   beginBusy: (reason: P1BusyReason) => void;
   endBusy: () => void;
 
-  // Segment mutations (forwarded)
   undo: () => void;
   redo: () => void;
   updateSegmentText: (idx: number, text: string) => void;
@@ -146,39 +143,21 @@ export function useProjectLifecycleController(): ProjectLifecycleApi {
     setPickedPath(null);
   }, []);
 
-  const createProject = useCallback(async () => {
-    if (!pickedPath) {
-      setError("请先选择音频文件。");
-      return;
-    }
-    beginBusy("create");
-    setError("");
-    try {
-      const d = await p1.p1ProjectCreate(newName.trim() || "未命名项目", pickedPath);
-      applyDetail(d);
-      await refreshProjects();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      endBusy();
-    }
-  }, [pickedPath, newName, applyDetail, refreshProjects, beginBusy, endBusy]);
-
-  const loadProject = useCallback(
-    async (id: string) => {
-      beginBusy("load");
-      setError("");
-      try {
-        const d = await p1.p1ProjectLoad(id);
-        applyDetail(d);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
-      } finally {
-        endBusy();
-      }
-    },
-    [applyDetail, beginBusy, endBusy],
-  );
+  const crud = useProjectCrudController({
+    pickedPath,
+    newName,
+    current,
+    setError,
+    beginBusy,
+    endBusy,
+    applyDetail,
+    refreshProjects,
+    mutations,
+    setCurrent,
+    setSegments,
+    setAudioSrc,
+    setTranscribeHints,
+  });
 
   const runTranscribe = useCallback(async () => {
     if (!current) return;
@@ -224,86 +203,21 @@ export function useProjectLifecycleController(): ProjectLifecycleApi {
     }
   }, [current, applyDetail, mutations, beginBusy, endBusy]);
 
-  const openAppDataFolder = useCallback(async () => {
+  const openAppDataFolder = async () => {
     setError("");
     try {
       await p1.p1OpenAppDataFolder();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
-  }, []);
+  };
 
-  const exportTxt = useCallback(async () => {
-    if (!current) return;
-    setError("");
-    mutations.flushP1SegmentTextDraftsFromDom();
-    const rows: ExportSegment[] = segmentsRef.current.map((s, i) => ({ ...s, idx: i }));
-    try {
-      await p1.p1ExportTextFile(safeExportBasename(current.name, "txt"), formatTxt(rows));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    }
-  }, [current, mutations]);
-
-  const exportSrt = useCallback(async () => {
-    if (!current) return;
-    setError("");
-    mutations.flushP1SegmentTextDraftsFromDom();
-    const rows: ExportSegment[] = segmentsRef.current.map((s, i) => ({ ...s, idx: i }));
-    try {
-      await p1.p1ExportTextFile(safeExportBasename(current.name, "srt"), formatSrt(rows));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    }
-  }, [current, mutations]);
-
-  const exportDocx = useCallback(
-    async (mode: P3DocxExportMode) => {
-      if (!current) return;
-      setError("");
-      mutations.flushP1SegmentTextDraftsFromDom();
-      const normalized: SegmentDto[] = segmentsRef.current.map((s, i) => ({ ...s, idx: i }));
-      try {
-        await p3ExportDocx(safeExportBasename(current.name, "docx"), current.name, mode, normalized);
-      } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
-      }
-    },
-    [current, mutations],
-  );
-
-  const exportDiagnosticBundle = useCallback(async () => {
-    setError("");
-    try {
-      await p4ExportDiagnosticBundle();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    }
-  }, []);
-
-  const deleteProject = useCallback(
-    async (id: string) => {
-      if (!window.confirm("确定删除该项目及本地音频副本？")) return;
-      beginBusy("delete");
-      setError("");
-      try {
-        await p1.p1ProjectDelete(id);
-        if (current?.id === id) {
-          mutations.resetMutationHistory();
-          setCurrent(null);
-          setSegments([]);
-          setAudioSrc(null);
-          setTranscribeHints([]);
-        }
-        await refreshProjects();
-      } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
-      } finally {
-        endBusy();
-      }
-    },
-    [current, refreshProjects, beginBusy, endBusy, mutations],
-  );
+  const exports = useP1ExportController({
+    current,
+    segmentsRef,
+    setError,
+    flushP1SegmentTextDraftsFromDom: mutations.flushP1SegmentTextDraftsFromDom,
+  });
 
   return {
     projects,
@@ -322,15 +236,15 @@ export function useProjectLifecycleController(): ProjectLifecycleApi {
     refreshProjects,
     pickAudio,
     clearPickedAudio,
-    createProject,
-    loadProject,
+    createProject: crud.createProject,
+    loadProject: crud.loadProject,
     runTranscribe,
     saveSegments,
-    deleteProject,
-    exportTxt,
-    exportSrt,
-    exportDocx,
-    exportDiagnosticBundle,
+    deleteProject: crud.deleteProject,
+    exportTxt: exports.exportTxt,
+    exportSrt: exports.exportSrt,
+    exportDocx: exports.exportDocx,
+    exportDiagnosticBundle: exports.exportDiagnosticBundle,
     openAppDataFolder,
     applyDetail,
     setError,

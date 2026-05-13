@@ -1,7 +1,8 @@
 import { useCallback, useRef } from "react";
-import { flushSync } from "react-dom";
 import type { SegmentDto } from "../tauri/p1Api";
-import { buildSplitPair, mergeTwoSegments, reindexSegments } from "./p1SegmentListHelpers";
+import { mergeTwoSegments, reindexSegments } from "./p1SegmentListHelpers";
+import { flushSegmentTextDraftsFromDom } from "./flushSegmentTextDrafts";
+import { useSegmentSplitController } from "./useSegmentSplitController";
 import { useSegmentUndoRedo } from "./useSegmentUndoRedo";
 
 function roundSec3(x: number): number {
@@ -39,7 +40,6 @@ export interface SegmentMutationDeps {
 
 export function useSegmentMutationController(deps: SegmentMutationDeps): SegmentMutationApi {
   const { segmentsRef, setSegments, setSelectedIdx, setError, busy } = deps;
-  // selectedIdxRef is kept in interface for caller symmetry but not used directly
   void deps.selectedIdxRef;
 
   const segmentBoundsLiveGestureRef = useRef(false);
@@ -48,33 +48,18 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
 
   const { pushUndo, pushUndoForTextEdit, undo, redo } = undoRedo;
 
-  /** 将语段卡正文输入框当前值写回 `segments`（与本地 draft 一致），供保存/合并等读最新正文。 */
   const flushP1SegmentTextDraftsFromDom = useCallback(() => {
-    const prev = segmentsRef.current;
-    const updates: { idx: number; text: string }[] = [];
-    prev.forEach((s, i) => {
-      const row = document.querySelector(`[data-p1-seg-row="${i}"]`);
-      const ta = row?.querySelector<HTMLTextAreaElement | HTMLInputElement>("textarea, input.p1-seg-text");
-      if (!ta || ta.value === s.text) return;
-      updates.push({ idx: i, text: ta.value });
-    });
-    if (updates.length === 0) return;
-    flushSync(() => {
-      setSegments((cur) => {
-        let next = cur;
-        for (const { idx, text } of updates) {
-          if (idx < 0 || idx >= cur.length) continue;
-          const seg = cur[idx];
-          if (!seg || seg.text === text) continue;
-          if (next === cur) next = [...cur];
-          next[idx] = { ...seg, text };
-        }
-        return next;
-      });
-    });
+    flushSegmentTextDraftsFromDom(segmentsRef, setSegments);
   }, [segmentsRef, setSegments]);
 
-
+  const splits = useSegmentSplitController({
+    segmentsRef,
+    setSegments,
+    setSelectedIdx,
+    setError,
+    pushUndo,
+    flushP1SegmentTextDraftsFromDom,
+  });
 
   const updateSegmentText = useCallback(
     (idx: number, text: string) => {
@@ -140,58 +125,6 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
     [segmentsRef, setSegments, pushUndo],
   );
 
-  const splitAtSelection = useCallback((selectedIdx: number) => {
-    flushP1SegmentTextDraftsFromDom();
-    const segs = segmentsRef.current;
-    if (segs.length === 0) return;
-    const i = Math.min(selectedIdx, segs.length - 1);
-    const s = segs[i];
-    if (!s) return;
-    const mid = (s.start_sec + s.end_sec) / 2;
-    const pair = buildSplitPair(s, mid);
-    if (!pair) {
-      setError("语段太短，无法拆分。");
-      return;
-    }
-    setError("");
-    pushUndo();
-    setSegments((prev) => {
-      const out = [...prev];
-      out.splice(i, 1, pair.left, pair.right);
-      return reindexSegments(out);
-    });
-    setSelectedIdx(i + 1);
-  }, [flushP1SegmentTextDraftsFromDom, segmentsRef, setSegments, setSelectedIdx, setError, pushUndo]);
-
-  const splitAtPlayhead = useCallback(
-    (timeSec: number) => {
-      flushP1SegmentTextDraftsFromDom();
-      const t = roundSec3(timeSec);
-      const segs = segmentsRef.current;
-      const i = segs.findIndex((s) => t > s.start_sec + 0.02 && t < s.end_sec - 0.02);
-      if (i < 0) {
-        setError("指针时间不在任一语段内，无法拆分。");
-        return;
-      }
-      const s = segs[i];
-      if (!s) return;
-      const pair = buildSplitPair(s, t);
-      if (!pair) {
-        setError("语段太短，无法在该时间拆分。");
-        return;
-      }
-      setError("");
-      pushUndo();
-      setSegments((prev) => {
-        const out = [...prev];
-        out.splice(i, 1, pair.left, pair.right);
-        return reindexSegments(out);
-      });
-      setSelectedIdx(i + 1);
-    },
-    [flushP1SegmentTextDraftsFromDom, segmentsRef, setSegments, setSelectedIdx, setError, pushUndo],
-  );
-
   const mergeWithPrevAt = useCallback(
     (idx: number) => {
       if (idx <= 0) return;
@@ -232,13 +165,8 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
     [flushP1SegmentTextDraftsFromDom, segmentsRef, setSegments, setSelectedIdx, pushUndo],
   );
 
-  const mergeWithPrev = useCallback((selectedIdx: number) => {
-    mergeWithPrevAt(selectedIdx);
-  }, [mergeWithPrevAt]);
-
-  const mergeWithNext = useCallback((selectedIdx: number) => {
-    mergeWithNextAt(selectedIdx);
-  }, [mergeWithNextAt]);
+  const mergeWithPrev = (selectedIdx: number) => mergeWithPrevAt(selectedIdx);
+  const mergeWithNext = (selectedIdx: number) => mergeWithNextAt(selectedIdx);
 
   const deleteSegmentAt = useCallback(
     (idx: number) => {
@@ -350,8 +278,8 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
     updateSegmentText,
     updateSegmentTime,
     updateSegmentBounds,
-    splitAtSelection,
-    splitAtPlayhead,
+    splitAtSelection: splits.splitAtSelection,
+    splitAtPlayhead: splits.splitAtPlayhead,
     mergeWithPrev,
     mergeWithNext,
     mergeWithPrevAt,
