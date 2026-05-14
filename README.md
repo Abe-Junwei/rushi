@@ -78,8 +78,8 @@ npm run desktop:dev
 | `npm run test` | Vitest |
 | `npm run build` | `tsc` + Vite 生产构建（不含完整 `tauri build` 安装包） |
 | `npm run desktop:dev` / `npm run desktop:build` | Tauri 开发 / 打包 |
-| `npm run p4:eval-placeholders` | 生成 P4 评测用五段占位 wav（需 ffmpeg，见 `fixtures/p4-eval/`） |
-| `npm run p4:eval-run` | 按清单批跑本机 ASR并打印 JSON 报告（需 ASR 已启动、系统有 **curl**；见 `docs/execution/p4-stabilization.md`） |
+| `npm run p4:eval-placeholders` | 生成 P4 评测用五段占位 wav（需 ffmpeg，见 `fixtures/eval/`） |
+| `npm run p4:eval-run` | 按清单批跑本机 ASR并打印 JSON 报告（需 ASR 已启动、系统有 **curl**；见 `docs/execution/stabilization.md`） |
 | `npm run asr:build-sidecar-unix` | **macOS** 或 **Linux x86_64**：PyInstaller **FunASR** 侧车；其他 Linux 架构为 **stub**。产物在 `apps/desktop/src-tauri/resources/bundled-asr/` |
 | `npm run asr:build-sidecar-windows-cpu` / `asr:build-sidecar-windows-cuda` | **Windows**：分别打 **CPU** 与 **CUDA** 侧车目录（需本机 PowerShell）；`desktop:build` 时壳在 8741 空闲时**自动拉起**（探测 N 卡优先 CUDA，失败回退 CPU；`RUSHI_SKIP_BUNDLED_ASR=1` 禁用） |
 | `npm run asr:regen-sidecar-locks` | 在 `services/asr` 用 **Python 3.12** 重生成 **`requirements-sidecar-cpu-macos-arm64.lock`** 与 **`requirements-sidecar-cuda-win_amd64.lock`**（需网络；见 `services/asr/README.md`） |
@@ -104,9 +104,9 @@ Python 单测（与 CI 一致，需本机 **Python 3.11+**，推荐 3.12）：**
 5. **保存到 SQLite**（应用数据目录下的 `studio.lingchuang.rushi/rushi.sqlite3`）；**导出 TXT / SRT**会弹出系统「另存为」，内容为 UTF-8、LF。**导出 DOCX（逐字稿 / 讲稿）** 同样为「另存为」，由壳内 `docx-rs` 生成最小版式（逐字稿：每段带时间行 + 正文，低置信段黄底高亮；讲稿：连续正文）。
 6. **P4 诊断**：点 **「导出诊断包（zip）」**，内含版本/平台说明、**最近编辑流水**（`edit_log`）、**`logs/*.log` 尾部**（含 `desktop.log` 转写失败摘要）；若本地库不超过 5MiB 会附带 `rushi.sqlite3`。安装包 **Resources** 内含 **`user-guide-zh.md` / `user-guide-zh.pdf`** 简版说明（路径随平台在 Tauri 资源目录）。
 
-**P1 验收口径（本仓）**：计划书 §8 P1 验收 3 在 Rushi 内**放宽**为「保存批次写入 `edit_log` + 诊断包导出取证」，不要求逐键/逐拖动的持久化审计；见 [`docs/execution/p1-acceptance.md`](./docs/execution/p1-acceptance.md)。
+**P1 验收口径（本仓）**：计划书 §8 P1 验收 3 在 Rushi 内**放宽**为「保存批次写入 `edit_log` + 诊断包导出取证」，不要求逐键/逐拖动的持久化审计；见 [`docs/execution/acceptance.md`](./docs/execution/acceptance.md)。
 
-**P4 评测占位音频（可选）**：`bash scripts/p4-eval-generate-placeholders.sh`（需 ffmpeg），与 [`fixtures/p4-eval/eval_manifest.v1.json`](./fixtures/p4-eval/eval_manifest.v1.json) 中路径对应。占位生成后可在仓库根执行 **`npm run p4:eval-run`**（需本机 ASR + curl）得到 JSON 报告。
+**P4 评测占位音频（可选）**：`bash scripts/p4-eval-generate-placeholders.sh`（需 ffmpeg），与 [`fixtures/eval/eval_manifest.v1.json`](./fixtures/eval/eval_manifest.v1.json) 中路径对应。占位生成后可在仓库根执行 **`npm run p4:eval-run`**（需本机 ASR + curl）得到 JSON 报告。
 
 ## 与 Jieyu 的文档链接
 
@@ -126,17 +126,17 @@ Python 单测（与 CI 一致，需本机 **Python 3.11+**，推荐 3.12）：**
 - [`CONTRIBUTING.md`](./CONTRIBUTING.md) — 贡献与拷贝 Jieyu 代码时的许可注意。
 - [`docs/adr/`](./docs/adr/) — ADR（如 [`0001`](./docs/adr/0001-independent-repo-default-sqlite-python-asr.md) 独立仓 / SQLite / Python ASR）。
 - [`docs/execution/p0-acceptance.md`](./docs/execution/p0-acceptance.md) — P0 验收：本机 ASR 契约、脚本与可降级口径。
-- [`docs/execution/p1-acceptance.md`](./docs/execution/p1-acceptance.md) — P1 验收：本仓对计划书「编辑追溯」的放宽口径与手测建议。
+- [`docs/execution/acceptance.md`](./docs/execution/acceptance.md) — P1 验收：本仓对计划书「编辑追溯」的放宽口径与手测建议。
 - [`docs/execution/p2-acceptance.md`](./docs/execution/p2-acceptance.md) — P2 验收：术语偏置、低置信、纠错记忆与错词提示。
 - [`docs/execution/p3-acceptance.md`](./docs/execution/p3-acceptance.md) — P3 验收：TXT/SRT/DOCX 与逐字稿/讲稿导出闭环。
-- [`docs/execution/p4-stabilization.md`](./docs/execution/p4-stabilization.md) — P4 评测集、指标、批量检查点、安装包与诊断包说明。
+- [`docs/execution/stabilization.md`](./docs/execution/stabilization.md) — P4 评测集、指标、批量检查点、安装包与诊断包说明。
 
 ## 下一步（产品 / 工程）
 
 - **P0（已完成）**：导入音视频、FFmpeg 抽轨、ASR 契约与验收脚本闭环（见 [`docs/execution/p0-acceptance.md`](./docs/execution/p0-acceptance.md)）。
-- **P1（已完成）**：桌面壳内项目 + SQLite 语段 + 编辑保存 + TXT/SRT 导出（见 [`docs/execution/p1-acceptance.md`](./docs/execution/p1-acceptance.md)）。
+- **P1（已完成）**：桌面壳内项目 + SQLite 语段 + 编辑保存 + TXT/SRT 导出（见 [`docs/execution/acceptance.md`](./docs/execution/acceptance.md)）。
 - **P2（已完成）**：术语库 + 热词注入 + 低置信链路；补齐 **纠错记忆 / 错词规则提示**（见 [`docs/execution/p2-acceptance.md`](./docs/execution/p2-acceptance.md)）。
 - **P3（已完成）**：TXT/SRT/DOCX 三格式导出，含逐字稿/讲稿模式与低置信样式（见 [`docs/execution/p3-acceptance.md`](./docs/execution/p3-acceptance.md)）。
-- **P4（已完成）**：评测清单、指标脚本、批跑命令、CI 冒烟、诊断包与安装包资源（见 [`docs/execution/p4-stabilization.md`](./docs/execution/p4-stabilization.md)）。
+- **P4（已完成）**：评测清单、指标脚本、批跑命令、CI 冒烟、诊断包与安装包资源（见 [`docs/execution/stabilization.md`](./docs/execution/stabilization.md)）。
 - 编排层遵守 [`../Jieyu/copilot-instructions.md`](../Jieyu/copilot-instructions.md) 节选纪律：**controller / service** 下沉，避免 mega-hook 与壳层误接。
 - CI：文档链接、前端 lint/typecheck/test/build、`cargo check`、**`tauri build`（deb）**、Python pytest、**stub ASR 上的 `p4-eval-run.py`**；后续可加 E2E、架构 ratchet 等。

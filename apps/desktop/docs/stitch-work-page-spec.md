@@ -2,7 +2,7 @@
 
 本文描述 **已打开项目**（`current != null`）时的界面，对应代码 **`workspacePhase === "C"`**。包含：**左轨（项目 / 新建另一项目 / 术语库 / 诊断）**、**主区工具条**、**转写提示**、**波形 + 时间轴语段列表**、**底栏**、**忙碌遮罩**。欢迎页说明见同目录 [`stitch-welcome-page-spec.md`](./stitch-welcome-page-spec.md)。
 
-实现参考：[`src/components/ProjectP1Panel.tsx`](../src/components/ProjectP1Panel.tsx)（`workspacePhase === "C"` 分支、`TIMELINE_PX_PER_SEC`、`useProjectWaveform`）。
+实现参考：[`src/components/ProjectPanel.tsx`](../src/components/ProjectPanel.tsx)（`workspacePhase === "C"` 分支、`TIMELINE_PX_PER_SEC`、`useProjectWaveform`）。
 
 ---
 
