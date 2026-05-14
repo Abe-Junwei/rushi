@@ -79,7 +79,7 @@ npm run desktop:dev
 | `npm run build` | `tsc` + Vite 生产构建（不含完整 `tauri build` 安装包） |
 | `npm run desktop:dev` / `npm run desktop:build` | Tauri 开发 / 打包 |
 | `npm run p4:eval-placeholders` | 生成 P4 评测用五段占位 wav（需 ffmpeg，见 `fixtures/eval/`） |
-| `npm run p4:eval-run` | 按清单批跑本机 ASR并打印 JSON 报告（需 ASR 已启动、系统有 **curl**；见 `docs/execution/stabilization.md`） |
+| `npm run eval:eval-run` | 按清单批跑本机 ASR并打印 JSON 报告（需 ASR 已启动、系统有 **curl**；见 `docs/execution/stabilization.md`） |
 | `npm run asr:build-sidecar-unix` | **macOS** 或 **Linux x86_64**：PyInstaller **FunASR** 侧车；其他 Linux 架构为 **stub**。产物在 `apps/desktop/src-tauri/resources/bundled-asr/` |
 | `npm run asr:build-sidecar-windows-cpu` / `asr:build-sidecar-windows-cuda` | **Windows**：分别打 **CPU** 与 **CUDA** 侧车目录（需本机 PowerShell）；`desktop:build` 时壳在 8741 空闲时**自动拉起**（探测 N 卡优先 CUDA，失败回退 CPU；`RUSHI_SKIP_BUNDLED_ASR=1` 禁用） |
 | `npm run asr:regen-sidecar-locks` | 在 `services/asr` 用 **Python 3.12** 重生成 **`requirements-sidecar-cpu-macos-arm64.lock`** 与 **`requirements-sidecar-cuda-win_amd64.lock`**（需网络；见 `services/asr/README.md`） |
@@ -106,7 +106,7 @@ Python 单测（与 CI 一致，需本机 **Python 3.11+**，推荐 3.12）：**
 
 **P1 验收口径（本仓）**：计划书 §8 P1 验收 3 在 Rushi 内**放宽**为「保存批次写入 `edit_log` + 诊断包导出取证」，不要求逐键/逐拖动的持久化审计；见 [`docs/execution/acceptance.md`](./docs/execution/acceptance.md)。
 
-**P4 评测占位音频（可选）**：`bash scripts/p4-eval-generate-placeholders.sh`（需 ffmpeg），与 [`fixtures/eval/eval_manifest.v1.json`](./fixtures/eval/eval_manifest.v1.json) 中路径对应。占位生成后可在仓库根执行 **`npm run p4:eval-run`**（需本机 ASR + curl）得到 JSON 报告。
+**P4 评测占位音频（可选）**：`bash scripts/eval-generate-placeholders.sh`（需 ffmpeg），与 [`fixtures/eval/eval_manifest.v1.json`](./fixtures/eval/eval_manifest.v1.json) 中路径对应。占位生成后可在仓库根执行 **`npm run eval:eval-run`**（需本机 ASR + curl）得到 JSON 报告。
 
 ## 与 Jieyu 的文档链接
 
@@ -139,4 +139,4 @@ Python 单测（与 CI 一致，需本机 **Python 3.11+**，推荐 3.12）：**
 - **P3（已完成）**：TXT/SRT/DOCX 三格式导出，含逐字稿/讲稿模式与低置信样式（见 [`docs/execution/p3-acceptance.md`](./docs/execution/p3-acceptance.md)）。
 - **P4（已完成）**：评测清单、指标脚本、批跑命令、CI 冒烟、诊断包与安装包资源（见 [`docs/execution/stabilization.md`](./docs/execution/stabilization.md)）。
 - 编排层遵守 [`../Jieyu/copilot-instructions.md`](../Jieyu/copilot-instructions.md) 节选纪律：**controller / service** 下沉，避免 mega-hook 与壳层误接。
-- CI：文档链接、前端 lint/typecheck/test/build、`cargo check`、**`tauri build`（deb）**、Python pytest、**stub ASR 上的 `p4-eval-run.py`**；后续可加 E2E、架构 ratchet 等。
+- CI：文档链接、前端 lint/typecheck/test/build、`cargo check`、**`tauri build`（deb）**、Python pytest、**stub ASR 上的 `eval-run.py`**；后续可加 E2E、架构 ratchet 等。
