@@ -69,7 +69,7 @@ jobs:
 
       - name: Tauri build (deb bundle smoke)
         working-directory: apps/desktop
-        run: npm run tauri -- build -- --bundles deb
+        run: npm run tauri -- build --bundles deb
         timeout-minutes: 25
 
   asr:
