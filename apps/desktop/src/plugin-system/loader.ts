@@ -6,7 +6,7 @@
  */
 
 import type { PluginContext, PluginManifest, PluginModule } from "./types";
-import { createPluginContext } from "./context";
+import { createPluginContext, disposePluginContext } from "./context";
 import { registryUnregister } from "./registry";
 
 interface LoadedPlugin {
@@ -46,7 +46,15 @@ export async function loadPlugin(manifest: PluginManifest): Promise<void> {
     return h;
   };
 
-  await pluginModule.activate(ctx);
+  try {
+    await pluginModule.activate(ctx);
+  } catch (e) {
+    for (const h of [...handles].reverse()) {
+      registryUnregister(h);
+    }
+    disposePluginContext(ctx);
+    throw e;
+  }
   loaded.set(manifest.id, { manifest, module: pluginModule, context: ctx, handles });
   console.warn(`[plugin] loaded ${manifest.id}`);
 }
@@ -64,12 +72,19 @@ export async function unloadPlugin(id: string): Promise<void> {
     registryUnregister(h);
   }
 
+  let deactivateError: unknown = null;
   if (typeof entry.module.deactivate === "function") {
-    await entry.module.deactivate();
+    try {
+      await entry.module.deactivate();
+    } catch (e) {
+      deactivateError = e;
+    }
   }
 
+  disposePluginContext(entry.context);
   loaded.delete(id);
   console.warn(`[plugin] unloaded ${id}`);
+  if (deactivateError) throw deactivateError;
 }
 
 /** Load multiple plugins in parallel. */

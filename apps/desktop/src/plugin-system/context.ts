@@ -13,9 +13,36 @@ import type {
 } from "./types";
 import { registryRegister, registryUnregister } from "./registry";
 
+const pluginEventBus = new Map<string, Set<(payload?: unknown) => void>>();
+const pluginContextSubscriptions = new WeakMap<PluginContext, Array<() => void>>();
+
+function emitPluginEvent(event: string, payload?: unknown): void {
+  const subs = pluginEventBus.get(event);
+  if (!subs || subs.size === 0) return;
+  for (const fn of Array.from(subs)) {
+    try {
+      fn(payload);
+    } catch {
+      // ignore subscriber errors to protect host
+    }
+  }
+}
+
+function subscribePluginEvent(event: string, handler: (payload?: unknown) => void): () => void {
+  const subs = pluginEventBus.get(event) ?? new Set<(payload?: unknown) => void>();
+  subs.add(handler);
+  pluginEventBus.set(event, subs);
+  return () => {
+    const cur = pluginEventBus.get(event);
+    if (!cur) return;
+    cur.delete(handler);
+    if (cur.size === 0) pluginEventBus.delete(event);
+  };
+}
+
 export function createPluginContext(manifest: PluginManifest): PluginContext {
   const handles: ExtensionHandle[] = [];
-  const listeners = new Map<string, Array<(payload?: unknown) => void>>();
+  const unsubscribers: Array<() => void> = [];
 
   const ctx: PluginContext = {
     manifest,
@@ -33,36 +60,29 @@ export function createPluginContext(manifest: PluginManifest): PluginContext {
     },
 
     emit(event: string, payload?: unknown): void {
-      const subs = listeners.get(event);
-      if (subs) {
-        subs.forEach((fn) => {
-          try {
-            fn(payload);
-          } catch {
-            // ignore subscriber errors to protect host
-          }
-        });
-      }
+      emitPluginEvent(event, payload);
     },
 
     on(event: string, handler: (payload?: unknown) => void): () => void {
-      if (!listeners.has(event)) listeners.set(event, []);
-      listeners.get(event)!.push(handler);
+      const off = subscribePluginEvent(event, handler);
+      unsubscribers.push(off);
       return () => {
-        const arr = listeners.get(event);
-        if (!arr) return;
-        const i = arr.indexOf(handler);
-        if (i >= 0) arr.splice(i, 1);
+        off();
+        const i = unsubscribers.indexOf(off);
+        if (i >= 0) unsubscribers.splice(i, 1);
       };
     },
   };
+
+  pluginContextSubscriptions.set(ctx, unsubscribers);
 
   return ctx;
 }
 
 /** Dispose a context: unregister every handle it created. */
-export function disposePluginContext(_ctx: PluginContext): void {
-  // Access internal handles via a WeakMap if we wanted strict privacy.
-  // For simplicity we rely on the loader to keep track.
-  void _ctx;
+export function disposePluginContext(ctx: PluginContext): void {
+  const subs = pluginContextSubscriptions.get(ctx);
+  if (!subs) return;
+  for (const off of subs.splice(0)) off();
+  pluginContextSubscriptions.delete(ctx);
 }

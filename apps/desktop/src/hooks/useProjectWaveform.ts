@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import WaveSurfer from "wavesurfer.js";
 import RegionsPlugin from "wavesurfer.js/dist/plugins/regions.esm.js";
+import { COLORS } from "../config/tokens";
 import type { SegmentDto } from "../tauri/p1Api";
 import { formatMediaTime } from "../utils/formatMediaTime";
 import { p1WaveformBoundsSignature } from "../utils/p1BoundsSignature";
@@ -76,6 +77,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     disabled,
     boundsSig,
     selectedIdx,
+    onWaveformCreateRange,
   );
 
   const destroyWave = useCallback(() => {
@@ -101,7 +103,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
   /** Create / replace WaveSurfer when mediaUrl changes（缩放走 ws.zoom，不重建实例）。 */
   useEffect(() => {
     destroyWave();
-    if (!mediaUrl || disabled) {
+    if (!mediaUrl) {
       setLoadError(null);
       return;
     }
@@ -120,7 +122,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
       const regions = RegionsPlugin.create();
       regionsRef.current = regions;
 
-      const wantDragCreate = Boolean(onWaveformCreateRange);
+      const wantDragCreate = Boolean(optsRef.current.onWaveformCreateRange);
       const initialMps = minPxPerSecRef.current;
       const initialH = waveformHeightRef.current;
       const ws = WaveSurfer.create({
@@ -128,9 +130,9 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
         url: mediaUrl,
         height: initialH,
         normalize: true,
-        waveColor: "#c4c4c8",
-        progressColor: "#8e8e93",
-        cursorColor: "#6a6a6f",
+        waveColor: COLORS.p1WaveformWave,
+        progressColor: COLORS.p1WaveformProgress,
+        cursorColor: COLORS.p1WaveformCursor,
         cursorWidth: 1,
         barWidth: 2,
         barGap: 1,
@@ -201,7 +203,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
       disposed = true;
       destroyWave();
     };
-  }, [mediaUrl, disabled, destroyWave, onWaveformCreateRange]);
+  }, [mediaUrl, destroyWave]);
 
   /** 仅缩放：不销毁 WaveSurfer。 */
   useEffect(() => {
@@ -220,16 +222,16 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     const h = waveformHeightPx;
     if (el) {
       el.style.height = `${h}px`;
-      el.style.backgroundColor = "#ffffff";
+      el.style.backgroundColor = COLORS.p1WaveformSurface;
     }
     const ws = wsRef.current;
     if (!ws || !isReady || disabled) return;
     try {
       ws.setOptions({
         height: h,
-        waveColor: "#c4c4c8",
-        progressColor: "#8e8e93",
-        cursorColor: "#6a6a6f",
+        waveColor: COLORS.p1WaveformWave,
+        progressColor: COLORS.p1WaveformProgress,
+        cursorColor: COLORS.p1WaveformCursor,
       });
     } catch {
       try {
@@ -242,7 +244,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
 
   useEffect(() => {
     const ws = wsRef.current;
-    if (!ws || !isReady || disabled) return;
+    if (!ws || !isReady) return;
     ws.toggleInteraction(!disabled);
   }, [disabled, isReady]);
 
