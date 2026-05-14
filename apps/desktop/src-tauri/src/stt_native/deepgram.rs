@@ -35,9 +35,7 @@ pub async fn transcribe_deepgram(
     } else {
         url
     };
-    let bytes = std::fs::read(audio_path).map_err(|e| e.to_string())?;
-    let part = reqwest::multipart::Part::bytes(bytes)
-        .file_name(audio_path.file_name().unwrap_or_default().to_string_lossy().into_owned());
+    let part = super::multipart_part_from_file(audio_path).await?;
     let form = reqwest::multipart::Form::new().part("audio", part);
     log("INFO deepgram listen");
     let resp = client

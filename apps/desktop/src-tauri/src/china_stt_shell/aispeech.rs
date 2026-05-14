@@ -62,9 +62,7 @@ pub async fn transcribe_aispeech_lasr(
         "asr": { "lang": "cn", "use_vad": true, "use_post": true, "use_segment": true },
     });
     let params_s = params.to_string();
-    let bytes = std::fs::read(audio_path).map_err(|e| e.to_string())?;
-    let file_part = reqwest::multipart::Part::bytes(bytes)
-        .file_name(audio_path.file_name().unwrap_or_default().to_string_lossy().into_owned());
+    let file_part = crate::stt_native::multipart_part_from_file(audio_path).await?;
     let form = reqwest::multipart::Form::new()
         .text("params", params_s)
         .part("file", file_part);

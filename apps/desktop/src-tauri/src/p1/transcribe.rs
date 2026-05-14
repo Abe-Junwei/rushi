@@ -3,7 +3,6 @@ use super::utils::append_desktop_log_line;
 use crate::online_stt_bridge::{is_allowed_stt_transcribe_url, P1OnlineTranscribeBridge};
 use crate::DbState;
 use rusqlite::Connection;
-use std::fs;
 use std::path::Path;
 use std::time::{Duration, Instant};
 
@@ -48,9 +47,7 @@ pub async fn post_transcribe_multipart(
     app_key: Option<&str>,
     timeout: std::time::Duration,
 ) -> Result<serde_json::Value, String> {
-    let bytes = std::fs::read(audio_path).map_err(|e| e.to_string())?;
-    let part = reqwest::multipart::Part::bytes(bytes)
-        .file_name(audio_path.file_name().unwrap_or_default().to_string_lossy().into_owned());
+    let part = crate::stt_native::multipart_part_from_file(audio_path).await?;
     let form = {
         let mut f = reqwest::multipart::Form::new().part("file", part);
         if !hotwords.is_empty() {
@@ -334,9 +331,7 @@ pub async fn transcribe_openai_native(
     if !auth_ok {
         return Err("OpenAI 转写需要 Authorization（Bearer Token）。".to_string());
     }
-    let bytes = std::fs::read(audio_path).map_err(|e| e.to_string())?;
-    let part = reqwest::multipart::Part::bytes(bytes)
-        .file_name(audio_path.file_name().unwrap_or_default().to_string_lossy().into_owned());
+    let part = crate::stt_native::multipart_part_from_file(audio_path).await?;
     let mut form = reqwest::multipart::Form::new()
         .part("file", part)
         .text("model", "whisper-1")
@@ -401,7 +396,8 @@ pub async fn transcribe_assemblyai_native(
         .ok_or_else(|| "AssemblyAI 缺少 authorization / API Key".to_string())?;
     let deadline = Instant::now() + timeout;
     let client = crate::stt_native::http_client();
-    let bytes = fs::read(audio_path).map_err(|e| format!("读取音频失败: {e}"))?;
+    let bytes = crate::stt_native::read_audio_bytes_limited(audio_path)
+        .map_err(|e| format!("读取音频失败: {e}"))?;
     append_desktop_log_line(st, "INFO transcribe assemblyai_upload");
     let upload_res = client
         .post(format!("{base}/v2/upload"))

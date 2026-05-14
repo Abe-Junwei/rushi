@@ -13,10 +13,12 @@ use std::time::Duration;
 
 use serde_json::json;
 use std::sync::OnceLock;
+use tokio_util::io::ReaderStream;
 
 use crate::online_stt_bridge::{is_allowed_stt_transcribe_url, P1OnlineTranscribeBridge};
 
 static HTTP: OnceLock<reqwest::Client> = OnceLock::new();
+const MAX_STT_AUDIO_BYTES: u64 = 512 * 1024 * 1024;
 
 pub fn http_client() -> &'static reqwest::Client {
     HTTP.get_or_init(|| {
@@ -26,6 +28,39 @@ pub fn http_client() -> &'static reqwest::Client {
             .build()
             .expect("reqwest async client")
     })
+}
+
+pub(crate) fn read_audio_bytes_limited(path: &Path) -> Result<Vec<u8>, String> {
+    let meta = fs::metadata(path).map_err(|e| format!("读取音频元数据: {e}"))?;
+    if meta.len() > MAX_STT_AUDIO_BYTES {
+        return Err(format!(
+            "音频文件过大（{} bytes），超过 {} bytes 限制。",
+            meta.len(),
+            MAX_STT_AUDIO_BYTES
+        ));
+    }
+    fs::read(path).map_err(|e| format!("读取音频: {e}"))
+}
+
+pub(crate) async fn multipart_part_from_file(path: &Path) -> Result<reqwest::multipart::Part, String> {
+    let meta = fs::metadata(path).map_err(|e| format!("读取音频元数据: {e}"))?;
+    if meta.len() > MAX_STT_AUDIO_BYTES {
+        return Err(format!(
+            "音频文件过大（{} bytes），超过 {} bytes 限制。",
+            meta.len(),
+            MAX_STT_AUDIO_BYTES
+        ));
+    }
+    let f = tokio::fs::File::open(path)
+        .await
+        .map_err(|e| format!("打开音频文件失败: {e}"))?;
+    let stream = ReaderStream::new(f);
+    let body = reqwest::Body::wrap_stream(stream);
+    let mut part = reqwest::multipart::Part::stream_with_length(body, meta.len());
+    if let Some(name) = path.file_name() {
+        part = part.file_name(name.to_string_lossy().into_owned());
+    }
+    Ok(part)
 }
 
 fn sha256_hex(data: &[u8]) -> String {
@@ -76,7 +111,7 @@ fn rushi_value(
 }
 
 pub(crate) fn audio_bytes_and_format(path: &Path) -> Result<(Vec<u8>, &'static str), String> {
-    let bytes = fs::read(path).map_err(|e| format!("读取音频: {e}"))?;
+    let bytes = read_audio_bytes_limited(path)?;
     let ext = path
         .extension()
         .and_then(|e| e.to_str())
