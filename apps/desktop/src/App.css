@@ -2,5 +2,5 @@
 @import "./styles/shell.css";
 @import "./styles/panels.css";
 @import "./styles/legacy/seg-table.css";
-@import "./styles/components/p1-waveform.css";
-@import "./styles/components/p1-workspace.css";
+@import "./styles/components/waveform.css";
+@import "./styles/components/workspace.css";

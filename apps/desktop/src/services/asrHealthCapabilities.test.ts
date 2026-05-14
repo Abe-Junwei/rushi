@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { parseAsrHealthJson } from "../pages/useProjectP1Controller";
+import { parseAsrHealthJson } from "../pages/useProjectController";
 
 describe("parseAsrHealthJson", () => {
   it("parses extended health fields", () => {

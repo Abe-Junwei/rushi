@@ -1,6 +1,6 @@
 import { useEffect, useState } from "react";
 import { invoke } from "@tauri-apps/api/core";
-import { ProjectP1Panel } from "./components/ProjectP1Panel";
+import { ProjectPanel } from "./components/ProjectPanel";
 import "./App.css";
 
 export default function App() {
@@ -21,7 +21,7 @@ export default function App() {
   return (
     <main className="shell">
       <div className="shell-body">
-        <ProjectP1Panel />
+        <ProjectPanel />
       </div>
 
       <footer className="shell-footer">

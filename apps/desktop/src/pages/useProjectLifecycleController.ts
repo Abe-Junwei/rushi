@@ -2,16 +2,16 @@ import { convertFileSrc } from "@tauri-apps/api/core";
 import { useCallback, useEffect, useRef, useState } from "react";
 import { asrBaseUrl } from "../config/env";
 import { deriveTranscribeHints } from "../services/asrTranscribeHints";
-import { isSttOnlineEnabledButIncomplete, tryBuildP1OnlineTranscribeBridgePayload } from "../services/stt/sttOnlineProviderContract";
-import type { ProjectDetail, ProjectSummary, SegmentDto } from "../tauri/p1Api";
-import * as p1 from "../tauri/p1Api";
-import { type P3DocxExportMode } from "../tauri/p3ExportDocxApi";
-import { useP1ExportController } from "./useP1ExportController";
-import { useProjectCrudController, type P1BusyReason } from "./useProjectCrudController";
+import { isSttOnlineEnabledButIncomplete, tryBuildOnlineTranscribeBridgePayload } from "../services/stt/sttOnlineProviderContract";
+import type { ProjectDetail, ProjectSummary, SegmentDto } from "../tauri/projectApi";
+import * as p1 from "../tauri/projectApi";
+import { type DocxExportMode } from "../tauri/exportDocxApi";
+import { useExportController } from "./useExportController";
+import { useProjectCrudController, type BusyReason } from "./useProjectCrudController";
 import { useSegmentMutationController } from "./useSegmentMutationController";
 
-export type { P1BusyReason };
-type P1BusyPack = { busy: boolean; reason: P1BusyReason | null };
+export type { BusyReason };
+type BusyPack = { busy: boolean; reason: BusyReason | null };
 
 function cloneSegments(segs: SegmentDto[]): SegmentDto[] {
   return segs.map((s) => ({ ...s }));
@@ -26,7 +26,7 @@ export interface ProjectLifecycleApi {
   audioSrc: string | null;
   error: string;
   busy: boolean;
-  busyReason: P1BusyReason | null;
+  busyReason: BusyReason | null;
   newName: string;
   setNewName: React.Dispatch<React.SetStateAction<string>>;
   pickedPath: string | null;
@@ -41,12 +41,12 @@ export interface ProjectLifecycleApi {
   deleteProject: (id: string) => Promise<void>;
   exportTxt: () => Promise<void>;
   exportSrt: () => Promise<void>;
-  exportDocx: (mode: P3DocxExportMode) => Promise<void>;
+  exportDocx: (mode: DocxExportMode) => Promise<void>;
   exportDiagnosticBundle: () => Promise<void>;
   openAppDataFolder: () => Promise<void>;
   applyDetail: (d: ProjectDetail) => void;
   setError: React.Dispatch<React.SetStateAction<string>>;
-  beginBusy: (reason: P1BusyReason) => void;
+  beginBusy: (reason: BusyReason) => void;
   endBusy: () => void;
 
   undo: () => void;
@@ -63,8 +63,8 @@ export interface ProjectLifecycleApi {
   deleteSegmentAt: (idx: number) => void;
   insertSegmentAfter: (idx: number) => void;
   insertSegmentFromTimeRange: (startSec: number, endSec: number) => void;
-  flushP1SegmentTextDraftsFromDom: () => void;
-  attachP1SegmentListDomRoot: (getter: (() => HTMLElement | null) | null) => void;
+  flushSegmentTextDraftsFromDom: () => void;
+  attachSegmentListDomRoot: (getter: (() => HTMLElement | null) | null) => void;
 }
 
 export function useProjectLifecycleController(): ProjectLifecycleApi {
@@ -74,14 +74,14 @@ export function useProjectLifecycleController(): ProjectLifecycleApi {
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [audioSrc, setAudioSrc] = useState<string | null>(null);
   const [error, setError] = useState<string>("");
-  const [busyPack, setBusyPack] = useState<P1BusyPack>({ busy: false, reason: null });
+  const [busyPack, setBusyPack] = useState<BusyPack>({ busy: false, reason: null });
   const [newName, setNewName] = useState("未命名项目");
   const [pickedPath, setPickedPath] = useState<string | null>(null);
   const [transcribeHints, setTranscribeHints] = useState<string[]>([]);
 
   const busy = busyPack.busy;
   const busyReason = busyPack.reason;
-  const beginBusy = useCallback((reason: P1BusyReason) => {
+  const beginBusy = useCallback((reason: BusyReason) => {
     setBusyPack({ busy: true, reason });
   }, []);
   const endBusy = useCallback(() => {
@@ -93,10 +93,10 @@ export function useProjectLifecycleController(): ProjectLifecycleApi {
   const selectedIdxRef = useRef(selectedIdx);
   selectedIdxRef.current = selectedIdx;
 
-  const getP1SegmentListRootRef = useRef<(() => HTMLElement | null) | null>(null);
-  const getP1SegmentListRoot = useCallback(() => getP1SegmentListRootRef.current?.() ?? null, []);
-  const attachP1SegmentListDomRoot = useCallback((getter: (() => HTMLElement | null) | null) => {
-    getP1SegmentListRootRef.current = getter;
+  const getSegmentListRootRef = useRef<(() => HTMLElement | null) | null>(null);
+  const getSegmentListRoot = useCallback(() => getSegmentListRootRef.current?.() ?? null, []);
+  const attachSegmentListDomRoot = useCallback((getter: (() => HTMLElement | null) | null) => {
+    getSegmentListRootRef.current = getter;
   }, []);
 
   const mutations = useSegmentMutationController({
@@ -106,13 +106,13 @@ export function useProjectLifecycleController(): ProjectLifecycleApi {
     setSelectedIdx,
     setError,
     busy,
-    getP1SegmentListRoot,
+    getSegmentListRoot,
   });
 
   const refreshProjects = useCallback(async () => {
     try {
       setError("");
-      const list = await p1.p1ProjectList();
+      const list = await p1.projectList();
       setProjects(list);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -140,7 +140,7 @@ export function useProjectLifecycleController(): ProjectLifecycleApi {
   const pickAudio = useCallback(async () => {
     setError("");
     try {
-      const p = await p1.p1PickAudioPath();
+      const p = await p1.pickAudioPath();
       setPickedPath(p ?? null);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -179,8 +179,8 @@ export function useProjectLifecycleController(): ProjectLifecycleApi {
     setError("");
     setTranscribeHints([]);
     try {
-      const online = tryBuildP1OnlineTranscribeBridgePayload();
-      const out = await p1.p1ProjectRunTranscribe(current.id, asrBaseUrl(), online ?? null);
+      const online = tryBuildOnlineTranscribeBridgePayload();
+      const out = await p1.projectRunTranscribe(current.id, asrBaseUrl(), online ?? null);
       applyDetail(out.detail);
       const hints = deriveTranscribeHints(out.engine, out.warnings, out.detail.segments);
       if (import.meta.env.DEV && hints.length > 0) {
@@ -199,10 +199,10 @@ export function useProjectLifecycleController(): ProjectLifecycleApi {
     beginBusy("save");
     setError("");
     try {
-      mutations.flushP1SegmentTextDraftsFromDom();
+      mutations.flushSegmentTextDraftsFromDom();
       const normalized = segmentsRef.current.map((s, i) => ({ ...s, idx: i }));
-      await p1.p1ProjectSaveSegments(current.id, normalized);
-      const d = await p1.p1ProjectLoad(current.id);
+      await p1.projectSaveSegments(current.id, normalized);
+      const d = await p1.projectLoad(current.id);
       applyDetail(d);
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -214,17 +214,17 @@ export function useProjectLifecycleController(): ProjectLifecycleApi {
   const openAppDataFolder = async () => {
     setError("");
     try {
-      await p1.p1OpenAppDataFolder();
+      await p1.openAppDataFolder();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
   };
 
-  const exports = useP1ExportController({
+  const exports = useExportController({
     current,
     segmentsRef,
     setError,
-    flushP1SegmentTextDraftsFromDom: mutations.flushP1SegmentTextDraftsFromDom,
+    flushSegmentTextDraftsFromDom: mutations.flushSegmentTextDraftsFromDom,
   });
 
   return {
@@ -273,7 +273,7 @@ export function useProjectLifecycleController(): ProjectLifecycleApi {
     deleteSegmentAt: mutations.deleteSegmentAt,
     insertSegmentAfter: mutations.insertSegmentAfter,
     insertSegmentFromTimeRange: mutations.insertSegmentFromTimeRange,
-    flushP1SegmentTextDraftsFromDom: mutations.flushP1SegmentTextDraftsFromDom,
-    attachP1SegmentListDomRoot,
+    flushSegmentTextDraftsFromDom: mutations.flushSegmentTextDraftsFromDom,
+    attachSegmentListDomRoot,
   };
 }

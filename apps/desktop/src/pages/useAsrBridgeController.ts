@@ -1,9 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { asrHealthUrl, isDefaultBundledAsrTarget } from "../config/env";
-import type { AsrHealthCapabilities } from "../tauri/p1Api";
-import * as p1 from "../tauri/p1Api";
+import type { AsrHealthCapabilities } from "../tauri/projectApi";
+import * as p1 from "../tauri/projectApi";
 import {
-  tryBuildP1OnlineTranscribeBridgePayload,
+  tryBuildOnlineTranscribeBridgePayload,
 } from "../services/stt/sttOnlineProviderContract";
 import { usePrepareModelController, type PrepareModelApi } from "./usePrepareModelController";
 
@@ -64,7 +64,7 @@ export function useAsrBridgeController(): AsrBridgeApi {
   const [sttOnlineBridgeEpoch, setSttOnlineBridgeEpoch] = useState(0);
 
   const sttOnlineBridgeReady = useMemo(
-    () => tryBuildP1OnlineTranscribeBridgePayload() !== null,
+    () => tryBuildOnlineTranscribeBridgePayload() !== null,
     // eslint-disable-next-line react-hooks/exhaustive-deps
     [sttOnlineBridgeEpoch],
   );
@@ -139,7 +139,7 @@ export function useAsrBridgeController(): AsrBridgeApi {
 
   const retryBundledAsrSidecar = useCallback(async () => {
     try {
-      await p1.p1RetryBundledAsrSidecar();
+      await p1.retryBundledAsrSidecar();
       await refreshBundledAsrDiag();
       await refreshAsrHealth();
     } catch {
@@ -151,7 +151,7 @@ export function useAsrBridgeController(): AsrBridgeApi {
     modelCtrl.setPrepareModelFailure(null);
     modelCtrl.setFunasrInstallMessage("");
     try {
-      const log = await p1.p1InstallFunasrDepsInteractive();
+      const log = await p1.installFunasrDepsInteractive();
       if (log != null && log.length > 0) {
         modelCtrl.setFunasrInstallMessage(
           [

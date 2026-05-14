@@ -4,8 +4,8 @@ import RegionsPlugin from "wavesurfer.js/dist/plugins/regions.esm.js";
 import type { Region } from "wavesurfer.js/dist/plugins/regions";
 
 import { COLORS } from "../config/tokens";
-import { roundSec3 } from "../utils/p1BoundsSignature";
-import { p1WaveformRegionFillColor } from "../utils/p1SegmentChrome";
+import { roundSec3 } from "../utils/boundsSignature";
+import { waveformRegionFillColor } from "../utils/segmentChrome";
 import { parseSegmentRegionId, segmentRegionId, REGION_ID_PREFIX } from "../utils/waveformRegionId";
 import type { UseProjectWaveformOptions } from "./useProjectWaveform";
 
@@ -139,7 +139,7 @@ export function useWaveformRegions(
           drag: true,
           resize: true,
           minLength: 0.05,
-          color: p1WaveformRegionFillColor(seg, primary),
+          color: waveformRegionFillColor(seg, primary),
         });
         bindSegmentRegion(ws, region, i);
       });
@@ -202,7 +202,7 @@ export function useWaveformRegions(
         r.setOptions({
           start,
           end,
-          color: p1WaveformRegionFillColor(seg, i === sel),
+          color: waveformRegionFillColor(seg, i === sel),
         });
       }
     }
@@ -276,7 +276,7 @@ export function useWaveformRegions(
       const r = rp.getRegions().find((x) => x.id === id);
       if (!r) return;
       const seg = liveSegs[idx];
-      r.setOptions({ color: p1WaveformRegionFillColor(seg, idx === selectedIdx) });
+      r.setOptions({ color: waveformRegionFillColor(seg, idx === selectedIdx) });
     };
 
     if (prev !== null && prev !== selectedIdx) paint(prev);

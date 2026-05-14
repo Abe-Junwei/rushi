@@ -3,8 +3,8 @@ mod china_stt_shell;
 mod db;
 mod export_docx;
 mod online_stt_bridge;
-mod p1;
-mod p4_diagnostic;
+mod project;
+mod diagnostic;
 mod stt_native;
 
 use std::path::PathBuf;
@@ -26,7 +26,7 @@ fn app_version() -> String {
 pub fn run() {
     let app = tauri::Builder::default()
         .setup(|app| {
-            let st = p1::setup_db(app.handle())?;
+            let st = project::setup_db(app.handle())?;
             app.manage(st);
             app.manage(asr_sidecar::AsrSidecarState(std::sync::Mutex::new(None)));
             app.manage(asr_sidecar::BundledAsrLaunchState(std::sync::Mutex::new(
@@ -38,22 +38,22 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             app_version,
             asr_sidecar::bundled_asr_launch_report,
-            p1::p1_pick_audio_path,
-            p1::p1_project_create,
-            p1::p1_project_list,
-            p1::p1_project_load,
-            p1::p1_project_save_segments,
-            p1::p1_project_run_transcribe,
-            p1::p1_project_delete,
-            p1::p1_install_funasr_deps_interactive,
-            p1::p1_retry_bundled_asr_sidecar,
-            p1::p1_open_app_data_folder,
-            p1::p1_export_text_file,
-            p1::p2_glossary_list,
-            p1::p2_glossary_add,
-            p1::p2_glossary_delete,
-            export_docx::p3_export_docx,
-            p4_diagnostic::p4_export_diagnostic_bundle,
+            project::pick_audio_path,
+            project::project_create,
+            project::project_list,
+            project::project_load,
+            project::project_save_segments,
+            project::project_run_transcribe,
+            project::project_delete,
+            project::install_funasr_deps_interactive,
+            project::retry_bundled_asr_sidecar,
+            project::open_app_data_folder,
+            project::export_text_file,
+            project::glossary_list,
+            project::glossary_add,
+            project::glossary_delete,
+            export_docx::export_docx,
+            diagnostic::export_diagnostic_bundle,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application");

@@ -15,7 +15,7 @@ use serde_json::json;
 use std::sync::OnceLock;
 use tokio_util::io::ReaderStream;
 
-use crate::online_stt_bridge::{is_allowed_stt_transcribe_url, P1OnlineTranscribeBridge};
+use crate::online_stt_bridge::{is_allowed_stt_transcribe_url, OnlineTranscribeBridge};
 
 static HTTP: OnceLock<reqwest::Client> = OnceLock::new();
 const MAX_STT_AUDIO_BYTES: u64 = 512 * 1024 * 1024;
@@ -134,7 +134,7 @@ pub async fn dispatch_native(
     adapter: &str,
     client: &reqwest::Client,
     audio_path: &Path,
-    bridge: &P1OnlineTranscribeBridge,
+    bridge: &OnlineTranscribeBridge,
     timeout: Duration,
     log: &impl Fn(&str),
 ) -> Result<serde_json::Value, String> {

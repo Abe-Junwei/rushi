@@ -6,10 +6,10 @@ import { getSttOnlineProviderDefinition } from "./definitions";
 import { isAllowedSttOnlineEndpoint } from "./endpoint";
 import { getSttOnlineApiKeyFromMemory } from "./memorySecrets";
 import { readExternalSttOnlineRuntimeConfigFromStorage } from "./runtimeConfig";
-import type { P1OnlineNativeAdapterId, P1OnlineTranscribeBridgePayload } from "./types";
+import type { OnlineNativeAdapterId, OnlineTranscribeBridgePayload } from "./types";
 
 /** 所选厂商是否由桌面壳内置 HTTP 直连（可省略自定义 endpoint，由 Rust 填默认 URL）。 */
-export function resolveShellNativeSttAdapterId(providerId: string): P1OnlineNativeAdapterId | null {
+export function resolveShellNativeSttAdapterId(providerId: string): OnlineNativeAdapterId | null {
   switch (providerId) {
     case "openai":
       return "openaiAudio";
@@ -49,7 +49,7 @@ export function sttOnlineProviderAllowsEmptyEndpoint(providerId: string): boolea
  * 若已启用在线 STT 且具备密钥（及壳直连厂商所需的持久化 AppKey），则返回 Tauri 载荷；否则返回 null（走本机 ASR）。
  * 启用但未配全时由调用方提示错误，避免静默回落。
  */
-export function tryBuildP1OnlineTranscribeBridgePayload(): P1OnlineTranscribeBridgePayload | null {
+export function tryBuildOnlineTranscribeBridgePayload(): OnlineTranscribeBridgePayload | null {
   const c = readExternalSttOnlineRuntimeConfigFromStorage();
   const key = getSttOnlineApiKeyFromMemory()?.trim();
   if (!c.enabled || !key) return null;

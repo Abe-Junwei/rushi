@@ -1,7 +1,7 @@
 use std::path::Path;
 use std::time::Duration;
 
-use crate::online_stt_bridge::P1OnlineTranscribeBridge;
+use crate::online_stt_bridge::OnlineTranscribeBridge;
 
 use super::audio_bytes_and_format;
 use super::rushi_value;
@@ -10,7 +10,7 @@ use super::rushi_value;
 pub async fn transcribe_aliyun_nls(
     client: &reqwest::Client,
     audio_path: &Path,
-    bridge: &P1OnlineTranscribeBridge,
+    bridge: &OnlineTranscribeBridge,
     timeout: Duration,
     log: &impl Fn(&str),
 ) -> Result<serde_json::Value, String> {

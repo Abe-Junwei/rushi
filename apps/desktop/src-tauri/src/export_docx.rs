@@ -5,7 +5,7 @@ use std::io::Cursor;
 
 use docx_rs::*;
 
-use crate::p1::SegmentDto;
+use crate::project::SegmentDto;
 
 /// Escape text embedded in WordprocessingML runs (minimal subset).
 fn escape_docx_text(s: &str) -> String {
@@ -108,7 +108,7 @@ fn sanitize_title(title: &str) -> String {
 
 /// `export_mode`: `verbatim`（逐字稿：每段带时间轴）或 `lecture`（讲稿：连续正文）。
 #[tauri::command]
-pub fn p3_export_docx(
+pub fn export_docx(
     default_filename: String,
     title: String,
     export_mode: String,

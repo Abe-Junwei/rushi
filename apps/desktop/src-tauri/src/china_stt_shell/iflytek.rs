@@ -9,7 +9,7 @@ use url::Url;
 
 use http::header::HeaderValue;
 
-use crate::online_stt_bridge::P1OnlineTranscribeBridge;
+use crate::online_stt_bridge::OnlineTranscribeBridge;
 
 use super::{hmac_sha256, rushi_value, split_pipe2, wav_strip_to_pcm};
 
@@ -56,7 +56,7 @@ fn iflytek_collect_text(j: &serde_json::Value) -> String {
 
 pub fn transcribe_iflytek_iat_ws(
     audio_path: &Path,
-    bridge: &P1OnlineTranscribeBridge,
+    bridge: &OnlineTranscribeBridge,
     timeout: Duration,
     log: &impl Fn(&str),
 ) -> Result<serde_json::Value, String> {

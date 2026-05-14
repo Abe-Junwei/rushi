@@ -1,5 +1,5 @@
 import { useCallback, useRef } from "react";
-import type { SegmentDto } from "../tauri/p1Api";
+import type { SegmentDto } from "../tauri/projectApi";
 
 function cloneSegments(segs: SegmentDto[]): SegmentDto[] {
   return segs.map((s) => ({ ...s }));

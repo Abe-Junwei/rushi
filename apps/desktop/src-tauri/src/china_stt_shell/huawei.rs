@@ -6,7 +6,7 @@ use chrono::Utc;
 use serde_json::json;
 use url::Url;
 
-use crate::online_stt_bridge::P1OnlineTranscribeBridge;
+use crate::online_stt_bridge::OnlineTranscribeBridge;
 
 use super::{hmac_sha256, rushi_value, sha256_hex, split_pipe2};
 
@@ -48,7 +48,7 @@ fn huawei_authorization(
 pub async fn transcribe_huawei_sis_short(
     client: &reqwest::Client,
     audio_path: &Path,
-    bridge: &P1OnlineTranscribeBridge,
+    bridge: &OnlineTranscribeBridge,
     timeout: Duration,
     log: &impl Fn(&str),
 ) -> Result<serde_json::Value, String> {

@@ -79,7 +79,7 @@ export interface ExternalSttOnlineHealthCheckOptions {
 }
 
 /** 与 Tauri `stt_native::dispatch_native` 的 `native_adapter` 一致（壳内直连）。 */
-export type P1OnlineNativeAdapterId =
+export type OnlineNativeAdapterId =
   | "openaiAudio"
   | "assemblyai"
   | "baiduSpeech"
@@ -93,13 +93,13 @@ export type P1OnlineNativeAdapterId =
   | "aispeechLasrSentenceV2"
   | "volcengineBigmodelNostreamWs";
 
-/** 供 Tauri `p1_project_run_transcribe` 的 `online` 参数；与 Rust `P1OnlineTranscribeBridge` 字段 camelCase 对齐。 */
-export type P1OnlineTranscribeBridgePayload = {
+/** 供 Tauri `project_run_transcribe` 的 `online` 参数；与 Rust `OnlineTranscribeBridge` 字段 camelCase 对齐。 */
+export type OnlineTranscribeBridgePayload = {
   transcribeUrl: string;
   authorization?: string | null;
   timeoutSec?: number | null;
   /** 非空时 Rust 走厂商原生 API，再归一为 Rushi `TranscriptionResult` JSON。 */
-  nativeAdapter?: P1OnlineNativeAdapterId | null;
+  nativeAdapter?: OnlineNativeAdapterId | null;
   /** 应用级标识（AppKey 等），由自建网关读取请求头 `X-Rushi-Stt-App-Key`（若设置）。 */
   appKey?: string | null;
 };

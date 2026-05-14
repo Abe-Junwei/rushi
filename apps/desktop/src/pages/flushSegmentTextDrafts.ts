@@ -1,5 +1,5 @@
 import { flushSync } from "react-dom";
-import type { SegmentDto } from "../tauri/p1Api";
+import type { SegmentDto } from "../tauri/projectApi";
 
 /** 将语段卡正文输入框当前值写回 `segments`（与本地 draft 一致），供保存/合并等读最新正文。 */
 export function flushSegmentTextDraftsFromDom(
@@ -11,8 +11,8 @@ export function flushSegmentTextDraftsFromDom(
   const prev = segmentsRef.current;
   const updates: { idx: number; text: string }[] = [];
   prev.forEach((s, i) => {
-    const row = root.querySelector(`[data-p1-seg-row="${i}"]`);
-    const ta = row?.querySelector<HTMLTextAreaElement | HTMLInputElement>("textarea, input.p1-seg-text");
+    const row = root.querySelector(`[data-seg-row="${i}"]`);
+    const ta = row?.querySelector<HTMLTextAreaElement | HTMLInputElement>("textarea, input.seg-text");
     if (!ta || ta.value === s.text) return;
     updates.push({ idx: i, text: ta.value });
   });

@@ -111,8 +111,8 @@
 - **问题**: 未使用正规 URL 解析器；`http://127.0.0.1:80@evil.com/` 被误判为本地地址，实际连接到 `evil.com`。
 - **修复**: 使用 `url::Url::parse` 正规解析后比较 `host`。
 
-#### 15. `p4_diagnostic.rs` 日志打包跟随符号链接，可泄露外部敏感文件
-- **文件**: `apps/desktop/src-tauri/src/p4_diagnostic.rs:96-126`
+#### 15. `diagnostic.rs` 日志打包跟随符号链接，可泄露外部敏感文件
+- **文件**: `apps/desktop/src-tauri/src/diagnostic.rs:96-126`
 - **问题**: `p.is_file()` 跟随符号链接，攻击者可在 logs 目录下放置指向 `/etc/passwd` 的 symlink 并被打包。
 - **修复**: 用 `symlink_metadata` 显式跳过符号链接。
 
@@ -207,7 +207,7 @@
 | 34 | `useProjectP1Controller.ts:26-29` | `safeExportBasename` 未覆盖控制字符、Windows 保留名 | 增强过滤规则 |
 | 35 | `P1SegmentContextMenu.tsx:37` | 右键菜单位置无视口边界校正 | 根据 `window.innerWidth/Height` 钳制 |
 | 36 | `useProjectP1Controller.ts:82-83` | `busy` / `busyReason` 双状态非原子 | 合并为单一 state |
-| 37 | `useP1TranscriptionLayer.ts:414-417` | `scrollIntoView` 用 `useEffect` 时序不可靠 | 改用 `useLayoutEffect` |
+| 37 | `useTranscriptionLayer.ts:414-417` | `scrollIntoView` 用 `useEffect` 时序不可靠 | 改用 `useLayoutEffect` |
 | 38 | `P1EnvironmentPanel.tsx:76,86,105` | 超时阈值多处硬编码 | 提取具名常量 |
 
 ### Rust
@@ -222,7 +222,7 @@
 | 44 | `asr_sidecar.rs:298-309` | 子进程异常退出后未收割，可能成僵尸 | 后台线程轮询 `try_wait()` |
 | 45 | `export_docx.rs:59-66` | `sanitize_title` 未转义 XML 特殊字符 | 转义 `& < > "` |
 | 46 | `export_docx.rs:19-33` | lecture 模式大项目全内存构建 | 限制 segment 数量或分块写入 |
-| 47 | `p4_diagnostic.rs:35` | zip 打包失败残留不完整文件 | 先写 `.tmp` 再 `rename` |
+| 47 | `diagnostic.rs:35` | zip 打包失败残留不完整文件 | 先写 `.tmp` 再 `rename` |
 | 48 | `p1.rs:172` | 每次转写新建 `reqwest::blocking::Client` | 模块级缓存 Client |
 
 ### Python ASR
@@ -257,12 +257,12 @@
 - `p1BoundsSignature.ts` `roundSec3` 未防御 `NaN`
 - `cloneSegments` 浅拷贝注释缺失
 - `undoStack` 硬编码 40 层且 `shift()` 为 O(n)
-- `document.querySelector([data-p1-seg-row="..."])` 多处硬编码
+- `document.querySelector([data-seg-row="..."])` 多处硬编码
 - `tsconfig.json` 缺少 `sourceMap`
 
 **Rust**
 - `db.rs` 迁移连接上的 `PRAGMA foreign_keys = ON` 随连接关闭即失效（无害）
-- `p4_diagnostic.rs` `u64 as usize` 32 位截断风险
+- `diagnostic.rs` `u64 as usize` 32 位截断风险
 - `p1_pick_audio_path` 返回路径可被前端篡改回传
 - `reveal_path_in_file_manager` 命令参数注入风险（`-` 开头路径）
 - `now_ms()` `unwrap_or(0)` 回退语义危险
@@ -293,7 +293,7 @@
 7. 前端 `prepareDefaultFunasrModel` 添加 `AbortController`
 8. Rust `post_transcribe_multipart` 改为异步或独立线程
 9. Rust `is_allowed_stt_transcribe_url` 使用 `url::Url` 正规解析
-10. Rust `p4_diagnostic.rs` 跳过符号链接
+10. Rust `diagnostic.rs` 跳过符号链接
 11. 前端 `isTranscriptionResult` 完善类型守卫
 12. Rust `append_desktop_log_line` 添加日志轮转或上限
 13. Python `funasr_engine.py` 添加模型初始化锁

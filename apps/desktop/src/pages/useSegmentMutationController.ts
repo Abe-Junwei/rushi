@@ -1,7 +1,7 @@
 import { useCallback, useRef } from "react";
-import type { SegmentDto } from "../tauri/p1Api";
-import { mergeTwoSegments, reindexSegments } from "./p1SegmentListHelpers";
-import { flushSegmentTextDraftsFromDom } from "./flushSegmentTextDrafts";
+import type { SegmentDto } from "../tauri/projectApi";
+import { mergeTwoSegments, reindexSegments } from "./segmentListHelpers";
+import { flushSegmentTextDraftsFromDom as flushSegmentTextDraftsFromDomImpl } from "./flushSegmentTextDrafts";
 import { useSegmentSplitController } from "./useSegmentSplitController";
 import { useSegmentUndoRedo } from "./useSegmentUndoRedo";
 
@@ -25,7 +25,7 @@ export interface SegmentMutationApi {
   deleteSegmentAt: (idx: number) => void;
   insertSegmentAfter: (idx: number) => void;
   insertSegmentFromTimeRange: (startSec: number, endSec: number) => void;
-  flushP1SegmentTextDraftsFromDom: () => void;
+  flushSegmentTextDraftsFromDom: () => void;
   resetMutationHistory: () => void;
 }
 
@@ -37,11 +37,11 @@ export interface SegmentMutationDeps {
   setError: (msg: string) => void;
   busy: boolean;
   /** 语段列表挂载容器；缺省时退回 `document`（测试等） */
-  getP1SegmentListRoot?: () => HTMLElement | null;
+  getSegmentListRoot?: () => HTMLElement | null;
 }
 
 export function useSegmentMutationController(deps: SegmentMutationDeps): SegmentMutationApi {
-  const { segmentsRef, setSegments, setSelectedIdx, setError, busy, getP1SegmentListRoot } = deps;
+  const { segmentsRef, setSegments, setSelectedIdx, setError, busy, getSegmentListRoot } = deps;
   void deps.selectedIdxRef;
 
   const segmentBoundsLiveGestureRef = useRef(false);
@@ -50,10 +50,10 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
 
   const { pushUndo, pushUndoForTextEdit, undo, redo } = undoRedo;
 
-  const flushP1SegmentTextDraftsFromDom = useCallback(() => {
-    const el = getP1SegmentListRoot?.() ?? null;
-    flushSegmentTextDraftsFromDom(segmentsRef, setSegments, el ?? undefined);
-  }, [segmentsRef, setSegments, getP1SegmentListRoot]);
+  const flushSegmentTextDraftsFromDom = useCallback(() => {
+    const el = getSegmentListRoot?.() ?? null;
+    flushSegmentTextDraftsFromDomImpl(segmentsRef, setSegments, el ?? undefined);
+  }, [segmentsRef, setSegments, getSegmentListRoot]);
 
   const splits = useSegmentSplitController({
     segmentsRef,
@@ -61,7 +61,7 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
     setSelectedIdx,
     setError,
     pushUndo,
-    flushP1SegmentTextDraftsFromDom,
+    flushSegmentTextDraftsFromDom,
   });
 
   const updateSegmentText = useCallback(
@@ -131,7 +131,7 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
   const mergeWithPrevAt = useCallback(
     (idx: number) => {
       if (idx <= 0) return;
-      flushP1SegmentTextDraftsFromDom();
+      flushSegmentTextDraftsFromDom();
       const segs = segmentsRef.current;
       const a = segs[idx - 1];
       const b = segs[idx];
@@ -145,12 +145,12 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
       });
       setSelectedIdx(idx - 1);
     },
-    [flushP1SegmentTextDraftsFromDom, segmentsRef, setSegments, setSelectedIdx, pushUndo],
+    [flushSegmentTextDraftsFromDom, segmentsRef, setSegments, setSelectedIdx, pushUndo],
   );
 
   const mergeWithNextAt = useCallback(
     (idx: number) => {
-      flushP1SegmentTextDraftsFromDom();
+      flushSegmentTextDraftsFromDom();
       const segs = segmentsRef.current;
       if (idx >= segs.length - 1) return;
       const a = segs[idx];
@@ -165,7 +165,7 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
       });
       setSelectedIdx(idx);
     },
-    [flushP1SegmentTextDraftsFromDom, segmentsRef, setSegments, setSelectedIdx, pushUndo],
+    [flushSegmentTextDraftsFromDom, segmentsRef, setSegments, setSelectedIdx, pushUndo],
   );
 
   const mergeWithPrev = (selectedIdx: number) => mergeWithPrevAt(selectedIdx);
@@ -173,7 +173,7 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
 
   const deleteSegmentAt = useCallback(
     (idx: number) => {
-      flushP1SegmentTextDraftsFromDom();
+      flushSegmentTextDraftsFromDom();
       const segs = segmentsRef.current;
       if (idx < 0 || idx >= segs.length) return;
       setError("");
@@ -188,12 +188,12 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
         return Math.max(0, Math.min(next, nextLen - 1));
       });
     },
-    [flushP1SegmentTextDraftsFromDom, segmentsRef, setSegments, setSelectedIdx, setError, pushUndo],
+    [flushSegmentTextDraftsFromDom, segmentsRef, setSegments, setSelectedIdx, setError, pushUndo],
   );
 
   const insertSegmentAfter = useCallback(
     (idx: number) => {
-      flushP1SegmentTextDraftsFromDom();
+      flushSegmentTextDraftsFromDom();
       const segs = segmentsRef.current;
       if (idx < 0 || idx >= segs.length) return;
       const a = segs[idx];
@@ -232,13 +232,13 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
       });
       setSelectedIdx(idx + 1);
     },
-    [flushP1SegmentTextDraftsFromDom, segmentsRef, setSegments, setSelectedIdx, setError, pushUndo],
+    [flushSegmentTextDraftsFromDom, segmentsRef, setSegments, setSelectedIdx, setError, pushUndo],
   );
 
   const insertSegmentFromTimeRange = useCallback(
     (startSec: number, endSec: number) => {
       if (busy) return;
-      flushP1SegmentTextDraftsFromDom();
+      flushSegmentTextDraftsFromDom();
       const lo = roundSec3(Math.min(startSec, endSec));
       const hi = roundSec3(Math.max(startSec, endSec));
       if (hi <= lo + 0.05) {
@@ -271,7 +271,7 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
       });
       setSelectedIdx(insertAt);
     },
-    [busy, flushP1SegmentTextDraftsFromDom, segmentsRef, setSegments, setSelectedIdx, setError, pushUndo],
+    [busy, flushSegmentTextDraftsFromDom, segmentsRef, setSegments, setSelectedIdx, setError, pushUndo],
   );
 
   return {
@@ -290,7 +290,7 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
     deleteSegmentAt,
     insertSegmentAfter,
     insertSegmentFromTimeRange,
-    flushP1SegmentTextDraftsFromDom,
+    flushSegmentTextDraftsFromDom,
     resetMutationHistory: undoRedo.reset,
   };
 }

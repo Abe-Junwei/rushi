@@ -4,7 +4,7 @@ import {
   STT_ONLINE_PROVIDER_STORAGE_KEYS,
   isSttOnlineEnabledButIncomplete,
   setSttOnlineApiKeyInMemory,
-  tryBuildP1OnlineTranscribeBridgePayload,
+  tryBuildOnlineTranscribeBridgePayload,
   resolveShellNativeSttAdapterId,
 } from "./sttOnlineProviderContract";
 
@@ -32,7 +32,7 @@ function mockLocalStorage(initial: Record<string, string>) {
   } as Storage;
 }
 
-describe("tryBuildP1OnlineTranscribeBridgePayload", () => {
+describe("tryBuildOnlineTranscribeBridgePayload", () => {
   beforeEach(() => {
     vi.stubGlobal("localStorage", mockLocalStorage({}));
     setSttOnlineApiKeyInMemory(null);
@@ -44,7 +44,7 @@ describe("tryBuildP1OnlineTranscribeBridgePayload", () => {
   });
 
   it("returns null when online STT is not enabled in storage", () => {
-    expect(tryBuildP1OnlineTranscribeBridgePayload()).toBeNull();
+    expect(tryBuildOnlineTranscribeBridgePayload()).toBeNull();
   });
 
   it("builds OpenAI native payload without custom endpoint when key present", () => {
@@ -57,7 +57,7 @@ describe("tryBuildP1OnlineTranscribeBridgePayload", () => {
       }),
     );
     setSttOnlineApiKeyInMemory("sk-test");
-    const p = tryBuildP1OnlineTranscribeBridgePayload();
+    const p = tryBuildOnlineTranscribeBridgePayload();
     expect(p).not.toBeNull();
     expect(p?.nativeAdapter).toBe("openaiAudio");
     expect(p?.transcribeUrl).toBe(STT_ONLINE_OPENAI_DEFAULT_TRANSCRIBE_URL);
@@ -74,7 +74,7 @@ describe("tryBuildP1OnlineTranscribeBridgePayload", () => {
       }),
     );
     setSttOnlineApiKeyInMemory("aa-test");
-    const p = tryBuildP1OnlineTranscribeBridgePayload();
+    const p = tryBuildOnlineTranscribeBridgePayload();
     expect(p?.nativeAdapter).toBe("assemblyai");
     expect(p?.transcribeUrl).toBe("https://api.assemblyai.com");
     expect(p?.authorization).toBe("aa-test");
@@ -117,7 +117,7 @@ describe("tryBuildP1OnlineTranscribeBridgePayload", () => {
       }),
     );
     setSttOnlineApiKeyInMemory("nls-token");
-    const p = tryBuildP1OnlineTranscribeBridgePayload();
+    const p = tryBuildOnlineTranscribeBridgePayload();
     expect(p?.nativeAdapter).toBe("aliyunNls");
     expect(p?.transcribeUrl).toBe("");
     expect(p?.appKey).toBe("my-nls-appkey");
@@ -134,7 +134,7 @@ describe("tryBuildP1OnlineTranscribeBridgePayload", () => {
       }),
     );
     setSttOnlineApiKeyInMemory("dg-key");
-    const p = tryBuildP1OnlineTranscribeBridgePayload();
+    const p = tryBuildOnlineTranscribeBridgePayload();
     expect(p?.nativeAdapter).toBe("deepgramListen");
     expect(p?.transcribeUrl).toBe("");
     expect(p?.authorization).toBe("Bearer dg-key");
@@ -158,7 +158,7 @@ describe("tryBuildP1OnlineTranscribeBridgePayload", () => {
       }),
     );
     setSttOnlineApiKeyInMemory("apikeyxxx|secretxxx");
-    const p = tryBuildP1OnlineTranscribeBridgePayload();
+    const p = tryBuildOnlineTranscribeBridgePayload();
     expect(p?.nativeAdapter).toBe("iflytekIatWs");
     expect(p?.appKey).toBe("appid-123");
     expect(p?.authorization).toBe("apikeyxxx|secretxxx");
@@ -175,7 +175,7 @@ describe("tryBuildP1OnlineTranscribeBridgePayload", () => {
       }),
     );
     setSttOnlineApiKeyInMemory("AKID|SECRETKEY");
-    const p = tryBuildP1OnlineTranscribeBridgePayload();
+    const p = tryBuildOnlineTranscribeBridgePayload();
     expect(p?.nativeAdapter).toBe("huaweiSisShortAudio");
     expect(p?.appKey).toBe("proj-abc");
     expect(p?.authorization).toBe("Bearer AKID|SECRETKEY");
@@ -193,7 +193,7 @@ describe("tryBuildP1OnlineTranscribeBridgePayload", () => {
       }),
     );
     setSttOnlineApiKeyInMemory("lasr-key");
-    const p = tryBuildP1OnlineTranscribeBridgePayload();
+    const p = tryBuildOnlineTranscribeBridgePayload();
     expect(p?.nativeAdapter).toBe("aispeechLasrSentenceV2");
     expect(p?.appKey).toBe("product-99");
     expect(p?.authorization).toBe("Bearer lasr-key");
@@ -211,7 +211,7 @@ describe("tryBuildP1OnlineTranscribeBridgePayload", () => {
       }),
     );
     setSttOnlineApiKeyInMemory("access-token-xyz");
-    const p = tryBuildP1OnlineTranscribeBridgePayload();
+    const p = tryBuildOnlineTranscribeBridgePayload();
     expect(p?.nativeAdapter).toBe("volcengineBigmodelNostreamWs");
     expect(p?.appKey).toBe("app-key-volc");
     expect(p?.authorization).toBe("Bearer access-token-xyz");
@@ -229,7 +229,7 @@ describe("tryBuildP1OnlineTranscribeBridgePayload", () => {
       }),
     );
     setSttOnlineApiKeyInMemory("baidu-secret");
-    const p = tryBuildP1OnlineTranscribeBridgePayload();
+    const p = tryBuildOnlineTranscribeBridgePayload();
     expect(p?.nativeAdapter).toBe("baiduSpeech");
     expect(p?.appKey).toBe("baidu-api-key");
     expect(p?.authorization).toBe("Bearer baidu-secret");
@@ -260,7 +260,7 @@ describe("tryBuildP1OnlineTranscribeBridgePayload", () => {
       }),
     );
     setSttOnlineApiKeyInMemory("proxy-secret");
-    const p = tryBuildP1OnlineTranscribeBridgePayload();
+    const p = tryBuildOnlineTranscribeBridgePayload();
     expect(p?.appKey).toBe("app-xyz");
     expect(p?.nativeAdapter).toBeUndefined();
   });

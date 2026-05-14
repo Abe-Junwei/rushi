@@ -2,9 +2,9 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import WaveSurfer from "wavesurfer.js";
 import RegionsPlugin from "wavesurfer.js/dist/plugins/regions.esm.js";
 import { COLORS } from "../config/tokens";
-import type { SegmentDto } from "../tauri/p1Api";
+import type { SegmentDto } from "../tauri/projectApi";
 import { formatMediaTime } from "../utils/formatMediaTime";
-import { p1WaveformBoundsSignature } from "../utils/p1BoundsSignature";
+import { waveformBoundsSignature } from "../utils/boundsSignature";
 import { parseSegmentRegionId } from "../utils/waveformRegionId";
 import { useWaveformPlayback } from "./useWaveformPlayback";
 import { useWaveformRegions } from "./useWaveformRegions";
@@ -62,7 +62,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
 
   const playback = useWaveformPlayback(wsRef, containerRef, isReady, minPxPerSecRef);
 
-  const boundsSig = useMemo(() => p1WaveformBoundsSignature(segments), [segments]);
+  const boundsSig = useMemo(() => waveformBoundsSignature(segments), [segments]);
 
   const clearWsListeners = useCallback(() => {
     wsUnsubsRef.current.forEach((u) => u());
@@ -130,9 +130,9 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
         url: mediaUrl,
         height: initialH,
         normalize: true,
-        waveColor: COLORS.p1WaveformWave,
-        progressColor: COLORS.p1WaveformProgress,
-        cursorColor: COLORS.p1WaveformCursor,
+        waveColor: COLORS.waveformWave,
+        progressColor: COLORS.waveformProgress,
+        cursorColor: COLORS.waveformCursor,
         cursorWidth: 1,
         barWidth: 2,
         barGap: 1,
@@ -222,16 +222,16 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     const h = waveformHeightPx;
     if (el) {
       el.style.height = `${h}px`;
-      el.style.backgroundColor = COLORS.p1WaveformSurface;
+      el.style.backgroundColor = COLORS.waveformSurface;
     }
     const ws = wsRef.current;
     if (!ws || !isReady || disabled) return;
     try {
       ws.setOptions({
         height: h,
-        waveColor: COLORS.p1WaveformWave,
-        progressColor: COLORS.p1WaveformProgress,
-        cursorColor: COLORS.p1WaveformCursor,
+        waveColor: COLORS.waveformWave,
+        progressColor: COLORS.waveformProgress,
+        cursorColor: COLORS.waveformCursor,
       });
     } catch {
       try {

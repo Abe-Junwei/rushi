@@ -66,7 +66,7 @@ cd apps/desktop && npm run test:e2e
 |---|------|-------------|-------------|
 | 1 | 启动 ASR（`python -m rushi_asr`），`GET /health` 正常 | ☐ | |
 | 2 | `npm run desktop:dev`，打开「本地项目与校对」面板 | ☐ | |
-| 3 | 创建项目、选真实 **30–60 分钟** 级中文课音频（[`p1-acceptance.md`](./p1-acceptance.md) 建议） | ☐ | |
+| 3 | 创建项目、选真实 **30–60 分钟** 级中文课音频（[`acceptance.md`](./acceptance.md) 建议） | ☐ | |
 | 4 | 拉取语段 → 编辑 / 拆分 / 合并 → **保存到 SQLite** | ☐ | |
 | 5 | 关应用重开，确认语段与时间戳仍在（P1 验收 2） | ☐ | |
 | 6 | 导出 **TXT、SRT**，与界面正文对照（P1 验收 4） | ☐ | |

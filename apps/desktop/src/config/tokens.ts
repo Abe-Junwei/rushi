@@ -47,14 +47,14 @@ export const COLORS = {
   clayTeal: "#1a3a3a",
   clayCard: "#f5f0e0",
 
-  /** P1 WaveSurfer 白底波形条（与 tailwind `zen-p1-wf-*` 同源） */
-  p1WaveformSurface: "#ffffff",
-  p1WaveformWave: "#c4c4c8",
-  p1WaveformProgress: "#8e8e93",
-  p1WaveformCursor: "#6a6a6f",
-  /** 波形 region 叠色（与 p1WaveformRegionFillColor 一致） */
-  p1WaveformRegionLaneLow: "#9ca3af",
-  p1WaveformRegionLaneIdle: "#d1d5db",
+  /** WaveSurfer 白底波形条（与 tailwind `zen-wf-*` 同源） */
+  waveformSurface: "#ffffff",
+  waveformWave: "#c4c4c8",
+  waveformProgress: "#8e8e93",
+  waveformCursor: "#6a6a6f",
+  /** 波形 region 叠色（与 waveformRegionFillColor 一致） */
+  waveformRegionLaneLow: "#9ca3af",
+  waveformRegionLaneIdle: "#d1d5db",
 } as const;
 
 export type ColorToken = keyof typeof COLORS;

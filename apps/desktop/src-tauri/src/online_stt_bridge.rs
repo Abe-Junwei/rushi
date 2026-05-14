@@ -5,7 +5,7 @@ use url::Url;
 
 #[derive(Debug, Deserialize)]
 #[serde(rename_all = "camelCase")]
-pub struct P1OnlineTranscribeBridge {
+pub struct OnlineTranscribeBridge {
     /// 自定义网关 POST URL，或各厂商默认端点（可为空串由壳填默认）。
     pub transcribe_url: String,
     /// Bearer / Token / 订阅密钥等；部分厂商约定为内存 Secret（见 `native_adapter`）。

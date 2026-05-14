@@ -135,7 +135,7 @@ mod tests {
     }
 
     #[test]
-    fn migrate_segments_p2_adds_columns() {
+    fn migrate_segments_adds_columns() {
         let conn = Connection::open_in_memory().unwrap();
         // 先创建基础 schema（不含 P2 列）
         conn.execute_batch(

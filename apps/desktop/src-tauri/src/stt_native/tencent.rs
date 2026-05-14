@@ -5,7 +5,7 @@ use base64::Engine;
 use chrono::{TimeZone, Utc};
 use serde_json::json;
 
-use crate::online_stt_bridge::P1OnlineTranscribeBridge;
+use crate::online_stt_bridge::OnlineTranscribeBridge;
 
 use super::audio_bytes_and_format;
 use super::{hmac_sha256, rushi_value, sha256_hex};
@@ -56,7 +56,7 @@ fn tencent_tc3_authorization(
 pub async fn transcribe_tencent(
     client: &reqwest::Client,
     audio_path: &Path,
-    bridge: &P1OnlineTranscribeBridge,
+    bridge: &OnlineTranscribeBridge,
     timeout: Duration,
     log: &impl Fn(&str),
 ) -> Result<serde_json::Value, String> {

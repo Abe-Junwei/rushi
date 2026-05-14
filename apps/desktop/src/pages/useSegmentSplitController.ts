@@ -1,6 +1,6 @@
 import { useCallback } from "react";
-import type { SegmentDto } from "../tauri/p1Api";
-import { buildSplitPair, reindexSegments } from "./p1SegmentListHelpers";
+import type { SegmentDto } from "../tauri/projectApi";
+import { buildSplitPair, reindexSegments } from "./segmentListHelpers";
 
 function roundSec3(x: number): number {
   return Math.round(x * 1000) / 1000;
@@ -17,14 +17,14 @@ export interface SegmentSplitDeps {
   setSelectedIdx: React.Dispatch<React.SetStateAction<number>>;
   setError: (msg: string) => void;
   pushUndo: () => void;
-  flushP1SegmentTextDraftsFromDom: () => void;
+  flushSegmentTextDraftsFromDom: () => void;
 }
 
 export function useSegmentSplitController(deps: SegmentSplitDeps): SegmentSplitApi {
-  const { segmentsRef, setSegments, setSelectedIdx, setError, pushUndo, flushP1SegmentTextDraftsFromDom } = deps;
+  const { segmentsRef, setSegments, setSelectedIdx, setError, pushUndo, flushSegmentTextDraftsFromDom } = deps;
 
   const splitAtSelection = useCallback((selectedIdx: number) => {
-    flushP1SegmentTextDraftsFromDom();
+    flushSegmentTextDraftsFromDom();
     const segs = segmentsRef.current;
     if (segs.length === 0) return;
     const i = Math.min(selectedIdx, segs.length - 1);
@@ -44,11 +44,11 @@ export function useSegmentSplitController(deps: SegmentSplitDeps): SegmentSplitA
       return reindexSegments(out);
     });
     setSelectedIdx(i + 1);
-  }, [flushP1SegmentTextDraftsFromDom, segmentsRef, setSegments, setSelectedIdx, setError, pushUndo]);
+  }, [flushSegmentTextDraftsFromDom, segmentsRef, setSegments, setSelectedIdx, setError, pushUndo]);
 
   const splitAtPlayhead = useCallback(
     (timeSec: number) => {
-      flushP1SegmentTextDraftsFromDom();
+      flushSegmentTextDraftsFromDom();
       const t = roundSec3(timeSec);
       const segs = segmentsRef.current;
       const i = segs.findIndex((s) => t > s.start_sec + 0.02 && t < s.end_sec - 0.02);
@@ -72,7 +72,7 @@ export function useSegmentSplitController(deps: SegmentSplitDeps): SegmentSplitA
       });
       setSelectedIdx(i + 1);
     },
-    [flushP1SegmentTextDraftsFromDom, segmentsRef, setSegments, setSelectedIdx, setError, pushUndo],
+    [flushSegmentTextDraftsFromDom, segmentsRef, setSegments, setSelectedIdx, setError, pushUndo],
   );
 
   return { splitAtSelection, splitAtPlayhead };

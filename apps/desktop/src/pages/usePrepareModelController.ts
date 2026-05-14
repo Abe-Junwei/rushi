@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { asrBaseUrl } from "../config/env";
-import type { AsrHealthCapabilities } from "../tauri/p1Api";
+import type { AsrHealthCapabilities } from "../tauri/projectApi";
 import {
   describePrepareModelFailure,
   type PrepareModelFailureCopy,

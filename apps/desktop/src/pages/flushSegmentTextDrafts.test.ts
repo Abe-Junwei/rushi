@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { flushSync } from "react-dom";
 import type React from "react";
-import type { SegmentDto } from "../tauri/p1Api";
+import type { SegmentDto } from "../tauri/projectApi";
 import { flushSegmentTextDraftsFromDom } from "./flushSegmentTextDrafts";
 
 function seg(text: string): SegmentDto {
@@ -22,17 +22,17 @@ describe("flushSegmentTextDraftsFromDom", () => {
     document.body.appendChild(root);
 
     const row0 = document.createElement("div");
-    row0.setAttribute("data-p1-seg-row", "0");
+    row0.setAttribute("data-seg-row", "0");
     const input0 = document.createElement("input");
-    input0.className = "p1-seg-text";
+    input0.className = "seg-text";
     input0.value = "draft";
     row0.appendChild(input0);
     root.appendChild(row0);
 
     const decoy = document.createElement("div");
-    decoy.setAttribute("data-p1-seg-row", "0");
+    decoy.setAttribute("data-seg-row", "0");
     const decoyInput = document.createElement("input");
-    decoyInput.className = "p1-seg-text";
+    decoyInput.className = "seg-text";
     decoyInput.value = "wrong";
     decoy.appendChild(decoyInput);
     document.body.appendChild(decoy);
@@ -57,9 +57,9 @@ describe("flushSegmentTextDraftsFromDom", () => {
 
   it("falls back to document when listRoot is omitted", () => {
     const row = document.createElement("div");
-    row.setAttribute("data-p1-seg-row", "0");
+    row.setAttribute("data-seg-row", "0");
     const input = document.createElement("input");
-    input.className = "p1-seg-text";
+    input.className = "seg-text";
     input.value = "from-doc";
     row.appendChild(input);
     document.body.appendChild(row);

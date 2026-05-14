@@ -11,7 +11,7 @@ use uuid::Uuid;
 
 use http::header::HeaderValue;
 
-use crate::online_stt_bridge::P1OnlineTranscribeBridge;
+use crate::online_stt_bridge::OnlineTranscribeBridge;
 
 use super::rushi_value;
 
@@ -100,7 +100,7 @@ fn volc_parse_server_binary(bin: &[u8]) -> Result<Option<(serde_json::Value, boo
 
 pub fn transcribe_volcengine_bigmodel_nostream_ws(
     audio_path: &Path,
-    bridge: &P1OnlineTranscribeBridge,
+    bridge: &OnlineTranscribeBridge,
     timeout: Duration,
     log: &impl Fn(&str),
 ) -> Result<serde_json::Value, String> {

@@ -1,9 +1,9 @@
 import { useCallback } from "react";
-import type { ProjectDetail } from "../tauri/p1Api";
-import * as p1 from "../tauri/p1Api";
+import type { ProjectDetail } from "../tauri/projectApi";
+import * as p1 from "../tauri/projectApi";
 import type { SegmentMutationApi } from "./useSegmentMutationController";
 
-export type P1BusyReason = "create" | "load" | "transcribe" | "save" | "delete" | "install_funasr";
+export type BusyReason = "create" | "load" | "transcribe" | "save" | "delete" | "install_funasr";
 
 export interface ProjectCrudApi {
   createProject: () => Promise<void>;
@@ -16,13 +16,13 @@ export interface ProjectCrudDeps {
   newName: string;
   current: ProjectDetail | null;
   setError: (msg: string) => void;
-  beginBusy: (reason: P1BusyReason) => void;
+  beginBusy: (reason: BusyReason) => void;
   endBusy: () => void;
   applyDetail: (d: ProjectDetail) => void;
   refreshProjects: () => Promise<void>;
   mutations: SegmentMutationApi;
   setCurrent: React.Dispatch<React.SetStateAction<ProjectDetail | null>>;
-  setSegments: React.Dispatch<React.SetStateAction<import("../tauri/p1Api").SegmentDto[]>>;
+  setSegments: React.Dispatch<React.SetStateAction<import("../tauri/projectApi").SegmentDto[]>>;
   setAudioSrc: React.Dispatch<React.SetStateAction<string | null>>;
   setTranscribeHints: React.Dispatch<React.SetStateAction<string[]>>;
 }
@@ -52,7 +52,7 @@ export function useProjectCrudController(deps: ProjectCrudDeps): ProjectCrudApi 
     beginBusy("create");
     setError("");
     try {
-      const d = await p1.p1ProjectCreate(newName.trim() || "未命名项目", pickedPath);
+      const d = await p1.projectCreate(newName.trim() || "未命名项目", pickedPath);
       applyDetail(d);
       await refreshProjects();
     } catch (e) {
@@ -67,7 +67,7 @@ export function useProjectCrudController(deps: ProjectCrudDeps): ProjectCrudApi 
       beginBusy("load");
       setError("");
       try {
-        const d = await p1.p1ProjectLoad(id);
+        const d = await p1.projectLoad(id);
         applyDetail(d);
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
@@ -84,7 +84,7 @@ export function useProjectCrudController(deps: ProjectCrudDeps): ProjectCrudApi 
       beginBusy("delete");
       setError("");
       try {
-        await p1.p1ProjectDelete(id);
+        await p1.projectDelete(id);
         if (current?.id === id) {
           mutations.resetMutationHistory();
           setCurrent(null);
