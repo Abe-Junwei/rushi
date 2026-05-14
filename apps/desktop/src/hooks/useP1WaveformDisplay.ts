@@ -53,17 +53,26 @@ export function useP1WaveformDisplay(args: { busy: boolean }) {
     (e: React.PointerEvent) => {
       if (e.button !== 0 || args.busy) return;
       e.preventDefault();
+      const target = e.currentTarget;
+      target.setPointerCapture(e.pointerId);
       const startY = e.clientY;
       const startH = waveformHeightPxRef.current;
       const onMove = (ev: PointerEvent) => {
         setWaveformHeightPxState(clampP1WaveformHeight(startH + (ev.clientY - startY)));
       };
-      const onUp = () => {
+      const onUp = (ev: PointerEvent) => {
+        try {
+          target.releasePointerCapture(ev.pointerId);
+        } catch {
+          /* noop */
+        }
         window.removeEventListener("pointermove", onMove);
         window.removeEventListener("pointerup", onUp);
+        window.removeEventListener("pointercancel", onUp);
       };
       window.addEventListener("pointermove", onMove);
       window.addEventListener("pointerup", onUp);
+      window.addEventListener("pointercancel", onUp);
     },
     [args.busy],
   );
@@ -72,17 +81,26 @@ export function useP1WaveformDisplay(args: { busy: boolean }) {
     (e: React.PointerEvent) => {
       if (e.button !== 0 || args.busy) return;
       e.preventDefault();
+      const target = e.currentTarget;
+      target.setPointerCapture(e.pointerId);
       const startY = e.clientY;
       const startF = transcriptFontPxRef.current;
       const onMove = (ev: PointerEvent) => {
         setTranscriptFontPxState(clampP1TranscriptFontPx(startF + Math.round((ev.clientY - startY) / 5)));
       };
-      const onUp = () => {
+      const onUp = (ev: PointerEvent) => {
+        try {
+          target.releasePointerCapture(ev.pointerId);
+        } catch {
+          /* noop */
+        }
         window.removeEventListener("pointermove", onMove);
         window.removeEventListener("pointerup", onUp);
+        window.removeEventListener("pointercancel", onUp);
       };
       window.addEventListener("pointermove", onMove);
       window.addEventListener("pointerup", onUp);
+      window.addEventListener("pointercancel", onUp);
     },
     [args.busy],
   );

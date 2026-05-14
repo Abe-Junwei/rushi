@@ -1,4 +1,10 @@
 import { useMemo } from "react";
+import {
+  P1_CLAY_BTN_GHOST,
+  P1_CLAY_BTN_ONLINE_STT,
+  P1_CLAY_BTN_PRIMARY,
+  P1_CLAY_SELECT,
+} from "../config/p1ControlStyles";
 import type { ProjectP1ControllerApi } from "../pages/useProjectP1Controller";
 import type { ProjectSummary } from "../tauri/p1Api";
 
@@ -8,17 +14,14 @@ function sortRecentProjects(list: ProjectSummary[]): ProjectSummary[] {
   return [...list].sort((a, b) => b.updated_at_ms - a.updated_at_ms).slice(0, RECENT_PROJECT_LIMIT);
 }
 
-const welcomePrimaryBtn =
-  "inline-flex items-center justify-center rounded-xl bg-app-accent px-6 py-3 text-[15px] font-medium text-white transition-colors hover:bg-app-accent-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-app-accent/45 disabled:cursor-not-allowed disabled:opacity-40";
+/** DESIGN.md `button-primary` */
+const welcomePrimaryBtn = P1_CLAY_BTN_PRIMARY;
 
-const btnOnlineSttEntry =
-  "inline-flex shrink-0 items-center justify-center rounded-xl border border-zen-saffron/35 bg-white px-4 py-2 text-sm font-medium text-zen-saffron transition-colors hover:border-zen-saffron/60 hover:bg-zen-paper/70 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-saffron/40 disabled:cursor-not-allowed disabled:opacity-40";
+const btnOnlineSttEntry = P1_CLAY_BTN_ONLINE_STT;
 
-const welcomeGhostBtn =
-  "inline-flex appearance-none items-center rounded-xl border border-black/10 bg-white px-4 py-2 text-sm font-medium text-app-text-muted transition-colors hover:bg-zen-paper/70 disabled:cursor-not-allowed disabled:opacity-40";
+const welcomeGhostBtn = P1_CLAY_BTN_GHOST;
 
-const welcomeSelect =
-  "cursor-pointer rounded-xl border border-black/10 bg-white py-2 pl-4 pr-3 text-sm font-medium text-app-text-muted transition-colors hover:bg-zen-paper/70 disabled:opacity-40";
+const welcomeSelect = P1_CLAY_SELECT;
 
 interface P1WelcomeViewProps {
   controller: ProjectP1ControllerApi;
@@ -32,11 +35,11 @@ export function P1WelcomeView({ controller: c, onOpenOnlineStt }: P1WelcomeViewP
   return (
     <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col overflow-y-auto px-4 pb-16 pt-6 md:px-6">
       <section className="mb-6" data-purpose="hero-content">
-        <div className="rounded-2xl border border-black/5 bg-gradient-to-br from-white via-zen-paper/45 to-zen-paper p-6 shadow-sm sm:p-8">
-          <div className="mb-4 inline-flex items-center rounded-full border border-black/10 bg-white px-3 py-1 text-xs font-medium tracking-wide text-app-text-muted">
+        <div className="rounded-2xl border border-zen-gray-300 bg-app-highlight p-6 sm:p-8">
+          <div className="mb-4 inline-flex items-center rounded-full border border-zen-gray-300 bg-zen-paper px-3 py-1 text-xs font-medium tracking-wide text-app-text-muted">
             P1 Workspace
           </div>
-          <h1 className="font-serif text-4xl font-medium tracking-tight text-app-text-main sm:text-5xl">开始校对</h1>
+          <h1 className="text-4xl font-semibold tracking-tight text-app-text-main sm:text-5xl">开始校对</h1>
           <p className="mt-4 max-w-3xl text-base leading-relaxed text-app-text-muted sm:text-lg">
             选择本地音频创建项目，或打开已有 SQLite 项目继续工作。在线 STT Provider 可用于实验性流程。
           </p>
@@ -63,17 +66,17 @@ export function P1WelcomeView({ controller: c, onOpenOnlineStt }: P1WelcomeViewP
           </div>
 
           <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="rounded-xl border border-black/5 bg-white/90 px-4 py-3">
+            <div className="rounded-lg border border-zen-gray-300 bg-zen-paper px-4 py-3">
               <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-app-text-muted">项目总数</p>
               <p className="mt-1 text-2xl font-semibold text-app-text-main">{c.projects.length}</p>
             </div>
-            <div className="rounded-xl border border-black/5 bg-white/90 px-4 py-3">
+            <div className="rounded-lg border border-zen-gray-300 bg-zen-paper px-4 py-3">
               <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-app-text-muted">最近更新</p>
               <p className="mt-1 truncate text-sm font-medium text-app-text-main">
                 {latestProject ? latestProject.name : "暂无项目"}
               </p>
             </div>
-            <div className="rounded-xl border border-black/5 bg-white/90 px-4 py-3">
+            <div className="rounded-lg border border-zen-gray-300 bg-zen-paper px-4 py-3">
               <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-app-text-muted">环境提示</p>
               <p className="mt-1 text-sm font-medium text-app-text-main">ASR 依赖可在上方环境面板中准备</p>
             </div>
@@ -82,8 +85,8 @@ export function P1WelcomeView({ controller: c, onOpenOnlineStt }: P1WelcomeViewP
       </section>
 
       <section className="w-full" data-purpose="projects-list-container">
-        <div className="rounded-2xl border border-black/5 bg-white/80 p-4 shadow-sm sm:p-5">
-          <div className="mb-4 flex flex-wrap items-end justify-between gap-3 border-b border-black/5 pb-4">
+        <div className="rounded-2xl border border-zen-gray-300 bg-zen-ochre p-4 sm:p-5">
+          <div className="mb-4 flex flex-wrap items-end justify-between gap-3 border-b border-zen-gray-300 pb-4">
             <div>
               <h2 className="text-xl font-semibold text-app-text-main">最近项目</h2>
               <p className="mt-1 text-sm text-app-text-muted">可快速打开最近使用的项目，继续编辑与导出。</p>
@@ -131,12 +134,12 @@ export function P1WelcomeView({ controller: c, onOpenOnlineStt }: P1WelcomeViewP
 
           {recentProjects.length > 0 ? (
             <div data-purpose="project-items">
-              <ul className="max-h-[min(24rem,50vh)] list-none overflow-y-auto p-0">
+              <ul className="max-h-[min(24rem,50vh)] list-none overflow-y-auto rounded-lg border border-zen-gray-300 bg-zen-paper p-0">
                 {recentProjects.map((p) => (
-                  <li key={p.id} className="border-b border-black/5 last:border-b-0">
+                  <li key={p.id} className="border-b border-zen-gray-200 last:border-b-0">
                     <button
                       type="button"
-                      className="flex w-full cursor-pointer appearance-none items-center justify-between gap-3 rounded-xl border-0 bg-transparent px-4 py-4 text-left transition-colors hover:bg-zen-ochre/60 focus-visible:bg-zen-ochre/60 focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40"
+                      className="flex w-full cursor-pointer appearance-none items-center justify-between gap-3 border-0 bg-transparent px-4 py-4 text-left transition-colors hover:bg-zen-ochre focus-visible:bg-zen-ochre focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40"
                       data-purpose="project-item"
                       disabled={c.busy}
                       onClick={() => void c.loadProject(p.id)}

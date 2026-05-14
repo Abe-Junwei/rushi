@@ -43,7 +43,7 @@ export function P1EditorView({
       <P1EditorToolbar controller={c} tx={tx} exportKey={exportKey} onExportSelect={onExportSelect} />
 
       {c.transcribeHints.length > 0 ? (
-        <ul className="shrink-0 space-y-1 border-b border-black/[0.05] bg-zen-ochre/35 px-4 py-2 text-[12px] text-zen-indigo">
+        <ul className="shrink-0 space-y-1 border-b border-zen-gray-300 bg-app-highlight px-4 py-2 text-[12px] text-gray-700">
           {c.transcribeHints.map((h, i) => (
             <li key={i}>{h}</li>
           ))}
@@ -55,14 +55,14 @@ export function P1EditorView({
           <div
             ref={tx.tierScrollRef}
             onScroll={tx.onTierScroll}
-            className="min-h-0 flex-1 overflow-auto rounded-md border border-black/[0.08] bg-zen-paper shadow-inner [overflow-anchor:none]"
+            className="min-h-0 flex-1 overflow-auto rounded-lg border border-zen-gray-300 bg-zen-paper shadow-inner [overflow-anchor:none]"
           >
             <div
               style={{ width: tx.timelineWidthPx }}
               className={`inline-block align-top ${c.busy ? "pointer-events-none opacity-60" : ""}`}
             >
               <div
-                className="sticky top-0 z-30 border-b border-black/20 bg-zen-ink shadow-sm"
+                className="sticky top-0 z-30 border-b border-zen-gray-300 bg-zen-ochre"
                 onContextMenu={(e) => {
                   if (c.busy) return;
                   e.preventDefault();
@@ -74,56 +74,58 @@ export function P1EditorView({
                 }}
               >
                 {tx.loadError ? (
-                  <p className="px-3 py-2 text-center text-[12px] text-zen-ochre">{tx.loadError}</p>
+                  <p className="border-b border-zen-gray-300 bg-amber-50 px-3 py-2 text-center text-[12px] text-red-700">
+                    {tx.loadError}
+                  </p>
                 ) : null}
-                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-white/10 px-2 py-1.5 text-white/85">
+                <div className="flex flex-wrap items-center gap-x-2 gap-y-1 border-b border-zen-gray-300 bg-zen-paper px-2 py-1.5 text-zen-ink">
                   <button
                     type="button"
-                    className="rounded-full border border-white/20 p-2 transition-colors hover:bg-white/10 disabled:opacity-40"
+                    className="rounded-full border border-zen-gray-300 bg-zen-paper p-2 text-zen-ink transition-colors hover:border-zen-gray-400 hover:bg-zen-ochre disabled:opacity-40"
                     disabled={c.busy || !tx.isReady}
                     onClick={() => void tx.togglePlay()}
                     aria-label={tx.isPlaying ? "暂停" : "播放"}
                   >
                     {tx.isPlaying ? (
                       <span className="flex h-3 w-3 items-center justify-center gap-0.5" aria-hidden>
-                        <span className="h-2.5 w-0.5 bg-white" />
-                        <span className="h-2.5 w-0.5 bg-white" />
+                        <span className="h-2.5 w-0.5 bg-zen-ink" />
+                        <span className="h-2.5 w-0.5 bg-zen-ink" />
                       </span>
                     ) : (
                       <span
-                        className="ml-0.5 block h-0 w-0 border-y-[6px] border-l-[10px] border-y-transparent border-l-white"
+                        className="ml-0.5 block h-0 w-0 border-y-[6px] border-l-[10px] border-y-transparent border-l-zen-ink"
                         aria-hidden
                       />
                     )}
                   </button>
-                  <span className="font-mono text-[11px] tabular-nums tracking-tight">
+                  <span className="font-mono text-[11px] tabular-nums tracking-tight text-zen-ink">
                     {tx.formatMediaTime(tx.currentTime)} / {tx.formatMediaTime(tx.duration || 0)}
                   </span>
-                  <span className="text-[10px] text-white/45" title="拖动波形区下边缘调节高度">
+                  <span className="text-[10px] text-zen-stone" title="拖动波形区下边缘调节高度">
                     波形
                   </span>
-                  <span className="min-w-[2.25rem] text-center font-mono text-[10px] text-white/70">
+                  <span className="min-w-[2.25rem] text-center font-mono text-[10px] text-zen-stone">
                     {tx.waveformHeightPx}px
                   </span>
-                  <span className="text-[10px] text-white/45" title="拖动语段轨下边缘调节字号">
+                  <span className="text-[10px] text-zen-stone" title="拖动语段轨下边缘调节字号">
                     语段
                   </span>
-                  <span className="min-w-[1.75rem] text-center font-mono text-[10px] text-white/70">
+                  <span className="min-w-[1.75rem] text-center font-mono text-[10px] text-zen-stone">
                     {tx.transcriptFontPx}px
                   </span>
                 </div>
-                <div className="relative overflow-x-hidden bg-white">
+                <div className="relative overflow-x-hidden bg-zen-paper">
                   <div
                     ref={tx.waveformShellRef}
                     tabIndex={0}
-                    className="relative z-0 outline-none focus-visible:ring-2 focus-visible:ring-inset focus-visible:ring-zen-saffron/35"
+                    className="relative z-0 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-ink/20"
                     onKeyDown={tx.onWaveformMainKeyDown}
                     onClick={() => tx.focusWaveformShell()}
                   >
                     <div
                       ref={tx.containerRef}
                       style={{ height: tx.waveformHeightPx }}
-                      className="w-full shrink-0 bg-white"
+                      className="w-full shrink-0 bg-zen-paper"
                       role="img"
                       aria-label="转写波形与语段时间范围"
                     />
@@ -135,7 +137,7 @@ export function P1EditorView({
                   />
                 </div>
                 <div
-                  className="sticky left-0 z-[25] shrink-0 bg-white"
+                  className="sticky left-0 z-[25] shrink-0 bg-zen-paper"
                   style={{ width: Math.max(1, tx.tierScrollLayout.clientWidth) }}
                 >
                   <P1WaveformTimeRuler
@@ -157,7 +159,7 @@ export function P1EditorView({
 
               {c.segments.length === 0 ? (
                 <div
-                  className="relative mt-0 shrink-0 overflow-x-hidden border-b border-black/[0.06] bg-black/[0.02]"
+                  className="relative mt-0 shrink-0 overflow-x-hidden border-b border-zen-gray-300 bg-zen-ochre"
                   style={{ width: tx.timelineWidthPx }}
                 >
                   <div className="relative z-0 px-3 py-4 text-center text-xs leading-relaxed text-zen-stone">
@@ -172,7 +174,7 @@ export function P1EditorView({
                 </div>
               ) : (
                 <div
-                  className="relative mt-0 shrink-0 overflow-x-hidden border-b border-black/[0.06] bg-black/[0.02]"
+                  className="relative mt-0 shrink-0 overflow-x-hidden border-b border-zen-gray-300 bg-zen-ochre"
                   style={{ width: tx.timelineWidthPx }}
                 >
                   <div
@@ -246,7 +248,7 @@ export function P1EditorView({
         </p>
       )}
 
-      <footer className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-black/[0.06] bg-white/35 px-4 py-1.5 text-[10px] text-zen-stone">
+      <footer className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-t border-zen-gray-300 bg-zen-ochre px-4 py-1.5 text-[10px] text-zen-stone">
         <span>
           全局：⌘/Ctrl+Z 撤销 · ⌘/Ctrl+Shift+Z 重做（输入框内不触发）。波形区快捷键：Space 播/停 · ←/→ 切条 ·
           Tab / Shift+Tab 切条并播段 · ⌘/Ctrl+M 并下 · ⌘/Ctrl+Shift+M 并上 · ⌘/Ctrl+Shift+S 指针拆分 · , / .

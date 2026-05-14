@@ -5,8 +5,10 @@
 .p1-confirm-project-input:-webkit-autofill,
 .p1-confirm-project-input:-webkit-autofill:hover,
 .p1-confirm-project-input:-webkit-autofill:focus {
-  -webkit-text-fill-color: rgb(55 65 81);
-  border: 2px solid var(--brand-input-border);
-  box-shadow: 0 0 0 1000px white inset;
+  -webkit-text-fill-color: var(--near-black);
+  border: 1px solid var(--brand-input-border);
+  background-image: none !important;
+  box-shadow: 0 0 0 1000px var(--zen-paper) inset !important;
+  -webkit-box-shadow: 0 0 0 1000px var(--zen-paper) inset !important;
   transition: background-color 9999s ease-out;
 }

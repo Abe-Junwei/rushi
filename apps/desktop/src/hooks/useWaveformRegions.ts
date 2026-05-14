@@ -3,6 +3,7 @@ import WaveSurfer from "wavesurfer.js";
 import RegionsPlugin from "wavesurfer.js/dist/plugins/regions.esm.js";
 import type { Region } from "wavesurfer.js/dist/plugins/regions";
 
+import { COLORS } from "../config/tokens";
 import { roundSec3 } from "../utils/p1BoundsSignature";
 import { p1WaveformRegionFillColor } from "../utils/p1SegmentChrome";
 import { parseSegmentRegionId, segmentRegionId, REGION_ID_PREFIX } from "../utils/waveformRegionId";
@@ -16,11 +17,16 @@ export function useWaveformRegions(
   disabled: boolean | undefined,
   boundsSig: string,
   selectedIdx: number,
+  onWaveformCreateRange: UseProjectWaveformOptions["onWaveformCreateRange"],
 ) {
   const isDraggingRef = useRef(false);
   const syncingRegionsRef = useRef(false);
   const prevSelectedIdxForColorRef = useRef<number | null>(null);
   const regionUnsubsRef = useRef<Array<() => void>>([]);
+  const skippedBoundsDuringDragRef = useRef(false);
+  const rebuildAllSegmentRegionsRef = useRef<(ws: WaveSurfer, rp: ReturnType<typeof RegionsPlugin.create>) => void>(
+    () => {},
+  );
 
   const clearRegionListeners = useCallback(() => {
     regionUnsubsRef.current.forEach((u) => u());
@@ -47,6 +53,25 @@ export function useWaveformRegions(
         if (boundsLiveRaf) return;
         boundsLiveRaf = requestAnimationFrame(flushBoundsLive);
       };
+      const flushSkippedResyncAfterDrag = () => {
+        if (!skippedBoundsDuringDragRef.current) return;
+        const attempt = (n: number) => {
+          if (n > 24) return;
+          requestAnimationFrame(() => {
+            if (syncingRegionsRef.current) {
+              attempt(n + 1);
+              return;
+            }
+            if (!skippedBoundsDuringDragRef.current) return;
+            skippedBoundsDuringDragRef.current = false;
+            const ws2 = wsRef.current;
+            const rp2 = regionsRef.current;
+            if (!ws2 || !rp2 || optsRef.current.disabled) return;
+            rebuildAllSegmentRegionsRef.current(ws2, rp2);
+          });
+        };
+        attempt(0);
+      };
       const onUpdate = () => {
         if (syncingRegionsRef.current) return;
         isDraggingRef.current = true;
@@ -58,13 +83,17 @@ export function useWaveformRegions(
           boundsLiveRaf = 0;
         }
         isDraggingRef.current = false;
-        if (syncingRegionsRef.current) return;
+        if (syncingRegionsRef.current) {
+          flushSkippedResyncAfterDrag();
+          return;
+        }
         const lo = Math.min(region.start, region.end);
         const hi = Math.max(region.start, region.end);
         const dur = ws.getDuration() || hi;
         const clampedStart = roundSec3(Math.max(0, lo));
         const clampedEnd = roundSec3(Math.min(Math.max(clampedStart + 0.05, hi), dur));
         optsRef.current.onBoundsCommit(i, clampedStart, clampedEnd);
+        flushSkippedResyncAfterDrag();
       };
       const onClick = (ev: MouseEvent) => {
         ev.stopPropagation();
@@ -118,12 +147,17 @@ export function useWaveformRegions(
     [bindSegmentRegion, clearRegionListeners, optsRef],
   );
 
+  rebuildAllSegmentRegionsRef.current = rebuildAllSegmentRegions;
+
   /** 语段 regions：段数或 id 映射变化时全量重建；仅起止/低置信变化时增量 setOptions。 */
   useEffect(() => {
     const ws = wsRef.current;
     const rp = regionsRef.current;
     if (!ws || !rp || !isReady || disabled) return;
-    if (isDraggingRef.current) return;
+    if (isDraggingRef.current) {
+      skippedBoundsDuringDragRef.current = true;
+      return;
+    }
 
     const segs = optsRef.current.segments;
     const regs = rp.getRegions();
@@ -173,6 +207,8 @@ export function useWaveformRegions(
       }
     }
 
+    skippedBoundsDuringDragRef.current = false;
+
     rafIds.a = requestAnimationFrame(() => {
       rafIds.b = requestAnimationFrame(() => {
         syncingRegionsRef.current = false;
@@ -195,7 +231,7 @@ export function useWaveformRegions(
     if (!onCreate) return;
 
     const disableDragSelection = rp.enableDragSelection({
-      color: "rgba(0,0,0,0.07)",
+      color: `color-mix(in srgb, ${COLORS.ink} 7%, transparent)`,
     });
 
     const onRegionCreated = (region: { id: string; start: number; end: number; remove: () => void }) => {
@@ -224,7 +260,7 @@ export function useWaveformRegions(
       unsub();
       disableDragSelection();
     };
-  }, [isReady, disabled, wsRef, regionsRef, optsRef]);
+  }, [isReady, disabled, wsRef, regionsRef, optsRef, onWaveformCreateRange]);
 
   /** 仅选中变化：只改旧/新两条 region 颜色，避免 getRegions 全表 setOptions。 */
   useEffect(() => {

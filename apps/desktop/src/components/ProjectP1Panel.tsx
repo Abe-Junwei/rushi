@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useP1TranscriptionLayer } from "../pages/useP1TranscriptionLayer";
 import { buildP1SegmentContextMenuItems, type P1SegmentContextMenuKey } from "../utils/p1SegmentContextMenuModel";
 import { P1EnvironmentPanel } from "./P1EnvironmentPanel";
@@ -10,9 +10,9 @@ import { P1ProjectHeader } from "./P1ProjectHeader";
 import { useGlossaryP2Controller } from "../pages/useGlossaryP2Controller";
 import type { P1BusyReason } from "../pages/useProjectP1Controller";
 import { useProjectP1Controller } from "../pages/useProjectP1Controller";
+import { P1_CLAY_BTN_SECONDARY } from "../config/p1ControlStyles";
 
-const btnSecondary =
-  "rounded border border-black/10 bg-white/60 px-3 py-1.5 text-xs text-zen-ink transition-colors hover:border-zen-saffron/35 hover:text-zen-saffron disabled:cursor-not-allowed disabled:opacity-40";
+const btnSecondary = P1_CLAY_BTN_SECONDARY;
 
 function busyOverlayCopy(reason: P1BusyReason | null): { title: string; hint: string } {
   switch (reason) {
@@ -85,6 +85,15 @@ export function ProjectP1Panel() {
     deleteSegmentAt: c.deleteSegmentAt,
   });
 
+  const txRef = useRef(tx);
+  txRef.current = tx;
+
+  useLayoutEffect(() => {
+    const attach = c.attachP1SegmentListDomRoot;
+    attach(() => txRef.current.tierScrollRef.current);
+    return () => attach(null);
+  }, [c.attachP1SegmentListDomRoot]);
+
   const segmentCtxMenuItems = useMemo(
     () =>
       segmentCtxMenu
@@ -153,12 +162,12 @@ export function ProjectP1Panel() {
   return (
     <section
       className={[
-        "flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden rounded-lg shadow-sm select-none",
+        "p1-workspace flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden rounded-lg select-none",
         workspacePhase === "A"
-          ? "border border-black/[0.06] bg-[radial-gradient(circle_at_top_center,#fbfaf6_0%,#f3f1e8_100%)] font-sans antialiased text-app-text-main"
+          ? "border border-zen-gray-300 bg-zen-paper font-sans antialiased text-app-text-main"
           : workspacePhase === "B"
-            ? "border border-black/[0.06] bg-[radial-gradient(circle,rgba(255,255,255,0.4)_0%,rgba(247,244,240,1)_100%)] font-sans antialiased text-gray-800"
-            : "border border-black/[0.08] bg-zen-paper text-zen-ink",
+            ? "border border-zen-gray-300 bg-zen-paper font-sans antialiased text-app-text-main"
+            : "border border-zen-gray-300 bg-zen-paper text-zen-ink",
       ].join(" ")}
     >
       <P1ProjectHeader
@@ -226,12 +235,12 @@ export function ProjectP1Panel() {
 
         <main
           className={`relative flex min-h-[12rem] min-w-0 flex-1 flex-col lg:min-h-0 ${
-            workspacePhase === "A" || workspacePhase === "B" ? "bg-transparent" : "bg-zen-paper/80"
+            workspacePhase === "A" || workspacePhase === "B" ? "bg-transparent" : "bg-zen-ochre"
           }`}
         >
           {c.busy ? (
             <div
-              className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-3 bg-zen-paper/85 px-6 text-center backdrop-blur-sm"
+              className="absolute inset-0 z-40 flex flex-col items-center justify-center gap-3 bg-zen-paper/95 px-6 text-center"
               role="status"
               aria-live="polite"
               aria-busy="true"
@@ -239,7 +248,7 @@ export function ProjectP1Panel() {
               <p className="text-sm font-medium text-zen-ink">{busyCopy.title}</p>
               <p className="max-w-sm text-[12px] text-zen-stone">{busyCopy.hint}</p>
               <div className="h-1.5 w-48 overflow-hidden rounded-full bg-black/[0.08]">
-                <div className="h-full w-1/3 animate-pulse rounded-full bg-zen-saffron/80" />
+                <div className="h-full w-1/3 animate-pulse rounded-full bg-zen-gray-300" />
               </div>
               <p className="font-mono text-[11px] tabular-nums text-zen-stone">已等待 {busyElapsedSec}s</p>
             </div>

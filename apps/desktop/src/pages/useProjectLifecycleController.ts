@@ -64,6 +64,7 @@ export interface ProjectLifecycleApi {
   insertSegmentAfter: (idx: number) => void;
   insertSegmentFromTimeRange: (startSec: number, endSec: number) => void;
   flushP1SegmentTextDraftsFromDom: () => void;
+  attachP1SegmentListDomRoot: (getter: (() => HTMLElement | null) | null) => void;
 }
 
 export function useProjectLifecycleController(): ProjectLifecycleApi {
@@ -92,6 +93,12 @@ export function useProjectLifecycleController(): ProjectLifecycleApi {
   const selectedIdxRef = useRef(selectedIdx);
   selectedIdxRef.current = selectedIdx;
 
+  const getP1SegmentListRootRef = useRef<(() => HTMLElement | null) | null>(null);
+  const getP1SegmentListRoot = useCallback(() => getP1SegmentListRootRef.current?.() ?? null, []);
+  const attachP1SegmentListDomRoot = useCallback((getter: (() => HTMLElement | null) | null) => {
+    getP1SegmentListRootRef.current = getter;
+  }, []);
+
   const mutations = useSegmentMutationController({
     segmentsRef,
     setSegments,
@@ -99,6 +106,7 @@ export function useProjectLifecycleController(): ProjectLifecycleApi {
     setSelectedIdx,
     setError,
     busy,
+    getP1SegmentListRoot,
   });
 
   const refreshProjects = useCallback(async () => {
@@ -266,5 +274,6 @@ export function useProjectLifecycleController(): ProjectLifecycleApi {
     insertSegmentAfter: mutations.insertSegmentAfter,
     insertSegmentFromTimeRange: mutations.insertSegmentFromTimeRange,
     flushP1SegmentTextDraftsFromDom: mutations.flushP1SegmentTextDraftsFromDom,
+    attachP1SegmentListDomRoot,
   };
 }

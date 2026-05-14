@@ -5,11 +5,13 @@ import type { SegmentDto } from "../tauri/p1Api";
 export function flushSegmentTextDraftsFromDom(
   segmentsRef: React.MutableRefObject<SegmentDto[]>,
   setSegments: React.Dispatch<React.SetStateAction<SegmentDto[]>>,
+  listRoot?: Document | HTMLElement | null,
 ): void {
+  const root: Document | ParentNode = listRoot ?? document;
   const prev = segmentsRef.current;
   const updates: { idx: number; text: string }[] = [];
   prev.forEach((s, i) => {
-    const row = document.querySelector(`[data-p1-seg-row="${i}"]`);
+    const row = root.querySelector(`[data-p1-seg-row="${i}"]`);
     const ta = row?.querySelector<HTMLTextAreaElement | HTMLInputElement>("textarea, input.p1-seg-text");
     if (!ta || ta.value === s.text) return;
     updates.push({ idx: i, text: ta.value });

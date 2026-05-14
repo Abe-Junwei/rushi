@@ -1,0 +1,51 @@
+/**
+ * P1 工作区：未注入 Tailwind Preflight 时，WebKit 会给 button/input/textarea
+ * 默认 -webkit-appearance 立体绘制，与自定义 border 叠成「假重影 / 硬阴影」。
+ * 另：装饰性 inset box-shadow 与 1px border 在圆角处会像第二条轮廓，故控件统一走扁平 border+背景。
+ * 仅挂在 ProjectP1Panel 根节点（.p1-workspace）。
+ * select 不强制 appearance:none（避免去掉原生下拉箭头），但仍压平 UA 渐变/内阴影。
+ */
+.p1-workspace button,
+.p1-workspace input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]),
+.p1-workspace textarea {
+  -webkit-appearance: none !important;
+  appearance: none !important;
+}
+
+.p1-workspace button {
+  border-style: solid;
+  -webkit-tap-highlight-color: transparent;
+}
+
+/* WebKit 默认 inner 渐变 / box-shadow（含与 ring 同源）会在圆角输入框顶缘形成「一条暗线」 */
+.p1-workspace input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]),
+.p1-workspace textarea,
+.p1-workspace select {
+  border-style: solid;
+  background-clip: padding-box;
+  background-image: none !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+}
+
+.p1-workspace input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):focus,
+.p1-workspace input:not([type="checkbox"]):not([type="radio"]):not([type="file"]):not([type="range"]):focus-visible,
+.p1-workspace textarea:focus,
+.p1-workspace textarea:focus-visible,
+.p1-workspace select:focus,
+.p1-workspace select:focus-visible {
+  background-image: none !important;
+  box-shadow: none !important;
+  -webkit-box-shadow: none !important;
+}
+
+/* number：去掉步进器绘制残影（仍可用滚轮/键盘改值） */
+.p1-workspace input[type="number"]::-webkit-inner-spin-button,
+.p1-workspace input[type="number"]::-webkit-outer-spin-button {
+  -webkit-appearance: none;
+  margin: 0;
+}
+
+.p1-workspace input[type="number"] {
+  -moz-appearance: textfield;
+}

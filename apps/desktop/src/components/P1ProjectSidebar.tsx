@@ -1,14 +1,16 @@
 import type { ProjectP1ControllerApi } from "../pages/useProjectP1Controller";
 import type { GlossaryP2ControllerApi } from "../pages/useGlossaryP2Controller";
+import {
+  P1_CLAY_BTN_ONLINE_STT,
+  P1_CLAY_BTN_PRIMARY,
+  P1_CLAY_BTN_SECONDARY,
+  P1_CLAY_SELECT,
+  P1_CLAY_TEXT_INPUT,
+} from "../config/p1ControlStyles";
 
-const btnPrimary =
-  "rounded px-3 py-1.5 text-xs font-medium bg-zen-saffron text-white shadow-sm transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40";
-const btnSecondary =
-  "rounded border border-black/10 bg-white/60 px-3 py-1.5 text-xs text-zen-ink transition-colors hover:border-zen-saffron/35 hover:text-zen-saffron disabled:cursor-not-allowed disabled:opacity-40";
-const btnOnlineSttEntry =
-  "inline-flex shrink-0 items-center justify-center rounded-lg border border-zen-saffron/35 bg-white/80 px-3 py-1.5 text-xs font-medium text-zen-saffron shadow-sm transition-colors hover:border-zen-saffron/55 hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-saffron/40 disabled:cursor-not-allowed disabled:opacity-40";
-const field =
-  "block w-full rounded border border-black/10 bg-white/80 px-2 py-1 text-xs text-zen-ink outline-none transition-colors focus:border-zen-saffron/45 focus:ring-1 focus:ring-zen-saffron/20 disabled:cursor-not-allowed disabled:opacity-40";
+const btnPrimary = P1_CLAY_BTN_PRIMARY;
+const btnSecondary = P1_CLAY_BTN_SECONDARY;
+const btnOnlineSttEntry = P1_CLAY_BTN_ONLINE_STT;
 
 interface P1ProjectSidebarProps {
   controller: ProjectP1ControllerApi;
@@ -19,12 +21,12 @@ interface P1ProjectSidebarProps {
 
 export function P1ProjectSidebar({ controller: c, glossary: gl, workspacePhase, onOpenOnlineStt }: P1ProjectSidebarProps) {
   return (
-    <aside className="min-h-0 min-w-0 space-y-4 overflow-y-auto border-black/[0.06] bg-zen-paper px-4 py-4 lg:h-auto lg:w-[min(16rem,28vw)] lg:max-w-[18rem] lg:shrink-0 lg:self-stretch lg:border-b-0 lg:border-r border-b">
+    <aside className="min-h-0 min-w-0 space-y-4 overflow-y-auto border-zen-gray-300 bg-zen-ochre px-4 py-4 lg:h-auto lg:w-[min(16rem,28vw)] lg:max-w-[18rem] lg:shrink-0 lg:self-stretch lg:border-b-0 lg:border-r border-b">
       <div>
         <h3 className="mb-2 text-[11px] font-medium uppercase tracking-wide text-zen-stone">项目</h3>
         <div className="flex flex-wrap gap-2">
           <select
-            className={`${field} max-w-full flex-1 min-w-[8rem]`}
+            className={`${P1_CLAY_SELECT} max-w-full flex-1 min-w-[8rem]`}
             value=""
             disabled={c.busy}
             onChange={(e) => {
@@ -47,7 +49,7 @@ export function P1ProjectSidebar({ controller: c, glossary: gl, workspacePhase, 
       </div>
 
       {workspacePhase === "C" ? (
-        <div className="rounded-lg border border-zen-saffron/30 bg-white/50 p-2 shadow-sm">
+        <div className="rounded-lg border border-zen-gray-300 bg-zen-paper p-2">
           <p className="mb-1.5 text-[10px] font-medium uppercase tracking-wide text-zen-stone">在线转写</p>
           <button
             type="button"
@@ -68,7 +70,7 @@ export function P1ProjectSidebar({ controller: c, glossary: gl, workspacePhase, 
             <label className="mb-2 block text-[12px] text-zen-stone">
               项目名称
               <input
-                className={`${field} mt-1`}
+                className={`${P1_CLAY_TEXT_INPUT} mt-1`}
                 value={c.newName}
                 onChange={(e) => c.setNewName(e.target.value)}
                 disabled={c.busy}
@@ -98,7 +100,7 @@ export function P1ProjectSidebar({ controller: c, glossary: gl, workspacePhase, 
             {gl.error ? <p className="mb-2 text-sm text-zen-cinnabar">{gl.error}</p> : null}
             <div className="flex flex-wrap gap-2">
               <input
-                className={`${field} min-w-0 flex-1`}
+                className={`${P1_CLAY_TEXT_INPUT} min-w-0 flex-1`}
                 placeholder="输入术语…"
                 value={gl.newTerm}
                 onChange={(e) => gl.setNewTerm(e.target.value)}
@@ -118,7 +120,7 @@ export function P1ProjectSidebar({ controller: c, glossary: gl, workspacePhase, 
             </div>
             <ul className="mt-2 max-h-40 space-y-1 overflow-auto text-[12px]">
               {gl.terms.map((t) => (
-                <li key={t.id} className="flex items-center justify-between gap-2 rounded bg-white/50 px-2 py-1">
+                <li key={t.id} className="flex items-center justify-between gap-2 rounded bg-zen-paper/60 px-2 py-1">
                   <span className="truncate text-zen-ink">{t.term}</span>
                   <button
                     type="button"

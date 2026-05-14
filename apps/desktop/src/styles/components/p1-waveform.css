@@ -1,4 +1,4 @@
-/* P1 波形区：解语 BottomToolbarSection + waveform-zoom-bar / icon-btn 布局与尺度（配色贴合 zen-paper / saffron） */
+/* P1 波形区：BottomToolbar + zoom-bar（配色对齐 DESIGN.md / tokens.css） */
 .p1-waveform-zoom-toolbar {
   display: flex;
   align-items: center;
@@ -9,7 +9,7 @@
   padding: 8px 14px;
   border-radius: 10px;
   margin-top: 8px;
-  background: var(--zen-paper);
+  background: var(--zen-ochre);
 }
 
 .p1-waveform-zoom-bar {
@@ -38,10 +38,9 @@
   padding: 0;
   border: 1px solid rgb(0 0 0 / 12%);
   border-radius: 10px;
-  background: white;
+  background: var(--near-white);
   color: var(--zen-ink);
   cursor: pointer;
-  box-shadow: 0 1px 2px rgb(0 0 0 / 5%);
 }
 
 .p1-icon-btn-compact {
@@ -50,12 +49,12 @@
 }
 
 .p1-icon-btn:hover:not(:disabled) {
-  border-color: rgb(212 154 91 / 45%);
+  border-color: rgb(17 17 17 / 28%);
   background: rgb(255 255 255 / 95%);
 }
 
 .p1-icon-btn:focus-visible {
-  outline: 2px solid rgb(212 154 91 / 55%);
+  outline: 2px solid rgb(17 17 17 / 40%);
   outline-offset: 2px;
 }
 

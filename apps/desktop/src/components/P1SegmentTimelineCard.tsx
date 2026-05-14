@@ -134,7 +134,7 @@ export const P1SegmentTimelineCard = memo(function P1SegmentTimelineCard({
     <div
       data-p1-seg-row={i}
       className={[
-        "absolute z-10 flex min-h-0 min-w-0 max-w-full items-center overflow-hidden rounded-md px-2 py-2 shadow-sm ring-1 ring-inset select-text hover:brightness-[1.01]",
+        "absolute z-10 flex min-h-0 min-w-0 max-w-full box-border items-center overflow-hidden rounded-md px-2 py-2 select-text hover:brightness-[1.01]",
         cardBg,
         cardRing,
       ].join(" ")}
@@ -145,7 +145,7 @@ export const P1SegmentTimelineCard = memo(function P1SegmentTimelineCard({
       <div ref={shellRef} className="relative flex min-h-0 w-full min-w-0 max-w-full flex-1 items-center overflow-hidden">
         <span
           ref={measRef}
-          className="pointer-events-none fixed top-0 left-[-9999px] whitespace-nowrap font-serif text-zen-ink"
+          className="pointer-events-none fixed top-0 left-[-9999px] whitespace-nowrap font-sans text-zen-ink"
           style={lineStyle}
           aria-hidden
         >
@@ -153,7 +153,7 @@ export const P1SegmentTimelineCard = memo(function P1SegmentTimelineCard({
         </span>
         <input
           type="text"
-          className="p1-seg-text max-w-full min-h-0 min-w-0 rounded border-0 bg-transparent px-0 font-serif text-zen-ink outline-none ring-0 focus:outline-none focus-visible:ring-2 focus-visible:ring-zen-saffron/30 disabled:opacity-40"
+          className="p1-seg-text max-w-full min-h-0 min-w-0 rounded border-0 bg-transparent px-0 font-sans text-zen-ink shadow-none outline-none ring-0 focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-zen-ink/25 disabled:opacity-40"
           style={{
             ...lineStyle,
             width: textScale < 1 ? `${100 / textScale}%` : "100%",

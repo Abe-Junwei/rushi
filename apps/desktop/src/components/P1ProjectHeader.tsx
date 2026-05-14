@@ -1,12 +1,11 @@
 import type { Dispatch, SetStateAction } from "react";
 import { asrBaseUrl } from "../config/env";
+import { P1_CLAY_BTN_ONLINE_STT, P1_CLAY_BTN_SECONDARY } from "../config/p1ControlStyles";
 import type { AsrHealthCapabilities } from "../tauri/p1Api";
 import type { AsrHealthState } from "../pages/useAsrBridgeController";
 
-const btnSecondary =
-  "rounded border border-black/10 bg-white/60 px-3 py-1.5 text-xs text-zen-ink transition-colors hover:border-zen-saffron/35 hover:text-zen-saffron disabled:cursor-not-allowed disabled:opacity-40";
-const btnOnlineSttEntry =
-  "inline-flex shrink-0 items-center justify-center rounded-lg border border-zen-saffron/35 bg-white/80 px-3 py-1.5 text-xs font-medium text-zen-saffron shadow-sm transition-colors hover:border-zen-saffron/55 hover:bg-white focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-saffron/40 disabled:cursor-not-allowed disabled:opacity-40";
+const btnSecondary = P1_CLAY_BTN_SECONDARY;
+const btnOnlineSttEntry = P1_CLAY_BTN_ONLINE_STT;
 
 /** 欢迎顶栏：亮绿 / 红（与 Stitch 稿一致） */
 function WelcomeStatusDot({ ok }: { ok: boolean }) {
@@ -21,7 +20,7 @@ function WelcomeStatusDot({ ok }: { ok: boolean }) {
 function StatusDot({ ok }: { ok: boolean }) {
   return (
     <span
-      className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${ok ? "bg-zen-saffron" : "bg-zen-cinnabar"}`}
+      className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${ok ? "bg-zen-success" : "bg-zen-cinnabar"}`}
       aria-hidden
     />
   );
@@ -55,11 +54,11 @@ export function P1ProjectHeader({
         className="flex shrink-0 flex-wrap items-center justify-between gap-4 px-8 py-8 sm:px-12"
         data-purpose="navigation-bar"
       >
-        <div className="text-2xl font-serif font-bold tracking-wider text-app-text-main" data-purpose="site-logo">
+        <div className="text-2xl font-semibold tracking-tight text-app-text-main" data-purpose="site-logo">
           如是我闻
         </div>
         <div className="flex flex-wrap items-center justify-end gap-3 sm:gap-4" data-purpose="status-controls">
-          <div className="flex flex-wrap items-center gap-2 rounded-full bg-black/5 p-1 px-3">
+          <div className="flex flex-wrap items-center gap-2 rounded-full border border-zen-gray-300 bg-app-highlight p-1 px-3">
             {asrHealth === "ok" && asrCaps ? (
               <>
                 <span className="inline-flex items-center rounded-full bg-transparent px-1.5 py-0.5 text-xs text-zen-gray-500">
@@ -83,7 +82,7 @@ export function P1ProjectHeader({
               <span className="text-xs text-red-600">ASR 不可达</span>
             ) : null}
           </div>
-          <div className="flex items-center gap-3 rounded-full bg-black/5 px-4 py-1.5" data-purpose="toggle-container">
+          <div className="flex items-center gap-3 rounded-full border border-zen-gray-300 bg-app-highlight px-4 py-1.5" data-purpose="toggle-container">
             <span className="text-xs font-medium text-app-text-muted">环境与 ASR</span>
             <label className="relative inline-flex cursor-pointer items-center">
               <input
@@ -93,7 +92,7 @@ export function P1ProjectHeader({
                 onChange={() => setEnvOpen((v) => !v)}
                 aria-expanded={envOpen}
               />
-              <div className="relative h-5 w-9 shrink-0 rounded-full bg-gray-300 after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:border after:border-gray-300 after:bg-white after:transition-all after:content-[''] peer-checked:bg-app-accent peer-checked:after:translate-x-full peer-checked:after:border-white peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-app-accent/50" />
+              <div className="relative h-5 w-9 shrink-0 rounded-full bg-zen-gray-300 after:absolute after:top-[2px] after:left-[2px] after:h-4 after:w-4 after:rounded-full after:border after:border-zen-gray-300 after:bg-zen-paper after:transition-all after:content-[''] peer-checked:bg-zen-ink peer-checked:after:translate-x-full peer-checked:after:border-zen-paper peer-focus-visible:outline peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-zen-ink/25" />
             </label>
           </div>
           <button
@@ -117,10 +116,10 @@ export function P1ProjectHeader({
         className="flex shrink-0 w-full max-w-7xl items-center justify-between gap-4 self-center px-8 py-8"
         data-purpose="main-header"
       >
-        <div className="text-2xl font-bold tracking-wider text-gray-800 font-serif" data-purpose="site-logo">
+        <div className="text-2xl font-semibold tracking-tight text-zen-ink" data-purpose="site-logo">
           如是我闻
         </div>
-        <div className="flex items-center gap-3 font-sans text-sm text-gray-500">
+        <div className="flex items-center gap-3 font-sans text-sm text-app-text-muted">
           <span>环境 ASR</span>
           <label className="relative inline-block h-[22px] w-[44px] shrink-0 cursor-pointer">
             <input
@@ -130,12 +129,12 @@ export function P1ProjectHeader({
               onChange={() => setEnvOpen((v) => !v)}
               aria-expanded={envOpen}
             />
-            <span className="pointer-events-none absolute inset-0 rounded-[34px] bg-zen-ochre transition-colors peer-checked:bg-brand-orange" />
-            <span className="pointer-events-none absolute bottom-[3px] left-[3px] h-4 w-4 rounded-full bg-white transition-transform peer-checked:translate-x-[22px]" />
+            <span className="pointer-events-none absolute inset-0 rounded-[34px] bg-zen-gray-300 transition-colors peer-checked:bg-zen-ink" />
+            <span className="pointer-events-none absolute bottom-[3px] left-[3px] h-4 w-4 rounded-full bg-zen-paper transition-transform peer-checked:translate-x-[22px]" />
           </label>
           <button
             type="button"
-            className={`${btnOnlineSttEntry} border-brand-orange/40 text-gray-700 hover:text-brand-orange`}
+            className={`${btnOnlineSttEntry}`}
             disabled={busy}
             onClick={onOpenOnlineStt}
             aria-controls="p1-online-stt-provider"
@@ -147,8 +146,8 @@ export function P1ProjectHeader({
     );
   }
 
-  return (
-    <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-black/[0.06] bg-white/40 px-4 py-2 backdrop-blur-sm">
+    return (
+    <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-zen-gray-300 bg-zen-paper px-4 py-2">
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
         <span className="text-[11px] font-medium tracking-[0.18em] text-zen-stone">如是我闻 · 本地校对</span>
         {asrHealth === "ok" && asrCaps ? (

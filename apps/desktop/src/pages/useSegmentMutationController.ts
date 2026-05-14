@@ -36,10 +36,12 @@ export interface SegmentMutationDeps {
   setSelectedIdx: React.Dispatch<React.SetStateAction<number>>;
   setError: (msg: string) => void;
   busy: boolean;
+  /** 语段列表挂载容器；缺省时退回 `document`（测试等） */
+  getP1SegmentListRoot?: () => HTMLElement | null;
 }
 
 export function useSegmentMutationController(deps: SegmentMutationDeps): SegmentMutationApi {
-  const { segmentsRef, setSegments, setSelectedIdx, setError, busy } = deps;
+  const { segmentsRef, setSegments, setSelectedIdx, setError, busy, getP1SegmentListRoot } = deps;
   void deps.selectedIdxRef;
 
   const segmentBoundsLiveGestureRef = useRef(false);
@@ -49,8 +51,9 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
   const { pushUndo, pushUndoForTextEdit, undo, redo } = undoRedo;
 
   const flushP1SegmentTextDraftsFromDom = useCallback(() => {
-    flushSegmentTextDraftsFromDom(segmentsRef, setSegments);
-  }, [segmentsRef, setSegments]);
+    const el = getP1SegmentListRoot?.() ?? null;
+    flushSegmentTextDraftsFromDom(segmentsRef, setSegments, el ?? undefined);
+  }, [segmentsRef, setSegments, getP1SegmentListRoot]);
 
   const splits = useSegmentSplitController({
     segmentsRef,

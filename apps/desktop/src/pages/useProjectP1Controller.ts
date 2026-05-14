@@ -61,6 +61,7 @@ export function useProjectP1Controller() {
     insertSegmentAfter: lifecycle.insertSegmentAfter,
     insertSegmentFromTimeRange: lifecycle.insertSegmentFromTimeRange,
     flushP1SegmentTextDraftsFromDom: lifecycle.flushP1SegmentTextDraftsFromDom,
+    attachP1SegmentListDomRoot: lifecycle.attachP1SegmentListDomRoot,
 
     // ASR bridge
     asrHealth: asr.asrHealth,

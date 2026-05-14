@@ -1,13 +1,12 @@
 import { asrBaseUrl, isDefaultBundledAsrTarget } from "../config/env";
-import type { AsrHealthCapabilities, BundledAsrLaunchReport } from "../tauri/p1Api";
+import { P1_CLAY_BTN_PRIMARY, P1_CLAY_BTN_SECONDARY } from "../config/p1ControlStyles";
+import type { PrepareModelFailureCopy } from "../pages/prepareModelDownloadCopy";
 import type { AsrHealthState } from "../pages/useProjectP1Controller";
 import { funasrManualSetupCommands } from "../pages/useProjectP1Controller";
-import type { PrepareModelFailureCopy } from "../pages/prepareModelDownloadCopy";
+import type { AsrHealthCapabilities, BundledAsrLaunchReport } from "../tauri/p1Api";
 
-const btnPrimary =
-  "rounded px-3 py-1.5 text-xs font-medium bg-zen-saffron text-white shadow-sm transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40";
-const btnSecondary =
-  "rounded border border-black/10 bg-white/60 px-3 py-1.5 text-xs text-zen-ink transition-colors hover:border-zen-saffron/35 hover:text-zen-saffron disabled:cursor-not-allowed disabled:opacity-40";
+const btnPrimary = P1_CLAY_BTN_PRIMARY;
+const btnSecondary = P1_CLAY_BTN_SECONDARY;
 
 type Props = {
   asrHealth: AsrHealthState;
@@ -54,14 +53,14 @@ export function P1EnvLocalAsrPanel({
       ) : null}
 
       {asrHealth === "ok" && asrCaps && !asrCaps.ffmpeg_ok ? (
-        <div className="rounded-md bg-zen-ochre/50 px-3 py-2 text-sm">
+        <div className="rounded-md border border-zen-gray-300 bg-app-highlight px-3 py-2 text-sm">
           <strong className="text-zen-ink">未检测到 FFmpeg</strong>
           <span className="text-zen-stone"> — ASR 无法解码上传音频。请安装 ffmpeg/ffprobe 并加入 PATH 后重启 ASR。</span>
         </div>
       ) : null}
 
       {asrHealth === "ok" && asrCaps && asrCaps.ffmpeg_ok && !asrCaps.funasr_ready ? (
-        <div className="space-y-2 rounded-md bg-zen-ochre/45 px-3 py-2 text-sm">
+        <div className="space-y-2 rounded-md border border-zen-gray-300 bg-app-highlight px-3 py-2 text-sm">
           <p>
             <strong className="text-zen-ink">FunASR 未就绪</strong>
             <span className="text-zen-stone">（stub：中文正文常为空）。安装依赖并重启 ASR；可选 </span>
@@ -121,7 +120,7 @@ export function P1EnvLocalAsrPanel({
             <p>（ASR 未返回能力字段，请升级 rushi-asr。）</p>
           )}
           {asrCaps && asrCaps.funasr_import_ok && !asrCaps.funasr_default_model_cached ? (
-            <div className="space-y-2 rounded-md bg-white/50 p-2">
+            <div className="space-y-2 rounded-md bg-zen-paper/60 p-2">
               <button type="button" className={btnSecondary} disabled={busy || prepareModelBusy} onClick={() => void prepareDefaultFunasrModel()}>
                 {prepareModelBusy ? "正在下载默认模型…" : "预先下载默认模型"}
               </button>
@@ -134,7 +133,7 @@ export function P1EnvLocalAsrPanel({
                     aria-valuemin={0}
                     aria-valuemax={100}
                   >
-                    <div className="h-full bg-zen-saffron transition-[width]" style={{ width: `${prepareModelProgress}%` }} />
+                    <div className="h-full bg-zen-ink transition-[width]" style={{ width: `${prepareModelProgress}%` }} />
                   </div>
                   {funasrInstallMessage ? (
                     <pre className="max-h-28 overflow-auto whitespace-pre-wrap font-mono text-[10px] text-zen-indigo">{funasrInstallMessage}</pre>

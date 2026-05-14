@@ -6,7 +6,6 @@ import { useP1WaveformDisplay } from "../hooks/useP1WaveformDisplay";
 import { useP1WaveformZoom } from "../hooks/useP1WaveformZoom";
 import { computeP1TimelineWidthPx } from "../utils/p1SegmentLayout";
 import { assignP1SegmentOverlapLanes, computeP1SegmentLaneRowPx } from "../utils/p1SegmentLayout";
-import { P1_TIMELINE_PX_PER_SEC } from "../utils/p1PxPerSec";
 import type { SegmentDto } from "../tauri/p1Api";
 
 export { P1_TIMELINE_PX_PER_SEC, clampP1PxPerSec } from "../utils/p1PxPerSec";
@@ -42,13 +41,23 @@ export function useP1TranscriptionLayer(ctx: P1TranscriptionLayerInput) {
     startTransition(() => ctxRef.current.setSelectedIdx(idx));
   }, []);
 
+  const display = useP1WaveformDisplay({ busy: ctx.busy });
+
+  const durationRef = useRef(0);
+
+  const zoom = useP1WaveformZoom({
+    getTierWidth: () => tierScrollRef.current?.clientWidth ?? 0,
+    getDuration: () => durationRef.current,
+    getSelectedSegment: () => ctx.segments[ctx.selectedIdx] ?? null,
+  });
+
   const wf = useProjectWaveform({
     mediaUrl: ctx.mediaUrl,
     segments: ctx.segments,
     selectedIdx: ctx.selectedIdx,
     disabled: ctx.busy,
-    minPxPerSec: P1_TIMELINE_PX_PER_SEC,
-    waveformHeightPx: 0, // placeholder; actual ref updated after mount
+    minPxPerSec: zoom.pxPerSec,
+    waveformHeightPx: display.waveformHeightPx,
     onSelectIndex: setSelectedIdxUi,
     onBoundsCommit: (idx, lo, hi) => ctx.updateSegmentBounds(idx, lo, hi, "commit"),
     onBoundsLive: (idx, lo, hi) => ctx.updateSegmentBounds(idx, lo, hi, "live"),
@@ -60,18 +69,10 @@ export function useP1TranscriptionLayer(ctx: P1TranscriptionLayerInput) {
     },
   });
 
+  durationRef.current = wf.duration || 0;
+
   const wfApiRef = useRef(wf);
   wfApiRef.current = wf;
-
-  const display = useP1WaveformDisplay({ busy: ctx.busy });
-
-
-
-  const zoom = useP1WaveformZoom({
-    getTierWidth: () => tierScrollRef.current?.clientWidth ?? 0,
-    getDuration: () => wf.duration || 0,
-    getSelectedSegment: () => ctx.segments[ctx.selectedIdx] ?? null,
-  });
 
   const timelineWidthPx = useMemo(
     () => computeP1TimelineWidthPx(wf.duration || 0, zoom.pxPerSec),
@@ -84,12 +85,14 @@ export function useP1TranscriptionLayer(ctx: P1TranscriptionLayerInput) {
     wfApiRef,
     mediaUrl: ctx.mediaUrl,
     selectedIdx: ctx.selectedIdx,
+    segmentRowCount: ctx.segments.length,
   });
 
   const keyboard = useP1SegmentKeyboard({
     ctxRef,
     wfApiRef,
     setSelectedIdxUi,
+    tierScrollRef,
   });
 
   const segmentLaneRowPx = useMemo(() => computeP1SegmentLaneRowPx(display.transcriptFontPx), [display.transcriptFontPx]);
@@ -136,7 +139,7 @@ export function useP1TranscriptionLayer(ctx: P1TranscriptionLayerInput) {
     tier.scrollLeft = sl;
     if (Math.abs(w.getScrollLeft() - sl) > 0.5) w.setScrollLeft(sl);
     scroll.refreshTierScrollLayout();
-  }, [zoom.pxPerSec, timelineWidthPx, wf.isReady, scroll]);
+  }, [zoom.pxPerSec, timelineWidthPx, wf.isReady, scroll.refreshTierScrollLayout]);
 
   useEffect(() => {
     if (!ctx.mediaUrl || !wf.isReady) return;

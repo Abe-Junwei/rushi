@@ -156,8 +156,8 @@ export const P1WaveformTimeRuler = memo(function P1WaveformTimeRuler({
     <div
       className={
         ink
-          ? "relative w-full shrink-0 border-t border-white/10 bg-black/25"
-          : "relative w-full shrink-0 border-t border-black/10 bg-white"
+          ? "relative w-full shrink-0 border-t border-zen-paper/10 bg-black/25"
+          : "relative w-full shrink-0 border-t border-black/10 bg-zen-paper"
       }
       style={{ height: RULER_H + 6 }}
     >
@@ -207,7 +207,7 @@ export const P1WaveformTimeRuler = memo(function P1WaveformTimeRuler({
             x2={playheadInWindowPct}
             y1={-2}
             y2={RULER_H}
-            className={ink ? "stroke-zen-saffron/90" : "stroke-neutral-600"}
+            className={ink ? "stroke-zen-saffron/90" : "stroke-zen-ink"}
             strokeWidth={1}
             vectorEffect="non-scaling-stroke"
           />
@@ -243,12 +243,12 @@ export const P1WaveformTimeRuler = memo(function P1WaveformTimeRuler({
           }
         }}
       >
-        <div className={`absolute inset-x-0 top-0.5 h-px rounded-full ${ink ? "bg-white/20" : "bg-black/12"}`} />
+        <div className={`absolute inset-x-0 top-0.5 h-px rounded-full ${ink ? "bg-zen-paper/20" : "bg-black/12"}`} />
         <div
           className={
             ink
               ? "absolute top-0 h-[3px] rounded-full bg-zen-saffron/80 shadow-[0_0_0_1px_rgba(255,255,255,0.12)]"
-              : "absolute top-0 h-[3px] rounded-full bg-neutral-500 shadow-[0_0_0_1px_rgba(0,0,0,0.08)]"
+              : "absolute top-0 h-[3px] rounded-full bg-zen-ink shadow-[0_0_0_1px_rgba(0,0,0,0.06)]"
           }
           style={{ left: `${overviewViewport.leftPct}%`, width: `${overviewViewport.widthPct}%` }}
           aria-hidden

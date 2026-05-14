@@ -21,7 +21,8 @@
     "asr:build-sidecar-unix": "bash scripts/build-asr-sidecar-unix.sh",
     "asr:build-sidecar-windows-cpu": "powershell -ExecutionPolicy Bypass -File scripts/build-asr-sidecar-windows.ps1",
     "asr:build-sidecar-windows-cuda": "powershell -ExecutionPolicy Bypass -File scripts/build-asr-sidecar-windows.ps1 -Variant Cuda",
-    "asr:regen-sidecar-locks": "bash scripts/regen-sidecar-cpu-lock.sh && bash scripts/regen-sidecar-cuda-win-lock.sh"
+    "asr:regen-sidecar-locks": "bash scripts/regen-sidecar-cpu-lock.sh && bash scripts/regen-sidecar-cuda-win-lock.sh",
+    "design:add": "npx --yes getdesign@latest add"
   },
   "engines": {
     "node": ">=22",

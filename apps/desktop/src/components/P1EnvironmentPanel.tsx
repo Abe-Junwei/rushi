@@ -67,10 +67,10 @@ export function P1EnvironmentPanel({
   }, [focusOnlineSttSeq]);
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-col border-t border-black/[0.06] bg-zen-paper/90">
+    <div className="flex min-h-0 min-w-0 flex-col border-t border-zen-gray-300 bg-zen-paper">
       <div className="flex min-h-0 min-w-0 flex-1 flex-col sm:flex-row">
         <nav
-          className="flex shrink-0 gap-1 overflow-x-auto border-b border-black/[0.06] bg-white/30 px-2 py-2 sm:w-[7.75rem] sm:flex-col sm:gap-0.5 sm:border-b-0 sm:border-r sm:border-black/[0.06] sm:bg-white/40 sm:px-1 sm:py-2"
+          className="flex shrink-0 gap-1 overflow-x-auto border-b border-zen-gray-300 bg-zen-ochre px-2 py-2 sm:w-[7.75rem] sm:flex-col sm:gap-0.5 sm:border-b-0 sm:border-r sm:border-zen-gray-300 sm:bg-zen-ochre sm:px-1 sm:py-2"
           aria-label="环境与 ASR 分区"
         >
           {ENV_NAV_ITEMS.map((item) => {
@@ -79,8 +79,8 @@ export function P1EnvironmentPanel({
               <button
                 key={item.id}
                 type="button"
-                className={`rounded-md px-2 py-2 text-left text-[11px] font-medium outline-none transition-colors focus-visible:ring-2 focus-visible:ring-zen-saffron/35 sm:w-full ${
-                  active ? "bg-zen-saffron/18 text-zen-ink" : "text-zen-stone hover:bg-black/[0.06] hover:text-zen-ink"
+                className={`rounded-md px-2 py-2 text-left text-[11px] font-medium outline-none transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-ink/20 sm:w-full ${
+                  active ? "bg-zen-paper text-zen-ink" : "text-zen-stone hover:bg-zen-gray-300/70 hover:text-zen-ink"
                 }`}
                 aria-current={active ? "true" : undefined}
                 onClick={() => setEnvSection(item.id)}

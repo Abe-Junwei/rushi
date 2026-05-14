@@ -1,50 +1,60 @@
 /**
  * 设计 token — 与 tailwind.config.js theme.extend.colors 同源。
  * 供 TS 侧内联样式、Rust 侧 docx 导出等引用。
+ * 对齐仓库根 DESIGN.md（Clay.com 分析稿）。
  */
 
 export const COLORS = {
-  // Zen 系列
-  ink: "#2C2C2C",
-  paper: "#F2EFE8",
-  saffron: "#C58A43",
-  saffronLight: "#E5BC94",
-  saffronMid: "#D49A5B",
-  saffronDeep: "#C69C6D",
-  ochre: "#EAE0C5",
-  stone: "#8E8E8E",
-  cinnabar: "#963530",
-  indigo: "#3D4F5D",
+  ink: "#0a0a0a",
+  paper: "#fffaf0",
+  saffron: "#0a0a0a",
+  saffronLight: "#e5e5e5",
+  saffronMid: "#1f1f1f",
+  saffronDeep: "#0a0a0a",
+  ochre: "#faf5e8",
+  stone: "#6a6a6a",
+  cinnabar: "#ef4444",
+  indigo: "#1a3a3a",
 
-  // App 系列
-  bg: "#f3f1e8",
-  accent: "#d4a373",
-  accentHover: "#bc8a5f",
-  textMain: "#333333",
-  textMuted: "#666666",
-  highlight: "#ede4d0",
+  bg: "#fffaf0",
+  accent: "#ff4d8b",
+  accentHover: "#e63e7a",
+  textMain: "#0a0a0a",
+  textMuted: "#6a6a6a",
+  highlight: "#f5f0e0",
 
-  // Brand 系列
-  brandBg: "#f7f3ed",
-  brandOrange: "#d9a066",
-  brandGray: "#e5e2dd",
-  brandInputBorder: "#e5c19d",
-  brandInputBg: "#fdfcfb",
-  brandSecondaryBg: "#f0f1f3",
-  brandSecondaryText: "#5a5a5a",
+  brandBg: "#fffaf0",
+  brandOrange: "#e8b94a",
+  brandGray: "#faf5e8",
+  brandInputBorder: "#e5e5e5",
+  brandInputBg: "#fffaf0",
+  brandSecondaryBg: "#faf5e8",
+  brandSecondaryText: "#3a3a3a",
 
-  // 语义化
-  success: "#4ADE80",
-  danger: "#EF4444",
-  warning: "#F59E0B",
-  gray100: "#F4F4F5",
-  gray200: "#ECECEC",
-  gray300: "#E0E0E0",
-  gray400: "#8E8E8E",
-  gray500: "#555555",
-  gray600: "#444444",
-  gray700: "#333333",
-  gray800: "#2A2A2A",
+  success: "#22c55e",
+  danger: "#ef4444",
+  warning: "#f59e0b",
+  gray100: "#f0f0f0",
+  gray200: "#ebe6d6",
+  gray300: "#e5e5e5",
+  gray400: "#9a9a9a",
+  gray500: "#6a6a6a",
+  gray600: "#3a3a3a",
+  gray700: "#1a1a1a",
+  gray800: "#0a0a0a",
+
+  clayPink: "#ff4d8b",
+  clayTeal: "#1a3a3a",
+  clayCard: "#f5f0e0",
+
+  /** P1 WaveSurfer 白底波形条（与 tailwind `zen-p1-wf-*` 同源） */
+  p1WaveformSurface: "#ffffff",
+  p1WaveformWave: "#c4c4c8",
+  p1WaveformProgress: "#8e8e93",
+  p1WaveformCursor: "#6a6a6f",
+  /** 波形 region 叠色（与 p1WaveformRegionFillColor 一致） */
+  p1WaveformRegionLaneLow: "#9ca3af",
+  p1WaveformRegionLaneIdle: "#d1d5db",
 } as const;
 
 export type ColorToken = keyof typeof COLORS;

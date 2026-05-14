@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
+import { P1_CLAY_BTN_PRIMARY, P1_CLAY_BTN_SECONDARY, P1_CLAY_TEXT_INPUT } from "../config/p1ControlStyles";
 import {
   getSttOnlineProviderDefinition,
   normalizeExternalSttOnlineRuntimeConfig,
@@ -12,13 +13,9 @@ import {
 import type { SttOnlineMarket } from "../services/stt/sttOnlineProviderContract";
 import "./p1OnlineSttProviderList.css";
 
-const btnPrimary =
-  "rounded px-3 py-1.5 text-xs font-medium bg-zen-saffron text-white shadow-sm transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40";
-const btnSecondary =
-  "rounded border border-black/10 bg-white/60 px-3 py-1.5 text-xs text-zen-ink transition-colors hover:border-zen-saffron/35 hover:text-zen-saffron disabled:cursor-not-allowed disabled:opacity-40";
-
-const field =
-  "block w-full rounded border border-black/10 bg-white/80 px-2 py-1 text-xs text-zen-ink outline-none transition-colors focus:border-zen-saffron/45 focus:ring-1 focus:ring-zen-saffron/20 disabled:cursor-not-allowed disabled:opacity-40";
+const btnPrimary = P1_CLAY_BTN_PRIMARY;
+const btnSecondary = P1_CLAY_BTN_SECONDARY;
+const field = P1_CLAY_TEXT_INPUT;
 
 const STT_MARKET_GROUPS: { market: SttOnlineMarket; label: string }[] = [
   { market: "china", label: "国内（中国区 / 合规云厂商）" },
@@ -158,7 +155,7 @@ export function P1EnvOnlineSttPanel({ busy, onSttOnlineRuntimeChanged }: Props) 
             href={olDef.docsUrl}
             target="_blank"
             rel="noreferrer"
-            className="text-zen-indigo underline decoration-zen-indigo/30 hover:text-zen-saffron"
+            className="text-zen-indigo underline decoration-zen-indigo/30 hover:text-zen-ink"
           >
             {olDef.docsUrl.replace(/^https?:\/\//, "").split("/")[0]}
           </a>

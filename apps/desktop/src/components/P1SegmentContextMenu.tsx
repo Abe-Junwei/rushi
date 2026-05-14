@@ -47,7 +47,7 @@ export function P1SegmentContextMenu({ x, y, items, onSelect, onClose }: Props) 
     <div
       ref={rootRef}
       role="menu"
-      className="fixed z-[100] min-w-[10rem] rounded-md border border-black/[0.08] bg-zen-paper py-1 text-[12px] text-zen-ink shadow-lg"
+      className="fixed z-[100] min-w-[10rem] rounded-lg border border-zen-gray-300 bg-zen-paper py-1 text-[12px] text-zen-ink shadow-lg"
       style={{ left: pos.left, top: pos.top }}
     >
       {items.map((it) => (
@@ -56,7 +56,7 @@ export function P1SegmentContextMenu({ x, y, items, onSelect, onClose }: Props) 
           type="button"
           role="menuitem"
           disabled={it.disabled}
-          className="block w-full px-3 py-1.5 text-left transition-colors hover:bg-zen-saffron/10 disabled:cursor-not-allowed disabled:opacity-40"
+          className="block w-full px-3 py-1.5 text-left transition-colors hover:bg-app-highlight disabled:cursor-not-allowed disabled:opacity-40"
           onClick={() => {
             if (it.disabled) return;
             onSelect(it.key);

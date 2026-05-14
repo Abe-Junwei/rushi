@@ -1,0 +1,21 @@
+---
+description: Rushi 桌面端 UI 与仓库根 DESIGN.md（Stitch）对齐；落码走 Tailwind token
+globs: apps/desktop/**/*.{tsx,ts,css,js}
+alwaysApply: false
+---
+
+# Rushi — 视觉与 DESIGN.md
+
+## 何时读
+
+在修改 `apps/desktop` 下 **React 组件、面板 CSS、Tailwind 相关** 文件时，先浏览仓库根目录的 **`DESIGN.md`**（Google Stitch 的 DESIGN.md 约定；当前为 Clay.com 风格分析稿），再改代码。
+
+## 优先级
+
+1. **版面、组件形态、间距节奏、交互层次**：以 `DESIGN.md` 为意图真源，可与 Stitch 输出对照。
+2. **颜色与主题在代码中的表达**：必须落在 `apps/desktop/tailwind.config.js` 与 `apps/desktop/src/config/tokens.ts`；P1 项目坞按钮/输入框的 **尺寸与圆角** 对齐 `DESIGN.md` 时优先复用 `apps/desktop/src/config/p1ControlStyles.ts`，将 `DESIGN.md` 色板映射为具名颜色后使用，**禁止** `bg-[#...]` 及未入库的随意 hex。
+3. **架构与面板规则**：仍遵守 `AGENTS.md`、`docs/architecture/` 与「面板最多两层可见 border」等既有约束。
+
+## 更新 DESIGN.md
+
+若 Stitch 或产品定稿后视觉有变，**直接编辑仓库根 `DESIGN.md`**，并同步调整 `tailwind` / `tokens.ts`，保持三处不脱节。

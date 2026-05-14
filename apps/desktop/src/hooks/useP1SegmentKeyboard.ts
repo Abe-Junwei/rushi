@@ -8,6 +8,7 @@ export function useP1SegmentKeyboard(args: {
   ctxRef: React.MutableRefObject<P1TranscriptionLayerInput>;
   wfApiRef: React.MutableRefObject<WfApi>;
   setSelectedIdxUi: (idx: number) => void;
+  tierScrollRef: React.RefObject<HTMLDivElement | null>;
 }) {
   const setSelectedIdxUiRef = useRef(args.setSelectedIdxUi);
   setSelectedIdxUiRef.current = args.setSelectedIdxUi;
@@ -157,7 +158,8 @@ export function useP1SegmentKeyboard(args: {
         setSel(pi);
         void w.playSegmentAtIndex(pi);
         requestAnimationFrame(() => {
-          document.querySelector<HTMLElement>(`[data-p1-seg-row="${pi}"] input.p1-seg-text`)?.focus();
+          const root = args.tierScrollRef.current;
+          root?.querySelector<HTMLElement>(`[data-p1-seg-row="${pi}"] input.p1-seg-text`)?.focus();
         });
       } else {
         if (segmentIdx >= c.segments.length - 1) return;
@@ -168,11 +170,12 @@ export function useP1SegmentKeyboard(args: {
         setSel(ni);
         void w.playSegmentAtIndex(ni);
         requestAnimationFrame(() => {
-          document.querySelector<HTMLElement>(`[data-p1-seg-row="${ni}"] input.p1-seg-text`)?.focus();
+          const root = args.tierScrollRef.current;
+          root?.querySelector<HTMLElement>(`[data-p1-seg-row="${ni}"] input.p1-seg-text`)?.focus();
         });
       }
     },
-    [args.ctxRef, args.wfApiRef],
+    [args.ctxRef, args.wfApiRef, args.tierScrollRef],
   );
 
   useEffect(() => {

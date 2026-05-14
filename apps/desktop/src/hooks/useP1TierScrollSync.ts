@@ -9,6 +9,8 @@ export function useP1TierScrollSync(args: {
   wfApiRef: React.MutableRefObject<WfApi>;
   mediaUrl: string | null;
   selectedIdx: number;
+  /** 语段行数：异步补行后触发 scrollIntoView 对齐 */
+  segmentRowCount: number;
 }) {
   const scrollSyncingRef = useRef(false);
   const tierScrollLayoutRafRef = useRef(0);
@@ -121,9 +123,11 @@ export function useP1TierScrollSync(args: {
   }, [args.mediaUrl, args.tierScrollRef]);
 
   useLayoutEffect(() => {
-    const el = document.querySelector<HTMLElement>(`[data-p1-seg-row="${args.selectedIdx}"]`);
+    const root = args.tierScrollRef.current;
+    if (!root) return;
+    const el = root.querySelector<HTMLElement>(`[data-p1-seg-row="${args.selectedIdx}"]`);
     el?.scrollIntoView({ block: "nearest", behavior: "instant" });
-  }, [args.selectedIdx]);
+  }, [args.selectedIdx, args.tierScrollRef, args.segmentRowCount]);
 
   return {
     onTierScroll,
