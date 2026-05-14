@@ -1,11 +1,11 @@
 //! 各在线 STT 厂商原生 HTTP 调用，归一为 Rushi `TranscriptionResult` JSON（schema_version 1）。
 
-pub mod baidu;
 pub mod aliyun;
-pub mod deepgram;
-pub mod tencent;
 pub mod azure;
+pub mod baidu;
+pub mod deepgram;
 pub mod google;
+pub mod tencent;
 
 use std::fs;
 use std::path::Path;
@@ -42,7 +42,9 @@ pub(crate) fn read_audio_bytes_limited(path: &Path) -> Result<Vec<u8>, String> {
     fs::read(path).map_err(|e| format!("读取音频: {e}"))
 }
 
-pub(crate) async fn multipart_part_from_file(path: &Path) -> Result<reqwest::multipart::Part, String> {
+pub(crate) async fn multipart_part_from_file(
+    path: &Path,
+) -> Result<reqwest::multipart::Part, String> {
     let meta = fs::metadata(path).map_err(|e| format!("读取音频元数据: {e}"))?;
     if meta.len() > MAX_STT_AUDIO_BYTES {
         return Err(format!(
@@ -151,22 +153,34 @@ pub async fn dispatch_native(
     }
     match adapter {
         "baiduSpeech" => baidu::transcribe_baidu(client, audio_path, bridge, timeout, log).await,
-        "aliyunNls" => aliyun::transcribe_aliyun_nls(client, audio_path, bridge, timeout, log).await,
-        "deepgramListen" => deepgram::transcribe_deepgram(client, audio_path, bridge, timeout, log).await,
+        "aliyunNls" => {
+            aliyun::transcribe_aliyun_nls(client, audio_path, bridge, timeout, log).await
+        }
+        "deepgramListen" => {
+            deepgram::transcribe_deepgram(client, audio_path, bridge, timeout, log).await
+        }
         "tencentAsr" => tencent::transcribe_tencent(client, audio_path, bridge, timeout, log).await,
         "azureConversationV1" => {
             azure::transcribe_azure_conversation(client, audio_path, bridge, timeout, log).await
         }
-        "googleSpeechV1" => google::transcribe_google(client, audio_path, bridge, timeout, log).await,
-        "iflytekIatWs" => {
-            crate::china_stt_shell::iflytek::transcribe_iflytek_iat_ws(audio_path, bridge, timeout, log)
+        "googleSpeechV1" => {
+            google::transcribe_google(client, audio_path, bridge, timeout, log).await
         }
-        "huaweiSisShortAudio" => crate::china_stt_shell::huawei::transcribe_huawei_sis_short(
-            client, audio_path, bridge, timeout, log,
-        ).await,
-        "aispeechLasrSentenceV2" => crate::china_stt_shell::aispeech::transcribe_aispeech_lasr(
-            client, audio_path, bridge, timeout, log,
-        ).await,
+        "iflytekIatWs" => crate::china_stt_shell::iflytek::transcribe_iflytek_iat_ws(
+            audio_path, bridge, timeout, log,
+        ),
+        "huaweiSisShortAudio" => {
+            crate::china_stt_shell::huawei::transcribe_huawei_sis_short(
+                client, audio_path, bridge, timeout, log,
+            )
+            .await
+        }
+        "aispeechLasrSentenceV2" => {
+            crate::china_stt_shell::aispeech::transcribe_aispeech_lasr(
+                client, audio_path, bridge, timeout, log,
+            )
+            .await
+        }
         "volcengineBigmodelNostreamWs" => {
             crate::china_stt_shell::volcengine::transcribe_volcengine_bigmodel_nostream_ws(
                 audio_path, bridge, timeout, log,

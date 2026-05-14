@@ -54,7 +54,9 @@ async fn project_run_transcribe_inner(
         let timeout_s = o.timeout_sec.unwrap_or(600).clamp(30, 600);
         let dur = Duration::from_secs(timeout_s);
         match o.native_adapter.as_deref() {
-            Some("openaiAudio") => transcribe_openai_native(&st, audio_path, &hotwords, o, dur).await?,
+            Some("openaiAudio") => {
+                transcribe_openai_native(&st, audio_path, &hotwords, o, dur).await?
+            }
             Some("assemblyai") => transcribe_assemblyai_native(&st, audio_path, o, dur).await?,
             Some(
                 adapter @ ("baiduSpeech"
@@ -70,7 +72,8 @@ async fn project_run_transcribe_inner(
             ) => {
                 let client = crate::stt_native::http_client();
                 let log = |line: &str| append_desktop_log_line(&st, line);
-                crate::stt_native::dispatch_native(adapter, client, audio_path, o, dur, &log).await?
+                crate::stt_native::dispatch_native(adapter, client, audio_path, o, dur, &log)
+                    .await?
             }
             _ => {
                 let url = o.transcribe_url.trim();
@@ -93,7 +96,8 @@ async fn project_run_transcribe_inner(
                     }
                 });
                 append_desktop_log_line(&st, "INFO transcribe online_multipart");
-                post_transcribe_multipart(&st, url, audio_path, hotwords.clone(), auth, app_k, dur).await?
+                post_transcribe_multipart(&st, url, audio_path, hotwords.clone(), auth, app_k, dur)
+                    .await?
             }
         }
     } else {
@@ -110,7 +114,8 @@ async fn project_run_transcribe_inner(
             None,
             None,
             std::time::Duration::from_secs(600),
-        ).await?
+        )
+        .await?
     };
     // 契约里 success 也可能带 `"error": null`（Pydantic optional）；仅非 null 视为硬错误。
     if let Some(err) = v.get("error").filter(|e| !e.is_null()) {

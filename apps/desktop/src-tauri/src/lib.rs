@@ -1,10 +1,10 @@
 mod asr_sidecar;
 mod china_stt_shell;
 mod db;
+mod diagnostic;
 mod export_docx;
 mod online_stt_bridge;
 mod project;
-mod diagnostic;
 mod stt_native;
 
 use std::path::PathBuf;
