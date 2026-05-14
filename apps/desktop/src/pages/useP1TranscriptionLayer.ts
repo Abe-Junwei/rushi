@@ -87,6 +87,7 @@ export function useP1TranscriptionLayer(ctx: P1TranscriptionLayerInput) {
     selectedIdx: ctx.selectedIdx,
     segmentRowCount: ctx.segments.length,
   });
+  const refreshTierScrollLayout = scroll.refreshTierScrollLayout;
 
   const keyboard = useP1SegmentKeyboard({
     ctxRef,
@@ -138,8 +139,8 @@ export function useP1TranscriptionLayer(ctx: P1TranscriptionLayerInput) {
     const sl = Math.min(maxSl, Math.max(0, wsSl));
     tier.scrollLeft = sl;
     if (Math.abs(w.getScrollLeft() - sl) > 0.5) w.setScrollLeft(sl);
-    scroll.refreshTierScrollLayout();
-  }, [zoom.pxPerSec, timelineWidthPx, wf.isReady, scroll.refreshTierScrollLayout]);
+    refreshTierScrollLayout();
+  }, [zoom.pxPerSec, timelineWidthPx, wf.isReady, refreshTierScrollLayout]);
 
   useEffect(() => {
     if (!ctx.mediaUrl || !wf.isReady) return;

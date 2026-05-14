@@ -139,7 +139,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
         barRadius: 2,
         minPxPerSec: initialMps,
         dragToSeek: !wantDragCreate,
-        interact: !disabled,
+        interact: !optsRef.current.disabled,
         autoScroll: true,
         autoCenter: false,
         plugins: [regions],

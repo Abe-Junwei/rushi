@@ -9,6 +9,16 @@ import type { PluginContext, PluginManifest, PluginModule } from "./types";
 import { createPluginContext, disposePluginContext } from "./context";
 import { registryUnregister } from "./registry";
 
+function formatUnknownError(value: unknown): string {
+  if (typeof value === "string") return value;
+  if (value instanceof Error) return value.message;
+  try {
+    return JSON.stringify(value);
+  } catch {
+    return "unknown error";
+  }
+}
+
 interface LoadedPlugin {
   manifest: PluginManifest;
   module: PluginModule;
@@ -53,7 +63,7 @@ export async function loadPlugin(manifest: PluginManifest): Promise<void> {
       registryUnregister(h);
     }
     disposePluginContext(ctx);
-    throw e;
+    throw e instanceof Error ? e : new Error(formatUnknownError(e));
   }
   loaded.set(manifest.id, { manifest, module: pluginModule, context: ctx, handles });
   console.warn(`[plugin] loaded ${manifest.id}`);
@@ -84,7 +94,9 @@ export async function unloadPlugin(id: string): Promise<void> {
   disposePluginContext(entry.context);
   loaded.delete(id);
   console.warn(`[plugin] unloaded ${id}`);
-  if (deactivateError) throw deactivateError;
+  if (deactivateError) {
+    throw deactivateError instanceof Error ? deactivateError : new Error(formatUnknownError(deactivateError));
+  }
 }
 
 /** Load multiple plugins in parallel. */

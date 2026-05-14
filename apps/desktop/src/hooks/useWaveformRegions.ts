@@ -119,7 +119,7 @@ export function useWaveformRegions(
         region.un("dblclick", onDbl);
       });
     },
-    [wsRef, optsRef],
+    [wsRef, regionsRef, optsRef],
   );
 
   const rebuildAllSegmentRegions = useCallback(
