@@ -6,13 +6,12 @@ import type { AsrHealthCapabilities, BundledAsrLaunchReport } from "../tauri/pro
 import type { AsrHealthState } from "../pages/useProjectController";
 import type { PrepareModelFailureCopy } from "../pages/prepareModelDownloadCopy";
 
-/** 左侧导航分区（类系统设置 / IDE Settings：导航 + 详情） */
 type EnvNavId = "local-asr" | "online-stt" | "help";
 
-const ENV_NAV_ITEMS: { id: EnvNavId; label: string }[] = [
-  { id: "local-asr", label: "本机 ASR" },
-  { id: "online-stt", label: "在线 STT" },
-  { id: "help", label: "使用说明" },
+const ENV_NAV_ITEMS: { id: EnvNavId; label: string; description: string }[] = [
+  { id: "local-asr", label: "本机 ASR", description: "FunASR 环境、模型下载与诊断" },
+  { id: "online-stt", label: "在线 STT", description: "在线转写提供方与 API 配置" },
+  { id: "help", label: "使用说明", description: "快捷键、常见问题与导出格式" },
 ];
 
 export type EnvironmentPanelProps = {
@@ -32,7 +31,6 @@ export type EnvironmentPanelProps = {
   retryBundledAsrSidecar: () => Promise<void>;
   openAppDataFolder: () => Promise<void>;
   onSttOnlineRuntimeChanged?: () => void;
-  /** 递增时切换到「在线 STT」分区并滚动到锚点（顶栏 / 侧栏入口）。 */
   focusOnlineSttSeq?: number;
 };
 
@@ -66,31 +64,44 @@ export function EnvironmentPanel({
     return () => window.cancelAnimationFrame(raf);
   }, [focusOnlineSttSeq]);
 
+  const activeItem = ENV_NAV_ITEMS.find((i) => i.id === envSection);
+
   return (
-    <div className="flex min-h-0 min-w-0 flex-col border-t border-zen-gray-300 bg-zen-paper">
-      <div className="flex min-h-0 min-w-0 flex-1 flex-col sm:flex-row">
-        <nav
-          className="flex shrink-0 gap-1 overflow-x-auto border-b border-zen-gray-300 bg-zen-ochre px-2 py-2 sm:w-[7.75rem] sm:flex-col sm:gap-0.5 sm:border-b-0 sm:border-r sm:border-zen-gray-300 sm:bg-zen-ochre sm:px-1 sm:py-2"
-          aria-label="环境与 ASR 分区"
-        >
-          {ENV_NAV_ITEMS.map((item) => {
-            const active = envSection === item.id;
-            return (
-              <button
-                key={item.id}
-                type="button"
-                className={`rounded-md px-2 py-2 text-left text-[11px] font-medium outline-none transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-ink/20 sm:w-full ${
-                  active ? "bg-zen-paper text-zen-ink" : "text-zen-stone hover:bg-zen-gray-300/70 hover:text-zen-ink"
-                }`}
-                aria-current={active ? "true" : undefined}
-                onClick={() => setEnvSection(item.id)}
-              >
-                <span className="whitespace-nowrap sm:whitespace-normal">{item.label}</span>
-              </button>
-            );
-          })}
-        </nav>
-        <div className="min-h-0 min-w-0 flex-1 overflow-y-auto px-3 py-3 text-[12px] leading-relaxed text-zen-stone">
+    <div className="flex h-full flex-row">
+      {/* 左侧导航 */}
+      <nav className="flex h-full w-44 shrink-0 flex-col border-r border-zen-gray-300 bg-serene-surface-container-low px-2 py-4">
+        <p className="mb-3 px-2 text-[10px] font-semibold uppercase tracking-[0.1em] text-zen-stone">
+          设置
+        </p>
+        {ENV_NAV_ITEMS.map((item) => {
+          const active = envSection === item.id;
+          return (
+            <button
+              key={item.id}
+              type="button"
+              className={`mb-0.5 flex w-full flex-col rounded-lg px-3 py-2 text-left outline-none transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-ink/20 ${
+                active
+                  ? "bg-zen-paper text-zen-ink shadow-sm"
+                  : "text-zen-stone hover:bg-zen-paper hover:text-zen-ink"
+              }`}
+              aria-current={active ? "true" : undefined}
+              onClick={() => setEnvSection(item.id)}
+            >
+              <span className="text-[12px] font-medium">{item.label}</span>
+              <span className="mt-0.5 text-[10px] leading-snug text-zen-stone/80">{item.description}</span>
+            </button>
+          );
+        })}
+      </nav>
+
+      {/* 右侧内容 */}
+      <div className="min-h-0 flex-1 overflow-y-auto bg-zen-paper px-6 py-5">
+        <div className="mb-5">
+          <h2 className="font-serif text-xl font-medium text-zen-ink">{activeItem?.label}</h2>
+          <p className="mt-1 text-[12px] text-zen-stone">{activeItem?.description}</p>
+        </div>
+
+        <div className="space-y-4">
           {envSection === "local-asr" ? (
             <EnvLocalAsrPanel
               asrHealth={asrHealth}
