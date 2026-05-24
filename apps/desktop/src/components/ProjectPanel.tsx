@@ -161,26 +161,47 @@ export function ProjectPanel() {
       ) : null}
 
       {envOpen ? (
-        <div className="max-h-[min(28rem,42vh)] shrink-0 overflow-y-auto border-b border-black/[0.06]">
-          <EnvironmentPanel
-            asrHealth={c.asrHealth}
-            asrHealthDetail={c.asrHealthDetail}
-            bundledAsrDiag={c.bundledAsrDiag}
-            asrCaps={c.asrCaps}
-            funasrInstallMessage={c.funasrInstallMessage}
-            prepareModelBusy={c.prepareModelBusy}
-            prepareModelProgress={c.prepareModelProgress}
-            prepareModelFailure={c.prepareModelFailure}
-            busy={c.busy}
-            refreshAsrHealth={c.refreshAsrHealth}
-            installFunasrDepsInteractive={c.installFunasrDepsInteractive}
-            copyFunasrManualCommands={c.copyFunasrManualCommands}
-            prepareDefaultFunasrModel={c.prepareDefaultFunasrModel}
-            retryBundledAsrSidecar={c.retryBundledAsrSidecar}
-            openAppDataFolder={c.openAppDataFolder}
-            onSttOnlineRuntimeChanged={c.bumpSttOnlineRuntimeChanged}
-            focusOnlineSttSeq={onlineSttFocusSeq}
-          />
+        <div
+          className="fixed inset-0 z-50 flex justify-end bg-black/20 backdrop-blur-sm"
+          onClick={() => setEnvOpen(false)}
+        >
+          <div
+            className="flex h-full w-full max-w-lg flex-col overflow-hidden border-l border-zen-gray-300 bg-zen-paper shadow-2xl"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="flex shrink-0 items-center justify-between border-b border-zen-gray-300 px-4 py-3">
+              <h2 className="font-serif text-lg font-medium text-zen-ink">环境与 ASR</h2>
+              <button
+                type="button"
+                className="rounded-lg border-0 bg-transparent p-1 text-zen-stone transition-colors hover:text-zen-ink"
+                onClick={() => setEnvOpen(false)}
+                aria-label="关闭面板"
+              >
+                ✕
+              </button>
+            </div>
+            <div className="min-h-0 flex-1 overflow-y-auto">
+              <EnvironmentPanel
+                asrHealth={c.asrHealth}
+                asrHealthDetail={c.asrHealthDetail}
+                bundledAsrDiag={c.bundledAsrDiag}
+                asrCaps={c.asrCaps}
+                funasrInstallMessage={c.funasrInstallMessage}
+                prepareModelBusy={c.prepareModelBusy}
+                prepareModelProgress={c.prepareModelProgress}
+                prepareModelFailure={c.prepareModelFailure}
+                busy={c.busy}
+                refreshAsrHealth={c.refreshAsrHealth}
+                installFunasrDepsInteractive={c.installFunasrDepsInteractive}
+                copyFunasrManualCommands={c.copyFunasrManualCommands}
+                prepareDefaultFunasrModel={c.prepareDefaultFunasrModel}
+                retryBundledAsrSidecar={c.retryBundledAsrSidecar}
+                openAppDataFolder={c.openAppDataFolder}
+                onSttOnlineRuntimeChanged={c.bumpSttOnlineRuntimeChanged}
+                focusOnlineSttSeq={onlineSttFocusSeq}
+              />
+            </div>
+          </div>
         </div>
       ) : null}
 
