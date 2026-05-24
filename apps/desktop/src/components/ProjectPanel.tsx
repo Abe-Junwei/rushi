@@ -2,6 +2,7 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranscriptionLayer } from "../pages/useTranscriptionLayer";
 import { buildSegmentContextMenuItems, type SegmentContextMenuKey } from "../utils/segmentContextMenuModel";
 import { EnvironmentPanel } from "./EnvironmentPanel";
+import { DraggableResizablePanel } from "./DraggableResizablePanel";
 import { EditorView } from "./EditorView";
 
 import { ProjectSidebar } from "./ProjectSidebar";
@@ -161,49 +162,38 @@ export function ProjectPanel() {
       ) : null}
 
       {envOpen ? (
-        <div
-          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
-          onClick={() => setEnvOpen(false)}
-        >
-          <div
-            className="flex w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-zen-gray-300 bg-zen-paper shadow-xl"
-            style={{ maxHeight: "85vh" }}
-            onClick={(e) => e.stopPropagation()}
+        <>
+          <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm" onClick={() => setEnvOpen(false)} />
+          <DraggableResizablePanel
+            id="environment"
+            title="环境与 ASR"
+            defaultPosition={{ x: Math.round(window.innerWidth / 2 - 384), y: Math.round(window.innerHeight / 2 - 280) }}
+            defaultSize={{ width: 768, height: 560 }}
+            minWidth={480}
+            minHeight={320}
+            onClose={() => setEnvOpen(false)}
           >
-            <div className="flex shrink-0 items-center justify-between border-b border-zen-gray-300 px-5 py-3">
-              <h2 className="font-serif text-lg font-medium text-zen-ink">环境与 ASR</h2>
-              <button
-                type="button"
-                className="rounded-lg border-0 bg-transparent p-1 text-zen-stone transition-colors hover:text-zen-ink"
-                onClick={() => setEnvOpen(false)}
-                aria-label="关闭面板"
-              >
-                ✕
-              </button>
-            </div>
-            <div className="min-h-0 flex-1 overflow-y-auto">
-              <EnvironmentPanel
-                asrHealth={c.asrHealth}
-                asrHealthDetail={c.asrHealthDetail}
-                bundledAsrDiag={c.bundledAsrDiag}
-                asrCaps={c.asrCaps}
-                funasrInstallMessage={c.funasrInstallMessage}
-                prepareModelBusy={c.prepareModelBusy}
-                prepareModelProgress={c.prepareModelProgress}
-                prepareModelFailure={c.prepareModelFailure}
-                busy={c.busy}
-                refreshAsrHealth={c.refreshAsrHealth}
-                installFunasrDepsInteractive={c.installFunasrDepsInteractive}
-                copyFunasrManualCommands={c.copyFunasrManualCommands}
-                prepareDefaultFunasrModel={c.prepareDefaultFunasrModel}
-                retryBundledAsrSidecar={c.retryBundledAsrSidecar}
-                openAppDataFolder={c.openAppDataFolder}
-                onSttOnlineRuntimeChanged={c.bumpSttOnlineRuntimeChanged}
-                focusOnlineSttSeq={onlineSttFocusSeq}
-              />
-            </div>
-          </div>
-        </div>
+            <EnvironmentPanel
+              asrHealth={c.asrHealth}
+              asrHealthDetail={c.asrHealthDetail}
+              bundledAsrDiag={c.bundledAsrDiag}
+              asrCaps={c.asrCaps}
+              funasrInstallMessage={c.funasrInstallMessage}
+              prepareModelBusy={c.prepareModelBusy}
+              prepareModelProgress={c.prepareModelProgress}
+              prepareModelFailure={c.prepareModelFailure}
+              busy={c.busy}
+              refreshAsrHealth={c.refreshAsrHealth}
+              installFunasrDepsInteractive={c.installFunasrDepsInteractive}
+              copyFunasrManualCommands={c.copyFunasrManualCommands}
+              prepareDefaultFunasrModel={c.prepareDefaultFunasrModel}
+              retryBundledAsrSidecar={c.retryBundledAsrSidecar}
+              openAppDataFolder={c.openAppDataFolder}
+              onSttOnlineRuntimeChanged={c.bumpSttOnlineRuntimeChanged}
+              focusOnlineSttSeq={onlineSttFocusSeq}
+            />
+          </DraggableResizablePanel>
+        </>
       ) : null}
 
       <div
