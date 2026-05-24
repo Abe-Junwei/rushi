@@ -77,7 +77,6 @@ function formatRecentProjectDate(ms: number): string {
 
 export function WelcomeView({ controller: c, reserveTopSpace = false }: WelcomeViewProps) {
   const recentProjects = useMemo(() => sortRecentProjects(c.projects), [c.projects]);
-  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [showCreateModal, setShowCreateModal] = useState(false);
 
   return (
@@ -167,26 +166,26 @@ export function WelcomeView({ controller: c, reserveTopSpace = false }: WelcomeV
                         <span className="mt-1 block font-mono text-[12px] tabular-nums text-zen-stone">{formatRecentProjectDate(p.updated_at_ms)}</span>
                       </span>
                     </button>
-                    <div className="flex shrink-0 items-center gap-1 self-stretch">
-                      <span className="flex h-9 w-7 items-center justify-center">
-                        <ChevronRightIcon />
-                      </span>
+                    <div className="flex shrink-0 items-center gap-1 self-stretch opacity-0 transition-opacity group-hover:opacity-100">
                       <button
                         type="button"
-                        className={`flex h-9 shrink-0 items-center justify-center rounded-lg border-0 bg-transparent text-zen-stone transition-colors hover:bg-zen-cinnabar/10 hover:text-zen-cinnabar focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-cinnabar/30 disabled:cursor-not-allowed disabled:opacity-40 ${deleteConfirmId === p.id ? "w-12 bg-zen-cinnabar/10 text-zen-cinnabar" : "w-9"}`}
-                        aria-label={deleteConfirmId === p.id ? `确认删除项目 ${p.name}` : `删除项目 ${p.name}`}
-                        title={deleteConfirmId === p.id ? "确认删除" : "删除项目"}
+                        className="flex h-9 w-9 items-center justify-center rounded-lg border-0 bg-transparent text-zen-stone transition-colors hover:bg-zen-saffron/10 hover:text-zen-saffron focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-saffron/30 disabled:cursor-not-allowed disabled:opacity-40"
+                        aria-label={`打开项目 ${p.name}`}
+                        title="打开项目"
                         disabled={c.busy}
-                        onClick={() => {
-                          if (deleteConfirmId === p.id) {
-                            setDeleteConfirmId(null);
-                            void c.deleteProject(p.id, { skipBrowserConfirm: true });
-                            return;
-                          }
-                          setDeleteConfirmId(p.id);
-                        }}
+                        onClick={() => void c.loadProject(p.id)}
                       >
-                        {deleteConfirmId === p.id ? <span className="font-sans text-[12px] font-semibold">确认</span> : <TrashIcon />}
+                        <ChevronRightIcon />
+                      </button>
+                      <button
+                        type="button"
+                        className="flex h-9 w-9 items-center justify-center rounded-lg border-0 bg-transparent text-zen-stone transition-colors hover:bg-zen-cinnabar/10 hover:text-zen-cinnabar focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-cinnabar/30 disabled:cursor-not-allowed disabled:opacity-40"
+                        aria-label={`删除项目 ${p.name}`}
+                        title="删除项目"
+                        disabled={c.busy}
+                        onClick={() => void c.deleteProject(p.id)}
+                      >
+                        <TrashIcon />
                       </button>
                     </div>
                   </div>

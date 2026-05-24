@@ -6,8 +6,8 @@ import { WaveformTimeRuler } from "./WaveformTimeRuler";
 import { WaveformZoomBar } from "./WaveformZoomBar";
 import type { ProjectControllerApi } from "../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../pages/useTranscriptionLayer";
-import * as fileApi from "../tauri/fileApi";
-import { CLAY_BTN_SECONDARY } from "../config/controlStyles";
+import { useState } from "react";
+import { EmptyProjectPanel } from "./EmptyProjectPanel";
 import { pointerTimeFromSegmentCard, type SegmentContextMenuItem, type SegmentContextMenuKey } from "../utils/segmentContextMenuModel";
 
 
@@ -17,69 +17,6 @@ interface SegmentCtxMenuState {
   y: number;
   segmentIdx: number;
   pointerTimeSec: number;
-}
-
-function InboxIcon() {
-  return (
-    <svg className="mb-3 h-12 w-12 text-zen-stone/40" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5" aria-hidden>
-      <path d="M4 4h16v12H4z" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M4 16h5l1.5 2h3L15 16h5" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function EmptyProjectPanel({ controller: c }: { controller: ProjectControllerApi }) {
-  return (
-    <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-6 py-12">
-      <InboxIcon />
-      <p className="mb-1 text-center font-sans text-sm text-zen-ink">项目为空</p>
-      <p className="mb-6 text-center font-sans text-[12px] text-zen-stone">导入音频或文本文件开始工作</p>
-      <div className="flex flex-wrap justify-center gap-3">
-        <button
-          type="button"
-          className={CLAY_BTN_SECONDARY}
-          disabled={c.busy}
-          onClick={() => {
-            void (async () => {
-              if (!c.current) return;
-              try {
-                const srcPath = await fileApi.pickAudioPath();
-                if (!srcPath) return;
-                const name = srcPath.replace(/^.*[/\\]/, "").replace(/\.[^.]+$/, "") || "未命名音频";
-                await fileApi.importAudioToProject(c.current.id, name, srcPath);
-                await c.refreshCurrentProject();
-              } catch (e) {
-                c.setError(e instanceof Error ? e.message : String(e));
-              }
-            })();
-          }}
-        >
-          导入音频
-        </button>
-        <button
-          type="button"
-          className={CLAY_BTN_SECONDARY}
-          disabled={c.busy}
-          onClick={() => {
-            void (async () => {
-              if (!c.current) return;
-              try {
-                const srcPath = await fileApi.pickTextPath();
-                if (!srcPath) return;
-                const name = srcPath.replace(/^.*[/\\]/, "").replace(/\.[^.]+$/, "") || "未命名文本";
-                await fileApi.importTextToProject(c.current.id, name, srcPath);
-                await c.refreshCurrentProject();
-              } catch (e) {
-                c.setError(e instanceof Error ? e.message : String(e));
-              }
-            })();
-          }}
-        >
-          导入文本文件
-        </button>
-      </div>
-    </div>
-  );
 }
 
 interface EditorViewProps {
@@ -93,6 +30,12 @@ interface EditorViewProps {
   onSegmentCtxMenuSelect: (key: SegmentContextMenuKey) => void;
 }
 
+function fileTypeDot(type: string) {
+  if (type === "text") return "bg-zen-indigo";
+  if (type === "paired") return "bg-zen-saffron";
+  return "bg-zen-stone";
+}
+
 export function EditorView({
   controller: c,
   tx,
@@ -103,10 +46,13 @@ export function EditorView({
   segmentCtxMenuItems,
   onSegmentCtxMenuSelect,
 }: EditorViewProps) {
+  const [showFileDropdown, setShowFileDropdown] = useState(false);
+  const files = c.current?.files ?? [];
+
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col">
       {/* Navigation bar */}
-      <div className="flex h-10 shrink-0 items-center justify-between border-b border-zen-gray-300 px-4">
+      <div className="relative flex h-10 shrink-0 items-center justify-between border-b border-zen-gray-300 px-4">
         <button
           type="button"
           className="text-[12px] text-zen-stone transition-colors hover:text-zen-ink disabled:cursor-not-allowed disabled:opacity-40"
@@ -115,15 +61,52 @@ export function EditorView({
         >
           ← 返回 Dashboard
         </button>
-        <span className="text-sm text-zen-stone">
-          <span className="font-medium text-zen-ink">{c.current?.name}</span>
-          {c.currentFileId ? (
-            <>
-              <span className="mx-1.5 text-zen-gray-300">/</span>
-              <span>{c.current?.files.find((f) => f.id === c.currentFileId)?.name ?? "未命名文件"}</span>
-            </>
+        <div className="relative">
+          <button
+            type="button"
+            className="text-sm text-zen-stone transition-colors hover:text-zen-ink disabled:cursor-not-allowed disabled:opacity-40"
+            disabled={c.busy}
+            onClick={() => setShowFileDropdown((v) => !v)}
+          >
+            <span className="font-medium text-zen-ink">{c.current?.name}</span>
+            {c.currentFileId ? (
+              <>
+                <span className="mx-1.5 text-zen-gray-300">/</span>
+                <span>{c.current?.files.find((f) => f.id === c.currentFileId)?.name ?? "未命名文件"}</span>
+              </>
+            ) : null}
+          </button>
+          {showFileDropdown && files.length > 0 ? (
+            <div
+              className="absolute right-0 top-full z-40 mt-1 w-56 rounded-xl border border-zen-gray-300 bg-zen-paper p-2 shadow-lg"
+              onMouseLeave={() => setShowFileDropdown(false)}
+            >
+              <p className="mb-1 px-2 py-1 text-[10px] font-medium uppercase tracking-[0.18em] text-zen-stone">项目文件</p>
+              <div className="flex flex-col gap-0.5">
+                {files.map((f) => {
+                  const isActive = c.currentFileId === f.id;
+                  return (
+                    <button
+                      key={f.id}
+                      type="button"
+                      className={`flex items-center gap-2 rounded-lg px-2 py-1.5 text-left text-[11px] transition-colors ${
+                        isActive ? "bg-serene-surface-container font-medium text-zen-saffron-mid" : "text-zen-ink hover:bg-serene-surface-container"
+                      }`}
+                      disabled={c.busy}
+                      onClick={() => {
+                        if (!isActive) void c.openFile(f.id);
+                        setShowFileDropdown(false);
+                      }}
+                    >
+                      <span className={`inline-block h-1.5 w-1.5 rounded-full ${fileTypeDot(f.file_type)}`} />
+                      <span className="min-w-0 flex-1 truncate">{f.name}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
           ) : null}
-        </span>
+        </div>
         <span className="w-20" />
       </div>
 
