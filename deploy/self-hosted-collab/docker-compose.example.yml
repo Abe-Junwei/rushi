@@ -1,0 +1,73 @@
+services:
+  rushi-collab:
+    image: ${RUSHI_COLLAB_IMAGE}
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    environment:
+      RUSHI_DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@postgres:5432/${POSTGRES_DB}
+      RUSHI_HTTP_BIND: 0.0.0.0:${RUSHI_COLLAB_APP_PORT}
+      RUSHI_PUBLIC_BASE_URL: https://${RUSHI_COLLAB_DOMAIN}
+      RUSHI_STORAGE_BACKEND: filesystem
+      RUSHI_FILES_ROOT: /var/lib/rushi/files
+      RUSHI_ENABLE_EMBEDDED_WORKER: "true"
+    depends_on:
+      postgres:
+        condition: service_healthy
+    volumes:
+      - rushi_files:/var/lib/rushi/files
+    expose:
+      - "${RUSHI_COLLAB_APP_PORT}"
+    networks:
+      - rushi_internal
+
+  postgres:
+    image: postgres:16
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
+    command: >-
+      postgres
+      -c shared_buffers=256MB
+      -c max_connections=100
+      -c wal_level=replica
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - rushi_postgres:/var/lib/postgresql/data
+    networks:
+      - rushi_internal
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    env_file:
+      - ./.env
+    depends_on:
+      - rushi-collab
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./caddy/Caddyfile.example:/etc/caddy/Caddyfile:ro
+      - rushi_caddy_data:/data
+      - rushi_caddy_config:/config
+    networks:
+      - rushi_internal
+
+volumes:
+  rushi_postgres:
+  rushi_files:
+  rushi_caddy_data:
+  rushi_caddy_config:
+
+networks:
+  rushi_internal:
+    driver: bridge

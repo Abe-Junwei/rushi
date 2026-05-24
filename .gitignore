@@ -34,3 +34,4 @@ services/asr/third_party/ffmpeg/darwin-arm64/
 services/asr/third_party/ffmpeg/darwin-x64/
 services/asr/third_party/ffmpeg/win32-x64/
 services/asr/third_party/ffmpeg/linux-x64/
+.playwright-mcp/

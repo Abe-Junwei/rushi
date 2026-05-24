@@ -26,6 +26,15 @@ export function asrHealthUrl(base: string = asrBaseUrl()): string {
   return `${trimTrailingSlashes(base)}/health`;
 }
 
+export function isTauriRuntime(): boolean {
+  if (typeof window === "undefined") return false;
+  const w = window as Window & {
+    __TAURI__?: unknown;
+    __TAURI_INTERNALS__?: unknown;
+  };
+  return typeof w.__TAURI__ !== "undefined" || typeof w.__TAURI_INTERNALS__ !== "undefined";
+}
+
 /** True when UI targets the default loopback ASR (same as bundled sidecar). */
 export function isDefaultBundledAsrTarget(): boolean {
   return asrBaseUrl() === DEFAULT_ASR_BASE_URL;

@@ -1,12 +1,8 @@
-import { useMemo } from "react";
-import {
-  CLAY_BTN_GHOST,
-  CLAY_BTN_ONLINE_STT,
-  CLAY_BTN_PRIMARY,
-  CLAY_SELECT,
-} from "../config/controlStyles";
+import { useMemo, useState } from "react";
+import { CLAY_BTN_PRIMARY, CLAY_BTN_SECONDARY, CLAY_SELECT } from "../config/controlStyles";
 import type { ProjectControllerApi } from "../pages/useProjectController";
 import type { ProjectSummary } from "../tauri/projectApi";
+import { CreateProjectModal } from "./CreateProjectModal";
 
 const RECENT_PROJECT_LIMIT = 8;
 
@@ -14,150 +10,212 @@ function sortRecentProjects(list: ProjectSummary[]): ProjectSummary[] {
   return [...list].sort((a, b) => b.updated_at_ms - a.updated_at_ms).slice(0, RECENT_PROJECT_LIMIT);
 }
 
-/** DESIGN.md `button-primary` */
 const welcomePrimaryBtn = CLAY_BTN_PRIMARY;
-
-const btnOnlineSttEntry = CLAY_BTN_ONLINE_STT;
-
-const welcomeGhostBtn = CLAY_BTN_GHOST;
-
-const welcomeSelect = CLAY_SELECT;
 
 interface WelcomeViewProps {
   controller: ProjectControllerApi;
   onOpenOnlineStt: () => void;
+  reserveTopSpace?: boolean;
 }
 
-export function WelcomeView({ controller: c, onOpenOnlineStt }: WelcomeViewProps) {
+function AudioFileIcon() {
+  return (
+    <svg className="h-5 w-5 shrink-0" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M14 2v6h6" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M10 17a2 2 0 1 0 0-4 2 2 0 0 0 0 4Z" />
+      <path d="M12 15V9h3" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function InboxIcon() {
+  return (
+    <svg className="mb-2 h-8 w-8 text-zen-stone/50" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.8" aria-hidden>
+      <path d="M4 4h16v12H4z" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M4 16h5l1.5 2h3L15 16h5" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function ChevronRightIcon() {
+  return (
+    <svg className="h-4 w-4 shrink-0 text-zen-stone transition-colors group-hover:text-zen-saffron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <path d="m9 18 6-6-6-6" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function TrashIcon() {
+  return (
+    <svg className="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <path d="M3 6h18" strokeLinecap="round" />
+      <path d="M8 6V4h8v2" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="m6 6 1 14h10l1-14" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M10 11v5" strokeLinecap="round" />
+      <path d="M14 11v5" strokeLinecap="round" />
+    </svg>
+  );
+}
+
+function HistoryIcon() {
+  return (
+    <svg className="h-4 w-4 shrink-0 text-zen-stone" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
+      <path d="M3 12a9 9 0 1 0 3-6.7" strokeLinecap="round" />
+      <path d="M3 4v5h5" strokeLinecap="round" strokeLinejoin="round" />
+      <path d="M12 7v5l3 2" strokeLinecap="round" strokeLinejoin="round" />
+    </svg>
+  );
+}
+
+function formatRecentProjectDate(ms: number): string {
+  const d = new Date(ms);
+  const date = d.toLocaleDateString("zh-CN", { year: "numeric", month: "2-digit", day: "2-digit" }).split("/").join("-");
+  const time = d.toLocaleTimeString("zh-CN", { hour: "2-digit", minute: "2-digit", hour12: false });
+  return `${date} ${time}`;
+}
+
+export function WelcomeView({ controller: c, reserveTopSpace = false }: WelcomeViewProps) {
   const recentProjects = useMemo(() => sortRecentProjects(c.projects), [c.projects]);
-  const latestProject = recentProjects[0];
+  const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
+  const [showCreateModal, setShowCreateModal] = useState(false);
 
   return (
-    <div className="mx-auto flex min-h-0 w-full max-w-5xl flex-1 flex-col overflow-y-auto px-4 pb-16 pt-6 md:px-6">
-      <section className="mb-6" data-purpose="hero-content">
-        <div className="rounded-2xl border border-zen-gray-300 bg-app-highlight p-6 sm:p-8">
-          <div className="mb-4 inline-flex items-center rounded-full border border-zen-gray-300 bg-zen-paper px-3 py-1 text-xs font-medium tracking-wide text-app-text-muted">
-            P1 Workspace
-          </div>
-          <h1 className="text-4xl font-semibold tracking-tight text-app-text-main sm:text-5xl">开始校对</h1>
-          <p className="mt-4 max-w-3xl text-base leading-relaxed text-app-text-muted sm:text-lg">
-            选择本地音频创建项目，或打开已有 SQLite 项目继续工作。在线 STT Provider 可用于实验性流程。
+    <div
+      className={`flex min-h-0 w-full flex-1 flex-col items-center overflow-y-auto px-6 pb-12 lg:px-8 ${reserveTopSpace ? "justify-start pt-32" : "justify-center py-12"}`}
+      data-purpose="welcome-canvas"
+    >
+      <div className="mx-auto flex w-full max-w-2xl flex-col items-center">
+        <section className="mb-8 text-center" data-purpose="hero-content">
+          <h1 className="mb-3 font-serif text-[40px] font-medium leading-tight text-zen-ink sm:text-[48px]">开始校对</h1>
+          <p className="mx-auto max-w-md font-sans text-sm leading-relaxed text-zen-stone">
+            新建项目或打开已有项目。
           </p>
-
-          <div className="mt-7 flex flex-wrap items-center gap-3">
-            <button
-              type="button"
-              className={welcomePrimaryBtn}
-              data-purpose="main-action-button"
+        </section>
+        <div className="grid w-full max-w-md grid-cols-1 gap-4 sm:grid-cols-2" data-purpose="welcome-actions">
+          <button
+            type="button"
+            className={`${welcomePrimaryBtn} group relative w-full gap-3 rounded-xl px-4 py-3 text-sm shadow-md shadow-zen-saffron/20 transition-all duration-300 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-zen-saffron/40`}
+            data-purpose="main-action-button"
+            disabled={c.busy}
+            onClick={() => setShowCreateModal(true)}
+          >
+            <span className="absolute inset-0 rounded-xl bg-white/20 opacity-0 transition-opacity group-hover:opacity-100" aria-hidden />
+            <AudioFileIcon />
+            <span className="relative">新建项目</span>
+          </button>
+          <label className="min-w-0">
+            <span className="sr-only">打开已有项目</span>
+            <select
+              className={`${CLAY_SELECT} h-full min-h-12 w-full rounded-xl px-4 py-3 text-center font-sans text-sm font-semibold`}
+              value=""
               disabled={c.busy}
-              onClick={() => void c.pickAudio()}
+              onChange={(e) => {
+                const id = e.target.value;
+                if (id) void c.loadProject(id);
+                e.target.value = "";
+              }}
             >
-              新建项目（选择音频）
-            </button>
-            <button
-              type="button"
-              className={btnOnlineSttEntry}
-              disabled={c.busy}
-              onClick={onOpenOnlineStt}
-              aria-controls="online-stt-provider"
-            >
-              在线 STT Provider（实验）
-            </button>
-          </div>
-
-          <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-3">
-            <div className="rounded-lg border border-zen-gray-300 bg-zen-paper px-4 py-3">
-              <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-app-text-muted">项目总数</p>
-              <p className="mt-1 text-2xl font-semibold text-app-text-main">{c.projects.length}</p>
-            </div>
-            <div className="rounded-lg border border-zen-gray-300 bg-zen-paper px-4 py-3">
-              <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-app-text-muted">最近更新</p>
-              <p className="mt-1 truncate text-sm font-medium text-app-text-main">
-                {latestProject ? latestProject.name : "暂无项目"}
-              </p>
-            </div>
-            <div className="rounded-lg border border-zen-gray-300 bg-zen-paper px-4 py-3">
-              <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-app-text-muted">环境提示</p>
-              <p className="mt-1 text-sm font-medium text-app-text-main">ASR 依赖可在上方环境面板中准备</p>
-            </div>
-          </div>
+              <option value="">打开已有项目...</option>
+              {c.projects.map((p) => (
+                <option key={p.id} value={p.id}>
+                  {p.name} ({formatRecentProjectDate(p.updated_at_ms)})
+                </option>
+              ))}
+            </select>
+          </label>
         </div>
-      </section>
 
-      <section className="w-full" data-purpose="projects-list-container">
-        <div className="rounded-2xl border border-zen-gray-300 bg-zen-ochre p-4 sm:p-5">
-          <div className="mb-4 flex flex-wrap items-end justify-between gap-3 border-b border-zen-gray-300 pb-4">
-            <div>
-              <h2 className="text-xl font-semibold text-app-text-main">最近项目</h2>
-              <p className="mt-1 text-sm text-app-text-muted">可快速打开最近使用的项目，继续编辑与导出。</p>
-            </div>
+        <div className="mt-3 flex w-full max-w-md justify-center">
+          <button
+            type="button"
+            className={`${CLAY_BTN_SECONDARY} w-full sm:w-auto`}
+            disabled={c.busy}
+            onClick={() => void c.importProjectBundle()}
+          >
+            导入项目包（zip）
+          </button>
+        </div>
 
-            <div className="flex flex-wrap items-center gap-3">
-              <div className="relative inline-block min-w-[11rem] text-left">
-                <select
-                  className={welcomeSelect}
-                  value=""
-                  disabled={c.busy}
-                  onChange={(e) => {
-                    const id = e.target.value;
-                    if (id) void c.loadProject(id);
-                    e.target.value = "";
-                  }}
-                  aria-label="打开已有项目"
-                >
-                  <option value="">打开已有项目…</option>
-                  {c.projects.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {p.name} ({new Date(p.updated_at_ms).toLocaleString()})
-                    </option>
-                  ))}
-                </select>
-              </div>
-              <button
-                type="button"
-                className={welcomeGhostBtn}
-                disabled={c.busy}
-                onClick={() => void c.refreshProjects()}
-              >
-                <svg className="mr-2 h-4 w-4 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden>
-                  <path
-                    strokeLinecap="round"
-                    strokeLinejoin="round"
-                    strokeWidth={2}
-                    d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"
-                  />
-                </svg>
-                刷新
-              </button>
+        <div className="my-8 h-px w-full max-w-md bg-zen-gray-200" aria-hidden />
+
+        <section className="w-full max-w-lg" data-purpose="projects-list-container">
+          <div className="mb-4 flex flex-col gap-3">
+            <div className="flex items-center justify-center gap-2 text-zen-stone">
+              <h2 className="font-sans text-[11px] font-semibold uppercase tracking-[0.1em]">最近项目</h2>
+              {recentProjects.length > 0 ? <HistoryIcon /> : null}
             </div>
           </div>
 
-          {recentProjects.length > 0 ? (
-            <div data-purpose="project-items">
-              <ul className="max-h-[min(24rem,50vh)] list-none overflow-y-auto rounded-lg border border-zen-gray-300 bg-zen-paper p-0">
-                {recentProjects.map((p) => (
-                  <li key={p.id} className="border-b border-zen-gray-200 last:border-b-0">
+          <div className="rounded-[24px] border border-zen-gray-300 bg-serene-surface-card p-3">
+            {recentProjects.length > 0 ? (
+              <div className="flex max-h-[min(24rem,50vh)] flex-col gap-2 overflow-y-auto" data-purpose="project-items">
+                {recentProjects.slice(0, 5).map((p) => (
+                  <div
+                    key={p.id}
+                    className="group flex items-stretch gap-2 rounded-xl border border-transparent p-1 transition-colors hover:border-zen-gray-200 hover:bg-serene-surface-container-low"
+                    data-purpose="project-item"
+                  >
                     <button
                       type="button"
-                      className="flex w-full cursor-pointer appearance-none items-center justify-between gap-3 border-0 bg-transparent px-4 py-4 text-left transition-colors hover:bg-zen-ochre focus-visible:bg-zen-ochre focus-visible:outline-none disabled:cursor-not-allowed disabled:opacity-40"
-                      data-purpose="project-item"
+                      className="min-w-0 flex-1 rounded-lg border-0 bg-transparent p-2 text-left transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-saffron/30 disabled:cursor-not-allowed disabled:opacity-40"
                       disabled={c.busy}
                       onClick={() => void c.loadProject(p.id)}
                     >
-                      <span className="min-w-0 truncate font-medium text-app-text-main">{p.name}</span>
-                      <span className="shrink-0 font-sans text-sm text-app-text-muted">
-                        {new Date(p.updated_at_ms).toLocaleDateString()}
+                      <span className="block min-w-0">
+                        <span className="block truncate font-sans text-sm font-semibold text-zen-ink transition-colors group-hover:text-zen-saffron-mid">{p.name}</span>
+                        <span className="mt-1 block font-mono text-[12px] tabular-nums text-zen-stone">{formatRecentProjectDate(p.updated_at_ms)}</span>
                       </span>
                     </button>
-                  </li>
+                    <div className="flex shrink-0 items-center gap-1 self-stretch">
+                      <span className="flex h-9 w-7 items-center justify-center">
+                        <ChevronRightIcon />
+                      </span>
+                      <button
+                        type="button"
+                        className={`flex h-9 shrink-0 items-center justify-center rounded-lg border-0 bg-transparent text-zen-stone transition-colors hover:bg-zen-cinnabar/10 hover:text-zen-cinnabar focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-cinnabar/30 disabled:cursor-not-allowed disabled:opacity-40 ${deleteConfirmId === p.id ? "w-12 bg-zen-cinnabar/10 text-zen-cinnabar" : "w-9"}`}
+                        aria-label={deleteConfirmId === p.id ? `确认删除项目 ${p.name}` : `删除项目 ${p.name}`}
+                        title={deleteConfirmId === p.id ? "确认删除" : "删除项目"}
+                        disabled={c.busy}
+                        onClick={() => {
+                          if (deleteConfirmId === p.id) {
+                            setDeleteConfirmId(null);
+                            void c.deleteProject(p.id, { skipBrowserConfirm: true });
+                            return;
+                          }
+                          setDeleteConfirmId(p.id);
+                        }}
+                      >
+                        {deleteConfirmId === p.id ? <span className="font-sans text-[12px] font-semibold">确认</span> : <TrashIcon />}
+                      </button>
+                    </div>
+                  </div>
                 ))}
-              </ul>
-            </div>
-          ) : (
-            <p className="pt-2 text-center text-sm text-app-text-muted">暂无项目，请先新建。</p>
-          )}
-        </div>
-      </section>
+              </div>
+            ) : (
+              <div className="flex min-h-[160px] flex-col items-center justify-center rounded-[20px] border border-dashed border-zen-gray-300 bg-serene-surface-container-low p-8 text-center">
+                <InboxIcon />
+                <p className="font-sans text-[12px] leading-relaxed text-zen-stone">暂无项目，请先新建。</p>
+              </div>
+            )}
+          </div>
+
+          {recentProjects.length > 5 ? (
+            <button
+              type="button"
+              className="mt-4 w-full border-0 bg-transparent py-2 text-center font-sans text-[12px] text-zen-stone transition-colors hover:text-zen-ink disabled:cursor-not-allowed disabled:opacity-40"
+              disabled={c.busy}
+              onClick={() => void c.refreshProjects()}
+            >
+              查看全部项目
+            </button>
+          ) : null}
+        </section>
+      </div>
+
+      {showCreateModal ? (
+        <CreateProjectModal controller={c} onClose={() => setShowCreateModal(false)} />
+      ) : null}
     </div>
   );
 }

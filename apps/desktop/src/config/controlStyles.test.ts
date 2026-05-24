@@ -7,7 +7,7 @@ import {
 } from "./controlStyles";
 
 describe("controlStyles", () => {
-  it("maps Clay rounded.md (12px) to rounded-xl", () => {
+  it("maps Serene rounded.md (12px) to rounded-xl", () => {
     expect(CLAY_BTN_PRIMARY).toContain("rounded-xl");
     expect(CLAY_BTN_SECONDARY).toContain("rounded-xl");
     expect(CLAY_TEXT_INPUT).toContain("rounded-xl");

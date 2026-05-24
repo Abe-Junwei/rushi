@@ -15,13 +15,43 @@ export function p1RegionFillColor(seg: SegmentDto, selected: boolean): string {
   return `color-mix(in srgb, ${COLORS.waveformRegionLaneLow} 22%, transparent)`;
 }
 
-/** 时间轨语段卡片：背景 + 边框（不用 ring，避免与内嵌 input 叠出假阴影） */
-export function segmentCardChrome(seg: SegmentDto, selected: boolean): { cardBg: string; cardRing: string } {
-  const cardBg = seg.low_confidence
-    ? "bg-amber-50"
-    : selected
-      ? "bg-zen-ochre"
-      : "bg-zen-paper";
-  const cardRing = selected ? "border border-zen-gray-300" : "border border-black/[0.06]";
-  return { cardBg, cardRing };
+/** 时间轨语段卡片：可编辑内容板与时长底色分离，避免长条直接变成整块编辑面。 */
+export function segmentCardChrome(
+  seg: SegmentDto,
+  selected: boolean,
+): { slabBg: string; slabBorder: string; railFill: string; railAccent: string; outerShadow: string } {
+  if (selected && seg.low_confidence) {
+    return {
+      slabBg: "bg-amber-50/95",
+      slabBorder: "border border-zen-saffron/45",
+      railFill: "bg-amber-300/20",
+      railAccent: "bg-zen-saffron/85",
+      outerShadow: "shadow-[0_0_0_1px_rgba(197,138,67,0.18)]",
+    };
+  }
+  if (selected) {
+    return {
+      slabBg: "bg-serene-surface-card/95",
+      slabBorder: "border border-zen-saffron/40",
+      railFill: "bg-zen-saffron/16",
+      railAccent: "bg-zen-saffron/78",
+      outerShadow: "shadow-[0_0_0_1px_rgba(197,138,67,0.16)]",
+    };
+  }
+  if (seg.low_confidence) {
+    return {
+      slabBg: "bg-amber-50/92",
+      slabBorder: "border border-amber-200",
+      railFill: "bg-amber-300/18",
+      railAccent: "bg-amber-400/78",
+      outerShadow: "shadow-none",
+    };
+  }
+  return {
+    slabBg: "bg-zen-paper/96",
+    slabBorder: "border border-black/[0.06]",
+    railFill: "bg-zen-ink/6",
+    railAccent: "bg-zen-indigo/32",
+    outerShadow: "shadow-none",
+  };
 }

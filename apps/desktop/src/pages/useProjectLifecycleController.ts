@@ -5,6 +5,7 @@ import { deriveTranscribeHints } from "../services/asrTranscribeHints";
 import { isSttOnlineEnabledButIncomplete, tryBuildOnlineTranscribeBridgePayload } from "../services/stt/sttOnlineProviderContract";
 import type { ProjectDetail, ProjectSummary, SegmentDto } from "../tauri/projectApi";
 import * as p1 from "../tauri/projectApi";
+import * as fileApi from "../tauri/fileApi";
 import { type DocxExportMode } from "../tauri/exportDocxApi";
 import { useExportController } from "./useExportController";
 import { useProjectCrudController, type BusyReason } from "./useProjectCrudController";
@@ -20,6 +21,7 @@ function cloneSegments(segs: SegmentDto[]): SegmentDto[] {
 export interface ProjectLifecycleApi {
   projects: ProjectSummary[];
   current: ProjectDetail | null;
+  currentFileId: string | null;
   segments: SegmentDto[];
   selectedIdx: number;
   setSelectedIdx: React.Dispatch<React.SetStateAction<number>>;
@@ -35,14 +37,22 @@ export interface ProjectLifecycleApi {
   pickAudio: () => Promise<void>;
   clearPickedAudio: () => void;
   createProject: () => Promise<void>;
+  createEmptyProject: () => Promise<void>;
+  createProjectFromText: () => Promise<void>;
   loadProject: (id: string) => Promise<void>;
+  openFile: (fileId: string) => Promise<void>;
+  closeFile: () => void;
+  closeProject: () => void;
+  refreshCurrentProject: () => Promise<void>;
   runTranscribe: () => Promise<void>;
   saveSegments: () => Promise<void>;
-  deleteProject: (id: string) => Promise<void>;
+  deleteProject: (id: string, options?: { skipBrowserConfirm?: boolean }) => Promise<void>;
   exportTxt: () => Promise<void>;
   exportSrt: () => Promise<void>;
   exportDocx: (mode: DocxExportMode) => Promise<void>;
   exportDiagnosticBundle: () => Promise<void>;
+  exportProjectBundle: () => Promise<void>;
+  importProjectBundle: () => Promise<void>;
   openAppDataFolder: () => Promise<void>;
   applyDetail: (d: ProjectDetail) => void;
   setError: React.Dispatch<React.SetStateAction<string>>;
@@ -70,6 +80,7 @@ export interface ProjectLifecycleApi {
 export function useProjectLifecycleController(): ProjectLifecycleApi {
   const [projects, setProjects] = useState<ProjectSummary[]>([]);
   const [current, setCurrent] = useState<ProjectDetail | null>(null);
+  const [currentFileId, setCurrentFileId] = useState<string | null>(null);
   const [segments, setSegments] = useState<SegmentDto[]>([]);
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [audioSrc, setAudioSrc] = useState<string | null>(null);
@@ -115,7 +126,12 @@ export function useProjectLifecycleController(): ProjectLifecycleApi {
       const list = await p1.projectList();
       setProjects(list);
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      const message = e instanceof Error ? e.message : String(e);
+      if (message.includes("reading 'invoke'")) {
+        setProjects([]);
+        return;
+      }
+      setError(message);
     }
   }, []);
 
@@ -126,16 +142,67 @@ export function useProjectLifecycleController(): ProjectLifecycleApi {
   const applyDetail = useCallback((d: ProjectDetail) => {
     mutations.resetMutationHistory();
     setCurrent(d);
-    setSegments(cloneSegments(d.segments));
-    setSelectedIdx(0);
     setTranscribeHints([]);
     setPickedPath(null);
-    try {
-      setAudioSrc(convertFileSrc(d.audio_storage_path));
-    } catch {
-      setAudioSrc(null);
-    }
   }, [mutations]);
+
+  const openFile = useCallback(async (fileId: string) => {
+    beginBusy("load");
+    setError("");
+    try {
+      const detail = await fileApi.loadFile(fileId);
+      setCurrentFileId(fileId);
+      setSegments(cloneSegments(detail.segments));
+      setSelectedIdx(0);
+      try {
+        setAudioSrc(detail.audio_path ? convertFileSrc(detail.audio_path) : null);
+      } catch {
+        setAudioSrc(null);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      endBusy();
+    }
+  }, [beginBusy, endBusy]);
+
+  const closeFile = useCallback(() => {
+    setCurrentFileId(null);
+    setSegments([]);
+    setSelectedIdx(0);
+    setAudioSrc(null);
+    mutations.resetMutationHistory();
+  }, [mutations]);
+
+  const closeProject = useCallback(() => {
+    setCurrent(null);
+    closeFile();
+  }, [closeFile]);
+
+  const loadProject = useCallback(async (id: string) => {
+    setError("");
+    try {
+      const d = await p1.projectLoad(id);
+      applyDetail(d);
+      if (d.files && d.files.length > 0) {
+        const sorted = [...d.files].sort((a, b) => b.updated_at_ms - a.updated_at_ms);
+        await openFile(sorted[0].id);
+      }
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }, [applyDetail, openFile, setError]);
+
+  const refreshCurrentProject = useCallback(async () => {
+    if (!current) return;
+    setError("");
+    try {
+      const d = await p1.projectLoad(current.id);
+      setCurrent(d);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }, [current, setError]);
 
   const pickAudio = useCallback(async () => {
     setError("");
@@ -225,11 +292,14 @@ export function useProjectLifecycleController(): ProjectLifecycleApi {
     segmentsRef,
     setError,
     flushSegmentTextDraftsFromDom: mutations.flushSegmentTextDraftsFromDom,
+    refreshProjects,
+    applyDetail,
   });
 
   return {
     projects,
     current,
+    currentFileId,
     segments,
     selectedIdx,
     setSelectedIdx,
@@ -245,7 +315,13 @@ export function useProjectLifecycleController(): ProjectLifecycleApi {
     pickAudio,
     clearPickedAudio,
     createProject: crud.createProject,
-    loadProject: crud.loadProject,
+    createEmptyProject: crud.createEmptyProject,
+    createProjectFromText: crud.createProjectFromText,
+    loadProject,
+    refreshCurrentProject,
+    openFile,
+    closeFile,
+    closeProject,
     runTranscribe,
     saveSegments,
     deleteProject: crud.deleteProject,
@@ -253,6 +329,8 @@ export function useProjectLifecycleController(): ProjectLifecycleApi {
     exportSrt: exports.exportSrt,
     exportDocx: exports.exportDocx,
     exportDiagnosticBundle: exports.exportDiagnosticBundle,
+    exportProjectBundle: exports.exportProjectBundle,
+    importProjectBundle: exports.importProjectBundle,
     openAppDataFolder,
     applyDetail,
     setError,

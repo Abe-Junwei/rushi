@@ -63,7 +63,7 @@ describe("computeTimelineWidthPx", () => {
 describe("computeSegmentLaneRowPx", () => {
   it("matches exported default constant at 13px font", () => {
     expect(computeSegmentLaneRowPx(13)).toBe(SEGMENT_LANE_ROW_PX);
-    expect(SEGMENT_LANE_ROW_PX).toBe(43);
+    expect(SEGMENT_LANE_ROW_PX).toBe(68);
   });
 
   it("grows with font size", () => {

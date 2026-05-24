@@ -1,5 +1,5 @@
 /** 避免默认文件名含路径分隔符、控制字符、Windows 保留名等非法字符。 */
-export function safeExportBasename(name: string, ext: "txt" | "srt" | "docx"): string {
+export function safeExportBasename(name: string, ext: "txt" | "srt" | "docx" | "zip"): string {
   // 1) 控制字符与常见文件系统非法字符
   const illegalChars = new Set(["/", "\\", "?", "%", "*", ":", "|", '"', "<", ">"]);
   let base = Array.from(name, (ch) => {

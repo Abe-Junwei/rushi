@@ -1,42 +1,42 @@
 /**
  * CSS 自定义属性 — 与 tailwind.config.js / src/config/tokens.ts 同源。
  * 供独立 CSS 模块引用（避免各文件中硬编码 hex 发散）。
- * 色值对齐仓库根 DESIGN.md（Clay.com 分析稿）。
+ * 色值对齐仓库根 DESIGN.md（Serene Scholar）。
  */
 
 :root {
-  --zen-ink: #0a0a0a;
-  --zen-paper: #fffaf0;
-  --zen-saffron: #0a0a0a;
-  --zen-saffron-mid: #1f1f1f;
-  --zen-stone: #6a6a6a;
-  --zen-indigo: #1a3a3a;
-  --zen-cinnabar: #ef4444;
-  --zen-ochre: #faf5e8;
+  --zen-ink: #2C2C2C;
+  --zen-paper: #F2EFE8;
+  --zen-saffron: #C58A43;
+  --zen-saffron-mid: #85530f;
+  --zen-stone: #8E8E8E;
+  --zen-indigo: #3D4F5D;
+  --zen-cinnabar: #963530;
+  --zen-ochre: #EAE0C5;
   --zen-success: #22c55e;
 
-  --gray-200: #ebe6d6;
-  --gray-300: #e5e5e5;
-  --gray-500: #6a6a6a;
-  --gray-600: #3a3a3a;
+  --gray-200: #e5e2db;
+  --gray-300: #d5c3b3;
+  --gray-500: #514538;
+  --gray-600: #5f5e5e;
 
   --stone-600: #57534e;
   --stone-700: #44403c;
 
-  --text-muted: #6a6a6a;
+  --text-muted: #8E8E8E;
   --red-700: #b91c1c;
   --amber-800: #92400e;
-  --slate-100: #faf5e8;
-  --slate-200: #ebe6d6;
-  --near-black: #0a0a0a;
-  --near-white: #fffaf0;
-  --brown-800: #3a3a3a;
-  --brand-input-border: #e5e5e5;
-  --clay-pink: #ff4d8b;
+  --slate-100: #f1eee7;
+  --slate-200: #e5e2db;
+  --near-black: #1c1c18;
+  --near-white: #fcf9f2;
+  --brown-800: #514538;
+  --brand-input-border: #E5E5E5;
+  --clay-pink: #C58A43;
 
-  /* Clay DESIGN.md footer（shell.css 引用） */
-  --shell-footer-bg: #0a1a1a;
-  --shell-footer-fg: #a0a0a0;
-  --shell-footer-code-bg: #1a2a2a;
-  --shell-footer-code-fg: #e5e5e5;
+  /* Serene Scholar footer（shell.css 引用） */
+  --shell-footer-bg: #31312c;
+  --shell-footer-fg: #f3f0e9;
+  --shell-footer-code-bg: #1c1c18;
+  --shell-footer-code-fg: #E5E5E5;
 }

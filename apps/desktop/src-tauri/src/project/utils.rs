@@ -1,4 +1,4 @@
-use super::types::{ProjectDetail, SegmentDto};
+use super::types::{FileDetail, FileSummary, ProjectDetail, SegmentDto};
 use crate::DbState;
 use rusqlite::{params, Connection};
 use std::fs;
@@ -40,8 +40,6 @@ pub fn append_desktop_log_line(st: &DbState, line: &str) {
 
 pub fn open_db(state: &DbState) -> Result<Connection, String> {
     let conn = Connection::open(&state.db_path).map_err(|e| e.to_string())?;
-    // 勿对 `PRAGMA busy_timeout = …` 使用 `execute()`：SQLite 会返回一行（新超时值），rusqlite 会报
-    // "Execute returned results - did you mean to call query?"。
     conn.pragma_update(None, "foreign_keys", "ON")
         .map_err(|e| e.to_string())?;
     conn.busy_timeout(Duration::from_millis(5000))
@@ -53,21 +51,70 @@ pub fn project_detail_from_conn(
     conn: &Connection,
     project_id: &str,
 ) -> Result<ProjectDetail, String> {
-    let (name, audio_path, c_ms, u_ms): (String, String, i64, i64) = conn
+    let (name, c_ms, u_ms): (String, i64, i64) = conn
         .query_row(
-            "SELECT name, audio_storage_path, created_at_ms, updated_at_ms FROM projects WHERE id = ?1",
+            "SELECT name, created_at_ms, updated_at_ms FROM projects WHERE id = ?1",
             params![project_id],
-            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?)),
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
         )
         .map_err(|e| e.to_string())?;
+
+    let mut stmt = conn
+        .prepare(
+            "SELECT id, name, file_type, updated_at_ms FROM files WHERE project_id = ?1 ORDER BY created_at_ms ASC",
+        )
+        .map_err(|e| e.to_string())?;
+    let file_rows = stmt
+        .query_map(params![project_id], |r| {
+            Ok(FileSummary {
+                id: r.get(0)?,
+                name: r.get(1)?,
+                file_type: r.get(2)?,
+                updated_at_ms: r.get(3)?,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+    let mut files = Vec::new();
+    for f in file_rows {
+        files.push(f.map_err(|e| e.to_string())?);
+    }
+
+    Ok(ProjectDetail {
+        id: project_id.to_string(),
+        name,
+        files,
+        created_at_ms: c_ms,
+        updated_at_ms: u_ms,
+    })
+}
+
+pub fn file_detail_from_conn(
+    conn: &Connection,
+    file_id: &str,
+) -> Result<FileDetail, String> {
+    let (project_id, name, file_type, audio_path, c_ms, u_ms): (
+        String,
+        String,
+        String,
+        Option<String>,
+        i64,
+        i64,
+    ) = conn
+        .query_row(
+            "SELECT project_id, name, file_type, audio_path, created_at_ms, updated_at_ms FROM files WHERE id = ?1",
+            params![file_id],
+            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?, r.get(3)?, r.get(4)?, r.get(5)?)),
+        )
+        .map_err(|e| e.to_string())?;
+
     let mut stmt = conn
         .prepare(
             "SELECT idx, start_sec, end_sec, text, confidence, low_confidence, detail \
-             FROM segments WHERE project_id = ?1 ORDER BY idx ASC",
+             FROM segments WHERE file_id = ?1 ORDER BY idx ASC",
         )
         .map_err(|e| e.to_string())?;
     let segs = stmt
-        .query_map(params![project_id], |r| {
+        .query_map(params![file_id], |r| {
             let detail: String = r.get(6)?;
             Ok(SegmentDto {
                 idx: r.get(0)?,
@@ -88,13 +135,16 @@ pub fn project_detail_from_conn(
     for s in segs {
         segments.push(s.map_err(|e| e.to_string())?);
     }
-    Ok(ProjectDetail {
-        id: project_id.to_string(),
+
+    Ok(FileDetail {
+        id: file_id.to_string(),
+        project_id,
         name,
-        audio_storage_path: audio_path,
+        file_type,
+        audio_path,
+        segments,
         created_at_ms: c_ms,
         updated_at_ms: u_ms,
-        segments,
     })
 }
 

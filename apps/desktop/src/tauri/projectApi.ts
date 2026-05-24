@@ -27,6 +27,8 @@ export interface ProjectDetail {
   created_at_ms: number;
   updated_at_ms: number;
   segments: SegmentDto[];
+  /** File container schema: list of files in the project */
+  files: { id: string; name: string; file_type: string; updated_at_ms: number }[];
 }
 
 /** `project_run_transcribe` 返回值 */
@@ -65,7 +67,7 @@ export async function pickAudioPath(): Promise<string | null> {
 
 export async function projectCreate(name: string, srcPath: string): Promise<ProjectDetail> {
   // Tauri 2：invoke 顶层参数名使用 camelCase，与 Rust 形参 snake_case 对应。
-  return invoke<ProjectDetail>("project_create", { name, srcPath });
+  return invoke<ProjectDetail>("project_create_from_audio", { name, srcPath });
 }
 
 export async function projectList(): Promise<ProjectSummary[]> {
@@ -94,6 +96,18 @@ export async function projectRunTranscribe(
 
 export async function projectDelete(projectId: string): Promise<void> {
   return invoke<void>("project_delete", { projectId });
+}
+
+export async function exportProjectBundle(
+  projectId: string,
+  defaultFilename: string,
+  segments: SegmentDto[],
+): Promise<string | null> {
+  return invoke<string | null>("export_project_bundle", { projectId, defaultFilename, segments });
+}
+
+export async function importProjectBundle(): Promise<ProjectDetail | null> {
+  return invoke<ProjectDetail | null>("import_project_bundle");
 }
 
 /** 系统另存为；用户取消时返回 `null`。 */

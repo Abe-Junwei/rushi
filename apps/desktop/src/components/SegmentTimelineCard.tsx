@@ -2,9 +2,7 @@ import {
   memo,
   useCallback,
   useEffect,
-  useLayoutEffect,
   useMemo,
-  useRef,
   useState,
   type CSSProperties,
   type KeyboardEvent,
@@ -26,7 +24,7 @@ export type SegmentTimelineCardProps = {
   transcriptFontPx: number;
   selectSegmentAt: (idx: number) => void;
   updateSegmentText: (idx: number, text: string) => void;
-  onTextareaKeyDown: (idx: number, e: KeyboardEvent<HTMLInputElement>) => void;
+  onTextareaKeyDown: (idx: number, e: KeyboardEvent<HTMLTextAreaElement>) => void;
 };
 
 const vPad = 6;
@@ -47,20 +45,20 @@ export const SegmentTimelineCard = memo(function SegmentTimelineCard({
 }: SegmentTimelineCardProps) {
   /** 本地草稿：避免每键 `setSegments` 触发整页（含波形）重绘导致的闪动；props 在撤销/合并等时同步。 */
   const [draft, setDraft] = useState(() => (s.text ?? "").replace(/\r\n|\r|\n/g, ""));
+
   useEffect(() => {
     setDraft((s.text ?? "").replace(/\r\n|\r|\n/g, ""));
   }, [s.text]);
 
-  const { cardBg, cardRing } = useMemo(() => segmentCardChrome(s, sel), [s, sel]);
+  const { slabBg, slabBorder, railFill, railAccent, outerShadow } = useMemo(() => segmentCardChrome(s, sel), [s, sel]);
 
-  const { style, title, cardInnerWidthPx } = useMemo(() => {
+  const { style, title, barWidthPx } = useMemo(() => {
     const twSafe = Math.max(0, Math.floor(Number.isFinite(tw) ? tw : 0));
     const rawLeft = s.start_sec * px;
     const rawW = Math.max((s.end_sec - s.start_sec) * px, 8);
     const left = Math.max(0, Math.min(Math.floor(rawLeft + 1e-9), Math.max(0, twSafe - 1)));
     const maxW = Math.max(0, twSafe - left);
-    const minBar = Math.min(72, maxW);
-    const width = Math.floor(Math.min(Math.max(rawW, minBar), maxW));
+    const width = Math.floor(Math.min(rawW, maxW));
     const st: CSSProperties = {
       left,
       width,
@@ -74,27 +72,12 @@ export const SegmentTimelineCard = memo(function SegmentTimelineCard({
     const confNote =
       s.confidence != null && Number.isFinite(s.confidence) ? ` · 置信 ${s.confidence.toFixed(2)}` : "";
     const ttl = `${formatMediaTime(s.start_sec)} → ${formatMediaTime(s.end_sec)}${s.detail ? ` · ${s.detail}` : ""}${lowNote}${confNote}`;
-    const cardInnerWidthPx = Math.max(1, width - 16);
-    return { style: st, title: ttl, cardInnerWidthPx };
+    const barWidthPx = Math.max(8, width - 8);
+    return { style: st, title: ttl, barWidthPx };
   }, [s.start_sec, s.end_sec, s.detail, s.low_confidence, s.confidence, px, tw, lane, rowH, sel]);
 
-  const shellRef = useRef<HTMLDivElement>(null);
-  const measRef = useRef<HTMLSpanElement>(null);
-  const [textScale, setTextScale] = useState(1);
-
-  useLayoutEffect(() => {
-    const shell = shellRef.current;
-    const meas = measRef.current;
-    if (!shell || !meas) return;
-    const avail = shell.clientWidth;
-    const textW = meas.scrollWidth;
-    const next =
-      avail > 0 && textW > avail ? Math.max(0.18, Math.min(1, avail / textW)) : 1;
-    setTextScale((prev) => (Math.abs(prev - next) < 0.004 ? prev : next));
-  }, [draft, transcriptFontPx, cardInnerWidthPx]);
-
-  const onChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
-    setDraft(e.target.value.replace(/\r\n|\r|\n/g, ""));
+  const onTextAreaChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    setDraft(e.target.value.replace(/\r\n|\r|\n/g, " "));
   }, []);
 
   const onBlurText = useCallback(() => {
@@ -103,11 +86,7 @@ export const SegmentTimelineCard = memo(function SegmentTimelineCard({
   }, [draft, i, s.text, updateSegmentText]);
 
   const onKeyDown = useCallback(
-    (e: KeyboardEvent<HTMLInputElement>) => {
-      if (e.key === "Enter") {
-        e.preventDefault();
-        return;
-      }
+    (e: KeyboardEvent<HTMLTextAreaElement>) => {
       onTextareaKeyDown(i, e);
     },
     [i, onTextareaKeyDown],
@@ -125,51 +104,76 @@ export const SegmentTimelineCard = memo(function SegmentTimelineCard({
     () =>
       ({
         fontSize: transcriptFontPx,
-        lineHeight: 1.45,
+        lineHeight: 1.55,
       }) as const,
     [transcriptFontPx],
   );
+
+  const confidenceLabel = useMemo(() => {
+    if (s.low_confidence) return "低置信";
+    if (s.confidence != null && Number.isFinite(s.confidence)) return `置信 ${s.confidence.toFixed(2)}`;
+    return "待确认";
+  }, [s.confidence, s.low_confidence]);
 
   return (
     <div
       data-seg-row={i}
       className={[
-        "absolute z-10 flex min-h-0 min-w-0 max-w-full box-border items-center overflow-hidden rounded-md px-2 py-2 select-text hover:brightness-[1.01]",
-        cardBg,
-        cardRing,
+        "absolute z-10 min-h-0 min-w-0 max-w-full overflow-hidden rounded-2xl px-1 py-1 select-text transition-colors hover:brightness-[1.01]",
+        outerShadow,
       ].join(" ")}
       style={style}
       title={title}
       onClick={onClickCard}
     >
-      <div ref={shellRef} className="relative flex min-h-0 w-full min-w-0 max-w-full flex-1 items-center overflow-hidden">
-        <span
-          ref={measRef}
-          className="pointer-events-none fixed top-0 left-[-9999px] whitespace-nowrap font-sans text-zen-ink"
-          style={lineStyle}
-          aria-hidden
+      <div className="relative h-full w-full">
+        <div className={`absolute inset-y-1 left-1 rounded-2xl ${railFill}`} style={{ width: barWidthPx }} />
+        <div
+          className={[
+            "relative z-10 flex h-full min-h-0 min-w-0 flex-col gap-2 rounded-2xl px-3 py-2 shadow-[0_1px_0_rgba(255,255,255,0.65)]",
+            slabBg,
+            slabBorder,
+          ].join(" ")}
         >
-          {draft || "\u00a0"}
-        </span>
-        <input
-          type="text"
-          className="seg-text max-w-full min-h-0 min-w-0 rounded border-0 bg-transparent px-0 font-sans text-zen-ink shadow-none outline-none ring-0 focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-zen-ink/25 disabled:opacity-40"
-          style={{
-            ...lineStyle,
-            width: textScale < 1 ? `${100 / textScale}%` : "100%",
-            transform: textScale < 1 ? `scale(${textScale})` : undefined,
-            transformOrigin: "left center",
-          }}
-          value={draft}
-          disabled={busy}
-          onChange={onChange}
-          onBlur={onBlurText}
-          onClick={(e) => e.stopPropagation()}
-          onKeyDown={onKeyDown}
-          spellCheck={false}
-          autoComplete="off"
-          aria-label="语段正文"
-        />
+          <div className="flex items-center gap-2">
+            <span className="inline-flex h-5 shrink-0 items-center rounded-full bg-white/78 px-2 font-mono text-[10px] text-zen-indigo">
+              #{i + 1}
+            </span>
+            <span
+              className={[
+                "inline-flex h-5 items-center rounded-full px-2 text-[10px] font-medium",
+                s.low_confidence ? "bg-amber-100 text-amber-900" : sel ? "bg-zen-saffron/12 text-zen-saffron-mid" : "bg-white/72 text-zen-stone",
+              ].join(" ")}
+            >
+              {confidenceLabel}
+            </span>
+            <span className="ml-auto truncate font-mono text-[10px] text-zen-stone">
+              {formatMediaTime(s.start_sec)} - {formatMediaTime(s.end_sec)}
+            </span>
+          </div>
+
+          <textarea
+            className="seg-text min-h-[2.8rem] w-full resize-none rounded-xl border border-black/5 bg-white/52 px-2 py-1.5 font-serif text-zen-ink shadow-none outline-none ring-0 focus:outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-zen-ink/25 disabled:opacity-40"
+            style={lineStyle}
+            value={draft}
+            disabled={busy}
+            rows={2}
+            onFocus={() => !busy && selectSegmentAt(i)}
+            onChange={onTextAreaChange}
+            onBlur={onBlurText}
+            onClick={(e) => e.stopPropagation()}
+            onKeyDown={onKeyDown}
+            spellCheck={false}
+            autoComplete="off"
+            aria-label="语段正文"
+          />
+
+          {s.detail ? <p className="max-h-[2.5rem] overflow-hidden text-[10px] leading-relaxed text-zen-stone">{s.detail}</p> : null}
+
+          <div className="mt-auto h-1.5 w-full rounded-full bg-black/5">
+            <div className={`h-full rounded-full ${railAccent}`} style={{ width: `${Math.max(12, Math.min(100, (barWidthPx / Math.max(style.width ? Number(style.width) : barWidthPx, 1)) * 100))}%` }} />
+          </div>
+        </div>
       </div>
     </div>
   );

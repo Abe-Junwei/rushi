@@ -142,7 +142,7 @@ export function useSegmentKeyboard(args: {
   );
 
   const onSegmentTextareaKeyDown = useCallback(
-    (segmentIdx: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    (segmentIdx: number, e: React.KeyboardEvent<HTMLTextAreaElement>) => {
       const c = args.ctxRef.current;
       const w = args.wfApiRef.current;
       if (e.key !== "Tab") return;
@@ -159,7 +159,7 @@ export function useSegmentKeyboard(args: {
         void w.playSegmentAtIndex(pi);
         requestAnimationFrame(() => {
           const root = args.tierScrollRef.current;
-          root?.querySelector<HTMLElement>(`[data-seg-row="${pi}"] input.seg-text`)?.focus();
+          root?.querySelector<HTMLElement>(`[data-seg-row="${pi}"] textarea.seg-text, [data-seg-row="${pi}"] input.seg-text`)?.focus();
         });
       } else {
         if (segmentIdx >= c.segments.length - 1) return;
@@ -171,7 +171,7 @@ export function useSegmentKeyboard(args: {
         void w.playSegmentAtIndex(ni);
         requestAnimationFrame(() => {
           const root = args.tierScrollRef.current;
-          root?.querySelector<HTMLElement>(`[data-seg-row="${ni}"] input.seg-text`)?.focus();
+          root?.querySelector<HTMLElement>(`[data-seg-row="${ni}"] textarea.seg-text, [data-seg-row="${ni}"] input.seg-text`)?.focus();
         });
       }
     },

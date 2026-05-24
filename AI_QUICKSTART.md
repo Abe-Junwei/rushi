@@ -19,10 +19,10 @@
 
 ## 当前热点（自动同步）
 
-- `useProjectP1Controller.ts` 946 行 / 46 hooks → 待拆分
-- `ProjectP1Panel.tsx` 1050 行 → 待拆 controller
-- `p1.rs` 1385 行 → 待拆模块
-- `useP1TranscriptionLayer.ts` 645 行 / 34 hooks → 待拆分
+- `apps/desktop/src-tauri/src/project/export_cmd.rs` 485 行 → 待拆模块
+- `apps/desktop/src-tauri/src/project/transcribe.rs` 478 行 → 待拆模块
+- `apps/desktop/src/hooks/useProjectWaveform.ts` 275 行 / 13 hooks → 接近阈值
+- `apps/desktop/src/components/ProjectPanel.tsx` 241 行 → 已拆 controller，当前健康
 
 ## 任务路由
 
@@ -34,17 +34,18 @@
 | 数据层 / SQLite | `src-tauri/src/db.rs` + ADR-0001 |
 | 新增颜色 / 样式 | `tailwind.config.js` + `src/config/tokens.ts` |
 | 新 UI / 整页重设计 / Stitch 对齐 | 仓库根 `DESIGN.md` → 再映射到 `tailwind.config.js` + `apps/desktop/src/config/tokens.ts` |
+| 单人 UI 重设计迭代 | `docs/execution/specs/ui-redesign-parallel-dev.md` + `bash scripts/prepare-stitch-upload.sh` |
 | 更换或更新 `DESIGN.md` 基底 | 仓库根执行 `npm run design:add -- <站点>`（站点名见 [awesome-design-md](https://github.com/VoltAgent/awesome-design-md) / [getdesign.md](https://getdesign.md/)，例：`npm run design:add -- cal`） |
 | 导出格式 | `src/services/exportFormatters.ts` |
 
 ## 典型模式（好 / 坏）
 
-- ✅ 好：`useP1TranscriptionLayer.ts` — 专注转写业务逻辑
-- ❌ 坏：`useProjectP1Controller.ts` — 945 行上帝 hook（项目 CRUD + 语段 + ASR + 导出）
-- ✅ 好：`p1SegmentListHelpers.ts` — 纯函数，无 React 依赖
-- ❌ 坏：`ProjectP1Panel.tsx` — 1048 行（渲染 / 样式常量 / 交互混合）
+- ✅ 好：`useTranscriptionLayer.ts` — 专注转写业务逻辑（185 行 / 11 hooks）
+- ❌ 坏：`useProjectWaveform.ts` — 275 行 / 13 hooks，波形 + 播放 + 区域混合
+- ✅ 好：`segmentListHelpers.ts` — 纯函数，无 React 依赖
+- ❌ 坏：`transcribe.rs` — 478 行（HTTP 客户端 / 多厂商适配 / 热词 / 模型调用混合）
 - ✅ 好：`db.rs` — 专注迁移和 schema
-- ❌ 坏：`p1.rs` — 1385 行（HTTP / DB / 业务逻辑 / 日志混合）
+- ❌ 坏：`export_cmd.rs` — 485 行（导入/导出/项目包/路径校验混合）
 
 ## 验证命令
 
@@ -56,6 +57,19 @@ npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs
 cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml
 cargo clippy --all-targets -- -D warnings
 ```
+
+## 单人 AI 流程（UI 重设计阶段）
+
+1. 每轮 2-4 小时，只做一个纵向薄片。
+2. 每轮开始先执行：`bash scripts/prepare-stitch-upload.sh`。
+3. Stitch 单目标出稿后，先改 token，再改页面组件。
+4. 后端只接本轮 UI 需要的最小契约。
+5. 每轮结束必须通过：
+	- `npm run typecheck`
+	- `npm run test`
+	- `npm run lint`
+	- `node scripts/check-architecture-guard.mjs`
+6. 每轮至少手测 1 条主路径，并记录 3 行日志（改动 / 验证 / 下一轮）。
 
 ## 跨工具子 agent 决策
 

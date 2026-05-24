@@ -1,0 +1,129 @@
+import { invoke } from "@tauri-apps/api/core";
+import type { ProjectDetail as LegacyProjectDetail, SegmentDto } from "./projectApi";
+
+export interface FileSummary {
+  id: string;
+  name: string;
+  file_type: string;
+  updated_at_ms: number;
+}
+
+export interface FileDetail {
+  id: string;
+  project_id: string;
+  name: string;
+  file_type: string;
+  audio_path: string | null;
+  segments: SegmentDto[];
+  created_at_ms: number;
+  updated_at_ms: number;
+}
+
+export interface RawProjectDetail {
+  id: string;
+  name: string;
+  files: FileSummary[];
+  created_at_ms: number;
+  updated_at_ms: number;
+}
+
+export async function createEmptyProject(name: string): Promise<RawProjectDetail> {
+  return invoke<RawProjectDetail>("create_empty_project", { name });
+}
+
+export async function pickAudioPath(): Promise<string | null> {
+  return invoke<string | null>("pick_audio_path");
+}
+
+export async function createProjectFromAudio(
+  name: string,
+  srcPath: string,
+): Promise<RawProjectDetail> {
+  return invoke<RawProjectDetail>("project_create_from_audio", { name, srcPath });
+}
+
+export async function createEmptyTextFile(
+  projectId: string,
+  name: string,
+): Promise<RawProjectDetail> {
+  return invoke<RawProjectDetail>("create_empty_text_file", { projectId, name });
+}
+
+export async function importAudioToProject(
+  projectId: string,
+  name: string,
+  srcPath: string,
+): Promise<RawProjectDetail> {
+  return invoke<RawProjectDetail>("import_audio_to_project", { projectId, name, srcPath });
+}
+
+export async function importTextToProject(
+  projectId: string,
+  name: string,
+  srcPath: string,
+): Promise<RawProjectDetail> {
+  return invoke<RawProjectDetail>("import_text_to_project", { projectId, name, srcPath });
+}
+
+export async function pickTextPath(): Promise<string | null> {
+  return invoke<string | null>("pick_text_path");
+}
+
+export async function createProjectFromText(
+  name: string,
+  srcPath: string,
+): Promise<RawProjectDetail> {
+  return invoke<RawProjectDetail>("create_project_from_text", { name, srcPath });
+}
+
+export async function listFiles(projectId: string): Promise<FileSummary[]> {
+  return invoke<FileSummary[]>("list_files", { projectId });
+}
+
+export async function loadFile(fileId: string): Promise<FileDetail> {
+  return invoke<FileDetail>("load_file", { fileId });
+}
+
+export async function renameFile(fileId: string, name: string): Promise<void> {
+  return invoke<void>("rename_file", { fileId, name });
+}
+
+export async function deleteFile(fileId: string): Promise<void> {
+  return invoke<void>("delete_file", { fileId });
+}
+
+export async function fileSaveSegments(
+  fileId: string,
+  segments: SegmentDto[],
+): Promise<void> {
+  return invoke<void>("file_save_segments", { fileId, segments });
+}
+
+/** 将新格式 ProjectDetail 适配为旧格式（含 audio_storage_path + segments + files）。
+ *  如果项目有文件，取第一个文件的音频路径和语段；否则返回空。 */
+export async function adaptToLegacyProjectDetail(
+  detail: RawProjectDetail,
+): Promise<LegacyProjectDetail> {
+  if (detail.files.length > 0) {
+    const firstFile = detail.files[0];
+    const fileDetail = await loadFile(firstFile.id);
+    return {
+      id: detail.id,
+      name: detail.name,
+      audio_storage_path: fileDetail.audio_path ?? "",
+      created_at_ms: detail.created_at_ms,
+      updated_at_ms: detail.updated_at_ms,
+      segments: fileDetail.segments,
+      files: detail.files,
+    };
+  }
+  return {
+    id: detail.id,
+    name: detail.name,
+    audio_storage_path: "",
+    created_at_ms: detail.created_at_ms,
+    updated_at_ms: detail.updated_at_ms,
+    segments: [],
+    files: detail.files,
+  };
+}

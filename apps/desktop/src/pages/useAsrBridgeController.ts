@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { asrHealthUrl, isDefaultBundledAsrTarget } from "../config/env";
+import { asrHealthUrl, isDefaultBundledAsrTarget, isTauriRuntime } from "../config/env";
 import type { AsrHealthCapabilities } from "../tauri/projectApi";
 import * as p1 from "../tauri/projectApi";
 import {
@@ -57,6 +57,7 @@ export interface AsrBridgeApi {
 }
 
 export function useAsrBridgeController(): AsrBridgeApi {
+  const tauriRuntime = isTauriRuntime();
   const [asrHealth, setAsrHealth] = useState<AsrHealthState>("checking");
   const [asrHealthDetail, setAsrHealthDetail] = useState<string>("");
   const [bundledAsrDiag, setBundledAsrDiag] = useState<p1.BundledAsrLaunchReport | null>(null);
@@ -83,6 +84,13 @@ export function useAsrBridgeController(): AsrBridgeApi {
   }, []);
 
   const refreshAsrHealth = useCallback(async () => {
+    if (!tauriRuntime) {
+      setAsrHealth("ok");
+      setAsrHealthDetail("浏览器预览环境不自动检测本机 ASR。请在 Tauri 桌面壳中验证本地 ASR 连通性。");
+      setAsrCaps(null);
+      setBundledAsrDiag(null);
+      return;
+    }
     setAsrHealth("checking");
     setAsrHealthDetail("");
     setAsrCaps(null);
@@ -116,7 +124,7 @@ export function useAsrBridgeController(): AsrBridgeApi {
       setAsrHealthDetail(`无法连接 ${url}：${msg}。请确认已在终端启动 python -m rushi_asr，且地址与 VITE_ASR_BASE_URL 一致。`);
     }
     await refreshBundledAsrDiag();
-  }, [refreshBundledAsrDiag]);
+  }, [refreshBundledAsrDiag, tauriRuntime]);
 
   const modelCtrl = usePrepareModelController(refreshAsrHealth, asrCaps);
 

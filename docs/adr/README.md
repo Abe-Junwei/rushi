@@ -5,5 +5,6 @@
 | ADR | 标题 |
 |-----|------|
 | [0001](./0001-independent-repo-default-sqlite-python-asr.md) | 独立仓库、默认 SQLite、ASR 独立 Python 进程 |
+| [0002](./0002-local-collab-dual-source-review-mode.md) | 本地独立与联机协作双轨、项目来源与工作模式分离 |
 
 与 Jieyu 对齐的跨仓规范仍以 sibling 文档为准；见 [`../architecture/README.md`](../architecture/README.md)。

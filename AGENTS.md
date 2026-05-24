@@ -20,11 +20,19 @@
 
 > 小修复（单文件 ≤ 10 行）可跳过 Explore，但 Commit 验证不可省。
 
+## 单人项目执行补充（UI 重设计期）
+
+1. 不设置多人评审环节，改为“单人短循环 + 硬闸门”。
+2. 每轮 2-4 小时，仅允许一个纵向薄片主题。
+3. 每轮开始先刷新 Stitch 上传包：`bash scripts/prepare-stitch-upload.sh`。
+4. 每轮结束必须通过：`npm run typecheck && npm run test && npm run lint && node scripts/check-architecture-guard.mjs`。
+5. 每轮至少手测一条主路径，并记录改动/验证/下一轮三行日志。
+
 ## Rushi-specific（≤ 15 个 bullets）
 
 - 目录落位见 AI_QUICKSTART §项目结构
 - 复杂度阈值：hook > 300 行 / > 12 hooks → 拆分；`.rs` > 500 行 → 考虑拆模块
-- **视觉意图**：`apps/desktop` 的版面、组件气质、间距层次以仓库根 [`DESIGN.md`](./DESIGN.md) 为准（当前为 Clay.com 风格分析稿，可与 Stitch 稿对齐）。
+- **视觉意图**：`apps/desktop` 的版面、组件气质、间距层次以仓库根 [`DESIGN.md`](./DESIGN.md) 为准（当前为 Serene Scholar：calm / deliberate / academic，可与 Stitch 稿对齐）。
 - **落码颜色**：样式颜色唯一来源仍为 `apps/desktop/tailwind.config.js` + `apps/desktop/src/config/tokens.ts`；将 `DESIGN.md` 中的色板映射为具名 token / Tailwind 主题扩展，禁止 `bg-[#...]` 与未入库的随意 hex。
 - SQLite `PRAGMA busy_timeout = 5000`；路径用 `canonicalize` + `relative_to`
 - Python async 端点同步 IO 必须 `run_in_threadpool`；上传文件流式处理

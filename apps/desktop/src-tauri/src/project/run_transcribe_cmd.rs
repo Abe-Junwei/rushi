@@ -1,27 +1,17 @@
 use super::correction::collect_correction_rule_hints;
-use super::project_cmd::project_save_segments_inner;
+use super::project_cmd::file_save_segments_inner;
 use super::transcribe::{
     glossary_hotwords_joined, post_transcribe_multipart, transcribe_assemblyai_native,
     transcribe_openai_native,
 };
 use super::types::{RunTranscribeOutcome, SegmentDto};
-use super::utils::{append_desktop_log_line, now_ms, open_db, project_detail_from_conn};
+use super::utils::{append_desktop_log_line, file_detail_from_conn, now_ms, open_db};
 use crate::online_stt_bridge::{is_allowed_stt_transcribe_url, OnlineTranscribeBridge};
 use crate::DbState;
 use std::fs;
-use std::ops::Deref;
 use std::path::Path;
 use std::time::Duration;
 use tauri::State;
-
-#[tauri::command]
-pub fn project_save_segments(
-    state: State<DbState>,
-    project_id: String,
-    segments: Vec<SegmentDto>,
-) -> Result<(), String> {
-    project_save_segments_inner(state.deref(), &project_id, &segments)
-}
 
 #[tauri::command]
 pub async fn project_run_transcribe(
@@ -41,10 +31,12 @@ async fn project_run_transcribe_inner(
     online: Option<OnlineTranscribeBridge>,
 ) -> Result<RunTranscribeOutcome, String> {
     let conn = open_db(&st)?;
-    let detail = project_detail_from_conn(&conn, &project_id)?;
+    let file_detail = file_detail_from_conn(&conn, &project_id)?;
     let hotwords = glossary_hotwords_joined(&conn)?;
     drop(conn);
-    let audio_path = Path::new(&detail.audio_storage_path);
+    let audio_path = file_detail.audio_path.as_ref()
+        .ok_or("该文件没有关联音频，无法转写")?;
+    let audio_path = Path::new(audio_path);
     if !audio_path.is_file() {
         append_desktop_log_line(&st, "ERROR transcribe audio_missing");
         return Err("项目音频文件缺失".to_string());
@@ -214,7 +206,7 @@ async fn project_run_transcribe_inner(
         serde_json::to_vec_pretty(&recovery_doc).map_err(|e| e.to_string())?,
     )
     .map_err(|e| format!("无法写入转写恢复文件: {e}"))?;
-    match project_save_segments_inner(&st, &project_id, &segments) {
+    match file_save_segments_inner(&st, &project_id, &segments) {
         Ok(()) => {
             let _ = fs::remove_file(&recovery_path);
         }
@@ -233,7 +225,7 @@ async fn project_run_transcribe_inner(
         }
     }
     let conn = open_db(&st)?;
-    let detail = project_detail_from_conn(&conn, &project_id)?;
+    let detail = file_detail_from_conn(&conn, &project_id)?;
     Ok(RunTranscribeOutcome {
         detail,
         engine,

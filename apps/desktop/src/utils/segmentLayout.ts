@@ -1,12 +1,13 @@
 import type { SegmentDto } from "../tauri/projectApi";
 import { clampTranscriptFontPx, TRANSCRIPT_FONT_DEFAULT } from "./waveformPrefs";
 
-/** 语段卡行高（px）：单行正文 + 上下内边距，随正文字号略增。 */
+/** 语段卡行高（px）：支持元信息与两行正文的编辑卡。 */
 export function computeSegmentLaneRowPx(transcriptFontPx: number): number {
   const f = clampTranscriptFontPx(transcriptFontPx);
-  const linePx = Math.ceil(f * 1.45);
-  const verticalPad = 24;
-  return Math.max(28, verticalPad + linePx);
+  const linePx = Math.ceil(f * 1.55);
+  const headerAndControlsPx = 26;
+  const bodyPx = Math.ceil(linePx * 2);
+  return Math.max(64, headerAndControlsPx + bodyPx);
 }
 
 /** 默认字号下的语段卡行高（供测试与布局常量引用）。 */

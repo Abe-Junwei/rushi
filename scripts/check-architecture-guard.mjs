@@ -31,13 +31,17 @@ function checkTsFile(fullPath) {
 
   if (hookTotal > 12) warnings.push(`${rel}: ${hookTotal} 个 hook，超过 12 个阈值`);
 
-  // 防回归：检测 setState updater 内的 querySelector（error）
-  if (/setSegments\([^)]*=>[^}]*querySelector/s.test(source)) {
-    errors.push(`${rel}: setState updater 内发现 querySelector`);
+  // 防回归：检测 setState updater 内的 DOM 查询（error）
+  // 匹配 setXxx(... => ... { ... querySelector/getElementById ... })
+  const setStateUpdaterDom = /set\w+\s*\(\s*\([^)]*\)\s*=>[\s\S]{0,800}?(?:querySelector|getElementById)/;
+  if (setStateUpdaterDom.test(source)) {
+    errors.push(`${rel}: setState updater 内发现 DOM 查询（querySelector / getElementById）`);
   }
 
   // 防回归：检测 Tailwind arbitrary value 颜色（warning，逐步收敛）
-  const arbitraryColors = source.match(/(?:bg|text|border)-\[#[0-9a-fA-F]{3,6}\]/g) ?? [];
+  const arbitraryColors = source.match(
+    /(?:bg|text|border|ring|shadow|fill|stroke|outline)-\[#[0-9a-fA-F]{3,6}\]/g
+  ) ?? [];
   if (arbitraryColors.length > 0) {
     warnings.push(`${rel}: 发现 ${arbitraryColors.length} 处 Tailwind arbitrary value 颜色，应收敛到 token`);
   }
@@ -79,12 +83,23 @@ function checkCssFile(fullPath) {
   }
 }
 
+function checkPythonFile(fullPath) {
+  const rel = path.relative(ROOT, fullPath).replaceAll(path.sep, '/');
+  const source = fs.readFileSync(fullPath, 'utf-8');
+  const lines = source.split('\n').length;
+
+  if (lines > 400) warnings.push(`${rel}: ${lines} 行，建议拆分到 ≤300 行`);
+}
+
 walk(path.join(ROOT, 'apps/desktop/src'), (p) => {
   if (/\.(ts|tsx)$/.test(p)) checkTsFile(p);
   if (/\.css$/.test(p)) checkCssFile(p);
 });
 walk(path.join(ROOT, 'apps/desktop/src-tauri/src'), (p) => {
   if (/\.rs$/.test(p)) checkRustFile(p);
+});
+walk(path.join(ROOT, 'services/asr/rushi_asr'), (p) => {
+  if (/\.py$/.test(p)) checkPythonFile(p);
 });
 
 console.log(`\n架构守卫报告：${errors.length} 错误，${warnings.length} 警告\n`);

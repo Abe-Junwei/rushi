@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { loadPlugin, loadedPluginIds, unloadAllPlugins, unloadPlugin } from "./loader";
 import { registryClear, registryQuery } from "./registry";
 import type { PluginManifest } from "./types";
@@ -22,6 +22,8 @@ function makeManifest(id: string, code: string): PluginManifest {
 
 describe("plugin loader", () => {
   beforeEach(async () => {
+    vi.spyOn(console, "warn").mockImplementation(() => {});
+    vi.spyOn(console, "error").mockImplementation(() => {});
     await unloadAllPlugins();
     registryClear();
     delete (globalThis as TestGlobal).__pluginEvents;
@@ -31,6 +33,7 @@ describe("plugin loader", () => {
     await unloadAllPlugins();
     registryClear();
     delete (globalThis as TestGlobal).__pluginEvents;
+    vi.restoreAllMocks();
   });
 
   it("rolls back registered contributions when activate fails", async () => {

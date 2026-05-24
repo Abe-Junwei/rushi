@@ -5,7 +5,7 @@
   "identifier": "studio.lingchuang.rushi",
   "build": {
     "beforeDevCommand": "npm run dev",
-    "devUrl": "http://localhost:1420",
+    "devUrl": "http://localhost:1421",
     "beforeBuildCommand": "npm run build && npm run build:user-guide-pdf",
     "frontendDist": "../dist"
   },

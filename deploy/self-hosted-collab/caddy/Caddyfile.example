@@ -1,0 +1,9 @@
+{$RUSHI_COLLAB_DOMAIN} {
+  encode zstd gzip
+
+  request_body {
+    max_size 512MB
+  }
+
+  reverse_proxy rushi-collab:{$RUSHI_COLLAB_APP_PORT}
+}

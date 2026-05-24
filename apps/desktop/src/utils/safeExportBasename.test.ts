@@ -5,6 +5,7 @@ describe("safeExportBasename", () => {
   it("保留正常中文/英文文件名", () => {
     expect(safeExportBasename("演讲稿", "txt")).toBe("演讲稿.txt");
     expect(safeExportBasename("lecture_notes", "srt")).toBe("lecture_notes.srt");
+    expect(safeExportBasename("项目归档", "zip")).toBe("项目归档.zip");
   });
 
   it("替换路径分隔符与非法字符为下划线", () => {

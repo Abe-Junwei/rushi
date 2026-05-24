@@ -11,6 +11,8 @@ export interface ExportApi {
   exportSrt: () => Promise<void>;
   exportDocx: (mode: DocxExportMode) => Promise<void>;
   exportDiagnosticBundle: () => Promise<void>;
+  exportProjectBundle: () => Promise<void>;
+  importProjectBundle: () => Promise<void>;
 }
 
 export interface ExportDeps {
@@ -18,10 +20,12 @@ export interface ExportDeps {
   segmentsRef: React.MutableRefObject<SegmentDto[]>;
   setError: (msg: string) => void;
   flushSegmentTextDraftsFromDom: () => void;
+  refreshProjects: () => Promise<void>;
+  applyDetail: (d: ProjectDetail) => void;
 }
 
 export function useExportController(deps: ExportDeps): ExportApi {
-  const { current, segmentsRef, setError, flushSegmentTextDraftsFromDom } = deps;
+  const { current, segmentsRef, setError, flushSegmentTextDraftsFromDom, refreshProjects, applyDetail } = deps;
 
   const exportTxt = useCallback(async () => {
     if (!current) return;
@@ -71,5 +75,29 @@ export function useExportController(deps: ExportDeps): ExportApi {
     }
   }, [setError]);
 
-  return { exportTxt, exportSrt, exportDocx, exportDiagnosticBundle };
+  const exportProjectBundle = useCallback(async () => {
+    if (!current) return;
+    setError("");
+    flushSegmentTextDraftsFromDom();
+    const normalized: SegmentDto[] = segmentsRef.current.map((s, i) => ({ ...s, idx: i }));
+    try {
+      await p1.exportProjectBundle(current.id, safeExportBasename(current.name, "zip"), normalized);
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }, [current, segmentsRef, setError, flushSegmentTextDraftsFromDom]);
+
+  const importProjectBundle = useCallback(async () => {
+    setError("");
+    try {
+      const detail = await p1.importProjectBundle();
+      if (!detail) return;
+      applyDetail(detail);
+      await refreshProjects();
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+    }
+  }, [applyDetail, refreshProjects, setError]);
+
+  return { exportTxt, exportSrt, exportDocx, exportDiagnosticBundle, exportProjectBundle, importProjectBundle };
 }

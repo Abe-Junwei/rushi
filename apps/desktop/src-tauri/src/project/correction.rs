@@ -5,15 +5,15 @@ use std::collections::{HashMap, HashSet};
 
 const CORRECTION_RULE_WARNING_PREFIX: &str = "correction_rule_hint:";
 
-pub fn load_project_segment_texts(
+pub fn load_file_segment_texts(
     conn: &Connection,
-    project_id: &str,
+    file_id: &str,
 ) -> Result<HashMap<i32, String>, String> {
     let mut stmt = conn
-        .prepare("SELECT idx, text FROM segments WHERE project_id = ?1")
+        .prepare("SELECT idx, text FROM segments WHERE file_id = ?1")
         .map_err(|e| e.to_string())?;
     let rows = stmt
-        .query_map(params![project_id], |r| {
+        .query_map(params![file_id], |r| {
             Ok((r.get::<_, i32>(0)?, r.get::<_, String>(1)?))
         })
         .map_err(|e| e.to_string())?;
