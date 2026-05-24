@@ -162,14 +162,15 @@ export function ProjectPanel() {
 
       {envOpen ? (
         <div
-          className="fixed inset-0 z-50 flex justify-end bg-black/20 backdrop-blur-sm"
+          className="fixed inset-0 z-50 flex items-center justify-center bg-black/30 backdrop-blur-sm"
           onClick={() => setEnvOpen(false)}
         >
           <div
-            className="flex h-full w-full max-w-lg flex-col overflow-hidden border-l border-zen-gray-300 bg-zen-paper shadow-2xl"
+            className="flex w-full max-w-3xl flex-col overflow-hidden rounded-2xl border border-zen-gray-300 bg-zen-paper shadow-xl"
+            style={{ maxHeight: "85vh" }}
             onClick={(e) => e.stopPropagation()}
           >
-            <div className="flex shrink-0 items-center justify-between border-b border-zen-gray-300 px-4 py-3">
+            <div className="flex shrink-0 items-center justify-between border-b border-zen-gray-300 px-5 py-3">
               <h2 className="font-serif text-lg font-medium text-zen-ink">环境与 ASR</h2>
               <button
                 type="button"
