@@ -1,6 +1,6 @@
-use super::types::HTTP_CLIENT;
 use super::utils::append_desktop_log_line;
 use crate::DbState;
+use crate::utils::http_client;
 use rusqlite::Connection;
 use std::path::Path;
 
@@ -53,13 +53,7 @@ pub async fn post_transcribe_multipart(
         }
         f
     };
-    let client = HTTP_CLIENT.get_or_init(|| {
-        reqwest::Client::builder()
-            .timeout(std::time::Duration::from_secs(30))
-            .build()
-            .expect("reqwest async client build")
-    });
-    let mut req = client.post(url).multipart(form).timeout(timeout);
+    let mut req = http_client().post(url).multipart(form).timeout(timeout);
     if let Some(a) = authorization {
         let t = a.trim();
         if !t.is_empty() {

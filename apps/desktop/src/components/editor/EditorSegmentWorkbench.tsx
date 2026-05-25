@@ -54,6 +54,8 @@ function areEditorSegmentWorkbenchPropsEqual(
 ) {
   return (
     prev.controller.busy === next.controller.busy &&
+    prev.controller.canAutoPunctuate === next.controller.canAutoPunctuate &&
+    prev.controller.autoPunctuateDialog.phase === next.controller.autoPunctuateDialog.phase &&
     prev.controller.selectedIdx === next.controller.selectedIdx &&
     prev.controller.currentFileId === next.controller.currentFileId &&
     prev.controller.segments === next.controller.segments &&

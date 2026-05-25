@@ -1,4 +1,4 @@
-import { History, Minus, Plus, Redo2, Undo2 } from "lucide-react";
+import { History, Minus, Plus, Redo2, Sparkles, Undo2 } from "lucide-react";
 import { useEffect, useRef } from "react";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
@@ -46,6 +46,29 @@ export function EditorSegmentToolbar({
   return (
     <div className="flex h-14 shrink-0 items-center justify-between bg-notion-bg px-6">
       <div className="relative flex items-center gap-1.5">
+        <button
+          type="button"
+          className={[
+            appearanceBtnBase,
+            "px-2.5",
+            c.autoPunctuateDialog.phase === "loading"
+              ? "bg-notion-sidebar text-notion-text"
+              : "text-notion-text-muted hover:bg-notion-sidebar-hover hover:text-notion-text",
+          ].join(" ")}
+          disabled={!c.canAutoPunctuate || c.autoPunctuateDialog.phase === "loading"}
+          onClick={() => void c.requestAutoPunctuate()}
+          aria-label="自动标点"
+          title={
+            c.canAutoPunctuate
+              ? "自动标点"
+              : "请先在设置 → LLM 配置 中保存 API Key"
+          }
+        >
+          <span className="inline-flex items-center gap-1.5">
+            <Sparkles className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+            {c.autoPunctuateDialog.phase === "loading" ? "处理中..." : "自动标点"}
+          </span>
+        </button>
         <button
           type="button"
           className={footerActionIconBtn}

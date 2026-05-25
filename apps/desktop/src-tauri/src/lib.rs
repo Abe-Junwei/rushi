@@ -4,8 +4,10 @@ mod db;
 mod diagnostic;
 mod export_docx;
 mod online_stt_bridge;
+mod postprocess_cmd;
 mod project;
 mod stt_native;
+mod utils;
 
 use std::path::PathBuf;
 
@@ -65,6 +67,7 @@ pub fn run() {
             project::glossary_list,
             project::glossary_add,
             project::glossary_delete,
+            postprocess_cmd::postprocess_auto_punctuate,
             export_docx::export_docx,
             diagnostic::export_diagnostic_bundle,
         ])

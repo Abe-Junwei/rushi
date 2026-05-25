@@ -3,6 +3,7 @@ import { useTranscriptionLayer } from "../pages/useTranscriptionLayer";
 import { buildSegmentContextMenuItems, type SegmentContextMenuKey } from "../utils/segmentContextMenuModel";
 import { EnvironmentPanel } from "./EnvironmentPanel";
 import { FloatingPanelTemplate } from "./PanelTemplate";
+import { AutoPunctuatePreviewDialog } from "./AutoPunctuatePreviewDialog";
 import { EditorView } from "./EditorView";
 
 import { WelcomeView, type WelcomePageId } from "./WelcomeView";
@@ -183,6 +184,13 @@ export function ProjectPanel() {
       </div>
 
       {c.busy ? <ProjectBusyOverlay reason={c.busyReason} elapsedSec={busyElapsedSec} /> : null}
+
+      <AutoPunctuatePreviewDialog
+        state={c.autoPunctuateDialog}
+        onCancel={c.cancelAutoPunctuate}
+        onConfirmConsent={c.confirmAutoPunctuateConsent}
+        onConfirmWriteback={c.confirmAutoPunctuateWriteback}
+      />
 
       <UnsavedCloseDialog
         open={c.closeGateOpen}

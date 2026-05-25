@@ -1,5 +1,6 @@
 import { useEffect, useRef, useState } from "react";
-import { Cloud, Cpu, HelpCircle } from "lucide-react";
+import { Cloud, Cpu, HelpCircle, Sparkles } from "lucide-react";
+import { EnvLlmConfigPanel } from "./EnvLlmConfigPanel";
 import { EnvLocalAsrPanel } from "./EnvLocalAsrPanel";
 import { EnvOnlineSttPanel } from "./EnvOnlineSttPanel";
 import { EnvHelpPanel } from "./EnvHelpPanel";
@@ -9,11 +10,12 @@ import type { AsrHealthState } from "../pages/useProjectController";
 import type { PrepareModelFailureCopy } from "../pages/prepareModelDownloadCopy";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
-type EnvNavId = "local-asr" | "online-stt" | "help";
+type EnvNavId = "local-asr" | "online-stt" | "llm" | "help";
 
 const ENV_NAV_ITEMS: { id: EnvNavId; label: string; description: string; icon: React.ReactNode }[] = [
   { id: "local-asr", label: "本机 ASR", description: "FunASR 环境、模型下载与诊断", icon: <Cpu className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden /> },
   { id: "online-stt", label: "在线 STT", description: "在线转写提供方与 API 配置", icon: <Cloud className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden /> },
+  { id: "llm", label: "LLM 配置", description: "远程大模型连接与密钥", icon: <Sparkles className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden /> },
   { id: "help", label: "使用说明", description: "快捷键、常见问题与导出格式", icon: <HelpCircle className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden /> },
 ];
 
@@ -160,6 +162,8 @@ export function EnvironmentPanel({
               {envSection === "online-stt" ? (
                 <EnvOnlineSttPanel busy={busy} onSttOnlineRuntimeChanged={onSttOnlineRuntimeChanged} />
               ) : null}
+
+              {envSection === "llm" ? <EnvLlmConfigPanel busy={busy} /> : null}
 
               {envSection === "help" ? <EnvHelpPanel /> : null}
             </div>

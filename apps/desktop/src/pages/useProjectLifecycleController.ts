@@ -14,6 +14,7 @@ import { useSegmentMutationController } from "./useSegmentMutationController";
 import { useProjectBusyState } from "./useProjectBusyState";
 import { useProjectListState } from "./useProjectListState";
 import { useProjectEditorState } from "./useProjectEditorState";
+import { useAutoPunctuateController } from "./useAutoPunctuateController";
 import { useProjectCloseGateController } from "./useProjectCloseGateController";
 import { useSegmentDirtyState } from "./useSegmentDirtyState";
 import { cloneSegments } from "./segmentListHelpers";
@@ -155,6 +156,17 @@ export function useProjectLifecycleController(): ProjectLifecycleApi {
     resetMutationHistory: mutations.resetMutationHistory,
   });
 
+  const autoPunctuate = useAutoPunctuateController({
+    busy,
+    currentFileId,
+    selectedIdx,
+    segments,
+    segmentsRef,
+    flushSegmentTextDrafts: mutations.flushSegmentTextDrafts,
+    updateSegmentText: mutations.updateSegmentText,
+    setError,
+  });
+
   const runTranscribe = useCallback(async () => {
     if (busy || !current || !currentFileId) {
       if (!busy && current && !currentFileId) {
@@ -230,6 +242,12 @@ export function useProjectLifecycleController(): ProjectLifecycleApi {
     deleteSegmentAt: mutations.deleteSegmentAt, insertSegmentAfter: mutations.insertSegmentAfter,
     insertSegmentFromTimeRange: mutations.insertSegmentFromTimeRange,
     flushSegmentTextDrafts: mutations.flushSegmentTextDrafts,
+    canAutoPunctuate: autoPunctuate.canAutoPunctuate,
+    autoPunctuateDialog: autoPunctuate.dialog,
+    requestAutoPunctuate: autoPunctuate.requestAutoPunctuate,
+    confirmAutoPunctuateConsent: autoPunctuate.confirmAutoPunctuateConsent,
+    confirmAutoPunctuateWriteback: autoPunctuate.confirmAutoPunctuateWriteback,
+    cancelAutoPunctuate: autoPunctuate.cancelAutoPunctuate,
     closeGateOpen: closeGate.closeGateOpen,
     closeGateIntent: closeGate.closeGateIntent,
     stayAfterCloseAttempt: closeGate.stayAfterCloseAttempt,

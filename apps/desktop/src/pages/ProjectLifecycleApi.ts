@@ -1,5 +1,6 @@
 import type { ProjectDetail, ProjectSummary, SegmentDto } from "../tauri/projectApi";
 import type { DocxExportMode } from "../tauri/exportDocxApi";
+import type { AutoPunctuateDialogState } from "./useAutoPunctuateController";
 import type { BusyReason } from "./useProjectCrudController";
 
 export type { BusyReason };
@@ -60,6 +61,12 @@ export interface ProjectLifecycleApi {
   insertSegmentAfter: (idx: number) => void;
   insertSegmentFromTimeRange: (startSec: number, endSec: number) => void;
   flushSegmentTextDrafts: () => void;
+  canAutoPunctuate: boolean;
+  autoPunctuateDialog: AutoPunctuateDialogState;
+  requestAutoPunctuate: () => void;
+  confirmAutoPunctuateConsent: () => void;
+  confirmAutoPunctuateWriteback: () => void;
+  cancelAutoPunctuate: () => void;
   closeGateOpen: boolean;
   closeGateIntent: "app-quit" | "navigate";
   stayAfterCloseAttempt: () => void;
