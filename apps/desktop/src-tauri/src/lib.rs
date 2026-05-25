@@ -47,6 +47,7 @@ pub fn run() {
             project::import_text_to_project,
             project::project_list,
             project::project_load,
+            project::project_list_edit_log,
             project::file_save_segments,
             project::project_run_transcribe,
             project::project_delete,

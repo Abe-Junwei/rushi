@@ -1,9 +1,7 @@
 use super::correction::collect_correction_rule_hints;
-use super::project_cmd::file_save_segments_inner;
-use super::transcribe::{
-    glossary_hotwords_joined, post_transcribe_multipart, transcribe_assemblyai_native,
-    transcribe_openai_native,
-};
+use super::segment_cmd::file_save_segments_inner;
+use super::transcribe::{glossary_hotwords_joined, post_transcribe_multipart};
+use super::transcribe_native_online::{transcribe_assemblyai_native, transcribe_openai_native};
 use super::types::{RunTranscribeOutcome, SegmentDto};
 use super::utils::{append_desktop_log_line, file_detail_from_conn, now_ms, open_db};
 use crate::online_stt_bridge::{is_allowed_stt_transcribe_url, OnlineTranscribeBridge};
@@ -16,25 +14,27 @@ use tauri::State;
 #[tauri::command]
 pub async fn project_run_transcribe(
     state: State<'_, DbState>,
-    project_id: String,
+    file_id: String,
     asr_base_url: Option<String>,
     online: Option<OnlineTranscribeBridge>,
 ) -> Result<RunTranscribeOutcome, String> {
     let st = state.inner().clone();
-    project_run_transcribe_inner(st, project_id, asr_base_url, online).await
+    project_run_transcribe_inner(st, file_id, asr_base_url, online).await
 }
 
 async fn project_run_transcribe_inner(
     st: DbState,
-    project_id: String,
+    file_id: String,
     asr_base_url: Option<String>,
     online: Option<OnlineTranscribeBridge>,
 ) -> Result<RunTranscribeOutcome, String> {
     let conn = open_db(&st)?;
-    let file_detail = file_detail_from_conn(&conn, &project_id)?;
+    let file_detail = file_detail_from_conn(&conn, &file_id)?;
     let hotwords = glossary_hotwords_joined(&conn)?;
     drop(conn);
-    let audio_path = file_detail.audio_path.as_ref()
+    let audio_path = file_detail
+        .audio_path
+        .as_ref()
         .ok_or("该文件没有关联音频，无法转写")?;
     let audio_path = Path::new(audio_path);
     if !audio_path.is_file() {
@@ -194,10 +194,11 @@ async fn project_run_transcribe_inner(
     let recovery_path = st
         .root
         .join("logs")
-        .join(format!("transcribe_recovery_{project_id}.json"));
+        .join(format!("transcribe_recovery_{file_id}.json"));
     let recovery_doc = serde_json::json!({
         "kind": "transcribe_segments_recovery",
-        "project_id": project_id,
+        "file_id": file_id,
+        "project_id": file_detail.project_id,
         "saved_at_ms": now_ms(),
         "segments": &segments,
     });
@@ -206,7 +207,7 @@ async fn project_run_transcribe_inner(
         serde_json::to_vec_pretty(&recovery_doc).map_err(|e| e.to_string())?,
     )
     .map_err(|e| format!("无法写入转写恢复文件: {e}"))?;
-    match file_save_segments_inner(&st, &project_id, &segments) {
+    match file_save_segments_inner(&st, &file_id, &segments) {
         Ok(()) => {
             let _ = fs::remove_file(&recovery_path);
         }
@@ -225,7 +226,7 @@ async fn project_run_transcribe_inner(
         }
     }
     let conn = open_db(&st)?;
-    let detail = file_detail_from_conn(&conn, &project_id)?;
+    let detail = file_detail_from_conn(&conn, &file_id)?;
     Ok(RunTranscribeOutcome {
         detail,
         engine,

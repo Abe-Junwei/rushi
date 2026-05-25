@@ -46,6 +46,15 @@ pub struct FileDetail {
     pub updated_at_ms: i64,
 }
 
+#[derive(Debug, Serialize)]
+pub struct EditLogEntryDto {
+    pub id: i64,
+    pub project_id: String,
+    pub at_ms: i64,
+    pub kind: String,
+    pub detail: String,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SegmentDto {
     pub idx: i32,
@@ -68,6 +77,7 @@ pub struct GlossaryTermDto {
 }
 
 /// File type classification persisted in the database.
+#[allow(dead_code)]
 pub mod file_type {
     pub const TEXT: &str = "text";
     pub const PAIRED: &str = "paired";
