@@ -35,6 +35,7 @@ pub fn run() {
             app.manage(asr_sidecar::BundledAsrLaunchState(std::sync::Mutex::new(
                 asr_sidecar::BundledAsrLaunchReport::default(),
             )));
+            app.manage(postprocess_cmd::PostprocessCancelState::default());
             asr_sidecar::try_start_bundled(app.handle());
             Ok(())
         })
@@ -74,6 +75,7 @@ pub fn run() {
             postprocess_cmd::llm_delete_api_key,
             postprocess_cmd::llm_probe_connection,
             postprocess_cmd::postprocess_auto_punctuate,
+            postprocess_cmd::postprocess_cancel_auto_punctuate,
             profile::export_settings_profile,
             profile::import_settings_profile,
             export_docx::export_docx,

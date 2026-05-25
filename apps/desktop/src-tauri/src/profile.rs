@@ -92,7 +92,10 @@ fn validate_profile(profile: &SettingsProfileV1) -> Result<(), String> {
         ));
     }
     if let Some(llm) = profile.llm.as_ref() {
-        if llm.provider_id.trim().is_empty() || llm.base_url.trim().is_empty() || llm.model.trim().is_empty() {
+        if llm.provider_id.trim().is_empty()
+            || llm.base_url.trim().is_empty()
+            || llm.model.trim().is_empty()
+        {
             return Err("LLM profile 缺少 provider_id / base_url / model。".to_string());
         }
     }

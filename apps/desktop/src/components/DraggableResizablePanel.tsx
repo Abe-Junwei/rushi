@@ -22,7 +22,6 @@ interface DraggableResizablePanelProps {
   minHeight?: number;
   children: React.ReactNode;
   onClose: () => void;
-  variant?: "serene" | "notion";
   persistState?: boolean;
 }
 
@@ -63,7 +62,6 @@ export function DraggableResizablePanel({
   minHeight = 200,
   children,
   onClose,
-  variant = "serene",
   persistState = true,
 }: DraggableResizablePanelProps) {
   const storageKey = `panel-state-${id}`;
@@ -71,6 +69,11 @@ export function DraggableResizablePanel({
   const saved = persistState ? loadState(storageKey) : null;
   const [position, setPosition] = useState<Position>(saved?.position ?? defaultPosition);
   const [size, setSize] = useState<Size>(saved?.size ?? defaultSize);
+  const panelStateRef = useRef({ position: saved?.position ?? defaultPosition, size: saved?.size ?? defaultSize });
+
+  useEffect(() => {
+    panelStateRef.current = { position, size };
+  }, [position, size]);
 
   const resolveViewportBounds = useCallback(() => {
     const margin = 16;
@@ -178,7 +181,7 @@ export function DraggableResizablePanel({
     const onUp = () => {
       if (dragRef.current) {
         if (persistState) {
-          saveState(storageKey, { position, size });
+          saveState(storageKey, panelStateRef.current);
         }
         dragRef.current = null;
       }
@@ -190,7 +193,7 @@ export function DraggableResizablePanel({
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
     };
-  }, [clampToViewport, persistState, position, resolveViewportBounds, size, storageKey]);
+  }, [clampToViewport, persistState, resolveViewportBounds, storageKey]);
 
   useEffect(() => {
     const clamp = () => {
@@ -232,42 +235,16 @@ export function DraggableResizablePanel({
       <div className="absolute -bottom-1 -right-1 h-5 w-5 cursor-se-resize" onPointerDown={(e) => startDrag("se", e)} />
 
       {/* Panel */}
-      <div
-        className={[
-          "flex h-full w-full flex-col overflow-hidden border shadow-xl",
-          variant === "notion"
-            ? "rounded-lg border-notion-divider bg-notion-bg shadow-2xl"
-            : "rounded-2xl border-notion-divider bg-notion-bg",
-        ].join(" ")}
-      >
-        {/* Title bar (draggable) */}
+      <div className="flex h-full w-full flex-col overflow-hidden rounded-lg border border-notion-divider bg-notion-bg shadow-2xl">
+        {/* Title bar (draggable) — Notion/Zen */}
         <div
-          className={[
-            "flex shrink-0 cursor-move items-center justify-between border-b select-none",
-            variant === "notion"
-              ? "border-notion-divider bg-notion-sidebar px-6 py-4"
-              : "border-notion-divider bg-notion-sidebar px-5 py-3",
-          ].join(" ")}
+          className="flex shrink-0 cursor-move items-center justify-between border-b border-notion-divider bg-notion-sidebar px-6 py-4 select-none"
           onPointerDown={(e) => startDrag("move", e)}
         >
-          <h2
-            className={[
-              "m-0 select-none",
-              variant === "notion"
-                ? PANEL_TYPOGRAPHY.dialogTitle
-                : "font-serif text-lg font-medium text-notion-text",
-            ].join(" ")}
-          >
-            {title}
-          </h2>
+          <h2 className={`m-0 select-none ${PANEL_TYPOGRAPHY.dialogTitle}`}>{title}</h2>
           <button
             type="button"
-            className={[
-              "border-0 bg-transparent p-1 transition-colors",
-              variant === "notion"
-                ? "rounded text-notion-text-muted hover:bg-notion-sidebar-hover hover:text-notion-text"
-                : "rounded-lg text-notion-text-muted hover:text-notion-text",
-            ].join(" ")}
+            className="rounded border-0 bg-transparent p-1 text-notion-text-muted transition-colors hover:bg-notion-sidebar-hover hover:text-notion-text"
             onClick={onClose}
             aria-label="关闭面板"
           >

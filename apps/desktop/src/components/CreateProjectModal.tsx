@@ -6,6 +6,10 @@ import * as fileApi from "../tauri/fileApi";
 import { FloatingPanelTemplate } from "./PanelTemplate";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
+/** 按当前表单文案测算；避免 preset 默认取 maxHeight=560 留下底部空白 */
+const CREATE_PROJECT_DIALOG_DEFAULT = { width: 400, height: 420 } as const;
+const CREATE_PROJECT_DIALOG_MIN = { width: 360, height: 320 } as const;
+
 interface CreateProjectModalProps {
   controller: ProjectControllerApi;
   onClose: () => void;
@@ -65,7 +69,15 @@ export function CreateProjectModal({ controller: c, onClose }: CreateProjectModa
   }, [c, projectName, runCreate]);
 
   return (
-    <FloatingPanelTemplate id="create-project-modal-v1" title="新建项目" preset="createProject" onClose={onClose}>
+    <FloatingPanelTemplate
+      id="create-project-modal-v1"
+      title="新建项目"
+      preset="createProject"
+      minWidth={CREATE_PROJECT_DIALOG_MIN.width}
+      minHeight={CREATE_PROJECT_DIALOG_MIN.height}
+      defaultSize={CREATE_PROJECT_DIALOG_DEFAULT}
+      onClose={onClose}
+    >
       <div className="px-6 py-5">
           <form className="space-y-6" onSubmit={(e) => {
             e.preventDefault();

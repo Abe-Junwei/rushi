@@ -28,6 +28,7 @@ export type EnvironmentPanelProps = {
   asrCaps: AsrHealthCapabilities | null;
   asrModelCacheInfo: AsrModelCacheInfo | null;
   asrModelCacheBusy: boolean;
+  asrCacheMessage: string;
   funasrInstallMessage: string;
   prepareModelBusy: boolean;
   prepareModelProgress: number;
@@ -52,6 +53,7 @@ export function EnvironmentPanel({
   asrCaps,
   asrModelCacheInfo,
   asrModelCacheBusy,
+  asrCacheMessage,
   funasrInstallMessage,
   prepareModelBusy,
   prepareModelProgress,
@@ -158,6 +160,7 @@ export function EnvironmentPanel({
                   asrCaps={asrCaps}
                   asrModelCacheInfo={asrModelCacheInfo}
                   asrModelCacheBusy={asrModelCacheBusy}
+                  asrCacheMessage={asrCacheMessage}
                   funasrInstallMessage={funasrInstallMessage}
                   prepareModelBusy={prepareModelBusy}
                   prepareModelProgress={prepareModelProgress}

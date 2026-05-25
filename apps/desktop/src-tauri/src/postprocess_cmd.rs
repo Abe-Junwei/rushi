@@ -1,10 +1,13 @@
 use crate::project::utils::append_desktop_log_line;
 use crate::utils::http_client;
 use crate::DbState;
+use futures_util::future::{AbortHandle, Abortable};
 use keyring::Entry;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
+use std::collections::HashMap;
 use std::env;
+use std::sync::Mutex;
 use std::time::{Duration, Instant};
 use tauri::State;
 use url::Url;
@@ -32,6 +35,8 @@ pub struct PostprocessRuntimeBridge {
 #[derive(Debug, Deserialize)]
 pub struct PostprocessAutoPunctuateRequest {
     pub task: String,
+    #[serde(default)]
+    pub request_id: Option<String>,
     pub segment_uid: String,
     pub text: String,
     #[serde(default)]
@@ -45,6 +50,14 @@ pub struct PostprocessAutoPunctuateRawResponse {
     pub text: String,
     pub provider: String,
     pub latency_ms: u64,
+}
+
+#[derive(Default)]
+pub struct PostprocessCancelState(pub Mutex<HashMap<String, AbortHandle>>);
+
+#[derive(Debug, Deserialize)]
+pub struct PostprocessCancelAutoPunctuateRequest {
+    pub request_id: String,
 }
 
 #[derive(Debug, Deserialize)]
@@ -118,11 +131,17 @@ pub async fn llm_probe_connection(
     let endpoint = build_postprocess_models_endpoint(&config.endpoint);
     append_desktop_log_line(
         &state,
-        &format!("INFO llm_probe provider={} endpoint={}", config.provider, endpoint),
+        &format!(
+            "INFO llm_probe provider={} endpoint={}",
+            config.provider, endpoint
+        ),
     );
     let out = probe_llm_connection(&config, Duration::from_secs(PROBE_TIMEOUT_SECS)).await;
     let level = if out.ok { "INFO" } else { "WARN" };
-    let status = out.status.map(|x| x.to_string()).unwrap_or_else(|| "-".to_string());
+    let status = out
+        .status
+        .map(|x| x.to_string())
+        .unwrap_or_else(|| "-".to_string());
     let latency_ms = out
         .latency_ms
         .map(|x| x.to_string())
@@ -140,6 +159,7 @@ pub async fn llm_probe_connection(
 #[tauri::command]
 pub async fn postprocess_auto_punctuate(
     state: State<'_, DbState>,
+    cancel_state: State<'_, PostprocessCancelState>,
     req: PostprocessAutoPunctuateRequest,
 ) -> Result<PostprocessAutoPunctuateRawResponse, String> {
     if req.task.trim() != "auto_punctuate" {
@@ -180,28 +200,72 @@ pub async fn postprocess_auto_punctuate(
     );
 
     let t0 = Instant::now();
-    let resp = http_client()
-        .post(config.endpoint.clone())
-        .bearer_auth(api_key)
-        .timeout(std::time::Duration::from_secs(DEFAULT_TIMEOUT_SECS))
-        .json(&body)
-        .send()
-        .await
-        .map_err(|e| {
-            append_desktop_log_line(&state, &format!("ERROR postprocess connect {e}"));
-            "自动标点请求失败，请检查网络、模型配置或 API Key。".to_string()
-        })?;
+    let request_id = req
+        .request_id
+        .as_deref()
+        .map(str::trim)
+        .filter(|x| !x.is_empty())
+        .map(str::to_string);
+    let cancel_registration = request_id.as_ref().map(|id| {
+        let (handle, registration) = AbortHandle::new_pair();
+        if let Ok(mut handles) = cancel_state.0.lock() {
+            if let Some(previous) = handles.insert(id.clone(), handle) {
+                previous.abort();
+            }
+        }
+        (id.clone(), registration)
+    });
 
-    let status = resp.status();
-    let payload = resp.text().await.map_err(|e| {
-        append_desktop_log_line(&state, &format!("ERROR postprocess read body {e}"));
-        "自动标点返回体读取失败。".to_string()
-    })?;
+    let http_future = async {
+        let resp = http_client()
+            .post(config.endpoint.clone())
+            .bearer_auth(api_key)
+            .timeout(std::time::Duration::from_secs(DEFAULT_TIMEOUT_SECS))
+            .json(&body)
+            .send()
+            .await
+            .map_err(|e| {
+                append_desktop_log_line(&state, &format!("ERROR postprocess connect {e}"));
+                "自动标点请求失败，请检查网络、模型配置或 API Key。".to_string()
+            })?;
+
+        let status = resp.status();
+        let payload = resp.text().await.map_err(|e| {
+            append_desktop_log_line(&state, &format!("ERROR postprocess read body {e}"));
+            "自动标点返回体读取失败。".to_string()
+        })?;
+        Ok::<_, String>((status, payload))
+    };
+
+    let http_result = if let Some((id, registration)) = cancel_registration {
+        let out = Abortable::new(http_future, registration).await;
+        if let Ok(mut handles) = cancel_state.0.lock() {
+            handles.remove(&id);
+        }
+        match out {
+            Ok(result) => result,
+            Err(_) => {
+                append_desktop_log_line(
+                    &state,
+                    &format!("INFO postprocess_auto_punctuate_cancelled request_id={id}"),
+                );
+                return Err("自动标点请求已取消。".to_string());
+            }
+        }
+    } else {
+        http_future.await
+    }?;
+
+    let (status, payload) = http_result;
 
     if !status.is_success() {
         append_desktop_log_line(
             &state,
-            &format!("ERROR postprocess status={} body={}", status.as_u16(), payload),
+            &format!(
+                "ERROR postprocess status={} body={}",
+                status.as_u16(),
+                payload
+            ),
         );
         return Err(format!(
             "自动标点服务返回异常（HTTP {}），请检查 provider 配置或稍后重试。",
@@ -231,14 +295,40 @@ pub async fn postprocess_auto_punctuate(
     })
 }
 
-fn resolve_postprocess_config(req: &PostprocessAutoPunctuateRequest) -> Result<PostprocessConfig, String> {
+#[tauri::command]
+pub fn postprocess_cancel_auto_punctuate(
+    cancel_state: State<'_, PostprocessCancelState>,
+    req: PostprocessCancelAutoPunctuateRequest,
+) -> Result<bool, String> {
+    let request_id = req.request_id.trim();
+    if request_id.is_empty() {
+        return Err("缺少自动标点请求 id。".to_string());
+    }
+    let handle = cancel_state
+        .0
+        .lock()
+        .map_err(|_| "自动标点取消状态不可用。".to_string())?
+        .remove(request_id);
+    if let Some(handle) = handle {
+        handle.abort();
+        Ok(true)
+    } else {
+        Ok(false)
+    }
+}
+
+fn resolve_postprocess_config(
+    req: &PostprocessAutoPunctuateRequest,
+) -> Result<PostprocessConfig, String> {
     if let Some(rt) = req.runtime.as_ref() {
         return resolve_runtime_postprocess_config(rt);
     }
     load_postprocess_config_from_env()
 }
 
-fn resolve_runtime_postprocess_config(rt: &PostprocessRuntimeBridge) -> Result<PostprocessConfig, String> {
+fn resolve_runtime_postprocess_config(
+    rt: &PostprocessRuntimeBridge,
+) -> Result<PostprocessConfig, String> {
     let base_url = rt.base_url.trim();
     let model = rt.model.trim();
     let api_key = rt.api_key.trim();
@@ -268,9 +358,11 @@ fn resolve_runtime_postprocess_config(rt: &PostprocessRuntimeBridge) -> Result<P
 }
 
 fn load_postprocess_config_from_env() -> Result<PostprocessConfig, String> {
-    let provider = env::var("RUSHI_POSTPROCESS_PROVIDER").unwrap_or_else(|_| DEFAULT_PROVIDER.to_string());
+    let provider =
+        env::var("RUSHI_POSTPROCESS_PROVIDER").unwrap_or_else(|_| DEFAULT_PROVIDER.to_string());
     let base_url = env::var("RUSHI_POSTPROCESS_BASE_URL").map_err(|_| {
-        "未配置 LLM：请在「设置 → LLM 配置」填写连接信息，或设置 RUSHI_POSTPROCESS_BASE_URL。".to_string()
+        "未配置 LLM：请在「设置 → LLM 配置」填写连接信息，或设置 RUSHI_POSTPROCESS_BASE_URL。"
+            .to_string()
     })?;
     let model = env::var("RUSHI_POSTPROCESS_MODEL")
         .map_err(|_| "未配置自动标点模型：请设置 RUSHI_POSTPROCESS_MODEL。".to_string())?;
@@ -292,12 +384,14 @@ fn load_postprocess_config_from_env() -> Result<PostprocessConfig, String> {
 }
 
 fn parse_postprocess_endpoint(raw: &str, allow_insecure_http: bool) -> Result<Url, String> {
-    let mut url =
-        Url::parse(raw.trim()).map_err(|_| "自动标点服务地址无效，请检查 API 基址。".to_string())?;
+    let mut url = Url::parse(raw.trim())
+        .map_err(|_| "自动标点服务地址无效，请检查 API 基址。".to_string())?;
     match url.scheme() {
         "https" => {}
         "http" if allow_insecure_http && is_loopback_host(url.host_str()) => {}
-        _ => return Err("自动标点服务地址必须为 HTTPS；本地开发仅允许 loopback HTTP。".to_string()),
+        _ => {
+            return Err("自动标点服务地址必须为 HTTPS；本地开发仅允许 loopback HTTP。".to_string())
+        }
     }
 
     let path = url.path().trim_end_matches('/');
@@ -366,7 +460,10 @@ fn load_postprocess_api_key(api_key_id: Option<&str>) -> Result<String, String> 
     })
 }
 
-async fn probe_llm_connection(config: &PostprocessConfig, timeout: Duration) -> LlmProbeConnectionResponse {
+async fn probe_llm_connection(
+    config: &PostprocessConfig,
+    timeout: Duration,
+) -> LlmProbeConnectionResponse {
     let endpoint = build_postprocess_models_endpoint(&config.endpoint);
     let t0 = Instant::now();
     match http_client()

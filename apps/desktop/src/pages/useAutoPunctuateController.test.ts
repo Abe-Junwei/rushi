@@ -16,9 +16,11 @@ type MockPostprocess = (req: unknown) => Promise<{
 }>;
 
 const postprocessAutoPunctuate = vi.fn<MockPostprocess>();
+const postprocessCancelAutoPunctuate = vi.fn<(requestId: string) => Promise<boolean>>();
 
 vi.mock("../tauri/postprocessApi", () => ({
   postprocessAutoPunctuate: (req: unknown) => postprocessAutoPunctuate(req),
+  postprocessCancelAutoPunctuate: (requestId: string) => postprocessCancelAutoPunctuate(requestId),
 }));
 
 function seg(text: string, uid = "seg-1"): SegmentDto {
@@ -57,6 +59,8 @@ function installMockLocalStorage() {
 describe("useAutoPunctuateController", () => {
   beforeEach(() => {
     postprocessAutoPunctuate.mockReset();
+    postprocessCancelAutoPunctuate.mockReset();
+    postprocessCancelAutoPunctuate.mockResolvedValue(true);
     installMockLocalStorage();
     window.localStorage.clear();
     setLlmApiKeyInMemory(null);
@@ -139,7 +143,7 @@ describe("useAutoPunctuateController", () => {
     expect(result.current.dialog.phase).toBe("closed");
   });
 
-  it("soft-cancels an in-flight request", () => {
+  it("cancels an in-flight request in the Tauri backend", () => {
     seedDeepseekRuntime();
     const segmentsRef = { current: [seg("今天天气不错我们出发吧", "seg-b")] };
     let resolve: ((value: Awaited<ReturnType<MockPostprocess>>) => void) | null =
@@ -175,6 +179,9 @@ describe("useAutoPunctuateController", () => {
       result.current.cancelAutoPunctuate();
     });
     expect(result.current.dialog.phase).toBe("closed");
+    const request = postprocessAutoPunctuate.mock.calls[0]?.[0] as { request_id?: string };
+    expect(request.request_id).toBeTruthy();
+    expect(postprocessCancelAutoPunctuate).toHaveBeenCalledWith(request.request_id);
 
     act(() => {
       resolve?.({

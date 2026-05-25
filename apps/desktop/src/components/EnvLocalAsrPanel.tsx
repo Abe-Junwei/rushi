@@ -1,4 +1,4 @@
-import { asrBaseUrl, isDefaultBundledAsrTarget } from "../config/env";
+import { asrBaseUrl, isDefaultBundledAsrTarget, isTauriRuntime } from "../config/env";
 import { Download, RefreshCw, Wrench } from "lucide-react";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import type { PrepareModelFailureCopy } from "../pages/prepareModelDownloadCopy";
@@ -16,6 +16,7 @@ type Props = {
   asrCaps: AsrHealthCapabilities | null;
   asrModelCacheInfo: AsrModelCacheInfo | null;
   asrModelCacheBusy: boolean;
+  asrCacheMessage: string;
   funasrInstallMessage: string;
   prepareModelBusy: boolean;
   prepareModelProgress: number;
@@ -38,6 +39,7 @@ export function EnvLocalAsrPanel({
   asrCaps,
   asrModelCacheInfo,
   asrModelCacheBusy,
+  asrCacheMessage,
   funasrInstallMessage,
   prepareModelBusy,
   prepareModelProgress,
@@ -205,7 +207,9 @@ export function EnvLocalAsrPanel({
       <LocalAsrCacheSection
         asrModelCacheInfo={asrModelCacheInfo}
         asrModelCacheBusy={asrModelCacheBusy}
+        asrCacheMessage={asrCacheMessage}
         busy={busy}
+        tauriRuntime={isTauriRuntime()}
         refreshAsrModelCacheInfo={refreshAsrModelCacheInfo}
         clearAsrModelCache={clearAsrModelCache}
         openAppDataFolder={openAppDataFolder}

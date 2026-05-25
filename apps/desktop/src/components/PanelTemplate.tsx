@@ -1,17 +1,20 @@
 import { DraggableResizablePanel } from "./DraggableResizablePanel";
 
-type PanelVariant = "serene" | "notion";
-
+/**
+ * 浮动面板预设。对话框类请用 `compactDialog`（Notion/Zen，见 docs/architecture/desktop-floating-dialog-panels.md）。
+ */
 interface PanelTemplatePreset {
   margin: number;
   minWidth: number;
   minHeight: number;
   maxWidth: number;
   maxHeight: number;
-  variant: PanelVariant;
   persistState: boolean;
   overlayClassName: string;
 }
+
+/** 标准可拖动确认/表单对话框预设名 */
+export const FLOATING_COMPACT_DIALOG_PRESET = "compactDialog" as const;
 
 interface PanelTemplateMetrics {
   defaultPosition: { x: number; y: number };
@@ -25,7 +28,6 @@ export const PANEL_TEMPLATE_PRESETS = {
     minHeight: 360,
     maxWidth: 560,
     maxHeight: 560,
-    variant: "notion",
     persistState: false,
     overlayClassName: "fixed inset-0 z-50 bg-zen-ink/20 backdrop-blur-sm",
   },
@@ -35,17 +37,16 @@ export const PANEL_TEMPLATE_PRESETS = {
     minHeight: 280,
     maxWidth: 920,
     maxHeight: 700,
-    variant: "notion",
     persistState: false,
     overlayClassName: "fixed inset-0 z-40 bg-zen-ink/20 backdrop-blur-sm",
   },
+  /** 确认/表单对话框：Notion/Zen 壳 + 可记忆拖放尺寸 */
   compactDialog: {
     margin: 24,
     minWidth: 280,
     minHeight: 180,
     maxWidth: 320,
     maxHeight: 200,
-    variant: "serene",
     persistState: true,
     overlayClassName: "fixed inset-0 z-40 bg-zen-ink/20 backdrop-blur-sm",
   },
@@ -83,9 +84,10 @@ interface FloatingPanelTemplateProps {
   minHeight?: number;
   maxWidth?: number;
   maxHeight?: number;
-  variant?: PanelVariant;
   persistState?: boolean;
   overlayClassName?: string;
+  defaultSize?: { width: number; height: number };
+  defaultPosition?: { x: number; y: number };
 }
 
 export function FloatingPanelTemplate({
@@ -98,9 +100,10 @@ export function FloatingPanelTemplate({
   minHeight,
   maxWidth,
   maxHeight,
-  variant,
   persistState,
   overlayClassName,
+  defaultSize: defaultSizeOverride,
+  defaultPosition: defaultPositionOverride,
 }: FloatingPanelTemplateProps) {
   const presetConfig = PANEL_TEMPLATE_PRESETS[preset];
   const mergedConfig: PanelTemplatePreset = {
@@ -109,7 +112,6 @@ export function FloatingPanelTemplate({
     minHeight: minHeight ?? presetConfig.minHeight,
     maxWidth: maxWidth ?? presetConfig.maxWidth,
     maxHeight: maxHeight ?? presetConfig.maxHeight,
-    variant: variant ?? presetConfig.variant,
     persistState: persistState ?? presetConfig.persistState,
     overlayClassName: overlayClassName ?? presetConfig.overlayClassName,
   };
@@ -121,12 +123,11 @@ export function FloatingPanelTemplate({
       <DraggableResizablePanel
         id={id}
         title={title}
-        defaultPosition={metrics.defaultPosition}
-        defaultSize={metrics.defaultSize}
+        defaultPosition={defaultPositionOverride ?? metrics.defaultPosition}
+        defaultSize={defaultSizeOverride ?? metrics.defaultSize}
         minWidth={mergedConfig.minWidth}
         minHeight={mergedConfig.minHeight}
         persistState={mergedConfig.persistState}
-        variant={mergedConfig.variant}
         onClose={onClose}
       >
         {children}

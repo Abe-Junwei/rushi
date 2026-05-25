@@ -1,10 +1,14 @@
+import { useState } from "react";
+import { ClearAsrCacheConfirmDialog } from "../ClearAsrCacheConfirmDialog";
 import { PANEL_TYPOGRAPHY } from "../../config/typography";
 import type { AsrModelCacheInfo } from "../../tauri/projectApi";
 
 type Props = {
   asrModelCacheInfo: AsrModelCacheInfo | null;
   asrModelCacheBusy: boolean;
+  asrCacheMessage: string;
   busy: boolean;
+  tauriRuntime: boolean;
   refreshAsrModelCacheInfo: () => Promise<void>;
   clearAsrModelCache: () => Promise<void>;
   openAppDataFolder: () => Promise<void>;
@@ -13,11 +17,15 @@ type Props = {
 export function LocalAsrCacheSection({
   asrModelCacheInfo,
   asrModelCacheBusy,
+  asrCacheMessage,
   busy,
+  tauriRuntime,
   refreshAsrModelCacheInfo,
   clearAsrModelCache,
   openAppDataFolder,
 }: Props) {
+  const [confirmClearOpen, setConfirmClearOpen] = useState(false);
+
   const manifestStatus =
     asrModelCacheInfo == null
       ? "未读取"
@@ -26,10 +34,22 @@ export function LocalAsrCacheSection({
           ? "已配置，文件存在"
           : "已配置，但文件不存在"
         : "未配置";
-  const clearDisabled = busy || asrModelCacheBusy || (asrModelCacheInfo?.total_bytes ?? 0) <= 0;
+  const clearDisabled = !tauriRuntime || busy || asrModelCacheBusy;
+  const clearDisabledReason = !tauriRuntime ? "需在桌面应用中运行（npm run desktop:dev 或安装包）" : null;
+
+  const onConfirmClear = () => {
+    void clearAsrModelCache().finally(() => setConfirmClearOpen(false));
+  };
 
   return (
     <section className="flex flex-col gap-4">
+      <ClearAsrCacheConfirmDialog
+        open={confirmClearOpen}
+        busy={asrModelCacheBusy}
+        totalBytes={asrModelCacheInfo?.total_bytes ?? null}
+        onCancel={() => setConfirmClearOpen(false)}
+        onConfirm={onConfirmClear}
+      />
       <div className="pb-1">
         <h3 className={PANEL_TYPOGRAPHY.sectionTitle}>缓存与校验</h3>
         <p className={PANEL_TYPOGRAPHY.sectionDescription}>查看模型缓存目录、占用大小与 manifest 校验配置。</p>
@@ -45,20 +65,32 @@ export function LocalAsrCacheSection({
             manifest 路径：<code className="font-mono text-zen-indigo">{asrModelCacheInfo.manifest_path}</code>
           </p>
         ) : null}
+        {asrModelCacheInfo?.manifest_path && !asrModelCacheInfo.manifest_exists ? (
+          <p className="text-[11px] leading-relaxed text-zen-cinnabar">
+            环境变量已设置，但该路径下尚无文件。请把 JSON（内容可为 <code className="font-mono">[]</code>）建在上方「manifest
+            路径」所指位置（不要只用单层 Application Support 目录），保存后点「刷新缓存信息」。
+          </p>
+        ) : null}
         <p className="text-[11px] text-notion-text-muted">
-          manifest 展示基于桌面壳当前环境变量；若 ASR 是在外部终端单独启动，实际运行配置可能与此不同。
+          占用仅统计应用数据目录下的 <code className="font-mono text-zen-indigo">models/</code>；若 ASR 在终端单独启动且未设置
+          RUSHI_MODELS_ROOT，权重可能在其他路径，此处清理不会生效。
+        </p>
+        <p className="text-[11px] text-notion-text-muted">
+          manifest 状态读取自<strong className="font-medium text-notion-text">桌面应用进程</strong>的{" "}
+          <code className="font-mono text-zen-indigo">RUSHI_MODEL_VERIFY_MANIFEST</code>（相对路径相对上方「缓存目录」解析）。
         </p>
       </div>
+      {asrCacheMessage ? (
+        <p className="rounded bg-notion-callout-bg px-3 py-2 text-[12px] text-notion-text">{asrCacheMessage}</p>
+      ) : null}
       <div className="flex flex-wrap gap-2">
         <ActionButton disabled={busy || asrModelCacheBusy} onClick={() => void refreshAsrModelCacheInfo()}>
           {asrModelCacheBusy ? "处理中…" : "刷新缓存信息"}
         </ActionButton>
         <ActionButton
           disabled={clearDisabled}
-          onClick={() => {
-            if (!window.confirm("确认清除已下载的模型缓存吗？此操作不会删除数据库或项目文件。")) return;
-            void clearAsrModelCache();
-          }}
+          title={clearDisabledReason ?? undefined}
+          onClick={() => setConfirmClearOpen(true)}
         >
           {asrModelCacheBusy ? "清理中…" : "清除模型缓存"}
         </ActionButton>
@@ -66,6 +98,9 @@ export function LocalAsrCacheSection({
           打开应用数据目录
         </ActionButton>
       </div>
+      {clearDisabledReason ? (
+        <p className="text-[11px] text-notion-text-muted">{clearDisabledReason}</p>
+      ) : null}
     </section>
   );
 }
@@ -79,12 +114,23 @@ function InfoRow({ label, value, mono = false }: { label: string; value: string;
   );
 }
 
-function ActionButton({ children, disabled, onClick }: { children: React.ReactNode; disabled?: boolean; onClick: () => void }) {
+function ActionButton({
+  children,
+  disabled,
+  title,
+  onClick,
+}: {
+  children: React.ReactNode;
+  disabled?: boolean;
+  title?: string;
+  onClick: () => void;
+}) {
   return (
     <button
       type="button"
       className={`flex items-center gap-1.5 rounded border border-notion-divider bg-notion-bg px-2.5 py-1 ${PANEL_TYPOGRAPHY.button} text-notion-text transition-colors hover:bg-notion-sidebar-hover disabled:opacity-40`}
       disabled={disabled}
+      title={title}
       onClick={onClick}
     >
       {children}

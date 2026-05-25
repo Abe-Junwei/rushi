@@ -40,16 +40,22 @@ fn inspect_asr_model_cache(st: &DbState) -> Result<AsrModelCacheInfo, String> {
         huggingface_cache: root.join("huggingface").to_string_lossy().to_string(),
         exists: root.exists(),
         total_bytes,
-        manifest_exists: manifest_path.as_ref().is_some_and(|p| p.is_file()),
-        manifest_path: manifest_path.map(|p| p.to_string_lossy().to_string()),
+        manifest_exists: manifest_path
+            .as_ref()
+            .is_some_and(|p| manifest_file_exists(p.as_path())),
+        manifest_path: manifest_path.as_ref().map(|p| {
+            fs::canonicalize(p)
+                .unwrap_or_else(|_| p.clone())
+                .to_string_lossy()
+                .to_string()
+        }),
     })
 }
 
 fn clear_asr_model_cache_for_state(st: &DbState) -> Result<(), String> {
     let root = models_root(st);
     fs::create_dir_all(&root).map_err(|e| format!("创建模型缓存目录失败: {e}"))?;
-    let preserve_manifest = resolve_manifest_path(manifest_raw_from_env(), &root)
-        .and_then(|p| p.canonicalize().ok());
+    let preserve_manifest = preserve_manifest_within_root(manifest_raw_from_env(), &root);
     clear_cache_contents(&root, preserve_manifest.as_deref())
 }
 
@@ -70,7 +76,23 @@ fn manifest_raw_from_env() -> Option<String> {
 fn resolve_manifest_path(raw: Option<String>, root: &Path) -> Option<PathBuf> {
     let raw = raw?;
     let path = PathBuf::from(raw);
-    Some(if path.is_absolute() { path } else { root.join(path) })
+    Some(if path.is_absolute() {
+        path
+    } else {
+        root.join(path)
+    })
+}
+
+fn manifest_file_exists(path: &Path) -> bool {
+    fs::metadata(path).map(|m| m.is_file()).unwrap_or(false)
+}
+
+fn preserve_manifest_within_root(raw: Option<String>, root: &Path) -> Option<PathBuf> {
+    let canonical_root = root.canonicalize().ok()?;
+    resolve_manifest_path(raw, root)?
+        .canonicalize()
+        .ok()
+        .filter(|p| p.starts_with(canonical_root))
 }
 
 fn clear_cache_contents(root: &Path, preserve_manifest: Option<&Path>) -> Result<(), String> {
@@ -79,7 +101,7 @@ fn clear_cache_contents(root: &Path, preserve_manifest: Option<&Path>) -> Result
         let entry = entry.map_err(|e| e.to_string())?;
         let path = entry.path();
         let canonical = path.canonicalize().ok();
-        let meta = entry.metadata().map_err(|e| e.to_string())?;
+        let meta = fs::symlink_metadata(&path).map_err(|e| e.to_string())?;
         if meta.is_dir() {
             let contains_preserved = preserve_manifest
                 .as_deref()
@@ -87,7 +109,11 @@ fn clear_cache_contents(root: &Path, preserve_manifest: Option<&Path>) -> Result
                 .is_some_and(|(preserve, current)| preserve.starts_with(current));
             if contains_preserved {
                 clear_cache_contents(&path, preserve_manifest.as_deref())?;
-                if fs::read_dir(&path).map_err(|e| e.to_string())?.next().is_none() {
+                if fs::read_dir(&path)
+                    .map_err(|e| e.to_string())?
+                    .next()
+                    .is_none()
+                {
                     fs::remove_dir(&path)
                         .map_err(|e| format!("删除空缓存目录失败（{}）: {e}", path.display()))?;
                 }
@@ -103,7 +129,8 @@ fn clear_cache_contents(root: &Path, preserve_manifest: Option<&Path>) -> Result
             if should_preserve {
                 continue;
             }
-            fs::remove_file(&path).map_err(|e| format!("删除缓存文件失败（{}）: {e}", path.display()))?;
+            fs::remove_file(&path)
+                .map_err(|e| format!("删除缓存文件失败（{}）: {e}", path.display()))?;
         }
     }
     Ok(())
@@ -130,7 +157,9 @@ fn dir_size_bytes(path: &Path) -> Result<u64, std::io::Error> {
 
 #[cfg(test)]
 mod tests {
-    use super::{clear_cache_contents, dir_size_bytes, resolve_manifest_path};
+    use super::{
+        clear_cache_contents, dir_size_bytes, preserve_manifest_within_root, resolve_manifest_path,
+    };
     use std::fs;
     use std::path::Path;
     use uuid::Uuid;
@@ -144,7 +173,8 @@ mod tests {
     #[test]
     fn resolve_relative_manifest_against_models_root() {
         let root = Path::new("/tmp/rushi-models");
-        let manifest = resolve_manifest_path(Some("manifest/default.json".to_string()), root).unwrap();
+        let manifest =
+            resolve_manifest_path(Some("manifest/default.json".to_string()), root).unwrap();
         assert_eq!(manifest, root.join("manifest/default.json"));
     }
 
@@ -178,6 +208,39 @@ mod tests {
         assert!(manifest_dir.is_dir());
         assert!(!root.join("modelscope").exists());
         assert!(!root.join("huggingface").exists());
+        let _ = fs::remove_dir_all(&temp);
+    }
+
+    #[test]
+    fn preserve_manifest_ignores_absolute_path_outside_models_root() {
+        let temp = temp_dir();
+        let root = temp.join("models");
+        let outside = temp.join("outside-manifest.json");
+        fs::create_dir_all(&root).unwrap();
+        fs::write(&outside, "{}").unwrap();
+
+        let resolved =
+            preserve_manifest_within_root(Some(outside.to_string_lossy().to_string()), &root);
+
+        assert!(resolved.is_none());
+        let _ = fs::remove_dir_all(&temp);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn clear_cache_unlinks_symlinked_directory_without_following_it() {
+        let temp = temp_dir();
+        let root = temp.join("models");
+        let outside = temp.join("outside-cache");
+        fs::create_dir_all(&root).unwrap();
+        fs::create_dir_all(&outside).unwrap();
+        fs::write(outside.join("keep.bin"), vec![1_u8; 4]).unwrap();
+        std::os::unix::fs::symlink(&outside, root.join("linked-outside")).unwrap();
+
+        clear_cache_contents(&root, None).unwrap();
+
+        assert!(!root.join("linked-outside").exists());
+        assert!(outside.join("keep.bin").is_file());
         let _ = fs::remove_dir_all(&temp);
     }
 }

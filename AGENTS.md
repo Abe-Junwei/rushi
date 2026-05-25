@@ -39,6 +39,7 @@
 - 禁止：setState updater 内 DOM 查询 / 硬编码 hex / mega-hook
 - 好/坏示例见 AI_QUICKSTART §典型模式
 - 新增设计 → 先读 `docs/architecture/` 与 ADR
+- **浮动对话框** → `compactDialog` + Notion/Zen（`controlStyles.ts`）；勿用已移除的 serene 面板变体；见 `docs/architecture/desktop-floating-dialog-panels.md`
 - 中等以上复杂度 → 先写 spec（`docs/execution/specs/` 三件套）再实施
 
 ## 机器守卫（提交前必跑）

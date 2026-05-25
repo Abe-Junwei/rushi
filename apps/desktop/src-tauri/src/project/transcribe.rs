@@ -1,6 +1,6 @@
 use super::utils::append_desktop_log_line;
-use crate::DbState;
 use crate::utils::http_client;
+use crate::DbState;
 use rusqlite::Connection;
 use std::path::Path;
 

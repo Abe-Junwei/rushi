@@ -119,8 +119,8 @@ R9     发版集成验收（REL-1）
 
 | 顺序 | 子项 | 状态 | 预估 | 说明 |
 |------|------|------|------|------|
-| 0 | **提交波次** | ⏳ | 0.5d | 合入 R3b/c、`profile.rs`、`asr_cache_cmd`、转写 hints/整轨兜底等未提交改动 |
-| 1 | **R3c 手测** | 🟡 编码完成 | 0.5d | [`r3c-local-asr-cache-manifest-acceptance.md`](../specs/r3c-local-asr-cache-manifest-acceptance.md) A–D |
+| 0 | **提交波次** | ✅ | 0.5d | R3b/c 与手测补丁已合入 `main` |
+| 1 | **R3c 手测** | ✅ | 0.5d | [`r3c-local-asr-cache-manifest-acceptance.md`](../specs/r3c-local-asr-cache-manifest-acceptance.md) A–D |
 | 2 | **R3f-A/B** | ⏳ | 3–5d | 诊断报告 +「一键准备本机 ASR」；[`r3f-asr-setup-wizard-acceptance.md`](../specs/r3f-asr-setup-wizard-acceptance.md) |
 | 3 | **R3g-A** | ⏳ | 3–5d | 三模型目录 + 按 model 预下载 + 切换重启侧车；[`r3g-local-asr-model-catalog-acceptance.md`](../specs/r3g-local-asr-model-catalog-acceptance.md) |
 | 4 | **R3e-A** | ⏳ | 2–3d | 动态超时 + 失败文案（13min/50min 先可完成拉取） |
@@ -264,7 +264,7 @@ React 预览 UI
 |------|------|-------------------|
 | R3a | LLM keychain + probe | ✅ 已完成 |
 | R3b | Profile 导入导出（无 secret） | ✅ 已完成（工作区待提交） |
-| R3c | 本机 ASR 引导 / 缓存 / manifest | 🟡 编码完成，待提交 + 手测 |
+| R3c | 本机 ASR 引导 / 缓存 / manifest | ✅ 手测通过（2026-05-25） |
 | **R3f** | 本机 ASR **一键环境准备** | ⏳ 见 [`r3f-asr-setup-wizard-acceptance.md`](../specs/r3f-asr-setup-wizard-acceptance.md) |
 | **R3g** | 本机 ASR **模型目录**（FunASR ×3） | ⏳ 见 [`r3g-local-asr-model-catalog-acceptance.md`](../specs/r3g-local-asr-model-catalog-acceptance.md) |
 | **R3e** | 长音频转写（超时 / 分段） | ⏳ 见 [`r3e-long-audio-transcribe-acceptance.md`](../specs/r3e-long-audio-transcribe-acceptance.md) |
@@ -436,7 +436,7 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 |----|------|
 | **阶段** | **R3 — EXP-1（进行中，见 §4.1）** |
 | **规划真源** | §4.1 + [`r3f-asr-setup-wizard-acceptance.md`](../specs/r3f-asr-setup-wizard-acceptance.md) / [`r3g-local-asr-model-catalog-acceptance.md`](../specs/r3g-local-asr-model-catalog-acceptance.md) |
-| **建议实施顺序** | 提交波次 → **R3c 手测** → **R3f** → **R3g** → **R3e-A** → R3d → **R3e-B** → R4 |
+| **建议实施顺序** | **R3f** → **R3g** → **R3e-A** → R3d → **R3e-B** → R4 |
 | **不要** | 内置 LiteLLM/网关、合并 STT/LLM 协议、Win 安装包 v1 pip 装 FunASR、协作提前插队 |
 
 ### R3 规划门禁
@@ -444,9 +444,9 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 - [x] Provider 调研文档（见上）  
 - [x] **不引入捆绑网关**；**STT/LLM 分通道**  
 - [x] **内置侧车优先**（dev + 安装包）；Win 终端 **仅双 exe**（2026-05-25 确认）  
-- [x] R3a/b acceptance 已签收；R3c/f/g/e acceptance 已起草  
+- [x] R3a/b/c acceptance 已签收；R3f/g/e acceptance 已起草  
 
-**下一刀**：**提交 R3 工作区改动** → **R3c 手测** → **R3f-A**（诊断契约）
+**下一刀**：**R3f-A**（诊断契约 + 一键准备本机 ASR）
 
 ---
 
@@ -489,6 +489,7 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | 2026-05-25 | 手测 13min：SenseVoice 无分句 → 整轨兜底 + transcribeHints 横幅（工作区，非 spec 薄片） |
 | 2026-05-25 | 产品决策：dev/安装包 **内置侧车优先**；Win **仅双 exe**；新增 **R3f** spec |
 | 2026-05-25 | **§4.1 R3 重排**：R3f → R3g → R3e-A → R3d → R3e-B；新增 [`r3g-local-asr-model-catalog-acceptance.md`](../specs/r3g-local-asr-model-catalog-acceptance.md)；总周次 ~18 周 |
+| 2026-05-25 | **R3c 手测通过**：引导/缓存/manifest/清缓存确认框；下一刀 **R3f** |
 
 ---
 

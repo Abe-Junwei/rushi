@@ -6,6 +6,7 @@ import {
   tryBuildPostprocessRuntimeBridge,
 } from "../services/postprocess/postprocessRuntimeContract";
 import {
+  postprocessCancelAutoPunctuate,
   postprocessAutoPunctuate,
   type PostprocessAutoPunctuateRequest,
 } from "../tauri/postprocessApi";
@@ -53,6 +54,13 @@ type PendingPayload = {
   originalText: string;
 };
 
+function createAutoPunctuateRequestId(): string {
+  if (typeof crypto !== "undefined" && typeof crypto.randomUUID === "function") {
+    return crypto.randomUUID();
+  }
+  return `auto-punctuate-${Date.now()}-${Math.random().toString(36).slice(2)}`;
+}
+
 export function useAutoPunctuateController(
   args: UseAutoPunctuateControllerArgs,
 ): AutoPunctuateControllerApi {
@@ -69,6 +77,7 @@ export function useAutoPunctuateController(
 
   const [dialog, setDialog] = useState<AutoPunctuateDialogState>({ phase: "closed" });
   const activeRequestSeqRef = useRef(0);
+  const activeRequestIdRef = useRef<string | null>(null);
   const pendingPayloadRef = useRef<PendingPayload | null>(null);
   const previewSegmentUidRef = useRef<string | null>(null);
 
@@ -101,6 +110,7 @@ export function useAutoPunctuateController(
       originalText: current.text,
       request: {
         task: "auto_punctuate",
+        request_id: createAutoPunctuateRequestId(),
         segment_uid: current.uid,
         text: current.text,
         neighbor_snippets,
@@ -113,11 +123,13 @@ export function useAutoPunctuateController(
     (payload: PendingPayload) => {
       const seq = activeRequestSeqRef.current + 1;
       activeRequestSeqRef.current = seq;
+      activeRequestIdRef.current = payload.request.request_id ?? null;
       previewSegmentUidRef.current = payload.request.segment_uid;
       setDialog({ phase: "loading", originalText: payload.originalText });
       void postprocessAutoPunctuate(payload.request)
         .then((out) => {
           if (activeRequestSeqRef.current != seq) return;
+          activeRequestIdRef.current = null;
           setDialog({
             phase: "preview",
             originalText: payload.originalText,
@@ -129,6 +141,7 @@ export function useAutoPunctuateController(
         })
         .catch((e) => {
           if (activeRequestSeqRef.current != seq) return;
+          activeRequestIdRef.current = null;
           setDialog({ phase: "closed" });
           setError(e instanceof Error ? e.message : String(e));
         });
@@ -171,8 +184,15 @@ export function useAutoPunctuateController(
 
   const cancelAutoPunctuate = useCallback(() => {
     activeRequestSeqRef.current += 1;
+    const requestId = activeRequestIdRef.current;
+    activeRequestIdRef.current = null;
     pendingPayloadRef.current = null;
     setDialog({ phase: "closed" });
+    if (requestId) {
+      void postprocessCancelAutoPunctuate(requestId).catch(() => {
+        /* ignore */
+      });
+    }
   }, []);
 
   return {

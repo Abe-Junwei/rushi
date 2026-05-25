@@ -3256,6 +3256,7 @@ dependencies = [
  "chrono",
  "docx-rs",
  "flate2",
+ "futures-util",
  "hex",
  "hmac",
  "http",

@@ -91,6 +91,7 @@ export function useProjectController() {
     asrCaps: asr.asrCaps,
     asrModelCacheInfo: asr.asrModelCacheInfo,
     asrModelCacheBusy: asr.asrModelCacheBusy,
+    asrCacheMessage: asr.asrCacheMessage,
     sttOnlineBridgeReady: asr.sttOnlineBridgeReady,
     funasrInstallMessage: asr.funasrInstallMessage,
     prepareModelBusy: asr.prepareModelBusy,

@@ -146,6 +146,7 @@ export function ProjectPanel() {
               asrCaps={c.asrCaps}
               asrModelCacheInfo={c.asrModelCacheInfo}
               asrModelCacheBusy={c.asrModelCacheBusy}
+              asrCacheMessage={c.asrCacheMessage}
               funasrInstallMessage={c.funasrInstallMessage}
               prepareModelBusy={c.prepareModelBusy}
               prepareModelProgress={c.prepareModelProgress}

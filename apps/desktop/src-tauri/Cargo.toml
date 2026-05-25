@@ -44,3 +44,4 @@ tungstenite = { version = "0.24", default-features = false, features = [
 docx-rs = "0.4"
 zip = { version = "2.4", default-features = false, features = ["deflate"] }
 serde_yaml = "0.9.34"
+futures-util = "0.3"

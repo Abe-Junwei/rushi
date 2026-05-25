@@ -4,6 +4,7 @@ import { computeSingleTextDiff, type TextDiffSpan } from "../utils/textDiff";
 
 export interface PostprocessAutoPunctuateRequest {
   task: "auto_punctuate";
+  request_id?: string;
   segment_uid: string;
   text: string;
   neighbor_snippets?: string[];
@@ -55,6 +56,12 @@ export async function postprocessAutoPunctuate(
     ...out,
     diff: computeSingleTextDiff(req.text, out.text),
   };
+}
+
+export async function postprocessCancelAutoPunctuate(requestId: string): Promise<boolean> {
+  return await invoke<boolean>("postprocess_cancel_auto_punctuate", {
+    req: { request_id: requestId },
+  });
 }
 
 export async function llmSaveApiKey(req: LlmApiKeyRequest): Promise<string> {

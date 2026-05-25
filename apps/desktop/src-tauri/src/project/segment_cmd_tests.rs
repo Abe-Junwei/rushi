@@ -69,19 +69,9 @@ fn file_save_segments_swaps_idx_without_unique_violation() {
     let uid_a = Uuid::new_v4().to_string();
     let uid_b = Uuid::new_v4().to_string();
 
-    file_save_segments_inner(
-        &st,
-        &file_id,
-        &[seg(&uid_a, 0, "a"), seg(&uid_b, 1, "b")],
-    )
-    .unwrap();
+    file_save_segments_inner(&st, &file_id, &[seg(&uid_a, 0, "a"), seg(&uid_b, 1, "b")]).unwrap();
 
-    file_save_segments_inner(
-        &st,
-        &file_id,
-        &[seg(&uid_a, 1, "a"), seg(&uid_b, 0, "b")],
-    )
-    .unwrap();
+    file_save_segments_inner(&st, &file_id, &[seg(&uid_a, 1, "a"), seg(&uid_b, 0, "b")]).unwrap();
 
     let detail = file_detail_from_conn(&open_db(&st).unwrap(), &file_id).unwrap();
     assert_eq!(detail.segments.len(), 2);

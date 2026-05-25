@@ -47,9 +47,7 @@ fn migrate_segments_uid(conn: &Connection) -> rusqlite::Result<()> {
     if !cols.iter().any(|c| c == "uid") {
         conn.execute("ALTER TABLE segments ADD COLUMN uid TEXT", [])?;
     }
-    let mut stmt = conn.prepare(
-        "SELECT id FROM segments WHERE uid IS NULL OR trim(uid) = ''",
-    )?;
+    let mut stmt = conn.prepare("SELECT id FROM segments WHERE uid IS NULL OR trim(uid) = ''")?;
     let ids = stmt
         .query_map([], |row| row.get::<_, i64>(0))?
         .collect::<Result<Vec<_>, _>>()?;

@@ -53,6 +53,7 @@ export interface AsrBridgeApi {
   refreshAsrHealth: () => Promise<void>;
   refreshAsrModelCacheInfo: () => Promise<void>;
   clearAsrModelCache: () => Promise<void>;
+  asrCacheMessage: string;
   prepareDefaultFunasrModel: () => Promise<void>;
   retryBundledAsrSidecar: () => Promise<void>;
   installFunasrDepsInteractive: () => Promise<void>;
@@ -68,6 +69,7 @@ export function useAsrBridgeController(): AsrBridgeApi {
   const [asrCaps, setAsrCaps] = useState<AsrHealthCapabilities | null>(null);
   const [asrModelCacheInfo, setAsrModelCacheInfo] = useState<AsrModelCacheInfo | null>(null);
   const [asrModelCacheBusy, setAsrModelCacheBusy] = useState(false);
+  const [asrCacheMessage, setAsrCacheMessage] = useState("");
   const [sttOnlineBridgeEpoch, setSttOnlineBridgeEpoch] = useState(0);
 
   const sttOnlineBridgeReady = useMemo(
@@ -92,13 +94,18 @@ export function useAsrBridgeController(): AsrBridgeApi {
   const refreshAsrModelCacheInfo = useCallback(async () => {
     if (!tauriRuntime) {
       setAsrModelCacheInfo(null);
+      setAsrCacheMessage("浏览器预览无法读取模型缓存，请在桌面应用中操作。");
       return;
     }
     try {
       const info = await p1.asrModelCacheInfo();
       setAsrModelCacheInfo(info);
-    } catch {
+      setAsrCacheMessage("");
+    } catch (e) {
       setAsrModelCacheInfo(null);
+      setAsrCacheMessage(
+        `读取缓存信息失败：${e instanceof Error ? e.message : String(e)}。请确认在 Tauri 桌面壳中运行。`,
+      );
     }
   }, [tauriRuntime]);
 
@@ -181,12 +188,22 @@ export function useAsrBridgeController(): AsrBridgeApi {
   }, [refreshAsrRuntimeInfo, refreshBundledAsrDiag]);
 
   const clearAsrModelCache = useCallback(async () => {
-    if (!tauriRuntime) return;
+    if (!tauriRuntime) {
+      setAsrCacheMessage("清除模型缓存需要在桌面应用中运行（npm run desktop:dev 或安装包），浏览器预览不支持。");
+      return;
+    }
     setAsrModelCacheBusy(true);
+    setAsrCacheMessage("");
     try {
       const info = await p1.clearAsrModelCache();
       setAsrModelCacheInfo(info);
       await refreshAsrHealth();
+      const mb = info.total_bytes / (1024 * 1024);
+      const sizeLabel =
+        info.total_bytes <= 0 ? "0 B" : mb >= 0.1 ? `${mb.toFixed(1)} MB` : `${(info.total_bytes / 1024).toFixed(0)} KB`;
+      setAsrCacheMessage(`已清除模型缓存。当前占用约 ${sizeLabel}。可点「预先下载默认模型」重新拉取权重。`);
+    } catch (e) {
+      setAsrCacheMessage(`清除模型缓存失败：${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setAsrModelCacheBusy(false);
     }
@@ -238,6 +255,7 @@ export function useAsrBridgeController(): AsrBridgeApi {
     refreshAsrHealth,
     refreshAsrModelCacheInfo,
     clearAsrModelCache,
+    asrCacheMessage,
     prepareDefaultFunasrModel: modelCtrl.prepareDefaultFunasrModel,
     retryBundledAsrSidecar,
     installFunasrDepsInteractive,

@@ -1,7 +1,8 @@
 use super::{
     build_auto_punctuate_prompt, build_postprocess_models_endpoint, extract_chat_completion_text,
-    parse_postprocess_endpoint, probe_llm_connection, resolve_postprocess_config, LlmProbeConnectionResponse,
-    PostprocessAutoPunctuateRequest, PostprocessConfig, PostprocessRuntimeBridge,
+    parse_postprocess_endpoint, probe_llm_connection, resolve_postprocess_config,
+    LlmProbeConnectionResponse, PostprocessAutoPunctuateRequest, PostprocessConfig,
+    PostprocessRuntimeBridge,
 };
 use serde_json::json;
 use std::env;
@@ -44,7 +45,11 @@ fn spawn_http_server(status_line: &str, body: &str, delay: Duration) -> Url {
         );
         let _ = stream.write_all(response.as_bytes());
     });
-    Url::parse(&format!("http://127.0.0.1:{}/v1/chat/completions", addr.port())).unwrap()
+    Url::parse(&format!(
+        "http://127.0.0.1:{}/v1/chat/completions",
+        addr.port()
+    ))
+    .unwrap()
 }
 
 #[test]
@@ -93,7 +98,10 @@ fn extract_text_from_array_content() {
 
 #[test]
 fn prompt_includes_neighbors() {
-    let prompt = build_auto_punctuate_prompt("今天天气不错我们出发吧", &["上一句".into(), "下一句".into()]);
+    let prompt = build_auto_punctuate_prompt(
+        "今天天气不错我们出发吧",
+        &["上一句".into(), "下一句".into()],
+    );
     assert!(prompt.contains("片段1：上一句"));
     assert!(prompt.contains("当前语段："));
 }
@@ -102,6 +110,7 @@ fn prompt_includes_neighbors() {
 fn runtime_bridge_resolves_deepseek_endpoint() {
     let req = PostprocessAutoPunctuateRequest {
         task: "auto_punctuate".into(),
+        request_id: None,
         segment_uid: "u1".into(),
         text: "你好".into(),
         neighbor_snippets: vec![],
@@ -115,7 +124,10 @@ fn runtime_bridge_resolves_deepseek_endpoint() {
         }),
     };
     let cfg = resolve_postprocess_config(&req).unwrap();
-    assert_eq!(cfg.endpoint.as_str(), "https://api.deepseek.com/v1/chat/completions");
+    assert_eq!(
+        cfg.endpoint.as_str(),
+        "https://api.deepseek.com/v1/chat/completions"
+    );
     assert_eq!(cfg.model, "deepseek-chat");
 }
 
@@ -125,6 +137,7 @@ fn runtime_bridge_can_fallback_to_env_api_key() {
     env::set_var("RUSHI_POSTPROCESS_API_KEY", "sk-env");
     let req = PostprocessAutoPunctuateRequest {
         task: "auto_punctuate".into(),
+        request_id: None,
         segment_uid: "u1".into(),
         text: "你好".into(),
         neighbor_snippets: vec![],
@@ -158,7 +171,11 @@ fn probe_reports_success() {
 
 #[test]
 fn probe_reports_auth_failure() {
-    let endpoint = spawn_http_server("401 Unauthorized", r#"{"error":"bad key"}"#, Duration::from_millis(0));
+    let endpoint = spawn_http_server(
+        "401 Unauthorized",
+        r#"{"error":"bad key"}"#,
+        Duration::from_millis(0),
+    );
     let cfg = PostprocessConfig {
         provider: "DeepSeek".into(),
         endpoint,

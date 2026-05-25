@@ -1,6 +1,6 @@
 # Acceptance: R3c — 本机 ASR 引导 / 缓存 / manifest 展示
 
-> **状态**：已实现（自动化已通过，待手测）  
+> **状态**：✅ 手测通过（2026-05-25）  
 > **规划门禁**：已确认 — 不引入捆绑网关；STT/LLM **分通道**；薄片顺序 R3a→b→c→d  
 > **关联**：[`r3-provider-configuration-research.md`](./r3-provider-configuration-research.md)、[`r3b-profile-import-export-acceptance.md`](./r3b-profile-import-export-acceptance.md)、[`../../architecture/asr-sidecar-funasr-policy.md`](../../architecture/asr-sidecar-funasr-policy.md)
 
@@ -90,17 +90,44 @@
 
 ### D. manifest 展示
 
-1. 配置或移除 `RUSHI_MODEL_VERIFY_MANIFEST` 后打开面板。
-2. 确认面板能区分未配置 / 已配置但缺失 / 已配置且存在。
+> **真源**：面板读的是 **Tauri 桌面进程** 的环境变量，不是侧车进程。相对路径相对面板里的「缓存目录」（`…/studio.lingchuang.rushi/models`）解析。
+
+**D3 — 已配置且存在（推荐一次性脚本）**
+
+```bash
+# 1) 先建文件：路径必须与面板「缓存目录」一致（常见为双层 studio.lingchuang.rushi）
+MANIFEST_ROOT="$HOME/Library/Application Support/studio.lingchuang.rushi/studio.lingchuang.rushi/models"
+mkdir -p "$MANIFEST_ROOT"
+printf '%s\n' '[]' > "$MANIFEST_ROOT/test-manifest.json"
+ls -la "$MANIFEST_ROOT/test-manifest.json"
+
+# 2) 在同一终端启动桌面（变量必须随启动传入）
+export RUSHI_MODEL_VERIFY_MANIFEST="test-manifest.json"
+cd /path/to/Rushi
+npm run desktop:dev
+```
+
+3. 环境与 ASR → 本机 ASR → **缓存与校验** → 点「刷新缓存信息」。
+4. 期望：**manifest 校验** =「已配置，文件存在」；路径行应含 `…/models/test-manifest.json`。
+
+**常见误判**
+
+| 现象 | 原因 |
+|------|------|
+| 已配置但不存在 | 文件建在别的目录；或先开了 App 再 export；或变量指向 `manifest/foo.json` 但文件在根目录 |
+| 未配置 | 从 Dock/双击启动，未继承终端里的 export |
+| 清缓存后变不存在 | manifest 若在 `models/` 根下的单文件会被保留；若在未保护子目录则可能被删 |
+
+**D1/D2**：`unset RUSHI_MODEL_VERIFY_MANIFEST` 或指向不存在文件后重启 App，对照「未配置 / 已配置但不存在」。
 
 ## 手测记录
 
 | 日期 | 场景 | 结果 | 备注 |
 |------|------|------|------|
-| | | | |
+| 2026-05-25 | A–D + 清除缓存确认框 | 通过 | 含 app_data 根路径修复、浮动对话框 Notion/Zen |
 
 ## 完成定义
 
 - [x] 自动化项全绿
-- [ ] 手测 A + B + C 通过（D 至少抽查一次）
-- [ ] 路线图下一刀切至 R3d
+- [x] 手测 A + B + C 通过（D 至少抽查一次）
+- [x] 路线图下一刀切至 **R3f**（§4.1）
