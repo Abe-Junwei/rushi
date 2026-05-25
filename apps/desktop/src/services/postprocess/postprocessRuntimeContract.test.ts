@@ -52,6 +52,14 @@ describe("postprocessRuntimeContract", () => {
     });
   });
 
+  it("persists qwen preset", () => {
+    persistLlmRuntimeConfig(applyLlmProviderPreset("qwen"));
+    const cfg = readLlmRuntimeConfigFromStorage();
+    expect(cfg.providerId).toBe("qwen");
+    expect(cfg.baseUrl).toBe("https://dashscope.aliyuncs.com/compatible-mode/v1");
+    expect(cfg.model).toBe("qwen-plus");
+  });
+
   it("returns null bridge without api key", () => {
     persistLlmRuntimeConfig(applyLlmProviderPreset("deepseek"));
     expect(tryBuildPostprocessRuntimeBridge()).toBeNull();
@@ -77,5 +85,12 @@ describe("postprocessRuntimeContract", () => {
     expect(cfg.providerId).toBe("kimi");
     expect(cfg.model).toBe("moonshot-v1-32k");
     expect(localStorage.getItem(LLM_STORAGE_KEYS.providerId)).toBe("kimi");
+  });
+
+  it("falls back to deepseek for unknown provider ids", () => {
+    localStorage.setItem(LLM_STORAGE_KEYS.providerId, "unknown-provider");
+    const cfg = readLlmRuntimeConfigFromStorage();
+    expect(cfg.providerId).toBe("deepseek");
+    expect(cfg.baseUrl).toBe("https://api.deepseek.com/v1");
   });
 });

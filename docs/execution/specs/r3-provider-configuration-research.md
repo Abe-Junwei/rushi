@@ -54,7 +54,7 @@
 
 - **真源**：[`postprocess-remote-boundary.md`](../../architecture/postprocess-remote-boundary.md)、`postprocess_cmd`、`llmRuntimeContract`。
 - **协议**：`POST /v1/chat/completions`（或兼容变体），`Authorization: Bearer`。
-- **已支持预设**：DeepSeek、Kimi（Moonshot）；易扩展：OpenAI、Azure OpenAI、百炼 compatible、Groq、本地 Ollama（loopback HTTP）等——**仅需增加定义表行 + 默认 base_url/model**。
+- **已支持预设**：DeepSeek、Kimi（Moonshot）、Qwen（阿里百炼）、SiliconFlow、火山方舟（Doubao）、OpenAI、OpenRouter；其余 OpenAI-compatible 厂商仍可继续按「定义表行 + 默认 `base_url/model`」扩展。
 
 ---
 
@@ -189,8 +189,8 @@ llm:
 | 优先级 | 厂商 | 方式 |
 |--------|------|------|
 | P0 | DeepSeek、Kimi | ✅ 已有 |
-| P1 | OpenAI、阿里百炼 compatible、Azure OpenAI | 仅加 `LLM_PROVIDER_DEFINITIONS` 行 + 文档 |
-| P2 | 用户自定义 base_url（「兼容网关」） | 已有字段，补 label「自定义 OpenAI 兼容」 |
+| P1 | Qwen（阿里百炼）、SiliconFlow、火山方舟（Doubao）、OpenAI、OpenRouter | 仅加 `LLM_PROVIDER_DEFINITIONS` 行 + 文档 |
+| P2 | 用户自定义 base_url（兼容网关 / 自建代理） | 已有字段，直接编辑 `base_url` + `model` |
 | 不做 | Anthropic 原生 Messages API | 需第二 adapter，非 OpenAI 形 |
 
 **可选增强（R3 薄片，不阻塞）**：

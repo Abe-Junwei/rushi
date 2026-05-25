@@ -15,7 +15,14 @@ const LEGACY_POSTPROCESS_STORAGE_KEYS = {
   model: "rushi.postprocess.model",
 } as const;
 
-export type LlmProviderId = "deepseek" | "kimi";
+export type LlmProviderId =
+  | "deepseek"
+  | "kimi"
+  | "qwen"
+  | "siliconflow"
+  | "doubao"
+  | "openai"
+  | "openrouter";
 
 export type LlmProviderDefinition = {
   id: LlmProviderId;
@@ -61,6 +68,51 @@ export const LLM_PROVIDER_DEFINITIONS: LlmProviderDefinition[] = [
     defaultModel: "moonshot-v1-8k",
     modelExamples: ["moonshot-v1-8k", "moonshot-v1-32k", "kimi-k2-0711-preview"],
   },
+  {
+    id: "qwen",
+    label: "通义千问（阿里百炼）",
+    description: "阿里云百炼 OpenAI 兼容接口；适合中文通用任务，可直接切换 Qwen 系列模型。",
+    docsUrl: "https://help.aliyun.com/zh/model-studio/compatibility-of-openai-with-dashscope",
+    defaultBaseUrl: "https://dashscope.aliyuncs.com/compatible-mode/v1",
+    defaultModel: "qwen-plus",
+    modelExamples: ["qwen-plus", "qwen-turbo", "qwen-max"],
+  },
+  {
+    id: "siliconflow",
+    label: "SiliconFlow",
+    description: "硅基流动 OpenAI 兼容接口；国内开发者常用，适合按模型族灵活切换。",
+    docsUrl: "https://docs.siliconflow.com/en/api-reference/chat-completions/chat-completions",
+    defaultBaseUrl: "https://api.siliconflow.com/v1",
+    defaultModel: "Qwen/Qwen3-8B",
+    modelExamples: ["Qwen/Qwen3-8B", "deepseek-ai/DeepSeek-V3", "deepseek-ai/DeepSeek-R1"],
+  },
+  {
+    id: "doubao",
+    label: "火山方舟（Doubao）",
+    description: "火山引擎方舟 OpenAI 兼容入口；`model` 通常填写你在方舟控制台创建的 endpoint ID。",
+    docsUrl: "https://console.volcengine.com/ark",
+    defaultBaseUrl: "https://ark.cn-beijing.volces.com/api/v3",
+    defaultModel: "ep-your-endpoint-id",
+    modelExamples: ["ep-your-endpoint-id", "ep-20260525-example", "ep-prod-doubao"],
+  },
+  {
+    id: "openai",
+    label: "OpenAI",
+    description: "国际通用参考实现；适合作为兼容基线或海外直连备选。",
+    docsUrl: "https://platform.openai.com/docs/api-reference/chat",
+    defaultBaseUrl: "https://api.openai.com/v1",
+    defaultModel: "gpt-4o-mini",
+    modelExamples: ["gpt-4o-mini", "gpt-4o", "gpt-4.1-mini"],
+  },
+  {
+    id: "openrouter",
+    label: "OpenRouter",
+    description: "统一聚合多家海外模型的 OpenAI 兼容入口；适合兼顾国外模型覆盖面。",
+    docsUrl: "https://openrouter.ai/docs/quickstart",
+    defaultBaseUrl: "https://openrouter.ai/api/v1",
+    defaultModel: "~openai/gpt-latest",
+    modelExamples: ["~openai/gpt-latest", "openai/gpt-4o-mini", "anthropic/claude-3.5-sonnet"],
+  },
 ];
 
 export type LlmRuntimeConfig = {
@@ -102,7 +154,7 @@ export function getLlmProviderDefinition(id: string): LlmProviderDefinition | un
 export function readLlmRuntimeConfigFromStorage(): LlmRuntimeConfig {
   migrateLegacyLlmStorageKeys();
   const rawId = (readStorage(LLM_STORAGE_KEYS.providerId) ?? "deepseek").trim();
-  const providerId: LlmProviderId = rawId === "kimi" ? "kimi" : "deepseek";
+  const providerId: LlmProviderId = getLlmProviderDefinition(rawId)?.id ?? "deepseek";
   const def = getLlmProviderDefinition(providerId)!;
   const baseUrl = (readStorage(LLM_STORAGE_KEYS.baseUrl) ?? def.defaultBaseUrl).trim();
   const model = (readStorage(LLM_STORAGE_KEYS.model) ?? def.defaultModel).trim();
