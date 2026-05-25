@@ -207,7 +207,6 @@ describe("useProjectCrudController", () => {
 
     expect(result.current.error).toBe("not found");
   });
-
   it("createEmptyProject invokes Tauri and applies detail", async () => {
     const rawDetail: fileApi.RawProjectDetail = {
       id: "proj-empty",
@@ -229,28 +228,20 @@ describe("useProjectCrudController", () => {
     (invoke as Mock)
       .mockResolvedValueOnce(rawDetail)
       .mockResolvedValueOnce(fileDetail);
-
     const { result } = renderHook(() => useTestCrud({}));
-
     await act(async () => result.current.crud.createEmptyProject());
-
     expect(invoke).toHaveBeenNthCalledWith(1, "create_empty_project", { name: "Test Project" });
     expect(invoke).toHaveBeenNthCalledWith(2, "load_file", { fileId: "file-1" });
     expect(result.current.current?.id).toBe("proj-empty");
     expect(result.current.busyReason).toBeNull();
   });
-
   it("createEmptyProject surfaces Tauri errors", async () => {
     (invoke as Mock).mockRejectedValueOnce(new Error("db locked"));
-
     const { result } = renderHook(() => useTestCrud({}));
-
     await act(async () => result.current.crud.createEmptyProject());
-
     expect(result.current.error).toBe("db locked");
     expect(result.current.busyReason).toBeNull();
   });
-
   it("createProjectFromText invokes Tauri and applies detail", async () => {
     const rawDetail: fileApi.RawProjectDetail = {
       id: "proj-text",
@@ -273,11 +264,8 @@ describe("useProjectCrudController", () => {
       .mockResolvedValueOnce("/text.txt")   // pick_text_path
       .mockResolvedValueOnce(rawDetail)     // create_project_from_text
       .mockResolvedValueOnce(fileDetail);   // load_file via adapt
-
     const { result } = renderHook(() => useTestCrud({}));
-
     await act(async () => result.current.crud.createProjectFromText());
-
     expect(invoke).toHaveBeenNthCalledWith(1, "pick_text_path");
     expect(invoke).toHaveBeenNthCalledWith(2, "create_project_from_text", {
       name: "Test Project",
@@ -288,28 +276,20 @@ describe("useProjectCrudController", () => {
     expect(result.current.current?.segments).toHaveLength(1);
     expect(result.current.busyReason).toBeNull();
   });
-
   it("createProjectFromText handles user cancel", async () => {
     (invoke as Mock).mockResolvedValueOnce(null); // pick_text_path returns null
-
     const { result } = renderHook(() => useTestCrud({}));
-
     await act(async () => result.current.crud.createProjectFromText());
-
     expect(invoke).toHaveBeenCalledTimes(1);
     expect(invoke).toHaveBeenNthCalledWith(1, "pick_text_path");
     expect(result.current.busyReason).toBeNull();
   });
-
   it("createProjectFromText surfaces Tauri errors", async () => {
     (invoke as Mock)
       .mockResolvedValueOnce("/text.txt")
       .mockRejectedValueOnce(new Error("parse error"));
-
     const { result } = renderHook(() => useTestCrud({}));
-
     await act(async () => result.current.crud.createProjectFromText());
-
     expect(result.current.error).toBe("parse error");
     expect(result.current.busyReason).toBeNull();
   });

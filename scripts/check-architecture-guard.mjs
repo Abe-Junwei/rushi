@@ -45,6 +45,26 @@ function checkTsFile(fullPath) {
   if (arbitraryColors.length > 0) {
     warnings.push(`${rel}: 发现 ${arbitraryColors.length} 处 Tailwind arbitrary value 颜色，应收敛到 token`);
   }
+
+  const usesLucide = /from\s+['"]lucide-react['"]/.test(source);
+  if (usesLucide) {
+    const hasIconSpecImport = /from\s+['"][./]+lucideIconSpec['"]/.test(source);
+    if (!hasIconSpecImport) {
+      errors.push(`${rel}: 使用 lucide-react 时必须引入 lucideIconSpec 统一尺寸与描边常量`);
+    }
+
+    const nonStandardStroke = source.match(/strokeWidth=\{(?!LUCIDE_ICON_STROKE_WIDTH\})[^}]+\}/g) ?? [];
+    if (nonStandardStroke.length > 0) {
+      errors.push(`${rel}: Lucide strokeWidth 必须使用 LUCIDE_ICON_STROKE_WIDTH（发现 ${nonStandardStroke.length} 处非规范写法）`);
+    }
+
+    const rawIconSizes = source.match(
+      /<[A-Z][A-Za-z0-9]*[^>]*className=[^>]*(h-\[18px\]\s+w-\[18px\]|h-3\.5\s+w-3\.5|h-5\s+w-5)[^>]*strokeWidth=\{[^}]+\}[^>]*>/g
+    ) ?? [];
+    if (rawIconSizes.length > 0) {
+      errors.push(`${rel}: Lucide 图标尺寸必须使用 LUCIDE_ICON_SIZE_SM/MD/LG（发现 ${rawIconSizes.length} 处硬编码尺寸）`);
+    }
+  }
 }
 
 function checkRustFile(fullPath) {

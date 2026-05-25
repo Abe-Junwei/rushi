@@ -35,6 +35,24 @@ body,
   flex-direction: column;
 }
 
+/* 欢迎页与编辑页铺满视口：避免 .shell 默认 padding 造成「套盒」留白 */
+.shell:has([data-purpose="welcome-view"]),
+.shell:has([data-purpose="editor-workspace"]) {
+  height: 100vh;
+  height: 100dvh;
+  padding: 0;
+  overflow: hidden;
+}
+
+.shell [data-purpose="welcome-view"] h1,
+.shell [data-purpose="welcome-view"] h2,
+.shell [data-purpose="welcome-view"] h3,
+.shell [data-purpose="welcome-view"] h4,
+.shell [data-purpose="welcome-view"] p {
+  text-shadow: none;
+  box-shadow: none;
+}
+
 .shell-title {
   margin: 0;
   font-size: 1.5rem;

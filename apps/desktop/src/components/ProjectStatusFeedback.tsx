@@ -1,4 +1,6 @@
 import type { BusyReason } from "../pages/useProjectController";
+import { LoaderCircle, TriangleAlert } from "lucide-react";
+import { LUCIDE_ICON_SIZE_LG, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
 function busyOverlayCopy(reason: BusyReason | null): { title: string; hint: string } {
   switch (reason) {
@@ -19,37 +21,16 @@ function busyOverlayCopy(reason: BusyReason | null): { title: string; hint: stri
   }
 }
 
-function BusySpinnerIcon() {
-  return (
-    <svg className="h-6 w-6 animate-rushi-spin-slow text-zen-saffron" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-      <path d="M20 12a8 8 0 0 1-13.7 5.7" strokeLinecap="round" />
-      <path d="M4 12A8 8 0 0 1 17.7 6.3" strokeLinecap="round" />
-      <path d="M17 3v4h4" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M7 21v-4H3" strokeLinecap="round" strokeLinejoin="round" />
-    </svg>
-  );
-}
-
-function WarningIcon() {
-  return (
-    <svg className="h-5 w-5 shrink-0 text-zen-cinnabar" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden>
-      <path d="M10.3 4.2 2.7 17.5A2 2 0 0 0 4.4 20h15.2a2 2 0 0 0 1.7-2.5L13.7 4.2a2 2 0 0 0-3.4 0Z" strokeLinecap="round" strokeLinejoin="round" />
-      <path d="M12 9v4" strokeLinecap="round" />
-      <path d="M12 17h.01" strokeLinecap="round" />
-    </svg>
-  );
-}
-
 export function ProjectBusyOverlay({ reason, elapsedSec }: { reason: BusyReason | null; elapsedSec: number }) {
   const busyCopy = busyOverlayCopy(reason);
 
   return (
     <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/70 px-6 backdrop-blur-[2px]" role="status" aria-live="polite" aria-busy="true">
-      <div className="flex w-full max-w-[360px] flex-col items-center gap-4 rounded-[24px] border border-zen-gray-200 bg-serene-surface-card p-8 text-center shadow-sm">
+      <div className="flex w-full max-w-[360px] flex-col items-center gap-4 rounded-[24px] border border-notion-divider bg-notion-bg p-8 text-center shadow-sm">
         <div className="relative mb-1 flex h-16 w-16 items-center justify-center">
           <div className="absolute inset-0 animate-ping rounded-full bg-zen-saffron/20 [animation-duration:2s]" />
           <div className="relative z-10 flex h-12 w-12 items-center justify-center rounded-full border border-zen-saffron/30 bg-white shadow-sm">
-            <BusySpinnerIcon />
+            <LoaderCircle className={`${LUCIDE_ICON_SIZE_LG} animate-rushi-spin-slow text-zen-saffron`} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
           </div>
         </div>
         <div className="flex w-full flex-col gap-1">
@@ -67,9 +48,9 @@ export function ProjectBusyOverlay({ reason, elapsedSec }: { reason: BusyReason 
 
 export function AsrErrorBanner({ onOpenEnvironment }: { onOpenEnvironment: () => void }) {
   return (
-    <div className="flex flex-col items-start justify-between gap-4 rounded-lg border border-zen-cinnabar/20 bg-serene-error-container px-4 py-4 text-zen-cinnabar shadow-sm sm:flex-row sm:items-center">
+    <div className="flex flex-col items-start justify-between gap-4 rounded-lg border border-zen-cinnabar/20 bg-zen-cinnabar/10 px-4 py-4 text-zen-cinnabar shadow-sm sm:flex-row sm:items-center">
       <div className="flex items-start gap-3 sm:items-center">
-        <WarningIcon />
+        <TriangleAlert className={`${LUCIDE_ICON_SIZE_LG} shrink-0 text-zen-cinnabar`} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
         <p className="font-sans text-sm font-semibold leading-relaxed">无法连接本机 ASR，请检查服务是否在运行。</p>
       </div>
       <button

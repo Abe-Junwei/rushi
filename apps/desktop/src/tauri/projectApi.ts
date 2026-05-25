@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { OnlineTranscribeBridgePayload } from "../services/stt/sttOnlineProviderContract";
+import type { FileDetail } from "./fileApi";
 
 export interface ProjectSummary {
   id: string;
@@ -31,11 +32,19 @@ export interface ProjectDetail {
   files: { id: string; name: string; file_type: string; updated_at_ms: number }[];
 }
 
-/** `project_run_transcribe` 返回值 */
+/** `project_run_transcribe` 返回值（`detail` 为转写后的文件详情） */
 export interface RunTranscribeOutcome {
-  detail: ProjectDetail;
+  detail: FileDetail;
   engine: string;
   warnings: string[];
+}
+
+export interface EditLogEntryDto {
+  id: number;
+  project_id: string;
+  at_ms: number;
+  kind: string;
+  detail: string;
 }
 
 /** `GET /health` 扩展字段（rushi-asr ≥ 当前仓）；用于桌面自动检测 FunASR。 */
@@ -78,17 +87,17 @@ export async function projectLoad(projectId: string): Promise<ProjectDetail> {
   return invoke<ProjectDetail>("project_load", { projectId });
 }
 
-export async function projectSaveSegments(projectId: string, segments: SegmentDto[]): Promise<void> {
-  return invoke<void>("project_save_segments", { projectId, segments });
+export async function projectListEditLog(projectId: string, limit = 40): Promise<EditLogEntryDto[]> {
+  return invoke<EditLogEntryDto[]>("project_list_edit_log", { projectId, limit });
 }
 
 export async function projectRunTranscribe(
-  projectId: string,
+  fileId: string,
   asrBaseUrl?: string | null,
   online?: OnlineTranscribeBridgePayload | null,
 ): Promise<RunTranscribeOutcome> {
   return invoke<RunTranscribeOutcome>("project_run_transcribe", {
-    projectId,
+    fileId,
     asrBaseUrl: asrBaseUrl ?? null,
     online: online ?? null,
   });
@@ -100,10 +109,16 @@ export async function projectDelete(projectId: string): Promise<void> {
 
 export async function exportProjectBundle(
   projectId: string,
+  fileId: string,
   defaultFilename: string,
   segments: SegmentDto[],
 ): Promise<string | null> {
-  return invoke<string | null>("export_project_bundle", { projectId, defaultFilename, segments });
+  return invoke<string | null>("export_project_bundle", {
+    projectId,
+    fileId,
+    defaultFilename,
+    segments,
+  });
 }
 
 export async function importProjectBundle(): Promise<ProjectDetail | null> {

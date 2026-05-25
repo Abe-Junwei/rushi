@@ -47,6 +47,19 @@ export const COLORS = {
   clayTeal: "#3D4F5D",
   clayCard: "#F5F0E0",
 
+  /** Notion 风格令牌 */
+  notionBg: "#ffffff",
+  notionSidebar: "#f7f7f5",
+  notionSidebarHover: "#efefef",
+  notionSidebarActive: "#ebebea",
+  notionDivider: "#e3e2e0",
+  notionBorder: "#e3e2e0",
+  notionText: "#37352f",
+  notionTextMuted: "#6b6b6b",
+  notionTextLight: "#9ca3af",
+  notionCalloutBg: "#f1f1ef",
+  notionCalloutBorder: "#e3e2e0",
+
   /** WaveSurfer 白底波形条（与 tailwind `zen-wf-*` 同源） */
   waveformSurface: "#ffffff",
   waveformWave: "#c4c4c8",

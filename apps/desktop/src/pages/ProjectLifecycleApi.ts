@@ -1,0 +1,64 @@
+import type { ProjectDetail, ProjectSummary, SegmentDto } from "../tauri/projectApi";
+import type { DocxExportMode } from "../tauri/exportDocxApi";
+import type { BusyReason } from "./useProjectCrudController";
+
+export type { BusyReason };
+
+export interface ProjectLifecycleApi {
+  projects: ProjectSummary[];
+  current: ProjectDetail | null;
+  currentFileId: string | null;
+  segments: SegmentDto[];
+  selectedIdx: number;
+  setSelectedIdx: React.Dispatch<React.SetStateAction<number>>;
+  audioSrc: string | null;
+  error: string;
+  busy: boolean;
+  busyReason: BusyReason | null;
+  newName: string;
+  setNewName: React.Dispatch<React.SetStateAction<string>>;
+  pickedPath: string | null;
+  transcribeHints: string[];
+  refreshProjects: () => Promise<void>;
+  pickAudio: () => Promise<void>;
+  clearPickedAudio: () => void;
+  createProject: () => Promise<void>;
+  createEmptyProject: () => Promise<void>;
+  createProjectFromText: () => Promise<void>;
+  loadProject: (id: string) => Promise<void>;
+  openFile: (fileId: string) => Promise<void>;
+  closeFile: () => void;
+  closeProject: () => void;
+  refreshCurrentProject: () => Promise<void>;
+  runTranscribe: () => Promise<void>;
+  saveSegments: () => Promise<void>;
+  deleteProject: (id: string, options?: { skipBrowserConfirm?: boolean }) => Promise<void>;
+  exportTxt: () => Promise<void>;
+  exportSrt: () => Promise<void>;
+  exportDocx: (mode: DocxExportMode) => Promise<void>;
+  exportDiagnosticBundle: () => Promise<void>;
+  exportProjectBundle: () => Promise<void>;
+  importProjectBundle: () => Promise<void>;
+  openAppDataFolder: () => Promise<void>;
+  applyDetail: (d: ProjectDetail) => void;
+  setError: React.Dispatch<React.SetStateAction<string>>;
+  beginBusy: (reason: BusyReason) => void;
+  endBusy: () => void;
+
+  undo: () => void;
+  redo: () => void;
+  updateSegmentText: (idx: number, text: string) => void;
+  updateSegmentTime: (idx: number, field: "start_sec" | "end_sec", value: number) => void;
+  updateSegmentBounds: (idx: number, startSec: number, endSec: number, phase?: "live" | "commit") => void;
+  splitAtSelection: () => void;
+  splitAtPlayhead: (timeSec: number) => void;
+  mergeWithNext: () => void;
+  mergeWithPrev: () => void;
+  mergeWithNextAt: (idx: number) => void;
+  mergeWithPrevAt: (idx: number) => void;
+  deleteSegmentAt: (idx: number) => void;
+  insertSegmentAfter: (idx: number) => void;
+  insertSegmentFromTimeRange: (startSec: number, endSec: number) => void;
+  flushSegmentTextDraftsFromDom: () => void;
+  attachSegmentListDomRoot: (getter: (() => HTMLElement | null) | null) => void;
+}

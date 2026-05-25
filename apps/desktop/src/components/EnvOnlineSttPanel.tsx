@@ -7,20 +7,13 @@ import {
   probeExternalSttOnlineHealth,
   readExternalSttOnlineRuntimeConfigFromStorage,
   setSttOnlineApiKeyInMemory,
-  sttOnlineProviderAllowsEmptyEndpoint,
-  sttOnlineProvidersByMarket,
 } from "../services/stt/sttOnlineProviderContract";
-import type { SttOnlineMarket } from "../services/stt/sttOnlineProviderContract";
-import "./onlineSttProviderList.css";
+import { OnlineSttProviderPicker } from "./envOnlineStt/OnlineSttProviderPicker";
+import { OnlineSttRuntimeForm } from "./envOnlineStt/OnlineSttRuntimeForm";
 
 const btnPrimary = CLAY_BTN_PRIMARY;
 const btnSecondary = CLAY_BTN_SECONDARY;
 const field = CLAY_TEXT_INPUT;
-
-const STT_MARKET_GROUPS: { market: SttOnlineMarket; label: string }[] = [
-  { market: "china", label: "国内（中国区 / 合规云厂商）" },
-  { market: "global", label: "国际" },
-];
 
 type Props = {
   busy: boolean;
@@ -87,7 +80,7 @@ export function EnvOnlineSttPanel({ busy, onSttOnlineRuntimeChanged }: Props) {
     }
   }, [olApiKey, olAppKey, olEnabled, olEndpoint, olProviderId, olTimeoutSec, onSttOnlineRuntimeChanged]);
 
-  const olDef = getSttOnlineProviderDefinition(olProviderId);
+  const olDef = getSttOnlineProviderDefinition(olProviderId) ?? null;
 
   return (
     <div id="online-stt-provider" className="space-y-2">
@@ -106,128 +99,31 @@ export function EnvOnlineSttPanel({ busy, onSttOnlineRuntimeChanged }: Props) {
         <input type="checkbox" checked={olEnabled} onChange={(e) => setOlEnabled(e.target.checked)} disabled={busy} />
         启用在线 STT（关闭则仍走本机基址）
       </label>
-      <div className="space-y-2">
-        <p className="text-[11px] font-medium text-zen-ink">厂商（影响鉴权头与配置项）</p>
-        <div className="stt-provider-list" role="radiogroup" aria-label="选择在线 STT 厂商">
-          {STT_MARKET_GROUPS.map(({ market, label: groupLabel }) => (
-            <div key={market} className="stt-provider-group">
-              <p className="stt-provider-group-title">{groupLabel}</p>
-              <ul>
-                {sttOnlineProvidersByMarket(market).map((d) => {
-                  const selected = d.id === olProviderId;
-                  const marketShort = market === "china" ? "国内" : "国际";
-                  return (
-                    <li key={d.id}>
-                      <button
-                        type="button"
-                        role="radio"
-                        aria-checked={selected}
-                        disabled={busy}
-                        onClick={() => setOlProviderId(d.id)}
-                        className={`stt-provider-card${selected ? " stt-provider-card--selected" : ""}`}
-                      >
-                        <div className="stt-provider-card__head">
-                          <span className="stt-provider-card__title">{d.label}</span>
-                          <span className="stt-provider-card__market">{marketShort}</span>
-                        </div>
-                        <p className="stt-provider-card__desc">{d.description}</p>
-                        <div className="stt-provider-card__meta">
-                          {d.experimental ? <span className="stt-provider-chip stt-provider-chip--accent">实验</span> : null}
-                          {d.freeTierNote ? (
-                            <span className="stt-provider-chip" title={d.freeTierNote}>
-                              试用 / 免费额
-                            </span>
-                          ) : null}
-                        </div>
-                      </button>
-                    </li>
-                  );
-                })}
-              </ul>
-            </div>
-          ))}
-        </div>
-      </div>
-      {olDef?.docsUrl && olDef.docsUrl.startsWith("http") && !olDef.docsUrl.includes("example.com") ? (
-        <p className="text-[10px] text-zen-stone">
-          文档:{" "}
-          <a
-            href={olDef.docsUrl}
-            target="_blank"
-            rel="noreferrer"
-            className="text-zen-indigo underline decoration-zen-indigo/30 hover:text-zen-ink"
-          >
-            {olDef.docsUrl.replace(/^https?:\/\//, "").split("/")[0]}
-          </a>
-        </p>
-      ) : null}
-      <label className="block text-[11px] font-medium text-zen-ink">
-        转写 POST 完整 URL
-        <input
-          type="url"
-          className={`${field} mt-0.5 font-mono text-[11px]`}
-          value={olEndpoint}
-          onChange={(e) => setOlEndpoint(e.target.value)}
-          placeholder={
-            sttOnlineProviderAllowsEmptyEndpoint(olProviderId)
-              ? "可留空：OpenAI 默认 api.openai.com；AssemblyAI 默认 api.assemblyai.com"
-              : olDef?.defaultEndpointExample
-                ? `示例：${olDef.defaultEndpointExample}`
-                : "https://你的网关/v1/transcribe"
-          }
-          disabled={busy}
-          autoComplete="off"
-        />
-      </label>
-      <label className="block text-[11px] font-medium text-zen-ink">
-        超时（秒，30–600）
-        <input
-          type="number"
-          min={30}
-          max={600}
-          className={`${field} mt-0.5`}
-          value={olTimeoutSec}
-          onChange={(e) => setOlTimeoutSec(Number(e.target.value) || 30)}
-          disabled={busy}
-        />
-      </label>
-      {olDef?.requiresPersistedAppKey ? (
-        <label className="block text-[11px] font-medium text-zen-ink">
-          {olDef.persistedAppKeyFieldLabel ?? "应用标识（可持久化）"}
-          <input
-            type="text"
-            className={`${field} mt-0.5 font-mono text-[11px]`}
-            value={olAppKey}
-            onChange={(e) => setOlAppKey(e.target.value)}
-            placeholder="与控制台一致，保存在本机配置"
-            disabled={busy}
-            autoComplete="off"
-          />
-        </label>
-      ) : null}
-      <label className="block text-[11px] font-medium text-zen-ink">
-        {olDef?.authStyle === "header" && olDef.headerName
-          ? `根凭证 / Token（仅内存，HTTP 头 ${olDef.headerName}）`
-          : "根凭证 / API Key（仅内存，不落盘）"}
-        <input
-          type="password"
-          className={`${field} mt-0.5 font-mono text-[11px]`}
-          value={olApiKey}
-          onChange={(e) => setOlApiKey(e.target.value)}
-          placeholder="sk-… 或代理签发令牌"
-          disabled={busy}
-          autoComplete="off"
-        />
-      </label>
-      <div className="flex flex-wrap gap-2">
-        <button type="button" className={btnPrimary} disabled={busy} onClick={saveOnlineStt}>
-          保存在线配置
-        </button>
-        <button type="button" className={btnSecondary} disabled={busy || olProbeBusy} onClick={() => void probeOnlineStt()}>
-          {olProbeBusy ? "探测中…" : "探测连接"}
-        </button>
-      </div>
-      {olMsg ? <p className="text-[11px] text-zen-indigo">{olMsg}</p> : null}
+
+      <OnlineSttProviderPicker busy={busy} providerId={olProviderId} onProviderChange={setOlProviderId} />
+
+      <OnlineSttRuntimeForm
+        busy={busy}
+        probeBusy={olProbeBusy}
+        fieldClassName={field}
+        btnPrimaryClassName={btnPrimary}
+        btnSecondaryClassName={btnSecondary}
+        providerId={olProviderId}
+        providerDef={olDef}
+        endpoint={olEndpoint}
+        timeoutSec={olTimeoutSec}
+        appKey={olAppKey}
+        apiKey={olApiKey}
+        message={olMsg}
+        onEndpointChange={setOlEndpoint}
+        onTimeoutSecChange={setOlTimeoutSec}
+        onAppKeyChange={setOlAppKey}
+        onApiKeyChange={setOlApiKey}
+        onSave={saveOnlineStt}
+        onProbe={() => {
+          void probeOnlineStt();
+        }}
+      />
     </div>
   );
 }

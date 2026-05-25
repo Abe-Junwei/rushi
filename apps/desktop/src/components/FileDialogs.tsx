@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { CLAY_BTN_PRIMARY, CLAY_BTN_SECONDARY, CLAY_TEXT_INPUT } from "../config/controlStyles";
-import { DraggableResizablePanel } from "./DraggableResizablePanel";
+import { FloatingPanelTemplate } from "./PanelTemplate";
 
 const btnSecondary = CLAY_BTN_SECONDARY;
 
@@ -18,18 +18,8 @@ export function CreateTextFileDialog({
   const [name, setName] = useState("");
   if (!open) return null;
   return (
-    <>
-      <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm" onClick={onClose} />
-      <DraggableResizablePanel
-        id="create-text-file"
-        title="新建文本文件"
-        defaultPosition={{ x: Math.round(window.innerWidth / 2 - 160), y: Math.round(window.innerHeight / 2 - 100) }}
-        defaultSize={{ width: 320, height: 200 }}
-        minWidth={280}
-        minHeight={180}
-        onClose={onClose}
-      >
-        <div className="flex h-full flex-col px-5 py-4">
+    <FloatingPanelTemplate id="create-text-file" title="新建文本文件" preset="compactDialog" onClose={onClose}>
+      <div className="flex h-full flex-col px-5 py-4">
           <input
             type="text"
             className={`${CLAY_TEXT_INPUT} w-full`}
@@ -56,8 +46,7 @@ export function CreateTextFileDialog({
             </button>
           </div>
         </div>
-      </DraggableResizablePanel>
-    </>
+    </FloatingPanelTemplate>
   );
 }
 
@@ -76,18 +65,8 @@ export function DeleteFileDialog({
 }) {
   if (!open) return null;
   return (
-    <>
-      <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm" onClick={onClose} />
-      <DraggableResizablePanel
-        id="delete-file"
-        title="删除文件"
-        defaultPosition={{ x: Math.round(window.innerWidth / 2 - 160), y: Math.round(window.innerHeight / 2 - 100) }}
-        defaultSize={{ width: 320, height: 200 }}
-        minWidth={280}
-        minHeight={180}
-        onClose={onClose}
-      >
-        <div className="flex h-full flex-col px-5 py-4">
+    <FloatingPanelTemplate id="delete-file" title="删除文件" preset="compactDialog" onClose={onClose}>
+      <div className="flex h-full flex-col px-5 py-4">
           <p className="mb-4 text-sm text-zen-stone">
             确定删除「<span className="font-medium text-zen-ink">{fileName}</span>」？
             <br />
@@ -107,7 +86,6 @@ export function DeleteFileDialog({
             </button>
           </div>
         </div>
-      </DraggableResizablePanel>
-    </>
+    </FloatingPanelTemplate>
   );
 }

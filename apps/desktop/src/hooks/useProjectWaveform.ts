@@ -5,6 +5,7 @@ import { COLORS } from "../config/tokens";
 import type { SegmentDto } from "../tauri/projectApi";
 import { formatMediaTime } from "../utils/formatMediaTime";
 import { waveformBoundsSignature } from "../utils/boundsSignature";
+import { resolveWaveformRulerView, type WaveformRulerView } from "../utils/waveformViewport";
 import { parseSegmentRegionId } from "../utils/waveformRegionId";
 import { useWaveformPlayback } from "./useWaveformPlayback";
 import { useWaveformRegions } from "./useWaveformRegions";
@@ -27,6 +28,8 @@ export type UseProjectWaveformOptions = {
   onWaveformCreateRange?: (startSec: number, endSec: number) => void;
   /** 波形内部横向滚动（与外层时间轴滚动条对齐，思路来自解语 waveform ↔ tier scroll sync） */
   onWaveformScroll?: (scrollLeftPx: number) => void;
+  /** 当前可见视口横向滚动偏移；若外层容器也参与横向滚动，用于命中换算对齐。 */
+  getViewportScrollPx?: () => number;
 };
 
 export function useProjectWaveform(options: UseProjectWaveformOptions) {
@@ -41,13 +44,10 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
   } = options;
   const optsRef = useRef(options);
   optsRef.current = options;
-
   const minPxPerSecRef = useRef(minPxPerSec);
   minPxPerSecRef.current = minPxPerSec;
-
   const waveformHeightRef = useRef(waveformHeightPx);
   waveformHeightRef.current = waveformHeightPx;
-
   const containerRef = useRef<HTMLDivElement | null>(null);
   const wsRef = useRef<WaveSurfer | null>(null);
   const regionsRef = useRef<ReturnType<typeof RegionsPlugin.create> | null>(null);
@@ -59,8 +59,15 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
   const [isPlaying, setIsPlaying] = useState(false);
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
+  const [rulerView, setRulerView] = useState<WaveformRulerView | null>(null);
 
-  const playback = useWaveformPlayback(wsRef, containerRef, isReady, minPxPerSecRef);
+  const playback = useWaveformPlayback(
+    wsRef,
+    containerRef,
+    isReady,
+    minPxPerSecRef,
+    options.getViewportScrollPx,
+  );
 
   const boundsSig = useMemo(() => waveformBoundsSignature(segments), [segments]);
 
@@ -98,9 +105,9 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     setIsPlaying(false);
     setDuration(0);
     setCurrentTime(0);
+    setRulerView(null);
   }, [clearRegionListeners, clearWsListeners]);
 
-  /** Create / replace WaveSurfer when mediaUrl changes（缩放走 ws.zoom，不重建实例）。 */
   useEffect(() => {
     destroyWave();
     if (!mediaUrl) {
@@ -153,6 +160,14 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
           setLoadError(null);
           setIsReady(true);
           setDuration(d);
+          setRulerView(
+            resolveWaveformRulerView({
+              durationSec: d,
+              scrollLeftPx: ws.getScroll(),
+              clientWidthPx: ws.getWidth(),
+              pxPerSec: minPxPerSecRef.current,
+            }),
+          );
         }),
       );
       wsUnsubsRef.current.push(
@@ -183,15 +198,24 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
         }),
       );
       wsUnsubsRef.current.push(
-        ws.on("scroll", () => {
+        ws.on("scroll", (visibleStartTime, visibleEndTime, scrollLeft) => {
           if (disposed) return;
-          optsRef.current.onWaveformScroll?.(ws.getScroll());
+          setRulerView({ start: visibleStartTime, end: visibleEndTime });
+          optsRef.current.onWaveformScroll?.(scrollLeft);
         }),
       );
       wsUnsubsRef.current.push(
         ws.on("zoom", () => {
           if (disposed) return;
           optsRef.current.onWaveformScroll?.(ws.getScroll());
+          setRulerView(
+            resolveWaveformRulerView({
+              durationSec: ws.getDuration() || 0,
+              scrollLeftPx: ws.getScroll(),
+              clientWidthPx: ws.getWidth(),
+              pxPerSec: minPxPerSecRef.current,
+            }),
+          );
         }),
       );
     };
@@ -205,7 +229,6 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     };
   }, [mediaUrl, destroyWave]);
 
-  /** 仅缩放：不销毁 WaveSurfer。 */
   useEffect(() => {
     const ws = wsRef.current;
     if (!ws || !isReady || disabled) return;
@@ -216,7 +239,6 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     }
   }, [minPxPerSec, isReady, disabled]);
 
-  /** 波形纵向高度 + 白底灰度样式（不重建实例）。 */
   useEffect(() => {
     const el = containerRef.current;
     const h = waveformHeightPx;
@@ -267,6 +289,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     isPlaying,
     duration,
     currentTime,
+    rulerView,
     ...playback,
     playSegmentAtIndex,
     formatMediaTime,

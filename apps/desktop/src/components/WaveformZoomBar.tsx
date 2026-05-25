@@ -1,10 +1,12 @@
 import { memo, useCallback, useMemo } from "react";
+import { Crosshair, Maximize2 } from "lucide-react";
 import {
   clampPxPerSec,
   PX_PER_SEC_MAX,
   PX_PER_SEC_MIN,
   TIMELINE_PX_PER_SEC,
 } from "../utils/pxPerSec";
+import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
 export type WaveformZoomBarProps = {
   disabled: boolean;
@@ -31,34 +33,6 @@ function sliderPosToPxPerSec(pos: number): number {
   const hi = PX_PER_SEC_MAX;
   const t = Math.min(1000, Math.max(0, pos));
   return clampPxPerSec(lo * (hi / lo) ** (t / 1000));
-}
-
-function IconFitAll({ className }: { className?: string }) {
-  return (
-    <svg className={className} width="18" height="18" viewBox="0 0 24 24" aria-hidden fill="none">
-      <path
-        d="M9 3H3v6M15 3h6v6M3 15v6h6M21 15v6h-6"
-        stroke="currentColor"
-        strokeWidth="2"
-        strokeLinecap="round"
-        strokeLinejoin="round"
-      />
-    </svg>
-  );
-}
-
-function IconFitSelection({ className }: { className?: string }) {
-  return (
-    <svg className={className} width="18" height="18" viewBox="0 0 24 24" aria-hidden fill="none">
-      <circle cx="12" cy="12" r="3" stroke="currentColor" strokeWidth="2" />
-      <path
-        d="M12 5V3M12 21v-2M5 12H3M21 12h-2M6.34 6.34 4.93 4.93M19.07 19.07 17.66 17.66M17.66 6.34 19.07 4.93M4.93 19.07 6.34 17.66"
-        stroke="currentColor"
-        strokeWidth="1.5"
-        strokeLinecap="round"
-      />
-    </svg>
-  );
 }
 
 /** 解语 TranscriptionLayoutSections / ZoomControls 同款：底部横向缩放条（布局与 icon-btn + 滑块 + 百分比）。 */
@@ -100,7 +74,7 @@ export const WaveformZoomBar = memo(function WaveformZoomBar({
           aria-label="适配整段"
           onClick={onZoomToFitAll}
         >
-          <IconFitAll className="shrink-0 opacity-90" />
+          <Maximize2 className={`${LUCIDE_ICON_SIZE_MD} shrink-0 opacity-90`} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
         </button>
         <button
           type="button"
@@ -110,7 +84,7 @@ export const WaveformZoomBar = memo(function WaveformZoomBar({
           aria-label="适配选中语段"
           onClick={onZoomToFitSelection}
         >
-          <IconFitSelection className="shrink-0 opacity-90" />
+          <Crosshair className={`${LUCIDE_ICON_SIZE_MD} shrink-0 opacity-90`} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
         </button>
         <button type="button" className="icon-btn" disabled={off} title="默认横向比例（56 px/s）" aria-label="一比一" onClick={onZoomOneToOne}>
           <span className="icon-btn-label">1:1</span>

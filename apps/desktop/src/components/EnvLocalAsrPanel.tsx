@@ -1,12 +1,11 @@
 import { asrBaseUrl, isDefaultBundledAsrTarget } from "../config/env";
-import { CLAY_BTN_PRIMARY, CLAY_BTN_SECONDARY } from "../config/controlStyles";
+import { Download, RefreshCw, Wrench } from "lucide-react";
+import { PANEL_TYPOGRAPHY } from "../config/typography";
 import type { PrepareModelFailureCopy } from "../pages/prepareModelDownloadCopy";
 import type { AsrHealthState } from "../pages/useProjectController";
 import { funasrManualSetupCommands } from "../pages/useProjectController";
 import type { AsrHealthCapabilities, BundledAsrLaunchReport } from "../tauri/projectApi";
-
-const btnPrimary = CLAY_BTN_PRIMARY;
-const btnSecondary = CLAY_BTN_SECONDARY;
+import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
 type Props = {
   asrHealth: AsrHealthState;
@@ -43,105 +42,134 @@ export function EnvLocalAsrPanel({
   retryBundledAsrSidecar,
   openAppDataFolder,
 }: Props) {
+  const envOk = asrHealth === "ok";
+  const ffmpegOk = asrCaps?.ffmpeg_ok === true;
+  const funasrReady = asrHealth === "ok" && asrCaps?.funasr_ready === true;
+  const progress = prepareModelBusy ? prepareModelProgress : asrCaps?.funasr_default_model_cached ? 100 : 0;
+
   return (
-    <div className="space-y-3">
-      <h3 className="text-[12px] font-semibold text-zen-ink">本机 ASR</h3>
+    <div className="flex w-full min-w-0 flex-col gap-8">
+      <section className="flex flex-col gap-4">
+        <div className="pb-1">
+          <h3 className={PANEL_TYPOGRAPHY.sectionTitle}>ASR 状态</h3>
+          <p className={PANEL_TYPOGRAPHY.sectionDescription}>当前系统的 ASR 环境检测结果</p>
+        </div>
+
+        <div className="flex flex-col">
+          <StatusRow label="环境" ok={envOk} text={envOk ? "正常" : "异常"} />
+          <StatusRow label="FFmpeg" ok={ffmpegOk} text={ffmpegOk ? "已安装" : "未安装"} />
+          <StatusRow label="FunASR" ok={funasrReady} text={funasrReady ? "就绪" : "未就绪"} last />
+        </div>
+
+        <div className="flex justify-start gap-3">
+          <SmallButton disabled={busy} onClick={() => void refreshAsrHealth()} icon={<RefreshCw className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />}>
+            刷新状态
+          </SmallButton>
+          <SmallButton disabled={busy} onClick={() => void installFunasrDepsInteractive()} icon={<Wrench className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />}>
+            安装依赖
+          </SmallButton>
+        </div>
+      </section>
+
       {funasrInstallMessage && !prepareModelBusy ? (
-        <pre className="max-h-40 overflow-auto whitespace-pre-wrap rounded-md bg-black/[0.04] p-2 font-mono text-[11px] text-zen-indigo">
+        <pre className="max-h-32 overflow-auto whitespace-pre-wrap rounded bg-notion-callout-bg p-3 font-mono text-[11px] text-zen-indigo">
           {funasrInstallMessage}
         </pre>
       ) : null}
 
       {asrHealth === "ok" && asrCaps && !asrCaps.ffmpeg_ok ? (
-        <div className="rounded-md border border-zen-gray-300 bg-app-highlight px-3 py-2 text-sm">
-          <strong className="text-zen-ink">未检测到 FFmpeg</strong>
-          <span className="text-zen-stone"> — ASR 无法解码上传音频。请安装 ffmpeg/ffprobe 并加入 PATH 后重启 ASR。</span>
+        <div className="rounded border border-notion-divider bg-notion-callout-bg px-3 py-2 text-sm">
+          <strong className="text-notion-text">未检测到 FFmpeg</strong>
+          <span className="text-notion-text-muted"> — ASR 无法解码上传音频。请安装 ffmpeg/ffprobe 并加入 PATH 后重启 ASR。</span>
         </div>
       ) : null}
 
       {asrHealth === "ok" && asrCaps && asrCaps.ffmpeg_ok && !asrCaps.funasr_ready ? (
-        <div className="space-y-2 rounded-md border border-zen-gray-300 bg-app-highlight px-3 py-2 text-sm">
+        <div className="space-y-2 rounded border border-notion-divider bg-notion-callout-bg px-3 py-2 text-sm">
           <p>
-            <strong className="text-zen-ink">FunASR 未就绪</strong>
-            <span className="text-zen-stone">（stub：中文正文常为空）。安装依赖并重启 ASR；可选 </span>
-            <code className="rounded bg-black/[0.04] px-1 font-mono text-[11px]">RUSHI_FUNASR_MODEL</code>。
+            <strong className="text-notion-text">FunASR 未就绪</strong>
+            <span className="text-notion-text-muted">（stub：中文正文常为空）。安装依赖并重启 ASR；可选 </span>
+            <code className="rounded bg-white px-1 font-mono text-[11px]">RUSHI_FUNASR_MODEL</code>。
           </p>
           <div className="flex flex-wrap gap-2">
-            <button type="button" className={btnPrimary} disabled={busy} onClick={() => void installFunasrDepsInteractive()}>
-              一键安装 FunASR 依赖
-            </button>
-            <button type="button" className={btnSecondary} disabled={busy} onClick={() => void copyFunasrManualCommands()}>
+            <SmallButton disabled={busy} onClick={() => void copyFunasrManualCommands()}>
               复制手动命令
-            </button>
+            </SmallButton>
           </div>
-          <pre className="max-h-32 overflow-auto whitespace-pre-wrap rounded-md bg-black/[0.03] p-2 font-mono text-[10px] text-zen-indigo">
+          <pre className="max-h-32 overflow-auto whitespace-pre-wrap rounded bg-white p-2 font-mono text-[10px] text-zen-indigo">
             {funasrManualSetupCommands()}
           </pre>
         </div>
       ) : null}
 
       {asrHealth === "error" ? (
-        <div className="space-y-2 rounded-md bg-zen-cinnabar/10 px-3 py-2 text-sm text-zen-cinnabar">
+        <div className="space-y-2 rounded bg-zen-cinnabar/10 px-3 py-2 text-sm text-zen-cinnabar">
           <p>{asrHealthDetail}</p>
           <div className="flex flex-wrap gap-2">
-            <button type="button" className={btnSecondary} disabled={busy} onClick={() => void refreshAsrHealth()}>
-              重新检测 ASR
-            </button>
             {isDefaultBundledAsrTarget() && bundledAsrDiag?.attempted ? (
-              <button type="button" className={btnSecondary} disabled={busy} onClick={() => void retryBundledAsrSidecar()}>
+              <SmallButton disabled={busy} onClick={() => void retryBundledAsrSidecar()}>
                 重试内置侧车
-              </button>
+              </SmallButton>
             ) : null}
-            <button type="button" className={btnSecondary} disabled={busy} onClick={() => void openAppDataFolder()}>
+            <SmallButton disabled={busy} onClick={() => void openAppDataFolder()}>
               打开应用数据目录
-            </button>
+            </SmallButton>
           </div>
-          <p className="text-[11px] text-zen-stone">
+          <p className={PANEL_TYPOGRAPHY.meta}>
             基址 <code className="font-mono text-zen-indigo">{asrBaseUrl()}</code> · <code className="font-mono">VITE_ASR_BASE_URL</code>
           </p>
         </div>
       ) : null}
 
-      {asrHealth === "ok" ? (
-        <div className="space-y-2 text-[12px] text-zen-stone">
-          {asrCaps ? (
-            <p className="leading-relaxed">
-              模型 <code className="font-mono text-zen-indigo">{asrCaps.funasr_model_id ?? "—"}</code>
-              {asrCaps.funasr_model_explicit_from_env ? "（环境变量）" : "（内置默认）"}
-              {" · "}
-              权重缓存：
-              {asrCaps.rushi_models_root ? (
-                <code className="break-all font-mono text-[10px] text-zen-indigo">{asrCaps.rushi_models_root}</code>
-              ) : (
-                "—"
-              )}
-            </p>
-          ) : (
-            <p>（ASR 未返回能力字段，请升级 rushi-asr。）</p>
-          )}
-          {asrCaps && asrCaps.funasr_import_ok && !asrCaps.funasr_default_model_cached ? (
-            <div className="space-y-2 rounded-md bg-zen-paper/60 p-2">
-              <button type="button" className={btnSecondary} disabled={busy || prepareModelBusy} onClick={() => void prepareDefaultFunasrModel()}>
-                {prepareModelBusy ? "正在下载默认模型…" : "预先下载默认模型"}
-              </button>
-              {prepareModelBusy ? (
-                <div className="space-y-1" aria-live="polite">
-                  <div
-                    className="h-1.5 overflow-hidden rounded-full bg-black/[0.08]"
-                    role="progressbar"
-                    aria-valuenow={prepareModelProgress}
-                    aria-valuemin={0}
-                    aria-valuemax={100}
-                  >
-                    <div className="h-full bg-zen-ink transition-[width]" style={{ width: `${prepareModelProgress}%` }} />
-                  </div>
-                  {funasrInstallMessage ? (
-                    <pre className="max-h-28 overflow-auto whitespace-pre-wrap font-mono text-[10px] text-zen-indigo">{funasrInstallMessage}</pre>
-                  ) : null}
-                </div>
-              ) : null}
+      <div className="h-px bg-notion-divider" />
+
+      <section className="flex flex-col gap-4">
+        <div className="pb-1">
+          <h3 className={PANEL_TYPOGRAPHY.sectionTitle}>模型下载</h3>
+          <p className={PANEL_TYPOGRAPHY.sectionDescription}>下载并管理本地转写模型</p>
+        </div>
+
+        <div className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <span className={PANEL_TYPOGRAPHY.fieldLabel}>FunASR 默认模型</span>
+            <span className="font-mono text-[12px] text-zen-saffron">{progress}%</span>
+          </div>
+          <div
+            className="h-1.5 w-full overflow-hidden rounded-full border border-notion-divider bg-notion-sidebar"
+            role="progressbar"
+            aria-valuenow={progress}
+            aria-valuemin={0}
+            aria-valuemax={100}
+          >
+            <div className="h-1.5 rounded-full bg-zen-saffron transition-all duration-500" style={{ width: `${progress}%` }} />
+          </div>
+          <p className={PANEL_TYPOGRAPHY.meta}>
+            {prepareModelBusy
+              ? "正在下载 checkpoint 压缩包..."
+              : asrCaps?.funasr_default_model_cached
+                ? "默认模型已缓存，可直接用于本地转写。"
+                : "默认模型尚未缓存，可预先下载以减少首次转写等待。"}
+          </p>
+        </div>
+
+        <div className="flex justify-start">
+          <button
+            type="button"
+            className={`flex items-center gap-2 rounded border border-transparent bg-zen-saffron px-4 py-1.5 ${PANEL_TYPOGRAPHY.button} text-white shadow-sm outline-none transition-all hover:brightness-110 focus:ring-2 focus:ring-zen-saffron/30 disabled:opacity-40`}
+            disabled={busy || prepareModelBusy}
+            onClick={() => void prepareDefaultFunasrModel()}
+          >
+            <Download className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+            {prepareModelBusy ? "正在下载默认模型" : "下载默认模型"}
+          </button>
+        </div>
+
+        {funasrInstallMessage && prepareModelBusy ? (
+          <pre className="max-h-28 overflow-auto whitespace-pre-wrap font-mono text-[10px] text-zen-indigo">{funasrInstallMessage}</pre>
+        ) : null}
+
               {prepareModelFailure ? (
-                <div className="rounded-md bg-zen-cinnabar/10 p-2 text-zen-cinnabar" role="alert">
+                <div className="rounded bg-zen-cinnabar/10 p-2 text-zen-cinnabar" role="alert">
                   <p className="font-medium">{prepareModelFailure.headline}</p>
                   <ul className="mt-1 list-inside list-disc text-[11px]">
                     {prepareModelFailure.tips.map((t, i) => (
@@ -149,19 +177,42 @@ export function EnvLocalAsrPanel({
                     ))}
                   </ul>
                   <div className="mt-2 flex flex-wrap gap-2">
-                    <button type="button" className={btnSecondary} disabled={busy || prepareModelBusy} onClick={() => void prepareDefaultFunasrModel()}>
+                    <SmallButton disabled={busy || prepareModelBusy} onClick={() => void prepareDefaultFunasrModel()}>
                       重试下载
-                    </button>
-                    <button type="button" className={btnSecondary} disabled={busy} onClick={() => void refreshAsrHealth()}>
+                    </SmallButton>
+                    <SmallButton disabled={busy} onClick={() => void refreshAsrHealth()}>
                       重新检测 ASR
-                    </button>
+                    </SmallButton>
                   </div>
                 </div>
               ) : null}
-            </div>
-          ) : null}
-        </div>
-      ) : null}
+      </section>
     </div>
+  );
+}
+
+function StatusRow({ label, ok, text, last = false }: { label: string; ok: boolean; text: string; last?: boolean }) {
+  return (
+    <div className={`flex flex-wrap items-center justify-between gap-2 py-2 ${last ? "" : "border-b border-notion-divider"}`}>
+      <span className={PANEL_TYPOGRAPHY.fieldLabel}>{label}</span>
+      <div className="flex items-center gap-2.5">
+        <span className={`h-2 w-2 rounded-full ${ok ? "bg-zen-success" : "bg-zen-cinnabar"}`} aria-hidden />
+        <span className={PANEL_TYPOGRAPHY.meta}>{text}</span>
+      </div>
+    </div>
+  );
+}
+
+function SmallButton({ children, disabled, onClick, icon }: { children: React.ReactNode; disabled?: boolean; onClick: () => void; icon?: React.ReactNode }) {
+  return (
+    <button
+      type="button"
+      className={`flex items-center gap-1.5 rounded border border-notion-divider bg-white px-2.5 py-1 ${PANEL_TYPOGRAPHY.button} text-notion-text transition-colors hover:bg-notion-sidebar-hover disabled:opacity-40`}
+      disabled={disabled}
+      onClick={onClick}
+    >
+      {icon}
+      {children}
+    </button>
   );
 }

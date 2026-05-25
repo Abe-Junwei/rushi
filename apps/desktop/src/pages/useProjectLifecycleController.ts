@@ -1,114 +1,54 @@
-import { convertFileSrc } from "@tauri-apps/api/core";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useState } from "react";
 import { asrBaseUrl } from "../config/env";
 import { deriveTranscribeHints } from "../services/asrTranscribeHints";
-import { isSttOnlineEnabledButIncomplete, tryBuildOnlineTranscribeBridgePayload } from "../services/stt/sttOnlineProviderContract";
-import type { ProjectDetail, ProjectSummary, SegmentDto } from "../tauri/projectApi";
+import {
+  isSttOnlineEnabledButIncomplete,
+  tryBuildOnlineTranscribeBridgePayload,
+} from "../services/stt/sttOnlineProviderContract";
+import type { ProjectDetail } from "../tauri/projectApi";
 import * as p1 from "../tauri/projectApi";
 import * as fileApi from "../tauri/fileApi";
-import { type DocxExportMode } from "../tauri/exportDocxApi";
 import { useExportController } from "./useExportController";
-import { useProjectCrudController, type BusyReason } from "./useProjectCrudController";
+import { useProjectCrudController } from "./useProjectCrudController";
 import { useSegmentMutationController } from "./useSegmentMutationController";
+import { useProjectBusyState } from "./useProjectBusyState";
+import { useProjectListState } from "./useProjectListState";
+import { useProjectEditorState } from "./useProjectEditorState";
+import { useSegmentDirtyState } from "./useSegmentDirtyState";
+import { cloneSegments } from "./segmentListHelpers";
+import type { ProjectLifecycleApi } from "./ProjectLifecycleApi";
 
-export type { BusyReason };
-type BusyPack = { busy: boolean; reason: BusyReason | null };
-
-function cloneSegments(segs: SegmentDto[]): SegmentDto[] {
-  return segs.map((s) => ({ ...s }));
-}
-
-export interface ProjectLifecycleApi {
-  projects: ProjectSummary[];
-  current: ProjectDetail | null;
-  currentFileId: string | null;
-  segments: SegmentDto[];
-  selectedIdx: number;
-  setSelectedIdx: React.Dispatch<React.SetStateAction<number>>;
-  audioSrc: string | null;
-  error: string;
-  busy: boolean;
-  busyReason: BusyReason | null;
-  newName: string;
-  setNewName: React.Dispatch<React.SetStateAction<string>>;
-  pickedPath: string | null;
-  transcribeHints: string[];
-  refreshProjects: () => Promise<void>;
-  pickAudio: () => Promise<void>;
-  clearPickedAudio: () => void;
-  createProject: () => Promise<void>;
-  createEmptyProject: () => Promise<void>;
-  createProjectFromText: () => Promise<void>;
-  loadProject: (id: string) => Promise<void>;
-  openFile: (fileId: string) => Promise<void>;
-  closeFile: () => void;
-  closeProject: () => void;
-  refreshCurrentProject: () => Promise<void>;
-  runTranscribe: () => Promise<void>;
-  saveSegments: () => Promise<void>;
-  deleteProject: (id: string, options?: { skipBrowserConfirm?: boolean }) => Promise<void>;
-  exportTxt: () => Promise<void>;
-  exportSrt: () => Promise<void>;
-  exportDocx: (mode: DocxExportMode) => Promise<void>;
-  exportDiagnosticBundle: () => Promise<void>;
-  exportProjectBundle: () => Promise<void>;
-  importProjectBundle: () => Promise<void>;
-  openAppDataFolder: () => Promise<void>;
-  applyDetail: (d: ProjectDetail) => void;
-  setError: React.Dispatch<React.SetStateAction<string>>;
-  beginBusy: (reason: BusyReason) => void;
-  endBusy: () => void;
-
-  undo: () => void;
-  redo: () => void;
-  updateSegmentText: (idx: number, text: string) => void;
-  updateSegmentTime: (idx: number, field: "start_sec" | "end_sec", value: number) => void;
-  updateSegmentBounds: (idx: number, startSec: number, endSec: number, phase?: "live" | "commit") => void;
-  splitAtSelection: () => void;
-  splitAtPlayhead: (timeSec: number) => void;
-  mergeWithNext: () => void;
-  mergeWithPrev: () => void;
-  mergeWithNextAt: (idx: number) => void;
-  mergeWithPrevAt: (idx: number) => void;
-  deleteSegmentAt: (idx: number) => void;
-  insertSegmentAfter: (idx: number) => void;
-  insertSegmentFromTimeRange: (startSec: number, endSec: number) => void;
-  flushSegmentTextDraftsFromDom: () => void;
-  attachSegmentListDomRoot: (getter: (() => HTMLElement | null) | null) => void;
-}
+export type { ProjectLifecycleApi } from "./ProjectLifecycleApi";
+export type { BusyReason } from "./useProjectCrudController";
 
 export function useProjectLifecycleController(): ProjectLifecycleApi {
-  const [projects, setProjects] = useState<ProjectSummary[]>([]);
-  const [current, setCurrent] = useState<ProjectDetail | null>(null);
-  const [currentFileId, setCurrentFileId] = useState<string | null>(null);
-  const [segments, setSegments] = useState<SegmentDto[]>([]);
-  const [selectedIdx, setSelectedIdx] = useState(0);
-  const [audioSrc, setAudioSrc] = useState<string | null>(null);
+  const { busy, busyReason, beginBusy, endBusy } = useProjectBusyState();
   const [error, setError] = useState<string>("");
-  const [busyPack, setBusyPack] = useState<BusyPack>({ busy: false, reason: null });
+  const { projects, refreshProjects } = useProjectListState(setError);
+
+  const {
+    current,
+    setCurrent,
+    currentFileId,
+    segments,
+    setSegments,
+    selectedIdx,
+    setSelectedIdx,
+    audioSrc,
+    setAudioSrc,
+    segmentsRef,
+    selectedIdxRef,
+    getSegmentListRoot,
+    attachSegmentListDomRoot,
+    openFile,
+    closeFile,
+    refreshCurrentProject: refreshCurrentProjectBase,
+    applyDetailBase,
+  } = useProjectEditorState(setError);
+
   const [newName, setNewName] = useState("未命名项目");
   const [pickedPath, setPickedPath] = useState<string | null>(null);
   const [transcribeHints, setTranscribeHints] = useState<string[]>([]);
-
-  const busy = busyPack.busy;
-  const busyReason = busyPack.reason;
-  const beginBusy = useCallback((reason: BusyReason) => {
-    setBusyPack({ busy: true, reason });
-  }, []);
-  const endBusy = useCallback(() => {
-    setBusyPack({ busy: false, reason: null });
-  }, []);
-
-  const segmentsRef = useRef(segments);
-  segmentsRef.current = segments;
-  const selectedIdxRef = useRef(selectedIdx);
-  selectedIdxRef.current = selectedIdx;
-
-  const getSegmentListRootRef = useRef<(() => HTMLElement | null) | null>(null);
-  const getSegmentListRoot = useCallback(() => getSegmentListRootRef.current?.() ?? null, []);
-  const attachSegmentListDomRoot = useCallback((getter: (() => HTMLElement | null) | null) => {
-    getSegmentListRootRef.current = getter;
-  }, []);
 
   const mutations = useSegmentMutationController({
     segmentsRef,
@@ -120,91 +60,83 @@ export function useProjectLifecycleController(): ProjectLifecycleApi {
     getSegmentListRoot,
   });
 
-  const refreshProjects = useCallback(async () => {
-    try {
-      setError("");
-      const list = await p1.projectList();
-      setProjects(list);
-    } catch (e) {
-      const message = e instanceof Error ? e.message : String(e);
-      if (message.includes("reading 'invoke'")) {
-        setProjects([]);
+  const dirty = useSegmentDirtyState({
+    currentFileId,
+    segmentsRef,
+    flushSegmentTextDraftsFromDom: mutations.flushSegmentTextDraftsFromDom,
+  });
+
+  const applyDetail = useCallback(
+    (d: ProjectDetail) => {
+      mutations.resetMutationHistory();
+      applyDetailBase(d);
+      setTranscribeHints([]);
+      setPickedPath(null);
+    },
+    [mutations, applyDetailBase],
+  );
+
+  const closeFileWrapped = useCallback(() => {
+    closeFile();
+    dirty.clearSavedSnapshot();
+    mutations.resetMutationHistory();
+  }, [closeFile, dirty, mutations]);
+
+  const closeProjectWrapped = useCallback(() => {
+    if (!dirty.confirmDiscardUnsavedIfNeeded()) return;
+    setCurrent(null);
+    closeFileWrapped();
+    setTranscribeHints([]);
+  }, [dirty, closeFileWrapped, setCurrent]);
+
+  const openFileWrapped = useCallback(
+    async (fileId: string) => {
+      if (
+        currentFileId &&
+        fileId !== currentFileId &&
+        !dirty.confirmDiscardUnsavedIfNeeded()
+      ) {
         return;
       }
-      setError(message);
-    }
-  }, []);
+      await openFile(fileId);
+      dirty.markSegmentsSaved();
+    },
+    [currentFileId, dirty, openFile],
+  );
 
-  useEffect(() => {
-    void refreshProjects();
-  }, [refreshProjects]);
-
-  const applyDetail = useCallback((d: ProjectDetail) => {
-    mutations.resetMutationHistory();
-    setCurrent(d);
-    setTranscribeHints([]);
-    setPickedPath(null);
-  }, [mutations]);
-
-  const openFile = useCallback(async (fileId: string) => {
-    beginBusy("load");
-    setError("");
-    try {
-      const detail = await fileApi.loadFile(fileId);
-      setCurrentFileId(fileId);
-      setSegments(cloneSegments(detail.segments));
-      setSelectedIdx(0);
+  const loadProject = useCallback(
+    async (id: string) => {
+      if (busy) return;
+      if (current?.id !== id && !dirty.confirmDiscardUnsavedIfNeeded()) return;
+      setError("");
+      beginBusy("load");
       try {
-        setAudioSrc(detail.audio_path ? convertFileSrc(detail.audio_path) : null);
-      } catch {
-        setAudioSrc(null);
+        const d = await p1.projectLoad(id);
+        applyDetail(d);
+        if (d.files && d.files.length > 0) {
+          const sorted = [...d.files].sort((a, b) => b.updated_at_ms - a.updated_at_ms);
+          await openFileWrapped(sorted[0].id);
+        } else {
+          dirty.clearSavedSnapshot();
+        }
+      } catch (e) {
+        setCurrent(null);
+        closeFileWrapped();
+        setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        endBusy();
       }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      endBusy();
-    }
-  }, [beginBusy, endBusy]);
-
-  const closeFile = useCallback(() => {
-    setCurrentFileId(null);
-    setSegments([]);
-    setSelectedIdx(0);
-    setAudioSrc(null);
-    mutations.resetMutationHistory();
-  }, [mutations]);
-
-  const closeProject = useCallback(() => {
-    setCurrent(null);
-    closeFile();
-  }, [closeFile]);
-
-  const loadProject = useCallback(async (id: string) => {
-    setError("");
-    try {
-      const d = await p1.projectLoad(id);
-      applyDetail(d);
-      if (d.files && d.files.length > 0) {
-        const sorted = [...d.files].sort((a, b) => b.updated_at_ms - a.updated_at_ms);
-        await openFile(sorted[0].id);
-      }
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    }
-  }, [applyDetail, openFile, setError]);
+    },
+    [busy, current?.id, dirty, applyDetail, openFileWrapped, beginBusy, endBusy, closeFileWrapped, setCurrent],
+  );
 
   const refreshCurrentProject = useCallback(async () => {
-    if (!current) return;
-    setError("");
-    try {
-      const d = await p1.projectLoad(current.id);
-      setCurrent(d);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    }
-  }, [current, setError]);
+    if (busy || !current) return;
+    await refreshCurrentProjectBase();
+  }, [busy, current, refreshCurrentProjectBase]);
 
   const pickAudio = useCallback(async () => {
+    if (busy) return;
     setError("");
     try {
       const p = await p1.pickAudioPath();
@@ -212,7 +144,7 @@ export function useProjectLifecycleController(): ProjectLifecycleApi {
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
-  }, []);
+  }, [busy]);
 
   const clearPickedAudio = useCallback(() => {
     setPickedPath(null);
@@ -235,20 +167,29 @@ export function useProjectLifecycleController(): ProjectLifecycleApi {
   });
 
   const runTranscribe = useCallback(async () => {
-    if (!current) return;
+    if (busy || !current || !currentFileId) {
+      if (!busy && current && !currentFileId) {
+        setError("请先打开一个文件后再拉取语段");
+      }
+      return;
+    }
     if (isSttOnlineEnabledButIncomplete()) {
       setError(
         "已启用在线 STT：请在「环境与 ASR」中选择厂商、填写 API Key 并点击保存在线配置；自建网关还须填写 HTTPS 转写 URL。OpenAI / AssemblyAI 可留空 URL 使用默认端点。",
       );
       return;
     }
+    const fileId = currentFileId;
     beginBusy("transcribe");
     setError("");
     setTranscribeHints([]);
     try {
       const online = tryBuildOnlineTranscribeBridgePayload();
-      const out = await p1.projectRunTranscribe(current.id, asrBaseUrl(), online ?? null);
-      applyDetail(out.detail);
+      const out = await p1.projectRunTranscribe(fileId, asrBaseUrl(), online ?? null);
+      mutations.resetMutationHistory();
+      const projectDetail = await p1.projectLoad(current.id);
+      setCurrent(projectDetail);
+      await openFileWrapped(fileId);
       const hints = deriveTranscribeHints(out.engine, out.warnings, out.detail.segments);
       if (import.meta.env.DEV && hints.length > 0) {
         hints.push("（开发模式）详见仓库 services/asr/README.md。");
@@ -259,36 +200,47 @@ export function useProjectLifecycleController(): ProjectLifecycleApi {
     } finally {
       endBusy();
     }
-  }, [current, applyDetail, beginBusy, endBusy]);
+  }, [busy, current, currentFileId, mutations, openFileWrapped, beginBusy, endBusy, setCurrent]);
 
   const saveSegments = useCallback(async () => {
-    if (!current) return;
+    if (busy || !current || !currentFileId) {
+      setError("请先打开一个文件后再保存");
+      return;
+    }
     beginBusy("save");
     setError("");
     try {
       mutations.flushSegmentTextDraftsFromDom();
       const normalized = segmentsRef.current.map((s, i) => ({ ...s, idx: i }));
-      await p1.projectSaveSegments(current.id, normalized);
-      const d = await p1.projectLoad(current.id);
-      applyDetail(d);
+      await fileApi.fileSaveSegments(currentFileId, normalized);
+      const [projectDetail, fileDetail] = await Promise.all([
+        p1.projectLoad(current.id),
+        fileApi.loadFile(currentFileId),
+      ]);
+      setCurrent(projectDetail);
+      setSegments(cloneSegments(fileDetail.segments));
+      dirty.setSavedSnapshot(fileDetail.segments);
+      setSelectedIdx((prev) => Math.min(prev, Math.max(0, fileDetail.segments.length - 1)));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       endBusy();
     }
-  }, [current, applyDetail, mutations, beginBusy, endBusy]);
+  }, [busy, current, currentFileId, mutations, dirty, beginBusy, endBusy, setCurrent, setSegments, setSelectedIdx, segmentsRef]);
 
-  const openAppDataFolder = async () => {
+  const openAppDataFolder = useCallback(async () => {
+    if (busy) return;
     setError("");
     try {
       await p1.openAppDataFolder();
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
-  };
+  }, [busy]);
 
   const exports = useExportController({
     current,
+    currentFileId,
     segmentsRef,
     setError,
     flushSegmentTextDraftsFromDom: mutations.flushSegmentTextDraftsFromDom,
@@ -297,59 +249,21 @@ export function useProjectLifecycleController(): ProjectLifecycleApi {
   });
 
   return {
-    projects,
-    current,
-    currentFileId,
-    segments,
-    selectedIdx,
-    setSelectedIdx,
-    audioSrc,
-    error,
-    busy,
-    busyReason,
-    newName,
-    setNewName,
-    pickedPath,
-    transcribeHints,
-    refreshProjects,
-    pickAudio,
-    clearPickedAudio,
-    createProject: crud.createProject,
-    createEmptyProject: crud.createEmptyProject,
-    createProjectFromText: crud.createProjectFromText,
-    loadProject,
-    refreshCurrentProject,
-    openFile,
-    closeFile,
-    closeProject,
-    runTranscribe,
-    saveSegments,
-    deleteProject: crud.deleteProject,
-    exportTxt: exports.exportTxt,
-    exportSrt: exports.exportSrt,
-    exportDocx: exports.exportDocx,
-    exportDiagnosticBundle: exports.exportDiagnosticBundle,
-    exportProjectBundle: exports.exportProjectBundle,
-    importProjectBundle: exports.importProjectBundle,
-    openAppDataFolder,
-    applyDetail,
-    setError,
-    beginBusy,
-    endBusy,
-
-    undo: mutations.undo,
-    redo: mutations.redo,
-    updateSegmentText: mutations.updateSegmentText,
-    updateSegmentTime: mutations.updateSegmentTime,
-    updateSegmentBounds: mutations.updateSegmentBounds,
-    splitAtSelection: () => mutations.splitAtSelection(selectedIdx),
-    splitAtPlayhead: mutations.splitAtPlayhead,
-    mergeWithNext: () => mutations.mergeWithNext(selectedIdx),
-    mergeWithPrev: () => mutations.mergeWithPrev(selectedIdx),
-    mergeWithNextAt: mutations.mergeWithNextAt,
-    mergeWithPrevAt: mutations.mergeWithPrevAt,
-    deleteSegmentAt: mutations.deleteSegmentAt,
-    insertSegmentAfter: mutations.insertSegmentAfter,
+    projects, current, currentFileId, segments, selectedIdx, setSelectedIdx,
+    audioSrc, error, busy, busyReason, newName, setNewName, pickedPath, transcribeHints,
+    refreshProjects, pickAudio, clearPickedAudio,
+    createProject: crud.createProject, createEmptyProject: crud.createEmptyProject, createProjectFromText: crud.createProjectFromText,
+    loadProject, refreshCurrentProject, openFile: openFileWrapped, closeFile: closeFileWrapped, closeProject: closeProjectWrapped,
+    runTranscribe, saveSegments, deleteProject: crud.deleteProject,
+    exportTxt: exports.exportTxt, exportSrt: exports.exportSrt, exportDocx: exports.exportDocx,
+    exportDiagnosticBundle: exports.exportDiagnosticBundle, exportProjectBundle: exports.exportProjectBundle, importProjectBundle: exports.importProjectBundle,
+    openAppDataFolder, applyDetail, setError, beginBusy, endBusy,
+    undo: mutations.undo, redo: mutations.redo, updateSegmentText: mutations.updateSegmentText,
+    updateSegmentTime: mutations.updateSegmentTime, updateSegmentBounds: mutations.updateSegmentBounds,
+    splitAtSelection: () => mutations.splitAtSelection(selectedIdx), splitAtPlayhead: mutations.splitAtPlayhead,
+    mergeWithNext: () => mutations.mergeWithNext(selectedIdx), mergeWithPrev: () => mutations.mergeWithPrev(selectedIdx),
+    mergeWithNextAt: mutations.mergeWithNextAt, mergeWithPrevAt: mutations.mergeWithPrevAt,
+    deleteSegmentAt: mutations.deleteSegmentAt, insertSegmentAfter: mutations.insertSegmentAfter,
     insertSegmentFromTimeRange: mutations.insertSegmentFromTimeRange,
     flushSegmentTextDraftsFromDom: mutations.flushSegmentTextDraftsFromDom,
     attachSegmentListDomRoot,

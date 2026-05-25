@@ -9,6 +9,11 @@ import {
   writeStoredP1TranscriptFontPx,
   writeStoredWaveformHeightPx,
 } from "../utils/waveformPrefs";
+import {
+  clampSegmentLaneRowPx,
+  computeSegmentLaneRowPx,
+  transcriptFontPxFromSegmentRowPx,
+} from "../utils/segmentLayout";
 
 export function useWaveformDisplay(args: { busy: boolean }) {
   const [waveformHeightPx, setWaveformHeightPxState] = useState(
@@ -47,6 +52,12 @@ export function useWaveformDisplay(args: { busy: boolean }) {
 
   const nudgeTranscriptFontPx = useCallback((delta: number) => {
     setTranscriptFontPxState((f) => clampTranscriptFontPx(f + delta));
+  }, []);
+
+  const nudgeTranscriptRowHeightPx = useCallback((delta: number) => {
+    const currentRow = computeSegmentLaneRowPx(transcriptFontPxRef.current);
+    const nextRow = clampSegmentLaneRowPx(currentRow + delta);
+    setTranscriptFontPxState(transcriptFontPxFromSegmentRowPx(nextRow));
   }, []);
 
   const beginWaveformHeightDrag = useCallback(
@@ -105,12 +116,46 @@ export function useWaveformDisplay(args: { busy: boolean }) {
     [args.busy],
   );
 
+  const beginTranscriptRowHeightDrag = useCallback(
+    (e: React.PointerEvent) => {
+      if (e.button !== 0 || args.busy) return;
+      e.preventDefault();
+      const target = e.currentTarget;
+      target.setPointerCapture(e.pointerId);
+      const startY = e.clientY;
+      const startRow = computeSegmentLaneRowPx(transcriptFontPxRef.current);
+      const onMove = (ev: PointerEvent) => {
+        const nextRow = clampSegmentLaneRowPx(startRow + (ev.clientY - startY));
+        setTranscriptFontPxState(transcriptFontPxFromSegmentRowPx(nextRow));
+      };
+      const onUp = (ev: PointerEvent) => {
+        try {
+          target.releasePointerCapture(ev.pointerId);
+        } catch {
+          /* noop */
+        }
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        window.removeEventListener("pointercancel", onUp);
+      };
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+      window.addEventListener("pointercancel", onUp);
+    },
+    [args.busy],
+  );
+
+  const transcriptRowHeightPx = computeSegmentLaneRowPx(transcriptFontPx);
+
   return {
     waveformHeightPx,
     transcriptFontPx,
+    transcriptRowHeightPx,
     nudgeWaveformHeight,
     nudgeTranscriptFontPx,
+    nudgeTranscriptRowHeightPx,
     beginWaveformHeightDrag,
     beginTranscriptFontDrag,
+    beginTranscriptRowHeightDrag,
   };
 }

@@ -1,5 +1,10 @@
 import type { SegmentDto } from "../tauri/projectApi";
-import { clampTranscriptFontPx, TRANSCRIPT_FONT_DEFAULT } from "./waveformPrefs";
+import {
+  clampTranscriptFontPx,
+  TRANSCRIPT_FONT_DEFAULT,
+  TRANSCRIPT_FONT_MAX,
+  TRANSCRIPT_FONT_MIN,
+} from "./waveformPrefs";
 
 /** 语段卡行高（px）：支持元信息与两行正文的编辑卡。 */
 export function computeSegmentLaneRowPx(transcriptFontPx: number): number {
@@ -8,6 +13,27 @@ export function computeSegmentLaneRowPx(transcriptFontPx: number): number {
   const headerAndControlsPx = 26;
   const bodyPx = Math.ceil(linePx * 2);
   return Math.max(64, headerAndControlsPx + bodyPx);
+}
+
+export const SEGMENT_LANE_ROW_MIN_PX = computeSegmentLaneRowPx(TRANSCRIPT_FONT_MIN);
+export const SEGMENT_LANE_ROW_MAX_PX = computeSegmentLaneRowPx(TRANSCRIPT_FONT_MAX);
+
+export function clampSegmentLaneRowPx(px: number): number {
+  return Math.min(SEGMENT_LANE_ROW_MAX_PX, Math.max(SEGMENT_LANE_ROW_MIN_PX, Math.round(px)));
+}
+
+export function transcriptFontPxFromSegmentRowPx(rowPx: number): number {
+  const target = clampSegmentLaneRowPx(rowPx);
+  let bestFont = TRANSCRIPT_FONT_DEFAULT;
+  let bestDiff = Number.POSITIVE_INFINITY;
+  for (let f = TRANSCRIPT_FONT_MIN; f <= TRANSCRIPT_FONT_MAX; f += 1) {
+    const diff = Math.abs(computeSegmentLaneRowPx(f) - target);
+    if (diff < bestDiff) {
+      bestDiff = diff;
+      bestFont = f;
+    }
+  }
+  return bestFont;
 }
 
 /** 默认字号下的语段卡行高（供测试与布局常量引用）。 */

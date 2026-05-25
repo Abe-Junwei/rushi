@@ -8,7 +8,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        /** Serene Scholar DESIGN.md：暖纸面、墨色文本、saffron 主操作 */
+        /** Notion 风格 + Serene Scholar 暖色：暖白背景、saffron 主操作 */
         "zen-ink": "#2C2C2C",
         "zen-paper": "#F2EFE8",
         "zen-saffron": "#C58A43",
@@ -24,6 +24,19 @@ export default {
         "zen-gray-300": "#d5c3b3",
         "zen-gray-400": "#837567",
         "zen-gray-500": "#514538",
+        /** Notion 风格 surface 令牌 */
+        "notion-bg": "#ffffff",
+        "notion-sidebar": "#f7f7f5",
+        "notion-sidebar-hover": "#efefef",
+        "notion-sidebar-active": "#ebebea",
+        "notion-divider": "#e3e2e0",
+        "notion-border": "#e3e2e0",
+        "notion-text": "#37352f",
+        "notion-text-muted": "#6b6b6b",
+        "notion-text-light": "#9ca3af",
+        "notion-callout-bg": "#f1f1ef",
+        "notion-callout-border": "#e3e2e0",
+        /** 兼容旧令牌（保留语义映射） */
         "serene-surface": "#fcf9f2",
         "serene-surface-container": "#f1eee7",
         "serene-surface-container-low": "#f6f3ec",
@@ -56,6 +69,9 @@ export default {
         "brand-input-bg": "#ffffff",
         "brand-secondary-bg": "#F5F0E0",
         "brand-secondary-text": "#514538",
+      },
+      spacing: {
+        "page-margin": "2rem",
       },
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],

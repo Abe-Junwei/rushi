@@ -44,6 +44,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
   const display = useWaveformDisplay({ busy: ctx.busy });
 
   const durationRef = useRef(0);
+  const syncWaveformScrollRef = useRef<(scrollLeftPx: number) => void>(() => {});
 
   const zoom = useWaveformZoom({
     getTierWidth: () => tierScrollRef.current?.clientWidth ?? 0,
@@ -62,11 +63,8 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     onBoundsCommit: (idx, lo, hi) => ctx.updateSegmentBounds(idx, lo, hi, "commit"),
     onBoundsLive: (idx, lo, hi) => ctx.updateSegmentBounds(idx, lo, hi, "live"),
     onWaveformCreateRange: ctx.insertSegmentFromTimeRange,
-    onWaveformScroll: (sl) => {
-      const tier = tierScrollRef.current;
-      if (!tier) return;
-      tier.scrollLeft = sl;
-    },
+    onWaveformScroll: (sl) => syncWaveformScrollRef.current(sl),
+    getViewportScrollPx: () => tierScrollRef.current?.scrollLeft ?? 0,
   });
 
   durationRef.current = wf.duration || 0;
@@ -83,11 +81,12 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     tierScrollRef,
     timelineWidthPx,
     wfApiRef,
+    waveformReady: wf.isReady,
     mediaUrl: ctx.mediaUrl,
     selectedIdx: ctx.selectedIdx,
     segmentRowCount: ctx.segments.length,
   });
-  const refreshTierScrollLayout = scroll.refreshTierScrollLayout;
+  syncWaveformScrollRef.current = scroll.syncWaveformScrollPx;
 
   const keyboard = useSegmentKeyboard({
     ctxRef,
@@ -131,22 +130,19 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
   // 缩放或总宽变化后：WaveSurfer 已 `zoom`，将 tier 与 WS 的 scrollLeft 钳到同一值，避免语段卡与 region 错位。
   useEffect(() => {
     const tier = tierScrollRef.current;
-    const w = wfApiRef.current;
-    if (!tier || !w.isReady || timelineWidthPx <= 0) return;
+    if (!tier || !wf.isReady || timelineWidthPx <= 0) return;
     const maxSl = Math.max(0, timelineWidthPx - tier.clientWidth);
-    // useTierScrollSync 内部有 scrollSyncingRef，这里直接同步不经过它
-    const wsSl = w.getScrollLeft();
+    const wsSl = wf.getScrollLeft();
     const sl = Math.min(maxSl, Math.max(0, wsSl));
-    tier.scrollLeft = sl;
-    if (Math.abs(w.getScrollLeft() - sl) > 0.5) w.setScrollLeft(sl);
-    refreshTierScrollLayout();
-  }, [zoom.pxPerSec, timelineWidthPx, wf.isReady, refreshTierScrollLayout]);
+    scroll.setTierScrollPx(sl);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [zoom.pxPerSec, timelineWidthPx, wf.isReady, wf.getScrollLeft, scroll.setTierScrollPx]);
 
   useEffect(() => {
     if (!ctx.mediaUrl || !wf.isReady) return;
-    wf.setScrollLeft(0);
+    scroll.setTierScrollPx(0);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ctx.mediaUrl, wf.isReady, wf.setScrollLeft]);
+  }, [ctx.mediaUrl, wf.isReady, scroll.setTierScrollPx]);
 
   return {
     tierScrollRef,
@@ -159,10 +155,13 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     segmentLaneRowPx,
     waveformHeightPx: display.waveformHeightPx,
     transcriptFontPx: display.transcriptFontPx,
+    transcriptRowHeightPx: display.transcriptRowHeightPx,
     nudgeWaveformHeight: display.nudgeWaveformHeight,
     nudgeTranscriptFontPx: display.nudgeTranscriptFontPx,
+    nudgeTranscriptRowHeightPx: display.nudgeTranscriptRowHeightPx,
     beginWaveformHeightDrag: display.beginWaveformHeightDrag,
     beginTranscriptFontDrag: display.beginTranscriptFontDrag,
+    beginTranscriptRowHeightDrag: display.beginTranscriptRowHeightDrag,
     onTierScroll: scroll.onTierScroll,
     timelineWidthPx,
     pxPerSec: zoom.pxPerSec,

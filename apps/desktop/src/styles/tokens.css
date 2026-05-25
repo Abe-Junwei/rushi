@@ -34,6 +34,11 @@
   --brand-input-border: #E5E5E5;
   --clay-pink: #C58A43;
 
+  /* Notion 风格令牌 */
+  --notion-divider: #e3e2e0;
+  --notion-border: #e3e2e0;
+  --notion-bg: #ffffff;
+
   /* Serene Scholar footer（shell.css 引用） */
   --shell-footer-bg: #31312c;
   --shell-footer-fg: #f3f0e9;

@@ -2,21 +2,16 @@ import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { useTranscriptionLayer } from "../pages/useTranscriptionLayer";
 import { buildSegmentContextMenuItems, type SegmentContextMenuKey } from "../utils/segmentContextMenuModel";
 import { EnvironmentPanel } from "./EnvironmentPanel";
-import { DraggableResizablePanel } from "./DraggableResizablePanel";
+import { FloatingPanelTemplate } from "./PanelTemplate";
 import { EditorView } from "./EditorView";
 
-import { ProjectSidebar } from "./ProjectSidebar";
 import { WelcomeView } from "./WelcomeView";
-import { ProjectHeader } from "./ProjectHeader";
-import { AsrErrorBanner, ProjectBusyOverlay } from "./ProjectStatusFeedback";
-import { useGlossaryController } from "../pages/useGlossaryController";
+import { ProjectBusyOverlay } from "./ProjectStatusFeedback";
 import { useProjectController } from "../pages/useProjectController";
 
 export function ProjectPanel() {
   const c = useProjectController();
-  const gl = useGlossaryController();
   const [envOpen, setEnvOpen] = useState(false);
-  const [onlineSttFocusSeq, setOnlineSttFocusSeq] = useState(0);
   const [exportKey, setExportKey] = useState("");
   const [busyElapsedSec, setBusyElapsedSec] = useState(0);
   const [segmentCtxMenu, setSegmentCtxMenu] = useState<{
@@ -106,13 +101,6 @@ export function ProjectPanel() {
     }
   };
 
-  const showAsrBanner = workspacePhase === "A" && c.asrHealth === "error";
-
-  const openOnlineSttProvider = () => {
-    setEnvOpen(true);
-    setOnlineSttFocusSeq((n) => n + 1);
-  };
-
   const onExportSelect = (key: string) => {
     setExportKey("");
     switch (key) {
@@ -133,28 +121,15 @@ export function ProjectPanel() {
     }
   };
 
-
   return (
     <section
       className={[
-        "workspace relative flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden rounded-lg select-none",
+        "workspace relative flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden select-none",
         workspacePhase === "A"
-          ? "border border-zen-gray-300 bg-zen-paper font-sans antialiased text-app-text-main"
-          : "border border-zen-gray-300 bg-zen-paper text-zen-ink",
+          ? "rounded-none border-0 bg-notion-sidebar font-sans antialiased text-notion-text"
+          : "rounded-none border-0 bg-notion-bg font-sans antialiased text-notion-text",
       ].join(" ")}
     >
-      <ProjectHeader
-        workspacePhase={workspacePhase}
-        asrHealth={c.asrHealth}
-        asrCaps={c.asrCaps}
-        asrHealthDetail={c.asrHealthDetail}
-        sttOnlineBridgeReady={c.sttOnlineBridgeReady}
-        busy={c.busy}
-        envOpen={envOpen}
-        setEnvOpen={setEnvOpen}
-        onOpenOnlineStt={openOnlineSttProvider}
-      />
-
       {c.error ? (
         <p className="mx-4 mt-3 shrink-0 rounded border border-zen-cinnabar/25 bg-zen-cinnabar/10 px-3 py-2 text-sm text-zen-cinnabar">
           {c.error}
@@ -162,17 +137,7 @@ export function ProjectPanel() {
       ) : null}
 
       {envOpen ? (
-        <>
-          <div className="fixed inset-0 z-40 bg-black/30 backdrop-blur-sm" onClick={() => setEnvOpen(false)} />
-          <DraggableResizablePanel
-            id="environment"
-            title="环境与 ASR"
-            defaultPosition={{ x: Math.round(window.innerWidth / 2 - 384), y: Math.round(window.innerHeight / 2 - 280) }}
-            defaultSize={{ width: 768, height: 560 }}
-            minWidth={480}
-            minHeight={320}
-            onClose={() => setEnvOpen(false)}
-          >
+        <FloatingPanelTemplate id="environment-v3" title="环境与 ASR" preset="environment" onClose={() => setEnvOpen(false)}>
             <EnvironmentPanel
               asrHealth={c.asrHealth}
               asrHealthDetail={c.asrHealthDetail}
@@ -190,55 +155,30 @@ export function ProjectPanel() {
               retryBundledAsrSidecar={c.retryBundledAsrSidecar}
               openAppDataFolder={c.openAppDataFolder}
               onSttOnlineRuntimeChanged={c.bumpSttOnlineRuntimeChanged}
-              focusOnlineSttSeq={onlineSttFocusSeq}
+
             />
-          </DraggableResizablePanel>
-        </>
+        </FloatingPanelTemplate>
       ) : null}
 
-      <div
-        className={`flex min-h-0 min-w-0 flex-1 flex-col border-t lg:flex-row lg:items-stretch ${
-          workspacePhase === "A" ? "border-black/5" : "border-black/[0.06]"
-        }`}
-      >
-        {workspacePhase === "C" ? (
-          <ProjectSidebar
-            controller={c}
-            glossary={gl}
-            workspacePhase={workspacePhase}
-            onOpenOnlineStt={openOnlineSttProvider}
-          />
-        ) : null}
-
-        <main
-          className={`relative flex min-h-[12rem] min-w-0 flex-1 flex-col lg:min-h-0 ${
-            workspacePhase === "A" ? "bg-transparent" : "bg-zen-ochre"
-          }`}
-        >
-          {workspacePhase === "A" ? <WelcomeView controller={c} onOpenOnlineStt={openOnlineSttProvider} reserveTopSpace={showAsrBanner} /> : null}
-
-          {workspacePhase === "C" ? (
+      <div className="flex min-h-0 min-w-0 flex-1 flex-col">
+        {workspacePhase === "A" ? (
+          <WelcomeView controller={c} onOpenSettings={() => setEnvOpen(true)} />
+        ) : (
+          <main className="relative flex min-h-[12rem] min-w-0 flex-1 flex-col bg-notion-bg lg:min-h-0">
             <EditorView
               controller={c}
               tx={tx}
               exportKey={exportKey}
               onExportSelect={onExportSelect}
+              onOpenEnvironment={() => setEnvOpen(true)}
               segmentCtxMenu={segmentCtxMenu}
               setSegmentCtxMenu={setSegmentCtxMenu}
               segmentCtxMenuItems={segmentCtxMenuItems}
               onSegmentCtxMenuSelect={onSegmentCtxMenuSelect}
             />
-          ) : null}
-        </main>
+          </main>
+        )}
       </div>
-
-      {showAsrBanner ? (
-        <div className="pointer-events-none absolute left-4 right-4 top-20 z-40">
-          <div className="pointer-events-auto">
-            <AsrErrorBanner onOpenEnvironment={() => setEnvOpen(true)} />
-          </div>
-        </div>
-      ) : null}
 
       {c.busy ? <ProjectBusyOverlay reason={c.busyReason} elapsedSec={busyElapsedSec} /> : null}
     </section>

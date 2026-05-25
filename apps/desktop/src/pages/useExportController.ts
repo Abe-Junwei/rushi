@@ -17,6 +17,7 @@ export interface ExportApi {
 
 export interface ExportDeps {
   current: ProjectDetail | null;
+  currentFileId: string | null;
   segmentsRef: React.MutableRefObject<SegmentDto[]>;
   setError: (msg: string) => void;
   flushSegmentTextDraftsFromDom: () => void;
@@ -25,7 +26,15 @@ export interface ExportDeps {
 }
 
 export function useExportController(deps: ExportDeps): ExportApi {
-  const { current, segmentsRef, setError, flushSegmentTextDraftsFromDom, refreshProjects, applyDetail } = deps;
+  const {
+    current,
+    currentFileId,
+    segmentsRef,
+    setError,
+    flushSegmentTextDraftsFromDom,
+    refreshProjects,
+    applyDetail,
+  } = deps;
 
   const exportTxt = useCallback(async () => {
     if (!current) return;
@@ -76,16 +85,26 @@ export function useExportController(deps: ExportDeps): ExportApi {
   }, [setError]);
 
   const exportProjectBundle = useCallback(async () => {
-    if (!current) return;
+    if (!current || !currentFileId) {
+      if (current && !currentFileId) {
+        setError("请先打开一个文件后再导出项目包");
+      }
+      return;
+    }
     setError("");
     flushSegmentTextDraftsFromDom();
     const normalized: SegmentDto[] = segmentsRef.current.map((s, i) => ({ ...s, idx: i }));
     try {
-      await p1.exportProjectBundle(current.id, safeExportBasename(current.name, "zip"), normalized);
+      await p1.exportProjectBundle(
+        current.id,
+        currentFileId,
+        safeExportBasename(current.name, "zip"),
+        normalized,
+      );
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
-  }, [current, segmentsRef, setError, flushSegmentTextDraftsFromDom]);
+  }, [current, currentFileId, segmentsRef, setError, flushSegmentTextDraftsFromDom]);
 
   const importProjectBundle = useCallback(async () => {
     setError("");

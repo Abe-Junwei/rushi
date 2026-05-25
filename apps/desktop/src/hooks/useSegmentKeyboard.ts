@@ -159,7 +159,9 @@ export function useSegmentKeyboard(args: {
         void w.playSegmentAtIndex(pi);
         requestAnimationFrame(() => {
           const root = args.tierScrollRef.current;
-          root?.querySelector<HTMLElement>(`[data-seg-row="${pi}"] textarea.seg-text, [data-seg-row="${pi}"] input.seg-text`)?.focus();
+          const selector = `[data-seg-row="${pi}"] textarea.seg-text, [data-seg-row="${pi}"] input.seg-text`;
+          const target = root?.querySelector<HTMLElement>(selector) ?? document.querySelector<HTMLElement>(selector);
+          target?.focus();
         });
       } else {
         if (segmentIdx >= c.segments.length - 1) return;
@@ -171,7 +173,9 @@ export function useSegmentKeyboard(args: {
         void w.playSegmentAtIndex(ni);
         requestAnimationFrame(() => {
           const root = args.tierScrollRef.current;
-          root?.querySelector<HTMLElement>(`[data-seg-row="${ni}"] textarea.seg-text, [data-seg-row="${ni}"] input.seg-text`)?.focus();
+          const selector = `[data-seg-row="${ni}"] textarea.seg-text, [data-seg-row="${ni}"] input.seg-text`;
+          const target = root?.querySelector<HTMLElement>(selector) ?? document.querySelector<HTMLElement>(selector);
+          target?.focus();
         });
       }
     },

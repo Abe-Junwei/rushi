@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { buildSplitPair, mergeTwoSegments, reindexSegments } from "./segmentListHelpers";
+import {
+  buildSplitPair,
+  mergeTwoSegments,
+  reindexSegments,
+  segmentsEqualForPersist,
+  snapshotSegmentsForPersist,
+} from "./segmentListHelpers";
 import type { SegmentDto } from "../tauri/projectApi";
 
 describe("reindexSegments", () => {
@@ -21,6 +27,22 @@ describe("mergeTwoSegments", () => {
     expect(m.end_sec).toBe(3);
     expect(m.text).toBe("x\ny");
     expect(m.confidence).toBe(0.5);
+  });
+});
+
+describe("segmentsEqualForPersist", () => {
+  const base: SegmentDto = { idx: 0, start_sec: 0, end_sec: 1, text: "a", confidence: 0.5, low_confidence: false, detail: null };
+
+  it("treats reindexed copies as equal", () => {
+    const a = [{ ...base, idx: 3 }];
+    const b = snapshotSegmentsForPersist(a);
+    expect(segmentsEqualForPersist(a, b)).toBe(true);
+  });
+
+  it("detects text change", () => {
+    const a = [base];
+    const b = [{ ...base, text: "b" }];
+    expect(segmentsEqualForPersist(a, b)).toBe(false);
   });
 });
 

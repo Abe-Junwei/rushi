@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { PANEL_TYPOGRAPHY } from "../config/typography";
 
 interface Position {
   x: number;
@@ -19,6 +20,8 @@ interface DraggableResizablePanelProps {
   minHeight?: number;
   children: React.ReactNode;
   onClose: () => void;
+  variant?: "serene" | "notion";
+  persistState?: boolean;
 }
 
 function loadState(key: string): { position: Position; size: Size } | null {
@@ -41,6 +44,14 @@ function saveState(key: string, state: { position: Position; size: Size }) {
   }
 }
 
+function samePosition(a: Position, b: Position): boolean {
+  return a.x === b.x && a.y === b.y;
+}
+
+function sameSize(a: Size, b: Size): boolean {
+  return a.width === b.width && a.height === b.height;
+}
+
 export function DraggableResizablePanel({
   id,
   title,
@@ -50,12 +61,50 @@ export function DraggableResizablePanel({
   minHeight = 200,
   children,
   onClose,
+  variant = "serene",
+  persistState = true,
 }: DraggableResizablePanelProps) {
   const storageKey = `panel-state-${id}`;
 
-  const saved = loadState(storageKey);
+  const saved = persistState ? loadState(storageKey) : null;
   const [position, setPosition] = useState<Position>(saved?.position ?? defaultPosition);
   const [size, setSize] = useState<Size>(saved?.size ?? defaultSize);
+
+  const resolveViewportBounds = useCallback(() => {
+    const margin = 16;
+    const viewportWidth = Math.floor(window.visualViewport?.width ?? window.innerWidth);
+    const viewportHeight = Math.floor(window.visualViewport?.height ?? window.innerHeight);
+    const maxWidth = Math.max(240, viewportWidth - margin * 2);
+    const maxHeight = Math.max(180, viewportHeight - margin * 2);
+    const effectiveMinWidth = Math.min(minWidth, maxWidth);
+    const effectiveMinHeight = Math.min(minHeight, maxHeight);
+    return {
+      margin,
+      maxWidth,
+      maxHeight,
+      effectiveMinWidth,
+      effectiveMinHeight,
+    };
+  }, [minHeight, minWidth]);
+
+  const clampToViewport = useCallback((nextPosition: Position, nextSize: Size) => {
+    const { margin, maxWidth, maxHeight, effectiveMinWidth, effectiveMinHeight } = resolveViewportBounds();
+    const clampedSize = {
+      width: Math.min(Math.max(nextSize.width, effectiveMinWidth), maxWidth),
+      height: Math.min(Math.max(nextSize.height, effectiveMinHeight), maxHeight),
+    };
+    const viewportWidth = Math.floor(window.visualViewport?.width ?? window.innerWidth);
+    const viewportHeight = Math.floor(window.visualViewport?.height ?? window.innerHeight);
+    const maxX = Math.max(margin, viewportWidth - clampedSize.width - margin);
+    const maxY = Math.max(margin, viewportHeight - clampedSize.height - margin);
+    return {
+      position: {
+        x: Math.min(Math.max(nextPosition.x, margin), maxX),
+        y: Math.min(Math.max(nextPosition.y, margin), maxY),
+      },
+      size: clampedSize,
+    };
+  }, [resolveViewportBounds]);
 
   const dragRef = useRef<{
     mode: string;
@@ -88,7 +137,11 @@ export function DraggableResizablePanel({
       const dy = e.clientY - d.startY;
 
       if (d.mode === "move") {
-        setPosition({ x: d.startPos.x + dx, y: d.startPos.y + dy });
+        const clamped = clampToViewport(
+          { x: d.startPos.x + dx, y: d.startPos.y + dy },
+          { width: d.startSize.width, height: d.startSize.height },
+        );
+        setPosition(clamped.position);
         return;
       }
 
@@ -96,31 +149,35 @@ export function DraggableResizablePanel({
       let nextY = d.startPos.y;
       let nextW = d.startSize.width;
       let nextH = d.startSize.height;
+      const { effectiveMinWidth, effectiveMinHeight } = resolveViewportBounds();
 
       if (d.mode.includes("e")) {
-        nextW = Math.max(minWidth, d.startSize.width + dx);
+        nextW = Math.max(effectiveMinWidth, d.startSize.width + dx);
       }
       if (d.mode.includes("w")) {
-        const newW = Math.max(minWidth, d.startSize.width - dx);
+        const newW = Math.max(effectiveMinWidth, d.startSize.width - dx);
         nextX = d.startPos.x + (d.startSize.width - newW);
         nextW = newW;
       }
       if (d.mode.includes("s")) {
-        nextH = Math.max(minHeight, d.startSize.height + dy);
+        nextH = Math.max(effectiveMinHeight, d.startSize.height + dy);
       }
       if (d.mode.includes("n")) {
-        const newH = Math.max(minHeight, d.startSize.height - dy);
+        const newH = Math.max(effectiveMinHeight, d.startSize.height - dy);
         nextY = d.startPos.y + (d.startSize.height - newH);
         nextH = newH;
       }
 
-      setPosition({ x: nextX, y: nextY });
-      setSize({ width: nextW, height: nextH });
+      const clamped = clampToViewport({ x: nextX, y: nextY }, { width: nextW, height: nextH });
+      setPosition(clamped.position);
+      setSize(clamped.size);
     };
 
     const onUp = () => {
       if (dragRef.current) {
-        saveState(storageKey, { position, size });
+        if (persistState) {
+          saveState(storageKey, { position, size });
+        }
         dragRef.current = null;
       }
     };
@@ -131,10 +188,29 @@ export function DraggableResizablePanel({
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
     };
-  }, [minWidth, minHeight, position, size, storageKey]);
+  }, [clampToViewport, persistState, position, resolveViewportBounds, size, storageKey]);
+
+  useEffect(() => {
+    const clamp = () => {
+      const next = clampToViewport(position, size);
+      if (!samePosition(position, next.position)) setPosition(next.position);
+      if (!sameSize(size, next.size)) setSize(next.size);
+    };
+    clamp();
+    const vv = window.visualViewport;
+    window.addEventListener("resize", clamp);
+    vv?.addEventListener("resize", clamp);
+    vv?.addEventListener("scroll", clamp);
+    return () => {
+      window.removeEventListener("resize", clamp);
+      vv?.removeEventListener("resize", clamp);
+      vv?.removeEventListener("scroll", clamp);
+    };
+  }, [clampToViewport, position, size]);
 
   return (
     <div
+      data-panel-id={id}
       className="fixed z-50"
       style={{
         left: position.x,
@@ -154,16 +230,42 @@ export function DraggableResizablePanel({
       <div className="absolute -bottom-1 -right-1 h-5 w-5 cursor-se-resize" onPointerDown={(e) => startDrag("se", e)} />
 
       {/* Panel */}
-      <div className="flex h-full w-full flex-col overflow-hidden rounded-2xl border border-zen-gray-300 bg-zen-paper shadow-xl">
+      <div
+        className={[
+          "flex h-full w-full flex-col overflow-hidden border shadow-xl",
+          variant === "notion"
+            ? "rounded-lg border-notion-divider bg-notion-bg shadow-2xl"
+            : "rounded-2xl border-zen-gray-300 bg-zen-paper",
+        ].join(" ")}
+      >
         {/* Title bar (draggable) */}
         <div
-          className="flex shrink-0 cursor-move items-center justify-between border-b border-zen-gray-300 bg-serene-surface-container-low px-5 py-3"
+          className={[
+            "flex shrink-0 cursor-move items-center justify-between border-b select-none",
+            variant === "notion"
+              ? "border-notion-divider bg-notion-sidebar px-6 py-4"
+              : "border-zen-gray-300 bg-serene-surface-container-low px-5 py-3",
+          ].join(" ")}
           onPointerDown={(e) => startDrag("move", e)}
         >
-          <h2 className="select-none font-serif text-lg font-medium text-zen-ink">{title}</h2>
+          <h2
+            className={[
+              "m-0 select-none",
+              variant === "notion"
+                ? PANEL_TYPOGRAPHY.dialogTitle
+                : "font-serif text-lg font-medium text-zen-ink",
+            ].join(" ")}
+          >
+            {title}
+          </h2>
           <button
             type="button"
-            className="rounded-lg border-0 bg-transparent p-1 text-zen-stone transition-colors hover:text-zen-ink"
+            className={[
+              "border-0 bg-transparent p-1 transition-colors",
+              variant === "notion"
+                ? "rounded text-notion-text-muted hover:bg-notion-sidebar-hover hover:text-notion-text"
+                : "rounded-lg text-zen-stone hover:text-zen-ink",
+            ].join(" ")}
             onClick={onClose}
             aria-label="关闭面板"
           >

@@ -7,6 +7,7 @@ export function useTierScrollSync(args: {
   tierScrollRef: React.RefObject<HTMLDivElement | null>;
   timelineWidthPx: number;
   wfApiRef: React.MutableRefObject<WfApi>;
+  waveformReady: boolean;
   mediaUrl: string | null;
   selectedIdx: number;
   /** 语段行数：异步补行后触发 scrollIntoView 对齐 */
@@ -14,18 +15,38 @@ export function useTierScrollSync(args: {
 }) {
   const scrollSyncingRef = useRef(false);
   const tierScrollLayoutRafRef = useRef(0);
+  const committedScrollLeftRef = useRef(0);
 
   const [tierScrollLayout, setTierScrollLayout] = useState({ scrollLeft: 0, clientWidth: 400 });
+
+  const updateTierScrollLayout = useCallback((scrollLeft: number, clientWidth: number) => {
+    committedScrollLeftRef.current = scrollLeft;
+    setTierScrollLayout((prev) =>
+      prev.scrollLeft === scrollLeft && prev.clientWidth === clientWidth ? prev : { scrollLeft, clientWidth },
+    );
+  }, []);
 
   const refreshTierScrollLayout = useCallback(() => {
     const el = args.tierScrollRef.current;
     if (!el) return;
-    const sl = el.scrollLeft;
-    const cw = el.clientWidth;
-    setTierScrollLayout((prev) =>
-      prev.scrollLeft === sl && prev.clientWidth === cw ? prev : { scrollLeft: sl, clientWidth: cw },
-    );
-  }, [args.tierScrollRef]);
+    updateTierScrollLayout(committedScrollLeftRef.current, el.clientWidth);
+  }, [args.tierScrollRef, updateTierScrollLayout]);
+
+  const syncWaveformScrollPx = useCallback(
+    (scrollLeft: number) => {
+      const tier = args.tierScrollRef.current;
+      if (tier && Math.abs(tier.scrollLeft - scrollLeft) > 0.01) {
+        scrollSyncingRef.current = true;
+        try {
+          tier.scrollLeft = scrollLeft;
+        } finally {
+          scrollSyncingRef.current = false;
+        }
+      }
+      updateTierScrollLayout(scrollLeft, tier?.clientWidth ?? tierScrollLayout.clientWidth);
+    },
+    [args.tierScrollRef, tierScrollLayout.clientWidth, updateTierScrollLayout],
+  );
 
   const setTierScrollPx = useCallback(
     (px: number) => {
@@ -38,12 +59,12 @@ export function useTierScrollSync(args: {
         const sl = Math.max(0, Math.min(maxSl, px));
         tier.scrollLeft = sl;
         w.setScrollLeft(sl);
+        updateTierScrollLayout(sl, tier.clientWidth);
       } finally {
         scrollSyncingRef.current = false;
-        refreshTierScrollLayout();
       }
     },
-    [args.timelineWidthPx, args.tierScrollRef, args.wfApiRef, refreshTierScrollLayout],
+    [args.timelineWidthPx, args.tierScrollRef, args.wfApiRef, updateTierScrollLayout],
   );
 
   const seekFromTierClientX = useCallback(
@@ -78,8 +99,8 @@ export function useTierScrollSync(args: {
   const onTierScroll = useCallback(() => {
     const tier = args.tierScrollRef.current;
     if (!tier) return;
-    const sl = tier.scrollLeft;
     const w = args.wfApiRef.current;
+    const sl = tier.scrollLeft;
     if (w.isReady && !scrollSyncingRef.current) {
       scrollSyncingRef.current = true;
       try {
@@ -91,12 +112,20 @@ export function useTierScrollSync(args: {
     if (tierScrollLayoutRafRef.current) cancelAnimationFrame(tierScrollLayoutRafRef.current);
     tierScrollLayoutRafRef.current = requestAnimationFrame(() => {
       tierScrollLayoutRafRef.current = 0;
-      const cw = tier.clientWidth;
-      setTierScrollLayout((prev) =>
-        prev.scrollLeft === sl && prev.clientWidth === cw ? prev : { scrollLeft: sl, clientWidth: cw },
-      );
+      updateTierScrollLayout(sl, tier.clientWidth);
     });
-  }, [args.tierScrollRef, args.wfApiRef]);
+  }, [args.tierScrollRef, args.wfApiRef, updateTierScrollLayout]);
+
+  useLayoutEffect(() => {
+    const tier = args.tierScrollRef.current;
+    if (!tier || !args.waveformReady) return;
+    const w = args.wfApiRef.current;
+    const nextScrollLeft = w.getScrollLeft();
+    if (Math.abs(tier.scrollLeft - nextScrollLeft) > 0.5) {
+      tier.scrollLeft = nextScrollLeft;
+    }
+    updateTierScrollLayout(nextScrollLeft, tier.clientWidth);
+  }, [args.mediaUrl, args.tierScrollRef, args.timelineWidthPx, args.waveformReady, args.wfApiRef, updateTierScrollLayout]);
 
   useEffect(() => {
     refreshTierScrollLayout();
@@ -119,8 +148,10 @@ export function useTierScrollSync(args: {
 
   useEffect(() => {
     const tier = args.tierScrollRef.current;
-    if (tier) tier.scrollLeft = 0;
-  }, [args.mediaUrl, args.tierScrollRef]);
+    if (!tier) return;
+    tier.scrollLeft = 0;
+    updateTierScrollLayout(0, tier.clientWidth);
+  }, [args.mediaUrl, args.tierScrollRef, updateTierScrollLayout]);
 
   useLayoutEffect(() => {
     const root = args.tierScrollRef.current;
@@ -132,6 +163,7 @@ export function useTierScrollSync(args: {
   return {
     onTierScroll,
     setTierScrollPx,
+    syncWaveformScrollPx,
     tierScrollLayout,
     refreshTierScrollLayout,
     seekFromTierClientX,
