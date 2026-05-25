@@ -1,8 +1,9 @@
 import { useCallback, useEffect, useState } from "react";
 import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY, CONTROL_TEXT_INPUT } from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
+import { EnvLlmCapabilitiesSection } from "./EnvLlmCapabilitiesSection";
 import {
-  LLM_CAPABILITIES,
+  DEFAULT_LLM_API_KEY_ID,
   LLM_PROVIDER_DEFINITIONS,
   applyLlmProviderPreset,
   getLlmProviderDefinition,
@@ -12,7 +13,9 @@ import {
   readLlmRuntimeConfigFromStorage,
   setLlmApiKeyInMemory,
   type LlmProviderId,
+  type PostprocessRuntimeBridge,
 } from "../services/postprocess/postprocessRuntimeContract";
+import { llmDeleteApiKey, llmProbeConnection, llmSaveApiKey } from "../tauri/postprocessApi";
 
 const btnPrimary = CONTROL_BTN_PRIMARY;
 const btnSecondary = CONTROL_BTN_SECONDARY;
@@ -27,6 +30,10 @@ export function EnvLlmConfigPanel({ busy }: Props) {
   const [baseUrl, setBaseUrl] = useState("");
   const [model, setModel] = useState("");
   const [apiKey, setApiKey] = useState("");
+  const [savedApiKeyId, setSavedApiKeyId] = useState<string | null>(null);
+  const [saveBusy, setSaveBusy] = useState(false);
+  const [probeBusy, setProbeBusy] = useState(false);
+  const [probeState, setProbeState] = useState<"idle" | "ok" | "fail">("idle");
   const [msg, setMsg] = useState<string | null>(null);
 
   useEffect(() => {
@@ -34,34 +41,100 @@ export function EnvLlmConfigPanel({ busy }: Props) {
     setProviderId(c.providerId);
     setBaseUrl(c.baseUrl);
     setModel(c.model);
+    setSavedApiKeyId(c.apiKeyId ?? null);
   }, []);
-
   const def = getLlmProviderDefinition(providerId);
+  const formBusy = busy || saveBusy || probeBusy;
   const ready = isLlmRuntimeReady();
-
   const onProviderChange = useCallback((next: LlmProviderId) => {
     setProviderId(next);
     const preset = applyLlmProviderPreset(next);
     setBaseUrl(preset.baseUrl);
     setModel(preset.model);
+    setProbeState("idle");
     setMsg(null);
   }, []);
-
-  const save = useCallback(() => {
+  const buildProbeRuntime = useCallback((): PostprocessRuntimeBridge => {
+    if (!def) throw new Error("未知的 LLM 厂商预设。");
+    const typedApiKey = apiKey.trim();
+    const runtime: PostprocessRuntimeBridge = {
+      provider: def.label,
+      base_url: baseUrl.trim() || def.defaultBaseUrl,
+      model: model.trim() || def.defaultModel,
+    };
+    if (typedApiKey) runtime.api_key = typedApiKey;
+    else if (savedApiKeyId) runtime.api_key_id = savedApiKeyId;
+    const allowInsecureHttp =
+      runtime.base_url.startsWith("http://127.0.0.1") || runtime.base_url.startsWith("http://localhost");
+    if (allowInsecureHttp) runtime.allow_insecure_http = true;
+    return runtime;
+  }, [apiKey, baseUrl, def, model, savedApiKeyId]);
+  const save = useCallback(async () => {
     setMsg(null);
+    setProbeState("idle");
+    setSaveBusy(true);
     try {
-      persistLlmRuntimeConfig({ providerId, baseUrl, model });
-      setLlmApiKeyInMemory(apiKey.trim() || null);
-      setMsg(
-        isLlmRuntimeReady()
-          ? "已保存。API Key 仅保留在当前应用会话内存；关闭应用后需重新填写。"
-          : "已保存连接信息。请填写 API Key 后再次点击保存。",
-      );
+      const typedApiKey = apiKey.trim();
+      let nextApiKeyId = savedApiKeyId ?? undefined;
+      if (typedApiKey) {
+        nextApiKeyId = await llmSaveApiKey({
+          api_key_id: nextApiKeyId ?? DEFAULT_LLM_API_KEY_ID,
+          api_key: typedApiKey,
+        });
+      }
+      persistLlmRuntimeConfig({ providerId, baseUrl, model, apiKeyId: nextApiKeyId });
+      setSavedApiKeyId(nextApiKeyId ?? null);
+      setLlmApiKeyInMemory(null);
+      if (typedApiKey) {
+        setApiKey("");
+        setMsg("已保存。API Key 已写入系统钥匙串；当前页面不再保留明文。");
+      } else if (nextApiKeyId) {
+        setMsg("已保存连接信息，将继续使用系统钥匙串中的 API Key。");
+      } else {
+        setMsg("已保存连接信息。请填写 API Key 并保存到系统钥匙串。");
+      }
     } catch (e) {
       setMsg(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSaveBusy(false);
     }
-  }, [apiKey, baseUrl, model, providerId]);
-
+  }, [apiKey, baseUrl, model, providerId, savedApiKeyId]);
+  const clearSavedApiKey = useCallback(async () => {
+    if (!savedApiKeyId) return;
+    setMsg(null);
+    setProbeState("idle");
+    setSaveBusy(true);
+    try {
+      await llmDeleteApiKey({ api_key_id: savedApiKeyId });
+      persistLlmRuntimeConfig({ providerId, baseUrl, model });
+      setSavedApiKeyId(null);
+      setApiKey("");
+      setLlmApiKeyInMemory(null);
+      setMsg("已清除系统钥匙串中的 API Key。");
+    } catch (e) {
+      setMsg(e instanceof Error ? e.message : String(e));
+    } finally {
+      setSaveBusy(false);
+    }
+  }, [baseUrl, model, providerId, savedApiKeyId]);
+  const probe = useCallback(async () => {
+    setMsg(null);
+    setProbeBusy(true);
+    try {
+      const runtime = buildProbeRuntime();
+      if (!runtime.api_key && !runtime.api_key_id) {
+        throw new Error("请先填写 API Key，或使用已保存的系统钥匙串密钥。");
+      }
+      const out = await llmProbeConnection({ runtime });
+      setProbeState(out.ok ? "ok" : "fail");
+      setMsg(out.ok ? `连接成功（约 ${out.latency_ms ?? "?"} ms）。` : out.message);
+    } catch (e) {
+      setProbeState("fail");
+      setMsg(e instanceof Error ? e.message : String(e));
+    } finally {
+      setProbeBusy(false);
+    }
+  }, [buildProbeRuntime]);
   return (
     <div id="llm-config" className="flex max-w-2xl flex-col gap-6">
       <header className="space-y-2">
@@ -75,30 +148,7 @@ export function EnvLlmConfigPanel({ busy }: Props) {
           请求由应用壳（Tauri）直连厂商，语段正文仅在触发具体能力时发送；不会静默改写文稿。后续智能分段、文本规整等能力将共用本页连接信息。
         </p>
       </header>
-
-      <section className="space-y-2 rounded-lg bg-notion-sidebar/60 px-3 py-3">
-        <h4 className={PANEL_TYPOGRAPHY.sectionTitle}>已接入能力</h4>
-        <ul className="m-0 flex list-none flex-col gap-2 p-0">
-          {LLM_CAPABILITIES.map((cap) => (
-            <li
-              key={cap.id}
-              className="flex flex-col gap-0.5 rounded-md bg-white/80 px-3 py-2.5"
-            >
-              <div className="flex flex-wrap items-center gap-2">
-                <span className="text-[12px] font-medium text-notion-text">{cap.label}</span>
-                <span className="rounded bg-zen-saffron/15 px-1.5 py-0.5 text-[10px] font-semibold text-zen-saffron">
-                  可用
-                </span>
-              </div>
-              <p className={`m-0 ${PANEL_TYPOGRAPHY.meta}`}>{cap.description}</p>
-            </li>
-          ))}
-        </ul>
-        <p className={`m-0 ${PANEL_TYPOGRAPHY.helper}`}>
-          更多 LLM 能力将在此列出；连接与密钥保持一处配置，避免重复填写。
-        </p>
-      </section>
-
+      <EnvLlmCapabilitiesSection />
       <section className="space-y-4">
         <div>
           <h4 className={PANEL_TYPOGRAPHY.sectionTitle}>连接</h4>
@@ -107,7 +157,7 @@ export function EnvLlmConfigPanel({ busy }: Props) {
           </p>
         </div>
 
-        <fieldset className="space-y-2" disabled={busy}>
+        <fieldset className="space-y-2" disabled={formBusy}>
           <legend className={PANEL_TYPOGRAPHY.fieldLabel}>厂商预设</legend>
           <div className="flex flex-wrap gap-2">
             {LLM_PROVIDER_DEFINITIONS.map((p) => (
@@ -146,7 +196,7 @@ export function EnvLlmConfigPanel({ busy }: Props) {
           <input
             className={field}
             value={baseUrl}
-            disabled={busy}
+            disabled={formBusy}
             onChange={(e) => setBaseUrl(e.target.value)}
             placeholder={def?.defaultBaseUrl}
             aria-describedby="llm-base-url-hint"
@@ -162,7 +212,7 @@ export function EnvLlmConfigPanel({ busy }: Props) {
           <input
             className={field}
             value={model}
-            disabled={busy}
+            disabled={formBusy}
             onChange={(e) => setModel(e.target.value)}
             placeholder={def?.defaultModel}
             list="llm-model-suggestions"
@@ -181,37 +231,50 @@ export function EnvLlmConfigPanel({ busy }: Props) {
             type="password"
             autoComplete="off"
             value={apiKey}
-            disabled={busy}
+            disabled={formBusy}
             onChange={(e) => setApiKey(e.target.value)}
-            placeholder="在厂商控制台创建，仅当前会话有效"
+            placeholder={savedApiKeyId ? "留空则沿用已保存的系统钥匙串密钥" : "在厂商控制台创建并保存到系统钥匙串"}
           />
           <span className={PANEL_TYPOGRAPHY.meta}>
-            与在线 STT 密钥分开存放；不写入 localStorage 或项目文件。重启应用后需重新填写（后续版本可支持钥匙串）。
+            与在线 STT 密钥分开存放；不写入 localStorage 或项目文件。点击保存后将写入系统钥匙串，重启应用后仍可用。
           </span>
         </label>
 
+        <p className={PANEL_TYPOGRAPHY.meta}>
+          {savedApiKeyId
+            ? `系统钥匙串：已保存 API Key（标识：${savedApiKeyId}）。输入框留空时将继续使用它。`
+            : "系统钥匙串：当前未保存 API Key。"}
+        </p>
+
         <div className="flex flex-wrap gap-2">
-          <button type="button" className={btnPrimary} disabled={busy} onClick={save}>
+          <button type="button" className={btnPrimary} disabled={formBusy} onClick={() => void save()}>
             保存配置
+          </button>
+          <button type="button" className={btnSecondary} disabled={formBusy} onClick={() => void probe()}>
+            {probeBusy ? "探测中…" : "探测连接"}
           </button>
           <button
             type="button"
             className={btnSecondary}
-            disabled={busy}
+            disabled={formBusy}
             onClick={() => onProviderChange(providerId)}
           >
             恢复厂商默认
           </button>
+          <button type="button" className={btnSecondary} disabled={formBusy || !savedApiKeyId} onClick={() => void clearSavedApiKey()}>
+            清除已保存 Key
+          </button>
         </div>
 
         {msg ? <p className={PANEL_TYPOGRAPHY.meta}>{msg}</p> : null}
-        {ready ? (
+        {probeState !== "fail" && ready ? (
           <p className="text-[11px] text-zen-saffron">
             连接就绪：编辑器中的 LLM 能力（如自动标点）可使用当前配置。
           </p>
-        ) : (
+        ) : null}
+        {!ready ? (
           <p className="text-[11px] text-zen-cinnabar">{llmConfigHint()}</p>
-        )}
+        ) : null}
       </section>
     </div>
   );

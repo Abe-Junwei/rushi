@@ -5,13 +5,15 @@ use keyring::Entry;
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::env;
-use std::time::Instant;
+use std::time::{Duration, Instant};
 use tauri::State;
 use url::Url;
 
 const KEYRING_SERVICE: &str = "studio.lingchuang.rushi.postprocess";
 const DEFAULT_PROVIDER: &str = "openai-compatible";
 const DEFAULT_TIMEOUT_SECS: u64 = 30;
+const PROBE_TIMEOUT_SECS: u64 = 15;
+const DEFAULT_API_KEY_ID: &str = "default";
 
 /// 桌面 UI 传入的运行时配置（DeepSeek / Kimi 等）；优先于进程环境变量。
 #[derive(Debug, Deserialize)]
@@ -19,7 +21,10 @@ pub struct PostprocessRuntimeBridge {
     pub provider: String,
     pub base_url: String,
     pub model: String,
+    #[serde(default)]
     pub api_key: String,
+    #[serde(default)]
+    pub api_key_id: Option<String>,
     #[serde(default)]
     pub allow_insecure_http: bool,
 }
@@ -42,12 +47,94 @@ pub struct PostprocessAutoPunctuateRawResponse {
     pub latency_ms: u64,
 }
 
+#[derive(Debug, Deserialize)]
+pub struct LlmSaveApiKeyRequest {
+    #[serde(default)]
+    pub api_key_id: Option<String>,
+    pub api_key: String,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LlmDeleteApiKeyRequest {
+    #[serde(default)]
+    pub api_key_id: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+pub struct LlmProbeConnectionRequest {
+    pub runtime: PostprocessRuntimeBridge,
+}
+
+#[derive(Debug, Serialize)]
+pub struct LlmProbeConnectionResponse {
+    pub ok: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub status: Option<u16>,
+    pub message: String,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub latency_ms: Option<u64>,
+}
+
 #[derive(Debug)]
 struct PostprocessConfig {
     provider: String,
     endpoint: Url,
     model: String,
     api_key: String,
+}
+
+#[tauri::command]
+pub fn llm_save_api_key(req: LlmSaveApiKeyRequest) -> Result<String, String> {
+    let api_key = req.api_key.trim();
+    if api_key.is_empty() {
+        return Err("API Key 为空，无法写入系统钥匙串。".to_string());
+    }
+    let api_key_id = normalize_api_key_id(req.api_key_id.as_deref());
+    let entry = Entry::new(KEYRING_SERVICE, &api_key_id)
+        .map_err(|_| "无法创建 LLM 钥匙串条目，请检查系统钥匙串权限。".to_string())?;
+    entry
+        .set_password(api_key)
+        .map_err(|_| "写入 LLM API Key 失败，请检查系统钥匙串权限。".to_string())?;
+    Ok(api_key_id)
+}
+
+#[tauri::command]
+pub fn llm_delete_api_key(req: LlmDeleteApiKeyRequest) -> Result<(), String> {
+    let api_key_id = normalize_api_key_id(req.api_key_id.as_deref());
+    let entry = Entry::new(KEYRING_SERVICE, &api_key_id)
+        .map_err(|_| "无法定位 LLM 钥匙串条目，请检查系统钥匙串权限。".to_string())?;
+    match entry.delete_credential() {
+        Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
+        Err(_) => Err("删除 LLM API Key 失败，请检查系统钥匙串权限。".to_string()),
+    }
+}
+
+#[tauri::command]
+pub async fn llm_probe_connection(
+    state: State<'_, DbState>,
+    req: LlmProbeConnectionRequest,
+) -> Result<LlmProbeConnectionResponse, String> {
+    let config = resolve_runtime_postprocess_config(&req.runtime)?;
+    let endpoint = build_postprocess_models_endpoint(&config.endpoint);
+    append_desktop_log_line(
+        &state,
+        &format!("INFO llm_probe provider={} endpoint={}", config.provider, endpoint),
+    );
+    let out = probe_llm_connection(&config, Duration::from_secs(PROBE_TIMEOUT_SECS)).await;
+    let level = if out.ok { "INFO" } else { "WARN" };
+    let status = out.status.map(|x| x.to_string()).unwrap_or_else(|| "-".to_string());
+    let latency_ms = out
+        .latency_ms
+        .map(|x| x.to_string())
+        .unwrap_or_else(|| "-".to_string());
+    append_desktop_log_line(
+        &state,
+        &format!(
+            "{level} llm_probe_done provider={} status={} latency_ms={} message={}",
+            config.provider, status, latency_ms, out.message
+        ),
+    );
+    Ok(out)
 }
 
 #[tauri::command]
@@ -146,32 +233,38 @@ pub async fn postprocess_auto_punctuate(
 
 fn resolve_postprocess_config(req: &PostprocessAutoPunctuateRequest) -> Result<PostprocessConfig, String> {
     if let Some(rt) = req.runtime.as_ref() {
-        let base_url = rt.base_url.trim();
-        let model = rt.model.trim();
-        let api_key = rt.api_key.trim();
-        if base_url.is_empty() {
-            return Err("未配置自动标点服务地址。".to_string());
-        }
-        if model.is_empty() {
-            return Err("未配置自动标点模型。".to_string());
-        }
-        if api_key.is_empty() {
-            return Err("未配置自动标点 API Key。".to_string());
-        }
-        let endpoint = parse_postprocess_endpoint(base_url, rt.allow_insecure_http)?;
-        let provider = if rt.provider.trim().is_empty() {
-            DEFAULT_PROVIDER.to_string()
-        } else {
-            rt.provider.trim().to_string()
-        };
-        return Ok(PostprocessConfig {
-            provider,
-            endpoint,
-            model: model.to_string(),
-            api_key: api_key.to_string(),
-        });
+        return resolve_runtime_postprocess_config(rt);
     }
     load_postprocess_config_from_env()
+}
+
+fn resolve_runtime_postprocess_config(rt: &PostprocessRuntimeBridge) -> Result<PostprocessConfig, String> {
+    let base_url = rt.base_url.trim();
+    let model = rt.model.trim();
+    let api_key = rt.api_key.trim();
+    if base_url.is_empty() {
+        return Err("未配置自动标点服务地址。".to_string());
+    }
+    if model.is_empty() {
+        return Err("未配置自动标点模型。".to_string());
+    }
+    let endpoint = parse_postprocess_endpoint(base_url, rt.allow_insecure_http)?;
+    let provider = if rt.provider.trim().is_empty() {
+        DEFAULT_PROVIDER.to_string()
+    } else {
+        rt.provider.trim().to_string()
+    };
+    let api_key = if !api_key.is_empty() {
+        api_key.to_string()
+    } else {
+        load_postprocess_api_key(rt.api_key_id.as_deref())?
+    };
+    Ok(PostprocessConfig {
+        provider,
+        endpoint,
+        model: model.to_string(),
+        api_key,
+    })
 }
 
 fn load_postprocess_config_from_env() -> Result<PostprocessConfig, String> {
@@ -200,7 +293,7 @@ fn load_postprocess_config_from_env() -> Result<PostprocessConfig, String> {
 
 fn parse_postprocess_endpoint(raw: &str, allow_insecure_http: bool) -> Result<Url, String> {
     let mut url =
-        Url::parse(raw.trim()).map_err(|_| "自动标点服务地址无效，请检查 RUSHI_POSTPROCESS_BASE_URL。".to_string())?;
+        Url::parse(raw.trim()).map_err(|_| "自动标点服务地址无效，请检查 API 基址。".to_string())?;
     match url.scheme() {
         "https" => {}
         "http" if allow_insecure_http && is_loopback_host(url.host_str()) => {}
@@ -216,20 +309,51 @@ fn parse_postprocess_endpoint(raw: &str, allow_insecure_http: bool) -> Result<Ur
     Ok(url)
 }
 
+fn build_postprocess_models_endpoint(chat_endpoint: &Url) -> Url {
+    let mut url = chat_endpoint.clone();
+    let path = url.path().trim_end_matches('/');
+    let next = if path.is_empty() || path == "/" {
+        "/v1/models".to_string()
+    } else if let Some(prefix) = path.strip_suffix("/chat/completions") {
+        let prefix = prefix.trim_end_matches('/');
+        if prefix.is_empty() {
+            "/v1/models".to_string()
+        } else {
+            format!("{prefix}/models")
+        }
+    } else if path.ends_with("/models") {
+        path.to_string()
+    } else {
+        format!("{path}/models")
+    };
+    url.set_path(&next);
+    url
+}
+
 fn is_loopback_host(host: Option<&str>) -> bool {
     matches!(host, Some("127.0.0.1" | "localhost" | "::1"))
+}
+
+fn normalize_api_key_id(raw: Option<&str>) -> String {
+    raw.map(str::trim)
+        .filter(|x| !x.is_empty())
+        .unwrap_or(DEFAULT_API_KEY_ID)
+        .to_string()
 }
 
 fn load_postprocess_api_key(api_key_id: Option<&str>) -> Result<String, String> {
     if let Some(id) = api_key_id {
         let entry = Entry::new(KEYRING_SERVICE, id)
             .map_err(|_| "自动标点密钥配置无效：无法读取 keychain 条目。".to_string())?;
-        let key = entry
-            .get_password()
-            .map_err(|_| "未找到自动标点 API Key：请先把密钥写入 keychain。".to_string())?;
-        let trimmed = key.trim();
-        if !trimmed.is_empty() {
-            return Ok(trimmed.to_string());
+        match entry.get_password() {
+            Ok(key) => {
+                let trimmed = key.trim();
+                if !trimmed.is_empty() {
+                    return Ok(trimmed.to_string());
+                }
+            }
+            Err(keyring::Error::NoEntry) => {}
+            Err(_) => return Err("自动标点密钥配置无效：无法读取 keychain 条目。".to_string()),
         }
     }
 
@@ -240,6 +364,57 @@ fn load_postprocess_api_key(api_key_id: Option<&str>) -> Result<String, String> 
     fallback.ok_or_else(|| {
         "未配置自动标点 API Key：请设置 RUSHI_POSTPROCESS_API_KEY_ID（keychain）或开发环境变量 RUSHI_POSTPROCESS_API_KEY。".to_string()
     })
+}
+
+async fn probe_llm_connection(config: &PostprocessConfig, timeout: Duration) -> LlmProbeConnectionResponse {
+    let endpoint = build_postprocess_models_endpoint(&config.endpoint);
+    let t0 = Instant::now();
+    match http_client()
+        .get(endpoint)
+        .bearer_auth(&config.api_key)
+        .timeout(timeout)
+        .send()
+        .await
+    {
+        Ok(resp) => {
+            let status = resp.status().as_u16();
+            let latency_ms = Some(t0.elapsed().as_millis() as u64);
+            if resp.status().is_success() {
+                LlmProbeConnectionResponse {
+                    ok: true,
+                    status: Some(status),
+                    message: "连接成功。".to_string(),
+                    latency_ms,
+                }
+            } else if matches!(status, 401 | 403) {
+                LlmProbeConnectionResponse {
+                    ok: false,
+                    status: Some(status),
+                    message: format!("认证失败（HTTP {status}），请检查 API Key。"),
+                    latency_ms,
+                }
+            } else {
+                LlmProbeConnectionResponse {
+                    ok: false,
+                    status: Some(status),
+                    message: format!("连接失败（HTTP {status}），请检查服务地址或稍后重试。"),
+                    latency_ms,
+                }
+            }
+        }
+        Err(e) if e.is_timeout() => LlmProbeConnectionResponse {
+            ok: false,
+            status: None,
+            message: "连接超时，请检查网络或稍后重试。".to_string(),
+            latency_ms: Some(t0.elapsed().as_millis() as u64),
+        },
+        Err(_) => LlmProbeConnectionResponse {
+            ok: false,
+            status: None,
+            message: "连接失败，请检查网络、服务地址或 API Key。".to_string(),
+            latency_ms: Some(t0.elapsed().as_millis() as u64),
+        },
+    }
 }
 
 fn build_auto_punctuate_prompt(text: &str, neighbors: &[String]) -> String {
@@ -291,74 +466,5 @@ fn extract_chat_completion_text(v: &serde_json::Value) -> Result<String, String>
 }
 
 #[cfg(test)]
-mod tests {
-    use super::{
-        build_auto_punctuate_prompt, extract_chat_completion_text, parse_postprocess_endpoint,
-        resolve_postprocess_config, PostprocessAutoPunctuateRequest, PostprocessRuntimeBridge,
-    };
-    use serde_json::json;
-
-    #[test]
-    fn parse_endpoint_appends_chat_path() {
-        let url = parse_postprocess_endpoint("https://api.openai.com/v1", false).unwrap();
-        assert_eq!(url.as_str(), "https://api.openai.com/v1/chat/completions");
-    }
-
-    #[test]
-    fn parse_endpoint_rejects_non_https() {
-        let err = parse_postprocess_endpoint("http://example.com/v1", false).unwrap_err();
-        assert!(err.contains("HTTPS"));
-    }
-
-    #[test]
-    fn extract_text_from_string_content() {
-        let payload = json!({
-            "choices": [{ "message": { "content": "你好，世界。" } }]
-        });
-        let text = extract_chat_completion_text(&payload).unwrap();
-        assert_eq!(text, "你好，世界。");
-    }
-
-    #[test]
-    fn extract_text_from_array_content() {
-        let payload = json!({
-            "choices": [{
-                "message": {
-                    "content": [
-                        { "type": "text", "text": "你好" },
-                        { "type": "text", "text": "，世界。" }
-                    ]
-                }
-            }]
-        });
-        let text = extract_chat_completion_text(&payload).unwrap();
-        assert_eq!(text, "你好，世界。");
-    }
-
-    #[test]
-    fn prompt_includes_neighbors() {
-        let prompt = build_auto_punctuate_prompt("今天天气不错我们出发吧", &["上一句".into(), "下一句".into()]);
-        assert!(prompt.contains("片段1：上一句"));
-        assert!(prompt.contains("当前语段："));
-    }
-
-    #[test]
-    fn runtime_bridge_resolves_deepseek_endpoint() {
-        let req = PostprocessAutoPunctuateRequest {
-            task: "auto_punctuate".into(),
-            segment_uid: "u1".into(),
-            text: "你好".into(),
-            neighbor_snippets: vec![],
-            runtime: Some(PostprocessRuntimeBridge {
-                provider: "DeepSeek".into(),
-                base_url: "https://api.deepseek.com/v1".into(),
-                model: "deepseek-chat".into(),
-                api_key: "sk-x".into(),
-                allow_insecure_http: false,
-            }),
-        };
-        let cfg = resolve_postprocess_config(&req).unwrap();
-        assert_eq!(cfg.endpoint.as_str(), "https://api.deepseek.com/v1/chat/completions");
-        assert_eq!(cfg.model, "deepseek-chat");
-    }
-}
+#[path = "postprocess_cmd_tests.rs"]
+mod tests;

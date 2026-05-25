@@ -24,6 +24,26 @@ export interface PostprocessAutoPunctuateResponse {
   latency_ms: number;
 }
 
+type LlmApiKeyRequest = {
+  api_key_id?: string;
+  api_key: string;
+};
+
+type LlmDeleteApiKeyRequest = {
+  api_key_id?: string;
+};
+
+export type LlmProbeConnectionRequest = {
+  runtime: PostprocessRuntimeBridge;
+};
+
+export type LlmProbeConnectionResponse = {
+  ok: boolean;
+  status?: number;
+  message: string;
+  latency_ms?: number;
+};
+
 export async function postprocessAutoPunctuate(
   req: PostprocessAutoPunctuateRequest,
 ): Promise<PostprocessAutoPunctuateResponse> {
@@ -35,4 +55,18 @@ export async function postprocessAutoPunctuate(
     ...out,
     diff: computeSingleTextDiff(req.text, out.text),
   };
+}
+
+export async function llmSaveApiKey(req: LlmApiKeyRequest): Promise<string> {
+  return await invoke<string>("llm_save_api_key", { req });
+}
+
+export async function llmDeleteApiKey(req: LlmDeleteApiKeyRequest): Promise<void> {
+  await invoke("llm_delete_api_key", { req });
+}
+
+export async function llmProbeConnection(
+  req: LlmProbeConnectionRequest,
+): Promise<LlmProbeConnectionResponse> {
+  return await invoke<LlmProbeConnectionResponse>("llm_probe_connection", { req });
 }

@@ -5,6 +5,7 @@ export const LLM_STORAGE_KEYS = {
   providerId: "rushi.llm.providerId",
   baseUrl: "rushi.llm.baseUrl",
   model: "rushi.llm.model",
+  apiKeyId: "rushi.llm.apiKeyId",
 } as const;
 
 /** @deprecated 仅用于从旧版「自动标点」页迁移 */
@@ -66,6 +67,7 @@ export type LlmRuntimeConfig = {
   providerId: LlmProviderId;
   baseUrl: string;
   model: string;
+  apiKeyId?: string;
 };
 
 /** 发往 Tauri 后处理命令的运行时桥（字段名与 Rust 一致）。 */
@@ -73,11 +75,13 @@ export type PostprocessRuntimeBridge = {
   provider: string;
   base_url: string;
   model: string;
-  api_key: string;
+  api_key?: string;
+  api_key_id?: string;
   allow_insecure_http?: boolean;
 };
 
 const inMemoryLlmSecrets: { apiKey?: string } = {};
+export const DEFAULT_LLM_API_KEY_ID = "default";
 
 function migrateLegacyLlmStorageKeys(): void {
   const hasNew = readStorage(LLM_STORAGE_KEYS.providerId);
@@ -102,7 +106,8 @@ export function readLlmRuntimeConfigFromStorage(): LlmRuntimeConfig {
   const def = getLlmProviderDefinition(providerId)!;
   const baseUrl = (readStorage(LLM_STORAGE_KEYS.baseUrl) ?? def.defaultBaseUrl).trim();
   const model = (readStorage(LLM_STORAGE_KEYS.model) ?? def.defaultModel).trim();
-  return { providerId, baseUrl, model };
+  const apiKeyId = (readStorage(LLM_STORAGE_KEYS.apiKeyId) ?? "").trim() || undefined;
+  return { providerId, baseUrl, model, apiKeyId };
 }
 
 export function persistLlmRuntimeConfig(config: LlmRuntimeConfig): void {
@@ -120,6 +125,11 @@ export function persistLlmRuntimeConfig(config: LlmRuntimeConfig): void {
   writeStorage(LLM_STORAGE_KEYS.providerId, config.providerId);
   writeStorage(LLM_STORAGE_KEYS.baseUrl, baseUrl);
   writeStorage(LLM_STORAGE_KEYS.model, model);
+  if (config.apiKeyId?.trim()) {
+    writeStorage(LLM_STORAGE_KEYS.apiKeyId, config.apiKeyId.trim());
+  } else {
+    localStorage.removeItem(LLM_STORAGE_KEYS.apiKeyId);
+  }
 }
 
 export function applyLlmProviderPreset(providerId: LlmProviderId): LlmRuntimeConfig {
@@ -140,28 +150,31 @@ export function getLlmApiKeyFromMemory(): string | undefined {
 export function isLlmRuntimeReady(): boolean {
   const cfg = readLlmRuntimeConfigFromStorage();
   if (!cfg.baseUrl || !cfg.model) return false;
-  return Boolean(getLlmApiKeyFromMemory()?.trim());
+  return Boolean(getLlmApiKeyFromMemory()?.trim() || cfg.apiKeyId?.trim());
 }
 
 export function tryBuildPostprocessRuntimeBridge(): PostprocessRuntimeBridge | null {
   const cfg = readLlmRuntimeConfigFromStorage();
   const def = getLlmProviderDefinition(cfg.providerId);
   const apiKey = getLlmApiKeyFromMemory()?.trim();
-  if (!def || !apiKey) return null;
+  const apiKeyId = cfg.apiKeyId?.trim();
+  if (!def || (!apiKey && !apiKeyId)) return null;
   const base = cfg.baseUrl.trim() || def.defaultBaseUrl;
   const allow_insecure_http =
     base.startsWith("http://127.0.0.1") || base.startsWith("http://localhost");
-  return {
+  const runtime: PostprocessRuntimeBridge = {
     provider: def.label,
     base_url: base,
     model: cfg.model.trim() || def.defaultModel,
-    api_key: apiKey,
     allow_insecure_http: allow_insecure_http || undefined,
   };
+  if (apiKey) runtime.api_key = apiKey;
+  else if (apiKeyId) runtime.api_key_id = apiKeyId;
+  return runtime;
 }
 
 export function llmConfigHint(): string {
-  return "请打开「设置 → LLM 配置」，选择厂商并保存 API Key。";
+  return "请打开「设置 → LLM 配置」，选择厂商并保存 API Key 到系统钥匙串。";
 }
 
 // --- 兼容旧命名（内部调用逐步迁移） ---

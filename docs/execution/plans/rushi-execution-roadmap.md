@@ -117,7 +117,7 @@ R9     发版集成验收（REL-1）
 | 阶段 ID | 状态 | 完成日 |
 |---------|------|--------|
 | R0 | ✅ 已完成 | 2026-05-25 |
-| GLY-1 | ✅ 已实现（待手测） | 2026-05-25 |
+| GLY-1 | ✅ 已完成（手测通过） | 2026-05-25 |
 | R1 | ✅ 已完成（文档门禁） | 2026-05-25 |
 | R2 | ✅ 已完成（DeepSeek 手测通过） | 2026-05-25 |
 | R3 | ⏳ | — |
@@ -186,8 +186,8 @@ React 预览 UI
 | Tauri | ✅ | `glossary_list` / `glossary_add` / `glossary_delete`（`glossary_cmd.rs`） |
 | 转写注入 | ✅ | `glossary_hotwords_joined` → `run_transcribe_cmd` |
 | 在线 STT 文案 | ✅ | `EnvOnlineSttPanel` 说明热词来源 |
-| React controller | ✅ 未挂载 | `useGlossaryController.ts`（**零引用**） |
-| 用户入口 | ⚠️ 占位 | `WelcomeSidebar`「术语管理页面即将上线」 |
+| React controller | ✅ | `useGlossaryController.ts` → `GlossaryPage` |
+| 用户入口 | ✅ | 欢迎页侧栏「术语管理」独立页 |
 
 **目标**：用户可在桌面端维护全局术语表，无需改 DB；保存后下次转写自动带上 `hotwords`。
 
@@ -202,10 +202,10 @@ React 预览 UI
 
 **验收**：
 
-- [ ] UI 可增删查，与 `glossaryApi` 行为一致
-- [ ] 空术语、重复术语有中文错误提示
-- [ ] 手测 1 条：新增术语 → 执行转写 → 侧车/日志或 UI 提示体现热词策略
-- [ ] 硬闸门全绿
+- [x] UI 可增删查，与 `glossaryApi` 行为一致
+- [x] 空术语、重复术语有中文错误提示
+- [x] 手测：新增术语 → 转写 → 热词/warning 策略可观测（2026-05-25，用户确认）
+- [x] 硬闸门全绿（与 R2 同期提交前已验证）
 
 **与 R4 关系**：R4 质量插槽可复用 `term_hit_rate` 与术语表；**不合并实施**，仅数据同源。
 
@@ -386,10 +386,19 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 
 | 项 | 内容 |
 |----|------|
-| **阶段** | **R2 收口 → R3（EXP-1 模型与配置体验）** |
-| **本周** | 1）整理提交 R2 + LLM 配置工作区改动；2）可选 Kimi 抽测；3）GLY-1 术语页手测 |
-| **R3 主题** | 首次引导、缓存/manifest 展示、`profile.rs`；LLM 页可补 keychain 持久化与连通性探测 |
-| **不要** | 批量标点、本地 LLM、协作提前插队（除非产品改排期） |
+| **阶段** | **R3 — EXP-1（先规划后实施）** |
+| **规划真源** | [`r3-provider-configuration-research.md`](../specs/r3-provider-configuration-research.md)（Provider 业内共识 + Rushi 分层建议） |
+| **建议实施顺序** | R3a LLM keychain+probe → R3b profile 导入导出 → R3c 本机引导/缓存/manifest → R3d 设置 IA |
+| **不要** | 内置 LiteLLM/网关、合并 STT/LLM 协议、批量标点、协作提前插队 |
+
+### R3 规划门禁
+
+- [x] Provider 调研文档（见上）  
+- [x] **不引入捆绑网关**；**STT/LLM 分通道**（用户 2026-05-25 确认）  
+- [x] 薄片顺序：**R3a → R3b → R3c → R3d**（用户确认）  
+- [x] R3a acceptance：[`r3a-llm-keychain-probe-acceptance.md`](../specs/r3a-llm-keychain-probe-acceptance.md)（R3b–d 实施前再补对应 acceptance）
+
+**下一刀**：R3b `profile` 导入导出（无 secret）
 
 ---
 
@@ -420,6 +429,11 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | 2026-05-25 | 补 **GLY-1 术语库管理 UI**（P2 后端已有、UI 未接线；初版路线图遗漏） |
 | 2026-05-25 | 完成 R1：补 `auto-punctuate` 三件套与 `postprocess-remote-boundary.md`；下一步切到 R2 |
 | 2026-05-25 | R2 实施 + **LLM 配置**页（DeepSeek/Kimi）；**DeepSeek 自动标点手测通过**（用户确认） |
+| 2026-05-25 | **GLY-1 术语库管理 UI 手测通过**（用户确认）；§10 入口切至 R3 |
+| 2026-05-25 | R3 规划门禁：新增 `r3-provider-configuration-research.md`（LLM/STT Provider 业内调研） |
+| 2026-05-25 | R3 门禁关闭：不引入网关 + 分通道 + R3a→d 顺序；补 `r3a-llm-keychain-probe-acceptance.md` |
+| 2026-05-25 | R3a 编码完成：LLM keychain + probe；自动化验证全绿，待手测签收 |
+| 2026-05-25 | R3a 手测通过：A keychain 持久化、B probe 成功、C probe 失败路径（经 UI 状态修复后）通过；下一刀切 R3b |
 
 ---
 
@@ -450,7 +464,7 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | **基线 / UI** | `EditorView` 189 行；`editor/*` 8 文件；`ProjectPanel` 187 行 | ✅ 与文档一致 |
 | **R0** | 工作区 ~69 文件改动未提交；lifecycle 超标 | ⚠️ **应先做** |
 | **R1–R2** | 无 Rust `postprocess_cmd`；无标点 preview UI | ❌ 未开始，排期有效 |
-| **GLY-1** | 后端 + `useGlossaryController` 已有；无 UI 挂载 | 🟡 **后端完成、UI 欠账**（P2 验收未覆盖界面） |
+| **GLY-1** | `GlossaryPage` + 欢迎页入口；手测通过 | ✅ 与 P2 后端 + 热词链路一致 |
 | **R3** | `usePrepareModelController`（~166 行）、`EnvLocalAsrPanel` 下载条、`EnvOnlineSttPanel`（129 行）、`EnvironmentPanel` | 🟡 **约 60% UI 已有**；缺首次引导、缓存管理 UI、manifest 校验展示、`profile.rs` |
 | **R4** | `correction_memory` 表 + 保存时更新；`eval_metrics.py` + `eval-run.py`；无质量 Tab | 🟡 数据层有，桌面无入口 |
 | **R5** | 无 `services/mcp` | ❌ 未开始 |

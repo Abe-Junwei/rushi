@@ -1,10 +1,12 @@
 import { beforeEach, describe, expect, it } from "vitest";
 import {
+  DEFAULT_LLM_API_KEY_ID,
   LLM_STORAGE_KEYS,
   applyLlmProviderPreset,
   persistLlmRuntimeConfig,
   readLlmRuntimeConfigFromStorage,
   setLlmApiKeyInMemory,
+  isLlmRuntimeReady,
   tryBuildPostprocessRuntimeBridge,
 } from "./postprocessRuntimeContract";
 
@@ -53,6 +55,19 @@ describe("postprocessRuntimeContract", () => {
   it("returns null bridge without api key", () => {
     persistLlmRuntimeConfig(applyLlmProviderPreset("deepseek"));
     expect(tryBuildPostprocessRuntimeBridge()).toBeNull();
+  });
+
+  it("persists api key id for keychain-backed runtime", () => {
+    persistLlmRuntimeConfig({ ...applyLlmProviderPreset("deepseek"), apiKeyId: DEFAULT_LLM_API_KEY_ID });
+    expect(localStorage.getItem(LLM_STORAGE_KEYS.apiKeyId)).toBe(DEFAULT_LLM_API_KEY_ID);
+    expect(isLlmRuntimeReady()).toBe(true);
+    expect(tryBuildPostprocessRuntimeBridge()).toEqual({
+      provider: "DeepSeek",
+      base_url: "https://api.deepseek.com/v1",
+      model: "deepseek-chat",
+      api_key_id: DEFAULT_LLM_API_KEY_ID,
+      allow_insecure_http: undefined,
+    });
   });
 
   it("migrates legacy postprocess storage keys", () => {
