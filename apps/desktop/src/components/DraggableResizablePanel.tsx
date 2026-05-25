@@ -237,7 +237,7 @@ export function DraggableResizablePanel({
           "flex h-full w-full flex-col overflow-hidden border shadow-xl",
           variant === "notion"
             ? "rounded-lg border-notion-divider bg-notion-bg shadow-2xl"
-            : "rounded-2xl border-zen-gray-300 bg-zen-paper",
+            : "rounded-2xl border-notion-divider bg-notion-bg",
         ].join(" ")}
       >
         {/* Title bar (draggable) */}
@@ -246,7 +246,7 @@ export function DraggableResizablePanel({
             "flex shrink-0 cursor-move items-center justify-between border-b select-none",
             variant === "notion"
               ? "border-notion-divider bg-notion-sidebar px-6 py-4"
-              : "border-zen-gray-300 bg-serene-surface-container-low px-5 py-3",
+              : "border-notion-divider bg-notion-sidebar px-5 py-3",
           ].join(" ")}
           onPointerDown={(e) => startDrag("move", e)}
         >
@@ -255,7 +255,7 @@ export function DraggableResizablePanel({
               "m-0 select-none",
               variant === "notion"
                 ? PANEL_TYPOGRAPHY.dialogTitle
-                : "font-serif text-lg font-medium text-zen-ink",
+                : "font-serif text-lg font-medium text-notion-text",
             ].join(" ")}
           >
             {title}
@@ -266,7 +266,7 @@ export function DraggableResizablePanel({
               "border-0 bg-transparent p-1 transition-colors",
               variant === "notion"
                 ? "rounded text-notion-text-muted hover:bg-notion-sidebar-hover hover:text-notion-text"
-                : "rounded-lg text-zen-stone hover:text-zen-ink",
+                : "rounded-lg text-notion-text-muted hover:text-notion-text",
             ].join(" ")}
             onClick={onClose}
             aria-label="关闭面板"

@@ -163,10 +163,10 @@ interface PostprocessAutoPunctuateResponse {
 
 **实施门禁（先于编码）**：
 
-- [ ] `docs/execution/specs/auto-punctuate-intent.md`
-- [ ] `docs/execution/specs/auto-punctuate-plan.md`
-- [ ] `docs/execution/specs/auto-punctuate-acceptance.md`
-- [ ] `docs/architecture/` 或 ADR 短文：后处理**不进** ASR 侧车
+- [x] `docs/execution/specs/auto-punctuate-intent.md`
+- [x] `docs/execution/specs/auto-punctuate-plan.md`
+- [x] `docs/execution/specs/auto-punctuate-acceptance.md`
+- [x] `docs/architecture/postprocess-remote-boundary.md`
 
 **验证标准**：
 
@@ -392,7 +392,8 @@ Dry-run + confirm 值得借鉴。Rushi `edit_log` 仅为批次级（如 `save_se
 |------|------|------|
 | `rushi-execution-roadmap.md` | **排期真源**（单机 + 协作 + 验收） | 2026-05-25 起 |
 | `oumi-remediation-report.md` | **本文档**：Oumi 边界 + 接口草案 + Part II 愿景 | Part I 已评审 |
-| `auto-punctuate-{intent,plan,acceptance}.md` | P0 实施三件套 | **待编写**（P0 门禁） |
+| `auto-punctuate-{intent,plan,acceptance}.md` | P0 实施三件套 | ✅ 2026-05-25 已补齐 |
+| `postprocess-remote-boundary.md` | 后处理不进 ASR sidecar 的架构短文 | ✅ 2026-05-25 已补齐 |
 | `architecture-split-plan.md` | Rust/UI 拆分规划 | ⚠️ 行数表待与 §1.3 同步 |
 | `file-container-refactor.md` | 文件容器验收 | 功能面 R2/R8 已关闭；索引性描述以 reviews 为准 |
 | `docs/execution/reviews/README.md` | 批次审查与链路模拟 | 2026-05-25 已同步草稿/uid/波形 |

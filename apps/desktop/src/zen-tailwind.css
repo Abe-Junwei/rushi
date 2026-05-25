@@ -5,10 +5,10 @@
 .confirm-project-input:-webkit-autofill,
 .confirm-project-input:-webkit-autofill:hover,
 .confirm-project-input:-webkit-autofill:focus {
-  -webkit-text-fill-color: var(--near-black);
-  border: 1px solid var(--brand-input-border);
+  -webkit-text-fill-color: var(--notion-text);
+  border: 1px solid var(--notion-border);
   background-image: none !important;
-  box-shadow: 0 0 0 1000px var(--zen-paper) inset !important;
-  -webkit-box-shadow: 0 0 0 1000px var(--zen-paper) inset !important;
+  box-shadow: 0 0 0 1000px var(--notion-bg) inset !important;
+  -webkit-box-shadow: 0 0 0 1000px var(--notion-bg) inset !important;
   transition: background-color 9999s ease-out;
 }

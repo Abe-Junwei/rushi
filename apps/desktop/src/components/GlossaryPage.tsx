@@ -79,7 +79,7 @@ export function GlossaryPage({ busy }: GlossaryPageProps) {
             />
             <button
               type="button"
-              className="inline-flex min-h-[44px] items-center justify-center rounded-lg border-0 bg-zen-saffron px-5 text-sm font-semibold text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+              className="inline-flex min-h-[44px] items-center justify-center rounded-lg border-0 bg-zen-saffron px-5 text-sm font-semibold text-notion-bg transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
               disabled={disabled || !g.newTerm.trim()}
               onClick={handleAdd}
             >

@@ -173,7 +173,7 @@ export function EditorSegmentToolbar({
           <div
             role="dialog"
             aria-label="字体调整面板"
-            className="absolute right-0 top-10 z-50 w-[18.5rem] rounded-xl border border-notion-divider bg-notion-bg p-2.5 shadow-[0_8px_18px_rgba(44,44,44,0.1)]"
+            className="absolute right-0 top-10 z-50 w-[18.5rem] rounded-xl border border-notion-divider bg-notion-bg p-2.5 shadow-lg"
           >
             <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-notion-text-muted">
               文本排版

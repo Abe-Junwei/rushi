@@ -78,7 +78,7 @@ export function DeleteFileDialog({
             </button>
             <button
               type="button"
-              className="rounded-xl border-0 bg-zen-cinnabar px-3 py-2 font-sans text-[11px] font-semibold text-white transition-colors hover:bg-zen-cinnabar/90 disabled:cursor-not-allowed disabled:opacity-40"
+                       className="rounded-xl border-0 bg-zen-cinnabar px-3 py-2 font-sans text-[11px] font-semibold text-notion-bg transition-colors hover:bg-zen-cinnabar/90 disabled:cursor-not-allowed disabled:opacity-40"
               disabled={busy}
               onClick={onConfirm}
             >

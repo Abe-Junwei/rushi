@@ -88,7 +88,7 @@ export function CreateProjectModal({ controller: c, onClose }: CreateProjectModa
 
             <button
               type="submit"
-              className={`flex w-full items-center justify-center rounded-lg border border-transparent bg-zen-saffron px-4 py-2 ${PANEL_TYPOGRAPHY.button} text-white transition-colors hover:bg-zen-saffron-mid focus:outline-none focus:ring-2 focus:ring-zen-saffron/50 focus:ring-offset-1 disabled:opacity-40`}
+              className={`flex w-full items-center justify-center rounded-lg border border-transparent bg-zen-saffron px-4 py-2 ${PANEL_TYPOGRAPHY.button} text-notion-bg transition-colors hover:bg-zen-saffron-mid focus:outline-none focus:ring-2 focus:ring-zen-saffron/50 focus:ring-offset-1 disabled:opacity-40`}
               disabled={isBusy}
             >
               {busy ? "创建中…" : "创建项目"}

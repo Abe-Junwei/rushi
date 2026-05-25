@@ -26,8 +26,8 @@ describe("controlStyles", () => {
   });
 
   it("uses canvas + hairline for secondary and inputs", () => {
-    expect(CLAY_BTN_SECONDARY).toContain("bg-app-bg");
-    expect(CLAY_BTN_SECONDARY).toContain("border-zen-gray-300");
-    expect(CLAY_TEXT_INPUT).toContain("bg-app-bg");
+    expect(CLAY_BTN_SECONDARY).toContain("bg-notion-bg");
+    expect(CLAY_BTN_SECONDARY).toContain("border-notion-border");
+    expect(CLAY_TEXT_INPUT).toContain("bg-notion-bg");
   });
 });

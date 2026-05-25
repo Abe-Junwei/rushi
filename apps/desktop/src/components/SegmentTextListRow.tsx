@@ -76,7 +76,7 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
       className={[
         "group relative flex cursor-text items-start gap-2 rounded-md border border-transparent px-[9px] py-[9px] transition-[background-color,border-color,box-shadow]",
         selected
-          ? "border-zen-gray-300 bg-zen-ochre/45 shadow-[inset_0_0_0_1px_rgba(133,83,15,0.14)]"
+          ? "border-notion-border bg-zen-ochre/45 shadow-[inset_0_0_0_1px_var(--notion-border)]"
           : "bg-transparent hover:bg-notion-sidebar/20",
       ].join(" ")}
       onClick={onClickRow}

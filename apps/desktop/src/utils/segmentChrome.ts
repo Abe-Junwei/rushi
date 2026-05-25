@@ -26,16 +26,16 @@ export function segmentCardChrome(
       slabBorder: "border border-zen-saffron/45",
       railFill: "bg-amber-300/20",
       railAccent: "bg-zen-saffron/85",
-      outerShadow: "shadow-[0_0_0_1px_rgba(197,138,67,0.18)]",
+      outerShadow: "shadow-[inset_0_0_0_1px_var(--notion-border)]",
     };
   }
   if (selected) {
     return {
-      slabBg: "bg-serene-surface-card/95",
+      slabBg: "bg-zen-ochre/95",
       slabBorder: "border border-zen-saffron/40",
       railFill: "bg-zen-saffron/16",
       railAccent: "bg-zen-saffron/78",
-      outerShadow: "shadow-[0_0_0_1px_rgba(197,138,67,0.16)]",
+      outerShadow: "shadow-[inset_0_0_0_1px_var(--notion-border)]",
     };
   }
   if (seg.low_confidence) {
@@ -49,7 +49,7 @@ export function segmentCardChrome(
   }
   return {
     slabBg: "bg-zen-paper/96",
-    slabBorder: "border border-black/[0.06]",
+    slabBorder: "border border-notion-border",
     railFill: "bg-zen-ink/6",
     railAccent: "bg-zen-indigo/32",
     outerShadow: "shadow-none",

@@ -107,7 +107,7 @@ export function WelcomeSidebar({ controller: c, onOpenSettings, page, onPageChan
       {/* Brand */}
       <div className="border-b border-notion-divider px-6 py-8">
         <div className="mb-6 flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded bg-zen-saffron text-white">
+          <div className="flex h-8 w-8 items-center justify-center rounded bg-zen-saffron text-notion-bg">
             <Mic className={`${LUCIDE_ICON_SIZE_MD} shrink-0`} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
           </div>
           <div>

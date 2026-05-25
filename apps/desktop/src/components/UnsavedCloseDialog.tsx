@@ -72,9 +72,9 @@ export function UnsavedCloseDialog({
           >
             {discardLabel}
           </button>
-          <button
-            type="button"
-            className="rounded-md border-0 bg-zen-saffron-mid px-3 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+            <button
+              type="button"
+              className="rounded-md border-0 bg-zen-saffron-mid px-3 py-1.5 text-sm font-medium text-notion-bg transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             disabled={busy}
             onClick={onSaveAndClose}
           >

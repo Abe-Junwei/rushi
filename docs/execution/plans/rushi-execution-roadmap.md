@@ -116,9 +116,9 @@ R9     发版集成验收（REL-1）
 
 | 阶段 ID | 状态 | 完成日 |
 |---------|------|--------|
-| R0 | ⏳ 建议先做 | — |
+| R0 | ✅ 已完成 | 2026-05-25 |
 | GLY-1 | ✅ 已实现（待手测） | 2026-05-25 |
-| R1 | ⏳ 待开始 | — |
+| R1 | ✅ 已完成（文档门禁） | 2026-05-25 |
 | R2 | ⏳ | — |
 | R3 | ⏳ | — |
 | R4 | ⏳ | — |
@@ -386,10 +386,10 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 
 | 项 | 内容 |
 |----|------|
-| **阶段** | **R0** → **GLY-1**（术语库 UI，约 0.5 周）→ **R1** |
-| **本周** | 先提交并清零守卫警告；接着接线术语库 UI（替换侧栏占位）；再写 `auto-punctuate` 三件套 |
-| **不要** | 在 lifecycle 仍 21 hooks 时叠加大功能；不要重复做模型下载条 UI |
-| **轮末** | R0：0 守卫警告；R1：三件套可评审 + 硬闸门全绿 |
+| **阶段** | **R2 — LLM-1 自动标点实施** |
+| **本周** | 基于已完成的三件套与架构短文，落 `postprocess_cmd`、预览 dialog、toolbar 入口与 focused tests |
+| **不要** | 趁机扩成批量后处理、多 provider 或本地 LLM；不要把实现塞进 ASR sidecar |
+| **轮末** | 预览 → 确认写回闭环跑通；Rust/TS 测试与守卫全绿 |
 
 ---
 
@@ -401,6 +401,7 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | [`collaboration-foundation-plan.md`](./collaboration-foundation-plan.md) | 协作 Phase 1–7 细节；**顺序以本文 §4–§6 为准** |
 | [`p2-acceptance.md`](../p2-acceptance.md) | P2：术语库/热词/低置信/纠错记忆（**后端**）；管理 UI → GLY-1 |
 | [`docs/architecture/asr-hotword-bias-truth.md`](../../architecture/asr-hotword-bias-truth.md) | 术语如何拼进 ASR `hotwords` |
+| [`docs/architecture/postprocess-remote-boundary.md`](../../architecture/postprocess-remote-boundary.md) | R1 定稿：后处理不进 ASR sidecar |
 | [`translation-dictionary-module.md`](../specs/translation-dictionary-module.md) | CAT **词典**愿景（≠ 全局 glossary） |
 | [`ui-redesign-parallel-dev.md`](../specs/ui-redesign-parallel-dev.md) | UI 纪律与已验收记录 |
 | [`architecture-split-plan.md`](../specs/architecture-split-plan.md) | 文件拆分地图（R9 同步） |
@@ -417,6 +418,7 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | 2026-05-25 | 初版：合并 UI 验收后、Oumi Part I、协作规划；统一 16 周排期 |
 | 2026-05-25 | §13 代码对照：新增 R0；R3 缩至 1.5 周；T-005 升为 R0；验证快照 139+30 tests |
 | 2026-05-25 | 补 **GLY-1 术语库管理 UI**（P2 后端已有、UI 未接线；初版路线图遗漏） |
+| 2026-05-25 | 完成 R1：补 `auto-punctuate` 三件套与 `postprocess-remote-boundary.md`；下一步切到 R2 |
 
 ---
 

@@ -125,7 +125,7 @@ export function WelcomeView({ controller: c, onOpenSettings, page, onPageChange 
             <div className="w-full max-w-sm space-y-4" data-purpose="welcome-actions">
               <button
                 type="button"
-                className="flex w-full items-center justify-center gap-2 rounded-lg border-0 bg-zen-saffron px-8 py-4 text-sm font-semibold text-white shadow-sm outline-none transition-opacity hover:opacity-90 focus:outline-none disabled:opacity-40"
+                className="flex w-full items-center justify-center gap-2 rounded-lg border-0 bg-zen-saffron px-8 py-4 text-sm font-semibold text-notion-bg shadow-sm outline-none transition-opacity hover:opacity-90 focus:outline-none disabled:opacity-40"
                 disabled={c.busy}
                 onClick={() => setShowCreateModal(true)}
               >

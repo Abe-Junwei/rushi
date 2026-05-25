@@ -26,7 +26,7 @@ export function SegmentRowTimestampColumn({
           <span
             className={[
               "font-mono text-[11px] font-medium tabular-nums tracking-[0.01em]",
-              selected ? "text-zen-gray-500" : "text-notion-text-light group-hover:text-notion-text-muted",
+              selected ? "text-notion-text-muted" : "text-notion-text-light group-hover:text-notion-text-muted",
             ].join(" ")}
           >
             {index + 1}.
@@ -34,7 +34,7 @@ export function SegmentRowTimestampColumn({
           <span
             className={[
               "font-mono text-[11px] font-medium tabular-nums tracking-[0.01em]",
-              selected ? "text-zen-gray-500" : "text-notion-text-light group-hover:text-notion-text-muted",
+              selected ? "text-notion-text-muted" : "text-notion-text-light group-hover:text-notion-text-muted",
             ].join(" ")}
           >
             {timestampLabel}

@@ -159,8 +159,8 @@ export const WaveformTimeRuler = memo(function WaveformTimeRuler({
         embedded
           ? "relative shrink-0"
           : ink
-          ? "relative shrink-0 border-t border-zen-paper/10 bg-black/25"
-          : "relative shrink-0 border-t border-black/10 bg-zen-paper"
+          ? "relative shrink-0 border-t border-zen-paper/10 bg-zen-ink/25"
+          : "relative shrink-0 border-t border-zen-ink/10 bg-zen-paper"
       }
       style={{ width: timelineWidthPx, height: RULER_H }}
     >
@@ -188,17 +188,17 @@ export const WaveformTimeRuler = memo(function WaveformTimeRuler({
                   className={
                     embedded
                       ? interactionActive && isHighlightedMajor
-                        ? "stroke-white/58"
+                        ? "stroke-notion-bg/58"
                         : major
-                        ? "stroke-white/34"
-                        : "stroke-white/16"
+                        ? "stroke-notion-bg/34"
+                        : "stroke-notion-bg/16"
                       : ink
                       ? major
-                        ? "stroke-white/55"
-                        : "stroke-white/30"
+                        ? "stroke-notion-bg/55"
+                        : "stroke-notion-bg/30"
                       : major
-                        ? "stroke-black/45"
-                        : "stroke-black/22"
+                        ? "stroke-zen-ink/45"
+                        : "stroke-zen-ink/22"
                   }
                   strokeWidth={1}
                   vectorEffect="non-scaling-stroke"
@@ -235,11 +235,11 @@ export const WaveformTimeRuler = memo(function WaveformTimeRuler({
                 className={`absolute top-[8px] text-[11px] tabular-nums ${
                   embedded
                     ? interactionActive && isHighlightedMajor
-                      ? "text-white/74"
-                      : "text-white/36"
+                      ? "text-notion-bg/74"
+                      : "text-notion-bg/36"
                     : ink
-                      ? "text-white/60"
-                      : "text-black/55"
+                      ? "text-notion-bg/60"
+                      : "text-zen-ink/55"
                 }`}
                 style={{ left: `${leftPct}%`, transform: "translateX(2px)" }}
               >

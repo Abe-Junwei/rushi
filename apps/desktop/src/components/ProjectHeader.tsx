@@ -14,7 +14,7 @@ const btnOnlineSttEntry =
 function WelcomeStatusDot({ ok }: { ok: boolean }) {
   return (
     <span
-      className={`inline-block h-2 w-2 shrink-0 rounded-full ${ok ? "bg-zen-success shadow-[0_0_8px_rgba(34,197,94,0.35)]" : "bg-zen-cinnabar shadow-[0_0_8px_rgba(150,53,48,0.35)]"}`}
+      className={`inline-block h-2 w-2 shrink-0 rounded-full ${ok ? "bg-zen-success ring-2 ring-zen-success/35" : "bg-zen-cinnabar ring-2 ring-zen-cinnabar/35"}`}
       aria-hidden
     />
   );

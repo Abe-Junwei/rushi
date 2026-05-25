@@ -37,7 +37,7 @@ export function ProjectBusyOverlay({ reason, elapsedSec }: { reason: BusyReason 
           <h2 className="font-sans text-lg font-semibold leading-snug text-zen-ink">{busyCopy.title}</h2>
           <p className="font-sans text-[12px] leading-normal text-zen-stone">{busyCopy.hint}</p>
         </div>
-        <div className="relative mt-2 h-[3px] w-full overflow-hidden rounded-full bg-zen-gray-200">
+        <div className="relative mt-2 h-[3px] w-full overflow-hidden rounded-full bg-notion-divider">
           <div className="absolute inset-y-0 w-1/3 animate-rushi-indeterminate rounded-full bg-zen-saffron" />
         </div>
         <p className="mt-1 font-mono text-[12px] tabular-nums text-zen-stone">已等待 {elapsedSec}s</p>
@@ -55,7 +55,7 @@ export function AsrErrorBanner({ onOpenEnvironment }: { onOpenEnvironment: () =>
       </div>
       <button
         type="button"
-        className="inline-flex h-10 shrink-0 items-center justify-center rounded-xl border border-transparent bg-zen-cinnabar px-5 font-sans text-sm font-semibold text-white transition-colors hover:bg-zen-cinnabar/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-cinnabar/30"
+        className="inline-flex h-10 shrink-0 items-center justify-center rounded-xl border border-transparent bg-zen-cinnabar px-5 font-sans text-sm font-semibold text-notion-bg transition-colors hover:bg-zen-cinnabar/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-cinnabar/30"
         onClick={onOpenEnvironment}
       >
         打开环境与 ASR

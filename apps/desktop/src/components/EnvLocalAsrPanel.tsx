@@ -155,7 +155,7 @@ export function EnvLocalAsrPanel({
         <div className="flex justify-start">
           <button
             type="button"
-            className={`flex items-center gap-2 rounded border border-transparent bg-zen-saffron px-4 py-1.5 ${PANEL_TYPOGRAPHY.button} text-white shadow-sm outline-none transition-all hover:brightness-110 focus:ring-2 focus:ring-zen-saffron/30 disabled:opacity-40`}
+            className={`flex items-center gap-2 rounded border border-transparent bg-zen-saffron px-4 py-1.5 ${PANEL_TYPOGRAPHY.button} text-notion-bg shadow-sm outline-none transition-all hover:brightness-110 focus:ring-2 focus:ring-zen-saffron/30 disabled:opacity-40`}
             disabled={busy || prepareModelBusy}
             onClick={() => void prepareDefaultFunasrModel()}
           >
