@@ -1,0 +1,101 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rushi Editor Dense Layout</title>
+    <style>
+      :root {
+        --bg: #ffffff;
+        --sub: #f7f7f5;
+        --line: #e3e2e0;
+        --text: #37352f;
+        --muted: #6b6b6b;
+        --accent: #c58a43;
+        --accent-deep: #85530f;
+      }
+      * { box-sizing: border-box; }
+      body { margin: 0; font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; background: #f2efe8; color: var(--text); }
+      .app { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+      .side { border-right: 1px solid var(--line); background: var(--sub); }
+      .main { display: flex; min-width: 0; flex-direction: column; background: var(--bg); }
+      .top { display: flex; height: 52px; align-items: center; justify-content: space-between; gap: 10px; border-bottom: 1px solid var(--line); padding: 0 12px; }
+      .toolbar { display: flex; height: 40px; align-items: center; gap: 6px; overflow-x: auto; border-bottom: 1px solid var(--line); padding: 5px 10px; }
+      .toolbar::-webkit-scrollbar { display: none; }
+      .btn { height: 30px; border: 1px solid var(--line); border-radius: 6px; background: var(--bg); padding: 0 9px; font-size: 11px; color: var(--text); white-space: nowrap; }
+      .btn.primary { border-color: transparent; background: var(--accent); color: #fff; }
+      .btn.primary:hover { background: var(--accent-deep); }
+      .sep { width: 1px; height: 14px; background: var(--line); }
+      .content { display: flex; min-height: 0; flex: 1; flex-direction: column; gap: 6px; padding: 6px; background: var(--sub); }
+      .wave { border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--bg); }
+      .wave-hd { display: flex; height: 30px; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); padding: 0 8px; font-size: 10px; color: var(--muted); }
+      .wave-body { position: relative; height: 204px; background: linear-gradient(180deg, #fafaf9, #f4f4f3); }
+      .wave-body::after { content: ""; position: absolute; left: 0; right: 0; top: 50%; height: 1px; background: #d8d8d6; }
+      .seg { position: absolute; top: 84px; height: 36px; border: 1px solid #c8b08b; border-radius: 7px; background: #f6ead8; }
+      .zoom { display: flex; height: 30px; align-items: center; gap: 6px; border-top: 1px solid var(--line); padding: 0 8px; font-size: 10px; }
+      .editor { display: flex; min-height: 0; flex: 1; flex-direction: column; border: 1px solid var(--line); border-radius: 10px; overflow: hidden; background: var(--bg); }
+      .editor-hd { display: flex; height: 36px; align-items: center; justify-content: space-between; border-bottom: 1px solid var(--line); padding: 0 8px; background: #fbfbfa; }
+      .icon { width: 28px; height: 28px; border: 1px solid var(--line); border-radius: 6px; background: var(--sub); }
+      .list { min-height: 0; flex: 1; overflow: auto; padding: 6px 8px; }
+      .row { display: grid; grid-template-columns: 136px 1fr; gap: 6px; border: 1px solid var(--line); border-radius: 7px; padding: 6px; font-size: 11px; background: #fff; }
+      .row + .row { margin-top: 6px; }
+      .meta { color: var(--muted); font-size: 10px; }
+      .foot { display: flex; height: 28px; align-items: center; justify-content: space-between; border-top: 1px solid var(--line); padding: 0 8px; font-size: 10px; color: var(--muted); background: #fbfbfa; }
+      @media (max-width: 1080px) { .app { grid-template-columns: 1fr; } .side { display: none; } }
+    </style>
+  </head>
+  <body>
+    <div class="app">
+      <aside class="side"></aside>
+      <main class="main">
+        <header class="top">
+          <div>← 课堂口述转写 / lecture.wav</div>
+          <button class="btn">环境与 ASR</button>
+        </header>
+        <section class="toolbar">
+          <button class="btn">导入素材</button>
+          <div class="sep"></div>
+          <button class="btn">ASR 拉取</button>
+          <button class="btn primary">导出</button>
+          <button class="btn">保存</button>
+          <div class="sep"></div>
+          <button class="btn">拆分</button>
+          <button class="btn">合并上一条</button>
+          <button class="btn">合并下一条</button>
+        </section>
+        <section class="content">
+          <div class="wave">
+            <div class="wave-hd"><span>00:01:22 / 00:43:16</span><span>波形就绪</span></div>
+            <div class="wave-body">
+              <div class="seg" style="left: 8%; width: 13%"></div>
+              <div class="seg" style="left: 24%; width: 9%"></div>
+              <div class="seg" style="left: 39%; width: 16%"></div>
+              <div class="seg" style="left: 63%; width: 11%"></div>
+            </div>
+            <div class="zoom"><span>92% Zoom</span><span>·</span><span>52 px/s</span></div>
+          </div>
+          <div class="editor">
+            <div class="editor-hd">
+              <div>
+                <button class="icon" aria-label="撤销"></button>
+                <button class="icon" aria-label="重做"></button>
+                <button class="icon" aria-label="历史"></button>
+              </div>
+              <div>
+                <button class="btn">字体</button>
+                <button class="btn">加粗</button>
+                <button class="btn">斜体</button>
+              </div>
+            </div>
+            <div class="list">
+              <article class="row"><div class="meta">#01 00:00:12-00:00:21</div><div>极限紧凑版强调一屏可见更多语段与上下文，减少滚动切换频率。</div></article>
+              <article class="row"><div class="meta">#02 00:00:22-00:00:31</div><div>工具条单行优先，窄窗采用横向滚动，避免二行堆叠打断视觉扫描。</div></article>
+              <article class="row"><div class="meta">#03 00:00:32-00:00:40</div><div>在保证点击热区不低于 30px 的前提下尽可能压缩留白。</div></article>
+            </div>
+          </div>
+        </section>
+        <footer class="foot"><span>92% Zoom · 52 px/s</span><span>双击波形切片</span><span>快捷键 · 文档</span></footer>
+      </main>
+    </div>
+  </body>
+</html>

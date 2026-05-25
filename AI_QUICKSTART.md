@@ -19,9 +19,9 @@
 
 ## 当前热点（自动同步）
 
-- `apps/desktop/src-tauri/src/project/export_cmd.rs` 485 行 → 待拆模块
-- `apps/desktop/src-tauri/src/project/transcribe.rs` 478 行 → 待拆模块
-- `apps/desktop/src/hooks/useProjectWaveform.ts` 275 行 / 13 hooks → 接近阈值
+- `apps/desktop/src-tauri/src/project/project_bundle_cmd.rs` 277 行（生产）+ `project_bundle_cmd_tests.rs` 252 行 → 项目包逻辑/测试已分离
+- `apps/desktop/src-tauri/src/project/transcribe.rs` 300+ 行，在线 provider 已拆到 `transcribe_native_online.rs`
+- `apps/desktop/src/hooks/useProjectWaveform.ts` 275 行 → 仍是波形入口，但已拆出 `useWaveformPlayback` / `useWaveformRegions`
 - `apps/desktop/src/components/ProjectPanel.tsx` 241 行 → 已拆 controller，当前健康
 
 ## 任务路由
@@ -41,11 +41,11 @@
 ## 典型模式（好 / 坏）
 
 - ✅ 好：`useTranscriptionLayer.ts` — 专注转写业务逻辑（185 行 / 11 hooks）
-- ❌ 坏：`useProjectWaveform.ts` — 275 行 / 13 hooks，波形 + 播放 + 区域混合
+- ✅ 好：`useProjectWaveform.ts` + `useWaveformPlayback.ts` + `useWaveformRegions.ts` — 波形入口 + 子职责拆分
 - ✅ 好：`segmentListHelpers.ts` — 纯函数，无 React 依赖
-- ❌ 坏：`transcribe.rs` — 478 行（HTTP 客户端 / 多厂商适配 / 热词 / 模型调用混合）
+- ✅ 好：`transcribe.rs` + `transcribe_native_online.rs` — 解析逻辑与 provider 调用分离
 - ✅ 好：`db.rs` — 专注迁移和 schema
-- ❌ 坏：`export_cmd.rs` — 485 行（导入/导出/项目包/路径校验混合）
+- ✅ 好：`project_bundle_cmd.rs` + `project_bundle_cmd_tests.rs` — 生产逻辑与回归测试分离
 
 ## 验证命令
 

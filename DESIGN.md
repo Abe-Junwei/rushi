@@ -196,3 +196,14 @@ The shape language is "Soft-Modern," using intentional rounding to counteract th
 
 ### Progress Indicators
 - **Pulse Bar:** A thin horizontal track with a `saffron` pulse effect, used during "Busy" states. Accompanied by a `mono-sm` timer.
+
+### Icons (Lucide)
+- Use a strict three-tier size system for Lucide icons in `apps/desktop/src/components`:
+  - **SM (14px):** Dense controls, chevrons, inline utility actions.
+  - **MD (18px):** Default toolbar, nav, panel action icons.
+  - **LG (20px):** Primary action emphasis and hero/supportive symbols.
+- All icon stroke width must be unified to `2`.
+- In code, use shared constants from `apps/desktop/src/components/lucideIconSpec.ts`:
+  - `LUCIDE_ICON_SIZE_SM`, `LUCIDE_ICON_SIZE_MD`, `LUCIDE_ICON_SIZE_LG`
+  - `LUCIDE_ICON_STROKE_WIDTH`
+- Do not hardcode icon size class pairs like `h-3.5 w-3.5`, `h-[18px] w-[18px]`, `h-5 w-5` on Lucide tags.
