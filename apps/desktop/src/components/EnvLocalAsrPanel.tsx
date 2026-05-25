@@ -4,14 +4,18 @@ import { PANEL_TYPOGRAPHY } from "../config/typography";
 import type { PrepareModelFailureCopy } from "../pages/prepareModelDownloadCopy";
 import type { AsrHealthState } from "../pages/useProjectController";
 import { funasrManualSetupCommands } from "../pages/useProjectController";
-import type { AsrHealthCapabilities, BundledAsrLaunchReport } from "../tauri/projectApi";
+import type { AsrHealthCapabilities, AsrModelCacheInfo, BundledAsrLaunchReport } from "../tauri/projectApi";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
+import { LocalAsrGuidanceSection } from "./envLocalAsr/LocalAsrGuidanceSection";
+import { LocalAsrCacheSection } from "./envLocalAsr/LocalAsrCacheSection";
 
 type Props = {
   asrHealth: AsrHealthState;
   asrHealthDetail: string;
   bundledAsrDiag: BundledAsrLaunchReport | null;
   asrCaps: AsrHealthCapabilities | null;
+  asrModelCacheInfo: AsrModelCacheInfo | null;
+  asrModelCacheBusy: boolean;
   funasrInstallMessage: string;
   prepareModelBusy: boolean;
   prepareModelProgress: number;
@@ -21,6 +25,8 @@ type Props = {
   installFunasrDepsInteractive: () => Promise<void>;
   copyFunasrManualCommands: () => Promise<void>;
   prepareDefaultFunasrModel: () => Promise<void>;
+  refreshAsrModelCacheInfo: () => Promise<void>;
+  clearAsrModelCache: () => Promise<void>;
   retryBundledAsrSidecar: () => Promise<void>;
   openAppDataFolder: () => Promise<void>;
 };
@@ -30,6 +36,8 @@ export function EnvLocalAsrPanel({
   asrHealthDetail,
   bundledAsrDiag,
   asrCaps,
+  asrModelCacheInfo,
+  asrModelCacheBusy,
   funasrInstallMessage,
   prepareModelBusy,
   prepareModelProgress,
@@ -39,6 +47,8 @@ export function EnvLocalAsrPanel({
   installFunasrDepsInteractive,
   copyFunasrManualCommands,
   prepareDefaultFunasrModel,
+  refreshAsrModelCacheInfo,
+  clearAsrModelCache,
   retryBundledAsrSidecar,
   openAppDataFolder,
 }: Props) {
@@ -70,6 +80,8 @@ export function EnvLocalAsrPanel({
           </SmallButton>
         </div>
       </section>
+
+      <LocalAsrGuidanceSection asrHealth={asrHealth} asrCaps={asrCaps} />
 
       {funasrInstallMessage && !prepareModelBusy ? (
         <pre className="max-h-32 overflow-auto whitespace-pre-wrap rounded bg-notion-callout-bg p-3 font-mono text-[11px] text-zen-indigo">
@@ -187,6 +199,17 @@ export function EnvLocalAsrPanel({
                 </div>
               ) : null}
       </section>
+
+      <div className="h-px bg-notion-divider" />
+
+      <LocalAsrCacheSection
+        asrModelCacheInfo={asrModelCacheInfo}
+        asrModelCacheBusy={asrModelCacheBusy}
+        busy={busy}
+        refreshAsrModelCacheInfo={refreshAsrModelCacheInfo}
+        clearAsrModelCache={clearAsrModelCache}
+        openAppDataFolder={openAppDataFolder}
+      />
     </div>
   );
 }

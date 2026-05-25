@@ -410,8 +410,8 @@ mod tests {
             .collect::<Result<Vec<_>, _>>()
             .unwrap();
         assert_eq!(uids.len(), 2);
-        assert!(uids[0].len() > 0);
-        assert!(uids[1].len() > 0);
+        assert!(!uids[0].is_empty());
+        assert!(!uids[1].is_empty());
         assert_ne!(uids[0], uids[1]);
 
         let index_count: i64 = conn

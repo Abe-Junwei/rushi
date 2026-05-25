@@ -25,4 +25,16 @@ describe("deriveTranscribeHints", () => {
     );
     expect(h.some((x) => x.includes("安波那那") && x.includes("安那般那"))).toBe(true);
   });
+
+  it("flags whole-track fallback warning", () => {
+    const h = deriveTranscribeHints("funasr+iic/SenseVoiceSmall", ["funasr_whole_track_fallback: x"], [
+      { text: "你好世界" },
+    ]);
+    expect(h.some((x) => x.includes("整轨单语段"))).toBe(true);
+  });
+
+  it("flags zero segments without stub", () => {
+    const h = deriveTranscribeHints("funasr+x", [], []);
+    expect(h.some((x) => x.includes("未生成任何语段"))).toBe(true);
+  });
 });

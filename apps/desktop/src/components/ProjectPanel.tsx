@@ -8,6 +8,7 @@ import { EditorView } from "./EditorView";
 
 import { WelcomeView, type WelcomePageId } from "./WelcomeView";
 import { ProjectBusyOverlay } from "./ProjectStatusFeedback";
+import { TranscribeHintsBanner } from "./TranscribeHintsBanner";
 import { UnsavedCloseDialog } from "./UnsavedCloseDialog";
 import { useProjectController } from "../pages/useProjectController";
 
@@ -134,6 +135,8 @@ export function ProjectPanel() {
         </p>
       ) : null}
 
+      <TranscribeHintsBanner hints={c.transcribeHints} />
+
       {envOpen ? (
         <FloatingPanelTemplate id="environment-v3" title="环境与 ASR" preset="environment" onClose={() => setEnvOpen(false)}>
             <EnvironmentPanel
@@ -141,6 +144,8 @@ export function ProjectPanel() {
               asrHealthDetail={c.asrHealthDetail}
               bundledAsrDiag={c.bundledAsrDiag}
               asrCaps={c.asrCaps}
+              asrModelCacheInfo={c.asrModelCacheInfo}
+              asrModelCacheBusy={c.asrModelCacheBusy}
               funasrInstallMessage={c.funasrInstallMessage}
               prepareModelBusy={c.prepareModelBusy}
               prepareModelProgress={c.prepareModelProgress}
@@ -150,6 +155,8 @@ export function ProjectPanel() {
               installFunasrDepsInteractive={c.installFunasrDepsInteractive}
               copyFunasrManualCommands={c.copyFunasrManualCommands}
               prepareDefaultFunasrModel={c.prepareDefaultFunasrModel}
+              refreshAsrModelCacheInfo={c.refreshAsrModelCacheInfo}
+              clearAsrModelCache={c.clearAsrModelCache}
               retryBundledAsrSidecar={c.retryBundledAsrSidecar}
               openAppDataFolder={c.openAppDataFolder}
               onSttOnlineRuntimeChanged={c.bumpSttOnlineRuntimeChanged}

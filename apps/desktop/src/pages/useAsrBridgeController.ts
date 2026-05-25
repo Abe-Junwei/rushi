@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { asrHealthUrl, isDefaultBundledAsrTarget, isTauriRuntime } from "../config/env";
-import type { AsrHealthCapabilities } from "../tauri/projectApi";
+import type { AsrHealthCapabilities, AsrModelCacheInfo } from "../tauri/projectApi";
 import * as p1 from "../tauri/projectApi";
 import {
   tryBuildOnlineTranscribeBridgePayload,
@@ -43,12 +43,16 @@ export interface AsrBridgeApi {
   asrHealthDetail: string;
   bundledAsrDiag: p1.BundledAsrLaunchReport | null;
   asrCaps: AsrHealthCapabilities | null;
+  asrModelCacheInfo: AsrModelCacheInfo | null;
+  asrModelCacheBusy: boolean;
   sttOnlineBridgeReady: boolean;
   funasrInstallMessage: string;
   prepareModelBusy: boolean;
   prepareModelProgress: number;
   prepareModelFailure: PrepareModelApi["prepareModelFailure"];
   refreshAsrHealth: () => Promise<void>;
+  refreshAsrModelCacheInfo: () => Promise<void>;
+  clearAsrModelCache: () => Promise<void>;
   prepareDefaultFunasrModel: () => Promise<void>;
   retryBundledAsrSidecar: () => Promise<void>;
   installFunasrDepsInteractive: () => Promise<void>;
@@ -62,6 +66,8 @@ export function useAsrBridgeController(): AsrBridgeApi {
   const [asrHealthDetail, setAsrHealthDetail] = useState<string>("");
   const [bundledAsrDiag, setBundledAsrDiag] = useState<p1.BundledAsrLaunchReport | null>(null);
   const [asrCaps, setAsrCaps] = useState<AsrHealthCapabilities | null>(null);
+  const [asrModelCacheInfo, setAsrModelCacheInfo] = useState<AsrModelCacheInfo | null>(null);
+  const [asrModelCacheBusy, setAsrModelCacheBusy] = useState(false);
   const [sttOnlineBridgeEpoch, setSttOnlineBridgeEpoch] = useState(0);
 
   const sttOnlineBridgeReady = useMemo(
@@ -82,6 +88,19 @@ export function useAsrBridgeController(): AsrBridgeApi {
       setBundledAsrDiag(null);
     }
   }, []);
+
+  const refreshAsrModelCacheInfo = useCallback(async () => {
+    if (!tauriRuntime) {
+      setAsrModelCacheInfo(null);
+      return;
+    }
+    try {
+      const info = await p1.asrModelCacheInfo();
+      setAsrModelCacheInfo(info);
+    } catch {
+      setAsrModelCacheInfo(null);
+    }
+  }, [tauriRuntime]);
 
   const refreshAsrHealth = useCallback(async () => {
     if (!tauriRuntime) {
@@ -126,11 +145,17 @@ export function useAsrBridgeController(): AsrBridgeApi {
     await refreshBundledAsrDiag();
   }, [refreshBundledAsrDiag, tauriRuntime]);
 
-  const modelCtrl = usePrepareModelController(refreshAsrHealth, asrCaps);
+  const refreshAsrRuntimeInfo = useCallback(async () => {
+    await refreshAsrHealth();
+    await refreshAsrModelCacheInfo();
+  }, [refreshAsrHealth, refreshAsrModelCacheInfo]);
+
+  const modelCtrl = usePrepareModelController(refreshAsrRuntimeInfo, asrCaps);
 
   useEffect(() => {
     void refreshAsrHealth();
-  }, [refreshAsrHealth]);
+    void refreshAsrModelCacheInfo();
+  }, [refreshAsrHealth, refreshAsrModelCacheInfo]);
 
   const asrHealthDetailDisplay = useMemo(() => {
     if (asrHealth !== "error") return asrHealthDetail;
@@ -149,11 +174,23 @@ export function useAsrBridgeController(): AsrBridgeApi {
     try {
       await p1.retryBundledAsrSidecar();
       await refreshBundledAsrDiag();
-      await refreshAsrHealth();
+      await refreshAsrRuntimeInfo();
     } catch {
       /* ignore */
     }
-  }, [refreshAsrHealth, refreshBundledAsrDiag]);
+  }, [refreshAsrRuntimeInfo, refreshBundledAsrDiag]);
+
+  const clearAsrModelCache = useCallback(async () => {
+    if (!tauriRuntime) return;
+    setAsrModelCacheBusy(true);
+    try {
+      const info = await p1.clearAsrModelCache();
+      setAsrModelCacheInfo(info);
+      await refreshAsrHealth();
+    } finally {
+      setAsrModelCacheBusy(false);
+    }
+  }, [refreshAsrHealth, tauriRuntime]);
 
   const installFunasrDepsInteractive = useCallback(async () => {
     modelCtrl.setPrepareModelFailure(null);
@@ -191,12 +228,16 @@ export function useAsrBridgeController(): AsrBridgeApi {
     asrHealthDetail: asrHealthDetailDisplay,
     bundledAsrDiag,
     asrCaps,
+    asrModelCacheInfo,
+    asrModelCacheBusy,
     sttOnlineBridgeReady,
     funasrInstallMessage: modelCtrl.funasrInstallMessage,
     prepareModelBusy: modelCtrl.prepareModelBusy,
     prepareModelProgress: modelCtrl.prepareModelProgress,
     prepareModelFailure: modelCtrl.prepareModelFailure,
     refreshAsrHealth,
+    refreshAsrModelCacheInfo,
+    clearAsrModelCache,
     prepareDefaultFunasrModel: modelCtrl.prepareDefaultFunasrModel,
     retryBundledAsrSidecar,
     installFunasrDepsInteractive,

@@ -20,11 +20,32 @@ export function deriveTranscribeHints(engine: string, warnings: string[], segmen
   if (warnings.some((w) => w.includes("hotword_param_unsupported"))) {
     hints.push("当前 FunASR 未接受热词参数，已自动回退；可升级 rushi-asr 依赖或忽略。");
   }
+  if (warnings.some((w) => w.includes("funasr_whole_track_fallback"))) {
+    hints.push(
+      "识别完成，但模型未返回分句时间戳：已用整轨单语段承载全文。可在波形上拖选拆分，或换用带 sentence_info 的 FunASR 模型后重新拉取。",
+    );
+  } else if (warnings.some((w) => w.includes("funasr_no_timestamps"))) {
+    hints.push(
+      "识别有全文输出，但无分句时间戳且无法估算时长，未写入语段。请在波形空白处拖选新建语段，或检查 ASR 日志后重试。",
+    );
+  } else if (warnings.some((w) => w.includes("funasr_no_sentence_segments"))) {
+    hints.push(
+      "本次未识别到可写入的文本（语段列表为空）。请确认音频有清晰人声，并查看「环境与 ASR」中 FunASR 是否就绪。",
+    );
+  }
   const allEmpty =
     segments.length > 0 && segments.every((s) => !String(s.text ?? "").trim());
   if (allEmpty) {
     hints.push(
       "本次拉取到的语段正文均为空：常见于 stub 或引擎未输出文本。请查看 ASR 日志，并确认 FunASR 已安装且模型权重已下载。",
+    );
+  } else if (
+    segments.length === 0 &&
+    !eng.includes("stub") &&
+    !warnings.some((w) => w.includes("funasr_no_timestamps") || w.includes("funasr_no_sentence_segments"))
+  ) {
+    hints.push(
+      "拉取已完成，但未生成任何语段。请查看桌面日志（应用数据目录下的 desktop.log）或重试；若使用 SenseVoice，可尝试换用 paraformer-zh 等带分句的模型。",
     );
   }
   for (const w of warnings) {

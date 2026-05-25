@@ -5,6 +5,7 @@ mod diagnostic;
 mod export_docx;
 mod online_stt_bridge;
 mod postprocess_cmd;
+mod profile;
 mod project;
 mod stt_native;
 mod utils;
@@ -60,6 +61,8 @@ pub fn run() {
             project::delete_file,
             project::export_project_bundle,
             project::import_project_bundle,
+            project::asr_model_cache_info,
+            project::clear_asr_model_cache,
             project::install_funasr_deps_interactive,
             project::retry_bundled_asr_sidecar,
             project::open_app_data_folder,
@@ -71,6 +74,8 @@ pub fn run() {
             postprocess_cmd::llm_delete_api_key,
             postprocess_cmd::llm_probe_connection,
             postprocess_cmd::postprocess_auto_punctuate,
+            profile::export_settings_profile,
+            profile::import_settings_profile,
             export_docx::export_docx,
             diagnostic::export_diagnostic_bundle,
         ])

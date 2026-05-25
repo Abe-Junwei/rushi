@@ -16,6 +16,10 @@
 - [`asr-sidecar-funasr-policy.md`](./asr-sidecar-funasr-policy.md) — ASR 侧车 + FunASR：目标用户、联网与磁盘预算、CPU/GPU（MPS + CUDA）策略。
 - [`postprocess-remote-boundary.md`](./postprocess-remote-boundary.md) — `auto_punctuate` 后处理边界：桌面壳直连远程 provider，不进 ASR sidecar。
 - [`../execution/specs/r3-provider-configuration-research.md`](../execution/specs/r3-provider-configuration-research.md) — R3 规划：LLM/STT Provider 业内共识与本仓配置策略（先调研后实施）。
+- [`../execution/specs/r3c-local-asr-cache-manifest-acceptance.md`](../execution/specs/r3c-local-asr-cache-manifest-acceptance.md) — R3c：本机 ASR 首次引导、缓存管理与 manifest 展示的验收边界。
+- [`../execution/specs/r3e-long-audio-transcribe-acceptance.md`](../execution/specs/r3e-long-audio-transcribe-acceptance.md) — R3e：长音频本机转写（600s 超时、整文件 FunASR 内存、分段方案与 R9 对齐）。
+- [`../execution/specs/r3f-asr-setup-wizard-acceptance.md`](../execution/specs/r3f-asr-setup-wizard-acceptance.md) — R3f：本机 ASR 一键环境准备（内置侧车编排）。
+- [`../execution/specs/r3g-local-asr-model-catalog-acceptance.md`](../execution/specs/r3g-local-asr-model-catalog-acceptance.md) — R3g：本机 FunASR 模型目录（v1 三 SKU）。
 - [`asr-pyinstaller-collect-notes.md`](./asr-pyinstaller-collect-notes.md) — PyInstaller `collect-submodules` 取舍与 nightly 构建说明。
 - [`collaboration-storage-schema.md`](./collaboration-storage-schema.md) — 联机协作版服务端真源、PostgreSQL schema、事件流与本地缓存/项目包分层草案。
 - [`collaboration-review-domain-api.md`](./collaboration-review-domain-api.md) — 批注、审阅、建议修改、活动流与 Word 导出的领域模型和 API 草案。

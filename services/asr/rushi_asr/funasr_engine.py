@@ -152,9 +152,23 @@ def transcribe_with_funasr(
     if not text:
         _warn("funasr_no_sentence_segments")
         return [], engine
-    # 有全文但无 sentence_info：与解语一致，不自动建整轨占位语段（避免「一条占满时长」）
+    # 有全文但无 sentence_info：优先生成整轨单语段，避免桌面端「拉取成功但语段列表为空」
+    if _duration_sec is not None and _duration_sec > 0:
+        _warn(
+            "funasr_whole_track_fallback: 模型返回全文但无分句时间戳；已生成整轨单语段，"
+            "可在波形上拖选拆分或换用输出 sentence_info 的模型。"
+        )
+        return [
+            TranscriptionSegment(
+                start_sec=0.0,
+                end_sec=float(_duration_sec),
+                text=text,
+                low_confidence=True,
+                detail="funasr_whole_track_fallback",
+            ),
+        ], engine
     _warn(
-        "funasr_no_timestamps: 模型返回全文但无分句时间戳；未创建语段。"
+        "funasr_no_timestamps: 模型返回全文但无分句时间戳且时长未知；未创建语段。"
         "请换用输出 sentence_info 的模型/参数，或在桌面端波形上拖选新建语段。"
     )
     return [], engine

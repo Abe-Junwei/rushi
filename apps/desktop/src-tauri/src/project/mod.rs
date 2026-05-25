@@ -2,6 +2,7 @@
 //! P2: segment confidence / low_confidence / detail; local glossary_terms.
 
 pub mod correction;
+pub mod asr_cache_cmd;
 pub mod export_cmd;
 pub mod file_cmd;
 pub mod glossary_cmd;
@@ -20,6 +21,7 @@ mod transcribe_native_online;
 pub mod types;
 pub mod utils;
 
+pub use asr_cache_cmd::*;
 pub use export_cmd::*;
 pub use file_cmd::*;
 pub use glossary_cmd::*;

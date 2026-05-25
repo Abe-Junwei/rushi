@@ -72,6 +72,16 @@ export interface BundledAsrLaunchReport {
   detail?: string | null;
 }
 
+export interface AsrModelCacheInfo {
+  models_root: string;
+  modelscope_cache: string;
+  huggingface_cache: string;
+  exists: boolean;
+  total_bytes: number;
+  manifest_path?: string | null;
+  manifest_exists: boolean;
+}
+
 export async function pickAudioPath(): Promise<string | null> {
   return invoke<string | null>("pick_audio_path");
 }
@@ -148,4 +158,12 @@ export async function retryBundledAsrSidecar(): Promise<void> {
 
 export async function openAppDataFolder(): Promise<void> {
   return invoke<void>("open_app_data_folder");
+}
+
+export async function asrModelCacheInfo(): Promise<AsrModelCacheInfo> {
+  return invoke<AsrModelCacheInfo>("asr_model_cache_info");
+}
+
+export async function clearAsrModelCache(): Promise<AsrModelCacheInfo> {
+  return invoke<AsrModelCacheInfo>("clear_asr_model_cache");
 }
