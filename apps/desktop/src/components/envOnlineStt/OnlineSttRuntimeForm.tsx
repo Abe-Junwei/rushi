@@ -2,6 +2,7 @@ import {
   sttOnlineProviderAllowsEmptyEndpoint,
   type SttOnlineProviderDefinition,
 } from "../../services/stt/sttOnlineProviderContract";
+import "./onlineSttRuntimeForm.css";
 
 type Props = {
   busy: boolean;
@@ -44,9 +45,25 @@ export function OnlineSttRuntimeForm({
   onSave,
   onProbe,
 }: Props) {
+  const providerLabel = providerDef?.label ?? providerId;
+  const authSummary =
+    providerDef?.authStyle === "header" && providerDef.headerName
+      ? `HTTP 头 ${providerDef.headerName}`
+      : "标准 Bearer / API Key";
+  const messageToneClass = message ? (message.includes("可达") ? " stt-runtime-form__message--success" : " stt-runtime-form__message--error") : "";
+
   return (
-    <>
-      <label className="block text-[11px] font-medium text-zen-ink">
+    <section className="stt-runtime-form">
+      <div className="stt-runtime-form__summary" role="status" aria-live="polite">
+        <p className="stt-runtime-form__summary-line">
+          当前厂商：<span className="stt-runtime-form__summary-value">{providerLabel}</span>
+        </p>
+        <p className="stt-runtime-form__summary-line">
+          鉴权方式：<span className="stt-runtime-form__summary-value">{authSummary}</span>
+        </p>
+      </div>
+
+      <label className="stt-runtime-form__field block text-[11px] font-medium text-zen-ink">
         转写 POST 完整 URL
         <input
           type="url"
@@ -65,7 +82,7 @@ export function OnlineSttRuntimeForm({
         />
       </label>
 
-      <label className="block text-[11px] font-medium text-zen-ink">
+      <label className="stt-runtime-form__field block text-[11px] font-medium text-zen-ink">
         超时（秒，30–600）
         <input
           type="number"
@@ -79,7 +96,7 @@ export function OnlineSttRuntimeForm({
       </label>
 
       {providerDef?.requiresPersistedAppKey ? (
-        <label className="block text-[11px] font-medium text-zen-ink">
+        <label className="stt-runtime-form__field block text-[11px] font-medium text-zen-ink">
           {providerDef.persistedAppKeyFieldLabel ?? "应用标识（可持久化）"}
           <input
             type="text"
@@ -93,7 +110,7 @@ export function OnlineSttRuntimeForm({
         </label>
       ) : null}
 
-      <label className="block text-[11px] font-medium text-zen-ink">
+      <label className="stt-runtime-form__field block text-[11px] font-medium text-zen-ink">
         {providerDef?.authStyle === "header" && providerDef.headerName
           ? `根凭证 / Token（仅内存，HTTP 头 ${providerDef.headerName}）`
           : "根凭证 / API Key（仅内存，不落盘）"}
@@ -108,7 +125,7 @@ export function OnlineSttRuntimeForm({
         />
       </label>
 
-      <div className="flex flex-wrap gap-2">
+      <div className="stt-runtime-form__actions flex flex-wrap gap-2">
         <button type="button" className={btnPrimaryClassName} disabled={busy} onClick={onSave}>
           保存在线配置
         </button>
@@ -117,7 +134,7 @@ export function OnlineSttRuntimeForm({
         </button>
       </div>
 
-      {message ? <p className="text-[11px] text-zen-indigo">{message}</p> : null}
-    </>
+      {message ? <p className={`stt-runtime-form__message text-[11px]${messageToneClass}`}>{message}</p> : null}
+    </section>
   );
 }

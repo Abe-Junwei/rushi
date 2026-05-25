@@ -16,36 +16,9 @@ export const COLORS = {
   cinnabar: "#963530",
   indigo: "#3D4F5D",
 
-  bg: "#fcf9f2",
-  accent: "#C58A43",
-  accentHover: "#85530f",
-  textMain: "#2C2C2C",
-  textMuted: "#8E8E8E",
-  highlight: "#F5F0E0",
-
-  brandBg: "#fcf9f2",
-  brandOrange: "#C58A43",
-  brandGray: "#f1eee7",
-  brandInputBorder: "#E5E5E5",
-  brandInputBg: "#ffffff",
-  brandSecondaryBg: "#F5F0E0",
-  brandSecondaryText: "#514538",
-
   success: "#22c55e",
   danger: "#963530",
   warning: "#f59e0b",
-  gray100: "#f0f0f0",
-  gray200: "#e5e2db",
-  gray300: "#d5c3b3",
-  gray400: "#837567",
-  gray500: "#514538",
-  gray600: "#5f5e5e",
-  gray700: "#31312c",
-  gray800: "#1c1c18",
-
-  clayPink: "#C58A43",
-  clayTeal: "#3D4F5D",
-  clayCard: "#F5F0E0",
 
   /** Notion 风格令牌 */
   notionBg: "#ffffff",

@@ -1,5 +1,6 @@
 import type { BusyReason } from "../pages/useProjectController";
 import { LoaderCircle, TriangleAlert } from "lucide-react";
+import { CONTROL_BTN_DANGER } from "../config/controlStyles";
 import { LUCIDE_ICON_SIZE_LG, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
 function busyOverlayCopy(reason: BusyReason | null): { title: string; hint: string } {
@@ -55,7 +56,7 @@ export function AsrErrorBanner({ onOpenEnvironment }: { onOpenEnvironment: () =>
       </div>
       <button
         type="button"
-        className="inline-flex h-10 shrink-0 items-center justify-center rounded-xl border border-transparent bg-zen-cinnabar px-5 font-sans text-sm font-semibold text-notion-bg transition-colors hover:bg-zen-cinnabar/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-cinnabar/30"
+        className={CONTROL_BTN_DANGER}
         onClick={onOpenEnvironment}
       >
         打开环境与 ASR

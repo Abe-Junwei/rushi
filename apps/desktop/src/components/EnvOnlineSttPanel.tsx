@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from "react";
-import { CLAY_BTN_PRIMARY, CLAY_BTN_SECONDARY, CLAY_TEXT_INPUT } from "../config/controlStyles";
+import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY, CONTROL_TEXT_INPUT } from "../config/controlStyles";
 import {
   getSttOnlineProviderDefinition,
   normalizeExternalSttOnlineRuntimeConfig,
@@ -11,9 +11,9 @@ import {
 import { OnlineSttProviderPicker } from "./envOnlineStt/OnlineSttProviderPicker";
 import { OnlineSttRuntimeForm } from "./envOnlineStt/OnlineSttRuntimeForm";
 
-const btnPrimary = CLAY_BTN_PRIMARY;
-const btnSecondary = CLAY_BTN_SECONDARY;
-const field = CLAY_TEXT_INPUT;
+const btnPrimary = CONTROL_BTN_PRIMARY;
+const btnSecondary = CONTROL_BTN_SECONDARY;
+const field = CONTROL_TEXT_INPUT;
 
 type Props = {
   busy: boolean;

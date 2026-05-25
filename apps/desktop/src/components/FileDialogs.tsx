@@ -1,8 +1,13 @@
 import { useState } from "react";
-import { CLAY_BTN_PRIMARY, CLAY_BTN_SECONDARY, CLAY_TEXT_INPUT } from "../config/controlStyles";
+import {
+  CONTROL_BTN_DANGER_COMPACT,
+  CONTROL_BTN_PRIMARY,
+  CONTROL_BTN_SECONDARY,
+  CONTROL_TEXT_INPUT,
+} from "../config/controlStyles";
 import { FloatingPanelTemplate } from "./PanelTemplate";
 
-const btnSecondary = CLAY_BTN_SECONDARY;
+const btnSecondary = CONTROL_BTN_SECONDARY;
 
 export function CreateTextFileDialog({
   open,
@@ -22,7 +27,7 @@ export function CreateTextFileDialog({
       <div className="flex h-full flex-col px-5 py-4">
           <input
             type="text"
-            className={`${CLAY_TEXT_INPUT} w-full`}
+            className={`${CONTROL_TEXT_INPUT} w-full`}
             placeholder="输入文件名称"
             value={name}
             onChange={(e) => setName(e.target.value)}
@@ -38,7 +43,7 @@ export function CreateTextFileDialog({
             </button>
             <button
               type="button"
-              className={CLAY_BTN_PRIMARY}
+              className={CONTROL_BTN_PRIMARY}
               disabled={busy || !name.trim()}
               onClick={() => onConfirm(name.trim())}
             >
@@ -78,7 +83,7 @@ export function DeleteFileDialog({
             </button>
             <button
               type="button"
-                       className="rounded-xl border-0 bg-zen-cinnabar px-3 py-2 font-sans text-[11px] font-semibold text-notion-bg transition-colors hover:bg-zen-cinnabar/90 disabled:cursor-not-allowed disabled:opacity-40"
+              className={CONTROL_BTN_DANGER_COMPACT}
               disabled={busy}
               onClick={onConfirm}
             >

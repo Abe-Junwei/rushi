@@ -56,7 +56,7 @@ export function SegmentContextMenu({ x, y, items, onSelect, onClose }: Props) {
           type="button"
           role="menuitem"
           disabled={it.disabled}
-          className="dropdown-item w-full px-3 py-1.5 text-left transition-colors hover:bg-app-highlight disabled:cursor-not-allowed disabled:text-notion-text-light"
+          className="dropdown-item w-full px-3 py-1.5 text-left transition-colors hover:bg-notion-sidebar-hover disabled:cursor-not-allowed disabled:text-notion-text-light"
           onClick={() => {
             if (it.disabled) return;
             onSelect(it.key);
