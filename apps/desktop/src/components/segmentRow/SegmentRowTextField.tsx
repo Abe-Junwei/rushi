@@ -1,13 +1,11 @@
-import {
-  memo,
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useRef,
-  useState,
-  type KeyboardEvent,
-} from "react";
+import { memo, useCallback, useEffect, useImperativeHandle, useRef, type KeyboardEvent } from "react";
 import type { SegmentDto } from "../../tauri/projectApi";
+import {
+  normalizeSegmentDraftText,
+  segmentDraftKey,
+  segmentDraftStore,
+  useSegmentDraft,
+} from "../../hooks/useSegmentDraftStore";
 
 interface SegmentRowTextFieldProps {
   segment: SegmentDto;
@@ -38,7 +36,8 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
   updateSegmentText,
   onTextareaKeyDown,
 }: SegmentRowTextFieldProps) {
-  const [draft, setDraft] = useState(() => (s.text ?? "").replace(/\r\n|\r|\n/g, ""));
+  const draftKey = segmentDraftKey(s, i);
+  const [draft, setDraft] = useSegmentDraft(draftKey, s.text ?? "");
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
   useImperativeHandle(
@@ -56,17 +55,24 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
   );
 
   useEffect(() => {
-    setDraft((s.text ?? "").replace(/\r\n|\r|\n/g, ""));
-  }, [s.text]);
+    const stored = segmentDraftStore.getDraft(draftKey);
+    if (stored === undefined) return;
+    const current = normalizeSegmentDraftText(s.text ?? "");
+    if (stored === current) segmentDraftStore.clearDraft(draftKey);
+  }, [draftKey, s.text]);
 
-  const onTextAreaChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
-    setDraft(e.target.value.replace(/\r\n|\r|\n/g, " "));
-  }, []);
+  const onTextAreaChange = useCallback(
+    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
+      setDraft(e.target.value);
+    },
+    [setDraft],
+  );
 
   const onBlurText = useCallback(() => {
-    const current = (s.text ?? "").replace(/\r\n|\r|\n/g, "");
+    const current = normalizeSegmentDraftText(s.text ?? "");
     if (draft !== current) updateSegmentText(i, draft);
-  }, [draft, i, s.text, updateSegmentText]);
+    segmentDraftStore.clearDraft(draftKey);
+  }, [draft, draftKey, i, s.text, updateSegmentText]);
 
   const onKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -99,16 +105,13 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
     focusOnSelectRef.current = false;
   }, [focusOnSelectRef, selected]);
 
-  const committedText = (s.text ?? "").replace(/\r\n|\r|\n/g, " ");
+  const committedText = normalizeSegmentDraftText(s.text ?? "");
   const textAreaMinHeight = Math.max(36, Math.round(segmentRowHeightPx - (selected ? 24 : 30)));
 
   return (
     <div className="min-w-0 flex-1">
       <div
-        className={[
-          "rounded-lg transition-[background-color] duration-150",
-          selected ? "bg-notion-bg" : "bg-transparent",
-        ].join(" ")}
+        className="rounded-lg transition-[background-color] duration-150 bg-transparent"
       >
         {selected ? (
           <>

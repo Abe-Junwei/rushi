@@ -68,7 +68,7 @@ function useTestCrud(opts: {
     deleteSegmentAt: vi.fn(),
     insertSegmentAfter: vi.fn(),
     insertSegmentFromTimeRange: vi.fn(),
-    flushSegmentTextDraftsFromDom: vi.fn(),
+    flushSegmentTextDrafts: vi.fn(),
     resetMutationHistory: vi.fn(),
   });
   const mutations = mutationsRef.current;

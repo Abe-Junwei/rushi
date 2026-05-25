@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { X } from "lucide-react";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
+import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
 interface Position {
   x: number;
@@ -269,7 +271,7 @@ export function DraggableResizablePanel({
             onClick={onClose}
             aria-label="关闭面板"
           >
-            ✕
+            <X className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
           </button>
         </div>
 

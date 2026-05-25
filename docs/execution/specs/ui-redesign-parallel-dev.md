@@ -1,5 +1,7 @@
 # Spec: UI 重设计与前后端并行开发
 
+> **状态（2026-05-25）**：首轮 UI 重设计验收已完成。后续排期见 **[统一执行路线图](../plans/rushi-execution-roadmap.md)**；能力边界见 [oumi-remediation-report.md](./oumi-remediation-report.md) Part I。
+
 ## 目标
 先完成桌面端核心工作流的 UI 重设计根部，再以纵向薄片方式推进后续功能，避免后端功能堆叠后才发现前端信息架构、交互状态和视觉系统无法承载。
 
@@ -110,19 +112,23 @@ Stitch 产物进入代码前，先沉淀为可维护的设计约束。
 ```
 
 ## 首轮 UI 重设计验收标准
-- [x] Stitch 产物覆盖欢迎 / 建项页主路径。（校对工作页主路径尚未开始）
+- [x] Stitch 产物覆盖欢迎 / 建项页与校对工作页主路径。
 - [x] `DESIGN.md` 与 token 文件已同步设计选择，页面层无新增随意 hex。
 - [x] 欢迎页主 CTA、最近项目、ASR 异常横幅、环境面板入口层级清晰。
-- [ ] 工作页左轨、主工具栏、波形、语段时间轴、底栏在默认桌面窗口不互相挤压。
-- [x] 忙碌态、空态、错误态、低置信态、危险删除操作均有明确 UI 表达。（A 阶段欢迎页已覆盖；B 阶段工作页的危险删除操作待校对工作页薄片）
-- [ ] 长音频横向滚动可发现，波形与语段条仍保持同一时间比例。
+- [x] 工作页左轨、主工具栏、波形、语段时间轴、底栏在默认桌面窗口不互相挤压。
+- [x] 忙碌态、空态、错误态、低置信态、危险删除操作均有明确 UI 表达（A/B 均已覆盖）。
+- [x] 长音频横向滚动可发现，波形与语段条仍保持同一时间比例。
 - [x] `npm run typecheck` 通过。
-- [x] `npm run test` 通过（112/112）。
+- [x] `npm run test` 通过（以仓库当前快照为准）。
 - [x] `npm run lint` 无新增 error。
 - [x] `node scripts/check-architecture-guard.mjs` 无新增 error。
-- [x] 按“单人 AI 开发流程”完成至少 1 轮 2-4 小时纵向薄片，并留下迭代日志。（已完成 7 轮，见下方日志）
+- [x] 按“单人 AI 开发流程”完成至少 1 轮 2-4 小时纵向薄片，并留下迭代日志。（见下方日志）
+- [x] 真实 Tauri 窗口手测：欢迎/建项、校对工作页、关窗与未保存提示。
 
 ## 后续候选薄片
+
+> UI 根部已收工；下列项已映射至 [统一执行路线图](../plans/rushi-execution-roadmap.md)（R2–R5、R9），不再单独开「纯 UI 轮次」。
+
 1. 在线 STT Provider：先完成一个 Provider 的配置、检测、提交、轮询、失败与结果落库 UI，再扩展更多 Provider。
 2. FunASR 模型准备：下载状态、等待时长、失败恢复、缓存位置说明、manifest 校验反馈。
 3. 批量评测 / 批处理：清单导入、逐条进度、失败恢复、检查点展示、报告导出。
@@ -172,3 +178,9 @@ Stitch 产物进入代码前，先沉淀为可维护的设计约束。
 - 改动：移除 A 阶段 ASR 异常时的布局限制条件，使异常态仅显示警告 banner，冷启动空态、有最近项目 bento 布局保持不变；修改 `ProjectPanel.tsx` 中 `showAsrBanner` 条件从 `workspacePhase === "A" && c.asrHealth === "error" && !c.sttOnlineBridgeReady` 改为 `workspacePhase === "A" && c.asrHealth === "error"`，移除 `!c.sttOnlineBridgeReady` 限制。
 - 验证：`npm run typecheck`、`npm run test`、`npm run lint`、`node scripts/check-architecture-guard.mjs` 均通过；所有 88 个单测通过，架构守卫 0 错误 0 警告。
 - 下一轮：用真实 Tauri 窗口手测异常态 banner 显示、布局一致性，然后启动下一轮 UI 薄片。
+
+### 2026-05-25：首轮 UI 重设计验收收口
+
+- 改动：校对工作页（B）布局与波形/语段时间轴/底栏对齐 Serene Scholar；关窗守卫与未保存对话框（`allow-destroy`）；波形区控件与滚动同步等工程项并入工作流。
+- 验证：Tauri 手测通过（欢迎/建项、校对主路径、关窗）；`npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs` 通过。
+- 下一轮：**R1 LLM-0** — 见 [统一执行路线图](../plans/rushi-execution-roadmap.md) §10。

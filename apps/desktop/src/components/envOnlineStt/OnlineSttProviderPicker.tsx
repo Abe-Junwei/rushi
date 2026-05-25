@@ -67,7 +67,7 @@ export function OnlineSttProviderPicker({ busy, providerId, onProviderChange }: 
       </div>
 
       {providerDef?.docsUrl && providerDef.docsUrl.startsWith("http") && !providerDef.docsUrl.includes("example.com") ? (
-        <p className="text-[10px] text-zen-stone">
+        <p className="text-[11px] text-zen-stone">
           文档:{" "}
           <a
             href={providerDef.docsUrl}

@@ -1,7 +1,7 @@
 import { useCallback, useRef } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
-import { mergeTwoSegments, reindexSegments } from "./segmentListHelpers";
-import { flushSegmentTextDraftsFromDom as flushSegmentTextDraftsFromDomImpl } from "./flushSegmentTextDrafts";
+import { createSegmentUid, mergeTwoSegments, reindexSegments } from "./segmentListHelpers";
+import { flushSegmentTextDrafts as flushSegmentTextDraftsImpl } from "./flushSegmentTextDrafts";
 import { useSegmentSplitController } from "./useSegmentSplitController";
 import { useSegmentUndoRedo } from "./useSegmentUndoRedo";
 
@@ -25,7 +25,7 @@ export interface SegmentMutationApi {
   deleteSegmentAt: (idx: number) => void;
   insertSegmentAfter: (idx: number) => void;
   insertSegmentFromTimeRange: (startSec: number, endSec: number) => void;
-  flushSegmentTextDraftsFromDom: () => void;
+  flushSegmentTextDrafts: () => void;
   resetMutationHistory: () => void;
 }
 
@@ -36,12 +36,10 @@ export interface SegmentMutationDeps {
   setSelectedIdx: React.Dispatch<React.SetStateAction<number>>;
   setError: (msg: string) => void;
   busy: boolean;
-  /** 语段列表挂载容器；缺省时退回 `document`（测试等） */
-  getSegmentListRoot?: () => HTMLElement | null;
 }
 
 export function useSegmentMutationController(deps: SegmentMutationDeps): SegmentMutationApi {
-  const { segmentsRef, setSegments, setSelectedIdx, setError, busy, getSegmentListRoot } = deps;
+  const { segmentsRef, setSegments, setSelectedIdx, setError, busy } = deps;
   void deps.selectedIdxRef;
 
   const segmentBoundsLiveGestureRef = useRef(false);
@@ -50,10 +48,9 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
 
   const { pushUndo, pushUndoForTextEdit, undo, redo } = undoRedo;
 
-  const flushSegmentTextDraftsFromDom = useCallback(() => {
-    const el = getSegmentListRoot?.() ?? null;
-    flushSegmentTextDraftsFromDomImpl(segmentsRef, setSegments, el ?? undefined);
-  }, [segmentsRef, setSegments, getSegmentListRoot]);
+  const flushSegmentTextDrafts = useCallback(() => {
+    flushSegmentTextDraftsImpl(segmentsRef, setSegments);
+  }, [segmentsRef, setSegments]);
 
   const splits = useSegmentSplitController({
     segmentsRef,
@@ -61,7 +58,7 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
     setSelectedIdx,
     setError,
     pushUndo,
-    flushSegmentTextDraftsFromDom,
+    flushSegmentTextDrafts,
   });
 
   const updateSegmentText = useCallback(
@@ -131,7 +128,7 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
   const mergeWithPrevAt = useCallback(
     (idx: number) => {
       if (idx <= 0) return;
-      flushSegmentTextDraftsFromDom();
+      flushSegmentTextDrafts();
       const segs = segmentsRef.current;
       const a = segs[idx - 1];
       const b = segs[idx];
@@ -145,12 +142,12 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
       });
       setSelectedIdx(idx - 1);
     },
-    [flushSegmentTextDraftsFromDom, segmentsRef, setSegments, setSelectedIdx, pushUndo],
+    [flushSegmentTextDrafts, segmentsRef, setSegments, setSelectedIdx, pushUndo],
   );
 
   const mergeWithNextAt = useCallback(
     (idx: number) => {
-      flushSegmentTextDraftsFromDom();
+      flushSegmentTextDrafts();
       const segs = segmentsRef.current;
       if (idx >= segs.length - 1) return;
       const a = segs[idx];
@@ -165,7 +162,7 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
       });
       setSelectedIdx(idx);
     },
-    [flushSegmentTextDraftsFromDom, segmentsRef, setSegments, setSelectedIdx, pushUndo],
+    [flushSegmentTextDrafts, segmentsRef, setSegments, setSelectedIdx, pushUndo],
   );
 
   const mergeWithPrev = (selectedIdx: number) => mergeWithPrevAt(selectedIdx);
@@ -173,7 +170,7 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
 
   const deleteSegmentAt = useCallback(
     (idx: number) => {
-      flushSegmentTextDraftsFromDom();
+      flushSegmentTextDrafts();
       const segs = segmentsRef.current;
       if (idx < 0 || idx >= segs.length) return;
       setError("");
@@ -188,12 +185,12 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
         return Math.max(0, Math.min(next, nextLen - 1));
       });
     },
-    [flushSegmentTextDraftsFromDom, segmentsRef, setSegments, setSelectedIdx, setError, pushUndo],
+    [flushSegmentTextDrafts, segmentsRef, setSegments, setSelectedIdx, setError, pushUndo],
   );
 
   const insertSegmentAfter = useCallback(
     (idx: number) => {
-      flushSegmentTextDraftsFromDom();
+      flushSegmentTextDrafts();
       const segs = segmentsRef.current;
       if (idx < 0 || idx >= segs.length) return;
       const a = segs[idx];
@@ -218,6 +215,7 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
       setError("");
       pushUndo();
       const newSeg: SegmentDto = {
+        uid: createSegmentUid(),
         idx: 0,
         start_sec: startSec,
         end_sec: endSec,
@@ -232,13 +230,13 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
       });
       setSelectedIdx(idx + 1);
     },
-    [flushSegmentTextDraftsFromDom, segmentsRef, setSegments, setSelectedIdx, setError, pushUndo],
+    [flushSegmentTextDrafts, segmentsRef, setSegments, setSelectedIdx, setError, pushUndo],
   );
 
   const insertSegmentFromTimeRange = useCallback(
     (startSec: number, endSec: number) => {
       if (busy) return;
-      flushSegmentTextDraftsFromDom();
+      flushSegmentTextDrafts();
       const lo = roundSec3(Math.min(startSec, endSec));
       const hi = roundSec3(Math.max(startSec, endSec));
       if (hi <= lo + 0.05) {
@@ -257,6 +255,7 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
       let insertAt = segs.findIndex((s) => s.start_sec > lo);
       if (insertAt === -1) insertAt = segs.length;
       const newSeg: SegmentDto = {
+        uid: createSegmentUid(),
         idx: 0,
         start_sec: lo,
         end_sec: hi,
@@ -271,7 +270,7 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
       });
       setSelectedIdx(insertAt);
     },
-    [busy, flushSegmentTextDraftsFromDom, segmentsRef, setSegments, setSelectedIdx, setError, pushUndo],
+    [busy, flushSegmentTextDrafts, segmentsRef, setSegments, setSelectedIdx, setError, pushUndo],
   );
 
   return {
@@ -290,7 +289,7 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
     deleteSegmentAt,
     insertSegmentAfter,
     insertSegmentFromTimeRange,
-    flushSegmentTextDraftsFromDom,
+    flushSegmentTextDrafts,
     resetMutationHistory: undoRedo.reset,
   };
 }

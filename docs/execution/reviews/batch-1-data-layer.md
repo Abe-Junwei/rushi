@@ -7,14 +7,15 @@
 | 删单文件 `delete_file` | `remove_audio_file`，不删整项目目录 | 2025 P0 已修 |
 | 删项目 `project_delete` | 单次 `remove_project_audio_parent_dir` | OK |
 | symlink 音频/目录 | `canonicalize` + 拒绝 symlink | 2026-05-12 #9 已修 |
-| `file_save_segments` | 事务：DELETE+INSERT+edit_log | OK |
+| `file_save_segments` | 事务：临时负 idx → 按 `uid` upsert/delete + edit_log | OK |
+| `segments.uid` 迁移 | 先回填 UUID，再 `UNIQUE(file_id, uid)` | OK（测：同 file 两条无 uid） |
 | 转写落库失败 | `transcribe_recovery_*.json` | 2026-05-12 #8 已修 |
 | `project_delete` DB 失败 | FS 已删、DB 仍在 | R1-002 |
 | 并发 SQLite | `busy_timeout=5000` | 已修 |
 
 ## 测试证据
 
-`cargo test`：29 passed，含 `delete_file_cascades`、`export_and_import_project_bundle_round_trip`、`import_project_bundle_rejects_unsafe_audio_path`
+`cargo test`：30 passed，含 `migrate_segments_uid_backfills_two_rows_same_file_before_unique_index`、`file_save_segments_swaps_idx_without_unique_violation`、`delete_file_cascades`、`export_and_import_project_bundle_round_trip`
 
 ## 架构
 

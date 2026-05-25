@@ -31,7 +31,7 @@ export interface ProjectLifecycleApi {
   closeProject: () => void;
   refreshCurrentProject: () => Promise<void>;
   runTranscribe: () => Promise<void>;
-  saveSegments: () => Promise<void>;
+  saveSegments: () => Promise<boolean>;
   deleteProject: (id: string, options?: { skipBrowserConfirm?: boolean }) => Promise<void>;
   exportTxt: () => Promise<void>;
   exportSrt: () => Promise<void>;
@@ -59,6 +59,10 @@ export interface ProjectLifecycleApi {
   deleteSegmentAt: (idx: number) => void;
   insertSegmentAfter: (idx: number) => void;
   insertSegmentFromTimeRange: (startSec: number, endSec: number) => void;
-  flushSegmentTextDraftsFromDom: () => void;
-  attachSegmentListDomRoot: (getter: (() => HTMLElement | null) | null) => void;
+  flushSegmentTextDrafts: () => void;
+  closeGateOpen: boolean;
+  closeGateIntent: "app-quit" | "navigate";
+  stayAfterCloseAttempt: () => void;
+  discardUnsavedAndClose: () => void;
+  saveAndClose: () => void;
 }

@@ -1,14 +1,14 @@
 import { describe, expect, it } from "vitest";
-import { parseSegmentRegionId, segmentRegionId } from "../utils/waveformRegionId";
+import { parseSegmentRegionUid, segmentRegionId } from "../utils/waveformRegionId";
 
-describe("segmentRegionId / parseSegmentRegionId", () => {
-  it("round-trips indices", () => {
-    expect(parseSegmentRegionId(segmentRegionId(0))).toBe(0);
-    expect(parseSegmentRegionId(segmentRegionId(12))).toBe(12);
+describe("segmentRegionId / parseSegmentRegionUid", () => {
+  it("round-trips stable segment uid", () => {
+    const uid = "8f3c2b1a-4d5e-6f7a-8b9c-0d1e2f3a4b5c";
+    expect(parseSegmentRegionUid(segmentRegionId(uid))).toBe(uid);
   });
 
-  it("rejects foreign ids", () => {
-    expect(parseSegmentRegionId("other")).toBeNull();
-    expect(parseSegmentRegionId("rushi-seg-x")).toBeNull();
+  it("rejects non-segment ids", () => {
+    expect(parseSegmentRegionUid("other")).toBeNull();
+    expect(parseSegmentRegionUid("rushi-seg-")).toBeNull();
   });
 });

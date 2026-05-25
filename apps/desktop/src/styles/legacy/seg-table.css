@@ -4,13 +4,13 @@
   overflow: auto;
   max-height: 16rem;
   border-radius: 8px;
-  background: #f4f4f5;
+  background: var(--notion-sidebar);
 }
 
 .seg-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.8rem;
+  font-size: 12px;
 }
 
 .seg-table th,
@@ -21,7 +21,7 @@
 }
 
 .seg-table th {
-  background: var(--gray-200);
+  background: var(--notion-sidebar-active);
   position: sticky;
   top: 0;
 }
@@ -33,7 +33,7 @@
 
 .seg-detail {
   max-width: 14rem;
-  font-size: 0.75rem;
-  color: var(--gray-600);
+  font-size: 12px;
+  color: var(--notion-text-muted);
   word-break: break-word;
 }

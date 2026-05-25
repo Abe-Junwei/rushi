@@ -14,7 +14,7 @@ export function EnvHelpPanel() {
       </p>
       <p>
         未配置 FunASR 时多为 <strong className="text-zen-ink">stub</strong>（语段常有、正文或为空）。请先启动{" "}
-        <code className={`rounded bg-black/[0.04] px-1 py-0.5 ${PANEL_TYPOGRAPHY.code}`}>python -m rushi_asr</code>。
+        <code className={`rounded bg-notion-sidebar px-1 py-0.5 ${PANEL_TYPOGRAPHY.code}`}>python -m rushi_asr</code>。
       </p>
       <h4 className={`mt-4 ${PANEL_TYPOGRAPHY.fieldLabel}`}>没有中文稿？</h4>
       <ol className="list-inside list-decimal space-y-1 break-words leading-relaxed">

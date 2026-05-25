@@ -9,6 +9,8 @@ export interface ProjectSummary {
 }
 
 export interface SegmentDto {
+  /** 稳定语段 id；旧数据可为空，打开文件时由前端补全。 */
+  uid?: string;
   idx: number;
   start_sec: number;
   end_sec: number;

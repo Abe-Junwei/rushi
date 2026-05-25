@@ -1,14 +1,17 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import WaveSurfer from "wavesurfer.js";
 import RegionsPlugin from "wavesurfer.js/dist/plugins/regions.esm.js";
 import { COLORS } from "../config/tokens";
 import type { SegmentDto } from "../tauri/projectApi";
 import { formatMediaTime } from "../utils/formatMediaTime";
 import { waveformBoundsSignature } from "../utils/boundsSignature";
+import { segmentsUidSignature } from "../utils/segmentUid";
 import { resolveWaveformRulerView, type WaveformRulerView } from "../utils/waveformViewport";
-import { parseSegmentRegionId } from "../utils/waveformRegionId";
+import { useWaveformHeightSync } from "./useWaveformHeightSync";
 import { useWaveformPlayback } from "./useWaveformPlayback";
 import { useWaveformRegions } from "./useWaveformRegions";
+import { useWaveformSegmentPlaybackControls } from "./useWaveformSegmentPlaybackControls";
+import { useWaveformZoomSync } from "./useWaveformZoomSync";
 
 export type UseProjectWaveformOptions = {
   mediaUrl: string | null;
@@ -19,11 +22,11 @@ export type UseProjectWaveformOptions = {
   minPxPerSec?: number;
   /** 波形区纵向高度（px），与外层容器一致；变更时 `setOptions({ height })` */
   waveformHeightPx?: number;
+  /** 波形真实重绘完成后，将已应用高度回传给外层预览层。 */
+  onWaveformHeightApplied?: (heightPx: number) => void;
   onSelectIndex: (idx: number) => void;
   /** Single undo entry: segment time bounds after drag/resize. */
   onBoundsCommit: (idx: number, startSec: number, endSec: number) => void;
-  /** 拖拽/resize 过程中同步下方时间轨语段卡（每帧至多一次 RAF）。 */
-  onBoundsLive?: (idx: number, startSec: number, endSec: number) => void;
   /** 在波形空白处拖选新建语段；启用时会关闭 dragToSeek 以免抢同一套水平拖动 */
   onWaveformCreateRange?: (startSec: number, endSec: number) => void;
   /** 波形内部横向滚动（与外层时间轴滚动条对齐，思路来自解语 waveform ↔ tier scroll sync） */
@@ -48,11 +51,15 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
   minPxPerSecRef.current = minPxPerSec;
   const waveformHeightRef = useRef(waveformHeightPx);
   waveformHeightRef.current = waveformHeightPx;
+  const appliedWaveformHeightRef = useRef(waveformHeightPx);
+  const pendingAppliedWaveformHeightRef = useRef<number | null>(waveformHeightPx);
   const containerRef = useRef<HTMLDivElement | null>(null);
   const wsRef = useRef<WaveSurfer | null>(null);
   const regionsRef = useRef<ReturnType<typeof RegionsPlugin.create> | null>(null);
   const wsUnsubsRef = useRef<Array<() => void>>([]);
   const lastTimeUiCommitRef = useRef(-1);
+  const zoomRafRef = useRef(0);
+  const appliedZoomPxPerSecRef = useRef(minPxPerSec);
 
   const [isReady, setIsReady] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -60,7 +67,6 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
   const [duration, setDuration] = useState(0);
   const [currentTime, setCurrentTime] = useState(0);
   const [rulerView, setRulerView] = useState<WaveformRulerView | null>(null);
-
   const playback = useWaveformPlayback(
     wsRef,
     containerRef,
@@ -68,14 +74,12 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     minPxPerSecRef,
     options.getViewportScrollPx,
   );
-
-  const boundsSig = useMemo(() => waveformBoundsSignature(segments), [segments]);
-
+  const boundsSig = waveformBoundsSignature(segments);
+  const uidSig = segmentsUidSignature(segments);
   const clearWsListeners = useCallback(() => {
     wsUnsubsRef.current.forEach((u) => u());
     wsUnsubsRef.current = [];
   }, []);
-
   const { clearRegionListeners } = useWaveformRegions(
     wsRef,
     regionsRef,
@@ -83,9 +87,17 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     isReady,
     disabled,
     boundsSig,
+    uidSig,
     selectedIdx,
     onWaveformCreateRange,
   );
+  const segmentPlayback = useWaveformSegmentPlaybackControls({
+    wsRef,
+    regionsRef,
+    isReady,
+    segments,
+    selectedIdx,
+  });
 
   const destroyWave = useCallback(() => {
     clearRegionListeners();
@@ -106,6 +118,11 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     setDuration(0);
     setCurrentTime(0);
     setRulerView(null);
+    pendingAppliedWaveformHeightRef.current = null;
+    if (zoomRafRef.current) {
+      cancelAnimationFrame(zoomRafRef.current);
+      zoomRafRef.current = 0;
+    }
   }, [clearRegionListeners, clearWsListeners]);
 
   useEffect(() => {
@@ -132,6 +149,8 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
       const wantDragCreate = Boolean(optsRef.current.onWaveformCreateRange);
       const initialMps = minPxPerSecRef.current;
       const initialH = waveformHeightRef.current;
+      pendingAppliedWaveformHeightRef.current = initialH;
+      appliedZoomPxPerSecRef.current = initialMps;
       const ws = WaveSurfer.create({
         container: el,
         url: mediaUrl,
@@ -218,6 +237,16 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
           );
         }),
       );
+      wsUnsubsRef.current.push(
+        ws.on("redrawcomplete", () => {
+          if (disposed) return;
+          const appliedHeight = pendingAppliedWaveformHeightRef.current;
+          if (appliedHeight == null) return;
+          pendingAppliedWaveformHeightRef.current = null;
+          appliedWaveformHeightRef.current = appliedHeight;
+          optsRef.current.onWaveformHeightApplied?.(appliedHeight);
+        }),
+      );
     };
 
     setLoadError(null);
@@ -229,58 +258,30 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     };
   }, [mediaUrl, destroyWave]);
 
-  useEffect(() => {
-    const ws = wsRef.current;
-    if (!ws || !isReady || disabled) return;
-    try {
-      ws.zoom(minPxPerSec);
-    } catch {
-      /* noop */
-    }
-  }, [minPxPerSec, isReady, disabled]);
+  useWaveformZoomSync({
+    wsRef,
+    isReady,
+    disabled,
+    minPxPerSec,
+    zoomRafRef,
+    appliedZoomPxPerSecRef,
+  });
 
-  useEffect(() => {
-    const el = containerRef.current;
-    const h = waveformHeightPx;
-    if (el) {
-      el.style.height = `${h}px`;
-      el.style.backgroundColor = COLORS.waveformSurface;
-    }
-    const ws = wsRef.current;
-    if (!ws || !isReady || disabled) return;
-    try {
-      ws.setOptions({
-        height: h,
-        waveColor: COLORS.waveformWave,
-        progressColor: COLORS.waveformProgress,
-        cursorColor: COLORS.waveformCursor,
-      });
-    } catch {
-      try {
-        ws.setOptions({ height: h });
-      } catch {
-        /* noop */
-      }
-    }
-  }, [waveformHeightPx, isReady, disabled]);
+  useWaveformHeightSync({
+    wsRef,
+    containerRef,
+    waveformHeightPx,
+    isReady,
+    disabled,
+    appliedWaveformHeightRef,
+    pendingAppliedWaveformHeightRef,
+  });
 
   useEffect(() => {
     const ws = wsRef.current;
     if (!ws || !isReady) return;
     ws.toggleInteraction(!disabled);
   }, [disabled, isReady]);
-
-  const playSegmentAtIndex = useCallback(
-    (idx: number) => {
-      const rp = regionsRef.current;
-      if (!rp || !isReady) return;
-      const regs = rp.getRegions();
-      const r = regs.find((x) => parseSegmentRegionId(x.id) === idx);
-      if (!r) return;
-      r.play(true);
-    },
-    [isReady],
-  );
 
   return {
     containerRef,
@@ -291,7 +292,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     currentTime,
     rulerView,
     ...playback,
-    playSegmentAtIndex,
+    ...segmentPlayback,
     formatMediaTime,
     destroyWave,
   };

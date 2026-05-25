@@ -1,12 +1,12 @@
-import { memo, useCallback, useMemo } from "react";
-import { Crosshair, Maximize2 } from "lucide-react";
+import { memo, useCallback, useEffect, useMemo, useRef } from "react";
+import { Crosshair, Maximize2, ZoomIn, ZoomOut } from "lucide-react";
 import {
   clampPxPerSec,
   PX_PER_SEC_MAX,
   PX_PER_SEC_MIN,
   TIMELINE_PX_PER_SEC,
 } from "../utils/pxPerSec";
-import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
+import { LUCIDE_ICON_SIZE_LG, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
 export type WaveformZoomBarProps = {
   disabled: boolean;
@@ -19,6 +19,8 @@ export type WaveformZoomBarProps = {
   onZoomIn: () => void;
   onZoomOut: () => void;
   onPxPerSecChange: (pxPerSec: number) => void;
+  onZoomInteractionStart?: () => void;
+  onZoomInteractionEnd?: () => void;
 };
 
 function pxPerSecToSliderPos(px: number): number {
@@ -47,20 +49,61 @@ export const WaveformZoomBar = memo(function WaveformZoomBar({
   onZoomIn,
   onZoomOut,
   onPxPerSecChange,
+  onZoomInteractionStart,
+  onZoomInteractionEnd,
 }: WaveformZoomBarProps) {
   const off = disabled || !isReady;
+  const sliderRafRef = useRef(0);
+  const sliderInteractingRef = useRef(false);
+  const pendingSliderPosRef = useRef<number | null>(null);
   const sliderValue = useMemo(() => pxPerSecToSliderPos(pxPerSec), [pxPerSec]);
   const zoomPercentLabel = useMemo(
     () => Math.round((pxPerSec / TIMELINE_PX_PER_SEC) * 100),
     [pxPerSec],
   );
 
+  const beginSliderInteraction = useCallback(() => {
+    if (sliderInteractingRef.current) return;
+    sliderInteractingRef.current = true;
+    onZoomInteractionStart?.();
+  }, [onZoomInteractionStart]);
+
+  const flushPendingSliderChange = useCallback(() => {
+    const pos = pendingSliderPosRef.current;
+    if (pos == null) return;
+    pendingSliderPosRef.current = null;
+    if (sliderRafRef.current) {
+      cancelAnimationFrame(sliderRafRef.current);
+      sliderRafRef.current = 0;
+    }
+    onPxPerSecChange(sliderPosToPxPerSec(pos));
+  }, [onPxPerSecChange]);
+
+  const endSliderInteraction = useCallback(() => {
+    flushPendingSliderChange();
+    if (!sliderInteractingRef.current) return;
+    sliderInteractingRef.current = false;
+    onZoomInteractionEnd?.();
+  }, [flushPendingSliderChange, onZoomInteractionEnd]);
+
   const onSliderChange = useCallback(
     (e: React.ChangeEvent<HTMLInputElement>) => {
-      const pos = Number(e.target.value);
-      onPxPerSecChange(sliderPosToPxPerSec(pos));
+      beginSliderInteraction();
+      pendingSliderPosRef.current = Number(e.target.value);
+      if (sliderRafRef.current) return;
+      sliderRafRef.current = requestAnimationFrame(() => {
+        sliderRafRef.current = 0;
+        flushPendingSliderChange();
+      });
     },
-    [onPxPerSecChange],
+    [beginSliderInteraction, flushPendingSliderChange],
+  );
+
+  useEffect(
+    () => () => {
+      if (sliderRafRef.current) cancelAnimationFrame(sliderRafRef.current);
+    },
+    [],
   );
 
   return (
@@ -74,7 +117,7 @@ export const WaveformZoomBar = memo(function WaveformZoomBar({
           aria-label="适配整段"
           onClick={onZoomToFitAll}
         >
-          <Maximize2 className={`${LUCIDE_ICON_SIZE_MD} shrink-0 opacity-90`} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+          <Maximize2 className={`${LUCIDE_ICON_SIZE_LG} shrink-0 opacity-90`} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
         </button>
         <button
           type="button"
@@ -84,17 +127,17 @@ export const WaveformZoomBar = memo(function WaveformZoomBar({
           aria-label="适配选中语段"
           onClick={onZoomToFitSelection}
         >
-          <Crosshair className={`${LUCIDE_ICON_SIZE_MD} shrink-0 opacity-90`} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+          <Crosshair className={`${LUCIDE_ICON_SIZE_LG} shrink-0 opacity-90`} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
         </button>
         <button type="button" className="icon-btn" disabled={off} title="默认横向比例（56 px/s）" aria-label="一比一" onClick={onZoomOneToOne}>
           <span className="icon-btn-label">1:1</span>
         </button>
         <span className="toolbar-sep" aria-hidden />
-        <button type="button" className="icon-btn icon-btn-compact" disabled={off} title="缩小" aria-label="缩小" onClick={onZoomOut}>
-          <span className="text-base leading-none">−</span>
+        <button type="button" className="icon-btn" disabled={off} title="缩小" aria-label="缩小" onClick={onZoomOut}>
+          <ZoomOut className={LUCIDE_ICON_SIZE_LG} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
         </button>
-        <button type="button" className="icon-btn icon-btn-compact" disabled={off} title="放大" aria-label="放大" onClick={onZoomIn}>
-          <span className="text-base leading-none">+</span>
+        <button type="button" className="icon-btn" disabled={off} title="放大" aria-label="放大" onClick={onZoomIn}>
+          <ZoomIn className={LUCIDE_ICON_SIZE_LG} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
         </button>
         <span className="toolbar-sep" aria-hidden />
         <input
@@ -106,6 +149,12 @@ export const WaveformZoomBar = memo(function WaveformZoomBar({
           disabled={off}
           value={sliderValue}
           onChange={onSliderChange}
+          onPointerDown={beginSliderInteraction}
+          onPointerUp={endSliderInteraction}
+          onPointerCancel={endSliderInteraction}
+          onKeyDown={beginSliderInteraction}
+          onKeyUp={endSliderInteraction}
+          onBlur={endSliderInteraction}
           title={`横向比例 ${zoomPercentLabel}%（相对默认）`}
           aria-label={`横向缩放滑块，当前 ${zoomPercentLabel}%`}
         />

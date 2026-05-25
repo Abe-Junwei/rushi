@@ -1,4 +1,5 @@
 import { ResizeBottomHit } from "../ResizeBottomHit";
+import { WaveformSegmentPlaybackControls } from "../WaveformSegmentPlaybackControls";
 import { WaveformTimeRuler } from "../WaveformTimeRuler";
 import { WaveformZoomBar } from "../WaveformZoomBar";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
@@ -26,19 +27,35 @@ export function EditorWaveformPane({
   rulerScrollLeftPx,
   onOpenSegmentContextMenu,
 }: EditorWaveformPaneProps) {
+  const selectedSegment = c.segments[c.selectedIdx] ?? null;
+  const waveformStageHeightPx = tx.waveformHeightPx;
+  const waveformHorizontalScale = tx.renderPxPerSec > 0 ? tx.pxPerSec / tx.renderPxPerSec : 1;
+  const waveformVisualScale =
+    tx.waveformPaintedHeightPx > 0 ? tx.waveformHeightPx / tx.waveformPaintedHeightPx : 1;
+  const waveformPreviewTransform = [
+    Math.abs(waveformHorizontalScale - 1) > 0.001 ? `scaleX(${waveformHorizontalScale})` : "",
+    Math.abs(waveformVisualScale - 1) > 0.001 ? `scaleY(${waveformVisualScale})` : "",
+  ]
+    .filter(Boolean)
+    .join(" ");
+  const waveformPreviewClass = tx.waveformHeightDragging || tx.zoomPreviewActive
+    ? "w-full origin-top-left will-change-transform"
+    : "w-full origin-top-left will-change-transform transition-transform duration-150 ease-out motion-reduce:transition-none";
   return (
     <div className="relative z-0 flex w-full shrink-0 flex-col overflow-hidden bg-notion-sidebar">
       <div
         ref={tx.tierScrollRef}
         onScroll={tx.onTierScroll}
-        className="h-[180px] w-full shrink-0 overflow-x-auto overflow-y-hidden [overflow-anchor:none]"
+        style={{ height: waveformStageHeightPx }}
+        className="w-full shrink-0 overflow-x-auto overflow-y-hidden [overflow-anchor:none]"
       >
         <div
           style={{ width: tx.timelineWidthPx }}
           className={`inline-block align-top ${c.busy ? "pointer-events-none opacity-60" : ""}`}
         >
           <div
-            className="relative h-[180px] overflow-hidden bg-notion-sidebar"
+            style={{ height: waveformStageHeightPx }}
+            className="relative overflow-hidden bg-notion-sidebar"
             onContextMenu={(e) => {
               if (c.busy) return;
               e.preventDefault();
@@ -55,35 +72,7 @@ export function EditorWaveformPane({
               </p>
             ) : null}
 
-            <div className="absolute left-4 top-4 z-20 flex min-w-0 items-center gap-2">
-                <button
-                  type="button"
-                  className="inline-flex h-7 w-7 items-center justify-center rounded-full bg-notion-bg text-notion-text-muted shadow-sm transition-colors hover:text-notion-text disabled:opacity-40"
-                  disabled={c.busy || !tx.isReady}
-                  onClick={() => void tx.togglePlay()}
-                  aria-label={tx.isPlaying ? "暂停" : "播放"}
-                >
-                  {tx.isPlaying ? (
-                    <span className="flex h-3 w-3 items-center justify-center gap-0.5" aria-hidden>
-                      <span className="h-2.5 w-0.5 bg-notion-text" />
-                      <span className="h-2.5 w-0.5 bg-notion-text" />
-                    </span>
-                  ) : (
-                    <span
-                      className="ml-0.5 block h-0 w-0 border-y-[6px] border-l-[10px] border-y-transparent border-l-notion-text"
-                      aria-hidden
-                    />
-                  )}
-                </button>
-                <span className="rounded bg-notion-bg px-2 py-1 font-mono text-[12px] tabular-nums tracking-tight text-notion-text shadow-sm">
-                  {tx.formatMediaTime(tx.currentTime)} / {tx.formatMediaTime(tx.duration || 0)}
-                </span>
-                <span className="inline-flex h-5 items-center rounded-full bg-notion-bg px-2 text-[10px] text-notion-text-muted shadow-sm">
-                  {tx.isReady ? "波形就绪" : "正在加载波形"}
-                </span>
-            </div>
-
-            <div className="relative flex h-full flex-col overflow-x-hidden bg-notion-sidebar pt-7">
+            <div className="relative flex h-full flex-col overflow-x-hidden bg-notion-sidebar">
               <div
                 ref={tx.waveformShellRef}
                 tabIndex={0}
@@ -91,13 +80,53 @@ export function EditorWaveformPane({
                 onKeyDown={tx.onWaveformMainKeyDown}
                 onClick={() => tx.focusWaveformShell()}
               >
-                <div
-                  ref={tx.containerRef}
-                  style={{ height: tx.waveformHeightPx }}
-                  className="w-full shrink-0 bg-transparent"
-                  role="img"
-                  aria-label="转写波形与语段时间范围"
+                <div className="w-full overflow-hidden" style={{ height: tx.waveformHeightPx }}>
+                  <div
+                    className={waveformPreviewClass}
+                    style={{
+                      width: tx.renderTimelineWidthPx,
+                      height: tx.waveformPaintedHeightPx,
+                      transform: waveformPreviewTransform || undefined,
+                    }}
+                  >
+                    <div
+                      ref={tx.containerRef}
+                      style={{ width: tx.renderTimelineWidthPx, height: tx.waveformPaintedHeightPx }}
+                      className="shrink-0 bg-transparent"
+                      role="img"
+                      aria-label="转写波形与语段时间范围"
+                    />
+                  </div>
+                </div>
+                <WaveformSegmentPlaybackControls
+                  disabled={c.busy || !tx.isReady}
+                  isPlaying={tx.isPlaying}
+                  pxPerSec={tx.pxPerSec}
+                  scrollLeftPx={rulerScrollLeftPx}
+                  viewportWidthPx={rulerViewportWidthPx}
+                  selectedSegment={selectedSegment}
+                  segmentPlaybackRate={tx.segmentPlaybackRate}
+                  segmentLoopPlayback={tx.segmentLoopPlayback}
+                  onPlaybackRateChange={tx.handleSegmentPlaybackRateChange}
+                  onToggleLoop={() => void tx.handleToggleSelectedWaveformLoop()}
+                  onTogglePlay={() => void tx.handleToggleSelectedWaveformPlay()}
                 />
+                <div className="absolute inset-x-0 bottom-0 z-10">
+                  <WaveformTimeRuler
+                    appearance="embedded"
+                    durationSec={tx.duration || 0}
+                    timelineWidthPx={tx.timelineWidthPx}
+                    scrollLeftPx={rulerScrollLeftPx}
+                    viewportWidthPx={rulerViewportWidthPx}
+                    pxPerSec={tx.pxPerSec}
+                    rulerView={tx.rulerView}
+                    currentTimeSec={tx.currentTime}
+                    formatMediaTime={tx.formatMediaTime}
+                    disabled={c.busy || !tx.isReady}
+                    onSeekFromTierClientX={tx.seekFromTierClientX}
+                    onSetScrollLeftPx={tx.setTierScrollPx}
+                  />
+                </div>
               </div>
               <ResizeBottomHit
                 busy={c.busy}
@@ -105,28 +134,32 @@ export function EditorWaveformPane({
                 onPointerDown={tx.beginWaveformHeightDrag}
               />
             </div>
-
-            <div className="absolute inset-x-0 bottom-0 shrink-0 border-t border-notion-divider/70 bg-notion-sidebar/95">
-              <WaveformTimeRuler
-                appearance="light"
-                durationSec={tx.duration || 0}
-                timelineWidthPx={tx.timelineWidthPx}
-                scrollLeftPx={rulerScrollLeftPx}
-                viewportWidthPx={rulerViewportWidthPx}
-                pxPerSec={tx.pxPerSec}
-                rulerView={tx.rulerView}
-                currentTimeSec={tx.currentTime}
-                formatMediaTime={tx.formatMediaTime}
-                disabled={c.busy || !tx.isReady}
-                onSeekFromTierClientX={tx.seekFromTierClientX}
-                onSetScrollLeftPx={tx.setTierScrollPx}
-              />
-            </div>
           </div>
         </div>
       </div>
 
-      <div className="flex h-[48px] w-full shrink-0 items-center bg-notion-sidebar/80 px-6">
+      <div className="waveform-bottom-toolbar">
+        <div className="waveform-playback-cluster">
+          <button
+            type="button"
+            className="waveform-playback-btn"
+            disabled={c.busy || !tx.isReady}
+            onClick={() => void tx.togglePlay()}
+            aria-label={tx.isPlaying ? "暂停" : "播放"}
+          >
+            {tx.isPlaying ? (
+              <span className="waveform-playback-pause" aria-hidden>
+                <span />
+                <span />
+              </span>
+            ) : (
+              <span className="waveform-playback-play" aria-hidden />
+            )}
+          </button>
+          <span className="waveform-playback-time" aria-live="polite">
+            {tx.formatMediaTime(tx.currentTime)} / {tx.formatMediaTime(tx.duration || 0)}
+          </span>
+        </div>
         <WaveformZoomBar
           disabled={c.busy}
           isReady={tx.isReady}
@@ -138,6 +171,8 @@ export function EditorWaveformPane({
           onZoomIn={() => tx.zoomIn()}
           onZoomOut={() => tx.zoomOut()}
           onPxPerSecChange={tx.setPxPerSec}
+          onZoomInteractionStart={tx.beginZoomInteraction}
+          onZoomInteractionEnd={tx.commitZoomInteraction}
         />
       </div>
     </div>

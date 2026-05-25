@@ -1,17 +1,19 @@
-import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useTranscriptionLayer } from "../pages/useTranscriptionLayer";
 import { buildSegmentContextMenuItems, type SegmentContextMenuKey } from "../utils/segmentContextMenuModel";
 import { EnvironmentPanel } from "./EnvironmentPanel";
 import { FloatingPanelTemplate } from "./PanelTemplate";
 import { EditorView } from "./EditorView";
 
-import { WelcomeView } from "./WelcomeView";
+import { WelcomeView, type WelcomePageId } from "./WelcomeView";
 import { ProjectBusyOverlay } from "./ProjectStatusFeedback";
+import { UnsavedCloseDialog } from "./UnsavedCloseDialog";
 import { useProjectController } from "../pages/useProjectController";
 
 export function ProjectPanel() {
   const c = useProjectController();
   const [envOpen, setEnvOpen] = useState(false);
+  const [welcomePage, setWelcomePage] = useState<WelcomePageId>("home");
   const [exportKey, setExportKey] = useState("");
   const [busyElapsedSec, setBusyElapsedSec] = useState(0);
   const [segmentCtxMenu, setSegmentCtxMenu] = useState<{
@@ -27,6 +29,10 @@ export function ProjectPanel() {
     if (c.current) return "C";
     return "A";
   }, [c]);
+
+  useEffect(() => {
+    if (workspacePhase !== "A") setWelcomePage("home");
+  }, [workspacePhase]);
 
   useEffect(() => {
     if (!c.busy) {
@@ -57,15 +63,6 @@ export function ProjectPanel() {
     insertSegmentAfter: c.insertSegmentAfter,
     deleteSegmentAt: c.deleteSegmentAt,
   });
-
-  const txRef = useRef(tx);
-  txRef.current = tx;
-
-  useLayoutEffect(() => {
-    const attach = c.attachSegmentListDomRoot;
-    attach(() => txRef.current.tierScrollRef.current);
-    return () => attach(null);
-  }, [c.attachSegmentListDomRoot]);
 
   const segmentCtxMenuItems = useMemo(
     () =>
@@ -162,7 +159,12 @@ export function ProjectPanel() {
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
         {workspacePhase === "A" ? (
-          <WelcomeView controller={c} onOpenSettings={() => setEnvOpen(true)} />
+          <WelcomeView
+            controller={c}
+            onOpenSettings={() => setEnvOpen(true)}
+            page={welcomePage}
+            onPageChange={setWelcomePage}
+          />
         ) : (
           <main className="relative flex min-h-[12rem] min-w-0 flex-1 flex-col bg-notion-bg lg:min-h-0">
             <EditorView
@@ -181,6 +183,15 @@ export function ProjectPanel() {
       </div>
 
       {c.busy ? <ProjectBusyOverlay reason={c.busyReason} elapsedSec={busyElapsedSec} /> : null}
+
+      <UnsavedCloseDialog
+        open={c.closeGateOpen}
+        intent={c.closeGateIntent}
+        busy={c.busy}
+        onStay={c.stayAfterCloseAttempt}
+        onDiscardAndClose={() => void c.discardUnsavedAndClose()}
+        onSaveAndClose={() => void c.saveAndClose()}
+      />
     </section>
   );
 }

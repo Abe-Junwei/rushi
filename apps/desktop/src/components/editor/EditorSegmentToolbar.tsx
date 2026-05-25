@@ -1,8 +1,8 @@
-import { History, Redo2, Undo2 } from "lucide-react";
+import { History, Minus, Plus, Redo2, Undo2 } from "lucide-react";
 import { useEffect, useRef } from "react";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
-import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";
+import { LUCIDE_ICON_SIZE_LG, LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";
 import { footerActionIconBtn } from "./editorSegmentToolbarStyles";
 import { summarizeHistoryDetail } from "./useEditorEditHistory";
 import type { useEditorEditHistory } from "./useEditorEditHistory";
@@ -26,7 +26,7 @@ export function EditorSegmentToolbar({
 }: EditorSegmentToolbarProps) {
   const fontEntryRef = useRef<HTMLDivElement | null>(null);
   const appearanceBtnBase =
-    "inline-flex h-7 items-center justify-center rounded-md border-0 bg-transparent px-2.5 text-[11px] font-medium leading-none transition-colors";
+    "inline-flex h-8 items-center justify-center rounded-md border-0 bg-transparent px-3 text-[12px] font-medium leading-none transition-colors";
 
   useEffect(() => {
     if (!a.fontPanelOpen) return;
@@ -54,7 +54,7 @@ export function EditorSegmentToolbar({
           aria-label="撤销"
           title="撤销"
         >
-          <Undo2 className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+          <Undo2 className={LUCIDE_ICON_SIZE_LG} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
         </button>
         <button
           type="button"
@@ -64,7 +64,7 @@ export function EditorSegmentToolbar({
           aria-label="重做"
           title="重做"
         >
-          <Redo2 className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+          <Redo2 className={LUCIDE_ICON_SIZE_LG} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
         </button>
         <button
           type="button"
@@ -74,7 +74,7 @@ export function EditorSegmentToolbar({
           aria-label="编辑历史"
           title="编辑历史"
         >
-          <History className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+          <History className={LUCIDE_ICON_SIZE_LG} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
         </button>
 
         {h.historyOpen ? (
@@ -84,7 +84,7 @@ export function EditorSegmentToolbar({
               <div className="flex items-center gap-1">
                 <button
                   type="button"
-                  className="inline-flex h-6 items-center justify-center rounded-md border border-notion-border px-2 text-[10px] text-notion-text-muted transition-colors hover:bg-notion-sidebar-hover"
+                  className="inline-flex h-6 items-center justify-center rounded-md border border-notion-border px-2 text-[11px] text-notion-text-muted transition-colors hover:bg-notion-sidebar-hover"
                   onClick={() => void h.loadEditHistory()}
                   disabled={h.historyBusy}
                 >
@@ -92,7 +92,7 @@ export function EditorSegmentToolbar({
                 </button>
                 <button
                   type="button"
-                  className="inline-flex h-6 items-center justify-center rounded-md border border-notion-border px-2 text-[10px] text-notion-text-muted transition-colors hover:bg-notion-sidebar-hover"
+                  className="inline-flex h-6 items-center justify-center rounded-md border border-notion-border px-2 text-[11px] text-notion-text-muted transition-colors hover:bg-notion-sidebar-hover"
                   onClick={() => h.setHistoryOpen(false)}
                 >
                   关闭
@@ -109,10 +109,10 @@ export function EditorSegmentToolbar({
               <ul className="max-h-56 space-y-1 overflow-y-auto px-1 py-1">
                 {h.historyRows.map((row) => (
                   <li key={row.id} className="rounded-md border border-notion-divider bg-notion-bg px-2 py-1.5">
-                    <p className="text-[10px] font-medium text-notion-text">
+                    <p className="text-[11px] font-medium text-notion-text">
                       {new Date(row.at_ms).toLocaleString()} · {row.kind}
                     </p>
-                    <p className="mt-0.5 text-[10px] text-notion-text-muted">{summarizeHistoryDetail(row.detail)}</p>
+                    <p className="mt-0.5 text-[11px] text-notion-text-muted">{summarizeHistoryDetail(row.detail)}</p>
                   </li>
                 ))}
               </ul>
@@ -175,12 +175,12 @@ export function EditorSegmentToolbar({
             aria-label="字体调整面板"
             className="absolute right-0 top-10 z-50 w-[18.5rem] rounded-xl border border-notion-divider bg-notion-bg p-2.5 shadow-[0_8px_18px_rgba(44,44,44,0.1)]"
           >
-            <div className="mb-1.5 text-[10px] font-semibold uppercase tracking-[0.14em] text-notion-text-muted">
+            <div className="mb-1.5 text-[11px] font-semibold uppercase tracking-[0.1em] text-notion-text-muted">
               文本排版
             </div>
 
             <div className="grid gap-2">
-              <label className="grid gap-1 text-[10px] text-notion-text-muted">
+              <label className="grid gap-1 text-[11px] text-notion-text-muted">
                 <span>系统字体</span>
                 <select
                   className="h-7 w-full rounded-md border border-notion-divider bg-notion-bg px-2 text-[11px] text-notion-text-muted outline-none focus:border-zen-saffron/45"
@@ -198,7 +198,7 @@ export function EditorSegmentToolbar({
                 </select>
               </label>
 
-              <div className="grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-1 text-[10px] text-notion-text-muted">
+              <div className="grid grid-cols-[auto_1fr] items-center gap-x-2 gap-y-1 text-[11px] text-notion-text-muted">
                 <span>字号</span>
                 <div className="inline-flex h-7 items-center justify-between rounded-md border border-notion-divider bg-notion-bg px-1 text-[11px] text-notion-text-muted">
                   <button
@@ -208,7 +208,7 @@ export function EditorSegmentToolbar({
                     onClick={() => tx.nudgeTranscriptFontPx(-1)}
                     aria-label="减小字号"
                   >
-                    −
+                    <Minus className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
                   </button>
                   <span className="px-2 tabular-nums">{Math.round(tx.transcriptFontPx)}px</span>
                   <button
@@ -218,14 +218,14 @@ export function EditorSegmentToolbar({
                     onClick={() => tx.nudgeTranscriptFontPx(1)}
                     aria-label="增大字号"
                   >
-                    +
+                    <Plus className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
                   </button>
                 </div>
 
                 <span>字体库</span>
                 <button
                   type="button"
-                  className="inline-flex h-7 items-center justify-center rounded-md border border-notion-divider bg-notion-sidebar px-2 text-[10px] text-notion-text-muted transition-colors hover:bg-notion-sidebar-hover disabled:cursor-not-allowed disabled:text-notion-text-light"
+                  className="inline-flex h-7 items-center justify-center rounded-md border border-notion-divider bg-notion-sidebar px-2 text-[11px] text-notion-text-muted transition-colors hover:bg-notion-sidebar-hover disabled:cursor-not-allowed disabled:text-notion-text-light"
                   disabled={a.transcriptFontControlDisabled || a.fontLoadBusy}
                   onClick={() => {
                     void a.loadSystemFonts();

@@ -173,6 +173,7 @@ async fn project_run_transcribe_inner(
             .filter(|s| !s.is_empty())
             .map(String::from);
         segments.push(SegmentDto {
+            uid: Some(uuid::Uuid::new_v4().to_string()),
             idx: i as i32,
             start_sec: start,
             end_sec: end,

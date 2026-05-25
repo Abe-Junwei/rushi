@@ -1,4 +1,5 @@
 use super::correction::{load_file_segment_texts, update_correction_memory_from_save};
+use super::segment_uid::segment_uid_or_new;
 use super::types::SegmentDto;
 use super::utils::{append_desktop_log_line, now_ms, open_db};
 use crate::DbState;
@@ -24,26 +25,86 @@ pub fn file_save_segments_inner(
         )
         .map_err(|e| e.to_string())?;
 
-    tx.execute("DELETE FROM segments WHERE file_id = ?1", params![file_id])
+    let existing_uids: Vec<String> = tx
+        .prepare("SELECT uid FROM segments WHERE file_id = ?1")
+        .map_err(|e| e.to_string())?
+        .query_map(params![file_id], |r| r.get::<_, String>(0))
+        .map_err(|e| e.to_string())?
+        .collect::<Result<Vec<_>, _>>()
         .map_err(|e| e.to_string())?;
-    for s in segments {
-        let low = if s.low_confidence { 1i64 } else { 0i64 };
-        let detail = s.detail.as_deref().unwrap_or("");
+    for (slot, uid) in existing_uids.iter().enumerate() {
+        let temp_idx = -((slot as i64) + 1);
         tx.execute(
-            "INSERT INTO segments (file_id, idx, start_sec, end_sec, text, confidence, low_confidence, detail) \
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
-            params![
-                file_id,
-                s.idx,
-                s.start_sec,
-                s.end_sec,
-                s.text.as_str(),
-                s.confidence,
-                low,
-                detail,
-            ],
+            "UPDATE segments SET idx = ?1 WHERE file_id = ?2 AND uid = ?3",
+            params![temp_idx, file_id, uid.as_str()],
         )
         .map_err(|e| e.to_string())?;
+    }
+
+    let mut kept_uids: Vec<String> = Vec::with_capacity(segments.len());
+    for s in segments {
+        let uid = segment_uid_or_new(&s.uid);
+        kept_uids.push(uid.clone());
+        let low = if s.low_confidence { 1i64 } else { 0i64 };
+        let detail = s.detail.as_deref().unwrap_or("");
+        let updated = tx
+            .execute(
+                "UPDATE segments SET idx = ?1, start_sec = ?2, end_sec = ?3, text = ?4, \
+                 confidence = ?5, low_confidence = ?6, detail = ?7 \
+                 WHERE file_id = ?8 AND uid = ?9",
+                params![
+                    s.idx,
+                    s.start_sec,
+                    s.end_sec,
+                    s.text.as_str(),
+                    s.confidence,
+                    low,
+                    detail,
+                    file_id,
+                    uid.as_str(),
+                ],
+            )
+            .map_err(|e| e.to_string())?;
+        if updated == 0 {
+            tx.execute(
+                "INSERT INTO segments (file_id, uid, idx, start_sec, end_sec, text, confidence, low_confidence, detail) \
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+                params![
+                    file_id,
+                    uid.as_str(),
+                    s.idx,
+                    s.start_sec,
+                    s.end_sec,
+                    s.text.as_str(),
+                    s.confidence,
+                    low,
+                    detail,
+                ],
+            )
+            .map_err(|e| e.to_string())?;
+        }
+    }
+    if kept_uids.is_empty() {
+        tx.execute("DELETE FROM segments WHERE file_id = ?1", params![file_id])
+            .map_err(|e| e.to_string())?;
+    } else {
+        let mut stmt = tx
+            .prepare("SELECT uid FROM segments WHERE file_id = ?1")
+            .map_err(|e| e.to_string())?;
+        let existing = stmt
+            .query_map(params![file_id], |r| r.get::<_, String>(0))
+            .map_err(|e| e.to_string())?
+            .collect::<Result<Vec<_>, _>>()
+            .map_err(|e| e.to_string())?;
+        for old_uid in existing {
+            if !kept_uids.iter().any(|u| u == &old_uid) {
+                tx.execute(
+                    "DELETE FROM segments WHERE file_id = ?1 AND uid = ?2",
+                    params![file_id, old_uid.as_str()],
+                )
+                .map_err(|e| e.to_string())?;
+            }
+        }
     }
     tx.execute(
         "UPDATE files SET updated_at_ms = ?1 WHERE id = ?2",

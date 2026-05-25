@@ -57,6 +57,9 @@ pub struct EditLogEntryDto {
 
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SegmentDto {
+    /// 稳定语段 id（波形 region、按 uid upsert 落库）；旧数据可为空，加载/保存时补全。
+    #[serde(default)]
+    pub uid: Option<String>,
     pub idx: i32,
     pub start_sec: f64,
     pub end_sec: f64,

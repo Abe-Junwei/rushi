@@ -8,6 +8,7 @@ use uuid::Uuid;
 use zip::write::SimpleFileOptions;
 use zip::{CompressionMethod, ZipArchive, ZipWriter};
 
+use super::segment_uid::segment_uid_or_new;
 use super::types::{ProjectDetail, SegmentDto};
 use super::utils::{now_ms, open_db, project_detail_from_conn};
 
@@ -230,13 +231,15 @@ pub(super) fn import_project_bundle_from_path(
         )
         .map_err(|e| e.to_string())?;
         for (idx, s) in normalized_segments.iter().enumerate() {
+            let uid = segment_uid_or_new(&s.uid);
             let low = if s.low_confidence { 1i64 } else { 0i64 };
             let detail = s.detail.as_deref().unwrap_or("");
             tx.execute(
-                "INSERT INTO segments (file_id, idx, start_sec, end_sec, text, confidence, low_confidence, detail) \
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+                "INSERT INTO segments (file_id, uid, idx, start_sec, end_sec, text, confidence, low_confidence, detail) \
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
                 params![
                     &file_id,
+                    uid.as_str(),
                     idx as i32,
                     s.start_sec,
                     s.end_sec,

@@ -20,7 +20,7 @@ export type SegmentTextListRowProps = {
   selectSegmentAt: (idx: number) => void;
   updateSegmentText: (idx: number, text: string) => void;
   onTextareaKeyDown: (idx: number, e: KeyboardEvent<HTMLTextAreaElement>) => void;
-  onContextMenu?: (e: MouseEvent<HTMLDivElement>) => void;
+  onOpenContextMenu?: (e: MouseEvent<HTMLDivElement>, segmentIdx: number, pointerTimeSec: number) => void;
 };
 
 export const SegmentTextListRow = memo(function SegmentTextListRow({
@@ -39,7 +39,7 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
   selectSegmentAt,
   updateSegmentText,
   onTextareaKeyDown,
-  onContextMenu,
+  onOpenContextMenu,
 }: SegmentTextListRowProps) {
   const focusOnSelectRef = useRef(false);
   const editorRef = useRef<{ focusEditor: () => void } | null>(null);
@@ -62,17 +62,25 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
 
   const rowMinHeight = Math.max(60, Math.round(segmentRowHeightPx + 2));
   const metaWidth = Math.max(44, Math.round((segmentMetaWidthPx - 10) / 2));
+  const onRowContextMenu = useCallback(
+    (e: MouseEvent<HTMLDivElement>) => {
+      onOpenContextMenu?.(e, i, (s.start_sec + s.end_sec) / 2);
+    },
+    [i, onOpenContextMenu, s.end_sec, s.start_sec],
+  );
 
   return (
     <div
       data-seg-row={i}
       style={{ minHeight: rowMinHeight }}
       className={[
-        "group relative flex cursor-text items-start gap-2 rounded-lg border border-notion-divider px-[9px] py-[9px] transition-colors",
-        selected ? "bg-notion-sidebar/50" : "bg-notion-bg hover:bg-notion-sidebar/30",
+        "group relative flex cursor-text items-start gap-2 rounded-md border border-transparent px-[9px] py-[9px] transition-[background-color,border-color,box-shadow]",
+        selected
+          ? "border-zen-gray-300 bg-zen-ochre/45 shadow-[inset_0_0_0_1px_rgba(133,83,15,0.14)]"
+          : "bg-transparent hover:bg-notion-sidebar/20",
       ].join(" ")}
       onClick={onClickRow}
-      onContextMenu={onContextMenu}
+      onContextMenu={onRowContextMenu}
     >
       <SegmentRowTimestampColumn
         index={i}

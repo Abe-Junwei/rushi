@@ -25,16 +25,16 @@ export function SegmentRowTimestampColumn({
         <div className="flex flex-col gap-1">
           <span
             className={[
-              "font-mono text-[10px] font-medium tabular-nums tracking-[0.01em]",
-              selected ? "text-notion-text-muted" : "text-notion-text-light group-hover:text-notion-text-muted",
+              "font-mono text-[11px] font-medium tabular-nums tracking-[0.01em]",
+              selected ? "text-zen-gray-500" : "text-notion-text-light group-hover:text-notion-text-muted",
             ].join(" ")}
           >
             {index + 1}.
           </span>
           <span
             className={[
-              "font-mono text-[10px] font-medium tabular-nums tracking-[0.01em]",
-              selected ? "text-notion-text-muted" : "text-notion-text-light group-hover:text-notion-text-muted",
+              "font-mono text-[11px] font-medium tabular-nums tracking-[0.01em]",
+              selected ? "text-zen-gray-500" : "text-notion-text-light group-hover:text-notion-text-muted",
             ].join(" ")}
           >
             {timestampLabel}
@@ -48,11 +48,20 @@ export function SegmentRowTimestampColumn({
         aria-label="拖拽调整语段信息列宽度"
         className={[
           "group/resize relative my-1.5 w-2.5 shrink-0 rounded-full",
-          busy ? "cursor-not-allowed" : "cursor-col-resize hover:bg-notion-sidebar-hover/70",
+          busy
+            ? "cursor-not-allowed"
+            : selected
+              ? "cursor-col-resize hover:bg-zen-saffron/12"
+              : "cursor-col-resize hover:bg-notion-sidebar-hover/70",
         ].join(" ")}
         onPointerDown={onMetaWidthPointerDown}
       >
-        <span className="absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-transparent transition-colors group-hover/resize:bg-notion-divider" />
+        <span
+          className={[
+            "absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-transparent transition-colors",
+            selected ? "group-hover/resize:bg-zen-saffron/30" : "group-hover/resize:bg-notion-divider",
+          ].join(" ")}
+        />
       </div>
     </>
   );

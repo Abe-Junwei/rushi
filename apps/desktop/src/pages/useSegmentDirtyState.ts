@@ -4,14 +4,23 @@ import {
   segmentsEqualForPersist,
   snapshotSegmentsForPersist,
 } from "./segmentListHelpers";
+import { segmentsWithDraftsApplied } from "./segmentDirtyRead";
 
 export const UNSAVED_SEGMENTS_CONFIRM =
   "当前文件有未保存的语段修改，确定放弃吗？";
 
+/** 关闭应用时对话框正文（由 `UnsavedCloseDialog` 展示，勿依赖 `window.confirm`）。 */
+export const UNSAVED_CLOSE_DISCARD_PROMPT =
+  "关闭后未保存的正文修改将丢失。\n可先保存并退出，或放弃修改后退出。";
+
+/** 离开当前文件/项目时对话框正文。 */
+export const UNSAVED_NAV_DISCARD_PROMPT =
+  "离开后未保存的正文修改将丢失。\n可先保存再离开，或放弃修改后继续。";
+
 export interface SegmentDirtyStateDeps {
   currentFileId: string | null;
   segmentsRef: React.MutableRefObject<SegmentDto[]>;
-  flushSegmentTextDraftsFromDom: () => void;
+  flushSegmentTextDrafts: () => void;
 }
 
 export interface SegmentDirtyStateApi {
@@ -24,13 +33,13 @@ export interface SegmentDirtyStateApi {
 }
 
 export function useSegmentDirtyState(deps: SegmentDirtyStateDeps): SegmentDirtyStateApi {
-  const { currentFileId, segmentsRef, flushSegmentTextDraftsFromDom } = deps;
+  const { currentFileId, segmentsRef, flushSegmentTextDrafts } = deps;
   const savedSegmentsRef = useRef<SegmentDto[]>([]);
 
   const markSegmentsSaved = useCallback(() => {
-    flushSegmentTextDraftsFromDom();
+    flushSegmentTextDrafts();
     savedSegmentsRef.current = snapshotSegmentsForPersist(segmentsRef.current);
-  }, [flushSegmentTextDraftsFromDom, segmentsRef]);
+  }, [flushSegmentTextDrafts, segmentsRef]);
 
   const setSavedSnapshot = useCallback((segments: SegmentDto[]) => {
     savedSegmentsRef.current = snapshotSegmentsForPersist(segments);
@@ -42,9 +51,9 @@ export function useSegmentDirtyState(deps: SegmentDirtyStateDeps): SegmentDirtyS
 
   const hasUnsavedSegmentChanges = useCallback(() => {
     if (!currentFileId) return false;
-    flushSegmentTextDraftsFromDom();
-    return !segmentsEqualForPersist(segmentsRef.current, savedSegmentsRef.current);
-  }, [currentFileId, flushSegmentTextDraftsFromDom, segmentsRef]);
+    const withDrafts = segmentsWithDraftsApplied(segmentsRef.current);
+    return !segmentsEqualForPersist(withDrafts, savedSegmentsRef.current);
+  }, [currentFileId, segmentsRef]);
 
   const confirmDiscardUnsavedIfNeeded = useCallback(() => {
     if (!hasUnsavedSegmentChanges()) return true;

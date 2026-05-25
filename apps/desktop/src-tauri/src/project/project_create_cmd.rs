@@ -1,4 +1,5 @@
 use super::import_parse::{parse_srt, parse_txt};
+use super::segment_uid::segment_uid_or_new;
 use super::types::ProjectDetail;
 use super::utils::{now_ms, open_db, project_detail_from_conn};
 use crate::DbState;
@@ -128,11 +129,13 @@ pub fn create_project_from_text(
     )
     .map_err(|e| e.to_string())?;
     for s in &segments {
+        let uid = segment_uid_or_new(&s.uid);
         tx.execute(
-            "INSERT INTO segments (file_id, idx, start_sec, end_sec, text, confidence, low_confidence, detail) \
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            "INSERT INTO segments (file_id, uid, idx, start_sec, end_sec, text, confidence, low_confidence, detail) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
             params![
                 &file_id,
+                uid.as_str(),
                 s.idx,
                 s.start_sec,
                 s.end_sec,
@@ -245,11 +248,13 @@ pub fn import_text_to_project(
     )
     .map_err(|e| e.to_string())?;
     for s in &segments {
+        let uid = segment_uid_or_new(&s.uid);
         tx.execute(
-            "INSERT INTO segments (file_id, idx, start_sec, end_sec, text, confidence, low_confidence, detail) \
-             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8)",
+            "INSERT INTO segments (file_id, uid, idx, start_sec, end_sec, text, confidence, low_confidence, detail) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
             params![
                 &file_id,
+                uid.as_str(),
                 s.idx,
                 s.start_sec,
                 s.end_sec,

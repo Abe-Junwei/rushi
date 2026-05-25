@@ -38,6 +38,14 @@
   --notion-divider: #e3e2e0;
   --notion-border: #e3e2e0;
   --notion-bg: #ffffff;
+  --notion-sidebar: #f7f7f5;
+  --notion-sidebar-hover: #efefef;
+  --notion-sidebar-active: #ebebea;
+  --notion-text: #37352f;
+  --notion-text-muted: #6b6b6b;
+  --notion-text-light: #9ca3af;
+  --notion-callout-bg: #f1f1ef;
+  --notion-callout-border: #e3e2e0;
 
   /* Serene Scholar footer（shell.css 引用） */
   --shell-footer-bg: #31312c;

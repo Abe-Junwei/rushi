@@ -38,6 +38,7 @@ pub fn parse_srt(content: &str) -> Result<Vec<SegmentDto>, String> {
         let end_sec = parse_srt_time(time_parts[1]).ok_or("SRT 时间戳格式错误")?;
         let text = lines[2..].join("\n");
         segments.push(SegmentDto {
+            uid: Some(uuid::Uuid::new_v4().to_string()),
             idx: segments.len() as i32,
             start_sec,
             end_sec,
@@ -67,6 +68,7 @@ pub fn parse_txt(content: &str) -> Vec<SegmentDto> {
         let start_sec = current_sec;
         let end_sec = current_sec + duration.max(1.0);
         segments.push(SegmentDto {
+            uid: Some(uuid::Uuid::new_v4().to_string()),
             idx: segments.len() as i32,
             start_sec,
             end_sec,

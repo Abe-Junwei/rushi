@@ -21,7 +21,7 @@ export const CLAY_BTN_GHOST =
 
 /** `text-input`：canvas + body-md + hairline；显式关 shadow/ring，避免与 workspace 或 WebKit 默认叠层 */
 export const CLAY_TEXT_INPUT =
-  "block w-full min-h-[44px] rounded-xl border border-zen-gray-300 bg-app-bg px-4 py-3 font-sans text-base font-normal leading-snug text-zen-ink shadow-none ring-0 outline-none transition-colors placeholder:text-zen-gray-400 focus:border-zen-ink focus:shadow-none focus:ring-0 focus-visible:shadow-none focus-visible:ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-zen-ink/25 disabled:cursor-not-allowed disabled:opacity-40";
+  "block w-full min-h-[44px] rounded-xl border border-zen-gray-300 bg-app-bg px-4 py-3 font-sans text-sm font-normal leading-snug text-zen-ink shadow-none ring-0 outline-none transition-colors placeholder:text-zen-gray-400 focus:border-zen-ink focus:shadow-none focus:ring-0 focus-visible:shadow-none focus-visible:ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-zen-ink/25 disabled:cursor-not-allowed disabled:opacity-40";
 
 /** 与 text-input 同高同边，保留系统下拉箭头 */
 export const CLAY_SELECT =

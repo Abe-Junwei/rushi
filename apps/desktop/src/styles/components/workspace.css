@@ -101,7 +101,7 @@
   border: 1px solid var(--notion-border);
   border-radius: 0.375rem;
   background: var(--notion-bg);
-  box-shadow: 0 14px 30px rgb(0 0 0 / 12%);
+  box-shadow: 0 14px 30px color-mix(in srgb, var(--zen-ink) 12%, transparent);
 }
 
 .workspace .dropdown-item,
@@ -115,4 +115,13 @@
 .workspace .dropdown-item:disabled,
 .dropdown-item:disabled {
   background: transparent !important;
+}
+
+.workspace textarea.seg-text {
+  caret-color: var(--zen-saffron-mid);
+}
+
+.workspace textarea.seg-text::selection {
+  color: var(--zen-saffron-mid);
+  background: color-mix(in srgb, var(--zen-saffron) 20%, var(--zen-paper));
 }

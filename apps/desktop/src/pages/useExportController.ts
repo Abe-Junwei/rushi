@@ -20,7 +20,7 @@ export interface ExportDeps {
   currentFileId: string | null;
   segmentsRef: React.MutableRefObject<SegmentDto[]>;
   setError: (msg: string) => void;
-  flushSegmentTextDraftsFromDom: () => void;
+  flushSegmentTextDrafts: () => void;
   refreshProjects: () => Promise<void>;
   applyDetail: (d: ProjectDetail) => void;
 }
@@ -31,7 +31,7 @@ export function useExportController(deps: ExportDeps): ExportApi {
     currentFileId,
     segmentsRef,
     setError,
-    flushSegmentTextDraftsFromDom,
+    flushSegmentTextDrafts,
     refreshProjects,
     applyDetail,
   } = deps;
@@ -39,32 +39,32 @@ export function useExportController(deps: ExportDeps): ExportApi {
   const exportTxt = useCallback(async () => {
     if (!current) return;
     setError("");
-    flushSegmentTextDraftsFromDom();
+    flushSegmentTextDrafts();
     const rows: ExportSegment[] = segmentsRef.current.map((s, i) => ({ ...s, idx: i }));
     try {
       await p1.exportTextFile(safeExportBasename(current.name, "txt"), formatTxt(rows));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
-  }, [current, segmentsRef, setError, flushSegmentTextDraftsFromDom]);
+  }, [current, segmentsRef, setError, flushSegmentTextDrafts]);
 
   const exportSrt = useCallback(async () => {
     if (!current) return;
     setError("");
-    flushSegmentTextDraftsFromDom();
+    flushSegmentTextDrafts();
     const rows: ExportSegment[] = segmentsRef.current.map((s, i) => ({ ...s, idx: i }));
     try {
       await p1.exportTextFile(safeExportBasename(current.name, "srt"), formatSrt(rows));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
-  }, [current, segmentsRef, setError, flushSegmentTextDraftsFromDom]);
+  }, [current, segmentsRef, setError, flushSegmentTextDrafts]);
 
   const exportDocx = useCallback(
     async (mode: DocxExportMode) => {
       if (!current) return;
       setError("");
-      flushSegmentTextDraftsFromDom();
+      flushSegmentTextDrafts();
       const normalized: SegmentDto[] = segmentsRef.current.map((s, i) => ({ ...s, idx: i }));
       try {
         await exportDocxImpl(safeExportBasename(current.name, "docx"), current.name, mode, normalized);
@@ -72,7 +72,7 @@ export function useExportController(deps: ExportDeps): ExportApi {
         setError(e instanceof Error ? e.message : String(e));
       }
     },
-    [current, segmentsRef, setError, flushSegmentTextDraftsFromDom],
+    [current, segmentsRef, setError, flushSegmentTextDrafts],
   );
 
   const exportDiagnosticBundle = useCallback(async () => {
@@ -92,7 +92,7 @@ export function useExportController(deps: ExportDeps): ExportApi {
       return;
     }
     setError("");
-    flushSegmentTextDraftsFromDom();
+    flushSegmentTextDrafts();
     const normalized: SegmentDto[] = segmentsRef.current.map((s, i) => ({ ...s, idx: i }));
     try {
       await p1.exportProjectBundle(
@@ -104,7 +104,7 @@ export function useExportController(deps: ExportDeps): ExportApi {
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
-  }, [current, currentFileId, segmentsRef, setError, flushSegmentTextDraftsFromDom]);
+  }, [current, currentFileId, segmentsRef, setError, flushSegmentTextDrafts]);
 
   const importProjectBundle = useCallback(async () => {
     setError("");

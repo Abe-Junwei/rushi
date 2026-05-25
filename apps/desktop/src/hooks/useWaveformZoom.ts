@@ -1,6 +1,12 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useRef } from "react";
 import { clampPxPerSec, TIMELINE_PX_PER_SEC } from "../utils/pxPerSec";
 import { readStoredWaveformPxPerSec, writeStoredWaveformPxPerSec } from "../utils/waveformPrefs";
+import { useDeferredRendererState } from "./useDeferredRendererState";
+
+const PREF_WRITE_DEBOUNCE_MS = 180;
+const ZOOM_RENDER_FRAME_MS = 16;
+
+const pxEquals = (a: number, b: number) => Math.abs(a - b) < 0.001;
 
 export function useWaveformZoom(args: {
   getTierWidth: () => number;
@@ -10,43 +16,57 @@ export function useWaveformZoom(args: {
   const argsRef = useRef(args);
   argsRef.current = args;
 
-  const [pxPerSec, setPxPerSecState] = useState(() => {
-    const stored = readStoredWaveformPxPerSec();
-    return stored != null ? stored : TIMELINE_PX_PER_SEC;
+  const zoom = useDeferredRendererState({
+    initial: readStoredWaveformPxPerSec() ?? TIMELINE_PX_PER_SEC,
+    clamp: clampPxPerSec,
+    areEqual: pxEquals,
+    renderDelayMs: ZOOM_RENDER_FRAME_MS,
+    persist: {
+      read: readStoredWaveformPxPerSec,
+      write: writeStoredWaveformPxPerSec,
+      debounceMs: PREF_WRITE_DEBOUNCE_MS,
+    },
   });
 
-  const skipInitialRef = useRef(true);
-  useEffect(() => {
-    if (skipInitialRef.current) {
-      skipInitialRef.current = false;
-      return;
-    }
-    writeStoredWaveformPxPerSec(pxPerSec);
-  }, [pxPerSec]);
+  const setPxPerSec = useCallback(
+    (next: number) => {
+      zoom.setVisual(clampPxPerSec(next));
+    },
+    [zoom],
+  );
 
-  const setPxPerSec = useCallback((next: number) => {
-    setPxPerSecState(clampPxPerSec(next));
-  }, []);
+  const beginZoomInteraction = useCallback(() => {
+    zoom.setDragging(true);
+  }, [zoom]);
+
+  const commitZoomInteraction = useCallback(() => {
+    zoom.setDragging(false);
+    zoom.flushRender();
+  }, [zoom]);
 
   const zoomIn = useCallback(() => {
-    setPxPerSecState((p) => clampPxPerSec(p * 1.12));
-  }, []);
+    zoom.setVisual((p) => clampPxPerSec(p * 1.12));
+    zoom.flushRender();
+  }, [zoom]);
 
   const zoomOut = useCallback(() => {
-    setPxPerSecState((p) => clampPxPerSec(p / 1.12));
-  }, []);
+    zoom.setVisual((p) => clampPxPerSec(p / 1.12));
+    zoom.flushRender();
+  }, [zoom]);
 
   const resetZoom = useCallback(() => {
-    setPxPerSecState(TIMELINE_PX_PER_SEC);
-  }, []);
+    zoom.setVisual(TIMELINE_PX_PER_SEC);
+    zoom.flushRender();
+  }, [zoom]);
 
   const zoomToFitTier = useCallback(() => {
     const a = argsRef.current;
     const w = a.getTierWidth();
     const dur = a.getDuration();
     if (w <= 0 || dur < 0.5) return;
-    setPxPerSecState(clampPxPerSec(w / dur));
-  }, []);
+    zoom.setVisual(clampPxPerSec(w / dur));
+    zoom.flushRender();
+  }, [zoom]);
 
   const zoomToFitSelection = useCallback(() => {
     const a = argsRef.current;
@@ -56,8 +76,21 @@ export function useWaveformZoom(args: {
     if (w <= 0 || dur < 0.5 || !seg) return;
     const span = Math.max(seg.end_sec - seg.start_sec, 0.05);
     const vw = Math.max(160, w - 24);
-    setPxPerSecState(clampPxPerSec(vw / span));
-  }, []);
+    zoom.setVisual(clampPxPerSec(vw / span));
+    zoom.flushRender();
+  }, [zoom]);
 
-  return { pxPerSec, setPxPerSec, zoomIn, zoomOut, resetZoom, zoomToFitTier, zoomToFitSelection };
+  return {
+    pxPerSec: zoom.visual,
+    renderPxPerSec: zoom.render,
+    zoomPreviewActive: zoom.previewActive,
+    setPxPerSec,
+    zoomIn,
+    zoomOut,
+    resetZoom,
+    zoomToFitTier,
+    zoomToFitSelection,
+    beginZoomInteraction,
+    commitZoomInteraction,
+  };
 }

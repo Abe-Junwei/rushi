@@ -1,0 +1,59 @@
+import { useLayoutEffect, type MutableRefObject, type RefObject } from "react";
+import WaveSurfer from "wavesurfer.js";
+import { COLORS } from "../config/tokens";
+
+interface UseWaveformHeightSyncArgs {
+  wsRef: RefObject<WaveSurfer | null>;
+  containerRef: RefObject<HTMLDivElement | null>;
+  waveformHeightPx: number;
+  isReady: boolean;
+  disabled?: boolean;
+  appliedWaveformHeightRef: MutableRefObject<number>;
+  pendingAppliedWaveformHeightRef: MutableRefObject<number | null>;
+}
+
+export function useWaveformHeightSync({
+  wsRef,
+  containerRef,
+  waveformHeightPx,
+  isReady,
+  disabled,
+  appliedWaveformHeightRef,
+  pendingAppliedWaveformHeightRef,
+}: UseWaveformHeightSyncArgs) {
+  useLayoutEffect(() => {
+    const el = containerRef.current;
+    const h = waveformHeightPx;
+    if (el) {
+      el.style.backgroundColor = COLORS.waveformSurface;
+    }
+    const ws = wsRef.current;
+    if (!ws || !isReady || disabled) return;
+    if (appliedWaveformHeightRef.current === h) {
+      return;
+    }
+    pendingAppliedWaveformHeightRef.current = h;
+    try {
+      ws.setOptions({ height: h });
+    } catch {
+      try {
+        ws.setOptions({
+          height: h,
+          waveColor: COLORS.waveformWave,
+          progressColor: COLORS.waveformProgress,
+          cursorColor: COLORS.waveformCursor,
+        });
+      } catch {
+        pendingAppliedWaveformHeightRef.current = null;
+      }
+    }
+  }, [
+    appliedWaveformHeightRef,
+    containerRef,
+    disabled,
+    isReady,
+    pendingAppliedWaveformHeightRef,
+    waveformHeightPx,
+    wsRef,
+  ]);
+}

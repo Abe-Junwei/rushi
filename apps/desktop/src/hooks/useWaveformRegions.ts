@@ -6,7 +6,8 @@ import type { Region } from "wavesurfer.js/dist/plugins/regions";
 import { COLORS } from "../config/tokens";
 import { roundSec3 } from "../utils/boundsSignature";
 import { waveformRegionFillColor } from "../utils/segmentChrome";
-import { parseSegmentRegionId, segmentRegionId, REGION_ID_PREFIX } from "../utils/waveformRegionId";
+import { segmentUidOf } from "../utils/segmentUid";
+import { parseSegmentRegionUid, segmentRegionId, REGION_ID_PREFIX } from "../utils/waveformRegionId";
 import type { UseProjectWaveformOptions } from "./useProjectWaveform";
 
 export function useWaveformRegions(
@@ -16,6 +17,7 @@ export function useWaveformRegions(
   isReady: boolean,
   disabled: boolean | undefined,
   boundsSig: string,
+  uidSig: string,
   selectedIdx: number,
   onWaveformCreateRange: UseProjectWaveformOptions["onWaveformCreateRange"],
 ) {
@@ -33,26 +35,13 @@ export function useWaveformRegions(
     regionUnsubsRef.current = [];
   }, []);
 
+  const resolveSegmentIndexByUid = useCallback(
+    (uid: string): number => optsRef.current.segments.findIndex((s) => segmentUidOf(s) === uid),
+    [optsRef],
+  );
+
   const bindSegmentRegion = useCallback(
-    (ws: WaveSurfer, region: Region, i: number) => {
-      let boundsLiveRaf = 0;
-      const flushBoundsLive = () => {
-        boundsLiveRaf = 0;
-        if (syncingRegionsRef.current) return;
-        if (wsRef.current !== ws) return;
-        const live = optsRef.current.onBoundsLive;
-        if (!live) return;
-        const lo = Math.min(region.start, region.end);
-        const hi = Math.max(region.start, region.end);
-        const dur = ws.getDuration() || hi;
-        const clampedStart = roundSec3(Math.max(0, lo));
-        const clampedEnd = roundSec3(Math.min(Math.max(clampedStart + 0.05, hi), dur));
-        live(i, clampedStart, clampedEnd);
-      };
-      const scheduleBoundsLive = () => {
-        if (boundsLiveRaf) return;
-        boundsLiveRaf = requestAnimationFrame(flushBoundsLive);
-      };
+    (ws: WaveSurfer, region: Region, uid: string) => {
       const flushSkippedResyncAfterDrag = () => {
         if (!skippedBoundsDuringDragRef.current) return;
         const attempt = (n: number) => {
@@ -75,13 +64,8 @@ export function useWaveformRegions(
       const onUpdate = () => {
         if (syncingRegionsRef.current) return;
         isDraggingRef.current = true;
-        if (optsRef.current.onBoundsLive) scheduleBoundsLive();
       };
       const onUpdateEnd = () => {
-        if (boundsLiveRaf) {
-          cancelAnimationFrame(boundsLiveRaf);
-          boundsLiveRaf = 0;
-        }
         isDraggingRef.current = false;
         if (syncingRegionsRef.current) {
           flushSkippedResyncAfterDrag();
@@ -92,17 +76,23 @@ export function useWaveformRegions(
         const dur = ws.getDuration() || hi;
         const clampedStart = roundSec3(Math.max(0, lo));
         const clampedEnd = roundSec3(Math.min(Math.max(clampedStart + 0.05, hi), dur));
-        optsRef.current.onBoundsCommit(i, clampedStart, clampedEnd);
+        const idx = resolveSegmentIndexByUid(uid);
+        if (idx < 0) return;
+        optsRef.current.onBoundsCommit(idx, clampedStart, clampedEnd);
         flushSkippedResyncAfterDrag();
       };
       const onClick = (ev: MouseEvent) => {
         ev.stopPropagation();
-        optsRef.current.onSelectIndex(i);
+        const idx = resolveSegmentIndexByUid(uid);
+        if (idx < 0) return;
+        optsRef.current.onSelectIndex(idx);
         ws.setTime(region.start);
       };
       const onDbl = (ev: MouseEvent) => {
         ev.stopPropagation();
-        optsRef.current.onSelectIndex(i);
+        const idx = resolveSegmentIndexByUid(uid);
+        if (idx < 0) return;
+        optsRef.current.onSelectIndex(idx);
         void region.play(true);
       };
 
@@ -112,14 +102,13 @@ export function useWaveformRegions(
       region.on("dblclick", onDbl);
 
       regionUnsubsRef.current.push(() => {
-        if (boundsLiveRaf) cancelAnimationFrame(boundsLiveRaf);
         region.un("update", onUpdate);
         region.un("update-end", onUpdateEnd);
         region.un("click", onClick);
         region.un("dblclick", onDbl);
       });
     },
-    [wsRef, regionsRef, optsRef],
+    [resolveSegmentIndexByUid, wsRef, regionsRef, optsRef],
   );
 
   const rebuildAllSegmentRegions = useCallback(
@@ -128,7 +117,9 @@ export function useWaveformRegions(
       rp.clearRegions();
       const segs = optsRef.current.segments;
       segs.forEach((seg, i) => {
-        const id = segmentRegionId(i);
+        const uid = segmentUidOf(seg);
+        if (!uid) return;
+        const id = segmentRegionId(uid);
         const start = Math.max(0, seg.start_sec);
         const end = Math.max(start + 0.04, seg.end_sec);
         const primary = i === optsRef.current.selectedIdx;
@@ -141,7 +132,7 @@ export function useWaveformRegions(
           minLength: 0.05,
           color: waveformRegionFillColor(seg, primary),
         });
-        bindSegmentRegion(ws, region, i);
+        bindSegmentRegion(ws, region, uid);
       });
     },
     [bindSegmentRegion, clearRegionListeners, optsRef],
@@ -149,7 +140,7 @@ export function useWaveformRegions(
 
   rebuildAllSegmentRegionsRef.current = rebuildAllSegmentRegions;
 
-  /** 语段 regions：段数或 id 映射变化时全量重建；仅起止/低置信变化时增量 setOptions。 */
+  /** 按稳定 uid diff regions：增删单条，起止/颜色变更时 setOptions。 */
   useEffect(() => {
     const ws = wsRef.current;
     const rp = regionsRef.current;
@@ -160,51 +151,55 @@ export function useWaveformRegions(
     }
 
     const segs = optsRef.current.segments;
-    const regs = rp.getRegions();
-    const byId = new Map(regs.map((r) => [r.id, r]));
-
-    let needFull = segs.length !== byId.size;
-    if (!needFull) {
-      for (let i = 0; i < segs.length; i++) {
-        if (!byId.has(segmentRegionId(i))) {
-          needFull = true;
-          break;
-        }
-      }
-    }
-    if (!needFull) {
-      for (const r of regs) {
-        const idx = parseSegmentRegionId(r.id);
-        if (idx == null || idx >= segs.length) {
-          needFull = true;
-          break;
-        }
-      }
+    const expectedRegionIds = new Set<string>();
+    for (const seg of segs) {
+      const uid = segmentUidOf(seg);
+      if (uid) expectedRegionIds.add(segmentRegionId(uid));
     }
 
     syncingRegionsRef.current = true;
     const rafIds = { a: 0, b: 0 };
 
-    if (needFull) {
-      rebuildAllSegmentRegions(ws, rp);
-    } else {
-      const sel = optsRef.current.selectedIdx;
-      for (let i = 0; i < segs.length; i++) {
-        const seg = segs[i];
-        const id = segmentRegionId(i);
-        const r = byId.get(id);
-        if (!r) {
-          rebuildAllSegmentRegions(ws, rp);
-          break;
+    for (const region of rp.getRegions()) {
+      const parsedUid = parseSegmentRegionUid(region.id);
+      if (parsedUid == null) continue;
+      if (!expectedRegionIds.has(region.id)) {
+        try {
+          region.remove();
+        } catch {
+          /* noop */
         }
-        const start = Math.max(0, seg.start_sec);
-        const end = Math.max(start + 0.04, seg.end_sec);
-        r.setOptions({
+      }
+    }
+
+    const liveById = new Map(rp.getRegions().map((r) => [r.id, r]));
+    const sel = optsRef.current.selectedIdx;
+    for (let i = 0; i < segs.length; i++) {
+      const seg = segs[i];
+      const uid = segmentUidOf(seg);
+      if (!uid) continue;
+      const id = segmentRegionId(uid);
+      const start = Math.max(0, seg.start_sec);
+      const end = Math.max(start + 0.04, seg.end_sec);
+      const existing = liveById.get(id);
+      if (!existing) {
+        const region = rp.addRegion({
+          id,
           start,
           end,
+          drag: true,
+          resize: true,
+          minLength: 0.05,
           color: waveformRegionFillColor(seg, i === sel),
         });
+        bindSegmentRegion(ws, region, uid);
+        continue;
       }
+      existing.setOptions({
+        start,
+        end,
+        color: waveformRegionFillColor(seg, i === sel),
+      });
     }
 
     skippedBoundsDuringDragRef.current = false;
@@ -220,7 +215,7 @@ export function useWaveformRegions(
       cancelAnimationFrame(rafIds.b);
       syncingRegionsRef.current = false;
     };
-  }, [boundsSig, isReady, disabled, wsRef, regionsRef, optsRef, rebuildAllSegmentRegions]);
+  }, [boundsSig, uidSig, isReady, disabled, wsRef, regionsRef, optsRef, bindSegmentRegion]);
 
   /** 波形空白处拖选 → 新建语段（Regions enableDragSelection） */
   useEffect(() => {
@@ -262,7 +257,7 @@ export function useWaveformRegions(
     };
   }, [isReady, disabled, wsRef, regionsRef, optsRef, onWaveformCreateRange]);
 
-  /** 仅选中变化：只改旧/新两条 region 颜色，避免 getRegions 全表 setOptions。 */
+  /** 仅选中变化：只改旧/新两条 region 颜色。 */
   useEffect(() => {
     const rp = regionsRef.current;
     if (!rp || !isReady || disabled) return;
@@ -272,10 +267,13 @@ export function useWaveformRegions(
 
     const paint = (idx: number | null) => {
       if (idx == null || idx < 0 || idx >= liveSegs.length) return;
-      const id = segmentRegionId(idx);
+      const seg = liveSegs[idx];
+      if (!seg) return;
+      const uid = segmentUidOf(seg);
+      if (!uid) return;
+      const id = segmentRegionId(uid);
       const r = rp.getRegions().find((x) => x.id === id);
       if (!r) return;
-      const seg = liveSegs[idx];
       r.setOptions({ color: waveformRegionFillColor(seg, idx === selectedIdx) });
     };
 

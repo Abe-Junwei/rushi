@@ -135,7 +135,7 @@ export function EnvironmentPanel({
           </nav>
 
           {/* 右侧内容 */}
-          <main className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-white p-[clamp(12px,2.4vw,30px)]">
+          <main className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-notion-bg p-[clamp(12px,2.4vw,30px)]">
             <div className="flex flex-col gap-6">
               {envSection === "local-asr" ? (
                 <EnvLocalAsrPanel

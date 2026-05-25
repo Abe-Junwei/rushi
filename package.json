@@ -2,7 +2,7 @@
   "name": "rushi",
   "private": true,
   "description": "如是我闻 — 本地中文转写与校对（独立仓）",
-  "workspaces": ["apps/desktop", "packages/wasm-waveform"],
+  "workspaces": ["apps/desktop"],
   "scripts": {
     "prepare": "cd apps/desktop && husky",
     "check:doc-links": "node scripts/check-internal-doc-links.mjs",

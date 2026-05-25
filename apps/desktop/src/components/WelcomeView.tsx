@@ -3,14 +3,19 @@ import { Mic, Plus } from "lucide-react";
 import type { ProjectControllerApi } from "../pages/useProjectController";
 import { AsrErrorBanner } from "./ProjectStatusFeedback";
 import { CreateProjectModal } from "./CreateProjectModal";
+import { GlossaryPage } from "./GlossaryPage";
 import { WelcomeSidebar } from "./WelcomeSidebar";
 import { WelcomeTopBar } from "./WelcomeTopBar";
+
+export type WelcomePageId = "home" | "glossary";
 import * as fileApi from "../tauri/fileApi";
 import { LUCIDE_ICON_SIZE_LG, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
 interface WelcomeViewProps {
   controller: ProjectControllerApi;
   onOpenSettings: () => void;
+  page: WelcomePageId;
+  onPageChange: (page: WelcomePageId) => void;
 }
 
 function formatProjectTime(ms: number) {
@@ -32,7 +37,7 @@ interface RecentFileItem {
   updatedAtMs: number;
 }
 
-export function WelcomeView({ controller: c, onOpenSettings }: WelcomeViewProps) {
+export function WelcomeView({ controller: c, onOpenSettings, page, onPageChange }: WelcomeViewProps) {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [recentFiles, setRecentFiles] = useState<RecentFileItem[]>([]);
   const [loadingRecentFiles, setLoadingRecentFiles] = useState(false);
@@ -86,11 +91,20 @@ export function WelcomeView({ controller: c, onOpenSettings }: WelcomeViewProps)
 
   return (
     <div className="grid h-full min-h-0 w-full grid-cols-[20rem_1fr]" data-purpose="welcome-view">
-      <WelcomeSidebar controller={c} onOpenSettings={onOpenSettings} />
+      <WelcomeSidebar
+        controller={c}
+        onOpenSettings={onOpenSettings}
+        page={page}
+        onPageChange={onPageChange}
+      />
 
-      <div className="flex min-h-0 min-w-0 flex-col bg-white">
+      <div className="flex min-h-0 min-w-0 flex-col bg-notion-bg">
         <WelcomeTopBar asrHealth={c.asrHealth} asrCaps={c.asrCaps} />
 
+        {page === "glossary" ? (
+          <GlossaryPage busy={c.busy} />
+        ) : (
+          <>
         {c.asrHealth === "error" ? (
           <div className="shrink-0 px-10 pt-4">
             <AsrErrorBanner onOpenEnvironment={onOpenSettings} />
@@ -101,7 +115,7 @@ export function WelcomeView({ controller: c, onOpenSettings }: WelcomeViewProps)
           <div className="mx-auto flex w-full max-w-2xl flex-col items-center text-center">
             {/* Hero */}
             <section className="mb-12 text-center" data-purpose="hero-content">
-              <h1 className="mb-2 text-[30px] font-bold leading-[1.2] text-notion-text">
+              <h1 className="mb-2 font-serif text-[32px] font-medium leading-[1.3] tracking-[-0.01em] text-notion-text">
                 欢迎回来
               </h1>
               <p className="text-sm text-notion-text-muted">继续您的转写任务或开始新的项目</p>
@@ -120,7 +134,7 @@ export function WelcomeView({ controller: c, onOpenSettings }: WelcomeViewProps)
               </button>
             </div>
 
-            <div className="mt-20 w-full rounded-xl border border-notion-divider bg-white/60 p-6">
+            <div className="mt-20 w-full rounded-xl border border-notion-divider bg-notion-bg/70 p-6">
               <div className="mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <span className="text-zen-saffron">
@@ -135,7 +149,7 @@ export function WelcomeView({ controller: c, onOpenSettings }: WelcomeViewProps)
 
               <div className="space-y-2">
                 {loadingRecentFiles ? (
-                  <p className="rounded-lg border border-dashed border-notion-divider bg-white px-3 py-6 text-center text-sm text-notion-text-muted">
+                  <p className="rounded-lg border border-dashed border-notion-divider bg-notion-bg px-3 py-6 text-center text-sm text-notion-text-muted">
                     正在加载最近文件...
                   </p>
                 ) : recentFiles.length > 0 ? (
@@ -143,7 +157,7 @@ export function WelcomeView({ controller: c, onOpenSettings }: WelcomeViewProps)
                     <button
                       key={f.fileId}
                       type="button"
-                      className="flex w-full items-center justify-between rounded-lg border border-notion-divider bg-white px-3 py-2 text-left transition-colors hover:bg-notion-sidebar-hover disabled:opacity-40"
+                      className="flex w-full items-center justify-between rounded-lg border border-notion-divider bg-notion-bg px-3 py-2 text-left transition-colors hover:bg-notion-sidebar-hover disabled:opacity-40"
                       disabled={c.busy}
                       onClick={() => void handleOpenRecentFile(f)}
                     >
@@ -157,7 +171,7 @@ export function WelcomeView({ controller: c, onOpenSettings }: WelcomeViewProps)
                     </button>
                   ))
                 ) : (
-                  <p className="rounded-lg border border-dashed border-notion-divider bg-white px-3 py-6 text-center text-sm text-notion-text-muted">
+                  <p className="rounded-lg border border-dashed border-notion-divider bg-notion-bg px-3 py-6 text-center text-sm text-notion-text-muted">
                     暂无最近文件，请先新建项目或导入文件。
                   </p>
                 )}
@@ -165,9 +179,11 @@ export function WelcomeView({ controller: c, onOpenSettings }: WelcomeViewProps)
             </div>
           </div>
         </div>
+          </>
+        )}
       </div>
 
-      {showCreateModal ? (
+      {showCreateModal && page === "home" ? (
         <CreateProjectModal controller={c} onClose={() => setShowCreateModal(false)} />
       ) : null}
     </div>

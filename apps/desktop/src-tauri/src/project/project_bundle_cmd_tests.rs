@@ -74,6 +74,7 @@ fn export_and_import_project_bundle_round_trip() {
     let export_zip = export_state.root.join("bundle.zip");
     let exported_segments = vec![
         SegmentDto {
+            uid: None,
             idx: 0,
             start_sec: 0.0,
             end_sec: 1.2,
@@ -83,6 +84,7 @@ fn export_and_import_project_bundle_round_trip() {
             detail: Some("ok".into()),
         },
         SegmentDto {
+            uid: None,
             idx: 1,
             start_sec: 1.2,
             end_sec: 2.4,
@@ -193,6 +195,7 @@ fn export_project_bundle_uses_requested_file_audio() {
         &file_b,
         &zip_path,
         vec![SegmentDto {
+            uid: None,
             idx: 0,
             start_sec: 0.0,
             end_sec: 1.0,

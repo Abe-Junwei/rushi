@@ -2,7 +2,7 @@
 
 ## 导出文本 / SRT / DOCX
 
-- 经 `useExportController`：先 `flushSegmentTextDraftsFromDom`，用 `segmentsRef` — OK
+- 经 `useExportController`：先 `flushSegmentTextDrafts`（草稿 store），用 `segmentsRef` — OK
 - 不强制 `currentFileId`；空项目时 `current` 有即可 — 边界可接受
 
 ## 项目包 ZIP

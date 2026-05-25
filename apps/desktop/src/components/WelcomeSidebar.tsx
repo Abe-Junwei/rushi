@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BookOpen, ChevronRight, FileText, FolderOpen, List, Mic, Pencil, Settings, Trash2 } from "lucide-react";
+import { BookOpen, ChevronRight, FileText, FolderOpen, List, Mic, Pencil, Settings, Trash2, X } from "lucide-react";
 import type { ProjectControllerApi } from "../pages/useProjectController";
+import type { WelcomePageId } from "./WelcomeView";
 import type { ProjectSummary } from "../tauri/projectApi";
 import * as fileApi from "../tauri/fileApi";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
@@ -29,13 +30,14 @@ function formatFileType(type: string): string {
 export interface WelcomeSidebarProps {
   controller: ProjectControllerApi;
   onOpenSettings: () => void;
+  page: WelcomePageId;
+  onPageChange: (page: WelcomePageId) => void;
 }
 
-export function WelcomeSidebar({ controller: c, onOpenSettings }: WelcomeSidebarProps) {
+export function WelcomeSidebar({ controller: c, onOpenSettings, page, onPageChange }: WelcomeSidebarProps) {
   const projects = useMemo(() => sortProjects(c.projects), [c.projects]);
   const [deleteConfirmId, setDeleteConfirmId] = useState<string | null>(null);
   const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
-  const [showGlossaryHint, setShowGlossaryHint] = useState(false);
   const [projectFilesById, setProjectFilesById] = useState<Record<string, fileApi.FileSummary[]>>({});
   const [loadingFilesById, setLoadingFilesById] = useState<Record<string, boolean>>({});
   const projectListRef = useRef<HTMLDivElement | null>(null);
@@ -82,14 +84,19 @@ export function WelcomeSidebar({ controller: c, onOpenSettings }: WelcomeSidebar
     {
       icon: <List className={`${LUCIDE_ICON_SIZE_MD} shrink-0`} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />,
       label: "项目列表",
-      active: true,
-      onClick: () => projectListRef.current?.scrollIntoView({ block: "start", behavior: "smooth" }),
+      active: page === "home",
+      onClick: () => {
+        onPageChange("home");
+        window.requestAnimationFrame(() => {
+          projectListRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+        });
+      },
     },
     {
       icon: <BookOpen className={`${LUCIDE_ICON_SIZE_MD} shrink-0`} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />,
       label: "术语管理",
-      active: false,
-      onClick: () => setShowGlossaryHint((v) => !v),
+      active: page === "glossary",
+      onClick: () => onPageChange("glossary"),
     },
     { icon: <Pencil className={`${LUCIDE_ICON_SIZE_MD} shrink-0`} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />, label: "编辑器", active: false, disabled: true },
     { icon: <FileText className={`${LUCIDE_ICON_SIZE_MD} shrink-0`} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />, label: "转写文本", active: false, disabled: true },
@@ -104,8 +111,8 @@ export function WelcomeSidebar({ controller: c, onOpenSettings }: WelcomeSidebar
             <Mic className={`${LUCIDE_ICON_SIZE_MD} shrink-0`} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
           </div>
           <div>
-            <h1 className="m-0 text-base font-semibold leading-[1.4] text-notion-text">如是我闻</h1>
-            <p className="m-0 mt-1 text-[11px] font-semibold uppercase leading-none tracking-[0.12em] text-notion-text-muted">转写任务进行中</p>
+            <h1 className="m-0 font-serif text-[18px] font-medium leading-[1.4] text-notion-text">如是我闻</h1>
+            <p className="m-0 mt-1 text-[11px] font-semibold uppercase leading-none tracking-[0.1em] text-notion-text-muted">转写任务进行中</p>
           </div>
         </div>
         {/* Nav */}
@@ -130,16 +137,10 @@ export function WelcomeSidebar({ controller: c, onOpenSettings }: WelcomeSidebar
             </button>
           ))}
         </nav>
-          {showGlossaryHint ? (
-            <p className="mt-3 rounded border border-dashed border-notion-divider bg-notion-bg px-2 py-1.5 text-left text-[11px] text-notion-text-muted">
-              术语管理页面即将上线，当前入口已预留。
-            </p>
-          ) : null}
       </div>
-
-      {/* Project List */}
+      {page === "home" ? (
       <div ref={projectListRef} className="flex min-h-0 flex-1 flex-col overflow-y-auto p-6">
-        <h2 className="mb-4 text-[11px] font-semibold uppercase tracking-[0.12em] text-notion-text-muted">项目列表</h2>
+        <h2 className="mb-4 text-[11px] font-semibold uppercase tracking-[0.1em] text-notion-text-muted">项目列表</h2>
         <div className="space-y-3">
           {projects.length > 0 ? (
             projects.map((p) => {
@@ -216,10 +217,11 @@ export function WelcomeSidebar({ controller: c, onOpenSettings }: WelcomeSidebar
                         </button>
                         <button
                           type="button"
-                          className="appearance-none border-0 bg-transparent p-0 text-[11px] text-notion-text-muted hover:text-notion-text"
+                          className="inline-flex h-4 w-4 appearance-none items-center justify-center rounded border-0 bg-transparent p-0 text-notion-text-muted transition-colors hover:bg-notion-sidebar-hover hover:text-notion-text"
                           onClick={() => setDeleteConfirmId(null)}
+                          aria-label="取消删除"
                         >
-                          ✕
+                          <X className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
                         </button>
                       </div>
                     )}
@@ -242,7 +244,7 @@ export function WelcomeSidebar({ controller: c, onOpenSettings }: WelcomeSidebar
                             title={f.name}
                           >
                             <span className="min-w-0 flex-1 truncate">{f.name}</span>
-                            <span className="shrink-0 text-[10px] text-notion-text-muted">{formatFileType(f.file_type)}</span>
+                            <span className="shrink-0 text-[11px] text-notion-text-muted">{formatFileType(f.file_type)}</span>
                           </button>
                         ))}
                       </div>
@@ -271,8 +273,13 @@ export function WelcomeSidebar({ controller: c, onOpenSettings }: WelcomeSidebar
         </div>
 
       </div>
-
-      {/* Footer */}
+      ) : (
+        <div className="flex min-h-0 flex-1 flex-col justify-center px-6 py-8 text-center">
+          <p className="text-sm leading-relaxed text-notion-text-muted">
+            术语库为全局设置。在右侧添加或删除术语后，转写时会自动作为热词提交给 ASR。
+          </p>
+        </div>
+      )}
       <div className="border-t border-notion-divider p-4">
         <button
           type="button"

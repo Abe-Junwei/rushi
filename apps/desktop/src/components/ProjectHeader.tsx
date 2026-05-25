@@ -54,10 +54,10 @@ export function ProjectHeader({
   if (workspacePhase === "A") {
     return (
       <header
-          className="flex h-16 w-full shrink-0 items-center justify-between gap-4 border-b border-notion-divider bg-white px-6"
+          className="flex h-16 w-full shrink-0 items-center justify-between gap-4 border-b border-notion-divider bg-notion-bg px-6"
         data-purpose="navigation-bar"
       >
-        <div className="font-serif text-[28px] font-medium leading-none text-zen-ink" data-purpose="site-logo">
+        <div className="font-serif text-[32px] font-medium leading-[1.3] tracking-[-0.01em] text-zen-ink" data-purpose="site-logo">
           如是我闻
         </div>
         <div className="flex items-center justify-end gap-3" data-purpose="status-controls">
@@ -89,18 +89,18 @@ export function ProjectHeader({
           >
             <Settings className={LUCIDE_ICON_SIZE_LG} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
           </button>
-          <code className="hidden max-w-[12rem] truncate font-mono text-[10px] text-zen-indigo xl:inline">{asrBaseUrl()}</code>
+          <code className="hidden max-w-[12rem] truncate font-mono text-[12px] text-zen-indigo xl:inline">{asrBaseUrl()}</code>
         </div>
       </header>
     );
   }
 
     return (
-    <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-notion-divider bg-white px-4 py-2">
+    <header className="flex shrink-0 flex-wrap items-center justify-between gap-2 border-b border-notion-divider bg-notion-bg px-4 py-2">
       <div className="flex min-w-0 flex-1 flex-wrap items-center gap-3">
-        <span className="text-[11px] font-medium tracking-[0.18em] text-notion-text-muted">如是我闻 · 本地校对</span>
+        <span className="text-[11px] font-medium tracking-[0.1em] text-notion-text-muted">如是我闻 · 本地校对</span>
         {asrHealth === "ok" && asrCaps ? (
-          <div className="flex flex-wrap items-center gap-3 text-[10px] text-notion-text-muted">
+          <div className="flex flex-wrap items-center gap-3 text-[11px] text-notion-text-muted">
             <span className="flex items-center gap-1.5">
               <StatusDot ok={asrCaps.ffmpeg_ok} />
               FFmpeg
@@ -115,11 +115,11 @@ export function ProjectHeader({
             </span>
           </div>
         ) : asrHealth === "checking" ? (
-          <span className="text-[10px] text-notion-text-muted">正在检测 ASR…</span>
+          <span className="text-[11px] text-notion-text-muted">正在检测 ASR…</span>
         ) : asrHealth === "error" && sttOnlineBridgeReady ? (
-          <span className="text-[10px] text-notion-text-muted">本机 ASR 未连接 · 在线 STT 已就绪</span>
+          <span className="text-[11px] text-notion-text-muted">本机 ASR 未连接 · 在线 STT 已就绪</span>
         ) : asrHealth === "error" ? (
-          <span className="text-[10px] text-zen-cinnabar">ASR 不可达</span>
+          <span className="text-[11px] text-zen-cinnabar">ASR 不可达</span>
         ) : null}
       </div>
       <div className="flex shrink-0 flex-wrap items-center gap-2">
@@ -140,7 +140,7 @@ export function ProjectHeader({
         >
           在线 STT 提供方
         </button>
-        <code className="hidden max-w-[12rem] truncate text-[10px] text-zen-indigo lg:inline">{asrBaseUrl()}</code>
+        <code className="hidden max-w-[12rem] truncate font-mono text-[12px] text-zen-indigo lg:inline">{asrBaseUrl()}</code>
       </div>
     </header>
   );

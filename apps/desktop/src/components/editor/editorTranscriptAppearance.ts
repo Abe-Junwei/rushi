@@ -59,7 +59,6 @@ export const SYSTEM_FONT_CANDIDATES = [
   "Georgia",
   "Menlo",
   "Monaco",
-  "JetBrains Mono",
   "Fira Code",
   "Inter",
 ] as const;

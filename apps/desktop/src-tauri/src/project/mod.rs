@@ -14,6 +14,7 @@ pub mod project_delete_cmd;
 pub mod project_query_cmd;
 pub mod run_transcribe_cmd;
 pub mod segment_cmd;
+mod segment_uid;
 pub mod transcribe;
 mod transcribe_native_online;
 pub mod types;
@@ -35,6 +36,8 @@ pub use types::*;
 mod cmd_integration_tests;
 #[cfg(test)]
 mod project_bundle_cmd_tests;
+#[cfg(test)]
+mod segment_cmd_tests;
 
 use rusqlite::Connection;
 use std::fs;

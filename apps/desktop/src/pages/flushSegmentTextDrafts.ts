@@ -1,21 +1,29 @@
 import { flushSync } from "react-dom";
 import type { SegmentDto } from "../tauri/projectApi";
+import {
+  normalizeSegmentDraftText,
+  segmentDraftKey,
+  segmentDraftStore,
+} from "../hooks/useSegmentDraftStore";
 
-/** 将语段卡正文输入框当前值写回 `segments`（与本地 draft 一致），供保存/合并等读最新正文。 */
-export function flushSegmentTextDraftsFromDom(
+/** 将草稿 store 中未提交的语段正文写回 `segments`（保存/合并/导出等前调用）。 */
+export function flushSegmentTextDrafts(
   segmentsRef: React.MutableRefObject<SegmentDto[]>,
   setSegments: React.Dispatch<React.SetStateAction<SegmentDto[]>>,
-  listRoot?: Document | HTMLElement | null,
 ): void {
-  const root: Document | ParentNode = listRoot ?? document;
   const prev = segmentsRef.current;
+  const validKeys = new Set<string>();
   const updates: { idx: number; text: string }[] = [];
   prev.forEach((s, i) => {
-    const row = root.querySelector(`[data-seg-row="${i}"]`);
-    const ta = row?.querySelector<HTMLTextAreaElement | HTMLInputElement>("textarea, input.seg-text");
-    if (!ta || ta.value === s.text) return;
-    updates.push({ idx: i, text: ta.value });
+    const key = segmentDraftKey(s, i);
+    validKeys.add(key);
+    const draft = segmentDraftStore.getDraft(key);
+    if (draft === undefined) return;
+    const committed = normalizeSegmentDraftText(s.text ?? "");
+    if (draft === committed) return;
+    updates.push({ idx: i, text: draft });
   });
+  segmentDraftStore.pruneMissingKeys(validKeys);
   if (updates.length === 0) return;
   flushSync(() => {
     setSegments((cur) => {
@@ -30,4 +38,12 @@ export function flushSegmentTextDraftsFromDom(
       return next;
     });
   });
+  for (const { idx, text } of updates) {
+    const seg = segmentsRef.current[idx];
+    if (!seg) continue;
+    const key = segmentDraftKey(seg, idx);
+    if (segmentDraftStore.getDraft(key) === text) {
+      segmentDraftStore.clearDraft(key);
+    }
+  }
 }

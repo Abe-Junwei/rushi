@@ -4,6 +4,7 @@ import { useSegmentKeyboard } from "../hooks/useSegmentKeyboard";
 import { useTierScrollSync } from "../hooks/useTierScrollSync";
 import { useWaveformDisplay } from "../hooks/useWaveformDisplay";
 import { useWaveformZoom } from "../hooks/useWaveformZoom";
+import { p1LaneBoundsSignature } from "../utils/boundsSignature";
 import { computeTimelineWidthPx } from "../utils/segmentLayout";
 import { assignSegmentOverlapLanes, computeSegmentLaneRowPx } from "../utils/segmentLayout";
 import type { SegmentDto } from "../tauri/projectApi";
@@ -33,6 +34,7 @@ export type TranscriptionLayerInput = {
 
 export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
   const tierScrollRef = useRef<HTMLDivElement | null>(null);
+  const segmentListRef = useRef<HTMLDivElement | null>(null);
   const waveformShellRef = useRef<HTMLDivElement | null>(null);
   const ctxRef = useRef(ctx);
   ctxRef.current = ctx;
@@ -57,11 +59,11 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     segments: ctx.segments,
     selectedIdx: ctx.selectedIdx,
     disabled: ctx.busy,
-    minPxPerSec: zoom.pxPerSec,
-    waveformHeightPx: display.waveformHeightPx,
+    minPxPerSec: zoom.renderPxPerSec,
+    waveformHeightPx: display.waveformRenderHeightPx,
+    onWaveformHeightApplied: display.markWaveformRenderHeightApplied,
     onSelectIndex: setSelectedIdxUi,
     onBoundsCommit: (idx, lo, hi) => ctx.updateSegmentBounds(idx, lo, hi, "commit"),
-    onBoundsLive: (idx, lo, hi) => ctx.updateSegmentBounds(idx, lo, hi, "live"),
     onWaveformCreateRange: ctx.insertSegmentFromTimeRange,
     onWaveformScroll: (sl) => syncWaveformScrollRef.current(sl),
     getViewportScrollPx: () => tierScrollRef.current?.scrollLeft ?? 0,
@@ -76,6 +78,10 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     () => computeTimelineWidthPx(wf.duration || 0, zoom.pxPerSec),
     [wf.duration, zoom.pxPerSec],
   );
+  const renderTimelineWidthPx = useMemo(
+    () => computeTimelineWidthPx(wf.duration || 0, zoom.renderPxPerSec),
+    [wf.duration, zoom.renderPxPerSec],
+  );
 
   const scroll = useTierScrollSync({
     tierScrollRef,
@@ -83,8 +89,6 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     wfApiRef,
     waveformReady: wf.isReady,
     mediaUrl: ctx.mediaUrl,
-    selectedIdx: ctx.selectedIdx,
-    segmentRowCount: ctx.segments.length,
   });
   syncWaveformScrollRef.current = scroll.syncWaveformScrollPx;
 
@@ -97,7 +101,11 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
 
   const segmentLaneRowPx = useMemo(() => computeSegmentLaneRowPx(display.transcriptFontPx), [display.transcriptFontPx]);
 
-  const segmentLaneLayout = useMemo(() => assignSegmentOverlapLanes(ctx.segments), [ctx.segments]);
+  const laneBoundsSig = p1LaneBoundsSignature(ctx.segments);
+  const segmentLaneLayout = useMemo(() => {
+    void laneBoundsSig;
+    return assignSegmentOverlapLanes(ctxRef.current.segments);
+  }, [laneBoundsSig]);
 
   const segmentToolbar = useMemo(
     () => ({
@@ -117,26 +125,31 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
       const w = wfApiRef.current;
       const s = c.segments[idx];
       if (!s) return;
+      const tier = tierScrollRef.current;
+      const segmentMidSec = (s.start_sec + s.end_sec) / 2;
       w.seek(s.start_sec);
+      if (tier) {
+        scroll.setTierScrollPxSmooth(segmentMidSec * zoom.pxPerSec - tier.clientWidth / 2);
+      }
       setSelectedIdxUi(idx);
     },
-    [setSelectedIdxUi],
+    [scroll, setSelectedIdxUi, zoom.pxPerSec],
   );
 
   const focusWaveformShell = useCallback(() => {
     waveformShellRef.current?.focus();
   }, []);
 
-  // 缩放或总宽变化后：WaveSurfer 已 `zoom`，将 tier 与 WS 的 scrollLeft 钳到同一值，避免语段卡与 region 错位。
+  // 真实 WaveSurfer zoom 完成后：将 tier 与 WS 的 scrollLeft 钳到同一值，避免语段卡与 region 错位。
   useEffect(() => {
     const tier = tierScrollRef.current;
-    if (!tier || !wf.isReady || timelineWidthPx <= 0) return;
-    const maxSl = Math.max(0, timelineWidthPx - tier.clientWidth);
+    if (!tier || !wf.isReady || renderTimelineWidthPx <= 0) return;
+    const maxSl = Math.max(0, renderTimelineWidthPx - tier.clientWidth);
     const wsSl = wf.getScrollLeft();
     const sl = Math.min(maxSl, Math.max(0, wsSl));
     scroll.setTierScrollPx(sl);
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [zoom.pxPerSec, timelineWidthPx, wf.isReady, wf.getScrollLeft, scroll.setTierScrollPx]);
+  }, [zoom.renderPxPerSec, renderTimelineWidthPx, wf.isReady, wf.getScrollLeft, scroll.setTierScrollPx]);
 
   useEffect(() => {
     if (!ctx.mediaUrl || !wf.isReady) return;
@@ -146,6 +159,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
 
   return {
     tierScrollRef,
+    segmentListRef,
     waveformShellRef,
     tierScrollLayout: scroll.tierScrollLayout,
     seekFromTierClientX: scroll.seekFromTierClientX,
@@ -154,6 +168,9 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     segmentLaneLayout,
     segmentLaneRowPx,
     waveformHeightPx: display.waveformHeightPx,
+    waveformRenderHeightPx: display.waveformRenderHeightPx,
+    waveformPaintedHeightPx: display.waveformPaintedHeightPx,
+    waveformHeightDragging: display.waveformHeightDragging,
     transcriptFontPx: display.transcriptFontPx,
     transcriptRowHeightPx: display.transcriptRowHeightPx,
     nudgeWaveformHeight: display.nudgeWaveformHeight,
@@ -164,13 +181,18 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     beginTranscriptRowHeightDrag: display.beginTranscriptRowHeightDrag,
     onTierScroll: scroll.onTierScroll,
     timelineWidthPx,
+    renderTimelineWidthPx,
     pxPerSec: zoom.pxPerSec,
+    renderPxPerSec: zoom.renderPxPerSec,
+    zoomPreviewActive: zoom.zoomPreviewActive,
     zoomIn: zoom.zoomIn,
     zoomOut: zoom.zoomOut,
     resetZoom: zoom.resetZoom,
     zoomToFitTier: zoom.zoomToFitTier,
     zoomToFitSelection: zoom.zoomToFitSelection,
     setPxPerSec: zoom.setPxPerSec,
+    beginZoomInteraction: zoom.beginZoomInteraction,
+    commitZoomInteraction: zoom.commitZoomInteraction,
     selectSegmentAt,
     insertSegmentAfter: ctx.insertSegmentAfter,
     deleteSegmentAt: ctx.deleteSegmentAt,

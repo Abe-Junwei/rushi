@@ -1,8 +1,10 @@
 # 协作架构统一规划与实施顺序（2026-05-24）
 
-本文件用于把现有协作相关架构草案、规格、部署草案收敛成一条可执行路线，并明确“当前最适合做哪一步”。
+本文件用于协作 **Phase 1–7 的细节**（API、表、部署边界）。
 
-若与更早的口头讨论冲突，以本文件和相关 ADR 为准。
+**排期真源**：[统一执行路线图](./rushi-execution-roadmap.md)（默认 R6–R8 在单机 R1–R5 之后）。
+
+若与更早的口头讨论冲突，以本文件、路线图和相关 ADR 为准。
 
 ## 1. 当前进展状态
 
@@ -12,7 +14,7 @@
    - **P0 债务清除已完成（2026-05-24）**：`lint-staged` 版本 bug 修复、AI_QUICKSTART 热点同步、`useSegmentMutationController`（15 测试）与 `useProjectCrudController`（9 测试）补齐、架构守卫增强（setState updater DOM 查询检测 + Tailwind 任意值扩展 + Python 文件大小检查）、设计 token 收敛（移除 `clay-lavender`/`clay-peach`/`clay-mint` 重复项）、`SEGMENT_LANE_ROW_PX` 测试期望同步（43 → 68）。
    - 自动化验收全绿：0 typecheck 错误、112/112 测试通过、0 lint 错误、0 架构守卫警告。
 2. zip 项目包导入导出已经实现，可作为交换/归档层。
-3. UI 重设计欢迎/建项页根部已完成（2026-05-23，7 轮纵向薄片）：确认创建页视觉基线、欢迎页最近项目列表、忙碌遮罩态、ASR 异常态、冷启动空态、A 阶段浏览器手测修复、异常态布局简化。全部通过硬闸门。
+3. **UI 重设计首轮验收已完成（2026-05-25）**：A 欢迎/建项（2026-05-23 七轮薄片）+ B 校对工作页 + Tauri 手测；详见 [ui-redesign-parallel-dev.md](../specs/ui-redesign-parallel-dev.md)。
 4. 协作方向的规格已经成型：
    - [../../specs/collaboration-review-word-export.md](../specs/collaboration-review-word-export.md)
    - [../../architecture/collaboration-storage-schema.md](../../architecture/collaboration-storage-schema.md)
@@ -32,7 +34,6 @@
 4. 桌面端还没有 `ProjectSource` / `WorkflowMode` 的正式运行时模型。
 5. 审阅线程、建议修改、Presence、活动流都仍停留在文档层。
 6. 部署包还没有真实镜像、升级策略与健康检查。
-7. UI 重设计校对工作页（B 阶段核心编辑界面：左轨、工具栏、波形、语段时间轴、底栏）尚未开始。
 
 ## 2. 统一调整后的口径
 
@@ -169,59 +170,19 @@
 
 ## 4. 当前最适合做的一步
 
-### 结论
+> **已迁入** [统一执行路线图](./rushi-execution-roadmap.md) §10。  
+> **默认下一刀**：**R1 — `auto_punctuate` spec 三件套**（非协作 Phase 1）。  
+> 协作 **COL-1** 对应本文件 Phase 1，排在路线图 **R6**（约 2026-07-28 起），除非启用路线图 §9 分叉 B。
 
-当前最适合做的是：**Phase 1，协作服务基础骨架**。
+## 5. Phase 1 落点（实施 R6 时用）
 
-**替代选项评估**：
-- **继续 UI 重设计（校对工作页）**：欢迎/建项页根部已完成，校对工作页（用户核心工作流）尚未开始。如果优先做 UI，1–2 轮薄片可完成校对工作页主路径，让 P0 交付物在视觉和交互上完整。但此工作不阻塞后续协作，可随时穿插。
-- **P1  Polish（Playwright E2E、波形性能基准）**：可提升质量信心，但不扩展产品能力边界，建议作为协作骨架落地后的穿插项。
+实施 **R6 / COL-1** 时，以本节 + 上文 §3 Phase 1 为范围真源：
 
-**推荐 Phase 1 的理由**：
-1. P0 本地模式债务已清除（2026-05-24），核心 controller 已覆盖测试，本地路径稳定。这意味着协作扩展不会破坏既有基础，可以放心地在本地真源之上叠加协作层。
-2. 它是所有后续协作工作的关键路径；Phase 2–7 全部依赖服务端真源存在。
-3. 现有部署包、API 草案、桌面端协作入口都依赖它存在；否则继续停留在文档层。
-4. 若继续细化部署文档，也会因为没有真实镜像与服务脚本而反复返工。
-5. 技术选型（Python/FastAPI vs Rust/Axum）可在本轮薄片内一并敲定，团队已有 Python ASR 侧经验，FastAPI 可最快验证假设。
+1. 技术选型（推荐 Python/FastAPI）
+2. `services/collab/` + Compose + PG 迁移
+3. `GET /health` + 项目/语段只读 API
 
-### 不建议当前优先做的事
-
-1. 不优先做复杂协作 UI（Phase 4+ 的审阅线程、Presence 等）。
-2. 不优先继续扩展部署包细节（需要真实服务镜像）。
-3. 不优先做 Word 审阅稿深加工（需要线程/建议修改数据落库）。
-4. 不优先做 Presence WebSocket（Phase 5）。
-5. 不优先大面积重构本地状态层（本地路径已稳定，P0 刚验证全绿）。
-
-## 5. 下一刀的精确落点
-
-把下一轮工作限制成一个纵向薄片：
-
-### Slice 1：协作服务最小骨架
-
-范围：
-1. 技术选型确认（Python/FastAPI 为推荐方向，理由见 §4）
-2. 新建 `services/collab/`
-3. 最小配置与启动脚本
-4. PostgreSQL 连接（Docker Compose）
-5. 初始迁移（`projects`、`project_collaborators`、`media_assets`、`transcript_segments`、`revision_events`）
-6. `GET /health`
-7. 协作项目创建/列表/详情/语段读取 API
-
-暂不包含：
-1. 评论线程
-2. 建议修改
-3. WebSocket Presence
-4. Word 导出
-5. 离线恢复
-6. 认证/授权（最小原型阶段允许无认证或硬编码 token）
-
-验收：
-1. `docker compose` 可在本地起服务和数据库
-2. 健康检查通过
-3. 能创建一个协作项目并读回语段空列表
-4. 迁移可重复执行（`down` + `up`）
-5. 新文档与部署包占位不再只是“空镜像”，而是有真实服务目录可接
-6. 硬闸门：若新增 Python 代码，需通过 Python lint + 架构守卫文件大小检查
+验收：Compose 起服务；迁移可重复；可创建项目并读回语段列表。硬闸门见路线图 §1。
 
 ## 6. 风险与防漂移提醒
 

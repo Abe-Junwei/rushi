@@ -17,14 +17,14 @@ export interface SegmentSplitDeps {
   setSelectedIdx: React.Dispatch<React.SetStateAction<number>>;
   setError: (msg: string) => void;
   pushUndo: () => void;
-  flushSegmentTextDraftsFromDom: () => void;
+  flushSegmentTextDrafts: () => void;
 }
 
 export function useSegmentSplitController(deps: SegmentSplitDeps): SegmentSplitApi {
-  const { segmentsRef, setSegments, setSelectedIdx, setError, pushUndo, flushSegmentTextDraftsFromDom } = deps;
+  const { segmentsRef, setSegments, setSelectedIdx, setError, pushUndo, flushSegmentTextDrafts } = deps;
 
   const splitAtSelection = useCallback((selectedIdx: number) => {
-    flushSegmentTextDraftsFromDom();
+    flushSegmentTextDrafts();
     const segs = segmentsRef.current;
     if (segs.length === 0) return;
     const i = Math.min(selectedIdx, segs.length - 1);
@@ -44,11 +44,11 @@ export function useSegmentSplitController(deps: SegmentSplitDeps): SegmentSplitA
       return reindexSegments(out);
     });
     setSelectedIdx(i + 1);
-  }, [flushSegmentTextDraftsFromDom, segmentsRef, setSegments, setSelectedIdx, setError, pushUndo]);
+  }, [flushSegmentTextDrafts, segmentsRef, setSegments, setSelectedIdx, setError, pushUndo]);
 
   const splitAtPlayhead = useCallback(
     (timeSec: number) => {
-      flushSegmentTextDraftsFromDom();
+      flushSegmentTextDrafts();
       const t = roundSec3(timeSec);
       const segs = segmentsRef.current;
       const i = segs.findIndex((s) => t > s.start_sec + 0.02 && t < s.end_sec - 0.02);
@@ -72,7 +72,7 @@ export function useSegmentSplitController(deps: SegmentSplitDeps): SegmentSplitA
       });
       setSelectedIdx(i + 1);
     },
-    [flushSegmentTextDraftsFromDom, segmentsRef, setSegments, setSelectedIdx, setError, pushUndo],
+    [flushSegmentTextDrafts, segmentsRef, setSegments, setSelectedIdx, setError, pushUndo],
   );
 
   return { splitAtSelection, splitAtPlayhead };

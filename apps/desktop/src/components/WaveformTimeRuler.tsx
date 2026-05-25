@@ -1,4 +1,4 @@
-import { memo, useCallback, useMemo, useRef } from "react";
+import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
 
 export type WaveformTimeRulerProps = {
   durationSec: number;
@@ -10,8 +10,8 @@ export type WaveformTimeRulerProps = {
   currentTimeSec: number;
   formatMediaTime: (sec: number) => string;
   disabled?: boolean;
-  /** ink：深色条上（默认）；light：白底波形区下方 */
-  appearance?: "ink" | "light";
+  /** ink：深色条上（默认）；light：浅色独立条；embedded：嵌入波形底部 */
+  appearance?: "ink" | "light" | "embedded";
   /** 点击时间尺（相对 tier 视口）寻位 */
   onSeekFromTierClientX: (clientX: number) => void;
   onSetScrollLeftPx: (px: number) => void;
@@ -33,7 +33,9 @@ export const WaveformTimeRuler = memo(function WaveformTimeRuler({
   durationSec,
   timelineWidthPx,
   scrollLeftPx,
+  viewportWidthPx,
   pxPerSec,
+  rulerView,
   currentTimeSec,
   formatMediaTime,
   disabled,
@@ -42,24 +44,79 @@ export const WaveformTimeRuler = memo(function WaveformTimeRuler({
   appearance = "ink",
 }: WaveformTimeRulerProps) {
   const ink = appearance === "ink";
+  const embedded = appearance === "embedded";
   const rulerDragRef = useRef({ dragging: false, startX: 0, startScroll: 0 });
+  const prevCurrentTimeRef = useRef<number | null>(null);
+  const interactionFadeTimeoutRef = useRef<number | null>(null);
+  const [interactionActive, setInteractionActive] = useState(false);
+  const visibleView = useMemo(() => {
+    const derivedStart = Math.max(0, scrollLeftPx / Math.max(pxPerSec, 1e-6));
+    const derivedEnd = Math.min(
+      Math.max(durationSec, 0),
+      Math.max(derivedStart, (scrollLeftPx + Math.max(viewportWidthPx, 1)) / Math.max(pxPerSec, 1e-6)),
+    );
+    return rulerView ?? { start: derivedStart, end: derivedEnd };
+  }, [durationSec, pxPerSec, rulerView, scrollLeftPx, viewportWidthPx]);
 
-  const { ticks } = useMemo(() => {
+  const { ticks, majorStep } = useMemo(() => {
     const { majorStep: maj, minorStep: min } = pickSteps(pxPerSec);
     const dur = Math.max(durationSec, 0);
     const list: Array<{ t: number; major: boolean }> = [];
-    const t0 = 0;
-    for (let t = t0; t <= dur + 1e-9; t += min) {
+    const viewStart = Math.max(0, visibleView.start - min * 2);
+    const viewEnd = Math.min(dur, visibleView.end + min * 2);
+    const t0 = Math.max(0, Math.floor(viewStart / min) * min);
+    for (let t = t0; t <= viewEnd + 1e-9; t += min) {
       const rounded = Math.round(t * 1e6) / 1e6;
-      if (rounded > dur) break;
+      if (rounded > viewEnd) break;
       const ratio = rounded / maj;
       const major = Math.abs(ratio - Math.round(ratio)) < 1e-6;
       list.push({ t: rounded, major });
     }
-    return { ticks: list };
-  }, [durationSec, pxPerSec]);
+    return { ticks: list, majorStep: maj };
+  }, [durationSec, pxPerSec, visibleView]);
 
   const majorTicks = useMemo(() => ticks.filter((tick) => tick.major), [ticks]);
+  const embeddedLabelStride = useMemo(() => {
+    if (!embedded) return 1;
+    const majorStepPx = majorStep * pxPerSec;
+    if (majorStepPx < 88) return 3;
+    if (majorStepPx < 144) return 2;
+    return 1;
+  }, [embedded, majorStep, pxPerSec]);
+  const highlightedMajorTickTime = useMemo(() => {
+    if (!embedded || majorTicks.length === 0) return null;
+    let closest = majorTicks[0]?.t ?? null;
+    let minDistance = Number.POSITIVE_INFINITY;
+    for (const tick of majorTicks) {
+      const distance = Math.abs(tick.t - currentTimeSec);
+      if (distance < minDistance) {
+        minDistance = distance;
+        closest = tick.t;
+      }
+    }
+    return minDistance <= majorStep * 0.75 ? closest : null;
+  }, [currentTimeSec, embedded, majorStep, majorTicks]);
+
+  useEffect(() => {
+    if (!embedded) return;
+    const prev = prevCurrentTimeRef.current;
+    prevCurrentTimeRef.current = currentTimeSec;
+    if (prev == null || Math.abs(currentTimeSec - prev) < 1e-4) return;
+    setInteractionActive(true);
+    if (interactionFadeTimeoutRef.current != null) {
+      window.clearTimeout(interactionFadeTimeoutRef.current);
+    }
+    interactionFadeTimeoutRef.current = window.setTimeout(() => {
+      interactionFadeTimeoutRef.current = null;
+      setInteractionActive(false);
+    }, 260);
+    return () => {
+      if (interactionFadeTimeoutRef.current != null) {
+        window.clearTimeout(interactionFadeTimeoutRef.current);
+        interactionFadeTimeoutRef.current = null;
+      }
+    };
+  }, [currentTimeSec, embedded]);
 
   const playheadPct = useMemo(() => {
     const dur = Math.max(durationSec, 1e-6);
@@ -99,12 +156,20 @@ export const WaveformTimeRuler = memo(function WaveformTimeRuler({
   return (
     <div
       className={
-        ink
+        embedded
+          ? "relative shrink-0"
+          : ink
           ? "relative shrink-0 border-t border-zen-paper/10 bg-black/25"
           : "relative shrink-0 border-t border-black/10 bg-zen-paper"
       }
       style={{ width: timelineWidthPx, height: RULER_H }}
     >
+      {embedded ? (
+        <div
+          aria-hidden
+          className="pointer-events-none absolute inset-0 bg-gradient-to-t from-notion-sidebar/74 via-notion-sidebar/42 to-transparent"
+        />
+      ) : null}
       <div
         className={`relative h-[22px] cursor-grab select-none active:cursor-grabbing ${disabled ? "pointer-events-none opacity-50" : ""}`}
         onMouseDown={onRulerMouseDown}
@@ -112,15 +177,22 @@ export const WaveformTimeRuler = memo(function WaveformTimeRuler({
         <svg className="absolute inset-0 h-[22px] w-full overflow-visible" aria-hidden>
           {ticks.map(({ t, major }) => {
             const leftPct = (t / Math.max(durationSec, 1e-6)) * 100;
+            const isHighlightedMajor = embedded && major && highlightedMajorTickTime != null && Math.abs(t - highlightedMajorTickTime) < 1e-6;
             return (
               <g key={`tk-${t}`}>
                 <line
                   x1={`${leftPct}%`}
                   x2={`${leftPct}%`}
                   y1={0}
-                  y2={major ? 8 : 4}
+                  y2={embedded ? (major ? 7 : 3) : major ? 8 : 4}
                   className={
-                    ink
+                    embedded
+                      ? interactionActive && isHighlightedMajor
+                        ? "stroke-white/58"
+                        : major
+                        ? "stroke-white/34"
+                        : "stroke-white/16"
+                      : ink
                       ? major
                         ? "stroke-white/55"
                         : "stroke-white/30"
@@ -139,18 +211,36 @@ export const WaveformTimeRuler = memo(function WaveformTimeRuler({
             x2={playheadPct}
             y1={-2}
             y2={RULER_H}
-            className={ink ? "stroke-zen-saffron/90" : "stroke-zen-ink"}
+            className={
+              embedded
+                ? interactionActive
+                  ? "stroke-zen-saffron/86"
+                  : "stroke-zen-saffron/58"
+                : ink
+                  ? "stroke-zen-saffron/90"
+                  : "stroke-zen-ink"
+            }
             strokeWidth={1}
             vectorEffect="non-scaling-stroke"
           />
         </svg>
         <div className="pointer-events-none absolute inset-0 h-[22px]">
-          {majorTicks.map(({ t }) => {
+          {majorTicks.filter((_, index) => index % embeddedLabelStride === 0).map(({ t }) => {
             const leftPct = (t / Math.max(durationSec, 1e-6)) * 100;
+            const isHighlightedMajor =
+              embedded && highlightedMajorTickTime != null && Math.abs(t - highlightedMajorTickTime) < 1e-6;
             return (
               <span
                 key={`lb-${t}`}
-                className={`absolute top-[8px] text-[10px] tabular-nums ${ink ? "text-white/60" : "text-black/55"}`}
+                className={`absolute top-[8px] text-[11px] tabular-nums ${
+                  embedded
+                    ? interactionActive && isHighlightedMajor
+                      ? "text-white/74"
+                      : "text-white/36"
+                    : ink
+                      ? "text-white/60"
+                      : "text-black/55"
+                }`}
                 style={{ left: `${leftPct}%`, transform: "translateX(2px)" }}
               >
                 {formatMediaTime(t)}

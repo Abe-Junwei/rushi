@@ -47,7 +47,7 @@ export const PANEL_TEMPLATE_PRESETS = {
     maxHeight: 200,
     variant: "serene",
     persistState: true,
-    overlayClassName: "fixed inset-0 z-40 bg-black/30 backdrop-blur-sm",
+    overlayClassName: "fixed inset-0 z-40 bg-zen-ink/20 backdrop-blur-sm",
   },
 } satisfies Record<string, PanelTemplatePreset>;
 

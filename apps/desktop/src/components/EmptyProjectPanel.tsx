@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from "react";
-import { FileAudio, FileText, FolderOpen, LoaderCircle, Upload } from "lucide-react";
+import { FileAudio, FileInput, FileText, FolderOpen, LoaderCircle } from "lucide-react";
 import * as fileApi from "../tauri/fileApi";
 import type { ProjectControllerApi } from "../pages/useProjectController";
 import { LUCIDE_ICON_SIZE_LG, LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
@@ -220,12 +220,12 @@ export function EmptyProjectPanel({ controller: c }: { controller: ProjectContro
           </span>
         </div>
         <h2 className="mb-2 text-[32px] font-semibold text-zen-ink">暂无媒体文件</h2>
-        <p className="mx-auto mb-8 max-w-xl text-[13px] leading-6 text-notion-text-muted">
+        <p className="mx-auto mb-8 max-w-xl text-[14px] leading-6 text-notion-text-muted">
           要开始转录或编辑，请导入音频文件或现有的转录文本以映射到时间轴。
         </p>
 
         <div className="mt-2 border-t border-notion-divider pt-6">
-          <p className="mb-4 text-[11px] font-semibold tracking-[0.08em] text-notion-text-muted">导入资源</p>
+          <p className="mb-4 text-[11px] font-semibold tracking-[0.1em] text-notion-text-muted">导入资源</p>
           <div className="flex flex-col items-center justify-center gap-4 sm:flex-row">
             <ImportTile
               title="导入音频"
@@ -255,7 +255,7 @@ export function EmptyProjectPanel({ controller: c }: { controller: ProjectContro
               : "border-notion-divider text-notion-text-muted"
           }`}
         >
-          <Upload className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+          <FileInput className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
           <span>{isDragActive ? "释放鼠标即可导入文件" : "或直接将文件拖放到此工作区"}</span>
         </div>
       </section>

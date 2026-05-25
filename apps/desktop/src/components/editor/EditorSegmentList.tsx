@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef } from "react";
+import { useCallback, useLayoutEffect, type MouseEvent as ReactMouseEvent } from "react";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
 import { SegmentTextListRow } from "../SegmentTextListRow";
@@ -17,6 +17,7 @@ interface EditorSegmentListProps {
   controller: ProjectControllerApi;
   tx: TranscriptionLayerApi;
   appearance: AppearanceApi;
+  listRef: React.RefObject<HTMLDivElement | null>;
   onOpenSegmentContextMenu: (menu: SegmentCtxMenuState) => void;
 }
 
@@ -24,16 +25,25 @@ export function EditorSegmentList({
   controller: c,
   tx,
   appearance: a,
+  listRef: segmentListRef,
   onOpenSegmentContextMenu,
 }: EditorSegmentListProps) {
-  const segmentListRef = useRef<HTMLDivElement | null>(null);
+  const onOpenRowContextMenu = useCallback(
+    (e: ReactMouseEvent<HTMLDivElement>, segmentIdx: number, pointerTimeSec: number) => {
+      if (c.busy) return;
+      e.preventDefault();
+      e.stopPropagation();
+      onOpenSegmentContextMenu({ x: e.clientX, y: e.clientY, segmentIdx, pointerTimeSec });
+    },
+    [c.busy, onOpenSegmentContextMenu],
+  );
 
   useLayoutEffect(() => {
     const root = segmentListRef.current;
     if (!root) return;
     const el = root.querySelector<HTMLElement>(`[data-seg-row="${c.selectedIdx}"]`);
     el?.scrollIntoView({ block: "nearest", behavior: "instant" });
-  }, [c.currentFileId, c.selectedIdx, c.segments.length]);
+  }, [c.currentFileId, c.selectedIdx, c.segments.length, segmentListRef]);
 
   if (c.segments.length === 0) {
     return (
@@ -46,7 +56,7 @@ export function EditorSegmentList({
   return (
     <div
       ref={segmentListRef}
-      className="min-h-0 flex-1 overflow-y-auto bg-notion-bg px-6 py-2.5"
+      className="min-h-0 flex-1 overflow-y-auto bg-notion-bg p-2.5"
       role="list"
       aria-label="语段文本列表"
     >
@@ -69,13 +79,7 @@ export function EditorSegmentList({
             selectSegmentAt={tx.selectSegmentAt}
             updateSegmentText={c.updateSegmentText}
             onTextareaKeyDown={tx.onSegmentTextareaKeyDown}
-            onContextMenu={(e) => {
-              if (c.busy) return;
-              e.preventDefault();
-              e.stopPropagation();
-              const pointerTimeSec = (s.start_sec + s.end_sec) / 2;
-              onOpenSegmentContextMenu({ x: e.clientX, y: e.clientY, segmentIdx: i, pointerTimeSec });
-            }}
+            onOpenContextMenu={onOpenRowContextMenu}
           />
         ))}
       </div>

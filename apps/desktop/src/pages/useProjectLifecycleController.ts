@@ -14,6 +14,7 @@ import { useSegmentMutationController } from "./useSegmentMutationController";
 import { useProjectBusyState } from "./useProjectBusyState";
 import { useProjectListState } from "./useProjectListState";
 import { useProjectEditorState } from "./useProjectEditorState";
+import { useProjectCloseGateController } from "./useProjectCloseGateController";
 import { useSegmentDirtyState } from "./useSegmentDirtyState";
 import { cloneSegments } from "./segmentListHelpers";
 import type { ProjectLifecycleApi } from "./ProjectLifecycleApi";
@@ -38,8 +39,6 @@ export function useProjectLifecycleController(): ProjectLifecycleApi {
     setAudioSrc,
     segmentsRef,
     selectedIdxRef,
-    getSegmentListRoot,
-    attachSegmentListDomRoot,
     openFile,
     closeFile,
     refreshCurrentProject: refreshCurrentProjectBase,
@@ -57,13 +56,12 @@ export function useProjectLifecycleController(): ProjectLifecycleApi {
     setSelectedIdx,
     setError,
     busy,
-    getSegmentListRoot,
   });
 
   const dirty = useSegmentDirtyState({
     currentFileId,
     segmentsRef,
-    flushSegmentTextDraftsFromDom: mutations.flushSegmentTextDraftsFromDom,
+    flushSegmentTextDrafts: mutations.flushSegmentTextDrafts,
   });
 
   const applyDetail = useCallback(
@@ -74,60 +72,6 @@ export function useProjectLifecycleController(): ProjectLifecycleApi {
       setPickedPath(null);
     },
     [mutations, applyDetailBase],
-  );
-
-  const closeFileWrapped = useCallback(() => {
-    closeFile();
-    dirty.clearSavedSnapshot();
-    mutations.resetMutationHistory();
-  }, [closeFile, dirty, mutations]);
-
-  const closeProjectWrapped = useCallback(() => {
-    if (!dirty.confirmDiscardUnsavedIfNeeded()) return;
-    setCurrent(null);
-    closeFileWrapped();
-    setTranscribeHints([]);
-  }, [dirty, closeFileWrapped, setCurrent]);
-
-  const openFileWrapped = useCallback(
-    async (fileId: string) => {
-      if (
-        currentFileId &&
-        fileId !== currentFileId &&
-        !dirty.confirmDiscardUnsavedIfNeeded()
-      ) {
-        return;
-      }
-      await openFile(fileId);
-      dirty.markSegmentsSaved();
-    },
-    [currentFileId, dirty, openFile],
-  );
-
-  const loadProject = useCallback(
-    async (id: string) => {
-      if (busy) return;
-      if (current?.id !== id && !dirty.confirmDiscardUnsavedIfNeeded()) return;
-      setError("");
-      beginBusy("load");
-      try {
-        const d = await p1.projectLoad(id);
-        applyDetail(d);
-        if (d.files && d.files.length > 0) {
-          const sorted = [...d.files].sort((a, b) => b.updated_at_ms - a.updated_at_ms);
-          await openFileWrapped(sorted[0].id);
-        } else {
-          dirty.clearSavedSnapshot();
-        }
-      } catch (e) {
-        setCurrent(null);
-        closeFileWrapped();
-        setError(e instanceof Error ? e.message : String(e));
-      } finally {
-        endBusy();
-      }
-    },
-    [busy, current?.id, dirty, applyDetail, openFileWrapped, beginBusy, endBusy, closeFileWrapped, setCurrent],
   );
 
   const refreshCurrentProject = useCallback(async () => {
@@ -166,6 +110,51 @@ export function useProjectLifecycleController(): ProjectLifecycleApi {
     setTranscribeHints,
   });
 
+  const saveSegments = useCallback(async (): Promise<boolean> => {
+    if (busy || !current || !currentFileId) {
+      setError("请先打开一个文件后再保存");
+      return false;
+    }
+    beginBusy("save");
+    setError("");
+    try {
+      mutations.flushSegmentTextDrafts();
+      const normalized = segmentsRef.current.map((s, i) => ({ ...s, idx: i }));
+      await fileApi.fileSaveSegments(currentFileId, normalized);
+      const [projectDetail, fileDetail] = await Promise.all([
+        p1.projectLoad(current.id),
+        fileApi.loadFile(currentFileId),
+      ]);
+      setCurrent(projectDetail);
+      setSegments(cloneSegments(fileDetail.segments));
+      dirty.setSavedSnapshot(fileDetail.segments);
+      setSelectedIdx((prev) => Math.min(prev, Math.max(0, fileDetail.segments.length - 1)));
+      return true;
+    } catch (e) {
+      setError(e instanceof Error ? e.message : String(e));
+      return false;
+    } finally {
+      endBusy();
+    }
+  }, [busy, current, currentFileId, mutations, dirty, beginBusy, endBusy, setCurrent, setSegments, setSelectedIdx, segmentsRef]);
+
+  const closeGate = useProjectCloseGateController({
+    applyDetail,
+    beginBusy,
+    busy,
+    closeFile,
+    current,
+    currentFileId,
+    dirty,
+    endBusy,
+    openFile,
+    saveSegments,
+    setCurrent,
+    setError,
+    setTranscribeHints,
+    resetMutationHistory: mutations.resetMutationHistory,
+  });
+
   const runTranscribe = useCallback(async () => {
     if (busy || !current || !currentFileId) {
       if (!busy && current && !currentFileId) {
@@ -189,7 +178,7 @@ export function useProjectLifecycleController(): ProjectLifecycleApi {
       mutations.resetMutationHistory();
       const projectDetail = await p1.projectLoad(current.id);
       setCurrent(projectDetail);
-      await openFileWrapped(fileId);
+      await closeGate.openFileWrapped(fileId);
       const hints = deriveTranscribeHints(out.engine, out.warnings, out.detail.segments);
       if (import.meta.env.DEV && hints.length > 0) {
         hints.push("（开发模式）详见仓库 services/asr/README.md。");
@@ -200,33 +189,7 @@ export function useProjectLifecycleController(): ProjectLifecycleApi {
     } finally {
       endBusy();
     }
-  }, [busy, current, currentFileId, mutations, openFileWrapped, beginBusy, endBusy, setCurrent]);
-
-  const saveSegments = useCallback(async () => {
-    if (busy || !current || !currentFileId) {
-      setError("请先打开一个文件后再保存");
-      return;
-    }
-    beginBusy("save");
-    setError("");
-    try {
-      mutations.flushSegmentTextDraftsFromDom();
-      const normalized = segmentsRef.current.map((s, i) => ({ ...s, idx: i }));
-      await fileApi.fileSaveSegments(currentFileId, normalized);
-      const [projectDetail, fileDetail] = await Promise.all([
-        p1.projectLoad(current.id),
-        fileApi.loadFile(currentFileId),
-      ]);
-      setCurrent(projectDetail);
-      setSegments(cloneSegments(fileDetail.segments));
-      dirty.setSavedSnapshot(fileDetail.segments);
-      setSelectedIdx((prev) => Math.min(prev, Math.max(0, fileDetail.segments.length - 1)));
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      endBusy();
-    }
-  }, [busy, current, currentFileId, mutations, dirty, beginBusy, endBusy, setCurrent, setSegments, setSelectedIdx, segmentsRef]);
+  }, [busy, current, currentFileId, mutations, closeGate, beginBusy, endBusy, setCurrent]);
 
   const openAppDataFolder = useCallback(async () => {
     if (busy) return;
@@ -243,7 +206,7 @@ export function useProjectLifecycleController(): ProjectLifecycleApi {
     currentFileId,
     segmentsRef,
     setError,
-    flushSegmentTextDraftsFromDom: mutations.flushSegmentTextDraftsFromDom,
+    flushSegmentTextDrafts: mutations.flushSegmentTextDrafts,
     refreshProjects,
     applyDetail,
   });
@@ -253,7 +216,8 @@ export function useProjectLifecycleController(): ProjectLifecycleApi {
     audioSrc, error, busy, busyReason, newName, setNewName, pickedPath, transcribeHints,
     refreshProjects, pickAudio, clearPickedAudio,
     createProject: crud.createProject, createEmptyProject: crud.createEmptyProject, createProjectFromText: crud.createProjectFromText,
-    loadProject, refreshCurrentProject, openFile: openFileWrapped, closeFile: closeFileWrapped, closeProject: closeProjectWrapped,
+    loadProject: closeGate.loadProject, refreshCurrentProject, openFile: closeGate.openFileWrapped,
+    closeFile: closeGate.closeFileWrapped, closeProject: closeGate.closeProjectWrapped,
     runTranscribe, saveSegments, deleteProject: crud.deleteProject,
     exportTxt: exports.exportTxt, exportSrt: exports.exportSrt, exportDocx: exports.exportDocx,
     exportDiagnosticBundle: exports.exportDiagnosticBundle, exportProjectBundle: exports.exportProjectBundle, importProjectBundle: exports.importProjectBundle,
@@ -265,7 +229,15 @@ export function useProjectLifecycleController(): ProjectLifecycleApi {
     mergeWithNextAt: mutations.mergeWithNextAt, mergeWithPrevAt: mutations.mergeWithPrevAt,
     deleteSegmentAt: mutations.deleteSegmentAt, insertSegmentAfter: mutations.insertSegmentAfter,
     insertSegmentFromTimeRange: mutations.insertSegmentFromTimeRange,
-    flushSegmentTextDraftsFromDom: mutations.flushSegmentTextDraftsFromDom,
-    attachSegmentListDomRoot,
+    flushSegmentTextDrafts: mutations.flushSegmentTextDrafts,
+    closeGateOpen: closeGate.closeGateOpen,
+    closeGateIntent: closeGate.closeGateIntent,
+    stayAfterCloseAttempt: closeGate.stayAfterCloseAttempt,
+    discardUnsavedAndClose: () => {
+      void closeGate.discardUnsavedAndClose();
+    },
+    saveAndClose: () => {
+      void closeGate.saveAndClose();
+    },
   };
 }

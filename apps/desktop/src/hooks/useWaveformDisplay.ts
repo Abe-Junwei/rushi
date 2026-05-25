@@ -14,28 +14,31 @@ import {
   computeSegmentLaneRowPx,
   transcriptFontPxFromSegmentRowPx,
 } from "../utils/segmentLayout";
+import { useDeferredRendererState } from "./useDeferredRendererState";
+
+const PREF_WRITE_DEBOUNCE_MS = 180;
+
+const heightEquals = (a: number, b: number) => Math.abs(a - b) < 0.5;
 
 export function useWaveformDisplay(args: { busy: boolean }) {
-  const [waveformHeightPx, setWaveformHeightPxState] = useState(
-    () => readStoredWaveformHeightPx() ?? WAVEFORM_HEIGHT_DEFAULT,
-  );
+  const height = useDeferredRendererState({
+    initial: readStoredWaveformHeightPx() ?? WAVEFORM_HEIGHT_DEFAULT,
+    clamp: clampWaveformHeight,
+    areEqual: heightEquals,
+    trackCommitted: true,
+    persist: {
+      read: readStoredWaveformHeightPx,
+      write: writeStoredWaveformHeightPx,
+      debounceMs: PREF_WRITE_DEBOUNCE_MS,
+    },
+  });
+
   const [transcriptFontPx, setTranscriptFontPxState] = useState(
     () => readStoredP1TranscriptFontPx() ?? TRANSCRIPT_FONT_DEFAULT,
   );
 
-  const waveformHeightPxRef = useRef(waveformHeightPx);
-  waveformHeightPxRef.current = waveformHeightPx;
   const transcriptFontPxRef = useRef(transcriptFontPx);
   transcriptFontPxRef.current = transcriptFontPx;
-
-  const skipHWriteRef = useRef(true);
-  useEffect(() => {
-    if (skipHWriteRef.current) {
-      skipHWriteRef.current = false;
-      return;
-    }
-    writeStoredWaveformHeightPx(waveformHeightPx);
-  }, [waveformHeightPx]);
 
   const skipFontWriteRef = useRef(true);
   useEffect(() => {
@@ -43,12 +46,26 @@ export function useWaveformDisplay(args: { busy: boolean }) {
       skipFontWriteRef.current = false;
       return;
     }
-    writeStoredP1TranscriptFontPx(transcriptFontPx);
+    const timer = window.setTimeout(() => {
+      writeStoredP1TranscriptFontPx(transcriptFontPx);
+    }, PREF_WRITE_DEBOUNCE_MS);
+    return () => window.clearTimeout(timer);
   }, [transcriptFontPx]);
 
-  const nudgeWaveformHeight = useCallback((delta: number) => {
-    setWaveformHeightPxState((h) => clampWaveformHeight(h + delta));
-  }, []);
+  const nudgeWaveformHeight = useCallback(
+    (delta: number) => {
+      height.setVisual((prev) => clampWaveformHeight(prev + delta));
+      height.flushRender();
+    },
+    [height],
+  );
+
+  const markWaveformRenderHeightApplied = useCallback(
+    (heightPx: number) => {
+      height.markCommitted(heightPx);
+    },
+    [height],
+  );
 
   const nudgeTranscriptFontPx = useCallback((delta: number) => {
     setTranscriptFontPxState((f) => clampTranscriptFontPx(f + delta));
@@ -66,12 +83,27 @@ export function useWaveformDisplay(args: { busy: boolean }) {
       e.preventDefault();
       const target = e.currentTarget;
       target.setPointerCapture(e.pointerId);
+      height.setDragging(true);
       const startY = e.clientY;
-      const startH = waveformHeightPxRef.current;
+      const startH = height.visual;
+      let rafId = 0;
+      let latestHeight = startH;
+      const flushHeight = () => {
+        rafId = 0;
+        height.setVisual(latestHeight);
+      };
       const onMove = (ev: PointerEvent) => {
-        setWaveformHeightPxState(clampWaveformHeight(startH + (ev.clientY - startY)));
+        latestHeight = clampWaveformHeight(startH + (ev.clientY - startY));
+        if (rafId !== 0) return;
+        rafId = window.requestAnimationFrame(flushHeight);
       };
       const onUp = (ev: PointerEvent) => {
+        if (rafId !== 0) {
+          window.cancelAnimationFrame(rafId);
+          flushHeight();
+        }
+        height.setDragging(false);
+        height.flushRender();
         try {
           target.releasePointerCapture(ev.pointerId);
         } catch {
@@ -85,7 +117,7 @@ export function useWaveformDisplay(args: { busy: boolean }) {
       window.addEventListener("pointerup", onUp);
       window.addEventListener("pointercancel", onUp);
     },
-    [args.busy],
+    [args.busy, height],
   );
 
   const beginTranscriptFontDrag = useCallback(
@@ -148,12 +180,16 @@ export function useWaveformDisplay(args: { busy: boolean }) {
   const transcriptRowHeightPx = computeSegmentLaneRowPx(transcriptFontPx);
 
   return {
-    waveformHeightPx,
+    waveformHeightPx: height.visual,
+    waveformRenderHeightPx: height.render,
+    waveformPaintedHeightPx: height.committed,
+    waveformHeightDragging: height.dragging,
     transcriptFontPx,
     transcriptRowHeightPx,
     nudgeWaveformHeight,
     nudgeTranscriptFontPx,
     nudgeTranscriptRowHeightPx,
+    markWaveformRenderHeightApplied,
     beginWaveformHeightDrag,
     beginTranscriptFontDrag,
     beginTranscriptRowHeightDrag,

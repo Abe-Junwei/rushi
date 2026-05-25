@@ -25,11 +25,11 @@ export function ProjectBusyOverlay({ reason, elapsedSec }: { reason: BusyReason 
   const busyCopy = busyOverlayCopy(reason);
 
   return (
-    <div className="absolute inset-0 z-50 flex items-center justify-center bg-white/70 px-6 backdrop-blur-[2px]" role="status" aria-live="polite" aria-busy="true">
+    <div className="absolute inset-0 z-50 flex items-center justify-center bg-notion-bg/70 px-6 backdrop-blur-[2px]" role="status" aria-live="polite" aria-busy="true">
       <div className="flex w-full max-w-[360px] flex-col items-center gap-4 rounded-[24px] border border-notion-divider bg-notion-bg p-8 text-center shadow-sm">
         <div className="relative mb-1 flex h-16 w-16 items-center justify-center">
           <div className="absolute inset-0 animate-ping rounded-full bg-zen-saffron/20 [animation-duration:2s]" />
-          <div className="relative z-10 flex h-12 w-12 items-center justify-center rounded-full border border-zen-saffron/30 bg-white shadow-sm">
+          <div className="relative z-10 flex h-12 w-12 items-center justify-center rounded-full border border-zen-saffron/30 bg-notion-bg shadow-sm">
             <LoaderCircle className={`${LUCIDE_ICON_SIZE_LG} animate-rushi-spin-slow text-zen-saffron`} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
           </div>
         </div>

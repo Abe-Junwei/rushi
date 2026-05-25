@@ -1,4 +1,7 @@
 import type { SegmentDto } from "../tauri/projectApi";
+import { createSegmentUid, ensureSegmentUids } from "../utils/segmentUid";
+
+export { createSegmentUid, ensureSegmentUids };
 
 /** 深拷贝语段数组（不重新索引）。 */
 export function cloneSegments(segs: SegmentDto[]): SegmentDto[] {
@@ -19,6 +22,7 @@ export function segmentsEqualForPersist(a: SegmentDto[], b: SegmentDto[]): boole
     const t = nb[i];
     if (!t) return false;
     return (
+      (s.uid ?? "") === (t.uid ?? "") &&
       s.start_sec === t.start_sec &&
       s.end_sec === t.end_sec &&
       s.text === t.text &&
@@ -38,6 +42,7 @@ export function mergeTwoSegments(a: SegmentDto, b: SegmentDto): SegmentDto {
   const confA = a.confidence ?? null;
   const confB = b.confidence ?? null;
   return {
+    uid: a.uid,
     idx: a.idx,
     start_sec: a.start_sec,
     end_sec: b.end_sec,
@@ -54,6 +59,7 @@ export function buildSplitPair(s: SegmentDto, mid: number): { left: SegmentDto; 
   if (mid <= s.start_sec + 0.02 || mid >= s.end_sec - 0.02) return null;
   const left: SegmentDto = { ...s, end_sec: mid, text: s.text };
   const right: SegmentDto = {
+    uid: createSegmentUid(),
     idx: s.idx + 1,
     start_sec: mid,
     end_sec: s.end_sec,

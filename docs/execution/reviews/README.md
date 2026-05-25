@@ -26,7 +26,9 @@
 - [chains/segment-edit-undo.md](./chains/segment-edit-undo.md)
 - [chains/asr-sidecar-transcribe.md](./chains/asr-sidecar-transcribe.md)
 
-## 验证快照（审查日）
+## 验证快照
+
+**审查日（2026-05-21）**
 
 ```bash
 npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs
@@ -37,6 +39,13 @@ cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml
 - 前端 test：117 passed
 - 架构守卫：0 错误，8 警告
 - Rust test：29 passed
+
+**文档同步（2026-05-25）** — 与当前代码对齐的要点：
+
+- 语段正文：`useSegmentDraftStore` + `flushSegmentTextDrafts`（非 DOM flush；已移除 `attachSegmentListDomRoot`）
+- 持久化：`segments.uid`、按 uid upsert、`file_save_segments` 交换 idx 前临时负 idx
+- 波形：WaveSurfer + region 按 uid diff；`packages/wasm-waveform` 已删除
+- 快照（同命令）：前端 test 137 passed；Rust test 30 passed；架构守卫 0 错误 / 0 警告
 
 ## 与历史文档关系
 

@@ -76,7 +76,7 @@ export default {
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
         serif: ['"Noto Serif SC"', 'serif'],
-        mono: ['"JetBrains Mono"', "ui-monospace", "SFMono-Regular", "Menlo", "monospace"],
+        mono: ['Inter', 'system-ui', 'sans-serif'],
       },
       keyframes: {
         "rushi-indeterminate": {

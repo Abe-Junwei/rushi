@@ -38,6 +38,34 @@ fn migrate_segments_p2(conn: &Connection) -> rusqlite::Result<()> {
     Ok(())
 }
 
+/// 语段稳定 uid：供波形 region 与按 uid upsert，避免保存时整表删插导致 id 漂移。
+fn migrate_segments_uid(conn: &Connection) -> rusqlite::Result<()> {
+    let cols = table_columns(conn, "segments")?;
+    if cols.is_empty() {
+        return Ok(());
+    }
+    if !cols.iter().any(|c| c == "uid") {
+        conn.execute("ALTER TABLE segments ADD COLUMN uid TEXT", [])?;
+    }
+    let mut stmt = conn.prepare(
+        "SELECT id FROM segments WHERE uid IS NULL OR trim(uid) = ''",
+    )?;
+    let ids = stmt
+        .query_map([], |row| row.get::<_, i64>(0))?
+        .collect::<Result<Vec<_>, _>>()?;
+    for row_id in ids {
+        let uid = uuid::Uuid::new_v4().to_string();
+        conn.execute(
+            "UPDATE segments SET uid = ?1 WHERE id = ?2",
+            rusqlite::params![uid, row_id],
+        )?;
+    }
+    conn.execute_batch(
+        "CREATE UNIQUE INDEX IF NOT EXISTS idx_segments_file_uid ON segments(file_id, uid);",
+    )?;
+    Ok(())
+}
+
 fn migrate_glossary_p2(conn: &Connection) -> rusqlite::Result<()> {
     conn.execute_batch(
         r#"
@@ -134,6 +162,7 @@ pub fn migrate(conn: &Connection) -> rusqlite::Result<()> {
             confidence REAL,
             low_confidence INTEGER NOT NULL DEFAULT 0,
             detail TEXT NOT NULL DEFAULT '',
+            uid TEXT NOT NULL DEFAULT '',
             FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE,
             UNIQUE (file_id, idx)
         );
@@ -150,6 +179,7 @@ pub fn migrate(conn: &Connection) -> rusqlite::Result<()> {
         "#,
     )?;
     migrate_segments_p2(conn)?;
+    migrate_segments_uid(conn)?;
     migrate_glossary_p2(conn)?;
     migrate_correction_memory_p2(conn)?;
     Ok(())
@@ -328,5 +358,69 @@ mod tests {
             .query_row("SELECT COUNT(*) FROM projects", [], |r| r.get(0))
             .unwrap();
         assert_eq!(count, 0);
+    }
+
+    #[test]
+    fn migrate_segments_uid_backfills_two_rows_same_file_before_unique_index() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            r#"
+            CREATE TABLE files (
+                id TEXT PRIMARY KEY NOT NULL,
+                project_id TEXT NOT NULL,
+                name TEXT NOT NULL,
+                file_type TEXT NOT NULL,
+                created_at_ms INTEGER NOT NULL,
+                updated_at_ms INTEGER NOT NULL
+            );
+            CREATE TABLE segments (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                file_id TEXT NOT NULL,
+                idx INTEGER NOT NULL,
+                start_sec REAL NOT NULL DEFAULT 0,
+                end_sec REAL NOT NULL DEFAULT 0,
+                text TEXT NOT NULL DEFAULT ''
+            );
+            "#,
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO files (id, project_id, name, file_type, created_at_ms, updated_at_ms) VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
+            ["f1", "p1", "test", "text", "0", "0"],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO segments (file_id, idx, start_sec, end_sec, text) VALUES (?1, ?2, ?3, ?4, ?5)",
+            ["f1", "0", "0.0", "1.0", "a"],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO segments (file_id, idx, start_sec, end_sec, text) VALUES (?1, ?2, ?3, ?4, ?5)",
+            ["f1", "1", "1.0", "2.0", "b"],
+        )
+        .unwrap();
+
+        migrate_segments_uid(&conn).unwrap();
+
+        let uids: Vec<String> = conn
+            .prepare("SELECT uid FROM segments WHERE file_id = 'f1' ORDER BY idx")
+            .unwrap()
+            .query_map([], |row| row.get(0))
+            .unwrap()
+            .collect::<Result<Vec<_>, _>>()
+            .unwrap();
+        assert_eq!(uids.len(), 2);
+        assert!(uids[0].len() > 0);
+        assert!(uids[1].len() > 0);
+        assert_ne!(uids[0], uids[1]);
+
+        let index_count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM sqlite_master WHERE type = 'index' AND name = 'idx_segments_file_uid'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(index_count, 1);
     }
 }

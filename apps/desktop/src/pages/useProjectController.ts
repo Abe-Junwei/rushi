@@ -71,8 +71,12 @@ export function useProjectController() {
     deleteSegmentAt: lifecycle.deleteSegmentAt,
     insertSegmentAfter: lifecycle.insertSegmentAfter,
     insertSegmentFromTimeRange: lifecycle.insertSegmentFromTimeRange,
-    flushSegmentTextDraftsFromDom: lifecycle.flushSegmentTextDraftsFromDom,
-    attachSegmentListDomRoot: lifecycle.attachSegmentListDomRoot,
+    flushSegmentTextDrafts: lifecycle.flushSegmentTextDrafts,
+    closeGateOpen: lifecycle.closeGateOpen,
+    closeGateIntent: lifecycle.closeGateIntent,
+    stayAfterCloseAttempt: lifecycle.stayAfterCloseAttempt,
+    discardUnsavedAndClose: lifecycle.discardUnsavedAndClose,
+    saveAndClose: lifecycle.saveAndClose,
 
     // ASR bridge
     asrHealth: asr.asrHealth,

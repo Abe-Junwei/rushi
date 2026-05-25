@@ -1,8 +1,10 @@
 import { EditorToolbar } from "./EditorToolbar";
 import { SegmentContextMenu } from "./SegmentContextMenu";
+import { ArrowLeft } from "lucide-react";
 import type { ProjectControllerApi } from "../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../pages/useTranscriptionLayer";
 import { TIMELINE_PX_PER_SEC } from "../utils/pxPerSec";
+import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 import { EmptyProjectPanel } from "./EmptyProjectPanel";
 import { type SegmentContextMenuItem, type SegmentContextMenuKey } from "../utils/segmentContextMenuModel";
 import { EditorSegmentWorkbench } from "./editor/EditorSegmentWorkbench";
@@ -58,7 +60,7 @@ export function EditorView({
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-notion-bg" data-purpose="editor-workspace">
       {!c.currentFileId ? (
-        <div className="relative flex h-16 shrink-0 items-center justify-between border-b border-notion-divider bg-white px-4 lg:px-10">
+        <div className="relative flex h-16 shrink-0 items-center justify-between border-b border-notion-divider bg-notion-bg px-4 lg:px-10">
           <div className="flex min-w-0 items-center gap-2.5">
             <button
               type="button"
@@ -67,13 +69,13 @@ export function EditorView({
               onClick={() => c.closeProject()}
               aria-label="返回 Dashboard"
             >
-              ←
+              <ArrowLeft className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
             </button>
             <div className="min-w-0 max-w-[70vw]">
               <p className="truncate text-[14px] font-semibold tracking-tight text-notion-text">
                 <span>{projectName}</span>
                 <span className="px-1 text-notion-text-light">\</span>
-                <span className="text-[13px] font-medium text-notion-text-muted">{currentFileName}</span>
+                <span className="text-[12px] font-medium text-notion-text-muted">{currentFileName}</span>
               </p>
             </div>
           </div>
@@ -103,7 +105,7 @@ export function EditorView({
             onOpenEnvironment={onOpenEnvironment}
           />
 
-          <main className="flex min-h-0 min-w-0 flex-1 flex-col gap-4 bg-notion-bg pb-6">
+          <main className="flex min-h-0 min-w-0 flex-1 flex-col gap-0 bg-notion-bg pb-6">
             {c.audioSrc ? (
               <EditorWaveformPane
                 controller={c}
@@ -140,9 +142,9 @@ export function EditorView({
           </main>
 
           {c.audioSrc ? (
-            <footer className="z-40 flex h-10 shrink-0 items-center justify-between gap-2 border-t border-notion-divider bg-notion-bg px-page-margin pb-2 text-[12px] text-notion-text-muted">
+            <footer className="z-40 flex h-[30px] shrink-0 items-center justify-between gap-2 border-t border-notion-divider bg-notion-bg px-2.5 text-[11px] text-notion-text-muted">
               <div className="flex min-w-0 items-center gap-2">
-                <span className="font-medium text-notion-text">{zoomPercent}% Zoom</span>
+                <span className="font-medium text-notion-text">{zoomPercent}% 缩放</span>
                 <span className="h-1 w-1 rounded-full bg-notion-divider" aria-hidden />
                 <span>{tx.pxPerSec.toFixed(0)} px/s</span>
                 <span className="h-1 w-1 rounded-full bg-notion-divider" aria-hidden />
@@ -152,19 +154,19 @@ export function EditorView({
               <div className="flex items-center gap-1.5">
                 <button
                   type="button"
-                  className="inline-flex h-7 items-center justify-center rounded-full border-0 bg-transparent px-3 text-[12px] text-notion-text-muted transition-colors hover:bg-notion-sidebar hover:text-notion-text"
+                  className="inline-flex h-6 items-center justify-center rounded-md border-0 bg-transparent px-2 text-[11px] text-notion-text-muted transition-colors hover:bg-notion-sidebar hover:text-notion-text"
                 >
                   快捷键
                 </button>
                 <button
                   type="button"
-                  className="inline-flex h-7 items-center justify-center rounded-full border-0 bg-transparent px-3 text-[12px] text-notion-text-muted transition-colors hover:bg-notion-sidebar hover:text-notion-text"
+                  className="inline-flex h-6 items-center justify-center rounded-md border-0 bg-transparent px-2 text-[11px] text-notion-text-muted transition-colors hover:bg-notion-sidebar hover:text-notion-text"
                 >
                   文档
                 </button>
                 <button
                   type="button"
-                  className="inline-flex h-7 items-center justify-center rounded-full border-0 bg-transparent px-3 text-[12px] text-notion-text-muted transition-colors hover:bg-notion-sidebar hover:text-notion-text"
+                  className="inline-flex h-6 items-center justify-center rounded-md border-0 bg-transparent px-2 text-[11px] text-notion-text-muted transition-colors hover:bg-notion-sidebar hover:text-notion-text"
                 >
                   支持
                 </button>

@@ -89,14 +89,14 @@ export function EnvLocalAsrPanel({
           <p>
             <strong className="text-notion-text">FunASR 未就绪</strong>
             <span className="text-notion-text-muted">（stub：中文正文常为空）。安装依赖并重启 ASR；可选 </span>
-            <code className="rounded bg-white px-1 font-mono text-[11px]">RUSHI_FUNASR_MODEL</code>。
+            <code className="rounded bg-notion-bg px-1 font-mono text-[11px]">RUSHI_FUNASR_MODEL</code>。
           </p>
           <div className="flex flex-wrap gap-2">
             <SmallButton disabled={busy} onClick={() => void copyFunasrManualCommands()}>
               复制手动命令
             </SmallButton>
           </div>
-          <pre className="max-h-32 overflow-auto whitespace-pre-wrap rounded bg-white p-2 font-mono text-[10px] text-zen-indigo">
+          <pre className="max-h-32 overflow-auto whitespace-pre-wrap rounded bg-notion-bg p-2 font-mono text-[12px] text-zen-indigo">
             {funasrManualSetupCommands()}
           </pre>
         </div>
@@ -165,7 +165,7 @@ export function EnvLocalAsrPanel({
         </div>
 
         {funasrInstallMessage && prepareModelBusy ? (
-          <pre className="max-h-28 overflow-auto whitespace-pre-wrap font-mono text-[10px] text-zen-indigo">{funasrInstallMessage}</pre>
+          <pre className="max-h-28 overflow-auto whitespace-pre-wrap font-mono text-[12px] text-zen-indigo">{funasrInstallMessage}</pre>
         ) : null}
 
               {prepareModelFailure ? (
@@ -207,7 +207,7 @@ function SmallButton({ children, disabled, onClick, icon }: { children: React.Re
   return (
     <button
       type="button"
-      className={`flex items-center gap-1.5 rounded border border-notion-divider bg-white px-2.5 py-1 ${PANEL_TYPOGRAPHY.button} text-notion-text transition-colors hover:bg-notion-sidebar-hover disabled:opacity-40`}
+      className={`flex items-center gap-1.5 rounded border border-notion-divider bg-notion-bg px-2.5 py-1 ${PANEL_TYPOGRAPHY.button} text-notion-text transition-colors hover:bg-notion-sidebar-hover disabled:opacity-40`}
       disabled={disabled}
       onClick={onClick}
     >

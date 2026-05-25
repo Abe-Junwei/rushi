@@ -15,7 +15,7 @@ describe("useSegmentDirtyState", () => {
       useSegmentDirtyState({
         currentFileId: "f1",
         segmentsRef,
-        flushSegmentTextDraftsFromDom: flush,
+        flushSegmentTextDrafts: flush,
       }),
     );
     act(() => result.current.markSegmentsSaved());
@@ -29,7 +29,7 @@ describe("useSegmentDirtyState", () => {
       useSegmentDirtyState({
         currentFileId: "f1",
         segmentsRef,
-        flushSegmentTextDraftsFromDom: vi.fn(),
+        flushSegmentTextDrafts: vi.fn(),
       }),
     );
     act(() => result.current.markSegmentsSaved());
@@ -44,7 +44,7 @@ describe("useSegmentDirtyState", () => {
       useSegmentDirtyState({
         currentFileId: "f1",
         segmentsRef,
-        flushSegmentTextDraftsFromDom: vi.fn(),
+        flushSegmentTextDrafts: vi.fn(),
       }),
     );
     act(() => result.current.markSegmentsSaved());

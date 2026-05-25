@@ -3,7 +3,8 @@ import { useCallback, useRef, useState } from "react";
 import type { ProjectDetail, SegmentDto } from "../tauri/projectApi";
 import * as p1 from "../tauri/projectApi";
 import * as fileApi from "../tauri/fileApi";
-import { cloneSegments } from "./segmentListHelpers";
+import { segmentDraftStore } from "../hooks/useSegmentDraftStore";
+import { cloneSegments, ensureSegmentUids } from "./segmentListHelpers";
 
 export interface ProjectEditorApi {
   current: ProjectDetail | null;
@@ -18,9 +19,7 @@ export interface ProjectEditorApi {
   setAudioSrc: React.Dispatch<React.SetStateAction<string | null>>;
   segmentsRef: React.MutableRefObject<SegmentDto[]>;
   selectedIdxRef: React.MutableRefObject<number>;
-  getSegmentListRoot: () => HTMLElement | null;
-  attachSegmentListDomRoot: (getter: (() => HTMLElement | null) | null) => void;
-  openFile: (fileId: string) => Promise<void>;
+  openFile: (fileId: string) => Promise<SegmentDto[] | null>;
   closeFile: () => void;
   closeProject: () => void;
   refreshCurrentProject: () => Promise<void>;
@@ -39,30 +38,30 @@ export function useProjectEditorState(setError: (msg: string) => void): ProjectE
   const selectedIdxRef = useRef(selectedIdx);
   selectedIdxRef.current = selectedIdx;
 
-  const getSegmentListRootRef = useRef<(() => HTMLElement | null) | null>(null);
-  const getSegmentListRoot = useCallback(() => getSegmentListRootRef.current?.() ?? null, []);
-  const attachSegmentListDomRoot = useCallback((getter: (() => HTMLElement | null) | null) => {
-    getSegmentListRootRef.current = getter;
-  }, []);
-
-  const openFile = useCallback(async (fileId: string) => {
+  const openFile = useCallback(async (fileId: string): Promise<SegmentDto[] | null> => {
+    segmentDraftStore.resetAll();
     setError("");
     try {
       const detail = await fileApi.loadFile(fileId);
+      const segs = ensureSegmentUids(cloneSegments(detail.segments));
+      segmentsRef.current = segs;
       setCurrentFileId(fileId);
-      setSegments(cloneSegments(detail.segments));
+      setSegments(segs);
       setSelectedIdx(0);
       try {
         setAudioSrc(detail.audio_path ? convertFileSrc(detail.audio_path) : null);
       } catch {
         setAudioSrc(null);
       }
+      return segs;
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+      return null;
     }
-  }, [setError]);
+  }, [segmentsRef, setError]);
 
   const closeFile = useCallback(() => {
+    segmentDraftStore.resetAll();
     setCurrentFileId(null);
     setSegments([]);
     setSelectedIdx(0);
@@ -82,7 +81,7 @@ export function useProjectEditorState(setError: (msg: string) => void): ProjectE
       setCurrent(d);
       if (currentFileId) {
         const fd = await fileApi.loadFile(currentFileId);
-        setSegments(cloneSegments(fd.segments));
+        setSegments(ensureSegmentUids(cloneSegments(fd.segments)));
         try {
           setAudioSrc(fd.audio_path ? convertFileSrc(fd.audio_path) : null);
         } catch {
@@ -111,8 +110,6 @@ export function useProjectEditorState(setError: (msg: string) => void): ProjectE
     setAudioSrc,
     segmentsRef,
     selectedIdxRef,
-    getSegmentListRoot,
-    attachSegmentListDomRoot,
     openFile,
     closeFile,
     closeProject,

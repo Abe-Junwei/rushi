@@ -1,11 +1,12 @@
 export const REGION_ID_PREFIX = "rushi-seg-";
 
-export function segmentRegionId(index: number): string {
-  return `${REGION_ID_PREFIX}${index}`;
+export function segmentRegionId(uid: string): string {
+  return `${REGION_ID_PREFIX}${uid}`;
 }
 
-export function parseSegmentRegionId(id: string): number | null {
+/** 从 region id 解析稳定语段 uid。 */
+export function parseSegmentRegionUid(id: string): string | null {
   if (!id.startsWith(REGION_ID_PREFIX)) return null;
-  const n = Number(id.slice(REGION_ID_PREFIX.length));
-  return Number.isInteger(n) && n >= 0 ? n : null;
+  const uid = id.slice(REGION_ID_PREFIX.length);
+  return uid.length > 0 ? uid : null;
 }

@@ -93,4 +93,4 @@ ProjectPanel
 - ASR 上传：`run_in_threadpool` + 分块上限（`app.py`）
 - 在线 STT URL：`url::Url` + SSRF 单测（`online_stt_bridge.rs`）
 - 诊断 zip：跳过 symlink 日志（`diagnostic.rs`）
-- `flushSegmentTextDraftsFromDom`：DOM 在 `flushSync` 前收集，updater 纯函数
+- 语段正文草稿：`useSegmentDraftStore` + `flushSegmentTextDrafts`（`flushSync` 前从 store 收集，updater 纯函数；不再 query DOM）

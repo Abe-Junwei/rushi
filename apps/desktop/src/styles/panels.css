@@ -2,8 +2,8 @@
 .panel {
   padding: 1rem 1rem 1.1rem;
   border-radius: 10px;
-  background: white;
-  box-shadow: 0 1px 2px rgb(0 0 0 / 6%);
+  background: var(--notion-bg);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--zen-ink) 12%, transparent);
 }
 
 .panel-spaced {
@@ -12,13 +12,13 @@
 
 .panel-title {
   margin: 0 0 0.5rem;
-  font-size: 1.1rem;
+  font-size: 18px;
 }
 
 .panel-meta {
   margin: 0 0 0.75rem;
-  font-size: 0.9rem;
-  color: var(--gray-600);
+  font-size: 14px;
+  color: var(--notion-text-muted);
 }
 
 .panel-meta code,
@@ -26,41 +26,41 @@
   font-size: 0.85em;
   padding: 0.1em 0.35em;
   border-radius: 4px;
-  background: #f4f4f5;
+  background: var(--notion-sidebar);
 }
 
 .panel-status {
   margin: 0.75rem 0 0.25rem;
-  font-size: 0.95rem;
+  font-size: 14px;
 }
 
 .panel-pre {
   margin: 0.5rem 0 0;
   padding: 0.65rem 0.75rem;
   border-radius: 8px;
-  background: #f4f4f5;
-  font-size: 0.8rem;
+  background: var(--notion-sidebar);
+  font-size: 12px;
   overflow: auto;
   max-height: 12rem;
 }
 
 .panel-hint {
   margin: 0.85rem 0 0;
-  font-size: 0.85rem;
-  color: var(--text-muted);
+  font-size: 12px;
+  color: var(--notion-text-muted);
 }
 
 .panel-err {
   margin: 0.6rem 0 0;
-  color: var(--red-700);
-  font-size: 0.9rem;
+  color: var(--zen-cinnabar);
+  font-size: 14px;
 }
 
 .panel-warn {
   margin: 0.5rem 0 0;
   padding-left: 1.2rem;
-  color: var(--amber-800);
-  font-size: 0.85rem;
+  color: var(--zen-saffron-mid);
+  font-size: 12px;
 }
 
 .row-gap {
@@ -75,8 +75,8 @@
   flex-wrap: wrap;
   gap: 0.75rem 1rem;
   margin-top: 0.75rem;
-  font-size: 0.85rem;
-  color: var(--gray-600);
+  font-size: 12px;
+  color: var(--notion-text-muted);
 }
 
 .muted {
