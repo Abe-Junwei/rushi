@@ -8,21 +8,37 @@ import sys
 from pathlib import Path
 
 
-def _pyinstaller_bundle_dir() -> Path | None:
-    """PyInstaller onedir: ffmpeg/ffprobe are placed next to the main executable."""
+def _pyinstaller_bundle_dirs() -> list[Path]:
+    """Return candidate onedir locations for bundled binaries.
+
+    PyInstaller 6 onedir defaults to `contents-directory=_internal`, so binaries may
+    live either next to the main executable or under `_internal` / `sys._MEIPASS`.
+    """
     if not getattr(sys, "frozen", False):
-        return None
-    return Path(sys.executable).resolve().parent
+        return []
+
+    exe_dir = Path(sys.executable).resolve().parent
+    dirs = [exe_dir, exe_dir / "_internal"]
+
+    meipass = getattr(sys, "_MEIPASS", None)
+    if meipass:
+        dirs.append(Path(meipass).resolve())
+
+    unique: list[Path] = []
+    seen: set[Path] = set()
+    for d in dirs:
+        if d not in seen:
+            seen.add(d)
+            unique.append(d)
+    return unique
 
 
 def _bundled_binary(*names: str) -> str | None:
-    d = _pyinstaller_bundle_dir()
-    if d is None:
-        return None
-    for n in names:
-        p = d / n
-        if p.is_file():
-            return str(p)
+    for d in _pyinstaller_bundle_dirs():
+        for n in names:
+            p = d / n
+            if p.is_file():
+                return str(p)
     return None
 
 
@@ -43,7 +59,7 @@ def ffprobe_path() -> str:
 
 
 def ffmpeg_available() -> bool:
-    if _pyinstaller_bundle_dir() is not None:
+    if _pyinstaller_bundle_dirs():
         return (
             _bundled_binary("ffmpeg", "ffmpeg.exe") is not None
             and _bundled_binary("ffprobe", "ffprobe.exe") is not None

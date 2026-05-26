@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Post-build smoke: bundled sidecar starts and /health reports funasr_import_ok.
+# Post-build smoke: bundled sidecar starts and /health reports bundled FunASR + ffmpeg.
 # Usage:
 #   bash scripts/smoke-asr-sidecar-health.sh [path/to/rushi-asr-sidecar]
 # Env:
@@ -7,6 +7,9 @@
 set -euo pipefail
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 EXE="${1:-$ROOT/apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar/rushi-asr-sidecar}"
+if [[ "$EXE" != /* ]]; then
+  EXE="$PWD/$EXE"
+fi
 PORT="${RUSHI_SMOKE_ASR_PORT:-18741}"
 WORKDIR="$(dirname "$EXE")"
 INTERNAL="$WORKDIR/_internal"
@@ -18,7 +21,17 @@ fi
 
 if [[ ! -f "$INTERNAL/funasr/version.txt" ]]; then
   echo "smoke: missing PyInstaller data file: $INTERNAL/funasr/version.txt" >&2
-  echo "hint: rebuild with --collect-data funasr (npm run asr:build-sidecar-unix)" >&2
+  echo "hint: rebuild sidecar so funasr package data lands in _internal/" >&2
+  exit 1
+fi
+
+if [[ ! -x "$INTERNAL/ffmpeg" && ! -x "$INTERNAL/ffmpeg.exe" ]]; then
+  echo "smoke: missing bundled ffmpeg binary under $INTERNAL/" >&2
+  exit 1
+fi
+
+if [[ ! -x "$INTERNAL/ffprobe" && ! -x "$INTERNAL/ffprobe.exe" ]]; then
+  echo "smoke: missing bundled ffprobe binary under $INTERNAL/" >&2
   exit 1
 fi
 
@@ -60,5 +73,9 @@ if body.get("service") != "rushi-asr":
     sys.exit(f"unexpected service field: {body!r}")
 if body.get("funasr_import_ok") is not True:
     sys.exit(f"funasr_import_ok is not true: {body!r}")
+if body.get("ffmpeg_ok") is not True:
+    sys.exit(f"ffmpeg_ok is not true: {body!r}")
+if body.get("funasr_ready") is not True:
+    sys.exit(f"funasr_ready is not true: {body!r}")
 print("smoke OK:", body.get("transcription_mode"), "ffmpeg_ok=", body.get("ffmpeg_ok"))
 PY
