@@ -26,3 +26,7 @@ jobs:
       - name: Build Linux x86_64 FunASR sidecar (PyInstaller)
         run: bash scripts/build-asr-sidecar-unix.sh
         timeout-minutes: 120
+
+      - name: Post-build sidecar health smoke
+        run: bash scripts/smoke-asr-sidecar-health.sh
+        timeout-minutes: 10

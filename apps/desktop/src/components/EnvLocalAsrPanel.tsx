@@ -1,13 +1,15 @@
 import { asrBaseUrl, isDefaultBundledAsrTarget, isTauriRuntime } from "../config/env";
-import { Download, RefreshCw, Wrench } from "lucide-react";
+import { Download, RefreshCw } from "lucide-react";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import type { PrepareModelFailureCopy } from "../pages/prepareModelDownloadCopy";
 import type { AsrHealthState } from "../pages/useProjectController";
-import { funasrManualSetupCommands } from "../pages/useProjectController";
 import type { AsrHealthCapabilities, AsrModelCacheInfo, BundledAsrLaunchReport } from "../tauri/projectApi";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
+import type { AsrSetupControllerApi } from "../pages/useAsrSetupController";
+import { LocalAsrAdvancedSection } from "./envLocalAsr/LocalAsrAdvancedSection";
 import { LocalAsrGuidanceSection } from "./envLocalAsr/LocalAsrGuidanceSection";
 import { LocalAsrCacheSection } from "./envLocalAsr/LocalAsrCacheSection";
+import { LocalAsrSetupWizard } from "./envLocalAsr/LocalAsrSetupWizard";
 
 type Props = {
   asrHealth: AsrHealthState;
@@ -30,6 +32,7 @@ type Props = {
   clearAsrModelCache: () => Promise<void>;
   retryBundledAsrSidecar: () => Promise<void>;
   openAppDataFolder: () => Promise<void>;
+  asrSetup: AsrSetupControllerApi;
 };
 
 export function EnvLocalAsrPanel({
@@ -53,6 +56,7 @@ export function EnvLocalAsrPanel({
   clearAsrModelCache,
   retryBundledAsrSidecar,
   openAppDataFolder,
+  asrSetup,
 }: Props) {
   const envOk = asrHealth === "ok";
   const ffmpegOk = asrCaps?.ffmpeg_ok === true;
@@ -77,42 +81,28 @@ export function EnvLocalAsrPanel({
           <SmallButton disabled={busy} onClick={() => void refreshAsrHealth()} icon={<RefreshCw className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />}>
             刷新状态
           </SmallButton>
-          <SmallButton disabled={busy} onClick={() => void installFunasrDepsInteractive()} icon={<Wrench className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />}>
-            安装依赖
-          </SmallButton>
         </div>
       </section>
 
+      <div className="h-px bg-notion-divider" />
+
+      <LocalAsrSetupWizard setup={asrSetup} busy={busy} />
+
       <LocalAsrGuidanceSection asrHealth={asrHealth} asrCaps={asrCaps} />
 
-      {funasrInstallMessage && !prepareModelBusy ? (
-        <pre className="max-h-32 overflow-auto whitespace-pre-wrap rounded bg-notion-callout-bg p-3 font-mono text-[11px] text-zen-indigo">
-          {funasrInstallMessage}
-        </pre>
-      ) : null}
+      <LocalAsrAdvancedSection
+        asrHealth={asrHealth}
+        asrCaps={asrCaps}
+        funasrInstallMessage={funasrInstallMessage}
+        busy={busy}
+        installFunasrDepsInteractive={installFunasrDepsInteractive}
+        copyFunasrManualCommands={copyFunasrManualCommands}
+      />
 
       {asrHealth === "ok" && asrCaps && !asrCaps.ffmpeg_ok ? (
         <div className="rounded border border-notion-divider bg-notion-callout-bg px-3 py-2 text-sm">
           <strong className="text-notion-text">未检测到 FFmpeg</strong>
           <span className="text-notion-text-muted"> — ASR 无法解码上传音频。请安装 ffmpeg/ffprobe 并加入 PATH 后重启 ASR。</span>
-        </div>
-      ) : null}
-
-      {asrHealth === "ok" && asrCaps && asrCaps.ffmpeg_ok && !asrCaps.funasr_ready ? (
-        <div className="space-y-2 rounded border border-notion-divider bg-notion-callout-bg px-3 py-2 text-sm">
-          <p>
-            <strong className="text-notion-text">FunASR 未就绪</strong>
-            <span className="text-notion-text-muted">（stub：中文正文常为空）。安装依赖并重启 ASR；可选 </span>
-            <code className="rounded bg-notion-bg px-1 font-mono text-[11px]">RUSHI_FUNASR_MODEL</code>。
-          </p>
-          <div className="flex flex-wrap gap-2">
-            <SmallButton disabled={busy} onClick={() => void copyFunasrManualCommands()}>
-              复制手动命令
-            </SmallButton>
-          </div>
-          <pre className="max-h-32 overflow-auto whitespace-pre-wrap rounded bg-notion-bg p-2 font-mono text-[12px] text-zen-indigo">
-            {funasrManualSetupCommands()}
-          </pre>
         </div>
       ) : null}
 

@@ -1,6 +1,7 @@
 # Acceptance: R3g — 本机 ASR 模型目录（FunASR v1）
 
 > **状态**：规划已定，待实施  
+> **切片**：**R3g-A** = SenseVoice + Paraformer（路线图 §4.1 优先）；**R3g-B** = Nano 等扩展 SKU  
 > **关联**：[`r3f-asr-setup-wizard-acceptance.md`](./r3f-asr-setup-wizard-acceptance.md)、[`asr-sidecar-funasr-policy.md`](../../architecture/asr-sidecar-funasr-policy.md)
 
 ## 产品决策

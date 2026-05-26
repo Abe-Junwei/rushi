@@ -1,3 +1,4 @@
+mod asr_setup;
 mod asr_sidecar;
 mod china_stt_shell;
 mod db;
@@ -41,6 +42,7 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![
             app_version,
+            asr_setup::diagnose::asr_setup_diagnose,
             asr_sidecar::bundled_asr_launch_report,
             project::pick_audio_path,
             project::project_create_from_audio,

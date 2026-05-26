@@ -160,8 +160,8 @@ export function ProjectPanel() {
               clearAsrModelCache={c.clearAsrModelCache}
               retryBundledAsrSidecar={c.retryBundledAsrSidecar}
               openAppDataFolder={c.openAppDataFolder}
+              asrSetup={c.asrSetup}
               onSttOnlineRuntimeChanged={c.bumpSttOnlineRuntimeChanged}
-
             />
         </FloatingPanelTemplate>
       ) : null}

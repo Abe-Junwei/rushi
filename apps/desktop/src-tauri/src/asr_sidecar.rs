@@ -20,12 +20,12 @@ use tauri::{AppHandle, Manager};
 
 use crate::DbState;
 
-const ASR_HEALTH_URL: &str = "http://127.0.0.1:8741/health";
+pub const ASR_HEALTH_URL: &str = "http://127.0.0.1:8741/health";
 
 pub struct AsrSidecarState(pub Mutex<Option<Child>>);
 
 /// Last bundled sidecar launch outcome (for P1 UI when loopback ASR is unreachable).
-#[derive(Clone, Default, Serialize)]
+#[derive(Clone, Debug, Default, Serialize)]
 #[serde(rename_all = "camelCase")]
 pub struct BundledAsrLaunchReport {
     pub attempted: bool,
@@ -148,13 +148,83 @@ fn reap_bundled_sidecar_if_exited(handle: &AppHandle) {
     }
 }
 
-fn is_rushi_asr_health_json(v: &Value) -> bool {
+pub fn is_rushi_asr_health_json(v: &Value) -> bool {
     v.get("service").and_then(|s| s.as_str()) == Some("rushi-asr")
         && v.get("status").and_then(|s| s.as_str()) == Some("ok")
 }
 
+#[derive(Clone, Debug, PartialEq, Eq, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub enum AsrPortStatus {
+    Free,
+    RushiAsr,
+    Foreign,
+}
+
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct AsrPortProbe {
+    pub status: AsrPortStatus,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub http_status: Option<u16>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub detail: Option<String>,
+}
+
+/// Classify who is listening on loopback :8741.
+pub async fn probe_asr_port() -> AsrPortProbe {
+    let client = reqwest::Client::builder()
+        .timeout(Duration::from_secs(2))
+        .build()
+        .unwrap_or_else(|_| reqwest::Client::new());
+    let Ok(resp) = client.get(ASR_HEALTH_URL).send().await else {
+        return AsrPortProbe {
+            status: AsrPortStatus::Free,
+            http_status: None,
+            detail: Some("8741 端口无 HTTP 响应，可启动内置侧车。".into()),
+        };
+    };
+    let http_status = resp.status().as_u16();
+    let text = resp.text().await.unwrap_or_default();
+    let Ok(v) = serde_json::from_str::<Value>(&text) else {
+        return AsrPortProbe {
+            status: AsrPortStatus::Foreign,
+            http_status: Some(http_status),
+            detail: Some(format!(
+                "8741 有服务响应，但不是 rushi-asr /health JSON（HTTP {http_status}）。请先结束占用该端口的其他进程。"
+            )),
+        };
+    };
+    if is_rushi_asr_health_json(&v) {
+        return AsrPortProbe {
+            status: AsrPortStatus::RushiAsr,
+            http_status: Some(http_status),
+            detail: None,
+        };
+    }
+    let service = v
+        .get("service")
+        .and_then(|s| s.as_str())
+        .unwrap_or("未知");
+    AsrPortProbe {
+        status: AsrPortStatus::Foreign,
+        http_status: Some(http_status),
+        detail: Some(format!(
+            "8741 已被其他服务占用（service={service}，HTTP {http_status}）。内置侧车无法同端口启动。"
+        )),
+    }
+}
+
+/// True when install media includes at least one bundled sidecar executable.
+pub fn bundled_sidecar_resources_present(handle: &AppHandle) -> bool {
+    let Ok(res_dir) = handle.path().resource_dir() else {
+        return false;
+    };
+    !bundled_sidecar_try_order(&res_dir).is_empty()
+}
+
 /// True when `GET /health` returns JSON that looks like **this** rushi-asr (not merely "something on :8741").
-fn bundled_health_looks_like_rushi_asr() -> bool {
+pub fn bundled_health_looks_like_rushi_asr() -> bool {
     tauri::async_runtime::block_on(async {
         let client = reqwest::Client::builder()
             .timeout(Duration::from_secs(2))

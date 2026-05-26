@@ -8,6 +8,7 @@ import { EnvHelpPanel } from "./EnvHelpPanel";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import type { AsrHealthCapabilities, AsrModelCacheInfo, BundledAsrLaunchReport } from "../tauri/projectApi";
 import type { AsrHealthState } from "../pages/useProjectController";
+import type { AsrSetupControllerApi } from "../pages/useAsrSetupController";
 import type { PrepareModelFailureCopy } from "../pages/prepareModelDownloadCopy";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
@@ -42,6 +43,7 @@ export type EnvironmentPanelProps = {
   clearAsrModelCache: () => Promise<void>;
   retryBundledAsrSidecar: () => Promise<void>;
   openAppDataFolder: () => Promise<void>;
+  asrSetup: AsrSetupControllerApi;
   onSttOnlineRuntimeChanged?: () => void;
   focusOnlineSttSeq?: number;
 };
@@ -67,6 +69,7 @@ export function EnvironmentPanel({
   clearAsrModelCache,
   retryBundledAsrSidecar,
   openAppDataFolder,
+  asrSetup,
   onSttOnlineRuntimeChanged,
   focusOnlineSttSeq = 0,
 }: EnvironmentPanelProps) {
@@ -174,6 +177,7 @@ export function EnvironmentPanel({
                   clearAsrModelCache={clearAsrModelCache}
                   retryBundledAsrSidecar={retryBundledAsrSidecar}
                   openAppDataFolder={openAppDataFolder}
+                  asrSetup={asrSetup}
                 />
               ) : null}
 

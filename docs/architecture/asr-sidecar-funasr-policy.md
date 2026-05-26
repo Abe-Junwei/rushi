@@ -93,7 +93,8 @@
 - 当前代码已有 **stub 侧车**、`GET /health` 能力字段、启动/退出钩子、**macOS / Windows CPU 侧车** PyInstaller 脚本、**内置 ffmpeg**、锁文件矩阵。  
 - **Windows x64**：桌面壳已实现 **CUDA onedir 优先 + 健康检查超时回退 CPU**（`RUSHI_FORCE_BUNDLED_ASR_CPU=1` 强制 CPU）；**`npm run asr:build-sidecar-windows-cuda`**（或 `build-asr-sidecar-windows.ps1 -Variant Cuda`）生成 `rushi-asr-sidecar-cuda/`。  
 - **已部分落地**：默认 **`RUSHI_FUNASR_MODEL`**、`RUSHI_MODELS_ROOT` / hub 缓存、`POST /v1/models/prepare-default`（阻塞下载 + 磁盘粗检 + `/health` 缓存探测字段）、**异步准备 + `prepare-status`**、P1 **侧车失败文案**、**重试侧车 / 打开应用数据目录 / 预先下载默认模型** 按钮、**Linux x86_64** 侧车锁与构建脚本（工程用，**不承诺**终端矩阵）、**Windows 发布检查清单**、**`scripts/sign-windows-sidecar.ps1`（递归签侧车 onedir）**、**PyInstaller collect 说明 + nightly workflow**、Vitest **health 解析** 单测、Playwright **loopback `/health`** 烟测。  
-- **仍待工程化**：下载 **独立进度条 / 断点续传 UI**、**强校验 manifest**（消费版默认仍可选环境变量；内发/企业可在发布 checklist 强制）、**安装包级 Authenticode / 升级流水线** 与团队证书策略完全对齐（证书不进仓库；侧车目录递归签名见 `scripts/sign-windows-sidecar.ps1`）等。
+- **仍待工程化**：下载 **独立进度条 / 断点续传 UI**、**强校验 manifest**（消费版默认仍可选环境变量；内发/企业可在发布 checklist 强制）、**安装包级 Authenticode / 升级流水线** 与团队证书策略完全对齐（证书不进仓库；侧车目录递归签名见 `scripts/sign-windows-sidecar.ps1`）等。实施真源见 [`rushi-local-runtime-catalog-remediation-plan.md`](../execution/specs/rushi-local-runtime-catalog-remediation-plan.md)（R3h）。
+- **引擎替代评估（跟踪）**：Phase 3 后 **Sherpa-ONNX Spike**（[`remediation-plan`](../execution/specs/rushi-local-runtime-catalog-remediation-plan.md) §5 Phase 3.5）；未通过则接受 ~2.5GB Python 侧车为长期约束并持续加固 PyInstaller。
 
 ---
 

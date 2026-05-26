@@ -1,7 +1,7 @@
 # Acceptance: R3f — 本机 ASR 一键环境准备
 
-> **状态**：规划已定（产品决策已锁定），待实施  
-> **关联**：[`asr-sidecar-funasr-policy.md`](../../architecture/asr-sidecar-funasr-policy.md)、[`r3c-local-asr-cache-manifest-acceptance.md`](./r3c-local-asr-cache-manifest-acceptance.md)、[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md)
+> **状态**：R3f-A/B 已编码（诊断 + 一键准备 UI），待手测（**建议在 R3h-0 构建 smoke 通过后签收**）  
+> **关联**：[`rushi-local-runtime-catalog-remediation-plan.md`](./rushi-local-runtime-catalog-remediation-plan.md)（发行整改真源）、[`asr-sidecar-funasr-policy.md`](../../architecture/asr-sidecar-funasr-policy.md)、[`r3c-local-asr-cache-manifest-acceptance.md`](./r3c-local-asr-cache-manifest-acceptance.md)、[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md)
 
 ## 产品决策（已锁定）
 
@@ -36,18 +36,25 @@
 | **R3f-E** | Windows：CUDA/CPU 二选一拉起 + 错误文案 + 手测（**不 pip**） |
 | **R3f-F** | 首次拉取语段前轻提示；「复制手动命令」收进高级 |
 
-### 不做（R3f）
+### 不做（R3f 本切片）
 
-- Windows 安装包用户 v1 的 **pip / embeddable Python 安装器**
 - 长音频分片转写（R3e）
-- 侧车下载独立进度条 / 断点续传 UI（沿用现有 prepare 进度即可）
 - Linux 桌面正式侧车矩阵
 
-### 延后（非 v1 主路径）
+### 迁至 R3h（发行整改，见 remediation plan）
+
+| 原 R3f 范围 | R3h 阶段 |
+|-------------|----------|
+| 应用内下载/安装侧车、完整性诊断、损坏重下 | R3h-1 / R3h-2 |
+| 侧车下载进度条 / 断点续传 | R3h-2 |
+| Windows v1 仍 **不** 对终端用户 pip；联网下 **侧车 zip** 与模型权重分离 | R3h-1 + policy §10 |
+
+### 延后（高级 / 非主路径）
 
 | 项 | 说明 |
 |----|------|
-| **R3f-C** | 应用数据托管 venv + 无 bundled 时自动 pip：仅 **高级** 或 dev 无侧车包时的兜底，优先级低于 R3f-B/E |
+| **R3h-E**（原 R3f-C） | 应用数据托管 venv + 白名单 pip：仅 **高级** 兜底 |
+| **R3h-F** | 应用内跑 `build-asr-sidecar-*`：仅开发者折叠入口 |
 
 ## 非功能约束
 
@@ -61,13 +68,14 @@
 2. **Windows 安装包**：同上，且 CUDA 机可自动选 CUDA 包（失败回退 CPU）；全程无 PowerShell 教程。
 3. **`tauri dev`（已 build sidecar）**：与安装包相同主路径，不依赖 `python -m rushi_asr` 手动启动。
 4. **8741 已被外置 ASR 占用**：诊断标明冲突；用户可选使用当前服务或重试内置。
-5. **磁盘不足**：准备前或失败时中文提示，不 silent stub。
+5. **磁盘不足**：准备前或失败时中文提示，不 silent stub；**Windows** 亦能通过诊断得到磁盘预警（R3h-0）。
+6. **主 UI 无 pip 教程**：`install_funasr_deps_interactive` 仅出现在高级/开发者折叠区（R3h-0）。
 
 ## 建议实施顺序
 
 `R3f-A` → `R3f-B` → `R3f-D` → `R3f-E` → `R3f-F`；`R3f-C` 按需后置。
 
-**路线图建议**：R3c 手测签收 → **R3f** → R3d → R3e（或与 R3d 并行若人手允许）。
+**路线图建议（§4.1 真源）**：R3f 手测签收 → **R3e-A** → **R3g-A** → R3d 轻量 → **R3e-B**。
 
 ## 落位（实施时）
 

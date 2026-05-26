@@ -35,7 +35,7 @@
 | 新增颜色 / 样式 | `tailwind.config.js` + `src/config/tokens.ts` |
 | 新 UI / 整页重设计 / Stitch 对齐 | 仓库根 `DESIGN.md` → 再映射到 `tailwind.config.js` + `apps/desktop/src/config/tokens.ts` |
 | 浮动确认/表单对话框 | `FloatingPanelTemplate` + `preset="compactDialog"`；`controlStyles.ts` 按钮；见 [`docs/architecture/desktop-floating-dialog-panels.md`](./docs/architecture/desktop-floating-dialog-panels.md) |
-| **后续排期 / 下一刀** | [`docs/execution/plans/rushi-execution-roadmap.md`](./docs/execution/plans/rushi-execution-roadmap.md) |
+| **后续排期 / 下一刀** | [`docs/execution/plans/rushi-execution-roadmap.md`](./docs/execution/plans/rushi-execution-roadmap.md) §4.1（当前：**R3f 手测** → R3e-A → R3g-A） |
 | 单人 UI 重设计迭代（已验收） | `docs/execution/specs/ui-redesign-parallel-dev.md` + `bash scripts/prepare-stitch-upload.sh` |
 | 更换或更新 `DESIGN.md` 基底 | 仓库根执行 `npm run design:add -- <站点>`（站点名见 [awesome-design-md](https://github.com/VoltAgent/awesome-design-md) / [getdesign.md](https://getdesign.md/)，例：`npm run design:add -- cal`） |
 | 导出格式 | `src/services/exportFormatters.ts` |

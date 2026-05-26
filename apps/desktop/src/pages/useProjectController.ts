@@ -4,7 +4,9 @@ import {
   parseAsrHealthJson,
   funasrManualSetupCommands,
 } from "./useAsrBridgeController";
+import { useAsrSetupController } from "./useAsrSetupController";
 import { useProjectLifecycleController, type BusyReason } from "./useProjectLifecycleController";
+import { useCallback } from "react";
 
 export type { AsrHealthState, BusyReason };
 export type BusyPack = { busy: boolean; reason: BusyReason | null };
@@ -15,6 +17,16 @@ export { parseAsrHealthJson, funasrManualSetupCommands };
 export function useProjectController() {
   const lifecycle = useProjectLifecycleController();
   const asr = useAsrBridgeController();
+  const refreshAsrRuntimeInfo = useCallback(async () => {
+    await asr.refreshAsrHealth();
+    await asr.refreshAsrModelCacheInfo();
+  }, [asr.refreshAsrHealth, asr.refreshAsrModelCacheInfo]);
+  const asrSetup = useAsrSetupController({
+    refreshAsrHealth: asr.refreshAsrHealth,
+    refreshAsrRuntimeInfo,
+    prepareDefaultFunasrModel: asr.prepareDefaultFunasrModel,
+    prepareModelBusy: asr.prepareModelBusy,
+  });
 
   return {
     // Lifecycle
@@ -105,5 +117,6 @@ export function useProjectController() {
     installFunasrDepsInteractive: asr.installFunasrDepsInteractive,
     copyFunasrManualCommands: asr.copyFunasrManualCommands,
     bumpSttOnlineRuntimeChanged: asr.bumpSttOnlineRuntimeChanged,
+    asrSetup,
   };
 }

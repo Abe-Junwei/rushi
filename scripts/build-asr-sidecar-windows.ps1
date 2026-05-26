@@ -74,6 +74,7 @@ pyinstaller --noconfirm --clean --onedir --name $PyInstallerName `
   --hidden-import=uvicorn.lifespan `
   --hidden-import=uvicorn.lifespan.on `
   --collect-submodules funasr `
+  --collect-data funasr `
   --collect-submodules modelscope `
   --collect-submodules hydra `
   --collect-submodules omegaconf `
