@@ -46,6 +46,16 @@ export function describePrepareModelFailure(code: string): PrepareModelFailureCo
       ],
     };
   }
+  if (c === "model_prepare_incomplete") {
+    return {
+      headline: "模型下载未完整落盘，缓存目录里仍是半成品。",
+      tips: [
+        "先结束当前转写/下载，再删除对应 SenseVoiceSmall 缓存目录后重新点「下载默认模型」。",
+        "若仍复现：检查网络/VPN，避免在下载过程中中断 rushi-asr 进程。",
+        ...commonRetryTips(),
+      ],
+    };
+  }
   if (c === "model_manifest_path_missing") {
     return {
       headline: "已启用模型 manifest 校验，但找不到校验清单文件。",

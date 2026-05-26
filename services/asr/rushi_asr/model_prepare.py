@@ -17,6 +17,7 @@ log = logging.getLogger(__name__)
 _MIN_FREE_BYTES = 512 * 1024 * 1024
 _WARN_FREE_BYTES = 2 * 1024 * 1024 * 1024
 _BUDGET_HINT_BYTES = 5 * 1024 * 1024 * 1024
+_DEFAULT_MODEL_REQUIRED_FILES = ("model.pt", "config.yaml", "tokens.json")
 
 _lock = threading.Lock()
 _state: dict[str, Any] = {
@@ -37,28 +38,56 @@ def _disk_check_path() -> Path:
     return p
 
 
+def _default_model_dir_candidates(root: Path) -> list[Path]:
+    parts = DEFAULT_FUNASR_MODEL_ID.split("/", 1)
+    if len(parts) != 2:
+        return []
+    owner, name = parts
+    candidates = [
+        root / "models" / owner / name,
+        root / "hub" / owner / name,
+    ]
+    # Some ModelScope versions keep extra temp/lock directories nearby. Ignore them.
+    try:
+        for p in root.glob(f"**/{name}"):
+            text = p.as_posix()
+            if any(marker in text for marker in ("/._____temp/", "/.lock/")):
+                continue
+            candidates.append(p)
+    except OSError:
+        pass
+
+    unique: list[Path] = []
+    for p in candidates:
+        if p not in unique:
+            unique.append(p)
+    return unique
+
+
+def _looks_like_complete_default_model_dir(model_dir: Path) -> bool:
+    try:
+        if not model_dir.is_dir():
+            return False
+        for rel in _DEFAULT_MODEL_REQUIRED_FILES:
+            p = model_dir / rel
+            if not p.is_file():
+                return False
+        return (model_dir / "model.pt").stat().st_size > 100 * 1024 * 1024
+    except OSError:
+        return False
+
+
 def default_model_cached_guess() -> bool:
-    """Best-effort cache probe (ModelScope hub layout varies by version)."""
+    """Conservative cache probe: only true when the final model dir looks complete."""
     ms = os.environ.get("MODELSCOPE_CACHE", "").strip()
     if not ms:
         return False
     root = Path(ms)
     if not root.is_dir():
         return False
-    needle = "SenseVoiceSmall"
-    try:
-        hub = root / "hub"
-        roots = [hub] if hub.is_dir() else [root]
-        for r in roots:
-            n = 0
-            for p in r.glob(f"**/*{needle}*"):
-                if p.is_dir():
-                    return True
-                n += 1
-                if n > 500:
-                    break
-    except OSError:
-        return False
+    for model_dir in _default_model_dir_candidates(root):
+        if _looks_like_complete_default_model_dir(model_dir):
+            return True
     return False
 
 
@@ -112,6 +141,8 @@ def prepare_default_model() -> dict[str, Any]:
         model_dir = Path(snapshot_download(DEFAULT_FUNASR_MODEL_ID))
     finally:
         socket.setdefaulttimeout(old_timeout)
+    if not _looks_like_complete_default_model_dir(model_dir):
+        raise RuntimeError("model_prepare_incomplete")
     _maybe_verify_manifest(model_dir)
     return {
         "status": "ok",
