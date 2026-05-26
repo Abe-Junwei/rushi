@@ -134,6 +134,41 @@ fn bundled_sidecar_try_order(resource_root: &Path) -> Vec<PathBuf> {
     bundled_cpu_executable(resource_root).into_iter().collect()
 }
 
+fn candidate_resource_roots(handle: &AppHandle) -> Vec<PathBuf> {
+    let mut roots = Vec::new();
+
+    if let Ok(res_dir) = handle.path().resource_dir() {
+        roots.push(res_dir.clone());
+        if res_dir.file_name().and_then(|s| s.to_str()) != Some("resources") {
+            roots.push(res_dir.join("resources"));
+        }
+    }
+
+    // In `tauri dev`, the source resources directory is the most reliable place to
+    // inspect the freshly rebuilt PyInstaller onedir.
+    roots.push(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources"));
+
+    let mut unique = Vec::new();
+    for root in roots {
+        if !unique.iter().any(|existing: &PathBuf| existing == &root) {
+            unique.push(root);
+        }
+    }
+    unique
+}
+
+fn bundled_sidecar_candidates(handle: &AppHandle) -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    for root in candidate_resource_roots(handle) {
+        for exe in bundled_sidecar_try_order(&root) {
+            if !out.iter().any(|existing: &PathBuf| existing == &exe) {
+                out.push(exe);
+            }
+        }
+    }
+    out
+}
+
 fn reap_bundled_sidecar_if_exited(handle: &AppHandle) {
     let Some(s) = handle.try_state::<AsrSidecarState>() else {
         return;
@@ -217,10 +252,7 @@ pub async fn probe_asr_port() -> AsrPortProbe {
 
 /// True when install media includes at least one bundled sidecar executable.
 pub fn bundled_sidecar_resources_present(handle: &AppHandle) -> bool {
-    let Ok(res_dir) = handle.path().resource_dir() else {
-        return false;
-    };
-    !bundled_sidecar_try_order(&res_dir).is_empty()
+    !bundled_sidecar_candidates(handle).is_empty()
 }
 
 /// True when `GET /health` returns JSON that looks like **this** rushi-asr (not merely "something on :8741").
@@ -320,10 +352,7 @@ pub fn try_start_bundled(handle: &AppHandle) {
         return;
     }
     reap_bundled_sidecar_if_exited(handle);
-    let Ok(res_dir) = handle.path().resource_dir() else {
-        return;
-    };
-    let candidates = bundled_sidecar_try_order(&res_dir);
+    let candidates = bundled_sidecar_candidates(handle);
     if candidates.is_empty() {
         return;
     }
