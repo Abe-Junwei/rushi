@@ -5,7 +5,8 @@
 `scripts/build-asr-sidecar-*.sh` 使用：
 
 - **`--collect-submodules modelscope`**（及 `funasr`、`hydra`、`omegaconf`、`torchaudio`），以换取 **首次打包即可 import 成功**，避免在 FunASR 动态 import 路径上反复试错。
-- **`--collect-data funasr`**（R3h-0）：打包 `funasr/version.txt` 等包内数据文件；缺少此项时侧车 `/health` 会 500、`funasr_import_ok: false`。
+- **`--hidden-import funasr` + `--collect-all funasr`**（R3h-0）：强制将 FunASR 包体与数据文件落到 onedir `_internal/funasr/`（仅 `--collect-submodules` / `--collect-data` 时，模块可能只进 PYZ，磁盘上无 `version.txt`，`/health` 500）。
+- 构建脚本另有 **`ensure_funasr_onedir_data`**：若 PyInstaller 仍漏数据，从 build venv 回退复制并 `exit 1` 门禁。
 
 Post-build 门禁：`scripts/smoke-asr-sidecar-health.sh`（检查 `_internal/funasr/version.txt` 并断言 `/health` 中 `funasr_import_ok`）。
 

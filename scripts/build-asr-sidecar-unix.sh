@@ -74,18 +74,40 @@ build_funasr() {
     --hidden-import=uvicorn.protocols.http.auto \
     --hidden-import=uvicorn.lifespan \
     --hidden-import=uvicorn.lifespan.on \
-    --collect-submodules funasr \
-    --collect-data funasr \
+    --hidden-import=funasr \
+    --collect-all funasr \
     --collect-submodules modelscope \
     --collect-submodules hydra \
     --collect-submodules omegaconf \
     --collect-submodules torchaudio \
     rushi_sidecar_entry.py
 
+  ensure_funasr_onedir_data "$ASR/dist/rushi-asr-sidecar/_internal"
+
   rm -rf "$DEST"
   mkdir -p "$(dirname "$DEST")"
   cp -R "$ASR/dist/rushi-asr-sidecar" "$DEST"
   echo "OK: FunASR sidecar onedir -> $DEST"
+  bash "$ROOT/scripts/smoke-asr-sidecar-health.sh" "$DEST/rushi-asr-sidecar"
+}
+
+# PyInstaller may place funasr only in PYZ without package data on disk; /health needs version.txt.
+ensure_funasr_onedir_data() {
+  local internal="$1"
+  local marker="$internal/funasr/version.txt"
+  if [[ -f "$marker" ]]; then
+    return 0
+  fi
+  echo "WARN: $marker missing after PyInstaller; copying funasr from build venv" >&2
+  local site
+  site="$(python -c 'import funasr, pathlib; print(pathlib.Path(funasr.__file__).resolve().parent)')"
+  rm -rf "$internal/funasr"
+  mkdir -p "$internal/funasr"
+  cp -R "$site/." "$internal/funasr/"
+  if [[ ! -f "$marker" ]]; then
+    echo "FATAL: funasr package data still missing at $marker" >&2
+    exit 1
+  fi
 }
 
 if [[ "$OS" == Linux && "$ARCH" == x86_64 ]]; then
