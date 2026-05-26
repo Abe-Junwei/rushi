@@ -2,15 +2,18 @@ import { useEffect } from "react";
 import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../../config/typography";
 import { formatDiskFree } from "../../services/asr/asrSetupContract";
+import { isLocalRuntimeInstallRunning } from "../../services/localRuntime/localRuntimeContract";
 import type { AsrSetupControllerApi } from "../../pages/useAsrSetupController";
 import { isTauriRuntime } from "../../config/env";
 
 type Props = {
   setup: AsrSetupControllerApi;
   busy: boolean;
+  openAppDataFolder: () => Promise<void>;
+  exportDiagnosticBundle: () => Promise<void>;
 };
 
-export function LocalAsrSetupWizard({ setup, busy }: Props) {
+export function LocalAsrSetupWizard({ setup, busy, openAppDataFolder, exportDiagnosticBundle }: Props) {
   const {
     setupReport,
     localRuntimeDiag,
@@ -24,12 +27,20 @@ export function LocalAsrSetupWizard({ setup, busy }: Props) {
     refreshLocalRuntimeDiagnose,
     downloadLocalRuntime,
     cancelLocalRuntime,
+    revalidateLocalRuntime,
+    clearLocalRuntime,
+    restorePreviousLocalRuntime,
     runOneClickAsrPrepare,
     acceptForeignPortService,
   } = setup;
 
   const wizardBusy = busy || setupBusy || diagnoseBusy;
   const refreshDisabled = setupBusy || diagnoseBusy || !isTauriRuntime();
+  const runtimeInstallRunning = isLocalRuntimeInstallRunning(localRuntimeDiag?.install.phase);
+  const updateAvailable =
+    !!localRuntimeDiag?.availableVersion &&
+    !!localRuntimeDiag?.installed.version &&
+    localRuntimeDiag.availableVersion !== localRuntimeDiag.installed.version;
 
   useEffect(() => {
     if (isTauriRuntime() && !setupReport && !setupBusy && !diagnoseBusy) {
@@ -75,15 +86,48 @@ export function LocalAsrSetupWizard({ setup, busy }: Props) {
           <p className="mt-1">
             {localRuntimeDiag.installed.status === "installed"
               ? `已安装${localRuntimeDiag.installed.version ? `（${localRuntimeDiag.installed.version}）` : ""}`
-              : localRuntimeDiag.install.phase === "downloading" || localRuntimeDiag.install.phase === "installing"
+              : runtimeInstallRunning
                 ? localRuntimeDiag.install.message
                 : localRuntimeDiag.blockingIssue ?? "尚未安装。"}
           </p>
+          {localRuntimeDiag.availableVersion ? (
+            <p className="mt-1 text-[11px] text-notion-text-muted">
+              manifest 可用版本：{localRuntimeDiag.availableVersion}
+            </p>
+          ) : null}
+          {updateAvailable ? (
+            <p className="mt-1 text-[11px] text-zen-saffron">
+              当前版本 {localRuntimeDiag.installed.version} 落后于 manifest 可用版本，可下载新组件；若升级失败可恢复上一版。
+            </p>
+          ) : null}
+          {localRuntimeDiag.requiredDiskBytes ? (
+            <p className="mt-1 text-[11px] text-notion-text-muted">
+              安装预算约 {formatDiskFree(localRuntimeDiag.requiredDiskBytes)}
+              {localRuntimeDiag.freeDiskBytes != null
+                ? `，当前可用空间约 ${formatDiskFree(localRuntimeDiag.freeDiskBytes)}`
+                : ""}
+            </p>
+          ) : null}
+          {localRuntimeDiag.manifestSignatureKeyId ? (
+            <p className="mt-1 text-[11px] text-notion-text-muted">
+              manifest 签名 key：{localRuntimeDiag.manifestSignatureKeyId}
+            </p>
+          ) : null}
+          {localRuntimeDiag.installed.previousVersion ? (
+            <p className="mt-1 text-[11px] text-notion-text-muted">
+              可恢复上一版本：{localRuntimeDiag.installed.previousVersion}
+            </p>
+          ) : null}
           <div className="mt-2 flex flex-wrap gap-2">
             <button
               type="button"
               className={CONTROL_BTN_SECONDARY}
-              disabled={wizardBusy || !localRuntimeDiag.manifestConfigured}
+              disabled={
+                wizardBusy ||
+                runtimeInstallRunning ||
+                !localRuntimeDiag.manifestConfigured ||
+                localRuntimeDiag.manifestStatus === "incompatible"
+              }
               onClick={() => void downloadLocalRuntime()}
             >
               下载 / 修复语音识别组件
@@ -106,7 +150,52 @@ export function LocalAsrSetupWizard({ setup, busy }: Props) {
             >
               刷新组件状态
             </button>
+            <button
+              type="button"
+              className={CONTROL_BTN_SECONDARY}
+              disabled={wizardBusy || runtimeInstallRunning || !localRuntimeDiag.installed.executablePath}
+              onClick={() => void revalidateLocalRuntime()}
+            >
+              重新验证安装
+            </button>
+            <button
+              type="button"
+              className={CONTROL_BTN_SECONDARY}
+              disabled={wizardBusy || runtimeInstallRunning || localRuntimeDiag.installed.status === "missing"}
+              onClick={() => void clearLocalRuntime()}
+            >
+              清除已安装组件
+            </button>
+            <button
+              type="button"
+              className={CONTROL_BTN_SECONDARY}
+              disabled={wizardBusy || runtimeInstallRunning || !localRuntimeDiag.installed.previousVersion}
+              onClick={() => void restorePreviousLocalRuntime()}
+            >
+              恢复上一版本
+            </button>
+            <button
+              type="button"
+              className={CONTROL_BTN_SECONDARY}
+              disabled={wizardBusy}
+              onClick={() => void openAppDataFolder()}
+            >
+              打开应用数据目录
+            </button>
+            <button
+              type="button"
+              className={CONTROL_BTN_SECONDARY}
+              disabled={wizardBusy}
+              onClick={() => void exportDiagnosticBundle()}
+            >
+              导出诊断包
+            </button>
           </div>
+          {localRuntimeDiag.installed.lastVerifyError ? (
+            <p className="mt-2 rounded bg-zen-cinnabar/10 px-2 py-1 text-[11px] text-zen-cinnabar">
+              最近一次验证失败：{localRuntimeDiag.installed.lastVerifyError}
+            </p>
+          ) : null}
         </div>
       ) : null}
 

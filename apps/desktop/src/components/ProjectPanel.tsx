@@ -160,6 +160,7 @@ export function ProjectPanel() {
               clearAsrModelCache={c.clearAsrModelCache}
               retryBundledAsrSidecar={c.retryBundledAsrSidecar}
               openAppDataFolder={c.openAppDataFolder}
+              exportDiagnosticBundle={c.exportDiagnosticBundle}
               asrSetup={c.asrSetup}
               onSttOnlineRuntimeChanged={c.bumpSttOnlineRuntimeChanged}
             />

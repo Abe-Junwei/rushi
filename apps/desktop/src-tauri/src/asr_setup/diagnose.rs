@@ -119,11 +119,16 @@ async fn fetch_rushi_health() -> HealthFetch {
 
 fn infer_sidecar_integrity(
     bundled_available: bool,
+    local_runtime_status: &InstalledRuntimeStatus,
     port: &AsrPortStatus,
     fetch: &HealthFetch,
     health: &AsrSetupHealthSnapshot,
 ) -> &'static str {
-    if !bundled_available {
+    if matches!(local_runtime_status, InstalledRuntimeStatus::Corrupt) {
+        return "corrupt";
+    }
+
+    if !bundled_available && matches!(local_runtime_status, InstalledRuntimeStatus::Missing) {
         return "not_installed";
     }
 
@@ -212,7 +217,7 @@ fn build_summary(
     port_status: &AsrPortStatus,
     port_detail: &Option<String>,
     bundled_available: bool,
-    local_runtime_installed: bool,
+    local_runtime_status: &InstalledRuntimeStatus,
     sidecar_integrity: &str,
     bundled_launch: &BundledAsrLaunchReport,
     health: &AsrSetupHealthSnapshot,
@@ -248,12 +253,18 @@ fn build_summary(
         } else if sidecar_integrity == "unknown" {
             lines.push("侧车完整性尚未确认，可尝试一键准备启动后再诊断。".into());
         }
-    } else if local_runtime_installed {
+    } else if matches!(local_runtime_status, InstalledRuntimeStatus::Installed) {
         lines.push("应用数据目录已检测到已安装的侧车运行时。".into());
+    } else if matches!(local_runtime_status, InstalledRuntimeStatus::Corrupt) {
+        let msg: String = "应用数据目录中的侧车运行时已损坏或不完整，请重新下载 / 修复语音识别组件。".into();
+        lines.push(msg.clone());
+        if blocking.is_none() {
+            blocking = Some(msg);
+        }
     } else {
-        lines.push("未检测到内置侧车（开发环境需先 build sidecar，或使用手动 ASR）。".into());
+        lines.push("未检测到可用侧车（开发环境需先 build sidecar，或通过应用内下载 / 修复组件）。".into());
         if blocking.is_none() && !health.health_reachable {
-            blocking = Some("无内置侧车且 ASR 未连通。请先构建侧车或手动启动 python -m rushi_asr。".into());
+            blocking = Some("无可用侧车且 ASR 未连通。请先构建侧车，或通过应用内下载 / 修复语音识别组件。".into());
         }
     }
 
@@ -294,7 +305,7 @@ fn build_summary(
     } else if blocking.is_none() && sidecar_integrity != "corrupt" {
         lines.push("尚未连通 rushi-asr /health。".into());
         blocking = Some(
-            if local_runtime_installed {
+            if matches!(local_runtime_status, InstalledRuntimeStatus::Installed) {
                 "无法读取 ASR 能力。请先一键准备或重试应用数据侧车。".into()
             } else {
                 "无法读取 ASR 能力。请先一键准备或重试内置侧车。".into()
@@ -334,8 +345,7 @@ pub async fn asr_setup_diagnose(
         .try_state::<BundledAsrLaunchState>()
         .map(|s| s.0.lock().map(|g| g.clone()).unwrap_or_default())
         .unwrap_or_default();
-    let local_runtime_installed =
-        inspect_installed_runtime(&st.root).status == InstalledRuntimeStatus::Installed;
+    let local_runtime_info = inspect_installed_runtime(&st.root);
 
     let health_fetch = fetch_rushi_health().await;
     let health = match &health_fetch {
@@ -353,8 +363,14 @@ pub async fn asr_setup_diagnose(
         },
     };
 
-    let sidecar_integrity =
-        infer_sidecar_integrity(bundled_available, &port.status, &health_fetch, &health).to_string();
+    let sidecar_integrity = infer_sidecar_integrity(
+        bundled_available,
+        &local_runtime_info.status,
+        &port.status,
+        &health_fetch,
+        &health,
+    )
+    .to_string();
 
     let disk_free_bytes = disk_free_bytes(&models_root);
     let disk_low = disk_free_bytes.map(|b| b < DISK_LOW_BYTES).unwrap_or(false);
@@ -365,7 +381,7 @@ pub async fn asr_setup_diagnose(
         &port.status,
         &port.detail,
         bundled_available,
-        local_runtime_installed,
+        &local_runtime_info.status,
         &sidecar_integrity,
         &bundled_launch,
         &health,
@@ -389,204 +405,5 @@ pub async fn asr_setup_diagnose(
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::asr_sidecar::{AsrPortStatus, BundledAsrLaunchReport};
-    use serde_json::json;
-
-    #[test]
-    fn health_snapshot_reads_caps() {
-        let v = json!({
-            "service": "rushi-asr",
-            "status": "ok",
-            "ffmpeg_ok": true,
-            "funasr_import_ok": true,
-            "funasr_ready": true,
-            "funasr_default_model_cached": false,
-            "funasr_vad_model_cached": false,
-            "funasr_required_models_cached": false,
-            "ready_for_transcribe": false,
-            "transcription_mode": "funasr"
-        });
-        let h = health_snapshot_from_value(&v);
-        assert!(h.health_reachable);
-        assert!(h.funasr_ready);
-        assert!(!h.funasr_default_model_cached);
-    }
-
-    #[test]
-    fn foreign_port_sets_blocking() {
-        let health = AsrSetupHealthSnapshot {
-            health_reachable: false,
-            ffmpeg_ok: false,
-            funasr_import_ok: false,
-            funasr_ready: false,
-            funasr_default_model_cached: false,
-            funasr_vad_model_cached: false,
-            funasr_required_models_cached: false,
-            ready_for_transcribe: false,
-            transcription_mode: "stub".into(),
-        };
-        let (_lines, block) = build_summary(
-            &AsrPortStatus::Foreign,
-            &Some("占用".into()),
-            true,
-            false,
-            "unknown",
-            &BundledAsrLaunchReport::default(),
-            &health,
-            false,
-        );
-        assert!(block.is_some());
-    }
-
-    #[test]
-    fn sidecar_integrity_corrupt_on_health_500() {
-        let health = AsrSetupHealthSnapshot {
-            health_reachable: false,
-            ffmpeg_ok: false,
-            funasr_import_ok: false,
-            funasr_ready: false,
-            funasr_default_model_cached: false,
-            funasr_vad_model_cached: false,
-            funasr_required_models_cached: false,
-            ready_for_transcribe: false,
-            transcription_mode: "stub".into(),
-        };
-        assert_eq!(
-            infer_sidecar_integrity(
-                true,
-                &AsrPortStatus::RushiAsr,
-                &HealthFetch::HttpError(500),
-                &health,
-            ),
-            "corrupt"
-        );
-    }
-
-    #[test]
-    fn sidecar_integrity_ok_when_import_ok() {
-        let health = AsrSetupHealthSnapshot {
-            health_reachable: true,
-            ffmpeg_ok: true,
-            funasr_import_ok: true,
-            funasr_ready: true,
-            funasr_default_model_cached: false,
-            funasr_vad_model_cached: false,
-            funasr_required_models_cached: false,
-            ready_for_transcribe: false,
-            transcription_mode: "funasr".into(),
-        };
-        let v = json!({ "service": "rushi-asr", "funasr_import_ok": true });
-        assert_eq!(
-            infer_sidecar_integrity(true, &AsrPortStatus::RushiAsr, &HealthFetch::Ok(v), &health),
-            "ok"
-        );
-    }
-
-    #[test]
-    fn sidecar_integrity_not_installed_without_bundle() {
-        let health = AsrSetupHealthSnapshot {
-            health_reachable: false,
-            ffmpeg_ok: false,
-            funasr_import_ok: false,
-            funasr_ready: false,
-            funasr_default_model_cached: false,
-            funasr_vad_model_cached: false,
-            funasr_required_models_cached: false,
-            ready_for_transcribe: false,
-            transcription_mode: "stub".into(),
-        };
-        assert_eq!(
-            infer_sidecar_integrity(
-                false,
-                &AsrPortStatus::Free,
-                &HealthFetch::Unreachable,
-                &health,
-            ),
-            "not_installed"
-        );
-    }
-
-    #[test]
-    fn corrupt_bundle_adds_blocking_summary() {
-        let health = AsrSetupHealthSnapshot {
-            health_reachable: false,
-            ffmpeg_ok: false,
-            funasr_import_ok: false,
-            funasr_ready: false,
-            funasr_default_model_cached: false,
-            funasr_vad_model_cached: false,
-            funasr_required_models_cached: false,
-            ready_for_transcribe: false,
-            transcription_mode: "stub".into(),
-        };
-        let (lines, block) = build_summary(
-            &AsrPortStatus::RushiAsr,
-            &None,
-            true,
-            false,
-            "corrupt",
-            &BundledAsrLaunchReport::default(),
-            &health,
-            false,
-        );
-        assert!(lines.iter().any(|l| l.contains("损坏")));
-        assert!(block.is_some());
-    }
-
-    #[test]
-    fn partial_aux_model_blocks_ready_summary() {
-        let health = AsrSetupHealthSnapshot {
-            health_reachable: true,
-            ffmpeg_ok: true,
-            funasr_import_ok: true,
-            funasr_ready: true,
-            funasr_default_model_cached: true,
-            funasr_vad_model_cached: false,
-            funasr_required_models_cached: false,
-            ready_for_transcribe: false,
-            transcription_mode: "stub".into(),
-        };
-        let (lines, block) = build_summary(
-            &AsrPortStatus::RushiAsr,
-            &None,
-            true,
-            false,
-            "ok",
-            &BundledAsrLaunchReport::default(),
-            &health,
-            false,
-        );
-        assert!(lines.iter().any(|l| l.contains("VAD")));
-        assert!(block.is_some());
-    }
-
-    #[test]
-    fn installed_local_runtime_changes_missing_bundle_summary() {
-        let health = AsrSetupHealthSnapshot {
-            health_reachable: false,
-            ffmpeg_ok: false,
-            funasr_import_ok: false,
-            funasr_ready: false,
-            funasr_default_model_cached: false,
-            funasr_vad_model_cached: false,
-            funasr_required_models_cached: false,
-            ready_for_transcribe: false,
-            transcription_mode: "stub".into(),
-        };
-        let (lines, block) = build_summary(
-            &AsrPortStatus::Free,
-            &None,
-            false,
-            true,
-            "not_installed",
-            &BundledAsrLaunchReport::default(),
-            &health,
-            false,
-        );
-        assert!(lines.iter().any(|l| l.contains("应用数据目录已检测到已安装的侧车运行时")));
-        assert!(block.is_some());
-        assert!(block.unwrap().contains("应用数据侧车"));
-    }
-}
+#[path = "diagnose_tests.rs"]
+mod tests;

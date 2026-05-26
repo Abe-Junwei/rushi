@@ -31,6 +31,7 @@ type Props = {
   clearAsrModelCache: () => Promise<void>;
   retryBundledAsrSidecar: () => Promise<void>;
   openAppDataFolder: () => Promise<void>;
+  exportDiagnosticBundle: () => Promise<void>;
   asrSetup: AsrSetupControllerApi;
 };
 
@@ -55,6 +56,7 @@ export function EnvLocalAsrPanel({
   clearAsrModelCache,
   retryBundledAsrSidecar,
   openAppDataFolder,
+  exportDiagnosticBundle,
   asrSetup,
 }: Props) {
   const envOk = asrHealth === "ok";
@@ -87,7 +89,12 @@ export function EnvLocalAsrPanel({
 
       <div className="h-px bg-notion-divider" />
 
-      <LocalAsrSetupWizard setup={asrSetup} busy={busy} />
+      <LocalAsrSetupWizard
+        setup={asrSetup}
+        busy={busy}
+        openAppDataFolder={openAppDataFolder}
+        exportDiagnosticBundle={exportDiagnosticBundle}
+      />
 
       <LocalAsrAdvancedSection
         asrHealth={asrHealth}

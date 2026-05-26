@@ -25,6 +25,9 @@ export interface AsrSetupControllerApi {
   refreshLocalRuntimeDiagnose: () => Promise<LocalRuntimeDiagnose | null>;
   downloadLocalRuntime: () => Promise<void>;
   cancelLocalRuntime: () => Promise<void>;
+  revalidateLocalRuntime: () => Promise<void>;
+  clearLocalRuntime: () => Promise<void>;
+  restorePreviousLocalRuntime: () => Promise<void>;
   runOneClickAsrPrepare: () => Promise<void>;
   acceptForeignPortService: () => Promise<void>;
 }
@@ -48,6 +51,9 @@ export function useAsrSetupController(deps: {
     refreshLocalRuntimeDiagnose,
     downloadLocalRuntime,
     cancelLocalRuntime,
+    revalidateLocalRuntime,
+    clearLocalRuntime,
+    restorePreviousLocalRuntime,
     ensureLocalRuntimeInstalled,
   } = useLocalRuntimeSetupSupport({
     tauriRuntime,
@@ -200,7 +206,8 @@ export function useAsrSetupController(deps: {
       setSetupSteps((steps) => patchStep(steps, "health", { status: "running", detail: "等待 /health…" }));
       const healthOk = await pollUntilHealth();
       if (!healthOk) {
-        const hasInstalledLocalRuntime = localRuntimeDiag?.installed.status === "installed";
+        const latestRuntimeDiag = await refreshLocalRuntimeDiagnose();
+        const hasInstalledLocalRuntime = latestRuntimeDiag?.installed.status === "installed";
         setSetupSteps((steps) =>
           patchStep(steps, "health", {
             status: "error",
@@ -212,7 +219,7 @@ export function useAsrSetupController(deps: {
             ? "侧车已尝试启动，但 FunASR 运行时仍未就绪。请查看「ASR 状态」或导出诊断包。"
             : hasInstalledLocalRuntime
               ? "已检测到应用数据侧车并已尝试启动，但 FunASR 运行时仍未就绪。请查看组件状态与诊断信息后重试。"
-              : "未检测到内置侧车包（dev 需先 npm run asr:build-sidecar-unix）。也可在终端手动 python -m rushi_asr 后点「刷新诊断」。",
+              : "未检测到可用侧车（dev 需先 npm run asr:build-sidecar-unix），或先通过「下载 / 修复语音识别组件」安装应用数据侧车。",
         );
         setSetupOutcome("error");
         return;
@@ -267,7 +274,7 @@ export function useAsrSetupController(deps: {
     } finally {
       setSetupBusy(false);
     }
-  }, [deps, ensureLocalRuntimeInstalled, localRuntimeDiag, pollUntilHealth, refreshSetupDiagnose, tauriRuntime]);
+  }, [deps, ensureLocalRuntimeInstalled, pollUntilHealth, refreshLocalRuntimeDiagnose, refreshSetupDiagnose, tauriRuntime]);
 
   return {
     setupReport,
@@ -282,6 +289,9 @@ export function useAsrSetupController(deps: {
     refreshLocalRuntimeDiagnose,
     downloadLocalRuntime,
     cancelLocalRuntime,
+    revalidateLocalRuntime,
+    clearLocalRuntime,
+    restorePreviousLocalRuntime,
     runOneClickAsrPrepare,
     acceptForeignPortService,
   };

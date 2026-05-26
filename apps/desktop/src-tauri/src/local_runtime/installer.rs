@@ -1,17 +1,22 @@
-use super::integrity::{inspect_installed_runtime, local_runtime_root, version_dir, write_marker};
-use super::manifest::{current_platform_key, parse_manifest, select_asr_sidecar_component};
+use super::catalog::load_configured_manifest;
+use super::install_support::{
+    disk_free_bytes, download_component_artifact, ensure_not_cancelled, extract_zip, sha256_hex,
+    verify_installed_runtime,
+};
+use super::integrity::{
+    inspect_installed_runtime, local_runtime_root, read_marker, version_dir, write_marker_with_previous,
+};
+use super::manifest::{current_platform_key, is_shell_version_compatible, select_asr_sidecar_component};
 use crate::DbState;
-use futures_util::StreamExt;
 use serde::Serialize;
-use sha2::{Digest, Sha256};
-use std::fs::{self, File};
-use std::io::{Read, Write};
-use std::path::{Path, PathBuf};
+use std::fs;
+use std::path::Path;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Arc, Mutex};
 use tauri::{AppHandle, Manager, State};
 use uuid::Uuid;
-use zip::ZipArchive;
+
+const INSTALL_DISK_HEADROOM_BYTES: u64 = 512 * 1024 * 1024;
 
 #[derive(Clone, Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -37,9 +42,9 @@ impl Default for LocalRuntimeInstallProgress {
     }
 }
 
-struct InstallerStateInner {
-    progress: LocalRuntimeInstallProgress,
-    cancel: Option<Arc<AtomicBool>>,
+pub(super) struct InstallerStateInner {
+    pub(super) progress: LocalRuntimeInstallProgress,
+    pub(super) cancel: Option<Arc<AtomicBool>>,
 }
 
 impl Default for InstallerStateInner {
@@ -51,7 +56,7 @@ impl Default for InstallerStateInner {
     }
 }
 
-pub struct LocalRuntimeInstallerState(Mutex<InstallerStateInner>);
+pub struct LocalRuntimeInstallerState(pub(super) Mutex<InstallerStateInner>);
 
 impl Default for LocalRuntimeInstallerState {
     fn default() -> Self {
@@ -67,7 +72,19 @@ pub struct LocalRuntimeDownloadResult {
     pub reason: Option<String>,
 }
 
-fn update_progress(
+#[derive(Clone, Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LocalRuntimeActionResult {
+    pub ok: bool,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub reason: Option<String>,
+}
+
+pub(super) fn install_phase_running(phase: &str) -> bool {
+    matches!(phase, "downloading" | "installing" | "verifying")
+}
+
+pub(super) fn update_progress(
     handle: &AppHandle,
     phase: &str,
     message: impl Into<String>,
@@ -92,7 +109,7 @@ fn update_progress(
     }
 }
 
-fn append_runtime_log_line(handle: &AppHandle, line: &str) {
+pub(super) fn append_runtime_log_line(handle: &AppHandle, line: &str) {
     if let Some(st) = handle.try_state::<DbState>() {
         crate::project::utils::append_desktop_log_line(&st, line);
     }
@@ -105,176 +122,7 @@ pub fn install_progress(handle: &AppHandle) -> LocalRuntimeInstallProgress {
         .unwrap_or_default()
 }
 
-fn manifest_source_from_env() -> Option<String> {
-    let raw = std::env::var("RUSHI_LOCAL_RUNTIME_MANIFEST_URL").ok()?;
-    let trimmed = raw.trim();
-    if trimmed.is_empty() {
-        None
-    } else {
-        Some(trimmed.to_string())
-    }
-}
-
-fn is_http_source(source: &str) -> bool {
-    source.strip_prefix("http://").is_some() || source.strip_prefix("https://").is_some()
-}
-
-fn read_text_source(source: &str) -> Result<String, String> {
-    if is_http_source(source) {
-        return tauri::async_runtime::block_on(async move {
-            let resp = reqwest::Client::new()
-                .get(source)
-                .send()
-                .await
-                .map_err(|e| format!("manifest_fetch_failed: {e}"))?;
-            if !resp.status().is_success() {
-                return Err(format!("manifest_http_{}", resp.status().as_u16()));
-            }
-            resp.text()
-                .await
-                .map_err(|e| format!("manifest_read_failed: {e}"))
-        });
-    }
-    let path = source.strip_prefix("file://").unwrap_or(source);
-    fs::read_to_string(path).map_err(|e| format!("manifest_read_failed: {e}"))
-}
-
-fn sha256_hex(path: &Path) -> Result<String, String> {
-    let mut file = File::open(path).map_err(|e| format!("open_download_failed: {e}"))?;
-    let mut hasher = Sha256::new();
-    let mut buf = vec![0_u8; 1024 * 1024];
-    loop {
-        let n = file
-            .read(&mut buf)
-            .map_err(|e| format!("hash_read_failed: {e}"))?;
-        if n == 0 {
-            break;
-        }
-        hasher.update(&buf[..n]);
-    }
-    Ok(hex::encode(hasher.finalize()))
-}
-
-fn ensure_not_cancelled(cancel: &Arc<AtomicBool>) -> Result<(), String> {
-    if cancel.load(Ordering::SeqCst) {
-        Err("cancelled".into())
-    } else {
-        Ok(())
-    }
-}
-
-fn download_to_path(
-    handle: &AppHandle,
-    url: &str,
-    target: &Path,
-    cancel: &Arc<AtomicBool>,
-    version: &str,
-) -> Result<(), String> {
-    ensure_not_cancelled(cancel)?;
-    if is_http_source(url) {
-        let url_owned = url.to_string();
-        let target_path = target.to_path_buf();
-        let cancel_flag = cancel.clone();
-        return tauri::async_runtime::block_on(async move {
-            let resp = reqwest::Client::new()
-                .get(&url_owned)
-                .send()
-                .await
-                .map_err(|e| format!("artifact_fetch_failed: {e}"))?;
-            if !resp.status().is_success() {
-                return Err(format!("artifact_http_{}", resp.status().as_u16()));
-            }
-            let total = resp.content_length();
-            let mut file =
-                File::create(&target_path).map_err(|e| format!("artifact_create_failed: {e}"))?;
-            let mut stream = resp.bytes_stream();
-            let mut downloaded = 0_u64;
-            while let Some(chunk) = stream.next().await {
-                if cancel_flag.load(Ordering::SeqCst) {
-                    return Err("cancelled".into());
-                }
-                let chunk = chunk.map_err(|e| format!("artifact_stream_failed: {e}"))?;
-                file.write_all(&chunk)
-                    .map_err(|e| format!("artifact_write_failed: {e}"))?;
-                downloaded = downloaded.saturating_add(chunk.len() as u64);
-                update_progress(
-                    handle,
-                    "downloading",
-                    "正在下载本机语音识别组件…",
-                    Some(version.to_string()),
-                    Some(downloaded),
-                    total,
-                    None,
-                );
-            }
-            Ok(())
-        });
-    }
-
-    let source_path = PathBuf::from(url.strip_prefix("file://").unwrap_or(url));
-    let total = fs::metadata(&source_path)
-        .map_err(|e| format!("artifact_stat_failed: {e}"))?
-        .len();
-    let mut src = File::open(&source_path).map_err(|e| format!("artifact_open_failed: {e}"))?;
-    let mut dst = File::create(target).map_err(|e| format!("artifact_create_failed: {e}"))?;
-    let mut copied = 0_u64;
-    let mut buf = vec![0_u8; 1024 * 1024];
-    loop {
-        ensure_not_cancelled(cancel)?;
-        let n = src
-            .read(&mut buf)
-            .map_err(|e| format!("artifact_read_failed: {e}"))?;
-        if n == 0 {
-            break;
-        }
-        dst.write_all(&buf[..n])
-            .map_err(|e| format!("artifact_write_failed: {e}"))?;
-        copied = copied.saturating_add(n as u64);
-        update_progress(
-            handle,
-            "downloading",
-            "正在复制本机语音识别组件…",
-            Some(version.to_string()),
-            Some(copied),
-            Some(total),
-            None,
-        );
-    }
-    Ok(())
-}
-
-fn extract_zip(zip_path: &Path, dest: &Path, cancel: &Arc<AtomicBool>) -> Result<(), String> {
-    fs::create_dir_all(dest).map_err(|e| format!("create_extract_dir_failed: {e}"))?;
-    let file = File::open(zip_path).map_err(|e| format!("open_zip_failed: {e}"))?;
-    let mut archive = ZipArchive::new(file).map_err(|e| format!("open_zip_failed: {e}"))?;
-    for i in 0..archive.len() {
-        ensure_not_cancelled(cancel)?;
-        let mut entry = archive
-            .by_index(i)
-            .map_err(|e| format!("read_zip_entry_failed: {e}"))?;
-        let Some(rel) = entry.enclosed_name().map(|p| p.to_path_buf()) else {
-            return Err("zip_path_traversal".into());
-        };
-        let out_path = dest.join(rel);
-        if entry.is_dir() {
-            fs::create_dir_all(&out_path).map_err(|e| format!("create_dir_failed: {e}"))?;
-            continue;
-        }
-        if let Some(parent) = out_path.parent() {
-            fs::create_dir_all(parent).map_err(|e| format!("create_dir_failed: {e}"))?;
-        }
-        let mut out = File::create(&out_path).map_err(|e| format!("create_file_failed: {e}"))?;
-        std::io::copy(&mut entry, &mut out).map_err(|e| format!("extract_file_failed: {e}"))?;
-        #[cfg(unix)]
-        if let Some(mode) = entry.unix_mode() {
-            use std::os::unix::fs::PermissionsExt;
-            let _ = fs::set_permissions(&out_path, fs::Permissions::from_mode(mode));
-        }
-    }
-    Ok(())
-}
-
-fn reset_cancel_handle(handle: &AppHandle) {
+pub(super) fn reset_cancel_handle(handle: &AppHandle) {
     if let Some(state) = handle.try_state::<LocalRuntimeInstallerState>() {
         if let Ok(mut guard) = state.0.lock() {
             guard.cancel = None;
@@ -282,10 +130,29 @@ fn reset_cancel_handle(handle: &AppHandle) {
     }
 }
 
-fn run_install(handle: &AppHandle, app_root: &Path, cancel: Arc<AtomicBool>) -> Result<(), String> {
-    let Some(source) = manifest_source_from_env() else {
-        return Err("local_runtime_manifest_missing".into());
+fn required_install_bytes(component_size: Option<u64>) -> Option<u64> {
+    component_size.map(|size| {
+        size.saturating_mul(3)
+            .saturating_add(INSTALL_DISK_HEADROOM_BYTES)
+    })
+}
+
+fn ensure_install_disk_budget(app_root: &Path, artifact_size: Option<u64>) -> Result<(), String> {
+    let Some(required_bytes) = required_install_bytes(artifact_size) else {
+        return Ok(());
     };
+    let Some(free_bytes) = disk_free_bytes(&local_runtime_root(app_root)) else {
+        return Ok(());
+    };
+    if free_bytes < required_bytes {
+        return Err(format!(
+            "local_runtime_disk_space_low:{free_bytes}:{required_bytes}"
+        ));
+    }
+    Ok(())
+}
+
+fn run_install(handle: &AppHandle, app_root: &Path, cancel: Arc<AtomicBool>) -> Result<(), String> {
     update_progress(
         handle,
         "downloading",
@@ -295,17 +162,33 @@ fn run_install(handle: &AppHandle, app_root: &Path, cancel: Arc<AtomicBool>) -> 
         None,
         None,
     );
-    let manifest_text = read_text_source(&source)?;
-    let manifest = parse_manifest(&manifest_text)?;
+    let loaded = load_configured_manifest()?;
+    let signature_key_id = loaded.signature_key_id.clone();
+    let manifest_source = loaded.source.clone();
+    let manifest = loaded.manifest;
     let platform = current_platform_key();
     let component = select_asr_sidecar_component(&manifest, &platform)
         .ok_or_else(|| format!("local_runtime_component_missing:{platform}"))?;
+    if let Some(min_shell_version) = component.min_shell_version.as_deref() {
+        if !is_shell_version_compatible(env!("CARGO_PKG_VERSION"), min_shell_version) {
+            return Err(format!(
+                "local_runtime_shell_version_incompatible:{}:{}",
+                env!("CARGO_PKG_VERSION"),
+                min_shell_version
+            ));
+        }
+    }
     let root = local_runtime_root(app_root);
     fs::create_dir_all(&root).map_err(|e| format!("create_local_runtime_root_failed: {e}"))?;
+    ensure_install_disk_budget(app_root, component.size_bytes)?;
     let tmp_zip = root.join(format!("download-{}.zip.part", Uuid::new_v4()));
     let staging = root.join(format!("staging-{}", Uuid::new_v4()));
     let install_dir = version_dir(app_root, &component.version);
-    download_to_path(handle, &component.url, &tmp_zip, &cancel, &component.version)?;
+    let existing_marker = read_marker(app_root).ok().filter(|marker| {
+        inspect_installed_runtime(app_root).status == super::integrity::InstalledRuntimeStatus::Installed
+            && marker.version != component.version
+    });
+    download_component_artifact(handle, component, &tmp_zip, &cancel)?;
     ensure_not_cancelled(&cancel)?;
     let actual_sha = sha256_hex(&tmp_zip)?;
     if !component.sha256.trim().is_empty() && actual_sha != component.sha256.to_lowercase() {
@@ -324,12 +207,66 @@ fn run_install(handle: &AppHandle, app_root: &Path, cancel: Arc<AtomicBool>) -> 
     let _ = fs::remove_dir_all(&staging);
     extract_zip(&tmp_zip, &staging, &cancel)?;
     let _ = fs::remove_file(&tmp_zip);
-    let _ = fs::remove_dir_all(&install_dir);
-    fs::rename(&staging, &install_dir).map_err(|e| format!("promote_runtime_failed: {e}"))?;
-    write_marker(app_root, &component.version, &component.exe_relpath)?;
+    let staged_exe = staging.join(&component.exe_relpath);
+    if !staged_exe.is_file() {
+        let _ = fs::remove_dir_all(&staging);
+        return Err("local_runtime_executable_missing".into());
+    }
+    update_progress(
+        handle,
+        "verifying",
+        "正在验证本机语音识别组件可用性…",
+        Some(component.version.clone()),
+        None,
+        None,
+        None,
+    );
+    if let Err(err) = verify_installed_runtime(&staged_exe) {
+        let _ = fs::remove_dir_all(&staging);
+        return Err(err);
+    }
+    let backup_dir = if install_dir.exists() {
+        let backup = root.join(format!("rollback-{}", Uuid::new_v4()));
+        fs::rename(&install_dir, &backup).map_err(|e| format!("backup_runtime_failed: {e}"))?;
+        Some(backup)
+    } else {
+        None
+    };
+    if let Err(err) = fs::rename(&staging, &install_dir) {
+        if let Some(backup) = &backup_dir {
+            let _ = fs::rename(backup, &install_dir);
+        }
+        return Err(format!("promote_runtime_failed: {err}"));
+    }
+    let installed_exe = install_dir.join(&component.exe_relpath);
+    if !installed_exe.is_file() {
+        let _ = fs::remove_dir_all(&install_dir);
+        if let Some(backup) = &backup_dir {
+            let _ = fs::rename(backup, &install_dir);
+        }
+        return Err("local_runtime_executable_missing".into());
+    }
+    if let Err(err) = write_marker_with_previous(
+        app_root,
+        &component.version,
+        &component.exe_relpath,
+        existing_marker
+            .as_ref()
+            .map(|marker| (marker.version.as_str(), marker.exe_relpath.as_str())),
+        Some("ready"),
+    ) {
+        let _ = fs::remove_dir_all(&install_dir);
+        if let Some(backup) = &backup_dir {
+            let _ = fs::rename(backup, &install_dir);
+        }
+        return Err(err);
+    }
     let info = inspect_installed_runtime(app_root);
     match info.status {
         super::integrity::InstalledRuntimeStatus::Installed => {
+            if let Some(backup) = backup_dir {
+                let _ = fs::remove_dir_all(backup);
+            }
             update_progress(
                 handle,
                 "installed",
@@ -341,11 +278,20 @@ fn run_install(handle: &AppHandle, app_root: &Path, cancel: Arc<AtomicBool>) -> 
             );
             append_runtime_log_line(
                 handle,
-                &format!("INFO local_runtime_installed version={}", component.version),
+                &format!(
+                    "INFO local_runtime_installed version={} signature_key={} source={}",
+                    component.version, signature_key_id, manifest_source
+                ),
             );
             Ok(())
         }
-        _ => Err(info.detail.unwrap_or_else(|| "local_runtime_install_corrupt".into())),
+        _ => {
+            if let Some(backup) = &backup_dir {
+                let _ = fs::remove_dir_all(&install_dir);
+                let _ = fs::rename(backup, &install_dir);
+            }
+            Err(info.detail.unwrap_or_else(|| "local_runtime_install_corrupt".into()))
+        }
     }
 }
 
@@ -362,7 +308,7 @@ pub fn local_runtime_download_sidecar(
         let Ok(mut guard) = installer.0.lock() else {
             return Err("local_runtime_state_poisoned".into());
         };
-        if matches!(guard.progress.phase.as_str(), "downloading" | "installing") {
+        if install_phase_running(&guard.progress.phase) {
             return Ok(LocalRuntimeDownloadResult {
                 started: false,
                 reason: Some("already_running".into()),
@@ -437,19 +383,16 @@ pub fn local_runtime_cancel_download(app: AppHandle) -> Result<bool, String> {
 
 #[cfg(test)]
 mod tests {
-    use super::sha256_hex;
-    use std::fs;
-    use uuid::Uuid;
+    use super::install_phase_running;
 
     #[test]
-    fn sha256_hex_matches_known_value() {
-        let temp = std::env::temp_dir().join(format!("rushi-local-runtime-hash-{}", Uuid::new_v4()));
-        fs::write(&temp, b"abc").unwrap();
-        let digest = sha256_hex(&temp).unwrap();
-        assert_eq!(
-            digest,
-            "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad"
-        );
-        let _ = fs::remove_file(&temp);
+    fn install_phase_running_treats_verifying_as_busy() {
+        assert!(install_phase_running("downloading"));
+        assert!(install_phase_running("installing"));
+        assert!(install_phase_running("verifying"));
+        assert!(!install_phase_running("idle"));
+        assert!(!install_phase_running("installed"));
+        assert!(!install_phase_running("error"));
     }
 }
+

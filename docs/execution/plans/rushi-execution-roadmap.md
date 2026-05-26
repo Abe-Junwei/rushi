@@ -106,7 +106,7 @@ R9     发版集成验收（REL-1）
 | **GLY-1** | W1 后半 | 05/29 – 06/02 | 术语库管理 UI | 接线 `useGlossaryController`；列表/增删；与转写热词说明；替换侧栏占位 | **0.5 周** |
 | **R1** | W2 | 06/03 – 06/06 | LLM-0 规格与架构 | `auto-punctuate-{intent,plan,acceptance}.md`；后处理不进侧车短文；T-002 迁址设计 | 1 周 |
 | **R2** | W2–W3 | 06/02 – 06/13 | LLM-1 自动标点 | Rust `postprocess_cmd` + 预览 diff UI + 确认写回；隐私首次明示；超时/取消 | 1.5 周 |
-| **R3** | W5–W10 | 05/26 – **07/18** | EXP-1 + **R3h LRC 发行整改** | R3a–c ✅；**R3h-0～3**、R3f、R3e-A、R3g-A、R3d、**R3h-3.5**、R3e-B；真源 §4.1 + [remediation plan](../specs/rushi-local-runtime-catalog-remediation-plan.md) | **~4～5 周** |
+| **R3** | W5–W10 | 05/26 – **07/18** | EXP-1 + **R3h LRC 发行整改** | R3a–c ✅；**R3h-0～3**、R3f、R3e-A、R3g-A、R3d、**R3h-I**、**R3h-3.5**、R3e-B；真源 §4.1 + [remediation plan](../specs/rushi-local-runtime-catalog-remediation-plan.md) | **~4～5 周** |
 | **R4** | W11–W12 | 07/21 – 08/01 | QLT-1 质量插槽 | 包装 `eval_metrics`；rubric schema；质量 Tab 只读；correction_memory 导出脱敏 | 1.5 周 |
 | **R5** | W13–W14 | 08/04 – 08/15 | AGT-1 MCP 只读 | `services/mcp/`；4 tools + 2 resources；127.0.0.1、默认关 | 2 周 |
 | **R6** | W15–W16 | 08/18 – 08/29 | COL-1 协作骨架 | `services/collab/` + Compose + PG 迁移 + 只读 API | 2 周 |
@@ -121,6 +121,7 @@ R9     发版集成验收（REL-1）
 > **产品目标**：发行用户 **零必需命令行** — 应用内完成本机 ASR 的诊断、引导、下载、安装、测试、排错（见 [remediation plan](../specs/rushi-local-runtime-catalog-remediation-plan.md) §1.1）。  
 > **架构真源**：**Local Runtime Catalog（LRC）** — 运行时（侧车）与权重（模型）分离；manifest + 应用数据安装；与引擎无关（FunASR 侧车 v1，Sherpa 为 Phase 3.5 门控）。  
 > **依据**：R3a–c ✅；手测暴露 **安装难（R3h）**、**分句差（R3g）**、**超时/OOM（R3e）**；审查报告已吸收至 remediation **v1.1**。
+> **结构收口**：补入 **`R3h-I` 工业成熟度对齐轨**，专门收口 `Runtime Supervisor`、签名/回滚型 release system、`ASR setup` 状态机三条结构线；**不改** §4.1.1 的发行止血主顺序。
 
 #### 4.1.1 实施顺序（严格串行，勿跳步）
 
@@ -153,12 +154,12 @@ R9     发版集成验收（REL-1）
 | 序 | ID | 状态 | 预估 | 交付摘要 | 规格真源 |
 |----|-----|------|------|----------|----------|
 | — | R3a/b/c | ✅ | — | keychain、profile、缓存/manifest | 各 acceptance |
-| **①** | **R3h-0** | ⏳ | 2–3d | `--collect-data funasr`；post-build health smoke；`sidecarIntegrity`；Win `disk_free_bytes` | [remediation §5 Phase 0](../specs/rushi-local-runtime-catalog-remediation-plan.md) |
-| **②** | **R3h-1** | ⏳ | 5–7d | `local_runtime/`；manifest 下载；app_data 优先解析；Installer 状态机；下载进度 UI | remediation §5 Phase 1 |
-| **③** | **R3f** | 🟡 | 2–3d | 诊断 + 一键准备 + 8741 冲突；**须在 ② 后手测** | [`r3f-asr-setup-wizard-acceptance.md`](../specs/r3f-asr-setup-wizard-acceptance.md) |
+| **①** | **R3h-0** | 🟡 | 2–3d | 构建脚本 / smoke / `sidecarIntegrity` / Win `disk_free_bytes` 已有工作区实现；待跨平台构建 smoke 与 Windows 手测 | [remediation §5 Phase 0](../specs/rushi-local-runtime-catalog-remediation-plan.md) |
+| **②** | **R3h-1** | 🟡 | 5–7d | `local_runtime/`、manifest 下载、sha256、app_data 优先、下载进度 UI 已有最小闭环；本轮继续补 **signed manifest / pinned key / current+previous / rollback / 手测** | remediation §5 Phase 1 |
+| **③** | **R3f** | 🟡 | 2–3d | 诊断 + 一键准备 + 8741 冲突；已接入 R3h-1 最小闭环，**须在 ①② 发行级补齐后手测** | [`r3f-asr-setup-wizard-acceptance.md`](../specs/r3f-asr-setup-wizard-acceptance.md) |
 | **④** | **R3e-A** | ⏳ | 2–3d | 动态超时 + 失败分类 | [`r3e-long-audio-transcribe-acceptance.md`](../specs/r3e-long-audio-transcribe-acceptance.md) |
 | **⑤** | **R3g-A** | ⏳ | 3–5d | 双 SKU + `prepare(model_id)` + 硬件阈值文案 | [`r3g-local-asr-model-catalog-acceptance.md`](../specs/r3g-local-asr-model-catalog-acceptance.md) |
-| **⑥** | **R3h-2** | ⏳ | ~1w | Range 断点续传；缺/坏侧车自动下载；`recommended_asr_models`；升级/回滚 | remediation §5 Phase 2 |
+| **⑥** | **R3h-2** | ⏳ | ~1w | Range 断点续传；缺/坏侧车自动下载；`recommended_asr_models`；GC / 事件化进度 / 升级编排收口 | remediation §5 Phase 2 |
 | **⑦** | **R3h-3** + **R3d** | ⏳ | 3–5d | 本机 ASR / 在线 STT / LLM 三盏灯；五栏 IA | remediation §5 Phase 3 + [`r3d-settings-ia-acceptance.md`](../specs/r3d-settings-ia-acceptance.md) |
 | **⑧** | **R3h-3.5** | ⏳ | ~1w | Sherpa-ONNX CER Spike；引擎去留 ADR | remediation §5 Phase 3.5 |
 | **⑨** | **R3e-B** | ⏳ | 1.5–2w | 分段转写 + 合并 + 长任务进度 | r3e spec §R3e-B |
@@ -171,8 +172,29 @@ R9     发版集成验收（REL-1）
 |------|------|
 | **勿并行** | R3f 编排与 **R3e-B** 分片（同改转写链） |
 | **可并行设计** | R3e-A 与 R3g-A 接口；实施仍 **④ 先于 ⑤** |
+| **R3h-I 设计** | 可在 **② 后**并行做只读方案与接口草图；避免和 **①–③** 的止血实现混在同一刀 |
+| **R3h-I 实施** | 建议在 **⑥–⑦** 之间或之后集中收口；不单独改写 §4.1.1 的产品签收顺序 |
 | **勿跳步** | **R3f 手测不得在 R3h-0 前签收**（否则 corrupt 包误判） |
 | **R9 依赖** | 零终端 ASR：**②+③**；长音频完整：**⑨** |
+
+#### 4.1.4 `R3h-I` 工业成熟度对齐（收口轨，不改主顺序）
+
+**目的**：把已经在 `R3h-0～3` 中落地的发行止血能力，继续收口成更稳定、可回归、可替换的长期结构；这是**架构硬化轨**，不是新增一层产品阶段。
+
+| 子轨 | 对齐目标 | 主要落位 | 建议接入点 |
+|------|----------|----------|------------|
+| **R3h-I1 Runtime Supervisor** | 显式 sidecar supervisor FSM、watchdog、runtime identity，统一 `bundled` / `app_data` 侧车真相 | `apps/desktop/src-tauri/src/asr_sidecar.rs`、`lib.rs`、`asr_setup/diagnose.rs` | **R3h-1** 稳定后可设计；建议在 **R3h-2 / R3h-3** 前后收口 |
+| **R3h-I2 Release System** | 在 R3h-1 已落地的签名校验、`current+previous`、rollback 之上继续升级到更完整的发布元数据、GC、事件化进度 | `apps/desktop/src-tauri/src/local_runtime/*.rs`、`apps/desktop/src/services/localRuntime/localRuntimeContract.ts` | 以 **R3h-2** 为主落点，避免早于 **R3h-1** |
+| **R3h-I3 Setup Machine** | 将 `ASR setup` 编排改成 reducer/state-machine，统一消费 diagnose / installer / model prepare 事件 | `apps/desktop/src/pages/useAsrSetupController.ts`、`asrSetupState.ts`、相关 contract / wizard 测试 | 依赖 **I1/I2** 契约后再收口，建议放在 **R3h-3** 附近 |
+
+**当前冻结边界**：
+
+- `R3h-I` **不引入新产品承诺**，只收口已存在能力的真实状态面与可维护性。
+- 默认走 **依赖轻** 的内部 reducer / state-machine，不为了 `R3h-I3` 新增 `xstate`。
+- 当前默认口径：**R3h-1** 直接补到 release-system 最小闭环，即 `签名 manifest`、`pinned key`、`current+previous`、`rollback`、schema 对齐、生产禁用明文 HTTP、下载前磁盘预算、诊断可追踪；`R3h-2/R3h-I2` 再继续补 `Range`、GC、`progress events` 与更完整升级编排。
+- `Setup Machine` 仍不并入 `R3h-1`；维持在 **R3h-I3 / R3h-3 附近** 收口，避免把 Phase 1 扩成整套编排重写。
+- 供应链成熟度默认目标：artifact `sha256` + signed manifest + pinned public key；release 产物附 SBOM / provenance 摘要 / sidecar smoke 证据。Sigstore / SLSA 可作为后续增强，不阻塞 R3h-0/1 止血。
+- 验证矩阵沿用 `cargo test`、`run-asr-pytest.sh`、桌面端 `typecheck/test`、`architecture guard` 与打包后 sidecar smoke。
 
 ### 阶段状态（实施时更新）
 
@@ -183,7 +205,7 @@ R9     发版集成验收（REL-1）
 | R1 | ✅ 已完成（文档门禁） | 2026-05-25 |
 | R2 | ✅ 已完成（DeepSeek 手测通过） | 2026-05-25 |
 | R3 | 🟡 进行中（a/b/c ✅；**R3h/f/e/g/d** 按 §4.1） | — |
-| R3h | ⏳ LRC 整改（§4.1 ①–⑧） | — |
+| R3h | 🟡 LRC 整改进行中：①② 工作区已有最小闭环；待发行级信任、回滚、手测与 `R3h-I` 收口 | — |
 | R4 | ⏳ | — |
 | R5 | ⏳ | — |
 | R6 | ⏳ | — |
@@ -311,7 +333,7 @@ React 预览 UI
 | R3a | LLM keychain + probe | ✅ |
 | R3b | Profile 导入导出 | ✅ |
 | R3c | 缓存 / manifest / 清缓存 | ✅ |
-| **R3h** | **本地运行时目录（LRC）** | ⏳ §4.1 ①–⑧ |
+| **R3h** | **本地运行时目录（LRC）** | ⏳ §4.1 ①–⑧ + `R3h-I`；`R3h-1` 按 release-system 最小闭环推进 |
 | **R3f** | 一键环境准备 | 🟡 编码完成；手测在 **R3h-0 后** |
 | **R3e** | 长音频 | ⏳ |
 | **R3g** | 模型目录 | ⏳ |
@@ -328,9 +350,10 @@ React 预览 UI
 | 子阶段 | 主题 | 阻塞关系 |
 |--------|------|----------|
 | **R3h-0** | 构建正确 + CI smoke + 诊断 corrupt + Win 磁盘 | **阻塞一切发行手测** |
-| **R3h-1** | `local_runtime/` + HTTPS 下载 + app_data 侧车 | 阻塞 R3f 签收 |
-| **R3h-2** | 断点续传、自动下载编排、升级回滚 | 阻塞 R9 弱网场景 |
+| **R3h-1** | `local_runtime/` + HTTPS 下载 + app_data 侧车 + signed manifest / current+previous / rollback | 阻塞 R3f 签收 |
+| **R3h-2** | 断点续传、自动下载编排、GC / progress events / 升级收口 | 阻塞 R9 弱网场景 |
 | **R3h-3** | 三盏灯就绪页（合并 R3d） | 体验收口 |
+| **R3h-I** | 工业成熟度对齐：`Runtime Supervisor` / signed release system / `Setup Machine` | **收口轨**；不改 ①–⑨ 主顺序 |
 | **R3h-3.5** | Sherpa-ONNX Spike | **不阻塞** ①–⑦ |
 | **R3h-4** | 本机 LLM catalog | R4 前或并行设计 |
 | **R3h-E/F** | 高级 pip / 本地 build 侧车 | 开发者折叠 |
@@ -586,7 +609,8 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | `node scripts/check-architecture-guard.mjs` | ✅ 0 错误，**0 警告** |
 | `cargo test`（desktop lib） | ✅ **53** passed |
 | `profile.rs` / R3c 缓存 / 清缓存对话框 | ✅ 已合入 `main` |
-| `asr_setup_diagnose` / 一键准备 UI | 🟡 **工作区有**（R3f-A/B/D），待提交 + 手测 |
+| `asr_setup_diagnose` / 一键准备 UI | 🟡 **工作区有**（R3f-A/B/D），已接入 local runtime 最小闭环，待提交 + 手测 |
+| `local_runtime` / LRC 下载器 | 🟡 **工作区有**（manifest、sha256、staging、app_data 优先、下载进度），待发行级信任 / 回滚 / 弱网手测 |
 | `prepare(model_id)` / 模型目录 UI | ❌ R3g 未开始 |
 | 长音频动态超时 / 分段转写 | ❌ R3e 未开始 |
 | `services/mcp` / `services/collab` | ❌ 未开始 |
@@ -604,7 +628,8 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | **R0–R2** | 已提交；lifecycle 仍 381 行 / 21 hooks | 🟡 守卫警告未清，不阻塞 R3 但应在 R3 提交前或 R3e-B 前拆 |
 | **R3a–b** | keychain/probe；profile 导入导出 | ✅ |
 | **R3c** | 引导/缓存/manifest/清缓存确认框 | ✅ 已合入 + 手测通过 |
-| **R3f** | `asr_setup_diagnose`、一键准备编排、8741 探测 | 🟡 工作区编码完成；高级「选仓库+bash」仍保留兜底 |
+| **R3f** | `asr_setup_diagnose`、一键准备编排、8741 探测、local runtime 缺失/损坏修复 | 🟡 工作区编码完成；待 R3h-0/1 发行级补齐后手测；高级「选仓库+bash」仍保留兜底 |
+| **R3h-0/1** | 构建 smoke、Win 磁盘、`local_runtime`、manifest 下载、app_data 优先 | 🟡 最小闭环已编码；文档状态需随提交更新；仍缺 signed manifest、回滚槽、断点续传、生产源策略 |
 | **R3g** | 仅 `prepare-default`；`funasr_engine` 单例 | ❌ 待 g-A；切换模型需重启侧车（规划已定） |
 | **R3e** | transcribe **600s** 固定；整文件推理 | ❌ e-A 待做；e-B 为分段合并 |
 | **转写体验补丁** | hints 横幅、整轨兜底 | ✅ 已合入 `main` |
@@ -628,6 +653,8 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 3. **唯一顺序 §4.1.1**：`R3h-0 → R3h-1 → R3f → R3e-A → R3g-A → R3h-2 → R3h-3(+R3d) → R3h-3.5 → R3e-B`。  
 4. **R3f 不得在 R3h-0 前签收**；**R9** 增加零终端 ASR + 弱网场景。  
 5. **T-004** 从「C7 后」改为 **R3h-2**；新增 **T-008/T-009**（corrupt 诊断、Sherpa 门控）。
+6. **补入 `R3h-I` 工业成熟度对齐轨**：不改发行止血主顺序，用于收口 `Runtime Supervisor`、release system、`ASR setup` 状态机三条结构线。
+7. **2026-05-26 代码对照更新**：R3h-0/1 已出现工作区最小闭环，但尚未达到发行级；R3h-I2 必须补齐 signed manifest、pinned key、current+previous / rollback、GC、progress events、SBOM / provenance 摘要。
 
 ### 13.5 风险（对照后）
 
@@ -636,6 +663,10 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | R3f 工作区未提交 | 中 | f 手测前提交 `asr_setup` 等增量 |
 | 用户仍卡在「选仓库装 FunASR」 | 高 | **R3h-1** 应用内下侧车 + **R3f** 一键准备 |
 | 侧车包 corrupt（funasr 数据缺失） | 高 | **R3h-0** smoke + **R3h-2** 重下 |
+| manifest 源被替换导致 hash 同步被篡改 | 高 | R3h-I2：signed manifest + pinned public key；生产禁用非 HTTPS / 非内置源 |
+| 下载/安装失败破坏旧 runtime | 高 | R3h-2：current+previous 或 A/B 槽；新包验证通过后再切换；失败保留旧版 |
+| 文档 manifest schema 与代码实现漂移 | 中 | R3h-1 收口：统一 `artifact{}` vs 扁平字段真源，并补 contract test |
+| 大文件弱网 / 代理环境失败 | 中 | R3h-2：Range 续传、镜像回退、proxy/timeout、弱网手测 |
 | ~2.5GB 侧车长期体积 | 中 | **R3h-3.5** Sherpa Spike |
 | SenseVoice 默认 → 整轨长语段 | 中 | **R3g** 推荐 Paraformer 长音频 |
 | 长音频 OOM / 600s 超时 | 高 | **R3e-A/B** |

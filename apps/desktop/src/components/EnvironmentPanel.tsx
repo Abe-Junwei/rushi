@@ -43,6 +43,7 @@ export type EnvironmentPanelProps = {
   clearAsrModelCache: () => Promise<void>;
   retryBundledAsrSidecar: () => Promise<void>;
   openAppDataFolder: () => Promise<void>;
+  exportDiagnosticBundle: () => Promise<void>;
   asrSetup: AsrSetupControllerApi;
   onSttOnlineRuntimeChanged?: () => void;
   focusOnlineSttSeq?: number;
@@ -69,6 +70,7 @@ export function EnvironmentPanel({
   clearAsrModelCache,
   retryBundledAsrSidecar,
   openAppDataFolder,
+  exportDiagnosticBundle,
   asrSetup,
   onSttOnlineRuntimeChanged,
   focusOnlineSttSeq = 0,
@@ -177,6 +179,7 @@ export function EnvironmentPanel({
                   clearAsrModelCache={clearAsrModelCache}
                   retryBundledAsrSidecar={retryBundledAsrSidecar}
                   openAppDataFolder={openAppDataFolder}
+                  exportDiagnosticBundle={exportDiagnosticBundle}
                   asrSetup={asrSetup}
                 />
               ) : null}

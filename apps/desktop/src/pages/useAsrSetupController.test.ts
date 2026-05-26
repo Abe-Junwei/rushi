@@ -9,6 +9,9 @@ const retryBundledAsrSidecar = vi.fn<() => Promise<void>>();
 const localRuntimeDiagnose = vi.fn<() => Promise<LocalRuntimeDiagnose>>();
 const localRuntimeDownloadSidecar = vi.fn<() => Promise<{ started: boolean; reason?: string | null }>>();
 const localRuntimeCancelDownload = vi.fn<() => Promise<boolean>>();
+const localRuntimeRevalidateInstall = vi.fn<() => Promise<{ ok: boolean; reason?: string | null }>>();
+const localRuntimeClearInstall = vi.fn<() => Promise<{ ok: boolean; reason?: string | null }>>();
+const localRuntimeRestorePrevious = vi.fn<() => Promise<{ ok: boolean; reason?: string | null }>>();
 const fetchMock = vi.fn<typeof fetch>();
 
 vi.mock("../config/env", () => ({
@@ -29,6 +32,9 @@ vi.mock("../tauri/localRuntimeApi", () => ({
   localRuntimeDiagnose: () => localRuntimeDiagnose(),
   localRuntimeDownloadSidecar: () => localRuntimeDownloadSidecar(),
   localRuntimeCancelDownload: () => localRuntimeCancelDownload(),
+  localRuntimeRevalidateInstall: () => localRuntimeRevalidateInstall(),
+  localRuntimeClearInstall: () => localRuntimeClearInstall(),
+  localRuntimeRestorePrevious: () => localRuntimeRestorePrevious(),
 }));
 
 function makeReport(overrides: Partial<AsrSetupReport> = {}): AsrSetupReport {
@@ -90,11 +96,17 @@ describe("useAsrSetupController", () => {
     localRuntimeDiagnose.mockReset();
     localRuntimeDownloadSidecar.mockReset();
     localRuntimeCancelDownload.mockReset();
+    localRuntimeRevalidateInstall.mockReset();
+    localRuntimeClearInstall.mockReset();
+    localRuntimeRestorePrevious.mockReset();
     fetchMock.mockReset();
     vi.stubGlobal("fetch", fetchMock);
     localRuntimeDiagnose.mockResolvedValue(makeLocalRuntimeDiag());
     localRuntimeDownloadSidecar.mockResolvedValue({ started: true });
     localRuntimeCancelDownload.mockResolvedValue(true);
+    localRuntimeRevalidateInstall.mockResolvedValue({ ok: true });
+    localRuntimeClearInstall.mockResolvedValue({ ok: true });
+    localRuntimeRestorePrevious.mockResolvedValue({ ok: true });
   });
 
   it("maps partial auxiliary model cache into blocked wizard state", async () => {

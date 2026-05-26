@@ -3,7 +3,7 @@
 > **状态**：规划真源（2026-05-26，**v1.1** 已吸收审查意见）  
 > **目标读者**：产品 / 架构 / 实施  
 > **审查**：[`rushi-local-runtime-catalog-remediation-plan-review.md`](./rushi-local-runtime-catalog-remediation-plan-review.md)（2026-05-26）  
-> **排期索引**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) **§4.1.1**（R3 唯一实施顺序；epic **R3h**）  
+> **排期索引**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) **§4.1.1**（R3 唯一实施顺序；epic **R3h**）+ **§4.1.4**（`R3h-I` 工业成熟度对齐收口轨）
 > **关联**：[`asr-sidecar-funasr-policy.md`](../../architecture/asr-sidecar-funasr-policy.md)、[`r3f-asr-setup-wizard-acceptance.md`](./r3f-asr-setup-wizard-acceptance.md)、[`r3-provider-configuration-research.md`](./r3-provider-configuration-research.md)、[`postprocess-remote-boundary.md`](../../architecture/postprocess-remote-boundary.md)
 
 ---
@@ -344,7 +344,7 @@ sequenceDiagram
 
 ### Phase 1 — 应用数据侧车 + Manifest 下载（≈1–1.5 周）
 
-**目标**：无开发构建的用户可应用内下载安装侧车。
+**目标**：无开发构建的用户可应用内下载安装侧车，并具备最小可发布的 release-system 能力（信任链、保留旧版、失败回退）。
 
 | 层 | 落位 |
 |----|------|
@@ -358,11 +358,27 @@ sequenceDiagram
 | 大文件分发 | artifact **>2GB** 时：优先 **压缩 zip**；仍超限则 **分卷**（`.zip.001`）或对象存储直链；manifest 支持 `artifact.parts[]`（Phase 1 可先做单文件 + 压缩） |
 | 镜像 | manifest 可选 `mirror_urls[]`，下载失败时顺序回退 |
 
+**2026-05-26 代码对照**：工作区已出现 `local_runtime/` 最小闭环（manifest 读取、平台选择、sha256、staging 解压、app_data 优先、取消 / 清除 / 重新验证、UI 进度）。该实现可作为 R3h-1 起点，但**尚未等价于发行级 release system**。
+
+**R3h-1 收口补充**（从评估吸收；本轮按 release-system 口径前移）：
+
+| 项 | 要求 |
+|----|------|
+| Manifest schema | 文档示例与代码契约统一；明确 `artifact{}` 或扁平字段为唯一真源，并补 contract test |
+| 生产源策略 | 生产默认只允许内置 manifest endpoint / HTTPS；`file://` 与明文 HTTP 仅开发 / 内测开关可用 |
+| Manifest 信任 | manifest 采用签名元数据 + 壳内 pinned public key 校验；artifact `sha256` 继续作为内容校验 |
+| 下载前预算 | 使用 `size_bytes` 做磁盘空间预检；运行时包与模型预算分开展示 |
+| 安装安全 | 继续保留 `*.staging` + zip path traversal 防护；补解压后大小上限 / 文件数量上限，降低 zip bomb 风险 |
+| 安装槽位 / 回退 | `current+previous` 或等价双槽；新包 verify 成功后再切换 current，失败保留旧版并允许显式恢复 |
+| 诊断可追踪 | `diagnostic_bundle` 增加 manifest source、runtime source、installed version、last verify error、last install phase |
+
 **验收**（手测）：
 
 1. 空 `app_data/sidecar`、无 bundled → 向导触发下载 → health OK。  
 2. 删 manifest 中一文件模拟 corrupt → 诊断 `corrupt` → 重下修复。  
-3. 安装包带 bundled 且无网 → 仍可用 bundled。
+3. 安装包带 bundled 且无网 → 仍可用 bundled。  
+4. 新版本下载成功但 verify 失败 → 旧版 `current` 仍保持可用，可恢复到 previous / bundled。  
+5. 生产策略下 `file://` / 明文 HTTP / 签名不合法 manifest 会被拒绝，且错误可诊断。
 
 ---
 
@@ -373,7 +389,9 @@ sequenceDiagram
 | R3f | 一键准备：缺/坏侧车 → 自动 Phase 1 下载，再 health → prepare |
 | R3g | 模型 catalog 与 manifest 中 `recommended_asr_models` 一致；SKU 展示 **RAM/磁盘/量化** 阈值 |
 | 下载器 | 大文件 Range + 持久化进度（policy §9 待办）；弱网/断网恢复手测纳入 R9 |
-| 升级 | §3.7 侧车升级/回滚最小实现 |
+| 升级 | 在 Phase 1 的 `current+previous` 基础上补自动升级编排与版本迁移约束；不得先删除当前可用版本再切换 |
+| Release System 收口 | 在已落地的签名校验 / 回退之上继续补事件化进度、更丰富签名元数据、发布证据对接 |
+| 清理 | GC 只删除非 current / previous 且不在运行中的版本目录 |
 | R3d | 环境 IA：五栏中「本机语音识别」= 运行时 + 模型 两区块 |
 
 **修订规格**：[`r3f-asr-setup-wizard-acceptance.md`](./r3f-asr-setup-wizard-acceptance.md) 主路径改为 LRC；原「不做联网侧车」**废止**。
@@ -409,6 +427,26 @@ sequenceDiagram
 
 ---
 
+### `R3h-I` — 工业成熟度对齐（收口轨，不改 Phase 0–3.5 主顺序）
+
+**目的**：把 Phase 0–3 已经落地的发行止血能力，继续收口成更稳定、可回归、可替换的长期结构。`R3h-I` 是 **结构硬化轨**，不是新的产品承诺层。
+
+| 子轨 | 目标 | 主要落位 | 建议接入点 |
+|------|------|----------|------------|
+| **R3h-I1 Runtime Supervisor** | 把 sidecar 启动/探测收成显式 supervisor FSM、watchdog、runtime identity，统一 `bundled` / `app_data` 真相 | `apps/desktop/src-tauri/src/asr_sidecar.rs`、`lib.rs`、`asr_setup/diagnose.rs` | **Phase 1** 稳定后可设计；建议在 **Phase 2–3** 收口 |
+| **R3h-I2 Release System** | 在 Phase 1 已落地的签名校验、`current+previous`、rollback 之上继续收口成更完整的发布元数据、GC、事件化进度与长期可维护结构 | `apps/desktop/src-tauri/src/local_runtime/*.rs`、`apps/desktop/src/services/localRuntime/localRuntimeContract.ts` | 以 **Phase 2** 为主落点，避免早于 Phase 1 |
+| **R3h-I3 Setup Machine** | 将 `ASR setup` 编排改成 reducer/state-machine，统一消费 diagnose / installer / model prepare 事件 | `apps/desktop/src/pages/useAsrSetupController.ts`、`asrSetupState.ts`、相关 contract / wizard 测试 | 依赖 **I1/I2** 契约后再收口，建议靠近 **Phase 3** |
+
+**冻结边界**：
+
+- `R3h-I` **不改**「零终端主路径」与现有 Phase 0–3.5 的产品验收语义。
+- 默认走 **依赖轻** 的内部 reducer / state-machine，不为了 `R3h-I3` 引入 `xstate`。
+- 当前默认口径：**Phase 1** 先落地 `signed manifest`、`pinned key`、`current+previous`、`rollback` 最小闭环；**Phase 2 / R3h-I2** 继续补 `GC`、`progress events`、更完整发布元数据与长期收口。
+- 供应链成熟度补充：release 产物附 `sha256`、SBOM、provenance 摘要与 sidecar smoke 证据；Sigstore / SLSA 可作为后续增强，不阻塞 R3h-0/1 止血。
+- 验证矩阵沿用：`cargo test`、`bash scripts/run-asr-pytest.sh tests -q`、桌面端 `typecheck/test`、`node scripts/check-architecture-guard.mjs`、打包后 sidecar smoke。
+
+---
+
 ### Phase 4 — 本机 LLM 组件（≈2–3 周，可与 R9 前并行设计）
 
 | 子阶段 | 内容 |
@@ -438,6 +476,7 @@ sequenceDiagram
 | **R3e-A / R3g-A** | 可与 Phase 1 **并行开发**；g-A 接口与 LRC manifest 对齐 |
 | **R3d** | 建议在 Phase 2–3 做，纳入统一就绪页 |
 | **新 epic R3h** | 本文件为真源；§4.1 路线图增加 R3h 行 |
+| **`R3h-I`** | 设计可在 **Phase 1 后**并行；实施建议在 **Phase 2–3** 集中收口，不改主顺序 |
 | **R9 REL-1** | 发行门禁增加：零终端侧车安装路径手测 |
 
 **建议实施顺序**：
@@ -445,6 +484,8 @@ sequenceDiagram
 ```text
 R3h-0 (构建+smoke+Win磁盘) → R3h-1 (下载安装) → R3f 手测签收 → R3e-A → R3g-A → R3h-2/3 → R3d → R3h-3.5 (Sherpa Spike) → R3e-B
 ```
+
+`R3h-I` 不单列进上面的产品签收顺序；它作为 **Phase 1 后可设计、Phase 2–3 收口** 的结构硬化轨，与路线图 `§4.1.4` 保持一致。
 
 **审查结论**：**批准** Phase 0→3 按序推进；Phase 3.5 为 **有条件** 中期门控，不阻塞发行止血。
 
@@ -481,12 +522,14 @@ UI **分开展示**「语音识别组件」与「语音模型」占用。
 
 | 模块 | 路径 |
 |------|------|
+| Runtime Supervisor | `apps/desktop/src-tauri/src/runtime_supervisor.rs`（新）或 `asr_sidecar/supervisor.rs` |
 | LRC 核心 | `apps/desktop/src-tauri/src/local_runtime/{manifest,installer,integrity,diagnose}.rs` |
 | ASR 侧车解析 | `apps/desktop/src-tauri/src/asr_sidecar.rs`（改 resolve 顺序） |
 | 诊断扩展 | `apps/desktop/src-tauri/src/asr_setup/diagnose.rs` 或迁入 `local_runtime/diagnose.rs` |
 | 构建 smoke | `scripts/smoke-asr-sidecar-health.sh` |
 | TS 契约 | `apps/desktop/src/services/localRuntime/` |
 | Tauri API | `apps/desktop/src/tauri/localRuntimeApi.ts` |
+| Setup Machine | `apps/desktop/src/pages/asrSetupMachine.ts`（新） |
 | Controller | `useAsrSetupController.ts` → 或 `useLocalRuntimeController.ts` |
 | UI | `envLocalAsr/LocalAsrSetupWizard.tsx`、`EnvironmentReadinessPanel.tsx`（新） |
 | 测试 | Rust unit + Vitest contract；CI smoke |
@@ -499,7 +542,7 @@ UI **分开展示**「语音识别组件」与「语音模型」占用。
 |------|----------|
 | [`asr-sidecar-funasr-policy.md`](../../architecture/asr-sidecar-funasr-policy.md) | §6 增加「应用数据侧车可联网更新」；§9 断点续传归 Phase 2 |
 | [`r3f-asr-setup-wizard-acceptance.md`](./r3f-asr-setup-wizard-acceptance.md) | 主路径改为 R3h；R3f-C 迁至 R3h-E |
-| [`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) | §4.1 增加 R3h 行与顺序 |
+| [`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) | §4.1 增加 R3h 行、顺序与 `R3h-I` 收口轨 |
 | [`docs/architecture/README.md`](../../architecture/README.md) | 索引本文件 |
 | `resources/bundled-asr/README.txt` | 说明 app_data 优先与下载入口 |
 
@@ -528,6 +571,10 @@ UI **分开展示**「语音识别组件」与「语音模型」占用。
 | **R3** | GitHub Releases 单文件 **2GB** 上限 | 中 | 压缩 zip；超限分卷或对象存储 + `mirror_urls` |
 | **R4** | Defender / Gatekeeper 拦截下载二进制 | 中 | 官方发布管道 + 哈希校验 + UI 说明来源 |
 | **R5** | 侧车×模型×平台×CUDA/CPU 矩阵膨胀 | 低 | `min_shell_version`；壳与 manifest 同发；模型由 FunASR 向后兼容 |
+| **R6** | manifest 源被替换导致 URL 与 hash 同时被篡改 | 高 | R3h-I2：signed manifest + pinned public key；生产禁用非 HTTPS / 非内置源 |
+| **R7** | 安装失败时覆盖或删除旧 runtime | 高 | R3h-2：current+previous / A/B 槽；验证通过后切换；失败保留旧版 |
+| **R8** | manifest 文档契约与代码 schema 漂移 | 中 | R3h-1：统一 schema 真源并补 Rust / TS contract test |
+| **R9** | 2GB 级下载在弱网、代理、企业网络中失败 | 中 | R3h-2：Range 续传、mirror fallback、proxy / timeout、弱网手测 |
 
 ### 10.2 长期技术雷达
 
@@ -552,6 +599,9 @@ UI **分开展示**「语音识别组件」与「语音模型」占用。
 - [ ] **Windows 磁盘**：空间不足时准备/下载前有预警（Phase 0）。  
 - [ ] **弱网/断网**：下载中断可重试或续传（Phase 2）；无网 bundled 回退（Phase 1）。  
 - [ ] **并发安全**：连点「一键准备」不重复下载/重复 spawn（§3.6）。  
+- [ ] **发行信任**：manifest 已签名并用壳内 pinned key 验证；artifact hash 必检。
+- [ ] **升级回滚**：新 runtime 验证失败时旧版仍可用；可恢复到 previous / bundled。
+- [ ] **Schema 单一真源**：manifest 文档、Rust parser、TS contract、示例文件一致。
 
 ---
 
@@ -579,6 +629,7 @@ UI **分开展示**「语音识别组件」与「语音模型」占用。
 | C1–C2 代码缺口 | → Phase 0 |
 | R1–R5 风险 | → §10.1 |
 | 竞品补充借鉴 | → §2.4–2.5 |
+| 工业级评估补充（signed manifest / rollback / SBOM / schema drift） | → Phase 1/2、R3h-I、§10.1、§11 |
 
 完整审查原文：[`rushi-local-runtime-catalog-remediation-plan-review.md`](./rushi-local-runtime-catalog-remediation-plan-review.md)。
 

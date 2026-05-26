@@ -7,7 +7,7 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 
 use rusqlite::{Connection, OpenFlags};
-use tauri::State;
+use tauri::{AppHandle, State};
 use zip::write::SimpleFileOptions;
 use zip::CompressionMethod;
 use zip::ZipWriter;
@@ -22,7 +22,7 @@ fn zip_opts() -> SimpleFileOptions {
 }
 
 #[tauri::command]
-pub fn export_diagnostic_bundle(state: State<DbState>) -> Result<Option<String>, String> {
+pub fn export_diagnostic_bundle(app: AppHandle, state: State<DbState>) -> Result<Option<String>, String> {
     let st: &DbState = state.deref();
     let picked = rfd::FileDialog::new()
         .add_filter("ZIP", &["zip"])
@@ -48,6 +48,35 @@ pub fn export_diagnostic_bundle(state: State<DbState>) -> Result<Option<String>,
     zip.start_file("build-info.txt", zip_opts())
         .map_err(|e| e.to_string())?;
     zip.write_all(meta.as_bytes()).map_err(|e| e.to_string())?;
+
+    let manifest_probe = crate::local_runtime::catalog::diagnose_configured_manifest();
+    let installed_runtime = crate::local_runtime::integrity::inspect_installed_runtime(&st.root);
+    let runtime_source = match installed_runtime.status {
+        crate::local_runtime::integrity::InstalledRuntimeStatus::Installed
+        | crate::local_runtime::integrity::InstalledRuntimeStatus::Corrupt => "app_data",
+        crate::local_runtime::integrity::InstalledRuntimeStatus::Missing
+            if crate::asr_sidecar::bundled_sidecar_resources_present(&app) =>
+        {
+            "bundled"
+        }
+        crate::local_runtime::integrity::InstalledRuntimeStatus::Missing => "missing",
+    };
+    let local_runtime_note = format!(
+        "manifest_source: {}\nmanifest_status: {}\nmanifest_signature_key_id: {}\navailable_version: {}\nruntime_source: {}\ncurrent_version: {}\nprevious_version: {}\nlast_verify_error: {}\nlast_install_phase: {}\n",
+        manifest_probe.source.as_deref().unwrap_or("(missing)"),
+        manifest_probe.status,
+        manifest_probe.signature_key_id.as_deref().unwrap_or("(none)"),
+        manifest_probe.available_version.as_deref().unwrap_or("(none)"),
+        runtime_source,
+        installed_runtime.version.as_deref().unwrap_or("(none)"),
+        installed_runtime.previous_version.as_deref().unwrap_or("(none)"),
+        installed_runtime.last_verify_error.as_deref().unwrap_or("(none)"),
+        installed_runtime.last_install_phase.as_deref().unwrap_or("(none)"),
+    );
+    zip.start_file("local-runtime.txt", zip_opts())
+        .map_err(|e| e.to_string())?;
+    zip.write_all(local_runtime_note.as_bytes())
+        .map_err(|e| e.to_string())?;
 
     let mut include_db = false;
     let db_note = if let Ok(meta_db) = fs::metadata(&st.db_path) {
@@ -150,6 +179,7 @@ pub fn export_diagnostic_bundle(state: State<DbState>) -> Result<Option<String>,
     zip.write_all(
         b"Files in this zip:\n\
 - build-info.txt - version, OS, app_data_root, db_path\n\
+- local-runtime.txt - manifest source/status, runtime source, current/previous version, verify/install context\n\
 - database-readme.txt - whether rushi.sqlite3 is embedded\n\
 - rushi.sqlite3 - optional copy (small DB only)\n\
 - recent_edit_log.tsv - last 500 rows from SQLite edit_log (tab-separated)\n\

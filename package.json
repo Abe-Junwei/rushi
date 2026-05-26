@@ -19,6 +19,7 @@
     "asr:test": "bash scripts/run-asr-pytest.sh",
     "desktop:test:e2e": "npm run test:e2e -w @rushi/desktop",
     "asr:build-sidecar-unix": "bash scripts/build-asr-sidecar-unix.sh",
+    "asr:prepare-local-runtime-fixtures": "bash scripts/prepare-local-runtime-fixtures.sh",
     "asr:build-sidecar-windows-cpu": "powershell -ExecutionPolicy Bypass -File scripts/build-asr-sidecar-windows.ps1",
     "asr:build-sidecar-windows-cuda": "powershell -ExecutionPolicy Bypass -File scripts/build-asr-sidecar-windows.ps1 -Variant Cuda",
     "asr:regen-sidecar-locks": "bash scripts/regen-sidecar-cpu-lock.sh && bash scripts/regen-sidecar-cuda-win-lock.sh",
