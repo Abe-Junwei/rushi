@@ -1,6 +1,7 @@
 use crate::asr_sidecar::{
     probe_asr_port, AsrPortStatus, BundledAsrLaunchReport, BundledAsrLaunchState,
 };
+use crate::local_runtime::integrity::{inspect_installed_runtime, InstalledRuntimeStatus};
 use crate::DbState;
 use serde::Serialize;
 use serde_json::Value;
@@ -18,6 +19,9 @@ pub struct AsrSetupHealthSnapshot {
     pub funasr_import_ok: bool,
     pub funasr_ready: bool,
     pub funasr_default_model_cached: bool,
+    pub funasr_vad_model_cached: bool,
+    pub funasr_required_models_cached: bool,
+    pub ready_for_transcribe: bool,
     pub transcription_mode: String,
 }
 
@@ -59,12 +63,21 @@ fn health_snapshot_from_value(v: &Value) -> AsrSetupHealthSnapshot {
     let funasr_ready = v.get("funasr_ready").and_then(|x| x.as_bool()) == Some(true);
     let funasr_default_model_cached =
         v.get("funasr_default_model_cached").and_then(|x| x.as_bool()) == Some(true);
+    let funasr_vad_model_cached =
+        v.get("funasr_vad_model_cached").and_then(|x| x.as_bool()) == Some(true);
+    let funasr_required_models_cached =
+        v.get("funasr_required_models_cached").and_then(|x| x.as_bool()) == Some(true);
+    let ready_for_transcribe =
+        v.get("ready_for_transcribe").and_then(|x| x.as_bool()) == Some(true);
     AsrSetupHealthSnapshot {
         health_reachable: true,
         ffmpeg_ok,
         funasr_import_ok,
         funasr_ready,
         funasr_default_model_cached,
+        funasr_vad_model_cached,
+        funasr_required_models_cached,
+        ready_for_transcribe,
         transcription_mode: mode.to_string(),
     }
 }
@@ -123,6 +136,13 @@ fn infer_sidecar_integrity(
             if matches!(port, AsrPortStatus::RushiAsr | AsrPortStatus::Free) {
                 return "corrupt";
             }
+        }
+        HealthFetch::Ok(_)
+            if matches!(port, AsrPortStatus::Foreign)
+                && !health.funasr_import_ok
+                && !health.ffmpeg_ok =>
+        {
+            return "unknown";
         }
         HealthFetch::Ok(_) if health.health_reachable && health.funasr_import_ok => return "ok",
         _ => {}
@@ -192,6 +212,7 @@ fn build_summary(
     port_status: &AsrPortStatus,
     port_detail: &Option<String>,
     bundled_available: bool,
+    local_runtime_installed: bool,
     sidecar_integrity: &str,
     bundled_launch: &BundledAsrLaunchReport,
     health: &AsrSetupHealthSnapshot,
@@ -227,6 +248,8 @@ fn build_summary(
         } else if sidecar_integrity == "unknown" {
             lines.push("侧车完整性尚未确认，可尝试一键准备启动后再诊断。".into());
         }
+    } else if local_runtime_installed {
+        lines.push("应用数据目录已检测到已安装的侧车运行时。".into());
     } else {
         lines.push("未检测到内置侧车（开发环境需先 build sidecar，或使用手动 ASR）。".into());
         if blocking.is_none() && !health.health_reachable {
@@ -243,8 +266,10 @@ fn build_summary(
     }
 
     if health.health_reachable {
-        if health.funasr_ready {
-            lines.push("FunASR 推理已就绪。".into());
+        if health.ready_for_transcribe {
+            lines.push("FunASR 与必需模型均已就绪，可直接转写。".into());
+        } else if health.funasr_ready {
+            lines.push("FunASR 运行时已就绪。".into());
         } else if health.ffmpeg_ok {
             lines.push("ASR 已连通，但 FunASR 未就绪（可能仍为 stub）。".into());
             if blocking.is_none() && sidecar_integrity != "corrupt" {
@@ -256,19 +281,30 @@ fn build_summary(
                 blocking = Some("侧车内 FFmpeg 不可用，无法解码音频。".into());
             }
         }
-        if health.funasr_default_model_cached {
-            lines.push("默认转写模型已缓存。".into());
+        if health.funasr_required_models_cached {
+            lines.push("默认转写模型及必需辅助模型已缓存。".into());
+        } else if health.funasr_default_model_cached && !health.funasr_vad_model_cached {
+            lines.push("默认转写模型已缓存，但辅助 VAD 模型尚未完成。".into());
+            if blocking.is_none() {
+                blocking = Some("默认模型缓存未完整完成，请继续执行一键准备或重新下载模型。".into());
+            }
         } else if health.funasr_ready {
             lines.push("默认模型尚未下载，一键准备将拉取 SenseVoiceSmall 权重。".into());
         }
     } else if blocking.is_none() && sidecar_integrity != "corrupt" {
         lines.push("尚未连通 rushi-asr /health。".into());
-        blocking = Some("无法读取 ASR 能力。请先一键准备或重试内置侧车。".into());
+        blocking = Some(
+            if local_runtime_installed {
+                "无法读取 ASR 能力。请先一键准备或重试应用数据侧车。".into()
+            } else {
+                "无法读取 ASR 能力。请先一键准备或重试内置侧车。".into()
+            },
+        );
     }
 
     if disk_low {
         lines.push("模型缓存所在磁盘可用空间不足 500MB，下载可能失败。".into());
-        if blocking.is_none() && health.funasr_ready && !health.funasr_default_model_cached {
+        if blocking.is_none() && health.funasr_ready && !health.funasr_required_models_cached {
             blocking = Some("磁盘空间不足，请先清理后再下载模型。".into());
         }
     }
@@ -298,6 +334,8 @@ pub async fn asr_setup_diagnose(
         .try_state::<BundledAsrLaunchState>()
         .map(|s| s.0.lock().map(|g| g.clone()).unwrap_or_default())
         .unwrap_or_default();
+    let local_runtime_installed =
+        inspect_installed_runtime(&st.root).status == InstalledRuntimeStatus::Installed;
 
     let health_fetch = fetch_rushi_health().await;
     let health = match &health_fetch {
@@ -308,6 +346,9 @@ pub async fn asr_setup_diagnose(
             funasr_import_ok: false,
             funasr_ready: false,
             funasr_default_model_cached: false,
+            funasr_vad_model_cached: false,
+            funasr_required_models_cached: false,
+            ready_for_transcribe: false,
             transcription_mode: "stub".into(),
         },
     };
@@ -318,13 +359,13 @@ pub async fn asr_setup_diagnose(
     let disk_free_bytes = disk_free_bytes(&models_root);
     let disk_low = disk_free_bytes.map(|b| b < DISK_LOW_BYTES).unwrap_or(false);
 
-    let ready_for_transcribe =
-        health.health_reachable && health.funasr_ready && health.funasr_default_model_cached;
+    let ready_for_transcribe = health.health_reachable && health.ready_for_transcribe;
 
     let (summary_lines, blocking_issue) = build_summary(
         &port.status,
         &port.detail,
         bundled_available,
+        local_runtime_installed,
         &sidecar_integrity,
         &bundled_launch,
         &health,
@@ -362,6 +403,9 @@ mod tests {
             "funasr_import_ok": true,
             "funasr_ready": true,
             "funasr_default_model_cached": false,
+            "funasr_vad_model_cached": false,
+            "funasr_required_models_cached": false,
+            "ready_for_transcribe": false,
             "transcription_mode": "funasr"
         });
         let h = health_snapshot_from_value(&v);
@@ -378,12 +422,16 @@ mod tests {
             funasr_import_ok: false,
             funasr_ready: false,
             funasr_default_model_cached: false,
+            funasr_vad_model_cached: false,
+            funasr_required_models_cached: false,
+            ready_for_transcribe: false,
             transcription_mode: "stub".into(),
         };
         let (_lines, block) = build_summary(
             &AsrPortStatus::Foreign,
             &Some("占用".into()),
             true,
+            false,
             "unknown",
             &BundledAsrLaunchReport::default(),
             &health,
@@ -400,6 +448,9 @@ mod tests {
             funasr_import_ok: false,
             funasr_ready: false,
             funasr_default_model_cached: false,
+            funasr_vad_model_cached: false,
+            funasr_required_models_cached: false,
+            ready_for_transcribe: false,
             transcription_mode: "stub".into(),
         };
         assert_eq!(
@@ -421,6 +472,9 @@ mod tests {
             funasr_import_ok: true,
             funasr_ready: true,
             funasr_default_model_cached: false,
+            funasr_vad_model_cached: false,
+            funasr_required_models_cached: false,
+            ready_for_transcribe: false,
             transcription_mode: "funasr".into(),
         };
         let v = json!({ "service": "rushi-asr", "funasr_import_ok": true });
@@ -438,6 +492,9 @@ mod tests {
             funasr_import_ok: false,
             funasr_ready: false,
             funasr_default_model_cached: false,
+            funasr_vad_model_cached: false,
+            funasr_required_models_cached: false,
+            ready_for_transcribe: false,
             transcription_mode: "stub".into(),
         };
         assert_eq!(
@@ -459,12 +516,16 @@ mod tests {
             funasr_import_ok: false,
             funasr_ready: false,
             funasr_default_model_cached: false,
+            funasr_vad_model_cached: false,
+            funasr_required_models_cached: false,
+            ready_for_transcribe: false,
             transcription_mode: "stub".into(),
         };
         let (lines, block) = build_summary(
             &AsrPortStatus::RushiAsr,
             &None,
             true,
+            false,
             "corrupt",
             &BundledAsrLaunchReport::default(),
             &health,
@@ -472,5 +533,60 @@ mod tests {
         );
         assert!(lines.iter().any(|l| l.contains("损坏")));
         assert!(block.is_some());
+    }
+
+    #[test]
+    fn partial_aux_model_blocks_ready_summary() {
+        let health = AsrSetupHealthSnapshot {
+            health_reachable: true,
+            ffmpeg_ok: true,
+            funasr_import_ok: true,
+            funasr_ready: true,
+            funasr_default_model_cached: true,
+            funasr_vad_model_cached: false,
+            funasr_required_models_cached: false,
+            ready_for_transcribe: false,
+            transcription_mode: "stub".into(),
+        };
+        let (lines, block) = build_summary(
+            &AsrPortStatus::RushiAsr,
+            &None,
+            true,
+            false,
+            "ok",
+            &BundledAsrLaunchReport::default(),
+            &health,
+            false,
+        );
+        assert!(lines.iter().any(|l| l.contains("VAD")));
+        assert!(block.is_some());
+    }
+
+    #[test]
+    fn installed_local_runtime_changes_missing_bundle_summary() {
+        let health = AsrSetupHealthSnapshot {
+            health_reachable: false,
+            ffmpeg_ok: false,
+            funasr_import_ok: false,
+            funasr_ready: false,
+            funasr_default_model_cached: false,
+            funasr_vad_model_cached: false,
+            funasr_required_models_cached: false,
+            ready_for_transcribe: false,
+            transcription_mode: "stub".into(),
+        };
+        let (lines, block) = build_summary(
+            &AsrPortStatus::Free,
+            &None,
+            false,
+            true,
+            "not_installed",
+            &BundledAsrLaunchReport::default(),
+            &health,
+            false,
+        );
+        assert!(lines.iter().any(|l| l.contains("应用数据目录已检测到已安装的侧车运行时")));
+        assert!(block.is_some());
+        assert!(block.unwrap().contains("应用数据侧车"));
     }
 }

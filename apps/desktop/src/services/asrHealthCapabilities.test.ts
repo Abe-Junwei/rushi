@@ -11,13 +11,17 @@ describe("parseAsrHealthJson", () => {
       funasr_model_configured: true,
       funasr_model_explicit_from_env: false,
       funasr_default_model_cached: false,
+      funasr_vad_model_cached: false,
+      funasr_required_models_cached: false,
       funasr_ready: false,
+      ready_for_transcribe: false,
       transcription_mode: "stub",
       funasr_model_id: "iic/SenseVoiceSmall",
       rushi_models_root: "/tmp/models",
     });
     expect(caps).not.toBeNull();
     expect(caps!.funasr_default_model_cached).toBe(false);
+    expect(caps!.funasr_required_models_cached).toBe(false);
     expect(caps!.rushi_models_root).toBe("/tmp/models");
   });
 

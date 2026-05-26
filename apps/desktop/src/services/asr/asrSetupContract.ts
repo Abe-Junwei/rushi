@@ -8,6 +8,9 @@ export interface AsrSetupHealthSnapshot {
   funasrImportOk: boolean;
   funasrReady: boolean;
   funasrDefaultModelCached: boolean;
+  funasrVadModelCached: boolean;
+  funasrRequiredModelsCached: boolean;
+  readyForTranscribe: boolean;
   transcriptionMode: string;
 }
 
@@ -29,6 +32,7 @@ export interface AsrSetupReport {
 }
 
 export type AsrSetupStepStatus = "pending" | "running" | "ok" | "error" | "skipped";
+export type AsrSetupOutcome = "idle" | "running" | "blocked" | "ready" | "error";
 
 export type AsrSetupStepId = "diagnose" | "sidecar" | "health" | "model" | "done";
 

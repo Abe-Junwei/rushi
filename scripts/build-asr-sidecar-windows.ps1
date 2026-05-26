@@ -34,6 +34,28 @@ switch ($Variant) {
 $Dest = Join-Path $Root $DestRel
 $Lock = Join-Path $Asr $LockName
 
+function Ensure-FunasrOnedirData {
+  param(
+    [Parameter(Mandatory = $true)]
+    [string]$InternalDir
+  )
+
+  $Marker = Join-Path $InternalDir "funasr\version.txt"
+  if (Test-Path $Marker) {
+    return
+  }
+
+  Write-Warning "$Marker missing after PyInstaller; copying funasr from build venv"
+  $Site = python -c "import funasr, pathlib; print(pathlib.Path(funasr.__file__).resolve().parent)"
+  $FunasrDir = Join-Path $InternalDir "funasr"
+  if (Test-Path $FunasrDir) { Remove-Item -Recurse -Force $FunasrDir }
+  New-Item -ItemType Directory -Force $FunasrDir | Out-Null
+  Copy-Item -Recurse (Join-Path $Site "*") $FunasrDir
+  if (-not (Test-Path $Marker)) {
+    throw "FATAL: funasr package data still missing at $Marker"
+  }
+}
+
 if (-not (Get-Command python -ErrorAction SilentlyContinue)) {
   Write-Error "python not on PATH (install Python 3.12+)"
 }
@@ -80,6 +102,8 @@ pyinstaller --noconfirm --clean --onedir --name $PyInstallerName `
   --collect-submodules omegaconf `
   --collect-submodules torchaudio `
   rushi_sidecar_entry.py
+
+Ensure-FunasrOnedirData -InternalDir (Join-Path $Asr "dist\$PyInstallerName\_internal")
 
 if (Test-Path $Dest) { Remove-Item -Recurse -Force $Dest }
 New-Item -ItemType Directory -Force (Split-Path $Dest) | Out-Null

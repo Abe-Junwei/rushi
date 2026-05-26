@@ -67,7 +67,7 @@ export function ProjectHeader({
               FFmpeg
             </span>
               <span className="flex items-center gap-2 font-mono text-[12px] text-notion-text-muted">
-              <WelcomeStatusDot ok={asrHealth === "ok" && asrCaps?.funasr_ready === true} />
+              <WelcomeStatusDot ok={asrHealth === "ok" && asrCaps?.ready_for_transcribe === true} />
               ASR
             </span>
             <button
@@ -111,7 +111,11 @@ export function ProjectHeader({
             </span>
             <span className="flex items-center gap-1.5">
               <StatusDot ok={asrCaps.funasr_ready} />
-              转写就绪
+              运行时就绪
+            </span>
+            <span className="flex items-center gap-1.5">
+              <StatusDot ok={asrCaps.ready_for_transcribe === true} />
+              可直接转写
             </span>
           </div>
         ) : asrHealth === "checking" ? (

@@ -53,7 +53,11 @@ use crate::DbState;
 /// `app_data_dir()` 已含 bundle id（`studio.lingchuang.rushi`）；旧版误再拼一层，若该处已有 DB 则继续用嵌套路径。
 fn resolve_app_data_root(app_data: PathBuf) -> PathBuf {
     let legacy = app_data.join("studio.lingchuang.rushi");
-    if legacy.join("rushi.sqlite3").is_file() {
+    let has_legacy_state = legacy.join("rushi.sqlite3").is_file()
+        || legacy.join("models").is_dir()
+        || legacy.join("logs").is_dir()
+        || legacy.join("projects").is_dir();
+    if has_legacy_state {
         return legacy;
     }
     app_data
@@ -89,6 +93,15 @@ mod app_data_root_tests {
         let legacy = temp.join("studio.lingchuang.rushi");
         fs::create_dir_all(&legacy).unwrap();
         fs::write(legacy.join("rushi.sqlite3"), b"").unwrap();
+        assert_eq!(resolve_app_data_root(temp.clone()), legacy);
+        let _ = fs::remove_dir_all(&temp);
+    }
+
+    #[test]
+    fn prefers_legacy_nested_root_when_models_exist() {
+        let temp = std::env::temp_dir().join(format!("rushi-app-data-{}", Uuid::new_v4()));
+        let legacy = temp.join("studio.lingchuang.rushi");
+        fs::create_dir_all(legacy.join("models")).unwrap();
         assert_eq!(resolve_app_data_root(temp.clone()), legacy);
         let _ = fs::remove_dir_all(&temp);
     }

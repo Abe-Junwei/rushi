@@ -101,8 +101,8 @@ def transcribe_upload(
 
     if not segments and engine == "stub":
         warnings.append(
-            "stub_no_placeholder_segment: 未安装 FunASR 或引擎不可用；可在桌面端波形空白处拖选新建语段，"
-            "或安装 pip install -e \".[funasr]\" 后重启 ASR（可选设置 RUSHI_FUNASR_MODEL）。",
+            "stub_no_placeholder_segment: FunASR 未安装、运行时不可用，或当前模型尚未准备完成；"
+            "可在桌面端波形空白处拖选新建语段，或先完成 FunASR 安装与模型准备后再重试。",
         )
 
     if hw_norm and engine == "stub":

@@ -56,6 +56,16 @@ export function describePrepareModelFailure(code: string): PrepareModelFailureCo
       ],
     };
   }
+  if (c === "vad_prepare_incomplete") {
+    return {
+      headline: "辅助 VAD 模型未完整落盘，当前仍不能稳定转写。",
+      tips: [
+        "删除对应 VAD 缓存目录后重新点「下载默认模型」，让主模型与辅助模型一起补齐。",
+        "若多次复现：检查网络/VPN，避免在下载过程中中断 rushi-asr 进程。",
+        ...commonRetryTips(),
+      ],
+    };
+  }
   if (c === "model_manifest_path_missing") {
     return {
       headline: "已启用模型 manifest 校验，但找不到校验清单文件。",

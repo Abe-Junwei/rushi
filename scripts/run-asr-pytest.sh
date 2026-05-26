@@ -43,6 +43,7 @@ if [[ ! -x "$VENV/bin/python" ]]; then
 fi
 # shellcheck source=/dev/null
 source "$VENV/bin/activate"
-python -m pip install -q -U pip
-python -m pip install -q -e ".[dev]"
-exec python -m pytest "$@"
+PY_BIN="$VENV/bin/python"
+"$PY_BIN" -m pip install -q -U pip
+"$PY_BIN" -m pip install -q -e ".[dev]"
+exec "$PY_BIN" -m pytest "$@"

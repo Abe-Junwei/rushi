@@ -25,7 +25,6 @@ export function useProjectController() {
     refreshAsrHealth: asr.refreshAsrHealth,
     refreshAsrRuntimeInfo,
     prepareDefaultFunasrModel: asr.prepareDefaultFunasrModel,
-    prepareModelBusy: asr.prepareModelBusy,
   });
 
   return {

@@ -7,7 +7,6 @@ import type { AsrHealthCapabilities, AsrModelCacheInfo, BundledAsrLaunchReport }
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 import type { AsrSetupControllerApi } from "../pages/useAsrSetupController";
 import { LocalAsrAdvancedSection } from "./envLocalAsr/LocalAsrAdvancedSection";
-import { LocalAsrGuidanceSection } from "./envLocalAsr/LocalAsrGuidanceSection";
 import { LocalAsrCacheSection } from "./envLocalAsr/LocalAsrCacheSection";
 import { LocalAsrSetupWizard } from "./envLocalAsr/LocalAsrSetupWizard";
 
@@ -60,8 +59,9 @@ export function EnvLocalAsrPanel({
 }: Props) {
   const envOk = asrHealth === "ok";
   const ffmpegOk = asrCaps?.ffmpeg_ok === true;
-  const funasrReady = asrHealth === "ok" && asrCaps?.funasr_ready === true;
-  const progress = prepareModelBusy ? prepareModelProgress : asrCaps?.funasr_default_model_cached ? 100 : 0;
+  const runtimeReady = asrHealth === "ok" && asrCaps?.funasr_ready === true;
+  const transcribeReady = asrHealth === "ok" && asrCaps?.ready_for_transcribe === true;
+  const progress = prepareModelBusy ? prepareModelProgress : asrCaps?.funasr_required_models_cached ? 100 : 0;
 
   return (
     <div className="flex w-full min-w-0 flex-col gap-8">
@@ -74,7 +74,8 @@ export function EnvLocalAsrPanel({
         <div className="flex flex-col">
           <StatusRow label="环境" ok={envOk} text={envOk ? "正常" : "异常"} />
           <StatusRow label="FFmpeg" ok={ffmpegOk} text={ffmpegOk ? "已安装" : "未安装"} />
-          <StatusRow label="FunASR" ok={funasrReady} text={funasrReady ? "就绪" : "未就绪"} last />
+          <StatusRow label="FunASR 运行时" ok={runtimeReady} text={runtimeReady ? "就绪" : "未就绪"} />
+          <StatusRow label="可直接转写" ok={transcribeReady} text={transcribeReady ? "就绪" : "未就绪"} last />
         </div>
 
         <div className="flex justify-start gap-3">
@@ -87,8 +88,6 @@ export function EnvLocalAsrPanel({
       <div className="h-px bg-notion-divider" />
 
       <LocalAsrSetupWizard setup={asrSetup} busy={busy} />
-
-      <LocalAsrGuidanceSection asrHealth={asrHealth} asrCaps={asrCaps} />
 
       <LocalAsrAdvancedSection
         asrHealth={asrHealth}
@@ -149,10 +148,12 @@ export function EnvLocalAsrPanel({
           </div>
           <p className={PANEL_TYPOGRAPHY.meta}>
             {prepareModelBusy
-              ? "正在下载 checkpoint 压缩包..."
-              : asrCaps?.funasr_default_model_cached
-                ? "默认模型已缓存，可直接用于本地转写。"
-                : "默认模型尚未缓存，可预先下载以减少首次转写等待。"}
+              ? "正在下载默认模型与必需辅助模型..."
+              : asrCaps?.funasr_required_models_cached
+                ? "默认模型与必需辅助模型已缓存，可直接用于本地转写。"
+                : asrCaps?.funasr_default_model_cached
+                  ? "主模型已缓存，但辅助模型尚未完成。"
+                  : "默认模型尚未缓存，可预先下载以减少首次转写等待。"}
           </p>
         </div>
 

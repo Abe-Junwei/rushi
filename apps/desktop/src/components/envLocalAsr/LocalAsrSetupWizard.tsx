@@ -13,17 +13,22 @@ type Props = {
 export function LocalAsrSetupWizard({ setup, busy }: Props) {
   const {
     setupReport,
+    localRuntimeDiag,
     setupSteps,
     setupBusy,
     diagnoseBusy,
     setupMessage,
+    setupOutcome,
     portConflict,
     refreshSetupDiagnose,
+    refreshLocalRuntimeDiagnose,
+    downloadLocalRuntime,
+    cancelLocalRuntime,
     runOneClickAsrPrepare,
     acceptForeignPortService,
   } = setup;
 
-  const wizardBusy = busy || setupBusy;
+  const wizardBusy = busy || setupBusy || diagnoseBusy;
   const refreshDisabled = setupBusy || diagnoseBusy || !isTauriRuntime();
 
   useEffect(() => {
@@ -56,13 +61,54 @@ export function LocalAsrSetupWizard({ setup, busy }: Props) {
           ) : null}
           {setupReport.sidecarIntegrity === "corrupt" ? (
             <li className="rounded bg-zen-cinnabar/10 px-3 py-1.5 text-zen-cinnabar">
-              内置侧车包完整性异常，一键准备无法修复损坏的安装包。
+              内置侧车包完整性异常；一键准备会尝试改用应用数据侧车恢复当前环境。
             </li>
           ) : null}
         </ul>
       ) : (
         <p className={PANEL_TYPOGRAPHY.meta}>尚未诊断。点击下方按钮开始。</p>
       )}
+
+      {localRuntimeDiag ? (
+        <div className="rounded bg-notion-callout-bg px-3 py-2 text-[12px] text-notion-text-muted">
+          <p className="font-medium text-notion-text">应用内侧车运行时</p>
+          <p className="mt-1">
+            {localRuntimeDiag.installed.status === "installed"
+              ? `已安装${localRuntimeDiag.installed.version ? `（${localRuntimeDiag.installed.version}）` : ""}`
+              : localRuntimeDiag.install.phase === "downloading" || localRuntimeDiag.install.phase === "installing"
+                ? localRuntimeDiag.install.message
+                : localRuntimeDiag.blockingIssue ?? "尚未安装。"}
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button
+              type="button"
+              className={CONTROL_BTN_SECONDARY}
+              disabled={wizardBusy || !localRuntimeDiag.manifestConfigured}
+              onClick={() => void downloadLocalRuntime()}
+            >
+              下载 / 修复语音识别组件
+            </button>
+            {(localRuntimeDiag.install.phase === "downloading" || localRuntimeDiag.install.phase === "installing") ? (
+              <button
+                type="button"
+                className={CONTROL_BTN_SECONDARY}
+                disabled={wizardBusy}
+                onClick={() => void cancelLocalRuntime()}
+              >
+                取消下载
+              </button>
+            ) : null}
+            <button
+              type="button"
+              className={CONTROL_BTN_SECONDARY}
+              disabled={wizardBusy}
+              onClick={() => void refreshLocalRuntimeDiagnose()}
+            >
+              刷新组件状态
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       <ol className="flex flex-col gap-2">
         {setupSteps.map((step) => (
@@ -121,7 +167,13 @@ export function LocalAsrSetupWizard({ setup, busy }: Props) {
 
       {setupMessage ? (
         <p
-          className={`text-sm ${setupMessage.includes("完成") ? "text-zen-success" : "text-notion-text-muted"}`}
+          className={`text-sm ${
+            setupOutcome === "ready"
+              ? "text-zen-success"
+              : setupOutcome === "error" || setupOutcome === "blocked"
+                ? "text-zen-cinnabar"
+                : "text-notion-text-muted"
+          }`}
           role="status"
         >
           {setupMessage}

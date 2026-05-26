@@ -21,6 +21,8 @@ use tauri::{AppHandle, Manager};
 use crate::DbState;
 
 pub const ASR_HEALTH_URL: &str = "http://127.0.0.1:8741/health";
+const BUNDLED_HEALTH_WAIT_MS: u64 = 45_000;
+const BUNDLED_HEALTH_POLL_MS: u64 = 250;
 
 pub struct AsrSidecarState(pub Mutex<Option<Child>>);
 
@@ -35,6 +37,12 @@ pub struct BundledAsrLaunchReport {
 }
 
 pub struct BundledAsrLaunchState(pub Mutex<BundledAsrLaunchReport>);
+
+fn append_sidecar_log_line(handle: &AppHandle, line: &str) {
+    if let Some(st) = handle.try_state::<DbState>() {
+        crate::project::utils::append_desktop_log_line(&st, line);
+    }
+}
 
 fn write_launch_report(handle: &AppHandle, report: BundledAsrLaunchReport) {
     if let Some(st) = handle.try_state::<BundledAsrLaunchState>() {
@@ -134,19 +142,28 @@ fn bundled_sidecar_try_order(resource_root: &Path) -> Vec<PathBuf> {
     bundled_cpu_executable(resource_root).into_iter().collect()
 }
 
-fn candidate_resource_roots(handle: &AppHandle) -> Vec<PathBuf> {
+fn candidate_resource_roots_from_parts(
+    resource_dir: Option<PathBuf>,
+    manifest_dir: &Path,
+) -> Vec<PathBuf> {
     let mut roots = Vec::new();
-
-    if let Ok(res_dir) = handle.path().resource_dir() {
+    if let Some(res_dir) = resource_dir {
         roots.push(res_dir.clone());
         if res_dir.file_name().and_then(|s| s.to_str()) != Some("resources") {
             roots.push(res_dir.join("resources"));
         }
     }
 
-    // In `tauri dev`, the source resources directory is the most reliable place to
-    // inspect the freshly rebuilt PyInstaller onedir.
-    roots.push(PathBuf::from(env!("CARGO_MANIFEST_DIR")).join("resources"));
+    roots.push(manifest_dir.join("target").join("debug").join("resources"));
+    roots.push(
+        manifest_dir
+            .parent()
+            .unwrap_or(manifest_dir)
+            .join("target")
+            .join("debug")
+            .join("resources"),
+    );
+    roots.push(manifest_dir.join("resources"));
 
     let mut unique = Vec::new();
     for root in roots {
@@ -157,13 +174,35 @@ fn candidate_resource_roots(handle: &AppHandle) -> Vec<PathBuf> {
     unique
 }
 
-fn bundled_sidecar_candidates(handle: &AppHandle) -> Vec<PathBuf> {
+fn candidate_resource_roots(handle: &AppHandle) -> Vec<PathBuf> {
+    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+    // In `tauri dev`, the source resources directory is the most reliable place to
+    // inspect the freshly rebuilt PyInstaller onedir.
+    candidate_resource_roots_from_parts(handle.path().resource_dir().ok(), &manifest_dir)
+}
+
+fn bundled_sidecar_candidates_from_roots(roots: &[PathBuf]) -> Vec<PathBuf> {
     let mut out = Vec::new();
-    for root in candidate_resource_roots(handle) {
-        for exe in bundled_sidecar_try_order(&root) {
+    for root in roots {
+        for exe in bundled_sidecar_try_order(root) {
             if !out.iter().any(|existing: &PathBuf| existing == &exe) {
                 out.push(exe);
             }
+        }
+    }
+    out
+}
+
+fn bundled_sidecar_candidates(handle: &AppHandle) -> Vec<PathBuf> {
+    let mut out = Vec::new();
+    if let Some(st) = handle.try_state::<DbState>() {
+        if let Some(exe) = crate::local_runtime::integrity::resolve_installed_executable(&st.root) {
+            out.push(exe);
+        }
+    }
+    for exe in bundled_sidecar_candidates_from_roots(&candidate_resource_roots(handle)) {
+        if !out.iter().any(|existing: &PathBuf| existing == &exe) {
+            out.push(exe);
         }
     }
     out
@@ -252,7 +291,7 @@ pub async fn probe_asr_port() -> AsrPortProbe {
 
 /// True when install media includes at least one bundled sidecar executable.
 pub fn bundled_sidecar_resources_present(handle: &AppHandle) -> bool {
-    !bundled_sidecar_candidates(handle).is_empty()
+    !bundled_sidecar_candidates_from_roots(&candidate_resource_roots(handle)).is_empty()
 }
 
 /// True when `GET /health` returns JSON that looks like **this** rushi-asr (not merely "something on :8741").
@@ -308,21 +347,38 @@ fn spawn_sidecar(exe: &Path, handle: &AppHandle) -> std::io::Result<Child> {
         const CREATE_NO_WINDOW: u32 = 0x08000000;
         cmd.creation_flags(CREATE_NO_WINDOW);
     }
+    append_sidecar_log_line(handle, &format!("INFO bundled_sidecar_spawn {}", exe.display()));
     cmd.spawn()
 }
 
 fn wait_health_store_child(handle: &AppHandle, mut child: Child) -> bool {
     reap_bundled_sidecar_if_exited(handle);
-    for _ in 0..80 {
-        std::thread::sleep(Duration::from_millis(250));
+    let attempts = (BUNDLED_HEALTH_WAIT_MS / BUNDLED_HEALTH_POLL_MS) as usize;
+    for _ in 0..attempts {
+        std::thread::sleep(Duration::from_millis(BUNDLED_HEALTH_POLL_MS));
         reap_bundled_sidecar_if_exited(handle);
+        if let Ok(Some(status)) = child.try_wait() {
+            append_sidecar_log_line(
+                handle,
+                &format!("ERROR bundled_sidecar_exited_before_health status={status}"),
+            );
+            return false;
+        }
         if !bundled_health_looks_like_rushi_asr() {
             continue;
+        }
+        if let Ok(Some(status)) = child.try_wait() {
+            append_sidecar_log_line(
+                handle,
+                &format!("ERROR bundled_sidecar_exited_after_health status={status}"),
+            );
+            return false;
         }
         match handle.try_state::<AsrSidecarState>() {
             Some(s) => {
                 let Ok(mut g) = s.0.lock() else {
                     eprintln!("[rushi-asr-sidecar] mutex poisoned; cannot store child");
+                    append_sidecar_log_line(handle, "ERROR bundled_sidecar_mutex_poisoned");
                     let _ = child.kill();
                     return false;
                 };
@@ -330,6 +386,7 @@ fn wait_health_store_child(handle: &AppHandle, mut child: Child) -> bool {
             }
             None => {
                 eprintln!("[rushi-asr-sidecar] internal: AsrSidecarState missing");
+                append_sidecar_log_line(handle, "ERROR bundled_sidecar_state_missing");
                 let _ = child.kill();
                 return false;
             }
@@ -338,10 +395,12 @@ fn wait_health_store_child(handle: &AppHandle, mut child: Child) -> bool {
             "[rushi-asr-sidecar] started bundled ASR at {}",
             ASR_HEALTH_URL
         );
+        append_sidecar_log_line(handle, "INFO bundled_sidecar_health_ok");
         return true;
     }
     let _ = child.kill();
     let _ = child.wait();
+    append_sidecar_log_line(handle, "ERROR bundled_sidecar_health_timeout");
     false
 }
 
@@ -349,11 +408,13 @@ fn wait_health_store_child(handle: &AppHandle, mut child: Child) -> bool {
 pub fn try_start_bundled(handle: &AppHandle) {
     write_launch_report(handle, BundledAsrLaunchReport::default());
     if std::env::var("RUSHI_SKIP_BUNDLED_ASR").ok().as_deref() == Some("1") {
+        append_sidecar_log_line(handle, "INFO bundled_sidecar_skip_env");
         return;
     }
     reap_bundled_sidecar_if_exited(handle);
     let candidates = bundled_sidecar_candidates(handle);
     if candidates.is_empty() {
+        append_sidecar_log_line(handle, "INFO bundled_sidecar_missing");
         return;
     }
     if bundled_health_looks_like_rushi_asr() {
@@ -361,6 +422,7 @@ pub fn try_start_bundled(handle: &AppHandle) {
             "[rushi-asr-sidecar] {} already healthy; skip bundled start.",
             ASR_HEALTH_URL
         );
+        append_sidecar_log_line(handle, "INFO bundled_sidecar_already_healthy");
         return;
     }
     write_launch_report(
@@ -383,6 +445,10 @@ pub fn try_start_bundled(handle: &AppHandle) {
                     "[rushi-asr-sidecar] spawn failed for {}: {e}",
                     exe.display()
                 );
+                append_sidecar_log_line(
+                    handle,
+                    &format!("ERROR bundled_sidecar_spawn_failed {} {e}", exe.display()),
+                );
                 continue;
             }
         };
@@ -400,6 +466,10 @@ pub fn try_start_bundled(handle: &AppHandle) {
         eprintln!(
             "[rushi-asr-sidecar] {} did not become healthy in time; trying next candidate if any.",
             exe.display()
+        );
+        append_sidecar_log_line(
+            handle,
+            &format!("ERROR bundled_sidecar_candidate_unhealthy {}", exe.display()),
         );
     }
     let detail = Some(
@@ -421,6 +491,7 @@ pub fn try_start_bundled(handle: &AppHandle) {
          Set RUSHI_SKIP_BUNDLED_ASR=1 to skip, RUSHI_FORCE_BUNDLED_ASR_CPU=1 to avoid CUDA bundle, \
          or rebuild PyInstaller output (see scripts/build-asr-sidecar-*)."
     );
+    append_sidecar_log_line(handle, "ERROR bundled_sidecar_all_candidates_failed");
 }
 
 /// Stop bundled sidecar (if we started it) and try starting again (e.g. after a transient failure).
@@ -443,52 +514,4 @@ pub fn stop_bundled(handle: &AppHandle) {
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use serde_json::json;
-
-    #[test]
-    fn recognizes_valid_health_json() {
-        let v = json!({
-            "service": "rushi-asr",
-            "status": "ok",
-            "transcription_mode": "funasr"
-        });
-        assert!(is_rushi_asr_health_json(&v));
-    }
-
-    #[test]
-    fn rejects_wrong_service() {
-        let v = json!({
-            "service": "other-service",
-            "status": "ok"
-        });
-        assert!(!is_rushi_asr_health_json(&v));
-    }
-
-    #[test]
-    fn rejects_non_ok_status() {
-        let v = json!({
-            "service": "rushi-asr",
-            "status": "loading"
-        });
-        assert!(!is_rushi_asr_health_json(&v));
-    }
-
-    #[test]
-    fn rejects_missing_fields() {
-        let v = json!({ "status": "ok" });
-        assert!(!is_rushi_asr_health_json(&v));
-
-        let v = json!({ "service": "rushi-asr" });
-        assert!(!is_rushi_asr_health_json(&v));
-    }
-
-    #[test]
-    fn launch_report_default_is_not_attempted() {
-        let report = BundledAsrLaunchReport::default();
-        assert!(!report.attempted);
-        assert!(!report.success);
-        assert!(report.detail.is_none());
-    }
-}
+mod tests;

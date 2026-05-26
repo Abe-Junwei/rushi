@@ -30,6 +30,9 @@ def test_health_ok() -> None:
     assert "funasr_model_configured" in body
     assert "funasr_model_explicit_from_env" in body
     assert "funasr_ready" in body
+    assert "funasr_vad_model_cached" in body
+    assert "funasr_required_models_cached" in body
+    assert "ready_for_transcribe" in body
     assert "rushi_models_root" in body
     assert "funasr_default_model_cached" in body
     assert body["transcription_mode"] in ("funasr", "stub")

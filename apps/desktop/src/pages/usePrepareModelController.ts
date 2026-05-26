@@ -18,7 +18,7 @@ export interface PrepareModelApi {
 
 export function usePrepareModelController(
   refreshAsrHealth: () => Promise<void>,
-  asrCaps: AsrHealthCapabilities | null,
+  _asrCaps: AsrHealthCapabilities | null,
 ): PrepareModelApi {
   const [funasrInstallMessage, setFunasrInstallMessage] = useState<string>("");
   const [prepareModelBusy, setPrepareModelBusy] = useState(false);
@@ -80,10 +80,13 @@ export function usePrepareModelController(
         const stRes = await fetch(urlStatus, { signal: ac.signal });
         const st = (await stRes.json().catch(() => ({}))) as Record<string, unknown>;
         const phase = typeof st.phase === "string" ? st.phase : "?";
+        const message = typeof st.message === "string" ? st.message : "";
         if (phase === "running") {
-          setFunasrInstallMessage(
-            `正在从 ModelScope 拉取默认权重（内置 SenseVoiceSmall）… 已等待 ${formatWait()}。请保持联网，尽量不要关闭运行 ASR 的终端。`,
-          );
+          const stage =
+            message === "downloading_vad"
+              ? "正在下载必需辅助模型（VAD）…"
+              : "正在下载默认主模型（SenseVoiceSmall）…";
+          setFunasrInstallMessage(`${stage} 已等待 ${formatWait()}。请保持联网，尽量不要关闭运行 ASR 的终端。`);
         } else if (phase === "idle") {
           if (Date.now() - runT0 < 4000) {
             setFunasrInstallMessage("正在启动后台下载任务，请稍候…");
@@ -101,9 +104,10 @@ export function usePrepareModelController(
             : "";
           setFunasrInstallMessage(
             [
-              "默认模型权重已准备（或已在缓存中）。",
+              "默认模型与必需辅助模型已准备（或已在缓存中）。",
               warns ? `提示：${warns}` : "",
               typeof result?.path === "string" ? `缓存路径：${result.path}` : "",
+              typeof result?.vad_path === "string" ? `辅助模型路径：${result.vad_path}` : "",
             ]
               .filter(Boolean)
               .join("\n"),
@@ -140,18 +144,6 @@ export function usePrepareModelController(
       setPrepareModelProgress(0);
     }
   }, [refreshAsrHealth]);
-
-  useEffect(() => {
-    if (!asrCaps) return;
-    if (
-      asrCaps.funasr_ready &&
-      !asrCaps.funasr_default_model_cached &&
-      !prepareModelBusy &&
-      !prepareModelFailure
-    ) {
-      void prepareDefaultFunasrModel();
-    }
-  }, [asrCaps, prepareModelBusy, prepareModelFailure, prepareDefaultFunasrModel]);
 
   return {
     prepareModelBusy,

@@ -12,7 +12,8 @@ import threading
 from pathlib import Path
 from typing import Any
 
-from rushi_asr.defaults import effective_funasr_model_id
+from rushi_asr.defaults import effective_funasr_model_id, effective_funasr_vad_model_id
+from rushi_asr.model_prepare import required_models_cached_guess
 from rushi_asr.schemas import TranscriptionSegment
 
 log = logging.getLogger(__name__)
@@ -36,7 +37,7 @@ def _get_model(model_id: str) -> Any:
 
         device = os.environ.get("RUSHI_FUNASR_DEVICE", "cpu")
         kwargs: dict[str, Any] = {"model": model_id, "trust_remote_code": True, "device": device}
-        vad = os.environ.get("RUSHI_FUNASR_VAD_MODEL", "fsmn-vad").strip()
+        vad = effective_funasr_vad_model_id()
         if vad:
             kwargs["vad_model"] = vad
             kwargs["vad_kwargs"] = {
@@ -48,10 +49,26 @@ def _get_model(model_id: str) -> Any:
         return _model_singleton
 
 
-def _segments_from_sentence_info(sentence_info: list[dict[str, Any]]) -> list[TranscriptionSegment]:
+def _normalize_funasr_time(value: float, duration_sec: float | None) -> float:
+    if value < 0:
+        return 0.0
+    if duration_sec is not None and duration_sec > 0:
+        # If the timestamp is wildly larger than the track itself, FunASR almost certainly
+        # returned milliseconds instead of seconds.
+        if value > max(duration_sec * 2.0 + 5.0, 600.0):
+            return value / 1000.0
+        return value
+    if value >= 10_000.0:
+        return value / 1000.0
+    return value
+
+
+def _segments_from_sentence_info(
+    sentence_info: list[dict[str, Any]],
+    duration_sec: float | None,
+) -> list[TranscriptionSegment]:
     segs: list[TranscriptionSegment] = []
     for row in sentence_info:
-        # FunASR variants: ms or seconds
         start = row.get("start") or row.get("begin")
         end = row.get("end")
         if start is None or end is None:
@@ -61,9 +78,8 @@ def _segments_from_sentence_info(sentence_info: list[dict[str, Any]]) -> list[Tr
             e = float(end)
         except (TypeError, ValueError):
             continue
-        # Heuristic: values clearly in ms domain; avoid single threshold at 2000 alone.
-        if s >= 500.0 or e >= 500.0:
-            s, e = s / 1000.0, e / 1000.0
+        s = _normalize_funasr_time(s, duration_sec)
+        e = _normalize_funasr_time(e, duration_sec)
         text = str(row.get("text") or row.get("spk") or "").strip()
         conf = row.get("confidence")
         conf_f: float | None
@@ -102,6 +118,8 @@ def transcribe_with_funasr(
     model_id = effective_funasr_model_id()
     if not model_id:
         raise RuntimeError("funasr_model_not_configured")
+    if not required_models_cached_guess(model_id):
+        raise RuntimeError("funasr_models_not_ready")
 
     model = _get_model(model_id)
     raw_lang = os.environ.get("RUSHI_FUNASR_LANGUAGE", "zh").strip() or "zh"
@@ -144,7 +162,7 @@ def transcribe_with_funasr(
     engine = f"funasr+{model_id}"
 
     if isinstance(r0.get("sentence_info"), list):
-        segs = _segments_from_sentence_info(r0["sentence_info"])
+        segs = _segments_from_sentence_info(r0["sentence_info"], _duration_sec)
         if segs:
             return segs, engine
 

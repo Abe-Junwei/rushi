@@ -4,6 +4,7 @@ mod china_stt_shell;
 mod db;
 mod diagnostic;
 mod export_docx;
+mod local_runtime;
 mod online_stt_bridge;
 mod postprocess_cmd;
 mod profile;
@@ -36,14 +37,24 @@ pub fn run() {
             app.manage(asr_sidecar::BundledAsrLaunchState(std::sync::Mutex::new(
                 asr_sidecar::BundledAsrLaunchReport::default(),
             )));
+            app.manage(local_runtime::installer::LocalRuntimeInstallerState::default());
             app.manage(postprocess_cmd::PostprocessCancelState::default());
-            asr_sidecar::try_start_bundled(app.handle());
+            let handle = app.handle().clone();
+            tauri::async_runtime::spawn(async move {
+                let _ = tauri::async_runtime::spawn_blocking(move || {
+                    asr_sidecar::try_start_bundled(&handle);
+                })
+                .await;
+            });
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
             app_version,
             asr_setup::diagnose::asr_setup_diagnose,
             asr_sidecar::bundled_asr_launch_report,
+            local_runtime::local_runtime_diagnose,
+            local_runtime::installer::local_runtime_download_sidecar,
+            local_runtime::installer::local_runtime_cancel_download,
             project::pick_audio_path,
             project::project_create_from_audio,
             project::create_empty_project,

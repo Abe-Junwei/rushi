@@ -69,6 +69,25 @@
 - 构建产物 `_internal/` 无完整 `funasr/` 目录 → `GET /health` → `FileNotFoundError: .../funasr/version.txt`。  
 - **整改门禁**：任何侧车发布物必须通过 **post-build smoke**（起进程 → `/health` 200 且 `funasr_import_ok`）。
 
+### 1.4 Phase 0 状态术语冻结（实施真源）
+
+后续实现、测试与 UI 文案统一按下表解释，禁止再把“可启动”“运行时健康”“模型完整”“真正可转写”混成一个 `ready`：
+
+| 字段 | 含义 | 允许为 `true` 的前提 |
+|------|------|----------------------|
+| `bundledAvailable` | 安装介质里存在 bundled sidecar 可执行文件候选 | 至少找到 1 个有效 exe |
+| `sidecarIntegrity` | bundled sidecar 自身是否明显损坏 | `ok / corrupt / unknown / not_installed` |
+| `funasr_ready` | **运行时健康**；仅表示 `ffmpeg + funasr import` 可用 | 不要求模型完整 |
+| `funasr_default_model_cached` | 默认主识别模型缓存完整 | 仅主模型完成 |
+| `funasr_required_models_cached` | 当前默认 ASR 所需模型集合完整 | 主模型 + 必需辅助模型（至少 VAD）均完成 |
+| `readyForTranscribe` / `ready_for_transcribe` | **真正可转写** | `funasr_ready && funasr_required_models_cached` |
+
+实施约束：
+
+1. `/health` 必须同时暴露 `funasr_ready` 与 `ready_for_transcribe`，两者不得混用。
+2. UI 上的“可直接转写”“100%”“完成”只能绑定 `readyForTranscribe`。
+3. wizard / installer / catalog / diagnostics 必须共用同一套字段定义，不允许各自再做字符串猜测。
+
 ---
 
 ## 2. 业界调研（同类产品怎么做）
@@ -215,7 +234,7 @@ Win x64：在 `asr-sidecar` 层内仍保持 **CUDA 优先 → CPU 回退**（现
 | `model.default_cached` | 已有 |
 | `disk` | 已有 |
 | `port` | 已有 |
-| `ready_for_local_transcribe` | sidecar integrity ok + funasr_ready + model cached |
+| `ready_for_local_transcribe` | sidecar integrity ok + `ready_for_transcribe` |
 
 **禁止**：仅凭 exe 存在报 `installed: true`。
 

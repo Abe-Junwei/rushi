@@ -8,7 +8,9 @@
 - **`--hidden-import funasr` + `--collect-all funasr`**（R3h-0）：强制将 FunASR 包体与数据文件落到 onedir `_internal/funasr/`（仅 `--collect-submodules` / `--collect-data` 时，模块可能只进 PYZ，磁盘上无 `version.txt`，`/health` 500）。
 - 构建脚本另有 **`ensure_funasr_onedir_data`**：若 PyInstaller 仍漏数据，从 build venv 回退复制并 `exit 1` 门禁。
 
-Post-build 门禁：`scripts/smoke-asr-sidecar-health.sh`（检查 `_internal/funasr/version.txt` 并断言 `/health` 中 `funasr_import_ok`）。
+Post-build 门禁：`scripts/smoke-asr-sidecar-health.sh`（检查 `_internal/funasr/version.txt`，并断言 `/health` 中 `funasr_import_ok`、`ffmpeg_ok`、`funasr_ready` 为真）。
+
+注意：当前 `/health` 里 `funasr_ready` 只表示 **运行时健康**（FunASR import + FFmpeg），不等于模型已完整缓存；真正“可直接转写”需看 `ready_for_transcribe` / `funasr_required_models_cached`。
 
 代价：**构建时间长**、**onedir 体积大**（与产品 §8 预算需定期对照）。
 

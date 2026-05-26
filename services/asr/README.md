@@ -52,7 +52,7 @@ python -m rushi_asr
 ## 依赖
 
 - **ffmpeg / ffprobe**：须在 `PATH` 中，用于上传文件的解码与 **16 kHz mono WAV** 规范化。
-- **可选 FunASR**：`pip install -e ".[funasr]"` 后可选设置 `RUSHI_FUNASR_MODEL`（例如 `paraformer-zh`）；**未设置时使用内置默认** `iic/SenseVoiceSmall`（首次 FunASR 推理需联网从 ModelScope 拉取权重）。未安装 FunASR 时仍走 **stub**（单段、空文本、带 `detail` 说明）。
+- **可选 FunASR**：`pip install -e ".[funasr]"` 后可选设置 `RUSHI_FUNASR_MODEL`（例如 `paraformer-zh`）；**未设置时使用内置默认** `iic/SenseVoiceSmall`。默认模型与必需辅助模型建议先通过 `POST /v1/models/prepare-default` 或桌面端「下载默认模型」准备完成；未安装 FunASR 时仍走 **stub**（单段、空文本、带 `detail` 说明）。
 - **模型缓存目录**：桌面壳启动内置侧车时会设置 **`RUSHI_MODELS_ROOT`**（`{应用数据}/studio.lingchuang.rushi/models/`）并映射 **`MODELSCOPE_CACHE`** / **`HF_HOME`** 至其下子目录；本机 `python -m rushi_asr` 也可自行 `export RUSHI_MODELS_ROOT=...` 以统一权重落盘位置。
 - **可选 manifest 校验**：`RUSHI_MODEL_VERIFY_MANIFEST` 指向 JSON 文件（相对路径则相对 `RUSHI_MODELS_ROOT`），在 `POST /v1/models/prepare-default`（及异步路径完成时）对列出的文件做 **SHA256** 校验；不匹配返回 **400**（见 `rushi_asr/model_manifest_verify.py`）。Manifest 为对象数组，每项含 `path` 或 `rel`（相对 `RUSHI_MODELS_ROOT`）、`sha256`（小写十六进制）。
 
@@ -64,7 +64,7 @@ python -m rushi_asr
 
 ## 接口
 
-- `GET /health` — 在 `status` / `service` 之外返回 **运行时能力**（供桌面自动检测）：`ffmpeg_ok`、`funasr_import_ok`（能否 `import funasr`）、`funasr_model_configured`（是否已设 `RUSHI_FUNASR_MODEL`）、`funasr_ready`（前三者同时满足）、`transcription_mode`（`funasr` 或 `stub`）、`funasr_model_id`（未设置时为 `null`）、`funasr_default_model_cached`（默认 SenseVoice 权重是否已在 `RUSHI_MODELS_ROOT` 下检测到）。
+- `GET /health` — 在 `status` / `service` 之外返回 **运行时能力**（供桌面自动检测）：`ffmpeg_ok`、`funasr_import_ok`（能否 `import funasr`）、`funasr_model_configured`（当前是否存在有效模型 id）、`funasr_model_explicit_from_env`（是否显式设置了 `RUSHI_FUNASR_MODEL`）、`funasr_ready`（仅表示运行时可用，不等于可直接转写）、`funasr_default_model_cached`、`funasr_vad_model_cached`、`funasr_required_models_cached`（当前必需模型是否完整）、`ready_for_transcribe`（运行时 + 必需模型均完成）、`transcription_mode`（`funasr` 或 `stub`）、`funasr_model_id`（未设置时返回内置默认 id）。
 - `POST /v1/models/prepare-default` — 同步触发默认 FunASR 模型准备（下载/校验）；无 FunASR 时 **503**；manifest 校验失败 **400**。
 - `POST /v1/models/prepare-default/async` — 在后台线程启动同上准备；立即返回 **202**；无 FunASR 时 **503**。
 - `GET /v1/models/prepare-status` — 查询异步准备状态：`phase` 为 `idle` | `running` | `done` | `error`；`done` 时含 `result`（与同步成功体同形），`error` 时含 `message`。

@@ -21,7 +21,10 @@ export function parseAsrHealthJson(data: unknown): AsrHealthCapabilities | null 
     funasr_model_configured: j.funasr_model_configured === true,
     funasr_model_explicit_from_env: j.funasr_model_explicit_from_env === true,
     funasr_default_model_cached: j.funasr_default_model_cached === true,
+    funasr_vad_model_cached: j.funasr_vad_model_cached === true,
+    funasr_required_models_cached: j.funasr_required_models_cached === true,
     funasr_ready: j.funasr_ready === true,
+    ready_for_transcribe: j.ready_for_transcribe === true,
     transcription_mode: mode,
     funasr_model_id: typeof j.funasr_model_id === "string" ? j.funasr_model_id : null,
     rushi_models_root: typeof j.rushi_models_root === "string" ? j.rushi_models_root : null,
@@ -217,7 +220,7 @@ export function useAsrBridgeController(): AsrBridgeApi {
       if (log != null && log.length > 0) {
         modelCtrl.setFunasrInstallMessage(
           [
-            "已在所选仓库中执行安装脚本。未设置 RUSHI_FUNASR_MODEL 时将使用内置默认模型 iic/SenseVoiceSmall（首次转写会从网络拉取权重）。",
+            "已在所选仓库中执行安装脚本。未设置 RUSHI_FUNASR_MODEL 时将使用内置默认模型 iic/SenseVoiceSmall；请先在本页下载默认模型，再开始正式转写。",
             "停止并重新执行 python -m rushi_asr，然后回到本页点「重新检测 ASR」。",
             "",
             "--- 脚本输出（节选）---",

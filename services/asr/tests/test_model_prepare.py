@@ -6,7 +6,11 @@ import pytest
 from fastapi.testclient import TestClient
 
 from rushi_asr.app import create_app
-from rushi_asr.model_prepare import default_model_cached_guess
+from rushi_asr.model_prepare import (
+    default_model_cached_guess,
+    required_models_cached_guess,
+    vad_model_cached_guess,
+)
 
 
 def test_prepare_status_idle() -> None:
@@ -49,6 +53,7 @@ def test_default_model_cached_guess_requires_complete_model(monkeypatch, tmp_pat
     ms = tmp_path / "modelscope"
     model_dir = ms / "models" / "iic" / "SenseVoiceSmall"
     temp_dir = ms / "models" / "._____temp" / "iic" / "SenseVoiceSmall"
+    vad_dir = ms / "models" / "iic" / "speech_fsmn_vad_zh-cn-16k-common-pytorch"
 
     temp_dir.mkdir(parents=True)
     (temp_dir / "model.pt").write_bytes(b"x" * (101 * 1024 * 1024))
@@ -59,6 +64,35 @@ def test_default_model_cached_guess_requires_complete_model(monkeypatch, tmp_pat
 
     monkeypatch.setenv("MODELSCOPE_CACHE", str(ms))
     assert default_model_cached_guess() is False
+    assert vad_model_cached_guess() is False
+    assert required_models_cached_guess() is False
 
     (model_dir / "model.pt").write_bytes(b"x" * (101 * 1024 * 1024))
     assert default_model_cached_guess() is True
+    assert required_models_cached_guess() is False
+
+    vad_dir.mkdir(parents=True)
+    (vad_dir / "model.pt").write_bytes(b"x" * (2 * 1024 * 1024))
+    assert vad_model_cached_guess() is True
+    assert required_models_cached_guess() is True
+
+
+def test_required_models_cached_guess_uses_explicit_model_env(monkeypatch, tmp_path: Path) -> None:
+    ms = tmp_path / "modelscope"
+    custom_dir = ms / "models" / "acme" / "custom-sensevoice"
+    vad_dir = ms / "models" / "iic" / "speech_fsmn_vad_zh-cn-16k-common-pytorch"
+
+    custom_dir.mkdir(parents=True)
+    (custom_dir / "model.pt").write_bytes(b"x" * (101 * 1024 * 1024))
+    (custom_dir / "config.yaml").write_text("ok")
+    (custom_dir / "tokens.json").write_text("{}")
+
+    vad_dir.mkdir(parents=True)
+    (vad_dir / "model.pt").write_bytes(b"x" * (2 * 1024 * 1024))
+
+    monkeypatch.setenv("MODELSCOPE_CACHE", str(ms))
+    monkeypatch.setenv("RUSHI_FUNASR_MODEL", "acme/custom-sensevoice")
+
+    assert default_model_cached_guess() is False
+    assert vad_model_cached_guess() is True
+    assert required_models_cached_guess() is True

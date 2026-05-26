@@ -32,8 +32,8 @@ export function WelcomeTopBar({ asrHealth, asrCaps }: WelcomeTopBarProps) {
             <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-notion-text-muted">FFmpeg</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <StatusDot ok={asrHealth === "ok" && asrCaps?.funasr_ready === true} />
-            <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-notion-text-muted">FunASR</span>
+            <StatusDot ok={asrHealth === "ok" && asrCaps?.ready_for_transcribe === true} />
+            <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-notion-text-muted">ASR Ready</span>
           </div>
         </div>
 

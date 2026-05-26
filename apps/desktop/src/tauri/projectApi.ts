@@ -56,13 +56,20 @@ export interface AsrHealthCapabilities {
   funasr_model_configured: boolean;
   /** 是否显式设置了 RUSHI_FUNASR_MODEL（否则为内置默认模型 id）。 */
   funasr_model_explicit_from_env?: boolean;
+  /** 运行时依赖是否就绪（不代表模型一定完整缓存）。 */
   funasr_ready: boolean;
+  /** 默认主模型是否已完整缓存。 */
+  funasr_default_model_cached?: boolean;
+  /** 默认辅助 VAD 模型是否已完整缓存。 */
+  funasr_vad_model_cached?: boolean;
+  /** 当前默认 ASR 所需模型集合是否都已完整缓存。 */
+  funasr_required_models_cached?: boolean;
+  /** 仅当 runtime + 必需模型都就绪时才应视为真正可转写。 */
+  ready_for_transcribe?: boolean;
   transcription_mode: "funasr" | "stub";
   funasr_model_id?: string | null;
   /** 侧车 / 壳传入的模型缓存根目录（若有）。 */
   rushi_models_root?: string | null;
-  /** 启发式：默认模型权重是否已在 MODELSCOPE_CACHE 中探测到。 */
-  funasr_default_model_cached?: boolean;
 }
 
 /** Tauri：安装包内推理侧车最近一次启动结果（供 P1 在 ASR 不可达时提示）。 */
