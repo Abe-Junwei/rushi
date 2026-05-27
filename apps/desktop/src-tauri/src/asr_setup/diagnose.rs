@@ -1,12 +1,12 @@
 use crate::asr_sidecar::{
     probe_asr_port, AsrPortStatus, BundledAsrLaunchReport, BundledAsrLaunchState,
 };
+use crate::local_runtime::disk_free_bytes;
 use crate::local_runtime::integrity::{inspect_installed_runtime, InstalledRuntimeStatus};
 use crate::DbState;
 use serde::Serialize;
 use serde_json::Value;
 use std::ops::Deref;
-use std::path::Path;
 use tauri::{AppHandle, Manager, State};
 
 const DISK_LOW_BYTES: u64 = 500 * 1024 * 1024;
@@ -161,58 +161,6 @@ fn infer_sidecar_integrity(
         "ok"
     } else {
         "unknown"
-    }
-}
-
-fn disk_free_bytes(path: &Path) -> Option<u64> {
-    let probe = if path.exists() {
-        path.to_path_buf()
-    } else {
-        path.parent()?.to_path_buf()
-    };
-
-    #[cfg(unix)]
-    {
-        let output = std::process::Command::new("df")
-            .arg("-k")
-            .arg(&probe)
-            .output()
-            .ok()?;
-        if !output.status.success() {
-            return None;
-        }
-        let text = String::from_utf8_lossy(&output.stdout);
-        let line = text.lines().last()?;
-        let parts: Vec<&str> = line.split_whitespace().collect();
-        if parts.len() < 4 {
-            return None;
-        }
-        let available_k = parts[3].parse::<u64>().ok()?;
-        Some(available_k * 1024)
-    }
-
-    #[cfg(windows)]
-    {
-        use std::os::windows::ffi::OsStrExt;
-        use windows::core::PCWSTR;
-        use windows::Win32::Storage::FileSystem::GetDiskFreeSpaceExW;
-
-        let wide: Vec<u16> = probe
-            .as_os_str()
-            .encode_wide()
-            .chain(std::iter::once(0))
-            .collect();
-        let mut free = 0u64;
-        unsafe {
-            GetDiskFreeSpaceExW(PCWSTR(wide.as_ptr()), None, None, Some(&mut free)).ok()?;
-        }
-        return Some(free);
-    }
-
-    #[cfg(not(any(unix, windows)))]
-    {
-        let _ = probe;
-        None
     }
 }
 

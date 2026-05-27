@@ -213,3 +213,10 @@ pub fn remove_audio_file(root: &Path, audio_storage_path: &str) -> Result<(), St
     }
     Ok(())
 }
+
+/// Absolute canonical path for persisting in `files.audio_path`.
+pub fn canonicalize_audio_storage_path(path: &Path) -> Result<String, String> {
+    let canonical =
+        fs::canonicalize(path).map_err(|e| format!("无法规范化音频路径 ({}): {e}", path.display()))?;
+    Ok(canonical.to_string_lossy().to_string())
+}

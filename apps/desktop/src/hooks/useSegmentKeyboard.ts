@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useRef } from "react";
-import type { TranscriptionLayerInput } from "../pages/useTranscriptionLayer";
+import type { TranscriptionLayerInput } from "../pages/transcriptionLayerTypes";
 import type { useProjectWaveform } from "./useProjectWaveform";
 
 type WfApi = ReturnType<typeof useProjectWaveform>;

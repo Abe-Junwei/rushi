@@ -143,7 +143,7 @@ MCP 只读服务不应直接调用 postprocess 写路径；后处理仍是桌面
 
 以下任一项若要引入，必须更新本文件：
 
-1. 本地 LLM
+1. **本地 LLM**（loopback Ollama 或 LRC `llm-runtime`）— 规划 [`llm-local-runtime-backlog.md`](../execution/specs/llm-local-runtime-backlog.md)；v1 不做，v1 后 **LLM-LOC-4a/4b**
 2. 多 provider 抽象层
 3. 批量后处理
 4. 将后处理并入 ASR sidecar

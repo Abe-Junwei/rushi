@@ -1,7 +1,7 @@
 use super::import_parse::{parse_srt, parse_txt};
 use super::segment_uid::segment_uid_or_new;
 use super::types::ProjectDetail;
-use super::utils::{now_ms, open_db, project_detail_from_conn};
+use super::utils::{canonicalize_audio_storage_path, now_ms, open_db, project_detail_from_conn};
 use crate::DbState;
 use rusqlite::params;
 use std::fs;
@@ -53,7 +53,9 @@ pub fn project_create_from_audio(
     copy_audio_with_context(&src, &dest_audio).inspect_err(|_| {
         let _ = fs::remove_dir_all(&dest_dir);
     })?;
-    let dest_str = dest_audio.to_string_lossy().to_string();
+    let dest_str = canonicalize_audio_storage_path(&dest_audio).inspect_err(|_| {
+        let _ = fs::remove_dir_all(&dest_dir);
+    })?;
     let t = now_ms();
     let mut conn = open_db(st)?;
     let tx = conn.transaction().map_err(|e| e.to_string())?;
@@ -197,7 +199,7 @@ pub fn import_audio_to_project(
     fs::create_dir_all(&dest_dir).map_err(|e| e.to_string())?;
     let dest_audio = dest_dir.join(format!("{file_id}.{ext}"));
     copy_audio_with_context(&src, &dest_audio)?;
-    let dest_str = dest_audio.to_string_lossy().to_string();
+    let dest_str = canonicalize_audio_storage_path(&dest_audio)?;
     let t = now_ms();
     let conn = open_db(st)?;
     conn.execute(

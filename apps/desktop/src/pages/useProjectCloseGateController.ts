@@ -67,7 +67,9 @@ export function useProjectCloseGateController(
   const [closeGateOpen, setCloseGateOpen] = useState(false);
   const [closeGateIntent, setCloseGateIntent] = useState<"app-quit" | "navigate">("app-quit");
 
-  hasUnsavedRef.current = dirty.hasUnsavedSegmentChanges;
+  useEffect(() => {
+    hasUnsavedRef.current = dirty.hasUnsavedSegmentChanges;
+  }, [dirty.hasUnsavedSegmentChanges]);
 
   function closeFileWrapped() {
     closeFile();

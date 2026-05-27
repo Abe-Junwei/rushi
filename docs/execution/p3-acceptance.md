@@ -11,6 +11,8 @@
    - 讲稿：连续正文输出。  
 4. **导出不反写项目正文**：导出是只读序列化流程，不修改 SQLite 原稿。
 
+> **与 EXP-WORD 的关系**：本文签收 **P3 最小 DOCX**（时间行 + 低置信高亮 + 讲稿连写）。**R3t 全管线完成后的「交付级 Word 格式化」** 另立 Epic **EXP-WORD**（[`word-formatted-export-backlog.md`](./specs/word-formatted-export-backlog.md)），排期见 [`rushi-execution-roadmap.md`](./plans/rushi-execution-roadmap.md) §4.1.1 ⑤‴；**不等** 协作 [`collaboration-review-word-export.md`](./specs/collaboration-review-word-export.md) C6。
+
 ## 验收建议
 
 1. 在同一项目依次导出 TXT / SRT / DOCX（逐字稿/讲稿）。  

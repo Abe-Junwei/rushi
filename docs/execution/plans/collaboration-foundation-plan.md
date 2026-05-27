@@ -1,5 +1,7 @@
 # 协作架构统一规划与实施顺序（2026-05-24）
 
+> ⚠️ **个人单机 v1 不做本文件内容。** 发版与排期以 [`rushi-execution-roadmap.md`](./rushi-execution-roadmap.md) §1.6、§3.1 为准；协作对应路线图 **R6–R8（v1 后、非阻塞）**。
+
 本文件用于协作 **Phase 1–7 的细节**（API、表、部署边界）。
 
 **排期真源**：[统一执行路线图](./rushi-execution-roadmap.md)（默认 R6–R8 在单机 R1–R5 之后）。

@@ -4,7 +4,7 @@
 use rusqlite::Connection;
 
 fn table_columns(conn: &Connection, table: &str) -> rusqlite::Result<Vec<String>> {
-    if !matches!(table, "segments" | "files" | "projects") {
+    if !matches!(table, "segments" | "files" | "projects" | "glossary_terms") {
         return Err(rusqlite::Error::InvalidParameterName(table.to_string()));
     }
     let mut stmt = conn.prepare(&format!("PRAGMA table_info({table})"))?;
@@ -74,6 +74,58 @@ fn migrate_glossary_p2(conn: &Connection) -> rusqlite::Result<()> {
         );
         CREATE INDEX IF NOT EXISTS idx_glossary_terms_created ON glossary_terms(created_at_ms);
         "#,
+    )?;
+    Ok(())
+}
+
+/// GLY-2: optional metadata aligned with future dictionary_entries subset.
+fn migrate_glossary_gly2(conn: &Connection) -> rusqlite::Result<()> {
+    let cols = table_columns(conn, "glossary_terms")?;
+    if cols.is_empty() {
+        return Ok(());
+    }
+    if !cols.iter().any(|c| c == "note") {
+        conn.execute(
+            "ALTER TABLE glossary_terms ADD COLUMN note TEXT NOT NULL DEFAULT ''",
+            [],
+        )?;
+    }
+    if !cols.iter().any(|c| c == "aliases") {
+        conn.execute(
+            "ALTER TABLE glossary_terms ADD COLUMN aliases TEXT NOT NULL DEFAULT ''",
+            [],
+        )?;
+    }
+    if !cols.iter().any(|c| c == "domain") {
+        conn.execute(
+            "ALTER TABLE glossary_terms ADD COLUMN domain TEXT NOT NULL DEFAULT ''",
+            [],
+        )?;
+    }
+    if !cols.iter().any(|c| c == "updated_at_ms") {
+        conn.execute("ALTER TABLE glossary_terms ADD COLUMN updated_at_ms INTEGER", [])?;
+        conn.execute(
+            "UPDATE glossary_terms SET updated_at_ms = created_at_ms WHERE updated_at_ms IS NULL",
+            [],
+        )?;
+    }
+    Ok(())
+}
+
+/// GLY-3: per-entry opt-in for ASR hotwords (default enabled for existing rows).
+fn migrate_glossary_gly3(conn: &Connection) -> rusqlite::Result<()> {
+    let cols = table_columns(conn, "glossary_terms")?;
+    if cols.is_empty() {
+        return Ok(());
+    }
+    if !cols.iter().any(|c| c == "hotword_enabled") {
+        conn.execute(
+            "ALTER TABLE glossary_terms ADD COLUMN hotword_enabled INTEGER NOT NULL DEFAULT 1",
+            [],
+        )?;
+    }
+    conn.execute_batch(
+        "CREATE INDEX IF NOT EXISTS idx_glossary_terms_hotword ON glossary_terms(hotword_enabled);",
     )?;
     Ok(())
 }
@@ -179,6 +231,8 @@ pub fn migrate(conn: &Connection) -> rusqlite::Result<()> {
     migrate_segments_p2(conn)?;
     migrate_segments_uid(conn)?;
     migrate_glossary_p2(conn)?;
+    migrate_glossary_gly2(conn)?;
+    migrate_glossary_gly3(conn)?;
     migrate_correction_memory_p2(conn)?;
     Ok(())
 }
@@ -214,6 +268,34 @@ mod tests {
         let conn = Connection::open_in_memory().unwrap();
         migrate(&conn).unwrap();
         migrate(&conn).unwrap(); // 不应报错
+    }
+
+    #[test]
+    fn migrate_glossary_gly2_adds_metadata_columns() {
+        let conn = Connection::open_in_memory().unwrap();
+        migrate_glossary_p2(&conn).unwrap();
+        let cols_before = table_columns(&conn, "glossary_terms").unwrap();
+        assert!(!cols_before.iter().any(|c| c == "note"));
+
+        migrate_glossary_gly2(&conn).unwrap();
+        migrate_glossary_gly2(&conn).unwrap();
+
+        let cols = table_columns(&conn, "glossary_terms").unwrap();
+        assert!(cols.contains(&"note".to_string()));
+        assert!(cols.contains(&"aliases".to_string()));
+        assert!(cols.contains(&"domain".to_string()));
+        assert!(cols.contains(&"updated_at_ms".to_string()));
+    }
+
+    #[test]
+    fn migrate_glossary_gly3_adds_hotword_enabled() {
+        let conn = Connection::open_in_memory().unwrap();
+        migrate_glossary_p2(&conn).unwrap();
+        migrate_glossary_gly2(&conn).unwrap();
+        migrate_glossary_gly3(&conn).unwrap();
+        migrate_glossary_gly3(&conn).unwrap();
+        let cols = table_columns(&conn, "glossary_terms").unwrap();
+        assert!(cols.contains(&"hotword_enabled".to_string()));
     }
 
     #[test]

@@ -6,7 +6,11 @@ import type { PrepareModelFailureCopy } from "../pages/prepareModelDownloadCopy"
 import type { AsrHealthState } from "../pages/useProjectController";
 import type { AsrHealthCapabilities, AsrModelCacheInfo, BundledAsrLaunchReport } from "../tauri/projectApi";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
+import type { PrepareDefaultModelOptions } from "../pages/usePrepareModelController";
 import type { AsrSetupControllerApi } from "../pages/useAsrSetupController";
+import type { LocalAsrModelCatalogApi } from "../pages/useLocalAsrModelCatalog";
+import { LocalAsrModelSection, selectedModelPrepareState } from "./envLocalAsr/LocalAsrModelSection";
+import { buildLocalAsrCatalogView, computeLocalAsrTranscribeReady } from "../services/asr/localAsrModelCatalog";
 import { LocalAsrAdvancedSection } from "./envLocalAsr/LocalAsrAdvancedSection";
 import { LocalAsrCacheSection } from "./envLocalAsr/LocalAsrCacheSection";
 import { LocalAsrSetupWizard } from "./envLocalAsr/LocalAsrSetupWizard";
@@ -27,7 +31,7 @@ type Props = {
   refreshAsrHealth: () => Promise<void>;
   installFunasrDepsInteractive: () => Promise<void>;
   copyFunasrManualCommands: () => Promise<void>;
-  prepareDefaultFunasrModel: () => Promise<void>;
+  prepareDefaultFunasrModel: (options?: PrepareDefaultModelOptions) => Promise<void>;
   cancelPrepareModel: () => void;
   refreshAsrModelCacheInfo: () => Promise<void>;
   clearAsrModelCache: () => Promise<void>;
@@ -35,6 +39,7 @@ type Props = {
   openAppDataFolder: () => Promise<void>;
   exportDiagnosticBundle: () => Promise<void>;
   asrSetup: AsrSetupControllerApi;
+  localAsrModelCatalog: LocalAsrModelCatalogApi;
 };
 
 export function EnvLocalAsrPanel({
@@ -61,12 +66,28 @@ export function EnvLocalAsrPanel({
   openAppDataFolder,
   exportDiagnosticBundle,
   asrSetup,
+  localAsrModelCatalog,
 }: Props) {
   const envOk = asrHealth === "ok";
   const ffmpegOk = asrCaps?.ffmpeg_ok === true;
   const runtimeReady = asrHealth === "ok" && asrCaps?.funasr_ready === true;
-  const transcribeReady = asrHealth === "ok" && asrCaps?.ready_for_transcribe === true;
-  const modelsCached = asrCaps?.funasr_required_models_cached === true;
+  const { ready: transcribeReady } = computeLocalAsrTranscribeReady({
+    asrHealth,
+    asrCaps,
+    selectedHubModelId: localAsrModelCatalog.selectedHubModelId,
+    catalogStatus: localAsrModelCatalog.catalogStatus,
+  });
+  const catalogView = buildLocalAsrCatalogView(
+    asrCaps,
+    localAsrModelCatalog.catalogStatus,
+    localAsrModelCatalog.selectedHubModelId,
+  );
+  const selectedPrepare = selectedModelPrepareState(
+    catalogView,
+    localAsrModelCatalog.selectedHubModelId,
+    asrCaps?.funasr_model_id,
+  );
+  const modelsCached = selectedPrepare.cached;
   const progress = prepareModelBusy ? prepareModelProgress : modelsCached ? 100 : 0;
 
   return (
@@ -137,18 +158,22 @@ export function EnvLocalAsrPanel({
 
       <div className="h-px bg-notion-divider" />
 
+      <LocalAsrModelSection catalog={localAsrModelCatalog} asrCaps={asrCaps} busy={busy} />
+
+      <div className="h-px bg-notion-divider" />
+
       <section className="flex flex-col gap-4">
         <div className="pb-1">
           <h3 className={PANEL_TYPOGRAPHY.sectionTitle}>模型下载</h3>
           <p className={PANEL_TYPOGRAPHY.sectionDescription}>
-            下载并管理本地转写模型。超过 30 分钟的音频转写耗时较长，请保持应用开启；Apple Silicon 可在启动侧车前设置{" "}
+            下载并管理当前所选转写模型。超过 30 分钟的音频转写耗时较长，请保持应用开启；Apple Silicon 可在启动侧车前设置{" "}
             <code className="font-mono text-[11px]">RUSHI_FUNASR_DEVICE=mps</code>。
           </p>
         </div>
 
         <div className="flex flex-col gap-3">
           <div className="flex flex-wrap items-baseline justify-between gap-2">
-            <span className={PANEL_TYPOGRAPHY.fieldLabel}>FunASR 默认模型</span>
+            <span className={PANEL_TYPOGRAPHY.fieldLabel}>{localAsrModelCatalog.selectedEntry.label}</span>
             <span className="font-mono text-[12px] text-zen-saffron">{progress}%</span>
           </div>
           <div
@@ -162,12 +187,14 @@ export function EnvLocalAsrPanel({
           </div>
           <p className={PANEL_TYPOGRAPHY.meta}>
             {prepareModelBusy
-              ? "正在下载默认模型与必需辅助模型..."
-              : asrCaps?.funasr_required_models_cached
-                ? "默认模型与必需辅助模型已缓存，可直接用于本地转写。"
-                : asrCaps?.funasr_default_model_cached
-                  ? "主模型已缓存，但辅助模型尚未完成。"
-                  : "默认模型尚未缓存，可预先下载以减少首次转写等待。"}
+              ? `正在下载 ${localAsrModelCatalog.selectedEntry.label} 与必需辅助模型…`
+              : !selectedPrepare.sidecarMatchesSelection
+                ? "所选模型尚未应用到侧车，请先点「应用并重启侧车」。"
+                : selectedPrepare.readyForTranscribe
+                  ? "当前模型与必需辅助模型已缓存，可直接用于本地转写。"
+                  : selectedPrepare.cached
+                    ? "主模型已缓存，但辅助模型尚未完成。"
+                    : "当前模型尚未缓存，可预先下载以减少首次转写等待。"}
           </p>
         </div>
 
@@ -176,10 +203,12 @@ export function EnvLocalAsrPanel({
             type="button"
             className={`flex items-center gap-2 ${modelsCached && !prepareModelBusy ? CONTROL_BTN_SECONDARY : CONTROL_BTN_PRIMARY}`}
             disabled={busy || prepareModelBusy}
-            onClick={() => void prepareDefaultFunasrModel()}
+            onClick={() =>
+              void prepareDefaultFunasrModel(modelsCached ? { force: true } : undefined)
+            }
           >
             <Download className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-            {prepareModelBusy ? "正在下载默认模型" : modelsCached ? "重新下载默认模型" : "下载默认模型"}
+            {prepareModelBusy ? "正在下载模型" : modelsCached ? "校验/刷新缓存" : "下载当前模型"}
           </button>
           {prepareModelBusy ? (
             <SmallButton disabled={busy} onClick={cancelPrepareModel}>

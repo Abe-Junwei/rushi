@@ -1,8 +1,8 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
 import type { AsrSetupOutcome, AsrSetupStep } from "../services/asr/asrSetupContract";
-import { asrHealthUrl } from "../config/env";
+import { fetchAsrHealthCaps } from "../services/asr/asrHealthSnapshot";
+import { snapshotSelectedModelPrepare } from "../services/asr/localAsrSetupModelStep";
 import { patchStep } from "./asrSetupState";
-import { parseAsrHealthJson } from "./useAsrBridgeController";
 
 const HEALTH_POLL_MS = 1000;
 const HEALTH_POLL_MAX = 45;
@@ -11,23 +11,15 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-async function fetchHealthSnapshot(): Promise<ReturnType<typeof parseAsrHealthJson>> {
-  const url = asrHealthUrl();
-  try {
-    const res = await fetch(url, { method: "GET", signal: AbortSignal.timeout(8000) });
-    if (!res.ok) return null;
-    const data: unknown = await res.json().catch(() => null);
-    return parseAsrHealthJson(data);
-  } catch {
-    return null;
-  }
+async function fetchHealthSnapshot() {
+  return fetchAsrHealthCaps();
 }
 
 type Params = {
   deps: {
     refreshAsrHealth: () => Promise<void>;
     refreshAsrRuntimeInfo: () => Promise<void>;
-    prepareDefaultFunasrModel: () => Promise<void>;
+    prepareDefaultFunasrModel: (options?: import("./usePrepareModelController").PrepareDefaultModelOptions) => Promise<void>;
   };
   refreshSetupDiagnose: () => Promise<unknown>;
   markPortConflictAcknowledged: () => void;
@@ -99,11 +91,25 @@ export function useAsrSetupHealthFlow({
       setSetupSteps((steps) =>
         patchStep(steps, "health", { status: "ok", detail: "已连接当前 ASR 运行时" }),
       );
-      if (!caps.funasr_required_models_cached) {
+      const modelSnap = await snapshotSelectedModelPrepare();
+      if (!modelSnap.sidecarMatchesSelection) {
+        setSetupSteps((steps) =>
+          patchStep(steps, "model", {
+            status: "error",
+            detail: `侧车未加载 ${modelSnap.modelLabel}`,
+          }),
+        );
+        setSetupMessage(
+          `8741 上的服务未加载所选模型（${modelSnap.modelLabel}）。请先在环境页应用所选模型，或改用内置侧车。`,
+        );
+        setSetupOutcome("blocked");
+        return;
+      }
+      if (!modelSnap.ready) {
         setSetupSteps((steps) =>
           patchStep(steps, "model", {
             status: "running",
-            detail: "正在补齐默认模型与辅助模型…",
+            detail: `正在补齐 ${modelSnap.modelLabel} 与辅助模型…`,
           }),
         );
         await deps.prepareDefaultFunasrModel();
@@ -111,7 +117,7 @@ export function useAsrSetupHealthFlow({
         setSetupSteps((steps) =>
           patchStep(steps, "model", {
             status: "skipped",
-            detail: "默认模型与辅助模型已在缓存中",
+            detail: `${modelSnap.modelLabel} 与辅助模型已在缓存中`,
           }),
         );
       }

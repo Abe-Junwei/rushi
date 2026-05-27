@@ -1,5 +1,7 @@
 import type { AsrHealthCapabilities } from "../tauri/projectApi";
 import type { AsrHealthState } from "../pages/useAsrBridgeController";
+import type { LocalAsrCatalogStatusItem } from "../services/asr/localAsrModelCatalog";
+import { computeLocalAsrTranscribeReady } from "../services/asr/localAsrModelCatalog";
 import { Bell, Search } from "lucide-react";
 import { LUCIDE_ICON_SIZE_LG, LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
@@ -18,9 +20,17 @@ function UserAvatar() {
 export interface WelcomeTopBarProps {
   asrHealth: AsrHealthState;
   asrCaps: AsrHealthCapabilities | null;
+  selectedHubModelId?: string;
+  catalogStatus?: LocalAsrCatalogStatusItem[] | null;
 }
 
-export function WelcomeTopBar({ asrHealth, asrCaps }: WelcomeTopBarProps) {
+export function WelcomeTopBar({ asrHealth, asrCaps, selectedHubModelId, catalogStatus }: WelcomeTopBarProps) {
+  const { ready: transcribeReady } = computeLocalAsrTranscribeReady({
+    asrHealth,
+    asrCaps,
+    selectedHubModelId,
+    catalogStatus,
+  });
   return (
     <header className="flex h-16 shrink-0 items-center justify-between border-b border-notion-divider bg-notion-bg px-10">
       <div className="flex items-center gap-6" />
@@ -32,7 +42,7 @@ export function WelcomeTopBar({ asrHealth, asrCaps }: WelcomeTopBarProps) {
             <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-notion-text-muted">FFmpeg</span>
           </div>
           <div className="flex items-center gap-1.5">
-            <StatusDot ok={asrHealth === "ok" && asrCaps?.ready_for_transcribe === true} />
+            <StatusDot ok={transcribeReady} />
             <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-notion-text-muted">ASR Ready</span>
           </div>
         </div>

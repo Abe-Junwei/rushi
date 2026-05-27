@@ -2,25 +2,119 @@
 
 > **本文件为 Rushi 仓后续工作的排期真源。**  
 > 与 Jieyu 平级计划书冲突时：以 **本仓代码 + ADR + 本文** 为准。  
-> 深度背景见文末「参考文档」；**R3 本机 ASR 发行整改**以 [`rushi-local-runtime-catalog-remediation-plan.md`](../specs/rushi-local-runtime-catalog-remediation-plan.md)（**v1.1**）为实施真源，本文 §4.1 / §5 R3h 为排期索引。
+> 深度背景见文末「参考文档」；**R3 本机 ASR 发行整改**以 [`rushi-local-runtime-catalog-remediation-plan.md`](../specs/rushi-local-runtime-catalog-remediation-plan.md)（**v1.2**）为实施真源，本文 §4.1 / §5 R3h 为排期索引。
 
 | 元数据 | 值 |
 |--------|-----|
 | 基线日期 | 2026-05-25 |
 | 适用节奏 | 单人、每轮 2～4h、一轮一纵向薄片 |
-| 规划跨度 | 约 **19～20 周**（至 **2026-09 下旬**）可完成「单机增强 + 协作最小闭环」 |
+| 规划跨度 | **个人单机 v1**：约 **11～13 周（自当前）** 或 **15～17 周（自 W1）**；R3 薄片 **~8～10w**（§4.0）；协作 **非 v1** |
 | 修订 | 每完成一个阶段更新 §2 状态表、§4 排期表与 §13 代码对照 |
-| 最近对照 | **2026-05-26**：R3 重排 — **R3h（LRC）** 升为发行阻塞 epic；§4.1 为 R3 唯一顺序真源 |
+| 最近对照 | **2026-05-27**：审查对齐（状态口径、rollback 三分、R3g cancel P0、§4.1.5/6 编号） |
+
+### 状态标记约定（全文档统一）
+
+| 标记 | 含义 |
+|------|------|
+| **✅** | 已合入可复现基线（`main` 或等价）且验证通过 |
+| **🟡 编码✅** | 工作区/分支已编码，自动化通过，**发行门禁或手测未全绿** |
+| **🟡 进行中** | 部分交付或依赖未闭合 |
+| **📋** | 规划定稿，未编码 |
+| **⏳** | 已排期、未开始 |
+
+> 路线图 §13 与 remediation §11 须区分 **编码签收** 与 **发行门禁**；勿将工作区草稿标为 ✅。
 
 ---
 
 ## 1. 规划原则
 
 1. **UI 根部已验收**：新能力必须带 UI 落点、状态模型与手测路径（[`ui-redesign-parallel-dev.md`](../specs/ui-redesign-parallel-dev.md) 已收口）；不再开「纯换皮」轮次。
-2. **一轮一薄片**：每轮只做一个可验收主题；轮末硬闸门 + 至少 1 条主路径手测 + 3 行日志。
-3. **信任边界**：LLM 后处理、MCP **不进** ASR PyInstaller 侧车；密钥不进 repo。
-4. **本地真源优先**：SQLite 离线能力不降级；协作是叠加层，不替换本地项目。
-5. **中等复杂度先 spec**：编码前完成 intent / plan / acceptance（模板见 [`spec-template.md`](../specs/spec-template.md)）。
+2. **能力—UI 状态对齐**：任何后端/侧车/Tauri 新能力必须在 acceptance 中填写 **能力—UI 状态矩阵**，并遵守 [`desktop-capability-ui-state-alignment.md`](../../architecture/desktop-capability-ui-state-alignment.md)；**禁止**用全局 `/health` 字段表示「用户所选维度」的状态（R3g-A 教训，见 §4.1.4）。
+3. **一轮一薄片**：每轮只做一个可验收主题；轮末硬闸门 + 至少 1 条主路径手测 + 3 行日志。
+4. **信任边界**：LLM 后处理、MCP **不进** ASR PyInstaller 侧车；密钥不进 repo。
+5. **本地真源优先**：SQLite 离线能力不降级；**个人单机 v1** 不以协作服务端为项目真源（§1.6）。
+6. **中等复杂度先 spec**：编码前完成 intent / plan / acceptance（模板见 [`spec-template.md`](../specs/spec-template.md)）；含 **§能力—UI 状态矩阵** 时方可开 UI 编码。
+7. **转写优先（2026-05-27）**：近期排期以 **本机 ASR + 录音转写 + 分段落库（R3g / R3e / R3t）** 为主；**CAT-TRAN、LEX-MINE、ASR-FT、RAG 校对** 仅 §8.1 远期或 §8 不做，**不得**占用当前薄片 unless 产品书面改序。
+8. **LLM 可插拔**：转写与手改 **不依赖** LLM；R3t-C/D/E 与 R2 标点均为 **用户显式触发 + 预览确认**（§1.7、§8.2 Q-LLM-1）。
+
+### 1.6 产品定位：个人单机 v1（2026-05-27）
+
+> **能力补齐真源**：[`personal-solo-v1-backlog.md`](../specs/personal-solo-v1-backlog.md)
+
+| 项 | 内容 |
+|----|------|
+| **用户** | 个人、一台电脑、离线优先；自己负责定稿 |
+| **真源** | 本机 **SQLite**；无协作真源、无云项目同步 v1 |
+| **主路径** | 装 ASR → 转写 → **手改（可无 LLM）** →（可选）云端 LLM 校对 → **EXP-WORD** 交付 |
+| **v1 后** | 本机 LLM：**LLM-LOC-SPIKE + Gate**（[`llm-local-runtime-backlog.md`](../specs/llm-local-runtime-backlog.md) §9）；**过 Gate 才 4a/4b** |
+| **v1 发版** | **R9（REL-1）** 以 §1.8 P0 + R4-GATE 为准；**不依赖** R6–R8 |
+| **非目标** | 企业采购、多语言/CAT、商业化、协作审阅（C4–C7）、转写 farm、实时 mic |
+
+**§4 默认顺序**：`R0 → GLY-1 → R1–R2 → R3（§4.1.1）→ R4 → R9`；**R5 / R6–R8** 标为 **v1 后或非阻塞**（§8.2 Q-POS-2）。
+
+### 1.7 产品决策台账（2026-05-27 对话拍板）
+
+> 与 [`recording-transcribe-llm-refine-plan.md`](../specs/recording-transcribe-llm-refine-plan.md) §9–10、各 backlog 一致；**冲突以本文 + 代码为准**。
+
+#### 转写与 LLM 管线（R3t）
+
+| 决策 | 内容 |
+|------|------|
+| **主路径** | **ASR 先产出带时间的 stable 语段** → 用户显式触发 LLM 校准 → 预览确认写回；**不做**「全轨纯文本 → LLM 切段 → 再贴时间」 |
+| **Q1** | 转写 **覆盖** 语段；非空时 **确认对话框** |
+| **Q2** | 长音频 **侧车内循环** 出完整 `segments[]` 优先；超长再评估 HTTP 分片 |
+| **Q3** | LLM 段界支持 **连续多段**；不跨文件 |
+| **Q4** | SenseVoice **VAD 段级** 即可；不强制句级 |
+| **Q5** | v1 可选 **`edit_log`**；不等 R8 `revision_events` |
+| **流式/mic** | **STREAM-***：在 **R3t-D/E 签收后** 另立项，不在 R3t v1 |
+| **R3t 子阶段顺序** | **A → B → C → D → E**（见 §4.1.1、§4.1.6） |
+
+#### 词表、热词与学习（非训练）
+
+| 决策 | 内容 |
+|------|------|
+| **术语真源** | **仅一套** 全局 `glossary_terms` |
+| **L2 ASR** | 拼 **空格串 `hotwords`**（≤12k 字符；见 [`asr-hotword-bias-truth.md`](../../architecture/asr-hotword-bias-truth.md)） |
+| **L4 LLM（R3t-E）** | **LexiconPack**（`glossary_canonical[]` + `correction_rules[]`）；**不传** ASR `hotwords` 字符串 |
+| **纠错记忆** | 保存语段学习 `correction_memory`；转写后 **hints**；R3t-E **主动改正** + evidence |
+| **越用越准** | **记忆 + 热词 +（规划）R3t-E**；**不**指望权重自动更新 |
+| **RAG** | **当前不做** |
+| **Oumi 式动模型** | **当前不做**；远期 **ASR-FT**（FunASR 微调 + R3h 发版），见 [`lexicon-mining-backlog.md`](../specs/lexicon-mining-backlog.md) §7、[`oumi-remediation-report.md`](../specs/oumi-remediation-report.md) §五-b |
+
+#### 明确不做 / 远期（当前不占排期）
+
+| 项 | 处置 |
+|----|------|
+| **CAT-TRAN**（翻译+富结构词典） | **远期**；spec 保留；**当前不做**（[`translation-cat-backlog.md`](../specs/translation-cat-backlog.md)） |
+| **LEX-MINE**（纠错推荐进 glossary） | §8.1 候选 |
+| **ASR-FT**（领域微调） | §8.1 候选；Go 门槛未满足 |
+| **领域 RAG 校对** | §8 不做 |
+| **correction_memory → 训练集** | §8 不做（schema 不足） |
+| **协作 C6 Word** | **远期**；多人批注真源；**不等**单机 EXP-WORD |
+
+#### R2 与 R3t-C 关系
+
+- **R2 `auto_punctuate` ✅** 保留；**R3t-C** 为其超集（可选邻段上下文），**不废弃** R2 命令与 UI。
+
+### 1.8 个人单机 v1 — 能力补齐索引（对齐工业「可用单机」）
+
+> 与 §1.6 一致；子 Epic 说明见 [`personal-solo-v1-backlog.md`](../specs/personal-solo-v1-backlog.md)。
+
+| 优先级 | 能力 | 路线图落点 |
+|--------|------|------------|
+| **P0** | 发行可重复（装/验/恢复） | R3h-0～3、R3f、**R3-STATE** |
+| **P0** | 长音频多段真源 | R3t-A/B、R3e-A/B |
+| **P0** | 术语 + memory + LLM 校对 | HOT-UX、R3t-C/D/E |
+| **P0** | 交付 Word 与编辑一致 | EXP-WORD（P3 基线之上） |
+| **P1** | 侧车保活、少冷启动 | **ASR-WARM**（R3h-I4） |
+| **P1** | 转写失败可理解 | R3e 分类 + **TRN-DIAG** |
+| **P1** | 发版 eval 回归 | **R4** + **R4-GATE**（R9 硬门禁） |
+| **P1** | Setup / 发布 / Supervisor 硬化 | **R3h-I1～I3** |
+| **P1** | 发版自动化子集 | **TEST-AUTO**（corrupt / 长音频慢测 / FSM contract；R9 硬门禁） |
+| **P2** | 单机修订时间线/恢复点 | **REV-LOC**（可选减 scope） |
+| **P2** | MCP 只读 | R5（v1 后可做） |
+
+---
 
 ### 每轮硬闸门
 
@@ -45,6 +139,7 @@ bash scripts/p0-acceptance.sh
 | 领域 | 状态 | 说明 |
 |------|------|------|
 | 本地 P0 功能闭环 | ✅ | 项目/文件/语段、转写、导出、包导入导出 |
+| P3 DOCX（逐字稿/讲稿） | ✅ 基线 | `export_docx.rs`；**非** R3t 后交付版式；**EXP-WORD** 规划见 §4.1.1 |
 | 架构拆分（主项） | ✅ | `project/` 模块、`EditorView`→`editor/*`、uid 语段、草稿 store、波形按 uid diff |
 | UI 重设计首轮 | ✅ | A 欢迎/建项 + B 校对工作页 + Tauri 手测（2026-05-25） |
 | 关窗 / 未保存 | ✅ | `allow-destroy` + 应用内对话框 |
@@ -56,9 +151,10 @@ bash scripts/p0-acceptance.sh
 | 在线 STT 环境 UI | ✅ 主体已有 | `EnvOnlineSttPanel` + 合约测试；非从零建设 |
 | FunASR 模型下载 UI | ✅ 主体已有 | `usePrepareModelController` + `EnvLocalAsrPanel` |
 | 本机 ASR 一键诊断/准备（R3f） | 🟡 工作区 | `asr_setup` + `LocalAsrSetupWizard`；**签收依赖 R3h-0** |
-| **本地运行时目录 LRC（R3h）** | ❌ 未开始 | 应用内侧车下载/完整性；见 remediation plan |
-| 诊断包导出入口 | ✅ 已有 | 工具栏菜单；R9 补体验与长音频手测 |
-| LLM 后处理 / MCP / 协作服务 | ❌ 未开始 | 无 `postprocess_*`、`services/mcp`、`services/collab` |
+| **本地运行时目录 LRC（R3h）** | 🟡 进行中 | R3h-0 🟡；R3h-1 **编码✅ / 发行门禁⏳**（§4.1.2、remediation §11）；见 §13.1 |
+| 诊断包导出入口 | ✅ 已有 | 工具栏菜单；R9 + TRN-DIAG 增强 |
+| LLM 后处理（R2 标点） | ✅ 已交付 | `postprocess_cmd`；**R3t-C/D/E 未编码** |
+| MCP / 协作服务 | ❌ 未开始 | 无 `services/mcp`、`services/collab` |
 | 桌面 profile 导入导出（无 secret） | ✅ R3b | `profile.rs` + 环境页「配置迁移」 |
 | 桌面质量 Tab | ❌ 未开始 | eval 仍在 `scripts/eval-run.py` |
 | **术语库（glossary）后端** | ✅ 已有 | `glossary_terms` + `glossary_*` 命令 + 转写 `hotwords` 注入 |
@@ -68,53 +164,63 @@ bash scripts/p0-acceptance.sh
 
 ## 3. 统一阶段总览
 
+### 3.1 个人单机 v1（**默认真源**，§1.6）
+
 ```text
-[已完成] 基线 + UI + 工作区波形/uid/关窗（待提交）
+[已完成] 基线 + UI + 波形/uid/关窗 + GLY-1 + R1–R2
     ↓
-R0     工程收口（提交 + 守卫）        ← 建议先于 R1（0.5 周）
+R3     本机 ASR 发行 + 转写 + LLM 校准 + 交付（§4.1.1 唯一顺序）
+       └ R3h LRC · R3t · HOT-UX · EXP-WORD · ASR-WARM · TRN-DIAG · REV-LOC(可选)
     ↓
-GLY-1  术语库管理 UI（P2 缺口）      ← 后端已有，0.5 周（建议 R0 后、R1 前）
+R4     质量 Tab + R4-GATE（R9 硬门禁）
     ↓
-R1–R2  单机 · LLM 标点（P0）
+R9     个人单机发版验收（REL-1）
     ↓
-R3     单机 · 模型/配置 + **本机 ASR 发行可用**（P2）
-       └ R3h LRC（侧车分发）为阻塞子线；见 §4.1
+[v1 后]  LLM-LOC  Spike → Gate →（可选）4a →（可选）4b  ← §6；**Q-LLM-5 未过 Gate 不编码**
     ↓
-R4     单机 · 质量评估插槽（P0.5）
-    ↓
-R5     单机 · MCP 只读（P1）
-    ↓
-R6–R8  协作 · 骨架 → 只读 → 写路径（C1–C3）
-    ↓
-R9     发版集成验收（REL-1）
-    ↓
-[远期] 协作 C4–C7（审阅 / Presence / Word / 部署正式化）
+[v1 后 / 非阻塞]  R5 MCP 只读
+[v1 后 / 远期]    R6–R8 协作 C1–C3 · C4–C7
 ```
 
-**默认战略顺序**：先做完 **R1–R5（单机增强）**，再 **R6–R8（协作最小闭环）**。  
-若业务要求「先演示多人协作」，可将 **R6 提前至 R3 之后**，但须接受 R1/R2 延后（见 §5 分叉）。
+**默认战略顺序**：**§4.1.1 严格串行**至 **EXP-WORD** → **R4** → **R9**；**不**为协作阻塞 v1。  
+协作仅在有书面需求时走 §9 分叉 B。
 
+### 3.2 全量阶段（含 v1 后，日历见 §4 表）
+
+```text
+R0 → GLY-1 → R1–R2 → R3 → R4 → [R5] → [R6–R8] → R9
+```
+
+> §4 周次表保留 R5–R8 作 **参考估算**；**个人 v1 以 §3.1 为准**，R9 可在 R4 后直接签收（约 **15～17 周**）。
 ---
 
 ## 4. 排期表（单人、日历周）
 
-> 周次以 **2026-05-26（周一）** 为第 1 周起点估算；按实际完成滑动，**不并行开两个大阶段**。
+> 周次以 **2026-05-26（周一）** 为第 1 周起点估算；按实际完成滑动，**不并行开两个大阶段**。  
+> **个人 v1 只看下表「v1 路径」行**；R5–R8 见 §6。
 
-| 阶段 ID | 周次（约） | 日历（约） | 主题 | 交付摘要 | 预估 |
-|---------|------------|------------|------|----------|------|
-| **R0** | W1 前半 | 05/26 – 05/28 | ENG-0 工程收口 | 提交 uid/波形/关窗等改动；**拆分或降级** `useProjectLifecycleController`（381 行 / 21 hooks，守卫已告警）；同步 oumi §1.3 行数 | 0.5 周 |
-| **GLY-1** | W1 后半 | 05/29 – 06/02 | 术语库管理 UI | 接线 `useGlossaryController`；列表/增删；与转写热词说明；替换侧栏占位 | **0.5 周** |
-| **R1** | W2 | 06/03 – 06/06 | LLM-0 规格与架构 | `auto-punctuate-{intent,plan,acceptance}.md`；后处理不进侧车短文；T-002 迁址设计 | 1 周 |
-| **R2** | W2–W3 | 06/02 – 06/13 | LLM-1 自动标点 | Rust `postprocess_cmd` + 预览 diff UI + 确认写回；隐私首次明示；超时/取消 | 1.5 周 |
-| **R3** | W5–W10 | 05/26 – **07/18** | EXP-1 + **R3h LRC 发行整改** | R3a–c ✅；**R3h-0～3**、R3f、R3e-A、R3g-A、R3d、**R3h-I**、**R3h-3.5**、R3e-B；真源 §4.1 + [remediation plan](../specs/rushi-local-runtime-catalog-remediation-plan.md) | **~4～5 周** |
-| **R4** | W11–W12 | 07/21 – 08/01 | QLT-1 质量插槽 | 包装 `eval_metrics`；rubric schema；质量 Tab 只读；correction_memory 导出脱敏 | 1.5 周 |
-| **R5** | W13–W14 | 08/04 – 08/15 | AGT-1 MCP 只读 | `services/mcp/`；4 tools + 2 resources；127.0.0.1、默认关 | 2 周 |
-| **R6** | W15–W16 | 08/18 – 08/29 | COL-1 协作骨架 | `services/collab/` + Compose + PG 迁移 + 只读 API | 2 周 |
-| **R7** | W17–W18 | 09/01 – 09/12 | COL-2 桌面只读 | `ProjectSource`；列表 local/collab；协作项目只读打开 | 1.5 周 |
-| **R8** | W19–W20 | 09/15 – 09/26 | COL-3 协作写入 | 单语段写 API + version + revision_events + 409 提示 | 2 周 |
-| **R9** | W21 | 09/29 – 10/03 | REL-1 发版验收 | 零终端 ASR 安装 + 长音频 + `p0-acceptance`；E2E 抽检（可选） | 1 周 |
+### 4.0 个人单机 v1 路径（排期真源）
 
-**合计**：约 **19～20 周**（R3 因 **R3h** 扩至 ~4～5 周；R4–R9 整体后滑约 **2 周**）。
+| 阶段 ID | 周次（约） | 主题 | 预估 |
+|---------|------------|------|------|
+| R0、GLY-1、R1、R2 | W1–W3 | ✅ 已完成 | — |
+| **R3** | W4–W12+ | 本机 ASR + 转写 + LLM + 交付；**细序 §4.1.1** | **~8～10w**（原 4～5w 低估薄片总和） |
+| **R4** + **R4-GATE** | +1.5w | 质量 Tab + eval 回归门禁 | 1.5w |
+| **R9** | +1w | 个人单机 REL-1 | 1w |
+
+**说明**：R3 宏观行原写 4～5w，但 §4.1.1 薄片相加明显更长；**以 §4.1.1 推进为准**，日历周次随完成滑动。  
+**v1 后（不占 v1 阻塞）**：R5 MCP、R6–R8 协作、LLM-LOC Spike→Gate。
+
+### 4.0.1 全量参考表（含已完成与 v1 后）
+
+| 阶段 ID | 状态 | 主题 | 预估 |
+|---------|------|------|------|
+| R0 / GLY-1 / R1 / R2 | ✅ | 工程收口、术语 UI、LLM 标点规格与实现 | — |
+| **R3** | 🟡 | §4.1.1 全线 | ~8～10w |
+| **R4** | ⏳ | QLT-1 + R4-GATE | 1.5w |
+| **R9** | ⏳ | REL-1 个人 v1 | 1w |
+| R5 | v1 后 | MCP 只读 | 2w |
+| R6–R8 | v1 后 | 协作 C1–C3 | ~5.5w |
 
 ### 4.1 R3 薄片排期（2026-05-26 重排 — **唯一顺序真源**）
 
@@ -123,30 +229,67 @@ R9     发版集成验收（REL-1）
 > **依据**：R3a–c ✅；手测暴露 **安装难（R3h）**、**分句差（R3g）**、**超时/OOM（R3e）**；审查报告已吸收至 remediation **v1.1**。
 > **结构收口**：补入 **`R3h-I` 工业成熟度对齐轨**，专门收口 `Runtime Supervisor`、签名/回滚型 release system、`ASR setup` 状态机三条结构线；**不改** §4.1.1 的发行止血主顺序。
 
+#### 4.1.0 里程碑分期（阅读用，与 §4.1.1 逐步对应）
+
+| 期 | 目标 | 包含薄片 |
+|----|------|----------|
+| **A 能装能转** | 零终端侧车 + 13min 多段 | ①–⑤c、HOT-UX |
+| *脚注* | *「能转」* | *≤~10min 单次整轨为 **R3e-A** 止血目标；>10min 完整多段能力见 **B 期 R3e-B + R3t-A** |
+| **B 转写真源** | 声学分段 + 编排 + 可观测 | ⑤′ R3t-A/B、TRN-DIAG、⑥ R3e-B |
+| **C 发行成熟** | 弱网/回滚/三盏灯/可选 Spike | ⑦ R3h-2、⑦½ ASR-WARM、⑧ R3h-3、⑧½ R3h-3.5 |
+| **D 可选 LLM** | 云端校对可插拔 + 交付 | ⑤″ R3t-C/D/E |
+| **E 交付与质量** | Word + eval + 发版 | ⑤‴ EXP-WORD、⑤‴½ REV-LOC(可选)、R4、R9 |
+
 #### 4.1.1 实施顺序（严格串行，勿跳步）
+
+> **2026-05-27 重排（Q-SEQ-1）**：**R3e-B 前移至 R3t-B 之后**（长音频在 LLM 块之前）；**HOT-UX 写入主序**（原仅在台账）。内核仍与 R3t-A 合并（Q-R3t-1）。
 
 ```text
 [R3a–c 已完成]
     ↓
-① R3h-0   构建 smoke + Win 磁盘 + pip 主 UI 降级     ← 发行阻塞，最先
+【A 能装能转】
+① R3h-0   构建 smoke + Win 磁盘 + pip 主 UI 降级
     ↓
-② R3h-1   local_runtime + manifest 下载 + app_data 侧车
+② R3h-1   local_runtime + manifest 下载 + app_data 侧车     ← ✅ 已收口
     ↓
-③ R3f     一键准备手测签收（接入 R3h-1 自动下侧车）
+③ R3f     一键准备手测签收
     ↓
-④ R3e-A   长音频超时止血
+④ R3e-A   长音频超时止血（**非**多段验收；50min 只验超时/文案，见 Q-R3e-1）
     ↓
-⑤ R3g-A   模型目录（SenseVoice + Paraformer）
+⑤ R3g-A   模型目录（SenseVoice + Paraformer）  ✅ 2026-05-27
+    ├ ⑤a 后端 ✅
+    ├ ⑤b UI 状态对齐 + S3 ✅
+    └ ⑤c Paraformer 13min 多语段 ✅
     ↓
-⑥ R3h-2   断点续传 + 一键准备合并 + 侧车升级回滚
+⑤½ HOT-UX  热词 12k 截断可观测  ✅ 2026-05-27
     ↓
-⑦ R3h-3   环境与能力「三盏灯」就绪页（含 R3d IA）
+【B 转写真源】
+⑤′a R3t-A   声学分段 ASR（与 R3e-B 同一分段内核）
     ↓
-⑧ R3h-3.5 Sherpa-ONNX Spike（1 周，不阻塞 ①–⑦）
+⑤′b R3t-B   转写编排、原子写库、warnings；不自动 LLM
     ↓
-⑨ R3e-B   分片转写 + 30min+ 手测
+⑤′½ TRN-DIAG  转写任务时间线 + 诊断包
     ↓
-[R4 起]
+⑥ R3e-B   长音频进度/分片（若 R3t-A 已覆盖内核则减量）  ← 自原⑨前移
+    ↓
+【C 发行成熟】
+⑦ R3h-2   断点续传 + 侧车升级回滚
+    ↓
+⑦½ ASR-WARM  侧车保活（R3h-I4）
+    ↓
+⑧ R3h-3   三盏灯就绪页（含 R3d IA）
+    ↓
+⑧½ R3h-3.5 Sherpa Spike（不阻塞签收 A–B）
+    ↓
+【D 可选 LLM — 可跳过，手改即可交付】
+⑤″ R3t-C → R3t-D → R3t-E  用户显式触发 · 预览写回
+    ↓
+【E 交付与质量】
+⑤‴ EXP-WORD
+    ↓
+⑤‴½ REV-LOC（P2 可减 scope）
+    ↓
+R4 + R4-GATE → R9
 ```
 
 #### 4.1.2 子项台账
@@ -155,46 +298,114 @@ R9     发版集成验收（REL-1）
 |----|-----|------|------|----------|----------|
 | — | R3a/b/c | ✅ | — | keychain、profile、缓存/manifest | 各 acceptance |
 | **①** | **R3h-0** | 🟡 | 2–3d | 构建脚本 / smoke / `sidecarIntegrity` / Win `disk_free_bytes` 已有工作区实现；待跨平台构建 smoke 与 Windows 手测 | [remediation §5 Phase 0](../specs/rushi-local-runtime-catalog-remediation-plan.md) |
-| **②** | **R3h-1** | ✅ | 5–7d | `local_runtime/`、signed manifest / pinned key、`current+previous` / rollback、下载预算 / zip guard、诊断导出、timeout/cancel/state feedback 与 focused tests 已收口；可进入 **R3f** 单独签收 | remediation §5 Phase 1 |
+| **②** | **R3h-1** | 🟡 **编码✅** / **发行⏳** | 5–7d | 编码：`local_runtime/`、signed manifest、pinned key、**install 事务回滚**、**手动恢复 previous**。**非**自动升级健康回滚（→ R3h-2/I2）。发行门禁 remediation **§11** 未全绿 | remediation §5 Phase 1 + §11、§3.7、路线图 §4.1.5.1 |
 | **③** | **R3f** | 🟡 | 2–3d | 诊断 + 一键准备 + 8741 冲突；已接入 R3h-1 最小闭环，**须在 ①② 发行级补齐后手测** | [`r3f-asr-setup-wizard-acceptance.md`](../specs/r3f-asr-setup-wizard-acceptance.md) |
 | **④** | **R3e-A** | 🟡 | 2–3d | 动态超时 + 失败分类（已编码；50min 手测待签收） | [`r3e-long-audio-transcribe-acceptance.md`](../specs/r3e-long-audio-transcribe-acceptance.md) |
-| **⑤** | **R3g-A** | ⏳ | 3–5d | 双 SKU + `prepare(model_id)` + 硬件阈值文案 | [`r3g-local-asr-model-catalog-acceptance.md`](../specs/r3g-local-asr-model-catalog-acceptance.md) |
-| **⑥** | **R3h-2** | ⏳ | ~1w | Range 断点续传；缺/坏侧车自动下载；`recommended_asr_models`；GC / 事件化进度 / 升级编排收口 | remediation §5 Phase 2 |
-| **⑦** | **R3h-3** + **R3d** | ⏳ | 3–5d | 本机 ASR / 在线 STT / LLM 三盏灯；五栏 IA | remediation §5 Phase 3 + [`r3d-settings-ia-acceptance.md`](../specs/r3d-settings-ia-acceptance.md) |
-| **⑧** | **R3h-3.5** | ⏳ | ~1w | Sherpa-ONNX CER Spike；引擎去留 ADR | remediation §5 Phase 3.5 |
-| **⑨** | **R3e-B** | ⏳ | 1.5–2w | 分段转写 + 合并 + 长任务进度 | r3e spec §R3e-B |
-| — | R3h-4 | 延后 | 2–3w | 本机 LLM runtime catalog（Ollama 检测 / llama-server） | remediation §5 Phase 4 |
+| **⑤** | **R3g-A** | ✅ | 3–5d | 双 SKU + `prepare(model_id)`；**⑤a–c** 手测签收（2026-05-27） | [`r3g-local-asr-model-catalog-acceptance.md`](../specs/r3g-local-asr-model-catalog-acceptance.md) |
+| **⑤½** | **HOT-UX** | ✅ | 0.5w | 热词 12k 截断可观测；术语页「本次转写将携带」摘要 | [`hot-ux-acceptance.md`](../specs/hot-ux-acceptance.md) |
+| **⑤′a** | **R3t-A** | 📋 | 3–5d | 全模型声学分段；punc/VAD；消灭长音频整轨单段 | [`recording-transcribe-llm-refine-plan.md`](../specs/recording-transcribe-llm-refine-plan.md) §2 |
+| **⑤′b** | **R3t-B** | 📋 | 2–4d | 转写任务、超时、原子写库、warnings UI；**不自动 LLM** | 同上 §3 |
+| **⑤′½** | **TRN-DIAG** | 📋 | 0.5w | 转写阶段时间线；失败阶段 + 建议动作；并入诊断包 | [`personal-solo-v1-backlog.md`](../specs/personal-solo-v1-backlog.md) §3.2 |
+| **⑥** | **R3e-B** | ⏳ | 1.5–2w | 长音频进度/分片；内核并入 R3t-A（**Q-SEQ-1 前移**） | r3e spec §R3e-B |
+| **⑦** | **R3h-2** | ⏳ | ~1w | Range 续传；事件化下载进度；GC；**C 类自动升级回滚**；缺/坏侧车自动下载 | remediation §5 Phase 2 |
+| **⑦½** | **ASR-WARM** | 📋 | 0.5–1w | 侧车保活、模型预热；**R3h-I4** | personal-solo §3.1 |
+| **⑧** | **R3h-3** + **R3d** | ⏳ | 3–5d | 本机 ASR / 在线 STT / LLM 三盏灯；五栏 IA | remediation §5 Phase 3 + [`r3d-settings-ia-acceptance.md`](../specs/r3d-settings-ia-acceptance.md) |
+| **⑧½** | **R3h-3.5** | ⏳ | ~1w | Sherpa-ONNX CER Spike；不阻塞 A–B 签收 | remediation §5 Phase 3.5 |
+| **⑤″c** | **R3t-C** | 📋 | 1–1.5w | 扩展 R2 标点（邻段上下文可选）；**可选/显式触发** | 同上 §4；R2 ✅ |
+| **⑤″d** | **R3t-D** | 📋 | 1.5–2w | merge/split/update_text ops + 预览 | 同上 §5 |
+| **⑤″e** | **R3t-E** | 📋 | 1.5–2w | LexiconPack 有据校对；**无 RAG**；**无** R3t-E3 项目级词表 v1 | [`lexicon-guided-llm-refine.md`](../../architecture/lexicon-guided-llm-refine.md) |
+| **⑤‴** | **EXP-WORD** | 📋 | 1–1.5w | L6 交付：导出真源对齐；逐字稿/讲稿/干净稿版式；可选修订摘要附录；**不等 C6** | [`word-formatted-export-backlog.md`](../specs/word-formatted-export-backlog.md) |
+| **⑤‴½** | **REV-LOC** | 📋 | 0.5–1w | 单机 `edit_log` 时间线；可选恢复点；**非** R8 协作 revision | [`personal-solo-v1-backlog.md`](../specs/personal-solo-v1-backlog.md) §3.3 |
+| — | **R3t（索引）** | 📋 | — | Epic 总览（含 L6） | [`recording-transcribe-llm-pipeline.md`](../../architecture/recording-transcribe-llm-pipeline.md) |
+| — | R3h-4 → **LLM-LOC** | v1 后 | 见 §6、[`llm-local-runtime-backlog.md`](../specs/llm-local-runtime-backlog.md)（**4a** Ollama ~0.5–1w；**4b** 自管 2–3w+） | remediation §Phase 4 |
 | — | R3h-E/F、R3g-B | 延后 | — | 高级 pip/本地构建；Nano 等多 SKU | remediation §5 Phase 5 |
 
 #### 4.1.3 并行与禁忌
 
 | 规则 | 说明 |
 |------|------|
-| **勿并行** | R3f 编排与 **R3e-B** 分片（同改转写链） |
+| **勿并行** | R3f 编排与 **R3e-B** 分片（同改转写链）；**R3t-A/B** 与 R3f **大改**勿同轮 |
+| **R3t 门禁** | **R3g ⑤c** 建议先签收再开 **R3t-A** 编码；R3e-B 与 R3t-A **同一分段真源**（禁止 fork 两套 VAD） |
+| **LLM 校准** | R3t-C/D/E **须用户显式触发**；禁止转写完成静默跑 |
 | **可并行设计** | R3e-A 与 R3g-A 接口；实施仍 **④ 先于 ⑤** |
 | **R3h-I 设计** | 可在 **② 后**并行做只读方案与接口草图；避免和 **①–③** 的止血实现混在同一刀 |
 | **R3h-I 实施** | 建议在 **⑥–⑦** 之间或之后集中收口；不单独改写 §4.1.1 的产品签收顺序 |
 | **勿跳步** | **R3f 手测不得在 R3h-0 前签收**（否则 corrupt 包误判） |
-| **R9 依赖** | 零终端 ASR：**②+③**；长音频完整：**⑨** |
+| **R9 依赖** | 零终端 ASR：**②+③**；多段转写：**⑤′+⑤c**；长音频完整：**⑥ R3e-B**；交付：**⑤‴**；质量：**R4-GATE** + **TEST-AUTO** 子集 |
 
-#### 4.1.4 `R3h-I` 工业成熟度对齐（收口轨，不改主顺序）
+#### 4.1.4 能力—UI 状态对齐闸门（R3-STATE，横切 R3）
+
+> **背景**：R3g-A 先交付 API/下拉，未同步验收「同一面板多控件是否同一状态维度」，导致 Paraformer 已选但下载区仍显示 SenseVoice 就绪、侧车报告不一致。**此后 R3 各切片 UI 编码前必须通过本闸门。**
+
+| 步骤 | 门禁 | 未过后果 |
+|------|------|----------|
+| **S1 Spec** | acceptance 含 **能力—UI 状态矩阵**（[`spec-template.md`](../specs/spec-template.md)） | 不得开 UI PR |
+| **S2 派生** | 多 SKU / 多进程场景用纯函数派生（如 `buildLocalAsrCatalogView`），禁止组件直读全局 `ready_for_transcribe` 表示「所选」 | 不得合并 |
+| **S3 手测** | 至少 2 组矛盾场景（见 architecture §5）截图无互斥文案 | 不得签收该切片 |
+| **S4 测试** | focused test 覆盖 mismatch（如 `selectedModelPrepareState`） | 不得宣称完成 |
+
+**R3g-A ⑤b**：P1 顶栏/环境页/一键准备模型步 **已编码**（`computeLocalAsrTranscribeReady` 等）；**S3 手测** 仍阻塞 ⑤c。`LocalAsrGuidanceSection` **未接线**（死代码，可删或 R3d 再接）。见 architecture §4。
+
+**与 R3h-I3 关系**：R3-STATE 是 **每切片交付纪律**；R3h-I3 Setup Machine 是 **一键准备状态机** 的长期收口，不替代 S1–S4。
+
+#### 4.1.5 `R3h-I` 工业成熟度对齐（收口轨，不改主顺序）
 
 **目的**：把已经在 `R3h-0～3` 中落地的发行止血能力，继续收口成更稳定、可回归、可替换的长期结构；这是**架构硬化轨**，不是新增一层产品阶段。
 
-| 子轨 | 对齐目标 | 主要落位 | 建议接入点 |
-|------|----------|----------|------------|
-| **R3h-I1 Runtime Supervisor** | 显式 sidecar supervisor FSM、watchdog、runtime identity，统一 `bundled` / `app_data` 侧车真相 | `apps/desktop/src-tauri/src/asr_sidecar.rs`、`lib.rs`、`asr_setup/diagnose.rs` | **R3h-1** 稳定后可设计；建议在 **R3h-2 / R3h-3** 前后收口 |
-| **R3h-I2 Release System** | 在 R3h-1 已落地的签名校验、`current+previous`、rollback 之上继续升级到更完整的发布元数据、GC、事件化进度 | `apps/desktop/src-tauri/src/local_runtime/*.rs`、`apps/desktop/src/services/localRuntime/localRuntimeContract.ts` | 以 **R3h-2** 为主落点，避免早于 **R3h-1** |
-| **R3h-I3 Setup Machine** | 将 `ASR setup` 编排改成 reducer/state-machine，统一消费 diagnose / installer / model prepare 事件 | `apps/desktop/src/pages/useAsrSetupController.ts`、`asrSetupState.ts`、相关 contract / wizard 测试 | 依赖 **I1/I2** 契约后再收口，建议放在 **R3h-3** 附近 |
+##### 4.1.5.1 R3h「回滚」三分法（勿混读）
+
+| 类型 | 含义 | 代码落点 | 阶段 |
+|------|------|----------|------|
+| **A 安装事务回滚** | 新包校验/解压失败 → 保留 **current**，不切换 | `local_runtime/installer.rs` | **R3h-1 编码✅** |
+| **B 手动恢复 previous** | 用户触发「恢复上一版侧车」 | `local_runtime/recovery.rs` | **R3h-1 编码✅** |
+| **C 自动升级健康回滚** | 切换后运行时劣化 → 自动回退 | 规划 | **R3h-2 / R3h-I2** |
+
+> R3h-1 **不包含 C**；roadmap 勿写「企业级自动回滚已完成」。
+
+| 子轨 | 对齐目标 | 主要落位 | **启动条件（定量）** |
+|------|----------|----------|----------------------|
+| **R3h-I1 Runtime Supervisor** | 显式 sidecar supervisor FSM、watchdog、runtime identity | `asr_sidecar.rs`、`lib.rs`、`asr_setup/diagnose.rs` | **R3h-1 编码签收** + remediation §11 **零终端/诊断** 手测通过后 → 可开 **设计**；**编码收口**不早于 **R3h-2 开始** |
+| **R3h-I2 Release System** | GC、**事件化下载进度**（可恢复/可取消）、完整升级编排 | `local_runtime/*.rs`、`localRuntimeContract.ts` | **R3h-2 编码完成** + `npm run test` + `cargo test` 通过 → 本轨 **编码收口** |
+| **R3h-I3 Setup Machine** | ASR setup reducer/state-machine | `useAsrSetupController.ts`、`asrSetupState.ts` | **I1 设计评审通过** + **I2 manifest schema 冻结**（ADR/contract 一行变更记录）→ 可开编码；目标窗口 **R3h-3** |
+| **R3h-I4 ASR-WARM** | Persistent worker、预热、空闲回收 | `asr_sidecar.rs`、侧车进程策略 | **R3t-B 编码完成** + **I1 Supervisor FSM 设计冻结** → 见 [`asr-warm-acceptance.md`](../specs/asr-warm-acceptance.md) |
+
+**R3h-2 进度事件（行业对照）**：侧车 zip 与模型拉取统一 **阶段 + 字节进度 + 可恢复**；参考 Tauri updater（签名/HTTPS/进度/代理）与 Ollama pull 流式 `status/digest/completed`（**取消须真停后台**，见 Q-R3g-3）。
 
 **当前冻结边界**：
 
 - `R3h-I` **不引入新产品承诺**，只收口已存在能力的真实状态面与可维护性。
 - 默认走 **依赖轻** 的内部 reducer / state-machine，不为了 `R3h-I3` 新增 `xstate`。
-- 当前默认口径：**R3h-1** 直接补到 release-system 最小闭环，即 `签名 manifest`、`pinned key`、`current+previous`、`rollback`、schema 对齐、生产禁用明文 HTTP、下载前磁盘预算、诊断可追踪；`R3h-2/R3h-I2` 再继续补 `Range`、GC、`progress events` 与更完整升级编排。
-- `Setup Machine` 仍不并入 `R3h-1`；维持在 **R3h-I3 / R3h-3 附近** 收口，避免把 Phase 1 扩成整套编排重写。
-- 供应链成熟度默认目标：artifact `sha256` + signed manifest + pinned public key；release 产物附 SBOM / provenance 摘要 / sidecar smoke 证据。Sigstore / SLSA 可作为后续增强，不阻塞 R3h-0/1 止血。
-- 验证矩阵沿用 `cargo test`、`run-asr-pytest.sh`、桌面端 `typecheck/test`、`architecture guard` 与打包后 sidecar smoke。
+- **R3h-1 编码最小闭环**：signed manifest、pinned key、schema 对齐、磁盘预算、诊断可追踪、**A/B 回滚**；**R3h-2/I2** 补 Range 续传、GC、**C 类回滚**、统一 progress events。
+- `Setup Machine` 仍不并入 `R3h-1`；维持在 **R3h-I3 / R3h-3 附近** 收口。
+- 供应链：artifact `sha256` + signed manifest + pinned key；SBOM / SLSA provenance 为 **release 附件**，不阻塞 R3h-0/1。
+- 验证矩阵：`cargo test`、`run-asr-pytest.sh`、桌面 `typecheck/test`、architecture guard、打包 sidecar smoke。
+
+#### 4.1.6 R3t 子阶段（录音转写 → LLM 校准）
+
+> **Epic 真源**：[`recording-transcribe-llm-refine-plan.md`](../specs/recording-transcribe-llm-refine-plan.md) · [`recording-transcribe-llm-pipeline.md`](../../architecture/recording-transcribe-llm-pipeline.md)  
+> **产品决策**：§1.7 · Q1–Q5 已定
+
+| ID | 依赖 | 交付要点 | 编码门禁 |
+|----|------|----------|----------|
+| **R3t-A** | R3g **⑤c** 建议先过 | 侧车全模型多语段；`funasr_whole_track_fallback` 长音频非终态 | 与 **R3e-B** 分段函数 **合并评审** |
+| **R3t-B** | R3t-A | 转写编排、原子写库、warnings；**不自动 LLM** | 勿与 R3f **大改**同轮 |
+| **R3t-C** | R3t-B；R2 ✅ | 标点 + 可选邻段上下文 | 用户显式触发 |
+| **R3t-D** | R3t-C 契约 | merge/split/update_text + 双 diff | 同左 |
+| **R3t-E** | R3t-D | LexiconPack；**无 RAG**；不传 hotwords 串 | 同左 |
+
+**学习环（已交付 + 规划）**：
+
+```text
+glossary_terms ──► L2 hotwords（转写偏置）
+保存语段 ──► correction_memory ──► 转写 hints + R3t-E rules
+用户确认写回 ──► 继续累积 memory（R3t-E2「采纳为规则」规划）
+```
+
+**增强项（排期）**：**HOT-UX**（⑤c 后，已拍板）；LEX-MINE / R3t-E3 项目级词表 **不做 v1**。
+
+**交付导出（L6）**：**EXP-WORD** 在 **R3t-E 之后**、**R4 之前**（§8.2 Q-WORD）；与 P3 DOCX **基线**分层。**REV-LOC** 在 EXP-WORD 后、R4 前（P2 可减 scope）。
+
+**个人 v1 补齐**：**TRN-DIAG**、**ASR-WARM**、**R4-GATE** — 见 §1.8。
 
 ### 阶段状态（实施时更新）
 
@@ -207,11 +418,9 @@ R9     发版集成验收（REL-1）
 | R3 | 🟡 进行中（a/b/c ✅；**R3h/f/e/g/d** 按 §4.1） | — |
 | R3h | 🟡 LRC 整改进行中：①② 已到 release-system 最小闭环；下一刀转 **R3f** 手测签收，后续再进 ⑥⑦ 与 `R3h-I` 收口 | — |
 | R4 | ⏳ | — |
-| R5 | ⏳ | — |
-| R6 | ⏳ | — |
-| R7 | ⏳ | — |
-| R8 | ⏳ | — |
-| R9 | ⏳ | — |
+| R5 | ⏳ v1 后 | — |
+| R6–R8 | ⏳ 非 v1 | — |
+| R9 | ⏳ 个人 v1 目标 | — |
 
 ---
 
@@ -336,7 +545,7 @@ React 预览 UI
 | **R3h** | **本地运行时目录（LRC）** | ⏳ §4.1 ①–⑧ + `R3h-I`；`R3h-1` 按 release-system 最小闭环推进 |
 | **R3f** | 一键环境准备 | 🟡 编码完成；手测在 **R3h-0 后** |
 | **R3e** | 长音频 | ⏳ |
-| **R3g** | 模型目录 | ⏳ |
+| **R3g** | 模型目录 | ✅ R3g-A ⑤a–c（2026-05-27） |
 | **R3d** | 环境 IA | ⏳ 与 **R3h-3** 合并实施 |
 
 **实施顺序**：**仅 §4.1.1**。
@@ -355,7 +564,7 @@ React 预览 UI
 | **R3h-3** | 三盏灯就绪页（合并 R3d） | 体验收口 |
 | **R3h-I** | 工业成熟度对齐：`Runtime Supervisor` / signed release system / `Setup Machine` | **收口轨**；不改 ①–⑨ 主顺序 |
 | **R3h-3.5** | Sherpa-ONNX Spike | **不阻塞** ①–⑦ |
-| **R3h-4** | 本机 LLM catalog | R4 前或并行设计 |
+| **R3h-4** | 本机 LLM catalog | R4 前或并行设计 | **已并入 LLM-LOC**（§6）；v1 后实施 |
 | **R3h-E/F** | 高级 pip / 本地 build 侧车 | 开发者折叠 |
 
 **组件路径**（应用数据根下）：`sidecar/{platform}/{version}/`、`models/`（已有）、远期 `llm-runtime/`、`llm-models/`。
@@ -375,7 +584,7 @@ React 预览 UI
 
 **验收真源**：[`r3e-long-audio-transcribe-acceptance.md`](../specs/r3e-long-audio-transcribe-acceptance.md)。**R9 REL-1 长音频手测**在 R3e-B 完成前仅可部分勾选。
 
-**建议排期**：见 **§4.1.1**（**R3e-A** 在 R3f 后；**R3e-B** 在 R3h-3/3.5 后、R4 前）。
+**建议排期**：见 **§4.1.1**（**R3e-A** 在 R3f 后；**R3e-B** 在 **R3t-B/TRN-DIAG 后**、**R3t-C 前**，Q-SEQ-1）。
 
 ---
 
@@ -391,9 +600,18 @@ React 预览 UI
 
 **验收**：与 `eval-run.py` 数值一致；correction_memory 导出含脱敏步骤。
 
+#### R4-GATE — 个人 v1 发版质量门禁（R9 硬依赖）
+
+| 做 | 不做 |
+|----|------|
+| 固定 eval 集一条命令可跑；质量 Tab 展示最近一次 CER / term_hit | 在线 LLM judge |
+| **R9 前必须**跑通并记录摘要（可对比上一版 tag） | 阻塞 R3 薄片开发 |
+
+**真源**：[`personal-solo-v1-backlog.md`](../specs/personal-solo-v1-backlog.md) §3.4。
+
 ---
 
-### R5 — AGT-1：MCP 只读（原 P1）
+### R5 — AGT-1：MCP 只读（原 P1，**个人 v1 非阻塞**）
 
 **目标**：外部 Agent 只读访问工作库。
 
@@ -409,7 +627,7 @@ React 预览 UI
 
 ---
 
-### R6 — COL-1：协作服务骨架
+### R6 — COL-1：协作服务骨架（**非个人 v1**；§6 / §8.2 Q-POS-2）
 
 **目标**：协作从文档变为可运行真源。
 
@@ -443,28 +661,40 @@ React 预览 UI
 
 ---
 
-### R9 — REL-1：发版集成验收
+### R9 — REL-1：发版集成验收（**个人单机 v1**）
 
-**目标**：里程碑可发布或内测。
+**目标**：个人用户可 **日常主力使用** 的内测/发布包；**不以 R6–R8 为门禁**。
 
 | 项 | 说明 |
 |----|------|
 | **零终端本机 ASR** | 无 shell 完成侧车安装 + 默认模型 + smoke（**依赖 R3h-1 + R3f**；[remediation §11](../specs/rushi-local-runtime-catalog-remediation-plan.md)） |
 | **弱网/断网** | 下载可重试；无网时 bundled 回退（**依赖 R3h-2**） |
-| 长音频 | 30～60min 中文：转写 → 编辑 → 保存 → 重启 → 导出（**依赖 R3e-B**；[`r3e-long-audio-transcribe-acceptance.md`](../specs/r3e-long-audio-transcribe-acceptance.md)） |
-| 脚本 | `p0-acceptance.sh`、现有 P1–P4 核对清单按需抽检 |
-| 文档 | 更新 §2 状态表；`architecture-split-plan` 行数表与代码对齐（T-006） |
-| 可选 | Playwright E2E 一条主干；波形性能基准记录 |
+| **长音频主路径** | 30～60min：转写 →（可选）LLM → 编辑 → 重启 → **EXP-WORD**（R3e + R3t + EXP-WORD） |
+| **TRN-DIAG** | 失败一次转写：UI/诊断包能指出阶段与建议动作 |
+| **ASR-WARM** | 同项目连续转写：第二次无明显冷启动劣化（手测） |
+| **R4-GATE** | eval 集已跑；质量 Tab 有摘要 |
+| **TEST-AUTO** | corrupt 侧车 fixture +（可选）长音频慢测 + Setup/转写 FSM contract 已跑 |
+| **LLM 可跳过** | 无 LLM 配置时可完成：转写 → 手改 → 导出 |
+| **REV-LOC** | 若本 v1 纳入：至少只读变更时间线；恢复点可按 acceptance 减 scope |
+| 脚本 | `p0-acceptance.sh`、P1–P4 按需抽检 |
+| 文档 | §2 状态表；T-006 行数表对齐 |
+| 可选 | E2E 一条主干；波形性能记录 |
+| **不含** | R6–R8 协作签收、C4–C7、MCP 写路径 |
+
+**手测清单摘要**：[`personal-solo-v1-backlog.md`](../specs/personal-solo-v1-backlog.md) §5。
 
 ---
 
-## 6. 远期阶段（2026 Q4 起，不纳入上表周次）
+## 6. 远期阶段（2026 Q4 起，**非个人 v1**）
 
 | ID | 主题 | 前置 |
 |----|------|------|
+| **R6–R8** | 协作 C1–C3（骨架 / 只读 / 写入） | 产品书面启动协作；**默认 v1 不做** |
+| **R5** | MCP 只读 | T-002；v1 后可插 |
+| **LLM-LOC** | 本机 LLM 校对（Ollama → LRC 自管） | **R9 + R3t-E** 后：**SPIKE → Gate**；**未过 Gate 不编码** | [`llm-local-runtime-backlog.md`](../specs/llm-local-runtime-backlog.md) §9–10 |
 | C4 | 审阅线程与建议修改 | R8 |
 | C5 | Presence 与活动流 | C4 |
-| C6 | Word 审阅导出 | C4 数据落库 |
+| C6 | Word 审阅导出（协作） | C4 数据落库；**≠** 单机 **EXP-WORD**（§4.1.1 ⑤‴） |
 | C7 | 离线缓存、部署包正式化 | C3 + 镜像 |
 
 规格已存在、实施等 C4 启动时再写 acceptance 增量：[`collaboration-review-word-export.md`](../specs/collaboration-review-word-export.md)。
@@ -481,7 +711,8 @@ React 预览 UI
 | T-004 | 侧车 artifact 断点续传 + 镜像回退 | **R3h-2** | 原标 C7；现纳入 LRC Phase 2 |
 | T-008 | LRC / 侧车 corrupt 诊断 | **R3h-0** | `bundledAvailable` 仅 bool；见 remediation §1.3 |
 | T-009 | ~2.5GB Python 侧车技术债 | **R3h-3.5** | Sherpa-ONNX Spike；见 remediation §10.1 R1 |
-| T-005 | `useProjectLifecycleController` | **R0 必做** | 当前 381 行 / 21 hooks，守卫已告警 |
+| T-005 | `useProjectLifecycleController` | **✅ 已解决** | ~261 行；原 R0 项，2026-05-27 对照 |
+| T-010 | `install_support.rs` / `asr_sidecar.rs` / `useAsrSetup*` | **R3h-2～I3** | 守卫 7 警告；随 LRC/I 薄片拆分，不单独开重构周 |
 | T-006 | `architecture-split-plan` 过期 | **R9** | 与 §2 基线同步 |
 | T-007 | 本机转写 600s 超时 + 整文件 FunASR | **R3e** | 50min 手测 OOM / request failed；见 r3e spec |
 
@@ -489,7 +720,7 @@ React 预览 UI
 
 ---
 
-## 8. 明确不做（至 C3 完成前）
+## 8. 明确不做（个人单机 v1 发版前）
 
 | 项 | 原因 |
 |----|------|
@@ -499,18 +730,69 @@ React 预览 UI
 | YAML 配置主真源 | 密钥与 UI 双写 |
 | correction_memory → 训练集 | schema 不足 |
 | CRDT / 浏览器完整编辑器 | 协作远期 |
-| 翻译词典 / CAT 全模块 | 见 `translation-dictionary-module.md`，**未纳入**（与 glossary 不同表、不同目标） |
+| 翻译词典 / CAT 全模块 | 见 [`translation-dictionary-module.md`](../specs/translation-dictionary-module.md) + [`translation-cat-backlog.md`](../specs/translation-cat-backlog.md)；**未纳入**（与 glossary 不同表、不同目标） |
+| **领域 RAG 校对** | **当前不做**（2026-05-27）；R3t-E 仅用 **LexiconPack**（glossary + correction_memory），不上检索语料 |
+| **Oumi 式桌面内训练 / Synth 管道** | 见 oumi Part I 排除 + lexicon-mining §7；**ASR-FT** 仅远期 |
+| **LLM 请求携带 ASR `hotwords` 空格串** | 与 LexiconPack 重复且难做 evidence；**禁止** |
+| **STREAM / mic 流式** | 不在 R3t v1；R3t-D/E 后另立项 |
 | 术语库仅做后端、不做管理 UI | GLY-1 已纳入；初版路线图遗漏，属文档缺口非功能删除 |
+
+---
+
+## 8.1 候选 Epic（未排期）
+
+> **真源**：[`lexicon-mining-backlog.md`](../specs/lexicon-mining-backlog.md)、[`translation-cat-backlog.md`](../specs/translation-cat-backlog.md)  
+> 下列项**不在 §4.1.1 顺序内**；产品书面 Go 后再拆 intent/plan/acceptance 并插入排期。
+
+| ID | 名称 | 摘要 | 建议门禁 |
+|----|------|------|----------|
+| **LEX-MINE** | 词表候选推荐 | 补齐计划书 §5.1.2：从 `correction_memory` 聚合推荐进 glossary；可选 LLM **只读**说明（**非训练**） | R3t-E 或 GLY-1 + memory 稳定；**不**与 R3t-E 合并 prompt |
+| **ASR-FT** | ASR 训练 manifest / 可选 LoRA | 计划书 §5.2–5.3；Oumi 数据合成 **远期** | R9 ROI + memory 导出 schema（privacy/domain）+ 独立测试集 |
+| **CAT-TRAN** | 翻译 + 词典（CAT） | 中译英、`target_text`、富结构词典、子范围批注、双语 DOCX；**spec 已有** T1–T6 | **远期**；**当前不做**（2026-05-27）；Go 须转写主线签收 + 产品中译英优先级 |
+| **REV-LOC** | 单机修订时间线 | `edit_log` 只读/恢复点；非协作 revision | EXP-WORD 后；P2 可减 scope |
+| **STREAM-*** | 实时 mic / 流式 | 另立项 | R3t-D/E 签收后 |
+| **LLM-LOC** | 本机 LLM（Spike / 4a / 4b） | 规划真源 §9 Gate；**实施待 Q-LLM-5** | [`llm-local-runtime-backlog.md`](../specs/llm-local-runtime-backlog.md) |
+
+**与 §8 关系**：§8「correction_memory → 训练集」仍有效；**LEX-MINE-1/2 不算训练集**（仅 UI 推荐）。**ASR-FT** 仅在 backlog §5 Go 门槛满足后解除。**CAT-TRAN**：**远期规划、当前不做**；维持 §8「全模块未纳入」，**禁止**在转写薄片内预建 CAT schema。
+
+---
+
+## 8.2 已拍板（2026-05-27）
+
+| ID | 决定 |
+|----|------|
+| **Q-R3t-1** | **合并分段内核**：R3t-A/B 与 R3e-B **同一 `funasr_engine` 真源**；⑨ 仅补长音频进度/分片（若侧车内循环已覆盖则减量） |
+| **Q-R3t-2** | **R3t-C、D、E 全部在 R4 之前** 完成（LLM 校准一整块后再做质量 Tab） |
+| **Q-R3t-3** | **HOT-UX** 纳入：**R3g ⑤c 后** 约 0.5w |
+| **Q-R3t-4** | **R3t-E3 项目级词表 v1 不做**；仍 **全局 `glossary_terms`** |
+| **Q-WORD-1** | **EXP-WORD** 在 **R3t-E 之后、R4 之前** |
+| **Q-WORD-2** | 修订摘要附录：**导出时可选勾选**；**不做** Word Track Changes / 批注气泡 |
+| **Q-WORD-3** | v1：**逐字稿增强 + 讲稿/干净稿**；**不等** 协作 C6 |
+| **Q-POS-1** | **产品定位 = 个人单机 v1**；SQLite 真源；主路径见 §1.6 |
+| **Q-POS-2** | **R6–R8 非 v1 阻塞**；R9 可在 R4 后签收；R5 可后置 |
+| **Q-POS-3** | **ASR-WARM** 纳入 v1 P1（§4.1.1 **⑦½**）；**TRN-DIAG** 纳入 v1 P1（**⑤′½**） |
+| **Q-POS-4** | **R4-GATE** 为 R9 **硬门禁**；**REV-LOC** 为 P2（可减 scope） |
+| **Q-LLM-1** | 本机 LLM **v1 后**做；**不阻塞 R9**；v1 仍以 **云端** 签收 R3t |
+| **Q-LLM-2** | **先 LLM-LOC-4a（Ollama）** 验证本地校对 ROI；**再 4b（LRC 自管）** |
+| **Q-LLM-3** | LLM **不进 ASR 侧车**；postprocess 仍为 Tauri OpenAI-compatible HTTP |
+| **Q-LLM-4** | **4a 与 4b 可并存**：默认 4b 零终端；检测到 Ollama 时可「使用现有安装」 |
+| **Q-LLM-5** | **是否真做本机 LLM 以 Gate 为准**：先 **LLM-LOC-SPIKE** → **Gate-A**（4a）→ **Gate-B**（4b）；**未过则不做产品化**，云端仍为默认 |
+| **Q-SEQ-1** | ✅ **已拍板**（2026-05-27 无异议）：**HOT-UX** 入主序（⑤c 后）；**R3e-B** 在 **R3t-B/TRN-DIAG 之后**、**R3t-C 之前**（**不**回退到 R3h-3 后）；Sherpa **⑧½** 不阻塞 A–B |
+| **Q-SEQ-2** | R3 宏观工期以 **§4.1.1 薄片总和** 为准（约 **8～10w**），非旧表「4～5w」单行 |
+| **Q-R3g-2** | ✅ **R3-STATE S3 不得跳过**：⑤b **2 组矛盾场景手测** 签收后方可 **⑤c**（不与 ⑤c 并行除非书面改序） |
+| **Q-R3t-2** | ✅ **分段单一模块**：R3t-A 产出 `segmentation.py`（或等价模块）；R3e-B **只消费**（见 R3t plan §2.3） |
+| **Q-R3e-1** | ✅ **R3e-A 非长音频多段验收**：50min 手测只验动态超时/失败分类/OOM 文案；多段质量 **仅 R3t-A/B + R3e-B** |
+| **Q-R3g-3** | ✅ **模型下载 cooperative cancel**：`POST /v1/models/prepare-cancel` + `phase: cancelled`；单文件传完前不可硬中断 ModelScope；**⑤c 前手测** |
 
 ---
 
 ## 9. 排期分叉（二选一）
 
-### 默认：单机优先（§4 表）
+### 默认：个人单机 v1（§3.1、§4.1.1）
 
-适合：先验证 LLM 标点与模型体验 ROI，再投入协作服务端。
+**真源**：§1.6–§1.8 → R3 薄片（含 EXP-WORD、TRN-DIAG、ASR-WARM）→ R4 + R4-GATE → R9。
 
-### 分叉 B：协作提前
+### 分叉 B：协作提前（**偏离个人 v1 默认**）
 
 若 **R6 必须提前至 R3 之后**（约 08 前要有协作 demo）：
 
@@ -528,11 +810,13 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 
 | 项 | 内容 |
 |----|------|
-| **阶段** | **R3 — EXP-1 + R3h LRC（进行中）** |
+| **定位** | **个人单机 v1**（§1.6） |
+| **阶段** | **R3 — 转写主线（EXP-1 + R3h LRC + R3g/R3e/R3t + EXP-WORD）** |
+| **近期不做** | **CAT-TRAN**、LEX-MINE、ASR-FT、**RAG**、**R6–R8** — §8 / §8.1 / §6 |
 | **ASR 引擎路线** | **方案 A 已锁定** — FunASR + LRC 先行；Sherpa 仅 R3h-3.5 Spike；[ADR-0003](../../adr/0003-asr-engine-funasr-first-sherpa-spike-gate.md) |
 | **排期真源** | **§4.1.1** |
 | **实施真源** | [`rushi-local-runtime-catalog-remediation-plan.md`](../specs/rushi-local-runtime-catalog-remediation-plan.md) **v1.1** |
-| **验收切片** | [`r3f-asr-setup-wizard-acceptance.md`](../specs/r3f-asr-setup-wizard-acceptance.md) / [`r3g-…`](../specs/r3g-local-asr-model-catalog-acceptance.md) / [`r3e-…`](../specs/r3e-long-audio-transcribe-acceptance.md) |
+| **验收切片** | [`r3f-…`](../specs/r3f-asr-setup-wizard-acceptance.md) / [`r3g-…`](../specs/r3g-local-asr-model-catalog-acceptance.md) / [`r3e-…`](../specs/r3e-long-audio-transcribe-acceptance.md) / [`trn-diag-…`](../specs/trn-diag-acceptance.md) / [`asr-warm-…`](../specs/asr-warm-acceptance.md) / [`exp-word-…`](../specs/exp-word-formatted-export-acceptance.md) |
 | **不要** | 内置 LiteLLM/网关、Ollama 替代 ASR、主路径 pip/PyInstaller、R3f 在 R3h-0 前签收 |
 
 ### R3 规划门禁
@@ -542,9 +826,11 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 - [x] R3a/b/c 已签收；R3f/g/e acceptance 已起草  
 - [x] **LRC 整改方案 + 审查吸收**（v1.1，2026-05-26）  
 - [x] **ASR 引擎方案 A**（FunASR 先行 + Sherpa Spike 门控；[ADR-0003](../../adr/0003-asr-engine-funasr-first-sherpa-spike-gate.md)）  
+- [x] **R3-STATE S3**（R3g-A ⑤b；2026-05-27 场景 1–2 手测签收）
+- [x] **R3g-A ⑤c**（Paraformer 13min 多语段；2026-05-27 复测签收）
 - [ ] **R3h §11 发行门禁**（零终端、构建 smoke、损坏可恢复…）
 
-**下一刀**：**④ R3e-A 手测**（50min 超时/文案）→ **⑤ R3g-A**（见 §4.1.1；macOS 安装包签收延后）
+**下一刀**：**R3t-A**（⑤′a；HOT-UX ✅、R3g ⑤c ✅）
 
 ---
 
@@ -552,12 +838,20 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 
 | 文档 | 用途 |
 |------|------|
-| [`oumi-remediation-report.md`](../specs/oumi-remediation-report.md) | Oumi 调研、能力边界、接口草案；**排期以本文 §4 为准** |
+| [`oumi-remediation-report.md`](../specs/oumi-remediation-report.md) | Oumi 调研；Part I 边界；**§五-b** 为何不训领域模型 |
 | [`collaboration-foundation-plan.md`](./collaboration-foundation-plan.md) | 协作 Phase 1–7 细节；**顺序以本文 §4–§6 为准** |
 | [`p2-acceptance.md`](../p2-acceptance.md) | P2：术语库/热词/低置信/纠错记忆（**后端**）；管理 UI → GLY-1 |
 | [`docs/architecture/asr-hotword-bias-truth.md`](../../architecture/asr-hotword-bias-truth.md) | 术语如何拼进 ASR `hotwords` |
-| [`docs/architecture/postprocess-remote-boundary.md`](../../architecture/postprocess-remote-boundary.md) | R1 定稿：后处理不进 ASR sidecar |
-| [`translation-dictionary-module.md`](../specs/translation-dictionary-module.md) | CAT **词典**愿景（≠ 全局 glossary） |
+| [`docs/architecture/recording-transcribe-llm-pipeline.md`](../../architecture/recording-transcribe-llm-pipeline.md) | **R3t** 管线真源（录音分段 + LLM 校准，不含流式） |
+| [`recording-transcribe-llm-refine-intent.md`](../specs/recording-transcribe-llm-refine-intent.md) | R3t 目标与边界 |
+| [`lexicon-guided-llm-refine.md`](../../architecture/lexicon-guided-llm-refine.md) | **R3t-E** 词表有据校对（**消费**词表） |
+| [`word-formatted-export-backlog.md`](../specs/word-formatted-export-backlog.md) | **EXP-WORD** L6 终稿 Word（单机；非 C6） |
+| [`p3-acceptance.md`](../p3-acceptance.md) | P3 DOCX **基线**签收 |
+| [`personal-solo-v1-backlog.md`](../specs/personal-solo-v1-backlog.md) | **个人单机 v1** 能力补齐与 R9 手测 |
+| [`llm-local-runtime-backlog.md`](../specs/llm-local-runtime-backlog.md) | **LLM-LOC** 本机 LLM（4a Ollama / 4b LRC） |
+| [`lexicon-mining-backlog.md`](../specs/lexicon-mining-backlog.md) | **候选** LEX-MINE / ASR-FT；历史 §5 与 Oumi 排除登记 |
+| [`translation-dictionary-module.md`](../specs/translation-dictionary-module.md) | **CAT 实施 spec**（T1–T6；未排期） |
+| [`translation-cat-backlog.md`](../specs/translation-cat-backlog.md) | **候选** CAT-TRAN；与 glossary/R3t 边界 |
 | [`ui-redesign-parallel-dev.md`](../specs/ui-redesign-parallel-dev.md) | UI 纪律与已验收记录 |
 | [`architecture-split-plan.md`](../specs/architecture-split-plan.md) | 文件拆分地图（R9 同步） |
 | [`rushi-local-runtime-catalog-remediation-plan.md`](../specs/rushi-local-runtime-catalog-remediation-plan.md) | **R3h 实施真源**（LRC、manifest、分阶段验收） |
@@ -593,8 +887,24 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | 2026-05-25 | **§4.1 排期微调**：R3f → **R3e-A** → R3g-A → R3d 轻量 → R3e-B；补 [`r3d-settings-ia-acceptance.md`](../specs/r3d-settings-ia-acceptance.md) |
 | 2026-05-26 | **R3 重排**：**R3h（LRC）** 升为 epic；remediation v1.1；§4.1.1 为唯一顺序 |
 | 2026-05-26 | **ADR-0003**：**方案 A** — FunASR + LRC 先行；Sherpa 经 R3h-3.5 Spike 门控；否决方案 B（直接上 Sherpa） |
-| 2026-05-27 | **R3h-1 手测收口**：`healthy install`、`corrupt -> repair`、`bundled offline fallback`、`upgrade failure keeps current` 走通；补 UI 失败反馈与 verifier `HTTP 5xx` fast-fail |
-| 2026-05-27 | **R3h-1 硬化收口**：补 manifest/artifact 超时、`verify/revalidate/restore` 取消、`clear`/same-version rollback 语义、中文错误映射与 focused tests；验证通过 desktop hard gate + `cargo test` |
+| 2026-05-27 | **§8.1 候选 Epic**：[`lexicon-mining-backlog.md`](../specs/lexicon-mining-backlog.md)（LEX-MINE / ASR-FT；对齐计划书 §5 与 Oumi 排除） |
+| 2026-05-27 | **§8.1 CAT-TRAN**：[`translation-cat-backlog.md`](../specs/translation-cat-backlog.md)（翻译+词典；spec 见 `translation-dictionary-module.md`） |
+| 2026-05-27 | **产品侧重转写**：§1 原则 6 + §10；**CAT-TRAN 远期、当前不做** |
+| 2026-05-27 | **RAG 校对不做**：§8 + R3t-E；校对仅 LexiconPack |
+| 2026-05-27 | Oumi 报告 §五-b + lexicon-mining §7：为何不照搬 Oumi 动模型 |
+| 2026-05-27 | **§1.7 产品决策台账**；§4.1.1 纳入 R3t-A～E；§4.1.6 |
+| 2026-05-27 | **§8.2 已拍板**：Q-R3t-1 合并 e-B 内核；Q-R3t-2 C/D/E 全在 R4 前；Q-R3t-3 HOT-UX；Q-R3t-4 无项目级词表 v1 |
+| 2026-05-27 | **R3-STATE 闸门**：新增 [`desktop-capability-ui-state-alignment.md`](../../architecture/desktop-capability-ui-state-alignment.md)；R3g-A 拆 ⑤a/b/c；记录 UI 状态疏漏台账 |
+| 2026-05-27 | **EXP-WORD**：backlog + §4.1.1 ⑤‴；L6；§8.2 **Q-WORD-1～3**；与 P3/C6/CAT 分轨 |
+| 2026-05-27 | **个人单机 v1**：§1.6/§1.8；**ASR-WARM/TRN-DIAG/REV-LOC/R4-GATE**；R6–R8 非 v1；§8.2 **Q-POS-1～4** |
+| 2026-05-27 | **LLM-LOC**：backlog §8–10 模型/Gate/SPIKE；**Q-LLM-5** 未过 Gate 不产品化 |
+| 2026-05-27 | **路线图梳理**：§4.0 v1 路径；§4.1.0 分期；§4.1.1 **Q-SEQ-1** 重排；§2 与 R3 工期校正；原则 **LLM 可插拔** |
+| 2026-05-27 | **Q-SEQ-1 签收**：R3e-B 前移无异议；§8.2 标为已拍板 |
+| 2026-05-27 | **审查对齐**：§13.3 热点表、T-005/T-010、R3h-1 编码/发行口径、S3 闸门、Q-R3g-2/Q-R3t-2；三份 acceptance 立项 |
+| 2026-05-27 | **审查 round-2**：状态标记约定；§4.1.5/6 编号；rollback 三分；Q-R3e-1/Q-R3g-3；remediation v1.2 |
+| 2026-05-27 | **Q-R3g-3 编码**：侧车 `prepare-cancel` + 前端取消；cooperative（阶段间/进度回调） |
+| 2026-05-27 | **R3g-A ⑤b S3 签收**：场景 1 未就绪 + 场景 2 通过 → 可进 **⑤c** |
+| 2026-05-27 | **R3g-A ⑤c 签收**：侧车陈旧检测 + punc prepare 复测；preflight + 13min ≥10 语段 |
 
 ---
 
@@ -607,14 +917,15 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | 检查项 | 结果 |
 |--------|------|
 | `npm run typecheck` | ✅ 通过 |
-| `npm run test`（desktop） | ✅ **161** passed |
-| `node scripts/check-architecture-guard.mjs` | ✅ 0 错误，**0 警告** |
-| `cargo test`（desktop lib） | ✅ **53** passed |
+| `npm run test`（desktop） | ✅ **194** passed（2026-05-27） |
+| `node scripts/check-architecture-guard.mjs` | ✅ 0 错误，**7 警告**（LRC/ASR 热点，§13.3 **T-010**） |
+| `cargo test`（desktop lib） | ✅ 见 `cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml` |
 | `profile.rs` / R3c 缓存 / 清缓存对话框 | ✅ 已合入 `main` |
 | `asr_setup_diagnose` / 一键准备 UI | 🟡 **工作区有**（R3f-A/B/D），已接入 local runtime 最小闭环，待提交 + 手测 |
 | `local_runtime` / LRC 下载器 | 🟡 **工作区有**（manifest、sha256、staging、app_data 优先、下载进度），待发行级信任 / 回滚 / 弱网手测 |
-| `prepare(model_id)` / 模型目录 UI | ❌ R3g 未开始 |
-| 长音频动态超时 / 分段转写 | ❌ R3e 未开始 |
+| `prepare(model_id)` / 模型目录 UI | 🟡 R3g-A ⑤a ✅；⑤b 状态对齐进行中（见 architecture §4） |
+| 长音频动态超时（R3e-A） | 🟡 已编码；50min 整轨仍 OOM，完整能力待 R3e-B+R3t-A |
+| 长音频分段转写（R3e-B） | 📋 未开始 |
 | `services/mcp` / `services/collab` | ❌ 未开始 |
 
 **工作区增量（R3f，待提交）**：
@@ -627,32 +938,38 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 
 | 阶段 | 代码现状 | 评估 |
 |------|----------|------|
-| **R0–R2** | 已提交；lifecycle 仍 381 行 / 21 hooks | 🟡 守卫警告未清，不阻塞 R3 但应在 R3 提交前或 R3e-B 前拆 |
+| **R0–R2** | 已提交；lifecycle ~261 行（**T-005 ✅**） | ✅ 不阻塞 R3；新债见 **T-010**（LRC/ASR） |
 | **R3a–b** | keychain/probe；profile 导入导出 | ✅ |
 | **R3c** | 引导/缓存/manifest/清缓存确认框 | ✅ 已合入 + 手测通过 |
 | **R3f** | `asr_setup_diagnose`、一键准备编排、8741 探测、local runtime 缺失/损坏修复 | 🟡 工作区编码完成；待 R3h-0/1 发行级补齐后手测；高级「选仓库+bash」仍保留兜底 |
 | **R3h-0/1** | 构建 smoke、Win 磁盘、`local_runtime`、manifest 下载、app_data 优先 | 🟡 最小闭环已编码；文档状态需随提交更新；仍缺 signed manifest、回滚槽、断点续传、生产源策略 |
-| **R3g** | 仅 `prepare-default`；`funasr_engine` 单例 | ❌ 待 g-A；切换模型需重启侧车（规划已定） |
+| **R3g** | `prepare(model_id)`、catalog API、force-restart | 🟡 ⑤a ✅；UI 勿用全局 health 表示所选 SKU |
 | **R3e** | transcribe **600s** 固定；整文件推理 | ❌ e-A 待做；e-B 为分段合并 |
 | **转写体验补丁** | hints 横幅、整轨兜底 | ✅ 已合入 `main` |
 | **R4–R8** | 无质量 Tab / MCP / collab | ❌ 未开始 |
 | **R9** | 诊断包有；长音频 REL 依赖 R3e-B | 🟡 |
 
-### 13.3 Rust / 前端热点（与 oumi §1.3 对齐）
+### 13.3 代码热点（2026-05-27 `wc -l`）
 
-| 文件 | 行数（wc） | 文档记载 | 判定 |
-|------|------------|----------|------|
-| `useProjectLifecycleController.ts` | 380 | ~267 | ⚠️ **文档偏低**，且超 hook 阈值 |
-| `useProjectWaveform.ts` | 299 | 275 | ✅ 临界，第三期可观察 |
-| `transcribe.rs` | 305 | ~305 | ✅ 已拆 `transcribe_native_online.rs` |
-| `project_bundle_cmd.rs` | 282 | 277 | ✅ |
-| `EnvOnlineSttPanel.tsx` | 129 | 349（旧拆分计划） | ✅ 已低于 300，无需拆 |
+| 文件 | 行数 | 路线图 / 守卫 | 判定 |
+|------|------|---------------|------|
+| `local_runtime/install_support.rs` | ~675 | **T-010**；R3h-I2 | ⚠️ 超阈值，R3h-2 薄片内拆 |
+| `asr_sidecar.rs` | ~632 | **T-010**；R3h-I1 | ⚠️ 同上 |
+| `useAsrSetupController.ts` | ~364 | R3h-I3 | ⚠️ 接近阈值 |
+| `useLocalRuntimeSetupSupport.ts` | ~359 | R3h-I3 | ⚠️ 接近阈值 |
+| `LocalAsrSetupWizard.tsx` | ~313 | R3f/⑤b | ⚠️ 观察 |
+| `useAsrSetupController.test.ts` | ~495 | — | 测试文件可拆，非产品阻塞 |
+| `useProjectLifecycleController.ts` | ~261 | **T-005 ✅** | ✅ 已低于 300 |
+| `useProjectWaveform.ts` | ~275 | — | ✅ 临界观察 |
+| `transcribe.rs` | ~300 | T-001 | ✅ 已拆 online |
+| `project_bundle_cmd.rs` | ~277 | R1-001 ✅ | ✅ |
+| `SegmentTextListRow.tsx` | ~110 | R3-003 | ✅ 已缓解 |
 
 ### 13.4 排期调整摘要（2026-05-26 第三版 — R3h 并入）
 
 1. **R3h（LRC）** 为发行阻塞线：应用内侧车下载/完整性/零终端；实施真源 [remediation v1.1](../specs/rushi-local-runtime-catalog-remediation-plan.md)。  
-2. **R3 由 ~3 周扩至 ~4～5 周**（W5–W10）；**R4–R9 后滑 ~2 周**（§4 主表）。  
-3. **唯一顺序 §4.1.1**：`R3h-0 → R3h-1 → R3f → R3e-A → R3g-A → R3h-2 → R3h-3(+R3d) → R3h-3.5 → R3e-B`。  
+2. **R3 宏观 ~8～10w**（§4.1.1 薄片总和，Q-SEQ-2）；v1 总跨度见文首元数据。  
+3. **唯一顺序 §4.1.1（2026-05-27）**：`…⑤c → HOT-UX → R3t-A/B → TRN-DIAG → R3e-B → R3h-2 → ASR-WARM → R3h-3 → Sherpa → R3t-C/D/E → EXP-WORD → R4 → R9`。  
 4. **R3f 不得在 R3h-0 前签收**；**R9** 增加零终端 ASR + 弱网场景。  
 5. **T-004** 从「C7 后」改为 **R3h-2**；新增 **T-008/T-009**（corrupt 诊断、Sherpa 门控）。
 6. **补入 `R3h-I` 工业成熟度对齐轨**：不改发行止血主顺序，用于收口 `Runtime Supervisor`、release system、`ASR setup` 状态机三条结构线。
@@ -673,4 +990,6 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | SenseVoice 默认 → 整轨长语段 | 中 | **R3g** 推荐 Paraformer 长音频 |
 | 长音频 OOM / 600s 超时 | 高 | **R3e-A/B** |
 | 多模型超 5GB | 中 | R3c 占用 + 清理 + 目录标注 |
-| lifecycle 守卫 | 中 | R3 提交轮或 R3e-B 前拆分 |
+| LRC/ASR 模块超 500 行（**T-010**） | 中 | R3h-2 / R3h-I1～I3 薄片内拆；见 §13.3 |
+| R3-STATE S3 未做即进 ⑤c | 高 | 严格执行 §4.1.4；维度误用会污染 R3t UI |
+| 文档 §13.1 与实测漂移 | 低 | 发版轮刷新测试数/守卫警告 |

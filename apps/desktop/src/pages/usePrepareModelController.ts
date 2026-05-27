@@ -1,28 +1,32 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { asrBaseUrl } from "../config/env";
-import type { AsrHealthCapabilities } from "../tauri/projectApi";
+import { catalogEntryForHub, hubModelNeedsPuncPrepare } from "../services/asr/localAsrModelCatalog";
 import {
   describePrepareModelFailure,
   type PrepareModelFailureCopy,
 } from "./prepareModelDownloadCopy";
 import { computePrepareModelProgress, parsePrepareProgressPercent } from "./prepareModelProgress";
 
+export type PrepareDefaultModelOptions = {
+  /** When true, still call sidecar prepare even if UI shows cached (re-verify / resume). */
+  force?: boolean;
+};
+
 export interface PrepareModelApi {
   prepareModelBusy: boolean;
   prepareModelProgress: number;
   prepareModelFailure: PrepareModelFailureCopy | null;
   funasrInstallMessage: string;
-  prepareDefaultFunasrModel: () => Promise<void>;
-  cancelPrepareModel: () => void;
+  prepareDefaultFunasrModel: (options?: PrepareDefaultModelOptions) => Promise<void>;
+  cancelPrepareModel: () => Promise<void>;
   setPrepareModelFailure: (v: PrepareModelFailureCopy | null) => void;
   setFunasrInstallMessage: (v: string) => void;
 }
 
 export function usePrepareModelController(
   refreshAsrHealth: () => Promise<void>,
-  _unusedAsrCaps: AsrHealthCapabilities | null,
+  getSelectedHubModelId: () => string,
 ): PrepareModelApi {
-  void _unusedAsrCaps;
   const [funasrInstallMessage, setFunasrInstallMessage] = useState<string>("");
   const [prepareModelBusy, setPrepareModelBusy] = useState(false);
   const [prepareModelProgress, setPrepareModelProgress] = useState(0);
@@ -37,19 +41,28 @@ export function usePrepareModelController(
     };
   }, []);
 
-  const prepareDefaultFunasrModel = useCallback(async () => {
+  const prepareDefaultFunasrModel = useCallback(async (options?: PrepareDefaultModelOptions) => {
     prepareModelAbortRef.current?.abort();
     const ac = new AbortController();
     prepareModelAbortRef.current = ac;
+    const hubModelId = getSelectedHubModelId();
+    const entry = catalogEntryForHub(hubModelId);
+    const modelLabel = entry?.label ?? hubModelId;
     const base = asrBaseUrl().replace(/\/+$/, "");
-    const urlAsync = `${base}/v1/models/prepare-default/async`;
+    const urlAsync = `${base}/v1/models/prepare/async`;
     const urlStatus = `${base}/v1/models/prepare-status`;
     const deadlineMs = 900_000;
+    if (!options?.force) {
+      setFunasrInstallMessage(
+        "将校验并拉取当前所选模型（若已在磁盘缓存，侧车会快速完成，不会重复下载大文件）。",
+      );
+    } else {
+      setFunasrInstallMessage("");
+    }
     setPrepareModelBusy(true);
     setPrepareModelFailure(null);
     prepareStageRef.current = { message: "", startedAt: Date.now() };
     setPrepareModelProgress(0);
-    setFunasrInstallMessage("");
     const runT0 = Date.now();
     const deadline = runT0 + deadlineMs;
     const formatWait = () => {
@@ -66,7 +79,12 @@ export function usePrepareModelController(
       setPrepareModelProgress(computePrepareModelProgress(message, stageElapsed));
     };
     try {
-      const start = await fetch(urlAsync, { method: "POST", signal: ac.signal });
+      const start = await fetch(urlAsync, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ model_id: hubModelId }),
+        signal: ac.signal,
+      });
       const sj = (await start.json().catch(() => ({}))) as Record<string, unknown>;
       if (!start.ok) {
         const d = sj.detail;
@@ -98,7 +116,9 @@ export function usePrepareModelController(
           const stage =
             message === "downloading_vad"
               ? "正在下载必需辅助模型（VAD）…"
-              : "正在下载默认主模型（SenseVoiceSmall）…";
+              : message === "downloading_punc"
+                ? "正在下载标点模型（ct-punc）…"
+                : `正在下载主模型（${modelLabel}）…`;
           setFunasrInstallMessage(`${stage} 已等待 ${formatWait()}。请保持应用开启并联网，尽量不要关闭当前窗口。`);
         } else if (phase === "idle") {
           if (Date.now() - runT0 < 4000) {
@@ -116,15 +136,28 @@ export function usePrepareModelController(
           const warns = Array.isArray(result?.warnings)
             ? (result?.warnings as string[]).join("；")
             : "";
+          const needsPunc = hubModelNeedsPuncPrepare(hubModelId);
+          const puncPath = typeof result?.punc_path === "string" ? result.punc_path : "";
+          const lines = [
+            `${modelLabel} 与必需辅助模型已准备（或已在缓存中）。`,
+            warns ? `提示：${warns}` : "",
+            typeof result?.path === "string" ? `缓存路径：${result.path}` : "",
+            typeof result?.vad_path === "string" ? `VAD 路径：${result.vad_path}` : "",
+            puncPath ? `标点模型路径：${puncPath}` : "",
+          ];
+          if (needsPunc && !puncPath) {
+            lines.push(
+              "警告：侧车未返回标点模型路径（punc_path），多为旧版 rushi-asr。请点「重试内置侧车」后再次校验，否则长音频可能只有整轨单语段。",
+            );
+          }
+          setFunasrInstallMessage(lines.filter(Boolean).join("\n"));
+          await refreshAsrHealth();
+          return;
+        }
+        if (phase === "cancelled") {
+          setPrepareModelProgress(0);
           setFunasrInstallMessage(
-            [
-              "默认模型与必需辅助模型已准备（或已在缓存中）。",
-              warns ? `提示：${warns}` : "",
-              typeof result?.path === "string" ? `缓存路径：${result.path}` : "",
-              typeof result?.vad_path === "string" ? `辅助模型路径：${result.vad_path}` : "",
-            ]
-              .filter(Boolean)
-              .join("\n"),
+            "已停止后台模型下载。未完成部分可在联网后重新点「下载当前模型」（支持断点续传）。",
           );
           await refreshAsrHealth();
           return;
@@ -158,14 +191,36 @@ export function usePrepareModelController(
       setPrepareModelProgress(0);
       await refreshAsrHealth();
     }
-  }, [refreshAsrHealth]);
+  }, [getSelectedHubModelId, refreshAsrHealth]);
 
-  const cancelPrepareModel = useCallback(() => {
+  const cancelPrepareModel = useCallback(async () => {
     if (!prepareModelBusy) return;
-    prepareModelAbortRef.current?.abort();
     setPrepareModelFailure(null);
-    setFunasrInstallMessage("已取消默认模型下载。");
-    void refreshAsrHealth();
+    const base = asrBaseUrl().replace(/\/+$/, "");
+    setFunasrInstallMessage("正在请求停止后台下载…");
+    try {
+      const res = await fetch(`${base}/v1/models/prepare-cancel`, { method: "POST" });
+      const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
+      if (body.cancelled === true) {
+        setFunasrInstallMessage(
+          "正在停止后台下载（当前文件传完后结束）。请稍候，状态将变为已取消。",
+        );
+        return;
+      }
+      setFunasrInstallMessage("侧车无进行中的下载；已结束等待。");
+      prepareModelAbortRef.current?.abort();
+      setPrepareModelBusy(false);
+      setPrepareModelProgress(0);
+      await refreshAsrHealth();
+    } catch {
+      setFunasrInstallMessage(
+        "无法联系 ASR 取消下载；可点「重新检测 ASR」或重启侧车后再试。",
+      );
+      prepareModelAbortRef.current?.abort();
+      setPrepareModelBusy(false);
+      setPrepareModelProgress(0);
+      await refreshAsrHealth();
+    }
   }, [prepareModelBusy, refreshAsrHealth]);
 
   return {

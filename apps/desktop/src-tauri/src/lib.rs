@@ -4,6 +4,7 @@ mod china_stt_shell;
 mod db;
 mod diagnostic;
 mod export_docx;
+mod local_asr_model;
 mod local_runtime;
 mod online_stt_bridge;
 mod postprocess_cmd;
@@ -51,7 +52,7 @@ pub fn run() {
         .invoke_handler(tauri::generate_handler![
             app_version,
             asr_setup::diagnose::asr_setup_diagnose,
-            asr_sidecar::bundled_asr_launch_report,
+            asr_sidecar::bundled::bundled_asr_launch_report,
             local_runtime::local_runtime_diagnose,
             local_runtime::installer::local_runtime_download_sidecar,
             local_runtime::installer::local_runtime_cancel_download,
@@ -82,11 +83,19 @@ pub fn run() {
             project::clear_asr_model_cache,
             project::install_funasr_deps_interactive,
             project::retry_bundled_asr_sidecar,
+            local_asr_model::get_local_asr_hub_model_pref,
+            local_asr_model::set_local_asr_hub_model_pref,
             project::open_app_data_folder,
             project::export_text_file,
             project::glossary_list,
             project::glossary_add,
+            project::glossary_add_batch,
+            project::glossary_update,
+            project::glossary_delete_batch,
+            project::glossary_set_hotword_batch,
             project::glossary_delete,
+            project::glossary_hotwords_preview,
+            project::glossary_import_from_file,
             postprocess_cmd::llm_save_api_key,
             postprocess_cmd::llm_delete_api_key,
             postprocess_cmd::llm_probe_connection,

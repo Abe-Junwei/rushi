@@ -12,18 +12,22 @@
 ## 本仓独立架构说明
 
 - [`desktop-floating-dialog-panels.md`](./desktop-floating-dialog-panels.md) — 可拖动浮动对话框：默认 `compactDialog` + Notion/Zen + `controlStyles` 约定。
+- [`desktop-capability-ui-state-alignment.md`](./desktop-capability-ui-state-alignment.md) — **能力字段与 UI 状态对齐**（R3-STATE 闸门、维度假设、R3 疏漏台账）。
 - [`r3f-asr-setup-wizard-acceptance.md`](../execution/specs/r3f-asr-setup-wizard-acceptance.md) — 本机 ASR 一键环境准备（诊断 + 编排）验收。
 - [`r3d-settings-ia-acceptance.md`](../execution/specs/r3d-settings-ia-acceptance.md) — 环境面板轻量 IA 收口（非全站重设计）。
 - [`asr-hotword-bias-truth.md`](./asr-hotword-bias-truth.md) — rushi-asr 热词是否进模型、`warnings` 与前端 `supportsHotwordBias` 占位说明（计划书 §4.3 / §6.1 对齐）。
 - [`stt-online-providers.md`](./stt-online-providers.md) — 在线 STT Provider 调研、与解语式合约对齐及后续接线说明。
 - [`asr-sidecar-funasr-policy.md`](./asr-sidecar-funasr-policy.md) — ASR 侧车 + FunASR：目标用户、联网与磁盘预算、CPU/GPU（MPS + CUDA）策略。
-- [`postprocess-remote-boundary.md`](./postprocess-remote-boundary.md) — `auto_punctuate` 后处理边界：桌面壳直连远程 provider，不进 ASR sidecar。
+- [`recording-transcribe-llm-pipeline.md`](./recording-transcribe-llm-pipeline.md) — **R3t 管线真源**
+- [`lexicon-guided-llm-refine.md`](./lexicon-guided-llm-refine.md) — **R3t-E 词表有据校对**
+- [`../execution/specs/lexicon-mining-backlog.md`](../execution/specs/lexicon-mining-backlog.md) — **候选** LEX-MINE / ASR-FT（词表挖掘与训练数据 backlog）
+- [`../execution/specs/recording-transcribe-llm-refine-intent.md`](../execution/specs/recording-transcribe-llm-refine-intent.md) — R3t intent（未实施）
 - [`../execution/specs/r3-provider-configuration-research.md`](../execution/specs/r3-provider-configuration-research.md) — R3 规划：LLM/STT Provider 业内共识与本仓配置策略（先调研后实施）。
 - [`../execution/specs/r3c-local-asr-cache-manifest-acceptance.md`](../execution/specs/r3c-local-asr-cache-manifest-acceptance.md) — R3c：本机 ASR 首次引导、缓存管理与 manifest 展示的验收边界。
 - [`../execution/specs/r3e-long-audio-transcribe-acceptance.md`](../execution/specs/r3e-long-audio-transcribe-acceptance.md) — R3e：长音频本机转写（600s 超时、整文件 FunASR 内存、分段方案与 R9 对齐）。
 - [`../execution/specs/r3f-asr-setup-wizard-acceptance.md`](../execution/specs/r3f-asr-setup-wizard-acceptance.md) — R3f：本机 ASR 一键环境准备（内置侧车编排）。
 - [`../execution/specs/r3g-local-asr-model-catalog-acceptance.md`](../execution/specs/r3g-local-asr-model-catalog-acceptance.md) — R3g：本机 FunASR 模型目录（v1 三 SKU）。
-- [`../execution/plans/rushi-execution-roadmap.md`](../execution/plans/rushi-execution-roadmap.md) — **排期真源**（§4.1 R3/R3h 顺序）
+- [`../execution/plans/rushi-execution-roadmap.md`](../execution/plans/rushi-execution-roadmap.md) — **排期真源**（§1.7 产品决策、§4.1 R3/R3t、§8.2 待拍板）
 - [`../adr/0003-asr-engine-funasr-first-sherpa-spike-gate.md`](../adr/0003-asr-engine-funasr-first-sherpa-spike-gate.md) — ASR 引擎方案 A（FunASR 先行 + Sherpa 门控）
 - [`../execution/specs/rushi-local-runtime-catalog-remediation-plan.md`](../execution/specs/rushi-local-runtime-catalog-remediation-plan.md) — **R3h 实施真源**：LRC 整改方案（v1.1）。
 - [`../execution/specs/rushi-local-runtime-catalog-remediation-plan-review.md`](../execution/specs/rushi-local-runtime-catalog-remediation-plan-review.md) — R3h 方案审查报告（已吸收至 v1.1）。

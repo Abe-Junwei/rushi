@@ -7,9 +7,11 @@ import { GlossaryPage } from "./GlossaryPage";
 import { WelcomeSidebar } from "./WelcomeSidebar";
 import { WelcomeTopBar } from "./WelcomeTopBar";
 
-export type WelcomePageId = "home" | "glossary";
+import type { WelcomePageId } from "./welcomeTypes";
 import * as fileApi from "../tauri/fileApi";
 import { LUCIDE_ICON_SIZE_LG, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
+
+export type { WelcomePageId } from "./welcomeTypes";
 
 interface WelcomeViewProps {
   controller: ProjectControllerApi;
@@ -99,7 +101,12 @@ export function WelcomeView({ controller: c, onOpenSettings, page, onPageChange 
       />
 
       <div className="flex min-h-0 min-w-0 flex-col bg-notion-bg">
-        <WelcomeTopBar asrHealth={c.asrHealth} asrCaps={c.asrCaps} />
+        <WelcomeTopBar
+          asrHealth={c.asrHealth}
+          asrCaps={c.asrCaps}
+          selectedHubModelId={c.localAsrModelCatalog.selectedHubModelId}
+          catalogStatus={c.localAsrModelCatalog.catalogStatus}
+        />
 
         {page === "glossary" ? (
           <GlossaryPage busy={c.busy} />

@@ -15,10 +15,16 @@ from rushi_asr.defaults import (
     effective_funasr_model_id,
     effective_funasr_vad_model_id,
 )
+from rushi_asr.funasr_pipeline import effective_funasr_punc_model_id
+from rushi_asr.model_catalog import resolve_hub_model_id
 from rushi_asr.model_prepare_progress import (
+    PrepareCancelledError,
+    clear_prepare_cancel,
     finalize_prepare_download_progress,
     prepare_progress_callback_types,
     prepare_progress_snapshot,
+    raise_if_prepare_cancelled,
+    request_prepare_cancel,
     reset_prepare_download_progress,
 )
 
@@ -30,10 +36,11 @@ _WARN_FREE_BYTES = 2 * 1024 * 1024 * 1024
 _BUDGET_HINT_BYTES = 5 * 1024 * 1024 * 1024
 _DEFAULT_MODEL_REQUIRED_FILES = ("model.pt", "config.yaml", "tokens.json")
 _DEFAULT_VAD_REQUIRED_FILES = ("model.pt",)
+_DEFAULT_PUNC_REQUIRED_FILES = ("model.pt", "config.yaml")
 
 _lock = threading.Lock()
 _state: dict[str, Any] = {
-    "phase": "idle",  # idle | running | done | error
+    "phase": "idle",  # idle | running | done | error | cancelled
     "message": "",
     "error_code": None,
     "result": None,
@@ -134,8 +141,21 @@ def vad_model_cached_guess() -> bool:
     return _model_cached_guess(vad_id, _DEFAULT_VAD_REQUIRED_FILES, 1 * 1024 * 1024)
 
 
+def punc_model_cached_guess(model_id: str | None = None) -> bool:
+    resolved_model_id = (model_id or "").strip() or effective_funasr_model_id()
+    punc_id = effective_funasr_punc_model_id(resolved_model_id)
+    if not punc_id:
+        return True
+    return _model_cached_guess(punc_id, _DEFAULT_PUNC_REQUIRED_FILES, 1 * 1024 * 1024)
+
+
 def required_models_cached_guess(model_id: str | None = None) -> bool:
-    return recognizer_model_cached_guess(model_id) and vad_model_cached_guess()
+    resolved = (model_id or "").strip() or effective_funasr_model_id()
+    return (
+        recognizer_model_cached_guess(resolved)
+        and vad_model_cached_guess()
+        and punc_model_cached_guess(resolved)
+    )
 
 
 def _set_prepare_message(message: str) -> None:
@@ -173,10 +193,11 @@ def _maybe_verify_manifest(model_dir: Path) -> None:
     verify_manifest(model_dir, load_manifest(mp))
 
 
-def prepare_default_model() -> dict[str, Any]:
+def prepare_model(model_id: str | None = None) -> dict[str, Any]:
     """
-    Blocking ``snapshot_download`` for ``DEFAULT_FUNASR_MODEL_ID`` (resume handled by ModelScope).
+    Blocking ``snapshot_download`` for the resolved hub model (resume handled by ModelScope).
     """
+    resolved_model_id = resolve_hub_model_id(model_id)
     warnings, _check = _disk_warnings()
 
     try:
@@ -184,36 +205,51 @@ def prepare_default_model() -> dict[str, Any]:
     except ImportError as e:
         raise RuntimeError("modelscope_not_installed") from e
 
-    log.info("model_prepare: snapshot_download %s", DEFAULT_FUNASR_MODEL_ID)
+    log.info("model_prepare: snapshot_download %s", resolved_model_id)
     # snapshot_download 底层未暴露 timeout；通过 socket 全局超时兜底。
     import socket
 
     vad_model_id = effective_funasr_vad_model_id()
+    punc_model_id = effective_funasr_punc_model_id(resolved_model_id)
     progress_callbacks = prepare_progress_callback_types()
-    reset_prepare_download_progress(include_vad=bool(vad_model_id))
+    reset_prepare_download_progress(include_vad=bool(vad_model_id), include_punc=bool(punc_model_id))
+    raise_if_prepare_cancelled()
 
     old_timeout = socket.getdefaulttimeout()
     socket.setdefaulttimeout(600)  # 10 min
     try:
         _set_prepare_message("downloading_recognizer")
+        raise_if_prepare_cancelled()
         model_dir = Path(
             snapshot_download(
-                DEFAULT_FUNASR_MODEL_ID,
+                resolved_model_id,
                 progress_callbacks=progress_callbacks,
             ),
         )
         vad_dir: Path | None = None
         if vad_model_id:
             _set_prepare_message("downloading_vad")
+            raise_if_prepare_cancelled()
             vad_dir = Path(
                 snapshot_download(
                     vad_model_id,
                     progress_callbacks=progress_callbacks,
                 ),
             )
+        punc_dir: Path | None = None
+        if punc_model_id:
+            _set_prepare_message("downloading_punc")
+            raise_if_prepare_cancelled()
+            punc_dir = Path(
+                snapshot_download(
+                    punc_model_id,
+                    progress_callbacks=progress_callbacks,
+                ),
+            )
     finally:
         socket.setdefaulttimeout(old_timeout)
     finalize_prepare_download_progress()
+    raise_if_prepare_cancelled()
     if not _looks_like_complete_model_dir(
         model_dir,
         _DEFAULT_MODEL_REQUIRED_FILES,
@@ -226,16 +262,32 @@ def prepare_default_model() -> dict[str, Any]:
         1 * 1024 * 1024,
     ):
         raise RuntimeError("vad_prepare_incomplete")
+    if punc_model_id and punc_dir is not None and not _looks_like_complete_model_dir(
+        punc_dir,
+        _DEFAULT_PUNC_REQUIRED_FILES,
+        1 * 1024 * 1024,
+    ):
+        raise RuntimeError("punc_prepare_incomplete")
     _maybe_verify_manifest(model_dir)
+    from rushi_asr.funasr_engine import invalidate_funasr_model_cache
+
+    invalidate_funasr_model_cache()
     return {
         "status": "ok",
-        "model_id": DEFAULT_FUNASR_MODEL_ID,
+        "model_id": resolved_model_id,
         "path": str(model_dir),
         "vad_model_id": vad_model_id,
         "vad_path": str(vad_dir) if vad_dir is not None else None,
-        "required_models_cached": required_models_cached_guess(),
+        "punc_model_id": punc_model_id,
+        "punc_path": str(punc_dir) if punc_dir is not None else None,
+        "required_models_cached": required_models_cached_guess(resolved_model_id),
         "warnings": warnings,
     }
+
+
+def prepare_default_model() -> dict[str, Any]:
+    """Blocking prefetch for the effective default hub model."""
+    return prepare_model(None)
 
 
 def prepare_status() -> dict[str, Any]:
@@ -253,12 +305,13 @@ def prepare_status() -> dict[str, Any]:
     return body
 
 
-def start_prepare_default_async() -> dict[str, Any]:
+def start_prepare_async(model_id: str | None = None) -> dict[str, Any]:
     """Spawn background download; poll ``prepare_status()`` until ``done`` or ``error``."""
+    resolved_model_id = resolve_hub_model_id(model_id)
 
     def _run() -> None:
         try:
-            body = prepare_default_model()
+            body = prepare_model(resolved_model_id)
             with _lock:
                 _state.clear()
                 _state.update(
@@ -268,6 +321,18 @@ def start_prepare_default_async() -> dict[str, Any]:
                         "error_code": None,
                         "result": body,
                         "progress_percent": 100,
+                    },
+                )
+        except PrepareCancelledError:
+            log.info("model_prepare async cancelled by user")
+            with _lock:
+                _state.clear()
+                _state.update(
+                    {
+                        "phase": "cancelled",
+                        "message": "cancelled",
+                        "error_code": "model_prepare_cancelled",
+                        "result": None,
                     },
                 )
         except Exception as e:  # noqa: BLE001
@@ -287,6 +352,8 @@ def start_prepare_default_async() -> dict[str, Any]:
                         "result": None,
                     },
                 )
+        finally:
+            clear_prepare_cancel()
 
     with _lock:
         if _state.get("phase") == "running":
@@ -301,10 +368,30 @@ def start_prepare_default_async() -> dict[str, Any]:
                 "progress_percent": 0,
             },
         )
+    clear_prepare_cancel()
     reset_prepare_download_progress(
         include_vad=bool(effective_funasr_vad_model_id()),
+        include_punc=bool(effective_funasr_punc_model_id(resolved_model_id)),
     )
 
     t = threading.Thread(target=_run, name="rushi-model-prepare", daemon=True)
     t.start()
-    return {"started": True}
+    return {"started": True, "model_id": resolved_model_id}
+
+
+def start_prepare_default_async() -> dict[str, Any]:
+    """Backward-compatible async prepare for the effective default hub model."""
+    return start_prepare_async(None)
+
+
+def cancel_prepare_async() -> dict[str, Any]:
+    """Request cooperative cancel of the background ``start_prepare_async`` thread."""
+    with _lock:
+        phase = str(_state.get("phase", "idle"))
+        if phase != "running":
+            return {"cancelled": False, "reason": phase}
+    request_prepare_cancel()
+    with _lock:
+        if _state.get("phase") == "running":
+            _state["message"] = "cancelling"
+    return {"cancelled": True}

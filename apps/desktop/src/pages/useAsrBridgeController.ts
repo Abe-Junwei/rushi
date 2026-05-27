@@ -1,11 +1,13 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { asrHealthUrl, isDefaultBundledAsrTarget, isTauriRuntime } from "../config/env";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { asrBaseUrl, asrHealthUrl, isDefaultBundledAsrTarget, isTauriRuntime } from "../config/env";
 import type { AsrHealthCapabilities, AsrModelCacheInfo } from "../tauri/projectApi";
 import * as p1 from "../tauri/projectApi";
 import {
   tryBuildOnlineTranscribeBridgePayload,
 } from "../services/stt/sttOnlineProviderContract";
 import { usePrepareModelController, type PrepareModelApi } from "./usePrepareModelController";
+import { useLocalAsrModelCatalog, type LocalAsrModelCatalogApi } from "./useLocalAsrModelCatalog";
+import { parseCatalogStatusFromHealth } from "../services/asr/localAsrModelCatalog";
 
 export type AsrHealthState = "checking" | "ok" | "error";
 
@@ -21,12 +23,17 @@ export function parseAsrHealthJson(data: unknown): AsrHealthCapabilities | null 
     funasr_model_configured: j.funasr_model_configured === true,
     funasr_model_explicit_from_env: j.funasr_model_explicit_from_env === true,
     funasr_default_model_cached: j.funasr_default_model_cached === true,
+    funasr_active_model_cached: j.funasr_active_model_cached === true,
     funasr_vad_model_cached: j.funasr_vad_model_cached === true,
+    funasr_punc_model_cached:
+      typeof j.funasr_punc_model_cached === "boolean" ? j.funasr_punc_model_cached : undefined,
     funasr_required_models_cached: j.funasr_required_models_cached === true,
     funasr_ready: j.funasr_ready === true,
     ready_for_transcribe: j.ready_for_transcribe === true,
     transcription_mode: mode,
     funasr_model_id: typeof j.funasr_model_id === "string" ? j.funasr_model_id : null,
+    funasr_punc_model_id:
+      typeof j.funasr_punc_model_id === "string" ? j.funasr_punc_model_id : null,
     rushi_models_root: typeof j.rushi_models_root === "string" ? j.rushi_models_root : null,
   };
 }
@@ -57,8 +64,9 @@ export interface AsrBridgeApi {
   refreshAsrModelCacheInfo: () => Promise<void>;
   clearAsrModelCache: () => Promise<void>;
   asrCacheMessage: string;
-  prepareDefaultFunasrModel: () => Promise<void>;
+  prepareDefaultFunasrModel: PrepareModelApi["prepareDefaultFunasrModel"];
   cancelPrepareModel: () => void;
+  localAsrModelCatalog: LocalAsrModelCatalogApi;
   retryBundledAsrSidecar: () => Promise<void>;
   installFunasrDepsInteractive: () => Promise<void>;
   copyFunasrManualCommands: () => Promise<void>;
@@ -148,6 +156,19 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
           return;
         }
         setAsrCaps(parsed);
+        let rootJson: unknown = null;
+        try {
+          const rootRes = await fetch(`${asrBaseUrl()}/`, {
+            signal: AbortSignal.timeout(5000),
+          });
+          if (rootRes.ok) rootJson = await rootRes.json();
+        } catch {
+          /* ignore */
+        }
+        catalogSyncRef.current(data, rootJson);
+        if (!parseCatalogStatusFromHealth(data)) {
+          void catalogRefreshRef.current();
+        }
         setAsrHealth("ok");
         await refreshBundledAsrDiag();
         return;
@@ -168,7 +189,16 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
     await refreshEnvironmentDiagnostics?.();
   }, [refreshAsrHealth, refreshAsrModelCacheInfo, refreshEnvironmentDiagnostics]);
 
-  const modelCtrl = usePrepareModelController(refreshAsrRuntimeInfo, asrCaps);
+  const catalogSyncRef = useRef<(healthJson: unknown, rootJson?: unknown) => void>(() => {});
+  const catalogRefreshRef = useRef<() => Promise<void>>(async () => {});
+  const localAsrModelCatalog = useLocalAsrModelCatalog(refreshAsrRuntimeInfo);
+  catalogSyncRef.current = localAsrModelCatalog.syncCatalogFromHealth;
+  catalogRefreshRef.current = localAsrModelCatalog.refreshCatalogFromSidecar;
+
+  const modelCtrl = usePrepareModelController(
+    refreshAsrRuntimeInfo,
+    () => localAsrModelCatalog.selectedHubModelId,
+  );
 
   useEffect(() => {
     void refreshAsrHealth();
@@ -270,6 +300,7 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
     asrCacheMessage,
     prepareDefaultFunasrModel: modelCtrl.prepareDefaultFunasrModel,
     cancelPrepareModel: modelCtrl.cancelPrepareModel,
+    localAsrModelCatalog,
     retryBundledAsrSidecar,
     installFunasrDepsInteractive,
     copyFunasrManualCommands,

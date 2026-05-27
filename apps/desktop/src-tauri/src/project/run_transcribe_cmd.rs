@@ -1,6 +1,6 @@
 use super::correction::collect_correction_rule_hints;
 use super::segment_cmd::file_save_segments_inner;
-use super::transcribe::{glossary_hotwords_joined, post_transcribe_multipart};
+use super::transcribe::{build_glossary_hotwords, post_transcribe_multipart};
 use super::transcribe_errors::describe_transcribe_payload_error;
 use super::transcribe_timeout::{
     local_transcribe_timeout_duration, long_audio_transcribe_hint, probe_audio_duration_sec,
@@ -34,7 +34,9 @@ async fn project_run_transcribe_inner(
 ) -> Result<RunTranscribeOutcome, String> {
     let conn = open_db(&st)?;
     let file_detail = file_detail_from_conn(&conn, &file_id)?;
-    let hotwords = glossary_hotwords_joined(&conn)?;
+    let hotwords_build = build_glossary_hotwords(&conn)?;
+    let hotwords_truncated = hotwords_build.preview.truncated;
+    let hotwords = hotwords_build.hotwords;
     drop(conn);
     let audio_path = file_detail
         .audio_path
@@ -155,6 +157,9 @@ async fn project_run_transcribe_inner(
                 .collect()
         })
         .unwrap_or_default();
+    if hotwords_truncated {
+        warnings.insert(0, "hotwords_truncated_12k".to_string());
+    }
     if let Some(hint) = long_audio_transcribe_hint(audio_duration_sec) {
         warnings.insert(0, hint.to_string());
     }

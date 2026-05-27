@@ -1,6 +1,7 @@
 # 调研与整改方案：本地运行时目录（Local Runtime Catalog）
 
-> **状态**：规划真源（2026-05-26，**v1.1** 已吸收审查意见）  
+> **状态**：规划真源（**v1.2**，2026-05-27 — release-system 编码闭环与 rollback 三分法）  
+> **v1.1**：2026-05-26 审查吸收  
 > **目标读者**：产品 / 架构 / 实施  
 > **审查**：[`rushi-local-runtime-catalog-remediation-plan-review.md`](./rushi-local-runtime-catalog-remediation-plan-review.md)（2026-05-26）  
 > **排期索引**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) **§4.1.1**（R3 唯一实施顺序；epic **R3h**）+ **§4.1.4**（`R3h-I` 工业成熟度对齐收口轨）
@@ -253,11 +254,19 @@ Win x64：在 `asr-sidecar` 层内仍保持 **CUDA 优先 → CPU 回退**（现
 
 ### 3.7 侧车升级 / 回滚（Phase 2 细化）
 
+与路线图 **§4.1.5.1** 三分法对齐：
+
+| 类型 | 说明 | 阶段 |
+|------|------|------|
+| **A 安装事务回滚** | 校验/解压失败 → **不切换** current | Phase 1 ✅ 编码 |
+| **B 手动恢复 previous** | UI「恢复上一版 / 内置组件」 | Phase 1 ✅ 编码 |
+| **C 自动健康回滚** | 切换后运行时劣化 → 自动回退 | Phase 2 / R3h-2 |
+
 | 规则 | 说明 |
 |------|------|
 | 检测 | manifest `version` vs 本地 `app_data/sidecar/.../installed.json` |
-| 升级 | 新包解压到 staging → smoke 通过 → 切换当前指针；失败则 **保留旧版** |
-| 回滚 | 保留上一版目录 N=1（或仅 bundled 回退）；UI「恢复内置组件」 |
+| 升级 | 新包解压到 staging → smoke 通过 → 切换当前指针；失败触发 **A** |
+| 回滚 | **B**：previous 槽 N=1；**C**：Phase 2 |
 | 矩阵控制 | 壳发布时 **侧车 version 与 manifest 对齐**；`min_shell_version` 不兼容时强制提示升级运行时，**不**自动清 `models/` |
 
 ### 3.8 健康探测超时（Phase 1–2）
@@ -609,7 +618,7 @@ UI **分开展示**「语音识别组件」与「语音模型」占用。
 - [ ] **弱网/断网**：下载中断可重试或续传（Phase 2）；无网 bundled 回退（Phase 1）。  
 - [ ] **并发安全**：连点「一键准备」不重复下载/重复 spawn（§3.6）。  
 - [x] **发行信任**：manifest 已签名并用壳内 pinned key 验证；artifact hash 必检。
-- [x] **升级回滚**：新 runtime 验证失败时旧版仍可用；可恢复到 previous / bundled（2026-05-27 手测到“失败保留 current”）。
+- [x] **升级回滚（A/B）**：安装失败保留 current；可 **手动** 恢复 previous / bundled（2026-05-27 手测）。**自动健康回滚（C）** → Phase 2 / R3h-2。
 - [x] **Schema 单一真源**：manifest 文档、Rust parser、TS contract、示例文件一致。
 
 ---
@@ -644,4 +653,10 @@ UI **分开展示**「语音识别组件」与「语音模型」占用。
 
 ---
 
-*文档版本：1.1 · 2026-05-26 · 吸收审查 v1.0；随 R3h 实施更新 §5 / §11 勾选。*
+*文档版本：1.2 · 2026-05-27 · v1.1 审查吸收；v1.2 对齐路线图 rollback 三分、状态口径、R3h-2 进度事件；随 R3h 实施更新 §5 / §11。*
+
+### v1.2 变更摘要
+
+- **§11**：区分安装事务回滚 / 手动 previous / 自动健康回滚（C → Phase 2）。
+- 与路线图 **§4.1.5.1**、编码状态 **🟡 编码✅ / 发行⏳** 对齐。
+- R3h-2：事件化下载进度 + 可恢复 + 与模型 prepare **真取消**（Q-R3g-3）统一契约。

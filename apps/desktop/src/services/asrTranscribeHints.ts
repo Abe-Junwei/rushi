@@ -20,9 +20,18 @@ export function deriveTranscribeHints(engine: string, warnings: string[], segmen
   if (warnings.some((w) => w.includes("hotword_param_unsupported"))) {
     hints.push("当前 FunASR 未接受热词参数，已自动回退；可升级 rushi-asr 依赖或忽略。");
   }
+  if (warnings.some((w) => w.includes("hotwords_truncated_12k"))) {
+    hints.push(
+      "术语热词超过 12,000 字符上限，已截断后提交；部分术语未进入识别。可在「术语库」查看「本次转写将携带」摘要。",
+    );
+  }
   if (warnings.some((w) => w.includes("funasr_whole_track_fallback"))) {
     hints.push(
       "识别完成，但模型未返回分句时间戳：已用整轨单语段承载全文。可在波形上拖选拆分，或换用带 sentence_info 的 FunASR 模型后重新拉取。",
+    );
+  } else if (warnings.some((w) => w.includes("funasr_long_audio_no_segments"))) {
+    hints.push(
+      "长音频未得到分句时间戳，未生成整轨占位语段。建议换用「Paraformer 长音频（推荐转写）」并确认 VAD/标点权重已缓存，然后重新拉取。",
     );
   } else if (warnings.some((w) => w.includes("funasr_no_timestamps"))) {
     hints.push(
@@ -42,7 +51,12 @@ export function deriveTranscribeHints(engine: string, warnings: string[], segmen
   } else if (
     segments.length === 0 &&
     !eng.includes("stub") &&
-    !warnings.some((w) => w.includes("funasr_no_timestamps") || w.includes("funasr_no_sentence_segments"))
+    !warnings.some(
+      (w) =>
+        w.includes("funasr_no_timestamps") ||
+        w.includes("funasr_no_sentence_segments") ||
+        w.includes("funasr_long_audio_no_segments"),
+    )
   ) {
     hints.push(
       "拉取已完成，但未生成任何语段。请查看桌面日志（应用数据目录下的 desktop.log）或重试；若使用 SenseVoice，可尝试换用 paraformer-zh 等带分句的模型。",

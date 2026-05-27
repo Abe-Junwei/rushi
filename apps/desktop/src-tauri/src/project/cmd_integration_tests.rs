@@ -1,7 +1,7 @@
 //! DB integration tests for split project command modules.
 
 use super::types::FileSummary;
-use super::utils::{file_detail_from_conn, now_ms, open_db, project_detail_from_conn};
+use super::utils::{canonicalize_audio_storage_path, file_detail_from_conn, now_ms, open_db, project_detail_from_conn};
 use crate::db;
 use crate::DbState;
 use rusqlite::params;
@@ -163,4 +163,14 @@ fn delete_file_cascades_to_segments() {
         )
         .unwrap();
     assert_eq!(count, 0);
+}
+
+#[test]
+fn canonicalize_audio_storage_path_returns_absolute_file_path() {
+    let st = test_state("audio_canonical");
+    let file = st.root.join("sample.wav");
+    fs::write(&file, b"x").unwrap();
+    let stored = canonicalize_audio_storage_path(&file).unwrap();
+    assert!(PathBuf::from(&stored).is_absolute());
+    assert!(PathBuf::from(stored).is_file());
 }

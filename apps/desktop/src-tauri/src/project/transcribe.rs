@@ -2,40 +2,9 @@ use super::transcribe_errors::describe_transcribe_request_error;
 use super::utils::append_desktop_log_line;
 use crate::utils::http_client;
 use crate::DbState;
-use rusqlite::Connection;
 use std::path::Path;
 
-/// 术语表拼接为 FunASR 期望的空格分隔热词串（与 ASR `hotwords` 表单字段对齐）。
-pub fn glossary_hotwords_joined(conn: &Connection) -> Result<String, String> {
-    let mut stmt = conn
-        .prepare("SELECT term FROM glossary_terms ORDER BY term COLLATE NOCASE ASC")
-        .map_err(|e| e.to_string())?;
-    let rows = stmt
-        .query_map([], |r| r.get::<_, String>(0))
-        .map_err(|e| e.to_string())?;
-    let mut parts: Vec<String> = Vec::new();
-    for r in rows {
-        let t: String = r.map_err(|e| e.to_string())?;
-        let u = t.trim();
-        if !u.is_empty() {
-            parts.push(u.to_string());
-        }
-    }
-    let mut s = parts.join(" ");
-    const MAX: usize = 12_000;
-    if s.len() > MAX {
-        s.truncate(MAX);
-        while !s.is_empty() && !s.is_char_boundary(s.len()) {
-            s.pop();
-        }
-        if let Some(i) = s.rfind(' ') {
-            if i > MAX / 2 {
-                s.truncate(i);
-            }
-        }
-    }
-    Ok(s)
-}
+pub use super::glossary_hotwords::build_glossary_hotwords;
 
 pub async fn post_transcribe_multipart(
     st: &DbState,

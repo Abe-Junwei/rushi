@@ -31,6 +31,7 @@ reqwest = { version = "0.12", default-features = false, features = [
   "json",
   "stream",
   "rustls-tls",
+  "blocking",
 ] }
 keyring = "3"
 tokio = { version = "1", features = ["time", "fs", "rt"] }
@@ -47,6 +48,7 @@ tungstenite = { version = "0.24", default-features = false, features = [
   "handshake",
   "rustls-tls-webpki-roots",
 ] }
+calamine = "0.26.1"
 docx-rs = "0.4"
 zip = { version = "2.4", default-features = false, features = ["deflate"] }
 serde_yaml = "0.9.34"

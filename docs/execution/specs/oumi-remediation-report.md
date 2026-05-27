@@ -365,6 +365,34 @@ Dry-run + confirm 值得借鉴。Rushi `edit_log` 仅为批次级（如 `save_se
 
 `correction_memory` 缺 project/domain/context/privacy → **不生成 synthetic dataset**。
 
+### 五-b、为何不照搬 Oumi「动模型」做领域专模（2026-05-27）
+
+Oumi 强项是 **YAML Recipe + `oumi train` + LoRA/SFT** 训 **开源 LLM/VLM**（见 [Oumi Training 文档](https://www.oumi.ai/docs/en/latest/user_guides/train/train.html)）。Rushi 精度主战场是 **FunASR 听写** 与 **中文改稿**，二者不应混为「上一个 Oumi 就能领域化」。
+
+| 维度 | Oumi 典型用法 | Rushi 当前/规划 |
+|------|---------------|-----------------|
+| 训练对象 | Llama、Qwen 等 **LLM** | **FunASR 权重**（远期 ASR-FT）；校对用 **云端 API**（R3t-E） |
+| 运行环境 | 本机实验 / 云集群 | **桌面推理侧车**（~2GB，仅 infer） |
+| 数据 | 合成 / 清洗后 JSONL | memory **不够格** 做 Synth；要 **音频对齐 manifest** |
+| 分发 | checkpoint / adapter | **R3h** 模型 manifest + 回滚 |
+
+**Part I 已排除（≠ 永远不能，而是不在当前项目形态内做）**：
+
+- 桌面内 `oumi train`、纠错记忆 → synthetic dataset 自动管道  
+- `services/llm/` 统一推理引擎 + 训练依赖进侧车  
+
+**与「越用越准」的对应关系**（不动权重）：
+
+```text
+glossary → ASR hotwords
+保存语段 → correction_memory → 转写 hints
+用户确认 → R3t-E LexiconPack（规划）
+```
+
+**远期若证明显要「动声学模型」**：走 [`lexicon-mining-backlog.md`](./lexicon-mining-backlog.md) **ASR-FT**（FunASR 微调 + R3h 发版），**不是**把 Oumi 训练链塞进 App。详表见该文 **§7**。
+
+**Part II 仍可参考**：评测框架思路（R4）、MCP（R5）、Recipe 式 **eval 配置**（非 train）。
+
 ### 六、风险评估（原始 + 评审后）
 
 | 风险 | 概率 | 影响 | 缓解（评审后） |
@@ -381,8 +409,9 @@ Dry-run + confirm 值得借鉴。Rushi `edit_log` 仅为批次级（如 `save_se
 | Inference Engine | 后处理 HTTP 客户端 | 非统一 ASR/LLM 引擎 |
 | Recipe | Profile 模板 | 预置 provider + 参数 |
 | Judge | 质量评估器 | 首轮仅规则指标 |
-| Synth | 数据合成 | 排除 |
+| Synth | 数据合成 | 排除（见 §五-b、lexicon-mining-backlog） |
 | Sidecar | ASR 侧车 | 仅 FunASR 推理 |
+| ASR-FT | FunASR 领域微调 | 远期；**非** Oumi train |
 
 ---
 
@@ -392,6 +421,7 @@ Dry-run + confirm 值得借鉴。Rushi `edit_log` 仅为批次级（如 `save_se
 |------|------|------|
 | `rushi-execution-roadmap.md` | **排期真源**（单机 + 协作 + 验收） | 2026-05-25 起 |
 | `oumi-remediation-report.md` | **本文档**：Oumi 边界 + 接口草案 + Part II 愿景 | Part I 已评审 |
+| `lexicon-mining-backlog.md` | LEX-MINE / **ASR-FT** / §7 Oumi vs 动模型 | 候选 backlog |
 | `auto-punctuate-{intent,plan,acceptance}.md` | P0 实施三件套 | ✅ 2026-05-25 已补齐 |
 | `postprocess-remote-boundary.md` | 后处理不进 ASR sidecar 的架构短文 | ✅ 2026-05-25 已补齐 |
 | `architecture-split-plan.md` | Rust/UI 拆分规划 | ⚠️ 行数表待与 §1.3 同步 |

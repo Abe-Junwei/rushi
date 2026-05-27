@@ -24,8 +24,13 @@ vi.mock("../tauri/asrSetupApi", () => ({
   asrSetupDiagnose: () => asrSetupDiagnose(),
 }));
 
+const setLocalAsrHubModelPref = vi.fn<() => Promise<void>>();
+const getLocalAsrHubModelPref = vi.fn<() => Promise<string | null>>();
+
 vi.mock("../tauri/projectApi", () => ({
   retryBundledAsrSidecar: () => retryBundledAsrSidecar(),
+  setLocalAsrHubModelPref: () => setLocalAsrHubModelPref(),
+  getLocalAsrHubModelPref: () => getLocalAsrHubModelPref(),
 }));
 
 vi.mock("../tauri/localRuntimeApi", () => ({
@@ -93,6 +98,10 @@ describe("useAsrSetupController", () => {
   beforeEach(() => {
     asrSetupDiagnose.mockReset();
     retryBundledAsrSidecar.mockReset();
+    setLocalAsrHubModelPref.mockReset();
+    getLocalAsrHubModelPref.mockReset();
+    getLocalAsrHubModelPref.mockResolvedValue("iic/SenseVoiceSmall");
+    setLocalAsrHubModelPref.mockResolvedValue(undefined);
     localRuntimeDiagnose.mockReset();
     localRuntimeDownloadSidecar.mockReset();
     localRuntimeCancelDownload.mockReset();
@@ -260,9 +269,11 @@ describe("useAsrSetupController", () => {
         funasr_default_model_cached: true,
         funasr_vad_model_cached: true,
         funasr_required_models_cached: true,
+        funasr_active_model_cached: true,
         funasr_ready: true,
         ready_for_transcribe: true,
         transcription_mode: "funasr",
+        funasr_model_id: "iic/SenseVoiceSmall",
         }),
     } as Response);
 
@@ -282,6 +293,7 @@ describe("useAsrSetupController", () => {
       expect(result.current.setupOutcome).toBe("ready");
     });
     expect(localRuntimeDownloadSidecar).toHaveBeenCalledTimes(1);
+    expect(setLocalAsrHubModelPref).toHaveBeenCalled();
     expect(result.current.setupMessage).toContain("一键准备完成");
   });
 
@@ -328,9 +340,11 @@ describe("useAsrSetupController", () => {
           funasr_default_model_cached: true,
           funasr_vad_model_cached: true,
           funasr_required_models_cached: true,
+          funasr_active_model_cached: true,
           funasr_ready: true,
           ready_for_transcribe: true,
           transcription_mode: "funasr",
+          funasr_model_id: "iic/SenseVoiceSmall",
         }),
     } as Response);
 
@@ -398,9 +412,11 @@ describe("useAsrSetupController", () => {
           funasr_default_model_cached: true,
           funasr_vad_model_cached: true,
           funasr_required_models_cached: true,
+          funasr_active_model_cached: true,
           funasr_ready: true,
           ready_for_transcribe: true,
           transcription_mode: "funasr",
+          funasr_model_id: "iic/SenseVoiceSmall",
         }),
     } as Response);
 

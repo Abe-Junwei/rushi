@@ -126,6 +126,7 @@ export function useProjectController() {
     prepareModelFailure: asr.prepareModelFailure,
     prepareDefaultFunasrModel: asr.prepareDefaultFunasrModel,
     cancelPrepareModel: asr.cancelPrepareModel,
+    localAsrModelCatalog: asr.localAsrModelCatalog,
     refreshAsrModelCacheInfo: asr.refreshAsrModelCacheInfo,
     clearAsrModelCache: asr.clearAsrModelCache,
     retryBundledAsrSidecar: asr.retryBundledAsrSidecar,

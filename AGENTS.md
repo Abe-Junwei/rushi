@@ -41,6 +41,7 @@
 - 新增设计 → 先读 `docs/architecture/` 与 ADR
 - **浮动对话框** → `compactDialog` + Notion/Zen（`controlStyles.ts`）；勿用已移除的 serene 面板变体；见 `docs/architecture/desktop-floating-dialog-panels.md`
 - 中等以上复杂度 → 先写 spec（`docs/execution/specs/` 三件套）再实施
+- **能力—UI 状态对齐**（环境/ASR/设置）：编码前读 [`docs/architecture/desktop-capability-ui-state-alignment.md`](./docs/architecture/desktop-capability-ui-state-alignment.md)；acceptance 必填 **能力—UI 状态矩阵**；禁止用全局 `/health.ready_for_transcribe` 表示「用户所选模型」状态（路线图 §4.1.4 R3-STATE）
 
 ## 机器守卫（提交前必跑）
 

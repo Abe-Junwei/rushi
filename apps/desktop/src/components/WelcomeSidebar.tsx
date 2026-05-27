@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { BookOpen, ChevronRight, FileText, FolderOpen, List, Mic, Pencil, Settings, Trash2, X } from "lucide-react";
 import type { ProjectControllerApi } from "../pages/useProjectController";
-import type { WelcomePageId } from "./WelcomeView";
+import type { WelcomePageId } from "./welcomeTypes";
 import type { ProjectSummary } from "../tauri/projectApi";
 import * as fileApi from "../tauri/fileApi";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";

@@ -1,31 +1,13 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { ProjectDetail as LegacyProjectDetail, SegmentDto } from "./projectApi";
+import type {
+  FileDetail,
+  FileSummary,
+  ProjectDetail,
+  RawProjectDetail,
+  SegmentDto,
+} from "./projectTypes";
 
-export interface FileSummary {
-  id: string;
-  name: string;
-  file_type: string;
-  updated_at_ms: number;
-}
-
-export interface FileDetail {
-  id: string;
-  project_id: string;
-  name: string;
-  file_type: string;
-  audio_path: string | null;
-  segments: SegmentDto[];
-  created_at_ms: number;
-  updated_at_ms: number;
-}
-
-export interface RawProjectDetail {
-  id: string;
-  name: string;
-  files: FileSummary[];
-  created_at_ms: number;
-  updated_at_ms: number;
-}
+export type { FileDetail, FileSummary, RawProjectDetail, SegmentDto } from "./projectTypes";
 
 export async function createEmptyProject(name: string): Promise<RawProjectDetail> {
   return invoke<RawProjectDetail>("create_empty_project", { name });
@@ -103,7 +85,7 @@ export async function fileSaveSegments(
  *  如果项目有文件，取第一个文件的音频路径和语段；否则返回空。 */
 export async function adaptToLegacyProjectDetail(
   detail: RawProjectDetail,
-): Promise<LegacyProjectDetail> {
+): Promise<ProjectDetail> {
   if (detail.files.length > 0) {
     const firstFile = detail.files[0];
     const fileDetail = await loadFile(firstFile.id);

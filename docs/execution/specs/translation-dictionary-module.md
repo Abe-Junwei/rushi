@@ -16,7 +16,7 @@
 - `apps/desktop/src-tauri/src/project/transcribe.rs` — 翻译引擎调度参考
 - `apps/desktop/src/pages/useGlossaryController.ts` — 现有术语库 UI 模式参考
 
----
+> **排期**：**远期规划，当前不做**（2026-05-27 产品侧重 **转写**）。未纳入 [`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) §4。登记见 [`translation-cat-backlog.md`](./translation-cat-backlog.md)。
 
 ## 1. 用户任务
 

@@ -70,11 +70,25 @@ pub struct SegmentDto {
     pub detail: Option<String>,
 }
 
-#[derive(Debug, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct GlossaryTermDto {
     pub id: i64,
     pub term: String,
+    #[serde(default)]
+    pub aliases: String,
+    #[serde(default)]
+    pub domain: String,
+    #[serde(default)]
+    pub note: String,
     pub created_at_ms: i64,
+    pub updated_at_ms: i64,
+    #[serde(default = "default_glossary_hotword_enabled")]
+    pub hotword_enabled: bool,
+}
+
+fn default_glossary_hotword_enabled() -> bool {
+    true
 }
 
 /// File type classification persisted in the database.

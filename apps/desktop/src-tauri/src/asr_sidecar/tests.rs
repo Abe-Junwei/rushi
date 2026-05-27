@@ -1,4 +1,8 @@
-use super::*;
+use super::candidates::{
+    bundled_sidecar_candidates_from_roots, candidate_resource_roots_from_parts,
+};
+use super::probe::{is_rushi_asr_health_json, loopback_port_accepts_tcp};
+use super::bundled::BundledAsrLaunchReport;
 use serde_json::json;
 use std::fs;
 use std::net::TcpListener;
@@ -51,22 +55,28 @@ fn launch_report_default_is_not_attempted() {
 
 #[test]
 fn candidate_resource_roots_include_dev_and_manifest_paths() {
-    let resource_dir = Some(PathBuf::from("/tmp/app/Contents/Resources"));
-    let manifest_dir = PathBuf::from("/repo/apps/desktop/src-tauri");
+    let resource_dir = Some(std::path::PathBuf::from("/tmp/app/Contents/Resources"));
+    let manifest_dir = std::path::PathBuf::from("/repo/apps/desktop/src-tauri");
     let roots = candidate_resource_roots_from_parts(resource_dir, &manifest_dir);
-    assert!(roots.contains(&PathBuf::from("/tmp/app/Contents/Resources")));
-    assert!(roots.contains(&PathBuf::from("/tmp/app/Contents/Resources/resources")));
-    assert!(roots.contains(&PathBuf::from(
+    assert!(roots.contains(&std::path::PathBuf::from("/tmp/app/Contents/Resources")));
+    assert!(roots.contains(&std::path::PathBuf::from(
+        "/tmp/app/Contents/Resources/resources"
+    )));
+    assert!(roots.contains(&std::path::PathBuf::from(
         "/repo/apps/desktop/src-tauri/target/debug/resources"
     )));
-    assert!(roots.contains(&PathBuf::from("/repo/apps/desktop/target/debug/resources")));
-    assert!(roots.contains(&PathBuf::from("/repo/apps/desktop/src-tauri/resources")));
+    assert!(roots.contains(&std::path::PathBuf::from(
+        "/repo/apps/desktop/target/debug/resources"
+    )));
+    assert!(roots.contains(&std::path::PathBuf::from(
+        "/repo/apps/desktop/src-tauri/resources"
+    )));
 }
 
 #[test]
 fn candidate_resource_roots_deduplicate_existing_resources_dir() {
-    let resource_dir = Some(PathBuf::from("/repo/apps/desktop/src-tauri/resources"));
-    let manifest_dir = PathBuf::from("/repo/apps/desktop/src-tauri");
+    let resource_dir = Some(std::path::PathBuf::from("/repo/apps/desktop/src-tauri/resources"));
+    let manifest_dir = std::path::PathBuf::from("/repo/apps/desktop/src-tauri");
     let roots = candidate_resource_roots_from_parts(resource_dir, &manifest_dir);
     let count = roots
         .iter()

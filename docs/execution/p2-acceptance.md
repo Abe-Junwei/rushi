@@ -5,7 +5,7 @@
 ## 本仓交付点
 
 1. **术语库（SQLite）**：`glossary_terms` 持久化，支持增删查。  
-2. **热词注入**：拉取转写时将术语库拼接为 `hotwords` 提交给 ASR；不支持时由 ASR 返回 warning。  
+2. **热词注入**：拉取转写时仅将 `hotword_enabled=1` 的词条（及别名 token，全局去重）拼接为 `hotwords` 提交 ASR；不支持时由 ASR 返回 warning。  
 3. **低置信工作流**：`confidence / low_confidence / detail` 全链路落库、展示、导出。  
 4. **纠错记忆（新增）**：保存语段时自动提取单一替换片段（如错词→正词）写入 `correction_memory`，累计命中。  
 5. **错词规则提示（新增）**：后续转写若命中高频或已采纳规则（`accepted_as_rule=1` 或 `hit_count>=2`），会生成 `correction_rule_hint:*` 并在 UI 提示。
@@ -24,4 +24,5 @@
 
 ## 备注
 
-计划书中的“拼音近音候选、文本规整”属于可迭代增强项；本仓 P2 验收以“术语偏置 + 低置信 + 纠错记忆/提示”闭环为准。
+计划书中的“拼音近音候选、文本规整”属于可迭代增强项；本仓 P2 验收以“术语偏置 + 低置信 + 纠错记忆/提示”闭环为准。  
+计划书 §5.1.2「从高频纠错推荐术语」与 §5.2–5.3 训练/LoRA 见 **[`lexicon-mining-backlog.md`](./specs/lexicon-mining-backlog.md)**（候选 **LEX-MINE / ASR-FT**，未排期）。

@@ -1,11 +1,11 @@
-"""
-Optional FunASR / SenseVoice path (install `pip install -e ".[funasr]"` and set RUSHI_FUNASR_MODEL).
+"""Optional FunASR / SenseVoice path (install `pip install -e ".[funasr]"` and set RUSHI_FUNASR_MODEL).
 
 Model id examples: `iic/SenseVoiceSmall`, `paraformer-zh` (see FunASR docs).
 """
 
 from __future__ import annotations
 
+import concurrent.futures
 import logging
 import os
 import threading
@@ -13,23 +13,59 @@ from pathlib import Path
 from typing import Any
 
 from rushi_asr.defaults import effective_funasr_model_id, effective_funasr_vad_model_id
+from rushi_asr.funasr_pipeline import effective_funasr_punc_model_id, recognizer_needs_punc_pipeline
 from rushi_asr.model_prepare import required_models_cached_guess
 from rushi_asr.schemas import TranscriptionSegment
+from rushi_asr.segmentation import (
+    LONG_AUDIO_SEC,
+    funasr_generate_kwargs,
+    segment_funasr_generate_result,
+)
 
 log = logging.getLogger(__name__)
 
 _model_singleton: Any = None
+_model_loaded_id: str | None = None
 _model_init_lock = threading.Lock()
+
+
+def invalidate_funasr_model_cache() -> None:
+    """Drop loaded AutoModel so the next transcribe picks up new weights (e.g. after prepare)."""
+    global _model_singleton, _model_loaded_id
+    with _model_init_lock:
+        _model_singleton = None
+        _model_loaded_id = None
+
+
 _inference_lock = threading.Lock()
+_inference_executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+
+# Timeout budget for a single inference call (seconds).
+# Formula: duration_sec * 4 + 300, clamped to [600, 7200].
+# Aligns with Rust-side budget in transcribe_timeout.rs.
+_INFERENCE_TIMEOUT_MIN: int = 600
+_INFERENCE_TIMEOUT_MAX: int = 7200
+_INFERENCE_TIMEOUT_FACTOR: float = 4.0
+_INFERENCE_TIMEOUT_PADDING: int = 300
+
+
+def _inference_timeout_sec(duration_sec: float | None) -> float:
+    if duration_sec is None or duration_sec <= 0 or not duration_sec == duration_sec:  # NaN check
+        return float(_INFERENCE_TIMEOUT_MIN)
+    estimate = duration_sec * _INFERENCE_TIMEOUT_FACTOR + _INFERENCE_TIMEOUT_PADDING
+    return max(_INFERENCE_TIMEOUT_MIN, min(_INFERENCE_TIMEOUT_MAX, estimate))
+
 
 _ALLOWED_FUNASR_LANG = frozenset({"zh", "en", "ja", "ko", "yue", "auto"})
 
 
 def _get_model(model_id: str) -> Any:
-    global _model_singleton
+    global _model_singleton, _model_loaded_id
     with _model_init_lock:
-        if _model_singleton is not None:
+        if _model_singleton is not None and _model_loaded_id == model_id:
             return _model_singleton
+        _model_singleton = None
+        _model_loaded_id = None
         try:
             from funasr import AutoModel
         except ImportError as e:
@@ -43,65 +79,30 @@ def _get_model(model_id: str) -> Any:
             kwargs["vad_kwargs"] = {
                 "max_single_segment_time": int(os.environ.get("RUSHI_FUNASR_VAD_MAX_MS", "30000")),
             }
+        punc = effective_funasr_punc_model_id(model_id)
+        if punc:
+            kwargs["punc_model"] = punc
 
-        log.info("loading FunASR model %s device=%s", model_id, device)
+        log.info(
+            "loading FunASR model %s device=%s vad=%s punc=%s",
+            model_id,
+            device,
+            vad or "-",
+            punc or "-",
+        )
         _model_singleton = AutoModel(**kwargs)
+        _model_loaded_id = model_id
         return _model_singleton
 
 
-def _normalize_funasr_time(value: float, duration_sec: float | None) -> float:
-    if value < 0:
-        return 0.0
-    if duration_sec is not None and duration_sec > 0:
-        # If the timestamp is wildly larger than the track itself, FunASR almost certainly
-        # returned milliseconds instead of seconds.
-        if value > max(duration_sec * 2.0 + 5.0, 600.0):
-            return value / 1000.0
-        return value
-    if value >= 10_000.0:
-        return value / 1000.0
-    return value
-
-
-def _segments_from_sentence_info(
-    sentence_info: list[dict[str, Any]],
-    duration_sec: float | None,
-) -> list[TranscriptionSegment]:
-    segs: list[TranscriptionSegment] = []
-    for row in sentence_info:
-        start = row.get("start") or row.get("begin")
-        end = row.get("end")
-        if start is None or end is None:
-            continue
-        try:
-            s = float(start)
-            e = float(end)
-        except (TypeError, ValueError):
-            continue
-        s = _normalize_funasr_time(s, duration_sec)
-        e = _normalize_funasr_time(e, duration_sec)
-        text = str(row.get("text") or row.get("spk") or "").strip()
-        conf = row.get("confidence")
-        conf_f: float | None
-        try:
-            conf_f = float(conf) if conf is not None else None
-        except (TypeError, ValueError):
-            conf_f = None
-        low = bool(row.get("low_confidence")) or (conf_f is None)
-        if conf_f is not None:
-            conf_f = max(0.0, min(1.0, conf_f))
-        lo = max(0.0, min(s, e))
-        hi = max(0.0, max(s, e))
-        segs.append(
-            TranscriptionSegment(
-                start_sec=lo,
-                end_sec=max(lo, hi),
-                text=text,
-                confidence=conf_f,
-                low_confidence=low,
-            ),
-        )
-    return segs
+def _long_audio_sensevoice_retry_kwargs(language: str) -> dict[str, Any]:
+    """Second pass when SenseVoice long audio returned text-only."""
+    return {
+        "language": language,
+        "merge_vad": False,
+        "batch_size_s": 60,
+        "output_timestamp": True,
+    }
 
 
 def transcribe_with_funasr(
@@ -109,9 +110,9 @@ def transcribe_with_funasr(
     _duration_sec: float | None,
     hotwords: str | None = None,
     out_warnings: list[str] | None = None,
-) -> tuple[list[TranscriptionSegment], str]:
+) -> tuple[list[TranscriptionSegment], str, str | None]:
     """
-    Returns (segments, engine_label). Raises RuntimeError on hard failures.
+    Returns (segments, engine_label, segmentation_mode). Raises RuntimeError on hard failures.
 
     ``hotwords``: space-separated bias string for FunASR ``hotword=`` when supported.
     """
@@ -132,28 +133,48 @@ def transcribe_with_funasr(
         if out_warnings is not None:
             out_warnings.append(msg)
 
-    with _inference_lock:
+    generate_kwargs = funasr_generate_kwargs(model_id, language, hw, _duration_sec)
+    needs_punc = recognizer_needs_punc_pipeline(model_id)
+    long_audio = _duration_sec is not None and _duration_sec >= LONG_AUDIO_SEC
+
+    def _generate(kwargs: dict[str, Any]) -> Any:
+        timeout = _inference_timeout_sec(_duration_sec)
+        future = _inference_executor.submit(model.generate, input=str(wav_path), **kwargs)
         try:
-            if hw:
-                try:
-                    res = model.generate(
-                        input=str(wav_path),
-                        language=language,
-                        merge_vad=True,
-                        hotword=hw,
-                    )
-                except TypeError:
-                    _warn("hotword_param_unsupported")
-                    res = model.generate(input=str(wav_path), language=language, merge_vad=True)
-            else:
-                res = model.generate(input=str(wav_path), language=language, merge_vad=True)
-        except TypeError:
+            return future.result(timeout=timeout)
+        except concurrent.futures.TimeoutError as e:
+            log.error("FunASR inference timed out after %.0fs for %s", timeout, wav_path)
+            raise RuntimeError(
+                f"funasr_inference_timeout: 推理超时（{timeout:.0f}s）；"
+                "音频可能过长或系统资源不足，建议缩短音频或切换至更快模型。"
+            ) from e
+
+    def _run_generate(kwargs: dict[str, Any]) -> Any:
+        with _inference_lock:
             try:
-                res = model.generate(input=str(wav_path))
+                return _generate(kwargs)
+            except TypeError as te:
+                _warn(f"funasr_generate_typeerror:{te!s}")
+                trimmed = {k: v for k, v in kwargs.items() if k != "hotword"}
+                if hw and trimmed != kwargs:
+                    _warn("hotword_param_unsupported")
+                try:
+                    return _generate(trimmed)
+                except TypeError:
+                    if needs_punc:
+                        minimal = {"language": language, "sentence_timestamp": True, "merge_vad": False}
+                        try:
+                            res = _generate(minimal)
+                            _warn("funasr_generate_minimal_sentence_timestamp")
+                            return res
+                        except TypeError:
+                            _warn("sentence_timestamp_param_unsupported")
+                            return _generate({"language": language, "merge_vad": True})
+                    return _generate({"language": language, "merge_vad": not long_audio})
             except Exception as e:  # noqa: BLE001
                 raise RuntimeError(f"funasr_generate_failed:{e!s}") from e
-        except Exception as e:  # noqa: BLE001
-            raise RuntimeError(f"funasr_generate_failed:{e!s}") from e
+
+    res = _run_generate(generate_kwargs)
 
     if not res or not isinstance(res, list):
         raise RuntimeError("funasr_empty_result")
@@ -161,32 +182,36 @@ def transcribe_with_funasr(
     r0: dict[str, Any] = res[0] if isinstance(res[0], dict) else {}
     engine = f"funasr+{model_id}"
 
-    if isinstance(r0.get("sentence_info"), list):
-        segs = _segments_from_sentence_info(r0["sentence_info"], _duration_sec)
-        if segs:
-            return segs, engine
+    segs, mode = segment_funasr_generate_result(r0, _duration_sec, model_id, out_warnings)
+    if segs:
+        if mode != "sentence_info" and long_audio:
+            _warn(f"segmentation_mode:{mode}")
+        return segs, engine, mode
 
-    text = str(r0.get("text") or "").strip()
-    if not text:
-        _warn("funasr_no_sentence_segments")
-        return [], engine
-    # 有全文但无 sentence_info：优先生成整轨单语段，避免桌面端「拉取成功但语段列表为空」
-    if _duration_sec is not None and _duration_sec > 0:
+    if (
+        long_audio
+        and not needs_punc
+        and str(r0.get("text") or "").strip()
+    ):
+        retry_kwargs = _long_audio_sensevoice_retry_kwargs(language)
+        if hw:
+            retry_kwargs["hotword"] = hw
+        try:
+            res2 = _run_generate(retry_kwargs)
+            if res2 and isinstance(res2, list) and isinstance(res2[0], dict):
+                segs2, mode2 = segment_funasr_generate_result(
+                    res2[0], _duration_sec, model_id, out_warnings,
+                )
+                if segs2:
+                    _warn("funasr_long_audio_retry_segments")
+                    _warn(f"segmentation_mode:{mode2}")
+                    return segs2, engine, mode2
+        except TypeError:
+            _warn("funasr_long_audio_retry_unsupported")
+
+    if not str(r0.get("text") or "").strip():
         _warn(
-            "funasr_whole_track_fallback: 模型返回全文但无分句时间戳；已生成整轨单语段，"
-            "可在波形上拖选拆分或换用输出 sentence_info 的模型。"
+            "funasr_no_timestamps: 模型返回全文但无分句时间戳且时长未知；未创建语段。"
+            "请换用输出 sentence_info 的模型/参数，或在桌面端波形上拖选新建语段。"
         )
-        return [
-            TranscriptionSegment(
-                start_sec=0.0,
-                end_sec=float(_duration_sec),
-                text=text,
-                low_confidence=True,
-                detail="funasr_whole_track_fallback",
-            ),
-        ], engine
-    _warn(
-        "funasr_no_timestamps: 模型返回全文但无分句时间戳且时长未知；未创建语段。"
-        "请换用输出 sentence_info 的模型/参数，或在桌面端波形上拖选新建语段。"
-    )
-    return [], engine
+    return [], engine, mode if mode != "empty" else None

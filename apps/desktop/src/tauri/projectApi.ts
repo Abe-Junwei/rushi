@@ -1,38 +1,15 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { OnlineTranscribeBridgePayload } from "../services/stt/sttOnlineProviderContract";
-import type { FileDetail } from "./fileApi";
+import type { FileDetail, ProjectDetail, ProjectSummary, SegmentDto } from "./projectTypes";
 
-export interface ProjectSummary {
-  id: string;
-  name: string;
-  updated_at_ms: number;
-}
-
-export interface SegmentDto {
-  /** 稳定语段 id；旧数据可为空，打开文件时由前端补全。 */
-  uid?: string;
-  idx: number;
-  start_sec: number;
-  end_sec: number;
-  text: string;
-  /** ASR 置信度 [0,1]，stub 等可为 null */
-  confidence?: number | null;
-  /** 引擎或 stub 标记的低置信 / 占位 */
-  low_confidence?: boolean;
-  /** 如 stub 说明、引擎附注 */
-  detail?: string | null;
-}
-
-export interface ProjectDetail {
-  id: string;
-  name: string;
-  audio_storage_path: string;
-  created_at_ms: number;
-  updated_at_ms: number;
-  segments: SegmentDto[];
-  /** File container schema: list of files in the project */
-  files: { id: string; name: string; file_type: string; updated_at_ms: number }[];
-}
+export type {
+  FileDetail,
+  FileSummary,
+  ProjectDetail,
+  ProjectSummary,
+  RawProjectDetail,
+  SegmentDto,
+} from "./projectTypes";
 
 /** `project_run_transcribe` 返回值（`detail` 为转写后的文件详情） */
 export interface RunTranscribeOutcome {
@@ -60,14 +37,19 @@ export interface AsrHealthCapabilities {
   funasr_ready: boolean;
   /** 默认主模型是否已完整缓存。 */
   funasr_default_model_cached?: boolean;
+  /** 当前激活主模型是否已完整缓存。 */
+  funasr_active_model_cached?: boolean;
   /** 默认辅助 VAD 模型是否已完整缓存。 */
   funasr_vad_model_cached?: boolean;
+  /** ct-punc 标点模型是否已完整缓存（Paraformer 多语段所需）。 */
+  funasr_punc_model_cached?: boolean;
   /** 当前默认 ASR 所需模型集合是否都已完整缓存。 */
   funasr_required_models_cached?: boolean;
   /** 仅当 runtime + 必需模型都就绪时才应视为真正可转写。 */
   ready_for_transcribe?: boolean;
   transcription_mode: "funasr" | "stub";
   funasr_model_id?: string | null;
+  funasr_punc_model_id?: string | null;
   /** 侧车 / 壳传入的模型缓存根目录（若有）。 */
   rushi_models_root?: string | null;
 }
@@ -173,4 +155,12 @@ export async function asrModelCacheInfo(): Promise<AsrModelCacheInfo> {
 
 export async function clearAsrModelCache(): Promise<AsrModelCacheInfo> {
   return invoke<AsrModelCacheInfo>("clear_asr_model_cache");
+}
+
+export async function getLocalAsrHubModelPref(): Promise<string | null> {
+  return invoke<string | null>("get_local_asr_hub_model_pref");
+}
+
+export async function setLocalAsrHubModelPref(hubModelId: string): Promise<void> {
+  return invoke<void>("set_local_asr_hub_model_pref", { hubModelId });
 }

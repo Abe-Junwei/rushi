@@ -8,7 +8,7 @@ import { roundSec3 } from "../utils/boundsSignature";
 import { waveformRegionFillColor } from "../utils/segmentChrome";
 import { segmentUidOf } from "../utils/segmentUid";
 import { parseSegmentRegionUid, segmentRegionId, REGION_ID_PREFIX } from "../utils/waveformRegionId";
-import type { UseProjectWaveformOptions } from "./useProjectWaveform";
+import type { UseProjectWaveformOptions } from "./useProjectWaveformTypes";
 
 export function useWaveformRegions(
   wsRef: React.MutableRefObject<WaveSurfer | null>,

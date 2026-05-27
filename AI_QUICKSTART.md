@@ -17,25 +17,33 @@
 | `docs/adr/` | 架构决策记录 |
 | `docs/execution/specs/` | 非 trivial feature 三件套 |
 
-## 当前热点（自动同步）
+## 当前热点（自动同步，2026-05-27）
 
-- `apps/desktop/src-tauri/src/project/project_bundle_cmd.rs` 277 行（生产）+ `project_bundle_cmd_tests.rs` 252 行 → 项目包逻辑/测试已分离
-- `apps/desktop/src-tauri/src/project/transcribe.rs` 300+ 行，在线 provider 已拆到 `transcribe_native_online.rs`
-- `apps/desktop/src/hooks/useProjectWaveform.ts` 275 行 → 仍是波形入口，但已拆出 `useWaveformPlayback` / `useWaveformRegions`
-- `apps/desktop/src/components/ProjectPanel.tsx` 241 行 → 已拆 controller，当前健康
+**R3h / LRC / ASR Setup（排期主战场）**
+
+- `apps/desktop/src-tauri/src/local_runtime/install_support.rs` ~675 行 → 守卫建议拆模块（**T-010**）
+- `apps/desktop/src-tauri/src/asr_sidecar.rs` ~632 行 → 同上；与 **R3h-I1** Supervisor 收口相关
+- `apps/desktop/src/pages/useAsrSetupController.ts` ~364 行 + `useLocalRuntimeSetupSupport.ts` ~359 行 → **R3h-I3** Setup Machine 候选
+- `apps/desktop/src/components/envLocalAsr/LocalAsrSetupWizard.tsx` ~313 行 → 接近阈值，随 R3f/⑤b 演进观察
+
+**已降温（勿再当 R0 阻塞）**
+
+- `useProjectLifecycleController.ts` ~261 行 → **T-005 已解决**（原 ~381 行）
+- `project_bundle_cmd.rs` 277 行 + tests 252 行；`transcribe.rs` ~300 行 + `transcribe_native_online.rs`
+- `useProjectWaveform.ts` 275 行；`SegmentTextListRow.tsx` ~110 行（**R3-003 已缓解**）
 
 ## 任务路由
 
 | 改动目标 | 先读 |
 |----------|------|
 | 时间轴 / 波形 | `useProjectWaveform.ts` + `docs/architecture/asr-hotword-bias-truth.md` |
-| ASR 侧车 / 模型 | `services/asr/README.md` + `docs/architecture/asr-sidecar-funasr-policy.md` |
+| ASR 侧车 / 模型 | `services/asr/README.md` + `docs/architecture/asr-sidecar-funasr-policy.md` + **能力—UI 对齐** [`desktop-capability-ui-state-alignment.md`](./docs/architecture/desktop-capability-ui-state-alignment.md) |
 | 在线 STT Provider | `docs/architecture/p1-stt-online-providers.md` |
 | 数据层 / SQLite | `src-tauri/src/db.rs` + ADR-0001 |
 | 新增颜色 / 样式 | `tailwind.config.js` + `src/config/tokens.ts` |
 | 新 UI / 整页重设计 / Stitch 对齐 | 仓库根 `DESIGN.md` → 再映射到 `tailwind.config.js` + `apps/desktop/src/config/tokens.ts` |
 | 浮动确认/表单对话框 | `FloatingPanelTemplate` + `preset="compactDialog"`；`controlStyles.ts` 按钮；见 [`docs/architecture/desktop-floating-dialog-panels.md`](./docs/architecture/desktop-floating-dialog-panels.md) |
-| **后续排期 / 下一刀** | [`docs/execution/plans/rushi-execution-roadmap.md`](./docs/execution/plans/rushi-execution-roadmap.md) §4.1（当前：**R3f 手测** → R3e-A → R3g-A） |
+| **后续排期 / 下一刀** | [`rushi-execution-roadmap.md`](./docs/execution/plans/rushi-execution-roadmap.md) §4.1.1；**当前**：**R3t-A**（声学分段） |
 | 单人 UI 重设计迭代（已验收） | `docs/execution/specs/ui-redesign-parallel-dev.md` + `bash scripts/prepare-stitch-upload.sh` |
 | 更换或更新 `DESIGN.md` 基底 | 仓库根执行 `npm run design:add -- <站点>`（站点名见 [awesome-design-md](https://github.com/VoltAgent/awesome-design-md) / [getdesign.md](https://getdesign.md/)，例：`npm run design:add -- cal`） |
 | 导出格式 | `src/services/exportFormatters.ts` |

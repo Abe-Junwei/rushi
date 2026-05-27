@@ -10,6 +10,9 @@ from rushi_asr.schemas import TranscriptionError, TranscriptionResult, Transcrip
 
 log = logging.getLogger(__name__)
 
+# Aligned with Rust HOTWORDS_MAX_CHARS in glossary_hotwords.rs
+HOTWORDS_MAX_CHARS = 12_000
+
 
 def _stub_segments(_duration_sec: float | None) -> tuple[list[TranscriptionSegment], str]:
     """Pipeline OK but no ASR model：不注入整轨占位语段，由桌面端用波形拖选自建。"""
@@ -73,15 +76,16 @@ def transcribe_upload(
 
     segments: list[TranscriptionSegment] = []
     engine = "stub"
+    segmentation_mode: str | None = None
     hw_norm = (hotwords or "").strip()
-    if len(hw_norm) > 12_000:
-        hw_norm = hw_norm[:12_000]
+    if len(hw_norm) > HOTWORDS_MAX_CHARS:
+        hw_norm = hw_norm[:HOTWORDS_MAX_CHARS]
         warnings.append("hotwords_truncated_12k")
 
     try:
         from rushi_asr import funasr_engine
 
-        segments, engine = funasr_engine.transcribe_with_funasr(
+        segments, engine, segmentation_mode = funasr_engine.transcribe_with_funasr(
             normalized,
             duration,
             hotwords=hw_norm or None,
@@ -116,4 +120,5 @@ def transcribe_upload(
         engine=engine,
         duration_sec=duration,
         warnings=warnings,
+        segmentation_mode=segmentation_mode,
     )

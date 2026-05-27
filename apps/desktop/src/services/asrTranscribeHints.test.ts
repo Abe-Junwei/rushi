@@ -7,6 +7,11 @@ describe("deriveTranscribeHints", () => {
     expect(h.some((x) => x.includes("stub"))).toBe(true);
   });
 
+  it("flags hotwords truncated at 12k", () => {
+    const h = deriveTranscribeHints("funasr+x", ["hotwords_truncated_12k"], [{ text: "a" }]);
+    expect(h.some((x) => x.includes("12,000"))).toBe(true);
+  });
+
   it("flags hotwords ignored", () => {
     const h = deriveTranscribeHints("funasr+x", ["hotwords_ignored_stub"], [{ text: "a" }]);
     expect(h.some((x) => x.includes("热词"))).toBe(true);
@@ -31,6 +36,12 @@ describe("deriveTranscribeHints", () => {
       { text: "你好世界" },
     ]);
     expect(h.some((x) => x.includes("整轨单语段"))).toBe(true);
+  });
+
+  it("flags long audio without segments", () => {
+    const h = deriveTranscribeHints("funasr+iic/SenseVoiceSmall", ["funasr_long_audio_no_segments: x"], []);
+    expect(h.some((x) => x.includes("Paraformer"))).toBe(true);
+    expect(h.some((x) => x.includes("未生成任何语段"))).toBe(false);
   });
 
   it("flags zero segments without stub", () => {

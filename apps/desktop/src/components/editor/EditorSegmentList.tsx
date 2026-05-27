@@ -63,7 +63,7 @@ export function EditorSegmentList({
       <div className="space-y-2.5">
         {c.segments.map((s, i) => (
           <SegmentTextListRow
-            key={i}
+            key={s.uid}
             segment={s}
             index={i}
             selected={i === c.selectedIdx}

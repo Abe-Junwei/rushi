@@ -163,6 +163,7 @@ export function ProjectPanel() {
               openAppDataFolder={c.openAppDataFolder}
               exportDiagnosticBundle={c.exportDiagnosticBundle}
               asrSetup={c.asrSetup}
+              localAsrModelCatalog={c.localAsrModelCatalog}
               onSttOnlineRuntimeChanged={c.bumpSttOnlineRuntimeChanged}
             />
         </FloatingPanelTemplate>

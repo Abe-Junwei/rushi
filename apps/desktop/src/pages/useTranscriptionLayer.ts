@@ -7,30 +7,15 @@ import { useWaveformZoom } from "../hooks/useWaveformZoom";
 import { p1LaneBoundsSignature } from "../utils/boundsSignature";
 import { computeTimelineWidthPx } from "../utils/segmentLayout";
 import { assignSegmentOverlapLanes, computeSegmentLaneRowPx } from "../utils/segmentLayout";
-import type { SegmentDto } from "../tauri/projectApi";
 
 export { TIMELINE_PX_PER_SEC, clampPxPerSec } from "../utils/pxPerSec";
 export { computeSegmentLaneRowPx, assignSegmentOverlapLanes, computeTimelineWidthPx, SEGMENT_LANE_ROW_PX } from "../utils/segmentLayout";
 
 export type TranscriptionLayerApi = ReturnType<typeof useTranscriptionLayer>;
 
-export type TranscriptionLayerInput = {
-  mediaUrl: string | null;
-  segments: SegmentDto[];
-  selectedIdx: number;
-  setSelectedIdx: (idx: number) => void;
-  busy: boolean;
-  undo: () => void;
-  redo: () => void;
-  updateSegmentBounds: (idx: number, startSec: number, endSec: number, phase?: "live" | "commit") => void;
-  insertSegmentFromTimeRange: (startSec: number, endSec: number) => void;
-  splitAtSelection: () => void;
-  splitAtPlayhead: (timeSec: number) => void;
-  mergeWithNext: () => void;
-  mergeWithPrev: () => void;
-  insertSegmentAfter: (idx: number) => void;
-  deleteSegmentAt: (idx: number) => void;
-};
+import type { TranscriptionLayerInput } from "./transcriptionLayerTypes";
+
+export type { TranscriptionLayerInput } from "./transcriptionLayerTypes";
 
 export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
   const tierScrollRef = useRef<HTMLDivElement | null>(null);

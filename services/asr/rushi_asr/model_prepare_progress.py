@@ -8,9 +8,30 @@ from typing import TYPE_CHECKING, Any
 if TYPE_CHECKING:
     from modelscope.hub.callback import ProgressCallback
 
+class PrepareCancelledError(RuntimeError):
+    """User requested stop of an in-flight ModelScope prefetch."""
+
+
+_cancel_event = threading.Event()
+
+
+def clear_prepare_cancel() -> None:
+    _cancel_event.clear()
+
+
+def request_prepare_cancel() -> None:
+    _cancel_event.set()
+
+
+def raise_if_prepare_cancelled() -> None:
+    if _cancel_event.is_set():
+        raise PrepareCancelledError("model_prepare_cancelled")
+
+
 # Rough budgets when remote Content-Length is missing (bytes).
 _RECOGNIZER_BUDGET_BYTES = 130 * 1024 * 1024
 _VAD_BUDGET_BYTES = 8 * 1024 * 1024
+_PUNC_BUDGET_BYTES = 50 * 1024 * 1024
 
 
 class ModelPrepareProgressTracker:
@@ -23,13 +44,15 @@ class ModelPrepareProgressTracker:
         self._budget_total = 0
         self._progress_percent: int | None = None
 
-    def reset(self, *, include_vad: bool) -> None:
+    def reset(self, *, include_vad: bool, include_punc: bool = False) -> None:
         with self._lock:
             self._bytes_downloaded = 0
             self._declared_total = 0
-            self._budget_total = _RECOGNIZER_BUDGET_BYTES + (
-                _VAD_BUDGET_BYTES if include_vad else 0
-            )
+            self._budget_total = _RECOGNIZER_BUDGET_BYTES
+            if include_vad:
+                self._budget_total += _VAD_BUDGET_BYTES
+            if include_punc:
+                self._budget_total += _PUNC_BUDGET_BYTES
             self._progress_percent = 0
 
     def register_file(self, _filename: str, file_size: int) -> None:
@@ -76,8 +99,8 @@ class ModelPrepareProgressTracker:
 _tracker = ModelPrepareProgressTracker()
 
 
-def reset_prepare_download_progress(*, include_vad: bool) -> None:
-    _tracker.reset(include_vad=include_vad)
+def reset_prepare_download_progress(*, include_vad: bool, include_punc: bool = False) -> None:
+    _tracker.reset(include_vad=include_vad, include_punc=include_punc)
 
 
 def finalize_prepare_download_progress() -> None:
@@ -99,6 +122,7 @@ def prepare_progress_callback_types() -> list[type[ProgressCallback]]:
             tracker.register_file(filename, file_size)
 
         def update(self, size: int) -> None:
+            raise_if_prepare_cancelled()
             tracker.add_bytes(size)
 
         def end(self) -> None:

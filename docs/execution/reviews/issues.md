@@ -1,6 +1,7 @@
 # 审查问题登记表
 
-审查日：2026-05-21 | 状态：`open` / `fixed` / `wontfix` / `debt`
+审查日：2026-05-21 | 最近刷新：**2026-05-27**（路线图审查对齐）  
+状态：`open` / `fixed` / `wontfix` / `debt`
 
 | ID | 级别 | 批次 | 状态 | 摘要 |
 |----|------|------|------|------|
@@ -9,17 +10,18 @@
 | R2-003 | P2 | 2 | fixed | `closeProject` 无未保存确认 |
 | R2-004 | P2 | 2 | fixed | `runTranscribe` 未要求 `currentFileId` |
 | R2-005 | P2 | 2 | fixed | `RunTranscribeOutcome` TS 类型与 Rust 不一致 |
-| R1-001 | P1 | 1 | debt | `project_cmd.rs` 953 行未拆模块 → 见 [architecture-split-plan.md](../specs/architecture-split-plan.md) S1 |
+| R1-001 | P1 | 1 | **fixed** | `project_cmd` 巨石 → 已拆 `project/` + `project_bundle_cmd.rs` ~277 行 |
 | R1-002 | P2 | 1 | fixed | `project_delete` 先 FS 后 DB，DB 失败留孤儿 FS |
-| R1-003 | P2 | 1 | open | `export_cmd.rs` 多文件项目只导出首个音频 |
+| R1-003 | P2 | 1 | **fixed** | 项目包导出：已 `export_project_bundle(file_id)`；见 R5-001 |
 | R3-001 | P3 | 0 | fixed | 死代码 `projectSaveSegments` → 不存在 command |
-| R3-002 | P1 | 3 | debt | lifecycle 358 行/14 hooks → 方案 S2 |
-| R3-003 | P1 | 3 | debt | `SegmentTextListRow` 17 hooks → 方案 S4 |
-| R3-004 | P3 | 3 | open | arbitrary hex 颜色未入库 token |
+| R3-002 | P1 | 3 | **debt↓** | lifecycle **~261 行**（原 358+）；**T-005 已解决**，观察即可 |
+| R3-003 | P1 | 3 | **debt↓** | `SegmentTextListRow` **~110 行**（原 17 hooks 告警已缓解） |
+| R3-004 | P3 | 3 | **fixed** | arbitrary hex → 仓库内已无 `text-[#`（2026-05-27 rg） |
 | R5-001 | P2 | 5 | fixed | 导出项目包：语段来自当前文件、音频来自 DB 首个 paired |
-| R7-001 | P1 | 7 | debt | `EditorView.tsx` 762 行 → 方案 S3 |
-| R4-001 | P3 | 4 | debt | `transcribe.rs`/`export_cmd.rs` → 方案 S5 |
+| R7-001 | P1 | 7 | **fixed** | `EditorView` 巨石 → `editor/*` 拆分（路线图 §2） |
+| R4-001 | P3 | 4 | **debt↓** | `transcribe.rs` ~300 行 + online 拆分；`export_cmd` 薄封装 |
 | R8-001 | P1 | 8 | fixed | file-container 转写/保存/导出已 `file_id` |
+| **T-010** | P1 | — | **open** | `install_support.rs` ~675、`asr_sidecar.rs` ~632、`useAsrSetup*` ~360；路线图 §7 |
 
 ---
 
@@ -67,10 +69,10 @@
 
 ---
 
-## R1-001 — project_cmd 巨石模块（P1 技术债）
+## R1-001 — project_cmd 巨石模块（P1 技术债）— fixed
 
-- 887 行，含创建/导入/列表/删改/保存；守卫持续告警
-- **建议**：按 `file-container-refactor` 拆 `file_cmd.rs`、`segment_cmd.rs`
+- 原 887+ 行；现 `project/` 模块 + `project_bundle_cmd.rs` ~277 行 + 独立 tests
+- **剩余**：无 P1 阻塞；新债见 **T-010**（LRC）
 
 ---
 
@@ -98,29 +100,35 @@
 
 ## R3-002 / R3-003 / R7-001 — 架构阈值（P1 债）
 
-- lifecycle controller：384 行、17 hooks，无 focused test
-- `SegmentTextListRow`：15 hooks
-- `EditorView`：762 行
-- 参照 [code-review-fix-2025-05-24.md](../specs/code-review-fix-2025-05-24.md) 拆分方案
+- lifecycle：**~261 行**（2026-05-27）— **T-005 已解决**
+- `SegmentTextListRow`：**~110 行**，hooks 已拆/缓解
+- `EditorView`：已拆至 `editor/*` — **fixed**
 
 ---
 
-## R3-004 — Tailwind arbitrary 颜色（P3）
+## R3-004 — Tailwind arbitrary 颜色（P3）— fixed
 
-- `SegmentTextListRow.tsx`：`text-[#8b8b8b]`、`text-[#5f5f5f]`
-- **建议**：映射 `tokens.ts` / `tailwind.config.js`
+- 2026-05-27：仓库 `apps/desktop` 内无 `text-[#` 匹配
+- 新增颜色须走 `tokens.ts` / `tailwind.config.js`
 
 ---
 
 ## R4-001 — ASR / 导出模块体量（P3 债）
 
-- `transcribe.rs`、`export_cmd.rs` 仍超 AI_QUICKSTART 建议拆分线
-- 当前：`post_transcribe_multipart` 已 async；blocking 已移除
+- `transcribe.rs` ~300 行 + `transcribe_native_online.rs` 已拆
+- `export_cmd.rs` 薄封装 + `project_bundle_cmd`
+- **新关注**：`asr_sidecar.rs`、`install_support.rs` → **T-010**
 
 ---
 
-## R8-001 — file-container 迁移未完成（P1）
+## R8-001 — file-container 迁移未完成（P1）— fixed
 
-- DB/schema、文件 API 已 file-centric
-- **转写、部分导出、前端 `applyDetail` 仍 project-centric**
-- 完成标准：全链路以 `currentFileId` 为轴；补集成测试
+- 转写、导出、前端均以 `currentFileId` 为轴（R2/R5/R8 已修）
+
+---
+
+## T-010 — LRC / ASR 热点体量（2026-05-27 新增）
+
+- **来源**：`check-architecture-guard.mjs` 7 警告
+- **文件**：`install_support.rs` ~675、`asr_sidecar.rs` ~632、`useAsrSetupController.ts` ~364、`useLocalRuntimeSetupSupport.ts` ~359 等
+- **穿插**：路线图 **R3h-2 / R3h-I1～I3**，不单独开重构周

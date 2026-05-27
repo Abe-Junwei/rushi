@@ -37,3 +37,4 @@ class TranscriptionResult(BaseModel):
     duration_sec: float | None = None
     error: TranscriptionError | None = None
     warnings: list[str] = Field(default_factory=list)
+    segmentation_mode: str | None = None

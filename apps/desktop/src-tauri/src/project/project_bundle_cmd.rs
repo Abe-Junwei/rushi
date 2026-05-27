@@ -10,7 +10,7 @@ use zip::{CompressionMethod, ZipArchive, ZipWriter};
 
 use super::segment_uid::segment_uid_or_new;
 use super::types::{ProjectDetail, SegmentDto};
-use super::utils::{now_ms, open_db, project_detail_from_conn};
+use super::utils::{canonicalize_audio_storage_path, now_ms, open_db, project_detail_from_conn};
 
 pub(super) const PROJECT_BUNDLE_KIND: &str = "rushi_project_bundle";
 pub(super) const PROJECT_BUNDLE_VERSION: u32 = 1;
@@ -192,6 +192,9 @@ pub(super) fn import_project_bundle_from_path(
         let _ = fs::remove_dir_all(&dest_dir);
         return Err(format!("写入项目音频失败: {e}"));
     }
+    let audio_path = canonicalize_audio_storage_path(&dest_audio).inspect_err(|_| {
+        let _ = fs::remove_dir_all(&dest_dir);
+    })?;
 
     let imported_name = if doc.name.trim().is_empty() {
         manifest.project.name.trim()
@@ -224,7 +227,7 @@ pub(super) fn import_project_bundle_from_path(
                 &id,
                 imported_name,
                 "paired",
-                dest_audio.to_string_lossy().to_string(),
+                audio_path,
                 created_at_ms,
                 now,
             ],

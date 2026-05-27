@@ -5,7 +5,8 @@ import shutil
 import tempfile
 from pathlib import Path
 
-from fastapi import FastAPI, File, Form, HTTPException, Request, UploadFile
+from fastapi import Body, FastAPI, File, Form, HTTPException, Request, UploadFile
+from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.concurrency import run_in_threadpool
 
@@ -39,6 +40,10 @@ def _require_local_token(request: Request) -> None:
         raise HTTPException(status_code=401, detail="invalid_local_token")
 
 
+class PrepareModelRequest(BaseModel):
+    model_id: str | None = Field(default=None, description="FunASR hub model id")
+
+
 def create_app() -> FastAPI:
     apply_models_root_env()
     app = FastAPI(title="rushi-asr", version="0.1.0")
@@ -59,8 +64,10 @@ def create_app() -> FastAPI:
             "service": "rushi-asr",
             "health": "/health",
             "transcribe": "POST /v1/transcribe (multipart: file, optional hotwords)",
-            "prepare_model": "POST /v1/models/prepare-default (blocking prefetch)",
-            "prepare_model_async": "POST /v1/models/prepare-default/async + GET /v1/models/prepare-status",
+            "prepare_model": "POST /v1/models/prepare (blocking prefetch, optional model_id)",
+            "prepare_model_async": "POST /v1/models/prepare/async + GET /v1/models/prepare-status",
+            "prepare_cancel": "POST /v1/models/prepare-cancel",
+            "model_catalog": "GET /v1/models/catalog",
         }
 
     @app.get("/health")
@@ -69,19 +76,17 @@ def create_app() -> FastAPI:
         body.update(get_runtime_caps())
         return body
 
-    @app.post("/v1/models/prepare-default")
-    async def prepare_default_model_endpoint(request: Request) -> dict[str, object]:
-        """Prefetch default FunASR model into MODELSCOPE_CACHE (may take minutes; loopback-only)."""
-        _require_local_token(request)
-        try:
-            import funasr  # noqa: F401, PLC0415
-        except ImportError:
-            raise HTTPException(status_code=503, detail="funasr_not_installed") from None
+    @app.get("/v1/models/catalog")
+    def models_catalog_endpoint() -> dict[str, object]:
+        from rushi_asr.model_catalog import get_catalog_status
 
-        from rushi_asr.model_prepare import prepare_default_model
+        return {"items": get_catalog_status()}
+
+    async def _prepare_model_blocking(model_id: str | None) -> dict[str, object]:
+        from rushi_asr.model_prepare import prepare_model
 
         try:
-            body = await run_in_threadpool(prepare_default_model)
+            return await run_in_threadpool(lambda: prepare_model(model_id))
         except (RuntimeError, ValueError, FileNotFoundError) as e:
             code = str(e)
             if code == "model_prepare_disk_full":
@@ -93,17 +98,47 @@ def create_app() -> FastAPI:
             if isinstance(e, ValueError) and ("sha256_mismatch" in code or "manifest_" in code):
                 raise HTTPException(status_code=400, detail=code) from e
             raise HTTPException(status_code=500, detail=code) from e
-        return body
 
-    @app.post("/v1/models/prepare-default/async")
-    def prepare_default_model_async_endpoint(request: Request) -> dict[str, object]:
-        """Start background prefetch; poll ``GET /v1/models/prepare-status``."""
-        _require_local_token(request)
+    def _require_funasr_import() -> None:
         try:
             import funasr  # noqa: F401, PLC0415
         except ImportError:
             raise HTTPException(status_code=503, detail="funasr_not_installed") from None
 
+    @app.post("/v1/models/prepare")
+    async def prepare_model_endpoint(
+        request: Request,
+        body: PrepareModelRequest = Body(default_factory=PrepareModelRequest),
+    ) -> dict[str, object]:
+        """Prefetch a FunASR hub model into MODELSCOPE_CACHE (may take minutes; loopback-only)."""
+        _require_local_token(request)
+        _require_funasr_import()
+        return await _prepare_model_blocking(body.model_id)
+
+    @app.post("/v1/models/prepare-default")
+    async def prepare_default_model_endpoint(request: Request) -> dict[str, object]:
+        """Backward-compatible blocking prefetch for the effective default hub model."""
+        _require_local_token(request)
+        _require_funasr_import()
+        return await _prepare_model_blocking(None)
+
+    @app.post("/v1/models/prepare/async")
+    def prepare_model_async_endpoint(
+        request: Request,
+        body: PrepareModelRequest = Body(default_factory=PrepareModelRequest),
+    ) -> dict[str, object]:
+        """Start background prefetch; poll ``GET /v1/models/prepare-status``."""
+        _require_local_token(request)
+        _require_funasr_import()
+        from rushi_asr.model_prepare import start_prepare_async
+
+        return start_prepare_async(body.model_id)
+
+    @app.post("/v1/models/prepare-default/async")
+    def prepare_default_model_async_endpoint(request: Request) -> dict[str, object]:
+        """Backward-compatible async prefetch for the effective default hub model."""
+        _require_local_token(request)
+        _require_funasr_import()
         from rushi_asr.model_prepare import start_prepare_default_async
 
         return start_prepare_default_async()
@@ -113,6 +148,14 @@ def create_app() -> FastAPI:
         from rushi_asr.model_prepare import prepare_status
 
         return prepare_status()
+
+    @app.post("/v1/models/prepare-cancel")
+    def prepare_cancel_endpoint(request: Request) -> dict[str, object]:
+        """Cooperative cancel for async model prefetch (Q-R3g-3)."""
+        _require_local_token(request)
+        from rushi_asr.model_prepare import cancel_prepare_async
+
+        return cancel_prepare_async()
 
     @app.post("/v1/transcribe")
     async def transcribe(

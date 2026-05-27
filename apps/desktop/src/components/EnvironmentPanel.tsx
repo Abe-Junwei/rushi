@@ -9,6 +9,8 @@ import { PANEL_TYPOGRAPHY } from "../config/typography";
 import type { AsrHealthCapabilities, AsrModelCacheInfo, BundledAsrLaunchReport } from "../tauri/projectApi";
 import type { AsrHealthState } from "../pages/useProjectController";
 import type { AsrSetupControllerApi } from "../pages/useAsrSetupController";
+import type { LocalAsrModelCatalogApi } from "../pages/useLocalAsrModelCatalog";
+import type { PrepareModelApi } from "../pages/usePrepareModelController";
 import type { PrepareModelFailureCopy } from "../pages/prepareModelDownloadCopy";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
@@ -38,7 +40,7 @@ export type EnvironmentPanelProps = {
   refreshAsrHealth: () => Promise<void>;
   installFunasrDepsInteractive: () => Promise<void>;
   copyFunasrManualCommands: () => Promise<void>;
-  prepareDefaultFunasrModel: () => Promise<void>;
+  prepareDefaultFunasrModel: PrepareModelApi["prepareDefaultFunasrModel"];
   cancelPrepareModel: () => void;
   refreshAsrModelCacheInfo: () => Promise<void>;
   clearAsrModelCache: () => Promise<void>;
@@ -46,6 +48,7 @@ export type EnvironmentPanelProps = {
   openAppDataFolder: () => Promise<void>;
   exportDiagnosticBundle: () => Promise<void>;
   asrSetup: AsrSetupControllerApi;
+  localAsrModelCatalog: LocalAsrModelCatalogApi;
   onSttOnlineRuntimeChanged?: () => void;
   focusOnlineSttSeq?: number;
 };
@@ -74,6 +77,7 @@ export function EnvironmentPanel({
   openAppDataFolder,
   exportDiagnosticBundle,
   asrSetup,
+  localAsrModelCatalog,
   onSttOnlineRuntimeChanged,
   focusOnlineSttSeq = 0,
 }: EnvironmentPanelProps) {
@@ -184,6 +188,7 @@ export function EnvironmentPanel({
                   openAppDataFolder={openAppDataFolder}
                   exportDiagnosticBundle={exportDiagnosticBundle}
                   asrSetup={asrSetup}
+                  localAsrModelCatalog={localAsrModelCatalog}
                 />
               ) : null}
 

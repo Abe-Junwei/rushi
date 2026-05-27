@@ -43,6 +43,8 @@ export interface TranscriptionResult {
   duration_sec: number | null;
   error?: TranscriptionError | null;
   warnings: string[];
+  /** L2 segmentation source when known: sentence_info | vad_timestamp | whole_track_fallback | empty. */
+  segmentation_mode?: string | null;
 }
 
 /** Client-side contract for calling a local or remote ASR HTTP service. */
