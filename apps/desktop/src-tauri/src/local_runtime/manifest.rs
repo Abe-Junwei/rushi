@@ -127,8 +127,8 @@ pub fn parse_manifest(body: &str) -> Result<RuntimeManifest, String> {
 pub fn parse_signed_manifest(body: &str) -> Result<ParsedSignedManifest, String> {
     let raw: RawSignedRuntimeManifest =
         serde_json::from_str(body).map_err(|e| format!("manifest_parse_failed: {e}"))?;
-    let canonical_payload =
-        serde_json::to_vec(&raw.payload).map_err(|e| format!("manifest_canonicalize_failed: {e}"))?;
+    let canonical_payload = serde_json::to_vec(&raw.payload)
+        .map_err(|e| format!("manifest_canonicalize_failed: {e}"))?;
     let manifest = convert_payload(raw.payload)?;
     Ok(ParsedSignedManifest {
         manifest,
@@ -249,8 +249,7 @@ pub fn artifact_sources(component: &RuntimeComponent) -> Vec<String> {
 mod tests {
     use super::{
         artifact_sources, current_platform_key, is_shell_version_compatible, parse_manifest,
-        parse_signed_manifest,
-        select_asr_sidecar_component,
+        parse_signed_manifest, select_asr_sidecar_component,
     };
 
     #[test]

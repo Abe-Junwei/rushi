@@ -64,7 +64,8 @@ fn validate_manifest_source_policy(source: &str) -> Result<(), String> {
 }
 
 fn verifying_key_from_hex(hex_value: &str) -> Result<VerifyingKey, String> {
-    let raw = hex::decode(hex_value).map_err(|e| format!("local_runtime_manifest_key_decode_failed:{e}"))?;
+    let raw = hex::decode(hex_value)
+        .map_err(|e| format!("local_runtime_manifest_key_decode_failed:{e}"))?;
     let key_bytes: [u8; 32] = raw
         .try_into()
         .map_err(|_| "local_runtime_manifest_key_length_invalid".to_string())?;
@@ -83,7 +84,12 @@ fn resolve_pinned_manifest_key(key_id: &str) -> Result<VerifyingKey, String> {
     }
 }
 
-fn verify_manifest_signature(key_id: &str, algorithm: &str, signature: &str, payload: &[u8]) -> Result<(), String> {
+fn verify_manifest_signature(
+    key_id: &str,
+    algorithm: &str,
+    signature: &str,
+    payload: &[u8],
+) -> Result<(), String> {
     if algorithm != "ed25519" {
         return Err("local_runtime_manifest_signature_algorithm_unsupported".into());
     }
@@ -99,7 +105,8 @@ fn verify_manifest_signature(key_id: &str, algorithm: &str, signature: &str, pay
 }
 
 pub fn load_configured_manifest() -> Result<LoadedRuntimeManifest, String> {
-    let source = configured_manifest_source().ok_or_else(|| "local_runtime_manifest_missing".to_string())?;
+    let source =
+        configured_manifest_source().ok_or_else(|| "local_runtime_manifest_missing".to_string())?;
     validate_manifest_source_policy(&source)?;
     let body = read_text_source(&source)?;
     let parsed = parse_signed_manifest(&body)?;
@@ -225,7 +232,8 @@ pub fn diagnose_configured_manifest() -> ManifestProbe {
             signature_key_id: Some(parsed.signature.key_id),
         };
     }
-    let Some(component) = select_asr_sidecar_component(&parsed.manifest, &current_platform_key()) else {
+    let Some(component) = select_asr_sidecar_component(&parsed.manifest, &current_platform_key())
+    else {
         return ManifestProbe {
             source: Some(source),
             status: "error".into(),
@@ -340,7 +348,10 @@ mod tests {
                 "signature": base64::engine::general_purpose::STANDARD.encode(signature.to_bytes()),
             }
         });
-        let path = std::env::temp_dir().join(format!("rushi-local-runtime-manifest-{}.json", Uuid::new_v4()));
+        let path = std::env::temp_dir().join(format!(
+            "rushi-local-runtime-manifest-{}.json",
+            Uuid::new_v4()
+        ));
         fs::write(&path, serde_json::to_vec_pretty(&body).unwrap()).unwrap();
         path.to_string_lossy().to_string()
     }
@@ -358,7 +369,10 @@ mod tests {
 
     #[test]
     fn diagnose_manifest_rejects_http_source_when_insecure_policy_disabled() {
-        std::env::set_var("RUSHI_LOCAL_RUNTIME_MANIFEST_URL", "http://example.invalid/manifest.json");
+        std::env::set_var(
+            "RUSHI_LOCAL_RUNTIME_MANIFEST_URL",
+            "http://example.invalid/manifest.json",
+        );
         std::env::set_var("RUSHI_LOCAL_RUNTIME_ALLOW_INSECURE_MANIFEST", "0");
         let probe = diagnose_configured_manifest();
         assert_eq!(probe.status, "source_rejected");
@@ -369,7 +383,8 @@ mod tests {
     #[test]
     fn diagnose_manifest_rejects_tampered_signature() {
         let path = write_manifest("https://example.invalid/asr.zip");
-        let mut body = serde_json::from_slice::<serde_json::Value>(&fs::read(&path).unwrap()).unwrap();
+        let mut body =
+            serde_json::from_slice::<serde_json::Value>(&fs::read(&path).unwrap()).unwrap();
         body["components"][0]["version"] = serde_json::Value::String("0.2.0".into());
         fs::write(&path, serde_json::to_vec_pretty(&body).unwrap()).unwrap();
         std::env::set_var("RUSHI_LOCAL_RUNTIME_MANIFEST_URL", &path);

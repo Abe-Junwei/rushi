@@ -9,11 +9,11 @@
 //! Model weights cache: passes `RUSHI_MODELS_ROOT` + hub cache dirs to the child so
 //! FunASR / ModelScope download under `{app_data}/studio.lingchuang.rushi/models/`.
 
+use std::net::{Ipv4Addr, SocketAddrV4, TcpStream};
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
 use std::time::Duration;
-use std::{net::{Ipv4Addr, SocketAddrV4, TcpStream}};
 
 use serde::Serialize;
 use serde_json::Value;
@@ -291,10 +291,7 @@ pub async fn probe_asr_port() -> AsrPortProbe {
             detail: None,
         };
     }
-    let service = v
-        .get("service")
-        .and_then(|s| s.as_str())
-        .unwrap_or("未知");
+    let service = v.get("service").and_then(|s| s.as_str()).unwrap_or("未知");
     AsrPortProbe {
         status: AsrPortStatus::Foreign,
         http_status: Some(http_status),
@@ -367,7 +364,10 @@ fn spawn_sidecar(exe: &Path, handle: &AppHandle) -> std::io::Result<Child> {
         const CREATE_NO_WINDOW: u32 = 0x08000000;
         cmd.creation_flags(CREATE_NO_WINDOW);
     }
-    append_sidecar_log_line(handle, &format!("INFO bundled_sidecar_spawn {}", exe.display()));
+    append_sidecar_log_line(
+        handle,
+        &format!("INFO bundled_sidecar_spawn {}", exe.display()),
+    );
     cmd.spawn()
 }
 
@@ -489,7 +489,10 @@ pub fn try_start_bundled(handle: &AppHandle) {
         );
         append_sidecar_log_line(
             handle,
-            &format!("ERROR bundled_sidecar_candidate_unhealthy {}", exe.display()),
+            &format!(
+                "ERROR bundled_sidecar_candidate_unhealthy {}",
+                exe.display()
+            ),
         );
     }
     let detail = Some(

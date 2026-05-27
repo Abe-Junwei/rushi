@@ -1,14 +1,14 @@
 pub(crate) mod catalog;
+mod install_support;
 pub mod installer;
 pub mod integrity;
 pub mod manifest;
 pub mod recovery;
-mod install_support;
 
 use catalog::{diagnose_configured_manifest, manifest_blocking_issue};
+use install_support::disk_free_bytes;
 use installer::{install_progress, LocalRuntimeInstallProgress};
 use integrity::{inspect_installed_runtime, InstalledRuntimeInfo};
-use install_support::disk_free_bytes;
 use serde::Serialize;
 use tauri::{AppHandle, State};
 
@@ -68,9 +68,7 @@ fn describe_local_runtime_error(error: &str) -> String {
         "local_runtime_not_revalidatable" => {
             "当前安装元数据已损坏，无法直接重新验证。请先清除后重新下载安装。".into()
         }
-        "local_runtime_not_restorable" => {
-            "当前安装元数据已损坏，无法恢复上一版本。".into()
-        }
+        "local_runtime_not_restorable" => "当前安装元数据已损坏，无法恢复上一版本。".into(),
         "local_runtime_no_previous" => "当前没有可恢复的上一版本侧车。".into(),
         "local_runtime_previous_missing" => "记录中的上一版本侧车目录已缺失，无法恢复。".into(),
         _ if error
@@ -91,7 +89,9 @@ fn describe_local_runtime_error(error: &str) -> String {
         _ if error.strip_prefix("promote_runtime_failed:").is_some() => {
             "语音识别组件已下载，但切换到新版本时失败。当前版本未变更。".into()
         }
-        _ if error.strip_prefix("create_local_runtime_root_failed:").is_some()
+        _ if error
+            .strip_prefix("create_local_runtime_root_failed:")
+            .is_some()
             || error.strip_prefix("create_extract_dir_failed:").is_some()
             || error.strip_prefix("create_dir_failed:").is_some()
             || error.strip_prefix("create_file_failed:").is_some()
@@ -137,7 +137,9 @@ pub fn local_runtime_diagnose(
         {
             manifest.blocking_issue.clone()
         }
-        _ if installed.status == integrity::InstalledRuntimeStatus::Corrupt => installed.detail.clone(),
+        _ if installed.status == integrity::InstalledRuntimeStatus::Corrupt => {
+            installed.detail.clone()
+        }
         _ => None,
     };
     Ok(LocalRuntimeDiagnose {
@@ -162,16 +164,30 @@ mod tests {
 
     #[test]
     fn describe_local_runtime_error_maps_known_runtime_failures() {
-        assert!(describe_local_runtime_error("local_runtime_executable_missing").contains("可执行文件"));
-        assert!(describe_local_runtime_error("local_runtime_component_missing:linux-x64").contains("本平台"));
         assert!(
-            describe_local_runtime_error("local_runtime_shell_version_incompatible:0.1.0:0.2.0")
-                .contains("版本过低")
+            describe_local_runtime_error("local_runtime_executable_missing").contains("可执行文件")
         );
-        assert!(describe_local_runtime_error("backup_runtime_failed:disk busy").contains("备份当前版本失败"));
-        assert!(describe_local_runtime_error("promote_runtime_failed:rename").contains("切换到新版本时失败"));
+        assert!(
+            describe_local_runtime_error("local_runtime_component_missing:linux-x64")
+                .contains("本平台")
+        );
+        assert!(describe_local_runtime_error(
+            "local_runtime_shell_version_incompatible:0.1.0:0.2.0"
+        )
+        .contains("版本过低"));
+        assert!(
+            describe_local_runtime_error("backup_runtime_failed:disk busy")
+                .contains("备份当前版本失败")
+        );
+        assert!(
+            describe_local_runtime_error("promote_runtime_failed:rename")
+                .contains("切换到新版本时失败")
+        );
         assert!(describe_local_runtime_error("artifact_http_500").contains("下载语音识别组件失败"));
         assert!(describe_local_runtime_error("open_zip_failed:bad zip").contains("压缩包无效"));
-        assert!(describe_local_runtime_error("local_runtime_not_revalidatable").contains("元数据已损坏"));
+        assert!(
+            describe_local_runtime_error("local_runtime_not_revalidatable")
+                .contains("元数据已损坏")
+        );
     }
 }

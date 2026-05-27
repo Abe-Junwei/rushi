@@ -22,7 +22,10 @@ fn zip_opts() -> SimpleFileOptions {
 }
 
 #[tauri::command]
-pub fn export_diagnostic_bundle(app: AppHandle, state: State<DbState>) -> Result<Option<String>, String> {
+pub fn export_diagnostic_bundle(
+    app: AppHandle,
+    state: State<DbState>,
+) -> Result<Option<String>, String> {
     let st: &DbState = state.deref();
     let picked = rfd::FileDialog::new()
         .add_filter("ZIP", &["zip"])

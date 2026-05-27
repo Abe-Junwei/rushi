@@ -93,7 +93,8 @@ fn parse_marker(bytes: &[u8]) -> Result<InstalledRuntimeMarker, String> {
 }
 
 pub fn read_marker(app_root: &Path) -> Result<InstalledRuntimeMarker, String> {
-    let bytes = fs::read(marker_path(app_root)).map_err(|e| format!("读取 local runtime marker 失败: {e}"))?;
+    let bytes = fs::read(marker_path(app_root))
+        .map_err(|e| format!("读取 local runtime marker 失败: {e}"))?;
     parse_marker(&bytes)
 }
 
@@ -110,7 +111,10 @@ fn required_runtime_files(exe: &Path) -> Vec<(&'static str, PathBuf)> {
     let ffprobe = internal_dir.join("ffprobe");
 
     vec![
-        ("FunASR 资源", internal_dir.join("funasr").join("version.txt")),
+        (
+            "FunASR 资源",
+            internal_dir.join("funasr").join("version.txt"),
+        ),
         ("FFmpeg", ffmpeg),
         ("FFprobe", ffprobe),
     ]
@@ -151,13 +155,24 @@ fn write_marker_with_state(
         "last_verify_error": last_verify_error,
         "last_install_phase": last_install_phase,
     });
-    fs::write(marker_path(app_root), serde_json::to_vec_pretty(&body).map_err(|e| e.to_string())?)
-        .map_err(|e| format!("写入 local runtime marker 失败: {e}"))
+    fs::write(
+        marker_path(app_root),
+        serde_json::to_vec_pretty(&body).map_err(|e| e.to_string())?,
+    )
+    .map_err(|e| format!("写入 local runtime marker 失败: {e}"))
 }
 
 #[allow(dead_code)]
 pub fn write_marker(app_root: &Path, version: &str, exe_relpath: &str) -> Result<(), String> {
-    write_marker_with_state(app_root, version, exe_relpath, Some("ok"), None, None, Some("ready"))
+    write_marker_with_state(
+        app_root,
+        version,
+        exe_relpath,
+        Some("ok"),
+        None,
+        None,
+        Some("ready"),
+    )
 }
 
 pub fn write_marker_with_previous(
@@ -231,7 +246,11 @@ pub fn inspect_installed_runtime(app_root: &Path) -> InstalledRuntimeInfo {
     let Ok(marker) = parse_marker(&bytes) else {
         return InstalledRuntimeInfo {
             status: InstalledRuntimeStatus::Corrupt,
-            detail: Some(parse_marker(&bytes).err().unwrap_or_else(|| "local runtime marker 无法解析".into())),
+            detail: Some(
+                parse_marker(&bytes)
+                    .err()
+                    .unwrap_or_else(|| "local runtime marker 无法解析".into()),
+            ),
             ..default
         };
     };
@@ -249,12 +268,9 @@ pub fn inspect_installed_runtime(app_root: &Path) -> InstalledRuntimeInfo {
                 previous_version: marker.previous_version.clone(),
                 executable_path: Some(exe.to_string_lossy().to_string()),
                 root_dir: root.to_string_lossy().to_string(),
-                detail: Some(
-                    marker
-                        .last_verify_error
-                        .clone()
-                        .unwrap_or_else(|| "local runtime 上次健康验证失败，请重新验证或重新下载安装组件。".into()),
-                ),
+                detail: Some(marker.last_verify_error.clone().unwrap_or_else(|| {
+                    "local runtime 上次健康验证失败，请重新验证或重新下载安装组件。".into()
+                })),
                 last_verify_error: marker.last_verify_error.clone(),
                 last_install_phase: marker.last_install_phase.clone(),
             }
@@ -316,8 +332,9 @@ pub fn resolve_installed_executable(app_root: &Path) -> Option<PathBuf> {
 #[cfg(test)]
 mod tests {
     use super::{
-        clear_installed_runtime, inspect_installed_runtime, local_runtime_root, mark_runtime_corrupt,
-        read_marker, runtime_root_exists, write_marker, write_marker_with_previous, InstalledRuntimeStatus,
+        clear_installed_runtime, inspect_installed_runtime, local_runtime_root,
+        mark_runtime_corrupt, read_marker, runtime_root_exists, write_marker,
+        write_marker_with_previous, InstalledRuntimeStatus,
     };
     use std::fs;
     use uuid::Uuid;
@@ -420,7 +437,10 @@ mod tests {
 
         let info = inspect_installed_runtime(&root);
         assert_eq!(info.status, InstalledRuntimeStatus::Corrupt);
-        assert!(info.detail.unwrap_or_default().contains("local_runtime_verify_health_incomplete"));
+        assert!(info
+            .detail
+            .unwrap_or_default()
+            .contains("local_runtime_verify_health_incomplete"));
         assert_eq!(info.last_install_phase.as_deref(), Some("verifying"));
         let _ = fs::remove_dir_all(&root);
     }

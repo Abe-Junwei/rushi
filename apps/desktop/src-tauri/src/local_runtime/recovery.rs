@@ -1,3 +1,4 @@
+use super::install_support::verify_installed_runtime;
 use super::installer::{
     append_runtime_log_line, install_phase_running, reset_cancel_handle, set_cancel_handle,
     update_progress, LocalRuntimeActionResult, LocalRuntimeInstallerState,
@@ -6,7 +7,6 @@ use super::integrity::{
     clear_installed_runtime, inspect_installed_runtime, mark_runtime_corrupt, read_marker,
     runtime_root_exists, version_dir, write_marker_with_previous,
 };
-use super::install_support::verify_installed_runtime;
 use crate::asr_sidecar;
 use crate::DbState;
 use std::sync::atomic::AtomicBool;
@@ -25,9 +25,15 @@ fn installer_busy(handle: &AppHandle) -> Result<bool, String> {
 
 fn is_transient_verify_error(err: &str) -> bool {
     err == "cancelled"
-        || err.strip_prefix("local_runtime_verify_health_unreachable:").is_some()
-        || err.strip_prefix("local_runtime_verify_port_bind_failed:").is_some()
-        || err.strip_prefix("local_runtime_verify_port_query_failed:").is_some()
+        || err
+            .strip_prefix("local_runtime_verify_health_unreachable:")
+            .is_some()
+        || err
+            .strip_prefix("local_runtime_verify_port_bind_failed:")
+            .is_some()
+        || err
+            .strip_prefix("local_runtime_verify_port_query_failed:")
+            .is_some()
         || err.contains("local_runtime_verify_process_exited:exit status: 0")
         || err.contains("local_runtime_verify_process_exited_after_health:exit status: 0")
 }
@@ -37,14 +43,17 @@ fn should_persist_revalidate_corrupt(err: &str) -> bool {
 }
 
 fn run_revalidate(app_root: &std::path::Path, cancel: &Arc<AtomicBool>) -> Result<String, String> {
-    let marker = read_marker(app_root).map_err(|_| "local_runtime_not_revalidatable".to_string())?;
+    let marker =
+        read_marker(app_root).map_err(|_| "local_runtime_not_revalidatable".to_string())?;
     let install_dir = version_dir(app_root, &marker.version);
     let installed_exe = install_dir.join(&marker.exe_relpath);
     if !installed_exe.is_file() {
         return Err("local_runtime_executable_missing".into());
     }
     let models_root = app_root.join("models");
-    let verify = |cancel: &Arc<AtomicBool>| verify_installed_runtime(&installed_exe, Some(&models_root), Some(cancel));
+    let verify = |cancel: &Arc<AtomicBool>| {
+        verify_installed_runtime(&installed_exe, Some(&models_root), Some(cancel))
+    };
     match verify(cancel).or_else(|err| {
         if is_transient_verify_error(&err) && err != "cancelled" {
             verify(cancel)
@@ -74,7 +83,10 @@ fn run_revalidate(app_root: &std::path::Path, cancel: &Arc<AtomicBool>) -> Resul
     }
 }
 
-fn run_restore_previous(app_root: &std::path::Path, cancel: &Arc<AtomicBool>) -> Result<String, String> {
+fn run_restore_previous(
+    app_root: &std::path::Path,
+    cancel: &Arc<AtomicBool>,
+) -> Result<String, String> {
     let marker = read_marker(app_root).map_err(|_| "local_runtime_not_restorable".to_string())?;
     let Some(previous_version) = marker.previous_version.as_deref() else {
         return Err("local_runtime_no_previous".into());
@@ -138,10 +150,11 @@ pub fn local_runtime_revalidate_install(
     let app_root = state.inner().root.clone();
     let handle = app.clone();
     tauri::async_runtime::spawn(async move {
-        let result = tauri::async_runtime::spawn_blocking(move || run_revalidate(&app_root, &cancel_flag))
-            .await
-            .map_err(|e| e.to_string())
-            .and_then(|r| r);
+        let result =
+            tauri::async_runtime::spawn_blocking(move || run_revalidate(&app_root, &cancel_flag))
+                .await
+                .map_err(|e| e.to_string())
+                .and_then(|r| r);
         match result {
             Ok(version) => {
                 update_progress(
@@ -153,7 +166,10 @@ pub fn local_runtime_revalidate_install(
                     None,
                     None,
                 );
-                append_runtime_log_line(&app, &format!("INFO local_runtime_revalidated version={version}"));
+                append_runtime_log_line(
+                    &app,
+                    &format!("INFO local_runtime_revalidated version={version}"),
+                );
             }
             Err(err) => {
                 update_progress(
@@ -165,7 +181,10 @@ pub fn local_runtime_revalidate_install(
                     None,
                     Some(err.clone()),
                 );
-                append_runtime_log_line(&app, &format!("ERROR local_runtime_revalidate_failed {err}"));
+                append_runtime_log_line(
+                    &app,
+                    &format!("ERROR local_runtime_revalidate_failed {err}"),
+                );
             }
         }
         reset_cancel_handle(&handle);
@@ -236,10 +255,12 @@ pub fn local_runtime_restore_previous(
     let app_root = state.inner().root.clone();
     let handle = app.clone();
     tauri::async_runtime::spawn(async move {
-        let result = tauri::async_runtime::spawn_blocking(move || run_restore_previous(&app_root, &cancel_flag))
-            .await
-            .map_err(|e| e.to_string())
-            .and_then(|r| r);
+        let result = tauri::async_runtime::spawn_blocking(move || {
+            run_restore_previous(&app_root, &cancel_flag)
+        })
+        .await
+        .map_err(|e| e.to_string())
+        .and_then(|r| r);
         match result {
             Ok(version) => {
                 update_progress(
@@ -251,7 +272,10 @@ pub fn local_runtime_restore_previous(
                     None,
                     None,
                 );
-                append_runtime_log_line(&app, &format!("INFO local_runtime_restored_previous version={version}"));
+                append_runtime_log_line(
+                    &app,
+                    &format!("INFO local_runtime_restored_previous version={version}"),
+                );
             }
             Err(err) => {
                 update_progress(
@@ -263,7 +287,10 @@ pub fn local_runtime_restore_previous(
                     None,
                     Some(err.clone()),
                 );
-                append_runtime_log_line(&app, &format!("ERROR local_runtime_restore_previous_failed {err}"));
+                append_runtime_log_line(
+                    &app,
+                    &format!("ERROR local_runtime_restore_previous_failed {err}"),
+                );
             }
         }
         reset_cancel_handle(&handle);
