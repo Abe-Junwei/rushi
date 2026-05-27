@@ -15,6 +15,12 @@ from rushi_asr.defaults import (
     effective_funasr_model_id,
     effective_funasr_vad_model_id,
 )
+from rushi_asr.model_prepare_progress import (
+    finalize_prepare_download_progress,
+    prepare_progress_callback_types,
+    prepare_progress_snapshot,
+    reset_prepare_download_progress,
+)
 
 log = logging.getLogger(__name__)
 
@@ -182,18 +188,32 @@ def prepare_default_model() -> dict[str, Any]:
     # snapshot_download 底层未暴露 timeout；通过 socket 全局超时兜底。
     import socket
 
+    vad_model_id = effective_funasr_vad_model_id()
+    progress_callbacks = prepare_progress_callback_types()
+    reset_prepare_download_progress(include_vad=bool(vad_model_id))
+
     old_timeout = socket.getdefaulttimeout()
     socket.setdefaulttimeout(600)  # 10 min
     try:
         _set_prepare_message("downloading_recognizer")
-        model_dir = Path(snapshot_download(DEFAULT_FUNASR_MODEL_ID))
-        vad_model_id = effective_funasr_vad_model_id()
+        model_dir = Path(
+            snapshot_download(
+                DEFAULT_FUNASR_MODEL_ID,
+                progress_callbacks=progress_callbacks,
+            ),
+        )
         vad_dir: Path | None = None
         if vad_model_id:
             _set_prepare_message("downloading_vad")
-            vad_dir = Path(snapshot_download(vad_model_id))
+            vad_dir = Path(
+                snapshot_download(
+                    vad_model_id,
+                    progress_callbacks=progress_callbacks,
+                ),
+            )
     finally:
         socket.setdefaulttimeout(old_timeout)
+    finalize_prepare_download_progress()
     if not _looks_like_complete_model_dir(
         model_dir,
         _DEFAULT_MODEL_REQUIRED_FILES,
@@ -220,12 +240,17 @@ def prepare_default_model() -> dict[str, Any]:
 
 def prepare_status() -> dict[str, Any]:
     with _lock:
-        return {
+        body: dict[str, Any] = {
             "phase": _state.get("phase", "idle"),
             "message": _state.get("message", ""),
             "error_code": _state.get("error_code"),
             "result": _state.get("result"),
         }
+    if body["phase"] == "running":
+        body.update(prepare_progress_snapshot())
+    elif body["phase"] == "done":
+        body["progress_percent"] = 100
+    return body
 
 
 def start_prepare_default_async() -> dict[str, Any]:
@@ -242,6 +267,7 @@ def start_prepare_default_async() -> dict[str, Any]:
                         "message": "ok",
                         "error_code": None,
                         "result": body,
+                        "progress_percent": 100,
                     },
                 )
         except Exception as e:  # noqa: BLE001
@@ -272,8 +298,12 @@ def start_prepare_default_async() -> dict[str, Any]:
                 "message": "starting",
                 "error_code": None,
                 "result": None,
+                "progress_percent": 0,
             },
         )
+    reset_prepare_download_progress(
+        include_vad=bool(effective_funasr_vad_model_id()),
+    )
 
     t = threading.Thread(target=_run, name="rushi-model-prepare", daemon=True)
     t.start()

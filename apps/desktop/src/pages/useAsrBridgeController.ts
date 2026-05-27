@@ -65,7 +65,13 @@ export interface AsrBridgeApi {
   bumpSttOnlineRuntimeChanged: () => void;
 }
 
-export function useAsrBridgeController(): AsrBridgeApi {
+type AsrBridgeOptions = {
+  /** Tauri setup diagnose (summary + local runtime panel); wired from useProjectController. */
+  refreshEnvironmentDiagnostics?: () => Promise<void>;
+};
+
+export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi {
+  const refreshEnvironmentDiagnostics = options?.refreshEnvironmentDiagnostics;
   const tauriRuntime = isTauriRuntime();
   const [asrHealth, setAsrHealth] = useState<AsrHealthState>("checking");
   const [asrHealthDetail, setAsrHealthDetail] = useState<string>("");
@@ -159,7 +165,8 @@ export function useAsrBridgeController(): AsrBridgeApi {
   const refreshAsrRuntimeInfo = useCallback(async () => {
     await refreshAsrHealth();
     await refreshAsrModelCacheInfo();
-  }, [refreshAsrHealth, refreshAsrModelCacheInfo]);
+    await refreshEnvironmentDiagnostics?.();
+  }, [refreshAsrHealth, refreshAsrModelCacheInfo, refreshEnvironmentDiagnostics]);
 
   const modelCtrl = usePrepareModelController(refreshAsrRuntimeInfo, asrCaps);
 
@@ -185,9 +192,10 @@ export function useAsrBridgeController(): AsrBridgeApi {
     try {
       await p1.retryBundledAsrSidecar();
       await refreshBundledAsrDiag();
-      await refreshAsrRuntimeInfo();
     } catch {
       /* ignore */
+    } finally {
+      await refreshAsrRuntimeInfo();
     }
   }, [refreshAsrRuntimeInfo, refreshBundledAsrDiag]);
 
@@ -201,7 +209,6 @@ export function useAsrBridgeController(): AsrBridgeApi {
     try {
       const info = await p1.clearAsrModelCache();
       setAsrModelCacheInfo(info);
-      await refreshAsrHealth();
       const mb = info.total_bytes / (1024 * 1024);
       const sizeLabel =
         info.total_bytes <= 0 ? "0 B" : mb >= 0.1 ? `${mb.toFixed(1)} MB` : `${(info.total_bytes / 1024).toFixed(0)} KB`;
@@ -210,8 +217,9 @@ export function useAsrBridgeController(): AsrBridgeApi {
       setAsrCacheMessage(`清除模型缓存失败：${e instanceof Error ? e.message : String(e)}`);
     } finally {
       setAsrModelCacheBusy(false);
+      await refreshAsrRuntimeInfo();
     }
-  }, [refreshAsrHealth, tauriRuntime]);
+  }, [refreshAsrRuntimeInfo, tauriRuntime]);
 
   const installFunasrDepsInteractive = useCallback(async () => {
     modelCtrl.setPrepareModelFailure(null);

@@ -12,6 +12,7 @@ const localRuntimeCancelDownload = vi.fn<() => Promise<boolean>>();
 const localRuntimeRevalidateInstall = vi.fn<() => Promise<{ ok: boolean; reason?: string | null }>>();
 const localRuntimeClearInstall = vi.fn<() => Promise<{ ok: boolean; reason?: string | null }>>();
 const localRuntimeRestorePrevious = vi.fn<() => Promise<{ ok: boolean; reason?: string | null }>>();
+const refreshEnvironmentDiagnostics = vi.fn(async () => {});
 
 vi.mock("../tauri/localRuntimeApi", () => ({
   localRuntimeDiagnose: () => localRuntimeDiagnose(),
@@ -53,6 +54,7 @@ function useHarness() {
   const [setupOutcome, setSetupOutcome] = useState<AsrSetupOutcome>("idle");
   const support = useLocalRuntimeSetupSupport({
     tauriRuntime: true,
+    refreshEnvironmentDiagnostics,
     setSetupSteps,
     setSetupMessage,
     setSetupOutcome,
@@ -73,6 +75,8 @@ describe("useLocalRuntimeSetupSupport", () => {
     localRuntimeRevalidateInstall.mockReset();
     localRuntimeClearInstall.mockReset();
     localRuntimeRestorePrevious.mockReset();
+    refreshEnvironmentDiagnostics.mockReset();
+    refreshEnvironmentDiagnostics.mockResolvedValue(undefined);
   });
 
   it("reports success after revalidating an installed runtime", async () => {
@@ -124,6 +128,7 @@ describe("useLocalRuntimeSetupSupport", () => {
 
     await waitFor(() => {
       expect(result.current.setupOutcome).toBe("idle");
+      expect(refreshEnvironmentDiagnostics).toHaveBeenCalledTimes(1);
     });
     expect(result.current.setupMessage).toContain("已清除应用数据侧车");
     expect(localRuntimeClearInstall).toHaveBeenCalledTimes(1);

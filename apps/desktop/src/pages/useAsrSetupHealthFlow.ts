@@ -136,6 +136,7 @@ export function useAsrSetupHealthFlow({
       setSetupOutcome("error");
     } finally {
       setSetupBusy(false);
+      await deps.refreshAsrRuntimeInfo();
     }
   }, [
     deps,

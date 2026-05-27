@@ -34,6 +34,7 @@ function missingRuntimeDiagnoseMessage(): string {
 
 type Params = {
   tauriRuntime: boolean;
+  refreshEnvironmentDiagnostics?: () => Promise<void>;
   setSetupSteps: Dispatch<SetStateAction<AsrSetupStep[]>>;
   setSetupMessage: Dispatch<SetStateAction<string>>;
   setSetupOutcome: Dispatch<SetStateAction<AsrSetupOutcome>>;
@@ -41,10 +42,14 @@ type Params = {
 
 export function useLocalRuntimeSetupSupport({
   tauriRuntime,
+  refreshEnvironmentDiagnostics,
   setSetupSteps,
   setSetupMessage,
   setSetupOutcome,
 }: Params) {
+  const syncEnvironmentDiagnostics = useCallback(async () => {
+    await refreshEnvironmentDiagnostics?.();
+  }, [refreshEnvironmentDiagnostics]);
   const [localRuntimeDiag, setLocalRuntimeDiag] = useState<LocalRuntimeDiagnose | null>(null);
 
   const refreshLocalRuntimeDiagnose = useCallback(async (): Promise<LocalRuntimeDiagnose | null> => {
@@ -99,8 +104,16 @@ export function useLocalRuntimeSetupSupport({
     } catch (error) {
       setSetupMessage(describeLocalRuntimeActionError("下载 / 修复语音识别组件", error));
       setSetupOutcome("error");
+    } finally {
+      await syncEnvironmentDiagnostics();
     }
-  }, [refreshLocalRuntimeDiagnose, setSetupMessage, setSetupOutcome, waitForLocalRuntimeInstall]);
+  }, [
+    refreshLocalRuntimeDiagnose,
+    setSetupMessage,
+    setSetupOutcome,
+    syncEnvironmentDiagnostics,
+    waitForLocalRuntimeInstall,
+  ]);
 
   const cancelLocalRuntime = useCallback(async () => {
     try {
@@ -111,8 +124,10 @@ export function useLocalRuntimeSetupSupport({
     } catch (error) {
       setSetupMessage(describeLocalRuntimeActionError("取消语音识别组件下载", error));
       setSetupOutcome("error");
+    } finally {
+      await syncEnvironmentDiagnostics();
     }
-  }, [refreshLocalRuntimeDiagnose, setSetupMessage, setSetupOutcome]);
+  }, [refreshLocalRuntimeDiagnose, setSetupMessage, setSetupOutcome, syncEnvironmentDiagnostics]);
 
   const revalidateLocalRuntime = useCallback(async () => {
     try {
@@ -142,8 +157,16 @@ export function useLocalRuntimeSetupSupport({
     } catch (error) {
       setSetupMessage(describeLocalRuntimeActionError("重新验证语音识别组件", error));
       setSetupOutcome("error");
+    } finally {
+      await syncEnvironmentDiagnostics();
     }
-  }, [refreshLocalRuntimeDiagnose, setSetupMessage, setSetupOutcome, waitForLocalRuntimeInstall]);
+  }, [
+    refreshLocalRuntimeDiagnose,
+    setSetupMessage,
+    setSetupOutcome,
+    syncEnvironmentDiagnostics,
+    waitForLocalRuntimeInstall,
+  ]);
 
   const clearLocalRuntime = useCallback(async () => {
     try {
@@ -167,8 +190,10 @@ export function useLocalRuntimeSetupSupport({
     } catch (error) {
       setSetupMessage(describeLocalRuntimeActionError("清除语音识别组件", error));
       setSetupOutcome("error");
+    } finally {
+      await syncEnvironmentDiagnostics();
     }
-  }, [refreshLocalRuntimeDiagnose, setSetupMessage, setSetupOutcome]);
+  }, [refreshLocalRuntimeDiagnose, setSetupMessage, setSetupOutcome, syncEnvironmentDiagnostics]);
 
   const restorePreviousLocalRuntime = useCallback(async () => {
     try {
@@ -197,8 +222,16 @@ export function useLocalRuntimeSetupSupport({
     } catch (error) {
       setSetupMessage(describeLocalRuntimeActionError("恢复上一版本语音识别组件", error));
       setSetupOutcome("error");
+    } finally {
+      await syncEnvironmentDiagnostics();
     }
-  }, [refreshLocalRuntimeDiagnose, setSetupMessage, setSetupOutcome, waitForLocalRuntimeInstall]);
+  }, [
+    refreshLocalRuntimeDiagnose,
+    setSetupMessage,
+    setSetupOutcome,
+    syncEnvironmentDiagnostics,
+    waitForLocalRuntimeInstall,
+  ]);
 
   const ensureLocalRuntimeInstalled = useCallback(
     async (reason: "missing" | "repair"): Promise<boolean> => {

@@ -5,6 +5,7 @@ import {
   describePrepareModelFailure,
   type PrepareModelFailureCopy,
 } from "./prepareModelDownloadCopy";
+import { computePrepareModelProgress, parsePrepareProgressPercent } from "./prepareModelProgress";
 
 export interface PrepareModelApi {
   prepareModelBusy: boolean;
@@ -28,6 +29,7 @@ export function usePrepareModelController(
   const [prepareModelFailure, setPrepareModelFailure] = useState<PrepareModelFailureCopy | null>(null);
 
   const prepareModelAbortRef = useRef<AbortController | null>(null);
+  const prepareStageRef = useRef({ message: "", startedAt: 0 });
 
   useEffect(() => {
     return () => {
@@ -45,7 +47,8 @@ export function usePrepareModelController(
     const deadlineMs = 900_000;
     setPrepareModelBusy(true);
     setPrepareModelFailure(null);
-    setPrepareModelProgress(6);
+    prepareStageRef.current = { message: "", startedAt: Date.now() };
+    setPrepareModelProgress(0);
     setFunasrInstallMessage("");
     const runT0 = Date.now();
     const deadline = runT0 + deadlineMs;
@@ -55,9 +58,12 @@ export function usePrepareModelController(
       const ss = secs % 60;
       return `${mm}:${ss.toString().padStart(2, "0")}`;
     };
-    const bumpProgress = () => {
-      const elapsed = Date.now() - runT0;
-      setPrepareModelProgress(Math.min(92, 6 + Math.floor((elapsed / deadlineMs) * 86)));
+    const bumpProgress = (message: string) => {
+      if (message !== prepareStageRef.current.message) {
+        prepareStageRef.current = { message, startedAt: Date.now() };
+      }
+      const stageElapsed = Date.now() - prepareStageRef.current.startedAt;
+      setPrepareModelProgress(computePrepareModelProgress(message, stageElapsed));
     };
     try {
       const start = await fetch(urlAsync, { method: "POST", signal: ac.signal });
@@ -78,12 +84,17 @@ export function usePrepareModelController(
       }
       while (Date.now() < deadline) {
         if (ac.signal.aborted) return;
-        bumpProgress();
         const stRes = await fetch(urlStatus, { signal: ac.signal });
         const st = (await stRes.json().catch(() => ({}))) as Record<string, unknown>;
         const phase = typeof st.phase === "string" ? st.phase : "?";
         const message = typeof st.message === "string" ? st.message : "";
         if (phase === "running") {
+          const serverPercent = parsePrepareProgressPercent(st.progress_percent);
+          if (serverPercent != null) {
+            setPrepareModelProgress(serverPercent);
+          } else {
+            bumpProgress(message);
+          }
           const stage =
             message === "downloading_vad"
               ? "正在下载必需辅助模型（VAD）…"
@@ -91,6 +102,7 @@ export function usePrepareModelController(
           setFunasrInstallMessage(`${stage} 已等待 ${formatWait()}。请保持应用开启并联网，尽量不要关闭当前窗口。`);
         } else if (phase === "idle") {
           if (Date.now() - runT0 < 4000) {
+            bumpProgress("starting");
             setFunasrInstallMessage("正在启动后台下载任务，请稍候…");
           } else {
             setFunasrInstallMessage("模型准备状态仍为 idle：请重新检测 ASR 服务，或回到「一键准备本机 ASR」后再试。");
@@ -144,6 +156,7 @@ export function usePrepareModelController(
     } finally {
       setPrepareModelBusy(false);
       setPrepareModelProgress(0);
+      await refreshAsrHealth();
     }
   }, [refreshAsrHealth]);
 
@@ -152,7 +165,8 @@ export function usePrepareModelController(
     prepareModelAbortRef.current?.abort();
     setPrepareModelFailure(null);
     setFunasrInstallMessage("已取消默认模型下载。");
-  }, [prepareModelBusy]);
+    void refreshAsrHealth();
+  }, [prepareModelBusy, refreshAsrHealth]);
 
   return {
     prepareModelBusy,

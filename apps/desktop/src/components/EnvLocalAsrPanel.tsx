@@ -1,5 +1,6 @@
 import { asrBaseUrl, isDefaultBundledAsrTarget, isTauriRuntime } from "../config/env";
 import { Download, RefreshCw } from "lucide-react";
+import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import type { PrepareModelFailureCopy } from "../pages/prepareModelDownloadCopy";
 import type { AsrHealthState } from "../pages/useProjectController";
@@ -65,7 +66,8 @@ export function EnvLocalAsrPanel({
   const ffmpegOk = asrCaps?.ffmpeg_ok === true;
   const runtimeReady = asrHealth === "ok" && asrCaps?.funasr_ready === true;
   const transcribeReady = asrHealth === "ok" && asrCaps?.ready_for_transcribe === true;
-  const progress = prepareModelBusy ? prepareModelProgress : asrCaps?.funasr_required_models_cached ? 100 : 0;
+  const modelsCached = asrCaps?.funasr_required_models_cached === true;
+  const progress = prepareModelBusy ? prepareModelProgress : modelsCached ? 100 : 0;
 
   return (
     <div className="flex w-full min-w-0 flex-col gap-8">
@@ -169,12 +171,12 @@ export function EnvLocalAsrPanel({
         <div className="flex justify-start gap-2">
           <button
             type="button"
-            className={`flex items-center gap-2 rounded border border-transparent bg-zen-saffron px-4 py-1.5 ${PANEL_TYPOGRAPHY.button} text-notion-bg shadow-sm outline-none transition-all hover:brightness-110 focus:ring-2 focus:ring-zen-saffron/30 disabled:opacity-40`}
+            className={`flex items-center gap-2 ${modelsCached && !prepareModelBusy ? CONTROL_BTN_SECONDARY : CONTROL_BTN_PRIMARY}`}
             disabled={busy || prepareModelBusy}
             onClick={() => void prepareDefaultFunasrModel()}
           >
             <Download className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-            {prepareModelBusy ? "正在下载默认模型" : "下载默认模型"}
+            {prepareModelBusy ? "正在下载默认模型" : modelsCached ? "重新下载默认模型" : "下载默认模型"}
           </button>
           {prepareModelBusy ? (
             <SmallButton disabled={busy} onClick={cancelPrepareModel}>

@@ -58,6 +58,7 @@ export function useAsrSetupController(deps: {
     ensureLocalRuntimeInstalled,
   } = useLocalRuntimeSetupSupport({
     tauriRuntime,
+    refreshEnvironmentDiagnostics: deps.refreshAsrRuntimeInfo,
     setSetupSteps,
     setSetupMessage,
     setSetupOutcome,
@@ -302,6 +303,7 @@ export function useAsrSetupController(deps: {
       setSetupOutcome("error");
     } finally {
       setSetupBusy(false);
+      await deps.refreshAsrRuntimeInfo();
     }
   }, [deps, ensureLocalRuntimeInstalled, pollUntilHealth, refreshLocalRuntimeDiagnose, refreshSetupDiagnose, tauriRuntime]);
 

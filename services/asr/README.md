@@ -67,7 +67,7 @@ python -m rushi_asr
 - `GET /health` — 在 `status` / `service` 之外返回 **运行时能力**（供桌面自动检测）：`ffmpeg_ok`、`funasr_import_ok`（能否 `import funasr`）、`funasr_model_configured`（当前是否存在有效模型 id）、`funasr_model_explicit_from_env`（是否显式设置了 `RUSHI_FUNASR_MODEL`）、`funasr_ready`（仅表示运行时可用，不等于可直接转写）、`funasr_default_model_cached`、`funasr_vad_model_cached`、`funasr_required_models_cached`（当前必需模型是否完整）、`ready_for_transcribe`（运行时 + 必需模型均完成）、`transcription_mode`（`funasr` 或 `stub`）、`funasr_model_id`（未设置时返回内置默认 id）。
 - `POST /v1/models/prepare-default` — 同步触发默认 FunASR 模型准备（下载/校验）；无 FunASR 时 **503**；manifest 校验失败 **400**。
 - `POST /v1/models/prepare-default/async` — 在后台线程启动同上准备；立即返回 **202**；无 FunASR 时 **503**。
-- `GET /v1/models/prepare-status` — 查询异步准备状态：`phase` 为 `idle` | `running` | `done` | `error`；`done` 时含 `result`（与同步成功体同形），`error` 时含 `message`。
+- `GET /v1/models/prepare-status` — 查询异步准备状态：`phase` 为 `idle` | `running` | `done` | `error`；`running` 时另含 `progress_percent`（0–99，按 ModelScope 下载回调累计字节 / 预算或已声明文件大小）、`bytes_downloaded`、`bytes_total`；`done` 时 `progress_percent` 为 100，并含 `result`（与同步成功体同形），`error` 时含 `message`。
 - **桌面一键安装（可选）**：仓库根脚本 `scripts/install-funasr-for-desktop.sh` 会在 `services/asr/.venv` 中执行 `pip install -e ".[funasr]"`；需本机已有 **Python 3**、**网络**与足够磁盘；**不会**代替用户设置 `RUSHI_FUNASR_MODEL`，也**不会**自动重启 ASR 进程。
 - `POST /v1/transcribe` — `multipart/form-data`：字段 **`file`**（必填）；可选字段 **`hotwords`**（UTF-8 文本，空格分隔热词，供 FunASR `generate(..., hotword=...)`；**stub 或未走 FunASR 时忽略**，并在 `warnings` 中加入 `hotwords_ignored_stub`）。响应为 **TranscriptionResult** JSON（`schema_version: "1"`）。
 

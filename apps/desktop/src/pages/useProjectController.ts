@@ -6,7 +6,8 @@ import {
 } from "./useAsrBridgeController";
 import { useAsrSetupController } from "./useAsrSetupController";
 import { useProjectLifecycleController, type BusyReason } from "./useProjectLifecycleController";
-import { useCallback } from "react";
+import { useCallback, useRef } from "react";
+import { refreshLocalAsrDiagnostics } from "./refreshLocalAsrDiagnostics";
 
 export type { AsrHealthState, BusyReason };
 export type BusyPack = { busy: boolean; reason: BusyReason | null };
@@ -16,17 +17,31 @@ export { parseAsrHealthJson, funasrManualSetupCommands };
 
 export function useProjectController() {
   const lifecycle = useProjectLifecycleController();
-  const asr = useAsrBridgeController();
+  const refreshSetupDiagnoseRef = useRef<
+    ((options?: { resetSteps?: boolean }) => Promise<unknown>) | null
+  >(null);
+
+  const asr = useAsrBridgeController({
+    refreshEnvironmentDiagnostics: async () => {
+      const refreshSetup = refreshSetupDiagnoseRef.current;
+      if (!refreshSetup) return;
+      await refreshSetup({ resetSteps: false });
+    },
+  });
   const { refreshAsrHealth, refreshAsrModelCacheInfo } = asr;
   const refreshAsrRuntimeInfo = useCallback(async () => {
-    await refreshAsrHealth();
-    await refreshAsrModelCacheInfo();
+    await refreshLocalAsrDiagnostics({
+      refreshAsrHealth,
+      refreshAsrModelCacheInfo,
+      refreshSetupDiagnose: refreshSetupDiagnoseRef.current ?? undefined,
+    });
   }, [refreshAsrHealth, refreshAsrModelCacheInfo]);
   const asrSetup = useAsrSetupController({
     refreshAsrHealth: asr.refreshAsrHealth,
     refreshAsrRuntimeInfo,
     prepareDefaultFunasrModel: asr.prepareDefaultFunasrModel,
   });
+  refreshSetupDiagnoseRef.current = asrSetup.refreshSetupDiagnose;
 
   return {
     // Lifecycle
