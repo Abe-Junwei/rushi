@@ -36,6 +36,7 @@ def transcribe_upload(
         )
 
     normalized = work_dir / "normalized.wav"
+    source_duration = ffmpeg_audio.ffprobe_duration_sec(upload_path)
     try:
         ffmpeg_audio.normalize_to_wav_16k_mono(upload_path, normalized)
     except RuntimeError as e:
@@ -54,7 +55,7 @@ def transcribe_upload(
             warnings=warnings,
         )
 
-    duration = ffmpeg_audio.ffprobe_duration_sec(normalized)
+    duration = ffmpeg_audio.ffprobe_duration_sec(normalized) or source_duration
     if duration is not None and duration <= 0:
         return TranscriptionResult(
             segments=[],

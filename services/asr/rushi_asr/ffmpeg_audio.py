@@ -7,6 +7,8 @@ import subprocess
 import sys
 from pathlib import Path
 
+from rushi_asr.transcribe_timeouts import pipeline_timeout_sec
+
 
 def _pyinstaller_bundle_dirs() -> list[Path]:
     """Return candidate onedir locations for bundled binaries.
@@ -97,9 +99,15 @@ def ffprobe_duration_sec(path: Path) -> float | None:
         return None
 
 
-def normalize_to_wav_16k_mono(src: Path, dst_wav: Path) -> None:
+def normalize_to_wav_16k_mono(
+    src: Path,
+    dst_wav: Path,
+    *,
+    timeout_sec: int | None = None,
+) -> None:
     """Decode / resample to 16 kHz mono s16le WAV via ffmpeg."""
     dst_wav.parent.mkdir(parents=True, exist_ok=True)
+    budget = timeout_sec or pipeline_timeout_sec(ffprobe_duration_sec(src))
     cmd = [
         ffmpeg_path(),
         "-hide_banner",
@@ -121,7 +129,7 @@ def normalize_to_wav_16k_mono(src: Path, dst_wav: Path) -> None:
             check=True,
             capture_output=True,
             text=True,
-            timeout=600,
+            timeout=budget,
         )
     except FileNotFoundError as e:
         raise RuntimeError("ffmpeg_not_found") from e
@@ -129,4 +137,4 @@ def normalize_to_wav_16k_mono(src: Path, dst_wav: Path) -> None:
         err = (e.stderr or e.stdout or "").strip()
         raise RuntimeError(f"ffmpeg_failed:{err[:800]}") from e
     except subprocess.TimeoutExpired as e:
-        raise RuntimeError("ffmpeg_timeout") from e
+        raise RuntimeError(f"ffmpeg_timeout:{budget}") from e

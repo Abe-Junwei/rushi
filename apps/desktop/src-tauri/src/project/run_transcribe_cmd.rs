@@ -1,6 +1,10 @@
 use super::correction::collect_correction_rule_hints;
 use super::segment_cmd::file_save_segments_inner;
 use super::transcribe::{glossary_hotwords_joined, post_transcribe_multipart};
+use super::transcribe_errors::describe_transcribe_payload_error;
+use super::transcribe_timeout::{
+    local_transcribe_timeout_duration, long_audio_transcribe_hint, probe_audio_duration_sec,
+};
 use super::transcribe_native_online::{transcribe_assemblyai_native, transcribe_openai_native};
 use super::types::{RunTranscribeOutcome, SegmentDto};
 use super::utils::{append_desktop_log_line, file_detail_from_conn, now_ms, open_db};
@@ -41,6 +45,7 @@ async fn project_run_transcribe_inner(
         append_desktop_log_line(&st, "ERROR transcribe audio_missing");
         return Err("项目音频文件缺失".to_string());
     }
+    let audio_duration_sec = probe_audio_duration_sec(audio_path);
 
     let v: serde_json::Value = if let Some(ref o) = online {
         let timeout_s = o.timeout_sec.unwrap_or(600).clamp(30, 600);
@@ -98,6 +103,14 @@ async fn project_run_transcribe_inner(
             .trim_end_matches('/')
             .to_string();
         let url = format!("{base}/v1/transcribe");
+        let timeout = local_transcribe_timeout_duration(audio_duration_sec);
+        append_desktop_log_line(
+            &st,
+            &format!(
+                "INFO transcribe local audio_duration_sec={audio_duration_sec:?} timeout_s={}",
+                timeout.as_secs()
+            ),
+        );
         post_transcribe_multipart(
             &st,
             &url,
@@ -105,7 +118,7 @@ async fn project_run_transcribe_inner(
             hotwords,
             None,
             None,
-            std::time::Duration::from_secs(600),
+            timeout,
         )
         .await?
     };
@@ -125,7 +138,7 @@ async fn project_run_transcribe_inner(
             &st,
             &format!("ERROR transcribe asr_payload code={code} {msg}"),
         );
-        return Err(format!("ASR 返回错误 ({code}): {msg}"));
+        return Err(describe_transcribe_payload_error(code, &msg));
     }
 
     let engine = v
@@ -142,6 +155,9 @@ async fn project_run_transcribe_inner(
                 .collect()
         })
         .unwrap_or_default();
+    if let Some(hint) = long_audio_transcribe_hint(audio_duration_sec) {
+        warnings.insert(0, hint.to_string());
+    }
 
     let arr = v
         .get("segments")

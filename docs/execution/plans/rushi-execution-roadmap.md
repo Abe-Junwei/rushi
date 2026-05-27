@@ -157,7 +157,7 @@ R9     发版集成验收（REL-1）
 | **①** | **R3h-0** | 🟡 | 2–3d | 构建脚本 / smoke / `sidecarIntegrity` / Win `disk_free_bytes` 已有工作区实现；待跨平台构建 smoke 与 Windows 手测 | [remediation §5 Phase 0](../specs/rushi-local-runtime-catalog-remediation-plan.md) |
 | **②** | **R3h-1** | ✅ | 5–7d | `local_runtime/`、signed manifest / pinned key、`current+previous` / rollback、下载预算 / zip guard、诊断导出、timeout/cancel/state feedback 与 focused tests 已收口；可进入 **R3f** 单独签收 | remediation §5 Phase 1 |
 | **③** | **R3f** | 🟡 | 2–3d | 诊断 + 一键准备 + 8741 冲突；已接入 R3h-1 最小闭环，**须在 ①② 发行级补齐后手测** | [`r3f-asr-setup-wizard-acceptance.md`](../specs/r3f-asr-setup-wizard-acceptance.md) |
-| **④** | **R3e-A** | ⏳ | 2–3d | 动态超时 + 失败分类 | [`r3e-long-audio-transcribe-acceptance.md`](../specs/r3e-long-audio-transcribe-acceptance.md) |
+| **④** | **R3e-A** | 🟡 | 2–3d | 动态超时 + 失败分类（已编码；50min 手测待签收） | [`r3e-long-audio-transcribe-acceptance.md`](../specs/r3e-long-audio-transcribe-acceptance.md) |
 | **⑤** | **R3g-A** | ⏳ | 3–5d | 双 SKU + `prepare(model_id)` + 硬件阈值文案 | [`r3g-local-asr-model-catalog-acceptance.md`](../specs/r3g-local-asr-model-catalog-acceptance.md) |
 | **⑥** | **R3h-2** | ⏳ | ~1w | Range 断点续传；缺/坏侧车自动下载；`recommended_asr_models`；GC / 事件化进度 / 升级编排收口 | remediation §5 Phase 2 |
 | **⑦** | **R3h-3** + **R3d** | ⏳ | 3–5d | 本机 ASR / 在线 STT / LLM 三盏灯；五栏 IA | remediation §5 Phase 3 + [`r3d-settings-ia-acceptance.md`](../specs/r3d-settings-ia-acceptance.md) |
@@ -544,7 +544,7 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 - [x] **ASR 引擎方案 A**（FunASR 先行 + Sherpa Spike 门控；[ADR-0003](../../adr/0003-asr-engine-funasr-first-sherpa-spike-gate.md)）  
 - [ ] **R3h §11 发行门禁**（零终端、构建 smoke、损坏可恢复…）
 
-**下一刀**：**③ R3f 手测签收** → **④ R3e-A** → **⑤ R3g-A**（见 §4.1.1）
+**下一刀**：**④ R3e-A 手测**（50min 超时/文案）→ **⑤ R3g-A**（见 §4.1.1；macOS 安装包签收延后）
 
 ---
 

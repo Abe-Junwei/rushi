@@ -140,7 +140,10 @@ export function EnvLocalAsrPanel({
       <section className="flex flex-col gap-4">
         <div className="pb-1">
           <h3 className={PANEL_TYPOGRAPHY.sectionTitle}>模型下载</h3>
-          <p className={PANEL_TYPOGRAPHY.sectionDescription}>下载并管理本地转写模型</p>
+          <p className={PANEL_TYPOGRAPHY.sectionDescription}>
+            下载并管理本地转写模型。超过 30 分钟的音频转写耗时较长，请保持应用开启；Apple Silicon 可在启动侧车前设置{" "}
+            <code className="font-mono text-[11px]">RUSHI_FUNASR_DEVICE=mps</code>。
+          </p>
         </div>
 
         <div className="flex flex-col gap-3">

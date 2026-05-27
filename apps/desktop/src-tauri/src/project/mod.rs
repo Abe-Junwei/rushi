@@ -17,7 +17,9 @@ pub mod run_transcribe_cmd;
 pub mod segment_cmd;
 mod segment_uid;
 pub mod transcribe;
+mod transcribe_errors;
 mod transcribe_native_online;
+mod transcribe_timeout;
 pub mod types;
 pub mod utils;
 

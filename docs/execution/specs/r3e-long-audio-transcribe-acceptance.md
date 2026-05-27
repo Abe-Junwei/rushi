@@ -1,6 +1,6 @@
 # Acceptance: R3e — 长音频本机转写（超时 / 内存 / 分段）
 
-> **状态**：待规划实施（由 2026-05-25 手测 50min 音频触发）  
+> **状态**：**R3e-A 已编码**（动态超时、失败分类、长音频提示、侧车 ffmpeg 超时对齐）；**R3e-B 分段转写仍待实施**。R3e-A 手测（含 50min）待签收。  
 > **关联**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) §R3e、[`../../architecture/asr-sidecar-funasr-policy.md`](../../architecture/asr-sidecar-funasr-policy.md)、[`../../architecture/asr-hotword-bias-truth.md`](../../architecture/asr-hotword-bias-truth.md)
 
 ## 背景（手测现象）
@@ -54,10 +54,11 @@
 
 **验收（R3e-A）**：
 
-- [ ] 对 50min 文件，桌面等待时间 ≥ 原 600s（不再 10min 必断）
-- [ ] 若 ASR 进程被杀，错误文案提示「检查 ASR 终端 / 内存」而非笼统 request failed
-- [ ] `npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs`
-- [ ] `cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml`
+- [ ] 对 50min 文件，桌面等待时间 ≥ 原 600s（不再 10min 必断）；`desktop.log` 含 `timeout_s=7200`（或按时长推导值）— 长音频仍 OOM，此项待 R3e-B 后复测
+- [x] 若 ASR 进程被杀，错误文案提示侧车崩溃/内存而非笼统 `error sending request`（2026-05-27 手测）
+- [x] 短音频回归 ≤10min 仍一次完成（2026-05-27 手测）
+- [x] `npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs`（实施提交时跑通）
+- [x] `cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml`（`transcribe_timeout` / `transcribe_errors` 单测）
 
 ### R3e-B — 分段转写（建议 1～1.5 周，依赖 R3e-A）
 
@@ -120,12 +121,15 @@
 | 日期 | 场景 | 结果 | 备注 |
 |------|------|------|------|
 | 2026-05-25 | 50min 整文件 | ❌ OOM + request failed | 触发本 spec |
+| 2026-05-27 | ≤10min 本机转写（`desktop:dev`） | ✅ 通过 | R3e-A 回归；语段可落库 |
+| 2026-05-27 | 50min 整文件（`desktop:dev`） | ❌ 侧车崩溃 | R3e-A 新文案：「侧车可能已崩溃…内存不足」；超时延长仍无法避免 OOM，待 R3e-B |
 
 ## 完成定义
 
-- [ ] R3e-A 或 R3e-B 按路线图排期实施并通过对应验收
-- [ ] R9 REL-1 长音频项可勾选
-- [ ] 路线图 §10 下一刀更新
+- [x] R3e-A 实施并通过「短音频回归 + 失败可诊断」签收（长音频完整能力仍依赖 R3e-B）
+- [ ] R3e-B 分段转写 + 30～60min 主路径手测
+- [ ] R9 REL-1 长音频项可勾选（依赖 R3e-B）
+- [x] 路线图 §4.1 下一刀：R3g-A（macOS 安装包 / 50min 完整转写延后）
 
 ## 实施顺序建议
 
