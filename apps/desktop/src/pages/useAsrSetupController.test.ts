@@ -285,6 +285,149 @@ describe("useAsrSetupController", () => {
     expect(result.current.setupMessage).toContain("一键准备完成");
   });
 
+  it("retries the bundled sidecar when bundled resources exist but health is still unreachable", async () => {
+    asrSetupDiagnose
+      .mockResolvedValueOnce(
+        makeReport({
+          bundledAvailable: true,
+          portStatus: "free",
+          readyForTranscribe: false,
+          blockingIssue: "尚未连通 rushi-asr /health。",
+          summaryLines: ["8741 端口空闲，可启动内置推理侧车。"],
+          health: {
+            healthReachable: false,
+            ffmpegOk: false,
+            funasrImportOk: false,
+            funasrReady: false,
+            funasrDefaultModelCached: false,
+            funasrVadModelCached: false,
+            funasrRequiredModelsCached: false,
+            readyForTranscribe: false,
+            transcriptionMode: "stub",
+          },
+        }),
+      )
+      .mockResolvedValue(
+        makeReport({
+          bundledAvailable: true,
+          portStatus: "rushi_asr",
+          readyForTranscribe: true,
+          blockingIssue: null,
+          summaryLines: ["本机 rushi-asr 已在 8741 响应 /health。"],
+        }),
+      );
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          status: "ok",
+          service: "rushi-asr",
+          ffmpeg_ok: true,
+          funasr_import_ok: true,
+          funasr_model_configured: true,
+          funasr_default_model_cached: true,
+          funasr_vad_model_cached: true,
+          funasr_required_models_cached: true,
+          funasr_ready: true,
+          ready_for_transcribe: true,
+          transcription_mode: "funasr",
+        }),
+    } as Response);
+
+    const { result } = renderHook(() =>
+      useAsrSetupController({
+        refreshAsrHealth: vi.fn(async () => {}),
+        refreshAsrRuntimeInfo: vi.fn(async () => {}),
+        prepareDefaultFunasrModel: vi.fn(async () => {}),
+      }),
+    );
+
+    await act(async () => {
+      await result.current.runOneClickAsrPrepare();
+    });
+
+    await waitFor(() => {
+      expect(result.current.setupOutcome).toBe("ready");
+    });
+    expect(retryBundledAsrSidecar).toHaveBeenCalledTimes(1);
+    expect(result.current.setupMessage).toContain("一键准备完成");
+  });
+
+  it("accepts a ready foreign rushi-asr service and clears the conflict path", async () => {
+    asrSetupDiagnose
+      .mockResolvedValueOnce(
+        makeReport({
+          portStatus: "foreign",
+          portDetail: "8741 已被其他 rushi-asr 占用。",
+          bundledAvailable: true,
+          readyForTranscribe: false,
+          blockingIssue: "8741 已被其他程序占用。",
+          summaryLines: ["8741 已被其他程序占用。"],
+          health: {
+            healthReachable: false,
+            ffmpegOk: false,
+            funasrImportOk: false,
+            funasrReady: false,
+            funasrDefaultModelCached: false,
+            funasrVadModelCached: false,
+            funasrRequiredModelsCached: false,
+            readyForTranscribe: false,
+            transcriptionMode: "stub",
+          },
+        }),
+      )
+      .mockResolvedValue(
+        makeReport({
+          portStatus: "foreign",
+          portDetail: "8741 已被其他 rushi-asr 占用。",
+          bundledAvailable: true,
+          readyForTranscribe: true,
+          blockingIssue: null,
+          summaryLines: ["本机 rushi-asr 已在 8741 响应 /health。"],
+        }),
+      );
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          status: "ok",
+          service: "rushi-asr",
+          ffmpeg_ok: true,
+          funasr_import_ok: true,
+          funasr_model_configured: true,
+          funasr_default_model_cached: true,
+          funasr_vad_model_cached: true,
+          funasr_required_models_cached: true,
+          funasr_ready: true,
+          ready_for_transcribe: true,
+          transcription_mode: "funasr",
+        }),
+    } as Response);
+
+    const { result } = renderHook(() =>
+      useAsrSetupController({
+        refreshAsrHealth: vi.fn(async () => {}),
+        refreshAsrRuntimeInfo: vi.fn(async () => {}),
+        prepareDefaultFunasrModel: vi.fn(async () => {}),
+      }),
+    );
+
+    await act(async () => {
+      await result.current.refreshSetupDiagnose();
+    });
+    expect(result.current.portConflict).toBe(true);
+
+    await act(async () => {
+      await result.current.acceptForeignPortService();
+    });
+
+    await waitFor(() => {
+      expect(result.current.setupOutcome).toBe("ready");
+    });
+    expect(result.current.setupMessage).toContain("已使用当前 8741 服务");
+    expect(result.current.portConflict).toBe(false);
+  });
+
   it("blocks one-click install when the runtime manifest is rejected", async () => {
     asrSetupDiagnose.mockResolvedValue(
       makeReport({

@@ -1,6 +1,6 @@
 # Acceptance: R3f — 本机 ASR 一键环境准备
 
-> **状态**：R3f-A/B 已编码（诊断 + 一键准备 UI），待手测（**建议在 R3h-0 构建 smoke 通过后签收**）  
+> **状态**：R3f-A/B/D/F 已编码并补强自动化对照；`bundled` 主路径、`8741` 冲突接受当前服务、主 UI 隐藏 `pip` 入口均已有回归覆盖。**仍待安装包手测**（macOS / Windows，建议在 R3h-0 / R3h-1 全绿后签收）。  
 > **关联**：[`rushi-local-runtime-catalog-remediation-plan.md`](./rushi-local-runtime-catalog-remediation-plan.md)（发行整改真源）、[`asr-sidecar-funasr-policy.md`](../../architecture/asr-sidecar-funasr-policy.md)、[`r3c-local-asr-cache-manifest-acceptance.md`](./r3c-local-asr-cache-manifest-acceptance.md)、[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md)
 
 ## 产品决策（已锁定）
@@ -70,6 +70,20 @@
 4. **8741 已被外置 ASR 占用**：诊断标明冲突；用户可选使用当前服务或重试内置。
 5. **磁盘不足**：准备前或失败时中文提示，不 silent stub；**Windows** 亦能通过诊断得到磁盘预警（R3h-0）。
 6. **主 UI 无 pip 教程**：`install_funasr_deps_interactive` 仅出现在高级/开发者折叠区（R3h-0）。
+
+## 2026-05-27 对照结论
+
+- **已由代码/自动化覆盖支撑**：
+  - `R3f-B`：`bundled` 可用但 `/health` 未就绪时，会走 `retry_bundled` → health 轮询 → ready；已补 `useAsrSetupController.test.ts` 回归。
+  - `R3f-D`：`8741` 被外置 `rushi-asr` 占用时，可选择“使用当前服务”；已补 ready / blocked 两条控制器回归。
+  - `R3f-F`：`pip` 与手动命令仅位于“高级 / 开发者”折叠区；已补 `LocalAsrAdvancedSection.test.tsx`。
+  - `R3h` 联动项：当内置侧车缺失或损坏时，主路径会转向 `local_runtime` 下载 / 修复，不再要求用户手动开终端。
+- **已由实现对照确认但未做本轮实机手测**：
+  - Windows `CUDA/CPU` 侧车自动选择逻辑已在 `asr_sidecar.rs` 中实现；仍需 Windows 安装包手测确认真实驱动探测与回退文案。
+  - 磁盘预警与中文 blocking 文案已在 `asr_setup/diagnose.rs` 与一键准备控制器中接通；仍建议在安装包场景做一次低磁盘手测。
+- **仍待签收的手测项**：
+  - macOS 安装包零终端首装到 ready。
+  - Windows 安装包零终端首装、CUDA 失败回退 CPU、全程无 PowerShell / pip 教程。
 
 ## 建议实施顺序
 
