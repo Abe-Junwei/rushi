@@ -1,6 +1,7 @@
 use super::*;
 use serde_json::json;
 use std::fs;
+use std::net::TcpListener;
 
 #[test]
 fn recognizes_valid_health_json() {
@@ -87,4 +88,13 @@ fn bundled_candidates_from_roots_deduplicate_same_executable() {
     assert_eq!(candidates.len(), 1);
     assert_eq!(candidates[0], exe);
     let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn loopback_port_accepts_tcp_detects_bound_listener() {
+    let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
+    let port = listener.local_addr().unwrap().port();
+    assert!(loopback_port_accepts_tcp(port));
+    drop(listener);
+    assert!(!loopback_port_accepts_tcp(port));
 }

@@ -1,4 +1,11 @@
 export type LocalRuntimeInstalledStatus = "missing" | "installed" | "corrupt";
+export type LocalRuntimeManifestStatus =
+  | "missing"
+  | "ok"
+  | "error"
+  | "incompatible"
+  | "source_rejected"
+  | "signature_invalid";
 
 export interface LocalRuntimeInstallProgress {
   phase: string;
@@ -24,6 +31,7 @@ export interface LocalRuntimeDiagnose {
   manifestConfigured: boolean;
   manifestSource?: string | null;
   manifestStatus: string;
+  manifestIssue?: string | null;
   manifestSignatureKeyId?: string | null;
   availableVersion?: string | null;
   availableSizeBytes?: number | null;
@@ -52,4 +60,16 @@ export function isLocalRuntimeInstallRunning(
   phase: LocalRuntimeInstallProgress["phase"] | null | undefined,
 ): boolean {
   return phase === "downloading" || phase === "installing" || phase === "verifying";
+}
+
+export function isLocalRuntimeManifestInstallBlocked(
+  diag: Pick<LocalRuntimeDiagnose, "manifestConfigured" | "manifestStatus"> | null | undefined,
+): boolean {
+  if (!diag?.manifestConfigured) return true;
+  return (
+    diag.manifestStatus === "error" ||
+    diag.manifestStatus === "incompatible" ||
+    diag.manifestStatus === "source_rejected" ||
+    diag.manifestStatus === "signature_invalid"
+  );
 }

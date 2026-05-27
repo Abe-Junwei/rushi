@@ -284,4 +284,52 @@ describe("useAsrSetupController", () => {
     expect(localRuntimeDownloadSidecar).toHaveBeenCalledTimes(1);
     expect(result.current.setupMessage).toContain("一键准备完成");
   });
+
+  it("blocks one-click install when the runtime manifest is rejected", async () => {
+    asrSetupDiagnose.mockResolvedValue(
+      makeReport({
+        bundledAvailable: false,
+        portStatus: "free",
+        readyForTranscribe: false,
+        blockingIssue: "无可用侧车且 ASR 未连通。",
+        summaryLines: ["8741 端口空闲，可启动内置推理侧车。"],
+        health: {
+          healthReachable: false,
+          ffmpegOk: false,
+          funasrImportOk: false,
+          funasrReady: false,
+          funasrDefaultModelCached: false,
+          funasrVadModelCached: false,
+          funasrRequiredModelsCached: false,
+          readyForTranscribe: false,
+          transcriptionMode: "stub",
+        },
+      }),
+    );
+    localRuntimeDiagnose.mockResolvedValue(
+      makeLocalRuntimeDiag({
+        manifestConfigured: true,
+        manifestStatus: "signature_invalid",
+        manifestIssue: "当前 manifest 签名校验失败，已拒绝下载安装。",
+      }),
+    );
+
+    const { result } = renderHook(() =>
+      useAsrSetupController({
+        refreshAsrHealth: vi.fn(async () => {}),
+        refreshAsrRuntimeInfo: vi.fn(async () => {}),
+        prepareDefaultFunasrModel: vi.fn(async () => {}),
+      }),
+    );
+
+    await act(async () => {
+      await result.current.runOneClickAsrPrepare();
+    });
+
+    await waitFor(() => {
+      expect(result.current.setupOutcome).toBe("blocked");
+    });
+    expect(result.current.setupMessage).toContain("签名校验失败");
+    expect(localRuntimeDownloadSidecar).not.toHaveBeenCalled();
+  });
 });

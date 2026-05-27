@@ -87,12 +87,12 @@ export function usePrepareModelController(
             message === "downloading_vad"
               ? "正在下载必需辅助模型（VAD）…"
               : "正在下载默认主模型（SenseVoiceSmall）…";
-          setFunasrInstallMessage(`${stage} 已等待 ${formatWait()}。请保持联网，尽量不要关闭运行 ASR 的终端。`);
+          setFunasrInstallMessage(`${stage} 已等待 ${formatWait()}。请保持应用开启并联网，尽量不要关闭当前窗口。`);
         } else if (phase === "idle") {
           if (Date.now() - runT0 < 4000) {
             setFunasrInstallMessage("正在启动后台下载任务，请稍候…");
           } else {
-            setFunasrInstallMessage("模型准备状态仍为 idle：请重启 ASR（python -m rushi_asr）后再试。");
+            setFunasrInstallMessage("模型准备状态仍为 idle：请重新检测 ASR 服务，或回到「一键准备本机 ASR」后再试。");
           }
         } else if (phase === "?") {
           setFunasrInstallMessage("无法读取模型准备状态，请确认 rushi-asr 已升级后重试。");

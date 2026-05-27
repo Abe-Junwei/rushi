@@ -13,6 +13,7 @@ use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
 use std::sync::Mutex;
 use std::time::Duration;
+use std::{net::{Ipv4Addr, SocketAddrV4, TcpStream}};
 
 use serde::Serialize;
 use serde_json::Value;
@@ -21,6 +22,7 @@ use tauri::{AppHandle, Manager};
 use crate::DbState;
 
 pub const ASR_HEALTH_URL: &str = "http://127.0.0.1:8741/health";
+const ASR_LOOPBACK_PORT: u16 = 8741;
 const BUNDLED_HEALTH_WAIT_MS: u64 = 45_000;
 const BUNDLED_HEALTH_POLL_MS: u64 = 250;
 
@@ -251,12 +253,25 @@ pub async fn probe_asr_port() -> AsrPortProbe {
         .timeout(Duration::from_secs(2))
         .build()
         .unwrap_or_else(|_| reqwest::Client::new());
-    let Ok(resp) = client.get(ASR_HEALTH_URL).send().await else {
-        return AsrPortProbe {
-            status: AsrPortStatus::Free,
-            http_status: None,
-            detail: Some("8741 端口无 HTTP 响应，可启动内置侧车。".into()),
-        };
+    let resp = match client.get(ASR_HEALTH_URL).send().await {
+        Ok(resp) => resp,
+        Err(_) => {
+            return if loopback_port_accepts_tcp(ASR_LOOPBACK_PORT) {
+                AsrPortProbe {
+                    status: AsrPortStatus::Foreign,
+                    http_status: None,
+                    detail: Some(
+                        "8741 已有服务监听，但未能按 rushi-asr /health 响应；可能是其他进程占用，或是仍在启动中的旧实例。请稍候重试；若持续存在，请结束占用进程。".into(),
+                    ),
+                }
+            } else {
+                AsrPortProbe {
+                    status: AsrPortStatus::Free,
+                    http_status: None,
+                    detail: Some("8741 端口无监听，可启动内置侧车。".into()),
+                }
+            };
+        }
     };
     let http_status = resp.status().as_u16();
     let text = resp.text().await.unwrap_or_default();
@@ -287,6 +302,11 @@ pub async fn probe_asr_port() -> AsrPortProbe {
             "8741 已被其他服务占用（service={service}，HTTP {http_status}）。内置侧车无法同端口启动。"
         )),
     }
+}
+
+fn loopback_port_accepts_tcp(port: u16) -> bool {
+    let addr = SocketAddrV4::new(Ipv4Addr::LOCALHOST, port);
+    TcpStream::connect_timeout(&addr.into(), Duration::from_millis(250)).is_ok()
 }
 
 /// True when install media includes at least one bundled sidecar executable.

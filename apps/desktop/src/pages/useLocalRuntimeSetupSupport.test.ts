@@ -243,4 +243,20 @@ describe("useLocalRuntimeSetupSupport", () => {
     expect(result.current.setupMessage).not.toContain("已安装完成");
     expect(localRuntimeDownloadSidecar).toHaveBeenCalledTimes(1);
   });
+
+  it("surfaces invoke failures while downloading the runtime", async () => {
+    localRuntimeDownloadSidecar.mockRejectedValue(new Error("command local_runtime_download_sidecar not found"));
+
+    const { result } = renderHook(() => useHarness());
+
+    await act(async () => {
+      await result.current.downloadLocalRuntime();
+    });
+
+    await waitFor(() => {
+      expect(result.current.setupOutcome).toBe("error");
+    });
+    expect(result.current.setupMessage).toContain("下载 / 修复语音识别组件失败");
+    expect(result.current.setupMessage).toContain("desktop:dev");
+  });
 });

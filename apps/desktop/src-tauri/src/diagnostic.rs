@@ -63,9 +63,10 @@ pub fn export_diagnostic_bundle(app: AppHandle, state: State<DbState>) -> Result
         crate::local_runtime::integrity::InstalledRuntimeStatus::Missing => "missing",
     };
     let local_runtime_note = format!(
-        "manifest_source: {}\nmanifest_status: {}\nmanifest_signature_key_id: {}\navailable_version: {}\nruntime_source: {}\ncurrent_version: {}\nprevious_version: {}\nlast_verify_error: {}\nlast_install_phase: {}\ninstall_progress_phase: {}\ninstall_progress_version: {}\ninstall_progress_error: {}\n",
+        "manifest_source: {}\nmanifest_status: {}\nmanifest_issue: {}\nmanifest_signature_key_id: {}\navailable_version: {}\nruntime_source: {}\ncurrent_version: {}\nprevious_version: {}\nlast_verify_error: {}\nlast_install_phase: {}\ninstall_progress_phase: {}\ninstall_progress_version: {}\ninstall_progress_error: {}\n",
         manifest_probe.source.as_deref().unwrap_or("(missing)"),
         manifest_probe.status,
+        manifest_probe.blocking_issue.as_deref().unwrap_or("(none)"),
         manifest_probe.signature_key_id.as_deref().unwrap_or("(none)"),
         manifest_probe.available_version.as_deref().unwrap_or("(none)"),
         runtime_source,

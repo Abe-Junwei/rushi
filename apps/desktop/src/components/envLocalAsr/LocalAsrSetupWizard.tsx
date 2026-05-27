@@ -2,7 +2,10 @@ import { useEffect } from "react";
 import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../../config/typography";
 import { formatDiskFree } from "../../services/asr/asrSetupContract";
-import { isLocalRuntimeInstallRunning } from "../../services/localRuntime/localRuntimeContract";
+import {
+  isLocalRuntimeInstallRunning,
+  isLocalRuntimeManifestInstallBlocked,
+} from "../../services/localRuntime/localRuntimeContract";
 import type { AsrSetupControllerApi } from "../../pages/useAsrSetupController";
 import { isTauriRuntime } from "../../config/env";
 
@@ -39,6 +42,7 @@ export function LocalAsrSetupWizard({ setup, busy, openAppDataFolder, exportDiag
   const runtimeInstallRunning = isLocalRuntimeInstallRunning(localRuntimeDiag?.install.phase);
   const retainedCurrentAfterInstallError =
     localRuntimeDiag?.install.phase === "error" && localRuntimeDiag.installed.status === "installed";
+  const manifestInstallBlocked = isLocalRuntimeManifestInstallBlocked(localRuntimeDiag);
   const updateAvailable =
     !!localRuntimeDiag?.availableVersion &&
     !!localRuntimeDiag?.installed.version &&
@@ -118,6 +122,13 @@ export function LocalAsrSetupWizard({ setup, busy, openAppDataFolder, exportDiag
               manifest 签名 key：{localRuntimeDiag.manifestSignatureKeyId}
             </p>
           ) : null}
+          {localRuntimeDiag.manifestIssue ? (
+            <p className="mt-2 rounded bg-zen-cinnabar/10 px-2 py-1 text-[11px] text-zen-cinnabar">
+              {localRuntimeDiag.installed.status === "installed"
+                ? `当前已安装版本仍可继续使用，但下载/升级已被阻止：${localRuntimeDiag.manifestIssue}`
+                : localRuntimeDiag.manifestIssue}
+            </p>
+          ) : null}
           {localRuntimeDiag.installed.previousVersion ? (
             <p className="mt-1 text-[11px] text-notion-text-muted">
               可恢复上一版本：{localRuntimeDiag.installed.previousVersion}
@@ -130,8 +141,7 @@ export function LocalAsrSetupWizard({ setup, busy, openAppDataFolder, exportDiag
               disabled={
                 wizardBusy ||
                 runtimeInstallRunning ||
-                !localRuntimeDiag.manifestConfigured ||
-                localRuntimeDiag.manifestStatus === "incompatible"
+                manifestInstallBlocked
               }
               onClick={() => void downloadLocalRuntime()}
             >
