@@ -184,4 +184,63 @@ describe("useLocalRuntimeSetupSupport", () => {
     expect(result.current.setupMessage).toContain("恢复上一版本");
     expect(localRuntimeRestorePrevious).toHaveBeenCalledTimes(1);
   });
+
+  it("reports upgrade failure while keeping the current installed runtime", async () => {
+    localRuntimeDownloadSidecar.mockResolvedValue({ started: true });
+    localRuntimeDiagnose
+      .mockResolvedValueOnce(
+        makeDiag({
+          availableVersion: "0.2.0",
+          install: {
+            phase: "downloading",
+            message: "正在下载新版本…",
+            downloadedBytes: 1,
+            totalBytes: 2,
+            version: "0.2.0",
+            error: null,
+          },
+          installed: {
+            status: "installed",
+            version: "0.1.0",
+            executablePath: "/tmp/local_runtime/asr-sidecar/0.1.0/rushi-asr-sidecar",
+            rootDir: "/tmp/local_runtime/asr-sidecar",
+            detail: null,
+          },
+        }),
+      )
+      .mockResolvedValueOnce(
+        makeDiag({
+          availableVersion: "0.2.0",
+          install: {
+            phase: "error",
+            message: "本机语音识别组件安装失败。",
+            downloadedBytes: null,
+            totalBytes: null,
+            version: "0.2.0",
+            error: "local_runtime_verify_http_500",
+          },
+          installed: {
+            status: "installed",
+            version: "0.1.0",
+            executablePath: "/tmp/local_runtime/asr-sidecar/0.1.0/rushi-asr-sidecar",
+            rootDir: "/tmp/local_runtime/asr-sidecar",
+            detail: null,
+          },
+          blockingIssue: "语音识别组件已下载，但健康验证未通过。可尝试重新验证、恢复上一版或导出诊断包。",
+        }),
+      );
+
+    const { result } = renderHook(() => useHarness());
+
+    await act(async () => {
+      await result.current.downloadLocalRuntime();
+    });
+
+    await waitFor(() => {
+      expect(result.current.setupOutcome).toBe("error");
+    });
+    expect(result.current.setupMessage).toContain("健康验证未通过");
+    expect(result.current.setupMessage).not.toContain("已安装完成");
+    expect(localRuntimeDownloadSidecar).toHaveBeenCalledTimes(1);
+  });
 });

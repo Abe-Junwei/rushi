@@ -1,7 +1,7 @@
 export type LocalRuntimeInstalledStatus = "missing" | "installed" | "corrupt";
 
 export interface LocalRuntimeInstallProgress {
-  phase: "idle" | "downloading" | "installing" | "verifying" | "installed" | "error" | "cancelled" | string;
+  phase: string;
   message: string;
   downloadedBytes?: number | null;
   totalBytes?: number | null;
@@ -23,7 +23,7 @@ export interface LocalRuntimeInstalledInfo {
 export interface LocalRuntimeDiagnose {
   manifestConfigured: boolean;
   manifestSource?: string | null;
-  manifestStatus: "missing" | "ok" | "error" | "incompatible" | string;
+  manifestStatus: string;
   manifestSignatureKeyId?: string | null;
   availableVersion?: string | null;
   availableSizeBytes?: number | null;

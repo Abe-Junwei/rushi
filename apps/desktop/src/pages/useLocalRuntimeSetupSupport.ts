@@ -8,6 +8,15 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+function retainedCurrentVersionMessage(diag: LocalRuntimeDiagnose | null | undefined): string | null {
+  if (!diag || diag.install.phase !== "error" || diag.installed.status !== "installed") {
+    return null;
+  }
+  const currentVersion = diag.installed.version ? `（${diag.installed.version}）` : "";
+  const targetVersion = diag.availableVersion ? `到 ${diag.availableVersion}` : "到新版本";
+  return `升级${targetVersion}失败，已保留当前版本${currentVersion}。`;
+}
+
 type Params = {
   tauriRuntime: boolean;
   setSetupSteps: Dispatch<SetStateAction<AsrSetupStep[]>>;
@@ -41,14 +50,7 @@ export function useLocalRuntimeSetupSupport({
   const waitForLocalRuntimeInstall = useCallback(async (): Promise<LocalRuntimeDiagnose | null> => {
     for (let i = 0; i < 90; i++) {
       const diag = await refreshLocalRuntimeDiagnose();
-      if (diag?.installed.status === "installed") {
-        return diag;
-      }
-      if (
-        diag?.install.phase === "error" ||
-        diag?.install.phase === "cancelled" ||
-        !isLocalRuntimeInstallRunning(diag?.install.phase)
-      ) {
+      if (!isLocalRuntimeInstallRunning(diag?.install.phase)) {
         return diag;
       }
       await sleep(1000);
@@ -65,6 +67,12 @@ export function useLocalRuntimeSetupSupport({
     }
     await refreshLocalRuntimeDiagnose();
     const after = await waitForLocalRuntimeInstall();
+    const retainedCurrentMessage = retainedCurrentVersionMessage(after);
+    if (retainedCurrentMessage) {
+      setSetupMessage(after?.blockingIssue ?? retainedCurrentMessage);
+      setSetupOutcome("error");
+      return;
+    }
     if (after?.installed.status === "installed") {
       setSetupMessage("本机语音识别组件已安装完成。");
       setSetupOutcome("idle");

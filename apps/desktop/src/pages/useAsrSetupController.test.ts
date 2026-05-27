@@ -149,7 +149,8 @@ describe("useAsrSetupController", () => {
   it("rejects a foreign-port rushi-asr runtime that is still stub-only", async () => {
     fetchMock.mockResolvedValue({
       ok: true,
-      json: async () => ({
+      json: () =>
+        Promise.resolve({
         status: "ok",
         service: "rushi-asr",
         ffmpeg_ok: true,
@@ -164,7 +165,7 @@ describe("useAsrSetupController", () => {
         transcription_mode: "stub",
         funasr_model_id: "iic/SenseVoiceSmall",
         rushi_models_root: "/tmp/models",
-      }),
+        }),
     } as Response);
 
     const refreshAsrHealth = vi.fn(async () => {});
@@ -185,5 +186,102 @@ describe("useAsrSetupController", () => {
     });
     expect(refreshAsrHealth).toHaveBeenCalled();
     expect(result.current.setupMessage).toContain("FunASR 运行时尚未就绪");
+  });
+
+  it("auto-installs local runtime before retrying sidecar when bundled runtime is missing", async () => {
+    asrSetupDiagnose
+      .mockResolvedValueOnce(
+        makeReport({
+          bundledAvailable: false,
+          portStatus: "free",
+          readyForTranscribe: false,
+          blockingIssue: "无可用侧车且 ASR 未连通。",
+          summaryLines: ["8741 端口空闲，可启动内置推理侧车。"],
+          health: {
+            healthReachable: false,
+            ffmpegOk: false,
+            funasrImportOk: false,
+            funasrReady: false,
+            funasrDefaultModelCached: false,
+            funasrVadModelCached: false,
+            funasrRequiredModelsCached: false,
+            readyForTranscribe: false,
+            transcriptionMode: "stub",
+          },
+        }),
+      )
+      .mockResolvedValue(
+        makeReport({
+          bundledAvailable: false,
+          portStatus: "rushi_asr",
+          readyForTranscribe: true,
+          blockingIssue: null,
+          summaryLines: ["应用数据侧车已启动并响应 /health。"],
+        }),
+      );
+    localRuntimeDiagnose
+      .mockResolvedValueOnce(
+        makeLocalRuntimeDiag({
+          manifestConfigured: true,
+          manifestStatus: "ok",
+          availableVersion: "0.1.0",
+        }),
+      )
+      .mockResolvedValueOnce(
+        makeLocalRuntimeDiag({
+          manifestConfigured: true,
+          manifestStatus: "ok",
+          availableVersion: "0.1.0",
+        }),
+      )
+      .mockResolvedValue(
+        makeLocalRuntimeDiag({
+          manifestConfigured: true,
+          manifestStatus: "ok",
+          availableVersion: "0.1.0",
+          installed: {
+            status: "installed",
+            version: "0.1.0",
+            executablePath: "/tmp/local_runtime/asr-sidecar/0.1.0/rushi-asr-sidecar",
+            rootDir: "/tmp/local_runtime/asr-sidecar",
+            detail: null,
+          },
+        }),
+      );
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+        status: "ok",
+        service: "rushi-asr",
+        ffmpeg_ok: true,
+        funasr_import_ok: true,
+        funasr_model_configured: true,
+        funasr_default_model_cached: true,
+        funasr_vad_model_cached: true,
+        funasr_required_models_cached: true,
+        funasr_ready: true,
+        ready_for_transcribe: true,
+        transcription_mode: "funasr",
+        }),
+    } as Response);
+
+    const { result } = renderHook(() =>
+      useAsrSetupController({
+        refreshAsrHealth: vi.fn(async () => {}),
+        refreshAsrRuntimeInfo: vi.fn(async () => {}),
+        prepareDefaultFunasrModel: vi.fn(async () => {}),
+      }),
+    );
+
+    await act(async () => {
+      await result.current.runOneClickAsrPrepare();
+    });
+
+    await waitFor(() => {
+      expect(result.current.setupOutcome).toBe("ready");
+    });
+    expect(localRuntimeDownloadSidecar).toHaveBeenCalledTimes(1);
+    expect(result.current.setupMessage).toContain("一键准备完成");
   });
 });

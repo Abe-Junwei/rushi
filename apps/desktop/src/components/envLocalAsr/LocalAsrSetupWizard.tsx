@@ -37,6 +37,8 @@ export function LocalAsrSetupWizard({ setup, busy, openAppDataFolder, exportDiag
   const wizardBusy = busy || setupBusy || diagnoseBusy;
   const refreshDisabled = setupBusy || diagnoseBusy || !isTauriRuntime();
   const runtimeInstallRunning = isLocalRuntimeInstallRunning(localRuntimeDiag?.install.phase);
+  const retainedCurrentAfterInstallError =
+    localRuntimeDiag?.install.phase === "error" && localRuntimeDiag.installed.status === "installed";
   const updateAvailable =
     !!localRuntimeDiag?.availableVersion &&
     !!localRuntimeDiag?.installed.version &&
@@ -84,11 +86,14 @@ export function LocalAsrSetupWizard({ setup, busy, openAppDataFolder, exportDiag
         <div className="rounded bg-notion-callout-bg px-3 py-2 text-[12px] text-notion-text-muted">
           <p className="font-medium text-notion-text">应用内侧车运行时</p>
           <p className="mt-1">
-            {localRuntimeDiag.installed.status === "installed"
-              ? `已安装${localRuntimeDiag.installed.version ? `（${localRuntimeDiag.installed.version}）` : ""}`
-              : runtimeInstallRunning
+            {runtimeInstallRunning
                 ? localRuntimeDiag.install.message
-                : localRuntimeDiag.blockingIssue ?? "尚未安装。"}
+                : retainedCurrentAfterInstallError
+                  ? localRuntimeDiag.blockingIssue ??
+                    `升级失败，已保留当前版本${localRuntimeDiag.installed.version ? `（${localRuntimeDiag.installed.version}）` : ""}`
+                  : localRuntimeDiag.installed.status === "installed"
+                    ? `已安装${localRuntimeDiag.installed.version ? `（${localRuntimeDiag.installed.version}）` : ""}`
+                    : localRuntimeDiag.blockingIssue ?? "尚未安装。"}
           </p>
           {localRuntimeDiag.availableVersion ? (
             <p className="mt-1 text-[11px] text-notion-text-muted">
@@ -194,6 +199,12 @@ export function LocalAsrSetupWizard({ setup, busy, openAppDataFolder, exportDiag
           {localRuntimeDiag.installed.lastVerifyError ? (
             <p className="mt-2 rounded bg-zen-cinnabar/10 px-2 py-1 text-[11px] text-zen-cinnabar">
               最近一次验证失败：{localRuntimeDiag.installed.lastVerifyError}
+            </p>
+          ) : null}
+          {retainedCurrentAfterInstallError && localRuntimeDiag.install.error ? (
+            <p className="mt-2 rounded bg-zen-cinnabar/10 px-2 py-1 text-[11px] text-zen-cinnabar">
+              升级未生效，当前仍使用 {localRuntimeDiag.installed.version ?? "已安装版本"}：
+              {localRuntimeDiag.install.error}
             </p>
           ) : null}
         </div>

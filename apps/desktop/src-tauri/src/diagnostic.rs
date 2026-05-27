@@ -51,6 +51,7 @@ pub fn export_diagnostic_bundle(app: AppHandle, state: State<DbState>) -> Result
 
     let manifest_probe = crate::local_runtime::catalog::diagnose_configured_manifest();
     let installed_runtime = crate::local_runtime::integrity::inspect_installed_runtime(&st.root);
+    let install_progress = crate::local_runtime::installer::install_progress(&app);
     let runtime_source = match installed_runtime.status {
         crate::local_runtime::integrity::InstalledRuntimeStatus::Installed
         | crate::local_runtime::integrity::InstalledRuntimeStatus::Corrupt => "app_data",
@@ -62,7 +63,7 @@ pub fn export_diagnostic_bundle(app: AppHandle, state: State<DbState>) -> Result
         crate::local_runtime::integrity::InstalledRuntimeStatus::Missing => "missing",
     };
     let local_runtime_note = format!(
-        "manifest_source: {}\nmanifest_status: {}\nmanifest_signature_key_id: {}\navailable_version: {}\nruntime_source: {}\ncurrent_version: {}\nprevious_version: {}\nlast_verify_error: {}\nlast_install_phase: {}\n",
+        "manifest_source: {}\nmanifest_status: {}\nmanifest_signature_key_id: {}\navailable_version: {}\nruntime_source: {}\ncurrent_version: {}\nprevious_version: {}\nlast_verify_error: {}\nlast_install_phase: {}\ninstall_progress_phase: {}\ninstall_progress_version: {}\ninstall_progress_error: {}\n",
         manifest_probe.source.as_deref().unwrap_or("(missing)"),
         manifest_probe.status,
         manifest_probe.signature_key_id.as_deref().unwrap_or("(none)"),
@@ -72,6 +73,9 @@ pub fn export_diagnostic_bundle(app: AppHandle, state: State<DbState>) -> Result
         installed_runtime.previous_version.as_deref().unwrap_or("(none)"),
         installed_runtime.last_verify_error.as_deref().unwrap_or("(none)"),
         installed_runtime.last_install_phase.as_deref().unwrap_or("(none)"),
+        install_progress.phase,
+        install_progress.version.as_deref().unwrap_or("(none)"),
+        install_progress.error.as_deref().unwrap_or("(none)"),
     );
     zip.start_file("local-runtime.txt", zip_opts())
         .map_err(|e| e.to_string())?;
@@ -179,7 +183,7 @@ pub fn export_diagnostic_bundle(app: AppHandle, state: State<DbState>) -> Result
     zip.write_all(
         b"Files in this zip:\n\
 - build-info.txt - version, OS, app_data_root, db_path\n\
-- local-runtime.txt - manifest source/status, runtime source, current/previous version, verify/install context\n\
+- local-runtime.txt - manifest source/status, runtime source, current/previous version, verify/install context, live installer progress\n\
 - database-readme.txt - whether rushi.sqlite3 is embedded\n\
 - rushi.sqlite3 - optional copy (small DB only)\n\
 - recent_edit_log.tsv - last 500 rows from SQLite edit_log (tab-separated)\n\

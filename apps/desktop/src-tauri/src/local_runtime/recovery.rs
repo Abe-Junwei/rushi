@@ -28,7 +28,8 @@ fn run_revalidate(app_root: &std::path::Path) -> Result<String, String> {
     if !installed_exe.is_file() {
         return Err("local_runtime_executable_missing".into());
     }
-    match verify_installed_runtime(&installed_exe) {
+    let models_root = app_root.join("models");
+    match verify_installed_runtime(&installed_exe, Some(&models_root)) {
         Ok(()) => {
             write_marker_with_previous(
                 app_root,
@@ -62,7 +63,8 @@ fn run_restore_previous(app_root: &std::path::Path) -> Result<String, String> {
     if !previous_exe.is_file() {
         return Err("local_runtime_previous_missing".into());
     }
-    verify_installed_runtime(&previous_exe)?;
+    let models_root = app_root.join("models");
+    verify_installed_runtime(&previous_exe, Some(&models_root))?;
     write_marker_with_previous(
         app_root,
         previous_version,

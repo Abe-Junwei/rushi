@@ -146,12 +146,13 @@ export function useAsrSetupController(deps: {
           detail: "正在读取本机环境…",
         }),
       );
-      const report = await refreshSetupDiagnose({ resetSteps: false });
-      if (!report) {
+      const firstReport = await refreshSetupDiagnose({ resetSteps: false });
+      if (!firstReport) {
         setSetupSteps((steps) => patchStep(steps, "diagnose", { status: "error", detail: "诊断失败" }));
         setSetupOutcome("error");
         return;
       }
+      let report = firstReport;
 
       setSetupSteps((steps) =>
         patchStep(steps, "diagnose", {
@@ -163,6 +164,13 @@ export function useAsrSetupController(deps: {
       if (report.sidecarIntegrity === "corrupt") {
         const repaired = await ensureLocalRuntimeInstalled("repair");
         if (!repaired) return;
+        const refreshed = await refreshSetupDiagnose({ resetSteps: false });
+        if (!refreshed) {
+          setSetupMessage("修复侧车后刷新诊断失败，请重试。");
+          setSetupOutcome("error");
+          return;
+        }
+        report = refreshed;
       }
       if (report.portStatus === "foreign") {
         setSetupSteps((steps) =>
@@ -178,6 +186,13 @@ export function useAsrSetupController(deps: {
       if (!report.health.healthReachable && !report.bundledAvailable) {
         const installed = await ensureLocalRuntimeInstalled("missing");
         if (!installed) return;
+        const refreshed = await refreshSetupDiagnose({ resetSteps: false });
+        if (!refreshed) {
+          setSetupMessage("下载安装侧车后刷新诊断失败，请重试。");
+          setSetupOutcome("error");
+          return;
+        }
+        report = refreshed;
       }
 
       const needSidecar =

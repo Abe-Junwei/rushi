@@ -221,7 +221,8 @@ fn run_install(handle: &AppHandle, app_root: &Path, cancel: Arc<AtomicBool>) -> 
         None,
         None,
     );
-    if let Err(err) = verify_installed_runtime(&staged_exe) {
+    let models_root = app_root.join("models");
+    if let Err(err) = verify_installed_runtime(&staged_exe, Some(&models_root)) {
         let _ = fs::remove_dir_all(&staging);
         return Err(err);
     }
@@ -345,11 +346,12 @@ pub fn local_runtime_download_sidecar(
                 );
                 append_runtime_log_line(&app, "INFO local_runtime_cancelled");
             } else {
+                let failed_version = install_progress(&app).version;
                 update_progress(
                     &app,
                     "error",
                     "本机语音识别组件安装失败。",
-                    None,
+                    failed_version,
                     None,
                     None,
                     Some(err.clone()),

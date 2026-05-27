@@ -16,7 +16,7 @@ async function fetchHealthSnapshot(): Promise<ReturnType<typeof parseAsrHealthJs
   try {
     const res = await fetch(url, { method: "GET", signal: AbortSignal.timeout(8000) });
     if (!res.ok) return null;
-    const data = await res.json().catch(() => null);
+    const data: unknown = await res.json().catch(() => null);
     return parseAsrHealthJson(data);
   } catch {
     return null;

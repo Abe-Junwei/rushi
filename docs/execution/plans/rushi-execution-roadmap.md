@@ -593,6 +593,7 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | 2026-05-25 | **§4.1 排期微调**：R3f → **R3e-A** → R3g-A → R3d 轻量 → R3e-B；补 [`r3d-settings-ia-acceptance.md`](../specs/r3d-settings-ia-acceptance.md) |
 | 2026-05-26 | **R3 重排**：**R3h（LRC）** 升为 epic；remediation v1.1；§4.1.1 为唯一顺序 |
 | 2026-05-26 | **ADR-0003**：**方案 A** — FunASR + LRC 先行；Sherpa 经 R3h-3.5 Spike 门控；否决方案 B（直接上 Sherpa） |
+| 2026-05-27 | **R3h-1 手测收口**：`healthy install`、`corrupt -> repair`、`bundled offline fallback`、`upgrade failure keeps current` 走通；补 UI 失败反馈与 verifier `HTTP 5xx` fast-fail |
 
 ---
 

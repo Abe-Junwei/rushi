@@ -380,6 +380,14 @@ sequenceDiagram
 4. 新版本下载成功但 verify 失败 → 旧版 `current` 仍保持可用，可恢复到 previous / bundled。  
 5. 生产策略下 `file://` / 明文 HTTP / 签名不合法 manifest 会被拒绝，且错误可诊断。
 
+**手测记录（2026-05-27）**：
+
+- `healthy install`：在无 bundled、空 `app_data` 条件下，向导触发 local runtime 下载并完成安装；过程中修复了冷启动 `/health` 超时误判。
+- `corrupt -> diagnose -> repair`：删除 `funasr/version.txt` 后，UI 正确诊断为损坏；重新下载后恢复为 `verify_state=ok`。
+- `bundled offline fallback`：移除 `app_data` runtime 且不注入 manifest 下载源时，dev 实例自动拉起 bundled sidecar，`/health` 最终返回 `ready_for_transcribe=true`。
+- `upgrade failure keeps current`：以 `0.2.0` corrupt manifest 触发升级失败，日志记录 `local_runtime_verify_http_500`；`current.json` 保持 `0.1.0` / `verify_state=ok`，未覆盖旧版。
+- `upgrade failure UI feedback`：补齐前端状态机与 verifier fast-fail 后，UI 明确提示“升级未生效，当前仍使用 0.1.0”并展示失败细节，不再长时间停留在“正在验证”。
+
 ---
 
 ### Phase 2 — 与 R3f/R3g 合并 + 断点续传（≈1 周）
@@ -591,8 +599,8 @@ UI **分开展示**「语音识别组件」与「语音模型」占用。
 
 - [ ] **零终端**：新装用户从不执行 `npm` / `pip` / `bash` 即可完成本机 ASR 首次转写。  
 - [ ] **构建 smoke**：发布流水线对每平台 sidecar artifact 跑 health。  
-- [ ] **损坏可恢复**：故意破坏 `funasr/version.txt` 后，应用诊断并一键重下修复。  
-- [ ] **离线安装包**：无网时 bundled 仍可用（若介质含侧车）。  
+- [x] **损坏可恢复**：故意破坏 `funasr/version.txt` 后，应用诊断并一键重下修复（2026-05-27 手测）。  
+- [x] **离线安装包**：无网时 bundled 仍可用（若介质含侧车，2026-05-27 手测）。  
 - [ ] **概念清晰**：UI 区分「语音识别组件 (~2GB)」与「语音模型」。  
 - [ ] **诊断包**：含 sidecar source、version、integrity、model cached。  
 - [ ] **政策一致**：LLM 仍不进 ASR 侧车；云 STT/LLM 走 probe。  
@@ -600,7 +608,7 @@ UI **分开展示**「语音识别组件」与「语音模型」占用。
 - [ ] **弱网/断网**：下载中断可重试或续传（Phase 2）；无网 bundled 回退（Phase 1）。  
 - [ ] **并发安全**：连点「一键准备」不重复下载/重复 spawn（§3.6）。  
 - [ ] **发行信任**：manifest 已签名并用壳内 pinned key 验证；artifact hash 必检。
-- [ ] **升级回滚**：新 runtime 验证失败时旧版仍可用；可恢复到 previous / bundled。
+- [x] **升级回滚**：新 runtime 验证失败时旧版仍可用；可恢复到 previous / bundled（2026-05-27 手测到“失败保留 current”）。
 - [ ] **Schema 单一真源**：manifest 文档、Rust parser、TS contract、示例文件一致。
 
 ---

@@ -18,8 +18,9 @@ export interface PrepareModelApi {
 
 export function usePrepareModelController(
   refreshAsrHealth: () => Promise<void>,
-  _asrCaps: AsrHealthCapabilities | null,
+  _unusedAsrCaps: AsrHealthCapabilities | null,
 ): PrepareModelApi {
+  void _unusedAsrCaps;
   const [funasrInstallMessage, setFunasrInstallMessage] = useState<string>("");
   const [prepareModelBusy, setPrepareModelBusy] = useState(false);
   const [prepareModelProgress, setPrepareModelProgress] = useState(0);
