@@ -155,7 +155,7 @@ R9     发版集成验收（REL-1）
 |----|-----|------|------|----------|----------|
 | — | R3a/b/c | ✅ | — | keychain、profile、缓存/manifest | 各 acceptance |
 | **①** | **R3h-0** | 🟡 | 2–3d | 构建脚本 / smoke / `sidecarIntegrity` / Win `disk_free_bytes` 已有工作区实现；待跨平台构建 smoke 与 Windows 手测 | [remediation §5 Phase 0](../specs/rushi-local-runtime-catalog-remediation-plan.md) |
-| **②** | **R3h-1** | 🟡 | 5–7d | `local_runtime/`、manifest 下载、sha256、app_data 优先、下载进度 UI 已有最小闭环；本轮继续补 **signed manifest / pinned key / current+previous / rollback / 手测** | remediation §5 Phase 1 |
+| **②** | **R3h-1** | ✅ | 5–7d | `local_runtime/`、signed manifest / pinned key、`current+previous` / rollback、下载预算 / zip guard、诊断导出、timeout/cancel/state feedback 与 focused tests 已收口；可进入 **R3f** 单独签收 | remediation §5 Phase 1 |
 | **③** | **R3f** | 🟡 | 2–3d | 诊断 + 一键准备 + 8741 冲突；已接入 R3h-1 最小闭环，**须在 ①② 发行级补齐后手测** | [`r3f-asr-setup-wizard-acceptance.md`](../specs/r3f-asr-setup-wizard-acceptance.md) |
 | **④** | **R3e-A** | ⏳ | 2–3d | 动态超时 + 失败分类 | [`r3e-long-audio-transcribe-acceptance.md`](../specs/r3e-long-audio-transcribe-acceptance.md) |
 | **⑤** | **R3g-A** | ⏳ | 3–5d | 双 SKU + `prepare(model_id)` + 硬件阈值文案 | [`r3g-local-asr-model-catalog-acceptance.md`](../specs/r3g-local-asr-model-catalog-acceptance.md) |
@@ -205,7 +205,7 @@ R9     发版集成验收（REL-1）
 | R1 | ✅ 已完成（文档门禁） | 2026-05-25 |
 | R2 | ✅ 已完成（DeepSeek 手测通过） | 2026-05-25 |
 | R3 | 🟡 进行中（a/b/c ✅；**R3h/f/e/g/d** 按 §4.1） | — |
-| R3h | 🟡 LRC 整改进行中：①② 工作区已有最小闭环；待发行级信任、回滚、手测与 `R3h-I` 收口 | — |
+| R3h | 🟡 LRC 整改进行中：①② 已到 release-system 最小闭环；下一刀转 **R3f** 手测签收，后续再进 ⑥⑦ 与 `R3h-I` 收口 | — |
 | R4 | ⏳ | — |
 | R5 | ⏳ | — |
 | R6 | ⏳ | — |
@@ -544,7 +544,7 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 - [x] **ASR 引擎方案 A**（FunASR 先行 + Sherpa Spike 门控；[ADR-0003](../../adr/0003-asr-engine-funasr-first-sherpa-spike-gate.md)）  
 - [ ] **R3h §11 发行门禁**（零终端、构建 smoke、损坏可恢复…）
 
-**下一刀**：**① R3h-0** → **② R3h-1** → **③ R3f 手测**（见 §4.1.1）
+**下一刀**：**③ R3f 手测签收** → **④ R3e-A** → **⑤ R3g-A**（见 §4.1.1）
 
 ---
 
@@ -594,6 +594,7 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | 2026-05-26 | **R3 重排**：**R3h（LRC）** 升为 epic；remediation v1.1；§4.1.1 为唯一顺序 |
 | 2026-05-26 | **ADR-0003**：**方案 A** — FunASR + LRC 先行；Sherpa 经 R3h-3.5 Spike 门控；否决方案 B（直接上 Sherpa） |
 | 2026-05-27 | **R3h-1 手测收口**：`healthy install`、`corrupt -> repair`、`bundled offline fallback`、`upgrade failure keeps current` 走通；补 UI 失败反馈与 verifier `HTTP 5xx` fast-fail |
+| 2026-05-27 | **R3h-1 硬化收口**：补 manifest/artifact 超时、`verify/revalidate/restore` 取消、`clear`/same-version rollback 语义、中文错误映射与 focused tests；验证通过 desktop hard gate + `cargo test` |
 
 ---
 

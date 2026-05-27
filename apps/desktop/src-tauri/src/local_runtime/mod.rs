@@ -59,8 +59,57 @@ fn describe_local_runtime_error(error: &str) -> String {
         "local_runtime_extract_too_many_entries" | "local_runtime_extract_size_limit_exceeded" => {
             "下载到的语音识别组件压缩包结构异常，已拒绝解压。".into()
         }
+        "local_runtime_executable_missing" => {
+            "语音识别组件缺少可执行文件或安装不完整，请重新下载安装。".into()
+        }
+        "local_runtime_install_corrupt" => {
+            "语音识别组件安装后校验仍异常，请重新下载安装或导出诊断包。".into()
+        }
+        "local_runtime_not_revalidatable" => {
+            "当前安装元数据已损坏，无法直接重新验证。请先清除后重新下载安装。".into()
+        }
+        "local_runtime_not_restorable" => {
+            "当前安装元数据已损坏，无法恢复上一版本。".into()
+        }
         "local_runtime_no_previous" => "当前没有可恢复的上一版本侧车。".into(),
         "local_runtime_previous_missing" => "记录中的上一版本侧车目录已缺失，无法恢复。".into(),
+        _ if error
+            .strip_prefix("local_runtime_component_missing:")
+            .is_some() =>
+        {
+            "当前 manifest 不包含本平台的语音识别组件。".into()
+        }
+        _ if error
+            .strip_prefix("local_runtime_shell_version_incompatible:")
+            .is_some() =>
+        {
+            "当前桌面端版本过低，无法安装该语音识别组件。请先升级应用。".into()
+        }
+        _ if error.strip_prefix("backup_runtime_failed:").is_some() => {
+            "在切换新语音识别组件前备份当前版本失败，已中止升级。".into()
+        }
+        _ if error.strip_prefix("promote_runtime_failed:").is_some() => {
+            "语音识别组件已下载，但切换到新版本时失败。当前版本未变更。".into()
+        }
+        _ if error.strip_prefix("create_local_runtime_root_failed:").is_some()
+            || error.strip_prefix("create_extract_dir_failed:").is_some()
+            || error.strip_prefix("create_dir_failed:").is_some()
+            || error.strip_prefix("create_file_failed:").is_some()
+            || error.strip_prefix("artifact_create_failed:").is_some()
+            || error.strip_prefix("artifact_write_failed:").is_some() =>
+        {
+            "无法写入应用数据目录，请检查磁盘权限或剩余空间后重试。".into()
+        }
+        _ if error.strip_prefix("artifact_").is_some() => {
+            "下载语音识别组件失败，请检查网络、镜像源或本地文件后重试。".into()
+        }
+        _ if error.strip_prefix("open_zip_failed:").is_some()
+            || error.strip_prefix("read_zip_entry_failed:").is_some()
+            || error.strip_prefix("extract_file_failed:").is_some()
+            || error == "zip_path_traversal" =>
+        {
+            "下载到的语音识别组件压缩包无效，无法完成解压安装。".into()
+        }
         _ if error.strip_prefix("local_runtime_verify_").is_some() => {
             "语音识别组件已下载，但健康验证未通过。可尝试重新验证、恢复上一版或导出诊断包。".into()
         }
@@ -84,7 +133,7 @@ pub fn local_runtime_diagnose(
         _ if matches!(
             manifest.status.as_str(),
             "missing" | "error" | "incompatible" | "source_rejected" | "signature_invalid"
-        ) && installed.status != integrity::InstalledRuntimeStatus::Installed =>
+        ) =>
         {
             manifest.blocking_issue.clone()
         }
@@ -105,4 +154,24 @@ pub fn local_runtime_diagnose(
         installed,
         blocking_issue,
     })
+}
+
+#[cfg(test)]
+mod tests {
+    use super::describe_local_runtime_error;
+
+    #[test]
+    fn describe_local_runtime_error_maps_known_runtime_failures() {
+        assert!(describe_local_runtime_error("local_runtime_executable_missing").contains("可执行文件"));
+        assert!(describe_local_runtime_error("local_runtime_component_missing:linux-x64").contains("本平台"));
+        assert!(
+            describe_local_runtime_error("local_runtime_shell_version_incompatible:0.1.0:0.2.0")
+                .contains("版本过低")
+        );
+        assert!(describe_local_runtime_error("backup_runtime_failed:disk busy").contains("备份当前版本失败"));
+        assert!(describe_local_runtime_error("promote_runtime_failed:rename").contains("切换到新版本时失败"));
+        assert!(describe_local_runtime_error("artifact_http_500").contains("下载语音识别组件失败"));
+        assert!(describe_local_runtime_error("open_zip_failed:bad zip").contains("压缩包无效"));
+        assert!(describe_local_runtime_error("local_runtime_not_revalidatable").contains("元数据已损坏"));
+    }
 }

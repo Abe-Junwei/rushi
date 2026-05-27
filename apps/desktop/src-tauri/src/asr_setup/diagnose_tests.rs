@@ -74,6 +74,31 @@ fn sidecar_integrity_corrupt_on_health_500() {
 }
 
 #[test]
+fn sidecar_integrity_keeps_foreign_http_500_as_unknown() {
+    let health = AsrSetupHealthSnapshot {
+        health_reachable: false,
+        ffmpeg_ok: false,
+        funasr_import_ok: false,
+        funasr_ready: false,
+        funasr_default_model_cached: false,
+        funasr_vad_model_cached: false,
+        funasr_required_models_cached: false,
+        ready_for_transcribe: false,
+        transcription_mode: "stub".into(),
+    };
+    assert_eq!(
+        infer_sidecar_integrity(
+            true,
+            &InstalledRuntimeStatus::Missing,
+            &AsrPortStatus::Foreign,
+            &HealthFetch::HttpError(500),
+            &health,
+        ),
+        "unknown"
+    );
+}
+
+#[test]
 fn sidecar_integrity_ok_when_import_ok() {
     let health = AsrSetupHealthSnapshot {
         health_reachable: true,

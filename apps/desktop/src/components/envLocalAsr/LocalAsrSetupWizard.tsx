@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useRef } from "react";
 import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../../config/typography";
 import { formatDiskFree } from "../../services/asr/asrSetupContract";
@@ -43,13 +43,15 @@ export function LocalAsrSetupWizard({ setup, busy, openAppDataFolder, exportDiag
   const retainedCurrentAfterInstallError =
     localRuntimeDiag?.install.phase === "error" && localRuntimeDiag.installed.status === "installed";
   const manifestInstallBlocked = isLocalRuntimeManifestInstallBlocked(localRuntimeDiag);
+  const initialDiagnoseTriggeredRef = useRef(false);
   const updateAvailable =
     !!localRuntimeDiag?.availableVersion &&
     !!localRuntimeDiag?.installed.version &&
     localRuntimeDiag.availableVersion !== localRuntimeDiag.installed.version;
 
   useEffect(() => {
-    if (isTauriRuntime() && !setupReport && !setupBusy && !diagnoseBusy) {
+    if (isTauriRuntime() && !initialDiagnoseTriggeredRef.current && !setupReport && !setupBusy && !diagnoseBusy) {
+      initialDiagnoseTriggeredRef.current = true;
       void refreshSetupDiagnose();
     }
   }, [diagnoseBusy, refreshSetupDiagnose, setupBusy, setupReport]);
@@ -95,6 +97,8 @@ export function LocalAsrSetupWizard({ setup, busy, openAppDataFolder, exportDiag
                 : retainedCurrentAfterInstallError
                   ? localRuntimeDiag.blockingIssue ??
                     `升级失败，已保留当前版本${localRuntimeDiag.installed.version ? `（${localRuntimeDiag.installed.version}）` : ""}`
+                  : localRuntimeDiag.installed.status === "corrupt"
+                    ? localRuntimeDiag.installed.detail ?? "已安装组件损坏，请重新下载或恢复上一版本。"
                   : localRuntimeDiag.installed.status === "installed"
                     ? `已安装${localRuntimeDiag.installed.version ? `（${localRuntimeDiag.installed.version}）` : ""}`
                     : localRuntimeDiag.blockingIssue ?? "尚未安装。"}
@@ -147,14 +151,14 @@ export function LocalAsrSetupWizard({ setup, busy, openAppDataFolder, exportDiag
             >
               下载 / 修复语音识别组件
             </button>
-            {(localRuntimeDiag.install.phase === "downloading" || localRuntimeDiag.install.phase === "installing") ? (
+            {runtimeInstallRunning ? (
               <button
                 type="button"
                 className={CONTROL_BTN_SECONDARY}
                 disabled={wizardBusy}
                 onClick={() => void cancelLocalRuntime()}
               >
-                取消下载
+                取消当前操作
               </button>
             ) : null}
             <button
@@ -213,8 +217,8 @@ export function LocalAsrSetupWizard({ setup, busy, openAppDataFolder, exportDiag
           ) : null}
           {retainedCurrentAfterInstallError && localRuntimeDiag.install.error ? (
             <p className="mt-2 rounded bg-zen-cinnabar/10 px-2 py-1 text-[11px] text-zen-cinnabar">
-              升级未生效，当前仍使用 {localRuntimeDiag.installed.version ?? "已安装版本"}：
-              {localRuntimeDiag.install.error}
+              升级未生效，当前仍使用 {localRuntimeDiag.installed.version ?? "已安装版本"}；
+              请使用上方诊断说明、重新验证或导出诊断包继续排查。
             </p>
           ) : null}
         </div>

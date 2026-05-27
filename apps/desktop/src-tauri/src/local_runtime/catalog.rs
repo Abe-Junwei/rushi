@@ -137,6 +137,12 @@ pub fn manifest_blocking_issue(error: &str) -> Option<String> {
         "local_runtime_manifest_signature_mismatch" => {
             Some("当前 manifest 签名校验失败，已拒绝下载安装。".into())
         }
+        _ if error.strip_prefix("manifest_fetch_failed:").is_some()
+            || error.strip_prefix("manifest_http_").is_some()
+            || error.strip_prefix("manifest_client_build_failed:").is_some() =>
+        {
+            Some("无法下载本机语音识别组件 manifest，请检查下载源或网络后重试。".into())
+        }
         _ if error.strip_prefix("manifest_read_failed:").is_some() => {
             Some("无法读取本机语音识别组件 manifest，请检查下载源是否可访问。".into())
         }

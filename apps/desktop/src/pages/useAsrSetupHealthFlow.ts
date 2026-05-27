@@ -30,6 +30,7 @@ type Params = {
     prepareDefaultFunasrModel: () => Promise<void>;
   };
   refreshSetupDiagnose: () => Promise<unknown>;
+  markPortConflictAcknowledged: () => void;
   setSetupBusy: Dispatch<SetStateAction<boolean>>;
   setSetupSteps: Dispatch<SetStateAction<AsrSetupStep[]>>;
   setSetupMessage: Dispatch<SetStateAction<string>>;
@@ -39,6 +40,7 @@ type Params = {
 export function useAsrSetupHealthFlow({
   deps,
   refreshSetupDiagnose,
+  markPortConflictAcknowledged,
   setSetupBusy,
   setSetupSteps,
   setSetupMessage,
@@ -117,19 +119,33 @@ export function useAsrSetupHealthFlow({
       await deps.refreshAsrRuntimeInfo();
       const latest = (await refreshSetupDiagnose()) as { readyForTranscribe?: boolean } | null;
       if (latest?.readyForTranscribe) {
+        markPortConflictAcknowledged();
         setSetupSteps((steps) =>
           patchStep(steps, "done", { status: "ok", detail: "当前 8741 服务已可用于转写" }),
         );
         setSetupMessage("已使用当前 8741 服务，可直接开始转写。");
         setSetupOutcome("ready");
       } else {
+        markPortConflictAcknowledged();
         setSetupMessage("已使用当前 8741 服务，但模型尚未完全准备好，请继续完成模型下载。");
         setSetupOutcome("blocked");
       }
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      setSetupMessage(`使用当前 8741 服务失败：${msg}`);
+      setSetupOutcome("error");
     } finally {
       setSetupBusy(false);
     }
-  }, [deps, refreshSetupDiagnose, setSetupBusy, setSetupMessage, setSetupOutcome, setSetupSteps]);
+  }, [
+    deps,
+    markPortConflictAcknowledged,
+    refreshSetupDiagnose,
+    setSetupBusy,
+    setSetupMessage,
+    setSetupOutcome,
+    setSetupSteps,
+  ]);
 
   return {
     pollUntilHealth,

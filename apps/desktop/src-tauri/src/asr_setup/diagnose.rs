@@ -133,10 +133,14 @@ fn infer_sidecar_integrity(
     }
 
     match fetch {
-        HealthFetch::HttpError(code) if *code >= 400 && matches!(port, AsrPortStatus::RushiAsr) => {
+        HealthFetch::HttpError(code)
+            if (400..500).contains(code) && matches!(port, AsrPortStatus::RushiAsr) =>
+        {
             return "corrupt";
         }
-        HealthFetch::HttpError(500..) => return "corrupt",
+        HealthFetch::HttpError(code) if *code >= 500 && matches!(port, AsrPortStatus::RushiAsr) => {
+            return "corrupt";
+        }
         HealthFetch::Ok(_) if health.health_reachable && !health.funasr_import_ok => {
             if matches!(port, AsrPortStatus::RushiAsr | AsrPortStatus::Free) {
                 return "corrupt";

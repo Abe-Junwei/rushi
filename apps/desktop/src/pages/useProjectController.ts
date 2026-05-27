@@ -17,10 +17,11 @@ export { parseAsrHealthJson, funasrManualSetupCommands };
 export function useProjectController() {
   const lifecycle = useProjectLifecycleController();
   const asr = useAsrBridgeController();
+  const { refreshAsrHealth, refreshAsrModelCacheInfo } = asr;
   const refreshAsrRuntimeInfo = useCallback(async () => {
-    await asr.refreshAsrHealth();
-    await asr.refreshAsrModelCacheInfo();
-  }, [asr.refreshAsrHealth, asr.refreshAsrModelCacheInfo]);
+    await refreshAsrHealth();
+    await refreshAsrModelCacheInfo();
+  }, [refreshAsrHealth, refreshAsrModelCacheInfo]);
   const asrSetup = useAsrSetupController({
     refreshAsrHealth: asr.refreshAsrHealth,
     refreshAsrRuntimeInfo,
@@ -109,6 +110,7 @@ export function useProjectController() {
     prepareModelProgress: asr.prepareModelProgress,
     prepareModelFailure: asr.prepareModelFailure,
     prepareDefaultFunasrModel: asr.prepareDefaultFunasrModel,
+    cancelPrepareModel: asr.cancelPrepareModel,
     refreshAsrModelCacheInfo: asr.refreshAsrModelCacheInfo,
     clearAsrModelCache: asr.clearAsrModelCache,
     retryBundledAsrSidecar: asr.retryBundledAsrSidecar,

@@ -156,6 +156,7 @@ export function ProjectPanel() {
               installFunasrDepsInteractive={c.installFunasrDepsInteractive}
               copyFunasrManualCommands={c.copyFunasrManualCommands}
               prepareDefaultFunasrModel={c.prepareDefaultFunasrModel}
+              cancelPrepareModel={c.cancelPrepareModel}
               refreshAsrModelCacheInfo={c.refreshAsrModelCacheInfo}
               clearAsrModelCache={c.clearAsrModelCache}
               retryBundledAsrSidecar={c.retryBundledAsrSidecar}

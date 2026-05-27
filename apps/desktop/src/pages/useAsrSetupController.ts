@@ -44,7 +44,8 @@ export function useAsrSetupController(deps: {
   const [diagnoseBusy, setDiagnoseBusy] = useState(false);
   const [setupMessage, setSetupMessage] = useState("");
   const [setupOutcome, setSetupOutcome] = useState<AsrSetupOutcome>("idle");
-  const portConflict = setupReport?.portStatus === "foreign";
+  const [portConflictAcknowledged, setPortConflictAcknowledged] = useState(false);
+  const portConflict = setupReport?.portStatus === "foreign" && !portConflictAcknowledged;
 
   const {
     localRuntimeDiag,
@@ -73,6 +74,7 @@ export function useAsrSetupController(deps: {
 
       const resetSteps = options?.resetSteps !== false;
       setDiagnoseBusy(true);
+      setPortConflictAcknowledged(false);
       setSetupMessage("");
       setSetupOutcome("idle");
       if (resetSteps) {
@@ -122,6 +124,7 @@ export function useAsrSetupController(deps: {
   const { pollUntilHealth, acceptForeignPortService } = useAsrSetupHealthFlow({
     deps,
     refreshSetupDiagnose: async () => refreshSetupDiagnose({ resetSteps: false }),
+    markPortConflictAcknowledged: () => setPortConflictAcknowledged(true),
     setSetupBusy,
     setSetupSteps,
     setSetupMessage,
@@ -136,6 +139,7 @@ export function useAsrSetupController(deps: {
     }
 
     setSetupBusy(true);
+    setPortConflictAcknowledged(false);
     setSetupOutcome("running");
     setSetupMessage("");
     setSetupSteps(initialSetupSteps());
@@ -286,6 +290,16 @@ export function useAsrSetupController(deps: {
       setSetupMessage("一键准备完成，可直接开始转写。");
       setSetupOutcome("ready");
       await deps.refreshAsrRuntimeInfo();
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      setSetupSteps((steps) =>
+        patchStep(steps, "done", {
+          status: "error",
+          detail: "一键准备过程中出现未处理异常",
+        }),
+      );
+      setSetupMessage(`一键准备失败：${msg}`);
+      setSetupOutcome("error");
     } finally {
       setSetupBusy(false);
     }

@@ -1,6 +1,6 @@
 use super::installer::{
-    append_runtime_log_line, install_phase_running, reset_cancel_handle, update_progress,
-    LocalRuntimeActionResult, LocalRuntimeInstallerState,
+    append_runtime_log_line, install_phase_running, reset_cancel_handle, set_cancel_handle,
+    update_progress, LocalRuntimeActionResult, LocalRuntimeInstallerState,
 };
 use super::integrity::{
     clear_installed_runtime, inspect_installed_runtime, mark_runtime_corrupt, read_marker,
@@ -9,6 +9,8 @@ use super::integrity::{
 use super::install_support::verify_installed_runtime;
 use crate::asr_sidecar;
 use crate::DbState;
+use std::sync::atomic::AtomicBool;
+use std::sync::Arc;
 use tauri::{AppHandle, Manager, State};
 
 fn installer_busy(handle: &AppHandle) -> Result<bool, String> {
@@ -21,7 +23,20 @@ fn installer_busy(handle: &AppHandle) -> Result<bool, String> {
     Ok(install_phase_running(&guard.progress.phase))
 }
 
-fn run_revalidate(app_root: &std::path::Path) -> Result<String, String> {
+fn is_transient_verify_error(err: &str) -> bool {
+    err == "cancelled"
+        || err.strip_prefix("local_runtime_verify_health_unreachable:").is_some()
+        || err.strip_prefix("local_runtime_verify_port_bind_failed:").is_some()
+        || err.strip_prefix("local_runtime_verify_port_query_failed:").is_some()
+        || err.contains("local_runtime_verify_process_exited:exit status: 0")
+        || err.contains("local_runtime_verify_process_exited_after_health:exit status: 0")
+}
+
+fn should_persist_revalidate_corrupt(err: &str) -> bool {
+    !is_transient_verify_error(err)
+}
+
+fn run_revalidate(app_root: &std::path::Path, cancel: &Arc<AtomicBool>) -> Result<String, String> {
     let marker = read_marker(app_root).map_err(|_| "local_runtime_not_revalidatable".to_string())?;
     let install_dir = version_dir(app_root, &marker.version);
     let installed_exe = install_dir.join(&marker.exe_relpath);
@@ -29,7 +44,14 @@ fn run_revalidate(app_root: &std::path::Path) -> Result<String, String> {
         return Err("local_runtime_executable_missing".into());
     }
     let models_root = app_root.join("models");
-    match verify_installed_runtime(&installed_exe, Some(&models_root)) {
+    let verify = |cancel: &Arc<AtomicBool>| verify_installed_runtime(&installed_exe, Some(&models_root), Some(cancel));
+    match verify(cancel).or_else(|err| {
+        if is_transient_verify_error(&err) && err != "cancelled" {
+            verify(cancel)
+        } else {
+            Err(err)
+        }
+    }) {
         Ok(()) => {
             write_marker_with_previous(
                 app_root,
@@ -44,13 +66,15 @@ fn run_revalidate(app_root: &std::path::Path) -> Result<String, String> {
             Ok(marker.version)
         }
         Err(err) => {
-            let _ = mark_runtime_corrupt(app_root, &marker, Some(&err), Some("verifying"));
+            if should_persist_revalidate_corrupt(&err) {
+                let _ = mark_runtime_corrupt(app_root, &marker, Some(&err), Some("verifying"));
+            }
             Err(err)
         }
     }
 }
 
-fn run_restore_previous(app_root: &std::path::Path) -> Result<String, String> {
+fn run_restore_previous(app_root: &std::path::Path, cancel: &Arc<AtomicBool>) -> Result<String, String> {
     let marker = read_marker(app_root).map_err(|_| "local_runtime_not_restorable".to_string())?;
     let Some(previous_version) = marker.previous_version.as_deref() else {
         return Err("local_runtime_no_previous".into());
@@ -64,7 +88,7 @@ fn run_restore_previous(app_root: &std::path::Path) -> Result<String, String> {
         return Err("local_runtime_previous_missing".into());
     }
     let models_root = app_root.join("models");
-    verify_installed_runtime(&previous_exe, Some(&models_root))?;
+    verify_installed_runtime(&previous_exe, Some(&models_root), Some(cancel))?;
     write_marker_with_previous(
         app_root,
         previous_version,
@@ -109,10 +133,12 @@ pub fn local_runtime_revalidate_install(
         None,
         None,
     );
+    let cancel_flag = Arc::new(AtomicBool::new(false));
+    set_cancel_handle(&app, cancel_flag.clone())?;
     let app_root = state.inner().root.clone();
     let handle = app.clone();
     tauri::async_runtime::spawn(async move {
-        let result = tauri::async_runtime::spawn_blocking(move || run_revalidate(&app_root))
+        let result = tauri::async_runtime::spawn_blocking(move || run_revalidate(&app_root, &cancel_flag))
             .await
             .map_err(|e| e.to_string())
             .and_then(|r| r);
@@ -161,13 +187,14 @@ pub fn local_runtime_clear_install(
             reason: Some("already_running".into()),
         });
     }
-    asr_sidecar::stop_bundled(&app);
     if !runtime_root_exists(&state.inner().root) {
+        update_progress(&app, "idle", String::new(), None, None, None, None);
         return Ok(LocalRuntimeActionResult {
             ok: false,
             reason: Some("not_installed".into()),
         });
     }
+    asr_sidecar::stop_bundled(&app);
     clear_installed_runtime(&state.inner().root)?;
     update_progress(&app, "idle", String::new(), None, None, None, None);
     append_runtime_log_line(&app, "INFO local_runtime_cleared");
@@ -204,10 +231,12 @@ pub fn local_runtime_restore_previous(
         None,
         None,
     );
+    let cancel_flag = Arc::new(AtomicBool::new(false));
+    set_cancel_handle(&app, cancel_flag.clone())?;
     let app_root = state.inner().root.clone();
     let handle = app.clone();
     tauri::async_runtime::spawn(async move {
-        let result = tauri::async_runtime::spawn_blocking(move || run_restore_previous(&app_root))
+        let result = tauri::async_runtime::spawn_blocking(move || run_restore_previous(&app_root, &cancel_flag))
             .await
             .map_err(|e| e.to_string())
             .and_then(|r| r);

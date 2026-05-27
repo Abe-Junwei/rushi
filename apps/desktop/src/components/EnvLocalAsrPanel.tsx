@@ -27,6 +27,7 @@ type Props = {
   installFunasrDepsInteractive: () => Promise<void>;
   copyFunasrManualCommands: () => Promise<void>;
   prepareDefaultFunasrModel: () => Promise<void>;
+  cancelPrepareModel: () => void;
   refreshAsrModelCacheInfo: () => Promise<void>;
   clearAsrModelCache: () => Promise<void>;
   retryBundledAsrSidecar: () => Promise<void>;
@@ -52,6 +53,7 @@ export function EnvLocalAsrPanel({
   installFunasrDepsInteractive,
   copyFunasrManualCommands,
   prepareDefaultFunasrModel,
+  cancelPrepareModel,
   refreshAsrModelCacheInfo,
   clearAsrModelCache,
   retryBundledAsrSidecar,
@@ -164,7 +166,7 @@ export function EnvLocalAsrPanel({
           </p>
         </div>
 
-        <div className="flex justify-start">
+        <div className="flex justify-start gap-2">
           <button
             type="button"
             className={`flex items-center gap-2 rounded border border-transparent bg-zen-saffron px-4 py-1.5 ${PANEL_TYPOGRAPHY.button} text-notion-bg shadow-sm outline-none transition-all hover:brightness-110 focus:ring-2 focus:ring-zen-saffron/30 disabled:opacity-40`}
@@ -174,9 +176,14 @@ export function EnvLocalAsrPanel({
             <Download className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
             {prepareModelBusy ? "正在下载默认模型" : "下载默认模型"}
           </button>
+          {prepareModelBusy ? (
+            <SmallButton disabled={busy} onClick={cancelPrepareModel}>
+              取消下载
+            </SmallButton>
+          ) : null}
         </div>
 
-        {funasrInstallMessage && prepareModelBusy ? (
+        {funasrInstallMessage ? (
           <pre className="max-h-28 overflow-auto whitespace-pre-wrap font-mono text-[12px] text-zen-indigo">{funasrInstallMessage}</pre>
         ) : null}
 

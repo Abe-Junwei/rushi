@@ -259,4 +259,20 @@ describe("useLocalRuntimeSetupSupport", () => {
     expect(result.current.setupMessage).toContain("下载 / 修复语音识别组件失败");
     expect(result.current.setupMessage).toContain("desktop:dev");
   });
+
+  it("reports when there is no cancellable runtime task", async () => {
+    localRuntimeCancelDownload.mockResolvedValue(false);
+    localRuntimeDiagnose.mockResolvedValue(makeDiag());
+
+    const { result } = renderHook(() => useHarness());
+
+    await act(async () => {
+      await result.current.cancelLocalRuntime();
+    });
+
+    await waitFor(() => {
+      expect(result.current.setupOutcome).toBe("blocked");
+    });
+    expect(result.current.setupMessage).toContain("当前没有正在进行的组件下载或验证任务");
+  });
 });

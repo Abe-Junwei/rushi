@@ -5,6 +5,7 @@ use super::install_support::{
 };
 use super::integrity::{
     inspect_installed_runtime, local_runtime_root, read_marker, version_dir, write_marker_with_previous,
+    InstalledRuntimeMarker,
 };
 use super::manifest::{current_platform_key, is_shell_version_compatible, select_asr_sidecar_component};
 use crate::DbState;
@@ -130,6 +131,17 @@ pub(super) fn reset_cancel_handle(handle: &AppHandle) {
     }
 }
 
+pub(super) fn set_cancel_handle(handle: &AppHandle, cancel: Arc<AtomicBool>) -> Result<(), String> {
+    let Some(state) = handle.try_state::<LocalRuntimeInstallerState>() else {
+        return Err("local_runtime_state_missing".into());
+    };
+    let Ok(mut guard) = state.0.lock() else {
+        return Err("local_runtime_state_poisoned".into());
+    };
+    guard.cancel = Some(cancel);
+    Ok(())
+}
+
 fn required_install_bytes(component_size: Option<u64>) -> Option<u64> {
     component_size.map(|size| {
         size.saturating_mul(3)
@@ -150,6 +162,22 @@ fn ensure_install_disk_budget(app_root: &Path, artifact_size: Option<u64>) -> Re
         ));
     }
     Ok(())
+}
+
+fn previous_marker_for_install<'a>(
+    existing_marker: Option<&'a InstalledRuntimeMarker>,
+    installing_version: &str,
+) -> Option<(&'a str, &'a str)> {
+    existing_marker.and_then(|marker| {
+        if marker.version != installing_version {
+            Some((marker.version.as_str(), marker.exe_relpath.as_str()))
+        } else {
+            marker
+                .previous_version
+                .as_deref()
+                .zip(marker.previous_exe_relpath.as_deref())
+        }
+    })
 }
 
 fn run_install(handle: &AppHandle, app_root: &Path, cancel: Arc<AtomicBool>) -> Result<(), String> {
@@ -184,10 +212,9 @@ fn run_install(handle: &AppHandle, app_root: &Path, cancel: Arc<AtomicBool>) -> 
     let tmp_zip = root.join(format!("download-{}.zip.part", Uuid::new_v4()));
     let staging = root.join(format!("staging-{}", Uuid::new_v4()));
     let install_dir = version_dir(app_root, &component.version);
-    let existing_marker = read_marker(app_root).ok().filter(|marker| {
-        inspect_installed_runtime(app_root).status == super::integrity::InstalledRuntimeStatus::Installed
-            && marker.version != component.version
-    });
+    let existing_marker = read_marker(app_root)
+        .ok()
+        .filter(|_| inspect_installed_runtime(app_root).status == super::integrity::InstalledRuntimeStatus::Installed);
     download_component_artifact(handle, component, &tmp_zip, &cancel)?;
     ensure_not_cancelled(&cancel)?;
     let actual_sha = sha256_hex(&tmp_zip)?;
@@ -222,7 +249,7 @@ fn run_install(handle: &AppHandle, app_root: &Path, cancel: Arc<AtomicBool>) -> 
         None,
     );
     let models_root = app_root.join("models");
-    if let Err(err) = verify_installed_runtime(&staged_exe, Some(&models_root)) {
+    if let Err(err) = verify_installed_runtime(&staged_exe, Some(&models_root), Some(&cancel)) {
         let _ = fs::remove_dir_all(&staging);
         return Err(err);
     }
@@ -251,9 +278,7 @@ fn run_install(handle: &AppHandle, app_root: &Path, cancel: Arc<AtomicBool>) -> 
         app_root,
         &component.version,
         &component.exe_relpath,
-        existing_marker
-            .as_ref()
-            .map(|marker| (marker.version.as_str(), marker.exe_relpath.as_str())),
+        previous_marker_for_install(existing_marker.as_ref(), &component.version),
         Some("ready"),
     ) {
         let _ = fs::remove_dir_all(&install_dir);
@@ -385,7 +410,8 @@ pub fn local_runtime_cancel_download(app: AppHandle) -> Result<bool, String> {
 
 #[cfg(test)]
 mod tests {
-    use super::install_phase_running;
+    use super::{install_phase_running, previous_marker_for_install};
+    use crate::local_runtime::integrity::InstalledRuntimeMarker;
 
     #[test]
     fn install_phase_running_treats_verifying_as_busy() {
@@ -395,6 +421,22 @@ mod tests {
         assert!(!install_phase_running("idle"));
         assert!(!install_phase_running("installed"));
         assert!(!install_phase_running("error"));
+    }
+
+    #[test]
+    fn previous_marker_for_install_preserves_previous_on_same_version_reinstall() {
+        let marker = InstalledRuntimeMarker {
+            version: "0.2.0".into(),
+            exe_relpath: "rushi-asr-sidecar/rushi-asr-sidecar".into(),
+            verify_state: Some("ok".into()),
+            previous_version: Some("0.1.0".into()),
+            previous_exe_relpath: Some("rushi-asr-sidecar/rushi-asr-sidecar".into()),
+            last_verify_error: None,
+            last_install_phase: Some("ready".into()),
+        };
+
+        let previous = previous_marker_for_install(Some(&marker), "0.2.0");
+        assert_eq!(previous, Some(("0.1.0", "rushi-asr-sidecar/rushi-asr-sidecar")));
     }
 }
 

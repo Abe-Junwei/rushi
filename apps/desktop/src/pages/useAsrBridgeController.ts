@@ -58,6 +58,7 @@ export interface AsrBridgeApi {
   clearAsrModelCache: () => Promise<void>;
   asrCacheMessage: string;
   prepareDefaultFunasrModel: () => Promise<void>;
+  cancelPrepareModel: () => void;
   retryBundledAsrSidecar: () => Promise<void>;
   installFunasrDepsInteractive: () => Promise<void>;
   copyFunasrManualCommands: () => Promise<void>;
@@ -260,6 +261,7 @@ export function useAsrBridgeController(): AsrBridgeApi {
     clearAsrModelCache,
     asrCacheMessage,
     prepareDefaultFunasrModel: modelCtrl.prepareDefaultFunasrModel,
+    cancelPrepareModel: modelCtrl.cancelPrepareModel,
     retryBundledAsrSidecar,
     installFunasrDepsInteractive,
     copyFunasrManualCommands,

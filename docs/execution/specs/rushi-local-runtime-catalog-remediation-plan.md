@@ -387,6 +387,7 @@ sequenceDiagram
 - `bundled offline fallback`：移除 `app_data` runtime 且不注入 manifest 下载源时，dev 实例自动拉起 bundled sidecar，`/health` 最终返回 `ready_for_transcribe=true`。
 - `upgrade failure keeps current`：以 `0.2.0` corrupt manifest 触发升级失败，日志记录 `local_runtime_verify_http_500`；`current.json` 保持 `0.1.0` / `verify_state=ok`，未覆盖旧版。
 - `upgrade failure UI feedback`：补齐前端状态机与 verifier fast-fail 后，UI 明确提示“升级未生效，当前仍使用 0.1.0”并展示失败细节，不再长时间停留在“正在验证”。
+- `release-system hardening`：补 manifest / artifact HTTP 超时、`verify/revalidate/restore` 取消、`clear` 不再误停无关 bundled、同版本重装保留 `previous`、更完整中文错误映射与 focused tests；验证通过 `npm run typecheck && npm run test && npm run lint && node scripts/check-architecture-guard.mjs && cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml`。
 
 ---
 
@@ -607,9 +608,9 @@ UI **分开展示**「语音识别组件」与「语音模型」占用。
 - [ ] **Windows 磁盘**：空间不足时准备/下载前有预警（Phase 0）。  
 - [ ] **弱网/断网**：下载中断可重试或续传（Phase 2）；无网 bundled 回退（Phase 1）。  
 - [ ] **并发安全**：连点「一键准备」不重复下载/重复 spawn（§3.6）。  
-- [ ] **发行信任**：manifest 已签名并用壳内 pinned key 验证；artifact hash 必检。
+- [x] **发行信任**：manifest 已签名并用壳内 pinned key 验证；artifact hash 必检。
 - [x] **升级回滚**：新 runtime 验证失败时旧版仍可用；可恢复到 previous / bundled（2026-05-27 手测到“失败保留 current”）。
-- [ ] **Schema 单一真源**：manifest 文档、Rust parser、TS contract、示例文件一致。
+- [x] **Schema 单一真源**：manifest 文档、Rust parser、TS contract、示例文件一致。
 
 ---
 

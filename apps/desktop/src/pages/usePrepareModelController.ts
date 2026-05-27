@@ -12,6 +12,7 @@ export interface PrepareModelApi {
   prepareModelFailure: PrepareModelFailureCopy | null;
   funasrInstallMessage: string;
   prepareDefaultFunasrModel: () => Promise<void>;
+  cancelPrepareModel: () => void;
   setPrepareModelFailure: (v: PrepareModelFailureCopy | null) => void;
   setFunasrInstallMessage: (v: string) => void;
 }
@@ -146,12 +147,20 @@ export function usePrepareModelController(
     }
   }, [refreshAsrHealth]);
 
+  const cancelPrepareModel = useCallback(() => {
+    if (!prepareModelBusy) return;
+    prepareModelAbortRef.current?.abort();
+    setPrepareModelFailure(null);
+    setFunasrInstallMessage("已取消默认模型下载。");
+  }, [prepareModelBusy]);
+
   return {
     prepareModelBusy,
     prepareModelProgress,
     prepareModelFailure,
     funasrInstallMessage,
     prepareDefaultFunasrModel,
+    cancelPrepareModel,
     setPrepareModelFailure,
     setFunasrInstallMessage,
   };

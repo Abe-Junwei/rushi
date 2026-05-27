@@ -82,5 +82,7 @@ export function stepsFromReport(report: AsrSetupReport): AsrSetupStep[] {
 export function outcomeFromReport(report: AsrSetupReport): AsrSetupOutcome {
   if (report.readyForTranscribe) return "ready";
   if (report.blockingIssue) return "blocked";
+  if (report.sidecarIntegrity === "corrupt") return "error";
+  if (report.health.healthReachable && !report.health.funasrReady) return "error";
   return "idle";
 }

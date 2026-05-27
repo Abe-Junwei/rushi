@@ -19,6 +19,9 @@ use zip::ZipArchive;
 const VERIFY_HEALTH_TIMEOUT: Duration = Duration::from_secs(90);
 const VERIFY_HEALTH_REQUEST_TIMEOUT: Duration = Duration::from_secs(60);
 const VERIFY_HEALTH_POLL: Duration = Duration::from_millis(250);
+const MANIFEST_FETCH_TIMEOUT: Duration = Duration::from_secs(10);
+const HTTP_CONNECT_TIMEOUT: Duration = Duration::from_secs(10);
+const ARTIFACT_REQUEST_TIMEOUT: Duration = Duration::from_secs(30 * 60);
 const MAX_EXTRACT_BYTES: u64 = 6 * 1024 * 1024 * 1024;
 const MAX_EXTRACT_ENTRIES: usize = 20_000;
 const VERIFY_LOG_TAIL_BYTES: usize = 8 * 1024;
@@ -27,10 +30,27 @@ fn is_http_source(source: &str) -> bool {
     source.strip_prefix("http://").is_some() || source.strip_prefix("https://").is_some()
 }
 
+fn build_manifest_http_client() -> Result<reqwest::Client, String> {
+    reqwest::Client::builder()
+        .connect_timeout(HTTP_CONNECT_TIMEOUT)
+        .timeout(MANIFEST_FETCH_TIMEOUT)
+        .build()
+        .map_err(|e| format!("manifest_client_build_failed: {e}"))
+}
+
+fn build_artifact_http_client() -> Result<reqwest::Client, String> {
+    reqwest::Client::builder()
+        .connect_timeout(HTTP_CONNECT_TIMEOUT)
+        .timeout(ARTIFACT_REQUEST_TIMEOUT)
+        .build()
+        .map_err(|e| format!("artifact_client_build_failed: {e}"))
+}
+
 pub fn read_text_source(source: &str) -> Result<String, String> {
     if is_http_source(source) {
         return tauri::async_runtime::block_on(async move {
-            let resp = reqwest::Client::new()
+            let client = build_manifest_http_client()?;
+            let resp = client
                 .get(source)
                 .send()
                 .await
@@ -137,7 +157,8 @@ fn download_to_path(
         let target_path = target.to_path_buf();
         let cancel_flag = cancel.clone();
         return tauri::async_runtime::block_on(async move {
-            let resp = reqwest::Client::new()
+            let client = build_artifact_http_client()?;
+            let resp = client
                 .get(&url_owned)
                 .send()
                 .await
@@ -340,6 +361,13 @@ fn should_fail_fast_verify(err: &str) -> bool {
         .is_some_and(|status| status >= 500)
 }
 
+fn ensure_verify_not_cancelled(cancel: Option<&Arc<AtomicBool>>) -> Result<(), String> {
+    if let Some(cancel) = cancel {
+        ensure_not_cancelled(cancel)?;
+    }
+    Ok(())
+}
+
 fn apply_runtime_env(cmd: &mut Command, models_root: Option<&Path>) {
     if let Some(models_root) = models_root {
         let _ = fs::create_dir_all(models_root);
@@ -353,10 +381,15 @@ fn apply_runtime_env(cmd: &mut Command, models_root: Option<&Path>) {
     }
 }
 
-pub fn verify_installed_runtime(exe: &Path, models_root: Option<&Path>) -> Result<(), String> {
+pub fn verify_installed_runtime(
+    exe: &Path,
+    models_root: Option<&Path>,
+    cancel: Option<&Arc<AtomicBool>>,
+) -> Result<(), String> {
     let workdir = exe
         .parent()
         .ok_or_else(|| "local_runtime_verify_workdir_missing".to_string())?;
+    ensure_verify_not_cancelled(cancel)?;
     let port = reserve_verify_port()?;
     let stdout_log = verify_log_path("verify", port, "stdout");
     let stderr_log = verify_log_path("verify", port, "stderr");
@@ -385,6 +418,7 @@ pub fn verify_installed_runtime(exe: &Path, models_root: Option<&Path>) -> Resul
             .map_err(|e| format!("local_runtime_verify_client_failed: {e}"))?;
         let mut last_detail = "local_runtime_verify_timeout".to_string();
         while Instant::now() < deadline {
+            ensure_verify_not_cancelled(cancel)?;
             if let Ok(Some(status)) = child.try_wait() {
                 return Err(with_process_log_detail(
                     format!("local_runtime_verify_process_exited:{status}"),
@@ -435,6 +469,7 @@ pub fn verify_installed_runtime(exe: &Path, models_root: Option<&Path>) -> Resul
                     last_detail = err;
                 }
             }
+            ensure_verify_not_cancelled(cancel)?;
             std::thread::sleep(VERIFY_HEALTH_POLL);
         }
         Err(with_process_log_detail(last_detail, &stderr_log, &stdout_log))
@@ -453,7 +488,9 @@ mod tests {
     use std::fs;
     #[cfg(unix)]
     use std::os::unix::fs::PermissionsExt;
-    use std::time::Instant;
+    use std::sync::atomic::{AtomicBool, Ordering};
+    use std::sync::Arc;
+    use std::time::{Duration, Instant};
     use uuid::Uuid;
 
     #[test]
@@ -483,7 +520,7 @@ mod tests {
         permissions.set_mode(0o755);
         fs::set_permissions(&exe, permissions).unwrap();
 
-        let err = verify_installed_runtime(&exe, None).unwrap_err();
+        let err = verify_installed_runtime(&exe, None, None).unwrap_err();
         assert!(err.contains("local_runtime_verify_process_exited"));
         assert!(err.contains("boom-from-test"));
 
@@ -537,7 +574,7 @@ ThreadingHTTPServer((host, port), Handler).serve_forever()
         permissions.set_mode(0o755);
         fs::set_permissions(&exe, permissions).unwrap();
 
-        verify_installed_runtime(&exe, None).unwrap();
+        verify_installed_runtime(&exe, None, None).unwrap();
 
         let _ = fs::remove_dir_all(&temp);
     }
@@ -574,9 +611,54 @@ ThreadingHTTPServer((host, port), Handler).serve_forever()
         fs::set_permissions(&exe, permissions).unwrap();
 
         let start = Instant::now();
-        let err = verify_installed_runtime(&exe, None).unwrap_err();
+        let err = verify_installed_runtime(&exe, None, None).unwrap_err();
         assert!(err.contains("local_runtime_verify_http_500"));
         assert!(start.elapsed().as_secs() < 10);
+
+        let _ = fs::remove_dir_all(&temp);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn verify_installed_runtime_returns_cancelled_when_flag_set() {
+        let temp = std::env::temp_dir().join(format!("rushi-local-runtime-cancelled-{}", Uuid::new_v4()));
+        fs::create_dir_all(&temp).unwrap();
+        let exe = temp.join("fake-sidecar");
+        fs::write(
+            &exe,
+            r#"#!/usr/bin/env python3
+import os
+import time
+from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
+
+class Handler(BaseHTTPRequestHandler):
+    def do_GET(self):
+        time.sleep(5)
+        self.send_response(200)
+        self.end_headers()
+
+    def log_message(self, format, *args):
+        return
+
+host = os.environ.get("ASR_HOST", "127.0.0.1")
+port = int(os.environ["ASR_PORT"])
+ThreadingHTTPServer((host, port), Handler).serve_forever()
+"#,
+        )
+        .unwrap();
+        let mut permissions = fs::metadata(&exe).unwrap().permissions();
+        permissions.set_mode(0o755);
+        fs::set_permissions(&exe, permissions).unwrap();
+
+        let cancel = Arc::new(AtomicBool::new(false));
+        let cancel_for_thread = cancel.clone();
+        std::thread::spawn(move || {
+            std::thread::sleep(Duration::from_millis(500));
+            cancel_for_thread.store(true, Ordering::SeqCst);
+        });
+
+        let err = verify_installed_runtime(&exe, None, Some(&cancel)).unwrap_err();
+        assert_eq!(err, "cancelled");
 
         let _ = fs::remove_dir_all(&temp);
     }

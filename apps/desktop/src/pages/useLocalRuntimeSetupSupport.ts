@@ -104,9 +104,9 @@ export function useLocalRuntimeSetupSupport({
 
   const cancelLocalRuntime = useCallback(async () => {
     try {
-      await localRuntimeApi.localRuntimeCancelDownload();
+      const cancelled = await localRuntimeApi.localRuntimeCancelDownload();
       await refreshLocalRuntimeDiagnose();
-      setSetupMessage("已请求取消本机语音识别组件下载。");
+      setSetupMessage(cancelled ? "已请求取消本机语音识别组件下载。" : "当前没有正在进行的组件下载或验证任务。");
       setSetupOutcome("blocked");
     } catch (error) {
       setSetupMessage(describeLocalRuntimeActionError("取消语音识别组件下载", error));

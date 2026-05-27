@@ -39,6 +39,7 @@ export type EnvironmentPanelProps = {
   installFunasrDepsInteractive: () => Promise<void>;
   copyFunasrManualCommands: () => Promise<void>;
   prepareDefaultFunasrModel: () => Promise<void>;
+  cancelPrepareModel: () => void;
   refreshAsrModelCacheInfo: () => Promise<void>;
   clearAsrModelCache: () => Promise<void>;
   retryBundledAsrSidecar: () => Promise<void>;
@@ -66,6 +67,7 @@ export function EnvironmentPanel({
   installFunasrDepsInteractive,
   copyFunasrManualCommands,
   prepareDefaultFunasrModel,
+  cancelPrepareModel,
   refreshAsrModelCacheInfo,
   clearAsrModelCache,
   retryBundledAsrSidecar,
@@ -175,6 +177,7 @@ export function EnvironmentPanel({
                   installFunasrDepsInteractive={installFunasrDepsInteractive}
                   copyFunasrManualCommands={copyFunasrManualCommands}
                   prepareDefaultFunasrModel={prepareDefaultFunasrModel}
+                  cancelPrepareModel={cancelPrepareModel}
                   refreshAsrModelCacheInfo={refreshAsrModelCacheInfo}
                   clearAsrModelCache={clearAsrModelCache}
                   retryBundledAsrSidecar={retryBundledAsrSidecar}
