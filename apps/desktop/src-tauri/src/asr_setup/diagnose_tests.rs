@@ -35,16 +35,16 @@ fn foreign_port_sets_blocking() {
         ready_for_transcribe: false,
         transcription_mode: "stub".into(),
     };
-    let (_lines, block) = build_summary(
-        &AsrPortStatus::Foreign,
-        &Some("占用".into()),
-        true,
-        &InstalledRuntimeStatus::Missing,
-        "unknown",
-        &BundledAsrLaunchReport::default(),
-        &health,
-        false,
-    );
+    let (_lines, block) = build_summary(SummaryContext {
+        port_status: &AsrPortStatus::Foreign,
+        port_detail: &Some("占用".into()),
+        bundled_available: true,
+        local_runtime_status: &InstalledRuntimeStatus::Missing,
+        sidecar_integrity: "unknown",
+        bundled_launch: &BundledAsrLaunchReport::default(),
+        health: &health,
+        disk_low: false,
+    });
     assert!(block.is_some());
 }
 
@@ -162,16 +162,16 @@ fn corrupt_bundle_adds_blocking_summary() {
         ready_for_transcribe: false,
         transcription_mode: "stub".into(),
     };
-    let (lines, block) = build_summary(
-        &AsrPortStatus::RushiAsr,
-        &None,
-        true,
-        &InstalledRuntimeStatus::Missing,
-        "corrupt",
-        &BundledAsrLaunchReport::default(),
-        &health,
-        false,
-    );
+    let (lines, block) = build_summary(SummaryContext {
+        port_status: &AsrPortStatus::RushiAsr,
+        port_detail: &None,
+        bundled_available: true,
+        local_runtime_status: &InstalledRuntimeStatus::Missing,
+        sidecar_integrity: "corrupt",
+        bundled_launch: &BundledAsrLaunchReport::default(),
+        health: &health,
+        disk_low: false,
+    });
     assert!(lines.iter().any(|l| l.contains("损坏")));
     assert!(block.is_some());
 }
@@ -189,16 +189,16 @@ fn partial_aux_model_blocks_ready_summary() {
         ready_for_transcribe: false,
         transcription_mode: "stub".into(),
     };
-    let (lines, block) = build_summary(
-        &AsrPortStatus::RushiAsr,
-        &None,
-        true,
-        &InstalledRuntimeStatus::Missing,
-        "ok",
-        &BundledAsrLaunchReport::default(),
-        &health,
-        false,
-    );
+    let (lines, block) = build_summary(SummaryContext {
+        port_status: &AsrPortStatus::RushiAsr,
+        port_detail: &None,
+        bundled_available: true,
+        local_runtime_status: &InstalledRuntimeStatus::Missing,
+        sidecar_integrity: "ok",
+        bundled_launch: &BundledAsrLaunchReport::default(),
+        health: &health,
+        disk_low: false,
+    });
     assert!(lines.iter().any(|l| l.contains("VAD")));
     assert!(block.is_some());
 }
@@ -216,17 +216,19 @@ fn installed_local_runtime_changes_missing_bundle_summary() {
         ready_for_transcribe: false,
         transcription_mode: "stub".into(),
     };
-    let (lines, block) = build_summary(
-        &AsrPortStatus::Free,
-        &None,
-        false,
-        &InstalledRuntimeStatus::Installed,
-        "not_installed",
-        &BundledAsrLaunchReport::default(),
-        &health,
-        false,
-    );
-    assert!(lines.iter().any(|l| l.contains("应用数据目录已检测到已安装的侧车运行时")));
+    let (lines, block) = build_summary(SummaryContext {
+        port_status: &AsrPortStatus::Free,
+        port_detail: &None,
+        bundled_available: false,
+        local_runtime_status: &InstalledRuntimeStatus::Installed,
+        sidecar_integrity: "not_installed",
+        bundled_launch: &BundledAsrLaunchReport::default(),
+        health: &health,
+        disk_low: false,
+    });
+    assert!(lines
+        .iter()
+        .any(|l| l.contains("应用数据目录已检测到已安装的侧车运行时")));
     assert!(block.is_some());
     assert!(block.unwrap().contains("应用数据侧车"));
 }
@@ -269,16 +271,16 @@ fn corrupt_local_runtime_adds_blocking_summary() {
         ready_for_transcribe: false,
         transcription_mode: "stub".into(),
     };
-    let (lines, block) = build_summary(
-        &AsrPortStatus::Free,
-        &None,
-        false,
-        &InstalledRuntimeStatus::Corrupt,
-        "corrupt",
-        &BundledAsrLaunchReport::default(),
-        &health,
-        false,
-    );
+    let (lines, block) = build_summary(SummaryContext {
+        port_status: &AsrPortStatus::Free,
+        port_detail: &None,
+        bundled_available: false,
+        local_runtime_status: &InstalledRuntimeStatus::Corrupt,
+        sidecar_integrity: "corrupt",
+        bundled_launch: &BundledAsrLaunchReport::default(),
+        health: &health,
+        disk_low: false,
+    });
     assert!(lines.iter().any(|l| l.contains("已损坏或不完整")));
     assert!(block.is_some());
 }

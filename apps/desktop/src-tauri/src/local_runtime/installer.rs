@@ -4,10 +4,12 @@ use super::install_support::{
     verify_installed_runtime,
 };
 use super::integrity::{
-    inspect_installed_runtime, local_runtime_root, read_marker, version_dir, write_marker_with_previous,
-    InstalledRuntimeMarker,
+    inspect_installed_runtime, local_runtime_root, read_marker, version_dir,
+    write_marker_with_previous, InstalledRuntimeMarker,
 };
-use super::manifest::{current_platform_key, is_shell_version_compatible, select_asr_sidecar_component};
+use super::manifest::{
+    current_platform_key, is_shell_version_compatible, select_asr_sidecar_component,
+};
 use crate::DbState;
 use serde::Serialize;
 use std::fs;
@@ -43,18 +45,10 @@ impl Default for LocalRuntimeInstallProgress {
     }
 }
 
+#[derive(Default)]
 pub(super) struct InstallerStateInner {
     pub(super) progress: LocalRuntimeInstallProgress,
     pub(super) cancel: Option<Arc<AtomicBool>>,
-}
-
-impl Default for InstallerStateInner {
-    fn default() -> Self {
-        Self {
-            progress: LocalRuntimeInstallProgress::default(),
-            cancel: None,
-        }
-    }
 }
 
 pub struct LocalRuntimeInstallerState(pub(super) Mutex<InstallerStateInner>);
@@ -212,9 +206,10 @@ fn run_install(handle: &AppHandle, app_root: &Path, cancel: Arc<AtomicBool>) -> 
     let tmp_zip = root.join(format!("download-{}.zip.part", Uuid::new_v4()));
     let staging = root.join(format!("staging-{}", Uuid::new_v4()));
     let install_dir = version_dir(app_root, &component.version);
-    let existing_marker = read_marker(app_root)
-        .ok()
-        .filter(|_| inspect_installed_runtime(app_root).status == super::integrity::InstalledRuntimeStatus::Installed);
+    let existing_marker = read_marker(app_root).ok().filter(|_| {
+        inspect_installed_runtime(app_root).status
+            == super::integrity::InstalledRuntimeStatus::Installed
+    });
     download_component_artifact(handle, component, &tmp_zip, &cancel)?;
     ensure_not_cancelled(&cancel)?;
     let actual_sha = sha256_hex(&tmp_zip)?;
@@ -316,7 +311,9 @@ fn run_install(handle: &AppHandle, app_root: &Path, cancel: Arc<AtomicBool>) -> 
                 let _ = fs::remove_dir_all(&install_dir);
                 let _ = fs::rename(backup, &install_dir);
             }
-            Err(info.detail.unwrap_or_else(|| "local_runtime_install_corrupt".into()))
+            Err(info
+                .detail
+                .unwrap_or_else(|| "local_runtime_install_corrupt".into()))
         }
     }
 }
@@ -354,10 +351,12 @@ pub fn local_runtime_download_sidecar(
     let app_root = state.inner().root.clone();
     let handle = app.clone();
     tauri::async_runtime::spawn(async move {
-        let result = tauri::async_runtime::spawn_blocking(move || run_install(&handle, &app_root, cancel_flag))
-            .await
-            .map_err(|e| e.to_string())
-            .and_then(|r| r);
+        let result = tauri::async_runtime::spawn_blocking(move || {
+            run_install(&handle, &app_root, cancel_flag)
+        })
+        .await
+        .map_err(|e| e.to_string())
+        .and_then(|r| r);
         if let Err(err) = result {
             if err == "cancelled" {
                 update_progress(
@@ -436,7 +435,9 @@ mod tests {
         };
 
         let previous = previous_marker_for_install(Some(&marker), "0.2.0");
-        assert_eq!(previous, Some(("0.1.0", "rushi-asr-sidecar/rushi-asr-sidecar")));
+        assert_eq!(
+            previous,
+            Some(("0.1.0", "rushi-asr-sidecar/rushi-asr-sidecar"))
+        );
     }
 }
-

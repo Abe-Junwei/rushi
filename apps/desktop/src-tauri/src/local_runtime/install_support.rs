@@ -115,7 +115,7 @@ pub fn disk_free_bytes(path: &Path) -> Option<u64> {
             return None;
         }
         let available_k = parts[3].parse::<u64>().ok()?;
-        return Some(available_k * 1024);
+        Some(available_k * 1024)
     }
 
     #[cfg(windows)]
@@ -131,8 +131,7 @@ pub fn disk_free_bytes(path: &Path) -> Option<u64> {
             .collect();
         let mut free = 0u64;
         unsafe {
-            GetDiskFreeSpaceExW(PCWSTR(wide.as_ptr()), None, None, Some(&mut free))
-                .ok()?;
+            GetDiskFreeSpaceExW(PCWSTR(wide.as_ptr()), None, None, Some(&mut free)).ok()?;
         }
         return Some(free);
     }
@@ -239,7 +238,10 @@ pub fn download_component_artifact(
             update_progress(
                 handle,
                 "downloading",
-                format!("主下载源失败，正在尝试镜像源 {index}/{}…", sources.len() - 1),
+                format!(
+                    "主下载源失败，正在尝试镜像源 {index}/{}…",
+                    sources.len() - 1
+                ),
                 Some(component.version.clone()),
                 None,
                 component.size_bytes,
@@ -393,10 +395,10 @@ pub fn verify_installed_runtime(
     let port = reserve_verify_port()?;
     let stdout_log = verify_log_path("verify", port, "stdout");
     let stderr_log = verify_log_path("verify", port, "stderr");
-    let stdout_file =
-        File::create(&stdout_log).map_err(|e| format!("local_runtime_verify_stdout_log_failed: {e}"))?;
-    let stderr_file =
-        File::create(&stderr_log).map_err(|e| format!("local_runtime_verify_stderr_log_failed: {e}"))?;
+    let stdout_file = File::create(&stdout_log)
+        .map_err(|e| format!("local_runtime_verify_stdout_log_failed: {e}"))?;
+    let stderr_file = File::create(&stderr_log)
+        .map_err(|e| format!("local_runtime_verify_stderr_log_failed: {e}"))?;
     let mut command = Command::new(exe);
     command.current_dir(workdir);
     apply_runtime_env(&mut command, models_root);
@@ -472,7 +474,11 @@ pub fn verify_installed_runtime(
             ensure_verify_not_cancelled(cancel)?;
             std::thread::sleep(VERIFY_HEALTH_POLL);
         }
-        Err(with_process_log_detail(last_detail, &stderr_log, &stdout_log))
+        Err(with_process_log_detail(
+            last_detail,
+            &stderr_log,
+            &stdout_log,
+        ))
     })();
 
     let _ = child.kill();
@@ -495,7 +501,8 @@ mod tests {
 
     #[test]
     fn sha256_hex_matches_known_value() {
-        let temp = std::env::temp_dir().join(format!("rushi-local-runtime-hash-{}", Uuid::new_v4()));
+        let temp =
+            std::env::temp_dir().join(format!("rushi-local-runtime-hash-{}", Uuid::new_v4()));
         fs::write(&temp, b"abc").unwrap();
         let digest = sha256_hex(&temp).unwrap();
         assert_eq!(
@@ -508,14 +515,11 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn verify_installed_runtime_reports_early_process_exit() {
-        let temp = std::env::temp_dir().join(format!("rushi-local-runtime-exit-{}", Uuid::new_v4()));
+        let temp =
+            std::env::temp_dir().join(format!("rushi-local-runtime-exit-{}", Uuid::new_v4()));
         fs::create_dir_all(&temp).unwrap();
         let exe = temp.join("fake-sidecar");
-        fs::write(
-            &exe,
-            "#!/bin/sh\n>&2 echo boom-from-test\nexit 17\n",
-        )
-        .unwrap();
+        fs::write(&exe, "#!/bin/sh\n>&2 echo boom-from-test\nexit 17\n").unwrap();
         let mut permissions = fs::metadata(&exe).unwrap().permissions();
         permissions.set_mode(0o755);
         fs::set_permissions(&exe, permissions).unwrap();
@@ -530,7 +534,10 @@ mod tests {
     #[cfg(unix)]
     #[test]
     fn verify_installed_runtime_tolerates_slow_health_response() {
-        let temp = std::env::temp_dir().join(format!("rushi-local-runtime-slow-health-{}", Uuid::new_v4()));
+        let temp = std::env::temp_dir().join(format!(
+            "rushi-local-runtime-slow-health-{}",
+            Uuid::new_v4()
+        ));
         fs::create_dir_all(&temp).unwrap();
         let exe = temp.join("fake-sidecar");
         fs::write(
@@ -582,7 +589,8 @@ ThreadingHTTPServer((host, port), Handler).serve_forever()
     #[cfg(unix)]
     #[test]
     fn verify_installed_runtime_fails_fast_on_health_http_500() {
-        let temp = std::env::temp_dir().join(format!("rushi-local-runtime-http500-{}", Uuid::new_v4()));
+        let temp =
+            std::env::temp_dir().join(format!("rushi-local-runtime-http500-{}", Uuid::new_v4()));
         fs::create_dir_all(&temp).unwrap();
         let exe = temp.join("fake-sidecar");
         fs::write(
@@ -621,7 +629,8 @@ ThreadingHTTPServer((host, port), Handler).serve_forever()
     #[cfg(unix)]
     #[test]
     fn verify_installed_runtime_returns_cancelled_when_flag_set() {
-        let temp = std::env::temp_dir().join(format!("rushi-local-runtime-cancelled-{}", Uuid::new_v4()));
+        let temp =
+            std::env::temp_dir().join(format!("rushi-local-runtime-cancelled-{}", Uuid::new_v4()));
         fs::create_dir_all(&temp).unwrap();
         let exe = temp.join("fake-sidecar");
         fs::write(

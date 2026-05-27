@@ -2,6 +2,7 @@ use super::*;
 use serde_json::json;
 use std::fs;
 use std::net::TcpListener;
+use std::path::Path;
 
 #[test]
 fn recognizes_valid_health_json() {
@@ -69,7 +70,7 @@ fn candidate_resource_roots_deduplicate_existing_resources_dir() {
     let roots = candidate_resource_roots_from_parts(resource_dir, &manifest_dir);
     let count = roots
         .iter()
-        .filter(|p| **p == PathBuf::from("/repo/apps/desktop/src-tauri/resources"))
+        .filter(|p| p.as_path() == Path::new("/repo/apps/desktop/src-tauri/resources"))
         .count();
     assert_eq!(count, 1);
 }
