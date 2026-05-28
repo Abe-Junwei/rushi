@@ -1,5 +1,7 @@
 /* P1 波形区：BottomToolbar + zoom-bar（配色对齐 DESIGN.md / tokens.css） */
 .waveform-bottom-toolbar {
+  position: relative;
+  z-index: 20;
   display: flex;
   width: 100%;
   height: 40px;
@@ -8,24 +10,62 @@
   justify-content: space-between;
   gap: 12px;
   padding: 0 16px;
+  overflow: visible;
   font-size: 12px;
   color: var(--notion-text-muted);
   background: color-mix(in srgb, var(--notion-sidebar) 80%, transparent);
 }
 
 .waveform-playback-cluster {
+  position: relative;
+  z-index: 1;
   display: flex;
   flex-shrink: 0;
   align-items: center;
   gap: 10px;
   min-width: 0;
+  overflow: visible;
+}
+
+.waveform-goto-time {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  margin: 0;
+}
+
+.waveform-goto-time-input {
+  box-sizing: border-box;
+  width: 4.25rem;
+  height: 30px;
+  padding: 0 8px;
+  border: 1px solid var(--notion-border);
+  border-radius: 6px;
+  background: var(--notion-bg);
+  font-size: 12px;
+  font-variant-numeric: tabular-nums;
+  color: var(--notion-text);
+}
+
+.waveform-goto-time-input::placeholder {
+  color: var(--notion-text-muted);
+}
+
+.waveform-goto-time-input:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--notion-text) 40%, transparent);
+  outline-offset: 1px;
+}
+
+.waveform-goto-time-input:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
 }
 
 .waveform-playback-btn {
   box-sizing: border-box;
   display: inline-flex;
-  width: 28px;
-  height: 28px;
+  width: 30px;
+  height: 30px;
   flex-shrink: 0;
   align-items: center;
   justify-content: center;
@@ -76,8 +116,222 @@
   font-family: Inter, system-ui, sans-serif;
   font-size: 12px;
   font-variant-numeric: tabular-nums;
-  letter-spacing: -0.02em;
+  letter-spacing: 0;
   color: var(--notion-text);
+}
+
+.waveform-playback-rate-menu {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-shrink: 0;
+  flex-direction: column;
+  align-items: stretch;
+  align-self: center;
+}
+
+.waveform-playback-rate-menu-global {
+  width: 3.25rem;
+}
+
+.waveform-playback-rate-menu-open {
+  z-index: 50;
+}
+
+.waveform-playback-rate-trigger {
+  box-sizing: border-box;
+  display: inline-flex;
+  width: 100%;
+  height: 30px;
+  align-items: center;
+  justify-content: center;
+  gap: 2px;
+  padding: 0 6px;
+  border: 1px solid var(--notion-border);
+  border-radius: 6px;
+  background: var(--notion-bg);
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  color: var(--notion-text-muted);
+  cursor: pointer;
+}
+
+.waveform-playback-rate-menu-segment .waveform-playback-rate-trigger {
+  height: 24px;
+  padding: 0 6px;
+  border-color: color-mix(in srgb, var(--notion-text) 14%, var(--notion-divider));
+  background: color-mix(in srgb, var(--notion-bg) 76%, transparent);
+}
+
+.waveform-playback-rate-trigger:hover:not(:disabled) {
+  border-color: color-mix(in srgb, var(--notion-text) 22%, var(--notion-divider));
+  color: var(--notion-text);
+}
+
+.waveform-playback-rate-trigger:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--notion-text) 40%, transparent);
+  outline-offset: 1px;
+}
+
+.waveform-playback-rate-trigger:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.waveform-playback-rate-trigger-label {
+  flex: 1 1 auto;
+  min-width: 0;
+  text-align: center;
+}
+
+.waveform-playback-rate-chevron {
+  flex-shrink: 0;
+  opacity: 0.65;
+  transition: transform 140ms ease;
+}
+
+.waveform-playback-rate-chevron-open {
+  transform: rotate(180deg);
+}
+
+.waveform-playback-rate-trigger-active {
+  color: var(--zen-saffron-mid);
+  background: color-mix(in srgb, var(--zen-saffron) 14%, var(--notion-bg));
+  border-color: color-mix(in srgb, var(--zen-saffron) 40%, var(--notion-border));
+}
+
+.waveform-playback-rate-popover {
+  position: absolute;
+  z-index: 60;
+  left: 0;
+  box-sizing: border-box;
+  display: flex;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  flex-direction: column;
+  gap: 0;
+  margin: 0;
+  padding: 2px;
+  list-style: none;
+  overflow: hidden;
+  border: 1px solid var(--notion-border);
+  background: var(--notion-bg);
+}
+
+.waveform-playback-rate-popover-above {
+  bottom: calc(100% - 1px);
+  flex-direction: column-reverse;
+  border-bottom: none;
+  border-radius: 8px 8px 0 0;
+  box-shadow: 0 -4px 16px color-mix(in srgb, var(--notion-text) 10%, transparent);
+}
+
+.waveform-playback-rate-popover-below {
+  top: calc(100% - 1px);
+  border-top: none;
+  border-radius: 0 0 8px 8px;
+  box-shadow: 0 4px 16px color-mix(in srgb, var(--notion-text) 10%, transparent);
+}
+
+.waveform-playback-rate-popover-portal {
+  position: fixed;
+  z-index: 100;
+}
+
+.waveform-playback-rate-portal-host {
+  pointer-events: none;
+}
+
+.waveform-playback-rate-portal-host .waveform-playback-rate-popover {
+  pointer-events: auto;
+}
+
+.waveform-playback-rate-menu-open .waveform-playback-rate-trigger {
+  position: relative;
+  z-index: 61;
+  border-radius: 0;
+}
+
+.waveform-playback-rate-option {
+  box-sizing: border-box;
+  width: 100%;
+  margin: 0;
+  padding: 5px 4px;
+  border: 0;
+  border-radius: 4px;
+  appearance: none;
+  background: transparent;
+  box-shadow: none;
+  font-size: 11px;
+  font-weight: 600;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+  color: var(--notion-text);
+  cursor: pointer;
+}
+
+.waveform-playback-rate-option:hover {
+  background: var(--notion-sidebar-hover);
+}
+
+.waveform-playback-rate-option-active {
+  color: var(--zen-saffron-mid);
+  background: color-mix(in srgb, var(--zen-saffron) 14%, transparent);
+}
+
+.waveform-playback-rate-option:focus {
+  outline: none;
+}
+
+.waveform-playback-rate-option:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--zen-saffron-mid) 55%, transparent);
+  outline-offset: 0;
+}
+
+.waveform-nav-mode-group {
+  display: inline-flex;
+  height: 30px;
+  flex-shrink: 0;
+  align-items: stretch;
+  padding: 2px;
+  border-radius: 8px;
+  background: color-mix(in srgb, var(--notion-text) 6%, transparent);
+}
+
+.waveform-nav-mode-btn {
+  box-sizing: border-box;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 6px;
+  background: transparent;
+  color: var(--notion-text-muted);
+  font-size: 11px;
+  cursor: pointer;
+}
+
+.waveform-nav-mode-btn:hover:not(:disabled) {
+  color: var(--notion-text);
+}
+
+.waveform-nav-mode-btn:disabled {
+  opacity: 0.4;
+  cursor: not-allowed;
+}
+
+.waveform-nav-mode-btn-active {
+  background: var(--notion-bg);
+  color: var(--notion-text);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--notion-text) 8%, transparent);
+}
+
+.icon-btn-text {
+  min-width: 0;
+  padding: 0 8px;
 }
 
 .waveform-zoom-toolbar {
@@ -144,11 +398,22 @@
   cursor: not-allowed;
 }
 
+.icon-btn-active:disabled,
+.icon-btn[aria-pressed="true"]:disabled {
+  opacity: 0.72;
+}
+
+.icon-btn-active,
+.icon-btn[aria-pressed="true"] {
+  background: color-mix(in srgb, var(--zen-saffron) 18%, transparent);
+  color: var(--notion-text);
+}
+
 .icon-btn-label {
   font-size: 11px;
   font-weight: 700;
   line-height: 1;
-  letter-spacing: 0.02em;
+  letter-spacing: 0;
 }
 
 .waveform-zoom-slider {
@@ -179,6 +444,63 @@
   font-size: 11px;
 }
 
+/*
+ * 主波形 z-index 栈（由低到高）：
+ * z-0  WaveSurfer 透明层
+ * z-2  WaveformPeaksViewportLayer（Canvas peaks）
+ * z-3  waveform-segment-overlay
+ * z-8  region-action-overlay（语段播放控制）
+ * z-10 嵌入时间尺 WaveformLiveTimeRuler
+ */
+
+.waveform-segment-overlay {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  pointer-events: auto;
+}
+
+.waveform-segment-region {
+  position: absolute;
+  box-sizing: border-box;
+  border-radius: 4px;
+  border: 1px solid color-mix(in srgb, var(--notion-text) 12%, transparent);
+  cursor: grab;
+  touch-action: none;
+}
+
+.waveform-segment-region-selected {
+  border-color: color-mix(in srgb, var(--zen-saffron) 55%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--zen-saffron) 28%, transparent);
+}
+
+.waveform-segment-handle {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  width: 8px;
+}
+
+.waveform-segment-handle-start {
+  left: 0;
+  cursor: ew-resize;
+}
+
+.waveform-segment-handle-end {
+  right: 0;
+  cursor: ew-resize;
+}
+
+.waveform-segment-create-preview {
+  position: absolute;
+  top: 4px;
+  bottom: 32px;
+  border-radius: 4px;
+  background: color-mix(in srgb, var(--zen-indigo) 18%, transparent);
+  border: 1px dashed color-mix(in srgb, var(--zen-indigo) 45%, transparent);
+  pointer-events: none;
+}
+
 .region-action-overlay {
   position: absolute;
   bottom: 30px;
@@ -187,6 +509,7 @@
   align-items: center;
   gap: 3px;
   z-index: 8;
+  overflow: visible;
   pointer-events: none;
   max-width: calc(100% - 8px);
 }
@@ -239,68 +562,18 @@
   box-shadow: none;
 }
 
-.region-action-btn:focus-visible,
-.segment-speed-label-reset:focus-visible {
+.region-action-btn:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--notion-text) 32%, transparent);
   outline-offset: 2px;
 }
 
-.segment-speed-control {
+.waveform-playback-rate-menu-segment {
   pointer-events: auto;
-  display: inline-flex;
-  align-items: center;
-  gap: 3px;
-  height: 24px;
-  padding: 0 5px;
-  border: 1px solid transparent;
-  border-radius: 5px;
-  background: color-mix(in srgb, var(--notion-bg) 42%, transparent);
-  box-shadow: none;
-  opacity: 0.74;
-  transition:
-    opacity 140ms ease,
-    background 140ms ease,
-    border-color 140ms ease;
+  opacity: 0.88;
 }
 
-.segment-speed-control:hover {
-  opacity: 0.98;
-  border-color: color-mix(in srgb, var(--notion-text) 14%, var(--notion-divider));
-  background: color-mix(in srgb, var(--notion-bg) 76%, transparent);
-}
-
-.segment-speed-slider {
-  width: 48px;
-  height: 4px;
-  cursor: pointer;
-  accent-color: var(--zen-saffron-mid);
-}
-
-.segment-speed-slider:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
-}
-
-.segment-speed-label {
-  min-width: 24px;
-  padding: 1px 2px;
-  border-radius: 4px;
-  font-size: 11px;
-  font-weight: 600;
-  line-height: 1;
-  text-align: center;
-  color: var(--notion-text-muted);
-  user-select: none;
-}
-
-.segment-speed-label-reset {
-  cursor: pointer;
-  color: var(--zen-saffron-mid);
-  background: color-mix(in srgb, var(--zen-saffron) 16%, var(--notion-bg));
-}
-
-.segment-speed-label-reset:hover {
-  background: color-mix(in srgb, var(--zen-saffron) 24%, var(--notion-bg));
+.waveform-playback-rate-menu-segment:hover {
+  opacity: 1;
 }
 
 @media (max-width: 1024px) {

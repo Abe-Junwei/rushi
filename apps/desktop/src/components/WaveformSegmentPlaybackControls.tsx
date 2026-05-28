@@ -1,7 +1,9 @@
-import { memo } from "react";
+import { memo, type RefObject } from "react";
 import { Play, Repeat, Square } from "lucide-react";
 import type { SegmentDto } from "../tauri/projectApi";
+import { computeRegionActionOverlayLeftPx } from "../utils/waveformRegionActionOverlay";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
+import { WaveformPlaybackRateMenu } from "./WaveformPlaybackRateMenu";
 
 type WaveformSegmentPlaybackControlsProps = {
   disabled: boolean;
@@ -9,6 +11,7 @@ type WaveformSegmentPlaybackControlsProps = {
   pxPerSec: number;
   scrollLeftPx: number;
   viewportWidthPx: number;
+  tierScrollRef: RefObject<HTMLElement | null>;
   selectedSegment: SegmentDto | null;
   segmentPlaybackRate: number;
   segmentLoopPlayback: boolean;
@@ -23,6 +26,7 @@ export const WaveformSegmentPlaybackControls = memo(function WaveformSegmentPlay
   pxPerSec,
   scrollLeftPx,
   viewportWidthPx,
+  tierScrollRef,
   selectedSegment,
   segmentPlaybackRate,
   segmentLoopPlayback,
@@ -35,48 +39,24 @@ export const WaveformSegmentPlaybackControls = memo(function WaveformSegmentPlay
   const widthPx = Math.abs(selectedSegment.end_sec - selectedSegment.start_sec) * pxPerSec;
   if (leftPx + widthPx < scrollLeftPx || leftPx > scrollLeftPx + viewportWidthPx) return null;
 
-  const showSpeedSlider = widthPx >= 160;
+  const showSpeedMenu = widthPx >= 88;
   const showLoopBtn = widthPx >= 72;
-  const speedLabel =
-    segmentPlaybackRate === 1
-      ? "1x"
-      : `${segmentPlaybackRate.toFixed(segmentPlaybackRate % 0.25 === 0 ? 1 : 2)}x`;
-
+  const overlayLeftPx = computeRegionActionOverlayLeftPx({
+    segmentStartPx: leftPx,
+    segmentWidthPx: widthPx,
+    scrollLeftPx,
+    viewportWidthPx,
+  });
   return (
-    <div className="region-action-overlay" style={{ left: Math.max(0, leftPx) }}>
-      {showSpeedSlider ? (
-        <div className="segment-speed-control" onPointerDown={(e) => e.stopPropagation()}>
-          <input
-            type="range"
-            className="segment-speed-slider"
-            min={0.25}
-            max={2}
-            step={0.05}
-            disabled={disabled}
-            value={segmentPlaybackRate}
-            onChange={(e) => onPlaybackRateChange(Number(e.target.value))}
-            aria-label={`语段播放速度，当前 ${speedLabel}`}
-            title={`语段播放速度 ${speedLabel}`}
-          />
-          <span
-            className={`segment-speed-label${segmentPlaybackRate !== 1 ? " segment-speed-label-reset" : ""}`}
-            role={segmentPlaybackRate !== 1 ? "button" : undefined}
-            tabIndex={segmentPlaybackRate !== 1 && !disabled ? 0 : -1}
-            title={segmentPlaybackRate !== 1 ? "恢复正常速度" : "正常速度"}
-            onClick={() => {
-              if (disabled) return;
-              onPlaybackRateChange(1);
-            }}
-            onKeyDown={(e) => {
-              if (disabled || segmentPlaybackRate === 1) return;
-              if (e.key !== "Enter" && e.key !== " ") return;
-              e.preventDefault();
-              onPlaybackRateChange(1);
-            }}
-          >
-            {speedLabel}
-          </span>
-        </div>
+    <div className="region-action-overlay" style={{ left: overlayLeftPx }}>
+      {showSpeedMenu ? (
+        <WaveformPlaybackRateMenu
+          variant="segment"
+          tierScrollRef={tierScrollRef}
+          disabled={disabled}
+          playbackRate={segmentPlaybackRate}
+          onPlaybackRateChange={onPlaybackRateChange}
+        />
       ) : null}
       {showLoopBtn ? (
         <button
