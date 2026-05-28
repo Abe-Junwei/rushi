@@ -64,7 +64,6 @@ function areEditorSegmentWorkbenchPropsEqual(
     prev.tx.beginTranscriptRowHeightDrag === next.tx.beginTranscriptRowHeightDrag &&
     prev.tx.selectSegmentAt === next.tx.selectSegmentAt &&
     prev.tx.onSegmentTextareaKeyDown === next.tx.onSegmentTextareaKeyDown &&
-    prev.tx.segmentToolbar === next.tx.segmentToolbar &&
     prev.appearance === next.appearance &&
     prev.editHistory === next.editHistory &&
     prev.onOpenSegmentContextMenu === next.onOpenSegmentContextMenu

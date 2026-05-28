@@ -6,8 +6,10 @@ export function normalizeSegmentDraftText(text: string): string {
   return text.replace(/\r\n|\r|\n/g, " ");
 }
 
+/** uid + 数组下标，避免重复 uid 时草稿与 React 行错位。 */
 export function segmentDraftKey(seg: SegmentDto, idx: number): string {
-  return segmentUidOf(seg) ?? `idx:${idx}`;
+  const uid = segmentUidOf(seg);
+  return uid ? `${uid}#${idx}` : `idx:${idx}`;
 }
 
 const drafts = new Map<string, string>();

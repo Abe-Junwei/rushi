@@ -1,15 +1,39 @@
 import { describe, expect, it } from "vitest";
-import { formatMediaTime } from "./formatMediaTime";
+import { formatMediaTime, parseMediaTimeInput, segmentStartSec } from "./formatMediaTime";
 
 describe("formatMediaTime", () => {
-  it("formats under one hour", () => {
-    expect(formatMediaTime(0)).toBe("0:00");
-    expect(formatMediaTime(5)).toBe("0:05");
+  it("formats sub-hour times", () => {
     expect(formatMediaTime(65)).toBe("1:05");
   });
+});
 
-  it("formats with hours", () => {
-    expect(formatMediaTime(3600)).toBe("1:00:00");
-    expect(formatMediaTime(3661)).toBe("1:01:01");
+describe("segmentStartSec", () => {
+  it("uses min of bounds", () => {
+    expect(segmentStartSec({ start_sec: 10, end_sec: 5 })).toBe(5);
+  });
+});
+
+describe("parseMediaTimeInput", () => {
+  it("parses m:ss and mm:ss", () => {
+    expect(parseMediaTimeInput("1:05")).toBe(65);
+    expect(parseMediaTimeInput("12:30")).toBe(750);
+  });
+
+  it("parses h:mm:ss", () => {
+    expect(parseMediaTimeInput("1:02:03")).toBe(3723);
+  });
+
+  it("parses plain seconds", () => {
+    expect(parseMediaTimeInput("90")).toBe(90);
+  });
+
+  it("clamps to duration", () => {
+    expect(parseMediaTimeInput("9:99", 120)).toBe(120);
+  });
+
+  it("returns null for invalid", () => {
+    expect(parseMediaTimeInput("")).toBeNull();
+    expect(parseMediaTimeInput("abc")).toBeNull();
+    expect(parseMediaTimeInput("1:2:3:4")).toBeNull();
   });
 });

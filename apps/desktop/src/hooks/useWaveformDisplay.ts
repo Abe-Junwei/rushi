@@ -86,22 +86,10 @@ export function useWaveformDisplay(args: { busy: boolean }) {
       height.setDragging(true);
       const startY = e.clientY;
       const startH = height.visual;
-      let rafId = 0;
-      let latestHeight = startH;
-      const flushHeight = () => {
-        rafId = 0;
-        height.setVisual(latestHeight);
-      };
       const onMove = (ev: PointerEvent) => {
-        latestHeight = clampWaveformHeight(startH + (ev.clientY - startY));
-        if (rafId !== 0) return;
-        rafId = window.requestAnimationFrame(flushHeight);
+        height.setVisual(clampWaveformHeight(startH + (ev.clientY - startY)));
       };
       const onUp = (ev: PointerEvent) => {
-        if (rafId !== 0) {
-          window.cancelAnimationFrame(rafId);
-          flushHeight();
-        }
         height.setDragging(false);
         height.flushRender();
         try {

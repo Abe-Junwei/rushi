@@ -3,7 +3,6 @@ import { SegmentContextMenu } from "./SegmentContextMenu";
 import { ArrowLeft } from "lucide-react";
 import type { ProjectControllerApi } from "../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../pages/useTranscriptionLayer";
-import { TIMELINE_PX_PER_SEC } from "../utils/pxPerSec";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 import { EmptyProjectPanel } from "./EmptyProjectPanel";
 import { type SegmentContextMenuItem, type SegmentContextMenuKey } from "../utils/segmentContextMenuModel";
@@ -53,7 +52,6 @@ export function EditorView({
     c.current?.files.find((f) => f.id !== c.currentFileId && f.file_type !== "text") ??
     c.current?.files.find((f) => f.id !== c.currentFileId) ??
     null;
-  const zoomPercent = Math.round((tx.pxPerSec / TIMELINE_PX_PER_SEC) * 100);
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-notion-bg" data-purpose="editor-workspace">
@@ -140,9 +138,7 @@ export function EditorView({
           {c.audioSrc ? (
             <footer className="z-40 flex h-[30px] shrink-0 items-center justify-between gap-2 border-t border-notion-divider bg-notion-bg px-2.5 text-[11px] text-notion-text-muted">
               <div className="flex min-w-0 items-center gap-2">
-                <span className="font-medium text-notion-text">{zoomPercent}% 缩放</span>
-                <span className="h-1 w-1 rounded-full bg-notion-divider" aria-hidden />
-                <span>{tx.pxPerSec.toFixed(0)} px/s</span>
+                <span className="font-medium text-notion-text">{tx.waveformNavigationFooterLabel}</span>
                 <span className="h-1 w-1 rounded-full bg-notion-divider" aria-hidden />
                 <span>自动保存已激活</span>
               </div>

@@ -1,63 +1,61 @@
 import { describe, expect, it } from "vitest";
-import {
-  buildSplitPair,
-  mergeTwoSegments,
-  reindexSegments,
-  segmentsEqualForPersist,
-  snapshotSegmentsForPersist,
-} from "./segmentListHelpers";
 import type { SegmentDto } from "../tauri/projectApi";
+import {
+  findSegmentIndexByUid,
+  normalizeSegmentList,
+  sortSegmentsByStartSec,
+} from "./segmentListHelpers";
+import { ensureUniqueSegmentUids } from "../utils/segmentUid";
 
-describe("reindexSegments", () => {
-  it("assigns contiguous idx", () => {
-    const a: SegmentDto = { idx: 9, start_sec: 0, end_sec: 1, text: "a" };
-    const b: SegmentDto = { idx: 9, start_sec: 1, end_sec: 2, text: "b" };
-    const out = reindexSegments([a, b]);
-    expect(out[0].idx).toBe(0);
-    expect(out[1].idx).toBe(1);
-  });
-});
+function seg(
+  props: Partial<SegmentDto> & { start_sec: number; end_sec: number; text: string },
+): SegmentDto {
+  return {
+    idx: 0,
+    confidence: null,
+    low_confidence: false,
+    detail: null,
+    uid: "uid-a",
+    ...props,
+  };
+}
 
-describe("mergeTwoSegments", () => {
-  it("joins text and time bounds", () => {
-    const a: SegmentDto = { idx: 0, start_sec: 0, end_sec: 1, text: "x", confidence: 0.9 };
-    const b: SegmentDto = { idx: 1, start_sec: 1, end_sec: 3, text: "y", confidence: 0.5 };
-    const m = mergeTwoSegments(a, b);
-    expect(m.start_sec).toBe(0);
-    expect(m.end_sec).toBe(3);
-    expect(m.text).toBe("x\ny");
-    expect(m.confidence).toBe(0.5);
-  });
-});
-
-describe("segmentsEqualForPersist", () => {
-  const base: SegmentDto = { idx: 0, start_sec: 0, end_sec: 1, text: "a", confidence: 0.5, low_confidence: false, detail: null };
-
-  it("treats reindexed copies as equal", () => {
-    const a = [{ ...base, idx: 3 }];
-    const b = snapshotSegmentsForPersist(a);
-    expect(segmentsEqualForPersist(a, b)).toBe(true);
-  });
-
-  it("detects text change", () => {
-    const a = [base];
-    const b = [{ ...base, text: "b" }];
-    expect(segmentsEqualForPersist(a, b)).toBe(false);
-  });
-});
-
-describe("buildSplitPair", () => {
-  it("returns null when segment too short", () => {
-    const s: SegmentDto = { idx: 0, start_sec: 0, end_sec: 0.03, text: "a" };
-    expect(buildSplitPair(s, 0.015)).toBeNull();
+describe("segmentListHelpers", () => {
+  it("sortSegmentsByStartSec orders by start_sec and reindexes", () => {
+    const input = [
+      seg({ uid: "b", start_sec: 5, end_sec: 6, text: "b" }),
+      seg({ uid: "a", start_sec: 1, end_sec: 2, text: "a" }),
+    ];
+    const out = sortSegmentsByStartSec(input);
+    expect(out.map((s) => s.text)).toEqual(["a", "b"]);
+    expect(out.map((s) => s.idx)).toEqual([0, 1]);
   });
 
-  it("splits at mid", () => {
-    const s: SegmentDto = { idx: 0, start_sec: 0, end_sec: 2, text: "ab" };
-    const p = buildSplitPair(s, 1);
-    expect(p).not.toBeNull();
-    expect(p!.left.end_sec).toBe(1);
-    expect(p!.right.start_sec).toBe(1);
-    expect(p!.right.text).toBe("");
+  it("ensureUniqueSegmentUids reassigns duplicates", () => {
+    const input = [
+      seg({ uid: "dup", start_sec: 0, end_sec: 1, text: "a" }),
+      seg({ uid: "dup", start_sec: 2, end_sec: 3, text: "b" }),
+    ];
+    const out = ensureUniqueSegmentUids(input);
+    expect(out[0]?.uid).toBe("dup");
+    expect(out[1]?.uid).not.toBe("dup");
+  });
+
+  it("normalizeSegmentList sorts and dedupes uids", () => {
+    const out = normalizeSegmentList([
+      seg({ uid: "dup", start_sec: 4, end_sec: 5, text: "late" }),
+      seg({ uid: "dup", start_sec: 1, end_sec: 2, text: "early" }),
+    ]);
+    expect(out[0]?.text).toBe("early");
+    expect(out[1]?.text).toBe("late");
+    expect(new Set(out.map((s) => s.uid)).size).toBe(2);
+  });
+
+  it("findSegmentIndexByUid returns array index", () => {
+    const list = [
+      seg({ uid: "x", start_sec: 0, end_sec: 1, text: "a" }),
+      seg({ uid: "y", start_sec: 2, end_sec: 3, text: "b" }),
+    ];
+    expect(findSegmentIndexByUid(list, "y")).toBe(1);
   });
 });

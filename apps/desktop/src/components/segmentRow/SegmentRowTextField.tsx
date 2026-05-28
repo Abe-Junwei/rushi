@@ -127,7 +127,8 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
               value={draft}
               disabled={busy}
               onFocus={() => {
-                if (!busy) selectSegmentAt(i);
+                if (busy) return;
+                selectSegmentAt(i);
               }}
               onChange={onTextAreaChange}
               onBlur={onBlurText}

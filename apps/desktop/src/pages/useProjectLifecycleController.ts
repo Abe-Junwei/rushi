@@ -17,7 +17,7 @@ import { useProjectEditorState } from "./useProjectEditorState";
 import { useAutoPunctuateController } from "./useAutoPunctuateController";
 import { useProjectCloseGateController } from "./useProjectCloseGateController";
 import { useSegmentDirtyState } from "./useSegmentDirtyState";
-import { cloneSegments } from "./segmentListHelpers";
+import { findSegmentIndexByUid, normalizeSegmentList } from "./segmentListHelpers";
 import type { ProjectLifecycleApi } from "./ProjectLifecycleApi";
 
 export type { ProjectLifecycleApi } from "./ProjectLifecycleApi";
@@ -127,9 +127,15 @@ export function useProjectLifecycleController(): ProjectLifecycleApi {
         fileApi.loadFile(currentFileId),
       ]);
       setCurrent(projectDetail);
-      setSegments(cloneSegments(fileDetail.segments));
-      dirty.setSavedSnapshot(fileDetail.segments);
-      setSelectedIdx((prev) => Math.min(prev, Math.max(0, fileDetail.segments.length - 1)));
+      const prevUid = segmentsRef.current[selectedIdxRef.current]?.uid;
+      const segs = normalizeSegmentList(fileDetail.segments);
+      segmentsRef.current = segs;
+      setSegments(segs);
+      dirty.setSavedSnapshot(segs);
+      const ni = findSegmentIndexByUid(segs, prevUid);
+      setSelectedIdx(
+        ni >= 0 ? ni : Math.min(selectedIdxRef.current, Math.max(0, segs.length - 1)),
+      );
       return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -236,8 +242,10 @@ export function useProjectLifecycleController(): ProjectLifecycleApi {
     openAppDataFolder, applyDetail, setError, beginBusy, endBusy,
     undo: mutations.undo, redo: mutations.redo, updateSegmentText: mutations.updateSegmentText,
     updateSegmentTime: mutations.updateSegmentTime, updateSegmentBounds: mutations.updateSegmentBounds,
-    splitAtSelection: () => mutations.splitAtSelection(selectedIdx), splitAtPlayhead: mutations.splitAtPlayhead,
-    mergeWithNext: () => mutations.mergeWithNext(selectedIdx), mergeWithPrev: () => mutations.mergeWithPrev(selectedIdx),
+    splitAtSelection: () => mutations.splitAtSelection(selectedIdxRef.current),
+    splitAtPlayhead: mutations.splitAtPlayhead,
+    mergeWithNext: () => mutations.mergeWithNext(selectedIdxRef.current),
+    mergeWithPrev: () => mutations.mergeWithPrev(selectedIdxRef.current),
     mergeWithNextAt: mutations.mergeWithNextAt, mergeWithPrevAt: mutations.mergeWithPrevAt,
     deleteSegmentAt: mutations.deleteSegmentAt, insertSegmentAfter: mutations.insertSegmentAfter,
     insertSegmentFromTimeRange: mutations.insertSegmentFromTimeRange,

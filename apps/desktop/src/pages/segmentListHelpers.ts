@@ -1,7 +1,7 @@
 import type { SegmentDto } from "../tauri/projectApi";
-import { createSegmentUid, ensureSegmentUids } from "../utils/segmentUid";
+import { createSegmentUid, ensureSegmentUids, ensureUniqueSegmentUids } from "../utils/segmentUid";
 
-export { createSegmentUid, ensureSegmentUids };
+export { createSegmentUid, ensureSegmentUids, ensureUniqueSegmentUids };
 
 /** 深拷贝语段数组（不重新索引）。 */
 export function cloneSegments(segs: SegmentDto[]): SegmentDto[] {
@@ -11,6 +11,38 @@ export function cloneSegments(segs: SegmentDto[]): SegmentDto[] {
 /** 连续 `idx` 与数组下标一致（SQLite / Tauri 保存前常用）。 */
 export function reindexSegments(segs: SegmentDto[]): SegmentDto[] {
   return segs.map((x, j) => ({ ...x, idx: j }));
+}
+
+export function compareSegmentsByStartSec(
+  a: Pick<SegmentDto, "start_sec" | "end_sec">,
+  b: Pick<SegmentDto, "start_sec" | "end_sec">,
+): number {
+  const byStart = a.start_sec - b.start_sec;
+  return byStart !== 0 ? byStart : a.end_sec - b.end_sec;
+}
+
+export function isSegmentsSortedByStart(segs: Pick<SegmentDto, "start_sec" | "end_sec">[]): boolean {
+  for (let i = 1; i < segs.length; i++) {
+    if (compareSegmentsByStartSec(segs[i - 1]!, segs[i]!) > 0) return false;
+  }
+  return true;
+}
+
+/** 列表与波形共用时间升序；已排序时仅 reindex。 */
+export function sortSegmentsByStartSec(segs: SegmentDto[]): SegmentDto[] {
+  if (segs.length < 2) return reindexSegments(segs);
+  if (isSegmentsSortedByStart(segs)) return reindexSegments(segs);
+  return reindexSegments([...segs].sort(compareSegmentsByStartSec));
+}
+
+export function findSegmentIndexByUid(segs: SegmentDto[], uid: string | null | undefined): number {
+  if (!uid) return -1;
+  return segs.findIndex((s) => s.uid === uid);
+}
+
+/** 从后端载入或保存回读后的语段列表规范化（uid、唯一性、时间序、idx）。 */
+export function normalizeSegmentList(segs: SegmentDto[]): SegmentDto[] {
+  return sortSegmentsByStartSec(ensureUniqueSegmentUids(ensureSegmentUids(cloneSegments(segs))));
 }
 
 /** 与 `file_save_segments` 落库字段对齐，用于未保存检测。 */

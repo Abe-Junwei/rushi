@@ -25,6 +25,23 @@ export function ensureSegmentUids(segs: SegmentDto[]): SegmentDto[] {
   return changed ? out : segs;
 }
 
+/** 重复 uid 会导致 React key / 草稿 store 串行，按出现顺序为后者换新 uid。 */
+export function ensureUniqueSegmentUids(segs: SegmentDto[]): SegmentDto[] {
+  const seen = new Set<string>();
+  let changed = false;
+  const out = segs.map((s) => {
+    const uid = segmentUidOf(s);
+    if (!uid) return s;
+    if (!seen.has(uid)) {
+      seen.add(uid);
+      return s;
+    }
+    changed = true;
+    return { ...s, uid: createSegmentUid() };
+  });
+  return changed ? out : segs;
+}
+
 /** 语段集合身份签名：仅 uid 集合变化时触发 region 增删。 */
 export function segmentsUidSignature(segments: Pick<SegmentDto, "uid">[]): string {
   return segments

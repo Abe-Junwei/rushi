@@ -7,3 +7,48 @@ export function formatMediaTime(sec: number): string {
   const pad = (n: number) => n.toString().padStart(2, "0");
   return h > 0 ? `${h}:${pad(m)}:${pad(s)}` : `${m}:${pad(s)}`;
 }
+
+/** 语段时间范围起点（与播放/seek 对齐，容忍反序边界）。 */
+export function segmentStartSec(seg: { start_sec: number; end_sec: number }): number {
+  return Math.min(seg.start_sec, seg.end_sec);
+}
+
+/**
+ * 解析跳转时间输入：`m:ss`、`mm:ss`、`h:mm:ss`；纯秒数也可。
+ * 超出 `durationSec` 时钳制；无效返回 null。
+ */
+export function parseMediaTimeInput(raw: string, durationSec?: number): number | null {
+  const trimmed = raw.trim();
+  if (!trimmed) return null;
+
+  if (/^\d+(\.\d+)?$/.test(trimmed)) {
+    const sec = Number(trimmed);
+    if (!Number.isFinite(sec) || sec < 0) return null;
+    return clampParsedMediaTime(sec, durationSec);
+  }
+
+  const parts = trimmed.split(":").map((p) => p.trim());
+  if (parts.length < 2 || parts.length > 3) return null;
+  if (parts.some((p) => p === "" || !/^\d+(\.\d+)?$/.test(p))) return null;
+
+  let sec = 0;
+  if (parts.length === 2) {
+    const [m, s] = parts.map(Number);
+    if (!Number.isFinite(m) || !Number.isFinite(s) || m < 0 || s < 0) return null;
+    sec = m * 60 + s;
+  } else {
+    const [h, m, s] = parts.map(Number);
+    if (!Number.isFinite(h) || !Number.isFinite(m) || !Number.isFinite(s) || h < 0 || m < 0 || s < 0) {
+      return null;
+    }
+    sec = h * 3600 + m * 60 + s;
+  }
+
+  return clampParsedMediaTime(sec, durationSec);
+}
+
+function clampParsedMediaTime(sec: number, durationSec?: number): number {
+  const dur = durationSec ?? 0;
+  if (!Number.isFinite(dur) || dur <= 0) return sec;
+  return Math.max(0, Math.min(dur, sec));
+}

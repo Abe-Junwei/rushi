@@ -53,6 +53,7 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
   const onClickRow = useCallback(() => {
     if (busy) return;
     if (selected) {
+      selectSegmentAt(i);
       editorRef.current?.focusEditor();
       return;
     }

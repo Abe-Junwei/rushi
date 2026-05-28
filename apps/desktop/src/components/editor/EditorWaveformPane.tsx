@@ -1,12 +1,20 @@
 import { ResizeBottomHit } from "../ResizeBottomHit";
 import { WaveformLiveTimeRuler } from "../WaveformLiveTimeRuler";
-import { WaveformPeaksCanvas } from "../WaveformPeaksCanvas";
+import { WaveformPeaksViewportLayer } from "../WaveformPeaksViewportLayer";
+import { WaveformGlobalPlaybackSpeed } from "../WaveformGlobalPlaybackSpeed";
+import { WaveformGoToTime } from "../WaveformGoToTime";
 import { WaveformPlaybackTime } from "../WaveformPlaybackTime";
 import { WaveformSegmentPlaybackControls } from "../WaveformSegmentPlaybackControls";
+import { WaveformSegmentOverlay } from "../WaveformSegmentOverlay";
+import { WaveformOverviewStrip } from "../WaveformOverviewStrip";
+import { WaveformGlobalStripShell } from "../WaveformGlobalStripShell";
 import { WaveformZoomBar } from "../WaveformZoomBar";
+import { WAVEFORM_GLOBAL_STRIP_HEIGHT_PX } from "../../utils/waveformViewMode";
+import { useCallback } from "react";
 import { useWaveformViewportMetrics } from "../../hooks/useWaveformViewportMetrics";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
+import { resolveSegmentIndexAtWaveformPointer } from "../../utils/waveformSegmentBounds";
 
 interface SegmentCtxMenuState {
   x: number;
@@ -29,40 +37,76 @@ export function EditorWaveformPane({
   const selectedSegment = c.segments[c.selectedIdx] ?? null;
   const liveViewport = tx.isPlaying || tx.zoomDragging;
   const { scrollLeftPx, clientWidthPx } = useWaveformViewportMetrics(tx.tierScrollRef, liveViewport);
-  const waveformStageHeightPx = tx.waveformHeightPx;
+
+  const readTierScrollLeftPx = useCallback(
+    () => tx.tierScrollRef.current?.scrollLeft ?? scrollLeftPx,
+    [scrollLeftPx, tx.tierScrollRef],
+  );
+  const readTierViewportWidthPx = useCallback(
+    () => tx.tierScrollRef.current?.clientWidth ?? clientWidthPx,
+    [clientWidthPx, tx.tierScrollRef],
+  );
+  const waveformStageHeightPx = tx.waveformStageHeightPx;
+  const innerWaveformHeightPx = tx.waveformHeightPx;
+  const innerPaintedHeightPx = tx.waveformPaintedHeightPx;
   const waveformVisualScale =
     tx.waveformPaintedHeightPx > 0 ? tx.waveformHeightPx / tx.waveformPaintedHeightPx : 1;
   const waveformHeightPreviewActive =
     Math.abs(waveformVisualScale - 1) > 0.001 && !tx.waveformHeightDragging;
   const waveformVerticalTransform =
-    Math.abs(waveformVisualScale - 1) > 0.001 ? `scaleY(${waveformVisualScale})` : undefined;
+    waveformHeightPreviewActive ? `scaleY(${waveformVisualScale})` : undefined;
   const waveformVerticalClass = tx.waveformHeightDragging
     ? "h-full w-full origin-top-left will-change-transform"
     : waveformHeightPreviewActive
       ? "h-full w-full origin-top-left will-change-transform transition-transform duration-150 ease-out motion-reduce:transition-none"
       : "h-full w-full origin-top-left";
+  const stripDisabled = c.busy || !tx.isReady;
+
   return (
-    <div className="relative z-0 flex w-full shrink-0 flex-col overflow-hidden bg-notion-sidebar">
+    <div className="relative z-10 flex w-full shrink-0 flex-col overflow-visible bg-notion-sidebar">
       <div
         ref={tx.tierScrollRef}
         onScroll={tx.onTierScroll}
         style={{ height: waveformStageHeightPx }}
-        className="w-full shrink-0 overflow-x-auto overflow-y-hidden [overflow-anchor:none]"
+        className="relative w-full shrink-0 overflow-x-auto overflow-y-hidden [overflow-anchor:none]"
       >
+        <WaveformPeaksViewportLayer
+          peakCache={tx.peakCache}
+          active={Boolean(tx.peakCache)}
+          pxPerSec={tx.pxPerSec}
+          scrollLeftPx={scrollLeftPx}
+          viewportWidthPx={clientWidthPx}
+          heightPx={innerWaveformHeightPx}
+          progressTimeSec={tx.isPlaying && tx.isReady ? tx.getPlayheadTime() : tx.currentTime}
+          tierScrollRef={tx.tierScrollRef}
+          readScrollLeftPx={readTierScrollLeftPx}
+          readViewportWidthPx={readTierViewportWidthPx}
+          repaintKey={tx.peaksRepaintKey}
+        />
         <div
           style={{ width: tx.timelineWidthPx }}
-          className={`inline-block align-top ${c.busy ? "pointer-events-none opacity-60" : ""}`}
+          className={`relative z-[1] inline-block align-top ${c.busy ? "pointer-events-none opacity-60" : ""}`}
         >
           <div
             style={{ height: waveformStageHeightPx }}
-            className="relative overflow-hidden bg-notion-sidebar"
+            className="relative overflow-hidden"
             onContextMenu={(e) => {
               if (c.busy) return;
               e.preventDefault();
               const t = tx.clientXToTimeSec(e.clientX);
-              const hit = c.segments.findIndex((s) => t >= s.start_sec && t <= s.end_sec);
-              const segmentIdx =
-                hit >= 0 ? hit : c.segments.length > 0 ? Math.min(c.selectedIdx, c.segments.length - 1) : 0;
+              const overlayEl = e.currentTarget.querySelector<HTMLElement>(".waveform-segment-overlay");
+              const overlayTop = overlayEl?.getBoundingClientRect().top ?? e.clientY;
+              const segmentIdx = resolveSegmentIndexAtWaveformPointer({
+                segments: c.segments,
+                timeSec: t,
+                pointerClientY: e.clientY,
+                overlayClientTop: overlayTop,
+                layoutHeightPx: tx.waveformPaintedHeightPx,
+                laneByIndex: tx.segmentLaneLayout.laneByIndex,
+                laneCount: tx.segmentLaneLayout.laneCount,
+                selectedIdx: c.selectedIdx,
+              });
+              if (segmentIdx < 0) return;
               onOpenSegmentContextMenu({ x: e.clientX, y: e.clientY, segmentIdx, pointerTimeSec: t });
             }}
           >
@@ -72,7 +116,7 @@ export function EditorWaveformPane({
               </p>
             ) : null}
 
-            <div className="relative flex h-full flex-col overflow-x-hidden bg-notion-sidebar">
+            <div className="relative flex h-full flex-col overflow-x-hidden bg-transparent">
               <div
                 ref={tx.waveformShellRef}
                 tabIndex={0}
@@ -80,12 +124,12 @@ export function EditorWaveformPane({
                 onKeyDown={tx.onWaveformMainKeyDown}
                 onClick={() => tx.focusWaveformShell()}
               >
-                <div className="w-full overflow-hidden" style={{ height: tx.waveformHeightPx }}>
+                <div className="w-full overflow-hidden" style={{ height: innerWaveformHeightPx }}>
                   <div
                     className={waveformVerticalClass}
                     style={{
                       width: tx.timelineWidthPx,
-                      height: tx.waveformPaintedHeightPx,
+                      height: innerPaintedHeightPx,
                       transform: waveformVerticalTransform,
                     }}
                   >
@@ -93,43 +137,53 @@ export function EditorWaveformPane({
                       className="relative h-full w-full origin-top-left"
                       style={{
                         width: tx.timelineWidthPx,
-                        height: tx.waveformPaintedHeightPx,
+                        height: innerPaintedHeightPx,
                       }}
                     >
-                      <WaveformPeaksCanvas
-                        peakCache={tx.peakCache}
+                      <WaveformSegmentOverlay
+                        disabled={stripDisabled}
+                        segments={c.segments}
+                        selectedIdx={c.selectedIdx}
                         pxPerSec={tx.pxPerSec}
-                        scrollLeftPx={scrollLeftPx}
-                        viewportWidthPx={clientWidthPx}
-                        heightPx={tx.waveformPaintedHeightPx}
-                        progressTimeSec={
-                          tx.isPlaying && tx.isReady ? tx.getPlayheadTime() : tx.currentTime
+                        durationSec={tx.duration || 0}
+                        layoutHeightPx={innerPaintedHeightPx}
+                        laneByIndex={tx.segmentLaneLayout.laneByIndex}
+                        laneCount={tx.segmentLaneLayout.laneCount}
+                        enableCreateRange
+                        clientXToTimeSec={tx.clientXToTimeSec}
+                        onSelectSegmentAt={(idx) => tx.selectSegmentAt(idx, "waveform")}
+                        onFocusWaveformShell={tx.focusWaveformShell}
+                        onBoundsCommit={(idx, startSec, endSec) =>
+                          c.updateSegmentBounds(idx, startSec, endSec, "commit")
                         }
-                        active={Boolean(tx.peakCache && tx.isReady)}
+                        onCreateRange={c.insertSegmentFromTimeRange}
+                        onPlaySegment={(idx) => void tx.playSegmentAtIndex(idx)}
+                        seekToTime={tx.seek}
                       />
                       <div
                         ref={tx.containerRef}
-                        style={{ width: tx.timelineWidthPx, height: tx.waveformPaintedHeightPx }}
-                        className="relative z-[2] shrink-0 bg-transparent"
+                        style={{ width: tx.timelineWidthPx, height: innerPaintedHeightPx }}
+                        className="pointer-events-none relative z-0 shrink-0 bg-transparent"
                         role="img"
                         aria-label="转写波形与语段时间范围"
+                      />
+                      <WaveformSegmentPlaybackControls
+                        disabled={stripDisabled}
+                        isPlaying={tx.isPlaying}
+                        pxPerSec={tx.pxPerSec}
+                        scrollLeftPx={scrollLeftPx}
+                        viewportWidthPx={clientWidthPx}
+                        tierScrollRef={tx.tierScrollRef}
+                        selectedSegment={selectedSegment}
+                        segmentPlaybackRate={tx.segmentPlaybackRate}
+                        segmentLoopPlayback={tx.segmentLoopPlayback}
+                        onPlaybackRateChange={tx.handleSegmentPlaybackRateChange}
+                        onToggleLoop={() => void tx.handleToggleSelectedWaveformLoop()}
+                        onTogglePlay={() => void tx.handleToggleSelectedWaveformPlay()}
                       />
                     </div>
                   </div>
                 </div>
-                <WaveformSegmentPlaybackControls
-                  disabled={c.busy || !tx.isReady}
-                  isPlaying={tx.isPlaying}
-                  pxPerSec={tx.pxPerSec}
-                  scrollLeftPx={scrollLeftPx}
-                  viewportWidthPx={clientWidthPx}
-                  selectedSegment={selectedSegment}
-                  segmentPlaybackRate={tx.segmentPlaybackRate}
-                  segmentLoopPlayback={tx.segmentLoopPlayback}
-                  onPlaybackRateChange={tx.handleSegmentPlaybackRateChange}
-                  onToggleLoop={() => void tx.handleToggleSelectedWaveformLoop()}
-                  onTogglePlay={() => void tx.handleToggleSelectedWaveformPlay()}
-                />
                 <div className="absolute inset-x-0 bottom-0 z-10">
                   <WaveformLiveTimeRuler
                     appearance="embedded"
@@ -143,7 +197,7 @@ export function EditorWaveformPane({
                     isReady={tx.isReady}
                     getPlayheadTime={tx.getPlayheadTime}
                     formatMediaTime={tx.formatMediaTime}
-                    disabled={c.busy || !tx.isReady}
+                    disabled={stripDisabled}
                     onSeekFromTierClientX={tx.seekFromTierClientX}
                     onSetScrollLeftPx={tx.setTierScrollPx}
                   />
@@ -158,6 +212,32 @@ export function EditorWaveformPane({
           </div>
         </div>
       </div>
+
+      <WaveformGlobalStripShell
+        collapsed={tx.globalStripCollapsed}
+        disabled={stripDisabled}
+        onToggleCollapsed={tx.toggleGlobalStripCollapsed}
+      >
+        {!tx.globalStripCollapsed ? (
+          <WaveformOverviewStrip
+            stripHeightPx={WAVEFORM_GLOBAL_STRIP_HEIGHT_PX}
+            disabled={stripDisabled}
+            isReady={tx.isReady}
+            durationSec={tx.duration || 0}
+            pxPerSec={tx.pxPerSec}
+            timelineWidthPx={tx.timelineWidthPx}
+            scrollLeftPx={scrollLeftPx}
+            mainViewportWidthPx={clientWidthPx}
+            progressTimeSec={tx.isPlaying && tx.isReady ? tx.getPlayheadTime() : tx.currentTime}
+            peakCache={tx.peakCache}
+            segments={c.segments}
+            selectedIdx={c.selectedIdx}
+            setTierScrollPx={tx.setTierScrollPx}
+            seekToTime={tx.seek}
+            onSelectSegmentAt={(idx) => tx.selectSegmentAt(idx, "global-strip")}
+          />
+        ) : null}
+      </WaveformGlobalStripShell>
 
       <div className="waveform-bottom-toolbar">
         <div className="waveform-playback-cluster">
@@ -177,6 +257,11 @@ export function EditorWaveformPane({
               <span className="waveform-playback-play" aria-hidden />
             )}
           </button>
+          <WaveformGlobalPlaybackSpeed
+            disabled={c.busy || !tx.isReady}
+            playbackRate={tx.globalPlaybackRate}
+            onPlaybackRateChange={tx.setGlobalPlaybackRate}
+          />
           <WaveformPlaybackTime
             isPlaying={tx.isPlaying}
             isReady={tx.isReady}
@@ -184,20 +269,32 @@ export function EditorWaveformPane({
             getPlayheadTime={tx.getPlayheadTime}
             formatMediaTime={tx.formatMediaTime}
           />
+          <WaveformGoToTime
+            disabled={c.busy || !tx.isReady}
+            durationSec={tx.duration || 0}
+            onJump={tx.jumpToMediaTime}
+          />
         </div>
         <WaveformZoomBar
           disabled={c.busy}
           isReady={tx.isReady}
           pxPerSec={tx.pxPerSec}
-          hasSelectionSegment={c.segments.length > 0}
-          onZoomToFitAll={() => tx.zoomToFitTier()}
-          onZoomToFitSelection={() => tx.zoomToFitSelection()}
+          viewportWidthPx={clientWidthPx}
+          durationSec={tx.duration || 0}
+          hasSelectionSegment={c.selectedIdx >= 0 && Boolean(c.segments[c.selectedIdx])}
+          selectedStartSec={selectedSegment?.start_sec}
+          selectedEndSec={selectedSegment?.end_sec}
+          autoFitSelectionToViewport={tx.autoFitSelectionToViewport}
+          onEnterManualNavigation={tx.enterManualWaveformNavigation}
+          onEnterFollowNavigation={tx.enterFollowWaveformNavigation}
+          onRefitFollowSelection={tx.refitFollowWaveformSelection}
           onResetDefaultZoom={() => tx.resetZoom()}
           onZoomIn={() => tx.zoomIn()}
           onZoomOut={() => tx.zoomOut()}
           onPxPerSecChange={tx.setPxPerSec}
           onZoomInteractionStart={tx.beginZoomInteraction}
           onZoomInteractionEnd={tx.commitZoomInteraction}
+          editorHint={tx.editorHint}
         />
       </div>
     </div>

@@ -35,9 +35,9 @@ export function buildSegmentContextMenuItems(args: {
   const { segmentIdx: i, segments, busy, pointerTimeSec } = args;
   const n = segments.length;
   const seg = segments[i];
-  const canMergePrev = i > 0 && !busy;
-  const canMergeNext = i < n - 1 && !busy;
-  let canSplit = Boolean(seg) && !busy && n > 0;
+  const canMergePrev = i >= 0 && i > 0 && !busy;
+  const canMergeNext = i >= 0 && i < n - 1 && !busy;
+  let canSplit = i >= 0 && Boolean(seg) && !busy && n > 0;
   if (canSplit && seg) {
     const t = pointerTimeSec;
     canSplit = t > seg.start_sec + 0.02 && t < seg.end_sec - 0.02;

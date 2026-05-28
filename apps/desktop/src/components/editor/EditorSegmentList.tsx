@@ -63,7 +63,7 @@ export function EditorSegmentList({
       <div className="space-y-2.5">
         {c.segments.map((s, i) => (
           <SegmentTextListRow
-            key={s.uid}
+            key={s.uid ? `${s.uid}#${i}` : `seg-${i}`}
             segment={s}
             index={i}
             selected={i === c.selectedIdx}
@@ -76,7 +76,7 @@ export function EditorSegmentList({
             segmentMetaWidthPx={a.transcriptMetaWidthPx}
             onSegmentMetaWidthPointerDown={a.beginTranscriptMetaWidthDrag}
             onSegmentRowHeightPointerDown={tx.beginTranscriptRowHeightDrag}
-            selectSegmentAt={tx.selectSegmentAt}
+            selectSegmentAt={tx.selectSegmentFromList}
             updateSegmentText={c.updateSegmentText}
             onTextareaKeyDown={tx.onSegmentTextareaKeyDown}
             onOpenContextMenu={onOpenRowContextMenu}

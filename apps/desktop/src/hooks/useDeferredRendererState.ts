@@ -126,6 +126,18 @@ export function useDeferredRendererState<T>(config: UseDeferredRendererStateConf
     [trackCommitted],
   );
 
+  useEffect(() => {
+    if (!trackCommitted || dragging) return;
+    if (equalsRef.current(committed, render)) return;
+    const timer = window.setTimeout(() => {
+      if (draggingRef.current) return;
+      const next = clampRef.current(visualRef.current);
+      setCommittedState((prev) => (equalsRef.current(prev, next) ? prev : next));
+      setRenderState((prev) => (equalsRef.current(prev, next) ? prev : next));
+    }, 2000);
+    return () => window.clearTimeout(timer);
+  }, [committed, dragging, render, trackCommitted]);
+
   const setDragging = useCallback((on: boolean) => {
     draggingRef.current = on;
     setDraggingState(on);

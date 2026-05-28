@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SegmentDto } from "../tauri/projectApi";
-import { createSegmentUid, ensureSegmentUids, segmentsUidSignature } from "./segmentUid";
+import { createSegmentUid, ensureSegmentUids, ensureUniqueSegmentUids, segmentsUidSignature } from "./segmentUid";
 
 function seg(partial: Partial<SegmentDto> & Pick<SegmentDto, "start_sec" | "end_sec">): SegmentDto {
   return {
@@ -21,6 +21,14 @@ describe("segmentUid", () => {
     expect(out[0]?.uid).toBe(existing);
     expect(out[1]?.uid).toBeTruthy();
     expect(out[1]?.uid).not.toBe(existing);
+  });
+
+  it("ensureUniqueSegmentUids fixes duplicate uids", () => {
+    const dup = createSegmentUid();
+    const input = [seg({ uid: dup, start_sec: 0, end_sec: 1 }), seg({ uid: dup, start_sec: 2, end_sec: 3 })];
+    const out = ensureUniqueSegmentUids(input);
+    expect(out[0]?.uid).toBe(dup);
+    expect(out[1]?.uid).not.toBe(dup);
   });
 
   it("segmentsUidSignature ignores order and text", () => {

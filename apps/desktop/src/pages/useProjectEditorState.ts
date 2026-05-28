@@ -4,7 +4,7 @@ import type { ProjectDetail, SegmentDto } from "../tauri/projectApi";
 import * as p1 from "../tauri/projectApi";
 import * as fileApi from "../tauri/fileApi";
 import { segmentDraftStore } from "../hooks/useSegmentDraftStore";
-import { cloneSegments, ensureSegmentUids } from "./segmentListHelpers";
+import { findSegmentIndexByUid, normalizeSegmentList } from "./segmentListHelpers";
 
 export interface ProjectEditorApi {
   current: ProjectDetail | null;
@@ -43,7 +43,7 @@ export function useProjectEditorState(setError: (msg: string) => void): ProjectE
     setError("");
     try {
       const detail = await fileApi.loadFile(fileId);
-      const segs = ensureSegmentUids(cloneSegments(detail.segments));
+      const segs = normalizeSegmentList(detail.segments);
       segmentsRef.current = segs;
       setCurrentFileId(fileId);
       setSegments(segs);
@@ -81,7 +81,12 @@ export function useProjectEditorState(setError: (msg: string) => void): ProjectE
       setCurrent(d);
       if (currentFileId) {
         const fd = await fileApi.loadFile(currentFileId);
-        setSegments(ensureSegmentUids(cloneSegments(fd.segments)));
+        const prevUid = segmentsRef.current[selectedIdxRef.current]?.uid;
+        const segs = normalizeSegmentList(fd.segments);
+        segmentsRef.current = segs;
+        setSegments(segs);
+        const ni = findSegmentIndexByUid(segs, prevUid);
+        setSelectedIdx(ni >= 0 ? ni : Math.min(selectedIdxRef.current, Math.max(0, segs.length - 1)));
         try {
           setAudioSrc(fd.audio_path ? convertFileSrc(fd.audio_path) : null);
         } catch {
