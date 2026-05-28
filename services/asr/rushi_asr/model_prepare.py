@@ -67,15 +67,6 @@ def _model_dir_candidates(root: Path, model_id: str) -> list[Path]:
         root / "hub" / "models" / owner / name,
         root / "hub" / owner / name,
     ]
-    # Some ModelScope versions keep extra temp/lock directories nearby. Ignore them.
-    try:
-        for p in root.glob(f"**/{name}"):
-            text = p.as_posix()
-            if any(marker in text for marker in ("/._____temp/", "/.lock/")):
-                continue
-            candidates.append(p)
-    except OSError:
-        pass
 
     unique: list[Path] = []
     for p in candidates:
@@ -382,6 +373,20 @@ def start_prepare_async(model_id: str | None = None) -> dict[str, Any]:
 def start_prepare_default_async() -> dict[str, Any]:
     """Backward-compatible async prepare for the effective default hub model."""
     return start_prepare_async(None)
+
+
+def reset_prepare_idle_state() -> None:
+    """Test / dev helper: clear in-memory prepare phase (does not cancel downloads)."""
+    with _lock:
+        _state.clear()
+        _state.update(
+            {
+                "phase": "idle",
+                "message": "",
+                "error_code": None,
+                "result": None,
+            }
+        )
 
 
 def cancel_prepare_async() -> dict[str, Any]:

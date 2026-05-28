@@ -102,24 +102,14 @@ fn spawn_sidecar(exe: &Path, handle: &AppHandle) -> std::io::Result<Child> {
     let mut cmd = Command::new(exe);
     cmd.current_dir(&workdir)
         .env("ASR_HOST", "127.0.0.1")
-        .env("ASR_PORT", "8741")
+        .env("ASR_PORT", super::ASR_LOOPBACK_PORT.to_string())
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null());
     if let Some(st) = handle.try_state::<DbState>() {
-        let models = st.root.join("models");
-        if std::fs::create_dir_all(&models).is_ok() {
-            cmd.env("RUSHI_MODELS_ROOT", &models);
-            let ms = models.join("modelscope");
-            let _ = std::fs::create_dir_all(&ms);
-            cmd.env("MODELSCOPE_CACHE", &ms);
-            let hf = models.join("huggingface");
-            let _ = std::fs::create_dir_all(&hf);
-            cmd.env("HF_HOME", &hf);
-        }
-        if let Some(hub) = crate::local_asr_model::read_hub_model_pref(st.inner()) {
-            cmd.env("RUSHI_FUNASR_MODEL", hub);
-        }
+        let models = crate::project::models_root_for_app_data_root(&st.root);
+        let hub = crate::local_asr_model::read_hub_model_pref(st.inner());
+        crate::project::app_data_paths::apply_asr_model_env(&mut cmd, &models, hub.as_deref());
     }
     #[cfg(target_os = "windows")]
     {
@@ -314,6 +304,10 @@ pub fn stop_bundled(handle: &AppHandle) {
 
 /// Stop managed child and any stale listener on :8741, then start bundled sidecar again.
 pub fn force_restart_bundled(handle: &AppHandle) {
+    if std::env::var("RUSHI_SKIP_BUNDLED_ASR").ok().as_deref() == Some("1") {
+        append_sidecar_log_line(handle, "INFO bundled_sidecar_skip_env_restart");
+        return;
+    }
     stop_bundled(handle);
     if loopback_port_accepts_tcp(ASR_LOOPBACK_PORT) {
         match kill_loopback_listeners_on_port(ASR_LOOPBACK_PORT) {

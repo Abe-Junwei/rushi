@@ -53,7 +53,7 @@ python -m rushi_asr
 
 - **ffmpeg / ffprobe**：须在 `PATH` 中，用于上传文件的解码与 **16 kHz mono WAV** 规范化。
 - **可选 FunASR**：`pip install -e ".[funasr]"` 后可选设置 `RUSHI_FUNASR_MODEL`（例如 `paraformer-zh`）；**未设置时使用内置默认** `iic/SenseVoiceSmall`。默认模型与必需辅助模型建议先通过 `POST /v1/models/prepare-default` 或桌面端「下载默认模型」准备完成；未安装 FunASR 时仍走 **stub**（单段、空文本、带 `detail` 说明）。
-- **模型缓存目录**：桌面壳启动内置侧车时会设置 **`RUSHI_MODELS_ROOT`**（`{应用数据}/studio.lingchuang.rushi/models/`）并映射 **`MODELSCOPE_CACHE`** / **`HF_HOME`** 至其下子目录；本机 `python -m rushi_asr` 也可自行 `export RUSHI_MODELS_ROOT=...` 以统一权重落盘位置。
+- **模型缓存目录**：桌面与侧车约定 **`RUSHI_MODELS_ROOT=<app_data_root>/models`**（`app_data_root` 由 Tauri 解析；若存在 legacy 嵌套 `studio.lingchuang.rushi/studio.lingchuang.rushi/` 则用之，见 `project/app_data_paths.rs`）。壳启动侧车或 **`npm run asr:dev`** 时会设置 `RUSHI_MODELS_ROOT` 并映射 **`MODELSCOPE_CACHE`** / **`HF_HOME`**。**未设置时** `apply_models_root_env()` 不生效，`/health.rushi_models_root` 为 `null`，`*_cached` 探测失败——权重会落到 `~/.cache/modelscope`，环境页会显示「未缓存」。
 - **可选 manifest 校验**：`RUSHI_MODEL_VERIFY_MANIFEST` 指向 JSON 文件（相对路径则相对 `RUSHI_MODELS_ROOT`），在 `POST /v1/models/prepare-default`（及异步路径完成时）对列出的文件做 **SHA256** 校验；不匹配返回 **400**（见 `rushi_asr/model_manifest_verify.py`）。Manifest 为对象数组，每项含 `path` 或 `rel`（相对 `RUSHI_MODELS_ROOT`）、`sha256`（小写十六进制）。
 
 可选调参：

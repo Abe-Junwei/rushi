@@ -9,6 +9,8 @@ from fastapi import Body, FastAPI, File, Form, HTTPException, Request, UploadFil
 from pydantic import BaseModel, Field
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.concurrency import run_in_threadpool
+from starlette.requests import Request
+from starlette.responses import Response
 
 from rushi_asr.engine import transcribe_upload
 from rushi_asr.model_cache_env import apply_models_root_env
@@ -56,6 +58,14 @@ def create_app() -> FastAPI:
         allow_methods=["GET", "POST", "OPTIONS"],
         allow_headers=["*"],
     )
+
+    @app.middleware("http")
+    async def private_network_access(request: Request, call_next) -> Response:
+        """Chrome Private Network Access preflight for http://localhost → loopback."""
+        response = await call_next(request)
+        if request.headers.get("access-control-request-private-network") == "true":
+            response.headers["Access-Control-Allow-Private-Network"] = "true"
+        return response
 
     @app.get("/")
     def root() -> dict[str, str]:

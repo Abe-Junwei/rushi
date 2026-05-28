@@ -137,6 +137,7 @@ export function readStoredLocalAsrHubModelId(): string {
   }
 }
 
+/** @deprecated Setup flows must use UI `selectedHubModelId`; pref is persistence only. */
 export async function resolvePreferredLocalAsrHubModelId(): Promise<string> {
   try {
     const { getLocalAsrHubModelPref } = await import("../../tauri/projectApi");

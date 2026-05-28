@@ -10,6 +10,7 @@ from rushi_asr.model_prepare import (
     cancel_prepare_async,
     default_model_cached_guess,
     required_models_cached_guess,
+    reset_prepare_idle_state,
     vad_model_cached_guess,
 )
 from rushi_asr.model_prepare_progress import (
@@ -18,6 +19,15 @@ from rushi_asr.model_prepare_progress import (
     raise_if_prepare_cancelled,
     request_prepare_cancel,
 )
+
+
+@pytest.fixture(autouse=True)
+def _isolate_prepare_state() -> None:
+    reset_prepare_idle_state()
+    clear_prepare_cancel()
+    yield
+    reset_prepare_idle_state()
+    clear_prepare_cancel()
 
 
 def test_prepare_cancel_when_idle() -> None:

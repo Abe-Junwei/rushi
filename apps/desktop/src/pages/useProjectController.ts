@@ -40,6 +40,10 @@ export function useProjectController() {
     refreshAsrHealth: asr.refreshAsrHealth,
     refreshAsrRuntimeInfo,
     prepareDefaultFunasrModel: asr.prepareDefaultFunasrModel,
+    getSetupSelection: () => ({
+      selectedHubModelId: asr.localAsrModelCatalog.selectedHubModelId,
+      catalogStatus: asr.localAsrModelCatalog.catalogStatus,
+    }),
   });
   refreshSetupDiagnoseRef.current = asrSetup.refreshSetupDiagnose;
 

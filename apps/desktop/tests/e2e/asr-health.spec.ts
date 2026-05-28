@@ -33,6 +33,8 @@ test.describe("loopback rushi-asr", () => {
     expect(body.status).toBe("ok");
     expect(body.service).toBe("rushi-asr");
     expect(body).toHaveProperty("funasr_default_model_cached");
+    expect(body).toHaveProperty("rushi_models_root");
+    expect(body).toHaveProperty("funasr_required_models_cached");
   });
 
   test("POST /v1/transcribe returns v1 contract", async ({ request }) => {

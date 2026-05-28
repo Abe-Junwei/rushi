@@ -50,7 +50,7 @@ fn run_revalidate(app_root: &std::path::Path, cancel: &Arc<AtomicBool>) -> Resul
     if !installed_exe.is_file() {
         return Err("local_runtime_executable_missing".into());
     }
-    let models_root = app_root.join("models");
+    let models_root = crate::project::models_root_for_app_data_root(&app_root);
     let verify = |cancel: &Arc<AtomicBool>| {
         verify_installed_runtime(&installed_exe, Some(&models_root), Some(cancel))
     };
@@ -99,7 +99,7 @@ fn run_restore_previous(
     if !previous_exe.is_file() {
         return Err("local_runtime_previous_missing".into());
     }
-    let models_root = app_root.join("models");
+    let models_root = crate::project::models_root_for_app_data_root(&app_root);
     verify_installed_runtime(&previous_exe, Some(&models_root), Some(cancel))?;
     write_marker_with_previous(
         app_root,

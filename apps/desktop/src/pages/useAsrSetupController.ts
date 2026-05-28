@@ -17,7 +17,10 @@ export interface AsrSetupControllerApi {
   setupMessage: string;
   setupOutcome: AsrSetupOutcome;
   portConflict: boolean;
-  refreshSetupDiagnose: (options?: { resetSteps?: boolean }) => Promise<AsrSetupReport | null>;
+  refreshSetupDiagnose: (options?: {
+    resetSteps?: boolean;
+    touchUi?: boolean;
+  }) => Promise<AsrSetupReport | null>;
   refreshLocalRuntimeDiagnose: () => Promise<LocalRuntimeDiagnose | null>;
   downloadLocalRuntime: () => Promise<void>;
   cancelLocalRuntime: () => Promise<void>;
@@ -32,6 +35,7 @@ export function useAsrSetupController(deps: {
   refreshAsrHealth: () => Promise<void>;
   refreshAsrRuntimeInfo: () => Promise<void>;
   prepareDefaultFunasrModel: (options?: import("./usePrepareModelController").PrepareDefaultModelOptions) => Promise<void>;
+  getSetupSelection: () => import("../services/asr/localAsrSetupModelStep").LocalAsrSetupSelectionContext;
 }): AsrSetupControllerApi {
   const tauriRuntime = isTauriRuntime();
   const [setupReport, setSetupReport] = useState<AsrSetupReport | null>(null);
@@ -73,7 +77,8 @@ export function useAsrSetupController(deps: {
 
   const { pollUntilHealth, acceptForeignPortService } = useAsrSetupHealthFlow({
     deps,
-    refreshSetupDiagnose: async () => refreshSetupDiagnose({ resetSteps: false }),
+    refreshSetupDiagnose: (options?: { resetSteps?: boolean; touchUi?: boolean }) =>
+      refreshSetupDiagnose({ resetSteps: false, touchUi: false, ...options }),
     markPortConflictAcknowledged: () => setPortConflictAcknowledged(true),
     setSetupBusy,
     setSetupSteps,

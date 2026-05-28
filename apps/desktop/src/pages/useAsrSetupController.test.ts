@@ -15,21 +15,32 @@ const localRuntimeRestorePrevious = vi.fn<() => Promise<{ ok: boolean; reason?: 
 const fetchMock = vi.fn<typeof fetch>();
 
 vi.mock("../config/env", () => ({
+  asrBaseUrl: () => "http://127.0.0.1:8741",
   asrHealthUrl: () => "http://127.0.0.1:8741/health",
   isDefaultBundledAsrTarget: () => true,
   isTauriRuntime: () => true,
+}));
+
+vi.mock("../services/asr/loopbackFetch", () => ({
+  loopbackFetch: vi.fn(async (url: string) => {
+    const res = await fetch(url, { method: "GET" });
+    return res;
+  }),
 }));
 
 vi.mock("../tauri/asrSetupApi", () => ({
   asrSetupDiagnose: () => asrSetupDiagnose(),
 }));
 
-const setLocalAsrHubModelPref = vi.fn<() => Promise<void>>();
+const setLocalAsrHubModelPref = vi.fn<
+  (hub: string, options?: { restartSidecar?: boolean }) => Promise<void>
+>();
 const getLocalAsrHubModelPref = vi.fn<() => Promise<string | null>>();
 
 vi.mock("../tauri/projectApi", () => ({
   retryBundledAsrSidecar: () => retryBundledAsrSidecar(),
-  setLocalAsrHubModelPref: () => setLocalAsrHubModelPref(),
+  setLocalAsrHubModelPref: (hubModelId: string, options?: { restartSidecar?: boolean }) =>
+    setLocalAsrHubModelPref(hubModelId, options),
   getLocalAsrHubModelPref: () => getLocalAsrHubModelPref(),
 }));
 
@@ -69,6 +80,28 @@ function makeReport(overrides: Partial<AsrSetupReport> = {}): AsrSetupReport {
   };
 }
 
+function loopbackHealthResponse(ready: boolean): Response {
+  return {
+    ok: true,
+    json: () =>
+      Promise.resolve({
+        status: "ok",
+        service: "rushi-asr",
+        ffmpeg_ok: ready,
+        funasr_import_ok: ready,
+        funasr_model_configured: ready,
+        funasr_default_model_cached: ready,
+        funasr_vad_model_cached: ready,
+        funasr_required_models_cached: ready,
+        funasr_active_model_cached: ready,
+        funasr_ready: ready,
+        ready_for_transcribe: ready,
+        transcription_mode: ready ? "funasr" : "stub",
+        funasr_model_id: "iic/SenseVoiceSmall",
+      }),
+  } as Response;
+}
+
 function makeLocalRuntimeDiag(overrides: Partial<LocalRuntimeDiagnose> = {}): LocalRuntimeDiagnose {
   return {
     manifestConfigured: false,
@@ -92,6 +125,23 @@ function makeLocalRuntimeDiag(overrides: Partial<LocalRuntimeDiagnose> = {}): Lo
     blockingIssue: null,
     ...overrides,
   };
+}
+
+function renderSetupController(overrides?: {
+  prepareDefaultFunasrModel?: () => Promise<void>;
+  selectedHubModelId?: string;
+}) {
+  return renderHook(() =>
+    useAsrSetupController({
+      refreshAsrHealth: vi.fn(async () => {}),
+      refreshAsrRuntimeInfo: vi.fn(async () => {}),
+      prepareDefaultFunasrModel: overrides?.prepareDefaultFunasrModel ?? vi.fn(async () => {}),
+      getSetupSelection: () => ({
+        selectedHubModelId: overrides?.selectedHubModelId ?? "iic/SenseVoiceSmall",
+        catalogStatus: null,
+      }),
+    }),
+  );
 }
 
 describe("useAsrSetupController", () => {
@@ -142,6 +192,10 @@ describe("useAsrSetupController", () => {
         refreshAsrHealth: vi.fn(async () => {}),
         refreshAsrRuntimeInfo: vi.fn(async () => {}),
         prepareDefaultFunasrModel: vi.fn(async () => {}),
+        getSetupSelection: () => ({
+          selectedHubModelId: "iic/SenseVoiceSmall",
+          catalogStatus: null,
+        }),
       }),
     );
 
@@ -183,6 +237,10 @@ describe("useAsrSetupController", () => {
         refreshAsrHealth,
         refreshAsrRuntimeInfo: vi.fn(async () => {}),
         prepareDefaultFunasrModel: vi.fn(async () => {}),
+        getSetupSelection: () => ({
+          selectedHubModelId: "iic/SenseVoiceSmall",
+          catalogStatus: null,
+        }),
       }),
     );
 
@@ -257,31 +315,20 @@ describe("useAsrSetupController", () => {
           },
         }),
       );
-    fetchMock.mockResolvedValue({
-      ok: true,
-      json: () =>
-        Promise.resolve({
-        status: "ok",
-        service: "rushi-asr",
-        ffmpeg_ok: true,
-        funasr_import_ok: true,
-        funasr_model_configured: true,
-        funasr_default_model_cached: true,
-        funasr_vad_model_cached: true,
-        funasr_required_models_cached: true,
-        funasr_active_model_cached: true,
-        funasr_ready: true,
-        ready_for_transcribe: true,
-        transcription_mode: "funasr",
-        funasr_model_id: "iic/SenseVoiceSmall",
-        }),
-    } as Response);
+    fetchMock
+      .mockResolvedValueOnce(loopbackHealthResponse(false))
+      .mockResolvedValueOnce(loopbackHealthResponse(false))
+      .mockResolvedValue(loopbackHealthResponse(true));
 
     const { result } = renderHook(() =>
       useAsrSetupController({
         refreshAsrHealth: vi.fn(async () => {}),
         refreshAsrRuntimeInfo: vi.fn(async () => {}),
         prepareDefaultFunasrModel: vi.fn(async () => {}),
+        getSetupSelection: () => ({
+          selectedHubModelId: "iic/SenseVoiceSmall",
+          catalogStatus: null,
+        }),
       }),
     );
 
@@ -293,7 +340,7 @@ describe("useAsrSetupController", () => {
       expect(result.current.setupOutcome).toBe("ready");
     });
     expect(localRuntimeDownloadSidecar).toHaveBeenCalledTimes(1);
-    expect(setLocalAsrHubModelPref).toHaveBeenCalled();
+    expect(setLocalAsrHubModelPref).not.toHaveBeenCalled();
     expect(result.current.setupMessage).toContain("一键准备完成");
   });
 
@@ -328,31 +375,20 @@ describe("useAsrSetupController", () => {
           summaryLines: ["本机 rushi-asr 已在 8741 响应 /health。"],
         }),
       );
-    fetchMock.mockResolvedValue({
-      ok: true,
-      json: () =>
-        Promise.resolve({
-          status: "ok",
-          service: "rushi-asr",
-          ffmpeg_ok: true,
-          funasr_import_ok: true,
-          funasr_model_configured: true,
-          funasr_default_model_cached: true,
-          funasr_vad_model_cached: true,
-          funasr_required_models_cached: true,
-          funasr_active_model_cached: true,
-          funasr_ready: true,
-          ready_for_transcribe: true,
-          transcription_mode: "funasr",
-          funasr_model_id: "iic/SenseVoiceSmall",
-        }),
-    } as Response);
+    fetchMock
+      .mockResolvedValueOnce(loopbackHealthResponse(false))
+      .mockResolvedValueOnce(loopbackHealthResponse(false))
+      .mockResolvedValue(loopbackHealthResponse(true));
 
     const { result } = renderHook(() =>
       useAsrSetupController({
         refreshAsrHealth: vi.fn(async () => {}),
         refreshAsrRuntimeInfo: vi.fn(async () => {}),
         prepareDefaultFunasrModel: vi.fn(async () => {}),
+        getSetupSelection: () => ({
+          selectedHubModelId: "iic/SenseVoiceSmall",
+          catalogStatus: null,
+        }),
       }),
     );
 
@@ -425,6 +461,10 @@ describe("useAsrSetupController", () => {
         refreshAsrHealth: vi.fn(async () => {}),
         refreshAsrRuntimeInfo: vi.fn(async () => {}),
         prepareDefaultFunasrModel: vi.fn(async () => {}),
+        getSetupSelection: () => ({
+          selectedHubModelId: "iic/SenseVoiceSmall",
+          catalogStatus: null,
+        }),
       }),
     );
 
@@ -440,8 +480,76 @@ describe("useAsrSetupController", () => {
     await waitFor(() => {
       expect(result.current.setupOutcome).toBe("ready");
     });
-    expect(result.current.setupMessage).toContain("已使用当前 8741 服务");
+    expect(result.current.setupMessage).toMatch(/8741 服务/);
     expect(result.current.portConflict).toBe(false);
+  });
+
+  it("short-circuits one-click prepare when UI and loopback agree transcribe-ready", async () => {
+    asrSetupDiagnose.mockResolvedValue(makeReport());
+    fetchMock.mockResolvedValue({
+      ok: true,
+      json: () =>
+        Promise.resolve({
+          status: "ok",
+          service: "rushi-asr",
+          ffmpeg_ok: true,
+          funasr_import_ok: true,
+          funasr_model_configured: true,
+          funasr_default_model_cached: true,
+          funasr_vad_model_cached: true,
+          funasr_required_models_cached: true,
+          funasr_active_model_cached: true,
+          funasr_ready: true,
+          ready_for_transcribe: true,
+          transcription_mode: "funasr",
+          funasr_model_id: "iic/SenseVoiceSmall",
+        }),
+    } as Response);
+
+    const prepareDefaultFunasrModel = vi.fn(async () => {});
+    const { result } = renderSetupController({ prepareDefaultFunasrModel });
+
+    await act(async () => {
+      await result.current.runOneClickAsrPrepare();
+    });
+
+    await waitFor(() => {
+      expect(result.current.setupOutcome).toBe("ready");
+    });
+    expect(retryBundledAsrSidecar).not.toHaveBeenCalled();
+    expect(setLocalAsrHubModelPref).not.toHaveBeenCalled();
+    expect(prepareDefaultFunasrModel).not.toHaveBeenCalled();
+    expect(result.current.setupMessage).toContain("无需重复准备");
+  });
+
+  it("short-circuits when UI selection matches sidecar even if Tauri pref differs", async () => {
+    getLocalAsrHubModelPref.mockResolvedValue(
+      "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
+    );
+    asrSetupDiagnose.mockResolvedValue(
+      makeReport({
+        readyForTranscribe: false,
+        blockingIssue: "默认模型缓存未完整完成，请继续执行一键准备或重新下载模型。",
+      }),
+    );
+    fetchMock.mockResolvedValue(loopbackHealthResponse(true));
+
+    const { result } = renderSetupController({
+      selectedHubModelId: "iic/SenseVoiceSmall",
+    });
+
+    await act(async () => {
+      await result.current.runOneClickAsrPrepare();
+    });
+
+    await waitFor(() => {
+      expect(result.current.setupOutcome).toBe("ready");
+    });
+    expect(retryBundledAsrSidecar).not.toHaveBeenCalled();
+    expect(setLocalAsrHubModelPref).toHaveBeenCalledWith("iic/SenseVoiceSmall", {
+      restartSidecar: false,
+    });
+    expect(result.current.setupMessage).toContain("无需重复准备");
   });
 
   it("blocks one-click install when the runtime manifest is rejected", async () => {
@@ -478,6 +586,10 @@ describe("useAsrSetupController", () => {
         refreshAsrHealth: vi.fn(async () => {}),
         refreshAsrRuntimeInfo: vi.fn(async () => {}),
         prepareDefaultFunasrModel: vi.fn(async () => {}),
+        getSetupSelection: () => ({
+          selectedHubModelId: "iic/SenseVoiceSmall",
+          catalogStatus: null,
+        }),
       }),
     );
 

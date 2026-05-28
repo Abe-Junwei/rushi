@@ -88,7 +88,7 @@ fn health_snapshot_from_value(v: &Value) -> AsrSetupHealthSnapshot {
 
 async fn fetch_rushi_health() -> HealthFetch {
     let client = match reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(3))
+        .timeout(std::time::Duration::from_secs(8))
         .build()
     {
         Ok(c) => c,
@@ -304,7 +304,7 @@ pub async fn asr_setup_diagnose(
     state: State<'_, DbState>,
 ) -> Result<AsrSetupReport, String> {
     let st: &DbState = state.deref();
-    let models_root = st.root.join("models");
+    let models_root = crate::project::models_root_for_app_data_root(&st.root);
     let models_root_str = models_root.to_string_lossy().to_string();
 
     let port = probe_asr_port().await;

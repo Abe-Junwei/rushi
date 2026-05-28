@@ -1,0 +1,46 @@
+import { describe, expect, it } from "vitest";
+import {
+  isLoopbackTranscribeReadyForSelection,
+  shouldSkipSidecarRestartForSelection,
+} from "./localAsrSidecarGuards";
+
+const selection = { selectedHubModelId: "iic/SenseVoiceSmall", catalogStatus: null };
+
+const readyCaps = {
+  ffmpeg_ok: true,
+  funasr_import_ok: true,
+  funasr_model_configured: true,
+  funasr_default_model_cached: true,
+  funasr_active_model_cached: true,
+  funasr_vad_model_cached: true,
+  funasr_required_models_cached: true,
+  funasr_ready: true,
+  ready_for_transcribe: true,
+  transcription_mode: "funasr" as const,
+  funasr_model_id: "iic/SenseVoiceSmall",
+};
+
+describe("localAsrSidecarGuards", () => {
+  it("isLoopbackTranscribeReadyForSelection matches ready caps", () => {
+    expect(isLoopbackTranscribeReadyForSelection(readyCaps, selection)).toBe(true);
+  });
+
+  it("isLoopbackTranscribeReadyForSelection false when sidecar hub differs from UI", () => {
+    expect(
+      isLoopbackTranscribeReadyForSelection(
+        { ...readyCaps, funasr_model_id: "iic/other" },
+        selection,
+      ),
+    ).toBe(false);
+  });
+
+  it("shouldSkipSidecarRestartForSelection true on warm matching sidecar", () => {
+    expect(shouldSkipSidecarRestartForSelection(readyCaps, selection)).toBe(true);
+  });
+
+  it("shouldSkipSidecarRestartForSelection false when funasr not ready", () => {
+    expect(
+      shouldSkipSidecarRestartForSelection({ ...readyCaps, funasr_ready: false }, selection),
+    ).toBe(false);
+  });
+});

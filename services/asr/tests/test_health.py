@@ -39,6 +39,20 @@ def test_health_ok() -> None:
     assert isinstance(body.get("funasr_model_id"), str)
 
 
+def test_health_rushi_models_root_reflects_env(monkeypatch, tmp_path) -> None:
+    models = tmp_path / "models"
+    models.mkdir()
+    monkeypatch.setenv("RUSHI_MODELS_ROOT", str(models))
+    # Re-import side effect: apply_models_root_env runs at import; set env before create_app module load is
+    # already done — create_app calls apply_models_root_env again at factory time.
+    app = create_app()
+    client = TestClient(app)
+    res = client.get("/health")
+    assert res.status_code == 200
+    body = res.json()
+    assert body.get("rushi_models_root") == str(models)
+
+
 def test_optional_local_token_blocks_mutating_endpoints(monkeypatch) -> None:
     monkeypatch.setenv("RUSHI_LOCAL_TOKEN", "secret")
     app = create_app()

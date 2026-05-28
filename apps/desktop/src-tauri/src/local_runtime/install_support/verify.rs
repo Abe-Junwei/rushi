@@ -88,14 +88,10 @@ fn ensure_verify_not_cancelled(cancel: Option<&Arc<AtomicBool>>) -> Result<(), S
 
 fn apply_runtime_env(cmd: &mut Command, models_root: Option<&Path>) {
     if let Some(models_root) = models_root {
-        let _ = fs::create_dir_all(models_root);
-        cmd.env("RUSHI_MODELS_ROOT", models_root);
-        let modelscope = models_root.join("modelscope");
-        let _ = fs::create_dir_all(&modelscope);
-        cmd.env("MODELSCOPE_CACHE", &modelscope);
-        let huggingface = models_root.join("huggingface");
-        let _ = fs::create_dir_all(&huggingface);
-        cmd.env("HF_HOME", &huggingface);
+        let hub = models_root
+            .parent()
+            .and_then(crate::local_asr_model::read_hub_model_pref_for_app_root);
+        crate::project::app_data_paths::apply_asr_model_env(cmd, models_root, hub.as_deref());
     }
 }
 

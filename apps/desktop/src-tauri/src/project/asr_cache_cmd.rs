@@ -1,4 +1,7 @@
 use crate::DbState;
+use crate::project::app_data_paths::{
+    huggingface_cache_for_models_root, modelscope_cache_for_models_root, models_root_for_app_data_root,
+};
 use serde::Serialize;
 use std::fs;
 use std::ops::Deref;
@@ -36,8 +39,12 @@ fn inspect_asr_model_cache(st: &DbState) -> Result<AsrModelCacheInfo, String> {
     let total_bytes = dir_size_bytes(&root).map_err(|e| format!("读取模型缓存占用失败: {e}"))?;
     Ok(AsrModelCacheInfo {
         models_root: root.to_string_lossy().to_string(),
-        modelscope_cache: root.join("modelscope").to_string_lossy().to_string(),
-        huggingface_cache: root.join("huggingface").to_string_lossy().to_string(),
+        modelscope_cache: modelscope_cache_for_models_root(&root)
+            .to_string_lossy()
+            .to_string(),
+        huggingface_cache: huggingface_cache_for_models_root(&root)
+            .to_string_lossy()
+            .to_string(),
         exists: root.exists(),
         total_bytes,
         manifest_exists: manifest_path
@@ -60,7 +67,7 @@ fn clear_asr_model_cache_for_state(st: &DbState) -> Result<(), String> {
 }
 
 fn models_root(st: &DbState) -> PathBuf {
-    st.root.join("models")
+    models_root_for_app_data_root(&st.root)
 }
 
 fn manifest_raw_from_env() -> Option<String> {

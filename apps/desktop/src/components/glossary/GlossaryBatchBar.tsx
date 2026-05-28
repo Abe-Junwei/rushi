@@ -1,4 +1,4 @@
-import { Flame, FlameKindling, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
 import { PANEL_TYPOGRAPHY } from "../../config/typography";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";
 
@@ -8,10 +8,6 @@ type GlossaryBatchBarProps = {
   hiddenSelectedCount: number;
   disabled: boolean;
   deleteConfirm: boolean;
-  canEnableHotwords: boolean;
-  canDisableHotwords: boolean;
-  onEnableHotwords: () => void;
-  onDisableHotwords: () => void;
   onDelete: () => void;
   onClearSelection: () => void;
 };
@@ -22,10 +18,6 @@ export function GlossaryBatchBar({
   hiddenSelectedCount,
   disabled,
   deleteConfirm,
-  canEnableHotwords,
-  canDisableHotwords,
-  onEnableHotwords,
-  onDisableHotwords,
   onDelete,
   onClearSelection,
 }: GlossaryBatchBarProps) {
@@ -47,24 +39,6 @@ export function GlossaryBatchBar({
         ) : null}
       </div>
       <div className="flex flex-wrap items-center gap-2">
-        <button
-          type="button"
-          className="inline-flex min-h-[32px] items-center gap-1 rounded-md border border-notion-border bg-notion-bg px-2.5 text-[11px] font-medium text-notion-text transition-colors hover:bg-notion-sidebar-hover disabled:opacity-40"
-          disabled={disabled || !canEnableHotwords}
-          onClick={onEnableHotwords}
-        >
-          <Flame className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-          纳入热词
-        </button>
-        <button
-          type="button"
-          className="inline-flex min-h-[32px] items-center gap-1 rounded-md border border-notion-border bg-notion-bg px-2.5 text-[11px] font-medium text-notion-text-muted transition-colors hover:bg-notion-sidebar-hover hover:text-notion-text disabled:opacity-40"
-          disabled={disabled || !canDisableHotwords}
-          onClick={onDisableHotwords}
-        >
-          <FlameKindling className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-          移出热词
-        </button>
         <button
           type="button"
           className={[

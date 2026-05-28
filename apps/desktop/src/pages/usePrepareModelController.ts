@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { asrBaseUrl } from "../config/env";
+import { loopbackFetch } from "../services/asr/loopbackFetch";
+import { fetchAsrHealthCaps } from "../services/asr/asrHealthSnapshot";
 import { catalogEntryForHub, hubModelNeedsPuncPrepare } from "../services/asr/localAsrModelCatalog";
 import {
   describePrepareModelFailure,
@@ -53,6 +55,15 @@ export function usePrepareModelController(
     const urlStatus = `${base}/v1/models/prepare-status`;
     const deadlineMs = 900_000;
     if (!options?.force) {
+      const caps = await fetchAsrHealthCaps();
+      if (caps?.ready_for_transcribe === true && caps.funasr_model_id === hubModelId) {
+        setPrepareModelProgress(100);
+        setFunasrInstallMessage(
+          `${modelLabel} 与必需辅助模型已准备（或已在缓存中）。无需重复下载。`,
+        );
+        await refreshAsrHealth();
+        return;
+      }
       setFunasrInstallMessage(
         "将校验并拉取当前所选模型（若已在磁盘缓存，侧车会快速完成，不会重复下载大文件）。",
       );
@@ -79,7 +90,7 @@ export function usePrepareModelController(
       setPrepareModelProgress(computePrepareModelProgress(message, stageElapsed));
     };
     try {
-      const start = await fetch(urlAsync, {
+      const start = await loopbackFetch(urlAsync, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({ model_id: hubModelId }),
@@ -102,7 +113,7 @@ export function usePrepareModelController(
       }
       while (Date.now() < deadline) {
         if (ac.signal.aborted) return;
-        const stRes = await fetch(urlStatus, { signal: ac.signal });
+        const stRes = await loopbackFetch(urlStatus, { signal: ac.signal });
         const st = (await stRes.json().catch(() => ({}))) as Record<string, unknown>;
         const phase = typeof st.phase === "string" ? st.phase : "?";
         const message = typeof st.message === "string" ? st.message : "";
@@ -125,6 +136,13 @@ export function usePrepareModelController(
             bumpProgress("starting");
             setFunasrInstallMessage("正在启动后台下载任务，请稍候…");
           } else {
+            const caps = await fetchAsrHealthCaps();
+            if (caps?.ready_for_transcribe === true && caps.funasr_model_id === hubModelId) {
+              setPrepareModelProgress(100);
+              setFunasrInstallMessage(`${modelLabel} 与必需辅助模型已在缓存中（侧车未返回下载进度，但 /health 已就绪）。`);
+              await refreshAsrHealth();
+              return;
+            }
             setFunasrInstallMessage("模型准备状态仍为 idle：请重新检测 ASR 服务，或回到「一键准备本机 ASR」后再试。");
           }
         } else if (phase === "?") {
@@ -199,7 +217,7 @@ export function usePrepareModelController(
     const base = asrBaseUrl().replace(/\/+$/, "");
     setFunasrInstallMessage("正在请求停止后台下载…");
     try {
-      const res = await fetch(`${base}/v1/models/prepare-cancel`, { method: "POST" });
+      const res = await loopbackFetch(`${base}/v1/models/prepare-cancel`, { method: "POST" });
       const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
       if (body.cancelled === true) {
         setFunasrInstallMessage(

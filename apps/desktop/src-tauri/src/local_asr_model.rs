@@ -10,8 +10,8 @@ pub fn pref_path(st: &DbState) -> PathBuf {
     st.root.join(PREF_REL)
 }
 
-pub fn read_hub_model_pref(st: &DbState) -> Option<String> {
-    let p = pref_path(st);
+pub fn read_hub_model_pref_for_app_root(app_data_root: &std::path::Path) -> Option<String> {
+    let p = app_data_root.join(PREF_REL);
     let Ok(raw) = std::fs::read_to_string(&p) else {
         return None;
     };
@@ -21,6 +21,10 @@ pub fn read_hub_model_pref(st: &DbState) -> Option<String> {
     } else {
         Some(trimmed.to_string())
     }
+}
+
+pub fn read_hub_model_pref(st: &DbState) -> Option<String> {
+    read_hub_model_pref_for_app_root(&st.root)
 }
 
 pub fn write_hub_model_pref(st: &DbState, hub_model_id: &str) -> Result<(), String> {
@@ -43,15 +47,28 @@ pub fn get_local_asr_hub_model_pref(state: State<'_, DbState>) -> Result<Option<
 #[tauri::command]
 pub async fn set_local_asr_hub_model_pref(
     hub_model_id: String,
+    restart_sidecar: Option<bool>,
     app: tauri::AppHandle,
     state: State<'_, DbState>,
 ) -> Result<(), String> {
-    write_hub_model_pref(state.inner(), &hub_model_id)?;
-    tauri::async_runtime::spawn_blocking(move || {
-        crate::asr_sidecar::force_restart_bundled(&app);
-    })
-    .await
-    .map_err(|e| e.to_string())
+    let hub = hub_model_id.trim();
+    if hub.is_empty() {
+        return Err("hub_model_id 不能为空".into());
+    }
+    let prev = read_hub_model_pref(state.inner());
+    write_hub_model_pref(state.inner(), hub)?;
+    let restart = restart_sidecar.unwrap_or(true);
+    if !restart || prev.as_deref() == Some(hub) {
+        return Ok(());
+    }
+    if std::env::var("RUSHI_SKIP_BUNDLED_ASR").ok().as_deref() != Some("1") {
+        tauri::async_runtime::spawn_blocking(move || {
+            crate::asr_sidecar::force_restart_bundled(&app);
+        })
+        .await
+        .map_err(|e| e.to_string())?;
+    }
+    Ok(())
 }
 
 #[cfg(test)]

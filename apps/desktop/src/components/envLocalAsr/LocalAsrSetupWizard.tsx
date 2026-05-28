@@ -52,7 +52,7 @@ export function LocalAsrSetupWizard({ setup, busy, openAppDataFolder, exportDiag
   useEffect(() => {
     if (isTauriRuntime() && !initialDiagnoseTriggeredRef.current && !setupReport && !setupBusy && !diagnoseBusy) {
       initialDiagnoseTriggeredRef.current = true;
-      void refreshSetupDiagnose();
+      void refreshSetupDiagnose({ resetSteps: false, touchUi: false });
     }
   }, [diagnoseBusy, refreshSetupDiagnose, setupBusy, setupReport]);
 

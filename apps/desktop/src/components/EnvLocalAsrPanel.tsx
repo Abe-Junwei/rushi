@@ -11,6 +11,7 @@ import type { AsrSetupControllerApi } from "../pages/useAsrSetupController";
 import type { LocalAsrModelCatalogApi } from "../pages/useLocalAsrModelCatalog";
 import { LocalAsrModelSection, selectedModelPrepareState } from "./envLocalAsr/LocalAsrModelSection";
 import { buildLocalAsrCatalogView, computeLocalAsrTranscribeReady } from "../services/asr/localAsrModelCatalog";
+import { modelsRootMismatch } from "../services/asr/asrRuntimePathsAlign";
 import { LocalAsrAdvancedSection } from "./envLocalAsr/LocalAsrAdvancedSection";
 import { LocalAsrCacheSection } from "./envLocalAsr/LocalAsrCacheSection";
 import { LocalAsrSetupWizard } from "./envLocalAsr/LocalAsrSetupWizard";
@@ -89,6 +90,15 @@ export function EnvLocalAsrPanel({
   );
   const modelsCached = selectedPrepare.cached;
   const progress = prepareModelBusy ? prepareModelProgress : modelsCached ? 100 : 0;
+  const sidecarModelsRoot = asrCaps?.rushi_models_root ?? null;
+  const desktopModelsRoot = asrModelCacheInfo?.models_root ?? null;
+  const cachePathMismatch =
+    asrHealth === "ok" &&
+    modelsRootMismatch(desktopModelsRoot, sidecarModelsRoot);
+  const modelsOnDiskButSidecarBlind =
+    asrHealth === "ok" &&
+    (asrModelCacheInfo?.total_bytes ?? 0) > 0 &&
+    !sidecarModelsRoot;
 
   return (
     <div className="flex w-full min-w-0 flex-col gap-8">
@@ -134,6 +144,46 @@ export function EnvLocalAsrPanel({
         <div className="rounded border border-notion-divider bg-notion-callout-bg px-3 py-2 text-sm">
           <strong className="text-notion-text">未检测到 FFmpeg</strong>
           <span className="text-notion-text-muted"> — ASR 无法解码上传音频。请安装 ffmpeg/ffprobe 并加入 PATH 后重启 ASR。</span>
+        </div>
+      ) : null}
+
+      {asrHealth === "ok" && asrCaps ? (
+        <p className={PANEL_TYPOGRAPHY.meta}>
+          侧车模型目录{" "}
+          <code className="font-mono text-[11px] text-zen-indigo">
+            {sidecarModelsRoot ?? "（未绑定，侧车看不到桌面缓存）"}
+          </code>
+          {desktopModelsRoot ? (
+            <>
+              {" "}
+              · 桌面缓存{" "}
+              <code className="font-mono text-[11px] text-zen-indigo">{desktopModelsRoot}</code>
+            </>
+          ) : null}
+        </p>
+      ) : null}
+
+      {cachePathMismatch || modelsOnDiskButSidecarBlind ? (
+        <div
+          className="rounded border border-zen-saffron/30 bg-zen-saffron/10 px-3 py-2 text-sm text-notion-text"
+          role="status"
+        >
+          <p className="font-medium">磁盘上已有模型，但当前侧车未指向应用缓存目录。</p>
+          <p className={`${PANEL_TYPOGRAPHY.meta} mt-1`}>
+            请重新运行 <code className="font-mono text-[11px]">npm run desktop:dev</code> 或{" "}
+            <code className="font-mono text-[11px]">npm run asr:dev</code>，再点「刷新状态」。
+          </p>
+        </div>
+      ) : null}
+
+      {asrHealth === "ok" && asrCaps && !transcribeReady && !cachePathMismatch && !modelsOnDiskButSidecarBlind ? (
+        <div className="rounded border border-notion-divider bg-notion-callout-bg px-3 py-2 text-sm text-notion-text">
+          <strong>已连接侧车</strong>
+          <span className="text-notion-text-muted">
+            {" "}
+            — 当前所选模型或 VAD/标点尚未齐备（<code className="font-mono text-[11px]">mode: {asrCaps.transcription_mode}</code>
+            ）。请在下方下载当前模型，或切换已缓存的模型。
+          </span>
         </div>
       ) : null}
 

@@ -6,7 +6,6 @@ import {
   RefreshCw,
   Search,
 } from "lucide-react";
-import { GlossaryBatchBar } from "./glossary/GlossaryBatchBar";
 import { GlossaryTermEditor } from "./glossary/GlossaryTermEditor";
 import { GlossaryTermTable } from "./glossary/GlossaryTermTable";
 import { PANEL_CONTROL_TYPOGRAPHY, PANEL_TYPOGRAPHY } from "../config/typography";
@@ -47,10 +46,6 @@ export function GlossaryPage({ busy }: GlossaryPageProps) {
     },
     [deleteConfirmId, g],
   );
-
-  const handleBatchDelete = useCallback(() => {
-    void g.batchDelete();
-  }, [g]);
 
   return (
     <div
@@ -215,23 +210,6 @@ export function GlossaryPage({ busy }: GlossaryPageProps) {
               </button>
             </div>
           </div>
-
-          <GlossaryBatchBar
-            selectedCount={g.selectedCount}
-            previewLabels={g.selectedPreviewLabels}
-            hiddenSelectedCount={g.hiddenSelectedCount}
-            disabled={disabled}
-            deleteConfirm={g.batchDeleteConfirm}
-            canEnableHotwords={g.canEnableHotwords}
-            canDisableHotwords={g.canDisableHotwords}
-            onEnableHotwords={() => void g.batchSetHotword(true)}
-            onDisableHotwords={() => void g.batchSetHotword(false)}
-            onDelete={handleBatchDelete}
-            onClearSelection={() => {
-              g.clearSelection();
-              g.clearBatchDeleteConfirm();
-            }}
-          />
 
           {g.terms.length === 0 ? (
             <p className="rounded-xl border border-dashed border-notion-divider bg-notion-bg/80 px-4 py-10 text-center text-sm text-notion-text-muted">

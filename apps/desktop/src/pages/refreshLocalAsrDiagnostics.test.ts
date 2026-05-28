@@ -15,6 +15,6 @@ describe("refreshLocalAsrDiagnostics", () => {
 
     expect(refreshAsrHealth).toHaveBeenCalledTimes(1);
     expect(refreshAsrModelCacheInfo).toHaveBeenCalledTimes(1);
-    expect(refreshSetupDiagnose).toHaveBeenCalledWith({ resetSteps: false });
+    expect(refreshSetupDiagnose).toHaveBeenCalledWith({ resetSteps: false, touchUi: false });
   });
 });

@@ -3,6 +3,7 @@
 
 pub(crate) mod bundled;
 pub mod candidates;
+pub mod loopback;
 mod probe;
 
 #[cfg(test)]

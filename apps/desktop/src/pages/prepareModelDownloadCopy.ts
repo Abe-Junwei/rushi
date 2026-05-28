@@ -96,9 +96,11 @@ export function describePrepareModelFailure(code: string): PrepareModelFailureCo
   }
   if (c === "fetch_failed") {
     return {
-      headline: "无法连接 ASR 或浏览器中断了请求。",
+      headline: "无法连接本机 ASR 侧车（8741）。",
       tips: [
-        "确认 rushi-asr 仍监听本页所示端口（默认 127.0.0.1:8741），且未被防火墙拦截。",
+        "确认侧车已启动：npm run desktop:dev（自动拉起）或 npm run asr:dev。",
+        "终端执行：curl -sf http://127.0.0.1:8741/health 应有 JSON 返回。",
+        "若磁盘已有模型但仍显示未缓存：侧车可能未绑定应用模型目录，请用上述命令重启侧车。",
         ...commonRetryTips(),
       ],
     };

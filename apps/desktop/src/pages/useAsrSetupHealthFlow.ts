@@ -1,7 +1,10 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
 import type { AsrSetupOutcome, AsrSetupStep } from "../services/asr/asrSetupContract";
 import { fetchAsrHealthCaps } from "../services/asr/asrHealthSnapshot";
-import { snapshotSelectedModelPrepare } from "../services/asr/localAsrSetupModelStep";
+import {
+  snapshotSelectedModelPrepare,
+  type LocalAsrSetupSelectionContext,
+} from "../services/asr/localAsrSetupModelStep";
 import { patchStep } from "./asrSetupState";
 
 const HEALTH_POLL_MS = 1000;
@@ -20,8 +23,12 @@ type Params = {
     refreshAsrHealth: () => Promise<void>;
     refreshAsrRuntimeInfo: () => Promise<void>;
     prepareDefaultFunasrModel: (options?: import("./usePrepareModelController").PrepareDefaultModelOptions) => Promise<void>;
+    getSetupSelection: () => LocalAsrSetupSelectionContext;
   };
-  refreshSetupDiagnose: () => Promise<unknown>;
+  refreshSetupDiagnose?: (options?: {
+    resetSteps?: boolean;
+    touchUi?: boolean;
+  }) => Promise<unknown>;
   markPortConflictAcknowledged: () => void;
   setSetupBusy: Dispatch<SetStateAction<boolean>>;
   setSetupSteps: Dispatch<SetStateAction<AsrSetupStep[]>>;
@@ -31,7 +38,6 @@ type Params = {
 
 export function useAsrSetupHealthFlow({
   deps,
-  refreshSetupDiagnose,
   markPortConflictAcknowledged,
   setSetupBusy,
   setSetupSteps,
@@ -91,7 +97,23 @@ export function useAsrSetupHealthFlow({
       setSetupSteps((steps) =>
         patchStep(steps, "health", { status: "ok", detail: "已连接当前 ASR 运行时" }),
       );
-      const modelSnap = await snapshotSelectedModelPrepare();
+      const selection = deps.getSetupSelection();
+      const modelSnap = await snapshotSelectedModelPrepare(selection);
+      if (modelSnap.ready && modelSnap.sidecarMatchesSelection) {
+        markPortConflictAcknowledged();
+        setSetupSteps((steps) => {
+          let next = patchStep(steps, "model", {
+            status: "skipped",
+            detail: `${modelSnap.modelLabel} 与辅助模型已在缓存中`,
+          });
+          next = patchStep(next, "done", { status: "ok", detail: "当前 8741 服务已可用于转写" });
+          return next;
+        });
+        setSetupMessage("当前 8741 服务已就绪，无需重复准备。");
+        setSetupOutcome("ready");
+        await deps.refreshAsrRuntimeInfo();
+        return;
+      }
       if (!modelSnap.sidecarMatchesSelection) {
         setSetupSteps((steps) =>
           patchStep(steps, "model", {
@@ -123,8 +145,8 @@ export function useAsrSetupHealthFlow({
       }
 
       await deps.refreshAsrRuntimeInfo();
-      const latest = (await refreshSetupDiagnose()) as { readyForTranscribe?: boolean } | null;
-      if (latest?.readyForTranscribe) {
+      const afterSnap = await snapshotSelectedModelPrepare(deps.getSetupSelection());
+      if (afterSnap.ready || caps.ready_for_transcribe) {
         markPortConflictAcknowledged();
         setSetupSteps((steps) =>
           patchStep(steps, "done", { status: "ok", detail: "当前 8741 服务已可用于转写" }),
@@ -147,7 +169,6 @@ export function useAsrSetupHealthFlow({
   }, [
     deps,
     markPortConflictAcknowledged,
-    refreshSetupDiagnose,
     setSetupBusy,
     setSetupMessage,
     setSetupOutcome,

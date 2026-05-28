@@ -1,5 +1,5 @@
 import type { RefObject } from "react";
-import { Flame } from "lucide-react";
+import { Flame, Trash2 } from "lucide-react";
 import { PANEL_TYPOGRAPHY } from "../../config/typography";
 import type { GlossaryTermDto } from "../../tauri/glossaryApi";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";
@@ -147,19 +147,35 @@ export function GlossaryTermTable({
                   {formatTermDate(row.updated_at_ms ?? row.created_at_ms)}
                 </td>
                 <td className="px-3 py-2.5">
-                  <button
-                    type="button"
-                    className={[
-                      "rounded-md px-2 py-1 text-[11px] font-medium transition-colors",
-                      confirming
-                        ? "bg-zen-cinnabar/10 text-zen-cinnabar"
-                        : "text-notion-text-muted hover:bg-notion-sidebar-hover hover:text-notion-text",
-                    ].join(" ")}
-                    disabled={disabled}
-                    onClick={() => onRowDelete(row.id)}
-                  >
-                    {confirming ? "确认" : "删除"}
-                  </button>
+                  <div className="flex items-center gap-1">
+                    <button
+                      type="button"
+                      className={[
+                        "inline-flex items-center rounded-md border px-2.5 py-1 text-[11px] font-medium transition-colors disabled:opacity-40",
+                        hotwordOn
+                          ? "border-zen-saffron/30 bg-notion-bg text-zen-saffron hover:bg-zen-saffron/10"
+                          : "border-notion-border bg-notion-bg text-notion-text-muted hover:bg-notion-sidebar-hover hover:text-notion-text",
+                      ].join(" ")}
+                      disabled={disabled}
+                      onClick={() => void onToggleRowHotword(row)}
+                    >
+                      {hotwordOn ? "移出热词" : "纳入热词"}
+                    </button>
+                    <button
+                      type="button"
+                      className={[
+                        "inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-[11px] font-medium transition-colors disabled:opacity-40",
+                        confirming
+                          ? "border-zen-cinnabar bg-zen-cinnabar/10 text-zen-cinnabar"
+                          : "border-notion-border bg-notion-bg text-notion-text hover:bg-notion-sidebar-hover",
+                      ].join(" ")}
+                      disabled={disabled}
+                      onClick={() => onRowDelete(row.id)}
+                    >
+                      <Trash2 className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+                      {confirming ? "确认删除" : "删除"}
+                    </button>
+                  </div>
                 </td>
               </tr>
             );

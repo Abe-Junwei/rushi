@@ -149,6 +149,18 @@ export async function openAppDataFolder(): Promise<void> {
   return invoke<void>("open_app_data_folder");
 }
 
+/** Canonical desktop models directory (matches bundled sidecar `RUSHI_MODELS_ROOT`). */
+export type AsrRuntimePaths = {
+  appDataRoot: string;
+  modelsRoot: string;
+  modelscopeCache: string;
+  huggingfaceCache: string;
+};
+
+export async function getAsrRuntimePaths(): Promise<AsrRuntimePaths> {
+  return invoke<AsrRuntimePaths>("get_asr_runtime_paths");
+}
+
 export async function asrModelCacheInfo(): Promise<AsrModelCacheInfo> {
   return invoke<AsrModelCacheInfo>("asr_model_cache_info");
 }
@@ -161,6 +173,12 @@ export async function getLocalAsrHubModelPref(): Promise<string | null> {
   return invoke<string | null>("get_local_asr_hub_model_pref");
 }
 
-export async function setLocalAsrHubModelPref(hubModelId: string): Promise<void> {
-  return invoke<void>("set_local_asr_hub_model_pref", { hubModelId });
+export async function setLocalAsrHubModelPref(
+  hubModelId: string,
+  options?: { restartSidecar?: boolean },
+): Promise<void> {
+  return invoke<void>("set_local_asr_hub_model_pref", {
+    hubModelId,
+    restartSidecar: options?.restartSidecar ?? true,
+  });
 }

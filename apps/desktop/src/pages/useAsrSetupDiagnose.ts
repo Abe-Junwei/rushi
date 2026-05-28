@@ -26,7 +26,11 @@ export function useAsrSetupDiagnose(args: {
   } = args;
 
   const refreshSetupDiagnose = useCallback(
-    async (options?: { resetSteps?: boolean }): Promise<AsrSetupReport | null> => {
+    async (options?: {
+      resetSteps?: boolean;
+      /** When false, do not reset wizard message/outcome (used during one-click prepare). */
+      touchUi?: boolean;
+    }): Promise<AsrSetupReport | null> => {
       if (!tauriRuntime) {
         setSetupMessage("浏览器预览无法运行环境诊断，请在桌面应用中使用。");
         setSetupOutcome("error");
@@ -35,10 +39,13 @@ export function useAsrSetupDiagnose(args: {
       }
 
       const resetSteps = options?.resetSteps !== false;
+      const touchUi = options?.touchUi !== false;
       setDiagnoseBusy(true);
-      setPortConflictAcknowledged(false);
-      setSetupMessage("");
-      setSetupOutcome("idle");
+      if (touchUi) {
+        setPortConflictAcknowledged(false);
+        setSetupMessage("");
+        setSetupOutcome("idle");
+      }
       if (resetSteps) {
         setSetupSteps(
           patchStep(initialSetupSteps(), "diagnose", {
@@ -54,8 +61,10 @@ export function useAsrSetupDiagnose(args: {
           refreshLocalRuntimeDiagnose(),
         ]);
         setSetupReport(report);
-        setSetupMessage(report.blockingIssue ?? "");
-        setSetupOutcome(outcomeFromReport(report));
+        if (touchUi) {
+          setSetupMessage(report.blockingIssue ?? "");
+          setSetupOutcome(outcomeFromReport(report));
+        }
         if (resetSteps) {
           setSetupSteps(stepsFromReport(report));
         }

@@ -243,7 +243,7 @@ fn run_install(handle: &AppHandle, app_root: &Path, cancel: Arc<AtomicBool>) -> 
         None,
         None,
     );
-    let models_root = app_root.join("models");
+    let models_root = crate::project::models_root_for_app_data_root(&app_root);
     if let Err(err) = verify_installed_runtime(&staged_exe, Some(&models_root), Some(&cancel)) {
         let _ = fs::remove_dir_all(&staging);
         return Err(err);

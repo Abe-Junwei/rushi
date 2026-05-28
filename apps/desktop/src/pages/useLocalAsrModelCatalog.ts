@@ -1,5 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
-import { asrBaseUrl, asrHealthUrl, isTauriRuntime } from "../config/env";
+import { asrBaseUrl, isTauriRuntime } from "../config/env";
+import { loopbackFetch } from "../services/asr/loopbackFetch";
+import { applyHubModelToSidecar } from "../services/asr/localAsrSetupModelStep";
 import {
   DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
   LOCAL_ASR_HUB_MODEL_STORAGE_KEY,
@@ -84,7 +86,7 @@ export function useLocalAsrModelCatalog(
     if (!isTauriRuntime()) return null;
     const base = asrBaseUrl().replace(/\/+$/, "");
     try {
-      const res = await fetch(`${base}/`, { signal: AbortSignal.timeout(5000) });
+      const res = await loopbackFetch(`${base}/`, { signal: AbortSignal.timeout(5000) });
       if (!res.ok) return null;
       return (await res.json()) as unknown;
     } catch {
@@ -96,7 +98,9 @@ export function useLocalAsrModelCatalog(
     if (!isTauriRuntime()) return;
     const base = asrBaseUrl().replace(/\/+$/, "");
     try {
-      const res = await fetch(`${base}/v1/models/catalog`, { signal: AbortSignal.timeout(8000) });
+      const res = await loopbackFetch(`${base}/v1/models/catalog`, {
+        signal: AbortSignal.timeout(8000),
+      });
       if (!res.ok) return;
       const data: unknown = await res.json();
       const parsed = parseCatalogStatusFromEndpoint(data);
@@ -132,15 +136,20 @@ export function useLocalAsrModelCatalog(
   const applySelectedModel = useCallback(async () => {
     const hub = resolveLocalAsrHubModelId(selectedHubModelId);
     writeStoredHubModelId(hub);
+    const selectionCtx = { selectedHubModelId: hub, catalogStatus };
     if (!tauriRuntime) {
       setApplyMessage("浏览器预览无法切换侧车模型，请在桌面应用中操作。");
       return;
     }
     setApplyBusy(true);
-    setApplyMessage("正在重启内置侧车并应用所选模型…");
+    setApplyMessage("正在应用所选模型并等待侧车就绪…");
     try {
-      await p1.setLocalAsrHubModelPref(hub);
-      setApplyMessage("已写入模型偏好，正在重启侧车…");
+      const result = await applyHubModelToSidecar(selectionCtx);
+      if (!result.ok) {
+        setApplyMessage(result.message);
+      } else {
+        setApplyMessage("");
+      }
       await refreshAsrRuntimeInfo();
       const root = await probeSidecarRoot();
       if (root) {
@@ -150,24 +159,6 @@ export function useLocalAsrModelCatalog(
         setSidecarPuncPrepareCapable(sidecarSupportsPuncPrepareFromRoot(root));
       }
       await refreshCatalogFromSidecar();
-      try {
-        const healthRes = await fetch(asrHealthUrl(), { signal: AbortSignal.timeout(8000) });
-        if (healthRes.ok) {
-          const hj = (await healthRes.json()) as Record<string, unknown>;
-          const sidecarModel =
-            typeof hj.funasr_model_id === "string" ? hj.funasr_model_id.trim() : "";
-          if (sidecarModel && sidecarModel !== hub) {
-            const label = catalogEntryForHub(hub)?.label ?? hub;
-            setApplyMessage(
-              `侧车仍在运行 ${sidecarModel}，尚未切换到 ${label}。请再点「应用并重启侧车」，或使用 ASR 状态区的「重试内置侧车」。`,
-            );
-            return;
-          }
-        }
-      } catch {
-        /* ignore verify errors */
-      }
-      setApplyMessage("");
     } catch (e) {
       setApplyMessage(
         `应用模型失败：${e instanceof Error ? e.message : String(e)}。可尝试「重试内置侧车」。`,
@@ -175,7 +166,7 @@ export function useLocalAsrModelCatalog(
     } finally {
       setApplyBusy(false);
     }
-  }, [probeSidecarRoot, refreshAsrRuntimeInfo, refreshCatalogFromSidecar, selectedHubModelId, tauriRuntime]);
+  }, [catalogStatus, probeSidecarRoot, refreshAsrRuntimeInfo, refreshCatalogFromSidecar, selectedHubModelId, tauriRuntime]);
 
   return {
     selectedHubModelId,

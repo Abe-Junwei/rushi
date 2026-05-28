@@ -1,7 +1,9 @@
 //! Local project persistence, ASR pull, segment CRUD, edit log.
 //! P2: segment confidence / low_confidence / detail; local glossary_terms.
 
+pub mod app_data_paths;
 pub mod asr_cache_cmd;
+pub mod asr_runtime_paths_cmd;
 pub mod correction;
 pub mod export_cmd;
 pub mod file_cmd;
@@ -29,7 +31,9 @@ mod transcribe_timeout;
 pub mod types;
 pub mod utils;
 
+pub use app_data_paths::models_root_for_app_data_root;
 pub use asr_cache_cmd::*;
+pub use asr_runtime_paths_cmd::*;
 pub use export_cmd::*;
 pub use file_cmd::*;
 pub use glossary_cmd::*;
@@ -58,24 +62,11 @@ use self::utils::append_desktop_log_line;
 use crate::db;
 use crate::DbState;
 
-/// `app_data_dir()` 已含 bundle id（`studio.lingchuang.rushi`）；旧版误再拼一层，若该处已有 DB 则继续用嵌套路径。
-fn resolve_app_data_root(app_data: PathBuf) -> PathBuf {
-    let legacy = app_data.join("studio.lingchuang.rushi");
-    let has_legacy_state = legacy.join("rushi.sqlite3").is_file()
-        || legacy.join("models").is_dir()
-        || legacy.join("logs").is_dir()
-        || legacy.join("projects").is_dir();
-    if has_legacy_state {
-        return legacy;
-    }
-    app_data
-}
-
 /// One-shot DB bootstrap (migrations + WAL, idempotent).
 pub fn setup_db(app: &tauri::AppHandle) -> Result<DbState, String> {
     let resolver = app.path();
     let app_data = resolver.app_data_dir().map_err(|e| e.to_string())?;
-    let base = resolve_app_data_root(app_data);
+    let base = app_data_paths::resolve_app_data_root(app_data);
     fs::create_dir_all(&base).map_err(|e| e.to_string())?;
     let db_path = base.join("rushi.sqlite3");
     let conn = Connection::open(&db_path).map_err(|e| e.to_string())?;
@@ -91,7 +82,7 @@ pub fn setup_db(app: &tauri::AppHandle) -> Result<DbState, String> {
 
 #[cfg(test)]
 mod app_data_root_tests {
-    use super::resolve_app_data_root;
+    use super::app_data_paths::resolve_app_data_root;
     use std::fs;
     use uuid::Uuid;
 

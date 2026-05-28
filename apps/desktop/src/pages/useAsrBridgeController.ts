@@ -8,6 +8,7 @@ import {
 import { usePrepareModelController, type PrepareModelApi } from "./usePrepareModelController";
 import { useLocalAsrModelCatalog, type LocalAsrModelCatalogApi } from "./useLocalAsrModelCatalog";
 import { parseCatalogStatusFromHealth } from "../services/asr/localAsrModelCatalog";
+import { loopbackFetch } from "../services/asr/loopbackFetch";
 
 export type AsrHealthState = "checking" | "ok" | "error";
 
@@ -40,10 +41,15 @@ export function parseAsrHealthJson(data: unknown): AsrHealthCapabilities | null 
 
 export function funasrManualSetupCommands(): string {
   return [
+    "# 推荐：与桌面共用模型缓存目录",
+    "npm run asr:dev",
+    "",
+    "# 或手动（须设置 RUSHI_MODELS_ROOT，见环境页「桌面模型目录」）",
     "cd services/asr",
     "source .venv/bin/activate   # Windows: .venv\\Scripts\\activate",
     'pip install -e ".[funasr]"',
-    "# 可选：export RUSHI_FUNASR_MODEL=其他模型   # 不设则使用内置默认 iic/SenseVoiceSmall",
+    "export RUSHI_MODELS_ROOT=\"<桌面模型目录>\"",
+    "export MODELSCOPE_CACHE=\"$RUSHI_MODELS_ROOT/modelscope\"",
     "python -m rushi_asr",
   ].join("\n");
 }
@@ -140,7 +146,7 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
     setAsrCaps(null);
     const url = asrHealthUrl();
     try {
-      const res = await fetch(url, { method: "GET", signal: AbortSignal.timeout(8000) });
+      const res = await loopbackFetch(url, { method: "GET", signal: AbortSignal.timeout(8000) });
       if (res.ok) {
         let data: unknown;
         try {
@@ -158,7 +164,7 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
         setAsrCaps(parsed);
         let rootJson: unknown = null;
         try {
-          const rootRes = await fetch(`${asrBaseUrl()}/`, {
+          const rootRes = await loopbackFetch(`${asrBaseUrl()}/`, {
             signal: AbortSignal.timeout(5000),
           });
           if (rootRes.ok) rootJson = await rootRes.json();
@@ -178,7 +184,7 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
     } catch (e) {
       setAsrHealth("error");
       const msg = e instanceof Error ? e.message : String(e);
-      setAsrHealthDetail(`无法连接 ${url}：${msg}。请确认已在终端启动 python -m rushi_asr，且地址与 VITE_ASR_BASE_URL 一致。`);
+      setAsrHealthDetail(`无法连接 ${url}：${msg}`);
     }
     await refreshBundledAsrDiag();
   }, [refreshBundledAsrDiag, tauriRuntime]);
