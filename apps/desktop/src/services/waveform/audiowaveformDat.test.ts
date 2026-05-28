@@ -1,0 +1,32 @@
+import { describe, expect, it, vi } from "vitest";
+import { computeTimelineWidthPx } from "../../utils/pxPerSec";
+import { resampleWaveformForPxPerSec } from "./audiowaveformDat";
+
+function mockWaveformData(durationSec: number, length: number) {
+  const resample = vi.fn(({ width }: { width: number }) => ({
+    duration: durationSec,
+    length: width,
+    resample,
+  }));
+  return { duration: durationSec, length, resample };
+}
+
+describe("resampleWaveformForPxPerSec", () => {
+  it("targets computeTimelineWidthPx (incl. 320 px fit-all floor)", () => {
+    const data = mockWaveformData(600, 1200);
+    const pxPerSec = 0.05;
+    const expectedWidth = computeTimelineWidthPx(600, pxPerSec);
+
+    resampleWaveformForPxPerSec(data as never, pxPerSec);
+
+    expect(expectedWidth).toBe(320);
+    expect(data.resample).toHaveBeenCalledWith({ width: 320 });
+  });
+
+  it("returns base data unchanged when target exceeds base width (no upsample)", () => {
+    const data = mockWaveformData(10, 100);
+    const out = resampleWaveformForPxPerSec(data as never, 56);
+    expect(out).toBe(data);
+    expect(data.resample).not.toHaveBeenCalled();
+  });
+});

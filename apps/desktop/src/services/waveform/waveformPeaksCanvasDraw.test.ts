@@ -111,6 +111,39 @@ describe("drawWaveformPeaksViewport", () => {
     expect(ctx.fillRect).toHaveBeenCalled();
   });
 
+  it("draws mid-timeline viewport when timelineWidthPx exceeds raw peak width (long audio fit-all)", () => {
+    const ctx = {
+      clearRect: vi.fn(),
+      fillRect: vi.fn(),
+      setTransform: vi.fn(),
+      fillStyle: "",
+      canvas: { width: 120, height: 48 },
+    } as unknown as CanvasRenderingContext2D;
+
+    const peaks: number[] = [];
+    for (let i = 0; i < 320; i++) peaks.push(-0.4, 0.4);
+
+    drawWaveformPeaksViewport(ctx, peaks, {
+      heightPx: 48,
+      scrollLeftPx: 160,
+      viewportWidthPx: 120,
+      progressTimeSec: 0,
+      pxPerSec: 0.05,
+      durationSec: 600,
+      timelineWidthPx: 320,
+      waveColor: "#ccc",
+      progressColor: "#888",
+      barWidth: 2,
+      barGap: 1,
+    });
+
+    const calls = (ctx.fillRect as ReturnType<typeof vi.fn>).mock.calls;
+    expect(calls.length).toBeGreaterThan(0);
+    const xs = calls.map(([x]) => x as number);
+    expect(Math.min(...xs)).toBeGreaterThanOrEqual(-2);
+    expect(Math.max(...xs)).toBeLessThanOrEqual(120);
+  });
+
   it("colors played bars using timeline coordinates", () => {
     const colors: string[] = [];
     const ctx = {

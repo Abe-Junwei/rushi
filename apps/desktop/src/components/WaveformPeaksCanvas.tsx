@@ -3,10 +3,13 @@ import type { RefObject } from "react";
 import { COLORS } from "../config/tokens";
 import type { PeakCache } from "../services/waveform/PeakCache";
 import { drawWaveformPeaksViewport } from "../services/waveform/waveformPeaksCanvasDraw";
+import { computeTimelineWidthPx } from "../utils/pxPerSec";
 
 interface WaveformPeaksCanvasProps {
   peakCache: PeakCache | null;
   pxPerSec: number;
+  /** Timeline width for peak distribution; defaults to `computeTimelineWidthPx`. */
+  timelineWidthPx?: number;
   /** React 状态（可能滞后）；绘制时优先 `readScrollLeftPx`。 */
   scrollLeftPx: number;
   viewportWidthPx: number;
@@ -27,6 +30,7 @@ interface WaveformPeaksCanvasProps {
 export function WaveformPeaksCanvas({
   peakCache,
   pxPerSec,
+  timelineWidthPx,
   scrollLeftPx,
   viewportWidthPx,
   heightPx,
@@ -73,6 +77,9 @@ export function WaveformPeaksCanvas({
 
       try {
         const interleaved = peakCache.getInterleavedPeaks(pxPerSec);
+        const distributionWidthPx =
+          timelineWidthPx ??
+          computeTimelineWidthPx(peakCache.durationSec, pxPerSec);
         drawWaveformPeaksViewport(ctx, interleaved, {
           heightPx: h,
           scrollLeftPx: sl,
@@ -80,6 +87,7 @@ export function WaveformPeaksCanvas({
           progressTimeSec,
           pxPerSec,
           durationSec: peakCache.durationSec,
+          timelineWidthPx: distributionWidthPx,
           waveColor: COLORS.waveformWave,
           progressColor: COLORS.waveformProgress,
           barWidth: 2,
@@ -105,6 +113,7 @@ export function WaveformPeaksCanvas({
     peakCache,
     progressTimeSec,
     pxPerSec,
+    timelineWidthPx,
     repaintKey,
     scrollLeftPx,
     viewportWidthPx,
@@ -116,7 +125,7 @@ export function WaveformPeaksCanvas({
     if (!active || !peakCache) return;
     if (paintRafRef.current) cancelAnimationFrame(paintRafRef.current);
     paintRafRef.current = requestAnimationFrame(() => paintRef.current());
-  }, [active, peakCache, pxPerSec, repaintKey]);
+  }, [active, peakCache, pxPerSec, timelineWidthPx, repaintKey]);
 
   useEffect(() => {
     const el = scrollContainerRef?.current;

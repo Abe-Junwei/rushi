@@ -5,6 +5,12 @@ export type WaveformPeaksDrawOptions = {
   progressTimeSec: number;
   pxPerSec: number;
   durationSec: number;
+  /**
+   * Total timeline width for peak distribution (= `computeTimelineWidthPx`).
+   * When omitted, falls back to `ceil(durationSec * pxPerSec)`. Pass explicitly
+   * so fit-all floor and overview strip stay aligned with tile renderer.
+   */
+  timelineWidthPx?: number;
   waveColor: string;
   progressColor: string;
   barWidth?: number;
@@ -52,33 +58,34 @@ export function drawWaveformPeaksViewport(
 
   const dur = Math.max(opts.durationSec, 0.001);
   const peakWidthPx = Math.max(1, Math.ceil(dur * opts.pxPerSec));
-  // LOD 列数可少于时间轴像素（audiowaveform 不向上采样）；绘制时映射 timeline px ↔ peak 列。
-  const drawableColumns = Math.min(totalColumns, peakWidthPx);
+  const distributionWidthPx = Math.max(1, opts.timelineWidthPx ?? peakWidthPx);
+  // Spread all resampled columns across the full distribution width (same as tile path).
+  const drawableColumns = totalColumns;
   const mid = heightPx / 2;
   const amp = mid * 0.92;
 
-  const maxScrollTimelinePx = Math.max(0, peakWidthPx - viewportWidthPx);
+  const maxScrollTimelinePx = Math.max(0, distributionWidthPx - viewportWidthPx);
   const clampedScrollTimelinePx = Math.max(0, Math.min(scrollLeftPx, maxScrollTimelinePx));
 
   const startCol = Math.max(
     0,
-    Math.floor((clampedScrollTimelinePx * drawableColumns) / peakWidthPx),
+    Math.floor((clampedScrollTimelinePx * drawableColumns) / distributionWidthPx),
   );
   let endCol = Math.min(
     drawableColumns,
-    Math.ceil(((clampedScrollTimelinePx + viewportWidthPx) * drawableColumns) / peakWidthPx) + 1,
+    Math.ceil(((clampedScrollTimelinePx + viewportWidthPx) * drawableColumns) / distributionWidthPx) + 1,
   );
   if (endCol <= startCol && drawableColumns > startCol) {
     endCol = Math.min(drawableColumns, startCol + 1);
   }
 
-  const playheadTimelinePx = progressTimeSec * opts.pxPerSec;
+  const playheadTimelinePx = (progressTimeSec / dur) * distributionWidthPx;
 
   for (let col = startCol; col < endCol; col++) {
     if ((col - startCol) % step !== 0) continue;
     const min = interleavedPeaks[col * 2] ?? 0;
     const max = interleavedPeaks[col * 2 + 1] ?? 0;
-    const colTimelinePx = (col * peakWidthPx) / drawableColumns;
+    const colTimelinePx = (col * distributionWidthPx) / drawableColumns;
     const x = colTimelinePx - clampedScrollTimelinePx;
     if (x + barWidth < 0 || x > viewportWidthPx) continue;
 

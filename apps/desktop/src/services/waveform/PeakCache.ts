@@ -1,4 +1,5 @@
 import type WaveformData from "waveform-data";
+import { computeTimelineWidthPx } from "../../utils/pxPerSec";
 import {
   loadWaveformDatFromUrl,
   resampleWaveformForPxPerSec,
@@ -25,7 +26,8 @@ export class PeakCache {
   readonly sampleRate: number;
 
   private readonly levels: Map<number, WaveformData>;
-  private readonly resampleCache = new Map<number, WaveSurferPeaksBundle>();
+  /** Key = `${lodLevel}:${targetWidthPx}` — avoids px/s rounding collisions at low zoom. */
+  private readonly resampleCache = new Map<string, WaveSurferPeaksBundle>();
 
   private constructor(levels: LoadedPeakLevel[], durationSec: number, sampleRate: number) {
     this.durationSec = durationSec;
@@ -71,15 +73,18 @@ export class PeakCache {
   }
 
   getWaveSurferPeaks(pxPerSec: number): WaveSurferPeaksBundle {
-    // 以 2 px/s 为粒度对 key 量化，减少相邻缩放值的缓存碎片
-    const key = Math.round(pxPerSec / 2) * 2;
-    const cached = this.resampleCache.get(key);
-    if (cached) return cached;
-
     const base = this.pickBaseLevel(pxPerSec);
     if (!base) {
       throw new Error("PeakCache 无可用 LOD");
     }
+    const targetWidthPx = Math.max(
+      1,
+      computeTimelineWidthPx(this.durationSec, pxPerSec),
+    );
+    const key = `${base.level}:${targetWidthPx}`;
+    const cached = this.resampleCache.get(key);
+    if (cached) return cached;
+
     const resampled = resampleWaveformForPxPerSec(base.data, pxPerSec);
     const bundle = {
       peaks: waveformDataToWaveSurferPeaks(resampled),

@@ -8,6 +8,7 @@ import {
   computeOverviewViewportRect,
   overviewSegmentBarPx,
 } from "../utils/waveformOverviewGeometry";
+import { computeTimelineWidthPx } from "../utils/pxPerSec";
 import { WaveformPeaksCanvas } from "./WaveformPeaksCanvas";
 
 export type WaveformOverviewStripProps = {
@@ -64,6 +65,14 @@ export const WaveformOverviewStrip = memo(function WaveformOverviewStrip({
     [durationSec, overviewWidthPx, pxPerSec],
   );
 
+  const overviewTimelineWidthPx = useMemo(
+    () =>
+      durationSec > 0
+        ? computeTimelineWidthPx(durationSec, overviewPxPerSec)
+        : 0,
+    [durationSec, overviewPxPerSec],
+  );
+
   const viewportRect = useMemo(
     () =>
       overviewWidthPx > 0
@@ -118,6 +127,7 @@ export const WaveformOverviewStrip = memo(function WaveformOverviewStrip({
           <WaveformPeaksCanvas
             peakCache={peakCache}
             pxPerSec={overviewPxPerSec}
+            timelineWidthPx={overviewTimelineWidthPx}
             scrollLeftPx={0}
             viewportWidthPx={overviewWidthPx}
             heightPx={Math.max(24, stripHeightPx - 8)}

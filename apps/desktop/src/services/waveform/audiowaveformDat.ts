@@ -1,6 +1,7 @@
 /** audiowaveform v1 `.dat` → WaveSurfer peaks conversion helpers. */
 
 import WaveformData from "waveform-data";
+import { computeTimelineWidthPx } from "../../utils/pxPerSec";
 
 const INT16_SCALE = 32768;
 
@@ -36,7 +37,9 @@ const MAX_UPSAMPLE_RATIO = 50;
 
 export function resampleWaveformForPxPerSec(data: WaveformData, pxPerSec: number): WaveformData {
   const baseWidth = data.length;
-  const targetWidth = Math.max(1, Math.ceil(data.duration * pxPerSec));
+  // Match `computeTimelineWidthPx` so resampled column count aligns with the
+  // timeline / tile distribution width (incl. 320 px fit-all floor).
+  const targetWidth = Math.max(1, computeTimelineWidthPx(data.duration, pxPerSec));
   // waveform-data 的 resample 只支持下采样（targetWidth <= baseWidth）。
   // 若需要上采样，直接返回原数据，由 Canvas 绘制层做视觉拉伸。
   if (targetWidth > baseWidth) {
