@@ -1,6 +1,13 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { clampPxPerSec } from "./pxPerSec";
-import { readStoredWaveformPxPerSec, writeStoredWaveformPxPerSec } from "./waveformPrefs";
+import {
+  readStoredAutoFitSelectionToViewport,
+  readStoredWaveformGlobalStripCollapsed,
+  readStoredWaveformPxPerSec,
+  writeStoredAutoFitSelectionToViewport,
+  writeStoredWaveformGlobalStripCollapsed,
+  writeStoredWaveformPxPerSec,
+} from "./waveformPrefs";
 
 describe("waveformPrefs localStorage", () => {
   const mem: Record<string, string> = {};
@@ -35,5 +42,16 @@ describe("waveformPrefs localStorage", () => {
   it("clamps invalid stored values on read", () => {
     localStorage.setItem("rushi.p1.waveformPxPerSec", "99999");
     expect(readStoredWaveformPxPerSec()).toBe(clampPxPerSec(99999));
+  });
+
+  it("round-trips auto-fit selection toggle", () => {
+    expect(readStoredAutoFitSelectionToViewport()).toBe(false);
+    writeStoredAutoFitSelectionToViewport(true);
+    expect(readStoredAutoFitSelectionToViewport()).toBe(true);
+  });
+
+  it("round-trips global strip collapsed", () => {
+    writeStoredWaveformGlobalStripCollapsed(true);
+    expect(readStoredWaveformGlobalStripCollapsed()).toBe(true);
   });
 });

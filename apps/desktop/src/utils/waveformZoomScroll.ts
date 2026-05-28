@@ -13,7 +13,7 @@ export function clampWaveformScrollLeftPx(input: {
   return Math.max(0, Math.min(maxSl, input.scrollLeftPx));
 }
 
-/** 读取当前可见横向 scroll：tier 与 WS 取较大值（与 clientXToTimeSec 一致）。 */
+/** 读取当前可见横向 scroll：tier 与 WS 取较大值（缩放时保留 scroll 用）。 */
 export function readVisibleWaveformScrollPx(
   wsScrollPx: number,
   viewportScrollPx?: number,

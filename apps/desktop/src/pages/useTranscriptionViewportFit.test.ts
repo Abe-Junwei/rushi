@@ -2,21 +2,11 @@ import { describe, expect, it } from "vitest";
 import { resolveViewportFitScrollPx } from "./useTranscriptionViewportFit";
 
 describe("resolveViewportFitScrollPx", () => {
-  it("returns zero scroll for fit-all", () => {
-    expect(
-      resolveViewportFitScrollPx({
-        pending: { intent: { kind: "all" }, pxPerSec: 0.5 },
-        durationSec: 3600,
-        viewportWidthPx: 800,
-      }),
-    ).toBe(0);
-  });
-
   it("centers selected segment after zoom", () => {
     const px = 100;
     const scroll = resolveViewportFitScrollPx({
       pending: {
-        intent: { kind: "selection", startSec: 10, endSec: 12 },
+        intent: { startSec: 10, endSec: 12 },
         pxPerSec: px,
       },
       durationSec: 120,

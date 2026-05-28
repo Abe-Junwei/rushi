@@ -1,16 +1,10 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import { TIMELINE_PX_PER_SEC } from "../utils/pxPerSec";
+import { computeFitSelectionPxPerSec, TIMELINE_PX_PER_SEC } from "../utils/pxPerSec";
 import { useWaveformZoom } from "./useWaveformZoom";
 
 function renderZoomHook() {
-  return renderHook(() =>
-    useWaveformZoom({
-      getTierWidth: () => 560,
-      getDuration: () => 10,
-      getSelectedSegment: () => ({ start_sec: 2, end_sec: 4 }),
-    }),
-  );
+  return renderHook(() => useWaveformZoom());
 }
 
 describe("useWaveformZoom", () => {
@@ -64,45 +58,11 @@ describe("useWaveformZoom", () => {
     expect(result.current.zoomPreviewActive).toBe(false);
   });
 
-  it("zoomToFitTier fits short audio to viewport width", () => {
-    const { result } = renderZoomHook();
+  it("setFitPxPerSec applies fit-selection px", () => {
+    const { result } = renderHook(() => useWaveformZoom());
 
     act(() => {
-      result.current.zoomToFitTier();
-    });
-
-    expect(result.current.pxPerSec).toBe(56);
-    expect(result.current.renderPxPerSec).toBe(56);
-  });
-
-  it("zoomToFitTier can go below manual slider min for long audio", () => {
-    const { result } = renderHook(() =>
-      useWaveformZoom({
-        getTierWidth: () => 800,
-        getDuration: () => 3600,
-        getSelectedSegment: () => null,
-      }),
-    );
-
-    act(() => {
-      result.current.zoomToFitTier();
-    });
-
-    expect(result.current.pxPerSec).toBeCloseTo(800 / 3600, 5);
-    expect(result.current.pxPerSec).toBeLessThan(16);
-  });
-
-  it("zoomToFitSelection scales to the selected segment span", () => {
-    const { result } = renderHook(() =>
-      useWaveformZoom({
-        getTierWidth: () => 800,
-        getDuration: () => 120,
-        getSelectedSegment: () => ({ start_sec: 10, end_sec: 12 }),
-      }),
-    );
-
-    act(() => {
-      result.current.zoomToFitSelection();
+      result.current.setFitPxPerSec(computeFitSelectionPxPerSec(800, 10, 12));
     });
 
     expect(result.current.pxPerSec).toBe((800 - 24) / 2);
@@ -122,26 +82,5 @@ describe("useWaveformZoom", () => {
 
     expect(result.current.pxPerSec).toBe(TIMELINE_PX_PER_SEC);
     expect(result.current.renderPxPerSec).toBe(TIMELINE_PX_PER_SEC);
-  });
-
-  it("resetZoom restores default after fit-all ultra-low zoom", () => {
-    const { result } = renderHook(() =>
-      useWaveformZoom({
-        getTierWidth: () => 800,
-        getDuration: () => 3600,
-        getSelectedSegment: () => null,
-      }),
-    );
-
-    act(() => {
-      result.current.zoomToFitTier();
-    });
-    expect(result.current.pxPerSec).toBeLessThan(TIMELINE_PX_PER_SEC);
-
-    act(() => {
-      result.current.resetZoom();
-    });
-
-    expect(result.current.pxPerSec).toBe(TIMELINE_PX_PER_SEC);
   });
 });

@@ -1,26 +1,34 @@
 import { memo, useCallback, useEffect, useMemo, useRef } from "react";
-import { Crosshair, Maximize2, ZoomIn, ZoomOut } from "lucide-react";
+import { ZoomIn, ZoomOut } from "lucide-react";
 import {
   clampPxPerSecForSlider,
   PX_PER_SEC_MAX,
   PX_PER_SEC_MIN,
-  TIMELINE_PX_PER_SEC,
 } from "../utils/pxPerSec";
+import { computeWaveformZoomBarUiState } from "../utils/waveformZoomBarState";
 import { LUCIDE_ICON_SIZE_LG, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
 export type WaveformZoomBarProps = {
   disabled: boolean;
   isReady: boolean;
   pxPerSec: number;
+  viewportWidthPx: number;
+  durationSec: number;
   hasSelectionSegment: boolean;
-  onZoomToFitAll: () => void;
-  onZoomToFitSelection: () => void;
+  selectedStartSec?: number;
+  selectedEndSec?: number;
+  /** 跟随语段模式。 */
+  autoFitSelectionToViewport: boolean;
+  onEnterManualNavigation: () => void;
+  onEnterFollowNavigation: () => void;
+  onRefitFollowSelection: () => void;
   onResetDefaultZoom: () => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
   onPxPerSecChange: (pxPerSec: number) => void;
   onZoomInteractionStart?: () => void;
   onZoomInteractionEnd?: () => void;
+  editorHint?: string;
 };
 
 function pxPerSecToSliderPos(px: number): number {
@@ -37,37 +45,90 @@ function sliderPosToPxPerSec(pos: number): number {
   return clampPxPerSecForSlider(lo * (hi / lo) ** (t / 1000));
 }
 
-/** 解语 TranscriptionLayoutSections / ZoomControls 同款：底部横向缩放条（布局与 icon-btn + 滑块 + 百分比）。 */
+/** 底部横向缩放：导航模式 + 滑块（全文件导航见底部全局波形条）。 */
 export const WaveformZoomBar = memo(function WaveformZoomBar({
   disabled,
   isReady,
   pxPerSec,
+  viewportWidthPx,
+  durationSec,
   hasSelectionSegment,
-  onZoomToFitAll,
-  onZoomToFitSelection,
+  selectedStartSec,
+  selectedEndSec,
+  autoFitSelectionToViewport,
+  onEnterManualNavigation,
+  onEnterFollowNavigation,
+  onRefitFollowSelection,
   onResetDefaultZoom,
   onZoomIn,
   onZoomOut,
   onPxPerSecChange,
   onZoomInteractionStart,
   onZoomInteractionEnd,
+  editorHint,
 }: WaveformZoomBarProps) {
   const off = disabled || !isReady;
-  const atDefaultZoom = Math.abs(pxPerSec - TIMELINE_PX_PER_SEC) < 0.001;
+  const { atMinZoom, atMaxZoom, belowManualSliderRange, zoomPercentLabel } = useMemo(
+    () =>
+      computeWaveformZoomBarUiState({
+        pxPerSec,
+        viewportWidthPx,
+        durationSec,
+        selectedStartSec,
+        selectedEndSec,
+      }),
+    [durationSec, pxPerSec, selectedEndSec, selectedStartSec, viewportWidthPx],
+  );
+  const followActive = autoFitSelectionToViewport;
+  const manualActive = !autoFitSelectionToViewport;
+
+  const enterManualMode = useCallback(() => {
+    if (!autoFitSelectionToViewport) return;
+    onEnterManualNavigation();
+  }, [autoFitSelectionToViewport, onEnterManualNavigation]);
+
+  const selectFollowMode = useCallback(() => {
+    if (!autoFitSelectionToViewport) {
+      onEnterFollowNavigation();
+      return;
+    }
+    if (hasSelectionSegment) onRefitFollowSelection();
+  }, [
+    autoFitSelectionToViewport,
+    hasSelectionSegment,
+    onEnterFollowNavigation,
+    onRefitFollowSelection,
+  ]);
+
+  const handleZoomIn = useCallback(() => {
+    if (autoFitSelectionToViewport) onEnterManualNavigation();
+    onZoomIn();
+  }, [autoFitSelectionToViewport, onEnterManualNavigation, onZoomIn]);
+
+  const handleZoomOut = useCallback(() => {
+    if (autoFitSelectionToViewport) onEnterManualNavigation();
+    onZoomOut();
+  }, [autoFitSelectionToViewport, onEnterManualNavigation, onZoomOut]);
+
+  const handlePxPerSecChange = useCallback(
+    (next: number) => {
+      if (autoFitSelectionToViewport) onEnterManualNavigation();
+      onPxPerSecChange(next);
+    },
+    [autoFitSelectionToViewport, onEnterManualNavigation, onPxPerSecChange],
+  );
+
   const sliderRafRef = useRef(0);
   const sliderInteractingRef = useRef(false);
   const pendingSliderPosRef = useRef<number | null>(null);
   const sliderValue = useMemo(() => pxPerSecToSliderPos(pxPerSec), [pxPerSec]);
-  const zoomPercentLabel = useMemo(
-    () => Math.round((pxPerSec / TIMELINE_PX_PER_SEC) * 100),
-    [pxPerSec],
-  );
 
   const beginSliderInteraction = useCallback(() => {
     if (sliderInteractingRef.current) return;
     sliderInteractingRef.current = true;
+    if (autoFitSelectionToViewport) onEnterManualNavigation();
     onZoomInteractionStart?.();
-  }, [onZoomInteractionStart]);
+  }, [autoFitSelectionToViewport, onEnterManualNavigation, onZoomInteractionStart]);
 
   const flushPendingSliderChange = useCallback(() => {
     const pos = pendingSliderPosRef.current;
@@ -77,8 +138,8 @@ export const WaveformZoomBar = memo(function WaveformZoomBar({
       cancelAnimationFrame(sliderRafRef.current);
       sliderRafRef.current = 0;
     }
-    onPxPerSecChange(sliderPosToPxPerSec(pos));
-  }, [onPxPerSecChange]);
+    handlePxPerSecChange(sliderPosToPxPerSec(pos));
+  }, [handlePxPerSecChange]);
 
   const endSliderInteraction = useCallback(() => {
     flushPendingSliderChange();
@@ -110,42 +171,51 @@ export const WaveformZoomBar = memo(function WaveformZoomBar({
   return (
     <div className="waveform-zoom-toolbar" role="toolbar" aria-label="波形时间轴缩放">
       <div className="waveform-zoom-bar">
-        <button
-          type="button"
-          className="icon-btn"
-          disabled={off}
-          title="适配整段时长到视口"
-          aria-label="适配整段"
-          onClick={onZoomToFitAll}
-        >
-          <Maximize2 className={`${LUCIDE_ICON_SIZE_LG} shrink-0 opacity-90`} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-        </button>
-        <button
-          type="button"
-          className="icon-btn"
-          disabled={off || !hasSelectionSegment}
-          title="将当前选中语段适配到视口"
-          aria-label="适配选中语段"
-          onClick={onZoomToFitSelection}
-        >
-          <Crosshair className={`${LUCIDE_ICON_SIZE_LG} shrink-0 opacity-90`} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-        </button>
-        <button
-          type="button"
-          className="icon-btn"
-          disabled={off || atDefaultZoom}
-          title={atDefaultZoom ? "已是默认横向比例（56 px/s，100%）" : "恢复默认横向比例（56 px/s，100%）"}
-          aria-label="恢复默认横向缩放"
-          aria-pressed={atDefaultZoom}
-          onClick={onResetDefaultZoom}
-        >
-          <span className="icon-btn-label">默认</span>
-        </button>
+        <div className="waveform-nav-mode-group" role="group" aria-label="波形导航模式">
+          <button
+            type="button"
+            className={["waveform-nav-mode-btn", manualActive ? "waveform-nav-mode-btn-active" : ""]
+              .filter(Boolean)
+              .join(" ")}
+            disabled={off}
+            aria-pressed={manualActive}
+            title="手动缩放：选中语段只滚动主波形，不改变横向比例"
+            onClick={enterManualMode}
+          >
+            手动
+          </button>
+          <button
+            type="button"
+            className={["waveform-nav-mode-btn", followActive ? "waveform-nav-mode-btn-active" : ""]
+              .filter(Boolean)
+              .join(" ")}
+            disabled={off}
+            aria-pressed={followActive}
+            title="跟随语段：选中时自动适配主波形视口（能放下则只滚）"
+            onClick={selectFollowMode}
+          >
+            跟随语段
+          </button>
+        </div>
         <span className="toolbar-sep" aria-hidden />
-        <button type="button" className="icon-btn" disabled={off} title="缩小" aria-label="缩小" onClick={onZoomOut}>
+        <button
+          type="button"
+          className="icon-btn"
+          disabled={off || atMinZoom}
+          title={atMinZoom ? "已达到最小手动缩放" : "缩小"}
+          aria-label="缩小"
+          onClick={handleZoomOut}
+        >
           <ZoomOut className={LUCIDE_ICON_SIZE_LG} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
         </button>
-        <button type="button" className="icon-btn" disabled={off} title="放大" aria-label="放大" onClick={onZoomIn}>
+        <button
+          type="button"
+          className="icon-btn"
+          disabled={off || atMaxZoom}
+          title={atMaxZoom ? "已达到最大手动缩放" : "放大"}
+          aria-label="放大"
+          onClick={handleZoomIn}
+        >
           <ZoomIn className={LUCIDE_ICON_SIZE_LG} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
         </button>
         <span className="toolbar-sep" aria-hidden />
@@ -155,8 +225,8 @@ export const WaveformZoomBar = memo(function WaveformZoomBar({
           min={0}
           max={1000}
           step={1}
-          disabled={off}
-          value={sliderValue}
+          disabled={off || belowManualSliderRange}
+          value={belowManualSliderRange ? 0 : sliderValue}
           onChange={onSliderChange}
           onPointerDown={beginSliderInteraction}
           onPointerUp={endSliderInteraction}
@@ -164,7 +234,16 @@ export const WaveformZoomBar = memo(function WaveformZoomBar({
           onKeyDown={beginSliderInteraction}
           onKeyUp={endSliderInteraction}
           onBlur={endSliderInteraction}
-          title={`横向比例 ${zoomPercentLabel}%（相对默认）`}
+          title={
+            belowManualSliderRange
+              ? `当前缩放 ${zoomPercentLabel}% 低于滑块范围；点「重置」或 +/- 调整`
+              : `横向比例 ${zoomPercentLabel}%（相对默认）`
+          }
+          aria-valuetext={
+            belowManualSliderRange
+              ? `${zoomPercentLabel}%（低于手动滑块下限）`
+              : `${zoomPercentLabel}%`
+          }
           aria-label={`横向缩放滑块，当前 ${zoomPercentLabel}%`}
         />
         <span className="waveform-zoom-value" aria-live="polite">
@@ -173,7 +252,25 @@ export const WaveformZoomBar = memo(function WaveformZoomBar({
         <span className="waveform-zoom-px font-mono tabular-nums text-zen-stone/80" title="像素/秒">
           {Math.round(pxPerSec)} px/s
         </span>
+        <button
+          type="button"
+          className="icon-btn icon-btn-text"
+          disabled={off}
+          title="重置为默认横向比例（56 px/s，100%）"
+          aria-label="重置缩放"
+          onClick={() => {
+            if (autoFitSelectionToViewport) onEnterManualNavigation();
+            onResetDefaultZoom();
+          }}
+        >
+          <span className="icon-btn-label">重置</span>
+        </button>
       </div>
+      {editorHint ? (
+        <p className="m-0 min-w-0 flex-1 truncate text-right text-[11px] text-notion-text-muted" aria-live="polite">
+          {editorHint}
+        </p>
+      ) : null}
     </div>
   );
 });

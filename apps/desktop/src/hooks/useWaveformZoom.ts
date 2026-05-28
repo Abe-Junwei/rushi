@@ -2,22 +2,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   clampPxPerSec,
   clampPxPerSecForSlider,
-  computeFitAllPxPerSec,
-  computeFitSelectionPxPerSec,
   TIMELINE_PX_PER_SEC,
 } from "../utils/pxPerSec";
 import { readStoredWaveformPxPerSec, writeStoredWaveformPxPerSec } from "../utils/waveformPrefs";
 
 const PREF_WRITE_DEBOUNCE_MS = 180;
 
-export function useWaveformZoom(args: {
-  getTierWidth: () => number;
-  getDuration: () => number;
-  getSelectedSegment: () => { start_sec: number; end_sec: number } | null;
-}) {
-  const argsRef = useRef(args);
-  argsRef.current = args;
-
+export function useWaveformZoom() {
   const [pxPerSec, setPxPerSecState] = useState(() => {
     const stored = readStoredWaveformPxPerSec();
     return clampPxPerSec(stored ?? TIMELINE_PX_PER_SEC);
@@ -60,21 +51,8 @@ export function useWaveformZoom(args: {
     setPxPerSecState(clampPxPerSec(TIMELINE_PX_PER_SEC));
   }, []);
 
-  const zoomToFitTier = useCallback(() => {
-    const a = argsRef.current;
-    const w = a.getTierWidth();
-    const dur = a.getDuration();
-    if (w <= 0 || dur < 0.5) return;
-    setPxPerSecState(computeFitAllPxPerSec(w, dur));
-  }, []);
-
-  const zoomToFitSelection = useCallback(() => {
-    const a = argsRef.current;
-    const w = a.getTierWidth();
-    const dur = a.getDuration();
-    const seg = a.getSelectedSegment();
-    if (w <= 0 || dur < 0.5 || !seg) return;
-    setPxPerSecState(computeFitSelectionPxPerSec(w, seg.start_sec, seg.end_sec));
+  const setFitPxPerSec = useCallback((next: number) => {
+    setPxPerSecState(clampPxPerSec(next));
   }, []);
 
   return {
@@ -86,8 +64,7 @@ export function useWaveformZoom(args: {
     zoomIn,
     zoomOut,
     resetZoom,
-    zoomToFitTier,
-    zoomToFitSelection,
+    setFitPxPerSec,
     beginZoomInteraction,
     commitZoomInteraction,
   };
