@@ -3,12 +3,19 @@ import type { AsrSetupReport } from "./asrSetupContract";
 import type { LocalAsrSetupSelectionContext } from "./localAsrSetupModelStep";
 import { snapshotSelectedModelPrepare, syncBundledSidecarToPreferredHub } from "./localAsrSetupModelStep";
 import { patchStep } from "../../pages/asrSetupState";
-import type { AsrOneClickPrepareCallbacks, AsrOneClickPrepareDeps } from "./asrOneClickPrepareFlow";
+import type {
+  AsrOneClickPrepareDeps,
+  AsrOneClickPrepareUi,
+} from "./asrOneClickPrepareTypes";
+
+export function oneClickPrepareSleep(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
 
 /** When UI + loopback already agree, mark wizard steps done without restart/download. */
 export async function finishOneClickIfAlreadyReady(
   deps: AsrOneClickPrepareDeps,
-  cb: Pick<AsrOneClickPrepareCallbacks, "setSetupSteps" | "setSetupMessage" | "setSetupOutcome">,
+  cb: AsrOneClickPrepareUi,
   report: AsrSetupReport,
   selection: LocalAsrSetupSelectionContext,
 ): Promise<boolean> {
@@ -41,10 +48,7 @@ export async function finishOneClickIfAlreadyReady(
   return true;
 }
 
-export function applyPortForeignBlocked(
-  cb: Pick<AsrOneClickPrepareCallbacks, "setSetupSteps" | "setSetupMessage" | "setSetupOutcome">,
-  report: AsrSetupReport,
-): void {
+export function applyPortForeignBlocked(cb: AsrOneClickPrepareUi, report: AsrSetupReport): void {
   cb.setSetupSteps((steps) =>
     patchStep(steps, "sidecar", {
       status: "error",
