@@ -1,0 +1,112 @@
+import { describe, expect, it } from "vitest";
+import {
+  clampSegmentTimeBounds,
+  computeDragSegmentBounds,
+  hitSegmentEdgeFromLocalPx,
+  hitSegmentEdgeFromTimelinePointer,
+  resolveSegmentIndexAtWaveformPointer,
+  segmentOverlayGeometry,
+  WAVEFORM_SEGMENT_INSET_BOTTOM_PX,
+  WAVEFORM_SEGMENT_INSET_TOP_PX,
+} from "./waveformSegmentBounds";
+
+describe("waveformSegmentBounds", () => {
+  it("clamps segment bounds with minimum span", () => {
+    expect(clampSegmentTimeBounds(1, 1.01, 10)).toEqual({ startSec: 1, endSec: 1.05 });
+  });
+
+  it("uses full waveform band height for a single lane", () => {
+    const h = 96;
+    const g = segmentOverlayGeometry({
+      startSec: 2,
+      endSec: 4,
+      pxPerSec: 100,
+      lane: 0,
+      laneCount: 1,
+      containerHeightPx: h,
+    });
+    expect(g.leftPx).toBe(200);
+    expect(g.widthPx).toBe(200);
+    expect(g.topPx).toBe(WAVEFORM_SEGMENT_INSET_TOP_PX);
+    expect(g.heightPx).toBe(h - WAVEFORM_SEGMENT_INSET_TOP_PX - WAVEFORM_SEGMENT_INSET_BOTTOM_PX);
+  });
+
+  it("splits vertical band when segments overlap", () => {
+    const g = segmentOverlayGeometry({
+      startSec: 1,
+      endSec: 2,
+      pxPerSec: 56,
+      lane: 1,
+      laneCount: 3,
+      containerHeightPx: 96,
+    });
+    expect(g.topPx).toBeGreaterThan(WAVEFORM_SEGMENT_INSET_TOP_PX);
+    expect(g.heightPx).toBeLessThan(60);
+  });
+
+  it("computeDragSegmentBounds matches move delta on finish path", () => {
+    const moved = computeDragSegmentBounds("move", 2, 4, 0.5, 60);
+    expect(moved).toEqual({ startSec: 2.5, endSec: 4.5 });
+  });
+
+  it("hitSegmentEdgeFromLocalPx detects resize handles", () => {
+    expect(hitSegmentEdgeFromLocalPx(4, 200)).toBe("resize-start");
+    expect(hitSegmentEdgeFromLocalPx(196, 200)).toBe("resize-end");
+    expect(hitSegmentEdgeFromLocalPx(100, 200)).toBe("move");
+  });
+
+  it("hitSegmentEdgeFromTimelinePointer uses segment time bounds", () => {
+    expect(
+      hitSegmentEdgeFromTimelinePointer({
+        pointerTimeSec: 2.01,
+        startSec: 2,
+        endSec: 4,
+        pxPerSec: 100,
+      }),
+    ).toBe("resize-start");
+  });
+
+  it("resolveSegmentIndexAtWaveformPointer prefers higher lane at same time", () => {
+    const layoutHeightPx = 96;
+    const laneByIndex = [0, 1];
+    const laneCount = 2;
+    const overlayTop = 100;
+    const lane1Geom = segmentOverlayGeometry({
+      startSec: 0,
+      endSec: 5,
+      pxPerSec: 1,
+      lane: 1,
+      laneCount,
+      containerHeightPx: layoutHeightPx,
+    });
+    const pointerY = overlayTop + lane1Geom.topPx + lane1Geom.heightPx / 2;
+    const idx = resolveSegmentIndexAtWaveformPointer({
+      segments: [
+        { idx: 0, start_sec: 0, end_sec: 5, text: "a" },
+        { idx: 1, start_sec: 1, end_sec: 4, text: "b" },
+      ],
+      timeSec: 2,
+      pointerClientY: pointerY,
+      overlayClientTop: overlayTop,
+      layoutHeightPx,
+      laneByIndex,
+      laneCount,
+      selectedIdx: 0,
+    });
+    expect(idx).toBe(1);
+  });
+
+  it("returns -1 when pointer misses all segments", () => {
+    const idx = resolveSegmentIndexAtWaveformPointer({
+      segments: [{ idx: 0, start_sec: 10, end_sec: 12, text: "a" }],
+      timeSec: 2,
+      pointerClientY: 150,
+      overlayClientTop: 100,
+      layoutHeightPx: 96,
+      laneByIndex: [0],
+      laneCount: 1,
+      selectedIdx: 0,
+    });
+    expect(idx).toBe(-1);
+  });
+});
