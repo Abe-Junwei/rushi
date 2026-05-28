@@ -53,6 +53,23 @@ pub struct EditLogEntryDto {
     pub detail: String,
 }
 
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WaveformPeakLevelStatus {
+    pub level: u8,
+    pub pixels_per_second: u32,
+    pub path: String,
+    pub exists: bool,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct WaveformPeaksStatus {
+    pub levels: Vec<WaveformPeakLevelStatus>,
+    pub sample_rate: Option<u32>,
+    pub duration_sec: Option<f64>,
+}
+
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct SegmentDto {
     /// 稳定语段 id（波形 region、按 uid upsert 落库）；旧数据可为空，加载/保存时补全。

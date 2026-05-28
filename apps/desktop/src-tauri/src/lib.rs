@@ -77,6 +77,8 @@ pub fn run() {
             project::load_file,
             project::rename_file,
             project::delete_file,
+            project::ensure_waveform_peaks,
+            project::waveform_peaks_status,
             project::export_project_bundle,
             project::import_project_bundle,
             project::get_asr_runtime_paths,

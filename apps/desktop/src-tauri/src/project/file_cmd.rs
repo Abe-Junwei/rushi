@@ -1,5 +1,6 @@
 use super::types::{FileDetail, FileSummary};
 use super::utils::{file_detail_from_conn, now_ms, open_db, remove_audio_file};
+use super::waveform_peaks_cmd::cleanup_peaks_for_file;
 use crate::DbState;
 use rusqlite::params;
 use std::ops::Deref;
@@ -92,6 +93,8 @@ pub fn delete_file(state: State<DbState>, file_id: String) -> Result<(), String>
     if let Ok(p) = audio_path {
         let _ = remove_audio_file(&st.root, &p);
     }
+
+    cleanup_peaks_for_file(st, &project_id, &file_id);
 
     Ok(())
 }

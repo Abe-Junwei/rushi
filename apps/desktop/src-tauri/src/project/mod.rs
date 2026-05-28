@@ -30,6 +30,8 @@ mod transcribe_native_online;
 mod transcribe_timeout;
 pub mod types;
 pub mod utils;
+pub mod waveform_peaks;
+pub mod waveform_peaks_cmd;
 
 pub use app_data_paths::models_root_for_app_data_root;
 pub use asr_cache_cmd::*;
@@ -45,6 +47,7 @@ pub use project_query_cmd::*;
 pub use run_transcribe_cmd::*;
 pub use segment_cmd::*;
 pub use types::*;
+pub use waveform_peaks_cmd::*;
 
 #[cfg(test)]
 mod cmd_integration_tests;
