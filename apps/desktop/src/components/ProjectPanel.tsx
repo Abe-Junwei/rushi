@@ -49,6 +49,8 @@ export function ProjectPanel() {
   }, [c.busy]);
 
   const tx = useTranscriptionLayer({
+    projectId: c.current?.id ?? null,
+    fileId: c.currentFileId,
     mediaUrl: c.audioSrc,
     segments: c.segments,
     selectedIdx: c.selectedIdx,

@@ -54,8 +54,6 @@ export function EditorView({
     c.current?.files.find((f) => f.id !== c.currentFileId) ??
     null;
   const zoomPercent = Math.round((tx.pxPerSec / TIMELINE_PX_PER_SEC) * 100);
-  const rulerViewportWidthPx = Math.max(1, tx.tierScrollLayout.clientWidth);
-  const rulerScrollLeftPx = tx.tierScrollLayout.scrollLeft;
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-notion-bg" data-purpose="editor-workspace">
@@ -110,8 +108,6 @@ export function EditorView({
               <EditorWaveformPane
                 controller={c}
                 tx={tx}
-                rulerViewportWidthPx={rulerViewportWidthPx}
-                rulerScrollLeftPx={rulerScrollLeftPx}
                 onOpenSegmentContextMenu={setSegmentCtxMenu}
               />
             ) : (

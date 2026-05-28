@@ -11,7 +11,6 @@ import type { useProjectWaveform } from "../hooks/useProjectWaveform";
 type WfApi = ReturnType<typeof useProjectWaveform>;
 
 type WaveformZoomFitApi = {
-  renderPxPerSec: number;
   zoomToFitTier: () => void;
   zoomToFitSelection: () => void;
 };
@@ -20,6 +19,26 @@ type TierScrollApi = {
   setTierScrollPx: (scrollLeftPx: number) => void;
 };
 
+export type PendingViewportFit = {
+  intent: ViewportFitScrollIntent;
+  pxPerSec: number;
+};
+
+/** 在 zoom / peaks resample 完成后计算 tier scroll。 */
+export function resolveViewportFitScrollPx(input: {
+  pending: PendingViewportFit;
+  durationSec: number;
+  viewportWidthPx: number;
+}): number {
+  const tw = computeTimelineWidthPx(input.durationSec, input.pending.pxPerSec);
+  return computeViewportFitScrollPx({
+    intent: input.pending.intent,
+    viewportWidthPx: input.viewportWidthPx,
+    timelineWidthPx: tw,
+    pxPerSec: input.pending.pxPerSec,
+  });
+}
+
 export function useTranscriptionViewportFit(args: {
   tierScrollRef: RefObject<HTMLDivElement | null>;
   durationRef: MutableRefObject<number>;
@@ -27,6 +46,7 @@ export function useTranscriptionViewportFit(args: {
   scrollApiRef: MutableRefObject<TierScrollApi>;
   wfApiRef: MutableRefObject<WfApi>;
   zoom: WaveformZoomFitApi;
+  currentPxPerSec: number;
   renderTimelineWidthPx: number;
   waveformReady: boolean;
   mediaUrl: string | null;
@@ -39,53 +59,35 @@ export function useTranscriptionViewportFit(args: {
     scrollApiRef,
     wfApiRef,
     zoom,
+    currentPxPerSec,
     renderTimelineWidthPx,
     waveformReady,
     mediaUrl,
     getSelectedSegment,
   } = args;
 
-  const viewportFitSessionRef = useRef<{
-    intent: ViewportFitScrollIntent;
-    pxPerSec: number;
-    framesLeft: number;
-  } | null>(null);
+  const pendingViewportFitRef = useRef<PendingViewportFit | null>(null);
 
-  const applyViewportFitScroll = useCallback(
-    (pxPerSec = zoom.renderPxPerSec) => {
-      const session = viewportFitSessionRef.current;
-      if (!session) return;
+  const applyPendingViewportFit = useCallback(
+    (pxPerSec: number) => {
+      const pending = pendingViewportFitRef.current;
+      if (!pending || Math.abs(pending.pxPerSec - pxPerSec) > 0.001) return false;
+
       const tier = tierScrollRef.current;
-      if (!tier) return;
-      const tw = computeTimelineWidthPx(durationRef.current, pxPerSec);
-      const targetSl = computeViewportFitScrollPx({
-        intent: session.intent,
-        viewportWidthPx: tier.clientWidth,
-        timelineWidthPx: tw,
-        pxPerSec,
-      });
-      scrollApiRef.current.setTierScrollPx(targetSl);
-    },
-    [durationRef, scrollApiRef, tierScrollRef, zoom.renderPxPerSec],
-  );
+      if (!tier) return false;
 
-  const beginViewportFitSession = useCallback(
-    (intent: ViewportFitScrollIntent, pxPerSec: number) => {
-      viewportFitSessionRef.current = { intent, pxPerSec, framesLeft: 2 };
-      applyViewportFitScroll(pxPerSec);
-      const tick = () => {
-        const session = viewportFitSessionRef.current;
-        if (!session || session.framesLeft <= 0) {
-          viewportFitSessionRef.current = null;
-          return;
-        }
-        session.framesLeft -= 1;
-        applyViewportFitScroll(session.pxPerSec);
-        requestAnimationFrame(tick);
-      };
-      requestAnimationFrame(tick);
+      const targetSl = resolveViewportFitScrollPx({
+        pending,
+        durationSec: durationRef.current,
+        viewportWidthPx: tier.clientWidth,
+      });
+
+      scrollApiRef.current.setTierScrollPx(targetSl);
+      wfApiRef.current.setScrollLeft(targetSl);
+      pendingViewportFitRef.current = null;
+      return true;
     },
-    [applyViewportFitScroll],
+    [durationRef, scrollApiRef, tierScrollRef, wfApiRef],
   );
 
   const zoomToFitTier = useCallback(() => {
@@ -94,9 +96,12 @@ export function useTranscriptionViewportFit(args: {
     const w = tier?.clientWidth ?? 0;
     if (w <= 0 || dur < 0.5) return;
     const px = computeFitAllPxPerSec(w, dur);
-    beginViewportFitSession({ kind: "all" }, px);
+    pendingViewportFitRef.current = { intent: { kind: "all" }, pxPerSec: px };
     zoom.zoomToFitTier();
-  }, [beginViewportFitSession, durationRef, tierScrollRef, zoom]);
+    if (Math.abs(currentPxPerSec - px) < 0.001) {
+      applyPendingViewportFit(px);
+    }
+  }, [applyPendingViewportFit, currentPxPerSec, durationRef, tierScrollRef, zoom]);
 
   const zoomToFitSelection = useCallback(() => {
     const seg = getSelectedSegment();
@@ -105,47 +110,44 @@ export function useTranscriptionViewportFit(args: {
     const w = tier?.clientWidth ?? 0;
     if (!seg || w <= 0 || dur < 0.5) return;
     const px = computeFitSelectionPxPerSec(w, seg.start_sec, seg.end_sec);
-    beginViewportFitSession(
-      { kind: "selection", startSec: seg.start_sec, endSec: seg.end_sec },
-      px,
-    );
+    pendingViewportFitRef.current = {
+      intent: { kind: "selection", startSec: seg.start_sec, endSec: seg.end_sec },
+      pxPerSec: px,
+    };
     zoom.zoomToFitSelection();
-  }, [beginViewportFitSession, durationRef, getSelectedSegment, tierScrollRef, zoom]);
+    if (Math.abs(currentPxPerSec - px) < 0.001) {
+      applyPendingViewportFit(px);
+    }
+  }, [applyPendingViewportFit, currentPxPerSec, durationRef, getSelectedSegment, tierScrollRef, zoom]);
 
   const onWaveformScroll = useCallback(
     (scrollLeftPx: number) => {
-      if (viewportFitSessionRef.current && viewportFitSessionRef.current.framesLeft > 0) {
-        applyViewportFitScroll();
-        return;
-      }
+      if (pendingViewportFitRef.current) return;
       syncWaveformScrollRef.current(scrollLeftPx);
     },
-    [applyViewportFitScroll, syncWaveformScrollRef],
+    [syncWaveformScrollRef],
   );
 
   useLayoutEffect(() => {
     const tier = tierScrollRef.current;
     if (!tier || !waveformReady || renderTimelineWidthPx <= 0) return;
-    if (viewportFitSessionRef.current && viewportFitSessionRef.current.framesLeft > 0) {
-      applyViewportFitScroll(viewportFitSessionRef.current.pxPerSec);
-      return;
-    }
+    if (pendingViewportFitRef.current) return;
+
     const maxSl = Math.max(0, renderTimelineWidthPx - tier.clientWidth);
     const wsSl = wfApiRef.current.getScrollLeft();
     const sl = Math.min(maxSl, Math.max(0, wsSl));
     scrollApiRef.current.setTierScrollPx(sl);
   }, [
-    applyViewportFitScroll,
     renderTimelineWidthPx,
     scrollApiRef,
     tierScrollRef,
     waveformReady,
     wfApiRef,
-    zoom.renderPxPerSec,
   ]);
 
   useEffect(() => {
     if (!mediaUrl || !waveformReady) return;
+    pendingViewportFitRef.current = null;
     scrollApiRef.current.setTierScrollPx(0);
   }, [mediaUrl, scrollApiRef, waveformReady]);
 
@@ -153,5 +155,6 @@ export function useTranscriptionViewportFit(args: {
     onWaveformScroll,
     zoomToFitTier,
     zoomToFitSelection,
+    applyPendingViewportFit,
   };
 }

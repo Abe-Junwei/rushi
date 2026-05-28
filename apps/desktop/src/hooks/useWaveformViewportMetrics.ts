@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState, type RefObject } from "react";
+import { useEffect, useState, type RefObject } from "react";
 
 export type WaveformViewportMetrics = {
   scrollLeftPx: number;
@@ -6,14 +6,16 @@ export type WaveformViewportMetrics = {
 };
 
 /**
- * 读取 tier 横向滚动指标。`poll` 为 true 时用 rAF 采样，避免 scroll 事件链驱动整页 setState。
+ * tier 视口指标；在 EditorWaveformPane 内 rAF 采样，避免 scroll 链路上浮到 ProjectPanel。
  */
 export function useWaveformViewportMetrics(
   tierScrollRef: RefObject<HTMLElement | null>,
   poll: boolean,
 ): WaveformViewportMetrics {
-  const scrollLeftRef = useRef(0);
-  const [clientWidthPx, setClientWidthPx] = useState(400);
+  const [metrics, setMetrics] = useState<WaveformViewportMetrics>({
+    scrollLeftPx: 0,
+    clientWidthPx: 400,
+  });
 
   useEffect(() => {
     const el = tierScrollRef.current;
@@ -21,9 +23,10 @@ export function useWaveformViewportMetrics(
 
     let rafId = 0;
     const sample = () => {
-      scrollLeftRef.current = el.scrollLeft;
-      const vw = el.clientWidth;
-      setClientWidthPx((prev) => (prev === vw ? prev : vw));
+      const next = { scrollLeftPx: el.scrollLeft, clientWidthPx: el.clientWidth };
+      setMetrics((prev) =>
+        prev.scrollLeftPx === next.scrollLeftPx && prev.clientWidthPx === next.clientWidthPx ? prev : next,
+      );
     };
 
     const loop = () => {
@@ -34,6 +37,16 @@ export function useWaveformViewportMetrics(
     sample();
     if (poll) {
       rafId = window.requestAnimationFrame(loop);
+    } else {
+      const onScroll = () => sample();
+      el.addEventListener("scroll", onScroll, { passive: true });
+      const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(sample) : null;
+      ro?.observe(el);
+      return () => {
+        el.removeEventListener("scroll", onScroll);
+        ro?.disconnect();
+        if (rafId) window.cancelAnimationFrame(rafId);
+      };
     }
 
     return () => {
@@ -41,8 +54,5 @@ export function useWaveformViewportMetrics(
     };
   }, [poll, tierScrollRef]);
 
-  return {
-    scrollLeftPx: scrollLeftRef.current,
-    clientWidthPx,
-  };
+  return metrics;
 }

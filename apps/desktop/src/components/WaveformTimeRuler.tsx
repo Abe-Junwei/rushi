@@ -15,6 +15,9 @@ export type WaveformTimeRulerProps = {
   /** 点击时间尺（相对 tier 视口）寻位 */
   onSeekFromTierClientX: (clientX: number) => void;
   onSetScrollLeftPx: (px: number) => void;
+  /** 播放期由 rAF 直写 playhead，避免 React 每帧重绘 */
+  playheadLineRef?: React.RefObject<SVGLineElement | null>;
+  hidePlayheadReact?: boolean;
 };
 
 const NICE_STEPS = [0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600];
@@ -42,6 +45,8 @@ export const WaveformTimeRuler = memo(function WaveformTimeRuler({
   onSeekFromTierClientX,
   onSetScrollLeftPx,
   appearance = "ink",
+  playheadLineRef,
+  hidePlayheadReact = false,
 }: WaveformTimeRulerProps) {
   const ink = appearance === "ink";
   const embedded = appearance === "embedded";
@@ -207,12 +212,15 @@ export const WaveformTimeRuler = memo(function WaveformTimeRuler({
             );
           })}
           <line
-            x1={playheadPct}
-            x2={playheadPct}
+            ref={playheadLineRef}
+            x1={hidePlayheadReact ? "-1%" : playheadPct}
+            x2={hidePlayheadReact ? "-1%" : playheadPct}
             y1={-2}
             y2={RULER_H}
             className={
-              embedded
+              hidePlayheadReact
+                ? "stroke-zen-saffron/58"
+                : embedded
                 ? interactionActive
                   ? "stroke-zen-saffron/86"
                   : "stroke-zen-saffron/58"

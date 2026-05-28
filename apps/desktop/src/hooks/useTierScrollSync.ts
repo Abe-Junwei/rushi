@@ -20,7 +20,7 @@ export function useTierScrollSync(args: {
   const committedScrollLeftRef = useRef(0);
   const smoothScrollCleanupRef = useRef<(() => void) | null>(null);
 
-  const [tierScrollLayout, setTierScrollLayout] = useState({ scrollLeft: 0, clientWidth: 400 });
+  const [tierScrollLayout, setTierScrollLayout] = useState({ clientWidth: 400 });
 
   const applyScrollLeftPx = (px: number, source: ScrollApplySource) => {
     const a = argsRef.current;
@@ -42,9 +42,7 @@ export function useTierScrollSync(args: {
       tier.scrollLeft = sl;
     }
     committedScrollLeftRef.current = sl;
-    setTierScrollLayout((prev) =>
-      prev.scrollLeft === sl && prev.clientWidth === vw ? prev : { scrollLeft: sl, clientWidth: vw },
-    );
+    setTierScrollLayout((prev) => (prev.clientWidth === vw ? prev : { clientWidth: vw }));
     if (shouldSyncWaveform) {
       w.setScrollLeft(sl);
     }
@@ -85,7 +83,8 @@ export function useTierScrollSync(args: {
         const el = argsRef.current.tierScrollRef.current;
         if (!el) return;
         committedScrollLeftRef.current = el.scrollLeft;
-        setTierScrollLayout({ scrollLeft: el.scrollLeft, clientWidth: el.clientWidth });
+        const vw = el.clientWidth;
+        setTierScrollLayout((prev) => (prev.clientWidth === vw ? prev : { clientWidth: vw }));
       },
       seekFromTierClientX: (clientX: number) => {
         const w = argsRef.current.wfApiRef.current;

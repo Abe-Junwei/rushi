@@ -6,6 +6,7 @@ type WfApi = ReturnType<typeof UseProjectWaveformHook>;
 import { useSegmentKeyboard } from "../hooks/useSegmentKeyboard";
 import { useTierScrollSync } from "../hooks/useTierScrollSync";
 import { useWaveformDisplay } from "../hooks/useWaveformDisplay";
+import { useWaveformPeaks } from "../hooks/useWaveformPeaks";
 import { useWaveformZoom } from "../hooks/useWaveformZoom";
 import { p1LaneBoundsSignature } from "../utils/boundsSignature";
 import { computeTimelineWidthPx } from "../utils/segmentLayout";
@@ -33,6 +34,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
   }, []);
 
   const display = useWaveformDisplay({ busy: ctx.busy });
+  const peaks = useWaveformPeaks(ctx.projectId, ctx.mediaUrl ? ctx.fileId : null);
 
   const durationRef = useRef(0);
   const syncWaveformScrollRef = useRef<(scrollLeftPx: number) => void>(() => {});
@@ -46,13 +48,16 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     getSelectedSegment: () => ctx.segments[ctx.selectedIdx] ?? null,
   });
 
+  const applyPendingViewportFitRef = useRef<(pxPerSec: number) => boolean>(() => false);
+
   const wf = useProjectWaveform({
     mediaUrl: ctx.mediaUrl,
     segments: ctx.segments,
     selectedIdx: ctx.selectedIdx,
     disabled: ctx.busy,
-    minPxPerSec: zoom.renderPxPerSec,
-    interactionPxPerSec: zoom.pxPerSec,
+    minPxPerSec: zoom.pxPerSec,
+    peakCache: peaks.peakCache,
+    zoomDragging: zoom.zoomDragging,
     waveformHeightPx: display.waveformRenderHeightPx,
     onWaveformHeightApplied: display.markWaveformRenderHeightApplied,
     onSelectIndex: setSelectedIdxUi,
@@ -60,18 +65,15 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     onWaveformCreateRange: ctx.insertSegmentFromTimeRange,
     onWaveformScroll: (scrollLeftPx) => onWaveformScrollRef.current(scrollLeftPx),
     getViewportScrollPx: () => tierScrollRef.current?.scrollLeft ?? 0,
+    onZoomApplied: (pxPerSec) => applyPendingViewportFitRef.current(pxPerSec),
   });
 
   durationRef.current = wf.duration || 0;
   wfApiRef.current = wf;
 
   const timelineWidthPx = useMemo(
-    () => computeTimelineWidthPx(wf.duration || 0, zoom.pxPerSec),
-    [wf.duration, zoom.pxPerSec],
-  );
-  const renderTimelineWidthPx = useMemo(
-    () => computeTimelineWidthPx(wf.duration || 0, zoom.renderPxPerSec),
-    [wf.duration, zoom.renderPxPerSec],
+    () => computeTimelineWidthPx(wf.duration || peaks.status?.durationSec || 0, zoom.pxPerSec),
+    [wf.duration, peaks.status?.durationSec, zoom.pxPerSec],
   );
 
   const scroll = useTierScrollSync({
@@ -91,12 +93,14 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     scrollApiRef,
     wfApiRef,
     zoom,
-    renderTimelineWidthPx,
+    currentPxPerSec: zoom.pxPerSec,
+    renderTimelineWidthPx: timelineWidthPx,
     waveformReady: wf.isReady,
     mediaUrl: ctx.mediaUrl,
     getSelectedSegment: () => ctx.segments[ctx.selectedIdx] ?? null,
   });
   onWaveformScrollRef.current = viewportFit.onWaveformScroll;
+  applyPendingViewportFitRef.current = viewportFit.applyPendingViewportFit;
 
   const keyboard = useSegmentKeyboard({
     ctxRef,
@@ -170,7 +174,10 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     beginTranscriptRowHeightDrag: display.beginTranscriptRowHeightDrag,
     onTierScroll: scroll.onTierScroll,
     timelineWidthPx,
-    renderTimelineWidthPx,
+    renderTimelineWidthPx: timelineWidthPx,
+    peaksLoading: peaks.loading,
+    peaksError: peaks.error,
+    peakCache: peaks.peakCache,
     pxPerSec: zoom.pxPerSec,
     renderPxPerSec: zoom.renderPxPerSec,
     zoomPreviewActive: zoom.zoomPreviewActive,

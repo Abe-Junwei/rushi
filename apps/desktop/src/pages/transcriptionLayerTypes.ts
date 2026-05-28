@@ -2,6 +2,8 @@ import type { SegmentDto } from "../tauri/projectTypes";
 
 /** Input context for transcription timeline + waveform layer. */
 export type TranscriptionLayerInput = {
+  projectId: string | null;
+  fileId: string | null;
   mediaUrl: string | null;
   segments: SegmentDto[];
   selectedIdx: number;

@@ -1,7 +1,10 @@
 import { ResizeBottomHit } from "../ResizeBottomHit";
+import { WaveformLiveTimeRuler } from "../WaveformLiveTimeRuler";
+import { WaveformPeaksCanvas } from "../WaveformPeaksCanvas";
+import { WaveformPlaybackTime } from "../WaveformPlaybackTime";
 import { WaveformSegmentPlaybackControls } from "../WaveformSegmentPlaybackControls";
-import { WaveformTimeRuler } from "../WaveformTimeRuler";
 import { WaveformZoomBar } from "../WaveformZoomBar";
+import { useWaveformViewportMetrics } from "../../hooks/useWaveformViewportMetrics";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
 
@@ -15,33 +18,24 @@ interface SegmentCtxMenuState {
 interface EditorWaveformPaneProps {
   controller: ProjectControllerApi;
   tx: TranscriptionLayerApi;
-  rulerViewportWidthPx: number;
-  rulerScrollLeftPx: number;
   onOpenSegmentContextMenu: (menu: SegmentCtxMenuState) => void;
 }
 
 export function EditorWaveformPane({
   controller: c,
   tx,
-  rulerViewportWidthPx,
-  rulerScrollLeftPx,
   onOpenSegmentContextMenu,
 }: EditorWaveformPaneProps) {
   const selectedSegment = c.segments[c.selectedIdx] ?? null;
+  const liveViewport = tx.isPlaying || tx.zoomDragging;
+  const { scrollLeftPx, clientWidthPx } = useWaveformViewportMetrics(tx.tierScrollRef, liveViewport);
   const waveformStageHeightPx = tx.waveformHeightPx;
-  const waveformHorizontalScale = tx.renderPxPerSec > 0 ? tx.pxPerSec / tx.renderPxPerSec : 1;
   const waveformVisualScale =
     tx.waveformPaintedHeightPx > 0 ? tx.waveformHeightPx / tx.waveformPaintedHeightPx : 1;
   const waveformHeightPreviewActive =
     Math.abs(waveformVisualScale - 1) > 0.001 && !tx.waveformHeightDragging;
-  const waveformHorizontalTransform =
-    Math.abs(waveformHorizontalScale - 1) > 0.001 ? `scaleX(${waveformHorizontalScale})` : undefined;
   const waveformVerticalTransform =
     Math.abs(waveformVisualScale - 1) > 0.001 ? `scaleY(${waveformVisualScale})` : undefined;
-  const waveformHorizontalClass =
-    tx.zoomPreviewActive || tx.zoomDragging
-      ? "h-full w-full origin-top-left will-change-transform"
-      : "h-full w-full origin-top-left";
   const waveformVerticalClass = tx.waveformHeightDragging
     ? "h-full w-full origin-top-left will-change-transform"
     : waveformHeightPreviewActive
@@ -90,23 +84,33 @@ export function EditorWaveformPane({
                   <div
                     className={waveformVerticalClass}
                     style={{
-                      width: tx.renderTimelineWidthPx,
+                      width: tx.timelineWidthPx,
                       height: tx.waveformPaintedHeightPx,
                       transform: waveformVerticalTransform,
                     }}
                   >
                     <div
-                      className={waveformHorizontalClass}
+                      className="relative h-full w-full origin-top-left"
                       style={{
-                        width: tx.renderTimelineWidthPx,
+                        width: tx.timelineWidthPx,
                         height: tx.waveformPaintedHeightPx,
-                        transform: waveformHorizontalTransform,
                       }}
                     >
+                      <WaveformPeaksCanvas
+                        peakCache={tx.peakCache}
+                        pxPerSec={tx.pxPerSec}
+                        scrollLeftPx={scrollLeftPx}
+                        viewportWidthPx={clientWidthPx}
+                        heightPx={tx.waveformPaintedHeightPx}
+                        progressTimeSec={
+                          tx.isPlaying && tx.isReady ? tx.getPlayheadTime() : tx.currentTime
+                        }
+                        active={Boolean(tx.peakCache && tx.isReady)}
+                      />
                       <div
                         ref={tx.containerRef}
-                        style={{ width: tx.renderTimelineWidthPx, height: tx.waveformPaintedHeightPx }}
-                        className="shrink-0 bg-transparent"
+                        style={{ width: tx.timelineWidthPx, height: tx.waveformPaintedHeightPx }}
+                        className="relative z-[2] shrink-0 bg-transparent"
                         role="img"
                         aria-label="转写波形与语段时间范围"
                       />
@@ -117,8 +121,8 @@ export function EditorWaveformPane({
                   disabled={c.busy || !tx.isReady}
                   isPlaying={tx.isPlaying}
                   pxPerSec={tx.pxPerSec}
-                  scrollLeftPx={rulerScrollLeftPx}
-                  viewportWidthPx={rulerViewportWidthPx}
+                  scrollLeftPx={scrollLeftPx}
+                  viewportWidthPx={clientWidthPx}
                   selectedSegment={selectedSegment}
                   segmentPlaybackRate={tx.segmentPlaybackRate}
                   segmentLoopPlayback={tx.segmentLoopPlayback}
@@ -127,15 +131,17 @@ export function EditorWaveformPane({
                   onTogglePlay={() => void tx.handleToggleSelectedWaveformPlay()}
                 />
                 <div className="absolute inset-x-0 bottom-0 z-10">
-                  <WaveformTimeRuler
+                  <WaveformLiveTimeRuler
                     appearance="embedded"
                     durationSec={tx.duration || 0}
                     timelineWidthPx={tx.timelineWidthPx}
-                    scrollLeftPx={rulerScrollLeftPx}
-                    viewportWidthPx={rulerViewportWidthPx}
+                    scrollLeftPx={scrollLeftPx}
+                    viewportWidthPx={clientWidthPx}
                     pxPerSec={tx.pxPerSec}
                     rulerView={tx.rulerView}
-                    currentTimeSec={tx.currentTime}
+                    isPlaying={tx.isPlaying}
+                    isReady={tx.isReady}
+                    getPlayheadTime={tx.getPlayheadTime}
                     formatMediaTime={tx.formatMediaTime}
                     disabled={c.busy || !tx.isReady}
                     onSeekFromTierClientX={tx.seekFromTierClientX}
@@ -171,9 +177,13 @@ export function EditorWaveformPane({
               <span className="waveform-playback-play" aria-hidden />
             )}
           </button>
-          <span className="waveform-playback-time" aria-live="polite">
-            {tx.formatMediaTime(tx.currentTime)} / {tx.formatMediaTime(tx.duration || 0)}
-          </span>
+          <WaveformPlaybackTime
+            isPlaying={tx.isPlaying}
+            isReady={tx.isReady}
+            durationSec={tx.duration || 0}
+            getPlayheadTime={tx.getPlayheadTime}
+            formatMediaTime={tx.formatMediaTime}
+          />
         </div>
         <WaveformZoomBar
           disabled={c.busy}
@@ -182,7 +192,7 @@ export function EditorWaveformPane({
           hasSelectionSegment={c.segments.length > 0}
           onZoomToFitAll={() => tx.zoomToFitTier()}
           onZoomToFitSelection={() => tx.zoomToFitSelection()}
-          onZoomOneToOne={() => tx.resetZoom()}
+          onResetDefaultZoom={() => tx.resetZoom()}
           onZoomIn={() => tx.zoomIn()}
           onZoomOut={() => tx.zoomOut()}
           onPxPerSecChange={tx.setPxPerSec}

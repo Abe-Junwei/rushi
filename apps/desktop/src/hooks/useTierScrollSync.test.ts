@@ -73,7 +73,7 @@ describe("useTierScrollSync", () => {
     });
 
     expect(wfApiRef.current.setScrollLeft).toHaveBeenCalledWith(96);
-    expect(result.current.tierScrollLayout).toEqual({ scrollLeft: 96, clientWidth: 320 });
+    expect(result.current.tierScrollLayout).toEqual({ clientWidth: 320 });
   });
 
   it("mirrors waveform scroll updates into tier DOM and layout state", () => {
@@ -96,7 +96,7 @@ describe("useTierScrollSync", () => {
     });
 
     expect(tier.scrollLeft).toBe(144);
-    expect(result.current.tierScrollLayout).toEqual({ scrollLeft: 144, clientWidth: 320 });
+    expect(result.current.tierScrollLayout).toEqual({ clientWidth: 320 });
   });
 
   it("uses smooth DOM scrolling and syncs waveform after scroll settles", () => {

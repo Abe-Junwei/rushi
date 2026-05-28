@@ -28,15 +28,13 @@ describe("useWaveformZoom", () => {
         storage.clear();
       }),
     });
-    vi.stubGlobal("requestAnimationFrame", vi.fn((_cb: FrameRequestCallback) => 1));
-    vi.stubGlobal("cancelAnimationFrame", vi.fn());
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
   });
 
-  it("keeps slider changes as preview until interaction commits", () => {
+  it("uses single pxPerSec for render (no CSS scaleX preview)", () => {
     const { result } = renderZoomHook();
 
     act(() => {
@@ -45,34 +43,14 @@ describe("useWaveformZoom", () => {
     });
 
     expect(result.current.pxPerSec).toBe(TIMELINE_PX_PER_SEC * 2);
-    expect(result.current.renderPxPerSec).toBe(TIMELINE_PX_PER_SEC);
-    expect(result.current.zoomPreviewActive).toBe(true);
+    expect(result.current.renderPxPerSec).toBe(TIMELINE_PX_PER_SEC * 2);
+    expect(result.current.zoomPreviewActive).toBe(false);
 
     act(() => {
       result.current.commitZoomInteraction();
     });
 
     expect(result.current.renderPxPerSec).toBe(TIMELINE_PX_PER_SEC * 2);
-    expect(result.current.zoomPreviewActive).toBe(false);
-  });
-
-  it("flushes the latest visual zoom when slider interaction ends", () => {
-    const { result } = renderZoomHook();
-
-    act(() => {
-      result.current.beginZoomInteraction();
-      result.current.setPxPerSec(TIMELINE_PX_PER_SEC * 2);
-    });
-
-    expect(result.current.renderPxPerSec).toBe(TIMELINE_PX_PER_SEC);
-    expect(result.current.zoomPreviewActive).toBe(true);
-
-    act(() => {
-      result.current.commitZoomInteraction();
-    });
-
-    expect(result.current.renderPxPerSec).toBe(TIMELINE_PX_PER_SEC * 2);
-    expect(result.current.zoomPreviewActive).toBe(false);
   });
 
   it("commits discrete zoom commands immediately", () => {
@@ -128,5 +106,42 @@ describe("useWaveformZoom", () => {
     });
 
     expect(result.current.pxPerSec).toBe((800 - 24) / 2);
+  });
+
+  it("resetZoom restores design default pxPerSec", () => {
+    const { result } = renderZoomHook();
+
+    act(() => {
+      result.current.setPxPerSec(TIMELINE_PX_PER_SEC * 2);
+    });
+    expect(result.current.pxPerSec).toBe(TIMELINE_PX_PER_SEC * 2);
+
+    act(() => {
+      result.current.resetZoom();
+    });
+
+    expect(result.current.pxPerSec).toBe(TIMELINE_PX_PER_SEC);
+    expect(result.current.renderPxPerSec).toBe(TIMELINE_PX_PER_SEC);
+  });
+
+  it("resetZoom restores default after fit-all ultra-low zoom", () => {
+    const { result } = renderHook(() =>
+      useWaveformZoom({
+        getTierWidth: () => 800,
+        getDuration: () => 3600,
+        getSelectedSegment: () => null,
+      }),
+    );
+
+    act(() => {
+      result.current.zoomToFitTier();
+    });
+    expect(result.current.pxPerSec).toBeLessThan(TIMELINE_PX_PER_SEC);
+
+    act(() => {
+      result.current.resetZoom();
+    });
+
+    expect(result.current.pxPerSec).toBe(TIMELINE_PX_PER_SEC);
   });
 });

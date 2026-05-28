@@ -15,7 +15,7 @@ export type WaveformZoomBarProps = {
   hasSelectionSegment: boolean;
   onZoomToFitAll: () => void;
   onZoomToFitSelection: () => void;
-  onZoomOneToOne: () => void;
+  onResetDefaultZoom: () => void;
   onZoomIn: () => void;
   onZoomOut: () => void;
   onPxPerSecChange: (pxPerSec: number) => void;
@@ -45,7 +45,7 @@ export const WaveformZoomBar = memo(function WaveformZoomBar({
   hasSelectionSegment,
   onZoomToFitAll,
   onZoomToFitSelection,
-  onZoomOneToOne,
+  onResetDefaultZoom,
   onZoomIn,
   onZoomOut,
   onPxPerSecChange,
@@ -53,6 +53,7 @@ export const WaveformZoomBar = memo(function WaveformZoomBar({
   onZoomInteractionEnd,
 }: WaveformZoomBarProps) {
   const off = disabled || !isReady;
+  const atDefaultZoom = Math.abs(pxPerSec - TIMELINE_PX_PER_SEC) < 0.001;
   const sliderRafRef = useRef(0);
   const sliderInteractingRef = useRef(false);
   const pendingSliderPosRef = useRef<number | null>(null);
@@ -129,8 +130,16 @@ export const WaveformZoomBar = memo(function WaveformZoomBar({
         >
           <Crosshair className={`${LUCIDE_ICON_SIZE_LG} shrink-0 opacity-90`} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
         </button>
-        <button type="button" className="icon-btn" disabled={off} title="默认横向比例（56 px/s）" aria-label="一比一" onClick={onZoomOneToOne}>
-          <span className="icon-btn-label">1:1</span>
+        <button
+          type="button"
+          className="icon-btn"
+          disabled={off || atDefaultZoom}
+          title={atDefaultZoom ? "已是默认横向比例（56 px/s，100%）" : "恢复默认横向比例（56 px/s，100%）"}
+          aria-label="恢复默认横向缩放"
+          aria-pressed={atDefaultZoom}
+          onClick={onResetDefaultZoom}
+        >
+          <span className="icon-btn-label">默认</span>
         </button>
         <span className="toolbar-sep" aria-hidden />
         <button type="button" className="icon-btn" disabled={off} title="缩小" aria-label="缩小" onClick={onZoomOut}>

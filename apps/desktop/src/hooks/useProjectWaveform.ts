@@ -1,16 +1,19 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import WaveSurfer from "wavesurfer.js";
 import RegionsPlugin from "wavesurfer.js/dist/plugins/regions.esm.js";
-import { COLORS } from "../config/tokens";
 import { formatMediaTime } from "../utils/formatMediaTime";
 import { waveformBoundsSignature } from "../utils/boundsSignature";
 import { segmentsUidSignature } from "../utils/segmentUid";
-import { resolveWaveformRulerView, type WaveformRulerView } from "../utils/waveformViewport";
+import type { WaveformRulerView } from "../utils/waveformViewport";
 import { useWaveformHeightSync } from "./useWaveformHeightSync";
 import { useWaveformPlayback } from "./useWaveformPlayback";
 import { useWaveformRegions } from "./useWaveformRegions";
 import { useWaveformSegmentPlaybackControls } from "./useWaveformSegmentPlaybackControls";
 import { useWaveformZoomSync } from "./useWaveformZoomSync";
+import {
+  useProjectWaveformDestroy,
+  useProjectWaveformMount,
+} from "./useProjectWaveformMount";
 import type { UseProjectWaveformOptions } from "./useProjectWaveformTypes";
 
 export type { UseProjectWaveformOptions } from "./useProjectWaveformTypes";
@@ -22,16 +25,22 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     selectedIdx,
     disabled,
     minPxPerSec = 56,
-    interactionPxPerSec,
+    peakCache = null,
     waveformHeightPx = 96,
+    zoomDragging = false,
     onWaveformCreateRange,
+    onZoomApplied,
   } = options;
   const optsRef = useRef(options);
   optsRef.current = options;
+  const onZoomAppliedRef = useRef(onZoomApplied);
+  onZoomAppliedRef.current = onZoomApplied;
+  const getViewportScrollPxRef = useRef(options.getViewportScrollPx);
+  getViewportScrollPxRef.current = options.getViewportScrollPx;
   const minPxPerSecRef = useRef(minPxPerSec);
   minPxPerSecRef.current = minPxPerSec;
-  const interactionPxPerSecRef = useRef(interactionPxPerSec ?? minPxPerSec);
-  interactionPxPerSecRef.current = interactionPxPerSec ?? minPxPerSec;
+  const peakCacheRef = useRef(peakCache);
+  peakCacheRef.current = peakCache;
   const waveformHeightRef = useRef(waveformHeightPx);
   waveformHeightRef.current = waveformHeightPx;
   const appliedWaveformHeightRef = useRef(waveformHeightPx);
@@ -41,7 +50,11 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
   const regionsRef = useRef<ReturnType<typeof RegionsPlugin.create> | null>(null);
   const wsUnsubsRef = useRef<Array<() => void>>([]);
   const lastTimeUiCommitRef = useRef(-1);
+  const lastTimeUiCommitMsRef = useRef(0);
+  const scrollNotifyRafRef = useRef(0);
+  const pendingScrollLeftRef = useRef(0);
   const appliedZoomPxPerSecRef = useRef(minPxPerSec);
+  const appliedPeaksRef = useRef(false);
 
   const [isReady, setIsReady] = useState(false);
   const [loadError, setLoadError] = useState<string | null>(null);
@@ -54,7 +67,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     containerRef,
     isReady,
     minPxPerSecRef,
-    interactionPxPerSecRef,
+    minPxPerSecRef,
     options.getViewportScrollPx,
   );
   const boundsSig = waveformBoundsSignature(segments);
@@ -82,160 +95,52 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     selectedIdx,
   });
 
-  const destroyWave = useCallback(() => {
-    clearRegionListeners();
-    regionsRef.current?.clearRegions();
-    regionsRef.current = null;
-    clearWsListeners();
-    const ws = wsRef.current;
-    wsRef.current = null;
-    if (ws) {
-      try {
-        ws.destroy();
-      } catch {
-        /* noop */
-      }
-    }
-    setIsReady(false);
-    setIsPlaying(false);
-    setDuration(0);
-    setCurrentTime(0);
-    setRulerView(null);
-    pendingAppliedWaveformHeightRef.current = null;
-  }, [clearRegionListeners, clearWsListeners]);
+  const mountRefs = {
+    optsRef,
+    containerRef,
+    wsRef,
+    regionsRef,
+    wsUnsubsRef,
+    minPxPerSecRef,
+    peakCacheRef,
+    waveformHeightRef,
+    appliedWaveformHeightRef,
+    pendingAppliedWaveformHeightRef,
+    appliedZoomPxPerSecRef,
+    appliedPeaksRef,
+    lastTimeUiCommitRef,
+    lastTimeUiCommitMsRef,
+    scrollNotifyRafRef,
+    pendingScrollLeftRef,
+    setLoadError,
+    setIsReady,
+    setIsPlaying,
+    setDuration,
+    setCurrentTime,
+    setRulerView,
+  };
+
+  const destroyWave = useProjectWaveformDestroy(
+    clearRegionListeners,
+    clearWsListeners,
+    mountRefs,
+    mountRefs,
+  );
+
+  useProjectWaveformMount(mediaUrl, mountRefs, destroyWave);
 
   useEffect(() => {
-    destroyWave();
-    if (!mediaUrl) {
-      setLoadError(null);
-      return;
+    const ws = wsRef.current;
+    const cache = peakCache;
+    if (!ws || !isReady || !cache || !mediaUrl || appliedPeaksRef.current) return;
+    try {
+      const bundle = cache.getWaveSurferPeaks(minPxPerSecRef.current);
+      appliedPeaksRef.current = true;
+      void ws.load(mediaUrl, bundle.peaks, bundle.duration);
+    } catch {
+      /* peaks 损坏时保留 WS decode 回退 */
     }
-    const container = containerRef.current;
-    if (!container) return;
-
-    let disposed = false;
-    const run = async () => {
-      await new Promise<void>((r) => {
-        requestAnimationFrame(() => requestAnimationFrame(() => r()));
-      });
-      if (disposed) return;
-      const el = containerRef.current;
-      if (!el?.isConnected) return;
-
-      const regions = RegionsPlugin.create();
-      regionsRef.current = regions;
-
-      const wantDragCreate = Boolean(optsRef.current.onWaveformCreateRange);
-      const initialMps = minPxPerSecRef.current;
-      const initialH = waveformHeightRef.current;
-      pendingAppliedWaveformHeightRef.current = initialH;
-      appliedZoomPxPerSecRef.current = initialMps;
-      const ws = WaveSurfer.create({
-        container: el,
-        url: mediaUrl,
-        height: initialH,
-        normalize: true,
-        waveColor: COLORS.waveformWave,
-        progressColor: COLORS.waveformProgress,
-        cursorColor: COLORS.waveformCursor,
-        cursorWidth: 1,
-        barWidth: 2,
-        barGap: 1,
-        barRadius: 2,
-        minPxPerSec: initialMps,
-        dragToSeek: !wantDragCreate,
-        interact: !optsRef.current.disabled,
-        autoScroll: true,
-        autoCenter: false,
-        plugins: [regions],
-      });
-
-      wsRef.current = ws;
-
-      wsUnsubsRef.current.push(
-        ws.on("ready", (d) => {
-          if (disposed) return;
-          setLoadError(null);
-          setIsReady(true);
-          setDuration(d);
-          setRulerView(
-            resolveWaveformRulerView({
-              durationSec: d,
-              scrollLeftPx: ws.getScroll(),
-              clientWidthPx: ws.getWidth(),
-              pxPerSec: minPxPerSecRef.current,
-            }),
-          );
-        }),
-      );
-      wsUnsubsRef.current.push(
-        ws.on("error", (err) => {
-          if (disposed) return;
-          setLoadError(err.message || String(err));
-          setIsReady(false);
-        }),
-      );
-      wsUnsubsRef.current.push(ws.on("play", () => setIsPlaying(true)));
-      wsUnsubsRef.current.push(ws.on("pause", () => setIsPlaying(false)));
-      wsUnsubsRef.current.push(ws.on("finish", () => setIsPlaying(false)));
-      wsUnsubsRef.current.push(
-        ws.on("timeupdate", (t) => {
-          if (disposed) return;
-          if (ws.isPlaying()) {
-            if (Math.abs(t - lastTimeUiCommitRef.current) < 0.12) return;
-          }
-          lastTimeUiCommitRef.current = t;
-          setCurrentTime(t);
-        }),
-      );
-      wsUnsubsRef.current.push(
-        ws.on("seeking", (t) => {
-          if (disposed) return;
-          lastTimeUiCommitRef.current = t;
-          setCurrentTime(t);
-        }),
-      );
-      wsUnsubsRef.current.push(
-        ws.on("scroll", (visibleStartTime, visibleEndTime, scrollLeft) => {
-          if (disposed) return;
-          setRulerView({ start: visibleStartTime, end: visibleEndTime });
-          optsRef.current.onWaveformScroll?.(scrollLeft);
-        }),
-      );
-      wsUnsubsRef.current.push(
-        ws.on("zoom", () => {
-          if (disposed) return;
-          optsRef.current.onWaveformScroll?.(ws.getScroll());
-          setRulerView(
-            resolveWaveformRulerView({
-              durationSec: ws.getDuration() || 0,
-              scrollLeftPx: ws.getScroll(),
-              clientWidthPx: ws.getWidth(),
-              pxPerSec: minPxPerSecRef.current,
-            }),
-          );
-        }),
-      );
-      wsUnsubsRef.current.push(
-        ws.on("redrawcomplete", () => {
-          if (disposed) return;
-          const appliedHeight = pendingAppliedWaveformHeightRef.current;
-          if (appliedHeight == null) return;
-          pendingAppliedWaveformHeightRef.current = null;
-          appliedWaveformHeightRef.current = appliedHeight;
-          optsRef.current.onWaveformHeightApplied?.(appliedHeight);
-        }),
-      );
-    };
-
-    setLoadError(null);
-    void run();
-
-    return () => {
-      disposed = true;
-      destroyWave();
-    };
-  }, [mediaUrl, destroyWave]);
+  }, [peakCache, isReady, mediaUrl]);
 
   useWaveformZoomSync({
     wsRef,
@@ -243,6 +148,11 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     disabled,
     minPxPerSec,
     appliedZoomPxPerSecRef,
+    peakCacheRef,
+    mediaUrl,
+    zoomDragging,
+    getViewportScrollPxRef,
+    onZoomAppliedRef,
   });
 
   useWaveformHeightSync({

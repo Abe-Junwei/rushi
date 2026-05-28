@@ -1,4 +1,5 @@
 import type { SegmentDto } from "../tauri/projectTypes";
+import type { PeakCache } from "../services/waveform/PeakCache";
 
 /** Options for `useProjectWaveform` (shared to break hook import cycle). */
 export type UseProjectWaveformOptions = {
@@ -6,10 +7,16 @@ export type UseProjectWaveformOptions = {
   segments: SegmentDto[];
   selectedIdx: number;
   disabled?: boolean;
-  /** 与 WaveSurfer `minPxPerSec` 对齐的渲染 px/s */
+  /** 与 WaveSurfer `minPxPerSec` / tier 对齐的 px/s */
   minPxPerSec?: number;
-  /** 与 tier / ruler 对齐的交互 px/s（预览期可与 minPxPerSec 不同） */
+  /** @deprecated 与 minPxPerSec 相同；保留兼容旧调用方 */
   interactionPxPerSec?: number;
+  /** 预计算 peaks（Tauri audiowaveform `.dat`） */
+  peakCache?: PeakCache | null;
+  /** 缩放滑块拖动中（P2：合并 peaks resample 更新） */
+  zoomDragging?: boolean;
+  /** peaks resample / ws.zoom 完成后回调（用于 fit 视口 scroll）；返回 true 表示已处理 scroll */
+  onZoomApplied?: (pxPerSec: number) => boolean | void;
   /** 波形区纵向高度（px），与外层容器一致；变更时 `setOptions({ height })` */
   waveformHeightPx?: number;
   /** 波形真实重绘完成后，将已应用高度回传给外层预览层。 */
