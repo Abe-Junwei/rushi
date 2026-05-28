@@ -50,7 +50,7 @@
 ## 典型模式（好 / 坏）
 
 - ✅ 好：`useTranscriptionLayer.ts` — 专注转写业务逻辑（185 行 / 11 hooks）
-- ✅ 好：`useProjectWaveform.ts` + `useWaveformPlayback.ts` + `useWaveformRegions.ts` — 波形入口 + 子职责拆分
+- ✅ 好：`useProjectWaveform.ts` + `useWaveformPlayback.ts` + `WaveformSegmentOverlay` — 波形入口 + DOM 语段 overlay
 - ✅ 好：`segmentListHelpers.ts` — 纯函数，无 React 依赖
 - ✅ 好：`transcribe.rs` + `transcribe_native_online.rs` — 解析逻辑与 provider 调用分离
 - ✅ 好：`db.rs` — 专注迁移和 schema

@@ -11,6 +11,7 @@
 
 ## 本仓独立架构说明
 
+- [`desktop-waveform-engine.md`](./desktop-waveform-engine.md) — 桌面端波形 peaks / Canvas / tier scroll 真源（P1–P5′）。
 - [`desktop-floating-dialog-panels.md`](./desktop-floating-dialog-panels.md) — 可拖动浮动对话框：默认 `compactDialog` + Notion/Zen + `controlStyles` 约定。
 - [`desktop-capability-ui-state-alignment.md`](./desktop-capability-ui-state-alignment.md) — **能力字段与 UI 状态对齐**（R3-STATE 闸门、维度假设、R3 疏漏台账）。
 - [`r3f-asr-setup-wizard-acceptance.md`](../execution/specs/r3f-asr-setup-wizard-acceptance.md) — 本机 ASR 一键环境准备（诊断 + 编排）验收。

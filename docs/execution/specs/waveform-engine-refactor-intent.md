@@ -41,9 +41,10 @@
 
 - 移除 WS Regions，语段/time ruler 对齐单一 scroll container。
 
-### P5 — Overview / Zoom 双视图（可选）
+### P5 — 全局波形导航（P5′，原双视图已废弃）
 
-- 语段列表编辑时低分辨率 overview；精细改 in/out 时全宽 zoom view。
+- 单一主波形 + 可折叠底部全局条；选中语段默认不 fit（准星开关控制）。
+- 规格：`waveform-engine-refactor-p5-global-strip.md`；P6 登记 overlay 拆分。
 
 ## 明确不做（本轮）
 

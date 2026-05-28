@@ -16,7 +16,7 @@
 | `apps/desktop/src/hooks/useWaveformPeaks.ts` | 打开文件时 ensure + 加载 |
 | `apps/desktop/src/hooks/useWaveformZoom.ts` | 单一 px/s，移除 deferred preview |
 | `apps/desktop/src/hooks/useProjectWaveform.ts` | peaks + MediaElement |
-| `apps/desktop/src/components/editor/EditorWaveformPane.tsx` | 移除 scaleX 预览层 |
+| `apps/desktop/src/components/editor/EditorWaveformPane.tsx` | 主波形 + 全局条组装 |
 | `apps/desktop/src/pages/transcriptionLayerTypes.ts` | 传入 projectId / fileId |
 
 ## Peaks 文件布局
