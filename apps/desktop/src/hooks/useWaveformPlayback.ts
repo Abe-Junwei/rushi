@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import type WaveSurfer from "wavesurfer.js";
+import { clientXToTimelinePx, timelinePxToTimeSec } from "../utils/waveformPointerTime";
 
 export function useWaveformPlayback(
   wsRef: React.MutableRefObject<WaveSurfer | null>,
@@ -7,7 +8,7 @@ export function useWaveformPlayback(
   isReady: boolean,
   minPxPerSecRef: React.MutableRefObject<number>,
   interactionPxPerSecRef: React.MutableRefObject<number>,
-  getViewportScrollPx?: () => number,
+  applyGlobalPlaybackRateRef: React.MutableRefObject<() => void>,
 ) {
   const seek = useCallback(
     (timeSec: number) => {
@@ -23,8 +24,11 @@ export function useWaveformPlayback(
     const ws = wsRef.current;
     if (!ws || !isReady) return;
     if (ws.isPlaying()) ws.pause();
-    else await ws.play();
-  }, [isReady, wsRef]);
+    else {
+      applyGlobalPlaybackRateRef.current();
+      await ws.play();
+    }
+  }, [applyGlobalPlaybackRateRef, isReady, wsRef]);
 
   const getScrollLeft = useCallback((): number => {
     const ws = wsRef.current;
@@ -51,7 +55,9 @@ export function useWaveformPlayback(
     (deltaSec: number) => {
       const ws = wsRef.current;
       if (!ws || !isReady) return;
-      ws.skip(deltaSec);
+      const d = ws.getDuration() || 0;
+      const t = Math.max(0, Math.min(d, ws.getCurrentTime() + deltaSec));
+      ws.setTime(t);
     },
     [isReady, wsRef],
   );
@@ -62,14 +68,12 @@ export function useWaveformPlayback(
       const el = containerRef.current;
       if (!ws || !el || !isReady) return 0;
       const rect = el.getBoundingClientRect();
-      const visibleScrollPx = Math.max(getViewportScrollPx?.() ?? 0, ws.getScroll());
-      const relPx = clientX - rect.left + visibleScrollPx;
+      const relPx = clientXToTimelinePx(clientX, rect.left);
       const mps = interactionPxPerSecRef.current ?? minPxPerSecRef.current ?? 56;
       const dur = ws.getDuration() || 0;
-      const t = relPx / mps;
-      return Math.max(0, Math.min(t, dur));
+      return timelinePxToTimeSec(relPx, mps, dur);
     },
-    [getViewportScrollPx, isReady, wsRef, containerRef, interactionPxPerSecRef, minPxPerSecRef],
+    [isReady, wsRef, containerRef, interactionPxPerSecRef, minPxPerSecRef],
   );
 
   return {

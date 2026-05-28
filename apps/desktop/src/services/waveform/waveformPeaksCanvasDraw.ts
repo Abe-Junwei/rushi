@@ -4,6 +4,7 @@ export type WaveformPeaksDrawOptions = {
   viewportWidthPx: number;
   progressTimeSec: number;
   pxPerSec: number;
+  durationSec: number;
   waveColor: string;
   progressColor: string;
   barWidth?: number;
@@ -25,20 +26,30 @@ export function drawWaveformPeaksViewport(
   if (viewportWidthPx <= 0 || heightPx <= 0 || interleavedPeaks.length < 2) return;
 
   const totalColumns = interleavedPeaks.length / 2;
-  const progressPx = progressTimeSec * opts.pxPerSec;
+  if (totalColumns <= 0) return;
+
+  const dur = Math.max(opts.durationSec, 0.001);
+  const peakWidthPx = Math.max(1, Math.ceil(dur * opts.pxPerSec));
+  // totalColumns 可能因上采样限制而小于 peakWidthPx，取 min 防止越界
+  const drawableColumns = Math.min(totalColumns, peakWidthPx);
   const mid = heightPx / 2;
   const amp = mid * 0.92;
 
-  const startCol = Math.max(0, Math.floor(scrollLeftPx / step));
-  const endCol = Math.min(totalColumns, Math.ceil((scrollLeftPx + viewportWidthPx) / step) + 1);
+  const maxScrollLeftPx = Math.max(0, drawableColumns - viewportWidthPx);
+  const clampedScrollLeftPx = Math.max(0, Math.min(scrollLeftPx, maxScrollLeftPx));
 
-  for (let col = startCol; col < endCol; col += 1) {
+  const startCol = Math.max(0, Math.floor(clampedScrollLeftPx));
+  const endCol = Math.min(drawableColumns, Math.ceil(clampedScrollLeftPx + viewportWidthPx) + 1);
+
+  const playheadTimelinePx = progressTimeSec * opts.pxPerSec;
+
+  for (let col = startCol; col < endCol; col += step) {
     const min = interleavedPeaks[col * 2] ?? 0;
     const max = interleavedPeaks[col * 2 + 1] ?? 0;
-    const x = col * step - scrollLeftPx;
+    const x = col - clampedScrollLeftPx;
     if (x + barWidth < 0 || x > viewportWidthPx) continue;
 
-    ctx.fillStyle = col * step <= progressPx ? progressColor : waveColor;
+    ctx.fillStyle = col + barWidth <= playheadTimelinePx ? progressColor : waveColor;
 
     const top = mid - max * amp;
     const bottom = mid - min * amp;

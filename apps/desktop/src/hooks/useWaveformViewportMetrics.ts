@@ -6,7 +6,7 @@ export type WaveformViewportMetrics = {
 };
 
 /**
- * tier 视口指标；在 EditorWaveformPane 内 rAF 采样，避免 scroll 链路上浮到 ProjectPanel。
+ * tier 视口指标。滚动时用 rAF 合并采样，减少 React 状态滞后导致 peaks 画布空白。
  */
 export function useWaveformViewportMetrics(
   tierScrollRef: RefObject<HTMLElement | null>,
@@ -21,36 +21,45 @@ export function useWaveformViewportMetrics(
     const el = tierScrollRef.current;
     if (!el) return;
 
-    let rafId = 0;
+    let scrollRaf = 0;
+    let loopRaf = 0;
+
     const sample = () => {
-      const next = { scrollLeftPx: el.scrollLeft, clientWidthPx: el.clientWidth };
+      const currentEl = tierScrollRef.current;
+      if (!currentEl) return;
+      const next = { scrollLeftPx: currentEl.scrollLeft, clientWidthPx: currentEl.clientWidth };
       setMetrics((prev) =>
         prev.scrollLeftPx === next.scrollLeftPx && prev.clientWidthPx === next.clientWidthPx ? prev : next,
       );
     };
 
+    const scheduleSample = () => {
+      if (scrollRaf) return;
+      scrollRaf = window.requestAnimationFrame(() => {
+        scrollRaf = 0;
+        sample();
+      });
+    };
+
     const loop = () => {
       sample();
-      rafId = window.requestAnimationFrame(loop);
+      loopRaf = window.requestAnimationFrame(loop);
     };
 
     sample();
+    el.addEventListener("scroll", scheduleSample, { passive: true });
+    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(scheduleSample) : null;
+    ro?.observe(el);
+
     if (poll) {
-      rafId = window.requestAnimationFrame(loop);
-    } else {
-      const onScroll = () => sample();
-      el.addEventListener("scroll", onScroll, { passive: true });
-      const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(sample) : null;
-      ro?.observe(el);
-      return () => {
-        el.removeEventListener("scroll", onScroll);
-        ro?.disconnect();
-        if (rafId) window.cancelAnimationFrame(rafId);
-      };
+      loopRaf = window.requestAnimationFrame(loop);
     }
 
     return () => {
-      if (rafId) window.cancelAnimationFrame(rafId);
+      el.removeEventListener("scroll", scheduleSample);
+      ro?.disconnect();
+      if (scrollRaf) window.cancelAnimationFrame(scrollRaf);
+      if (loopRaf) window.cancelAnimationFrame(loopRaf);
     };
   }, [poll, tierScrollRef]);
 

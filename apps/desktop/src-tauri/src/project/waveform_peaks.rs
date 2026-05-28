@@ -213,7 +213,7 @@ pub fn generate_all_levels(
                     let mixed = if frame.is_empty() {
                         0.0
                     } else {
-                        frame.iter().sum::<f32>() / frame.len() as f32
+                        frame.iter().sum::<f32>() / channels as f32
                     };
                     for lw in &mut level_writers {
                         lw.push_sample(mixed);

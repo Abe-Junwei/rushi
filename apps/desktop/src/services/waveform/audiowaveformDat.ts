@@ -31,7 +31,12 @@ export function waveformDurationSec(data: WaveformData): number {
   return data.duration;
 }
 
+/** 上采样倍数硬上限，防止极长音频高缩放导致 OOM。 */
+const MAX_UPSAMPLE_RATIO = 50;
+
 export function resampleWaveformForPxPerSec(data: WaveformData, pxPerSec: number): WaveformData {
-  const width = Math.max(1, Math.ceil(data.duration * pxPerSec));
+  const baseWidth = data.length;
+  const targetWidth = Math.max(1, Math.ceil(data.duration * pxPerSec));
+  const width = Math.min(targetWidth, Math.max(1, baseWidth * MAX_UPSAMPLE_RATIO));
   return data.resample({ width });
 }

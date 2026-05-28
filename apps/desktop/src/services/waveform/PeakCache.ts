@@ -71,7 +71,8 @@ export class PeakCache {
   }
 
   getWaveSurferPeaks(pxPerSec: number): WaveSurferPeaksBundle {
-    const key = Math.round(pxPerSec * 1000) / 1000;
+    // 以 2 px/s 为粒度对 key 量化，减少相邻缩放值的缓存碎片
+    const key = Math.round(pxPerSec / 2) * 2;
     const cached = this.resampleCache.get(key);
     if (cached) return cached;
 
@@ -90,6 +91,13 @@ export class PeakCache {
 
   /** Interleaved min/max floats for canvas draw at target px/s. */
   getInterleavedPeaks(pxPerSec: number): number[] {
-    return this.getWaveSurferPeaks(pxPerSec).peaks[0] ?? [];
+    try {
+      return this.getWaveSurferPeaks(pxPerSec).peaks[0] ?? [];
+    } catch {
+      const base = this.pickBaseLevel(pxPerSec);
+      if (!base) return [];
+      const resampled = resampleWaveformForPxPerSec(base.data, pxPerSec);
+      return waveformDataToWaveSurferPeaks(resampled)[0] ?? [];
+    }
   }
 }

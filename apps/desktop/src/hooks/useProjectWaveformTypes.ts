@@ -21,9 +21,6 @@ export type UseProjectWaveformOptions = {
   waveformHeightPx?: number;
   /** 波形真实重绘完成后，将已应用高度回传给外层预览层。 */
   onWaveformHeightApplied?: (heightPx: number) => void;
-  onSelectIndex: (idx: number) => void;
-  /** Single undo entry: segment time bounds after drag/resize. */
-  onBoundsCommit: (idx: number, startSec: number, endSec: number) => void;
   /** 在波形空白处拖选新建语段；启用时会关闭 dragToSeek 以免抢同一套水平拖动 */
   onWaveformCreateRange?: (startSec: number, endSec: number) => void;
   /** 波形内部横向滚动（与外层时间轴滚动条对齐，思路来自解语 waveform ↔ tier scroll sync） */

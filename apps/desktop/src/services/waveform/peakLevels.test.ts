@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { pickPeakLodLevel, PEAK_LOD_LEVELS } from "./peakLevels";
 
 describe("pickPeakLodLevel", () => {
-  it("picks L0 for fit-all zoom", () => {
+  it("picks L0 for very low px/s", () => {
     expect(pickPeakLodLevel(0.2)).toBe(PEAK_LOD_LEVELS[0]!.level);
   });
 

@@ -1,5 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { afterSmoothScrollEnd } from "../utils/tierScrollSmooth";
+import { WAVEFORM_SCROLL_SYNC_EPSILON_PX } from "../utils/waveformScrollSync";
 import type { useProjectWaveform } from "./useProjectWaveform";
 
 type WfApi = ReturnType<typeof useProjectWaveform>;
@@ -18,6 +19,7 @@ export function useTierScrollSync(args: {
   argsRef.current = args;
 
   const committedScrollLeftRef = useRef(0);
+  const prevMediaUrlRef = useRef(args.mediaUrl);
   const smoothScrollCleanupRef = useRef<(() => void) | null>(null);
 
   const [tierScrollLayout, setTierScrollLayout] = useState({ clientWidth: 400 });
@@ -30,15 +32,15 @@ export function useTierScrollSync(args: {
     const maxSl = Math.max(0, a.timelineWidthPx - vw);
     const sl = Math.max(0, Math.min(maxSl, px));
     const w = a.wfApiRef.current;
-    const shouldSyncWaveform = source !== "waveform" && w.isReady && Math.abs(w.getScrollLeft() - sl) > 0.01;
+    const shouldSyncWaveform = source !== "waveform" && w.isReady && Math.abs(w.getScrollLeft() - sl) > WAVEFORM_SCROLL_SYNC_EPSILON_PX;
     if (
       !shouldSyncWaveform &&
-      Math.abs(committedScrollLeftRef.current - sl) < 0.01 &&
-      Math.abs(tier.scrollLeft - sl) < 0.01
+      Math.abs(committedScrollLeftRef.current - sl) < WAVEFORM_SCROLL_SYNC_EPSILON_PX &&
+      Math.abs(tier.scrollLeft - sl) < WAVEFORM_SCROLL_SYNC_EPSILON_PX
     ) {
       return;
     }
-    if (Math.abs(tier.scrollLeft - sl) > 0.01) {
+    if (Math.abs(tier.scrollLeft - sl) > WAVEFORM_SCROLL_SYNC_EPSILON_PX) {
       tier.scrollLeft = sl;
     }
     committedScrollLeftRef.current = sl;
@@ -113,7 +115,17 @@ export function useTierScrollSync(args: {
     const tier = a.tierScrollRef.current;
     if (!tier || !a.waveformReady) return;
     const maxSl = Math.max(0, a.timelineWidthPx - tier.clientWidth);
-    const sl = Math.min(maxSl, Math.max(0, committedScrollLeftRef.current));
+    const isMediaUrlChange = prevMediaUrlRef.current !== a.mediaUrl;
+    prevMediaUrlRef.current = a.mediaUrl;
+    // waveformReady 首次变为 true 时，优先用 WS 当前 scroll 而非旧的 committedScrollLeft，
+    // 防止 WS 重新 mount 后 tier 被拉到上一个音频的位置。
+    const wsScroll = a.wfApiRef.current.isReady ? a.wfApiRef.current.getScrollLeft() : 0;
+    const sl = isMediaUrlChange
+      ? 0
+      : Math.min(maxSl, Math.max(0, committedScrollLeftRef.current === 0 ? wsScroll : committedScrollLeftRef.current));
+    if (isMediaUrlChange) {
+      committedScrollLeftRef.current = 0;
+    }
     applyScrollLeftPx(sl, "program");
   }, [args.mediaUrl, args.timelineWidthPx, args.waveformReady]);
 
@@ -137,9 +149,7 @@ export function useTierScrollSync(args: {
     [],
   );
 
-  useEffect(() => {
-    applyScrollLeftPx(0, "program");
-  }, [args.mediaUrl]);
+  // mediaUrl 变更时的 scroll 重置已合并到上面的 useLayoutEffect 中
 
   return {
     ...api,

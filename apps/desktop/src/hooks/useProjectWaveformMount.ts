@@ -1,6 +1,5 @@
 import { useCallback, useEffect, type Dispatch, type MutableRefObject, type RefObject, type SetStateAction } from "react";
 import WaveSurfer from "wavesurfer.js";
-import RegionsPlugin from "wavesurfer.js/dist/plugins/regions.esm.js";
 import { COLORS } from "../config/tokens";
 import type { WaveformRulerView } from "../utils/waveformViewport";
 import type { PeakCache } from "../services/waveform/PeakCache";
@@ -11,7 +10,6 @@ type MountRefs = {
   optsRef: MutableRefObject<UseProjectWaveformOptions>;
   containerRef: RefObject<HTMLDivElement | null>;
   wsRef: MutableRefObject<WaveSurfer | null>;
-  regionsRef: MutableRefObject<ReturnType<typeof RegionsPlugin.create> | null>;
   wsUnsubsRef: MutableRefObject<Array<() => void>>;
   minPxPerSecRef: MutableRefObject<number>;
   peakCacheRef: MutableRefObject<PeakCache | null>;
@@ -41,7 +39,6 @@ export function useProjectWaveformMount(
     optsRef,
     containerRef,
     wsRef,
-    regionsRef,
     wsUnsubsRef,
     minPxPerSecRef,
     peakCacheRef,
@@ -80,22 +77,18 @@ export function useProjectWaveformMount(
       const el = containerRef.current;
       if (!el?.isConnected) return;
 
-      const regions = RegionsPlugin.create();
-      regionsRef.current = regions;
-
       const wantDragCreate = Boolean(optsRef.current.onWaveformCreateRange);
       const initialMps = minPxPerSecRef.current;
       const initialH = waveformHeightRef.current;
       pendingAppliedWaveformHeightRef.current = initialH;
       appliedZoomPxPerSecRef.current = initialMps;
       let peakBundle: ReturnType<PeakCache["getWaveSurferPeaks"]> | undefined;
-      const usePeaksDraw = Boolean(peakCacheRef.current);
       try {
         peakBundle = peakCacheRef.current?.getWaveSurferPeaks(initialMps);
-        if (peakBundle) appliedPeaksRef.current = true;
       } catch {
         peakBundle = undefined;
       }
+      const usePeaksDraw = Boolean(peakBundle);
       const ws = WaveSurfer.create({
         container: el,
         url: mediaUrl,
@@ -122,10 +115,11 @@ export function useProjectWaveformMount(
               duration: peakBundle.duration,
             }
           : {}),
-        plugins: [regions],
       });
 
       wsRef.current = ws;
+      // 透明层仅在 peaks load 成功后再开（见 useWaveformZoomSync），避免 Canvas 未就绪时空白。
+      appliedPeaksRef.current = false;
 
       wsUnsubsRef.current.push(
         ...bindProjectWaveformWaveSurferEvents({
@@ -139,6 +133,7 @@ export function useProjectWaveformMount(
           scrollNotifyRafRef,
           pendingAppliedWaveformHeightRef,
           appliedWaveformHeightRef,
+          appliedPeaksRef,
           setLoadError,
           setIsReady,
           setIsPlaying,
@@ -162,7 +157,6 @@ export function useProjectWaveformMount(
     optsRef,
     containerRef,
     wsRef,
-    regionsRef,
     wsUnsubsRef,
     minPxPerSecRef,
     peakCacheRef,
@@ -185,29 +179,14 @@ export function useProjectWaveformMount(
 }
 
 export function useProjectWaveformDestroy(
-  clearRegionListeners: () => void,
   clearWsListeners: () => void,
-  refs: Pick<
-    MountRefs,
-    | "regionsRef"
-    | "wsRef"
-    | "scrollNotifyRafRef"
-    | "pendingAppliedWaveformHeightRef"
-    | "appliedPeaksRef"
-  >,
-  setters: Pick<
-    MountRefs,
-    "setIsReady" | "setIsPlaying" | "setDuration" | "setCurrentTime" | "setRulerView"
-  >,
+  refs: Pick<MountRefs, "wsRef" | "scrollNotifyRafRef" | "pendingAppliedWaveformHeightRef" | "appliedPeaksRef">,
+  setters: Pick<MountRefs, "setIsReady" | "setIsPlaying" | "setDuration" | "setCurrentTime" | "setRulerView">,
 ) {
-  const { regionsRef, wsRef, scrollNotifyRafRef, pendingAppliedWaveformHeightRef, appliedPeaksRef } =
-    refs;
+  const { wsRef, scrollNotifyRafRef, pendingAppliedWaveformHeightRef, appliedPeaksRef } = refs;
   const { setIsReady, setIsPlaying, setDuration, setCurrentTime, setRulerView } = setters;
 
   return useCallback(() => {
-    clearRegionListeners();
-    regionsRef.current?.clearRegions();
-    regionsRef.current = null;
     clearWsListeners();
     const ws = wsRef.current;
     wsRef.current = null;
@@ -230,9 +209,7 @@ export function useProjectWaveformDestroy(
       scrollNotifyRafRef.current = 0;
     }
   }, [
-    clearRegionListeners,
     clearWsListeners,
-    regionsRef,
     wsRef,
     scrollNotifyRafRef,
     pendingAppliedWaveformHeightRef,

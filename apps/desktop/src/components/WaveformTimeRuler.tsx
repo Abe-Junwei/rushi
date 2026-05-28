@@ -51,6 +51,8 @@ export const WaveformTimeRuler = memo(function WaveformTimeRuler({
   const ink = appearance === "ink";
   const embedded = appearance === "embedded";
   const rulerDragRef = useRef({ dragging: false, startX: 0, startScroll: 0 });
+  const scrollLeftPxRef = useRef(scrollLeftPx);
+  scrollLeftPxRef.current = scrollLeftPx;
   const prevCurrentTimeRef = useRef<number | null>(null);
   const interactionFadeTimeoutRef = useRef<number | null>(null);
   const [interactionActive, setInteractionActive] = useState(false);
@@ -129,29 +131,40 @@ export const WaveformTimeRuler = memo(function WaveformTimeRuler({
     return `${Math.max(-1, Math.min(101, p))}%`;
   }, [currentTimeSec, durationSec]);
 
-  const onRulerMouseDown = useCallback(
-    (e: React.MouseEvent<HTMLDivElement>) => {
+  const onRulerPointerDown = useCallback(
+    (e: React.PointerEvent<HTMLDivElement>) => {
       if (disabled || e.button !== 0) return;
-      rulerDragRef.current = { dragging: false, startX: e.clientX, startScroll: scrollLeftPx };
-      const onMove = (ev: MouseEvent) => {
+      rulerDragRef.current = { dragging: false, startX: e.clientX, startScroll: scrollLeftPxRef.current };
+      const onMove = (ev: PointerEvent) => {
         const dx = ev.clientX - rulerDragRef.current.startX;
         if (Math.abs(dx) > 3) rulerDragRef.current.dragging = true;
         if (rulerDragRef.current.dragging) {
           onSetScrollLeftPx(rulerDragRef.current.startScroll - dx);
         }
       };
-      const onUp = (ev: MouseEvent) => {
-        window.removeEventListener("mousemove", onMove);
-        window.removeEventListener("mouseup", onUp);
+      const onUp = (ev: PointerEvent) => {
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        window.removeEventListener("pointercancel", onUp);
+        window.removeEventListener("blur", onBlur);
         if (!rulerDragRef.current.dragging) {
           onSeekFromTierClientX(ev.clientX);
         }
         rulerDragRef.current.dragging = false;
       };
-      window.addEventListener("mousemove", onMove);
-      window.addEventListener("mouseup", onUp);
+      const onBlur = () => {
+        window.removeEventListener("pointermove", onMove);
+        window.removeEventListener("pointerup", onUp);
+        window.removeEventListener("pointercancel", onUp);
+        window.removeEventListener("blur", onBlur);
+        rulerDragRef.current.dragging = false;
+      };
+      window.addEventListener("pointermove", onMove);
+      window.addEventListener("pointerup", onUp);
+      window.addEventListener("pointercancel", onUp);
+      window.addEventListener("blur", onBlur);
     },
-    [disabled, onSeekFromTierClientX, onSetScrollLeftPx, scrollLeftPx],
+    [disabled, onSeekFromTierClientX, onSetScrollLeftPx],
   );
 
   if (durationSec <= 0 || timelineWidthPx <= 0) {
@@ -177,7 +190,7 @@ export const WaveformTimeRuler = memo(function WaveformTimeRuler({
       ) : null}
       <div
         className={`relative h-[22px] cursor-grab select-none active:cursor-grabbing ${disabled ? "pointer-events-none opacity-50" : ""}`}
-        onMouseDown={onRulerMouseDown}
+        onPointerDown={onRulerPointerDown}
       >
         <svg className="absolute inset-0 h-[22px] w-full overflow-visible" aria-hidden>
           {ticks.map(({ t, major }) => {

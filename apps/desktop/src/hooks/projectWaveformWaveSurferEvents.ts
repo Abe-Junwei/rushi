@@ -1,4 +1,5 @@
 import type WaveSurfer from "wavesurfer.js";
+import { applyWaveSurferPeaksDrawMode } from "../services/waveform/waveSurferPeaksDraw";
 import { resolveWaveformRulerView } from "../utils/waveformViewport";
 import type { UseProjectWaveformOptions } from "./useProjectWaveformTypes";
 
@@ -13,6 +14,7 @@ type BindWaveformEventsParams = {
   scrollNotifyRafRef: { current: number };
   pendingAppliedWaveformHeightRef: { current: number | null };
   appliedWaveformHeightRef: { current: number };
+  appliedPeaksRef: { current: boolean };
   setLoadError: (value: string | null) => void;
   setIsReady: (value: boolean) => void;
   setIsPlaying: (value: boolean) => void;
@@ -35,6 +37,7 @@ export function bindProjectWaveformWaveSurferEvents(
     scrollNotifyRafRef,
     pendingAppliedWaveformHeightRef,
     appliedWaveformHeightRef,
+    appliedPeaksRef,
     setLoadError,
     setIsReady,
     setIsPlaying,
@@ -70,6 +73,10 @@ export function bindProjectWaveformWaveSurferEvents(
     ws.on("error", (err) => {
       if (disposed()) return;
       setLoadError(err.message || String(err));
+      if (appliedPeaksRef.current) {
+        appliedPeaksRef.current = false;
+        applyWaveSurferPeaksDrawMode(ws, false);
+      }
       setIsReady(false);
     }),
     ws.on("play", () => setIsPlaying(true)),
