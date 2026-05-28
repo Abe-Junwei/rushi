@@ -21,8 +21,7 @@
 
 **R3h / LRC / ASR Setup（排期主战场）**
 
-- `apps/desktop/src-tauri/src/local_runtime/install_support.rs` ~675 行 → 守卫建议拆模块（**T-010**）
-- `apps/desktop/src-tauri/src/asr_sidecar.rs` ~632 行 → 同上；与 **R3h-I1** Supervisor 收口相关
+- **Rust T-010 ✅**：`install_support/`、`integrity/`、`installer/`、`catalog/`、`manifest/`、`recovery/`、`asr_sidecar/bundled/`；业务 `.rs` 均 &lt;320 行（测试模块除外）
 - `apps/desktop/src/pages/useAsrSetupController.ts` ~364 行 + `useLocalRuntimeSetupSupport.ts` ~359 行 → **R3h-I3** Setup Machine 候选
 - `apps/desktop/src/components/envLocalAsr/LocalAsrSetupWizard.tsx` ~313 行 → 接近阈值，随 R3f/⑤b 演进观察
 

@@ -2,7 +2,7 @@ use super::{
     ensure_not_cancelled, is_http_source, ARTIFACT_REQUEST_TIMEOUT, HTTP_CONNECT_TIMEOUT,
     MANIFEST_FETCH_TIMEOUT,
 };
-use super::super::installer::update_progress;
+use super::super::installer::progress::update_progress;
 use super::super::manifest::{artifact_sources, RuntimeComponent};
 use futures_util::StreamExt;
 use std::fs::{self, File};

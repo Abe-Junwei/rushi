@@ -90,7 +90,7 @@ function checkRustFile(fullPath) {
   }
 
   // 安装验证在 local_runtime/installer 的 spawn_blocking 中调用，此处允许 blocking HTTP
-  const blockingHttpAllowed = rel.endsWith('local_runtime/install_support/verify.rs');
+  const blockingHttpAllowed = rel.includes('local_runtime/install_support/verify/');
   if (/reqwest::blocking/.test(source) && !rel.includes('test') && !blockingHttpAllowed) {
     warnings.push(`${rel}: 发现 reqwest::blocking，可能阻塞 Tauri 线程池`);
   }
