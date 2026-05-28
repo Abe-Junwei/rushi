@@ -32,15 +32,21 @@ export function EditorWaveformPane({
   const waveformHorizontalScale = tx.renderPxPerSec > 0 ? tx.pxPerSec / tx.renderPxPerSec : 1;
   const waveformVisualScale =
     tx.waveformPaintedHeightPx > 0 ? tx.waveformHeightPx / tx.waveformPaintedHeightPx : 1;
-  const waveformPreviewTransform = [
-    Math.abs(waveformHorizontalScale - 1) > 0.001 ? `scaleX(${waveformHorizontalScale})` : "",
-    Math.abs(waveformVisualScale - 1) > 0.001 ? `scaleY(${waveformVisualScale})` : "",
-  ]
-    .filter(Boolean)
-    .join(" ");
-  const waveformPreviewClass = tx.waveformHeightDragging || tx.zoomPreviewActive
-    ? "w-full origin-top-left will-change-transform"
-    : "w-full origin-top-left will-change-transform transition-transform duration-150 ease-out motion-reduce:transition-none";
+  const waveformHeightPreviewActive =
+    Math.abs(waveformVisualScale - 1) > 0.001 && !tx.waveformHeightDragging;
+  const waveformHorizontalTransform =
+    Math.abs(waveformHorizontalScale - 1) > 0.001 ? `scaleX(${waveformHorizontalScale})` : undefined;
+  const waveformVerticalTransform =
+    Math.abs(waveformVisualScale - 1) > 0.001 ? `scaleY(${waveformVisualScale})` : undefined;
+  const waveformHorizontalClass =
+    tx.zoomPreviewActive || tx.zoomDragging
+      ? "h-full w-full origin-top-left will-change-transform"
+      : "h-full w-full origin-top-left";
+  const waveformVerticalClass = tx.waveformHeightDragging
+    ? "h-full w-full origin-top-left will-change-transform"
+    : waveformHeightPreviewActive
+      ? "h-full w-full origin-top-left will-change-transform transition-transform duration-150 ease-out motion-reduce:transition-none"
+      : "h-full w-full origin-top-left";
   return (
     <div className="relative z-0 flex w-full shrink-0 flex-col overflow-hidden bg-notion-sidebar">
       <div
@@ -82,20 +88,29 @@ export function EditorWaveformPane({
               >
                 <div className="w-full overflow-hidden" style={{ height: tx.waveformHeightPx }}>
                   <div
-                    className={waveformPreviewClass}
+                    className={waveformVerticalClass}
                     style={{
                       width: tx.renderTimelineWidthPx,
                       height: tx.waveformPaintedHeightPx,
-                      transform: waveformPreviewTransform || undefined,
+                      transform: waveformVerticalTransform,
                     }}
                   >
                     <div
-                      ref={tx.containerRef}
-                      style={{ width: tx.renderTimelineWidthPx, height: tx.waveformPaintedHeightPx }}
-                      className="shrink-0 bg-transparent"
-                      role="img"
-                      aria-label="转写波形与语段时间范围"
-                    />
+                      className={waveformHorizontalClass}
+                      style={{
+                        width: tx.renderTimelineWidthPx,
+                        height: tx.waveformPaintedHeightPx,
+                        transform: waveformHorizontalTransform,
+                      }}
+                    >
+                      <div
+                        ref={tx.containerRef}
+                        style={{ width: tx.renderTimelineWidthPx, height: tx.waveformPaintedHeightPx }}
+                        className="shrink-0 bg-transparent"
+                        role="img"
+                        aria-label="转写波形与语段时间范围"
+                      />
+                    </div>
                   </div>
                 </div>
                 <WaveformSegmentPlaybackControls

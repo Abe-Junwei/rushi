@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useMemo, useRef } from "react";
 import { Crosshair, Maximize2, ZoomIn, ZoomOut } from "lucide-react";
 import {
-  clampPxPerSec,
+  clampPxPerSecForSlider,
   PX_PER_SEC_MAX,
   PX_PER_SEC_MIN,
   TIMELINE_PX_PER_SEC,
@@ -24,7 +24,7 @@ export type WaveformZoomBarProps = {
 };
 
 function pxPerSecToSliderPos(px: number): number {
-  const c = clampPxPerSec(px);
+  const c = clampPxPerSecForSlider(px);
   const lo = PX_PER_SEC_MIN;
   const hi = PX_PER_SEC_MAX;
   return Math.round((Math.log(c / lo) / Math.log(hi / lo)) * 1000);
@@ -34,7 +34,7 @@ function sliderPosToPxPerSec(pos: number): number {
   const lo = PX_PER_SEC_MIN;
   const hi = PX_PER_SEC_MAX;
   const t = Math.min(1000, Math.max(0, pos));
-  return clampPxPerSec(lo * (hi / lo) ** (t / 1000));
+  return clampPxPerSecForSlider(lo * (hi / lo) ** (t / 1000));
 }
 
 /** 解语 TranscriptionLayoutSections / ZoomControls 同款：底部横向缩放条（布局与 icon-btn + 滑块 + 百分比）。 */

@@ -22,6 +22,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     selectedIdx,
     disabled,
     minPxPerSec = 56,
+    interactionPxPerSec,
     waveformHeightPx = 96,
     onWaveformCreateRange,
   } = options;
@@ -29,6 +30,8 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
   optsRef.current = options;
   const minPxPerSecRef = useRef(minPxPerSec);
   minPxPerSecRef.current = minPxPerSec;
+  const interactionPxPerSecRef = useRef(interactionPxPerSec ?? minPxPerSec);
+  interactionPxPerSecRef.current = interactionPxPerSec ?? minPxPerSec;
   const waveformHeightRef = useRef(waveformHeightPx);
   waveformHeightRef.current = waveformHeightPx;
   const appliedWaveformHeightRef = useRef(waveformHeightPx);
@@ -38,7 +41,6 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
   const regionsRef = useRef<ReturnType<typeof RegionsPlugin.create> | null>(null);
   const wsUnsubsRef = useRef<Array<() => void>>([]);
   const lastTimeUiCommitRef = useRef(-1);
-  const zoomRafRef = useRef(0);
   const appliedZoomPxPerSecRef = useRef(minPxPerSec);
 
   const [isReady, setIsReady] = useState(false);
@@ -52,6 +54,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     containerRef,
     isReady,
     minPxPerSecRef,
+    interactionPxPerSecRef,
     options.getViewportScrollPx,
   );
   const boundsSig = waveformBoundsSignature(segments);
@@ -99,10 +102,6 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     setCurrentTime(0);
     setRulerView(null);
     pendingAppliedWaveformHeightRef.current = null;
-    if (zoomRafRef.current) {
-      cancelAnimationFrame(zoomRafRef.current);
-      zoomRafRef.current = 0;
-    }
   }, [clearRegionListeners, clearWsListeners]);
 
   useEffect(() => {
@@ -243,7 +242,6 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     isReady,
     disabled,
     minPxPerSec,
-    zoomRafRef,
     appliedZoomPxPerSecRef,
   });
 

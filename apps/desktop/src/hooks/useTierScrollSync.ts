@@ -113,7 +113,9 @@ export function useTierScrollSync(args: {
     const a = argsRef.current;
     const tier = a.tierScrollRef.current;
     if (!tier || !a.waveformReady) return;
-    applyScrollLeftPx(a.wfApiRef.current.getScrollLeft(), "waveform");
+    const maxSl = Math.max(0, a.timelineWidthPx - tier.clientWidth);
+    const sl = Math.min(maxSl, Math.max(0, committedScrollLeftRef.current));
+    applyScrollLeftPx(sl, "program");
   }, [args.mediaUrl, args.timelineWidthPx, args.waveformReady]);
 
   useEffect(() => {

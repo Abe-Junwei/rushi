@@ -6,8 +6,10 @@ export type UseProjectWaveformOptions = {
   segments: SegmentDto[];
   selectedIdx: number;
   disabled?: boolean;
-  /** 与解语式横向时间轴对齐：像素/秒，需与 UI 轨宽计算一致 */
+  /** 与 WaveSurfer `minPxPerSec` 对齐的渲染 px/s */
   minPxPerSec?: number;
+  /** 与 tier / ruler 对齐的交互 px/s（预览期可与 minPxPerSec 不同） */
+  interactionPxPerSec?: number;
   /** 波形区纵向高度（px），与外层容器一致；变更时 `setOptions({ height })` */
   waveformHeightPx?: number;
   /** 波形真实重绘完成后，将已应用高度回传给外层预览层。 */

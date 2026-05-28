@@ -1,10 +1,15 @@
 import { useCallback, useRef } from "react";
-import { clampPxPerSec, TIMELINE_PX_PER_SEC } from "../utils/pxPerSec";
+import {
+  clampPxPerSec,
+  clampPxPerSecForSlider,
+  computeFitAllPxPerSec,
+  computeFitSelectionPxPerSec,
+  TIMELINE_PX_PER_SEC,
+} from "../utils/pxPerSec";
 import { readStoredWaveformPxPerSec, writeStoredWaveformPxPerSec } from "../utils/waveformPrefs";
 import { useDeferredRendererState } from "./useDeferredRendererState";
 
 const PREF_WRITE_DEBOUNCE_MS = 180;
-const ZOOM_RENDER_FRAME_MS = 16;
 
 const pxEquals = (a: number, b: number) => Math.abs(a - b) < 0.001;
 
@@ -20,7 +25,7 @@ export function useWaveformZoom(args: {
     initial: readStoredWaveformPxPerSec() ?? TIMELINE_PX_PER_SEC,
     clamp: clampPxPerSec,
     areEqual: pxEquals,
-    renderDelayMs: ZOOM_RENDER_FRAME_MS,
+    renderDelayMs: 0,
     persist: {
       read: readStoredWaveformPxPerSec,
       write: writeStoredWaveformPxPerSec,
@@ -30,7 +35,7 @@ export function useWaveformZoom(args: {
 
   const setPxPerSec = useCallback(
     (next: number) => {
-      zoom.setVisual(clampPxPerSec(next));
+      zoom.setVisual(clampPxPerSecForSlider(next));
     },
     [zoom],
   );
@@ -50,7 +55,7 @@ export function useWaveformZoom(args: {
   }, [zoom]);
 
   const zoomOut = useCallback(() => {
-    zoom.setVisual((p) => clampPxPerSec(p / 1.12));
+    zoom.setVisual((p) => clampPxPerSecForSlider(p / 1.12));
     zoom.flushRender();
   }, [zoom]);
 
@@ -64,7 +69,7 @@ export function useWaveformZoom(args: {
     const w = a.getTierWidth();
     const dur = a.getDuration();
     if (w <= 0 || dur < 0.5) return;
-    zoom.setVisual(clampPxPerSec(w / dur));
+    zoom.setVisual(computeFitAllPxPerSec(w, dur));
     zoom.flushRender();
   }, [zoom]);
 
@@ -74,9 +79,7 @@ export function useWaveformZoom(args: {
     const dur = a.getDuration();
     const seg = a.getSelectedSegment();
     if (w <= 0 || dur < 0.5 || !seg) return;
-    const span = Math.max(seg.end_sec - seg.start_sec, 0.05);
-    const vw = Math.max(160, w - 24);
-    zoom.setVisual(clampPxPerSec(vw / span));
+    zoom.setVisual(computeFitSelectionPxPerSec(w, seg.start_sec, seg.end_sec));
     zoom.flushRender();
   }, [zoom]);
 
@@ -84,6 +87,7 @@ export function useWaveformZoom(args: {
     pxPerSec: zoom.visual,
     renderPxPerSec: zoom.render,
     zoomPreviewActive: zoom.previewActive,
+    zoomDragging: zoom.dragging,
     setPxPerSec,
     zoomIn,
     zoomOut,

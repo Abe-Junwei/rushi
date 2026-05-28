@@ -6,6 +6,7 @@ export function useWaveformPlayback(
   containerRef: React.MutableRefObject<HTMLDivElement | null>,
   isReady: boolean,
   minPxPerSecRef: React.MutableRefObject<number>,
+  interactionPxPerSecRef: React.MutableRefObject<number>,
   getViewportScrollPx?: () => number,
 ) {
   const seek = useCallback(
@@ -63,12 +64,12 @@ export function useWaveformPlayback(
       const rect = el.getBoundingClientRect();
       const visibleScrollPx = Math.max(getViewportScrollPx?.() ?? 0, ws.getScroll());
       const relPx = clientX - rect.left + visibleScrollPx;
-      const mps = minPxPerSecRef.current ?? 56;
+      const mps = interactionPxPerSecRef.current ?? minPxPerSecRef.current ?? 56;
       const dur = ws.getDuration() || 0;
       const t = relPx / mps;
       return Math.max(0, Math.min(t, dur));
     },
-    [getViewportScrollPx, isReady, wsRef, containerRef, minPxPerSecRef],
+    [getViewportScrollPx, isReady, wsRef, containerRef, interactionPxPerSecRef, minPxPerSecRef],
   );
 
   return {

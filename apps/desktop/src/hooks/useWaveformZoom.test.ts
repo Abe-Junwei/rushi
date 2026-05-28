@@ -14,8 +14,6 @@ function renderZoomHook() {
 }
 
 describe("useWaveformZoom", () => {
-  let rafCallback: FrameRequestCallback | null = null;
-
   beforeEach(() => {
     const storage = new Map<string, string>();
     vi.stubGlobal("localStorage", {
@@ -30,11 +28,7 @@ describe("useWaveformZoom", () => {
         storage.clear();
       }),
     });
-    rafCallback = null;
-    vi.stubGlobal("requestAnimationFrame", vi.fn((cb: FrameRequestCallback) => {
-      rafCallback = cb;
-      return 1;
-    }));
+    vi.stubGlobal("requestAnimationFrame", vi.fn((_cb: FrameRequestCallback) => 1));
     vi.stubGlobal("cancelAnimationFrame", vi.fn());
   });
 
@@ -42,10 +36,11 @@ describe("useWaveformZoom", () => {
     vi.unstubAllGlobals();
   });
 
-  it("keeps slider changes as preview until the next render frame", () => {
+  it("keeps slider changes as preview until interaction commits", () => {
     const { result } = renderZoomHook();
 
     act(() => {
+      result.current.beginZoomInteraction();
       result.current.setPxPerSec(TIMELINE_PX_PER_SEC * 2);
     });
 
@@ -54,7 +49,7 @@ describe("useWaveformZoom", () => {
     expect(result.current.zoomPreviewActive).toBe(true);
 
     act(() => {
-      rafCallback?.(0);
+      result.current.commitZoomInteraction();
     });
 
     expect(result.current.renderPxPerSec).toBe(TIMELINE_PX_PER_SEC * 2);
@@ -89,5 +84,49 @@ describe("useWaveformZoom", () => {
 
     expect(result.current.renderPxPerSec).toBe(result.current.pxPerSec);
     expect(result.current.zoomPreviewActive).toBe(false);
+  });
+
+  it("zoomToFitTier fits short audio to viewport width", () => {
+    const { result } = renderZoomHook();
+
+    act(() => {
+      result.current.zoomToFitTier();
+    });
+
+    expect(result.current.pxPerSec).toBe(56);
+    expect(result.current.renderPxPerSec).toBe(56);
+  });
+
+  it("zoomToFitTier can go below manual slider min for long audio", () => {
+    const { result } = renderHook(() =>
+      useWaveformZoom({
+        getTierWidth: () => 800,
+        getDuration: () => 3600,
+        getSelectedSegment: () => null,
+      }),
+    );
+
+    act(() => {
+      result.current.zoomToFitTier();
+    });
+
+    expect(result.current.pxPerSec).toBeCloseTo(800 / 3600, 5);
+    expect(result.current.pxPerSec).toBeLessThan(16);
+  });
+
+  it("zoomToFitSelection scales to the selected segment span", () => {
+    const { result } = renderHook(() =>
+      useWaveformZoom({
+        getTierWidth: () => 800,
+        getDuration: () => 120,
+        getSelectedSegment: () => ({ start_sec: 10, end_sec: 12 }),
+      }),
+    );
+
+    act(() => {
+      result.current.zoomToFitSelection();
+    });
+
+    expect(result.current.pxPerSec).toBe((800 - 24) / 2);
   });
 });

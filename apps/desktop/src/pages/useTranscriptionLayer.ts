@@ -1,5 +1,8 @@
-import { startTransition, useCallback, useEffect, useMemo, useRef } from "react";
+import { startTransition, useCallback, useMemo, useRef } from "react";
 import { useProjectWaveform } from "../hooks/useProjectWaveform";
+import type { useProjectWaveform as UseProjectWaveformHook } from "../hooks/useProjectWaveform";
+
+type WfApi = ReturnType<typeof UseProjectWaveformHook>;
 import { useSegmentKeyboard } from "../hooks/useSegmentKeyboard";
 import { useTierScrollSync } from "../hooks/useTierScrollSync";
 import { useWaveformDisplay } from "../hooks/useWaveformDisplay";
@@ -7,6 +10,7 @@ import { useWaveformZoom } from "../hooks/useWaveformZoom";
 import { p1LaneBoundsSignature } from "../utils/boundsSignature";
 import { computeTimelineWidthPx } from "../utils/segmentLayout";
 import { assignSegmentOverlapLanes, computeSegmentLaneRowPx } from "../utils/segmentLayout";
+import { useTranscriptionViewportFit } from "./useTranscriptionViewportFit";
 
 export { TIMELINE_PX_PER_SEC, clampPxPerSec } from "../utils/pxPerSec";
 export { computeSegmentLaneRowPx, assignSegmentOverlapLanes, computeTimelineWidthPx, SEGMENT_LANE_ROW_PX } from "../utils/segmentLayout";
@@ -32,6 +36,9 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
 
   const durationRef = useRef(0);
   const syncWaveformScrollRef = useRef<(scrollLeftPx: number) => void>(() => {});
+  const scrollApiRef = useRef({ setTierScrollPx: (_scrollLeftPx: number) => {} });
+  const wfApiRef = useRef<WfApi>(null!);
+  const onWaveformScrollRef = useRef<(scrollLeftPx: number) => void>(() => {});
 
   const zoom = useWaveformZoom({
     getTierWidth: () => tierScrollRef.current?.clientWidth ?? 0,
@@ -45,18 +52,17 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     selectedIdx: ctx.selectedIdx,
     disabled: ctx.busy,
     minPxPerSec: zoom.renderPxPerSec,
+    interactionPxPerSec: zoom.pxPerSec,
     waveformHeightPx: display.waveformRenderHeightPx,
     onWaveformHeightApplied: display.markWaveformRenderHeightApplied,
     onSelectIndex: setSelectedIdxUi,
     onBoundsCommit: (idx, lo, hi) => ctx.updateSegmentBounds(idx, lo, hi, "commit"),
     onWaveformCreateRange: ctx.insertSegmentFromTimeRange,
-    onWaveformScroll: (sl) => syncWaveformScrollRef.current(sl),
+    onWaveformScroll: (scrollLeftPx) => onWaveformScrollRef.current(scrollLeftPx),
     getViewportScrollPx: () => tierScrollRef.current?.scrollLeft ?? 0,
   });
 
   durationRef.current = wf.duration || 0;
-
-  const wfApiRef = useRef(wf);
   wfApiRef.current = wf;
 
   const timelineWidthPx = useMemo(
@@ -76,6 +82,21 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     mediaUrl: ctx.mediaUrl,
   });
   syncWaveformScrollRef.current = scroll.syncWaveformScrollPx;
+  scrollApiRef.current = scroll;
+
+  const viewportFit = useTranscriptionViewportFit({
+    tierScrollRef,
+    durationRef,
+    syncWaveformScrollRef,
+    scrollApiRef,
+    wfApiRef,
+    zoom,
+    renderTimelineWidthPx,
+    waveformReady: wf.isReady,
+    mediaUrl: ctx.mediaUrl,
+    getSelectedSegment: () => ctx.segments[ctx.selectedIdx] ?? null,
+  });
+  onWaveformScrollRef.current = viewportFit.onWaveformScroll;
 
   const keyboard = useSegmentKeyboard({
     ctxRef,
@@ -107,7 +128,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
   const selectSegmentAt = useCallback(
     (idx: number) => {
       const c = ctxRef.current;
-      const w = wfApiRef.current;
+      const w = wf;
       const s = c.segments[idx];
       if (!s) return;
       const tier = tierScrollRef.current;
@@ -118,29 +139,12 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
       }
       setSelectedIdxUi(idx);
     },
-    [scroll, setSelectedIdxUi, zoom.pxPerSec],
+    [scroll, setSelectedIdxUi, wf, zoom.pxPerSec],
   );
 
   const focusWaveformShell = useCallback(() => {
     waveformShellRef.current?.focus();
   }, []);
-
-  // 真实 WaveSurfer zoom 完成后：将 tier 与 WS 的 scrollLeft 钳到同一值，避免语段卡与 region 错位。
-  useEffect(() => {
-    const tier = tierScrollRef.current;
-    if (!tier || !wf.isReady || renderTimelineWidthPx <= 0) return;
-    const maxSl = Math.max(0, renderTimelineWidthPx - tier.clientWidth);
-    const wsSl = wf.getScrollLeft();
-    const sl = Math.min(maxSl, Math.max(0, wsSl));
-    scroll.setTierScrollPx(sl);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [zoom.renderPxPerSec, renderTimelineWidthPx, wf.isReady, wf.getScrollLeft, scroll.setTierScrollPx]);
-
-  useEffect(() => {
-    if (!ctx.mediaUrl || !wf.isReady) return;
-    scroll.setTierScrollPx(0);
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [ctx.mediaUrl, wf.isReady, scroll.setTierScrollPx]);
 
   return {
     tierScrollRef,
@@ -170,11 +174,12 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     pxPerSec: zoom.pxPerSec,
     renderPxPerSec: zoom.renderPxPerSec,
     zoomPreviewActive: zoom.zoomPreviewActive,
+    zoomDragging: zoom.zoomDragging,
     zoomIn: zoom.zoomIn,
     zoomOut: zoom.zoomOut,
     resetZoom: zoom.resetZoom,
-    zoomToFitTier: zoom.zoomToFitTier,
-    zoomToFitSelection: zoom.zoomToFitSelection,
+    zoomToFitTier: viewportFit.zoomToFitTier,
+    zoomToFitSelection: viewportFit.zoomToFitSelection,
     setPxPerSec: zoom.setPxPerSec,
     beginZoomInteraction: zoom.beginZoomInteraction,
     commitZoomInteraction: zoom.commitZoomInteraction,

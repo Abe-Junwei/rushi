@@ -1,4 +1,4 @@
-import { useEffect, type MutableRefObject, type RefObject } from "react";
+import { useLayoutEffect, type MutableRefObject, type RefObject } from "react";
 import type WaveSurfer from "wavesurfer.js";
 
 export function useWaveformZoomSync(args: {
@@ -6,30 +6,20 @@ export function useWaveformZoomSync(args: {
   isReady: boolean;
   disabled?: boolean;
   minPxPerSec: number;
-  zoomRafRef: MutableRefObject<number>;
   appliedZoomPxPerSecRef: MutableRefObject<number>;
 }) {
-  const { wsRef, isReady, disabled, minPxPerSec, zoomRafRef, appliedZoomPxPerSecRef } = args;
+  const { wsRef, isReady, disabled, minPxPerSec, appliedZoomPxPerSecRef } = args;
 
-  useEffect(() => {
+  // 同步 zoom：避免 useEffect + RAF 额外晚一帧，缩放提交后立刻 redraw。
+  useLayoutEffect(() => {
     const ws = wsRef.current;
     if (!ws || !isReady || disabled) return;
     if (appliedZoomPxPerSecRef.current === minPxPerSec) return;
-    if (zoomRafRef.current) cancelAnimationFrame(zoomRafRef.current);
-    zoomRafRef.current = requestAnimationFrame(() => {
-      zoomRafRef.current = 0;
-      try {
-        ws.zoom(minPxPerSec);
-        appliedZoomPxPerSecRef.current = minPxPerSec;
-      } catch {
-        /* noop */
-      }
-    });
-    return () => {
-      if (zoomRafRef.current) {
-        cancelAnimationFrame(zoomRafRef.current);
-        zoomRafRef.current = 0;
-      }
-    };
-  }, [appliedZoomPxPerSecRef, disabled, isReady, minPxPerSec, wsRef, zoomRafRef]);
+    try {
+      ws.zoom(minPxPerSec);
+      appliedZoomPxPerSecRef.current = minPxPerSec;
+    } catch {
+      /* noop */
+    }
+  }, [appliedZoomPxPerSecRef, disabled, isReady, minPxPerSec, wsRef]);
 }
