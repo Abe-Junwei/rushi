@@ -5,6 +5,8 @@ import {
   TRANSCRIPT_FONT_MAX,
   TRANSCRIPT_FONT_MIN,
 } from "./waveformPrefs";
+import { computeTimelineWidthPx } from "./pxPerSec";
+export { computeTimelineWidthPx };
 
 /** 语段卡行高（px）：支持元信息与两行正文的编辑卡。 */
 export function computeSegmentLaneRowPx(transcriptFontPx: number): number {
@@ -80,12 +82,4 @@ export function assignSegmentOverlapLanes(
   return { laneByIndex, laneCount: laneEnds.length };
 }
 
-/**
- * 时间轴总宽 = 媒体时长 × 像素/秒（与 WaveSurfer `minPxPerSec` 一致）。
- * 若与波形可滚宽度不一致，会导致 tier 与波形横向错位、语段卡与 region 对不齐。
- */
-export function computeTimelineWidthPx(durationSec: number, pxPerSec: number): number {
-  const floor = 320;
-  const sec = Math.max(durationSec, 0.5);
-  return Math.max(Math.ceil(sec * pxPerSec), floor);
-}
+

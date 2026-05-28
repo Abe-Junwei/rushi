@@ -1,11 +1,13 @@
 import { memo, useCallback, useEffect, useMemo, useRef } from "react";
 import { ZoomIn, ZoomOut } from "lucide-react";
 import {
-  clampPxPerSecForSlider,
+  clampPxPerSecInSliderRange,
   PX_PER_SEC_MAX,
   PX_PER_SEC_MIN,
+  resolveWaveformZoomSliderRange,
 } from "../utils/pxPerSec";
 import { computeWaveformZoomBarUiState } from "../utils/waveformZoomBarState";
+import { pxPerSecToSliderPos, sliderPosToPxPerSec } from "../utils/waveformZoomSlider";
 import { LUCIDE_ICON_SIZE_LG, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
 export type WaveformZoomBarProps = {
@@ -23,27 +25,11 @@ export type WaveformZoomBarProps = {
   onEnterFollowNavigation: () => void;
   onRefitFollowSelection: () => void;
   onResetDefaultZoom: () => void;
-  onZoomIn: () => void;
-  onZoomOut: () => void;
   onPxPerSecChange: (pxPerSec: number) => void;
   onZoomInteractionStart?: () => void;
   onZoomInteractionEnd?: () => void;
   editorHint?: string;
 };
-
-function pxPerSecToSliderPos(px: number): number {
-  const c = clampPxPerSecForSlider(px);
-  const lo = PX_PER_SEC_MIN;
-  const hi = PX_PER_SEC_MAX;
-  return Math.round((Math.log(c / lo) / Math.log(hi / lo)) * 1000);
-}
-
-function sliderPosToPxPerSec(pos: number): number {
-  const lo = PX_PER_SEC_MIN;
-  const hi = PX_PER_SEC_MAX;
-  const t = Math.min(1000, Math.max(0, pos));
-  return clampPxPerSecForSlider(lo * (hi / lo) ** (t / 1000));
-}
 
 /** 底部横向缩放：导航模式 + 滑块（全文件导航见底部全局波形条）。 */
 export const WaveformZoomBar = memo(function WaveformZoomBar({
@@ -60,15 +46,21 @@ export const WaveformZoomBar = memo(function WaveformZoomBar({
   onEnterFollowNavigation,
   onRefitFollowSelection,
   onResetDefaultZoom,
-  onZoomIn,
-  onZoomOut,
   onPxPerSecChange,
   onZoomInteractionStart,
   onZoomInteractionEnd,
   editorHint,
 }: WaveformZoomBarProps) {
   const off = disabled || !isReady;
-  const { atMinZoom, atMaxZoom, belowManualSliderRange, zoomPercentLabel } = useMemo(
+
+  const sliderRange = useMemo(() => {
+    if (viewportWidthPx <= 0 || durationSec < 0.5) {
+      return { minPxPerSec: PX_PER_SEC_MIN, maxPxPerSec: PX_PER_SEC_MAX };
+    }
+    return resolveWaveformZoomSliderRange(viewportWidthPx, durationSec);
+  }, [durationSec, viewportWidthPx]);
+
+  const { atMinZoom, atMaxZoom, belowManualSliderRange, atFitAllZoom, zoomPercentLabel } = useMemo(
     () =>
       computeWaveformZoomBarUiState({
         pxPerSec,
@@ -76,8 +68,14 @@ export const WaveformZoomBar = memo(function WaveformZoomBar({
         durationSec,
         selectedStartSec,
         selectedEndSec,
+        sliderRange,
       }),
-    [durationSec, pxPerSec, selectedEndSec, selectedStartSec, viewportWidthPx],
+    [durationSec, pxPerSec, selectedEndSec, selectedStartSec, sliderRange, viewportWidthPx],
+  );
+
+  const sliderValue = useMemo(
+    () => pxPerSecToSliderPos(pxPerSec, sliderRange),
+    [pxPerSec, sliderRange],
   );
   const followActive = autoFitSelectionToViewport;
   const manualActive = !autoFitSelectionToViewport;
@@ -102,13 +100,13 @@ export const WaveformZoomBar = memo(function WaveformZoomBar({
 
   const handleZoomIn = useCallback(() => {
     if (autoFitSelectionToViewport) onEnterManualNavigation();
-    onZoomIn();
-  }, [autoFitSelectionToViewport, onEnterManualNavigation, onZoomIn]);
+    onPxPerSecChange(clampPxPerSecInSliderRange(pxPerSec * 1.12, sliderRange));
+  }, [autoFitSelectionToViewport, onEnterManualNavigation, onPxPerSecChange, pxPerSec, sliderRange]);
 
   const handleZoomOut = useCallback(() => {
     if (autoFitSelectionToViewport) onEnterManualNavigation();
-    onZoomOut();
-  }, [autoFitSelectionToViewport, onEnterManualNavigation, onZoomOut]);
+    onPxPerSecChange(clampPxPerSecInSliderRange(pxPerSec / 1.12, sliderRange));
+  }, [autoFitSelectionToViewport, onEnterManualNavigation, onPxPerSecChange, pxPerSec, sliderRange]);
 
   const handlePxPerSecChange = useCallback(
     (next: number) => {
@@ -121,7 +119,6 @@ export const WaveformZoomBar = memo(function WaveformZoomBar({
   const sliderRafRef = useRef(0);
   const sliderInteractingRef = useRef(false);
   const pendingSliderPosRef = useRef<number | null>(null);
-  const sliderValue = useMemo(() => pxPerSecToSliderPos(pxPerSec), [pxPerSec]);
 
   const beginSliderInteraction = useCallback(() => {
     if (sliderInteractingRef.current) return;
@@ -138,8 +135,8 @@ export const WaveformZoomBar = memo(function WaveformZoomBar({
       cancelAnimationFrame(sliderRafRef.current);
       sliderRafRef.current = 0;
     }
-    handlePxPerSecChange(sliderPosToPxPerSec(pos));
-  }, [handlePxPerSecChange]);
+    handlePxPerSecChange(sliderPosToPxPerSec(pos, sliderRange));
+  }, [handlePxPerSecChange, sliderRange]);
 
   const endSliderInteraction = useCallback(() => {
     flushPendingSliderChange();
@@ -202,7 +199,7 @@ export const WaveformZoomBar = memo(function WaveformZoomBar({
           type="button"
           className="icon-btn"
           disabled={off || atMinZoom}
-          title={atMinZoom ? "已达到最小手动缩放" : "缩小"}
+          title={atMinZoom ? "已缩至整段可见（滑块最小档）" : "缩小"}
           aria-label="缩小"
           onClick={handleZoomOut}
         >
@@ -236,8 +233,10 @@ export const WaveformZoomBar = memo(function WaveformZoomBar({
           onBlur={endSliderInteraction}
           title={
             belowManualSliderRange
-              ? `当前缩放 ${zoomPercentLabel}% 低于滑块范围；点「重置」或 +/- 调整`
-              : `横向比例 ${zoomPercentLabel}%（相对默认）`
+              ? `当前缩放 ${zoomPercentLabel}% 低于本文件滑块下限；点「重置」或 +/- 调整`
+              : atFitAllZoom
+                ? `整段可见（约 ${zoomPercentLabel}% 相对默认 56 px/s）`
+                : `横向比例 ${zoomPercentLabel}%（相对默认 56 px/s）`
           }
           aria-valuetext={
             belowManualSliderRange

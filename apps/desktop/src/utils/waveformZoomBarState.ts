@@ -1,8 +1,10 @@
 import {
+  computeFitAllPxPerSec,
   computeFitSelectionPxPerSec,
+  isTimelineFitInViewport,
   PX_PER_SEC_MAX,
-  PX_PER_SEC_MIN,
   TIMELINE_PX_PER_SEC,
+  type WaveformZoomSliderRange,
 } from "./pxPerSec";
 
 const ZOOM_EPS = 0.001;
@@ -17,6 +19,7 @@ export type WaveformZoomBarUiInput = {
   /** 有选中语段时传入，用于判定 fit-selection 视图。 */
   selectedStartSec?: number;
   selectedEndSec?: number;
+  sliderRange?: WaveformZoomSliderRange;
 };
 
 export type WaveformZoomBarUiState = {
@@ -25,8 +28,9 @@ export type WaveformZoomBarUiState = {
   atMinZoom: boolean;
   atMaxZoom: boolean;
   atFitSelectionZoom: boolean;
-  /** px/s 低于手动滑块下限（如跟随长语段 fit），滑块不应假装在 16px/s。 */
+  /** px/s 低于当前文件滑块下限（如跟随语段 fit），滑块停在 0 档。 */
   belowManualSliderRange: boolean;
+  atFitAllZoom: boolean;
   zoomPercentLabel: number;
 };
 
@@ -71,7 +75,8 @@ export function computeWaveformZoomBarUiState(input: WaveformZoomBarUiInput | nu
       ? { pxPerSec: input, viewportWidthPx: 0, durationSec: 0 }
       : input;
 
-  const { pxPerSec, viewportWidthPx, selectedStartSec, selectedEndSec } = resolved;
+  const { pxPerSec, viewportWidthPx, durationSec, selectedStartSec, selectedEndSec, sliderRange } =
+    resolved;
   const atFitSelectionZoom = computeAtFitSelectionZoom(
     pxPerSec,
     viewportWidthPx,
@@ -79,15 +84,27 @@ export function computeWaveformZoomBarUiState(input: WaveformZoomBarUiInput | nu
     selectedEndSec,
   );
   const atDefaultZoom = Math.abs(pxPerSec - TIMELINE_PX_PER_SEC) < ZOOM_EPS;
-  const belowManualSliderRange = pxPerSec < PX_PER_SEC_MIN - ZOOM_EPS;
+  const sliderMinPx =
+    sliderRange?.minPxPerSec ??
+    (viewportWidthPx > 0 && durationSec > 0
+      ? computeFitAllPxPerSec(viewportWidthPx, durationSec)
+      : pxPerSec);
+  const belowManualSliderRange = pxPerSec < sliderMinPx - ZOOM_EPS;
+  const atFitAllZoom =
+    viewportWidthPx > 0 &&
+    durationSec > 0 &&
+    isTimelineFitInViewport(viewportWidthPx, durationSec, pxPerSec);
 
   return {
     viewMode: deriveWaveformZoomViewMode(resolved),
     atDefaultZoom,
-    atMinZoom: pxPerSec <= PX_PER_SEC_MIN + ZOOM_EPS,
-    atMaxZoom: pxPerSec >= PX_PER_SEC_MAX - ZOOM_EPS,
+    atMinZoom: belowManualSliderRange
+      ? false
+      : Math.abs(pxPerSec - sliderMinPx) < ZOOM_EPS || atFitAllZoom,
+    atMaxZoom: pxPerSec >= (sliderRange?.maxPxPerSec ?? PX_PER_SEC_MAX) - ZOOM_EPS,
     atFitSelectionZoom,
     belowManualSliderRange,
+    atFitAllZoom,
     zoomPercentLabel: Math.round((pxPerSec / TIMELINE_PX_PER_SEC) * 100),
   };
 }

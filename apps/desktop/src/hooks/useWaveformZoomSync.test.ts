@@ -3,6 +3,15 @@ import { describe, expect, it, vi } from "vitest";
 import type { PeakCache } from "../services/waveform/PeakCache";
 import { useWaveformZoomSync } from "./useWaveformZoomSync";
 
+async function flushZoomFrames() {
+  await new Promise<void>((resolve) => {
+    requestAnimationFrame(() => {
+      requestAnimationFrame(() => resolve());
+    });
+  });
+  await Promise.resolve();
+}
+
 describe("useWaveformZoomSync", () => {
   it("calls ws.zoom synchronously in layout effect when minPxPerSec changes", () => {
     const zoom = vi.fn();
@@ -69,9 +78,9 @@ describe("useWaveformZoomSync", () => {
     rerender({ minPxPerSec: 80 });
 
     expect(peakCache.getWaveSurferPeaks).toHaveBeenCalledWith(80);
+    await flushZoomFrames();
     expect(load).toHaveBeenCalledWith("asset://audio.mp3", [[0, 1, 0, 0.5]], 10);
-    await Promise.resolve();
-    await Promise.resolve();
+    await flushZoomFrames();
     expect(zoom).not.toHaveBeenCalled();
     expect(appliedZoomPxPerSecRef.current).toBe(80);
   });
@@ -111,8 +120,8 @@ describe("useWaveformZoomSync", () => {
     );
 
     rerender({ minPxPerSec: 80 });
-    await Promise.resolve();
-    await Promise.resolve();
+    await flushZoomFrames();
+    await flushZoomFrames();
 
     expect(zoom).not.toHaveBeenCalled();
     expect(onZoomApplied).toHaveBeenCalledWith(80);
@@ -152,8 +161,8 @@ describe("useWaveformZoomSync", () => {
     );
 
     rerender({ minPxPerSec: 56 });
-    await Promise.resolve();
-    await Promise.resolve();
+    await flushZoomFrames();
+    await flushZoomFrames();
 
     expect(setScroll).toHaveBeenCalledWith(500);
   });
@@ -192,8 +201,8 @@ describe("useWaveformZoomSync", () => {
     );
 
     rerender({ minPxPerSec: 388 });
-    await Promise.resolve();
-    await Promise.resolve();
+    await flushZoomFrames();
+    await flushZoomFrames();
 
     expect(setScroll).toHaveBeenCalledWith(500);
   });
@@ -281,9 +290,9 @@ describe("useWaveformZoomSync", () => {
     rerender({ peakCache });
 
     expect(peakCache.getWaveSurferPeaks).toHaveBeenCalledWith(56);
+    await flushZoomFrames();
     expect(load).toHaveBeenCalled();
-    await Promise.resolve();
-    await Promise.resolve();
+    await flushZoomFrames();
     expect(appliedPeaksRef.current).toBe(true);
   });
 
@@ -329,16 +338,17 @@ describe("useWaveformZoomSync", () => {
     );
 
     rerender({ minPxPerSec: 80 });
+    await flushZoomFrames();
     rerender({ minPxPerSec: 120 });
-    await Promise.resolve();
-    await Promise.resolve();
+    await flushZoomFrames();
+    await flushZoomFrames();
 
     expect(appliedZoomPxPerSecRef.current).toBe(120);
     const scrollCallsBeforeStale = setScroll.mock.calls.length;
 
     resolveFirst?.();
-    await Promise.resolve();
-    await Promise.resolve();
+    await flushZoomFrames();
+    await flushZoomFrames();
 
     expect(appliedZoomPxPerSecRef.current).toBe(120);
     expect(setScroll.mock.calls.length).toBe(scrollCallsBeforeStale);

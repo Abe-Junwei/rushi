@@ -58,6 +58,7 @@ export function useTranscriptionViewportFit(args: {
   mediaUrl: string | null;
   getSelectedSegment: () => { start_sec: number; end_sec: number } | null;
   suppressWaveformScrollUntilRef: MutableRefObject<number>;
+  onTierScrollAdjusted?: () => void;
 }) {
   const {
     tierScrollRef,
@@ -73,6 +74,7 @@ export function useTranscriptionViewportFit(args: {
     mediaUrl,
     getSelectedSegment,
     suppressWaveformScrollUntilRef,
+    onTierScrollAdjusted,
   } = args;
 
   const pendingViewportFitRef = useRef<PendingViewportFit | null>(null);
@@ -110,12 +112,13 @@ export function useTranscriptionViewportFit(args: {
       markProgrammaticScroll();
       scrollApiRef.current.setTierScrollPx(targetSl);
       wfApiRef.current.setScrollLeft(targetSl);
+      onTierScrollAdjusted?.();
       if (options?.finalize !== false) {
         pendingViewportFitRef.current = null;
       }
       return true;
     },
-    [durationRef, markProgrammaticScroll, scrollApiRef, tierScrollRef, wfApiRef],
+    [durationRef, markProgrammaticScroll, onTierScrollAdjusted, scrollApiRef, tierScrollRef, wfApiRef],
   );
 
   const queueViewportFit = useCallback(
@@ -146,9 +149,10 @@ export function useTranscriptionViewportFit(args: {
       markProgrammaticScroll(undefined, Math.abs(targetSl - currentSl));
       scrollApiRef.current.setTierScrollPx(targetSl);
       wfApiRef.current.setScrollLeft(targetSl);
+      onTierScrollAdjusted?.();
       pendingViewportFitRef.current = null;
     },
-    [durationRef, markProgrammaticScroll, scrollApiRef, tierScrollRef, wfApiRef],
+    [durationRef, markProgrammaticScroll, onTierScrollAdjusted, scrollApiRef, tierScrollRef, wfApiRef],
   );
 
   const runZoomToFitSegment = useCallback(

@@ -80,11 +80,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     onWaveformCreateRange: ctx.insertSegmentFromTimeRange,
     onWaveformScroll: (scrollLeftPx) => onWaveformScrollRef.current(scrollLeftPx),
     getViewportScrollPx: () => tierScrollRef.current?.scrollLeft ?? 0,
-    onZoomApplied: (pxPerSec) => {
-      const applied = applyPendingViewportFitRef.current(pxPerSec, { finalize: true });
-      setPeaksRepaintKey((k) => k + 1);
-      return applied;
-    },
+    onZoomApplied: (pxPerSec) => applyPendingViewportFitRef.current(pxPerSec, { finalize: true }),
   });
 
   durationRef.current = wf.duration || 0;
@@ -120,6 +116,14 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
   pxPerSecRef.current = zoom.pxPerSec;
 
   const [peaksRepaintKey, setPeaksRepaintKey] = useState(0);
+  // Stable callback — passing an inline arrow to `useTranscriptionViewportFit`
+  // would re-create `applyPendingViewportFit` every render, which is wired into
+  // a `useLayoutEffect` dep array. That re-runs the effect on every render and,
+  // if a pending fit exists, sets state from inside the layout effect — which
+  // React 19 flushes synchronously and triggers "Maximum update depth exceeded".
+  const handleTierScrollAdjusted = useCallback(() => {
+    setPeaksRepaintKey((k) => k + 1);
+  }, []);
   const [editorHint, setEditorHint] = useState("");
   const editorHintTimerRef = useRef(0);
   const showEditorHint = useCallback((msg: string) => {
@@ -156,9 +160,14 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     mediaUrl: ctx.mediaUrl,
     getSelectedSegment: () => ctx.segments[ctx.selectedIdx] ?? null,
     suppressWaveformScrollUntilRef,
+    onTierScrollAdjusted: handleTierScrollAdjusted,
   });
   onWaveformScrollRef.current = viewportFit.onWaveformScroll;
-  applyPendingViewportFitRef.current = viewportFit.applyPendingViewportFit;
+  applyPendingViewportFitRef.current = (pxPerSec, options) => {
+    const applied = viewportFit.applyPendingViewportFit(pxPerSec, options);
+    if (applied) setPeaksRepaintKey((k) => k + 1);
+    return applied;
+  };
 
   const enterManualWaveformNavigation = useCallback(() => {
     viewportFit.cancelViewportFit();

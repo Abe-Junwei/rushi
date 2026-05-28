@@ -1,6 +1,9 @@
 import { useEffect, useLayoutEffect, useMemo, useRef, useState } from "react";
 import { afterSmoothScrollEnd } from "../utils/tierScrollSmooth";
-import { WAVEFORM_SCROLL_SYNC_EPSILON_PX } from "../utils/waveformScrollSync";
+import {
+  WAVEFORM_SCROLL_REVERSE_SYNC_EPSILON_PX,
+  WAVEFORM_SCROLL_SYNC_EPSILON_PX,
+} from "../utils/waveformScrollSync";
 import type { useProjectWaveform } from "./useProjectWaveform";
 
 type WfApi = ReturnType<typeof useProjectWaveform>;
@@ -40,7 +43,16 @@ export function useTierScrollSync(args: {
     ) {
       return;
     }
-    if (Math.abs(tier.scrollLeft - sl) > WAVEFORM_SCROLL_SYNC_EPSILON_PX) {
+    // Use a wider epsilon when the *source* of the update is WaveSurfer:
+    // sub-pixel rounding in ws.zoom/setScrollLeft otherwise snaps the tier
+    // back 0.5-2px on every user scroll-stop (visible as flicker, esp. on
+    // long audio). Forward direction (user/program → tier) keeps the tight
+    // 0.5px threshold so seeks/programmatic positioning stay accurate.
+    const writeEpsilon =
+      source === "waveform"
+        ? WAVEFORM_SCROLL_REVERSE_SYNC_EPSILON_PX
+        : WAVEFORM_SCROLL_SYNC_EPSILON_PX;
+    if (Math.abs(tier.scrollLeft - sl) > writeEpsilon) {
       tier.scrollLeft = sl;
     }
     committedScrollLeftRef.current = sl;

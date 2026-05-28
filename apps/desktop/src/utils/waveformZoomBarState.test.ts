@@ -1,8 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  computeFitAllPxPerSec,
   computeFitSelectionPxPerSec,
   PX_PER_SEC_MAX,
-  PX_PER_SEC_MIN,
   TIMELINE_PX_PER_SEC,
 } from "./pxPerSec";
 import { computeCrosshairTogglePressed, computeWaveformZoomBarUiState } from "./waveformZoomBarState";
@@ -15,8 +15,15 @@ describe("computeWaveformZoomBarUiState", () => {
     expect(s.zoomPercentLabel).toBe(100);
   });
 
-  it("marks min and max manual zoom boundaries", () => {
-    expect(computeWaveformZoomBarUiState(PX_PER_SEC_MIN).atMinZoom).toBe(true);
+  it("marks min at fit-all and max at slider ceiling", () => {
+    const fitAll = computeFitAllPxPerSec(800, 3600);
+    const s = computeWaveformZoomBarUiState({
+      pxPerSec: fitAll,
+      viewportWidthPx: 800,
+      durationSec: 3600,
+    });
+    expect(s.atMinZoom).toBe(true);
+    expect(s.atFitAllZoom).toBe(true);
     expect(computeWaveformZoomBarUiState(PX_PER_SEC_MAX).atMaxZoom).toBe(true);
   });
 
@@ -33,11 +40,15 @@ describe("computeWaveformZoomBarUiState", () => {
     expect(s.atFitSelectionZoom).toBe(true);
   });
 
-  it("ultra-low px/s without viewport context is custom", () => {
-    const s = computeWaveformZoomBarUiState(0.2);
+  it("ultra-low px/s below file fit-all is below slider range", () => {
+    const s = computeWaveformZoomBarUiState({
+      pxPerSec: 0.05,
+      viewportWidthPx: 800,
+      durationSec: 3600,
+    });
     expect(s.viewMode).toBe("custom");
     expect(s.belowManualSliderRange).toBe(true);
-    expect(s.atMinZoom).toBe(true);
+    expect(s.atMinZoom).toBe(false);
   });
 });
 

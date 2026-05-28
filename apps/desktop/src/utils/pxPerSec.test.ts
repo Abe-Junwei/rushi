@@ -2,8 +2,11 @@ import { describe, expect, it } from "vitest";
 import {
   clampPxPerSec,
   clampPxPerSecForSlider,
+  computeFitAllPxPerSec,
   computeFitSelectionPxPerSec,
+  isTimelineFitInViewport,
   resolveSelectionFitPxPerSec,
+  resolveWaveformZoomSliderRange,
   computeSelectionFitScrollPx,
   computeViewportFitScrollPx,
   PX_PER_SEC_FIT_MIN,
@@ -36,6 +39,28 @@ describe("clampPxPerSecForSlider", () => {
     expect(clampPxPerSecForSlider(1)).toBe(PX_PER_SEC_MIN);
     expect(clampPxPerSecForSlider(0.2)).toBe(PX_PER_SEC_MIN);
     expect(clampPxPerSecForSlider(9999)).toBe(PX_PER_SEC_MAX);
+  });
+});
+
+describe("computeFitAllPxPerSec", () => {
+  it("fits timeline width to viewport for long media", () => {
+    const px = computeFitAllPxPerSec(800, 3600);
+    expect(px).toBeCloseTo(800 / 3600, 5);
+    expect(isTimelineFitInViewport(800, 3600, px)).toBe(true);
+  });
+
+  it("slider min is below legacy 16 px/s for hour-long audio", () => {
+    const px = computeFitAllPxPerSec(800, 3600);
+    expect(px).toBeLessThan(PX_PER_SEC_MIN);
+    expect(Math.round((px / 56) * 100)).toBeLessThan(29);
+  });
+});
+
+describe("resolveWaveformZoomSliderRange", () => {
+  it("uses fit-all as min and caps max above min", () => {
+    const range = resolveWaveformZoomSliderRange(800, 120);
+    expect(range.minPxPerSec).toBeCloseTo((800 - 0) / 120, 4);
+    expect(range.maxPxPerSec).toBeGreaterThan(range.minPxPerSec);
   });
 });
 

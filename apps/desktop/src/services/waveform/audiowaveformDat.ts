@@ -37,6 +37,11 @@ const MAX_UPSAMPLE_RATIO = 50;
 export function resampleWaveformForPxPerSec(data: WaveformData, pxPerSec: number): WaveformData {
   const baseWidth = data.length;
   const targetWidth = Math.max(1, Math.ceil(data.duration * pxPerSec));
+  // waveform-data 的 resample 只支持下采样（targetWidth <= baseWidth）。
+  // 若需要上采样，直接返回原数据，由 Canvas 绘制层做视觉拉伸。
+  if (targetWidth > baseWidth) {
+    return data;
+  }
   const width = Math.min(targetWidth, Math.max(1, baseWidth * MAX_UPSAMPLE_RATIO));
   return data.resample({ width });
 }

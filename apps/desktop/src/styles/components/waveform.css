@@ -445,12 +445,15 @@
 }
 
 /*
- * 主波形 z-index 栈（由低到高）：
- * z-0  WaveSurfer 透明层
- * z-2  WaveformPeaksViewportLayer（Canvas peaks）
- * z-3  waveform-segment-overlay
- * z-8  region-action-overlay（语段播放控制）
- * z-10 嵌入时间尺 WaveformLiveTimeRuler
+ * 主波形舞台 z-index 栈（由低到高，单一 stacking context）：
+ *   z-1  WaveformPeaksViewportLayer（手动 sticky：absolute + transform:translateX(scrollLeft)）
+ *   z-1  tier 宽内容 wide-content（含 ws / segments / ruler，自成 stacking context）：
+ *     z-0  WaveSurfer 透明层
+ *     z-3  waveform-segment-overlay
+ *     z-8  region-action-overlay（语段播放控制）
+ *     z-10 嵌入时间尺 WaveformLiveTimeRuler
+ *   peaks 与 wide-content 同 z=1，但 source order 上 peaks 在前，wide-content 在后 →
+ *   wide-content 自然覆盖在 peaks 之上。
  */
 
 .waveform-segment-overlay {

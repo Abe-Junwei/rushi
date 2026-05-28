@@ -28,7 +28,7 @@ export function useWaveformZoom() {
   }, [pxPerSec]);
 
   const setPxPerSec = useCallback((next: number) => {
-    setPxPerSecState(clampPxPerSecForSlider(next));
+    setPxPerSecState(clampPxPerSec(next));
   }, []);
 
   const beginZoomInteraction = useCallback(() => {

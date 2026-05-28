@@ -1,5 +1,6 @@
 import { ResizeBottomHit } from "../ResizeBottomHit";
 import { WaveformLiveTimeRuler } from "../WaveformLiveTimeRuler";
+import { WaveformPeaksTileLayer } from "../WaveformPeaksTileLayer";
 import { WaveformPeaksViewportLayer } from "../WaveformPeaksViewportLayer";
 import { WaveformGlobalPlaybackSpeed } from "../WaveformGlobalPlaybackSpeed";
 import { WaveformGoToTime } from "../WaveformGoToTime";
@@ -10,11 +11,12 @@ import { WaveformOverviewStrip } from "../WaveformOverviewStrip";
 import { WaveformGlobalStripShell } from "../WaveformGlobalStripShell";
 import { WaveformZoomBar } from "../WaveformZoomBar";
 import { WAVEFORM_GLOBAL_STRIP_HEIGHT_PX } from "../../utils/waveformViewMode";
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import { useWaveformViewportMetrics } from "../../hooks/useWaveformViewportMetrics";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
 import { resolveSegmentIndexAtWaveformPointer } from "../../utils/waveformSegmentBounds";
+import { isWaveformTileRendererEnabled } from "../../utils/waveformTileFlag";
 
 interface SegmentCtxMenuState {
   x: number;
@@ -37,6 +39,8 @@ export function EditorWaveformPane({
   const selectedSegment = c.segments[c.selectedIdx] ?? null;
   const liveViewport = tx.isPlaying || tx.zoomDragging;
   const { scrollLeftPx, clientWidthPx } = useWaveformViewportMetrics(tx.tierScrollRef, liveViewport);
+  // ADR-0004 feature flag: read once per mount; toggle via localStorage + reload.
+  const tileRendererEnabled = useMemo(() => isWaveformTileRendererEnabled(), []);
 
   const readTierScrollLeftPx = useCallback(
     () => tx.tierScrollRef.current?.scrollLeft ?? scrollLeftPx,
@@ -70,19 +74,23 @@ export function EditorWaveformPane({
         style={{ height: waveformStageHeightPx }}
         className="relative w-full shrink-0 overflow-x-auto overflow-y-hidden [overflow-anchor:none]"
       >
-        <WaveformPeaksViewportLayer
-          peakCache={tx.peakCache}
-          active={Boolean(tx.peakCache)}
-          pxPerSec={tx.pxPerSec}
-          scrollLeftPx={scrollLeftPx}
-          viewportWidthPx={clientWidthPx}
-          heightPx={innerWaveformHeightPx}
-          progressTimeSec={tx.isPlaying && tx.isReady ? tx.getPlayheadTime() : tx.currentTime}
-          tierScrollRef={tx.tierScrollRef}
-          readScrollLeftPx={readTierScrollLeftPx}
-          readViewportWidthPx={readTierViewportWidthPx}
-          repaintKey={tx.peaksRepaintKey}
-        />
+        {/* 旧路径（ADR-0004 之前）：手动 sticky 的 viewport-fixed canvas。
+            P4 完成后删除。flag=false 时走此路径，作为 regression escape hatch。 */}
+        {!tileRendererEnabled ? (
+          <WaveformPeaksViewportLayer
+            peakCache={tx.peakCache}
+            active={Boolean(tx.peakCache)}
+            pxPerSec={tx.pxPerSec}
+            scrollLeftPx={scrollLeftPx}
+            viewportWidthPx={clientWidthPx}
+            heightPx={innerWaveformHeightPx}
+            progressTimeSec={tx.isPlaying && tx.isReady ? tx.getPlayheadTime() : tx.currentTime}
+            tierScrollRef={tx.tierScrollRef}
+            readScrollLeftPx={readTierScrollLeftPx}
+            readViewportWidthPx={readTierViewportWidthPx}
+            repaintKey={tx.peaksRepaintKey}
+          />
+        ) : null}
         <div
           style={{ width: tx.timelineWidthPx }}
           className={`relative z-[1] inline-block align-top ${c.busy ? "pointer-events-none opacity-60" : ""}`}
@@ -140,6 +148,18 @@ export function EditorWaveformPane({
                         height: innerPaintedHeightPx,
                       }}
                     >
+                      {/* 新路径（ADR-0004）：content-tile canvas，挂在内容流里，跟 timeline 自然滚动。
+                          无 sticky、无 transform、无 scroll listener。z=1，被 segments overlay z=3 覆盖。 */}
+                      {tileRendererEnabled ? (
+                        <WaveformPeaksTileLayer
+                          peakCache={tx.peakCache}
+                          pxPerSec={tx.pxPerSec}
+                          timelineWidthPx={tx.timelineWidthPx}
+                          heightPx={innerWaveformHeightPx}
+                          viewportWidthPx={clientWidthPx}
+                          tierScrollRef={tx.tierScrollRef}
+                        />
+                      ) : null}
                       <WaveformSegmentOverlay
                         disabled={stripDisabled}
                         segments={c.segments}
@@ -289,8 +309,6 @@ export function EditorWaveformPane({
           onEnterFollowNavigation={tx.enterFollowWaveformNavigation}
           onRefitFollowSelection={tx.refitFollowWaveformSelection}
           onResetDefaultZoom={() => tx.resetZoom()}
-          onZoomIn={() => tx.zoomIn()}
-          onZoomOut={() => tx.zoomOut()}
           onPxPerSecChange={tx.setPxPerSec}
           onZoomInteractionStart={tx.beginZoomInteraction}
           onZoomInteractionEnd={tx.commitZoomInteraction}

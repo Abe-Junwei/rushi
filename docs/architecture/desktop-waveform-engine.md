@@ -19,6 +19,43 @@
 - **tier** `tierScrollRef.scrollLeft` 为 UI 真源（overlay、Canvas draw、ruler、全局条视口框）。
 - WaveSurfer 内部 scroll 通过 `useTierScrollSync` 同步，不反向驱动语段位置。
 
+## Peaks layer 挂载契约（2026-05 根因修复 + 手动 sticky）
+
+**`WaveformPeaksViewportLayer` 挂在 `tierScrollRef` 内部、宽内容之前**，外壳用 **手动
+sticky**（订阅 tier `scroll` + `transform: translateX(scrollLeft)`）贴在视口左边。
+
+舞台 DOM：
+
+```text
+<div ref=tierScrollRef overflow-x:auto>          ← tier
+  <peaks-anchor absolute;left:0;top:0;          ← 手动 sticky，z=1
+                width:vw;height:heightPx;
+                transform:translateX(scrollLeft)>
+    <Canvas width:vw height:heightPx />          ← 撑满视口
+  <wide-content inline-block width=timelineWidthPx z=1>  ← 滚动内容
+    ... segments (z=3) / ws (z=0) / ruler (z=10)
+</div>
+```
+
+**根因排查（2026-05 多轮）**：
+
+1. CSS `position:absolute` 在 `overflow-x:auto` 父内随**内容坐标**定位，会随宽内容
+   横向滚出视口 → 长音频滚到后部 canvas DOM 物理上在视口外。
+2. 改用 wrapper + `absolute inset-0` 让 tier 脱离自身坐标 → 破坏 tier 尺寸读取链路，
+   `clientWidth` 异常，layout 整体崩。
+3. 改用 CSS `position:sticky` + `inline-block` + `width:0` → 部分场景下 sticky 首次
+   生效后失效（peaks "闪一下消失"），inline 上下文里 sticky 行为不稳定。
+4. **手动 sticky**（当前方案）：layer 用 `position:absolute`（content 坐标），订阅
+   tier `scroll`，每帧用 `transform: translateX(scrollLeft)` 抵消内容平移 → 视觉上
+   始终钉在视口左边，跨浏览器一致，无 CSS sticky 的隐式条件。
+
+**绘制**：Canvas 通过 `readScrollLeftPx()`（= `tierScrollRef.current.scrollLeft`）
++ 内部 scroll 监听重绘可见切片。layer 物理位置由 transform 跟随，Canvas 内容由
+slice 计算切片，两条路径独立都正确。
+
+**z-index**：peaks layer 与 wide-content 同 z=1，source order peaks 在前 →
+wide-content (含 segments z=3 / ruler z=10) 自然覆盖在 peaks 之上。
+
 ## 偏好（localStorage）
 
 | Key | 含义 |

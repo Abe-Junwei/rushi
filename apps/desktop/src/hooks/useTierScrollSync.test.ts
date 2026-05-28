@@ -99,6 +99,46 @@ describe("useTierScrollSync", () => {
     expect(result.current.tierScrollLayout).toEqual({ clientWidth: 320 });
   });
 
+  it("ignores subpixel waveform scroll noise so user scroll doesn't snap back", () => {
+    // Regression: WaveSurfer's `zoom` / `setScrollLeft` round to sub-integer
+    // positions. The resulting waveform→tier sync event used to write tier
+    // back by 0.5-2px, producing visible flicker on long audio. Reverse
+    // direction must tolerate noise up to WAVEFORM_SCROLL_REVERSE_SYNC_EPSILON_PX.
+    const { el: tier } = createTierContainer();
+    const tierScrollRef = { current: tier };
+    const wfApiRef = { current: createWaveformApi(0) };
+
+    const { result } = renderHook(() =>
+      useTierScrollSync({
+        tierScrollRef,
+        timelineWidthPx: 2000,
+        wfApiRef: wfApiRef as never,
+        waveformReady: true,
+        mediaUrl: "/audio.wav",
+      }),
+    );
+
+    // User scrolls to 1000, sync flows through.
+    act(() => {
+      tier.scrollLeft = 1000;
+      result.current.onTierScroll();
+    });
+    expect(tier.scrollLeft).toBe(1000);
+
+    // WaveSurfer rounds and reports back 998.7 — a 1.3px subpixel delta that
+    // used to snap tier back. Must be ignored.
+    act(() => {
+      result.current.syncWaveformScrollPx(998.7);
+    });
+    expect(tier.scrollLeft).toBe(1000);
+
+    // A real >4px difference (e.g. playback autoScroll) still propagates.
+    act(() => {
+      result.current.syncWaveformScrollPx(1010);
+    });
+    expect(tier.scrollLeft).toBe(1010);
+  });
+
   it("uses smooth DOM scrolling and syncs waveform after scroll settles", () => {
     const { el: tier, scrollToMock } = createTierContainer();
     const tierScrollRef = { current: tier };
