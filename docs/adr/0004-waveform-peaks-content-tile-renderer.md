@@ -1,7 +1,7 @@
 ---
 adr: "0004"
 title: 桌面端波形 peaks 渲染 — 切换到 content-tile 范式（WaveSurfer v7 同款）
-status: proposed
+status: accepted
 date: 2026-05-28
 ---
 
@@ -81,7 +81,7 @@ date: 2026-05-28
 
 ### 回滚
 
-P1–P3 阶段保留旧 `WaveformPeaksViewportLayer` 路径，由 feature flag `RUSHI_WAVEFORM_TILE_RENDERER`（localStorage）切换；**flag 默认 true**（更快暴露问题，单人开发激进推进）。若新路径在 P1/P2/P3 任一手测出现 regression，可在浏览器 console 内 `localStorage.setItem('RUSHI_WAVEFORM_TILE_RENDERER', 'false')` 立即回到旧路径。P4 完成手测稳定后删除旧路径与 flag。
+P4（2026-05）已删除旧 viewport-fixed 路径与 `RUSHI_WAVEFORM_TILE_RENDERER` flag。回滚需 git revert 对应 commit，不再支持 runtime 切换。
 
 ## 验证标准
 
@@ -101,4 +101,4 @@ P1–P3 阶段保留旧 `WaveformPeaksViewportLayer` 路径，由 feature flag `
 - [Peaks.js（BBC）](https://github.com/bbc/peaks.js/) — 同样的 content-tile 思路
 - [Konva 大画布滚动 demo](https://konvajs.org/docs/sandbox/Canvas_Scrolling.html) — 范式 B 的另一种实现（对照）
 - [Virtualizing The Canvas (gedge.ca)](https://gedge.ca/blog/2024-11-03-virtualizing-the-canvas/) — virtual canvas 通用方法学
-- 现行实现：[`WaveformPeaksViewportLayer.tsx`](../../apps/desktop/src/components/WaveformPeaksViewportLayer.tsx)、[`desktop-waveform-engine.md`](../architecture/desktop-waveform-engine.md)
+- 现行实现：[`WaveformPeaksTileLayer.tsx`](../../apps/desktop/src/components/WaveformPeaksTileLayer.tsx)、[`desktop-waveform-engine.md`](../architecture/desktop-waveform-engine.md)

@@ -9,7 +9,7 @@ import {
   overviewSegmentBarPx,
 } from "../utils/waveformOverviewGeometry";
 import { computeTimelineWidthPx } from "../utils/pxPerSec";
-import { WaveformPeaksCanvas } from "./WaveformPeaksCanvas";
+import { WaveformOverviewPeaksCanvas } from "./WaveformOverviewPeaksCanvas";
 
 export type WaveformOverviewStripProps = {
   stripHeightPx: number;
@@ -123,16 +123,13 @@ export const WaveformOverviewStrip = memo(function WaveformOverviewStrip({
         onPointerUp={interaction.onOverviewPointerUp}
         onPointerCancel={interaction.onOverviewPointerCancel}
       >
-        {showPeaks ? (
-          <WaveformPeaksCanvas
+        {showPeaks && peakCache ? (
+          <WaveformOverviewPeaksCanvas
             peakCache={peakCache}
             pxPerSec={overviewPxPerSec}
             timelineWidthPx={overviewTimelineWidthPx}
-            scrollLeftPx={0}
             viewportWidthPx={overviewWidthPx}
             heightPx={Math.max(24, stripHeightPx - 8)}
-            progressTimeSec={progressTimeSec}
-            active
           />
         ) : (
           <div className="absolute inset-0 bg-notion-sidebar-active/40" aria-hidden />

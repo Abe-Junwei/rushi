@@ -48,12 +48,6 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
   const display = useWaveformDisplay({ busy: ctx.busy });
   const peaks = useWaveformPeaks(ctx.projectId, ctx.mediaUrl ? ctx.fileId : null);
 
-  useEffect(() => {
-    if (peaks.peakCache) {
-      setPeaksRepaintKey((k) => k + 1);
-    }
-  }, [peaks.peakCache]);
-
   const durationRef = useRef(0);
   const syncWaveformScrollRef = useRef<(scrollLeftPx: number) => void>(() => {});
   const scrollApiRef = useRef({ setTierScrollPx: (_scrollLeftPx: number) => {} });
@@ -115,15 +109,6 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
   const pxPerSecRef = useRef(zoom.pxPerSec);
   pxPerSecRef.current = zoom.pxPerSec;
 
-  const [peaksRepaintKey, setPeaksRepaintKey] = useState(0);
-  // Stable callback — passing an inline arrow to `useTranscriptionViewportFit`
-  // would re-create `applyPendingViewportFit` every render, which is wired into
-  // a `useLayoutEffect` dep array. That re-runs the effect on every render and,
-  // if a pending fit exists, sets state from inside the layout effect — which
-  // React 19 flushes synchronously and triggers "Maximum update depth exceeded".
-  const handleTierScrollAdjusted = useCallback(() => {
-    setPeaksRepaintKey((k) => k + 1);
-  }, []);
   const [editorHint, setEditorHint] = useState("");
   const editorHintTimerRef = useRef(0);
   const showEditorHint = useCallback((msg: string) => {
@@ -160,14 +145,9 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     mediaUrl: ctx.mediaUrl,
     getSelectedSegment: () => ctx.segments[ctx.selectedIdx] ?? null,
     suppressWaveformScrollUntilRef,
-    onTierScrollAdjusted: handleTierScrollAdjusted,
   });
   onWaveformScrollRef.current = viewportFit.onWaveformScroll;
-  applyPendingViewportFitRef.current = (pxPerSec, options) => {
-    const applied = viewportFit.applyPendingViewportFit(pxPerSec, options);
-    if (applied) setPeaksRepaintKey((k) => k + 1);
-    return applied;
-  };
+  applyPendingViewportFitRef.current = viewportFit.applyPendingViewportFit;
 
   const enterManualWaveformNavigation = useCallback(() => {
     viewportFit.cancelViewportFit();
@@ -231,6 +211,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
       const targetSl = computeSelectionFitScrollPx({
         viewportWidthPx: tier.clientWidth,
         timelineWidthPx: tw,
+        durationSec: dur,
         pxPerSec: px,
         startSec: s.start_sec,
         endSec: s.end_sec,
@@ -324,7 +305,6 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     peaksLoading: peaks.loading,
     peaksError: peaks.error,
     peakCache: peaks.peakCache,
-    peaksRepaintKey,
     pxPerSec: zoom.pxPerSec,
     renderPxPerSec: zoom.renderPxPerSec,
     zoomPreviewActive: zoom.zoomPreviewActive,

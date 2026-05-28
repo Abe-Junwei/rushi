@@ -156,15 +156,19 @@ export function resolveSelectionFitPxPerSec(
 export function computeSelectionFitScrollPx(input: {
   viewportWidthPx: number;
   timelineWidthPx: number;
-  pxPerSec: number;
+  durationSec: number;
   startSec: number;
   endSec: number;
+  /** 保留以兼容旧调用；滚动位置按 timelineWidthPx 比例映射，不用 pxPerSec 线性乘。 */
+  pxPerSec?: number;
 }): number {
   const vw = Math.max(1, input.viewportWidthPx);
-  const maxSl = Math.max(0, input.timelineWidthPx - vw);
+  const tw = Math.max(1, input.timelineWidthPx);
+  const dur = Math.max(input.durationSec, 0.001);
+  const maxSl = Math.max(0, tw - vw);
   const span = Math.max(input.endSec - input.startSec, 0.05);
-  const segStartPx = input.startSec * input.pxPerSec;
-  const segWidthPx = span * input.pxPerSec;
+  const segStartPx = (input.startSec / dur) * tw;
+  const segWidthPx = (span / dur) * tw;
   const targetSl = segStartPx - (vw - segWidthPx) / 2;
   return Math.max(0, Math.min(maxSl, targetSl));
 }
@@ -178,13 +182,15 @@ export function computeViewportFitScrollPx(input: {
   intent: ViewportFitScrollIntent;
   viewportWidthPx: number;
   timelineWidthPx: number;
+  durationSec: number;
   pxPerSec: number;
 }): number {
   return computeSelectionFitScrollPx({
     viewportWidthPx: input.viewportWidthPx,
     timelineWidthPx: input.timelineWidthPx,
-    pxPerSec: input.pxPerSec,
+    durationSec: input.durationSec,
     startSec: input.intent.startSec,
     endSec: input.intent.endSec,
+    pxPerSec: input.pxPerSec,
   });
 }

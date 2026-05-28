@@ -78,6 +78,15 @@ export const WaveformPeaksTileLayer = memo(function WaveformPeaksTileLayer({
     };
   }, [tierScrollRef]);
 
+  // After zoom/fit the tier scroll jumps programmatically; sync once before the
+  // next rAF so tile layout matches on the same frame as timeline width change.
+  useLayoutEffect(() => {
+    const el = tierScrollRef.current;
+    if (!el) return;
+    const next = el.scrollLeft;
+    setScrollLeftPx((prev) => (prev === next ? prev : next));
+  }, [tierScrollRef, timelineWidthPx, pxPerSec, viewportWidthPx]);
+
   const layout = useMemo(
     () =>
       computeTileLayout({

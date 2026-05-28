@@ -13,7 +13,7 @@ describe("resolveViewportFitScrollPx", () => {
       viewportWidthPx: 800,
     });
     const tw = Math.max(Math.ceil(120 * px), 320);
-    expect(scroll).toBe(10 * px - (800 - 2 * px) / 2);
+    expect(scroll).toBe((10 / 120) * tw - (800 - (2 / 120) * tw) / 2);
     expect(scroll).toBeGreaterThanOrEqual(0);
     expect(scroll).toBeLessThanOrEqual(Math.max(0, tw - 800));
   });

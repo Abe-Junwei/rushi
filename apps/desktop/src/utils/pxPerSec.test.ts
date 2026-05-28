@@ -116,14 +116,17 @@ describe("resolveSelectionFitPxPerSec", () => {
 describe("computeSelectionFitScrollPx", () => {
   it("centers the segment in the viewport", () => {
     const px = 100;
+    const dur = 50;
+    const tw = Math.max(Math.ceil(dur * px), 320);
     const scroll = computeSelectionFitScrollPx({
       viewportWidthPx: 800,
-      timelineWidthPx: 5000,
+      timelineWidthPx: tw,
+      durationSec: dur,
       pxPerSec: px,
       startSec: 10,
       endSec: 12,
     });
-    expect(scroll).toBe(10 * px - (800 - 2 * px) / 2);
+    expect(scroll).toBe((10 / dur) * tw - (800 - (2 / dur) * tw) / 2);
   });
 
   it("clamps scroll at timeline start for first segment", () => {
@@ -131,6 +134,7 @@ describe("computeSelectionFitScrollPx", () => {
       computeSelectionFitScrollPx({
         viewportWidthPx: 800,
         timelineWidthPx: 5000,
+        durationSec: 60,
         pxPerSec: 56,
         startSec: 0,
         endSec: 1,
@@ -146,11 +150,27 @@ describe("computeSelectionFitScrollPx", () => {
     const scroll = computeSelectionFitScrollPx({
       viewportWidthPx: vw,
       timelineWidthPx: tw,
+      durationSec: dur,
       pxPerSec: px,
       startSec: 58,
       endSec: 60,
     });
     expect(scroll).toBe(Math.max(0, tw - vw));
+  });
+
+  it("uses timeline width proportion when floor widens content", () => {
+    const dur = 10;
+    const tw = 320;
+    const scroll = computeSelectionFitScrollPx({
+      viewportWidthPx: 800,
+      timelineWidthPx: tw,
+      durationSec: dur,
+      startSec: 5,
+      endSec: 7,
+    });
+    const segStartPx = (5 / dur) * tw;
+    const segWidthPx = (2 / dur) * tw;
+    expect(scroll).toBe(Math.max(0, segStartPx - (800 - segWidthPx) / 2));
   });
 });
 
@@ -161,12 +181,14 @@ describe("computeViewportFitScrollPx", () => {
         intent: { startSec: 10, endSec: 12 },
         viewportWidthPx: 800,
         timelineWidthPx: 6720,
+        durationSec: 120,
         pxPerSec: 56,
       }),
     ).toBe(
       computeSelectionFitScrollPx({
         viewportWidthPx: 800,
         timelineWidthPx: 6720,
+        durationSec: 120,
         pxPerSec: 56,
         startSec: 10,
         endSec: 12,

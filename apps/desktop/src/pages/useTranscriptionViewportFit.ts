@@ -40,6 +40,7 @@ export function resolveViewportFitScrollPx(input: {
     intent: input.pending.intent,
     viewportWidthPx: input.viewportWidthPx,
     timelineWidthPx: tw,
+    durationSec: input.durationSec,
     pxPerSec: input.pending.pxPerSec,
   });
 }
@@ -58,7 +59,6 @@ export function useTranscriptionViewportFit(args: {
   mediaUrl: string | null;
   getSelectedSegment: () => { start_sec: number; end_sec: number } | null;
   suppressWaveformScrollUntilRef: MutableRefObject<number>;
-  onTierScrollAdjusted?: () => void;
 }) {
   const {
     tierScrollRef,
@@ -74,7 +74,6 @@ export function useTranscriptionViewportFit(args: {
     mediaUrl,
     getSelectedSegment,
     suppressWaveformScrollUntilRef,
-    onTierScrollAdjusted,
   } = args;
 
   const pendingViewportFitRef = useRef<PendingViewportFit | null>(null);
@@ -112,21 +111,36 @@ export function useTranscriptionViewportFit(args: {
       markProgrammaticScroll();
       scrollApiRef.current.setTierScrollPx(targetSl);
       wfApiRef.current.setScrollLeft(targetSl);
-      onTierScrollAdjusted?.();
       if (options?.finalize !== false) {
         pendingViewportFitRef.current = null;
       }
       return true;
     },
-    [durationRef, markProgrammaticScroll, onTierScrollAdjusted, scrollApiRef, tierScrollRef, wfApiRef],
+    [durationRef, markProgrammaticScroll, scrollApiRef, tierScrollRef, wfApiRef],
   );
 
   const queueViewportFit = useCallback(
     (pending: PendingViewportFit) => {
       pendingViewportFitRef.current = pending;
       zoom.setFitPxPerSec(pending.pxPerSec);
+      // Scroll tier immediately when px/s will change — do not wait for peaks
+      // reload + layout effect. Otherwise zoom sync may restore scroll to 0
+      // before viewport-fit runs (follow mode shows 0:00 with blank main view).
+      const tier = tierScrollRef.current;
+      const dur = durationRef.current;
+      if (tier && tier.clientWidth > 0 && dur >= 0.5) {
+        const targetSl = resolveViewportFitScrollPx({
+          pending,
+          durationSec: dur,
+          viewportWidthPx: tier.clientWidth,
+        });
+        const currentSl = tier.scrollLeft;
+        markProgrammaticScroll(undefined, Math.abs(targetSl - currentSl));
+        scrollApiRef.current.setTierScrollPx(targetSl);
+        wfApiRef.current.setScrollLeft(targetSl);
+      }
     },
-    [zoom],
+    [durationRef, markProgrammaticScroll, scrollApiRef, tierScrollRef, wfApiRef, zoom],
   );
 
   const applySelectionViewportScroll = useCallback(
@@ -149,10 +163,9 @@ export function useTranscriptionViewportFit(args: {
       markProgrammaticScroll(undefined, Math.abs(targetSl - currentSl));
       scrollApiRef.current.setTierScrollPx(targetSl);
       wfApiRef.current.setScrollLeft(targetSl);
-      onTierScrollAdjusted?.();
       pendingViewportFitRef.current = null;
     },
-    [durationRef, markProgrammaticScroll, onTierScrollAdjusted, scrollApiRef, tierScrollRef, wfApiRef],
+    [durationRef, markProgrammaticScroll, scrollApiRef, tierScrollRef, wfApiRef],
   );
 
   const runZoomToFitSegment = useCallback(

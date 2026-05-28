@@ -88,26 +88,28 @@ export function useWaveformZoomSync(args: {
     };
 
     const finishZoom = (currentWs: WaveSurfer, options?: { skipZoom?: boolean }) => {
-      if (zoomSyncInFlightRef.current !== null && zoomSyncInFlightRef.current !== minPxPerSec) {
-        return;
-      }
-      try {
-        if (!options?.skipZoom) {
-          currentWs.zoom(minPxPerSec);
+      queueMicrotask(() => {
+        if (zoomSyncInFlightRef.current !== null && zoomSyncInFlightRef.current !== minPxPerSec) {
+          return;
         }
-        appliedZoomPxPerSecRef.current = minPxPerSec;
-        const fitApplied = onZoomAppliedRef?.current?.(minPxPerSec) === true;
-        if (!fitApplied) {
-          // 在 load 完成时再采样 scroll，避免早于 viewport-fit layout 采到旧位置并滚回去。
-          restoreScrollPx(currentWs, resolveScrollRestorePx(captureScrollPx(currentWs)));
+        try {
+          if (!options?.skipZoom) {
+            currentWs.zoom(minPxPerSec);
+          }
+          appliedZoomPxPerSecRef.current = minPxPerSec;
+          const fitApplied = onZoomAppliedRef?.current?.(minPxPerSec) === true;
+          if (!fitApplied) {
+            // 在 load 完成时再采样 scroll，避免早于 viewport-fit layout 采到旧位置并滚回去。
+            restoreScrollPx(currentWs, resolveScrollRestorePx(captureScrollPx(currentWs)));
+          }
+        } catch {
+          /* noop */
+        } finally {
+          if (zoomSyncInFlightRef.current === minPxPerSec) {
+            zoomSyncInFlightRef.current = null;
+          }
         }
-      } catch {
-        /* noop */
-      } finally {
-        if (zoomSyncInFlightRef.current === minPxPerSec) {
-          zoomSyncInFlightRef.current = null;
-        }
-      }
+      });
     };
 
     const applyZoom = () => {
@@ -128,29 +130,26 @@ export function useWaveformZoomSync(args: {
           const bundle = cache.getWaveSurferPeaks(minPxPerSec);
           const loadSeq = ++peaksLoadSeqRef.current;
           zoomSyncInFlightRef.current = minPxPerSec;
-          requestAnimationFrame(() => {
-            if (peaksLoadSeqRef.current !== loadSeq) return;
-            const wsForLoad = wsRef.current;
-            if (!wsForLoad || !isReady || disabled) return;
-            void wsForLoad
-              .load(url, bundle.peaks, bundle.duration)
-              .then(() => {
-                if (peaksLoadSeqRef.current !== loadSeq) return;
-                if (wsRef.current !== wsForLoad) return;
-                if (mediaUrl !== url) return;
-                applyWaveSurferPeaksDrawMode(wsForLoad, true);
-                if (appliedPeaksRef) appliedPeaksRef.current = true;
-                appliedZoomPxPerSecRef.current = minPxPerSec;
-                finishZoom(wsForLoad, { skipZoom: true });
-              })
-              .catch(() => {
-                if (peaksLoadSeqRef.current !== loadSeq) return;
-                if (wsRef.current !== wsForLoad) return;
-                if (appliedPeaksRef) appliedPeaksRef.current = false;
-                applyWaveSurferPeaksDrawMode(wsForLoad, false);
-                finishZoom(wsForLoad);
-              });
-          });
+          const wsForLoad = wsRef.current;
+          if (!wsForLoad || !isReady || disabled) return;
+          void wsForLoad
+            .load(url, bundle.peaks, bundle.duration)
+            .then(() => {
+              if (peaksLoadSeqRef.current !== loadSeq) return;
+              if (wsRef.current !== wsForLoad) return;
+              if (mediaUrl !== url) return;
+              applyWaveSurferPeaksDrawMode(wsForLoad, true);
+              if (appliedPeaksRef) appliedPeaksRef.current = true;
+              appliedZoomPxPerSecRef.current = minPxPerSec;
+              finishZoom(wsForLoad, { skipZoom: true });
+            })
+            .catch(() => {
+              if (peaksLoadSeqRef.current !== loadSeq) return;
+              if (wsRef.current !== wsForLoad) return;
+              if (appliedPeaksRef) appliedPeaksRef.current = false;
+              applyWaveSurferPeaksDrawMode(wsForLoad, false);
+              finishZoom(wsForLoad);
+            });
           return;
         } catch {
           if (zoomSyncInFlightRef.current === minPxPerSec) {

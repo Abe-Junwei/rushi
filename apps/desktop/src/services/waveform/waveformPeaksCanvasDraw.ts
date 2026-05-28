@@ -1,22 +1,3 @@
-export type WaveformPeaksDrawOptions = {
-  heightPx: number;
-  scrollLeftPx: number;
-  viewportWidthPx: number;
-  progressTimeSec: number;
-  pxPerSec: number;
-  durationSec: number;
-  /**
-   * Total timeline width for peak distribution (= `computeTimelineWidthPx`).
-   * When omitted, falls back to `ceil(durationSec * pxPerSec)`. Pass explicitly
-   * so fit-all floor and overview strip stay aligned with tile renderer.
-   */
-  timelineWidthPx?: number;
-  waveColor: string;
-  progressColor: string;
-  barWidth?: number;
-  barGap?: number;
-};
-
 /** Per-tile draw options for ADR-0004 content-tile renderer. No scroll, no progress. */
 export type WaveformPeaksTileDrawOptions = {
   /** Tile's left edge in timeline pixel space (used to slice the right peak columns). */
@@ -39,71 +20,11 @@ export type WaveformPeaksTileDrawOptions = {
   barGap?: number;
 };
 
-/** Draw visible min/max columns from interleaved WaveSurfer peaks `[min0,max0,min1,max1,...]`. */
-export function drawWaveformPeaksViewport(
-  ctx: CanvasRenderingContext2D,
-  interleavedPeaks: number[],
-  opts: WaveformPeaksDrawOptions,
-): void {
-  const { heightPx, scrollLeftPx, viewportWidthPx, progressTimeSec, waveColor, progressColor } = opts;
-  const barWidth = opts.barWidth ?? 2;
-  const barGap = opts.barGap ?? 1;
-  const step = barWidth + barGap;
-
-  ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-  if (viewportWidthPx <= 0 || heightPx <= 0 || interleavedPeaks.length < 2) return;
-
-  const totalColumns = interleavedPeaks.length / 2;
-  if (totalColumns <= 0) return;
-
-  const dur = Math.max(opts.durationSec, 0.001);
-  const peakWidthPx = Math.max(1, Math.ceil(dur * opts.pxPerSec));
-  const distributionWidthPx = Math.max(1, opts.timelineWidthPx ?? peakWidthPx);
-  // Spread all resampled columns across the full distribution width (same as tile path).
-  const drawableColumns = totalColumns;
-  const mid = heightPx / 2;
-  const amp = mid * 0.92;
-
-  const maxScrollTimelinePx = Math.max(0, distributionWidthPx - viewportWidthPx);
-  const clampedScrollTimelinePx = Math.max(0, Math.min(scrollLeftPx, maxScrollTimelinePx));
-
-  const startCol = Math.max(
-    0,
-    Math.floor((clampedScrollTimelinePx * drawableColumns) / distributionWidthPx),
-  );
-  let endCol = Math.min(
-    drawableColumns,
-    Math.ceil(((clampedScrollTimelinePx + viewportWidthPx) * drawableColumns) / distributionWidthPx) + 1,
-  );
-  if (endCol <= startCol && drawableColumns > startCol) {
-    endCol = Math.min(drawableColumns, startCol + 1);
-  }
-
-  const playheadTimelinePx = (progressTimeSec / dur) * distributionWidthPx;
-
-  for (let col = startCol; col < endCol; col++) {
-    if ((col - startCol) % step !== 0) continue;
-    const min = interleavedPeaks[col * 2] ?? 0;
-    const max = interleavedPeaks[col * 2 + 1] ?? 0;
-    const colTimelinePx = (col * distributionWidthPx) / drawableColumns;
-    const x = colTimelinePx - clampedScrollTimelinePx;
-    if (x + barWidth < 0 || x > viewportWidthPx) continue;
-
-    ctx.fillStyle = colTimelinePx + barWidth <= playheadTimelinePx ? progressColor : waveColor;
-
-    const top = mid - max * amp;
-    const bottom = mid - min * amp;
-    const y = Math.min(top, bottom);
-    const h = Math.max(1, Math.abs(bottom - top));
-    ctx.fillRect(x, y, barWidth, h);
-  }
-}
-
 /**
  * Draw a single content-tile (ADR-0004). The tile owns timeline range
  * `[tileLeftPx, tileLeftPx + tileWidthPx]`. Coordinates inside `ctx` are
- * tile-local (0 ... tileWidthPx). No scroll, no progress — progress is a
- * separate DOM overlay (`WaveformProgressOverlay`).
+ * tile-local (0 ... tileWidthPx). No scroll — progress tint is not rendered on
+ * the tile path (overview uses a separate playhead line).
  *
  * Returns `true` if drew anything, `false` if no-oped (caller may keep
  * the previous canvas content to avoid white flashes during transient
