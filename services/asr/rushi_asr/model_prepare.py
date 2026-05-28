@@ -5,18 +5,27 @@ from __future__ import annotations
 import logging
 import os
 import shutil
+import socket
 import threading
 from pathlib import Path
 from typing import Any
 
-from rushi_asr.defaults import (
-    DEFAULT_FUNASR_MODEL_ID,
-    DEFAULT_FUNASR_VAD_MODEL_ID,
-    effective_funasr_model_id,
-    effective_funasr_vad_model_id,
-)
+from rushi_asr.defaults import effective_funasr_vad_model_id
 from rushi_asr.funasr_pipeline import effective_funasr_punc_model_id
 from rushi_asr.model_catalog import resolve_hub_model_id
+from rushi_asr.defaults import DEFAULT_FUNASR_MODEL_ID
+from rushi_asr.model_prepare_cache import (
+    DEFAULT_MODEL_REQUIRED_FILES,
+    DEFAULT_PUNC_REQUIRED_FILES,
+    DEFAULT_VAD_REQUIRED_FILES,
+    default_model_cached_guess,
+    disk_check_path,
+    looks_like_complete_model_dir,
+    punc_model_cached_guess,
+    recognizer_model_cached_guess,
+    required_models_cached_guess,
+    vad_model_cached_guess,
+)
 from rushi_asr.model_prepare_progress import (
     PrepareCancelledError,
     clear_prepare_cancel,
@@ -30,123 +39,17 @@ from rushi_asr.model_prepare_progress import (
 
 log = logging.getLogger(__name__)
 
-# Policy §0 / §8 rough guard (bytes).
 _MIN_FREE_BYTES = 512 * 1024 * 1024
 _WARN_FREE_BYTES = 2 * 1024 * 1024 * 1024
 _BUDGET_HINT_BYTES = 5 * 1024 * 1024 * 1024
-_DEFAULT_MODEL_REQUIRED_FILES = ("model.pt", "config.yaml", "tokens.json")
-_DEFAULT_VAD_REQUIRED_FILES = ("model.pt",)
-_DEFAULT_PUNC_REQUIRED_FILES = ("model.pt", "config.yaml")
 
 _lock = threading.Lock()
 _state: dict[str, Any] = {
-    "phase": "idle",  # idle | running | done | error | cancelled
+    "phase": "idle",
     "message": "",
     "error_code": None,
     "result": None,
 }
-
-
-def _disk_check_path() -> Path:
-    raw = os.environ.get("RUSHI_MODELS_ROOT", "").strip()
-    p = Path(raw) if raw else Path.home()
-    try:
-        p.mkdir(parents=True, exist_ok=True)
-    except OSError:
-        return Path.home()
-    return p
-
-
-def _model_dir_candidates(root: Path, model_id: str) -> list[Path]:
-    parts = model_id.split("/", 1)
-    if len(parts) != 2:
-        return []
-    owner, name = parts
-    candidates = [
-        root / "models" / owner / name,
-        root / "hub" / "models" / owner / name,
-        root / "hub" / owner / name,
-    ]
-
-    unique: list[Path] = []
-    for p in candidates:
-        if p not in unique:
-            unique.append(p)
-    return unique
-
-
-def _looks_like_complete_model_dir(
-    model_dir: Path,
-    required_files: tuple[str, ...],
-    min_model_bytes: int,
-) -> bool:
-    try:
-        if not model_dir.is_dir():
-            return False
-        for rel in required_files:
-            p = model_dir / rel
-            if not p.is_file():
-                return False
-        return (model_dir / "model.pt").stat().st_size > min_model_bytes
-    except OSError:
-        return False
-
-
-def _model_cached_guess(
-    model_id: str,
-    required_files: tuple[str, ...],
-    min_model_bytes: int,
-) -> bool:
-    ms = os.environ.get("MODELSCOPE_CACHE", "").strip()
-    if not ms:
-        return False
-    root = Path(ms)
-    if not root.is_dir():
-        return False
-    for model_dir in _model_dir_candidates(root, model_id):
-        if _looks_like_complete_model_dir(model_dir, required_files, min_model_bytes):
-            return True
-    return False
-
-
-def recognizer_model_cached_guess(model_id: str | None = None) -> bool:
-    resolved_model_id = (model_id or "").strip() or effective_funasr_model_id()
-    if not resolved_model_id:
-        return False
-    return _model_cached_guess(
-        resolved_model_id,
-        _DEFAULT_MODEL_REQUIRED_FILES,
-        100 * 1024 * 1024,
-    )
-
-
-def default_model_cached_guess() -> bool:
-    """True when the default recognizer model looks fully cached in its final directory."""
-    return recognizer_model_cached_guess(DEFAULT_FUNASR_MODEL_ID)
-
-
-def vad_model_cached_guess() -> bool:
-    vad_id = effective_funasr_vad_model_id()
-    if not vad_id:
-        return True
-    return _model_cached_guess(vad_id, _DEFAULT_VAD_REQUIRED_FILES, 1 * 1024 * 1024)
-
-
-def punc_model_cached_guess(model_id: str | None = None) -> bool:
-    resolved_model_id = (model_id or "").strip() or effective_funasr_model_id()
-    punc_id = effective_funasr_punc_model_id(resolved_model_id)
-    if not punc_id:
-        return True
-    return _model_cached_guess(punc_id, _DEFAULT_PUNC_REQUIRED_FILES, 1 * 1024 * 1024)
-
-
-def required_models_cached_guess(model_id: str | None = None) -> bool:
-    resolved = (model_id or "").strip() or effective_funasr_model_id()
-    return (
-        recognizer_model_cached_guess(resolved)
-        and vad_model_cached_guess()
-        and punc_model_cached_guess(resolved)
-    )
 
 
 def _set_prepare_message(message: str) -> None:
@@ -157,7 +60,7 @@ def _set_prepare_message(message: str) -> None:
 
 def _disk_warnings() -> tuple[list[str], Path]:
     warnings: list[str] = []
-    check = _disk_check_path()
+    check = disk_check_path()
     try:
         usage = shutil.disk_usage(check)
     except OSError:
@@ -185,9 +88,7 @@ def _maybe_verify_manifest(model_dir: Path) -> None:
 
 
 def prepare_model(model_id: str | None = None) -> dict[str, Any]:
-    """
-    Blocking ``snapshot_download`` for the resolved hub model (resume handled by ModelScope).
-    """
+    """Blocking ``snapshot_download`` for the resolved hub model (resume handled by ModelScope)."""
     resolved_model_id = resolve_hub_model_id(model_id)
     warnings, _check = _disk_warnings()
 
@@ -197,9 +98,6 @@ def prepare_model(model_id: str | None = None) -> dict[str, Any]:
         raise RuntimeError("modelscope_not_installed") from e
 
     log.info("model_prepare: snapshot_download %s", resolved_model_id)
-    # snapshot_download 底层未暴露 timeout；通过 socket 全局超时兜底。
-    import socket
-
     vad_model_id = effective_funasr_vad_model_id()
     punc_model_id = effective_funasr_punc_model_id(resolved_model_id)
     progress_callbacks = prepare_progress_callback_types()
@@ -207,7 +105,7 @@ def prepare_model(model_id: str | None = None) -> dict[str, Any]:
     raise_if_prepare_cancelled()
 
     old_timeout = socket.getdefaulttimeout()
-    socket.setdefaulttimeout(600)  # 10 min
+    socket.setdefaulttimeout(600)
     try:
         _set_prepare_message("downloading_recognizer")
         raise_if_prepare_cancelled()
@@ -241,21 +139,21 @@ def prepare_model(model_id: str | None = None) -> dict[str, Any]:
         socket.setdefaulttimeout(old_timeout)
     finalize_prepare_download_progress()
     raise_if_prepare_cancelled()
-    if not _looks_like_complete_model_dir(
+    if not looks_like_complete_model_dir(
         model_dir,
-        _DEFAULT_MODEL_REQUIRED_FILES,
+        DEFAULT_MODEL_REQUIRED_FILES,
         100 * 1024 * 1024,
     ):
         raise RuntimeError("model_prepare_incomplete")
-    if vad_model_id and vad_dir is not None and not _looks_like_complete_model_dir(
+    if vad_model_id and vad_dir is not None and not looks_like_complete_model_dir(
         vad_dir,
-        _DEFAULT_VAD_REQUIRED_FILES,
+        DEFAULT_VAD_REQUIRED_FILES,
         1 * 1024 * 1024,
     ):
         raise RuntimeError("vad_prepare_incomplete")
-    if punc_model_id and punc_dir is not None and not _looks_like_complete_model_dir(
+    if punc_model_id and punc_dir is not None and not looks_like_complete_model_dir(
         punc_dir,
-        _DEFAULT_PUNC_REQUIRED_FILES,
+        DEFAULT_PUNC_REQUIRED_FILES,
         1 * 1024 * 1024,
     ):
         raise RuntimeError("punc_prepare_incomplete")
@@ -400,3 +298,20 @@ def cancel_prepare_async() -> dict[str, Any]:
         if _state.get("phase") == "running":
             _state["message"] = "cancelling"
     return {"cancelled": True}
+
+
+__all__ = [
+    "DEFAULT_FUNASR_MODEL_ID",
+    "cancel_prepare_async",
+    "default_model_cached_guess",
+    "prepare_default_model",
+    "prepare_model",
+    "prepare_status",
+    "punc_model_cached_guess",
+    "recognizer_model_cached_guess",
+    "required_models_cached_guess",
+    "reset_prepare_idle_state",
+    "start_prepare_async",
+    "start_prepare_default_async",
+    "vad_model_cached_guess",
+]

@@ -8,7 +8,7 @@ pub mod recovery;
 
 pub(crate) use install_support::disk_free_bytes;
 
-use catalog::{diagnose_configured_manifest, manifest_blocking_issue};
+use catalog::diagnose_configured_manifest;
 use errors::describe_local_runtime_error;
 use installer::{install_progress, LocalRuntimeInstallProgress};
 use integrity::{inspect_installed_runtime, InstalledRuntimeInfo};

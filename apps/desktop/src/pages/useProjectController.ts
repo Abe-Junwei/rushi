@@ -1,9 +1,5 @@
-import {
-  useAsrBridgeController,
-  type AsrHealthState,
-  parseAsrHealthJson,
-  funasrManualSetupCommands,
-} from "./useAsrBridgeController";
+import { useAsrBridgeController, type AsrHealthState } from "./useAsrBridgeController";
+import { funasrManualSetupCommands, parseAsrHealthJson } from "../services/asr/asrHealthParse";
 import { useAsrSetupController } from "./useAsrSetupController";
 import { useProjectLifecycleController, type BusyReason } from "./useProjectLifecycleController";
 import { useCallback, useRef } from "react";

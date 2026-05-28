@@ -149,10 +149,6 @@ pub fn build_glossary_hotwords(conn: &Connection) -> Result<GlossaryHotwordsBuil
     })
 }
 
-pub fn glossary_hotwords_joined(conn: &Connection) -> Result<String, String> {
-    Ok(build_glossary_hotwords(conn)?.hotwords)
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

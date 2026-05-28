@@ -1,3 +1,6 @@
+//! Sidecar install health probe. Called from `installer::run_install` inside
+//! `tauri::async_runtime::spawn_blocking`, not on the main Tauri thread.
+
 use super::ensure_not_cancelled;
 use std::fs::{self, File};
 use std::net::TcpListener;

@@ -1,6 +1,5 @@
 use super::ensure_not_cancelled;
 use std::fs::{self, File};
-use std::io::Write;
 use std::path::Path;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;

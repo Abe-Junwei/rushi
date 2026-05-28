@@ -74,13 +74,24 @@ function checkRustFile(fullPath) {
 
   if (lines > 600) warnings.push(`${rel}: ${lines} 行，建议拆分模块`);
 
-  // 防回归：检测 starts_with 路径校验
-  if (/starts_with\(".*"\)/.test(source) && !rel.includes('test')) {
+  // 防回归：文件系统路径前缀校验（排除 error-code、URL path、引号剥除等）
+  const rustStartsWithSkip = [
+    'local_runtime/errors.rs',
+    'project/asr_cache_cmd.rs',
+    'asr_sidecar/loopback.rs',
+    'project/glossary_bulk_parse.rs',
+  ];
+  const fsPathStartsWith =
+    /starts_with\("(?:\/|[A-Za-z]:)/.test(source) ||
+    (/\b(?:path|PathBuf|root|dest)\b[^\n]{0,80}\.starts_with\(/.test(source) &&
+      !/error\.starts_with/.test(source));
+  if (fsPathStartsWith && !rel.includes('test') && !rustStartsWithSkip.some((s) => rel.endsWith(s))) {
     warnings.push(`${rel}: 发现 starts_with 路径校验，建议改用 canonicalize + relative_to`);
   }
 
-  // 防回归：检测 reqwest::blocking 在命令函数中
-  if (/reqwest::blocking/.test(source) && !rel.includes('test')) {
+  // 安装验证在 local_runtime/installer 的 spawn_blocking 中调用，此处允许 blocking HTTP
+  const blockingHttpAllowed = rel.endsWith('local_runtime/install_support/verify.rs');
+  if (/reqwest::blocking/.test(source) && !rel.includes('test') && !blockingHttpAllowed) {
     warnings.push(`${rel}: 发现 reqwest::blocking，可能阻塞 Tauri 线程池`);
   }
 }

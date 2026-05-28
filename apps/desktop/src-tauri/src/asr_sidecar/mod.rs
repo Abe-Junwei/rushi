@@ -14,11 +14,7 @@ pub use bundled::{
     BundledAsrLaunchState,
 };
 pub use candidates::bundled_sidecar_resources_present;
-pub use probe::{
-    bundled_health_looks_like_rushi_asr, bundled_sidecar_supports_model_catalog,
-    bundled_sidecar_supports_punc_prepare, is_rushi_asr_health_json, probe_asr_port,
-    AsrPortProbe, AsrPortStatus,
-};
+pub use probe::{is_rushi_asr_health_json, probe_asr_port, AsrPortStatus};
 
 use std::process::Child;
 use std::sync::Mutex;

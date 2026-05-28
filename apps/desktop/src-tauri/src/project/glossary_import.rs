@@ -130,11 +130,3 @@ pub fn rows_from_glossary_file(path: &Path) -> Result<Vec<GlossaryInsertRow>, St
         )),
     }
 }
-
-/// Legacy: flat term strings only (tests / callers).
-pub fn terms_from_glossary_file(path: &Path) -> Result<Vec<String>, String> {
-    Ok(rows_from_glossary_file(path)?
-        .into_iter()
-        .map(|r| r.term)
-        .collect())
-}

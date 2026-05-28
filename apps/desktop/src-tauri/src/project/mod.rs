@@ -55,7 +55,6 @@ mod segment_cmd_tests;
 
 use rusqlite::Connection;
 use std::fs;
-use std::path::PathBuf;
 use tauri::Manager;
 
 use self::utils::append_desktop_log_line;

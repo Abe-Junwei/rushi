@@ -1,6 +1,6 @@
 import { asrHealthUrl } from "../../config/env";
 import type { AsrHealthCapabilities } from "../../tauri/projectApi";
-import { parseAsrHealthJson } from "../../pages/useAsrBridgeController";
+import { parseAsrHealthJson } from "./asrHealthParse";
 import { loopbackFetch } from "./loopbackFetch";
 
 /** Loopback GET /health → parsed caps (shared by setup flow). */
