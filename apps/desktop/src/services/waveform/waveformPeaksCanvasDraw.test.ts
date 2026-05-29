@@ -149,8 +149,7 @@ describe("drawWaveformPeaksTile", () => {
         timelineWidthPx: 8_000,
         heightPx: 48,
         pxPerSec: 80,
-        peakDurationSec: 80,
-        mediaDurationSec: 100,
+        ...sameDuration(100),
         waveColor: "#ccc",
         barWidth: 2,
         barGap: 1,
@@ -175,27 +174,22 @@ describe("drawWaveformPeaksTile", () => {
     expect(ctx.fillRect).toHaveBeenCalled();
   });
 
-  it("maps peak columns by media duration so mid-timeline tiles still draw", () => {
+  it("throws when peaks coverage is below 98%", () => {
     const ctx = makeCtx(4096, 48);
-    const mediaDurationSec = 1195;
-    const peakDurationSec = 732;
-    const layoutTimelineWidthPx = 66_920;
-
-    expect(
+    expect(() =>
       drawWaveformPeaksTile(ctx, makePeaks(40992), {
         tileLeftPx: 40_950,
         tileWidthPx: 4_095,
-        timelineWidthPx: layoutTimelineWidthPx,
+        timelineWidthPx: 66_920,
         heightPx: 48,
         pxPerSec: 56,
-        peakDurationSec,
-        mediaDurationSec,
+        peakDurationSec: 732,
+        mediaDurationSec: 1195,
         waveColor: "#ccc",
         barWidth: 2,
         barGap: 1,
       }),
-    ).toBe(true);
-    expect(ctx.fillRect).toHaveBeenCalled();
+    ).toThrow("Peaks coverage insufficient");
   });
 
   it("fills the right-edge tile when peaks cover ~99% of media (VBR / rounding drift)", () => {
@@ -224,9 +218,9 @@ describe("drawWaveformPeaksTile", () => {
     expect(ctx.fillRect).toHaveBeenCalled();
   });
 
-  it("no-ops for tiles beyond peak coverage when media is longer than peak file", () => {
+  it("throws for any tile when peaks coverage is below 98%", () => {
     const ctx = makeCtx(4096, 48);
-    expect(
+    expect(() =>
       drawWaveformPeaksTile(ctx, makePeaks(40992), {
         tileLeftPx: 41_000,
         tileWidthPx: 4_095,
@@ -239,7 +233,7 @@ describe("drawWaveformPeaksTile", () => {
         barWidth: 2,
         barGap: 1,
       }),
-    ).toBe(false);
+    ).toThrow("Peaks coverage insufficient");
   });
 
   it("draws overview-style full-width tile at scroll 0", () => {
@@ -259,9 +253,9 @@ describe("drawWaveformPeaksTile", () => {
     expect(ctx.fillRect).toHaveBeenCalled();
   });
 
-  it("fillLayoutWidth stretches partial peaks across the overview viewport", () => {
+  it("throws when overview peaks coverage is below 98%", () => {
     const ctx = makeCtx(400, 32);
-    expect(
+    expect(() =>
       drawWaveformPeaksTile(ctx, makePeaks(200), {
         tileLeftPx: 0,
         tileWidthPx: 400,
@@ -273,11 +267,7 @@ describe("drawWaveformPeaksTile", () => {
         waveColor: "#ccc",
         barWidth: 2,
         barGap: 1,
-        fillLayoutWidth: true,
       }),
-    ).toBe(true);
-
-    const xs = (ctx.fillRect as ReturnType<typeof vi.fn>).mock.calls.map(([x]) => x as number);
-    expect(Math.max(...xs)).toBeGreaterThan(300);
+    ).toThrow("Peaks coverage insufficient");
   });
 });

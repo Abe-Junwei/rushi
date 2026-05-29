@@ -23,8 +23,6 @@ export type WaveformPeaksTileDrawOptions = {
   waveColor: string;
   barWidth?: number;
   barGap?: number;
-  /** Overview minimap: stretch all peak columns across the full layout width. */
-  fillLayoutWidth?: boolean;
 };
 
 /**
@@ -81,53 +79,34 @@ export function drawWaveformPeaksTile(
   const layoutWidthPx = timelineWidthPx;
   const mediaDurationSec = Math.max(opts.mediaDurationSec, 0.001);
   const peakDurationSec = Math.max(opts.peakDurationSec, 0.001);
-  // Peaks and media duration come from two independent sources (`.dat` decode vs
-  // WaveSurfer/HTML media element). For VBR MP3 the browser routinely over-reports
-  // duration by a fraction, and there is always sub-second rounding. When peaks
-  // effectively cover the whole media (≥ coverage threshold), stretch the columns
-  // to fill the entire timeline; otherwise the rightmost whole tiles fall past
-  // `peakLayoutSpanPx` and `drawWaveformPeaksTile` no-ops → blank grey tiles on the
-  // right (subtle in the full-width overview, but whole empty tiles when zoomed in).
-  // Genuinely-short peaks (< threshold, which also triggers regeneration) still clip.
   const coverageRatio = peakDurationSec / mediaDurationSec;
-  // When peaks cover the media timeline (≥98%, incl. VBR/rounding drift), stretch columns
-  // across the full layout width. Otherwise map peak time onto the media axis so segment
-  // positions stay aligned; the tail past peak duration stays empty until peaks regenerate.
-  const stretchPeaksToLayout =
-    opts.fillLayoutWidth === true ||
-    coverageRatio >= PEAKS_MEDIA_MIN_COVERAGE_RATIO;
-  const mapDurationSec = stretchPeaksToLayout ? peakDurationSec : mediaDurationSec;
-  const peakLayoutSpanPx = stretchPeaksToLayout
-    ? layoutWidthPx
-    : (peakDurationSec / mapDurationSec) * layoutWidthPx;
+  if (coverageRatio < PEAKS_MEDIA_MIN_COVERAGE_RATIO) {
+    throw new Error(
+      `Peaks coverage insufficient (${Math.round(coverageRatio * 100)}% — ` +
+        `${Math.round(peakDurationSec)}s / ${Math.round(mediaDurationSec)}s). ` +
+        `Regeneration required.`,
+    );
+  }
 
   const mid = heightPx / 2;
   const amp = mid * 0.92;
 
-  if (tileLeftPx >= peakLayoutSpanPx) return false;
-
   ctx.clearRect(0, 0, ctx.canvas.width, ctx.canvas.height);
-  const tileRightPx = Math.min(peakLayoutSpanPx, tileLeftPx + tileWidthPx);
-
-  const tileStartSec = (tileLeftPx / layoutWidthPx) * mapDurationSec;
-  const tileEndSec = (tileRightPx / layoutWidthPx) * mapDurationSec;
+  const tileRightPx = Math.min(layoutWidthPx, tileLeftPx + tileWidthPx);
 
   const startCol = Math.max(
     0,
-    Math.floor((tileStartSec / peakDurationSec) * totalColumns),
+    Math.floor((tileLeftPx / layoutWidthPx) * totalColumns),
   );
   let endCol = Math.min(
     totalColumns,
-    Math.ceil((tileEndSec / peakDurationSec) * totalColumns) + 1,
+    Math.ceil((tileRightPx / layoutWidthPx) * totalColumns) + 1,
   );
   if (endCol <= startCol && totalColumns > startCol) {
     endCol = Math.min(totalColumns, startCol + 1);
   }
 
   // Align to global bar grid so adjacent tiles share column boundaries.
-  // In preview≠committed stretch mode startCol may fall off-grid; aligning
-  // prevents gaps at tile seams. Columns left of the tile are skipped by
-  // the x-bounds check inside the loop.
   const alignedStartCol = Math.floor(startCol / step) * step;
 
   ctx.fillStyle = waveColor;
@@ -136,8 +115,7 @@ export function drawWaveformPeaksTile(
   for (let col = alignedStartCol; col < endCol; col += step) {
     const min = interleavedPeaks[col * 2] ?? 0;
     const max = interleavedPeaks[col * 2 + 1] ?? 0;
-    const colTimeSec = (col / totalColumns) * peakDurationSec;
-    const colTimelinePx = (colTimeSec / mapDurationSec) * layoutWidthPx;
+    const colTimelinePx = (col / totalColumns) * layoutWidthPx;
     const x = colTimelinePx - tileLeftPx;
     if (x + barWidth < 0 || x > tileWidthPx) continue;
 

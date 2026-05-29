@@ -61,7 +61,6 @@ export function WaveformOverviewPeaksCanvas({
         waveColor: COLORS.waveformWave,
         barWidth: 2,
         barGap: 1,
-        fillLayoutWidth: true,
       });
 
       if (!drew) {
