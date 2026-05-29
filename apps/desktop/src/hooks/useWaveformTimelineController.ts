@@ -29,11 +29,11 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
 
   const display = useWaveformDisplay({ busy: ctx.busy });
   const zoom = useWaveformZoom();
-  const [mediaDurationSec, setMediaDurationSec] = useState(0);
+  const [resolvedDurationSec, setResolvedDurationSec] = useState(0);
   const peaks = useWaveformPeaks(
     ctx.projectId,
     ctx.mediaUrl ? ctx.fileId : null,
-    mediaDurationSec,
+    resolvedDurationSec,
   );
 
   const wf = useProjectWaveform({
@@ -57,15 +57,15 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
   wfApiRef.current = wf;
 
   useEffect(() => {
-    setMediaDurationSec(0);
+    setResolvedDurationSec(0);
   }, [ctx.projectId, ctx.fileId, ctx.mediaUrl]);
 
   useEffect(() => {
-    const d = wf.duration || 0;
+    const d = wf.duration || peaks.status?.durationSec || 0;
     if (d > 0) {
-      setMediaDurationSec((prev) => (Math.abs(prev - d) < 1e-6 ? prev : d));
+      setResolvedDurationSec((prev) => (Math.abs(prev - d) < 1e-6 ? prev : d));
     }
-  }, [wf.duration]);
+  }, [wf.duration, peaks.status?.durationSec]);
 
   const layoutPxPerSec = zoom.layoutPxPerSec;
   const drawPxPerSec = zoom.drawPxPerSec;
@@ -73,13 +73,13 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
   layoutPxPerSecRef.current = layoutPxPerSec;
 
   const timelineWidthPx = useMemo(
-    () => computeTimelineWidthPx(wf.duration || peaks.status?.durationSec || 0, layoutPxPerSec),
-    [wf.duration, peaks.status?.durationSec, layoutPxPerSec],
+    () => computeTimelineWidthPx(resolvedDurationSec, layoutPxPerSec),
+    [resolvedDurationSec, layoutPxPerSec],
   );
 
   const drawTimelineWidthPx = useMemo(
-    () => computeTimelineWidthPx(wf.duration || peaks.status?.durationSec || 0, drawPxPerSec),
-    [wf.duration, peaks.status?.durationSec, drawPxPerSec],
+    () => computeTimelineWidthPx(resolvedDurationSec, drawPxPerSec),
+    [resolvedDurationSec, drawPxPerSec],
   );
 
   const peaksCanvasActive = resolveWaveformTimelineMode(peaks.peakCache) === "peaks";
@@ -154,6 +154,7 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
     durationRef,
     scroll,
     viewportFit,
+    resolvedDurationSec,
     timelineWidthPx,
     drawTimelineWidthPx,
     layoutPxPerSec,

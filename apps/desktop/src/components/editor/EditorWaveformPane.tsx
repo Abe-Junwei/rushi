@@ -129,7 +129,7 @@ export function EditorWaveformPane({
                         drawPxPerSec={tx.drawPxPerSec}
                         layoutTimelineWidthPx={tx.timelineWidthPx}
                         drawTimelineWidthPx={tx.drawTimelineWidthPx}
-                        mediaDurationSec={tx.duration || tx.peakCache?.durationSec || 0}
+                        mediaDurationSec={tx.duration}
                         heightPx={innerWaveformHeightPx}
                         scrollLeftPx={scrollLeftPx}
                         viewportWidthPx={clientWidthPx}
@@ -139,7 +139,7 @@ export function EditorWaveformPane({
                         segments={c.segments}
                         selectedIdx={c.selectedIdx}
                         pxPerSec={tx.pxPerSec}
-                        durationSec={tx.duration || 0}
+                        durationSec={tx.duration}
                         layoutHeightPx={innerPaintedHeightPx}
                         laneByIndex={tx.segmentLaneLayout.laneByIndex}
                         laneCount={tx.segmentLaneLayout.laneCount}
@@ -181,7 +181,7 @@ export function EditorWaveformPane({
                 <div className="absolute inset-x-0 bottom-0 z-10">
                   <WaveformLiveTimeRuler
                     appearance="embedded"
-                    durationSec={tx.duration || 0}
+                    durationSec={tx.duration}
                     timelineWidthPx={tx.timelineWidthPx}
                     scrollLeftPx={scrollLeftPx}
                     viewportWidthPx={clientWidthPx}
@@ -217,7 +217,7 @@ export function EditorWaveformPane({
             stripHeightPx={WAVEFORM_GLOBAL_STRIP_HEIGHT_PX}
             disabled={stripDisabled}
             isReady={tx.isReady}
-            durationSec={tx.duration || 0}
+            durationSec={tx.duration}
             pxPerSec={tx.pxPerSec}
             timelineWidthPx={tx.timelineWidthPx}
             scrollLeftPx={scrollLeftPx}
@@ -259,13 +259,13 @@ export function EditorWaveformPane({
           <WaveformPlaybackTime
             isPlaying={tx.isPlaying}
             isReady={tx.isReady}
-            durationSec={tx.duration || 0}
+            durationSec={tx.duration}
             getPlayheadTime={tx.getPlayheadTime}
             formatMediaTime={tx.formatMediaTime}
           />
           <WaveformGoToTime
             disabled={c.busy || !tx.isReady}
-            durationSec={tx.duration || 0}
+            durationSec={tx.duration}
             onJump={tx.jumpToMediaTime}
           />
         </div>
@@ -274,10 +274,10 @@ export function EditorWaveformPane({
           isReady={tx.isReady}
           pxPerSec={tx.pxPerSec}
           viewportWidthPx={clientWidthPx}
-          durationSec={tx.duration || 0}
+          durationSec={tx.duration}
           selectedStartSec={selectedSegment?.start_sec}
           selectedEndSec={selectedSegment?.end_sec}
-          onResetDefaultZoom={() => tx.resetZoomForMedia(clientWidthPx, tx.duration || 0)}
+          onResetDefaultZoom={() => tx.resetZoomForMedia(clientWidthPx, tx.duration)}
           onPxPerSecChange={tx.setPxPerSecFromSlider}
           onZoomInteractionStart={tx.beginZoomInteraction}
           onZoomInteractionEnd={tx.commitZoomInteraction}

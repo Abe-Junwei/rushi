@@ -193,5 +193,6 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     onWaveformMainKeyDown: keyboard.onWaveformMainKeyDown,
     onSegmentTextareaKeyDown: keyboard.onSegmentTextareaKeyDown,
     ...wf,
+    duration: timeline.resolvedDurationSec,
   };
 }
