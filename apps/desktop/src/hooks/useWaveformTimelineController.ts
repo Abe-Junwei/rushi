@@ -53,7 +53,7 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
     onZoomApplied: (pxPerSec) => applyPendingViewportFitRef.current(pxPerSec, { finalize: true }),
   });
 
-  durationRef.current = wf.duration || 0;
+  durationRef.current = resolvedDurationSec || 0;
   wfApiRef.current = wf;
 
   useEffect(() => {
