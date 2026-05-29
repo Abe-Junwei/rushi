@@ -87,91 +87,123 @@ def _maybe_verify_manifest(model_dir: Path) -> None:
     verify_manifest(model_dir, load_manifest(mp))
 
 
-def prepare_model(model_id: str | None = None) -> dict[str, Any]:
-    """Blocking ``snapshot_download`` for the resolved hub model (resume handled by ModelScope)."""
-    resolved_model_id = resolve_hub_model_id(model_id)
-    warnings, _check = _disk_warnings()
+def _download_models(resolved_model_id: str) -> dict[str, Any]:
+    """Download weights for one hub id (holds runtime lock for prepare vs inference)."""
+    from rushi_asr.funasr_engine import invalidate_funasr_model_cache, runtime_lock
 
-    try:
-        from modelscope.hub.snapshot_download import snapshot_download
-    except ImportError as e:
-        raise RuntimeError("modelscope_not_installed") from e
+    with runtime_lock():
+        warnings, _check = _disk_warnings()
 
-    log.info("model_prepare: snapshot_download %s", resolved_model_id)
-    vad_model_id = effective_funasr_vad_model_id()
-    punc_model_id = effective_funasr_punc_model_id(resolved_model_id)
-    progress_callbacks = prepare_progress_callback_types()
-    reset_prepare_download_progress(include_vad=bool(vad_model_id), include_punc=bool(punc_model_id))
-    raise_if_prepare_cancelled()
+        try:
+            from modelscope.hub.snapshot_download import snapshot_download
+        except ImportError as e:
+            raise RuntimeError("modelscope_not_installed") from e
 
-    old_timeout = socket.getdefaulttimeout()
-    socket.setdefaulttimeout(600)
-    try:
-        _set_prepare_message("downloading_recognizer")
+        log.info("model_prepare: snapshot_download %s", resolved_model_id)
+        vad_model_id = effective_funasr_vad_model_id()
+        punc_model_id = effective_funasr_punc_model_id(resolved_model_id)
+        progress_callbacks = prepare_progress_callback_types()
+        reset_prepare_download_progress(include_vad=bool(vad_model_id), include_punc=bool(punc_model_id))
         raise_if_prepare_cancelled()
-        model_dir = Path(
-            snapshot_download(
-                resolved_model_id,
-                progress_callbacks=progress_callbacks,
-            ),
-        )
-        vad_dir: Path | None = None
-        if vad_model_id:
-            _set_prepare_message("downloading_vad")
-            raise_if_prepare_cancelled()
-            vad_dir = Path(
-                snapshot_download(
-                    vad_model_id,
-                    progress_callbacks=progress_callbacks,
-                ),
-            )
-        punc_dir: Path | None = None
-        if punc_model_id:
-            _set_prepare_message("downloading_punc")
-            raise_if_prepare_cancelled()
-            punc_dir = Path(
-                snapshot_download(
-                    punc_model_id,
-                    progress_callbacks=progress_callbacks,
-                ),
-            )
-    finally:
-        socket.setdefaulttimeout(old_timeout)
-    finalize_prepare_download_progress()
-    raise_if_prepare_cancelled()
-    if not looks_like_complete_model_dir(
-        model_dir,
-        DEFAULT_MODEL_REQUIRED_FILES,
-        100 * 1024 * 1024,
-    ):
-        raise RuntimeError("model_prepare_incomplete")
-    if vad_model_id and vad_dir is not None and not looks_like_complete_model_dir(
-        vad_dir,
-        DEFAULT_VAD_REQUIRED_FILES,
-        1 * 1024 * 1024,
-    ):
-        raise RuntimeError("vad_prepare_incomplete")
-    if punc_model_id and punc_dir is not None and not looks_like_complete_model_dir(
-        punc_dir,
-        DEFAULT_PUNC_REQUIRED_FILES,
-        1 * 1024 * 1024,
-    ):
-        raise RuntimeError("punc_prepare_incomplete")
-    _maybe_verify_manifest(model_dir)
-    from rushi_asr.funasr_engine import invalidate_funasr_model_cache
 
-    invalidate_funasr_model_cache()
-    return {
-        "status": "ok",
-        "model_id": resolved_model_id,
-        "path": str(model_dir),
-        "vad_model_id": vad_model_id,
-        "vad_path": str(vad_dir) if vad_dir is not None else None,
-        "punc_model_id": punc_model_id,
-        "punc_path": str(punc_dir) if punc_dir is not None else None,
-        "required_models_cached": required_models_cached_guess(resolved_model_id),
-        "warnings": warnings,
-    }
+        old_timeout = socket.getdefaulttimeout()
+        socket.setdefaulttimeout(600)
+        try:
+            _set_prepare_message("downloading_recognizer")
+            raise_if_prepare_cancelled()
+            model_dir = Path(
+                snapshot_download(
+                    resolved_model_id,
+                    progress_callbacks=progress_callbacks,
+                ),
+            )
+            vad_dir: Path | None = None
+            if vad_model_id:
+                _set_prepare_message("downloading_vad")
+                raise_if_prepare_cancelled()
+                vad_dir = Path(
+                    snapshot_download(
+                        vad_model_id,
+                        progress_callbacks=progress_callbacks,
+                    ),
+                )
+            punc_dir: Path | None = None
+            if punc_model_id:
+                _set_prepare_message("downloading_punc")
+                raise_if_prepare_cancelled()
+                punc_dir = Path(
+                    snapshot_download(
+                        punc_model_id,
+                        progress_callbacks=progress_callbacks,
+                    ),
+                )
+        finally:
+            socket.setdefaulttimeout(old_timeout)
+        finalize_prepare_download_progress()
+        raise_if_prepare_cancelled()
+        if not looks_like_complete_model_dir(
+            model_dir,
+            DEFAULT_MODEL_REQUIRED_FILES,
+            100 * 1024 * 1024,
+        ):
+            raise RuntimeError("model_prepare_incomplete")
+        if vad_model_id and vad_dir is not None and not looks_like_complete_model_dir(
+            vad_dir,
+            DEFAULT_VAD_REQUIRED_FILES,
+            1 * 1024 * 1024,
+        ):
+            raise RuntimeError("vad_prepare_incomplete")
+        if punc_model_id and punc_dir is not None and not looks_like_complete_model_dir(
+            punc_dir,
+            DEFAULT_PUNC_REQUIRED_FILES,
+            1 * 1024 * 1024,
+        ):
+            raise RuntimeError("punc_prepare_incomplete")
+        _maybe_verify_manifest(model_dir)
+        invalidate_funasr_model_cache()
+        return {
+            "status": "ok",
+            "model_id": resolved_model_id,
+            "path": str(model_dir),
+            "vad_model_id": vad_model_id,
+            "vad_path": str(vad_dir) if vad_dir is not None else None,
+            "punc_model_id": punc_model_id,
+            "punc_path": str(punc_dir) if punc_dir is not None else None,
+            "required_models_cached": required_models_cached_guess(resolved_model_id),
+            "warnings": warnings,
+        }
+
+
+def _wait_for_prepare_phase(*, poll_sec: float = 0.5, deadline_sec: float = 900.0) -> dict[str, Any]:
+    import time
+
+    deadline = time.monotonic() + deadline_sec
+    while time.monotonic() < deadline:
+        st = prepare_status()
+        phase = st.get("phase")
+        if phase == "done":
+            result = st.get("result")
+            if isinstance(result, dict):
+                return result
+            raise RuntimeError("model_prepare_failed")
+        if phase == "cancelled":
+            raise PrepareCancelledError()
+        if phase == "error":
+            raise RuntimeError(str(st.get("error_code") or "model_prepare_failed"))
+        time.sleep(poll_sec)
+    raise RuntimeError("model_prepare_timeout")
+
+
+def prepare_model(model_id: str | None = None) -> dict[str, Any]:
+    """Blocking prefetch via the async coordinator (visible in prepare-status / cancellable)."""
+    resolved_model_id = resolve_hub_model_id(model_id)
+    started = start_prepare_async(model_id)
+    if not started.get("started"):
+        reason = started.get("reason")
+        if reason == "already_running":
+            return _wait_for_prepare_phase()
+        raise RuntimeError(f"model_prepare_not_started:{reason}")
+    return _wait_for_prepare_phase()
 
 
 def prepare_default_model() -> dict[str, Any]:
@@ -200,7 +232,7 @@ def start_prepare_async(model_id: str | None = None) -> dict[str, Any]:
 
     def _run() -> None:
         try:
-            body = prepare_model(resolved_model_id)
+            body = _download_models(resolved_model_id)
             with _lock:
                 _state.clear()
                 _state.update(
@@ -257,7 +289,7 @@ def start_prepare_async(model_id: str | None = None) -> dict[str, Any]:
                 "progress_percent": 0,
             },
         )
-    clear_prepare_cancel()
+        clear_prepare_cancel()
     reset_prepare_download_progress(
         include_vad=bool(effective_funasr_vad_model_id()),
         include_punc=bool(effective_funasr_punc_model_id(resolved_model_id)),

@@ -1,11 +1,13 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const resampleMock = vi.fn((data: unknown) => data);
+const resampleToWidthMock = vi.fn((data: unknown) => data);
 const toPeaksMock = vi.fn((_data?: unknown) => [[0, 0.5, -0.1, 0.2]]);
 
 vi.mock("./audiowaveformDat", () => ({
   loadWaveformDatFromUrl: vi.fn(() => Promise.resolve({ sample_rate: 44100 })),
   resampleWaveformForPxPerSec: (data: unknown) => resampleMock(data),
+  resampleWaveformToWidth: (data: unknown, _w: number) => resampleToWidthMock(data),
   waveformDataToWaveSurferPeaks: (data: unknown) => toPeaksMock(data),
   waveformDurationSec: () => 600,
 }));
@@ -79,5 +81,22 @@ describe("PeakCache", () => {
     expect(low).not.toBe(mid);
     expect(resampleMock).toHaveBeenCalledTimes(2);
     expect(low.peaks[0]?.length).not.toBe(mid.peaks[0]?.length);
+  });
+
+  it("getInterleavedPeaksForOverview resamples to overview width", async () => {
+    const cache = await PeakCache.fromLevelUrls([
+      { level: 0, pixelsPerSecond: 2, url: "asset://l0.dat" },
+    ]);
+    expect(cache).not.toBeNull();
+    if (!cache) return;
+
+    resampleToWidthMock.mockClear();
+    const peaks = cache.getInterleavedPeaksForOverview(400, 0.48, 1195);
+    expect(resampleToWidthMock).toHaveBeenCalledTimes(1);
+    expect(peaks.length).toBeGreaterThan(0);
+
+    resampleToWidthMock.mockClear();
+    cache.getInterleavedPeaksForOverview(400, 0.48, 1195);
+    expect(resampleToWidthMock).toHaveBeenCalledTimes(0);
   });
 });

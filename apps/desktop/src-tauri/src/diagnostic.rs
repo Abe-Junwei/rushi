@@ -7,7 +7,7 @@ use std::ops::Deref;
 use std::path::{Path, PathBuf};
 
 use rusqlite::{Connection, OpenFlags};
-use tauri::{AppHandle, State};
+use tauri::{AppHandle, Manager, State};
 use zip::write::SimpleFileOptions;
 use zip::CompressionMethod;
 use zip::ZipWriter;
@@ -84,6 +84,26 @@ pub fn export_diagnostic_bundle(
     zip.start_file("local-runtime.txt", zip_opts())
         .map_err(|e| e.to_string())?;
     zip.write_all(local_runtime_note.as_bytes())
+        .map_err(|e| e.to_string())?;
+
+    let hub_model = crate::local_asr_model::read_hub_model_pref(st);
+    let bundled_launch = app
+        .try_state::<crate::asr_sidecar::BundledAsrLaunchState>()
+        .and_then(|st| st.0.lock().ok().map(|g| g.clone()))
+        .unwrap_or_default();
+    let asr_port_probe = tauri::async_runtime::block_on(crate::asr_sidecar::probe_asr_port());
+    let asr_setup_note = format!(
+        "hub_model_pref: {}\nbundled_launch_attempted: {}\nbundled_launch_success: {}\nbundled_launch_detail: {}\nasr_port_status: {:?}\nasr_port_detail: {}\n",
+        hub_model.as_deref().unwrap_or("(none)"),
+        bundled_launch.attempted,
+        bundled_launch.success,
+        bundled_launch.detail.as_deref().unwrap_or("(none)"),
+        asr_port_probe.status,
+        asr_port_probe.detail.as_deref().unwrap_or("(none)"),
+    );
+    zip.start_file("asr-setup.txt", zip_opts())
+        .map_err(|e| e.to_string())?;
+    zip.write_all(asr_setup_note.as_bytes())
         .map_err(|e| e.to_string())?;
 
     let mut include_db = false;
@@ -188,6 +208,7 @@ pub fn export_diagnostic_bundle(
         b"Files in this zip:\n\
 - build-info.txt - version, OS, app_data_root, db_path\n\
 - local-runtime.txt - manifest source/status, runtime source, current/previous version, verify/install context, live installer progress\n\
+- asr-setup.txt - hub model pref, bundled launch report, loopback port probe\n\
 - database-readme.txt - whether rushi.sqlite3 is embedded\n\
 - rushi.sqlite3 - optional copy (small DB only)\n\
 - recent_edit_log.tsv - last 500 rows from SQLite edit_log (tab-separated)\n\

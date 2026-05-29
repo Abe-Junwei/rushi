@@ -47,7 +47,7 @@ export const ASR_SETUP_INITIAL_STEPS: AsrSetupStep[] = [
   { id: "diagnose", label: "环境诊断", status: "pending" },
   { id: "sidecar", label: "启动内置侧车", status: "pending" },
   { id: "health", label: "检测 ASR 能力", status: "pending" },
-  { id: "model", label: "准备默认模型", status: "pending" },
+  { id: "model", label: "准备当前所选模型", status: "pending" },
   { id: "done", label: "完成", status: "pending" },
 ];
 

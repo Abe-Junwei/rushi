@@ -7,6 +7,9 @@ import { useWaveformDisplay } from "./useWaveformDisplay";
 import { useWaveformPeaks } from "./useWaveformPeaks";
 import { useWaveformZoom } from "./useWaveformZoom";
 import { resolveWaveformTimelineMode } from "../services/waveform/waveformTimelineTypes";
+import { resolvePeaksDrawMediaDurationSec } from "../utils/peakMediaDuration";
+import { computeFitAllPxPerSec } from "../utils/pxPerSec";
+import { sliderMinTolerancePx } from "../utils/waveformZoomBarState";
 import { computeTimelineWidthPx } from "../utils/segmentLayout";
 import { useTranscriptionViewportFit } from "../pages/useTranscriptionViewportFit";
 import { writeStoredWaveformPxPerSecDefault } from "../utils/waveformPrefs";
@@ -72,6 +75,21 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
   const layoutPxPerSecRef = useRef(layoutPxPerSec);
   layoutPxPerSecRef.current = layoutPxPerSec;
 
+  // Defensive: if stored zoom is below fit-all for this media (e.g. left over
+  // from a previous short-audio project), snap to fit-all so the timeline
+  // never renders narrower than the viewport.
+  useEffect(() => {
+    if (resolvedDurationSec <= 0) return;
+    const vw = tierScrollRef.current?.clientWidth ?? 0;
+    if (vw <= 0) return;
+    const fitAll = computeFitAllPxPerSec(vw, resolvedDurationSec);
+    if (layoutPxPerSecRef.current < fitAll - sliderMinTolerancePx(fitAll)) {
+      zoom.setPxPerSecFromSlider(fitAll);
+    }
+    // Only run when duration becomes known; do not chase zoom changes.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [resolvedDurationSec]);
+
   const timelineWidthPx = useMemo(
     () => computeTimelineWidthPx(resolvedDurationSec, layoutPxPerSec),
     [resolvedDurationSec, layoutPxPerSec],
@@ -83,6 +101,15 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
   );
 
   const peaksCanvasActive = resolveWaveformTimelineMode(peaks.peakCache) === "peaks";
+
+  const peaksDrawMediaDurationSec = useMemo(() => {
+    const peakDur = peaks.peakCache?.durationSec ?? 0;
+    return resolvePeaksDrawMediaDurationSec({
+      peakDurationSec: peakDur,
+      layoutMediaDurationSec: resolvedDurationSec,
+      peaksLoading: peaks.loading,
+    });
+  }, [peaks.loading, peaks.peakCache, resolvedDurationSec]);
 
   const scroll = useTierScrollSync({
     tierScrollRef,
@@ -155,6 +182,7 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
     scroll,
     viewportFit,
     resolvedDurationSec,
+    peaksDrawMediaDurationSec,
     timelineWidthPx,
     drawTimelineWidthPx,
     layoutPxPerSec,

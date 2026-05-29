@@ -26,19 +26,10 @@ log = logging.getLogger(__name__)
 
 _model_singleton: Any = None
 _model_loaded_id: str | None = None
-_model_init_lock = threading.Lock()
+_runtime_lock = threading.RLock()
 
-
-def invalidate_funasr_model_cache() -> None:
-    """Drop loaded AutoModel so the next transcribe picks up new weights (e.g. after prepare)."""
-    global _model_singleton, _model_loaded_id
-    with _model_init_lock:
-        _model_singleton = None
-        _model_loaded_id = None
-
-
-_inference_lock = threading.Lock()
 _inference_executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+_executor_lock = threading.Lock()
 
 # Timeout budget for a single inference call (seconds).
 # Formula: duration_sec * 4 + 300, clamped to [600, 7200].
@@ -49,8 +40,35 @@ _INFERENCE_TIMEOUT_FACTOR: float = 4.0
 _INFERENCE_TIMEOUT_PADDING: int = 300
 
 
+def runtime_lock() -> threading.RLock:
+    """Shared lock for model prepare, load, and inference."""
+    return _runtime_lock
+
+
+def loaded_funasr_model_id() -> str | None:
+    """Hub id of the AutoModel currently resident in memory (None if unloaded)."""
+    with _runtime_lock:
+        return _model_loaded_id
+
+
+def invalidate_funasr_model_cache() -> None:
+    """Drop loaded AutoModel so the next transcribe picks up new weights (e.g. after prepare)."""
+    global _model_singleton, _model_loaded_id
+    with _runtime_lock:
+        _model_singleton = None
+        _model_loaded_id = None
+
+
+def _reset_inference_executor_after_timeout() -> None:
+    global _inference_executor
+    with _executor_lock:
+        old = _inference_executor
+        _inference_executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        old.shutdown(wait=False, cancel_futures=True)
+
+
 def _inference_timeout_sec(duration_sec: float | None) -> float:
-    if duration_sec is None or duration_sec <= 0 or not duration_sec == duration_sec:  # NaN check
+    if duration_sec is None or duration_sec <= 0 or duration_sec != duration_sec:  # NaN check
         return float(_INFERENCE_TIMEOUT_MIN)
     estimate = duration_sec * _INFERENCE_TIMEOUT_FACTOR + _INFERENCE_TIMEOUT_PADDING
     return max(_INFERENCE_TIMEOUT_MIN, min(_INFERENCE_TIMEOUT_MAX, estimate))
@@ -61,7 +79,7 @@ _ALLOWED_FUNASR_LANG = frozenset({"zh", "en", "ja", "ko", "yue", "auto"})
 
 def _get_model(model_id: str) -> Any:
     global _model_singleton, _model_loaded_id
-    with _model_init_lock:
+    with _runtime_lock:
         if _model_singleton is not None and _model_loaded_id == model_id:
             return _model_singleton
         _model_singleton = None
@@ -139,18 +157,21 @@ def transcribe_with_funasr(
 
     def _generate(kwargs: dict[str, Any]) -> Any:
         timeout = _inference_timeout_sec(_duration_sec)
-        future = _inference_executor.submit(model.generate, input=str(wav_path), **kwargs)
+        with _executor_lock:
+            executor = _inference_executor
+        future = executor.submit(model.generate, input=str(wav_path), **kwargs)
         try:
             return future.result(timeout=timeout)
         except concurrent.futures.TimeoutError as e:
             log.error("FunASR inference timed out after %.0fs for %s", timeout, wav_path)
+            _reset_inference_executor_after_timeout()
             raise RuntimeError(
                 f"funasr_inference_timeout: 推理超时（{timeout:.0f}s）；"
                 "音频可能过长或系统资源不足，建议缩短音频或切换至更快模型。"
             ) from e
 
     def _run_generate(kwargs: dict[str, Any]) -> Any:
-        with _inference_lock:
+        with _runtime_lock:
             try:
                 return _generate(kwargs)
             except TypeError as te:

@@ -79,7 +79,7 @@ export function EnvLocalAsrModelDownloadSection({
         <button
           type="button"
           className={`flex items-center gap-2 ${modelsCached && !prepareModelBusy ? CONTROL_BTN_SECONDARY : CONTROL_BTN_PRIMARY}`}
-          disabled={busy || prepareModelBusy}
+          disabled={busy || prepareModelBusy || !selectedPrepare.sidecarMatchesSelection}
           onClick={() => void prepareDefaultFunasrModel(modelsCached ? { force: true } : undefined)}
         >
           <Download className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />

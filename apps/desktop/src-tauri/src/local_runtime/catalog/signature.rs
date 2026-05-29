@@ -8,6 +8,7 @@ const RELEASE_MANIFEST_KEY_ID: &str = "rushi-runtime-release-v1";
 const RELEASE_MANIFEST_PUBLIC_KEY_HEX: &str =
     "e606847c5f1e9e9e701982aaeeb374673e6d0c0f2d495af59cc2ddb12576f94a";
 const FIXTURE_MANIFEST_KEY_ID: &str = "rushi-runtime-fixture-v1";
+#[cfg(debug_assertions)]
 const FIXTURE_MANIFEST_PUBLIC_KEY_HEX: &str =
     "a7ae302ffd9688b1d22107d177680db6b2708e7870dcfab12b0592a0cbb659f3";
 
@@ -24,6 +25,7 @@ fn verifying_key_from_hex(hex_value: &str) -> Result<VerifyingKey, String> {
 fn resolve_pinned_manifest_key(key_id: &str) -> Result<VerifyingKey, String> {
     match key_id {
         RELEASE_MANIFEST_KEY_ID => verifying_key_from_hex(RELEASE_MANIFEST_PUBLIC_KEY_HEX),
+        #[cfg(debug_assertions)]
         FIXTURE_MANIFEST_KEY_ID if insecure_manifest_source_allowed() => {
             verifying_key_from_hex(FIXTURE_MANIFEST_PUBLIC_KEY_HEX)
         }

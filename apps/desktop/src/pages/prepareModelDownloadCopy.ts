@@ -1,4 +1,4 @@
-/** User-facing copy for default FunASR model prefetch (P1). */
+/** User-facing copy for FunASR model prefetch (P1). */
 
 export type PrepareModelFailureCopy = {
   headline: string;
@@ -7,7 +7,7 @@ export type PrepareModelFailureCopy = {
 
 function commonRetryTips(): string[] {
   return [
-    "再次点击「预先下载默认模型」重试（ModelScope 下载支持断点续传，可多试几次）。",
+    "再次点击「下载当前模型」重试（ModelScope 下载支持断点续传，可多试几次）。",
     "点「重新检测 ASR」确认服务仍在本机运行。",
     "若多次失败：检查网络/代理/VPN，或更换网络后再试。",
   ];
@@ -23,13 +23,13 @@ export function describePrepareModelFailure(code: string): PrepareModelFailureCo
       headline: "当前 ASR 进程未加载 FunASR（或缺少依赖）。",
       tips: [
         "在 services/asr 的 venv 中执行 pip install -e \".[funasr]\"，然后重启 python -m rushi_asr。",
-        "也可用本页「一键安装 FunASR 依赖」后重启 ASR，再点「预先下载默认模型」。",
+        "也可用本页「一键安装 FunASR 依赖」后重启 ASR，再点「下载当前模型」。",
       ],
     };
   }
   if (c === "modelscope_not_installed") {
     return {
-      headline: "缺少 ModelScope 客户端，无法拉取默认权重。",
+      headline: "缺少 ModelScope 客户端，无法拉取模型权重。",
       tips: [
         "在同一 venv 中安装 funasr 扩展依赖（通常已包含 modelscope）；重启 ASR 后再试。",
         ...commonRetryTips(),
@@ -50,7 +50,7 @@ export function describePrepareModelFailure(code: string): PrepareModelFailureCo
     return {
       headline: "模型下载未完整落盘，缓存目录里仍是半成品。",
       tips: [
-        "先结束当前转写/下载，再删除对应 SenseVoiceSmall 缓存目录后重新点「下载默认模型」。",
+        "先结束当前转写/下载，再删除对应模型缓存目录后重新点「下载当前模型」。",
         "若仍复现：检查网络/VPN，避免在下载过程中中断 rushi-asr 进程。",
         ...commonRetryTips(),
       ],
@@ -60,7 +60,7 @@ export function describePrepareModelFailure(code: string): PrepareModelFailureCo
     return {
       headline: "辅助 VAD 模型未完整落盘，当前仍不能稳定转写。",
       tips: [
-        "删除对应 VAD 缓存目录后重新点「下载默认模型」，让主模型与辅助模型一起补齐。",
+        "删除对应 VAD 缓存目录后重新点「下载当前模型」，让主模型与辅助模型一起补齐。",
         "若多次复现：检查网络/VPN，避免在下载过程中中断 rushi-asr 进程。",
         ...commonRetryTips(),
       ],

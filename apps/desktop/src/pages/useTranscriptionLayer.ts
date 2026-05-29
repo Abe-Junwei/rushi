@@ -168,6 +168,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     renderTimelineWidthPx: timeline.timelineWidthPx,
     peaksLoading: peaks.loading,
     peaksError: peaks.error,
+    peaksDrawMediaDurationSec: timeline.peaksDrawMediaDurationSec,
     peakCache: peaks.peakCache,
     layoutPxPerSec: timeline.layoutPxPerSec,
     drawPxPerSec: timeline.drawPxPerSec,

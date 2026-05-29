@@ -3,6 +3,7 @@ import {
   buildLocalAsrCatalogView,
   catalogEntryForHub,
   selectedModelMatchesSidecar,
+  sidecarMemoryModelMatchesConfig,
 } from "../../services/asr/localAsrModelCatalog";
 import type { LocalAsrModelCatalogApi } from "../../pages/useLocalAsrModelCatalog";
 import type { AsrHealthCapabilities } from "../../tauri/projectApi";
@@ -11,9 +12,10 @@ type Props = {
   catalog: LocalAsrModelCatalogApi;
   asrCaps: AsrHealthCapabilities | null;
   busy: boolean;
+  prepareModelBusy?: boolean;
 };
 
-export function LocalAsrModelSection({ catalog, asrCaps, busy }: Props) {
+export function LocalAsrModelSection({ catalog, asrCaps, busy, prepareModelBusy = false }: Props) {
   const sidecarHub = asrCaps?.funasr_model_id ?? null;
   const catalogView = buildLocalAsrCatalogView(
     asrCaps,
@@ -26,6 +28,8 @@ export function LocalAsrModelSection({ catalog, asrCaps, busy }: Props) {
     catalog.selectedHubModelId,
     sidecarHub,
   );
+  const memoryMatchesConfig = sidecarMemoryModelMatchesConfig(asrCaps);
+  const panelBusy = busy || prepareModelBusy;
   const selectedLabel =
     catalogEntryForHub(catalog.selectedHubModelId)?.label ?? catalog.selectedHubModelId;
 
@@ -43,7 +47,7 @@ export function LocalAsrModelSection({ catalog, asrCaps, busy }: Props) {
         <select
           className="w-full max-w-xl rounded border border-notion-divider bg-notion-bg px-2.5 py-2 font-mono text-[12px] text-notion-text"
           value={catalog.selectedHubModelId}
-          disabled={busy || catalog.applyBusy}
+          disabled={panelBusy || catalog.applyBusy}
           onChange={(e) => catalog.setSelectedHubModelId(e.target.value)}
         >
           {catalogView.map((item) => (
@@ -80,7 +84,7 @@ export function LocalAsrModelSection({ catalog, asrCaps, busy }: Props) {
         ))}
       </div>
 
-      {!catalog.sidecarCatalogCapable && asrCaps?.ready_for_transcribe ? (
+      {!catalog.sidecarCatalogCapable ? (
         <p className={`${PANEL_TYPOGRAPHY.meta} rounded border border-notion-divider bg-notion-callout-bg px-3 py-2`}>
           8741 上的侧车进程较旧（无模型目录接口）。应用会自动尝试结束旧进程并拉起新侧车；若仍失败，请完全退出应用后再开。
         </p>
@@ -113,11 +117,21 @@ export function LocalAsrModelSection({ catalog, asrCaps, busy }: Props) {
         </p>
       ) : null}
 
+      {sidecarMatchesSelection && !memoryMatchesConfig ? (
+        <p
+          className={`${PANEL_TYPOGRAPHY.meta} rounded border border-zen-saffron/30 bg-zen-saffron/10 px-3 py-2 text-notion-text`}
+          role="status"
+        >
+          侧车配置为 <code className="font-mono text-[11px]">{sidecarHub}</code>，但内存仍加载{" "}
+          <code className="font-mono text-[11px]">{asrCaps?.funasr_loaded_model_id}</code>。请点「应用并重启侧车」或等待侧车完成切换后再转写。
+        </p>
+      ) : null}
+
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
           className="rounded border border-notion-divider bg-notion-bg px-2.5 py-1 text-notion-text transition-colors hover:bg-notion-sidebar-hover disabled:opacity-40"
-          disabled={busy || catalog.applyBusy}
+          disabled={panelBusy || catalog.applyBusy}
           onClick={() => void catalog.applySelectedModel()}
         >
           {catalog.applyBusy ? "正在应用…" : "应用并重启侧车"}

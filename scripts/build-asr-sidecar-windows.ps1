@@ -97,6 +97,8 @@ pyinstaller --noconfirm --clean --onedir --name $PyInstallerName `
   --hidden-import=uvicorn.lifespan.on `
   --hidden-import=funasr `
   --collect-all funasr `
+  --collect-all jieba `
+  --collect-data modelscope `
   --collect-submodules modelscope `
   --collect-submodules hydra `
   --collect-submodules omegaconf `
@@ -105,7 +107,15 @@ pyinstaller --noconfirm --clean --onedir --name $PyInstallerName `
 
 Ensure-FunasrOnedirData -InternalDir (Join-Path $Asr "dist\$PyInstallerName\_internal")
 
+$DistOnedir = Join-Path $Asr "dist\$PyInstallerName"
+$SmokeExe = Join-Path $DistOnedir $PyInstallerName
+if (Get-Command bash -ErrorAction SilentlyContinue) {
+  bash "$Root/scripts/smoke-asr-sidecar-health.sh" $SmokeExe
+} else {
+  Write-Warning "bash not found; skipping post-build /health smoke (install Git Bash for release builds)"
+}
+
 if (Test-Path $Dest) { Remove-Item -Recurse -Force $Dest }
 New-Item -ItemType Directory -Force (Split-Path $Dest) | Out-Null
-Copy-Item -Recurse (Join-Path $Asr "dist\$PyInstallerName") $Dest
+Copy-Item -Recurse $DistOnedir $Dest
 Write-Host "OK ($Variant): FunASR sidecar onedir -> $Dest"

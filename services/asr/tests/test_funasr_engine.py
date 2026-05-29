@@ -115,6 +115,27 @@ def test_segment_audio_alias_matches_segment_funasr_result() -> None:
     assert mode_a == mode_b == "sentence_info"
 
 
+def test_unknown_duration_text_only_skips_whole_track_fallback() -> None:
+    warnings: list[str] = []
+    segs, mode = segment_funasr_generate_result(
+        {"text": "无时长信息"},
+        duration_sec=None,
+        model_id="iic/SenseVoiceSmall",
+        out_warnings=warnings,
+    )
+    assert segs == []
+    assert mode == "empty"
+    assert not any("funasr_whole_track_fallback" in w for w in warnings)
+
+
+def test_loaded_funasr_model_id_tracks_singleton() -> None:
+    assert funasr_engine.loaded_funasr_model_id() is None
+    funasr_engine._model_loaded_id = "iic/SenseVoiceSmall"
+    assert funasr_engine.loaded_funasr_model_id() == "iic/SenseVoiceSmall"
+    invalidate_funasr_model_cache()
+    assert funasr_engine.loaded_funasr_model_id() is None
+
+
 def test_invalidate_funasr_model_cache_clears_singleton(monkeypatch) -> None:
     sentinel = object()
     funasr_engine._model_singleton = sentinel

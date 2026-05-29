@@ -10,10 +10,9 @@ use crate::asr_sidecar::probe::{
     bundled_health_looks_like_rushi_asr, bundled_sidecar_supports_model_catalog,
     bundled_sidecar_supports_punc_prepare, loopback_port_accepts_tcp,
 };
-use crate::asr_sidecar::{AsrSidecarState, ASR_HEALTH_URL, ASR_LOOPBACK_PORT};
+use crate::asr_sidecar::{with_asr_lifecycle, AsrSidecarState, ASR_HEALTH_URL, ASR_LOOPBACK_PORT};
 
-/// Start bundled ASR if present and nothing is already listening on :8741.
-pub fn try_start_bundled(handle: &AppHandle) {
+fn try_start_bundled_inner(handle: &AppHandle) {
     write_launch_report(handle, BundledAsrLaunchReport::default());
     if std::env::var("RUSHI_SKIP_BUNDLED_ASR").ok().as_deref() == Some("1") {
         append_sidecar_log_line(handle, "INFO bundled_sidecar_skip_env");
@@ -24,6 +23,11 @@ pub fn try_start_bundled(handle: &AppHandle) {
     if candidates.is_empty() {
         append_sidecar_log_line(handle, "INFO bundled_sidecar_missing");
         return;
+    }
+    if loopback_port_accepts_tcp(ASR_LOOPBACK_PORT) && !bundled_health_looks_like_rushi_asr() {
+        append_sidecar_log_line(handle, "INFO bundled_sidecar_port_busy_warming");
+        let _ = kill_loopback_listeners_on_port(ASR_LOOPBACK_PORT);
+        std::thread::sleep(Duration::from_millis(300));
     }
     if bundled_health_looks_like_rushi_asr() {
         if bundled_sidecar_supports_model_catalog() && bundled_sidecar_supports_punc_prepare() {
@@ -118,6 +122,11 @@ pub fn try_start_bundled(handle: &AppHandle) {
     append_sidecar_log_line(handle, "ERROR bundled_sidecar_all_candidates_failed");
 }
 
+/// Start bundled ASR if present and nothing is already listening on :8741.
+pub fn try_start_bundled(handle: &AppHandle) {
+    with_asr_lifecycle(|| try_start_bundled_inner(handle));
+}
+
 pub fn stop_bundled(handle: &AppHandle) {
     let Some(s) = handle.try_state::<AsrSidecarState>() else {
         return;
@@ -133,22 +142,24 @@ pub fn stop_bundled(handle: &AppHandle) {
 
 /// Stop managed child and any stale listener on :8741, then start bundled sidecar again.
 pub fn force_restart_bundled(handle: &AppHandle) {
-    if std::env::var("RUSHI_SKIP_BUNDLED_ASR").ok().as_deref() == Some("1") {
-        append_sidecar_log_line(handle, "INFO bundled_sidecar_skip_env_restart");
-        return;
-    }
-    stop_bundled(handle);
-    if loopback_port_accepts_tcp(ASR_LOOPBACK_PORT) {
-        match kill_loopback_listeners_on_port(ASR_LOOPBACK_PORT) {
-            Ok(()) => append_sidecar_log_line(handle, "INFO bundled_sidecar_killed_listeners"),
-            Err(e) => append_sidecar_log_line(
-                handle,
-                &format!("WARN bundled_sidecar_kill_listeners_failed {e}"),
-            ),
+    with_asr_lifecycle(|| {
+        if std::env::var("RUSHI_SKIP_BUNDLED_ASR").ok().as_deref() == Some("1") {
+            append_sidecar_log_line(handle, "INFO bundled_sidecar_skip_env_restart");
+            return;
         }
-        std::thread::sleep(Duration::from_millis(300));
-    }
-    try_start_bundled(handle);
+        stop_bundled(handle);
+        if loopback_port_accepts_tcp(ASR_LOOPBACK_PORT) {
+            match kill_loopback_listeners_on_port(ASR_LOOPBACK_PORT) {
+                Ok(()) => append_sidecar_log_line(handle, "INFO bundled_sidecar_killed_listeners"),
+                Err(e) => append_sidecar_log_line(
+                    handle,
+                    &format!("WARN bundled_sidecar_kill_listeners_failed {e}"),
+                ),
+            }
+            std::thread::sleep(Duration::from_millis(300));
+        }
+        try_start_bundled_inner(handle);
+    });
 }
 
 /// Stop bundled sidecar (if we started it) and try starting again (e.g. after a transient failure).

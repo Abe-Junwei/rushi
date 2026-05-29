@@ -4,6 +4,10 @@ import { COLORS } from "../config/tokens";
 import { useWaveformOverviewInteraction } from "../hooks/useWaveformOverviewInteraction";
 import type { PeakCache } from "../services/waveform/PeakCache";
 import {
+  resolveWaveformPeaksUiState,
+  waveformPeaksStatusMessage,
+} from "../utils/peakMediaDuration";
+import {
   computeOverviewPxPerSec,
   computeOverviewViewportRect,
   overviewSegmentBarPx,
@@ -15,6 +19,9 @@ export type WaveformOverviewStripProps = {
   disabled: boolean;
   isReady: boolean;
   durationSec: number;
+  drawMediaDurationSec: number;
+  peaksLoading: boolean;
+  peaksError: string | null;
   pxPerSec: number;
   timelineWidthPx: number;
   scrollLeftPx: number;
@@ -33,6 +40,9 @@ export const WaveformOverviewStrip = memo(function WaveformOverviewStrip({
   disabled,
   isReady,
   durationSec,
+  drawMediaDurationSec,
+  peaksLoading,
+  peaksError,
   pxPerSec,
   timelineWidthPx,
   scrollLeftPx,
@@ -56,8 +66,6 @@ export const WaveformOverviewStrip = memo(function WaveformOverviewStrip({
     });
     ro.observe(el);
     setOverviewWidthPx(el.clientWidth);
-    // Defensive: force a synchronous re-read after the current paint,
-    // in case the container is still animating in (global strip expand).
     const raf = requestAnimationFrame(() => {
       if (el) setOverviewWidthPx(el.clientWidth);
     });
@@ -106,19 +114,16 @@ export const WaveformOverviewStrip = memo(function WaveformOverviewStrip({
     seekToTime,
   });
 
-  // Decompose visibility states so the user sees WHY the overview is blank.
-  const hasPeakCache = Boolean(peakCache);
-  const hasDuration = durationSec > 0;
-  const hasWidth = overviewWidthPx > 0;
-  const showPeaks = hasPeakCache && hasWidth && hasDuration;
+  const peaksUiState = resolveWaveformPeaksUiState({
+    peakCache,
+    peaksLoading,
+    peaksError,
+    layoutMediaDurationSec: durationSec,
+    peakDurationSec: peakCache?.durationSec ?? 0,
+  });
 
-  const placeholderText = !hasPeakCache
-    ? "正在加载波形…"
-    : !hasDuration
-      ? "等待音频时长…"
-      : !hasWidth
-        ? "等待布局…"
-        : null;
+  const showPeaks = peaksUiState === "ready" || peaksUiState === "loading";
+  const statusMessage = waveformPeaksStatusMessage(peaksUiState, peaksError);
 
   return (
     <div
@@ -142,19 +147,30 @@ export const WaveformOverviewStrip = memo(function WaveformOverviewStrip({
             peakCache={peakCache}
             overviewPxPerSec={overviewPxPerSec}
             overviewWidthPx={overviewWidthPx}
-            mediaDurationSec={durationSec}
+            drawMediaDurationSec={drawMediaDurationSec}
             heightPx={Math.max(24, stripHeightPx - 8)}
           />
         ) : (
           <div className="absolute inset-0 flex items-center justify-center bg-notion-sidebar-active/40" aria-hidden>
-            {placeholderText ? (
-              <span className="text-[10px] text-notion-text/40">{placeholderText}</span>
+            {statusMessage ? (
+              <span className="text-[10px] text-notion-text/40">{statusMessage}</span>
             ) : null}
           </div>
         )}
 
+        {peaksUiState === "loading" && peakCache ? (
+          <div className="pointer-events-none absolute inset-x-0 top-1 z-[5] flex justify-center">
+            <span className="rounded bg-notion-sidebar/90 px-2 py-0.5 text-[10px] text-notion-text/50">
+              正在更新波形…
+            </span>
+          </div>
+        ) : null}
+
         {segments.map((seg, idx) => {
-          const bar = overviewSegmentBarPx(seg.start_sec, seg.end_sec, overviewPxPerSec);
+          const bar =
+            durationSec > 0 && overviewWidthPx > 0
+              ? overviewSegmentBarPx(seg.start_sec, seg.end_sec, durationSec, overviewWidthPx)
+              : { leftPx: 0, widthPx: 2 };
           const selected = idx === selectedIdx;
           return (
             <button

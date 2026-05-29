@@ -61,14 +61,18 @@ export function overviewClientXToTimeSec(
   return ratio * dur;
 }
 
+/** Map segment times to overview strip pixels (same axis as playhead). */
 export function overviewSegmentBarPx(
   startSec: number,
   endSec: number,
-  overviewPxPerSec: number,
+  durationSec: number,
+  overviewWidthPx: number,
 ): { leftPx: number; widthPx: number } {
+  const dur = Math.max(durationSec, 0.001);
+  const ow = Math.max(1, overviewWidthPx);
   const lo = Math.min(startSec, endSec);
   const hi = Math.max(startSec, endSec);
-  const leftPx = lo * overviewPxPerSec;
-  const widthPx = Math.max(2, (hi - lo) * overviewPxPerSec);
-  return { leftPx, widthPx };
+  const leftPx = (Math.max(0, lo) / dur) * ow;
+  const rightPx = (Math.min(dur, hi) / dur) * ow;
+  return { leftPx, widthPx: Math.max(2, rightPx - leftPx) };
 }

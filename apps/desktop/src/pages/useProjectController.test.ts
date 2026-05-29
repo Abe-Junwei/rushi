@@ -33,6 +33,7 @@ describe("parseAsrHealthJson", () => {
       ready_for_transcribe: false,
       transcription_mode: "stub",
       funasr_model_id: null,
+      funasr_loaded_model_id: null,
       funasr_punc_model_id: null,
       rushi_models_root: null,
     });
@@ -70,6 +71,7 @@ describe("parseAsrHealthJson", () => {
       ready_for_transcribe: false,
       transcription_mode: "funasr",
       funasr_model_id: "iic/SenseVoiceSmall",
+      funasr_loaded_model_id: null,
       funasr_punc_model_id: null,
       rushi_models_root: "/tmp/models",
     });

@@ -1,18 +1,21 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { asrBaseUrl, asrHealthUrl, isDefaultBundledAsrTarget, isTauriRuntime } from "../config/env";
+import { isDefaultBundledAsrTarget, isTauriRuntime } from "../config/env";
 import type { AsrHealthCapabilities, AsrModelCacheInfo } from "../tauri/projectApi";
 import * as p1 from "../tauri/projectApi";
 import { tryBuildOnlineTranscribeBridgePayload } from "../services/stt/sttOnlineProviderContract";
 import { usePrepareModelController, type PrepareModelApi } from "./usePrepareModelController";
 import { useLocalAsrModelCatalog, type LocalAsrModelCatalogApi } from "./useLocalAsrModelCatalog";
-import { parseCatalogStatusFromHealth } from "../services/asr/localAsrModelCatalog";
-import { loopbackFetch } from "../services/asr/loopbackFetch";
-import { funasrManualSetupCommands, parseAsrHealthJson } from "../services/asr/asrHealthParse";
+import { funasrManualSetupCommands } from "../services/asr/asrHealthParse";
+import {
+  useAsrHealthPoll,
+  type AsrHealthRefreshOptions,
+  type AsrHealthState,
+} from "./useAsrHealthPoll";
+import { useAsrModelCacheController } from "./useAsrModelCacheController";
 
 export type { AsrHealthCapabilities } from "../tauri/projectApi";
 export { funasrManualSetupCommands, parseAsrHealthJson } from "../services/asr/asrHealthParse";
-
-export type AsrHealthState = "checking" | "ok" | "error";
+export type { AsrHealthState };
 
 export interface AsrBridgeApi {
   asrHealth: AsrHealthState;
@@ -26,7 +29,7 @@ export interface AsrBridgeApi {
   prepareModelBusy: boolean;
   prepareModelProgress: number;
   prepareModelFailure: PrepareModelApi["prepareModelFailure"];
-  refreshAsrHealth: () => Promise<void>;
+  refreshAsrHealth: (options?: AsrHealthRefreshOptions) => Promise<void>;
   refreshAsrModelCacheInfo: () => Promise<void>;
   clearAsrModelCache: () => Promise<void>;
   asrCacheMessage: string;
@@ -40,21 +43,53 @@ export interface AsrBridgeApi {
 }
 
 type AsrBridgeOptions = {
-  /** Tauri setup diagnose (summary + local runtime panel); wired from useProjectController. */
   refreshEnvironmentDiagnostics?: () => Promise<void>;
 };
 
 export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi {
   const refreshEnvironmentDiagnostics = options?.refreshEnvironmentDiagnostics;
   const tauriRuntime = isTauriRuntime();
-  const [asrHealth, setAsrHealth] = useState<AsrHealthState>("checking");
-  const [asrHealthDetail, setAsrHealthDetail] = useState<string>("");
-  const [bundledAsrDiag, setBundledAsrDiag] = useState<p1.BundledAsrLaunchReport | null>(null);
-  const [asrCaps, setAsrCaps] = useState<AsrHealthCapabilities | null>(null);
-  const [asrModelCacheInfo, setAsrModelCacheInfo] = useState<AsrModelCacheInfo | null>(null);
-  const [asrModelCacheBusy, setAsrModelCacheBusy] = useState(false);
-  const [asrCacheMessage, setAsrCacheMessage] = useState("");
   const [sttOnlineBridgeEpoch, setSttOnlineBridgeEpoch] = useState(0);
+  const refreshAsrRuntimeInfoRef = useRef<() => Promise<void>>(async () => {});
+
+  const catalogHooksRef = useRef({
+    syncFromHealth: (_healthJson: unknown, _rootJson?: unknown) => {},
+    refreshIfNeeded: (_healthJson: unknown) => {},
+  });
+
+  const {
+    asrHealth,
+    asrHealthDetail,
+    bundledAsrDiag,
+    asrCaps,
+    refreshAsrHealth,
+    refreshBundledAsrDiag,
+  } = useAsrHealthPoll({ tauriRuntime, catalogHooksRef });
+
+  const cacheCtrl = useAsrModelCacheController({
+    tauriRuntime,
+    onAfterCacheMutation: async () => refreshAsrRuntimeInfoRef.current(),
+  });
+
+  const refreshAsrRuntimeInfo = useCallback(async () => {
+    await refreshAsrHealth();
+    await cacheCtrl.refreshAsrModelCacheInfo();
+    await refreshEnvironmentDiagnostics?.();
+  }, [cacheCtrl.refreshAsrModelCacheInfo, refreshAsrHealth, refreshEnvironmentDiagnostics]);
+  refreshAsrRuntimeInfoRef.current = refreshAsrRuntimeInfo;
+
+  const localAsrModelCatalog = useLocalAsrModelCatalog(refreshAsrRuntimeInfo);
+  catalogHooksRef.current = {
+    syncFromHealth: localAsrModelCatalog.syncCatalogFromHealth,
+    refreshIfNeeded: () => {
+      void localAsrModelCatalog.refreshCatalogFromSidecar();
+    },
+  };
+
+  const modelCtrl = usePrepareModelController(
+    refreshAsrRuntimeInfo,
+    () => localAsrModelCatalog.selectedHubModelId,
+  );
 
   const sttOnlineBridgeReady = useMemo(
     () => tryBuildOnlineTranscribeBridgePayload() !== null,
@@ -66,110 +101,10 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
     setSttOnlineBridgeEpoch((n) => n + 1);
   }, []);
 
-  const refreshBundledAsrDiag = useCallback(async () => {
-    try {
-      const r = await p1.bundledAsrLaunchReport();
-      setBundledAsrDiag(r);
-    } catch {
-      setBundledAsrDiag(null);
-    }
-  }, []);
-
-  const refreshAsrModelCacheInfo = useCallback(async () => {
-    if (!tauriRuntime) {
-      setAsrModelCacheInfo(null);
-      setAsrCacheMessage("浏览器预览无法读取模型缓存，请在桌面应用中操作。");
-      return;
-    }
-    try {
-      const info = await p1.asrModelCacheInfo();
-      setAsrModelCacheInfo(info);
-      setAsrCacheMessage("");
-    } catch (e) {
-      setAsrModelCacheInfo(null);
-      setAsrCacheMessage(
-        `读取缓存信息失败：${e instanceof Error ? e.message : String(e)}。请确认在 Tauri 桌面壳中运行。`,
-      );
-    }
-  }, [tauriRuntime]);
-
-  const refreshAsrHealth = useCallback(async () => {
-    if (!tauriRuntime) {
-      setAsrHealth("ok");
-      setAsrHealthDetail("浏览器预览环境不自动检测本机 ASR。请在 Tauri 桌面壳中验证本地 ASR 连通性。");
-      setAsrCaps(null);
-      setBundledAsrDiag(null);
-      return;
-    }
-    setAsrHealth("checking");
-    setAsrHealthDetail("");
-    setAsrCaps(null);
-    const url = asrHealthUrl();
-    try {
-      const res = await loopbackFetch(url, { method: "GET", signal: AbortSignal.timeout(8000) });
-      if (res.ok) {
-        let data: unknown;
-        try {
-          data = await res.json();
-        } catch {
-          data = null;
-        }
-        const parsed = parseAsrHealthJson(data);
-        if (!parsed) {
-          setAsrHealth("error");
-          setAsrHealthDetail(`无法解析 ${url} 的能力字段（响应格式不符合 rushi-asr /health 契约）。`);
-          await refreshBundledAsrDiag();
-          return;
-        }
-        setAsrCaps(parsed);
-        let rootJson: unknown = null;
-        try {
-          const rootRes = await loopbackFetch(`${asrBaseUrl()}/`, {
-            signal: AbortSignal.timeout(5000),
-          });
-          if (rootRes.ok) rootJson = await rootRes.json();
-        } catch {
-          /* ignore */
-        }
-        catalogSyncRef.current(data, rootJson);
-        if (!parseCatalogStatusFromHealth(data)) {
-          void catalogRefreshRef.current();
-        }
-        setAsrHealth("ok");
-        await refreshBundledAsrDiag();
-        return;
-      }
-      setAsrHealth("error");
-      setAsrHealthDetail(`无法访问 ${url}（HTTP ${res.status}）。请先在本机启动 ASR：见说明中「启动本地 ASR」一节。`);
-    } catch (e) {
-      setAsrHealth("error");
-      const msg = e instanceof Error ? e.message : String(e);
-      setAsrHealthDetail(`无法连接 ${url}：${msg}`);
-    }
-    await refreshBundledAsrDiag();
-  }, [refreshBundledAsrDiag, tauriRuntime]);
-
-  const refreshAsrRuntimeInfo = useCallback(async () => {
-    await refreshAsrHealth();
-    await refreshAsrModelCacheInfo();
-    await refreshEnvironmentDiagnostics?.();
-  }, [refreshAsrHealth, refreshAsrModelCacheInfo, refreshEnvironmentDiagnostics]);
-
-  const catalogSyncRef = useRef<(healthJson: unknown, rootJson?: unknown) => void>(() => {});
-  const catalogRefreshRef = useRef<() => Promise<void>>(async () => {});
-  const localAsrModelCatalog = useLocalAsrModelCatalog(refreshAsrRuntimeInfo);
-  catalogSyncRef.current = localAsrModelCatalog.syncCatalogFromHealth;
-  catalogRefreshRef.current = localAsrModelCatalog.refreshCatalogFromSidecar;
-
-  const modelCtrl = usePrepareModelController(
-    refreshAsrRuntimeInfo,
-    () => localAsrModelCatalog.selectedHubModelId,
-  );
-
   useEffect(() => {
     void refreshAsrHealth();
-    void refreshAsrModelCacheInfo();
-  }, [refreshAsrHealth, refreshAsrModelCacheInfo]);
+    void cacheCtrl.refreshAsrModelCacheInfo();
+  }, [cacheCtrl.refreshAsrModelCacheInfo, refreshAsrHealth]);
 
   const asrHealthDetailDisplay = useMemo(() => {
     if (asrHealth !== "error") return asrHealthDetail;
@@ -195,28 +130,6 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
     }
   }, [refreshAsrRuntimeInfo, refreshBundledAsrDiag]);
 
-  const clearAsrModelCache = useCallback(async () => {
-    if (!tauriRuntime) {
-      setAsrCacheMessage("清除模型缓存需要在桌面应用中运行（npm run desktop:dev 或安装包），浏览器预览不支持。");
-      return;
-    }
-    setAsrModelCacheBusy(true);
-    setAsrCacheMessage("");
-    try {
-      const info = await p1.clearAsrModelCache();
-      setAsrModelCacheInfo(info);
-      const mb = info.total_bytes / (1024 * 1024);
-      const sizeLabel =
-        info.total_bytes <= 0 ? "0 B" : mb >= 0.1 ? `${mb.toFixed(1)} MB` : `${(info.total_bytes / 1024).toFixed(0)} KB`;
-      setAsrCacheMessage(`已清除模型缓存。当前占用约 ${sizeLabel}。可点「预先下载默认模型」重新拉取权重。`);
-    } catch (e) {
-      setAsrCacheMessage(`清除模型缓存失败：${e instanceof Error ? e.message : String(e)}`);
-    } finally {
-      setAsrModelCacheBusy(false);
-      await refreshAsrRuntimeInfo();
-    }
-  }, [refreshAsrRuntimeInfo, tauriRuntime]);
-
   const installFunasrDepsInteractive = useCallback(async () => {
     modelCtrl.setPrepareModelFailure(null);
     modelCtrl.setFunasrInstallMessage("");
@@ -225,7 +138,7 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
       if (log != null && log.length > 0) {
         modelCtrl.setFunasrInstallMessage(
           [
-            "已在所选仓库中执行安装脚本。未设置 RUSHI_FUNASR_MODEL 时将使用内置默认模型 iic/SenseVoiceSmall；请先在本页下载默认模型，再开始正式转写。",
+            "已在所选仓库中执行安装脚本。未设置 RUSHI_FUNASR_MODEL 时将使用内置 SenseVoiceSmall；请先下载当前所选模型，再开始正式转写。",
             "停止并重新执行 python -m rushi_asr，然后回到本页点「重新检测 ASR」。",
             "",
             "--- 脚本输出（节选）---",
@@ -253,17 +166,17 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
     asrHealthDetail: asrHealthDetailDisplay,
     bundledAsrDiag,
     asrCaps,
-    asrModelCacheInfo,
-    asrModelCacheBusy,
+    asrModelCacheInfo: cacheCtrl.asrModelCacheInfo,
+    asrModelCacheBusy: cacheCtrl.asrModelCacheBusy,
     sttOnlineBridgeReady,
     funasrInstallMessage: modelCtrl.funasrInstallMessage,
     prepareModelBusy: modelCtrl.prepareModelBusy,
     prepareModelProgress: modelCtrl.prepareModelProgress,
     prepareModelFailure: modelCtrl.prepareModelFailure,
     refreshAsrHealth,
-    refreshAsrModelCacheInfo,
-    clearAsrModelCache,
-    asrCacheMessage,
+    refreshAsrModelCacheInfo: cacheCtrl.refreshAsrModelCacheInfo,
+    clearAsrModelCache: cacheCtrl.clearAsrModelCache,
+    asrCacheMessage: cacheCtrl.asrCacheMessage,
     prepareDefaultFunasrModel: modelCtrl.prepareDefaultFunasrModel,
     cancelPrepareModel: () => void modelCtrl.cancelPrepareModel(),
     localAsrModelCatalog,

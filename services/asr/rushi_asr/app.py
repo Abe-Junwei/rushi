@@ -181,16 +181,23 @@ def create_app() -> FastAPI:
         tmp_path = Path(tmp)
         try:
             in_path = tmp_path / f"upload{suffix or '.bin'}"
+            chunks: list[bytes] = []
             total = 0
-            with in_path.open("wb") as out:
-                while True:
-                    chunk = await file.read(_READ_CHUNK)
-                    if not chunk:
-                        break
-                    total += len(chunk)
-                    if total > _MAX_UPLOAD_BYTES:
-                        raise HTTPException(status_code=413, detail="upload_too_large")
-                    out.write(chunk)
+            while True:
+                chunk = await file.read(_READ_CHUNK)
+                if not chunk:
+                    break
+                total += len(chunk)
+                if total > _MAX_UPLOAD_BYTES:
+                    raise HTTPException(status_code=413, detail="upload_too_large")
+                chunks.append(chunk)
+
+            def _write_upload() -> None:
+                with in_path.open("wb") as out:
+                    for part in chunks:
+                        out.write(part)
+
+            await run_in_threadpool(_write_upload)
             result = await run_in_threadpool(transcribe_upload, in_path, tmp_path, hotwords)
             return result.model_dump()
         finally:

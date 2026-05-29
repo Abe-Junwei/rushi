@@ -15,6 +15,8 @@ describe("isAllowedSttOnlineEndpoint", () => {
     expect(isAllowedSttOnlineEndpoint("http://127.0.0.1:8741")).toBe(true);
     expect(isAllowedSttOnlineEndpoint("http://localhost:3000")).toBe(true);
     expect(isAllowedSttOnlineEndpoint("http://example.com")).toBe(false);
+    expect(isAllowedSttOnlineEndpoint("https://169.254.169.254/latest/meta-data")).toBe(false);
+    expect(isAllowedSttOnlineEndpoint("https://10.0.0.5/v1")).toBe(false);
   });
 });
 

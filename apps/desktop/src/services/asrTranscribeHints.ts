@@ -11,7 +11,7 @@ export function deriveTranscribeHints(engine: string, warnings: string[], segmen
   const eng = engine.toLowerCase();
   if (eng === "stub" || eng.includes("stub")) {
     hints.push(
-      "当前识别引擎为 stub（占位）：不会产生正常中文稿。请按说明安装本地 ASR 的 FunASR 扩展并重启服务；未设置 RUSHI_FUNASR_MODEL 时将使用内置默认模型，并需先完成模型准备后再进行正式转写。",
+      "当前识别引擎为 stub（占位）：不会产生正常中文稿。请按说明安装本地 ASR 的 FunASR 扩展并重启服务；未设置 RUSHI_FUNASR_MODEL 时将使用内置 SenseVoiceSmall，并需先完成当前所选模型准备后再进行正式转写。",
     );
   }
   if (warnings.some((w) => w.includes("hotwords_ignored_stub"))) {

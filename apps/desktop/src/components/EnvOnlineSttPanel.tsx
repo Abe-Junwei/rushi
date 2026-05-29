@@ -100,7 +100,17 @@ export function EnvOnlineSttPanel({ busy, onSttOnlineRuntimeChanged }: Props) {
         启用在线 STT（关闭则仍走本机基址）
       </label>
 
-      <OnlineSttProviderPicker busy={busy} providerId={olProviderId} onProviderChange={setOlProviderId} />
+      <OnlineSttProviderPicker
+        busy={busy}
+        providerId={olProviderId}
+        onProviderChange={(id) => {
+          if (id !== olProviderId) {
+            setSttOnlineApiKeyInMemory(null);
+            setOlApiKey("");
+          }
+          setOlProviderId(id);
+        }}
+      />
 
       <OnlineSttRuntimeForm
         busy={busy}

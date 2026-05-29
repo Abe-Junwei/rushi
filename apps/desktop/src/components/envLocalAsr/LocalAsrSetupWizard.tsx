@@ -9,11 +9,18 @@ import { LocalAsrSetupWizardSummary } from "./LocalAsrSetupWizardSummary";
 type Props = {
   setup: AsrSetupControllerApi;
   busy: boolean;
+  prepareModelBusy?: boolean;
   openAppDataFolder: () => Promise<void>;
   exportDiagnosticBundle: () => Promise<void>;
 };
 
-export function LocalAsrSetupWizard({ setup, busy, openAppDataFolder, exportDiagnosticBundle }: Props) {
+export function LocalAsrSetupWizard({
+  setup,
+  busy,
+  prepareModelBusy = false,
+  openAppDataFolder,
+  exportDiagnosticBundle,
+}: Props) {
   const {
     setupReport,
     localRuntimeDiag,
@@ -34,7 +41,7 @@ export function LocalAsrSetupWizard({ setup, busy, openAppDataFolder, exportDiag
     acceptForeignPortService,
   } = setup;
 
-  const wizardBusy = busy || setupBusy || diagnoseBusy;
+  const wizardBusy = busy || setupBusy || diagnoseBusy || prepareModelBusy;
   const refreshDisabled = setupBusy || diagnoseBusy || !isTauriRuntime();
   const initialDiagnoseTriggeredRef = useRef(false);
 
@@ -50,7 +57,7 @@ export function LocalAsrSetupWizard({ setup, busy, openAppDataFolder, exportDiag
       <div className="pb-1">
         <h3 className={PANEL_TYPOGRAPHY.sectionTitle}>一键准备本机 ASR</h3>
         <p className={PANEL_TYPOGRAPHY.sectionDescription}>
-          自动诊断并依次完成：启动内置侧车 → 检测能力 → 下载默认模型（无需终端命令）。
+          自动诊断并依次完成：启动内置侧车 → 检测能力 → 下载当前所选模型（无需终端命令）。
         </p>
       </div>
 

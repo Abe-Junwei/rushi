@@ -21,6 +21,8 @@ export function parseAsrHealthJson(data: unknown): AsrHealthCapabilities | null 
     ready_for_transcribe: j.ready_for_transcribe === true,
     transcription_mode: mode,
     funasr_model_id: typeof j.funasr_model_id === "string" ? j.funasr_model_id : null,
+    funasr_loaded_model_id:
+      typeof j.funasr_loaded_model_id === "string" ? j.funasr_loaded_model_id : null,
     funasr_punc_model_id:
       typeof j.funasr_punc_model_id === "string" ? j.funasr_punc_model_id : null,
     rushi_models_root: typeof j.rushi_models_root === "string" ? j.rushi_models_root : null,

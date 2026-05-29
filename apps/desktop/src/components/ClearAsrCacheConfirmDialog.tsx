@@ -24,7 +24,7 @@ export function ClearAsrCacheConfirmDialog({ open, busy, totalBytes, onCancel, o
 
   const sizeHint =
     totalBytes != null && totalBytes > 0
-      ? `当前缓存约 ${formatBytes(totalBytes)}。清除后需重新「预先下载默认模型」。`
+      ? `当前缓存约 ${formatBytes(totalBytes)}。清除后需重新「下载当前模型」。`
       : "当前未检测到已下载的模型权重；将仅整理应用数据目录下的 models/ 结构。";
 
   const handleClose = () => {

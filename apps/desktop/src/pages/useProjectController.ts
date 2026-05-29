@@ -14,14 +14,14 @@ export { parseAsrHealthJson, funasrManualSetupCommands };
 export function useProjectController() {
   const lifecycle = useProjectLifecycleController();
   const refreshSetupDiagnoseRef = useRef<
-    ((options?: { resetSteps?: boolean }) => Promise<unknown>) | null
+    ((options?: { resetSteps?: boolean; touchUi?: boolean }) => Promise<unknown>) | null
   >(null);
 
   const asr = useAsrBridgeController({
     refreshEnvironmentDiagnostics: async () => {
       const refreshSetup = refreshSetupDiagnoseRef.current;
       if (!refreshSetup) return;
-      await refreshSetup({ resetSteps: false });
+      await refreshSetup({ resetSteps: false, touchUi: false });
     },
   });
   const { refreshAsrHealth, refreshAsrModelCacheInfo } = asr;

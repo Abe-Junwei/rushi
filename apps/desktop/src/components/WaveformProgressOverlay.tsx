@@ -5,21 +5,30 @@ type WaveformProgressOverlayProps = {
   isPlaying: boolean;
   durationSec: number;
   timelineWidthPx: number;
+  currentTimeSec: number;
   getPlayheadTime: () => number;
 };
 
 /** Playback progress tint for peaks mode (ADR-0004 P2).
- *  Uses rAF to update CSS width directly — no React render per frame.
+ *  Uses rAF while playing; syncs from `currentTimeSec` when paused/seeking.
  */
 export const WaveformProgressOverlay = memo(function WaveformProgressOverlay({
   isPlaying,
   durationSec,
   timelineWidthPx,
+  currentTimeSec,
   getPlayheadTime,
 }: WaveformProgressOverlayProps) {
   const divRef = useRef<HTMLDivElement | null>(null);
   const rafRef = useRef(0);
-  const lastTimeRef = useRef(0);
+
+  const applyWidth = (timeSec: number) => {
+    if (durationSec <= 0 || timelineWidthPx <= 0) return;
+    const progress = Math.max(0, Math.min(1, timeSec / durationSec));
+    const widthPx = progress * timelineWidthPx;
+    const el = divRef.current;
+    if (el) el.style.width = `${widthPx}px`;
+  };
 
   useEffect(() => {
     if (!isPlaying || durationSec <= 0 || timelineWidthPx <= 0) {
@@ -28,12 +37,7 @@ export const WaveformProgressOverlay = memo(function WaveformProgressOverlay({
     }
 
     const tick = () => {
-      const t = getPlayheadTime();
-      lastTimeRef.current = t;
-      const progress = Math.max(0, Math.min(1, t / durationSec));
-      const widthPx = progress * timelineWidthPx;
-      const el = divRef.current;
-      if (el) el.style.width = `${widthPx}px`;
+      applyWidth(getPlayheadTime());
       rafRef.current = requestAnimationFrame(tick);
     };
 
@@ -41,18 +45,19 @@ export const WaveformProgressOverlay = memo(function WaveformProgressOverlay({
     return () => cancelAnimationFrame(rafRef.current);
   }, [isPlaying, durationSec, timelineWidthPx, getPlayheadTime]);
 
-  if (durationSec <= 0 || timelineWidthPx <= 0) return null;
+  useEffect(() => {
+    if (isPlaying) return;
+    applyWidth(currentTimeSec);
+  }, [isPlaying, currentTimeSec, durationSec, timelineWidthPx]);
 
-  const staticWidthPx =
-    Math.max(0, Math.min(1, lastTimeRef.current / durationSec)) * timelineWidthPx;
+  if (durationSec <= 0 || timelineWidthPx <= 0) return null;
 
   return (
     <div
       ref={divRef}
       className="pointer-events-none absolute left-0 top-0 z-[1] h-full"
       style={{
-        width: isPlaying ? undefined : `${staticWidthPx}px`,
-        backgroundColor: `${COLORS.saffron}26`, // 15% opacity
+        backgroundColor: `${COLORS.saffron}26`,
       }}
       aria-hidden
     />

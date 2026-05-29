@@ -36,7 +36,9 @@ pub fn write_hub_model_pref(st: &DbState, hub_model_id: &str) -> Result<(), Stri
     if let Some(parent) = path.parent() {
         std::fs::create_dir_all(parent).map_err(|e| format!("无法创建 prefs 目录：{e}"))?;
     }
-    std::fs::write(&path, format!("{hub}\n")).map_err(|e| format!("无法写入模型偏好：{e}"))
+    let tmp = path.with_extension("txt.tmp");
+    std::fs::write(&tmp, format!("{hub}\n")).map_err(|e| format!("无法写入模型偏好：{e}"))?;
+    std::fs::rename(&tmp, &path).map_err(|e| format!("无法写入模型偏好：{e}"))
 }
 
 #[tauri::command]

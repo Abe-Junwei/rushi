@@ -64,10 +64,11 @@ pub async fn loopback_request_json(
     if method != Method::GET && method != Method::POST {
         return Err("loopback_method_not_allowed".into());
     }
-    let port = port.unwrap_or(ASR_LOOPBACK_PORT);
-    if port == 0 {
-        return Err("invalid_loopback_port".into());
-    }
+    let port = match port {
+        None => ASR_LOOPBACK_PORT,
+        Some(p) if p == ASR_LOOPBACK_PORT => ASR_LOOPBACK_PORT,
+        Some(_) => return Err("loopback_port_not_allowed".into()),
+    };
     let host = loopback_connect_host();
     let url = format!("http://{host}:{port}{path}");
     let client = reqwest::Client::builder()
@@ -116,5 +117,21 @@ mod tests {
     fn normalize_path_rejects_traversal() {
         assert!(normalize_path("/health").is_ok());
         assert!(normalize_path("../health").is_err());
+    }
+
+    #[test]
+    fn loopback_port_must_match_asr_sidecar() {
+        use super::LoopbackRequestArgs;
+        let err = tauri::async_runtime::block_on(super::loopback_request_json(
+            LoopbackRequestArgs {
+                path: "/health".into(),
+                method: None,
+                body: None,
+            },
+            Some(9999),
+            Some(1000),
+        ))
+        .unwrap_err();
+        assert!(err.contains("loopback_port_not_allowed"));
     }
 }

@@ -8,6 +8,7 @@ from rushi_asr import ffmpeg_audio
 from rushi_asr.defaults import effective_funasr_model_id, funasr_model_explicit_from_env
 from rushi_asr.model_catalog import get_catalog_status
 from rushi_asr.funasr_pipeline import effective_funasr_punc_model_id
+from rushi_asr.funasr_engine import loaded_funasr_model_id
 from rushi_asr.model_prepare import (
     default_model_cached_guess,
     punc_model_cached_guess,
@@ -56,5 +57,6 @@ def get_runtime_caps() -> dict[str, object]:
         "ready_for_transcribe": ready_for_transcribe,
         "transcription_mode": transcription_mode,
         "funasr_model_id": model,
+        "funasr_loaded_model_id": loaded_funasr_model_id(),
         "rushi_models_root": models_root,
     }

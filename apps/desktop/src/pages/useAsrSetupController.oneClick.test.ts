@@ -67,7 +67,7 @@ describe("useAsrSetupController one-click prepare", () => {
     asrSetupDiagnose.mockResolvedValue(
       makeReport({
         readyForTranscribe: false,
-        blockingIssue: "默认模型缓存未完整完成，请继续执行一键准备或重新下载模型。",
+        blockingIssue: "当前所选模型缓存未完整完成，请继续执行一键准备或重新下载模型。",
       }),
     );
     fetchMock.mockResolvedValue(loopbackHealthResponse(true));

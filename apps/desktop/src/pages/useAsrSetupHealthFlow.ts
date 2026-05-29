@@ -20,7 +20,7 @@ async function fetchHealthSnapshot() {
 
 type Params = {
   deps: {
-    refreshAsrHealth: () => Promise<void>;
+    refreshAsrHealth: (options?: { touchUi?: boolean }) => Promise<void>;
     refreshAsrRuntimeInfo: () => Promise<void>;
     prepareDefaultFunasrModel: (options?: import("./usePrepareModelController").PrepareDefaultModelOptions) => Promise<void>;
     getSetupSelection: () => LocalAsrSetupSelectionContext;
@@ -48,15 +48,12 @@ export function useAsrSetupHealthFlow({
     for (let i = 0; i < HEALTH_POLL_MAX; i++) {
       const caps = await fetchHealthSnapshot();
       if (caps?.funasr_ready) {
-        await deps.refreshAsrHealth();
+        await deps.refreshAsrHealth({ touchUi: false });
         return true;
-      }
-      if (caps?.ffmpeg_ok) {
-        await deps.refreshAsrHealth();
       }
       await sleep(HEALTH_POLL_MS);
     }
-    await deps.refreshAsrHealth();
+    await deps.refreshAsrHealth({ touchUi: false });
     const last = await fetchHealthSnapshot();
     return last?.funasr_ready === true;
   }, [deps]);

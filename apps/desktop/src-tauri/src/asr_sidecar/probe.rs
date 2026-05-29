@@ -32,7 +32,7 @@ pub struct AsrPortProbe {
 /// Classify who is listening on loopback :8741.
 pub async fn probe_asr_port() -> AsrPortProbe {
     let client = reqwest::Client::builder()
-        .timeout(Duration::from_secs(2))
+        .timeout(Duration::from_secs(8))
         .build()
         .unwrap_or_else(|_| reqwest::Client::new());
     let resp = match client.get(ASR_HEALTH_URL).send().await {
@@ -85,7 +85,7 @@ pub async fn probe_asr_port() -> AsrPortProbe {
 
 async fn fetch_loopback_root_json() -> Option<Value> {
     let client = reqwest::Client::builder()
-        .timeout(Duration::from_secs(2))
+        .timeout(Duration::from_secs(8))
         .build()
         .unwrap_or_else(|_| reqwest::Client::new());
     let resp = client.get("http://127.0.0.1:8741/").send().await.ok()?;
@@ -131,7 +131,7 @@ pub(crate) fn loopback_port_accepts_tcp(port: u16) -> bool {
 pub fn bundled_health_looks_like_rushi_asr() -> bool {
     tauri::async_runtime::block_on(async {
         let client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(2))
+            .timeout(Duration::from_secs(8))
             .build()
             .unwrap_or_else(|_| reqwest::Client::new());
         let Ok(resp) = client.get(ASR_HEALTH_URL).send().await else {

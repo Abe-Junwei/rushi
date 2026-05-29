@@ -13,6 +13,7 @@ import { WaveformZoomBar } from "../WaveformZoomBar";
 import { WAVEFORM_GLOBAL_STRIP_HEIGHT_PX } from "../../utils/waveformViewMode";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
+import { resolveWaveformPeaksUiState, waveformPeaksStatusMessage } from "../../utils/peakMediaDuration";
 import { resolveSegmentIndexAtWaveformPointer } from "../../utils/waveformSegmentBounds";
 
 interface SegmentCtxMenuState {
@@ -53,6 +54,16 @@ export function EditorWaveformPane({
       : "h-full w-full origin-top-left";
   const stripDisabled = c.busy || !tx.isReady;
   const progressTimeSec = tx.isPlaying && tx.isReady ? tx.getPlayheadTime() : tx.currentTime;
+  const peaksUiState = resolveWaveformPeaksUiState({
+    peakCache: tx.peakCache,
+    peaksLoading: tx.peaksLoading,
+    peaksError: tx.peaksError,
+    layoutMediaDurationSec: tx.duration,
+    peakDurationSec: tx.peakCache?.durationSec ?? 0,
+  });
+  const peaksStatusMessage = waveformPeaksStatusMessage(peaksUiState, tx.peaksError);
+  const drawMediaDurationSec =
+    tx.peaksDrawMediaDurationSec > 0 ? tx.peaksDrawMediaDurationSec : tx.duration;
 
   return (
     <div className="relative z-10 flex w-full shrink-0 flex-col overflow-visible bg-notion-sidebar">
@@ -94,9 +105,14 @@ export function EditorWaveformPane({
                 {tx.loadError}
               </p>
             ) : null}
-            {tx.peaksError ? (
+            {peaksStatusMessage && peaksUiState === "error" ? (
               <p className="absolute inset-x-4 top-14 z-30 rounded-md bg-zen-cinnabar/10 px-3 py-2 text-center text-[12px] text-zen-cinnabar">
-                {tx.peaksError}
+                {peaksStatusMessage}
+              </p>
+            ) : null}
+            {peaksUiState === "loading" ? (
+              <p className="absolute inset-x-4 top-14 z-30 rounded-md bg-notion-sidebar-active/80 px-3 py-2 text-center text-[12px] text-notion-text/50">
+                正在更新波形…
               </p>
             ) : null}
 
@@ -130,7 +146,8 @@ export function EditorWaveformPane({
                         drawPxPerSec={tx.drawPxPerSec}
                         layoutTimelineWidthPx={tx.timelineWidthPx}
                         drawTimelineWidthPx={tx.drawTimelineWidthPx}
-                        mediaDurationSec={tx.duration}
+                        mediaDurationSec={drawMediaDurationSec}
+                        peaksLoading={tx.peaksLoading}
                         heightPx={innerWaveformHeightPx}
                         scrollLeftPx={scrollLeftPx}
                         viewportWidthPx={clientWidthPx}
@@ -139,19 +156,17 @@ export function EditorWaveformPane({
                         isPlaying={tx.isPlaying}
                         durationSec={tx.duration}
                         timelineWidthPx={tx.timelineWidthPx}
+                        currentTimeSec={tx.currentTime}
                         getPlayheadTime={tx.getPlayheadTime}
                       />
+                      {tx.timelineWidthPx < clientWidthPx && (
+                        <div className="pointer-events-none absolute top-0 z-0 bg-notion-sidebar/30" style={{ left: tx.timelineWidthPx, width: clientWidthPx - tx.timelineWidthPx, height: "100%" }} aria-hidden />
+                      )}
                       <WaveformSegmentOverlay
-                        disabled={stripDisabled}
-                        segments={c.segments}
-                        selectedIdx={c.selectedIdx}
-                        pxPerSec={tx.pxPerSec}
-                        durationSec={tx.duration}
-                        layoutHeightPx={innerPaintedHeightPx}
-                        laneByIndex={tx.segmentLaneLayout.laneByIndex}
-                        laneCount={tx.segmentLaneLayout.laneCount}
-                        enableCreateRange
-                        clientXToTimeSec={tx.clientXToTimeSec}
+                        disabled={stripDisabled} segments={c.segments} selectedIdx={c.selectedIdx}
+                        pxPerSec={tx.pxPerSec} durationSec={tx.duration} layoutHeightPx={innerPaintedHeightPx}
+                        laneByIndex={tx.segmentLaneLayout.laneByIndex} laneCount={tx.segmentLaneLayout.laneCount}
+                        enableCreateRange clientXToTimeSec={tx.clientXToTimeSec}
                         onSelectSegmentAt={(idx) => tx.selectSegmentAt(idx, "waveform")}
                         onFocusWaveformShell={tx.focusWaveformShell}
                         onBoundsCommit={(idx, startSec, endSec) =>
@@ -187,19 +202,11 @@ export function EditorWaveformPane({
                 </div>
                 <div className="absolute inset-x-0 bottom-0 z-10">
                   <WaveformLiveTimeRuler
-                    appearance="embedded"
-                    durationSec={tx.duration}
-                    timelineWidthPx={tx.timelineWidthPx}
-                    scrollLeftPx={scrollLeftPx}
-                    viewportWidthPx={clientWidthPx}
-                    pxPerSec={tx.pxPerSec}
-                    rulerView={tx.rulerView}
-                    isPlaying={tx.isPlaying}
-                    isReady={tx.isReady}
-                    getPlayheadTime={tx.getPlayheadTime}
-                    formatMediaTime={tx.formatMediaTime}
-                    disabled={stripDisabled}
-                    onSeekFromTierClientX={tx.seekFromTierClientX}
+                    appearance="embedded" durationSec={tx.duration} timelineWidthPx={tx.timelineWidthPx}
+                    scrollLeftPx={scrollLeftPx} viewportWidthPx={clientWidthPx} pxPerSec={tx.pxPerSec}
+                    rulerView={tx.rulerView} isPlaying={tx.isPlaying} isReady={tx.isReady}
+                    getPlayheadTime={tx.getPlayheadTime} formatMediaTime={tx.formatMediaTime}
+                    disabled={stripDisabled} onSeekFromTierClientX={tx.seekFromTierClientX}
                     onSetScrollLeftPx={tx.setTierScrollPx}
                   />
                 </div>
@@ -221,20 +228,13 @@ export function EditorWaveformPane({
       >
         {!tx.globalStripCollapsed ? (
           <WaveformOverviewStrip
-            stripHeightPx={WAVEFORM_GLOBAL_STRIP_HEIGHT_PX}
-            disabled={stripDisabled}
-            isReady={tx.isReady}
-            durationSec={tx.duration}
-            pxPerSec={tx.pxPerSec}
-            timelineWidthPx={tx.timelineWidthPx}
-            scrollLeftPx={scrollLeftPx}
-            mainViewportWidthPx={clientWidthPx}
-            progressTimeSec={progressTimeSec}
-            peakCache={tx.peakCache}
-            segments={c.segments}
-            selectedIdx={c.selectedIdx}
-            setTierScrollPx={tx.setTierScrollPx}
-            seekToTime={tx.seek}
+            stripHeightPx={WAVEFORM_GLOBAL_STRIP_HEIGHT_PX} disabled={stripDisabled}
+            isReady={tx.isReady} durationSec={tx.duration} drawMediaDurationSec={drawMediaDurationSec}
+            peaksLoading={tx.peaksLoading} peaksError={tx.peaksError} pxPerSec={tx.pxPerSec}
+            timelineWidthPx={tx.timelineWidthPx} scrollLeftPx={scrollLeftPx}
+            mainViewportWidthPx={clientWidthPx} progressTimeSec={progressTimeSec}
+            peakCache={tx.peakCache} segments={c.segments} selectedIdx={c.selectedIdx}
+            setTierScrollPx={tx.setTierScrollPx} seekToTime={tx.seek}
             onSelectSegmentAt={(idx) => tx.selectSegmentAt(idx, "global-strip")}
           />
         ) : null}
@@ -277,13 +277,9 @@ export function EditorWaveformPane({
           />
         </div>
         <WaveformZoomBar
-          disabled={c.busy}
-          isReady={tx.isReady}
-          pxPerSec={tx.pxPerSec}
-          viewportWidthPx={clientWidthPx}
-          durationSec={tx.duration}
-          selectedStartSec={selectedSegment?.start_sec}
-          selectedEndSec={selectedSegment?.end_sec}
+          disabled={c.busy} isReady={tx.isReady} pxPerSec={tx.pxPerSec}
+          viewportWidthPx={clientWidthPx} durationSec={tx.duration}
+          selectedStartSec={selectedSegment?.start_sec} selectedEndSec={selectedSegment?.end_sec}
           onResetDefaultZoom={() => tx.resetZoomForMedia(clientWidthPx, tx.duration)}
           onPxPerSecChange={tx.setPxPerSecFromSlider}
           onZoomInteractionStart={tx.beginZoomInteraction}

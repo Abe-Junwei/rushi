@@ -26,6 +26,57 @@ pub(crate) fn reap_bundled_sidecar_if_exited(handle: &AppHandle) {
     }
 }
 
+fn replace_bundled_child(handle: &AppHandle, mut child: Child) -> bool {
+    let Some(s) = handle.try_state::<AsrSidecarState>() else {
+        let _ = child.kill();
+        return false;
+    };
+    let Ok(mut g) = s.0.lock() else {
+        let _ = child.kill();
+        return false;
+    };
+    if let Some(mut old) = g.take() {
+        let _ = old.kill();
+        let _ = old.wait();
+    }
+    *g = Some(child);
+    true
+}
+
+fn drop_bundled_child(handle: &AppHandle) {
+    let Some(s) = handle.try_state::<AsrSidecarState>() else {
+        return;
+    };
+    let Ok(mut g) = s.0.lock() else {
+        return;
+    };
+    if let Some(mut c) = g.take() {
+        let _ = c.kill();
+        let _ = c.wait();
+    }
+}
+
+fn bundled_child_exited(handle: &AppHandle) -> bool {
+    let Some(s) = handle.try_state::<AsrSidecarState>() else {
+        return true;
+    };
+    let Ok(mut g) = s.0.lock() else {
+        return true;
+    };
+    let Some(ref mut child) = *g else {
+        return true;
+    };
+    if let Ok(Some(status)) = child.try_wait() {
+        append_sidecar_log_line(
+            handle,
+            &format!("ERROR bundled_sidecar_exited_before_health status={status}"),
+        );
+        *g = None;
+        return true;
+    }
+    false
+}
+
 pub(crate) fn spawn_sidecar(exe: &Path, handle: &AppHandle) -> std::io::Result<Child> {
     let workdir = exe
         .parent()
@@ -56,17 +107,16 @@ pub(crate) fn spawn_sidecar(exe: &Path, handle: &AppHandle) -> std::io::Result<C
     cmd.spawn()
 }
 
-pub(crate) fn wait_health_store_child(handle: &AppHandle, mut child: Child) -> bool {
+pub(crate) fn wait_health_store_child(handle: &AppHandle, child: Child) -> bool {
     reap_bundled_sidecar_if_exited(handle);
+    if !replace_bundled_child(handle, child) {
+        append_sidecar_log_line(handle, "ERROR bundled_sidecar_state_missing");
+        return false;
+    }
     let attempts = (BUNDLED_HEALTH_WAIT_MS / BUNDLED_HEALTH_POLL_MS) as usize;
     for _ in 0..attempts {
         std::thread::sleep(Duration::from_millis(BUNDLED_HEALTH_POLL_MS));
-        reap_bundled_sidecar_if_exited(handle);
-        if let Ok(Some(status)) = child.try_wait() {
-            append_sidecar_log_line(
-                handle,
-                &format!("ERROR bundled_sidecar_exited_before_health status={status}"),
-            );
+        if bundled_child_exited(handle) {
             return false;
         }
         if !bundled_health_looks_like_rushi_asr() {
@@ -74,33 +124,15 @@ pub(crate) fn wait_health_store_child(handle: &AppHandle, mut child: Child) -> b
         }
         if !bundled_sidecar_supports_model_catalog() || !bundled_sidecar_supports_punc_prepare() {
             append_sidecar_log_line(handle, "WARN bundled_sidecar_spawn_stale_build");
-            let _ = child.kill();
-            let _ = child.wait();
-            continue;
-        }
-        if let Ok(Some(status)) = child.try_wait() {
-            append_sidecar_log_line(
-                handle,
-                &format!("ERROR bundled_sidecar_exited_after_health status={status}"),
-            );
+            drop_bundled_child(handle);
             return false;
         }
-        match handle.try_state::<AsrSidecarState>() {
-            Some(s) => {
-                let Ok(mut g) = s.0.lock() else {
-                    eprintln!("[rushi-asr-sidecar] mutex poisoned; cannot store child");
-                    append_sidecar_log_line(handle, "ERROR bundled_sidecar_mutex_poisoned");
-                    let _ = child.kill();
-                    return false;
-                };
-                *g = Some(child);
-            }
-            None => {
-                eprintln!("[rushi-asr-sidecar] internal: AsrSidecarState missing");
-                append_sidecar_log_line(handle, "ERROR bundled_sidecar_state_missing");
-                let _ = child.kill();
-                return false;
-            }
+        if bundled_child_exited(handle) {
+            append_sidecar_log_line(
+                handle,
+                "ERROR bundled_sidecar_exited_after_health",
+            );
+            return false;
         }
         eprintln!(
             "[rushi-asr-sidecar] started bundled ASR at {}",
@@ -109,8 +141,7 @@ pub(crate) fn wait_health_store_child(handle: &AppHandle, mut child: Child) -> b
         append_sidecar_log_line(handle, "INFO bundled_sidecar_health_ok");
         return true;
     }
-    let _ = child.kill();
-    let _ = child.wait();
+    drop_bundled_child(handle);
     append_sidecar_log_line(handle, "ERROR bundled_sidecar_health_timeout");
     false
 }

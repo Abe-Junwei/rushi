@@ -77,5 +77,24 @@ if body.get("ffmpeg_ok") is not True:
     sys.exit(f"ffmpeg_ok is not true: {body!r}")
 if body.get("funasr_ready") is not True:
     sys.exit(f"funasr_ready is not true: {body!r}")
+if "funasr_loaded_model_id" not in body:
+    sys.exit(f"missing funasr_loaded_model_id: {body!r}")
 print("smoke OK:", body.get("transcription_mode"), "ffmpeg_ok=", body.get("ffmpeg_ok"))
 PY
+
+ROOT_URL="http://127.0.0.1:${PORT}/"
+if ! curl -sf "$ROOT_URL" >/tmp/rushi-sidecar-smoke-root.json 2>/dev/null; then
+  echo "smoke: GET / failed" >&2
+  exit 1
+fi
+python3 - <<'PY2'
+import json
+import sys
+with open("/tmp/rushi-sidecar-smoke-root.json", encoding="utf-8") as f:
+    body = json.load(f)
+if body.get("service") != "rushi-asr":
+    sys.exit(f"unexpected root service: {body!r}")
+if not body.get("prepare_model_async"):
+    sys.exit(f"missing prepare_model_async on root: {body!r}")
+print("smoke root OK: catalog endpoints present")
+PY2

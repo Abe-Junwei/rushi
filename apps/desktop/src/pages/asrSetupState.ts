@@ -55,7 +55,7 @@ export function stepsFromReport(report: AsrSetupReport): AsrSetupStep[] {
   if (report.health.funasrRequiredModelsCached) {
     steps = patchStep(steps, "model", {
       status: "ok",
-      detail: "默认模型与必需辅助模型已就绪",
+      detail: "当前所选模型与必需辅助模型已就绪",
     });
   } else if (report.health.funasrDefaultModelCached && !report.health.funasrVadModelCached) {
     steps = patchStep(steps, "model", {
@@ -65,7 +65,7 @@ export function stepsFromReport(report: AsrSetupReport): AsrSetupStep[] {
   } else if (report.diskLow && report.health.funasrReady) {
     steps = patchStep(steps, "model", { status: "error", detail: "磁盘可用空间不足" });
   } else if (report.health.funasrReady) {
-    steps = patchStep(steps, "model", { status: "pending", detail: "待下载默认模型" });
+    steps = patchStep(steps, "model", { status: "pending", detail: "待下载当前所选模型" });
   } else {
     steps = patchStep(steps, "model", {
       status: "pending",

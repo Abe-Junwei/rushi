@@ -49,6 +49,8 @@ export interface AsrHealthCapabilities {
   ready_for_transcribe?: boolean;
   transcription_mode: "funasr" | "stub";
   funasr_model_id?: string | null;
+  /** Hub id resident in sidecar memory (null when unloaded). */
+  funasr_loaded_model_id?: string | null;
   funasr_punc_model_id?: string | null;
   /** 侧车 / 壳传入的模型缓存根目录（若有）。 */
   rushi_models_root?: string | null;

@@ -5,8 +5,8 @@ use crate::local_runtime::install_support::{
     verify_installed_runtime,
 };
 use crate::local_runtime::integrity::{
-    inspect_installed_runtime, local_runtime_root, read_marker, version_dir,
-    write_marker_with_previous, InstalledRuntimeMarker, InstalledRuntimeStatus,
+    clear_installed_runtime, inspect_installed_runtime, local_runtime_root, read_marker,
+    version_dir, write_marker_with_previous, InstalledRuntimeMarker, InstalledRuntimeStatus,
 };
 use crate::local_runtime::manifest::{
     current_platform_key, is_shell_version_compatible, select_asr_sidecar_component,
@@ -194,9 +194,24 @@ pub(super) fn run_install(handle: &AppHandle, app_root: &Path, cancel: Arc<Atomi
                 let _ = fs::remove_dir_all(&install_dir);
                 let _ = fs::rename(backup, &install_dir);
             }
-            Err(info
+            let detail = info
                 .detail
-                .unwrap_or_else(|| "local_runtime_install_corrupt".into()))
+                .clone()
+                .unwrap_or_else(|| "local_runtime_install_corrupt".into());
+            if let Some(prev) = existing_marker.as_ref() {
+                let _ = write_marker_with_previous(
+                    app_root,
+                    &prev.version,
+                    &prev.exe_relpath,
+                    prev.previous_version
+                        .as_deref()
+                        .zip(prev.previous_exe_relpath.as_deref()),
+                    Some("ready"),
+                );
+            } else {
+                let _ = clear_installed_runtime(app_root);
+            }
+            Err(detail)
         }
     }
 }

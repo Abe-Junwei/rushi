@@ -60,7 +60,7 @@ describe("waveformOverviewGeometry", () => {
   });
 
   it("overviewSegmentBarPx returns bar geometry", () => {
-    const b = overviewSegmentBarPx(2, 5, 10);
+    const b = overviewSegmentBarPx(2, 5, 10, 100);
     expect(b.leftPx).toBe(20);
     expect(b.widthPx).toBe(30);
   });

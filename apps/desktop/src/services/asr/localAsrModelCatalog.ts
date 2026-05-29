@@ -153,6 +153,7 @@ export type LocalAsrTranscribeReadyInput = {
   asrHealth: "checking" | "ok" | "error";
   asrCaps: {
     funasr_model_id?: string | null;
+    funasr_loaded_model_id?: string | null;
     funasr_default_model_cached?: boolean;
     funasr_active_model_cached?: boolean;
     funasr_required_models_cached?: boolean;
@@ -179,6 +180,9 @@ export function computeLocalAsrTranscribeReady(input: LocalAsrTranscribeReadyInp
   if (!sidecarMatchesSelection) {
     return { ready: false, sidecarMatchesSelection: false };
   }
+  if (!sidecarMemoryModelMatchesConfig(asrCaps)) {
+    return { ready: false, sidecarMatchesSelection: true };
+  }
   const view = buildLocalAsrCatalogView(asrCaps, input.catalogStatus ?? null, selected);
   const prepare = selectedModelPrepareState(view, selected, sidecarHub);
   const ready =
@@ -204,6 +208,20 @@ export function selectedModelMatchesSidecar(
 ): boolean {
   if (!sidecarHubModelId) return false;
   return selectedHubModelId === sidecarHubModelId;
+}
+
+/** True when sidecar memory holds the same hub id as configured (D1). Null loaded = not yet loaded. */
+export function sidecarMemoryModelMatchesConfig(
+  asrCaps: {
+    funasr_model_id?: string | null;
+    funasr_loaded_model_id?: string | null;
+  } | null,
+): boolean {
+  const configured = asrCaps?.funasr_model_id;
+  if (!configured) return true;
+  const loaded = asrCaps?.funasr_loaded_model_id;
+  if (loaded == null || loaded === "") return true;
+  return loaded === configured;
 }
 
 export function selectedModelPrepareState(
@@ -249,7 +267,7 @@ export function buildLocalAsrCatalogView(
     if (active && caps?.funasr_active_model_cached === true) {
       cached = true;
     }
-    if (active && caps?.funasr_required_models_cached === true) {
+    if (active && caps?.funasr_model_id && caps?.funasr_required_models_cached === true) {
       cached = true;
       readyForTranscribe = true;
     }

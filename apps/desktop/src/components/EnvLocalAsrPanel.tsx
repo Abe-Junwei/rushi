@@ -117,6 +117,7 @@ export function EnvLocalAsrPanel({
       <LocalAsrSetupWizard
         setup={asrSetup}
         busy={busy}
+        prepareModelBusy={prepareModelBusy}
         openAppDataFolder={openAppDataFolder}
         exportDiagnosticBundle={exportDiagnosticBundle}
       />
@@ -171,8 +172,10 @@ export function EnvLocalAsrPanel({
           <strong>已连接侧车</strong>
           <span className="text-notion-text-muted">
             {" "}
-            — 当前所选模型或 VAD/标点尚未齐备（<code className="font-mono text-[11px]">mode: {asrCaps.transcription_mode}</code>
-            ）。请在下方下载当前模型，或切换已缓存的模型。
+            —{" "}
+            {!selectedPrepare.sidecarMatchesSelection
+              ? "当前所选模型尚未应用到侧车。请先在下方点「应用并重启侧车」，再下载或转写。"
+              : `当前所选模型或 VAD/标点尚未齐备（mode: ${asrCaps.transcription_mode}）。请在下方下载当前模型，或切换已缓存的模型。`}
           </span>
         </div>
       ) : null}
@@ -198,7 +201,12 @@ export function EnvLocalAsrPanel({
 
       <div className="h-px bg-notion-divider" />
 
-      <LocalAsrModelSection catalog={localAsrModelCatalog} asrCaps={asrCaps} busy={busy} />
+      <LocalAsrModelSection
+        catalog={localAsrModelCatalog}
+        asrCaps={asrCaps}
+        busy={busy}
+        prepareModelBusy={prepareModelBusy}
+      />
 
       <div className="h-px bg-notion-divider" />
 
@@ -223,6 +231,7 @@ export function EnvLocalAsrPanel({
         asrModelCacheBusy={asrModelCacheBusy}
         asrCacheMessage={asrCacheMessage}
         busy={busy}
+        prepareModelBusy={prepareModelBusy}
         tauriRuntime={isTauriRuntime()}
         refreshAsrModelCacheInfo={refreshAsrModelCacheInfo}
         clearAsrModelCache={clearAsrModelCache}

@@ -11,7 +11,6 @@ import {
   hubModelNeedsPuncPrepare,
   sidecarSupportsPuncPrepareFromRoot,
 } from "./localAsrModelCatalog";
-import { localAsrGuidanceSteps } from "./localAsrGuidanceSteps";
 
 describe("localAsrModelCatalog", () => {
   it("includes R3g-A curated models", () => {
@@ -158,27 +157,20 @@ describe("localAsrModelCatalog", () => {
     expect(result.ready).toBe(true);
   });
 
-  it("localAsrGuidanceSteps names selected model and blocks on sidecar mismatch", () => {
+  it("computeLocalAsrTranscribeReady blocks when loaded memory mismatches config", () => {
     const para =
       "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch";
-    const { steps, nextAction } = localAsrGuidanceSteps({
+    const result = computeLocalAsrTranscribeReady({
       asrHealth: "ok",
       asrCaps: {
-        ffmpeg_ok: true,
-        funasr_import_ok: true,
-        funasr_model_configured: true,
-        funasr_ready: true,
-        funasr_default_model_cached: true,
+        funasr_model_id: para,
+        funasr_loaded_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
         funasr_required_models_cached: true,
         ready_for_transcribe: true,
-        transcription_mode: "funasr",
-        funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
       },
       selectedHubModelId: para,
-      catalogStatus: null,
     });
-    expect(steps[2].label).toContain("Paraformer");
-    expect(steps[2].done).toBe(false);
-    expect(nextAction).toContain("应用");
+    expect(result.sidecarMatchesSelection).toBe(true);
+    expect(result.ready).toBe(false);
   });
 });

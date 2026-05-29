@@ -194,7 +194,7 @@ def normalize_funasr_time(value: float, duration_sec: float | None) -> float:
 
 def _allow_whole_track_fallback(duration_sec: float | None) -> bool:
     if duration_sec is None or duration_sec <= 0:
-        return True
+        return False
     return duration_sec < SHORT_WHOLE_TRACK_MAX_SEC
 
 

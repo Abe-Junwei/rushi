@@ -76,6 +76,8 @@ build_funasr() {
     --hidden-import=uvicorn.lifespan.on \
     --hidden-import=funasr \
     --collect-all funasr \
+    --collect-all jieba \
+    --collect-data modelscope \
     --collect-submodules modelscope \
     --collect-submodules hydra \
     --collect-submodules omegaconf \
@@ -84,11 +86,12 @@ build_funasr() {
 
   ensure_funasr_onedir_data "$ASR/dist/rushi-asr-sidecar/_internal"
 
+  bash "$ROOT/scripts/smoke-asr-sidecar-health.sh" "$ASR/dist/rushi-asr-sidecar/rushi-asr-sidecar"
+
   rm -rf "$DEST"
   mkdir -p "$(dirname "$DEST")"
   cp -R "$ASR/dist/rushi-asr-sidecar" "$DEST"
   echo "OK: FunASR sidecar onedir -> $DEST"
-  bash "$ROOT/scripts/smoke-asr-sidecar-health.sh" "$DEST/rushi-asr-sidecar"
 }
 
 # PyInstaller may place funasr only in PYZ without package data on disk; /health needs version.txt.

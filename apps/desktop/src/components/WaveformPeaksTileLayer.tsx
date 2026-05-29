@@ -32,7 +32,9 @@ export type WaveformPeaksTileLayerProps = {
   drawPxPerSec: number;
   layoutTimelineWidthPx: number;
   drawTimelineWidthPx: number;
+  /** Resample / coverage axis — may be peak duration while peaks reload. */
   mediaDurationSec: number;
+  peaksLoading?: boolean;
   heightPx: number;
   scrollLeftPx: number;
   viewportWidthPx: number;
@@ -50,6 +52,7 @@ export const WaveformPeaksTileLayer = memo(function WaveformPeaksTileLayer({
   layoutTimelineWidthPx,
   drawTimelineWidthPx,
   mediaDurationSec,
+  peaksLoading = false,
   heightPx,
   scrollLeftPx,
   viewportWidthPx,
@@ -107,6 +110,7 @@ export const WaveformPeaksTileLayer = memo(function WaveformPeaksTileLayer({
           layoutTimelineWidthPx={layoutTimelineWidthPx}
           drawTimelineWidthPx={drawTimelineWidthPx}
           mediaDurationSec={mediaDurationSec}
+          peaksLoading={peaksLoading}
           heightPx={heightPx}
         />
       ))}
@@ -123,6 +127,7 @@ type WaveformPeaksTileProps = {
   /** Draw px/s + draw width — signature / generation only. */
   drawTimelineWidthPx: number;
   mediaDurationSec: number;
+  peaksLoading: boolean;
   heightPx: number;
 };
 
@@ -138,6 +143,7 @@ const tilePropsEqual = (
   prev.layoutTimelineWidthPx === next.layoutTimelineWidthPx &&
   prev.drawTimelineWidthPx === next.drawTimelineWidthPx &&
   prev.mediaDurationSec === next.mediaDurationSec &&
+  prev.peaksLoading === next.peaksLoading &&
   prev.heightPx === next.heightPx &&
   prev.peakCache === next.peakCache;
 
@@ -148,6 +154,7 @@ const WaveformPeaksTile = memo(function WaveformPeaksTile({
   layoutTimelineWidthPx,
   drawTimelineWidthPx,
   mediaDurationSec,
+  peaksLoading,
   heightPx,
 }: WaveformPeaksTileProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
@@ -201,9 +208,11 @@ const WaveformPeaksTile = memo(function WaveformPeaksTile({
       }
     } catch (err) {
       console.error("[WaveformPeaksTile] draw failed:", err);
-      ctx.clearRect(0, 0, cssW, cssH);
-      lastDrawnSignatureRef.current = "";
-      canvas.style.opacity = "0";
+      if (!peaksLoading) {
+        ctx.clearRect(0, 0, cssW, cssH);
+        lastDrawnSignatureRef.current = "";
+        canvas.style.opacity = "0";
+      }
     }
   }, [
     tile.generation,
@@ -215,6 +224,7 @@ const WaveformPeaksTile = memo(function WaveformPeaksTile({
     layoutTimelineWidthPx,
     drawTimelineWidthPx,
     mediaDurationSec,
+    peaksLoading,
   ]);
 
   return (
