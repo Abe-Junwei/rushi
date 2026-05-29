@@ -1,6 +1,7 @@
 import { ResizeBottomHit } from "../ResizeBottomHit";
 import { WaveformLiveTimeRuler } from "../WaveformLiveTimeRuler";
 import { WaveformPeaksTileLayer } from "../WaveformPeaksTileLayer";
+import { WaveformProgressOverlay } from "../WaveformProgressOverlay";
 import { WaveformGlobalPlaybackSpeed } from "../WaveformGlobalPlaybackSpeed";
 import { WaveformGoToTime } from "../WaveformGoToTime";
 import { WaveformPlaybackTime } from "../WaveformPlaybackTime";
@@ -133,6 +134,12 @@ export function EditorWaveformPane({
                         heightPx={innerWaveformHeightPx}
                         scrollLeftPx={scrollLeftPx}
                         viewportWidthPx={clientWidthPx}
+                      />
+                      <WaveformProgressOverlay
+                        isPlaying={tx.isPlaying}
+                        durationSec={tx.duration}
+                        timelineWidthPx={tx.timelineWidthPx}
+                        getPlayheadTime={tx.getPlayheadTime}
                       />
                       <WaveformSegmentOverlay
                         disabled={stripDisabled}
