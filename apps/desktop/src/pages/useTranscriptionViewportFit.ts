@@ -13,36 +13,26 @@ import {
   WAVEFORM_PROGRAMMATIC_SCROLL_SUPPRESS_MS,
 } from "../utils/waveformScrollSync";
 import type { useProjectWaveform } from "../hooks/useProjectWaveform";
+import { reduceViewportFitPhase, shouldBlockWaveformScrollSync } from "../services/waveform/viewportFitStateMachine";
+import type { ViewportFitPhase } from "../services/waveform/waveformTimelineTypes";
 
 type WfApi = ReturnType<typeof useProjectWaveform>;
 
-type WaveformZoomFitApi = {
-  setFitPxPerSec: (pxPerSec: number) => void;
-};
+type WaveformZoomFitApi = { setFitPxPerSec: (pxPerSec: number) => void };
 
-type TierScrollApi = {
-  setTierScrollPx: (scrollLeftPx: number) => void;
-};
+type TierScrollApi = { setTierScrollPx: (scrollLeftPx: number) => void };
 
-export type PendingViewportFit = {
-  intent: ViewportFitScrollIntent;
-  pxPerSec: number;
-};
+export type PendingViewportFit = { intent: ViewportFitScrollIntent; pxPerSec: number };
 
-/** 在 zoom / peaks resample 完成后计算 tier scroll。 */
+/** Compute tier scroll target for a pending viewport-fit. */
 export function resolveViewportFitScrollPx(input: {
   pending: PendingViewportFit;
   durationSec: number;
   viewportWidthPx: number;
 }): number {
-  const tw = computeTimelineWidthPx(input.durationSec, input.pending.pxPerSec);
-  return computeViewportFitScrollPx({
-    intent: input.pending.intent,
-    viewportWidthPx: input.viewportWidthPx,
-    timelineWidthPx: tw,
-    durationSec: input.durationSec,
-    pxPerSec: input.pending.pxPerSec,
-  });
+  const { pending, durationSec, viewportWidthPx } = input;
+  const tw = computeTimelineWidthPx(durationSec, pending.pxPerSec);
+  return computeViewportFitScrollPx({ intent: pending.intent, viewportWidthPx, timelineWidthPx: tw, durationSec, pxPerSec: pending.pxPerSec });
 }
 
 export function useTranscriptionViewportFit(args: {
@@ -55,10 +45,13 @@ export function useTranscriptionViewportFit(args: {
   currentPxPerSec: number;
   currentPxPerSecRef: MutableRefObject<number>;
   renderTimelineWidthPx: number;
+  drawPxPerSec: number;
   waveformReady: boolean;
   mediaUrl: string | null;
   getSelectedSegment: () => { start_sec: number; end_sec: number } | null;
   suppressWaveformScrollUntilRef: MutableRefObject<number>;
+  /** ADR-0005: tier-only scroll when canvas peaks are active. */
+  peaksCanvasActive: boolean;
 }) {
   const {
     tierScrollRef,
@@ -70,77 +63,71 @@ export function useTranscriptionViewportFit(args: {
     currentPxPerSec,
     currentPxPerSecRef,
     renderTimelineWidthPx,
+    drawPxPerSec,
     waveformReady,
     mediaUrl,
     getSelectedSegment,
     suppressWaveformScrollUntilRef,
+    peaksCanvasActive,
   } = args;
 
   const pendingViewportFitRef = useRef<PendingViewportFit | null>(null);
+  const viewportFitPhaseRef = useRef<ViewportFitPhase>("idle");
   const pendingSegmentFitRafRef = useRef(0);
-  const pendingSegmentFitRef = useRef<{ start_sec: number; end_sec: number; forceFullFit: boolean } | null>(
-    null,
-  );
+  const pendingSegmentFitRef = useRef<{ start_sec: number; end_sec: number; forceFullFit: boolean } | null>(null);
 
   const markProgrammaticScroll = useCallback(
     (suppressMs?: number, scrollDeltaPx?: number) => {
-      const ms =
-        suppressMs ??
-        (scrollDeltaPx != null
-          ? computeProgrammaticScrollSuppressMs(scrollDeltaPx)
-          : WAVEFORM_PROGRAMMATIC_SCROLL_SUPPRESS_MS);
+      const ms = suppressMs ?? (scrollDeltaPx != null ? computeProgrammaticScrollSuppressMs(scrollDeltaPx) : WAVEFORM_PROGRAMMATIC_SCROLL_SUPPRESS_MS);
       suppressWaveformScrollUntilRef.current = performance.now() + ms;
     },
     [suppressWaveformScrollUntilRef],
+  );
+
+  const writeTierScroll = useCallback(
+    (targetSl: number) => {
+      scrollApiRef.current.setTierScrollPx(targetSl);
+      if (!peaksCanvasActive) wfApiRef.current.setScrollLeft(targetSl);
+    },
+    [peaksCanvasActive, scrollApiRef, wfApiRef],
   );
 
   const applyPendingViewportFit = useCallback(
     (pxPerSec: number, options?: { finalize?: boolean }) => {
       const pending = pendingViewportFitRef.current;
       if (!pending || Math.abs(pending.pxPerSec - pxPerSec) > 0.001) return false;
-
       const tier = tierScrollRef.current;
       if (!tier) return false;
 
-      const targetSl = resolveViewportFitScrollPx({
-        pending,
-        durationSec: durationRef.current,
-        viewportWidthPx: tier.clientWidth,
-      });
-
+      const targetSl = resolveViewportFitScrollPx({ pending, durationSec: durationRef.current, viewportWidthPx: tier.clientWidth });
       markProgrammaticScroll();
-      scrollApiRef.current.setTierScrollPx(targetSl);
-      wfApiRef.current.setScrollLeft(targetSl);
+      writeTierScroll(targetSl);
+      viewportFitPhaseRef.current = reduceViewportFitPhase(viewportFitPhaseRef.current, { type: "scrollApplied" });
       if (options?.finalize !== false) {
         pendingViewportFitRef.current = null;
+        viewportFitPhaseRef.current = reduceViewportFitPhase(viewportFitPhaseRef.current, { type: "finalize" });
       }
       return true;
     },
-    [durationRef, markProgrammaticScroll, scrollApiRef, tierScrollRef, wfApiRef],
+    [durationRef, markProgrammaticScroll, tierScrollRef, writeTierScroll],
   );
 
   const queueViewportFit = useCallback(
     (pending: PendingViewportFit) => {
+      const needsPeaksResample = Math.abs(pending.pxPerSec - drawPxPerSec) > 0.001;
+      viewportFitPhaseRef.current = reduceViewportFitPhase(viewportFitPhaseRef.current, { type: "queue", needsPeaksResample });
       pendingViewportFitRef.current = pending;
       zoom.setFitPxPerSec(pending.pxPerSec);
-      // Scroll tier immediately when px/s will change — do not wait for peaks
-      // reload + layout effect. Otherwise zoom sync may restore scroll to 0
-      // before viewport-fit runs (follow mode shows 0:00 with blank main view).
+      // Scroll tier immediately — do not wait for peaks reload to avoid blank main view.
       const tier = tierScrollRef.current;
       const dur = durationRef.current;
       if (tier && tier.clientWidth > 0 && dur >= 0.5) {
-        const targetSl = resolveViewportFitScrollPx({
-          pending,
-          durationSec: dur,
-          viewportWidthPx: tier.clientWidth,
-        });
-        const currentSl = tier.scrollLeft;
-        markProgrammaticScroll(undefined, Math.abs(targetSl - currentSl));
-        scrollApiRef.current.setTierScrollPx(targetSl);
-        wfApiRef.current.setScrollLeft(targetSl);
+        const targetSl = resolveViewportFitScrollPx({ pending, durationSec: dur, viewportWidthPx: tier.clientWidth });
+        markProgrammaticScroll(undefined, Math.abs(targetSl - tier.scrollLeft));
+        writeTierScroll(targetSl);
       }
     },
-    [durationRef, markProgrammaticScroll, scrollApiRef, tierScrollRef, wfApiRef, zoom],
+    [drawPxPerSec, durationRef, markProgrammaticScroll, tierScrollRef, writeTierScroll, zoom],
   );
 
   const applySelectionViewportScroll = useCallback(
@@ -150,22 +137,13 @@ export function useTranscriptionViewportFit(args: {
       const w = tier?.clientWidth ?? 0;
       if (w <= 0 || dur < 0.5) return;
 
-      const pending: PendingViewportFit = {
-        intent: { startSec: seg.start_sec, endSec: seg.end_sec },
-        pxPerSec,
-      };
-      const targetSl = resolveViewportFitScrollPx({
-        pending,
-        durationSec: dur,
-        viewportWidthPx: w,
-      });
-      const currentSl = tier?.scrollLeft ?? 0;
-      markProgrammaticScroll(undefined, Math.abs(targetSl - currentSl));
-      scrollApiRef.current.setTierScrollPx(targetSl);
-      wfApiRef.current.setScrollLeft(targetSl);
+      const pending: PendingViewportFit = { intent: { startSec: seg.start_sec, endSec: seg.end_sec }, pxPerSec };
+      const targetSl = resolveViewportFitScrollPx({ pending, durationSec: dur, viewportWidthPx: w });
+      markProgrammaticScroll(undefined, Math.abs(targetSl - (tier?.scrollLeft ?? 0)));
+      writeTierScroll(targetSl);
       pendingViewportFitRef.current = null;
     },
-    [durationRef, markProgrammaticScroll, scrollApiRef, tierScrollRef, wfApiRef],
+    [durationRef, markProgrammaticScroll, tierScrollRef, writeTierScroll],
   );
 
   const runZoomToFitSegment = useCallback(
@@ -184,11 +162,7 @@ export function useTranscriptionViewportFit(args: {
         applySelectionViewportScroll(seg, px);
         return;
       }
-
-      queueViewportFit({
-        intent: { startSec: seg.start_sec, endSec: seg.end_sec },
-        pxPerSec: px,
-      });
+      queueViewportFit({ intent: { startSec: seg.start_sec, endSec: seg.end_sec }, pxPerSec: px });
     },
     [applySelectionViewportScroll, currentPxPerSecRef, durationRef, queueViewportFit, tierScrollRef],
   );
@@ -196,18 +170,13 @@ export function useTranscriptionViewportFit(args: {
   const zoomToFitSegment = useCallback(
     (seg: { start_sec: number; end_sec: number }, options?: { forceFullFit?: boolean }) => {
       pendingSegmentFitRef.current = { ...seg, forceFullFit: options?.forceFullFit === true };
-      if (pendingSegmentFitRafRef.current) {
-        cancelAnimationFrame(pendingSegmentFitRafRef.current);
-      }
+      if (pendingSegmentFitRafRef.current) cancelAnimationFrame(pendingSegmentFitRafRef.current);
       pendingSegmentFitRafRef.current = requestAnimationFrame(() => {
         pendingSegmentFitRafRef.current = 0;
         const pending = pendingSegmentFitRef.current;
         pendingSegmentFitRef.current = null;
         if (!pending) return;
-        runZoomToFitSegment(
-          { start_sec: pending.start_sec, end_sec: pending.end_sec },
-          { forceFullFit: pending.forceFullFit },
-        );
+        runZoomToFitSegment({ start_sec: pending.start_sec, end_sec: pending.end_sec }, { forceFullFit: pending.forceFullFit });
       });
     },
     [runZoomToFitSegment],
@@ -220,6 +189,7 @@ export function useTranscriptionViewportFit(args: {
   }, [getSelectedSegment, zoomToFitSegment]);
 
   const cancelViewportFit = useCallback(() => {
+    viewportFitPhaseRef.current = reduceViewportFitPhase(viewportFitPhaseRef.current, { type: "cancel" });
     pendingViewportFitRef.current = null;
     pendingSegmentFitRef.current = null;
     if (pendingSegmentFitRafRef.current) {
@@ -231,23 +201,26 @@ export function useTranscriptionViewportFit(args: {
 
   const onWaveformScroll = useCallback(
     (scrollLeftPx: number) => {
+      if (peaksCanvasActive) return;
+      if (shouldBlockWaveformScrollSync(viewportFitPhaseRef.current)) return;
       const pending = pendingViewportFitRef.current;
       const pxPerSec = currentPxPerSecRef.current;
       if (pending && Math.abs(pending.pxPerSec - pxPerSec) > 0.001) return;
       if (shouldSuppressWaveformScrollSync(suppressWaveformScrollUntilRef.current)) return;
       syncWaveformScrollRef.current(scrollLeftPx);
     },
-    [currentPxPerSecRef, suppressWaveformScrollUntilRef, syncWaveformScrollRef],
+    [currentPxPerSecRef, peaksCanvasActive, suppressWaveformScrollUntilRef, syncWaveformScrollRef],
   );
 
-  // 先滚动 tier（finalize: false），保留 pending 直至 peaks resample + ws.load 完成。
-  // 若在此时 finalize，onZoomApplied 会失败并 restore 旧 scroll → 视口看似 fit 但 Canvas peaks 空白。
+  // Scroll tier immediately; keep pending until draw px/s and peaks are ready.
   useLayoutEffect(() => {
     const pending = pendingViewportFitRef.current;
     if (!pending || !waveformReady || renderTimelineWidthPx <= 0) return;
     if (Math.abs(pending.pxPerSec - currentPxPerSec) > 0.001) return;
+    if (Math.abs(pending.pxPerSec - drawPxPerSec) > 0.001) return;
     applyPendingViewportFit(currentPxPerSec, { finalize: false });
-  }, [applyPendingViewportFit, currentPxPerSec, renderTimelineWidthPx, waveformReady]);
+    viewportFitPhaseRef.current = reduceViewportFitPhase(viewportFitPhaseRef.current, { type: "peaksReady" });
+  }, [applyPendingViewportFit, currentPxPerSec, drawPxPerSec, renderTimelineWidthPx, waveformReady]);
 
   useEffect(() => {
     if (!mediaUrl || !waveformReady) return;
@@ -263,9 +236,7 @@ export function useTranscriptionViewportFit(args: {
 
   useEffect(
     () => () => {
-      if (pendingSegmentFitRafRef.current) {
-        cancelAnimationFrame(pendingSegmentFitRafRef.current);
-      }
+      if (pendingSegmentFitRafRef.current) cancelAnimationFrame(pendingSegmentFitRafRef.current);
     },
     [],
   );

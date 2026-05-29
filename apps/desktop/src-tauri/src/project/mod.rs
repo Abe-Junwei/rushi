@@ -31,6 +31,7 @@ mod transcribe_timeout;
 pub mod types;
 pub mod utils;
 pub mod waveform_peaks;
+pub mod waveform_peaks_generate;
 pub mod waveform_peaks_cmd;
 
 pub use app_data_paths::models_root_for_app_data_root;

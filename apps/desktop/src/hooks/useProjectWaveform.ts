@@ -22,6 +22,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     selectedIdx,
     disabled,
     minPxPerSec = 56,
+    interactionPxPerSec,
     peakCache = null,
     waveformHeightPx = 96,
     zoomDragging = false,
@@ -35,6 +36,8 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
   getViewportScrollPxRef.current = options.getViewportScrollPx;
   const minPxPerSecRef = useRef(minPxPerSec);
   minPxPerSecRef.current = minPxPerSec;
+  const interactionPxPerSecRef = useRef(interactionPxPerSec ?? minPxPerSec);
+  interactionPxPerSecRef.current = interactionPxPerSec ?? minPxPerSec;
   const peakCacheRef = useRef(peakCache);
   peakCacheRef.current = peakCache;
   const waveformHeightRef = useRef(waveformHeightPx);
@@ -66,7 +69,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     containerRef,
     isReady,
     minPxPerSecRef,
-    minPxPerSecRef,
+    interactionPxPerSecRef,
     applyGlobalPlaybackRateRef,
   );
   const clearWsListeners = useCallback(() => {

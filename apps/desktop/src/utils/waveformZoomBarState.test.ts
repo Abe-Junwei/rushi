@@ -3,9 +3,10 @@ import {
   computeFitAllPxPerSec,
   computeFitSelectionPxPerSec,
   PX_PER_SEC_MAX,
+  resolveWaveformZoomSliderRange,
   TIMELINE_PX_PER_SEC,
 } from "./pxPerSec";
-import { computeCrosshairTogglePressed, computeWaveformZoomBarUiState } from "./waveformZoomBarState";
+import { computeWaveformZoomBarUiState } from "./waveformZoomBarState";
 
 describe("computeWaveformZoomBarUiState", () => {
   it("marks default zoom at 56 px/s", () => {
@@ -50,15 +51,17 @@ describe("computeWaveformZoomBarUiState", () => {
     expect(s.belowManualSliderRange).toBe(true);
     expect(s.atMinZoom).toBe(false);
   });
-});
 
-describe("computeCrosshairTogglePressed", () => {
-  it("is off at default view while preference may stay armed", () => {
-    expect(computeCrosshairTogglePressed(true, "default")).toBe(false);
-  });
-
-  it("is on for fit-selection or custom when preference is true", () => {
-    expect(computeCrosshairTogglePressed(true, "fit-selection")).toBe(true);
-    expect(computeCrosshairTogglePressed(true, "custom")).toBe(true);
+  it("does not mark near-fit-all px/s as below slider min (long media, wide viewport)", () => {
+    const fitAll = computeFitAllPxPerSec(1200, 1195);
+    const s = computeWaveformZoomBarUiState({
+      pxPerSec: 1,
+      viewportWidthPx: 1200,
+      durationSec: 1195,
+      sliderRange: resolveWaveformZoomSliderRange(1200, 1195),
+    });
+    expect(fitAll).toBeGreaterThan(1);
+    expect(s.belowManualSliderRange).toBe(false);
+    expect(s.atMinZoom).toBe(true);
   });
 });

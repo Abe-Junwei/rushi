@@ -12,6 +12,7 @@ export function useSegmentKeyboard(args: {
   selectSegmentAtRef: React.MutableRefObject<(idx: number, source?: SegmentSelectSource) => void>;
   tierScrollRef: React.RefObject<HTMLDivElement | null>;
   showEditorHintRef: React.MutableRefObject<(msg: string) => void>;
+  stepWaveformZoomRef: React.MutableRefObject<(direction: "in" | "out") => void>;
 }) {
   const argsRef = useRef(args);
   argsRef.current = args;
@@ -102,6 +103,26 @@ export function useSegmentKeyboard(args: {
       if (e.key === "." && !mod) {
         e.preventDefault();
         w.seekByDelta(1 / 30);
+        return;
+      }
+      if ((e.key === "=" || e.key === "+") && !mod) {
+        e.preventDefault();
+        a.stepWaveformZoomRef.current("in");
+        return;
+      }
+      if (e.key === "-" && !mod) {
+        e.preventDefault();
+        a.stepWaveformZoomRef.current("out");
+        return;
+      }
+      if (mod && (e.key === "=" || e.key === "+")) {
+        e.preventDefault();
+        a.stepWaveformZoomRef.current("in");
+        return;
+      }
+      if (mod && e.key === "-") {
+        e.preventDefault();
+        a.stepWaveformZoomRef.current("out");
         return;
       }
       if (e.key === "[" && !mod) {

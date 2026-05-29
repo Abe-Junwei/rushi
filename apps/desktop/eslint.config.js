@@ -40,6 +40,24 @@ export default tseslint.config(
       "@typescript-eslint/no-misused-promises": "error",
       // 生产代码不留 console.log
       "no-console": ["warn", { allow: ["warn", "error"] }],
+      // `_` 前缀表示「有意未使用」（占位参数、稳定签名）
+      "@typescript-eslint/no-unused-vars": [
+        "error",
+        {
+          argsIgnorePattern: "^_",
+          varsIgnorePattern: "^_",
+          caughtErrorsIgnorePattern: "^_",
+        },
+      ],
+    },
+  },
+  {
+    // vitest mock spies (vi.fn) are object methods, so referencing them in
+    // `expect(ctx.fillRect)` trips unbound-method — a known false positive for
+    // mocking libraries. Relax it for test files only.
+    files: ["src/**/*.test.{ts,tsx}"],
+    rules: {
+      "@typescript-eslint/unbound-method": "off",
     },
   },
 );

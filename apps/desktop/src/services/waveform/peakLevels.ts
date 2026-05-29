@@ -11,9 +11,9 @@ export const PEAK_LOD_LEVELS = [
  * 若 target 超过所有级别，回退到最精细级别（L2），由绘制层做视觉拉伸。
  */
 export function pickPeakLodLevel(pxPerSec: number): number {
-  let picked: number = PEAK_LOD_LEVELS[PEAK_LOD_LEVELS.length - 1]!.level;
+  let picked: number = PEAK_LOD_LEVELS[PEAK_LOD_LEVELS.length - 1].level;
   for (let i = PEAK_LOD_LEVELS.length - 1; i >= 0; i--) {
-    const lod = PEAK_LOD_LEVELS[i]!;
+    const lod = PEAK_LOD_LEVELS[i];
     if (lod.pixelsPerSecond >= pxPerSec) {
       picked = lod.level;
     }

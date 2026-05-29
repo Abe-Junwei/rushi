@@ -212,7 +212,7 @@ export function useWaveformSegmentDrag(
       if (!drag || drag.pointerId !== ev.pointerId) return;
       dragRef.current = null;
       try {
-        (ev.currentTarget as HTMLElement).releasePointerCapture(ev.pointerId);
+        (ev.currentTarget).releasePointerCapture(ev.pointerId);
       } catch {
         /* noop */
       }

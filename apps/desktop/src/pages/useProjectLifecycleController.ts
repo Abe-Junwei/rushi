@@ -143,7 +143,7 @@ export function useProjectLifecycleController(): ProjectLifecycleApi {
     } finally {
       endBusy();
     }
-  }, [busy, current, currentFileId, mutations, dirty, beginBusy, endBusy, setCurrent, setSegments, setSelectedIdx, segmentsRef]);
+  }, [busy, current, currentFileId, mutations, dirty, beginBusy, endBusy, setCurrent, setSegments, setSelectedIdx, segmentsRef, selectedIdxRef]);
 
   const closeGate = useProjectCloseGateController({
     applyDetail,

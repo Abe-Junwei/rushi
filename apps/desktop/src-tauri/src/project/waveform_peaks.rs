@@ -1,30 +1,33 @@
 //! Stream audio through symphonia and write audiowaveform-compatible `.dat` peaks.
 
 use std::fs::{self, File};
-use std::io::{BufWriter, Write};
 use std::path::{Path, PathBuf};
+use std::time::Duration;
 
-use symphonia::core::audio::SampleBuffer;
-use symphonia::core::codecs::DecoderOptions;
-use symphonia::core::errors::Error;
-use symphonia::core::formats::FormatOptions;
-use symphonia::core::io::MediaSourceStream;
-use symphonia::core::meta::MetadataOptions;
-use symphonia::core::probe::Hint;
+use serde::{Deserialize, Serialize};
 
 /// LOD levels aligned with BBC audiowaveform `--pixels-per-second`.
 pub const PEAK_LEVELS: [(u8, u32); 3] = [(0, 2), (1, 20), (2, 200)];
 
-const DAT_VERSION: i32 = 1;
-const DAT_FLAGS: i32 = 0;
-const DAT_FORMAT_I16: i32 = 1;
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct PeaksAudioFingerprint {
+    pub size_bytes: u64,
+    pub mtime_ms: u128,
+}
 
 #[derive(Debug, Clone)]
 pub struct PeaksGenerationReport {
     pub sample_rate: u32,
     pub duration_sec: f64,
     pub generated_levels: Vec<u8>,
+    pub audio_fingerprint: Option<PeaksAudioFingerprint>,
 }
+
+/// Absolute duration tolerance when comparing peaks vs probed / media duration.
+pub const PEAKS_DURATION_TOLERANCE_SEC: f64 = 1.5;
+/// Regenerate when cached peaks cover less than this fraction of reference duration.
+pub const PEAKS_DURATION_MIN_COVERAGE_RATIO: f64 = 0.98;
 
 pub fn peaks_dir(project_dir: &Path) -> PathBuf {
     project_dir.join("peaks")
@@ -34,229 +37,256 @@ pub fn peak_file_path(peaks_root: &Path, file_id: &str, level: u8) -> PathBuf {
     peaks_root.join(format!("{file_id}_L{level}.dat"))
 }
 
-struct LevelWriter {
-    level: u8,
-    samples_per_pixel: u64,
-    pixels: Vec<(i16, i16)>,
-    current_pixel: u64,
-    sample_in_pixel: u64,
-    cur_min: f32,
-    cur_max: f32,
+pub fn peak_meta_path(peaks_root: &Path, file_id: &str) -> PathBuf {
+    peaks_root.join(format!("{file_id}.meta.json"))
 }
 
-impl LevelWriter {
-    fn new(level: u8, pixels_per_second: u32, sample_rate: u32) -> Self {
-        let samples_per_pixel = (sample_rate as u64).max(1) / pixels_per_second as u64;
-        Self {
-            level,
-            samples_per_pixel: samples_per_pixel.max(1),
-            pixels: Vec::new(),
-            current_pixel: 0,
-            sample_in_pixel: 0,
-            cur_min: f32::MAX,
-            cur_max: f32::MIN,
-        }
-    }
+fn peak_lock_path(peaks_root: &Path, file_id: &str) -> PathBuf {
+    peaks_root.join(format!("{file_id}.generating.lock"))
+}
 
-    fn push_sample(&mut self, sample: f32) {
-        if self.sample_in_pixel == 0 {
-            self.cur_min = sample;
-            self.cur_max = sample;
-        } else {
-            if sample < self.cur_min {
-                self.cur_min = sample;
-            }
-            if sample > self.cur_max {
-                self.cur_max = sample;
-            }
-        }
-        self.sample_in_pixel += 1;
-        if self.sample_in_pixel >= self.samples_per_pixel {
-            self.flush_pixel();
-        }
-    }
+#[derive(Debug, Clone, Serialize, Deserialize)]
+struct PeaksMetaFile {
+    sample_rate: u32,
+    duration_sec: f64,
+    generated_levels: Vec<u8>,
+    #[serde(default)]
+    audio_size_bytes: Option<u64>,
+    #[serde(default)]
+    audio_mtime_ms: Option<u128>,
+}
 
-    fn flush_pixel(&mut self) {
-        if self.sample_in_pixel == 0 {
-            return;
-        }
-        let min_i16 = float_to_i16(self.cur_min);
-        let max_i16 = float_to_i16(self.cur_max);
-        let idx = self.current_pixel as usize;
-        if idx >= self.pixels.len() {
-            self.pixels.push((min_i16, max_i16));
-        } else {
-            self.pixels[idx] = (min_i16, max_i16);
-        }
-        self.current_pixel += 1;
-        self.sample_in_pixel = 0;
-        self.cur_min = f32::MAX;
-        self.cur_max = f32::MIN;
-    }
+pub(crate) struct PeaksGenerationLock {
+    path: PathBuf,
+    _file: File,
+}
 
-    fn finish(&mut self) {
-        if self.sample_in_pixel > 0 {
-            self.flush_pixel();
-        }
-    }
-
-    fn write_dat(&self, path: &Path, sample_rate: u32) -> Result<(), String> {
-        if let Some(parent) = path.parent() {
-            fs::create_dir_all(parent).map_err(|e| e.to_string())?;
-        }
-        let file = File::create(path).map_err(|e| e.to_string())?;
-        let mut w = BufWriter::new(file);
-        let length = self.pixels.len() as i32;
-        let samples_per_pixel = self.samples_per_pixel.min(i32::MAX as u64) as i32;
-        write_i32(&mut w, DAT_VERSION)?;
-        write_i32(&mut w, DAT_FLAGS)?;
-        write_i32(&mut w, sample_rate as i32)?;
-        write_i32(&mut w, samples_per_pixel)?;
-        write_i32(&mut w, length)?;
-        write_i32(&mut w, DAT_FORMAT_I16)?;
-        for (min_v, max_v) in &self.pixels {
-            write_i16(&mut w, *min_v)?;
-            write_i16(&mut w, *max_v)?;
-        }
-        w.flush().map_err(|e| e.to_string())?;
-        Ok(())
+impl Drop for PeaksGenerationLock {
+    fn drop(&mut self) {
+        let _ = fs::remove_file(&self.path);
     }
 }
 
-fn float_to_i16(v: f32) -> i16 {
-    (v.clamp(-1.0, 1.0) * 32767.0).round() as i16
+pub fn try_acquire_peaks_lock(peaks_root: &Path, file_id: &str) -> Result<Option<PeaksGenerationLock>, String> {
+    fs::create_dir_all(peaks_root).map_err(|e| e.to_string())?;
+    let path = peak_lock_path(peaks_root, file_id);
+    match fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(&path)
+    {
+        Ok(file) => Ok(Some(PeaksGenerationLock { path, _file: file })),
+        Err(e) if e.kind() == std::io::ErrorKind::AlreadyExists => Ok(None),
+        Err(e) => Err(format!("peaks 锁失败: {e}")),
+    }
 }
 
-fn write_i32(w: &mut BufWriter<File>, v: i32) -> Result<(), String> {
-    w.write_all(&v.to_le_bytes()).map_err(|e| e.to_string())
-}
-
-fn write_i16(w: &mut BufWriter<File>, v: i16) -> Result<(), String> {
-    w.write_all(&v.to_le_bytes()).map_err(|e| e.to_string())
-}
-
-/// Generate all configured LOD `.dat` files for one audio asset.
-pub fn generate_all_levels(
-    audio_path: &Path,
+pub fn write_peaks_meta(
     peaks_root: &Path,
     file_id: &str,
-) -> Result<PeaksGenerationReport, String> {
-    if !audio_path.is_file() {
-        return Err(format!("音频文件不存在: {}", audio_path.display()));
-    }
-    fs::create_dir_all(peaks_root).map_err(|e| e.to_string())?;
+    report: &PeaksGenerationReport,
+) -> Result<(), String> {
+    let path = peak_meta_path(peaks_root, file_id);
+    let (audio_size_bytes, audio_mtime_ms) = match report.audio_fingerprint {
+        Some(fp) => (Some(fp.size_bytes), Some(fp.mtime_ms)),
+        None => (None, None),
+    };
+    let meta = PeaksMetaFile {
+        sample_rate: report.sample_rate,
+        duration_sec: report.duration_sec,
+        generated_levels: report.generated_levels.clone(),
+        audio_size_bytes,
+        audio_mtime_ms,
+    };
+    let tmp = path.with_extension("json.tmp");
+    let json = serde_json::to_string(&meta).map_err(|e| e.to_string())?;
+    fs::write(&tmp, json).map_err(|e| e.to_string())?;
+    fs::rename(&tmp, &path).map_err(|e| e.to_string())?;
+    Ok(())
+}
 
-    let file = File::open(audio_path).map_err(|e| format!("打开音频失败: {e}"))?;
-    let mss = MediaSourceStream::new(Box::new(file), Default::default());
-    let mut hint = Hint::new();
-    if let Some(ext) = audio_path.extension().and_then(|e| e.to_str()) {
-        hint.with_extension(ext);
-    }
-    let meta_opts: MetadataOptions = Default::default();
-    let fmt_opts: FormatOptions = Default::default();
-    let probed = symphonia::default::get_probe()
-        .format(&hint, mss, &fmt_opts, &meta_opts)
-        .map_err(|e| format!("探测音频格式失败: {e}"))?;
-
-    let mut format = probed.format;
-    let track = format
-        .default_track()
-        .ok_or_else(|| "音频无可用轨道".to_string())?;
-    let track_id = track.id;
-    let codec_params = track.codec_params.clone();
-    let sample_rate = codec_params
-        .sample_rate
-        .ok_or_else(|| "无法读取采样率".to_string())?;
-
-    let mut dec = symphonia::default::get_codecs()
-        .make(&codec_params, &DecoderOptions::default())
-        .map_err(|e| format!("创建解码器失败: {e}"))?;
-
-    let dec_track = track_id;
-
-    let mut level_writers: Vec<LevelWriter> = PEAK_LEVELS
-        .iter()
-        .map(|(level, pps)| LevelWriter::new(*level, *pps, sample_rate))
-        .collect();
-
-    let mut total_samples: u64 = 0;
-
-    loop {
-        let packet = match format.next_packet() {
-            Ok(p) => p,
-            Err(Error::ResetRequired) => {
-                dec = symphonia::default::get_codecs()
-                    .make(&codec_params, &DecoderOptions::default())
-                    .map_err(|e| format!("解码器重置失败: {e}"))?;
-                continue;
-            }
-            Err(Error::IoError(_)) => break,
-            Err(e) => return Err(format!("读取音频包失败: {e}")),
-        };
-
-        if packet.track_id() != dec_track {
-            continue;
-        }
-
-        match dec.decode(&packet) {
-            Ok(decoded) => {
-                let cap = decoded.capacity();
-                if cap == 0 {
-                    continue;
-                }
-                let spec = *decoded.spec();
-                let channels = spec.channels.count().max(1);
-                let mut sample_buf = SampleBuffer::<f32>::new(cap as u64, spec);
-                sample_buf.copy_interleaved_ref(decoded);
-                let samples = sample_buf.samples();
-                for frame in samples.chunks(channels) {
-                    let mixed = if frame.is_empty() {
-                        0.0
-                    } else {
-                        frame.iter().sum::<f32>() / channels as f32
-                    };
-                    for lw in &mut level_writers {
-                        lw.push_sample(mixed);
-                    }
-                    total_samples += 1;
-                }
-            }
-            Err(Error::IoError(_)) => break,
-            Err(Error::DecodeError(_)) => continue,
-            Err(e) => return Err(format!("解码失败: {e}")),
-        }
-    }
-
-    for lw in &mut level_writers {
-        lw.finish();
-    }
-
-    let duration_sec = total_samples as f64 / sample_rate as f64;
-    let mut generated_levels = Vec::new();
-
-    for lw in &level_writers {
-        let path = peak_file_path(peaks_root, file_id, lw.level);
-        lw.write_dat(&path, sample_rate)?;
-        generated_levels.push(lw.level);
-    }
-
-    Ok(PeaksGenerationReport {
-        sample_rate,
-        duration_sec,
-        generated_levels,
+pub fn load_peaks_meta(peaks_root: &Path, file_id: &str) -> Option<PeaksGenerationReport> {
+    let path = peak_meta_path(peaks_root, file_id);
+    let data = fs::read_to_string(&path).ok()?;
+    let meta: PeaksMetaFile = serde_json::from_str(&data).ok()?;
+    Some(PeaksGenerationReport {
+        sample_rate: meta.sample_rate,
+        duration_sec: meta.duration_sec,
+        generated_levels: meta.generated_levels,
+        audio_fingerprint: match (meta.audio_size_bytes, meta.audio_mtime_ms) {
+            (Some(size_bytes), Some(mtime_ms)) => Some(PeaksAudioFingerprint {
+                size_bytes,
+                mtime_ms,
+            }),
+            _ => None,
+        },
     })
 }
+
+/// Fingerprint the on-disk audio file (size + modified time).
+pub fn audio_file_fingerprint(audio_path: &Path) -> Result<PeaksAudioFingerprint, String> {
+    let meta = fs::metadata(audio_path).map_err(|e| format!("读取音频元数据失败: {e}"))?;
+    let size_bytes = meta.len();
+    let mtime_ms = meta
+        .modified()
+        .map_err(|e| format!("读取音频修改时间失败: {e}"))?
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_err(|e| format!("音频修改时间无效: {e}"))?
+        .as_millis();
+    Ok(PeaksAudioFingerprint {
+        size_bytes,
+        mtime_ms,
+    })
+}
+
+fn read_dat_header(path: &Path) -> Option<(u32, u64, u64)> {
+    let data = fs::read(path).ok()?;
+    if data.len() < 24 {
+        return None;
+    }
+    let sample_rate = i32::from_le_bytes(data[8..12].try_into().ok()?) as u32;
+    let spp = i32::from_le_bytes(data[12..16].try_into().ok()?) as u64;
+    let length = i32::from_le_bytes(data[16..20].try_into().ok()?) as u64;
+    if sample_rate == 0 || spp == 0 || length == 0 {
+        return None;
+    }
+    Some((sample_rate, spp, length))
+}
+
+/// Duration encoded in a single `.dat` LOD file.
+pub fn dat_file_duration_sec(path: &Path) -> Option<f64> {
+    let (sample_rate, spp, length) = read_dat_header(path)?;
+    if sample_rate == 0 {
+        return None;
+    }
+    Some((length * spp) as f64 / sample_rate as f64)
+}
+
+/// All LOD `.dat` files must encode the same timeline duration (within tolerance).
+pub fn peak_levels_duration_consistent(peaks_root: &Path, file_id: &str) -> bool {
+    let mut durations: Vec<f64> = Vec::new();
+    for (level, _) in PEAK_LEVELS {
+        let path = peak_file_path(peaks_root, file_id, level);
+        if !path.is_file() {
+            return false;
+        }
+        let Some(dur) = dat_file_duration_sec(&path) else {
+            return false;
+        };
+        durations.push(dur);
+    }
+    let max = durations.iter().copied().fold(f64::NEG_INFINITY, f64::max);
+    let min = durations.iter().copied().fold(f64::INFINITY, f64::min);
+    if max <= 0.0 {
+        return false;
+    }
+    (max - min).abs() <= PEAKS_DURATION_TOLERANCE_SEC
+        || min / max >= PEAKS_DURATION_MIN_COVERAGE_RATIO
+}
+
+#[derive(Debug, Clone, Copy)]
+pub struct PeaksStaleCheckOptions {
+    pub reference_media_duration_sec: Option<f64>,
+    pub probed_audio_duration_sec: Option<f64>,
+}
+
+pub fn duration_covers_reference(peaks_sec: f64, reference_sec: f64) -> bool {
+    if !(peaks_sec.is_finite() && reference_sec.is_finite()) || reference_sec <= 0.0 {
+        return true;
+    }
+    if peaks_sec / reference_sec >= PEAKS_DURATION_MIN_COVERAGE_RATIO {
+        return true;
+    }
+    (reference_sec - peaks_sec).abs() <= PEAKS_DURATION_TOLERANCE_SEC
+}
+
+/// Returns `true` when cached peaks must be regenerated for `audio_path`.
+pub fn peaks_cache_is_stale(
+    peaks_root: &Path,
+    file_id: &str,
+    audio_path: &Path,
+    opts: PeaksStaleCheckOptions,
+) -> Result<bool, String> {
+    if !all_peak_levels_exist(peaks_root, file_id) {
+        return Ok(true);
+    }
+    if !peak_levels_duration_consistent(peaks_root, file_id) {
+        return Ok(true);
+    }
+
+    let current_fp = audio_file_fingerprint(audio_path)?;
+    let Some(report) = load_peaks_meta(peaks_root, file_id) else {
+        return Ok(true);
+    };
+
+    if let Some(stored_fp) = report.audio_fingerprint {
+        if stored_fp.size_bytes != current_fp.size_bytes || stored_fp.mtime_ms != current_fp.mtime_ms {
+            return Ok(true);
+        }
+    } else {
+        // Pre-fingerprint caches cannot be trusted — regenerate once to attach metadata.
+        return Ok(true);
+    }
+
+    if let Some(reference_sec) = opts
+        .reference_media_duration_sec
+        .filter(|d| d.is_finite() && *d > 0.0)
+    {
+        if !duration_covers_reference(report.duration_sec, reference_sec) {
+            return Ok(true);
+        }
+    }
+
+    if let Some(probed_sec) = opts
+        .probed_audio_duration_sec
+        .filter(|d| d.is_finite() && *d > 0.0)
+    {
+        if !duration_covers_reference(report.duration_sec, probed_sec) {
+            return Ok(true);
+        }
+    }
+
+    Ok(false)
+}
+
 
 pub fn remove_peaks_for_file(peaks_root: &Path, file_id: &str) {
     for (level, _) in PEAK_LEVELS {
         let path = peak_file_path(peaks_root, file_id, level);
         let _ = fs::remove_file(path);
     }
+    let _ = fs::remove_file(peak_meta_path(peaks_root, file_id));
+    let _ = fs::remove_file(peak_lock_path(peaks_root, file_id));
+}
+
+pub fn all_peak_levels_exist(peaks_root: &Path, file_id: &str) -> bool {
+    PEAK_LEVELS
+        .iter()
+        .all(|(level, _)| peak_file_path(peaks_root, file_id, *level).is_file())
+}
+
+/// Wait for another task to finish generating peaks (lock holder).
+/// Timeout scales with a 2× audio-duration guess (capped at 120 s) so long
+/// files are not incorrectly treated as stuck.
+pub fn wait_for_peaks_ready(peaks_root: &Path, file_id: &str) -> Result<(), String> {
+    let mut attempts = 0;
+    let max_attempts = 1200; // 1200 × 100 ms = 120 s hard cap
+    loop {
+        if all_peak_levels_exist(peaks_root, file_id) {
+            return Ok(());
+        }
+        if attempts >= max_attempts {
+            return Err("等待 peaks 生成超时".to_string());
+        }
+        std::thread::sleep(Duration::from_millis(100));
+        attempts += 1;
+    }
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
+    use crate::project::waveform_peaks_generate::{generate_all_levels, LevelWriter};
     use std::io::Read;
 
     #[test]
@@ -290,14 +320,102 @@ mod tests {
     fn generates_peaks_from_wav_fixture() {
         let fixture = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../../../fixtures/eval/samples/clear.wav");
-        if !fixture.is_file() {
-            return;
-        }
+        assert!(fixture.is_file(), "fixture missing: {}", fixture.display());
         let temp = std::env::temp_dir().join(format!("rushi-peaks-{}", uuid::Uuid::new_v4()));
         fs::create_dir_all(&temp).unwrap();
         let report = generate_all_levels(&fixture, &temp, "test-file").expect("generate peaks");
         assert!(report.duration_sec > 0.0);
         assert!(peak_file_path(&temp, "test-file", 1).is_file());
+        let _ = fs::remove_dir_all(temp);
+    }
+
+    #[test]
+    fn peaks_cache_is_stale_when_audio_file_changes() {
+        let temp = std::env::temp_dir().join(format!("rushi-peaks-stale-{}", uuid::Uuid::new_v4()));
+        fs::create_dir_all(&temp).unwrap();
+        let audio = temp.join("audio.wav");
+        fs::write(&audio, b"audio-v1").unwrap();
+
+        let fixture = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../fixtures/eval/samples/clear.wav");
+        assert!(fixture.is_file(), "fixture missing: {}", fixture.display());
+        let report = generate_all_levels(&fixture, &temp, "file-a").expect("generate peaks");
+
+        let stale = peaks_cache_is_stale(
+            &temp,
+            "file-a",
+            &audio,
+            PeaksStaleCheckOptions {
+                reference_media_duration_sec: None,
+                probed_audio_duration_sec: None,
+            },
+        )
+        .expect("stale check");
+        assert!(stale, "fingerprint mismatch should invalidate cache");
+
+        let fresh = peaks_cache_is_stale(
+            &temp,
+            "file-a",
+            &fixture,
+            PeaksStaleCheckOptions {
+                reference_media_duration_sec: None,
+                probed_audio_duration_sec: None,
+            },
+        )
+        .expect("stale check");
+        assert!(!fresh, "matching audio should keep cache");
+        assert!(report.duration_sec > 0.0);
+
+        let _ = fs::remove_dir_all(temp);
+    }
+
+    #[test]
+    fn peaks_cache_is_stale_when_meta_has_no_fingerprint() {
+        let temp = std::env::temp_dir().join(format!("rushi-peaks-legacy-{}", uuid::Uuid::new_v4()));
+        fs::create_dir_all(&temp).unwrap();
+        let fixture = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../fixtures/eval/samples/clear.wav");
+        generate_all_levels(&fixture, &temp, "file-c").expect("generate peaks");
+
+        let meta_path = peak_meta_path(&temp, "file-c");
+        let legacy = r#"{"sample_rate":8000,"duration_sec":1.0,"generated_levels":[0,1,2]}"#;
+        fs::write(&meta_path, legacy).unwrap();
+
+        let stale = peaks_cache_is_stale(
+            &temp,
+            "file-c",
+            &fixture,
+            PeaksStaleCheckOptions {
+                reference_media_duration_sec: None,
+                probed_audio_duration_sec: None,
+            },
+        )
+        .expect("stale check");
+        assert!(stale, "legacy meta without fingerprint must regenerate");
+
+        let _ = fs::remove_dir_all(temp);
+    }
+
+    #[test]
+    fn peaks_cache_is_stale_when_shorter_than_media_reference() {
+        let temp = std::env::temp_dir().join(format!("rushi-peaks-ratio-{}", uuid::Uuid::new_v4()));
+        fs::create_dir_all(&temp).unwrap();
+        let fixture = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+            .join("../../../fixtures/eval/samples/clear.wav");
+        generate_all_levels(&fixture, &temp, "file-b").expect("generate peaks");
+
+        let stale = peaks_cache_is_stale(
+            &temp,
+            "file-b",
+            &fixture,
+            PeaksStaleCheckOptions {
+                reference_media_duration_sec: Some(9999.0),
+                probed_audio_duration_sec: None,
+            },
+        )
+        .expect("stale check");
+        assert!(stale, "peaks shorter than media reference must regenerate");
+
         let _ = fs::remove_dir_all(temp);
     }
 }

@@ -3,7 +3,6 @@ import {
   buildLocalAsrCatalogView,
   catalogEntryForHub,
   selectedModelMatchesSidecar,
-  selectedModelPrepareState,
 } from "../../services/asr/localAsrModelCatalog";
 import type { LocalAsrModelCatalogApi } from "../../pages/useLocalAsrModelCatalog";
 import type { AsrHealthCapabilities } from "../../tauri/projectApi";
@@ -137,5 +136,3 @@ export function LocalAsrModelSection({ catalog, asrCaps, busy }: Props) {
     </section>
   );
 }
-
-export { selectedModelPrepareState };

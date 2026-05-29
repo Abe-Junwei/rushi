@@ -56,7 +56,7 @@ export function useWaveformOverviewInteraction(args: {
           startX: e.clientX,
           startScrollPx: a.scrollLeftPx,
         };
-        (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
+        (e.currentTarget).setPointerCapture(e.pointerId);
         return;
       }
 
@@ -83,7 +83,7 @@ export function useWaveformOverviewInteraction(args: {
     if (!drag || drag.pointerId !== e.pointerId) return;
     dragRef.current = null;
     try {
-      (e.currentTarget as HTMLElement).releasePointerCapture(e.pointerId);
+      (e.currentTarget).releasePointerCapture(e.pointerId);
     } catch {
       /* noop */
     }

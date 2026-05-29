@@ -1,71 +1,99 @@
-import { useLayoutEffect, useRef } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { COLORS } from "../config/tokens";
 import type { PeakCache } from "../services/waveform/PeakCache";
-import { drawWaveformPeaksTile } from "../services/waveform/waveformPeaksCanvasDraw";
+import {
+  drawWaveformPeaksTile,
+  prepareCanvasDprDraw,
+} from "../services/waveform/waveformPeaksCanvasDraw";
 
 type WaveformOverviewPeaksCanvasProps = {
   peakCache: PeakCache;
-  pxPerSec: number;
-  timelineWidthPx: number;
-  viewportWidthPx: number;
+  overviewPxPerSec: number;
+  overviewWidthPx: number;
+  mediaDurationSec: number;
   heightPx: number;
 };
 
-/** Overview strip: single viewport-wide tile at scroll 0 (ADR-0004 draw path). */
+/** Overview strip: single viewport-wide tile at scroll 0 (ADR-0004 draw path).
+ *  Resamples to exactly `overviewWidthPx` columns, bypassing the 320 px floor.
+ */
 export function WaveformOverviewPeaksCanvas({
   peakCache,
-  pxPerSec,
-  timelineWidthPx,
-  viewportWidthPx,
+  overviewPxPerSec,
+  overviewWidthPx,
+  mediaDurationSec,
   heightPx,
 }: WaveformOverviewPeaksCanvasProps) {
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const [drawError, setDrawError] = useState<string | null>(null);
 
   useLayoutEffect(() => {
     const canvas = canvasRef.current;
-    if (!canvas || heightPx <= 0 || viewportWidthPx <= 0 || timelineWidthPx <= 0) return;
+    if (!canvas || heightPx <= 0 || overviewWidthPx <= 0) return;
 
-    const dpr = typeof window !== "undefined" ? window.devicePixelRatio || 1 : 1;
-    const cssW = Math.max(1, Math.round(viewportWidthPx));
+    const cssW = Math.max(1, Math.round(overviewWidthPx));
     const cssH = Math.max(1, Math.round(heightPx));
-    const targetW = Math.round(cssW * dpr);
-    const targetH = Math.round(cssH * dpr);
-    if (canvas.width !== targetW || canvas.height !== targetH) {
-      canvas.width = targetW;
-      canvas.height = targetH;
-      canvas.style.width = `${cssW}px`;
-      canvas.style.height = `${cssH}px`;
-    }
-
-    const ctx = canvas.getContext("2d");
+    const ctx = prepareCanvasDprDraw(canvas, cssW, cssH);
     if (!ctx) return;
-    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+    const mediaDur = mediaDurationSec > 0 ? mediaDurationSec : peakCache.durationSec;
 
     try {
-      const interleaved = peakCache.getInterleavedPeaks(pxPerSec);
-      drawWaveformPeaksTile(ctx, interleaved, {
+      const interleaved = peakCache.getInterleavedPeaksForOverview(
+        overviewWidthPx,
+        overviewPxPerSec,
+        mediaDur,
+      );
+      if (interleaved.length < 2) {
+        // No data to draw — keep previous frame if any, or leave blank.
+        setDrawError("无峰值数据");
+        return;
+      }
+
+      const drew = drawWaveformPeaksTile(ctx, interleaved, {
         tileLeftPx: 0,
         tileWidthPx: cssW,
-        timelineWidthPx,
+        timelineWidthPx: cssW,
         heightPx: cssH,
-        pxPerSec,
-        durationSec: peakCache.durationSec,
+        pxPerSec: overviewPxPerSec,
+        peakDurationSec: peakCache.durationSec,
+        mediaDurationSec: mediaDur,
         waveColor: COLORS.waveformWave,
         barWidth: 2,
         barGap: 1,
+        fillLayoutWidth: true,
       });
+
+      if (!drew) {
+        setDrawError("绘制无输出");
+      } else {
+        setDrawError(null);
+      }
     } catch (err) {
       console.error("[WaveformOverviewPeaksCanvas] draw failed:", err);
-      ctx.clearRect(0, 0, cssW, cssH);
+      setDrawError(err instanceof Error ? err.message : "绘制失败");
+      // Intentionally NOT clearing canvas — keep previous frame to avoid blank flash.
     }
-  }, [peakCache, pxPerSec, timelineWidthPx, viewportWidthPx, heightPx]);
+  }, [peakCache, overviewPxPerSec, overviewWidthPx, mediaDurationSec, heightPx]);
 
   return (
-    <canvas
-      ref={canvasRef}
-      className="pointer-events-none block h-full w-full"
-      style={{ width: viewportWidthPx, height: heightPx }}
-      aria-hidden
-    />
+    <>
+      <canvas
+        ref={canvasRef}
+        className="pointer-events-none block h-full w-full"
+        style={{ width: overviewWidthPx, height: heightPx }}
+        aria-hidden
+      />
+      {drawError ? (
+        <div
+          className="pointer-events-none absolute inset-0 flex items-center justify-center"
+          aria-label={`波形绘制错误: ${drawError}`}
+        >
+          <span className="rounded bg-zen-cinnabar/10 px-2 py-0.5 text-[10px] text-zen-cinnabar">
+            {drawError}
+          </span>
+        </div>
+      ) : null}
+    </>
   );
 }

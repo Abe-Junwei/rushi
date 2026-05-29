@@ -8,7 +8,6 @@ import {
   computeOverviewViewportRect,
   overviewSegmentBarPx,
 } from "../utils/waveformOverviewGeometry";
-import { computeTimelineWidthPx } from "../utils/pxPerSec";
 import { WaveformOverviewPeaksCanvas } from "./WaveformOverviewPeaksCanvas";
 
 export type WaveformOverviewStripProps = {
@@ -57,20 +56,23 @@ export const WaveformOverviewStrip = memo(function WaveformOverviewStrip({
     });
     ro.observe(el);
     setOverviewWidthPx(el.clientWidth);
-    return () => ro.disconnect();
+    // Defensive: force a synchronous re-read after the current paint,
+    // in case the container is still animating in (global strip expand).
+    const raf = requestAnimationFrame(() => {
+      if (el) setOverviewWidthPx(el.clientWidth);
+    });
+    return () => {
+      ro.disconnect();
+      cancelAnimationFrame(raf);
+    };
   }, []);
 
   const overviewPxPerSec = useMemo(
-    () => (overviewWidthPx > 0 ? computeOverviewPxPerSec(overviewWidthPx, durationSec) : pxPerSec),
-    [durationSec, overviewWidthPx, pxPerSec],
-  );
-
-  const overviewTimelineWidthPx = useMemo(
     () =>
-      durationSec > 0
-        ? computeTimelineWidthPx(durationSec, overviewPxPerSec)
-        : 0,
-    [durationSec, overviewPxPerSec],
+      overviewWidthPx > 0 && durationSec > 0
+        ? computeOverviewPxPerSec(overviewWidthPx, durationSec)
+        : pxPerSec,
+    [durationSec, overviewWidthPx, pxPerSec],
   );
 
   const viewportRect = useMemo(
@@ -104,7 +106,19 @@ export const WaveformOverviewStrip = memo(function WaveformOverviewStrip({
     seekToTime,
   });
 
-  const showPeaks = Boolean(peakCache && isReady && overviewWidthPx > 0 && durationSec > 0);
+  // Decompose visibility states so the user sees WHY the overview is blank.
+  const hasPeakCache = Boolean(peakCache);
+  const hasDuration = durationSec > 0;
+  const hasWidth = overviewWidthPx > 0;
+  const showPeaks = hasPeakCache && hasWidth && hasDuration;
+
+  const placeholderText = !hasPeakCache
+    ? "正在加载波形…"
+    : !hasDuration
+      ? "等待音频时长…"
+      : !hasWidth
+        ? "等待布局…"
+        : null;
 
   return (
     <div
@@ -126,13 +140,17 @@ export const WaveformOverviewStrip = memo(function WaveformOverviewStrip({
         {showPeaks && peakCache ? (
           <WaveformOverviewPeaksCanvas
             peakCache={peakCache}
-            pxPerSec={overviewPxPerSec}
-            timelineWidthPx={overviewTimelineWidthPx}
-            viewportWidthPx={overviewWidthPx}
+            overviewPxPerSec={overviewPxPerSec}
+            overviewWidthPx={overviewWidthPx}
+            mediaDurationSec={durationSec}
             heightPx={Math.max(24, stripHeightPx - 8)}
           />
         ) : (
-          <div className="absolute inset-0 bg-notion-sidebar-active/40" aria-hidden />
+          <div className="absolute inset-0 flex items-center justify-center bg-notion-sidebar-active/40" aria-hidden>
+            {placeholderText ? (
+              <span className="text-[10px] text-notion-text/40">{placeholderText}</span>
+            ) : null}
+          </div>
         )}
 
         {segments.map((seg, idx) => {

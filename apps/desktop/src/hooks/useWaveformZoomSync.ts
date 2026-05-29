@@ -7,6 +7,14 @@ import {
   readVisibleWaveformScrollPx,
 } from "../utils/waveformZoomScroll";
 
+function disableWaveSurferAutoScroll(ws: WaveSurfer): void {
+  try {
+    ws.setOptions({ autoScroll: false });
+  } catch {
+    /* noop */
+  }
+}
+
 export function useWaveformZoomSync(args: {
   wsRef: RefObject<WaveSurfer | null>;
   isReady: boolean;
@@ -38,7 +46,6 @@ export function useWaveformZoomSync(args: {
     cancelInFlightZoomRef,
   } = args;
 
-  const pendingRafRef = useRef(0);
   const zoomSyncInFlightRef = useRef<number | null>(null);
   const peaksLoadSeqRef = useRef(0);
 
@@ -87,8 +94,8 @@ export function useWaveformZoomSync(args: {
       }
     };
 
-    const finishZoom = (currentWs: WaveSurfer, options?: { skipZoom?: boolean }) => {
-      queueMicrotask(() => {
+    const finishDecodeFallbackZoom = (currentWs: WaveSurfer, options?: { skipZoom?: boolean }) => {
+      requestAnimationFrame(() => {
         if (zoomSyncInFlightRef.current !== null && zoomSyncInFlightRef.current !== minPxPerSec) {
           return;
         }
@@ -99,7 +106,6 @@ export function useWaveformZoomSync(args: {
           appliedZoomPxPerSecRef.current = minPxPerSec;
           const fitApplied = onZoomAppliedRef?.current?.(minPxPerSec) === true;
           if (!fitApplied) {
-            // 在 load 完成时再采样 scroll，避免早于 viewport-fit layout 采到旧位置并滚回去。
             restoreScrollPx(currentWs, resolveScrollRestorePx(captureScrollPx(currentWs)));
           }
         } catch {
@@ -110,6 +116,36 @@ export function useWaveformZoomSync(args: {
           }
         }
       });
+    };
+
+    const finishPeaksCanvasZoom = () => {
+      requestAnimationFrame(() => {
+        if (zoomSyncInFlightRef.current !== null && zoomSyncInFlightRef.current !== minPxPerSec) {
+          return;
+        }
+        appliedZoomPxPerSecRef.current = minPxPerSec;
+        onZoomAppliedRef?.current?.(minPxPerSec);
+        if (zoomSyncInFlightRef.current === minPxPerSec) {
+          zoomSyncInFlightRef.current = null;
+        }
+      });
+    };
+
+    const applyPeaksCanvasZoom = (currentWs: WaveSurfer) => {
+      const cache = peakCacheRef?.current;
+      if (!cache) return;
+      zoomSyncInFlightRef.current = minPxPerSec;
+      peaksLoadSeqRef.current += 1;
+      try {
+        cache.getWaveSurferPeaks(minPxPerSec);
+      } catch {
+        zoomSyncInFlightRef.current = null;
+        return;
+      }
+      disableWaveSurferAutoScroll(currentWs);
+      applyWaveSurferPeaksDrawMode(currentWs, true);
+      if (appliedPeaksRef) appliedPeaksRef.current = true;
+      finishPeaksCanvasZoom();
     };
 
     const applyZoom = () => {
@@ -124,63 +160,20 @@ export function useWaveformZoomSync(args: {
       }
 
       const cache = peakCacheRef?.current;
-      const url = mediaUrl;
-      if (cache && url) {
-        try {
-          const bundle = cache.getWaveSurferPeaks(minPxPerSec);
-          const loadSeq = ++peaksLoadSeqRef.current;
-          zoomSyncInFlightRef.current = minPxPerSec;
-          const wsForLoad = wsRef.current;
-          if (!wsForLoad || !isReady || disabled) return;
-          void wsForLoad
-            .load(url, bundle.peaks, bundle.duration)
-            .then(() => {
-              if (peaksLoadSeqRef.current !== loadSeq) return;
-              if (wsRef.current !== wsForLoad) return;
-              if (mediaUrl !== url) return;
-              applyWaveSurferPeaksDrawMode(wsForLoad, true);
-              if (appliedPeaksRef) appliedPeaksRef.current = true;
-              appliedZoomPxPerSecRef.current = minPxPerSec;
-              finishZoom(wsForLoad, { skipZoom: true });
-            })
-            .catch(() => {
-              if (peaksLoadSeqRef.current !== loadSeq) return;
-              if (wsRef.current !== wsForLoad) return;
-              if (appliedPeaksRef) appliedPeaksRef.current = false;
-              applyWaveSurferPeaksDrawMode(wsForLoad, false);
-              finishZoom(wsForLoad);
-            });
-          return;
-        } catch {
-          if (zoomSyncInFlightRef.current === minPxPerSec) {
-            zoomSyncInFlightRef.current = null;
-          }
-          /* 回退 ws.zoom */
-        }
+      if (cache) {
+        applyPeaksCanvasZoom(currentWs);
+        return;
       }
 
-      // 回退到无 peaks 绘制时，确保 WS 颜色恢复可见
       if (appliedPeaksRef?.current) {
         appliedPeaksRef.current = false;
         applyWaveSurferPeaksDrawMode(currentWs, false);
       }
-      finishZoom(currentWs);
+      finishDecodeFallbackZoom(currentWs);
     };
 
     if (zoomDragging) {
-      if (pendingRafRef.current) cancelAnimationFrame(pendingRafRef.current);
-      pendingRafRef.current = requestAnimationFrame(() => {
-        pendingRafRef.current = 0;
-        applyZoom();
-      });
-      return () => {
-        peaksLoadSeqRef.current += 1;
-        zoomSyncInFlightRef.current = null;
-        if (pendingRafRef.current) {
-          cancelAnimationFrame(pendingRafRef.current);
-          pendingRafRef.current = 0;
-        }
-      };
+      return;
     }
 
     applyZoom();
@@ -190,6 +183,7 @@ export function useWaveformZoomSync(args: {
     };
   }, [
     appliedZoomPxPerSecRef,
+    appliedPeaksRef,
     disabled,
     isReady,
     mediaUrl,

@@ -71,6 +71,25 @@ describe("useWaveformTileLifecycle", () => {
     expect(gen2).toBe(gen1);
   });
 
+  it("bumps generation when layoutGeometryKey changes (viewport expand)", () => {
+    const layout = layoutAt(0);
+    const { result, rerender } = renderHook(
+      ({
+        layout: l,
+        layoutGeometryKey,
+      }: {
+        layout: TileLayout;
+        layoutGeometryKey: string;
+      }) => useWaveformTileLifecycle({ layout: l, contentKey: "k0", layoutGeometryKey }),
+      { initialProps: { layout, layoutGeometryKey: "vw400" } },
+    );
+    const gen1 = result.current.activeTiles[0].generation;
+    rerender({ layout, layoutGeometryKey: "vw900" });
+    for (const tile of result.current.activeTiles) {
+      expect(tile.generation).toBe(gen1 + 1);
+    }
+  });
+
   it("bumps generation for all active tiles when contentKey changes", () => {
     const layout = layoutAt(0);
     const { result, rerender } = renderHook(

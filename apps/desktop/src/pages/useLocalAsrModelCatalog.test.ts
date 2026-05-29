@@ -18,11 +18,11 @@ vi.mock("../services/asr/localAsrSetupModelStep", () => ({
 }));
 
 vi.mock("../services/asr/loopbackFetch", () => ({
-  loopbackFetch: vi.fn(async () => ({ ok: true, json: async () => ({}) })),
+  loopbackFetch: vi.fn(() => Promise.resolve({ ok: true, json: () => Promise.resolve({}) })),
 }));
 
 vi.mock("../tauri/projectApi", () => ({
-  getLocalAsrHubModelPref: vi.fn(async () => "iic/SenseVoiceSmall"),
+  getLocalAsrHubModelPref: vi.fn(() => Promise.resolve("iic/SenseVoiceSmall")),
 }));
 
 describe("useLocalAsrModelCatalog applySelectedModel", () => {

@@ -4,11 +4,7 @@ import { resolveSelectSegmentViewportPlan } from "./selectSegmentViewportPlan";
 describe("resolveSelectSegmentViewportPlan", () => {
   const seg = { start_sec: 10, end_sec: 12 };
 
-  it("scrolls when auto-fit is off", () => {
-    expect(resolveSelectSegmentViewportPlan(false, seg)).toEqual({ kind: "scroll", segment: seg });
-  });
-
-  it("fits explicit segment when auto-fit is on", () => {
-    expect(resolveSelectSegmentViewportPlan(true, seg)).toEqual({ kind: "fit", segment: seg });
+  it("always fits the selected segment to the viewport", () => {
+    expect(resolveSelectSegmentViewportPlan(seg)).toEqual({ kind: "fit", segment: seg });
   });
 });

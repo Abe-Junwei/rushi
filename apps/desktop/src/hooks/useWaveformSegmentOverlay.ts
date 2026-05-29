@@ -40,6 +40,7 @@ export function useWaveformSegmentOverlay(args: {
   }, []);
 
   const drag = useWaveformSegmentDrag(argsRef, applySegmentDraft, setCreatePreview);
+  const { suppressClickAfterPointer } = drag;
 
   const onSegmentClick = useCallback(
     (idx: number, ev: ReactMouseEvent<HTMLElement>) => {
@@ -59,12 +60,12 @@ export function useWaveformSegmentOverlay(args: {
       if (a.disabled) return;
       ev.stopPropagation();
       if (!a.segments[idx]) return;
-      drag.suppressClickAfterPointer();
+      suppressClickAfterPointer();
       a.onFocusWaveformShell?.();
       a.onSelectSegmentAt(idx);
       void a.onPlaySegment?.(idx);
     },
-    [drag.suppressClickAfterPointer],
+    [suppressClickAfterPointer],
   );
 
   const segmentBoundsAt = useCallback(

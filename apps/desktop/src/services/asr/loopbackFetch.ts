@@ -91,7 +91,7 @@ function raceWithAbort<T>(promise: Promise<T>, signal?: AbortSignal): Promise<T>
       },
       (err: unknown) => {
         signal.removeEventListener("abort", onAbort);
-        reject(err);
+        reject(err instanceof Error ? err : new Error(String(err)));
       },
     );
   });
@@ -110,7 +110,7 @@ function raceWithTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> 
       },
       (err: unknown) => {
         clearTimeout(timer);
-        reject(err);
+        reject(err instanceof Error ? err : new Error(String(err)));
       },
     );
   });
@@ -119,7 +119,7 @@ function raceWithTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> 
 async function loopbackInvoke(
   path: string,
   method: string,
-  body: unknown | undefined,
+  body: unknown,
   timeoutMs: number,
   signal?: AbortSignal,
 ): Promise<LoopbackInvokeResult> {
@@ -141,7 +141,7 @@ export async function loopbackFetch(url: string, init?: LoopbackFetchInit): Prom
   const path = pathFromUrl(url);
   const method = (init?.method ?? "GET").toUpperCase();
   const timeoutMs = init?.loopbackTimeoutMs ?? defaultLoopbackTimeoutMs(method, path);
-  let bodyJson: unknown | undefined;
+  let bodyJson: unknown;
   if (init?.body != null) {
     if (typeof init.body === "string") {
       bodyJson = JSON.parse(init.body) as unknown;

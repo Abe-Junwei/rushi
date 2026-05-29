@@ -6,6 +6,7 @@ import {
   computeFitSelectionPxPerSec,
   isTimelineFitInViewport,
   resolveSelectionFitPxPerSec,
+  resolveDefaultResetPxPerSec,
   resolveWaveformZoomSliderRange,
   computeSelectionFitScrollPx,
   computeViewportFitScrollPx,
@@ -62,6 +63,24 @@ describe("resolveWaveformZoomSliderRange", () => {
     expect(range.minPxPerSec).toBeCloseTo((800 - 0) / 120, 4);
     expect(range.maxPxPerSec).toBeGreaterThan(range.minPxPerSec);
   });
+
+  it("raises min above manual max for short media", () => {
+    const range = resolveWaveformZoomSliderRange(800, 0.5);
+    expect(range.minPxPerSec).toBeGreaterThan(PX_PER_SEC_MAX);
+    expect(range.maxPxPerSec).toBeGreaterThanOrEqual(range.minPxPerSec);
+  });
+});
+
+describe("resolveDefaultResetPxPerSec", () => {
+  it("returns fit-all for short media where fit-all exceeds manual max", () => {
+    const fitAll = computeFitAllPxPerSec(800, 0.5);
+    expect(resolveDefaultResetPxPerSec(800, 0.5)).toBe(fitAll);
+    expect(fitAll).toBeGreaterThan(PX_PER_SEC_MAX);
+  });
+
+  it("returns design default for long media", () => {
+    expect(resolveDefaultResetPxPerSec(800, 120)).toBe(TIMELINE_PX_PER_SEC);
+  });
 });
 
 describe("computeFitSelectionPxPerSec", () => {
@@ -90,7 +109,23 @@ describe("quantizePxPerSecForPeaksLoad", () => {
 
   it("respects fit min below manual slider", () => {
     const q = quantizePxPerSecForPeaksLoad(0.2);
-    expect(q).toBe(PX_PER_SEC_FIT_MIN);
+    expect(q).toBe(0.2);
+  });
+
+  it("preserves sub-manual fit-all px/s instead of collapsing to fit min", () => {
+    const fitAll = computeFitAllPxPerSec(800, 3600);
+    expect(fitAll).toBeLessThan(PX_PER_SEC_MIN);
+    expect(quantizePxPerSecForPeaksLoad(fitAll)).toBeCloseTo(fitAll, 5);
+  });
+
+  it("allows fit-selection zoom above the manual slider ceiling", () => {
+    const q = quantizePxPerSecForPeaksLoad(1000);
+    expect(q).toBeGreaterThan(PX_PER_SEC_MAX);
+    expect(q).toBeLessThanOrEqual(PX_PER_SEC_FIT_SELECTION_MAX);
+  });
+
+  it("caps fit-selection zoom at the fit-selection max", () => {
+    expect(quantizePxPerSecForPeaksLoad(5000)).toBe(PX_PER_SEC_FIT_SELECTION_MAX);
   });
 });
 

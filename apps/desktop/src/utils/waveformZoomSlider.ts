@@ -1,5 +1,27 @@
 import type { WaveformZoomSliderRange } from "./pxPerSec";
 import { clampPxPerSecInSliderRange } from "./pxPerSec";
+import { isPxPerSecBelowSliderMin } from "./waveformZoomBarState";
+
+/** +/- 与键盘 zoom：显著低于滑块下限时 snap 到 min，否则按比例步进。 */
+export function computeZoomInPxPerSec(
+  pxPerSec: number,
+  range: WaveformZoomSliderRange,
+): number {
+  if (isPxPerSecBelowSliderMin(pxPerSec, range.minPxPerSec)) {
+    return range.minPxPerSec;
+  }
+  return clampPxPerSecInSliderRange(pxPerSec * 1.12, range);
+}
+
+export function computeZoomOutPxPerSec(
+  pxPerSec: number,
+  range: WaveformZoomSliderRange,
+): number {
+  if (isPxPerSecBelowSliderMin(pxPerSec, range.minPxPerSec)) {
+    return range.minPxPerSec;
+  }
+  return clampPxPerSecInSliderRange(pxPerSec / 1.12, range);
+}
 
 export function pxPerSecToSliderPos(pxPerSec: number, range: WaveformZoomSliderRange): number {
   const { minPxPerSec: lo, maxPxPerSec: hi } = range;

@@ -44,10 +44,10 @@ export function parseGlossaryTermDto(raw: Record<string, unknown>): GlossaryTerm
   const hotword = readBool(raw, "hotwordEnabled", "hotword_enabled");
   return {
     id: Number(raw.id),
-    term: String(raw.term ?? ""),
-    aliases: String(raw.aliases ?? ""),
-    domain: String(raw.domain ?? ""),
-    note: String(raw.note ?? ""),
+    term: typeof raw.term === "string" ? raw.term : "",
+    aliases: typeof raw.aliases === "string" ? raw.aliases : "",
+    domain: typeof raw.domain === "string" ? raw.domain : "",
+    note: typeof raw.note === "string" ? raw.note : "",
     created_at_ms: Number(raw.created_at_ms ?? raw.createdAtMs ?? 0),
     updated_at_ms: Number(raw.updated_at_ms ?? raw.updatedAtMs ?? raw.created_at_ms ?? raw.createdAtMs ?? 0),
     hotword_enabled: hotword ?? true,
@@ -135,7 +135,7 @@ export function parseGlossaryImportResult(raw: unknown): GlossaryImportResult | 
 }
 
 export async function glossaryImportFromFile(): Promise<GlossaryImportResult | null> {
-  const raw = await invoke<unknown | null>("glossary_import_from_file");
+  const raw = await invoke<unknown>("glossary_import_from_file");
   if (raw == null) return null;
   return parseGlossaryImportResult(raw);
 }

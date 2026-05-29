@@ -138,8 +138,6 @@ export function EditorView({
           {c.audioSrc ? (
             <footer className="z-40 flex h-[30px] shrink-0 items-center justify-between gap-2 border-t border-notion-divider bg-notion-bg px-2.5 text-[11px] text-notion-text-muted">
               <div className="flex min-w-0 items-center gap-2">
-                <span className="font-medium text-notion-text">{tx.waveformNavigationFooterLabel}</span>
-                <span className="h-1 w-1 rounded-full bg-notion-divider" aria-hidden />
                 <span>自动保存已激活</span>
               </div>
               <span className="truncate text-[11px] text-notion-text-muted">双击波形进行切片</span>

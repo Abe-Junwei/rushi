@@ -100,6 +100,7 @@ export function bindProjectWaveformWaveSurferEvents(
     }),
     ws.on("scroll", (_visibleStartTime, _visibleEndTime, scrollLeft) => {
       if (disposed()) return;
+      if (appliedPeaksRef.current) return;
       pendingScrollLeftRef.current = scrollLeft;
       if (scrollNotifyRafRef.current) return;
       scrollNotifyRafRef.current = requestAnimationFrame(() => {
@@ -109,6 +110,7 @@ export function bindProjectWaveformWaveSurferEvents(
     }),
     ws.on("zoom", () => {
       if (disposed()) return;
+      if (appliedPeaksRef.current) return;
       notifyScroll();
     }),
     ws.on("redrawcomplete", () => {

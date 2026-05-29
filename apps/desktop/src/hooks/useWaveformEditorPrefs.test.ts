@@ -31,7 +31,7 @@ describe("useWaveformEditorPrefs", () => {
   it("keeps global strip collapsed state when mediaUrl changes", () => {
     const { result, rerender } = renderHook(
       ({ mediaUrl }: { mediaUrl: string | null }) => useWaveformEditorPrefs(mediaUrl),
-      { initialProps: { mediaUrl: "asset://a.mp3" as string | null } },
+      { initialProps: { mediaUrl: "asset://a.mp3" } },
     );
 
     expect(result.current.globalStripCollapsed).toBe(true);

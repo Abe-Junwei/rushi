@@ -23,7 +23,7 @@ export function compareSegmentsByStartSec(
 
 export function isSegmentsSortedByStart(segs: Pick<SegmentDto, "start_sec" | "end_sec">[]): boolean {
   for (let i = 1; i < segs.length; i++) {
-    if (compareSegmentsByStartSec(segs[i - 1]!, segs[i]!) > 0) return false;
+    if (compareSegmentsByStartSec(segs[i - 1], segs[i]) > 0) return false;
   }
   return true;
 }

@@ -1,6 +1,17 @@
 import { describe, expect, it, vi } from "vitest";
 import { drawWaveformPeaksTile } from "./waveformPeaksCanvasDraw";
 
+const sameDuration = (sec: number) => ({
+  peakDurationSec: sec,
+  mediaDurationSec: sec,
+});
+
+const makePeaks = (count: number) => {
+  const peaks: number[] = [];
+  for (let i = 0; i < count; i++) peaks.push(-0.5, 0.5);
+  return peaks;
+};
+
 describe("drawWaveformPeaksTile", () => {
   const makeCtx = (width = 4096, height = 48) =>
     ({
@@ -13,16 +24,14 @@ describe("drawWaveformPeaksTile", () => {
 
   it("draws without throwing for the first tile", () => {
     const ctx = makeCtx();
-    const peaks: number[] = [];
-    for (let i = 0; i < 200; i++) peaks.push(-0.5, 0.5);
     expect(() =>
-      drawWaveformPeaksTile(ctx, peaks, {
+      drawWaveformPeaksTile(ctx, makePeaks(200), {
         tileLeftPx: 0,
         tileWidthPx: 4096,
         timelineWidthPx: 200,
         heightPx: 48,
         pxPerSec: 20,
-        durationSec: 10,
+        ...sameDuration(10),
         waveColor: "#ccc",
       }),
     ).not.toThrow();
@@ -31,16 +40,13 @@ describe("drawWaveformPeaksTile", () => {
 
   it("only draws bars within its own tile range", () => {
     const ctx = makeCtx();
-    const peaks: number[] = [];
-    for (let i = 0; i < 1000; i++) peaks.push(-0.5, 0.5);
-
-    drawWaveformPeaksTile(ctx, peaks, {
+    drawWaveformPeaksTile(ctx, makePeaks(1000), {
       tileLeftPx: 4096,
       tileWidthPx: 4096,
       timelineWidthPx: 10000,
       heightPx: 48,
       pxPerSec: 200,
-      durationSec: 50,
+      ...sameDuration(50),
       waveColor: "#ccc",
       barWidth: 2,
       barGap: 1,
@@ -69,16 +75,13 @@ describe("drawWaveformPeaksTile", () => {
       canvas: { width: 4096, height: 48 },
     } as unknown as CanvasRenderingContext2D;
 
-    const peaks: number[] = [];
-    for (let i = 0; i < 200; i++) peaks.push(-0.5, 0.5);
-
-    drawWaveformPeaksTile(ctx, peaks, {
+    drawWaveformPeaksTile(ctx, makePeaks(200), {
       tileLeftPx: 0,
       tileWidthPx: 4096,
       timelineWidthPx: 200,
       heightPx: 48,
       pxPerSec: 20,
-      durationSec: 10,
+      ...sameDuration(10),
       waveColor: "wave",
     });
 
@@ -94,7 +97,7 @@ describe("drawWaveformPeaksTile", () => {
       timelineWidthPx: 200,
       heightPx: 48,
       pxPerSec: 20,
-      durationSec: 10,
+      ...sameDuration(10),
       waveColor: "#ccc",
     });
     expect(ctx.fillRect).not.toHaveBeenCalled();
@@ -105,7 +108,7 @@ describe("drawWaveformPeaksTile", () => {
       timelineWidthPx: 200,
       heightPx: 48,
       pxPerSec: 20,
-      durationSec: 10,
+      ...sameDuration(10),
       waveColor: "#ccc",
     });
     expect(ctx.fillRect).not.toHaveBeenCalled();
@@ -113,16 +116,15 @@ describe("drawWaveformPeaksTile", () => {
 
   it("distributes peaks across timelineWidthPx (not pxPerSec*duration) so fit-all on long audio fills the tile", () => {
     const ctx = makeCtx(320, 48);
-    const peaks: number[] = [];
-    for (let i = 0; i < 30; i++) peaks.push(-0.4, 0.4);
-
+    const peaks = makePeaks(30);
+    for (let i = 0; i < peaks.length; i++) peaks[i] *= 0.8;
     drawWaveformPeaksTile(ctx, peaks, {
       tileLeftPx: 0,
       tileWidthPx: 320,
       timelineWidthPx: 320,
       heightPx: 48,
       pxPerSec: 0.05,
-      durationSec: 600,
+      ...sameDuration(600),
       waveColor: "#ccc",
       barWidth: 2,
       barGap: 1,
@@ -134,23 +136,148 @@ describe("drawWaveformPeaksTile", () => {
     expect(Math.max(...xs)).toBeGreaterThan(160);
   });
 
+  it("draws mid-timeline tile on layout width when peak span covers the tile", () => {
+    const ctx = makeCtx(4096, 48);
+    const layoutTimelineWidthPx = 10_000;
+    const tileLeftPx = 8_200;
+    const tileWidthPx = 1_500;
+
+    expect(
+      drawWaveformPeaksTile(ctx, makePeaks(1000), {
+        tileLeftPx,
+        tileWidthPx,
+        timelineWidthPx: 8_000,
+        heightPx: 48,
+        pxPerSec: 80,
+        peakDurationSec: 80,
+        mediaDurationSec: 100,
+        waveColor: "#ccc",
+        barWidth: 2,
+        barGap: 1,
+      }),
+    ).toBe(false);
+    expect(ctx.fillRect).not.toHaveBeenCalled();
+
+    (ctx.fillRect as ReturnType<typeof vi.fn>).mockClear();
+    expect(
+      drawWaveformPeaksTile(ctx, makePeaks(1000), {
+        tileLeftPx,
+        tileWidthPx,
+        timelineWidthPx: layoutTimelineWidthPx,
+        heightPx: 48,
+        pxPerSec: 80,
+        ...sameDuration(100),
+        waveColor: "#ccc",
+        barWidth: 2,
+        barGap: 1,
+      }),
+    ).toBe(true);
+    expect(ctx.fillRect).toHaveBeenCalled();
+  });
+
+  it("maps peak columns by media duration so mid-timeline tiles still draw", () => {
+    const ctx = makeCtx(4096, 48);
+    const mediaDurationSec = 1195;
+    const peakDurationSec = 732;
+    const layoutTimelineWidthPx = 66_920;
+
+    expect(
+      drawWaveformPeaksTile(ctx, makePeaks(40992), {
+        tileLeftPx: 40_950,
+        tileWidthPx: 4_095,
+        timelineWidthPx: layoutTimelineWidthPx,
+        heightPx: 48,
+        pxPerSec: 56,
+        peakDurationSec,
+        mediaDurationSec,
+        waveColor: "#ccc",
+        barWidth: 2,
+        barGap: 1,
+      }),
+    ).toBe(true);
+    expect(ctx.fillRect).toHaveBeenCalled();
+  });
+
+  it("fills the right-edge tile when peaks cover ~99% of media (VBR / rounding drift)", () => {
+    const ctx = makeCtx(4096, 48);
+    const mediaDurationSec = 1195;
+    const peakDurationSec = 1190; // 0.9958 coverage — effectively complete
+    const layoutTimelineWidthPx = 66_920;
+    // Without stretch-to-fill, peakLayoutSpanPx ≈ 66_640, so this tile (left ≥ that)
+    // would be entirely past the peak span and render as a blank grey tile.
+    const tileLeftPx = 66_700;
+
+    expect(
+      drawWaveformPeaksTile(ctx, makePeaks(40992), {
+        tileLeftPx,
+        tileWidthPx: layoutTimelineWidthPx - tileLeftPx,
+        timelineWidthPx: layoutTimelineWidthPx,
+        heightPx: 48,
+        pxPerSec: 56,
+        peakDurationSec,
+        mediaDurationSec,
+        waveColor: "#ccc",
+        barWidth: 2,
+        barGap: 1,
+      }),
+    ).toBe(true);
+    expect(ctx.fillRect).toHaveBeenCalled();
+  });
+
+  it("no-ops for tiles beyond peak coverage when media is longer than peak file", () => {
+    const ctx = makeCtx(4096, 48);
+    expect(
+      drawWaveformPeaksTile(ctx, makePeaks(40992), {
+        tileLeftPx: 41_000,
+        tileWidthPx: 4_095,
+        timelineWidthPx: 66_920,
+        heightPx: 48,
+        pxPerSec: 56,
+        peakDurationSec: 732,
+        mediaDurationSec: 1195,
+        waveColor: "#ccc",
+        barWidth: 2,
+        barGap: 1,
+      }),
+    ).toBe(false);
+  });
+
   it("draws overview-style full-width tile at scroll 0", () => {
     const ctx = makeCtx(400, 32);
-    const peaks: number[] = [];
-    for (let i = 0; i < 80; i++) peaks.push(-0.5, 0.5);
-
-    drawWaveformPeaksTile(ctx, peaks, {
+    drawWaveformPeaksTile(ctx, makePeaks(80), {
       tileLeftPx: 0,
       tileWidthPx: 400,
       timelineWidthPx: 400,
       heightPx: 32,
       pxPerSec: 40,
-      durationSec: 10,
+      ...sameDuration(10),
       waveColor: "#ccc",
       barWidth: 2,
       barGap: 1,
     });
 
     expect(ctx.fillRect).toHaveBeenCalled();
+  });
+
+  it("fillLayoutWidth stretches partial peaks across the overview viewport", () => {
+    const ctx = makeCtx(400, 32);
+    expect(
+      drawWaveformPeaksTile(ctx, makePeaks(200), {
+        tileLeftPx: 0,
+        tileWidthPx: 400,
+        timelineWidthPx: 400,
+        heightPx: 32,
+        pxPerSec: 0.48,
+        peakDurationSec: 960,
+        mediaDurationSec: 1263,
+        waveColor: "#ccc",
+        barWidth: 2,
+        barGap: 1,
+        fillLayoutWidth: true,
+      }),
+    ).toBe(true);
+
+    const xs = (ctx.fillRect as ReturnType<typeof vi.fn>).mock.calls.map(([x]) => x as number);
+    expect(Math.max(...xs)).toBeGreaterThan(300);
   });
 });

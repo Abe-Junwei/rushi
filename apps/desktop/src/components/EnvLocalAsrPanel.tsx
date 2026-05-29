@@ -6,8 +6,12 @@ import type { AsrHealthCapabilities, AsrModelCacheInfo, BundledAsrLaunchReport }
 import type { PrepareDefaultModelOptions } from "../pages/usePrepareModelController";
 import type { AsrSetupControllerApi } from "../pages/useAsrSetupController";
 import type { LocalAsrModelCatalogApi } from "../pages/useLocalAsrModelCatalog";
-import { LocalAsrModelSection, selectedModelPrepareState } from "./envLocalAsr/LocalAsrModelSection";
-import { buildLocalAsrCatalogView, computeLocalAsrTranscribeReady } from "../services/asr/localAsrModelCatalog";
+import { LocalAsrModelSection } from "./envLocalAsr/LocalAsrModelSection";
+import {
+  buildLocalAsrCatalogView,
+  computeLocalAsrTranscribeReady,
+  selectedModelPrepareState,
+} from "../services/asr/localAsrModelCatalog";
 import { modelsRootMismatch } from "../services/asr/asrRuntimePathsAlign";
 import { LocalAsrAdvancedSection } from "./envLocalAsr/LocalAsrAdvancedSection";
 import { LocalAsrCacheSection } from "./envLocalAsr/LocalAsrCacheSection";

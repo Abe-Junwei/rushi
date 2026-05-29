@@ -265,7 +265,7 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
     clearAsrModelCache,
     asrCacheMessage,
     prepareDefaultFunasrModel: modelCtrl.prepareDefaultFunasrModel,
-    cancelPrepareModel: modelCtrl.cancelPrepareModel,
+    cancelPrepareModel: () => void modelCtrl.cancelPrepareModel(),
     localAsrModelCatalog,
     retryBundledAsrSidecar,
     installFunasrDepsInteractive,

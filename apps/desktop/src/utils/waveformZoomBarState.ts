@@ -3,11 +3,21 @@ import {
   computeFitSelectionPxPerSec,
   isTimelineFitInViewport,
   PX_PER_SEC_MAX,
+  PX_PER_SEC_PEAKS_QUANTUM,
   TIMELINE_PX_PER_SEC,
   type WaveformZoomSliderRange,
 } from "./pxPerSec";
 
 const ZOOM_EPS = 0.001;
+
+/** px/s may sit slightly below computed fit-all min (binary search / rounding); don't treat as out-of-range. */
+export function sliderMinTolerancePx(sliderMinPx: number): number {
+  return Math.max(ZOOM_EPS, Math.min(PX_PER_SEC_PEAKS_QUANTUM, sliderMinPx * 0.05));
+}
+
+export function isPxPerSecBelowSliderMin(pxPerSec: number, sliderMinPx: number): boolean {
+  return pxPerSec < sliderMinPx - sliderMinTolerancePx(sliderMinPx);
+}
 
 /** 当前横向缩放「视图模式」（由 px/s + 视口 + 时长 + 选中语段派生，非持久偏好）。 */
 export type WaveformZoomViewMode = "fit-selection" | "default" | "custom";
@@ -89,7 +99,7 @@ export function computeWaveformZoomBarUiState(input: WaveformZoomBarUiInput | nu
     (viewportWidthPx > 0 && durationSec > 0
       ? computeFitAllPxPerSec(viewportWidthPx, durationSec)
       : pxPerSec);
-  const belowManualSliderRange = pxPerSec < sliderMinPx - ZOOM_EPS;
+  const belowManualSliderRange = isPxPerSecBelowSliderMin(pxPerSec, sliderMinPx);
   const atFitAllZoom =
     viewportWidthPx > 0 &&
     durationSec > 0 &&
@@ -107,12 +117,4 @@ export function computeWaveformZoomBarUiState(input: WaveformZoomBarUiInput | nu
     atFitAllZoom,
     zoomPercentLabel: Math.round((pxPerSec / TIMELINE_PX_PER_SEC) * 100),
   };
-}
-
-/** 跟随语段偏好是否应显示为激活（与默认 100% 视图互斥高亮）。 */
-export function computeCrosshairTogglePressed(
-  autoFitSelectionToViewport: boolean,
-  viewMode: WaveformZoomViewMode,
-): boolean {
-  return autoFitSelectionToViewport && viewMode !== "default";
 }

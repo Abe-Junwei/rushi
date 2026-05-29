@@ -10,7 +10,6 @@ import { WaveformOverviewStrip } from "../WaveformOverviewStrip";
 import { WaveformGlobalStripShell } from "../WaveformGlobalStripShell";
 import { WaveformZoomBar } from "../WaveformZoomBar";
 import { WAVEFORM_GLOBAL_STRIP_HEIGHT_PX } from "../../utils/waveformViewMode";
-import { useWaveformViewportMetrics } from "../../hooks/useWaveformViewportMetrics";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
 import { resolveSegmentIndexAtWaveformPointer } from "../../utils/waveformSegmentBounds";
@@ -34,8 +33,8 @@ export function EditorWaveformPane({
   onOpenSegmentContextMenu,
 }: EditorWaveformPaneProps) {
   const selectedSegment = c.segments[c.selectedIdx] ?? null;
-  const liveViewport = tx.isPlaying || tx.zoomDragging || tx.autoFitSelectionToViewport;
-  const { scrollLeftPx, clientWidthPx } = useWaveformViewportMetrics(tx.tierScrollRef, liveViewport);
+  const scrollLeftPx = tx.tierScrollLayout.scrollLeftPx;
+  const clientWidthPx = tx.tierScrollLayout.clientWidthPx;
 
   const waveformStageHeightPx = tx.waveformStageHeightPx;
   const innerWaveformHeightPx = tx.waveformHeightPx;
@@ -94,6 +93,11 @@ export function EditorWaveformPane({
                 {tx.loadError}
               </p>
             ) : null}
+            {tx.peaksError ? (
+              <p className="absolute inset-x-4 top-14 z-30 rounded-md bg-zen-cinnabar/10 px-3 py-2 text-center text-[12px] text-zen-cinnabar">
+                {tx.peaksError}
+              </p>
+            ) : null}
 
             <div className="relative flex h-full flex-col overflow-x-hidden bg-transparent">
               <div
@@ -121,11 +125,14 @@ export function EditorWaveformPane({
                     >
                       <WaveformPeaksTileLayer
                         peakCache={tx.peakCache}
-                        pxPerSec={tx.pxPerSec}
-                        timelineWidthPx={tx.timelineWidthPx}
+                        layoutPxPerSec={tx.layoutPxPerSec}
+                        drawPxPerSec={tx.drawPxPerSec}
+                        layoutTimelineWidthPx={tx.timelineWidthPx}
+                        drawTimelineWidthPx={tx.drawTimelineWidthPx}
+                        mediaDurationSec={tx.duration || tx.peakCache?.durationSec || 0}
                         heightPx={innerWaveformHeightPx}
+                        scrollLeftPx={scrollLeftPx}
                         viewportWidthPx={clientWidthPx}
-                        tierScrollRef={tx.tierScrollRef}
                       />
                       <WaveformSegmentOverlay
                         disabled={stripDisabled}
@@ -268,15 +275,10 @@ export function EditorWaveformPane({
           pxPerSec={tx.pxPerSec}
           viewportWidthPx={clientWidthPx}
           durationSec={tx.duration || 0}
-          hasSelectionSegment={c.selectedIdx >= 0 && Boolean(c.segments[c.selectedIdx])}
           selectedStartSec={selectedSegment?.start_sec}
           selectedEndSec={selectedSegment?.end_sec}
-          autoFitSelectionToViewport={tx.autoFitSelectionToViewport}
-          onEnterManualNavigation={tx.enterManualWaveformNavigation}
-          onEnterFollowNavigation={tx.enterFollowWaveformNavigation}
-          onRefitFollowSelection={tx.refitFollowWaveformSelection}
-          onResetDefaultZoom={() => tx.resetZoom()}
-          onPxPerSecChange={tx.setPxPerSec}
+          onResetDefaultZoom={() => tx.resetZoomForMedia(clientWidthPx, tx.duration || 0)}
+          onPxPerSecChange={tx.setPxPerSecFromSlider}
           onZoomInteractionStart={tx.beginZoomInteraction}
           onZoomInteractionEnd={tx.commitZoomInteraction}
           editorHint={tx.editorHint}

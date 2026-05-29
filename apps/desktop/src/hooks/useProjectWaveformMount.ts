@@ -89,6 +89,9 @@ export function useProjectWaveformMount(
         peakBundle = undefined;
       }
       const usePeaksDraw = Boolean(peakBundle);
+      if (usePeaksDraw) {
+        appliedPeaksRef.current = true;
+      }
       const ws = WaveSurfer.create({
         container: el,
         url: mediaUrl,
@@ -106,7 +109,7 @@ export function useProjectWaveformMount(
         minPxPerSec: initialMps,
         dragToSeek: !wantDragCreate,
         interact: !optsRef.current.disabled,
-        autoScroll: true,
+        autoScroll: !usePeaksDraw,
         autoCenter: false,
         hideScrollbar: true,
         ...(peakBundle
@@ -118,8 +121,9 @@ export function useProjectWaveformMount(
       });
 
       wsRef.current = ws;
-      // 透明层仅在 peaks load 成功后再开（见 useWaveformZoomSync），避免 Canvas 未就绪时空白。
-      appliedPeaksRef.current = false;
+      if (!usePeaksDraw) {
+        appliedPeaksRef.current = false;
+      }
 
       wsUnsubsRef.current.push(
         ...bindProjectWaveformWaveSurferEvents({

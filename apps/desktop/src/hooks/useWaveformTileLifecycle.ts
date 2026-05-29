@@ -33,6 +33,11 @@ export type UseWaveformTileLifecycleArgs = {
    */
   contentKey: string | number;
   /**
+   * Viewport / tile grid geometry (not scroll position). Bumps generation when the
+   * tier grows (maximize/fullscreen) so newly exposed tiles repaint.
+   */
+  layoutGeometryKey?: string | number;
+  /**
    * Soft cap on total active tile DOM nodes (visible + LRU cache).
    * Visible/overscan tiles always retained; LRU only governs the slack.
    * Default 16 — see ADR-0004.
@@ -49,16 +54,17 @@ const DEFAULT_CAP = 16;
 export function useWaveformTileLifecycle(
   args: UseWaveformTileLifecycleArgs,
 ): UseWaveformTileLifecycleReturn {
-  const { layout, contentKey, cap = DEFAULT_CAP } = args;
+  const { layout, contentKey, layoutGeometryKey = "", cap = DEFAULT_CAP } = args;
   const { startIndex, endIndex } = layout.visibleRange;
   const { totalTiles, tileWidthPx } = layout;
+  const invalidationKey = `${contentKey}|${layoutGeometryKey}`;
 
   // LRU: index -> monotonic visit time. Map iteration order is insertion-time;
   // we re-insert on visit to keep "most recent at end" without a separate sort.
   const lruRef = useRef<Map<number, number>>(new Map());
   const visitCounterRef = useRef(0);
   const generationRef = useRef(0);
-  const lastContentKeyRef = useRef<string | number | null>(null);
+  const lastInvalidationKeyRef = useRef<string | null>(null);
 
   // Deps are primitives only — layout identity changes every frame (scrollLeft
   // updates) but the actual visible range / geometry numbers stay constant when
@@ -66,10 +72,10 @@ export function useWaveformTileLifecycle(
   // frames means React's children get stable tile object refs → no reconciler
   // work → no jitter when reversing scroll direction.
   return useMemo(() => {
-    // 1. Invalidate-all on contentKey change (idempotent on strict-mode double-invoke).
-    if (lastContentKeyRef.current !== contentKey) {
+    // 1. Invalidate-all on content/zoom/viewport geometry change.
+    if (lastInvalidationKeyRef.current !== invalidationKey) {
       generationRef.current += 1;
-      lastContentKeyRef.current = contentKey;
+      lastInvalidationKeyRef.current = invalidationKey;
     }
 
     // 2. Mark visible (incl. overscan) range as freshly visited.
@@ -98,6 +104,17 @@ export function useWaveformTileLifecycle(
         if (toEvict <= 0) break;
         lruRef.current.delete(idx);
         toEvict -= 1;
+      }
+      // Defensive: if visible+overscan alone exceeds cap (extremely wide viewport),
+      // evict only non-visible tiles; never drop tiles in the current visible range.
+      if (lruRef.current.size > cap && hasVisible) {
+        const nonVisible = [...lruRef.current.keys()].filter((idx) => !visibleSet.has(idx));
+        let toEvict = lruRef.current.size - cap;
+        for (const idx of nonVisible) {
+          if (toEvict <= 0) break;
+          lruRef.current.delete(idx);
+          toEvict -= 1;
+        }
       }
     }
 
@@ -128,5 +145,5 @@ export function useWaveformTileLifecycle(
 
     return { activeTiles };
     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [startIndex, endIndex, totalTiles, tileWidthPx, contentKey, cap]);
+  }, [startIndex, endIndex, totalTiles, tileWidthPx, invalidationKey, cap]);
 }

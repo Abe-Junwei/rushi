@@ -16,8 +16,12 @@ export const VIEWPORT_FIT_HORIZONTAL_PADDING_PX = 24;
  * 时间轴总宽 = 媒体时长 × 像素/秒（与 WaveSurfer `minPxPerSec` 一致）。
  * 若与波形可滚宽度不一致，会导致 tier 与波形横向错位、语段卡与 region 对不齐。
  */
-export function computeTimelineWidthPx(durationSec: number, pxPerSec: number): number {
-  const floor = 320;
+export function computeTimelineWidthPx(
+  durationSec: number,
+  pxPerSec: number,
+  minWidthPx?: number,
+): number {
+  const floor = minWidthPx ?? 320;
   const sec = Math.max(durationSec, 0.5);
   return Math.max(Math.ceil(sec * pxPerSec), floor);
 }
@@ -64,6 +68,23 @@ export function computeFitAllPxPerSec(viewportWidthPx: number, durationSec: numb
   return clampPxPerSecForFitSelection(lo);
 }
 
+/**
+ * UI「重置」目标 px/s：默认 56；当整段 fit-all 超过手动上限时落到 fit-all，
+ * 避免极短音频 reset 后滑块仍不可用。
+ */
+export function resolveDefaultResetPxPerSec(
+  viewportWidthPx: number,
+  durationSec: number,
+): number {
+  if (viewportWidthPx > 0 && durationSec >= 0.5) {
+    const fitAll = computeFitAllPxPerSec(viewportWidthPx, durationSec);
+    if (fitAll > PX_PER_SEC_MAX) {
+      return fitAll;
+    }
+  }
+  return TIMELINE_PX_PER_SEC;
+}
+
 /** 给定视口与时长时，手动缩放滑块 [min, max]（min = 整段 fit，max ≥ 默认上限）。 */
 export function resolveWaveformZoomSliderRange(
   viewportWidthPx: number,
@@ -100,7 +121,7 @@ export function fitSelectionViewportWidthPx(viewportWidthPx: number): number {
   return Math.max(160, Math.max(1, viewportWidthPx) - VIEWPORT_FIT_HORIZONTAL_PADDING_PX);
 }
 
-function clampPxPerSecForFitSelection(x: number): number {
+export function clampPxPerSecForFitSelection(x: number): number {
   if (!Number.isFinite(x)) return TIMELINE_PX_PER_SEC;
   return Math.min(PX_PER_SEC_FIT_SELECTION_MAX, Math.max(PX_PER_SEC_FIT_MIN, x));
 }
@@ -111,11 +132,20 @@ export function quantizePxPerSecForPeaksLoad(pxPerSec: number): number {
   const clamped = clampPxPerSecForFitSelection(pxPerSec);
   const q = PX_PER_SEC_PEAKS_QUANTUM;
   let snapped = Math.round(clamped / q) * q;
+  if (clamped < PX_PER_SEC_MIN) {
+    // 8 px/s quantum rounds sub-manual values (e.g. 0.2, fit-all 0.67) to 0.
+    if (snapped <= 0) {
+      return clamped;
+    }
+    return clampPxPerSecForFitSelection(snapped);
+  }
   if (snapped < PX_PER_SEC_FIT_MIN) {
     snapped = PX_PER_SEC_FIT_MIN;
   }
   if (snapped >= PX_PER_SEC_MIN) {
-    return Math.min(PX_PER_SEC_MAX, Math.max(PX_PER_SEC_MIN, snapped));
+    // Fit-selection may exceed the manual slider ceiling so very short segments
+    // can fill the viewport; cap at the fit-selection max, not the manual max.
+    return Math.min(PX_PER_SEC_FIT_SELECTION_MAX, Math.max(PX_PER_SEC_MIN, snapped));
   }
   return clampPxPerSecForFitSelection(snapped);
 }

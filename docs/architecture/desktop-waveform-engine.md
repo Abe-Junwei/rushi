@@ -33,7 +33,7 @@ timeline 宽内容的一部分，随 `tierScrollRef` **自然滚动**，无 stic
   <div inline-block width=timelineWidthPx>                 ← 宽内容
     <div relative height=stage>                              ← 波形舞台
       <WaveformPeaksTileLayer absolute z=1>                ← peaks tiles（内容坐标）
-        <canvas absolute left=tileLeft ... /> × N (LRU≤16)
+        <canvas absolute left=tileLeft ... /> × N (LRU≤24)
       </WaveformPeaksTileLayer>
       <WaveformSegmentOverlay z=3 />
       <WaveSurfer container z=0 />                         ← 透明，仅播放后端
@@ -46,13 +46,19 @@ timeline 宽内容的一部分，随 `tierScrollRef` **自然滚动**，无 stic
 **Tile 生命周期**（`useWaveformTileLifecycle` + `tileGeometry.ts`）：
 
 - `tileWidthPx = clamp(viewport × 2, 4096, 8000)`，按 `barWidth + barGap` 对齐
-- 可见区间 `[floor(scroll/tileW)−1, ceil((scroll+vw)/tileW)+1]`，LRU cap = 16
-- `pxPerSec` / `peakCache` 变化 → generation bump，可见 tile 重画
-- `WaveformPeaksTileLayer` 用 rAF 读 `tierScrollRef.scrollLeft`，避免 React 状态滞后白闪
+- 可见区间 `[floor(scroll/tileW)−overscan, ceil((scroll+vw)/tileW)+overscan]`（`overscanTiles = 5`），LRU cap = **24**
+- `drawPxPerSec`（现 `committedPxPerSec`）/ `peakCache` 变化 → generation bump；`layoutPxPerSec`（现 `pxPerSec`）拖动期冻结 draw px
+- `EditorWaveformPane` / `WaveformPeaksTileLayer` 使用 `useTierScrollSync.tierScrollLayout`（`scrollLeftPx` + `clientWidth`），层内不二次订阅
 
-**绘制**：`drawWaveformPeaksTile(ctx, peaks, { tileLeftPx, tileWidthPx, timelineWidthPx, … })`
-在 tile 局部坐标画 peak 列；peaks 按 **timelineWidthPx** 均匀分布（与
-`computeTimelineWidthPx` floor 对齐）。主 tier 不在 tile 上画 progress 色。
+**Scroll 真源（规划）**：见 [ADR-0005](../adr/0005-waveform-single-scroll-authority.md) — peaks 模式仅 `tierScrollRef`；实施 spec：[`waveform-single-scroll-consolidation-plan.md`](../execution/specs/waveform-single-scroll-consolidation-plan.md)。
+
+**peaks 模式（已落地 ADR-0005 S1）**：`autoScroll: false`；无 tier↔WS scroll 回写；无 `ws.load` 缩放；播放跟随 `useWaveformPlaybackScrollFollow` 只写 tier。
+
+**decode-fallback**：保留 `autoScroll` + 窄 tier↔WS bridge。
+
+**Scroll 采样**：`useTierScrollLayout`（scroll burst rAF + ResizeObserver）→ `tierScrollLayout`；编排见 `useWaveformTimelineController`。
+
+**Zoom 三轨**：`layoutPxPerSec`（布局/语段/hit-test）、`drawPxPerSec`（peaks resample + tile draw / generation）；tile draw signature 仅用 `drawTimelineWidthPx`，拖动 preview 不每帧 bump generation。
 
 **全局条**：`WaveformOverviewPeaksCanvas` 在 overview 视口用单 tile（scroll=0）调用同一
 draw 入口；播放进度由 minimap playhead 线表示。
@@ -72,7 +78,7 @@ draw 入口；播放进度由 minimap playhead 线表示。
 
 ## 播放头与全局条
 
-- **主波形** playhead 由 `WaveformTimeRuler` / `WaveformLiveTimeRuler` 绘制；播放、缩放拖动或跟随模式下 `liveViewport` 拉高 tier scroll 采样率（`useWaveformViewportMetrics`）。
+- **主波形** playhead 由 `WaveformTimeRuler` / `WaveformLiveTimeRuler` 绘制；`tierScrollLayout` 随 tier `scroll` 更新（S2 计划补 120ms burst rAF）；播放跟随拟由 tier 写 scroll（ADR-0005 S1）。
 - **全局条展开**时另有 minimap playhead（`WaveformOverviewStrip`）；**折叠**后 minimap 隐藏，**主区 playhead 仍可见、仍随播放更新**。
 - 选中语段后 seek 到 **语段起点**（非中点）。
 
@@ -89,4 +95,5 @@ draw 入口；播放进度由 minimap playhead 线表示。
 - `docs/execution/specs/waveform-engine-refactor-acceptance.md`
 - `docs/execution/specs/waveform-engine-refactor-p5-global-strip.md`
 - `docs/execution/specs/waveform-engine-refactor-p6-overlay-split.md`
-- ADR：[ADR-0004](../adr/0004-waveform-peaks-content-tile-renderer.md)
+- ADR：[ADR-0004](../adr/0004-waveform-peaks-content-tile-renderer.md)、[ADR-0005](../adr/0005-waveform-single-scroll-authority.md)
+- 收敛实施：[`waveform-single-scroll-consolidation-intent.md`](../execution/specs/waveform-single-scroll-consolidation-intent.md)

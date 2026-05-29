@@ -77,6 +77,8 @@ export function computeTileLayout(input: ComputeTileLayoutInput): TileLayout {
       tileWidthPx,
       totalTiles: 0,
       visibleRange: { startIndex: 0, endIndex: -1 },
+      // Degenerate: totalTiles === 0 means no valid tiles; tileOf returns zero-width
+      // as a defensive fallback. Callers should filter by `idx < totalTiles`.
       tileOf: (index) => ({ index, leftPx: index * tileWidthPx, widthPx: 0 }),
     };
   }

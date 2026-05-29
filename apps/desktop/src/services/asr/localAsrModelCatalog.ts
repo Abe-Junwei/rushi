@@ -124,7 +124,7 @@ export function hubModelNeedsPuncPrepare(hubModelId: string): boolean {
 
 export function sidecarSupportsModelCatalogAny(
   healthJson: unknown,
-  rootJson: unknown | null | undefined,
+  rootJson: unknown,
 ): boolean {
   return sidecarSupportsModelCatalog(healthJson) || sidecarSupportsModelCatalogFromRoot(rootJson);
 }

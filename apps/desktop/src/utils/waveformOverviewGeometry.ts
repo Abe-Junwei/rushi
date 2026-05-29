@@ -18,7 +18,10 @@ export function computeOverviewViewportRect(input: {
 /** overview 条内整段音频一屏显示的 px/s（无 timeline 最小宽度地板）。 */
 export function computeOverviewPxPerSec(overviewWidthPx: number, durationSec: number): number {
   const sec = Math.max(durationSec, 0.5);
-  return Math.max(1, overviewWidthPx) / sec;
+  const raw = Math.max(1, overviewWidthPx) / sec;
+  // Quantize to stabilize PeakCache resample keys on resize jitter.
+  // Never return 0 — sub-0.5 px/s still maps long audio into the overview strip.
+  return Math.max(0.01, Math.round(raw * 100) / 100);
 }
 
 /** 使 `timeSec` 位于主视图视口水平中央时的 tier scrollLeft。 */

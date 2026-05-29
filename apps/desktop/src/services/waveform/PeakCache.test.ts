@@ -4,8 +4,8 @@ const resampleMock = vi.fn((data: unknown) => data);
 const toPeaksMock = vi.fn((_data?: unknown) => [[0, 0.5, -0.1, 0.2]]);
 
 vi.mock("./audiowaveformDat", () => ({
-  loadWaveformDatFromUrl: vi.fn(async () => ({ sample_rate: 44100 })),
-  resampleWaveformForPxPerSec: (data: unknown, _px: unknown) => resampleMock(data),
+  loadWaveformDatFromUrl: vi.fn(() => Promise.resolve({ sample_rate: 44100 })),
+  resampleWaveformForPxPerSec: (data: unknown) => resampleMock(data),
   waveformDataToWaveSurferPeaks: (data: unknown) => toPeaksMock(data),
   waveformDurationSec: () => 600,
 }));
@@ -35,6 +35,27 @@ describe("PeakCache", () => {
     expect(resampleMock).toHaveBeenCalledTimes(2);
   });
 
+  it("evicts oldest resample entries beyond LRU cap", async () => {
+    const cache = await PeakCache.fromLevelUrls([
+      { level: 0, pixelsPerSecond: 2, url: "asset://l0.dat" },
+    ]);
+    expect(cache).not.toBeNull();
+    if (!cache) return;
+
+    for (let px = 1; px <= 10; px += 1) {
+      cache.getWaveSurferPeaks(px);
+    }
+    expect(resampleMock).toHaveBeenCalledTimes(10);
+
+    resampleMock.mockClear();
+    cache.getWaveSurferPeaks(2);
+    expect(resampleMock).toHaveBeenCalledTimes(1);
+
+    resampleMock.mockClear();
+    cache.getWaveSurferPeaks(10);
+    expect(resampleMock).toHaveBeenCalledTimes(0);
+  });
+
   it("does not reuse resample cache across px/s that map to different target widths", async () => {
     const cache = await PeakCache.fromLevelUrls([
       { level: 0, pixelsPerSecond: 2, url: "asset://l0.dat" },
@@ -50,7 +71,7 @@ describe("PeakCache", () => {
     });
     toPeaksMock.mockImplementation((data?: unknown) => {
       const callNum = (data as { _call?: number } | undefined)?._call ?? 1;
-      return [new Array(callNum * 4).fill(0)];
+      return [new Array<number>(callNum * 4).fill(0)];
     });
 
     const low = cache.getWaveSurferPeaks(0.05);

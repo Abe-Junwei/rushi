@@ -3,17 +3,12 @@ import { describe, expect, it, vi } from "vitest";
 import type { PeakCache } from "../services/waveform/PeakCache";
 import { useWaveformZoomSync } from "./useWaveformZoomSync";
 
-async function flushPromises() {
-  await Promise.resolve();
-  await Promise.resolve();
-}
-
-async function flushMicrotasks() {
-  await Promise.resolve();
+async function flushRaf() {
+  await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
 }
 
 describe("useWaveformZoomSync", () => {
-  it("calls ws.zoom after layout effect when minPxPerSec changes", async () => {
+  it("calls ws.zoom after layout effect when minPxPerSec changes (decode-fallback)", async () => {
     const zoom = vi.fn();
     const setScroll = vi.fn();
     const getScroll = vi.fn(() => 0);
@@ -23,7 +18,6 @@ describe("useWaveformZoomSync", () => {
     const ws = { zoom, load, setScroll, getScroll, getWidth, getDuration };
     const wsRef = { current: ws as never };
     const appliedZoomPxPerSecRef = { current: 56 };
-
     const { rerender } = renderHook(
       (props: { minPxPerSec: number }) =>
         useWaveformZoomSync({
@@ -34,28 +28,75 @@ describe("useWaveformZoomSync", () => {
         }),
       { initialProps: { minPxPerSec: 56 } },
     );
-
     expect(zoom).not.toHaveBeenCalled();
-
     rerender({ minPxPerSec: 112 });
-
     expect(zoom).not.toHaveBeenCalled();
-    await flushMicrotasks();
+    await flushRaf();
     expect(zoom).toHaveBeenCalledTimes(1);
     expect(zoom).toHaveBeenCalledWith(112);
     expect(appliedZoomPxPerSecRef.current).toBe(112);
+    expect(load).not.toHaveBeenCalled();
   });
-
-  it("uses peaks resample + ws.load instead of ws.zoom when PeakCache is available", async () => {
+  it("skips zoom apply while zoomDragging and applies once after commit", async () => {
     const zoom = vi.fn();
     const setScroll = vi.fn();
+    const setOptions = vi.fn();
     const getScroll = vi.fn(() => 0);
     const getWidth = vi.fn(() => 800);
     const getDuration = vi.fn(() => 10);
     const load = vi.fn().mockResolvedValue(undefined);
-    const ws = { zoom, load, setScroll, getScroll, getWidth, getDuration };
+    const ws = { zoom, load, setScroll, setOptions, getScroll, getWidth, getDuration };
     const wsRef = { current: ws as never };
     const appliedZoomPxPerSecRef = { current: 56 };
+    const appliedPeaksRef = { current: false };
+    const peakCache = {
+      getWaveSurferPeaks: vi.fn(() => ({
+        peaks: [[0, 1, 0, 0.5]],
+        duration: 10,
+      })),
+    };
+    const peakCacheRef = { current: peakCache as never };
+
+    const { rerender } = renderHook(
+      (props: { minPxPerSec: number; zoomDragging: boolean }) =>
+        useWaveformZoomSync({
+          wsRef,
+          isReady: true,
+          minPxPerSec: props.minPxPerSec,
+          appliedZoomPxPerSecRef,
+          appliedPeaksRef,
+          peakCacheRef,
+          mediaUrl: "asset://audio.mp3",
+          zoomDragging: props.zoomDragging,
+        }),
+      { initialProps: { minPxPerSec: 56, zoomDragging: true } },
+    );
+
+    rerender({ minPxPerSec: 56, zoomDragging: true });
+    expect(load).not.toHaveBeenCalled();
+    expect(peakCache.getWaveSurferPeaks).not.toHaveBeenCalled();
+
+    rerender({ minPxPerSec: 112, zoomDragging: false });
+    expect(peakCache.getWaveSurferPeaks).toHaveBeenCalledWith(112);
+    expect(load).not.toHaveBeenCalled();
+    await flushRaf();
+    expect(appliedZoomPxPerSecRef.current).toBe(112);
+    expect(appliedPeaksRef.current).toBe(true);
+    expect(setOptions).toHaveBeenCalledWith({ autoScroll: false });
+  });
+
+  it("uses canvas peaks path without ws.load when PeakCache is available", async () => {
+    const zoom = vi.fn();
+    const setScroll = vi.fn();
+    const setOptions = vi.fn();
+    const getScroll = vi.fn(() => 0);
+    const getWidth = vi.fn(() => 800);
+    const getDuration = vi.fn(() => 10);
+    const load = vi.fn().mockResolvedValue(undefined);
+    const ws = { zoom, load, setScroll, setOptions, getScroll, getWidth, getDuration };
+    const wsRef = { current: ws as never };
+    const appliedZoomPxPerSecRef = { current: 56 };
+    const appliedPeaksRef = { current: false };
     const peakCache = {
       getWaveSurferPeaks: vi.fn(() => ({
         peaks: [[0, 1, 0, 0.5]],
@@ -71,6 +112,7 @@ describe("useWaveformZoomSync", () => {
           isReady: true,
           minPxPerSec: props.minPxPerSec,
           appliedZoomPxPerSecRef,
+          appliedPeaksRef,
           peakCacheRef,
           mediaUrl: "asset://audio.mp3",
         }),
@@ -80,20 +122,24 @@ describe("useWaveformZoomSync", () => {
     rerender({ minPxPerSec: 80 });
 
     expect(peakCache.getWaveSurferPeaks).toHaveBeenCalledWith(80);
-    expect(load).toHaveBeenCalledWith("asset://audio.mp3", [[0, 1, 0, 0.5]], 10);
-    await flushPromises();
+    expect(load).not.toHaveBeenCalled();
+    await flushRaf();
     expect(zoom).not.toHaveBeenCalled();
+    expect(setScroll).not.toHaveBeenCalled();
     expect(appliedZoomPxPerSecRef.current).toBe(80);
+    expect(appliedPeaksRef.current).toBe(true);
+    expect(setOptions).toHaveBeenCalledWith({ autoScroll: false });
   });
 
-  it("calls onZoomApplied after async peaks load completes", async () => {
+  it("calls onZoomApplied after peaks canvas zoom (no async load)", async () => {
     const zoom = vi.fn();
     const setScroll = vi.fn();
+    const setOptions = vi.fn();
     const getScroll = vi.fn(() => 0);
     const getWidth = vi.fn(() => 800);
     const getDuration = vi.fn(() => 10);
     const load = vi.fn().mockResolvedValue(undefined);
-    const ws = { zoom, load, setScroll, getScroll, getWidth, getDuration };
+    const ws = { zoom, load, setScroll, setOptions, getScroll, getWidth, getDuration };
     const wsRef = { current: ws as never };
     const appliedZoomPxPerSecRef = { current: 56 };
     const onZoomApplied = vi.fn();
@@ -121,20 +167,22 @@ describe("useWaveformZoomSync", () => {
     );
 
     rerender({ minPxPerSec: 80 });
-    await flushPromises();
+    await flushRaf();
 
     expect(zoom).not.toHaveBeenCalled();
+    expect(load).not.toHaveBeenCalled();
     expect(onZoomApplied).toHaveBeenCalledWith(80);
   });
 
-  it("restores scroll after peaks load when ws.load resets scroll", async () => {
+  it("does not restore ws scroll after peaks canvas zoom", async () => {
     const zoom = vi.fn();
     const setScroll = vi.fn();
+    const setOptions = vi.fn();
     const getScroll = vi.fn(() => 120);
     const getWidth = vi.fn(() => 800);
     const getDuration = vi.fn(() => 120);
     const load = vi.fn().mockResolvedValue(undefined);
-    const ws = { zoom, load, setScroll, getScroll, getWidth, getDuration };
+    const ws = { zoom, load, setScroll, setOptions, getScroll, getWidth, getDuration };
     const wsRef = { current: ws as never };
     const appliedZoomPxPerSecRef = { current: 112 };
     const getViewportScrollPxRef = { current: () => 500 };
@@ -161,98 +209,20 @@ describe("useWaveformZoomSync", () => {
     );
 
     rerender({ minPxPerSec: 56 });
-    await flushPromises();
-
-    expect(setScroll).toHaveBeenCalledWith(500);
-  });
-
-  it("restores preserved scroll when onZoomApplied does not handle viewport fit", async () => {
-    const zoom = vi.fn();
-    const setScroll = vi.fn();
-    const getScroll = vi.fn(() => 500);
-    const getWidth = vi.fn(() => 800);
-    const getDuration = vi.fn(() => 120);
-    const load = vi.fn().mockResolvedValue(undefined);
-    const ws = { zoom, load, setScroll, getScroll, getWidth, getDuration };
-    const wsRef = { current: ws as never };
-    const appliedZoomPxPerSecRef = { current: 112 };
-    const onZoomAppliedRef = { current: () => false };
-    const peakCache = {
-      getWaveSurferPeaks: vi.fn(() => ({
-        peaks: [[0, 1]],
-        duration: 120,
-      })),
-    };
-    const peakCacheRef = { current: peakCache as never };
-
-    const { rerender } = renderHook(
-      (props: { minPxPerSec: number }) =>
-        useWaveformZoomSync({
-          wsRef,
-          isReady: true,
-          minPxPerSec: props.minPxPerSec,
-          appliedZoomPxPerSecRef,
-          peakCacheRef,
-          mediaUrl: "asset://audio.mp3",
-          onZoomAppliedRef,
-        }),
-      { initialProps: { minPxPerSec: 112 } },
-    );
-
-    rerender({ minPxPerSec: 388 });
-    await flushPromises();
-
-    expect(setScroll).toHaveBeenCalledWith(500);
-  });
-
-  it("skips scroll restore when onZoomApplied handles viewport fit", async () => {
-    const zoom = vi.fn();
-    const setScroll = vi.fn();
-    const getScroll = vi.fn(() => 500);
-    const getWidth = vi.fn(() => 800);
-    const getDuration = vi.fn(() => 120);
-    const load = vi.fn().mockResolvedValue(undefined);
-    const ws = { zoom, load, setScroll, getScroll, getWidth, getDuration };
-    const wsRef = { current: ws as never };
-    const appliedZoomPxPerSecRef = { current: 112 };
-    const onZoomAppliedRef = { current: () => true };
-    const peakCache = {
-      getWaveSurferPeaks: vi.fn(() => ({
-        peaks: [[0, 1]],
-        duration: 120,
-      })),
-    };
-    const peakCacheRef = { current: peakCache as never };
-
-    const { rerender } = renderHook(
-      (props: { minPxPerSec: number }) =>
-        useWaveformZoomSync({
-          wsRef,
-          isReady: true,
-          minPxPerSec: props.minPxPerSec,
-          appliedZoomPxPerSecRef,
-          peakCacheRef,
-          mediaUrl: "asset://audio.mp3",
-          onZoomAppliedRef,
-        }),
-      { initialProps: { minPxPerSec: 112 } },
-    );
-
-    rerender({ minPxPerSec: 388 });
-    await Promise.resolve();
-    await Promise.resolve();
+    await flushRaf();
 
     expect(setScroll).not.toHaveBeenCalled();
+    expect(load).not.toHaveBeenCalled();
   });
 
-  it("loads peaks when PeakCache becomes available after ready", async () => {
+  it("activates canvas peaks when PeakCache becomes available after ready", async () => {
     const zoom = vi.fn();
     const setScroll = vi.fn();
+    const setOptions = vi.fn();
     const getScroll = vi.fn(() => 0);
     const getWidth = vi.fn(() => 800);
     const getDuration = vi.fn(() => 120);
     const load = vi.fn().mockResolvedValue(undefined);
-    const setOptions = vi.fn();
     const ws = { zoom, load, setScroll, getScroll, getWidth, getDuration, setOptions };
     const wsRef = { current: ws as never };
     const appliedZoomPxPerSecRef = { current: 56 };
@@ -288,39 +258,23 @@ describe("useWaveformZoomSync", () => {
     rerender({ peakCache });
 
     expect(peakCache.getWaveSurferPeaks).toHaveBeenCalledWith(56);
-    expect(load).toHaveBeenCalled();
-    await flushPromises();
+    expect(load).not.toHaveBeenCalled();
+    await flushRaf();
     expect(appliedPeaksRef.current).toBe(true);
+    expect(setOptions).toHaveBeenCalledWith({ autoScroll: false });
   });
 
-  it("ignores stale peaks load completion when a newer zoom request started", async () => {
+  it("restores scroll after decode-fallback zoom when onZoomApplied does not handle fit", async () => {
     const zoom = vi.fn();
     const setScroll = vi.fn();
-    const getScroll = vi.fn(() => 100);
+    const getScroll = vi.fn(() => 500);
     const getWidth = vi.fn(() => 800);
     const getDuration = vi.fn(() => 120);
-    let resolveFirst: (() => void) | undefined;
-    const load = vi
-      .fn()
-      .mockImplementationOnce(
-        () =>
-          new Promise<void>((resolve) => {
-            resolveFirst = resolve;
-          }),
-      )
-      .mockResolvedValue(undefined);
-    const setOptions = vi.fn();
-    const ws = { zoom, load, setScroll, getScroll, getWidth, getDuration, setOptions };
+    const load = vi.fn().mockResolvedValue(undefined);
+    const ws = { zoom, load, setScroll, getScroll, getWidth, getDuration };
     const wsRef = { current: ws as never };
-    const appliedZoomPxPerSecRef = { current: 56 };
-    const peakCache = {
-      getWaveSurferPeaks: vi.fn((px: number) => ({
-        peaks: [[0, px]],
-        duration: 120,
-      })),
-    };
-    const peakCacheRef = { current: peakCache as never };
-
+    const appliedZoomPxPerSecRef = { current: 112 };
+    const onZoomAppliedRef = { current: () => false };
     const { rerender } = renderHook(
       (props: { minPxPerSec: number }) =>
         useWaveformZoomSync({
@@ -328,24 +282,14 @@ describe("useWaveformZoomSync", () => {
           isReady: true,
           minPxPerSec: props.minPxPerSec,
           appliedZoomPxPerSecRef,
-          peakCacheRef,
           mediaUrl: "asset://audio.mp3",
+          onZoomAppliedRef,
         }),
-      { initialProps: { minPxPerSec: 56 } },
+      { initialProps: { minPxPerSec: 112 } },
     );
-
-    rerender({ minPxPerSec: 80 });
-    await flushPromises();
-    rerender({ minPxPerSec: 120 });
-    await flushPromises();
-
-    expect(appliedZoomPxPerSecRef.current).toBe(120);
-    const scrollCallsBeforeStale = setScroll.mock.calls.length;
-
-    resolveFirst?.();
-    await flushPromises();
-
-    expect(appliedZoomPxPerSecRef.current).toBe(120);
-    expect(setScroll.mock.calls.length).toBe(scrollCallsBeforeStale);
+    rerender({ minPxPerSec: 388 });
+    await flushRaf();
+    expect(setScroll).toHaveBeenCalledWith(500);
+    expect(load).not.toHaveBeenCalled();
   });
 });

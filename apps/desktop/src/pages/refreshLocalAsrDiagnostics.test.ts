@@ -5,7 +5,7 @@ describe("refreshLocalAsrDiagnostics", () => {
   it("refreshes health, cache, and setup diagnose without resetting steps", async () => {
     const refreshAsrHealth = vi.fn(async () => {});
     const refreshAsrModelCacheInfo = vi.fn(async () => {});
-    const refreshSetupDiagnose = vi.fn(async () => null);
+    const refreshSetupDiagnose = vi.fn(() => Promise.resolve(null));
 
     await refreshLocalAsrDiagnostics({
       refreshAsrHealth,

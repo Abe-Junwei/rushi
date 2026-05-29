@@ -24,6 +24,16 @@ describe("waveformOverviewGeometry", () => {
     expect(computeOverviewPxPerSec(800, 100)).toBe(8);
   });
 
+  it("computeOverviewPxPerSec quantizes to two decimals", () => {
+    expect(computeOverviewPxPerSec(800.4, 100)).toBe(8);
+    expect(computeOverviewPxPerSec(800.6, 100)).toBe(8.01);
+  });
+
+  it("computeOverviewPxPerSec never returns 0 for long audio", () => {
+    expect(computeOverviewPxPerSec(600, 21 * 60 + 3)).toBe(0.48);
+    expect(computeOverviewPxPerSec(600, 21 * 60 + 3)).toBeGreaterThan(0);
+  });
+
   it("computeCenterScrollPxForTimeSec centers time in main viewport", () => {
     const sl = computeCenterScrollPxForTimeSec({
       timeSec: 10,

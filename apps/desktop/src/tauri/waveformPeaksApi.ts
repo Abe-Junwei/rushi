@@ -14,8 +14,22 @@ export interface WaveformPeaksStatus {
   durationSec: number | null;
 }
 
-export async function ensureWaveformPeaks(projectId: string, fileId: string): Promise<WaveformPeaksStatus> {
-  return invoke<WaveformPeaksStatus>("ensure_waveform_peaks", { projectId, fileId });
+export interface EnsureWaveformPeaksOptions {
+  force?: boolean;
+  mediaDurationSec?: number;
+}
+
+export async function ensureWaveformPeaks(
+  projectId: string,
+  fileId: string,
+  options?: EnsureWaveformPeaksOptions,
+): Promise<WaveformPeaksStatus> {
+  return invoke<WaveformPeaksStatus>("ensure_waveform_peaks", {
+    projectId,
+    fileId,
+    force: options?.force ?? false,
+    mediaDurationSec: options?.mediaDurationSec ?? null,
+  });
 }
 
 export async function waveformPeaksStatus(projectId: string, fileId: string): Promise<WaveformPeaksStatus> {

@@ -141,7 +141,7 @@ export function resolveSegmentIndexAtWaveformPointer(input: {
   let bestIdx = candidates[0] ?? 0;
   let bestLane = laneByIndex[bestIdx] ?? 0;
   for (let i = 1; i < candidates.length; i += 1) {
-    const idx = candidates[i]!;
+    const idx = candidates[i];
     const lane = laneByIndex[idx] ?? 0;
     if (lane > bestLane || (lane === bestLane && idx > bestIdx)) {
       bestIdx = idx;
