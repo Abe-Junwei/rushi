@@ -1,48 +1,45 @@
 import { ResizeBottomHit } from "../ResizeBottomHit";
 import { WaveformLiveTimeRuler } from "../WaveformLiveTimeRuler";
-import { WaveformPeaksTileLayer } from "../WaveformPeaksTileLayer";
-import { WaveformProgressOverlay } from "../WaveformProgressOverlay";
+import { WAVEFORM_EMBEDDED_TIME_RULER_H_PX } from "../WaveformTimeRuler";
 import { WaveformGlobalPlaybackSpeed } from "../WaveformGlobalPlaybackSpeed";
 import { WaveformGoToTime } from "../WaveformGoToTime";
 import { WaveformPlaybackTime } from "../WaveformPlaybackTime";
 import { WaveformSegmentPlaybackControls } from "../WaveformSegmentPlaybackControls";
 import { WaveformSegmentOverlay } from "../WaveformSegmentOverlay";
-import { WaveformOverviewStrip } from "../WaveformOverviewStrip";
-import { WaveformGlobalStripShell } from "../WaveformGlobalStripShell";
 import { WaveformZoomBar } from "../WaveformZoomBar";
-import { WAVEFORM_GLOBAL_STRIP_HEIGHT_PX } from "../../utils/waveformViewMode";
+import { WaveformMinimapStrip } from "../WaveformMinimapStrip";
+import { resolveWaveformCenterStatusLabel, resolveWaveformHeaderStatusLabel } from "../../services/waveform/waveformRenderStatus";
+import { tierViewportWidthStyle } from "../../utils/waveformViewport";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
-import { resolveWaveformPeaksUiState, waveformPeaksStatusMessage } from "../../utils/peakMediaDuration";
-import { resolveSegmentIndexAtWaveformPointer } from "../../utils/waveformSegmentBounds";
-
-interface SegmentCtxMenuState {
-  x: number;
-  y: number;
-  segmentIdx: number;
-  pointerTimeSec: number;
-}
 
 interface EditorWaveformPaneProps {
   controller: ProjectControllerApi;
   tx: TranscriptionLayerApi;
-  onOpenSegmentContextMenu: (menu: SegmentCtxMenuState) => void;
 }
 
 export function EditorWaveformPane({
   controller: c,
   tx,
-  onOpenSegmentContextMenu,
 }: EditorWaveformPaneProps) {
   const selectedSegment = c.segments[c.selectedIdx] ?? null;
   const scrollLeftPx = tx.tierScrollLayout.scrollLeftPx;
   const clientWidthPx = tx.tierScrollLayout.clientWidthPx;
+  const liveViewportWidthPx = Math.max(
+    1,
+    tx.tierScrollLive.clientWidthRef.current || clientWidthPx,
+  );
 
   const waveformStageHeightPx = tx.waveformStageHeightPx;
   const innerWaveformHeightPx = tx.waveformHeightPx;
+  const peaksPaneHeightPx = Math.max(1, innerWaveformHeightPx - WAVEFORM_EMBEDDED_TIME_RULER_H_PX);
   const innerPaintedHeightPx = tx.waveformPaintedHeightPx;
+  const peaksPaintedHeightPx = Math.max(
+    1,
+    innerPaintedHeightPx - WAVEFORM_EMBEDDED_TIME_RULER_H_PX,
+  );
   const waveformVisualScale =
-    tx.waveformPaintedHeightPx > 0 ? tx.waveformHeightPx / tx.waveformPaintedHeightPx : 1;
+    peaksPaintedHeightPx > 0 ? peaksPaneHeightPx / peaksPaintedHeightPx : 1;
   const waveformHeightPreviewActive =
     Math.abs(waveformVisualScale - 1) > 0.001 && !tx.waveformHeightDragging;
   const waveformVerticalTransform =
@@ -53,51 +50,88 @@ export function EditorWaveformPane({
       ? "h-full w-full origin-top-left will-change-transform transition-transform duration-150 ease-out motion-reduce:transition-none"
       : "h-full w-full origin-top-left";
   const stripDisabled = c.busy || !tx.isReady;
-  const progressTimeSec = tx.isPlaying && tx.isReady ? tx.getPlayheadTime() : tx.currentTime;
-  const peaksUiState = resolveWaveformPeaksUiState({
-    peakCache: tx.peakCache,
-    peaksLoading: tx.peaksLoading,
-    peaksError: tx.peaksError,
-    layoutMediaDurationSec: tx.duration,
-    peakDurationSec: tx.peakCache?.durationSec ?? 0,
+  const headerStatusLabel = resolveWaveformHeaderStatusLabel({
+    phase: tx.waveformPeaksPhase,
+    backgroundPeaksEnabled: tx.backgroundPeaksEnabled,
+    mountDeferTimedOut: tx.mountDeferTimedOut,
+    waveformReady: tx.isReady,
   });
-  const peaksStatusMessage = waveformPeaksStatusMessage(peaksUiState, tx.peaksError);
-  const drawMediaDurationSec =
-    tx.peaksDrawMediaDurationSec > 0 ? tx.peaksDrawMediaDurationSec : tx.duration;
+  const centerStatusLabel = resolveWaveformCenterStatusLabel({
+    phase: tx.waveformPeaksPhase,
+    backgroundPeaksEnabled: tx.backgroundPeaksEnabled,
+    mountDeferTimedOut: tx.mountDeferTimedOut,
+    waveformReady: tx.isReady,
+  });
+  const peaksStageWidthPx =
+    liveViewportWidthPx > 0 ? Math.max(tx.timelineWidthPx, liveViewportWidthPx) : tx.timelineWidthPx;
 
   return (
     <div className="relative z-10 flex w-full shrink-0 flex-col overflow-visible bg-notion-sidebar">
+      <div className="waveform-header-bar" aria-live="polite">
+        <WaveformPlaybackTime
+          className="waveform-header-time"
+          isPlaying={tx.isPlaying}
+          isReady={tx.isReady}
+          durationSec={tx.duration}
+          getPlayheadTime={tx.getPlayheadTime}
+          formatMediaTime={tx.formatMediaTime}
+        />
+        {headerStatusLabel ? (
+          <span className="waveform-render-status">{headerStatusLabel}</span>
+        ) : (
+          <span className="waveform-render-status" aria-hidden />
+        )}
+      </div>
+      {tx.minimapEnabled ? (
+        <WaveformMinimapStrip
+          disabled={stripDisabled}
+          durationSec={tx.duration}
+          timelineWidthPx={tx.timelineWidthPx}
+          scrollLeftPx={scrollLeftPx}
+          viewportWidthPx={clientWidthPx}
+          pxPerSec={tx.pxPerSec}
+          peakCache={tx.peakCache}
+          isReady={tx.isReady}
+          currentTimeSec={tx.currentTime}
+          onSeek={tx.seek}
+          onSetScrollLeftPx={tx.setTierScrollPx}
+        />
+      ) : null}
       <div
         ref={tx.tierScrollRef}
         onScroll={tx.onTierScroll}
         style={{ height: waveformStageHeightPx }}
-        className="relative w-full shrink-0 overflow-x-auto overflow-y-hidden [overflow-anchor:none]"
+        className="relative w-full shrink-0 overflow-x-auto overflow-y-hidden bg-notion-sidebar [overflow-anchor:none]"
       >
+        {centerStatusLabel ? (
+          <div
+            className="waveform-center-status pointer-events-none absolute inset-0 z-30 flex items-center justify-center"
+            aria-live="polite"
+          >
+            <p className="rounded-md bg-notion-sidebar-active/95 px-3 py-2 text-[12px] text-notion-text-muted shadow-sm">
+              {centerStatusLabel}
+            </p>
+          </div>
+        ) : null}
         <div
-          style={{ width: tx.timelineWidthPx }}
-          className={`relative z-[1] inline-block align-top ${c.busy ? "pointer-events-none opacity-60" : ""}`}
+          ref={tx.waveformPeaksStageShellRef}
+          style={{ width: peaksStageWidthPx }}
+          className={`relative z-[1] inline-block min-h-full align-top ${c.busy ? "pointer-events-none opacity-60" : ""}`}
         >
           <div
-            style={{ height: waveformStageHeightPx }}
-            className="relative overflow-hidden"
+            style={{ height: peaksPaneHeightPx, width: peaksStageWidthPx }}
+            className={`relative ${!tx.isReady ? "bg-notion-sidebar-active" : ""}`}
             onContextMenu={(e) => {
               if (c.busy) return;
               e.preventDefault();
-              const t = tx.clientXToTimeSec(e.clientX);
-              const overlayEl = e.currentTarget.querySelector<HTMLElement>(".waveform-segment-overlay");
-              const overlayTop = overlayEl?.getBoundingClientRect().top ?? e.clientY;
-              const segmentIdx = resolveSegmentIndexAtWaveformPointer({
-                segments: c.segments,
-                timeSec: t,
-                pointerClientY: e.clientY,
-                overlayClientTop: overlayTop,
-                layoutHeightPx: tx.waveformPaintedHeightPx,
-                laneByIndex: tx.segmentLaneLayout.laneByIndex,
-                laneCount: tx.segmentLaneLayout.laneCount,
-                selectedIdx: c.selectedIdx,
+              const paneTop = e.currentTarget.getBoundingClientRect().top;
+              tx.openSegmentContextMenuFromPointer({
+                clientX: e.clientX,
+                clientY: e.clientY,
+                overlayClientTop: paneTop,
+                peaksPaintedHeightPx: peaksPaintedHeightPx,
+                layoutYScale: waveformHeightPreviewActive ? waveformVisualScale : 1,
               });
-              if (segmentIdx < 0) return;
-              onOpenSegmentContextMenu({ x: e.clientX, y: e.clientY, segmentIdx, pointerTimeSec: t });
             }}
           >
             {tx.loadError ? (
@@ -105,66 +139,51 @@ export function EditorWaveformPane({
                 {tx.loadError}
               </p>
             ) : null}
-            {peaksStatusMessage && peaksUiState === "error" ? (
-              <p className="absolute inset-x-4 top-14 z-30 rounded-md bg-zen-cinnabar/10 px-3 py-2 text-center text-[12px] text-zen-cinnabar">
-                {peaksStatusMessage}
-              </p>
-            ) : null}
-            {peaksUiState === "loading" ? (
-              <p className="absolute inset-x-4 top-14 z-30 rounded-md bg-notion-sidebar-active/80 px-3 py-2 text-center text-[12px] text-notion-text/50">
-                正在更新波形…
-              </p>
-            ) : null}
 
-            <div className="relative flex h-full flex-col overflow-x-hidden bg-transparent">
+            <div className="relative h-full bg-transparent">
               <div
                 ref={tx.waveformShellRef}
                 tabIndex={0}
-                className="relative z-0 flex-1 outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-saffron/40"
+                className="relative z-0 h-full outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-saffron/40"
                 onKeyDown={tx.onWaveformMainKeyDown}
                 onClick={() => tx.focusWaveformShell()}
               >
-                <div className="w-full overflow-hidden" style={{ height: innerWaveformHeightPx }}>
-                  <div
-                    className={waveformVerticalClass}
-                    style={{
-                      width: tx.timelineWidthPx,
-                      height: innerPaintedHeightPx,
-                      transform: waveformVerticalTransform,
-                    }}
-                  >
+                <div
+                  ref={tx.waveformTimelineShellRef}
+                  className="relative"
+                  style={{ width: tx.timelineWidthPx, height: peaksPaintedHeightPx }}
+                >
                     <div
-                      className="relative h-full w-full origin-top-left"
-                      style={{
-                        width: tx.timelineWidthPx,
-                        height: innerPaintedHeightPx,
-                      }}
+                      ref={tx.waveformStickyShellRef}
+                      className="sticky left-0 top-0 z-[1] overflow-hidden bg-transparent"
+                      style={{ ...tierViewportWidthStyle(liveViewportWidthPx), height: peaksPaneHeightPx }}
                     >
-                      <WaveformPeaksTileLayer
-                        peakCache={tx.peakCache}
-                        layoutPxPerSec={tx.layoutPxPerSec}
-                        drawPxPerSec={tx.drawPxPerSec}
-                        layoutTimelineWidthPx={tx.timelineWidthPx}
-                        drawTimelineWidthPx={tx.drawTimelineWidthPx}
-                        mediaDurationSec={drawMediaDurationSec}
-                        peaksLoading={tx.peaksLoading}
-                        heightPx={innerWaveformHeightPx}
-                        scrollLeftPx={scrollLeftPx}
-                        viewportWidthPx={clientWidthPx}
-                      />
-                      <WaveformProgressOverlay
-                        isPlaying={tx.isPlaying}
-                        durationSec={tx.duration}
-                        timelineWidthPx={tx.timelineWidthPx}
-                        currentTimeSec={tx.currentTime}
-                        getPlayheadTime={tx.getPlayheadTime}
-                      />
-                      {tx.timelineWidthPx < clientWidthPx && (
-                        <div className="pointer-events-none absolute top-0 z-0 bg-notion-sidebar/30" style={{ left: tx.timelineWidthPx, width: clientWidthPx - tx.timelineWidthPx, height: "100%" }} aria-hidden />
-                      )}
+                      <div
+                        className={waveformVerticalClass}
+                        style={{
+                          width: "100%",
+                          height: peaksPaintedHeightPx,
+                          transform: waveformVerticalTransform,
+                        }}
+                      >
+                        <div
+                          ref={tx.waveformStretchShellRef}
+                          className="h-full w-full origin-top-left"
+                        >
+                          <div
+                            ref={tx.containerRef}
+                            style={{ height: peaksPaintedHeightPx }}
+                            className="relative z-[1] w-full shrink-0 bg-transparent"
+                            role="img"
+                            aria-label="转写波形与语段时间范围"
+                          />
+                        </div>
+                      </div>
+                    </div>
                       <WaveformSegmentOverlay
                         disabled={stripDisabled} segments={c.segments} selectedIdx={c.selectedIdx}
-                        pxPerSec={tx.pxPerSec} durationSec={tx.duration} layoutHeightPx={innerPaintedHeightPx}
+                        timelineWidthPx={tx.timelineWidthPx} durationSec={tx.duration} layoutHeightPx={peaksPaintedHeightPx}
+                        scrollLeftPx={scrollLeftPx} viewportWidthPx={clientWidthPx}
                         laneByIndex={tx.segmentLaneLayout.laneByIndex} laneCount={tx.segmentLaneLayout.laneCount}
                         enableCreateRange clientXToTimeSec={tx.clientXToTimeSec}
                         onSelectSegmentAt={(idx) => tx.selectSegmentAt(idx, "waveform")}
@@ -176,17 +195,11 @@ export function EditorWaveformPane({
                         onPlaySegment={(idx) => void tx.playSegmentAtIndex(idx)}
                         seekToTime={tx.seek}
                       />
-                      <div
-                        ref={tx.containerRef}
-                        style={{ width: tx.timelineWidthPx, height: innerPaintedHeightPx }}
-                        className="pointer-events-none relative z-0 shrink-0 bg-transparent"
-                        role="img"
-                        aria-label="转写波形与语段时间范围"
-                      />
                       <WaveformSegmentPlaybackControls
                         disabled={stripDisabled}
                         isPlaying={tx.isPlaying}
-                        pxPerSec={tx.pxPerSec}
+                        timelineWidthPx={tx.timelineWidthPx}
+                        durationSec={tx.duration}
                         scrollLeftPx={scrollLeftPx}
                         viewportWidthPx={clientWidthPx}
                         tierScrollRef={tx.tierScrollRef}
@@ -197,48 +210,40 @@ export function EditorWaveformPane({
                         onToggleLoop={() => void tx.handleToggleSelectedWaveformLoop()}
                         onTogglePlay={() => void tx.handleToggleSelectedWaveformPlay()}
                       />
-                    </div>
                   </div>
                 </div>
-                <div className="absolute inset-x-0 bottom-0 z-10">
-                  <WaveformLiveTimeRuler
-                    appearance="embedded" durationSec={tx.duration} timelineWidthPx={tx.timelineWidthPx}
-                    scrollLeftPx={scrollLeftPx} viewportWidthPx={clientWidthPx} pxPerSec={tx.pxPerSec}
-                    rulerView={tx.rulerView} isPlaying={tx.isPlaying} isReady={tx.isReady}
-                    getPlayheadTime={tx.getPlayheadTime} formatMediaTime={tx.formatMediaTime}
-                    disabled={stripDisabled} onSeekFromTierClientX={tx.seekFromTierClientX}
-                    onSetScrollLeftPx={tx.setTierScrollPx}
-                  />
-                </div>
               </div>
-              <ResizeBottomHit
-                busy={c.busy}
-                ariaLabel="拖动下边缘调节波形高度"
-                onPointerDown={tx.beginWaveformHeightDrag}
-              />
             </div>
-          </div>
         </div>
-      </div>
-
-      <WaveformGlobalStripShell
-        collapsed={tx.globalStripCollapsed}
-        disabled={stripDisabled}
-        onToggleCollapsed={tx.toggleGlobalStripCollapsed}
-      >
-        {!tx.globalStripCollapsed ? (
-          <WaveformOverviewStrip
-            stripHeightPx={WAVEFORM_GLOBAL_STRIP_HEIGHT_PX} disabled={stripDisabled}
-            isReady={tx.isReady} durationSec={tx.duration} drawMediaDurationSec={drawMediaDurationSec}
-            peaksLoading={tx.peaksLoading} peaksError={tx.peaksError} pxPerSec={tx.pxPerSec}
-            timelineWidthPx={tx.timelineWidthPx} scrollLeftPx={scrollLeftPx}
-            mainViewportWidthPx={clientWidthPx} progressTimeSec={progressTimeSec}
-            peakCache={tx.peakCache} segments={c.segments} selectedIdx={c.selectedIdx}
-            setTierScrollPx={tx.setTierScrollPx} seekToTime={tx.seek}
-            onSelectSegmentAt={(idx) => tx.selectSegmentAt(idx, "global-strip")}
+        <div
+          className="sticky bottom-0 left-0 z-20 shrink-0 overflow-hidden border-t border-notion-border/25 bg-notion-sidebar"
+          style={{ height: WAVEFORM_EMBEDDED_TIME_RULER_H_PX }}
+        >
+          <WaveformLiveTimeRuler
+            appearance="embedded"
+            coordinateSpace="viewport"
+            durationSec={tx.duration}
+            timelineWidthPx={tx.timelineWidthPx}
+            scrollLeftPx={scrollLeftPx}
+            viewportWidthPx={clientWidthPx}
+            pxPerSec={tx.pxPerSec}
+            tierScrollRef={tx.tierScrollRef}
+            tierScrollLive={tx.tierScrollLive}
+            isPlaying={tx.isPlaying}
+            isReady={tx.isReady}
+            getPlayheadTime={tx.getPlayheadTime}
+            formatMediaTime={tx.formatMediaTime}
+            disabled={stripDisabled}
+            onSeekFromTierClientX={tx.seekFromTierClientX}
+            onSetScrollLeftPx={tx.setTierScrollPx}
           />
-        ) : null}
-      </WaveformGlobalStripShell>
+        </div>
+        <ResizeBottomHit
+          busy={c.busy}
+          ariaLabel="拖动下边缘调节波形高度"
+          onPointerDown={tx.beginWaveformHeightDrag}
+        />
+      </div>
 
       <div className="waveform-bottom-toolbar">
         <div className="waveform-playback-cluster">
@@ -263,13 +268,6 @@ export function EditorWaveformPane({
             playbackRate={tx.globalPlaybackRate}
             onPlaybackRateChange={tx.setGlobalPlaybackRate}
           />
-          <WaveformPlaybackTime
-            isPlaying={tx.isPlaying}
-            isReady={tx.isReady}
-            durationSec={tx.duration}
-            getPlayheadTime={tx.getPlayheadTime}
-            formatMediaTime={tx.formatMediaTime}
-          />
           <WaveformGoToTime
             disabled={c.busy || !tx.isReady}
             durationSec={tx.duration}
@@ -277,13 +275,17 @@ export function EditorWaveformPane({
           />
         </div>
         <WaveformZoomBar
-          disabled={c.busy} isReady={tx.isReady} pxPerSec={tx.pxPerSec}
-          viewportWidthPx={clientWidthPx} durationSec={tx.duration}
+          disabled={c.busy}
+          isReady={tx.isReady}
+          pxPerSec={tx.pxPerSec}
+          layoutIntent={tx.layoutIntent}
+          viewportWidthPx={clientWidthPx}
+          durationSec={tx.duration}
           selectedStartSec={selectedSegment?.start_sec} selectedEndSec={selectedSegment?.end_sec}
+          onFitSelection={tx.zoomToFitSelection}
+          onFitAll={tx.zoomToFitAll}
           onResetDefaultZoom={() => tx.resetZoomForMedia(clientWidthPx, tx.duration)}
           onPxPerSecChange={tx.setPxPerSecFromSlider}
-          onZoomInteractionStart={tx.beginZoomInteraction}
-          onZoomInteractionEnd={tx.commitZoomInteraction}
           editorHint={tx.editorHint}
         />
       </div>

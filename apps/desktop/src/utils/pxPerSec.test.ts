@@ -1,10 +1,14 @@
 import { describe, expect, it } from "vitest";
 import {
+  capWaveformPeakColumns,
   clampPxPerSec,
   clampPxPerSecForSlider,
+  clampPxPerSecForWaveSurferRender,
   computeFitAllPxPerSec,
   computeFitSelectionPxPerSec,
+  computeTimelineWidthPx,
   isTimelineFitInViewport,
+  resolveMaxRenderablePxPerSec,
   resolveSelectionFitPxPerSec,
   resolveDefaultResetPxPerSec,
   resolveWaveformZoomSliderRange,
@@ -15,6 +19,8 @@ import {
   PX_PER_SEC_MAX,
   PX_PER_SEC_MIN,
   quantizePxPerSecForPeaksLoad,
+  shouldZoomOnlyForSubMinFitAllPeaks,
+  shouldZoomOnlyForSubMinFitAllRefit,
   TIMELINE_PX_PER_SEC,
 } from "./pxPerSec";
 
@@ -81,16 +87,23 @@ describe("resolveDefaultResetPxPerSec", () => {
   it("returns design default for long media", () => {
     expect(resolveDefaultResetPxPerSec(800, 120)).toBe(TIMELINE_PX_PER_SEC);
   });
+
+  it("returns fit-all when opening very long media", () => {
+    const dur = 4 * 3600;
+    const fitAll = computeFitAllPxPerSec(1200, dur);
+    expect(resolveDefaultResetPxPerSec(1200, dur)).toBe(fitAll);
+    expect(fitAll).toBeLessThan(PX_PER_SEC_MIN);
+  });
 });
 
 describe("computeFitSelectionPxPerSec", () => {
-  it("uses viewport width minus horizontal padding", () => {
-    expect(computeFitSelectionPxPerSec(800, 10, 12)).toBe((800 - 24) / 2);
+  it("uses 80% of viewport width for the segment span", () => {
+    expect(computeFitSelectionPxPerSec(800, 10, 12)).toBe((800 * 0.8) / 2);
   });
 
   it("allows low px/s for long segments", () => {
     const px = computeFitSelectionPxPerSec(800, 0, 120);
-    expect(px).toBeCloseTo((800 - 24) / 120, 5);
+    expect(px).toBeCloseTo((800 * 0.8) / 120, 5);
     expect(px).toBeLessThan(PX_PER_SEC_MIN);
   });
 
@@ -129,6 +142,54 @@ describe("quantizePxPerSecForPeaksLoad", () => {
   });
 });
 
+describe("shouldZoomOnlyForSubMinFitAllPeaks", () => {
+  it("returns true when both loaded and requested px/s are sub-min fit-all", () => {
+    expect(shouldZoomOnlyForSubMinFitAllPeaks(0.083, 0.133)).toBe(true);
+  });
+
+  it("returns false when loaded peaks were at manual range", () => {
+    expect(shouldZoomOnlyForSubMinFitAllPeaks(56, 0.133)).toBe(false);
+  });
+});
+
+describe("shouldZoomOnlyForSubMinFitAllRefit", () => {
+  it("zoom-only on decode path when px/s changed from viewport refit", () => {
+    expect(
+      shouldZoomOnlyForSubMinFitAllRefit({
+        requestedPeaksPxPerSec: 0.133,
+        loadedPeaksPxPerSec: Number.NaN,
+        peaksLoadedIntoWaveSurfer: false,
+        pxPerSecChanged: true,
+        peaksLoadInFlight: false,
+      }),
+    ).toBe(true);
+  });
+
+  it("allows initial peaks load when px/s unchanged on mount", () => {
+    expect(
+      shouldZoomOnlyForSubMinFitAllRefit({
+        requestedPeaksPxPerSec: 0.083,
+        loadedPeaksPxPerSec: Number.NaN,
+        peaksLoadedIntoWaveSurfer: false,
+        pxPerSecChanged: false,
+        peaksLoadInFlight: false,
+      }),
+    ).toBe(false);
+  });
+
+  it("zoom-only while sub-min peaks load is in flight", () => {
+    expect(
+      shouldZoomOnlyForSubMinFitAllRefit({
+        requestedPeaksPxPerSec: 0.133,
+        loadedPeaksPxPerSec: Number.NaN,
+        peaksLoadedIntoWaveSurfer: false,
+        pxPerSecChanged: true,
+        peaksLoadInFlight: true,
+      }),
+    ).toBe(true);
+  });
+});
+
 describe("resolveSelectionFitPxPerSec", () => {
   it("keeps current px/s when segment already fits in viewport", () => {
     const px = resolveSelectionFitPxPerSec(800, 10, 12, 120);
@@ -137,7 +198,7 @@ describe("resolveSelectionFitPxPerSec", () => {
 
   it("zooms out when segment is wider than viewport at current px/s", () => {
     const px = resolveSelectionFitPxPerSec(800, 0, 60, 120);
-    expect(px).toBe(quantizePxPerSecForPeaksLoad((800 - 24) / 60));
+    expect(px).toBe(quantizePxPerSecForPeaksLoad((800 * 0.8) / 60));
     expect(px).toBeLessThan(120);
   });
 
@@ -152,12 +213,11 @@ describe("computeSelectionFitScrollPx", () => {
   it("centers the segment in the viewport", () => {
     const px = 100;
     const dur = 50;
-    const tw = Math.max(Math.ceil(dur * px), 320);
+    const tw = Math.ceil(dur * px);
     const scroll = computeSelectionFitScrollPx({
       viewportWidthPx: 800,
       timelineWidthPx: tw,
       durationSec: dur,
-      pxPerSec: px,
       startSec: 10,
       endSec: 12,
     });
@@ -170,7 +230,6 @@ describe("computeSelectionFitScrollPx", () => {
         viewportWidthPx: 800,
         timelineWidthPx: 5000,
         durationSec: 60,
-        pxPerSec: 56,
         startSec: 0,
         endSec: 1,
       }),
@@ -180,22 +239,21 @@ describe("computeSelectionFitScrollPx", () => {
   it("clamps scroll at timeline end for last segment", () => {
     const px = 56;
     const dur = 60;
-    const tw = Math.max(Math.ceil(dur * px), 320);
+    const tw = Math.ceil(dur * px);
     const vw = 800;
     const scroll = computeSelectionFitScrollPx({
       viewportWidthPx: vw,
       timelineWidthPx: tw,
       durationSec: dur,
-      pxPerSec: px,
       startSec: 58,
       endSec: 60,
     });
     expect(scroll).toBe(Math.max(0, tw - vw));
   });
 
-  it("uses timeline width proportion when floor widens content", () => {
+  it("uses timeline width proportion for scroll", () => {
     const dur = 10;
-    const tw = 320;
+    const tw = Math.ceil(dur * 56);
     const scroll = computeSelectionFitScrollPx({
       viewportWidthPx: 800,
       timelineWidthPx: tw,
@@ -217,17 +275,31 @@ describe("computeViewportFitScrollPx", () => {
         viewportWidthPx: 800,
         timelineWidthPx: 6720,
         durationSec: 120,
-        pxPerSec: 56,
       }),
     ).toBe(
       computeSelectionFitScrollPx({
         viewportWidthPx: 800,
         timelineWidthPx: 6720,
         durationSec: 120,
-        pxPerSec: 56,
         startSec: 10,
         endSec: 12,
       }),
     );
+  });
+});
+
+describe("capWaveformPeakColumns", () => {
+  it("caps 4h audio at high zoom to a fixed column budget", () => {
+    const timelineWidth = computeTimelineWidthPx(14_400, 107);
+    expect(timelineWidth).toBeGreaterThan(1_000_000);
+    expect(capWaveformPeakColumns(timelineWidth)).toBe(32_768);
+  });
+});
+
+describe("resolveMaxRenderablePxPerSec", () => {
+  it("limits decode canvas width for very long media", () => {
+    const maxPx = resolveMaxRenderablePxPerSec(14_400);
+    expect(maxPx).toBeCloseTo(262_144 / 14_400, 4);
+    expect(clampPxPerSecForWaveSurferRender(107, 14_400)).toBeLessThan(20);
   });
 });

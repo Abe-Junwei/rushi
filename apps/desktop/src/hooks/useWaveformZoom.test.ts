@@ -33,26 +33,6 @@ describe("useWaveformZoom", () => {
     vi.unstubAllGlobals();
   });
 
-  it("keeps committed pxPerSec frozen while slider drag preview updates", () => {
-    const { result } = renderZoomHook();
-
-    act(() => {
-      result.current.beginZoomInteraction();
-      result.current.setPxPerSecFromSlider(TIMELINE_PX_PER_SEC * 2);
-    });
-
-    expect(result.current.pxPerSec).toBe(TIMELINE_PX_PER_SEC * 2);
-    expect(result.current.committedPxPerSec).toBe(TIMELINE_PX_PER_SEC);
-    expect(result.current.zoomPreviewActive).toBe(true);
-
-    act(() => {
-      result.current.commitZoomInteraction();
-    });
-
-    expect(result.current.committedPxPerSec).toBe(TIMELINE_PX_PER_SEC * 2);
-    expect(result.current.zoomPreviewActive).toBe(false);
-  });
-
   it("setPxPerSecFromSlider accepts slider-range values above manual max", () => {
     const { result } = renderZoomHook();
     const fitAll = computeFitAllPxPerSec(800, 0.5);
@@ -63,18 +43,16 @@ describe("useWaveformZoom", () => {
 
     expect(fitAll).toBeGreaterThan(PX_PER_SEC_MAX);
     expect(result.current.pxPerSec).toBe(fitAll);
-    expect(result.current.committedPxPerSec).toBe(fitAll);
   });
 
-  it("setFitPxPerSec applies fit-selection px to preview and committed", () => {
+  it("setFitPxPerSec applies fit-selection px/s immediately", () => {
     const { result } = renderHook(() => useWaveformZoom());
 
     act(() => {
       result.current.setFitPxPerSec(computeFitSelectionPxPerSec(800, 10, 12));
     });
 
-    expect(result.current.pxPerSec).toBe((800 - 24) / 2);
-    expect(result.current.committedPxPerSec).toBe(result.current.pxPerSec);
+    expect(result.current.pxPerSec).toBe((800 * 0.8) / 2);
   });
 
   it("setFitPxPerSec can zoom a short segment past the manual slider ceiling", () => {
@@ -85,29 +63,6 @@ describe("useWaveformZoom", () => {
     });
 
     expect(result.current.pxPerSec).toBeGreaterThan(PX_PER_SEC_MAX);
-    expect(result.current.committedPxPerSec).toBe(result.current.pxPerSec);
-  });
-
-  it("setFitPxPerSec does not update committed during slider drag", () => {
-    const { result } = renderZoomHook();
-
-    act(() => {
-      result.current.beginZoomInteraction();
-      result.current.setPxPerSecFromSlider(120);
-    });
-
-    act(() => {
-      result.current.setFitPxPerSec(computeFitSelectionPxPerSec(800, 10, 12));
-    });
-
-    expect(result.current.pxPerSec).toBe((800 - 24) / 2);
-    expect(result.current.committedPxPerSec).toBe(TIMELINE_PX_PER_SEC);
-
-    act(() => {
-      result.current.commitZoomInteraction();
-    });
-
-    expect(result.current.committedPxPerSec).toBe((800 - 24) / 2);
   });
 
   it("resetZoom restores design default pxPerSec", () => {
@@ -123,7 +78,6 @@ describe("useWaveformZoom", () => {
     });
 
     expect(result.current.pxPerSec).toBe(TIMELINE_PX_PER_SEC);
-    expect(result.current.committedPxPerSec).toBe(TIMELINE_PX_PER_SEC);
   });
 
   it("resetZoomForMedia uses fit-all when it exceeds manual max", () => {
@@ -139,6 +93,31 @@ describe("useWaveformZoom", () => {
     });
 
     expect(result.current.pxPerSec).toBe(fitAll);
-    expect(result.current.committedPxPerSec).toBe(fitAll);
+    expect(result.current.layoutIntent).toBe("fit-all");
+  });
+
+  it("enterFitAllLayout sets fit-all intent", () => {
+    const { result } = renderZoomHook();
+    const fitAll = computeFitAllPxPerSec(1200, 3600);
+
+    act(() => {
+      result.current.enterFitAllLayout(fitAll);
+    });
+
+    expect(result.current.layoutIntent).toBe("fit-all");
+    expect(result.current.pxPerSec).toBe(fitAll);
+  });
+
+  it("manual slider change clears fit-all intent", () => {
+    const { result } = renderZoomHook();
+
+    act(() => {
+      result.current.enterFitAllLayout(computeFitAllPxPerSec(800, 3600));
+    });
+    act(() => {
+      result.current.setPxPerSecFromSlider(TIMELINE_PX_PER_SEC);
+    });
+
+    expect(result.current.layoutIntent).toBe("manual");
   });
 });

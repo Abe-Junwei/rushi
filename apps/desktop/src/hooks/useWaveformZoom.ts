@@ -2,9 +2,12 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   clampPxPerSec,
   clampPxPerSecForFitSelection,
+  computeFitAllPxPerSec,
   resolveDefaultResetPxPerSec,
   TIMELINE_PX_PER_SEC,
+  type WaveformZoomLayoutIntent,
 } from "../utils/pxPerSec";
+import { isPxPerSecNearFitAll } from "../utils/waveformZoomBarState";
 import { readStoredWaveformPxPerSec, writeStoredWaveformPxPerSec } from "../utils/waveformPrefs";
 
 const PREF_WRITE_DEBOUNCE_MS = 180;
@@ -13,17 +16,19 @@ function clampStoredPxPerSec(value: number | null | undefined): number {
   return clampPxPerSec(value ?? TIMELINE_PX_PER_SEC);
 }
 
+/** Single px/s track — WaveSurfer owns redraw on zoom / peaks reload. */
 export function useWaveformZoom() {
   const [pxPerSec, setPxPerSecState] = useState(() =>
     clampStoredPxPerSec(readStoredWaveformPxPerSec()),
   );
-  const [committedPxPerSec, setCommittedPxPerSecState] = useState(() =>
-    clampStoredPxPerSec(readStoredWaveformPxPerSec()),
-  );
-  const [zoomDragging, setZoomDragging] = useState(false);
-  const zoomDraggingRef = useRef(false);
-  const pxPerSecRef = useRef(pxPerSec);
-  pxPerSecRef.current = pxPerSec;
+  const [layoutIntent, setLayoutIntent] = useState<WaveformZoomLayoutIntent>("manual");
+  const layoutIntentRef = useRef<WaveformZoomLayoutIntent>("manual");
+  layoutIntentRef.current = layoutIntent;
+
+  const setLayoutIntentState = useCallback((intent: WaveformZoomLayoutIntent) => {
+    layoutIntentRef.current = intent;
+    setLayoutIntent(intent);
+  }, []);
 
   const skipPersistRef = useRef(true);
   useEffect(() => {
@@ -37,83 +42,80 @@ export function useWaveformZoom() {
     return () => window.clearTimeout(timer);
   }, [pxPerSec]);
 
-  const applyClamped = useCallback((clamped: number) => {
-    setPxPerSecState(clamped);
-    if (!zoomDraggingRef.current) {
-      setCommittedPxPerSecState(clamped);
-    }
-  }, []);
-
-  const applyBoth = useCallback(
-    (next: number) => {
-      applyClamped(clampPxPerSec(next));
-    },
-    [applyClamped],
-  );
-
-  /** Programmatic clamp to manual/fit min–max (not slider-range-aware). */
-  const setPxPerSec = useCallback((next: number) => {
-    const clamped = clampPxPerSec(next);
-    setPxPerSecState(clamped);
-    if (!zoomDraggingRef.current) {
-      setCommittedPxPerSecState(clamped);
-    }
-  }, []);
-
-  /** Slider / +/- / keyboard: value already clamped to sliderRange — no second clampPxPerSec. */
-  const setPxPerSecFromSlider = useCallback((next: number) => {
+  const applyFitAllRefitPxPerSec = useCallback((next: number) => {
     if (!Number.isFinite(next)) return;
     setPxPerSecState(next);
-    if (!zoomDraggingRef.current) {
-      setCommittedPxPerSecState(next);
-    }
   }, []);
 
-  const beginZoomInteraction = useCallback(() => {
-    zoomDraggingRef.current = true;
-    setZoomDragging(true);
-  }, []);
+  const enterFitAllLayout = useCallback(
+    (next: number) => {
+      if (!Number.isFinite(next)) return;
+      setLayoutIntentState("fit-all");
+      setPxPerSecState(next);
+    },
+    [setLayoutIntentState],
+  );
 
-  const commitZoomInteraction = useCallback(() => {
-    zoomDraggingRef.current = false;
-    setZoomDragging(false);
-    setCommittedPxPerSecState(pxPerSecRef.current);
-  }, []);
+  const setPxPerSec = useCallback(
+    (next: number) => {
+      setLayoutIntentState("manual");
+      setPxPerSecState(clampPxPerSec(next));
+    },
+    [setLayoutIntentState],
+  );
+
+  const setPxPerSecFromSlider = useCallback(
+    (next: number) => {
+      if (!Number.isFinite(next)) return;
+      setLayoutIntentState("manual");
+      setPxPerSecState(next);
+    },
+    [setLayoutIntentState],
+  );
 
   const resetZoom = useCallback(() => {
-    applyBoth(TIMELINE_PX_PER_SEC);
-  }, [applyBoth]);
+    setLayoutIntentState("default");
+    setPxPerSecState(TIMELINE_PX_PER_SEC);
+  }, [setLayoutIntentState]);
 
   const resetZoomForMedia = useCallback(
     (viewportWidthPx: number, durationSec: number) => {
-      applyClamped(resolveDefaultResetPxPerSec(viewportWidthPx, durationSec));
+      const px = resolveDefaultResetPxPerSec(viewportWidthPx, durationSec);
+      let intent: WaveformZoomLayoutIntent = "manual";
+      if (viewportWidthPx > 0 && durationSec >= 0.5) {
+        const fitAll = computeFitAllPxPerSec(viewportWidthPx, durationSec);
+        if (isPxPerSecNearFitAll(px, fitAll)) {
+          intent = "fit-all";
+        } else if (Math.abs(px - TIMELINE_PX_PER_SEC) < 1e-6) {
+          intent = "default";
+        }
+      } else if (Math.abs(px - TIMELINE_PX_PER_SEC) < 1e-6) {
+        intent = "default";
+      }
+      setLayoutIntentState(intent);
+      setPxPerSecState(px);
     },
-    [applyClamped],
+    [setLayoutIntentState],
   );
 
   const setFitPxPerSec = useCallback(
     (next: number) => {
-      applyClamped(clampPxPerSecForFitSelection(next));
+      setLayoutIntentState("fit-selection");
+      setPxPerSecState(clampPxPerSecForFitSelection(next));
     },
-    [applyClamped],
+    [setLayoutIntentState],
   );
 
   return {
-    /** Layout / hit-test px per second (preview during slider drag). */
-    layoutPxPerSec: pxPerSec,
-    /** Peaks resample + tile draw px per second (frozen until commit). */
-    drawPxPerSec: committedPxPerSec,
     pxPerSec,
-    committedPxPerSec,
-    renderPxPerSec: pxPerSec,
-    zoomPreviewActive: zoomDragging,
-    zoomDragging,
+    layoutIntent,
+    layoutIntentRef,
     setPxPerSec,
     setPxPerSecFromSlider,
+    applyFitAllRefitPxPerSec,
+    enterFitAllLayout,
     resetZoom,
     resetZoomForMedia,
     setFitPxPerSec,
-    beginZoomInteraction,
-    commitZoomInteraction,
   };
-}
+};

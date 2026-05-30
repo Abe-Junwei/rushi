@@ -6,7 +6,7 @@ import {
   resolveWaveformZoomSliderRange,
   TIMELINE_PX_PER_SEC,
 } from "./pxPerSec";
-import { computeWaveformZoomBarUiState } from "./waveformZoomBarState";
+import { computeWaveformZoomBarUiState, resolveFitAllPxPerSecAdjustment } from "./waveformZoomBarState";
 
 describe("computeWaveformZoomBarUiState", () => {
   it("marks default zoom at 56 px/s", () => {
@@ -22,6 +22,7 @@ describe("computeWaveformZoomBarUiState", () => {
       pxPerSec: fitAll,
       viewportWidthPx: 800,
       durationSec: 3600,
+      layoutIntent: "fit-all",
     });
     expect(s.atMinZoom).toBe(true);
     expect(s.atFitAllZoom).toBe(true);
@@ -63,5 +64,80 @@ describe("computeWaveformZoomBarUiState", () => {
     expect(fitAll).toBeGreaterThan(1);
     expect(s.belowManualSliderRange).toBe(false);
     expect(s.atMinZoom).toBe(true);
+  });
+
+  it("does not mark zoomed-out below fit-all as atFitAllZoom without intent", () => {
+    const dur = 3600;
+    const vw = 800;
+    const fitAll = computeFitAllPxPerSec(vw, dur);
+    const s = computeWaveformZoomBarUiState({
+      pxPerSec: fitAll * 0.5,
+      viewportWidthPx: vw,
+      durationSec: dur,
+    });
+    expect(s.atFitAllZoom).toBe(false);
+  });
+
+  it("marks fit-all intent even before fill converges", () => {
+    const dur = 3 * 3600 + 40 * 60;
+    const vw = 1200;
+    const stalePx = computeFitAllPxPerSec(960, dur);
+    const s = computeWaveformZoomBarUiState({
+      pxPerSec: stalePx,
+      viewportWidthPx: vw,
+      durationSec: dur,
+      layoutIntent: "fit-all",
+    });
+    expect(s.atFitAllZoom).toBe(true);
+  });
+});
+
+describe("resolveFitAllPxPerSecAdjustment", () => {
+  it("raises px/s when viewport grew but fit-all px/s stayed on the old width", () => {
+    const dur = 4 * 3600 + 29;
+    const oldVw = 1200;
+    const newVw = 1600;
+    const staleFitAll = computeFitAllPxPerSec(oldVw, dur);
+    const next = resolveFitAllPxPerSecAdjustment(newVw, dur, staleFitAll, {
+      staleFitAllOnViewportGrow: true,
+    });
+    expect(next).not.toBeNull();
+    expect(next!).toBeCloseTo(computeFitAllPxPerSec(newVw, dur), 6);
+  });
+
+  it("refits after a large fullscreen grow from prior fit-all width", () => {
+    const dur = 4 * 3600 + 29;
+    const staleFitAll = computeFitAllPxPerSec(1200, dur);
+    const next = resolveFitAllPxPerSecAdjustment(1920, dur, staleFitAll, {
+      staleFitAllOnViewportGrow: true,
+    });
+    expect(next).toBeCloseTo(computeFitAllPxPerSec(1920, dur), 6);
+  });
+
+  it("does not refit when the user zoomed out below fit-all", () => {
+    const dur = 3600;
+    const vw = 800;
+    const fitAll = computeFitAllPxPerSec(vw, dur);
+    expect(resolveFitAllPxPerSecAdjustment(vw, dur, fitAll * 0.5)).toBeNull();
+  });
+
+  it("refits when timeline fits in viewport but leaves a fill gap (fit-all stale width)", () => {
+    const dur = 3 * 3600 + 40 * 60 + 29;
+    const vw = 1200;
+    const stalePx = computeFitAllPxPerSec(960, dur);
+    const next = resolveFitAllPxPerSecAdjustment(vw, dur, stalePx, {
+      staleFitAllOnViewportGrow: true,
+    });
+    expect(next).toBeCloseTo(computeFitAllPxPerSec(vw, dur), 6);
+  });
+
+  it("refits under fit-all intent when viewport unchanged but fill gap remains", () => {
+    const dur = 3 * 3600 + 40 * 60;
+    const vw = 1200;
+    const stalePx = computeFitAllPxPerSec(960, dur);
+    const next = resolveFitAllPxPerSecAdjustment(vw, dur, stalePx, {
+      layoutIntent: "fit-all",
+    });
+    expect(next).toBeCloseTo(computeFitAllPxPerSec(vw, dur), 6);
   });
 });
