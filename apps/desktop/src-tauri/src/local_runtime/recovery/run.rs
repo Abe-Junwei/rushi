@@ -1,3 +1,4 @@
+use super::auto_rollback::run_auto_health_rollback;
 use super::helpers::{is_transient_verify_error, should_persist_revalidate_corrupt};
 use crate::local_runtime::install_support::verify_installed_runtime;
 use crate::local_runtime::integrity::{
@@ -7,7 +8,15 @@ use std::path::Path;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
-pub(crate) fn run_revalidate(app_root: &Path, cancel: &Arc<AtomicBool>) -> Result<String, String> {
+pub(crate) enum RevalidateOutcome {
+    Verified(String),
+    AutoRolledBack(String),
+}
+
+pub(crate) fn run_revalidate(
+    app_root: &Path,
+    cancel: &Arc<AtomicBool>,
+) -> Result<RevalidateOutcome, String> {
     let marker =
         read_marker(app_root).map_err(|_| "local_runtime_not_revalidatable".to_string())?;
     let install_dir = version_dir(app_root, &marker.version);
@@ -37,9 +46,17 @@ pub(crate) fn run_revalidate(app_root: &Path, cancel: &Arc<AtomicBool>) -> Resul
                     .zip(marker.previous_exe_relpath.as_deref()),
                 Some("ready"),
             )?;
-            Ok(marker.version)
+            Ok(RevalidateOutcome::Verified(marker.version))
         }
         Err(err) => {
+            if let Ok(restored) = run_auto_health_rollback(
+                app_root,
+                cancel,
+                &err,
+                Some(marker.version.as_str()),
+            ) {
+                return Ok(RevalidateOutcome::AutoRolledBack(restored));
+            }
             if should_persist_revalidate_corrupt(&err) {
                 let _ = mark_runtime_corrupt(app_root, &marker, Some(&err), Some("verifying"));
             }

@@ -1,6 +1,7 @@
-use crate::local_runtime::manifest::{
-        artifact_sources, current_platform_key, is_shell_version_compatible, parse_manifest,
-        parse_signed_manifest, select_asr_sidecar_component,
+    use super::parse::parse_manifest;
+    use crate::local_runtime::manifest::{
+        artifact_sources, current_platform_key, is_shell_version_compatible, parse_signed_manifest,
+        select_asr_sidecar_component,
     };
 
     #[test]
@@ -63,6 +64,24 @@ use crate::local_runtime::manifest::{
             Some("2026-05-26T00:00:00Z")
         );
         assert!(!signed.canonical_payload.is_empty());
+    }
+
+    #[test]
+    fn parse_signed_manifest_rejects_unknown_top_level_field() {
+        let err = parse_signed_manifest(
+            r#"{
+              "manifest_version": 1,
+              "components": [],
+              "unexpected_field": true,
+              "signature": {
+                "key_id": "fixture",
+                "algorithm": "ed25519",
+                "signature": "ZmFrZQ=="
+              }
+            }"#,
+        )
+        .unwrap_err();
+        assert!(err.contains("manifest_parse_failed"));
     }
 
     #[test]

@@ -8,6 +8,7 @@ pub struct RuntimeManifest {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct RuntimeArtifact {
     pub url: String,
     pub sha256: String,
@@ -18,6 +19,7 @@ pub struct RuntimeArtifact {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct ManifestSignature {
     pub key_id: String,
     pub algorithm: String,
@@ -46,6 +48,7 @@ pub struct ParsedSignedManifest {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct RawRuntimeComponent {
     pub id: String,
     pub version: String,
@@ -78,17 +81,11 @@ impl TryFrom<RawRuntimeComponent> for RuntimeComponent {
 }
 
 #[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub(crate) struct RawRuntimeManifestPayload {
     pub manifest_version: u32,
     #[serde(default)]
     pub published_at: Option<String>,
     #[serde(default)]
     pub components: Vec<RawRuntimeComponent>,
-}
-
-#[derive(Clone, Debug, Deserialize, Serialize, PartialEq, Eq)]
-pub(crate) struct RawSignedRuntimeManifest {
-    #[serde(flatten)]
-    pub payload: RawRuntimeManifestPayload,
-    pub signature: ManifestSignature,
 }

@@ -2,7 +2,6 @@ use super::{diagnose_configured_manifest, load_configured_manifest};
 use crate::local_runtime::manifest::current_platform_key;
 use base64::Engine;
 use ed25519_dalek::{Signer, SigningKey};
-use serde::Serialize;
 use serde_json::json;
 use std::fs;
 use uuid::Uuid;
@@ -11,66 +10,40 @@ const FIXTURE_KEY_ID: &str = "rushi-runtime-fixture-v1";
 const FIXTURE_PRIVATE_KEY_HEX: &str =
     "93c68519a9caa35b3d667513e02fc64e4117ab7483321f9ac92cea336a6c5ade";
 
-#[derive(Serialize)]
-struct Artifact<'a> {
-    url: &'a str,
-    sha256: &'a str,
-    size_bytes: u64,
-    format: &'a str,
-}
-
-#[derive(Serialize)]
-struct Component<'a> {
-    id: &'a str,
-    version: &'a str,
-    platform: String,
-    artifact: Artifact<'a>,
-    exe_relpath: &'a str,
-    min_shell_version: &'a str,
-    mirror_urls: Vec<&'a str>,
-}
-
-#[derive(Serialize)]
-struct Payload<'a> {
-    manifest_version: u32,
-    published_at: &'a str,
-    components: Vec<Component<'a>>,
-}
-
 fn write_manifest(url: &str) -> String {
     let private_key_bytes: [u8; 32] = hex::decode(FIXTURE_PRIVATE_KEY_HEX)
         .unwrap()
         .try_into()
         .unwrap();
     let signing_key = SigningKey::from_bytes(&private_key_bytes);
-    let payload = Payload {
-        manifest_version: 1,
-        published_at: "2026-05-26T00:00:00Z",
-        components: vec![Component {
-            id: "asr-sidecar",
-            version: "0.1.0",
-            platform: current_platform_key(),
-            artifact: Artifact {
-                url,
-                sha256: "abc",
-                size_bytes: 123,
-                format: "zip-onedir",
+    let unsigned = json!({
+        "manifest_version": 1,
+        "published_at": "2026-05-26T00:00:00Z",
+        "components": [{
+            "id": "asr-sidecar",
+            "version": "0.1.0",
+            "platform": current_platform_key(),
+            "artifact": {
+                "url": url,
+                "sha256": "abc",
+                "size_bytes": 123,
+                "format": "zip-onedir",
             },
-            exe_relpath: if cfg!(target_os = "windows") {
+            "exe_relpath": if cfg!(target_os = "windows") {
                 "rushi-asr-sidecar/rushi-asr-sidecar.exe"
             } else {
                 "rushi-asr-sidecar/rushi-asr-sidecar"
             },
-            min_shell_version: "0.0.1",
-            mirror_urls: vec![],
+            "min_shell_version": "0.0.1",
+            "mirror_urls": [],
         }],
-    };
-    let canonical = serde_json::to_vec(&payload).unwrap();
+    });
+    let canonical = serde_json::to_vec(&unsigned).unwrap();
     let signature = signing_key.sign(&canonical);
     let body = json!({
-        "manifest_version": payload.manifest_version,
-        "published_at": payload.published_at,
-        "components": payload.components,
+        "manifest_version": unsigned["manifest_version"].clone(),
+        "published_at": unsigned["published_at"].clone(),
+        "components": unsigned["components"].clone(),
         "signature": {
             "key_id": FIXTURE_KEY_ID,
             "algorithm": "ed25519",

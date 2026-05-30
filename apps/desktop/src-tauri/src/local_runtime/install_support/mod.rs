@@ -1,8 +1,10 @@
 mod download;
+mod download_resume;
 mod extract;
 mod verify;
 
 pub use download::{download_component_artifact, read_text_source};
+pub use download_resume::{artifact_download_paths, clear_resume_artifacts};
 pub use extract::extract_zip;
 pub use verify::verify_installed_runtime;
 

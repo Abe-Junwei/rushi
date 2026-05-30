@@ -1,12 +1,13 @@
 use super::progress::{append_runtime_log_line, update_progress};
 use crate::local_runtime::catalog::load_configured_manifest;
 use crate::local_runtime::install_support::{
-    disk_free_bytes, download_component_artifact, ensure_not_cancelled, extract_zip, sha256_hex,
-    verify_installed_runtime,
+    artifact_download_paths, clear_resume_artifacts, disk_free_bytes, download_component_artifact,
+    ensure_not_cancelled, extract_zip, sha256_hex, verify_installed_runtime,
 };
 use crate::local_runtime::integrity::{
-    clear_installed_runtime, inspect_installed_runtime, local_runtime_root, read_marker,
-    version_dir, write_marker_with_previous, InstalledRuntimeMarker, InstalledRuntimeStatus,
+    clear_installed_runtime, gc_stale_version_dirs, inspect_installed_runtime, local_runtime_root,
+    read_marker, version_dir, write_marker_with_previous, InstalledRuntimeMarker,
+    InstalledRuntimeStatus,
 };
 use crate::local_runtime::manifest::{
     current_platform_key, is_shell_version_compatible, select_asr_sidecar_component,
@@ -87,19 +88,19 @@ pub(super) fn run_install(handle: &AppHandle, app_root: &Path, cancel: Arc<Atomi
     let root = local_runtime_root(app_root);
     fs::create_dir_all(&root).map_err(|e| format!("create_local_runtime_root_failed: {e}"))?;
     ensure_install_disk_budget(app_root, component.size_bytes)?;
-    let tmp_zip = root.join(format!("download-{}.zip.part", Uuid::new_v4()));
-    let staging = root.join(format!("staging-{}", Uuid::new_v4()));
+    let (tmp_zip, tmp_meta) = artifact_download_paths(app_root, component);
+    let staging = root.join(format!("staging-{}", uuid::Uuid::new_v4()));
     let install_dir = version_dir(app_root, &component.version);
     let existing_marker = read_marker(app_root).ok().filter(|_| {
         inspect_installed_runtime(app_root).status == InstalledRuntimeStatus::Installed
     });
-    download_component_artifact(handle, component, &tmp_zip, &cancel)?;
+    download_component_artifact(handle, app_root, component, &tmp_zip, &cancel)?;
     ensure_not_cancelled(&cancel)?;
     let actual_sha = sha256_hex(&tmp_zip)?;
     if !component.sha256.trim().is_empty() && actual_sha != component.sha256.to_lowercase() {
-        let _ = fs::remove_file(&tmp_zip);
         return Err("local_runtime_sha256_mismatch".into());
     }
+    clear_resume_artifacts(&tmp_zip, &tmp_meta);
     update_progress(
         handle,
         "installing",
@@ -171,6 +172,7 @@ pub(super) fn run_install(handle: &AppHandle, app_root: &Path, cancel: Arc<Atomi
             if let Some(backup) = backup_dir {
                 let _ = fs::remove_dir_all(backup);
             }
+            let _ = gc_stale_version_dirs(app_root);
             update_progress(
                 handle,
                 "installed",

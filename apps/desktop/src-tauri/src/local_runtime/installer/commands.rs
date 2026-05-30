@@ -4,6 +4,7 @@ use super::progress::{
 };
 use super::run::run_install;
 use super::types::{LocalRuntimeDownloadResult, LocalRuntimeInstallerState};
+use crate::local_runtime::recovery::run_auto_health_rollback;
 use crate::DbState;
 use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::Arc;
@@ -40,6 +41,7 @@ pub fn local_runtime_download_sidecar(
     }
 
     let app_root = state.inner().root.clone();
+    let app_root_for_rollback = app_root.clone();
     let handle = app.clone();
     tauri::async_runtime::spawn(async move {
         let result = tauri::async_runtime::spawn_blocking(move || {
@@ -53,13 +55,47 @@ pub fn local_runtime_download_sidecar(
                 update_progress(
                     &app,
                     "cancelled",
-                    "已取消本机语音识别组件下载。",
+                    "已取消下载；已保存进度，下次将从断点续传。",
                     None,
                     None,
                     None,
                     None,
                 );
                 append_runtime_log_line(&app, "INFO local_runtime_cancelled");
+            } else if err.starts_with("local_runtime_verify_") {
+                let failed_version = install_progress(&app).version;
+                let cancel_flag = Arc::new(AtomicBool::new(false));
+                if let Ok(restored) = run_auto_health_rollback(
+                    &app_root_for_rollback,
+                    &cancel_flag,
+                    &err,
+                    failed_version.as_deref(),
+                ) {
+                    update_progress(
+                        &app,
+                        "installed",
+                        format!("新版本安装验证失败，已自动恢复上一版本（{restored}）。"),
+                        Some(restored.clone()),
+                        None,
+                        None,
+                        None,
+                    );
+                    append_runtime_log_line(
+                        &app,
+                        &format!("INFO local_runtime_auto_rollback version={restored}"),
+                    );
+                } else {
+                    update_progress(
+                        &app,
+                        "error",
+                        "本机语音识别组件安装失败。",
+                        failed_version,
+                        None,
+                        None,
+                        Some(err.clone()),
+                    );
+                    append_runtime_log_line(&app, &format!("ERROR local_runtime_install_failed {err}"));
+                }
             } else {
                 let failed_version = install_progress(&app).version;
                 update_progress(
