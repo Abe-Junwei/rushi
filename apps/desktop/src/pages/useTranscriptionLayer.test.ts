@@ -9,7 +9,11 @@ import {
 
 describe("assignSegmentOverlapLanes", () => {
   it("returns empty for no segments", () => {
-    expect(assignSegmentOverlapLanes([])).toEqual({ laneByIndex: [], laneCount: 0 });
+    expect(assignSegmentOverlapLanes([])).toEqual({
+      laneByIndex: [],
+      laneCount: 0,
+      dominantSpanIndices: [],
+    });
   });
 
   it("places non-overlapping segments on lane 0", () => {
@@ -25,8 +29,8 @@ describe("assignSegmentOverlapLanes", () => {
 
   it("stacks overlapping segments on separate lanes", () => {
     const segs = [
-      { start_sec: 0, end_sec: 3 },
-      { start_sec: 1, end_sec: 4 },
+      { start_sec: 0, end_sec: 10 },
+      { start_sec: 5, end_sec: 15 },
     ];
     const { laneByIndex, laneCount } = assignSegmentOverlapLanes(segs);
     expect(laneCount).toBe(2);
@@ -36,13 +40,72 @@ describe("assignSegmentOverlapLanes", () => {
 
   it("reuses lane 0 when interval fits after previous on that lane", () => {
     const segs = [
-      { start_sec: 0, end_sec: 2 },
-      { start_sec: 1, end_sec: 3 },
-      { start_sec: 2, end_sec: 4 },
+      { start_sec: 0, end_sec: 10 },
+      { start_sec: 5, end_sec: 15 },
+      { start_sec: 10, end_sec: 20 },
     ];
     const { laneByIndex, laneCount } = assignSegmentOverlapLanes(segs);
     expect(laneCount).toBe(2);
     expect(laneByIndex[2]).toBe(0);
+  });
+
+  it("excludes whole-track placeholder spans from lane stacking", () => {
+    const segs = [
+      { start_sec: 30, end_sec: 1000 },
+      { start_sec: 40, end_sec: 50 },
+      { start_sec: 55, end_sec: 65 },
+      { start_sec: 100, end_sec: 1000 },
+    ];
+    const { laneByIndex, laneCount, dominantSpanIndices } = assignSegmentOverlapLanes(segs, 1000);
+    expect(dominantSpanIndices).toEqual([0, 3]);
+    expect(laneCount).toBe(1);
+    expect(laneByIndex[1]).toBe(0);
+    expect(laneByIndex[2]).toBe(0);
+  });
+
+  it("keeps laneCount=1 for ASR micro-overlap (avoid half-height overlay bands)", () => {
+    const segs = [
+      { start_sec: 0, end_sec: 10.02 },
+      { start_sec: 10, end_sec: 20 },
+      { start_sec: 20, end_sec: 30.01 },
+      { start_sec: 30, end_sec: 40 },
+    ];
+    const { laneByIndex, laneCount } = assignSegmentOverlapLanes(segs);
+    expect(laneCount).toBe(1);
+    expect(laneByIndex).toEqual([0, 0, 0, 0]);
+  });
+
+  it("keeps laneCount=1 for ASR boundary overlap up to ~2s (typical FunASR tail/head)", () => {
+    const segs = [
+      { start_sec: 0, end_sec: 10.6 },
+      { start_sec: 10, end_sec: 22.4 },
+      { start_sec: 22, end_sec: 35.8 },
+      { start_sec: 35.5, end_sec: 48 },
+    ];
+    const { laneByIndex, laneCount } = assignSegmentOverlapLanes(segs);
+    expect(laneCount).toBe(1);
+    expect(laneByIndex).toEqual([0, 0, 0, 0]);
+  });
+
+  it("still uses two lanes for true parallel overlap (non-contained)", () => {
+    const segs = [
+      { start_sec: 0, end_sec: 10 },
+      { start_sec: 5, end_sec: 15 },
+    ];
+    const { laneByIndex, laneCount } = assignSegmentOverlapLanes(segs);
+    expect(laneCount).toBe(2);
+    expect(laneByIndex).toEqual([0, 1]);
+  });
+
+  it("shares a lane when one segment fully contains another", () => {
+    const segs = [
+      { start_sec: 0, end_sec: 100 },
+      { start_sec: 10, end_sec: 20 },
+      { start_sec: 30, end_sec: 40 },
+    ];
+    const { laneByIndex, laneCount } = assignSegmentOverlapLanes(segs);
+    expect(laneCount).toBe(1);
+    expect(laneByIndex).toEqual([0, 0, 0]);
   });
 });
 

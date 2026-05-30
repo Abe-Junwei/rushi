@@ -10,12 +10,15 @@ import { useWaveformSegmentDrag } from "./useWaveformSegmentDrag";
 
 export type { CreateRangePreview, SegmentOverlayDraft } from "../utils/waveformSegmentOverlayGeometry";
 
+import type { SegmentOverlapPolicy } from "../utils/segmentTimeRange";
+
 export function useWaveformSegmentOverlay(args: {
   disabled: boolean;
   segments: SegmentDto[];
   selectedIdx: number;
   timelineWidthPx: number;
   durationSec: number;
+  playheadSec?: number;
   layoutHeightPx: number;
   laneByIndex: number[];
   laneCount: number;
@@ -25,7 +28,11 @@ export function useWaveformSegmentOverlay(args: {
   onBeginBoundsEdit?: () => void;
   onFocusWaveformShell?: () => void;
   onBoundsCommit: (idx: number, startSec: number, endSec: number) => void;
-  onCreateRange?: (startSec: number, endSec: number) => void;
+  onCreateRange?: (
+    startSec: number,
+    endSec: number,
+    options?: { overlapPolicy?: SegmentOverlapPolicy },
+  ) => void;
   onPlaySegment?: (idx: number) => void;
   seekToTime: (timeSec: number) => void;
 }) {
@@ -75,6 +82,7 @@ export function useWaveformSegmentOverlay(args: {
 
   return {
     createPreview,
+    segmentDraftIdx: segmentDraft?.idx ?? null,
     segmentBoundsAt,
     onShellPointerDown: drag.onShellPointerDown,
     onSegmentPointerDown: drag.onSegmentPointerDown,

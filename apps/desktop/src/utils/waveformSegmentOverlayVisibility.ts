@@ -1,42 +1,30 @@
 import type { SegmentDto } from "../tauri/projectApi";
-import { visibleTimeWindowFromScroll } from "./waveformProjection";
 
-const DEFAULT_PADDING_SEC = 2;
-
-/** Indices of segments intersecting the visible tier window (+ selected, padded). */
-export function pickVisibleSegmentIndices(input: {
+/**
+ * Overlay render set = all segments minus dominant-span placeholders.
+ *
+ * No scroll/viewport virtualization (intentional): segment regions live inside
+ * the natively-scrolling tier content (absolute `timeToTimelinePx` positions),
+ * so the rendered set MUST NOT depend on scroll position. Coupling the set to a
+ * JS-read scroll value was the root cause of the recurring "segments don't
+ * refresh after viewport scroll" regression — the overlay re-renders on prop
+ * changes (selection / playhead), not reliably on scroll, so a windowed set went
+ * stale. Off-screen paint cost is handled by `content-visibility: auto` on
+ * `.waveform-segment-region` (platform-level virtualization), which is always
+ * correct because the browser drives it from real scroll.
+ *
+ * Dominant placeholders (整轨 span) are still excluded: rendered as an
+ * interactive region they would blanket the whole waveform and block blank-area
+ * box-create / seek (`onShellPointerDown` bails on `[data-waveform-segment]`).
+ */
+export function selectOverlayRenderedSegmentIndices(input: {
   segments: SegmentDto[];
-  durationSec: number;
-  timelineWidthPx: number;
-  scrollLeftPx: number;
-  viewportWidthPx: number;
-  selectedIdx: number;
-  paddingSec?: number;
+  dominantSpanIndices?: readonly number[];
 }): number[] {
-  const { segments, durationSec, timelineWidthPx, scrollLeftPx, viewportWidthPx, selectedIdx } =
-    input;
-  const pad = input.paddingSec ?? DEFAULT_PADDING_SEC;
-  if (segments.length === 0 || durationSec <= 0) return [];
-  if (timelineWidthPx <= 0) return segments.map((_, idx) => idx);
-
-  const view = visibleTimeWindowFromScroll({
-    scrollLeftPx,
-    viewportWidthPx,
-    timelineWidthPx,
-    durationSec,
-  });
-  if (!view) return segments.map((_, idx) => idx);
-
-  const start = Math.max(0, view.start - pad);
-  const end = view.end + pad;
-  const picked = new Set<number>();
-  if (selectedIdx >= 0 && selectedIdx < segments.length) {
-    picked.add(selectedIdx);
+  const dominant = new Set(input.dominantSpanIndices ?? []);
+  const out: number[] = [];
+  for (let idx = 0; idx < input.segments.length; idx += 1) {
+    if (!dominant.has(idx)) out.push(idx);
   }
-  segments.forEach((seg, idx) => {
-    if (seg.end_sec >= start && seg.start_sec <= end) {
-      picked.add(idx);
-    }
-  });
-  return [...picked].sort((a, b) => a - b);
+  return out;
 }

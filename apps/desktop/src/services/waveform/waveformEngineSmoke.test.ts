@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { resolveWaveformMountDeferred } from "../../utils/waveformMountPolicy";
-import { pickVisibleSegmentIndices } from "../../utils/waveformSegmentOverlayVisibility";
+import { selectOverlayRenderedSegmentIndices } from "../../utils/waveformSegmentOverlayVisibility";
 import { resolveWaveformSegmentContextMenuIndex } from "../../utils/waveformSegmentContextMenu";
 import { shouldForcePeaksRegenerate } from "../../utils/peakMediaDuration";
 
@@ -26,20 +26,15 @@ describe("waveform engine smoke", () => {
     ).toBe(false);
   });
 
-  it("virtualizes segment overlay to viewport window", () => {
+  it("renders all overlay segments scroll-independently, minus dominant spans", () => {
     const segments = [
       { idx: 0, uid: "a", start_sec: 0, end_sec: 10, text: "a" },
       { idx: 1, uid: "b", start_sec: 90, end_sec: 100, text: "b" },
     ];
-    const picked = pickVisibleSegmentIndices({
-      segments,
-      durationSec: 120,
-      timelineWidthPx: 1200,
-      scrollLeftPx: 850,
-      viewportWidthPx: 300,
-      selectedIdx: -1,
-    });
-    expect(picked).toEqual([1]);
+    expect(selectOverlayRenderedSegmentIndices({ segments })).toEqual([0, 1]);
+    expect(
+      selectOverlayRenderedSegmentIndices({ segments, dominantSpanIndices: [0] }),
+    ).toEqual([1]);
   });
 
   it("resolves segment context menu hit at pointer", () => {

@@ -1,4 +1,4 @@
-import type { SegmentDto } from "../tauri/projectApi";
+import type { SegmentDto, SegmentKind } from "../tauri/projectApi";
 import { roundSec3 } from "./boundsSignature";
 import { timeToTimelinePx } from "./waveformProjection";
 
@@ -58,10 +58,86 @@ export function computeDragSegmentBounds(
   return clampSegmentTimeBounds(startSec, endSec, durationSec || endSec);
 }
 
-/** 语段 overlay 与底部刻度尺留白（与 `WaveformLiveTimeRuler` embedded 区对齐） */
-export const WAVEFORM_SEGMENT_INSET_TOP_PX = 4;
-export const WAVEFORM_SEGMENT_INSET_BOTTOM_PX = 32;
+/** 语段 overlay 垂直 inset（贴满 canvas 高度） */
+export const WAVEFORM_SEGMENT_INSET_TOP_PX = 0;
+export const WAVEFORM_SEGMENT_INSET_BOTTOM_PX = 0;
 export const WAVEFORM_SEGMENT_LANE_GAP_PX = 2;
+
+/** Span ratio above which a segment is treated as whole-track placeholder for waveform UI. */
+export const WAVEFORM_DOMINANT_SPAN_RATIO = 0.85;
+
+export function isDominantWaveformSpanSegment(
+  startSec: number,
+  endSec: number,
+  durationSec: number,
+): boolean {
+  if (!(durationSec > 0)) return false;
+  const lo = Math.min(startSec, endSec);
+  const hi = Math.max(startSec, endSec);
+  const span = hi - lo;
+  if (span <= 0) return false;
+  return span / durationSec >= WAVEFORM_DOMINANT_SPAN_RATIO;
+}
+
+type PlaceholderProbe = Pick<SegmentDto, "start_sec" | "end_sec"> & {
+  kind?: SegmentKind | null;
+};
+
+/**
+ * 是否为整轨占位语段（波形上不渲染）。**显式 `kind` 优先**：`placeholder` 即占位、
+ * `speech` 即非占位（即便跨度很大也不隐藏，消除短片段长单段的假阳性）；缺省时回退
+ * 0.85 跨度启发式（兼容旧数据 / 未标记语段）。
+ */
+export function isPlaceholderSegment(seg: PlaceholderProbe, durationSec: number): boolean {
+  const kind = seg.kind === "placeholder" || seg.kind === "speech" ? seg.kind : undefined;
+  if (kind === "placeholder") return true;
+  if (kind === "speech") return false;
+  return isDominantWaveformSpanSegment(seg.start_sec, seg.end_sec, durationSec);
+}
+
+export type PackableSegmentPartition = {
+  /** Source indices kept for waveform UI (render / lane packing / hit-test / create-overlap). */
+  packableIndices: number[];
+  /** Source indices treated as whole-track placeholders, hidden from the waveform UI. */
+  dominantSpanIndices: number[];
+};
+
+/**
+ * Single authority for "which segments participate in the waveform UI" (TRUTH).
+ *
+ * Whole-track placeholder spans (e.g. the pre-segmentation ASR span) are excluded so
+ * that rendering, lane packing, pointer hit-test and create-range overlap all agree on
+ * the exact same working set. Routing every consumer through this selector prevents the
+ * class of bug where the overlay hides a placeholder yet editing logic still counts it.
+ *
+ * Pass durationSec <= 0 (unknown duration) to keep every segment packable.
+ */
+export function selectPackableSegmentIndices(
+  segments: ReadonlyArray<PlaceholderProbe>,
+  durationSec: number,
+): PackableSegmentPartition {
+  const packableIndices: number[] = [];
+  const dominantSpanIndices: number[] = [];
+  for (let i = 0; i < segments.length; i += 1) {
+    const seg = segments[i];
+    if (!seg) continue;
+    if (isPlaceholderSegment(seg, durationSec)) {
+      dominantSpanIndices.push(i);
+    } else {
+      packableIndices.push(i);
+    }
+  }
+  return { packableIndices, dominantSpanIndices };
+}
+
+/** Packable segments (identity-preserving) derived from {@link selectPackableSegmentIndices}. */
+export function selectPackableSegments<T extends PlaceholderProbe>(
+  segments: ReadonlyArray<T>,
+  durationSec: number,
+): T[] {
+  const { packableIndices } = selectPackableSegmentIndices(segments, durationSec);
+  return packableIndices.map((i) => segments[i]);
+}
 
 export function clampSegmentTimeBounds(
   startSec: number,
@@ -76,25 +152,24 @@ export function clampSegmentTimeBounds(
   return { startSec: clampedStart, endSec: clampedEnd };
 }
 
-/** 波形语段条几何：铺满波形带高度；重叠语段再分 lane（勿用语段列表行高）。 */
+/** 波形语段条几何：始终铺满波形带全高；时间重叠时靠 DOM/z-order 叠放，不垂直分 lane。 */
 export function segmentOverlayGeometry(input: {
   startSec: number;
   endSec: number;
   timelineWidthPx: number;
   durationSec: number;
+  /** @deprecated 保留入参兼容；垂直布局不再分 lane。 */
   lane: number;
+  /** @deprecated 保留入参兼容；垂直布局不再分 lane。 */
   laneCount: number;
   containerHeightPx: number;
 }): { leftPx: number; widthPx: number; topPx: number; heightPx: number } {
-  const start = Math.min(input.startSec, input.endSec);
-  const end = Math.max(input.startSec, input.endSec);
-  const lanes = Math.max(1, input.laneCount);
+  const clamped = clampSegmentTimeBounds(input.startSec, input.endSec, input.durationSec);
+  const start = clamped.startSec;
+  const end = clamped.endSec;
   const insetTop = WAVEFORM_SEGMENT_INSET_TOP_PX;
   const insetBottom = WAVEFORM_SEGMENT_INSET_BOTTOM_PX;
   const bandHeight = Math.max(20, input.containerHeightPx - insetTop - insetBottom);
-  const laneGap = WAVEFORM_SEGMENT_LANE_GAP_PX;
-  const laneHeight =
-    lanes <= 1 ? bandHeight : Math.max(14, Math.floor((bandHeight - laneGap * (lanes - 1)) / lanes));
 
   const leftPx = timeToTimelinePx(start, input.timelineWidthPx, input.durationSec);
   const rightPx = timeToTimelinePx(end, input.timelineWidthPx, input.durationSec);
@@ -102,12 +177,12 @@ export function segmentOverlayGeometry(input: {
   return {
     leftPx,
     widthPx: Math.max(2, rightPx - leftPx),
-    topPx: insetTop + input.lane * (laneHeight + laneGap),
-    heightPx: laneHeight,
+    topPx: insetTop,
+    heightPx: bandHeight,
   };
 }
 
-/** 按时间与 Y 命中语段；重叠时优先更高 lane，再优先更后渲染的 index。 */
+/** 按时间命中语段；全高条带重叠时优先选中项，否则取较大 index（DOM 后绘制的在上层）。 */
 export function resolveSegmentIndexAtWaveformPointer(input: {
   segments: SegmentDto[];
   timeSec: number;
@@ -117,6 +192,8 @@ export function resolveSegmentIndexAtWaveformPointer(input: {
   laneByIndex: number[];
   laneCount: number;
   selectedIdx: number;
+  /** When set, whole-track placeholder segments are ignored for hit testing. */
+  durationSec?: number;
   /** Visual scaleY on overlay ancestor (1 = no preview shrink). */
   layoutYScale?: number;
 }): number {
@@ -126,51 +203,32 @@ export function resolveSegmentIndexAtWaveformPointer(input: {
     pointerClientY,
     overlayClientTop,
     layoutHeightPx,
-    laneByIndex,
-    laneCount,
     layoutYScale = 1,
+    durationSec = 0,
+    selectedIdx,
   } = input;
   if (segments.length === 0) return -1;
 
   const scale = layoutYScale > 0 ? layoutYScale : 1;
   const localY = (pointerClientY - overlayClientTop) / scale;
+  const insetTop = WAVEFORM_SEGMENT_INSET_TOP_PX;
+  const insetBottom = WAVEFORM_SEGMENT_INSET_BOTTOM_PX;
+  const bandTop = insetTop;
+  const bandBottom = layoutHeightPx - insetBottom;
+  if (localY < bandTop || localY > bandBottom) return -1;
+
+  const { dominantSpanIndices } = selectPackableSegmentIndices(segments, durationSec);
+  const dominantSet = dominantSpanIndices.length > 0 ? new Set(dominantSpanIndices) : null;
   const timeHits: number[] = [];
   for (let i = 0; i < segments.length; i += 1) {
     const seg = segments[i];
     if (!seg) continue;
+    if (dominantSet?.has(i)) continue;
     const start = Math.min(seg.start_sec, seg.end_sec);
     const end = Math.max(seg.start_sec, seg.end_sec);
     if (timeSec >= start && timeSec <= end) timeHits.push(i);
   }
-  if (timeHits.length === 0) {
-    return -1;
-  }
-
-  const yHits = timeHits.filter((idx) => {
-    const seg = segments[idx];
-    if (!seg) return false;
-    const geom = segmentOverlayGeometry({
-      startSec: seg.start_sec,
-      endSec: seg.end_sec,
-      timelineWidthPx: 1,
-      durationSec: 1,
-      lane: laneByIndex[idx] ?? 0,
-      laneCount,
-      containerHeightPx: layoutHeightPx,
-    });
-    return localY >= geom.topPx && localY <= geom.topPx + geom.heightPx;
-  });
-
-  const candidates = yHits.length > 0 ? yHits : timeHits;
-  let bestIdx = candidates[0] ?? 0;
-  let bestLane = laneByIndex[bestIdx] ?? 0;
-  for (let i = 1; i < candidates.length; i += 1) {
-    const idx = candidates[i];
-    const lane = laneByIndex[idx] ?? 0;
-    if (lane > bestLane || (lane === bestLane && idx > bestIdx)) {
-      bestIdx = idx;
-      bestLane = lane;
-    }
-  }
-  return bestIdx;
+  if (timeHits.length === 0) return -1;
+  if (timeHits.includes(selectedIdx)) return selectedIdx;
+  return Math.max(...timeHits);
 }

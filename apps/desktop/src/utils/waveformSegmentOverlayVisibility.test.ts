@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { pickVisibleSegmentIndices } from "./waveformSegmentOverlayVisibility";
+import { selectOverlayRenderedSegmentIndices } from "./waveformSegmentOverlayVisibility";
 
 const segments = [
   { idx: 0, uid: "a", start_sec: 0, end_sec: 10, text: "a" },
@@ -7,30 +7,24 @@ const segments = [
   { idx: 2, uid: "c", start_sec: 100, end_sec: 110, text: "c" },
 ] as const;
 
-describe("pickVisibleSegmentIndices", () => {
-  it("returns only segments in visible window plus selected", () => {
-    const picked = pickVisibleSegmentIndices({
-      segments: [...segments],
-      durationSec: 120,
-      timelineWidthPx: 1200,
-      scrollLeftPx: 500,
-      viewportWidthPx: 400,
-      selectedIdx: 2,
-    });
-    expect(picked).toContain(1);
-    expect(picked).toContain(2);
-    expect(picked).not.toContain(0);
+describe("selectOverlayRenderedSegmentIndices", () => {
+  it("renders every segment regardless of scroll/viewport (no virtualization)", () => {
+    // Regression guard for "segments don't refresh after viewport scroll": the
+    // render set must be scroll-independent, so far-apart off-screen segments are
+    // always included.
+    expect(selectOverlayRenderedSegmentIndices({ segments: [...segments] })).toEqual([0, 1, 2]);
   });
 
-  it("returns all indices when timeline width is zero", () => {
-    const picked = pickVisibleSegmentIndices({
-      segments: [...segments],
-      durationSec: 120,
-      timelineWidthPx: 0,
-      scrollLeftPx: 0,
-      viewportWidthPx: 400,
-      selectedIdx: -1,
-    });
-    expect(picked).toEqual([0, 1, 2]);
+  it("excludes dominant-span placeholders so they cannot blanket the waveform", () => {
+    expect(
+      selectOverlayRenderedSegmentIndices({
+        segments: [...segments],
+        dominantSpanIndices: [1],
+      }),
+    ).toEqual([0, 2]);
+  });
+
+  it("returns empty for no segments", () => {
+    expect(selectOverlayRenderedSegmentIndices({ segments: [] })).toEqual([]);
   });
 });

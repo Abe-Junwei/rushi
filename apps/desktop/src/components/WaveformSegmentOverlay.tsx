@@ -1,15 +1,10 @@
 import { memo, useMemo } from "react";
-import type { RefObject } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
+import type { SegmentOverlapPolicy } from "../utils/segmentTimeRange";
 import { useWaveformSegmentOverlay } from "../hooks/useWaveformSegmentOverlay";
 import { computeCreatePreviewStyle } from "../utils/waveformSegmentOverlayGeometry";
+import { selectOverlayRenderedSegmentIndices } from "../utils/waveformSegmentOverlayVisibility";
 import { waveformRegionFillColor } from "../utils/segmentChrome";
-import { pickVisibleSegmentIndices } from "../utils/waveformSegmentOverlayVisibility";
-import {
-  resolveTierViewportMetrics,
-  type TierScrollLayoutMetrics,
-  type TierScrollLiveRefs,
-} from "../utils/waveformViewport";
 
 export type WaveformSegmentOverlayProps = {
   disabled: boolean;
@@ -17,19 +12,22 @@ export type WaveformSegmentOverlayProps = {
   selectedIdx: number;
   timelineWidthPx: number;
   durationSec: number;
+  playheadSec?: number;
   layoutHeightPx: number;
-  tierScrollRef: RefObject<HTMLElement | null>;
-  tierScrollLive: TierScrollLiveRefs;
-  tierScrollLayout: TierScrollLayoutMetrics;
   laneByIndex: number[];
   laneCount: number;
+  dominantSpanIndices?: number[];
   enableCreateRange: boolean;
   clientXToTimeSec: (clientX: number) => number;
   onSelectSegmentAt: (idx: number) => void;
   onBeginBoundsEdit?: () => void;
   onFocusWaveformShell?: () => void;
   onBoundsCommit: (idx: number, startSec: number, endSec: number) => void;
-  onCreateRange?: (startSec: number, endSec: number) => void;
+  onCreateRange?: (
+    startSec: number,
+    endSec: number,
+    options?: { overlapPolicy?: SegmentOverlapPolicy },
+  ) => void;
   onPlaySegment?: (idx: number) => void;
   seekToTime: (timeSec: number) => void;
 };
@@ -51,39 +49,25 @@ export const WaveformSegmentOverlay = memo(function WaveformSegmentOverlay(props
   const { timelineWidthPx, laneByIndex, laneCount, layoutHeightPx, segments, selectedIdx, durationSec } =
     props;
 
-  const visibleIndices = useMemo(() => {
-    const { scrollLeftPx, viewportWidthPx } = resolveTierViewportMetrics({
-      tierScrollEl: props.tierScrollRef.current,
-      tierScrollLive: props.tierScrollLive,
-      tierScrollLayout: props.tierScrollLayout,
-    });
-    return pickVisibleSegmentIndices({
-      segments,
-      durationSec,
-      timelineWidthPx,
-      scrollLeftPx,
-      viewportWidthPx,
-      selectedIdx,
-    });
-  }, [
-    durationSec,
-    props.tierScrollLayout,
-    props.tierScrollLive,
-    props.tierScrollRef,
-    segments,
-    selectedIdx,
-    timelineWidthPx,
-  ]);
+  const segmentIndices = useMemo(
+    () =>
+      selectOverlayRenderedSegmentIndices({
+        segments,
+        dominantSpanIndices: props.dominantSpanIndices,
+      }),
+    [segments, props.dominantSpanIndices],
+  );
 
   return (
     <div
       className="waveform-segment-overlay"
+      title="框选：Shift 允许重叠，Alt+Shift 拒绝重叠，Alt 关闭吸附"
       onPointerDown={onShellPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerCancel}
     >
-      {visibleIndices.map((idx) => {
+      {segmentIndices.map((idx) => {
         const seg = segments[idx];
         if (!seg) return null;
         const bounds = segmentBoundsAt(idx);

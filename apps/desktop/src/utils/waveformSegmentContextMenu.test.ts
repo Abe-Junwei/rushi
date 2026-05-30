@@ -7,21 +7,20 @@ const segments = [
 ] as const;
 
 describe("resolveWaveformSegmentContextMenuIndex", () => {
-  it("returns segment index at pointer time and lane", () => {
+  it("returns segment index at pointer time (full-height overlap bands)", () => {
     const layoutHeightPx = 96;
-    const laneByIndex = [0, 1];
-    const laneCount = 2;
     const overlayTop = 0;
     const idx = resolveWaveformSegmentContextMenuIndex({
       segments: [...segments],
       timeSec: 2.5,
-      pointerClientY: overlayTop + layoutHeightPx * 0.75,
+      pointerClientY: overlayTop + layoutHeightPx * 0.5,
       overlayClientTop: overlayTop,
       layoutHeightPx,
       layoutYScale: 1,
-      laneByIndex,
-      laneCount,
-      selectedIdx: 0,
+      laneByIndex: [0, 1],
+      laneCount: 2,
+      selectedIdx: -1,
+      durationSec: 10,
     });
     expect(idx).toBe(1);
   });
@@ -37,6 +36,7 @@ describe("resolveWaveformSegmentContextMenuIndex", () => {
       laneByIndex: [0, 1],
       laneCount: 2,
       selectedIdx: -1,
+      durationSec: 10,
     });
     expect(idx).toBe(-1);
   });

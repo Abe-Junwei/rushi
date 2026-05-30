@@ -1,4 +1,5 @@
 import type { SegmentDto } from "../tauri/projectApi";
+import { selectPackableSegmentIndices } from "./waveformSegmentBounds";
 import {
   clampTranscriptFontPx,
   TRANSCRIPT_FONT_DEFAULT,
@@ -30,7 +31,7 @@ export function transcriptFontPxFromSegmentRowPx(rowPx: number): number {
   let bestDiff = Number.POSITIVE_INFINITY;
   for (let f = TRANSCRIPT_FONT_MIN; f <= TRANSCRIPT_FONT_MAX; f += 1) {
     const diff = Math.abs(computeSegmentLaneRowPx(f) - target);
-    if (diff < bestDiff) {
+    if (bestDiff > diff) {
       bestDiff = diff;
       bestFont = f;
     }
@@ -41,45 +42,98 @@ export function transcriptFontPxFromSegmentRowPx(rowPx: number): number {
 /** 默认字号下的语段卡行高（供测试与布局常量引用）。 */
 export const SEGMENT_LANE_ROW_PX = computeSegmentLaneRowPx(TRANSCRIPT_FONT_DEFAULT);
 
+/** 重叠超过此阈值且非包含关系时，才拆分到不同 lane（避免 ASR 微重叠把条带压成半高）。 */
+export const SEGMENT_LANE_OVERLAP_SEPARATE_SEC = 0.05;
+
+/** ASR 相邻语段常见的尾/头边界重叠上限；超过才视为真并行（需分 lane）。 */
+export const SEGMENT_LANE_BOUNDARY_OVERLAP_MAX_SEC = 2.0;
+
+type SegmentSpan = { startSec: number; endSec: number };
+
+function normalizeSpan(span: SegmentSpan): { lo: number; hi: number } {
+  return {
+    lo: Math.min(span.startSec, span.endSec),
+    hi: Math.max(span.startSec, span.endSec),
+  };
+}
+
+/** 是否为 ASR/字幕常见的「前句 end 略大于后句 start」边界重叠（非并行说话）。 */
+export function isSequentialBoundaryOverlap(a: SegmentSpan, b: SegmentSpan): boolean {
+  const { lo: aLo, hi: aHi } = normalizeSpan(a);
+  const { lo: bLo, hi: bHi } = normalizeSpan(b);
+  const overlap = Math.min(aHi, bHi) - Math.max(aLo, bLo);
+  if (overlap <= SEGMENT_LANE_OVERLAP_SEPARATE_SEC) return true;
+  const [first, second] =
+    aLo <= bLo ? [{ lo: aLo, hi: aHi }, { lo: bLo, hi: bHi }] : [{ lo: bLo, hi: bHi }, { lo: aLo, hi: aHi }];
+  // 后句起点距前句结束很近（尾/头交界）→ ASR 边界重叠，共享 lane。
+  const tailGap = first.hi - second.lo;
+  return tailGap >= 0 && tailGap <= SEGMENT_LANE_BOUNDARY_OVERLAP_MAX_SEC;
+}
+
+/** 两语段时间上是否必须分到不同 lane（真并行重叠；忽略微重叠、包含关系与 ASR 边界重叠）。 */
+export function segmentSpansNeedSeparateLanes(a: SegmentSpan, b: SegmentSpan): boolean {
+  const { lo: aLo, hi: aHi } = normalizeSpan(a);
+  const { lo: bLo, hi: bHi } = normalizeSpan(b);
+  const overlap = Math.min(aHi, bHi) - Math.max(aLo, bLo);
+  if (overlap <= SEGMENT_LANE_OVERLAP_SEPARATE_SEC) return false;
+  const aContainsB = aLo <= bLo + 1e-9 && aHi >= bHi - 1e-9;
+  const bContainsA = bLo <= aLo + 1e-9 && bHi >= aHi - 1e-9;
+  if (aContainsB || bContainsA) return false;
+  if (isSequentialBoundaryOverlap(a, b)) return false;
+  return true;
+}
+
 /**
  * 将语段分配到最少数量的「车道」，使时间重叠的语段不在同一车道相邻占用（贪心按开始时间排序）。
  * 用于单条时间轨上垂直错开放置。
  */
 export function assignSegmentOverlapLanes(
   segments: Pick<SegmentDto, "start_sec" | "end_sec">[],
-): { laneByIndex: number[]; laneCount: number } {
+  durationSec = 0,
+): { laneByIndex: number[]; laneCount: number; dominantSpanIndices: number[] } {
   const n = segments.length;
-  if (n === 0) return { laneByIndex: [], laneCount: 0 };
+  if (n === 0) return { laneByIndex: [], laneCount: 0, dominantSpanIndices: [] };
 
-  const idxs = Array.from({ length: n }, (_, j) => j).sort((a, b) => {
+  const { packableIndices, dominantSpanIndices } = selectPackableSegmentIndices(
+    segments,
+    durationSec,
+  );
+
+  const laneByIndex = new Array<number>(n).fill(0);
+  if (packableIndices.length === 0) {
+    return { laneByIndex, laneCount: 0, dominantSpanIndices };
+  }
+
+  const idxs = [...packableIndices].sort((a, b) => {
     const d = segments[a].start_sec - segments[b].start_sec;
     return d !== 0 ? d : segments[a].end_sec - segments[b].end_sec;
   });
 
-  const laneEnds: number[] = [];
-  const laneByIndex = new Array<number>(n).fill(0);
+  const laneMembers: number[][] = [];
 
   for (const i of idxs) {
     const s = segments[i];
-    const lo = Math.min(s.start_sec, s.end_sec);
-    const hi = Math.max(s.start_sec, s.end_sec);
+    const span = { startSec: s.start_sec, endSec: s.end_sec };
     let chosen = -1;
-    for (let k = 0; k < laneEnds.length; k++) {
-      if (laneEnds[k] <= lo + 1e-9) {
+    for (let k = 0; k < laneMembers.length; k += 1) {
+      const canShare = laneMembers[k].every((j) =>
+        !segmentSpansNeedSeparateLanes(span, {
+          startSec: segments[j].start_sec,
+          endSec: segments[j].end_sec,
+        }),
+      );
+      if (canShare) {
         chosen = k;
         break;
       }
     }
     if (chosen < 0) {
-      chosen = laneEnds.length;
-      laneEnds.push(hi);
-    } else {
-      laneEnds[chosen] = hi;
+      chosen = laneMembers.length;
+      laneMembers.push([]);
     }
+    laneMembers[chosen].push(i);
     laneByIndex[i] = chosen;
   }
 
-  return { laneByIndex, laneCount: laneEnds.length };
+  return { laneByIndex, laneCount: laneMembers.length, dominantSpanIndices };
 }
-
-
