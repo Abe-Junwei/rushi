@@ -45,6 +45,21 @@ function checkTsFile(fullPath) {
     errors.push(`${rel}: 使用 resolveLayoutDurationSec / layoutDurationSecRef，勿直接 ws.getDuration()`);
   }
 
+  // 防回归：语段「可见性 / 重叠」判定必须经由 selectPackableSegments(单一真源)。
+  // 仅 selector 本体可直接调用跨度启发式；persist sanitize 须用 isPlaceholderSegment（与 Rust 一致）。
+  const dominantPredicateAllowlist = [
+    "apps/desktop/src/utils/waveformSegmentBounds.ts",
+  ];
+  if (
+    /\bisDominantWaveformSpanSegment\b/.test(source) &&
+    !rel.endsWith(".test.ts") &&
+    !dominantPredicateAllowlist.some((allowed) => rel.endsWith(allowed))
+  ) {
+    errors.push(
+      `${rel}: 语段可见性/重叠判定须经由 selectPackableSegments / selectPackableSegmentIndices，勿直接调用 isDominantWaveformSpanSegment`,
+    );
+  }
+
   // 防回归：检测 Tailwind arbitrary value 颜色（warning，逐步收敛）
   const arbitraryColors = source.match(
     /(?:bg|text|border|ring|shadow|fill|stroke|outline)-\[#[0-9a-fA-F]{3,6}\]/g

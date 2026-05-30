@@ -19,9 +19,12 @@ copy_file() {
 }
 
 copy_file "DESIGN.md" "01-DESIGN.md"
+# 01-DESIGN.md 为根 DESIGN.md 的副本；编辑设计系统请只改仓库根 DESIGN.md。
 copy_file "docs/execution/specs/ui-redesign-parallel-dev.md" "02-ui-redesign-parallel-dev.md"
 copy_file "apps/desktop/docs/stitch-welcome-page-spec.md" "03-stitch-welcome-page-spec.md"
 copy_file "apps/desktop/docs/stitch-work-page-spec.md" "04-stitch-work-page-spec.md"
+copy_file "apps/desktop/docs/stitch-waveform-polish-spec.md" "19-stitch-waveform-polish-spec.md"
+copy_file "apps/desktop/stitch-waveform-polish-layout.html" "20-stitch-waveform-polish-layout.html"
 copy_file "apps/desktop/stitch-welcome-page-full.png" "05-stitch-welcome-page-full.png"
 
 # Fix relative links after copying docs from apps/desktop/docs into docs/stitch-upload.

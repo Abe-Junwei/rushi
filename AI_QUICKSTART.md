@@ -10,7 +10,7 @@
 | `apps/desktop/src/hooks/use*.ts` | 通用 React hook |
 | `apps/desktop/src/components/` | UI 组件 |
 | `apps/desktop/src/config/` | 设计 token、环境配置 |
-| 仓库根 `DESIGN.md` | 桌面端视觉意图（Stitch DESIGN.md；与 `tailwind` / `tokens.ts` 配合使用） |
+| 仓库根 `DESIGN.md` | 桌面端视觉意图（**Notion Zen**；Stitch 上传包由 `prepare-stitch-upload.sh` 同步为 `docs/stitch-upload/01-DESIGN.md`） |
 | `apps/desktop/src-tauri/src/*.rs` | Tauri 命令与数据层 |
 | `services/asr/rushi_asr/` | Python ASR 侧车 |
 | `docs/architecture/` | 架构真源 |
@@ -41,6 +41,7 @@
 | 数据层 / SQLite | `src-tauri/src/db.rs` + ADR-0001 |
 | 新增颜色 / 样式 | `tailwind.config.js` + `src/config/tokens.ts` |
 | 新 UI / 整页重设计 / Stitch 对齐 | 仓库根 `DESIGN.md` → 再映射到 `tailwind.config.js` + `apps/desktop/src/config/tokens.ts` |
+| **波形区 Stitch 精修** | [`apps/desktop/docs/stitch-waveform-polish-spec.md`](./apps/desktop/docs/stitch-waveform-polish-spec.md) + [`stitch-waveform-polish-layout.html`](./apps/desktop/stitch-waveform-polish-layout.html) → `bash scripts/prepare-stitch-upload.sh` |
 | 浮动确认/表单对话框 | `FloatingPanelTemplate` + `preset="compactDialog"`；`controlStyles.ts` 按钮；见 [`docs/architecture/desktop-floating-dialog-panels.md`](./docs/architecture/desktop-floating-dialog-panels.md) |
 | **后续排期 / 下一刀** | [`rushi-execution-roadmap.md`](./docs/execution/plans/rushi-execution-roadmap.md) §4.1.1；**当前**：**R3t-A**（声学分段） |
 | 单人 UI 重设计迭代（已验收） | `docs/execution/specs/ui-redesign-parallel-dev.md` + `bash scripts/prepare-stitch-upload.sh` |

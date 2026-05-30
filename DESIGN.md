@@ -1,6 +1,29 @@
 ---
-name: Serene Scholar
+name: Notion Zen (Serene Scholar × Notion)
 colors:
+  # Notion 中性基础
+  notion-bg: '#ffffff'
+  notion-sidebar: '#f7f7f5'
+  notion-sidebar-hover: '#efefef'
+  notion-sidebar-active: '#ebebea'
+  notion-divider: '#e3e2e0'
+  notion-border: '#e3e2e0'
+  notion-text: '#37352f'
+  notion-text-muted: '#6b6b6b'
+  notion-text-light: '#9ca3af'
+  notion-callout-bg: '#f1f1ef'
+  notion-callout-border: '#e3e2e0'
+  # Serene Scholar 暖色强调（保留）
+  ink: '#2C2C2C'
+  paper: '#F2EFE8'
+  saffron: '#C58A43'
+  saffron-light: '#ffddba'
+  saffron-mid: '#85530f'
+  saffron-deep: '#452800'
+  ochre: '#EAE0C5'
+  stone: '#8E8E8E'
+  cinnabar: '#963530'
+  indigo: '#3D4F5D'
   surface: '#fcf9f2'
   surface-dim: '#dcdad3'
   surface-bright: '#fcf9f2'
@@ -9,65 +32,26 @@ colors:
   surface-container: '#f1eee7'
   surface-container-high: '#ebe8e1'
   surface-container-highest: '#e5e2db'
-  on-surface: '#1c1c18'
-  on-surface-variant: '#514538'
-  inverse-surface: '#31312c'
-  inverse-on-surface: '#f3f0e9'
-  outline: '#837567'
-  outline-variant: '#d5c3b3'
-  surface-tint: '#85530f'
-  primary: '#85530f'
-  on-primary: '#ffffff'
-  primary-container: '#c58a43'
-  on-primary-container: '#452800'
-  inverse-primary: '#fcba6e'
-  secondary: '#5f5e5e'
-  on-secondary: '#ffffff'
-  secondary-container: '#e4e2e1'
-  on-secondary-container: '#656464'
-  tertiary: '#166589'
-  on-tertiary: '#ffffff'
-  tertiary-container: '#5b9dc4'
-  on-tertiary-container: '#003248'
-  error: '#ba1a1a'
-  on-error: '#ffffff'
-  error-container: '#ffdad6'
-  on-error-container: '#93000a'
-  primary-fixed: '#ffddba'
-  primary-fixed-dim: '#fcba6e'
-  on-primary-fixed: '#2b1700'
-  on-primary-fixed-variant: '#673d00'
-  secondary-fixed: '#e4e2e1'
-  secondary-fixed-dim: '#c8c6c5'
-  on-secondary-fixed: '#1b1c1c'
-  on-secondary-fixed-variant: '#474747'
-  tertiary-fixed: '#c6e7ff'
-  tertiary-fixed-dim: '#8dcef7'
-  on-tertiary-fixed: '#001e2d'
-  on-tertiary-fixed-variant: '#004c6b'
-  background: '#fcf9f2'
-  on-background: '#1c1c18'
-  surface-variant: '#e5e2db'
-  ink: '#2C2C2C'
-  paper: '#F2EFE8'
-  saffron: '#C58A43'
-  ochre: '#EAE0C5'
-  stone: '#8E8E8E'
-  cinnabar: '#963530'
-  indigo: '#3D4F5D'
   surface-card: '#F5F0E0'
   hairline: '#E5E5E5'
+  outline: '#837567'
+  outline-variant: '#d5c3b3'
+  # 波形 / WaveSurfer（与 tokens.ts COLORS.waveform* / tailwind zen-wf-* 同源）
+  waveform-surface: '#ffffff'
+  waveform-wave: '#c4c4c8'
+  waveform-progress: '#8e8e93'
+  waveform-cursor: '#6a6a6f'
 typography:
   display-lg:
-    fontFamily: Noto Serif SC
-    fontSize: 48px
-    fontWeight: '500'
+    fontFamily: Inter
+    fontSize: 40px
+    fontWeight: '700'
     lineHeight: '1.2'
     letterSpacing: -0.02em
   display-md:
-    fontFamily: Noto Serif SC
-    fontSize: 32px
-    fontWeight: '500'
+    fontFamily: Inter
+    fontSize: 28px
+    fontWeight: '600'
     lineHeight: '1.3'
     letterSpacing: -0.01em
   headline-sm:
@@ -95,17 +79,17 @@ typography:
     lineHeight: '1.0'
     letterSpacing: 0.1em
   mono-sm:
-    fontFamily: Inter
+    fontFamily: JetBrains Mono
     fontSize: 12px
     fontWeight: '400'
     lineHeight: '1.4'
     letterSpacing: '0'
 rounded:
-  sm: 0.25rem
+  sm: 0.25rem   # 4px — 按钮、输入框
   DEFAULT: 0.5rem
-  md: 0.75rem
-  lg: 1rem
-  xl: 1.5rem
+  md: 0.375rem  # 6px — 卡片
+  lg: 0.75rem
+  xl: 1rem
   full: 9999px
 spacing:
   margin-page: 2rem
@@ -118,84 +102,137 @@ spacing:
 
 ## Brand & Style
 
-The design system is built for a focused, editorial desktop environment that bridges traditional scholarship with modern technology. The brand personality is **calm, deliberate, and academic**, evoking the feeling of working in a quiet library or with high-quality stationery.
+A transcription/review desktop app that blends **Notion's minimalist clarity** with **Serene Scholar's warm, academic temperament**. The result is a workspace that feels clean, modern, and focused—like a well-organized digital notebook with a touch of scholarly warmth.
 
-The chosen style is **Minimalist-Tactile**. It relies on heavy whitespace, a sophisticated paper-like color palette, and clear typographic hierarchy. Unlike standard digital tools that feel clinical, this design system uses warm organic tones and high-contrast "ink" typography to create a workspace that encourages deep focus and reduces digital fatigue. Visual hierarchy is established through subtle hairlines and shifts in surface tone rather than aggressive shadows or gradients.
+The chosen style is **Minimalist-Editorial**. It relies on heavy whitespace, a clean white-forward palette for surfaces, and warm saffron accents for primary actions. Unlike standard SaaS tools that feel cold, this design system uses Notion's proven information architecture (left sidebar, card-based content, hover-reveal actions) with a warm paper-like undertone to create a workspace that encourages deep focus.
+
+**落码真源：** 颜色与尺寸以本文件为意图说明；实现以 `apps/desktop/tailwind.config.js` + `apps/desktop/src/config/tokens.ts` + `apps/desktop/src/styles/tokens.css` 为准。禁止页面层散落未入库 hex。
 
 ## Colors
 
-The palette is rooted in a "Zen Paper" aesthetic, using warm, low-strain backgrounds and high-legibility foregrounds.
+The palette is a **Notion-neutral base + warm saffron accent**:
 
-- **Primary (Saffron):** Reserved for the most important calls to action (e.g., "New Project") and active selection states. It provides a warm, energetic contrast to the neutral base.
-- **Secondary/Text (Ink):** A soft black used for primary typography and high-contrast UI elements. It mimics the appearance of ink on paper.
-- **Neutral (Paper):** The foundation of the app. It uses a slightly warm, off-white hue to reduce eye strain during long working sessions.
-- **Functional Accents:**
-  - **Cinnabar:** Used exclusively for critical errors and destructive actions.
-  - **Ochre/Stone:** Used for secondary metadata, disabled states, and auxiliary hints.
-  - **Indigo:** Reserved for technical/monospace data like file paths or code.
+- **Background (`notion-bg` #ffffff):** Pure white for main content areas. Maximizes readability and feels modern.
+- **Sidebar (`notion-sidebar` #f7f7f5):** Very light warm gray for the navigation rail. Separates from content without harsh contrast.
+- **Text (`notion-text` #37352f):** Notion's signature soft black. High legibility without the harshness of pure #000.
+- **Muted Text (`notion-text-muted` #6b6b6b):** For secondary labels, descriptions, placeholders.
+- **Dividers (`notion-divider` #e3e2e0):** Very light borders for separation. Used extensively for hairlines.
+- **Primary (Saffron #C58A43):** Reserved for the most important CTAs and active selection states. The warm accent prevents the interface from feeling sterile.
+- **Danger (Cinnabar #963530):** Used exclusively for destructive actions (delete, remove).
+- **Success:** Green for positive status indicators.
+
+**Legacy warm surfaces (`paper`, `surface-card`, `ochre`):** Retained for语段卡、欢迎页 hero、部分 callout；主工作台壳层与波形区优先 `notion-*`。
+
+### Waveform tokens
+
+波形区在 Notion 侧栏底上叠白底 peaks；语段 overlay 用 saffron / ink 语义，与下方语段卡可分层配色。
+
+| Token | Hex | Tailwind / TS | 用途 |
+|-------|-----|---------------|------|
+| `waveform-surface` | `#ffffff` | `zen-wf-surface` / `COLORS.waveformSurface` | WaveSurfer 画布底、peaks 绘制区 |
+| `waveform-wave` | `#c4c4c8` | `zen-wf-wave` / `COLORS.waveformWave` | 未播放 peaks、minimap 柱形 |
+| `waveform-progress` | `#8e8e93` | `zen-wf-progress` / `COLORS.waveformProgress` | 已播放 peaks tint |
+| `waveform-cursor` | `#6a6a6f` | `zen-wf-cursor` / `COLORS.waveformCursor` | WaveSurfer 内置 playhead |
+| — | — | `bg-notion-sidebar` | 波形 tier 外壳、minimap 条背景 |
+| — | — | `zen-saffron` | 选中语段边线、minimap 视口框、缩放 active 态 |
 
 ## Typography
 
-This design system uses a dual-font approach to balance editorial elegance with functional clarity.
+Single sans-serif font family (Inter) for all UI. No serif display fonts—Notion style favors clean, modern typography throughout.
 
-- **Serif (Noto Serif SC):** Used for large displays and section headers. It provides a "scholarly" feel, giving the user a sense of importance and permanence.
-- **Sans-Serif (Inter):** Used for all functional UI components, labels, and dense body text. It is chosen for its exceptional legibility at small sizes and its neutral, modern character.
+- **Display:** Large, bold headings for page titles (`display-lg`, `display-md`).
+- **Headings:** Semibold for section titles (`headline-sm`).
+- **Body:** Regular weight for all content and UI text (`body-md`, `body-sm`).
+- **Labels:** Uppercase with wide letter spacing for section headers and metadata (`label-caps`).
+- **Monospace:** JetBrains Mono for technical data (file paths, dates, IDs).
 
 **Formatting Rules:**
-- Large display text should use optical kerning and tighter letter spacing.
-- Labels and captions (11px) should always use uppercase with generous letter spacing to maintain readability.
-- Monospace paths or technical data should use the UI font (Inter) but be styled with a distinct background or color (`indigo`) to signify their nature.
+- Large display text uses tighter letter spacing for a modern feel.
+- Labels and captions (11px) always use uppercase with generous letter spacing.
+- Monospace paths or technical data use a distinct background or color (`indigo`) to signify their nature.
+- Timecode in toolbars uses tabular nums (`font-variant-numeric: tabular-nums`).
+
+**Serif 例外（legacy，仍允许）：**
+- 欢迎页品牌标题（如侧栏「如是我闻」）可用 `Noto Serif SC`。
+- 校对工作页 **语段正文** 默认衬线（`editorTranscriptAppearance`），与 UI chrome 的 Inter 分离。
+- 除此以外的新增 UI chrome（工具栏、面板、按钮、波形底栏）统一 Inter。
 
 ## Layout & Spacing
 
-The design system utilizes a **Side-Rail + Main Stage** model, optimized for desktop productivity.
+**Notion-style Side-Rail + Main Stage** model:
 
-- **Aside (Side-Rail):** A fixed-width container (approx. 280px) on the left for navigation and project-level controls. It is separated by a subtle right-hand hairline.
-- **Main Stage:** A fluid area that centers content horizontally for "Welcome" states and fills the remaining space for "Working" states.
-- **Top Bar:** A slim, 64px tall utility bar that persists across states, featuring a bottom hairline.
+- **Sidebar:** Fixed-width container (~240px) on the left for navigation. Background `notion-sidebar`, separated by a 1px `notion-divider` border.
+- **Main Stage:** White background, fluid area for content. Generous padding (`px-8 py-6`).
+- **Top Bar:** Slim utility bar (**48px / `h-12`**) with subtle bottom border. Brand name left, status indicators right.
+
+**Prominent controls（欢迎页 / 建项 hero）：** 40px 高（`CONTROL_BTN_*_PROMINENT`），4px 圆角；环境面板与工作页工具栏仍用 32px 标准 `CONTROL_*`。
 
 **Responsive Behavior:**
-- **Desktop (>=1024px):** Standard side-rail layout.
-- **Tablet/Mobile (<1024px):** The side-rail reflows to sit above the Main Stage. The top bar may wrap content to preserve touch targets.
-- **Spacing Rhythm:** Based on an 8px (0.5rem) grid. Margins between editorial sections should be generous (stack-lg) to preserve the "calm" atmosphere.
+- **Desktop (>=1024px):** Standard sidebar layout.
+- **Tablet/Mobile (<1024px):** Sidebar collapses or reflows above main content.
+- **Spacing Rhythm:** Based on an 8px grid. Cards have 16px padding, sections separated by 24px gaps.
 
 ## Elevation & Depth
 
-Hierarchy is achieved through **Tonal Layering** and **Fine Outlines** rather than traditional drop shadows.
+Hierarchy through **background tone shifts** and **fine borders**—no drop shadows on most elements.
 
-- **Surfaces:** The background is `paper`. Cards and active containers use `surface-card` (a slightly deeper cream) to appear closer to the user.
-- **Borders:** Hairline borders (1px) in `hairline` or `stone` define boundaries. This creates a crisp, architectural look.
-- **Interactive Depth:** Only the Primary CTA uses a soft, saffron-tinted shadow to signify its "floating" importance. Other elements use subtle shifts in background color (e.g., white-to-cream) on hover.
-- **The Busy Layer:** A semi-transparent white wash with a light backdrop blur is used to block interaction while maintaining visual context during processing tasks.
+- **Surfaces:** Main content is white. Cards use white with a 1px `notion-border`. Sidebar uses `#f7f7f5`.
+- **Borders:** 1px borders in `notion-divider` define boundaries. This creates a crisp, architectural look.
+- **Interactive Depth:** Only floating panels (modals, dropdowns) use subtle shadows. Hover effects use background color shifts (`notion-sidebar-hover`).
+- **The Busy Layer:** Semi-transparent white wash with light backdrop blur during processing.
+- **Panel CSS:** 同一路径上最多 2 层可见容器 `border`；更深层级用背景色差与间距区分（见 Jieyu 面板规则）。
 
 ## Shapes
 
-The shape language is "Soft-Modern," using intentional rounding to counteract the formal feel of the Serif typography.
+**Notion's restrained rounding:**
 
-- **Standard UI (Inputs, Buttons):** 12px (rounded-xl) for a friendly, modern touch.
-- **Containers (Cards):** 24px (rounded-2xl) to clearly define major content blocks against the page floor.
-- **Status Indicators:** Pills (9999px) for badges and status dots to provide a visual contrast to the linear grid.
+- **Buttons & Inputs:** 4px radius (`rounded-sm` / `rounded-md`)—small, professional.
+- **Cards:** 6px radius (`rounded-md`)—subtle, not playful.
+- **Navigation Items:** 4px radius for hover/active states.
+- **Status Indicators:** Small circles (6px) for status dots.
 
 ## Components
 
 ### Buttons
-- **Primary:** Saffron background with white text. 12px radius. Focused on the "New Project" action.
-- **Secondary:** Transparent/White-translucent background with a `hairline` border. On hover, the border and text transition toward saffron.
-- **Tertiary:** No border or background. Used for utility actions in the Top Bar (e.g., "Collapse Environment").
+- **Primary:** Saffron background (#C58A43) with white text. **4px radius (`rounded-sm`). Height 32px (`h-8`).** Hover darkens to `saffron-mid`.
+- **Secondary:** `notion-sidebar` background with `notion-text` text. 4px radius. Hover to `notion-sidebar-hover`. 1px `notion-border`.
+- **Ghost:** No background. `notion-text-muted` text. Hover to `notion-sidebar-hover` background.
+- **Danger:** White background, cinnabar text and border. Hover fills cinnabar with white text.
+
+**落码：** 环境面板 / 欢迎页等复用 `apps/desktop/src/config/controlStyles.ts` 的 `CONTROL_*` 常量（已与上表对齐）。
 
 ### Input Fields
-- White background, 1px `hairline` border, 12px radius. On focus, the border color shifts to `saffron` with a subtle ring. Use `body-md` for user input.
+- White background, 1px `notion-border`, **4px radius**, **height 32px**. On focus: border shifts to saffron with a subtle ring. Use `body-md` for user input.
 
 ### Cards
-- **Editorial Card:** Used for "Recent Projects" or "Confirm Project." Background is `surface-card` with 24px radius.
-- **List Items:** Within cards, list items use `ink` for titles and `stone` for dates. Hovering an item applies a very pale saffron background.
+- White background, 1px `notion-border`, **6px radius (`rounded-md`)**. No shadow unless floating. Padding 16px–20px.
 
-### Navigation
-- **Project Selector:** A styled `<select>` element in the side-rail. Minimalist border, consistent with input fields.
-- **Top Bar:** Features "Status Dots" for technical dependencies (FFmpeg, ASR). Dots are 8px circles in green (ok) or red (fail).
+### Navigation (Sidebar)
+- Items: 4px radius, padding `px-3 py-2`.
+- Active: `bg-notion-sidebar-active`.
+- Hover: `bg-notion-sidebar-hover`.
+- No left border indicator—Notion uses background color only.
+- Each item: icon (16px, muted) + label (`text-sm font-medium`) + optional description (`text-[11px] text-muted`).
+
+### Lists
+- No outer container border (unlike cards).
+- Each row: compact height (`h-10` or `h-11`), full-width, 4px radius.
+- Hover: `bg-notion-sidebar-hover`.
+- Actions: opacity-0 by default, opacity-100 on hover with transition.
 
 ### Progress Indicators
-- **Pulse Bar:** A thin horizontal track with a `saffron` pulse effect, used during "Busy" states. Accompanied by a `mono-sm` timer.
+- **Pulse Bar:** Thin horizontal track with saffron pulse effect during busy states.
+- **Status Dots:** 6px circles, green for ok, red for error.
+
+### Waveform stage
+- **Tier shell:** `notion-sidebar` 背景；横向滚动；高度可拖拽。
+- **Peaks:** 白底 + 中性灰柱；WaveSurfer **中性灰 playhead**（`waveform-cursor`）；底边嵌入 22px 透明时间尺（标尺带 saffron playhead 刻度线）。
+- **语段 overlay:** 全高竖向区域，左右 hairline；选中 saffron 边线；左右 **8px 透明 handle**（`ew-resize`，无可见 grip）拖拽改边界；播放控件 pill 浮于标尺上方居中。
+- **Minimap（可选）:** 40px 高；saffron 视口框 + 细 playhead。
+- **底栏 transport:** 40px；播放 / 时间 / 倍速 / 跳转 | 缩放（Lucide 图标 + 文本 fit 按钮）。
+
+### Floating dialogs
+- 使用 `compactDialog` preset + `controlStyles.ts`（Notion/Zen 控件）；勿使用已移除的 serene 面板变体。
 
 ### Icons (Lucide)
 - Use a strict three-tier size system for Lucide icons in `apps/desktop/src/components`:
@@ -207,3 +244,7 @@ The shape language is "Soft-Modern," using intentional rounding to counteract th
   - `LUCIDE_ICON_SIZE_SM`, `LUCIDE_ICON_SIZE_MD`, `LUCIDE_ICON_SIZE_LG`
   - `LUCIDE_ICON_STROKE_WIDTH`
 - Do not hardcode icon size class pairs like `h-3.5 w-3.5`, `h-[18px] w-[18px]`, `h-5 w-5` on Lucide tags.
+
+## Stitch 同步
+
+运行 `bash scripts/prepare-stitch-upload.sh` 会将本文件复制为 `docs/stitch-upload/01-DESIGN.md`。**以仓库根 `DESIGN.md` 为唯一编辑入口**，勿只改 stitch-upload 副本。
