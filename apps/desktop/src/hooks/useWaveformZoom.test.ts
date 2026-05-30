@@ -4,6 +4,7 @@ import {
   computeFitAllPxPerSec,
   computeFitSelectionPxPerSec,
   PX_PER_SEC_MAX,
+  resolveDefaultEditingPxPerSec,
   TIMELINE_PX_PER_SEC,
 } from "../utils/pxPerSec";
 import { DRAW_PX_PER_SEC_DEBOUNCE_MS, useWaveformZoom } from "./useWaveformZoom";
@@ -80,9 +81,9 @@ describe("useWaveformZoom", () => {
     expect(result.current.pxPerSec).toBe(TIMELINE_PX_PER_SEC);
   });
 
-  it("resetZoomForMedia uses fit-all when it exceeds manual max", () => {
+  it("resetZoomForMedia uses per-file geometric default", () => {
     const { result } = renderZoomHook();
-    const fitAll = computeFitAllPxPerSec(800, 0.5);
+    const expected = resolveDefaultEditingPxPerSec(800, 0.5);
 
     act(() => {
       result.current.setPxPerSecFromSlider(TIMELINE_PX_PER_SEC);
@@ -92,8 +93,23 @@ describe("useWaveformZoom", () => {
       result.current.resetZoomForMedia(800, 0.5);
     });
 
-    expect(result.current.pxPerSec).toBe(fitAll);
-    expect(result.current.layoutIntent).toBe("fit-all");
+    expect(result.current.pxPerSec).toBeCloseTo(expected, 4);
+    expect(expected).toBeGreaterThan(PX_PER_SEC_MAX);
+  });
+
+  it("resetZoomForMedia sets default intent for typical media", () => {
+    const { result } = renderZoomHook();
+
+    act(() => {
+      result.current.setPxPerSecFromSlider(TIMELINE_PX_PER_SEC * 2);
+    });
+
+    act(() => {
+      result.current.resetZoomForMedia(800, 120);
+    });
+
+    expect(result.current.pxPerSec).toBeCloseTo(resolveDefaultEditingPxPerSec(800, 120), 4);
+    expect(result.current.layoutIntent).toBe("default");
   });
 
   it("enterFitAllLayout sets fit-all intent", () => {

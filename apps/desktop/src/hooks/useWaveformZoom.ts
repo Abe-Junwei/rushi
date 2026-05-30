@@ -7,7 +7,7 @@ import {
   TIMELINE_PX_PER_SEC,
   type WaveformZoomLayoutIntent,
 } from "../utils/pxPerSec";
-import { isPxPerSecNearFitAll } from "../utils/waveformZoomBarState";
+import { isPxPerSecNearFitAll, isNearEditingDefaultForMedia } from "../utils/waveformZoomBarState";
 import { readStoredWaveformPxPerSec, writeStoredWaveformPxPerSec } from "../utils/waveformPrefs";
 
 const PREF_WRITE_DEBOUNCE_MS = 180;
@@ -138,7 +138,7 @@ export function useWaveformZoom() {
         const fitAll = computeFitAllPxPerSec(viewportWidthPx, durationSec);
         if (isPxPerSecNearFitAll(px, fitAll)) {
           intent = "fit-all";
-        } else if (Math.abs(px - TIMELINE_PX_PER_SEC) < 1e-6) {
+        } else if (isNearEditingDefaultForMedia(px, viewportWidthPx, durationSec)) {
           intent = "default";
         }
       } else if (Math.abs(px - TIMELINE_PX_PER_SEC) < 1e-6) {

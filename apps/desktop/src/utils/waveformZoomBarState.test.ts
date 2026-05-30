@@ -3,13 +3,26 @@ import {
   computeFitAllPxPerSec,
   computeFitSelectionPxPerSec,
   PX_PER_SEC_MAX,
+  resolveDefaultEditingPxPerSec,
   resolveWaveformZoomSliderRange,
   TIMELINE_PX_PER_SEC,
 } from "./pxPerSec";
 import { computeWaveformZoomBarUiState, resolveFitAllPxPerSecAdjustment } from "./waveformZoomBarState";
 
 describe("computeWaveformZoomBarUiState", () => {
-  it("marks default zoom at 56 px/s", () => {
+  it("marks default zoom at per-file editing px/s", () => {
+    const defaultPx = resolveDefaultEditingPxPerSec(800, 120);
+    const s = computeWaveformZoomBarUiState({
+      pxPerSec: defaultPx,
+      viewportWidthPx: 800,
+      durationSec: 120,
+    });
+    expect(s.viewMode).toBe("default");
+    expect(s.atDefaultZoom).toBe(true);
+    expect(s.zoomPercentLabel).toBe(100);
+  });
+
+  it("marks legacy 56-only input as default without media context", () => {
     const s = computeWaveformZoomBarUiState(TIMELINE_PX_PER_SEC);
     expect(s.viewMode).toBe("default");
     expect(s.atDefaultZoom).toBe(true);

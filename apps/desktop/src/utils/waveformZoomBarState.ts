@@ -8,6 +8,7 @@ import {
   isTimelineFitInViewport,
   PX_PER_SEC_MAX,
   PX_PER_SEC_PEAKS_QUANTUM,
+  resolveDefaultEditingPxPerSec,
   TIMELINE_PX_PER_SEC,
   type WaveformZoomLayoutIntent,
   type WaveformZoomSliderRange,
@@ -156,8 +157,32 @@ function computeAtFitSelectionZoom(
   return Math.abs(pxPerSec - fitSelPx) < ZOOM_EPS;
 }
 
+function resolveEditingDefaultPxPerSec(input: WaveformZoomBarUiInput): number {
+  if (input.viewportWidthPx > 0 && input.durationSec >= 0.5) {
+    return resolveDefaultEditingPxPerSec(input.viewportWidthPx, input.durationSec);
+  }
+  return TIMELINE_PX_PER_SEC;
+}
+
+function isNearEditingDefaultPxPerSec(pxPerSec: number, defaultPx: number): boolean {
+  const tol = Math.max(ZOOM_EPS, defaultPx * 0.01);
+  return Math.abs(pxPerSec - defaultPx) <= tol;
+}
+
+export function isNearEditingDefaultForMedia(
+  pxPerSec: number,
+  viewportWidthPx: number,
+  durationSec: number,
+): boolean {
+  return isNearEditingDefaultPxPerSec(
+    pxPerSec,
+    resolveEditingDefaultPxPerSec({ pxPerSec, viewportWidthPx, durationSec }),
+  );
+}
+
 export function deriveWaveformZoomViewMode(input: WaveformZoomBarUiInput): WaveformZoomViewMode {
-  if (Math.abs(input.pxPerSec - TIMELINE_PX_PER_SEC) < ZOOM_EPS) {
+  const defaultPx = resolveEditingDefaultPxPerSec(input);
+  if (isNearEditingDefaultPxPerSec(input.pxPerSec, defaultPx)) {
     return "default";
   }
   if (computeAtFitSelectionZoom(
@@ -193,7 +218,8 @@ export function computeWaveformZoomBarUiState(input: WaveformZoomBarUiInput | nu
     selectedStartSec,
     selectedEndSec,
   );
-  const atDefaultZoom = Math.abs(pxPerSec - TIMELINE_PX_PER_SEC) < ZOOM_EPS;
+  const defaultPx = resolveEditingDefaultPxPerSec(resolved);
+  const atDefaultZoom = isNearEditingDefaultPxPerSec(pxPerSec, defaultPx);
   const sliderMinPx =
     sliderRange?.minPxPerSec ??
     (viewportWidthPx > 0 && durationSec > 0
@@ -217,6 +243,6 @@ export function computeWaveformZoomBarUiState(input: WaveformZoomBarUiInput | nu
     atFitSelectionZoom,
     belowManualSliderRange,
     atFitAllZoom,
-    zoomPercentLabel: Math.round((pxPerSec / TIMELINE_PX_PER_SEC) * 100),
+    zoomPercentLabel: Math.round((pxPerSec / defaultPx) * 100),
   };
 }

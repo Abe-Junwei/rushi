@@ -1,8 +1,8 @@
 import type { WaveformZoomSliderRange } from "./pxPerSec";
-import { clampPxPerSecInSliderRange } from "./pxPerSec";
+import { clampPxPerSecInSliderRange, resolveWaveformZoomStepRatio } from "./pxPerSec";
 import { isPxPerSecBelowSliderMin } from "./waveformZoomBarState";
 
-/** +/- 与键盘 zoom：显著低于滑块下限时 snap 到 min，否则按比例步进。 */
+/** +/- 与键盘 zoom：显著低于滑块下限时 snap 到 min，否则按文件区间对数步进。 */
 export function computeZoomInPxPerSec(
   pxPerSec: number,
   range: WaveformZoomSliderRange,
@@ -10,7 +10,8 @@ export function computeZoomInPxPerSec(
   if (isPxPerSecBelowSliderMin(pxPerSec, range.minPxPerSec)) {
     return range.minPxPerSec;
   }
-  return clampPxPerSecInSliderRange(pxPerSec * 1.12, range);
+  const ratio = resolveWaveformZoomStepRatio(range);
+  return clampPxPerSecInSliderRange(pxPerSec * ratio, range);
 }
 
 export function computeZoomOutPxPerSec(
@@ -20,7 +21,8 @@ export function computeZoomOutPxPerSec(
   if (isPxPerSecBelowSliderMin(pxPerSec, range.minPxPerSec)) {
     return range.minPxPerSec;
   }
-  return clampPxPerSecInSliderRange(pxPerSec / 1.12, range);
+  const ratio = resolveWaveformZoomStepRatio(range);
+  return clampPxPerSecInSliderRange(pxPerSec / ratio, range);
 }
 
 export function pxPerSecToSliderPos(pxPerSec: number, range: WaveformZoomSliderRange): number {

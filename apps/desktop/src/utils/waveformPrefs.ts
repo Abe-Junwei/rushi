@@ -1,5 +1,5 @@
 import { clampWaveformPlaybackRate } from "./waveformPlaybackRate";
-import { clampPxPerSec, TIMELINE_PX_PER_SEC } from "./pxPerSec";
+import { clampPxPerSec, resolveDefaultEditingPxPerSec, TIMELINE_PX_PER_SEC } from "./pxPerSec";
 
 const LS_KEY = "rushi.p1.waveformPxPerSec";
 const LS_HEIGHT = "rushi.p1.waveformHeightPx";
@@ -152,7 +152,19 @@ export function writeStoredWaveformMinimapEnabled(enabled: boolean): void {
   }
 }
 
-/** 换音频文件时写入默认横向缩放（决策 B：100% / 56 px/s）。 */
+/** 换音频文件时写入该媒体的 per-file 默认 px/s。 */
+export function writeStoredWaveformPxPerSecForMedia(
+  viewportWidthPx: number,
+  durationSec: number,
+): void {
+  try {
+    localStorage.setItem(LS_KEY, String(resolveDefaultEditingPxPerSec(viewportWidthPx, durationSec)));
+  } catch {
+    /* noop */
+  }
+}
+
+/** 无媒体上下文时写入 56 px/s 回退。 */
 export function writeStoredWaveformPxPerSecDefault(): void {
   try {
     localStorage.setItem(LS_KEY, String(TIMELINE_PX_PER_SEC));

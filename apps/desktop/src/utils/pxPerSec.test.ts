@@ -10,8 +10,11 @@ import {
   isTimelineFitInViewport,
   resolveMaxRenderablePxPerSec,
   resolveSelectionFitPxPerSec,
+  resolveDefaultEditingPxPerSec,
   resolveDefaultResetPxPerSec,
   resolveWaveformZoomSliderRange,
+  resolveWaveformZoomStepRatio,
+  WAVEFORM_ZOOM_STEPS_EACH_WAY,
   computeSelectionFitScrollPx,
   computeViewportFitScrollPx,
   PX_PER_SEC_FIT_MIN,
@@ -77,22 +80,53 @@ describe("resolveWaveformZoomSliderRange", () => {
   });
 });
 
-describe("resolveDefaultResetPxPerSec", () => {
-  it("returns fit-all for short media where fit-all exceeds manual max", () => {
+describe("resolveDefaultEditingPxPerSec", () => {
+  it("returns geometric mean near 56 px/s for ~2min media", () => {
+    const px = resolveDefaultEditingPxPerSec(960, 120);
+    expect(px).toBeCloseTo(Math.sqrt(computeFitAllPxPerSec(960, 120) * 400), 4);
+    expect(px).toBeCloseTo(56.57, 1);
+  });
+
+  it("returns fit-all when min equals max for ultra-short media", () => {
     const fitAll = computeFitAllPxPerSec(800, 0.5);
-    expect(resolveDefaultResetPxPerSec(800, 0.5)).toBe(fitAll);
+    expect(resolveDefaultEditingPxPerSec(800, 0.5)).toBeCloseTo(fitAll, 4);
     expect(fitAll).toBeGreaterThan(PX_PER_SEC_MAX);
   });
 
-  it("returns design default for long media", () => {
-    expect(resolveDefaultResetPxPerSec(800, 120)).toBe(TIMELINE_PX_PER_SEC);
-  });
-
-  it("returns fit-all when opening very long media", () => {
+  it("uses lower default for long media instead of fit-all", () => {
     const dur = 4 * 3600;
     const fitAll = computeFitAllPxPerSec(1200, dur);
-    expect(resolveDefaultResetPxPerSec(1200, dur)).toBe(fitAll);
-    expect(fitAll).toBeLessThan(PX_PER_SEC_MIN);
+    const px = resolveDefaultEditingPxPerSec(1200, dur);
+    expect(px).toBeGreaterThan(fitAll);
+    expect(px).toBeLessThan(PX_PER_SEC_MAX);
+  });
+
+  it("falls back to TIMELINE_PX_PER_SEC without media context", () => {
+    expect(resolveDefaultEditingPxPerSec(0, 0)).toBe(TIMELINE_PX_PER_SEC);
+  });
+});
+
+describe("resolveWaveformZoomStepRatio", () => {
+  it("yields 5 symmetric steps from default to min and max", () => {
+    const range = resolveWaveformZoomSliderRange(960, 600);
+    const ratio = resolveWaveformZoomStepRatio(range);
+    const def = resolveDefaultEditingPxPerSec(960, 600);
+    let up = def;
+    for (let i = 0; i < WAVEFORM_ZOOM_STEPS_EACH_WAY; i++) {
+      up *= ratio;
+    }
+    let down = def;
+    for (let i = 0; i < WAVEFORM_ZOOM_STEPS_EACH_WAY; i++) {
+      down /= ratio;
+    }
+    expect(up).toBeCloseTo(range.maxPxPerSec, 2);
+    expect(down).toBeCloseTo(range.minPxPerSec, 2);
+  });
+});
+
+describe("resolveDefaultResetPxPerSec", () => {
+  it("matches per-file editing default", () => {
+    expect(resolveDefaultResetPxPerSec(800, 120)).toBe(resolveDefaultEditingPxPerSec(800, 120));
   });
 });
 

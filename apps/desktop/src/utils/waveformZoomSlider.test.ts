@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { resolveWaveformZoomSliderRange } from "./pxPerSec";
+import {
+  resolveDefaultEditingPxPerSec,
+  resolveWaveformZoomSliderRange,
+  resolveWaveformZoomStepRatio,
+} from "./pxPerSec";
 import {
   computeZoomInPxPerSec,
   computeZoomOutPxPerSec,
@@ -20,5 +24,13 @@ describe("waveformZoomSlider", () => {
     expect(range.minPxPerSec).toBeGreaterThan(400);
     expect(computeZoomInPxPerSec(56, range)).toBe(range.minPxPerSec);
     expect(computeZoomOutPxPerSec(56, range)).toBe(range.minPxPerSec);
+  });
+
+  it("steps zoom in/out by per-file step ratio within slider range", () => {
+    const range = resolveWaveformZoomSliderRange(800, 600);
+    const start = resolveDefaultEditingPxPerSec(800, 600);
+    const ratio = resolveWaveformZoomStepRatio(range);
+    expect(computeZoomInPxPerSec(start, range)).toBeCloseTo(start * ratio, 6);
+    expect(computeZoomOutPxPerSec(start, range)).toBeCloseTo(start / ratio, 6);
   });
 });

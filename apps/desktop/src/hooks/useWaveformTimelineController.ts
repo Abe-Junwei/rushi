@@ -15,7 +15,7 @@ import { useTranscriptionViewportFit } from "../pages/useTranscriptionViewportFi
 import { useWaveformTimelineMountGate } from "./useWaveformTimelineMountGate";
 import { useWaveformTimelineDurationSync } from "./useWaveformTimelineDuration";
 import { useWaveformPeaksPhaseState } from "./useWaveformPeaksPhaseState";
-import { writeStoredWaveformPxPerSecDefault } from "../utils/waveformPrefs";
+import { writeStoredWaveformPxPerSecForMedia } from "../utils/waveformPrefs";
 import type { TranscriptionLayerInput } from "../pages/transcriptionLayerTypes";
 
 type WfApi = ReturnType<typeof UseProjectWaveformHook>;
@@ -241,7 +241,7 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
     if (dur < 0.5 || vw <= 0) return;
     pendingMediaZoomResetRef.current = false;
     zoom.resetZoomForMedia(vw, dur);
-    writeStoredWaveformPxPerSecDefault();
+    writeStoredWaveformPxPerSecForMedia(vw, dur);
   }, [ctx.mediaUrl, timelineMetrics.mediaDurationSec, scroll.tierScrollLayout.clientWidthPx, scroll.tierScrollLive.clientWidthRef, zoom]);
 
   return {

@@ -44,6 +44,9 @@ export const MAX_WAVESURFER_CANVAS_WIDTH_PX = 262_144;
 /** 超过此时长，打开文件默认「整段可见」而非 56 px/s。 */
 export const LONG_MEDIA_OPEN_FIT_ALL_SEC = 30 * 60;
 
+/** ± 缩放：从默认 px/s 到 min/max 各需按键次数（对数对称步进）。 */
+export const WAVEFORM_ZOOM_STEPS_EACH_WAY = 5;
+
 export function capWaveformPeakColumns(timelineWidthPx: number): number {
   const w = Math.floor(timelineWidthPx);
   if (!Number.isFinite(w) || w <= 0) return 1;
@@ -101,23 +104,39 @@ export function computeFitAllPxPerSec(viewportWidthPx: number, durationSec: numb
 }
 
 /**
- * UI「重置」目标 px/s：默认 56；当整段 fit-all 超过手动上限时落到 fit-all，
- * 避免极短音频 reset 后滑块仍不可用。
+ * 当前文件编辑默认 px/s：min/max 几何平均，±5 步各达 fit-all 与手动上限。
+ * 无视口/时长时回退 TIMELINE_PX_PER_SEC。
+ */
+export function resolveDefaultEditingPxPerSec(
+  viewportWidthPx: number,
+  durationSec: number,
+): number {
+  if (viewportWidthPx <= 0 || durationSec < 0.5) {
+    return TIMELINE_PX_PER_SEC;
+  }
+  const range = resolveWaveformZoomSliderRange(viewportWidthPx, durationSec);
+  const geometric = Math.sqrt(range.minPxPerSec * range.maxPxPerSec);
+  return clampPxPerSecInSliderRange(geometric, range);
+}
+
+/** 给定 slider 区间：使 default×ratio^N=max 且 default÷ratio^N=min 的步进比（N=WAVEFORM_ZOOM_STEPS_EACH_WAY）。 */
+export function resolveWaveformZoomStepRatio(range: WaveformZoomSliderRange): number {
+  const { minPxPerSec: min, maxPxPerSec: max } = range;
+  if (!(min > 0 && max > min * (1 + 1e-9))) {
+    return 1.2544000000000002;
+  }
+  const span = max / min;
+  return Math.pow(span, 1 / (2 * WAVEFORM_ZOOM_STEPS_EACH_WAY));
+}
+
+/**
+ * UI「重置」/ 换文件默认 px/s（per-file 几何默认；极短音频 min≈max 时即为 fit-all）。
  */
 export function resolveDefaultResetPxPerSec(
   viewportWidthPx: number,
   durationSec: number,
 ): number {
-  if (viewportWidthPx > 0 && durationSec >= 0.5) {
-    const fitAll = computeFitAllPxPerSec(viewportWidthPx, durationSec);
-    if (durationSec >= LONG_MEDIA_OPEN_FIT_ALL_SEC) {
-      return fitAll;
-    }
-    if (fitAll > PX_PER_SEC_MAX) {
-      return fitAll;
-    }
-  }
-  return TIMELINE_PX_PER_SEC;
+  return resolveDefaultEditingPxPerSec(viewportWidthPx, durationSec);
 }
 
 /** 给定视口与时长时，手动缩放滑块 [min, max]（min = 整段 fit，max ≥ 默认上限）。 */
