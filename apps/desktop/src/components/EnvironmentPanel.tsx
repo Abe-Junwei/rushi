@@ -6,7 +6,7 @@ import { EnvLocalAsrPanel } from "./EnvLocalAsrPanel";
 import { EnvOnlineSttPanel } from "./EnvOnlineSttPanel";
 import { EnvHelpPanel } from "./EnvHelpPanel";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
-import type { AsrHealthCapabilities, AsrModelCacheInfo, BundledAsrLaunchReport } from "../tauri/projectApi";
+import type { AsrHealthCapabilities, AsrModelCacheInfo, BundledAsrLaunchReport, WaveformPeaksCacheInfo } from "../tauri/projectApi";
 import type { AsrHealthState } from "../pages/useProjectController";
 import type { AsrSetupControllerApi } from "../pages/useAsrSetupController";
 import type { LocalAsrModelCatalogApi } from "../pages/useLocalAsrModelCatalog";
@@ -30,6 +30,7 @@ export type EnvironmentPanelProps = {
   bundledAsrDiag: BundledAsrLaunchReport | null;
   asrCaps: AsrHealthCapabilities | null;
   asrModelCacheInfo: AsrModelCacheInfo | null;
+  waveformPeaksCacheInfo: WaveformPeaksCacheInfo | null;
   asrModelCacheBusy: boolean;
   asrCacheMessage: string;
   funasrInstallMessage: string;
@@ -44,6 +45,7 @@ export type EnvironmentPanelProps = {
   cancelPrepareModel: () => void;
   refreshAsrModelCacheInfo: () => Promise<void>;
   clearAsrModelCache: () => Promise<void>;
+  clearOrphanWaveformPeaksCache: () => Promise<void>;
   retryBundledAsrSidecar: () => Promise<void>;
   openAppDataFolder: () => Promise<void>;
   exportDiagnosticBundle: () => Promise<void>;
@@ -59,6 +61,7 @@ export function EnvironmentPanel({
   bundledAsrDiag,
   asrCaps,
   asrModelCacheInfo,
+  waveformPeaksCacheInfo,
   asrModelCacheBusy,
   asrCacheMessage,
   funasrInstallMessage,
@@ -73,6 +76,7 @@ export function EnvironmentPanel({
   cancelPrepareModel,
   refreshAsrModelCacheInfo,
   clearAsrModelCache,
+  clearOrphanWaveformPeaksCache,
   retryBundledAsrSidecar,
   openAppDataFolder,
   exportDiagnosticBundle,
@@ -170,6 +174,7 @@ export function EnvironmentPanel({
                   bundledAsrDiag={bundledAsrDiag}
                   asrCaps={asrCaps}
                   asrModelCacheInfo={asrModelCacheInfo}
+                  waveformPeaksCacheInfo={waveformPeaksCacheInfo}
                   asrModelCacheBusy={asrModelCacheBusy}
                   asrCacheMessage={asrCacheMessage}
                   funasrInstallMessage={funasrInstallMessage}
@@ -184,6 +189,7 @@ export function EnvironmentPanel({
                   cancelPrepareModel={cancelPrepareModel}
                   refreshAsrModelCacheInfo={refreshAsrModelCacheInfo}
                   clearAsrModelCache={clearAsrModelCache}
+                  clearOrphanWaveformPeaksCache={clearOrphanWaveformPeaksCache}
                   retryBundledAsrSidecar={retryBundledAsrSidecar}
                   openAppDataFolder={openAppDataFolder}
                   exportDiagnosticBundle={exportDiagnosticBundle}

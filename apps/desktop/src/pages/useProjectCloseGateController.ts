@@ -98,15 +98,18 @@ export function useProjectCloseGateController(
   }
 
   async function openFileWrapped(fileId: string) {
+    const afterOpen = (loaded: SegmentDto[] | null) => {
+      if (!loaded) return;
+      dirty.setSavedSnapshot(loaded);
+    };
+
     if (currentFileId && fileId !== currentFileId && dirty.hasUnsavedSegmentChanges()) {
       openUnsavedNavigateGate(async () => {
-        const loaded = await openFile(fileId);
-        if (loaded) dirty.setSavedSnapshot(loaded);
+        afterOpen(await openFile(fileId));
       });
       return;
     }
-    const loaded = await openFile(fileId);
-    if (loaded) dirty.setSavedSnapshot(loaded);
+    afterOpen(await openFile(fileId));
   }
 
   async function performLoadProject(id: string) {

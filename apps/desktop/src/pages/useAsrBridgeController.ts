@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isDefaultBundledAsrTarget, isTauriRuntime } from "../config/env";
-import type { AsrHealthCapabilities, AsrModelCacheInfo } from "../tauri/projectApi";
+import type { AsrHealthCapabilities, AsrModelCacheInfo, WaveformPeaksCacheInfo } from "../tauri/projectApi";
 import * as p1 from "../tauri/projectApi";
 import { tryBuildOnlineTranscribeBridgePayload } from "../services/stt/sttOnlineProviderContract";
 import { usePrepareModelController, type PrepareModelApi } from "./usePrepareModelController";
@@ -23,6 +23,7 @@ export interface AsrBridgeApi {
   bundledAsrDiag: p1.BundledAsrLaunchReport | null;
   asrCaps: AsrHealthCapabilities | null;
   asrModelCacheInfo: AsrModelCacheInfo | null;
+  waveformPeaksCacheInfo: WaveformPeaksCacheInfo | null;
   asrModelCacheBusy: boolean;
   sttOnlineBridgeReady: boolean;
   funasrInstallMessage: string;
@@ -32,6 +33,7 @@ export interface AsrBridgeApi {
   refreshAsrHealth: (options?: AsrHealthRefreshOptions) => Promise<void>;
   refreshAsrModelCacheInfo: () => Promise<void>;
   clearAsrModelCache: () => Promise<void>;
+  clearOrphanWaveformPeaksCache: () => Promise<void>;
   asrCacheMessage: string;
   prepareDefaultFunasrModel: PrepareModelApi["prepareDefaultFunasrModel"];
   cancelPrepareModel: () => void;
@@ -167,6 +169,7 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
     bundledAsrDiag,
     asrCaps,
     asrModelCacheInfo: cacheCtrl.asrModelCacheInfo,
+    waveformPeaksCacheInfo: cacheCtrl.waveformPeaksCacheInfo,
     asrModelCacheBusy: cacheCtrl.asrModelCacheBusy,
     sttOnlineBridgeReady,
     funasrInstallMessage: modelCtrl.funasrInstallMessage,
@@ -176,6 +179,7 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
     refreshAsrHealth,
     refreshAsrModelCacheInfo: cacheCtrl.refreshAsrModelCacheInfo,
     clearAsrModelCache: cacheCtrl.clearAsrModelCache,
+    clearOrphanWaveformPeaksCache: cacheCtrl.clearOrphanWaveformPeaksCache,
     asrCacheMessage: cacheCtrl.asrCacheMessage,
     prepareDefaultFunasrModel: modelCtrl.prepareDefaultFunasrModel,
     cancelPrepareModel: () => void modelCtrl.cancelPrepareModel(),

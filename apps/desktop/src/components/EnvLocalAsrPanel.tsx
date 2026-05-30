@@ -2,7 +2,7 @@ import { asrBaseUrl, isDefaultBundledAsrTarget, isTauriRuntime } from "../config
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import type { PrepareModelFailureCopy } from "../pages/prepareModelDownloadCopy";
 import type { AsrHealthState } from "../pages/useProjectController";
-import type { AsrHealthCapabilities, AsrModelCacheInfo, BundledAsrLaunchReport } from "../tauri/projectApi";
+import type { AsrHealthCapabilities, AsrModelCacheInfo, BundledAsrLaunchReport, WaveformPeaksCacheInfo } from "../tauri/projectApi";
 import type { PrepareDefaultModelOptions } from "../pages/usePrepareModelController";
 import type { AsrSetupControllerApi } from "../pages/useAsrSetupController";
 import type { LocalAsrModelCatalogApi } from "../pages/useLocalAsrModelCatalog";
@@ -26,6 +26,7 @@ type Props = {
   bundledAsrDiag: BundledAsrLaunchReport | null;
   asrCaps: AsrHealthCapabilities | null;
   asrModelCacheInfo: AsrModelCacheInfo | null;
+  waveformPeaksCacheInfo: WaveformPeaksCacheInfo | null;
   asrModelCacheBusy: boolean;
   asrCacheMessage: string;
   funasrInstallMessage: string;
@@ -40,6 +41,7 @@ type Props = {
   cancelPrepareModel: () => void;
   refreshAsrModelCacheInfo: () => Promise<void>;
   clearAsrModelCache: () => Promise<void>;
+  clearOrphanWaveformPeaksCache: () => Promise<void>;
   retryBundledAsrSidecar: () => Promise<void>;
   openAppDataFolder: () => Promise<void>;
   exportDiagnosticBundle: () => Promise<void>;
@@ -53,6 +55,7 @@ export function EnvLocalAsrPanel({
   bundledAsrDiag,
   asrCaps,
   asrModelCacheInfo,
+  waveformPeaksCacheInfo,
   asrModelCacheBusy,
   asrCacheMessage,
   funasrInstallMessage,
@@ -67,6 +70,7 @@ export function EnvLocalAsrPanel({
   cancelPrepareModel,
   refreshAsrModelCacheInfo,
   clearAsrModelCache,
+  clearOrphanWaveformPeaksCache,
   retryBundledAsrSidecar,
   openAppDataFolder,
   exportDiagnosticBundle,
@@ -228,6 +232,7 @@ export function EnvLocalAsrPanel({
 
       <LocalAsrCacheSection
         asrModelCacheInfo={asrModelCacheInfo}
+        waveformPeaksCacheInfo={waveformPeaksCacheInfo}
         asrModelCacheBusy={asrModelCacheBusy}
         asrCacheMessage={asrCacheMessage}
         busy={busy}
@@ -235,6 +240,7 @@ export function EnvLocalAsrPanel({
         tauriRuntime={isTauriRuntime()}
         refreshAsrModelCacheInfo={refreshAsrModelCacheInfo}
         clearAsrModelCache={clearAsrModelCache}
+        clearOrphanWaveformPeaksCache={clearOrphanWaveformPeaksCache}
         openAppDataFolder={openAppDataFolder}
       />
     </div>

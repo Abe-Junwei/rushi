@@ -2,6 +2,7 @@ import { useCallback, useRef } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
 import { createSegmentUid, mergeTwoSegments, reindexSegments } from "./segmentListHelpers";
 import { flushSegmentTextDrafts as flushSegmentTextDraftsImpl } from "./flushSegmentTextDrafts";
+import { clampCreateRangeClearOfSegments } from "../utils/segmentTimeRange";
 import { useSegmentSplitController } from "./useSegmentSplitController";
 import { useSegmentUndoRedo } from "./useSegmentUndoRedo";
 
@@ -244,21 +245,21 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
         return;
       }
       const segs = segmentsRef.current;
-      for (const s of segs) {
-        if (lo < s.end_sec && hi > s.start_sec) {
-          setError("选区与已有语段重叠。");
-          return;
-        }
+      const clamped = clampCreateRangeClearOfSegments(segs, lo, hi);
+      if (!clamped) {
+        setError("选区与已有语段重叠。");
+        return;
       }
+      const { startSec: fitLo, endSec: fitHi } = clamped;
       setError("");
       pushUndo();
-      let insertAt = segs.findIndex((s) => s.start_sec > lo);
+      let insertAt = segs.findIndex((s) => s.start_sec > fitLo);
       if (insertAt === -1) insertAt = segs.length;
       const newSeg: SegmentDto = {
         uid: createSegmentUid(),
         idx: 0,
-        start_sec: lo,
-        end_sec: hi,
+        start_sec: fitLo,
+        end_sec: fitHi,
         text: "",
         confidence: null,
         low_confidence: false,

@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { ClearAsrCacheConfirmDialog } from "../ClearAsrCacheConfirmDialog";
 import { PANEL_TYPOGRAPHY } from "../../config/typography";
-import type { AsrModelCacheInfo } from "../../tauri/projectApi";
+import type { AsrModelCacheInfo, WaveformPeaksCacheInfo } from "../../tauri/projectApi";
 
 type Props = {
   asrModelCacheInfo: AsrModelCacheInfo | null;
+  waveformPeaksCacheInfo: WaveformPeaksCacheInfo | null;
   asrModelCacheBusy: boolean;
   asrCacheMessage: string;
   busy: boolean;
@@ -12,11 +13,13 @@ type Props = {
   tauriRuntime: boolean;
   refreshAsrModelCacheInfo: () => Promise<void>;
   clearAsrModelCache: () => Promise<void>;
+  clearOrphanWaveformPeaksCache: () => Promise<void>;
   openAppDataFolder: () => Promise<void>;
 };
 
 export function LocalAsrCacheSection({
   asrModelCacheInfo,
+  waveformPeaksCacheInfo,
   asrModelCacheBusy,
   asrCacheMessage,
   busy,
@@ -24,6 +27,7 @@ export function LocalAsrCacheSection({
   tauriRuntime,
   refreshAsrModelCacheInfo,
   clearAsrModelCache,
+  clearOrphanWaveformPeaksCache,
   openAppDataFolder,
 }: Props) {
   const [confirmClearOpen, setConfirmClearOpen] = useState(false);
@@ -54,7 +58,9 @@ export function LocalAsrCacheSection({
       />
       <div className="pb-1">
         <h3 className={PANEL_TYPOGRAPHY.sectionTitle}>缓存与校验</h3>
-        <p className={PANEL_TYPOGRAPHY.sectionDescription}>查看模型缓存目录、占用大小与 manifest 校验配置。</p>
+        <p className={PANEL_TYPOGRAPHY.sectionDescription}>
+          查看模型缓存与项目音频/波形缓存占用；删除项目或文件后会自动清理对应副本。
+        </p>
       </div>
       <div className="flex flex-col gap-2 rounded bg-notion-callout-bg px-3 py-3">
         <InfoRow label="缓存目录" value={asrModelCacheInfo?.models_root ?? "未读取"} mono />
@@ -82,12 +88,39 @@ export function LocalAsrCacheSection({
           <code className="font-mono text-zen-indigo">RUSHI_MODEL_VERIFY_MANIFEST</code>（相对路径相对上方「缓存目录」解析）。
         </p>
       </div>
+      <div className="flex flex-col gap-2 rounded bg-notion-callout-bg px-3 py-3">
+        <InfoRow
+          label="项目缓存目录"
+          value={waveformPeaksCacheInfo?.projects_root ?? "未读取"}
+          mono
+        />
+        <InfoRow label="项目缓存总占用" value={formatBytes(waveformPeaksCacheInfo?.total_bytes ?? 0)} />
+        <InfoRow
+          label="可清理旧缓存"
+          value={
+            waveformPeaksCacheInfo == null
+              ? "未读取"
+              : `${formatBytes(waveformPeaksCacheInfo.orphan_bytes)} · ${waveformPeaksCacheInfo.orphan_file_sets} 组波形 · ${waveformPeaksCacheInfo.orphan_project_dirs} 个孤立项目`
+          }
+        />
+        <p className="text-[11px] text-notion-text-muted">
+          包含项目内复制的音频与预计算波形（<code className="font-mono text-zen-indigo">projects/*/peaks</code>
+          ）。删除项目/文件时会自动清理；此处仅补清数据库已不存在但仍留在磁盘上的副本。
+        </p>
+      </div>
       {asrCacheMessage ? (
         <p className="rounded bg-notion-callout-bg px-3 py-2 text-[12px] text-notion-text">{asrCacheMessage}</p>
       ) : null}
       <div className="flex flex-wrap gap-2">
         <ActionButton disabled={busy || asrModelCacheBusy} onClick={() => void refreshAsrModelCacheInfo()}>
           {asrModelCacheBusy ? "处理中…" : "刷新缓存信息"}
+        </ActionButton>
+        <ActionButton
+          disabled={clearDisabled}
+          title={clearDisabledReason ?? undefined}
+          onClick={() => void clearOrphanWaveformPeaksCache()}
+        >
+          {asrModelCacheBusy ? "清理中…" : "清除项目旧缓存"}
         </ActionButton>
         <ActionButton
           disabled={clearDisabled}

@@ -66,6 +66,7 @@ export function ProjectPanel() {
     mergeWithPrev: c.mergeWithPrev,
     insertSegmentAfter: c.insertSegmentAfter,
     deleteSegmentAt: c.deleteSegmentAt,
+    onOpenSegmentContextMenu: setSegmentCtxMenu,
   });
 
   const segmentCtxMenuItems = useMemo(
@@ -147,6 +148,7 @@ export function ProjectPanel() {
               bundledAsrDiag={c.bundledAsrDiag}
               asrCaps={c.asrCaps}
               asrModelCacheInfo={c.asrModelCacheInfo}
+              waveformPeaksCacheInfo={c.waveformPeaksCacheInfo}
               asrModelCacheBusy={c.asrModelCacheBusy}
               asrCacheMessage={c.asrCacheMessage}
               funasrInstallMessage={c.funasrInstallMessage}
@@ -161,6 +163,7 @@ export function ProjectPanel() {
               cancelPrepareModel={c.cancelPrepareModel}
               refreshAsrModelCacheInfo={c.refreshAsrModelCacheInfo}
               clearAsrModelCache={c.clearAsrModelCache}
+              clearOrphanWaveformPeaksCache={c.clearOrphanWaveformPeaksCache}
               retryBundledAsrSidecar={c.retryBundledAsrSidecar}
               openAppDataFolder={c.openAppDataFolder}
               exportDiagnosticBundle={c.exportDiagnosticBundle}

@@ -174,6 +174,22 @@ describe("useSegmentMutationController", () => {
     expect(result.current.error).toContain("重叠");
   });
 
+  it("insertSegmentFromTimeRange trims sub-epsilon bleed in a gap", () => {
+    const { result } = renderHook(() =>
+      useTestController([
+        makeSeg({ text: "a", start_sec: 0, end_sec: 2 }),
+        makeSeg({ text: "b", start_sec: 3, end_sec: 5 }),
+      ])
+    );
+
+    act(() => result.current.mutations.insertSegmentFromTimeRange(1.97, 2.12));
+
+    expect(result.current.segments).toHaveLength(3);
+    expect(result.current.segments[1].start_sec).toBe(2);
+    expect(result.current.segments[1].end_sec).toBe(2.12);
+    expect(result.current.error).toBe("");
+  });
+
   it("undo restores previous state after mutation", () => {
     const { result } = renderHook(() =>
       useTestController([makeSeg({ text: "hello", start_sec: 0, end_sec: 1 })])
