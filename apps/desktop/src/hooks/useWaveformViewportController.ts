@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, type MutableRefObject, type RefObject } from "react";
 import type WaveSurfer from "wavesurfer.js";
 import { computeTimelineWidthPx } from "../utils/pxPerSec";
+import { markAppliedZoomWs, type WaveformAppliedZoomState } from "../utils/waveformAppliedZoom";
 import { writeWaveformTierViewportWidthVar } from "../utils/waveformViewport";
 import {
   applyWaveformViewportStretch,
@@ -27,7 +28,8 @@ export type UseWaveformViewportControllerArgs = {
   /** While true, zoom sync defers ws.load(peaks) until after resize. */
   viewportResizeHoldRef?: MutableRefObject<boolean>;
   refitFitAllPxPerSec?: (viewportWidthPx: number) => number | null;
-  appliedZoomPxPerSecRef?: MutableRefObject<number>;
+  /** WS-applied zoom state (TRUTH-010); fit-all refit writes via markAppliedZoomWs. */
+  appliedZoom?: WaveformAppliedZoomState;
   onFitAllPxPerSecRefit?: (pxPerSec: number) => void;
   layoutDurationSecRef?: MutableRefObject<number>;
   layoutTimelineWidthPxRef?: MutableRefObject<number>;
@@ -99,13 +101,13 @@ export function useWaveformViewportController(args: UseWaveformViewportControlle
     const {
       layoutDurationSecRef,
       layoutTimelineWidthPxRef,
-      appliedZoomPxPerSecRef,
+      appliedZoom,
       timelineShellRef,
       peaksStageShellRef,
       stickyShellRef,
     } = argsRef.current;
     const dur = layoutDurationSecRef?.current ?? 0;
-    const px = appliedZoomPxPerSecRef?.current ?? 0;
+    const px = appliedZoom?.appliedZoomPxPerSecRef.current ?? 0;
     if (dur <= 0 || tierW <= 0 || px <= 0) return;
     const timelineWidthPx =
       layoutTimelineWidthPxRef?.current && layoutTimelineWidthPxRef.current > 0
@@ -121,14 +123,15 @@ export function useWaveformViewportController(args: UseWaveformViewportControlle
   }, []);
 
   const applyFitAllRefit = useCallback((refitPx: number, tierW: number) => {
-    const { wsRef, appliedZoomPxPerSecRef, syncScrollAfterRender } = argsRef.current;
+    const { wsRef, appliedZoom, syncScrollAfterRender } = argsRef.current;
     const ws = wsRef.current;
-    if (!ws || !appliedZoomPxPerSecRef) return false;
-    const pxUnchanged = Math.abs(refitPx - appliedZoomPxPerSecRef.current) <= PX_PER_SEC_EPSILON;
+    const appliedPxRef = appliedZoom?.appliedZoomPxPerSecRef;
+    if (!ws || !appliedZoom || !appliedPxRef) return false;
+    const pxUnchanged = Math.abs(refitPx - appliedPxRef.current) <= PX_PER_SEC_EPSILON;
     try {
       if (!pxUnchanged) {
         ws.zoom(refitPx);
-        appliedZoomPxPerSecRef.current = refitPx;
+        markAppliedZoomWs(appliedZoom, refitPx);
       }
       writeFitAllShellWidths(refitPx, tierW);
       prevWidthRef.current = tierW;

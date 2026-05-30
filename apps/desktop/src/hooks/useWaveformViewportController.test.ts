@@ -1,5 +1,6 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
+import { createWaveformAppliedZoomState } from "../utils/waveformAppliedZoom";
 import { useWaveformViewportController } from "./useWaveformViewportController";
 import { WAVEFORM_TIER_VIEWPORT_WIDTH_VAR } from "../utils/waveformViewport";
 
@@ -157,7 +158,7 @@ describe("useWaveformViewportController", () => {
 
   it("refits fit-all when viewport width is unchanged but px/s is stale", async () => {
     const args = createSyncArgs(1200);
-    const appliedZoomPxPerSecRef = { current: 0.07 };
+    const appliedZoom = createWaveformAppliedZoomState(0.07);
     const onFitAllPxPerSecRefit = vi.fn();
     const layoutDurationSecRef = { current: 3 * 3600 + 40 * 60 + 29 };
     const refitFitAllPxPerSec = vi.fn((vw: number) => vw / layoutDurationSecRef.current);
@@ -184,7 +185,7 @@ describe("useWaveformViewportController", () => {
         tierScrollRef: args.tierScrollRef,
         isReady: true,
         deferDecodeMount: false,
-        appliedZoomPxPerSecRef,
+        appliedZoom,
         onFitAllPxPerSecRefit,
         layoutDurationSecRef,
         refitFitAllPxPerSec,
@@ -203,7 +204,7 @@ describe("useWaveformViewportController", () => {
 
   it("ws.zoom without ws.load when fit-all refit is needed on grow", async () => {
     const args = createSyncArgs(1200);
-    const appliedZoomPxPerSecRef = { current: 0.09 };
+    const appliedZoom = createWaveformAppliedZoomState(0.09);
     const onFitAllPxPerSecRefit = vi.fn();
     const refitFitAllPxPerSec = vi.fn(() => 0.145);
     const timelineShell = document.createElement("div");
@@ -213,7 +214,7 @@ describe("useWaveformViewportController", () => {
 
     const fireRo = mountWithRo(args, {
       refitFitAllPxPerSec,
-      appliedZoomPxPerSecRef,
+      appliedZoom,
       onFitAllPxPerSecRefit,
       layoutDurationSecRef,
       layoutTimelineWidthPxRef,
@@ -236,7 +237,7 @@ describe("useWaveformViewportController", () => {
   it("refits short-audio fit-all on fullscreen grow with matching timeline shell width", async () => {
     const args = createSyncArgs(800);
     const durationSec = 13 * 60 + 18;
-    const appliedZoomPxPerSecRef = { current: 800 / durationSec };
+    const appliedZoom = createWaveformAppliedZoomState(800 / durationSec);
     const onFitAllPxPerSecRefit = vi.fn();
     const refitFitAllPxPerSec = vi.fn((vw: number) => vw / durationSec);
     const timelineShell = document.createElement("div");
@@ -246,7 +247,7 @@ describe("useWaveformViewportController", () => {
 
     const fireRo = mountWithRo(args, {
       refitFitAllPxPerSec,
-      appliedZoomPxPerSecRef,
+      appliedZoom,
       onFitAllPxPerSecRefit,
       layoutDurationSecRef,
       layoutTimelineWidthPxRef,
@@ -275,13 +276,13 @@ describe("useWaveformViewportController", () => {
       configurable: true,
       value: timelineCanvasWidth,
     });
-    const appliedZoomPxPerSecRef = { current: 56 };
+    const appliedZoom = createWaveformAppliedZoomState(56);
     const layoutDurationSecRef = { current: 798 };
     const layoutTimelineWidthPxRef = { current: timelineCanvasWidth };
     const stickyShell = args.stickyShellRef.current!;
 
     const fireRo = mountWithRo(args, {
-      appliedZoomPxPerSecRef,
+      appliedZoom,
       layoutDurationSecRef,
       layoutTimelineWidthPxRef,
       stickyShellRef: args.stickyShellRef,

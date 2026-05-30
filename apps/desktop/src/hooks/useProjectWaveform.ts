@@ -56,8 +56,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
   const scrollNotifyRafRef = useRef(0);
   const pendingScrollLeftRef = useRef(0);
   const appliedZoomStateRef = useRef(createWaveformAppliedZoomState(minPxPerSec));
-  const { appliedZoomPxPerSecRef, appliedPeaksRef, appliedPeaksLoadPxPerSecRef } =
-    appliedZoomStateRef.current;
+  const appliedZoom = appliedZoomStateRef.current;
   const cancelInFlightZoomRef = useRef<(() => void) | undefined>(undefined);
   const viewportResizeHoldRef = useRef(false);
   const flushDeferredPeaksLoadRef = useRef<(() => void) | undefined>(undefined);
@@ -122,9 +121,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     waveformHeightRef,
     appliedWaveformHeightRef,
     pendingAppliedWaveformHeightRef,
-    appliedZoomPxPerSecRef,
-    appliedPeaksRef,
-    appliedPeaksLoadPxPerSecRef,
+    appliedZoom,
     syncTierScrollAfterRenderRef,
     lastTimeUiCommitRef,
     lastTimeUiCommitMsRef,
@@ -154,7 +151,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
       syncWaveSurferScrollPx(getViewportScrollPxRef.current?.() ?? 0);
     },
     refitFitAllPxPerSec: options.refitFitAllPxPerSec,
-    appliedZoomPxPerSecRef,
+    appliedZoom,
     onFitAllPxPerSecRefit: options.onFitAllPxPerSecRefit,
     layoutDurationSecRef,
     layoutTimelineWidthPxRef,
@@ -173,9 +170,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     hotSwitchWhilePlaying,
     disabled,
     minPxPerSec,
-    appliedZoomPxPerSecRef,
-    appliedPeaksRef,
-    appliedPeaksLoadPxPerSecRef,
+    appliedZoom,
     peakCache,
     peakCacheGeneration,
     peakCacheRef,

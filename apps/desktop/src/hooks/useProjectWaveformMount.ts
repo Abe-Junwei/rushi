@@ -4,10 +4,15 @@ import { COLORS } from "../config/tokens";
 import type { PeakCache } from "../services/waveform/PeakCache";
 import { quantizePxPerSecForPeaksLoad } from "../utils/pxPerSec";
 import { resolveLayoutDurationSec } from "../utils/waveformTimelineMetrics";
+import {
+  markAppliedPeaks,
+  markAppliedZoomWs,
+  resetAppliedPeaks,
+  type WaveformAppliedZoomState,
+} from "../utils/waveformAppliedZoom";
+import { WAVEFORM_DECODE_SAMPLE_RATE } from "../services/waveform/waveformZoomSyncEngine";
 import { bindProjectWaveformWaveSurferEvents } from "./projectWaveformWaveSurferEvents";
 import type { UseProjectWaveformOptions } from "./useProjectWaveformTypes";
-
-const DECODE_SAMPLE_RATE = 8000;
 
 type MountRefs = {
   optsRef: MutableRefObject<UseProjectWaveformOptions>;
@@ -20,9 +25,7 @@ type MountRefs = {
   waveformHeightRef: MutableRefObject<number>;
   appliedWaveformHeightRef: MutableRefObject<number>;
   pendingAppliedWaveformHeightRef: MutableRefObject<number | null>;
-  appliedZoomPxPerSecRef: MutableRefObject<number>;
-  appliedPeaksRef: MutableRefObject<boolean>;
-  appliedPeaksLoadPxPerSecRef: MutableRefObject<number>;
+  appliedZoom: WaveformAppliedZoomState;
   syncTierScrollAfterRenderRef: MutableRefObject<() => void>;
   lastTimeUiCommitRef: MutableRefObject<number>;
   lastTimeUiCommitMsRef: MutableRefObject<number>;
@@ -52,9 +55,7 @@ export function useProjectWaveformMount(
     waveformHeightRef,
     appliedWaveformHeightRef,
     pendingAppliedWaveformHeightRef,
-    appliedZoomPxPerSecRef,
-    appliedPeaksRef,
-    appliedPeaksLoadPxPerSecRef,
+    appliedZoom,
     syncTierScrollAfterRenderRef,
     lastTimeUiCommitRef,
     lastTimeUiCommitMsRef,
@@ -92,7 +93,7 @@ export function useProjectWaveformMount(
       const initialMps = minPxPerSecRef.current;
       const initialH = waveformHeightRef.current;
       pendingAppliedWaveformHeightRef.current = initialH;
-      appliedZoomPxPerSecRef.current = initialMps;
+      markAppliedZoomWs(appliedZoom, initialMps);
 
       const cache = peakCacheRef.current;
       const layoutDur = resolveLayoutDurationSec({
@@ -108,15 +109,12 @@ export function useProjectWaveformMount(
           const bundle = await cache.getWaveSurferPeaksAsync(loadPx, layoutDur);
           peaks = bundle.peaks;
           duration = bundle.duration;
-          appliedPeaksRef.current = true;
-          appliedPeaksLoadPxPerSecRef.current = loadPx;
+          markAppliedPeaks(appliedZoom, true, loadPx);
         } catch {
-          appliedPeaksRef.current = false;
-          appliedPeaksLoadPxPerSecRef.current = Number.NaN;
+          resetAppliedPeaks(appliedZoom);
         }
       } else {
-        appliedPeaksRef.current = false;
-        appliedPeaksLoadPxPerSecRef.current = Number.NaN;
+        resetAppliedPeaks(appliedZoom);
       }
 
       const ws = WaveSurfer.create({
@@ -127,7 +125,7 @@ export function useProjectWaveformMount(
         height: initialH,
         normalize: true,
         maxPeak: 1,
-        sampleRate: peaks ? undefined : DECODE_SAMPLE_RATE,
+        sampleRate: peaks ? undefined : WAVEFORM_DECODE_SAMPLE_RATE,
         waveColor: COLORS.waveformWave,
         progressColor: COLORS.waveformProgress,
         cursorColor: COLORS.waveformCursor,
@@ -188,9 +186,7 @@ export function useProjectWaveformMount(
     waveformHeightRef,
     appliedWaveformHeightRef,
     pendingAppliedWaveformHeightRef,
-    appliedZoomPxPerSecRef,
-    appliedPeaksRef,
-    appliedPeaksLoadPxPerSecRef,
+    appliedZoom,
     lastTimeUiCommitRef,
     lastTimeUiCommitMsRef,
     scrollNotifyRafRef,
@@ -207,16 +203,11 @@ export function useProjectWaveformDestroy(
   clearWsListeners: () => void,
   refs: Pick<
     MountRefs,
-    | "wsRef"
-    | "scrollNotifyRafRef"
-    | "pendingAppliedWaveformHeightRef"
-    | "appliedPeaksRef"
-    | "appliedPeaksLoadPxPerSecRef"
+    "wsRef" | "scrollNotifyRafRef" | "pendingAppliedWaveformHeightRef" | "appliedZoom"
   >,
   setters: Pick<MountRefs, "setIsReady" | "setIsPlaying" | "setDuration" | "setCurrentTime">,
 ) {
-  const { wsRef, scrollNotifyRafRef, pendingAppliedWaveformHeightRef, appliedPeaksRef, appliedPeaksLoadPxPerSecRef } =
-    refs;
+  const { wsRef, scrollNotifyRafRef, pendingAppliedWaveformHeightRef, appliedZoom } = refs;
   const { setIsReady, setIsPlaying, setDuration, setCurrentTime } = setters;
 
   return useCallback(() => {
@@ -235,8 +226,7 @@ export function useProjectWaveformDestroy(
     setDuration(0);
     setCurrentTime(0);
     pendingAppliedWaveformHeightRef.current = null;
-    appliedPeaksRef.current = false;
-    appliedPeaksLoadPxPerSecRef.current = Number.NaN;
+    resetAppliedPeaks(appliedZoom);
     if (scrollNotifyRafRef.current) {
       cancelAnimationFrame(scrollNotifyRafRef.current);
       scrollNotifyRafRef.current = 0;
@@ -246,8 +236,7 @@ export function useProjectWaveformDestroy(
     wsRef,
     scrollNotifyRafRef,
     pendingAppliedWaveformHeightRef,
-    appliedPeaksRef,
-    appliedPeaksLoadPxPerSecRef,
+    appliedZoom,
     setIsReady,
     setIsPlaying,
     setDuration,
