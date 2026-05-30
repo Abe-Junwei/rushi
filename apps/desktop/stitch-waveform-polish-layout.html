@@ -1,0 +1,704 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>Rushi Waveform Polish — Stitch Reference</title>
+    <style>
+      :root {
+        --notion-bg: #ffffff;
+        --notion-sidebar: #f7f7f5;
+        --notion-sidebar-hover: #efefef;
+        --notion-sidebar-active: #ebebea;
+        --notion-border: #e3e2e0;
+        --notion-text: #37352f;
+        --notion-text-muted: #6b6b6b;
+        --saffron: #c58a43;
+        --saffron-mid: #85530f;
+        --ink: #2c2c2c;
+        --wf-wave: #c4c4c8;
+        --wf-progress: #8e8e93;
+        --wf-surface: #ffffff;
+        --indigo: #3d4f5d;
+        --amber-bg: #fffbeb;
+        --amber-border: #fcd34d;
+      }
+
+      * { box-sizing: border-box; }
+
+      body {
+        margin: 0;
+        font-family: Inter, system-ui, sans-serif;
+        font-size: 12px;
+        color: var(--notion-text);
+        background: #eceae4;
+      }
+
+      .page {
+        max-width: 1280px;
+        margin: 0 auto;
+        padding: 24px 16px 48px;
+      }
+
+      .page-hd { margin-bottom: 20px; }
+      .page-hd h1 { margin: 0 0 8px; font-size: 20px; font-weight: 600; }
+      .page-hd p { margin: 0; color: var(--notion-text-muted); line-height: 1.5; max-width: 72ch; }
+
+      .tokens {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 24px;
+      }
+
+      .swatch {
+        display: flex;
+        align-items: center;
+        gap: 6px;
+        padding: 4px 8px;
+        border: 1px solid var(--notion-border);
+        border-radius: 6px;
+        background: var(--notion-bg);
+        font-size: 10px;
+        color: var(--notion-text-muted);
+      }
+
+      .swatch i {
+        display: block;
+        width: 14px;
+        height: 14px;
+        border-radius: 3px;
+        border: 1px solid rgba(0, 0, 0, 0.06);
+      }
+
+      .frame {
+        margin-bottom: 32px;
+        border: 1px solid var(--notion-border);
+        border-radius: 8px;
+        overflow: hidden;
+        background: var(--notion-bg);
+        box-shadow: 0 1px 3px rgba(55, 53, 47, 0.06);
+      }
+
+      .frame-label {
+        padding: 8px 12px;
+        border-bottom: 1px solid var(--notion-border);
+        background: var(--notion-sidebar);
+        font-size: 11px;
+        font-weight: 600;
+        letter-spacing: 0.02em;
+        color: var(--notion-text-muted);
+      }
+
+      .frame-label strong { color: var(--notion-text); }
+
+      /* —— Waveform column —— */
+      .wf-col {
+        display: flex;
+        flex-direction: column;
+        background: var(--notion-sidebar);
+      }
+
+      .minimap {
+        position: relative;
+        height: 40px;
+        flex-shrink: 0;
+        border-bottom: 1px solid color-mix(in srgb, var(--notion-border) 25%, transparent);
+        background: var(--notion-sidebar);
+        overflow: hidden;
+      }
+
+      .minimap-peaks {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        gap: 1px;
+        padding: 0 2px;
+        opacity: 0.85;
+      }
+
+      .minimap-peaks span {
+        flex: 1;
+        min-width: 1px;
+        border-radius: 1px;
+        background: var(--wf-wave);
+      }
+
+      .minimap-viewport {
+        position: absolute;
+        top: 0;
+        height: 100%;
+        border: 1px solid color-mix(in srgb, var(--saffron) 35%, transparent);
+        border-radius: 2px;
+        background: color-mix(in srgb, var(--saffron) 10%, transparent);
+      }
+
+      .minimap-playhead {
+        position: absolute;
+        top: 0;
+        width: 2px;
+        height: 100%;
+        background: color-mix(in srgb, var(--saffron-mid) 70%, transparent);
+      }
+
+      .minimap-playhead::after {
+        content: "";
+        position: absolute;
+        top: 0;
+        left: 50%;
+        width: 6px;
+        height: 6px;
+        border-radius: 999px;
+        background: var(--saffron);
+        transform: translateX(-50%);
+      }
+
+      .tier {
+        position: relative;
+        height: 236px;
+        overflow-x: auto;
+        overflow-y: hidden;
+        background: var(--notion-sidebar);
+      }
+
+      .tier-inner {
+        position: relative;
+        width: 180%;
+        min-width: 100%;
+        height: 100%;
+      }
+
+      .sticky-viewport {
+        position: sticky;
+        left: 0;
+        top: 0;
+        width: min(100%, 960px);
+        height: 100%;
+        overflow: hidden;
+      }
+
+      .peaks-stage {
+        position: relative;
+        height: 100%;
+        background: var(--wf-surface);
+      }
+
+      .peaks-bars {
+        position: absolute;
+        inset: 0 0 22px;
+        display: flex;
+        align-items: center;
+        gap: 1px;
+        padding: 24px 8px 8px;
+      }
+
+      .peaks-bars span {
+        flex: 1;
+        min-width: 2px;
+        border-radius: 2px;
+        background: var(--wf-wave);
+      }
+
+      .peaks-bars span.played { background: color-mix(in srgb, var(--saffron-mid) 22%, var(--wf-progress)); }
+
+      .playhead-line {
+        position: absolute;
+        top: 0;
+        bottom: 22px;
+        width: 2px;
+        background: var(--saffron-mid);
+        z-index: 5;
+        pointer-events: none;
+      }
+
+      .playhead-line::before {
+        content: "";
+        position: absolute;
+        bottom: 0;
+        left: 50%;
+        transform: translateX(-50%);
+        border-left: 5px solid transparent;
+        border-right: 5px solid transparent;
+        border-bottom: 6px solid var(--saffron-mid);
+      }
+
+      .seg-overlay {
+        position: absolute;
+        inset: 0 0 22px;
+        z-index: 3;
+        pointer-events: none;
+      }
+
+      .seg {
+        position: absolute;
+        top: 0;
+        bottom: 0;
+        border-left: 1px solid color-mix(in srgb, var(--notion-text) 12%, transparent);
+        border-right: 1px solid color-mix(in srgb, var(--notion-text) 12%, transparent);
+        background: color-mix(in srgb, var(--ink) 8%, transparent);
+      }
+
+      .seg.selected {
+        border-left-color: color-mix(in srgb, var(--saffron) 55%, transparent);
+        border-right-color: color-mix(in srgb, var(--saffron) 55%, transparent);
+        background: color-mix(in srgb, var(--saffron) 12%, transparent);
+        box-shadow:
+          inset 3px 0 0 0 color-mix(in srgb, var(--saffron) 22%, transparent),
+          inset -3px 0 0 0 color-mix(in srgb, var(--saffron) 22%, transparent);
+      }
+
+      .seg.low { background: color-mix(in srgb, #9ca3af 20%, transparent); }
+
+      .seg .grip {
+        position: absolute;
+        top: 20%;
+        bottom: 20%;
+        width: 3px;
+        border-radius: 2px;
+        background: color-mix(in srgb, var(--saffron) 50%, transparent);
+      }
+
+      .seg .grip-l { left: 2px; }
+      .seg .grip-r { right: 2px; }
+
+      .seg .chip {
+        position: absolute;
+        top: 6px;
+        left: 6px;
+        padding: 2px 6px;
+        border-radius: 4px;
+        background: color-mix(in srgb, var(--notion-bg) 88%, transparent);
+        font-size: 10px;
+        font-weight: 600;
+        font-variant-numeric: tabular-nums;
+        color: var(--notion-text-muted);
+        white-space: nowrap;
+      }
+
+      .region-actions {
+        position: absolute;
+        z-index: 8;
+        display: flex;
+        gap: 3px;
+        padding: 3px 4px;
+        border: 1px solid color-mix(in srgb, var(--notion-border) 80%, transparent);
+        border-radius: 6px;
+        background: color-mix(in srgb, var(--notion-bg) 85%, transparent);
+      }
+
+      .region-actions button {
+        width: 24px;
+        height: 24px;
+        border: 0;
+        border-radius: 5px;
+        background: color-mix(in srgb, var(--notion-bg) 42%, transparent);
+        color: var(--notion-text-muted);
+        font-size: 10px;
+      }
+
+      .ruler {
+        position: absolute;
+        left: 0;
+        right: 0;
+        bottom: 0;
+        height: 22px;
+        z-index: 10;
+        background: linear-gradient(180deg, transparent 0%, color-mix(in srgb, var(--notion-bg) 35%, transparent) 100%);
+        pointer-events: none;
+      }
+
+      .ruler-ticks {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: flex-end;
+        padding: 0 8px 2px;
+        gap: 0;
+      }
+
+      .tick-wrap {
+        position: relative;
+        flex: 1;
+        height: 100%;
+        font-size: 10px;
+        color: color-mix(in srgb, var(--notion-text) 72%, transparent);
+        font-variant-numeric: tabular-nums;
+      }
+
+      .tick-wrap::before {
+        content: "";
+        position: absolute;
+        left: 0;
+        bottom: 0;
+        width: 1px;
+        height: 6px;
+        background: color-mix(in srgb, var(--notion-text) 20%, transparent);
+      }
+
+      .tick-wrap.major::before { height: 10px; }
+      .tick-wrap span { position: absolute; left: 2px; top: 2px; }
+
+      .bottom-bar {
+        display: flex;
+        height: 40px;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 0 16px;
+        border-top: 1px solid color-mix(in srgb, var(--notion-border) 40%, transparent);
+        background: color-mix(in srgb, var(--notion-sidebar) 80%, transparent);
+        color: var(--notion-text-muted);
+      }
+
+      .cluster { display: flex; align-items: center; gap: 10px; }
+
+      .play-btn {
+        width: 30px;
+        height: 30px;
+        border: 0;
+        border-radius: 999px;
+        background: var(--notion-bg);
+        color: var(--notion-text);
+        font-size: 11px;
+      }
+
+      .time { font-variant-numeric: tabular-nums; color: var(--notion-text); }
+
+      .input-sm {
+        width: 4.25rem;
+        height: 30px;
+        padding: 0 8px;
+        border: 1px solid var(--notion-border);
+        border-radius: 6px;
+        background: var(--notion-bg);
+        font-size: 12px;
+        font-variant-numeric: tabular-nums;
+      }
+
+      .icon-btn {
+        height: 30px;
+        min-width: 30px;
+        padding: 0 8px;
+        border: 0;
+        border-radius: 6px;
+        background: transparent;
+        color: var(--notion-text-muted);
+        font-size: 11px;
+        font-weight: 700;
+      }
+
+      .icon-btn.active {
+        background: color-mix(in srgb, var(--saffron) 18%, transparent);
+        color: var(--notion-text);
+      }
+
+      .sep { width: 1px; height: 14px; background: color-mix(in srgb, var(--notion-text) 12%, transparent); }
+
+      .status-center {
+        position: absolute;
+        inset: 0;
+        z-index: 30;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        pointer-events: none;
+      }
+
+      .status-center p {
+        margin: 0;
+        padding: 8px 12px;
+        border-radius: 6px;
+        background: color-mix(in srgb, var(--notion-sidebar-active) 95%, transparent);
+        color: var(--notion-text-muted);
+        font-size: 12px;
+        box-shadow: 0 1px 2px rgba(55, 53, 47, 0.06);
+      }
+
+      .minimap-loading {
+        position: absolute;
+        inset: 0;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: color-mix(in srgb, var(--notion-sidebar) 60%, transparent);
+        font-size: 10px;
+        color: var(--notion-text-muted);
+      }
+
+      .transcript-placeholder {
+        height: 48px;
+        border-top: 1px dashed var(--notion-border);
+        background: color-mix(in srgb, var(--notion-bg) 60%, var(--notion-sidebar));
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 10px;
+        color: var(--notion-text-muted);
+      }
+
+      .note {
+        padding: 8px 12px;
+        font-size: 10px;
+        color: var(--notion-text-muted);
+        background: color-mix(in srgb, var(--saffron) 6%, var(--notion-sidebar));
+        border-top: 1px solid var(--notion-border);
+        line-height: 1.45;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="page">
+      <header class="page-hd">
+        <h1>Rushi 波形舞台 — Stitch 对照原型</h1>
+        <p>
+          对齐 <code>EditorWaveformPane</code> 与 <code>19-stitch-waveform-polish-spec.md</code>。
+          供 Stitch 出图时对照层级、token 与 6 个状态帧。下方语段列表仅灰色占位，不在本轮 redesign 范围。
+        </p>
+      </header>
+
+      <div class="tokens" aria-label="Token swatches">
+        <div class="swatch"><i style="background:#f7f7f5"></i>notion-sidebar</div>
+        <div class="swatch"><i style="background:#ffffff"></i>wf-surface</div>
+        <div class="swatch"><i style="background:#c4c4c8"></i>wf-wave</div>
+        <div class="swatch"><i style="background:#8e8e93"></i>wf-progress → saffron mix</div>
+        <div class="swatch"><i style="background:#c58a43"></i>saffron</div>
+        <div class="swatch"><i style="background:#85530f"></i>saffron-mid playhead</div>
+      </div>
+
+      <!-- F1 Default -->
+      <section class="frame" id="f1">
+        <div class="frame-label"><strong>F1</strong> 默认编辑 — minimap 开 · 语段 3+ · 1 选中 · playhead ~30%</div>
+        <div class="wf-col">
+          <div class="minimap">
+            <div class="minimap-peaks" aria-hidden="true">
+              <span style="height:40%"></span><span style="height:55%"></span><span style="height:30%"></span>
+              <span style="height:70%"></span><span style="height:45%"></span><span style="height:60%"></span>
+              <span style="height:35%"></span><span style="height:50%"></span><span style="height:65%"></span>
+              <span style="height:40%"></span><span style="height:75%"></span><span style="height:48%"></span>
+            </div>
+            <div class="minimap-viewport" style="left:22%; width:28%"></div>
+            <div class="minimap-playhead" style="left:36%"></div>
+          </div>
+          <div class="tier">
+            <div class="tier-inner">
+              <div class="sticky-viewport">
+                <div class="peaks-stage">
+                  <div class="peaks-bars" aria-hidden="true">
+                    <span class="played" style="height:42%"></span><span class="played" style="height:58%"></span>
+                    <span class="played" style="height:35%"></span><span class="played" style="height:62%"></span>
+                    <span class="played" style="height:48%"></span><span class="played" style="height:71%"></span>
+                    <span class="played" style="height:39%"></span><span class="played" style="height:55%"></span>
+                    <span style="height:44%"></span><span style="height:67%"></span><span style="height:51%"></span>
+                    <span style="height:38%"></span><span style="height:60%"></span><span style="height:46%"></span>
+                    <span style="height:72%"></span><span style="height:33%"></span><span style="height:57%"></span>
+                    <span style="height:41%"></span><span style="height:63%"></span><span style="height:49%"></span>
+                  </div>
+                  <div class="playhead-line" style="left:36%"></div>
+                  <div class="seg-overlay">
+                    <div class="seg" style="left:8%; width:14%"></div>
+                    <div class="seg selected" style="left:26%; width:18%">
+                      <span class="grip grip-l"></span><span class="grip grip-r"></span>
+                    </div>
+                    <div class="seg" style="left:52%; width:12%"></div>
+                    <div class="seg low" style="left:70%; width:16%"></div>
+                  </div>
+                  <div class="region-actions" style="left:31%; bottom:30px">
+                    <button type="button">1x</button>
+                    <button type="button">↻</button>
+                    <button type="button">▶</button>
+                  </div>
+                  <div class="ruler">
+                    <div class="ruler-ticks">
+                      <div class="tick-wrap major"><span>0:00</span></div>
+                      <div class="tick-wrap"></div>
+                      <div class="tick-wrap major"><span>0:05</span></div>
+                      <div class="tick-wrap"></div>
+                      <div class="tick-wrap major"><span>0:10</span></div>
+                      <div class="tick-wrap"></div>
+                      <div class="tick-wrap major"><span>0:15</span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="bottom-bar">
+            <div class="cluster">
+              <button type="button" class="play-btn" aria-label="播放">▶</button>
+              <span class="time">00:01:22 / 00:43:16</span>
+              <button type="button" class="input-sm" style="width:3.25rem">1.0x</button>
+              <input class="input-sm" placeholder="m:ss" />
+            </div>
+            <div class="cluster">
+              <button type="button" class="icon-btn active">适配语段</button>
+              <button type="button" class="icon-btn">整段可见</button>
+              <span class="sep"></span>
+              <button type="button" class="icon-btn">−</button>
+              <button type="button" class="icon-btn">+</button>
+              <button type="button" class="icon-btn">重置</button>
+            </div>
+          </div>
+          <div class="transcript-placeholder">↓ 语段列表（本轮不 redesign）</div>
+        </div>
+        <div class="note">精修点：playhead 全高 saffron-mid 2px；已播 peaks 略带暖色；选中语段 inset saffron + grip；内联控件 pill。</div>
+      </section>
+
+      <!-- F2 Zoomed segment -->
+      <section class="frame" id="f2">
+        <div class="frame-label"><strong>F2</strong> 放大语段 — 宽语段 · handle · chip · 内联控件</div>
+        <div class="wf-col">
+          <div class="minimap">
+            <div class="minimap-peaks" aria-hidden="true">
+              <span style="height:50%"></span><span style="height:40%"></span><span style="height:65%"></span>
+              <span style="height:55%"></span><span style="height:45%"></span><span style="height:70%"></span>
+            </div>
+            <div class="minimap-viewport" style="left:38%; width:18%"></div>
+            <div class="minimap-playhead" style="left:44%"></div>
+          </div>
+          <div class="tier">
+            <div class="tier-inner" style="width:320%">
+              <div class="sticky-viewport">
+                <div class="peaks-stage">
+                  <div class="peaks-bars" aria-hidden="true">
+                    <span class="played" style="height:52%"></span><span class="played" style="height:61%"></span>
+                    <span class="played" style="height:47%"></span><span class="played" style="height:58%"></span>
+                    <span class="played" style="height:64%"></span><span class="played" style="height:43%"></span>
+                    <span style="height:56%"></span><span style="height:49%"></span><span style="height:68%"></span>
+                  </div>
+                  <div class="playhead-line" style="left:44%"></div>
+                  <div class="seg-overlay">
+                    <div class="seg selected" style="left:28%; width:32%">
+                      <span class="chip">A · 0:12–0:28</span>
+                      <span class="grip grip-l"></span><span class="grip grip-r"></span>
+                    </div>
+                  </div>
+                  <div class="region-actions" style="left:42%; bottom:30px">
+                    <button type="button">1.25x</button>
+                    <button type="button">↻</button>
+                    <button type="button">■</button>
+                  </div>
+                  <div class="ruler">
+                    <div class="ruler-ticks">
+                      <div class="tick-wrap major"><span>0:10</span></div>
+                      <div class="tick-wrap"></div>
+                      <div class="tick-wrap major"><span>0:12</span></div>
+                      <div class="tick-wrap"></div>
+                      <div class="tick-wrap major"><span>0:14</span></div>
+                      <div class="tick-wrap"></div>
+                      <div class="tick-wrap major"><span>0:16</span></div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div class="bottom-bar">
+            <div class="cluster">
+              <button type="button" class="play-btn">■</button>
+              <span class="time">00:00:18 / 00:43:16</span>
+            </div>
+            <div class="cluster">
+              <button type="button" class="icon-btn active">适配语段</button>
+              <button type="button" class="icon-btn">整段可见</button>
+              <span class="sep"></span>
+              <button type="button" class="icon-btn">−</button>
+              <button type="button" class="icon-btn">+</button>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- F3 Loading -->
+      <section class="frame" id="f3">
+        <div class="frame-label"><strong>F3</strong> Peaks 加载中</div>
+        <div class="wf-col">
+          <div class="minimap">
+            <div class="minimap-loading">总览生成中…</div>
+          </div>
+          <div class="tier">
+            <div class="sticky-viewport" style="width:100%">
+              <div class="peaks-stage" style="background:var(--notion-sidebar-active)">
+                <div class="status-center"><p>正在生成波形…</p></div>
+              </div>
+            </div>
+          </div>
+          <div class="bottom-bar" style="opacity:0.6">
+            <div class="cluster"><button type="button" class="play-btn" disabled>▶</button><span class="time">— / —</span></div>
+            <div class="cluster"><button type="button" class="icon-btn" disabled>整段可见</button></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- F4 No minimap -->
+      <section class="frame" id="f4">
+        <div class="frame-label"><strong>F4</strong> Minimap 关闭</div>
+        <div class="wf-col">
+          <div class="tier" style="height:248px">
+            <div class="sticky-viewport" style="width:100%">
+              <div class="peaks-stage">
+                <div class="peaks-bars" aria-hidden="true">
+                  <span class="played" style="height:45%"></span><span class="played" style="height:60%"></span>
+                  <span style="height:50%"></span><span style="height:38%"></span><span style="height:66%"></span>
+                </div>
+                <div class="playhead-line" style="left:22%"></div>
+                <div class="seg-overlay">
+                  <div class="seg selected" style="left:18%; width:20%"><span class="grip grip-l"></span><span class="grip grip-r"></span></div>
+                </div>
+                <div class="ruler"><div class="ruler-ticks"><div class="tick-wrap major"><span>0:00</span></div><div class="tick-wrap major"><span>0:05</span></div></div></div>
+              </div>
+            </div>
+          </div>
+          <div class="bottom-bar">
+            <div class="cluster"><button type="button" class="play-btn">▶</button><span class="time">00:00:08 / 00:43:16</span></div>
+            <div class="cluster"><button type="button" class="icon-btn">整段可见</button></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- F5 Narrow -->
+      <section class="frame" id="f5">
+        <div class="frame-label"><strong>F5</strong> 窄窗 ~900px — transport 优先单行</div>
+        <div class="wf-col" style="max-width:900px;margin:0 auto">
+          <div class="minimap"><div class="minimap-viewport" style="left:10%;width:35%"></div></div>
+          <div class="tier" style="height:200px">
+            <div class="sticky-viewport" style="width:100%">
+              <div class="peaks-stage">
+                <div class="peaks-bars" aria-hidden="true"><span class="played" style="height:40%"></span><span style="height:55%"></span></div>
+                <div class="playhead-line" style="left:28%"></div>
+                <div class="ruler"><div class="ruler-ticks"><div class="tick-wrap major"><span>0:00</span></div></div></div>
+              </div>
+            </div>
+          </div>
+          <div class="bottom-bar" style="flex-wrap:nowrap;overflow-x:auto">
+            <div class="cluster" style="flex-shrink:0"><button type="button" class="play-btn">▶</button><span class="time">0:08 / 43:16</span></div>
+            <div class="cluster" style="flex-shrink:0"><button type="button" class="icon-btn active">适配</button><button type="button" class="icon-btn">−</button><button type="button" class="icon-btn">+</button></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- F6 Low confidence -->
+      <section class="frame" id="f6">
+        <div class="frame-label"><strong>F6</strong> 低置信语段 — overlay 与语段卡 amber 一致</div>
+        <div class="wf-col">
+          <div class="tier" style="height:220px">
+            <div class="sticky-viewport" style="width:100%">
+              <div class="peaks-stage">
+                <div class="peaks-bars" aria-hidden="true"><span style="height:48%"></span><span style="height:62%"></span><span style="height:44%"></span></div>
+                <div class="seg-overlay">
+                  <div class="seg low selected" style="left:24%; width:22%; background:color-mix(in srgb,#f59e0b 18%, transparent); border-color:color-mix(in srgb,#f59e0b 40%, transparent)">
+                    <span class="grip grip-l"></span><span class="grip grip-r"></span>
+                  </div>
+                </div>
+                <div class="ruler"><div class="ruler-ticks"><div class="tick-wrap major"><span>0:05</span></div></div></div>
+              </div>
+            </div>
+          </div>
+          <div style="padding:8px 12px;background:var(--amber-bg);border-top:1px solid var(--amber-border);font-size:11px;color:var(--notion-text-muted)">
+            语段卡占位：低置信 amber 底 — 与波形 overlay 语义对齐
+          </div>
+        </div>
+      </section>
+    </div>
+  </body>
+</html>

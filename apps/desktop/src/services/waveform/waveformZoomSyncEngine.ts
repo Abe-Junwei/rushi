@@ -1,6 +1,7 @@
 import type { MutableRefObject, RefObject } from "react";
 import type WaveSurfer from "wavesurfer.js";
 import type { PeakCache } from "./PeakCache";
+import { isWaveSurferAbortError } from "./waveSurferProgressAbortWarn";
 import {
   appliedZoomMatchesIntent,
   isPeaksLoadedIntoWs,
@@ -173,7 +174,7 @@ export function loadPeaksIntoWaveSurfer(input: {
           if (Math.abs(nowTimeSec - resumeTimeSec) < 0.5) {
             ws.setTime(resumeTimeSec);
           }
-          if (resumePlaying) void ws.play();
+          if (resumePlaying) void ws.play().catch(() => {});
         } catch {
           /* noop */
         }
@@ -187,7 +188,8 @@ export function loadPeaksIntoWaveSurfer(input: {
         });
       });
     })
-    .catch(() => {
+    .catch((err) => {
+      if (isWaveSurferAbortError(err)) return;
       if (wsRef.current !== ws) return;
       onPeaksApplied(false, Number.NaN);
       commitWaveSurferZoom({

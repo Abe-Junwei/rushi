@@ -33,7 +33,7 @@ export function AutoPunctuatePreviewDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="auto-punctuate-title"
-        className="w-full max-w-2xl rounded-xl border border-notion-divider bg-notion-bg px-6 py-5 shadow-lg"
+        className="w-full max-w-2xl rounded-md border border-notion-divider bg-notion-bg px-6 py-5 shadow-lg"
         onMouseDown={(e) => e.stopPropagation()}
       >
         <h2 id="auto-punctuate-title" className="text-base font-semibold text-notion-text">

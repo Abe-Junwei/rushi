@@ -17,7 +17,7 @@ import { useProjectEditorState } from "./useProjectEditorState";
 import { useAutoPunctuateController } from "./useAutoPunctuateController";
 import { useProjectCloseGateController } from "./useProjectCloseGateController";
 import { useSegmentDirtyState } from "./useSegmentDirtyState";
-import { findSegmentIndexByUid, normalizeSegmentList } from "./segmentListHelpers";
+import { findSegmentIndexByUid, normalizeSegmentList, prepareSegmentsForPersist } from "./segmentListHelpers";
 import type { ProjectLifecycleApi } from "./ProjectLifecycleApi";
 
 export type { ProjectLifecycleApi } from "./ProjectLifecycleApi";
@@ -120,7 +120,7 @@ export function useProjectLifecycleController(): ProjectLifecycleApi {
     setError("");
     try {
       mutations.flushSegmentTextDrafts();
-      const normalized = segmentsRef.current.map((s, i) => ({ ...s, idx: i }));
+      const normalized = prepareSegmentsForPersist(segmentsRef.current, 0);
       await fileApi.fileSaveSegments(currentFileId, normalized);
       const [projectDetail, fileDetail] = await Promise.all([
         p1.projectLoad(current.id),

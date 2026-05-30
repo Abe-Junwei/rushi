@@ -18,7 +18,7 @@ export function resolveWaveformMountDeferTimeoutMs(mediaDurationSec: number): nu
 export function resolveWaveformMountDeferred(input: {
   backgroundPeaksEnabled: boolean;
   peaksLoading: boolean;
-  peakCache: unknown | null;
+  peakCache: unknown;
   peaksUnavailable: boolean;
   deferTimedOut?: boolean;
   mediaDurationSec?: number;

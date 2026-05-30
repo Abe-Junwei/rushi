@@ -7,14 +7,19 @@ import { resolveTierViewportMetrics } from "../utils/waveformViewport";
 type WaveformLiveTimeRulerProps = Omit<WaveformTimeRulerProps, "currentTimeSec"> & {
   isPlaying: boolean;
   isReady: boolean;
+  currentTimeSec: number;
   getPlayheadTime: () => number;
+  /** 叠在波形上时不画 ruler playhead（由 WaveSurfer progress 承担） */
+  suppressPlayhead?: boolean;
 };
 
 /** 播放期 rAF 驱动 playhead，减少父级 currentTime 导致的整树重绘。 */
 export const WaveformLiveTimeRuler = memo(function WaveformLiveTimeRuler({
   isPlaying,
   isReady,
+  currentTimeSec,
   getPlayheadTime,
+  suppressPlayhead = false,
   ...rulerProps
 }: WaveformLiveTimeRulerProps) {
   const playheadLineRef = useRef<SVGLineElement | null>(null);
@@ -59,6 +64,7 @@ export const WaveformLiveTimeRuler = memo(function WaveformLiveTimeRuler({
   const { displayTimeSec } = useWaveformLiveClock({
     isPlaying,
     isReady,
+    currentTimeSec,
     getPlayheadTime,
     formatMediaTime: rulerProps.formatMediaTime,
     durationSec: rulerProps.durationSec,
@@ -68,9 +74,9 @@ export const WaveformLiveTimeRuler = memo(function WaveformLiveTimeRuler({
 
   useEffect(() => {
     if (isPlaying || !isReady) return;
-    writePlayheadLine(getPlayheadTime());
+    writePlayheadLine(currentTimeSec);
   }, [
-    getPlayheadTime,
+    currentTimeSec,
     isPlaying,
     isReady,
     rulerProps.durationSec,
@@ -84,7 +90,7 @@ export const WaveformLiveTimeRuler = memo(function WaveformLiveTimeRuler({
       {...rulerProps}
       currentTimeSec={displayTimeSec}
       playheadLineRef={playheadLineRef}
-      hidePlayheadReact={isPlaying}
+      hidePlayheadReact={suppressPlayhead || isPlaying}
     />
   );
 });

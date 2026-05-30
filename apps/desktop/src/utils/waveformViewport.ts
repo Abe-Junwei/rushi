@@ -45,11 +45,16 @@ export function resolveTierViewportWidthPx(input: {
   return Math.max(live, tier, layout);
 }
 
-/** Prefer live tier scroll ref; fall back to committed React layout scroll. */
+/** Prefer live tier DOM scroll; fall back to live ref then committed layout. */
 export function resolveTierScrollLeftPx(input: {
+  tierScrollEl?: HTMLElement | null;
   layoutScrollLeftPx: number;
   liveScrollLeftRef?: RefObject<number>;
 }): number {
+  const domScrollLeft = input.tierScrollEl?.scrollLeft;
+  if (domScrollLeft != null && Number.isFinite(domScrollLeft)) {
+    return domScrollLeft;
+  }
   const live = input.liveScrollLeftRef?.current;
   if (live != null && Number.isFinite(live)) return live;
   return input.layoutScrollLeftPx;
@@ -61,15 +66,17 @@ export function resolveTierViewportMetrics(input: {
   tierScrollLive?: TierScrollLiveRefs;
   tierScrollLayout: TierScrollLayoutMetrics;
 }): { scrollLeftPx: number; viewportWidthPx: number } {
+  const tier = input.tierScrollEl;
   return {
     scrollLeftPx: resolveTierScrollLeftPx({
+      tierScrollEl: tier,
       layoutScrollLeftPx: input.tierScrollLayout.scrollLeftPx,
       liveScrollLeftRef: input.tierScrollLive?.scrollLeftRef,
     }),
     viewportWidthPx: Math.max(
       1,
       resolveTierViewportWidthPx({
-        tierScrollEl: input.tierScrollEl,
+        tierScrollEl: tier,
         layoutClientWidthPx: input.tierScrollLayout.clientWidthPx,
         liveClientWidthPx: input.tierScrollLive?.clientWidthRef.current,
       }),

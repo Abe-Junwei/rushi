@@ -59,4 +59,20 @@ describe("WaveformZoomBar", () => {
     expect(onFitSelection).toHaveBeenCalledTimes(1);
     expect(onFitAll).toHaveBeenCalledTimes(1);
   });
+
+  it("renders minimap toggle when onToggleMinimap is provided", () => {
+    const onToggleMinimap = vi.fn();
+    render(
+      <WaveformZoomBar
+        {...baseProps}
+        minimapEnabled
+        onToggleMinimap={onToggleMinimap}
+      />,
+    );
+
+    const toggle = screen.getByRole("switch", { name: "波形总览" });
+    expect((toggle as HTMLButtonElement).getAttribute("aria-checked")).toBe("true");
+    fireEvent.click(toggle);
+    expect(onToggleMinimap).toHaveBeenCalledTimes(1);
+  });
 });

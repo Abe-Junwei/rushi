@@ -56,7 +56,7 @@ export function EditorView({
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-notion-bg" data-purpose="editor-workspace">
       {!c.currentFileId ? (
-        <div className="relative flex h-16 shrink-0 items-center justify-between border-b border-notion-divider bg-notion-bg px-4 lg:px-10">
+        <div className="relative flex h-12 shrink-0 items-center justify-between border-b border-notion-divider bg-notion-bg px-4 lg:px-10">
           <div className="flex min-w-0 items-center gap-2.5">
             <button
               type="button"
@@ -92,7 +92,6 @@ export function EditorView({
         <>
           <EditorToolbar
             controller={c}
-            tx={tx}
             exportKey={exportKey}
             onExportSelect={onExportSelect}
             projectName={projectName}
@@ -135,12 +134,14 @@ export function EditorView({
           </main>
 
           {c.audioSrc ? (
-            <footer className="z-40 flex h-[30px] shrink-0 items-center justify-between gap-2 border-t border-notion-divider bg-notion-bg px-2.5 text-[11px] text-notion-text-muted">
-              <div className="flex min-w-0 items-center gap-2">
+            <footer className="relative z-40 flex h-[30px] shrink-0 items-center border-t border-notion-divider bg-notion-bg px-2.5 text-[11px] text-notion-text-muted">
+              <div className="flex min-w-0 flex-1 items-center gap-2">
                 <span>自动保存已激活</span>
               </div>
-              <span className="truncate text-[11px] text-notion-text-muted">双击波形进行切片</span>
-              <div className="flex items-center gap-1.5">
+              <span className="pointer-events-none absolute left-1/2 max-w-[50%] -translate-x-1/2 truncate text-center text-[11px] text-notion-text-muted" aria-live="polite">
+                {tx.waveformFooterStatusLabel ?? ""}
+              </span>
+              <div className="flex flex-1 items-center justify-end gap-1.5">
                 <button
                   type="button"
                   className="inline-flex h-6 items-center justify-center rounded-md border-0 bg-transparent px-2 text-[11px] text-notion-text-muted transition-colors hover:bg-notion-sidebar hover:text-notion-text"

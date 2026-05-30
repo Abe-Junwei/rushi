@@ -5,6 +5,8 @@ export function useWaveformTierWheelForward(input: {
   waveformShellRef: RefObject<HTMLElement | null>;
   tierScrollRef: RefObject<HTMLElement | null>;
   enabled: boolean;
+  /** Imperative tier scroll writes do not always emit `scroll` — sync overlay/layout here. */
+  onTierScroll?: () => void;
 }): void {
   useEffect(() => {
     if (!input.enabled) return;
@@ -19,6 +21,7 @@ export function useWaveformTierWheelForward(input: {
       }
       if (!delta) return;
       tier.scrollLeft += delta;
+      input.onTierScroll?.();
       e.preventDefault();
     };
 
@@ -28,5 +31,5 @@ export function useWaveformTierWheelForward(input: {
       tier.removeEventListener("wheel", onWheel);
       shell?.removeEventListener("wheel", onWheel);
     };
-  }, [input.enabled, input.tierScrollRef, input.waveformShellRef]);
+  }, [input.enabled, input.onTierScroll, input.tierScrollRef, input.waveformShellRef]);
 }

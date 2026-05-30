@@ -8,12 +8,22 @@ export function useWaveformLiveClock(args: {
   getPlayheadTime: () => number;
   formatMediaTime: (sec: number) => string;
   durationSec: number;
+  /** WaveSurfer seeking/timeupdate — keeps label in sync while paused. */
+  currentTimeSec?: number;
   /** When omitted, playhead pct falls back to time/duration (label-only consumers). */
   timelineWidthPx?: number;
   onPlayheadMove?: (timeSec: number, leftPct: number) => void;
 }) {
-  const { isPlaying, isReady, getPlayheadTime, formatMediaTime, durationSec, timelineWidthPx = 0, onPlayheadMove } =
-    args;
+  const {
+    isPlaying,
+    isReady,
+    getPlayheadTime,
+    formatMediaTime,
+    durationSec,
+    currentTimeSec = 0,
+    timelineWidthPx = 0,
+    onPlayheadMove,
+  } = args;
   const [displayTimeSec, setDisplayTimeSec] = useState(0);
   const getPlayheadTimeRef = useRef(getPlayheadTime);
   const onPlayheadMoveRef = useRef(onPlayheadMove);
@@ -43,7 +53,7 @@ export function useWaveformLiveClock(args: {
     };
 
     if (!isPlaying) {
-      applyTime(getPlayheadTimeRef.current(), true);
+      applyTime(currentTimeSec, true);
       return;
     }
 
@@ -53,7 +63,7 @@ export function useWaveformLiveClock(args: {
     };
     rafId = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(rafId);
-  }, [durationSec, isPlaying, isReady, timelineWidthPx]);
+  }, [durationSec, isPlaying, isReady, timelineWidthPx, currentTimeSec]);
 
   return {
     displayTimeSec,

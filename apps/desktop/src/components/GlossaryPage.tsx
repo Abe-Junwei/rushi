@@ -68,7 +68,7 @@ export function GlossaryPage({ busy }: GlossaryPageProps) {
         </header>
 
         <section
-          className="flex flex-col gap-2 rounded-xl border border-notion-divider bg-notion-callout-bg px-4 py-3"
+          className="flex flex-col gap-2 rounded-md border border-notion-divider bg-notion-callout-bg px-4 py-3"
           aria-labelledby="glossary-hotwords-heading"
         >
           <h2 id="glossary-hotwords-heading" className={PANEL_TYPOGRAPHY.sectionTitle}>
@@ -212,11 +212,11 @@ export function GlossaryPage({ busy }: GlossaryPageProps) {
           </div>
 
           {g.terms.length === 0 ? (
-            <p className="rounded-xl border border-dashed border-notion-divider bg-notion-bg/80 px-4 py-10 text-center text-sm text-notion-text-muted">
+            <p className="rounded-md border border-dashed border-notion-divider bg-notion-bg/80 px-4 py-10 text-center text-sm text-notion-text-muted">
               暂无术语。在上方新建词条，或使用批量添加 / 表格导入。
             </p>
           ) : g.filteredTerms.length === 0 ? (
-            <p className="rounded-xl bg-notion-callout-bg px-4 py-8 text-center text-sm text-notion-text-muted">
+            <p className="rounded-md bg-notion-callout-bg px-4 py-8 text-center text-sm text-notion-text-muted">
               没有匹配的术语。
             </p>
           ) : (

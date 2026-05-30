@@ -12,6 +12,7 @@ import {
 import { computeZoomInPxPerSec, computeZoomOutPxPerSec } from "../utils/waveformZoomSlider";
 import { assignSegmentOverlapLanes, computeSegmentLaneRowPx } from "../utils/segmentLayout";
 import { resolveSelectSegmentViewportPlan } from "../services/waveform/selectSegmentViewportPlan";
+import { resolveWaveformFooterStatusLabel } from "../services/waveform/waveformRenderStatus";
 import { parseMediaTimeInput, segmentStartSec } from "../utils/formatMediaTime";
 import type { SegmentSelectSource } from "../utils/waveformViewMode";
 import { shouldFocusWaveformShellForSelectSource, shouldZoomViewportOnSelectSource } from "../utils/waveformViewMode";
@@ -89,8 +90,11 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
   const laneBoundsSig = p1LaneBoundsSignature(ctx.segments);
   const segmentLaneLayout = useMemo(() => {
     void laneBoundsSig;
-    return assignSegmentOverlapLanes(ctxRef.current.segments);
-  }, [laneBoundsSig]);
+    return assignSegmentOverlapLanes(
+      ctxRef.current.segments,
+      timeline.timelineMetrics.mediaDurationSec,
+    );
+  }, [laneBoundsSig, timeline.timelineMetrics.mediaDurationSec]);
 
   const focusWaveformShell = useCallback(() => {
     waveformShellRef.current?.focus();
@@ -117,6 +121,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
         laneByIndex: segmentLaneLayout.laneByIndex,
         laneCount: segmentLaneLayout.laneCount,
         selectedIdx: c.selectedIdx,
+        durationSec: timeline.timelineMetrics.mediaDurationSec,
       });
       if (segmentIdx < 0) return;
       c.onOpenSegmentContextMenu({
@@ -177,11 +182,18 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
   const { wf, display, peaks, zoom, routePrefs } = timeline;
   const waveformStageHeightPx = display.waveformHeightPx;
   const waveformPeaksPhase = timeline.waveformPeaksPhase;
+  const waveformFooterStatusLabel = resolveWaveformFooterStatusLabel({
+    phase: waveformPeaksPhase,
+    backgroundPeaksEnabled: routePrefs.backgroundPeaksEnabled,
+    mountDeferTimedOut: timeline.mountDeferTimedOut,
+    waveformReady: wf.isReady,
+  });
 
   useWaveformTierWheelForward({
     waveformShellRef,
     tierScrollRef: timeline.tierScrollRef,
     enabled: Boolean(ctx.mediaUrl && wf.isReady),
+    onTierScroll: timeline.onTierScroll,
   });
 
   return {
@@ -214,15 +226,16 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     tierScrollLive: timeline.tierScrollLive,
     peaksLoading: peaks.loading,
     peakCache: peaks.peakCache,
+    peakCacheGeneration: peaks.peakCacheGeneration,
     peaksUnavailable: peaks.peaksUnavailable,
+    exportMinimapPeaks: wf.exportMinimapPeaks,
     waveformPeaksPhase,
+    waveformFooterStatusLabel,
     peaksHotSwitchPending: wf.peaksHotSwitchPending,
     backgroundPeaksEnabled: routePrefs.backgroundPeaksEnabled,
-    setBackgroundPeaksEnabled: routePrefs.setBackgroundPeaksEnabled,
     minimapEnabled: routePrefs.minimapEnabled,
     setMinimapEnabled: routePrefs.setMinimapEnabled,
     hotSwitchWhilePlaying: routePrefs.hotSwitchWhilePlaying,
-    setHotSwitchWhilePlaying: routePrefs.setHotSwitchWhilePlaying,
     mountDeferTimedOut: timeline.mountDeferTimedOut,
     currentTime: wf.currentTime,
     pxPerSec: timeline.pxPerSec,

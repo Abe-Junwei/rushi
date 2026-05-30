@@ -1,7 +1,7 @@
 /**
  * 设计 token — 与 tailwind.config.js theme.extend.colors 同源。
  * 供 TS 侧内联样式、Rust 侧 docx 导出等引用。
- * 对齐仓库根 DESIGN.md（Serene Scholar）。
+ * 对齐仓库根 DESIGN.md（Notion Zen）。
  */
 
 export const COLORS = {
@@ -36,6 +36,7 @@ export const COLORS = {
   /** WaveSurfer 白底波形条（与 tailwind `zen-wf-*` 同源） */
   waveformSurface: "#ffffff",
   waveformWave: "#c4c4c8",
+  /** 已播放 peaks tint */
   waveformProgress: "#8e8e93",
   waveformCursor: "#6a6a6f",
   /** 波形 region 叠色（与 waveformRegionFillColor 一致） */

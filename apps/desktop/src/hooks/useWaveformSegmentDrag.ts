@@ -1,6 +1,26 @@
 import { useCallback, useRef, type PointerEvent as ReactPointerEvent } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
-import { clampSegmentTimeBounds, hitSegmentEdgeFromTimelinePointer } from "../utils/waveformSegmentBounds";
+import {
+  clampSegmentTimeBounds,
+  hitSegmentEdgeFromTimelinePointer,
+  selectPackableSegmentIndices,
+  WAVEFORM_SEGMENT_MIN_SPAN_SEC,
+} from "../utils/waveformSegmentBounds";
+import {
+  finalizeSegmentOverlayBounds,
+  SEGMENT_BOUNDS_LIVE_MIN_SPAN_SEC,
+} from "../utils/segmentGapPolicy";
+import {
+  isSegmentSnapEnabled,
+  readSegmentOverlayModifiers,
+  resolveCreateOverlapPolicy,
+} from "../utils/segmentOverlayModifiers";
+import {
+  collectSegmentSnapTargets,
+  resolveSnapThresholdSec,
+  snapSegmentRange,
+} from "../utils/segmentTimeSnap";
+import type { SegmentOverlapPolicy } from "../utils/segmentTimeRange";
 import { applyOverlayPointerUpIntent } from "../utils/waveformSegmentOverlayActions";
 import {
   boundsForOverlayDrag,
@@ -19,15 +39,78 @@ export type WaveformSegmentDragArgs = {
   segments: SegmentDto[];
   timelineWidthPx: number;
   durationSec: number;
+  playheadSec?: number;
   enableCreateRange: boolean;
   clientXToTimeSec: (clientX: number) => number;
   onSelectSegmentAt: (idx: number) => void;
   onBeginBoundsEdit?: () => void;
   onFocusWaveformShell?: () => void;
   onBoundsCommit: (idx: number, startSec: number, endSec: number) => void;
-  onCreateRange?: (startSec: number, endSec: number) => void;
+  onCreateRange?: (
+    startSec: number,
+    endSec: number,
+    options?: { overlapPolicy?: SegmentOverlapPolicy },
+  ) => void;
   seekToTime: (timeSec: number) => void;
 };
+
+function snapTargetsForOverlay(
+  a: WaveformSegmentDragArgs,
+  excludeSegmentIndex?: number,
+): { targets: number[]; thresholdSec: number } {
+  const { packableIndices } = selectPackableSegmentIndices(a.segments, a.durationSec);
+  const snapSegments = packableIndices
+    .filter((i) => i !== excludeSegmentIndex)
+    .map((i) => a.segments[i])
+    .filter((s): s is SegmentDto => s != null);
+  return {
+    targets: collectSegmentSnapTargets({
+      segments: snapSegments,
+      durationSec: a.durationSec,
+      playheadSec: a.playheadSec,
+    }),
+    thresholdSec: resolveSnapThresholdSec(a.timelineWidthPx, a.durationSec),
+  };
+}
+
+function finalizeEditDragBounds(
+  a: WaveformSegmentDragArgs,
+  drag: OverlayDragState,
+  bounds: { startSec: number; endSec: number },
+  snapEnabled: boolean,
+  minSpanSec: number,
+): { startSec: number; endSec: number } | null {
+  if (drag.mode === "create") return null;
+  const { targets, thresholdSec } = snapTargetsForOverlay(a, drag.segmentIdx);
+  const prev = a.segments[drag.segmentIdx - 1];
+  const next = a.segments[drag.segmentIdx + 1];
+  return finalizeSegmentOverlayBounds({
+    bounds,
+    mode: drag.mode,
+    targets,
+    thresholdSec,
+    snapEnabled,
+    durationSec: a.durationSec,
+    neighbors: {
+      prevEndSec: prev?.end_sec,
+      nextStartSec: next?.start_sec,
+    },
+    minSpanSec,
+  });
+}
+
+function snapCreateRange(
+  a: WaveformSegmentDragArgs,
+  lo: number,
+  hi: number,
+  snapEnabled: boolean,
+): { startSec: number; endSec: number } {
+  const { targets, thresholdSec } = snapTargetsForOverlay(a);
+  const snapped = snapEnabled
+    ? snapSegmentRange(lo, hi, targets, thresholdSec)
+    : { startSec: lo, endSec: hi };
+  return clampSegmentTimeBounds(snapped.startSec, snapped.endSec, a.durationSec || hi);
+}
 
 export function useWaveformSegmentDrag(
   argsRef: React.MutableRefObject<WaveformSegmentDragArgs>,
@@ -47,13 +130,16 @@ export function useWaveformSegmentDrag(
       if (!drag || drag.pointerId !== ev.pointerId) return;
       dragRef.current = null;
       const a = argsRef.current;
+      const modifiers = readSegmentOverlayModifiers(ev);
+      const snapEnabled = isSegmentSnapEnabled(modifiers);
       const timeSec = a.clientXToTimeSec(ev.clientX);
 
       if (drag.mode === "create") {
         const lo = Math.min(drag.initialStartSec, timeSec);
         const hi = Math.max(drag.initialStartSec, timeSec);
         setCreatePreview(null);
-        const clamped = clampSegmentTimeBounds(lo, hi, a.durationSec || hi);
+        const clamped = snapCreateRange(a, lo, hi, snapEnabled);
+        const overlapPolicy = resolveCreateOverlapPolicy(modifiers);
         const intent = resolveOverlayPointerUpIntent({
           mode: drag.mode,
           moved: drag.moved,
@@ -66,6 +152,20 @@ export function useWaveformSegmentDrag(
           clampedEndSec: clamped.endSec,
         });
         applySegmentDraft(null);
+        if (intent.kind === "create-range") {
+          applyOverlayPointerUpIntent(
+            { ...intent, overlapPolicy },
+            {
+              onSelectSegmentAt: a.onSelectSegmentAt,
+              onBoundsCommit: a.onBoundsCommit,
+              onCreateRange: a.onCreateRange,
+              onFocusWaveformShell: a.onFocusWaveformShell,
+              seekToTime: a.seekToTime,
+            },
+            suppressClickAfterPointer,
+          );
+          return;
+        }
         applyOverlayPointerUpIntent(
           intent,
           {
@@ -80,9 +180,19 @@ export function useWaveformSegmentDrag(
         return;
       }
 
-      const clamped = boundsForOverlayDrag(drag, timeSec, a.durationSec);
+      let clamped = boundsForOverlayDrag(drag, timeSec, a.durationSec);
       applySegmentDraft(null);
       if (!clamped) return;
+
+      const finalized = finalizeEditDragBounds(
+        a,
+        drag,
+        clamped,
+        snapEnabled,
+        WAVEFORM_SEGMENT_MIN_SPAN_SEC,
+      );
+      if (!finalized) return;
+      clamped = finalized;
 
       const intent = resolveOverlayPointerUpIntent({
         mode: drag.mode,
@@ -154,6 +264,8 @@ export function useWaveformSegmentDrag(
 
       const timeSec = a.clientXToTimeSec(ev.clientX);
       if (a.enableCreateRange && a.onCreateRange) {
+        // 锚点保持原始时间：纯点击空白处用于 seek（不吸附），框选范围在
+        // move / finish 阶段由 snapCreateRange 对两端整体吸附。
         dragRef.current = {
           mode: "create",
           pointerId: ev.pointerId,
@@ -180,6 +292,7 @@ export function useWaveformSegmentDrag(
       const drag = dragRef.current;
       if (!drag || drag.pointerId !== ev.pointerId) return;
       const a = argsRef.current;
+      const snapEnabled = isSegmentSnapEnabled(readSegmentOverlayModifiers(ev));
       const timeSec = a.clientXToTimeSec(ev.clientX);
 
       if (drag.mode === "create") {
@@ -188,15 +301,24 @@ export function useWaveformSegmentDrag(
         if (Math.abs(ev.clientX - drag.anchorClientX) > WAVEFORM_OVERLAY_DRAG_MOVE_THRESHOLD_PX) {
           drag.moved = true;
         }
-        setCreatePreview({ startSec: lo, endSec: hi });
+        const clamped = snapCreateRange(a, lo, hi, snapEnabled);
+        setCreatePreview({ startSec: clamped.startSec, endSec: clamped.endSec });
         return;
       }
 
       if (Math.abs(ev.clientX - drag.anchorClientX) > WAVEFORM_OVERLAY_DRAG_MOVE_THRESHOLD_PX) {
         drag.moved = true;
       }
-      const clamped = boundsForOverlayDrag(drag, timeSec, a.durationSec);
+      let clamped = boundsForOverlayDrag(drag, timeSec, a.durationSec);
       if (!clamped) return;
+      clamped =
+        finalizeEditDragBounds(
+          a,
+          drag,
+          clamped,
+          snapEnabled,
+          SEGMENT_BOUNDS_LIVE_MIN_SPAN_SEC,
+        ) ?? clamped;
       applySegmentDraft({ idx: drag.segmentIdx, ...clamped });
     },
     [applySegmentDraft, argsRef, setCreatePreview],

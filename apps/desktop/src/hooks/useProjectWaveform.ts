@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { formatMediaTime } from "../utils/formatMediaTime";
+import { exportMinimapPeaksFromWaveSurfer } from "../services/waveform/minimapPeaksSource";
 import { createWaveformAppliedZoomState } from "../utils/waveformAppliedZoom";
 import { useWaveformHeightSync } from "./useWaveformHeightSync";
 import { useWaveformPlayback } from "./useWaveformPlayback";
@@ -203,6 +204,14 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     ws.toggleInteraction(!disabled);
   }, [disabled, isReady]);
 
+  const exportMinimapPeaks = useCallback(
+    (overviewWidthPx: number) => {
+      if (!isReady) return null;
+      return exportMinimapPeaksFromWaveSurfer(wsRef.current, overviewWidthPx);
+    },
+    [isReady],
+  );
+
   return {
     containerRef,
     stickyShellRef,
@@ -226,5 +235,6 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     cancelInFlightZoom,
     peaksHotSwitchPending: zoomSync.peaksHotSwitchPending,
     peaksApplied: zoomSync.peaksApplied,
+    exportMinimapPeaks,
   };
 }

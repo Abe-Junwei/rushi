@@ -7,6 +7,7 @@ import {
   timeToTimelinePx,
   timelinePxToTime,
   visibleTimeWindowFromScroll,
+  paddedVisibleTimeWindow,
 } from "./waveformProjection";
 
 describe("waveformProjection — single horizontal scale", () => {
@@ -60,6 +61,21 @@ describe("waveformProjection — single horizontal scale", () => {
     });
     expect(w.start).toBeCloseTo((160 / 320) * 1263, 4);
     expect(w.end).toBe(1263);
+  });
+
+  it("paddedVisibleTimeWindow expands visible span for ruler prefetch", () => {
+    const base = {
+      scrollLeftPx: 160,
+      viewportWidthPx: 800,
+      timelineWidthPx: 3200,
+      durationSec: 1263,
+    };
+    const view = visibleTimeWindowFromScroll(base);
+    const padded = paddedVisibleTimeWindow(base);
+    expect(padded.start).toBeLessThan(view.start);
+    expect(padded.end).toBeGreaterThan(view.end);
+    expect(padded.start).toBeGreaterThanOrEqual(0);
+    expect(padded.end).toBeLessThanOrEqual(1263);
   });
 
   it("playheadTimelineLeftPct matches ratio projection", () => {

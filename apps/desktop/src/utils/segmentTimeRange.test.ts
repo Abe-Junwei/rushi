@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   clampCreateRangeClearOfSegments,
+  describeCreateRangePolicyFailure,
+  resolveCreateRangeForPolicy,
   segmentTimeRangesOverlap,
 } from "./segmentTimeRange";
 
@@ -51,5 +53,56 @@ describe("clampCreateRangeClearOfSegments", () => {
   it("returns null when the range is mostly over an existing segment", () => {
     expect(clampCreateRangeClearOfSegments(segs, 0.5, 1.5)).toBeNull();
     expect(clampCreateRangeClearOfSegments(segs, 2.02, 2.04)).toBeNull();
+  });
+});
+
+describe("resolveCreateRangeForPolicy", () => {
+  const segs = [
+    { start_sec: 0, end_sec: 2 },
+    { start_sec: 3, end_sec: 5 },
+  ];
+
+  it("trim matches clampCreateRangeClearOfSegments (trims / rejects)", () => {
+    expect(resolveCreateRangeForPolicy(segs, 1.97, 2.12, "trim")).toEqual(
+      clampCreateRangeClearOfSegments(segs, 1.97, 2.12),
+    );
+    expect(resolveCreateRangeForPolicy(segs, 0.5, 1.5, "trim")).toBeNull();
+  });
+
+  it("defaults to trim when policy is omitted", () => {
+    expect(resolveCreateRangeForPolicy(segs, 0.5, 1.5)).toBeNull();
+    expect(resolveCreateRangeForPolicy(segs, 2.2, 2.8)).toEqual({ startSec: 2.2, endSec: 2.8 });
+  });
+
+  it("reject blocks any overlap and never trims", () => {
+    // Float bleed into a neighbor → reject returns null (trim would have shaved it).
+    expect(resolveCreateRangeForPolicy(segs, 1.97, 2.12, "reject")).toBeNull();
+    // Fully clear gap → accepted as-is.
+    expect(resolveCreateRangeForPolicy(segs, 2.2, 2.8, "reject")).toEqual({
+      startSec: 2.2,
+      endSec: 2.8,
+    });
+  });
+
+  it("allow keeps the raw range even when it overlaps existing segments", () => {
+    expect(resolveCreateRangeForPolicy(segs, 0.5, 1.5, "allow")).toEqual({
+      startSec: 0.5,
+      endSec: 1.5,
+    });
+    // Still rejects a sub-min-span selection.
+    expect(resolveCreateRangeForPolicy(segs, 2.2, 2.21, "allow")).toBeNull();
+  });
+});
+
+describe("describeCreateRangePolicyFailure", () => {
+  const segs = [
+    { start_sec: 0, end_sec: 2 },
+    { start_sec: 3, end_sec: 5 },
+  ];
+
+  it("returns policy-specific messages", () => {
+    expect(describeCreateRangePolicyFailure("reject", 0.5, 1.5, segs)).toContain("重叠");
+    expect(describeCreateRangePolicyFailure("trim", 0.5, 1.5, segs)).toContain("重叠");
+    expect(describeCreateRangePolicyFailure("trim", 2.1, 2.4, segs)).toContain("空隙");
   });
 });

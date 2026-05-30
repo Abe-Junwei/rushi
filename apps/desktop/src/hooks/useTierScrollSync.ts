@@ -97,6 +97,7 @@ export function useTierScrollSync(args: {
     () => ({
       onTierScroll: () => {
         syncScrollFromTierDom();
+        tierScrollMetrics.refreshLayout();
         const suppressRef = argsRef.current.playbackFollowSuppressUntilRef;
         if (suppressRef && performance.now() >= programmaticScrollUntilRef.current) {
           suppressRef.current = performance.now() + 2500;

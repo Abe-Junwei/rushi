@@ -51,7 +51,7 @@ export function GlossaryTermTable({
   onRowDelete,
 }: GlossaryTermTableProps) {
   return (
-    <div className="overflow-x-auto rounded-xl border border-notion-divider">
+    <div className="overflow-x-auto rounded-md border border-notion-divider">
       <table className="w-full min-w-[720px] border-collapse text-left text-[12px]">
         <thead>
           <tr className="border-b border-notion-divider bg-notion-callout-bg text-notion-text-muted">

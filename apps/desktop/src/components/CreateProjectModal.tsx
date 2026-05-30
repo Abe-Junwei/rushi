@@ -4,6 +4,7 @@ import { PANEL_CONTROL_TYPOGRAPHY, PANEL_TYPOGRAPHY } from "../config/typography
 import type { ProjectControllerApi } from "../pages/useProjectController";
 import * as fileApi from "../tauri/fileApi";
 import { FloatingPanelTemplate } from "./PanelTemplate";
+import { CONTROL_BTN_PRIMARY_PROMINENT, CONTROL_BTN_SECONDARY_PROMINENT } from "../config/controlStyles";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
 /** 按当前表单文案测算；避免 preset 默认取 maxHeight=560 留下底部空白 */
@@ -100,7 +101,7 @@ export function CreateProjectModal({ controller: c, onClose }: CreateProjectModa
 
             <button
               type="submit"
-              className={`flex w-full items-center justify-center rounded-lg border border-transparent bg-zen-saffron px-4 py-2 ${PANEL_TYPOGRAPHY.button} text-notion-bg transition-colors hover:bg-zen-saffron-mid focus:outline-none focus:ring-2 focus:ring-zen-saffron/50 focus:ring-offset-1 disabled:opacity-40`}
+              className={`${CONTROL_BTN_PRIMARY_PROMINENT} w-full`}
               disabled={isBusy}
             >
               {busy ? "创建中…" : "创建项目"}
@@ -118,7 +119,7 @@ export function CreateProjectModal({ controller: c, onClose }: CreateProjectModa
             <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
               <button
                 type="button"
-                className={`flex items-center justify-center gap-2 rounded-lg border border-notion-border bg-notion-sidebar px-3 py-2 ${PANEL_TYPOGRAPHY.button} text-notion-text transition-colors hover:bg-notion-sidebar-hover focus:outline-none focus:ring-2 focus:ring-zen-saffron/30 disabled:opacity-40`}
+                className={`${CONTROL_BTN_SECONDARY_PROMINENT} w-full gap-2`}
                 disabled={isBusy}
                 onClick={() => void createFromAudio()}
               >
@@ -127,7 +128,7 @@ export function CreateProjectModal({ controller: c, onClose }: CreateProjectModa
               </button>
               <button
                 type="button"
-                className={`flex items-center justify-center gap-2 rounded-lg border border-notion-border bg-notion-sidebar px-3 py-2 ${PANEL_TYPOGRAPHY.button} text-notion-text transition-colors hover:bg-notion-sidebar-hover focus:outline-none focus:ring-2 focus:ring-zen-saffron/30 disabled:opacity-40`}
+                className={`${CONTROL_BTN_SECONDARY_PROMINENT} w-full gap-2`}
                 disabled={isBusy}
                 onClick={() => void createFromText()}
               >

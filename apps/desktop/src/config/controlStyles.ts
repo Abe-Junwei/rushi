@@ -1,36 +1,43 @@
 /**
- * 项目坞控件 — 对齐仓库根 DESIGN.md Serene Scholar button / input 语义。
- * 统一使用 `CONTROL_*` 语义导出；圆角 12px = `rounded-xl`，高 44px，无常态阴影。
+ * 项目坞控件 — 对齐仓库根 DESIGN.md Notion Zen button / input 语义。
+ * 标准：h-8 (32px)、rounded-sm (4px)、无常态 shadow。
  */
 
-/** `button-primary`：primary + on-primary，14px/600，44×，rounded.md */
+/** `button-primary`：saffron 底 + 白字，4px 圆角 */
 export const CONTROL_BTN_PRIMARY =
-  "inline-flex h-11 min-h-[44px] items-center justify-center rounded-xl border border-transparent bg-zen-saffron px-5 font-sans text-sm font-semibold text-notion-bg shadow-none ring-0 transition-colors hover:bg-zen-saffron-mid focus:shadow-none focus:ring-0 focus-visible:shadow-none focus-visible:ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-saffron/30 disabled:cursor-not-allowed disabled:opacity-40";
+  "inline-flex h-8 min-h-[32px] items-center justify-center rounded-sm border border-transparent bg-zen-saffron px-4 font-sans text-sm font-semibold text-notion-bg shadow-none ring-0 transition-colors hover:bg-zen-saffron-mid focus:shadow-none focus:ring-0 focus-visible:shadow-none focus-visible:ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-saffron/30 disabled:cursor-not-allowed disabled:opacity-40";
 
-/** `button-secondary`：canvas + hairline + ink，14px/600 */
+/** `button-secondary`：notion-sidebar 底 + hairline */
 export const CONTROL_BTN_SECONDARY =
-  "inline-flex h-11 min-h-[44px] items-center justify-center rounded-xl border border-notion-border bg-notion-bg px-5 font-sans text-sm font-semibold text-notion-text shadow-none ring-0 transition-colors hover:border-notion-text-light hover:bg-notion-sidebar focus:shadow-none focus:ring-0 focus-visible:shadow-none focus-visible:ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-notion-text/20 disabled:cursor-not-allowed disabled:opacity-40";
+  "inline-flex h-8 min-h-[32px] items-center justify-center rounded-sm border border-notion-border bg-notion-sidebar px-4 font-sans text-sm font-semibold text-notion-text shadow-none ring-0 transition-colors hover:border-notion-text-light hover:bg-notion-sidebar-hover focus:shadow-none focus:ring-0 focus-visible:shadow-none focus-visible:ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-notion-text/20 disabled:cursor-not-allowed disabled:opacity-40";
 
-/** 在线 STT 入口：在 secondary 形之上用 saffron 发线强调实验能力 */
+/** 在线 STT 入口：secondary 形 + saffron 发线 */
 export const CONTROL_BTN_ONLINE_STT =
-  "inline-flex h-11 min-h-[44px] shrink-0 items-center justify-center rounded-xl border border-zen-saffron/35 bg-notion-bg px-5 font-sans text-sm font-semibold text-notion-text shadow-none ring-0 transition-colors hover:border-zen-saffron/55 hover:bg-zen-saffron/10 focus:shadow-none focus:ring-0 focus-visible:shadow-none focus-visible:ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-saffron/35 disabled:cursor-not-allowed disabled:opacity-40";
+  "inline-flex h-8 min-h-[32px] shrink-0 items-center justify-center rounded-sm border border-zen-saffron/35 bg-notion-bg px-4 font-sans text-sm font-semibold text-notion-text shadow-none ring-0 transition-colors hover:border-zen-saffron/55 hover:bg-zen-saffron/10 focus:shadow-none focus:ring-0 focus-visible:shadow-none focus-visible:ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-saffron/35 disabled:cursor-not-allowed disabled:opacity-40";
 
-/** 幽灵/第三态：canvas 底 + hairline，字色 muted */
+/** 幽灵/第三态：透明底，hover sidebar */
 export const CONTROL_BTN_GHOST =
-  "inline-flex h-11 min-h-[44px] items-center justify-center rounded-xl border border-notion-border bg-notion-bg px-5 font-sans text-sm font-semibold text-notion-text-muted shadow-none ring-0 transition-colors hover:bg-notion-sidebar focus:shadow-none focus:ring-0 focus-visible:shadow-none focus-visible:ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-notion-text/20 disabled:cursor-not-allowed disabled:opacity-40";
+  "inline-flex h-8 min-h-[32px] items-center justify-center rounded-sm border border-transparent bg-transparent px-4 font-sans text-sm font-semibold text-notion-text-muted shadow-none ring-0 transition-colors hover:bg-notion-sidebar-hover hover:text-notion-text focus:shadow-none focus:ring-0 focus-visible:shadow-none focus-visible:ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-notion-text/20 disabled:cursor-not-allowed disabled:opacity-40";
 
-/** 危险操作按钮：cinnabar 主色，标准尺寸。 | Destructive button: cinnabar tone, standard size. */
+/** 危险操作：白底 + cinnabar 边/字；hover 填 cinnabar */
 export const CONTROL_BTN_DANGER =
-  "inline-flex h-10 shrink-0 items-center justify-center rounded-xl border border-transparent bg-zen-cinnabar px-5 font-sans text-sm font-semibold text-notion-bg transition-colors hover:bg-zen-cinnabar/90 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-cinnabar/30 disabled:cursor-not-allowed disabled:opacity-40";
+  "inline-flex h-8 shrink-0 items-center justify-center rounded-sm border border-zen-cinnabar bg-notion-bg px-4 font-sans text-sm font-semibold text-zen-cinnabar shadow-none ring-0 transition-colors hover:border-zen-cinnabar hover:bg-zen-cinnabar hover:text-notion-bg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-cinnabar/30 disabled:cursor-not-allowed disabled:opacity-40";
 
-/** 危险操作按钮：cinnabar 主色，紧凑尺寸。 | Destructive button: cinnabar tone, compact size. */
+/** 危险操作紧凑 */
 export const CONTROL_BTN_DANGER_COMPACT =
-  "inline-flex items-center justify-center rounded-xl border border-transparent bg-zen-cinnabar px-3 py-2 font-sans text-[11px] font-semibold text-notion-bg transition-colors hover:bg-zen-cinnabar/90 disabled:cursor-not-allowed disabled:opacity-40";
+  "inline-flex h-7 items-center justify-center rounded-sm border border-zen-cinnabar bg-notion-bg px-3 font-sans text-[11px] font-semibold text-zen-cinnabar transition-colors hover:bg-zen-cinnabar hover:text-notion-bg disabled:cursor-not-allowed disabled:opacity-40";
 
-/** `text-input`：canvas + body-md + hairline；显式关 shadow/ring，避免与 workspace 或 WebKit 默认叠层 */
+/** `text-input`：白底 + hairline + saffron focus */
 export const CONTROL_TEXT_INPUT =
-  "block w-full min-h-[44px] rounded-xl border border-notion-border bg-notion-bg px-4 py-3 font-sans text-sm font-normal leading-snug text-notion-text shadow-none ring-0 outline-none transition-colors placeholder:text-notion-text-light focus:border-zen-saffron focus:shadow-none focus:ring-0 focus-visible:shadow-none focus-visible:ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-zen-saffron/25 disabled:cursor-not-allowed disabled:opacity-40";
+  "block w-full h-8 min-h-[32px] rounded-sm border border-notion-border bg-notion-bg px-3 py-1.5 font-sans text-sm font-normal leading-snug text-notion-text shadow-none ring-0 outline-none transition-colors placeholder:text-notion-text-light focus:border-zen-saffron focus:shadow-none focus:ring-0 focus-visible:shadow-none focus-visible:ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-zen-saffron/25 disabled:cursor-not-allowed disabled:opacity-40";
 
-/** 与 text-input 同高同边，保留系统下拉箭头 */
+/** 与 text-input 同高，保留系统下拉箭头 */
 export const CONTROL_SELECT =
-  "h-11 min-h-[44px] w-full min-w-[11rem] cursor-pointer rounded-xl border border-notion-border bg-notion-bg py-0 pl-4 pr-10 font-sans text-sm font-medium text-notion-text-muted shadow-none ring-0 transition-colors hover:border-notion-text-light hover:bg-notion-sidebar focus:shadow-none focus:ring-0 focus-visible:shadow-none focus-visible:ring-0 disabled:opacity-40";
+  "h-8 min-h-[32px] w-full min-w-[11rem] cursor-pointer rounded-sm border border-notion-border bg-notion-bg py-0 pl-3 pr-9 font-sans text-sm font-medium text-notion-text-muted shadow-none ring-0 transition-colors hover:border-notion-text-light hover:bg-notion-sidebar focus:shadow-none focus:ring-0 focus-visible:shadow-none focus-visible:ring-0 disabled:opacity-40";
+
+/** 欢迎页 / 建项 hero CTA：40px 高，仍 4px 圆角（DESIGN § Prominent controls） */
+export const CONTROL_BTN_PRIMARY_PROMINENT =
+  "inline-flex h-10 min-h-[40px] items-center justify-center rounded-sm border border-transparent bg-zen-saffron px-5 font-sans text-sm font-semibold text-notion-bg shadow-none ring-0 transition-colors hover:bg-zen-saffron-mid focus:shadow-none focus:ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-saffron/30 disabled:cursor-not-allowed disabled:opacity-40";
+
+export const CONTROL_BTN_SECONDARY_PROMINENT =
+  "inline-flex h-10 min-h-[40px] items-center justify-center rounded-sm border border-notion-border bg-notion-sidebar px-5 font-sans text-sm font-semibold text-notion-text shadow-none ring-0 transition-colors hover:border-notion-text-light hover:bg-notion-sidebar-hover focus:shadow-none focus:ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-notion-text/20 disabled:cursor-not-allowed disabled:opacity-40";

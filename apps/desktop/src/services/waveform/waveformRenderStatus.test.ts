@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   resolveWaveformCenterStatusLabel,
+  resolveWaveformFooterStatusLabel,
   resolveWaveformHeaderStatusLabel,
 } from "./waveformRenderStatus";
 
@@ -9,6 +10,12 @@ const base = {
   mountDeferTimedOut: false,
   waveformReady: true,
 } as const;
+
+describe("resolveWaveformFooterStatusLabel", () => {
+  it("mirrors header steady-state labels for editor footer", () => {
+    expect(resolveWaveformFooterStatusLabel({ ...base, phase: "decode" })).toBe("正在优化波形…");
+  });
+});
 
 describe("resolveWaveformHeaderStatusLabel", () => {
   it("shows ready when peaks are applied", () => {

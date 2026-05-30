@@ -32,7 +32,7 @@ export function WelcomeTopBar({ asrHealth, asrCaps, selectedHubModelId, catalogS
     catalogStatus,
   });
   return (
-    <header className="flex h-16 shrink-0 items-center justify-between border-b border-notion-divider bg-notion-bg px-10">
+    <header className="flex h-12 shrink-0 items-center justify-between border-b border-notion-divider bg-notion-bg px-10">
       <div className="flex items-center gap-6" />
       <div className="flex items-center gap-4">
         {/* Status indicators */}

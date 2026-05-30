@@ -1,7 +1,7 @@
 /**
  * CSS 自定义属性 — 与 tailwind.config.js / src/config/tokens.ts 同源。
  * 供独立 CSS 模块引用（避免各文件中硬编码 hex 发散）。
- * 色值对齐仓库根 DESIGN.md（Serene Scholar）。
+ * 色值对齐仓库根 DESIGN.md（Notion Zen）。
  */
 
 :root {
@@ -28,7 +28,13 @@
   --notion-callout-bg: #f1f1ef;
   --notion-callout-border: #e3e2e0;
 
-  /* Serene Scholar footer（shell.css 引用） */
+  /* 波形 / WaveSurfer（DESIGN.md waveform-*；与 tailwind zen-wf-* 同源） */
+  --zen-wf-surface: #ffffff;
+  --zen-wf-wave: #c4c4c8;
+  --zen-wf-progress: #8e8e93;
+  --zen-wf-cursor: #6a6a6f;
+
+  /* App shell footer（shell.css 引用；深色底与主 Notion 工作台分离） */
   --shell-footer-bg: #31312c;
   --shell-footer-fg: #f3f0e9;
   --shell-footer-code-bg: #1c1c18;

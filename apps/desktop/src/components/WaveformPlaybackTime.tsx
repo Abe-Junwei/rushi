@@ -6,6 +6,7 @@ type WaveformPlaybackTimeProps = {
   isPlaying: boolean;
   isReady: boolean;
   durationSec: number;
+  currentTimeSec: number;
   getPlayheadTime: () => number;
   formatMediaTime: (sec: number) => string;
 };
@@ -15,12 +16,14 @@ export const WaveformPlaybackTime = memo(function WaveformPlaybackTime({
   isPlaying,
   isReady,
   durationSec,
+  currentTimeSec,
   getPlayheadTime,
   formatMediaTime,
 }: WaveformPlaybackTimeProps) {
   const { displayTimeLabel, durationLabel } = useWaveformLiveClock({
     isPlaying,
     isReady,
+    currentTimeSec,
     getPlayheadTime,
     formatMediaTime,
     durationSec,

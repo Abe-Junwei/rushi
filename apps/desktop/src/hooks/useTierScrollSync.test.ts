@@ -79,7 +79,6 @@ describe("useTierScrollSync", () => {
     act(() => {
       tier.scrollLeft = 96;
       result.current.onTierScroll();
-      tier.dispatchEvent(new Event("scroll"));
     });
     await act(async () => {
       await new Promise((r) => setTimeout(r, 0));

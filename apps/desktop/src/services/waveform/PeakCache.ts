@@ -153,20 +153,51 @@ export class PeakCache {
     return this.storeResample(key, bundle);
   }
 
+  private pickCoarsestLevelData(): WaveformData | null {
+    for (const lod of PEAK_LOD_LEVELS) {
+      const data = this.levels.get(lod.level);
+      if (data) return data;
+    }
+    return null;
+  }
+
   /** L0 resample for minimap strip (fixed overview width, no timeline floor). */
   getMinimapPeaks(overviewWidthPx: number, layoutMediaDurationSec?: number): WaveSurferPeaksBundle | null {
-    const l0 = this.levels.get(0);
-    if (!l0) return null;
+    const base = this.pickCoarsestLevelData();
+    if (!base) return null;
     const layoutDur =
       layoutMediaDurationSec != null && layoutMediaDurationSec > 0
         ? layoutMediaDurationSec
         : this.durationSec;
     const widthPx = Math.max(1, Math.floor(overviewWidthPx));
-    const resampled = resampleWaveformToWidth(l0, widthPx);
+    const resampled = resampleWaveformToWidth(base, widthPx);
     return {
       peaks: waveformDataToWaveSurferPeaks(resampled),
       duration: layoutDur,
     };
+  }
+
+  async getMinimapPeaksAsync(
+    overviewWidthPx: number,
+    layoutMediaDurationSec?: number,
+  ): Promise<WaveSurferPeaksBundle | null> {
+    try {
+      const base = this.pickCoarsestLevelData();
+      if (!base) return null;
+      const layoutDur =
+        layoutMediaDurationSec != null && layoutMediaDurationSec > 0
+          ? layoutMediaDurationSec
+          : this.durationSec;
+      const widthPx = Math.max(1, Math.floor(overviewWidthPx));
+      const resampled = resampleWaveformToWidth(base, widthPx);
+      const peaks =
+        resampled.length > 4_000
+          ? await waveformDataToWaveSurferPeaksAsync(resampled)
+          : waveformDataToWaveSurferPeaks(resampled);
+      return { peaks, duration: layoutDur };
+    } catch {
+      return null;
+    }
   }
 
   private storeResample(key: string, bundle: WaveSurferPeaksBundle): WaveSurferPeaksBundle {

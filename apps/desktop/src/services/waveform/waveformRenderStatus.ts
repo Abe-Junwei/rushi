@@ -7,7 +7,12 @@ type StatusInput = {
   waveformReady: boolean;
 };
 
-/** Steady-state label for wave-hd (top-right). */
+/** Steady-state label for editor footer center (e.g. 正在优化波形…). */
+export function resolveWaveformFooterStatusLabel(input: StatusInput): string | null {
+  return resolveWaveformHeaderStatusLabel(input);
+}
+
+/** @deprecated use resolveWaveformFooterStatusLabel */
 export function resolveWaveformHeaderStatusLabel(input: StatusInput): string | null {
   const { phase, backgroundPeaksEnabled, waveformReady } = input;
 

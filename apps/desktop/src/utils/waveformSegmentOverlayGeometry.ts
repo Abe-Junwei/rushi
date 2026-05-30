@@ -39,7 +39,7 @@ export function resolveSegmentBoundsAt(
   return { startSec: seg.start_sec, endSec: seg.end_sec };
 }
 
-/** 框选预览 DOM 几何（left clamp ≥ 0）。 */
+/** 框选预览 DOM 几何（timeline 坐标，随 tier 滚动）。 */
 export function computeCreatePreviewStyle(input: {
   createPreview: CreateRangePreview;
   timelineWidthPx: number;

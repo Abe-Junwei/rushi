@@ -7,7 +7,7 @@ export function useWaveformTimelineMountGate(input: {
   mediaDurationSec: number;
   backgroundPeaksEnabled: boolean;
   peaksLoading: boolean;
-  peakCache: unknown | null;
+  peakCache: unknown;
   peaksUnavailable: boolean;
 }) {
   const deferRequested = resolveWaveformMountDeferred({

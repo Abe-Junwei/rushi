@@ -1,11 +1,8 @@
 import { memo, useEffect, useRef, useState } from "react";
 import type { ProjectControllerApi } from "../pages/useProjectController";
-import type { TranscriptionLayerApi } from "../pages/useTranscriptionLayer";
 import * as fileApi from "../tauri/fileApi";
-import { isTauriRuntime } from "../config/env";
 import { ArrowLeft, Download, FileInput, FileOutput, Settings } from "lucide-react";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
-import { EditorToolbarWaveformMenu } from "./EditorToolbarWaveformMenu";
 const ghostBtn =
   "inline-flex h-8 items-center justify-center rounded-md border-0 bg-transparent px-2.5 text-[12px] font-medium text-notion-text-muted transition-colors hover:bg-notion-sidebar-hover hover:text-notion-text disabled:cursor-not-allowed disabled:opacity-40";
 const saveBtn =
@@ -14,7 +11,6 @@ const menuItem =
   "dropdown-item w-full px-3 py-2 text-left text-[12px] text-notion-text transition-colors hover:bg-notion-sidebar-hover disabled:cursor-not-allowed disabled:text-notion-text-light";
 interface EditorToolbarProps {
   controller: ProjectControllerApi;
-  tx: TranscriptionLayerApi;
   exportKey: string;
   onExportSelect: (key: string) => void;
   projectName: string;
@@ -24,7 +20,6 @@ interface EditorToolbarProps {
 }
 export const EditorToolbar = memo(function EditorToolbar({
   controller: c,
-  tx,
   exportKey,
   onExportSelect,
   projectName,
@@ -33,24 +28,20 @@ export const EditorToolbar = memo(function EditorToolbar({
   onOpenEnvironment,
 }: EditorToolbarProps) {
   const [pendingImport, setPendingImport] = useState<null | "audio" | "text" | "bundle">(null);
-  const [clearingPeaks, setClearingPeaks] = useState(false);
   const importMenuRef = useRef<HTMLDetailsElement | null>(null);
   const exportMenuRef = useRef<HTMLDetailsElement | null>(null);
-  const waveformMenuRef = useRef<HTMLDetailsElement | null>(null);
 
   useEffect(() => {
     const closeMenus = () => {
       importMenuRef.current?.removeAttribute("open");
       exportMenuRef.current?.removeAttribute("open");
-      waveformMenuRef.current?.removeAttribute("open");
     };
     const onWindowPointerDown = (event: PointerEvent) => {
       const target = event.target as Node | null;
       if (!target) return;
       if (
         importMenuRef.current?.contains(target) ||
-        exportMenuRef.current?.contains(target) ||
-        waveformMenuRef.current?.contains(target)
+        exportMenuRef.current?.contains(target)
       ) {
         return;
       }
@@ -108,35 +99,9 @@ export const EditorToolbar = memo(function EditorToolbar({
     }
   };
 
-  const clearPeaksDisabled =
-    !isTauriRuntime() ||
-    c.busy ||
-    clearingPeaks ||
-    tx.peaksLoading ||
-    !c.currentFileId ||
-    !c.audioSrc;
-
-  const onClearWaveformPeaks = async () => {
-    if (clearPeaksDisabled) return;
-    const ok = window.confirm(
-      "将删除当前音频的预计算波形 peaks 缓存，并在后台重新生成。长音频可能需要数十秒。继续？",
-    );
-    if (!ok) return;
-    waveformMenuRef.current?.removeAttribute("open");
-    setClearingPeaks(true);
-    try {
-      await tx.clearWaveformPeaksCache();
-      tx.showEditorHint("波形已清除，正在重新生成");
-    } catch (e) {
-      c.setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      setClearingPeaks(false);
-    }
-  };
-
   return (
     <div className="toolbar-popover-root z-[90] shrink-0 border-b border-notion-divider bg-notion-bg px-page-margin">
-      <div className="flex h-16 flex-nowrap items-center gap-3 overflow-visible">
+      <div className="flex h-12 flex-nowrap items-center gap-3 overflow-visible">
         <div className="mr-auto flex min-w-0 items-center gap-2.5 pr-2">
           <button
             type="button"
@@ -186,19 +151,6 @@ export const EditorToolbar = memo(function EditorToolbar({
           </button>
 
           <div className="ml-1 flex items-center gap-2">
-            <EditorToolbarWaveformMenu
-              controller={c}
-              tx={tx}
-              menuRef={waveformMenuRef}
-              clearPeaksDisabled={clearPeaksDisabled}
-              clearingPeaks={clearingPeaks}
-              onCloseSiblingMenus={() => {
-                importMenuRef.current?.removeAttribute("open");
-                exportMenuRef.current?.removeAttribute("open");
-              }}
-              onClearWaveformPeaks={onClearWaveformPeaks}
-            />
-
             <details ref={importMenuRef} className="dropdown-anchor">
               <summary
                 className={`${ghostBtn} list-none cursor-pointer marker:content-none [&::-webkit-details-marker]:hidden ${
@@ -211,7 +163,6 @@ export const EditorToolbar = memo(function EditorToolbar({
                     return;
                   }
                   exportMenuRef.current?.removeAttribute("open");
-                  waveformMenuRef.current?.removeAttribute("open");
                 }}
               >
                 <span className="inline-flex items-center gap-1.5">
@@ -261,7 +212,6 @@ export const EditorToolbar = memo(function EditorToolbar({
                 className={`${ghostBtn} list-none cursor-pointer marker:content-none [&::-webkit-details-marker]:hidden`}
                 onClick={() => {
                   importMenuRef.current?.removeAttribute("open");
-                  waveformMenuRef.current?.removeAttribute("open");
                 }}
               >
                 <span className="inline-flex items-center gap-1.5">
@@ -303,11 +253,6 @@ function areEditorToolbarPropsEqual(prev: EditorToolbarProps, next: EditorToolba
     prev.controller.currentFileId === next.controller.currentFileId &&
     prev.controller.audioSrc === next.controller.audioSrc &&
     prev.controller.busy === next.controller.busy &&
-    prev.controller.prepareModelBusy === next.controller.prepareModelBusy &&
-    prev.tx.peaksLoading === next.tx.peaksLoading &&
-    prev.tx.backgroundPeaksEnabled === next.tx.backgroundPeaksEnabled &&
-    prev.tx.minimapEnabled === next.tx.minimapEnabled &&
-    prev.tx.hotSwitchWhilePlaying === next.tx.hotSwitchWhilePlaying &&
-    prev.tx.clearWaveformPeaksCache === next.tx.clearWaveformPeaksCache
+    prev.controller.prepareModelBusy === next.controller.prepareModelBusy
   );
 }

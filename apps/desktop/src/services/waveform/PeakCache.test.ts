@@ -4,9 +4,11 @@ const resampleMock = vi.fn((data: unknown) => data);
 const toPeaksMock = vi.fn((_data?: unknown) => [[0, 0.5, -0.1, 0.2]]);
 
 vi.mock("./audiowaveformDat", () => ({
-  loadWaveformDatFromUrl: vi.fn(() => Promise.resolve({ sample_rate: 44100 })),
+  loadWaveformDatFromUrl: vi.fn(() => Promise.resolve({ sample_rate: 44100, length: 600 })),
   resampleWaveformForPxPerSec: (data: unknown) => resampleMock(data),
+  resampleWaveformToWidth: (data: unknown) => resampleMock(data),
   waveformDataToWaveSurferPeaks: (data: unknown) => toPeaksMock(data),
+  waveformDataToWaveSurferPeaksAsync: (data: unknown) => Promise.resolve(toPeaksMock(data)),
   waveformDurationSec: () => 600,
 }));
 
@@ -102,5 +104,31 @@ describe("PeakCache", () => {
     expect(low).not.toBe(mid);
     expect(resampleMock).toHaveBeenCalledTimes(2);
     expect(low.peaks[0]?.length).not.toBe(mid.peaks[0]?.length);
+  });
+
+  it("getMinimapPeaks uses coarsest loaded LOD when L0 is absent", async () => {
+    const cache = await PeakCache.fromLevelUrls([
+      { level: 1, pixelsPerSecond: 20, url: "asset://l1.dat" },
+    ]);
+    expect(cache).not.toBeNull();
+    if (!cache) return;
+
+    const bundle = cache.getMinimapPeaks(400, 600);
+    expect(bundle).not.toBeNull();
+    expect(bundle?.duration).toBe(600);
+    expect(resampleMock).toHaveBeenCalled();
+    expect(toPeaksMock).toHaveBeenCalled();
+  });
+
+  it("getMinimapPeaksAsync resolves minimap peaks", async () => {
+    const cache = await PeakCache.fromLevelUrls([
+      { level: 0, pixelsPerSecond: 2, url: "asset://l0.dat" },
+    ]);
+    expect(cache).not.toBeNull();
+    if (!cache) return;
+
+    const bundle = await cache.getMinimapPeaksAsync(320, 600);
+    expect(bundle).not.toBeNull();
+    expect(bundle?.peaks[0]?.length).toBeGreaterThan(0);
   });
 });

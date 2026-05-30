@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from "react";
-import { Mic, Plus } from "lucide-react";
+import { Plus, Mic } from "lucide-react";
+import { CONTROL_BTN_PRIMARY_PROMINENT } from "../config/controlStyles";
 import type { ProjectControllerApi } from "../pages/useProjectController";
 import { AsrErrorBanner } from "./ProjectStatusFeedback";
 import { CreateProjectModal } from "./CreateProjectModal";
@@ -132,7 +133,7 @@ export function WelcomeView({ controller: c, onOpenSettings, page, onPageChange 
             <div className="w-full max-w-sm space-y-4" data-purpose="welcome-actions">
               <button
                 type="button"
-                className="flex w-full items-center justify-center gap-2 rounded-lg border-0 bg-zen-saffron px-8 py-4 text-sm font-semibold text-notion-bg shadow-sm outline-none transition-opacity hover:opacity-90 focus:outline-none disabled:opacity-40"
+                className={`${CONTROL_BTN_PRIMARY_PROMINENT} w-full gap-2`}
                 disabled={c.busy}
                 onClick={() => setShowCreateModal(true)}
               >
@@ -141,7 +142,7 @@ export function WelcomeView({ controller: c, onOpenSettings, page, onPageChange 
               </button>
             </div>
 
-            <div className="mt-20 w-full rounded-xl border border-notion-divider bg-notion-bg/70 p-6">
+            <div className="mt-20 w-full rounded-md border border-notion-divider bg-notion-bg/70 p-6">
               <div className="mb-4 flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <span className="text-zen-saffron">

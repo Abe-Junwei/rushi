@@ -91,11 +91,11 @@ describe("useWaveformViewportController", () => {
     fireRo: () => void,
     nextWidth: number,
   ) {
-    Object.defineProperty(args.tierScrollRef.current!, "clientWidth", {
+    Object.defineProperty(args.tierScrollRef.current, "clientWidth", {
       configurable: true,
       value: nextWidth,
     });
-    Object.defineProperty(args.tierScrollRef.current!, "offsetWidth", {
+    Object.defineProperty(args.tierScrollRef.current, "offsetWidth", {
       configurable: true,
       value: nextWidth,
     });
@@ -104,7 +104,7 @@ describe("useWaveformViewportController", () => {
       offsetWidth: nextWidth,
       getBoundingClientRect: () => ({}),
     } as HTMLDivElement;
-    await act(async () => {
+    act(() => {
       fireRo();
     });
     await flushLayout();
@@ -117,8 +117,8 @@ describe("useWaveformViewportController", () => {
     await triggerViewportGrow(args, fireRo, 1600);
 
     expect(args.reRender).toHaveBeenCalledTimes(1);
-    expect(args.stickyShellRef.current!.style.width).toBe("1600px");
-    expect(args.stretchShellRef.current!.style.transform).toBe("scaleX(2)");
+    expect(args.stickyShellRef.current.style.width).toBe("1600px");
+    expect(args.stretchShellRef.current.style.transform).toBe("scaleX(2)");
   });
 
   it("clears stretch transform after redrawcomplete", async () => {
@@ -127,13 +127,14 @@ describe("useWaveformViewportController", () => {
 
     await triggerViewportGrow(args, fireRo, 1600);
 
-    expect(args.stretchShellRef.current!.style.transform).toBe("scaleX(2)");
+    expect(args.stretchShellRef.current.style.transform).toBe("scaleX(2)");
 
-    await act(async () => {
+    act(() => {
       args.redrawcompleteHandlers.forEach((handler) => handler());
     });
+    await flushLayout();
 
-    expect(args.stretchShellRef.current!.style.transform).toBe("");
+    expect(args.stretchShellRef.current.style.transform).toBe("");
   });
 
   it("re-renders when tier ResizeObserver fires", async () => {
@@ -151,7 +152,7 @@ describe("useWaveformViewportController", () => {
 
     await triggerViewportGrow(args, fireRo, 1600);
 
-    expect(args.tierScrollRef.current!.style.getPropertyValue(WAVEFORM_TIER_VIEWPORT_WIDTH_VAR)).toBe(
+    expect(args.tierScrollRef.current.style.getPropertyValue(WAVEFORM_TIER_VIEWPORT_WIDTH_VAR)).toBe(
       "1600px",
     );
   });
@@ -193,7 +194,7 @@ describe("useWaveformViewportController", () => {
       }),
     );
 
-    await act(async () => {
+    act(() => {
       roCallback?.();
     });
     await flushLayout();
@@ -228,7 +229,7 @@ describe("useWaveformViewportController", () => {
     expect(refitFitAllPxPerSec).toHaveBeenCalledWith(1920);
     expect((args.wsRef.current as { zoom: ReturnType<typeof vi.fn> }).zoom).toHaveBeenCalledWith(0.145);
     expect(onFitAllPxPerSecRefit).toHaveBeenCalledWith(0.145);
-    expect(args.stretchShellRef.current!.style.transform).toBe("scaleX(1.6)");
+    expect(args.stretchShellRef.current.style.transform).toBe("scaleX(1.6)");
     expect(timelineShell.style.width).not.toBe("");
     expect(peaksStageShell.style.width).not.toBe("");
     expect(args.reRender).not.toHaveBeenCalled();
@@ -268,18 +269,18 @@ describe("useWaveformViewportController", () => {
   it("default zoom: tier grow still re-renders when WS container width is unchanged", async () => {
     const args = createSyncArgs(800);
     const timelineCanvasWidth = 44_688;
-    Object.defineProperty(args.containerRef.current!, "clientWidth", {
+    Object.defineProperty(args.containerRef.current, "clientWidth", {
       configurable: true,
       value: timelineCanvasWidth,
     });
-    Object.defineProperty(args.containerRef.current!, "offsetWidth", {
+    Object.defineProperty(args.containerRef.current, "offsetWidth", {
       configurable: true,
       value: timelineCanvasWidth,
     });
     const appliedZoom = createWaveformAppliedZoomState(56);
     const layoutDurationSecRef = { current: 798 };
     const layoutTimelineWidthPxRef = { current: timelineCanvasWidth };
-    const stickyShell = args.stickyShellRef.current!;
+    const stickyShell = args.stickyShellRef.current;
 
     const fireRo = mountWithRo(args, {
       appliedZoom,
@@ -293,7 +294,7 @@ describe("useWaveformViewportController", () => {
 
     expect(args.reRender).toHaveBeenCalledTimes(1);
     expect(stickyShell.style.width).toBe("1600px");
-    expect(args.tierScrollRef.current!.style.getPropertyValue(WAVEFORM_TIER_VIEWPORT_WIDTH_VAR)).toBe(
+    expect(args.tierScrollRef.current.style.getPropertyValue(WAVEFORM_TIER_VIEWPORT_WIDTH_VAR)).toBe(
       "1600px",
     );
   });

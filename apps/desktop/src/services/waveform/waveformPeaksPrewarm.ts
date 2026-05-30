@@ -1,5 +1,5 @@
 import { ensureWaveformPeaks } from "../../tauri/waveformPeaksApi";
-import { readStoredBackgroundPeaksEnabled } from "../../utils/waveformPrefs";
+import { WAVEFORM_BACKGROUND_PEAKS_ENABLED } from "../../utils/waveformPrefs";
 import { peaksEnsureMediaDurationSec } from "../../utils/peakMediaDuration";
 
 /** Fire-and-forget peaks ensure after import/open (Route C2). */
@@ -8,7 +8,7 @@ export function scheduleWaveformPeaksPrewarm(
   fileId: string,
   mediaDurationSec?: number,
 ): void {
-  if (!readStoredBackgroundPeaksEnabled()) return;
+  if (!WAVEFORM_BACKGROUND_PEAKS_ENABLED) return;
   const mediaRef = peaksEnsureMediaDurationSec(mediaDurationSec ?? 0);
   void ensureWaveformPeaks(projectId, fileId, {
     mediaDurationSec: mediaRef,

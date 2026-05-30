@@ -1,9 +1,14 @@
+import type { SegmentOverlapPolicy } from "./segmentTimeRange";
 import type { OverlayPointerUpIntent } from "./waveformSegmentOverlayGestures";
 
 export type OverlayPointerActions = {
   onSelectSegmentAt: (idx: number) => void;
   onBoundsCommit: (idx: number, startSec: number, endSec: number) => void;
-  onCreateRange?: (startSec: number, endSec: number) => void;
+  onCreateRange?: (
+    startSec: number,
+    endSec: number,
+    options?: { overlapPolicy?: SegmentOverlapPolicy },
+  ) => void;
   onFocusWaveformShell?: () => void;
   seekToTime: (timeSec: number) => void;
 };
@@ -26,7 +31,9 @@ export function applyOverlayPointerUpIntent(
       break;
     case "create-range":
       suppressClick();
-      actions.onCreateRange?.(intent.startSec, intent.endSec);
+      actions.onCreateRange?.(intent.startSec, intent.endSec, {
+        overlapPolicy: intent.overlapPolicy,
+      });
       break;
     case "seek-blank":
       suppressClick();

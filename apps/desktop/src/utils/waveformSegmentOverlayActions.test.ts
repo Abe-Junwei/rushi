@@ -31,4 +31,19 @@ describe("waveformSegmentOverlayActions", () => {
     );
     expect(onBoundsCommit).toHaveBeenCalledWith(1, 2, 4);
   });
+
+  it("applyOverlayPointerUpIntent forwards overlapPolicy on create-range", () => {
+    const onCreateRange = vi.fn();
+    applyOverlayPointerUpIntent(
+      { kind: "create-range", startSec: 1, endSec: 3, overlapPolicy: "allow" },
+      {
+        onSelectSegmentAt: vi.fn(),
+        onBoundsCommit: vi.fn(),
+        onCreateRange,
+        seekToTime: vi.fn(),
+      },
+      vi.fn(),
+    );
+    expect(onCreateRange).toHaveBeenCalledWith(1, 3, { overlapPolicy: "allow" });
+  });
 });

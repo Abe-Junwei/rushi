@@ -1,9 +1,10 @@
-import { memo, useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from "react";
 import {
   buildVisibleRulerTicks,
   computeEmbeddedRulerLabelStride,
   findHighlightedRulerMajorTickTime,
 } from "../services/waveform/waveformRulerTicks";
+import { useWaveformRulerScrollTrack, applyWaveformRulerScrollTrackTransform } from "../hooks/useWaveformRulerScrollTrack";
 import {
   resolveTierViewportMetrics,
   type TierScrollLayoutMetrics,
@@ -11,6 +12,7 @@ import {
 } from "../utils/waveformViewport";
 import {
   effectiveTimelinePxPerSec,
+  paddedVisibleTimeWindow,
   playheadViewportLeftPx,
   timeToTimelinePx,
   visibleTimeWindowFromScroll,
@@ -36,6 +38,8 @@ export type WaveformTimeRulerProps = {
   appearance?: "ink" | "light" | "embedded";
   /** timeline：随宽内容滚动；viewport：sticky 视口宽标尺（embedded 推荐） */
   coordinateSpace?: "timeline" | "viewport";
+  /** embedded + overlay：透明叠在波形底部，无背景条 */
+  overlayOnWaveform?: boolean;
   /** 点击时间尺（相对 tier 视口）寻位 */
   onSeekFromTierClientX: (clientX: number) => void;
   onSetScrollLeftPx: (px: number) => void;
@@ -65,58 +69,96 @@ export const WaveformTimeRuler = memo(function WaveformTimeRuler({
   tierScrollRef,
   playheadLineRef,
   hidePlayheadReact = false,
+  overlayOnWaveform = false,
 }: WaveformTimeRulerProps) {
   const ink = appearance === "ink";
   const embedded = appearance === "embedded";
+  const embeddedOverlay = embedded && overlayOnWaveform;
   const viewportSpace = coordinateSpace === "viewport";
+  /** embedded overlay：timeline 坐标 + translate3d 随 tier 滚动，避免 React 重绘延迟 */
+  const scrollClipMode = embeddedOverlay && viewportSpace;
+  const scrollTrackRef = useRef<HTMLDivElement | null>(null);
   const [, bumpScrollFrame] = useReducer((n: number) => n + 1, 0);
+  const [tickBuildScrollLeftPx, setTickBuildScrollLeftPx] = useState(
+    () => tierScrollLayout.scrollLeftPx,
+  );
 
-  const tierMetrics = resolveTierViewportMetrics({
-    tierScrollEl: tierScrollRef?.current ?? null,
+  const onTickRebuild = useCallback((scrollLeftPx: number) => {
+    setTickBuildScrollLeftPx(scrollLeftPx);
+  }, []);
+
+  useWaveformRulerScrollTrack({
+    enabled: scrollClipMode,
+    tierScrollRef,
     tierScrollLive,
-    tierScrollLayout,
+    scrollTrackRef,
+    timelineWidthPx,
+    onTickRebuild: onTickRebuild,
   });
-  const liveScrollLeftPx = tierMetrics.scrollLeftPx;
-  const liveViewportWidthPx = tierMetrics.viewportWidthPx;
 
   useEffect(() => {
+    if (scrollClipMode) return;
     if (!viewportSpace) return;
     const scrollEl = tierScrollRef?.current;
     if (!scrollEl) return;
-    let raf = 0;
     const scheduleBump = () => {
-      if (raf) return;
-      raf = requestAnimationFrame(() => {
-        raf = 0;
-        bumpScrollFrame();
-      });
+      bumpScrollFrame();
     };
     scrollEl.addEventListener("scroll", scheduleBump, { passive: true });
     window.addEventListener("resize", scheduleBump);
     return () => {
       scrollEl.removeEventListener("scroll", scheduleBump);
       window.removeEventListener("resize", scheduleBump);
-      if (raf) cancelAnimationFrame(raf);
     };
-  }, [tierScrollRef, viewportSpace]);
+  }, [scrollClipMode, tierScrollRef, viewportSpace]);
 
-  const renderWidthPx = viewportSpace ? Math.max(1, liveViewportWidthPx) : timelineWidthPx;
+  useEffect(() => {
+    if (!scrollClipMode) return;
+    setTickBuildScrollLeftPx(tierScrollLayout.scrollLeftPx);
+  }, [scrollClipMode, tierScrollLayout.scrollLeftPx, timelineWidthPx, durationSec]);
+
+  const tierMetrics = resolveTierViewportMetrics({
+    tierScrollEl: tierScrollRef?.current ?? null,
+    tierScrollLive,
+    tierScrollLayout,
+  });
+  const scrollEl = tierScrollRef?.current;
+  const liveScrollLeftPx = scrollClipMode
+    ? tickBuildScrollLeftPx
+    : scrollEl != null
+      ? scrollEl.scrollLeft
+      : tierMetrics.scrollLeftPx;
+  const liveViewportWidthPx =
+    scrollEl != null ? Math.max(1, scrollEl.clientWidth) : tierMetrics.viewportWidthPx;
+
+  const renderWidthPx = scrollClipMode
+    ? timelineWidthPx
+    : viewportSpace
+      ? Math.max(1, liveViewportWidthPx)
+      : timelineWidthPx;
+  const tickLayerViewportSpace = scrollClipMode ? false : viewportSpace;
   const rulerDragRef = useRef({ dragging: false, startX: 0, startScroll: 0 });
   const scrollLeftPxRef = useRef(liveScrollLeftPx);
-  scrollLeftPxRef.current = liveScrollLeftPx;
+  scrollLeftPxRef.current = scrollEl?.scrollLeft ?? liveScrollLeftPx;
   const prevCurrentTimeRef = useRef<number | null>(null);
   const interactionFadeTimeoutRef = useRef<number | null>(null);
   const [interactionActive, setInteractionActive] = useState(false);
-  const visibleView = useMemo(
-    () =>
-      visibleTimeWindowFromScroll({
-        scrollLeftPx: liveScrollLeftPx,
-        viewportWidthPx: liveViewportWidthPx,
-        timelineWidthPx,
-        durationSec,
-      }),
-    [durationSec, liveScrollLeftPx, liveViewportWidthPx, timelineWidthPx],
-  );
+
+  const visibleView = useMemo(() => {
+    const base = {
+      scrollLeftPx: liveScrollLeftPx,
+      viewportWidthPx: liveViewportWidthPx,
+      timelineWidthPx,
+      durationSec,
+    };
+    return scrollClipMode ? paddedVisibleTimeWindow(base) : visibleTimeWindowFromScroll(base);
+  }, [
+    durationSec,
+    liveScrollLeftPx,
+    liveViewportWidthPx,
+    scrollClipMode,
+    timelineWidthPx,
+  ]);
 
   const tickPxPerSec = useMemo(
     () => effectiveTimelinePxPerSec(timelineWidthPx, durationSec),
@@ -133,6 +175,15 @@ export const WaveformTimeRuler = memo(function WaveformTimeRuler({
       }),
     [durationSec, tickPxPerSec, visibleView.end, visibleView.start],
   );
+
+  useLayoutEffect(() => {
+    if (!scrollClipMode) return;
+    applyWaveformRulerScrollTrackTransform(
+      tierScrollRef?.current ?? null,
+      scrollTrackRef.current,
+      tierScrollLive,
+    );
+  }, [scrollClipMode, tickBuildScrollLeftPx, ticks.length, tierScrollLive, tierScrollRef, timelineWidthPx]);
 
   const majorTicks = useMemo(() => ticks.filter((tick) => tick.major), [ticks]);
   const embeddedLabelStride = useMemo(
@@ -168,16 +219,20 @@ export const WaveformTimeRuler = memo(function WaveformTimeRuler({
   const timelineToDisplayPx = useCallback(
     (timeSec: number) => {
       const px = timeToTimelinePx(timeSec, timelineWidthPx, durationSec);
-      return viewportSpace ? px - Math.max(0, liveScrollLeftPx) : px;
+      if (tickLayerViewportSpace) {
+        return px - Math.max(0, liveScrollLeftPx);
+      }
+      return px;
     },
-    [durationSec, liveScrollLeftPx, timelineWidthPx, viewportSpace],
+    [durationSec, liveScrollLeftPx, tickLayerViewportSpace, timelineWidthPx],
   );
 
   const playheadLeft = useMemo(() => {
     if (viewportSpace) {
+      const scrollLeftPx = scrollEl?.scrollLeft ?? liveScrollLeftPx;
       const px = playheadViewportLeftPx(
         currentTimeSec,
-        liveScrollLeftPx,
+        scrollLeftPx,
         timelineWidthPx,
         durationSec,
       );
@@ -186,12 +241,16 @@ export const WaveformTimeRuler = memo(function WaveformTimeRuler({
     const dur = Math.max(durationSec, 1e-6);
     const p = (currentTimeSec / dur) * 100;
     return `${Math.max(-1, Math.min(101, p))}%`;
-  }, [currentTimeSec, durationSec, liveScrollLeftPx, timelineWidthPx, viewportSpace]);
+  }, [currentTimeSec, durationSec, liveScrollLeftPx, scrollEl, timelineWidthPx, viewportSpace]);
 
   const onRulerPointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (disabled || e.button !== 0) return;
-      rulerDragRef.current = { dragging: false, startX: e.clientX, startScroll: scrollLeftPxRef.current };
+      rulerDragRef.current = {
+        dragging: false,
+        startX: e.clientX,
+        startScroll: scrollLeftPxRef.current,
+      };
       const onMove = (ev: PointerEvent) => {
         const dx = ev.clientX - rulerDragRef.current.startX;
         if (Math.abs(dx) > 3) rulerDragRef.current.dragging = true;
@@ -228,45 +287,61 @@ export const WaveformTimeRuler = memo(function WaveformTimeRuler({
     return null;
   }
 
+  const tickLayer = (
+    <WaveformTimeRulerTickLayer
+      ticks={ticks}
+      majorTicks={majorTicks}
+      embeddedLabelStride={embeddedLabelStride}
+      viewportSpace={tickLayerViewportSpace}
+      renderWidthPx={renderWidthPx}
+      durationSec={durationSec}
+      embedded={embedded}
+      ink={ink}
+      interactionActive={interactionActive}
+      highlightedMajorTickTime={highlightedMajorTickTime}
+      timelineToDisplayPx={timelineToDisplayPx}
+      formatMediaTime={formatMediaTime}
+      playheadLineRef={playheadLineRef}
+      hidePlayheadReact={hidePlayheadReact}
+      playheadLeft={playheadLeft}
+      rulerHeightPx={RULER_H}
+      embeddedOverlay={embeddedOverlay}
+    />
+  );
+
   return (
     <div
       className={
-        embedded
-          ? "relative shrink-0"
-          : ink
-          ? "relative shrink-0 border-t border-zen-paper/10 bg-zen-ink/25"
-          : "relative shrink-0 border-t border-zen-ink/10 bg-zen-paper"
+        embeddedOverlay
+          ? "pointer-events-none relative h-full w-full shrink-0 bg-transparent"
+          : embedded
+            ? "relative shrink-0 bg-transparent"
+            : ink
+              ? "relative shrink-0 border-t border-notion-divider bg-notion-sidebar-active"
+              : "relative shrink-0 border-t border-notion-divider bg-notion-sidebar"
       }
-      style={{ width: renderWidthPx, height: RULER_H }}
+      style={{
+        width: embeddedOverlay ? "100%" : renderWidthPx,
+        height: RULER_H,
+      }}
     >
-      {embedded ? (
-        <div
-          aria-hidden
-          className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-t from-notion-sidebar/40 via-transparent to-transparent"
-        />
-      ) : null}
       <div
-        className={`relative z-[1] h-[22px] cursor-grab select-none active:cursor-grabbing ${disabled ? "pointer-events-none opacity-50" : ""}`}
+        className={`relative z-[1] h-[22px] bg-transparent ${embeddedOverlay ? "pointer-events-auto" : ""} cursor-grab select-none active:cursor-grabbing ${disabled ? "pointer-events-none opacity-50" : ""}`}
         onPointerDown={onRulerPointerDown}
       >
-        <WaveformTimeRulerTickLayer
-          ticks={ticks}
-          majorTicks={majorTicks}
-          embeddedLabelStride={embeddedLabelStride}
-          viewportSpace={viewportSpace}
-          renderWidthPx={renderWidthPx}
-          durationSec={durationSec}
-          embedded={embedded}
-          ink={ink}
-          interactionActive={interactionActive}
-          highlightedMajorTickTime={highlightedMajorTickTime}
-          timelineToDisplayPx={timelineToDisplayPx}
-          formatMediaTime={formatMediaTime}
-          playheadLineRef={playheadLineRef}
-          hidePlayheadReact={hidePlayheadReact}
-          playheadLeft={playheadLeft}
-          rulerHeightPx={RULER_H}
-        />
+        {scrollClipMode ? (
+          <div className="h-full w-full overflow-hidden">
+            <div
+              ref={scrollTrackRef}
+              className="relative h-full will-change-transform"
+              style={{ width: timelineWidthPx }}
+            >
+              {tickLayer}
+            </div>
+          </div>
+        ) : (
+          tickLayer
+        )}
       </div>
     </div>
   );

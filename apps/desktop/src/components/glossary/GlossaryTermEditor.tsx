@@ -25,7 +25,7 @@ export function GlossaryTermEditor({
   const isEdit = mode === "edit";
 
   return (
-    <div className="flex flex-col gap-4 rounded-xl border border-notion-divider bg-notion-callout-bg px-4 py-4">
+    <div className="flex flex-col gap-4 rounded-md border border-notion-divider bg-notion-callout-bg px-4 py-4">
       <div className="flex items-center justify-between gap-2">
         <h2 className={PANEL_TYPOGRAPHY.sectionTitle}>
           {isEdit ? (

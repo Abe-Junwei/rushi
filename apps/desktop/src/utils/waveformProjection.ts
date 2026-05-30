@@ -73,6 +73,26 @@ export function visibleTimeWindowFromScroll(input: {
   };
 }
 
+/** Visible window expanded by N× viewport span — for scroll-track ruler tick prefetch. */
+export function paddedVisibleTimeWindow(
+  input: {
+    scrollLeftPx: number;
+    viewportWidthPx: number;
+    timelineWidthPx: number;
+    durationSec: number;
+  },
+  paddingViewportMul = 1.5,
+): { start: number; end: number } {
+  const view = visibleTimeWindowFromScroll(input);
+  const span = Math.max(view.end - view.start, MIN_DURATION_SEC);
+  const pad = span * paddingViewportMul;
+  const dur = Math.max(input.durationSec, MIN_DURATION_SEC);
+  return {
+    start: Math.max(0, view.start - pad),
+    end: Math.min(dur, view.end + pad),
+  };
+}
+
 /** Tier scrollLeft that places `timeSec` on the viewport left edge. */
 export function scrollPxAlignTimeToViewportLeft(input: {
   timeSec: number;
@@ -139,7 +159,13 @@ export function playheadViewportLeftPx(
   timelineWidthPx: number,
   durationSec: number,
 ): number {
-  return (
-    timeToTimelinePx(timeSec, timelineWidthPx, durationSec) - Math.max(0, scrollLeftPx)
+  return timelinePxToViewportPx(
+    timeToTimelinePx(timeSec, timelineWidthPx, durationSec),
+    scrollLeftPx,
   );
+}
+
+/** Timeline pixel offset → tier viewport x (sticky overlay / ruler). */
+export function timelinePxToViewportPx(timelinePx: number, scrollLeftPx: number): number {
+  return timelinePx - Math.max(0, scrollLeftPx);
 }

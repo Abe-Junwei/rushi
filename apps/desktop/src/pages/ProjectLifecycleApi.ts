@@ -1,5 +1,6 @@
 import type { ProjectDetail, ProjectSummary, SegmentDto } from "../tauri/projectApi";
 import type { DocxExportMode } from "../tauri/exportDocxApi";
+import type { SegmentOverlapPolicy } from "../utils/segmentTimeRange";
 import type { AutoPunctuateDialogState } from "./useAutoPunctuateController";
 import type { BusyReason } from "./useProjectCrudController";
 
@@ -58,8 +59,13 @@ export interface ProjectLifecycleApi {
   mergeWithNextAt: (idx: number) => void;
   mergeWithPrevAt: (idx: number) => void;
   deleteSegmentAt: (idx: number) => void;
-  insertSegmentAfter: (idx: number) => void;
-  insertSegmentFromTimeRange: (startSec: number, endSec: number) => void;
+  insertSegmentAfter: (idx: number, mediaDurationSec?: number) => void;
+  insertSegmentFromTimeRange: (
+    startSec: number,
+    endSec: number,
+    mediaDurationSec?: number,
+    policy?: SegmentOverlapPolicy,
+  ) => void;
   flushSegmentTextDrafts: () => void;
   canAutoPunctuate: boolean;
   autoPunctuateDialog: AutoPunctuateDialogState;

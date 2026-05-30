@@ -174,6 +174,47 @@ describe("useSegmentMutationController", () => {
     expect(result.current.error).toContain("重叠");
   });
 
+  it("insertSegmentFromTimeRange ignores whole-track placeholder when duration is known", () => {
+    const { result } = renderHook(() =>
+      useTestController([
+        makeSeg({ text: "placeholder", start_sec: 0, end_sec: 100 }),
+        makeSeg({ text: "a", start_sec: 5, end_sec: 8 }),
+      ])
+    );
+
+    act(() => result.current.mutations.insertSegmentFromTimeRange(20, 25, 100));
+
+    expect(result.current.error).toBe("");
+    expect(result.current.segments).toHaveLength(3);
+    expect(result.current.segments.some((s) => s.start_sec === 20 && s.end_sec === 25)).toBe(true);
+  });
+
+  it("insertSegmentFromTimeRange still blocks overlap with a real segment when duration is known", () => {
+    const { result } = renderHook(() =>
+      useTestController([
+        makeSeg({ text: "placeholder", start_sec: 0, end_sec: 100 }),
+        makeSeg({ text: "a", start_sec: 20, end_sec: 30 }),
+      ])
+    );
+
+    act(() => result.current.mutations.insertSegmentFromTimeRange(22, 26, 100));
+
+    expect(result.current.error).toContain("重叠");
+    expect(result.current.segments).toHaveLength(2);
+  });
+
+  it("insertSegmentFromTimeRange with allow policy creates an overlapping segment", () => {
+    const { result } = renderHook(() =>
+      useTestController([makeSeg({ text: "a", start_sec: 0, end_sec: 2 })])
+    );
+
+    act(() => result.current.mutations.insertSegmentFromTimeRange(0.5, 1.5, 0, "allow"));
+
+    expect(result.current.error).toBe("");
+    expect(result.current.segments).toHaveLength(2);
+    expect(result.current.segments.some((s) => s.start_sec === 0.5 && s.end_sec === 1.5)).toBe(true);
+  });
+
   it("insertSegmentFromTimeRange trims sub-epsilon bleed in a gap", () => {
     const { result } = renderHook(() =>
       useTestController([

@@ -8,7 +8,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        /** Notion 风格 + Serene Scholar 暖色：暖白背景、saffron 主操作 */
+        /** Notion Zen：notion-* 中性底 + zen-* 暖色强调 + zen-wf-* 波形 */
         "zen-ink": "#2C2C2C",
         "zen-paper": "#F2EFE8",
         "zen-saffron": "#C58A43",
@@ -44,7 +44,7 @@ export default {
       fontFamily: {
         sans: ['Inter', 'system-ui', 'sans-serif'],
         serif: ['"Noto Serif SC"', 'serif'],
-        mono: ['Inter', 'system-ui', 'sans-serif'],
+        mono: ['"JetBrains Mono"', 'ui-monospace', 'monospace'],
       },
       keyframes: {
         "rushi-indeterminate": {

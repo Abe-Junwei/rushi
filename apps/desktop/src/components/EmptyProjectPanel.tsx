@@ -209,7 +209,7 @@ export function EmptyProjectPanel({ controller: c }: { controller: ProjectContro
   return (
     <div className="flex min-h-0 flex-1 flex-col items-center justify-center overflow-y-auto px-6 py-12">
       <section
-        className={`relative w-full max-w-3xl overflow-hidden rounded-xl border bg-notion-bg p-8 text-center shadow-sm transition-colors ${
+        className={`relative w-full max-w-3xl overflow-hidden rounded-md border bg-notion-bg p-8 text-center transition-colors ${
           isDragActive ? "border-zen-saffron bg-zen-saffron/5" : "border-notion-divider"
         }`}
       >

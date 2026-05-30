@@ -44,7 +44,7 @@ export function UnsavedCloseDialog({
         aria-modal="true"
         aria-labelledby="unsaved-close-title"
         aria-describedby="unsaved-close-desc"
-        className="w-full max-w-md rounded-xl border border-notion-divider bg-notion-bg px-6 py-5 shadow-lg"
+        className="w-full max-w-md rounded-md border border-notion-divider bg-notion-bg px-6 py-5 shadow-lg"
         onMouseDown={(e) => e.stopPropagation()}
       >
         <h2 id="unsaved-close-title" className="text-[18px] font-semibold leading-[1.4] text-notion-text">

@@ -1,18 +1,20 @@
 import { memo, type RefObject } from "react";
 import { Play, Repeat, Square } from "lucide-react";
 import type { SegmentDto } from "../tauri/projectApi";
-import { computeRegionActionOverlayLeftPx } from "../utils/waveformRegionActionOverlay";
-import { timeToTimelinePx } from "../utils/waveformProjection";
+import { useTierViewportMetricsFrame } from "../hooks/useTierViewportMetricsFrame";
 import {
-  resolveTierViewportMetrics,
-  type TierScrollLayoutMetrics,
-  type TierScrollLiveRefs,
-} from "../utils/waveformViewport";
+  computeRegionActionOverlayCenterLeftPx,
+  estimateRegionActionOverlayWidthPx,
+} from "../utils/waveformRegionActionOverlay";
+import { timeToTimelinePx } from "../utils/waveformProjection";
+import type { TierScrollLayoutMetrics, TierScrollLiveRefs } from "../utils/waveformViewport";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 import { WaveformPlaybackRateMenu } from "./WaveformPlaybackRateMenu";
 
 type WaveformSegmentPlaybackControlsProps = {
   disabled: boolean;
+  /** 底部嵌入时间尺占用高度，控件在其上方居中 */
+  rulerBandHeightPx?: number;
   isPlaying: boolean;
   timelineWidthPx: number;
   durationSec: number;
@@ -29,6 +31,7 @@ type WaveformSegmentPlaybackControlsProps = {
 
 export const WaveformSegmentPlaybackControls = memo(function WaveformSegmentPlaybackControls({
   disabled,
+  rulerBandHeightPx = 0,
   isPlaying,
   timelineWidthPx,
   durationSec,
@@ -42,12 +45,12 @@ export const WaveformSegmentPlaybackControls = memo(function WaveformSegmentPlay
   onToggleLoop,
   onTogglePlay,
 }: WaveformSegmentPlaybackControlsProps) {
-  if (!selectedSegment) return null;
-  const { scrollLeftPx, viewportWidthPx } = resolveTierViewportMetrics({
-    tierScrollEl: tierScrollRef.current,
+  const { scrollLeftPx, viewportWidthPx } = useTierViewportMetricsFrame({
+    tierScrollRef,
     tierScrollLive,
     tierScrollLayout,
   });
+  if (!selectedSegment) return null;
   const lo = Math.min(selectedSegment.start_sec, selectedSegment.end_sec);
   const hi = Math.max(selectedSegment.start_sec, selectedSegment.end_sec);
   const leftPx = timeToTimelinePx(lo, timelineWidthPx, durationSec);
@@ -57,14 +60,23 @@ export const WaveformSegmentPlaybackControls = memo(function WaveformSegmentPlay
 
   const showSpeedMenu = widthPx >= 88;
   const showLoopBtn = widthPx >= 72;
-  const overlayLeftPx = computeRegionActionOverlayLeftPx({
+  const overlayWidthPx = estimateRegionActionOverlayWidthPx({ showSpeedMenu, showLoopBtn });
+  const overlayLeftPx = computeRegionActionOverlayCenterLeftPx({
     segmentStartPx: leftPx,
     segmentWidthPx: widthPx,
     scrollLeftPx,
     viewportWidthPx,
+    overlayEstimatedWidthPx: overlayWidthPx,
   });
   return (
-    <div className="region-action-overlay" style={{ left: overlayLeftPx }}>
+    <div
+      className="region-action-overlay"
+      style={{
+        left: overlayLeftPx,
+        width: overlayWidthPx,
+        bottom: rulerBandHeightPx + 4,
+      }}
+    >
       {showSpeedMenu ? (
         <WaveformPlaybackRateMenu
           variant="segment"

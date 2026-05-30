@@ -55,6 +55,7 @@ export function bindProjectWaveformWaveSurferEvents(
     }),
     ws.on("error", (err) => {
       if (disposed()) return;
+      if (err.name === "AbortError") return;
       setLoadError(err.message || String(err));
       setIsReady(false);
     }),

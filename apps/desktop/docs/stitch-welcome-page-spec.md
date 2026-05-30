@@ -44,30 +44,26 @@
 
 ---
 
-## 3. 设计令牌（与实现对齐）
+## 3. 设计令牌（Notion Zen）
 
-Tailwind 扩展色（`[tailwind.config.js](../tailwind.config.js)`）：
+与仓库根 [`DESIGN.md`](../../../DESIGN.md) 一致。主壳层优先 `notion-*`；`zen-*` 用于 saffron 强调与 legacy 暖色面。
 
+| Token | 用途 |
+|-------|------|
+| `notion-bg` / `notion-sidebar` | 主内容 / 侧栏 |
+| `notion-text` / `notion-text-muted` | 正文 / 次级文案 |
+| `zen-saffron` | Primary 按钮、选中态 |
+| `zen-cinnabar` | 错误、危险操作（outline 按钮） |
+| `zen-indigo` + `font-mono` | 路径、技术信息（**JetBrains Mono**） |
+| `zen-paper` / `zen-ochre` | legacy callout、低置信（语段卡等） |
 
-| Token          | Hex       | 用途          |
-| -------------- | --------- | ----------- |
-| `zen-ink`      | `#2C2C2C` | 主标题、正文强调    |
-| `zen-paper`    | `#F2EFE8` | 面板背景        |
-| `zen-saffron`  | `#C58A43` | 主按钮填充、选中态点缀 |
-| `zen-ochre`    | `#EAE0C5` | 提示条背景、低置信辅助 |
-| `zen-stone`    | `#8E8E8E` | 次级标签、说明文    |
-| `zen-cinnabar` | `#963530` | 错误、危险操作文字   |
-| `zen-indigo`   | `#3D4F5D` | 等宽路径、技术信息   |
+**字体：**
+- **UI chrome：** Inter。
+- **Serif 例外：** 欢迎侧栏品牌标题 `Noto Serif SC`；工作页语段正文默认衬线。
 
+**按钮（`controlStyles.ts`）：** Primary saffron 实心；Secondary `notion-sidebar` 底；Danger 白底 + cinnabar 边/字。**32px 高、4px 圆角。**
 
-**字体**：正文 UI 为系统无衬线；语段正文在工作页用衬线（欢迎页主文案当前为无衬线小标题）。全局可选 `Noto Serif SC` 用于庄重感（见 `index.html`）。
-
-**按钮（逻辑两类）**
-
-- **Primary**：`zen-saffron` 底、白字、圆角、`text-xs`、hover 略透明。
-- **Secondary**：白半透明底、浅灰边、`zen-ink` 字、hover 边/字偏 saffron。
-
-**输入框**：白底、浅边框、小字号、`focus` 时边 + ring 偏 saffron。
+**卡片 / 对话框：** 6px 圆角（`rounded-md`）；仅浮动层使用 shadow。
 
 ---
 

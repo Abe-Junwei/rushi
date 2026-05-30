@@ -1,7 +1,5 @@
 import { roundSec3 } from "./boundsSignature";
 import { WAVEFORM_SEGMENT_MIN_SPAN_SEC } from "./waveformSegmentBounds";
-
-/** Sub-span bleed from pointer mapping / rounding is ignored below this overlap. */
 export const SEGMENT_TIME_OVERLAP_EPS_SEC = 0.02;
 
 export function segmentTimeRangesOverlap(
@@ -75,4 +73,65 @@ export function clampCreateRangeClearOfSegments(
   }
 
   return { startSec: roundSec3(lo), endSec: roundSec3(hi) };
+}
+
+/**
+ * 框选新建的重叠策略（一等、具名）：
+ * - `trim`（默认）：裁剪进相邻空隙，放不下返回 null（= 现行行为）；
+ * - `reject`：任一重叠即拒绝（不裁剪），否则按原范围；
+ * - `allow`：允许重叠，按原范围创建（由 lane 分层呈现），仅过短返回 null。
+ */
+export type SegmentOverlapPolicy = "trim" | "reject" | "allow";
+
+export function resolveCreateRangeForPolicy(
+  segments: ReadonlyArray<{ start_sec: number; end_sec: number }>,
+  rawLo: number,
+  rawHi: number,
+  policy: SegmentOverlapPolicy = "trim",
+  minSpanSec = WAVEFORM_SEGMENT_MIN_SPAN_SEC,
+): { startSec: number; endSec: number } | null {
+  if (policy === "trim") {
+    return clampCreateRangeClearOfSegments(segments, rawLo, rawHi, minSpanSec);
+  }
+
+  const lo = Math.min(rawLo, rawHi);
+  const hi = Math.max(rawLo, rawHi);
+  if (hi - lo < minSpanSec) return null;
+
+  if (policy === "reject") {
+    for (const s of segments) {
+      if (segmentTimeRangesOverlap(lo, hi, s.start_sec, s.end_sec)) {
+        return null;
+      }
+    }
+  }
+
+  return { startSec: roundSec3(lo), endSec: roundSec3(hi) };
+}
+
+/** User-facing error when {@link resolveCreateRangeForPolicy} returns null. */
+export function describeCreateRangePolicyFailure(
+  policy: SegmentOverlapPolicy,
+  rawLo: number,
+  rawHi: number,
+  segments: ReadonlyArray<{ start_sec: number; end_sec: number }>,
+  minSpanSec = WAVEFORM_SEGMENT_MIN_SPAN_SEC,
+): string {
+  const lo = Math.min(rawLo, rawHi);
+  const hi = Math.max(rawLo, rawHi);
+  if (hi - lo < minSpanSec) {
+    return "选区过短。";
+  }
+  if (policy === "reject") {
+    return "选区与已有语段重叠。";
+  }
+  if (policy === "allow") {
+    return "选区过短。";
+  }
+  for (const s of segments) {
+    if (segmentTimeRangesOverlap(lo, hi, s.start_sec, s.end_sec)) {
+      return "选区与已有语段重叠，或空隙不足以容纳新语段。";
+    }
+  }
+  return "空隙不足以容纳新语段。";
 }

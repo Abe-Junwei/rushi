@@ -6,9 +6,13 @@ const LS_HEIGHT = "rushi.p1.waveformHeightPx";
 const LS_FONT = "rushi.p1.transcriptFontPx";
 const LS_GLOBAL_PLAYBACK_RATE = "rushi.p1.waveformGlobalPlaybackRate";
 const LS_TAB_ADVANCE_LOOP = "rushi.p1.tabAdvanceLoopsSegment";
-const LS_BACKGROUND_PEAKS = "rushi.p1.waveformBackgroundPeaks";
 const LS_MINIMAP = "rushi.p1.waveformMinimap";
-const LS_HOT_SWITCH_PLAYING = "rushi.p1.peaksHotSwitchWhilePlaying";
+
+/** 程序内设定：后台预热/生成 peaks（Route C2）。 */
+export const WAVEFORM_BACKGROUND_PEAKS_ENABLED = true;
+
+/** 程序内设定：peaks 就绪时在播放中立即热切换（否则暂停后切换）。 */
+export const WAVEFORM_HOT_SWITCH_WHILE_PLAYING = true;
 
 export const WAVEFORM_HEIGHT_MIN = 56;
 export const WAVEFORM_HEIGHT_MAX = 280;
@@ -128,27 +132,7 @@ export function writeStoredTabAdvanceLoopsSegment(enabled: boolean): void {
   }
 }
 
-/** 后台生成/预热 peaks（Route C2）；关闭后仅 decode，可手动清缓存重算。 */
-export function readStoredBackgroundPeaksEnabled(): boolean {
-  try {
-    const raw = localStorage.getItem(LS_BACKGROUND_PEAKS);
-    if (raw === "0") return false;
-    if (raw === "1") return true;
-  } catch {
-    /* noop */
-  }
-  return true;
-}
-
-export function writeStoredBackgroundPeaksEnabled(enabled: boolean): void {
-  try {
-    localStorage.setItem(LS_BACKGROUND_PEAKS, enabled ? "1" : "0");
-  } catch {
-    /* noop */
-  }
-}
-
-/** 主波形上方 L0 minimap 条。 */
+/** 主波形下方 L0 minimap 条。 */
 export function readStoredWaveformMinimapEnabled(): boolean {
   try {
     const raw = localStorage.getItem(LS_MINIMAP);
@@ -163,26 +147,6 @@ export function readStoredWaveformMinimapEnabled(): boolean {
 export function writeStoredWaveformMinimapEnabled(enabled: boolean): void {
   try {
     localStorage.setItem(LS_MINIMAP, enabled ? "1" : "0");
-  } catch {
-    /* noop */
-  }
-}
-
-/** peaks 就绪时是否在播放中立即热切换（否则暂停后切换）。 */
-export function readStoredPeaksHotSwitchWhilePlaying(): boolean {
-  try {
-    const raw = localStorage.getItem(LS_HOT_SWITCH_PLAYING);
-    if (raw === "0") return false;
-    if (raw === "1") return true;
-  } catch {
-    /* noop */
-  }
-  return true;
-}
-
-export function writeStoredPeaksHotSwitchWhilePlaying(enabled: boolean): void {
-  try {
-    localStorage.setItem(LS_HOT_SWITCH_PLAYING, enabled ? "1" : "0");
   } catch {
     /* noop */
   }

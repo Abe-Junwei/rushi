@@ -19,6 +19,8 @@ type WaveformTimeRulerTickLayerProps = {
   hidePlayheadReact: boolean;
   playheadLeft: string;
   rulerHeightPx: number;
+  /** embedded + overlay：刻度从波形底边向上 */
+  embeddedOverlay?: boolean;
 };
 
 export function WaveformTimeRulerTickLayer({
@@ -38,16 +40,26 @@ export function WaveformTimeRulerTickLayer({
   hidePlayheadReact,
   playheadLeft,
   rulerHeightPx,
+  embeddedOverlay = false,
 }: WaveformTimeRulerTickLayerProps) {
+  const isVisibleViewportPx = (displayPx: number, marginPx: number) =>
+    displayPx >= -marginPx && displayPx <= renderWidthPx + marginPx;
+  const tickTopY = embeddedOverlay ? undefined : 0;
+  const tickBottomY = (len: number) =>
+    embeddedOverlay ? rulerHeightPx - len : len;
+  const labelClassTop = embeddedOverlay ? "top-0" : "top-[8px]";
+  const embeddedLabelClass = embedded ? "text-notion-text/72" : ink ? "text-notion-bg/60" : "text-zen-ink/55";
+
   return (
     <>
       <svg className="absolute inset-0 h-[22px] w-full overflow-visible" aria-hidden>
         {ticks.map(({ t, major }) => {
           const displayPx = timelineToDisplayPx(t);
-          if (viewportSpace && (displayPx < -8 || displayPx > renderWidthPx + 8)) {
+          if (viewportSpace && !isVisibleViewportPx(displayPx, 8)) {
             return null;
           }
           const tickX = viewportSpace ? `${displayPx}px` : `${(t / Math.max(durationSec, 1e-6)) * 100}%`;
+          const tickLen = embedded ? (major ? 7 : 3) : major ? 8 : 4;
           const isHighlightedMajor =
             embedded && major && highlightedMajorTickTime != null && Math.abs(t - highlightedMajorTickTime) < 1e-6;
           return (
@@ -55,8 +67,8 @@ export function WaveformTimeRulerTickLayer({
               <line
                 x1={tickX}
                 x2={tickX}
-                y1={0}
-                y2={embedded ? (major ? 7 : 3) : major ? 8 : 4}
+                y1={embeddedOverlay ? tickBottomY(tickLen) : tickTopY}
+                y2={embeddedOverlay ? rulerHeightPx : tickBottomY(tickLen)}
                 className={
                   embedded
                     ? interactionActive && isHighlightedMajor
@@ -82,7 +94,7 @@ export function WaveformTimeRulerTickLayer({
           ref={playheadLineRef}
           x1={hidePlayheadReact ? (viewportSpace ? "-8px" : "-1%") : playheadLeft}
           x2={hidePlayheadReact ? (viewportSpace ? "-8px" : "-1%") : playheadLeft}
-          y1={-2}
+          y1={embeddedOverlay ? 0 : -2}
           y2={rulerHeightPx}
           className={
             hidePlayheadReact
@@ -102,7 +114,7 @@ export function WaveformTimeRulerTickLayer({
       <div className="pointer-events-none absolute inset-0 h-[22px]">
         {majorTicks.filter((_, index) => index % embeddedLabelStride === 0).map(({ t }) => {
           const displayPx = timelineToDisplayPx(t);
-          if (viewportSpace && (displayPx < -4 || displayPx > renderWidthPx + 4)) {
+          if (viewportSpace && !isVisibleViewportPx(displayPx, 4)) {
             return null;
           }
           const isHighlightedMajor =
@@ -110,11 +122,11 @@ export function WaveformTimeRulerTickLayer({
           return (
             <span
               key={`lb-${t}`}
-              className={`absolute top-[8px] text-[11px] tabular-nums ${
+              className={`absolute text-[10px] tabular-nums leading-none ${labelClassTop} ${
                 embedded
                   ? interactionActive && isHighlightedMajor
-                    ? "text-notion-text/90"
-                    : "text-notion-text/68"
+                    ? "font-medium text-notion-text/90"
+                    : embeddedLabelClass
                   : ink
                     ? "text-notion-bg/60"
                     : "text-zen-ink/55"

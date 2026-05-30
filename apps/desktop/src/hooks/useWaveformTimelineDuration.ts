@@ -9,7 +9,7 @@ type DurationSyncInput = {
   wfDuration: number;
   wfIsReady: boolean;
   peaksStatusDurationSec: number;
-  peakCache: unknown | null;
+  peakCache: unknown;
 };
 
 /** Keeps peaks media-duration aligned with WS + peaks status (timeline controller). */

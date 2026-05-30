@@ -124,21 +124,26 @@
 
 ## 7. 波形与时间轴核心区
 
+> **波形精修（Stitch 本轮）：** 详见 [`stitch-waveform-polish-spec.md`](./stitch-waveform-polish-spec.md) 与静态原型 [`stitch-waveform-polish-layout.html`](../stitch-waveform-polish-layout.html)。  
+> 现网实现为 **Notion Zen 波形 tier**（`EditorWaveformPane`）：可选 minimap、白底 peaks、语段 overlay、嵌入 22px 标尺、40px 底栏 transport/zoom。**不再是**早期 spec 中的深色 sticky 波形条。
+
 ### 7.1 外层滚动容器
 
 - 占主区 **剩余高度**（`flex-1 min-h-0`）。
 - 内层：`overflow: auto`，圆角、细边框、浅阴影（「内凹」工作区）。
 - **内部轨道宽度**：`timelineWidthPx` = `f(duration, segments) * 56`，上下限约 `320px～16000px`（实现常量 **`TIMELINE_PX_PER_SEC = 56`**，与 WaveSurfer `minPxPerSec` 一致）。
 
-### 7.2 Sticky 波形条（宽 = 轨道宽）
+### 7.2 波形列（`EditorWaveformPane`，Notion Zen）
 
 | 子区域 | 说明 |
 |--------|------|
-| 错误 | 若有加载错误，黄杏色小字条 |
-| 波形 | 固定高度容器挂载 WaveSurfer；**整轨宽度 = 上式** |
-| 控制行 | 左：**播放/暂停**（圆按钮）；中：**当前时间 / 总时长** mono；右：一句「波形与下方色块同一水平标尺」 |
+| Minimap（可选） | 40px；`notion-sidebar` 底；saffron 视口框；**saffron-mid playhead** |
+| Tier 滚动区 | `notion-sidebar` 外壳；sticky 视口宽；**白底** WaveSurfer peaks |
+| 语段 overlay | 全高竖条，左右 hairline；选中 saffron inset |
+| 嵌入标尺 | 22px 透明叠层，无刻度背景带 |
+| 底栏 40px | 左：Lucide 播放/时间/倍速/跳转；右：缩放簇 |
 
-深色条与浅色主区对比要强，便于聚焦时间轴。
+Token 与交互细节见 [`stitch-waveform-polish-spec.md`](./stitch-waveform-polish-spec.md)。
 
 ### 7.3 语段列表（每行一条 segment）
 
@@ -210,7 +215,7 @@
 
 ## 12. 给 Stitch 的提示词片段（可复制）
 
-> Desktop transcription review workspace, same warm zen palette as before (#F2EFE8 paper, #2C2C2C ink, #C58A43 saffron accent). Two-column layout on large screens: narrow left rail (project switcher, secondary “new project”, glossary list, diagnostics). Main column: top toolbar two rows (project title + id, primary actions Transcribe/Save, export dropdown, overflow menu for delete), optional amber hint strip, then a large scrollable panel. Inside: sticky dark header strip containing audio waveform + transport (play/pause, timecode). Below, vertical list of segment rows: each row left sticky panel with segment index, confidence, numeric start/end fields, serif transcript textarea; right side a wide horizontal timeline track with a colored bar positioned by time (56px per second), bars align with waveform. Subtle row selection highlight. Serious, calm, Buddhist editorial mood—not gamified.
+> Desktop transcription review workspace, **Notion Zen** palette (`notion-bg` #ffffff, `notion-sidebar` #f7f7f5, `notion-text` #37352f, saffron #C58A43 accent). Two-column layout: narrow left rail + main column with toolbar, optional hint strip, **waveform column** (optional 40px minimap, white peaks on sidebar-gray tier, embedded 22px time ruler, 40px bottom transport/zoom bar with Lucide icons), then vertical segment list with serif transcript body. Waveform segment overlays: full-height vertical bands with left/right borders only. Calm, professional—not gamified. See root DESIGN.md and stitch-waveform-polish-spec.md.
 
 ---
 

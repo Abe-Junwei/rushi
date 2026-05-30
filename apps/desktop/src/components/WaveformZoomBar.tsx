@@ -16,6 +16,8 @@ import { LUCIDE_ICON_SIZE_LG, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec"
 export type WaveformZoomBarProps = {
   disabled: boolean;
   isReady: boolean;
+  minimapEnabled?: boolean;
+  onToggleMinimap?: () => void;
   pxPerSec: number;
   layoutIntent?: WaveformZoomLayoutIntent;
   viewportWidthPx: number;
@@ -45,6 +47,8 @@ function hasWaveformSegmentSelection(
 export const WaveformZoomBar = memo(function WaveformZoomBar({
   disabled,
   isReady,
+  minimapEnabled = false,
+  onToggleMinimap,
   pxPerSec,
   layoutIntent,
   viewportWidthPx,
@@ -92,6 +96,24 @@ export const WaveformZoomBar = memo(function WaveformZoomBar({
   return (
     <div className="waveform-zoom-toolbar" role="toolbar" aria-label="波形时间轴缩放">
       <div className="waveform-zoom-bar">
+        {onToggleMinimap ? (
+          <>
+            <label className="waveform-minimap-toggle">
+              <span className="waveform-minimap-toggle-label">波形总览</span>
+              <button
+                type="button"
+                role="switch"
+                className="waveform-minimap-switch"
+                disabled={off}
+                aria-checked={minimapEnabled}
+                onClick={onToggleMinimap}
+              >
+                <span className="waveform-minimap-switch-thumb" aria-hidden />
+              </button>
+            </label>
+            <span className="toolbar-sep" aria-hidden />
+          </>
+        ) : null}
         <button
           type="button"
           className={`icon-btn icon-btn-text${atFitSelectionZoom ? " icon-btn-active" : ""}`}

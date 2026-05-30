@@ -1,11 +1,12 @@
 import { WAVEFORM_SEGMENT_MIN_SPAN_SEC, type SegmentDragMode } from "./waveformSegmentBounds";
+import type { SegmentOverlapPolicy } from "./segmentTimeRange";
 
 export type OverlayDragMode = SegmentDragMode | "create";
 
 export type OverlayPointerUpIntent =
   | { kind: "select-segment"; segmentIdx: number }
   | { kind: "commit-bounds"; segmentIdx: number; startSec: number; endSec: number }
-  | { kind: "create-range"; startSec: number; endSec: number }
+  | { kind: "create-range"; startSec: number; endSec: number; overlapPolicy?: SegmentOverlapPolicy }
   | { kind: "seek-blank"; timeSec: number }
   | { kind: "noop" };
 

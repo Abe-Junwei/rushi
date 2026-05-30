@@ -4,7 +4,7 @@ import { resolveWaveformPeaksPhase, type WaveformPeaksPhase } from "../services/
 export function useWaveformPeaksPhaseState(input: {
   mediaUrl: string | null | undefined;
   peaksLoading: boolean;
-  peakCache: unknown | null;
+  peakCache: unknown;
   peaksUnavailable: boolean;
   peaksApplied: boolean;
   peaksHotSwitchPending: boolean;

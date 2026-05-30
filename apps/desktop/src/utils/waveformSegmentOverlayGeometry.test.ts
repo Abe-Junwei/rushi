@@ -15,7 +15,7 @@ describe("waveformSegmentOverlayGeometry", () => {
     expect(bounds).toEqual({ startSec: 1.5, endSec: 2.5 });
   });
 
-  it("computeCreatePreviewStyle clamps left to zero", () => {
+  it("computeCreatePreviewStyle uses timeline coordinates", () => {
     const style = computeCreatePreviewStyle({
       createPreview: { startSec: 0, endSec: 3 },
       timelineWidthPx: 1000,

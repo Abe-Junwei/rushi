@@ -11,8 +11,11 @@ import {
   type WaveformAppliedZoomState,
 } from "../utils/waveformAppliedZoom";
 import { WAVEFORM_DECODE_SAMPLE_RATE } from "../services/waveform/waveformZoomSyncEngine";
+import { installWaveSurferProgressAbortWarnFilter } from "../services/waveform/waveSurferProgressAbortWarn";
 import { bindProjectWaveformWaveSurferEvents } from "./projectWaveformWaveSurferEvents";
 import type { UseProjectWaveformOptions } from "./useProjectWaveformTypes";
+
+installWaveSurferProgressAbortWarnFilter();
 
 type MountRefs = {
   optsRef: MutableRefObject<UseProjectWaveformOptions>;

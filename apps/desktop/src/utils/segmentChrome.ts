@@ -1,11 +1,11 @@
 import type { SegmentDto } from "../tauri/projectApi";
 import { COLORS } from "../config/tokens";
 
-/** 白底波形条上的 region 填充（灰阶语义；与下方语段卡配色分离） */
+/** 白底波形条上的 region 填充（Notion Zen + saffron 选中语义） */
 export function waveformRegionFillColor(seg: SegmentDto, selected: boolean): string {
-  if (selected) return `color-mix(in srgb, ${COLORS.ink} 26%, transparent)`;
-  if (seg.low_confidence) return `color-mix(in srgb, ${COLORS.waveformRegionLaneLow} 32%, transparent)`;
-  return `color-mix(in srgb, ${COLORS.waveformRegionLaneIdle} 22%, transparent)`;
+  if (selected) return `color-mix(in srgb, ${COLORS.saffron} 18%, transparent)`;
+  if (seg.low_confidence) return `color-mix(in srgb, ${COLORS.waveformRegionLaneLow} 28%, transparent)`;
+  return `color-mix(in srgb, ${COLORS.ink} 12%, transparent)`;
 }
 
 /** WaveSurfer region `color`（语段卡/非白底语境；DESIGN 近单色 + ink 选中） */

@@ -70,6 +70,23 @@
 - `clientXToTimeSec` 按容器实际渲染宽（= `timelineWidthPx`）比例换算。
 - ruler 用 `t/duration` 比例定位；`pxPerSec` 用于刻度密度与离散缩放命令（适配语段 / 整段可见 / ±）。
 
+## 语段语义真源：可见 / 可打包语段
+
+「哪些语段参与波形 UI」是与坐标分离的另一条真源。整轨占位语段（如分句前的 ASR 整段）在波形上**不渲染**，因此 render / lane / 命中测试 / 框选新建必须对它有一致判定。
+
+- **是否占位**：[`isPlaceholderSegment`](../../apps/desktop/src/utils/waveformSegmentBounds.ts)（Rust 对应 `is_placeholder_segment`）。**显式 `kind` 优先**：`SegmentDto.kind === "placeholder"` 即占位、`"speech"` 即非占位（即便跨度大也不隐藏，消除短片段长单段假阳性）；缺省（旧数据 / 未标记）时回退 `span/duration ≥ WAVEFORM_DOMINANT_SPAN_RATIO`（0.85）启发式。
+- **产生点**：ASR 整轨兜底（`transcribe.rs`）显式标 `placeholder`，子句标 `speech`；`kind` 列随语段落库（DB 迁移 `migrate_segments_kind`，旧行 NULL → 缺省）。
+- **唯一权威（选择）**：[`selectPackableSegmentIndices` / `selectPackableSegments`](../../apps/desktop/src/utils/waveformSegmentBounds.ts)，内部走 `isPlaceholderSegment`。
+- **消费方一律经此 selector**：
+  - render / lane：`assignSegmentOverlapLanes`（[`segmentLayout.ts`](../../apps/desktop/src/utils/segmentLayout.ts)）
+  - 命中测试：`resolveSegmentIndexAtWaveformPointer`（含 `waveformSegmentContextMenu` 转发）
+  - 框选新建重叠：`insertSegmentFromTimeRange`（[`useSegmentMutationController.ts`](../../apps/desktop/src/pages/useSegmentMutationController.ts)）→ `clampCreateRangeClearOfSegments` 只吃 packable 集
+- **唯一例外**：持久化清洗 [`sanitizeSegmentsForMedia`](../../apps/desktop/src/utils/segmentMediaSanitize.ts) 直接用谓词（策略不同：占位为唯一语段时**保留**，不可套用 selector）。
+- **三道防回归闸**（针对 dominant-span 重叠误报）：
+  1. 单一 selector（上）——render 与编辑共用同一可见集；
+  2. 跨路径不变量测试（[`waveformSegmentBounds.test.ts`](../../apps/desktop/src/utils/waveformSegmentBounds.test.ts)）——「overlay 看不见的语段不得阻止创建」，lane 隐藏集与创建丢弃集锁步；
+  3. 架构守卫（`scripts/check-architecture-guard.mjs`）——除 selector 本体与 persist sanitize 外，禁止生产代码直接调用 `isDominantWaveformSpanSegment`。新增直调点须显式加入白名单。
+
 ## 舞台 DOM
 
 ```text
