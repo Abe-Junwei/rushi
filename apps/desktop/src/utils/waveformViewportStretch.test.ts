@@ -4,6 +4,7 @@ import {
   clearWaveformViewportStretch,
   computeViewportStretchRatio,
   writeWaveformPeaksStageShellWidth,
+  writeWaveformShellLayout,
   writeWaveformStickyShellWidth,
   writeWaveformTimelineShellWidth,
 } from "./waveformViewportStretch";
@@ -22,6 +23,22 @@ describe("waveformViewportStretch", () => {
     writeWaveformPeaksStageShellWidth(stage, 1600);
     expect(timeline.style.width).toBe("1400px");
     expect(stage.style.width).toBe("1600px");
+  });
+
+  it("writes timeline, stage, and sticky via writeWaveformShellLayout", () => {
+    const timeline = document.createElement("div");
+    const stage = document.createElement("div");
+    const sticky = document.createElement("div");
+    writeWaveformShellLayout({
+      timelineShell: timeline,
+      peaksStageShell: stage,
+      stickyShell: sticky,
+      timelineWidthPx: 900,
+      viewportWidthPx: 1200,
+    });
+    expect(timeline.style.width).toBe("900px");
+    expect(stage.style.width).toBe("1200px");
+    expect(sticky.style.width).toBe("1200px");
   });
 
   it("applies and clears horizontal stretch", () => {

@@ -7,9 +7,8 @@ import {
   applyWaveformViewportStretch,
   clearWaveformViewportStretch,
   computeViewportStretchRatio,
-  writeWaveformPeaksStageShellWidth,
+  writeWaveformShellLayout,
   writeWaveformStickyShellWidth,
-  writeWaveformTimelineShellWidth,
 } from "../utils/waveformViewportStretch";
 
 const WIDTH_EPSILON_PX = 1;
@@ -46,14 +45,14 @@ function flushViewportLayout(
 }
 
 /**
- * Single resize orchestrator: one RO + window listener, rAF coalesce,
+ * Single resize orchestrator: one RO + window listener, microtask coalesce,
  * stretch-hold before shell width writes, fit-all refit / WS reRender.
  */
 export function useWaveformViewportController(args: UseWaveformViewportControllerArgs) {
   const prevWidthRef = useRef(0);
   const wasReadyRef = useRef(false);
   const resizeSyncMountedRef = useRef(false);
-  const pendingResizeRafRef = useRef(0);
+  const pendingResizeMicrotaskRef = useRef(false);
   const pendingResizeForceRef = useRef(false);
   const argsRef = useRef(args);
   argsRef.current = args;
@@ -76,6 +75,7 @@ export function useWaveformViewportController(args: UseWaveformViewportControlle
       layoutTimelineWidthPxRef,
       timelineShellRef,
       peaksStageShellRef,
+      stickyShellRef,
       onFitAllPxPerSecRefit,
     } = argsRef.current;
     const dur = layoutDurationSecRef?.current ?? 0;
@@ -84,12 +84,39 @@ export function useWaveformViewportController(args: UseWaveformViewportControlle
     if (layoutTimelineWidthPxRef) {
       layoutTimelineWidthPxRef.current = timelineWidthPx;
     }
-    const stageWidthPx = Math.max(timelineWidthPx, tierW);
-    const timelineShell = timelineShellRef?.current;
-    const peaksStageShell = peaksStageShellRef?.current;
-    if (timelineShell) writeWaveformTimelineShellWidth(timelineShell, timelineWidthPx);
-    if (peaksStageShell) writeWaveformPeaksStageShellWidth(peaksStageShell, stageWidthPx);
+    writeWaveformShellLayout({
+      timelineShell: timelineShellRef?.current,
+      peaksStageShell: peaksStageShellRef?.current,
+      stickyShell: stickyShellRef?.current,
+      timelineWidthPx,
+      viewportWidthPx: tierW,
+    });
     onFitAllPxPerSecRefit?.(refitPx);
+  }, []);
+
+  const writeShellLayoutForCurrentZoom = useCallback((tierW: number) => {
+    const {
+      layoutDurationSecRef,
+      layoutTimelineWidthPxRef,
+      appliedZoomPxPerSecRef,
+      timelineShellRef,
+      peaksStageShellRef,
+      stickyShellRef,
+    } = argsRef.current;
+    const dur = layoutDurationSecRef?.current ?? 0;
+    const px = appliedZoomPxPerSecRef?.current ?? 0;
+    if (dur <= 0 || tierW <= 0 || px <= 0) return;
+    const timelineWidthPx =
+      layoutTimelineWidthPxRef?.current && layoutTimelineWidthPxRef.current > 0
+        ? layoutTimelineWidthPxRef.current
+        : computeTimelineWidthPx(dur, px);
+    writeWaveformShellLayout({
+      timelineShell: timelineShellRef?.current,
+      peaksStageShell: peaksStageShellRef?.current,
+      stickyShell: stickyShellRef?.current,
+      timelineWidthPx,
+      viewportWidthPx: tierW,
+    });
   }, []);
 
   const applyFitAllRefit = useCallback((refitPx: number, tierW: number) => {
@@ -186,6 +213,7 @@ export function useWaveformViewportController(args: UseWaveformViewportControlle
 
       writeTierViewportWidth(tierW);
       flushViewportLayout(tier, container, argsRef.current.stickyShellRef?.current);
+      writeShellLayoutForCurrentZoom(tierW);
 
       prevWidthRef.current = measuredWidth;
 
@@ -197,15 +225,16 @@ export function useWaveformViewportController(args: UseWaveformViewportControlle
       syncScrollAfterRender?.();
       onAfterViewportResizeRef?.current?.();
     },
-    [applyFitAllRefit, writeTierViewportWidth],
+    [applyFitAllRefit, writeShellLayoutForCurrentZoom, writeTierViewportWidth],
   );
 
   const scheduleViewportResize = useCallback(
     (force = false) => {
       pendingResizeForceRef.current = pendingResizeForceRef.current || force;
-      if (pendingResizeRafRef.current) return;
-      pendingResizeRafRef.current = requestAnimationFrame(() => {
-        pendingResizeRafRef.current = 0;
+      if (pendingResizeMicrotaskRef.current) return;
+      pendingResizeMicrotaskRef.current = true;
+      queueMicrotask(() => {
+        pendingResizeMicrotaskRef.current = false;
         const forceNow = pendingResizeForceRef.current;
         pendingResizeForceRef.current = false;
         runViewportTransaction(forceNow, { staleFitAllOnViewportGrow: true });
@@ -271,10 +300,7 @@ export function useWaveformViewportController(args: UseWaveformViewportControlle
       window.removeEventListener("resize", onViewportResize);
       ro.disconnect();
       clearStretch();
-      if (pendingResizeRafRef.current) {
-        cancelAnimationFrame(pendingResizeRafRef.current);
-        pendingResizeRafRef.current = 0;
-      }
+      pendingResizeMicrotaskRef.current = false;
       pendingResizeForceRef.current = false;
     };
   }, [

@@ -1,5 +1,23 @@
 const STRETCH_EPSILON = 0.001;
 
+export type WriteWaveformShellLayoutInput = {
+  timelineShell?: HTMLElement | null;
+  peaksStageShell?: HTMLElement | null;
+  stickyShell?: HTMLElement | null;
+  timelineWidthPx: number;
+  viewportWidthPx: number;
+};
+
+/** Imperatively sync timeline / stage / sticky shells (layout truth for resize + zoom). */
+export function writeWaveformShellLayout(input: WriteWaveformShellLayoutInput): void {
+  const { timelineShell, peaksStageShell, stickyShell, timelineWidthPx, viewportWidthPx } = input;
+  if (timelineWidthPx <= 0 || viewportWidthPx <= 0) return;
+  const stageWidthPx = Math.max(timelineWidthPx, viewportWidthPx);
+  if (timelineShell) writeWaveformTimelineShellWidth(timelineShell, timelineWidthPx);
+  if (peaksStageShell) writeWaveformPeaksStageShellWidth(peaksStageShell, stageWidthPx);
+  if (stickyShell) writeWaveformStickyShellWidth(stickyShell, viewportWidthPx);
+}
+
 /** Imperatively sync sticky clip shell — avoids waiting for React commit on resize. */
 export function writeWaveformStickyShellWidth(
   stickyEl: HTMLElement,

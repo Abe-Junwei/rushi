@@ -62,8 +62,6 @@ export function EditorWaveformPane({
     mountDeferTimedOut: tx.mountDeferTimedOut,
     waveformReady: tx.isReady,
   });
-  const peaksStageWidthPx =
-    liveViewportWidthPx > 0 ? Math.max(tx.timelineWidthPx, liveViewportWidthPx) : tx.timelineWidthPx;
 
   return (
     <div className="relative z-10 flex w-full shrink-0 flex-col overflow-visible bg-notion-sidebar">
@@ -115,12 +113,11 @@ export function EditorWaveformPane({
         ) : null}
         <div
           ref={tx.waveformPeaksStageShellRef}
-          style={{ width: peaksStageWidthPx }}
           className={`relative z-[1] inline-block min-h-full align-top ${c.busy ? "pointer-events-none opacity-60" : ""}`}
         >
           <div
-            style={{ height: peaksPaneHeightPx, width: peaksStageWidthPx }}
-            className={`relative ${!tx.isReady ? "bg-notion-sidebar-active" : ""}`}
+            style={{ height: peaksPaneHeightPx }}
+            className={`relative w-full ${!tx.isReady ? "bg-notion-sidebar-active" : ""}`}
             onContextMenu={(e) => {
               if (c.busy) return;
               e.preventDefault();
@@ -151,7 +148,7 @@ export function EditorWaveformPane({
                 <div
                   ref={tx.waveformTimelineShellRef}
                   className="relative"
-                  style={{ width: tx.timelineWidthPx, height: peaksPaintedHeightPx }}
+                  style={{ height: peaksPaintedHeightPx }}
                 >
                     <div
                       ref={tx.waveformStickyShellRef}

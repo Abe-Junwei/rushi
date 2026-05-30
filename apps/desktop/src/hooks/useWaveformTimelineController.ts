@@ -10,6 +10,8 @@ import { useWaveformZoom } from "./useWaveformZoom";
 import { clampPxPerSecForWaveSurferRender } from "../utils/pxPerSec";
 import { resolveFitAllPxPerSecAdjustment } from "../utils/waveformZoomBarState";
 import { resolveWaveformTimelineMetrics } from "../utils/waveformTimelineMetrics";
+import { writeWaveformShellLayout } from "../utils/waveformViewportStretch";
+import { writeWaveformTierViewportWidthVar } from "../utils/waveformViewport";
 import { useTranscriptionViewportFit } from "../pages/useTranscriptionViewportFit";
 import { useWaveformTimelineMountGate } from "./useWaveformTimelineMountGate";
 import { useWaveformTimelineDurationSync } from "./useWaveformTimelineDuration";
@@ -140,6 +142,35 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
   });
 
   onAfterViewportResizeRef.current = scroll.refreshTierScrollLayout;
+
+  useLayoutEffect(() => {
+    const timelineShell = wf.timelineShellRef.current;
+    const peaksStageShell = wf.peaksStageShellRef.current;
+    const stickyShell = wf.stickyShellRef.current;
+    const tier = tierScrollRef.current;
+    const vw = Math.max(
+      tier?.clientWidth ?? 0,
+      scroll.tierScrollLive.clientWidthRef.current,
+      scroll.tierScrollLayout.clientWidthPx,
+    );
+    if (timelineWidthPx <= 0 || vw <= 0) return;
+    timelineWidthPxRef.current = timelineWidthPx;
+    if (tier && vw > 0) {
+      writeWaveformTierViewportWidthVar(tier, vw);
+    }
+    writeWaveformShellLayout({
+      timelineShell,
+      peaksStageShell,
+      stickyShell,
+      timelineWidthPx,
+      viewportWidthPx: vw,
+    });
+  }, [
+    timelineWidthPx,
+    scroll.tierScrollLayout.clientWidthPx,
+    scroll.tierScrollLive.clientWidthRef,
+    wf,
+  ]);
 
   useLayoutEffect(() => {
     if (timelineMetrics.mediaDurationSec <= 0) return;

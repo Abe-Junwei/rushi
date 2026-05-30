@@ -26,12 +26,17 @@
 
 [`useWaveformViewportController`](../../apps/desktop/src/hooks/useWaveformViewportController.ts) 为**单一 resize 入口**：
 
-- 一个 `ResizeObserver`（tier + WS container）+ `window.resize`，rAF coalesce（`WIDTH_EPSILON_PX` 过滤）。
+- 一个 `ResizeObserver`（tier + WS container）+ `window.resize`，**microtask** coalesce（同帧合并，避免 rAF 晚一帧）。
 - **fit-all refit**（视口变宽、整段可见 stale）：stretch-hold **先于** sticky/timeline 宽度写入，再 `ws.zoom` + imperative shell 宽度；React `pxPerSec` 同步更新；`refreshTierScrollLayout` 在 transaction 末尾。
-- **非 refit resize**：同样 stretch → 写宽度 → `reRender()`；`redrawcomplete` 清除 stretch。
-- **非 refit**：stretch-hold（`stretchShell` `scaleX`）+ `ws.getRenderer().reRender()`；`redrawcomplete` 清除 stretch。
+- **非 refit resize**：stretch → 写宽度 → `reRender()`；`redrawcomplete` 清除 stretch。
 - resize 后调用 `onAfterViewportResizeRef` → `useTierScrollSync.refreshTierScrollLayout`（**不再**在 tier sync 内挂独立 RO）。
-- **时长变化** overflow refit：`useWaveformTimelineController` layout effect 仅调 `wf.refitFitAllIfNeeded()` + renderCap clamp；**不再**在 timeline effect 内重复 viewport fit-all 判断。
+- **时长变化** overflow refit：`useWaveformTimelineController` layout effect 仅调 `wf.refitFitAllIfNeeded()` + renderCap clamp。
+
+### Shell 宽度真源（P0 阶段 2）
+
+- [`writeWaveformShellLayout`](../../apps/desktop/src/utils/waveformViewportStretch.ts) 在 viewport transaction 与 timeline controller `useLayoutEffect` 中 **imperative** 写入 timeline / stage / sticky 宽。
+- [`EditorWaveformPane`](../../apps/desktop/src/components/editor/EditorWaveformPane.tsx) 不再用 React `timelineWidthPx` 写 shell `width`（避免 commit 晚一帧覆盖）。
+- overlay / ruler 仍读 React `timelineWidthPx`（zoom 时更新）；shell DOM 宽以 imperative 为准。
 
 ## 整段可见（fit-all）布局意图
 

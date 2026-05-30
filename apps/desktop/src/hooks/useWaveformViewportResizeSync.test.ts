@@ -3,9 +3,9 @@ import { renderHook, act } from "@testing-library/react";
 import { useWaveformViewportResizeSync } from "./useWaveformViewportResizeSync";
 import { WAVEFORM_TIER_VIEWPORT_WIDTH_VAR } from "../utils/waveformViewport";
 
-async function flushRaf() {
+async function flushLayout() {
   await act(async () => {
-    await new Promise<void>((resolve) => requestAnimationFrame(() => resolve()));
+    await Promise.resolve();
   });
 }
 
@@ -106,7 +106,7 @@ describe("useWaveformViewportResizeSync", () => {
     await act(async () => {
       fireRo();
     });
-    await flushRaf();
+    await flushLayout();
   }
 
   it("re-renders WaveSurfer when viewport width changes", async () => {
@@ -193,7 +193,7 @@ describe("useWaveformViewportResizeSync", () => {
     await act(async () => {
       roCallback?.();
     });
-    await flushRaf();
+    await flushLayout();
 
     expect(onFitAllPxPerSecRefit).toHaveBeenCalled();
     expect(timelineShell.style.width).not.toBe("");
@@ -220,7 +220,7 @@ describe("useWaveformViewportResizeSync", () => {
     });
 
     await triggerViewportGrow(args, fireRo, 1920);
-    await flushRaf();
+    await flushLayout();
 
     expect(refitFitAllPxPerSec).toHaveBeenCalledWith(1920);
     expect((args.wsRef.current as { zoom: ReturnType<typeof vi.fn> }).zoom).toHaveBeenCalledWith(0.145);
