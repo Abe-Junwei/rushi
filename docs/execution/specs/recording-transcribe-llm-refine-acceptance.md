@@ -1,44 +1,60 @@
 # Acceptance: R3t — 录音转写 · 声学分段 · LLM 校准
 
-> **状态**：规划定稿；**签收项均未开始**  
+> **状态（2026-05-30）**：**R3t-A 🟡 编码✅ / 手测⏳**；R3t-B～E 📋 未编码  
 > **Intent**：[`recording-transcribe-llm-refine-intent.md`](./recording-transcribe-llm-refine-intent.md)  
-> **Plan**：[`recording-transcribe-llm-refine-plan.md`](./recording-transcribe-llm-refine-plan.md)
+> **Plan**：[`recording-transcribe-llm-refine-plan.md`](./recording-transcribe-llm-refine-plan.md)  
+> **路线图索引**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) §4.1.2、§13
 
 ## Epic 签收条件（全部子阶段完成后）
 
 - [ ] 录音文件「拉取语段」主路径可重复手测通过（短音频 + 13min）
 - [ ] LLM 标点（R3t-C）、段界（R3t-D）、**词表校对（R3t-E）** 均有预览确认，取消不改库
-- [ ] `npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs`
-- [ ] 动 Rust 时 `cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml`
-- [ ] 架构守卫无新增 error
+- [x] `npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs`（2026-05-30：567 vitest，0 守卫 error）
+- [ ] 动 Rust 时 `cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml`（R3t 全 Epic 签收时跑全量）
+- [x] 架构守卫无新增 error（2026-05-30）
 
 ---
 
 ## R3t-A — 声学分段 ASR
 
+> **编码真源（已合入 `main`）**：`services/asr/rushi_asr/segmentation.py`、`funasr_engine.py`；桌面 `segmentation_mode` + `deriveTranscribeHints` / `segmentListHelpers`（`whole_track_fallback` → `kind: placeholder`）。
+
 ### 自动
 
-- [ ] `services/asr/tests/test_funasr_engine*.py` 覆盖：句级解析、`start=0`、Paraformer generate 参数、punc 需 cached
-- [ ] `test_funasr_pipeline.py` / `test_model_prepare.py` 覆盖 punc 纳入 `required_models_cached_guess`
+- [x] `services/asr/tests/test_funasr_engine.py`：句级解析（含 ms/s 归一、`start=0`）、Paraformer `sentence_timestamp` / `merge_vad`、长音频禁 whole-track 终态、短音频 fallback、`segment_audio` 别名  
+  验证：`python3 -m pytest services/asr/tests/test_funasr_engine.py -q`
+- [x] `test_funasr_pipeline.py`：`recognizer_needs_punc_pipeline`、`effective_funasr_punc_model_id`  
+  验证：`python3 -m pytest services/asr/tests/test_funasr_pipeline.py -q`
+- [x] `test_model_prepare.py`：Paraformer 需 punc 纳入 `required_models_cached_guess`  
+  验证：`python3 -m pytest services/asr/tests/test_model_prepare.py -q -k punc`
+- [x] 桌面 hints 单测：`asrTranscribeHints.test.ts` 覆盖 `funasr_whole_track_fallback` 横幅文案
 
 ### 手测
 
-- [ ] **Paraformer + 13min**：≥10 条语段；无仅 0～全长 1 条（除非用户知悉 fallback）
+- [ ] **Paraformer + 13min**：≥10 条语段；无仅 0～全长 1 条（除非用户知悉 fallback）  
+  _注：R3g-A ⑤c（2026-05-27）已签 Paraformer 13min 多语段；本节仍作 **R3t-A 正式收口**，需按本清单复测并记录 segmentation_mode/warnings。_
 - [ ] **SenseVoice + 13min**：≥3 条语段（VAD 级可接受）
 - [ ] **短音频 30s**：1～5 段均可接受；无崩溃
-- [ ] 响应 `warnings` 含 `funasr_whole_track_fallback` 时，桌面 hints 出现对应横幅
+- [ ] 响应 `warnings` 含 `funasr_whole_track_fallback` 时，桌面 hints 出现对应横幅（UI 手测）
 
 ### 非目标
 
-- [ ] 不在此阶段签收 mic/流式
+- [x] 不在此阶段签收 mic/流式（未编码）
+
+### R3t-A 切片签收（编码 + 手测）
+
+- [x] **自动项**（上表）— 2026-05-30
+- [ ] **手测项**（上表）— 阻塞标 **R3t-A ✅**、开 **R3t-B**
 
 ---
 
 ## R3t-B — 转写任务与落库
 
+> **状态**：📋 未编码（编排、原子写库、覆盖确认 Q1、warnings UI 待 R3t-A 手测后开）
+
 ### 自动
 
-- [ ] Rust/TS 单测：segments 解析；空 segments 行为；超时推导（若与 e-A 合并）
+- [ ] Rust/TS 单测：segments 解析；空 segments 行为；超时推导（与 R3e-A `transcribe_timeout.rs` 部分已有，R3t-B 收口任务态）
 
 ### 手测
 
@@ -46,7 +62,7 @@
 - [ ] 转写中：busy + 可理解阶段文案
 - [ ] 成功后：语段列表与波形对齐；保存重启仍在
 - [ ] 失败：旧语段不被半成品覆盖
-- [ ] 覆盖已有语段时：有确认（若 Q1 采纳）
+- [ ] 覆盖已有语段时：有确认（Q1 已拍板）
 
 ### 能力—UI 状态矩阵
 
@@ -65,9 +81,11 @@
 
 ## R3t-C — LLM 标点（扩展 R2）
 
+> **状态**：R2 ✅ 基线已有；邻段上下文扩展 📋
+
 ### 自动
 
-- [ ] `postprocess_cmd` 邻段字段回归；`useAutoPunctuateController` 测试
+- [ ] `postprocess_cmd` 邻段字段回归；`useAutoPunctuateController` 测试（R2 基线已部分覆盖）
 
 ### 手测
 
@@ -78,6 +96,8 @@
 ---
 
 ## R3t-D — LLM 语义段界
+
+> **状态**：📋 未编码
 
 ### 自动
 
@@ -95,7 +115,8 @@
 
 ## R3t-E — 词表有据校对（Lexicon-guided）
 
-> 架构：[`lexicon-guided-llm-refine.md`](../../architecture/lexicon-guided-llm-refine.md)
+> 架构：[`lexicon-guided-llm-refine.md`](../../architecture/lexicon-guided-llm-refine.md)  
+> **状态**：📋 未编码
 
 ### 自动
 
@@ -120,11 +141,11 @@
 
 ## 与 R3g / R3e 关系（避免重复签收）
 
-| 原切片 | R3t 接管部分 |
-|--------|----------------|
-| R3g-A ⑤c 多语段 | → **R3t-A** 手测 |
-| R3e-A 超时 | 横切 **R3t-B**；e-A 可单独先签 |
-| R3e-B 分段 | 与 **R3t-A/B** 合并评审后签，避免测两遍 |
+| 原切片 | R3t 接管部分 | 2026-05-30 口径 |
+|--------|----------------|-----------------|
+| R3g-A ⑤c 多语段 | → **R3t-A** 手测 | ⑤c ✅；R3t-A 手测清单仍须 **正式勾选** |
+| R3e-A 超时 | 横切 **R3t-B**；e-A 可单独先签 | `transcribe_timeout.rs` 编码✅；50min 手测⏳ |
+| R3e-B 分段 | 与 **R3t-A/B** 合并评审后签 | R3e-B 消费 `segmentation.py` 别名，📋 未开始 |
 
 ---
 

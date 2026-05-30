@@ -10,7 +10,7 @@
 | 适用节奏 | 单人、每轮 2～4h、一轮一纵向薄片 |
 | 规划跨度 | **个人单机 v1**：约 **11～13 周（自当前）** 或 **15～17 周（自 W1）**；R3 薄片 **~8～10w**（§4.0）；协作 **非 v1** |
 | 修订 | 每完成一个阶段更新 §2 状态表、§4 排期表与 §13 代码对照 |
-| 最近对照 | **2026-05-27**：审查对齐（状态口径、rollback 三分、R3g cancel P0、§4.1.5/6 编号） |
+| 最近对照 | **2026-05-30**：§13 实测刷新；R3t-A 标为编码✅/手测⏳；波形 polish 记入 §2 |
 
 ### 状态标记约定（全文档统一）
 
@@ -146,12 +146,13 @@ bash scripts/p0-acceptance.sh
 | WASM 波形 | ✅ 移除 | WaveSurfer 为真源 |
 | 协作决策 | ✅ | ADR-0001 / ADR-0002、存储与 API 草案 |
 | Oumi 报告 Part I | ✅ 已评审 | 能力边界与「不做」清单 |
-| 语段 uid / 草稿 / 波形同步（工作区） | ✅ 已实现 | 见 §13.1；**建议先提交再开 R1** |
+| 语段 uid / 草稿 / 波形同步 | ✅ 已实现 | 见 §13.1 |
+| 校对工作台波形 UX polish | ✅ 基线 | minimap 56px、layoutIntent 缩放栏、语段 tap seek、segment 策略（2026-05-30，`00e9a9d` 等）；非 R3t 薄片 |
 | 关窗守卫 + 未保存对话框 | ✅ 已实现 | `appWindowCloseGuard` + `allow-destroy` |
 | 在线 STT 环境 UI | ✅ 主体已有 | `EnvOnlineSttPanel` + 合约测试；非从零建设 |
 | FunASR 模型下载 UI | ✅ 主体已有 | `usePrepareModelController` + `EnvLocalAsrPanel` |
-| 本机 ASR 一键诊断/准备（R3f） | 🟡 工作区 | `asr_setup` + `LocalAsrSetupWizard`；**签收依赖 R3h-0** |
-| **本地运行时目录 LRC（R3h）** | 🟡 进行中 | R3h-0 🟡；R3h-1 **编码✅ / 发行门禁⏳**（§4.1.2、remediation §11）；见 §13.1 |
+| 本机 ASR 一键诊断/准备（R3f） | 🟡 编码✅ | `asr_setup/` + `LocalAsrSetupWizard` 已合入 `main`；**手测签收依赖 R3h-0**（§4.1.1 ③） |
+| **本地运行时目录 LRC（R3h）** | 🟡 进行中 | R3h-0 🟡；R3h-1 **编码✅ / 发行门禁⏳**；`local_runtime/` 模块树已合入；见 §13.1 |
 | 诊断包导出入口 | ✅ 已有 | 工具栏菜单；R9 + TRN-DIAG 增强 |
 | LLM 后处理（R2 标点） | ✅ 已交付 | `postprocess_cmd`；**R3t-C/D/E 未编码** |
 | MCP / 协作服务 | ❌ 未开始 | 无 `services/mcp`、`services/collab` |
@@ -303,7 +304,7 @@ R4 + R4-GATE → R9
 | **④** | **R3e-A** | 🟡 | 2–3d | 动态超时 + 失败分类（已编码；50min 手测待签收） | [`r3e-long-audio-transcribe-acceptance.md`](../specs/r3e-long-audio-transcribe-acceptance.md) |
 | **⑤** | **R3g-A** | ✅ | 3–5d | 双 SKU + `prepare(model_id)`；**⑤a–c** 手测签收（2026-05-27） | [`r3g-local-asr-model-catalog-acceptance.md`](../specs/r3g-local-asr-model-catalog-acceptance.md) |
 | **⑤½** | **HOT-UX** | ✅ | 0.5w | 热词 12k 截断可观测；术语页「本次转写将携带」摘要 | [`hot-ux-acceptance.md`](../specs/hot-ux-acceptance.md) |
-| **⑤′a** | **R3t-A** | 📋 | 3–5d | 全模型声学分段；punc/VAD；消灭长音频整轨单段 | [`recording-transcribe-llm-refine-plan.md`](../specs/recording-transcribe-llm-refine-plan.md) §2 |
+| **⑤′a** | **R3t-A** | 🟡 **编码✅** / **手测⏳** | 3–5d | `segmentation.py` + FunASR 接线 + 单测；长音频禁 whole-track 终态；**acceptance 手测未签** | [`recording-transcribe-llm-refine-acceptance.md`](../specs/recording-transcribe-llm-refine-acceptance.md) §R3t-A |
 | **⑤′b** | **R3t-B** | 📋 | 2–4d | 转写任务、超时、原子写库、warnings UI；**不自动 LLM** | 同上 §3 |
 | **⑤′½** | **TRN-DIAG** | 📋 | 0.5w | 转写阶段时间线；失败阶段 + 建议动作；并入诊断包 | [`personal-solo-v1-backlog.md`](../specs/personal-solo-v1-backlog.md) §3.2 |
 | **⑥** | **R3e-B** | ⏳ | 1.5–2w | 长音频进度/分片；内核并入 R3t-A（**Q-SEQ-1 前移**） | r3e spec §R3e-B |
@@ -416,7 +417,7 @@ glossary_terms ──► L2 hotwords（转写偏置）
 | R1 | ✅ 已完成（文档门禁） | 2026-05-25 |
 | R2 | ✅ 已完成（DeepSeek 手测通过） | 2026-05-25 |
 | R3 | 🟡 进行中（a/b/c ✅；**R3h/f/e/g/d** 按 §4.1） | — |
-| R3h | 🟡 LRC 整改进行中：①② 已到 release-system 最小闭环；下一刀转 **R3f** 手测签收，后续再进 ⑥⑦ 与 `R3h-I` 收口 | — |
+| R3h | 🟡 LRC 整改进行中：① 待跨平台 smoke；② 编码✅/发行⏳；**下一刀 R3t-A 手测签收**（编码已就绪）；并行闭合 ③ R3f、④ R3e-A 手测 | — |
 | R4 | ⏳ | — |
 | R5 | ⏳ v1 后 | — |
 | R6–R8 | ⏳ 非 v1 | — |
@@ -543,7 +544,7 @@ React 预览 UI
 | R3b | Profile 导入导出 | ✅ |
 | R3c | 缓存 / manifest / 清缓存 | ✅ |
 | **R3h** | **本地运行时目录（LRC）** | ⏳ §4.1 ①–⑧ + `R3h-I`；`R3h-1` 按 release-system 最小闭环推进 |
-| **R3f** | 一键环境准备 | 🟡 编码完成；手测在 **R3h-0 后** |
+| **R3f** | 一键环境准备 | 🟡 编码✅；手测在 **R3h-0 后** |
 | **R3e** | 长音频 | ⏳ |
 | **R3g** | 模型目录 | ✅ R3g-A ⑤a–c（2026-05-27） |
 | **R3d** | 环境 IA | ⏳ 与 **R3h-3** 合并实施 |
@@ -830,7 +831,11 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 - [x] **R3g-A ⑤c**（Paraformer 13min 多语段；2026-05-27 复测签收）
 - [ ] **R3h §11 发行门禁**（零终端、构建 smoke、损坏可恢复…）
 
-**下一刀**：**R3t-A**（⑤′a；HOT-UX ✅、R3g ⑤c ✅）
+**下一刀**：**R3t-A 手测签收**（⑤′a 编码✅；见 [`recording-transcribe-llm-refine-acceptance.md`](../specs/recording-transcribe-llm-refine-acceptance.md) §手测）
+
+**同轮或紧邻闭合**（§4.1.1 未跳过）：**③ R3f** 一键准备手测、**④ R3e-A** 50min 超时/OOM 文案手测、**R3h §11** 发行门禁。
+
+**再下一刀**：**R3t-B**（转写编排 / 原子写库 / warnings UI；勿与 R3f 大改同轮）
 
 ---
 
@@ -905,91 +910,88 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | 2026-05-27 | **Q-R3g-3 编码**：侧车 `prepare-cancel` + 前端取消；cooperative（阶段间/进度回调） |
 | 2026-05-27 | **R3g-A ⑤b S3 签收**：场景 1 未就绪 + 场景 2 通过 → 可进 **⑤c** |
 | 2026-05-27 | **R3g-A ⑤c 签收**：侧车陈旧检测 + punc prepare 复测；preflight + 13min ≥10 语段 |
+| 2026-05-30 | **§13 对照刷新**：567 vitest、11 守卫警告；R3f/LRC/R3t-A 合入 `main`；波形 polish 记入 §2；R3t-A → 🟡 编码✅/手测⏳ |
 
 ---
 
-## 13. 代码对照评估（2026-05-25，§4.1 微调后）
+## 13. 代码对照评估（2026-05-30，`main` @ `00e9a9d`）
 
-> 对照 **`main` @ `06b5a4c` + 工作区未提交增量**。R0–R3c、R3b 已合入远程；R3f 实现主要在**工作区未提交**。
+> 对照 **已推送 `main`**。发版轮末刷新本节测试数 / 守卫警告 / 热点行数。
 
 ### 13.1 工程验证快照（实测）
 
 | 检查项 | 结果 |
 |--------|------|
 | `npm run typecheck` | ✅ 通过 |
-| `npm run test`（desktop） | ✅ **194** passed（2026-05-27） |
-| `node scripts/check-architecture-guard.mjs` | ✅ 0 错误，**7 警告**（LRC/ASR 热点，§13.3 **T-010**） |
+| `npm run test`（desktop） | ✅ **567** passed（116 files，2026-05-30） |
+| `node scripts/check-architecture-guard.mjs` | ✅ 0 错误，**11 警告**（波形热点：`pxPerSec.ts`、`useWaveformSegmentDrag.ts` 等，§13.3） |
 | `cargo test`（desktop lib） | ✅ 见 `cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml` |
 | `profile.rs` / R3c 缓存 / 清缓存对话框 | ✅ 已合入 `main` |
-| `asr_setup_diagnose` / 一键准备 UI | 🟡 **工作区有**（R3f-A/B/D），已接入 local runtime 最小闭环，待提交 + 手测 |
-| `local_runtime` / LRC 下载器 | 🟡 **工作区有**（manifest、sha256、staging、app_data 优先、下载进度），待发行级信任 / 回滚 / 弱网手测 |
-| `prepare(model_id)` / 模型目录 UI | 🟡 R3g-A ⑤a ✅；⑤b 状态对齐进行中（见 architecture §4） |
-| 长音频动态超时（R3e-A） | 🟡 已编码；50min 整轨仍 OOM，完整能力待 R3e-B+R3t-A |
-| 长音频分段转写（R3e-B） | 📋 未开始 |
+| `asr_setup_diagnose` / 一键准备 UI | 🟡 **已合入**（`asr_setup/`、`LocalAsrSetupWizard`）；**R3f 手测待 R3h-0** |
+| `local_runtime/` LRC | 🟡 **已合入**（manifest、installer、recovery、integrity…）；**R3h-1 发行门禁 §11 未全绿** |
+| `segmentation.py` / R3t-A 内核 | 🟡 **已合入**；ASR pytest 17+（`test_funasr_engine` / pipeline / model_prepare）；**acceptance 手测未签** |
+| `prepare(model_id)` / 模型目录 UI | ✅ R3g-A ⑤a–c 手测签收（2026-05-27） |
+| 长音频动态超时（R3e-A） | 🟡 `transcribe_timeout.rs` 已编码；**50min 手测待签** |
+| 长音频分段转写（R3e-B） | 📋 未开始（消费 R3t-A 内核） |
+| 校对工作台波形 polish | ✅ minimap 56px、layoutIntent 缩放栏、语段 tap seek 等（2026-05-30） |
 | `services/mcp` / `services/collab` | ❌ 未开始 |
 
-**工作区增量（R3f，待提交）**：
+**R3t-A 编码真源（签收对照）**：
 
-- `src-tauri/src/asr_setup/`、`useAsrSetupController.ts`、`LocalAsrSetupWizard.tsx`
-- `asrSetupApi.ts`、`services/asr/asrSetupContract.ts`
-- `asr_sidecar::probe_asr_port`、路线图/spec 同步
+- `services/asr/rushi_asr/segmentation.py` — 分段内核 + `segment_audio_to_transcription_segments` 别名（R3e-B 消费点）
+- `services/asr/rushi_asr/funasr_engine.py` — generate 参数、分段模式、`segmentation_mode` 回传
+- `services/asr/tests/test_funasr_engine.py`、`test_funasr_pipeline.py`、`test_model_prepare.py`
+- 桌面：`segmentation_mode`（`contracts/transcription.ts`）、`deriveTranscribeHints` / `segmentListHelpers`（`whole_track_fallback` → placeholder kind）
 
 ### 13.2 与路线图各阶段的符合度
 
 | 阶段 | 代码现状 | 评估 |
 |------|----------|------|
-| **R0–R2** | 已提交；lifecycle ~261 行（**T-005 ✅**） | ✅ 不阻塞 R3；新债见 **T-010**（LRC/ASR） |
+| **R0–R2** | lifecycle ~261 行（**T-005 ✅**） | ✅ |
 | **R3a–b** | keychain/probe；profile 导入导出 | ✅ |
-| **R3c** | 引导/缓存/manifest/清缓存确认框 | ✅ 已合入 + 手测通过 |
-| **R3f** | `asr_setup_diagnose`、一键准备编排、8741 探测、local runtime 缺失/损坏修复 | 🟡 工作区编码完成；待 R3h-0/1 发行级补齐后手测；高级「选仓库+bash」仍保留兜底 |
-| **R3h-0/1** | 构建 smoke、Win 磁盘、`local_runtime`、manifest 下载、app_data 优先 | 🟡 最小闭环已编码；文档状态需随提交更新；仍缺 signed manifest、回滚槽、断点续传、生产源策略 |
-| **R3g** | `prepare(model_id)`、catalog API、force-restart | 🟡 ⑤a ✅；UI 勿用全局 health 表示所选 SKU |
-| **R3e** | transcribe **600s** 固定；整文件推理 | ❌ e-A 待做；e-B 为分段合并 |
-| **转写体验补丁** | hints 横幅、整轨兜底 | ✅ 已合入 `main` |
-| **R4–R8** | 无质量 Tab / MCP / collab | ❌ 未开始 |
-| **R9** | 诊断包有；长音频 REL 依赖 R3e-B | 🟡 |
+| **R3c** | 引导/缓存/manifest/清缓存 | ✅ 手测通过 |
+| **R3f** | `asr_setup_diagnose`、一键准备、8741 探测、LRC 缺失/损坏修复 | 🟡 编码✅；**R3h-0 后手测** |
+| **R3h-0/1** | smoke、Win 磁盘、`local_runtime` 模块树、manifest 下载、A/B 回滚 | 🟡 编码✅；**§11 发行门禁未全绿** |
+| **R3g** | 双 SKU + prepare；R3-STATE 对齐 | ✅ ⑤a–c 签收 |
+| **R3t-A** | 分段内核 + 单测 + hints | 🟡 **编码✅ / 手测⏳** |
+| **R3t-B～E** | — | 📋 |
+| **R3e-A** | 动态超时预算 | 🟡 编码✅；50min 手测待签 |
+| **R3e-B** | — | 📋 |
+| **波形 UX** | 2026-05 多轮 polish | ✅ 编辑体验；**不替代 R3t 签收** |
+| **R4–R8** | 无质量 Tab / MCP / collab | ❌ |
+| **R9** | 诊断包有；长音频 REL 依赖 R3e-B + R3t | 🟡 |
 
-### 13.3 代码热点（2026-05-27 `wc -l`）
+### 13.3 代码热点（2026-05-30 `wc -l`）
 
 | 文件 | 行数 | 路线图 / 守卫 | 判定 |
 |------|------|---------------|------|
-| `local_runtime/install_support.rs` | ~675 | **T-010**；R3h-I2 | ⚠️ 超阈值，R3h-2 薄片内拆 |
+| `local_runtime/install_support/`（合计） | 仍大 | **T-010**；R3h-I2 | ⚠️ R3h-2 薄片内拆 |
 | `asr_sidecar.rs` | ~632 | **T-010**；R3h-I1 | ⚠️ 同上 |
-| `useAsrSetupController.ts` | ~364 | R3h-I3 | ⚠️ 接近阈值 |
-| `useLocalRuntimeSetupSupport.ts` | ~359 | R3h-I3 | ⚠️ 接近阈值 |
-| `LocalAsrSetupWizard.tsx` | ~313 | R3f/⑤b | ⚠️ 观察 |
-| `useAsrSetupController.test.ts` | ~495 | — | 测试文件可拆，非产品阻塞 |
-| `useProjectLifecycleController.ts` | ~261 | **T-005 ✅** | ✅ 已低于 300 |
-| `useProjectWaveform.ts` | ~275 | — | ✅ 临界观察 |
+| `useAsrSetupController.ts` | ~122 | R3h-I3 | ✅ 已拆分（原 ~364） |
+| `useLocalRuntimeSetupSupport.ts` | ~61 | R3h-I3 | ✅ |
+| `LocalAsrSetupWizard.tsx` | ~166 | R3f | ✅ |
+| `useWaveformSegmentDrag.ts` | ~376 | 波形 | ⚠️ 守卫警告；再叠功能先拆 |
+| `pxPerSec.ts` | ~376 | 波形 fit/zoom | ⚠️ 同上 |
+| `useWaveformZoom.ts` | — | 13 hooks | ⚠️ 超 12 阈值 |
+| `WaveformTimeRuler.tsx` | ~349 | 波形 | ⚠️ 接近 300 行 + 13 hooks |
+| `useProjectLifecycleController.ts` | ~261 | **T-005 ✅** | ✅ |
+| `useProjectWaveform.ts` | ~275 | — | ✅ 观察 |
 | `transcribe.rs` | ~300 | T-001 | ✅ 已拆 online |
-| `project_bundle_cmd.rs` | ~277 | R1-001 ✅ | ✅ |
-| `SegmentTextListRow.tsx` | ~110 | R3-003 | ✅ 已缓解 |
 
-### 13.4 排期调整摘要（2026-05-26 第三版 — R3h 并入）
+### 13.4 排期调整摘要（2026-05-30）
 
-1. **R3h（LRC）** 为发行阻塞线：应用内侧车下载/完整性/零终端；实施真源 [remediation v1.1](../specs/rushi-local-runtime-catalog-remediation-plan.md)。  
-2. **R3 宏观 ~8～10w**（§4.1.1 薄片总和，Q-SEQ-2）；v1 总跨度见文首元数据。  
-3. **唯一顺序 §4.1.1（2026-05-27）**：`…⑤c → HOT-UX → R3t-A/B → TRN-DIAG → R3e-B → R3h-2 → ASR-WARM → R3h-3 → Sherpa → R3t-C/D/E → EXP-WORD → R4 → R9`。  
-4. **R3f 不得在 R3h-0 前签收**；**R9** 增加零终端 ASR + 弱网场景。  
-5. **T-004** 从「C7 后」改为 **R3h-2**；新增 **T-008/T-009**（corrupt 诊断、Sherpa 门控）。
-6. **补入 `R3h-I` 工业成熟度对齐轨**：不改发行止血主顺序，用于收口 `Runtime Supervisor`、release system、`ASR setup` 状态机三条结构线。
-7. **2026-05-26 代码对照更新**：R3h-0/1 已出现工作区最小闭环，但尚未达到发行级；R3h-I2 必须补齐 signed manifest、pinned key、current+previous / rollback、GC、progress events、SBOM / provenance 摘要。
+1. **R3t-A** 由 📋 调整为 **🟡 编码✅ / 手测⏳**；下一刀为 acceptance §手测，而非从零编码。  
+2. **R3f / LRC** 不再标「工作区未提交」；发行与手测闸门仍开放。  
+3. **波形 polish**（2026-05-27～30）记入 §2 基线，**不占用** R3t 薄片序号。  
+4. **§4.1.1 顺序不变**：③ R3f、④ R3e-A 手测仍建议在 R3t-B 前闭合，可与 R3t-A 手测交错。
 
 ### 13.5 风险（对照后）
 
 | 风险 | 严重度 | 缓解 |
 |------|--------|------|
-| R3f 工作区未提交 | 中 | f 手测前提交 `asr_setup` 等增量 |
-| 用户仍卡在「选仓库装 FunASR」 | 高 | **R3h-1** 应用内下侧车 + **R3f** 一键准备 |
-| 侧车包 corrupt（funasr 数据缺失） | 高 | **R3h-0** smoke + **R3h-2** 重下 |
-| manifest 源被替换导致 hash 同步被篡改 | 高 | R3h-I2：signed manifest + pinned public key；生产禁用非 HTTPS / 非内置源 |
-| 下载/安装失败破坏旧 runtime | 高 | R3h-2：current+previous 或 A/B 槽；新包验证通过后再切换；失败保留旧版 |
-| 文档 manifest schema 与代码实现漂移 | 中 | R3h-1 收口：统一 `artifact{}` vs 扁平字段真源，并补 contract test |
-| 大文件弱网 / 代理环境失败 | 中 | R3h-2：Range 续传、镜像回退、proxy/timeout、弱网手测 |
-| ~2.5GB 侧车长期体积 | 中 | **R3h-3.5** Sherpa Spike |
-| SenseVoice 默认 → 整轨长语段 | 中 | **R3g** 推荐 Paraformer 长音频 |
-| 长音频 OOM / 600s 超时 | 高 | **R3e-A/B** |
-| 多模型超 5GB | 中 | R3c 占用 + 清理 + 目录标注 |
-| LRC/ASR 模块超 500 行（**T-010**） | 中 | R3h-2 / R3h-I1～I3 薄片内拆；见 §13.3 |
-| R3-STATE S3 未做即进 ⑤c | 高 | 严格执行 §4.1.4；维度误用会污染 R3t UI |
-| 文档 §13.1 与实测漂移 | 低 | 发版轮刷新测试数/守卫警告 |
+| R3t-A 手测未签即开 R3t-B | 中 | 先跑 acceptance §R3t-A 手测清单 |
+| R3f / R3h-0 手测滞后 | 高 | 与 R3t-A 手测同轮或紧邻； corrupt 包误判 |
+| 文档 §13 与实测再次漂移 | 低 | 每 Epic 签收后刷新 §13.1 一行 |
+| 波形热点超阈值继续叠功能 | 中 | 下一波形刀先拆 `pxPerSec` 或 drag |
+| 长音频 OOM / 超时 | 高 | **R3e-A 手测** + **R3t-A/B** |
+| LRC 大模块（**T-010**） | 中 | R3h-2 / R3h-I 薄片内拆 |

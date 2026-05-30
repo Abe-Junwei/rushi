@@ -1,7 +1,8 @@
 # Plan: R3t — 录音转写 · 声学分段 · LLM 校准
 
-> **状态**：规划定稿；**本文档不触发编码**  
+> **状态**：R3t-A **编码进行中**（`segmentation.py` 已合入）；R3t-B～E 未编码  
 > **Intent**：[`recording-transcribe-llm-refine-intent.md`](./recording-transcribe-llm-refine-intent.md)  
+> **Acceptance**：[`recording-transcribe-llm-refine-acceptance.md`](./recording-transcribe-llm-refine-acceptance.md)  
 > **架构**：[`recording-transcribe-llm-pipeline.md`](../../architecture/recording-transcribe-llm-pipeline.md)
 
 ## 1. 子阶段总览

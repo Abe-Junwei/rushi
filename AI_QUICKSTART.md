@@ -17,13 +17,14 @@
 | `docs/adr/` | 架构决策记录 |
 | `docs/execution/specs/` | 非 trivial feature 三件套 |
 
-## 当前热点（自动同步，2026-05-27）
+## 当前热点（自动同步，2026-05-30）
 
 **R3h / LRC / ASR Setup（排期主战场）**
 
 - **Rust T-010 ✅**：`install_support/`、`integrity/`、`installer/`、`catalog/`、`manifest/`、`recovery/`、`asr_sidecar/bundled/`；业务 `.rs` 均 &lt;320 行（测试模块除外）
-- `apps/desktop/src/pages/useAsrSetupController.ts` ~364 行 + `useLocalRuntimeSetupSupport.ts` ~359 行 → **R3h-I3** Setup Machine 候选
-- `apps/desktop/src/components/envLocalAsr/LocalAsrSetupWizard.tsx` ~313 行 → 接近阈值，随 R3f/⑤b 演进观察
+- `apps/desktop/src/pages/useAsrSetupController.ts` ~122 行 + `useLocalRuntimeSetupSupport.ts` ~61 行（已拆分；**R3h-I3** Setup Machine 仍待收口）
+- `apps/desktop/src/components/envLocalAsr/LocalAsrSetupWizard.tsx` ~166 行
+- **R3t-A**：`services/asr/rushi_asr/segmentation.py` 已合入；**acceptance 手测待签**
 
 **已降温（勿再当 R0 阻塞）**
 
@@ -43,7 +44,7 @@
 | 新 UI / 整页重设计 / Stitch 对齐 | 仓库根 `DESIGN.md` → 再映射到 `tailwind.config.js` + `apps/desktop/src/config/tokens.ts` |
 | **波形区 Stitch 精修** | [`apps/desktop/docs/stitch-waveform-polish-spec.md`](./apps/desktop/docs/stitch-waveform-polish-spec.md) + [`stitch-waveform-polish-layout.html`](./apps/desktop/stitch-waveform-polish-layout.html) → `bash scripts/prepare-stitch-upload.sh` |
 | 浮动确认/表单对话框 | `FloatingPanelTemplate` + `preset="compactDialog"`；`controlStyles.ts` 按钮；见 [`docs/architecture/desktop-floating-dialog-panels.md`](./docs/architecture/desktop-floating-dialog-panels.md) |
-| **后续排期 / 下一刀** | [`rushi-execution-roadmap.md`](./docs/execution/plans/rushi-execution-roadmap.md) §4.1.1；**当前**：**R3t-A**（声学分段） |
+| **后续排期 / 下一刀** | [`rushi-execution-roadmap.md`](./docs/execution/plans/rushi-execution-roadmap.md) §10；**当前**：**R3t-A 手测签收**（编码✅）→ R3t-B |
 | 单人 UI 重设计迭代（已验收） | `docs/execution/specs/ui-redesign-parallel-dev.md` + `bash scripts/prepare-stitch-upload.sh` |
 | 更换或更新 `DESIGN.md` 基底 | 仓库根执行 `npm run design:add -- <站点>`（站点名见 [awesome-design-md](https://github.com/VoltAgent/awesome-design-md) / [getdesign.md](https://getdesign.md/)，例：`npm run design:add -- cal`） |
 | 导出格式 | `src/services/exportFormatters.ts` |
