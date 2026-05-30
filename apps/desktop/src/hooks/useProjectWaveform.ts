@@ -22,7 +22,8 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     segments,
     selectedIdx,
     disabled,
-    minPxPerSec = 56,
+    minPxPerSec: layoutPxPerSec = 56,
+    drawPxPerSec = layoutPxPerSec,
     peakCache = null,
     waveformHeightPx = 96,
     onZoomApplied,
@@ -37,8 +38,8 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
   onZoomAppliedRef.current = onZoomApplied;
   const getViewportScrollPxRef = useRef(options.getViewportScrollPx);
   getViewportScrollPxRef.current = options.getViewportScrollPx;
-  const minPxPerSecRef = useRef(minPxPerSec);
-  minPxPerSecRef.current = minPxPerSec;
+  const minPxPerSecRef = useRef(layoutPxPerSec);
+  minPxPerSecRef.current = layoutPxPerSec;
   const peakCacheRef = useRef(peakCache);
   peakCacheRef.current = peakCache;
   const waveformHeightRef = useRef(waveformHeightPx);
@@ -56,7 +57,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
   const lastTimeUiCommitMsRef = useRef(0);
   const scrollNotifyRafRef = useRef(0);
   const pendingScrollLeftRef = useRef(0);
-  const appliedZoomStateRef = useRef(createWaveformAppliedZoomState(minPxPerSec));
+  const appliedZoomStateRef = useRef(createWaveformAppliedZoomState(layoutPxPerSec));
   const appliedZoom = appliedZoomStateRef.current;
   const cancelInFlightZoomRef = useRef<(() => void) | undefined>(undefined);
   const viewportResizeHoldRef = useRef(false);
@@ -170,7 +171,8 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     hotSwitchWhilePlayingRef,
     hotSwitchWhilePlaying,
     disabled,
-    minPxPerSec,
+    layoutPxPerSec,
+    drawPxPerSec,
     appliedZoom,
     peakCache,
     peakCacheGeneration,

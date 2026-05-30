@@ -1,7 +1,8 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   exportMinimapPeaksFromWaveSurfer,
   interleaveExportPeaksChannel,
+  resetMinimapPeaksCache,
   resolveMinimapPeaksForDraw,
 } from "./minimapPeaksSource";
 import type { PeakCache } from "./PeakCache";
@@ -41,6 +42,10 @@ describe("exportMinimapPeaksFromWaveSurfer", () => {
 });
 
 describe("resolveMinimapPeaksForDraw", () => {
+  beforeEach(() => {
+    resetMinimapPeaksCache();
+  });
+
   it("prefers WaveSurfer export when available", async () => {
     const exportPeaks = new Float32Array([-0.2, 0.2, -0.5, 0.5]);
     const peakCache = {
@@ -92,5 +97,32 @@ describe("resolveMinimapPeaksForDraw", () => {
 
     expect(result).toBe(asyncPeaks);
     expect(peakCache.getMinimapPeaksAsync).toHaveBeenCalledWith(180, 90);
+  });
+
+  it("reuses cached peaks when width and generation are unchanged", async () => {
+    const cachePeaks = new Float32Array([-0.1, 0.1, -0.3, 0.3]);
+    const peakCache = {
+      getMinimapPeaks: vi.fn(() => ({ peaks: [cachePeaks], duration: 120 })),
+      getMinimapPeaksAsync: vi.fn(),
+    } as unknown as PeakCache;
+
+    const first = await resolveMinimapPeaksForDraw({
+      peakCache,
+      overviewWidthPx: 240,
+      layoutDurationSec: 120,
+      peakCacheGeneration: 2,
+      exportFromWaveSurfer: () => null,
+    });
+    const second = await resolveMinimapPeaksForDraw({
+      peakCache,
+      overviewWidthPx: 240,
+      layoutDurationSec: 120,
+      peakCacheGeneration: 2,
+      exportFromWaveSurfer: () => null,
+    });
+
+    expect(first).toBe(cachePeaks);
+    expect(second).toBe(cachePeaks);
+    expect(peakCache.getMinimapPeaks).toHaveBeenCalledTimes(1);
   });
 });

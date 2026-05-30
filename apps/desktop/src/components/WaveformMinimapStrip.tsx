@@ -93,6 +93,7 @@ export function WaveformMinimapStrip({
         peakCache,
         overviewWidthPx: widthPx,
         layoutDurationSec: durationSec,
+        peakCacheGeneration,
         exportFromWaveSurfer: () => exportMinimapPeaksRef.current?.(widthPx) ?? null,
       })
         .then((peaks) => {

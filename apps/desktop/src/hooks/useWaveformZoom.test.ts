@@ -6,7 +6,7 @@ import {
   PX_PER_SEC_MAX,
   TIMELINE_PX_PER_SEC,
 } from "../utils/pxPerSec";
-import { useWaveformZoom } from "./useWaveformZoom";
+import { DRAW_PX_PER_SEC_DEBOUNCE_MS, useWaveformZoom } from "./useWaveformZoom";
 
 function renderZoomHook() {
   return renderHook(() => useWaveformZoom());
@@ -119,5 +119,36 @@ describe("useWaveformZoom", () => {
     });
 
     expect(result.current.layoutIntent).toBe("manual");
+  });
+
+  it("setPxPerSecFromSlider updates layout immediately and debounces draw px/s", () => {
+    vi.useFakeTimers();
+    const { result } = renderZoomHook();
+
+    act(() => {
+      result.current.setPxPerSecFromSlider(TIMELINE_PX_PER_SEC * 2);
+    });
+
+    expect(result.current.layoutPxPerSec).toBe(TIMELINE_PX_PER_SEC * 2);
+    expect(result.current.drawPxPerSec).toBe(TIMELINE_PX_PER_SEC);
+
+    act(() => {
+      vi.advanceTimersByTime(DRAW_PX_PER_SEC_DEBOUNCE_MS);
+    });
+
+    expect(result.current.drawPxPerSec).toBe(TIMELINE_PX_PER_SEC * 2);
+    vi.useRealTimers();
+  });
+
+  it("setFitPxPerSec syncs layout and draw immediately", () => {
+    const { result } = renderZoomHook();
+    const fitPx = computeFitSelectionPxPerSec(800, 10, 12);
+
+    act(() => {
+      result.current.setFitPxPerSec(fitPx);
+    });
+
+    expect(result.current.layoutPxPerSec).toBe(fitPx);
+    expect(result.current.drawPxPerSec).toBe(fitPx);
   });
 });

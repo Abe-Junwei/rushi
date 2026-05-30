@@ -1,6 +1,6 @@
 import { renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { createWaveformAppliedZoomState } from "../utils/waveformAppliedZoom";
+import { createWaveformAppliedZoomState, markAppliedPeaks } from "../utils/waveformAppliedZoom";
 import { useWaveformZoomSync } from "./useWaveformZoomSync";
 import { flushRaf, makeWs, zoomSyncBase } from "./useWaveformZoomSync.testHelpers";
 
@@ -60,19 +60,50 @@ describe("useWaveformZoomSync", () => {
     const appliedZoom = createWaveformAppliedZoomState(56);
 
     const { rerender } = renderHook(
-      (props: { minPxPerSec: number }) =>
+      (props: { layoutPxPerSec: number }) =>
         useWaveformZoomSync({
           ...zoomSyncBase,
           wsRef,
-          minPxPerSec: props.minPxPerSec,
+          layoutPxPerSec: props.layoutPxPerSec,
+          drawPxPerSec: 56,
           appliedZoom,
         }),
-      { initialProps: { minPxPerSec: 56 } },
+      { initialProps: { layoutPxPerSec: 56 } },
     );
 
-    rerender({ minPxPerSec: 80 });
+    rerender({ layoutPxPerSec: 80 });
 
     expect(appliedZoom.appliedZoomPxPerSecRef.current).toBe(80);
     expect(ws.zoom).toHaveBeenCalledWith(80);
+  });
+
+  it("ws.zoom follows layout while draw defers peaks load", async () => {
+    const ws = makeWs();
+    const wsRef = { current: ws as never };
+    const appliedZoom = createWaveformAppliedZoomState(56);
+    markAppliedPeaks(appliedZoom, true, 56);
+    const peakCache = {
+      durationSec: 120,
+      getWaveSurferPeaksAsync: vi.fn(),
+    };
+
+    const { rerender } = renderHook(
+      (props: { layoutPxPerSec: number; drawPxPerSec: number }) =>
+        useWaveformZoomSync({
+          ...zoomSyncBase,
+          wsRef,
+          layoutPxPerSec: props.layoutPxPerSec,
+          drawPxPerSec: props.drawPxPerSec,
+          appliedZoom,
+          peakCache: peakCache as never,
+        }),
+      { initialProps: { layoutPxPerSec: 56, drawPxPerSec: 56 } },
+    );
+
+    rerender({ layoutPxPerSec: 120, drawPxPerSec: 56 });
+    await flushRaf();
+
+    expect(ws.zoom).toHaveBeenCalledWith(120);
+    expect(ws.load).not.toHaveBeenCalled();
   });
 });

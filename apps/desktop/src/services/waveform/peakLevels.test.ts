@@ -10,11 +10,13 @@ describe("pickPeakLodLevel", () => {
     expect(pickPeakLodLevel(56)).toBe(PEAK_LOD_LEVELS[2].level);
   });
 
-  it("picks L2 for high zoom", () => {
+  it("picks L3 for high zoom above L2", () => {
     expect(pickPeakLodLevel(200)).toBe(PEAK_LOD_LEVELS[2].level);
+    expect(pickPeakLodLevel(400)).toBe(PEAK_LOD_LEVELS[3].level);
   });
 
   it("falls back to finest level when target exceeds all LODs", () => {
-    expect(pickPeakLodLevel(500)).toBe(PEAK_LOD_LEVELS[2].level);
+    expect(pickPeakLodLevel(500)).toBe(PEAK_LOD_LEVELS[3].level);
+    expect(pickPeakLodLevel(1200)).toBe(PEAK_LOD_LEVELS[3].level);
   });
 });

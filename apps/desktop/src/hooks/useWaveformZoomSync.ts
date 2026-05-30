@@ -24,7 +24,7 @@ type PendingPeaksLoad = {
   layoutDur: number;
 };
 
-/** Sync layout px/s → WaveSurfer zoom; ws.load(peaks) when cache ready / quantum changes. */
+/** Sync layout px/s → WaveSurfer zoom; ws.load(peaks) when draw px/s cache ready / quantum changes. */
 export function useWaveformZoomSync(args: {
   wsRef: RefObject<WaveSurfer | null>;
   isReady: boolean;
@@ -32,8 +32,12 @@ export function useWaveformZoomSync(args: {
   hotSwitchWhilePlayingRef: MutableRefObject<boolean>;
   hotSwitchWhilePlaying: boolean;
   disabled?: boolean;
-  /** React zoom intent (useWaveformZoom pxPerSec). */
-  minPxPerSec: number;
+  /** Live layout px/s — ws.zoom follows immediately. */
+  layoutPxPerSec?: number;
+  /** Debounced peaks-load px/s — ws.load quantum follows this track. */
+  drawPxPerSec?: number;
+  /** @deprecated Use layoutPxPerSec + drawPxPerSec. When set alone, applies to both tracks. */
+  minPxPerSec?: number;
   appliedZoom: WaveformAppliedZoomState;
   peakCache?: PeakCache | null;
   peakCacheGeneration?: number;
@@ -53,7 +57,9 @@ export function useWaveformZoomSync(args: {
     hotSwitchWhilePlayingRef,
     hotSwitchWhilePlaying,
     disabled,
-    minPxPerSec,
+    layoutPxPerSec: layoutPxPerSecArg,
+    drawPxPerSec: drawPxPerSecArg,
+    minPxPerSec: minPxPerSecArg,
     appliedZoom,
     peakCache,
     peakCacheGeneration = 0,
@@ -67,6 +73,9 @@ export function useWaveformZoomSync(args: {
     flushDeferredPeaksLoadRef,
   } = args;
 
+  const layoutPxPerSec = layoutPxPerSecArg ?? minPxPerSecArg ?? 56;
+  const drawPxPerSec = drawPxPerSecArg ?? layoutPxPerSec;
+
   const zoomSyncInFlightRef = useRef<number | null>(null);
   const peaksLoadSeqRef = useRef(0);
   const peaksLoadInFlightPxRef = useRef<number | null>(null);
@@ -78,7 +87,7 @@ export function useWaveformZoomSync(args: {
 
   const pendingPeaksHotSwitchRef = useRef(false);
   const pendingPeaksLoadRef = useRef<PendingPeaksLoad | null>(null);
-  const prevMinPxPerSecRef = useRef(minPxPerSec);
+  const prevDrawPxPerSecRef = useRef(drawPxPerSec);
   const prevPlayingRef = useRef(isPlaying);
   const [peaksHotSwitchPending, setPeaksHotSwitchPending] = useState(false);
   const [peaksApplied, setPeaksApplied] = useState(false);
@@ -113,7 +122,7 @@ export function useWaveformZoomSync(args: {
   }, [onPeaksApplied, peakCache, syncPeaksHotSwitchPending]);
 
   useEffect(() => {
-    prevMinPxPerSecRef.current = minPxPerSec;
+    prevDrawPxPerSecRef.current = drawPxPerSec;
   }, [mediaUrl]);
 
   const cancelInFlightZoom = useCallback(() => {
@@ -133,7 +142,7 @@ export function useWaveformZoomSync(args: {
     const finishZoom = (currentWs: WaveSurfer) => {
       commitWaveSurferZoom({
         ws: currentWs,
-        intentPxPerSec: minPxPerSec,
+        intentPxPerSec: layoutPxPerSec,
         appliedZoom,
         inFlight,
         onZoomApplied: onZoomAppliedRef?.current ?? undefined,
@@ -155,7 +164,7 @@ export function useWaveformZoomSync(args: {
         url: pending.url,
         loadPeaksPx: pending.loadPeaksPx,
         layoutDur: pending.layoutDur,
-        intentPxPerSec: minPxPerSec,
+        intentPxPerSec: drawPxPerSec,
         mediaUrl,
         wsRef,
         appliedZoom,
@@ -177,7 +186,7 @@ export function useWaveformZoomSync(args: {
 
       const cache = peakCacheRef?.current ?? peakCache ?? null;
       const action = planWaveformZoomApply({
-        intentPxPerSec: minPxPerSec,
+        intentPxPerSec: drawPxPerSec,
         appliedZoom,
         peakCache: cache,
         mediaUrl,
@@ -193,6 +202,7 @@ export function useWaveformZoomSync(args: {
       switch (action.type) {
         case "noop":
           syncPeaksHotSwitchPending(false);
+          finishZoom(currentWs);
           break;
         case "finish-zoom":
           syncPeaksHotSwitchPending(false);
@@ -222,7 +232,7 @@ export function useWaveformZoomSync(args: {
             url: mediaUrl!,
             loadPeaksPx: action.loadPeaksPx,
             layoutDur: action.layoutDur,
-            intentPxPerSec: minPxPerSec,
+            intentPxPerSec: drawPxPerSec,
             mediaUrl,
             wsRef,
             appliedZoom,
@@ -233,7 +243,7 @@ export function useWaveformZoomSync(args: {
           break;
       }
 
-      prevMinPxPerSecRef.current = minPxPerSec;
+      prevDrawPxPerSecRef.current = drawPxPerSec;
     };
 
     applyZoom();
@@ -256,7 +266,8 @@ export function useWaveformZoomSync(args: {
     layoutDurationSec,
     layoutDurationSecRef,
     mediaUrl,
-    minPxPerSec,
+    layoutPxPerSec,
+    drawPxPerSec,
     onPeaksApplied,
     onZoomAppliedRef,
     peakCache,

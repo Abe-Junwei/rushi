@@ -47,7 +47,7 @@ export function WaveformTimeRulerTickLayer({
   const tickTopY = embeddedOverlay ? undefined : 0;
   const tickBottomY = (len: number) =>
     embeddedOverlay ? rulerHeightPx - len : len;
-  const labelClassTop = embeddedOverlay ? "top-0" : "top-[8px]";
+  const labelClassTop = embeddedOverlay ? "bottom-0 pb-px" : embedded ? "top-0" : "top-[8px]";
   const embeddedLabelClass = embedded ? "text-notion-text/72" : ink ? "text-notion-bg/60" : "text-zen-ink/55";
 
   return (

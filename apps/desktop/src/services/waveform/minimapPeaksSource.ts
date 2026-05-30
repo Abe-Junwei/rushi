@@ -27,7 +27,20 @@ export function exportMinimapPeaksFromWaveSurfer(
   }
 }
 
-export async function resolveMinimapPeaksForDraw(input: {
+type MinimapPeaksCacheEntry = {
+  widthPx: number;
+  peakCacheGeneration: number;
+  layoutDurationSec: number;
+  peaks: Float32Array;
+};
+
+let minimapPeaksCache: MinimapPeaksCacheEntry | null = null;
+
+export function resetMinimapPeaksCache(): void {
+  minimapPeaksCache = null;
+}
+
+async function resolveMinimapPeaksForDrawInner(input: {
   peakCache: PeakCache | null;
   overviewWidthPx: number;
   layoutDurationSec: number;
@@ -59,4 +72,38 @@ export async function resolveMinimapPeaksForDraw(input: {
   }
 
   return exportPeaks;
+}
+
+export async function resolveMinimapPeaksForDraw(input: {
+  peakCache: PeakCache | null;
+  overviewWidthPx: number;
+  layoutDurationSec: number;
+  peakCacheGeneration?: number;
+  exportFromWaveSurfer?: () => Float32Array | null;
+}): Promise<Float32Array | null> {
+  const widthPx = Math.max(1, Math.floor(input.overviewWidthPx));
+  const peakCacheGeneration = input.peakCacheGeneration ?? 0;
+  const layoutDurationSec = input.layoutDurationSec;
+
+  if (
+    minimapPeaksCache &&
+    minimapPeaksCache.widthPx === widthPx &&
+    minimapPeaksCache.peakCacheGeneration === peakCacheGeneration &&
+    Math.abs(minimapPeaksCache.layoutDurationSec - layoutDurationSec) < 1e-6
+  ) {
+    return minimapPeaksCache.peaks;
+  }
+
+  const peaks = await resolveMinimapPeaksForDrawInner(input);
+  if (peaks && peaks.length >= 2) {
+    minimapPeaksCache = {
+      widthPx,
+      peakCacheGeneration,
+      layoutDurationSec,
+      peaks,
+    };
+  } else {
+    minimapPeaksCache = null;
+  }
+  return peaks;
 }

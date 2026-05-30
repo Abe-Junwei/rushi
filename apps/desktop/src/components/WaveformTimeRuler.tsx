@@ -313,7 +313,7 @@ export const WaveformTimeRuler = memo(function WaveformTimeRuler({
     <div
       className={
         embeddedOverlay
-          ? "pointer-events-none relative h-full w-full shrink-0 bg-transparent"
+          ? "waveform-embedded-time-ruler pointer-events-none absolute inset-x-0 bottom-0 z-10 overflow-hidden bg-transparent"
           : embedded
             ? "relative shrink-0 bg-transparent"
             : ink

@@ -4,7 +4,7 @@ import type { SegmentOverlapPolicy } from "../utils/segmentTimeRange";
 import { useWaveformSegmentOverlay } from "../hooks/useWaveformSegmentOverlay";
 import { computeCreatePreviewStyle } from "../utils/waveformSegmentOverlayGeometry";
 import { selectOverlayRenderedSegmentIndices } from "../utils/waveformSegmentOverlayVisibility";
-import { waveformRegionFillColor } from "../utils/segmentChrome";
+import { WaveformSegmentRegionItem } from "./WaveformSegmentRegionItem";
 
 export type WaveformSegmentOverlayProps = {
   disabled: boolean;
@@ -72,36 +72,24 @@ export const WaveformSegmentOverlay = memo(function WaveformSegmentOverlay(props
         if (!seg) return null;
         const bounds = segmentBoundsAt(idx);
         if (!bounds) return null;
-        const geom = segmentOverlayGeometry({
-          startSec: bounds.startSec,
-          endSec: bounds.endSec,
-          timelineWidthPx,
-          durationSec,
-          lane: laneByIndex[idx] ?? 0,
-          laneCount,
-          containerHeightPx: layoutHeightPx,
-        });
-        const selected = idx === selectedIdx;
         return (
-          <div
+          <WaveformSegmentRegionItem
             key={seg.uid ? `${seg.uid}#${idx}` : `seg-${idx}`}
-            data-waveform-segment=""
-            data-segment-idx={idx}
-            className={`waveform-segment-region${selected ? " waveform-segment-region-selected" : ""}`}
-            style={{
-              left: geom.leftPx,
-              width: geom.widthPx,
-              top: geom.topPx,
-              height: geom.heightPx,
-              background: waveformRegionFillColor(seg, selected),
-            }}
-            onPointerDown={(ev) => onSegmentPointerDown(idx, ev)}
-            onClick={(ev) => onSegmentClick(idx, ev)}
-            onDoubleClick={(ev) => onSegmentDoubleClick(idx, ev)}
-          >
-            <span className="waveform-segment-handle waveform-segment-handle-start" aria-hidden />
-            <span className="waveform-segment-handle waveform-segment-handle-end" aria-hidden />
-          </div>
+            idx={idx}
+            seg={seg}
+            startSec={bounds.startSec}
+            endSec={bounds.endSec}
+            selected={idx === selectedIdx}
+            timelineWidthPx={timelineWidthPx}
+            durationSec={durationSec}
+            lane={laneByIndex[idx] ?? 0}
+            laneCount={laneCount}
+            layoutHeightPx={layoutHeightPx}
+            segmentOverlayGeometry={segmentOverlayGeometry}
+            onSegmentPointerDown={onSegmentPointerDown}
+            onSegmentClick={onSegmentClick}
+            onSegmentDoubleClick={onSegmentDoubleClick}
+          />
         );
       })}
       {createPreview ? (

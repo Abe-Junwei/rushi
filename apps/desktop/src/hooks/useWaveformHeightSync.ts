@@ -1,6 +1,5 @@
 import { useLayoutEffect, type MutableRefObject, type RefObject } from "react";
 import WaveSurfer from "wavesurfer.js";
-import { COLORS } from "../config/tokens";
 
 interface UseWaveformHeightSyncArgs {
   wsRef: RefObject<WaveSurfer | null>;
@@ -25,7 +24,7 @@ export function useWaveformHeightSync({
     const el = containerRef.current;
     const h = waveformHeightPx;
     if (el) {
-      el.style.backgroundColor = COLORS.waveformSurface;
+      el.style.backgroundColor = "transparent";
     }
     const ws = wsRef.current;
     if (!ws || !isReady || disabled) return;

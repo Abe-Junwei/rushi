@@ -7,7 +7,7 @@ use std::time::Duration;
 use serde::{Deserialize, Serialize};
 
 /// LOD levels aligned with BBC audiowaveform `--pixels-per-second`.
-pub const PEAK_LEVELS: [(u8, u32); 3] = [(0, 2), (1, 20), (2, 200)];
+pub const PEAK_LEVELS: [(u8, u32); 4] = [(0, 2), (1, 20), (2, 200), (3, 800)];
 
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]

@@ -42,9 +42,10 @@ export function EditorWaveformPane({
   const waveformStageHeightPx = tx.waveformStageHeightPx;
   const rulerHeightPx = WAVEFORM_EMBEDDED_TIME_RULER_H_PX;
   const innerWaveformHeightPx = tx.waveformHeightPx;
-  const peaksPaneHeightPx = Math.max(1, innerWaveformHeightPx - rulerHeightPx);
+  const peaksPaneHeightPx = Math.max(1, innerWaveformHeightPx);
   const innerPaintedHeightPx = tx.waveformPaintedHeightPx;
-  const peaksPaintedHeightPx = Math.max(1, innerPaintedHeightPx - rulerHeightPx);
+  const peaksPaintedHeightPx = Math.max(1, innerPaintedHeightPx);
+  const segmentOverlayHeightPx = peaksPaintedHeightPx;
   const waveformVisualScale =
     peaksPaintedHeightPx > 0 ? peaksPaneHeightPx / peaksPaintedHeightPx : 1;
   const waveformHeightPreviewActive =
@@ -88,7 +89,7 @@ export function EditorWaveformPane({
         >
           <div
             style={{ height: peaksPaneHeightPx }}
-            className={`relative w-full ${!tx.isReady ? "bg-notion-sidebar-active" : ""}`}
+            className={`relative w-full ${!tx.isReady ? "bg-notion-sidebar-active" : "waveform-peaks-stage"}`}
             onContextMenu={(e) => {
               if (c.busy) return;
               e.preventDefault();
@@ -97,7 +98,7 @@ export function EditorWaveformPane({
                 clientX: e.clientX,
                 clientY: e.clientY,
                 overlayClientTop: paneTop,
-                peaksPaintedHeightPx,
+                peaksPaintedHeightPx: segmentOverlayHeightPx,
                 layoutYScale: waveformHeightPreviewActive ? waveformVisualScale : 1,
               });
             }}
@@ -118,33 +119,51 @@ export function EditorWaveformPane({
                 <div
                   ref={tx.waveformTimelineShellRef}
                   className="relative"
-                  style={{ height: peaksPaintedHeightPx }}
+                  style={{ height: peaksPaneHeightPx }}
                 >
                   <div
                     ref={tx.waveformStickyShellRef}
-                    className="sticky left-0 top-0 z-[1] overflow-hidden bg-transparent"
+                    className="sticky left-0 top-0 z-[1] h-full overflow-hidden"
                     style={{ ...tierViewportWidthStyle(viewportWidthPx), height: peaksPaneHeightPx }}
                   >
-                    <div
-                      className={waveformVerticalClass}
-                      style={{
-                        width: "100%",
-                        height: peaksPaintedHeightPx,
-                        transform: waveformVerticalTransform,
-                      }}
-                    >
+                    <div className="relative h-full w-full">
                       <div
-                        ref={tx.waveformStretchShellRef}
-                        className="h-full w-full origin-top-left"
+                        className={`absolute inset-0 ${waveformVerticalClass}`}
+                        style={{
+                          transform: waveformVerticalTransform,
+                          transformOrigin: "top left",
+                        }}
                       >
                         <div
-                          ref={tx.containerRef}
-                          style={{ height: peaksPaintedHeightPx }}
-                          className="relative z-[1] w-full shrink-0 bg-transparent"
-                          role="img"
-                          aria-label="转写波形与语段时间范围"
-                        />
+                          ref={tx.waveformStretchShellRef}
+                          className="h-full w-full origin-top-left"
+                        >
+                          <div
+                            ref={tx.containerRef}
+                            className="relative z-[1] h-full w-full shrink-0 bg-transparent"
+                            role="img"
+                            aria-label="转写波形与语段时间范围"
+                          />
+                        </div>
                       </div>
+                      <WaveformLiveTimeRuler
+                        appearance="embedded"
+                        coordinateSpace="viewport"
+                        overlayOnWaveform
+                        suppressPlayhead
+                        durationSec={mediaDurationSec}
+                        timelineWidthPx={tx.timelineWidthPx}
+                        {...tierScrollProps}
+                        pxPerSec={tx.pxPerSec}
+                        isPlaying={tx.isPlaying}
+                        isReady={tx.isReady}
+                        currentTimeSec={tx.currentTime}
+                        getPlayheadTime={tx.getPlayheadTime}
+                        formatMediaTime={tx.formatMediaTime}
+                        disabled={stripDisabled}
+                        onSeekFromTierClientX={tx.seekFromTierClientX}
+                        onSetScrollLeftPx={tx.setTierScrollPx}
+                      />
                     </div>
                   </div>
                   <WaveformSegmentOverlay
@@ -154,7 +173,7 @@ export function EditorWaveformPane({
                     timelineWidthPx={tx.timelineWidthPx}
                     durationSec={mediaDurationSec}
                     playheadSec={tx.currentTime}
-                    layoutHeightPx={peaksPaintedHeightPx}
+                    layoutHeightPx={segmentOverlayHeightPx}
                     laneByIndex={tx.segmentLaneLayout.laneByIndex}
                     laneCount={tx.segmentLaneLayout.laneCount}
                     dominantSpanIndices={tx.segmentLaneLayout.dominantSpanIndices}
@@ -177,7 +196,7 @@ export function EditorWaveformPane({
                   />
                   <WaveformSegmentPlaybackControls
                     disabled={stripDisabled}
-                    rulerBandHeightPx={0}
+                    rulerBandHeightPx={rulerHeightPx}
                     isPlaying={tx.isPlaying}
                     timelineWidthPx={tx.timelineWidthPx}
                     durationSec={mediaDurationSec}
@@ -194,27 +213,6 @@ export function EditorWaveformPane({
                 </div>
               </div>
             </div>
-          </div>
-          <div
-            className="sticky bottom-0 left-0 z-20 shrink-0 overflow-hidden border-t border-notion-border/25 bg-notion-sidebar"
-            style={{ height: rulerHeightPx }}
-          >
-            <WaveformLiveTimeRuler
-              appearance="embedded"
-              coordinateSpace="viewport"
-              durationSec={mediaDurationSec}
-              timelineWidthPx={tx.timelineWidthPx}
-              {...tierScrollProps}
-              pxPerSec={tx.pxPerSec}
-              isPlaying={tx.isPlaying}
-              isReady={tx.isReady}
-              currentTimeSec={tx.currentTime}
-              getPlayheadTime={tx.getPlayheadTime}
-              formatMediaTime={tx.formatMediaTime}
-              disabled={stripDisabled}
-              onSeekFromTierClientX={tx.seekFromTierClientX}
-              onSetScrollLeftPx={tx.setTierScrollPx}
-            />
           </div>
           <ResizeBottomHit
             busy={c.busy}

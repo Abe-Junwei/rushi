@@ -510,10 +510,26 @@
  *   z-1  WaveSurfer container（可见波形 + progress + 内置 cursor playhead）
  *   z-3  waveform-segment-overlay
  *   z-8  region-action-overlay（语段播放控制）
- *   z-10 WaveformLiveTimeRuler
+ *   z-10 .waveform-embedded-time-ruler（透明叠在 sticky 视口底边）
  *   z-30 loadError banner / peaks loading badge（EditorWaveformPane）
  */
 
+/** 嵌入标尺：透明叠在波形底边，无背景带、不占布局高度。 */
+.waveform-embedded-time-ruler {
+  background: transparent;
+}
+
+/** 主波形 peaks 舞台白底；WaveSurfer 内层背景透明，避免底部出现独立色带。 */
+.waveform-peaks-stage {
+  background: var(--zen-wf-surface);
+}
+
+.waveform-peaks-stage [role="img"] canvas,
+.waveform-peaks-stage [role="img"] > div {
+  background: transparent !important;
+}
+
+/** 语段 overlay 与波形同高；底部时间刻度在其上透明叠层。 */
 .waveform-segment-overlay {
   position: absolute;
   inset: 0;

@@ -7,7 +7,11 @@ export type UseProjectWaveformOptions = {
   segments: SegmentDto[];
   selectedIdx: number;
   disabled?: boolean;
-  /** Timeline px/s — drives WaveSurfer zoom / peaks resample. */
+  /** Live layout px/s — ws.zoom follows immediately. */
+  layoutPxPerSec?: number;
+  /** Debounced peaks-load px/s — ws.load quantum; defaults to layout when omitted. */
+  drawPxPerSec?: number;
+  /** @deprecated Use layoutPxPerSec + drawPxPerSec. When set alone, applies to both tracks. */
   minPxPerSec?: number;
   /** Precomputed peaks (Tauri audiowaveform `.dat`). */
   peakCache?: PeakCache | null;
