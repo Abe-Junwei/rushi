@@ -28,16 +28,19 @@ function createTierContainer(clientWidth = 320) {
   return { el, scrollToMock };
 }
 
-function createWaveformApi(scrollLeft: number) {
+function createWaveformApi() {
   return {
     isReady: true,
     duration: 30,
-    getScrollLeft: vi.fn(() => scrollLeft),
-    setScrollLeft: vi.fn(),
     clientXToTimeSec: vi.fn((clientX: number) => clientX / 10),
     seek: vi.fn(),
   };
 }
+
+const tierScrollDefaults = {
+  mediaDurationSec: 30,
+  pxPerSec: 40,
+};
 
 describe("useTierScrollSync", () => {
   beforeEach(() => {
@@ -53,10 +56,10 @@ describe("useTierScrollSync", () => {
     vi.unstubAllGlobals();
   });
 
-  it("pushes tier scroll changes back into the waveform instance", async () => {
+  it("tracks tier scroll in layout state", async () => {
     const { el: tier } = createTierContainer();
     const tierScrollRef = { current: tier };
-    const wfApiRef = { current: createWaveformApi(0) };
+    const wfApiRef = { current: createWaveformApi() };
 
     const { result } = renderHook(() =>
       useTierScrollSync({
@@ -65,7 +68,7 @@ describe("useTierScrollSync", () => {
         wfApiRef: wfApiRef as never,
         waveformReady: true,
         mediaUrl: "/audio.wav",
-        peaksCanvasActive: false,
+        ...tierScrollDefaults,
       }),
     );
 
@@ -82,14 +85,13 @@ describe("useTierScrollSync", () => {
       await new Promise((r) => setTimeout(r, 0));
     });
 
-    expect(wfApiRef.current.setScrollLeft).toHaveBeenCalledWith(96);
     expect(result.current.tierScrollLayout).toEqual({ clientWidthPx: 320, scrollLeftPx: 96 });
   });
 
-  it("mirrors waveform scroll updates into tier DOM and layout state", async () => {
+  it("applies programmatic tier scroll", async () => {
     const { el: tier } = createTierContainer();
     const tierScrollRef = { current: tier };
-    const wfApiRef = { current: createWaveformApi(0) };
+    const wfApiRef = { current: createWaveformApi() };
 
     const { result } = renderHook(() =>
       useTierScrollSync({
@@ -98,12 +100,12 @@ describe("useTierScrollSync", () => {
         wfApiRef: wfApiRef as never,
         waveformReady: true,
         mediaUrl: "/audio.wav",
-        peaksCanvasActive: false,
+        ...tierScrollDefaults,
       }),
     );
 
     act(() => {
-      result.current.syncWaveformScrollPx(144);
+      result.current.setTierScrollPx(144);
       tier.dispatchEvent(new Event("scroll"));
     });
     await act(async () => {
@@ -114,51 +116,10 @@ describe("useTierScrollSync", () => {
     expect(result.current.tierScrollLayout).toEqual({ clientWidthPx: 320, scrollLeftPx: 144 });
   });
 
-  it("ignores subpixel waveform scroll noise so user scroll doesn't snap back", () => {
-    // Regression: WaveSurfer's `zoom` / `setScrollLeft` round to sub-integer
-    // positions. The resulting waveform→tier sync event used to write tier
-    // back by 0.5-2px, producing visible flicker on long audio. Reverse
-    // direction must tolerate noise up to WAVEFORM_SCROLL_REVERSE_SYNC_EPSILON_PX.
-    const { el: tier } = createTierContainer();
-    const tierScrollRef = { current: tier };
-    const wfApiRef = { current: createWaveformApi(0) };
-
-    const { result } = renderHook(() =>
-      useTierScrollSync({
-        tierScrollRef,
-        timelineWidthPx: 2000,
-        wfApiRef: wfApiRef as never,
-        waveformReady: true,
-        mediaUrl: "/audio.wav",
-        peaksCanvasActive: false,
-      }),
-    );
-
-    // User scrolls to 1000, sync flows through.
-    act(() => {
-      tier.scrollLeft = 1000;
-      result.current.onTierScroll();
-    });
-    expect(tier.scrollLeft).toBe(1000);
-
-    // WaveSurfer rounds and reports back 998.7 — a 1.3px subpixel delta that
-    // used to snap tier back. Must be ignored.
-    act(() => {
-      result.current.syncWaveformScrollPx(998.7);
-    });
-    expect(tier.scrollLeft).toBe(1000);
-
-    // A real >4px difference (e.g. playback autoScroll) still propagates.
-    act(() => {
-      result.current.syncWaveformScrollPx(1010);
-    });
-    expect(tier.scrollLeft).toBe(1010);
-  });
-
-  it("uses smooth DOM scrolling and syncs waveform after scroll settles", () => {
+  it("uses smooth DOM scrolling for setTierScrollPxSmooth", () => {
     const { el: tier, scrollToMock } = createTierContainer();
     const tierScrollRef = { current: tier };
-    const wfApiRef = { current: createWaveformApi(0) };
+    const wfApiRef = { current: createWaveformApi() };
 
     const { result } = renderHook(() =>
       useTierScrollSync({
@@ -167,7 +128,7 @@ describe("useTierScrollSync", () => {
         wfApiRef: wfApiRef as never,
         waveformReady: true,
         mediaUrl: "/audio.wav",
-        peaksCanvasActive: false,
+        ...tierScrollDefaults,
       }),
     );
 
@@ -176,66 +137,95 @@ describe("useTierScrollSync", () => {
     });
 
     expect(scrollToMock).toHaveBeenCalledWith({ left: 180, behavior: "smooth" });
-    expect(wfApiRef.current.setScrollLeft).not.toHaveBeenCalled();
-
-    act(() => {
-      tier.scrollLeft = 180;
-      tier.dispatchEvent(new Event("scrollend"));
-    });
-
-    expect(wfApiRef.current.setScrollLeft).toHaveBeenCalledWith(180);
   });
 
-  describe("peaks canvas mode (ADR-0005)", () => {
-    it("does not push tier scroll into WaveSurfer", async () => {
-      const { el: tier } = createTierContainer();
-      const tierScrollRef = { current: tier };
-      const wfApiRef = { current: createWaveformApi(0) };
+  it("clamps scroll when timeline floor is narrower than native width", () => {
+    const { el: tier } = createTierContainer(200);
+    const tierScrollRef = { current: tier };
+    const wfApiRef = { current: createWaveformApi() };
 
-      const { result } = renderHook(() =>
+    const { result } = renderHook(() =>
+      useTierScrollSync({
+        tierScrollRef,
+        timelineWidthPx: 320,
+        mediaDurationSec: 1263,
+        pxPerSec: 0.05,
+        wfApiRef: wfApiRef as never,
+        waveformReady: true,
+        mediaUrl: "/audio.wav",
+      }),
+    );
+
+    act(() => {
+      result.current.setTierScrollPx(160);
+    });
+
+    expect(tier.scrollLeft).toBe(120);
+  });
+
+  it("preserves viewport center time when tier viewport width changes", async () => {
+    const { el: tier } = createTierContainer(400);
+    const tierScrollRef = { current: tier };
+    const wfApiRef = { current: createWaveformApi() };
+
+    const { result } = renderHook(
+      () =>
         useTierScrollSync({
           tierScrollRef,
-          timelineWidthPx: 1200,
+          timelineWidthPx: 4000,
           wfApiRef: wfApiRef as never,
           waveformReady: true,
           mediaUrl: "/audio.wav",
-          peaksCanvasActive: true,
+          ...tierScrollDefaults,
+          mediaDurationSec: 100,
         }),
-      );
+    );
 
-      await act(async () => {
-        tier.scrollLeft = 96;
-        result.current.onTierScroll();
-        tier.dispatchEvent(new Event("scroll"));
-        await new Promise((r) => setTimeout(r, 0));
-      });
-
-      expect(wfApiRef.current.setScrollLeft).not.toHaveBeenCalled();
-      expect(result.current.tierScrollLayout.scrollLeftPx).toBe(96);
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
     });
 
-    it("ignores waveform scroll callbacks", () => {
-      const { el: tier } = createTierContainer();
-      const tierScrollRef = { current: tier };
-      const wfApiRef = { current: createWaveformApi(0) };
-
-      const { result } = renderHook(() =>
-        useTierScrollSync({
-          tierScrollRef,
-          timelineWidthPx: 1200,
-          wfApiRef: wfApiRef as never,
-          waveformReady: true,
-          mediaUrl: "/audio.wav",
-          peaksCanvasActive: true,
-        }),
-      );
-
-      tier.scrollLeft = 500;
-      act(() => {
-        result.current.syncWaveformScrollPx(144);
-      });
-
-      expect(tier.scrollLeft).toBe(500);
+    act(() => {
+      result.current.setTierScrollPx(1000);
     });
+
+    Object.defineProperty(tier, "clientWidth", { configurable: true, value: 800 });
+
+    await act(async () => {
+      result.current.refreshTierScrollLayout();
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    // center was 1000+200=1200px => 30s on 4000px / 100s; new vw=800 => sl = 1200-400=800
+    expect(tier.scrollLeft).toBe(800);
+  });
+
+  it("does not extend playback-follow suppress for programmatic scroll writes", async () => {
+    const { el: tier } = createTierContainer();
+    const tierScrollRef = { current: tier };
+    const wfApiRef = { current: createWaveformApi() };
+    const playbackFollowSuppressUntilRef = { current: 0 };
+
+    const { result } = renderHook(() =>
+      useTierScrollSync({
+        tierScrollRef,
+        timelineWidthPx: 1200,
+        wfApiRef: wfApiRef as never,
+        waveformReady: true,
+        mediaUrl: "/audio.wav",
+        playbackFollowSuppressUntilRef,
+        ...tierScrollDefaults,
+      }),
+    );
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    act(() => {
+      result.current.setTierScrollPx(120);
+    });
+
+    expect(playbackFollowSuppressUntilRef.current).toBe(0);
   });
 });

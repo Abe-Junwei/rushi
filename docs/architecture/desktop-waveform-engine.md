@@ -1,4 +1,4 @@
-# 桌面端波形引擎（P1–P5′）
+# 桌面端波形引擎（WaveSurfer-only，2026-05）
 
 ## 数据流
 
@@ -8,62 +8,95 @@
 
 编辑器 (React)
   useWaveformPeaks → PeakCache.fromLevelUrls
-  WaveformPeaksTileLayer + drawWaveformPeaksTile  ← 主 tier peaks（ADR-0004 content-tile）
-  WaveformOverviewPeaksCanvas                     ← 全局条 minimap peaks（同 draw 入口）
-  useProjectWaveform + WaveSurfer                 ← 播放 / seek / 无 peaks 回退 decode
-  useWaveformZoomSync                             ← px/s 变更时 resample+load；peaks 路径 skip ws.zoom
-  WaveformSegmentOverlay                          ← 语段 DOM（P4，非 WS Regions）
+  useProjectWaveform + WaveSurfer v7     ← 唯一主波形渲染器（可见波形 + 内置 progress）
+  useWaveformZoomSync                    ← decode 首帧 + peaks 热切换 + zoom
+  WaveformSegmentOverlay                 ← 语段 DOM（非 WS Regions）
+  WaveformLiveTimeRuler                  ← 时间尺 + playhead
 ```
+
+**已移除（2026-05）**：`WaveformPeaksTileLayer`、`WaveformProgressOverlay`、全局 overview 条（`WaveformOverviewStrip` / `WaveformGlobalStripShell`）、canvas draw 路径（`drawWaveformPeaksTile` / `tileGeometry` / `useWaveformTileLifecycle`）。
 
 ## 滚动真源
 
-- **tier** `tierScrollRef.scrollLeft` 为 UI 真源（overlay、tile layout、ruler、全局条视口框）。
-- WaveSurfer 内部 scroll 通过 `useTierScrollSync` 同步，不反向驱动语段位置。
+- **tier** `tierScrollRef.scrollLeft` 为 UI 真源（overlay、ruler、segment 控件、minimap）。
+- WaveSurfer `autoScroll: false`；tier 承担水平滚动，并通过 `syncWaveSurferScrollPx` **镜像** `ws.setScroll(scrollLeftPx)`，使 WS lazy tile 视口与 tier 对齐（每帧 resize transaction 内单次写入，无重复 rAF）。
+- 播放跟随：`useWaveformPlaybackScrollFollow` 在波形 ready 后只写 tier scroll；tier → WS 镜像由 `useTierScrollSync` 触发。
 
-## Peaks tile 挂载契约（ADR-0004，2026-05）
+## Viewport resize 编排（P0 阶段 1）
 
-主 tier peaks 采用 **content-tile** 范式（与 WaveSurfer v7 同类）：canvas tile 是
-timeline 宽内容的一部分，随 `tierScrollRef` **自然滚动**，无 sticky / transform /
-每帧 viewport 重画。
+[`useWaveformViewportController`](../../apps/desktop/src/hooks/useWaveformViewportController.ts) 为**单一 resize 入口**：
 
-舞台 DOM：
+- 一个 `ResizeObserver`（tier + WS container）+ `window.resize`，rAF coalesce（`WIDTH_EPSILON_PX` 过滤）。
+- **fit-all refit**（视口变宽、整段可见 stale）：stretch-hold **先于** sticky/timeline 宽度写入，再 `ws.zoom` + imperative shell 宽度；React `pxPerSec` 同步更新；`refreshTierScrollLayout` 在 transaction 末尾。
+- **非 refit resize**：同样 stretch → 写宽度 → `reRender()`；`redrawcomplete` 清除 stretch。
+- **非 refit**：stretch-hold（`stretchShell` `scaleX`）+ `ws.getRenderer().reRender()`；`redrawcomplete` 清除 stretch。
+- resize 后调用 `onAfterViewportResizeRef` → `useTierScrollSync.refreshTierScrollLayout`（**不再**在 tier sync 内挂独立 RO）。
+- **时长变化** overflow refit：`useWaveformTimelineController` layout effect 仅调 `wf.refitFitAllIfNeeded()` + renderCap clamp；**不再**在 timeline effect 内重复 viewport fit-all 判断。
+
+## 整段可见（fit-all）布局意图
+
+- `useWaveformZoom` 维护 `layoutIntent: 'fit-all' | 'fit-selection' | 'default' | 'manual'`（非持久）。
+- 「整段可见」按钮 / 长音频打开默认 → `fit-all`；滑块 / ± / 手动 zoom → `manual`。
+- **贴满不变量**：`isFitAllTimelineFilledInViewport`（`timelineWidthPx ≈ tier 视口宽`），不再用「timeline ≤ viewport」误判高亮。
+- `layoutIntent === 'fit-all'` 时，`resolveFitAllPxPerSecAdjustment` **与 resize 无关**地在 fill gap 时 refit；viewport controller 的 `applyFitAllRefitPxPerSec` 保留 intent 不写 `manual`。
+
+## 坐标真源：单一水平投影
+
+[`waveformProjection.ts`](../../apps/desktop/src/utils/waveformProjection.ts) 提供 `effectiveTimelinePxPerSec = timelineWidthPx / duration`。
+
+- 语段 overlay、框选、播放控件、点击寻位一律经 `timeToTimelinePx`（`waveformSegmentBounds` / `waveformSegmentOverlayGeometry`）。
+- `clientXToTimeSec` 按容器实际渲染宽（= `timelineWidthPx`）比例换算。
+- ruler 用 `t/duration` 比例定位；`pxPerSec` 用于刻度密度与离散缩放命令（适配语段 / 整段可见 / ±）。
+
+## 舞台 DOM
 
 ```text
-<div ref=tierScrollRef overflow-x:auto>                    ← tier 滚动容器
-  <div inline-block width=timelineWidthPx>                 ← 宽内容
-    <div relative height=stage>                              ← 波形舞台
-      <WaveformPeaksTileLayer absolute z=1>                ← peaks tiles（内容坐标）
-        <canvas absolute left=tileLeft ... /> × N (LRU≤24)
-      </WaveformPeaksTileLayer>
+<div ref=tierScrollRef overflow-x:auto>                    ← tier 滚动容器（scroll 真源）
+  <div ref=waveformPeaksStageShellRef width=max(timeline, vw)>  ← stage 宽壳（imperative 可写）
+    <div ref=waveformTimelineShellRef width=timelineWidthPx>  ← timeline 宽壳
+      <div ref=waveformStickyShellRef sticky left=0 width=vw> ← 视口宽 sticky 壳
+        <div ref=waveformStretchShellRef>                     ← resize stretch-hold（scaleX）
+          <div ref=containerRef>                              ← WaveSurfer mount（fillParent: false）
       <WaveformSegmentOverlay z=3 />
-      <WaveSurfer container z=0 />                         ← 透明，仅播放后端
-      <WaveformLiveTimeRuler z=10 />
-    </div>
-  </div>
+      <WaveformSegmentPlaybackControls z=8 />
+  <WaveformLiveTimeRuler sticky bottom z=20 />               ← 嵌入时间尺（viewport 坐标空间）
 </div>
 ```
 
-**Tile 生命周期**（`useWaveformTileLifecycle` + `tileGeometry.ts`）：
+- `timelineWidthPx = pxPerSec × duration`；`peaksStageWidthPx = max(timelineWidthPx, tier.clientWidth)`。
+- sticky 壳宽 = tier 视口宽（CSS var `--waveform-tier-viewport-width` + imperative `width`）。
 
-- `tileWidthPx = clamp(viewport × 2, 4096, 8000)`，按 `barWidth + barGap` 对齐
-- 可见区间 `[floor(scroll/tileW)−overscan, ceil((scroll+vw)/tileW)+overscan]`（`overscanTiles = 5`），LRU cap = **24**
-- `drawPxPerSec`（现 `committedPxPerSec`）/ `peakCache` 变化 → generation bump；`layoutPxPerSec`（现 `pxPerSec`）拖动期冻结 draw px
-- `EditorWaveformPane` / `WaveformPeaksTileLayer` 使用 `useTierScrollSync.tierScrollLayout`（`scrollLeftPx` + `clientWidth`），层内不二次订阅
+## Zoom 单轨（路线 A + C：decode 首帧，peaks 热切换）
 
-**Scroll 真源（规划）**：见 [ADR-0005](../adr/0005-waveform-single-scroll-authority.md) — peaks 模式仅 `tierScrollRef`；实施 spec：[`waveform-single-scroll-consolidation-plan.md`](../execution/specs/waveform-single-scroll-consolidation-plan.md)。
+- 单一 `pxPerSec` 驱动 `timelineWidthPx` 与 WS 横向比例。
+- **挂载（C0）**：后台 peaks 开启时推迟挂载直至 bootstrap；**90s 超时**降级 decode；bootstrap 后 `create({ url, peaks, duration })`。
+- **PeakCache 就绪（C1）**：`useWaveformZoomSync` 执行 `ws.load(url, peaks, layoutDuration)` 热切换；切换前保存 `currentTime`，完成后 `setTime` 恢复；播放中推迟至暂停。
+- **有 PeakCache 后**：
+  - `quantizePxPerSecForPeaksLoad(px/s)`（8 px/s 档）决定 `ws.load(peaks)` 时机；
+  - **同档内**仅 `ws.zoom(pxPerSec)`，不重复 `ws.load`；
+  - **跨档**时 `ws.load(url, peaks, layoutDuration)`，完成后 `ws.zoom` 对齐当前 px/s；
+  - **整段可见 sub-min**（px/s &lt; 16，典型 4h+ 长音频）：视口 refit / 全屏仅 `ws.zoom`；decode 阶段（顶栏「正在优化波形…」）也不因 refit 重启 `ws.load`；后台首次 peaks 加载仍仅在 px/s 稳定时触发一次。
+- **无 PeakCache**：持续 decode 路径，仅 `ws.zoom(pxPerSec)`；`peaksUnavailable` 时不再后台重试（需手动清缓存）。
+- `PeakCache.getWaveSurferPeaks` 返回的 `duration` 与 layout `mediaDurationSec` 一致。
+- **阶段状态**（`resolveWaveformPeaksPhase`）：`idle` → `generating`/`decode` → `peaks_pending`（播放中待切换）→ `peaks`；失败为 `unavailable`。
+- UI 角标：顶栏 `waveform-header-bar` 左播放时间、右渲染状态（`resolveWaveformHeaderStatusLabel`）；生成中居中（`resolveWaveformCenterStatusLabel`）。
 
-**peaks 模式（已落地 ADR-0005 S1）**：`autoScroll: false`；无 tier↔WS scroll 回写；无 `ws.load` 缩放；播放跟随 `useWaveformPlaybackScrollFollow` 只写 tier。
+## Peaks 数据层
 
-**decode-fallback**：保留 `autoScroll` + 窄 tier↔WS bridge。
+- Rust 生成 `.dat` LOD；前端 `PeakCache.getWaveSurferPeaks(px/s, layoutDuration)` 供 WS 注入。
+- peaks 生成失败不阻断 UI（无波形区错误条）；WS decode 仍可播放与显示波形。
+- Symphonia 探测/解码失败时，peaks 路径尝试 **ffmpeg remux → 临时 WAV → 再生成**（`waveform_peaks_ffmpeg.rs`）。
+- `peaksMediaDurationMismatch` 仍用于 `useWaveformPeaks` 触发一次 best-effort regenerate（仅当已有 `.dat` 级别）。
 
-**Scroll 采样**：`useTierScrollLayout`（scroll burst rAF + ResizeObserver）→ `tierScrollLayout`；编排见 `useWaveformTimelineController`。
+## 时长真源
 
-**Zoom 三轨**：`layoutPxPerSec`（布局/语段/hit-test）、`drawPxPerSec`（peaks resample + tile draw / generation）；tile draw signature 仅用 `drawTimelineWidthPx`，拖动 preview 不每帧 bump generation。
+[`waveformTimelineMetrics.ts`](../../apps/desktop/src/utils/waveformTimelineMetrics.ts) 的 `resolveWaveformTimelineMetrics()` 导出：
 
-**全局条**：`WaveformOverviewPeaksCanvas` 在 overview 视口用单 tile（scroll=0）调用同一
-draw 入口；播放进度由 minimap playhead 线表示。
+- `mediaDurationSec` — WS 与 peaks manifest 合并
+- `timelineWidthPx` — `pxPerSec × duration`（无 320 floor）
+- `effectiveLayoutPxPerSec` — 与比例族一致的有效 px/s
 
-**z-index**：peaks layer z=1，segments z=3，ruler z=10。
+`useWaveformTimelineController` 为唯一装配点。
 
 ## 偏好（localStorage）
 
@@ -72,28 +105,25 @@ draw 入口；播放进度由 minimap playhead 线表示。
 | `rushi.p1.waveformPxPerSec` | 横向缩放 |
 | `rushi.p1.waveformHeightPx` | 主波形高度 |
 | `rushi.p1.autoFitSelectionToViewport` | 跟随语段模式 |
-| `rushi.p1.waveformGlobalStripCollapsed` | 全局条折叠（持久化，换文件不强制展开） |
-| `rushi.p1.waveformGlobalPlaybackRate` | 全局播放速度（主 transport） |
-| `rushi.p1.tabAdvanceLoopsSegment` | Tab 切段并播放时自动语段循环（默认开） |
+| `rushi.p1.waveformGlobalPlaybackRate` | 全局播放速度 |
+| `rushi.p1.tabAdvanceLoopsSegment` | Tab 切段并播放时自动语段循环 |
 
-## 播放头与全局条
+## Viewport fit
 
-- **主波形** playhead 由 `WaveformTimeRuler` / `WaveformLiveTimeRuler` 绘制；`tierScrollLayout` 随 tier `scroll` 更新（S2 计划补 120ms burst rAF）；播放跟随拟由 tier 写 scroll（ADR-0005 S1）。
-- **全局条展开**时另有 minimap playhead（`WaveformOverviewStrip`）；**折叠**后 minimap 隐藏，**主区 playhead 仍可见、仍随播放更新**。
-- 选中语段后 seek 到 **语段起点**（非中点）。
+- 语段 fit / reveal：`useTranscriptionViewportFit` 写 tier scroll；需 peaks 换档时保留 `pendingViewportFitRef`，在 `onZoomApplied → applyPendingViewportFit` **单次**滚 tier（`queueViewportFit` 不在换档前预滚）。
+- 程序化滚动通过 `playbackFollowSuppressUntilRef` 短暂暂停播放跟随（与用户手动滚 tier 相同机制）。
 
-## 已知限制
+## Route C2（导入预热 / 偏好 / minimap / 播放中热切换）
 
-- 生产路径为 **PeakCache + content-tile peaks + hook 编排**（`useProjectWaveform`、`useWaveformZoomSync`、`useTranscriptionViewportFit`、`useWaveformTileLifecycle`）；曾规划的 `WaveformEngine` facade 已移除（2026-05-28，无接线）。
-- 旧 viewport-fixed peaks 路径（`WaveformPeaksViewportLayer` / 手动 sticky）已于 P4 删除。
-- WS 仍负责 MediaElement 播放与无 peaks 时的 decode 波形。
-- peaks 为 mono mixdown。
+- **导入预热**：`scheduleWaveformPeaksPrewarm` 仍可用于显式预热；打开文件时由 `useWaveformPeaks` 统一 `ensure`（避免重复 invoke）。
+- **偏好**（`waveformPrefs.ts`，工具栏「波形」菜单）：
+  - `rushi.p1.waveformBackgroundPeaks` — 后台生成 peaks（默认开）
+  - `rushi.p1.waveformMinimap` — L0 总览条（默认开）
+  - `rushi.p1.peaksHotSwitchWhilePlaying` — 播放中立即热切换（默认开）
+- **Minimap**：`WaveformMinimapStrip` + `PeakCache.getMinimapPeaks`（L0 resample 至条宽）；点击跳转并滚 tier。
+- **播放中热切换**：`hotSwitchWhilePlaying` 为真时不推迟；仍 `setTime` 恢复 playhead，必要时 `play()` 续播。
 
-## 相关 spec
+## 相关 ADR / spec（历史）
 
-- `docs/execution/specs/waveform-content-tile-renderer-acceptance.md`
-- `docs/execution/specs/waveform-engine-refactor-acceptance.md`
-- `docs/execution/specs/waveform-engine-refactor-p5-global-strip.md`
-- `docs/execution/specs/waveform-engine-refactor-p6-overlay-split.md`
-- ADR：[ADR-0004](../adr/0004-waveform-peaks-content-tile-renderer.md)、[ADR-0005](../adr/0005-waveform-single-scroll-authority.md)
-- 收敛实施：[`waveform-single-scroll-consolidation-intent.md`](../execution/specs/waveform-single-scroll-consolidation-intent.md)
+- ADR-0004 / ADR-0005 描述的 canvas tile 路径已废弃；现行以本文为准。
+- 历史 spec 已归档：[`docs/execution/specs/archive/waveform-pre-ws-only-2026-05/`](../execution/specs/archive/waveform-pre-ws-only-2026-05/README.md)（content-tile / convergence / 全局条等，**superseded**）。

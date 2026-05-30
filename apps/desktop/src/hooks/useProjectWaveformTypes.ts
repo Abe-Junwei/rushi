@@ -7,24 +7,45 @@ export type UseProjectWaveformOptions = {
   segments: SegmentDto[];
   selectedIdx: number;
   disabled?: boolean;
-  /** 与 WaveSurfer `minPxPerSec` / tier 对齐的 px/s */
+  /** Timeline px/s — drives WaveSurfer zoom / peaks resample. */
   minPxPerSec?: number;
-  /** @deprecated 与 minPxPerSec 相同；保留兼容旧调用方 */
-  interactionPxPerSec?: number;
-  /** 预计算 peaks（Tauri audiowaveform `.dat`） */
+  /** Precomputed peaks (Tauri audiowaveform `.dat`). */
   peakCache?: PeakCache | null;
-  /** 缩放滑块拖动中（P2：合并 peaks resample 更新） */
-  zoomDragging?: boolean;
-  /** peaks resample / ws.zoom 完成后回调（用于 fit 视口 scroll）；返回 true 表示已处理 scroll */
-  onZoomApplied?: (pxPerSec: number) => boolean | void;
-  /** 波形区纵向高度（px），与外层容器一致；变更时 `setOptions({ height })` */
-  waveformHeightPx?: number;
-  /** 波形真实重绘完成后，将已应用高度回传给外层预览层。 */
-  onWaveformHeightApplied?: (heightPx: number) => void;
-  /** 在波形空白处拖选新建语段；启用时会关闭 dragToSeek 以免抢同一套水平拖动 */
-  onWaveformCreateRange?: (startSec: number, endSec: number) => void;
-  /** 波形内部横向滚动（与外层时间轴滚动条对齐，思路来自解语 waveform ↔ tier scroll sync） */
-  onWaveformScroll?: (scrollLeftPx: number) => void;
-  /** 当前可见视口横向滚动偏移；若外层容器也参与横向滚动，用于命中换算对齐。 */
+  /** Tier scrollLeft for zoom scroll preservation. */
   getViewportScrollPx?: () => number;
+  /** After peaks resample / ws.zoom; return true if viewport fit handled scroll. */
+  onZoomApplied?: (pxPerSec: number) => boolean | void;
+  /** Waveform stage height (px). */
+  waveformHeightPx?: number;
+  /** After WaveSurfer redraw, ack committed height to outer preview layer. */
+  onWaveformHeightApplied?: (heightPx: number) => void;
+  /** Drag on blank waveform to create a segment. */
+  onWaveformCreateRange?: (startSec: number, endSec: number) => void;
+  /** Route C2: allow peaks hot-switch during playback. */
+  hotSwitchWhilePlaying?: boolean;
+  /** When true, defer decode mount until peaks bootstrap or failure (long-audio safe path). */
+  deferDecodeMount?: boolean;
+  /** Bumps zoom sync when in-place PeakCache gains LOD levels (e.g. L2). */
+  peakCacheGeneration?: number;
+  /** Layout duration (resolved media); click-to-time ratio. */
+  layoutDurationSecRef?: React.MutableRefObject<number>;
+  /** Resolved layout duration — re-syncs WaveSurfer zoom when decode duration settles. */
+  layoutDurationSec?: number;
+  /** Layout timeline width; click-to-time ratio. */
+  layoutTimelineWidthPxRef?: React.MutableRefObject<number>;
+  /** Tier scroll container for pointer → time mapping on overlay gestures. */
+  tierScrollRef?: React.RefObject<HTMLDivElement | null>;
+  /** Sticky waveform clip shell — resize sync writes width imperatively. */
+  stickyShellRef?: React.RefObject<HTMLDivElement | null>;
+  /** Inner stretch wrapper — temporary scaleX during viewport resize. */
+  stretchShellRef?: React.RefObject<HTMLDivElement | null>;
+  /** Timeline width shell — imperative width sync on fit-all refit. */
+  timelineShellRef?: React.RefObject<HTMLDivElement | null>;
+  /** Peaks stage outer shell — imperative width sync on fit-all refit. */
+  peaksStageShellRef?: React.RefObject<HTMLDivElement | null>;
+  /** Called after viewport controller reads tier width (replaces duplicate tier RO). */
+  onAfterViewportResizeRef?: React.MutableRefObject<(() => void) | undefined>;
+  /** Refit fit-all px/s when tier viewport grows (e.g. fullscreen). */
+  refitFitAllPxPerSec?: (viewportWidthPx: number) => number | null;
+  onFitAllPxPerSecRefit?: (pxPerSec: number) => void;
 };

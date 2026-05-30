@@ -1,26 +1,22 @@
 import { describe, expect, it } from "vitest";
-import { resolveWaveformRulerView } from "./waveformViewport";
+import { resolveTierViewportWidthPx } from "./waveformViewport";
 
-describe("resolveWaveformRulerView", () => {
-  it("returns the initial visible window at scroll origin", () => {
+describe("resolveTierViewportWidthPx", () => {
+  it("returns the largest known viewport width", () => {
     expect(
-      resolveWaveformRulerView({
-        durationSec: 20,
-        scrollLeftPx: 0,
-        clientWidthPx: 400,
-        pxPerSec: 50,
+      resolveTierViewportWidthPx({
+        tierScrollEl: { clientWidth: 1200 } as HTMLElement,
+        layoutClientWidthPx: 1100,
+        liveClientWidthPx: 1400,
       }),
-    ).toEqual({ start: 0, end: 8 });
+    ).toBe(1400);
   });
 
-  it("converts scroll offset into the matching visible time window", () => {
+  it("falls back to layout width when live ref is unset", () => {
     expect(
-      resolveWaveformRulerView({
-        durationSec: 20,
-        scrollLeftPx: 250,
-        clientWidthPx: 400,
-        pxPerSec: 50,
+      resolveTierViewportWidthPx({
+        layoutClientWidthPx: 960,
       }),
-    ).toEqual({ start: 5, end: 13 });
+    ).toBe(960);
   });
 });
