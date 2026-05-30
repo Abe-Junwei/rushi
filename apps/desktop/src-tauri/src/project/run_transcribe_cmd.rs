@@ -1,4 +1,5 @@
 use super::correction::collect_correction_rule_hints;
+use super::local_transcribe_gate::assert_local_asr_ready_for_transcribe;
 use super::segment_cmd::file_save_segments_inner;
 use super::transcribe::{build_glossary_hotwords, post_transcribe_multipart};
 use super::transcribe_errors::describe_transcribe_payload_error;
@@ -104,6 +105,7 @@ async fn project_run_transcribe_inner(
             .unwrap_or_else(|| "http://127.0.0.1:8741".to_string())
             .trim_end_matches('/')
             .to_string();
+        assert_local_asr_ready_for_transcribe(&st, &base).await?;
         let url = format!("{base}/v1/transcribe");
         let timeout = local_transcribe_timeout_duration(audio_duration_sec);
         append_desktop_log_line(
@@ -138,7 +140,10 @@ async fn project_run_transcribe_inner(
             .unwrap_or("unknown");
         append_desktop_log_line(
             &st,
-            &format!("ERROR transcribe asr_payload code={code} {msg}"),
+            &format!(
+                "ERROR transcribe asr_payload code={code} {}",
+                crate::utils::redact_secrets_for_log(&msg)
+            ),
         );
         return Err(describe_transcribe_payload_error(code, &msg));
     }

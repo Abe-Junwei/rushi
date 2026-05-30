@@ -258,8 +258,9 @@ pub fn generate_all_levels(
     }
 
     if let Some(n_frames) = expected_frame_count {
-        let min_ok = n_frames.saturating_sub(sample_rate as u64 / 10);
-        if total_samples < min_ok {
+        let expected_sec = n_frames as f64 / sample_rate as f64;
+        let actual_sec = total_samples as f64 / sample_rate as f64;
+        if !duration_covers_reference(actual_sec, expected_sec) {
             return Err(format!(
                 "音频解码不完整（{} / {} 样本），已中止 peaks 写入",
                 total_samples, n_frames

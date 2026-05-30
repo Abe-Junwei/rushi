@@ -1,6 +1,7 @@
 use super::transcribe_errors::describe_transcribe_request_error;
 use super::utils::append_desktop_log_line;
 use crate::utils::http_client;
+use crate::utils::{redact_http_body_snippet, redact_secrets_for_log};
 use crate::DbState;
 use std::path::Path;
 
@@ -37,13 +38,16 @@ pub async fn post_transcribe_multipart(
         }
     }
     let resp = req.send().await.map_err(|e| {
-        append_desktop_log_line(st, &format!("ERROR transcribe connect {e}"));
+        append_desktop_log_line(
+            st,
+            &format!("ERROR transcribe connect {}", redact_secrets_for_log(&e.to_string())),
+        );
         describe_transcribe_request_error(&e, timeout)
     })?;
     let status = resp.status();
     if !status.is_success() {
         let body = resp.text().await.unwrap_or_default();
-        let snippet: String = body.chars().take(500).collect();
+        let snippet = redact_http_body_snippet(&body);
         append_desktop_log_line(st, &format!("ERROR transcribe http {} {}", status, snippet));
         return Err(format!("ASR HTTP {}: {}", status, snippet));
     }

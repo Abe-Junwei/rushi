@@ -3,8 +3,11 @@ use super::types::{WaveformPeakLevelStatus, WaveformPeaksStatus};
 use super::utils::open_db;
 use super::waveform_peaks::{
     all_peak_levels_exist, load_peaks_meta, peak_file_path, peaks_cache_is_stale,
-    peaks_dir, remove_peaks_for_file, try_acquire_peaks_lock, wait_for_peaks_ready,
-    PeaksGenerationReport, PeaksStaleCheckOptions, PEAK_LEVELS,
+    peaks_dir, peaks_generation_in_progress, remove_peaks_for_file, try_acquire_peaks_lock,
+    wait_for_peaks_ready, PeaksGenerationReport, PeaksStaleCheckOptions, PEAK_LEVELS,
+};
+use super::waveform_peaks_ffmpeg::{
+    remux_audio_to_pcm_wav, symphonia_error_eligible_for_ffmpeg_remux,
 };
 use super::waveform_peaks_generate::{generate_all_levels, probe_symphonia_track_duration_sec};
 use crate::DbState;
@@ -39,7 +42,38 @@ fn status_from_disk(
         levels,
         sample_rate: report.map(|r| r.sample_rate),
         duration_sec: report.map(|r| r.duration_sec),
+        generating: peaks_generation_in_progress(peaks_root, file_id),
     }
+}
+
+fn status_from_disk_with_probe(
+    peaks_root: &Path,
+    file_id: &str,
+    report: Option<&PeaksGenerationReport>,
+    audio_path: Option<&Path>,
+    media_duration_sec: Option<f64>,
+) -> WaveformPeaksStatus {
+    let mut st = status_from_disk(peaks_root, file_id, report);
+    if st.duration_sec.is_none() {
+        if let Some(audio) = audio_path {
+            st.duration_sec = resolve_reference_duration_sec(audio, media_duration_sec);
+        }
+    }
+    st
+}
+
+fn spawn_peaks_generation(
+    audio: PathBuf,
+    peaks_root: PathBuf,
+    file_id: String,
+    lock: super::waveform_peaks::PeaksGenerationLock,
+) {
+    std::thread::spawn(move || {
+        let _lock = lock;
+        if let Err(err) = generate_peaks_with_optional_ffmpeg_remux(&audio, &peaks_root, &file_id) {
+            eprintln!("[waveform_peaks] background generation failed for {file_id}: {err}");
+        }
+    });
 }
 
 fn load_existing_meta(peaks_root: &Path, file_id: &str) -> Option<PeaksGenerationReport> {
@@ -97,28 +131,68 @@ fn stale_check_options(
     }
 }
 
-fn invalidate_peaks_if_stale(
+/// When all peak levels exist, skip symphonia/ffprobe and use caller/meta duration.
+fn stale_check_options_cache_fresh(
+    peaks_root: &Path,
+    file_id: &str,
+    audio_path: &Path,
+    media_duration_sec: Option<f64>,
+) -> PeaksStaleCheckOptions {
+    if let Some(d) = media_duration_sec.filter(|v| v.is_finite() && *v > 0.0) {
+        return PeaksStaleCheckOptions {
+            reference_media_duration_sec: Some(d),
+            probed_audio_duration_sec: None,
+        };
+    }
+    if let Some(report) = load_existing_meta(peaks_root, file_id) {
+        if report.duration_sec.is_finite() && report.duration_sec > 0.0 {
+            return PeaksStaleCheckOptions {
+                reference_media_duration_sec: Some(report.duration_sec),
+                probed_audio_duration_sec: None,
+            };
+        }
+    }
+    stale_check_options(audio_path, media_duration_sec)
+}
+
+fn invalidate_peaks_if_stale_with_options(
     peaks_root: &Path,
     file_id: &str,
     audio_path: &Path,
     force: bool,
-    media_duration_sec: Option<f64>,
+    stale_opts: PeaksStaleCheckOptions,
 ) -> Result<bool, String> {
     if force {
         remove_peaks_for_file(peaks_root, file_id);
         return Ok(true);
     }
-    let stale = peaks_cache_is_stale(
-        peaks_root,
-        file_id,
-        audio_path,
-        stale_check_options(audio_path, media_duration_sec),
-    )?;
+    let stale = peaks_cache_is_stale(peaks_root, file_id, audio_path, stale_opts)?;
     if stale {
         remove_peaks_for_file(peaks_root, file_id);
         return Ok(true);
     }
     Ok(false)
+}
+
+fn generate_peaks_with_optional_ffmpeg_remux(
+    audio: &Path,
+    peaks_root: &Path,
+    file_id: &str,
+) -> Result<PeaksGenerationReport, String> {
+    match generate_all_levels(audio, peaks_root, file_id) {
+        Ok(report) => Ok(report),
+        Err(err) if symphonia_error_eligible_for_ffmpeg_remux(&err) => {
+            let remux_path = peaks_root.join(format!("{file_id}.peaks-remux.wav"));
+            let remux_result = remux_audio_to_pcm_wav(audio, &remux_path).and_then(|()| {
+                generate_all_levels(&remux_path, peaks_root, file_id)
+            });
+            let _ = std::fs::remove_file(&remux_path);
+            remux_result.map_err(|remux_err| {
+                format!("{err}；ffmpeg remux 回退失败: {remux_err}")
+            })
+        }
+        Err(err) => Err(err),
+    }
 }
 
 fn ensure_waveform_peaks_sync(
@@ -144,25 +218,49 @@ fn ensure_waveform_peaks_sync(
     let peaks_root = peaks_dir(&project_dir(st, project_id));
     let audio = Path::new(&audio_path);
 
-    if !invalidate_peaks_if_stale(&peaks_root, file_id, audio, force, media_duration_sec)?
-        && all_peak_levels_exist(&peaks_root, file_id)
+    let cache_complete = all_peak_levels_exist(&peaks_root, file_id);
+    let stale_opts = if cache_complete {
+        stale_check_options_cache_fresh(&peaks_root, file_id, audio, media_duration_sec)
+    } else {
+        stale_check_options(audio, media_duration_sec)
+    };
+
+    if !invalidate_peaks_if_stale_with_options(&peaks_root, file_id, audio, force, stale_opts)?
+        && cache_complete
     {
         let report = load_existing_meta(&peaks_root, file_id);
         return Ok(status_from_disk(&peaks_root, file_id, report.as_ref()));
     }
 
     if let Some(_lock) = try_acquire_peaks_lock(&peaks_root, file_id)? {
-        if !invalidate_peaks_if_stale(&peaks_root, file_id, audio, force, media_duration_sec)?
-            && all_peak_levels_exist(&peaks_root, file_id)
+        let cache_complete = all_peak_levels_exist(&peaks_root, file_id);
+        let stale_opts = if cache_complete {
+            stale_check_options_cache_fresh(&peaks_root, file_id, audio, media_duration_sec)
+        } else {
+            stale_check_options(audio, media_duration_sec)
+        };
+        if !invalidate_peaks_if_stale_with_options(&peaks_root, file_id, audio, force, stale_opts)?
+            && cache_complete
         {
             let report = load_existing_meta(&peaks_root, file_id);
             return Ok(status_from_disk(&peaks_root, file_id, report.as_ref()));
         }
 
-        let report = generate_all_levels(audio, &peaks_root, file_id)?;
-        Ok(status_from_disk(&peaks_root, file_id, Some(&report)))
+        spawn_peaks_generation(
+            audio.to_path_buf(),
+            peaks_root.clone(),
+            file_id.to_string(),
+            _lock,
+        );
+        Ok(status_from_disk_with_probe(
+            &peaks_root,
+            file_id,
+            None,
+            Some(audio),
+            media_duration_sec,
+        ))
     } else {
-        wait_for_peaks_ready(&peaks_root, file_id)?;
+        wait_for_peaks_ready(&peaks_root, file_id, media_duration_sec)?;
         if peaks_cache_is_stale(
             &peaks_root,
             file_id,

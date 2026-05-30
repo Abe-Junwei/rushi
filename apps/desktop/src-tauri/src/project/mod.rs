@@ -21,9 +21,11 @@ mod project_bundle_cmd;
 pub mod project_create_cmd;
 pub mod project_delete_cmd;
 pub mod project_query_cmd;
+pub mod project_storage;
 pub mod run_transcribe_cmd;
 pub mod segment_cmd;
 mod segment_uid;
+mod local_transcribe_gate;
 pub mod transcribe;
 mod transcribe_errors;
 mod transcribe_native_online;
@@ -31,7 +33,10 @@ mod transcribe_timeout;
 pub mod types;
 pub mod utils;
 pub mod waveform_peaks;
+pub mod waveform_peaks_cache_cmd;
 pub mod waveform_peaks_generate;
+pub mod waveform_peaks_ffmpeg;
+pub mod waveform_peaks_gc;
 pub mod waveform_peaks_cmd;
 
 pub use app_data_paths::models_root_for_app_data_root;
@@ -49,6 +54,7 @@ pub use run_transcribe_cmd::*;
 pub use segment_cmd::*;
 pub use types::*;
 pub use waveform_peaks_cmd::*;
+pub use waveform_peaks_cache_cmd::*;
 
 #[cfg(test)]
 mod cmd_integration_tests;

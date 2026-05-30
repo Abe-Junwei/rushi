@@ -68,6 +68,8 @@ pub struct WaveformPeaksStatus {
     pub levels: Vec<WaveformPeakLevelStatus>,
     pub sample_rate: Option<u32>,
     pub duration_sec: Option<f64>,
+    /// True while a background `.generating.lock` is held for this file.
+    pub generating: bool,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

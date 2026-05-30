@@ -259,18 +259,38 @@ pub fn remove_peaks_for_file(peaks_root: &Path, file_id: &str) {
     let _ = fs::remove_file(peak_lock_path(peaks_root, file_id));
 }
 
+pub fn peaks_disk_bytes_for_file(peaks_root: &Path, file_id: &str) -> u64 {
+    let mut total = 0_u64;
+    for (level, _) in PEAK_LEVELS {
+        if let Ok(meta) = fs::metadata(peak_file_path(peaks_root, file_id, level)) {
+            total = total.saturating_add(meta.len());
+        }
+    }
+    if let Ok(meta) = fs::metadata(peak_meta_path(peaks_root, file_id)) {
+        total = total.saturating_add(meta.len());
+    }
+    total
+}
+
 pub fn all_peak_levels_exist(peaks_root: &Path, file_id: &str) -> bool {
     PEAK_LEVELS
         .iter()
         .all(|(level, _)| peak_file_path(peaks_root, file_id, *level).is_file())
 }
 
+pub fn peaks_generation_in_progress(peaks_root: &Path, file_id: &str) -> bool {
+    peak_lock_path(peaks_root, file_id).is_file()
+}
+
 /// Wait for another task to finish generating peaks (lock holder).
-/// Timeout scales with a 2× audio-duration guess (capped at 120 s) so long
-/// files are not incorrectly treated as stuck.
-pub fn wait_for_peaks_ready(peaks_root: &Path, file_id: &str) -> Result<(), String> {
-    let mut attempts = 0;
-    let max_attempts = 1200; // 1200 × 100 ms = 120 s hard cap
+/// Timeout scales with media duration (capped) so long files are not treated as stuck.
+pub fn wait_for_peaks_ready(
+    peaks_root: &Path,
+    file_id: &str,
+    media_duration_sec: Option<f64>,
+) -> Result<(), String> {
+    let max_attempts = peaks_wait_max_attempts(media_duration_sec);
+    let mut attempts = 0_u32;
     loop {
         if all_peak_levels_exist(peaks_root, file_id) {
             return Ok(());
@@ -283,11 +303,30 @@ pub fn wait_for_peaks_ready(peaks_root: &Path, file_id: &str) -> Result<(), Stri
     }
 }
 
+fn peaks_wait_max_attempts(media_duration_sec: Option<f64>) -> u32 {
+    const INTERVAL_MS: f64 = 100.0;
+    let max_sec = media_duration_sec
+        .filter(|d| d.is_finite() && *d > 0.0)
+        .map(|d| (d * 0.35 + 60.0).min(900.0))
+        .unwrap_or(120.0);
+    ((max_sec * 1000.0) / INTERVAL_MS).ceil().max(1.0) as u32
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::project::waveform_peaks_generate::{generate_all_levels, LevelWriter};
     use std::io::Read;
+
+    #[test]
+    fn duration_covers_reference_allows_small_tail_gap_on_long_files() {
+        let sample_rate = 44100_u32;
+        let expected_frames = 128_699_136_u64;
+        let decoded_frames = 128_694_528_u64;
+        let expected_sec = expected_frames as f64 / sample_rate as f64;
+        let actual_sec = decoded_frames as f64 / sample_rate as f64;
+        assert!(duration_covers_reference(actual_sec, expected_sec));
+    }
 
     #[test]
     fn dat_header_layout_matches_audiowaveform_v1() {

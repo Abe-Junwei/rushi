@@ -150,7 +150,10 @@ pub async fn llm_probe_connection(
         &state,
         &format!(
             "{level} llm_probe_done provider={} status={} latency_ms={} message={}",
-            config.provider, status, latency_ms, out.message
+            config.provider,
+            status,
+            latency_ms,
+            crate::utils::redact_secrets_for_log(&out.message)
         ),
     );
     Ok(out)
@@ -264,7 +267,7 @@ pub async fn postprocess_auto_punctuate(
             &format!(
                 "ERROR postprocess status={} body={}",
                 status.as_u16(),
-                payload
+                crate::utils::redact_http_body_snippet(&payload)
             ),
         );
         return Err(format!(

@@ -1,23 +1,12 @@
-use super::utils::{append_desktop_log_line, open_db, remove_project_audio_parent_dir};
+use super::project_storage::cleanup_deleted_project_storage;
+use super::utils::open_db;
 use crate::DbState;
 use rusqlite::params;
-use std::fs;
 use std::ops::Deref;
 use tauri::State;
 
 pub(crate) fn project_delete_inner(st: &DbState, project_id: &str) -> Result<(), String> {
     let conn = open_db(st)?;
-    let mut stmt = conn
-        .prepare("SELECT audio_path FROM files WHERE project_id = ?1 AND audio_path IS NOT NULL")
-        .map_err(|e| e.to_string())?;
-    let audio_paths: Vec<String> = stmt
-        .query_map(params![project_id], |r| r.get::<_, String>(0))
-        .map_err(|e| e.to_string())?
-        .collect::<Result<Vec<_>, _>>()
-        .map_err(|e| e.to_string())?;
-    drop(stmt);
-
-    let project_dir = st.root.join("projects").join(project_id);
 
     let deleted = conn
         .execute("DELETE FROM projects WHERE id = ?1", params![project_id])
@@ -26,21 +15,7 @@ pub(crate) fn project_delete_inner(st: &DbState, project_id: &str) -> Result<(),
         return Err("项目不存在或已被删除。".into());
     }
 
-    if let Some(first) = audio_paths.first() {
-        if let Err(e) = remove_project_audio_parent_dir(&st.root, first) {
-            append_desktop_log_line(
-                st,
-                &format!("WARN project_delete_fs_cleanup project_id={project_id} {e}"),
-            );
-        }
-    } else if project_dir.exists() {
-        if let Err(e) = fs::remove_dir(&project_dir) {
-            append_desktop_log_line(
-                st,
-                &format!("WARN project_delete_empty_dir project_id={project_id} {e}"),
-            );
-        }
-    }
+    cleanup_deleted_project_storage(st, project_id);
     Ok(())
 }
 
@@ -53,6 +28,8 @@ pub fn project_delete(state: State<DbState>, project_id: String) -> Result<(), S
 mod tests {
     use super::*;
     use crate::db;
+    use crate::project::project_storage::project_storage_dir;
+    use std::fs;
     use std::path::PathBuf;
     use std::time::{SystemTime, UNIX_EPOCH};
     use uuid::Uuid;
@@ -110,6 +87,7 @@ mod tests {
 
         project_delete_inner(&st, &project_id).unwrap();
 
+        assert!(!project_storage_dir(&st.root, &project_id).exists());
         let conn = super::super::utils::open_db(&st).unwrap();
         let count: i64 = conn
             .query_row(
