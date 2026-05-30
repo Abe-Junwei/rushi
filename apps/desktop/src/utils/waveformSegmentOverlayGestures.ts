@@ -4,7 +4,7 @@ import type { SegmentOverlapPolicy } from "./segmentTimeRange";
 export type OverlayDragMode = SegmentDragMode | "create";
 
 export type OverlayPointerUpIntent =
-  | { kind: "select-segment"; segmentIdx: number }
+  | { kind: "select-segment"; segmentIdx: number; pointerTimeSec: number }
   | { kind: "commit-bounds"; segmentIdx: number; startSec: number; endSec: number }
   | { kind: "create-range"; startSec: number; endSec: number; overlapPolicy?: SegmentOverlapPolicy }
   | { kind: "seek-blank"; timeSec: number }
@@ -35,14 +35,22 @@ export function resolveOverlayPointerUpIntent(input: {
   }
 
   if (!input.moved) {
-    return { kind: "select-segment", segmentIdx: input.segmentIdx };
+    return {
+      kind: "select-segment",
+      segmentIdx: input.segmentIdx,
+      pointerTimeSec: input.pointerTimeSec,
+    };
   }
 
   const unchanged =
     Math.abs(input.clampedStartSec - input.initialStartSec) < 0.0005 &&
     Math.abs(input.clampedEndSec - input.initialEndSec) < 0.0005;
   if (unchanged) {
-    return { kind: "select-segment", segmentIdx: input.segmentIdx };
+    return {
+      kind: "select-segment",
+      segmentIdx: input.segmentIdx,
+      pointerTimeSec: input.pointerTimeSec,
+    };
   }
 
   return {

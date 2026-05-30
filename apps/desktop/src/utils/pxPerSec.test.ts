@@ -10,6 +10,7 @@ import {
   isTimelineFitInViewport,
   resolveMaxRenderablePxPerSec,
   resolveSelectionFitPxPerSec,
+  resolveViewportFitLayoutPxPerSec,
   resolveDefaultEditingPxPerSec,
   resolveDefaultResetPxPerSec,
   resolveWaveformZoomSliderRange,
@@ -173,6 +174,17 @@ describe("quantizePxPerSecForPeaksLoad", () => {
 
   it("caps fit-selection zoom at the fit-selection max", () => {
     expect(quantizePxPerSecForPeaksLoad(5000)).toBe(PX_PER_SEC_FIT_SELECTION_MAX);
+  });
+});
+
+describe("resolveViewportFitLayoutPxPerSec", () => {
+  it("quantizes then applies WaveSurfer render cap for long media", () => {
+    const dur = 3600;
+    const raw = computeFitSelectionPxPerSec(800, 10, 12);
+    expect(raw).toBeGreaterThan(resolveMaxRenderablePxPerSec(dur));
+    const layout = resolveViewportFitLayoutPxPerSec(raw, dur);
+    expect(layout).toBeLessThanOrEqual(resolveMaxRenderablePxPerSec(dur));
+    expect(layout).toBeGreaterThan(PX_PER_SEC_MIN);
   });
 });
 

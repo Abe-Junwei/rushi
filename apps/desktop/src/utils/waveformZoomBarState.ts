@@ -1,6 +1,5 @@
 import {
   computeFitAllPxPerSec,
-  computeFitSelectionPxPerSec,
   computeTimelineWidthPx,
   FIT_ALL_FILL_GAP_MIN_PX,
   FIT_ALL_FILL_GAP_RATIO,
@@ -9,6 +8,7 @@ import {
   PX_PER_SEC_MAX,
   PX_PER_SEC_PEAKS_QUANTUM,
   resolveDefaultEditingPxPerSec,
+  resolveQuantizedFitSelectionPxPerSec,
   TIMELINE_PX_PER_SEC,
   type WaveformZoomLayoutIntent,
   type WaveformZoomSliderRange,
@@ -126,8 +126,12 @@ export type WaveformZoomBarUiInput = {
   sliderRange?: WaveformZoomSliderRange;
 };
 
+/** 缩放条三枚模式按钮的互斥激活态（至多一项）。 */
+export type WaveformZoomBarActiveMode = "fit-all" | "fit-selection" | "default" | null;
+
 export type WaveformZoomBarUiState = {
   viewMode: WaveformZoomViewMode;
+  activeMode: WaveformZoomBarActiveMode;
   atDefaultZoom: boolean;
   atMinZoom: boolean;
   atMaxZoom: boolean;
@@ -138,7 +142,19 @@ export type WaveformZoomBarUiState = {
   zoomPercentLabel: number;
 };
 
-function computeAtFitSelectionZoom(
+function resolveEditingDefaultPxPerSec(input: WaveformZoomBarUiInput): number {
+  if (input.viewportWidthPx > 0 && input.durationSec >= 0.5) {
+    return resolveDefaultEditingPxPerSec(input.viewportWidthPx, input.durationSec);
+  }
+  return TIMELINE_PX_PER_SEC;
+}
+
+function isNearEditingDefaultPxPerSec(pxPerSec: number, defaultPx: number): boolean {
+  const tol = Math.max(ZOOM_EPS, defaultPx * 0.01);
+  return Math.abs(pxPerSec - defaultPx) <= tol;
+}
+
+export function isNearQuantizedFitSelectionPxPerSec(
   pxPerSec: number,
   viewportWidthPx: number,
   selectedStartSec?: number,
@@ -153,20 +169,58 @@ function computeAtFitSelectionZoom(
   ) {
     return false;
   }
-  const fitSelPx = computeFitSelectionPxPerSec(viewportWidthPx, selectedStartSec, selectedEndSec);
-  return Math.abs(pxPerSec - fitSelPx) < ZOOM_EPS;
+  const target = resolveQuantizedFitSelectionPxPerSec(
+    viewportWidthPx,
+    selectedStartSec,
+    selectedEndSec,
+  );
+  const tol = Math.max(ZOOM_EPS, target * 0.01);
+  return Math.abs(pxPerSec - target) <= tol;
 }
 
-function resolveEditingDefaultPxPerSec(input: WaveformZoomBarUiInput): number {
-  if (input.viewportWidthPx > 0 && input.durationSec >= 0.5) {
-    return resolveDefaultEditingPxPerSec(input.viewportWidthPx, input.durationSec);
+/** layoutIntent 优先；manual 时不亮模式键；无 intent 时按 px 接近度回退。 */
+export function resolveWaveformZoomBarActiveMode(
+  input: WaveformZoomBarUiInput,
+): WaveformZoomBarActiveMode {
+  const { pxPerSec, layoutIntent, viewportWidthPx, durationSec, selectedStartSec, selectedEndSec } =
+    input;
+
+  if (layoutIntent === "manual") {
+    return null;
   }
-  return TIMELINE_PX_PER_SEC;
-}
+  if (layoutIntent === "fit-all") {
+    return "fit-all";
+  }
+  if (layoutIntent === "fit-selection") {
+    return "fit-selection";
+  }
+  if (layoutIntent === "default") {
+    return "default";
+  }
 
-function isNearEditingDefaultPxPerSec(pxPerSec: number, defaultPx: number): boolean {
-  const tol = Math.max(ZOOM_EPS, defaultPx * 0.01);
-  return Math.abs(pxPerSec - defaultPx) <= tol;
+  if (viewportWidthPx <= 0 || durationSec < 0.5) {
+    if (Math.abs(pxPerSec - TIMELINE_PX_PER_SEC) < ZOOM_EPS) {
+      return "default";
+    }
+    return null;
+  }
+
+  if (isFitAllTimelineFilledInViewport(viewportWidthPx, durationSec, pxPerSec)) {
+    return "fit-all";
+  }
+  const defaultPx = resolveDefaultEditingPxPerSec(viewportWidthPx, durationSec);
+  if (isNearEditingDefaultPxPerSec(pxPerSec, defaultPx)) {
+    return "default";
+  }
+  if (isNearQuantizedFitSelectionPxPerSec(
+    pxPerSec,
+    viewportWidthPx,
+    selectedStartSec,
+    selectedEndSec,
+  )) {
+    return "fit-selection";
+  }
+  return null;
 }
 
 export function isNearEditingDefaultForMedia(
@@ -181,16 +235,11 @@ export function isNearEditingDefaultForMedia(
 }
 
 export function deriveWaveformZoomViewMode(input: WaveformZoomBarUiInput): WaveformZoomViewMode {
-  const defaultPx = resolveEditingDefaultPxPerSec(input);
-  if (isNearEditingDefaultPxPerSec(input.pxPerSec, defaultPx)) {
+  const activeMode = resolveWaveformZoomBarActiveMode(input);
+  if (activeMode === "default") {
     return "default";
   }
-  if (computeAtFitSelectionZoom(
-    input.pxPerSec,
-    input.viewportWidthPx,
-    input.selectedStartSec,
-    input.selectedEndSec,
-  )) {
+  if (activeMode === "fit-selection") {
     return "fit-selection";
   }
   return "custom";
@@ -207,38 +256,31 @@ export function computeWaveformZoomBarUiState(input: WaveformZoomBarUiInput | nu
     pxPerSec,
     viewportWidthPx,
     durationSec,
-    layoutIntent,
-    selectedStartSec,
-    selectedEndSec,
     sliderRange,
   } = resolved;
-  const atFitSelectionZoom = computeAtFitSelectionZoom(
-    pxPerSec,
-    viewportWidthPx,
-    selectedStartSec,
-    selectedEndSec,
-  );
   const defaultPx = resolveEditingDefaultPxPerSec(resolved);
-  const atDefaultZoom = isNearEditingDefaultPxPerSec(pxPerSec, defaultPx);
+  const activeMode = resolveWaveformZoomBarActiveMode(resolved);
+  const atFitAllZoom = activeMode === "fit-all";
+  const atFitSelectionZoom = activeMode === "fit-selection";
+  const atDefaultZoom = activeMode === "default";
   const sliderMinPx =
     sliderRange?.minPxPerSec ??
     (viewportWidthPx > 0 && durationSec > 0
       ? computeFitAllPxPerSec(viewportWidthPx, durationSec)
       : pxPerSec);
   const belowManualSliderRange = isPxPerSecBelowSliderMin(pxPerSec, sliderMinPx);
-  const atFitAllZoom =
-    layoutIntent === "fit-all" ||
-    (layoutIntent == null &&
-      viewportWidthPx > 0 &&
-      durationSec > 0 &&
-      isFitAllTimelineFilledInViewport(viewportWidthPx, durationSec, pxPerSec));
+  const atMinFitAllFill =
+    viewportWidthPx > 0 &&
+    durationSec > 0 &&
+    isFitAllTimelineFilledInViewport(viewportWidthPx, durationSec, pxPerSec);
 
   return {
     viewMode: deriveWaveformZoomViewMode(resolved),
+    activeMode,
     atDefaultZoom,
     atMinZoom: belowManualSliderRange
       ? false
-      : Math.abs(pxPerSec - sliderMinPx) < ZOOM_EPS || atFitAllZoom,
+      : Math.abs(pxPerSec - sliderMinPx) < ZOOM_EPS || atMinFitAllFill,
     atMaxZoom: pxPerSec >= (sliderRange?.maxPxPerSec ?? PX_PER_SEC_MAX) - ZOOM_EPS,
     atFitSelectionZoom,
     belowManualSliderRange,

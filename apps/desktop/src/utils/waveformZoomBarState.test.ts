@@ -7,7 +7,7 @@ import {
   resolveWaveformZoomSliderRange,
   TIMELINE_PX_PER_SEC,
 } from "./pxPerSec";
-import { computeWaveformZoomBarUiState, resolveFitAllPxPerSecAdjustment } from "./waveformZoomBarState";
+import { computeWaveformZoomBarUiState, resolveFitAllPxPerSecAdjustment, resolveWaveformZoomBarActiveMode } from "./waveformZoomBarState";
 
 describe("computeWaveformZoomBarUiState", () => {
   it("marks default zoom at per-file editing px/s", () => {
@@ -50,9 +50,59 @@ describe("computeWaveformZoomBarUiState", () => {
       durationSec: 120,
       selectedStartSec: 10,
       selectedEndSec: 20,
+      layoutIntent: "fit-selection",
     });
     expect(s.viewMode).toBe("fit-selection");
     expect(s.atFitSelectionZoom).toBe(true);
+    expect(s.atDefaultZoom).toBe(false);
+    expect(s.atFitAllZoom).toBe(false);
+  });
+
+  it("lights fit-selection from layoutIntent even when px is peaks-quantized", () => {
+    const rawFit = computeFitSelectionPxPerSec(800, 10, 19);
+    const quantized = Math.round(rawFit / 8) * 8;
+    expect(Math.abs(rawFit - quantized)).toBeGreaterThan(0.001);
+    const s = computeWaveformZoomBarUiState({
+      pxPerSec: quantized,
+      viewportWidthPx: 800,
+      durationSec: 120,
+      selectedStartSec: 10,
+      selectedEndSec: 19,
+      layoutIntent: "fit-selection",
+    });
+    expect(s.atFitSelectionZoom).toBe(true);
+  });
+
+  it("keeps zoom mode buttons mutually exclusive", () => {
+    const defaultPx = resolveDefaultEditingPxPerSec(800, 120);
+    const s = computeWaveformZoomBarUiState({
+      pxPerSec: defaultPx,
+      viewportWidthPx: 800,
+      durationSec: 120,
+      layoutIntent: "default",
+    });
+    const active = [s.atDefaultZoom, s.atFitAllZoom, s.atFitSelectionZoom].filter(Boolean);
+    expect(active).toHaveLength(1);
+    expect(s.activeMode).toBe("default");
+  });
+
+  it("does not highlight mode buttons when layoutIntent is manual", () => {
+    const fitAll = computeFitAllPxPerSec(800, 3600);
+    const s = computeWaveformZoomBarUiState({
+      pxPerSec: fitAll,
+      viewportWidthPx: 800,
+      durationSec: 3600,
+      layoutIntent: "manual",
+    });
+    expect(s.atFitAllZoom).toBe(false);
+    expect(s.atDefaultZoom).toBe(false);
+    expect(s.atFitSelectionZoom).toBe(false);
+    expect(resolveWaveformZoomBarActiveMode({
+      pxPerSec: fitAll,
+      viewportWidthPx: 800,
+      durationSec: 3600,
+      layoutIntent: "manual",
+    })).toBe(null);
   });
 
   it("ultra-low px/s below file fit-all is below slider range", () => {

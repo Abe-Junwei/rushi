@@ -1,21 +1,94 @@
 import { describe, expect, it, vi } from "vitest";
-import { applyOverlayPointerUpIntent } from "./waveformSegmentOverlayActions";
+import {
+  applyOverlayPointerUpIntent,
+  applySegmentOverlayTap,
+  resolveSegmentOverlayTap,
+} from "./waveformSegmentOverlayActions";
+
+describe("resolveSegmentOverlayTap", () => {
+  const segment = { start_sec: 4, end_sec: 10 };
+
+  it("selects when tapping a different segment", () => {
+    expect(
+      resolveSegmentOverlayTap({
+        selectedIdx: 0,
+        segmentIdx: 2,
+        pointerTimeSec: 7,
+        segment,
+      }),
+    ).toEqual({ kind: "select", segmentIdx: 2 });
+  });
+
+  it("seeks within segment when tapping the selected segment", () => {
+    expect(
+      resolveSegmentOverlayTap({
+        selectedIdx: 2,
+        segmentIdx: 2,
+        pointerTimeSec: 7.5,
+        segment,
+      }),
+    ).toEqual({ kind: "seek-within", timeSec: 7.5 });
+  });
+
+  it("clamps seek-within to segment bounds", () => {
+    expect(
+      resolveSegmentOverlayTap({
+        selectedIdx: 1,
+        segmentIdx: 1,
+        pointerTimeSec: 12,
+        segment,
+      }),
+    ).toEqual({ kind: "seek-within", timeSec: 10 });
+  });
+});
 
 describe("waveformSegmentOverlayActions", () => {
-  it("applyOverlayPointerUpIntent dispatches select-segment", () => {
-    const suppress = vi.fn();
+  it("applySegmentOverlayTap selects a new segment", () => {
     const onSelectSegmentAt = vi.fn();
-    applyOverlayPointerUpIntent(
-      { kind: "select-segment", segmentIdx: 2 },
+    const seekToTime = vi.fn();
+    applySegmentOverlayTap(
       {
-        onSelectSegmentAt,
+        selectedIdx: 0,
+        segmentIdx: 2,
+        pointerTimeSec: 7,
+        segment: { start_sec: 4, end_sec: 10 },
+      },
+      { onSelectSegmentAt, seekToTime },
+    );
+    expect(onSelectSegmentAt).toHaveBeenCalledWith(2);
+    expect(seekToTime).not.toHaveBeenCalled();
+  });
+
+  it("applySegmentOverlayTap seeks when re-tapping selected segment", () => {
+    const onSelectSegmentAt = vi.fn();
+    const seekToTime = vi.fn();
+    applySegmentOverlayTap(
+      {
+        selectedIdx: 2,
+        segmentIdx: 2,
+        pointerTimeSec: 6,
+        segment: { start_sec: 4, end_sec: 10 },
+      },
+      { onSelectSegmentAt, seekToTime },
+    );
+    expect(onSelectSegmentAt).not.toHaveBeenCalled();
+    expect(seekToTime).toHaveBeenCalledWith(6);
+  });
+
+  it("applyOverlayPointerUpIntent dispatches select-segment via onSegmentPointerTap", () => {
+    const suppress = vi.fn();
+    const onSegmentPointerTap = vi.fn();
+    applyOverlayPointerUpIntent(
+      { kind: "select-segment", segmentIdx: 2, pointerTimeSec: 5 },
+      {
+        onSegmentPointerTap,
         onBoundsCommit: vi.fn(),
         seekToTime: vi.fn(),
       },
       suppress,
     );
     expect(suppress).toHaveBeenCalledOnce();
-    expect(onSelectSegmentAt).toHaveBeenCalledWith(2);
+    expect(onSegmentPointerTap).toHaveBeenCalledWith(2, 5);
   });
 
   it("applyOverlayPointerUpIntent dispatches commit-bounds", () => {
@@ -23,7 +96,7 @@ describe("waveformSegmentOverlayActions", () => {
     applyOverlayPointerUpIntent(
       { kind: "commit-bounds", segmentIdx: 1, startSec: 2, endSec: 4 },
       {
-        onSelectSegmentAt: vi.fn(),
+        onSegmentPointerTap: vi.fn(),
         onBoundsCommit,
         seekToTime: vi.fn(),
       },
@@ -37,7 +110,7 @@ describe("waveformSegmentOverlayActions", () => {
     applyOverlayPointerUpIntent(
       { kind: "create-range", startSec: 1, endSec: 3, overlapPolicy: "allow" },
       {
-        onSelectSegmentAt: vi.fn(),
+        onSegmentPointerTap: vi.fn(),
         onBoundsCommit: vi.fn(),
         onCreateRange,
         seekToTime: vi.fn(),

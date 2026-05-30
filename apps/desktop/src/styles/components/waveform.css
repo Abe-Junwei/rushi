@@ -47,7 +47,8 @@
   overflow: visible;
   font-size: 12px;
   color: var(--notion-text-muted);
-  background: color-mix(in srgb, var(--notion-sidebar) 80%, transparent);
+  background: color-mix(in srgb, var(--notion-sidebar) 88%, var(--notion-bg));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, var(--notion-bg) 55%, transparent);
 }
 
 .waveform-playback-cluster {
@@ -454,6 +455,63 @@
   flex-shrink: 0;
   border-radius: 1px;
   background: color-mix(in srgb, var(--notion-text) 12%, transparent);
+}
+
+/** 波形总览：paper 底与下方 sidebar 底栏以色块分层，无额外边距。 */
+.waveform-minimap-strip {
+  box-sizing: border-box;
+  display: flex;
+  width: 100%;
+  height: 56px;
+  flex-shrink: 0;
+  align-items: stretch;
+  background: var(--zen-paper);
+}
+
+.waveform-minimap-well {
+  position: relative;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.waveform-minimap-well.is-disabled {
+  opacity: 0.5;
+}
+
+.waveform-minimap-canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.waveform-minimap-pending {
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: color-mix(in srgb, var(--zen-paper) 72%, transparent);
+}
+
+.waveform-minimap-viewport {
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  height: 100%;
+  border: 1px solid color-mix(in srgb, var(--zen-saffron) 35%, transparent);
+  border-radius: 3px;
+  background: color-mix(in srgb, var(--zen-saffron) 10%, transparent);
+}
+
+.waveform-minimap-playhead {
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  width: 2px;
+  height: 100%;
+  background: color-mix(in srgb, var(--zen-saffron-mid) 75%, transparent);
 }
 
 .icon-btn {

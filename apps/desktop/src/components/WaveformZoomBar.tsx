@@ -1,6 +1,7 @@
 import { memo, useCallback, useMemo } from "react";
-import { ZoomIn, ZoomOut } from "lucide-react";
+import { Focus, Maximize2, ZoomIn, ZoomOut } from "lucide-react";
 import {
+  FIT_SELECTION_VIEWPORT_RATIO,
   PX_PER_SEC_MAX,
   PX_PER_SEC_MIN,
   resolveWaveformZoomSliderRange,
@@ -12,6 +13,49 @@ import {
   computeZoomOutPxPerSec,
 } from "../utils/waveformZoomSlider";
 import { LUCIDE_ICON_SIZE_LG, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
+
+function fitSelectionPercentLabel(): string {
+  return `${Math.round(FIT_SELECTION_VIEWPORT_RATIO * 100)}%`;
+}
+
+function resolveFitSelectionTitle(hasSelection: boolean, active: boolean): string {
+  if (!hasSelection) {
+    return "请先在语段列表或波形上选中一条语段";
+  }
+  const pct = fitSelectionPercentLabel();
+  if (active) {
+    return `语段适配（已激活）：选中语段约占视口 ${pct} 宽，并已滚入可见区域`;
+  }
+  return `语段适配：将选中语段缩放到约占视口 ${pct} 宽，并滚入可见区域`;
+}
+
+function resolveFitAllTitle(active: boolean): string {
+  if (active) {
+    return "整段可见（已激活）：整段音频时间轴已贴满视口宽度";
+  }
+  return "整段可见：缩小至整段音频贴满视口宽度（本文件最宽可见）";
+}
+
+function resolveZoomOutTitle(atMinZoom: boolean): string {
+  if (atMinZoom) {
+    return "已为本文件最宽可见（整段贴满视口）";
+  }
+  return "缩小一级";
+}
+
+function resolveZoomInTitle(atMaxZoom: boolean): string {
+  if (atMaxZoom) {
+    return "已为本文件最大缩放";
+  }
+  return "放大一级";
+}
+
+function resolveResetTitle(active: boolean): string {
+  if (active) {
+    return "默认比例（已激活）：当前为本文件编辑默认缩放（标签约 100%）";
+  }
+  return "默认比例：恢复本文件编辑默认（几何中点；±5 步可达最宽/最大）";
+}
 
 export type WaveformZoomBarProps = {
   disabled: boolean;
@@ -93,6 +137,12 @@ export const WaveformZoomBar = memo(function WaveformZoomBar({
     onPxPerSecChange(computeZoomOutPxPerSec(pxPerSec, sliderRange));
   }, [onPxPerSecChange, pxPerSec, sliderRange]);
 
+  const fitSelectionTitle = resolveFitSelectionTitle(hasSelection, atFitSelectionZoom);
+  const fitAllTitle = resolveFitAllTitle(atFitAllZoom);
+  const zoomOutTitle = resolveZoomOutTitle(atMinZoom);
+  const zoomInTitle = resolveZoomInTitle(atMaxZoom);
+  const resetTitle = resolveResetTitle(atDefaultZoom);
+
   return (
     <div className="waveform-zoom-toolbar" role="toolbar" aria-label="波形时间轴缩放">
       <div className="waveform-zoom-bar">
@@ -116,32 +166,32 @@ export const WaveformZoomBar = memo(function WaveformZoomBar({
         ) : null}
         <button
           type="button"
-          className={`icon-btn icon-btn-text${atFitSelectionZoom ? " icon-btn-active" : ""}`}
+          className={`icon-btn${atFitSelectionZoom ? " icon-btn-active" : ""}`}
           disabled={off || !hasSelection}
-          title={hasSelection ? "将选中语段缩进当前视口" : "请先选中语段"}
+          title={fitSelectionTitle}
           aria-label="适配语段"
           aria-pressed={atFitSelectionZoom}
           onClick={onFitSelection}
         >
-          <span className="icon-btn-label">适配语段</span>
+          <Focus className={LUCIDE_ICON_SIZE_LG} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
         </button>
         <button
           type="button"
-          className={`icon-btn icon-btn-text${atFitAllZoom ? " icon-btn-active" : ""}`}
+          className={`icon-btn${atFitAllZoom ? " icon-btn-active" : ""}`}
           disabled={off}
-          title="整段音频缩进当前视口"
+          title={fitAllTitle}
           aria-label="整段可见"
           aria-pressed={atFitAllZoom}
           onClick={onFitAll}
         >
-          <span className="icon-btn-label">整段可见</span>
+          <Maximize2 className={LUCIDE_ICON_SIZE_LG} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
         </button>
         <span className="toolbar-sep" aria-hidden />
         <button
           type="button"
           className="icon-btn"
           disabled={off || atMinZoom}
-          title={atMinZoom ? "已整段可见" : "缩小"}
+          title={zoomOutTitle}
           aria-label="缩小"
           onClick={handleZoomOut}
         >
@@ -151,7 +201,7 @@ export const WaveformZoomBar = memo(function WaveformZoomBar({
           type="button"
           className="icon-btn"
           disabled={off || atMaxZoom}
-          title={atMaxZoom ? "已达到最大缩放" : "放大"}
+          title={zoomInTitle}
           aria-label="放大"
           onClick={handleZoomIn}
         >
@@ -161,7 +211,7 @@ export const WaveformZoomBar = memo(function WaveformZoomBar({
           type="button"
           className={`icon-btn icon-btn-text${atDefaultZoom ? " icon-btn-active" : ""}`}
           disabled={off}
-          title="重置为默认编辑比例"
+          title={resetTitle}
           aria-label="重置缩放"
           aria-pressed={atDefaultZoom}
           onClick={onResetDefaultZoom}

@@ -64,14 +64,15 @@ export function useTierScrollSync(args: {
     mirrorWaveSurferScroll(sl);
   };
 
-  const applyScrollLeftPx = (px: number, source: ScrollApplySource) => {
+  const applyScrollLeftPx = (px: number, source: ScrollApplySource, timelineWidthPxOverride?: number) => {
     const a = argsRef.current;
     const tier = a.tierScrollRef.current;
     if (!tier) return;
     const vw = tier.clientWidth;
+    const timelineWidthPx = timelineWidthPxOverride ?? a.timelineWidthPx;
     const sl = clampTimelineScrollLeftPx({
       scrollLeftPx: px,
-      timelineWidthPx: a.timelineWidthPx,
+      timelineWidthPx,
       viewportWidthPx: vw,
     });
     if (
@@ -103,8 +104,8 @@ export function useTierScrollSync(args: {
           suppressRef.current = performance.now() + 2500;
         }
       },
-      setTierScrollPx: (px: number) => {
-        applyScrollLeftPx(px, "program");
+      setTierScrollPx: (px: number, options?: { timelineWidthPx?: number }) => {
+        applyScrollLeftPx(px, "program", options?.timelineWidthPx);
       },
       setTierScrollPxSmooth: (px: number) => {
         const tier = argsRef.current.tierScrollRef.current;

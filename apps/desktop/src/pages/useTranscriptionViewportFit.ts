@@ -3,8 +3,8 @@ import {
   computeFitAllPxPerSec,
   computeFitSelectionPxPerSec,
   computeViewportFitScrollPx,
-  quantizePxPerSecForPeaksLoad,
   resolveSelectionFitPxPerSec,
+  resolveViewportFitLayoutPxPerSec,
   type ViewportFitScrollIntent,
 } from "../utils/pxPerSec";
 import { computeTimelineWidthPx } from "../utils/segmentLayout";
@@ -21,7 +21,9 @@ type WaveformZoomFitApi = {
   enterFitAllLayout: (pxPerSec: number) => void;
 };
 
-type TierScrollApi = { setTierScrollPx: (scrollLeftPx: number) => void };
+type TierScrollApi = {
+  setTierScrollPx: (scrollLeftPx: number, options?: { timelineWidthPx?: number }) => void;
+};
 
 export type PendingViewportFit = { intent: ViewportFitScrollIntent; pxPerSec: number };
 
@@ -44,7 +46,10 @@ export function runZoomToFitAll(input: {
   const w = input.tier?.clientWidth ?? 0;
   if (w <= 0 || input.durationSec < 0.5) return;
 
-  const px = quantizePxPerSecForPeaksLoad(computeFitAllPxPerSec(w, input.durationSec));
+  const px = resolveViewportFitLayoutPxPerSec(
+    computeFitAllPxPerSec(w, input.durationSec),
+    input.durationSec,
+  );
   input.queueViewportFit(
     { intent: { startSec: 0, endSec: input.durationSec }, pxPerSec: px },
     { fitAll: true },
@@ -94,8 +99,11 @@ export function useTranscriptionViewportFit(args: {
   );
 
   const writeTierScroll = useCallback(
-    (targetSl: number) => {
-      scrollApiRef.current.setTierScrollPx(targetSl);
+    (targetSl: number, timelineWidthPx?: number) => {
+      scrollApiRef.current.setTierScrollPx(
+        targetSl,
+        timelineWidthPx != null ? { timelineWidthPx } : undefined,
+      );
     },
     [scrollApiRef],
   );
@@ -103,18 +111,23 @@ export function useTranscriptionViewportFit(args: {
   const applyPendingViewportFit = useCallback(
     (pxPerSec: number, options?: { finalize?: boolean; skipScroll?: boolean }) => {
       const pending = pendingViewportFitRef.current;
-      if (!pending || Math.abs(pending.pxPerSec - pxPerSec) > 0.001) return false;
+      if (!pending) return false;
+      if (Math.abs(pending.pxPerSec - pxPerSec) > 0.001) {
+        pendingViewportFitRef.current = { ...pending, pxPerSec };
+      }
       const tier = tierScrollRef.current;
       if (!tier) return false;
+      const scrollPending = pendingViewportFitRef.current!;
 
       if (!options?.skipScroll) {
+        const tw = computeTimelineWidthPx(durationRef.current, scrollPending.pxPerSec);
         const targetSl = resolveViewportFitScrollPx({
-          pending,
+          pending: scrollPending,
           durationSec: durationRef.current,
           viewportWidthPx: tier.clientWidth,
         });
         markProgrammaticScroll(undefined, Math.abs(targetSl - tier.scrollLeft));
-        writeTierScroll(targetSl);
+        writeTierScroll(targetSl, tw);
       }
       if (options?.finalize !== false) {
         pendingViewportFitRef.current = null;
@@ -138,13 +151,14 @@ export function useTranscriptionViewportFit(args: {
         const tier = tierScrollRef.current;
         const dur = durationRef.current;
         if (tier && tier.clientWidth > 0 && dur >= 0.5) {
+          const tw = computeTimelineWidthPx(dur, pending.pxPerSec);
           const targetSl = resolveViewportFitScrollPx({
             pending,
             durationSec: dur,
             viewportWidthPx: tier.clientWidth,
           });
           markProgrammaticScroll(undefined, Math.abs(targetSl - tier.scrollLeft));
-          writeTierScroll(targetSl);
+          writeTierScroll(targetSl, tw);
         }
         pendingViewportFitRef.current = null;
         return;
@@ -161,9 +175,10 @@ export function useTranscriptionViewportFit(args: {
       if (w <= 0 || dur < 0.5) return;
 
       const pending: PendingViewportFit = { intent: { startSec: seg.start_sec, endSec: seg.end_sec }, pxPerSec };
+      const tw = computeTimelineWidthPx(dur, pxPerSec);
       const targetSl = resolveViewportFitScrollPx({ pending, durationSec: dur, viewportWidthPx: w });
       markProgrammaticScroll(undefined, Math.abs(targetSl - (tier?.scrollLeft ?? 0)));
-      writeTierScroll(targetSl);
+      writeTierScroll(targetSl, tw);
       pendingViewportFitRef.current = null;
     },
     [durationRef, markProgrammaticScroll, tierScrollRef, writeTierScroll],
@@ -186,7 +201,7 @@ export function useTranscriptionViewportFit(args: {
       const pxRaw = options?.forceFullFit
         ? computeFitSelectionPxPerSec(w, seg.start_sec, seg.end_sec)
         : resolveSelectionFitPxPerSec(w, seg.start_sec, seg.end_sec, currentPxPerSecRef.current);
-      const px = quantizePxPerSecForPeaksLoad(pxRaw);
+      const px = resolveViewportFitLayoutPxPerSec(pxRaw, dur);
 
       if (Math.abs(px - currentPxPerSecRef.current) < 0.001) {
         applySelectionViewportScroll(seg, px);

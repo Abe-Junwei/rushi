@@ -15,7 +15,7 @@ import { resolveSelectSegmentViewportPlan } from "../services/waveform/selectSeg
 import { resolveWaveformFooterStatusLabel } from "../services/waveform/waveformRenderStatus";
 import { parseMediaTimeInput, segmentStartSec } from "../utils/formatMediaTime";
 import type { SegmentSelectSource } from "../utils/waveformViewMode";
-import { shouldFocusWaveformShellForSelectSource, shouldZoomViewportOnSelectSource } from "../utils/waveformViewMode";
+import { shouldFocusWaveformShellForSelectSource, shouldFitSelectionOnWaveformSelect, shouldZoomViewportOnSelectSource } from "../utils/waveformViewMode";
 export { TIMELINE_PX_PER_SEC, clampPxPerSec } from "../utils/pxPerSec";
 export { computeSegmentLaneRowPx, assignSegmentOverlapLanes, computeTimelineWidthPx, SEGMENT_LANE_ROW_PX } from "../utils/segmentLayout";
 
@@ -147,6 +147,16 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
           start_sec: seg.start_sec,
           end_sec: seg.end_sec,
         });
+      } else if (
+        shouldFitSelectionOnWaveformSelect(
+          source,
+          scrollFitRef.current.timeline.zoom.layoutIntentRef.current,
+        )
+      ) {
+        scrollFitRef.current.timeline.viewportFit.zoomToFitSegment(
+          { start_sec: seg.start_sec, end_sec: seg.end_sec },
+          { forceFullFit: true },
+        );
       } else {
         scrollFitRef.current.timeline.viewportFit.revealSegmentInViewport({
           start_sec: seg.start_sec,

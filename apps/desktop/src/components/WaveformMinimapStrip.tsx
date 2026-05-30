@@ -1,5 +1,4 @@
 import { useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
-import { COLORS } from "../config/tokens";
 import type { PeakCache } from "../services/waveform/PeakCache";
 import {
   drawWaveformMinimap,
@@ -54,7 +53,7 @@ export function WaveformMinimapStrip({
   onSetScrollLeftPx,
 }: WaveformMinimapStripProps) {
   void _pxPerSec;
-  const shellRef = useRef<HTMLDivElement | null>(null);
+  const wellRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const [overviewWidthPx, setOverviewWidthPx] = useState(0);
   const [minimapPeaksReady, setMinimapPeaksReady] = useState(false);
@@ -62,9 +61,9 @@ export function WaveformMinimapStrip({
   exportMinimapPeaksRef.current = exportMinimapPeaks;
 
   useLayoutEffect(() => {
-    const shell = shellRef.current;
+    const well = wellRef.current;
     const canvas = canvasRef.current;
-    if (!shell || !canvas) return;
+    if (!well || !canvas) return;
 
     let roRafId = 0;
     let paintSeq = 0;
@@ -72,20 +71,21 @@ export function WaveformMinimapStrip({
     const paint = () => {
       const seq = ++paintSeq;
       roRafId = 0;
-      const widthPx = Math.max(1, Math.floor(shell.clientWidth));
+      const widthPx = Math.max(1, Math.floor(well.clientWidth));
+      const heightPx = Math.max(1, Math.floor(well.clientHeight));
       setOverviewWidthPx(widthPx);
       const dpr = window.devicePixelRatio || 1;
       canvas.width = Math.max(1, Math.floor(widthPx * dpr));
-      canvas.height = Math.max(1, Math.floor(WAVEFORM_MINIMAP_HEIGHT_PX * dpr));
+      canvas.height = Math.max(1, Math.floor(heightPx * dpr));
       canvas.style.width = `${widthPx}px`;
-      canvas.style.height = `${WAVEFORM_MINIMAP_HEIGHT_PX}px`;
+      canvas.style.height = `${heightPx}px`;
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
       if (durationSec <= 0) {
         setMinimapPeaksReady(false);
-        ctx.clearRect(0, 0, widthPx, WAVEFORM_MINIMAP_HEIGHT_PX);
+        ctx.clearRect(0, 0, widthPx, heightPx);
         return;
       }
 
@@ -100,21 +100,21 @@ export function WaveformMinimapStrip({
           if (seq !== paintSeq) return;
           if (!peaks || peaks.length < 2) {
             setMinimapPeaksReady(false);
-            ctx.clearRect(0, 0, widthPx, WAVEFORM_MINIMAP_HEIGHT_PX);
+            ctx.clearRect(0, 0, widthPx, heightPx);
             return;
           }
           try {
-            drawWaveformMinimap(ctx, peaks, widthPx, WAVEFORM_MINIMAP_HEIGHT_PX);
+            drawWaveformMinimap(ctx, peaks, widthPx, heightPx);
             setMinimapPeaksReady(true);
           } catch {
             setMinimapPeaksReady(false);
-            ctx.clearRect(0, 0, widthPx, WAVEFORM_MINIMAP_HEIGHT_PX);
+            ctx.clearRect(0, 0, widthPx, heightPx);
           }
         })
         .catch(() => {
           if (seq !== paintSeq) return;
           setMinimapPeaksReady(false);
-          ctx.clearRect(0, 0, widthPx, WAVEFORM_MINIMAP_HEIGHT_PX);
+          ctx.clearRect(0, 0, widthPx, heightPx);
         });
     };
 
@@ -123,7 +123,7 @@ export function WaveformMinimapStrip({
       if (roRafId) return;
       roRafId = requestAnimationFrame(paint);
     });
-    ro.observe(shell);
+    ro.observe(well);
     window.addEventListener("resize", paint);
     return () => {
       paintSeq += 1;
@@ -159,53 +159,46 @@ export function WaveformMinimapStrip({
       : 0;
 
   const showPeaksPending = peaksLoading && !minimapPeaksReady && durationSec > 0 && isReady;
+  const off = disabled || !isReady;
 
   return (
-    <div
-      ref={shellRef}
-      className={`relative w-full shrink-0 overflow-hidden border-t border-notion-border/25 bg-notion-sidebar ${
-        disabled || !isReady ? "pointer-events-none opacity-50" : ""
-      }`}
-      style={{ height: WAVEFORM_MINIMAP_HEIGHT_PX }}
-      onPointerDown={(e) => {
-        if (disabled || !isReady || durationSec <= 0) return;
-        const rect = e.currentTarget.getBoundingClientRect();
-        const timeSec = overviewClientXToTimeSec(e.clientX, rect, durationSec);
-        onSeek(timeSec);
-        onSetScrollLeftPx(
-          scrollPxAlignTimeToViewportLeft({
-            timeSec,
-            timelineWidthPx,
-            durationSec,
-            viewportWidthPx,
-          }),
-        );
-      }}
-      role="img"
-      aria-label="波形总览"
-    >
-      <canvas ref={canvasRef} className="block h-full w-full" />
-      {showPeaksPending ? (
-        <div className="pointer-events-none absolute inset-0 flex items-center justify-center bg-notion-sidebar/60">
-          <span className="text-[10px] text-notion-text-muted">总览生成中…</span>
-        </div>
-      ) : null}
-      {viewport.widthPx > 0 ? (
-        <div
-          className="pointer-events-none absolute top-0 h-full rounded-sm border border-zen-saffron/35 bg-zen-saffron/10"
-          style={{ left: viewport.leftPx, width: viewport.widthPx }}
-        />
-      ) : null}
-      {durationSec > 0 ? (
-        <div
-          className="pointer-events-none absolute top-0 h-full w-0.5 bg-zen-saffron-mid/75"
-          style={{ left: playheadLeftPx }}
-        />
-      ) : null}
+    <div className="waveform-minimap-strip">
       <div
-        className="pointer-events-none absolute inset-0"
-        style={{ boxShadow: `inset 0 0 0 1px ${COLORS.notionBorder}33` }}
-      />
+        ref={wellRef}
+        className={`waveform-minimap-well${off ? " is-disabled" : ""}${off ? " pointer-events-none" : ""}`}
+        onPointerDown={(e) => {
+          if (off || durationSec <= 0) return;
+          const rect = e.currentTarget.getBoundingClientRect();
+          const timeSec = overviewClientXToTimeSec(e.clientX, rect, durationSec);
+          onSeek(timeSec);
+          onSetScrollLeftPx(
+            scrollPxAlignTimeToViewportLeft({
+              timeSec,
+              timelineWidthPx,
+              durationSec,
+              viewportWidthPx,
+            }),
+          );
+        }}
+        role="img"
+        aria-label="波形总览"
+      >
+        <canvas ref={canvasRef} className="waveform-minimap-canvas" aria-hidden />
+        {showPeaksPending ? (
+          <div className="waveform-minimap-pending">
+            <span className="text-[10px] text-notion-text-muted">总览生成中…</span>
+          </div>
+        ) : null}
+        {viewport.widthPx > 0 ? (
+          <div
+            className="waveform-minimap-viewport"
+            style={{ left: viewport.leftPx, width: viewport.widthPx }}
+          />
+        ) : null}
+        {durationSec > 0 ? (
+          <div className="waveform-minimap-playhead" style={{ left: playheadLeftPx }} />
+        ) : null}
+      </div>
     </div>
   );
 }

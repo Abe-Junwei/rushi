@@ -22,6 +22,9 @@ describe("drawWaveformMinimap", () => {
     const { ctx, fillRects } = createMockCtx(4, 20);
     drawWaveformMinimap(ctx, [-0.5, 0.5, -0.2, 0.8, -0.1, 0.3, -0.4, 0.4], 4, 20);
     expect(fillRects).toHaveLength(4);
+    for (const rect of fillRects) {
+      expect(rect.y + rect.h / 2).toBeCloseTo(10, 0);
+    }
   });
 
   it("buckets peaks when colCount exceeds canvas width", () => {

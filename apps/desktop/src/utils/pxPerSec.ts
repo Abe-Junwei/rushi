@@ -292,6 +292,28 @@ export function computeFitSelectionPxPerSec(
   return clampPxPerSecForFitSelection(targetWidthPx / span);
 }
 
+/** 语段 fit 命令实际写入 WaveSurfer 的量化 px/s（与 queueViewportFit 一致）。 */
+export function resolveQuantizedFitSelectionPxPerSec(
+  viewportWidthPx: number,
+  startSec: number,
+  endSec: number,
+): number {
+  return quantizePxPerSecForPeaksLoad(
+    computeFitSelectionPxPerSec(viewportWidthPx, startSec, endSec),
+  );
+}
+
+/** viewport fit 最终 layout px/s：peaks 量化 + WaveSurfer 渲染上限（与 timeline clamp 一致）。 */
+export function resolveViewportFitLayoutPxPerSec(
+  pxPerSec: number,
+  durationSec: number,
+): number {
+  return clampPxPerSecForWaveSurferRender(
+    quantizePxPerSecForPeaksLoad(pxPerSec),
+    durationSec,
+  );
+}
+
 /**
  * 切换语段时的目标 px/s：当前缩放已能放下语段则保持不变（仅滚 tier），
  * 否则缩小到能容纳。避免准星模式下每次切换都 peaks resample + ws.load。

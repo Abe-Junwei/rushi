@@ -27,6 +27,26 @@ describe("WaveformZoomBar", () => {
     expect(screen.getByRole("button", { name: "缩小" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "放大" })).toBeTruthy();
     expect(screen.getByRole("button", { name: "重置缩放" })).toBeTruthy();
+    expect(screen.queryByText("适配语段")).toBeNull();
+    expect(screen.queryByText("整段可见")).toBeNull();
+  });
+
+  it("uses precise tooltips for fit commands", () => {
+    render(
+      <WaveformZoomBar
+        {...baseProps}
+        selectedStartSec={10}
+        selectedEndSec={14}
+        layoutIntent="fit-selection"
+      />,
+    );
+
+    const fitBtn = screen.getByRole("button", { name: "适配语段" });
+    expect(fitBtn.getAttribute("title")).toContain("80%");
+    expect(fitBtn.getAttribute("title")).toContain("已激活");
+
+    const fitAllBtn = screen.getByRole("button", { name: "整段可见" });
+    expect(fitAllBtn.getAttribute("title")).toContain("贴满视口");
   });
 
   it("disables fit-selection until a segment is selected", () => {

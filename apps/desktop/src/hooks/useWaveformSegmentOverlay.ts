@@ -1,5 +1,6 @@
 import { useCallback, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
+import { applySegmentOverlayTap } from "../utils/waveformSegmentOverlayActions";
 import { segmentOverlayGeometry } from "../utils/waveformSegmentBounds";
 import {
   resolveSegmentBoundsAt,
@@ -46,7 +47,22 @@ export function useWaveformSegmentOverlay(args: {
     setSegmentDraft(draft);
   }, []);
 
-  const drag = useWaveformSegmentDrag(argsRef, applySegmentDraft, setCreatePreview);
+  const onSegmentPointerTap = useCallback((idx: number, pointerTimeSec: number) => {
+    const a = argsRef.current;
+    const seg = a.segments[idx];
+    if (!seg) return;
+    applySegmentOverlayTap(
+      {
+        selectedIdx: a.selectedIdx,
+        segmentIdx: idx,
+        pointerTimeSec,
+        segment: seg,
+      },
+      { onSelectSegmentAt: a.onSelectSegmentAt, seekToTime: a.seekToTime },
+    );
+  }, []);
+
+  const drag = useWaveformSegmentDrag(argsRef, applySegmentDraft, setCreatePreview, onSegmentPointerTap);
   const { suppressClickAfterPointer } = drag;
 
   const onSegmentClick = useCallback(
@@ -56,9 +72,9 @@ export function useWaveformSegmentOverlay(args: {
       ev.stopPropagation();
       if (!a.segments[idx]) return;
       a.onFocusWaveformShell?.();
-      a.onSelectSegmentAt(idx);
+      onSegmentPointerTap(idx, a.clientXToTimeSec(ev.clientX));
     },
-    [drag.dragRef, drag.suppressClickUntilRef],
+    [drag.dragRef, drag.suppressClickUntilRef, onSegmentPointerTap],
   );
 
   const onSegmentDoubleClick = useCallback(

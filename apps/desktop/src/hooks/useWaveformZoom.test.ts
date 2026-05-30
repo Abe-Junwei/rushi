@@ -54,6 +54,7 @@ describe("useWaveformZoom", () => {
     });
 
     expect(result.current.pxPerSec).toBe((800 * 0.8) / 2);
+    expect(result.current.layoutIntent).toBe("fit-selection");
   });
 
   it("setFitPxPerSec can zoom a short segment past the manual slider ceiling", () => {
@@ -166,5 +167,20 @@ describe("useWaveformZoom", () => {
 
     expect(result.current.layoutPxPerSec).toBe(fitPx);
     expect(result.current.drawPxPerSec).toBe(fitPx);
+  });
+
+  it("applyFitAllRefitPxPerSec preserves fit-selection intent after render-cap clamp", () => {
+    const { result } = renderZoomHook();
+    const fitPx = computeFitSelectionPxPerSec(800, 10, 10.5);
+
+    act(() => {
+      result.current.setFitPxPerSec(fitPx);
+    });
+    act(() => {
+      result.current.applyFitAllRefitPxPerSec(72);
+    });
+
+    expect(result.current.layoutIntent).toBe("fit-selection");
+    expect(result.current.pxPerSec).toBe(72);
   });
 });

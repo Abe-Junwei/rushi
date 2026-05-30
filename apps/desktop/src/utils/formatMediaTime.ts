@@ -13,6 +13,17 @@ export function segmentStartSec(seg: { start_sec: number; end_sec: number }): nu
   return Math.min(seg.start_sec, seg.end_sec);
 }
 
+/** 语段内播放起点：playhead 在语段内则从 playhead 起播，否则从语段头起播。 */
+export function resolveSegmentPlaybackStartSec(
+  playheadSec: number,
+  seg: { start_sec: number; end_sec: number },
+): number {
+  const start = segmentStartSec(seg);
+  const end = Math.max(seg.start_sec, seg.end_sec);
+  if (playheadSec >= start && playheadSec < end) return playheadSec;
+  return start;
+}
+
 /**
  * 解析跳转时间输入：`m:ss`、`mm:ss`、`h:mm:ss`；纯秒数也可。
  * 超出 `durationSec` 时钳制；无效返回 null。

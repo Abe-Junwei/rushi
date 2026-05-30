@@ -137,7 +137,7 @@
 
 | 子区域 | 说明 |
 |--------|------|
-| Minimap（可选） | 40px；`notion-sidebar` 底；saffron 视口框；**saffron-mid playhead** |
+| Minimap（可选） | 56px；`zen-paper` 底；peaks 垂直居中；saffron 视口框；**saffron-mid playhead** |
 | Tier 滚动区 | `notion-sidebar` 外壳；sticky 视口宽；**白底** WaveSurfer peaks |
 | 语段 overlay | 全高竖条，左右 hairline；选中 saffron inset |
 | 嵌入标尺 | 22px 透明叠层，无刻度背景带 |
@@ -215,7 +215,7 @@ Token 与交互细节见 [`stitch-waveform-polish-spec.md`](./stitch-waveform-po
 
 ## 12. 给 Stitch 的提示词片段（可复制）
 
-> Desktop transcription review workspace, **Notion Zen** palette (`notion-bg` #ffffff, `notion-sidebar` #f7f7f5, `notion-text` #37352f, saffron #C58A43 accent). Two-column layout: narrow left rail + main column with toolbar, optional hint strip, **waveform column** (optional 40px minimap, white peaks on sidebar-gray tier, embedded 22px time ruler, 40px bottom transport/zoom bar with Lucide icons), then vertical segment list with serif transcript body. Waveform segment overlays: full-height vertical bands with left/right borders only. Calm, professional—not gamified. See root DESIGN.md and stitch-waveform-polish-spec.md.
+> Desktop transcription review workspace, **Notion Zen** palette (`notion-bg` #ffffff, `notion-sidebar` #f7f7f5, `zen-paper` #F2EFE8 minimap, `notion-text` #37352f, saffron #C58A43 accent). Two-column layout: narrow left rail + main column with toolbar, optional hint strip, **waveform column** (optional 56px minimap on zen-paper, white peaks on sidebar-gray tier, embedded 22px time ruler, 40px bottom transport/zoom bar with Lucide icons), then vertical segment list with serif transcript body. Waveform segment overlays: full-height vertical bands with left/right borders only. Calm, professional—not gamified. See root DESIGN.md and stitch-waveform-polish-spec.md.
 
 ---
 

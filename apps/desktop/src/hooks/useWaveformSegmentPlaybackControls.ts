@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import type WaveSurfer from "wavesurfer.js";
 import type { SegmentDto } from "../tauri/projectApi";
 
+import { resolveSegmentPlaybackStartSec } from "../utils/formatMediaTime";
 import { clampWaveformPlaybackRate } from "../utils/waveformPlaybackRate";
 
 const SEGMENT_PLAYBACK_RATE_KEY = "rushi.p1.segmentPlaybackRate";
@@ -69,6 +70,7 @@ export function useWaveformSegmentPlaybackControls(args: {
         start: Math.min(seg.start_sec, seg.end_sec),
         end: Math.max(seg.start_sec, seg.end_sec),
       };
+      const playFrom = resolveSegmentPlaybackStartSec(ws.getCurrentTime(), seg);
       const rate = options?.useGlobalPlaybackRate
         ? (getGlobalPlaybackRate?.() ?? segmentPlaybackRateRef.current)
         : segmentPlaybackRateRef.current;
@@ -76,7 +78,7 @@ export function useWaveformSegmentPlaybackControls(args: {
       if (options?.loop) {
         setSegmentLoopPlayback(true);
       }
-      await ws.play(range.start, range.end);
+      await ws.play(playFrom, range.end);
       if (gen !== playGenerationRef.current && ws.isPlaying()) {
         ws.pause();
       }

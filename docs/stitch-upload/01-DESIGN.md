@@ -39,8 +39,8 @@ colors:
   # 波形 / WaveSurfer（与 tokens.ts COLORS.waveform* / tailwind zen-wf-* 同源）
   waveform-surface: '#ffffff'
   waveform-wave: '#c4c4c8'
-  waveform-progress: '#948b84'
-  waveform-cursor: '#85530f'
+  waveform-progress: '#8e8e93'
+  waveform-cursor: '#6a6a6f'
 typography:
   display-lg:
     fontFamily: Inter
@@ -131,8 +131,8 @@ The palette is a **Notion-neutral base + warm saffron accent**:
 |-------|-----|---------------|------|
 | `waveform-surface` | `#ffffff` | `zen-wf-surface` / `COLORS.waveformSurface` | WaveSurfer 画布底、peaks 绘制区 |
 | `waveform-wave` | `#c4c4c8` | `zen-wf-wave` / `COLORS.waveformWave` | 未播放 peaks、minimap 柱形 |
-| `waveform-progress` | `#948b84` | `zen-wf-progress` / `COLORS.waveformProgress` | 已播放 peaks tint（saffron 暖色混灰） |
-| `waveform-cursor` | `#85530f` | `zen-wf-cursor` / `COLORS.waveformCursor` | 全高 playhead 线（`WaveformPeaksPlayhead`） |
+| `waveform-progress` | `#8e8e93` | `zen-wf-progress` / `COLORS.waveformProgress` | 已播放 peaks tint |
+| `waveform-cursor` | `#6a6a6f` | `zen-wf-cursor` / `COLORS.waveformCursor` | WaveSurfer 内置 playhead |
 | — | — | `bg-notion-sidebar` | 波形 tier 外壳、minimap 条背景 |
 | — | — | `zen-saffron` | 选中语段边线、minimap 视口框、缩放 active 态 |
 
@@ -226,10 +226,11 @@ Hierarchy through **background tone shifts** and **fine borders**—no drop shad
 
 ### Waveform stage
 - **Tier shell:** `notion-sidebar` 背景；横向滚动；高度可拖拽。
-- **Peaks:** 白底 + 中性灰柱；**全高 saffron playhead 竖线**（`WaveformPeaksPlayhead`）；底边嵌入 22px 透明时间尺（无刻度背景带）。
-- **语段 overlay:** 全高竖向区域，左右 hairline；选中 saffron 填充/边线；**hover/选中显示 resize grip**；播放控件 **pill 底** 浮于标尺上方居中。
-- **Minimap（可选）:** 40px 高；saffron 视口框 + 细 playhead。
-- **底栏 transport:** 40px；播放 / 时间 / 倍速 / 跳转 | 缩放（Lucide 图标 + 文本 fit 按钮）。
+- **Peaks:** 白底 + 中性灰柱；WaveSurfer **中性灰 playhead**（`waveform-cursor`）；底边嵌入 22px 透明时间尺（标尺带 saffron playhead 刻度线）。
+- **语段 overlay:** 全高竖向区域，左右 hairline；选中 saffron 边线；左右 **8px 透明 handle**（`ew-resize`，无可见 grip）拖拽改边界；播放控件 pill 浮于标尺上方居中。
+- **Minimap（可选）:** 56px 高；`zen-paper` 底（与下方 sidebar 底栏以色块分层）；波形缩略**垂直居中**；saffron 视口框 + 细 playhead；无上下 border / 无内边距。
+- **底栏 transport:** 40px；`notion-sidebar` 混底；播放 / 时间 / 倍速 / 跳转 | 缩放（Lucide：`Focus` 适配语段、`Maximize2` 整段可见、±、`重置` 文本）。
+- **语段点击（波形 overlay）：** 首次点击未选中语段 → 选中并 seek 到语段头；已在该语段内再次点击 → seek 到点击位置（钳在语段内）；语段播放从当前 playhead 起（若在语段内）。
 
 ### Floating dialogs
 - 使用 `compactDialog` preset + `controlStyles.ts`（Notion/Zen 控件）；勿使用已移除的 serene 面板变体。

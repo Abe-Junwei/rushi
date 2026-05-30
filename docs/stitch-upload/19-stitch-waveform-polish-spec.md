@@ -8,7 +8,8 @@
 
 在 **Notion Zen** 基线上，精修 **校对工作页（阶段 C）波形舞台**，使其实现稿与 Stitch 稿一致，并达到专业转写/DAW 工具的 **可读性 + 编辑 affordance** 标准。
 
-**不在本轮：** 改交互逻辑、改 scroll/zoom 架构、改语段列表布局（仅波形 tier + minimap + 底栏 transport/zoom）。
+**不在本轮（Stitch 视觉）：** 改 scroll/zoom 架构、改语段列表布局。  
+**交互真源（已实现，供验收对照）：** 语段 tap 两段式 seek、缩放栏 `layoutIntent` 互斥高亮、fit-selection 下点语段 re-fit — 见 [`desktop-waveform-engine.md`](../../../docs/architecture/desktop-waveform-engine.md)。
 
 **适用：** Stitch 出图 → 回写 token / CSS → 对照 HTML 原型验收。
 
@@ -30,8 +31,8 @@
 自上而下 **单一波形列**（主区扣掉工具条后的 flex-1 区域顶部）：
 
 ```text
-┌─ [可选] Minimap 40px ─────────────────────────────────────┐
-│  灰 peaks 缩略 + saffron 视口框 + playhead 竖线            │
+┌─ [可选] Minimap 56px（zen-paper 底）──────────────────────┐
+│  灰 peaks 缩略（垂直居中）+ saffron 视口框 + playhead 竖线  │
 ├─ Tier 横向滚动区 (高度 ≈ 220–280px，可拖拽下边放大) ───────┤
 │  ┌ sticky 视口宽 ─────────────────────────────────────┐  │
 │  │ 白底 peaks 柱形 (zen-wf-wave / zen-wf-progress)      │  │
@@ -87,14 +88,13 @@
 
 ## 4. 组件规格
 
-### 4.1 Minimap（`WaveformMinimapStrip`，40px）
+### 4.1 Minimap（`WaveformMinimapStrip`，56px）
 
-- 全宽；底边 `notion-border` 25% hairline。
-- Canvas：同主波形 peak 色绘制缩略。
+- 全宽；**无**上下 border / **无** horizontal padding；背景 `zen-paper`（`#F2EFE8`），与下方 40px sidebar 底栏以色块分层。
+- Canvas：同主波形 peak 色；柱形**相对中线垂直居中**（上下 ~22% 留白）。
 - **视口框：** `border saffron/35`，`bg saffron/10`，`rounded-sm`（2–4px）。
-- **Playhead：** 1–2px 竖线；Stitch 可试 `saffron` 1px + 顶点小圆点。
-- **可选增强（Stitch 探索）：** 语段分布 1px 高细带（`ink` 8%）。
-- 点击：seek + 滚动主视口（原型标注即可）。
+- **Playhead：** 2px 竖线，`saffron-mid` 混色。
+- 点击 well：seek + 滚动主视口对齐点击时刻。
 
 ### 4.2 主波形 Peaks
 
@@ -116,6 +116,7 @@
 - 仅 **左右 border**，`border-radius: 0`。
 - **Handle（Stitch 必画）：** 选中或 hover 时，左右各 3px 宽竖向 grip（`saffron/50`），`ew-resize` 光标区 8px。
 - **Lane（探索）：** 重叠语段可用 70–85% 高度 band + lane 间距，避免全高叠影（若信息过密可只做选中语段全高）。
+- **点击（已实现）：** 首次点未选中语段 → 选中 + playhead 到语段头；已在该语段内再点 → playhead 到点击位置（`resolveSegmentOverlayTap`）；语段内联播放 / `playSegmentAtIndex` 若 playhead 在语段内则从 playhead 起播。
 
 ### 4.5 语段内联播放控件（`WaveformSegmentPlaybackControls`）
 
@@ -125,10 +126,10 @@
 
 ### 4.6 底栏 Transport + Zoom（40px）
 
-- 背景：`notion-sidebar` 80% mix；无顶 border 或极浅 hairline。
-- **左簇：** 播放 30px 圆钮（**统一 Lucide 风格**，取代纯 CSS 三角）、时间 `tabular-nums`、倍速、跳转输入 4.25rem。
-- **右簇：** `适配语段` | `整段可见` | sep | ZoomOut | ZoomIn | 重置 | 可选 hint 文案。
-- Active zoom 模式：`icon-btn-active`（saffron 18% 底）。
+- 背景：`notion-sidebar` 88% mix + 顶内阴影；与 minimap `zen-paper` 以色块区分。
+- **左簇：** 播放 30px 圆钮（**统一 Lucide 风格**）、时间 `tabular-nums`、倍速、跳转输入 4.25rem。
+- **右簇：** 波形总览 switch | `Focus` 适配语段 | `Maximize2` 整段可见 | sep | ZoomOut | ZoomIn | 重置（文本）。
+- Active zoom 模式：`icon-btn-active`（saffron 18% 底）；`layoutIntent` 驱动互斥（`manual` 时三者均不亮）。
 
 ---
 
@@ -149,7 +150,7 @@
 
 | 元素 | 尺寸 |
 |------|------|
-| Minimap 高 | 40px |
+| Minimap 高 | 56px（`zen-paper` 底，peaks 垂直居中） |
 | 嵌入标尺 | 22px |
 | 底栏 | 40px |
 | 播放钮 | 30×30px，圆形 |
@@ -167,11 +168,11 @@ Design the waveform stage for a desktop Chinese transcription editor (Rushi) in 
 Context: Notion-neutral surfaces (#f7f7f5 sidebar, #ffffff waveform canvas) with warm saffron (#C58A43) accents. This is NOT a dark DAW timeline. Below the waveform is a transcript list (out of scope—show only a thin placeholder strip).
 
 Structure top to bottom:
-1) Optional 40px minimap: gray waveform thumbnail, saffron viewport rectangle, thin playhead line.
+1) Optional 56px minimap on zen-paper (#F2EFE8): centered gray waveform thumbnail, saffron viewport rectangle, thin playhead line; no outer border/padding.
 2) Main waveform tier (~240px tall, horizontally scrollable): white canvas with gray vertical peak bars; played portion slightly darker/warmer; FULL-HEIGHT vertical playhead line in saffron-mid (2px).
 3) Segment overlays: full-height translucent vertical bands with LEFT/RIGHT borders only (no top/bottom border). Selected segment: saffron edge accents + visible 3px resize grips on left/right. Floating mini transport pill centered on selected segment, just above the time ruler.
 4) Embedded time ruler (22px) overlaid on bottom of waveform—transparent background, ticks growing upward from bottom edge, tabular-nums labels.
-5) Bottom toolbar (40px): left = play/pause, timecode, speed, go-to-time; right = fit-segment, fit-all, zoom in/out buttons.
+5) Bottom toolbar (40px, notion-sidebar tint): left = play/pause, timecode, speed, go-to-time; right = minimap toggle, Focus icon fit-segment, Maximize2 icon fit-all, zoom in/out, reset text.
 
 Deliver frames: default, zoomed-in selected segment with handles, loading state, narrow window.
 
@@ -187,7 +188,7 @@ Reference tokens in uploaded 01-DESIGN.md. Match layout proportions in uploaded 
 ```text
 为中文转写桌面应用 Rushi 设计「波形舞台」精修稿，风格 Notion Zen。
 
-层次：可选 40px 总览 minimap → 主波形横向滚动区（白底灰 peaks + saffron 播放头竖线）→ 语段透明竖条 overlay（仅左右边线，选中显示拖拽 grip）→ 底部嵌入 22px 时间尺（无背景带）→ 40px 底栏（播放簇 + 缩放簇）。
+层次：可选 56px 总览 minimap（zen-paper 底，peaks 居中）→ 主波形横向滚动区（白底灰 peaks + saffron 播放头竖线）→ 语段透明竖条 overlay（仅左右边线，选中显示拖拽 grip；tap 两段式 seek）→ 底部嵌入 22px 时间尺（无背景带）→ 40px 底栏（播放簇 + Lucide 缩放簇）。
 
 重点精修：1) playhead 全高清晰可见；2) 已播放 peaks 略带 saffron 暖色；3) 选中语段 handle 与内联播放控件 pill；4) minimap 视口框与 playhead；5) 与 DESIGN.md token 一致，禁止随意 hex。
 

@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { formatMediaTime, parseMediaTimeInput, segmentStartSec } from "./formatMediaTime";
+import {
+  formatMediaTime,
+  parseMediaTimeInput,
+  resolveSegmentPlaybackStartSec,
+  segmentStartSec,
+} from "./formatMediaTime";
 
 describe("formatMediaTime", () => {
   it("formats sub-hour times", () => {
@@ -10,6 +15,19 @@ describe("formatMediaTime", () => {
 describe("segmentStartSec", () => {
   it("uses min of bounds", () => {
     expect(segmentStartSec({ start_sec: 10, end_sec: 5 })).toBe(5);
+  });
+});
+
+describe("resolveSegmentPlaybackStartSec", () => {
+  const segment = { start_sec: 4, end_sec: 10 };
+
+  it("plays from playhead when inside segment", () => {
+    expect(resolveSegmentPlaybackStartSec(7, segment)).toBe(7);
+  });
+
+  it("plays from segment start when playhead is outside", () => {
+    expect(resolveSegmentPlaybackStartSec(2, segment)).toBe(4);
+    expect(resolveSegmentPlaybackStartSec(10, segment)).toBe(4);
   });
 });
 

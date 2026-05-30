@@ -21,7 +21,7 @@ import {
   snapSegmentRange,
 } from "../utils/segmentTimeSnap";
 import type { SegmentOverlapPolicy } from "../utils/segmentTimeRange";
-import { applyOverlayPointerUpIntent } from "../utils/waveformSegmentOverlayActions";
+import { applyOverlayPointerUpIntent, type OverlayPointerActions } from "../utils/waveformSegmentOverlayActions";
 import {
   boundsForOverlayDrag,
   type CreateRangePreview,
@@ -53,6 +53,19 @@ export type WaveformSegmentDragArgs = {
   ) => void;
   seekToTime: (timeSec: number) => void;
 };
+
+function overlayPointerActions(
+  a: WaveformSegmentDragArgs,
+  onSegmentPointerTap: (segmentIdx: number, pointerTimeSec: number) => void,
+): OverlayPointerActions {
+  return {
+    onSegmentPointerTap,
+    onBoundsCommit: a.onBoundsCommit,
+    onCreateRange: a.onCreateRange,
+    onFocusWaveformShell: a.onFocusWaveformShell,
+    seekToTime: a.seekToTime,
+  };
+}
 
 function snapTargetsForOverlay(
   a: WaveformSegmentDragArgs,
@@ -116,9 +129,12 @@ export function useWaveformSegmentDrag(
   argsRef: React.MutableRefObject<WaveformSegmentDragArgs>,
   applySegmentDraft: (draft: SegmentOverlayDraft | null) => void,
   setCreatePreview: React.Dispatch<React.SetStateAction<CreateRangePreview | null>>,
+  onSegmentPointerTap: (segmentIdx: number, pointerTimeSec: number) => void,
 ) {
   const dragRef = useRef<OverlayDragState | null>(null);
   const suppressClickUntilRef = useRef(0);
+  const onSegmentPointerTapRef = useRef(onSegmentPointerTap);
+  onSegmentPointerTapRef.current = onSegmentPointerTap;
 
   const suppressClickAfterPointer = useCallback(() => {
     suppressClickUntilRef.current = performance.now() + WAVEFORM_OVERLAY_SUPPRESS_CLICK_MS;
@@ -155,26 +171,14 @@ export function useWaveformSegmentDrag(
         if (intent.kind === "create-range") {
           applyOverlayPointerUpIntent(
             { ...intent, overlapPolicy },
-            {
-              onSelectSegmentAt: a.onSelectSegmentAt,
-              onBoundsCommit: a.onBoundsCommit,
-              onCreateRange: a.onCreateRange,
-              onFocusWaveformShell: a.onFocusWaveformShell,
-              seekToTime: a.seekToTime,
-            },
+            overlayPointerActions(a, onSegmentPointerTapRef.current),
             suppressClickAfterPointer,
           );
           return;
         }
         applyOverlayPointerUpIntent(
           intent,
-          {
-            onSelectSegmentAt: a.onSelectSegmentAt,
-            onBoundsCommit: a.onBoundsCommit,
-            onCreateRange: a.onCreateRange,
-            onFocusWaveformShell: a.onFocusWaveformShell,
-            seekToTime: a.seekToTime,
-          },
+          overlayPointerActions(a, onSegmentPointerTapRef.current),
           suppressClickAfterPointer,
         );
         return;
@@ -207,13 +211,7 @@ export function useWaveformSegmentDrag(
       });
       applyOverlayPointerUpIntent(
         intent,
-        {
-          onSelectSegmentAt: a.onSelectSegmentAt,
-          onBoundsCommit: a.onBoundsCommit,
-          onCreateRange: a.onCreateRange,
-          onFocusWaveformShell: a.onFocusWaveformShell,
-          seekToTime: a.seekToTime,
-        },
+        overlayPointerActions(a, onSegmentPointerTapRef.current),
         suppressClickAfterPointer,
       );
     },
@@ -358,7 +356,7 @@ export function useWaveformSegmentDrag(
       if (!drag.moved) {
         suppressClickAfterPointer();
         a.onFocusWaveformShell?.();
-        a.onSelectSegmentAt(drag.segmentIdx);
+        onSegmentPointerTapRef.current(drag.segmentIdx, drag.anchorTimeSec);
       }
     },
     [applySegmentDraft, argsRef, setCreatePreview, suppressClickAfterPointer],

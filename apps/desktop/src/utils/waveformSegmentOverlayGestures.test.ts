@@ -15,7 +15,7 @@ describe("resolveOverlayPointerUpIntent", () => {
         clampedStartSec: 4,
         clampedEndSec: 6,
       }),
-    ).toEqual({ kind: "select-segment", segmentIdx: 2 });
+    ).toEqual({ kind: "select-segment", segmentIdx: 2, pointerTimeSec: 5 });
   });
 
   it("commits bounds after drag", () => {

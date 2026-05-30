@@ -160,7 +160,8 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
     const renderCap = clampPxPerSecForWaveSurferRender(zoom.pxPerSec, dur);
     const renderTol = Math.max(0.001, Math.min(renderCap * 0.05, 8));
     if (zoom.pxPerSec > renderCap + renderTol) {
-      zoom.setPxPerSecFromSlider(renderCap);
+      // Preserve fit-selection / fit-all / default intent — not a manual slider change.
+      zoom.applyFitAllRefitPxPerSec(renderCap);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
