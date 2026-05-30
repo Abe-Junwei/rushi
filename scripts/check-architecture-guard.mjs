@@ -38,6 +38,13 @@ function checkTsFile(fullPath) {
     errors.push(`${rel}: setState updater 内发现 DOM 查询（querySelector / getElementById）`);
   }
 
+  if (
+    (rel.includes("useWaveformPlayback.ts") || rel.includes("useWaveformZoomSync.ts")) &&
+    /\.getDuration\(\)/.test(source)
+  ) {
+    errors.push(`${rel}: 使用 resolveLayoutDurationSec / layoutDurationSecRef，勿直接 ws.getDuration()`);
+  }
+
   // 防回归：检测 Tailwind arbitrary value 颜色（warning，逐步收敛）
   const arbitraryColors = source.match(
     /(?:bg|text|border|ring|shadow|fill|stroke|outline)-\[#[0-9a-fA-F]{3,6}\]/g
