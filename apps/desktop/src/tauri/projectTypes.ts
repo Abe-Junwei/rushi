@@ -6,6 +6,12 @@ export interface ProjectSummary {
   updated_at_ms: number;
 }
 
+/**
+ * 语段类型：`placeholder` 为整轨占位（ASR 未产出子句时的兜底，波形上不渲染）；
+ * `speech` 为正常语段。缺省（旧数据 / 未标记）时按 0.85 跨度启发式回退判定。
+ */
+export type SegmentKind = "speech" | "placeholder";
+
 export interface SegmentDto {
   /** 稳定语段 id；旧数据可为空，打开文件时由前端补全。 */
   uid?: string;
@@ -19,6 +25,8 @@ export interface SegmentDto {
   low_confidence?: boolean;
   /** 如 stub 说明、引擎附注 */
   detail?: string | null;
+  /** 显式语段类型；缺省走启发式占位判定（见 SegmentKind）。 */
+  kind?: SegmentKind | null;
 }
 
 export interface FileSummary {

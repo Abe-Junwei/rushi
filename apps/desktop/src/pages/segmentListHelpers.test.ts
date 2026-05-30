@@ -1,11 +1,16 @@
 import { describe, expect, it } from "vitest";
 import type { SegmentDto } from "../tauri/projectApi";
 import {
+  buildSplitPair,
   findSegmentIndexByUid,
+  mergeTwoSegments,
   normalizeSegmentList,
+  prepareSegmentsForPersist,
+  segmentsEqualForPersist,
   sortSegmentsByStartSec,
 } from "./segmentListHelpers";
 import { ensureUniqueSegmentUids } from "../utils/segmentUid";
+import { isPlaceholderSegment } from "../utils/waveformSegmentBounds";
 
 function seg(
   props: Partial<SegmentDto> & { start_sec: number; end_sec: number; text: string },
@@ -21,6 +26,25 @@ function seg(
 }
 
 describe("segmentListHelpers", () => {
+  it("mergeTwoSegments marks the result as explicit speech (not heuristically hidden)", () => {
+    // Two segments whose merge spans >85% of a short clip would trip the heuristic.
+    const merged = mergeTwoSegments(
+      seg({ uid: "a", start_sec: 0, end_sec: 5, text: "a" }),
+      seg({ uid: "b", start_sec: 5, end_sec: 9.5, text: "b" }),
+    );
+    expect(merged.kind).toBe("speech");
+    expect(isPlaceholderSegment(merged, 10)).toBe(false);
+  });
+
+  it("buildSplitPair marks both halves as explicit speech", () => {
+    const pair = buildSplitPair(
+      seg({ uid: "a", start_sec: 0, end_sec: 100, text: "whole", kind: "placeholder" }),
+      40,
+    );
+    expect(pair?.left.kind).toBe("speech");
+    expect(pair?.right.kind).toBe("speech");
+  });
+
   it("sortSegmentsByStartSec orders by start_sec and reindexes", () => {
     const input = [
       seg({ uid: "b", start_sec: 5, end_sec: 6, text: "b" }),
@@ -51,11 +75,47 @@ describe("segmentListHelpers", () => {
     expect(new Set(out.map((s) => s.uid)).size).toBe(2);
   });
 
+  it("normalizeSegmentList assigns speech kind to ASR segments missing kind", () => {
+    const out = normalizeSegmentList([
+      seg({ uid: "1", start_sec: 0, end_sec: 2, text: "asr" }),
+    ]);
+    expect(out[0]?.kind).toBe("speech");
+  });
+
+  it("normalizeSegmentList trims ASR boundary overlap on load", () => {
+    const out = normalizeSegmentList([
+      seg({ uid: "2", start_sec: 10, end_sec: 22, text: "b" }),
+      seg({ uid: "1", start_sec: 0, end_sec: 10.6, text: "a" }),
+    ]);
+    expect(out[0]?.text).toBe("a");
+    expect(out[0]?.end_sec).toBe(10);
+    expect(out[1]?.text).toBe("b");
+  });
+
   it("findSegmentIndexByUid returns array index", () => {
     const list = [
       seg({ uid: "x", start_sec: 0, end_sec: 1, text: "a" }),
       seg({ uid: "y", start_sec: 2, end_sec: 3, text: "b" }),
     ];
     expect(findSegmentIndexByUid(list, "y")).toBe(1);
+  });
+
+  it("prepareSegmentsForPersist clamps and filters when duration known", () => {
+    const out = prepareSegmentsForPersist(
+      [
+        seg({ uid: "1", start_sec: 30, end_sec: 1000, text: "a" }),
+        seg({ uid: "2", start_sec: 40, end_sec: 50, text: "b" }),
+      ],
+      1000,
+    );
+    expect(out).toHaveLength(1);
+    expect(out[0]?.text).toBe("b");
+  });
+
+  it("segmentsEqualForPersist compares kind", () => {
+    const a = [seg({ uid: "1", start_sec: 0, end_sec: 1, text: "a", kind: "speech" })];
+    const b = [seg({ uid: "1", start_sec: 0, end_sec: 1, text: "a", kind: "placeholder" })];
+    expect(segmentsEqualForPersist(a, a)).toBe(true);
+    expect(segmentsEqualForPersist(a, b)).toBe(false);
   });
 });

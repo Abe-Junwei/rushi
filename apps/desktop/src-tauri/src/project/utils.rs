@@ -106,7 +106,7 @@ pub fn file_detail_from_conn(conn: &Connection, file_id: &str) -> Result<FileDet
 
     let mut stmt = conn
         .prepare(
-            "SELECT uid, idx, start_sec, end_sec, text, confidence, low_confidence, detail \
+            "SELECT uid, idx, start_sec, end_sec, text, confidence, low_confidence, detail, kind \
              FROM segments WHERE file_id = ?1 ORDER BY idx ASC",
         )
         .map_err(|e| e.to_string())?;
@@ -114,6 +114,7 @@ pub fn file_detail_from_conn(conn: &Connection, file_id: &str) -> Result<FileDet
         .query_map(params![file_id], |r| {
             let uid: String = r.get(0)?;
             let detail: String = r.get(7)?;
+            let kind: Option<String> = r.get(8)?;
             Ok(SegmentDto {
                 uid: if uid.trim().is_empty() {
                     None
@@ -131,6 +132,7 @@ pub fn file_detail_from_conn(conn: &Connection, file_id: &str) -> Result<FileDet
                 } else {
                     Some(detail)
                 },
+                kind: kind.filter(|s| !s.trim().is_empty()),
             })
         })
         .map_err(|e| e.to_string())?;

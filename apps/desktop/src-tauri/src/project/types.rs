@@ -87,6 +87,10 @@ pub struct SegmentDto {
     pub low_confidence: bool,
     #[serde(default)]
     pub detail: Option<String>,
+    /// 显式语段类型："placeholder"=整轨占位（波形不渲染），"speech"=正常语段；
+    /// 旧数据 / 未标记为 None，按 0.85 跨度启发式回退判定。
+    #[serde(default)]
+    pub kind: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

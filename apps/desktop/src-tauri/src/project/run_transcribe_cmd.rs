@@ -1,6 +1,7 @@
 use super::correction::collect_correction_rule_hints;
 use super::local_transcribe_gate::assert_local_asr_ready_for_transcribe;
 use super::segment_cmd::file_save_segments_inner;
+use super::segment_media_sanitize::{sanitize_segments_for_media, trim_adjacent_segment_overlaps};
 use super::transcribe::{build_glossary_hotwords, post_transcribe_multipart};
 use super::transcribe_errors::describe_transcribe_payload_error;
 use super::transcribe_timeout::{
@@ -198,6 +199,18 @@ async fn project_run_transcribe_inner(
             .and_then(|x| x.as_str())
             .filter(|s| !s.is_empty())
             .map(String::from);
+        let kind = row
+            .get("kind")
+            .and_then(|x| x.as_str())
+            .filter(|s| !s.is_empty())
+            .map(String::from)
+            .or_else(|| {
+                if detail.as_deref() == Some("funasr_whole_track_fallback") {
+                    Some("placeholder".to_string())
+                } else {
+                    Some("speech".to_string())
+                }
+            });
         segments.push(SegmentDto {
             uid: Some(uuid::Uuid::new_v4().to_string()),
             idx: i as i32,
@@ -207,10 +220,24 @@ async fn project_run_transcribe_inner(
             confidence,
             low_confidence,
             detail,
+            kind,
         });
     }
     if segments.is_empty() {
         append_desktop_log_line(&st, "INFO transcribe zero_segments_ok");
+    }
+    trim_adjacent_segment_overlaps(&mut segments);
+    for (i, s) in segments.iter_mut().enumerate() {
+        s.idx = i as i32;
+    }
+    let (segments, removed_dominant) =
+        sanitize_segments_for_media(segments, audio_duration_sec, true);
+    if removed_dominant > 0 {
+        warnings.push(format!("segments_dominant_span_filtered:{removed_dominant}"));
+        append_desktop_log_line(
+            &st,
+            &format!("INFO transcribe filtered dominant spans removed={removed_dominant} file_id={file_id}"),
+        );
     }
     if let Ok(conn) = open_db(&st) {
         if let Ok(mut hint_warnings) = collect_correction_rule_hints(&conn, &segments) {

@@ -46,6 +46,7 @@ pub fn parse_srt(content: &str) -> Result<Vec<SegmentDto>, String> {
             confidence: None,
             low_confidence: false,
             detail: None,
+            kind: None,
         });
     }
     Ok(segments)
@@ -76,6 +77,7 @@ pub fn parse_txt(content: &str) -> Vec<SegmentDto> {
             confidence: None,
             low_confidence: false,
             detail: None,
+            kind: None,
         });
         current_sec = end_sec;
     }

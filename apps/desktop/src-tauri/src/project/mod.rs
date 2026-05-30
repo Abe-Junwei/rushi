@@ -24,6 +24,7 @@ pub mod project_query_cmd;
 pub mod project_storage;
 pub mod run_transcribe_cmd;
 pub mod segment_cmd;
+mod segment_media_sanitize;
 mod segment_uid;
 mod local_transcribe_gate;
 pub mod transcribe;

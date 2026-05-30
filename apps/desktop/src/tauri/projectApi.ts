@@ -9,6 +9,7 @@ export type {
   ProjectSummary,
   RawProjectDetail,
   SegmentDto,
+  SegmentKind,
 } from "./projectTypes";
 
 /** `project_run_transcribe` 返回值（`detail` 为转写后的文件详情） */

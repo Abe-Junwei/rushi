@@ -59,6 +59,7 @@ fn seg(uid: &str, idx: i32, text: &str) -> SegmentDto {
         confidence: None,
         low_confidence: false,
         detail: None,
+        kind: None,
     }
 }
 

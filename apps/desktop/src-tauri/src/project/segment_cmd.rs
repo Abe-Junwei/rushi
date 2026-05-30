@@ -1,11 +1,23 @@
 use super::correction::{load_file_segment_texts, update_correction_memory_from_save};
+use super::segment_media_sanitize::sanitize_segments_for_media;
 use super::segment_uid::segment_uid_or_new;
+use super::transcribe_timeout::probe_audio_duration_sec;
 use super::types::SegmentDto;
 use super::utils::{append_desktop_log_line, now_ms, open_db};
 use crate::DbState;
 use rusqlite::params;
 use std::ops::Deref;
+use std::path::Path;
 use tauri::State;
+
+fn file_audio_path(conn: &rusqlite::Connection, file_id: &str) -> Result<Option<String>, String> {
+    conn.query_row(
+        "SELECT audio_path FROM files WHERE id = ?1",
+        params![file_id],
+        |r| r.get(0),
+    )
+    .map_err(|e| e.to_string())
+}
 
 pub fn file_save_segments_inner(
     state: &DbState,
@@ -13,6 +25,22 @@ pub fn file_save_segments_inner(
     segments: &[SegmentDto],
 ) -> Result<(), String> {
     let mut conn = open_db(state)?;
+    let audio_path = file_audio_path(&conn, file_id)?;
+    let duration_sec = audio_path
+        .as_deref()
+        .map(Path::new)
+        .and_then(probe_audio_duration_sec);
+    let (segments_owned, removed) =
+        sanitize_segments_for_media(segments.to_vec(), duration_sec, true);
+    if removed > 0 {
+        append_desktop_log_line(
+            state,
+            &format!(
+                "INFO save_segments filtered dominant spans removed={removed} file_id={file_id}"
+            ),
+        );
+    }
+    let segments = &segments_owned;
     let old_text_by_idx = load_file_segment_texts(&conn, file_id)?;
     let t = now_ms();
     let tx = conn.transaction().map_err(|e| e.to_string())?;
@@ -47,11 +75,12 @@ pub fn file_save_segments_inner(
         kept_uids.push(uid.clone());
         let low = if s.low_confidence { 1i64 } else { 0i64 };
         let detail = s.detail.as_deref().unwrap_or("");
+        let kind = s.kind.as_deref().filter(|k| !k.trim().is_empty());
         let updated = tx
             .execute(
                 "UPDATE segments SET idx = ?1, start_sec = ?2, end_sec = ?3, text = ?4, \
-                 confidence = ?5, low_confidence = ?6, detail = ?7 \
-                 WHERE file_id = ?8 AND uid = ?9",
+                 confidence = ?5, low_confidence = ?6, detail = ?7, kind = ?8 \
+                 WHERE file_id = ?9 AND uid = ?10",
                 params![
                     s.idx,
                     s.start_sec,
@@ -60,6 +89,7 @@ pub fn file_save_segments_inner(
                     s.confidence,
                     low,
                     detail,
+                    kind,
                     file_id,
                     uid.as_str(),
                 ],
@@ -67,8 +97,8 @@ pub fn file_save_segments_inner(
             .map_err(|e| e.to_string())?;
         if updated == 0 {
             tx.execute(
-                "INSERT INTO segments (file_id, uid, idx, start_sec, end_sec, text, confidence, low_confidence, detail) \
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9)",
+                "INSERT INTO segments (file_id, uid, idx, start_sec, end_sec, text, confidence, low_confidence, detail, kind) \
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
                 params![
                     file_id,
                     uid.as_str(),
@@ -79,6 +109,7 @@ pub fn file_save_segments_inner(
                     s.confidence,
                     low,
                     detail,
+                    kind,
                 ],
             )
             .map_err(|e| e.to_string())?;

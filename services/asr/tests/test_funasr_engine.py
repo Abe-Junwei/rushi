@@ -47,6 +47,23 @@ def test_sentence_info_keeps_zero_start_second() -> None:
     assert segs[0].end_sec == 12.5
 
 
+def test_sentence_info_millisecond_timestamps_below_per_row_threshold() -> None:
+    """FunASR sentence_info often uses ms; per-row normalize used to mis-read as seconds."""
+    rows = [
+        {"start": 0, "end": 3400, "text": "第一句"},
+        {"start": 3400, "end": 8200, "text": "第二句"},
+        {"start": 8200, "end": 12500, "text": "第三句"},
+    ]
+    segs = segments_from_sentence_info(rows, duration_sec=780.0)
+    assert len(segs) == 3
+    assert segs[0].start_sec == 0.0
+    assert segs[0].end_sec == pytest.approx(3.4)
+    assert segs[1].start_sec == pytest.approx(3.4)
+    assert segs[1].end_sec == pytest.approx(8.2)
+    assert segs[2].start_sec == pytest.approx(8.2)
+    assert segs[2].end_sec == pytest.approx(12.5)
+
+
 def test_paraformer_generate_kwargs_request_sentence_timestamp() -> None:
     para = "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch"
     kwargs = funasr_generate_kwargs(para, "zh", None, duration_sec=900.0)

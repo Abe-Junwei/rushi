@@ -98,6 +98,7 @@ pub fn openai_verbose_json_to_rushi(v: &serde_json::Value) -> Result<serde_json:
                         "text": text,
                         "confidence": serde_json::Value::Null,
                         "low_confidence": false,
+                        "kind": "speech",
                     }));
                 }
                 out
@@ -105,6 +106,7 @@ pub fn openai_verbose_json_to_rushi(v: &serde_json::Value) -> Result<serde_json:
         } else {
             Vec::new()
         };
+    // 无子句但有全文 → 整轨占位兜底；显式标 placeholder，下游不再靠 0.85 跨度反推。
     let rushi_segments = if rushi_segments.is_empty() && !full_text.trim().is_empty() {
         vec![serde_json::json!({
             "start_sec": 0.0_f64,
@@ -112,6 +114,7 @@ pub fn openai_verbose_json_to_rushi(v: &serde_json::Value) -> Result<serde_json:
             "text": full_text.trim(),
             "confidence": serde_json::Value::Null,
             "low_confidence": false,
+            "kind": "placeholder",
         })]
     } else {
         rushi_segments
@@ -163,6 +166,7 @@ pub fn assemblyai_words_to_segments(words: &[serde_json::Value]) -> Vec<serde_js
                             "text": text,
                             "confidence": serde_json::Value::Null,
                             "low_confidence": false,
+                            "kind": "speech",
                         }));
                     }
                     seg_start_ms = Some(s_ms);
@@ -185,6 +189,7 @@ pub fn assemblyai_words_to_segments(words: &[serde_json::Value]) -> Vec<serde_js
                 "text": text,
                 "confidence": serde_json::Value::Null,
                 "low_confidence": false,
+                "kind": "speech",
             }));
         }
     }
@@ -236,6 +241,7 @@ pub fn assemblyai_transcript_json_to_rushi(
                         "text": text,
                         "confidence": confidence,
                         "low_confidence": false,
+                        "kind": "speech",
                     }));
                 }
                 out
@@ -255,6 +261,7 @@ pub fn assemblyai_transcript_json_to_rushi(
             "text": full_text.trim(),
             "confidence": serde_json::Value::Null,
             "low_confidence": false,
+            "kind": "placeholder",
         })]
     } else {
         rushi_segments

@@ -1,5 +1,7 @@
 /** 根据 ASR 返回的 engine / warnings 与语段正文生成面向用户的提示（不阻断操作）。 */
 
+import { parseDominantSpanFilteredCount } from "../utils/segmentMediaSanitize";
+
 export interface SegmentLike {
   text?: string | null;
 }
@@ -23,6 +25,12 @@ export function deriveTranscribeHints(engine: string, warnings: string[], segmen
   if (warnings.some((w) => w.includes("hotwords_truncated_12k"))) {
     hints.push(
       "术语热词超过 12,000 字符上限，已截断后提交；部分术语未进入识别。可在「术语库」查看「本次转写将携带」摘要。",
+    );
+  }
+  const dominantRemoved = parseDominantSpanFilteredCount(warnings);
+  if (dominantRemoved > 0) {
+    hints.push(
+      `已自动移除 ${dominantRemoved} 条整轨占位语段（与分句结果重复）；正文保留在分句语段中。`,
     );
   }
   if (warnings.some((w) => w.includes("funasr_whole_track_fallback"))) {

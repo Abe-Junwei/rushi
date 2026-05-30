@@ -64,6 +64,18 @@ fn migrate_segments_uid(conn: &Connection) -> rusqlite::Result<()> {
     Ok(())
 }
 
+/// 显式语段类型：旧库 segments 表补 `kind` 列（附加式，旧行为 NULL → 按缺省启发式判定）。
+fn migrate_segments_kind(conn: &Connection) -> rusqlite::Result<()> {
+    let cols = table_columns(conn, "segments")?;
+    if cols.is_empty() {
+        return Ok(());
+    }
+    if !cols.iter().any(|c| c == "kind") {
+        conn.execute("ALTER TABLE segments ADD COLUMN kind TEXT", [])?;
+    }
+    Ok(())
+}
+
 fn migrate_glossary_p2(conn: &Connection) -> rusqlite::Result<()> {
     conn.execute_batch(
         r#"
@@ -213,6 +225,7 @@ pub fn migrate(conn: &Connection) -> rusqlite::Result<()> {
             low_confidence INTEGER NOT NULL DEFAULT 0,
             detail TEXT NOT NULL DEFAULT '',
             uid TEXT NOT NULL DEFAULT '',
+            kind TEXT,
             FOREIGN KEY (file_id) REFERENCES files(id) ON DELETE CASCADE,
             UNIQUE (file_id, idx)
         );
@@ -230,6 +243,7 @@ pub fn migrate(conn: &Connection) -> rusqlite::Result<()> {
     )?;
     migrate_segments_p2(conn)?;
     migrate_segments_uid(conn)?;
+    migrate_segments_kind(conn)?;
     migrate_glossary_p2(conn)?;
     migrate_glossary_gly2(conn)?;
     migrate_glossary_gly3(conn)?;

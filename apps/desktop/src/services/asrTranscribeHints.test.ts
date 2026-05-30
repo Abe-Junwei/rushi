@@ -31,6 +31,14 @@ describe("deriveTranscribeHints", () => {
     expect(h.some((x) => x.includes("安波那那") && x.includes("安那般那"))).toBe(true);
   });
 
+  it("flags dominant span auto-filter warning", () => {
+    const h = deriveTranscribeHints("funasr+x", ["segments_dominant_span_filtered:2"], [
+      { text: "分句一" },
+      { text: "分句二" },
+    ]);
+    expect(h.some((x) => x.includes("已自动移除 2 条整轨占位语段"))).toBe(true);
+  });
+
   it("flags whole-track fallback warning", () => {
     const h = deriveTranscribeHints("funasr+iic/SenseVoiceSmall", ["funasr_whole_track_fallback: x"], [
       { text: "你好世界" },

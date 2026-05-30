@@ -85,14 +85,15 @@ def segments_from_sentence_info(
     sentence_info: list[dict[str, Any]],
     duration_sec: float | None,
 ) -> list[TranscriptionSegment]:
+    scale = _sentence_info_time_scale(sentence_info, duration_sec)
     segs: list[TranscriptionSegment] = []
     for row in sentence_info:
         start = _row_start_sec(row)
         end = _row_end_sec(row)
         if start is None or end is None:
             continue
-        s = normalize_funasr_time(start, duration_sec)
-        e = normalize_funasr_time(end, duration_sec)
+        s = normalize_funasr_time(start * scale, duration_sec)
+        e = normalize_funasr_time(end * scale, duration_sec)
         text = _row_text(row)
         conf = row.get("confidence")
         conf_f: float | None
@@ -192,6 +193,37 @@ def normalize_funasr_time(value: float, duration_sec: float | None) -> float:
     return value
 
 
+def _sentence_info_time_scale(
+    sentence_info: list[dict[str, Any]],
+    duration_sec: float | None,
+) -> float:
+    """Return 0.001 when FunASR sentence_info times are in milliseconds (ASR-only path).
+
+    Per-row heuristics mis-convert ms values below ``duration*2+5`` as seconds (e.g. 1250ms →
+    1250s on a 13-minute file), which desynchronizes waveform scroll from segment overlay.
+    """
+    times: list[float] = []
+    for row in sentence_info:
+        start = _row_start_sec(row)
+        end = _row_end_sec(row)
+        if start is not None:
+            times.append(start)
+        if end is not None:
+            times.append(end)
+    if not times:
+        return 1.0
+    max_t = max(times)
+    if duration_sec is not None and duration_sec > 0:
+        if max_t > duration_sec * 1.2 + 1.0:
+            return 0.001
+        if max_t >= 1000.0 and max_t / 1000.0 <= duration_sec * 1.05:
+            return 0.001
+        return 1.0
+    if max_t >= 10_000.0:
+        return 0.001
+    return 1.0
+
+
 def _allow_whole_track_fallback(duration_sec: float | None) -> bool:
     if duration_sec is None or duration_sec <= 0:
         return False
@@ -206,6 +238,7 @@ def _whole_track_segment(text: str, duration_sec: float | None) -> Transcription
         text=text,
         low_confidence=True,
         detail="funasr_whole_track_fallback",
+        kind="placeholder",
     )
 
 

@@ -82,6 +82,7 @@ fn export_and_import_project_bundle_round_trip() {
             confidence: Some(0.9),
             low_confidence: false,
             detail: Some("ok".into()),
+            kind: None,
         },
         SegmentDto {
             uid: None,
@@ -92,6 +93,7 @@ fn export_and_import_project_bundle_round_trip() {
             confidence: None,
             low_confidence: true,
             detail: None,
+            kind: None,
         },
     ];
 
@@ -203,6 +205,7 @@ fn export_project_bundle_uses_requested_file_audio() {
             confidence: None,
             low_confidence: false,
             detail: None,
+            kind: None,
         }],
     )
     .unwrap();

@@ -21,6 +21,7 @@ class TranscriptionSegment(BaseModel):
     confidence: float | None = Field(default=None, ge=0, le=1)
     low_confidence: bool = False
     detail: str | None = None
+    kind: Literal["speech", "placeholder"] = "speech"
 
     @model_validator(mode="after")
     def check_times(self) -> TranscriptionSegment:
