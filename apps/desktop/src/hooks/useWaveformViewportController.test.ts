@@ -1,6 +1,6 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
-import { useWaveformViewportResizeSync } from "./useWaveformViewportResizeSync";
+import { useWaveformViewportController } from "./useWaveformViewportController";
 import { WAVEFORM_TIER_VIEWPORT_WIDTH_VAR } from "../utils/waveformViewport";
 
 async function flushLayout() {
@@ -52,7 +52,7 @@ function createSyncArgs(width: number) {
   };
 }
 
-describe("useWaveformViewportResizeSync", () => {
+describe("useWaveformViewportController", () => {
   afterEach(() => {
     vi.restoreAllMocks();
   });
@@ -70,7 +70,7 @@ describe("useWaveformViewportResizeSync", () => {
       },
     );
     renderHook(() =>
-      useWaveformViewportResizeSync({
+      useWaveformViewportController({
         wsRef: args.wsRef,
         containerRef: args.containerRef,
         stickyShellRef: args.stickyShellRef,
@@ -160,6 +160,7 @@ describe("useWaveformViewportResizeSync", () => {
     const appliedZoomPxPerSecRef = { current: 0.07 };
     const onFitAllPxPerSecRefit = vi.fn();
     const layoutDurationSecRef = { current: 3 * 3600 + 40 * 60 + 29 };
+    const refitFitAllPxPerSec = vi.fn((vw: number) => vw / layoutDurationSecRef.current);
     const timelineShell = document.createElement("div");
 
     let roCallback: (() => void) | undefined;
@@ -175,7 +176,7 @@ describe("useWaveformViewportResizeSync", () => {
     );
 
     renderHook(() =>
-      useWaveformViewportResizeSync({
+      useWaveformViewportController({
         wsRef: args.wsRef,
         containerRef: args.containerRef,
         stickyShellRef: args.stickyShellRef,
@@ -186,6 +187,7 @@ describe("useWaveformViewportResizeSync", () => {
         appliedZoomPxPerSecRef,
         onFitAllPxPerSecRefit,
         layoutDurationSecRef,
+        refitFitAllPxPerSec,
         timelineShellRef: { current: timelineShell },
       }),
     );

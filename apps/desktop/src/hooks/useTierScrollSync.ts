@@ -34,9 +34,18 @@ export function useTierScrollSync(args: {
   const smoothScrollCleanupRef = useRef<(() => void) | null>(null);
   const programmaticScrollUntilRef = useRef(0);
 
-  const tierScrollMetrics = useTierScrollLayout(args.tierScrollRef, {
-    resyncDeps: [args.timelineWidthPx, args.mediaUrl, args.waveformReady, args.mediaDurationSec, args.pxPerSec],
-  });
+  const tierScrollMetrics = useTierScrollLayout(args.tierScrollRef);
+
+  useLayoutEffect(() => {
+    tierScrollMetrics.refreshLayout();
+  }, [
+    args.timelineWidthPx,
+    args.mediaUrl,
+    args.waveformReady,
+    args.mediaDurationSec,
+    args.pxPerSec,
+    tierScrollMetrics.refreshLayout,
+  ]);
 
   const mirrorWaveSurferScroll = (scrollLeftPx: number) => {
     const a = argsRef.current;

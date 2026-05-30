@@ -1,4 +1,5 @@
 import { describe, expect, it } from "vitest";
+import { effectiveTimelinePxPerSec } from "./waveformProjection";
 import { TIMELINE_PX_PER_SEC } from "./pxPerSec";
 import {
   resolveLayoutDurationSec,
@@ -53,7 +54,7 @@ describe("resolveLayoutDurationSec", () => {
 });
 
 describe("resolveWaveformTimelineMetrics", () => {
-  it("exports timeline width and effective px/s from one px/s input", () => {
+  it("exports timeline width from one px/s input", () => {
     const m = resolveWaveformTimelineMetrics({
       wsDurationSec: 1263,
       peaksStatusDurationSec: 1260,
@@ -62,7 +63,10 @@ describe("resolveWaveformTimelineMetrics", () => {
 
     expect(m.mediaDurationSec).toBe(1263);
     expect(m.timelineWidthPx).toBe(Math.ceil(1263 * 0.05));
-    expect(m.effectiveLayoutPxPerSec).toBeCloseTo(m.timelineWidthPx / 1263, 6);
+    expect(effectiveTimelinePxPerSec(m.timelineWidthPx, m.mediaDurationSec)).toBeCloseTo(
+      m.timelineWidthPx / 1263,
+      6,
+    );
   });
 
   it("uses default px/s for short clips", () => {

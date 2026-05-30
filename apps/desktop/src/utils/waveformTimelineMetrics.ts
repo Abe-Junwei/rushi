@@ -1,5 +1,4 @@
 import { computeTimelineWidthPx } from "./pxPerSec";
-import { effectiveTimelinePxPerSec } from "./waveformProjection";
 
 export type ResolveWaveformTimelineMetricsInput = {
   /** WaveSurfer / media element duration once known. */
@@ -13,7 +12,6 @@ export type WaveformTimelineMetrics = {
   /** Layout / segments / scroll / ruler duration truth. */
   mediaDurationSec: number;
   timelineWidthPx: number;
-  effectiveLayoutPxPerSec: number;
 };
 
 /** Merge WS and peaks-manifest durations into one layout timeline length. */
@@ -61,6 +59,5 @@ export function resolveWaveformTimelineMetrics(
   return {
     mediaDurationSec,
     timelineWidthPx,
-    effectiveLayoutPxPerSec: effectiveTimelinePxPerSec(timelineWidthPx, mediaDurationSec),
   };
 }

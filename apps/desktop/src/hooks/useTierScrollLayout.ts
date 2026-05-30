@@ -15,7 +15,6 @@ export type UseTierScrollLayoutResult = TierScrollLayout & {
 
 export type UseTierScrollLayoutOptions = {
   burstMs?: number;
-  resyncDeps?: readonly unknown[];
 };
 
 const DEFAULT_BURST_MS = 120;
@@ -26,7 +25,6 @@ export function useTierScrollLayout(
   options?: UseTierScrollLayoutOptions,
 ): UseTierScrollLayoutResult {
   const burstMs = options?.burstMs ?? DEFAULT_BURST_MS;
-  const resyncDeps = options?.resyncDeps ?? [];
   const liveScrollLeftRef = useRef(0);
   const liveClientWidthRef = useRef(0);
   const [layout, setLayout] = useState<TierScrollLayout>({
@@ -80,16 +78,6 @@ export function useTierScrollLayout(
       readLayoutRef.current = () => {};
     };
   }, [tierScrollRef, burstMs]);
-
-  useLayoutEffect(() => {
-    const el = tierScrollRef.current;
-    if (!el) return;
-    setLayout((prev) => {
-      const next = { scrollLeftPx: el.scrollLeft, clientWidthPx: el.clientWidth };
-      return prev.scrollLeftPx === next.scrollLeftPx && prev.clientWidthPx === next.clientWidthPx ? prev : next;
-    });
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- layout drivers
-  }, [tierScrollRef, ...resyncDeps]);
 
   const refreshLayout = useCallback(() => {
     readLayoutRef.current();

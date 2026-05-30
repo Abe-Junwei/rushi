@@ -43,7 +43,7 @@ describe("useTierScrollLayout", () => {
     expect(result.current.scrollLeftPx).toBe(120);
   });
 
-  it("resyncs when resyncDeps change", () => {
+  it("refreshLayout picks up scrollLeft after programmatic write", () => {
     const el = document.createElement("div");
     let scrollLeft = 10;
     Object.defineProperty(el, "scrollLeft", {
@@ -56,14 +56,12 @@ describe("useTierScrollLayout", () => {
     Object.defineProperty(el, "clientWidth", { value: 400, configurable: true });
     const tierScrollRef = { current: el };
 
-    const { result, rerender } = renderHook(
-      ({ timelineWidthPx }: { timelineWidthPx: number }) =>
-        useTierScrollLayout(tierScrollRef, { resyncDeps: [timelineWidthPx] }),
-      { initialProps: { timelineWidthPx: 1000 } },
-    );
+    const { result } = renderHook(() => useTierScrollLayout(tierScrollRef));
 
-    scrollLeft = 88;
-    rerender({ timelineWidthPx: 2000 });
+    act(() => {
+      scrollLeft = 88;
+      result.current.refreshLayout();
+    });
 
     expect(result.current.scrollLeftPx).toBe(88);
   });

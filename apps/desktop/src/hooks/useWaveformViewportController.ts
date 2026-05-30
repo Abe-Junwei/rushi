@@ -1,7 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useRef, type MutableRefObject, type RefObject } from "react";
 import type WaveSurfer from "wavesurfer.js";
 import { computeTimelineWidthPx } from "../utils/pxPerSec";
-import { resolveFitAllPxPerSecAdjustment } from "../utils/waveformZoomBarState";
 import { writeWaveformTierViewportWidthVar } from "../utils/waveformViewport";
 import {
   applyWaveformViewportStretch,
@@ -145,8 +144,7 @@ export function useWaveformViewportController(args: UseWaveformViewportControlle
     }
   }, [writeFitAllShellWidths]);
 
-  const runViewportTransaction = useCallback(
-    (force = false, options?: { staleFitAllOnViewportGrow?: boolean }) => {
+  const runViewportTransaction = useCallback((force = false) => {
       const {
         wsRef,
         containerRef,
@@ -176,18 +174,8 @@ export function useWaveformViewportController(args: UseWaveformViewportControlle
       try {
         const prev = prevWidthRef.current;
 
-        const refitPx = (() => {
-          if (tierW <= 0) return null;
-          if (refitFitAllPxPerSec) {
-            return refitFitAllPxPerSec(tierW);
-          }
-          const dur = argsRef.current.layoutDurationSecRef?.current ?? 0;
-          const px = argsRef.current.appliedZoomPxPerSecRef?.current ?? 0;
-          if (dur <= 0) return null;
-          return resolveFitAllPxPerSecAdjustment(tierW, dur, px, {
-            staleFitAllOnViewportGrow: options?.staleFitAllOnViewportGrow,
-          });
-        })();
+        const refitPx =
+          tierW > 0 && refitFitAllPxPerSec ? refitFitAllPxPerSec(tierW) : null;
 
         if (refitPx != null) {
           const stretchRatio = computeViewportStretchRatio(
@@ -245,14 +233,14 @@ export function useWaveformViewportController(args: UseWaveformViewportControlle
         pendingResizeMicrotaskRef.current = false;
         const forceNow = pendingResizeForceRef.current;
         pendingResizeForceRef.current = false;
-        runViewportTransaction(forceNow, { staleFitAllOnViewportGrow: true });
+        runViewportTransaction(forceNow);
       });
     },
     [runViewportTransaction],
   );
 
   const refitFitAllIfNeeded = useCallback(() => {
-    runViewportTransaction(false, { staleFitAllOnViewportGrow: false });
+    runViewportTransaction(false);
   }, [runViewportTransaction]);
 
   useEffect(() => {
