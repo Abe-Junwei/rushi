@@ -2,12 +2,21 @@ import { useCallback, useEffect, useLayoutEffect, useRef, useState, type Mutable
 import type WaveSurfer from "wavesurfer.js";
 import type { PeakCache } from "../services/waveform/PeakCache";
 import {
-  quantizePxPerSecForPeaksLoad,
-  shouldZoomOnlyForSubMinFitAllRefit,
-} from "../utils/pxPerSec";
-import { resolveLayoutDurationSec } from "../utils/waveformTimelineMetrics";
+  clearPeaksAppliedForDecode,
+  commitWaveSurferZoom,
+  disableWaveSurferAutoScroll,
+  loadPeaksIntoWaveSurfer,
+  planWaveformZoomApply,
+  WAVEFORM_DECODE_SAMPLE_RATE,
+  type WaveformZoomSyncInFlight,
+} from "../services/waveform/waveformZoomSyncEngine";
+import {
+  createWaveformAppliedZoomState,
+  markAppliedPeaks,
+  type WaveformAppliedZoomState,
+} from "../utils/waveformAppliedZoom";
 
-const DECODE_SAMPLE_RATE = 8000;
+export { WAVEFORM_DECODE_SAMPLE_RATE as DECODE_SAMPLE_RATE };
 
 type PendingPeaksLoad = {
   url: string;
@@ -15,39 +24,26 @@ type PendingPeaksLoad = {
   layoutDur: number;
 };
 
-function disableWaveSurferAutoScroll(ws: WaveSurfer): void {
-  try {
-    ws.setOptions({ autoScroll: false });
-  } catch {
-    /* noop */
-  }
-}
-
 /** Sync layout px/s → WaveSurfer zoom; ws.load(peaks) when cache ready / quantum changes. */
 export function useWaveformZoomSync(args: {
   wsRef: RefObject<WaveSurfer | null>;
   isReady: boolean;
   isPlaying: boolean;
   hotSwitchWhilePlayingRef: MutableRefObject<boolean>;
-  /** Bumps layout effect when user toggles the playing hot-switch pref. */
   hotSwitchWhilePlaying: boolean;
   disabled?: boolean;
+  /** React zoom intent (useWaveformZoom pxPerSec). */
   minPxPerSec: number;
-  appliedZoomPxPerSecRef: MutableRefObject<number>;
-  appliedPeaksRef?: MutableRefObject<boolean>;
-  appliedPeaksLoadPxPerSecRef?: MutableRefObject<number>;
+  appliedZoom: WaveformAppliedZoomState;
   peakCache?: PeakCache | null;
   peakCacheGeneration?: number;
   peakCacheRef?: RefObject<PeakCache | null>;
   layoutDurationSecRef?: MutableRefObject<number>;
-  /** Bumps layout effect when timeline duration truth changes (decode → peaks). */
   layoutDurationSec?: number;
   mediaUrl?: string | null;
   onZoomAppliedRef?: MutableRefObject<((pxPerSec: number) => boolean | void) | undefined>;
   cancelInFlightZoomRef?: MutableRefObject<(() => void) | undefined>;
-  /** While viewport resize transaction runs, defer ws.load until hold clears. */
   viewportResizeHoldRef?: MutableRefObject<boolean>;
-  /** Register flush for deferred peaks load (called after viewport transaction). */
   flushDeferredPeaksLoadRef?: MutableRefObject<(() => void) | undefined>;
 }) {
   const {
@@ -58,9 +54,7 @@ export function useWaveformZoomSync(args: {
     hotSwitchWhilePlaying,
     disabled,
     minPxPerSec,
-    appliedZoomPxPerSecRef,
-    appliedPeaksRef,
-    appliedPeaksLoadPxPerSecRef,
+    appliedZoom,
     peakCache,
     peakCacheGeneration = 0,
     peakCacheRef,
@@ -76,6 +70,12 @@ export function useWaveformZoomSync(args: {
   const zoomSyncInFlightRef = useRef<number | null>(null);
   const peaksLoadSeqRef = useRef(0);
   const peaksLoadInFlightPxRef = useRef<number | null>(null);
+  const inFlight: WaveformZoomSyncInFlight = {
+    zoomSyncInFlightRef,
+    peaksLoadSeqRef,
+    peaksLoadInFlightPxRef,
+  };
+
   const pendingPeaksHotSwitchRef = useRef(false);
   const pendingPeaksLoadRef = useRef<PendingPeaksLoad | null>(null);
   const prevMinPxPerSecRef = useRef(minPxPerSec);
@@ -89,15 +89,12 @@ export function useWaveformZoomSync(args: {
     setPeaksHotSwitchPending(pending);
   }, []);
 
-  const markPeaksApplied = useCallback(
+  const onPeaksApplied = useCallback(
     (applied: boolean, loadPeaksPx: number) => {
-      if (appliedPeaksRef) appliedPeaksRef.current = applied;
-      if (appliedPeaksLoadPxPerSecRef) {
-        appliedPeaksLoadPxPerSecRef.current = applied ? loadPeaksPx : Number.NaN;
-      }
+      markAppliedPeaks(appliedZoom, applied, loadPeaksPx);
       setPeaksApplied(applied);
     },
-    [appliedPeaksLoadPxPerSecRef, appliedPeaksRef],
+    [appliedZoom],
   );
 
   useEffect(() => {
@@ -110,10 +107,10 @@ export function useWaveformZoomSync(args: {
 
   useEffect(() => {
     if (!peakCache) {
-      markPeaksApplied(false, Number.NaN);
+      onPeaksApplied(false, Number.NaN);
       syncPeaksHotSwitchPending(false);
     }
-  }, [markPeaksApplied, peakCache, syncPeaksHotSwitchPending]);
+  }, [onPeaksApplied, peakCache, syncPeaksHotSwitchPending]);
 
   useEffect(() => {
     prevMinPxPerSecRef.current = minPxPerSec;
@@ -134,81 +131,13 @@ export function useWaveformZoomSync(args: {
     if (!ws || !isReady || disabled) return;
 
     const finishZoom = (currentWs: WaveSurfer) => {
-      if (zoomSyncInFlightRef.current !== null && zoomSyncInFlightRef.current !== minPxPerSec) {
-        return;
-      }
-      try {
-        if (Math.abs(appliedZoomPxPerSecRef.current - minPxPerSec) > 1e-6) {
-          currentWs.zoom(minPxPerSec);
-        }
-        appliedZoomPxPerSecRef.current = minPxPerSec;
-        onZoomAppliedRef?.current?.(minPxPerSec);
-      } catch {
-        /* noop */
-      } finally {
-        if (zoomSyncInFlightRef.current === minPxPerSec) {
-          zoomSyncInFlightRef.current = null;
-        }
-      }
-    };
-
-    const loadPeaksIntoWaveSurfer = (
-      currentWs: WaveSurfer,
-      cache: PeakCache,
-      url: string,
-      loadPeaksPx: number,
-      layoutDur: number,
-    ) => {
-      if (peaksLoadInFlightPxRef.current === loadPeaksPx) return;
-      peaksLoadInFlightPxRef.current = loadPeaksPx;
-
-      const resumeTimeSec = currentWs.getCurrentTime();
-      const resumePlaying = currentWs.isPlaying();
-
-      const loadSeq = ++peaksLoadSeqRef.current;
-      zoomSyncInFlightRef.current = minPxPerSec;
-      syncPeaksHotSwitchPending(false);
-
-      try {
-        void cache
-          .getWaveSurferPeaksAsync(loadPeaksPx, layoutDur)
-          .then((bundle) => {
-            if (peaksLoadSeqRef.current !== loadSeq) return;
-            if (peaksLoadInFlightPxRef.current !== loadPeaksPx) return;
-            return currentWs.load(url, bundle.peaks, bundle.duration).then(() => {
-              if (peaksLoadSeqRef.current !== loadSeq) return;
-              if (wsRef.current !== currentWs) return;
-              if (mediaUrl !== url) return;
-              try {
-                const nowTimeSec = currentWs.getCurrentTime();
-                if (Math.abs(nowTimeSec - resumeTimeSec) < 0.5) {
-                  currentWs.setTime(resumeTimeSec);
-                }
-                if (resumePlaying) void currentWs.play();
-              } catch {
-                /* noop */
-              }
-              markPeaksApplied(true, loadPeaksPx);
-              finishZoom(currentWs);
-            });
-          })
-          .catch(() => {
-            if (wsRef.current !== currentWs) return;
-            markPeaksApplied(false, Number.NaN);
-            finishZoom(currentWs);
-          })
-          .finally(() => {
-            if (peaksLoadInFlightPxRef.current === loadPeaksPx) {
-              peaksLoadInFlightPxRef.current = null;
-            }
-          });
-      } catch {
-        peaksLoadInFlightPxRef.current = null;
-        syncPeaksHotSwitchPending(false);
-        if (zoomSyncInFlightRef.current === minPxPerSec) {
-          zoomSyncInFlightRef.current = null;
-        }
-      }
+      commitWaveSurferZoom({
+        ws: currentWs,
+        intentPxPerSec: minPxPerSec,
+        appliedZoom,
+        inFlight,
+        onZoomApplied: onZoomAppliedRef?.current ?? undefined,
+      });
     };
 
     const flushDeferredPeaksLoad = () => {
@@ -219,34 +148,26 @@ export function useWaveformZoomSync(args: {
       const currentWs = wsRef.current;
       const cache = peakCacheRef?.current;
       if (!currentWs || !cache || mediaUrl !== pending.url) return;
-      loadPeaksIntoWaveSurfer(
-        currentWs,
+      syncPeaksHotSwitchPending(false);
+      loadPeaksIntoWaveSurfer({
+        ws: currentWs,
         cache,
-        pending.url,
-        pending.loadPeaksPx,
-        pending.layoutDur,
-      );
+        url: pending.url,
+        loadPeaksPx: pending.loadPeaksPx,
+        layoutDur: pending.layoutDur,
+        intentPxPerSec: minPxPerSec,
+        mediaUrl,
+        wsRef,
+        appliedZoom,
+        inFlight,
+        onZoomApplied: onZoomAppliedRef?.current ?? undefined,
+        onPeaksApplied,
+      });
     };
 
     if (flushDeferredPeaksLoadRef) {
       flushDeferredPeaksLoadRef.current = flushDeferredPeaksLoad;
     }
-
-    const schedulePeaksLoad = (
-      currentWs: WaveSurfer,
-      cache: PeakCache,
-      url: string,
-      loadPeaksPx: number,
-      layoutDur: number,
-    ) => {
-      if (viewportResizeHoldRef?.current) {
-        pendingPeaksLoadRef.current = { url, loadPeaksPx, layoutDur };
-        finishZoom(currentWs);
-        prevMinPxPerSecRef.current = minPxPerSec;
-        return;
-      }
-      loadPeaksIntoWaveSurfer(currentWs, cache, url, loadPeaksPx, layoutDur);
-    };
 
     const applyZoom = () => {
       const currentWs = wsRef.current;
@@ -254,69 +175,64 @@ export function useWaveformZoomSync(args: {
 
       disableWaveSurferAutoScroll(currentWs);
 
-      const cache = peakCacheRef?.current;
-      const url = mediaUrl;
-      const loadPeaksPx = quantizePxPerSecForPeaksLoad(minPxPerSec);
+      const cache = peakCacheRef?.current ?? peakCache ?? null;
+      const action = planWaveformZoomApply({
+        intentPxPerSec: minPxPerSec,
+        appliedZoom,
+        peakCache: cache,
+        mediaUrl,
+        layoutDurationSecRef: layoutDurationSecRef?.current,
+        layoutDurationSec,
+        peakCacheDurationSec: cache?.durationSec,
+        isPlaying: currentWs.isPlaying(),
+        hotSwitchWhilePlaying: hotSwitchWhilePlayingRef?.current ?? hotSwitchWhilePlaying,
+        peaksLoadInFlight: peaksLoadInFlightPxRef.current != null,
+        viewportResizeHold: viewportResizeHoldRef?.current ?? false,
+      });
 
-      if (cache && url) {
-        const layoutDur = resolveLayoutDurationSec({
-          layoutDurationSecRef: layoutDurationSecRef?.current,
-          layoutDurationSec,
-          peakCacheDurationSec: cache.durationSec,
-        });
-        if (layoutDur <= 0) {
-          finishZoom(currentWs);
-          prevMinPxPerSecRef.current = minPxPerSec;
-          return;
-        }
-        const loadedPeaksPx = appliedPeaksLoadPxPerSecRef?.current ?? Number.NaN;
-        const peaksLoadedIntoWaveSurfer = appliedPeaksRef?.current === true;
-
-        if (
-          shouldZoomOnlyForSubMinFitAllRefit({
-            requestedPeaksPxPerSec: loadPeaksPx,
-            loadedPeaksPxPerSec: loadedPeaksPx,
-            peaksLoadedIntoWaveSurfer,
-            peaksLoadInFlight: peaksLoadInFlightPxRef.current != null,
-          })
-        ) {
+      switch (action.type) {
+        case "noop":
           syncPeaksHotSwitchPending(false);
-          finishZoom(currentWs);
-          prevMinPxPerSecRef.current = minPxPerSec;
-          return;
-        }
-
-        const peaksAlreadyLoaded =
-          peaksLoadedIntoWaveSurfer && loadedPeaksPx === loadPeaksPx;
-
-        if (peaksAlreadyLoaded && appliedZoomPxPerSecRef.current === minPxPerSec) {
+          break;
+        case "finish-zoom":
           syncPeaksHotSwitchPending(false);
-          prevMinPxPerSecRef.current = minPxPerSec;
-          return;
-        }
-
-        if (peaksAlreadyLoaded) {
-          syncPeaksHotSwitchPending(false);
+          if (!cache || !mediaUrl) {
+            clearPeaksAppliedForDecode(appliedZoom);
+            onPeaksApplied(false, Number.NaN);
+          }
           finishZoom(currentWs);
-          prevMinPxPerSecRef.current = minPxPerSec;
-          return;
-        }
-
-        if (!hotSwitchWhilePlayingRef?.current && currentWs.isPlaying()) {
+          break;
+        case "defer-hot-switch":
           syncPeaksHotSwitchPending(true);
           finishZoom(currentWs);
-          prevMinPxPerSecRef.current = minPxPerSec;
-          return;
-        }
-
-        schedulePeaksLoad(currentWs, cache, url, loadPeaksPx, layoutDur);
-        prevMinPxPerSecRef.current = minPxPerSec;
-        return;
+          break;
+        case "defer-resize-load":
+          pendingPeaksLoadRef.current = {
+            url: mediaUrl!,
+            loadPeaksPx: action.loadPeaksPx,
+            layoutDur: action.layoutDur,
+          };
+          finishZoom(currentWs);
+          break;
+        case "load-peaks":
+          syncPeaksHotSwitchPending(false);
+          loadPeaksIntoWaveSurfer({
+            ws: currentWs,
+            cache: cache!,
+            url: mediaUrl!,
+            loadPeaksPx: action.loadPeaksPx,
+            layoutDur: action.layoutDur,
+            intentPxPerSec: minPxPerSec,
+            mediaUrl,
+            wsRef,
+            appliedZoom,
+            inFlight,
+            onZoomApplied: onZoomAppliedRef?.current ?? undefined,
+            onPeaksApplied,
+          });
+          break;
       }
 
-      syncPeaksHotSwitchPending(false);
-      markPeaksApplied(false, Number.NaN);
-      finishZoom(currentWs);
       prevMinPxPerSecRef.current = minPxPerSec;
     };
 
@@ -331,23 +247,22 @@ export function useWaveformZoomSync(args: {
       }
     };
   }, [
-    appliedPeaksLoadPxPerSecRef,
-    appliedPeaksRef,
-    appliedZoomPxPerSecRef,
+    appliedZoom,
     disabled,
     flushDeferredPeaksLoadRef,
     hotSwitchWhilePlaying,
+    hotSwitchWhilePlayingRef,
     isReady,
-    peaksHotSwitchRetry,
-    layoutDurationSecRef,
     layoutDurationSec,
-    markPeaksApplied,
+    layoutDurationSecRef,
     mediaUrl,
     minPxPerSec,
+    onPeaksApplied,
     onZoomAppliedRef,
     peakCache,
     peakCacheGeneration,
     peakCacheRef,
+    peaksHotSwitchRetry,
     syncPeaksHotSwitchPending,
     viewportResizeHoldRef,
     wsRef,
@@ -356,4 +271,4 @@ export function useWaveformZoomSync(args: {
   return { cancelInFlightZoom, peaksHotSwitchPending, peaksApplied };
 }
 
-export { DECODE_SAMPLE_RATE };
+export { createWaveformAppliedZoomState };
