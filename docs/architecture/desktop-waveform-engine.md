@@ -47,10 +47,11 @@
 - **视口宽**：[`resolveTierViewportWidthPx`](../../apps/desktop/src/utils/waveformViewport.ts)（live ref / tier DOM / committed layout 取 max）；`EditorWaveformPane`、timeline controller、embedded ruler 统一调用。
 - **布局时长**：[`resolveLayoutDurationSec`](../../apps/desktop/src/utils/waveformTimelineMetrics.ts)（synced ref → prop → merged WS/peaks）；seek / peaks load / mount 禁止自建 `getDuration()` fallback 链。
 - **layout refs**（`durationRef` / `timelineWidthPxRef` / `pxPerSecRef`）在 timeline controller **`useLayoutEffect`** 写入，不在 render body。
-- **applied zoom refs**（`waveformAppliedZoom.ts`）：`appliedZoomPxPerSecRef` / `appliedPeaksLoadPxPerSecRef` / `appliedPeaksRef` 跟踪 WS 已应用状态；React `pxPerSec` 为用户意图。
+- **applied zoom state**（[`waveformAppliedZoom.ts`](../../apps/desktop/src/utils/waveformAppliedZoom.ts)）：`WaveformAppliedZoomState` 捆绑 WS 已应用 px/s、peaks 档位与是否已注入；React `pxPerSec` 为用户意图（TRUTH-010）。
 
 ### Zoom sync（P1）
 
+- [`waveformZoomSyncEngine.ts`](../../apps/desktop/src/services/waveform/waveformZoomSyncEngine.ts)：`planWaveformZoomApply` / `commitWaveSurferZoom` / `loadPeaksIntoWaveSurfer` 纯逻辑；[`useWaveformZoomSync`](../../apps/desktop/src/hooks/useWaveformZoomSync.ts) 仅编排 layout effect。
 - `useWaveformZoomSync` 在 `useLayoutEffect` 内**同步** `ws.zoom`（不再 rAF defer）。
 - `viewportResizeHoldRef` 为 true 时跳过 `ws.load`，transaction 结束后 `flushDeferredPeaksLoad` 换档。
 
