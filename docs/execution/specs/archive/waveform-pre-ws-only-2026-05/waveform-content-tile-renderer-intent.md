@@ -1,6 +1,6 @@
 # Intent: waveform_content_tile_renderer
 
-> 决策依据：[ADR-0004](../../adr/0004-waveform-peaks-content-tile-renderer.md)
+> 决策依据：[ADR-0004](../../../adr/0004-waveform-peaks-content-tile-renderer.md)
 > 完整阶段方案：[`waveform-content-tile-renderer-plan.md`](./waveform-content-tile-renderer-plan.md)
 > 验收：[`waveform-content-tile-renderer-acceptance.md`](./waveform-content-tile-renderer-acceptance.md)
 

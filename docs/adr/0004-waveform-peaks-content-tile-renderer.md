@@ -1,11 +1,14 @@
 ---
 adr: "0004"
 title: 桌面端波形 peaks 渲染 — 切换到 content-tile 范式（WaveSurfer v7 同款）
-status: accepted
-date: 2026-05-28
+status: superseded
+superseded_by: docs/architecture/desktop-waveform-engine.md
+superseded_date: 2026-05-29
 ---
 
 # ADR-0004：桌面端波形 peaks 渲染 — 改用 content-tile 范式
+
+> **Superseded（2026-05-29）**：content-tile canvas 路径已移除；现行见 [`desktop-waveform-engine.md`](../architecture/desktop-waveform-engine.md)。本 ADR 与 [`archive/waveform-pre-ws-only-2026-05/`](../execution/specs/archive/waveform-pre-ws-only-2026-05/README.md) 仅作决策史。
 
 ## 上下文
 
@@ -40,7 +43,7 @@ date: 2026-05-28
 
 **采纳范式 A（content-tile）作为桌面端波形 peaks 的渲染架构**。
 
-具体形态（参见 [`waveform-content-tile-renderer-plan.md`](../execution/specs/waveform-content-tile-renderer-plan.md)）：
+具体形态（参见 [`waveform-content-tile-renderer-plan.md`](../execution/specs/archive/waveform-pre-ws-only-2026-05/waveform-content-tile-renderer-plan.md)）：
 
 1. peaks 层挂在 tier 滚动容器**内部**，作为 inline-block 内容容器的子元素（与 segments overlay 同级），不再脱离内容流
 2. 单 tile 宽度 `min(8000, max(viewport * 2, 4096))`，DPR 缩放在 canvas backing store
@@ -85,7 +88,7 @@ P4（2026-05）已删除旧 viewport-fixed 路径与 `RUSHI_WAVEFORM_TILE_RENDER
 
 ## 验证标准
 
-详见 [`waveform-content-tile-renderer-acceptance.md`](../execution/specs/waveform-content-tile-renderer-acceptance.md)。关键闸门：
+详见 [`waveform-content-tile-renderer-acceptance.md`](../execution/specs/archive/waveform-pre-ws-only-2026-05/waveform-content-tile-renderer-acceptance.md)。关键闸门：
 
 | 阶段 | 完成标准 |
 |---|---|
@@ -101,4 +104,4 @@ P4（2026-05）已删除旧 viewport-fixed 路径与 `RUSHI_WAVEFORM_TILE_RENDER
 - [Peaks.js（BBC）](https://github.com/bbc/peaks.js/) — 同样的 content-tile 思路
 - [Konva 大画布滚动 demo](https://konvajs.org/docs/sandbox/Canvas_Scrolling.html) — 范式 B 的另一种实现（对照）
 - [Virtualizing The Canvas (gedge.ca)](https://gedge.ca/blog/2024-11-03-virtualizing-the-canvas/) — virtual canvas 通用方法学
-- 现行实现：[`WaveformPeaksTileLayer.tsx`](../../apps/desktop/src/components/WaveformPeaksTileLayer.tsx)、[`desktop-waveform-engine.md`](../architecture/desktop-waveform-engine.md)
+- 历史实现（已删除）：`WaveformPeaksTileLayer`；现行见 [`desktop-waveform-engine.md`](../architecture/desktop-waveform-engine.md)

@@ -7,5 +7,9 @@
 | [0001](./0001-independent-repo-default-sqlite-python-asr.md) | 独立仓库、默认 SQLite、ASR 独立 Python 进程 |
 | [0002](./0002-local-collab-dual-source-review-mode.md) | 本地独立与联机协作双轨、项目来源与工作模式分离 |
 | [0003](./0003-asr-engine-funasr-first-sherpa-spike-gate.md) | ASR 引擎：方案 A（FunASR + LRC 先行，Sherpa Spike 门控） |
+| [0004](./0004-waveform-peaks-content-tile-renderer.md) | ~~桌面端波形 content-tile canvas peaks~~ **superseded** → [`desktop-waveform-engine.md`](../architecture/desktop-waveform-engine.md) |
+| [0005](./0005-waveform-single-scroll-authority.md) | ~~tier scroll + layout/draw 双轨~~ **superseded** → 同上 |
 
 与 Jieyu 对齐的跨仓规范仍以 sibling 文档为准；见 [`../architecture/README.md`](../architecture/README.md)。
+
+波形历史规格归档：[`execution/specs/archive/waveform-pre-ws-only-2026-05/`](../execution/specs/archive/waveform-pre-ws-only-2026-05/README.md)。

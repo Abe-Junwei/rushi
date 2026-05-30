@@ -11,7 +11,7 @@ cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml waveform_peaks
 
 | # | 操作 | 预期 |
 |---|------|------|
-| 1 | 打开含 peaks 的音频，拖动缩放滑块 | 流畅；peaks 路径下 **`ws.zoom` 不被调用**（DevTools / 单测） |
+| 1 | 打开含 peaks 的音频，拖动缩放滑块 | 流畅；**peaks 路径**下 `ws.zoom` 不被调用；**decode 回退**路径拖动时会调用 `ws.zoom(layoutPxPerSec)` |
 | 2 | 同一 px/s 反复 fit 全段 / 重置 | 第二次 resample 卡顿减轻（memo） |
 
 ## P3 新增手测

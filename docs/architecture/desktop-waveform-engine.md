@@ -27,16 +27,25 @@
 [`useWaveformViewportController`](../../apps/desktop/src/hooks/useWaveformViewportController.ts) 为**单一 resize 入口**：
 
 - 一个 `ResizeObserver`（tier + WS container）+ `window.resize`，**microtask** coalesce（同帧合并，避免 rAF 晚一帧）。
+- **视口宽真源**为 tier `clientWidth`（非 WS canvas 宽；默认 56 px/s 时 canvas 宽 >> 视口，全屏须仍能检测 tier 变宽）。
 - **fit-all refit**（视口变宽、整段可见 stale）：stretch-hold **先于** sticky/timeline 宽度写入，再 `ws.zoom` + imperative shell 宽度；React `pxPerSec` 同步更新；`refreshTierScrollLayout` 在 transaction 末尾。
 - **非 refit resize**：stretch → 写宽度 → `reRender()`；`redrawcomplete` 清除 stretch。
-- resize 后调用 `onAfterViewportResizeRef` → `useTierScrollSync.refreshTierScrollLayout`（**不再**在 tier sync 内挂独立 RO）。
-- **时长变化** overflow refit：`useWaveformTimelineController` layout effect 仅调 `wf.refitFitAllIfNeeded()` + renderCap clamp。
+- resize 后调用 `onAfterViewportResizeRef` → `useTierScrollSync.refreshTierScrollLayout`（tier metrics 由 scroll/window + refresh 驱动，**无** tier RO）。
+- **时长变化** overflow refit：`useWaveformTimelineController` layout effect 调 `wf.refitFitAllIfNeeded()` + renderCap clamp。
 
 ### Shell 宽度真源（P0 阶段 2）
 
-- [`writeWaveformShellLayout`](../../apps/desktop/src/utils/waveformViewportStretch.ts) 在 viewport transaction 与 timeline controller `useLayoutEffect` 中 **imperative** 写入 timeline / stage / sticky 宽。
-- [`EditorWaveformPane`](../../apps/desktop/src/components/editor/EditorWaveformPane.tsx) 不再用 React `timelineWidthPx` 写 shell `width`（避免 commit 晚一帧覆盖）。
-- overlay / ruler 仍读 React `timelineWidthPx`（zoom 时更新）；shell DOM 宽以 imperative 为准。
+- [`writeWaveformShellLayout`](../../apps/desktop/src/utils/waveformViewportStretch.ts) 为**唯一写函数**；两路触发：
+  - **视口 resize** → `useWaveformViewportController.runViewportTransaction`
+  - **zoom / timelineWidthPx 变化** → `syncShellLayoutForZoom()`（timeline controller layout effect）
+- [`EditorWaveformPane`](../../apps/desktop/src/components/editor/EditorWaveformPane.tsx) 不再用 React `timelineWidthPx` 写 shell `width`。
+- overlay / ruler 读 React `timelineWidthPx`；shell DOM 宽以 imperative 为准。
+
+### 视口宽 / 时长读取
+
+- **视口宽**：[`resolveTierViewportWidthPx`](../../apps/desktop/src/utils/waveformViewport.ts)（live ref / tier DOM / committed layout 取 max）；`EditorWaveformPane`、timeline controller、embedded ruler 统一调用。
+- **布局时长**：[`resolveLayoutDurationSec`](../../apps/desktop/src/utils/waveformTimelineMetrics.ts)（synced ref → prop → merged WS/peaks）；seek / peaks load / mount 禁止自建 `getDuration()` fallback 链。
+- **layout refs**（`durationRef` / `timelineWidthPxRef` / `pxPerSecRef`）在 timeline controller **`useLayoutEffect`** 写入，不在 render body。
 
 ### Zoom sync（P1）
 
@@ -86,10 +95,11 @@
   - **同档内**仅 `ws.zoom(pxPerSec)`，不重复 `ws.load`；
   - **跨档**时 `ws.load(url, peaks, layoutDuration)`，完成后 `ws.zoom` 对齐当前 px/s；
   - **viewport resize 期间**（`viewportResizeHoldRef`）：仅同步 `ws.zoom` + shell layout；**推迟** `ws.load` 至 transaction 结束（`flushDeferredPeaksLoad`）；
-  - **整段可见 sub-min**（px/s &lt; 16，典型 4h+ 长音频）：视口 refit / 全屏仅 `ws.zoom`；decode 阶段也不因 refit 重启 `ws.load`；
+- **整段可见 sub-min**（px/s &lt; 16）：视口 refit / 全屏在 **peaks 已注入后** 仅 `ws.zoom`；decode 阶段首次 fit-all **必须** `ws.load` 一次（不可因 px/s 变化而永久跳过）。
+- **视口宽读取**：生产代码统一经 [`resolveTierViewportWidthPx`](../../apps/desktop/src/utils/waveformViewport.ts)（live ref / tier DOM / committed layout 取 max）；fit-all refit 仅认 `layoutIntent === 'fit-all'` 或 `staleFitAllOnViewportGrow + wasFitAll…`，**不**因手动 zoom 落在 fit-all 55% 带而静默 snap。
 - **无 PeakCache**：持续 decode 路径，仅 `ws.zoom(pxPerSec)`；`peaksUnavailable` 时不再后台重试（需手动清缓存）。
 - `PeakCache.getWaveSurferPeaks` 返回的 `duration` 与 layout `mediaDurationSec` 一致。
-- **阶段状态**（`resolveWaveformPeaksPhase`）：`idle` → `generating`/`decode` → `peaks_pending`（播放中待切换）→ `peaks`；失败为 `unavailable`。
+- **阶段状态**（`resolveWaveformPeaksPhase`）：`peaksApplied` **先于** `peaksUnavailable` 判定（避免 peaks 已注入仍显示不可用）；`idle` → `generating`/`decode` → `peaks_pending`（播放中待切换）→ `peaks`；失败为 `unavailable`。
 - UI 角标：顶栏 `waveform-header-bar` 左播放时间、右渲染状态（`resolveWaveformHeaderStatusLabel`）；生成中居中（`resolveWaveformCenterStatusLabel`）。
 
 ## Peaks 数据层
