@@ -1,0 +1,54 @@
+import type { WaveformPeaksPhase } from "./waveformPeaksPhase";
+
+type StatusInput = {
+  phase: WaveformPeaksPhase;
+  backgroundPeaksEnabled: boolean;
+  mountDeferTimedOut: boolean;
+  waveformReady: boolean;
+};
+
+/** Steady-state label for wave-hd (top-right). */
+export function resolveWaveformHeaderStatusLabel(input: StatusInput): string | null {
+  const { phase, backgroundPeaksEnabled, waveformReady } = input;
+
+  switch (phase) {
+    case "peaks":
+      return waveformReady ? "波形就绪" : null;
+    case "peaks_pending":
+      return "暂停后将优化波形";
+    case "decode":
+      if (!waveformReady) return null;
+      if (!backgroundPeaksEnabled) return "波形就绪";
+      return "正在优化波形…";
+    case "unavailable":
+      return waveformReady ? "波形就绪" : null;
+    default:
+      return null;
+  }
+}
+
+/** Active loading label — centered in the waveform viewport. */
+export function resolveWaveformCenterStatusLabel(input: StatusInput): string | null {
+  const { phase, backgroundPeaksEnabled, mountDeferTimedOut, waveformReady } = input;
+
+  switch (phase) {
+    case "generating":
+      if (!backgroundPeaksEnabled) return null;
+      if (mountDeferTimedOut && !waveformReady) return "正在加载波形…";
+      return "正在生成波形…";
+    case "decode":
+      if (waveformReady) return null;
+      return "正在加载波形…";
+    case "unavailable":
+      return waveformReady ? null : "正在加载波形…";
+    default:
+      return null;
+  }
+}
+
+/** @deprecated Use resolveWaveformHeaderStatusLabel / resolveWaveformCenterStatusLabel */
+export function resolveWaveformRenderStatusLabel(input: StatusInput): string | null {
+  return (
+    resolveWaveformCenterStatusLabel(input) ?? resolveWaveformHeaderStatusLabel(input)
+  );
+}

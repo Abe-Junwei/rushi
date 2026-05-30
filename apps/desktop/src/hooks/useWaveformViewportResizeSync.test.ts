@@ -230,4 +230,68 @@ describe("useWaveformViewportResizeSync", () => {
     expect(peaksStageShell.style.width).not.toBe("");
     expect(args.reRender).not.toHaveBeenCalled();
   });
+
+  it("refits short-audio fit-all on fullscreen grow with matching timeline shell width", async () => {
+    const args = createSyncArgs(800);
+    const durationSec = 13 * 60 + 18;
+    const appliedZoomPxPerSecRef = { current: 800 / durationSec };
+    const onFitAllPxPerSecRefit = vi.fn();
+    const refitFitAllPxPerSec = vi.fn((vw: number) => vw / durationSec);
+    const timelineShell = document.createElement("div");
+    const peaksStageShell = document.createElement("div");
+    const layoutDurationSecRef = { current: durationSec };
+    const layoutTimelineWidthPxRef = { current: 800 };
+
+    const fireRo = mountWithRo(args, {
+      refitFitAllPxPerSec,
+      appliedZoomPxPerSecRef,
+      onFitAllPxPerSecRefit,
+      layoutDurationSecRef,
+      layoutTimelineWidthPxRef,
+      timelineShellRef: { current: timelineShell },
+      peaksStageShellRef: { current: peaksStageShell },
+    });
+
+    await triggerViewportGrow(args, fireRo, 1600);
+    await flushLayout();
+
+    const expectedPx = 1600 / durationSec;
+    expect(refitFitAllPxPerSec).toHaveBeenCalledWith(1600);
+    expect(onFitAllPxPerSecRefit).toHaveBeenCalledWith(expectedPx);
+    expect(timelineShell.style.width).toBe(`${Math.ceil(durationSec * expectedPx)}px`);
+    expect(peaksStageShell.style.width).toBe("1600px");
+  });
+
+  it("default zoom: tier grow still re-renders when WS container width is unchanged", async () => {
+    const args = createSyncArgs(800);
+    const timelineCanvasWidth = 44_688;
+    Object.defineProperty(args.containerRef.current!, "clientWidth", {
+      configurable: true,
+      value: timelineCanvasWidth,
+    });
+    Object.defineProperty(args.containerRef.current!, "offsetWidth", {
+      configurable: true,
+      value: timelineCanvasWidth,
+    });
+    const appliedZoomPxPerSecRef = { current: 56 };
+    const layoutDurationSecRef = { current: 798 };
+    const layoutTimelineWidthPxRef = { current: timelineCanvasWidth };
+    const stickyShell = args.stickyShellRef.current!;
+
+    const fireRo = mountWithRo(args, {
+      appliedZoomPxPerSecRef,
+      layoutDurationSecRef,
+      layoutTimelineWidthPxRef,
+      stickyShellRef: args.stickyShellRef,
+    });
+
+    await triggerViewportGrow(args, fireRo, 1600);
+    await flushLayout();
+
+    expect(args.reRender).toHaveBeenCalledTimes(1);
+    expect(stickyShell.style.width).toBe("1600px");
+    expect(args.tierScrollRef.current!.style.getPropertyValue(WAVEFORM_TIER_VIEWPORT_WIDTH_VAR)).toBe(
+      "1600px",
+    );
+  });
 });

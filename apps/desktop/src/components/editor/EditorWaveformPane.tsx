@@ -9,7 +9,7 @@ import { WaveformSegmentOverlay } from "../WaveformSegmentOverlay";
 import { WaveformZoomBar } from "../WaveformZoomBar";
 import { WaveformMinimapStrip } from "../WaveformMinimapStrip";
 import { resolveWaveformCenterStatusLabel, resolveWaveformHeaderStatusLabel } from "../../services/waveform/waveformRenderStatus";
-import { tierViewportWidthStyle } from "../../utils/waveformViewport";
+import { resolveTierViewportWidthPx, tierViewportWidthStyle } from "../../utils/waveformViewport";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
 
@@ -24,10 +24,14 @@ export function EditorWaveformPane({
 }: EditorWaveformPaneProps) {
   const selectedSegment = c.segments[c.selectedIdx] ?? null;
   const scrollLeftPx = tx.tierScrollLayout.scrollLeftPx;
-  const clientWidthPx = tx.tierScrollLayout.clientWidthPx;
-  const liveViewportWidthPx = Math.max(
+  const layoutViewportWidthPx = tx.tierScrollLayout.clientWidthPx;
+  const viewportWidthPx = Math.max(
     1,
-    tx.tierScrollLive.clientWidthRef.current || clientWidthPx,
+    resolveTierViewportWidthPx({
+      tierScrollEl: tx.tierScrollRef.current,
+      layoutClientWidthPx: layoutViewportWidthPx,
+      liveClientWidthPx: tx.tierScrollLive.clientWidthRef.current,
+    }),
   );
 
   const waveformStageHeightPx = tx.waveformStageHeightPx;
@@ -86,7 +90,7 @@ export function EditorWaveformPane({
           durationSec={tx.duration}
           timelineWidthPx={tx.timelineWidthPx}
           scrollLeftPx={scrollLeftPx}
-          viewportWidthPx={clientWidthPx}
+          viewportWidthPx={viewportWidthPx}
           pxPerSec={tx.pxPerSec}
           peakCache={tx.peakCache}
           isReady={tx.isReady}
@@ -153,7 +157,7 @@ export function EditorWaveformPane({
                     <div
                       ref={tx.waveformStickyShellRef}
                       className="sticky left-0 top-0 z-[1] overflow-hidden bg-transparent"
-                      style={{ ...tierViewportWidthStyle(liveViewportWidthPx), height: peaksPaneHeightPx }}
+                      style={{ ...tierViewportWidthStyle(viewportWidthPx), height: peaksPaneHeightPx }}
                     >
                       <div
                         className={waveformVerticalClass}
@@ -180,7 +184,7 @@ export function EditorWaveformPane({
                       <WaveformSegmentOverlay
                         disabled={stripDisabled} segments={c.segments} selectedIdx={c.selectedIdx}
                         timelineWidthPx={tx.timelineWidthPx} durationSec={tx.duration} layoutHeightPx={peaksPaintedHeightPx}
-                        scrollLeftPx={scrollLeftPx} viewportWidthPx={clientWidthPx}
+                        scrollLeftPx={scrollLeftPx} viewportWidthPx={viewportWidthPx}
                         laneByIndex={tx.segmentLaneLayout.laneByIndex} laneCount={tx.segmentLaneLayout.laneCount}
                         enableCreateRange clientXToTimeSec={tx.clientXToTimeSec}
                         onSelectSegmentAt={(idx) => tx.selectSegmentAt(idx, "waveform")}
@@ -198,7 +202,7 @@ export function EditorWaveformPane({
                         timelineWidthPx={tx.timelineWidthPx}
                         durationSec={tx.duration}
                         scrollLeftPx={scrollLeftPx}
-                        viewportWidthPx={clientWidthPx}
+                        viewportWidthPx={viewportWidthPx}
                         tierScrollRef={tx.tierScrollRef}
                         selectedSegment={selectedSegment}
                         segmentPlaybackRate={tx.segmentPlaybackRate}
@@ -222,7 +226,7 @@ export function EditorWaveformPane({
             durationSec={tx.duration}
             timelineWidthPx={tx.timelineWidthPx}
             scrollLeftPx={scrollLeftPx}
-            viewportWidthPx={clientWidthPx}
+            viewportWidthPx={viewportWidthPx}
             pxPerSec={tx.pxPerSec}
             tierScrollRef={tx.tierScrollRef}
             tierScrollLive={tx.tierScrollLive}
@@ -276,12 +280,12 @@ export function EditorWaveformPane({
           isReady={tx.isReady}
           pxPerSec={tx.pxPerSec}
           layoutIntent={tx.layoutIntent}
-          viewportWidthPx={clientWidthPx}
+          viewportWidthPx={viewportWidthPx}
           durationSec={tx.duration}
           selectedStartSec={selectedSegment?.start_sec} selectedEndSec={selectedSegment?.end_sec}
           onFitSelection={tx.zoomToFitSelection}
           onFitAll={tx.zoomToFitAll}
-          onResetDefaultZoom={() => tx.resetZoomForMedia(clientWidthPx, tx.duration)}
+          onResetDefaultZoom={() => tx.resetZoomForMedia(viewportWidthPx, tx.duration)}
           onPxPerSecChange={tx.setPxPerSecFromSlider}
           editorHint={tx.editorHint}
         />

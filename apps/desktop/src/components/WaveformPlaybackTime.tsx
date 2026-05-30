@@ -2,6 +2,7 @@ import { memo } from "react";
 import { useWaveformLiveClock } from "../hooks/useWaveformLiveClock";
 
 type WaveformPlaybackTimeProps = {
+  className?: string;
   isPlaying: boolean;
   isReady: boolean;
   durationSec: number;
@@ -10,6 +11,7 @@ type WaveformPlaybackTimeProps = {
 };
 
 export const WaveformPlaybackTime = memo(function WaveformPlaybackTime({
+  className,
   isPlaying,
   isReady,
   durationSec,
@@ -25,7 +27,7 @@ export const WaveformPlaybackTime = memo(function WaveformPlaybackTime({
   });
 
   return (
-    <span className="waveform-playback-time" aria-live="polite">
+    <span className={className ? `${className} waveform-playback-time` : "waveform-playback-time"} aria-live="polite">
       {displayTimeLabel} / {durationLabel}
     </span>
   );

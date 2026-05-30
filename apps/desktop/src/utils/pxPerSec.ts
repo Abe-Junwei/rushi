@@ -243,14 +243,12 @@ export function shouldZoomOnlyForSubMinFitAllRefit(input: {
   requestedPeaksPxPerSec: number;
   loadedPeaksPxPerSec: number;
   peaksLoadedIntoWaveSurfer: boolean;
-  pxPerSecChanged: boolean;
   peaksLoadInFlight: boolean;
 }): boolean {
   const {
     requestedPeaksPxPerSec,
     loadedPeaksPxPerSec,
     peaksLoadedIntoWaveSurfer,
-    pxPerSecChanged,
     peaksLoadInFlight,
   } = input;
   if (requestedPeaksPxPerSec >= PX_PER_SEC_MIN) return false;
@@ -261,8 +259,6 @@ export function shouldZoomOnlyForSubMinFitAllRefit(input: {
   ) {
     return true;
   }
-  // Decode path ("正在优化波形…"): viewport refit must not restart a multi-second ws.load.
-  if (!peaksLoadedIntoWaveSurfer && pxPerSecChanged) return true;
   return false;
 }
 

@@ -197,17 +197,17 @@ describe("useWaveformZoomSync", () => {
     expect(ws.setTime).toHaveBeenCalledWith(42);
   });
 
-  it("skips ws.load on sub-min viewport refit while decode is visible", async () => {
+  it("sub-min viewport refit before peaks applied still allows ws.load", async () => {
     const ws = makeWs();
     const wsRef = { current: ws as never };
     const appliedZoomPxPerSecRef = { current: 0.083 };
     const appliedPeaksRef = { current: false };
     const appliedPeaksLoadPxPerSecRef = { current: Number.NaN };
     const peakCache = {
-      getWaveSurferPeaksAsync: vi.fn().mockResolvedValue({ peaks: [[0, 1]], duration: 14429 }),
+      getWaveSurferPeaksAsync: vi.fn().mockResolvedValue({ peaks: [[0, 1]], duration: 1249 }),
     };
     const peakCacheRef = { current: peakCache as never };
-    const layoutDurationSecRef = { current: 14429 };
+    const layoutDurationSecRef = { current: 1249 };
 
     const { rerender } = renderHook(
       (props: { minPxPerSec: number }) =>
@@ -225,18 +225,58 @@ describe("useWaveformZoomSync", () => {
       { initialProps: { minPxPerSec: 0.083 } },
     );
 
-    await flushRaf();
     await Promise.resolve();
 
     ws.load.mockClear();
     peakCache.getWaveSurferPeaksAsync.mockClear();
 
     rerender({ minPxPerSec: 0.133 });
-    await flushRaf();
     await Promise.resolve();
 
-    expect(ws.load).not.toHaveBeenCalled();
-    expect(peakCache.getWaveSurferPeaksAsync).not.toHaveBeenCalled();
+    expect(peakCache.getWaveSurferPeaksAsync).toHaveBeenCalledWith(0.133, 1249);
+    expect(ws.load).toHaveBeenCalled();
+  });
+
+  it("loads peaks when entering sub-min fit-all from manual zoom on decode", async () => {
+    const ws = makeWs();
+    const wsRef = { current: ws as never };
+    const appliedZoomPxPerSecRef = { current: 56 };
+    const appliedPeaksRef = { current: false };
+    const appliedPeaksLoadPxPerSecRef = { current: Number.NaN };
+    const peakCache = {
+      getWaveSurferPeaksAsync: vi.fn().mockResolvedValue({ peaks: [[0, 1]], duration: 1249 }),
+    };
+    const peakCacheRef = { current: peakCache as never };
+    const layoutDurationSecRef = { current: 1249 };
+
+    const { rerender } = renderHook(
+      (props: { minPxPerSec: number }) =>
+        useWaveformZoomSync({
+          ...zoomSyncBase,
+          wsRef,
+          minPxPerSec: props.minPxPerSec,
+          appliedZoomPxPerSecRef,
+          appliedPeaksRef,
+          appliedPeaksLoadPxPerSecRef,
+          peakCache: peakCache as never,
+          peakCacheRef,
+          layoutDurationSecRef,
+        }),
+      { initialProps: { minPxPerSec: 56 } },
+    );
+
+    await Promise.resolve();
+
+    ws.load.mockClear();
+    peakCache.getWaveSurferPeaksAsync.mockClear();
+
+    rerender({ minPxPerSec: 0.96 });
+    await Promise.resolve();
+    await Promise.resolve();
+
+    expect(peakCache.getWaveSurferPeaksAsync).toHaveBeenCalledWith(0.96, 1249);
+    expect(ws.load).toHaveBeenCalled();
+    expect(ws.zoom).toHaveBeenCalledWith(0.96);
   });
 
   it("zooms only within sub-min fit-all without ws.load (viewport refit)", async () => {

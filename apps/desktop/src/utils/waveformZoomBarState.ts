@@ -7,7 +7,6 @@ import {
   isFitAllTimelineFilledInViewport,
   isTimelineFitInViewport,
   PX_PER_SEC_MAX,
-  PX_PER_SEC_MIN,
   PX_PER_SEC_PEAKS_QUANTUM,
   TIMELINE_PX_PER_SEC,
   type WaveformZoomLayoutIntent,
@@ -90,14 +89,6 @@ export function resolveFitAllPxPerSecAdjustment(
       durationSec,
       pxPerSec: currentPxPerSec,
     })
-  ) {
-    return fitAll;
-  }
-
-  if (
-    currentPxPerSec >= PX_PER_SEC_MIN - tol &&
-    currentPxPerSec < fitAll - tol &&
-    currentPxPerSec >= fitAll * 0.55
   ) {
     return fitAll;
   }

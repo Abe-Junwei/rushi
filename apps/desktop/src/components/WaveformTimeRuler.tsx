@@ -1,17 +1,38 @@
-import { memo, useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { memo, useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import {
+  buildVisibleRulerTicks,
+  computeEmbeddedRulerLabelStride,
+  findHighlightedRulerMajorTickTime,
+} from "../services/waveform/waveformRulerTicks";
+import { resolveTierViewportWidthPx } from "../utils/waveformViewport";
+import {
+  effectiveTimelinePxPerSec,
+  playheadViewportLeftPx,
+  timeToTimelinePx,
+  visibleTimeWindowFromScroll,
+} from "../utils/waveformProjection";
+import { WaveformTimeRulerTickLayer } from "./WaveformTimeRulerTickLayer";
 
 export type WaveformTimeRulerProps = {
   durationSec: number;
   timelineWidthPx: number;
   scrollLeftPx: number;
   viewportWidthPx: number;
+  /** Retained for API compat; tick density uses effectiveTimelinePxPerSec. */
   pxPerSec: number;
-  rulerView?: { start: number; end: number } | null;
   currentTimeSec: number;
   formatMediaTime: (sec: number) => string;
   disabled?: boolean;
   /** ink：深色条上（默认）；light：浅色独立条；embedded：嵌入波形底部 */
   appearance?: "ink" | "light" | "embedded";
+  /** timeline：随宽内容滚动；viewport：sticky 视口宽标尺（embedded 推荐） */
+  coordinateSpace?: "timeline" | "viewport";
+  /** Live tier scroll refs — embedded viewport mode reads DOM scroll synchronously. */
+  tierScrollLive?: {
+    scrollLeftRef: React.RefObject<number>;
+    clientWidthRef: React.RefObject<number>;
+  };
+  tierScrollRef?: React.RefObject<HTMLElement | null>;
   /** 点击时间尺（相对 tier 视口）寻位 */
   onSeekFromTierClientX: (clientX: number) => void;
   onSetScrollLeftPx: (px: number) => void;
@@ -20,88 +41,109 @@ export type WaveformTimeRulerProps = {
   hidePlayheadReact?: boolean;
 };
 
-const NICE_STEPS = [0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600];
-const SUB_DIVS = [10, 5, 4, 2, 1];
-const RULER_H = 22;
-
-function pickSteps(pxPerSec: number) {
-  const approx = Math.max(pxPerSec, 1e-6);
-  const majorStep = NICE_STEPS.find((s) => s * approx >= 120) ?? NICE_STEPS[NICE_STEPS.length - 1];
-  const subDiv = SUB_DIVS.find((d) => (majorStep / d) * approx >= 28) ?? 1;
-  const minorStep = majorStep / subDiv;
-  return { majorStep, minorStep };
-}
+export const WAVEFORM_EMBEDDED_TIME_RULER_H_PX = 22;
+const RULER_H = WAVEFORM_EMBEDDED_TIME_RULER_H_PX;
 
 export const WaveformTimeRuler = memo(function WaveformTimeRuler({
   durationSec,
   timelineWidthPx,
   scrollLeftPx,
   viewportWidthPx,
-  pxPerSec,
-  rulerView,
+  pxPerSec: _pxPerSec,
   currentTimeSec,
   formatMediaTime,
   disabled,
   onSeekFromTierClientX,
   onSetScrollLeftPx,
   appearance = "ink",
+  coordinateSpace = "timeline",
+  tierScrollLive,
+  tierScrollRef,
   playheadLineRef,
   hidePlayheadReact = false,
 }: WaveformTimeRulerProps) {
   const ink = appearance === "ink";
   const embedded = appearance === "embedded";
+  const viewportSpace = coordinateSpace === "viewport";
+  const [, bumpScrollFrame] = useReducer((n: number) => n + 1, 0);
+
+  useEffect(() => {
+    if (!viewportSpace) return;
+    const scrollEl = tierScrollRef?.current;
+    if (!scrollEl) return;
+    let raf = 0;
+    const scheduleBump = () => {
+      if (raf) return;
+      raf = requestAnimationFrame(() => {
+        raf = 0;
+        bumpScrollFrame();
+      });
+    };
+    scrollEl.addEventListener("scroll", scheduleBump, { passive: true });
+    window.addEventListener("resize", scheduleBump);
+    return () => {
+      scrollEl.removeEventListener("scroll", scheduleBump);
+      window.removeEventListener("resize", scheduleBump);
+      if (raf) cancelAnimationFrame(raf);
+    };
+  }, [tierScrollRef, viewportSpace]);
+
+  const liveScrollLeftPx =
+    viewportSpace && tierScrollLive ? tierScrollLive.scrollLeftRef.current : scrollLeftPx;
+  const liveViewportWidthPx =
+    viewportSpace && tierScrollLive
+      ? Math.max(
+          1,
+          resolveTierViewportWidthPx({
+            tierScrollEl: tierScrollRef?.current ?? null,
+            layoutClientWidthPx: viewportWidthPx,
+            liveClientWidthPx: tierScrollLive.clientWidthRef.current,
+          }),
+        )
+      : viewportWidthPx;
+
+  const renderWidthPx = viewportSpace ? Math.max(1, liveViewportWidthPx) : timelineWidthPx;
   const rulerDragRef = useRef({ dragging: false, startX: 0, startScroll: 0 });
-  const scrollLeftPxRef = useRef(scrollLeftPx);
-  scrollLeftPxRef.current = scrollLeftPx;
+  const scrollLeftPxRef = useRef(liveScrollLeftPx);
+  scrollLeftPxRef.current = liveScrollLeftPx;
   const prevCurrentTimeRef = useRef<number | null>(null);
   const interactionFadeTimeoutRef = useRef<number | null>(null);
   const [interactionActive, setInteractionActive] = useState(false);
-  const visibleView = useMemo(() => {
-    const derivedStart = Math.max(0, scrollLeftPx / Math.max(pxPerSec, 1e-6));
-    const derivedEnd = Math.min(
-      Math.max(durationSec, 0),
-      Math.max(derivedStart, (scrollLeftPx + Math.max(viewportWidthPx, 1)) / Math.max(pxPerSec, 1e-6)),
-    );
-    return rulerView ?? { start: derivedStart, end: derivedEnd };
-  }, [durationSec, pxPerSec, rulerView, scrollLeftPx, viewportWidthPx]);
+  const visibleView = useMemo(
+    () =>
+      visibleTimeWindowFromScroll({
+        scrollLeftPx: liveScrollLeftPx,
+        viewportWidthPx: liveViewportWidthPx,
+        timelineWidthPx,
+        durationSec,
+      }),
+    [durationSec, liveScrollLeftPx, liveViewportWidthPx, timelineWidthPx],
+  );
 
-  const { ticks, majorStep } = useMemo(() => {
-    const { majorStep: maj, minorStep: min } = pickSteps(pxPerSec);
-    const dur = Math.max(durationSec, 0);
-    const list: Array<{ t: number; major: boolean }> = [];
-    const viewStart = Math.max(0, visibleView.start - min * 2);
-    const viewEnd = Math.min(dur, visibleView.end + min * 2);
-    const t0 = Math.max(0, Math.floor(viewStart / min) * min);
-    for (let t = t0; t <= viewEnd + 1e-9; t += min) {
-      const rounded = Math.round(t * 1e6) / 1e6;
-      if (rounded > viewEnd) break;
-      const ratio = rounded / maj;
-      const major = Math.abs(ratio - Math.round(ratio)) < 1e-6;
-      list.push({ t: rounded, major });
-    }
-    return { ticks: list, majorStep: maj };
-  }, [durationSec, pxPerSec, visibleView]);
+  const tickPxPerSec = useMemo(
+    () => effectiveTimelinePxPerSec(timelineWidthPx, durationSec),
+    [durationSec, timelineWidthPx],
+  );
+
+  const { ticks, majorStep } = useMemo(
+    () =>
+      buildVisibleRulerTicks({
+        durationSec,
+        tickPxPerSec,
+        visibleStart: visibleView.start,
+        visibleEnd: visibleView.end,
+      }),
+    [durationSec, tickPxPerSec, visibleView.end, visibleView.start],
+  );
 
   const majorTicks = useMemo(() => ticks.filter((tick) => tick.major), [ticks]);
-  const embeddedLabelStride = useMemo(() => {
-    if (!embedded) return 1;
-    const majorStepPx = majorStep * pxPerSec;
-    if (majorStepPx < 88) return 3;
-    if (majorStepPx < 144) return 2;
-    return 1;
-  }, [embedded, majorStep, pxPerSec]);
+  const embeddedLabelStride = useMemo(
+    () => computeEmbeddedRulerLabelStride(embedded, majorStep, tickPxPerSec),
+    [embedded, majorStep, tickPxPerSec],
+  );
   const highlightedMajorTickTime = useMemo(() => {
-    if (!embedded || majorTicks.length === 0) return null;
-    let closest = majorTicks[0]?.t ?? null;
-    let minDistance = Number.POSITIVE_INFINITY;
-    for (const tick of majorTicks) {
-      const distance = Math.abs(tick.t - currentTimeSec);
-      if (distance < minDistance) {
-        minDistance = distance;
-        closest = tick.t;
-      }
-    }
-    return minDistance <= majorStep * 0.75 ? closest : null;
+    if (!embedded) return null;
+    return findHighlightedRulerMajorTickTime(majorTicks, currentTimeSec, majorStep);
   }, [currentTimeSec, embedded, majorStep, majorTicks]);
 
   useEffect(() => {
@@ -125,11 +167,28 @@ export const WaveformTimeRuler = memo(function WaveformTimeRuler({
     };
   }, [currentTimeSec, embedded]);
 
-  const playheadPct = useMemo(() => {
+  const timelineToDisplayPx = useCallback(
+    (timeSec: number) => {
+      const px = timeToTimelinePx(timeSec, timelineWidthPx, durationSec);
+      return viewportSpace ? px - Math.max(0, liveScrollLeftPx) : px;
+    },
+    [durationSec, liveScrollLeftPx, timelineWidthPx, viewportSpace],
+  );
+
+  const playheadLeft = useMemo(() => {
+    if (viewportSpace) {
+      const px = playheadViewportLeftPx(
+        currentTimeSec,
+        liveScrollLeftPx,
+        timelineWidthPx,
+        durationSec,
+      );
+      return `${px}px`;
+    }
     const dur = Math.max(durationSec, 1e-6);
     const p = (currentTimeSec / dur) * 100;
     return `${Math.max(-1, Math.min(101, p))}%`;
-  }, [currentTimeSec, durationSec]);
+  }, [currentTimeSec, durationSec, liveScrollLeftPx, timelineWidthPx, viewportSpace]);
 
   const onRulerPointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
@@ -180,95 +239,36 @@ export const WaveformTimeRuler = memo(function WaveformTimeRuler({
           ? "relative shrink-0 border-t border-zen-paper/10 bg-zen-ink/25"
           : "relative shrink-0 border-t border-zen-ink/10 bg-zen-paper"
       }
-      style={{ width: timelineWidthPx, height: RULER_H }}
+      style={{ width: renderWidthPx, height: RULER_H }}
     >
       {embedded ? (
         <div
           aria-hidden
-          className="pointer-events-none absolute inset-0 bg-gradient-to-t from-notion-sidebar/74 via-notion-sidebar/42 to-transparent"
+          className="pointer-events-none absolute inset-0 z-0 bg-gradient-to-t from-notion-sidebar/40 via-transparent to-transparent"
         />
       ) : null}
       <div
-        className={`relative h-[22px] cursor-grab select-none active:cursor-grabbing ${disabled ? "pointer-events-none opacity-50" : ""}`}
+        className={`relative z-[1] h-[22px] cursor-grab select-none active:cursor-grabbing ${disabled ? "pointer-events-none opacity-50" : ""}`}
         onPointerDown={onRulerPointerDown}
       >
-        <svg className="absolute inset-0 h-[22px] w-full overflow-visible" aria-hidden>
-          {ticks.map(({ t, major }) => {
-            const leftPct = (t / Math.max(durationSec, 1e-6)) * 100;
-            const isHighlightedMajor = embedded && major && highlightedMajorTickTime != null && Math.abs(t - highlightedMajorTickTime) < 1e-6;
-            return (
-              <g key={`tk-${t}`}>
-                <line
-                  x1={`${leftPct}%`}
-                  x2={`${leftPct}%`}
-                  y1={0}
-                  y2={embedded ? (major ? 7 : 3) : major ? 8 : 4}
-                  className={
-                    embedded
-                      ? interactionActive && isHighlightedMajor
-                        ? "stroke-notion-bg/58"
-                        : major
-                        ? "stroke-notion-bg/34"
-                        : "stroke-notion-bg/16"
-                      : ink
-                      ? major
-                        ? "stroke-notion-bg/55"
-                        : "stroke-notion-bg/30"
-                      : major
-                        ? "stroke-zen-ink/45"
-                        : "stroke-zen-ink/22"
-                  }
-                  strokeWidth={1}
-                  vectorEffect="non-scaling-stroke"
-                />
-              </g>
-            );
-          })}
-          <line
-            ref={playheadLineRef}
-            x1={hidePlayheadReact ? "-1%" : playheadPct}
-            x2={hidePlayheadReact ? "-1%" : playheadPct}
-            y1={-2}
-            y2={RULER_H}
-            className={
-              hidePlayheadReact
-                ? "stroke-zen-saffron/58"
-                : embedded
-                ? interactionActive
-                  ? "stroke-zen-saffron/86"
-                  : "stroke-zen-saffron/58"
-                : ink
-                  ? "stroke-zen-saffron/90"
-                  : "stroke-zen-ink"
-            }
-            strokeWidth={1}
-            vectorEffect="non-scaling-stroke"
-          />
-        </svg>
-        <div className="pointer-events-none absolute inset-0 h-[22px]">
-          {majorTicks.filter((_, index) => index % embeddedLabelStride === 0).map(({ t }) => {
-            const leftPct = (t / Math.max(durationSec, 1e-6)) * 100;
-            const isHighlightedMajor =
-              embedded && highlightedMajorTickTime != null && Math.abs(t - highlightedMajorTickTime) < 1e-6;
-            return (
-              <span
-                key={`lb-${t}`}
-                className={`absolute top-[8px] text-[11px] tabular-nums ${
-                  embedded
-                    ? interactionActive && isHighlightedMajor
-                      ? "text-notion-bg/74"
-                      : "text-notion-bg/36"
-                    : ink
-                      ? "text-notion-bg/60"
-                      : "text-zen-ink/55"
-                }`}
-                style={{ left: `${leftPct}%`, transform: "translateX(2px)" }}
-              >
-                {formatMediaTime(t)}
-              </span>
-            );
-          })}
-        </div>
+        <WaveformTimeRulerTickLayer
+          ticks={ticks}
+          majorTicks={majorTicks}
+          embeddedLabelStride={embeddedLabelStride}
+          viewportSpace={viewportSpace}
+          renderWidthPx={renderWidthPx}
+          durationSec={durationSec}
+          embedded={embedded}
+          ink={ink}
+          interactionActive={interactionActive}
+          highlightedMajorTickTime={highlightedMajorTickTime}
+          timelineToDisplayPx={timelineToDisplayPx}
+          formatMediaTime={formatMediaTime}
+          playheadLineRef={playheadLineRef}
+          hidePlayheadReact={hidePlayheadReact}
+          playheadLeft={playheadLeft}
+          rulerHeightPx={RULER_H}
+        />
       </div>
     </div>
   );

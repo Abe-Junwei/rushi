@@ -1,13 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
 const resampleMock = vi.fn((data: unknown) => data);
-const resampleToWidthMock = vi.fn((data: unknown) => data);
 const toPeaksMock = vi.fn((_data?: unknown) => [[0, 0.5, -0.1, 0.2]]);
 
 vi.mock("./audiowaveformDat", () => ({
   loadWaveformDatFromUrl: vi.fn(() => Promise.resolve({ sample_rate: 44100 })),
   resampleWaveformForPxPerSec: (data: unknown) => resampleMock(data),
-  resampleWaveformToWidth: (data: unknown, _w: number) => resampleToWidthMock(data),
   waveformDataToWaveSurferPeaks: (data: unknown) => toPeaksMock(data),
   waveformDurationSec: () => 600,
 }));
@@ -19,6 +17,19 @@ describe("PeakCache", () => {
     resampleMock.mockClear();
     toPeaksMock.mockClear();
     resampleMock.mockImplementation((d) => d);
+  });
+
+  it("returns distinct instances per fromLevelUrls call", async () => {
+    const cacheA = await PeakCache.fromLevelUrls([
+      { level: 1, pixelsPerSecond: 20, url: "asset://a.dat" },
+    ]);
+    const cacheB = await PeakCache.fromLevelUrls([
+      { level: 1, pixelsPerSecond: 20, url: "asset://b.dat" },
+    ]);
+    expect(cacheA).not.toBeNull();
+    expect(cacheB).not.toBeNull();
+    if (!cacheA || !cacheB) return;
+    expect(cacheA).not.toBe(cacheB);
   });
 
   it("memoizes resample results per pxPerSec", async () => {
@@ -37,6 +48,17 @@ describe("PeakCache", () => {
     expect(resampleMock).toHaveBeenCalledTimes(2);
   });
 
+  it("uses layout duration in the returned bundle", async () => {
+    const cache = await PeakCache.fromLevelUrls([
+      { level: 1, pixelsPerSecond: 20, url: "asset://x.dat" },
+    ]);
+    expect(cache).not.toBeNull();
+    if (!cache) return;
+
+    const bundle = cache.getWaveSurferPeaks(56, 610);
+    expect(bundle.duration).toBe(610);
+  });
+
   it("evicts oldest resample entries beyond LRU cap", async () => {
     const cache = await PeakCache.fromLevelUrls([
       { level: 0, pixelsPerSecond: 2, url: "asset://l0.dat" },
@@ -44,17 +66,17 @@ describe("PeakCache", () => {
     expect(cache).not.toBeNull();
     if (!cache) return;
 
-    for (let px = 1; px <= 10; px += 1) {
+    for (let px = 1; px <= 18; px += 1) {
       cache.getWaveSurferPeaks(px);
     }
-    expect(resampleMock).toHaveBeenCalledTimes(10);
+    expect(resampleMock).toHaveBeenCalledTimes(18);
 
     resampleMock.mockClear();
     cache.getWaveSurferPeaks(2);
     expect(resampleMock).toHaveBeenCalledTimes(1);
 
     resampleMock.mockClear();
-    cache.getWaveSurferPeaks(10);
+    cache.getWaveSurferPeaks(18);
     expect(resampleMock).toHaveBeenCalledTimes(0);
   });
 
@@ -65,7 +87,6 @@ describe("PeakCache", () => {
     expect(cache).not.toBeNull();
     if (!cache) return;
 
-    // Simulate different column counts per resample call.
     let call = 0;
     resampleMock.mockImplementation((d: unknown) => {
       call += 1;
@@ -81,22 +102,5 @@ describe("PeakCache", () => {
     expect(low).not.toBe(mid);
     expect(resampleMock).toHaveBeenCalledTimes(2);
     expect(low.peaks[0]?.length).not.toBe(mid.peaks[0]?.length);
-  });
-
-  it("getInterleavedPeaksForOverview resamples to overview width", async () => {
-    const cache = await PeakCache.fromLevelUrls([
-      { level: 0, pixelsPerSecond: 2, url: "asset://l0.dat" },
-    ]);
-    expect(cache).not.toBeNull();
-    if (!cache) return;
-
-    resampleToWidthMock.mockClear();
-    const peaks = cache.getInterleavedPeaksForOverview(400, 0.48, 1195);
-    expect(resampleToWidthMock).toHaveBeenCalledTimes(1);
-    expect(peaks.length).toBeGreaterThan(0);
-
-    resampleToWidthMock.mockClear();
-    cache.getInterleavedPeaksForOverview(400, 0.48, 1195);
-    expect(resampleToWidthMock).toHaveBeenCalledTimes(0);
   });
 });

@@ -20,7 +20,8 @@ describe("waveformSegmentBounds", () => {
     const g = segmentOverlayGeometry({
       startSec: 2,
       endSec: 4,
-      pxPerSec: 100,
+      timelineWidthPx: 1000,
+      durationSec: 10,
       lane: 0,
       laneCount: 1,
       containerHeightPx: h,
@@ -35,7 +36,8 @@ describe("waveformSegmentBounds", () => {
     const g = segmentOverlayGeometry({
       startSec: 1,
       endSec: 2,
-      pxPerSec: 56,
+      timelineWidthPx: 560,
+      durationSec: 10,
       lane: 1,
       laneCount: 3,
       containerHeightPx: 96,
@@ -61,9 +63,26 @@ describe("waveformSegmentBounds", () => {
         pointerTimeSec: 2.01,
         startSec: 2,
         endSec: 4,
-        pxPerSec: 100,
+        timelineWidthPx: 1000,
+        durationSec: 10,
       }),
     ).toBe("resize-start");
+  });
+
+  it("aligns segment geometry with peaks when timeline width floor engages", () => {
+    const durationSec = 1263;
+    const timelineWidthPx = 320;
+    const g = segmentOverlayGeometry({
+      startSec: 600,
+      endSec: 660,
+      timelineWidthPx,
+      durationSec,
+      lane: 0,
+      laneCount: 1,
+      containerHeightPx: 96,
+    });
+    expect(g.leftPx).toBeCloseTo((600 / durationSec) * timelineWidthPx, 4);
+    expect(g.widthPx).toBeCloseTo((60 / durationSec) * timelineWidthPx, 4);
   });
 
   it("resolveSegmentIndexAtWaveformPointer prefers higher lane at same time", () => {
@@ -74,7 +93,8 @@ describe("waveformSegmentBounds", () => {
     const lane1Geom = segmentOverlayGeometry({
       startSec: 0,
       endSec: 5,
-      pxPerSec: 1,
+      timelineWidthPx: 10,
+      durationSec: 10,
       lane: 1,
       laneCount,
       containerHeightPx: layoutHeightPx,
@@ -108,5 +128,40 @@ describe("waveformSegmentBounds", () => {
       selectedIdx: 0,
     });
     expect(idx).toBe(-1);
+  });
+
+  it("maps pointer Y through layoutYScale when overlay is scaleY-previewed", () => {
+    const layoutHeightPx = 96;
+    const laneByIndex = [0, 1];
+    const laneCount = 2;
+    const overlayTop = 100;
+    const lane1Geom = segmentOverlayGeometry({
+      startSec: 0,
+      endSec: 5,
+      timelineWidthPx: 10,
+      durationSec: 10,
+      lane: 1,
+      laneCount,
+      containerHeightPx: layoutHeightPx,
+    });
+    const scale = 0.75;
+    const pointerY =
+      overlayTop + (lane1Geom.topPx + lane1Geom.heightPx / 2) * scale;
+
+    const idx = resolveSegmentIndexAtWaveformPointer({
+      segments: [
+        { idx: 0, start_sec: 0, end_sec: 5, text: "a" },
+        { idx: 1, start_sec: 1, end_sec: 4, text: "b" },
+      ],
+      timeSec: 2,
+      pointerClientY: pointerY,
+      overlayClientTop: overlayTop,
+      layoutHeightPx,
+      layoutYScale: scale,
+      laneByIndex,
+      laneCount,
+      selectedIdx: 0,
+    });
+    expect(idx).toBe(1);
   });
 });

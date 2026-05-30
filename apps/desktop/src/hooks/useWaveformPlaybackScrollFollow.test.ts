@@ -76,4 +76,31 @@ describe("useWaveformPlaybackScrollFollow", () => {
     act(() => {});
     expect(setTierScrollPx).not.toHaveBeenCalled();
   });
+
+  it("pauses follow while user tier scroll suppress is active", async () => {
+    const tier = createTier(400);
+    const tierScrollRef = { current: tier };
+    const setTierScrollPx = vi.fn();
+    const userScrollSuppressUntilRef = { current: performance.now() + 5000 };
+
+    renderHook(() =>
+      useWaveformPlaybackScrollFollow({
+        tierScrollRef,
+        timelineWidthPx: 3000,
+        durationSec: 30,
+        isPlaying: true,
+        isReady: true,
+        enabled: true,
+        getPlayheadTimeSec: () => 15,
+        setTierScrollPx,
+        userScrollSuppressUntilRef,
+      }),
+    );
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    expect(setTierScrollPx).not.toHaveBeenCalled();
+  });
 });

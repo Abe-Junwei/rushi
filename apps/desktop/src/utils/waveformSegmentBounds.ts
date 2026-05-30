@@ -1,5 +1,6 @@
 import type { SegmentDto } from "../tauri/projectApi";
 import { roundSec3 } from "./boundsSignature";
+import { timeToTimelinePx } from "./waveformProjection";
 
 export const WAVEFORM_SEGMENT_MIN_SPAN_SEC = 0.05;
 
@@ -19,13 +20,20 @@ export function hitSegmentEdgeFromTimelinePointer(input: {
   pointerTimeSec: number;
   startSec: number;
   endSec: number;
-  pxPerSec: number;
+  timelineWidthPx: number;
+  durationSec: number;
 }): SegmentDragMode {
   const start = Math.min(input.startSec, input.endSec);
   const end = Math.max(input.startSec, input.endSec);
-  const widthPx = Math.max(2, (end - start) * input.pxPerSec);
-  const localPx = (input.pointerTimeSec - start) * input.pxPerSec;
-  return hitSegmentEdgeFromLocalPx(localPx, widthPx);
+  const leftPx = timeToTimelinePx(start, input.timelineWidthPx, input.durationSec);
+  const rightPx = timeToTimelinePx(end, input.timelineWidthPx, input.durationSec);
+  const widthPx = Math.max(2, rightPx - leftPx);
+  const pointerPx = timeToTimelinePx(
+    input.pointerTimeSec,
+    input.timelineWidthPx,
+    input.durationSec,
+  );
+  return hitSegmentEdgeFromLocalPx(pointerPx - leftPx, widthPx);
 }
 
 /** 由拖拽模式与指针位移计算语段时间边界（供 overlay move / finish 共用）。 */
@@ -72,7 +80,8 @@ export function clampSegmentTimeBounds(
 export function segmentOverlayGeometry(input: {
   startSec: number;
   endSec: number;
-  pxPerSec: number;
+  timelineWidthPx: number;
+  durationSec: number;
   lane: number;
   laneCount: number;
   containerHeightPx: number;
@@ -87,9 +96,12 @@ export function segmentOverlayGeometry(input: {
   const laneHeight =
     lanes <= 1 ? bandHeight : Math.max(14, Math.floor((bandHeight - laneGap * (lanes - 1)) / lanes));
 
+  const leftPx = timeToTimelinePx(start, input.timelineWidthPx, input.durationSec);
+  const rightPx = timeToTimelinePx(end, input.timelineWidthPx, input.durationSec);
+
   return {
-    leftPx: start * input.pxPerSec,
-    widthPx: Math.max(2, (end - start) * input.pxPerSec),
+    leftPx,
+    widthPx: Math.max(2, rightPx - leftPx),
     topPx: insetTop + input.lane * (laneHeight + laneGap),
     heightPx: laneHeight,
   };
@@ -105,12 +117,23 @@ export function resolveSegmentIndexAtWaveformPointer(input: {
   laneByIndex: number[];
   laneCount: number;
   selectedIdx: number;
+  /** Visual scaleY on overlay ancestor (1 = no preview shrink). */
+  layoutYScale?: number;
 }): number {
-  const { segments, timeSec, pointerClientY, overlayClientTop, layoutHeightPx, laneByIndex, laneCount } =
-    input;
+  const {
+    segments,
+    timeSec,
+    pointerClientY,
+    overlayClientTop,
+    layoutHeightPx,
+    laneByIndex,
+    laneCount,
+    layoutYScale = 1,
+  } = input;
   if (segments.length === 0) return -1;
 
-  const localY = pointerClientY - overlayClientTop;
+  const scale = layoutYScale > 0 ? layoutYScale : 1;
+  const localY = (pointerClientY - overlayClientTop) / scale;
   const timeHits: number[] = [];
   for (let i = 0; i < segments.length; i += 1) {
     const seg = segments[i];
@@ -129,7 +152,8 @@ export function resolveSegmentIndexAtWaveformPointer(input: {
     const geom = segmentOverlayGeometry({
       startSec: seg.start_sec,
       endSec: seg.end_sec,
-      pxPerSec: 1,
+      timelineWidthPx: 1,
+      durationSec: 1,
       lane: laneByIndex[idx] ?? 0,
       laneCount,
       containerHeightPx: layoutHeightPx,

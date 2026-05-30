@@ -5,6 +5,7 @@ import {
   quantizePxPerSecForPeaksLoad,
   shouldZoomOnlyForSubMinFitAllRefit,
 } from "../utils/pxPerSec";
+import { resolveLayoutDurationSec } from "../utils/waveformTimelineMetrics";
 
 const DECODE_SAMPLE_RATE = 8000;
 
@@ -256,13 +257,18 @@ export function useWaveformZoomSync(args: {
       const cache = peakCacheRef?.current;
       const url = mediaUrl;
       const loadPeaksPx = quantizePxPerSecForPeaksLoad(minPxPerSec);
-      const pxPerSecChanged = Math.abs(prevMinPxPerSecRef.current - minPxPerSec) > 1e-6;
 
       if (cache && url) {
-        const layoutDur =
-          layoutDurationSecRef?.current && layoutDurationSecRef.current > 0
-            ? layoutDurationSecRef.current
-            : currentWs.getDuration() || 0;
+        const layoutDur = resolveLayoutDurationSec({
+          layoutDurationSecRef: layoutDurationSecRef?.current,
+          layoutDurationSec,
+          peakCacheDurationSec: cache.durationSec,
+        });
+        if (layoutDur <= 0) {
+          finishZoom(currentWs);
+          prevMinPxPerSecRef.current = minPxPerSec;
+          return;
+        }
         const loadedPeaksPx = appliedPeaksLoadPxPerSecRef?.current ?? Number.NaN;
         const peaksLoadedIntoWaveSurfer = appliedPeaksRef?.current === true;
 
@@ -271,7 +277,6 @@ export function useWaveformZoomSync(args: {
             requestedPeaksPxPerSec: loadPeaksPx,
             loadedPeaksPxPerSec: loadedPeaksPx,
             peaksLoadedIntoWaveSurfer,
-            pxPerSecChanged,
             peaksLoadInFlight: peaksLoadInFlightPxRef.current != null,
           })
         ) {

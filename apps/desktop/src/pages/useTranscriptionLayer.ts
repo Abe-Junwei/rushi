@@ -56,7 +56,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
   stepWaveformZoomRef.current = (direction) => {
     const { timeline: tl } = scrollFitRef.current;
     const tier = tl.tierScrollRef.current;
-    const dur = tl.wfApiRef.current.duration || tl.timelineMetrics.mediaDurationSec || tl.durationRef.current || 0;
+    const dur = tl.timelineMetrics.mediaDurationSec;
     const vw = tier?.clientWidth ?? 0;
     const px = tl.pxPerSec;
     const sliderRange =
@@ -163,7 +163,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
 
   const jumpToMediaTime = useCallback(
     (raw: string) => {
-      const dur = timeline.timelineMetrics.mediaDurationSec || timeline.durationRef.current || 0;
+      const dur = timeline.timelineMetrics.mediaDurationSec;
       const sec = parseMediaTimeInput(raw, dur > 0 ? dur : undefined);
       if (sec == null) {
         showEditorHintRef.current("时间格式无效，请用 m:ss 或 h:mm:ss。");
@@ -172,7 +172,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
       timeline.wfApiRef.current.seek(sec);
       return true;
     },
-    [timeline.durationRef, timeline.wfApiRef],
+    [timeline.timelineMetrics.mediaDurationSec, timeline.wfApiRef],
   );
 
   const { wf, display, peaks, zoom, routePrefs } = timeline;

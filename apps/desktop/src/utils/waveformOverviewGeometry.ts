@@ -19,35 +19,46 @@ export function computeOverviewViewportRect(input: {
 export function computeOverviewPxPerSec(overviewWidthPx: number, durationSec: number): number {
   const sec = Math.max(durationSec, 0.5);
   const raw = Math.max(1, overviewWidthPx) / sec;
-  // Quantize to stabilize PeakCache resample keys on resize jitter.
-  // Never return 0 — sub-0.5 px/s still maps long audio into the overview strip.
   return Math.max(0.01, Math.round(raw * 100) / 100);
 }
+
+import {
+  scrollPxAlignTimeToViewportLeft,
+  scrollPxCenterTimeInViewport,
+} from "./waveformProjection";
 
 /** 使 `timeSec` 位于主视图视口水平中央时的 tier scrollLeft。 */
 export function computeCenterScrollPxForTimeSec(input: {
   timeSec: number;
-  pxPerSec: number;
   timelineWidthPx: number;
   viewportWidthPx: number;
+  durationSec: number;
+  /** @deprecated 保留兼容；实际使用 timelineWidthPx / durationSec 投影 */
+  pxPerSec?: number;
 }): number {
-  const vw = Math.max(1, input.viewportWidthPx);
-  const maxSl = Math.max(0, input.timelineWidthPx - vw);
-  const target = input.timeSec * input.pxPerSec - vw / 2;
-  return Math.max(0, Math.min(maxSl, target));
+  return scrollPxCenterTimeInViewport({
+    timeSec: input.timeSec,
+    timelineWidthPx: input.timelineWidthPx,
+    durationSec: input.durationSec,
+    viewportWidthPx: input.viewportWidthPx,
+  });
 }
 
 /** 使 `timeSec` 对齐主视口左缘时的 tier scrollLeft（overview 点击跳转）。 */
 export function computeAlignScrollPxForTimeSec(input: {
   timeSec: number;
-  pxPerSec: number;
   timelineWidthPx: number;
   viewportWidthPx: number;
+  durationSec: number;
+  /** @deprecated 保留兼容；实际使用 timelineWidthPx / durationSec 投影 */
+  pxPerSec?: number;
 }): number {
-  const vw = Math.max(1, input.viewportWidthPx);
-  const maxSl = Math.max(0, input.timelineWidthPx - vw);
-  const target = input.timeSec * input.pxPerSec;
-  return Math.max(0, Math.min(maxSl, target));
+  return scrollPxAlignTimeToViewportLeft({
+    timeSec: input.timeSec,
+    timelineWidthPx: input.timelineWidthPx,
+    durationSec: input.durationSec,
+    viewportWidthPx: input.viewportWidthPx,
+  });
 }
 
 export function overviewClientXToTimeSec(

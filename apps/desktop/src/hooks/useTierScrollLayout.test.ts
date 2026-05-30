@@ -68,7 +68,7 @@ describe("useTierScrollLayout", () => {
     expect(result.current.scrollLeftPx).toBe(88);
   });
 
-  it("updates clientWidth when ResizeObserver fires (viewport expand)", () => {
+  it("updates clientWidth via refreshLayout after viewport expand", () => {
     const el = document.createElement("div");
     Object.defineProperty(el, "scrollLeft", { value: 0, writable: true, configurable: true });
     Object.defineProperty(el, "clientWidth", { value: 400, configurable: true });

@@ -6,8 +6,11 @@ export type TierScrollLayout = {
 };
 
 export type UseTierScrollLayoutResult = TierScrollLayout & {
-  /** Re-read scrollLeft/clientWidth from the tier element (e.g. after window maximize). */
+  /** Re-read scrollLeft/clientWidth from the tier element (e.g. after viewport resize). */
   refreshLayout: () => void;
+  /** Live DOM scroll — updated synchronously on scroll / programmatic writes. */
+  liveScrollLeftRef: RefObject<number>;
+  liveClientWidthRef: RefObject<number>;
 };
 
 export type UseTierScrollLayoutOptions = {
@@ -17,16 +20,18 @@ export type UseTierScrollLayoutOptions = {
 
 const DEFAULT_BURST_MS = 120;
 
-/** Read tier viewport metrics: scroll burst rAF + ResizeObserver (ADR-0005 S2). */
+/** Read tier scroll metrics: scroll burst rAF + window resize; viewport width via refreshLayout. */
 export function useTierScrollLayout(
   tierScrollRef: RefObject<HTMLElement | null>,
   options?: UseTierScrollLayoutOptions,
 ): UseTierScrollLayoutResult {
   const burstMs = options?.burstMs ?? DEFAULT_BURST_MS;
   const resyncDeps = options?.resyncDeps ?? [];
+  const liveScrollLeftRef = useRef(0);
+  const liveClientWidthRef = useRef(0);
   const [layout, setLayout] = useState<TierScrollLayout>({
     scrollLeftPx: 0,
-    clientWidthPx: 400,
+    clientWidthPx: 0,
   });
   const readLayoutRef = useRef<() => void>(() => {});
 
@@ -38,7 +43,12 @@ export function useTierScrollLayout(
     let activeUntil = 0;
 
     const readLayout = () => {
-      const next = { scrollLeftPx: el.scrollLeft, clientWidthPx: el.clientWidth };
+      liveScrollLeftRef.current = el.scrollLeft;
+      liveClientWidthRef.current = el.clientWidth;
+      const next = {
+        scrollLeftPx: liveScrollLeftRef.current,
+        clientWidthPx: liveClientWidthRef.current,
+      };
       setLayout((prev) =>
         prev.scrollLeftPx === next.scrollLeftPx && prev.clientWidthPx === next.clientWidthPx ? prev : next,
       );
@@ -61,14 +71,11 @@ export function useTierScrollLayout(
 
     readLayout();
     el.addEventListener("scroll", scheduleBurst, { passive: true });
-    const ro = typeof ResizeObserver !== "undefined" ? new ResizeObserver(scheduleBurst) : null;
-    ro?.observe(el);
     window.addEventListener("resize", scheduleBurst);
 
     return () => {
       el.removeEventListener("scroll", scheduleBurst);
       window.removeEventListener("resize", scheduleBurst);
-      ro?.disconnect();
       if (raf) cancelAnimationFrame(raf);
       readLayoutRef.current = () => {};
     };
@@ -92,6 +99,8 @@ export function useTierScrollLayout(
     scrollLeftPx: layout.scrollLeftPx,
     clientWidthPx: layout.clientWidthPx,
     refreshLayout,
+    liveScrollLeftRef,
+    liveClientWidthRef,
   };
 }
 

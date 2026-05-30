@@ -4,9 +4,11 @@ import { clampPxPerSec, TIMELINE_PX_PER_SEC } from "./pxPerSec";
 const LS_KEY = "rushi.p1.waveformPxPerSec";
 const LS_HEIGHT = "rushi.p1.waveformHeightPx";
 const LS_FONT = "rushi.p1.transcriptFontPx";
-const LS_GLOBAL_STRIP_COLLAPSED = "rushi.p1.waveformGlobalStripCollapsed";
 const LS_GLOBAL_PLAYBACK_RATE = "rushi.p1.waveformGlobalPlaybackRate";
 const LS_TAB_ADVANCE_LOOP = "rushi.p1.tabAdvanceLoopsSegment";
+const LS_BACKGROUND_PEAKS = "rushi.p1.waveformBackgroundPeaks";
+const LS_MINIMAP = "rushi.p1.waveformMinimap";
+const LS_HOT_SWITCH_PLAYING = "rushi.p1.peaksHotSwitchWhilePlaying";
 
 export const WAVEFORM_HEIGHT_MIN = 56;
 export const WAVEFORM_HEIGHT_MAX = 280;
@@ -87,22 +89,6 @@ export function writeStoredWaveformPxPerSec(pxPerSec: number): void {
   }
 }
 
-export function readStoredWaveformGlobalStripCollapsed(): boolean {
-  try {
-    return localStorage.getItem(LS_GLOBAL_STRIP_COLLAPSED) === "1";
-  } catch {
-    return false;
-  }
-}
-
-export function writeStoredWaveformGlobalStripCollapsed(collapsed: boolean): void {
-  try {
-    localStorage.setItem(LS_GLOBAL_STRIP_COLLAPSED, collapsed ? "1" : "0");
-  } catch {
-    /* noop */
-  }
-}
-
 export function readStoredWaveformGlobalPlaybackRate(): number {
   try {
     const raw = localStorage.getItem(LS_GLOBAL_PLAYBACK_RATE);
@@ -137,6 +123,66 @@ export function readStoredTabAdvanceLoopsSegment(): boolean {
 export function writeStoredTabAdvanceLoopsSegment(enabled: boolean): void {
   try {
     localStorage.setItem(LS_TAB_ADVANCE_LOOP, enabled ? "1" : "0");
+  } catch {
+    /* noop */
+  }
+}
+
+/** 后台生成/预热 peaks（Route C2）；关闭后仅 decode，可手动清缓存重算。 */
+export function readStoredBackgroundPeaksEnabled(): boolean {
+  try {
+    const raw = localStorage.getItem(LS_BACKGROUND_PEAKS);
+    if (raw === "0") return false;
+    if (raw === "1") return true;
+  } catch {
+    /* noop */
+  }
+  return true;
+}
+
+export function writeStoredBackgroundPeaksEnabled(enabled: boolean): void {
+  try {
+    localStorage.setItem(LS_BACKGROUND_PEAKS, enabled ? "1" : "0");
+  } catch {
+    /* noop */
+  }
+}
+
+/** 主波形上方 L0 minimap 条。 */
+export function readStoredWaveformMinimapEnabled(): boolean {
+  try {
+    const raw = localStorage.getItem(LS_MINIMAP);
+    if (raw === "0") return false;
+    if (raw === "1") return true;
+  } catch {
+    /* noop */
+  }
+  return true;
+}
+
+export function writeStoredWaveformMinimapEnabled(enabled: boolean): void {
+  try {
+    localStorage.setItem(LS_MINIMAP, enabled ? "1" : "0");
+  } catch {
+    /* noop */
+  }
+}
+
+/** peaks 就绪时是否在播放中立即热切换（否则暂停后切换）。 */
+export function readStoredPeaksHotSwitchWhilePlaying(): boolean {
+  try {
+    const raw = localStorage.getItem(LS_HOT_SWITCH_PLAYING);
+    if (raw === "0") return false;
+    if (raw === "1") return true;
+  } catch {
+    /* noop */
+  }
+  return true;
+}
+
+export function writeStoredPeaksHotSwitchWhilePlaying(enabled: boolean): void {
+  try {
+    localStorage.setItem(LS_HOT_SWITCH_PLAYING, enabled ? "1" : "0");
   } catch {
     /* noop */
   }

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { clampWaveformScrollLeftPx, readVisibleWaveformScrollPx } from "./waveformZoomScroll";
+import { clampWaveformScrollLeftPx, remapWaveformScrollLeftPx } from "./waveformZoomScroll";
 
 describe("waveformZoomScroll", () => {
   it("clamps scroll to timeline width minus viewport", () => {
@@ -22,19 +22,15 @@ describe("waveformZoomScroll", () => {
     ).toBe(320);
   });
 
-  it("preserves in-range pixel scroll when zoom changes", () => {
+  it("remaps scroll to preserve viewport center time when px/s changes", () => {
     expect(
-      clampWaveformScrollLeftPx({
+      remapWaveformScrollLeftPx({
         scrollLeftPx: 400,
-        pxPerSec: 56,
+        oldPxPerSec: 56,
+        newPxPerSec: 112,
         durationSec: 120,
         viewportWidthPx: 800,
       }),
-    ).toBe(400);
-  });
-
-  it("prefers tier scroll when it is ahead of WS scroll", () => {
-    expect(readVisibleWaveformScrollPx(100, 500)).toBe(500);
-    expect(readVisibleWaveformScrollPx(500, 100)).toBe(500);
+    ).toBe(1200);
   });
 });

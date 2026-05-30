@@ -73,6 +73,23 @@ export interface AsrModelCacheInfo {
   manifest_exists: boolean;
 }
 
+export interface WaveformPeaksCacheInfo {
+  projects_root: string;
+  total_bytes: number;
+  orphan_bytes: number;
+  orphan_file_sets: number;
+  orphan_project_dirs: number;
+}
+
+export interface ClearOrphanWaveformPeaksResult {
+  cache: WaveformPeaksCacheInfo;
+  gc: {
+    removed_file_sets: number;
+    removed_project_dirs: number;
+    freed_bytes: number;
+  };
+}
+
 export async function pickAudioPath(): Promise<string | null> {
   return invoke<string | null>("pick_audio_path");
 }
@@ -169,6 +186,14 @@ export async function asrModelCacheInfo(): Promise<AsrModelCacheInfo> {
 
 export async function clearAsrModelCache(): Promise<AsrModelCacheInfo> {
   return invoke<AsrModelCacheInfo>("clear_asr_model_cache");
+}
+
+export async function waveformPeaksCacheInfo(): Promise<WaveformPeaksCacheInfo> {
+  return invoke<WaveformPeaksCacheInfo>("waveform_peaks_cache_info");
+}
+
+export async function clearOrphanWaveformPeaksCache(): Promise<ClearOrphanWaveformPeaksResult> {
+  return invoke<ClearOrphanWaveformPeaksResult>("clear_orphan_waveform_peaks_cache");
 }
 
 export async function getLocalAsrHubModelPref(): Promise<string | null> {

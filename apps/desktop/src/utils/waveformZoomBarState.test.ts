@@ -121,6 +121,15 @@ describe("resolveFitAllPxPerSecAdjustment", () => {
     expect(resolveFitAllPxPerSecAdjustment(vw, dur, fitAll * 0.5)).toBeNull();
   });
 
+  it("does not snap manual zoom in 55-100% fit-all band without layout intent", () => {
+    const dur = 3600;
+    const oldVw = 800;
+    const newVw = 1200;
+    const fitAllOld = computeFitAllPxPerSec(oldVw, dur);
+    const manualPx = fitAllOld * 0.7;
+    expect(resolveFitAllPxPerSecAdjustment(newVw, dur, manualPx)).toBeNull();
+  });
+
   it("refits when timeline fits in viewport but leaves a fill gap (fit-all stale width)", () => {
     const dur = 3 * 3600 + 40 * 60 + 29;
     const vw = 1200;

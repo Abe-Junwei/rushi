@@ -1,16 +1,19 @@
-import { memo } from "react";
+import { memo, useMemo } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
 import { useWaveformSegmentOverlay } from "../hooks/useWaveformSegmentOverlay";
 import { computeCreatePreviewStyle } from "../utils/waveformSegmentOverlayGeometry";
 import { waveformRegionFillColor } from "../utils/segmentChrome";
+import { pickVisibleSegmentIndices } from "../utils/waveformSegmentOverlayVisibility";
 
 export type WaveformSegmentOverlayProps = {
   disabled: boolean;
   segments: SegmentDto[];
   selectedIdx: number;
-  pxPerSec: number;
+  timelineWidthPx: number;
   durationSec: number;
   layoutHeightPx: number;
+  scrollLeftPx?: number;
+  viewportWidthPx?: number;
   laneByIndex: number[];
   laneCount: number;
   enableCreateRange: boolean;
@@ -38,7 +41,29 @@ export const WaveformSegmentOverlay = memo(function WaveformSegmentOverlay(props
     segmentOverlayGeometry,
   } = useWaveformSegmentOverlay(props);
 
-  const { pxPerSec, laneByIndex, laneCount, layoutHeightPx, segments, selectedIdx } = props;
+  const { timelineWidthPx, laneByIndex, laneCount, layoutHeightPx, segments, selectedIdx, durationSec } =
+    props;
+
+  const visibleIndices = useMemo(() => {
+    if (props.scrollLeftPx == null || props.viewportWidthPx == null) {
+      return segments.map((_, idx) => idx);
+    }
+    return pickVisibleSegmentIndices({
+      segments,
+      durationSec,
+      timelineWidthPx,
+      scrollLeftPx: props.scrollLeftPx,
+      viewportWidthPx: props.viewportWidthPx,
+      selectedIdx,
+    });
+  }, [
+    durationSec,
+    props.scrollLeftPx,
+    props.viewportWidthPx,
+    segments,
+    selectedIdx,
+    timelineWidthPx,
+  ]);
 
   return (
     <div
@@ -48,13 +73,16 @@ export const WaveformSegmentOverlay = memo(function WaveformSegmentOverlay(props
       onPointerUp={onPointerUp}
       onPointerCancel={onPointerCancel}
     >
-      {segments.map((seg, idx) => {
+      {visibleIndices.map((idx) => {
+        const seg = segments[idx];
+        if (!seg) return null;
         const bounds = segmentBoundsAt(idx);
         if (!bounds) return null;
         const geom = segmentOverlayGeometry({
           startSec: bounds.startSec,
           endSec: bounds.endSec,
-          pxPerSec,
+          timelineWidthPx,
+          durationSec,
           lane: laneByIndex[idx] ?? 0,
           laneCount,
           containerHeightPx: layoutHeightPx,
@@ -85,7 +113,11 @@ export const WaveformSegmentOverlay = memo(function WaveformSegmentOverlay(props
       {createPreview ? (
         <div
           className="waveform-segment-create-preview"
-          style={computeCreatePreviewStyle({ createPreview, pxPerSec })}
+          style={computeCreatePreviewStyle({
+            createPreview,
+            timelineWidthPx,
+            durationSec,
+          })}
           aria-hidden
         />
       ) : null}

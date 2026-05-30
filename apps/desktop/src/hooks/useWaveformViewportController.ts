@@ -168,8 +168,9 @@ export function useWaveformViewportController(args: UseWaveformViewportControlle
 
       const tierW = tier?.clientWidth ?? 0;
       const containerW = container?.clientWidth ?? 0;
-      const measuredWidth = containerW > 0 ? containerW : tierW;
-      if (measuredWidth <= 0) return;
+      /** Tier scrollport width — not WS canvas width (default zoom keeps canvas >> viewport). */
+      const viewportWidthPx = tierW > 0 ? tierW : containerW;
+      if (viewportWidthPx <= 0) return;
 
       if (viewportResizeHoldRef) viewportResizeHoldRef.current = true;
       try {
@@ -189,10 +190,9 @@ export function useWaveformViewportController(args: UseWaveformViewportControlle
         })();
 
         if (refitPx != null) {
-          const stretchTarget = tierW > 0 ? tierW : measuredWidth;
           const stretchRatio = computeViewportStretchRatio(
-            prev > 0 ? prev : stretchTarget,
-            stretchTarget,
+            prev > 0 ? prev : viewportWidthPx,
+            viewportWidthPx,
           );
           if (stretch && stretchRatio != null) {
             applyWaveformViewportStretch(stretch, stretchRatio);
@@ -204,12 +204,14 @@ export function useWaveformViewportController(args: UseWaveformViewportControlle
           }
         }
 
-        if (!force && prev > 0 && Math.abs(prev - measuredWidth) <= WIDTH_EPSILON_PX) {
+        if (!force && prev > 0 && Math.abs(prev - viewportWidthPx) <= WIDTH_EPSILON_PX) {
           return;
         }
 
-        const stretchTarget = tierW > 0 ? tierW : measuredWidth;
-        const stretchRatio = computeViewportStretchRatio(prev > 0 ? prev : stretchTarget, stretchTarget);
+        const stretchRatio = computeViewportStretchRatio(
+          prev > 0 ? prev : viewportWidthPx,
+          viewportWidthPx,
+        );
         if (stretch && stretchRatio != null) {
           applyWaveformViewportStretch(stretch, stretchRatio);
         }
@@ -218,7 +220,7 @@ export function useWaveformViewportController(args: UseWaveformViewportControlle
         flushViewportLayout(tier, container, argsRef.current.stickyShellRef?.current);
         writeShellLayoutForCurrentZoom(tierW);
 
-        prevWidthRef.current = measuredWidth;
+        prevWidthRef.current = viewportWidthPx;
 
         try {
           ws.getRenderer().reRender();
@@ -265,7 +267,7 @@ export function useWaveformViewportController(args: UseWaveformViewportControlle
   useLayoutEffect(() => {
     const tierW = argsRef.current.tierScrollRef?.current?.clientWidth ?? 0;
     const containerW = argsRef.current.containerRef.current?.clientWidth ?? 0;
-    const width = containerW > 0 ? containerW : tierW;
+    const width = tierW > 0 ? tierW : containerW;
     if (width > 0 && prevWidthRef.current <= 0) {
       prevWidthRef.current = width;
     }
@@ -318,5 +320,17 @@ export function useWaveformViewportController(args: UseWaveformViewportControlle
     scheduleViewportResize,
   ]);
 
-  return { refitFitAllIfNeeded, scheduleViewportResize };
+  const syncShellLayoutForZoom = useCallback(() => {
+    const tierW = argsRef.current.tierScrollRef?.current?.clientWidth ?? 0;
+    if (tierW <= 0) return;
+    writeTierViewportWidth(tierW);
+    writeShellLayoutForCurrentZoom(tierW);
+    flushViewportLayout(
+      argsRef.current.tierScrollRef?.current,
+      argsRef.current.containerRef.current,
+      argsRef.current.stickyShellRef?.current,
+    );
+  }, [writeShellLayoutForCurrentZoom, writeTierViewportWidth]);
+
+  return { refitFitAllIfNeeded, scheduleViewportResize, syncShellLayoutForZoom };
 };

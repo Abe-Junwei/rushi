@@ -153,13 +153,23 @@ describe("shouldZoomOnlyForSubMinFitAllPeaks", () => {
 });
 
 describe("shouldZoomOnlyForSubMinFitAllRefit", () => {
-  it("zoom-only on decode path when px/s changed from viewport refit", () => {
+  it("allows first peaks load on decode when fit-all changes px/s from manual range", () => {
+    expect(
+      shouldZoomOnlyForSubMinFitAllRefit({
+        requestedPeaksPxPerSec: 0.96,
+        loadedPeaksPxPerSec: Number.NaN,
+        peaksLoadedIntoWaveSurfer: false,
+        peaksLoadInFlight: false,
+      }),
+    ).toBe(false);
+  });
+
+  it("zoom-only after sub-min peaks are loaded and viewport refits px/s", () => {
     expect(
       shouldZoomOnlyForSubMinFitAllRefit({
         requestedPeaksPxPerSec: 0.133,
-        loadedPeaksPxPerSec: Number.NaN,
-        peaksLoadedIntoWaveSurfer: false,
-        pxPerSecChanged: true,
+        loadedPeaksPxPerSec: 0.083,
+        peaksLoadedIntoWaveSurfer: true,
         peaksLoadInFlight: false,
       }),
     ).toBe(true);
@@ -171,7 +181,6 @@ describe("shouldZoomOnlyForSubMinFitAllRefit", () => {
         requestedPeaksPxPerSec: 0.083,
         loadedPeaksPxPerSec: Number.NaN,
         peaksLoadedIntoWaveSurfer: false,
-        pxPerSecChanged: false,
         peaksLoadInFlight: false,
       }),
     ).toBe(false);
@@ -183,7 +192,6 @@ describe("shouldZoomOnlyForSubMinFitAllRefit", () => {
         requestedPeaksPxPerSec: 0.133,
         loadedPeaksPxPerSec: Number.NaN,
         peaksLoadedIntoWaveSurfer: false,
-        pxPerSecChanged: true,
         peaksLoadInFlight: true,
       }),
     ).toBe(true);

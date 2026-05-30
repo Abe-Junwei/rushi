@@ -7,7 +7,7 @@ export type ViewportFitEvent =
   | { type: "finalize" }
   | { type: "cancel" };
 
-/** Minimal viewport-fit phase transitions (ADR-0005 S4). */
+/** Viewport-fit phase transitions (kept for unit tests; runtime uses pending refs only). */
 export function reduceViewportFitPhase(
   phase: ViewportFitPhase,
   event: ViewportFitEvent,
@@ -18,7 +18,7 @@ export function reduceViewportFitPhase(
     case "queue":
       return event.needsPeaksResample ? "pending-peaks" : "pending-scroll";
     case "scrollApplied":
-      if (phase === "pending-scroll") return "pending-peaks";
+      if (phase === "pending-scroll") return "done";
       if (phase === "pending-peaks") return phase;
       return phase === "idle" ? "pending-scroll" : phase;
     case "peaksReady":
@@ -29,8 +29,4 @@ export function reduceViewportFitPhase(
     default:
       return phase;
   }
-}
-
-export function shouldBlockWaveformScrollSync(phase: ViewportFitPhase): boolean {
-  return phase === "pending-scroll" || phase === "pending-peaks";
 }

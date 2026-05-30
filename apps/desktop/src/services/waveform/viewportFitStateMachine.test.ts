@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { reduceViewportFitPhase, shouldBlockWaveformScrollSync } from "./viewportFitStateMachine";
+import { reduceViewportFitPhase } from "./viewportFitStateMachine";
 
 describe("viewportFitStateMachine", () => {
   it("queues scroll then peaks when resample needed", () => {
@@ -17,16 +17,9 @@ describe("viewportFitStateMachine", () => {
     let phase = reduceViewportFitPhase("idle", { type: "queue", needsPeaksResample: false });
     expect(phase).toBe("pending-scroll");
     phase = reduceViewportFitPhase(phase, { type: "scrollApplied" });
-    expect(phase).toBe("pending-peaks");
-    phase = reduceViewportFitPhase(phase, { type: "peaksReady" });
     expect(phase).toBe("done");
-  });
-
-  it("blocks waveform scroll sync while pending", () => {
-    expect(shouldBlockWaveformScrollSync("pending-scroll")).toBe(true);
-    expect(shouldBlockWaveformScrollSync("pending-peaks")).toBe(true);
-    expect(shouldBlockWaveformScrollSync("idle")).toBe(false);
-    expect(shouldBlockWaveformScrollSync("done")).toBe(false);
+    phase = reduceViewportFitPhase(phase, { type: "finalize" });
+    expect(phase).toBe("idle");
   });
 
   it("cancel resets to idle from any phase", () => {

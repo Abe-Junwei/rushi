@@ -1,6 +1,27 @@
 import { computeTimelineWidthPx } from "./segmentLayout";
+import { clampTimelineScrollLeftPx } from "./waveformScrollSync";
+import { scrollPxPreservingViewportCenterTime } from "./waveformProjection";
 
-/** 缩放变更时保留 tier / WS 横向 scroll（像素钳制，不换算时间锚点）。 */
+/** Remap tier scroll when px/s changes so the viewport center time stays fixed. */
+export function remapWaveformScrollLeftPx(input: {
+  scrollLeftPx: number;
+  oldPxPerSec: number;
+  newPxPerSec: number;
+  durationSec: number;
+  viewportWidthPx: number;
+}): number {
+  const oldTw = computeTimelineWidthPx(input.durationSec, input.oldPxPerSec);
+  const newTw = computeTimelineWidthPx(input.durationSec, input.newPxPerSec);
+  return scrollPxPreservingViewportCenterTime({
+    scrollLeftPx: input.scrollLeftPx,
+    oldTimelineWidthPx: oldTw,
+    newTimelineWidthPx: newTw,
+    durationSec: input.durationSec,
+    viewportWidthPx: input.viewportWidthPx,
+  });
+}
+
+/** Clamp scroll to the current timeline width. */
 export function clampWaveformScrollLeftPx(input: {
   scrollLeftPx: number;
   pxPerSec: number;
@@ -8,15 +29,9 @@ export function clampWaveformScrollLeftPx(input: {
   viewportWidthPx: number;
 }): number {
   const tw = computeTimelineWidthPx(input.durationSec, input.pxPerSec);
-  const vw = Math.max(1, input.viewportWidthPx);
-  const maxSl = Math.max(0, tw - vw);
-  return Math.max(0, Math.min(maxSl, input.scrollLeftPx));
-}
-
-/** 读取当前可见横向 scroll：tier 与 WS 取较大值（缩放时保留 scroll 用）。 */
-export function readVisibleWaveformScrollPx(
-  wsScrollPx: number,
-  viewportScrollPx?: number,
-): number {
-  return Math.max(viewportScrollPx ?? 0, wsScrollPx);
+  return clampTimelineScrollLeftPx({
+    scrollLeftPx: input.scrollLeftPx,
+    timelineWidthPx: tw,
+    viewportWidthPx: input.viewportWidthPx,
+  });
 }

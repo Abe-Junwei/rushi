@@ -106,7 +106,6 @@ export function EditorView({
               <EditorWaveformPane
                 controller={c}
                 tx={tx}
-                onOpenSegmentContextMenu={setSegmentCtxMenu}
               />
             ) : (
               <div className="shrink-0 px-4 py-6 text-center text-sm text-zen-stone">

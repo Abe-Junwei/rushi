@@ -17,8 +17,9 @@ describe("waveformSegmentOverlayGeometry", () => {
 
   it("computeCreatePreviewStyle clamps left to zero", () => {
     const style = computeCreatePreviewStyle({
-      createPreview: { startSec: -1, endSec: 2 },
-      pxPerSec: 100,
+      createPreview: { startSec: 0, endSec: 3 },
+      timelineWidthPx: 1000,
+      durationSec: 10,
     });
     expect(style.left).toBe(0);
     expect(style.width).toBe(300);
@@ -32,6 +33,7 @@ describe("waveformSegmentOverlayGeometry", () => {
           pointerId: 1,
           segmentIdx: -1,
           anchorTimeSec: 0,
+          anchorClientX: 0,
           initialStartSec: 0,
           initialEndSec: 0,
           moved: false,

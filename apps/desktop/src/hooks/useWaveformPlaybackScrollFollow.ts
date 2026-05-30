@@ -1,4 +1,5 @@
 import { useEffect, useRef, type RefObject } from "react";
+import { scrollPxCenterTimeInViewport } from "../utils/waveformProjection";
 
 export type UseWaveformPlaybackScrollFollowArgs = {
   tierScrollRef: RefObject<HTMLElement | null>;
@@ -9,11 +10,13 @@ export type UseWaveformPlaybackScrollFollowArgs = {
   enabled: boolean;
   getPlayheadTimeSec: () => number;
   setTierScrollPx: (scrollLeftPx: number) => void;
+  /** Pause follow while user manually scrolls the tier. */
+  userScrollSuppressUntilRef?: React.MutableRefObject<number>;
 };
 
 /**
- * Peaks mode playback follow (ADR-0005 S1): keep playhead in view by writing tier
- * scroll only — replaces WaveSurfer autoScroll when canvas peaks are active.
+ * Playback follow (ADR-0005): keep playhead in view by writing tier scroll only
+ * (WaveSurfer `autoScroll` is off).
  */
 export function useWaveformPlaybackScrollFollow(args: UseWaveformPlaybackScrollFollowArgs): void {
   const {
@@ -25,6 +28,7 @@ export function useWaveformPlaybackScrollFollow(args: UseWaveformPlaybackScrollF
     enabled,
     getPlayheadTimeSec,
     setTierScrollPx,
+    userScrollSuppressUntilRef,
   } = args;
 
   const lastWrittenRef = useRef<number | null>(null);
@@ -38,6 +42,10 @@ export function useWaveformPlaybackScrollFollow(args: UseWaveformPlaybackScrollF
 
     const tick = () => {
       raf = 0;
+      if (userScrollSuppressUntilRef && performance.now() < userScrollSuppressUntilRef.current) {
+        raf = requestAnimationFrame(tick);
+        return;
+      }
       const tier = tierScrollRef.current;
       if (!tier) {
         raf = requestAnimationFrame(tick);
@@ -49,11 +57,13 @@ export function useWaveformPlaybackScrollFollow(args: UseWaveformPlaybackScrollF
         return;
       }
 
-      const tw = Math.max(timelineWidthPx, 1);
       const t = Math.max(0, Math.min(durationSec, getPlayheadTimeSec()));
-      const playheadPx = (t / durationSec) * tw;
-      const maxSl = Math.max(0, tw - vw);
-      const target = Math.max(0, Math.min(maxSl, playheadPx - vw / 2));
+      const target = scrollPxCenterTimeInViewport({
+        timeSec: t,
+        timelineWidthPx,
+        durationSec,
+        viewportWidthPx: vw,
+      });
       if (lastWrittenRef.current == null || Math.abs(lastWrittenRef.current - target) > 0.5) {
         lastWrittenRef.current = target;
         setTierScrollPx(target);
@@ -77,5 +87,6 @@ export function useWaveformPlaybackScrollFollow(args: UseWaveformPlaybackScrollF
     setTierScrollPx,
     tierScrollRef,
     timelineWidthPx,
+    userScrollSuppressUntilRef,
   ]);
 }

@@ -1,4 +1,30 @@
-/* P1 波形区：BottomToolbar + zoom-bar（配色对齐 DESIGN.md / tokens.css） */
+/* P1 波形区：header + BottomToolbar + zoom-bar（配色对齐 DESIGN.md / tokens.css） */
+.waveform-header-bar {
+  display: flex;
+  height: 30px;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 0 12px;
+  border-bottom: 1px solid color-mix(in srgb, var(--notion-border) 55%, transparent);
+  font-size: 11px;
+  color: var(--notion-text-muted);
+  background: color-mix(in srgb, var(--notion-sidebar) 92%, transparent);
+}
+
+.waveform-header-time {
+  min-width: 0;
+  font-variant-numeric: tabular-nums;
+  color: var(--notion-text-muted);
+}
+
+.waveform-render-status {
+  flex-shrink: 0;
+  white-space: nowrap;
+  color: var(--notion-text-muted);
+}
+
 .waveform-bottom-toolbar {
   position: relative;
   z-index: 20;
@@ -416,41 +442,14 @@
   letter-spacing: 0;
 }
 
-.waveform-zoom-slider {
-  width: clamp(128px, 18vw, 240px);
-  min-width: 0;
-  flex-shrink: 1;
-  cursor: pointer;
-  accent-color: var(--zen-saffron-mid);
-}
-
-.waveform-zoom-slider:disabled {
-  cursor: not-allowed;
-  opacity: 0.45;
-}
-
-.waveform-zoom-value {
-  flex-shrink: 0;
-  min-width: 2.8rem;
-  text-align: right;
-  font-size: 12px;
-  font-weight: 600;
-  font-variant-numeric: tabular-nums;
-  color: var(--notion-text-muted);
-}
-
-.waveform-zoom-px {
-  flex-shrink: 0;
-  font-size: 11px;
-}
-
 /*
  * 主波形舞台 z-index 栈（由低到高，单一 stacking context）：
- *   z-1  WaveformPeaksTileLayer（content-tile，absolute 在宽内容坐标内）
- *   z-0  WaveSurfer 透明层
+ *   z-0  WaveSurfer 透明层 / decode stretch 外壳
+ *   z-1  WaveSurfer container（可见波形 + 内置 progress）
  *   z-3  waveform-segment-overlay
  *   z-8  region-action-overlay（语段播放控制）
- *   z-10 嵌入时间尺 WaveformLiveTimeRuler
+ *   z-10 WaveformLiveTimeRuler
+ *   z-30 loadError banner / peaks loading badge（EditorWaveformPane）
  */
 
 .waveform-segment-overlay {
@@ -574,10 +573,4 @@
 
 .waveform-playback-rate-menu-segment:hover {
   opacity: 1;
-}
-
-@media (max-width: 1024px) {
-  .waveform-zoom-px {
-    display: none;
-  }
 }

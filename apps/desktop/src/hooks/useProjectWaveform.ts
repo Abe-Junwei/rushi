@@ -140,7 +140,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
 
   useProjectWaveformMount(mediaUrl, deferDecodeMount, mountRefs, destroyWave);
 
-  const { refitFitAllIfNeeded } = useWaveformViewportController({
+  const { refitFitAllIfNeeded, syncShellLayoutForZoom } = useWaveformViewportController({
     wsRef,
     containerRef,
     stickyShellRef,
@@ -220,6 +220,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     currentTime,
     syncWaveSurferScrollPx,
     refitFitAllIfNeeded,
+    syncShellLayoutForZoom,
     flushDeferredPeaksLoad: () => flushDeferredPeaksLoadRef.current?.(),
     ...playback,
     ...globalPlayback,

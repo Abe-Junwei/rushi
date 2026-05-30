@@ -10,8 +10,7 @@ import { useWaveformZoom } from "./useWaveformZoom";
 import { clampPxPerSecForWaveSurferRender } from "../utils/pxPerSec";
 import { resolveFitAllPxPerSecAdjustment } from "../utils/waveformZoomBarState";
 import { resolveWaveformTimelineMetrics } from "../utils/waveformTimelineMetrics";
-import { writeWaveformShellLayout } from "../utils/waveformViewportStretch";
-import { writeWaveformTierViewportWidthVar } from "../utils/waveformViewport";
+import { resolveTierViewportWidthPx } from "../utils/waveformViewport";
 import { useTranscriptionViewportFit } from "../pages/useTranscriptionViewportFit";
 import { useWaveformTimelineMountGate } from "./useWaveformTimelineMountGate";
 import { useWaveformTimelineDurationSync } from "./useWaveformTimelineDuration";
@@ -25,6 +24,7 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
   const tierScrollRef = useRef<HTMLDivElement | null>(null);
   const durationRef = useRef(0);
   const timelineWidthPxRef = useRef(0);
+  const pxPerSecRef = useRef(56);
   const scrollApiRef = useRef({ setTierScrollPx: (_scrollLeftPx: number) => {} });
   const wfApiRef = useRef<WfApi>(null!);
   const playbackFollowSuppressUntilRef = useRef(0);
@@ -48,9 +48,6 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
   getViewportScrollPxRef.current = () => tierScrollRef.current?.scrollLeft ?? 0;
 
   const mountMediaDurationSec = resolvedDurationSec || peaks.status?.durationSec || 0;
-
-  const pxPerSecRef = useRef(zoom.pxPerSec);
-  pxPerSecRef.current = zoom.pxPerSec;
 
   const refitFitAllPxPerSecRef = useRef<(viewportWidthPx: number) => number | null>(() => null);
   const onAfterViewportResizeRef = useRef<(() => void) | undefined>(undefined);
@@ -127,9 +124,6 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
 
   const pxPerSec = zoom.pxPerSec;
 
-  durationRef.current = resolvedDurationSec || timelineMetrics.mediaDurationSec || 0;
-  timelineWidthPxRef.current = timelineWidthPx;
-
   const scroll = useTierScrollSync({
     tierScrollRef,
     timelineWidthPx,
@@ -147,41 +141,23 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
   };
 
   useLayoutEffect(() => {
-    const timelineShell = wf.timelineShellRef.current;
-    const peaksStageShell = wf.peaksStageShellRef.current;
-    const stickyShell = wf.stickyShellRef.current;
-    const tier = tierScrollRef.current;
-    const vw = Math.max(
-      tier?.clientWidth ?? 0,
-      scroll.tierScrollLive.clientWidthRef.current,
-      scroll.tierScrollLayout.clientWidthPx,
-    );
-    if (timelineWidthPx <= 0 || vw <= 0) return;
+    pxPerSecRef.current = zoom.pxPerSec;
+    durationRef.current = resolvedDurationSec || timelineMetrics.mediaDurationSec || 0;
     timelineWidthPxRef.current = timelineWidthPx;
-    if (tier && vw > 0) {
-      writeWaveformTierViewportWidthVar(tier, vw);
-    }
-    writeWaveformShellLayout({
-      timelineShell,
-      peaksStageShell,
-      stickyShell,
-      timelineWidthPx,
-      viewportWidthPx: vw,
-    });
-  }, [
-    timelineWidthPx,
-    scroll.tierScrollLayout.clientWidthPx,
-    scroll.tierScrollLive.clientWidthRef,
-    wf,
-  ]);
+  }, [zoom.pxPerSec, resolvedDurationSec, timelineMetrics.mediaDurationSec, timelineWidthPx]);
+
+  useLayoutEffect(() => {
+    if (timelineWidthPx <= 0) return;
+    wf.syncShellLayoutForZoom();
+  }, [timelineWidthPx, wf]);
 
   useLayoutEffect(() => {
     if (timelineMetrics.mediaDurationSec <= 0) return;
     wf.refitFitAllIfNeeded();
     const dur = timelineMetrics.mediaDurationSec;
-    const renderCap = clampPxPerSecForWaveSurferRender(pxPerSecRef.current, dur);
+    const renderCap = clampPxPerSecForWaveSurferRender(zoom.pxPerSec, dur);
     const renderTol = Math.max(0.001, Math.min(renderCap * 0.05, 8));
-    if (pxPerSecRef.current > renderCap + renderTol) {
+    if (zoom.pxPerSec > renderCap + renderTol) {
       zoom.setPxPerSecFromSlider(renderCap);
     }
     // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -189,6 +165,7 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
     timelineMetrics.mediaDurationSec,
     scroll.tierScrollLayout.clientWidthPx,
     zoom.layoutIntent,
+    zoom.pxPerSec,
     peaks.peakCache,
     wf.duration,
     wf.isReady,
@@ -242,15 +219,16 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
   useEffect(() => {
     if (!pendingMediaZoomResetRef.current || !ctx.mediaUrl) return;
     const dur = timelineMetrics.mediaDurationSec;
-    const vw =
-      tierScrollRef.current?.clientWidth ||
-      scroll.tierScrollLayout.clientWidthPx ||
-      0;
+    const vw = resolveTierViewportWidthPx({
+      tierScrollEl: tierScrollRef.current,
+      layoutClientWidthPx: scroll.tierScrollLayout.clientWidthPx,
+      liveClientWidthPx: scroll.tierScrollLive.clientWidthRef.current,
+    });
     if (dur < 0.5 || vw <= 0) return;
     pendingMediaZoomResetRef.current = false;
     zoom.resetZoomForMedia(vw, dur);
     writeStoredWaveformPxPerSecDefault();
-  }, [ctx.mediaUrl, timelineMetrics.mediaDurationSec, scroll.tierScrollLayout.clientWidthPx, zoom]);
+  }, [ctx.mediaUrl, timelineMetrics.mediaDurationSec, scroll.tierScrollLayout.clientWidthPx, scroll.tierScrollLive.clientWidthRef, zoom]);
 
   return {
     tierScrollRef,

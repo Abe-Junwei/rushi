@@ -1,6 +1,7 @@
 import type { SegmentDto } from "../tauri/projectApi";
 import { computeDragSegmentBounds } from "./waveformSegmentBounds";
 import type { OverlayDragMode } from "./waveformSegmentOverlayGestures";
+import { timeToTimelinePx } from "./waveformProjection";
 
 export type SegmentOverlayDraft = {
   idx: number;
@@ -18,6 +19,7 @@ export type OverlayDragState = {
   pointerId: number;
   segmentIdx: number;
   anchorTimeSec: number;
+  anchorClientX: number;
   initialStartSec: number;
   initialEndSec: number;
   moved: boolean;
@@ -40,13 +42,16 @@ export function resolveSegmentBoundsAt(
 /** 框选预览 DOM 几何（left clamp ≥ 0）。 */
 export function computeCreatePreviewStyle(input: {
   createPreview: CreateRangePreview;
-  pxPerSec: number;
+  timelineWidthPx: number;
+  durationSec: number;
 }): { left: number; width: number } {
   const lo = Math.min(input.createPreview.startSec, input.createPreview.endSec);
   const hi = Math.max(input.createPreview.startSec, input.createPreview.endSec);
+  const leftPx = timeToTimelinePx(lo, input.timelineWidthPx, input.durationSec);
+  const rightPx = timeToTimelinePx(hi, input.timelineWidthPx, input.durationSec);
   return {
-    left: Math.max(0, lo * input.pxPerSec),
-    width: Math.max(2, (hi - lo) * input.pxPerSec),
+    left: Math.max(0, leftPx),
+    width: Math.max(2, rightPx - leftPx),
   };
 }
 

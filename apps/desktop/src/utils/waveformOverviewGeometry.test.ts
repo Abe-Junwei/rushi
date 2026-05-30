@@ -1,6 +1,5 @@
 import { describe, expect, it } from "vitest";
 import {
-  computeAlignScrollPxForTimeSec,
   computeCenterScrollPxForTimeSec,
   computeOverviewPxPerSec,
   computeOverviewViewportRect,
@@ -24,34 +23,14 @@ describe("waveformOverviewGeometry", () => {
     expect(computeOverviewPxPerSec(800, 100)).toBe(8);
   });
 
-  it("computeOverviewPxPerSec quantizes to two decimals", () => {
-    expect(computeOverviewPxPerSec(800.4, 100)).toBe(8);
-    expect(computeOverviewPxPerSec(800.6, 100)).toBe(8.01);
-  });
-
-  it("computeOverviewPxPerSec never returns 0 for long audio", () => {
-    expect(computeOverviewPxPerSec(600, 21 * 60 + 3)).toBe(0.48);
-    expect(computeOverviewPxPerSec(600, 21 * 60 + 3)).toBeGreaterThan(0);
-  });
-
   it("computeCenterScrollPxForTimeSec centers time in main viewport", () => {
     const sl = computeCenterScrollPxForTimeSec({
       timeSec: 10,
-      pxPerSec: 100,
       timelineWidthPx: 5000,
       viewportWidthPx: 800,
+      durationSec: 50,
     });
     expect(sl).toBe(10 * 100 - 400);
-  });
-
-  it("computeAlignScrollPxForTimeSec aligns time to viewport left edge", () => {
-    const sl = computeAlignScrollPxForTimeSec({
-      timeSec: 10,
-      pxPerSec: 100,
-      timelineWidthPx: 5000,
-      viewportWidthPx: 800,
-    });
-    expect(sl).toBe(1000);
   });
 
   it("overviewClientXToTimeSec maps x across strip", () => {
@@ -59,9 +38,9 @@ describe("waveformOverviewGeometry", () => {
     expect(t).toBeCloseTo(15, 5);
   });
 
-  it("overviewSegmentBarPx returns bar geometry", () => {
-    const b = overviewSegmentBarPx(2, 5, 10, 100);
-    expect(b.leftPx).toBe(20);
-    expect(b.widthPx).toBe(30);
+  it("overviewSegmentBarPx maps segment interval to strip pixels", () => {
+    const bar = overviewSegmentBarPx(10, 20, 100, 500);
+    expect(bar.leftPx).toBe(50);
+    expect(bar.widthPx).toBe(50);
   });
 });

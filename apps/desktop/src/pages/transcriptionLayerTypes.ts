@@ -19,4 +19,10 @@ export type TranscriptionLayerInput = {
   mergeWithPrev: () => void;
   insertSegmentAfter: (idx: number) => void;
   deleteSegmentAt: (idx: number) => void;
+  onOpenSegmentContextMenu?: (menu: {
+    x: number;
+    y: number;
+    segmentIdx: number;
+    pointerTimeSec: number;
+  }) => void;
 };

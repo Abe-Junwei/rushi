@@ -5,6 +5,7 @@ import {
   resampleWaveformForPxPerSec,
   resampleWaveformToWidth,
   waveformDataToWaveSurferPeaks,
+  waveformDataToWaveSurferPeaksAsync,
   waveformDurationSec,
 } from "./audiowaveformDat";
 import { PEAK_LOD_LEVELS, pickPeakLodLevel } from "./peakLevels";
@@ -18,7 +19,7 @@ export type LoadedPeakLevel = {
 };
 
 export type WaveSurferPeaksBundle = {
-  peaks: number[][];
+  peaks: Array<Float32Array | number[]>;
   duration: number;
 };
 
@@ -26,10 +27,10 @@ export class PeakCache {
   readonly durationSec: number;
   readonly sampleRate: number;
 
-  private static readonly RESAMPLE_CACHE_MAX = 8;
+  private static readonly RESAMPLE_CACHE_MAX = 16;
 
   private readonly levels: Map<number, WaveformData>;
-  /** Key = `${lodLevel}:${targetWidthPx}` — avoids px/s rounding collisions at low zoom. */
+  /** Key = `${lodLevel}:${targetWidthPx}` for a given peaks-load px/s bucket. */
   private readonly resampleCache = new Map<string, WaveSurferPeaksBundle>();
   private readonly resampleCacheOrder: string[] = [];
 
@@ -42,18 +43,34 @@ export class PeakCache {
   static async fromLevelUrls(
     entries: Array<{ level: number; pixelsPerSecond: number; url: string }>,
   ): Promise<PeakCache | null> {
-    const loaded: LoadedPeakLevel[] = [];
-    for (const entry of entries) {
-      const data = await loadWaveformDatFromUrl(entry.url);
-      loaded.push({
+    if (entries.length === 0) return null;
+    const loaded = await Promise.all(
+      entries.map(async (entry) => ({
         level: entry.level,
         pixelsPerSecond: entry.pixelsPerSecond,
-        data,
-      });
-    }
-    if (loaded.length === 0) return null;
+        data: await loadWaveformDatFromUrl(entry.url),
+      })),
+    );
     const finest = loaded.reduce((a, b) => (a.pixelsPerSecond >= b.pixelsPerSecond ? a : b));
     return new PeakCache(loaded, waveformDurationSec(finest.data), finest.data.sample_rate);
+  }
+
+  /** Load additional LOD files into an existing cache (e.g. L2 after L0/L1 bootstrap). */
+  async loadLevels(
+    entries: Array<{ level: number; pixelsPerSecond: number; url: string }>,
+  ): Promise<void> {
+    const pending = entries.filter((entry) => !this.levels.has(entry.level));
+    if (pending.length === 0) return;
+    const loaded = await Promise.all(
+      pending.map(async (entry) => ({
+        level: entry.level,
+        pixelsPerSecond: entry.pixelsPerSecond,
+        data: await loadWaveformDatFromUrl(entry.url),
+      })),
+    );
+    for (const entry of loaded) {
+      this.levels.set(entry.level, entry.data);
+    }
   }
 
   hasLevel(level: number): boolean {
@@ -77,6 +94,13 @@ export class PeakCache {
   }
 
   getWaveSurferPeaks(pxPerSec: number, layoutMediaDurationSec?: number): WaveSurferPeaksBundle {
+    return this.buildWaveSurferPeaksBundleSync(pxPerSec, layoutMediaDurationSec);
+  }
+
+  async getWaveSurferPeaksAsync(
+    pxPerSec: number,
+    layoutMediaDurationSec?: number,
+  ): Promise<WaveSurferPeaksBundle> {
     const base = this.pickBaseLevel(pxPerSec);
     if (!base) {
       throw new Error("PeakCache 无可用 LOD");
@@ -86,7 +110,35 @@ export class PeakCache {
         ? layoutMediaDurationSec
         : this.durationSec;
     const targetWidthPx = Math.max(1, computeTimelineWidthPx(layoutDur, pxPerSec));
-    const key = `${base.level}:${targetWidthPx}:${pxPerSec}`;
+    const key = `${base.level}:${targetWidthPx}`;
+    const cached = this.resampleCache.get(key);
+    if (cached) {
+      this.touchResampleKey(key);
+      return cached;
+    }
+
+    const resampled = resampleWaveformForPxPerSec(base.data, pxPerSec, layoutDur);
+    const bundle = {
+      peaks: await waveformDataToWaveSurferPeaksAsync(resampled),
+      duration: layoutDur,
+    };
+    return this.storeResample(key, bundle);
+  }
+
+  private buildWaveSurferPeaksBundleSync(
+    pxPerSec: number,
+    layoutMediaDurationSec?: number,
+  ): WaveSurferPeaksBundle {
+    const base = this.pickBaseLevel(pxPerSec);
+    if (!base) {
+      throw new Error("PeakCache 无可用 LOD");
+    }
+    const layoutDur =
+      layoutMediaDurationSec != null && layoutMediaDurationSec > 0
+        ? layoutMediaDurationSec
+        : this.durationSec;
+    const targetWidthPx = Math.max(1, computeTimelineWidthPx(layoutDur, pxPerSec));
+    const key = `${base.level}:${targetWidthPx}`;
     const cached = this.resampleCache.get(key);
     if (cached) {
       this.touchResampleKey(key);
@@ -96,9 +148,25 @@ export class PeakCache {
     const resampled = resampleWaveformForPxPerSec(base.data, pxPerSec, layoutDur);
     const bundle = {
       peaks: waveformDataToWaveSurferPeaks(resampled),
-      duration: this.durationSec,
+      duration: layoutDur,
     };
     return this.storeResample(key, bundle);
+  }
+
+  /** L0 resample for minimap strip (fixed overview width, no timeline floor). */
+  getMinimapPeaks(overviewWidthPx: number, layoutMediaDurationSec?: number): WaveSurferPeaksBundle | null {
+    const l0 = this.levels.get(0);
+    if (!l0) return null;
+    const layoutDur =
+      layoutMediaDurationSec != null && layoutMediaDurationSec > 0
+        ? layoutMediaDurationSec
+        : this.durationSec;
+    const widthPx = Math.max(1, Math.floor(overviewWidthPx));
+    const resampled = resampleWaveformToWidth(l0, widthPx);
+    return {
+      peaks: waveformDataToWaveSurferPeaks(resampled),
+      duration: layoutDur,
+    };
   }
 
   private storeResample(key: string, bundle: WaveSurferPeaksBundle): WaveSurferPeaksBundle {
@@ -122,43 +190,5 @@ export class PeakCache {
       this.resampleCacheOrder.splice(idx, 1);
       this.resampleCacheOrder.push(key);
     }
-  }
-
-  /** Interleaved min/max floats for canvas draw at target px/s. */
-  getInterleavedPeaks(pxPerSec: number, layoutMediaDurationSec?: number): number[] {
-    return this.getWaveSurferPeaks(pxPerSec, layoutMediaDurationSec).peaks[0] ?? [];
-  }
-
-  /** Overview-specific resample: target width = overview container width,
-   *  bypassing `computeTimelineWidthPx` and its 320 px floor.
-   */
-  getInterleavedPeaksForOverview(
-    overviewWidthPx: number,
-    overviewPxPerSec: number,
-    layoutMediaDurationSec?: number,
-  ): number[] {
-    const base = this.pickBaseLevel(overviewPxPerSec);
-    if (!base) {
-      throw new Error("PeakCache 无可用 LOD");
-    }
-    const layoutDur =
-      layoutMediaDurationSec != null && layoutMediaDurationSec > 0
-        ? layoutMediaDurationSec
-        : this.durationSec;
-    const w = Math.max(1, Math.floor(overviewWidthPx));
-    const key = `ov:${base.level}:${w}:${Math.round(layoutDur * 100)}`;
-    const cached = this.resampleCache.get(key);
-    if (cached) {
-      this.touchResampleKey(key);
-      return cached.peaks[0] ?? [];
-    }
-
-    const resampled = resampleWaveformToWidth(base.data, w);
-    const bundle = {
-      peaks: waveformDataToWaveSurferPeaks(resampled),
-      duration: this.durationSec,
-    };
-    this.storeResample(key, bundle);
-    return bundle.peaks[0] ?? [];
   }
 }

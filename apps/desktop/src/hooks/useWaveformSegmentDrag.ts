@@ -11,12 +11,13 @@ import {
 import { resolveOverlayPointerUpIntent } from "../utils/waveformSegmentOverlayGestures";
 
 export const WAVEFORM_OVERLAY_SUPPRESS_CLICK_MS = 250;
-const SEGMENT_TAP_MAX_DELTA_SEC = 0.02;
+/** Pointer move beyond this (px) counts as drag, not tap — stable across zoom levels. */
+export const WAVEFORM_OVERLAY_DRAG_MOVE_THRESHOLD_PX = 4;
 
 export type WaveformSegmentDragArgs = {
   disabled: boolean;
   segments: SegmentDto[];
-  pxPerSec: number;
+  timelineWidthPx: number;
   durationSec: number;
   enableCreateRange: boolean;
   clientXToTimeSec: (clientX: number) => number;
@@ -120,7 +121,8 @@ export function useWaveformSegmentDrag(
         pointerTimeSec: a.clientXToTimeSec(ev.clientX),
         startSec: seg.start_sec,
         endSec: seg.end_sec,
-        pxPerSec: a.pxPerSec,
+        timelineWidthPx: a.timelineWidthPx,
+        durationSec: a.durationSec,
       });
       if (mode !== "move") {
         ev.preventDefault();
@@ -133,6 +135,7 @@ export function useWaveformSegmentDrag(
         pointerId: ev.pointerId,
         segmentIdx: idx,
         anchorTimeSec: a.clientXToTimeSec(ev.clientX),
+        anchorClientX: ev.clientX,
         initialStartSec: seg.start_sec,
         initialEndSec: seg.end_sec,
         moved: false,
@@ -156,6 +159,7 @@ export function useWaveformSegmentDrag(
           pointerId: ev.pointerId,
           segmentIdx: -1,
           anchorTimeSec: timeSec,
+          anchorClientX: ev.clientX,
           initialStartSec: timeSec,
           initialEndSec: timeSec,
           moved: false,
@@ -181,14 +185,14 @@ export function useWaveformSegmentDrag(
       if (drag.mode === "create") {
         const lo = Math.min(drag.initialStartSec, timeSec);
         const hi = Math.max(drag.initialStartSec, timeSec);
-        if (Math.abs(timeSec - drag.anchorTimeSec) > SEGMENT_TAP_MAX_DELTA_SEC) {
+        if (Math.abs(ev.clientX - drag.anchorClientX) > WAVEFORM_OVERLAY_DRAG_MOVE_THRESHOLD_PX) {
           drag.moved = true;
         }
         setCreatePreview({ startSec: lo, endSec: hi });
         return;
       }
 
-      if (Math.abs(timeSec - drag.anchorTimeSec) > SEGMENT_TAP_MAX_DELTA_SEC) {
+      if (Math.abs(ev.clientX - drag.anchorClientX) > WAVEFORM_OVERLAY_DRAG_MOVE_THRESHOLD_PX) {
         drag.moved = true;
       }
       const clamped = boundsForOverlayDrag(drag, timeSec, a.durationSec);

@@ -12,6 +12,7 @@ export interface WaveformPeaksStatus {
   levels: WaveformPeakLevelStatus[];
   sampleRate: number | null;
   durationSec: number | null;
+  generating: boolean;
 }
 
 export interface EnsureWaveformPeaksOptions {
@@ -38,4 +39,19 @@ export async function waveformPeaksStatus(projectId: string, fileId: string): Pr
 
 export function peakLevelAssetUrl(diskPath: string): string {
   return convertFileSrc(diskPath);
+}
+
+export interface ClearWaveformPeaksForFileResult {
+  freed_bytes: number;
+}
+
+/** Remove on-disk peaks for one file (does not regenerate; caller should ensure). */
+export async function clearWaveformPeaksForFile(
+  projectId: string,
+  fileId: string,
+): Promise<ClearWaveformPeaksForFileResult> {
+  return invoke<ClearWaveformPeaksForFileResult>("clear_waveform_peaks_for_file", {
+    projectId,
+    fileId,
+  });
 }

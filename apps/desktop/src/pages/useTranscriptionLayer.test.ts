@@ -47,11 +47,11 @@ describe("assignSegmentOverlapLanes", () => {
 });
 
 describe("computeTimelineWidthPx", () => {
-  it("uses media duration only (floor), not segment ends; matches waveform width", () => {
-    expect(computeTimelineWidthPx(0, TIMELINE_PX_PER_SEC)).toBe(320);
+  it("uses media duration only, not segment ends; matches waveform width", () => {
+    expect(computeTimelineWidthPx(0, TIMELINE_PX_PER_SEC)).toBe(28);
     expect(computeTimelineWidthPx(10, TIMELINE_PX_PER_SEC)).toBe(560);
     expect(computeTimelineWidthPx(400, TIMELINE_PX_PER_SEC)).toBe(22400);
-    expect(computeTimelineWidthPx(5, TIMELINE_PX_PER_SEC)).toBe(320);
+    expect(computeTimelineWidthPx(5, TIMELINE_PX_PER_SEC)).toBe(280);
   });
 
   it("scales with pxPerSec", () => {

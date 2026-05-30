@@ -14,7 +14,7 @@ export function useWaveformSegmentOverlay(args: {
   disabled: boolean;
   segments: SegmentDto[];
   selectedIdx: number;
-  pxPerSec: number;
+  timelineWidthPx: number;
   durationSec: number;
   layoutHeightPx: number;
   laneByIndex: number[];

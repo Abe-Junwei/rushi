@@ -23,7 +23,6 @@ function mockWaveformData(length: number, durationSec: number, sampleRate = 4410
 vi.mock("./audiowaveformDat", () => ({
   loadWaveformDatFromUrl: () => Promise.resolve(mockWaveformData(2000, 600, 44100)),
   resampleWaveformForPxPerSec: (data: unknown) => data,
-  resampleWaveformToWidth: (data: unknown) => data,
   waveformDataToWaveSurferPeaks: (data: { length: number }) => {
     const peaks = new Array<number>(data.length * 2);
     for (let i = 0; i < data.length; i++) {
@@ -47,15 +46,15 @@ describe("PeakCache resample LRU", () => {
   bench("sequential 10 px/s values", async () => {
     const cache = await makeCache();
     for (let px = 1; px <= 10; px += 1) {
-      cache.getInterleavedPeaks(px);
+      cache.getWaveSurferPeaks(px);
     }
   });
 
   bench("random access 10 values (all cached)", async () => {
     const cache = await makeCache();
-    for (let px = 1; px <= 10; px += 1) cache.getInterleavedPeaks(px);
+    for (let px = 1; px <= 10; px += 1) cache.getWaveSurferPeaks(px);
     for (let i = 0; i < 50; i++) {
-      cache.getInterleavedPeaks((i % 10) + 1);
+      cache.getWaveSurferPeaks((i % 10) + 1);
     }
   });
 });

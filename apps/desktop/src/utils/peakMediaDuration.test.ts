@@ -2,9 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   peaksEnsureMediaDurationSec,
   peaksMediaDurationMismatch,
-  resolvePeaksDrawMediaDurationSec,
-  resolveWaveformPeaksUiState,
-  waveformPeaksStatusMessage,
+  shouldForcePeaksRegenerate,
 } from "./peakMediaDuration";
 
 describe("peaksMediaDurationMismatch", () => {
@@ -26,66 +24,16 @@ describe("peaksEnsureMediaDurationSec", () => {
   });
 });
 
-describe("resolvePeaksDrawMediaDurationSec", () => {
-  it("uses peak duration while reloading stale peaks", () => {
-    expect(
-      resolvePeaksDrawMediaDurationSec({
-        peakDurationSec: 960,
-        layoutMediaDurationSec: 1195,
-        peaksLoading: true,
-      }),
-    ).toBe(960);
+describe("shouldForcePeaksRegenerate", () => {
+  it("skips force on long media when peaks cover at least 95%", () => {
+    expect(shouldForcePeaksRegenerate(13_800, 14_400)).toBe(false);
   });
 
-  it("uses layout duration when peaks cover media", () => {
-    expect(
-      resolvePeaksDrawMediaDurationSec({
-        peakDurationSec: 1180,
-        layoutMediaDurationSec: 1195,
-        peaksLoading: false,
-      }),
-    ).toBe(1195);
+  it("still forces when long media peaks are genuinely short", () => {
+    expect(shouldForcePeaksRegenerate(12_000, 14_400)).toBe(true);
   });
 
-  it("falls back to peak duration when layout is unknown", () => {
-    expect(
-      resolvePeaksDrawMediaDurationSec({
-        peakDurationSec: 600,
-        layoutMediaDurationSec: 0,
-        peaksLoading: false,
-      }),
-    ).toBe(600);
-  });
-});
-
-describe("resolveWaveformPeaksUiState", () => {
-  it("prefers loading over mismatch error", () => {
-    expect(
-      resolveWaveformPeaksUiState({
-        peakCache: {},
-        peaksLoading: true,
-        peaksError: null,
-        layoutMediaDurationSec: 1195,
-        peakDurationSec: 960,
-      }),
-    ).toBe("loading");
-  });
-
-  it("surfaces mismatch as error when idle", () => {
-    expect(
-      resolveWaveformPeaksUiState({
-        peakCache: {},
-        peaksLoading: false,
-        peaksError: null,
-        layoutMediaDurationSec: 1195,
-        peakDurationSec: 960,
-      }),
-    ).toBe("error");
-  });
-});
-
-describe("waveformPeaksStatusMessage", () => {
-  it("returns mismatch copy for error without peaksError", () => {
-    expect(waveformPeaksStatusMessage("error", null)).toBe("波形数据与音频时长不一致");
+  it("forces on short media below coverage ratio", () => {
+    expect(shouldForcePeaksRegenerate(732, 1195)).toBe(true);
   });
 });

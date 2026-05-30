@@ -1,6 +1,4 @@
 import type WaveSurfer from "wavesurfer.js";
-import { applyWaveSurferPeaksDrawMode } from "../services/waveform/waveSurferPeaksDraw";
-import { resolveWaveformRulerView } from "../utils/waveformViewport";
 import type { UseProjectWaveformOptions } from "./useProjectWaveformTypes";
 
 type BindWaveformEventsParams = {
@@ -14,13 +12,12 @@ type BindWaveformEventsParams = {
   scrollNotifyRafRef: { current: number };
   pendingAppliedWaveformHeightRef: { current: number | null };
   appliedWaveformHeightRef: { current: number };
-  appliedPeaksRef: { current: boolean };
+  syncTierScrollAfterRenderRef: { current: () => void };
   setLoadError: (value: string | null) => void;
   setIsReady: (value: boolean) => void;
   setIsPlaying: (value: boolean) => void;
   setDuration: (value: number) => void;
   setCurrentTime: (value: number) => void;
-  setRulerView: (value: ReturnType<typeof resolveWaveformRulerView>) => void;
 };
 
 export function bindProjectWaveformWaveSurferEvents(
@@ -30,30 +27,23 @@ export function bindProjectWaveformWaveSurferEvents(
     ws,
     disposed,
     optsRef,
-    minPxPerSecRef,
+    minPxPerSecRef: _minPxPerSecRef,
     lastTimeUiCommitRef,
     lastTimeUiCommitMsRef,
-    pendingScrollLeftRef,
-    scrollNotifyRafRef,
+    pendingScrollLeftRef: _pendingScrollLeftRef,
+    scrollNotifyRafRef: _scrollNotifyRafRef,
     pendingAppliedWaveformHeightRef,
     appliedWaveformHeightRef,
-    appliedPeaksRef,
+    syncTierScrollAfterRenderRef,
     setLoadError,
     setIsReady,
     setIsPlaying,
     setDuration,
     setCurrentTime,
-    setRulerView,
   } = params;
-
-  const notifyScroll = () => {
-    pendingScrollLeftRef.current = ws.getScroll();
-    if (scrollNotifyRafRef.current) return;
-    scrollNotifyRafRef.current = requestAnimationFrame(() => {
-      scrollNotifyRafRef.current = 0;
-      optsRef.current.onWaveformScroll?.(pendingScrollLeftRef.current);
-    });
-  };
+  void _minPxPerSecRef;
+  void _pendingScrollLeftRef;
+  void _scrollNotifyRafRef;
 
   return [
     ws.on("ready", (d) => {
@@ -61,22 +51,11 @@ export function bindProjectWaveformWaveSurferEvents(
       setLoadError(null);
       setIsReady(true);
       setDuration(d);
-      setRulerView(
-        resolveWaveformRulerView({
-          durationSec: d,
-          scrollLeftPx: ws.getScroll(),
-          clientWidthPx: ws.getWidth(),
-          pxPerSec: minPxPerSecRef.current,
-        }),
-      );
+      queueMicrotask(() => syncTierScrollAfterRenderRef.current());
     }),
     ws.on("error", (err) => {
       if (disposed()) return;
       setLoadError(err.message || String(err));
-      if (appliedPeaksRef.current) {
-        appliedPeaksRef.current = false;
-        applyWaveSurferPeaksDrawMode(ws, false);
-      }
       setIsReady(false);
     }),
     ws.on("play", () => setIsPlaying(true)),
@@ -98,23 +77,15 @@ export function bindProjectWaveformWaveSurferEvents(
       lastTimeUiCommitMsRef.current = performance.now();
       setCurrentTime(t);
     }),
-    ws.on("scroll", (_visibleStartTime, _visibleEndTime, scrollLeft) => {
+    ws.on("scroll", () => {
       if (disposed()) return;
-      if (appliedPeaksRef.current) return;
-      pendingScrollLeftRef.current = scrollLeft;
-      if (scrollNotifyRafRef.current) return;
-      scrollNotifyRafRef.current = requestAnimationFrame(() => {
-        scrollNotifyRafRef.current = 0;
-        optsRef.current.onWaveformScroll?.(pendingScrollLeftRef.current);
-      });
     }),
     ws.on("zoom", () => {
       if (disposed()) return;
-      if (appliedPeaksRef.current) return;
-      notifyScroll();
     }),
     ws.on("redrawcomplete", () => {
       if (disposed()) return;
+      syncTierScrollAfterRenderRef.current();
       const appliedHeight = pendingAppliedWaveformHeightRef.current;
       if (appliedHeight == null) return;
       pendingAppliedWaveformHeightRef.current = null;

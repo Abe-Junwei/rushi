@@ -1,10 +1,13 @@
 import { useCallback, useEffect, type Dispatch, type MutableRefObject, type RefObject, type SetStateAction } from "react";
 import WaveSurfer from "wavesurfer.js";
 import { COLORS } from "../config/tokens";
-import type { WaveformRulerView } from "../utils/waveformViewport";
 import type { PeakCache } from "../services/waveform/PeakCache";
+import { quantizePxPerSecForPeaksLoad } from "../utils/pxPerSec";
+import { resolveLayoutDurationSec } from "../utils/waveformTimelineMetrics";
 import { bindProjectWaveformWaveSurferEvents } from "./projectWaveformWaveSurferEvents";
 import type { UseProjectWaveformOptions } from "./useProjectWaveformTypes";
+
+const DECODE_SAMPLE_RATE = 8000;
 
 type MountRefs = {
   optsRef: MutableRefObject<UseProjectWaveformOptions>;
@@ -13,11 +16,14 @@ type MountRefs = {
   wsUnsubsRef: MutableRefObject<Array<() => void>>;
   minPxPerSecRef: MutableRefObject<number>;
   peakCacheRef: MutableRefObject<PeakCache | null>;
+  layoutDurationSecRef: MutableRefObject<number>;
   waveformHeightRef: MutableRefObject<number>;
   appliedWaveformHeightRef: MutableRefObject<number>;
   pendingAppliedWaveformHeightRef: MutableRefObject<number | null>;
   appliedZoomPxPerSecRef: MutableRefObject<number>;
   appliedPeaksRef: MutableRefObject<boolean>;
+  appliedPeaksLoadPxPerSecRef: MutableRefObject<number>;
+  syncTierScrollAfterRenderRef: MutableRefObject<() => void>;
   lastTimeUiCommitRef: MutableRefObject<number>;
   lastTimeUiCommitMsRef: MutableRefObject<number>;
   scrollNotifyRafRef: MutableRefObject<number>;
@@ -27,11 +33,11 @@ type MountRefs = {
   setIsPlaying: Dispatch<SetStateAction<boolean>>;
   setDuration: Dispatch<SetStateAction<number>>;
   setCurrentTime: Dispatch<SetStateAction<number>>;
-  setRulerView: Dispatch<SetStateAction<WaveformRulerView | null>>;
 };
 
 export function useProjectWaveformMount(
   mediaUrl: string | null | undefined,
+  deferDecodeMount: boolean,
   refs: MountRefs,
   destroyWave: () => void,
 ) {
@@ -42,11 +48,14 @@ export function useProjectWaveformMount(
     wsUnsubsRef,
     minPxPerSecRef,
     peakCacheRef,
+    layoutDurationSecRef,
     waveformHeightRef,
     appliedWaveformHeightRef,
     pendingAppliedWaveformHeightRef,
     appliedZoomPxPerSecRef,
     appliedPeaksRef,
+    appliedPeaksLoadPxPerSecRef,
+    syncTierScrollAfterRenderRef,
     lastTimeUiCommitRef,
     lastTimeUiCommitMsRef,
     scrollNotifyRafRef,
@@ -56,13 +65,15 @@ export function useProjectWaveformMount(
     setIsPlaying,
     setDuration,
     setCurrentTime,
-    setRulerView,
   } = refs;
 
   useEffect(() => {
     destroyWave();
     if (!mediaUrl) {
       setLoadError(null);
+      return;
+    }
+    if (deferDecodeMount) {
       return;
     }
     const container = containerRef.current;
@@ -82,25 +93,43 @@ export function useProjectWaveformMount(
       const initialH = waveformHeightRef.current;
       pendingAppliedWaveformHeightRef.current = initialH;
       appliedZoomPxPerSecRef.current = initialMps;
-      let peakBundle: ReturnType<PeakCache["getWaveSurferPeaks"]> | undefined;
-      try {
-        peakBundle = peakCacheRef.current?.getWaveSurferPeaks(initialMps);
-      } catch {
-        peakBundle = undefined;
+
+      const cache = peakCacheRef.current;
+      const layoutDur = resolveLayoutDurationSec({
+        layoutDurationSecRef: layoutDurationSecRef.current,
+        peakCacheDurationSec: cache?.durationSec ?? 0,
+      });
+
+      let peaks: Array<Float32Array | number[]> | undefined;
+      let duration: number | undefined;
+      if (cache && layoutDur > 0) {
+        try {
+          const loadPx = quantizePxPerSecForPeaksLoad(initialMps);
+          const bundle = await cache.getWaveSurferPeaksAsync(loadPx, layoutDur);
+          peaks = bundle.peaks;
+          duration = bundle.duration;
+          appliedPeaksRef.current = true;
+          appliedPeaksLoadPxPerSecRef.current = loadPx;
+        } catch {
+          appliedPeaksRef.current = false;
+          appliedPeaksLoadPxPerSecRef.current = Number.NaN;
+        }
+      } else {
+        appliedPeaksRef.current = false;
+        appliedPeaksLoadPxPerSecRef.current = Number.NaN;
       }
-      const usePeaksDraw = Boolean(peakBundle);
-      if (usePeaksDraw) {
-        appliedPeaksRef.current = true;
-      }
+
       const ws = WaveSurfer.create({
         container: el,
         url: mediaUrl,
+        peaks,
+        duration,
         height: initialH,
         normalize: true,
         maxPeak: 1,
-        sampleRate: peakBundle ? undefined : 8000,
-        waveColor: usePeaksDraw ? "transparent" : COLORS.waveformWave,
-        progressColor: usePeaksDraw ? "transparent" : COLORS.waveformProgress,
+        sampleRate: peaks ? undefined : DECODE_SAMPLE_RATE,
+        waveColor: COLORS.waveformWave,
+        progressColor: COLORS.waveformProgress,
         cursorColor: COLORS.waveformCursor,
         cursorWidth: 1,
         barWidth: 2,
@@ -109,21 +138,13 @@ export function useProjectWaveformMount(
         minPxPerSec: initialMps,
         dragToSeek: !wantDragCreate,
         interact: !optsRef.current.disabled,
-        autoScroll: !usePeaksDraw,
+        autoScroll: false,
         autoCenter: false,
         hideScrollbar: true,
-        ...(peakBundle
-          ? {
-              peaks: peakBundle.peaks,
-              duration: peakBundle.duration,
-            }
-          : {}),
+        fillParent: false,
       });
 
       wsRef.current = ws;
-      if (!usePeaksDraw) {
-        appliedPeaksRef.current = false;
-      }
 
       wsUnsubsRef.current.push(
         ...bindProjectWaveformWaveSurferEvents({
@@ -137,13 +158,12 @@ export function useProjectWaveformMount(
           scrollNotifyRafRef,
           pendingAppliedWaveformHeightRef,
           appliedWaveformHeightRef,
-          appliedPeaksRef,
+          syncTierScrollAfterRenderRef,
           setLoadError,
           setIsReady,
           setIsPlaying,
           setDuration,
           setCurrentTime,
-          setRulerView,
         }),
       );
     };
@@ -157,18 +177,20 @@ export function useProjectWaveformMount(
     };
   }, [
     mediaUrl,
+    deferDecodeMount,
     destroyWave,
     optsRef,
     containerRef,
     wsRef,
     wsUnsubsRef,
     minPxPerSecRef,
-    peakCacheRef,
+    layoutDurationSecRef,
     waveformHeightRef,
     appliedWaveformHeightRef,
     pendingAppliedWaveformHeightRef,
     appliedZoomPxPerSecRef,
     appliedPeaksRef,
+    appliedPeaksLoadPxPerSecRef,
     lastTimeUiCommitRef,
     lastTimeUiCommitMsRef,
     scrollNotifyRafRef,
@@ -178,17 +200,24 @@ export function useProjectWaveformMount(
     setIsPlaying,
     setDuration,
     setCurrentTime,
-    setRulerView,
   ]);
 }
 
 export function useProjectWaveformDestroy(
   clearWsListeners: () => void,
-  refs: Pick<MountRefs, "wsRef" | "scrollNotifyRafRef" | "pendingAppliedWaveformHeightRef" | "appliedPeaksRef">,
-  setters: Pick<MountRefs, "setIsReady" | "setIsPlaying" | "setDuration" | "setCurrentTime" | "setRulerView">,
+  refs: Pick<
+    MountRefs,
+    | "wsRef"
+    | "scrollNotifyRafRef"
+    | "pendingAppliedWaveformHeightRef"
+    | "appliedPeaksRef"
+    | "appliedPeaksLoadPxPerSecRef"
+  >,
+  setters: Pick<MountRefs, "setIsReady" | "setIsPlaying" | "setDuration" | "setCurrentTime">,
 ) {
-  const { wsRef, scrollNotifyRafRef, pendingAppliedWaveformHeightRef, appliedPeaksRef } = refs;
-  const { setIsReady, setIsPlaying, setDuration, setCurrentTime, setRulerView } = setters;
+  const { wsRef, scrollNotifyRafRef, pendingAppliedWaveformHeightRef, appliedPeaksRef, appliedPeaksLoadPxPerSecRef } =
+    refs;
+  const { setIsReady, setIsPlaying, setDuration, setCurrentTime } = setters;
 
   return useCallback(() => {
     clearWsListeners();
@@ -205,9 +234,9 @@ export function useProjectWaveformDestroy(
     setIsPlaying(false);
     setDuration(0);
     setCurrentTime(0);
-    setRulerView(null);
     pendingAppliedWaveformHeightRef.current = null;
     appliedPeaksRef.current = false;
+    appliedPeaksLoadPxPerSecRef.current = Number.NaN;
     if (scrollNotifyRafRef.current) {
       cancelAnimationFrame(scrollNotifyRafRef.current);
       scrollNotifyRafRef.current = 0;
@@ -218,10 +247,10 @@ export function useProjectWaveformDestroy(
     scrollNotifyRafRef,
     pendingAppliedWaveformHeightRef,
     appliedPeaksRef,
+    appliedPeaksLoadPxPerSecRef,
     setIsReady,
     setIsPlaying,
     setDuration,
     setCurrentTime,
-    setRulerView,
   ]);
 }
