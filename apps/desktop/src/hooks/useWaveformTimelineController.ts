@@ -141,7 +141,10 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
     playbackFollowSuppressUntilRef,
   });
 
-  onAfterViewportResizeRef.current = scroll.refreshTierScrollLayout;
+  onAfterViewportResizeRef.current = () => {
+    scroll.refreshTierScrollLayout();
+    wf.flushDeferredPeaksLoad();
+  };
 
   useLayoutEffect(() => {
     const timelineShell = wf.timelineShellRef.current;

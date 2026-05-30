@@ -58,6 +58,8 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
   const appliedPeaksRef = useRef(false);
   const appliedPeaksLoadPxPerSecRef = useRef(Number.NaN);
   const cancelInFlightZoomRef = useRef<(() => void) | undefined>(undefined);
+  const viewportResizeHoldRef = useRef(false);
+  const flushDeferredPeaksLoadRef = useRef<(() => void) | undefined>(undefined);
   const fallbackLayoutDurationRef = useRef(0);
   const fallbackLayoutTimelineWidthRef = useRef(0);
   const layoutDurationSecRef = options.layoutDurationSecRef ?? fallbackLayoutDurationRef;
@@ -157,6 +159,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     layoutTimelineWidthPxRef,
     timelineShellRef,
     peaksStageShellRef,
+    viewportResizeHoldRef,
   });
 
   const peakCacheGeneration = options.peakCacheGeneration ?? 0;
@@ -180,6 +183,8 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     mediaUrl,
     onZoomAppliedRef,
     cancelInFlightZoomRef,
+    viewportResizeHoldRef,
+    flushDeferredPeaksLoadRef,
   });
 
   const cancelInFlightZoom = useCallback(() => {
@@ -215,6 +220,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     currentTime,
     syncWaveSurferScrollPx,
     refitFitAllIfNeeded,
+    flushDeferredPeaksLoad: () => flushDeferredPeaksLoadRef.current?.(),
     ...playback,
     ...globalPlayback,
     ...segmentPlayback,

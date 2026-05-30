@@ -23,8 +23,10 @@ export type UseWaveformViewportControllerArgs = {
   isReady: boolean;
   deferDecodeMount: boolean;
   syncScrollAfterRender?: () => void;
-  /** Live tier layout refresh (replaces duplicate tier RO in useTierScrollSync). */
+  /** Called after viewport transaction completes (hold cleared). */
   onAfterViewportResizeRef?: MutableRefObject<(() => void) | undefined>;
+  /** While true, zoom sync defers ws.load(peaks) until after resize. */
+  viewportResizeHoldRef?: MutableRefObject<boolean>;
   refitFitAllPxPerSec?: (viewportWidthPx: number) => number | null;
   appliedZoomPxPerSecRef?: MutableRefObject<number>;
   onFitAllPxPerSecRefit?: (pxPerSec: number) => void;
@@ -155,6 +157,7 @@ export function useWaveformViewportController(args: UseWaveformViewportControlle
         syncScrollAfterRender,
         refitFitAllPxPerSec,
         onAfterViewportResizeRef,
+        viewportResizeHoldRef,
       } = argsRef.current;
       const ws = wsRef.current;
       const container = containerRef.current;
@@ -168,62 +171,65 @@ export function useWaveformViewportController(args: UseWaveformViewportControlle
       const measuredWidth = containerW > 0 ? containerW : tierW;
       if (measuredWidth <= 0) return;
 
-      const prev = prevWidthRef.current;
+      if (viewportResizeHoldRef) viewportResizeHoldRef.current = true;
+      try {
+        const prev = prevWidthRef.current;
 
-      const refitPx = (() => {
-        if (tierW <= 0) return null;
-        if (refitFitAllPxPerSec) {
-          return refitFitAllPxPerSec(tierW);
+        const refitPx = (() => {
+          if (tierW <= 0) return null;
+          if (refitFitAllPxPerSec) {
+            return refitFitAllPxPerSec(tierW);
+          }
+          const dur = argsRef.current.layoutDurationSecRef?.current ?? 0;
+          const px = argsRef.current.appliedZoomPxPerSecRef?.current ?? 0;
+          if (dur <= 0) return null;
+          return resolveFitAllPxPerSecAdjustment(tierW, dur, px, {
+            staleFitAllOnViewportGrow: options?.staleFitAllOnViewportGrow,
+          });
+        })();
+
+        if (refitPx != null) {
+          const stretchTarget = tierW > 0 ? tierW : measuredWidth;
+          const stretchRatio = computeViewportStretchRatio(
+            prev > 0 ? prev : stretchTarget,
+            stretchTarget,
+          );
+          if (stretch && stretchRatio != null) {
+            applyWaveformViewportStretch(stretch, stretchRatio);
+          }
+          writeTierViewportWidth(tierW);
+          flushViewportLayout(tier, container, argsRef.current.stickyShellRef?.current);
+          if (applyFitAllRefit(refitPx, tierW)) {
+            return;
+          }
         }
-        const dur = argsRef.current.layoutDurationSecRef?.current ?? 0;
-        const px = argsRef.current.appliedZoomPxPerSecRef?.current ?? 0;
-        if (dur <= 0) return null;
-        return resolveFitAllPxPerSecAdjustment(tierW, dur, px, {
-          staleFitAllOnViewportGrow: options?.staleFitAllOnViewportGrow,
-        });
-      })();
 
-      if (refitPx != null) {
+        if (!force && prev > 0 && Math.abs(prev - measuredWidth) <= WIDTH_EPSILON_PX) {
+          return;
+        }
+
         const stretchTarget = tierW > 0 ? tierW : measuredWidth;
-        const stretchRatio = computeViewportStretchRatio(
-          prev > 0 ? prev : stretchTarget,
-          stretchTarget,
-        );
+        const stretchRatio = computeViewportStretchRatio(prev > 0 ? prev : stretchTarget, stretchTarget);
         if (stretch && stretchRatio != null) {
           applyWaveformViewportStretch(stretch, stretchRatio);
         }
+
         writeTierViewportWidth(tierW);
         flushViewportLayout(tier, container, argsRef.current.stickyShellRef?.current);
-        if (applyFitAllRefit(refitPx, tierW)) {
-          onAfterViewportResizeRef?.current?.();
-          return;
+        writeShellLayoutForCurrentZoom(tierW);
+
+        prevWidthRef.current = measuredWidth;
+
+        try {
+          ws.getRenderer().reRender();
+        } catch {
+          /* noop */
         }
-      }
-
-      if (!force && prev > 0 && Math.abs(prev - measuredWidth) <= WIDTH_EPSILON_PX) {
+        syncScrollAfterRender?.();
+      } finally {
+        if (viewportResizeHoldRef) viewportResizeHoldRef.current = false;
         onAfterViewportResizeRef?.current?.();
-        return;
       }
-
-      const stretchTarget = tierW > 0 ? tierW : measuredWidth;
-      const stretchRatio = computeViewportStretchRatio(prev > 0 ? prev : stretchTarget, stretchTarget);
-      if (stretch && stretchRatio != null) {
-        applyWaveformViewportStretch(stretch, stretchRatio);
-      }
-
-      writeTierViewportWidth(tierW);
-      flushViewportLayout(tier, container, argsRef.current.stickyShellRef?.current);
-      writeShellLayoutForCurrentZoom(tierW);
-
-      prevWidthRef.current = measuredWidth;
-
-      try {
-        ws.getRenderer().reRender();
-      } catch {
-        /* noop */
-      }
-      syncScrollAfterRender?.();
-      onAfterViewportResizeRef?.current?.();
     },
     [applyFitAllRefit, writeShellLayoutForCurrentZoom, writeTierViewportWidth],
   );

@@ -38,6 +38,11 @@
 - [`EditorWaveformPane`](../../apps/desktop/src/components/editor/EditorWaveformPane.tsx) 不再用 React `timelineWidthPx` 写 shell `width`（避免 commit 晚一帧覆盖）。
 - overlay / ruler 仍读 React `timelineWidthPx`（zoom 时更新）；shell DOM 宽以 imperative 为准。
 
+### Zoom sync（P1）
+
+- `useWaveformZoomSync` 在 `useLayoutEffect` 内**同步** `ws.zoom`（不再 rAF defer）。
+- `viewportResizeHoldRef` 为 true 时跳过 `ws.load`，transaction 结束后 `flushDeferredPeaksLoad` 换档。
+
 ## 整段可见（fit-all）布局意图
 
 - `useWaveformZoom` 维护 `layoutIntent: 'fit-all' | 'fit-selection' | 'default' | 'manual'`（非持久）。
@@ -80,7 +85,8 @@
   - `quantizePxPerSecForPeaksLoad(px/s)`（8 px/s 档）决定 `ws.load(peaks)` 时机；
   - **同档内**仅 `ws.zoom(pxPerSec)`，不重复 `ws.load`；
   - **跨档**时 `ws.load(url, peaks, layoutDuration)`，完成后 `ws.zoom` 对齐当前 px/s；
-  - **整段可见 sub-min**（px/s &lt; 16，典型 4h+ 长音频）：视口 refit / 全屏仅 `ws.zoom`；decode 阶段（顶栏「正在优化波形…」）也不因 refit 重启 `ws.load`；后台首次 peaks 加载仍仅在 px/s 稳定时触发一次。
+  - **viewport resize 期间**（`viewportResizeHoldRef`）：仅同步 `ws.zoom` + shell layout；**推迟** `ws.load` 至 transaction 结束（`flushDeferredPeaksLoad`）；
+  - **整段可见 sub-min**（px/s &lt; 16，典型 4h+ 长音频）：视口 refit / 全屏仅 `ws.zoom`；decode 阶段也不因 refit 重启 `ws.load`；
 - **无 PeakCache**：持续 decode 路径，仅 `ws.zoom(pxPerSec)`；`peaksUnavailable` 时不再后台重试（需手动清缓存）。
 - `PeakCache.getWaveSurferPeaks` 返回的 `duration` 与 layout `mediaDurationSec` 一致。
 - **阶段状态**（`resolveWaveformPeaksPhase`）：`idle` → `generating`/`decode` → `peaks_pending`（播放中待切换）→ `peaks`；失败为 `unavailable`。
