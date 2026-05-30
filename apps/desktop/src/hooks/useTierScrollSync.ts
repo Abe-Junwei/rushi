@@ -54,6 +54,16 @@ export function useTierScrollSync(args: {
     if (typeof sync === "function") sync(scrollLeftPx);
   };
 
+  const syncScrollFromTierDom = () => {
+    const tier = argsRef.current.tierScrollRef.current;
+    if (!tier) return;
+    const sl = tier.scrollLeft;
+    committedScrollLeftRef.current = sl;
+    tierScrollMetrics.liveScrollLeftRef.current = sl;
+    tierScrollMetrics.liveClientWidthRef.current = tier.clientWidth;
+    mirrorWaveSurferScroll(sl);
+  };
+
   const applyScrollLeftPx = (px: number, source: ScrollApplySource) => {
     const a = argsRef.current;
     const tier = a.tierScrollRef.current;
@@ -83,16 +93,11 @@ export function useTierScrollSync(args: {
   const api = useMemo(
     () => ({
       onTierScroll: () => {
-        const tier = argsRef.current.tierScrollRef.current;
-        if (!tier) return;
-        tierScrollMetrics.liveScrollLeftRef.current = tier.scrollLeft;
-        tierScrollMetrics.liveClientWidthRef.current = tier.clientWidth;
-        mirrorWaveSurferScroll(tier.scrollLeft);
+        syncScrollFromTierDom();
         const suppressRef = argsRef.current.playbackFollowSuppressUntilRef;
         if (suppressRef && performance.now() >= programmaticScrollUntilRef.current) {
           suppressRef.current = performance.now() + 2500;
         }
-        applyScrollLeftPx(tier.scrollLeft, "tier");
       },
       setTierScrollPx: (px: number) => {
         applyScrollLeftPx(px, "program");

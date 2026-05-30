@@ -3,6 +3,11 @@ import { Play, Repeat, Square } from "lucide-react";
 import type { SegmentDto } from "../tauri/projectApi";
 import { computeRegionActionOverlayLeftPx } from "../utils/waveformRegionActionOverlay";
 import { timeToTimelinePx } from "../utils/waveformProjection";
+import {
+  resolveTierViewportMetrics,
+  type TierScrollLayoutMetrics,
+  type TierScrollLiveRefs,
+} from "../utils/waveformViewport";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 import { WaveformPlaybackRateMenu } from "./WaveformPlaybackRateMenu";
 
@@ -11,9 +16,9 @@ type WaveformSegmentPlaybackControlsProps = {
   isPlaying: boolean;
   timelineWidthPx: number;
   durationSec: number;
-  scrollLeftPx: number;
-  viewportWidthPx: number;
   tierScrollRef: RefObject<HTMLElement | null>;
+  tierScrollLive: TierScrollLiveRefs;
+  tierScrollLayout: TierScrollLayoutMetrics;
   selectedSegment: SegmentDto | null;
   segmentPlaybackRate: number;
   segmentLoopPlayback: boolean;
@@ -27,9 +32,9 @@ export const WaveformSegmentPlaybackControls = memo(function WaveformSegmentPlay
   isPlaying,
   timelineWidthPx,
   durationSec,
-  scrollLeftPx,
-  viewportWidthPx,
   tierScrollRef,
+  tierScrollLive,
+  tierScrollLayout,
   selectedSegment,
   segmentPlaybackRate,
   segmentLoopPlayback,
@@ -38,6 +43,11 @@ export const WaveformSegmentPlaybackControls = memo(function WaveformSegmentPlay
   onTogglePlay,
 }: WaveformSegmentPlaybackControlsProps) {
   if (!selectedSegment) return null;
+  const { scrollLeftPx, viewportWidthPx } = resolveTierViewportMetrics({
+    tierScrollEl: tierScrollRef.current,
+    tierScrollLive,
+    tierScrollLayout,
+  });
   const lo = Math.min(selectedSegment.start_sec, selectedSegment.end_sec);
   const hi = Math.max(selectedSegment.start_sec, selectedSegment.end_sec);
   const leftPx = timeToTimelinePx(lo, timelineWidthPx, durationSec);

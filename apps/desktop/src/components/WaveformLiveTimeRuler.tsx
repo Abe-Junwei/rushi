@@ -2,24 +2,13 @@ import { memo, useCallback, useEffect, useRef } from "react";
 import { WaveformTimeRuler, type WaveformTimeRulerProps } from "./WaveformTimeRuler";
 import { useWaveformLiveClock } from "../hooks/useWaveformLiveClock";
 import { playheadTimelineLeftPct, playheadViewportLeftPx } from "../utils/waveformProjection";
+import { resolveTierScrollLeftPx } from "../utils/waveformViewport";
 
 type WaveformLiveTimeRulerProps = Omit<WaveformTimeRulerProps, "currentTimeSec"> & {
   isPlaying: boolean;
   isReady: boolean;
   getPlayheadTime: () => number;
 };
-
-function resolveLiveScrollLeftPx(
-  scrollLeftPx: number,
-  coordinateSpace: WaveformTimeRulerProps["coordinateSpace"],
-  tierScrollLive?: WaveformTimeRulerProps["tierScrollLive"],
-): number {
-  const live = tierScrollLive?.scrollLeftRef.current;
-  if (coordinateSpace === "viewport" && live != null) {
-    return live;
-  }
-  return scrollLeftPx;
-}
 
 /** 播放期 rAF 驱动 playhead，减少父级 currentTime 导致的整树重绘。 */
 export const WaveformLiveTimeRuler = memo(function WaveformLiveTimeRuler({
@@ -38,11 +27,13 @@ export const WaveformLiveTimeRuler = memo(function WaveformLiveTimeRuler({
     if (!line) return;
     const props = rulerPropsRef.current;
     if (viewportSpace) {
-      const scrollLeftPx = resolveLiveScrollLeftPx(
-        props.scrollLeftPx,
-        props.coordinateSpace,
-        props.tierScrollLive,
-      );
+      const scrollLeftPx =
+        props.coordinateSpace === "viewport"
+          ? resolveTierScrollLeftPx({
+              layoutScrollLeftPx: props.scrollLeftPx,
+              liveScrollLeftRef: props.tierScrollLive?.scrollLeftRef,
+            })
+          : props.scrollLeftPx;
       const px = playheadViewportLeftPx(
         timeSec,
         scrollLeftPx,

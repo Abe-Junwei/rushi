@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { formatMediaTime } from "../utils/formatMediaTime";
+import { createWaveformAppliedZoomState } from "../utils/waveformAppliedZoom";
 import { useWaveformHeightSync } from "./useWaveformHeightSync";
 import { useWaveformPlayback } from "./useWaveformPlayback";
 import { useWaveformGlobalPlayback } from "./useWaveformGlobalPlayback";
@@ -54,9 +55,9 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
   const lastTimeUiCommitMsRef = useRef(0);
   const scrollNotifyRafRef = useRef(0);
   const pendingScrollLeftRef = useRef(0);
-  const appliedZoomPxPerSecRef = useRef(minPxPerSec);
-  const appliedPeaksRef = useRef(false);
-  const appliedPeaksLoadPxPerSecRef = useRef(Number.NaN);
+  const appliedZoomStateRef = useRef(createWaveformAppliedZoomState(minPxPerSec));
+  const { appliedZoomPxPerSecRef, appliedPeaksRef, appliedPeaksLoadPxPerSecRef } =
+    appliedZoomStateRef.current;
   const cancelInFlightZoomRef = useRef<(() => void) | undefined>(undefined);
   const viewportResizeHoldRef = useRef(false);
   const flushDeferredPeaksLoadRef = useRef<(() => void) | undefined>(undefined);

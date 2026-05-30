@@ -1,9 +1,15 @@
 import { memo, useMemo } from "react";
+import type { RefObject } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
 import { useWaveformSegmentOverlay } from "../hooks/useWaveformSegmentOverlay";
 import { computeCreatePreviewStyle } from "../utils/waveformSegmentOverlayGeometry";
 import { waveformRegionFillColor } from "../utils/segmentChrome";
 import { pickVisibleSegmentIndices } from "../utils/waveformSegmentOverlayVisibility";
+import {
+  resolveTierViewportMetrics,
+  type TierScrollLayoutMetrics,
+  type TierScrollLiveRefs,
+} from "../utils/waveformViewport";
 
 export type WaveformSegmentOverlayProps = {
   disabled: boolean;
@@ -12,8 +18,9 @@ export type WaveformSegmentOverlayProps = {
   timelineWidthPx: number;
   durationSec: number;
   layoutHeightPx: number;
-  scrollLeftPx?: number;
-  viewportWidthPx?: number;
+  tierScrollRef: RefObject<HTMLElement | null>;
+  tierScrollLive: TierScrollLiveRefs;
+  tierScrollLayout: TierScrollLayoutMetrics;
   laneByIndex: number[];
   laneCount: number;
   enableCreateRange: boolean;
@@ -45,21 +52,24 @@ export const WaveformSegmentOverlay = memo(function WaveformSegmentOverlay(props
     props;
 
   const visibleIndices = useMemo(() => {
-    if (props.scrollLeftPx == null || props.viewportWidthPx == null) {
-      return segments.map((_, idx) => idx);
-    }
+    const { scrollLeftPx, viewportWidthPx } = resolveTierViewportMetrics({
+      tierScrollEl: props.tierScrollRef.current,
+      tierScrollLive: props.tierScrollLive,
+      tierScrollLayout: props.tierScrollLayout,
+    });
     return pickVisibleSegmentIndices({
       segments,
       durationSec,
       timelineWidthPx,
-      scrollLeftPx: props.scrollLeftPx,
-      viewportWidthPx: props.viewportWidthPx,
+      scrollLeftPx,
+      viewportWidthPx,
       selectedIdx,
     });
   }, [
     durationSec,
-    props.scrollLeftPx,
-    props.viewportWidthPx,
+    props.tierScrollLayout,
+    props.tierScrollLive,
+    props.tierScrollRef,
     segments,
     selectedIdx,
     timelineWidthPx,

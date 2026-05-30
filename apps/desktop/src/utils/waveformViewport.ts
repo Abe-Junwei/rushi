@@ -1,4 +1,15 @@
 import { visibleTimeWindowFromScroll } from "./waveformProjection";
+import type { RefObject } from "react";
+
+export type TierScrollLiveRefs = {
+  scrollLeftRef: RefObject<number>;
+  clientWidthRef: RefObject<number>;
+};
+
+export type TierScrollLayoutMetrics = {
+  scrollLeftPx: number;
+  clientWidthPx: number;
+};
 
 export type WaveformRulerView = {
   start: number;
@@ -32,6 +43,38 @@ export function resolveTierViewportWidthPx(input: {
   const tier = input.tierScrollEl?.clientWidth ?? 0;
   const layout = input.layoutClientWidthPx ?? 0;
   return Math.max(live, tier, layout);
+}
+
+/** Prefer live tier scroll ref; fall back to committed React layout scroll. */
+export function resolveTierScrollLeftPx(input: {
+  layoutScrollLeftPx: number;
+  liveScrollLeftRef?: RefObject<number>;
+}): number {
+  const live = input.liveScrollLeftRef?.current;
+  if (live != null && Number.isFinite(live)) return live;
+  return input.layoutScrollLeftPx;
+}
+
+/** Single read path for overlay / minimap / playback chrome (TRUTH-006/009/023). */
+export function resolveTierViewportMetrics(input: {
+  tierScrollEl?: HTMLElement | null;
+  tierScrollLive?: TierScrollLiveRefs;
+  tierScrollLayout: TierScrollLayoutMetrics;
+}): { scrollLeftPx: number; viewportWidthPx: number } {
+  return {
+    scrollLeftPx: resolveTierScrollLeftPx({
+      layoutScrollLeftPx: input.tierScrollLayout.scrollLeftPx,
+      liveScrollLeftRef: input.tierScrollLive?.scrollLeftRef,
+    }),
+    viewportWidthPx: Math.max(
+      1,
+      resolveTierViewportWidthPx({
+        tierScrollEl: input.tierScrollEl,
+        layoutClientWidthPx: input.tierScrollLayout.clientWidthPx,
+        liveClientWidthPx: input.tierScrollLive?.clientWidthRef.current,
+      }),
+    ),
+  };
 }
 
 export function resolveWaveformRulerView(input: {

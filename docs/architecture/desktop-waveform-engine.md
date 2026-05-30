@@ -19,7 +19,8 @@
 ## 滚动真源
 
 - **tier** `tierScrollRef.scrollLeft` 为 UI 真源（overlay、ruler、segment 控件、minimap）。
-- WaveSurfer `autoScroll: false`；tier 承担水平滚动，并通过 `syncWaveSurferScrollPx` **镜像** `ws.setScroll(scrollLeftPx)`，使 WS lazy tile 视口与 tier 对齐（每帧 resize transaction 内单次写入，无重复 rAF）。
+- **读取**：overlay / playback chrome / minimap 经 [`resolveTierViewportMetrics`](../../apps/desktop/src/utils/waveformViewport.ts)（live ref + committed layout）；**写入**仅 `setTierScrollPx` / 用户 scroll / viewport fit。
+- WaveSurfer `autoScroll: false`；tier 承担水平滚动，并通过 `syncWaveSurferScrollPx` **镜像** `ws.setScroll(scrollLeftPx)`（每帧 resize transaction 内单次写入，无重复 rAF）。
 - 播放跟随：`useWaveformPlaybackScrollFollow` 在波形 ready 后只写 tier scroll；tier → WS 镜像由 `useTierScrollSync` 触发。
 
 ## Viewport resize 编排（P0 阶段 1）
@@ -46,6 +47,7 @@
 - **视口宽**：[`resolveTierViewportWidthPx`](../../apps/desktop/src/utils/waveformViewport.ts)（live ref / tier DOM / committed layout 取 max）；`EditorWaveformPane`、timeline controller、embedded ruler 统一调用。
 - **布局时长**：[`resolveLayoutDurationSec`](../../apps/desktop/src/utils/waveformTimelineMetrics.ts)（synced ref → prop → merged WS/peaks）；seek / peaks load / mount 禁止自建 `getDuration()` fallback 链。
 - **layout refs**（`durationRef` / `timelineWidthPxRef` / `pxPerSecRef`）在 timeline controller **`useLayoutEffect`** 写入，不在 render body。
+- **applied zoom refs**（`waveformAppliedZoom.ts`）：`appliedZoomPxPerSecRef` / `appliedPeaksLoadPxPerSecRef` / `appliedPeaksRef` 跟踪 WS 已应用状态；React `pxPerSec` 为用户意图。
 
 ### Zoom sync（P1）
 
