@@ -1,8 +1,7 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useSegmentKeyboard } from "../hooks/useSegmentKeyboard";
 import { useWaveformTimelineController } from "../hooks/useWaveformTimelineController";
 import { useWaveformTierWheelForward } from "../hooks/useWaveformTierWheelForward";
-import { resolveWaveformPeaksPhase } from "../services/waveform/waveformPeaksPhase";
 import { p1LaneBoundsSignature } from "../utils/boundsSignature";
 import { resolveWaveformSegmentContextMenuIndex } from "../utils/waveformSegmentContextMenu";
 import {
@@ -177,42 +176,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
 
   const { wf, display, peaks, zoom, routePrefs } = timeline;
   const waveformStageHeightPx = display.waveformHeightPx;
-
-  const waveformPeaksPhase = useMemo(
-    () =>
-      resolveWaveformPeaksPhase({
-        mediaUrl: ctx.mediaUrl,
-        peaksLoading: peaks.loading,
-        peakCache: peaks.peakCache,
-        peaksUnavailable: peaks.peaksUnavailable,
-        peaksApplied: wf.peaksApplied,
-        peaksHotSwitchPending: wf.peaksHotSwitchPending,
-        waveformReady: wf.isReady,
-        backgroundPeaksEnabled: routePrefs.backgroundPeaksEnabled,
-        mountDeferred: timeline.deferDecodeMount,
-      }),
-    [
-      ctx.mediaUrl,
-      peaks.loading,
-      peaks.peakCache,
-      peaks.peaksUnavailable,
-      wf.peaksApplied,
-      wf.peaksHotSwitchPending,
-      wf.isReady,
-      routePrefs.backgroundPeaksEnabled,
-      timeline.deferDecodeMount,
-    ],
-  );
-
-  const prevMountDeferTimedOutRef = useRef(timeline.mountDeferTimedOut);
-  useEffect(() => {
-    prevMountDeferTimedOutRef.current = timeline.mountDeferTimedOut;
-  }, [timeline.mountDeferTimedOut]);
-
-  const prevWaveformPeaksPhaseRef = useRef(waveformPeaksPhase);
-  useEffect(() => {
-    prevWaveformPeaksPhaseRef.current = waveformPeaksPhase;
-  }, [waveformPeaksPhase]);
+  const waveformPeaksPhase = timeline.waveformPeaksPhase;
 
   useWaveformTierWheelForward({
     waveformShellRef,

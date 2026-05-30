@@ -1,6 +1,6 @@
 import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { afterSmoothScrollEnd } from "../utils/tierScrollSmooth";
-import { WAVEFORM_SCROLL_SYNC_EPSILON_PX } from "../utils/waveformScrollSync";
+import { clampTimelineScrollLeftPx, WAVEFORM_SCROLL_SYNC_EPSILON_PX } from "../utils/waveformScrollSync";
 import { scrollPxCenterTimeInViewport } from "../utils/waveformProjection";
 import type { useProjectWaveform } from "./useProjectWaveform";
 import { useTierScrollLayout, type TierScrollLayout } from "./useTierScrollLayout";
@@ -69,8 +69,11 @@ export function useTierScrollSync(args: {
     const tier = a.tierScrollRef.current;
     if (!tier) return;
     const vw = tier.clientWidth;
-    const maxSl = Math.max(0, a.timelineWidthPx - vw);
-    const sl = Math.max(0, Math.min(maxSl, px));
+    const sl = clampTimelineScrollLeftPx({
+      scrollLeftPx: px,
+      timelineWidthPx: a.timelineWidthPx,
+      viewportWidthPx: vw,
+    });
     if (
       Math.abs(committedScrollLeftRef.current - sl) < WAVEFORM_SCROLL_SYNC_EPSILON_PX &&
       Math.abs(tier.scrollLeft - sl) < WAVEFORM_SCROLL_SYNC_EPSILON_PX
@@ -106,8 +109,11 @@ export function useTierScrollSync(args: {
         const tier = argsRef.current.tierScrollRef.current;
         if (!tier) return;
         const vw = tier.clientWidth;
-        const maxSl = Math.max(0, argsRef.current.timelineWidthPx - vw);
-        const sl = Math.max(0, Math.min(maxSl, px));
+        const sl = clampTimelineScrollLeftPx({
+          scrollLeftPx: px,
+          timelineWidthPx: argsRef.current.timelineWidthPx,
+          viewportWidthPx: vw,
+        });
         smoothScrollCleanupRef.current?.();
         smoothScrollCleanupRef.current = null;
         if (typeof tier.scrollTo !== "function") {

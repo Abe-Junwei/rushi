@@ -19,7 +19,7 @@
 ## 滚动真源
 
 - **tier** `tierScrollRef.scrollLeft` 为 UI 真源（overlay、ruler、segment 控件、minimap）。
-- **读取**：overlay / playback chrome / minimap 经 [`resolveTierViewportMetrics`](../../apps/desktop/src/utils/waveformViewport.ts)（live ref + committed layout）；**写入**仅 `setTierScrollPx` / 用户 scroll / viewport fit。
+- **读取**：overlay / minimap / ruler / playback chrome 经 [`resolveTierViewportMetrics`](../../apps/desktop/src/utils/waveformViewport.ts)（live ref + committed layout）；**写入**仅 `setTierScrollPx` / 用户 scroll / viewport fit；clamp 经 [`clampTimelineScrollLeftPx`](../../apps/desktop/src/utils/waveformScrollSync.ts)。
 - WaveSurfer `autoScroll: false`；tier 承担水平滚动，并通过 `syncWaveSurferScrollPx` **镜像** `ws.setScroll(scrollLeftPx)`（每帧 resize transaction 内单次写入，无重复 rAF）。
 - 播放跟随：`useWaveformPlaybackScrollFollow` 在波形 ready 后只写 tier scroll；tier → WS 镜像由 `useTierScrollSync` 触发。
 

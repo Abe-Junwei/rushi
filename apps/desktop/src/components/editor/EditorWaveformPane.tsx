@@ -28,8 +28,13 @@ export function EditorWaveformPane({
     tierScrollLive: tx.tierScrollLive,
     tierScrollLayout: tx.tierScrollLayout,
   });
-  const { scrollLeftPx, viewportWidthPx } = tierViewport;
+  const { viewportWidthPx } = tierViewport;
   const mediaDurationSec = tx.mediaDurationSec;
+  const tierScrollProps = {
+    tierScrollRef: tx.tierScrollRef,
+    tierScrollLive: tx.tierScrollLive,
+    tierScrollLayout: tx.tierScrollLayout,
+  };
 
   const waveformStageHeightPx = tx.waveformStageHeightPx;
   const innerWaveformHeightPx = tx.waveformHeightPx;
@@ -86,8 +91,7 @@ export function EditorWaveformPane({
           disabled={stripDisabled}
           durationSec={mediaDurationSec}
           timelineWidthPx={tx.timelineWidthPx}
-          scrollLeftPx={scrollLeftPx}
-          viewportWidthPx={viewportWidthPx}
+          {...tierScrollProps}
           pxPerSec={tx.pxPerSec}
           peakCache={tx.peakCache}
           isReady={tx.isReady}
@@ -222,11 +226,8 @@ export function EditorWaveformPane({
             coordinateSpace="viewport"
             durationSec={mediaDurationSec}
             timelineWidthPx={tx.timelineWidthPx}
-            scrollLeftPx={scrollLeftPx}
-            viewportWidthPx={viewportWidthPx}
+            {...tierScrollProps}
             pxPerSec={tx.pxPerSec}
-            tierScrollRef={tx.tierScrollRef}
-            tierScrollLive={tx.tierScrollLive}
             isPlaying={tx.isPlaying}
             isReady={tx.isReady}
             getPlayheadTime={tx.getPlayheadTime}

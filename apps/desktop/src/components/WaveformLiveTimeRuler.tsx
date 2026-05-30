@@ -2,7 +2,7 @@ import { memo, useCallback, useEffect, useRef } from "react";
 import { WaveformTimeRuler, type WaveformTimeRulerProps } from "./WaveformTimeRuler";
 import { useWaveformLiveClock } from "../hooks/useWaveformLiveClock";
 import { playheadTimelineLeftPct, playheadViewportLeftPx } from "../utils/waveformProjection";
-import { resolveTierScrollLeftPx } from "../utils/waveformViewport";
+import { resolveTierViewportMetrics } from "../utils/waveformViewport";
 
 type WaveformLiveTimeRulerProps = Omit<WaveformTimeRulerProps, "currentTimeSec"> & {
   isPlaying: boolean;
@@ -27,13 +27,11 @@ export const WaveformLiveTimeRuler = memo(function WaveformLiveTimeRuler({
     if (!line) return;
     const props = rulerPropsRef.current;
     if (viewportSpace) {
-      const scrollLeftPx =
-        props.coordinateSpace === "viewport"
-          ? resolveTierScrollLeftPx({
-              layoutScrollLeftPx: props.scrollLeftPx,
-              liveScrollLeftRef: props.tierScrollLive?.scrollLeftRef,
-            })
-          : props.scrollLeftPx;
+      const { scrollLeftPx } = resolveTierViewportMetrics({
+        tierScrollEl: props.tierScrollRef?.current ?? null,
+        tierScrollLive: props.tierScrollLive,
+        tierScrollLayout: props.tierScrollLayout,
+      });
       const px = playheadViewportLeftPx(
         timeSec,
         scrollLeftPx,
@@ -76,7 +74,7 @@ export const WaveformLiveTimeRuler = memo(function WaveformLiveTimeRuler({
     isPlaying,
     isReady,
     rulerProps.durationSec,
-    rulerProps.scrollLeftPx,
+    rulerProps.tierScrollLayout,
     rulerProps.timelineWidthPx,
     writePlayheadLine,
   ]);

@@ -4,7 +4,11 @@ import {
   computeEmbeddedRulerLabelStride,
   findHighlightedRulerMajorTickTime,
 } from "../services/waveform/waveformRulerTicks";
-import { resolveTierViewportWidthPx } from "../utils/waveformViewport";
+import {
+  resolveTierViewportMetrics,
+  type TierScrollLayoutMetrics,
+  type TierScrollLiveRefs,
+} from "../utils/waveformViewport";
 import {
   effectiveTimelinePxPerSec,
   playheadViewportLeftPx,
@@ -16,8 +20,13 @@ import { WaveformTimeRulerTickLayer } from "./WaveformTimeRulerTickLayer";
 export type WaveformTimeRulerProps = {
   durationSec: number;
   timelineWidthPx: number;
-  scrollLeftPx: number;
-  viewportWidthPx: number;
+  /** Committed tier layout — scroll/viewport reads go through resolveTierViewportMetrics. */
+  tierScrollLayout: TierScrollLayoutMetrics;
+  tierScrollLive?: TierScrollLiveRefs;
+  tierScrollRef?: React.RefObject<HTMLElement | null>;
+  /** Legacy fallbacks when tierScrollLayout is absent (unused in embedded viewport). */
+  scrollLeftPx?: number;
+  viewportWidthPx?: number;
   /** Retained for API compat; tick density uses effectiveTimelinePxPerSec. */
   pxPerSec: number;
   currentTimeSec: number;
@@ -27,12 +36,6 @@ export type WaveformTimeRulerProps = {
   appearance?: "ink" | "light" | "embedded";
   /** timeline：随宽内容滚动；viewport：sticky 视口宽标尺（embedded 推荐） */
   coordinateSpace?: "timeline" | "viewport";
-  /** Live tier scroll refs — embedded viewport mode reads DOM scroll synchronously. */
-  tierScrollLive?: {
-    scrollLeftRef: React.RefObject<number>;
-    clientWidthRef: React.RefObject<number>;
-  };
-  tierScrollRef?: React.RefObject<HTMLElement | null>;
   /** 点击时间尺（相对 tier 视口）寻位 */
   onSeekFromTierClientX: (clientX: number) => void;
   onSetScrollLeftPx: (px: number) => void;
@@ -47,8 +50,9 @@ const RULER_H = WAVEFORM_EMBEDDED_TIME_RULER_H_PX;
 export const WaveformTimeRuler = memo(function WaveformTimeRuler({
   durationSec,
   timelineWidthPx,
-  scrollLeftPx,
-  viewportWidthPx,
+  tierScrollLayout,
+  scrollLeftPx: _scrollLeftPxProp = 0,
+  viewportWidthPx: _viewportWidthPxProp = 0,
   pxPerSec: _pxPerSec,
   currentTimeSec,
   formatMediaTime,
@@ -66,6 +70,14 @@ export const WaveformTimeRuler = memo(function WaveformTimeRuler({
   const embedded = appearance === "embedded";
   const viewportSpace = coordinateSpace === "viewport";
   const [, bumpScrollFrame] = useReducer((n: number) => n + 1, 0);
+
+  const tierMetrics = resolveTierViewportMetrics({
+    tierScrollEl: tierScrollRef?.current ?? null,
+    tierScrollLive,
+    tierScrollLayout,
+  });
+  const liveScrollLeftPx = tierMetrics.scrollLeftPx;
+  const liveViewportWidthPx = tierMetrics.viewportWidthPx;
 
   useEffect(() => {
     if (!viewportSpace) return;
@@ -87,20 +99,6 @@ export const WaveformTimeRuler = memo(function WaveformTimeRuler({
       if (raf) cancelAnimationFrame(raf);
     };
   }, [tierScrollRef, viewportSpace]);
-
-  const liveScrollLeftPx =
-    viewportSpace && tierScrollLive ? tierScrollLive.scrollLeftRef.current : scrollLeftPx;
-  const liveViewportWidthPx =
-    viewportSpace && tierScrollLive
-      ? Math.max(
-          1,
-          resolveTierViewportWidthPx({
-            tierScrollEl: tierScrollRef?.current ?? null,
-            layoutClientWidthPx: viewportWidthPx,
-            liveClientWidthPx: tierScrollLive.clientWidthRef.current,
-          }),
-        )
-      : viewportWidthPx;
 
   const renderWidthPx = viewportSpace ? Math.max(1, liveViewportWidthPx) : timelineWidthPx;
   const rulerDragRef = useRef({ dragging: false, startX: 0, startScroll: 0 });

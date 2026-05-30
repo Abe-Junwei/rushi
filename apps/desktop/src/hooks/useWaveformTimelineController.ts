@@ -10,10 +10,11 @@ import { useWaveformZoom } from "./useWaveformZoom";
 import { clampPxPerSecForWaveSurferRender } from "../utils/pxPerSec";
 import { resolveFitAllPxPerSecAdjustment } from "../utils/waveformZoomBarState";
 import { resolveWaveformTimelineMetrics } from "../utils/waveformTimelineMetrics";
-import { resolveTierViewportWidthPx } from "../utils/waveformViewport";
+import { resolveTierViewportMetrics } from "../utils/waveformViewport";
 import { useTranscriptionViewportFit } from "../pages/useTranscriptionViewportFit";
 import { useWaveformTimelineMountGate } from "./useWaveformTimelineMountGate";
 import { useWaveformTimelineDurationSync } from "./useWaveformTimelineDuration";
+import { useWaveformPeaksPhaseState } from "./useWaveformPeaksPhaseState";
 import { writeStoredWaveformPxPerSecDefault } from "../utils/waveformPrefs";
 import type { TranscriptionLayerInput } from "../pages/transcriptionLayerTypes";
 
@@ -201,6 +202,18 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
 
   applyPendingViewportFitRef.current = viewportFit.applyPendingViewportFit;
 
+  const waveformPeaksPhase = useWaveformPeaksPhaseState({
+    mediaUrl: ctx.mediaUrl,
+    peaksLoading: peaks.loading,
+    peakCache: peaks.peakCache,
+    peaksUnavailable: peaks.peaksUnavailable,
+    peaksApplied: wf.peaksApplied,
+    peaksHotSwitchPending: wf.peaksHotSwitchPending,
+    waveformReady: wf.isReady,
+    backgroundPeaksEnabled: routePrefs.backgroundPeaksEnabled,
+    mountDeferred: deferDecodeMount,
+  });
+
   const prevMediaUrlRef = useRef<string | null>(null);
   const pendingMediaZoomResetRef = useRef(false);
 
@@ -219,10 +232,10 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
   useEffect(() => {
     if (!pendingMediaZoomResetRef.current || !ctx.mediaUrl) return;
     const dur = timelineMetrics.mediaDurationSec;
-    const vw = resolveTierViewportWidthPx({
+    const { viewportWidthPx: vw } = resolveTierViewportMetrics({
       tierScrollEl: tierScrollRef.current,
-      layoutClientWidthPx: scroll.tierScrollLayout.clientWidthPx,
-      liveClientWidthPx: scroll.tierScrollLive.clientWidthRef.current,
+      tierScrollLive: scroll.tierScrollLive,
+      tierScrollLayout: scroll.tierScrollLayout,
     });
     if (dur < 0.5 || vw <= 0) return;
     pendingMediaZoomResetRef.current = false;
@@ -254,5 +267,6 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
     routePrefs,
     deferDecodeMount,
     mountDeferTimedOut,
+    waveformPeaksPhase,
   };
 }

@@ -1,4 +1,4 @@
-import { useLayoutEffect, useRef, useState } from "react";
+import { useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
 import { COLORS } from "../config/tokens";
 import type { PeakCache } from "../services/waveform/PeakCache";
 import {
@@ -10,13 +10,19 @@ import {
   overviewClientXToTimeSec,
 } from "../utils/waveformOverviewGeometry";
 import { scrollPxAlignTimeToViewportLeft } from "../utils/waveformProjection";
+import {
+  resolveTierViewportMetrics,
+  type TierScrollLayoutMetrics,
+  type TierScrollLiveRefs,
+} from "../utils/waveformViewport";
 
 type WaveformMinimapStripProps = {
   disabled?: boolean;
   durationSec: number;
   timelineWidthPx: number;
-  scrollLeftPx: number;
-  viewportWidthPx: number;
+  tierScrollRef: RefObject<HTMLElement | null>;
+  tierScrollLive: TierScrollLiveRefs;
+  tierScrollLayout: TierScrollLayoutMetrics;
   pxPerSec: number;
   peakCache: PeakCache | null;
   isReady: boolean;
@@ -29,8 +35,9 @@ export function WaveformMinimapStrip({
   disabled,
   durationSec,
   timelineWidthPx,
-  scrollLeftPx,
-  viewportWidthPx,
+  tierScrollRef,
+  tierScrollLive,
+  tierScrollLayout,
   pxPerSec: _pxPerSec,
   peakCache,
   isReady,
@@ -87,6 +94,16 @@ export function WaveformMinimapStrip({
       if (roRafId) cancelAnimationFrame(roRafId);
     };
   }, [durationSec, peakCache]);
+
+  const { scrollLeftPx, viewportWidthPx } = useMemo(
+    () =>
+      resolveTierViewportMetrics({
+        tierScrollEl: tierScrollRef.current,
+        tierScrollLive,
+        tierScrollLayout,
+      }),
+    [tierScrollLayout, tierScrollLive, tierScrollRef],
+  );
 
   const viewport =
     overviewWidthPx > 0 && timelineWidthPx > 0
