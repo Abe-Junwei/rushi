@@ -8,6 +8,7 @@ import {
   setLlmApiKeyInMemory,
   isLlmRuntimeReady,
   tryBuildPostprocessRuntimeBridge,
+  resolveLlmConnectionUiStatus,
 } from "./postprocessRuntimeContract";
 
 function installMockLocalStorage() {
@@ -45,10 +46,10 @@ describe("postprocessRuntimeContract", () => {
     const bridge = tryBuildPostprocessRuntimeBridge();
     expect(bridge).toEqual({
       provider: "Kimi（Moonshot）",
-      base_url: "https://api.moonshot.cn/v1",
+      baseUrl: "https://api.moonshot.cn/v1",
       model: "moonshot-v1-8k",
-      api_key: "sk-test",
-      allow_insecure_http: undefined,
+      apiKey: "sk-test",
+      allowInsecureHttp: undefined,
     });
   });
 
@@ -71,10 +72,10 @@ describe("postprocessRuntimeContract", () => {
     expect(isLlmRuntimeReady()).toBe(true);
     expect(tryBuildPostprocessRuntimeBridge()).toEqual({
       provider: "DeepSeek",
-      base_url: "https://api.deepseek.com/v1",
+      baseUrl: "https://api.deepseek.com/v1",
       model: "deepseek-chat",
-      api_key_id: DEFAULT_LLM_API_KEY_ID,
-      allow_insecure_http: undefined,
+      apiKeyId: DEFAULT_LLM_API_KEY_ID,
+      allowInsecureHttp: undefined,
     });
   });
 
@@ -92,5 +93,46 @@ describe("postprocessRuntimeContract", () => {
     const cfg = readLlmRuntimeConfigFromStorage();
     expect(cfg.providerId).toBe("deepseek");
     expect(cfg.baseUrl).toBe("https://api.deepseek.com/v1");
+  });
+
+  it("preserves api key id when persisting connection without apiKeyId field", () => {
+    persistLlmRuntimeConfig({ ...applyLlmProviderPreset("deepseek"), apiKeyId: DEFAULT_LLM_API_KEY_ID });
+    persistLlmRuntimeConfig(applyLlmProviderPreset("kimi"));
+    expect(localStorage.getItem(LLM_STORAGE_KEYS.apiKeyId)).toBe(DEFAULT_LLM_API_KEY_ID);
+    expect(isLlmRuntimeReady()).toBe(true);
+  });
+
+  it("sanitizes corrupt apiKeyId that looks like an API key", () => {
+    localStorage.setItem(LLM_STORAGE_KEYS.apiKeyId, "sk-3dad49106a1b4065b472b6894bf0ab36");
+    const cfg = readLlmRuntimeConfigFromStorage();
+    expect(cfg.apiKeyId).toBe(DEFAULT_LLM_API_KEY_ID);
+    expect(localStorage.getItem(LLM_STORAGE_KEYS.apiKeyId)).toBe(DEFAULT_LLM_API_KEY_ID);
+  });
+
+  it("resolveLlmConnectionUiStatus requires probe ok for verified", () => {
+    expect(
+      resolveLlmConnectionUiStatus({
+        hasLocalKeyRef: true,
+        hasTypedKey: false,
+        keychainPresent: true,
+        probeState: "idle",
+      }),
+    ).toBe("unverified");
+    expect(
+      resolveLlmConnectionUiStatus({
+        hasLocalKeyRef: true,
+        hasTypedKey: false,
+        keychainPresent: true,
+        probeState: "ok",
+      }),
+    ).toBe("verified");
+    expect(
+      resolveLlmConnectionUiStatus({
+        hasLocalKeyRef: true,
+        hasTypedKey: false,
+        keychainPresent: false,
+        probeState: "idle",
+      }),
+    ).toBe("keychain_missing");
   });
 });

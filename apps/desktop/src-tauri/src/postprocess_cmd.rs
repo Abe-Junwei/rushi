@@ -1,3 +1,6 @@
+#[path = "postprocess_probe.rs"]
+mod postprocess_probe;
+
 use crate::project::utils::append_desktop_log_line;
 use crate::utils::http_client;
 use crate::DbState;
@@ -8,31 +11,39 @@ use serde_json::json;
 use std::collections::HashMap;
 use std::env;
 use std::sync::Mutex;
-use std::time::{Duration, Instant};
+use std::time::Instant;
 use tauri::State;
 use url::Url;
 
 const KEYRING_SERVICE: &str = "studio.lingchuang.rushi.postprocess";
 const DEFAULT_PROVIDER: &str = "openai-compatible";
 const DEFAULT_TIMEOUT_SECS: u64 = 30;
-const PROBE_TIMEOUT_SECS: u64 = 15;
 const DEFAULT_API_KEY_ID: &str = "default";
 
 /// 桌面 UI 传入的运行时配置（DeepSeek / Kimi 等）；优先于进程环境变量。
-#[derive(Debug, Deserialize)]
+/// JSON 字段与前端 `PostprocessRuntimeBridge` 一致（camelCase；兼容 snake_case alias）。
+#[derive(Debug, Clone, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct PostprocessRuntimeBridge {
     pub provider: String,
+    #[serde(alias = "base_url")]
     pub base_url: String,
     pub model: String,
-    #[serde(default)]
+    #[serde(default, alias = "api_key")]
     pub api_key: String,
-    #[serde(default)]
+    #[serde(default, alias = "api_key_id")]
     pub api_key_id: Option<String>,
-    #[serde(default)]
+    #[serde(default, alias = "allow_insecure_http")]
     pub allow_insecure_http: bool,
 }
 
-#[derive(Debug, Deserialize)]
+#[derive(Debug, Clone, Deserialize)]
+pub struct NeighborContextItem {
+    pub role: String,
+    pub text: String,
+}
+
+#[derive(Debug, Clone, Deserialize)]
 pub struct PostprocessAutoPunctuateRequest {
     pub task: String,
     #[serde(default)]
@@ -41,6 +52,8 @@ pub struct PostprocessAutoPunctuateRequest {
     pub text: String,
     #[serde(default)]
     pub neighbor_snippets: Vec<String>,
+    #[serde(default)]
+    pub neighbor_context: Vec<NeighborContextItem>,
     #[serde(default)]
     pub runtime: Option<PostprocessRuntimeBridge>,
 }
@@ -61,15 +74,18 @@ pub struct PostprocessCancelAutoPunctuateRequest {
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LlmSaveApiKeyRequest {
-    #[serde(default)]
+    #[serde(default, alias = "api_key_id")]
     pub api_key_id: Option<String>,
+    #[serde(alias = "api_key")]
     pub api_key: String,
 }
 
 #[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LlmDeleteApiKeyRequest {
-    #[serde(default)]
+    #[serde(default, alias = "api_key_id")]
     pub api_key_id: Option<String>,
 }
 
@@ -86,14 +102,39 @@ pub struct LlmProbeConnectionResponse {
     pub message: String,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub latency_ms: Option<u64>,
+    /// `chat_completion_ping` | `models_list`
+    #[serde(skip_serializing_if = "Option::is_none", rename = "probeMethod")]
+    pub probe_method: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub endpoint: Option<String>,
 }
 
 #[derive(Debug)]
-struct PostprocessConfig {
-    provider: String,
-    endpoint: Url,
-    model: String,
-    api_key: String,
+pub(crate) struct PostprocessConfig {
+    pub provider: String,
+    pub endpoint: Url,
+    pub model: String,
+    pub api_key: String,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LlmHasStoredApiKeyRequest {
+    #[serde(default, alias = "api_key_id")]
+    pub api_key_id: Option<String>,
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct LlmMigrateLegacyApiKeyRequest {
+    #[serde(alias = "legacy_api_key_id")]
+    pub legacy_api_key_id: String,
+}
+
+#[tauri::command]
+pub fn llm_has_stored_api_key(req: LlmHasStoredApiKeyRequest) -> Result<bool, String> {
+    let api_key_id = normalize_api_key_id(req.api_key_id.as_deref());
+    keychain_has_api_key(&api_key_id)
 }
 
 #[tauri::command]
@@ -103,40 +144,60 @@ pub fn llm_save_api_key(req: LlmSaveApiKeyRequest) -> Result<String, String> {
         return Err("API Key 为空，无法写入系统钥匙串。".to_string());
     }
     let api_key_id = normalize_api_key_id(req.api_key_id.as_deref());
-    let entry = Entry::new(KEYRING_SERVICE, &api_key_id)
-        .map_err(|_| "无法创建 LLM 钥匙串条目，请检查系统钥匙串权限。".to_string())?;
-    entry
-        .set_password(api_key)
-        .map_err(|_| "写入 LLM API Key 失败，请检查系统钥匙串权限。".to_string())?;
+    write_llm_api_key_to_keychain(&api_key_id, api_key)?;
     Ok(api_key_id)
+}
+
+fn keychain_account_for_delete(raw: Option<&str>) -> String {
+    raw.map(str::trim)
+        .filter(|x| !x.is_empty())
+        .unwrap_or(DEFAULT_API_KEY_ID)
+        .to_string()
 }
 
 #[tauri::command]
 pub fn llm_delete_api_key(req: LlmDeleteApiKeyRequest) -> Result<(), String> {
-    let api_key_id = normalize_api_key_id(req.api_key_id.as_deref());
-    let entry = Entry::new(KEYRING_SERVICE, &api_key_id)
-        .map_err(|_| "无法定位 LLM 钥匙串条目，请检查系统钥匙串权限。".to_string())?;
-    match entry.delete_credential() {
-        Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
-        Err(_) => Err("删除 LLM API Key 失败，请检查系统钥匙串权限。".to_string()),
+    // 删除必须按字面账户名，不能把 sk-… 规范化成 default（否则会误删刚保存的密钥）。
+    let api_key_id = keychain_account_for_delete(req.api_key_id.as_deref());
+    delete_llm_api_key_from_keychain(&api_key_id)
+}
+
+/// 将旧版误写入钥匙串账户名（如 sk- 明文）下的密钥迁移到 `default`。
+#[tauri::command]
+pub fn llm_migrate_legacy_api_key(req: LlmMigrateLegacyApiKeyRequest) -> Result<bool, String> {
+    let legacy = req.legacy_api_key_id.trim();
+    if legacy.is_empty() || is_valid_keychain_account_id(legacy) {
+        return Ok(false);
     }
+    let Some(key) = read_llm_api_key_from_keychain(legacy)? else {
+        return Ok(false);
+    };
+    write_llm_api_key_to_keychain(DEFAULT_API_KEY_ID, &key)?;
+    let _ = delete_llm_api_key_from_keychain(legacy);
+    Ok(true)
 }
 
 #[tauri::command]
-pub async fn llm_probe_connection(
+pub fn llm_probe_connection(
     state: State<'_, DbState>,
     req: LlmProbeConnectionRequest,
 ) -> Result<LlmProbeConnectionResponse, String> {
-    let config = resolve_runtime_postprocess_config(&req.runtime)?;
-    let endpoint = build_postprocess_models_endpoint(&config.endpoint);
     append_desktop_log_line(
         &state,
         &format!(
-            "INFO llm_probe provider={} endpoint={}",
-            config.provider, endpoint
+            "INFO llm_probe_start provider={} base_url={}",
+            req.runtime.provider, req.runtime.base_url
         ),
     );
-    let out = probe_llm_connection(&config, Duration::from_secs(PROBE_TIMEOUT_SECS)).await;
+    let config = resolve_runtime_postprocess_config(&req.runtime)?;
+    append_desktop_log_line(
+        &state,
+        &format!("INFO llm_probe endpoint={}", config.endpoint),
+    );
+    let out = postprocess_probe::probe_llm_connection_blocking(
+        &config,
+        postprocess_probe::PROBE_TIMEOUT,
+    );
     let level = if out.ok { "INFO" } else { "WARN" };
     let status = out
         .status
@@ -149,10 +210,10 @@ pub async fn llm_probe_connection(
     append_desktop_log_line(
         &state,
         &format!(
-            "{level} llm_probe_done provider={} status={} latency_ms={} message={}",
-            config.provider,
+            "{level} llm_probe_done status={} latency_ms={} method={} message={}",
             status,
             latency_ms,
+            out.probe_method.as_deref().unwrap_or("-"),
             crate::utils::redact_secrets_for_log(&out.message)
         ),
     );
@@ -176,9 +237,9 @@ pub async fn postprocess_auto_punctuate(
         return Err("当前语段正文为空，无法执行自动标点。".to_string());
     }
 
-    let config = resolve_postprocess_config(&req)?;
+    let config = resolve_postprocess_config_async(&req).await?;
     let api_key = config.api_key.clone();
-    let prompt = build_auto_punctuate_prompt(text, &req.neighbor_snippets);
+    let prompt = build_auto_punctuate_prompt(text, &req.neighbor_context, &req.neighbor_snippets);
     let body = json!({
         "model": config.model,
         "temperature": 0.2,
@@ -329,7 +390,16 @@ fn resolve_postprocess_config(
     load_postprocess_config_from_env()
 }
 
-fn resolve_runtime_postprocess_config(
+async fn resolve_postprocess_config_async(
+    req: &PostprocessAutoPunctuateRequest,
+) -> Result<PostprocessConfig, String> {
+    let req = req.clone();
+    tauri::async_runtime::spawn_blocking(move || resolve_postprocess_config(&req))
+        .await
+        .map_err(|e| format!("无法解析 LLM 配置：{}", e))?
+}
+
+pub(crate) fn resolve_runtime_postprocess_config(
     rt: &PostprocessRuntimeBridge,
 ) -> Result<PostprocessConfig, String> {
     let base_url = rt.base_url.trim();
@@ -406,7 +476,7 @@ fn parse_postprocess_endpoint(raw: &str, allow_insecure_http: bool) -> Result<Ur
     Ok(url)
 }
 
-fn build_postprocess_models_endpoint(chat_endpoint: &Url) -> Url {
+pub(crate) fn build_postprocess_models_endpoint(chat_endpoint: &Url) -> Url {
     let mut url = chat_endpoint.clone();
     let path = url.path().trim_end_matches('/');
     let next = if path.is_empty() || path == "/" {
@@ -431,26 +501,83 @@ fn is_loopback_host(host: Option<&str>) -> bool {
     matches!(host, Some("127.0.0.1" | "localhost" | "::1"))
 }
 
+fn is_valid_keychain_account_id(id: &str) -> bool {
+    let id = id.trim();
+    if id.is_empty() || id.len() > 48 {
+        return false;
+    }
+    if id.starts_with("sk-") || id.starts_with("Bearer ") {
+        return false;
+    }
+    id.chars()
+        .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+}
+
 fn normalize_api_key_id(raw: Option<&str>) -> String {
     raw.map(str::trim)
         .filter(|x| !x.is_empty())
+        .filter(|x| is_valid_keychain_account_id(x))
         .unwrap_or(DEFAULT_API_KEY_ID)
         .to_string()
 }
 
+fn write_llm_api_key_to_keychain(api_key_id: &str, api_key: &str) -> Result<(), String> {
+    let entry = Entry::new(KEYRING_SERVICE, api_key_id)
+        .map_err(|_| "无法创建 LLM 钥匙串条目，请检查系统钥匙串权限。".to_string())?;
+    entry
+        .set_password(api_key)
+        .map_err(|_| "写入 LLM API Key 失败，请检查系统钥匙串权限。".to_string())?;
+    match entry.get_password() {
+        Ok(read_back) if !read_back.trim().is_empty() => Ok(()),
+        Ok(_) => Err("写入后 API Key 为空，请重试。".to_string()),
+        Err(keyring::Error::NoEntry) => Err(
+            "写入后无法在系统钥匙串中读回 API Key，请检查钥匙串权限后重试。".to_string(),
+        ),
+        Err(_) => Err("写入后无法验证 API Key，请检查系统钥匙串权限。".to_string()),
+    }
+}
+
+fn keychain_has_api_key(api_key_id: &str) -> Result<bool, String> {
+    let entry = Entry::new(KEYRING_SERVICE, api_key_id)
+        .map_err(|_| "无法读取系统钥匙串条目。".to_string())?;
+    match entry.get_password() {
+        Ok(key) => Ok(!key.trim().is_empty()),
+        Err(keyring::Error::NoEntry) => Ok(false),
+        Err(_) => Err("无法读取系统钥匙串条目。".to_string()),
+    }
+}
+
+fn read_llm_api_key_from_keychain(api_key_id: &str) -> Result<Option<String>, String> {
+    let entry = Entry::new(KEYRING_SERVICE, api_key_id)
+        .map_err(|_| "无法读取系统钥匙串条目。".to_string())?;
+    match entry.get_password() {
+        Ok(key) if !key.trim().is_empty() => Ok(Some(key)),
+        Ok(_) => Ok(None),
+        Err(keyring::Error::NoEntry) => Ok(None),
+        Err(_) => Err("无法读取系统钥匙串条目。".to_string()),
+    }
+}
+
+fn delete_llm_api_key_from_keychain(api_key_id: &str) -> Result<(), String> {
+    let entry = Entry::new(KEYRING_SERVICE, api_key_id)
+        .map_err(|_| "无法定位 LLM 钥匙串条目，请检查系统钥匙串权限。".to_string())?;
+    match entry.delete_credential() {
+        Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
+        Err(_) => Err("删除 LLM API Key 失败，请检查系统钥匙串权限。".to_string()),
+    }
+}
+
 fn load_postprocess_api_key(api_key_id: Option<&str>) -> Result<String, String> {
-    if let Some(id) = api_key_id {
-        let entry = Entry::new(KEYRING_SERVICE, id)
+    let id = normalize_api_key_id(api_key_id);
+    if keychain_has_api_key(&id)? {
+        let entry = Entry::new(KEYRING_SERVICE, &id)
             .map_err(|_| "自动标点密钥配置无效：无法读取 keychain 条目。".to_string())?;
-        match entry.get_password() {
-            Ok(key) => {
-                let trimmed = key.trim();
-                if !trimmed.is_empty() {
-                    return Ok(trimmed.to_string());
-                }
-            }
-            Err(keyring::Error::NoEntry) => {}
-            Err(_) => return Err("自动标点密钥配置无效：无法读取 keychain 条目。".to_string()),
+        let key = entry
+            .get_password()
+            .map_err(|_| "自动标点密钥配置无效：无法读取 keychain 条目。".to_string())?;
+        let trimmed = key.trim();
+        if !trimmed.is_empty() {
+            return Ok(trimmed.to_string());
         }
     }
 
@@ -458,66 +585,20 @@ fn load_postprocess_api_key(api_key_id: Option<&str>) -> Result<String, String> 
         .ok()
         .map(|x| x.trim().to_string())
         .filter(|x| !x.is_empty());
-    fallback.ok_or_else(|| {
-        "未配置自动标点 API Key：请设置 RUSHI_POSTPROCESS_API_KEY_ID（keychain）或开发环境变量 RUSHI_POSTPROCESS_API_KEY。".to_string()
-    })
-}
-
-async fn probe_llm_connection(
-    config: &PostprocessConfig,
-    timeout: Duration,
-) -> LlmProbeConnectionResponse {
-    let endpoint = build_postprocess_models_endpoint(&config.endpoint);
-    let t0 = Instant::now();
-    match http_client()
-        .get(endpoint)
-        .bearer_auth(&config.api_key)
-        .timeout(timeout)
-        .send()
-        .await
-    {
-        Ok(resp) => {
-            let status = resp.status().as_u16();
-            let latency_ms = Some(t0.elapsed().as_millis() as u64);
-            if resp.status().is_success() {
-                LlmProbeConnectionResponse {
-                    ok: true,
-                    status: Some(status),
-                    message: "连接成功。".to_string(),
-                    latency_ms,
-                }
-            } else if matches!(status, 401 | 403) {
-                LlmProbeConnectionResponse {
-                    ok: false,
-                    status: Some(status),
-                    message: format!("认证失败（HTTP {status}），请检查 API Key。"),
-                    latency_ms,
-                }
-            } else {
-                LlmProbeConnectionResponse {
-                    ok: false,
-                    status: Some(status),
-                    message: format!("连接失败（HTTP {status}），请检查服务地址或稍后重试。"),
-                    latency_ms,
-                }
-            }
-        }
-        Err(e) if e.is_timeout() => LlmProbeConnectionResponse {
-            ok: false,
-            status: None,
-            message: "连接超时，请检查网络或稍后重试。".to_string(),
-            latency_ms: Some(t0.elapsed().as_millis() as u64),
-        },
-        Err(_) => LlmProbeConnectionResponse {
-            ok: false,
-            status: None,
-            message: "连接失败，请检查网络、服务地址或 API Key。".to_string(),
-            latency_ms: Some(t0.elapsed().as_millis() as u64),
-        },
+    if let Some(key) = fallback {
+        return Ok(key);
     }
+
+    return Err(format!(
+        "系统钥匙串中未找到 API Key（标识：{id}）。请在「设置 → LLM 配置」重新填写并保存。"
+    ));
 }
 
-fn build_auto_punctuate_prompt(text: &str, neighbors: &[String]) -> String {
+fn build_auto_punctuate_prompt(
+    text: &str,
+    neighbor_context: &[NeighborContextItem],
+    legacy_snippets: &[String],
+) -> String {
     let mut lines = vec![
         "任务：仅为“当前语段”补充自然中文标点。".to_string(),
         "约束：".to_string(),
@@ -525,14 +606,39 @@ fn build_auto_punctuate_prompt(text: &str, neighbors: &[String]) -> String {
         "2. 不输出解释，不加引号标题。".to_string(),
         "3. 仅返回处理后的当前语段正文。".to_string(),
     ];
-    if !neighbors.is_empty() {
+    let context_lines = if !neighbor_context.is_empty() {
+        neighbor_context
+            .iter()
+            .filter_map(|item| {
+                let snippet = item.text.trim();
+                if snippet.is_empty() {
+                    return None;
+                }
+                let label = match item.role.trim() {
+                    "prev" => "上一语段",
+                    "next" => "下一语段",
+                    other if !other.is_empty() => other,
+                    _ => "上下文",
+                };
+                Some(format!("{label}：{snippet}"))
+            })
+            .collect::<Vec<_>>()
+    } else {
+        legacy_snippets
+            .iter()
+            .enumerate()
+            .filter_map(|(idx, snippet)| {
+                let trimmed = snippet.trim();
+                if trimmed.is_empty() {
+                    return None;
+                }
+                Some(format!("片段{}：{trimmed}", idx + 1))
+            })
+            .collect::<Vec<_>>()
+    };
+    if !context_lines.is_empty() {
         lines.push("上下文（仅辅助判断停顿，不可合并进结果）：".to_string());
-        for (idx, snippet) in neighbors.iter().enumerate() {
-            if snippet.trim().is_empty() {
-                continue;
-            }
-            lines.push(format!("片段{}：{}", idx + 1, snippet.trim()));
-        }
+        lines.extend(context_lines);
     }
     lines.push("当前语段：".to_string());
     lines.push(text.to_string());

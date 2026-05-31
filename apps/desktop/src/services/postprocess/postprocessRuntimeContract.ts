@@ -6,7 +6,11 @@ export const LLM_STORAGE_KEYS = {
   baseUrl: "rushi.llm.baseUrl",
   model: "rushi.llm.model",
   apiKeyId: "rushi.llm.apiKeyId",
+  /** 最近一次 chat 路径验证成功的配置指纹（探测或自动标点成功时写入） */
+  connectionVerifiedFingerprint: "rushi.llm.connectionVerifiedFingerprint",
 } as const;
+
+export const LLM_CONNECTION_VERIFIED_EVENT = "rushi:llm-connection-verified";
 
 /** @deprecated 仅用于从旧版「自动标点」页迁移 */
 const LEGACY_POSTPROCESS_STORAGE_KEYS = {
@@ -122,18 +126,34 @@ export type LlmRuntimeConfig = {
   apiKeyId?: string;
 };
 
-/** 发往 Tauri 后处理命令的运行时桥（字段名与 Rust 一致）。 */
+/** 发往 Tauri 后处理命令的运行时桥（camelCase，与 Rust `PostprocessRuntimeBridge` 一致）。 */
 export type PostprocessRuntimeBridge = {
   provider: string;
-  base_url: string;
+  baseUrl: string;
   model: string;
-  api_key?: string;
-  api_key_id?: string;
-  allow_insecure_http?: boolean;
+  apiKey?: string;
+  apiKeyId?: string;
+  allowInsecureHttp?: boolean;
 };
 
 const inMemoryLlmSecrets: { apiKey?: string } = {};
 export const DEFAULT_LLM_API_KEY_ID = "default";
+
+/** apiKeyId 只能是钥匙串条目名（如 default），不能是 API Key 本身（DeepSeek 等为 sk- 开头）。 */
+export function isCorruptLlmApiKeyId(raw: string | undefined | null): boolean {
+  const id = (raw ?? "").trim();
+  if (!id) return false;
+  if (id.startsWith("sk-") || id.startsWith("Bearer ")) return true;
+  if (id.length > 48) return true;
+  return !/^[A-Za-z0-9_-]+$/.test(id);
+}
+
+export function normalizeLlmApiKeyId(raw: string | undefined | null): string | undefined {
+  const id = (raw ?? "").trim();
+  if (!id) return undefined;
+  if (isCorruptLlmApiKeyId(id)) return DEFAULT_LLM_API_KEY_ID;
+  return id;
+}
 
 function migrateLegacyLlmStorageKeys(): void {
   const hasNew = readStorage(LLM_STORAGE_KEYS.providerId);
@@ -158,11 +178,43 @@ export function readLlmRuntimeConfigFromStorage(): LlmRuntimeConfig {
   const def = getLlmProviderDefinition(providerId)!;
   const baseUrl = (readStorage(LLM_STORAGE_KEYS.baseUrl) ?? def.defaultBaseUrl).trim();
   const model = (readStorage(LLM_STORAGE_KEYS.model) ?? def.defaultModel).trim();
-  const apiKeyId = (readStorage(LLM_STORAGE_KEYS.apiKeyId) ?? "").trim() || undefined;
+  const rawApiKeyId = (readStorage(LLM_STORAGE_KEYS.apiKeyId) ?? "").trim();
+  const apiKeyId = normalizeLlmApiKeyId(rawApiKeyId);
+  if (rawApiKeyId && apiKeyId && rawApiKeyId !== apiKeyId) {
+    writeStorage(LLM_STORAGE_KEYS.apiKeyId, apiKeyId);
+  } else if (rawApiKeyId && !apiKeyId) {
+    localStorage.removeItem(LLM_STORAGE_KEYS.apiKeyId);
+  }
   return { providerId, baseUrl, model, apiKeyId };
 }
 
-export function persistLlmRuntimeConfig(config: LlmRuntimeConfig): void {
+export function llmRuntimeConnectionFingerprint(config: LlmRuntimeConfig = readLlmRuntimeConfigFromStorage()): string {
+  return [config.providerId, config.baseUrl, config.model, config.apiKeyId ?? ""].join("\0");
+}
+
+export function markLlmConnectionVerified(config: LlmRuntimeConfig = readLlmRuntimeConfigFromStorage()): void {
+  writeStorage(LLM_STORAGE_KEYS.connectionVerifiedFingerprint, llmRuntimeConnectionFingerprint(config));
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent(LLM_CONNECTION_VERIFIED_EVENT));
+  }
+}
+
+export function clearLlmConnectionVerified(): void {
+  localStorage.removeItem(LLM_STORAGE_KEYS.connectionVerifiedFingerprint);
+}
+
+export function isLlmConnectionVerified(config: LlmRuntimeConfig = readLlmRuntimeConfigFromStorage()): boolean {
+  const stored = readStorage(LLM_STORAGE_KEYS.connectionVerifiedFingerprint);
+  if (!stored) return false;
+  return stored === llmRuntimeConnectionFingerprint(config);
+}
+
+export type PersistLlmRuntimeConfigOptions = {
+  /** 显式清除钥匙串引用（清除已保存 API Key 时使用） */
+  clearApiKeyId?: boolean;
+};
+
+export function validateLlmConnectionDraft(config: Pick<LlmRuntimeConfig, "providerId" | "baseUrl" | "model">): void {
   const def = getLlmProviderDefinition(config.providerId);
   if (!def) throw new Error("未知的 LLM 厂商预设。");
   const baseUrl = config.baseUrl.trim() || def.defaultBaseUrl;
@@ -174,13 +226,29 @@ export function persistLlmRuntimeConfig(config: LlmRuntimeConfig): void {
   ) {
     throw new Error("API 基址须为 https://，或本机 http://127.0.0.1 / localhost（开发）。");
   }
+  if (!model) {
+    throw new Error("请填写模型 ID。");
+  }
+}
+
+export function persistLlmRuntimeConfig(
+  config: LlmRuntimeConfig,
+  options?: PersistLlmRuntimeConfigOptions,
+): void {
+  validateLlmConnectionDraft(config);
+  const def = getLlmProviderDefinition(config.providerId)!;
+  const baseUrl = config.baseUrl.trim() || def.defaultBaseUrl;
+  const model = config.model.trim() || def.defaultModel;
   writeStorage(LLM_STORAGE_KEYS.providerId, config.providerId);
   writeStorage(LLM_STORAGE_KEYS.baseUrl, baseUrl);
   writeStorage(LLM_STORAGE_KEYS.model, model);
-  if (config.apiKeyId?.trim()) {
-    writeStorage(LLM_STORAGE_KEYS.apiKeyId, config.apiKeyId.trim());
-  } else {
+  clearLlmConnectionVerified();
+  if (options?.clearApiKeyId) {
     localStorage.removeItem(LLM_STORAGE_KEYS.apiKeyId);
+  } else if (config.apiKeyId?.trim()) {
+    const normalized = normalizeLlmApiKeyId(config.apiKeyId);
+    if (normalized) writeStorage(LLM_STORAGE_KEYS.apiKeyId, normalized);
+    else localStorage.removeItem(LLM_STORAGE_KEYS.apiKeyId);
   }
 }
 
@@ -205,23 +273,116 @@ export function isLlmRuntimeReady(): boolean {
   return Boolean(getLlmApiKeyFromMemory()?.trim() || cfg.apiKeyId?.trim());
 }
 
+/** 设置页 / 编辑器共用的连接 UI 状态（不含探测结果以外的「假就绪」）。 */
+export type LlmConnectionUiStatus = "missing" | "keychain_missing" | "unverified" | "verified";
+
+export type LlmConnectionUiStatusInput = {
+  /** localStorage 有 apiKeyId 或会话内存 Key */
+  hasLocalKeyRef: boolean;
+  /** 表单中尚未保存的 Key */
+  hasTypedKey: boolean;
+  /** null = 钥匙串检查中 */
+  keychainPresent: boolean | null;
+  probeState: "idle" | "ok" | "fail";
+};
+
+export function resolveLlmConnectionUiStatus(input: LlmConnectionUiStatusInput): LlmConnectionUiStatus {
+  if (input.hasTypedKey || input.hasLocalKeyRef) {
+    if (input.keychainPresent === false && !input.hasTypedKey && !getLlmApiKeyFromMemory()?.trim()) {
+      return "keychain_missing";
+    }
+    if (input.probeState === "ok") return "verified";
+    return "unverified";
+  }
+  return "missing";
+}
+
+export function llmConnectionStatusMessage(status: LlmConnectionUiStatus): string {
+  switch (status) {
+    case "missing":
+      return llmConfigHint();
+    case "keychain_missing":
+      return "配置里记录了密钥引用，但系统钥匙串中读不到。请重新填写 DeepSeek API Key 并保存。";
+    case "unverified":
+      return "密钥已就位，尚未验证连通性。请点击「探测连接」确认后再使用自动标点。";
+    case "verified":
+      return "连接已验证：编辑器中的自动标点等能力可用。";
+  }
+}
+
+export function llmConnectionStatusTone(status: LlmConnectionUiStatus): "error" | "warn" | "ok" {
+  switch (status) {
+    case "missing":
+    case "keychain_missing":
+      return "error";
+    case "unverified":
+      return "warn";
+    case "verified":
+      return "ok";
+  }
+}
+
+export function llmAutoPunctuateCapabilityBadge(status: LlmConnectionUiStatus): string {
+  switch (status) {
+    case "missing":
+      return "待配置";
+    case "keychain_missing":
+      return "密钥异常";
+    case "unverified":
+      return "待验证";
+    case "verified":
+      return "可用";
+  }
+}
+
+export function llmKeychainReferenceMessage(apiKeyId: string | null, keychainPresent: boolean | null): string {
+  const label = apiKeyId ? (normalizeLlmApiKeyId(apiKeyId) ?? DEFAULT_LLM_API_KEY_ID) : null;
+  if (!label) return "系统钥匙串：当前未保存 API Key。";
+  if (keychainPresent === null) return `系统钥匙串：正在检查已保存引用（标识：${label}）…`;
+  if (keychainPresent) {
+    return `系统钥匙串：已找到 API Key（标识：${label}）。输入框留空时将使用它。`;
+  }
+  return `系统钥匙串：未读到标识为「${label}」的密钥。请重新填写 DeepSeek API Key 并点击保存配置。`;
+}
+
+export function resolveAutoPunctuateBlockReason(input: {
+  currentFileId: string | null;
+  hasSegmentText: boolean;
+  keychainReady: boolean;
+  keychainChecking: boolean;
+}): string | null {
+  if (!input.currentFileId || !input.hasSegmentText) {
+    return "请先选中一条有正文的语段。";
+  }
+  if (!isLlmRuntimeReady()) {
+    return llmConfigHint();
+  }
+  if (input.keychainChecking) {
+    return "正在检查 LLM 密钥状态…";
+  }
+  if (!input.keychainReady && !getLlmApiKeyFromMemory()?.trim()) {
+    return "系统钥匙串中未找到 API Key，请在设置 → LLM 配置 中重新保存。";
+  }
+  return null;
+}
+
 export function tryBuildPostprocessRuntimeBridge(): PostprocessRuntimeBridge | null {
   const cfg = readLlmRuntimeConfigFromStorage();
   const def = getLlmProviderDefinition(cfg.providerId);
   const apiKey = getLlmApiKeyFromMemory()?.trim();
-  const apiKeyId = cfg.apiKeyId?.trim();
+  const apiKeyId = normalizeLlmApiKeyId(cfg.apiKeyId?.trim());
   if (!def || (!apiKey && !apiKeyId)) return null;
   const base = cfg.baseUrl.trim() || def.defaultBaseUrl;
-  const allow_insecure_http =
+  const allowInsecureHttp =
     base.startsWith("http://127.0.0.1") || base.startsWith("http://localhost");
   const runtime: PostprocessRuntimeBridge = {
     provider: def.label,
-    base_url: base,
+    baseUrl: base,
     model: cfg.model.trim() || def.defaultModel,
-    allow_insecure_http: allow_insecure_http || undefined,
+    allowInsecureHttp: allowInsecureHttp || undefined,
   };
-  if (apiKey) runtime.api_key = apiKey;
-  else if (apiKeyId) runtime.api_key_id = apiKeyId;
+  if (apiKey) runtime.apiKey = apiKey;
+  else if (apiKeyId) runtime.apiKeyId = apiKeyId;
   return runtime;
 }
 

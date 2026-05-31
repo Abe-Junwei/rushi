@@ -1,30 +1,20 @@
+use super::postprocess_probe::probe_llm_connection_blocking;
 use super::{
-    build_auto_punctuate_prompt, build_postprocess_models_endpoint, extract_chat_completion_text,
-    parse_postprocess_endpoint, probe_llm_connection, resolve_postprocess_config,
-    LlmProbeConnectionResponse, PostprocessAutoPunctuateRequest, PostprocessConfig,
-    PostprocessRuntimeBridge,
+    build_auto_punctuate_prompt, build_postprocess_models_endpoint, delete_llm_api_key_from_keychain,
+    extract_chat_completion_text, keychain_account_for_delete, keychain_has_api_key,
+    normalize_api_key_id, parse_postprocess_endpoint, read_llm_api_key_from_keychain,
+    resolve_postprocess_config, write_llm_api_key_to_keychain, LlmProbeConnectionResponse,
+    PostprocessAutoPunctuateRequest, PostprocessConfig, PostprocessRuntimeBridge,
 };
 use serde_json::json;
-use std::env;
 use std::io::{Read, Write};
 use std::net::TcpListener;
-use std::sync::{Mutex, OnceLock};
 use std::thread;
 use std::time::Duration;
-use tokio::runtime::Builder;
 use url::Url;
 
-fn env_lock() -> &'static Mutex<()> {
-    static LOCK: OnceLock<Mutex<()>> = OnceLock::new();
-    LOCK.get_or_init(|| Mutex::new(()))
-}
-
 fn run_probe(config: &PostprocessConfig, timeout: Duration) -> LlmProbeConnectionResponse {
-    Builder::new_current_thread()
-        .enable_all()
-        .build()
-        .unwrap()
-        .block_on(probe_llm_connection(config, timeout))
+    probe_llm_connection_blocking(config, timeout)
 }
 
 fn spawn_http_server(status_line: &str, body: &str, delay: Duration) -> Url {
@@ -34,14 +24,20 @@ fn spawn_http_server(status_line: &str, body: &str, delay: Duration) -> Url {
     let body = body.to_string();
     thread::spawn(move || {
         let (mut stream, _) = listener.accept().unwrap();
-        let mut buf = [0u8; 1024];
-        let _ = stream.read(&mut buf);
+        let mut buf = [0u8; 4096];
+        let n = stream.read(&mut buf).unwrap_or(0);
+        let req = String::from_utf8_lossy(&buf[..n]);
+        let response_body = if req.starts_with("POST ") {
+            r#"{"choices":[{"message":{"content":"."}}]}"#.to_string()
+        } else {
+            body.clone()
+        };
         if !delay.is_zero() {
             thread::sleep(delay);
         }
         let response = format!(
-            "HTTP/1.1 {status_line}\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{body}",
-            body.len()
+            "HTTP/1.1 {status_line}\r\ncontent-type: application/json\r\ncontent-length: {}\r\nconnection: close\r\n\r\n{response_body}",
+            response_body.len()
         );
         let _ = stream.write_all(response.as_bytes());
     });
@@ -97,13 +93,59 @@ fn extract_text_from_array_content() {
 }
 
 #[test]
-fn prompt_includes_neighbors() {
+fn prompt_includes_labeled_neighbor_context() {
     let prompt = build_auto_punctuate_prompt(
         "今天天气不错我们出发吧",
-        &["上一句".into(), "下一句".into()],
+        &[
+            super::NeighborContextItem {
+                role: "prev".into(),
+                text: "上一句".into(),
+            },
+            super::NeighborContextItem {
+                role: "next".into(),
+                text: "下一句".into(),
+            },
+        ],
+        &[],
+    );
+    assert!(prompt.contains("上一语段：上一句"));
+    assert!(prompt.contains("下一语段：下一句"));
+    assert!(prompt.contains("当前语段："));
+}
+
+#[test]
+fn prompt_falls_back_to_legacy_snippets() {
+    let prompt = build_auto_punctuate_prompt(
+        "今天天气不错我们出发吧",
+        &[],
+        &["上一句".into()],
     );
     assert!(prompt.contains("片段1：上一句"));
-    assert!(prompt.contains("当前语段："));
+}
+
+#[test]
+fn runtime_bridge_deserializes_snake_case_json_from_ui() {
+    let raw = json!({
+        "provider": "DeepSeek",
+        "base_url": "https://api.deepseek.com/v1",
+        "model": "deepseek-chat",
+        "api_key": "sk-from-ui"
+    });
+    let req = PostprocessAutoPunctuateRequest {
+        task: "auto_punctuate".into(),
+        request_id: None,
+        segment_uid: "u1".into(),
+        text: "你好".into(),
+        neighbor_snippets: vec![],
+        neighbor_context: vec![],
+        runtime: Some(serde_json::from_value(raw).unwrap()),
+    };
+    let cfg = resolve_postprocess_config(&req).unwrap();
+    assert_eq!(cfg.api_key, "sk-from-ui");
+    assert_eq!(
+        cfg.endpoint.as_str(),
+        "https://api.deepseek.com/v1/chat/completions"
+    );
 }
 
 #[test]
@@ -114,6 +156,7 @@ fn runtime_bridge_resolves_deepseek_endpoint() {
         segment_uid: "u1".into(),
         text: "你好".into(),
         neighbor_snippets: vec![],
+        neighbor_context: vec![],
         runtime: Some(PostprocessRuntimeBridge {
             provider: "DeepSeek".into(),
             base_url: "https://api.deepseek.com/v1".into(),
@@ -132,27 +175,25 @@ fn runtime_bridge_resolves_deepseek_endpoint() {
 }
 
 #[test]
-fn runtime_bridge_can_fallback_to_env_api_key() {
-    let _guard = env_lock().lock().unwrap();
-    env::set_var("RUSHI_POSTPROCESS_API_KEY", "sk-env");
+fn runtime_bridge_prefers_inline_api_key() {
     let req = PostprocessAutoPunctuateRequest {
         task: "auto_punctuate".into(),
         request_id: None,
         segment_uid: "u1".into(),
         text: "你好".into(),
         neighbor_snippets: vec![],
+        neighbor_context: vec![],
         runtime: Some(PostprocessRuntimeBridge {
             provider: "DeepSeek".into(),
             base_url: "https://api.deepseek.com/v1".into(),
             model: "deepseek-chat".into(),
-            api_key: String::new(),
+            api_key: "sk-inline".into(),
             api_key_id: Some("default".into()),
             allow_insecure_http: false,
         }),
     };
     let cfg = resolve_postprocess_config(&req).unwrap();
-    env::remove_var("RUSHI_POSTPROCESS_API_KEY");
-    assert_eq!(cfg.api_key, "sk-env");
+    assert_eq!(cfg.api_key, "sk-inline");
 }
 
 #[test]
@@ -200,4 +241,59 @@ fn probe_reports_timeout() {
     let out = run_probe(&cfg, Duration::from_millis(30));
     assert!(!out.ok);
     assert!(out.message.contains("超时"));
+}
+
+#[test]
+fn runtime_bridge_deserializes_camel_case_json() {
+    let raw = serde_json::json!({
+        "provider": "DeepSeek",
+        "baseUrl": "https://api.deepseek.com/v1",
+        "model": "deepseek-chat",
+        "apiKeyId": "default"
+    });
+    let rt: PostprocessRuntimeBridge = serde_json::from_value(raw).unwrap();
+    assert_eq!(rt.base_url, "https://api.deepseek.com/v1");
+    assert_eq!(rt.api_key_id.as_deref(), Some("default"));
+}
+
+#[test]
+fn normalize_api_key_id_rejects_api_key_shaped_values() {
+    assert_eq!(
+        normalize_api_key_id(Some("sk-3dad49106a1b4065b472b6894bf0ab36")),
+        "default"
+    );
+    assert_eq!(normalize_api_key_id(Some("default")), "default");
+    assert_eq!(normalize_api_key_id(Some("work")), "work");
+}
+
+#[test]
+fn keychain_account_for_delete_keeps_sk_shaped_legacy_account() {
+    assert_eq!(
+        keychain_account_for_delete(Some("sk-3dad49106a1b4065b472b6894bf0ab36")),
+        "sk-3dad49106a1b4065b472b6894bf0ab36"
+    );
+    assert_eq!(keychain_account_for_delete(None), "default");
+    assert_eq!(keychain_account_for_delete(Some("default")), "default");
+}
+
+#[test]
+fn llm_save_request_deserializes_camel_case_json() {
+    let raw = serde_json::json!({
+        "apiKeyId": "default",
+        "apiKey": "sk-ui"
+    });
+    let req: super::LlmSaveApiKeyRequest = serde_json::from_value(raw).unwrap();
+    assert_eq!(req.api_key, "sk-ui");
+    assert_eq!(req.api_key_id.as_deref(), Some("default"));
+}
+
+#[test]
+#[ignore = "manual: exercises macOS keychain"]
+fn keychain_write_then_has_stored_roundtrip() {
+    let account = format!("test-{}", std::process::id());
+    super::write_llm_api_key_to_keychain(&account, "sk-roundtrip-test")
+        .expect("write should succeed");
+    let has = super::keychain_has_api_key(&account).expect("has_stored should not error");
+    assert!(has, "fresh Entry should read back after write");
+    let _ = super::delete_llm_api_key_from_keychain(&account);
 }
