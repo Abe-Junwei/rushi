@@ -1,8 +1,15 @@
-import { useCallback, useRef, useState } from "react";
+import {
+  collectAutoPunctuateNeighborContext,
+  neighborContextSummary,
+  type NeighborContextItem,
+} from "./autoPunctuateNeighbors";
+import { useCallback, useMemo, useRef, useState } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
 import {
   isLlmRuntimeReady,
   llmConfigHint,
+  markLlmConnectionVerified,
+  resolveAutoPunctuateBlockReason,
   tryBuildPostprocessRuntimeBridge,
 } from "../services/postprocess/postprocessRuntimeContract";
 import {
@@ -18,8 +25,8 @@ type SegmentTextMutator = (idx: number, text: string) => void;
 
 export type AutoPunctuateDialogState =
   | { phase: "closed" }
-  | { phase: "consent"; originalText: string }
-  | { phase: "loading"; originalText: string }
+  | { phase: "consent"; originalText: string; neighborContextSummary: string | null }
+  | { phase: "loading"; originalText: string; neighborContextSummary: string | null }
   | {
       phase: "preview";
       originalText: string;
@@ -27,6 +34,7 @@ export type AutoPunctuateDialogState =
       diff: TextDiffSpan[];
       provider: string;
       latencyMs: number;
+      neighborContextSummary: string | null;
     };
 
 type UseAutoPunctuateControllerArgs = {
@@ -38,10 +46,14 @@ type UseAutoPunctuateControllerArgs = {
   flushSegmentTextDrafts: () => void;
   updateSegmentText: SegmentTextMutator;
   setError: React.Dispatch<React.SetStateAction<string>>;
+  llmRuntimeEpoch?: number;
+  llmKeychainReady?: boolean;
+  llmKeychainChecking?: boolean;
 };
 
 export type AutoPunctuateControllerApi = {
   canAutoPunctuate: boolean;
+  autoPunctuateBlockReason: string | null;
   dialog: AutoPunctuateDialogState;
   requestAutoPunctuate: () => void;
   confirmAutoPunctuateConsent: () => void;
@@ -52,6 +64,7 @@ export type AutoPunctuateControllerApi = {
 type PendingPayload = {
   request: PostprocessAutoPunctuateRequest;
   originalText: string;
+  neighborContextSummary: string | null;
 };
 
 function createAutoPunctuateRequestId(): string {
@@ -73,6 +86,9 @@ export function useAutoPunctuateController(
     flushSegmentTextDrafts,
     updateSegmentText,
     setError,
+    llmRuntimeEpoch = 0,
+    llmKeychainReady = false,
+    llmKeychainChecking = false,
   } = args;
 
   const [dialog, setDialog] = useState<AutoPunctuateDialogState>({ phase: "closed" });
@@ -81,13 +97,26 @@ export function useAutoPunctuateController(
   const pendingPayloadRef = useRef<PendingPayload | null>(null);
   const previewSegmentUidRef = useRef<string | null>(null);
 
+  const llmRuntimeReady = useMemo(() => isLlmRuntimeReady(), [llmRuntimeEpoch]);
+
   const selected = segments[selectedIdx] ?? null;
+  const autoPunctuateBlockReason = useMemo(
+    () =>
+      resolveAutoPunctuateBlockReason({
+        currentFileId,
+        hasSegmentText: !!(selected?.text ?? "").trim(),
+        keychainReady: llmKeychainReady,
+        keychainChecking: llmKeychainChecking,
+      }),
+    [currentFileId, llmKeychainChecking, llmKeychainReady, llmRuntimeEpoch, selected],
+  );
   const canAutoPunctuate =
     !busy &&
     !!currentFileId &&
     !!selected &&
     (selected.text ?? "").trim().length > 0 &&
-    isLlmRuntimeReady();
+    llmRuntimeReady &&
+    autoPunctuateBlockReason === null;
 
   const buildRequest = useCallback((): PendingPayload | null => {
     if (busy || !currentFileId) return null;
@@ -102,22 +131,24 @@ export function useAutoPunctuateController(
       setError(llmConfigHint());
       return null;
     }
-    const neighbor_snippets = [selectedIdx - 1, selectedIdx + 1]
-      .map((idx) => segmentsRef.current[idx]?.text?.trim() ?? "")
-      .filter(Boolean)
-      .map((text) => (text.length > 80 ? `${text.slice(0, 80)}…` : text));
+    const neighbor_context: NeighborContextItem[] = collectAutoPunctuateNeighborContext(
+      segmentsRef.current,
+      selectedIdx,
+    );
+    const contextSummary = neighborContextSummary(neighbor_context);
     return {
       originalText: current.text,
+      neighborContextSummary: contextSummary,
       request: {
         task: "auto_punctuate",
         request_id: createAutoPunctuateRequestId(),
         segment_uid: current.uid,
         text: current.text,
-        neighbor_snippets,
+        neighbor_context,
         runtime,
       },
     };
-  }, [busy, currentFileId, flushSegmentTextDrafts, segmentsRef, selectedIdx, setError]);
+  }, [busy, currentFileId, flushSegmentTextDrafts, llmRuntimeEpoch, segmentsRef, selectedIdx, setError]);
 
   const startRequest = useCallback(
     (payload: PendingPayload) => {
@@ -125,11 +156,16 @@ export function useAutoPunctuateController(
       activeRequestSeqRef.current = seq;
       activeRequestIdRef.current = payload.request.request_id ?? null;
       previewSegmentUidRef.current = payload.request.segment_uid;
-      setDialog({ phase: "loading", originalText: payload.originalText });
+      setDialog({
+        phase: "loading",
+        originalText: payload.originalText,
+        neighborContextSummary: payload.neighborContextSummary,
+      });
       void postprocessAutoPunctuate(payload.request)
         .then((out) => {
           if (activeRequestSeqRef.current != seq) return;
           activeRequestIdRef.current = null;
+          markLlmConnectionVerified();
           setDialog({
             phase: "preview",
             originalText: payload.originalText,
@@ -137,6 +173,7 @@ export function useAutoPunctuateController(
             diff: out.diff,
             provider: out.provider,
             latencyMs: out.latency_ms,
+            neighborContextSummary: payload.neighborContextSummary,
           });
         })
         .catch((e) => {
@@ -155,7 +192,11 @@ export function useAutoPunctuateController(
     pendingPayloadRef.current = payload;
     const consent = window.localStorage.getItem(AUTO_PUNCTUATE_CONSENT_KEY);
     if (consent !== "accepted") {
-      setDialog({ phase: "consent", originalText: payload.originalText });
+      setDialog({
+        phase: "consent",
+        originalText: payload.originalText,
+        neighborContextSummary: payload.neighborContextSummary,
+      });
       return;
     }
     startRequest(payload);
@@ -197,6 +238,7 @@ export function useAutoPunctuateController(
 
   return {
     canAutoPunctuate,
+    autoPunctuateBlockReason,
     dialog,
     requestAutoPunctuate,
     confirmAutoPunctuateConsent,

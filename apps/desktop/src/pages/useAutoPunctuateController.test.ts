@@ -98,6 +98,58 @@ describe("useAutoPunctuateController", () => {
     expect(updateSegmentText).not.toHaveBeenCalled();
   });
 
+  it("includes neighbor_context when adjacent segments have text", async () => {
+    seedDeepseekRuntime();
+    window.localStorage.setItem("rushi:auto-punctuate-consent:v1", "accepted");
+    const segmentsRef = {
+      current: [
+        seg("前一句。", "seg-prev"),
+        seg("中间没有标点", "seg-mid"),
+        seg("后一句。", "seg-next"),
+      ],
+    };
+    postprocessAutoPunctuate.mockResolvedValue({
+      text: "中间，没有标点。",
+      diff: [],
+      provider: "openai-compatible",
+      latency_ms: 50,
+    });
+
+    const { result } = renderHook(() =>
+      useAutoPunctuateController({
+        busy: false,
+        currentFileId: "f1",
+        selectedIdx: 1,
+        segments: segmentsRef.current,
+        segmentsRef,
+        flushSegmentTextDrafts: vi.fn(),
+        updateSegmentText: vi.fn(),
+        setError: vi.fn(),
+      }),
+    );
+
+    act(() => {
+      result.current.requestAutoPunctuate();
+    });
+
+    await waitFor(() => {
+      expect(result.current.dialog.phase).toBe("preview");
+    });
+
+    const request = postprocessAutoPunctuate.mock.calls[0]?.[0] as {
+      neighbor_context?: { role: string; text: string }[];
+    };
+    expect(request.neighbor_context).toEqual([
+      { role: "prev", text: "前一句。" },
+      { role: "next", text: "后一句。" },
+    ]);
+    if (result.current.dialog.phase === "preview") {
+      expect(result.current.dialog.neighborContextSummary).toBe(
+        "含邻段上下文（上一语段、下一语段）",
+      );
+    }
+  });
+
   it("writes back preview text after consent", async () => {
     seedDeepseekRuntime();
     const segmentsRef = { current: [seg("你好世界", "seg-a")] };

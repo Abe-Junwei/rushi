@@ -44,6 +44,10 @@ export function AutoPunctuatePreviewDialog({
               : "自动标点预览"}
         </h2>
 
+        {state.neighborContextSummary ? (
+          <p className="mt-2 text-xs text-notion-text-muted">{state.neighborContextSummary}</p>
+        ) : null}
+
         {state.phase === "consent" ? (
           <>
             <p className="mt-3 text-sm leading-relaxed text-notion-text-muted">
