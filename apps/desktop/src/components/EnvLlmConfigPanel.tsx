@@ -1,21 +1,33 @@
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY, CONTROL_TEXT_INPUT } from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
+import { useLlmKeychainReady } from "../hooks/useLlmKeychainReady";
 import { EnvLlmCapabilitiesSection } from "./EnvLlmCapabilitiesSection";
 import {
   DEFAULT_LLM_API_KEY_ID,
   LLM_PROVIDER_DEFINITIONS,
+  LLM_STORAGE_KEYS,
   applyLlmProviderPreset,
   getLlmProviderDefinition,
+  isCorruptLlmApiKeyId,
+  isLlmConnectionVerified,
   isLlmRuntimeReady,
-  llmConfigHint,
+  LLM_CONNECTION_VERIFIED_EVENT,
+  llmConnectionStatusMessage,
+  llmConnectionStatusTone,
+  llmKeychainReferenceMessage,
+  markLlmConnectionVerified,
+  normalizeLlmApiKeyId,
   persistLlmRuntimeConfig,
   readLlmRuntimeConfigFromStorage,
+  resolveLlmConnectionUiStatus,
   setLlmApiKeyInMemory,
+  tryBuildPostprocessRuntimeBridge,
+  validateLlmConnectionDraft,
   type LlmProviderId,
   type PostprocessRuntimeBridge,
 } from "../services/postprocess/postprocessRuntimeContract";
-import { llmDeleteApiKey, llmProbeConnection, llmSaveApiKey } from "../tauri/postprocessApi";
+import { llmDeleteApiKey, llmMigrateLegacyApiKey, llmProbeConnection, llmSaveApiKey } from "../tauri/postprocessApi";
 
 const btnPrimary = CONTROL_BTN_PRIMARY;
 const btnSecondary = CONTROL_BTN_SECONDARY;
@@ -23,29 +35,77 @@ const field = CONTROL_TEXT_INPUT;
 
 type Props = {
   busy: boolean;
+  onLlmRuntimeChanged?: () => void;
 };
 
-export function EnvLlmConfigPanel({ busy }: Props) {
+export function EnvLlmConfigPanel({ busy, onLlmRuntimeChanged }: Props) {
   const [providerId, setProviderId] = useState<LlmProviderId>("deepseek");
   const [baseUrl, setBaseUrl] = useState("");
   const [model, setModel] = useState("");
   const [apiKey, setApiKey] = useState("");
   const [savedApiKeyId, setSavedApiKeyId] = useState<string | null>(null);
+  /** 旧版误把 sk- 密钥写进 apiKeyId 字段时的原始值，用于迁移/清理。 */
+  const [legacyMisplacedKeyId, setLegacyMisplacedKeyId] = useState<string | undefined>(undefined);
   const [saveBusy, setSaveBusy] = useState(false);
   const [probeBusy, setProbeBusy] = useState(false);
-  const [probeState, setProbeState] = useState<"idle" | "ok" | "fail">("idle");
+  const [probeState, setProbeState] = useState<"idle" | "ok" | "fail">(() =>
+    isLlmConnectionVerified() ? "ok" : "idle",
+  );
   const [msg, setMsg] = useState<string | null>(null);
+  const [keychainRefreshSeq, setKeychainRefreshSeq] = useState(0);
 
   useEffect(() => {
+    const rawApiKeyId = (localStorage.getItem(LLM_STORAGE_KEYS.apiKeyId) ?? "").trim();
+    const legacyId =
+      rawApiKeyId && isCorruptLlmApiKeyId(rawApiKeyId) ? rawApiKeyId : undefined;
+    setLegacyMisplacedKeyId(legacyId);
     const c = readLlmRuntimeConfigFromStorage();
     setProviderId(c.providerId);
     setBaseUrl(c.baseUrl);
     setModel(c.model);
     setSavedApiKeyId(c.apiKeyId ?? null);
+    if (legacyId) {
+      void llmMigrateLegacyApiKey({ legacyApiKeyId: legacyId })
+        .then((migrated) => {
+          if (migrated) setKeychainRefreshSeq((n) => n + 1);
+        })
+        .catch(() => {
+          /* ignore migration errors; user can re-save key */
+        });
+    } else {
+      setKeychainRefreshSeq((n) => n + 1);
+    }
+  }, []);
+  useEffect(() => {
+    const syncVerified = () => {
+      if (isLlmConnectionVerified()) setProbeState("ok");
+    };
+    syncVerified();
+    window.addEventListener(LLM_CONNECTION_VERIFIED_EVENT, syncVerified);
+    return () => window.removeEventListener(LLM_CONNECTION_VERIFIED_EVENT, syncVerified);
   }, []);
   const def = getLlmProviderDefinition(providerId);
   const formBusy = busy || saveBusy || probeBusy;
-  const ready = isLlmRuntimeReady();
+  const hasLocalKeyRef = isLlmRuntimeReady();
+  const { keychainReady, checking: keychainChecking } = useLlmKeychainReady(keychainRefreshSeq);
+  const connectionStatus = useMemo(
+    () =>
+      resolveLlmConnectionUiStatus({
+        hasLocalKeyRef,
+        hasTypedKey: apiKey.trim().length > 0,
+        keychainPresent: keychainChecking ? null : keychainReady,
+        probeState,
+      }),
+    [apiKey, hasLocalKeyRef, keychainChecking, keychainReady, probeState],
+  );
+  const connectionStatusMessage = llmConnectionStatusMessage(connectionStatus);
+  const connectionStatusTone = llmConnectionStatusTone(connectionStatus);
+  const bumpKeychainCheck = useCallback(() => {
+    setKeychainRefreshSeq((n) => n + 1);
+  }, []);
+  const invalidateProbe = useCallback(() => {
+    setProbeState("idle");
+  }, []);
   const onProviderChange = useCallback((next: LlmProviderId) => {
     setProviderId(next);
     const preset = applyLlmProviderPreset(next);
@@ -55,36 +115,73 @@ export function EnvLlmConfigPanel({ busy }: Props) {
     setMsg(null);
   }, []);
   const buildProbeRuntime = useCallback((): PostprocessRuntimeBridge => {
-    if (!def) throw new Error("未知的 LLM 厂商预设。");
     const typedApiKey = apiKey.trim();
-    const runtime: PostprocessRuntimeBridge = {
-      provider: def.label,
-      base_url: baseUrl.trim() || def.defaultBaseUrl,
-      model: model.trim() || def.defaultModel,
-    };
-    if (typedApiKey) runtime.api_key = typedApiKey;
-    else if (savedApiKeyId) runtime.api_key_id = savedApiKeyId;
-    const allowInsecureHttp =
-      runtime.base_url.startsWith("http://127.0.0.1") || runtime.base_url.startsWith("http://localhost");
-    if (allowInsecureHttp) runtime.allow_insecure_http = true;
-    return runtime;
-  }, [apiKey, baseUrl, def, model, savedApiKeyId]);
+    if (typedApiKey) {
+      if (!def) throw new Error("未知的 LLM 厂商预设。");
+      const stored = readLlmRuntimeConfigFromStorage();
+      const resolvedBaseUrl = baseUrl.trim() || stored.baseUrl || def.defaultBaseUrl;
+      const runtime: PostprocessRuntimeBridge = {
+        provider: def.label,
+        baseUrl: resolvedBaseUrl,
+        model: model.trim() || stored.model || def.defaultModel,
+        apiKey: typedApiKey,
+      };
+      if (
+        resolvedBaseUrl.startsWith("http://127.0.0.1") ||
+        resolvedBaseUrl.startsWith("http://localhost")
+      ) {
+        runtime.allowInsecureHttp = true;
+      }
+      return runtime;
+    }
+    const bridge = tryBuildPostprocessRuntimeBridge();
+    if (!bridge) {
+      throw new Error("请先填写 API Key，或使用已保存的系统钥匙串密钥。");
+    }
+    return bridge;
+  }, [apiKey, baseUrl, def, model]);
   const save = useCallback(async () => {
     setMsg(null);
     setProbeState("idle");
     setSaveBusy(true);
     try {
+      validateLlmConnectionDraft({ providerId, baseUrl, model });
       const typedApiKey = apiKey.trim();
-      let nextApiKeyId = savedApiKeyId ?? undefined;
+      const rawStoredKeyId = savedApiKeyId ?? readLlmRuntimeConfigFromStorage().apiKeyId ?? undefined;
+      const misplacedKeyId = legacyMisplacedKeyId;
+      let nextApiKeyId = normalizeLlmApiKeyId(rawStoredKeyId);
       if (typedApiKey) {
-        nextApiKeyId = await llmSaveApiKey({
-          api_key_id: nextApiKeyId ?? DEFAULT_LLM_API_KEY_ID,
-          api_key: typedApiKey,
+        if (misplacedKeyId) {
+          await llmDeleteApiKey({ apiKeyId: misplacedKeyId }).catch(() => {
+            /* ignore missing legacy entries */
+          });
+        }
+        const savedId = await llmSaveApiKey({
+          apiKeyId: DEFAULT_LLM_API_KEY_ID,
+          apiKey: typedApiKey,
         });
+        nextApiKeyId = savedId;
+        setLegacyMisplacedKeyId(undefined);
+      } else if (misplacedKeyId) {
+        const migrated = await llmMigrateLegacyApiKey({ legacyApiKeyId: misplacedKeyId });
+        if (migrated) {
+          nextApiKeyId = DEFAULT_LLM_API_KEY_ID;
+          setLegacyMisplacedKeyId(undefined);
+        }
       }
-      persistLlmRuntimeConfig({ providerId, baseUrl, model, apiKeyId: nextApiKeyId });
-      setSavedApiKeyId(nextApiKeyId ?? null);
+      if (!nextApiKeyId) {
+        throw new Error("请先填写 API Key，再点击保存配置。");
+      }
+      persistLlmRuntimeConfig({
+        providerId,
+        baseUrl,
+        model,
+        apiKeyId: nextApiKeyId ?? DEFAULT_LLM_API_KEY_ID,
+      });
+      setSavedApiKeyId(nextApiKeyId ?? DEFAULT_LLM_API_KEY_ID);
       setLlmApiKeyInMemory(null);
+      bumpKeychainCheck();
+      onLlmRuntimeChanged?.();
       if (typedApiKey) {
         setApiKey("");
         setMsg("已保存。API Key 已写入系统钥匙串；当前页面不再保留明文。");
@@ -98,36 +195,43 @@ export function EnvLlmConfigPanel({ busy }: Props) {
     } finally {
       setSaveBusy(false);
     }
-  }, [apiKey, baseUrl, model, providerId, savedApiKeyId]);
+  }, [apiKey, baseUrl, bumpKeychainCheck, legacyMisplacedKeyId, model, onLlmRuntimeChanged, providerId, savedApiKeyId]);
   const clearSavedApiKey = useCallback(async () => {
-    if (!savedApiKeyId) return;
+    if (!savedApiKeyId && !readLlmRuntimeConfigFromStorage().apiKeyId) return;
     setMsg(null);
     setProbeState("idle");
     setSaveBusy(true);
     try {
-      await llmDeleteApiKey({ api_key_id: savedApiKeyId });
-      persistLlmRuntimeConfig({ providerId, baseUrl, model });
+      const rawId = savedApiKeyId ?? readLlmRuntimeConfigFromStorage().apiKeyId;
+      const ids = new Set<string>([DEFAULT_LLM_API_KEY_ID]);
+      if (rawId?.trim()) ids.add(rawId.trim());
+      for (const id of ids) {
+        await llmDeleteApiKey({ apiKeyId: id }).catch(() => {
+          /* ignore missing legacy entries */
+        });
+      }
+      persistLlmRuntimeConfig({ providerId, baseUrl, model }, { clearApiKeyId: true });
       setSavedApiKeyId(null);
       setApiKey("");
       setLlmApiKeyInMemory(null);
+      bumpKeychainCheck();
+      onLlmRuntimeChanged?.();
       setMsg("已清除系统钥匙串中的 API Key。");
     } catch (e) {
       setMsg(e instanceof Error ? e.message : String(e));
     } finally {
       setSaveBusy(false);
     }
-  }, [baseUrl, model, providerId, savedApiKeyId]);
+  }, [baseUrl, bumpKeychainCheck, model, onLlmRuntimeChanged, providerId, savedApiKeyId]);
   const probe = useCallback(async () => {
     setMsg(null);
     setProbeBusy(true);
     try {
       const runtime = buildProbeRuntime();
-      if (!runtime.api_key && !runtime.api_key_id) {
-        throw new Error("请先填写 API Key，或使用已保存的系统钥匙串密钥。");
-      }
       const out = await llmProbeConnection({ runtime });
       setProbeState(out.ok ? "ok" : "fail");
-      setMsg(out.ok ? `连接成功（约 ${out.latency_ms ?? "?"} ms）。` : out.message);
+      if (out.ok) markLlmConnectionVerified();
+      setMsg(out.ok ? `${out.message}（约 ${out.latency_ms ?? "?"} ms）` : out.message);
     } catch (e) {
       setProbeState("fail");
       setMsg(e instanceof Error ? e.message : String(e));
@@ -148,7 +252,7 @@ export function EnvLlmConfigPanel({ busy }: Props) {
           请求由应用壳（Tauri）直连厂商，语段正文仅在触发具体能力时发送；不会静默改写文稿。后续智能分段、文本规整等能力将共用本页连接信息。
         </p>
       </header>
-      <EnvLlmCapabilitiesSection />
+      <EnvLlmCapabilitiesSection connectionStatus={connectionStatus} />
       <section className="space-y-4">
         <div>
           <h4 className={PANEL_TYPOGRAPHY.sectionTitle}>连接</h4>
@@ -197,7 +301,10 @@ export function EnvLlmConfigPanel({ busy }: Props) {
             className={field}
             value={baseUrl}
             disabled={formBusy}
-            onChange={(e) => setBaseUrl(e.target.value)}
+            onChange={(e) => {
+              invalidateProbe();
+              setBaseUrl(e.target.value);
+            }}
             placeholder={def?.defaultBaseUrl}
             aria-describedby="llm-base-url-hint"
           />
@@ -213,7 +320,10 @@ export function EnvLlmConfigPanel({ busy }: Props) {
             className={field}
             value={model}
             disabled={formBusy}
-            onChange={(e) => setModel(e.target.value)}
+            onChange={(e) => {
+              invalidateProbe();
+              setModel(e.target.value);
+            }}
             placeholder={def?.defaultModel}
             list="llm-model-suggestions"
           />
@@ -230,9 +340,13 @@ export function EnvLlmConfigPanel({ busy }: Props) {
             className={field}
             type="password"
             autoComplete="off"
+            aria-label="API Key"
             value={apiKey}
             disabled={formBusy}
-            onChange={(e) => setApiKey(e.target.value)}
+            onChange={(e) => {
+              invalidateProbe();
+              setApiKey(e.target.value);
+            }}
             placeholder={savedApiKeyId ? "留空则沿用已保存的系统钥匙串密钥" : "在厂商控制台创建并保存到系统钥匙串"}
           />
           <span className={PANEL_TYPOGRAPHY.meta}>
@@ -241,9 +355,10 @@ export function EnvLlmConfigPanel({ busy }: Props) {
         </label>
 
         <p className={PANEL_TYPOGRAPHY.meta}>
-          {savedApiKeyId
-            ? `系统钥匙串：已保存 API Key（标识：${savedApiKeyId}）。输入框留空时将继续使用它。`
-            : "系统钥匙串：当前未保存 API Key。"}
+          {llmKeychainReferenceMessage(
+            normalizeLlmApiKeyId(savedApiKeyId) ?? null,
+            keychainChecking ? null : keychainReady,
+          )}
         </p>
 
         <div className="flex flex-wrap gap-2">
@@ -267,13 +382,19 @@ export function EnvLlmConfigPanel({ busy }: Props) {
         </div>
 
         {msg ? <p className={PANEL_TYPOGRAPHY.meta}>{msg}</p> : null}
-        {probeState !== "fail" && ready ? (
-          <p className="text-[11px] text-zen-saffron">
-            连接就绪：编辑器中的 LLM 能力（如自动标点）可使用当前配置。
+        {probeState !== "fail" ? (
+          <p
+            className={[
+              "text-[11px]",
+              connectionStatusTone === "ok"
+                ? "text-zen-saffron"
+                : connectionStatusTone === "warn"
+                  ? "text-notion-text-muted"
+                  : "text-zen-cinnabar",
+            ].join(" ")}
+          >
+            {connectionStatusMessage}
           </p>
-        ) : null}
-        {!ready ? (
-          <p className="text-[11px] text-zen-cinnabar">{llmConfigHint()}</p>
         ) : null}
       </section>
     </div>

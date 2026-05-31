@@ -85,10 +85,18 @@ pub(crate) fn ensure_verify_not_cancelled(cancel: Option<&Arc<AtomicBool>>) -> R
 
 pub(crate) fn apply_runtime_env(cmd: &mut Command, models_root: Option<&Path>) {
     if let Some(models_root) = models_root {
-        let hub = models_root
-            .parent()
+        let app_data_root = models_root.parent();
+        let hub = app_data_root
             .and_then(crate::local_asr_model::read_hub_model_pref_for_app_root);
-        crate::project::app_data_paths::apply_asr_model_env(cmd, models_root, hub.as_deref());
+        let language = app_data_root
+            .map(crate::local_asr_language::read_language_pref_for_app_root)
+            .unwrap_or_else(|| crate::local_asr_language::DEFAULT_FUNASR_LANGUAGE.to_string());
+        crate::project::app_data_paths::apply_asr_model_env(
+            cmd,
+            models_root,
+            hub.as_deref(),
+            Some(language.as_str()),
+        );
     }
 }
 

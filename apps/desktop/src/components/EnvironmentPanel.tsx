@@ -52,6 +52,7 @@ export type EnvironmentPanelProps = {
   asrSetup: AsrSetupControllerApi;
   localAsrModelCatalog: LocalAsrModelCatalogApi;
   onSttOnlineRuntimeChanged?: () => void;
+  onLlmRuntimeChanged?: () => void;
   focusOnlineSttSeq?: number;
 };
 
@@ -83,6 +84,7 @@ export function EnvironmentPanel({
   asrSetup,
   localAsrModelCatalog,
   onSttOnlineRuntimeChanged,
+  onLlmRuntimeChanged,
   focusOnlineSttSeq = 0,
 }: EnvironmentPanelProps) {
   const [envSection, setEnvSection] = useState<EnvNavId>("local-asr");
@@ -206,7 +208,9 @@ export function EnvironmentPanel({
                 />
               ) : null}
 
-              {envSection === "llm" ? <EnvLlmConfigPanel key={`llm-${settingsEpoch}`} busy={busy} /> : null}
+              {envSection === "llm" ? (
+                <EnvLlmConfigPanel key={`llm-${settingsEpoch}`} busy={busy} onLlmRuntimeChanged={onLlmRuntimeChanged} />
+              ) : null}
 
               {envSection === "profile" ? (
                 <EnvProfileActions
@@ -214,6 +218,7 @@ export function EnvironmentPanel({
                   onImported={() => {
                     setSettingsEpoch((n) => n + 1);
                     onSttOnlineRuntimeChanged?.();
+                    onLlmRuntimeChanged?.();
                   }}
                 />
               ) : null}

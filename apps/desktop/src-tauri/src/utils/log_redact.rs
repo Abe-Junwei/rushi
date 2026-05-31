@@ -7,8 +7,10 @@ fn replace_bearer_tokens(input: &str) -> String {
     let bytes = input.as_bytes();
     let mut i = 0;
     while i < bytes.len() {
-        let rest = &input[i..];
-        if rest.len() >= 7 && rest[..7].eq_ignore_ascii_case("bearer ") {
+        if i + 7 <= bytes.len()
+            && input.is_char_boundary(i + 7)
+            && input[i..i + 7].eq_ignore_ascii_case("bearer ")
+        {
             out.push_str("Bearer [REDACTED]");
             i += 7;
             while i < bytes.len() && bytes[i].is_ascii_whitespace() {
@@ -19,7 +21,10 @@ fn replace_bearer_tokens(input: &str) -> String {
             }
             continue;
         }
-        if rest.len() >= 8 && rest[..8].eq_ignore_ascii_case("api_key=") {
+        if i + 8 <= bytes.len()
+            && input.is_char_boundary(i + 8)
+            && input[i..i + 8].eq_ignore_ascii_case("api_key=")
+        {
             out.push_str("api_key=[REDACTED]");
             i += 8;
             while i < bytes.len() && bytes[i] != b'&' && !bytes[i].is_ascii_whitespace() {
@@ -27,7 +32,7 @@ fn replace_bearer_tokens(input: &str) -> String {
             }
             continue;
         }
-        if let Some(ch) = rest.chars().next() {
+        if let Some(ch) = input[i..].chars().next() {
             out.push(ch);
             i += ch.len_utf8();
         } else {
@@ -129,5 +134,12 @@ mod tests {
     fn redacts_sk_prefixed_tokens() {
         let out = redact_secrets_for_log("upstream said sk-abcdef1234567890 invalid");
         assert!(!out.contains("sk-abcdef1234567890"));
+    }
+
+    #[test]
+    fn survives_utf8_probe_success_message() {
+        let msg = "模型与 API Key 可用（与自动标点相同路径验证）。";
+        let out = redact_secrets_for_log(msg);
+        assert_eq!(out, msg);
     }
 }

@@ -1,7 +1,23 @@
 import { PANEL_TYPOGRAPHY } from "../config/typography";
-import { LLM_CAPABILITIES } from "../services/postprocess/postprocessRuntimeContract";
+import {
+  LLM_CAPABILITIES,
+  llmAutoPunctuateCapabilityBadge,
+  type LlmConnectionUiStatus,
+} from "../services/postprocess/postprocessRuntimeContract";
 
-export function EnvLlmCapabilitiesSection() {
+type Props = {
+  connectionStatus: LlmConnectionUiStatus;
+};
+
+export function EnvLlmCapabilitiesSection({ connectionStatus }: Props) {
+  const badge = llmAutoPunctuateCapabilityBadge(connectionStatus);
+  const badgeClass =
+    connectionStatus === "verified"
+      ? "rounded bg-zen-saffron/15 px-1.5 py-0.5 text-[10px] font-semibold text-zen-saffron"
+      : connectionStatus === "unverified"
+        ? "rounded bg-zen-saffron/10 px-1.5 py-0.5 text-[10px] font-semibold text-notion-text-muted"
+        : "rounded bg-notion-sidebar px-1.5 py-0.5 text-[10px] font-semibold text-notion-text-muted";
+
   return (
     <section className="space-y-2 rounded-lg bg-notion-sidebar/60 px-3 py-3">
       <h4 className={PANEL_TYPOGRAPHY.sectionTitle}>已接入能力</h4>
@@ -10,16 +26,14 @@ export function EnvLlmCapabilitiesSection() {
           <li key={cap.id} className="flex flex-col gap-0.5 rounded-md bg-white/80 px-3 py-2.5">
             <div className="flex flex-wrap items-center gap-2">
               <span className="text-[12px] font-medium text-notion-text">{cap.label}</span>
-              <span className="rounded bg-zen-saffron/15 px-1.5 py-0.5 text-[10px] font-semibold text-zen-saffron">
-                可用
-              </span>
+              <span className={badgeClass}>{badge}</span>
             </div>
             <p className={`m-0 ${PANEL_TYPOGRAPHY.meta}`}>{cap.description}</p>
           </li>
         ))}
       </ul>
       <p className={`m-0 ${PANEL_TYPOGRAPHY.helper}`}>
-        更多 LLM 能力将在此列出；连接与密钥保持一处配置，避免重复填写。
+        「可用」仅表示连接已通过探测验证；产品能力已接入不代表当前环境已就绪。
       </p>
     </section>
   );

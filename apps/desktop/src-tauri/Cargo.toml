@@ -17,6 +17,13 @@ windows = { version = "0.58", features = [
   "Win32_Foundation",
   "Win32_Storage_FileSystem",
 ] }
+keyring = { version = "3", features = ["windows-native"] }
+
+[target.'cfg(target_os = "macos")'.dependencies]
+keyring = { version = "3", features = ["apple-native"] }
+
+[target.'cfg(any(target_os = "linux", target_os = "freebsd", target_os = "openbsd"))'.dependencies]
+keyring = { version = "3", features = ["linux-native-sync-persistent"] }
 
 [dependencies]
 tauri = { version = "2", features = ["protocol-asset"] }
@@ -33,7 +40,6 @@ reqwest = { version = "0.12", default-features = false, features = [
   "rustls-tls",
   "blocking",
 ] }
-keyring = "3"
 tokio = { version = "1", features = ["time", "fs", "rt"] }
 tokio-util = { version = "0.7", features = ["io"] }
 base64 = "0.22"

@@ -92,7 +92,13 @@ pub(crate) fn spawn_sidecar(exe: &Path, handle: &AppHandle) -> std::io::Result<C
     if let Some(st) = handle.try_state::<DbState>() {
         let models = crate::project::models_root_for_app_data_root(&st.root);
         let hub = crate::local_asr_model::read_hub_model_pref(st.inner());
-        crate::project::app_data_paths::apply_asr_model_env(&mut cmd, &models, hub.as_deref());
+        let language = crate::local_asr_language::read_language_pref(st.inner());
+        crate::project::app_data_paths::apply_asr_model_env(
+            &mut cmd,
+            &models,
+            hub.as_deref(),
+            Some(language.as_str()),
+        );
     }
     #[cfg(target_os = "windows")]
     {

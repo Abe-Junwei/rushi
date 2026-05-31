@@ -61,7 +61,7 @@ export function applySettingsProfileV1(profile: SettingsProfileV1): void {
       providerId: profile.llm.provider_id,
       baseUrl: profile.llm.base_url,
       model: profile.llm.model,
-      apiKeyId: profile.llm.api_key_id,
+      ...(profile.llm.api_key_id ? { apiKeyId: profile.llm.api_key_id } : {}),
     });
   }
 
