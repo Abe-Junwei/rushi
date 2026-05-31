@@ -12,6 +12,7 @@ import {
   resolveAutoPunctuateBlockReason,
   tryBuildPostprocessRuntimeBridge,
 } from "../services/postprocess/postprocessRuntimeContract";
+import { TRANSCRIBE_PREVIEW_BLOCK_REASON } from "./transcribePreviewState";
 import {
   postprocessCancelAutoPunctuate,
   postprocessAutoPunctuate,
@@ -39,6 +40,7 @@ export type AutoPunctuateDialogState =
 
 type UseAutoPunctuateControllerArgs = {
   busy: boolean;
+  transcribePreviewActive?: boolean;
   currentFileId: string | null;
   selectedIdx: number;
   segments: SegmentDto[];
@@ -79,6 +81,7 @@ export function useAutoPunctuateController(
 ): AutoPunctuateControllerApi {
   const {
     busy,
+    transcribePreviewActive = false,
     currentFileId,
     selectedIdx,
     segments,
@@ -101,17 +104,27 @@ export function useAutoPunctuateController(
 
   const selected = segments[selectedIdx] ?? null;
   const autoPunctuateBlockReason = useMemo(
-    () =>
-      resolveAutoPunctuateBlockReason({
+    () => {
+      if (transcribePreviewActive) return TRANSCRIBE_PREVIEW_BLOCK_REASON;
+      return resolveAutoPunctuateBlockReason({
         currentFileId,
         hasSegmentText: !!(selected?.text ?? "").trim(),
         keychainReady: llmKeychainReady,
         keychainChecking: llmKeychainChecking,
-      }),
-    [currentFileId, llmKeychainChecking, llmKeychainReady, llmRuntimeEpoch, selected],
+      });
+    },
+    [
+      transcribePreviewActive,
+      currentFileId,
+      llmKeychainChecking,
+      llmKeychainReady,
+      llmRuntimeEpoch,
+      selected,
+    ],
   );
   const canAutoPunctuate =
     !busy &&
+    !transcribePreviewActive &&
     !!currentFileId &&
     !!selected &&
     (selected.text ?? "").trim().length > 0 &&

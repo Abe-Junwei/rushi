@@ -21,6 +21,9 @@ export interface ProjectLifecycleApi {
   setNewName: React.Dispatch<React.SetStateAction<string>>;
   pickedPath: string | null;
   transcribeHints: string[];
+  transcribeProgress: import("./transcribePreviewState").TranscribeProgress | null;
+  transcribeCancelling: boolean;
+  transcribePreviewActive: boolean;
   transcribeOverwriteDialogOpen: boolean;
   transcribeOverwriteSegmentCount: number;
   refreshProjects: () => Promise<void>;
@@ -35,6 +38,7 @@ export interface ProjectLifecycleApi {
   closeProject: () => void;
   refreshCurrentProject: () => Promise<void>;
   runTranscribe: () => Promise<void>;
+  cancelTranscribe: () => Promise<void>;
   confirmTranscribeOverwrite: () => void;
   cancelTranscribeOverwrite: () => void;
   saveSegments: () => Promise<boolean>;

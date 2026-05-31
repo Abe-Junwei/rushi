@@ -7,6 +7,9 @@ use super::stt_vocabulary::{
 };
 use super::transcribe::{build_glossary_hotwords, post_transcribe_multipart};
 use super::transcribe_errors::describe_transcribe_payload_error;
+use super::transcribe_job::{
+    get_transcribe_job_status, post_transcribe_async_multipart, parse_transcribe_job_phase,
+};
 use super::transcribe_native_online::{transcribe_assemblyai_native, transcribe_openai_native};
 use super::transcribe_response::{merge_transcribe_warnings, parse_transcribe_segments_from_json};
 use super::transcribe_timeout::{
@@ -20,6 +23,149 @@ use std::fs;
 use std::path::Path;
 use std::time::Duration;
 use tauri::State;
+
+#[derive(serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct TranscribeAsyncStartOutcome {
+    pub job_id: String,
+}
+
+#[tauri::command]
+pub async fn project_transcribe_async_start(
+    state: State<'_, DbState>,
+    file_id: String,
+    asr_base_url: Option<String>,
+) -> Result<TranscribeAsyncStartOutcome, String> {
+    let st = state.inner().clone();
+    let conn = open_db(&st)?;
+    let file_detail = file_detail_from_conn(&conn, &file_id)?;
+    let hotwords_build = build_glossary_hotwords(&conn)?;
+    let hotwords = SttVocabularyPlan::from_build(&hotwords_build).hotwords;
+    drop(conn);
+    let audio_path = file_detail
+        .audio_path
+        .as_ref()
+        .ok_or("该文件没有关联音频，无法转写")?;
+    let audio_path = Path::new(audio_path);
+    if !audio_path.is_file() {
+        return Err("项目音频文件缺失".to_string());
+    }
+    let audio_duration_sec = probe_audio_duration_sec(audio_path);
+    let base = asr_base_url
+        .unwrap_or_else(|| "http://127.0.0.1:8741".to_string())
+        .trim_end_matches('/')
+        .to_string();
+    assert_local_asr_ready_for_transcribe(&st, &base).await?;
+    let timeout = local_transcribe_timeout_duration(audio_duration_sec);
+    append_desktop_log_line(&st, "INFO transcribe_async_start");
+    let v = post_transcribe_async_multipart(&st, &base, audio_path, hotwords, timeout).await?;
+    let job_id = v
+        .get("job_id")
+        .and_then(|x| x.as_str())
+        .ok_or_else(|| "侧车未返回 job_id".to_string())?
+        .to_string();
+    append_desktop_log_line(
+        &st,
+        &format!("INFO transcribe_async job_id={job_id}"),
+    );
+    Ok(TranscribeAsyncStartOutcome { job_id })
+}
+
+#[tauri::command]
+pub async fn project_transcribe_async_finalize(
+    state: State<'_, DbState>,
+    file_id: String,
+    job_id: String,
+    asr_base_url: Option<String>,
+) -> Result<RunTranscribeOutcome, String> {
+    let st = state.inner().clone();
+    let conn = open_db(&st)?;
+    let hotwords_build = build_glossary_hotwords(&conn)?;
+    let hotwords_truncated = hotwords_build.preview.truncated;
+    let vocabulary = SttVocabularyPlan::from_build(&hotwords_build);
+    let vocabulary_pre_warnings = vocabulary_support_warnings(
+        SttVocabularyChannel::LocalFunasrMultipart,
+        &vocabulary,
+        hotwords_truncated,
+    );
+    drop(conn);
+
+    let base = asr_base_url
+        .unwrap_or_else(|| "http://127.0.0.1:8741".to_string())
+        .trim_end_matches('/')
+        .to_string();
+    let status = get_transcribe_job_status(
+        &st,
+        &base,
+        &job_id,
+        Duration::from_secs(30),
+    )
+    .await?;
+    let phase = parse_transcribe_job_phase(&status);
+    if phase != "done" {
+        if phase == "cancelled" {
+            return Err("转写已取消".to_string());
+        }
+        if phase == "unknown" {
+            return Err("转写任务不存在（侧车可能已重启）".to_string());
+        }
+        let msg = status
+            .get("error")
+            .and_then(|e| e.get("message"))
+            .and_then(|m| m.as_str())
+            .or_else(|| status.get("message").and_then(|m| m.as_str()))
+            .unwrap_or("转写未完成");
+        return Err(msg.to_string());
+    }
+
+    let audio_path = {
+        let conn = open_db(&st)?;
+        let file_detail = file_detail_from_conn(&conn, &file_id)?;
+        file_detail
+            .audio_path
+            .ok_or("该文件没有关联音频，无法转写")?
+    };
+    let audio_duration_sec = probe_audio_duration_sec(Path::new(&audio_path));
+
+    let engine = status
+        .get("engine")
+        .and_then(|x| x.as_str())
+        .unwrap_or("")
+        .to_string();
+    let base_warnings: Vec<String> = status
+        .get("warnings")
+        .and_then(|w| w.as_array())
+        .map(|arr| {
+            arr.iter()
+                .filter_map(|x| x.as_str().map(std::string::ToString::to_string))
+                .collect()
+        })
+        .unwrap_or_default();
+    let segmentation_mode = status.get("segmentation_mode").and_then(|x| x.as_str());
+    let mut warnings = merge_transcribe_warnings(
+        base_warnings,
+        vocabulary_pre_warnings,
+        hotwords_truncated,
+        long_audio_transcribe_hint(audio_duration_sec),
+        segmentation_mode,
+    );
+    if segmentation_mode == Some("transcribe_windowed") {
+        append_desktop_log_line(&st, "INFO transcribe_windowed_path");
+    }
+
+    let arr = status
+        .get("segments")
+        .and_then(|s| s.as_array())
+        .ok_or_else(|| "响应缺少 segments 数组".to_string())?;
+    save_transcribe_segments(&st, &file_id, arr, &mut warnings, audio_duration_sec).await?;
+    let conn = open_db(&st)?;
+    let detail = file_detail_from_conn(&conn, &file_id)?;
+    Ok(RunTranscribeOutcome {
+        detail,
+        engine,
+        warnings,
+    })
+}
 
 #[tauri::command]
 pub async fn project_run_transcribe(
@@ -163,7 +309,6 @@ async fn project_run_transcribe_inner(
         (v, vocabulary_pre_warnings)
     };
     append_desktop_log_line(&st, "INFO transcribe_stage=parse");
-    // 契约里 success 也可能带 `"error": null`（Pydantic optional）；仅非 null 视为硬错误。
     if let Some(err) = v.get("error").filter(|e| !e.is_null()) {
         let msg = err
             .get("message")
@@ -221,9 +366,30 @@ async fn project_run_transcribe_inner(
         .get("segments")
         .and_then(|s| s.as_array())
         .ok_or_else(|| "响应缺少 segments 数组".to_string())?;
+    save_transcribe_segments(&st, &file_id, arr, &mut warnings, audio_duration_sec).await?;
+    let conn = open_db(&st)?;
+    let detail = file_detail_from_conn(&conn, &file_id)?;
+    Ok(RunTranscribeOutcome {
+        detail,
+        engine,
+        warnings,
+    })
+}
+
+async fn save_transcribe_segments(
+    st: &DbState,
+    file_id: &str,
+    arr: &[serde_json::Value],
+    warnings: &mut Vec<String>,
+    audio_duration_sec: Option<f64>,
+) -> Result<(), String> {
+    let conn = open_db(st)?;
+    let file_detail = file_detail_from_conn(&conn, file_id)?;
+    drop(conn);
+
     let mut segments = parse_transcribe_segments_from_json(arr)?;
     if segments.is_empty() {
-        append_desktop_log_line(&st, "INFO transcribe zero_segments_ok");
+        append_desktop_log_line(st, "INFO transcribe zero_segments_ok");
     }
     trim_adjacent_segment_overlaps(&mut segments);
     for (i, s) in segments.iter_mut().enumerate() {
@@ -236,16 +402,16 @@ async fn project_run_transcribe_inner(
             "segments_dominant_span_filtered:{removed_dominant}"
         ));
         append_desktop_log_line(
-            &st,
+            st,
             &format!("INFO transcribe filtered dominant spans removed={removed_dominant} file_id={file_id}"),
         );
     }
-    if let Ok(conn) = open_db(&st) {
+    if let Ok(conn) = open_db(st) {
         if let Ok(mut hint_warnings) = collect_correction_rule_hints(&conn, &segments) {
             warnings.append(&mut hint_warnings);
         }
     }
-    append_desktop_log_line(&st, "INFO transcribe_stage=save");
+    append_desktop_log_line(st, "INFO transcribe_stage=save");
     fs::create_dir_all(st.root.join("logs")).map_err(|e| e.to_string())?;
     let recovery_path = st
         .root
@@ -263,13 +429,13 @@ async fn project_run_transcribe_inner(
         serde_json::to_vec_pretty(&recovery_doc).map_err(|e| e.to_string())?,
     )
     .map_err(|e| format!("无法写入转写恢复文件: {e}"))?;
-    match file_save_segments_inner(&st, &file_id, &segments) {
+    match file_save_segments_inner(st, file_id, &segments) {
         Ok(()) => {
             let _ = fs::remove_file(&recovery_path);
         }
         Err(e) => {
             append_desktop_log_line(
-                &st,
+                st,
                 &format!(
                     "ERROR transcribe_save_failed recovery={}",
                     recovery_path.display()
@@ -281,11 +447,5 @@ async fn project_run_transcribe_inner(
             ));
         }
     }
-    let conn = open_db(&st)?;
-    let detail = file_detail_from_conn(&conn, &file_id)?;
-    Ok(RunTranscribeOutcome {
-        detail,
-        engine,
-        warnings,
-    })
+    Ok(())
 }

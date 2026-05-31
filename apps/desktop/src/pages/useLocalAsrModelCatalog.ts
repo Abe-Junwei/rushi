@@ -16,6 +16,7 @@ import {
   sidecarSupportsModelCatalogFromRoot,
   sidecarSupportsModelCatalogAny,
   sidecarSupportsPuncPrepareFromRoot,
+  sidecarSupportsTranscribeAsyncFromRoot,
   parseCatalogStatusFromEndpoint,
   parseCatalogStatusFromHealth,
   resolveLocalAsrHubModelId,
@@ -47,6 +48,8 @@ export interface LocalAsrModelCatalogApi {
   sidecarCatalogCapable: boolean;
   /** False when loopback sidecar lacks prepare-cancel / punc prepare (old PyInstaller). */
   sidecarPuncPrepareCapable: boolean;
+  /** False when loopback sidecar lacks R3e-C ``/v1/transcribe/async`` (stale PyInstaller). */
+  sidecarAsyncTranscribeCapable: boolean;
   applyBusy: boolean;
   applyMessage: string;
   setSelectedHubModelId: (hubModelId: string) => void;
@@ -68,6 +71,7 @@ export function useLocalAsrModelCatalog(
   const [catalogStatus, setCatalogStatus] = useState<LocalAsrCatalogStatusItem[] | null>(null);
   const [sidecarCatalogCapable, setSidecarCatalogCapable] = useState(false);
   const [sidecarPuncPrepareCapable, setSidecarPuncPrepareCapable] = useState(false);
+  const [sidecarAsyncTranscribeCapable, setSidecarAsyncTranscribeCapable] = useState(false);
   const [applyBusy, setApplyBusy] = useState(false);
   const [applyMessage, setApplyMessage] = useState("");
   const [recognitionLanguage, setRecognitionLanguageState] = useState<LocalAsrRecognitionLanguage>(
@@ -95,6 +99,7 @@ export function useLocalAsrModelCatalog(
     const root = rootJson ?? null;
     setSidecarCatalogCapable(sidecarSupportsModelCatalogAny(healthJson, root));
     setSidecarPuncPrepareCapable(sidecarSupportsPuncPrepareFromRoot(root));
+    setSidecarAsyncTranscribeCapable(sidecarSupportsTranscribeAsyncFromRoot(root));
     const parsed = parseCatalogStatusFromHealth(healthJson);
     if (parsed) setCatalogStatus(parsed);
   }, []);
@@ -128,6 +133,7 @@ export function useLocalAsrModelCatalog(
       const root = await probeSidecarRoot();
       if (root) {
         setSidecarPuncPrepareCapable(sidecarSupportsPuncPrepareFromRoot(root));
+        setSidecarAsyncTranscribeCapable(sidecarSupportsTranscribeAsyncFromRoot(root));
       }
     } catch {
       /* sidecar may be older build without catalog endpoint */
@@ -161,6 +167,7 @@ export function useLocalAsrModelCatalog(
       selectedHubModelId: hub,
       catalogStatus,
       recognitionLanguage,
+      sidecarAsyncTranscribeCapable,
     };
     if (!tauriRuntime) {
       setApplyMessage("浏览器预览无法切换侧车模型，请在桌面应用中操作。");
@@ -182,6 +189,7 @@ export function useLocalAsrModelCatalog(
           setSidecarCatalogCapable(true);
         }
         setSidecarPuncPrepareCapable(sidecarSupportsPuncPrepareFromRoot(root));
+        setSidecarAsyncTranscribeCapable(sidecarSupportsTranscribeAsyncFromRoot(root));
       }
       await refreshCatalogFromSidecar();
     } catch (e) {
@@ -195,6 +203,7 @@ export function useLocalAsrModelCatalog(
     catalogStatus,
     probeSidecarRoot,
     recognitionLanguage,
+    sidecarAsyncTranscribeCapable,
     refreshAsrRuntimeInfo,
     refreshCatalogFromSidecar,
     selectedHubModelId,
@@ -207,6 +216,7 @@ export function useLocalAsrModelCatalog(
     catalogStatus,
     sidecarCatalogCapable,
     sidecarPuncPrepareCapable,
+    sidecarAsyncTranscribeCapable,
     applyBusy,
     applyMessage,
     setSelectedHubModelId,

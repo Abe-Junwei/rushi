@@ -246,4 +246,26 @@ describe("useAutoPunctuateController", () => {
 
     expect(result.current.dialog.phase).toBe("closed");
   });
+
+  it("blocks auto punctuate during transcribe preview with explicit reason", () => {
+    seedDeepseekRuntime();
+    const segmentsRef = { current: [seg("你好世界")] };
+    const { result } = renderHook(() =>
+      useAutoPunctuateController({
+        busy: true,
+        transcribePreviewActive: true,
+        currentFileId: "file-1",
+        selectedIdx: 0,
+        segments: segmentsRef.current,
+        segmentsRef,
+        flushSegmentTextDrafts: vi.fn(),
+        updateSegmentText: vi.fn(),
+        setError: vi.fn(),
+        llmKeychainReady: true,
+      }),
+    );
+
+    expect(result.current.canAutoPunctuate).toBe(false);
+    expect(result.current.autoPunctuateBlockReason).toContain("转写预览中");
+  });
 });

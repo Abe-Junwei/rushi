@@ -41,4 +41,19 @@ describe("localAsrTranscribePreflightMessage", () => {
     });
     expect(msg).toContain("不一致");
   });
+
+  it("blocks stale sidecar without async transcribe", () => {
+    const msg = localAsrTranscribePreflightMessage({
+      asrHealth: "ok",
+      asrCaps: {
+        funasr_model_id: "iic/SenseVoiceSmall",
+        funasr_loaded_model_id: "iic/SenseVoiceSmall",
+        ready_for_transcribe: true,
+      },
+      selectedHubModelId: "iic/SenseVoiceSmall",
+      catalogStatus: [],
+      sidecarAsyncTranscribeCapable: false,
+    });
+    expect(msg).toContain("transcribe/async");
+  });
 });

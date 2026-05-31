@@ -24,7 +24,10 @@ pub async fn post_transcribe_multipart(
         }
         f
     };
-    let mut req = http_client().post(url).multipart(form).timeout(timeout);
+    let mut req = crate::asr_sidecar::local_token::apply_local_token_if_asr_loopback(
+        http_client().post(url).multipart(form).timeout(timeout),
+        url,
+    );
     if let Some(a) = authorization {
         let t = a.trim();
         if !t.is_empty() {

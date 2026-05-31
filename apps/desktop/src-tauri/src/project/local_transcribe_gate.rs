@@ -1,8 +1,20 @@
 //! Gate local FunASR transcribe on loopback /health + hub model alignment (R3-STATE).
 
 use crate::asr_sidecar::is_rushi_asr_health_json;
+use crate::asr_sidecar::loopback_root_declares_transcribe_async;
 use crate::DbState;
 use serde_json::Value;
+
+pub fn local_transcribe_gate_from_root_catalog(root: &Value) -> Result<(), String> {
+    if !loopback_root_declares_transcribe_async(root) {
+        return Err(
+            "侧车版本过旧，不支持增量转写（缺少 POST /v1/transcribe/async）。\
+             请在环境页「应用并重启侧车」，或执行 npm run asr:build-sidecar-unix 重建 bundled 侧车。"
+                .to_string(),
+        );
+    }
+    Ok(())
+}
 
 pub fn local_transcribe_gate_from_health(
     health: &Value,
@@ -80,7 +92,27 @@ pub async fn assert_local_asr_ready_for_transcribe(
     let health: Value = serde_json::from_str(&text)
         .map_err(|_| "本机 ASR /health 响应不是有效 JSON。".to_string())?;
     let hub_pref = crate::local_asr_model::read_hub_model_pref(st);
-    local_transcribe_gate_from_health(&health, hub_pref.as_deref())
+    local_transcribe_gate_from_health(&health, hub_pref.as_deref())?;
+
+    let root_url = format!("{base}/");
+    let root_resp = client
+        .get(&root_url)
+        .send()
+        .await
+        .map_err(|_| "无法读取本机 ASR 服务目录（GET /）。".to_string())?;
+    if !root_resp.status().is_success() {
+        return Err(format!(
+            "本机 ASR GET / 返回 HTTP {}，无法确认增量转写能力。",
+            root_resp.status().as_u16()
+        ));
+    }
+    let root_text = root_resp
+        .text()
+        .await
+        .map_err(|_| "读取本机 ASR GET / 失败。".to_string())?;
+    let root: Value = serde_json::from_str(&root_text)
+        .map_err(|_| "本机 ASR GET / 响应不是有效 JSON。".to_string())?;
+    local_transcribe_gate_from_root_catalog(&root)
 }
 
 #[cfg(test)]
@@ -135,5 +167,22 @@ mod tests {
             Some("iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch"),
         )
         .is_err());
+    }
+
+    #[test]
+    fn gate_blocks_stale_sidecar_without_async_transcribe() {
+        let root = json!({
+            "service": "rushi-asr",
+            "transcribe": "POST /v1/transcribe",
+        });
+        assert!(local_transcribe_gate_from_root_catalog(&root).is_err());
+    }
+
+    #[test]
+    fn gate_passes_when_async_transcribe_declared() {
+        let root = json!({
+            "transcribe_async": "POST /v1/transcribe/async + GET /v1/transcribe/status",
+        });
+        local_transcribe_gate_from_root_catalog(&root).unwrap();
     }
 }

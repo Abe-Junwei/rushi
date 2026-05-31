@@ -14,10 +14,12 @@
 
 | catalog_id | 显示名 | hub_model_id | 定位 | 磁盘提示（约） |
 |------------|--------|--------------|------|----------------|
-| `sensevoice-small` | SenseVoice 轻量（默认） | `iic/SenseVoiceSmall` | 快、省资源；长音频可能无分句 | ~0.5–1 GB |
-| `paraformer-long-vad-punc` | Paraformer 长音频（推荐转写） | `iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch` | VAD+标点+时间戳，适合要语段 | ~1–2 GB |
+| `sensevoice-small` | SenseVoice 轻量 | `iic/SenseVoiceSmall` | 快、省资源；长音频可能无分句 | ~0.5–1 GB |
+| `paraformer-long-vad-punc` | Paraformer 长音频（**推荐转写**） | `iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch` | VAD+标点+时间戳，适合要语段 | ~1–2 GB |
 
-（`funasr-nano-mtl` 留 **R3g-B**。）
+（`funasr-nano-mtl` 留 **R3g-B**；**Qwen3-ASR** spike 见 [`r3g-b-qwen3-asr-sku-spike-research.md`](./r3g-b-qwen3-asr-sku-spike-research.md)。）
+
+**SenseVoice 文案（R3g-C C4）**：v1 默认选中仍可 SenseVoice，但 UI **不加「推荐」**；百炼等平台弃用预警 — 见 [`r3-asr-landscape-2026-05-improvement-backlog.md`](./r3-asr-landscape-2026-05-improvement-backlog.md) §3.3。Qwen3 spike **Go** 后再评估默认 SKU。
 
 **磁盘策略**：同一 `RUSHI_MODELS_ROOT` 下多模型并存；总额仍受 policy **~5GB** 约束；UI 展示占用 + 清理（沿用 R3c）。
 

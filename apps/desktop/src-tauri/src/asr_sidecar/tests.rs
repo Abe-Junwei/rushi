@@ -2,7 +2,10 @@ use super::bundled::BundledAsrLaunchReport;
 use super::candidates::{
     bundled_sidecar_candidates_from_roots, candidate_resource_roots_from_parts,
 };
-use super::probe::{is_rushi_asr_health_json, loopback_port_accepts_tcp};
+use super::probe::{
+    is_rushi_asr_health_json, loopback_port_accepts_tcp, loopback_root_declares_model_catalog,
+    loopback_root_declares_punc_prepare, loopback_root_declares_transcribe_async,
+};
 use serde_json::json;
 use std::fs;
 use std::net::TcpListener;
@@ -101,6 +104,27 @@ fn bundled_candidates_from_roots_deduplicate_same_executable() {
     assert_eq!(candidates.len(), 1);
     assert_eq!(candidates[0], exe);
     let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn detects_transcribe_async_in_loopback_root() {
+    let fresh = json!({
+        "transcribe_async": "POST /v1/transcribe/async + GET /v1/transcribe/status",
+    });
+    assert!(loopback_root_declares_transcribe_async(&fresh));
+
+    let stale = json!({ "transcribe": "POST /v1/transcribe" });
+    assert!(!loopback_root_declares_transcribe_async(&stale));
+}
+
+#[test]
+fn loopback_root_declares_model_catalog_and_punc_prepare() {
+    let root = json!({
+        "model_catalog": "GET /v1/models/catalog",
+        "prepare_cancel": "POST /v1/models/prepare-cancel",
+    });
+    assert!(loopback_root_declares_model_catalog(&root));
+    assert!(loopback_root_declares_punc_prepare(&root));
 }
 
 #[test]

@@ -5,6 +5,7 @@ from __future__ import annotations
 import logging
 import os
 import shutil
+from collections.abc import Callable
 from pathlib import Path
 
 from rushi_asr import ffmpeg_audio
@@ -13,7 +14,12 @@ from rushi_asr.schemas import TranscriptionSegment
 log = logging.getLogger(__name__)
 
 DEFAULT_WINDOW_SEC = 300.0
+DEFAULT_ASYNC_WINDOW_SEC = 120.0
 DEFAULT_WINDOW_THRESHOLD_SEC = 1800.0
+
+
+class TranscribeCancelledError(Exception):
+    """Cooperative cancel between windows (R3e-C)."""
 
 
 def _env_float(name: str, default: float) -> float:
@@ -31,6 +37,11 @@ def window_sec() -> float:
     return _env_float("RUSHI_FUNASR_WINDOW_SEC", DEFAULT_WINDOW_SEC)
 
 
+def async_window_sec() -> float:
+    """R3e-C async preview slice size (blocking long-audio path keeps ``window_sec()``)."""
+    return _env_float("RUSHI_FUNASR_ASYNC_WINDOW_SEC", DEFAULT_ASYNC_WINDOW_SEC)
+
+
 def window_threshold_sec() -> float:
     return _env_float("RUSHI_FUNASR_WINDOW_THRESHOLD_SEC", DEFAULT_WINDOW_THRESHOLD_SEC)
 
@@ -39,6 +50,17 @@ def should_transcribe_by_windows(duration_sec: float | None) -> bool:
     if duration_sec is None or duration_sec <= 0:
         return False
     return duration_sec >= window_threshold_sec()
+
+
+def async_window_threshold_sec() -> float:
+    """R3e-C async preview: window earlier than blocking ``should_transcribe_by_windows``."""
+    return _env_float("RUSHI_FUNASR_ASYNC_WINDOW_THRESHOLD_SEC", async_window_sec())
+
+
+def should_transcribe_by_windows_async(duration_sec: float | None) -> bool:
+    if duration_sec is None or duration_sec <= 0:
+        return False
+    return duration_sec >= async_window_threshold_sec()
 
 
 def plan_windows(total_sec: float, slice_sec: float) -> list[tuple[float, float]]:
@@ -86,6 +108,9 @@ def transcribe_by_windows(
     *,
     hotwords: str | None = None,
     out_warnings: list[str] | None = None,
+    on_window_done: Callable[[int, int, list[TranscriptionSegment]], None] | None = None,
+    should_cancel: Callable[[], bool] | None = None,
+    slice_sec: float | None = None,
 ) -> tuple[list[TranscriptionSegment], str, str | None]:
     """Slice normalized WAV, run FunASR per window, merge with global timestamps."""
     from rushi_asr.funasr_engine import generate_and_parse_funasr
@@ -94,8 +119,8 @@ def transcribe_by_windows(
         if out_warnings is not None:
             out_warnings.append(msg)
 
-    slice_sec = window_sec()
-    windows = plan_windows(total_duration_sec, slice_sec)
+    effective_slice_sec = slice_sec if slice_sec is not None else window_sec()
+    windows = plan_windows(total_duration_sec, effective_slice_sec)
     if not windows:
         raise RuntimeError("transcribe_window_plan_empty")
 
@@ -108,6 +133,8 @@ def transcribe_by_windows(
 
     try:
         for index, (start_sec, dur_sec) in enumerate(windows, start=1):
+            if should_cancel and should_cancel():
+                raise TranscribeCancelledError()
             log.info(
                 "transcribe_window i=%d n=%d start_sec=%.3f dur_sec=%.3f",
                 index,
@@ -128,7 +155,10 @@ def transcribe_by_windows(
                 hotwords,
                 out_warnings,
             )
-            merged.extend(offset_segments(segs, start_sec))
+            offset = offset_segments(segs, start_sec)
+            merged.extend(offset)
+            if on_window_done is not None:
+                on_window_done(index, len(windows), offset)
     finally:
         shutil.rmtree(slice_dir, ignore_errors=True)
 

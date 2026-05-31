@@ -337,12 +337,13 @@ export function llmAutoPunctuateCapabilityBadge(status: LlmConnectionUiStatus): 
 
 export function llmKeychainReferenceMessage(apiKeyId: string | null, keychainPresent: boolean | null): string {
   const label = apiKeyId ? (normalizeLlmApiKeyId(apiKeyId) ?? DEFAULT_LLM_API_KEY_ID) : null;
-  if (!label) return "本地安全存储：当前未保存 API Key。";
-  if (keychainPresent === null) return `本地安全存储：正在检查已保存引用（标识：${label}）…`;
+  const store = "系统密钥库（macOS 钥匙串 / Windows 凭据管理器；不可用时回退为应用数据目录下的受保护文件）";
+  if (!label) return `${store}：当前未保存 API Key。`;
+  if (keychainPresent === null) return `${store}：正在检查已保存引用（标识：${label}）…`;
   if (keychainPresent) {
-    return `本地安全存储：已找到 API Key（标识：${label}）。输入框留空时将使用它。`;
+    return `${store}：已找到 API Key（标识：${label}）。输入框留空时将使用它。`;
   }
-  return `本地安全存储：未读到标识为「${label}」的密钥。请重新填写 DeepSeek API Key 并点击保存配置。`;
+  return `${store}：未读到标识为「${label}」的密钥。请重新填写 API Key 并点击保存配置。`;
 }
 
 export function resolveAutoPunctuateBlockReason(input: {

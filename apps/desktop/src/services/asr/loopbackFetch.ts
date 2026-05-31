@@ -58,7 +58,7 @@ function pathFromUrl(url: string): string {
 export function defaultLoopbackTimeoutMs(method: string, path: string): number {
   const m = method.toUpperCase();
   if (path.includes("/v1/models/prepare") && m === "POST") return 900_000;
-  if (m === "GET" && (path === "/health" || path === "/" || path.includes("/prepare-status"))) {
+  if (m === "GET" && (path === "/health" || path === "/" || path.includes("/prepare-status") || path.includes("/transcribe/status"))) {
     return 8_000;
   }
   if (m === "GET") return 15_000;

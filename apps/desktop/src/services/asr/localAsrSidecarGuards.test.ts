@@ -57,4 +57,13 @@ describe("localAsrSidecarGuards", () => {
       ),
     ).toBe(false);
   });
+
+  it("shouldSkipSidecarRestartForSelection false when async transcribe missing", () => {
+    expect(
+      shouldSkipSidecarRestartForSelection(readyCaps, {
+        ...selection,
+        sidecarAsyncTranscribeCapable: false,
+      }),
+    ).toBe(false);
+  });
 });

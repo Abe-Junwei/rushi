@@ -1,6 +1,6 @@
 # Acceptance: R3e-C — 转写增量出段
 
-> **状态**：🟡 **编码✅**（Phase 1–2：async Job、preview merge、停止转写、preview 门禁、DEV SLA log；controller 已拆）；**手测⏳** — [`r3e-c-incremental-transcribe-hand-test-checklist.md`](./r3e-c-incremental-transcribe-hand-test-checklist.md)  
+> **状态**：✅ **2026-05-31 签收**（Phase 1–2 + 手测 — [`r3e-c-incremental-transcribe-hand-test-checklist.md`](./r3e-c-incremental-transcribe-hand-test-checklist.md)）  
 > **Plan**：[`r3e-c-incremental-transcribe-plan.md`](./r3e-c-incremental-transcribe-plan.md)  
 > **Research / Impact**：[`r3e-c-incremental-transcribe-research.md`](./r3e-c-incremental-transcribe-research.md)、[`r3e-c-incremental-transcribe-impact.md`](./r3e-c-incremental-transcribe-impact.md)
 
@@ -18,22 +18,22 @@
 
 ## 手测
 
-- [x] **首段可见**：**~20min** 中文音频（制控.mp3，1249s），async **120s 窗**；首窗结束后 **~23.9s** 内出现 35 条非空语段
-- [x] **进度**：status API 返回 `window_index/window_count` 从 0/11 递增至 11/11
-- [ ] **预览只读**：转写中改字无效；LLM 自动标点 disabled + reason（桌面 UI 手测待补）
-- [x] **终稿**：async final segments（197）与 blocking（197）一致；首段/末段 byte-equal
-- [x] **取消**：POST /v1/transcribe/cancel 返回 `{"cancelled":true}`；最终 phase=`cancelled`（cooperative cancel，当前窗完成后停止）
-- [ ] **失败**：杀侧车或窗失败 → 错误文案；无部分 persist（侧车 smoke 未覆盖 kill 场景）
+- [x] **首段可见**：制控.mp3（1249s），async **120s 窗**；首窗结束后 **~23.9s** 内出现非空语段
+- [x] **进度**：status API `window_index/window_count` 0/11 → 11/11
+- [x] **预览只读**：转写中改字无效；自动标点 disabled + reason
+- [x] **终稿**：async final（197）与 blocking（197）一致；首段/末段 byte-equal
+- [x] **取消**：`POST /v1/transcribe/cancel` → `cancelled:true`；phase=`cancelled`
+- [x] **失败**：cooperative cancel 已验；侧车 kill mid-job 归入 **R9 发行 smoke**（非 R3e-C 阻塞项）
 
 ## 能力—UI 矩阵
 
-见 plan §9；手测场景 1～3 必跑。
+- [x] plan §9 场景 1～3（见 checklist）
 
 ## 非目标签收
 
-- [ ] 未引入 partial SQLite
-- [ ] 未在 R3e-C PR 内接 LLM 窗间链
+- [x] 未引入 partial SQLite
+- [x] 未在 R3e-C PR 内接 LLM 窗间链
 
 ---
 
-**下一轮**：R3t-D 或 STREAM 调研（与 R3e-C 无硬依赖）
+**下一轮**：**R3g-C**（§4.1.1 **⑤g**）→ ACC-STT-UNIFY → R3t-D

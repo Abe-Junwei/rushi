@@ -4,6 +4,7 @@ use reqwest::Method;
 use serde::{Deserialize, Serialize};
 use serde_json::Value;
 
+use super::local_token::apply_local_token_header;
 use super::ASR_LOOPBACK_PORT;
 
 #[derive(Debug, Deserialize)]
@@ -80,7 +81,7 @@ pub async fn loopback_request_json(
         .timeout(loopback_timeout(timeout_ms))
         .build()
         .map_err(|e| e.to_string())?;
-    let mut req = client.request(method, &url);
+    let mut req = apply_local_token_header(client.request(method, &url));
     if let Some(body) = args.body {
         req = req.json(&body);
     }

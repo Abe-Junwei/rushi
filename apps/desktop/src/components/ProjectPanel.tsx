@@ -8,7 +8,7 @@ import { TranscribeOverwriteConfirmDialog } from "./TranscribeOverwriteConfirmDi
 import { EditorView } from "./EditorView";
 
 import { WelcomeView, type WelcomePageId } from "./WelcomeView";
-import { ProjectBusyOverlay } from "./ProjectStatusFeedback";
+import { ProjectBusyOverlay, TranscribePreviewBanner } from "./ProjectStatusFeedback";
 import { TranscribeHintsBanner } from "./TranscribeHintsBanner";
 import { UnsavedCloseDialog } from "./UnsavedCloseDialog";
 import { useProjectController } from "../pages/useProjectController";
@@ -186,6 +186,14 @@ export function ProjectPanel() {
           />
         ) : (
           <main className="relative flex min-h-[12rem] min-w-0 flex-1 flex-col bg-notion-bg lg:min-h-0">
+            {c.busy && c.busyReason === "transcribe" ? (
+              <TranscribePreviewBanner
+                elapsedSec={busyElapsedSec}
+                transcribeProgress={c.transcribeProgress}
+                cancelling={c.transcribeCancelling}
+                onCancel={c.cancelTranscribe}
+              />
+            ) : null}
             <EditorView
               controller={c}
               tx={tx}
@@ -201,7 +209,13 @@ export function ProjectPanel() {
         )}
       </div>
 
-      {c.busy ? <ProjectBusyOverlay reason={c.busyReason} elapsedSec={busyElapsedSec} /> : null}
+      {c.busy && c.busyReason !== "transcribe" ? (
+        <ProjectBusyOverlay
+          reason={c.busyReason}
+          elapsedSec={busyElapsedSec}
+          transcribeProgress={c.transcribeProgress}
+        />
+      ) : null}
 
       <AutoPunctuatePreviewDialog
         state={c.autoPunctuateDialog}

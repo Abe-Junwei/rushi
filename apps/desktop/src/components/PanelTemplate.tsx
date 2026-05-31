@@ -54,13 +54,16 @@ export const PANEL_TEMPLATE_PRESETS = {
 
 type PanelTemplatePresetKey = keyof typeof PANEL_TEMPLATE_PRESETS;
 
-function resolvePanelTemplateMetrics(preset: PanelTemplatePreset): PanelTemplateMetrics {
+function resolvePanelTemplateMetrics(
+  preset: PanelTemplatePreset,
+  defaultSizeOverride?: { width: number; height: number },
+): PanelTemplateMetrics {
   const viewportWidth = Math.floor(window.visualViewport?.width ?? window.innerWidth);
   const viewportHeight = Math.floor(window.visualViewport?.height ?? window.innerHeight);
   const availableWidth = Math.max(preset.minWidth, viewportWidth - preset.margin * 2);
   const availableHeight = Math.max(preset.minHeight, viewportHeight - preset.margin * 2);
-  const width = Math.min(preset.maxWidth, availableWidth);
-  const height = Math.min(preset.maxHeight, availableHeight);
+  const width = defaultSizeOverride?.width ?? Math.min(preset.maxWidth, availableWidth);
+  const height = defaultSizeOverride?.height ?? Math.min(preset.maxHeight, availableHeight);
 
   return {
     defaultPosition: {
@@ -115,7 +118,7 @@ export function FloatingPanelTemplate({
     persistState: persistState ?? presetConfig.persistState,
     overlayClassName: overlayClassName ?? presetConfig.overlayClassName,
   };
-  const metrics = resolvePanelTemplateMetrics(mergedConfig);
+  const metrics = resolvePanelTemplateMetrics(mergedConfig, defaultSizeOverride);
 
   return (
     <>

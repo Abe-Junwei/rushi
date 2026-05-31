@@ -10,6 +10,7 @@ import {
   selectedModelPrepareState,
   hubModelNeedsPuncPrepare,
   sidecarSupportsPuncPrepareFromRoot,
+  sidecarSupportsTranscribeAsyncFromRoot,
 } from "./localAsrModelCatalog";
 
 describe("localAsrModelCatalog", () => {
@@ -32,6 +33,17 @@ describe("localAsrModelCatalog", () => {
       }),
     ).toBe(true);
     expect(sidecarSupportsPuncPrepareFromRoot({ model_catalog: "GET /v1/models/catalog" })).toBe(
+      false,
+    );
+  });
+
+  it("detects async transcribe capability from sidecar root", () => {
+    expect(
+      sidecarSupportsTranscribeAsyncFromRoot({
+        transcribe_async: "POST /v1/transcribe/async + GET /v1/transcribe/status",
+      }),
+    ).toBe(true);
+    expect(sidecarSupportsTranscribeAsyncFromRoot({ transcribe: "POST /v1/transcribe" })).toBe(
       false,
     );
   });

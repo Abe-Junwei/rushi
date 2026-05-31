@@ -184,7 +184,7 @@ export function EnvLlmConfigPanel({ busy, onLlmRuntimeChanged }: Props) {
       onLlmRuntimeChanged?.();
       if (typedApiKey) {
         setApiKey("");
-        setMsg("已保存。API Key 已写入本地安全存储；当前页面不再保留明文。");
+        setMsg("已保存。API Key 已写入系统密钥库；当前页面不再保留明文。");
       } else if (nextApiKeyId) {
         setMsg("已保存连接信息，将继续使用本地已保存的 API Key。");
       } else {
@@ -350,7 +350,7 @@ export function EnvLlmConfigPanel({ busy, onLlmRuntimeChanged }: Props) {
             placeholder={savedApiKeyId ? "留空则沿用已保存的本地密钥" : "在厂商控制台创建并保存到本地安全存储"}
           />
           <span className={PANEL_TYPOGRAPHY.meta}>
-            与在线 STT 密钥分开存放；不写入 localStorage 或项目文件。点击保存后写入应用数据目录下的本地安全存储，重启后仍可用。
+            与在线 STT 密钥分开存放；不写入 localStorage 或项目文件。保存后写入系统密钥库（不可用时回退为应用数据目录下的受保护文件），重启后仍可用。
           </span>
         </label>
 

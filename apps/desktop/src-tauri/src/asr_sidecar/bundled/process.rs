@@ -5,9 +5,11 @@ use std::time::Duration;
 use tauri::{AppHandle, Manager};
 
 use super::launch::append_sidecar_log_line;
+use crate::asr_sidecar::local_token::{
+    clear_managed_local_token, generate_local_token, set_managed_local_token,
+};
 use crate::asr_sidecar::probe::{
-    bundled_health_looks_like_rushi_asr, bundled_sidecar_supports_model_catalog,
-    bundled_sidecar_supports_punc_prepare,
+    bundled_health_looks_like_rushi_asr, bundled_sidecar_is_fresh_build,
 };
 use crate::asr_sidecar::{
     AsrSidecarState, ASR_HEALTH_URL, BUNDLED_HEALTH_POLL_MS, BUNDLED_HEALTH_WAIT_MS,
@@ -47,15 +49,18 @@ fn replace_bundled_child(handle: &AppHandle, mut child: Child) -> bool {
 
 fn drop_bundled_child(handle: &AppHandle) {
     let Some(s) = handle.try_state::<AsrSidecarState>() else {
+        clear_managed_local_token();
         return;
     };
     let Ok(mut g) = s.0.lock() else {
+        clear_managed_local_token();
         return;
     };
     if let Some(mut c) = g.take() {
         let _ = c.kill();
         let _ = c.wait();
     }
+    clear_managed_local_token();
 }
 
 fn bundled_child_exited(handle: &AppHandle) -> bool {
@@ -84,6 +89,8 @@ pub(crate) fn spawn_sidecar(exe: &Path, handle: &AppHandle) -> std::io::Result<C
         .parent()
         .map(Path::to_path_buf)
         .unwrap_or_else(|| PathBuf::from("."));
+    let local_token = generate_local_token();
+    set_managed_local_token(Some(local_token.clone()));
     let mut cmd = Command::new(exe);
     cmd.current_dir(&workdir)
         .env("ASR_HOST", "127.0.0.1")
@@ -91,6 +98,7 @@ pub(crate) fn spawn_sidecar(exe: &Path, handle: &AppHandle) -> std::io::Result<C
             "ASR_PORT",
             crate::asr_sidecar::ASR_LOOPBACK_PORT.to_string(),
         )
+        .env("RUSHI_LOCAL_TOKEN", &local_token)
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null());
@@ -133,7 +141,7 @@ pub(crate) fn wait_health_store_child(handle: &AppHandle, child: Child) -> bool 
         if !bundled_health_looks_like_rushi_asr() {
             continue;
         }
-        if !bundled_sidecar_supports_model_catalog() || !bundled_sidecar_supports_punc_prepare() {
+        if !bundled_sidecar_is_fresh_build() {
             append_sidecar_log_line(handle, "WARN bundled_sidecar_spawn_stale_build");
             drop_bundled_child(handle);
             return false;

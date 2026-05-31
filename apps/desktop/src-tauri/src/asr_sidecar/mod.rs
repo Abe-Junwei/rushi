@@ -3,6 +3,7 @@
 
 pub(crate) mod bundled;
 pub mod candidates;
+pub(crate) mod local_token;
 pub mod loopback;
 mod probe;
 
@@ -14,7 +15,10 @@ pub use bundled::{
     BundledAsrLaunchState,
 };
 pub use candidates::bundled_sidecar_resources_present;
-pub use probe::{is_rushi_asr_health_json, probe_asr_port, AsrPortStatus};
+pub use probe::{
+    bundled_sidecar_is_fresh_build, bundled_sidecar_supports_transcribe_async,
+    is_rushi_asr_health_json, loopback_root_declares_transcribe_async, probe_asr_port, AsrPortStatus,
+};
 
 use std::process::Child;
 use std::sync::{Mutex, OnceLock};

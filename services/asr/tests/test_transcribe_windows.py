@@ -31,6 +31,36 @@ def test_should_transcribe_by_windows_threshold(monkeypatch: pytest.MonkeyPatch)
     assert transcribe_windows.should_transcribe_by_windows(None) is False
 
 
+def test_should_transcribe_by_windows_async_uses_async_window_sec(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    monkeypatch.delenv("RUSHI_FUNASR_ASYNC_WINDOW_SEC", raising=False)
+    monkeypatch.delenv("RUSHI_FUNASR_ASYNC_WINDOW_THRESHOLD_SEC", raising=False)
+    assert transcribe_windows.async_window_sec() == 120.0
+    assert transcribe_windows.should_transcribe_by_windows_async(1200.0) is True
+    assert transcribe_windows.should_transcribe_by_windows_async(119.0) is False
+    assert transcribe_windows.plan_windows(1200.0, 120.0) == [
+        (0.0, 120.0),
+        (120.0, 120.0),
+        (240.0, 120.0),
+        (360.0, 120.0),
+        (480.0, 120.0),
+        (600.0, 120.0),
+        (720.0, 120.0),
+        (840.0, 120.0),
+        (960.0, 120.0),
+        (1080.0, 120.0),
+    ]
+
+
+def test_async_window_sec_overrides_blocking_window(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("RUSHI_FUNASR_WINDOW_SEC", "300")
+    monkeypatch.setenv("RUSHI_FUNASR_ASYNC_WINDOW_SEC", "90")
+    assert transcribe_windows.window_sec() == 300.0
+    assert transcribe_windows.async_window_sec() == 90.0
+    assert transcribe_windows.should_transcribe_by_windows_async(90.0) is True
+
+
 def test_offset_and_merge_segments() -> None:
     base = [
         TranscriptionSegment(start_sec=1.0, end_sec=2.0, text="a"),

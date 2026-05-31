@@ -50,12 +50,14 @@ export function useProjectController() {
         asrCaps: asr.asrCaps,
         selectedHubModelId: asr.localAsrModelCatalog.selectedHubModelId,
         catalogStatus: asr.localAsrModelCatalog.catalogStatus,
+        sidecarAsyncTranscribeCapable: asr.localAsrModelCatalog.sidecarAsyncTranscribeCapable,
       }),
     [
       asr.asrHealth,
       asr.asrCaps,
       asr.localAsrModelCatalog.selectedHubModelId,
       asr.localAsrModelCatalog.catalogStatus,
+      asr.localAsrModelCatalog.sidecarAsyncTranscribeCapable,
     ],
   );
 
@@ -78,6 +80,9 @@ export function useProjectController() {
     setNewName: lifecycle.setNewName,
     pickedPath: lifecycle.pickedPath,
     transcribeHints: lifecycle.transcribeHints,
+    transcribeProgress: lifecycle.transcribeProgress,
+    transcribeCancelling: lifecycle.transcribeCancelling,
+    transcribePreviewActive: lifecycle.transcribePreviewActive,
     transcribeOverwriteDialogOpen: lifecycle.transcribeOverwriteDialogOpen,
     transcribeOverwriteSegmentCount: lifecycle.transcribeOverwriteSegmentCount,
     refreshProjects: lifecycle.refreshProjects,
@@ -92,6 +97,7 @@ export function useProjectController() {
     closeFile: lifecycle.closeFile,
     closeProject: lifecycle.closeProject,
     runTranscribe: lifecycle.runTranscribe,
+    cancelTranscribe: lifecycle.cancelTranscribe,
     confirmTranscribeOverwrite: lifecycle.confirmTranscribeOverwrite,
     cancelTranscribeOverwrite: lifecycle.cancelTranscribeOverwrite,
     saveSegments: lifecycle.saveSegments,

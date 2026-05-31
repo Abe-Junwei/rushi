@@ -15,6 +15,8 @@ export type LocalAsrSetupSelectionContext = {
   selectedHubModelId: string;
   catalogStatus?: LocalAsrCatalogStatusItem[] | null;
   recognitionLanguage?: LocalAsrRecognitionLanguage;
+  /** When false, sidecar lacks R3e-C async transcribe — force restart path. */
+  sidecarAsyncTranscribeCapable?: boolean;
 };
 
 /** Loopback + UI selection aligned transcribe-ready (same rule as EnvLocalAsrPanel). */
@@ -41,6 +43,7 @@ export function shouldSkipSidecarRestartForSelection(
   caps: AsrHealthCapabilities | null | undefined,
   ctx: LocalAsrSetupSelectionContext,
 ): boolean {
+  if (ctx.sidecarAsyncTranscribeCapable === false) return false;
   if (!caps?.funasr_ready || !caps.ready_for_transcribe) return false;
   const hub = resolveLocalAsrHubModelId(ctx.selectedHubModelId);
   const lang = normalizeLocalAsrRecognitionLanguage(

@@ -126,6 +126,29 @@ export async function projectRunTranscribe(
   });
 }
 
+export async function projectTranscribeAsyncStart(
+  fileId: string,
+  asrBaseUrl?: string | null,
+): Promise<{ jobId: string }> {
+  const out = await invoke<{ jobId: string }>("project_transcribe_async_start", {
+    fileId,
+    asrBaseUrl: asrBaseUrl ?? null,
+  });
+  return out;
+}
+
+export async function projectTranscribeAsyncFinalize(
+  fileId: string,
+  jobId: string,
+  asrBaseUrl?: string | null,
+): Promise<RunTranscribeOutcome> {
+  return invoke<RunTranscribeOutcome>("project_transcribe_async_finalize", {
+    fileId,
+    jobId,
+    asrBaseUrl: asrBaseUrl ?? null,
+  });
+}
+
 export async function projectDelete(projectId: string): Promise<void> {
   return invoke<void>("project_delete", { projectId });
 }

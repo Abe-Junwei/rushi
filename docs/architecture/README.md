@@ -27,7 +27,9 @@
 - [`../execution/specs/r3e-b-long-audio-chunking-research.md`](../execution/specs/r3e-b-long-audio-chunking-research.md) — **R3e-B 规划门禁**：长音频分片/进度业内调研与落位决策（先调研后编码）。
 - [`../execution/specs/r3-provider-configuration-research.md`](../execution/specs/r3-provider-configuration-research.md) — R3 规划：LLM/STT Provider 业内共识与本仓配置策略（先调研后实施）。
 - [`../execution/specs/r3c-local-asr-cache-manifest-acceptance.md`](../execution/specs/r3c-local-asr-cache-manifest-acceptance.md) — R3c：本机 ASR 首次引导、缓存管理与 manifest 展示的验收边界。
-- [`../execution/specs/r3e-long-audio-transcribe-acceptance.md`](../execution/specs/r3e-long-audio-transcribe-acceptance.md) — R3e：长音频本机转写（**R3e-A/B ✅ 2026-05-30**；[`r3e-b-hand-test-checklist.md`](../execution/specs/r3e-b-hand-test-checklist.md)）。
+- [`../execution/specs/r3e-long-audio-transcribe-acceptance.md`](../execution/specs/r3e-long-audio-transcribe-acceptance.md) — R3e：长音频（**R3e-A/B/C ✅**；C 2026-05-31 — [`r3e-c-incremental-transcribe-hand-test-checklist.md`](../execution/specs/r3e-c-incremental-transcribe-hand-test-checklist.md)）。
+- [`../execution/specs/r3-asr-landscape-2026-05-improvement-backlog.md`](../execution/specs/r3-asr-landscape-2026-05-improvement-backlog.md) — **ASR 生态改进 backlog**（路线图 §4.1.8）。
+- [`../execution/specs/r3g-b-qwen3-asr-sku-spike-research.md`](../execution/specs/r3g-b-qwen3-asr-sku-spike-research.md) — R3g-B Qwen3 SKU spike（Go/No-go）。
 - [`../execution/specs/r3f-asr-setup-wizard-acceptance.md`](../execution/specs/r3f-asr-setup-wizard-acceptance.md) — R3f：本机 ASR 一键环境准备（内置侧车编排）。
 - [`../execution/specs/r3g-local-asr-model-catalog-acceptance.md`](../execution/specs/r3g-local-asr-model-catalog-acceptance.md) — R3g：本机 FunASR 模型目录（v1 三 SKU）。
 - [`../execution/plans/rushi-execution-roadmap.md`](../execution/plans/rushi-execution-roadmap.md) — **排期真源**（§1.7 产品决策、§4.1 R3/R3t、§8.2 待拍板）

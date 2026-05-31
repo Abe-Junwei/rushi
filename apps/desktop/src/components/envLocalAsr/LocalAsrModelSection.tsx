@@ -137,6 +137,17 @@ export function LocalAsrModelSection({ catalog, asrCaps, busy, prepareModelBusy 
         </p>
       ) : null}
 
+      {catalog.sidecarCatalogCapable &&
+      catalog.sidecarPuncPrepareCapable &&
+      !catalog.sidecarAsyncTranscribeCapable ? (
+        <p
+          className={`${PANEL_TYPOGRAPHY.meta} rounded border border-zen-saffron/30 bg-zen-saffron/10 px-3 py-2 text-notion-text`}
+          role="status"
+        >
+          侧车版本过旧（无增量转写接口 POST /v1/transcribe/async），拉取语段将无法分批预览。请完全退出应用后重开，或执行 npm run asr:build-sidecar-unix 重建内置侧车。
+        </p>
+      ) : null}
+
       {sidecarMatchesSelection && !languageMatchesSidecar ? (
         <p
           className={`${PANEL_TYPOGRAPHY.meta} rounded border border-zen-saffron/30 bg-zen-saffron/10 px-3 py-2 text-notion-text`}

@@ -122,6 +122,7 @@ export function useProjectLifecycleController(
     segments,
     segmentsRef,
     setCurrent,
+    setSegments,
     setError,
     closeGate: {
       openFileWrapped: async (fileId: string) => {
@@ -205,6 +206,7 @@ export function useProjectLifecycleController(
 
   const autoPunctuate = useAutoPunctuateController({
     busy,
+    transcribePreviewActive: busy && busyReason === "transcribe",
     currentFileId,
     selectedIdx,
     segments,
@@ -241,6 +243,9 @@ export function useProjectLifecycleController(
     projects, current, currentFileId, segments, selectedIdx, setSelectedIdx,
     audioSrc, error, busy, busyReason, newName, setNewName, pickedPath,
     transcribeHints: transcribeJob.transcribeHints,
+    transcribeProgress: transcribeJob.transcribeProgress,
+    transcribeCancelling: transcribeJob.transcribeCancelling,
+    transcribePreviewActive: busy && busyReason === "transcribe",
     transcribeOverwriteDialogOpen: transcribeJob.overwriteDialogOpen,
     transcribeOverwriteSegmentCount: transcribeJob.overwriteSegmentCount,
     refreshProjects, pickAudio, clearPickedAudio,
@@ -248,6 +253,7 @@ export function useProjectLifecycleController(
     loadProject: closeGate.loadProject, refreshCurrentProject, openFile: closeGate.openFileWrapped,
     closeFile: closeGate.closeFileWrapped, closeProject: closeGate.closeProjectWrapped,
     runTranscribe: transcribeJob.requestTranscribe,
+    cancelTranscribe: transcribeJob.cancelTranscribe,
     confirmTranscribeOverwrite: transcribeJob.confirmTranscribeOverwrite,
     cancelTranscribeOverwrite: transcribeJob.cancelTranscribeOverwrite,
     saveSegments, deleteProject: crud.deleteProject,

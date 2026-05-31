@@ -29,6 +29,7 @@ mod segment_media_sanitize;
 mod segment_uid;
 pub mod stt_vocabulary;
 pub mod transcribe;
+mod transcribe_job;
 mod transcribe_errors;
 mod transcribe_native_online;
 mod transcribe_response;

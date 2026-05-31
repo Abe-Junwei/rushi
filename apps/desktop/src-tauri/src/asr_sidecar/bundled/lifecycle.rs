@@ -7,9 +7,9 @@ use super::port::kill_loopback_listeners_on_port;
 use super::process::{reap_bundled_sidecar_if_exited, spawn_sidecar, wait_health_store_child};
 use crate::asr_sidecar::candidates::bundled_sidecar_candidates_for_launch;
 use crate::asr_sidecar::probe::{
-    bundled_health_looks_like_rushi_asr, bundled_sidecar_supports_model_catalog,
-    bundled_sidecar_supports_punc_prepare, loopback_port_accepts_tcp,
+    bundled_health_looks_like_rushi_asr, bundled_sidecar_is_fresh_build, loopback_port_accepts_tcp,
 };
+use crate::asr_sidecar::local_token::clear_managed_local_token;
 use crate::asr_sidecar::{with_asr_lifecycle, AsrSidecarState, ASR_HEALTH_URL, ASR_LOOPBACK_PORT};
 
 fn try_start_bundled_inner(handle: &AppHandle) {
@@ -30,7 +30,7 @@ fn try_start_bundled_inner(handle: &AppHandle) {
         std::thread::sleep(Duration::from_millis(300));
     }
     if bundled_health_looks_like_rushi_asr() {
-        if bundled_sidecar_supports_model_catalog() && bundled_sidecar_supports_punc_prepare() {
+        if bundled_sidecar_is_fresh_build() {
             eprintln!(
                 "[rushi-asr-sidecar] {} already healthy; skip bundled start.",
                 ASR_HEALTH_URL
@@ -120,6 +120,7 @@ fn try_start_bundled_inner(handle: &AppHandle) {
          or rebuild PyInstaller output (see scripts/build-asr-sidecar-*)."
     );
     append_sidecar_log_line(handle, "ERROR bundled_sidecar_all_candidates_failed");
+    clear_managed_local_token();
 }
 
 /// Start bundled ASR if present and nothing is already listening on :8741.
@@ -129,15 +130,18 @@ pub fn try_start_bundled(handle: &AppHandle) {
 
 pub fn stop_bundled(handle: &AppHandle) {
     let Some(s) = handle.try_state::<AsrSidecarState>() else {
+        clear_managed_local_token();
         return;
     };
     let Ok(mut g) = s.0.lock() else {
+        clear_managed_local_token();
         return;
     };
     if let Some(mut c) = g.take() {
         let _ = c.kill();
         let _ = c.wait();
     }
+    clear_managed_local_token();
 }
 
 /// Stop managed child and any stale listener on :8741, then start bundled sidecar again.

@@ -97,16 +97,42 @@ async fn fetch_loopback_root_json() -> Option<Value> {
 }
 
 /// True when loopback rushi-asr exposes R3g model catalog (fresh PyInstaller build).
+pub fn loopback_root_declares_model_catalog(v: &Value) -> bool {
+    v.get("model_catalog").is_some()
+        || v.get("local_asr_model_catalog").is_some()
+        || v.get("prepare_model_async")
+            .and_then(|s| s.as_str())
+            .is_some_and(|s| s.contains("/v1/models/prepare/async"))
+}
+
+/// True when loopback rushi-asr includes Paraformer punc prepare + cancel (2026-05-27+ build).
+pub fn loopback_root_declares_punc_prepare(v: &Value) -> bool {
+    v.get("prepare_cancel")
+        .and_then(|s| s.as_str())
+        .is_some_and(|s| s.contains("/v1/models/prepare-cancel"))
+}
+
+/// True when loopback rushi-asr exposes R3e-C async transcribe job API.
+pub fn loopback_root_declares_transcribe_async(v: &Value) -> bool {
+    v.get("transcribe_async")
+        .and_then(|s| s.as_str())
+        .is_some_and(|s| s.contains("/v1/transcribe/async"))
+}
+
+/// True when loopback rushi-asr root catalog looks like a current bundled build.
+pub fn bundled_sidecar_is_fresh_build() -> bool {
+    bundled_sidecar_supports_model_catalog()
+        && bundled_sidecar_supports_punc_prepare()
+        && bundled_sidecar_supports_transcribe_async()
+}
+
+/// True when loopback rushi-asr exposes R3g model catalog (fresh PyInstaller build).
 pub fn bundled_sidecar_supports_model_catalog() -> bool {
     tauri::async_runtime::block_on(async {
         let Some(v) = fetch_loopback_root_json().await else {
             return false;
         };
-        v.get("model_catalog").is_some()
-            || v.get("local_asr_model_catalog").is_some()
-            || v.get("prepare_model_async")
-                .and_then(|s| s.as_str())
-                .is_some_and(|s| s.contains("/v1/models/prepare/async"))
+        loopback_root_declares_model_catalog(&v)
     })
 }
 
@@ -116,9 +142,17 @@ pub fn bundled_sidecar_supports_punc_prepare() -> bool {
         let Some(v) = fetch_loopback_root_json().await else {
             return false;
         };
-        v.get("prepare_cancel")
-            .and_then(|s| s.as_str())
-            .is_some_and(|s| s.contains("/v1/models/prepare-cancel"))
+        loopback_root_declares_punc_prepare(&v)
+    })
+}
+
+/// True when loopback rushi-asr includes R3e-C async transcribe (2026-05-30+ build).
+pub fn bundled_sidecar_supports_transcribe_async() -> bool {
+    tauri::async_runtime::block_on(async {
+        let Some(v) = fetch_loopback_root_json().await else {
+            return false;
+        };
+        loopback_root_declares_transcribe_async(&v)
     })
 }
 

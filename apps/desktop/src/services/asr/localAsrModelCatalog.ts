@@ -111,6 +111,22 @@ export function sidecarSupportsPuncPrepareFromRoot(data: unknown): boolean {
   return typeof raw === "string" && raw.includes("/v1/models/prepare-cancel");
 }
 
+/** True when GET / documents R3e-C async transcribe job API. */
+export function sidecarSupportsTranscribeAsyncFromRoot(data: unknown): boolean {
+  if (!data || typeof data !== "object") return false;
+  const raw = (data as Record<string, unknown>).transcribe_async;
+  return typeof raw === "string" && raw.includes("/v1/transcribe/async");
+}
+
+/** Loopback sidecar root looks like a current bundled build (catalog + punc + async). */
+export function sidecarIsFreshBuildFromRoot(data: unknown): boolean {
+  return (
+    sidecarSupportsModelCatalogFromRoot(data) &&
+    sidecarSupportsPuncPrepareFromRoot(data) &&
+    sidecarSupportsTranscribeAsyncFromRoot(data)
+  );
+}
+
 export function hubModelNeedsPuncPrepare(hubModelId: string): boolean {
   const mid = hubModelId.toLowerCase();
   if (mid.includes("sensevoice") || mid.includes("fun-asr-nano") || mid.includes("qwen")) {
