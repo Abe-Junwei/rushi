@@ -19,6 +19,15 @@ describe("localAsrModelCatalog", () => {
     expect(DEFAULT_LOCAL_ASR_HUB_MODEL_ID).toBe("iic/SenseVoiceSmall");
   });
 
+  it("R3g-C C4: Paraformer label recommends long audio; SenseVoice does not", () => {
+    const para =
+      "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch";
+    const sense = catalogEntryForHub("iic/SenseVoiceSmall");
+    const paraformer = catalogEntryForHub(para);
+    expect(paraformer?.label).toContain("推荐转写");
+    expect(sense?.label).not.toContain("推荐");
+  });
+
   it("resolves hub model id with fallback", () => {
     const para =
       "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch";

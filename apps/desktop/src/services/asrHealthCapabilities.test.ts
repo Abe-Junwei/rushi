@@ -44,6 +44,22 @@ describe("parseAsrHealthJson", () => {
     expect(caps?.funasr_punc_model_cached).toBe(true);
   });
 
+  it("parses funasr_language (R3g-C D2)", () => {
+    const caps = parseAsrHealthJson({
+      status: "ok",
+      service: "rushi-asr",
+      ffmpeg_ok: true,
+      funasr_import_ok: true,
+      funasr_model_configured: true,
+      funasr_ready: true,
+      ready_for_transcribe: true,
+      transcription_mode: "funasr",
+      funasr_model_id: "iic/SenseVoiceSmall",
+      funasr_language: "auto",
+    });
+    expect(caps?.funasr_language).toBe("auto");
+  });
+
   it("parses loaded model id", () => {
     const caps = parseAsrHealthJson({
       status: "ok",

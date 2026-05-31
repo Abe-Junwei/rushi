@@ -6,6 +6,10 @@ import {
   type LocalAsrSetupSelectionContext,
 } from "./localAsrSidecarGuards";
 import {
+  normalizeLocalAsrRecognitionLanguage,
+  sidecarRecognitionLanguageMatchesSelection,
+} from "./localAsrRecognitionLanguage";
+import {
   catalogEntryForHub,
   computeLocalAsrTranscribeReady,
   resolveLocalAsrHubModelId,
@@ -67,9 +71,16 @@ export async function applyHubModelToSidecar(
 
   const after = await pollLoopbackHealthUntil({
     deadlineMs: 90_000,
-    predicate: (c) => c.funasr_ready === true && c.funasr_model_id === hub,
+    predicate: (c) =>
+      c.funasr_ready === true &&
+      c.funasr_model_id === hub &&
+      sidecarRecognitionLanguageMatchesSelection(c.funasr_language, language),
   });
-  if (after?.funasr_model_id === hub && after.funasr_ready) {
+  if (
+    after?.funasr_model_id === hub &&
+    after.funasr_ready &&
+    sidecarRecognitionLanguageMatchesSelection(after.funasr_language, language)
+  ) {
     return { ok: true };
   }
   if (after?.funasr_ready && after.funasr_model_id !== hub) {
@@ -110,11 +121,20 @@ export async function syncBundledSidecarToPreferredHub(
   const pref = await projectApi.getLocalAsrHubModelPref().catch(() => null);
   const prefHub = pref?.trim() ?? "";
 
+  const language = normalizeLocalAsrRecognitionLanguage(ctx.recognitionLanguage);
+  const langPref = await projectApi.getLocalAsrRecognitionLanguagePref().catch(() => "zh");
+
   if (shouldSkipSidecarRestartForSelection(caps, ctx)) {
     if (prefHub !== hub) {
       await projectApi.setLocalAsrHubModelPref(hub, { restartSidecar: false });
     }
+    if (langPref.trim() !== language) {
+      await projectApi.setLocalAsrRecognitionLanguagePref(language, { restartSidecar: false });
+    }
     return false;
+  }
+  if (langPref.trim() !== language) {
+    await projectApi.setLocalAsrRecognitionLanguagePref(language, { restartSidecar: false });
   }
   await projectApi.setLocalAsrHubModelPref(hub);
   return true;

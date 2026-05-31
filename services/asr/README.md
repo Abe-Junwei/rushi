@@ -59,14 +59,16 @@ python -m rushi_asr
 可选调参：
 
 - `RUSHI_FUNASR_DEVICE`（默认 `cpu`）
-- `RUSHI_FUNASR_LANGUAGE`（默认 `zh`）
+- `RUSHI_FUNASR_LANGUAGE`（默认 `zh`；allowlist：`zh` / `auto` / `en` / `ja` / `ko` / `yue`；桌面写入 `prefs/funasr_language.txt`）
+- `RUSHI_FUNASR_USE_ITN`（**R3g-C** 排障：SenseVoice 默认开 ITN；`0`/`false` 关闭）
 - `RUSHI_FUNASR_VAD_MODEL`（默认 `fsmn-vad`；设为空字符串可关闭 VAD 参数传递）
+- **Generate Profile（R3g-C）**：`use_itn` / `merge_vad` / `batch_size_*` 等由 `rushi_asr/asr_model_profile.py` 按 SKU+时长生成，见 [`docs/architecture/asr-generate-params-truth.md`](../../docs/architecture/asr-generate-params-truth.md)
 - **R3e-B blocking 长音频分窗**（≥30min）：`RUSHI_FUNASR_WINDOW_SEC`（默认 **300**）、`RUSHI_FUNASR_WINDOW_THRESHOLD_SEC`（默认 **1800**）
 - **R3e-C async 增量预览分窗**：`RUSHI_FUNASR_ASYNC_WINDOW_SEC`（默认 **120**）、`RUSHI_FUNASR_ASYNC_WINDOW_THRESHOLD_SEC`（默认与 async 窗宽相同，即 **≥120s** 音频走分窗 preview；blocking `/v1/transcribe` 仍用 300s/1800s 阈值）
 
 ## 接口
 
-- `GET /health` — 在 `status` / `service` 之外返回 **运行时能力**（供桌面自动检测）：`ffmpeg_ok`、`funasr_import_ok`（能否 `import funasr`）、`funasr_model_configured`（当前是否存在有效模型 id）、`funasr_model_explicit_from_env`（是否显式设置了 `RUSHI_FUNASR_MODEL`）、`funasr_ready`（仅表示运行时可用，不等于可直接转写）、`funasr_default_model_cached`、`funasr_vad_model_cached`、`funasr_required_models_cached`（当前必需模型是否完整）、`ready_for_transcribe`（运行时 + 必需模型均完成）、`transcription_mode`（`funasr` 或 `stub`）、`funasr_model_id`（未设置时返回内置默认 id）。
+- `GET /health` — 在 `status` / `service` 之外返回 **运行时能力**（供桌面自动检测）：`ffmpeg_ok`、`funasr_import_ok`（能否 `import funasr`）、`funasr_model_configured`（当前是否存在有效模型 id）、`funasr_model_explicit_from_env`（是否显式设置了 `RUSHI_FUNASR_MODEL`）、`funasr_ready`（仅表示运行时可用，不等于可直接转写）、`funasr_default_model_cached`、`funasr_vad_model_cached`、`funasr_required_models_cached`（当前必需模型是否完整）、`ready_for_transcribe`（运行时 + 必需模型均完成）、`transcription_mode`（`funasr` 或 `stub`）、`funasr_model_id`（未设置时返回内置默认 id）、`funasr_language`（**R3g-C** 当前 `RUSHI_FUNASR_LANGUAGE`）。
 - `GET /` — 服务目录；桌面用 `transcribe_async` 字段检测 bundled 是否支持 R3e-C。
 - `POST /v1/models/prepare-default` — 同步触发默认 FunASR 模型准备（下载/校验）；无 FunASR 时 **503**；manifest 校验失败 **400**。
 - `POST /v1/models/prepare-default/async` — 在后台线程启动同上准备；立即返回 **202**；无 FunASR 时 **503**。

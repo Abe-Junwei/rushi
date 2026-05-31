@@ -55,10 +55,15 @@ export function localAsrRecognitionLanguageLabel(
   );
 }
 
+/** True when sidecar-reported language (D2) matches UI selection (D1). */
 export function sidecarRecognitionLanguageMatchesSelection(
   sidecarLanguage: string | null | undefined,
   selected: LocalAsrRecognitionLanguage,
 ): boolean {
-  const sidecar = normalizeLocalAsrRecognitionLanguage(sidecarLanguage);
-  return sidecar === selected;
+  const raw = (sidecarLanguage ?? "").trim();
+  if (!raw) {
+    // No D2 from /health — do not invent a match (R3-STATE).
+    return false;
+  }
+  return normalizeLocalAsrRecognitionLanguage(sidecarLanguage) === selected;
 }

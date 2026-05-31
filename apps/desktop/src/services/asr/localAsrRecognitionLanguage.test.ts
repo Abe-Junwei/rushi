@@ -14,6 +14,8 @@ describe("localAsrRecognitionLanguage", () => {
   it("matches sidecar language from health", () => {
     expect(sidecarRecognitionLanguageMatchesSelection("zh", "zh")).toBe(true);
     expect(sidecarRecognitionLanguageMatchesSelection("auto", "zh")).toBe(false);
-    expect(sidecarRecognitionLanguageMatchesSelection(undefined, "zh")).toBe(true);
+    expect(sidecarRecognitionLanguageMatchesSelection("auto", "auto")).toBe(true);
+    expect(sidecarRecognitionLanguageMatchesSelection(undefined, "zh")).toBe(false);
+    expect(sidecarRecognitionLanguageMatchesSelection(null, "zh")).toBe(false);
   });
 });

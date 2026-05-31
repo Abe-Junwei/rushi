@@ -115,6 +115,7 @@ describe("applyHubModelToSidecar", () => {
     pollLoopbackHealthUntil.mockResolvedValue({
       funasr_ready: true,
       funasr_model_id: "iic/SenseVoiceSmall",
+      funasr_language: "zh",
     });
 
     const result = await applyHubModelToSidecar(selection);

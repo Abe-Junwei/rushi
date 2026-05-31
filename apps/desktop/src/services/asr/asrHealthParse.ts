@@ -1,4 +1,5 @@
 import type { AsrHealthCapabilities } from "../../tauri/projectApi";
+import { normalizeLocalAsrRecognitionLanguage } from "./localAsrRecognitionLanguage";
 
 export function parseAsrHealthJson(data: unknown): AsrHealthCapabilities | null {
   if (!data || typeof data !== "object") return null;
@@ -21,6 +22,10 @@ export function parseAsrHealthJson(data: unknown): AsrHealthCapabilities | null 
     ready_for_transcribe: j.ready_for_transcribe === true,
     transcription_mode: mode,
     funasr_model_id: typeof j.funasr_model_id === "string" ? j.funasr_model_id : null,
+    funasr_language:
+      typeof j.funasr_language === "string"
+        ? normalizeLocalAsrRecognitionLanguage(j.funasr_language)
+        : null,
     funasr_loaded_model_id:
       typeof j.funasr_loaded_model_id === "string" ? j.funasr_loaded_model_id : null,
     funasr_punc_model_id:
