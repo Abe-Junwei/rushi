@@ -1,4 +1,3 @@
-
 use super::parse::parse_manifest;
 use crate::local_runtime::manifest::{
     artifact_sources, current_platform_key, is_shell_version_compatible, parse_signed_manifest,
