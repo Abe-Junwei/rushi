@@ -9,7 +9,9 @@ use super::waveform_peaks::{
 use super::waveform_peaks_ffmpeg::{
     remux_audio_to_pcm_wav, symphonia_error_eligible_for_ffmpeg_remux,
 };
-use super::waveform_peaks_generate::{generate_all_levels, probe_symphonia_track_duration_sec};
+use super::waveform_peaks_generate::{
+    generate_all_levels, generate_all_levels_trust_decoded_length, probe_symphonia_track_duration_sec,
+};
 use crate::DbState;
 use rusqlite::params;
 use std::ops::Deref;
@@ -184,7 +186,7 @@ fn generate_peaks_with_optional_ffmpeg_remux(
         Err(err) if symphonia_error_eligible_for_ffmpeg_remux(&err) => {
             let remux_path = peaks_root.join(format!("{file_id}.peaks-remux.wav"));
             let remux_result = remux_audio_to_pcm_wav(audio, &remux_path).and_then(|()| {
-                generate_all_levels(&remux_path, peaks_root, file_id)
+                generate_all_levels_trust_decoded_length(&remux_path, peaks_root, file_id)
             });
             let _ = std::fs::remove_file(&remux_path);
             remux_result.map_err(|remux_err| {

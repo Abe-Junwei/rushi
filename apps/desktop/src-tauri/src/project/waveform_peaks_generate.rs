@@ -158,6 +158,25 @@ pub fn generate_all_levels(
     peaks_root: &Path,
     file_id: &str,
 ) -> Result<PeaksGenerationReport, String> {
+    generate_all_levels_inner(audio_path, peaks_root, file_id, false)
+}
+
+/// Like [`generate_all_levels`], but accepts whatever Symphonia decodes after ffmpeg remux
+/// (container `n_frames` may lie on corrupt sources).
+pub(crate) fn generate_all_levels_trust_decoded_length(
+    audio_path: &Path,
+    peaks_root: &Path,
+    file_id: &str,
+) -> Result<PeaksGenerationReport, String> {
+    generate_all_levels_inner(audio_path, peaks_root, file_id, true)
+}
+
+fn generate_all_levels_inner(
+    audio_path: &Path,
+    peaks_root: &Path,
+    file_id: &str,
+    trust_decoded_length: bool,
+) -> Result<PeaksGenerationReport, String> {
     if !audio_path.is_file() {
         return Err(format!("音频文件不存在: {}", audio_path.display()));
     }
@@ -257,10 +276,14 @@ pub fn generate_all_levels(
         lw.finish();
     }
 
+    if total_samples == 0 {
+        return Err("音频解码未得到任何样本".to_string());
+    }
+
     if let Some(n_frames) = expected_frame_count {
         let expected_sec = n_frames as f64 / sample_rate as f64;
         let actual_sec = total_samples as f64 / sample_rate as f64;
-        if !duration_covers_reference(actual_sec, expected_sec) {
+        if !trust_decoded_length && !duration_covers_reference(actual_sec, expected_sec) {
             return Err(format!(
                 "音频解码不完整（{} / {} 样本），已中止 peaks 写入",
                 total_samples, n_frames
@@ -271,7 +294,7 @@ pub fn generate_all_levels(
     let duration_sec = total_samples as f64 / sample_rate as f64;
 
     if let Some(expected_sec) = expected_codec_duration_sec {
-        if !duration_covers_reference(duration_sec, expected_sec) {
+        if !trust_decoded_length && !duration_covers_reference(duration_sec, expected_sec) {
             return Err(format!(
                 "peaks 解码不完整（{duration_sec:.2}s / 容器 {expected_sec:.2}s），已中止写入"
             ));

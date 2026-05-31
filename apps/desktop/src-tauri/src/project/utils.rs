@@ -162,30 +162,6 @@ pub fn is_sqlite_unique_violation(err: &rusqlite::Error) -> bool {
     )
 }
 
-pub fn remove_project_audio_parent_dir(
-    root: &Path,
-    audio_storage_path: &str,
-) -> Result<(), String> {
-    let pb = PathBuf::from(audio_storage_path);
-    let Some(parent) = pb.parent() else {
-        return Ok(());
-    };
-    if !parent.exists() {
-        return Ok(());
-    }
-    let sm = fs::symlink_metadata(parent).map_err(|e| format!("无法读取项目目录元数据: {e}"))?;
-    if sm.file_type().is_symlink() {
-        return Err("拒绝删除：项目目录为符号链接，请先移除链接。".into());
-    }
-    let root_can = fs::canonicalize(root).map_err(|e| format!("无法解析应用数据根目录: {e}"))?;
-    let parent_can = fs::canonicalize(parent).map_err(|e| format!("无法解析项目目录: {e}"))?;
-    if parent_can.strip_prefix(&root_can).is_err() {
-        return Err("拒绝删除：项目目录不在应用数据根之下。".into());
-    }
-    fs::remove_dir_all(&parent_can).map_err(|e| format!("删除项目目录失败: {e}"))?;
-    Ok(())
-}
-
 /// 仅删除单个音频文件；若文件所在目录变为空，则一并删除该目录。
 pub fn remove_audio_file(root: &Path, audio_storage_path: &str) -> Result<(), String> {
     let pb = PathBuf::from(audio_storage_path);

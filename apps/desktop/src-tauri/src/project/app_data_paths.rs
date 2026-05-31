@@ -1,7 +1,6 @@
 //! Canonical app-data / models paths (shared by DB, bundled ASR spawn, and diagnostics).
 
 use std::path::{Path, PathBuf};
-use std::process::Command;
 
 /// `app_data_dir()` already includes bundle id; legacy builds nested another `studio.lingchuang.rushi`.
 pub fn resolve_app_data_root(app_data: PathBuf) -> PathBuf {
@@ -28,8 +27,13 @@ pub fn huggingface_cache_for_models_root(models_root: &Path) -> PathBuf {
     models_root.join("huggingface")
 }
 
-/// Same env triple (+ optional hub) as bundled sidecar spawn and dev scripts.
-pub fn apply_asr_model_env(cmd: &mut Command, models_root: &Path, hub_model: Option<&str>) {
+/// Same env triple (+ optional hub + language) as bundled sidecar spawn and dev scripts.
+pub fn apply_asr_model_env(
+    cmd: &mut std::process::Command,
+    models_root: &Path,
+    hub_model: Option<&str>,
+    language: Option<&str>,
+) {
     let _ = std::fs::create_dir_all(models_root);
     cmd.env("RUSHI_MODELS_ROOT", models_root);
     let ms = modelscope_cache_for_models_root(models_root);
@@ -41,6 +45,10 @@ pub fn apply_asr_model_env(cmd: &mut Command, models_root: &Path, hub_model: Opt
     if let Some(hub) = hub_model.map(str::trim).filter(|s| !s.is_empty()) {
         cmd.env("RUSHI_FUNASR_MODEL", hub);
     }
+    cmd.env(
+        "RUSHI_FUNASR_LANGUAGE",
+        crate::local_asr_language::normalize_funasr_language(language),
+    );
 }
 
 #[cfg(test)]
