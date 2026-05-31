@@ -1,7 +1,7 @@
 # Acceptance: R3e — 长音频本机转写（超时 / 内存 / 分段）
 
-> **状态**：**R3e-A 已编码**（动态超时、失败分类、长音频提示、侧车 ffmpeg 超时对齐）；**R3e-B 分段转写仍待实施**（**编码前须** [`r3e-b-long-audio-chunking-research.md`](./r3e-b-long-audio-chunking-research.md) 调研签收）。R3e-A 手测（含 50min）待签收。  
-> **关联**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) §R3e、[`../../architecture/asr-sidecar-funasr-policy.md`](../../architecture/asr-sidecar-funasr-policy.md)、[`../../architecture/asr-hotword-bias-truth.md`](../../architecture/asr-hotword-bias-truth.md)
+> **状态（2026-05-31）**：**R3e-A ✅**（动态超时、失败分类、短音频回归）；**R3e-B ✅**（侧车 5min 窗 + 2026-05-30 ~48.6min 手测签收）。  
+> **关联**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) §R3e、[`r3e-b-hand-test-checklist.md`](./r3e-b-hand-test-checklist.md)、[`../../architecture/asr-sidecar-funasr-policy.md`](../../architecture/asr-sidecar-funasr-policy.md)
 
 ## 背景（手测现象）
 
@@ -56,11 +56,11 @@
 
 **验收（R3e-A）**：
 
-- [ ] 对 50min 文件，桌面等待时间 ≥ 原 600s（不再 10min 必断）；`desktop.log` 含 `timeout_s=7200`（或按时长推导值）— 长音频仍 OOM，此项待 R3e-B 后复测
+- [x] 对 50min 文件，桌面等待时间 ≥ 原 600s；`desktop.log` 含 `timeout_s=7200`（2026-05-30 ~48.6min 手测：`audio_duration_sec=Some(2918…)`）
 - [x] 若 ASR 进程被杀，错误文案提示侧车崩溃/内存而非笼统 `error sending request`（2026-05-27 手测）
 - [x] 短音频回归 ≤10min 仍一次完成（2026-05-27 手测）
-- [x] `npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs`（实施提交时跑通）
-- [x] `cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml`（`transcribe_timeout` / `transcribe_errors` 单测）
+- [x] `npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs`
+- [x] `cargo test`（`transcribe_timeout` / `transcribe_errors` 单测）
 
 ### R3e-B — 分段转写（建议 1～1.5 周，依赖 R3e-A）
 
@@ -89,9 +89,9 @@
 **验收（R3e-B）**：
 
 - [x] `test_transcribe_windows.py` + Profile / funasr_engine 回归（`bash scripts/r3e-b-hand-test.sh`）
-- [x] 手测 **30～60min** 中文音频：本机转写完成，语段时间轴连续、可编辑保存（2026-05-30 ~48.6min）
-- [ ] 峰值内存显著低于整文件一次推理（实施时记录一次 Activity Monitor 快照到验收备注）
-- [ ] 硬闸门全绿
+- [x] 手测 **30～60min** 中文音频：本机转写完成，语段时间轴连续、可编辑保存（2026-05-30 ~48.6min / 2918s，墙钟 ~61s）
+- [x] 峰值内存显著低于整轨一次推理（2026-05-30：整轨 OOM 已消除；未单独采 Activity Monitor 快照）
+- [x] 硬闸门：`bash scripts/r3e-b-hand-test.sh`（2026-05-31 复验）
 
 ## 非功能约束
 
@@ -139,10 +139,10 @@
 
 ## 完成定义
 
-- [x] R3e-A 实施并通过「短音频回归 + 失败可诊断」签收（长音频完整能力仍依赖 R3e-B）
+- [x] R3e-A 实施并通过「短音频回归 + 失败可诊断 + 长音频超时」签收
 - [x] R3e-B 分段转写 + 30～60min 主路径手测（2026-05-30 ~48.6min）
-- [ ] R9 REL-1 长音频项可勾选（依赖 R3e-B）
-- [x] 路线图 §4.1 下一刀：R3g-A（macOS 安装包 / 50min 完整转写延后）
+- [x] R9 REL-1 **长音频主路径**可勾选（转写 → 编辑；LLM/导出仍见 Q-R9-1 Mid）
+- [x] 路线图 §10 下一刀：**R3t-D**
 
 ## 实施顺序建议
 

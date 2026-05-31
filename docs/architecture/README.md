@@ -11,7 +11,8 @@
 
 ## 本仓独立架构说明
 
-- [`desktop-waveform-engine.md`](./desktop-waveform-engine.md) — 桌面端波形引擎真源（WaveSurfer-only，2026-05）。
+- [`desktop-waveform-engine.md`](./desktop-waveform-engine.md) — 桌面端波形引擎真源（WaveSurfer-only；**Canvas 语段 bands + DOM interaction**，2026-05-30）。
+- [`../execution/specs/segment-overlay-virtualization.md`](../execution/specs/segment-overlay-virtualization.md) — 密集语段 display/interaction 分离（**禁止** scroll viewport React cull）。
 - [`desktop-floating-dialog-panels.md`](./desktop-floating-dialog-panels.md) — 可拖动浮动对话框：默认 `compactDialog` + Notion/Zen + `controlStyles` 约定。
 - [`desktop-capability-ui-state-alignment.md`](./desktop-capability-ui-state-alignment.md) — **能力字段与 UI 状态对齐**（R3-STATE 闸门、维度假设、R3 疏漏台账）。
 - [`r3f-asr-setup-wizard-acceptance.md`](../execution/specs/r3f-asr-setup-wizard-acceptance.md) — 本机 ASR 一键环境准备（诊断 + 编排）验收。
@@ -26,7 +27,7 @@
 - [`../execution/specs/r3e-b-long-audio-chunking-research.md`](../execution/specs/r3e-b-long-audio-chunking-research.md) — **R3e-B 规划门禁**：长音频分片/进度业内调研与落位决策（先调研后编码）。
 - [`../execution/specs/r3-provider-configuration-research.md`](../execution/specs/r3-provider-configuration-research.md) — R3 规划：LLM/STT Provider 业内共识与本仓配置策略（先调研后实施）。
 - [`../execution/specs/r3c-local-asr-cache-manifest-acceptance.md`](../execution/specs/r3c-local-asr-cache-manifest-acceptance.md) — R3c：本机 ASR 首次引导、缓存管理与 manifest 展示的验收边界。
-- [`../execution/specs/r3e-long-audio-transcribe-acceptance.md`](../execution/specs/r3e-long-audio-transcribe-acceptance.md) — R3e：长音频本机转写（600s 超时、整文件 FunASR 内存、分段方案与 R9 对齐）。
+- [`../execution/specs/r3e-long-audio-transcribe-acceptance.md`](../execution/specs/r3e-long-audio-transcribe-acceptance.md) — R3e：长音频本机转写（**R3e-A/B ✅ 2026-05-30**；[`r3e-b-hand-test-checklist.md`](../execution/specs/r3e-b-hand-test-checklist.md)）。
 - [`../execution/specs/r3f-asr-setup-wizard-acceptance.md`](../execution/specs/r3f-asr-setup-wizard-acceptance.md) — R3f：本机 ASR 一键环境准备（内置侧车编排）。
 - [`../execution/specs/r3g-local-asr-model-catalog-acceptance.md`](../execution/specs/r3g-local-asr-model-catalog-acceptance.md) — R3g：本机 FunASR 模型目录（v1 三 SKU）。
 - [`../execution/plans/rushi-execution-roadmap.md`](../execution/plans/rushi-execution-roadmap.md) — **排期真源**（§1.7 产品决策、§4.1 R3/R3t、§8.2 待拍板）

@@ -130,8 +130,24 @@
 ```text
 改动：R3t-C 邻段上下文标点签收（prev/next + UI 摘要 + LLM 探测/标点）
 验证：bash scripts/r3t-c-hand-test.sh；desktop.log postprocess_auto_punctuate_done
-下一轮：R3t-D 段界 或 R3e-B 长音频
+下一轮：R3t-D 段界 ops
 ```
+
+---
+
+## R3e-B — 长音频分窗转写
+
+> **状态（2026-05-31）**：**编码 ✅ · 手测签收 ✅** — [`r3e-b-hand-test-checklist.md`](./r3e-b-hand-test-checklist.md)、[`r3e-long-audio-transcribe-acceptance.md`](./r3e-long-audio-transcribe-acceptance.md)
+
+### 自动
+
+- [x] `test_transcribe_windows.py` + Profile + `bash scripts/r3e-b-hand-test.sh`
+
+### 手测
+
+- [x] ~48.6min（2918s）Paraformer：`transcribe_stage=preflight→parse→save`，墙钟 ~61s
+- [x] warnings / hints：`transcribe_windowed:windows=10`
+- [x] 短音频回归（同会话历史 log）
 
 ---
 
@@ -185,7 +201,7 @@
 |--------|----------------|-----------------|
 | R3g-A ⑤c 多语段 | → **R3t-A** 手测 | ⑤c ✅；R3t-A 手测清单仍须 **正式勾选** |
 | R3e-A 超时 | 横切 **R3t-B**；e-A 可单独先签 | `transcribe_timeout.rs` 编码✅；50min 手测⏳ |
-| R3e-B 分段 | 与 **R3t-A/B** 合并评审后签 | R3e-B 消费 `segmentation.py` 别名，📋 未开始 |
+| R3e-B 分段 | 与 **R3t-A/B** 合并评审后签 | ✅ 2026-05-30 — [`r3e-b-hand-test-checklist.md`](./r3e-b-hand-test-checklist.md) |
 
 ---
 

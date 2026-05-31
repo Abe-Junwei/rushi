@@ -10,8 +10,10 @@
   useWaveformPeaks → PeakCache.fromLevelUrls
   useProjectWaveform + WaveSurfer v7     ← 唯一主波形渲染器（可见波形 + 内置 progress）
   useWaveformZoomSync                    ← decode 首帧 + peaks 热切换 + zoom
-  WaveformSegmentOverlay                 ← 语段 DOM（非 WS Regions）
+  WaveformSegmentBandCanvas              ← packable 语段色带（Canvas display，全量绘制 + scroll 同步）
+  WaveformSegmentOverlay                 ← 语段 DOM（仅选中 + drag draft；非 WS Regions）
   WaveformLiveTimeRuler                  ← 时间尺 + playhead
+  EditorSegmentList                      ← 语段列表（虚拟窗口，长转写列表）
 ```
 
 **已移除（2026-05）**：`WaveformPeaksTileLayer`、`WaveformProgressOverlay`、全局 overview 条（`WaveformOverviewStrip` / `WaveformGlobalStripShell`）、canvas draw 路径（`drawWaveformPeaksTile` / `tileGeometry` / `useWaveformTileLifecycle`）。
@@ -90,6 +92,18 @@
   2. 跨路径不变量测试（[`waveformSegmentBounds.test.ts`](../../apps/desktop/src/utils/waveformSegmentBounds.test.ts)）——「overlay 看不见的语段不得阻止创建」，lane 隐藏集与创建丢弃集锁步；
   3. 架构守卫（`scripts/check-architecture-guard.mjs`）——除 selector 本体与 persist sanitize 外，禁止生产代码直接调用 `isDominantWaveformSpanSegment`。新增直调点须显式加入白名单。
 
+## 密集语段显示（5000+ 语段，2026-05-30）
+
+**禁止** scroll 驱动的 React overlay viewport 裁剪（历史回归：滚到新区域语段不出现，见 [`segment-overlay-virtualization.md`](../execution/specs/segment-overlay-virtualization.md)）。
+
+| 层 | 职责 |
+|----|------|
+| **Canvas bands** | [`WaveformSegmentBandCanvas`](../../apps/desktop/src/components/WaveformSegmentBandCanvas.tsx) 在 sticky 壳内绘制全部 packable 色带；[`drawWaveformSegmentBands`](../../apps/desktop/src/services/waveform/drawWaveformSegmentBands.ts) 纯函数；scroll/wheel 时读 live `resolveTierViewportMetrics` 重绘 |
+| **DOM overlay** | [`WaveformSegmentOverlay`](../../apps/desktop/src/components/WaveformSegmentOverlay.tsx) 仅 [`selectOverlayInteractiveSegmentIndices`](../../apps/desktop/src/utils/waveformSegmentOverlayVisibility.ts)（选中 + drag draft） |
+| **语段列表** | [`EditorSegmentList`](../../apps/desktop/src/components/editor/EditorSegmentList.tsx) + [`segmentListVirtualWindow`](../../apps/desktop/src/utils/segmentListVirtualWindow.ts) |
+
+交互 hit-test（tap seek、框选新建、context menu）仍经 packable selector + 投影坐标，与 band 绘制共用真源。
+
 ## 舞台 DOM
 
 ```text
@@ -99,7 +113,8 @@
       <div ref=waveformStickyShellRef sticky left=0 width=vw> ← 视口宽 sticky 壳
         <div ref=waveformStretchShellRef>                     ← resize stretch-hold（scaleX）
           <div ref=containerRef>                              ← WaveSurfer mount（fillParent: false）
-      <WaveformSegmentOverlay z=3 />
+          <WaveformSegmentBandCanvas z=2 />                   ← packable 语段色带（Canvas，sticky 壳内）
+      <WaveformSegmentOverlay z=3 />                          ← 仅选中 / drag draft DOM
       <WaveformSegmentPlaybackControls z=8 />
   <WaveformLiveTimeRuler sticky bottom z=20 />               ← 嵌入时间尺（viewport 坐标空间）
 </div>

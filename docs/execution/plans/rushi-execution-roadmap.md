@@ -10,7 +10,7 @@
 | 适用节奏 | 单人、每轮 2～4h、一轮一纵向薄片 |
 | 规划跨度 | **个人单机 v1**：约 **11～13 周（自当前）** 或 **15～17 周（自 W1）**；R3 薄片 **~8～10w**（§4.0）；协作 **非 v1** |
 | 修订 | 每完成一个阶段更新 §2 状态表、§4 排期表与 §13 代码对照 |
-| 最近对照 | **2026-05-30**：R3t-A/B/C ✅；§10 下一刀 **R3e-B / R3t-D** |
+| 最近对照 | **2026-05-31**：R3e-B ✅；R3t-A/B/C ✅；Canvas 语段 display 文档同步；§10 下一刀 **R3t-D** |
 
 ### 状态标记约定（全文档统一）
 
@@ -644,7 +644,7 @@ React 预览 UI
 | **R3e-A** | 按音频时长推导 HTTP/ffmpeg 超时；失败分类文案；环境/转写提示 | 自动分段 |
 | **R3e-B** | 分段转写 + 时间轴合并 + 长任务进度（30～60min 主路径） | 侧车 **artifact** 断点续传见 **R3h-2**（T-004） |
 
-**验收真源**：[`r3e-long-audio-transcribe-acceptance.md`](../specs/r3e-long-audio-transcribe-acceptance.md)。**R9 REL-1 长音频手测**在 R3e-B 完成前仅可部分勾选。
+**验收真源**：[`r3e-long-audio-transcribe-acceptance.md`](../specs/r3e-long-audio-transcribe-acceptance.md)、[`r3e-b-hand-test-checklist.md`](../specs/r3e-b-hand-test-checklist.md)。**R9 REL-1 长音频主路径**已于 **2026-05-30** 签收（~48.6min）。
 
 **建议排期**：见 **§4.1.1**（**R3e-A** 在 R3f 后；**R3e-B** 在 **R3t-B/TRN-DIAG 后**、**R3t-C 前**，Q-SEQ-1）。
 
@@ -914,9 +914,9 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 
 **下一刀**：**R3t-D**（段界 ops）或 **ACC-EVAL-1**
 
-**同轮或紧邻闭合**：**③ R3f**、**④ R3e-A** 手测、**R3h §11** 发行门禁
+**同轮或紧邻闭合**：**③ R3f**、**R3h §11** 发行门禁
 
-**主序**：**R3t-C ✅**（R9 Mid 硬门禁 **R3t-B + R3t-C** 已闭合）→ R3e-B / R3t-D → …
+**主序**：**R3t-C ✅** · **R3e-B ✅**（2026-05-30）→ **R3t-D** → R3t-E → …
 
 ---
 
@@ -999,7 +999,7 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | 2026-05-30 | **ACC-EVAL-1 样例就位**：`fixtures/eval/samples/制控.mp3` + manifest `proper-noun-zhikong`（硬门禁，非 optional） |
 | 2026-05-30 | **产品拍板批次**：Q-ACC-4～7、Q-R9-1 Mid、REV-LOC v1 P1、ACC-STT 三家 v1、Q-FUT-1 |
 | 2026-05-30 | **§4.1.7 ACC + 主序重排**：**⑤g R3g-C**、**⑤h ACC-STT-UNIFY**；§11 ACC 参考链 |
-| 2026-05-30 | **§13 对照刷新**：567 vitest、11 守卫警告；R3f/LRC/R3t-A 合入 `main`；波形 polish 记入 §2 |
+| 2026-05-31 | **R3e-B 文档签收同步**；**语段 overlay** 架构改为 Canvas display + DOM interaction（[`segment-overlay-virtualization.md`](../specs/segment-overlay-virtualization.md)、[`desktop-waveform-engine.md`](../../architecture/desktop-waveform-engine.md)） |
 
 ---
 
@@ -1043,12 +1043,14 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | **R3h-0/1** | smoke、Win 磁盘、`local_runtime` 模块树、manifest 下载、A/B 回滚 | 🟡 编码✅；**§11 发行门禁未全绿** |
 | **R3g** | 双 SKU + prepare；R3-STATE 对齐 | ✅ ⑤a–c 签收 |
 | **R3t-A** | 分段内核 + 单测 + hints + 手测 | ✅ **2026-05-30 签收** |
-| **R3t-B～E** | — | 📋 |
-| **R3e-A** | 动态超时预算 | 🟡 编码✅；50min 手测待签 |
-| **R3e-B** | — | 📋 |
-| **波形 UX** | 2026-05 多轮 polish | ✅ 编辑体验；**不替代 R3t 签收** |
+| **R3t-B～C** | 转写编排、overwrite、邻段标点 | ✅ **2026-05-30** |
+| **R3t-D～E** | — | 📋 |
+| **R3e-A** | 动态超时预算 | ✅ 2026-05-30 长音频 timeout 手测 |
+| **R3e-B** | `transcribe_windows.py` + 5min 窗 | ✅ **2026-05-30 签收** |
+| **密集语段 UX** | Canvas bands + 列表虚拟化 | ✅ 2026-05-30；[`segment-overlay-virtualization.md`](../specs/segment-overlay-virtualization.md) |
+| **波形 UX** | 2026-05 minimap / zoom / tap seek | ✅ |
 | **R4–R8** | 无质量 Tab / MCP / collab | ❌ |
-| **R9** | 诊断包有；长音频 REL 依赖 R3e-B + R3t | 🟡 |
+| **R9** | 诊断包有；长音频主路径 ✅（R3e-B）；Mid 硬门禁 R3t-B+C ✅ | 🟡 |
 
 ### 13.3 代码热点（2026-05-30 `wc -l`）
 

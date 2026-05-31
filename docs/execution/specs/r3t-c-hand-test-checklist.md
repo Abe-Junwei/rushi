@@ -75,12 +75,12 @@ bash scripts/r3t-c-hand-test.sh
 | 邻段上下文 | 2026-05-30 | Agent | neighbors + prompt 单测 |
 | UI 预览写回 | 2026-05-30 | 用户+Agent | DeepSeek 自动标点 + 探测 ✅ |
 | 隐私/取消 | 2026-05-30 | Agent | controller 单测 |
-| **R3t-C 签收** | **2026-05-30** | **✅** | R9 Mid 硬门禁之一；§10 切 **R3t-D / R3e-B** |
+| **R3t-C 签收** | **2026-05-30** | **✅** | R9 Mid 硬门禁之一；§10 切 **R3t-D** |
 
 **3 行日志模板**：
 
 ```text
 改动：R3t-C 邻段上下文自动标点签收（R2 扩展 + LLM 运行时）
 验证：bash scripts/r3t-c-hand-test.sh；desktop.log postprocess_auto_punctuate_done
-下一轮：R3t-D 段界 ops 或 R3e-B 长音频（按 §4.1.1）
+下一轮：R3t-D 段界 ops（R3e-B ✅ 2026-05-30）
 ```

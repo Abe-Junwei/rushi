@@ -71,10 +71,10 @@
 
 ## P3 — 语段编辑（横向调研启示，延后）
 
-### ~~B15. overlay 虚拟化用可靠 viewport 指标重启~~ ✅
+### ~~B15. 密集语段显示（Canvas bands + DOM interaction 分离）~~ ✅
 
-- `useTierViewportMetricsFrame` + `selectOverlayRenderedSegmentIndices`；unreliable viewport 全量 fallback；drag draft pin。
-- spec：[`segment-overlay-virtualization.md`](../segment-overlay-virtualization.md)
+- **2026-05-30 取代** viewport React cull：[`WaveformSegmentBandCanvas`](../../../../apps/desktop/src/components/WaveformSegmentBandCanvas.tsx) + overlay 仅 interactive + 列表虚拟化。
+- spec：[`segment-overlay-virtualization.md`](../segment-overlay-virtualization.md)（含 B15 历史与禁止项）
 
 ### ~~B16. gap / 连续性策略集中化~~ ✅
 
