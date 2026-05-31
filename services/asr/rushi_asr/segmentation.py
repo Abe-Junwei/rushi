@@ -5,6 +5,7 @@ from __future__ import annotations
 from typing import Any
 
 from rushi_asr.funasr_pipeline import recognizer_needs_punc_pipeline
+from rushi_asr.asr_model_profile import build_generate_kwargs as _profile_build_generate_kwargs
 from rushi_asr.schemas import TranscriptionSegment
 
 # R3t-A: long audio must not end as whole-track-only; short clips may.
@@ -20,20 +21,8 @@ def funasr_generate_kwargs(
     hotwords: str | None,
     duration_sec: float | None = None,
 ) -> dict[str, Any]:
-    """Build FunASR generate() kwargs; long audio favors VAD-visible segments."""
-    kwargs: dict[str, Any] = {"language": language}
-    long_audio = duration_sec is not None and duration_sec >= LONG_AUDIO_SEC
-    if recognizer_needs_punc_pipeline(model_id):
-        kwargs["sentence_timestamp"] = True
-        kwargs["merge_vad"] = False
-    else:
-        # SenseVoice / Nano: keep VAD boundaries on long audio (avoid one merged blob).
-        kwargs["merge_vad"] = not long_audio
-        if long_audio:
-            kwargs["batch_size_s"] = 60
-    if hotwords:
-        kwargs["hotword"] = hotwords
-    return kwargs
+    """Build FunASR generate() kwargs; delegates to ``asr_model_profile`` (R3g-C)."""
+    return _profile_build_generate_kwargs(model_id, language, hotwords, duration_sec)
 
 
 def segment_funasr_generate_result(

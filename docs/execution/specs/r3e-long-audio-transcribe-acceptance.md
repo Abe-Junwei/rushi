@@ -1,6 +1,6 @@
 # Acceptance: R3e — 长音频本机转写（超时 / 内存 / 分段）
 
-> **状态**：**R3e-A 已编码**（动态超时、失败分类、长音频提示、侧车 ffmpeg 超时对齐）；**R3e-B 分段转写仍待实施**。R3e-A 手测（含 50min）待签收。  
+> **状态**：**R3e-A 已编码**（动态超时、失败分类、长音频提示、侧车 ffmpeg 超时对齐）；**R3e-B 分段转写仍待实施**（**编码前须** [`r3e-b-long-audio-chunking-research.md`](./r3e-b-long-audio-chunking-research.md) 调研签收）。R3e-A 手测（含 50min）待签收。  
 > **关联**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) §R3e、[`../../architecture/asr-sidecar-funasr-policy.md`](../../architecture/asr-sidecar-funasr-policy.md)、[`../../architecture/asr-hotword-bias-truth.md`](../../architecture/asr-hotword-bias-truth.md)
 
 ## 背景（手测现象）
@@ -64,13 +64,22 @@
 
 ### R3e-B — 分段转写（建议 1～1.5 周，依赖 R3e-A）
 
+> **调研真源（2026-05-30 签收）**：[`r3e-b-long-audio-chunking-research.md`](./r3e-b-long-audio-chunking-research.md) — 侧车 **5min 窗口循环** + FunASR **batch 调参**；单 POST；桌面不 HTTP 分片。
+
 | 做 | 说明 |
 |----|------|
-| 分段策略 | 默认按 **固定时长窗口**（如 5～10min）或 VAD 静音切分（二选一，spec 实施时定） |
-| ASR 侧 | 新内部路径或 `POST /v1/transcribe` 可选 `chunked=true`：逐段 ffmpeg+FunASR，合并 `sentence_info` 并 **偏移 start/end** |
-| 桌面侧 | `project_run_transcribe` 对超长音频走分段 API，或循环调用并合并语段（优先单命令、原子写库） |
-| 进度 | 长任务返回阶段（规范化 / 段 N/M / 合并）供 UI 展示（最小：日志 + busy 文案） |
-| 热词 | 各段携带同一 `hotwords`；合并后 idx 连续 |
+| FunASR 调参 | Paraformer 长音频补 `batch_size_s` / `batch_size_threshold_s`（Profile 内，非用户控件） |
+| 窗口循环 | `duration ≥ 30min`：`ffmpeg` 切 5min 窗 → 逐窗 `generate` → `segmentation.py` 解析 → **offset 合并** |
+| ASR 侧 | 新 `transcribe_windows.py`；`engine.py` / `funasr_engine.py` 分支；**禁止**第二套 VAD |
+| 桌面侧 | **保持**单次 `project_run_transcribe` + 原子写库；v1 进度 = busy + 侧车 `transcribe_window i/N` 日志 |
+| 进度（可选 v1.5） | 仿 `prepare-status`：`GET /v1/transcribe-status` + UI「第 i/N 段」 |
+| 热词 | 各窗同一 `hotwords`；合并后 idx 连续（Rust 已有 trim/sanitize） |
+
+| 不做 | |
+|------|--|
+| 断点续传跨重启 | T-004 另项 |
+| 桌面多 HTTP / `chunked=true` 双路径 | 调研结论：不采纳 v1 |
+| 在线 STT 长音频 | 本薄片仅 **本机 FunASR** |
 
 | 不做 | |
 |------|--|
@@ -79,7 +88,8 @@
 
 **验收（R3e-B）**：
 
-- [ ] 手测 **30～60min** 中文音频：本机转写完成，语段时间轴连续、可编辑保存
+- [x] `test_transcribe_windows.py` + Profile / funasr_engine 回归（`bash scripts/r3e-b-hand-test.sh`）
+- [x] 手测 **30～60min** 中文音频：本机转写完成，语段时间轴连续、可编辑保存（2026-05-30 ~48.6min）
 - [ ] 峰值内存显著低于整文件一次推理（实施时记录一次 Activity Monitor 快照到验收备注）
 - [ ] 硬闸门全绿
 
@@ -94,10 +104,10 @@
 
 | 层 | R3e-A | R3e-B |
 |----|-------|-------|
-| Rust | `run_transcribe_cmd.rs`、`transcribe.rs` | 同上 + 可选 `transcribe_chunked.rs` |
-| Python | `ffmpeg_audio.py`、`app.py` | `engine.py`、`funasr_engine.py` 或 `transcribe_chunked.py` |
-| UI | `asrTranscribeHints.ts`、`EnvLocalAsrPanel` 或转写 busy 文案 | `useProjectLifecycleController` / 进度文案 |
-| 测试 | 超时推导单测 | 分段合并单测 + 短样本集成 |
+| Rust | `run_transcribe_cmd.rs`、`transcribe.rs` | 尽量不改；可选新 warning 映射 |
+| Python | `ffmpeg_audio.py`、`app.py` | **`transcribe_windows.py`（新）**、`funasr_engine.py`、`asr_model_profile.py`、`engine.py` |
+| UI | `asrTranscribeHints.ts`、`EnvLocalAsrPanel` 或转写 busy 文案 | `ProjectStatusFeedback` 长音频 hint；v1.5 `transcribe-status` poll |
+| 测试 | 超时推导单测 | `test_transcribe_windows.py` + 50min 手测 |
 
 ## 手测清单（与 R9 对齐）
 
@@ -124,12 +134,13 @@
 |------|------|------|------|
 | 2026-05-25 | 50min 整文件 | ❌ OOM + request failed | 触发本 spec |
 | 2026-05-27 | ≤10min 本机转写（`desktop:dev`） | ✅ 通过 | R3e-A 回归；语段可落库 |
-| 2026-05-27 | 50min 整文件（`desktop:dev`） | ❌ 侧车崩溃 | R3e-A 新文案：「侧车可能已崩溃…内存不足」；超时延长仍无法避免 OOM，待 R3e-B |
+| 2026-05-27 | 50min 整文件（`desktop:dev`） | ❌ 侧车崩溃 | R3e-A 新文案；待 R3e-B |
+| 2026-05-30 | ~48.6min（2918s）Paraformer 分窗 | ✅ | `desktop.log` preflight→save ~61s；用户手测跑通 |
 
 ## 完成定义
 
 - [x] R3e-A 实施并通过「短音频回归 + 失败可诊断」签收（长音频完整能力仍依赖 R3e-B）
-- [ ] R3e-B 分段转写 + 30～60min 主路径手测
+- [x] R3e-B 分段转写 + 30～60min 主路径手测（2026-05-30 ~48.6min）
 - [ ] R9 REL-1 长音频项可勾选（依赖 R3e-B）
 - [x] 路线图 §4.1 下一刀：R3g-A（macOS 安装包 / 50min 完整转写延后）
 

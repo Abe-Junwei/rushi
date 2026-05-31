@@ -37,6 +37,7 @@ def test_health_ok() -> None:
     assert "funasr_default_model_cached" in body
     assert body["transcription_mode"] in ("funasr", "stub")
     assert isinstance(body.get("funasr_model_id"), str)
+    assert body.get("funasr_language") in ("zh", "en", "ja", "ko", "yue", "auto")
 
 
 def test_health_rushi_models_root_reflects_env(monkeypatch, tmp_path) -> None:

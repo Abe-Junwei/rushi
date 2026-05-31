@@ -27,6 +27,12 @@ export function deriveTranscribeHints(engine: string, warnings: string[], segmen
       "术语热词超过 12,000 字符上限，已截断后提交；部分术语未进入识别。可在「术语库」查看「本次转写将携带」摘要。",
     );
   }
+  if (warnings.some((w) => w === "online_vocabulary_unsupported")) {
+    hints.push("当前在线识别引擎不支持术语偏置，术语表未传入厂商 API；专名依赖手改或换用本机 FunASR / 已支持词表的在线引擎。");
+  }
+  if (warnings.some((w) => w.startsWith("online_vocabulary_truncated_"))) {
+    hints.push("术语表已传入在线引擎，但因厂商上限已截断；可在术语库减少条目或优先保留关键专名。");
+  }
   const dominantRemoved = parseDominantSpanFilteredCount(warnings);
   if (dominantRemoved > 0) {
     hints.push(
@@ -40,6 +46,10 @@ export function deriveTranscribeHints(engine: string, warnings: string[], segmen
   } else if (warnings.some((w) => w.includes("funasr_long_audio_no_segments"))) {
     hints.push(
       "长音频未得到分句时间戳，未生成整轨占位语段。建议换用「Paraformer 长音频（推荐转写）」并确认 VAD/标点权重已缓存，然后重新拉取。",
+    );
+  } else if (warnings.some((w) => w.includes("transcribe_windowed"))) {
+    hints.push(
+      "长音频已按固定时间窗在侧车内分段识别并合并时间轴；若语段在窗边界被切断，可在波形上微调段界。",
     );
   } else if (warnings.some((w) => w.includes("funasr_no_timestamps"))) {
     hints.push(

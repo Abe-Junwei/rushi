@@ -12,6 +12,11 @@ describe("deriveTranscribeHints", () => {
     expect(h.some((x) => x.includes("12,000"))).toBe(true);
   });
 
+  it("flags online vocabulary unsupported", () => {
+    const h = deriveTranscribeHints("assemblyai:v2", ["online_vocabulary_unsupported"], [{ text: "a" }]);
+    expect(h.some((x) => x.includes("不支持术语偏置"))).toBe(true);
+  });
+
   it("flags hotwords ignored", () => {
     const h = deriveTranscribeHints("funasr+x", ["hotwords_ignored_stub"], [{ text: "a" }]);
     expect(h.some((x) => x.includes("热词"))).toBe(true);

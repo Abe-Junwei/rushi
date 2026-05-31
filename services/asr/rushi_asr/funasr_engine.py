@@ -77,6 +77,11 @@ def _inference_timeout_sec(duration_sec: float | None) -> float:
 _ALLOWED_FUNASR_LANG = frozenset({"zh", "en", "ja", "ko", "yue", "auto"})
 
 
+def effective_funasr_language() -> str:
+    raw = os.environ.get("RUSHI_FUNASR_LANGUAGE", "zh").strip() or "zh"
+    return raw if raw in _ALLOWED_FUNASR_LANG else "zh"
+
+
 def _get_model(model_id: str) -> Any:
     global _model_singleton, _model_loaded_id
     with _runtime_lock:
@@ -134,6 +139,26 @@ def transcribe_with_funasr(
 
     ``hotwords``: space-separated bias string for FunASR ``hotword=`` when supported.
     """
+    from rushi_asr.transcribe_windows import should_transcribe_by_windows, transcribe_by_windows
+
+    hw = (hotwords or "").strip() or None
+    if should_transcribe_by_windows(_duration_sec):
+        return transcribe_by_windows(
+            wav_path,
+            float(_duration_sec),
+            hotwords=hw,
+            out_warnings=out_warnings,
+        )
+    return generate_and_parse_funasr(wav_path, _duration_sec, hw, out_warnings)
+
+
+def generate_and_parse_funasr(
+    wav_path: Path,
+    _duration_sec: float | None,
+    hotwords: str | None = None,
+    out_warnings: list[str] | None = None,
+) -> tuple[list[TranscriptionSegment], str, str | None]:
+    """Run one FunASR generate + R3t-A segmentation parse (single WAV file)."""
     model_id = effective_funasr_model_id()
     if not model_id:
         raise RuntimeError("funasr_model_not_configured")
@@ -141,11 +166,11 @@ def transcribe_with_funasr(
         raise RuntimeError("funasr_models_not_ready")
 
     model = _get_model(model_id)
+    language = effective_funasr_language()
     raw_lang = os.environ.get("RUSHI_FUNASR_LANGUAGE", "zh").strip() or "zh"
-    language = raw_lang if raw_lang in _ALLOWED_FUNASR_LANG else "zh"
     if language != raw_lang and out_warnings is not None:
         out_warnings.append(f"funasr_language_fallback:{raw_lang!r}->{language!r}")
-    hw = (hotwords or "").strip() or None
+    hw = hotwords
 
     def _warn(msg: str) -> None:
         if out_warnings is not None:
@@ -171,17 +196,43 @@ def transcribe_with_funasr(
             ) from e
 
     def _run_generate(kwargs: dict[str, Any]) -> Any:
+        strip_order = (
+            "hotword",
+            "rich_transcription_postprocess",
+            "use_itn",
+            "output_timestamp",
+            "sentence_timestamp",
+            "batch_size_threshold_s",
+            "batch_size_s",
+            "merge_vad",
+        )
+
+        def _strip_one(current: dict[str, Any], key: str) -> dict[str, Any]:
+            if key == "hotword" and hw:
+                _warn("hotword_param_unsupported")
+            elif key == "use_itn":
+                _warn("funasr_use_itn_unsupported")
+            elif key == "rich_transcription_postprocess":
+                _warn("funasr_rich_postprocess_unsupported")
+            elif key == "sentence_timestamp":
+                _warn("sentence_timestamp_param_unsupported")
+            return {k: v for k, v in current.items() if k != key}
+
+        current = dict(kwargs)
         with _runtime_lock:
-            try:
-                return _generate(kwargs)
-            except TypeError as te:
-                _warn(f"funasr_generate_typeerror:{te!s}")
-                trimmed = {k: v for k, v in kwargs.items() if k != "hotword"}
-                if hw and trimmed != kwargs:
-                    _warn("hotword_param_unsupported")
+            while True:
                 try:
-                    return _generate(trimmed)
-                except TypeError:
+                    return _generate(current)
+                except TypeError as te:
+                    _warn(f"funasr_generate_typeerror:{te!s}")
+                    stripped_key: str | None = None
+                    for key in strip_order:
+                        if key in current:
+                            current = _strip_one(current, key)
+                            stripped_key = key
+                            break
+                    if stripped_key is not None:
+                        continue
                     if needs_punc:
                         minimal = {"language": language, "sentence_timestamp": True, "merge_vad": False}
                         try:
@@ -192,8 +243,8 @@ def transcribe_with_funasr(
                             _warn("sentence_timestamp_param_unsupported")
                             return _generate({"language": language, "merge_vad": True})
                     return _generate({"language": language, "merge_vad": not long_audio})
-            except Exception as e:  # noqa: BLE001
-                raise RuntimeError(f"funasr_generate_failed:{e!s}") from e
+                except Exception as e:  # noqa: BLE001
+                    raise RuntimeError(f"funasr_generate_failed:{e!s}") from e
 
     res = _run_generate(generate_kwargs)
 

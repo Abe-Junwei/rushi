@@ -138,3 +138,52 @@ def normalize_to_wav_16k_mono(
         raise RuntimeError(f"ffmpeg_failed:{err[:800]}") from e
     except subprocess.TimeoutExpired as e:
         raise RuntimeError(f"ffmpeg_timeout:{budget}") from e
+
+
+def extract_wav_segment(
+    src: Path,
+    dst: Path,
+    start_sec: float,
+    duration_sec: float,
+    *,
+    timeout_sec: int | None = None,
+) -> None:
+    """Extract ``duration_sec`` of 16 kHz mono WAV starting at ``start_sec``."""
+    if duration_sec <= 0:
+        raise RuntimeError("ffmpeg_segment_invalid_duration")
+    dst.parent.mkdir(parents=True, exist_ok=True)
+    budget = timeout_sec or max(120, int(duration_sec * 2) + 60)
+    cmd = [
+        ffmpeg_path(),
+        "-hide_banner",
+        "-nostdin",
+        "-y",
+        "-i",
+        str(src),
+        "-ss",
+        f"{start_sec:.6f}",
+        "-t",
+        f"{duration_sec:.6f}",
+        "-ac",
+        "1",
+        "-ar",
+        "16000",
+        "-sample_fmt",
+        "s16",
+        str(dst),
+    ]
+    try:
+        subprocess.run(
+            cmd,
+            check=True,
+            capture_output=True,
+            text=True,
+            timeout=budget,
+        )
+    except FileNotFoundError as e:
+        raise RuntimeError("ffmpeg_not_found") from e
+    except subprocess.CalledProcessError as e:
+        err = (e.stderr or e.stdout or "").strip()
+        raise RuntimeError(f"ffmpeg_segment_failed:{err[:800]}") from e
+    except subprocess.TimeoutExpired as e:
+        raise RuntimeError(f"ffmpeg_segment_timeout:{budget}") from e
