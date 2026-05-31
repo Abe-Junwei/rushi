@@ -5,7 +5,7 @@ import {
 } from "../services/postprocess/postprocessRuntimeContract";
 import { llmHasStoredApiKey } from "../tauri/postprocessApi";
 
-/** 刷新序号变化时，检查 localStorage 密钥引用是否能在钥匙串中读回。 */
+/** 刷新序号变化时，检查 localStorage 密钥引用是否能在本地安全存储中读回。 */
 export function useLlmKeychainReady(refreshSeq: number): {
   keychainReady: boolean;
   checking: boolean;

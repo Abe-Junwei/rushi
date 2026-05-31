@@ -136,7 +136,7 @@ export function EnvLlmConfigPanel({ busy, onLlmRuntimeChanged }: Props) {
     }
     const bridge = tryBuildPostprocessRuntimeBridge();
     if (!bridge) {
-      throw new Error("请先填写 API Key，或使用已保存的系统钥匙串密钥。");
+      throw new Error("请先填写 API Key，或使用已保存的本地密钥。");
     }
     return bridge;
   }, [apiKey, baseUrl, def, model]);
@@ -184,11 +184,11 @@ export function EnvLlmConfigPanel({ busy, onLlmRuntimeChanged }: Props) {
       onLlmRuntimeChanged?.();
       if (typedApiKey) {
         setApiKey("");
-        setMsg("已保存。API Key 已写入系统钥匙串；当前页面不再保留明文。");
+        setMsg("已保存。API Key 已写入本地安全存储；当前页面不再保留明文。");
       } else if (nextApiKeyId) {
-        setMsg("已保存连接信息，将继续使用系统钥匙串中的 API Key。");
+        setMsg("已保存连接信息，将继续使用本地已保存的 API Key。");
       } else {
-        setMsg("已保存连接信息。请填写 API Key 并保存到系统钥匙串。");
+        setMsg("已保存连接信息。请填写 API Key 并保存。");
       }
     } catch (e) {
       setMsg(e instanceof Error ? e.message : String(e));
@@ -216,7 +216,7 @@ export function EnvLlmConfigPanel({ busy, onLlmRuntimeChanged }: Props) {
       setLlmApiKeyInMemory(null);
       bumpKeychainCheck();
       onLlmRuntimeChanged?.();
-      setMsg("已清除系统钥匙串中的 API Key。");
+      setMsg("已清除本地保存的 API Key。");
     } catch (e) {
       setMsg(e instanceof Error ? e.message : String(e));
     } finally {
@@ -347,10 +347,10 @@ export function EnvLlmConfigPanel({ busy, onLlmRuntimeChanged }: Props) {
               invalidateProbe();
               setApiKey(e.target.value);
             }}
-            placeholder={savedApiKeyId ? "留空则沿用已保存的系统钥匙串密钥" : "在厂商控制台创建并保存到系统钥匙串"}
+            placeholder={savedApiKeyId ? "留空则沿用已保存的本地密钥" : "在厂商控制台创建并保存到本地安全存储"}
           />
           <span className={PANEL_TYPOGRAPHY.meta}>
-            与在线 STT 密钥分开存放；不写入 localStorage 或项目文件。点击保存后将写入系统钥匙串，重启应用后仍可用。
+            与在线 STT 密钥分开存放；不写入 localStorage 或项目文件。点击保存后写入应用数据目录下的本地安全存储，重启后仍可用。
           </span>
         </label>
 

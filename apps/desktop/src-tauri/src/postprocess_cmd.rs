@@ -1,21 +1,25 @@
 #[path = "postprocess_probe.rs"]
 mod postprocess_probe;
+#[path = "postprocess_secret_store.rs"]
+mod postprocess_secret_store;
 
 use crate::project::utils::append_desktop_log_line;
 use crate::utils::http_client;
 use crate::DbState;
 use futures_util::future::{AbortHandle, Abortable};
-use keyring::Entry;
+use postprocess_secret_store::{
+    delete_llm_secret, llm_secret_exists, read_llm_secret, write_llm_secret,
+};
 use serde::{Deserialize, Serialize};
 use serde_json::json;
 use std::collections::HashMap;
 use std::env;
+use std::path::Path;
 use std::sync::Mutex;
 use std::time::Instant;
 use tauri::State;
 use url::Url;
 
-const KEYRING_SERVICE: &str = "studio.lingchuang.rushi.postprocess";
 const DEFAULT_PROVIDER: &str = "openai-compatible";
 const DEFAULT_TIMEOUT_SECS: u64 = 30;
 const DEFAULT_API_KEY_ID: &str = "default";
@@ -132,23 +136,29 @@ pub struct LlmMigrateLegacyApiKeyRequest {
 }
 
 #[tauri::command]
-pub fn llm_has_stored_api_key(req: LlmHasStoredApiKeyRequest) -> Result<bool, String> {
+pub fn llm_has_stored_api_key(
+    state: State<'_, DbState>,
+    req: LlmHasStoredApiKeyRequest,
+) -> Result<bool, String> {
     let api_key_id = normalize_api_key_id(req.api_key_id.as_deref());
-    keychain_has_api_key(&api_key_id)
+    llm_secret_exists(&state.root, &api_key_id)
 }
 
 #[tauri::command]
-pub fn llm_save_api_key(req: LlmSaveApiKeyRequest) -> Result<String, String> {
+pub fn llm_save_api_key(
+    state: State<'_, DbState>,
+    req: LlmSaveApiKeyRequest,
+) -> Result<String, String> {
     let api_key = req.api_key.trim();
     if api_key.is_empty() {
-        return Err("API Key 为空，无法写入系统钥匙串。".to_string());
+        return Err("API Key 为空，无法保存。".to_string());
     }
     let api_key_id = normalize_api_key_id(req.api_key_id.as_deref());
-    write_llm_api_key_to_keychain(&api_key_id, api_key)?;
+    write_llm_secret(&state.root, &api_key_id, api_key)?;
     Ok(api_key_id)
 }
 
-fn keychain_account_for_delete(raw: Option<&str>) -> String {
+pub(crate) fn secret_account_for_delete(raw: Option<&str>) -> String {
     raw.map(str::trim)
         .filter(|x| !x.is_empty())
         .unwrap_or(DEFAULT_API_KEY_ID)
@@ -156,24 +166,30 @@ fn keychain_account_for_delete(raw: Option<&str>) -> String {
 }
 
 #[tauri::command]
-pub fn llm_delete_api_key(req: LlmDeleteApiKeyRequest) -> Result<(), String> {
+pub fn llm_delete_api_key(
+    state: State<'_, DbState>,
+    req: LlmDeleteApiKeyRequest,
+) -> Result<(), String> {
     // 删除必须按字面账户名，不能把 sk-… 规范化成 default（否则会误删刚保存的密钥）。
-    let api_key_id = keychain_account_for_delete(req.api_key_id.as_deref());
-    delete_llm_api_key_from_keychain(&api_key_id)
+    let api_key_id = secret_account_for_delete(req.api_key_id.as_deref());
+    delete_llm_secret(&state.root, &api_key_id)
 }
 
-/// 将旧版误写入钥匙串账户名（如 sk- 明文）下的密钥迁移到 `default`。
+/// 将旧版误写入账户名（如 sk- 明文）下的密钥迁移到 `default`（仅本地文件存储）。
 #[tauri::command]
-pub fn llm_migrate_legacy_api_key(req: LlmMigrateLegacyApiKeyRequest) -> Result<bool, String> {
+pub fn llm_migrate_legacy_api_key(
+    state: State<'_, DbState>,
+    req: LlmMigrateLegacyApiKeyRequest,
+) -> Result<bool, String> {
     let legacy = req.legacy_api_key_id.trim();
-    if legacy.is_empty() || is_valid_keychain_account_id(legacy) {
+    if legacy.is_empty() || is_valid_secret_account_id(legacy) {
         return Ok(false);
     }
-    let Some(key) = read_llm_api_key_from_keychain(legacy)? else {
+    let Some(key) = read_llm_secret(&state.root, legacy)? else {
         return Ok(false);
     };
-    write_llm_api_key_to_keychain(DEFAULT_API_KEY_ID, &key)?;
-    let _ = delete_llm_api_key_from_keychain(legacy);
+    write_llm_secret(&state.root, DEFAULT_API_KEY_ID, &key)?;
+    let _ = delete_llm_secret(&state.root, legacy);
     Ok(true)
 }
 
@@ -189,7 +205,7 @@ pub fn llm_probe_connection(
             req.runtime.provider, req.runtime.base_url
         ),
     );
-    let config = resolve_runtime_postprocess_config(&req.runtime)?;
+    let config = resolve_runtime_postprocess_config(&req.runtime, &state.root)?;
     append_desktop_log_line(
         &state,
         &format!("INFO llm_probe endpoint={}", config.endpoint),
@@ -235,7 +251,8 @@ pub async fn postprocess_auto_punctuate(
         return Err("当前语段正文为空，无法执行自动标点。".to_string());
     }
 
-    let config = resolve_postprocess_config_async(&req).await?;
+    let app_root = state.root.clone();
+    let config = resolve_postprocess_config_async(&req, &app_root).await?;
     let api_key = config.api_key.clone();
     let prompt = build_auto_punctuate_prompt(text, &req.neighbor_context, &req.neighbor_snippets);
     let body = json!({
@@ -381,24 +398,28 @@ pub fn postprocess_cancel_auto_punctuate(
 
 fn resolve_postprocess_config(
     req: &PostprocessAutoPunctuateRequest,
+    app_data_root: &Path,
 ) -> Result<PostprocessConfig, String> {
     if let Some(rt) = req.runtime.as_ref() {
-        return resolve_runtime_postprocess_config(rt);
+        return resolve_runtime_postprocess_config(rt, app_data_root);
     }
-    load_postprocess_config_from_env()
+    load_postprocess_config_from_env(app_data_root)
 }
 
 async fn resolve_postprocess_config_async(
     req: &PostprocessAutoPunctuateRequest,
+    app_data_root: &Path,
 ) -> Result<PostprocessConfig, String> {
     let req = req.clone();
-    tauri::async_runtime::spawn_blocking(move || resolve_postprocess_config(&req))
+    let app_data_root = app_data_root.to_path_buf();
+    tauri::async_runtime::spawn_blocking(move || resolve_postprocess_config(&req, &app_data_root))
         .await
         .map_err(|e| format!("无法解析 LLM 配置：{}", e))?
 }
 
 pub(crate) fn resolve_runtime_postprocess_config(
     rt: &PostprocessRuntimeBridge,
+    app_data_root: &Path,
 ) -> Result<PostprocessConfig, String> {
     let base_url = rt.base_url.trim();
     let model = rt.model.trim();
@@ -418,7 +439,7 @@ pub(crate) fn resolve_runtime_postprocess_config(
     let api_key = if !api_key.is_empty() {
         api_key.to_string()
     } else {
-        load_postprocess_api_key(rt.api_key_id.as_deref())?
+        load_postprocess_api_key(app_data_root, rt.api_key_id.as_deref())?
     };
     Ok(PostprocessConfig {
         provider,
@@ -428,7 +449,7 @@ pub(crate) fn resolve_runtime_postprocess_config(
     })
 }
 
-fn load_postprocess_config_from_env() -> Result<PostprocessConfig, String> {
+fn load_postprocess_config_from_env(app_data_root: &Path) -> Result<PostprocessConfig, String> {
     let provider =
         env::var("RUSHI_POSTPROCESS_PROVIDER").unwrap_or_else(|_| DEFAULT_PROVIDER.to_string());
     let base_url = env::var("RUSHI_POSTPROCESS_BASE_URL").map_err(|_| {
@@ -445,7 +466,7 @@ fn load_postprocess_config_from_env() -> Result<PostprocessConfig, String> {
         .ok()
         .is_some_and(|v| v == "1" || v.eq_ignore_ascii_case("true"));
     let endpoint = parse_postprocess_endpoint(&base_url, allow_insecure_http)?;
-    let api_key = load_postprocess_api_key(api_key_id.as_deref())?;
+    let api_key = load_postprocess_api_key(app_data_root, api_key_id.as_deref())?;
     Ok(PostprocessConfig {
         provider,
         endpoint,
@@ -499,7 +520,7 @@ fn is_loopback_host(host: Option<&str>) -> bool {
     matches!(host, Some("127.0.0.1" | "localhost" | "::1"))
 }
 
-fn is_valid_keychain_account_id(id: &str) -> bool {
+fn is_valid_secret_account_id(id: &str) -> bool {
     let id = id.trim();
     if id.is_empty() || id.len() > 48 {
         return false;
@@ -514,69 +535,18 @@ fn is_valid_keychain_account_id(id: &str) -> bool {
 fn normalize_api_key_id(raw: Option<&str>) -> String {
     raw.map(str::trim)
         .filter(|x| !x.is_empty())
-        .filter(|x| is_valid_keychain_account_id(x))
+        .filter(|x| is_valid_secret_account_id(x))
         .unwrap_or(DEFAULT_API_KEY_ID)
         .to_string()
 }
 
-fn write_llm_api_key_to_keychain(api_key_id: &str, api_key: &str) -> Result<(), String> {
-    let entry = Entry::new(KEYRING_SERVICE, api_key_id)
-        .map_err(|_| "无法创建 LLM 钥匙串条目，请检查系统钥匙串权限。".to_string())?;
-    entry
-        .set_password(api_key)
-        .map_err(|_| "写入 LLM API Key 失败，请检查系统钥匙串权限。".to_string())?;
-    match entry.get_password() {
-        Ok(read_back) if !read_back.trim().is_empty() => Ok(()),
-        Ok(_) => Err("写入后 API Key 为空，请重试。".to_string()),
-        Err(keyring::Error::NoEntry) => {
-            Err("写入后无法在系统钥匙串中读回 API Key，请检查钥匙串权限后重试。".to_string())
-        }
-        Err(_) => Err("写入后无法验证 API Key，请检查系统钥匙串权限。".to_string()),
-    }
-}
-
-fn keychain_has_api_key(api_key_id: &str) -> Result<bool, String> {
-    let entry = Entry::new(KEYRING_SERVICE, api_key_id)
-        .map_err(|_| "无法读取系统钥匙串条目。".to_string())?;
-    match entry.get_password() {
-        Ok(key) => Ok(!key.trim().is_empty()),
-        Err(keyring::Error::NoEntry) => Ok(false),
-        Err(_) => Err("无法读取系统钥匙串条目。".to_string()),
-    }
-}
-
-fn read_llm_api_key_from_keychain(api_key_id: &str) -> Result<Option<String>, String> {
-    let entry = Entry::new(KEYRING_SERVICE, api_key_id)
-        .map_err(|_| "无法读取系统钥匙串条目。".to_string())?;
-    match entry.get_password() {
-        Ok(key) if !key.trim().is_empty() => Ok(Some(key)),
-        Ok(_) => Ok(None),
-        Err(keyring::Error::NoEntry) => Ok(None),
-        Err(_) => Err("无法读取系统钥匙串条目。".to_string()),
-    }
-}
-
-fn delete_llm_api_key_from_keychain(api_key_id: &str) -> Result<(), String> {
-    let entry = Entry::new(KEYRING_SERVICE, api_key_id)
-        .map_err(|_| "无法定位 LLM 钥匙串条目，请检查系统钥匙串权限。".to_string())?;
-    match entry.delete_credential() {
-        Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
-        Err(_) => Err("删除 LLM API Key 失败，请检查系统钥匙串权限。".to_string()),
-    }
-}
-
-fn load_postprocess_api_key(api_key_id: Option<&str>) -> Result<String, String> {
+fn load_postprocess_api_key(
+    app_data_root: &Path,
+    api_key_id: Option<&str>,
+) -> Result<String, String> {
     let id = normalize_api_key_id(api_key_id);
-    if keychain_has_api_key(&id)? {
-        let entry = Entry::new(KEYRING_SERVICE, &id)
-            .map_err(|_| "自动标点密钥配置无效：无法读取 keychain 条目。".to_string())?;
-        let key = entry
-            .get_password()
-            .map_err(|_| "自动标点密钥配置无效：无法读取 keychain 条目。".to_string())?;
-        let trimmed = key.trim();
-        if !trimmed.is_empty() {
-            return Ok(trimmed.to_string());
-        }
+    if let Some(key) = read_llm_secret(app_data_root, &id)? {
+        return Ok(key);
     }
 
     let fallback = env::var("RUSHI_POSTPROCESS_API_KEY")
@@ -588,7 +558,7 @@ fn load_postprocess_api_key(api_key_id: Option<&str>) -> Result<String, String> 
     }
 
     Err(format!(
-        "系统钥匙串中未找到 API Key（标识：{id}）。请在「设置 → LLM 配置」重新填写并保存。"
+        "本地未找到 API Key（标识：{id}）。请在「设置 → LLM 配置」重新填写并保存。"
     ))
 }
 

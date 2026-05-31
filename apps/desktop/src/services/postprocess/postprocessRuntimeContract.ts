@@ -302,7 +302,7 @@ export function llmConnectionStatusMessage(status: LlmConnectionUiStatus): strin
     case "missing":
       return llmConfigHint();
     case "keychain_missing":
-      return "配置里记录了密钥引用，但系统钥匙串中读不到。请重新填写 DeepSeek API Key 并保存。";
+      return "配置里记录了密钥引用，但本地未找到已保存的密钥。请重新填写 DeepSeek API Key 并保存。";
     case "unverified":
       return "密钥已就位，尚未验证连通性。请点击「探测连接」确认后再使用自动标点。";
     case "verified":
@@ -337,12 +337,12 @@ export function llmAutoPunctuateCapabilityBadge(status: LlmConnectionUiStatus): 
 
 export function llmKeychainReferenceMessage(apiKeyId: string | null, keychainPresent: boolean | null): string {
   const label = apiKeyId ? (normalizeLlmApiKeyId(apiKeyId) ?? DEFAULT_LLM_API_KEY_ID) : null;
-  if (!label) return "系统钥匙串：当前未保存 API Key。";
-  if (keychainPresent === null) return `系统钥匙串：正在检查已保存引用（标识：${label}）…`;
+  if (!label) return "本地安全存储：当前未保存 API Key。";
+  if (keychainPresent === null) return `本地安全存储：正在检查已保存引用（标识：${label}）…`;
   if (keychainPresent) {
-    return `系统钥匙串：已找到 API Key（标识：${label}）。输入框留空时将使用它。`;
+    return `本地安全存储：已找到 API Key（标识：${label}）。输入框留空时将使用它。`;
   }
-  return `系统钥匙串：未读到标识为「${label}」的密钥。请重新填写 DeepSeek API Key 并点击保存配置。`;
+  return `本地安全存储：未读到标识为「${label}」的密钥。请重新填写 DeepSeek API Key 并点击保存配置。`;
 }
 
 export function resolveAutoPunctuateBlockReason(input: {
@@ -361,7 +361,7 @@ export function resolveAutoPunctuateBlockReason(input: {
     return "正在检查 LLM 密钥状态…";
   }
   if (!input.keychainReady && !getLlmApiKeyFromMemory()?.trim()) {
-    return "系统钥匙串中未找到 API Key，请在设置 → LLM 配置 中重新保存。";
+    return "本地未找到已保存的 API Key，请在设置 → LLM 配置 中重新保存。";
   }
   return null;
 }
@@ -387,7 +387,7 @@ export function tryBuildPostprocessRuntimeBridge(): PostprocessRuntimeBridge | n
 }
 
 export function llmConfigHint(): string {
-  return "请打开「设置 → LLM 配置」，选择厂商并保存 API Key 到系统钥匙串。";
+  return "请打开「设置 → LLM 配置」，选择厂商并保存 API Key。";
 }
 
 // --- 兼容旧命名（内部调用逐步迁移） ---

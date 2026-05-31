@@ -1,10 +1,11 @@
 use super::postprocess_probe::probe_llm_connection_blocking;
 use super::{
     build_auto_punctuate_prompt, build_postprocess_models_endpoint, extract_chat_completion_text,
-    keychain_account_for_delete, normalize_api_key_id, parse_postprocess_endpoint,
-    resolve_postprocess_config, LlmProbeConnectionResponse, PostprocessAutoPunctuateRequest,
+    normalize_api_key_id, parse_postprocess_endpoint, resolve_postprocess_config,
+    secret_account_for_delete, LlmProbeConnectionResponse, PostprocessAutoPunctuateRequest,
     PostprocessConfig, PostprocessRuntimeBridge,
 };
+use std::path::Path;
 use serde_json::json;
 use std::io::{Read, Write};
 use std::net::TcpListener;
@@ -135,7 +136,7 @@ fn runtime_bridge_deserializes_snake_case_json_from_ui() {
         neighbor_context: vec![],
         runtime: Some(serde_json::from_value(raw).unwrap()),
     };
-    let cfg = resolve_postprocess_config(&req).unwrap();
+    let cfg = resolve_postprocess_config(&req, Path::new("/tmp/rushi-test-unused")).unwrap();
     assert_eq!(cfg.api_key, "sk-from-ui");
     assert_eq!(
         cfg.endpoint.as_str(),
@@ -161,7 +162,7 @@ fn runtime_bridge_resolves_deepseek_endpoint() {
             allow_insecure_http: false,
         }),
     };
-    let cfg = resolve_postprocess_config(&req).unwrap();
+    let cfg = resolve_postprocess_config(&req, Path::new("/tmp/rushi-test-unused")).unwrap();
     assert_eq!(
         cfg.endpoint.as_str(),
         "https://api.deepseek.com/v1/chat/completions"
@@ -187,7 +188,7 @@ fn runtime_bridge_prefers_inline_api_key() {
             allow_insecure_http: false,
         }),
     };
-    let cfg = resolve_postprocess_config(&req).unwrap();
+    let cfg = resolve_postprocess_config(&req, Path::new("/tmp/rushi-test-unused")).unwrap();
     assert_eq!(cfg.api_key, "sk-inline");
 }
 
@@ -262,13 +263,13 @@ fn normalize_api_key_id_rejects_api_key_shaped_values() {
 }
 
 #[test]
-fn keychain_account_for_delete_keeps_sk_shaped_legacy_account() {
+fn secret_account_for_delete_keeps_sk_shaped_legacy_account() {
     assert_eq!(
-        keychain_account_for_delete(Some("sk-3dad49106a1b4065b472b6894bf0ab36")),
+        secret_account_for_delete(Some("sk-3dad49106a1b4065b472b6894bf0ab36")),
         "sk-3dad49106a1b4065b472b6894bf0ab36"
     );
-    assert_eq!(keychain_account_for_delete(None), "default");
-    assert_eq!(keychain_account_for_delete(Some("default")), "default");
+    assert_eq!(secret_account_for_delete(None), "default");
+    assert_eq!(secret_account_for_delete(Some("default")), "default");
 }
 
 #[test]
@@ -280,15 +281,4 @@ fn llm_save_request_deserializes_camel_case_json() {
     let req: super::LlmSaveApiKeyRequest = serde_json::from_value(raw).unwrap();
     assert_eq!(req.api_key, "sk-ui");
     assert_eq!(req.api_key_id.as_deref(), Some("default"));
-}
-
-#[test]
-#[ignore = "manual: exercises macOS keychain"]
-fn keychain_write_then_has_stored_roundtrip() {
-    let account = format!("test-{}", std::process::id());
-    super::write_llm_api_key_to_keychain(&account, "sk-roundtrip-test")
-        .expect("write should succeed");
-    let has = super::keychain_has_api_key(&account).expect("has_stored should not error");
-    assert!(has, "fresh Entry should read back after write");
-    let _ = super::delete_llm_api_key_from_keychain(&account);
 }
