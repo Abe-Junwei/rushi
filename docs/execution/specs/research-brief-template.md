@@ -3,7 +3,7 @@
 > **状态**：规划门禁 | spike 中 | 已采纳  
 > **关联路线图**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) §…  
 > **关联 spec**：`…-intent.md` / `…-acceptance.md`（编码前须链接本文）  
-> **门禁**：未完成本文 **不得** 进入 Plan 定稿与业务编码（见 [`AGENTS.md`](../../AGENTS.md) · `.cursor/rules/feature-research-gate.mdc`）
+> **门禁**：未完成本文 **不得** 进入 Plan 定稿与业务编码（见 [`AGENTS.md`](../../../AGENTS.md) · `.cursor/rules/feature-research-gate.mdc`）
 
 ---
 

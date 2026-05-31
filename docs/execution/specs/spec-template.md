@@ -1,6 +1,6 @@
 # Spec: [功能名]
 
-> **调研门禁**：中等及以上复杂度须先完成 [`research-brief-template.md`](./research-brief-template.md) 或 `*-research.md`，并在下文链接；见 [`AGENTS.md`](../../AGENTS.md) Research 阶段。
+> **调研门禁**：中等及以上复杂度须先完成 [`research-brief-template.md`](./research-brief-template.md) 或 `*-research.md`，并在下文链接；见 [`AGENTS.md`](../../../AGENTS.md) Research 阶段。
 
 **Research brief**：（链接，无则填 N/A — 仅适用于 trivial 修复）
 

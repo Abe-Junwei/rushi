@@ -1,6 +1,6 @@
 # Intent: waveform_engine_convergence（架构精简 + 4h 性能）
 
-> 架构真源（实施后更新）：[`desktop-waveform-engine.md`](../../../architecture/desktop-waveform-engine.md)  
+> 架构真源（实施后更新）：[`desktop-waveform-engine.md`](../../../../architecture/desktop-waveform-engine.md)  
 > 前置：ADR-0004 content-tile、ADR-0005 tier scroll + **layout/draw px/s 分轨**  
 > **约束**：无历史 peaks 数据、无向后兼容  
 > **定稿**：2026-05-29 实证审计修订（waveform-data 真库 benchmark + L0 可见性证伪）

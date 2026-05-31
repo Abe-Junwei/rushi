@@ -2,7 +2,7 @@
 
 > Intent：[`waveform-content-tile-renderer-intent.md`](./waveform-content-tile-renderer-intent.md)
 > Plan：[`waveform-content-tile-renderer-plan.md`](./waveform-content-tile-renderer-plan.md)
-> ADR：[ADR-0004](../../../adr/0004-waveform-peaks-content-tile-renderer.md)
+> ADR：[ADR-0004](../../../../adr/0004-waveform-peaks-content-tile-renderer.md)
 
 ## 总体闸门
 

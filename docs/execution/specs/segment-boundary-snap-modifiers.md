@@ -1,7 +1,7 @@
 # Spec: B14 — 边界吸附 + 修饰键
 
 > **状态**：✅ 已实施
-> **关联**：[`fix-backlog.md` B14](./waveform-audit-2026-05/fix-backlog.md)、[`segment-overlap-policy.md`](../segment-overlap-policy.md)（B13）
+> **关联**：[`fix-backlog.md` B14](./waveform-audit-2026-05/fix-backlog.md)、[`segment-overlap-policy.md`](./segment-overlap-policy.md)（B13）
 
 ## 背景
 

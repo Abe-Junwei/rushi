@@ -44,7 +44,7 @@ describe("trimAdjacentSegmentOverlaps", () => {
     ];
     const trimmed = trimAdjacentSegmentOverlaps(raw.map((s, i) => seg({ ...s, idx: i })));
     for (let i = 0; i < trimmed.length - 1; i += 1) {
-      expect(trimmed[i]!.end_sec).toBeLessThanOrEqual(trimmed[i + 1]!.start_sec + 1e-6);
+      expect(trimmed[i]?.end_sec).toBeLessThanOrEqual((trimmed[i + 1]?.start_sec ?? 0) + 1e-6);
     }
     const { laneCount } = assignSegmentOverlapLanes(trimmed);
     expect(laneCount).toBe(1);

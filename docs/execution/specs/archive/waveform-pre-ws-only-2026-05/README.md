@@ -2,12 +2,12 @@
 
 **状态**：`superseded` — 2026-05-29 起桌面端波形改为 **WaveSurfer-only** 主渲染，本目录内规格不再指导实施。
 
-**现行真源**：[desktop-waveform-engine.md](../../../architecture/desktop-waveform-engine.md)
+**现行真源**：[desktop-waveform-engine.md](../../../../architecture/desktop-waveform-engine.md)
 
 **相关 ADR**（已标 superseded，保留决策史）：
 
-- [ADR-0004](../../../adr/0004-waveform-peaks-content-tile-renderer.md) — content-tile canvas peaks
-- [ADR-0005](../../../adr/0005-waveform-single-scroll-authority.md) — tier scroll + layout/draw 双轨
+- [ADR-0004](../../../../adr/0004-waveform-peaks-content-tile-renderer.md) — content-tile canvas peaks
+- [ADR-0005](../../../../adr/0005-waveform-single-scroll-authority.md) — tier scroll + layout/draw 双轨
 
 ## 目录说明
 

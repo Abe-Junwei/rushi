@@ -3,12 +3,14 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SegmentDto } from "../tauri/projectApi";
 import { useTranscribeJobController } from "./useTranscribeJobController";
 
-const projectRunTranscribe = vi.fn();
-const projectLoad = vi.fn();
+const { projectRunTranscribe, projectLoad } = vi.hoisted(() => ({
+  projectRunTranscribe: vi.fn(),
+  projectLoad: vi.fn(),
+}));
 
 vi.mock("../tauri/projectApi", () => ({
-  projectRunTranscribe: (...args: unknown[]) => projectRunTranscribe(...args),
-  projectLoad: (...args: unknown[]) => projectLoad(...args),
+  projectRunTranscribe,
+  projectLoad,
 }));
 
 vi.mock("../config/env", () => ({
@@ -142,7 +144,7 @@ describe("useTranscribeJobController", () => {
     });
     expect(result.current.overwriteDialogOpen).toBe(true);
 
-    await act(async () => {
+    act(() => {
       result.current.confirmTranscribeOverwrite();
     });
 

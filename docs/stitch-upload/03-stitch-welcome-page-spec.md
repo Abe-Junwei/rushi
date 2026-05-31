@@ -46,7 +46,7 @@
 
 ## 3. 设计令牌（Notion Zen）
 
-与仓库根 [`DESIGN.md`](../../../DESIGN.md) 一致。主壳层优先 `notion-*`；`zen-*` 用于 saffron 强调与 legacy 暖色面。
+与仓库根 [`DESIGN.md`](../../DESIGN.md) 一致。主壳层优先 `notion-*`；`zen-*` 用于 saffron 强调与 legacy 暖色面。
 
 | Token | 用途 |
 |-------|------|

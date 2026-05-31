@@ -113,13 +113,17 @@ describe("EnvLlmConfigPanel", () => {
     fireEvent.change(screen.getByLabelText("API Key"), {
       target: { value: "sk-test-key" },
     });
-    fireEvent.click(screen.getAllByRole("button", { name: "保存配置" })[0]!);
+    const saveButton = screen.getAllByRole("button", { name: "保存配置" })[0];
+    expect(saveButton).toBeDefined();
+    fireEvent.click(saveButton);
 
     await waitFor(() => {
       expect(llmSaveApiKey).toHaveBeenCalled();
     });
 
-    fireEvent.click(screen.getAllByRole("button", { name: "探测连接" })[0]!);
+    const probeButton = screen.getAllByRole("button", { name: "探测连接" })[0];
+    expect(probeButton).toBeDefined();
+    fireEvent.click(probeButton);
 
     await waitFor(() => {
       expect(llmProbeConnection).toHaveBeenCalled();

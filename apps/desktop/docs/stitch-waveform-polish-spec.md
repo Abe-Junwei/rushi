@@ -1,7 +1,7 @@
 # 波形区视觉精修 — Stitch 需求文档
 
 > **真源：** 设计系统见仓库根 [`DESIGN.md`](../../../DESIGN.md)（Notion Zen）。  
-> **代码对照：** [`EditorWaveformPane.tsx`](../../src/components/editor/EditorWaveformPane.tsx)、[`waveform.css`](../../src/styles/components/waveform.css)。  
+> **代码对照：** [`EditorWaveformPane.tsx`](../src/components/editor/EditorWaveformPane.tsx)、[`waveform.css`](../src/styles/components/waveform.css)。  
 > **静态原型：** [`stitch-waveform-polish-layout.html`](../stitch-waveform-polish-layout.html)（同步为 `docs/stitch-upload/20-stitch-waveform-polish-layout.html`）。
 
 ## 0. 本轮目标

@@ -1,15 +1,15 @@
 # 波形区视觉精修 — Stitch 需求文档
 
-> **真源：** 设计系统见仓库根 [`DESIGN.md`](../../../DESIGN.md)（Notion Zen）。  
-> **代码对照：** [`EditorWaveformPane.tsx`](../../src/components/editor/EditorWaveformPane.tsx)、[`waveform.css`](../../src/styles/components/waveform.css)。  
-> **静态原型：** [`stitch-waveform-polish-layout.html`](../stitch-waveform-polish-layout.html)（同步为 `docs/stitch-upload/20-stitch-waveform-polish-layout.html`）。
+> **真源：** 设计系统见仓库根 [`DESIGN.md`](../../DESIGN.md)（Notion Zen）。  
+> **代码对照：** [`EditorWaveformPane.tsx`](../../apps/desktop/src/components/editor/EditorWaveformPane.tsx)、[`waveform.css`](../../apps/desktop/src/styles/components/waveform.css)。  
+> **静态原型：** [`stitch-waveform-polish-layout.html`](../../apps/desktop/stitch-waveform-polish-layout.html)（同步为 `docs/stitch-upload/20-stitch-waveform-polish-layout.html`）。
 
 ## 0. 本轮目标
 
 在 **Notion Zen** 基线上，精修 **校对工作页（阶段 C）波形舞台**，使其实现稿与 Stitch 稿一致，并达到专业转写/DAW 工具的 **可读性 + 编辑 affordance** 标准。
 
 **不在本轮（Stitch 视觉）：** 改 scroll/zoom 架构、改语段列表布局。  
-**交互真源（已实现，供验收对照）：** 语段 tap 两段式 seek、缩放栏 `layoutIntent` 互斥高亮、fit-selection 下点语段 re-fit — 见 [`desktop-waveform-engine.md`](../../../docs/architecture/desktop-waveform-engine.md)。
+**交互真源（已实现，供验收对照）：** 语段 tap 两段式 seek、缩放栏 `layoutIntent` 互斥高亮、fit-selection 下点语段 re-fit — 见 [`desktop-waveform-engine.md`](../architecture/desktop-waveform-engine.md)。
 
 **适用：** Stitch 出图 → 回写 token / CSS → 对照 HTML 原型验收。
 

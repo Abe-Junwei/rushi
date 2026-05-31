@@ -1,9 +1,9 @@
 # Intent: waveform_single_scroll_consolidation
 
-> 前置：[ADR-0004](../../../adr/0004-waveform-peaks-content-tile-renderer.md)（content-tile 已落地）  
+> 前置：[ADR-0004](../../../../adr/0004-waveform-peaks-content-tile-renderer.md)（content-tile 已落地）  
 > 审计：[`waveform-content-tile-renderer-audit-report.md`](./waveform-content-tile-renderer-audit-report.md)  
-> 架构真源：[`desktop-waveform-engine.md`](../../../architecture/desktop-waveform-engine.md)  
-> 决策：[ADR-0005](../../../adr/0005-waveform-single-scroll-authority.md)
+> 架构真源：[`desktop-waveform-engine.md`](../../../../architecture/desktop-waveform-engine.md)  
+> 决策：[ADR-0005](../../../../adr/0005-waveform-single-scroll-authority.md)
 
 ## 目标
 

@@ -47,7 +47,7 @@
 
 ## 能力—UI 状态矩阵（缩放工具栏）
 
-依据 [`docs/architecture/desktop-capability-ui-state-alignment.md`](../../../architecture/desktop-capability-ui-state-alignment.md)。
+依据 [`docs/architecture/desktop-capability-ui-state-alignment.md`](../../../../architecture/desktop-capability-ui-state-alignment.md)。
 
 | 维度 | 真源 | UI 控件 | 对齐规则 |
 |------|------|---------|----------|
@@ -95,4 +95,4 @@
 
 ## 架构真源
 
-- [`docs/architecture/desktop-waveform-engine.md`](../../../architecture/desktop-waveform-engine.md)
+- [`docs/architecture/desktop-waveform-engine.md`](../../../../architecture/desktop-waveform-engine.md)

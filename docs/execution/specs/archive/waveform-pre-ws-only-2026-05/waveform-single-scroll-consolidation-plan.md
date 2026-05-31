@@ -2,7 +2,7 @@
 
 > Intent：[`waveform-single-scroll-consolidation-intent.md`](./waveform-single-scroll-consolidation-intent.md)  
 > Acceptance：[`waveform-single-scroll-consolidation-acceptance.md`](./waveform-single-scroll-consolidation-acceptance.md)  
-> ADR：[ADR-0005](../../../adr/0005-waveform-single-scroll-authority.md)
+> ADR：[ADR-0005](../../../../adr/0005-waveform-single-scroll-authority.md)
 
 ## 架构目标态
 

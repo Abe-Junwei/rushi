@@ -14,7 +14,7 @@
 
 ## 波形架构真源
 
-`PeakCache` + `WaveformPeaksCanvas` + `useProjectWaveform` / `useWaveformZoomSync` / `useTranscriptionViewportFit` + WaveSurfer（播放与无 peaks 回退）。见 [`desktop-waveform-engine.md`](../../../architecture/desktop-waveform-engine.md)。
+`PeakCache` + `WaveformPeaksCanvas` + `useProjectWaveform` / `useWaveformZoomSync` / `useTranscriptionViewportFit` + WaveSurfer（播放与无 peaks 回退）。见 [`desktop-waveform-engine.md`](../../../../architecture/desktop-waveform-engine.md)。
 
 ## 实现落位
 
