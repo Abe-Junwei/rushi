@@ -1,0 +1,36 @@
+---
+description: 新功能/路线图薄片编码前须完成业内调研与可复用评估；禁止无调研直接设计
+alwaysApply: true
+---
+
+# 新功能调研门禁（Research-before-Build）
+
+## 何时必须
+
+进入 **路线图新薄片**、**中等及以上复杂度**、**新架构/新数据流** 前，**先调研、后 Plan、再 Implement**。
+
+**可跳过**：单文件 ≤10 行 bugfix；纯测试/文档/样式微调；acceptance 已引用完整 `*-research.md` 且结论仍有效。
+
+## Explore 阶段必交付
+
+在 `docs/execution/specs/` 写 **调研 brief**（`*-research.md`，或 intent 内独立「§0 调研」），至少包含：
+
+1. **问题陈述** — 用户场景 + 本仓现状（链路透 + 文件路径）
+2. **业内对照（≥2 条成熟路线）** — 开源实现 / 云 API / 桌面竞品（Whisper、FunASR、faster-whisper、Descript 等）；附可验证链接或仓库路径
+3. **可复用评估表** — 每路线：`复用度（高/中/低）`、协议/依赖、与 Rushi 约束冲突、峰值内存/进度 UX
+4. **决策** — 选定方案 + 明确 **不做什么** + 与既有 ADR/architecture 对齐
+5. **落位预告** — 预计改哪些层（Rust / Python 侧车 / UI），**禁止**第二套并行真源
+
+## 硬规则
+
+- **禁止**在 brief 完成前写业务实现（ spike 仅允许 ≤1 天、须标注 `spike/` 或 acceptance 附录，且不可当终态）
+- **禁止**「拍脑袋新造 VAD/分段/Provider 栈」— 须说明为何不能复用本仓已有模块（例：R3e-B 须消费 `segmentation.py`，不得 fork 第二套 VAD）
+- Plan / acceptance **顶部链接** research brief；路线图薄片标注「调研 ✅」后才可标「编码中」
+
+## 真源范例
+
+- [`docs/execution/specs/r3-provider-configuration-research.md`](../../docs/execution/specs/r3-provider-configuration-research.md)
+- [`docs/execution/specs/rushi-local-runtime-catalog-remediation-plan.md`](../../docs/execution/specs/rushi-local-runtime-catalog-remediation-plan.md) §2
+- [`docs/execution/specs/archive/waveform-pre-ws-only-2026-05/waveform-maturity-product-research.md`](../../docs/execution/specs/archive/waveform-pre-ws-only-2026-05/waveform-maturity-product-research.md)
+
+模板：[`docs/execution/specs/research-brief-template.md`](../../docs/execution/specs/research-brief-template.md)

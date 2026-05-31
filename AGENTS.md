@@ -14,11 +14,12 @@
 ## 工作流四阶段
 
 1. **Explore**：读相关 `src/` + `docs/architecture/` + `docs/adr/`，产出"已读清单"
-2. **Plan**：产出落位文件 + 验证方式；确认后再实施
-3. **Implement**：逐步验证（typecheck → 定向 test → 架构守卫）
-4. **Commit**：commit msg 附验证证据
+2. **Research**（**新功能 / 路线图薄片 / 中等及以上复杂度**）：对照业内 ≥2 条成熟路线，写 `docs/execution/specs/*-research.md`（模板 [`research-brief-template.md`](./docs/execution/specs/research-brief-template.md)），评估可复用度与「不做什么」；**未完成不得进入 Plan 定稿与业务编码**。细则：`.cursor/rules/feature-research-gate.mdc`；范例：[`r3-provider-configuration-research.md`](./docs/execution/specs/r3-provider-configuration-research.md)
+3. **Plan**：产出落位文件 + 验证方式；**顶部链接 research brief**；确认后再实施
+4. **Implement**：逐步验证（typecheck → 定向 test → 架构守卫）
+5. **Commit**：commit msg 附验证证据
 
-> 小修复（单文件 ≤ 10 行）可跳过 Explore，但 Commit 验证不可省。
+> 小修复（单文件 ≤ 10 行）可跳过 Explore / Research，但 Commit 验证不可省。
 
 ## 单人项目执行补充（UI 重设计期）
 
@@ -40,7 +41,7 @@
 - 好/坏示例见 AI_QUICKSTART §典型模式
 - 新增设计 → 先读 `docs/architecture/` 与 ADR
 - **浮动对话框** → `compactDialog` + Notion/Zen（`controlStyles.ts`）；勿用已移除的 serene 面板变体；见 `docs/architecture/desktop-floating-dialog-panels.md`
-- 中等以上复杂度 → 先写 spec（`docs/execution/specs/` 三件套）再实施
+- 中等以上复杂度 → **先调研 brief**（`docs/execution/specs/*-research.md`）→ 再写 spec 三件套 → 再实施；禁止无调研拍脑袋造轮子
 - **能力—UI 状态对齐**（环境/ASR/设置）：编码前读 [`docs/architecture/desktop-capability-ui-state-alignment.md`](./docs/architecture/desktop-capability-ui-state-alignment.md)；acceptance 必填 **能力—UI 状态矩阵**；禁止用全局 `/health.ready_for_transcribe` 表示「用户所选模型」状态（路线图 §4.1.4 R3-STATE）
 
 ## 机器守卫（提交前必跑）
