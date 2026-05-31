@@ -1,5 +1,8 @@
 import { describe, expect, it } from "vitest";
-import { selectOverlayRenderedSegmentIndices } from "./waveformSegmentOverlayVisibility";
+import {
+  selectOverlayInteractiveSegmentIndices,
+  selectOverlayRenderedSegmentIndices,
+} from "./waveformSegmentOverlayVisibility";
 
 const segments = [
   { idx: 0, uid: "a", start_sec: 0, end_sec: 10, text: "a" },
@@ -8,14 +11,11 @@ const segments = [
 ] as const;
 
 describe("selectOverlayRenderedSegmentIndices", () => {
-  it("renders every segment regardless of scroll/viewport (no virtualization)", () => {
-    // Regression guard for "segments don't refresh after viewport scroll": the
-    // render set must be scroll-independent, so far-apart off-screen segments are
-    // always included.
+  it("returns all packable segments for canvas band drawing", () => {
     expect(selectOverlayRenderedSegmentIndices({ segments: [...segments] })).toEqual([0, 1, 2]);
   });
 
-  it("excludes dominant-span placeholders so they cannot blanket the waveform", () => {
+  it("excludes dominant-span placeholders", () => {
     expect(
       selectOverlayRenderedSegmentIndices({
         segments: [...segments],
@@ -23,8 +23,26 @@ describe("selectOverlayRenderedSegmentIndices", () => {
       }),
     ).toEqual([0, 2]);
   });
+});
 
-  it("returns empty for no segments", () => {
-    expect(selectOverlayRenderedSegmentIndices({ segments: [] })).toEqual([]);
+describe("selectOverlayInteractiveSegmentIndices", () => {
+  it("returns only selected and draft indices for DOM overlay", () => {
+    expect(
+      selectOverlayInteractiveSegmentIndices({
+        segmentCount: 3,
+        selectedIdx: 1,
+        draftIdx: 2,
+      }),
+    ).toEqual([1, 2]);
+  });
+
+  it("dedupes when draft equals selected", () => {
+    expect(
+      selectOverlayInteractiveSegmentIndices({
+        segmentCount: 3,
+        selectedIdx: 1,
+        draftIdx: 1,
+      }),
+    ).toEqual([1]);
   });
 });

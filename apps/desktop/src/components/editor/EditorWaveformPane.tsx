@@ -1,4 +1,5 @@
 import { Pause, Play } from "lucide-react";
+import { useCallback, useState } from "react";
 import { ResizeBottomHit } from "../ResizeBottomHit";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";
 import { WaveformLiveTimeRuler } from "../WaveformLiveTimeRuler";
@@ -7,6 +8,7 @@ import { WaveformGlobalPlaybackSpeed } from "../WaveformGlobalPlaybackSpeed";
 import { WaveformGoToTime } from "../WaveformGoToTime";
 import { WaveformPlaybackTime } from "../WaveformPlaybackTime";
 import { WaveformSegmentPlaybackControls } from "../WaveformSegmentPlaybackControls";
+import { WaveformSegmentBandCanvas } from "../WaveformSegmentBandCanvas";
 import { WaveformSegmentOverlay } from "../WaveformSegmentOverlay";
 import { WaveformZoomBar } from "../WaveformZoomBar";
 import { WaveformMinimapStrip } from "../WaveformMinimapStrip";
@@ -58,6 +60,10 @@ export function EditorWaveformPane({
       ? "h-full w-full origin-top-left will-change-transform transition-transform duration-150 ease-out motion-reduce:transition-none"
       : "h-full w-full origin-top-left";
   const stripDisabled = c.busy || !tx.isReady;
+  const [overlayDraftIdx, setOverlayDraftIdx] = useState<number | null>(null);
+  const onOverlayDraftIdxChange = useCallback((idx: number | null) => {
+    setOverlayDraftIdx(idx);
+  }, []);
   const centerStatusLabel = resolveWaveformCenterStatusLabel({
     phase: tx.waveformPeaksPhase,
     backgroundPeaksEnabled: tx.backgroundPeaksEnabled,
@@ -146,6 +152,18 @@ export function EditorWaveformPane({
                           />
                         </div>
                       </div>
+                      <WaveformSegmentBandCanvas
+                        segments={c.segments}
+                        durationSec={mediaDurationSec}
+                        timelineWidthPx={tx.timelineWidthPx}
+                        layoutHeightPx={segmentOverlayHeightPx}
+                        selectedIdx={c.selectedIdx}
+                        dominantSpanIndices={tx.segmentLaneLayout.dominantSpanIndices}
+                        draftIdx={overlayDraftIdx}
+                        tierScrollRef={tx.tierScrollRef}
+                        tierScrollLive={tx.tierScrollLive}
+                        tierScrollLayout={tx.tierScrollLayout}
+                      />
                       <WaveformLiveTimeRuler
                         appearance="embedded"
                         coordinateSpace="viewport"
@@ -172,11 +190,12 @@ export function EditorWaveformPane({
                     selectedIdx={c.selectedIdx}
                     timelineWidthPx={tx.timelineWidthPx}
                     durationSec={mediaDurationSec}
-                    playheadSec={tx.currentTime}
                     layoutHeightPx={segmentOverlayHeightPx}
                     laneByIndex={tx.segmentLaneLayout.laneByIndex}
                     laneCount={tx.segmentLaneLayout.laneCount}
                     dominantSpanIndices={tx.segmentLaneLayout.dominantSpanIndices}
+                    getPlayheadSec={tx.getPlayheadTime}
+                    onDraftIdxChange={onOverlayDraftIdxChange}
                     enableCreateRange
                     clientXToTimeSec={tx.clientXToTimeSec}
                     onSelectSegmentAt={(idx) => tx.selectSegmentAt(idx, "waveform")}

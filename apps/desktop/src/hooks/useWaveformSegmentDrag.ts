@@ -3,6 +3,7 @@ import type { SegmentDto } from "../tauri/projectApi";
 import {
   clampSegmentTimeBounds,
   hitSegmentEdgeFromTimelinePointer,
+  resolveSegmentIndexAtWaveformPointer,
   selectPackableSegmentIndices,
   WAVEFORM_SEGMENT_MIN_SPAN_SEC,
 } from "../utils/waveformSegmentBounds";
@@ -37,9 +38,13 @@ export const WAVEFORM_OVERLAY_DRAG_MOVE_THRESHOLD_PX = 4;
 export type WaveformSegmentDragArgs = {
   disabled: boolean;
   segments: SegmentDto[];
+  selectedIdx: number;
   timelineWidthPx: number;
   durationSec: number;
-  playheadSec?: number;
+  getPlayheadSec?: () => number;
+  layoutHeightPx: number;
+  laneByIndex: number[];
+  laneCount: number;
   enableCreateRange: boolean;
   clientXToTimeSec: (clientX: number) => number;
   onSelectSegmentAt: (idx: number) => void;
@@ -80,7 +85,7 @@ function snapTargetsForOverlay(
     targets: collectSegmentSnapTargets({
       segments: snapSegments,
       durationSec: a.durationSec,
-      playheadSec: a.playheadSec,
+      playheadSec: a.getPlayheadSec?.(),
     }),
     thresholdSec: resolveSnapThresholdSec(a.timelineWidthPx, a.durationSec),
   };
@@ -261,6 +266,22 @@ export function useWaveformSegmentDrag(
       if ((ev.target as HTMLElement).closest("[data-waveform-segment]")) return;
 
       const timeSec = a.clientXToTimeSec(ev.clientX);
+      const hitIdx = resolveSegmentIndexAtWaveformPointer({
+        segments: a.segments,
+        timeSec,
+        pointerClientY: ev.clientY,
+        overlayClientTop: ev.currentTarget.getBoundingClientRect().top,
+        layoutHeightPx: a.layoutHeightPx,
+        laneByIndex: a.laneByIndex,
+        laneCount: a.laneCount,
+        selectedIdx: a.selectedIdx,
+        durationSec: a.durationSec,
+      });
+      if (hitIdx >= 0) {
+        onSegmentPointerDown(hitIdx, ev);
+        return;
+      }
+
       if (a.enableCreateRange && a.onCreateRange) {
         // 锚点保持原始时间：纯点击空白处用于 seek（不吸附），框选范围在
         // move / finish 阶段由 snapCreateRange 对两端整体吸附。
@@ -282,7 +303,7 @@ export function useWaveformSegmentDrag(
       a.onFocusWaveformShell?.();
       a.seekToTime(timeSec);
     },
-    [argsRef, setCreatePreview],
+    [argsRef, onSegmentPointerDown, setCreatePreview],
   );
 
   const onPointerMove = useCallback(

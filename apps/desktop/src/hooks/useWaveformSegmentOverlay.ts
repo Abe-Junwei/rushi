@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
+import { useCallback, useLayoutEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
 import { applySegmentOverlayTap } from "../utils/waveformSegmentOverlayActions";
 import { segmentOverlayGeometry } from "../utils/waveformSegmentBounds";
@@ -19,7 +19,7 @@ export function useWaveformSegmentOverlay(args: {
   selectedIdx: number;
   timelineWidthPx: number;
   durationSec: number;
-  playheadSec?: number;
+  getPlayheadSec?: () => number;
   layoutHeightPx: number;
   laneByIndex: number[];
   laneCount: number;
@@ -36,12 +36,19 @@ export function useWaveformSegmentOverlay(args: {
   ) => void;
   onPlaySegment?: (idx: number) => void;
   seekToTime: (timeSec: number) => void;
+  onDraftIdxChange?: (idx: number | null) => void;
 }) {
   const argsRef = useRef(args);
   argsRef.current = args;
 
   const [segmentDraft, setSegmentDraft] = useState<SegmentOverlayDraft | null>(null);
   const [createPreview, setCreatePreview] = useState<CreateRangePreview | null>(null);
+
+  const segmentDraftIdx = segmentDraft?.idx ?? null;
+
+  useLayoutEffect(() => {
+    argsRef.current.onDraftIdxChange?.(segmentDraftIdx);
+  }, [segmentDraftIdx]);
 
   const applySegmentDraft = useCallback((draft: SegmentOverlayDraft | null) => {
     setSegmentDraft(draft);
@@ -98,7 +105,7 @@ export function useWaveformSegmentOverlay(args: {
 
   return {
     createPreview,
-    segmentDraftIdx: segmentDraft?.idx ?? null,
+    segmentDraftIdx,
     segmentBoundsAt,
     onShellPointerDown: drag.onShellPointerDown,
     onSegmentPointerDown: drag.onSegmentPointerDown,

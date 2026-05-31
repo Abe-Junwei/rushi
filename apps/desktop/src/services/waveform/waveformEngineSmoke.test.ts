@@ -26,7 +26,7 @@ describe("waveform engine smoke", () => {
     ).toBe(false);
   });
 
-  it("renders all overlay segments scroll-independently, minus dominant spans", () => {
+  it("canvas draws packable segments; DOM overlay is interaction-only", () => {
     const segments = [
       { idx: 0, uid: "a", start_sec: 0, end_sec: 10, text: "a" },
       { idx: 1, uid: "b", start_sec: 90, end_sec: 100, text: "b" },

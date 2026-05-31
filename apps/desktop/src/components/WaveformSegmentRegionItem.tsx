@@ -11,6 +11,7 @@ export type WaveformSegmentRegionItemProps = {
   startSec: number;
   endSec: number;
   selected: boolean;
+  showHandles?: boolean;
   timelineWidthPx: number;
   durationSec: number;
   lane: number;
@@ -29,6 +30,7 @@ export const WaveformSegmentRegionItem = memo(
     startSec,
     endSec,
     selected,
+    showHandles = selected,
     timelineWidthPx,
     durationSec,
     lane,
@@ -78,8 +80,12 @@ export const WaveformSegmentRegionItem = memo(
         onClick={(ev) => onSegmentClick(idx, ev)}
         onDoubleClick={(ev) => onSegmentDoubleClick(idx, ev)}
       >
-        <span className="waveform-segment-handle waveform-segment-handle-start" aria-hidden />
-        <span className="waveform-segment-handle waveform-segment-handle-end" aria-hidden />
+        {showHandles ? (
+          <>
+            <span className="waveform-segment-handle waveform-segment-handle-start" aria-hidden />
+            <span className="waveform-segment-handle waveform-segment-handle-end" aria-hidden />
+          </>
+        ) : null}
       </div>
     );
   },
@@ -89,6 +95,7 @@ export const WaveformSegmentRegionItem = memo(
     prev.startSec === next.startSec &&
     prev.endSec === next.endSec &&
     prev.selected === next.selected &&
+    prev.showHandles === next.showHandles &&
     prev.timelineWidthPx === next.timelineWidthPx &&
     prev.durationSec === next.durationSec &&
     prev.lane === next.lane &&

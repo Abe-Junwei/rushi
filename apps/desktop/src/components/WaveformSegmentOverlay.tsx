@@ -3,7 +3,7 @@ import type { SegmentDto } from "../tauri/projectApi";
 import type { SegmentOverlapPolicy } from "../utils/segmentTimeRange";
 import { useWaveformSegmentOverlay } from "../hooks/useWaveformSegmentOverlay";
 import { computeCreatePreviewStyle } from "../utils/waveformSegmentOverlayGeometry";
-import { selectOverlayRenderedSegmentIndices } from "../utils/waveformSegmentOverlayVisibility";
+import { selectOverlayInteractiveSegmentIndices } from "../utils/waveformSegmentOverlayVisibility";
 import { WaveformSegmentRegionItem } from "./WaveformSegmentRegionItem";
 
 export type WaveformSegmentOverlayProps = {
@@ -12,13 +12,14 @@ export type WaveformSegmentOverlayProps = {
   selectedIdx: number;
   timelineWidthPx: number;
   durationSec: number;
-  playheadSec?: number;
   layoutHeightPx: number;
   laneByIndex: number[];
   laneCount: number;
   dominantSpanIndices?: number[];
   enableCreateRange: boolean;
   clientXToTimeSec: (clientX: number) => number;
+  getPlayheadSec: () => number;
+  onDraftIdxChange?: (idx: number | null) => void;
   onSelectSegmentAt: (idx: number) => void;
   onBeginBoundsEdit?: () => void;
   onFocusWaveformShell?: () => void;
@@ -35,6 +36,7 @@ export type WaveformSegmentOverlayProps = {
 export const WaveformSegmentOverlay = memo(function WaveformSegmentOverlay(props: WaveformSegmentOverlayProps) {
   const {
     createPreview,
+    segmentDraftIdx,
     segmentBoundsAt,
     onShellPointerDown,
     onSegmentPointerDown,
@@ -51,11 +53,12 @@ export const WaveformSegmentOverlay = memo(function WaveformSegmentOverlay(props
 
   const segmentIndices = useMemo(
     () =>
-      selectOverlayRenderedSegmentIndices({
-        segments,
-        dominantSpanIndices: props.dominantSpanIndices,
+      selectOverlayInteractiveSegmentIndices({
+        segmentCount: segments.length,
+        selectedIdx,
+        draftIdx: segmentDraftIdx,
       }),
-    [segments, props.dominantSpanIndices],
+    [segments.length, selectedIdx, segmentDraftIdx],
   );
 
   return (
@@ -72,6 +75,7 @@ export const WaveformSegmentOverlay = memo(function WaveformSegmentOverlay(props
         if (!seg) return null;
         const bounds = segmentBoundsAt(idx);
         if (!bounds) return null;
+        const selected = idx === selectedIdx;
         return (
           <WaveformSegmentRegionItem
             key={seg.uid ? `${seg.uid}#${idx}` : `seg-${idx}`}
@@ -79,7 +83,8 @@ export const WaveformSegmentOverlay = memo(function WaveformSegmentOverlay(props
             seg={seg}
             startSec={bounds.startSec}
             endSec={bounds.endSec}
-            selected={idx === selectedIdx}
+            selected={selected}
+            showHandles={selected || idx === segmentDraftIdx}
             timelineWidthPx={timelineWidthPx}
             durationSec={durationSec}
             lane={laneByIndex[idx] ?? 0}
