@@ -24,6 +24,10 @@ _MAX_UPLOAD_BYTES = int(os.environ.get("RUSHI_MAX_UPLOAD_BYTES", str(512 * 1024 
 _READ_CHUNK = 1024 * 1024
 
 
+class TranscribeCancelRequest(BaseModel):
+    job_id: str
+
+
 def _loopback_only(host: str) -> None:
     allowed = {"127.0.0.1", "localhost", "::1"}
     if host not in allowed:
@@ -77,6 +81,8 @@ def create_app() -> FastAPI:
             "prepare_model": "POST /v1/models/prepare (blocking prefetch, optional model_id)",
             "prepare_model_async": "POST /v1/models/prepare/async + GET /v1/models/prepare-status",
             "prepare_cancel": "POST /v1/models/prepare-cancel",
+            "transcribe_async": "POST /v1/transcribe/async + GET /v1/transcribe/status",
+            "transcribe_cancel": "POST /v1/transcribe/cancel",
             "model_catalog": "GET /v1/models/catalog",
         }
 
@@ -167,6 +173,33 @@ def create_app() -> FastAPI:
 
         return cancel_prepare_async()
 
+    async def _read_upload_to_temp(
+        file: UploadFile,
+        tmp_path: Path,
+    ) -> Path:
+        if not file.filename:
+            raise HTTPException(status_code=400, detail="missing file name")
+        suffix = Path(file.filename).suffix
+        in_path = tmp_path / f"upload{suffix or '.bin'}"
+        chunks: list[bytes] = []
+        total = 0
+        while True:
+            chunk = await file.read(_READ_CHUNK)
+            if not chunk:
+                break
+            total += len(chunk)
+            if total > _MAX_UPLOAD_BYTES:
+                raise HTTPException(status_code=413, detail="upload_too_large")
+            chunks.append(chunk)
+
+        def _write_upload() -> None:
+            with in_path.open("wb") as out:
+                for part in chunks:
+                    out.write(part)
+
+        await run_in_threadpool(_write_upload)
+        return in_path
+
     @app.post("/v1/transcribe")
     async def transcribe(
         request: Request,
@@ -174,34 +207,46 @@ def create_app() -> FastAPI:
         hotwords: str | None = Form(default=None),
     ) -> dict[str, object]:
         _require_local_token(request)
-        if not file.filename:
-            raise HTTPException(status_code=400, detail="missing file name")
-        suffix = Path(file.filename).suffix
         tmp = await run_in_threadpool(lambda: tempfile.mkdtemp(prefix="rushi_asr_"))
         tmp_path = Path(tmp)
         try:
-            in_path = tmp_path / f"upload{suffix or '.bin'}"
-            chunks: list[bytes] = []
-            total = 0
-            while True:
-                chunk = await file.read(_READ_CHUNK)
-                if not chunk:
-                    break
-                total += len(chunk)
-                if total > _MAX_UPLOAD_BYTES:
-                    raise HTTPException(status_code=413, detail="upload_too_large")
-                chunks.append(chunk)
-
-            def _write_upload() -> None:
-                with in_path.open("wb") as out:
-                    for part in chunks:
-                        out.write(part)
-
-            await run_in_threadpool(_write_upload)
+            in_path = await _read_upload_to_temp(file, tmp_path)
             result = await run_in_threadpool(transcribe_upload, in_path, tmp_path, hotwords)
             return result.model_dump()
         finally:
             await run_in_threadpool(shutil.rmtree, str(tmp_path), True)
+
+    @app.post("/v1/transcribe/async")
+    async def transcribe_async(
+        request: Request,
+        file: UploadFile = File(...),
+        hotwords: str | None = Form(default=None),
+    ) -> dict[str, object]:
+        """Start background transcribe; poll ``GET /v1/transcribe/status`` (R3e-C)."""
+        _require_local_token(request)
+        from rushi_asr.transcribe_job import start_transcribe_async
+
+        tmp = await run_in_threadpool(lambda: tempfile.mkdtemp(prefix="rushi_asr_job_"))
+        tmp_path = Path(tmp)
+        in_path = await _read_upload_to_temp(file, tmp_path)
+        # Job thread owns tmp_path cleanup after completion.
+        return start_transcribe_async(in_path, tmp_path, hotwords)
+
+    @app.get("/v1/transcribe/status")
+    def transcribe_status_endpoint(job_id: str) -> dict[str, object]:
+        from rushi_asr.transcribe_job import transcribe_status
+
+        return transcribe_status(job_id)
+
+    @app.post("/v1/transcribe/cancel")
+    def transcribe_cancel_endpoint(
+        request: Request,
+        body: TranscribeCancelRequest = Body(...),
+    ) -> dict[str, object]:
+        _require_local_token(request)
+        from rushi_asr.transcribe_job import cancel_transcribe
+
+        return cancel_transcribe(body.job_id)
 
     return app
 
