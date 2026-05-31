@@ -1,7 +1,8 @@
-use crate::DbState;
 use crate::project::app_data_paths::{
-    huggingface_cache_for_models_root, modelscope_cache_for_models_root, models_root_for_app_data_root,
+    huggingface_cache_for_models_root, models_root_for_app_data_root,
+    modelscope_cache_for_models_root,
 };
+use crate::DbState;
 use serde::Serialize;
 use std::fs;
 use std::ops::Deref;

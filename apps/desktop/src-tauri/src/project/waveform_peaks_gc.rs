@@ -1,4 +1,6 @@
-use super::project_storage::{project_storage_dir, projects_storage_root, remove_project_storage_dir};
+use super::project_storage::{
+    project_storage_dir, projects_storage_root, remove_project_storage_dir,
+};
 use super::utils::open_db;
 use super::waveform_peaks::{peaks_dir, remove_peaks_for_file, PEAK_LEVELS};
 use crate::DbState;
@@ -301,13 +303,17 @@ mod tests {
 
         let peaks_root = peaks_dir(&projects_root(&st.root).join(&project_id));
         fs::create_dir_all(&peaks_root).unwrap();
-        fs::write(peaks_root.join(format!("{active_id}_L0.dat")), vec![0_u8; 10]).unwrap();
-        fs::write(peaks_root.join(format!("{orphan_id}_L0.dat")), vec![0_u8; 20]).unwrap();
         fs::write(
-            peaks_root.join(format!("{orphan_id}.meta.json")),
-            b"{}",
+            peaks_root.join(format!("{active_id}_L0.dat")),
+            vec![0_u8; 10],
         )
         .unwrap();
+        fs::write(
+            peaks_root.join(format!("{orphan_id}_L0.dat")),
+            vec![0_u8; 20],
+        )
+        .unwrap();
+        fs::write(peaks_root.join(format!("{orphan_id}.meta.json")), b"{}").unwrap();
 
         let info = inspect_waveform_peaks_cache(&st).unwrap();
         assert_eq!(info.orphan_file_sets, 1);

@@ -90,11 +90,11 @@ fn probe_llm_connection(
     deadline: Instant,
 ) -> LlmProbeConnectionResponse {
     if Instant::now() >= deadline {
-        return deadline_exceeded_response(&input.chat_endpoint.to_string());
+        return deadline_exceeded_response(input.chat_endpoint.as_str());
     }
     let attempt_timeout = remaining_timeout(deadline, per_attempt_timeout);
     if attempt_timeout.is_zero() {
-        return deadline_exceeded_response(&input.chat_endpoint.to_string());
+        return deadline_exceeded_response(input.chat_endpoint.as_str());
     }
 
     match send_chat_completion_ping(probe_blocking_client(true), input, attempt_timeout) {
@@ -107,12 +107,16 @@ fn probe_llm_connection(
             let attempt_timeout = remaining_timeout(deadline, per_attempt_timeout);
             if attempt_timeout.is_zero() {
                 return attach_method(
-                    deadline_exceeded_response(&models_url.to_string()),
+                    deadline_exceeded_response(models_url.as_str()),
                     LlmProbeMethod::ModelsList,
                 );
             }
-            match send_models_list(probe_blocking_client(true), input, &models_url, attempt_timeout)
-            {
+            match send_models_list(
+                probe_blocking_client(true),
+                input,
+                &models_url,
+                attempt_timeout,
+            ) {
                 fallback if fallback.ok || is_definitive_auth_failure(fallback.status) => {
                     attach_method(fallback, LlmProbeMethod::ModelsList)
                 }
@@ -151,7 +155,12 @@ fn retry_transport(
     if attempt_timeout.is_zero() {
         return None;
     }
-    let out = send_models_list(probe_blocking_client(false), input, &models_url, attempt_timeout);
+    let out = send_models_list(
+        probe_blocking_client(false),
+        input,
+        &models_url,
+        attempt_timeout,
+    );
     if out.ok || out.status.is_some() {
         return Some(attach_method(
             enrich_direct_retry_message(out),
@@ -262,7 +271,7 @@ fn map_http_result(
         Ok(resp) => {
             let status = resp.status().as_u16();
             let _ = resp.text();
-            if status >= 200 && status < 300 {
+            if (200..300).contains(&status) {
                 let detail = match kind {
                     ProbeKind::Chat => "模型与 API Key 可用（与自动标点相同路径验证）。",
                     ProbeKind::Models => "API Key 可用（models 列表探测）。",

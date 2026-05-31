@@ -49,7 +49,9 @@ pub fn write_language_pref(st: &DbState, language: &str) -> Result<(), String> {
 }
 
 #[tauri::command]
-pub fn get_local_asr_recognition_language_pref(state: State<'_, DbState>) -> Result<String, String> {
+pub fn get_local_asr_recognition_language_pref(
+    state: State<'_, DbState>,
+) -> Result<String, String> {
     Ok(read_language_pref(state.inner()))
 }
 
@@ -92,10 +94,7 @@ mod tests {
 
     #[test]
     fn read_write_language_pref_roundtrip() {
-        let tmp = std::env::temp_dir().join(format!(
-            "rushi-local-asr-lang-{}",
-            std::process::id()
-        ));
+        let tmp = std::env::temp_dir().join(format!("rushi-local-asr-lang-{}", std::process::id()));
         let _ = fs::remove_dir_all(&tmp);
         fs::create_dir_all(&tmp).unwrap();
         let st = DbState {

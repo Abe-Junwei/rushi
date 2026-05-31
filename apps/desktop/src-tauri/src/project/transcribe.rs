@@ -40,7 +40,10 @@ pub async fn post_transcribe_multipart(
     let resp = req.send().await.map_err(|e| {
         append_desktop_log_line(
             st,
-            &format!("ERROR transcribe connect {}", redact_secrets_for_log(&e.to_string())),
+            &format!(
+                "ERROR transcribe connect {}",
+                redact_secrets_for_log(&e.to_string())
+            ),
         );
         describe_transcribe_request_error(&e, timeout)
     })?;

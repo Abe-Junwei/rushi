@@ -1,8 +1,8 @@
+use super::bundled::BundledAsrLaunchReport;
 use super::candidates::{
     bundled_sidecar_candidates_from_roots, candidate_resource_roots_from_parts,
 };
 use super::probe::{is_rushi_asr_health_json, loopback_port_accepts_tcp};
-use super::bundled::BundledAsrLaunchReport;
 use serde_json::json;
 use std::fs;
 use std::net::TcpListener;
@@ -75,7 +75,9 @@ fn candidate_resource_roots_include_dev_and_manifest_paths() {
 
 #[test]
 fn candidate_resource_roots_deduplicate_existing_resources_dir() {
-    let resource_dir = Some(std::path::PathBuf::from("/repo/apps/desktop/src-tauri/resources"));
+    let resource_dir = Some(std::path::PathBuf::from(
+        "/repo/apps/desktop/src-tauri/resources",
+    ));
     let manifest_dir = std::path::PathBuf::from("/repo/apps/desktop/src-tauri");
     let roots = candidate_resource_roots_from_parts(resource_dir, &manifest_dir);
     let count = roots

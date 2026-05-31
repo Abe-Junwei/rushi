@@ -3,7 +3,10 @@ use serde::Serialize;
 use std::ops::Deref;
 use tauri::State;
 
-use super::app_data_paths::{huggingface_cache_for_models_root, modelscope_cache_for_models_root, models_root_for_app_data_root};
+use super::app_data_paths::{
+    huggingface_cache_for_models_root, models_root_for_app_data_root,
+    modelscope_cache_for_models_root,
+};
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -18,8 +21,8 @@ pub struct AsrRuntimePaths {
 mod tests {
     use super::*;
     use crate::project::app_data_paths::{
-        huggingface_cache_for_models_root, modelscope_cache_for_models_root,
-        models_root_for_app_data_root,
+        huggingface_cache_for_models_root, models_root_for_app_data_root,
+        modelscope_cache_for_models_root,
     };
     use crate::DbState;
     use std::fs;

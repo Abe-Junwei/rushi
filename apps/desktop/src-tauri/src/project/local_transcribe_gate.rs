@@ -17,7 +17,8 @@ pub fn local_transcribe_gate_from_health(
         .unwrap_or("stub");
     if mode != "funasr" {
         return Err(
-            "本机 ASR 仍为占位引擎（stub），无法正式转写。请在环境页完成模型准备后再试。".to_string(),
+            "本机 ASR 仍为占位引擎（stub），无法正式转写。请在环境页完成模型准备后再试。"
+                .to_string(),
         );
     }
     if health.get("ready_for_transcribe").and_then(|x| x.as_bool()) != Some(true) {
@@ -43,7 +44,8 @@ pub fn local_transcribe_gate_from_health(
     {
         if !sidecar_model.is_empty() && loaded != sidecar_model {
             return Err(
-                "侧车正在切换模型权重，请稍候或在环境页重新「应用并重启侧车」后再转写。".to_string(),
+                "侧车正在切换模型权重，请稍候或在环境页重新「应用并重启侧车」后再转写。"
+                    .to_string(),
             );
         }
     }
@@ -75,8 +77,8 @@ pub async fn assert_local_asr_ready_for_transcribe(
         .text()
         .await
         .map_err(|_| "读取本机 ASR /health 失败。".to_string())?;
-    let health: Value =
-        serde_json::from_str(&text).map_err(|_| "本机 ASR /health 响应不是有效 JSON。".to_string())?;
+    let health: Value = serde_json::from_str(&text)
+        .map_err(|_| "本机 ASR /health 响应不是有效 JSON。".to_string())?;
     let hub_pref = crate::local_asr_model::read_hub_model_pref(st);
     local_transcribe_gate_from_health(&health, hub_pref.as_deref())
 }
@@ -124,7 +126,9 @@ mod tests {
 
     #[test]
     fn gate_blocks_loaded_memory_mismatch() {
-        let mut health = ok_health("iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch");
+        let mut health = ok_health(
+            "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
+        );
         health["funasr_loaded_model_id"] = json!("iic/SenseVoiceSmall");
         assert!(local_transcribe_gate_from_health(
             &health,

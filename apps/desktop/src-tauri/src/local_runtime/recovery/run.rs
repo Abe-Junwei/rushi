@@ -24,7 +24,7 @@ pub(crate) fn run_revalidate(
     if !installed_exe.is_file() {
         return Err("local_runtime_executable_missing".into());
     }
-    let models_root = crate::project::models_root_for_app_data_root(&app_root);
+    let models_root = crate::project::models_root_for_app_data_root(app_root);
     let verify = |cancel: &Arc<AtomicBool>| {
         verify_installed_runtime(&installed_exe, Some(&models_root), Some(cancel))
     };
@@ -49,12 +49,9 @@ pub(crate) fn run_revalidate(
             Ok(RevalidateOutcome::Verified(marker.version))
         }
         Err(err) => {
-            if let Ok(restored) = run_auto_health_rollback(
-                app_root,
-                cancel,
-                &err,
-                Some(marker.version.as_str()),
-            ) {
+            if let Ok(restored) =
+                run_auto_health_rollback(app_root, cancel, &err, Some(marker.version.as_str()))
+            {
                 return Ok(RevalidateOutcome::AutoRolledBack(restored));
             }
             if should_persist_revalidate_corrupt(&err) {
@@ -81,7 +78,7 @@ pub(crate) fn run_restore_previous(
     if !previous_exe.is_file() {
         return Err("local_runtime_previous_missing".into());
     }
-    let models_root = crate::project::models_root_for_app_data_root(&app_root);
+    let models_root = crate::project::models_root_for_app_data_root(app_root);
     verify_installed_runtime(&previous_exe, Some(&models_root), Some(cancel))?;
     write_marker_with_previous(
         app_root,

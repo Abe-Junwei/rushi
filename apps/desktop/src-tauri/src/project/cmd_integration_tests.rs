@@ -1,7 +1,10 @@
 //! DB integration tests for split project command modules.
 
 use super::types::FileSummary;
-use super::utils::{canonicalize_audio_storage_path, file_detail_from_conn, now_ms, open_db, project_detail_from_conn};
+use super::utils::{
+    canonicalize_audio_storage_path, file_detail_from_conn, now_ms, open_db,
+    project_detail_from_conn,
+};
 use crate::db;
 use crate::DbState;
 use rusqlite::params;

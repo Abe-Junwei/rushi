@@ -50,8 +50,8 @@ pub fn parse_signed_manifest(body: &str) -> Result<ParsedSignedManifest, String>
     if let Some(obj) = unsigned.as_object_mut() {
         obj.remove("signature");
     }
-    let payload: RawRuntimeManifestPayload = serde_json::from_value(unsigned)
-        .map_err(|e| format!("manifest_parse_failed: {e}"))?;
+    let payload: RawRuntimeManifestPayload =
+        serde_json::from_value(unsigned).map_err(|e| format!("manifest_parse_failed: {e}"))?;
     let manifest = convert_payload(payload)?;
     Ok(ParsedSignedManifest {
         manifest,

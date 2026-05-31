@@ -3,9 +3,7 @@
 use super::types::SegmentDto;
 use serde_json::Value;
 
-pub fn parse_transcribe_segments_from_json(
-    arr: &[Value],
-) -> Result<Vec<SegmentDto>, String> {
+pub fn parse_transcribe_segments_from_json(arr: &[Value]) -> Result<Vec<SegmentDto>, String> {
     let mut segments: Vec<SegmentDto> = Vec::new();
     for (i, row) in arr.iter().enumerate() {
         let start = row
@@ -101,14 +99,12 @@ mod tests {
 
     #[test]
     fn parse_segment_row_and_placeholder_kind() {
-        let arr = vec![
-            json!({
-                "start_sec": 0.0,
-                "end_sec": 12.0,
-                "text": "短音频",
-                "detail": "funasr_whole_track_fallback",
-            }),
-        ];
+        let arr = vec![json!({
+            "start_sec": 0.0,
+            "end_sec": 12.0,
+            "text": "短音频",
+            "detail": "funasr_whole_track_fallback",
+        })];
         let segs = parse_transcribe_segments_from_json(&arr).unwrap();
         assert_eq!(segs.len(), 1);
         assert_eq!(segs[0].kind.as_deref(), Some("placeholder"));

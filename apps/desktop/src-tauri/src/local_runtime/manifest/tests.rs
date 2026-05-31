@@ -1,13 +1,14 @@
-    use super::parse::parse_manifest;
-    use crate::local_runtime::manifest::{
-        artifact_sources, current_platform_key, is_shell_version_compatible, parse_signed_manifest,
-        select_asr_sidecar_component,
-    };
 
-    #[test]
-    fn parse_manifest_and_select_component() {
-        let manifest = parse_manifest(
-            r#"{
+use super::parse::parse_manifest;
+use crate::local_runtime::manifest::{
+    artifact_sources, current_platform_key, is_shell_version_compatible, parse_signed_manifest,
+    select_asr_sidecar_component,
+};
+
+#[test]
+fn parse_manifest_and_select_component() {
+    let manifest = parse_manifest(
+        r#"{
               "manifest_version": 1,
               "components": [
                 {
@@ -24,16 +25,16 @@
                 }
               ]
             }"#,
-        )
-        .unwrap();
-        let component = select_asr_sidecar_component(&manifest, "darwin-arm64").unwrap();
-        assert_eq!(component.version, "0.1.0");
-    }
+    )
+    .unwrap();
+    let component = select_asr_sidecar_component(&manifest, "darwin-arm64").unwrap();
+    assert_eq!(component.version, "0.1.0");
+}
 
-    #[test]
-    fn parse_signed_manifest_extracts_signature_and_payload() {
-        let signed = parse_signed_manifest(
-            r#"{
+#[test]
+fn parse_signed_manifest_extracts_signature_and_payload() {
+    let signed = parse_signed_manifest(
+        r#"{
               "manifest_version": 1,
               "published_at": "2026-05-26T00:00:00Z",
               "components": [
@@ -56,20 +57,20 @@
                 "signature": "ZmFrZQ=="
               }
             }"#,
-        )
-        .unwrap();
-        assert_eq!(signed.signature.key_id, "fixture");
-        assert_eq!(
-            signed.manifest.published_at.as_deref(),
-            Some("2026-05-26T00:00:00Z")
-        );
-        assert!(!signed.canonical_payload.is_empty());
-    }
+    )
+    .unwrap();
+    assert_eq!(signed.signature.key_id, "fixture");
+    assert_eq!(
+        signed.manifest.published_at.as_deref(),
+        Some("2026-05-26T00:00:00Z")
+    );
+    assert!(!signed.canonical_payload.is_empty());
+}
 
-    #[test]
-    fn parse_signed_manifest_rejects_unknown_top_level_field() {
-        let err = parse_signed_manifest(
-            r#"{
+#[test]
+fn parse_signed_manifest_rejects_unknown_top_level_field() {
+    let err = parse_signed_manifest(
+        r#"{
               "manifest_version": 1,
               "components": [],
               "unexpected_field": true,
@@ -79,15 +80,15 @@
                 "signature": "ZmFrZQ=="
               }
             }"#,
-        )
-        .unwrap_err();
-        assert!(err.contains("manifest_parse_failed"));
-    }
+    )
+    .unwrap_err();
+    assert!(err.contains("manifest_parse_failed"));
+}
 
-    #[test]
-    fn parse_manifest_rejects_legacy_flat_artifact_fields() {
-        let err = parse_manifest(
-            r#"{
+#[test]
+fn parse_manifest_rejects_legacy_flat_artifact_fields() {
+    let err = parse_manifest(
+        r#"{
               "manifest_version": 1,
               "components": [
                 {
@@ -100,30 +101,30 @@
                 }
               ]
             }"#,
-        )
-        .unwrap_err();
-        assert!(err.contains("manifest_parse_failed"));
-    }
+    )
+    .unwrap_err();
+    assert!(err.contains("manifest_parse_failed"));
+}
 
-    #[test]
-    fn platform_key_uses_expected_aliases() {
-        let key = current_platform_key();
-        assert!(key.contains('-'));
-    }
+#[test]
+fn platform_key_uses_expected_aliases() {
+    let key = current_platform_key();
+    assert!(key.contains('-'));
+}
 
-    #[test]
-    fn shell_version_compatibility_uses_semver_order() {
-        assert!(is_shell_version_compatible("0.2.0", "0.2.0"));
-        assert!(is_shell_version_compatible("0.2.1", "0.2.0"));
-        assert!(is_shell_version_compatible("1.0.0", "0.9.9"));
-        assert!(!is_shell_version_compatible("0.1.9", "0.2.0"));
-        assert!(!is_shell_version_compatible("0.2.0-beta.1", "0.2.0"));
-    }
+#[test]
+fn shell_version_compatibility_uses_semver_order() {
+    assert!(is_shell_version_compatible("0.2.0", "0.2.0"));
+    assert!(is_shell_version_compatible("0.2.1", "0.2.0"));
+    assert!(is_shell_version_compatible("1.0.0", "0.9.9"));
+    assert!(!is_shell_version_compatible("0.1.9", "0.2.0"));
+    assert!(!is_shell_version_compatible("0.2.0-beta.1", "0.2.0"));
+}
 
-    #[test]
-    fn artifact_sources_preserves_primary_then_mirrors_without_duplicates() {
-        let manifest = parse_manifest(
-            r#"{
+#[test]
+fn artifact_sources_preserves_primary_then_mirrors_without_duplicates() {
+    let manifest = parse_manifest(
+        r#"{
               "manifest_version": 1,
               "components": [
                 {
@@ -144,15 +145,15 @@
                 }
               ]
             }"#,
-        )
-        .unwrap();
-        let component = select_asr_sidecar_component(&manifest, "darwin-arm64").unwrap();
-        assert_eq!(
-            artifact_sources(component),
-            vec![
-                "https://primary.invalid/asr.zip".to_string(),
-                "https://mirror-1.invalid/asr.zip".to_string(),
-                "https://mirror-2.invalid/asr.zip".to_string(),
-            ]
-        );
-    }
+    )
+    .unwrap();
+    let component = select_asr_sidecar_component(&manifest, "darwin-arm64").unwrap();
+    assert_eq!(
+        artifact_sources(component),
+        vec![
+            "https://primary.invalid/asr.zip".to_string(),
+            "https://mirror-1.invalid/asr.zip".to_string(),
+            "https://mirror-2.invalid/asr.zip".to_string(),
+        ]
+    );
+}

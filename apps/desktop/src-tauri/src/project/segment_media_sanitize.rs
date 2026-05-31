@@ -11,7 +11,7 @@ fn round_sec3(v: f64) -> f64 {
 }
 
 pub fn is_dominant_span_segment(start_sec: f64, end_sec: f64, duration_sec: f64) -> bool {
-    if !(duration_sec > 0.0) {
+    if duration_sec <= 0.0 || !duration_sec.is_finite() {
         return false;
     }
     let lo = start_sec.min(end_sec);

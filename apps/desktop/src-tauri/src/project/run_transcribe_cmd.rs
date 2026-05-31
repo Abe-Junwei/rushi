@@ -2,16 +2,16 @@ use super::correction::collect_correction_rule_hints;
 use super::local_transcribe_gate::assert_local_asr_ready_for_transcribe;
 use super::segment_cmd::file_save_segments_inner;
 use super::segment_media_sanitize::{sanitize_segments_for_media, trim_adjacent_segment_overlaps};
-use super::transcribe::{build_glossary_hotwords, post_transcribe_multipart};
 use super::stt_vocabulary::{
     channel_for_online, vocabulary_support_warnings, SttVocabularyChannel, SttVocabularyPlan,
 };
+use super::transcribe::{build_glossary_hotwords, post_transcribe_multipart};
 use super::transcribe_errors::describe_transcribe_payload_error;
+use super::transcribe_native_online::{transcribe_assemblyai_native, transcribe_openai_native};
+use super::transcribe_response::{merge_transcribe_warnings, parse_transcribe_segments_from_json};
 use super::transcribe_timeout::{
     local_transcribe_timeout_duration, long_audio_transcribe_hint, probe_audio_duration_sec,
 };
-use super::transcribe_native_online::{transcribe_assemblyai_native, transcribe_openai_native};
-use super::transcribe_response::{merge_transcribe_warnings, parse_transcribe_segments_from_json};
 use super::types::RunTranscribeOutcome;
 use super::utils::{append_desktop_log_line, file_detail_from_conn, now_ms, open_db};
 use crate::online_stt_bridge::{is_allowed_stt_transcribe_url, OnlineTranscribeBridge};
@@ -158,16 +158,8 @@ async fn project_run_transcribe_inner(
                 timeout.as_secs()
             ),
         );
-        let v = post_transcribe_multipart(
-            &st,
-            &url,
-            audio_path,
-            hotwords,
-            None,
-            None,
-            timeout,
-        )
-        .await?;
+        let v =
+            post_transcribe_multipart(&st, &url, audio_path, hotwords, None, None, timeout).await?;
         (v, vocabulary_pre_warnings)
     };
     append_desktop_log_line(&st, "INFO transcribe_stage=parse");
@@ -207,9 +199,7 @@ async fn project_run_transcribe_inner(
                 .collect()
         })
         .unwrap_or_default();
-    let segmentation_mode = v
-        .get("segmentation_mode")
-        .and_then(|x| x.as_str());
+    let segmentation_mode = v.get("segmentation_mode").and_then(|x| x.as_str());
     let mut warnings = merge_transcribe_warnings(
         base_warnings,
         vocabulary_pre_warnings,
@@ -242,7 +232,9 @@ async fn project_run_transcribe_inner(
     let (segments, removed_dominant) =
         sanitize_segments_for_media(segments, audio_duration_sec, true);
     if removed_dominant > 0 {
-        warnings.push(format!("segments_dominant_span_filtered:{removed_dominant}"));
+        warnings.push(format!(
+            "segments_dominant_span_filtered:{removed_dominant}"
+        ));
         append_desktop_log_line(
             &st,
             &format!("INFO transcribe filtered dominant spans removed={removed_dominant} file_id={file_id}"),

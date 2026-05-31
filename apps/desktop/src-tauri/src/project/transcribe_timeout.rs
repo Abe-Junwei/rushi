@@ -16,7 +16,10 @@ pub fn local_transcribe_timeout_secs(audio_duration_sec: Option<f64>) -> u64 {
         return LOCAL_TRANSCRIBE_TIMEOUT_MIN_SEC;
     };
     let estimate = (duration * PER_DURATION_FACTOR).ceil() as u64 + FIXED_PADDING_SEC;
-    estimate.clamp(LOCAL_TRANSCRIBE_TIMEOUT_MIN_SEC, LOCAL_TRANSCRIBE_TIMEOUT_MAX_SEC)
+    estimate.clamp(
+        LOCAL_TRANSCRIBE_TIMEOUT_MIN_SEC,
+        LOCAL_TRANSCRIBE_TIMEOUT_MAX_SEC,
+    )
 }
 
 pub fn local_transcribe_timeout_duration(audio_duration_sec: Option<f64>) -> Duration {
@@ -52,10 +55,10 @@ fn bundled_ffprobe_candidates() -> Vec<PathBuf> {
 }
 
 fn resolve_ffprobe_command() -> PathBuf {
-    for candidate in bundled_ffprobe_candidates() {
-        return candidate;
-    }
-    PathBuf::from("ffprobe")
+    bundled_ffprobe_candidates()
+        .into_iter()
+        .next()
+        .unwrap_or_else(|| PathBuf::from("ffprobe"))
 }
 
 pub fn probe_audio_duration_sec(path: &Path) -> Option<f64> {

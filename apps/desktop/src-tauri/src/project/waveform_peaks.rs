@@ -9,7 +9,6 @@ use serde::{Deserialize, Serialize};
 /// LOD levels aligned with BBC audiowaveform `--pixels-per-second`.
 pub const PEAK_LEVELS: [(u8, u32); 4] = [(0, 2), (1, 20), (2, 200), (3, 800)];
 
-
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct PeaksAudioFingerprint {
     pub size_bytes: u64,
@@ -67,7 +66,10 @@ impl Drop for PeaksGenerationLock {
     }
 }
 
-pub fn try_acquire_peaks_lock(peaks_root: &Path, file_id: &str) -> Result<Option<PeaksGenerationLock>, String> {
+pub fn try_acquire_peaks_lock(
+    peaks_root: &Path,
+    file_id: &str,
+) -> Result<Option<PeaksGenerationLock>, String> {
     fs::create_dir_all(peaks_root).map_err(|e| e.to_string())?;
     let path = peak_lock_path(peaks_root, file_id);
     match fs::OpenOptions::new()
@@ -220,7 +222,9 @@ pub fn peaks_cache_is_stale(
     };
 
     if let Some(stored_fp) = report.audio_fingerprint {
-        if stored_fp.size_bytes != current_fp.size_bytes || stored_fp.mtime_ms != current_fp.mtime_ms {
+        if stored_fp.size_bytes != current_fp.size_bytes
+            || stored_fp.mtime_ms != current_fp.mtime_ms
+        {
             return Ok(true);
         }
     } else {
@@ -248,7 +252,6 @@ pub fn peaks_cache_is_stale(
 
     Ok(false)
 }
-
 
 pub fn remove_peaks_for_file(peaks_root: &Path, file_id: &str) {
     for (level, _) in PEAK_LEVELS {
@@ -410,7 +413,8 @@ mod tests {
 
     #[test]
     fn peaks_cache_is_stale_when_meta_has_no_fingerprint() {
-        let temp = std::env::temp_dir().join(format!("rushi-peaks-legacy-{}", uuid::Uuid::new_v4()));
+        let temp =
+            std::env::temp_dir().join(format!("rushi-peaks-legacy-{}", uuid::Uuid::new_v4()));
         fs::create_dir_all(&temp).unwrap();
         let fixture = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
             .join("../../../fixtures/eval/samples/clear.wav");

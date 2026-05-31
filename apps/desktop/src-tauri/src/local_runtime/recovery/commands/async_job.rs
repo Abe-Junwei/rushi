@@ -6,6 +6,7 @@ use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 use tauri::AppHandle;
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn spawn_blocking_runtime_job(
     app: AppHandle,
     progress_message: impl Into<String>,
@@ -47,10 +48,7 @@ pub(crate) fn spawn_blocking_runtime_job(
                     None,
                     None,
                 );
-                append_runtime_log_line(
-                    &app,
-                    &format!("{success_log_prefix} version={version}"),
-                );
+                append_runtime_log_line(&app, &format!("{success_log_prefix} version={version}"));
             }
             Err(err) => {
                 update_progress(

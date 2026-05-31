@@ -59,7 +59,11 @@ pub(super) fn previous_marker_for_install<'a>(
     })
 }
 
-pub(super) fn run_install(handle: &AppHandle, app_root: &Path, cancel: Arc<AtomicBool>) -> Result<(), String> {
+pub(super) fn run_install(
+    handle: &AppHandle,
+    app_root: &Path,
+    cancel: Arc<AtomicBool>,
+) -> Result<(), String> {
     update_progress(
         handle,
         "downloading",
@@ -127,7 +131,7 @@ pub(super) fn run_install(handle: &AppHandle, app_root: &Path, cancel: Arc<Atomi
         None,
         None,
     );
-    let models_root = crate::project::models_root_for_app_data_root(&app_root);
+    let models_root = crate::project::models_root_for_app_data_root(app_root);
     if let Err(err) = verify_installed_runtime(&staged_exe, Some(&models_root), Some(&cancel)) {
         let _ = fs::remove_dir_all(&staging);
         return Err(err);

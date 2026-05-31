@@ -2,15 +2,16 @@ use super::transcribe_timeout::probe_audio_duration_sec;
 use super::types::{WaveformPeakLevelStatus, WaveformPeaksStatus};
 use super::utils::open_db;
 use super::waveform_peaks::{
-    all_peak_levels_exist, load_peaks_meta, peak_file_path, peaks_cache_is_stale,
-    peaks_dir, peaks_generation_in_progress, remove_peaks_for_file, try_acquire_peaks_lock,
+    all_peak_levels_exist, load_peaks_meta, peak_file_path, peaks_cache_is_stale, peaks_dir,
+    peaks_generation_in_progress, remove_peaks_for_file, try_acquire_peaks_lock,
     wait_for_peaks_ready, PeaksGenerationReport, PeaksStaleCheckOptions, PEAK_LEVELS,
 };
 use super::waveform_peaks_ffmpeg::{
     remux_audio_to_pcm_wav, symphonia_error_eligible_for_ffmpeg_remux,
 };
 use super::waveform_peaks_generate::{
-    generate_all_levels, generate_all_levels_trust_decoded_length, probe_symphonia_track_duration_sec,
+    generate_all_levels, generate_all_levels_trust_decoded_length,
+    probe_symphonia_track_duration_sec,
 };
 use crate::DbState;
 use rusqlite::params;
@@ -128,7 +129,10 @@ fn stale_check_options(
     media_duration_sec: Option<f64>,
 ) -> PeaksStaleCheckOptions {
     PeaksStaleCheckOptions {
-        reference_media_duration_sec: resolve_reference_duration_sec(audio_path, media_duration_sec),
+        reference_media_duration_sec: resolve_reference_duration_sec(
+            audio_path,
+            media_duration_sec,
+        ),
         probed_audio_duration_sec: None,
     }
 }
@@ -189,9 +193,7 @@ fn generate_peaks_with_optional_ffmpeg_remux(
                 generate_all_levels_trust_decoded_length(&remux_path, peaks_root, file_id)
             });
             let _ = std::fs::remove_file(&remux_path);
-            remux_result.map_err(|remux_err| {
-                format!("{err}；ffmpeg remux 回退失败: {remux_err}")
-            })
+            remux_result.map_err(|remux_err| format!("{err}；ffmpeg remux 回退失败: {remux_err}"))
         }
         Err(err) => Err(err),
     }
@@ -214,7 +216,13 @@ fn ensure_waveform_peaks_sync(
         .map_err(|e| e.to_string())?;
     let audio_path = match audio_path {
         Some(p) if !p.is_empty() => p,
-        _ => return Ok(status_from_disk(&peaks_dir(&project_dir(st, project_id)), file_id, None)),
+        _ => {
+            return Ok(status_from_disk(
+                &peaks_dir(&project_dir(st, project_id)),
+                file_id,
+                None,
+            ))
+        }
     };
 
     let peaks_root = peaks_dir(&project_dir(st, project_id));

@@ -58,7 +58,12 @@ pub async fn loopback_request_json(
     timeout_ms: Option<u64>,
 ) -> Result<LoopbackResponse, String> {
     let path = normalize_path(&args.path)?;
-    let method_s = args.method.as_deref().unwrap_or("GET").trim().to_uppercase();
+    let method_s = args
+        .method
+        .as_deref()
+        .unwrap_or("GET")
+        .trim()
+        .to_uppercase();
     let method = Method::from_bytes(method_s.as_bytes())
         .map_err(|_| format!("invalid_http_method:{method_s}"))?;
     if method != Method::GET && method != Method::POST {
@@ -97,16 +102,7 @@ pub async fn asr_loopback_request(
     port: Option<u16>,
     timeout_ms: Option<u64>,
 ) -> Result<LoopbackResponse, String> {
-    loopback_request_json(
-        LoopbackRequestArgs {
-            path,
-            method,
-            body,
-        },
-        port,
-        timeout_ms,
-    )
-    .await
+    loopback_request_json(LoopbackRequestArgs { path, method, body }, port, timeout_ms).await
 }
 
 #[cfg(test)]

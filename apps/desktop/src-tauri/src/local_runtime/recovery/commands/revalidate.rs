@@ -26,13 +26,11 @@ pub fn local_runtime_revalidate_install(
     if info.executable_path.is_none() {
         return Ok(LocalRuntimeActionResult {
             ok: false,
-            reason: Some(
-                if info.status == InstalledRuntimeStatus::Corrupt {
-                    "not_revalidatable".into()
-                } else {
-                    "not_installed".into()
-                },
-            ),
+            reason: Some(if info.status == InstalledRuntimeStatus::Corrupt {
+                "not_revalidatable".into()
+            } else {
+                "not_installed".into()
+            }),
         });
     }
     let app_root = state.inner().root.clone();
@@ -49,12 +47,11 @@ pub fn local_runtime_revalidate_install(
     set_cancel_handle(&app, cancel_flag.clone())?;
     let handle = app.clone();
     tauri::async_runtime::spawn(async move {
-        let result = tauri::async_runtime::spawn_blocking(move || {
-            run_revalidate(&app_root, &cancel_flag)
-        })
-        .await
-        .map_err(|e| e.to_string())
-        .and_then(|r| r);
+        let result =
+            tauri::async_runtime::spawn_blocking(move || run_revalidate(&app_root, &cancel_flag))
+                .await
+                .map_err(|e| e.to_string())
+                .and_then(|r| r);
         match result {
             Ok(RevalidateOutcome::Verified(version)) => {
                 update_progress(
@@ -96,7 +93,10 @@ pub fn local_runtime_revalidate_install(
                     None,
                     Some(err.clone()),
                 );
-                append_runtime_log_line(&app, &format!("ERROR local_runtime_revalidate_failed {err}"));
+                append_runtime_log_line(
+                    &app,
+                    &format!("ERROR local_runtime_revalidate_failed {err}"),
+                );
             }
         }
         reset_cancel_handle(&handle);

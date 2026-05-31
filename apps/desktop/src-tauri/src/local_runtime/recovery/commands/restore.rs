@@ -1,6 +1,6 @@
-use super::async_job::spawn_blocking_runtime_job;
 use super::super::helpers::installer_busy;
 use super::super::run::run_restore_previous;
+use super::async_job::spawn_blocking_runtime_job;
 use crate::local_runtime::installer::LocalRuntimeActionResult;
 use crate::local_runtime::integrity::inspect_installed_runtime;
 use crate::DbState;

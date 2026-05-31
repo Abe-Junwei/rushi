@@ -87,7 +87,10 @@ pub fn rows_from_structured_text(content: &str) -> Option<Vec<GlossaryInsertRow>
     }
     let delimiter_is_tab = header_line.contains('\t') && !header_line.contains(',');
     let headers: Vec<String> = if delimiter_is_tab {
-        header_line.split('\t').map(|s| s.trim().to_string()).collect()
+        header_line
+            .split('\t')
+            .map(|s| s.trim().to_string())
+            .collect()
     } else {
         split_csv_line(header_line)
     };

@@ -94,7 +94,10 @@ pub fn local_runtime_download_sidecar(
                         None,
                         Some(err.clone()),
                     );
-                    append_runtime_log_line(&app, &format!("ERROR local_runtime_install_failed {err}"));
+                    append_runtime_log_line(
+                        &app,
+                        &format!("ERROR local_runtime_install_failed {err}"),
+                    );
                 }
             } else {
                 let failed_version = install_progress(&app).version;

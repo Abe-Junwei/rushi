@@ -1,6 +1,6 @@
 use super::glossary_hotwords::build_glossary_hotwords;
-use super::glossary_import::rows_from_glossary_file;
 use super::glossary_hotwords::GlossaryHotwordsPreview;
+use super::glossary_import::rows_from_glossary_file;
 use super::glossary_insert::GlossaryInsertRow;
 use super::types::GlossaryTermDto;
 use super::utils::{is_sqlite_unique_violation, now_ms, open_db};
@@ -102,7 +102,8 @@ fn execute_ids_in_chunks(
             .map(|(_, v)| rusqlite::types::Value::Integer(*v))
             .collect();
         values.extend(chunk.iter().map(|id| rusqlite::types::Value::Integer(*id)));
-        let param_refs: Vec<&dyn rusqlite::ToSql> = values.iter().map(|v| v as &dyn rusqlite::ToSql).collect();
+        let param_refs: Vec<&dyn rusqlite::ToSql> =
+            values.iter().map(|v| v as &dyn rusqlite::ToSql).collect();
         affected += conn
             .execute(&sql, param_refs.as_slice())
             .map_err(|e| e.to_string())?;
@@ -114,7 +115,9 @@ fn execute_ids_in_chunks(
 pub fn glossary_list(state: State<DbState>) -> Result<Vec<GlossaryTermDto>, String> {
     let conn = open_db(state.deref())?;
     let mut stmt = conn
-        .prepare(&format!("{GLOSSARY_SELECT} ORDER BY term COLLATE NOCASE ASC"))
+        .prepare(&format!(
+            "{GLOSSARY_SELECT} ORDER BY term COLLATE NOCASE ASC"
+        ))
         .map_err(|e| e.to_string())?;
     let rows = stmt
         .query_map([], row_to_glossary_term)
@@ -251,7 +254,10 @@ pub fn glossary_update(
 }
 
 #[tauri::command]
-pub fn glossary_delete_batch(state: State<DbState>, ids: Vec<i64>) -> Result<GlossaryBatchResult, String> {
+pub fn glossary_delete_batch(
+    state: State<DbState>,
+    ids: Vec<i64>,
+) -> Result<GlossaryBatchResult, String> {
     let requested = ids.len();
     if requested == 0 {
         return Ok(GlossaryBatchResult {
@@ -260,8 +266,17 @@ pub fn glossary_delete_batch(state: State<DbState>, ids: Vec<i64>) -> Result<Glo
         });
     }
     let conn = open_db(state.deref())?;
-    let affected = execute_ids_in_chunks(&conn, "DELETE FROM glossary_terms WHERE id IN", "", &[], &ids)?;
-    Ok(GlossaryBatchResult { requested, affected })
+    let affected = execute_ids_in_chunks(
+        &conn,
+        "DELETE FROM glossary_terms WHERE id IN",
+        "",
+        &[],
+        &ids,
+    )?;
+    Ok(GlossaryBatchResult {
+        requested,
+        affected,
+    })
 }
 
 #[tauri::command]
@@ -287,7 +302,10 @@ pub fn glossary_set_hotword_batch(
         &[("", flag), ("", now)],
         &ids,
     )?;
-    Ok(GlossaryBatchResult { requested, affected })
+    Ok(GlossaryBatchResult {
+        requested,
+        affected,
+    })
 }
 
 #[tauri::command]
@@ -297,12 +315,11 @@ pub fn glossary_hotwords_preview(state: State<DbState>) -> Result<GlossaryHotwor
 }
 
 #[tauri::command]
-pub fn glossary_import_from_file(state: State<DbState>) -> Result<Option<GlossaryImportResult>, String> {
+pub fn glossary_import_from_file(
+    state: State<DbState>,
+) -> Result<Option<GlossaryImportResult>, String> {
     let path = rfd::FileDialog::new()
-        .add_filter(
-            "表格",
-            &["xlsx", "xls", "xlsm", "csv", "tsv", "txt", "ods"],
-        )
+        .add_filter("表格", &["xlsx", "xls", "xlsm", "csv", "tsv", "txt", "ods"])
         .pick_file();
     let Some(path) = path else {
         return Ok(None);
@@ -348,12 +365,14 @@ mod tests {
         )
         .unwrap();
         let id = conn.last_insert_rowid();
-        let dto = glossary_update_inner(&conn, id, "Foo", "baz", "domain2", "note2", false, 200).unwrap();
+        let dto =
+            glossary_update_inner(&conn, id, "Foo", "baz", "domain2", "note2", false, 200).unwrap();
         assert_eq!(dto.term, "Foo");
         assert!(!dto.hotword_enabled);
         assert_eq!(dto.created_at_ms, 100);
     }
 
+    #[allow(clippy::too_many_arguments)]
     fn glossary_update_inner(
         conn: &Connection,
         id: i64,
@@ -406,7 +425,14 @@ mod tests {
         )
         .unwrap();
         let id2 = conn.last_insert_rowid();
-        let affected = execute_ids_in_chunks(&conn, "DELETE FROM glossary_terms WHERE id IN", "", &[], &[id1, id2]).unwrap();
+        let affected = execute_ids_in_chunks(
+            &conn,
+            "DELETE FROM glossary_terms WHERE id IN",
+            "",
+            &[],
+            &[id1, id2],
+        )
+        .unwrap();
         assert_eq!(affected, 2);
     }
 }

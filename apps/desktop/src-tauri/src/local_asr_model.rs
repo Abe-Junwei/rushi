@@ -80,10 +80,8 @@ mod tests {
 
     #[test]
     fn read_write_hub_model_pref_roundtrip() {
-        let tmp = std::env::temp_dir().join(format!(
-            "rushi-local-asr-model-{}",
-            std::process::id()
-        ));
+        let tmp =
+            std::env::temp_dir().join(format!("rushi-local-asr-model-{}", std::process::id()));
         let _ = fs::remove_dir_all(&tmp);
         fs::create_dir_all(&tmp).unwrap();
         let st = DbState {

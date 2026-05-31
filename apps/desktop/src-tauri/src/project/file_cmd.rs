@@ -1,5 +1,5 @@
-use super::types::{FileDetail, FileSummary};
 use super::project_storage::cleanup_deleted_file_storage;
+use super::types::{FileDetail, FileSummary};
 use super::utils::{file_detail_from_conn, now_ms, open_db};
 use crate::DbState;
 use rusqlite::params;

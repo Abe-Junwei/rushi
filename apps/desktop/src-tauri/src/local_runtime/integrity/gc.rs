@@ -34,7 +34,8 @@ pub fn gc_stale_version_dirs(app_root: &Path) -> Result<(), String> {
         let Some(name) = path.file_name().and_then(|value| value.to_str()) else {
             continue;
         };
-        if reserved.contains(name) || name.starts_with("staging-") || name.starts_with("rollback-") {
+        if reserved.contains(name) || name.starts_with("staging-") || name.starts_with("rollback-")
+        {
             continue;
         }
         if keep.contains(name) {

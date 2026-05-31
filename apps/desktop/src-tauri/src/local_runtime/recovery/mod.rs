@@ -1,5 +1,5 @@
-pub mod commands;
 pub(crate) mod auto_rollback;
+pub mod commands;
 mod helpers;
 mod run;
 

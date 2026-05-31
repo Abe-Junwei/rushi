@@ -40,12 +40,13 @@ pub fn remove_project_storage_dir(app_root: &Path, project_id: &str) -> Result<(
     if !project_dir.exists() {
         return Ok(());
     }
-    let sm = fs::symlink_metadata(&project_dir)
-        .map_err(|e| format!("无法读取项目目录元数据: {e}"))?;
+    let sm =
+        fs::symlink_metadata(&project_dir).map_err(|e| format!("无法读取项目目录元数据: {e}"))?;
     if sm.file_type().is_symlink() {
         return Err("拒绝删除：项目目录为符号链接，请先移除链接。".into());
     }
-    let root_can = fs::canonicalize(app_root).map_err(|e| format!("无法解析应用数据根目录: {e}"))?;
+    let root_can =
+        fs::canonicalize(app_root).map_err(|e| format!("无法解析应用数据根目录: {e}"))?;
     let project_can =
         fs::canonicalize(&project_dir).map_err(|e| format!("无法解析项目目录: {e}"))?;
     let projects_root = root_can.join("projects");
@@ -91,17 +92,19 @@ mod tests {
         fs::create_dir_all(project_dir.join("peaks")).unwrap();
         let audio = project_dir.join(format!("{file_id}.wav"));
         fs::write(&audio, b"audio").unwrap();
-        fs::write(project_dir.join("peaks").join(format!("{file_id}_L0.dat")), b"peaks").unwrap();
+        fs::write(
+            project_dir.join("peaks").join(format!("{file_id}_L0.dat")),
+            b"peaks",
+        )
+        .unwrap();
 
-        cleanup_deleted_file_storage(
-            &st,
-            &project_id,
-            &file_id,
-            Some(&audio.to_string_lossy()),
-        );
+        cleanup_deleted_file_storage(&st, &project_id, &file_id, Some(&audio.to_string_lossy()));
 
         assert!(!audio.is_file());
-        assert!(!project_dir.join("peaks").join(format!("{file_id}_L0.dat")).is_file());
+        assert!(!project_dir
+            .join("peaks")
+            .join(format!("{file_id}_L0.dat"))
+            .is_file());
         let _ = fs::remove_dir_all(&st.root);
     }
 

@@ -145,7 +145,12 @@ pub fn probe_symphonia_track_duration_sec(audio_path: &Path) -> Option<f64> {
         hint.with_extension(ext);
     }
     let probed = symphonia::default::get_probe()
-        .format(&hint, mss, &FormatOptions::default(), &MetadataOptions::default())
+        .format(
+            &hint,
+            mss,
+            &FormatOptions::default(),
+            &MetadataOptions::default(),
+        )
         .ok()?;
     let track = probed.format.default_track()?;
     let params = track.codec_params.clone();
@@ -205,8 +210,7 @@ fn generate_all_levels_inner(
         .sample_rate
         .ok_or_else(|| "无法读取采样率".to_string())?;
     let expected_frame_count = codec_params.n_frames;
-    let expected_codec_duration_sec =
-        codec_duration_sec(sample_rate, expected_frame_count);
+    let expected_codec_duration_sec = codec_duration_sec(sample_rate, expected_frame_count);
 
     let mut dec = symphonia::default::get_codecs()
         .make(&codec_params, &DecoderOptions::default())

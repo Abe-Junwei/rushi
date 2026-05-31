@@ -57,9 +57,10 @@ fn replace_json_secret_fields(input: &str) -> String {
                 let value_start = start + colon + 1;
                 if let Some(rest) = out.get(value_start..) {
                     let trimmed = rest.trim_start();
-                    if trimmed.starts_with('"') {
-                        if let Some(end_quote) = trimmed[1..].find('"') {
-                            let replace_end = value_start + (rest.len() - trimmed.len()) + 1 + end_quote + 1;
+                    if let Some(stripped) = trimmed.strip_prefix('"') {
+                        if let Some(end_quote) = stripped.find('"') {
+                            let replace_end =
+                                value_start + (rest.len() - trimmed.len()) + 1 + end_quote + 1;
                             out.replace_range(value_start..replace_end, " \"[REDACTED]\"");
                         }
                     }

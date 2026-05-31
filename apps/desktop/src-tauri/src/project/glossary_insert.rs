@@ -26,10 +26,16 @@ pub fn parse_hotword_enabled_cell(raw: &str) -> bool {
     if t.is_empty() {
         return true;
     }
-    if matches!(t.as_str(), "0" | "false" | "no" | "n" | "off" | "否" | "移出") {
+    if matches!(
+        t.as_str(),
+        "0" | "false" | "no" | "n" | "off" | "否" | "移出"
+    ) {
         return false;
     }
-    if matches!(t.as_str(), "1" | "true" | "yes" | "y" | "on" | "是" | "纳入") {
+    if matches!(
+        t.as_str(),
+        "1" | "true" | "yes" | "y" | "on" | "是" | "纳入"
+    ) {
         return true;
     }
     true

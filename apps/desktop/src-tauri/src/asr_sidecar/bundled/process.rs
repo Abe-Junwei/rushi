@@ -9,7 +9,9 @@ use crate::asr_sidecar::probe::{
     bundled_health_looks_like_rushi_asr, bundled_sidecar_supports_model_catalog,
     bundled_sidecar_supports_punc_prepare,
 };
-use crate::asr_sidecar::{AsrSidecarState, ASR_HEALTH_URL, BUNDLED_HEALTH_POLL_MS, BUNDLED_HEALTH_WAIT_MS};
+use crate::asr_sidecar::{
+    AsrSidecarState, ASR_HEALTH_URL, BUNDLED_HEALTH_POLL_MS, BUNDLED_HEALTH_WAIT_MS,
+};
 use crate::DbState;
 
 pub(crate) fn reap_bundled_sidecar_if_exited(handle: &AppHandle) {
@@ -85,7 +87,10 @@ pub(crate) fn spawn_sidecar(exe: &Path, handle: &AppHandle) -> std::io::Result<C
     let mut cmd = Command::new(exe);
     cmd.current_dir(&workdir)
         .env("ASR_HOST", "127.0.0.1")
-        .env("ASR_PORT", crate::asr_sidecar::ASR_LOOPBACK_PORT.to_string())
+        .env(
+            "ASR_PORT",
+            crate::asr_sidecar::ASR_LOOPBACK_PORT.to_string(),
+        )
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null());
@@ -134,10 +139,7 @@ pub(crate) fn wait_health_store_child(handle: &AppHandle, child: Child) -> bool 
             return false;
         }
         if bundled_child_exited(handle) {
-            append_sidecar_log_line(
-                handle,
-                "ERROR bundled_sidecar_exited_after_health",
-            );
+            append_sidecar_log_line(handle, "ERROR bundled_sidecar_exited_after_health");
             return false;
         }
         eprintln!(

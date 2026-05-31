@@ -17,7 +17,10 @@ pub fn downloads_dir(app_root: &Path) -> PathBuf {
     local_runtime_root(app_root).join("downloads")
 }
 
-pub fn artifact_download_paths(app_root: &Path, component: &RuntimeComponent) -> (PathBuf, PathBuf) {
+pub fn artifact_download_paths(
+    app_root: &Path,
+    component: &RuntimeComponent,
+) -> (PathBuf, PathBuf) {
     let sha_tag = component
         .sha256
         .trim()
@@ -28,7 +31,13 @@ pub fn artifact_download_paths(app_root: &Path, component: &RuntimeComponent) ->
     let safe_version = component
         .version
         .chars()
-        .map(|c| if c.is_ascii_alphanumeric() || c == '.' || c == '-' { c } else { '_' })
+        .map(|c| {
+            if c.is_ascii_alphanumeric() || c == '.' || c == '-' {
+                c
+            } else {
+                '_'
+            }
+        })
         .collect::<String>();
     let part = downloads_dir(app_root).join(format!("{safe_version}-{sha_tag}.zip.part"));
     let meta = PathBuf::from(format!("{}.meta.json", part.display()));
@@ -55,8 +64,7 @@ pub fn clear_resume_artifacts(part_path: &Path, meta_path: &Path) {
 }
 
 pub fn resume_matches_component(meta: &DownloadResumeMeta, component: &RuntimeComponent) -> bool {
-    meta.version == component.version
-        && meta.sha256.eq_ignore_ascii_case(component.sha256.trim())
+    meta.version == component.version && meta.sha256.eq_ignore_ascii_case(component.sha256.trim())
 }
 
 pub fn existing_part_offset(part_path: &Path) -> u64 {

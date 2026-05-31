@@ -159,7 +159,8 @@ pub async fn dispatch_native(
             aliyun::transcribe_aliyun_nls(client, audio_path, bridge, timeout, log).await
         }
         "deepgramListen" => {
-            deepgram::transcribe_deepgram(client, audio_path, bridge, vocabulary, timeout, log).await
+            deepgram::transcribe_deepgram(client, audio_path, bridge, vocabulary, timeout, log)
+                .await
         }
         "tencentAsr" => tencent::transcribe_tencent(client, audio_path, bridge, timeout, log).await,
         "azureConversationV1" => {

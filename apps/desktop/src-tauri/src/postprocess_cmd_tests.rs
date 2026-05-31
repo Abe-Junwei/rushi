@@ -1,10 +1,9 @@
 use super::postprocess_probe::probe_llm_connection_blocking;
 use super::{
-    build_auto_punctuate_prompt, build_postprocess_models_endpoint, delete_llm_api_key_from_keychain,
-    extract_chat_completion_text, keychain_account_for_delete, keychain_has_api_key,
-    normalize_api_key_id, parse_postprocess_endpoint, read_llm_api_key_from_keychain,
-    resolve_postprocess_config, write_llm_api_key_to_keychain, LlmProbeConnectionResponse,
-    PostprocessAutoPunctuateRequest, PostprocessConfig, PostprocessRuntimeBridge,
+    build_auto_punctuate_prompt, build_postprocess_models_endpoint, extract_chat_completion_text,
+    keychain_account_for_delete, normalize_api_key_id, parse_postprocess_endpoint,
+    resolve_postprocess_config, LlmProbeConnectionResponse, PostprocessAutoPunctuateRequest,
+    PostprocessConfig, PostprocessRuntimeBridge,
 };
 use serde_json::json;
 use std::io::{Read, Write};
@@ -115,11 +114,7 @@ fn prompt_includes_labeled_neighbor_context() {
 
 #[test]
 fn prompt_falls_back_to_legacy_snippets() {
-    let prompt = build_auto_punctuate_prompt(
-        "今天天气不错我们出发吧",
-        &[],
-        &["上一句".into()],
-    );
+    let prompt = build_auto_punctuate_prompt("今天天气不错我们出发吧", &[], &["上一句".into()]);
     assert!(prompt.contains("片段1：上一句"));
 }
 

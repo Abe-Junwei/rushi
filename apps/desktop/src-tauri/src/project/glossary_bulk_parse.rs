@@ -28,12 +28,7 @@ fn contains_list_delimiter(s: &str) -> bool {
 }
 
 fn split_list_delimiters(s: &str) -> impl Iterator<Item = &str> {
-    s.split(|c: char| {
-        matches!(
-            c,
-            ',' | '，' | ';' | '；' | '、' | '\t' | '\n'
-        )
-    })
+    s.split([',', '，', ';', '；', '、', '\t', '\n'])
 }
 
 fn push_unique(out: &mut Vec<String>, seen: &mut HashSet<String>, term: Option<String>) {

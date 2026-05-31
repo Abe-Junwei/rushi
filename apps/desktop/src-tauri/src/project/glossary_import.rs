@@ -27,16 +27,18 @@ fn cell_to_term(cell: &Data) -> Option<String> {
                 Some(t.to_string())
             }
         }
-        Data::Int(_) | Data::Float(_) | Data::Bool(_) | Data::DateTime(_) | Data::Empty | Data::Error(_) => {
-            None
-        }
+        Data::Int(_)
+        | Data::Float(_)
+        | Data::Bool(_)
+        | Data::DateTime(_)
+        | Data::Empty
+        | Data::Error(_) => None,
         _ => None,
     }
 }
 
 fn rows_from_excel_workbook(path: &Path) -> Result<Vec<GlossaryInsertRow>, String> {
-    let mut workbook =
-        open_workbook_auto(path).map_err(|e| format!("无法打开表格文件：{e}"))?;
+    let mut workbook = open_workbook_auto(path).map_err(|e| format!("无法打开表格文件：{e}"))?;
     let sheet_name = workbook
         .sheet_names()
         .first()
@@ -56,8 +58,12 @@ fn rows_from_excel_workbook(path: &Path) -> Result<Vec<GlossaryInsertRow>, Strin
             .iter()
             .position(|h| h.eq_ignore_ascii_case("term"))
             .ok_or_else(|| "表头缺少 term 列".to_string())?;
-        let aliases_idx = headers.iter().position(|h| h.eq_ignore_ascii_case("aliases"));
-        let domain_idx = headers.iter().position(|h| h.eq_ignore_ascii_case("domain"));
+        let aliases_idx = headers
+            .iter()
+            .position(|h| h.eq_ignore_ascii_case("aliases"));
+        let domain_idx = headers
+            .iter()
+            .position(|h| h.eq_ignore_ascii_case("domain"));
         let note_idx = headers.iter().position(|h| h.eq_ignore_ascii_case("note"));
         let hotword_idx = headers
             .iter()
@@ -116,7 +122,8 @@ pub fn rows_from_glossary_file(path: &Path) -> Result<Vec<GlossaryInsertRow>, St
     match ext.as_str() {
         "xlsx" | "xls" | "xlsm" | "ods" => rows_from_excel_workbook(path),
         "csv" | "tsv" | "txt" => {
-            let content = std::fs::read_to_string(path).map_err(|e| format!("无法读取文件：{e}"))?;
+            let content =
+                std::fs::read_to_string(path).map_err(|e| format!("无法读取文件：{e}"))?;
             if let Some(rows) = rows_from_structured_text(&content) {
                 return Ok(rows);
             }

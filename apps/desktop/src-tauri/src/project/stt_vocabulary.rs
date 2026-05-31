@@ -43,7 +43,10 @@ pub enum SttVocabularyChannel {
     Unsupported,
 }
 
-pub fn channel_for_online(native_adapter: Option<&str>, multipart_fallback: bool) -> SttVocabularyChannel {
+pub fn channel_for_online(
+    native_adapter: Option<&str>,
+    multipart_fallback: bool,
+) -> SttVocabularyChannel {
     match native_adapter {
         Some("openaiAudio") => SttVocabularyChannel::OpenAiPrompt,
         Some("assemblyai") => SttVocabularyChannel::AssemblyAiKeyterms,
@@ -156,10 +159,8 @@ mod tests {
             hotwords: "制控".into(),
             terms: vec!["制控".into()],
         };
-        let url = append_deepgram_keywords(
-            "https://api.deepgram.com/v1/listen?model=nova-2",
-            &plan,
-        );
+        let url =
+            append_deepgram_keywords("https://api.deepgram.com/v1/listen?model=nova-2", &plan);
         assert!(url.contains("keywords="));
         assert!(url.contains("%E5%88%B6%E6%8E%A7") || url.contains("制控"));
     }

@@ -115,7 +115,10 @@ fn migrate_glossary_gly2(conn: &Connection) -> rusqlite::Result<()> {
         )?;
     }
     if !cols.iter().any(|c| c == "updated_at_ms") {
-        conn.execute("ALTER TABLE glossary_terms ADD COLUMN updated_at_ms INTEGER", [])?;
+        conn.execute(
+            "ALTER TABLE glossary_terms ADD COLUMN updated_at_ms INTEGER",
+            [],
+        )?;
         conn.execute(
             "UPDATE glossary_terms SET updated_at_ms = created_at_ms WHERE updated_at_ms IS NULL",
             [],

@@ -194,10 +194,8 @@ pub fn llm_probe_connection(
         &state,
         &format!("INFO llm_probe endpoint={}", config.endpoint),
     );
-    let out = postprocess_probe::probe_llm_connection_blocking(
-        &config,
-        postprocess_probe::PROBE_TIMEOUT,
-    );
+    let out =
+        postprocess_probe::probe_llm_connection_blocking(&config, postprocess_probe::PROBE_TIMEOUT);
     let level = if out.ok { "INFO" } else { "WARN" };
     let status = out
         .status
@@ -530,9 +528,9 @@ fn write_llm_api_key_to_keychain(api_key_id: &str, api_key: &str) -> Result<(), 
     match entry.get_password() {
         Ok(read_back) if !read_back.trim().is_empty() => Ok(()),
         Ok(_) => Err("写入后 API Key 为空，请重试。".to_string()),
-        Err(keyring::Error::NoEntry) => Err(
-            "写入后无法在系统钥匙串中读回 API Key，请检查钥匙串权限后重试。".to_string(),
-        ),
+        Err(keyring::Error::NoEntry) => {
+            Err("写入后无法在系统钥匙串中读回 API Key，请检查钥匙串权限后重试。".to_string())
+        }
         Err(_) => Err("写入后无法验证 API Key，请检查系统钥匙串权限。".to_string()),
     }
 }
@@ -589,9 +587,9 @@ fn load_postprocess_api_key(api_key_id: Option<&str>) -> Result<String, String> 
         return Ok(key);
     }
 
-    return Err(format!(
+    Err(format!(
         "系统钥匙串中未找到 API Key（标识：{id}）。请在「设置 → LLM 配置」重新填写并保存。"
-    ));
+    ))
 }
 
 fn build_auto_punctuate_prompt(

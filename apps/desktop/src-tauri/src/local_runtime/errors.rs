@@ -103,8 +103,12 @@ pub fn describe_local_runtime_error(error: &str) -> String {
         }
         LocalRuntimeErrorCode::NotRestorable => "当前安装元数据已损坏，无法恢复上一版本。".into(),
         LocalRuntimeErrorCode::NoPrevious => "当前没有可恢复的上一版本侧车。".into(),
-        LocalRuntimeErrorCode::PreviousMissing => "记录中的上一版本侧车目录已缺失，无法恢复。".into(),
-        LocalRuntimeErrorCode::ComponentMissing => "当前 manifest 不包含本平台的语音识别组件。".into(),
+        LocalRuntimeErrorCode::PreviousMissing => {
+            "记录中的上一版本侧车目录已缺失，无法恢复。".into()
+        }
+        LocalRuntimeErrorCode::ComponentMissing => {
+            "当前 manifest 不包含本平台的语音识别组件。".into()
+        }
         LocalRuntimeErrorCode::ShellVersionIncompatible => {
             "当前桌面端版本过低，无法安装该语音识别组件。请先升级应用。".into()
         }
@@ -126,14 +130,18 @@ pub fn describe_local_runtime_error(error: &str) -> String {
         LocalRuntimeErrorCode::VerifyFailed => {
             "语音识别组件已下载，但健康验证未通过。可尝试重新验证、恢复上一版或导出诊断包。".into()
         }
-        LocalRuntimeErrorCode::DiskSpaceLow | LocalRuntimeErrorCode::ManifestIssue => error.to_string(),
+        LocalRuntimeErrorCode::DiskSpaceLow | LocalRuntimeErrorCode::ManifestIssue => {
+            error.to_string()
+        }
         LocalRuntimeErrorCode::Unknown => error.to_string(),
     }
 }
 
 #[cfg(test)]
 mod tests {
-    use super::{classify_local_runtime_error, describe_local_runtime_error, LocalRuntimeErrorCode};
+    use super::{
+        classify_local_runtime_error, describe_local_runtime_error, LocalRuntimeErrorCode,
+    };
 
     #[test]
     fn classifies_known_install_errors() {

@@ -17,7 +17,8 @@ use std::sync::Arc;
 
 pub(crate) const MANIFEST_FETCH_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
 pub(crate) const HTTP_CONNECT_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(10);
-pub(crate) const ARTIFACT_REQUEST_TIMEOUT: std::time::Duration = std::time::Duration::from_secs(30 * 60);
+pub(crate) const ARTIFACT_REQUEST_TIMEOUT: std::time::Duration =
+    std::time::Duration::from_secs(30 * 60);
 
 pub(crate) fn is_http_source(source: &str) -> bool {
     source.strip_prefix("http://").is_some() || source.strip_prefix("https://").is_some()

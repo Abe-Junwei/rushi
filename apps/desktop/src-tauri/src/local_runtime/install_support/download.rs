@@ -1,13 +1,13 @@
+use super::super::installer::progress::update_progress;
+use super::super::manifest::{artifact_sources, RuntimeComponent};
+use super::download_resume::{
+    artifact_download_paths, clear_resume_artifacts, ensure_resume_compatible,
+    existing_part_offset, gc_stale_download_parts, save_resume_meta, DownloadResumeMeta,
+};
 use super::{
     ensure_not_cancelled, is_http_source, ARTIFACT_REQUEST_TIMEOUT, HTTP_CONNECT_TIMEOUT,
     MANIFEST_FETCH_TIMEOUT,
 };
-use super::download_resume::{
-    artifact_download_paths, clear_resume_artifacts, ensure_resume_compatible, existing_part_offset,
-    gc_stale_download_parts, save_resume_meta, DownloadResumeMeta,
-};
-use super::super::installer::progress::update_progress;
-use super::super::manifest::{artifact_sources, RuntimeComponent};
 use futures_util::StreamExt;
 use std::fs::{self, File, OpenOptions};
 use std::io::{Read, Write};
@@ -225,7 +225,8 @@ fn download_to_path(
     let total = fs::metadata(&source_path)
         .map_err(|e| format!("artifact_stat_failed: {e}"))?
         .len();
-    let mut src = std::fs::File::open(&source_path).map_err(|e| format!("artifact_open_failed: {e}"))?;
+    let mut src =
+        std::fs::File::open(&source_path).map_err(|e| format!("artifact_open_failed: {e}"))?;
     if let Some(parent) = target.parent() {
         fs::create_dir_all(parent).map_err(|e| format!("artifact_create_failed: {e}"))?;
     }
@@ -287,13 +288,7 @@ pub fn download_component_artifact(
             );
         }
         match download_to_path(
-            handle,
-            app_root,
-            source,
-            target,
-            &meta_path,
-            component,
-            cancel,
+            handle, app_root, source, target, &meta_path, component, cancel,
         ) {
             Ok(()) => return Ok(()),
             Err(err) if err == "cancelled" => return Err(err),

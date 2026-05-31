@@ -24,10 +24,10 @@ fn bundled_ffmpeg_candidates() -> Vec<PathBuf> {
 }
 
 pub fn resolve_ffmpeg_command() -> PathBuf {
-    for candidate in bundled_ffmpeg_candidates() {
-        return candidate;
-    }
-    PathBuf::from("ffmpeg")
+    bundled_ffmpeg_candidates()
+        .into_iter()
+        .next()
+        .unwrap_or_else(|| PathBuf::from("ffmpeg"))
 }
 
 pub fn symphonia_error_eligible_for_ffmpeg_remux(err: &str) -> bool {
@@ -45,9 +45,7 @@ pub fn remux_audio_to_pcm_wav(source: &Path, dest: &Path) -> Result<(), String> 
         std::fs::create_dir_all(parent).map_err(|e| format!("创建 remux 目录失败: {e}"))?;
     }
     let ffmpeg = resolve_ffmpeg_command();
-    let source_s = source
-        .to_str()
-        .ok_or_else(|| "音频路径无效".to_string())?;
+    let source_s = source.to_str().ok_or_else(|| "音频路径无效".to_string())?;
     let dest_s = dest
         .to_str()
         .ok_or_else(|| "remux 输出路径无效".to_string())?;

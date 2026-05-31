@@ -135,10 +135,8 @@ ThreadingHTTPServer((host, port), Handler).serve_forever()
 #[cfg(unix)]
 #[test]
 fn verify_installed_runtime_returns_cancelled_when_flag_set() {
-    let temp = std::env::temp_dir().join(format!(
-        "rushi-local-runtime-cancelled-{}",
-        Uuid::new_v4()
-    ));
+    let temp =
+        std::env::temp_dir().join(format!("rushi-local-runtime-cancelled-{}", Uuid::new_v4()));
     fs::create_dir_all(&temp).unwrap();
     let exe = temp.join("fake-sidecar");
     fs::write(
