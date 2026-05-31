@@ -30,19 +30,23 @@ def _load_eval_metrics():
         raise RuntimeError(f"cannot load {path}")
     mod = importlib.util.module_from_spec(spec)
     spec.loader.exec_module(mod)
-    return mod.cer_chars, mod.low_confidence_ratio
+    return mod.cer_chars, mod.low_confidence_ratio, mod.term_hit_rate
 
 
-cer_chars, low_confidence_ratio = _load_eval_metrics()
+cer_chars, low_confidence_ratio, term_hit_rate = _load_eval_metrics()
 
 
-def curl_transcribe(wav: Path, asr_base: str) -> dict[str, Any]:
+def curl_transcribe(wav: Path, asr_base: str, hotwords: str | None = None) -> dict[str, Any]:
     url = asr_base.rstrip("/") + "/v1/transcribe"
     wav_abs = wav.resolve()
     if not wav_abs.is_file():
         raise FileNotFoundError(str(wav_abs))
+    cmd = ["curl", "-sS", "-X", "POST", "-F", f"file=@{wav_abs}"]
+    if hotwords and hotwords.strip():
+        cmd.extend(["-F", f"hotwords={hotwords.strip()}"])
+    cmd.append(url)
     r = subprocess.run(
-        ["curl", "-sS", "-X", "POST", "-F", f"file=@{wav_abs}", url],
+        cmd,
         capture_output=True,
         text=True,
         timeout=900,
@@ -88,6 +92,11 @@ def main() -> int:
         iid = it.get("id", "?")
         rel = it.get("audio_relpath")
         ref = (it.get("reference_transcript") or "").strip()
+        expected_terms = it.get("expected_terms")
+        if not isinstance(expected_terms, list):
+            expected_terms = []
+        optional = bool(it.get("optional"))
+        hotwords = (it.get("hotwords") or "").strip() or None
         cat = it.get("category", "")
         row: dict[str, Any] = {"id": iid, "category": cat, "audio_relpath": rel}
         if not isinstance(rel, str) or not rel:
@@ -96,8 +105,17 @@ def main() -> int:
             out_rows.append(row)
             continue
         wav = (base_dir / rel).resolve()
+        if not wav.is_file():
+            if optional:
+                row["skipped"] = "optional_audio_missing"
+                out_rows.append(row)
+                continue
+            row["error"] = f"audio not found: {wav}"
+            failed = True
+            out_rows.append(row)
+            continue
         try:
-            body = curl_transcribe(wav, args.asr_base)
+            body = curl_transcribe(wav, args.asr_base, hotwords)
         except Exception as e:  # noqa: BLE001
             row["error"] = str(e)
             failed = True
@@ -110,11 +128,17 @@ def main() -> int:
             segs = []
         hyp = "".join(str(s.get("text") or "") for s in segs if isinstance(s, dict))
         row["hypothesis_concat"] = hyp
-        row["low_confidence_ratio"] = low_confidence_ratio(segs if all(isinstance(s, dict) for s in segs) else [])
+        row["low_confidence_ratio"] = low_confidence_ratio(
+            segs if all(isinstance(s, dict) for s in segs) else []
+        )
         if ref:
             row["cer_chars"] = cer_chars(ref, hyp)
         else:
             row["cer_chars"] = None
+        if expected_terms:
+            terms = [str(t).strip() for t in expected_terms if str(t).strip()]
+            row["expected_terms"] = terms
+            row["term_hit_rate"] = term_hit_rate(terms, hyp)
         out_rows.append(row)
 
     report = {

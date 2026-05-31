@@ -31,6 +31,14 @@
       "category": "term_dense",
       "audio_relpath": "samples/term_dense.wav",
       "reference_transcript": ""
+    },
+    {
+      "id": "proper-noun-zhikong",
+      "category": "term_hit",
+      "audio_relpath": "samples/制控.mp3",
+      "reference_transcript": "",
+      "expected_terms": ["制控"],
+      "hotwords": "制控"
     }
   ]
 }

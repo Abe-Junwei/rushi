@@ -23,6 +23,7 @@
 - [`lexicon-guided-llm-refine.md`](./lexicon-guided-llm-refine.md) — **R3t-E 词表有据校对**
 - [`../execution/specs/lexicon-mining-backlog.md`](../execution/specs/lexicon-mining-backlog.md) — **候选** LEX-MINE / ASR-FT（词表挖掘与训练数据 backlog）
 - [`../execution/specs/recording-transcribe-llm-refine-intent.md`](../execution/specs/recording-transcribe-llm-refine-intent.md) — R3t intent（未实施）
+- [`../execution/specs/r3e-b-long-audio-chunking-research.md`](../execution/specs/r3e-b-long-audio-chunking-research.md) — **R3e-B 规划门禁**：长音频分片/进度业内调研与落位决策（先调研后编码）。
 - [`../execution/specs/r3-provider-configuration-research.md`](../execution/specs/r3-provider-configuration-research.md) — R3 规划：LLM/STT Provider 业内共识与本仓配置策略（先调研后实施）。
 - [`../execution/specs/r3c-local-asr-cache-manifest-acceptance.md`](../execution/specs/r3c-local-asr-cache-manifest-acceptance.md) — R3c：本机 ASR 首次引导、缓存管理与 manifest 展示的验收边界。
 - [`../execution/specs/r3e-long-audio-transcribe-acceptance.md`](../execution/specs/r3e-long-audio-transcribe-acceptance.md) — R3e：长音频本机转写（600s 超时、整文件 FunASR 内存、分段方案与 R9 对齐）。

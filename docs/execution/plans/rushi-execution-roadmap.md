@@ -10,7 +10,7 @@
 | 适用节奏 | 单人、每轮 2～4h、一轮一纵向薄片 |
 | 规划跨度 | **个人单机 v1**：约 **11～13 周（自当前）** 或 **15～17 周（自 W1）**；R3 薄片 **~8～10w**（§4.0）；协作 **非 v1** |
 | 修订 | 每完成一个阶段更新 §2 状态表、§4 排期表与 §13 代码对照 |
-| 最近对照 | **2026-05-30**：§13 实测刷新；R3t-A 标为编码✅/手测⏳；波形 polish 记入 §2 |
+| 最近对照 | **2026-05-30**：R3t-A/B/C ✅；§10 下一刀 **R3e-B / R3t-D** |
 
 ### 状态标记约定（全文档统一）
 
@@ -34,7 +34,7 @@
 4. **信任边界**：LLM 后处理、MCP **不进** ASR PyInstaller 侧车；密钥不进 repo。
 5. **本地真源优先**：SQLite 离线能力不降级；**个人单机 v1** 不以协作服务端为项目真源（§1.6）。
 6. **中等复杂度先 spec**：编码前完成 intent / plan / acceptance（模板见 [`spec-template.md`](../specs/spec-template.md)）；含 **§能力—UI 状态矩阵** 时方可开 UI 编码。
-7. **转写优先（2026-05-27）**：近期排期以 **本机 ASR + 录音转写 + 分段落库（R3g / R3e / R3t）** 为主；**CAT-TRAN、LEX-MINE、ASR-FT、RAG 校对** 仅 §8.1 远期或 §8 不做，**不得**占用当前薄片 unless 产品书面改序。
+7. **转写优先（2026-05-27）**：近期排期以 **本机 ASR + 录音转写 + 分段落库（R3g / R3e / R3t）+ 精度/STT 统一（R3g-C / ACC）** 为主；**CAT-TRAN、LEX-MINE、ASR-FT、RAG 校对** 仅 §8.1 远期或 §8 不做，**不得**占用当前薄片 unless 产品书面改序。
 8. **LLM 可插拔**：转写与手改 **不依赖** LLM；R3t-C/D/E 与 R2 标点均为 **用户显式触发 + 预览确认**（§1.7、§8.2 Q-LLM-1）。
 
 ### 1.6 产品定位：个人单机 v1（2026-05-27）
@@ -78,6 +78,9 @@
 | **L4 LLM（R3t-E）** | **LexiconPack**（`glossary_canonical[]` + `correction_rules[]`）；**不传** ASR `hotwords` 字符串 |
 | **纠错记忆** | 保存语段学习 `correction_memory`；转写后 **hints**；R3t-E **主动改正** + evidence |
 | **越用越准** | **记忆 + 热词 +（规划）R3t-E**；**不**指望权重自动更新 |
+| **FunASR 固有参数** | **用户不填** `use_itn` / `merge_vad` 等；由 **R3g-C Profile** 按 SKU+时长默认；仅 **模型、语言、术语表** 为用户控件（env 排障 override 另论） |
+| **本地 + 在线 STT** | **编排已统一**（`project_run_transcribe` → `TranscriptionResult` v1）；**词表偏置** 经 **ACC-STT-UNIFY** 分 adapter 映射（非同一 `hotword=` 字段） |
+| **同音/误写（如智控→制控）** | L2 热词 **偏置有限**；L4 **correction_memory + R3t-E**；**术语表只放正确 canonical**（见 **Q-ACC-5**） |
 | **RAG** | **当前不做** |
 | **Oumi 式动模型** | **当前不做**；远期 **ASR-FT**（FunASR 微调 + R3h 发版），见 [`lexicon-mining-backlog.md`](../specs/lexicon-mining-backlog.md) §7、[`oumi-remediation-report.md`](../specs/oumi-remediation-report.md) §五-b |
 
@@ -104,14 +107,16 @@
 |--------|------|------------|
 | **P0** | 发行可重复（装/验/恢复） | R3h-0～3、R3f、**R3-STATE** |
 | **P0** | 长音频多段真源 | R3t-A/B、R3e-A/B |
-| **P0** | 术语 + memory + LLM 校对 | HOT-UX、R3t-C/D/E |
+| **P0** | 术语 + memory + LLM 校对 | HOT-UX、**R3g-C**、**ACC-STT-UNIFY**、R3t-C/D/E |
+| **P0** | FunASR 官方参数接线（Profile） | **R3g-C**（侧车；不暴露全参数 UI） |
+| **P0** | 术语表本地/在线一致偏置 | **ACC-STT-UNIFY**（`SttVocabularyPlan` + adapter） |
 | **P0** | 交付 Word 与编辑一致 | EXP-WORD（P3 基线之上） |
 | **P1** | 侧车保活、少冷启动 | **ASR-WARM**（R3h-I4） |
 | **P1** | 转写失败可理解 | R3e 分类 + **TRN-DIAG** |
-| **P1** | 发版 eval 回归 | **R4** + **R4-GATE**（R9 硬门禁） |
+| **P1** | 发版 eval 回归 + 专名样例 | **ACC-EVAL-1**（R3g-C 合入门禁）、**R4** + **R4-GATE**（R9 硬门禁） |
 | **P1** | Setup / 发布 / Supervisor 硬化 | **R3h-I1～I3** |
 | **P1** | 发版自动化子集 | **TEST-AUTO**（corrupt / 长音频慢测 / FSM contract；R9 硬门禁） |
-| **P2** | 单机修订时间线/恢复点 | **REV-LOC**（可选减 scope） |
+| **P1** | 单机修订时间线 | **REV-LOC**（v1 纳入；见 **Q-POS-4**、**Q-R9-1**） |
 | **P2** | MCP 只读 | R5（v1 后可做） |
 
 ---
@@ -170,8 +175,8 @@ bash scripts/p0-acceptance.sh
 ```text
 [已完成] 基线 + UI + 波形/uid/关窗 + GLY-1 + R1–R2
     ↓
-R3     本机 ASR 发行 + 转写 + LLM 校准 + 交付（§4.1.1 唯一顺序）
-       └ R3h LRC · R3t · HOT-UX · EXP-WORD · ASR-WARM · TRN-DIAG · REV-LOC(可选)
+R3     本机 ASR 发行 + 转写 + 精度/STT 统一 + LLM 校准 + 交付（§4.1.1 唯一顺序）
+       └ R3h LRC · R3g-C · ACC-STT-UNIFY · R3t · HOT-UX · EXP-WORD · ASR-WARM · TRN-DIAG · **REV-LOC**
     ↓
 R4     质量 Tab + R4-GATE（R9 硬门禁）
     ↓
@@ -236,10 +241,10 @@ R0 → GLY-1 → R1–R2 → R3 → R4 → [R5] → [R6–R8] → R9
 |----|------|----------|
 | **A 能装能转** | 零终端侧车 + 13min 多段 | ①–⑤c、HOT-UX |
 | *脚注* | *「能转」* | *≤~10min 单次整轨为 **R3e-A** 止血目标；>10min 完整多段能力见 **B 期 R3e-B + R3t-A** |
-| **B 转写真源** | 声学分段 + 编排 + 可观测 | ⑤′ R3t-A/B、TRN-DIAG、⑥ R3e-B |
+| **B 转写真源** | 声学分段 + 编排 + 精度/STT 统一 + 可观测 | ⑤′ R3t-A/B、**⑤g R3g-C**、**⑤h ACC-STT-UNIFY**、TRN-DIAG、⑥ R3e-B |
 | **C 发行成熟** | 弱网/回滚/三盏灯/可选 Spike | ⑦ R3h-2、⑦½ ASR-WARM、⑧ R3h-3、⑧½ R3h-3.5 |
 | **D 可选 LLM** | 云端校对可插拔 + 交付 | ⑤″ R3t-C/D/E |
-| **E 交付与质量** | Word + eval + 发版 | ⑤‴ EXP-WORD、⑤‴½ REV-LOC(可选)、R4、R9 |
+| **E 交付与质量** | Word + eval + 发版 | ⑤‴ EXP-WORD、⑤‴½ **REV-LOC**（v1 P1）、R4、R9 |
 
 #### 4.1.1 实施顺序（严格串行，勿跳步）
 
@@ -265,7 +270,11 @@ R0 → GLY-1 → R1–R2 → R3 → R4 → [R5] → [R6–R8] → R9
 ⑤½ HOT-UX  热词 12k 截断可观测  ✅ 2026-05-27
     ↓
 【B 转写真源】
-⑤′a R3t-A   声学分段 ASR（与 R3e-B 同一分段内核）
+⑤′a R3t-A   声学分段 ASR（与 R3e-B 同一分段内核）  ✅ 2026-05-30
+    ↓
+⑤g R3g-C    FunASR Generate Profile（`use_itn`、降级、识别语言 UI；用户不填 generate 参数）
+    ↓
+⑤h ACC-STT-UNIFY  术语表 → 本机+在线 VocabularyAdapter；hints 能力矩阵
     ↓
 ⑤′b R3t-B   转写编排、原子写库、warnings；不自动 LLM
     ↓
@@ -288,7 +297,7 @@ R0 → GLY-1 → R1–R2 → R3 → R4 → [R5] → [R6–R8] → R9
 【E 交付与质量】
 ⑤‴ EXP-WORD
     ↓
-⑤‴½ REV-LOC（P2 可减 scope）
+⑤‴½ REV-LOC（v1 P1；Q-POS-4）
     ↓
 R4 + R4-GATE → R9
 ```
@@ -304,19 +313,21 @@ R4 + R4-GATE → R9
 | **④** | **R3e-A** | 🟡 | 2–3d | 动态超时 + 失败分类（已编码；50min 手测待签收） | [`r3e-long-audio-transcribe-acceptance.md`](../specs/r3e-long-audio-transcribe-acceptance.md) |
 | **⑤** | **R3g-A** | ✅ | 3–5d | 双 SKU + `prepare(model_id)`；**⑤a–c** 手测签收（2026-05-27） | [`r3g-local-asr-model-catalog-acceptance.md`](../specs/r3g-local-asr-model-catalog-acceptance.md) |
 | **⑤½** | **HOT-UX** | ✅ | 0.5w | 热词 12k 截断可观测；术语页「本次转写将携带」摘要 | [`hot-ux-acceptance.md`](../specs/hot-ux-acceptance.md) |
-| **⑤′a** | **R3t-A** | 🟡 **编码✅** / **手测⏳** | 3–5d | `segmentation.py` + FunASR 接线 + 单测；长音频禁 whole-track 终态；**acceptance 手测未签** | [`recording-transcribe-llm-refine-acceptance.md`](../specs/recording-transcribe-llm-refine-acceptance.md) §R3t-A |
-| **⑤′b** | **R3t-B** | 📋 | 2–4d | 转写任务、超时、原子写库、warnings UI；**不自动 LLM** | 同上 §3 |
+| **⑤′a** | **R3t-A** | ✅ | 3–5d | `segmentation.py` + FunASR 接线 + 单测 + **手测签收**（2026-05-30） | [`recording-transcribe-llm-refine-acceptance.md`](../specs/recording-transcribe-llm-refine-acceptance.md) §R3t-A |
+| **⑤g** | **R3g-C** | 📋 | 3–5d | **AsrModelProfile**；SenseVoice `use_itn` + postprocess；Paraformer 保持 punc 路径；TypeError 剥参 + warnings；环境页 **识别语言**；**不**暴露全 generate UI | [`r3g-c-asr-generate-profile-acceptance.md`](../specs/r3g-c-asr-generate-profile-acceptance.md)（待立项）；架构 [`asr-generate-params-truth.md`](../../architecture/asr-generate-params-truth.md)（待立项） |
+| **⑤h** | **ACC-STT-UNIFY** | 📋 | 2–4d | **`SttVocabularyPlan`**；**v1 必接** OpenAI prompt（已有）+ AssemblyAI `keyterms_prompt` + Deepgram keywords；U2 能力矩阵；**U3→R3h-3**；**U4 延后**；Azure/百炼 → §8.1 | [`acc-stt-unify-acceptance.md`](../specs/acc-stt-unify-acceptance.md)（待立项）；[`stt-online-providers.md`](../../architecture/stt-online-providers.md) |
+| **⑤′b** | **R3t-B** | ✅ | 2–4d | 转写任务、超时、原子写库、warnings UI；**不自动 LLM** | 同上 §3；[`r3t-b-hand-test-checklist.md`](../specs/r3t-b-hand-test-checklist.md) 2026-05-30 签收 |
 | **⑤′½** | **TRN-DIAG** | 📋 | 0.5w | 转写阶段时间线；失败阶段 + 建议动作；并入诊断包 | [`personal-solo-v1-backlog.md`](../specs/personal-solo-v1-backlog.md) §3.2 |
-| **⑥** | **R3e-B** | ⏳ | 1.5–2w | 长音频进度/分片；内核并入 R3t-A（**Q-SEQ-1 前移**） | r3e spec §R3e-B |
+| **⑥** | **R3e-B** | ✅ | 1.5–2w | 长音频侧车 5min 窗；**2026-05-30 签收** | [`r3e-b-hand-test-checklist.md`](../specs/r3e-b-hand-test-checklist.md) |
 | **⑦** | **R3h-2** | ⏳ | ~1w | Range 续传；事件化下载进度；GC；**C 类自动升级回滚**；缺/坏侧车自动下载 | remediation §5 Phase 2 |
 | **⑦½** | **ASR-WARM** | 📋 | 0.5–1w | 侧车保活、模型预热；**R3h-I4** | personal-solo §3.1 |
 | **⑧** | **R3h-3** + **R3d** | ⏳ | 3–5d | 本机 ASR / 在线 STT / LLM 三盏灯；五栏 IA | remediation §5 Phase 3 + [`r3d-settings-ia-acceptance.md`](../specs/r3d-settings-ia-acceptance.md) |
 | **⑧½** | **R3h-3.5** | ⏳ | ~1w | Sherpa-ONNX CER Spike；不阻塞 A–B 签收 | remediation §5 Phase 3.5 |
-| **⑤″c** | **R3t-C** | 📋 | 1–1.5w | 扩展 R2 标点（邻段上下文可选）；**可选/显式触发** | 同上 §4；R2 ✅ |
+| **⑤″c** | **R3t-C** | ✅ | 1–1.5w | 扩展 R2 标点（邻段上下文可选）；**可选/显式触发** | 同上 §4；[`r3t-c-hand-test-checklist.md`](../specs/r3t-c-hand-test-checklist.md) 2026-05-30 签收 |
 | **⑤″d** | **R3t-D** | 📋 | 1.5–2w | merge/split/update_text ops + 预览 | 同上 §5 |
 | **⑤″e** | **R3t-E** | 📋 | 1.5–2w | LexiconPack 有据校对；**无 RAG**；**无** R3t-E3 项目级词表 v1 | [`lexicon-guided-llm-refine.md`](../../architecture/lexicon-guided-llm-refine.md) |
 | **⑤‴** | **EXP-WORD** | 📋 | 1–1.5w | L6 交付：导出真源对齐；逐字稿/讲稿/干净稿版式；可选修订摘要附录；**不等 C6** | [`word-formatted-export-backlog.md`](../specs/word-formatted-export-backlog.md) |
-| **⑤‴½** | **REV-LOC** | 📋 | 0.5–1w | 单机 `edit_log` 时间线；可选恢复点；**非** R8 协作 revision | [`personal-solo-v1-backlog.md`](../specs/personal-solo-v1-backlog.md) §3.3 |
+| **⑤‴½** | **REV-LOC** | 📋 | 0.5–1w | 单机 `edit_log` 时间线；**v1 P1 必做**；恢复点可减 scope；**非** R8 协作 revision | [`personal-solo-v1-backlog.md`](../specs/personal-solo-v1-backlog.md) §3.3 |
 | — | **R3t（索引）** | 📋 | — | Epic 总览（含 L6） | [`recording-transcribe-llm-pipeline.md`](../../architecture/recording-transcribe-llm-pipeline.md) |
 | — | R3h-4 → **LLM-LOC** | v1 后 | 见 §6、[`llm-local-runtime-backlog.md`](../specs/llm-local-runtime-backlog.md)（**4a** Ollama ~0.5–1w；**4b** 自管 2–3w+） | remediation §Phase 4 |
 | — | R3h-E/F、R3g-B | 延后 | — | 高级 pip/本地构建；Nano 等多 SKU | remediation §5 Phase 5 |
@@ -326,13 +337,15 @@ R4 + R4-GATE → R9
 | 规则 | 说明 |
 |------|------|
 | **勿并行** | R3f 编排与 **R3e-B** 分片（同改转写链）；**R3t-A/B** 与 R3f **大改**勿同轮 |
+| **R3g-C 门禁** | **R3g-C PR-1（Profile 内核）须先于 R3t-B** 合入，避免 `funasr_engine.py` 冲突；R3g-C 与 R3t-B **勿同轮大改**侧车+编排 |
+| **ACC-STT-UNIFY** | 可与 **R3g-C2 之后** 并行（主改 Tauri `run_transcribe` / `stt_native`）；**须**在 R3t-B warnings UI 前或同轮接入 vocabulary hints |
 | **R3t 门禁** | **R3g ⑤c** 建议先签收再开 **R3t-A** 编码；R3e-B 与 R3t-A **同一分段真源**（禁止 fork 两套 VAD） |
 | **LLM 校准** | R3t-C/D/E **须用户显式触发**；禁止转写完成静默跑 |
 | **可并行设计** | R3e-A 与 R3g-A 接口；实施仍 **④ 先于 ⑤** |
 | **R3h-I 设计** | 可在 **② 后**并行做只读方案与接口草图；避免和 **①–③** 的止血实现混在同一刀 |
 | **R3h-I 实施** | 建议在 **⑥–⑦** 之间或之后集中收口；不单独改写 §4.1.1 的产品签收顺序 |
 | **勿跳步** | **R3f 手测不得在 R3h-0 前签收**（否则 corrupt 包误判） |
-| **R9 依赖** | 零终端 ASR：**②+③**；多段转写：**⑤′+⑤c**；长音频完整：**⑥ R3e-B**；交付：**⑤‴**；质量：**R4-GATE** + **TEST-AUTO** 子集 |
+| **R9 依赖** | 零终端 ASR：**②+③**；多段转写：**⑤′+⑤c**；长音频完整：**⑥ R3e-B**；**Profile/ITN：⑤g R3g-C**；**本地+在线词表：⑤h**；交付：**⑤‴**；质量：**R4-GATE** + **TEST-AUTO** + **ACC-EVAL-1** |
 
 #### 4.1.4 能力—UI 状态对齐闸门（R3-STATE，横切 R3）
 
@@ -388,7 +401,7 @@ R4 + R4-GATE → R9
 
 | ID | 依赖 | 交付要点 | 编码门禁 |
 |----|------|----------|----------|
-| **R3t-A** | R3g **⑤c** 建议先过 | 侧车全模型多语段；`funasr_whole_track_fallback` 长音频非终态 | 与 **R3e-B** 分段函数 **合并评审** |
+| **R3t-A** | R3g **⑤c** 建议先过 | 侧车全模型多语段；`funasr_whole_track_fallback` 长音频非终态 | ✅ 2026-05-30 手测签收 |
 | **R3t-B** | R3t-A | 转写编排、原子写库、warnings；**不自动 LLM** | 勿与 R3f **大改**同轮 |
 | **R3t-C** | R3t-B；R2 ✅ | 标点 + 可选邻段上下文 | 用户显式触发 |
 | **R3t-D** | R3t-C 契约 | merge/split/update_text + 双 diff | 同左 |
@@ -404,9 +417,57 @@ glossary_terms ──► L2 hotwords（转写偏置）
 
 **增强项（排期）**：**HOT-UX**（⑤c 后，已拍板）；LEX-MINE / R3t-E3 项目级词表 **不做 v1**。
 
-**交付导出（L6）**：**EXP-WORD** 在 **R3t-E 之后**、**R4 之前**（§8.2 Q-WORD）；与 P3 DOCX **基线**分层。**REV-LOC** 在 EXP-WORD 后、R4 前（P2 可减 scope）。
+**交付导出（L6）**：**EXP-WORD** 在 **R3t-E 之后**、**R4 之前**（§8.2 Q-WORD）；与 P3 DOCX **基线**分层。**REV-LOC** 在 EXP-WORD 后、R4 前（**v1 纳入 P1**，见 **Q-POS-4**）。
 
 **个人 v1 补齐**：**TRN-DIAG**、**ASR-WARM**、**R4-GATE** — 见 §1.8。
+
+#### 4.1.7 转写精度与 STT 统一（ACC，2026-05-30 纳入）
+
+> **对话拍板**：精度提升 = **Profile 默认（L2）+ 术语表（L2 偏置）+ memory/R3t-E（L4 改稿）+ 评测（L6）**；行业对标 Azure phrase list / OpenAI prompt / FunASR SDK `--use_itn` — **用户只维护模型、语言、术语表**。
+> **架构索引（待立项）**：[`transcription-accuracy-program.md`](../../architecture/transcription-accuracy-program.md)
+
+**分层（L0–L7，实施时勿混读）**：
+
+| 层 | 手段 | 路线图落点 | 用户手动？ |
+|----|------|----------|------------|
+| **L0** | 录音质量指引；可选 ffmpeg 增强 | ACC-IN-1/2 | 读提示；增强默认关 |
+| **L1** | SKU、prepare、MPS/CUDA、ASR-WARM | R3g-A、R3g-C4、ASR-WARM | 选模型；MPS 可选一键 |
+| **L2 听写** | Profile + 热词 + 在线 adapter | **R3g-C**、HOT-UX、**ACC-STT-UNIFY** | **仅术语表** |
+| **L3** | 分段/长音频 | R3t-A、R3e-B | 否 |
+| **L4 改稿** | memory hints、R3t-E、可选 accepted 规则替换 | R3t-E、ACC-TXT-0（候选） | 改稿+保存；LLM 显式触发 |
+| **L5** | 低置信筛选、一键入术语表 | ACC-HITL-*、LEX-MINE | 可选 |
+| **L6** | CER / term_hit 回归集 | **ACC-EVAL-1**、R4 | 维护 eval manifest |
+| **L7** | ASR-FT | §8.1 | Go 门槛后 |
+
+**问题类型 × 主路径**：
+
+| 问题 | 主路径 |
+|------|--------|
+| 专名听错 | L2 热词 + Paraformer SKU + **R3g-C**；L4 R3t-E；远期 ASR-FT |
+| 同音字 | L4 memory + **R3t-E**；**不**靠热词堆通用字 |
+| 听对音写错术语 | L2 热词 + L4 **LexiconPack canonical** |
+
+**R3g-C 子切片（§4.1.1 **⑤g**）**：
+
+| 子片 | 交付 |
+|------|------|
+| **C1** | `asr_model_profile.py`；迁移 `funasr_generate_kwargs`；单测快照 |
+| **C2** | SenseVoice **`use_itn=True` 默认开** + `rich_transcription_postprocess` |
+| **C3** | 通用 `_run_generate` 剥参 + `asr-generate-params-truth.md` + hints |
+| **C4** | 环境页识别语言（**默认 `zh`**；v1 至少 `zh` + `auto`）；`RUSHI_FUNASR_USE_ITN` / `GENERATE_OVERRIDES`（排障） |
+
+**ACC-STT-UNIFY 子切片（§4.1.1 **⑤h**）**：
+
+| 子片 | 交付 |
+|------|------|
+| **U1** | `SttVocabularyPlan`；**OpenAI + AssemblyAI + Deepgram** 词表 adapter（v1 三家必接） |
+| **U2** | `supportsHotwordBias` / 能力矩阵真源；`online_vocabulary_*` warnings |
+| **U3** | 环境页本地 vs 在线词表能力对照 → **跟 R3h-3 三盏灯**（**不**与 U1 同轮硬绑） |
+| **U4** | 在线失败回落本机 ASR（`fellBackToLocal`）→ **v1 不做**；仅 warning + 用户重试 |
+
+**明确仍不做（ACC v1）**：FunASR 全参数 UI；RAG；静默 LLM 改稿；无评测默认开音频降噪；术语 **alias 填误写形**。
+
+**ACC 候选（§8.1，Go 后再插入）**：ACC-MODEL-1（hotword SKU）、ACC-HOT-W（带权热词）、ACC-STT 阿里 vocabulary_id、ACC-IN-2/3、ACC-TXT-2 拼音引擎。
 
 ### 阶段状态（实施时更新）
 
@@ -417,7 +478,7 @@ glossary_terms ──► L2 hotwords（转写偏置）
 | R1 | ✅ 已完成（文档门禁） | 2026-05-25 |
 | R2 | ✅ 已完成（DeepSeek 手测通过） | 2026-05-25 |
 | R3 | 🟡 进行中（a/b/c ✅；**R3h/f/e/g/d** 按 §4.1） | — |
-| R3h | 🟡 LRC 整改进行中：① 待跨平台 smoke；② 编码✅/发行⏳；**下一刀 R3t-A 手测签收**（编码已就绪）；并行闭合 ③ R3f、④ R3e-A 手测 | — |
+| R3h | 🟡 LRC 整改进行中：① 待跨平台 smoke；② 编码✅/发行⏳；**下一刀 ⑤g R3g-C**（R3t-A ✅ 2026-05-30）；并行闭合 ③ R3f、④ R3e-A 手测 | — |
 | R4 | ⏳ | — |
 | R5 | ⏳ v1 后 | — |
 | R6–R8 | ⏳ 非 v1 | — |
@@ -670,13 +731,13 @@ React 预览 UI
 |----|------|
 | **零终端本机 ASR** | 无 shell 完成侧车安装 + 默认模型 + smoke（**依赖 R3h-1 + R3f**；[remediation §11](../specs/rushi-local-runtime-catalog-remediation-plan.md)） |
 | **弱网/断网** | 下载可重试；无网时 bundled 回退（**依赖 R3h-2**） |
-| **长音频主路径** | 30～60min：转写 →（可选）LLM → 编辑 → 重启 → **EXP-WORD**（R3e + R3t + EXP-WORD） |
+| **长音频主路径** | 30～60min：转写 →（**R3t-C 标点** 或手改）→ 编辑 → **REV-LOC** → **EXP-WORD**（见 **Q-R9-1 Mid**） |
 | **TRN-DIAG** | 失败一次转写：UI/诊断包能指出阶段与建议动作 |
 | **ASR-WARM** | 同项目连续转写：第二次无明显冷启动劣化（手测） |
-| **R4-GATE** | eval 集已跑；质量 Tab 有摘要 |
+| **R4-GATE** | eval 集已跑；质量 Tab 有摘要；**含 ACC-EVAL-1** |
 | **TEST-AUTO** | corrupt 侧车 fixture +（可选）长音频慢测 + Setup/转写 FSM contract 已跑 |
-| **LLM 可跳过** | 无 LLM 配置时可完成：转写 → 手改 → 导出 |
-| **REV-LOC** | 若本 v1 纳入：至少只读变更时间线；恢复点可按 acceptance 减 scope |
+| **LLM 档位 Mid** | **R3t-B + R3t-C** 为 R9 **硬门禁**；**R3t-D/E 可减 scope**（不挡 R9，仍尽量在 R4 前闭合）；无 LLM 配置仍可转写 → 手改 → 导出 |
+| **REV-LOC** | **v1 必做**（Q-POS-4）：至少只读变更时间线；恢复点按 acceptance 可减 scope |
 | 脚本 | `p0-acceptance.sh`、P1–P4 按需抽检 |
 | 文档 | §2 状态表；T-006 行数表对齐 |
 | 可选 | E2E 一条主干；波形性能记录 |
@@ -735,6 +796,8 @@ React 预览 UI
 | **领域 RAG 校对** | **当前不做**（2026-05-27）；R3t-E 仅用 **LexiconPack**（glossary + correction_memory），不上检索语料 |
 | **Oumi 式桌面内训练 / Synth 管道** | 见 oumi Part I 排除 + lexicon-mining §7；**ASR-FT** 仅远期 |
 | **LLM 请求携带 ASR `hotwords` 空格串** | 与 LexiconPack 重复且难做 evidence；**禁止** |
+| **向 C 端用户暴露 FunASR 全量 `generate()` 参数** | 行业惯例为 **Preset-first**；仅 env 排障 override（**R3g-C**） |
+| **假定在线 STT 与 FunASR 共用同一热词 HTTP 字段** | 须 **ACC-STT-UNIFY** 分 adapter；见 [`asr-hotword-bias-truth.md`](../../architecture/asr-hotword-bias-truth.md) |
 | **STREAM / mic 流式** | 不在 R3t v1；R3t-D/E 后另立项 |
 | 术语库仅做后端、不做管理 UI | GLY-1 已纳入；初版路线图遗漏，属文档缺口非功能删除 |
 
@@ -742,15 +805,23 @@ React 预览 UI
 
 ## 8.1 候选 Epic（未排期）
 
-> **真源**：[`lexicon-mining-backlog.md`](../specs/lexicon-mining-backlog.md)、[`translation-cat-backlog.md`](../specs/translation-cat-backlog.md)  
-> 下列项**不在 §4.1.1 顺序内**；产品书面 Go 后再拆 intent/plan/acceptance 并插入排期。
+> **真源**：[`lexicon-mining-backlog.md`](../specs/lexicon-mining-backlog.md)、[`translation-cat-backlog.md`](../specs/translation-cat-backlog.md)、**§4.1.7 ACC 候选**  
+> 下列项**不在 §4.1.1 顺序内**（**R3g-C / ACC-STT-UNIFY 已入主序 ⑤g/⑤h**）；产品书面 Go 后再拆 intent/plan/acceptance 并插入排期。
 
 | ID | 名称 | 摘要 | 建议门禁 |
 |----|------|------|----------|
+| **ACC-EVAL-1** | 专名/术语回归 manifest（如 制控 term_hit） | `fixtures/eval` + term_hit；**R3g-C 合入硬门禁** | **Q-ACC-4**；产品补 1～2 条脱敏样例 |
+| **ACC-MODEL-1** | SenseVoiceSmall_hotword / contextual SKU | FunASR 官方 hotword 增强权重 | **产品 Go**；R3g-C + ACC-EVAL-1 后插入 §4.1.1 |
+| **ACC-HOT-W** | 带权热词（`词 权重`） | 对齐 FunASR Runtime SDK / 阿里百炼 weight | R3g-C；ACC-EVAL-2 |
+| **ACC-STT-ALI** | 百炼 `vocabulary_id` + `target_model` | 云端 Paraformer/Fun-ASR 热词 CRUD | ACC-STT-UNIFY U2 |
+| **ACC-TXT-0** | 已采纳规则转写后自动替换 | 对标 AssemblyAI custom_spelling 轻量版 | R3t-E 边界评审 |
+| **ACC-IN-2/3** | 音频增强 / 选区重转写 | 须 ACC-EVAL A/B | R4 前 |
+| **ACC-HITL-1/2** | 低置信筛选 / R3t-E 优先队列 | UX 薄片 | R3t-B/E |
+| **ACC-GLOSS-2** | 错词一键加入术语表 | GLY-1 | R3t-B 后 |
 | **LEX-MINE** | 词表候选推荐 | 补齐计划书 §5.1.2：从 `correction_memory` 聚合推荐进 glossary；可选 LLM **只读**说明（**非训练**） | R3t-E 或 GLY-1 + memory 稳定；**不**与 R3t-E 合并 prompt |
 | **ASR-FT** | ASR 训练 manifest / 可选 LoRA | 计划书 §5.2–5.3；Oumi 数据合成 **远期** | R9 ROI + memory 导出 schema（privacy/domain）+ 独立测试集 |
 | **CAT-TRAN** | 翻译 + 词典（CAT） | 中译英、`target_text`、富结构词典、子范围批注、双语 DOCX；**spec 已有** T1–T6 | **远期**；**当前不做**（2026-05-27）；Go 须转写主线签收 + 产品中译英优先级 |
-| **REV-LOC** | 单机修订时间线 | `edit_log` 只读/恢复点；非协作 revision | EXP-WORD 后；P2 可减 scope |
+| **REV-LOC** | 单机修订时间线 | `edit_log` 只读/恢复点；非协作 revision | EXP-WORD 后；**v1 P1**（Q-POS-4） |
 | **STREAM-*** | 实时 mic / 流式 | 另立项 | R3t-D/E 签收后 |
 | **LLM-LOC** | 本机 LLM（Spike / 4a / 4b） | 规划真源 §9 Gate；**实施待 Q-LLM-5** | [`llm-local-runtime-backlog.md`](../specs/llm-local-runtime-backlog.md) |
 
@@ -758,7 +829,7 @@ React 预览 UI
 
 ---
 
-## 8.2 已拍板（2026-05-27）
+## 8.2 已拍板（2026-05-27；**2026-05-30 ACC/R9 增补**）
 
 | ID | 决定 |
 |----|------|
@@ -772,7 +843,7 @@ React 预览 UI
 | **Q-POS-1** | **产品定位 = 个人单机 v1**；SQLite 真源；主路径见 §1.6 |
 | **Q-POS-2** | **R6–R8 非 v1 阻塞**；R9 可在 R4 后签收；R5 可后置 |
 | **Q-POS-3** | **ASR-WARM** 纳入 v1 P1（§4.1.1 **⑦½**）；**TRN-DIAG** 纳入 v1 P1（**⑤′½**） |
-| **Q-POS-4** | **R4-GATE** 为 R9 **硬门禁**；**REV-LOC** 为 P2（可减 scope） |
+| **Q-POS-4** | **R4-GATE** 为 R9 **硬门禁**；**REV-LOC** 为 **v1 P1 必做**（2026-05-30 拍板） |
 | **Q-LLM-1** | 本机 LLM **v1 后**做；**不阻塞 R9**；v1 仍以 **云端** 签收 R3t |
 | **Q-LLM-2** | **先 LLM-LOC-4a（Ollama）** 验证本地校对 ROI；**再 4b（LRC 自管）** |
 | **Q-LLM-3** | LLM **不进 ASR 侧车**；postprocess 仍为 Tauri OpenAI-compatible HTTP |
@@ -784,6 +855,16 @@ React 预览 UI
 | **Q-R3t-2** | ✅ **分段单一模块**：R3t-A 产出 `segmentation.py`（或等价模块）；R3e-B **只消费**（见 R3t plan §2.3） |
 | **Q-R3e-1** | ✅ **R3e-A 非长音频多段验收**：50min 手测只验动态超时/失败分类/OOM 文案；多段质量 **仅 R3t-A/B + R3e-B** |
 | **Q-R3g-3** | ✅ **模型下载 cooperative cancel**：`POST /v1/models/prepare-cancel` + `phase: cancelled`；单文件传完前不可硬中断 ModelScope；**⑤c 前手测** |
+| **Q-ACC-1** | ✅ **FunASR 固有参数 Preset-first**：**R3g-C** 按 SKU Profile 默认；**不**做 C 端全参数表单 |
+| **Q-ACC-2** | ✅ **本地+在线打通**：编排层已统一；**⑤h ACC-STT-UNIFY** 统一 **术语真源 + adapter**；**不**假定同一 `hotword=` |
+| **Q-ACC-3** | ✅ **同音/专名双通道**：L2 热词 + L4 **R3t-E**/memory |
+| **Q-ACC-4** | ✅ **ACC-EVAL-1** 为 **R3g-C 合入硬门禁**；样例 **`fixtures/eval/samples/制控.mp3`**（`expected_terms: 制控`）；`eval-run.py` 输出 `term_hit_rate` |
+| **Q-ACC-5** | ✅ **术语表只放正确写法**：`term` = canonical；**不**用 aliases 承载误听/误写偏置（如 **智控**）；同音靠 L4 memory/R3t-E |
+| **Q-ACC-6** | ✅ **ACC-STT-UNIFY v1**：U1 必接 **OpenAI + AssemblyAI + Deepgram**；U2 必做；**U3→R3h-3**；**U4 延后**；Azure/百炼仍 §8.1 |
+| **Q-ACC-7** | ✅ **SenseVoice ITN 默认开**（R3g-C C2）；识别语言 UI **默认 `zh`**（C4） |
+| **Q-R9-1** | ✅ **Mid 档位**：R9 硬门禁 **R3t-B + R3t-C**；**R3t-D/E 可减 scope**（不挡 R9）；无 LLM 仍可手改交付 |
+| **Q-FUT-1** | ✅ **§9 分叉 B 否**（协作不提前）；**R3h-3.5 Sherpa Spike Go**；**ACC-MODEL-1/HOT-W 产品 Go**（ACC-EVAL-1 后插入主序）；**LLM-LOC** 仍 R9 后 Spike→Gate |
+| **Q-SEQ-3** | ✅ **§4.1.1 主序不变**（2026-05-30）：**R3g-C → ACC-STT-UNIFY → R3t-B → …**；不因 Mid/REV-LOC 重排薄片 |
 
 ---
 
@@ -812,12 +893,12 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | 项 | 内容 |
 |----|------|
 | **定位** | **个人单机 v1**（§1.6） |
-| **阶段** | **R3 — 转写主线（EXP-1 + R3h LRC + R3g/R3e/R3t + EXP-WORD）** |
+| **阶段** | **R3 — 转写主线（EXP-1 + R3h LRC + R3g/R3e/R3t + ACC + EXP-WORD）** |
 | **近期不做** | **CAT-TRAN**、LEX-MINE、ASR-FT、**RAG**、**R6–R8** — §8 / §8.1 / §6 |
 | **ASR 引擎路线** | **方案 A 已锁定** — FunASR + LRC 先行；Sherpa 仅 R3h-3.5 Spike；[ADR-0003](../../adr/0003-asr-engine-funasr-first-sherpa-spike-gate.md) |
 | **排期真源** | **§4.1.1** |
 | **实施真源** | [`rushi-local-runtime-catalog-remediation-plan.md`](../specs/rushi-local-runtime-catalog-remediation-plan.md) **v1.1** |
-| **验收切片** | [`r3f-…`](../specs/r3f-asr-setup-wizard-acceptance.md) / [`r3g-…`](../specs/r3g-local-asr-model-catalog-acceptance.md) / [`r3e-…`](../specs/r3e-long-audio-transcribe-acceptance.md) / [`trn-diag-…`](../specs/trn-diag-acceptance.md) / [`asr-warm-…`](../specs/asr-warm-acceptance.md) / [`exp-word-…`](../specs/exp-word-formatted-export-acceptance.md) |
+| **验收切片** | [`r3f-…`](../specs/r3f-asr-setup-wizard-acceptance.md) / [`r3g-…`](../specs/r3g-local-asr-model-catalog-acceptance.md) / [`r3g-c-…`](../specs/r3g-c-asr-generate-profile-acceptance.md)（待立项） / [`acc-stt-unify-…`](../specs/acc-stt-unify-acceptance.md)（待立项） / [`r3e-…`](../specs/r3e-long-audio-transcribe-acceptance.md) / [`trn-diag-…`](../specs/trn-diag-acceptance.md) / [`asr-warm-…`](../specs/asr-warm-acceptance.md) / [`exp-word-…`](../specs/exp-word-formatted-export-acceptance.md) |
 | **不要** | 内置 LiteLLM/网关、Ollama 替代 ASR、主路径 pip/PyInstaller、R3f 在 R3h-0 前签收 |
 
 ### R3 规划门禁
@@ -831,11 +912,11 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 - [x] **R3g-A ⑤c**（Paraformer 13min 多语段；2026-05-27 复测签收）
 - [ ] **R3h §11 发行门禁**（零终端、构建 smoke、损坏可恢复…）
 
-**下一刀**：**R3t-A 手测签收**（⑤′a 编码✅；见 [`recording-transcribe-llm-refine-acceptance.md`](../specs/recording-transcribe-llm-refine-acceptance.md) §手测）
+**下一刀**：**R3t-D**（段界 ops）或 **ACC-EVAL-1**
 
-**同轮或紧邻闭合**（§4.1.1 未跳过）：**③ R3f** 一键准备手测、**④ R3e-A** 50min 超时/OOM 文案手测、**R3h §11** 发行门禁。
+**同轮或紧邻闭合**：**③ R3f**、**④ R3e-A** 手测、**R3h §11** 发行门禁
 
-**再下一刀**：**R3t-B**（转写编排 / 原子写库 / warnings UI；勿与 R3f 大改同轮）
+**主序**：**R3t-C ✅**（R9 Mid 硬门禁 **R3t-B + R3t-C** 已闭合）→ R3e-B / R3t-D → …
 
 ---
 
@@ -847,6 +928,10 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | [`collaboration-foundation-plan.md`](./collaboration-foundation-plan.md) | 协作 Phase 1–7 细节；**顺序以本文 §4–§6 为准** |
 | [`p2-acceptance.md`](../p2-acceptance.md) | P2：术语库/热词/低置信/纠错记忆（**后端**）；管理 UI → GLY-1 |
 | [`docs/architecture/asr-hotword-bias-truth.md`](../../architecture/asr-hotword-bias-truth.md) | 术语如何拼进 ASR `hotwords` |
+| [`docs/architecture/transcription-accuracy-program.md`](../../architecture/transcription-accuracy-program.md) | **ACC** 分层 L0–L7、问题矩阵、与 R3g-C/UNIFY 关系（**待立项**） |
+| [`docs/architecture/asr-generate-params-truth.md`](../../architecture/asr-generate-params-truth.md) | **R3g-C** FunASR `generate()` Profile 真源表（**待立项**） |
+| [`r3g-c-asr-generate-profile-acceptance.md`](../specs/r3g-c-asr-generate-profile-acceptance.md) | **R3g-C** 验收切片（**待立项**） |
+| [`acc-stt-unify-acceptance.md`](../specs/acc-stt-unify-acceptance.md) | **ACC-STT-UNIFY** 验收切片（**待立项**） |
 | [`docs/architecture/recording-transcribe-llm-pipeline.md`](../../architecture/recording-transcribe-llm-pipeline.md) | **R3t** 管线真源（录音分段 + LLM 校准，不含流式） |
 | [`recording-transcribe-llm-refine-intent.md`](../specs/recording-transcribe-llm-refine-intent.md) | R3t 目标与边界 |
 | [`lexicon-guided-llm-refine.md`](../../architecture/lexicon-guided-llm-refine.md) | **R3t-E** 词表有据校对（**消费**词表） |
@@ -910,7 +995,11 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | 2026-05-27 | **Q-R3g-3 编码**：侧车 `prepare-cancel` + 前端取消；cooperative（阶段间/进度回调） |
 | 2026-05-27 | **R3g-A ⑤b S3 签收**：场景 1 未就绪 + 场景 2 通过 → 可进 **⑤c** |
 | 2026-05-27 | **R3g-A ⑤c 签收**：侧车陈旧检测 + punc prepare 复测；preflight + 13min ≥10 语段 |
-| 2026-05-30 | **§13 对照刷新**：567 vitest、11 守卫警告；R3f/LRC/R3t-A 合入 `main`；波形 polish 记入 §2；R3t-A → 🟡 编码✅/手测⏳ |
+| 2026-05-30 | **R3t-A 手测签收**：Paraformer 13min 28 段、SenseVoice 13min 41 段、短音频 1 段、whole_track_fallback hints；`scripts/r3t-a-hand-test.sh` |
+| 2026-05-30 | **ACC-EVAL-1 样例就位**：`fixtures/eval/samples/制控.mp3` + manifest `proper-noun-zhikong`（硬门禁，非 optional） |
+| 2026-05-30 | **产品拍板批次**：Q-ACC-4～7、Q-R9-1 Mid、REV-LOC v1 P1、ACC-STT 三家 v1、Q-FUT-1 |
+| 2026-05-30 | **§4.1.7 ACC + 主序重排**：**⑤g R3g-C**、**⑤h ACC-STT-UNIFY**；§11 ACC 参考链 |
+| 2026-05-30 | **§13 对照刷新**：567 vitest、11 守卫警告；R3f/LRC/R3t-A 合入 `main`；波形 polish 记入 §2 |
 
 ---
 
@@ -929,10 +1018,10 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | `profile.rs` / R3c 缓存 / 清缓存对话框 | ✅ 已合入 `main` |
 | `asr_setup_diagnose` / 一键准备 UI | 🟡 **已合入**（`asr_setup/`、`LocalAsrSetupWizard`）；**R3f 手测待 R3h-0** |
 | `local_runtime/` LRC | 🟡 **已合入**（manifest、installer、recovery、integrity…）；**R3h-1 发行门禁 §11 未全绿** |
-| `segmentation.py` / R3t-A 内核 | 🟡 **已合入**；ASR pytest 17+（`test_funasr_engine` / pipeline / model_prepare）；**acceptance 手测未签** |
+| `segmentation.py` / R3t-A 内核 | ✅ **手测签收**（2026-05-30；`scripts/r3t-a-hand-test.sh`） |
 | `prepare(model_id)` / 模型目录 UI | ✅ R3g-A ⑤a–c 手测签收（2026-05-27） |
 | 长音频动态超时（R3e-A） | 🟡 `transcribe_timeout.rs` 已编码；**50min 手测待签** |
-| 长音频分段转写（R3e-B） | 📋 未开始（消费 R3t-A 内核） |
+| 长音频分段转写（R3e-B） | ✅ 2026-05-30 签收 — [`r3e-b-hand-test-checklist.md`](../specs/r3e-b-hand-test-checklist.md) |
 | 校对工作台波形 polish | ✅ minimap 56px、layoutIntent 缩放栏、语段 tap seek 等（2026-05-30） |
 | `services/mcp` / `services/collab` | ❌ 未开始 |
 
@@ -953,7 +1042,7 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | **R3f** | `asr_setup_diagnose`、一键准备、8741 探测、LRC 缺失/损坏修复 | 🟡 编码✅；**R3h-0 后手测** |
 | **R3h-0/1** | smoke、Win 磁盘、`local_runtime` 模块树、manifest 下载、A/B 回滚 | 🟡 编码✅；**§11 发行门禁未全绿** |
 | **R3g** | 双 SKU + prepare；R3-STATE 对齐 | ✅ ⑤a–c 签收 |
-| **R3t-A** | 分段内核 + 单测 + hints | 🟡 **编码✅ / 手测⏳** |
+| **R3t-A** | 分段内核 + 单测 + hints + 手测 | ✅ **2026-05-30 签收** |
 | **R3t-B～E** | — | 📋 |
 | **R3e-A** | 动态超时预算 | 🟡 编码✅；50min 手测待签 |
 | **R3e-B** | — | 📋 |
@@ -980,16 +1069,16 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 
 ### 13.4 排期调整摘要（2026-05-30）
 
-1. **R3t-A** 由 📋 调整为 **🟡 编码✅ / 手测⏳**；下一刀为 acceptance §手测，而非从零编码。  
+1. **R3t-A** ✅（2026-05-30 手测签收）；下一刀 **R3g-C C1** → **ACC-STT-UNIFY U1** → **R3t-B**（§4.1.1 **⑤g/⑤h** 插入 **⑤′b** 前）。  
 2. **R3f / LRC** 不再标「工作区未提交」；发行与手测闸门仍开放。  
 3. **波形 polish**（2026-05-27～30）记入 §2 基线，**不占用** R3t 薄片序号。  
-4. **§4.1.1 顺序不变**：③ R3f、④ R3e-A 手测仍建议在 R3t-B 前闭合，可与 R3t-A 手测交错。
+4. **§4.1.1 顺序更新**：**⑤g R3g-C**、**⑤h ACC-STT-UNIFY** 在 **⑤′b R3t-B** 前；③ R3f、④ R3e-A 手测仍建议闭合，可与 R3g-C 交错。
 
 ### 13.5 风险（对照后）
 
 | 风险 | 严重度 | 缓解 |
 |------|--------|------|
-| R3t-A 手测未签即开 R3t-B | 中 | 先跑 acceptance §R3t-A 手测清单 |
+| R3t-A 手测未签即开 R3t-B | — | ✅ 2026-05-30 已签 |
 | R3f / R3h-0 手测滞后 | 高 | 与 R3t-A 手测同轮或紧邻； corrupt 包误判 |
 | 文档 §13 与实测再次漂移 | 低 | 每 Epic 签收后刷新 §13.1 一行 |
 | 波形热点超阈值继续叠功能 | 中 | 下一波形刀先拆 `pxPerSec` 或 drag |

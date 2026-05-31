@@ -33,6 +33,15 @@ if [[ -z "${RUSHI_FUNASR_MODEL:-}" && -f "${PREF_FILE}" ]]; then
   fi
 fi
 
+LANG_PREF_FILE="${APP_DATA_ROOT}/prefs/funasr_language.txt"
+if [[ -z "${RUSHI_FUNASR_LANGUAGE:-}" && -f "${LANG_PREF_FILE}" ]]; then
+  lang="$(tr -d '\r\n' < "${LANG_PREF_FILE}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+  if [[ -n "${lang}" ]]; then
+    export RUSHI_FUNASR_LANGUAGE="${lang}"
+    echo "==> RUSHI_FUNASR_LANGUAGE=${lang} (from desktop pref)"
+  fi
+fi
+
 if curl -sf --max-time 2 "${ASR_BASE}/health" >/dev/null 2>&1; then
   echo "WARN: ${ASR_BASE} already in use. Stop it first (lsof -i :8741) if you need a fresh process with updated env." >&2
 fi
