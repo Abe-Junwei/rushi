@@ -4,6 +4,7 @@ use std::time::Duration;
 use serde_json::json;
 
 use crate::online_stt_bridge::OnlineTranscribeBridge;
+use crate::project::stt_vocabulary::{append_deepgram_keywords, SttVocabularyPlan};
 
 use super::rushi_value;
 
@@ -12,6 +13,7 @@ pub async fn transcribe_deepgram(
     client: &reqwest::Client,
     audio_path: &Path,
     bridge: &OnlineTranscribeBridge,
+    vocabulary: &SttVocabularyPlan,
     timeout: Duration,
     log: &impl Fn(&str),
 ) -> Result<serde_json::Value, String> {
@@ -29,12 +31,13 @@ pub async fn transcribe_deepgram(
     } else {
         format!("Token {}", auth_trim)
     };
-    let url = bridge.transcribe_url.trim();
-    let url = if url.is_empty() {
+    let raw_url = bridge.transcribe_url.trim();
+    let base_url = if raw_url.is_empty() {
         "https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true"
     } else {
-        url
+        raw_url
     };
+    let url = append_deepgram_keywords(base_url, vocabulary);
     let part = super::multipart_part_from_file(audio_path).await?;
     let form = reqwest::multipart::Form::new().part("audio", part);
     log("INFO deepgram listen");

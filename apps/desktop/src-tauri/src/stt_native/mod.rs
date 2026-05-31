@@ -16,6 +16,7 @@ use std::sync::OnceLock;
 use tokio_util::io::ReaderStream;
 
 use crate::online_stt_bridge::{is_allowed_stt_transcribe_url, OnlineTranscribeBridge};
+use crate::project::stt_vocabulary::SttVocabularyPlan;
 
 static HTTP: OnceLock<reqwest::Client> = OnceLock::new();
 const MAX_STT_AUDIO_BYTES: u64 = 512 * 1024 * 1024;
@@ -137,6 +138,7 @@ pub async fn dispatch_native(
     client: &reqwest::Client,
     audio_path: &Path,
     bridge: &OnlineTranscribeBridge,
+    vocabulary: &SttVocabularyPlan,
     timeout: Duration,
     log: &impl Fn(&str),
 ) -> Result<serde_json::Value, String> {
@@ -157,7 +159,7 @@ pub async fn dispatch_native(
             aliyun::transcribe_aliyun_nls(client, audio_path, bridge, timeout, log).await
         }
         "deepgramListen" => {
-            deepgram::transcribe_deepgram(client, audio_path, bridge, timeout, log).await
+            deepgram::transcribe_deepgram(client, audio_path, bridge, vocabulary, timeout, log).await
         }
         "tencentAsr" => tencent::transcribe_tencent(client, audio_path, bridge, timeout, log).await,
         "azureConversationV1" => {

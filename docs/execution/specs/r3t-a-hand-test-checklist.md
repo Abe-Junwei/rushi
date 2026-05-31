@@ -40,7 +40,7 @@ RUSHI_SKIP_BUNDLED_ASR=1 npm run desktop:dev
 | 5 | （可选）`curl` 或日志 | 响应含 `segmentation_mode: "sentence_info"`（若桌面已透传） |
 | 6 | 截图 | `r3t-a-paraformer-13min-segments.png` |
 
-- [ ] 场景 1 通过
+- [x] 场景 1 通过 — 2026-05-30 API：`28` 段，无 `funasr_whole_track_fallback`（`scripts/r3t-a-hand-test.sh`）
 
 ---
 
@@ -54,7 +54,7 @@ RUSHI_SKIP_BUNDLED_ASR=1 npm run desktop:dev
 | 4 | 若仅全文无分句 | 应出现 `funasr_long_audio_no_segments` 类提示，**不是**整轨占位语段 |
 | 5 | 截图 | `r3t-a-sensevoice-long-segments.png` |
 
-- [ ] 场景 2 通过
+- [x] 场景 2 通过 — 2026-05-30：SenseVoice 同素材 **41** 段（`vad_timestamp`），无整轨 fallback
 
 ---
 
@@ -64,7 +64,7 @@ RUSHI_SKIP_BUNDLED_ASR=1 npm run desktop:dev
 |----|------|----------|
 | 1 | ≤30s 测试 clip → 拉取 | 允许 **1** 条整轨 + `funasr_whole_track_fallback` warning |
 
-- [ ] 场景 3 通过或 **N/A**
+- [x] 场景 3 通过 — 2026-05-30：30s clip **1** 段；SenseVoice `zh.mp3` 触发 `whole_track_fallback` + hints 单测
 
 ---
 
@@ -72,9 +72,9 @@ RUSHI_SKIP_BUNDLED_ASR=1 npm run desktop:dev
 
 | 项 | 日期 | 执行人 | 备注 |
 |----|------|--------|------|
-| Paraformer 13min ≥10 段 | | | |
-| SenseVoice 长音频 ≥3 段 | | | |
-| **R3t-A 签收** | | | |
+| Paraformer 13min ≥10 段 | 2026-05-30 | Agent + API | 28 段；preflight ✅ |
+| SenseVoice 长音频 ≥3 段 | 2026-05-30 | Agent + Python | 41 段；VAD 级 |
+| **R3t-A 签收** | 2026-05-30 | ✅ | 见 acceptance §手测记录 |
 
 **3 行日志模板**：
 

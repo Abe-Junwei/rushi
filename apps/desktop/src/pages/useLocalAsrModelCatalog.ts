@@ -1,6 +1,12 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { asrBaseUrl, isTauriRuntime } from "../config/env";
 import { loopbackFetch } from "../services/asr/loopbackFetch";
+import {
+  normalizeLocalAsrRecognitionLanguage,
+  readStoredLocalAsrRecognitionLanguage,
+  writeStoredLocalAsrRecognitionLanguage,
+  type LocalAsrRecognitionLanguage,
+} from "../services/asr/localAsrRecognitionLanguage";
 import { applyHubModelToSidecar } from "../services/asr/localAsrSetupModelStep";
 import {
   DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
@@ -44,6 +50,8 @@ export interface LocalAsrModelCatalogApi {
   applyBusy: boolean;
   applyMessage: string;
   setSelectedHubModelId: (hubModelId: string) => void;
+  recognitionLanguage: LocalAsrRecognitionLanguage;
+  setRecognitionLanguage: (language: LocalAsrRecognitionLanguage) => void;
   applySelectedModel: () => Promise<void>;
   syncCatalogFromHealth: (healthJson: unknown, rootJson?: unknown) => void;
   refreshCatalogFromSidecar: () => Promise<void>;
@@ -62,6 +70,9 @@ export function useLocalAsrModelCatalog(
   const [sidecarPuncPrepareCapable, setSidecarPuncPrepareCapable] = useState(false);
   const [applyBusy, setApplyBusy] = useState(false);
   const [applyMessage, setApplyMessage] = useState("");
+  const [recognitionLanguage, setRecognitionLanguageState] = useState<LocalAsrRecognitionLanguage>(
+    () => readStoredLocalAsrRecognitionLanguage(),
+  );
 
   const selectedEntry = useMemo(
     () => catalogEntryForHub(selectedHubModelId) ?? LOCAL_ASR_MODEL_CATALOG[0],
@@ -72,6 +83,12 @@ export function useLocalAsrModelCatalog(
     const resolved = resolveLocalAsrHubModelId(hubModelId);
     setSelectedHubModelIdState(resolved);
     writeStoredHubModelId(resolved);
+  }, []);
+
+  const setRecognitionLanguage = useCallback((language: LocalAsrRecognitionLanguage) => {
+    const resolved = normalizeLocalAsrRecognitionLanguage(language);
+    setRecognitionLanguageState(resolved);
+    writeStoredLocalAsrRecognitionLanguage(resolved);
   }, []);
 
   const syncCatalogFromHealth = useCallback((healthJson: unknown, rootJson?: unknown) => {
@@ -120,14 +137,18 @@ export function useLocalAsrModelCatalog(
   const bootstrapFromTauri = useCallback(async () => {
     if (!tauriRuntime) return;
     try {
-      const pref = await p1.getLocalAsrHubModelPref();
+      const [pref, langPref] = await Promise.all([
+        p1.getLocalAsrHubModelPref(),
+        p1.getLocalAsrRecognitionLanguagePref(),
+      ]);
       if (pref?.trim()) {
         setSelectedHubModelId(pref.trim());
       }
+      setRecognitionLanguage(normalizeLocalAsrRecognitionLanguage(langPref));
     } catch {
       /* ignore */
     }
-  }, [tauriRuntime, setSelectedHubModelId]);
+  }, [tauriRuntime, setSelectedHubModelId, setRecognitionLanguage]);
 
   useEffect(() => {
     void bootstrapFromTauri();
@@ -136,7 +157,11 @@ export function useLocalAsrModelCatalog(
   const applySelectedModel = useCallback(async () => {
     const hub = resolveLocalAsrHubModelId(selectedHubModelId);
     writeStoredHubModelId(hub);
-    const selectionCtx = { selectedHubModelId: hub, catalogStatus };
+    const selectionCtx = {
+      selectedHubModelId: hub,
+      catalogStatus,
+      recognitionLanguage,
+    };
     if (!tauriRuntime) {
       setApplyMessage("浏览器预览无法切换侧车模型，请在桌面应用中操作。");
       return;
@@ -166,7 +191,15 @@ export function useLocalAsrModelCatalog(
     } finally {
       setApplyBusy(false);
     }
-  }, [catalogStatus, probeSidecarRoot, refreshAsrRuntimeInfo, refreshCatalogFromSidecar, selectedHubModelId, tauriRuntime]);
+  }, [
+    catalogStatus,
+    probeSidecarRoot,
+    recognitionLanguage,
+    refreshAsrRuntimeInfo,
+    refreshCatalogFromSidecar,
+    selectedHubModelId,
+    tauriRuntime,
+  ]);
 
   return {
     selectedHubModelId,
@@ -177,6 +210,8 @@ export function useLocalAsrModelCatalog(
     applyBusy,
     applyMessage,
     setSelectedHubModelId,
+    recognitionLanguage,
+    setRecognitionLanguage,
     applySelectedModel,
     syncCatalogFromHealth,
     refreshCatalogFromSidecar,

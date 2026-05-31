@@ -4,7 +4,11 @@ import {
   shouldSkipSidecarRestartForSelection,
 } from "./localAsrSidecarGuards";
 
-const selection = { selectedHubModelId: "iic/SenseVoiceSmall", catalogStatus: null };
+const selection = {
+  selectedHubModelId: "iic/SenseVoiceSmall",
+  catalogStatus: null,
+  recognitionLanguage: "zh" as const,
+};
 
 const readyCaps = {
   ffmpeg_ok: true,
@@ -18,6 +22,7 @@ const readyCaps = {
   ready_for_transcribe: true,
   transcription_mode: "funasr" as const,
   funasr_model_id: "iic/SenseVoiceSmall",
+  funasr_language: "zh",
 };
 
 describe("localAsrSidecarGuards", () => {
@@ -41,6 +46,15 @@ describe("localAsrSidecarGuards", () => {
   it("shouldSkipSidecarRestartForSelection false when funasr not ready", () => {
     expect(
       shouldSkipSidecarRestartForSelection({ ...readyCaps, funasr_ready: false }, selection),
+    ).toBe(false);
+  });
+
+  it("shouldSkipSidecarRestartForSelection false when recognition language differs", () => {
+    expect(
+      shouldSkipSidecarRestartForSelection(
+        { ...readyCaps, funasr_language: "auto" },
+        { ...selection, recognitionLanguage: "zh" },
+      ),
     ).toBe(false);
   });
 });

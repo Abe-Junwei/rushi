@@ -30,30 +30,39 @@ export async function applyHubModelToSidecar(
 ): Promise<ApplyHubModelResult> {
   const hub = resolveLocalAsrHubModelId(ctx.selectedHubModelId);
   const label = catalogEntryForHub(hub)?.label ?? hub;
+  const language = ctx.recognitionLanguage ?? "zh";
   const caps = await fetchAsrHealthCaps();
   if (shouldSkipSidecarRestartForSelection(caps, ctx)) {
-    const pref = await projectApi.getLocalAsrHubModelPref().catch(() => null);
+    const [pref, langPref] = await Promise.all([
+      projectApi.getLocalAsrHubModelPref().catch(() => null),
+      projectApi.getLocalAsrRecognitionLanguagePref().catch(() => "zh"),
+    ]);
     if (pref?.trim() !== hub) {
       await projectApi.setLocalAsrHubModelPref(hub, { restartSidecar: false });
+    }
+    if (langPref.trim() !== language) {
+      await projectApi.setLocalAsrRecognitionLanguagePref(language, { restartSidecar: false });
     }
     return { ok: true };
   }
 
   const prevPref = (await projectApi.getLocalAsrHubModelPref().catch(() => null))?.trim() ?? "";
 
+  await projectApi.setLocalAsrRecognitionLanguagePref(language, { restartSidecar: false });
+
   if (!isDefaultBundledAsrTarget()) {
     await projectApi.setLocalAsrHubModelPref(hub, { restartSidecar: false });
     return {
       ok: false,
       needsManualSidecarRestart: true,
-      message: `已写入模型偏好。请执行 npm run asr:dev 重启侧车以加载 ${label}。`,
+      message: `已写入模型与识别语言偏好。请执行 npm run asr:dev 重启侧车以加载 ${label}。`,
     };
   }
 
-  if (prevPref === hub) {
-    await projectApi.retryBundledAsrSidecar();
-  } else {
+  if (prevPref !== hub) {
     await projectApi.setLocalAsrHubModelPref(hub);
+  } else {
+    await projectApi.retryBundledAsrSidecar();
   }
 
   const after = await pollLoopbackHealthUntil({

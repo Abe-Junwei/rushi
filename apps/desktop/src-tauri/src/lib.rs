@@ -4,6 +4,7 @@ mod china_stt_shell;
 mod db;
 mod diagnostic;
 mod export_docx;
+mod local_asr_language;
 mod local_asr_model;
 mod local_runtime;
 mod online_stt_bridge;
@@ -92,6 +93,8 @@ pub fn run() {
             asr_sidecar::loopback::asr_loopback_request,
             local_asr_model::get_local_asr_hub_model_pref,
             local_asr_model::set_local_asr_hub_model_pref,
+            local_asr_language::get_local_asr_recognition_language_pref,
+            local_asr_language::set_local_asr_recognition_language_pref,
             project::open_app_data_folder,
             project::export_text_file,
             project::glossary_list,
@@ -105,6 +108,8 @@ pub fn run() {
             project::glossary_import_from_file,
             postprocess_cmd::llm_save_api_key,
             postprocess_cmd::llm_delete_api_key,
+            postprocess_cmd::llm_has_stored_api_key,
+            postprocess_cmd::llm_migrate_legacy_api_key,
             postprocess_cmd::llm_probe_connection,
             postprocess_cmd::postprocess_auto_punctuate,
             postprocess_cmd::postprocess_cancel_auto_punctuate,

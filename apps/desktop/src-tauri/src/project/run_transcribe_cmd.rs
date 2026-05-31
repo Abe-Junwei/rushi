@@ -3,12 +3,16 @@ use super::local_transcribe_gate::assert_local_asr_ready_for_transcribe;
 use super::segment_cmd::file_save_segments_inner;
 use super::segment_media_sanitize::{sanitize_segments_for_media, trim_adjacent_segment_overlaps};
 use super::transcribe::{build_glossary_hotwords, post_transcribe_multipart};
+use super::stt_vocabulary::{
+    channel_for_online, vocabulary_support_warnings, SttVocabularyChannel, SttVocabularyPlan,
+};
 use super::transcribe_errors::describe_transcribe_payload_error;
 use super::transcribe_timeout::{
     local_transcribe_timeout_duration, long_audio_transcribe_hint, probe_audio_duration_sec,
 };
 use super::transcribe_native_online::{transcribe_assemblyai_native, transcribe_openai_native};
-use super::types::{RunTranscribeOutcome, SegmentDto};
+use super::transcribe_response::{merge_transcribe_warnings, parse_transcribe_segments_from_json};
+use super::types::RunTranscribeOutcome;
 use super::utils::{append_desktop_log_line, file_detail_from_conn, now_ms, open_db};
 use crate::online_stt_bridge::{is_allowed_stt_transcribe_url, OnlineTranscribeBridge};
 use crate::DbState;
@@ -38,7 +42,8 @@ async fn project_run_transcribe_inner(
     let file_detail = file_detail_from_conn(&conn, &file_id)?;
     let hotwords_build = build_glossary_hotwords(&conn)?;
     let hotwords_truncated = hotwords_build.preview.truncated;
-    let hotwords = hotwords_build.hotwords;
+    let vocabulary = SttVocabularyPlan::from_build(&hotwords_build);
+    let hotwords = vocabulary.hotwords.clone();
     drop(conn);
     let audio_path = file_detail
         .audio_path
@@ -50,15 +55,38 @@ async fn project_run_transcribe_inner(
         return Err("项目音频文件缺失".to_string());
     }
     let audio_duration_sec = probe_audio_duration_sec(audio_path);
+    append_desktop_log_line(&st, "INFO transcribe_stage=preflight");
 
-    let v: serde_json::Value = if let Some(ref o) = online {
+    let (v, vocabulary_pre_warnings) = if let Some(ref o) = online {
         let timeout_s = o.timeout_sec.unwrap_or(600).clamp(30, 600);
         let dur = Duration::from_secs(timeout_s);
-        match o.native_adapter.as_deref() {
+        let use_multipart = !matches!(
+            o.native_adapter.as_deref(),
+            Some(
+                "openaiAudio"
+                    | "assemblyai"
+                    | "baiduSpeech"
+                    | "aliyunNls"
+                    | "deepgramListen"
+                    | "tencentAsr"
+                    | "azureConversationV1"
+                    | "googleSpeechV1"
+                    | "iflytekIatWs"
+                    | "huaweiSisShortAudio"
+                    | "aispeechLasrSentenceV2"
+                    | "volcengineBigmodelNostreamWs"
+            )
+        );
+        let channel = channel_for_online(o.native_adapter.as_deref(), use_multipart);
+        let vocabulary_pre_warnings =
+            vocabulary_support_warnings(channel, &vocabulary, hotwords_truncated);
+        let v = match o.native_adapter.as_deref() {
             Some("openaiAudio") => {
-                transcribe_openai_native(&st, audio_path, &hotwords, o, dur).await?
+                transcribe_openai_native(&st, audio_path, &vocabulary, o, dur).await?
             }
-            Some("assemblyai") => transcribe_assemblyai_native(&st, audio_path, o, dur).await?,
+            Some("assemblyai") => {
+                transcribe_assemblyai_native(&st, audio_path, &vocabulary, o, dur).await?
+            }
             Some(
                 adapter @ ("baiduSpeech"
                 | "aliyunNls"
@@ -73,8 +101,16 @@ async fn project_run_transcribe_inner(
             ) => {
                 let client = crate::stt_native::http_client();
                 let log = |line: &str| append_desktop_log_line(&st, line);
-                crate::stt_native::dispatch_native(adapter, client, audio_path, o, dur, &log)
-                    .await?
+                crate::stt_native::dispatch_native(
+                    adapter,
+                    client,
+                    audio_path,
+                    o,
+                    &vocabulary,
+                    dur,
+                    &log,
+                )
+                .await?
             }
             _ => {
                 let url = o.transcribe_url.trim();
@@ -100,8 +136,14 @@ async fn project_run_transcribe_inner(
                 post_transcribe_multipart(&st, url, audio_path, hotwords.clone(), auth, app_k, dur)
                     .await?
             }
-        }
+        };
+        (v, vocabulary_pre_warnings)
     } else {
+        let vocabulary_pre_warnings = vocabulary_support_warnings(
+            SttVocabularyChannel::LocalFunasrMultipart,
+            &vocabulary,
+            hotwords_truncated,
+        );
         let base = asr_base_url
             .unwrap_or_else(|| "http://127.0.0.1:8741".to_string())
             .trim_end_matches('/')
@@ -116,7 +158,7 @@ async fn project_run_transcribe_inner(
                 timeout.as_secs()
             ),
         );
-        post_transcribe_multipart(
+        let v = post_transcribe_multipart(
             &st,
             &url,
             audio_path,
@@ -125,8 +167,10 @@ async fn project_run_transcribe_inner(
             None,
             timeout,
         )
-        .await?
+        .await?;
+        (v, vocabulary_pre_warnings)
     };
+    append_desktop_log_line(&st, "INFO transcribe_stage=parse");
     // 契约里 success 也可能带 `"error": null`（Pydantic optional）；仅非 null 视为硬错误。
     if let Some(err) = v.get("error").filter(|e| !e.is_null()) {
         let msg = err
@@ -154,7 +198,7 @@ async fn project_run_transcribe_inner(
         .and_then(|x| x.as_str())
         .unwrap_or("")
         .to_string();
-    let mut warnings: Vec<String> = v
+    let base_warnings: Vec<String> = v
         .get("warnings")
         .and_then(|w| w.as_array())
         .map(|arr| {
@@ -163,66 +207,31 @@ async fn project_run_transcribe_inner(
                 .collect()
         })
         .unwrap_or_default();
-    if hotwords_truncated {
-        warnings.insert(0, "hotwords_truncated_12k".to_string());
+    let segmentation_mode = v
+        .get("segmentation_mode")
+        .and_then(|x| x.as_str());
+    let mut warnings = merge_transcribe_warnings(
+        base_warnings,
+        vocabulary_pre_warnings,
+        hotwords_truncated,
+        long_audio_transcribe_hint(audio_duration_sec),
+        segmentation_mode,
+    );
+    if segmentation_mode == Some("transcribe_windowed") {
+        append_desktop_log_line(&st, "INFO transcribe_windowed_path");
     }
-    if let Some(hint) = long_audio_transcribe_hint(audio_duration_sec) {
-        warnings.insert(0, hint.to_string());
+    for w in warnings.iter() {
+        if w.starts_with("transcribe_windowed:") {
+            append_desktop_log_line(&st, &format!("INFO transcribe {w}"));
+            break;
+        }
     }
 
     let arr = v
         .get("segments")
         .and_then(|s| s.as_array())
         .ok_or_else(|| "响应缺少 segments 数组".to_string())?;
-    let mut segments: Vec<SegmentDto> = Vec::new();
-    for (i, row) in arr.iter().enumerate() {
-        let start = row
-            .get("start_sec")
-            .and_then(|x| x.as_f64())
-            .ok_or_else(|| format!("segment {i} start_sec"))?;
-        let end = row
-            .get("end_sec")
-            .and_then(|x| x.as_f64())
-            .ok_or_else(|| format!("segment {i} end_sec"))?;
-        let text = row
-            .get("text")
-            .and_then(|x| x.as_str())
-            .unwrap_or("")
-            .to_string();
-        let confidence = row.get("confidence").and_then(|x| x.as_f64());
-        let low_confidence = row
-            .get("low_confidence")
-            .and_then(|x| x.as_bool())
-            .unwrap_or(false);
-        let detail = row
-            .get("detail")
-            .and_then(|x| x.as_str())
-            .filter(|s| !s.is_empty())
-            .map(String::from);
-        let kind = row
-            .get("kind")
-            .and_then(|x| x.as_str())
-            .filter(|s| !s.is_empty())
-            .map(String::from)
-            .or_else(|| {
-                if detail.as_deref() == Some("funasr_whole_track_fallback") {
-                    Some("placeholder".to_string())
-                } else {
-                    Some("speech".to_string())
-                }
-            });
-        segments.push(SegmentDto {
-            uid: Some(uuid::Uuid::new_v4().to_string()),
-            idx: i as i32,
-            start_sec: start,
-            end_sec: end,
-            text,
-            confidence,
-            low_confidence,
-            detail,
-            kind,
-        });
-    }
+    let mut segments = parse_transcribe_segments_from_json(arr)?;
     if segments.is_empty() {
         append_desktop_log_line(&st, "INFO transcribe zero_segments_ok");
     }
@@ -244,6 +253,7 @@ async fn project_run_transcribe_inner(
             warnings.append(&mut hint_warnings);
         }
     }
+    append_desktop_log_line(&st, "INFO transcribe_stage=save");
     fs::create_dir_all(st.root.join("logs")).map_err(|e| e.to_string())?;
     let recovery_path = st
         .root

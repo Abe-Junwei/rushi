@@ -4,6 +4,7 @@ import { buildSegmentContextMenuItems, type SegmentContextMenuKey } from "../uti
 import { EnvironmentPanel } from "./EnvironmentPanel";
 import { FloatingPanelTemplate } from "./PanelTemplate";
 import { AutoPunctuatePreviewDialog } from "./AutoPunctuatePreviewDialog";
+import { TranscribeOverwriteConfirmDialog } from "./TranscribeOverwriteConfirmDialog";
 import { EditorView } from "./EditorView";
 
 import { WelcomeView, type WelcomePageId } from "./WelcomeView";
@@ -170,6 +171,7 @@ export function ProjectPanel() {
               asrSetup={c.asrSetup}
               localAsrModelCatalog={c.localAsrModelCatalog}
               onSttOnlineRuntimeChanged={c.bumpSttOnlineRuntimeChanged}
+              onLlmRuntimeChanged={c.bumpLlmRuntimeChanged}
             />
         </FloatingPanelTemplate>
       ) : null}
@@ -206,6 +208,14 @@ export function ProjectPanel() {
         onCancel={c.cancelAutoPunctuate}
         onConfirmConsent={c.confirmAutoPunctuateConsent}
         onConfirmWriteback={c.confirmAutoPunctuateWriteback}
+      />
+
+      <TranscribeOverwriteConfirmDialog
+        open={c.transcribeOverwriteDialogOpen && !c.busy}
+        busy={c.busy}
+        segmentCount={c.transcribeOverwriteSegmentCount}
+        onCancel={c.cancelTranscribeOverwrite}
+        onConfirm={c.confirmTranscribeOverwrite}
       />
 
       <UnsavedCloseDialog

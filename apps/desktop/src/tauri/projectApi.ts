@@ -52,6 +52,8 @@ export interface AsrHealthCapabilities {
   funasr_model_id?: string | null;
   /** Hub id resident in sidecar memory (null when unloaded). */
   funasr_loaded_model_id?: string | null;
+  /** Sidecar `RUSHI_FUNASR_LANGUAGE` (R3g-C C4). */
+  funasr_language?: string | null;
   funasr_punc_model_id?: string | null;
   /** 侧车 / 壳传入的模型缓存根目录（若有）。 */
   rushi_models_root?: string | null;
@@ -207,6 +209,20 @@ export async function setLocalAsrHubModelPref(
 ): Promise<void> {
   return invoke<void>("set_local_asr_hub_model_pref", {
     hubModelId,
+    restartSidecar: options?.restartSidecar ?? true,
+  });
+}
+
+export async function getLocalAsrRecognitionLanguagePref(): Promise<string> {
+  return invoke<string>("get_local_asr_recognition_language_pref");
+}
+
+export async function setLocalAsrRecognitionLanguagePref(
+  language: string,
+  options?: { restartSidecar?: boolean },
+): Promise<void> {
+  return invoke<void>("set_local_asr_recognition_language_pref", {
+    language,
     restartSidecar: options?.restartSidecar ?? true,
   });
 }

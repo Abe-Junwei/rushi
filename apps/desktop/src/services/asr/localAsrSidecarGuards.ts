@@ -1,5 +1,11 @@
 import type { AsrHealthCapabilities } from "../../tauri/projectApi";
 import {
+  DEFAULT_LOCAL_ASR_RECOGNITION_LANGUAGE,
+  normalizeLocalAsrRecognitionLanguage,
+  sidecarRecognitionLanguageMatchesSelection,
+  type LocalAsrRecognitionLanguage,
+} from "./localAsrRecognitionLanguage";
+import {
   computeLocalAsrTranscribeReady,
   resolveLocalAsrHubModelId,
   type LocalAsrCatalogStatusItem,
@@ -8,6 +14,7 @@ import {
 export type LocalAsrSetupSelectionContext = {
   selectedHubModelId: string;
   catalogStatus?: LocalAsrCatalogStatusItem[] | null;
+  recognitionLanguage?: LocalAsrRecognitionLanguage;
 };
 
 /** Loopback + UI selection aligned transcribe-ready (same rule as EnvLocalAsrPanel). */
@@ -36,5 +43,11 @@ export function shouldSkipSidecarRestartForSelection(
 ): boolean {
   if (!caps?.funasr_ready || !caps.ready_for_transcribe) return false;
   const hub = resolveLocalAsrHubModelId(ctx.selectedHubModelId);
+  const lang = normalizeLocalAsrRecognitionLanguage(
+    ctx.recognitionLanguage ?? DEFAULT_LOCAL_ASR_RECOGNITION_LANGUAGE,
+  );
+  if (!sidecarRecognitionLanguageMatchesSelection(caps.funasr_language, lang)) {
+    return false;
+  }
   return caps.funasr_model_id === hub && isLoopbackTranscribeReadyForSelection(caps, ctx);
 }

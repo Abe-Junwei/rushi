@@ -5,6 +5,12 @@ import {
   selectedModelMatchesSidecar,
   sidecarMemoryModelMatchesConfig,
 } from "../../services/asr/localAsrModelCatalog";
+import {
+  LOCAL_ASR_RECOGNITION_LANGUAGE_OPTIONS,
+  localAsrRecognitionLanguageLabel,
+  normalizeLocalAsrRecognitionLanguage,
+  sidecarRecognitionLanguageMatchesSelection,
+} from "../../services/asr/localAsrRecognitionLanguage";
 import type { LocalAsrModelCatalogApi } from "../../pages/useLocalAsrModelCatalog";
 import type { AsrHealthCapabilities } from "../../tauri/projectApi";
 
@@ -27,6 +33,10 @@ export function LocalAsrModelSection({ catalog, asrCaps, busy, prepareModelBusy 
   const sidecarMatchesSelection = selectedModelMatchesSidecar(
     catalog.selectedHubModelId,
     sidecarHub,
+  );
+  const languageMatchesSidecar = sidecarRecognitionLanguageMatchesSelection(
+    asrCaps?.funasr_language,
+    catalog.recognitionLanguage,
   );
   const memoryMatchesConfig = sidecarMemoryModelMatchesConfig(asrCaps);
   const panelBusy = busy || prepareModelBusy;
@@ -58,6 +68,34 @@ export function LocalAsrModelSection({ catalog, asrCaps, busy, prepareModelBusy 
             </option>
           ))}
         </select>
+      </label>
+
+      <label className="flex flex-col gap-1.5">
+        <span className={PANEL_TYPOGRAPHY.fieldLabel}>识别语言</span>
+        <select
+          className="w-full max-w-xl rounded border border-notion-divider bg-notion-bg px-2.5 py-2 text-[12px] text-notion-text"
+          value={catalog.recognitionLanguage}
+          disabled={panelBusy || catalog.applyBusy}
+          onChange={(e) =>
+            catalog.setRecognitionLanguage(
+              e.target.value as typeof catalog.recognitionLanguage,
+            )
+          }
+        >
+          {LOCAL_ASR_RECOGNITION_LANGUAGE_OPTIONS.map((option) => (
+            <option key={option.id} value={option.id}>
+              {option.label}
+            </option>
+          ))}
+        </select>
+        <p className={PANEL_TYPOGRAPHY.meta}>
+          {
+            LOCAL_ASR_RECOGNITION_LANGUAGE_OPTIONS.find(
+              (o) => o.id === catalog.recognitionLanguage,
+            )?.description
+          }{" "}
+          切换后请点「应用并重启侧车」生效。
+        </p>
       </label>
 
       <p className={PANEL_TYPOGRAPHY.meta}>{selectedView?.description ?? catalog.selectedEntry.description}</p>
@@ -96,6 +134,25 @@ export function LocalAsrModelSection({ catalog, asrCaps, busy, prepareModelBusy 
           role="status"
         >
           侧车版本过旧（无标点模型准备与下载取消接口），长音频 Paraformer 易整轨单语段。请完全退出应用后重开，或在下方点「重试内置侧车」，再「校验/刷新缓存」。
+        </p>
+      ) : null}
+
+      {sidecarMatchesSelection && !languageMatchesSidecar ? (
+        <p
+          className={`${PANEL_TYPOGRAPHY.meta} rounded border border-zen-saffron/30 bg-zen-saffron/10 px-3 py-2 text-notion-text`}
+          role="status"
+        >
+          已选识别语言{" "}
+          <strong className="font-medium">
+            {localAsrRecognitionLanguageLabel(catalog.recognitionLanguage)}
+          </strong>
+          ，但侧车仍在使用{" "}
+          <code className="font-mono text-[11px]">
+            {localAsrRecognitionLanguageLabel(
+              normalizeLocalAsrRecognitionLanguage(asrCaps?.funasr_language),
+            )}
+          </code>
+          。请点「应用并重启侧车」。
         </p>
       ) : null}
 
@@ -145,6 +202,11 @@ export function LocalAsrModelSection({ catalog, asrCaps, busy, prepareModelBusy 
         <p className={`${PANEL_TYPOGRAPHY.meta} font-mono text-[11px]`}>
           侧车运行中：{sidecarHub}
           {sidecarMatchesSelection ? "（与所选一致）" : ""}
+          {asrCaps?.funasr_language
+            ? ` · 识别语言 ${localAsrRecognitionLanguageLabel(
+                normalizeLocalAsrRecognitionLanguage(asrCaps.funasr_language),
+              )}`
+            : ""}
         </p>
       ) : null}
     </section>

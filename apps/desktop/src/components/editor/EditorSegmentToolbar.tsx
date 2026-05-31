@@ -59,9 +59,11 @@ export function EditorSegmentToolbar({
           onClick={() => void c.requestAutoPunctuate()}
           aria-label="自动标点"
           title={
-            c.canAutoPunctuate
-              ? "自动标点"
-              : "请先在设置 → LLM 配置 中保存 API Key"
+            c.busy
+              ? "处理中"
+              : c.canAutoPunctuate
+                ? "自动标点"
+                : (c.autoPunctuateBlockReason ?? "自动标点不可用")
           }
         >
           <span className="inline-flex items-center gap-1.5">

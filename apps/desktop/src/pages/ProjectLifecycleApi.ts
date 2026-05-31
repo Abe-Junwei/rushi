@@ -21,6 +21,8 @@ export interface ProjectLifecycleApi {
   setNewName: React.Dispatch<React.SetStateAction<string>>;
   pickedPath: string | null;
   transcribeHints: string[];
+  transcribeOverwriteDialogOpen: boolean;
+  transcribeOverwriteSegmentCount: number;
   refreshProjects: () => Promise<void>;
   pickAudio: () => Promise<void>;
   clearPickedAudio: () => void;
@@ -33,6 +35,8 @@ export interface ProjectLifecycleApi {
   closeProject: () => void;
   refreshCurrentProject: () => Promise<void>;
   runTranscribe: () => Promise<void>;
+  confirmTranscribeOverwrite: () => void;
+  cancelTranscribeOverwrite: () => void;
   saveSegments: () => Promise<boolean>;
   deleteProject: (id: string, options?: { skipBrowserConfirm?: boolean }) => Promise<void>;
   exportTxt: () => Promise<void>;
@@ -68,11 +72,13 @@ export interface ProjectLifecycleApi {
   ) => void;
   flushSegmentTextDrafts: () => void;
   canAutoPunctuate: boolean;
+  autoPunctuateBlockReason: string | null;
   autoPunctuateDialog: AutoPunctuateDialogState;
   requestAutoPunctuate: () => void;
   confirmAutoPunctuateConsent: () => void;
   confirmAutoPunctuateWriteback: () => void;
   cancelAutoPunctuate: () => void;
+  bumpLlmRuntimeChanged: () => void;
   closeGateOpen: boolean;
   closeGateIntent: "app-quit" | "navigate";
   stayAfterCloseAttempt: () => void;

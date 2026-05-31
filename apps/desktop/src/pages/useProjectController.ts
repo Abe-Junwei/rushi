@@ -1,5 +1,6 @@
 import { useAsrBridgeController, type AsrHealthState } from "./useAsrBridgeController";
 import { funasrManualSetupCommands, parseAsrHealthJson } from "../services/asr/asrHealthParse";
+import { localAsrTranscribePreflightMessage } from "../services/asr/localAsrTranscribePreflight";
 import { useAsrSetupController } from "./useAsrSetupController";
 import { useProjectLifecycleController, type BusyReason } from "./useProjectLifecycleController";
 import { useCallback, useRef } from "react";
@@ -12,7 +13,6 @@ export type ProjectControllerApi = ReturnType<typeof useProjectController>;
 export { parseAsrHealthJson, funasrManualSetupCommands };
 
 export function useProjectController() {
-  const lifecycle = useProjectLifecycleController();
   const refreshSetupDiagnoseRef = useRef<
     ((options?: { resetSteps?: boolean; touchUi?: boolean }) => Promise<unknown>) | null
   >(null);
@@ -43,6 +43,24 @@ export function useProjectController() {
   });
   refreshSetupDiagnoseRef.current = asrSetup.refreshSetupDiagnose;
 
+  const localTranscribePreflight = useCallback(
+    () =>
+      localAsrTranscribePreflightMessage({
+        asrHealth: asr.asrHealth,
+        asrCaps: asr.asrCaps,
+        selectedHubModelId: asr.localAsrModelCatalog.selectedHubModelId,
+        catalogStatus: asr.localAsrModelCatalog.catalogStatus,
+      }),
+    [
+      asr.asrHealth,
+      asr.asrCaps,
+      asr.localAsrModelCatalog.selectedHubModelId,
+      asr.localAsrModelCatalog.catalogStatus,
+    ],
+  );
+
+  const lifecycle = useProjectLifecycleController(localTranscribePreflight);
+
   return {
     // Lifecycle
     projects: lifecycle.projects,
@@ -60,6 +78,8 @@ export function useProjectController() {
     setNewName: lifecycle.setNewName,
     pickedPath: lifecycle.pickedPath,
     transcribeHints: lifecycle.transcribeHints,
+    transcribeOverwriteDialogOpen: lifecycle.transcribeOverwriteDialogOpen,
+    transcribeOverwriteSegmentCount: lifecycle.transcribeOverwriteSegmentCount,
     refreshProjects: lifecycle.refreshProjects,
     pickAudio: lifecycle.pickAudio,
     clearPickedAudio: lifecycle.clearPickedAudio,
@@ -72,6 +92,8 @@ export function useProjectController() {
     closeFile: lifecycle.closeFile,
     closeProject: lifecycle.closeProject,
     runTranscribe: lifecycle.runTranscribe,
+    confirmTranscribeOverwrite: lifecycle.confirmTranscribeOverwrite,
+    cancelTranscribeOverwrite: lifecycle.cancelTranscribeOverwrite,
     saveSegments: lifecycle.saveSegments,
     deleteProject: lifecycle.deleteProject,
     exportTxt: lifecycle.exportTxt,
@@ -100,11 +122,13 @@ export function useProjectController() {
     insertSegmentFromTimeRange: lifecycle.insertSegmentFromTimeRange,
     flushSegmentTextDrafts: lifecycle.flushSegmentTextDrafts,
     canAutoPunctuate: lifecycle.canAutoPunctuate,
+    autoPunctuateBlockReason: lifecycle.autoPunctuateBlockReason,
     autoPunctuateDialog: lifecycle.autoPunctuateDialog,
     requestAutoPunctuate: lifecycle.requestAutoPunctuate,
     confirmAutoPunctuateConsent: lifecycle.confirmAutoPunctuateConsent,
     confirmAutoPunctuateWriteback: lifecycle.confirmAutoPunctuateWriteback,
     cancelAutoPunctuate: lifecycle.cancelAutoPunctuate,
+    bumpLlmRuntimeChanged: lifecycle.bumpLlmRuntimeChanged,
     closeGateOpen: lifecycle.closeGateOpen,
     closeGateIntent: lifecycle.closeGateIntent,
     stayAfterCloseAttempt: lifecycle.stayAfterCloseAttempt,

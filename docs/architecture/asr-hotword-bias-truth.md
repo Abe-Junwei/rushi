@@ -18,7 +18,7 @@
 
 > **SenseVoice vs Paraformer 热词差异**：两者均通过 `hotword=` 参数统一传入。Paraformer 对热词参数的敏感度通常更高；SenseVoice 虽接受该参数，但实际热词召回效果可能弱于 Paraformer。TypeError 回退可处理「完全不支持」的情况，但无法覆盖「支持但效果不佳」的灰度场景。
 >
-> **Online STT（OpenAI、AssemblyAI 等）**：当前 **不携带热词**。Rust 侧仍会构建 `hotwords_build`，但不会随请求发出；仅本地 FunASR 路径使用术语热词。
+> **Online STT（OpenAI、AssemblyAI、Deepgram）**：术语经 **`SttVocabularyPlan`** 分 adapter 映射（OpenAI `prompt`、AssemblyAI `keyterms_prompt`、Deepgram `keywords`）；其它 native adapter 返回 **`online_vocabulary_unsupported`** warning（ACC-STT-UNIFY U1/U2，2026-05-30）。
 
 ## 3. 前端 `TranscriptionProvider`（`httpAsrProvider.ts`）
 

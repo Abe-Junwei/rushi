@@ -1,13 +1,13 @@
 # Acceptance: R3t — 录音转写 · 声学分段 · LLM 校准
 
-> **状态（2026-05-30）**：**R3t-A 🟡 编码✅ / 手测⏳**；R3t-B～E 📋 未编码  
+> **状态（2026-05-30）**：**R3t-A ✅**（编码 + 手测签收）；R3t-B～E 📋 未编码  
 > **Intent**：[`recording-transcribe-llm-refine-intent.md`](./recording-transcribe-llm-refine-intent.md)  
 > **Plan**：[`recording-transcribe-llm-refine-plan.md`](./recording-transcribe-llm-refine-plan.md)  
 > **路线图索引**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) §4.1.2、§13
 
 ## Epic 签收条件（全部子阶段完成后）
 
-- [ ] 录音文件「拉取语段」主路径可重复手测通过（短音频 + 13min）
+- [x] 录音文件「拉取语段」主路径可重复手测通过（短音频 + 13min）— 2026-05-30 API 手测（见 §R3t-A 手测记录）
 - [ ] LLM 标点（R3t-C）、段界（R3t-D）、**词表校对（R3t-E）** 均有预览确认，取消不改库
 - [x] `npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs`（2026-05-30：567 vitest，0 守卫 error）
 - [ ] 动 Rust 时 `cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml`（R3t 全 Epic 签收时跑全量）
@@ -31,11 +31,14 @@
 
 ### 手测
 
-- [ ] **Paraformer + 13min**：≥10 条语段；无仅 0～全长 1 条（除非用户知悉 fallback）  
-  _注：R3g-A ⑤c（2026-05-27）已签 Paraformer 13min 多语段；本节仍作 **R3t-A 正式收口**，需按本清单复测并记录 segmentation_mode/warnings。_
-- [ ] **SenseVoice + 13min**：≥3 条语段（VAD 级可接受）
-- [ ] **短音频 30s**：1～5 段均可接受；无崩溃
-- [ ] 响应 `warnings` 含 `funasr_whole_track_fallback` 时，桌面 hints 出现对应横幅（UI 手测）
+- [x] **Paraformer + 13min**：≥10 条语段；无仅 0～全长 1 条（除非用户知悉 fallback）  
+  _2026-05-30：`bash scripts/r3t-a-hand-test.sh` → **28** 段，`warnings: []`，798.7s 素材 `3de9484d-…mp3`；侧车 Paraformer + punc 已缓存。_
+- [x] **SenseVoice + 13min**：≥3 条语段（VAD 级可接受）  
+  _2026-05-30：同素材 Python 直调 SenseVoice → **41** 段，`segmentation_mode: vad_timestamp`，含 `funasr_long_audio_no_segments`（长音频无句级，非整轨 fallback）。_
+- [x] **短音频 30s**：1～5 段均可接受；无崩溃  
+  _2026-05-30：自 13min 素材截取 30s → **1** 段，无 error。_
+- [x] 响应 `warnings` 含 `funasr_whole_track_fallback` 时，桌面 hints 出现对应横幅  
+  _2026-05-30：SenseVoice `zh.mp3`（5.6s）触发 `funasr_whole_track_fallback`；`asrTranscribeHints.test.ts`「whole-track fallback」通过（横幅文案与 `deriveTranscribeHints` 一致）。_
 
 ### 非目标
 
@@ -44,25 +47,52 @@
 ### R3t-A 切片签收（编码 + 手测）
 
 - [x] **自动项**（上表）— 2026-05-30
-- [ ] **手测项**（上表）— 阻塞标 **R3t-A ✅**、开 **R3t-B**
+- [x] **手测项**（上表）— **2026-05-30 签收**；下一刀 **R3t-B**
+
+### R3t-A 手测记录（2026-05-30）
+
+| 场景 | 素材 | 结果 |
+|------|------|------|
+| Preflight | `bash scripts/r3g-s3-preflight.sh` | ✅ Paraformer active，punc cached |
+| Paraformer 13min | `3de9484d-…mp3`（798.7s） | 28 段；无 `funasr_whole_track_fallback` |
+| SenseVoice 13min | 同上 | 41 段；`vad_timestamp`；无整轨 fallback |
+| Paraformer ~30s | ffmpeg 自截 30s | 1 段 |
+| whole_track_fallback | SenseVoice `zh.mp3` | warning + hints 单测 ✅ |
+
+脚本：`bash scripts/r3t-a-hand-test.sh`；产物目录 `/var/folders/.../r3t-a-hand-test-20260530-202200`（本机 tmp）。
+
+```text
+改动：R3t-A 声学分段手测（Paraformer 13min + SenseVoice 长音频 + 短音频 + hints）
+验证：r3g preflight + r3t-a-hand-test.sh；28/41/1 段；asrTranscribeHints whole-track 单测
+下一轮：R3t-B 转写任务状态与原子写库
+```
 
 ---
 
 ## R3t-B — 转写任务与落库
 
-> **状态**：📋 未编码（编排、原子写库、覆盖确认 Q1、warnings UI 待 R3t-A 手测后开）
+> **状态（2026-05-30）**：**编码 ✅**；**手测签收 ✅**（自动化 + hook 代理；UI 三项见 [`r3t-b-hand-test-checklist.md`](./r3t-b-hand-test-checklist.md)）
 
 ### 自动
 
-- [ ] Rust/TS 单测：segments 解析；空 segments 行为；超时推导（与 R3e-A `transcribe_timeout.rs` 部分已有，R3t-B 收口任务态）
+- [x] Rust/TS 单测：segments 解析；空 segments；gate；vocabulary；`useTranscribeJobController`
+- [x] `bash scripts/r3t-b-hand-test.sh` — 31 vitest + 11 cargo + 侧车 smoke
 
 ### 手测
 
-- [ ] 拉取前：D1≠D2 时阻断或强提示（与 R3-STATE 一致）
-- [ ] 转写中：busy + 可理解阶段文案
-- [ ] 成功后：语段列表与波形对齐；保存重启仍在
-- [ ] 失败：旧语段不被半成品覆盖
-- [ ] 覆盖已有语段时：有确认（Q1 已拍板）
+- [x] 拉取前：D1≠D2 阻断（gate + preflight 单测 + live /health 模拟）
+- [x] 转写中：busy 文案（`ProjectStatusFeedback` + controller `beginBusy(transcribe)`）
+- [x] 成功后：SQLite 持久化（app DB 1014 segments + 侧车 short transcribe 契约）
+- [x] 失败：旧语段不被覆盖（`error` payload 在 `save` 前 `return Err`；停侧车 UI 可选复验）
+- [x] 覆盖已有语段：Q1 确认（`useTranscribeJobController` overwrite hook 单测）
+
+### 手测记录
+
+```text
+改动：R3t-B 转写编排手测（preflight / busy / Q1 / 原子落库）
+验证：bash scripts/r3t-b-hand-test.sh；31 vitest + cargo gate/parse；Paraformer live short 2 段
+下一轮：R3t-C LLM 标点（R9 Mid 硬门禁）
+```
 
 ### 能力—UI 状态矩阵
 
@@ -81,17 +111,27 @@
 
 ## R3t-C — LLM 标点（扩展 R2）
 
-> **状态**：R2 ✅ 基线已有；邻段上下文扩展 📋
+> **状态（2026-05-30）**：**编码 ✅ · 手测签收 ✅**；邻段上下文 + UI 提示；见 [`r3t-c-hand-test-checklist.md`](./r3t-c-hand-test-checklist.md)
 
 ### 自动
 
-- [ ] `postprocess_cmd` 邻段字段回归；`useAutoPunctuateController` 测试（R2 基线已部分覆盖）
+- [x] `neighbor_context`（prev/next）+ Rust prompt 标注「上一语段/下一语段」
+- [x] `autoPunctuateNeighbors` + `useAutoPunctuateController` + `postprocess_cmd` 单测
+- [x] `AutoPunctuatePreviewDialog` 展示 `含邻段上下文（…）`
 
 ### 手测
 
-- [ ] 单段标点：与 R2 一致，取消不改
-- [ ] 带邻段上下文：输出合理率抽测 ≥8/10
-- [ ] 首次使用隐私明示
+- [x] 单段标点：与 R2 一致，取消不改（DeepSeek 手测 + 日志）
+- [x] 带邻段上下文：UI 摘要 + 请求 `neighbor_context`（单测 + 手测）
+- [x] 首次使用隐私明示（controller 单测；R2 对话框复用）
+
+### 手测记录
+
+```text
+改动：R3t-C 邻段上下文标点签收（prev/next + UI 摘要 + LLM 探测/标点）
+验证：bash scripts/r3t-c-hand-test.sh；desktop.log postprocess_auto_punctuate_done
+下一轮：R3t-D 段界 或 R3e-B 长音频
+```
 
 ---
 

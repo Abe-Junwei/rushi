@@ -1,6 +1,8 @@
+use super::stt_vocabulary::openai_prompt;
 use super::transcribe::{assemblyai_transcript_json_to_rushi, openai_verbose_json_to_rushi};
 use super::utils::append_desktop_log_line;
 use crate::online_stt_bridge::{is_allowed_stt_transcribe_url, OnlineTranscribeBridge};
+use crate::project::stt_vocabulary::{assemblyai_keyterms, SttVocabularyPlan};
 use crate::DbState;
 use std::path::Path;
 use std::time::{Duration, Instant};
@@ -8,7 +10,7 @@ use std::time::{Duration, Instant};
 pub async fn transcribe_openai_native(
     st: &DbState,
     audio_path: &Path,
-    hotwords: &str,
+    vocabulary: &SttVocabularyPlan,
     o: &OnlineTranscribeBridge,
     timeout: Duration,
 ) -> Result<serde_json::Value, String> {
@@ -35,9 +37,7 @@ pub async fn transcribe_openai_native(
         .part("file", part)
         .text("model", "whisper-1")
         .text("response_format", "verbose_json");
-    let prompt = hotwords.trim();
-    if !prompt.is_empty() {
-        let p: String = prompt.chars().take(224).collect();
+    if let Some(p) = openai_prompt(vocabulary) {
         form = form.text("prompt", p);
     }
     let mut req = crate::stt_native::http_client()
@@ -75,6 +75,7 @@ pub async fn transcribe_openai_native(
 pub async fn transcribe_assemblyai_native(
     st: &DbState,
     audio_path: &Path,
+    vocabulary: &SttVocabularyPlan,
     o: &OnlineTranscribeBridge,
     timeout: Duration,
 ) -> Result<serde_json::Value, String> {
@@ -119,12 +120,17 @@ pub async fn transcribe_assemblyai_native(
         .and_then(|x| x.as_str())
         .ok_or_else(|| "AssemblyAI 上传响应缺少 upload_url".to_string())?;
     append_desktop_log_line(st, "INFO transcribe assemblyai_create");
+    let keyterms = assemblyai_keyterms(vocabulary);
+    let mut create_body = serde_json::json!({ "audio_url": audio_url });
+    if !keyterms.is_empty() {
+        create_body["keyterms_prompt"] = serde_json::json!(keyterms);
+    }
     let create_res = client
         .post(format!("{base}/v2/transcript"))
         .timeout(timeout)
         .header("authorization", auth)
         .header("Content-Type", "application/json")
-        .json(&serde_json::json!({ "audio_url": audio_url }))
+        .json(&create_body)
         .send()
         .await
         .map_err(|e| format!("AssemblyAI 创建任务失败: {e}"))?;
