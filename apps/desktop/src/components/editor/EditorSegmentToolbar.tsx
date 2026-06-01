@@ -1,4 +1,4 @@
-import { History, Minus, Plus, Redo2, Sparkles, Undo2 } from "lucide-react";
+import { History, Minus, Plus, Redo2, Scissors, Sparkles, Undo2 } from "lucide-react";
 import { useEffect, useRef } from "react";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
@@ -69,6 +69,31 @@ export function EditorSegmentToolbar({
           <span className="inline-flex items-center gap-1.5">
             <Sparkles className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
             {c.autoPunctuateDialog.phase === "loading" ? "处理中..." : "自动标点"}
+          </span>
+        </button>
+        <button
+          type="button"
+          className={[
+            appearanceBtnBase,
+            "px-2.5",
+            c.segmentRefineDialog.phase === "loading"
+              ? "bg-notion-sidebar text-notion-text"
+              : "text-notion-text-muted hover:bg-notion-sidebar-hover hover:text-notion-text",
+          ].join(" ")}
+          disabled={!c.canRefineSegments || c.segmentRefineDialog.phase === "loading"}
+          onClick={() => void c.requestSegmentRefine()}
+          aria-label="段界整理"
+          title={
+            c.busy
+              ? "处理中"
+              : c.canRefineSegments
+                ? "LLM 段界整理（合并/拆分/改字，需确认）"
+                : (c.segmentRefineBlockReason ?? "段界整理不可用")
+          }
+        >
+          <span className="inline-flex items-center gap-1.5">
+            <Scissors className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+            {c.segmentRefineDialog.phase === "loading" ? "处理中..." : "段界整理"}
           </span>
         </button>
         <button

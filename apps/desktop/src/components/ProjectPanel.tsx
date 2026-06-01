@@ -4,6 +4,7 @@ import { buildSegmentContextMenuItems, type SegmentContextMenuKey } from "../uti
 import { EnvironmentPanel } from "./EnvironmentPanel";
 import { FloatingPanelTemplate } from "./PanelTemplate";
 import { AutoPunctuatePreviewDialog } from "./AutoPunctuatePreviewDialog";
+import { SegmentRefinePreviewDialog } from "./SegmentRefinePreviewDialog";
 import { TranscribeOverwriteConfirmDialog } from "./TranscribeOverwriteConfirmDialog";
 import { EditorView } from "./EditorView";
 
@@ -191,7 +192,9 @@ export function ProjectPanel() {
                 elapsedSec={busyElapsedSec}
                 transcribeProgress={c.transcribeProgress}
                 cancelling={c.transcribeCancelling}
-                onCancel={c.cancelTranscribe}
+                onCancel={() => {
+                  void c.cancelTranscribe();
+                }}
               />
             ) : null}
             <EditorView
@@ -222,6 +225,13 @@ export function ProjectPanel() {
         onCancel={c.cancelAutoPunctuate}
         onConfirmConsent={c.confirmAutoPunctuateConsent}
         onConfirmWriteback={c.confirmAutoPunctuateWriteback}
+      />
+
+      <SegmentRefinePreviewDialog
+        state={c.segmentRefineDialog}
+        onCancel={c.cancelSegmentRefine}
+        onConfirmConsent={c.confirmSegmentRefineConsent}
+        onConfirmWriteback={c.confirmSegmentRefineWriteback}
       />
 
       <TranscribeOverwriteConfirmDialog

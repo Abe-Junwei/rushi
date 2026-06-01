@@ -10,7 +10,7 @@
 | 适用节奏 | 单人、每轮 2～4h、一轮一纵向薄片 |
 | 规划跨度 | **个人单机 v1**：约 **13～16 周（自当前）** 或 **17～20 周（自 W1）**；R3 薄片 **~10～13w**（§4.0）；协作 **非 v1** |
 | 修订 | 每完成一个阶段更新 §2 状态表、§4 排期表与 §13 代码对照 |
-| 最近对照 | **2026-05-31**：**R3g-C ✅**、**ACC-STT-UNIFY ✅**（本机手测；在线 ⏳）；§10 下一刀 **R3t-D** |
+| 最近对照 | **2026-05-31**：**ACC-STT-UNIFY ✅**、**R3t-D ✅**；§10 下一刀 **R3t-E** |
 
 ### 状态标记约定（全文档统一）
 
@@ -328,7 +328,7 @@ R4 + R4-GATE → R9
 | **⑧** | **R3h-3** + **R3d** | ⏳ | 3–5d | 本机 ASR / 在线 STT / LLM 三盏灯；五栏 IA | remediation §5 Phase 3 + [`r3d-settings-ia-acceptance.md`](../specs/r3d-settings-ia-acceptance.md) |
 | **⑧½** | **R3h-3.5** | ⏳ | ~1w | Sherpa-ONNX CER Spike；不阻塞 A–B 签收 | remediation §5 Phase 3.5 |
 | **⑤″c** | **R3t-C** | ✅ | 1–1.5w | 扩展 R2 标点（邻段上下文可选）；**可选/显式触发** | 同上 §4；[`r3t-c-hand-test-checklist.md`](../specs/r3t-c-hand-test-checklist.md) 2026-05-30 签收 |
-| **⑤″d** | **R3t-D** | 📋 | 1.5–2w | merge/split/update_text ops + 预览 | 同上 §5 |
+| **⑤″d** | **R3t-D** | ✅ **2026-05-31** | 1.5–2w | `postprocess_refine_segments` + 段界整理 UI | [`r3t-d-hand-test-checklist.md`](../specs/r3t-d-hand-test-checklist.md) |
 | **⑤″e** | **R3t-E** | 📋 | 1.5–2w | LexiconPack 有据校对；**无 RAG**；**无** R3t-E3 项目级词表 v1 | [`lexicon-guided-llm-refine.md`](../../architecture/lexicon-guided-llm-refine.md) |
 | **⑤‴** | **EXP-WORD** | 📋 | 1–1.5w | L6 交付：导出真源对齐；逐字稿/讲稿/干净稿版式；可选修订摘要附录；**不等 C6** | [`word-formatted-export-backlog.md`](../specs/word-formatted-export-backlog.md) |
 | **⑤‴½** | **REV-LOC** | 📋 | 0.5–1w | 单机 `edit_log` 时间线；**v1 P1 必做**；恢复点可减 scope；**非** R8 协作 revision | [`personal-solo-v1-backlog.md`](../specs/personal-solo-v1-backlog.md) §3.3 |
@@ -503,7 +503,7 @@ glossary_terms ──► L2 hotwords（转写偏置）
 | R1 | ✅ 已完成（文档门禁） | 2026-05-25 |
 | R2 | ✅ 已完成（DeepSeek 手测通过） | 2026-05-25 |
 | R3 | 🟡 进行中（a/b/c ✅；**R3h/f/e/g/d** 按 §4.1） | — |
-| R3h | 🟡 LRC 整改进行中：① 待跨平台 smoke；② 编码✅/发行⏳；**下一编码刀 R3t-D**（ACC-STT-UNIFY ✅ 本机 2026-05-31）；并行闭合 ③ R3f | — |
+| R3h | 🟡 LRC 整改进行中：① 待跨平台 smoke；② 编码✅/发行⏳；**下一编码刀 R3t-E**（R3t-D ✅ 2026-05-31）；并行闭合 ③ R3f | — |
 | R4 | ⏳ | — |
 | R5 | ⏳ v1 后 | — |
 | R6–R8 | ⏳ 非 v1 | — |
@@ -937,9 +937,9 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 - [x] **R3g-A ⑤c**（Paraformer 13min 多语段；2026-05-27 复测签收）
 - [ ] **R3h §11 发行门禁**（零终端、构建 smoke、损坏可恢复…）
 
-**下一刀**：**⑤″d R3t-D**（LLM 校准，用户显式触发）
+**下一刀**：**⑤″e R3t-E**（词表有据校对，LexiconPack）
 
-**同轮或紧邻闭合**：**③ R3f**、**① R3h-0**、**R3h §11**；ACC 在线 E2E 手测 ⏳（有 Key 时补）
+**同轮或紧邻闭合**：**③ R3f**、**① R3h-0**、**R3h §11**；ACC 在线 E2E 手测 ⏳；R3t-D split 可选补测
 
 **主序（编码）**：**R3t-D** → **EXP-WORD** → …
 
@@ -1031,6 +1031,7 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | 2026-05-30 | **§4.1.7 ACC + 主序重排**：**⑤g R3g-C**、**⑤h ACC-STT-UNIFY**；§11 ACC 参考链 |
 | 2026-05-31 | **R3g-C ✅ 手测签收**：Profile + 识别语言 + mismatch 横幅；§10 下一刀 **ACC-STT-UNIFY** |
 | 2026-05-31 | **ACC-STT-UNIFY ✅ 本机手测签收**：Paraformer + hotwords 链路；在线 E2E ⏳；§10 下一刀 **R3t-D** |
+| 2026-05-31 | **R3t-D ✅ 手测签收**：段界整理 merge/改字 + 预览写回；§10 下一刀 **R3t-E** |
 | 2026-05-31 | **R3e-C ✅ 手测签收**：制控.mp3 ~20.8min、197 段、首段 ~23.9s、blocking≡async；§10 下一刀 **R3g-C** |
 | 2026-05-30 | **R3e-C Phase 2 编码**：async preview + `cancelTranscribe` + preview 门禁 + controller 拆分；**§4.1.8** 并入 [`r3-asr-landscape-2026-05-improvement-backlog.md`](../specs/r3-asr-landscape-2026-05-improvement-backlog.md)；§4.1.1 **⑥½**；§10 下一刀 **R3e-C 手测 → R3g-C** |
 | 2026-05-30 | **外部评估吸收**：R3 **~10～13w**；Sherpa **轻量模式**（ADR-0003 附录）；Qwen3 **伪流式** / SenseVoice **弃用** 风险入 backlog + spike §8；FireRedASR2 / Moonshine **雷达项** |
@@ -1085,7 +1086,8 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | **R3g** | 双 SKU + prepare；R3-STATE 对齐 | ✅ ⑤a–c 签收 |
 | **R3t-A** | 分段内核 + 单测 + hints + 手测 | ✅ **2026-05-30 签收** |
 | **R3t-B～C** | 转写编排、overwrite、邻段标点 | ✅ **2026-05-30** |
-| **R3t-D～E** | — | 📋 |
+| **R3t-D** | `postprocess_refine_segments` + 段界整理 UI | ✅ **2026-05-31** |
+| **R3t-E** | LexiconPack 有据校对 | 📋 |
 | **R3e-A** | 动态超时预算 | ✅ 2026-05-30 长音频 timeout 手测 |
 | **R3e-B** | `transcribe_windows.py` + 5min 窗 | ✅ **2026-05-30 签收** |
 | **R3e-C** | async Job + preview + cancel + 门禁 | ✅ **2026-05-31 签收** |

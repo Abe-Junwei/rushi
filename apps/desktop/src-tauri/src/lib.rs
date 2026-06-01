@@ -114,6 +114,7 @@ pub fn run() {
             postprocess_cmd::llm_migrate_legacy_api_key,
             postprocess_cmd::llm_probe_connection,
             postprocess_cmd::postprocess_auto_punctuate,
+            postprocess_cmd::postprocess_refine_segments,
             postprocess_cmd::postprocess_cancel_auto_punctuate,
             profile::export_settings_profile,
             profile::import_settings_profile,

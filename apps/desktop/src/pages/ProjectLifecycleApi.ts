@@ -1,6 +1,7 @@
 import type { ProjectDetail, ProjectSummary, SegmentDto } from "../tauri/projectApi";
 import type { DocxExportMode } from "../tauri/exportDocxApi";
 import type { SegmentOverlapPolicy } from "../utils/segmentTimeRange";
+import type { SegmentRefineDialogState } from "./useSegmentRefineController";
 import type { AutoPunctuateDialogState } from "./useAutoPunctuateController";
 import type { BusyReason } from "./useProjectCrudController";
 
@@ -82,6 +83,13 @@ export interface ProjectLifecycleApi {
   confirmAutoPunctuateConsent: () => void;
   confirmAutoPunctuateWriteback: () => void;
   cancelAutoPunctuate: () => void;
+  canRefineSegments: boolean;
+  segmentRefineBlockReason: string | null;
+  segmentRefineDialog: SegmentRefineDialogState;
+  requestSegmentRefine: () => void;
+  confirmSegmentRefineConsent: () => void;
+  confirmSegmentRefineWriteback: () => void;
+  cancelSegmentRefine: () => void;
   bumpLlmRuntimeChanged: () => void;
   closeGateOpen: boolean;
   closeGateIntent: "app-quit" | "navigate";

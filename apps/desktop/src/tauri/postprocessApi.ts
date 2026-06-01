@@ -72,6 +72,40 @@ export async function postprocessCancelAutoPunctuate(requestId: string): Promise
   });
 }
 
+export type RefineSegmentItem = {
+  uid: string;
+  startSec: number;
+  endSec: number;
+  text: string;
+};
+
+export type SegmentRefineOp =
+  | { op: "update_text"; uid: string; text: string }
+  | { op: "merge"; uids: string[] }
+  | { op: "split"; uid: string; at_sec: number; left_text: string; right_text: string };
+
+export interface PostprocessRefineSegmentsRequest {
+  task: "refine_segments";
+  request_id?: string;
+  segments: RefineSegmentItem[];
+  runtime?: PostprocessRuntimeBridge;
+}
+
+export interface PostprocessRefineSegmentsResponse {
+  ops: SegmentRefineOp[];
+  rationale?: string;
+  provider: string;
+  latencyMs: number;
+  /** @deprecated Tauri camelCase; prefer latencyMs */
+  latency_ms?: number;
+}
+
+export async function postprocessRefineSegments(
+  req: PostprocessRefineSegmentsRequest,
+): Promise<PostprocessRefineSegmentsResponse> {
+  return await invoke<PostprocessRefineSegmentsResponse>("postprocess_refine_segments", { req });
+}
+
 export async function llmSaveApiKey(req: LlmApiKeyRequest): Promise<string> {
   return await invoke<string>("llm_save_api_key", { req });
 }

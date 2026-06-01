@@ -9,6 +9,7 @@ import { useProjectBusyState } from "./useProjectBusyState";
 import { useProjectListState } from "./useProjectListState";
 import { useProjectEditorState } from "./useProjectEditorState";
 import { useAutoPunctuateController } from "./useAutoPunctuateController";
+import { useSegmentRefineController } from "./useSegmentRefineController";
 import { useLlmKeychainReady } from "../hooks/useLlmKeychainReady";
 import {
   useProjectCloseGateController,
@@ -219,6 +220,23 @@ export function useProjectLifecycleController(
     llmKeychainChecking,
   });
 
+  const segmentRefine = useSegmentRefineController({
+    busy,
+    transcribePreviewActive: busy && busyReason === "transcribe",
+    currentFileId,
+    selectedIdx,
+    segments,
+    segmentsRef,
+    flushSegmentTextDrafts: mutations.flushSegmentTextDrafts,
+    setSegments,
+    setSelectedIdx,
+    pushUndo: mutations.pushUndo,
+    setError,
+    llmRuntimeEpoch,
+    llmKeychainReady,
+    llmKeychainChecking,
+  });
+
   const openAppDataFolder = useCallback(async () => {
     if (busy) return;
     setError("");
@@ -277,6 +295,13 @@ export function useProjectLifecycleController(
     confirmAutoPunctuateConsent: autoPunctuate.confirmAutoPunctuateConsent,
     confirmAutoPunctuateWriteback: autoPunctuate.confirmAutoPunctuateWriteback,
     cancelAutoPunctuate: autoPunctuate.cancelAutoPunctuate,
+    canRefineSegments: segmentRefine.canRefineSegments,
+    segmentRefineBlockReason: segmentRefine.segmentRefineBlockReason,
+    segmentRefineDialog: segmentRefine.segmentRefineDialog,
+    requestSegmentRefine: segmentRefine.requestSegmentRefine,
+    confirmSegmentRefineConsent: segmentRefine.confirmSegmentRefineConsent,
+    confirmSegmentRefineWriteback: segmentRefine.confirmSegmentRefineWriteback,
+    cancelSegmentRefine: segmentRefine.cancelSegmentRefine,
     bumpLlmRuntimeChanged,
     closeGateOpen: closeGate.closeGateOpen,
     closeGateIntent: closeGate.closeGateIntent,

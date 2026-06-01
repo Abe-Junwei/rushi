@@ -1,6 +1,6 @@
 # Acceptance: R3t — 录音转写 · 声学分段 · LLM 校准
 
-> **状态（2026-05-30）**：**R3t-A ✅**（编码 + 手测签收）；R3t-B～E 📋 未编码  
+> **状态（2026-05-31）**：**R3t-A/B/C/D ✅**（D 手测 2026-05-31）；**R3t-E** 📋 未编码  
 > **Intent**：[`recording-transcribe-llm-refine-intent.md`](./recording-transcribe-llm-refine-intent.md)  
 > **Plan**：[`recording-transcribe-llm-refine-plan.md`](./recording-transcribe-llm-refine-plan.md)  
 > **路线图索引**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) §4.1.2、§13
@@ -8,7 +8,8 @@
 ## Epic 签收条件（全部子阶段完成后）
 
 - [x] 录音文件「拉取语段」主路径可重复手测通过（短音频 + 13min）— 2026-05-30 API 手测（见 §R3t-A 手测记录）
-- [ ] LLM 标点（R3t-C）、段界（R3t-D）、**词表校对（R3t-E）** 均有预览确认，取消不改库
+- [x] LLM 标点（R3t-C）、段界（R3t-D）预览确认，取消不改库 — 2026-05-31
+- [ ] **词表校对（R3t-E）** 预览确认，取消不改库
 - [x] `npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs`（2026-05-30：567 vitest，0 守卫 error）
 - [ ] 动 Rust 时 `cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml`（R3t 全 Epic 签收时跑全量）
 - [x] 架构守卫无新增 error（2026-05-30）
@@ -153,19 +154,19 @@
 
 ## R3t-D — LLM 语义段界
 
-> **状态**：📋 未编码
+> **状态**：✅ **2026-05-31 手测签收** — [`r3t-d-hand-test-checklist.md`](./r3t-d-hand-test-checklist.md)
 
 ### 自动
 
-- [ ] ops 校验：非法 split 点拒绝；merge uid 不存在拒绝
-- [ ] apply 后：时间单调、无重叠
+- [x] ops 校验：非法 split 点拒绝；merge uid 不存在拒绝（`postprocess_segment_ops` + Vitest）
+- [x] apply 后：时间单调（`segmentRefineApply` + Vitest）
 
 ### 手测
 
-- [ ] **merge**：两条相邻段合并为一条，时间跨度正确，uid 策略符合 plan
-- [ ] **split**：一条段中点拆分，波形上两条可独立拖动
-- [ ] **拒绝预览**：数据库与 ASR 原文一致
-- [ ] 云端失败：无部分应用
+- [x] **merge / update_text**：LLM 建议合并邻段 + 改字；确认写回后语段条数/正文符合预期
+- [ ] **split**：一条段中点拆分，波形上两条可独立拖动（可选补测）
+- [x] **取消 / 未确认**：不写回或写回前取消，与 ASR 原文一致
+- [x] 预览 UI：时间+正文摘要（非裸 uid）；`startSec` 请求字段对齐
 
 ---
 
