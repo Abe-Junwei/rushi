@@ -1,5 +1,6 @@
 import {
   getSttOnlineProviderDefinition,
+  providerSupportsGlossaryBias,
   sttOnlineProvidersByMarket,
   type SttOnlineMarket,
 } from "../../services/stt/sttOnlineProviderContract";
@@ -53,6 +54,11 @@ export function OnlineSttProviderPicker({ busy, providerId, onProviderChange }: 
                           {definition.freeTierNote ? (
                             <span className="stt-provider-chip" title={definition.freeTierNote}>
                               试用 / 免费额
+                            </span>
+                          ) : null}
+                          {providerSupportsGlossaryBias(definition.id) ? (
+                            <span className="stt-provider-chip stt-provider-chip--accent" title="转写时映射全局术语表">
+                              术语偏置
                             </span>
                           ) : null}
                         </div>

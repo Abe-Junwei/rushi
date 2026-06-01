@@ -41,6 +41,7 @@ describe("useAsrSetupController one-click prepare", () => {
           ready_for_transcribe: true,
           transcription_mode: "funasr",
           funasr_model_id: "iic/SenseVoiceSmall",
+          funasr_language: "zh",
         }),
     } as Response);
 

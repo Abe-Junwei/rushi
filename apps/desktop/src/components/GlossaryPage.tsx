@@ -6,6 +6,7 @@ import {
   RefreshCw,
   Search,
 } from "lucide-react";
+import { GlossaryBatchBar } from "./glossary/GlossaryBatchBar";
 import { GlossaryTermEditor } from "./glossary/GlossaryTermEditor";
 import { GlossaryTermTable } from "./glossary/GlossaryTermTable";
 import { PANEL_CONTROL_TYPOGRAPHY, PANEL_TYPOGRAPHY } from "../config/typography";
@@ -80,6 +81,8 @@ export function GlossaryPage({ busy }: GlossaryPageProps) {
             {g.hotwordsPreview
               ? `；将提交 ${g.hotwordsPreview.termCount} 个唯一热词 token。`
               : "。"}
+            本机 FunASR 使用空格串 <code className="font-mono text-[11px]">hotwords</code>；在线 STT 按厂商映射（OpenAI /
+            AssemblyAI / Deepgram 等，见「环境与 ASR → 在线 STT」）。
           </p>
           {g.hotwordsPreview?.truncated ? (
             <p className={`m-0 ${PANEL_TYPOGRAPHY.meta} text-zen-saffron`}>
@@ -236,6 +239,22 @@ export function GlossaryPage({ busy }: GlossaryPageProps) {
                   </button>
                 </div>
               ) : null}
+              <GlossaryBatchBar
+                selectedCount={g.selectedCount}
+                previewLabels={g.selectedPreviewLabels}
+                hiddenSelectedCount={g.hiddenSelectedCount}
+                disabled={disabled}
+                deleteConfirm={g.batchDeleteConfirm}
+                canEnableHotwords={g.canEnableHotwords}
+                canDisableHotwords={g.canDisableHotwords}
+                onEnableHotwords={() => void g.batchSetHotword(true)}
+                onDisableHotwords={() => void g.batchSetHotword(false)}
+                onDelete={() => void g.batchDelete()}
+                onClearSelection={() => {
+                  g.clearBatchDeleteConfirm();
+                  g.clearSelection();
+                }}
+              />
               <GlossaryTermTable
                 rows={g.visibleTerms}
                 selectedId={g.selectedId}

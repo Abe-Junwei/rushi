@@ -6,8 +6,8 @@ import pytest
 
 import rushi_asr.funasr_engine as funasr_engine
 from rushi_asr.funasr_engine import invalidate_funasr_model_cache
+from rushi_asr.asr_model_profile import LONG_AUDIO_SEC
 from rushi_asr.segmentation import (
-    LONG_AUDIO_SEC,
     SHORT_WHOLE_TRACK_MAX_SEC,
     funasr_generate_kwargs,
     segment_audio_to_transcription_segments,

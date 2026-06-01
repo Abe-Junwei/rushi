@@ -71,6 +71,10 @@ export function useGlossaryBatchActions({
     setBatchDeleteConfirm(false);
   }, [searchQuery, hotwordFilter, clearSelection]);
 
+  useEffect(() => {
+    setBatchDeleteConfirm(false);
+  }, [selectedCount, selectedIdArray]);
+
   const batchDelete = useCallback(async () => {
     const ids = selectedIdArray;
     if (ids.length === 0) return;

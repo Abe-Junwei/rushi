@@ -26,7 +26,7 @@ const fetchAsrHealthCaps = vi.fn<
   } | null>
 >();
 const pollLoopbackHealthUntil = vi.fn<
-  () => Promise<{ funasr_ready?: boolean; funasr_model_id?: string | null } | null>
+  () => Promise<{ funasr_ready?: boolean; funasr_model_id?: string | null; funasr_language?: string | null } | null>
 >();
 
 vi.mock("../../config/env", () => ({

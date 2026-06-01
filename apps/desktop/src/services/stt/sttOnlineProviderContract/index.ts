@@ -6,3 +6,11 @@ export * from "./memorySecrets";
 export * from "./endpoint";
 export * from "./health";
 export * from "./bridge";
+export {
+  glossaryBiasFieldHint,
+  glossaryBiasSummaryForProviderId,
+  providerSupportsGlossaryBias,
+  supportsHotwordBiasForProviderId,
+  vocabularyChannelForProviderId,
+  type SttOnlineVocabularyChannel,
+} from "../sttVocabularyBias";

@@ -4,12 +4,11 @@ from __future__ import annotations
 
 from typing import Any
 
+from rushi_asr.asr_model_profile import LONG_AUDIO_SEC, build_generate_kwargs as _profile_build_generate_kwargs
 from rushi_asr.funasr_pipeline import recognizer_needs_punc_pipeline
-from rushi_asr.asr_model_profile import build_generate_kwargs as _profile_build_generate_kwargs
 from rushi_asr.schemas import TranscriptionSegment
 
 # R3t-A: long audio must not end as whole-track-only; short clips may.
-LONG_AUDIO_SEC = 180.0
 SHORT_WHOLE_TRACK_MAX_SEC = 30.0
 
 SegmentationMode = str  # sentence_info | vad_timestamp | whole_track_fallback | empty

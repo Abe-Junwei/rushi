@@ -20,13 +20,21 @@
 >
 > **Online STT（OpenAI、AssemblyAI、Deepgram）**：术语经 **`SttVocabularyPlan`** 分 adapter 映射（OpenAI `prompt`、AssemblyAI `keyterms_prompt`、Deepgram `keywords`）；其它 native adapter 返回 **`online_vocabulary_unsupported`** warning（ACC-STT-UNIFY U1/U2，2026-05-30）。
 
-## 3. 前端 `TranscriptionProvider`（`httpAsrProvider.ts`）
+## 3. 在线 STT 能力矩阵（ACC-STT-UNIFY U2）
 
-| 字段 | 当前值 | 说明 |
-|------|--------|------|
-| `supportsHotwordBias` | **`false`（固定）** | 计划书契约字段预留；**不**表示「HTTP 从不带 hotwords」。实际是否进模型由 **§2 表** 与 **`/v1/transcribe` 返回** 决定。 |
+真源：`apps/desktop/src/services/stt/sttVocabularyBias.ts`（与 Rust `SttVocabularyChannel` 对齐）。
 
-UI 侧热词相关说明以 **`deriveTranscribeHints`**（`apps/desktop/src/services/asrTranscribeHints.ts`）为准：解析 `warnings` 中的 `hotwords_ignored_stub`、`hotword_param_unsupported` 等并生成提示。
+| 厂商 id（环境页） | 术语偏置 | 映射字段 |
+|-------------------|----------|----------|
+| `openai` | ✅ | `prompt`（≤224 字） |
+| `assemblyai` | ✅ | `keyterms_prompt` |
+| `deepgram` | ✅ | URL `keywords` |
+| `custom-proxy` | ✅ | multipart `hotwords`（代理须兼容 Rushi） |
+| 其它壳直连（腾讯/百度/阿里/讯飞等） | ❌ | 转写前 warning：`online_vocabulary_unsupported` |
+
+`TranscriptionProvider.supportsHotwordBias`（`contracts/transcription.ts`）在需要时可按厂商 id 调用 `supportsHotwordBiasForProviderId`；**运行时仍以 `warnings` 为准**。
+
+UI：`deriveTranscribeHints`（`asrTranscribeHints.ts`）、环境页在线 STT 说明、厂商卡片「术语偏置」角标。
 
 ## 4. 与计划书 §4.3 对齐
 

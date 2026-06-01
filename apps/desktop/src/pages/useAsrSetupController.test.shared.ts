@@ -38,12 +38,19 @@ export const setLocalAsrHubModelPref = vi.fn<
   (hub: string, options?: { restartSidecar?: boolean }) => Promise<void>
 >();
 export const getLocalAsrHubModelPref = vi.fn<() => Promise<string | null>>();
+export const setLocalAsrRecognitionLanguagePref = vi.fn<
+  (language: string, options?: { restartSidecar?: boolean }) => Promise<void>
+>();
+export const getLocalAsrRecognitionLanguagePref = vi.fn<() => Promise<string>>();
 
 vi.mock("../tauri/projectApi", () => ({
   retryBundledAsrSidecar: () => retryBundledAsrSidecar(),
   setLocalAsrHubModelPref: (hubModelId: string, options?: { restartSidecar?: boolean }) =>
     setLocalAsrHubModelPref(hubModelId, options),
   getLocalAsrHubModelPref: () => getLocalAsrHubModelPref(),
+  setLocalAsrRecognitionLanguagePref: (language: string, options?: { restartSidecar?: boolean }) =>
+    setLocalAsrRecognitionLanguagePref(language, options),
+  getLocalAsrRecognitionLanguagePref: () => getLocalAsrRecognitionLanguagePref(),
 }));
 
 vi.mock("../tauri/localRuntimeApi", () => ({
@@ -100,6 +107,7 @@ export function loopbackHealthResponse(ready: boolean): Response {
         ready_for_transcribe: ready,
         transcription_mode: ready ? "funasr" : "stub",
         funasr_model_id: "iic/SenseVoiceSmall",
+        funasr_language: "zh",
       }),
   } as Response;
 }
@@ -153,6 +161,9 @@ export function resetAsrSetupControllerTestMocks(): void {
   getLocalAsrHubModelPref.mockReset();
   getLocalAsrHubModelPref.mockResolvedValue("iic/SenseVoiceSmall");
   setLocalAsrHubModelPref.mockResolvedValue(undefined);
+  getLocalAsrRecognitionLanguagePref.mockReset();
+  getLocalAsrRecognitionLanguagePref.mockResolvedValue("zh");
+  setLocalAsrRecognitionLanguagePref.mockResolvedValue(undefined);
   localRuntimeDiagnose.mockReset();
   localRuntimeDownloadSidecar.mockReset();
   localRuntimeCancelDownload.mockReset();

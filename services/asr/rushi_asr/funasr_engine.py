@@ -16,8 +16,8 @@ from rushi_asr.defaults import effective_funasr_model_id, effective_funasr_vad_m
 from rushi_asr.funasr_pipeline import effective_funasr_punc_model_id, recognizer_needs_punc_pipeline
 from rushi_asr.model_prepare import required_models_cached_guess
 from rushi_asr.schemas import TranscriptionSegment
+from rushi_asr.asr_model_profile import LONG_AUDIO_SEC
 from rushi_asr.segmentation import (
-    LONG_AUDIO_SEC,
     funasr_generate_kwargs,
     segment_funasr_generate_result,
 )

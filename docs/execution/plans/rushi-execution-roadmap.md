@@ -10,7 +10,7 @@
 | 适用节奏 | 单人、每轮 2～4h、一轮一纵向薄片 |
 | 规划跨度 | **个人单机 v1**：约 **13～16 周（自当前）** 或 **17～20 周（自 W1）**；R3 薄片 **~10～13w**（§4.0）；协作 **非 v1** |
 | 修订 | 每完成一个阶段更新 §2 状态表、§4 排期表与 §13 代码对照 |
-| 最近对照 | **2026-05-31**：**R3g-C ✅** 手测签收；§10 下一刀 **ACC-STT-UNIFY** |
+| 最近对照 | **2026-05-31**：**R3g-C ✅**、**ACC-STT-UNIFY ✅**（本机手测；在线 ⏳）；§10 下一刀 **R3t-D** |
 
 ### 状态标记约定（全文档统一）
 
@@ -318,7 +318,7 @@ R4 + R4-GATE → R9
 | **⑤½** | **HOT-UX** | ✅ | 0.5w | 热词 12k 截断可观测；术语页「本次转写将携带」摘要 | [`hot-ux-acceptance.md`](../specs/hot-ux-acceptance.md) |
 | **⑤′a** | **R3t-A** | ✅ | 3–5d | `segmentation.py` + FunASR 接线 + 单测 + **手测签收**（2026-05-30） | [`recording-transcribe-llm-refine-acceptance.md`](../specs/recording-transcribe-llm-refine-acceptance.md) §R3t-A |
 | **⑤g** | **R3g-C** | ✅ | 3–5d | **AsrModelProfile**；SenseVoice `use_itn` + postprocess；Paraformer 保持 punc 路径；TypeError 剥参 + warnings；环境页 **识别语言**；**不**暴露全 generate UI | [`r3g-c-asr-generate-profile-acceptance.md`](../specs/r3g-c-asr-generate-profile-acceptance.md)、[`r3g-c-hand-test-checklist.md`](../specs/r3g-c-hand-test-checklist.md) 2026-05-31 签收；架构 [`asr-generate-params-truth.md`](../../architecture/asr-generate-params-truth.md) |
-| **⑤h** | **ACC-STT-UNIFY** | 📋 | 2–4d | **`SttVocabularyPlan`**；**v1 必接** OpenAI prompt（已有）+ AssemblyAI `keyterms_prompt` + Deepgram keywords；U2 能力矩阵；**U3→R3h-3**；**U4 延后**；Azure/百炼 → §8.1 | [`acc-stt-unify-acceptance.md`](../specs/acc-stt-unify-acceptance.md)（待立项）；[`stt-online-providers.md`](../../architecture/stt-online-providers.md) |
+| **⑤h** | **ACC-STT-UNIFY** | ✅ **2026-05-31** | 2–4d | **`SttVocabularyPlan`** + 三家 adapter；U2 `sttVocabularyBias`；本机手测签收；**在线 E2E ⏳**；**U3→R3h-3**；**U4 延后** | [`acc-stt-unify-acceptance.md`](../specs/acc-stt-unify-acceptance.md)、[`acc-stt-unify-hand-test-checklist.md`](../specs/acc-stt-unify-hand-test-checklist.md) |
 | **⑤′b** | **R3t-B** | ✅ | 2–4d | 转写任务、超时、原子写库、warnings UI；**不自动 LLM** | 同上 §3；[`r3t-b-hand-test-checklist.md`](../specs/r3t-b-hand-test-checklist.md) 2026-05-30 签收 |
 | **⑤′½** | **TRN-DIAG** | 📋 | 0.5w | 转写阶段时间线；失败阶段 + 建议动作；并入诊断包 | [`personal-solo-v1-backlog.md`](../specs/personal-solo-v1-backlog.md) §3.2 |
 | **⑥** | **R3e-B** | ✅ | 1.5–2w | 长音频侧车 5min 窗；**2026-05-30 签收** | [`r3e-b-hand-test-checklist.md`](../specs/r3e-b-hand-test-checklist.md) |
@@ -481,7 +481,7 @@ glossary_terms ──► L2 hotwords（转写偏置）
 | 优先级 | ID | 收益 | 估时 | 依赖 | 状态 |
 |--------|-----|------|------|------|------|
 | **P0** | **R3e-C** | 长音频 preview + 停止转写 | — | — | §4.1.1 **⑥½** | ✅ 2026-05-31 |
-| **P0** | （主序内）**R3g-C / ACC-STT-UNIFY / ACC-EVAL-1** | Profile + 词表统一 + 专名回归 | 见 §4.1.1 | R3t-B ✅ | 📋 |
+| **P0** | （主序内）**R3g-C / ACC-STT-UNIFY / ACC-EVAL-1** | Profile + 词表统一 + 专名回归 | 见 §4.1.1 | R3t-B ✅ | R3g-C ✅ / ACC ✅（在线 E2E ⏳） |
 | **P1** | **R3h-ASR-VER** | FunASR **≥1.3.3** lock；Qwen3 spike 前置 | 1–2d | R3h-0 smoke | 📋 |
 | **P1** | **R3g-B Qwen3 spike** | 第三 SKU Go/No-go；**G4 + 伪流式边界** | 2–4d | R3h-ASR-VER 建议先 | 📋 research ✅ |
 | **P1** | **R3h-CUDA-PERF** | CUDA 侧车 p95 / 首段 SLA | 3–5d spike | R3e-C DEV log | 📋 |
@@ -503,7 +503,7 @@ glossary_terms ──► L2 hotwords（转写偏置）
 | R1 | ✅ 已完成（文档门禁） | 2026-05-25 |
 | R2 | ✅ 已完成（DeepSeek 手测通过） | 2026-05-25 |
 | R3 | 🟡 进行中（a/b/c ✅；**R3h/f/e/g/d** 按 §4.1） | — |
-| R3h | 🟡 LRC 整改进行中：① 待跨平台 smoke；② 编码✅/发行⏳；**下一编码刀 ⑤h ACC-STT-UNIFY**（R3g-C ✅ 2026-05-31）；并行闭合 ③ R3f | — |
+| R3h | 🟡 LRC 整改进行中：① 待跨平台 smoke；② 编码✅/发行⏳；**下一编码刀 R3t-D**（ACC-STT-UNIFY ✅ 本机 2026-05-31）；并行闭合 ③ R3f | — |
 | R4 | ⏳ | — |
 | R5 | ⏳ v1 后 | — |
 | R6–R8 | ⏳ 非 v1 | — |
@@ -923,7 +923,7 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | **ASR 引擎路线** | **方案 A 已锁定** — FunASR + LRC 先行；Sherpa **R3h-3.5 Spike → 轻量模式候选**（非完全替代，[ADR-0003](../../adr/0003-asr-engine-funasr-first-sherpa-spike-gate.md) 附录 A） |
 | **排期真源** | **§4.1.1** |
 | **实施真源** | [`rushi-local-runtime-catalog-remediation-plan.md`](../specs/rushi-local-runtime-catalog-remediation-plan.md) **v1.1** |
-| **验收切片** | [`r3f-…`](../specs/r3f-asr-setup-wizard-acceptance.md) / [`r3g-…`](../specs/r3g-local-asr-model-catalog-acceptance.md) / [`r3g-c-…`](../specs/r3g-c-asr-generate-profile-acceptance.md)（待立项） / [`acc-stt-unify-…`](../specs/acc-stt-unify-acceptance.md)（待立项） / [`r3e-…`](../specs/r3e-long-audio-transcribe-acceptance.md) / [`r3e-c-…`](../specs/r3e-c-incremental-transcribe-acceptance.md)（✅ 2026-05-31） / [`r3-asr-landscape-…`](../specs/r3-asr-landscape-2026-05-improvement-backlog.md) / [`trn-diag-…`](../specs/trn-diag-acceptance.md) / [`asr-warm-…`](../specs/asr-warm-acceptance.md) / [`exp-word-…`](../specs/exp-word-formatted-export-acceptance.md) |
+| **验收切片** | [`r3f-…`](../specs/r3f-asr-setup-wizard-acceptance.md) / [`r3g-…`](../specs/r3g-local-asr-model-catalog-acceptance.md) / [`r3g-c-…`](../specs/r3g-c-asr-generate-profile-acceptance.md)（✅ 2026-05-31） / [`acc-stt-unify-…`](../specs/acc-stt-unify-acceptance.md)（✅ 本机 2026-05-31） / [`r3e-…`](../specs/r3e-long-audio-transcribe-acceptance.md) / [`r3e-c-…`](../specs/r3e-c-incremental-transcribe-acceptance.md)（✅ 2026-05-31） / [`r3-asr-landscape-…`](../specs/r3-asr-landscape-2026-05-improvement-backlog.md) / [`trn-diag-…`](../specs/trn-diag-acceptance.md) / [`asr-warm-…`](../specs/asr-warm-acceptance.md) / [`exp-word-…`](../specs/exp-word-formatted-export-acceptance.md) |
 | **不要** | 内置 LiteLLM/网关、Ollama 替代 ASR、主路径 pip/PyInstaller、R3f 在 R3h-0 前签收 |
 
 ### R3 规划门禁
@@ -937,11 +937,11 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 - [x] **R3g-A ⑤c**（Paraformer 13min 多语段；2026-05-27 复测签收）
 - [ ] **R3h §11 发行门禁**（零终端、构建 smoke、损坏可恢复…）
 
-**下一刀**：**⑤h ACC-STT-UNIFY**（U1 `SttVocabularyPlan` + 三家在线 adapter）
+**下一刀**：**⑤″d R3t-D**（LLM 校准，用户显式触发）
 
-**同轮或紧邻闭合**：**③ R3f**、**① R3h-0 跨平台构建 smoke**（Win/mac，阻塞发行路径）、**R3h §11** 发行门禁
+**同轮或紧邻闭合**：**③ R3f**、**① R3h-0**、**R3h §11**；ACC 在线 E2E 手测 ⏳（有 Key 时补）
 
-**主序（编码）**：**ACC-STT-UNIFY** → **R3t-D** → …
+**主序（编码）**：**R3t-D** → **EXP-WORD** → …
 
 **并行 P1（不阻塞主序）**：**R3h-ASR-VER**（FunASR ≥1.3.3）→ **R3g-B Qwen3 spike**（注意伪流式 — research §8）— 见 §4.1.8、[`r3-asr-landscape-2026-05-improvement-backlog.md`](../specs/r3-asr-landscape-2026-05-improvement-backlog.md)
 
@@ -1030,6 +1030,7 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | 2026-05-30 | **产品拍板批次**：Q-ACC-4～7、Q-R9-1 Mid、REV-LOC v1 P1、ACC-STT 三家 v1、Q-FUT-1 |
 | 2026-05-30 | **§4.1.7 ACC + 主序重排**：**⑤g R3g-C**、**⑤h ACC-STT-UNIFY**；§11 ACC 参考链 |
 | 2026-05-31 | **R3g-C ✅ 手测签收**：Profile + 识别语言 + mismatch 横幅；§10 下一刀 **ACC-STT-UNIFY** |
+| 2026-05-31 | **ACC-STT-UNIFY ✅ 本机手测签收**：Paraformer + hotwords 链路；在线 E2E ⏳；§10 下一刀 **R3t-D** |
 | 2026-05-31 | **R3e-C ✅ 手测签收**：制控.mp3 ~20.8min、197 段、首段 ~23.9s、blocking≡async；§10 下一刀 **R3g-C** |
 | 2026-05-30 | **R3e-C Phase 2 编码**：async preview + `cancelTranscribe` + preview 门禁 + controller 拆分；**§4.1.8** 并入 [`r3-asr-landscape-2026-05-improvement-backlog.md`](../specs/r3-asr-landscape-2026-05-improvement-backlog.md)；§4.1.1 **⑥½**；§10 下一刀 **R3e-C 手测 → R3g-C** |
 | 2026-05-30 | **外部评估吸收**：R3 **~10～13w**；Sherpa **轻量模式**（ADR-0003 附录）；Qwen3 **伪流式** / SenseVoice **弃用** 风险入 backlog + spike §8；FireRedASR2 / Moonshine **雷达项** |
@@ -1090,7 +1091,7 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | **R3e-C** | async Job + preview + cancel + 门禁 | ✅ **2026-05-31 签收** |
 | **密集语段 UX** | Canvas bands + 列表虚拟化 | ✅ 2026-05-30；[`segment-overlay-virtualization.md`](../specs/segment-overlay-virtualization.md) |
 | **R3g-C** | `asr_model_profile.py` + 识别语言 UI/pref | ✅ 2026-05-31 |
-| **ACC-STT-UNIFY** | 在线词表 adapter 分散 | 📋 下一编码刀 |
+| **ACC-STT-UNIFY** | `stt_vocabulary` + `sttVocabularyBias` | ✅ **2026-05-31** 本机手测 |
 | **波形 UX** | 2026-05 minimap / zoom / tap seek | ✅ |
 | **R4–R8** | 无质量 Tab / MCP / collab | ❌ |
 | **R9** | 诊断包有；长音频 **R3e-B/C ✅**；Mid 硬门禁 R3t-B+C ✅ | 🟡 |

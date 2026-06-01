@@ -27,4 +27,4 @@
 ## 非范围
 
 - LLM LexiconPack（R3t-E）
-- 在线 STT 各厂商热词字段差异（仅本地 multipart `hotwords` 为主路径）
+- 在线 STT 各厂商热词字段差异 → **ACC-STT-UNIFY**（[`acc-stt-unify-acceptance.md`](./acc-stt-unify-acceptance.md)）

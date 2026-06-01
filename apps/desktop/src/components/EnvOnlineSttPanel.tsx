@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from "react";
 import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY, CONTROL_TEXT_INPUT } from "../config/controlStyles";
 import {
   getSttOnlineProviderDefinition,
+  glossaryBiasSummaryForProviderId,
   normalizeExternalSttOnlineRuntimeConfig,
   persistExternalSttOnlineRuntimeConfig,
   probeExternalSttOnlineHealth,
@@ -92,9 +93,17 @@ export function EnvOnlineSttPanel({ busy, onSttOnlineRuntimeChanged }: Props) {
         <strong className="text-zen-ink"> TC3 签名、Token 轮询或 WebSocket</strong>
         ，当前版本请优先走<strong className="text-zen-ink"> 自建 HTTPS 代理 </strong>
         ，将响应归一为 Rushi JSON（multipart <code className="font-mono text-zen-indigo">file</code>
-        ）。若厂商需 AppKey + 根密钥：AppKey 可持久化，根密钥仅内存。OpenAI 下术语表热词会作为{" "}
-        <code className="font-mono text-zen-indigo">prompt</code>（≤224 字）附加。
+        ）。若厂商需 AppKey + 根密钥：AppKey 可持久化，根密钥仅内存。启用在线转写时，全局术语表按厂商映射到各 API 字段（非统一{" "}
+        <code className="font-mono text-zen-indigo">hotwords</code>）：v1 支持
+        OpenAI <code className="font-mono text-zen-indigo">prompt</code>、AssemblyAI{" "}
+        <code className="font-mono text-zen-indigo">keyterms_prompt</code>、Deepgram{" "}
+        <code className="font-mono text-zen-indigo">keywords</code>；自定义代理走 multipart{" "}
+        <code className="font-mono text-zen-indigo">hotwords</code>。其它壳直连厂商转写时可能出现
+        「在线引擎不支持术语偏置」提示。
       </p>
+      {olEnabled ? (
+        <p className="text-[11px] text-zen-stone">{glossaryBiasSummaryForProviderId(olProviderId)}</p>
+      ) : null}
       <label className="flex cursor-pointer items-center gap-2 text-zen-ink">
         <input type="checkbox" checked={olEnabled} onChange={(e) => setOlEnabled(e.target.checked)} disabled={busy} />
         启用在线 STT（关闭则仍走本机基址）
