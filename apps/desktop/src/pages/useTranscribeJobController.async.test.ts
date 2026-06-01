@@ -24,21 +24,23 @@ describe("useTranscribeJobController async paths", () => {
 
   it("polls async job and merges preview deltas", async () => {
     let pollCount = 0;
-    vi.mocked(loopbackFetch).mockImplementation(async () => {
+    vi.mocked(loopbackFetch).mockImplementation(() => {
       pollCount += 1;
       if (pollCount === 1) {
-        return new Response(
-          JSON.stringify({
-            phase: "transcribing",
-            window_index: 1,
-            window_count: 10,
-            segments_delta: [{ start_sec: 0, end_sec: 1, text: "p1", kind: "speech" }],
-            segments_total: 1,
-          }),
-          { status: 200 },
+        return Promise.resolve(
+          new Response(
+            JSON.stringify({
+              phase: "transcribing",
+              window_index: 1,
+              window_count: 10,
+              segments_delta: [{ start_sec: 0, end_sec: 1, text: "p1", kind: "speech" }],
+              segments_total: 1,
+            }),
+            { status: 200 },
+          ),
         );
       }
-      return new Response(JSON.stringify({ phase: "done" }), { status: 200 });
+      return Promise.resolve(new Response(JSON.stringify({ phase: "done" }), { status: 200 }));
     });
 
     const deps = baseTranscribeJobDeps({ segments: [], segmentsRef: { current: [] } });

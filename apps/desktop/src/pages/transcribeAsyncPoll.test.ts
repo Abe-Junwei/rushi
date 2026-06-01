@@ -38,11 +38,13 @@ describe("transcribeAsyncPoll", () => {
 
   it("pollTranscribeJob throws when shouldStop before done", async () => {
     let pollCount = 0;
-    vi.mocked(loopbackFetch).mockImplementation(async () => {
+    vi.mocked(loopbackFetch).mockImplementation(() => {
       pollCount += 1;
-      return new Response(
-        JSON.stringify({ phase: "transcribing", window_index: 1, window_count: 3 }),
-        { status: 200 },
+      return Promise.resolve(
+        new Response(
+          JSON.stringify({ phase: "transcribing", window_index: 1, window_count: 3 }),
+          { status: 200 },
+        ),
       );
     });
     let stop = false;
