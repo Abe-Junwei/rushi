@@ -235,7 +235,7 @@ mod tests {
     #[test]
     fn accepts_adjacent_merge_and_valid_split() {
         let segments = vec![seg("a", 0.0, 1.0, "甲"), seg("b", 1.0, 2.0, "乙")];
-        let ops = vec![
+        let ops = [
             SegmentRefineOp::Merge {
                 uids: vec!["a".into(), "b".into()],
             },

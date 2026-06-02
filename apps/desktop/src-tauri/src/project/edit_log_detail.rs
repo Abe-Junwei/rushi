@@ -35,7 +35,7 @@ pub struct SaveSegmentsEditDetail {
 }
 
 fn preview_snippet(text: &str) -> String {
-    let t = text.replace('\n', " ").replace('\r', " ");
+    let t = text.replace(['\n', '\r'], " ");
     let chars: Vec<char> = t.chars().collect();
     if chars.len() <= SNIPPET_CHARS {
         return t;
@@ -148,7 +148,6 @@ mod tests {
     use crate::DbState;
     use rusqlite::params;
     use std::fs;
-    use std::path::PathBuf;
     use std::time::{SystemTime, UNIX_EPOCH};
     use uuid::Uuid;
 

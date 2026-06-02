@@ -189,12 +189,10 @@ pub fn write_llm_secret(
     api_key_id: &str,
     api_key: &str,
 ) -> Result<(), String> {
-    if use_keyring_store() {
-        if write_keyring_secret(api_key_id, api_key).is_ok() {
-            let _ = delete_file_secret(app_data_root, api_key_id);
-            write_keyring_presence_marker(app_data_root, api_key_id)?;
-            return Ok(());
-        }
+    if use_keyring_store() && write_keyring_secret(api_key_id, api_key).is_ok() {
+        let _ = delete_file_secret(app_data_root, api_key_id);
+        write_keyring_presence_marker(app_data_root, api_key_id)?;
+        return Ok(());
     }
     write_file_secret(app_data_root, api_key_id, api_key)?;
     let _ = delete_keyring_presence_marker(app_data_root, api_key_id);

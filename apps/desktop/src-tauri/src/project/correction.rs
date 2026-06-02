@@ -182,7 +182,7 @@ fn glossary_contains_term(conn: &Connection, term: &str) -> Result<bool, String>
         if term.trim() == needle {
             return Ok(true);
         }
-        for part in aliases.split(|c: char| c == ',' || c == '，' || c == ';' || c == '；') {
+        for part in aliases.split([',', '，', ';', '；']) {
             if part.trim() == needle {
                 return Ok(true);
             }
