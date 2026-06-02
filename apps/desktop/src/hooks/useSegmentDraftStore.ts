@@ -55,6 +55,11 @@ function subscribe(listener: () => void): () => void {
   return () => listeners.delete(listener);
 }
 
+/** 订阅草稿变更（用于自动保存等）。 */
+export function subscribeSegmentDraftStore(listener: () => void): () => void {
+  return subscribe(listener);
+}
+
 /** 语段正文草稿（按 uid / idx 键）；未编辑时与 committed 一致。 */
 export function useSegmentDraft(key: string, committedText: string): readonly [string, (text: string) => void] {
   const committed = normalizeSegmentDraftText(committedText ?? "");

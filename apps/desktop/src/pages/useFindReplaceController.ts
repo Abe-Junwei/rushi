@@ -15,6 +15,7 @@ import {
   captureTranscriptTextareaSelection,
   readTranscriptTextareaSelection,
 } from "../utils/transcriptSelection";
+import { toast } from "../services/ui/toast";
 
 export type FindReplaceDialogState =
   | { phase: "closed" }
@@ -46,6 +47,7 @@ type UseFindReplaceControllerArgs = {
   updateSegmentText: (idx: number, text: string) => void;
   setSegments: React.Dispatch<React.SetStateAction<SegmentDto[]>>;
   pushUndo: () => void;
+  saveSegments: (options?: { quiet?: boolean }) => Promise<boolean>;
 };
 
 export type FindReplaceControllerApi = {
@@ -68,7 +70,7 @@ export type FindReplaceControllerApi = {
   findReplaceGoPrev: () => void;
   findReplaceCurrent: () => void;
   findReplaceRequestReplaceAll: () => void;
-  findReplaceConfirmReplaceAll: () => void;
+  findReplaceConfirmReplaceAll: () => Promise<void>;
   findReplaceCancelReplaceAllPreview: () => void;
 };
 
@@ -83,6 +85,7 @@ export function useFindReplaceController(args: UseFindReplaceControllerArgs): Fi
     updateSegmentText,
     setSegments,
     pushUndo,
+    saveSegments,
   } = args;
 
   const [dialog, setDialog] = useState<FindReplaceDialogState>({ phase: "closed" });
@@ -369,15 +372,37 @@ export function useFindReplaceController(args: UseFindReplaceControllerArgs): Fi
     });
   }, [findText, flushSegmentTextDrafts, matches, replaceText, segmentsRef]);
 
-  const findReplaceConfirmReplaceAll = useCallback(() => {
-    if (!findText || !matches.length) return;
+  const findReplaceConfirmReplaceAll = useCallback(async () => {
+    if (!findText || !matches.length || busy) return;
+    const matchCount = matches.length;
     flushSegmentTextDrafts();
     pushUndo();
     const next = applyReplaceAllToSegments(segmentsRef.current, findText, replaceText, matches);
     segmentsRef.current = next;
     setSegments(next);
+    const saved = await saveSegments({ quiet: true });
+    if (!saved) {
+      toast.warning("已全部替换，但保存失败，请稍后手动保存以写入纠错记忆");
+      return;
+    }
     closeFindReplace();
-  }, [closeFindReplace, findText, flushSegmentTextDrafts, matches, pushUndo, replaceText, segmentsRef, setSegments]);
+    if (findText !== replaceText) {
+      toast.success(`已替换 ${matchCount} 处并已保存；纠错记忆将在符合条件时学习`);
+    } else {
+      toast.info(`已处理 ${matchCount} 处并已保存`);
+    }
+  }, [
+    busy,
+    closeFindReplace,
+    findText,
+    flushSegmentTextDrafts,
+    matches,
+    pushUndo,
+    replaceText,
+    saveSegments,
+    segmentsRef,
+    setSegments,
+  ]);
 
   const findReplaceCancelReplaceAllPreview = useCallback(() => {
     setDialog({

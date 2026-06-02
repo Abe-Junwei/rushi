@@ -10,6 +10,7 @@ import { EditorSegmentWorkbench } from "./editor/EditorSegmentWorkbench";
 import { EditorWaveformPane } from "./editor/EditorWaveformPane";
 import { useEditorEditHistory } from "./editor/useEditorEditHistory";
 import { useEditorTranscriptAppearance } from "./editor/useEditorTranscriptAppearance";
+import { autoSaveFooterLabel } from "../pages/useAutoSaveSegments";
 
 interface SegmentCtxMenuState {
   x: number;
@@ -128,7 +129,7 @@ export function EditorView({
           {c.audioSrc ? (
             <footer className="relative z-40 flex h-[30px] shrink-0 items-center border-t border-notion-divider bg-notion-bg px-2.5 text-[11px] text-notion-text-muted">
               <div className="flex min-w-0 flex-1 items-center gap-2">
-                <span>自动保存已激活</span>
+                <span>{autoSaveFooterLabel(c.autoSaveFooterStatus)}</span>
               </div>
               <span className="pointer-events-none absolute left-1/2 max-w-[50%] -translate-x-1/2 truncate text-center text-[11px] text-notion-text-muted" aria-live="polite">
                 {tx.waveformFooterStatusLabel ?? ""}

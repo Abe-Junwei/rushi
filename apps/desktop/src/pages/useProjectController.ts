@@ -105,6 +105,7 @@ export function useProjectController() {
     confirmTranscribeOverwrite: lifecycle.confirmTranscribeOverwrite,
     cancelTranscribeOverwrite: lifecycle.cancelTranscribeOverwrite,
     saveSegments: lifecycle.saveSegments,
+    autoSaveFooterStatus: lifecycle.autoSaveFooterStatus,
     deleteProject: lifecycle.deleteProject,
     exportTxt: lifecycle.exportTxt,
     exportSrt: lifecycle.exportSrt,

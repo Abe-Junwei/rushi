@@ -12,7 +12,7 @@
 |----|------|
 | **用户场景** | 中文长稿：专名听错 → 手改 → 希望**下次转写**更好；3–10 人互传词表；在线/本机引擎可选 |
 | **规划现状** | ASR-VOC（L2 可见性/闭环/eval）与 R3t-F（F2/F1/F6/F7 改稿）分两套文档，易重复估期、顺序冲突 |
-| **代码现状（2026-05-31）** | L2：HOT-UX + ACC-STT-UNIFY ✅；L4：R3t-E 编码✅ 手测⏳；**无** VOC-1 转写前摘要、**无** F6/F7、**无** F2 |
+| **代码现状（2026-05-31）** | L2：HOT-UX + ACC-STT-UNIFY ✅；L4：R3t-E 编码✅ 手测⏳；**F2/F6/自动保存 🟡** 工作区；**无** VOC-1、**无** F7、**无** MEM-P0+ |
 | **成功标准** | 一条主序可执行；无第二套 glossary/memory 真源；warnings 为运行时真源 |
 
 ---
@@ -58,10 +58,13 @@
 | H3 | **实施顺序**（墙钟）：见 §5；**VOC-5 在 F7 之前** |
 | H4 | **SKU 建议不变**：专名场景默认 **Paraformer**；SenseVoice 仅快轨 + 弱热词文案 |
 | H5 | **Qwen3 / Sherpa / VOC-4** 不进入 ⑤″f；仍在 §4.1.8 |
+| H6 | **MEM 优化轨** 插入 ⑤″f-B / B½ / C；**不** 第二套 memory 表；详见 [`r3t-f-correction-memory-optimization-plan.md`](./r3t-f-correction-memory-optimization-plan.md) |
 
 ---
 
-## 5. 调整后执行顺序（真源）
+## 5. 调整后执行顺序（真源 · 2026-05-31 含 MEM）
+
+> **MEM 细则**：[`r3t-f-correction-memory-optimization-plan.md`](./r3t-f-correction-memory-optimization-plan.md)
 
 ```text
 闸门  ⑤″e R3t-E 手测签收（不挡 VOC-1 纯 UI）
@@ -69,23 +72,27 @@
 ⑤″f-A  （约 1–2 周）
   ASR-VOC-1     转写前 preview + channel + SenseVoice 注记
   ‖
-  R3t-F P1 F2   查找替换（首刀）
-  ASR-VOC-5     eval hotwords on/off baseline（0.5–1d，与 ACC-EVAL-1 合并）
+  R3t-F F2      查找替换（🟡 收尾手测）
+  ASR-VOC-5     eval hotwords on/off（先于 F7）
 
 ⑤″f-B  （约 1–1.5 周）
-  R3t-F P1 F1   全文 memory 规则
-  R3t-F P1 F6   第三次 right → glossary（= ASR-VOC-2a）
-  ASR-VOC-2c/d  L2 文案 + 空表（0.5–1d）
+  F1 + F6 + L2/空表（VOC-2a/c/d）
+  MEM-P0        显式入库、写回即存、hit 与自动保存解耦
+
+⑤″f-B½ （约 0.5–1 周）
+  MEM-P1        记忆管理 UI、采纳为规则、LEX-MINE-1 轻量
 
 ⑤″f-C  （约 1–1.5 周）
-  R3t-F P2 F7   词表包（= ASR-VOC-2b）
-  R3t-F P2 F0-lite（可选同轮）
+  F7 词表包（VOC-2b）+ F0-lite（可选）
+  ‖ MEM-P2      uid 对齐学习、ACC-TXT-0 spike
 
 ⑤″f-D  （约 0.5–1 周，可 slip）
-  ASR-VOC-3     在线三家传参优化（闸门：ACC 在线 E2E 至少 1 家）
+  VOC-3（ACC 在线 E2E ≥1 家）
+
+Spike  MEM-S1    稳定规则 Rust 预替换（不阻塞 F7）
 ```
 
-**墙钟合计（单人）**：约 **3.5–5 周**，与 R3t-F Plan P1+P2 估时一致，非简单相加 1+7+2+2 天。
+**墙钟合计（单人）**：约 **4–6 周**（含 MEM **~1w**）；R3t-F Plan **v4**。
 
 ---
 

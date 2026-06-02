@@ -50,7 +50,8 @@ export interface ProjectLifecycleApi {
   cancelTranscribe: () => Promise<void>;
   confirmTranscribeOverwrite: () => void;
   cancelTranscribeOverwrite: () => void;
-  saveSegments: () => Promise<boolean>;
+  saveSegments: (options?: { quiet?: boolean }) => Promise<boolean>;
+  autoSaveFooterStatus: import("./useAutoSaveSegments").AutoSaveFooterStatus;
   deleteProject: (id: string, options?: { skipBrowserConfirm?: boolean }) => Promise<void>;
   exportTxt: () => Promise<void>;
   exportSrt: () => Promise<void>;
@@ -121,7 +122,7 @@ export interface ProjectLifecycleApi {
   findReplaceGoPrev: () => void;
   findReplaceCurrent: () => void;
   findReplaceRequestReplaceAll: () => void;
-  findReplaceConfirmReplaceAll: () => void;
+  findReplaceConfirmReplaceAll: () => Promise<void>;
   findReplaceCancelReplaceAllPreview: () => void;
   findReplaceEditorHighlight: { segmentIdx: number; charStart: number; charEnd: number } | null;
   findReplaceReplaceAndNext: () => void;

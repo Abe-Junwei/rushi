@@ -144,7 +144,7 @@ export function FindReplaceDialog({
         >
           <div className="flex min-h-0 flex-1 flex-col px-5 py-3">
             <p className="text-sm text-notion-text-muted">
-              将替换 {state.matchCount} 处「{state.findText}」→「{state.replaceText || "（空）"}」
+              将替换 {state.matchCount} 处「{state.findText}」→「{state.replaceText || "（空）"}」。确认后将自动保存并尝试写入纠错记忆。
             </p>
             <ul className={`${RESULT_LIST_CLASS} mt-3 text-xs`}>
               {state.rows.map((row) => (
@@ -175,8 +175,13 @@ export function FindReplaceDialog({
               <button type="button" className={CONTROL_BTN_SECONDARY} disabled={busy} onClick={onCancelReplaceAllPreview}>
                 返回
               </button>
-              <button type="button" className={CONTROL_BTN_PRIMARY} disabled={busy} onClick={onConfirmReplaceAll}>
-                确认替换
+              <button
+                type="button"
+                className={CONTROL_BTN_PRIMARY}
+                disabled={busy}
+                onClick={() => void onConfirmReplaceAll()}
+              >
+                确认替换并保存
               </button>
             </div>
           </div>

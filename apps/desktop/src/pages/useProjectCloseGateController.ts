@@ -22,7 +22,7 @@ type UseProjectCloseGateControllerArgs = {
   dirty: SegmentDirtyStateApi;
   endBusy: () => void;
   openFile: (fileId: string) => Promise<SegmentDto[] | null>;
-  saveSegments: () => Promise<boolean>;
+  saveSegments: (options?: { quiet?: boolean }) => Promise<boolean>;
   setCurrent: React.Dispatch<React.SetStateAction<ProjectDetail | null>>;
   setError: React.Dispatch<React.SetStateAction<string>>;
   setTranscribeHints: React.Dispatch<React.SetStateAction<string[]>>;
