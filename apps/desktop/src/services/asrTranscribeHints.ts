@@ -34,14 +34,14 @@ export function deriveTranscribeHints(engine: string, warnings: string[], segmen
   }
   if (warnings.some((w) => w.includes("hotwords_truncated_12k"))) {
     hints.push(
-      "术语热词超过 12,000 字符上限，已截断后提交；部分术语未进入识别。可在「术语库」查看「本次转写将携带」摘要。",
+      "术语热词超过 12,000 字符上限，已截断后提交；部分术语未进入识别。可在「热词与记忆」查看「本次转写将携带」摘要。",
     );
   }
   if (warnings.some((w) => w === "online_vocabulary_unsupported")) {
     hints.push("当前在线识别引擎不支持术语偏置，术语表未传入厂商 API；专名依赖手改或换用本机 FunASR / 已支持词表的在线引擎。");
   }
   if (warnings.some((w) => w.startsWith("online_vocabulary_truncated_"))) {
-    hints.push("术语表已传入在线引擎，但因厂商上限已截断；可在术语库减少条目或优先保留关键专名。");
+    hints.push("术语表已传入在线引擎，但因厂商上限已截断；可在「热词与记忆」减少条目或优先保留关键专名。");
   }
   const dominantRemoved = parseDominantSpanFilteredCount(warnings);
   if (dominantRemoved > 0) {

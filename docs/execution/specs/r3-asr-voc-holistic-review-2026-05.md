@@ -2,7 +2,7 @@
 
 > **状态**：调研 + 排期调整（2026-05-31）  
 > **作用**：一次合并评估后的**单一叙事**；实施仍以 [`r3-asr-voc-landing-plan.md`](./r3-asr-voc-landing-plan.md) + [`r3t-f-post-transcribe-suite-plan.md`](./r3t-f-post-transcribe-suite-plan.md) 为任务真源。  
-> **排期真源**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) §4.1.1 **⑤″f**（本评估后已同步）
+> **排期真源**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) §4.1.1 **⑤″f**、**§4.1.9 改进清单**（2026-06-02 调研吸收已同步）
 
 ---
 
@@ -12,7 +12,7 @@
 |----|------|
 | **用户场景** | 中文长稿：专名听错 → 手改 → 希望**下次转写**更好；3–10 人互传词表；在线/本机引擎可选 |
 | **规划现状** | ASR-VOC（L2 可见性/闭环/eval）与 R3t-F（F2/F1/F6/F7 改稿）分两套文档，易重复估期、顺序冲突 |
-| **代码现状（2026-05-31）** | L2：HOT-UX + ACC-STT-UNIFY ✅；L4：R3t-E 编码✅ 手测⏳；**F2/F6/自动保存 🟡** 工作区；**无** VOC-1、**无** F7、**无** MEM-P0+ |
+| **代码现状（2026-06-02）** | L2：HOT-UX + ACC-STT-UNIFY + **VOC-1** 手测✅；L4：R3t-E 编码✅ 手测⏳；F2/F1/F6 🟡；**MEM-P0** 编码✅；**下一刀 VOC-5**；**无** F7 |
 | **成功标准** | 一条主序可执行；无第二套 glossary/memory 真源；warnings 为运行时真源 |
 
 ---

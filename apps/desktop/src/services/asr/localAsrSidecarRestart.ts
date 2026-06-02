@@ -1,7 +1,10 @@
 import * as projectApi from "../../tauri/projectApi";
 import type { AsrHealthCapabilities } from "../../tauri/projectApi";
 import { pollLoopbackHealthUntil } from "./asrHealthSnapshot";
-import { sidecarRecognitionLanguageMatchesSelection } from "./localAsrRecognitionLanguage";
+import {
+  normalizeLocalAsrRecognitionLanguage,
+  sidecarRecognitionLanguageMatchesSelection,
+} from "./localAsrRecognitionLanguage";
 import { resolveLocalAsrHubModelId } from "./localAsrModelCatalog";
 
 /** Sidecar env/config matches UI hub (loaded weight may still be warming). */
@@ -17,7 +20,10 @@ export function sidecarConfigMatchesHub(
   const configured = caps.funasr_model_id?.trim() || "";
   return (
     configured === hub &&
-    sidecarRecognitionLanguageMatchesSelection(caps.funasr_language, language)
+    sidecarRecognitionLanguageMatchesSelection(
+      caps.funasr_language,
+      normalizeLocalAsrRecognitionLanguage(language),
+    )
   );
 }
 

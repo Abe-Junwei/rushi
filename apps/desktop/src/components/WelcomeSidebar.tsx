@@ -80,6 +80,10 @@ export function WelcomeSidebar({ controller: c, onOpenSettings, page, onPageChan
     await c.openFile(fileId);
   }, [c]);
 
+  const handleOpenEditor = useCallback(() => {
+    void c.openLastEditorWorkspace();
+  }, [c]);
+
   const navItems = [
     {
       icon: <List className={`${LUCIDE_ICON_SIZE_MD} shrink-0`} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />,
@@ -94,11 +98,18 @@ export function WelcomeSidebar({ controller: c, onOpenSettings, page, onPageChan
     },
     {
       icon: <BookOpen className={`${LUCIDE_ICON_SIZE_MD} shrink-0`} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />,
-      label: "术语管理",
+      label: "热词与记忆",
       active: page === "glossary",
       onClick: () => onPageChange("glossary"),
     },
-    { icon: <Pencil className={`${LUCIDE_ICON_SIZE_MD} shrink-0`} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />, label: "编辑器", active: false, disabled: true },
+    {
+      icon: <Pencil className={`${LUCIDE_ICON_SIZE_MD} shrink-0`} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />,
+      label: "编辑器",
+      active: false,
+      disabled: false,
+      onClick: handleOpenEditor,
+      title: "打开上次编辑的文件",
+    },
     { icon: <FileText className={`${LUCIDE_ICON_SIZE_MD} shrink-0`} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />, label: "转写文本", active: false, disabled: true },
   ];
 
@@ -122,6 +133,7 @@ export function WelcomeSidebar({ controller: c, onOpenSettings, page, onPageChan
               key={item.label}
               type="button"
               disabled={item.disabled || c.busy}
+              title={item.title}
               onClick={() => item.onClick?.()}
               className={[
                 "flex w-full items-center gap-3 rounded-md px-3 py-2 text-sm font-medium transition-colors border-0",
@@ -276,7 +288,7 @@ export function WelcomeSidebar({ controller: c, onOpenSettings, page, onPageChan
       ) : (
         <div className="flex min-h-0 flex-1 flex-col justify-center px-6 py-8 text-center">
           <p className="text-sm leading-relaxed text-notion-text-muted">
-            术语库为全局设置。在右侧添加或删除术语后，转写时会自动作为热词提交给 ASR。
+            热词与记忆为全局设置：术语表影响转写热词；纠错记忆影响全文规则与提示，可在右侧列表中查看与编辑。
           </p>
         </div>
       )}

@@ -1,5 +1,6 @@
 import type { SegmentDto } from "../../tauri/projectApi";
 import type { CorrectionRuleRow } from "../../tauri/correctionApi";
+import { splitGraphemes } from "../text/grapheme";
 import { formatSegmentTimeLabel } from "./segmentFindReplace";
 
 export type CorrectionRulePair = { wrong: string; right: string };
@@ -30,14 +31,14 @@ export function applyCorrectionRulesToText(text: string, rules: CorrectionRulePa
   const sorted = [...rules]
     .filter((r) => r.wrong.length >= MIN_WRONG_LEN)
     .sort((a, b) => b.wrong.length - a.wrong.length);
-  const chars = [...text];
+  const chars = splitGraphemes(text);
   const out: string[] = [];
   let i = 0;
   let count = 0;
   while (i < chars.length) {
     let matched: CorrectionRulePair | null = null;
     for (const rule of sorted) {
-      const w = [...rule.wrong];
+      const w = splitGraphemes(rule.wrong);
       if (i + w.length > chars.length) continue;
       if (chars.slice(i, i + w.length).join("") === rule.wrong) {
         if (!matched || rule.wrong.length > matched.wrong.length) matched = rule;
@@ -45,7 +46,7 @@ export function applyCorrectionRulesToText(text: string, rules: CorrectionRulePa
     }
     if (matched) {
       out.push(matched.right);
-      i += [...matched.wrong].length;
+      i += splitGraphemes(matched.wrong).length;
       count += 1;
     } else {
       const ch = chars[i];

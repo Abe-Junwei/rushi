@@ -121,6 +121,90 @@
   caret-color: var(--zen-saffron-mid);
 }
 
+.workspace textarea.seg-text.text-transparent::selection {
+  color: transparent;
+  background: color-mix(in srgb, var(--zen-saffron) 28%, var(--zen-paper));
+}
+
+/* 语段行：待纳入记忆改词 diff 镜像 */
+.workspace .seg-learn-diff-mirror {
+  margin: 0;
+  padding: 0;
+  border: 0;
+  font: inherit;
+  letter-spacing: inherit;
+  word-break: break-word;
+}
+
+.workspace .seg-learn-diff-removed {
+  text-decoration: line-through;
+  text-decoration-color: var(--zen-saffron-deep);
+  text-decoration-thickness: 2px;
+  color: color-mix(in srgb, var(--zen-saffron-deep) 82%, var(--notion-text-muted));
+  background: color-mix(in srgb, var(--zen-saffron) 14%, var(--notion-bg));
+  border-radius: 2px;
+}
+
+.workspace .seg-learn-diff-inserted {
+  border-radius: 2px;
+  background: color-mix(in srgb, var(--zen-saffron) 32%, transparent);
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--zen-saffron-mid) 35%, transparent);
+}
+
+/* 语段行：待纳入记忆（Notion 式文字胶囊，固定高度、行内垂直居中） */
+.workspace .seg-confirm-learn-btn {
+  pointer-events: auto;
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  min-width: 4.25rem;
+  height: 2.25rem;
+  padding: 0 0.65rem;
+  border: 1px solid color-mix(in srgb, var(--notion-border) 72%, transparent);
+  border-radius: 6px;
+  background: var(--notion-bg);
+  color: var(--notion-text-muted);
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--notion-text) 6%, transparent);
+  cursor: pointer;
+  transition:
+    background 120ms ease,
+    border-color 120ms ease,
+    color 120ms ease,
+    box-shadow 120ms ease;
+}
+
+.workspace .seg-confirm-learn-btn__label {
+  font-family: var(--font-sans, Inter, system-ui, sans-serif);
+  font-size: 12px;
+  font-weight: 500;
+  line-height: 1.2;
+  letter-spacing: 0.01em;
+  white-space: nowrap;
+}
+
+.workspace .seg-confirm-learn-btn:hover:not(:disabled) {
+  background: color-mix(in srgb, var(--zen-saffron) 8%, var(--notion-bg));
+  border-color: color-mix(in srgb, var(--zen-saffron) 22%, var(--notion-border));
+  color: var(--zen-saffron-deep);
+  box-shadow: 0 1px 3px color-mix(in srgb, var(--notion-text) 8%, transparent);
+}
+
+.workspace .seg-confirm-learn-btn:active:not(:disabled) {
+  background: color-mix(in srgb, var(--zen-saffron) 12%, var(--notion-bg));
+  box-shadow: none;
+}
+
+.workspace .seg-confirm-learn-btn:disabled {
+  opacity: 0.45;
+  cursor: not-allowed;
+}
+
+.workspace .seg-confirm-learn-btn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--zen-saffron) 35%, transparent);
+  outline-offset: 2px;
+}
+
 .workspace textarea.seg-text::selection {
   color: var(--zen-saffron-mid);
   background: color-mix(in srgb, var(--zen-saffron) 20%, var(--zen-paper));

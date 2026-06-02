@@ -4,7 +4,7 @@ import {
   segmentsEqualForPersist,
   snapshotSegmentsForPersist,
 } from "./segmentListHelpers";
-import { segmentsWithDraftsApplied } from "./segmentDirtyRead";
+import { segmentsWithDraftsApplied } from "../services/segmentDirtyRead";
 
 export const UNSAVED_SEGMENTS_CONFIRM =
   "当前文件有未保存的语段修改，确定放弃吗？";
@@ -27,6 +27,8 @@ export interface SegmentDirtyStateApi {
   markSegmentsSaved: () => void;
   /** After reload from DB, align snapshot without reading DOM drafts. */
   setSavedSnapshot: (segments: SegmentDto[]) => void;
+  /** Last persisted snapshot (for correction-memory learn baseline). */
+  getSavedSnapshot: () => SegmentDto[];
   clearSavedSnapshot: () => void;
   hasUnsavedSegmentChanges: () => boolean;
   confirmDiscardUnsavedIfNeeded: () => boolean;
@@ -44,6 +46,11 @@ export function useSegmentDirtyState(deps: SegmentDirtyStateDeps): SegmentDirtyS
   const setSavedSnapshot = useCallback((segments: SegmentDto[]) => {
     savedSegmentsRef.current = snapshotSegmentsForPersist(segments);
   }, []);
+
+  const getSavedSnapshot = useCallback(
+    () => snapshotSegmentsForPersist(savedSegmentsRef.current),
+    [],
+  );
 
   const clearSavedSnapshot = useCallback(() => {
     savedSegmentsRef.current = [];
@@ -63,6 +70,7 @@ export function useSegmentDirtyState(deps: SegmentDirtyStateDeps): SegmentDirtyS
   return {
     markSegmentsSaved,
     setSavedSnapshot,
+    getSavedSnapshot,
     clearSavedSnapshot,
     hasUnsavedSegmentChanges,
     confirmDiscardUnsavedIfNeeded,

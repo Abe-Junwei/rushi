@@ -22,6 +22,7 @@ type Args = {
   setSegments: React.Dispatch<React.SetStateAction<SegmentDto[]>>;
   pushUndo: () => void;
   setError: (msg: string) => void;
+  saveSegments: (options?: { quiet?: boolean; countHits?: boolean }) => Promise<boolean>;
 };
 
 export function useCorrectionRulesController(args: Args) {
@@ -34,6 +35,7 @@ export function useCorrectionRulesController(args: Args) {
     setSegments,
     pushUndo,
     setError,
+    saveSegments,
   } = args;
 
   const [dialog, setDialog] = useState<CorrectionRulesDialogState>({ phase: "closed" });
@@ -68,7 +70,7 @@ export function useCorrectionRulesController(args: Args) {
     }
   }, [canApplyCorrectionRules, flushSegmentTextDrafts, segmentsRef, setError]);
 
-  const confirmCorrectionRulesWriteback = useCallback(() => {
+  const confirmCorrectionRulesWriteback = useCallback(async () => {
     if (dialog.phase !== "preview") return;
     flushSegmentTextDrafts();
     pushUndo();
@@ -80,7 +82,11 @@ export function useCorrectionRulesController(args: Args) {
     segmentsRef.current = next;
     setSegments(next);
     setDialog({ phase: "closed" });
-  }, [dialog, flushSegmentTextDrafts, pushUndo, segmentsRef, setSegments]);
+    const saved = await saveSegments({ quiet: true, countHits: true });
+    if (!saved) {
+      setError("纠错规则已写回，但保存失败，请稍后手动保存。");
+    }
+  }, [dialog, flushSegmentTextDrafts, pushUndo, saveSegments, segmentsRef, setError, setSegments]);
 
   const cancelCorrectionRules = useCallback(() => {
     setDialog({ phase: "closed" });

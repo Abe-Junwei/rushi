@@ -4,15 +4,9 @@ import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
 import type { useEditorEditHistory } from "./useEditorEditHistory";
 import type { useEditorTranscriptAppearance } from "./useEditorTranscriptAppearance";
+import type { SegmentContextMenuOpen } from "../../utils/segmentContextMenuModel";
 import { EditorSegmentList } from "./EditorSegmentList";
 import { EditorSegmentToolbar } from "./EditorSegmentToolbar";
-
-interface SegmentCtxMenuState {
-  x: number;
-  y: number;
-  segmentIdx: number;
-  pointerTimeSec: number;
-}
 type EditHistoryApi = ReturnType<typeof useEditorEditHistory>;
 type AppearanceApi = ReturnType<typeof useEditorTranscriptAppearance>;
 interface EditorSegmentWorkbenchProps {
@@ -20,7 +14,7 @@ interface EditorSegmentWorkbenchProps {
   tx: TranscriptionLayerApi;
   appearance: AppearanceApi;
   editHistory: EditHistoryApi;
-  onOpenSegmentContextMenu: (menu: SegmentCtxMenuState) => void;
+  onOpenSegmentContextMenu: (menu: SegmentContextMenuOpen) => void;
 }
 export const EditorSegmentWorkbench = memo(function EditorSegmentWorkbench({
   controller: c,

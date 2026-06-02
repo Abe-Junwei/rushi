@@ -1,17 +1,26 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   BookOpen,
   Download,
   FileSpreadsheet,
   RefreshCw,
   Search,
+  Sparkles,
 } from "lucide-react";
+import { CorrectionMemoryBatchBar } from "./glossary/CorrectionMemoryBatchBar";
+import { CorrectionMemoryEditor } from "./glossary/CorrectionMemoryEditor";
+import { CorrectionMemoryTable } from "./glossary/CorrectionMemoryTable";
 import { GlossaryBatchBar } from "./glossary/GlossaryBatchBar";
 import { GlossaryTermEditor } from "./glossary/GlossaryTermEditor";
 import { GlossaryTermTable } from "./glossary/GlossaryTermTable";
 import { PANEL_CONTROL_TYPOGRAPHY, PANEL_TYPOGRAPHY } from "../config/typography";
 import { GLOSSARY_LIST_DISPLAY_CAP } from "../pages/glossaryListCap";
+import { useCorrectionMemoryController } from "../pages/useCorrectionMemoryController";
 import { useGlossaryController } from "../pages/useGlossaryController";
+import { useGlossaryMineController } from "../pages/useGlossaryMineController";
+import { groupCorrectionMemoryConflicts } from "../services/correctionMemoryConflicts";
+import { CorrectionMemoryConflictBanner } from "./glossary/CorrectionMemoryConflictBanner";
+import { GlossaryMineSection } from "./glossary/GlossaryMineSection";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
 type GlossaryPageProps = {
@@ -20,9 +29,14 @@ type GlossaryPageProps = {
 
 export function GlossaryPage({ busy }: GlossaryPageProps) {
   const g = useGlossaryController();
+  const mem = useCorrectionMemoryController();
+  const mine = useGlossaryMineController({
+    onGlossaryChanged: () => g.refresh(),
+  });
   const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const headerCheckboxRef = useRef<HTMLInputElement>(null);
-  const disabled = busy || g.busy;
+  const memoryHeaderCheckboxRef = useRef<HTMLInputElement>(null);
+  const disabled = busy || g.busy || mem.busy || mine.busy;
 
   useEffect(() => {
     if (headerCheckboxRef.current) {
@@ -30,11 +44,19 @@ export function GlossaryPage({ busy }: GlossaryPageProps) {
     }
   }, [g.isIndeterminate]);
 
+  useEffect(() => {
+    if (memoryHeaderCheckboxRef.current) {
+      memoryHeaderCheckboxRef.current.indeterminate = mem.isIndeterminate;
+    }
+  }, [mem.isIndeterminate]);
+
   const handleDeleteFromEditor = useCallback(() => {
     if (g.selectedId == null) return;
     void g.remove(g.selectedId);
     setDeleteConfirmId(null);
   }, [g]);
+
+  const memoryConflicts = useMemo(() => groupCorrectionMemoryConflicts(mem.rows), [mem.rows]);
 
   const handleRowDelete = useCallback(
     (id: number) => {
@@ -51,22 +73,24 @@ export function GlossaryPage({ busy }: GlossaryPageProps) {
   return (
     <div
       className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-notion-bg px-10 py-8"
-      data-purpose="glossary-page"
+      data-purpose="hotwords-memory-page"
     >
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-8">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-10">
         <header className="flex flex-col gap-2 border-b border-notion-divider pb-6">
           <div className="flex items-center gap-3">
             <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-zen-saffron/15 text-zen-saffron">
               <BookOpen className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
             </div>
             <div>
-              <h1 className="m-0 text-[18px] font-semibold leading-[1.4] text-notion-text">术语库</h1>
+              <h1 className="m-0 text-[18px] font-semibold leading-[1.4] text-notion-text">热词与记忆</h1>
               <p className={PANEL_TYPOGRAPHY.sectionDescription}>
-                全局术语表：可手动指定哪些词条纳入 ASR 热词；领域与备注为词典模块预留字段。
+                转写热词（术语表）与纠错记忆（错→对）分开展示；均可手动增删改，并影响下次转写与编辑内规则应用。
               </p>
             </div>
           </div>
         </header>
+
+        <h2 className={`m-0 ${PANEL_TYPOGRAPHY.sectionTitle}`}>转写热词</h2>
 
         <section
           className="flex flex-col gap-2 rounded-md border border-notion-divider bg-notion-callout-bg px-4 py-3"
@@ -97,6 +121,8 @@ export function GlossaryPage({ busy }: GlossaryPageProps) {
             </pre>
           ) : null}
         </section>
+
+        <GlossaryMineSection mine={mine} disabled={disabled} />
 
         <GlossaryTermEditor
           mode={g.editorMode}
@@ -155,10 +181,10 @@ export function GlossaryPage({ busy }: GlossaryPageProps) {
           </p>
         ) : null}
 
-        <section className="flex min-h-0 flex-1 flex-col gap-3">
+        <section className="flex min-h-0 flex-col gap-3">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div className="flex items-center gap-2">
-              <h2 className={PANEL_TYPOGRAPHY.sectionTitle}>已收录术语</h2>
+              <h3 className={PANEL_TYPOGRAPHY.sectionTitle}>已收录术语</h3>
               <span className={PANEL_TYPOGRAPHY.meta}>
                 {g.searchQuery.trim()
                   ? `${g.filteredTerms.length} / ${g.terms.length} 条`
@@ -276,6 +302,140 @@ export function GlossaryPage({ busy }: GlossaryPageProps) {
 
         <p className={PANEL_TYPOGRAPHY.helper}>
           勾选后可批量删除或设置热词；搜索/筛选变更会清空选择。导出 CSV 与结构化导入均支持 hotword_enabled 列。
+        </p>
+
+        <div className="flex flex-col gap-2 border-t border-notion-divider pt-8">
+          <div className="flex items-center gap-2">
+            <Sparkles
+              className={`${LUCIDE_ICON_SIZE_MD} text-zen-saffron`}
+              strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
+              aria-hidden
+            />
+            <h2 className={`m-0 ${PANEL_TYPOGRAPHY.sectionTitle}`}>纠错记忆</h2>
+            <span className={PANEL_TYPOGRAPHY.meta}>
+              {mem.rows.length} 条 · {mem.stableCount} 条稳定
+            </span>
+          </div>
+          <p className={`m-0 ${PANEL_TYPOGRAPHY.meta}`}>
+            来自手改、查找替换或本页新建。稳定后可用于工具栏「纠错规则」与转写提示；也可将正词加入术语表（保存语段后的 F6 提示）。
+          </p>
+        </div>
+
+        <CorrectionMemoryEditor
+          mode={mem.editorMode}
+          draft={mem.draft}
+          disabled={disabled}
+          onChange={mem.updateDraftField}
+          onSave={() => void mem.saveDraft()}
+          onReset={mem.resetEditor}
+          onDelete={
+            mem.selectedKey
+              ? () => {
+                  const key = mem.selectedKey;
+                  if (key) void mem.removeRow(key);
+                }
+              : undefined
+          }
+        />
+
+        {mem.statusMessage ? (
+          <p className={`m-0 ${PANEL_TYPOGRAPHY.meta} text-notion-text`}>{mem.statusMessage}</p>
+        ) : null}
+        {mem.loadError ? (
+          <p className="rounded-md border border-zen-cinnabar/25 bg-zen-cinnabar/10 px-3 py-2 text-sm text-zen-cinnabar">
+            {mem.loadError}
+          </p>
+        ) : null}
+
+        <CorrectionMemoryConflictBanner groups={memoryConflicts} />
+
+        <section className="flex flex-col gap-3">
+          <div className="flex flex-wrap items-center justify-between gap-3">
+            <h3 className={PANEL_TYPOGRAPHY.sectionTitle}>已收录记忆</h3>
+            <div className="flex flex-wrap items-center gap-2">
+              <label className="relative flex min-w-[200px] flex-1 items-center">
+                <Search
+                  className={`pointer-events-none absolute left-2.5 ${LUCIDE_ICON_SIZE_SM} text-notion-text-muted`}
+                  strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
+                  aria-hidden
+                />
+                <input
+                  type="search"
+                  value={mem.searchQuery}
+                  onChange={(e) => mem.setSearchQuery(e.target.value)}
+                  placeholder="搜索错词、正词"
+                  disabled={disabled}
+                  className={`min-h-[36px] w-full rounded-lg border border-notion-border bg-notion-bg py-2 pl-8 pr-3 outline-none transition-colors focus:border-zen-saffron focus:ring-2 focus:ring-zen-saffron/30 disabled:opacity-50 ${PANEL_CONTROL_TYPOGRAPHY.compactInput}`}
+                  aria-label="搜索纠错记忆"
+                />
+              </label>
+              <button
+                type="button"
+                className="inline-flex min-h-[36px] items-center justify-center gap-1.5 rounded-lg border border-notion-border bg-notion-bg px-3 text-sm font-medium text-notion-text-muted transition-colors hover:bg-notion-sidebar-hover hover:text-notion-text disabled:opacity-40"
+                disabled={disabled}
+                onClick={() => void mem.refresh()}
+                aria-label="刷新纠错记忆列表"
+              >
+                <RefreshCw className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+              </button>
+            </div>
+          </div>
+
+          {mem.rows.length === 0 ? (
+            <p className="rounded-md bg-notion-callout-bg px-4 py-10 text-center text-sm text-notion-text-muted">
+              暂无纠错记忆。在编辑器中手改并保存、使用查找替换全部替换，或于上方手动新建。
+            </p>
+          ) : mem.filteredRows.length === 0 ? (
+            <p className="rounded-md bg-notion-callout-bg px-4 py-8 text-center text-sm text-notion-text-muted">
+              没有匹配的纠错记忆。
+            </p>
+          ) : (
+            <>
+              {mem.filteredRows.length > 0 && mem.rows.length > mem.filteredRows.length ? (
+                <div className="flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    className="min-h-[32px] rounded-md border border-notion-border bg-notion-bg px-2.5 text-[11px] font-medium text-notion-text-muted hover:bg-notion-sidebar-hover hover:text-notion-text disabled:opacity-40"
+                    disabled={disabled}
+                    onClick={mem.selectFiltered}
+                  >
+                    全选筛选结果（{mem.filteredRows.length}）
+                  </button>
+                </div>
+              ) : null}
+              <CorrectionMemoryBatchBar
+                selectedCount={mem.selectedCount}
+                previewLabels={mem.previewLabels}
+                hiddenSelectedCount={mem.hiddenSelectedCount}
+                disabled={disabled}
+                deleteConfirm={mem.batchDeleteConfirm}
+                canAcceptRules={mem.canAcceptRules}
+                onAcceptRules={() => void mem.batchAcceptRules()}
+                onDelete={() => void mem.batchDelete()}
+                onClearSelection={() => {
+                  mem.clearBatchDeleteConfirm();
+                  mem.clearSelection();
+                }}
+              />
+              <CorrectionMemoryTable
+                rows={mem.filteredRows}
+                selectedKey={mem.selectedKey}
+                checkedKeys={mem.checkedKeys}
+                disabled={disabled}
+                isAllVisibleSelected={mem.isAllVisibleSelected}
+                isIndeterminate={mem.isIndeterminate}
+                headerCheckboxRef={memoryHeaderCheckboxRef}
+                onToggleVisibleSelection={mem.toggleVisibleSelection}
+                onToggleChecked={mem.toggleChecked}
+                onSelect={mem.selectRow}
+                onAcceptRule={(row) => void mem.acceptAsRule(row)}
+              />
+            </>
+          )}
+        </section>
+
+        <p className={PANEL_TYPOGRAPHY.helper}>
+          勾选后可批量「采纳为规则」或删除；搜索变更会清空选择。列表最多 200 条。删除稳定规则后，F1 与转写提示将不再使用该对。
         </p>
       </div>
     </div>

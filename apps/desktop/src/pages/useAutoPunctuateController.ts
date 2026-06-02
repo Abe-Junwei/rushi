@@ -13,6 +13,7 @@ import {
   tryBuildPostprocessRuntimeBridge,
 } from "../services/postprocess/postprocessRuntimeContract";
 import { TRANSCRIBE_PREVIEW_BLOCK_REASON } from "./transcribePreviewState";
+import { applySegmentTextChange, type SegmentTextUpdateMeta } from "./segmentTextLearnMeta";
 import {
   postprocessCancelAutoPunctuate,
   postprocessAutoPunctuate,
@@ -22,7 +23,7 @@ import type { TextDiffSpan } from "../utils/textDiff";
 
 const AUTO_PUNCTUATE_CONSENT_KEY = "rushi:auto-punctuate-consent:v1";
 
-type SegmentTextMutator = (idx: number, text: string) => void;
+type SegmentTextMutator = (idx: number, text: string, meta?: SegmentTextUpdateMeta) => void;
 
 export type AutoPunctuateDialogState =
   | { phase: "closed" }
@@ -232,7 +233,13 @@ export function useAutoPunctuateController(
       setError("语段已变化，无法写回自动标点结果，请重新尝试。");
       return;
     }
-    updateSegmentText(idx, dialog.candidateText);
+    const seg = segmentsRef.current[idx];
+    if (!seg) {
+      setDialog({ phase: "closed" });
+      return;
+    }
+    // 自动标点写回： intentionally 不传 learn（标点不计入 correction_memory）
+    applySegmentTextChange(seg, idx, dialog.candidateText, updateSegmentText);
     setDialog({ phase: "closed" });
   }, [dialog, segmentsRef, updateSegmentText, setError]);
 

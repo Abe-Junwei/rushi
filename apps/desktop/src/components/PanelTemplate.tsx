@@ -50,6 +50,16 @@ export const PANEL_TEMPLATE_PRESETS = {
     persistState: true,
     overlayClassName: "fixed inset-0 z-40 bg-zen-ink/20 backdrop-blur-sm",
   },
+  /** 查找替换：内容区较高，须压在 editor 工具栏（z-90）之上 */
+  findReplace: {
+    margin: 16,
+    minWidth: 320,
+    minHeight: 280,
+    maxWidth: 640,
+    maxHeight: 720,
+    persistState: true,
+    overlayClassName: "fixed inset-0 z-[100] bg-zen-ink/20 backdrop-blur-sm",
+  },
 } satisfies Record<string, PanelTemplatePreset>;
 
 type PanelTemplatePresetKey = keyof typeof PANEL_TEMPLATE_PRESETS;
@@ -62,8 +72,12 @@ function resolvePanelTemplateMetrics(
   const viewportHeight = Math.floor(window.visualViewport?.height ?? window.innerHeight);
   const availableWidth = Math.max(preset.minWidth, viewportWidth - preset.margin * 2);
   const availableHeight = Math.max(preset.minHeight, viewportHeight - preset.margin * 2);
-  const width = defaultSizeOverride?.width ?? Math.min(preset.maxWidth, availableWidth);
-  const height = defaultSizeOverride?.height ?? Math.min(preset.maxHeight, availableHeight);
+  const width = defaultSizeOverride
+    ? Math.min(defaultSizeOverride.width, availableWidth)
+    : Math.min(preset.maxWidth, availableWidth);
+  const height = defaultSizeOverride
+    ? Math.min(defaultSizeOverride.height, availableHeight)
+    : Math.min(preset.maxHeight, availableHeight);
 
   return {
     defaultPosition: {
@@ -91,6 +105,8 @@ interface FloatingPanelTemplateProps {
   overlayClassName?: string;
   defaultSize?: { width: number; height: number };
   defaultPosition?: { x: number; y: number };
+  /** Panel shell z-index; default 50. Editor modals use 110 to clear toolbar (z-90). */
+  panelZIndex?: number;
 }
 
 export function FloatingPanelTemplate({
@@ -107,6 +123,7 @@ export function FloatingPanelTemplate({
   overlayClassName,
   defaultSize: defaultSizeOverride,
   defaultPosition: defaultPositionOverride,
+  panelZIndex,
 }: FloatingPanelTemplateProps) {
   const presetConfig = PANEL_TEMPLATE_PRESETS[preset];
   const mergedConfig: PanelTemplatePreset = {
@@ -131,6 +148,7 @@ export function FloatingPanelTemplate({
         minWidth={mergedConfig.minWidth}
         minHeight={mergedConfig.minHeight}
         persistState={mergedConfig.persistState}
+        zIndex={panelZIndex}
         onClose={onClose}
       >
         {children}

@@ -7,9 +7,26 @@ import { FindReplaceMatchText } from "./FindReplaceMatchText";
 import { FloatingPanelTemplate } from "./PanelTemplate";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
-const PANEL_ID = "find-replace-v1";
-const DEFAULT_SIZE = { width: 480, height: 520 } as const;
-const MIN_SIZE = { width: 380, height: 360 } as const;
+const PANEL_ID = "find-replace-v2";
+
+/** 按当前视口测算，避免 compactDialog 320×200 上限与编辑区工具栏遮挡。 */
+function resolveFindReplacePanelLayout() {
+  const vw = Math.floor(window.visualViewport?.width ?? window.innerWidth);
+  const vh = Math.floor(window.visualViewport?.height ?? window.innerHeight);
+  const margin = 16;
+  const maxW = Math.min(640, Math.max(320, vw - margin * 2));
+  const maxH = Math.min(720, Math.max(280, vh - margin * 2));
+  return {
+    defaultSize: {
+      width: Math.min(480, maxW),
+      height: Math.min(520, maxH),
+    },
+    minWidth: Math.min(360, maxW),
+    minHeight: Math.min(320, maxH),
+    maxWidth: maxW,
+    maxHeight: maxH,
+  };
+}
 
 const fieldClass =
   "h-8 min-w-0 flex-1 rounded-md border border-notion-divider bg-notion-bg px-2.5 text-sm text-notion-text outline-none focus:border-zen-saffron/45";
@@ -130,21 +147,28 @@ export function FindReplaceDialog({
   };
 
   if (state.phase === "replaceAllPreview") {
+    const layout = resolveFindReplacePanelLayout();
     return createPortal(
       <div className="workspace">
         <FloatingPanelTemplate
           id={`${PANEL_ID}-preview`}
           title="全部替换预览"
-          preset="compactDialog"
-          minWidth={MIN_SIZE.width}
-          minHeight={400}
-          defaultSize={{ width: 520, height: 480 }}
+          preset="findReplace"
+          minWidth={layout.minWidth}
+          minHeight={Math.min(400, layout.maxHeight)}
+          maxWidth={layout.maxWidth}
+          maxHeight={layout.maxHeight}
+          defaultSize={{
+            width: Math.min(520, layout.maxWidth),
+            height: Math.min(480, layout.maxHeight),
+          }}
+          panelZIndex={110}
           persistState
           onClose={handleClose}
         >
           <div className="flex min-h-0 flex-1 flex-col px-5 py-3">
             <p className="text-sm text-notion-text-muted">
-              将替换 {state.matchCount} 处「{state.findText}」→「{state.replaceText || "（空）"}」。确认后将自动保存并尝试写入纠错记忆。
+              将替换 {state.matchCount} 处「{state.findText}」→「{state.replaceText || "（空）"}」。确认后将自动保存并写入纠错记忆（查找词与替换词不同时）。
             </p>
             <ul className={`${RESULT_LIST_CLASS} mt-3 text-xs`}>
               {state.rows.map((row) => (
@@ -201,15 +225,20 @@ export function FindReplaceDialog({
       ? state.resultItems.find((r) => r.globalIndex === state.activeMatchIndex)
       : state.resultItems[0];
 
+  const layout = resolveFindReplacePanelLayout();
+
   return createPortal(
     <div className="workspace">
       <FloatingPanelTemplate
         id={PANEL_ID}
         title="查找替换"
-        preset="compactDialog"
-        minWidth={MIN_SIZE.width}
-        minHeight={MIN_SIZE.height}
-        defaultSize={DEFAULT_SIZE}
+        preset="findReplace"
+        minWidth={layout.minWidth}
+        minHeight={layout.minHeight}
+        maxWidth={layout.maxWidth}
+        maxHeight={layout.maxHeight}
+        defaultSize={layout.defaultSize}
+        panelZIndex={110}
         persistState
         onClose={handleClose}
       >

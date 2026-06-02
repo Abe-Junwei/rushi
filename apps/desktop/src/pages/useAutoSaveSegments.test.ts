@@ -11,7 +11,6 @@ function seg(text: string, idx = 0): SegmentDto {
     start_sec: 0,
     end_sec: 1,
     text,
-    speaker: null,
   };
 }
 
@@ -51,6 +50,7 @@ describe("useAutoSaveSegments", () => {
       vi.advanceTimersByTime(1500);
     });
     expect(saveSegments).toHaveBeenCalledTimes(1);
+    expect(saveSegments).toHaveBeenCalledWith({ quiet: true, countHits: false });
 
     dirty = false;
     rerender({ segments: [seg("b")] });
@@ -79,5 +79,6 @@ describe("useAutoSaveSegments", () => {
       vi.advanceTimersByTime(1500);
     });
     expect(saveSegments).toHaveBeenCalledTimes(1);
+    expect(saveSegments).toHaveBeenCalledWith({ quiet: true, countHits: false });
   });
 });

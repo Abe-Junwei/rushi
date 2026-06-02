@@ -6,6 +6,22 @@ import { readStoredTabAdvanceLoopsSegment } from "../utils/waveformPrefs";
 
 type WfApi = ReturnType<typeof useProjectWaveform>;
 
+function focusSegmentTextarea(
+  tierScrollRef: React.RefObject<HTMLDivElement | null>,
+  segmentIdx: number,
+): void {
+  requestAnimationFrame(() => {
+    requestAnimationFrame(() => {
+      const root = tierScrollRef.current;
+      const selector = `[data-seg-row="${segmentIdx}"] textarea.seg-text, [data-seg-row="${segmentIdx}"] input.seg-text`;
+      const target =
+        root?.querySelector<HTMLElement>(selector) ??
+        document.querySelector<HTMLElement>(selector);
+      target?.focus();
+    });
+  });
+}
+
 export function useSegmentKeyboard(args: {
   ctxRef: React.MutableRefObject<TranscriptionLayerInput>;
   wfApiRef: React.MutableRefObject<WfApi>;
@@ -184,6 +200,31 @@ export function useSegmentKeyboard(args: {
       const a = argsRef.current;
       const c = a.ctxRef.current;
       const w = a.wfApiRef.current;
+
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z" && !e.altKey) {
+        e.preventDefault();
+        if (c.busy) return;
+        if (e.shiftKey) c.redo();
+        else c.undo();
+        return;
+      }
+
+      if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !e.altKey) {
+        e.preventDefault();
+        if (c.busy) return;
+        void (async () => {
+          const ok = await c.confirmSegmentEditAndAdvance(segmentIdx);
+          if (!ok) return;
+          const segs = a.ctxRef.current.segments;
+          const ni = Math.min(segmentIdx + 1, Math.max(0, segs.length - 1));
+          if (ni !== segmentIdx) {
+            a.selectSegmentAtRef.current(ni, "list");
+            focusSegmentTextarea(a.tierScrollRef, ni);
+          }
+        })();
+        return;
+      }
+
       if (e.key !== "Tab") return;
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       e.preventDefault();
@@ -196,14 +237,7 @@ export function useSegmentKeyboard(args: {
         if (tabLoop) w.preserveLoopForNextSegmentSelect();
         a.selectSegmentAtRef.current(pi, "list");
         void w.playSegmentAtIndex(pi, tabPlayOpts);
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            const root = a.tierScrollRef.current;
-            const selector = `[data-seg-row="${pi}"] textarea.seg-text, [data-seg-row="${pi}"] input.seg-text`;
-            const target = root?.querySelector<HTMLElement>(selector) ?? document.querySelector<HTMLElement>(selector);
-            target?.focus();
-          });
-        });
+        focusSegmentTextarea(a.tierScrollRef, pi);
       } else {
         if (segmentIdx >= c.segments.length - 1) return;
         const ni = segmentIdx + 1;
@@ -211,14 +245,7 @@ export function useSegmentKeyboard(args: {
         if (tabLoop) w.preserveLoopForNextSegmentSelect();
         a.selectSegmentAtRef.current(ni, "list");
         void w.playSegmentAtIndex(ni, tabPlayOpts);
-        requestAnimationFrame(() => {
-          requestAnimationFrame(() => {
-            const root = a.tierScrollRef.current;
-            const selector = `[data-seg-row="${ni}"] textarea.seg-text, [data-seg-row="${ni}"] input.seg-text`;
-            const target = root?.querySelector<HTMLElement>(selector) ?? document.querySelector<HTMLElement>(selector);
-            target?.focus();
-          });
-        });
+        focusSegmentTextarea(a.tierScrollRef, ni);
       }
     },
     [],

@@ -14,6 +14,16 @@ export function pointerTimeFromSegmentCard(
   return seg.start_sec + frac * (seg.end_sec - seg.start_sec);
 }
 
+export type SegmentContextMenuOrigin = "segmentList" | "waveform";
+
+export type SegmentContextMenuOpen = {
+  x: number;
+  y: number;
+  segmentIdx: number;
+  pointerTimeSec: number;
+  origin: SegmentContextMenuOrigin;
+};
+
 export type SegmentContextMenuKey = "delete" | "mergePrev" | "mergeNext" | "splitAtPointer";
 
 export type SegmentContextMenuItem = {
@@ -23,29 +33,33 @@ export type SegmentContextMenuItem = {
 };
 
 /**
- * 波形与语段卡共用的右键菜单项（删 / 并上 / 并下 / 在指针时间拆分）。
- * `pointerTimeSec`：波形区为鼠标 X 对应时间轴秒；语段卡为卡内点击映射秒（见 `pointerTimeFromSegmentCard`）。
+ * 语段右键菜单（删 / 并上 / 并下；「在指针时间拆分」仅波形区）。
+ * `pointerTimeSec`：波形区为鼠标 X 对应时间轴秒。
  */
 export function buildSegmentContextMenuItems(args: {
   segmentIdx: number;
   segments: SegmentDto[];
   busy: boolean;
   pointerTimeSec: number;
+  origin: SegmentContextMenuOrigin;
 }): SegmentContextMenuItem[] {
-  const { segmentIdx: i, segments, busy, pointerTimeSec } = args;
+  const { segmentIdx: i, segments, busy, pointerTimeSec, origin } = args;
   const n = segments.length;
   const seg = segments[i];
   const canMergePrev = i >= 0 && i > 0 && !busy;
   const canMergeNext = i >= 0 && i < n - 1 && !busy;
+  const items: SegmentContextMenuItem[] = [
+    { key: "delete", label: "删除", disabled: busy || n === 0 },
+    { key: "mergePrev", label: "与上一条合并", disabled: !canMergePrev },
+    { key: "mergeNext", label: "与下一条合并", disabled: !canMergeNext },
+  ];
+  if (origin !== "waveform") return items;
+
   let canSplit = i >= 0 && Boolean(seg) && !busy && n > 0;
   if (canSplit && seg) {
     const t = pointerTimeSec;
     canSplit = t > seg.start_sec + 0.02 && t < seg.end_sec - 0.02;
   }
-  return [
-    { key: "delete", label: "删除", disabled: busy || n === 0 },
-    { key: "mergePrev", label: "与上一条合并", disabled: !canMergePrev },
-    { key: "mergeNext", label: "与下一条合并", disabled: !canMergeNext },
-    { key: "splitAtPointer", label: "在指针时间拆分", disabled: !canSplit },
-  ];
+  items.push({ key: "splitAtPointer", label: "在指针时间拆分", disabled: !canSplit });
+  return items;
 }

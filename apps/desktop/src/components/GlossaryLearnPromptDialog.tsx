@@ -29,7 +29,7 @@ export function GlossaryLearnPromptDialog({ state, busy, onClose, onDismiss, onC
       >
         <div className="flex min-h-0 flex-1 flex-col gap-3 px-5 py-3">
           <p className="text-sm text-notion-text-muted">
-            以下写法已手改至少 3 次，可加入术语表以改善下次转写热词（对标 Descript Glossary）。
+            以下正词来自纠错记忆，已多次手改确认。加入术语表后，该写法会作为热词参与下次转写（错形不会进入热词）。
           </p>
           <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto">
             {state.rows.map((row) => (

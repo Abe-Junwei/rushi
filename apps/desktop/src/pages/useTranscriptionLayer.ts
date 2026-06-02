@@ -129,6 +129,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
         y: input.clientY,
         segmentIdx,
         pointerTimeSec,
+        origin: "waveform",
       });
     },
     [segmentLaneLayout.laneByIndex, segmentLaneLayout.laneCount, timeline.wfApiRef],

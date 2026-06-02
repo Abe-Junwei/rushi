@@ -147,12 +147,7 @@ export async function postprocessLexiconProofread(
   });
 }
 
-export async function correctionAcceptRule(
-  beforeText: string,
-  afterText: string,
-): Promise<void> {
-  await invoke("correction_accept_rule", { beforeText, afterText });
-}
+export { correctionAcceptRule } from "./correctionApi";
 
 export async function llmSaveApiKey(req: LlmApiKeyRequest): Promise<string> {
   return await invoke<string>("llm_save_api_key", { req });

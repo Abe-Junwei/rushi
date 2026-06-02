@@ -25,10 +25,6 @@ export type TranscriptionLayerInput = {
   mergeWithPrev: () => void;
   insertSegmentAfter: (idx: number, mediaDurationSec?: number) => void;
   deleteSegmentAt: (idx: number) => void;
-  onOpenSegmentContextMenu?: (menu: {
-    x: number;
-    y: number;
-    segmentIdx: number;
-    pointerTimeSec: number;
-  }) => void;
+  confirmSegmentEditAndAdvance: (segmentIdx: number) => Promise<boolean>;
+  onOpenSegmentContextMenu?: (menu: import("../utils/segmentContextMenuModel").SegmentContextMenuOpen) => void;
 };

@@ -105,7 +105,9 @@ describe("useAsrSetupController install path", () => {
       expect(result.current.setupOutcome).toBe("ready");
     });
     expect(localRuntimeDownloadSidecar).toHaveBeenCalledTimes(1);
-    expect(setLocalAsrHubModelPref).not.toHaveBeenCalled();
+    expect(setLocalAsrHubModelPref).toHaveBeenCalledWith("iic/SenseVoiceSmall", {
+      restartSidecar: false,
+    });
     expect(result.current.setupMessage).toContain("一键准备完成");
   });
 

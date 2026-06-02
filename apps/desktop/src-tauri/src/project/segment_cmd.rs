@@ -1,7 +1,8 @@
+use super::edit_log_detail::build_save_segments_edit_detail;
 use super::correction::{
     accept_correction_rule, list_glossary_learn_prompts, list_stable_correction_rules,
-    load_file_segment_texts, update_correction_memory_from_save, CorrectionRuleRow,
-    GlossaryLearnPromptRow,
+    upsert_explicit_correction_pairs, CorrectionExplicitPairDto, CorrectionLearnBaselineTextDto,
+    CorrectionRuleRow, GlossaryLearnPromptRow, SaveSegmentsLearnOpts,
 };
 use super::segment_media_sanitize::sanitize_segments_for_media;
 use super::segment_uid::segment_uid_or_new;
@@ -27,6 +28,7 @@ pub fn file_save_segments_inner(
     state: &DbState,
     file_id: &str,
     segments: &[SegmentDto],
+    learn: SaveSegmentsLearnOpts,
 ) -> Result<(), String> {
     let mut conn = open_db(state)?;
     let audio_path = file_audio_path(&conn, file_id)?;
@@ -45,7 +47,6 @@ pub fn file_save_segments_inner(
         );
     }
     let segments = &segments_owned;
-    let old_text_by_idx = load_file_segment_texts(&conn, file_id)?;
     let t = now_ms();
     let tx = conn.transaction().map_err(|e| e.to_string())?;
 
@@ -151,21 +152,27 @@ pub fn file_save_segments_inner(
         params![t, &project_id],
     )
     .map_err(|e| e.to_string())?;
-    let detail = serde_json::json!({
-        "op": "save_segments",
-        "file_id": file_id,
-        "count": segments.len(),
-        "at_ms": t,
-    })
-    .to_string();
+    let edit_detail = build_save_segments_edit_detail(
+        &tx,
+        file_id,
+        segments,
+        t,
+        &learn.explicit_pairs,
+    )?;
+    let detail = serde_json::to_string(&edit_detail).map_err(|e| e.to_string())?;
     tx.execute(
         "INSERT INTO edit_log (project_id, at_ms, kind, detail) VALUES (?1, ?2, ?3, ?4)",
         params![&project_id, t, "save_segments", detail.as_str()],
     )
     .map_err(|e| e.to_string())?;
     tx.commit().map_err(|e| e.to_string())?;
-    if let Err(e) = update_correction_memory_from_save(&conn, &old_text_by_idx, segments) {
-        append_desktop_log_line(state, &format!("WARN correction_memory_update_failed {e}"));
+    if !learn.explicit_pairs.is_empty() {
+        if let Err(e) = upsert_explicit_correction_pairs(&conn, &learn.explicit_pairs, t) {
+            append_desktop_log_line(
+                state,
+                &format!("WARN correction_memory_explicit_failed {e}"),
+            );
+        }
     }
     Ok(())
 }
@@ -175,8 +182,21 @@ pub fn file_save_segments(
     state: State<DbState>,
     file_id: String,
     segments: Vec<SegmentDto>,
+    _count_hits: Option<bool>,
+    explicit_pairs: Option<Vec<CorrectionExplicitPairDto>>,
+    _learn_baseline_texts: Option<Vec<CorrectionLearnBaselineTextDto>>,
 ) -> Result<(), String> {
-    file_save_segments_inner(state.deref(), &file_id, &segments)
+    let explicit_pairs = explicit_pairs
+        .unwrap_or_default()
+        .into_iter()
+        .map(|p| (p.before_text, p.after_text))
+        .collect();
+    file_save_segments_inner(
+        state.deref(),
+        &file_id,
+        &segments,
+        SaveSegmentsLearnOpts { explicit_pairs },
+    )
 }
 
 #[tauri::command]

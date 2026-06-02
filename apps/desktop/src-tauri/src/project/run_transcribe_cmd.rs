@@ -1,5 +1,6 @@
 use super::correction::collect_correction_rule_hints;
 use super::local_transcribe_gate::assert_local_asr_ready_for_transcribe;
+use super::correction::SaveSegmentsLearnOpts;
 use super::segment_cmd::file_save_segments_inner;
 use super::segment_media_sanitize::{sanitize_segments_for_media, trim_adjacent_segment_overlaps};
 use super::stt_vocabulary::{
@@ -429,7 +430,12 @@ async fn save_transcribe_segments(
         serde_json::to_vec_pretty(&recovery_doc).map_err(|e| e.to_string())?,
     )
     .map_err(|e| format!("无法写入转写恢复文件: {e}"))?;
-    match file_save_segments_inner(st, file_id, &segments) {
+    match file_save_segments_inner(
+        st,
+        file_id,
+        &segments,
+        SaveSegmentsLearnOpts::default(),
+    ) {
         Ok(()) => {
             let _ = fs::remove_file(&recovery_path);
         }

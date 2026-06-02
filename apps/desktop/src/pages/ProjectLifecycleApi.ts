@@ -43,6 +43,7 @@ export interface ProjectLifecycleApi {
   createProjectFromText: () => Promise<void>;
   loadProject: (id: string) => Promise<void>;
   openFile: (fileId: string) => Promise<void>;
+  openLastEditorWorkspace: () => Promise<void>;
   closeFile: () => void;
   closeProject: () => void;
   refreshCurrentProject: () => Promise<void>;
@@ -50,7 +51,26 @@ export interface ProjectLifecycleApi {
   cancelTranscribe: () => Promise<void>;
   confirmTranscribeOverwrite: () => void;
   cancelTranscribeOverwrite: () => void;
-  saveSegments: (options?: { quiet?: boolean }) => Promise<boolean>;
+  saveSegments: (options?: {
+    quiet?: boolean;
+    countHits?: boolean;
+    explicitPairs?: import("../tauri/fileApi").CorrectionExplicitPair[];
+  }) => Promise<boolean>;
+  /** Cmd/Ctrl+Enter：落笔保存并计入纠错记忆，然后选中下一语段。 */
+  confirmSegmentEditAndAdvance: (segmentIdx: number) => Promise<boolean>;
+  canConfirmSegmentEdit: (segmentIdx: number) => boolean;
+  getSavedSnapshot: () => import("../tauri/projectApi").SegmentDto[];
+  editorSpansForText: (text: string) => import("../services/editor/findCorrectableSpans").CorrectableSpan[];
+  editorCorrectPopover: import("./useEditorSegmentCorrectPopover").SegmentCorrectPopoverState | null;
+  editorCorrectPopoverSuggestions: import("../services/editor/correctSuggestions").CorrectSuggestion[];
+  openEditorCorrectPopover: (
+    segmentIdx: number,
+    span: import("../services/editor/findCorrectableSpans").CorrectableSpan,
+    clientX: number,
+    clientY: number,
+  ) => void;
+  closeEditorCorrectPopover: () => void;
+  applyEditorInlineCorrection: (item: import("../services/editor/correctSuggestions").CorrectSuggestion) => void;
   autoSaveFooterStatus: import("./useAutoSaveSegments").AutoSaveFooterStatus;
   deleteProject: (id: string, options?: { skipBrowserConfirm?: boolean }) => Promise<void>;
   exportTxt: () => Promise<void>;
@@ -67,7 +87,7 @@ export interface ProjectLifecycleApi {
 
   undo: () => void;
   redo: () => void;
-  updateSegmentText: (idx: number, text: string) => void;
+  updateSegmentText: (idx: number, text: string, meta?: import("./segmentTextLearnMeta").SegmentTextUpdateMeta) => void;
   updateSegmentTime: (idx: number, field: "start_sec" | "end_sec", value: number) => void;
   updateSegmentBounds: (idx: number, startSec: number, endSec: number, phase?: "live" | "commit") => void;
   splitAtSelection: () => void;
@@ -130,7 +150,7 @@ export interface ProjectLifecycleApi {
   correctionRulesBlockReason: string | null;
   correctionRulesDialog: CorrectionRulesDialogState;
   requestCorrectionRules: () => void;
-  confirmCorrectionRulesWriteback: () => void;
+  confirmCorrectionRulesWriteback: () => void | Promise<void>;
   cancelCorrectionRules: () => void;
   canCorrectSuggestions: boolean;
   correctSuggestionsBlockReason: string | null;

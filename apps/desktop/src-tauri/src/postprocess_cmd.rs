@@ -599,7 +599,7 @@ pub async fn postprocess_lexicon_proofread(
     let conn = open_db(&state)?;
     let pack = assemble_lexicon_pack(&conn)?;
     if !lexicon_pack_is_usable(&pack) {
-        return Err("词表为空：请先在术语库添加条目，或通过保存语段积累纠错记忆。".to_string());
+        return Err("词表为空：请先在「热词与记忆」添加术语，或通过保存语段积累纠错记忆。".to_string());
     }
     let pack_meta = pack.pack_meta.clone();
 

@@ -1,4 +1,5 @@
 import { useCallback, useLayoutEffect, useMemo, useState, type MouseEvent as ReactMouseEvent } from "react";
+import type { SegmentContextMenuOpen } from "../../utils/segmentContextMenuModel";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
 import {
@@ -10,12 +11,7 @@ import {
 import { SegmentTextListRow } from "../SegmentTextListRow";
 import type { useEditorTranscriptAppearance } from "./useEditorTranscriptAppearance";
 
-interface SegmentCtxMenuState {
-  x: number;
-  y: number;
-  segmentIdx: number;
-  pointerTimeSec: number;
-}
+type SegmentCtxMenuState = SegmentContextMenuOpen;
 
 type AppearanceApi = ReturnType<typeof useEditorTranscriptAppearance>;
 
@@ -78,7 +74,13 @@ export function EditorSegmentList({
       if (c.busy) return;
       e.preventDefault();
       e.stopPropagation();
-      onOpenSegmentContextMenu({ x: e.clientX, y: e.clientY, segmentIdx, pointerTimeSec });
+      onOpenSegmentContextMenu({
+        x: e.clientX,
+        y: e.clientY,
+        segmentIdx,
+        pointerTimeSec,
+        origin: "segmentList",
+      });
     },
     [c.busy, onOpenSegmentContextMenu],
   );
@@ -141,6 +143,11 @@ export function EditorSegmentList({
               onOpenContextMenu={onOpenRowContextMenu}
               findReplaceHighlight={
                 c.findReplaceEditorHighlight?.segmentIdx === i ? c.findReplaceEditorHighlight : null
+              }
+              onConfirmEdit={() => void c.confirmSegmentEditAndAdvance(i)}
+              spansForText={c.editorSpansForText}
+              onCorrectableSpanClick={(span, event) =>
+                c.openEditorCorrectPopover(i, span, event.clientX, event.clientY)
               }
             />
           );

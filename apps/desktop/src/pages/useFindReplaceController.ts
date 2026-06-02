@@ -16,6 +16,8 @@ import {
   readTranscriptTextareaSelection,
 } from "../utils/transcriptSelection";
 import { toast } from "../services/ui/toast";
+import { normalizeSegmentDraftText } from "../hooks/useSegmentDraftStore";
+import type { SegmentTextUpdateMeta } from "./segmentTextLearnMeta";
 
 export type FindReplaceDialogState =
   | { phase: "closed" }
@@ -36,6 +38,25 @@ export type FindReplaceDialogState =
       matchCount: number;
     };
 
+function findReplaceLearnMeta(
+  row: SegmentDto,
+  charStart: number,
+  findText: string,
+  replaceText: string,
+): SegmentTextUpdateMeta | undefined {
+  if (findText.trim() === replaceText.trim()) return undefined;
+  const committedText = normalizeSegmentDraftText(row.text ?? "");
+  return {
+    learn: {
+      committedText,
+      liveTextBeforeEdit: committedText,
+      liveAnchor: charStart,
+      removed: findText,
+      inserted: replaceText,
+    },
+  };
+}
+
 type UseFindReplaceControllerArgs = {
   busy: boolean;
   currentFileId: string | null;
@@ -44,10 +65,14 @@ type UseFindReplaceControllerArgs = {
   selectedIdx: number;
   flushSegmentTextDrafts: () => void;
   setSelectedIdx: React.Dispatch<React.SetStateAction<number>>;
-  updateSegmentText: (idx: number, text: string) => void;
+  updateSegmentText: (idx: number, text: string, meta?: SegmentTextUpdateMeta) => void;
   setSegments: React.Dispatch<React.SetStateAction<SegmentDto[]>>;
   pushUndo: () => void;
-  saveSegments: (options?: { quiet?: boolean }) => Promise<boolean>;
+  saveSegments: (options?: {
+    quiet?: boolean;
+    countHits?: boolean;
+    explicitPairs?: import("../tauri/fileApi").CorrectionExplicitPair[];
+  }) => Promise<boolean>;
 };
 
 export type FindReplaceControllerApi = {
@@ -306,7 +331,11 @@ export function useFindReplaceController(args: UseFindReplaceControllerArgs): Fi
     if (!row) return;
     const nextText = replaceOnceInText(row.text, match.charStart, findText, replaceText);
     if (nextText === row.text) return;
-    updateSegmentText(match.segmentIdx, nextText);
+    updateSegmentText(
+      match.segmentIdx,
+      nextText,
+      findReplaceLearnMeta(row, match.charStart, findText, replaceText),
+    );
     const projected = segmentsRef.current.map((s, i) =>
       i === match.segmentIdx ? { ...s, text: nextText } : s,
     );
@@ -336,7 +365,11 @@ export function useFindReplaceController(args: UseFindReplaceControllerArgs): Fi
     if (!row) return;
     const nextText = replaceOnceInText(row.text, match.charStart, findText, replaceText);
     if (nextText !== row.text) {
-      updateSegmentText(match.segmentIdx, nextText);
+      updateSegmentText(
+        match.segmentIdx,
+        nextText,
+        findReplaceLearnMeta(row, match.charStart, findText, replaceText),
+      );
     }
     const projected = segmentsRef.current.map((s, i) =>
       i === match.segmentIdx ? { ...s, text: nextText } : s,
@@ -380,14 +413,18 @@ export function useFindReplaceController(args: UseFindReplaceControllerArgs): Fi
     const next = applyReplaceAllToSegments(segmentsRef.current, findText, replaceText, matches);
     segmentsRef.current = next;
     setSegments(next);
-    const saved = await saveSegments({ quiet: true });
+    const explicitPairs =
+      findText.trim() !== replaceText.trim()
+        ? [{ beforeText: findText.trim(), afterText: replaceText.trim() }]
+        : undefined;
+    const saved = await saveSegments({ quiet: true, countHits: true, explicitPairs });
     if (!saved) {
       toast.warning("已全部替换，但保存失败，请稍后手动保存以写入纠错记忆");
       return;
     }
     closeFindReplace();
     if (findText !== replaceText) {
-      toast.success(`已替换 ${matchCount} 处并已保存；纠错记忆将在符合条件时学习`);
+      toast.success(`已替换 ${matchCount} 处并已保存；符合条件的将写入纠错记忆`);
     } else {
       toast.info(`已处理 ${matchCount} 处并已保存`);
     }

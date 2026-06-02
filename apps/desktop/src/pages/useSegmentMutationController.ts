@@ -1,6 +1,7 @@
 import { useCallback, useRef } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
 import { createSegmentUid, mergeTwoSegments, reindexSegments } from "./segmentListHelpers";
+import { segmentDraftStore } from "../hooks/useSegmentDraftStore";
 import { flushSegmentTextDrafts as flushSegmentTextDraftsImpl } from "./flushSegmentTextDrafts";
 import {
   describeCreateRangePolicyFailure,
@@ -21,6 +22,7 @@ import {
 } from "../utils/waveformSegmentBounds";
 import { useSegmentSplitController } from "./useSegmentSplitController";
 import { useSegmentUndoRedo } from "./useSegmentUndoRedo";
+import { applySegmentTextLearnMeta, type SegmentTextUpdateMeta } from "./segmentTextLearnMeta";
 
 function roundSec3(x: number): number {
   return Math.round(x * 1000) / 1000;
@@ -30,7 +32,7 @@ export interface SegmentMutationApi {
   pushUndo: () => void;
   undo: () => void;
   redo: () => void;
-  updateSegmentText: (idx: number, text: string) => void;
+  updateSegmentText: (idx: number, text: string, meta?: SegmentTextUpdateMeta) => void;
   updateSegmentTime: (idx: number, field: "start_sec" | "end_sec", value: number) => void;
   updateSegmentBounds: (idx: number, startSec: number, endSec: number, phase?: "live" | "commit") => void;
   splitAtSelection: (selectedIdx: number) => void;
@@ -68,11 +70,23 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
 
   const undoRedo = useSegmentUndoRedo(segmentsRef, setSegments);
 
-  const { pushUndo, pushUndoForTextEdit, undo, redo } = undoRedo;
+  const { pushUndo, pushUndoForTextEdit, undo: undoStackPop, redo: redoStackPop } = undoRedo;
 
   const flushSegmentTextDrafts = useCallback(() => {
     flushSegmentTextDraftsImpl(segmentsRef, setSegments);
   }, [segmentsRef, setSegments]);
+
+  const undo = useCallback(() => {
+    flushSegmentTextDrafts();
+    undoStackPop();
+    segmentDraftStore.discardEditingSession();
+  }, [flushSegmentTextDrafts, undoStackPop]);
+
+  const redo = useCallback(() => {
+    flushSegmentTextDrafts();
+    redoStackPop();
+    segmentDraftStore.discardEditingSession();
+  }, [flushSegmentTextDrafts, redoStackPop]);
 
   const splits = useSegmentSplitController({
     segmentsRef,
@@ -84,10 +98,13 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
   });
 
   const updateSegmentText = useCallback(
-    (idx: number, text: string) => {
+    (idx: number, text: string, meta?: SegmentTextUpdateMeta) => {
       const prev = segmentsRef.current;
       const cur = prev[idx];
       if (!cur || cur.text === text) return;
+      if (meta?.learn) {
+        applySegmentTextLearnMeta(cur, idx, meta.learn);
+      }
       pushUndoForTextEdit(idx);
       setSegments((p) => {
         const c = p[idx];

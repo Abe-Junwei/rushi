@@ -7,7 +7,7 @@
 | 项 | 真源 |
 |----|------|
 | 面板壳 / 标题栏 | `DraggableResizablePanel`（固定 Notion 样式） |
-| 预设尺寸 | `PanelTemplate.tsx` → `PANEL_TEMPLATE_PRESETS.compactDialog` |
+| 预设尺寸 | `PanelTemplate.tsx` → `compactDialog`（小确认框）/ `findReplace`（查找替换，z≥110） |
 | 页脚按钮 | `apps/desktop/src/config/controlStyles.ts`（`CONTROL_BTN_SECONDARY` / `CONTROL_BTN_DANGER_COMPACT` 等） |
 | 颜色 token | `tailwind.config.js` + `apps/desktop/src/config/tokens.ts`（`notion-*`、`zen-*`） |
 

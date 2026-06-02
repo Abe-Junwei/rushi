@@ -32,7 +32,23 @@ import {
   prepareSegmentsForPersist,
   segmentsEqualForPersist,
 } from "./segmentListHelpers";
+import {
+  buildConfirmLearnBaseline,
+  needsLearnOnSegmentConfirm,
+  segmentsToLearnBaseline,
+} from "../services/correctionLearnBaseline";
+import { buildConfirmExplicitPairs } from "../services/correctionInferPair";
+import {
+  normalizeSegmentDraftText,
+  segmentDraftKey,
+  segmentDraftStore,
+} from "../hooks/useSegmentDraftStore";
+import { segmentsWithDraftsApplied } from "../services/segmentDirtyRead";
+import { segmentCanConfirmEdit } from "../services/segmentConfirmEligible";
+import { waitForSaveIdle } from "../services/waitForSaveIdle";
 import { toast } from "../services/ui/toast";
+import { useEditorCorrectionCatalog } from "./useEditorCorrectionCatalog";
+import { useEditorSegmentCorrectPopover } from "./useEditorSegmentCorrectPopover";
 import type { ProjectLifecycleApi } from "./ProjectLifecycleApi";
 
 export type { ProjectLifecycleApi } from "./ProjectLifecycleApi";
@@ -90,7 +106,13 @@ export function useProjectLifecycleController(
   const clearAutoSaveRef = useRef<() => void>(() => {});
   const notifySegmentsPersistedRef = useRef<() => void>(() => {});
 
-  const saveSegments = useCallback(async (options?: { quiet?: boolean }): Promise<boolean> => {
+  const saveSegments = useCallback(
+    async (options?: {
+      quiet?: boolean;
+      countHits?: boolean;
+      explicitPairs?: fileApi.CorrectionExplicitPair[];
+      learnBaselineTexts?: fileApi.LearnBaselineText[];
+    }): Promise<boolean> => {
     if (saveInFlightRef.current) return false;
     if (!current || !currentFileId) {
       setError("请先打开一个文件后再保存");
@@ -105,8 +127,16 @@ export function useProjectLifecycleController(
     setError("");
     try {
       mutations.flushSegmentTextDrafts();
+      const countHits = options?.countHits ?? false;
+      const learnBaselineTexts = countHits
+        ? (options?.learnBaselineTexts ?? segmentsToLearnBaseline(dirty.getSavedSnapshot()))
+        : undefined;
       const normalized = prepareSegmentsForPersist(segmentsRef.current, 0);
-      await fileApi.fileSaveSegments(currentFileId, normalized);
+      await fileApi.fileSaveSegments(currentFileId, normalized, {
+        countHits,
+        explicitPairs: options?.explicitPairs,
+        learnBaselineTexts,
+      });
       const [projectDetail, fileDetail] = await Promise.all([
         p1.projectLoad(current.id),
         fileApi.loadFile(currentFileId),
@@ -154,7 +184,82 @@ export function useProjectLifecycleController(
     segmentsRef,
     selectedIdxRef,
     glossaryLearn.checkGlossaryLearnAfterSave,
-  ]);
+  ],
+  );
+
+  const confirmSegmentEditAndAdvance = useCallback(
+    async (segmentIdx: number): Promise<boolean> => {
+      if (!current || !currentFileId || busy) return false;
+      if (segmentIdx < 0 || segmentIdx >= segmentsRef.current.length) return false;
+      clearAutoSaveRef.current();
+      mutations.flushSegmentTextDrafts();
+      const nextIdx = Math.min(segmentIdx + 1, segmentsRef.current.length - 1);
+      const savedSnapshot = dirty.getSavedSnapshot();
+      const liveSegments = segmentsWithDraftsApplied(segmentsRef.current);
+      const pendingLearn = needsLearnOnSegmentConfirm(savedSnapshot, segmentIdx, liveSegments);
+      const needsPersist = dirty.hasUnsavedSegmentChanges() || pendingLearn;
+      if (needsPersist) {
+        if (saveInFlightRef.current) {
+          const idle = await waitForSaveIdle(saveInFlightRef);
+          if (!idle) {
+            toast.warning("确认改词失败：自动保存耗时过长，请稍候再试");
+            return false;
+          }
+        }
+        const learnBaselineTexts = buildConfirmLearnBaseline(
+          savedSnapshot,
+          segmentIdx,
+          segmentsRef.current,
+        );
+        const confirmSeg = liveSegments[segmentIdx];
+        const confirmKey = confirmSeg ? segmentDraftKey(confirmSeg, segmentIdx) : null;
+        const focusBase =
+          confirmKey !== null ? segmentDraftStore.getLearnFocusBaseline(confirmKey) : undefined;
+        const liveText = confirmSeg
+          ? normalizeSegmentDraftText(
+              (confirmKey !== null ? segmentDraftStore.getDraft(confirmKey) : undefined) ??
+                confirmSeg.text ??
+                "",
+            )
+          : "";
+        const learnState =
+          confirmKey !== null ? segmentDraftStore.getLearnEditState(confirmKey) : undefined;
+        const explicitPairs =
+          focusBase !== undefined && pendingLearn
+            ? buildConfirmExplicitPairs(focusBase, liveText, learnState)
+            : [];
+        const saved = await saveSegments({
+          quiet: true,
+          countHits: true,
+          learnBaselineTexts,
+          explicitPairs: explicitPairs.length > 0 ? explicitPairs : undefined,
+        });
+        if (!saved) {
+          toast.warning("确认改词失败：请稍候再试（可能正在自动保存）");
+          return false;
+        }
+      }
+      const seg = segmentsRef.current[segmentIdx];
+      if (seg) {
+        segmentDraftStore.clearLearnFocusBaseline(segmentDraftKey(seg, segmentIdx));
+      }
+      if (nextIdx !== selectedIdxRef.current) {
+        setSelectedIdx(nextIdx);
+      }
+      return true;
+    },
+    [
+      busy,
+      current,
+      currentFileId,
+      dirty,
+      mutations,
+      saveSegments,
+      segmentsRef,
+      selectedIdxRef,
+      setSelectedIdx,
+    ],
+  );
 
   const autoSave = useAutoSaveSegments({
     enabled: Boolean(currentFileId),
@@ -227,6 +332,7 @@ export function useProjectLifecycleController(
     setError,
     setTranscribeHints: transcribeJob.setTranscribeHints,
     resetMutationHistory: mutations.resetMutationHistory,
+    projects,
   });
   closeGateRef.current = closeGate;
 
@@ -336,6 +442,29 @@ export function useProjectLifecycleController(
     saveSegments,
   });
 
+  const editorCorrectionCatalog = useEditorCorrectionCatalog({
+    enabled: Boolean(currentFileId),
+  });
+
+  const editorSegmentCorrect = useEditorSegmentCorrectPopover({
+    busy,
+    segmentsRef,
+    suggestionsForSurface: editorCorrectionCatalog.suggestionsForSurface,
+    updateSegmentText: mutations.updateSegmentText,
+  });
+
+  const canConfirmSegmentEdit = useCallback(
+    (segmentIdx: number) => {
+      if (!currentFileId || busy) return false;
+      return segmentCanConfirmEdit(
+        segmentsWithDraftsApplied(segments),
+        dirty.getSavedSnapshot(),
+        segmentIdx,
+      );
+    },
+    [busy, currentFileId, dirty, segments],
+  );
+
   const correctSuggestions = useCorrectSuggestionsController({
     busy,
     currentFileId,
@@ -352,6 +481,7 @@ export function useProjectLifecycleController(
     setSegments,
     pushUndo: mutations.pushUndo,
     setError,
+    saveSegments,
   });
 
   const openAppDataFolder = useCallback(async () => {
@@ -387,12 +517,22 @@ export function useProjectLifecycleController(
     refreshProjects, pickAudio, clearPickedAudio,
     createProject: crud.createProject, createEmptyProject: crud.createEmptyProject, createProjectFromText: crud.createProjectFromText,
     loadProject: closeGate.loadProject, refreshCurrentProject, openFile: closeGate.openFileWrapped,
+    openLastEditorWorkspace: closeGate.openLastEditorWorkspace,
     closeFile: closeGate.closeFileWrapped, closeProject: closeGate.closeProjectWrapped,
     runTranscribe: transcribeJob.requestTranscribe,
     cancelTranscribe: transcribeJob.cancelTranscribe,
     confirmTranscribeOverwrite: transcribeJob.confirmTranscribeOverwrite,
     cancelTranscribeOverwrite: transcribeJob.cancelTranscribeOverwrite,
     saveSegments,
+    confirmSegmentEditAndAdvance,
+    canConfirmSegmentEdit,
+    getSavedSnapshot: dirty.getSavedSnapshot,
+    editorSpansForText: editorCorrectionCatalog.spansForText,
+    editorCorrectPopover: editorSegmentCorrect.popover,
+    editorCorrectPopoverSuggestions: editorSegmentCorrect.popoverSuggestions,
+    openEditorCorrectPopover: editorSegmentCorrect.openPopover,
+    closeEditorCorrectPopover: editorSegmentCorrect.closePopover,
+    applyEditorInlineCorrection: editorSegmentCorrect.applyInlineCorrection,
     autoSaveFooterStatus: autoSave.autoSaveFooterStatus,
     deleteProject: crud.deleteProject,
     exportTxt: exports.exportTxt, exportSrt: exports.exportSrt, exportDocx: exports.exportDocx,

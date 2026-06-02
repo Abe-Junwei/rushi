@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useRef, useState } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
+import { segmentDraftKey, segmentDraftStore } from "../hooks/useSegmentDraftStore";
 import { useSegmentMutationController } from "./useSegmentMutationController";
 
 function makeSeg(props: Partial<SegmentDto> & { text: string; start_sec: number; end_sec: number }): SegmentDto {
@@ -229,6 +230,21 @@ describe("useSegmentMutationController", () => {
     expect(result.current.segments[1].start_sec).toBe(2);
     expect(result.current.segments[1].end_sec).toBe(2.12);
     expect(result.current.error).toBe("");
+  });
+
+  it("undo flushes draft then restores committed text", () => {
+    const seg = makeSeg({ text: "hello", start_sec: 0, end_sec: 1, uid: "u1" });
+    const { result } = renderHook(() => useTestController([seg]));
+    const key = segmentDraftKey(seg, 0);
+
+    act(() => result.current.mutations.updateSegmentText(0, "world"));
+    act(() => {
+      segmentDraftStore.setDraft(key, "draft-only");
+    });
+    act(() => result.current.mutations.undo());
+
+    expect(result.current.segments[0].text).toBe("hello");
+    expect(segmentDraftStore.getDraft(key)).toBeUndefined();
   });
 
   it("undo restores previous state after mutation", () => {

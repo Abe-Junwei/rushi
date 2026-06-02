@@ -142,7 +142,10 @@ export function useTranscribeJobController(deps: Deps) {
       localTranscribePreflight,
     });
     if (block) {
-      if (block !== "busy") toast.error(block);
+      if (block !== "busy") {
+        toast.error(block);
+        setError(block);
+      }
       return;
     }
     const fileId = currentFileId!;
@@ -188,7 +191,9 @@ export function useTranscribeJobController(deps: Deps) {
         setTranscribeHints([]);
         pushTranscribeHintsToToast([TRANSCRIBE_CANCELLED_HINT]);
       } else {
-        toast.error(e instanceof Error ? e.message : String(e));
+        const msg = e instanceof Error ? e.message : String(e);
+        toast.error(msg);
+        setError(msg);
       }
     } finally {
       activeJobIdRef.current = null;
@@ -216,10 +221,13 @@ export function useTranscribeJobController(deps: Deps) {
       busy,
       hasCurrent: !!current,
       currentFileId,
-      localTranscribePreflight: () => null,
+      localTranscribePreflight,
     });
     if (block) {
-      if (block !== "busy") toast.error(block);
+      if (block !== "busy") {
+        toast.error(block);
+        setError(block);
+      }
       return;
     }
     if (segmentsHaveNonEmptyText(segmentsRef.current)) {
@@ -229,7 +237,16 @@ export function useTranscribeJobController(deps: Deps) {
     }
     await refreshVocabularyPreflight();
     await executeTranscribe();
-  }, [busy, current, currentFileId, segmentsRef, setError, executeTranscribe, refreshVocabularyPreflight]);
+  }, [
+    busy,
+    current,
+    currentFileId,
+    localTranscribePreflight,
+    segmentsRef,
+    setError,
+    executeTranscribe,
+    refreshVocabularyPreflight,
+  ]);
 
   const cancelTranscribeOverwrite = useCallback(() => {
     if (busy) return;

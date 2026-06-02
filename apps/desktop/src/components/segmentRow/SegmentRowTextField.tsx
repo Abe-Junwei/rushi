@@ -1,4 +1,13 @@
-import { memo, useCallback, useEffect, useImperativeHandle, useRef, type KeyboardEvent } from "react";
+import {
+  memo,
+  useCallback,
+  useEffect,
+  useImperativeHandle,
+  useMemo,
+  useRef,
+  useState,
+  type KeyboardEvent,
+} from "react";
 import type { SegmentDto } from "../../tauri/projectApi";
 import {
   normalizeSegmentDraftText,
@@ -6,8 +15,13 @@ import {
   segmentDraftStore,
   useSegmentDraft,
 } from "../../hooks/useSegmentDraftStore";
+import type { TextInputDomSnapshot } from "../../services/learnEditDelta";
+import { shouldDeferDomInputForIme } from "../../services/deferImeLearnInput";
 import { FindReplaceMatchText } from "../FindReplaceMatchText";
+import { CorrectableMatchText } from "./CorrectableMatchText";
 import { syncTranscriptTextareaSelection } from "../../utils/transcriptSelection";
+import type { CorrectableSpan } from "../../services/editor/findCorrectableSpans";
+import { shouldRetainDraftForPendingLearn } from "../../services/segmentLearnVisibility";
 
 interface SegmentRowTextFieldProps {
   segment: SegmentDto;
@@ -23,6 +37,12 @@ interface SegmentRowTextFieldProps {
   updateSegmentText: (idx: number, text: string) => void;
   onTextareaKeyDown: (idx: number, e: KeyboardEvent<HTMLTextAreaElement>) => void;
   findReplaceHighlight?: { charStart: number; charEnd: number } | null;
+  spansForText: (text: string) => CorrectableSpan[];
+  onCorrectableSpanClick: (span: CorrectableSpan, event: React.MouseEvent<HTMLButtonElement>) => void;
+}
+
+function initialTextareaValue(draftKey: string, committedText: string): string {
+  return segmentDraftStore.getDraft(draftKey) ?? committedText;
 }
 
 export const SegmentRowTextField = memo(function SegmentRowTextField({
@@ -35,15 +55,37 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
   focusOnSelectRef,
   editorRef,
   onSegmentRowHeightPointerDown,
-  selectSegmentAt,
   updateSegmentText,
   onTextareaKeyDown,
   findReplaceHighlight,
+  spansForText,
+  onCorrectableSpanClick,
 }: SegmentRowTextFieldProps) {
   const draftKey = segmentDraftKey(s, i);
-  const [draft, setDraft] = useSegmentDraft(draftKey, s.text ?? "");
+  const committedText = normalizeSegmentDraftText(s.text ?? "");
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const isFocusedRef = useRef(false);
   const lastSyncedFindHighlightRef = useRef<string | null>(null);
+  const [textareaFocused, setTextareaFocused] = useState(false);
+  const [textareaEpoch, setTextareaEpoch] = useState(0);
+  const prevCommittedRef = useRef(committedText);
+  const preEditRef = useRef<TextInputDomSnapshot | null>(null);
+  const compositionStartSnapRef = useRef<TextInputDomSnapshot | null>(null);
+
+  const captureTextareaSnapshot = useCallback((el: HTMLTextAreaElement): TextInputDomSnapshot => {
+    return {
+      value: el.value,
+      start: el.selectionStart,
+      end: el.selectionEnd,
+    };
+  }, []);
+
+  const defaultText = initialTextareaValue(draftKey, committedText);
+  const [liveText] = useSegmentDraft(draftKey, committedText);
+  const correctableSpans = useMemo(
+    () => spansForText(committedText),
+    [committedText, spansForText],
+  );
 
   useImperativeHandle(
     editorRef,
@@ -60,24 +102,118 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
   );
 
   useEffect(() => {
+    if (prevCommittedRef.current === committedText) {
+      if (!isFocusedRef.current) {
+        const stored = segmentDraftStore.getDraft(draftKey);
+        if (
+          stored !== undefined &&
+          stored === committedText &&
+          !shouldRetainDraftForPendingLearn(draftKey, committedText, stored)
+        ) {
+          segmentDraftStore.clearDraft(draftKey);
+        }
+      }
+      return;
+    }
+    prevCommittedRef.current = committedText;
     const stored = segmentDraftStore.getDraft(draftKey);
-    if (stored === undefined) return;
-    const current = normalizeSegmentDraftText(s.text ?? "");
-    if (stored === current) segmentDraftStore.clearDraft(draftKey);
-  }, [draftKey, s.text]);
+    if (stored !== undefined && shouldRetainDraftForPendingLearn(draftKey, committedText, stored)) {
+      return;
+    }
+    segmentDraftStore.clearDraft(draftKey);
+    const el = textareaRef.current;
+    if (el && !isFocusedRef.current) el.value = committedText;
+    setTextareaEpoch((n) => n + 1);
+  }, [committedText, draftKey]);
 
-  const onTextAreaChange = useCallback(
-    (e: React.ChangeEvent<HTMLTextAreaElement>) => {
-      setDraft(e.target.value);
+  const syncDomToDraftStore = useCallback(
+    (el: HTMLTextAreaElement) => {
+      segmentDraftStore.setDraft(draftKey, el.value);
     },
-    [setDraft],
+    [draftKey],
+  );
+
+  const handleTextareaInput = useCallback(
+    (el: HTMLTextAreaElement) => {
+      if (segmentDraftStore.isComposing(draftKey)) return;
+      const snap = preEditRef.current;
+      if (snap && snap.value !== el.value && !shouldDeferDomInputForIme(snap, el.value)) {
+        segmentDraftStore.applyLearnEditFromDomInput(draftKey, committedText, snap, el.value);
+      }
+      preEditRef.current = captureTextareaSnapshot(el);
+      syncDomToDraftStore(el);
+    },
+    [captureTextareaSnapshot, committedText, draftKey, syncDomToDraftStore],
+  );
+
+  const applyCompositionLearnEdit = useCallback(
+    (el: HTMLTextAreaElement) => {
+      const startSnap = compositionStartSnapRef.current;
+      compositionStartSnapRef.current = null;
+      if (startSnap && startSnap.value !== el.value) {
+        segmentDraftStore.applyLearnEditFromDomInput(draftKey, committedText, startSnap, el.value);
+      }
+      preEditRef.current = captureTextareaSnapshot(el);
+      syncDomToDraftStore(el);
+    },
+    [captureTextareaSnapshot, committedText, draftKey, syncDomToDraftStore],
+  );
+
+  const onBeforeInput = useCallback(
+    (e: React.FormEvent<HTMLTextAreaElement>) => {
+      preEditRef.current = captureTextareaSnapshot(e.currentTarget);
+    },
+    [captureTextareaSnapshot],
+  );
+
+  const onKeyDownCapture = useCallback(
+    (e: KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === "Dead" || e.ctrlKey || e.metaKey || e.altKey) return;
+      preEditRef.current = captureTextareaSnapshot(e.currentTarget);
+    },
+    [captureTextareaSnapshot],
+  );
+
+  const onCompositionStart = useCallback(
+    (e: React.CompositionEvent<HTMLTextAreaElement>) => {
+      const el = e.currentTarget;
+      const snap = captureTextareaSnapshot(el);
+      compositionStartSnapRef.current = snap;
+      preEditRef.current = snap;
+      segmentDraftStore.beginComposition(
+        draftKey,
+        committedText,
+        el.value,
+        el.selectionStart,
+        el.selectionEnd,
+      );
+    },
+    [captureTextareaSnapshot, committedText, draftKey],
+  );
+
+  const onCompositionEnd = useCallback(
+    (e: React.CompositionEvent<HTMLTextAreaElement>) => {
+      segmentDraftStore.endComposition(draftKey);
+      applyCompositionLearnEdit(e.currentTarget);
+    },
+    [applyCompositionLearnEdit, draftKey],
   );
 
   const onBlurText = useCallback(() => {
-    const current = normalizeSegmentDraftText(s.text ?? "");
-    if (draft !== current) updateSegmentText(i, draft);
-    segmentDraftStore.clearDraft(draftKey);
-  }, [draft, draftKey, i, s.text, updateSegmentText]);
+    isFocusedRef.current = false;
+    setTextareaFocused(false);
+    segmentDraftStore.endComposition(draftKey);
+    segmentDraftStore.finalizeActiveLearnEditOp(draftKey);
+    const el = textareaRef.current;
+    const liveText = normalizeSegmentDraftText(el?.value ?? committedText);
+    if (liveText !== committedText) updateSegmentText(i, liveText);
+    if (shouldRetainDraftForPendingLearn(draftKey, committedText, liveText)) {
+      segmentDraftStore.setDraft(draftKey, liveText);
+    } else {
+      segmentDraftStore.clearDraft(draftKey);
+    }
+    if (el) preEditRef.current = captureTextareaSnapshot(el);
+  }, [captureTextareaSnapshot, committedText, draftKey, i, updateSegmentText]);
 
   const onKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -86,9 +222,16 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
     [i, onTextareaKeyDown],
   );
 
-  const onSelectionChange = useCallback((e: React.SyntheticEvent<HTMLTextAreaElement>) => {
-    syncTranscriptTextareaSelection(e.currentTarget);
-  }, []);
+  const onSelectionChange = useCallback(
+    (e: React.SyntheticEvent<HTMLTextAreaElement>) => {
+      const el = e.currentTarget;
+      syncTranscriptTextareaSelection(el);
+      if (document.activeElement === el) {
+        preEditRef.current = captureTextareaSnapshot(el);
+      }
+    },
+    [captureTextareaSnapshot],
+  );
 
   const onRowHeightHandlePointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
@@ -98,6 +241,27 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
     },
     [onSegmentRowHeightPointerDown],
   );
+
+  useEffect(() => {
+    if (!selected || busy) return;
+    const anchor =
+      segmentDraftStore.getLearnFocusBaseline(draftKey) ??
+      normalizeSegmentDraftText(committedText);
+    segmentDraftStore.beginSegmentLearnSession(draftKey, anchor);
+    const el = textareaRef.current;
+    if (el) preEditRef.current = captureTextareaSnapshot(el);
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- committedText omitted: autosave must not reset ops
+  }, [busy, draftKey, selected, captureTextareaSnapshot]);
+
+  useEffect(() => {
+    const el = textareaRef.current;
+    if (!el || !selected) return;
+    const snapBeforeInput = () => {
+      preEditRef.current = captureTextareaSnapshot(el);
+    };
+    el.addEventListener("beforeinput", snapBeforeInput);
+    return () => el.removeEventListener("beforeinput", snapBeforeInput);
+  }, [selected, draftKey, textareaEpoch, captureTextareaSnapshot]);
 
   useEffect(() => {
     if (!selected || busy) return;
@@ -124,44 +288,77 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
     focusOnSelectRef.current = false;
   }, [focusOnSelectRef, selected]);
 
-  const committedText = normalizeSegmentDraftText(s.text ?? "");
   const textAreaMinHeight = Math.max(36, Math.round(segmentRowHeightPx - (selected ? 24 : 30)));
-
+  const showCorrectableOverlay =
+    selected &&
+    !textareaFocused &&
+    !findReplaceHighlight &&
+    correctableSpans.length > 0 &&
+    !busy;
   return (
     <div className="min-w-0 flex-1">
-      <div
-        className="rounded-lg transition-[background-color] duration-150 bg-transparent"
-      >
+      <div className="rounded-lg bg-transparent transition-[background-color] duration-150">
         {selected ? (
           <>
-            <textarea
-              ref={textareaRef}
-              className={[
-                "seg-text min-h-[3.1rem] w-full resize-none border-0 bg-transparent px-4 py-2.5 text-notion-text outline-none transition-colors duration-150 placeholder:text-notion-text-light",
-                "focus:ring-0 focus:ring-offset-0",
-                "disabled:cursor-not-allowed disabled:text-notion-text-light disabled:opacity-100",
-              ].join(" ")}
-              rows={1}
-              style={{ ...textStyle, minHeight: textAreaMinHeight }}
-              value={draft}
-              disabled={busy}
-              onMouseDown={(e) => e.stopPropagation()}
-              onClick={(e) => e.stopPropagation()}
-              onFocus={() => {
-                if (busy) return;
-                selectSegmentAt(i);
-              }}
-              onChange={onTextAreaChange}
-              onBlur={onBlurText}
-              onKeyDown={onKeyDown}
-              onSelect={onSelectionChange}
-              onMouseUp={onSelectionChange}
-              onKeyUp={onSelectionChange}
-              spellCheck={false}
-              autoComplete="off"
-              aria-label="语段正文"
-              placeholder="输入语段文本..."
-            />
+            <div className="relative">
+              <textarea
+                key={`${draftKey}@${textareaEpoch}`}
+                ref={textareaRef}
+                className={[
+                  "seg-text relative z-[1] min-h-[3.1rem] w-full resize-none border-0 bg-transparent px-4 py-2.5 font-[inherit] text-notion-text outline-none transition-colors duration-150 placeholder:text-notion-text-light",
+                  "focus:ring-0 focus:ring-offset-0",
+                  "disabled:cursor-not-allowed disabled:text-notion-text-light disabled:opacity-100",
+                ].join(" ")}
+                rows={1}
+                style={{ ...textStyle, minHeight: textAreaMinHeight }}
+                defaultValue={defaultText}
+                disabled={busy}
+                onMouseDown={(e) => e.stopPropagation()}
+                onClick={(e) => e.stopPropagation()}
+                onFocus={() => {
+                  if (busy) return;
+                  isFocusedRef.current = true;
+                  setTextareaFocused(true);
+                  const el = textareaRef.current;
+                  if (el) preEditRef.current = captureTextareaSnapshot(el);
+                  const pendingBase = segmentDraftStore.getLearnFocusBaseline(draftKey);
+                  if (pendingBase !== undefined && pendingBase !== committedText) {
+                    return;
+                  }
+                  segmentDraftStore.setLearnFocusBaseline(draftKey, committedText);
+                }}
+                onBeforeInput={onBeforeInput}
+                onInput={(e) => {
+                  if (e.nativeEvent.isComposing) return;
+                  handleTextareaInput(e.currentTarget);
+                }}
+                onCompositionStart={onCompositionStart}
+                onCompositionEnd={onCompositionEnd}
+                onBlur={onBlurText}
+                onKeyDownCapture={onKeyDownCapture}
+                onKeyDown={onKeyDown}
+                onSelect={onSelectionChange}
+                onMouseUp={onSelectionChange}
+                onKeyUp={onSelectionChange}
+                spellCheck={false}
+                autoComplete="off"
+                aria-label="语段正文"
+                placeholder="输入语段文本..."
+              />
+              {showCorrectableOverlay ? (
+                <div
+                  className="pointer-events-none absolute inset-0 z-[2] overflow-hidden px-4 py-2.5"
+                  aria-hidden
+                >
+                  <CorrectableMatchText
+                    text={liveText}
+                    spans={correctableSpans}
+                    className="whitespace-pre-wrap break-words text-sm leading-snug text-notion-text"
+                    onSpanClick={onCorrectableSpanClick}
+                  />
+                </div>
+              ) : null}
+            </div>
 
             <div
               role="separator"
@@ -191,11 +388,22 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
                     charEnd={findReplaceHighlight.charEnd}
                   />
                 </div>
+              ) : correctableSpans.length > 0 ? (
+                <div className="max-h-[4.5rem] overflow-hidden">
+                  <CorrectableMatchText
+                    text={committedText}
+                    spans={correctableSpans}
+                    className="overflow-hidden text-ellipsis whitespace-nowrap text-inherit"
+                    onSpanClick={onCorrectableSpanClick}
+                  />
+                </div>
               ) : (
                 <p className="overflow-hidden text-ellipsis whitespace-nowrap">{committedText}</p>
               )
             ) : (
-              <p className="overflow-hidden text-ellipsis whitespace-nowrap text-notion-text-light">输入语段文本...</p>
+              <p className="overflow-hidden text-ellipsis whitespace-nowrap text-notion-text-light">
+                输入语段文本...
+              </p>
             )}
           </div>
         )}

@@ -20,14 +20,14 @@
 |--------|------|-------------|------|
 | **P0** | 零终端安装、坏包可恢复、就绪可信 | R3h-0～3、R3f、**R3-STATE**（R3g ⑤b） | 🟡 进行中 |
 | **P0** | 长音频多段、时间轴可信 | R3t-A/B、R3e-A/B | ✅ 2026-05-30 签收（[`r3e-b-hand-test-checklist.md`](./r3e-b-hand-test-checklist.md)） |
-| **P0** | 术语热词 + 保存学 memory | glossary ✅、HOT-UX、R3t-E | 部分 ✅ |
+| **P0** | 术语热词 + 保存学 memory | glossary ✅、HOT-UX、R3t-E、**⑤″f**（路线图 §4.1.9：VOC-1 手测、VOC-5、F6+、F7） | 部分 ✅ |
 | **P0** | LLM 校对可控（预览写回） | R2 ✅、R3t-C/D/E | 部分 ✅ |
 | **P0** | 定稿 Word/文本与编辑一致 | P3 ✅、**EXP-WORD** | 部分 ✅ |
 | **P1** | 同项目多次转写不明显冷启动 | **ASR-WARM**（R3h-I4） | 📋 |
 | **P1** | 转写失败可理解、可重试 | R3e 分类 + **TRN-DIAG** | 部分 / 📋 |
 | **P1** | 发版质量可回归 | **R4** + **R4-GATE**（R9 硬门禁） | 📋 |
 | **P1** | 架构硬化（FSM / 发布 / Setup） | **R3h-I1～I3** | 📋 |
-| **P2** | 单机修订可追溯 / 恢复 | **REV-LOC**（轻量，非 R8） | 📋 可选 |
+| **P2** | 单机修订可追溯 / 恢复 | **REV-LOC**（轻量，非 R8） | 📋 规格✅ · 编码后置 |
 | **P2** | 外部 Agent 只读读稿 | R5 MCP | 📋 可后置 |
 | **v1 后** | 本机 LLM 校对 | **LLM-LOC** Spike→Gate | 📋 规划；**待 Gate** |
 | **—** | 词级时间轨、说话人分离、AAF/EDL、实时 mic | — | **v1 不做**（另立项或远期） |
@@ -71,9 +71,11 @@
 | **目标** | 基于 **`edit_log`（Q5 可选）** 或导出前快照：查看最近 N 次变更、**单项目恢复点**（非 Word Track Changes） |
 | **不做** | 协作 `revision_events`、CRDT、双端合并 |
 | **依赖** | R3t-E 与人工保存路径稳定；**EXP-WORD** 可引用同 log 做附录 |
-| **验收** | 改 3 句 → 可从列表恢复某一保存点前语段文本（实施范围在 acceptance 定） |
+| **验收** | 改 3 句 → 可从列表恢复某一保存点语段正文；撤销与自动保存对齐 |
 
-**v1 默认**：**P2 可选**；若 R3t-E 已写 `edit_log` 则优先做只读时间线，恢复点可减 scope。
+**验收真源**：[`rev-loc-undo-edit-history-acceptance.md`](./rev-loc-undo-edit-history-acceptance.md)（调研 [`rev-loc-undo-edit-history-research.md`](./rev-loc-undo-edit-history-research.md)）
+
+**v1 默认**：**P2 可选**；**2026-05-31** 规格三件套已定，**编码后置**（见路线图 **Q-REV-1**，不挡 R9）。
 
 ### 3.4 R4-GATE — 个人发版质量门禁
 
@@ -94,7 +96,7 @@
     → … → R3h-2
     → ASR-WARM（0.5～1w，R3h-I4）
     → … → R3t-E → EXP-WORD
-    → REV-LOC（0.5～1w，可减 scope）
+    → REV-LOC（0.5～1w；规格✅ · 编码后置，见 Q-REV-1）
     → R4（含 R4-GATE）
     → R9（个人单机主路径，不含 R6–R8）
 ```
@@ -120,3 +122,4 @@
 |------|------|
 | 2026-05-27 | 初版：个人单机定位；ASR-WARM / TRN-DIAG / REV-LOC / R4-GATE |
 | 2026-05-27 | 链接 TRN-DIAG / ASR-WARM acceptance；EXP-WORD 见 `exp-word-formatted-export-acceptance.md` |
+| 2026-05-31 | REV-LOC 三件套 + 路线图 Q-REV-1；编码后置、不挡 R9 |

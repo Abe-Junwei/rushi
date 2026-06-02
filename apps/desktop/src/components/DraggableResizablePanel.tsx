@@ -23,6 +23,7 @@ interface DraggableResizablePanelProps {
   children: React.ReactNode;
   onClose: () => void;
   persistState?: boolean;
+  zIndex?: number;
 }
 
 function loadState(key: string): { position: Position; size: Size } | null {
@@ -63,6 +64,7 @@ export function DraggableResizablePanel({
   children,
   onClose,
   persistState = true,
+  zIndex = 50,
 }: DraggableResizablePanelProps) {
   const storageKey = `panel-state-${id}`;
 
@@ -216,12 +218,13 @@ export function DraggableResizablePanel({
   return (
     <div
       data-panel-id={id}
-      className="fixed z-50"
+      className="fixed"
       style={{
         left: position.x,
         top: position.y,
         width: size.width,
         height: size.height,
+        zIndex,
       }}
     >
       {/* Resize handles — negative margins extend hit area outside the panel */}

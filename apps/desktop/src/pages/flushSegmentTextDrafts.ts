@@ -17,6 +17,7 @@ export function flushSegmentTextDrafts(
   prev.forEach((s, i) => {
     const key = segmentDraftKey(s, i);
     validKeys.add(key);
+    if (segmentDraftStore.isComposing(key)) return;
     const draft = segmentDraftStore.getDraft(key);
     if (draft === undefined) return;
     const committed = normalizeSegmentDraftText(s.text ?? "");

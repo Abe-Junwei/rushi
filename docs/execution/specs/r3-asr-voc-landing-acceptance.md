@@ -1,6 +1,7 @@
 # Acceptance: ASR-VOC — 词汇偏置落地
 
-> **状态**：规划（2026-05-31）· 未编码  
+> **状态**：进行中（2026-06-02）· **VOC-1** ✅ 编码+手测签收（2026-06-02）；下一刀 **VOC-5**；其余见路线图 **§4.1.9**  
+> **VOC-1 手测**：[`asr-voc-1-hand-test-checklist.md`](./asr-voc-1-hand-test-checklist.md) ✅  
 > **整体性评估**：[`r3-asr-voc-holistic-review-2026-05.md`](./r3-asr-voc-holistic-review-2026-05.md)（⑤″f-A→D 顺序）  
 > **Plan**：[`r3-asr-voc-landing-plan.md`](./r3-asr-voc-landing-plan.md)  
 > **架构**：[`asr-vocabulary-bias-practices.md`](../../architecture/asr-vocabulary-bias-practices.md)
@@ -39,11 +40,11 @@
 - [x] `transcribeVocabularyPreflight.test.ts`（或同名）覆盖：空词表、截断、unsupported channel、SenseVoice 注记
 - [x] `asrTranscribeHints.test.ts` 新增 skipped/stub 用例
 
-### 手测（可选，3 条）
+### 手测（3 条）
 
-- [ ] Paraformer + 2 条术语 → 确认框见热词摘要
-- [ ] 不支持在线厂商 + 术语 → 见不支持说明，转写仍成功
-- [ ] SenseVoice + 术语 → 见弱热词说明
+- [x] Paraformer + 2 条术语 → 确认框见热词摘要（2026-06-02，hand-test §1）
+- [x] 不支持在线厂商 + 术语 → 见不支持说明，转写仍成功（2026-06-02，hand-test §2）
+- [x] SenseVoice + 术语 → 见弱热词说明（2026-06-02，hand-test §3）
 
 ---
 

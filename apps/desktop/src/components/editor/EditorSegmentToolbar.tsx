@@ -8,7 +8,7 @@ import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
 import { LUCIDE_ICON_SIZE_LG, LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";
 import { footerActionIconBtn } from "./editorSegmentToolbarStyles";
-import { summarizeHistoryDetail } from "./useEditorEditHistory";
+import { formatHistorySubLines, summarizeHistoryHeadline } from "./useEditorEditHistory";
 import type { useEditorEditHistory } from "./useEditorEditHistory";
 import type { useEditorTranscriptAppearance } from "./useEditorTranscriptAppearance";
 
@@ -272,14 +272,35 @@ export function EditorSegmentToolbar({
               <div className="px-1 py-2 text-[11px] text-notion-text-muted">暂无记录</div>
             ) : (
               <ul className="max-h-56 space-y-1 overflow-y-auto px-1 py-1">
-                {h.historyRows.map((row) => (
-                  <li key={row.id} className="rounded-md border border-notion-divider bg-notion-bg px-2 py-1.5">
-                    <p className="text-[11px] font-medium text-notion-text">
-                      {new Date(row.at_ms).toLocaleString()} · {row.kind}
-                    </p>
-                    <p className="mt-0.5 text-[11px] text-notion-text-muted">{summarizeHistoryDetail(row.detail)}</p>
-                  </li>
-                ))}
+                {h.historyRows.map((row) => {
+                  const subLines = formatHistorySubLines(row.detail);
+                  const headline = summarizeHistoryHeadline(row.detail, row.kind);
+                  return (
+                    <li
+                      key={row.id}
+                      className="rounded-md border border-notion-divider bg-notion-bg px-2 py-1.5"
+                    >
+                      <p className="text-[10px] text-notion-text-muted">
+                        {new Date(row.at_ms).toLocaleString()}
+                      </p>
+                      <p className="mt-0.5 text-[11px] font-medium leading-snug text-notion-text">
+                        {headline}
+                      </p>
+                      {subLines.length > 0 ? (
+                        <ul className="mt-1 space-y-0.5 border-t border-notion-divider/60 pt-1">
+                          {subLines.map((line) => (
+                            <li
+                              key={line}
+                              className="text-[10px] leading-snug text-notion-text-muted"
+                            >
+                              {line}
+                            </li>
+                          ))}
+                        </ul>
+                      ) : null}
+                    </li>
+                  );
+                })}
               </ul>
             )}
           </div>

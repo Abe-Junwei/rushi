@@ -3,6 +3,11 @@ import type { SegmentDto } from "../tauri/projectApi";
 import { SegmentRowTextField } from "./segmentRow/SegmentRowTextField";
 import { useSegmentRowTextStyle } from "./segmentRow/useSegmentRowTextStyle";
 import { SegmentRowTimestampColumn } from "./segmentRow/SegmentRowTimestampColumn";
+import { SegmentConfirmButton } from "./segmentRow/SegmentConfirmButton";
+import type { CorrectableSpan } from "../services/editor/findCorrectableSpans";
+import { useSegmentPendingLearnConfirm } from "../hooks/useSegmentPendingLearnConfirm";
+import { usePendingLearnStrip } from "../hooks/usePendingLearnStrip";
+import { SegmentPendingLearnStrip } from "./segmentRow/SegmentPendingLearnStrip";
 
 export type SegmentTextListRowProps = {
   segment: SegmentDto;
@@ -22,6 +27,9 @@ export type SegmentTextListRowProps = {
   onTextareaKeyDown: (idx: number, e: KeyboardEvent<HTMLTextAreaElement>) => void;
   onOpenContextMenu?: (e: MouseEvent<HTMLDivElement>, segmentIdx: number, pointerTimeSec: number) => void;
   findReplaceHighlight?: { charStart: number; charEnd: number } | null;
+  onConfirmEdit: () => void;
+  spansForText: (text: string) => CorrectableSpan[];
+  onCorrectableSpanClick: (span: CorrectableSpan, event: React.MouseEvent<HTMLButtonElement>) => void;
 };
 
 export const SegmentTextListRow = memo(function SegmentTextListRow({
@@ -42,9 +50,14 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
   onTextareaKeyDown,
   onOpenContextMenu,
   findReplaceHighlight,
+  onConfirmEdit,
+  spansForText,
+  onCorrectableSpanClick,
 }: SegmentTextListRowProps) {
   const focusOnSelectRef = useRef(false);
   const editorRef = useRef<{ focusEditor: () => void } | null>(null);
+  const showConfirmButton = useSegmentPendingLearnConfirm(s, i, selected);
+  const pendingLearnStrip = usePendingLearnStrip(s, i, selected);
   const textStyle = useSegmentRowTextStyle(
     transcriptFontPx,
     transcriptFontFamily,
@@ -58,7 +71,6 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
       // 正文内拖选/点击由 textarea 处理，勿冒泡到行级（否则会 focusEditor 把选区移到末尾）
       if ((e.target as HTMLElement).closest("textarea")) return;
       if (selected) {
-        selectSegmentAt(i);
         editorRef.current?.focusEditor();
         return;
       }
@@ -113,7 +125,25 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
         updateSegmentText={updateSegmentText}
         onTextareaKeyDown={onTextareaKeyDown}
         findReplaceHighlight={findReplaceHighlight}
+        spansForText={spansForText}
+        onCorrectableSpanClick={onCorrectableSpanClick}
       />
+
+      {showConfirmButton ? (
+        <div
+          className="flex shrink-0 items-center gap-2 self-center py-0.5 pl-2 pr-0.5"
+          role="region"
+          aria-label="待纳入记忆的改词"
+        >
+          {pendingLearnStrip.visible ? (
+            <SegmentPendingLearnStrip
+              learnablePairs={pendingLearnStrip.learnablePairs}
+              isComposing={pendingLearnStrip.isComposing}
+            />
+          ) : null}
+          <SegmentConfirmButton visible busy={busy} onConfirm={onConfirmEdit} />
+        </div>
+      ) : null}
     </div>
   );
 });

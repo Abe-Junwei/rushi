@@ -56,7 +56,9 @@ describe("useAsrSetupController one-click prepare", () => {
       expect(result.current.setupOutcome).toBe("ready");
     });
     expect(retryBundledAsrSidecar).not.toHaveBeenCalled();
-    expect(setLocalAsrHubModelPref).not.toHaveBeenCalled();
+    expect(setLocalAsrHubModelPref).toHaveBeenCalledWith("iic/SenseVoiceSmall", {
+      restartSidecar: false,
+    });
     expect(prepareDefaultFunasrModel).not.toHaveBeenCalled();
     expect(result.current.setupMessage).toContain("无需重复准备");
   });

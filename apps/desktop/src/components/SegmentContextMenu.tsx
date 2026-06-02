@@ -1,6 +1,10 @@
-import { useEffect, useMemo, useRef } from "react";
+import { useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
 import type { SegmentContextMenuItem } from "../utils/segmentContextMenuModel";
+import {
+  clampContextMenuPosition,
+  estimateContextMenuSize,
+} from "../utils/clampContextMenuPosition";
 
 type Props = {
   x: number;
@@ -10,24 +14,28 @@ type Props = {
   onClose: () => void;
 };
 
-function clampMenuPosition(clientX: number, clientY: number): { left: number; top: number } {
-  const pad = 8;
-  const estW = 240;
-  const estH = 320;
-  if (typeof window === "undefined") {
-    return { left: clientX, top: clientY };
-  }
-  return {
-    left: Math.min(Math.max(pad, clientX), Math.max(pad, window.innerWidth - estW - pad)),
-    top: Math.min(Math.max(pad, clientY), Math.max(pad, window.innerHeight - estH - pad)),
-  };
-}
+const menuShell =
+  "fixed z-[100] min-w-[11rem] max-w-[min(16rem,calc(100vw-16px))] rounded-md border border-notion-border bg-notion-bg py-1 shadow-[0_8px_24px_color-mix(in_srgb,var(--zen-ink)_14%,transparent),0_0_0_1px_color-mix(in_srgb,var(--zen-ink)_4%,transparent)]";
+
+const menuItem =
+  "dropdown-item mx-1 flex min-h-[32px] w-[calc(100%-0.5rem)] items-center rounded-sm px-2.5 py-1.5 text-left font-sans text-sm leading-snug text-notion-text transition-colors hover:bg-notion-sidebar-hover focus-visible:bg-notion-sidebar-hover focus-visible:outline-none disabled:cursor-not-allowed disabled:text-notion-text-light";
 
 export function SegmentContextMenu({ x, y, items, onSelect, onClose }: Props) {
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const pos = useMemo(() => clampMenuPosition(x, y), [x, y]);
+  const estimate = estimateContextMenuSize(items.length);
+  const [pos, setPos] = useState(() =>
+    clampContextMenuPosition(x, y, estimate.width, estimate.height),
+  );
 
-  useEffect(() => {
+  useLayoutEffect(() => {
+    const el = rootRef.current;
+    if (!el) return;
+    const rect = el.getBoundingClientRect();
+    const next = clampContextMenuPosition(x, y, rect.width, rect.height);
+    setPos((prev) => (prev.left === next.left && prev.top === next.top ? prev : next));
+  }, [x, y, items]);
+
+  useLayoutEffect(() => {
     const onPointerDown = (e: PointerEvent) => {
       if (rootRef.current?.contains(e.target as Node)) return;
       onClose();
@@ -44,19 +52,14 @@ export function SegmentContextMenu({ x, y, items, onSelect, onClose }: Props) {
   }, [onClose]);
 
   const node = (
-    <div
-      ref={rootRef}
-      role="menu"
-      className="dropdown-surface fixed z-[100] min-w-[10rem] py-1 text-[12px] text-zen-ink"
-      style={{ left: pos.left, top: pos.top }}
-    >
+    <div ref={rootRef} role="menu" className={menuShell} style={{ left: pos.left, top: pos.top }}>
       {items.map((it) => (
         <button
           key={it.key}
           type="button"
           role="menuitem"
           disabled={it.disabled}
-          className="dropdown-item w-full px-3 py-1.5 text-left transition-colors hover:bg-notion-sidebar-hover disabled:cursor-not-allowed disabled:text-notion-text-light"
+          className={menuItem}
           onClick={() => {
             if (it.disabled) return;
             onSelect(it.key);

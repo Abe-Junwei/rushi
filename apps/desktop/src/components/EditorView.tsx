@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { EditorToolbar } from "./EditorToolbar";
 import { SegmentContextMenu } from "./SegmentContextMenu";
 import { EditorWorkspaceNav } from "./EditorWorkspaceNav";
@@ -5,19 +6,18 @@ import type { ProjectControllerApi } from "../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../pages/useTranscriptionLayer";
 import { EmptyProjectPanel } from "./EmptyProjectPanel";
 import { ProjectFilesHubPanel } from "./ProjectFilesHubPanel";
-import { type SegmentContextMenuItem, type SegmentContextMenuKey } from "../utils/segmentContextMenuModel";
+import {
+  type SegmentContextMenuItem,
+  type SegmentContextMenuKey,
+  type SegmentContextMenuOpen,
+} from "../utils/segmentContextMenuModel";
 import { EditorSegmentWorkbench } from "./editor/EditorSegmentWorkbench";
+import { EditorShortcutsDialog } from "./EditorShortcutsDialog";
+import { SegmentCorrectPopover } from "./segmentRow/SegmentCorrectPopover";
 import { EditorWaveformPane } from "./editor/EditorWaveformPane";
 import { useEditorEditHistory } from "./editor/useEditorEditHistory";
 import { useEditorTranscriptAppearance } from "./editor/useEditorTranscriptAppearance";
 import { autoSaveFooterLabel } from "../pages/useAutoSaveSegments";
-
-interface SegmentCtxMenuState {
-  x: number;
-  y: number;
-  segmentIdx: number;
-  pointerTimeSec: number;
-}
 
 interface EditorViewProps {
   controller: ProjectControllerApi;
@@ -25,8 +25,8 @@ interface EditorViewProps {
   exportKey: string;
   onExportSelect: (key: string) => void;
   onOpenEnvironment: () => void;
-  segmentCtxMenu: SegmentCtxMenuState | null;
-  setSegmentCtxMenu: (v: SegmentCtxMenuState | null) => void;
+  segmentCtxMenu: SegmentContextMenuOpen | null;
+  setSegmentCtxMenu: (v: SegmentContextMenuOpen | null) => void;
   segmentCtxMenuItems: SegmentContextMenuItem[];
   onSegmentCtxMenuSelect: (key: SegmentContextMenuKey) => void;
 }
@@ -42,6 +42,7 @@ export function EditorView({
   segmentCtxMenuItems,
   onSegmentCtxMenuSelect,
 }: EditorViewProps) {
+  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const appearance = useEditorTranscriptAppearance(c.busy, Boolean(c.currentFileId));
   const editHistory = useEditorEditHistory(c.current?.id, c.busy);
 
@@ -138,6 +139,7 @@ export function EditorView({
                 <button
                   type="button"
                   className="inline-flex h-6 items-center justify-center rounded-md border-0 bg-transparent px-2 text-[11px] text-notion-text-muted transition-colors hover:bg-notion-sidebar hover:text-notion-text"
+                  onClick={() => setShortcutsOpen(true)}
                 >
                   快捷键
                 </button>
@@ -171,6 +173,13 @@ export function EditorView({
           onClose={() => setSegmentCtxMenu(null)}
         />
       ) : null}
+      <EditorShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
+      <SegmentCorrectPopover
+        state={c.editorCorrectPopover}
+        suggestions={c.editorCorrectPopoverSuggestions}
+        onClose={c.closeEditorCorrectPopover}
+        onApply={c.applyEditorInlineCorrection}
+      />
     </div>
   );
 }

@@ -9,7 +9,11 @@ import { WelcomeSidebar } from "./WelcomeSidebar";
 import { WelcomeTopBar } from "./WelcomeTopBar";
 
 import type { WelcomePageId } from "./welcomeTypes";
-import * as fileApi from "../tauri/fileApi";
+import {
+  listRecentWorkspaceFiles,
+  recentProjectIdsForScan,
+  type RecentWorkspaceFile,
+} from "../services/lastWorkspace";
 import { LUCIDE_ICON_SIZE_LG, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
 export type { WelcomePageId } from "./welcomeTypes";
@@ -32,23 +36,12 @@ function formatFileType(type: string) {
   return type;
 }
 
-interface RecentFileItem {
-  projectId: string;
-  fileId: string;
-  name: string;
-  fileType: string;
-  updatedAtMs: number;
-}
-
 export function WelcomeView({ controller: c, onOpenSettings, page, onPageChange }: WelcomeViewProps) {
   const [showCreateModal, setShowCreateModal] = useState(false);
-  const [recentFiles, setRecentFiles] = useState<RecentFileItem[]>([]);
+  const [recentFiles, setRecentFiles] = useState<RecentWorkspaceFile[]>([]);
   const [loadingRecentFiles, setLoadingRecentFiles] = useState(false);
 
-  const recentProjectIds = useMemo(
-    () => [...c.projects].sort((a, b) => b.updated_at_ms - a.updated_at_ms).slice(0, 20).map((p) => p.id),
-    [c.projects],
-  );
+  const recentProjectIds = useMemo(() => recentProjectIdsForScan(c.projects), [c.projects]);
 
   useEffect(() => {
     let cancelled = false;
@@ -59,19 +52,7 @@ export function WelcomeView({ controller: c, onOpenSettings, page, onPageChange 
       }
       setLoadingRecentFiles(true);
       try {
-        const groups = await Promise.all(
-          recentProjectIds.map(async (projectId) => {
-            const files = await fileApi.listFiles(projectId);
-            return files.map((f) => ({
-              projectId,
-              fileId: f.id,
-              name: f.name,
-              fileType: f.file_type,
-              updatedAtMs: f.updated_at_ms,
-            }));
-          }),
-        );
-        const merged = groups.flat().sort((a, b) => b.updatedAtMs - a.updatedAtMs).slice(0, 8);
+        const merged = await listRecentWorkspaceFiles(recentProjectIds, 8);
         if (!cancelled) setRecentFiles(merged);
       } catch {
         if (!cancelled) setRecentFiles([]);
@@ -85,7 +66,7 @@ export function WelcomeView({ controller: c, onOpenSettings, page, onPageChange 
     };
   }, [recentProjectIds]);
 
-  const handleOpenRecentFile = async (item: RecentFileItem) => {
+  const handleOpenRecentFile = async (item: RecentWorkspaceFile) => {
     if (c.current?.id !== item.projectId) {
       await c.loadProject(item.projectId);
     }

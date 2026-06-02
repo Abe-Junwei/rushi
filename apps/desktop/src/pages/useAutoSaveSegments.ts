@@ -1,6 +1,9 @@
 import { useCallback, useEffect, useRef, useState, type MutableRefObject } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
-import { subscribeSegmentDraftStore } from "../hooks/useSegmentDraftStore";
+import {
+  segmentDraftStore,
+  subscribeSegmentDraftStore,
+} from "../hooks/useSegmentDraftStore";
 
 const AUTO_SAVE_DEBOUNCE_MS = 1500;
 
@@ -13,7 +16,11 @@ type Args = {
   busy: boolean;
   saveInFlightRef: MutableRefObject<boolean>;
   hasUnsavedSegmentChanges: () => boolean;
-  saveSegments: (options?: { quiet?: boolean }) => Promise<boolean>;
+  saveSegments: (options?: {
+    quiet?: boolean;
+    countHits?: boolean;
+    explicitPairs?: import("../tauri/fileApi").CorrectionExplicitPair[];
+  }) => Promise<boolean>;
   registerClearScheduled?: (clear: () => void) => void;
   registerOnPersisted?: (notify: () => void) => void;
 };
@@ -66,6 +73,7 @@ export function useAutoSaveSegments(args: Args): { autoSaveFooterStatus: AutoSav
   }, [notifyPersisted, registerOnPersisted]);
 
   const scheduleAutoSave = useCallback(() => {
+    if (segmentDraftStore.hasActiveComposition()) return;
     if (!enabledRef.current || !currentFileIdRef.current || busyRef.current || saveInFlightRef.current)
       return;
     if (!hasUnsavedRef.current()) {
@@ -83,7 +91,7 @@ export function useAutoSaveSegments(args: Args): { autoSaveFooterStatus: AutoSav
         return;
       }
       setAutoSaveFooterStatus("saving");
-      void saveSegmentsRef.current({ quiet: true });
+      void saveSegmentsRef.current({ quiet: true, countHits: false });
     }, AUTO_SAVE_DEBOUNCE_MS);
   }, [clearScheduledSave, saveInFlightRef]);
 
@@ -128,6 +136,6 @@ export function autoSaveFooterLabel(status: AutoSaveFooterStatus): string {
     case "saved":
       return "已自动保存";
     default:
-      return "自动保存已开启";
+      return "自动保存仅落库；⌘/Ctrl+Enter 确认改词并记入纠错记忆";
   }
 }

@@ -74,11 +74,30 @@ export async function deleteFile(fileId: string): Promise<void> {
   return invoke<void>("delete_file", { fileId });
 }
 
+export type CorrectionExplicitPair = { beforeText: string; afterText: string };
+
+export type LearnBaselineText = { uid: string; text: string };
+
+export type FileSaveSegmentsOptions = {
+  /** When false, infer-based hit_count learning is skipped. Explicit pairs still apply when true. */
+  countHits?: boolean;
+  explicitPairs?: CorrectionExplicitPair[];
+  /** Pre-save snapshot texts by uid; required when auto-save already persisted edits. */
+  learnBaselineTexts?: LearnBaselineText[];
+};
+
 export async function fileSaveSegments(
   fileId: string,
   segments: SegmentDto[],
+  options?: FileSaveSegmentsOptions,
 ): Promise<void> {
-  return invoke<void>("file_save_segments", { fileId, segments });
+  return invoke<void>("file_save_segments", {
+    fileId,
+    segments,
+    countHits: options?.countHits ?? false,
+    explicitPairs: options?.explicitPairs ?? [],
+    learnBaselineTexts: options?.learnBaselineTexts ?? [],
+  });
 }
 
 /** 将新格式 ProjectDetail 适配为旧格式（含 audio_storage_path + segments + files）。

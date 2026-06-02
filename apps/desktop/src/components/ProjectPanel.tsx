@@ -1,6 +1,10 @@
 import { useEffect, useMemo, useState } from "react";
 import { useTranscriptionLayer } from "../pages/useTranscriptionLayer";
-import { buildSegmentContextMenuItems, type SegmentContextMenuKey } from "../utils/segmentContextMenuModel";
+import {
+  buildSegmentContextMenuItems,
+  type SegmentContextMenuKey,
+  type SegmentContextMenuOpen,
+} from "../utils/segmentContextMenuModel";
 import { EnvironmentPanel } from "./EnvironmentPanel";
 import { FloatingPanelTemplate } from "./PanelTemplate";
 import { AutoPunctuatePreviewDialog } from "./AutoPunctuatePreviewDialog";
@@ -24,12 +28,7 @@ export function ProjectPanel() {
   const [welcomePage, setWelcomePage] = useState<WelcomePageId>("home");
   const [exportKey, setExportKey] = useState("");
   const [busyElapsedSec, setBusyElapsedSec] = useState(0);
-  const [segmentCtxMenu, setSegmentCtxMenu] = useState<{
-    x: number;
-    y: number;
-    segmentIdx: number;
-    pointerTimeSec: number;
-  } | null>(null);
+  const [segmentCtxMenu, setSegmentCtxMenu] = useState<SegmentContextMenuOpen | null>(null);
 
   const { segments, busy } = c;
 
@@ -72,6 +71,7 @@ export function ProjectPanel() {
     mergeWithPrev: c.mergeWithPrev,
     insertSegmentAfter: c.insertSegmentAfter,
     deleteSegmentAt: c.deleteSegmentAt,
+    confirmSegmentEditAndAdvance: c.confirmSegmentEditAndAdvance,
     onOpenSegmentContextMenu: setSegmentCtxMenu,
   });
 
@@ -83,6 +83,7 @@ export function ProjectPanel() {
             segments,
             busy,
             pointerTimeSec: segmentCtxMenu.pointerTimeSec,
+            origin: segmentCtxMenu.origin,
           })
         : [],
     [segmentCtxMenu, segments, busy],

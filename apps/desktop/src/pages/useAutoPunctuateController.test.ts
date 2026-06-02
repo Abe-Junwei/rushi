@@ -191,7 +191,7 @@ describe("useAutoPunctuateController", () => {
       result.current.confirmAutoPunctuateWriteback();
     });
 
-    expect(updateSegmentText).toHaveBeenCalledWith(0, "你好，世界。");
+    expect(updateSegmentText).toHaveBeenCalledWith(0, "你好，世界。", undefined);
     expect(result.current.dialog.phase).toBe("closed");
   });
 

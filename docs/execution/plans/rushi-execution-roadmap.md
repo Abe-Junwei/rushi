@@ -10,7 +10,7 @@
 | 适用节奏 | 单人、每轮 2～4h、一轮一纵向薄片 |
 | 规划跨度 | **个人单机 v1**：约 **14～18 周（自当前）** 或 **18～22 周（自 W1）**；R3 薄片 **~12～15w**（§4.0，含发行 smoke 缓冲）；协作 **非 v1** |
 | 修订 | 每完成一个阶段更新 §2 状态表、§4 排期表与 §13 代码对照 |
-| 最近对照 | **2026-06-02**：审查吸收 + **F2/自动保存/tost 已合入 main**；§10 **R3t-E 手测 → ⑤″f-B MEM-P0** |
+| 最近对照 | **2026-06-02**：**ASR-VOC-1** ✅ 手测签收；**下一刀 VOC-5**（§4.1.9）；§10 **⑤″f-A 余下 → ⑤″f-B** |
 
 ### 状态标记约定（全文档统一）
 
@@ -81,7 +81,8 @@
 | **Q-ASR-1** | **SenseVoice** = **兼容/快轨遗留**（百炼 v1 已下线公告）；**v1 主推 Paraformer**；第三 SKU 以 **Qwen3 spike Go/No-go** 为准（**⑤″f-D 后、EXP-WORD 前** 硬门控，§10） |
 | **FunASR 固有参数** | **用户不填** `use_itn` / `merge_vad` 等；由 **R3g-C Profile** 按 SKU+时长默认；仅 **模型、语言、术语表** 为用户控件（env 排障 override 另论） |
 | **本地 + 在线 STT** | **编排已统一**（`project_run_transcribe` → `TranscriptionResult` v1）；**词表偏置** 经 **ACC-STT-UNIFY** 分 adapter 映射（非同一 `hotword=` 字段） |
-| **同音/误写（如智控→制控）** | L2 热词 **偏置有限**；L4 **correction_memory + R3t-E**；**术语表只放正确 canonical**（见 **Q-ACC-5**） |
+| **同音/误写（如智控→制控）** | L2 热词 **偏置有限**；L4 **correction_memory + R3t-E**；**术语表只放正确 canonical**（**Q-ACC-5**）；**`before_text` 不进 hotwords**（**Q-ACC-8**） |
+| **L2 热词内容纪律** | **仅** `glossary_terms.term` + 合理 `aliases` → `hotwords`；**禁止** `correction_memory.before_text`、整对 `before→after`、误听形 alias；闭环走 **F6 / 纳入记忆→术语表**（见 §4.1.9） |
 | **RAG** | **当前不做** |
 | **Oumi 式动模型** | **当前不做**；远期 **ASR-FT**（FunASR 微调 + R3h 发版），见 [`lexicon-mining-backlog.md`](../specs/lexicon-mining-backlog.md) §7、[`oumi-remediation-report.md`](../specs/oumi-remediation-report.md) §五-b |
 
@@ -117,7 +118,7 @@
 | **P1** | 发版 eval 回归 + 专名样例 | **ACC-EVAL-1**（R3g-C 合入门禁）、**R4** + **R4-GATE**（R9 硬门禁） |
 | **P1** | Setup / 发布 / Supervisor 硬化 | **R3h-I1～I3** |
 | **P1** | 发版自动化子集 | **TEST-AUTO**（corrupt / 长音频慢测 / FSM contract；R9 硬门禁） |
-| **P1** | 单机修订时间线 | **REV-LOC**（v1 纳入；见 **Q-POS-4**、**Q-R9-1**） |
+| **P1** | 单机修订时间线 | **REV-LOC**（规格 ✅；编码 **后置**，见 **Q-REV-1**、§4.1.1 **⑤‴½**） |
 | **P2** | MCP 只读 | R5（v1 后可做） |
 
 ---
@@ -245,7 +246,7 @@ R0 → GLY-1 → R1–R2 → R3 → R4 → [R5] → [R6–R8] → R9
 | **B 转写真源** | 声学分段 + 编排 + 精度/STT 统一 + 可观测 + **长音频增量 preview** | ⑤′ R3t-A/B、**⑤g R3g-C**、**⑤h ACC-STT-UNIFY**、TRN-DIAG、⑥ R3e-B、**⑥½ R3e-C** |
 | **C 发行成熟** | 弱网/回滚/三盏灯/可选 Spike | ⑦ R3h-2、⑦½ ASR-WARM、⑧ R3h-3、⑧½ R3h-3.5 |
 | **D 可选 LLM** | 云端校对可插拔 + 交付 | ⑤″ R3t-C/D/E |
-| **E 交付与质量** | Word + eval + 发版 | ⑤‴ EXP-WORD、⑤‴½ **REV-LOC**（v1 P1）、R4、R9 |
+| **E 交付与质量** | Word + eval + 发版 | ⑤‴ EXP-WORD、⑤‴½ **REV-LOC**（规格已定·编码后置）、R4、R9 |
 
 #### 4.1.1 实施顺序（严格串行，勿跳步）
 
@@ -298,20 +299,20 @@ R0 → GLY-1 → R1–R2 → R3 → R4 → [R5] → [R6–R8] → R9
 【D 可选 LLM — 可跳过，手改即可交付】
 ⑤″ R3t-C → R3t-D → R3t-E  用户显式触发 · 预览写回
     ↓
-⑤″f 词表与改稿轨（R3t-F + ASR-VOC + MEM）— [`r3-asr-voc-holistic-review-2026-05.md`](../specs/r3-asr-voc-holistic-review-2026-05.md) · [`r3t-f-correction-memory-optimization-plan.md`](../specs/r3t-f-correction-memory-optimization-plan.md)
-    ├ ⑤″f-A  VOC-1 ‖ F2（分支待合入）‖ VOC-5（先于 F7）
-    ├ ⑤″f-B  F1 + F6 + L2/空表 + MEM-P0（2–3d）
-    ├ ⑤″f-B½ MEM-P1（记忆 UI + LEX-MINE-1 轻量，3–4d）
-    ├ ⑤″f-C  F7 + F0-lite? ‖ MEM-P2（uid/infer + ACC-TXT-0 spike）
-    └ ⑤″f-D  VOC-3（ACC 在线 E2E ≥1 家）
-    （⑤″f-4 VOC-4 暂缓 · Spike MEM-S1）
+⑤″f 词表与改稿轨（R3t-F + ASR-VOC + MEM）— [`r3-asr-voc-holistic-review-2026-05.md`](../specs/r3-asr-voc-holistic-review-2026-05.md) · [`asr-vocabulary-bias-practices.md`](../../architecture/asr-vocabulary-bias-practices.md) · [`r3t-f-correction-memory-optimization-plan.md`](../specs/r3t-f-correction-memory-optimization-plan.md) · **§4.1.9**
+    ├ ⑤″f-A  VOC-1 收尾手测 ‖ F2 合入手测 ‖ VOC-5 eval（先于 F7）
+    ├ ⑤″f-B  F1 + F6 + VOC-2c/d + F6+ + VOC-GUARD + MEM-P0
+    ├ ⑤″f-B½ MEM-P1（记忆 UI + LEX-MINE-1 + 中文纳入记忆矩阵巩固）
+    ├ ⑤″f-C  F7 词表包 + F0-lite? ‖ MEM-P2（uid/infer + ACC-TXT-0 spike）
+    └ ⑤″f-D  VOC-3 在线三家排序/截断（ACC 在线 E2E ≥1 家）
+    （⑤″f-4 VOC-4 暂缓 · ACC-HOT-W/2pass → §8.1 · Spike MEM-S1）
     ↓
 【E 交付与质量 — SKU 门控】
 ⑤″f-E  R3g-B Qwen3-ASR Go/No-go（2–4d；**EXP-WORD 前必过**，§10）
     ↓
 ⑤‴ EXP-WORD
     ↓
-⑤‴½ REV-LOC（v1 P1；Q-POS-4）
+⑤‴½ REV-LOC（规格 ✅ · 编码后置；Q-REV-1；不挡 R9）
     ↓
 R4 + R4-GATE → R9
 ```
@@ -344,13 +345,15 @@ R4 + R4-GATE → R9
 | **⑤″f** | **R3t-F + MEM** | 📋 规划✅ v4 | P1 12–16d / P1½ 3–4d / P2 10–14d | **F2→F1→F6→MEM-P0→MEM-P1→F7→MEM-P2**；墙钟 **4–6w** | [`r3t-f-post-transcribe-suite-plan.md`](../specs/r3t-f-post-transcribe-suite-plan.md) v4 · [`r3t-f-correction-memory-optimization-plan.md`](../specs/r3t-f-correction-memory-optimization-plan.md) |
 | **⑤″f-MEM** | **纠错记忆优化** | 📋 | ⑤″f-B～C | MEM-P0～P3、S1；D10 hit/自动保存 | [MEM acceptance](../specs/r3t-f-correction-memory-optimization-acceptance.md) |
 | **⑤″f-E** | **Qwen3 SKU 门控** | 📋 | 2–4d | 第三 SKU Go/No-go；**⑤″f-D 后、EXP-WORD 前** | [`r3g-b-qwen3-asr-sku-spike-research.md`](../specs/r3g-b-qwen3-asr-sku-spike-research.md) |
-| **⑤″f-1** | **ASR-VOC-1** | 📋 | 1–2d | 转写前 `glossary_hotwords_preview` + 在线 channel + SenseVoice 注记；覆盖确认框 | [`r3-asr-voc-landing-plan.md`](../specs/r3-asr-voc-landing-plan.md) §2 |
-| **⑤″f-2** | **ASR-VOC-2** | 📋 | **7–10d** | F6 2–3d + F7 4–6d + L2/空表 0.5–1d；**§3 完整规格** | [`r3-asr-voc-landing-plan.md`](../specs/r3-asr-voc-landing-plan.md) §3 |
+| **⑤″f-1** | **ASR-VOC-1** | ✅ **2026-06-02** | 1–2d | 转写前 preview + 覆盖确认框 + toast；契约+UI 手测签收 | [`asr-voc-1-hand-test-checklist.md`](../specs/asr-voc-1-hand-test-checklist.md) |
+| **⑤″f-2** | **ASR-VOC-2** | 🟡 部分 | **7–10d** | **2a** F6（hit≥3 弹窗 ✅；手测/边界 ⏳）+ **2a+** 纳入记忆确认后可选进术语表；**2c/d** 术语库 Custom Vocabulary 文案与空表 CTA；**2b** F7 `lexicon_bundle` ❌；**GUARD** hotwords 禁止 `before_text` 单测 | Plan §3 · **§4.1.9** |
 | **⑤″f-3** | **ASR-VOC-3** | 📋 | 2–4d | 在线三家排序/截断；**⑤″f-D**；签收前 ACC 在线 E2E ≥1 家 | 同上 §4；holistic H3 |
-| **⑤″f-5** | **ASR-VOC-5 = ACC-EVAL-1** | 📋 | 1–2d | `eval-run` hotwords on/off；制控 `term_hit`；**⑤″f-A** 内、**F7 前** | holistic §5；[`r3-asr-voc-landing-plan.md`](../specs/r3-asr-voc-landing-plan.md) §5 |
-| **⑤″f-4** | **ASR-VOC-4** | ⏸ 暂缓 | — | memory→hotwords 直连；默认 **No**（走 F6） | Plan §6 |
+| **⑤″f-5** | **ASR-VOC-5 = ACC-EVAL-1** | 📋 | 1–2d | `eval-run` hotwords on/off；制控 `term_hit` A/B；**⑤″f-A** 内、**F7 前**（验证 L2 真生效） | holistic §5；Plan §5 · **§4.1.9** |
+| **⑤″f-4** | **ASR-VOC-4** | ⏸ 暂缓 | — | 仅 `after_text` 直连 hotwords（≤20 词）；**默认 No**（**Q-ACC-8**；走 F6→glossary） | Plan §6 |
+| **⑤″f-2+** | **F6+ 纳入记忆→术语表** | 📋 | 0.5–1d | 「纳入记忆」确认后可选 **同时** `glossary_add` + `hotword_enabled=1`（不必等第 3 次 save） | §4.1.9 · R3t-F P1 |
+| **⑤″f-G** | **VOC-GUARD** | 📋 | 0.5d | `build_glossary_hotwords` / 词表包 import **永不** 读 `correction_memory.before_text`；架构守卫单测 | **Q-ACC-8** |
 | **⑤‴** | **EXP-WORD** | 📋 | 1–1.5w | L6 交付：导出真源对齐；逐字稿/讲稿/干净稿版式；可选修订摘要附录；**不等 C6** | [`word-formatted-export-backlog.md`](../specs/word-formatted-export-backlog.md) |
-| **⑤‴½** | **REV-LOC** | 📋 | 0.5–1w | 单机 `edit_log` 时间线；**v1 P1 必做**；恢复点可减 scope；**非** R8 协作 revision | [`personal-solo-v1-backlog.md`](../specs/personal-solo-v1-backlog.md) §3.3 |
+| **⑤‴½** | **REV-LOC** | 📋 **规格✅** / **编码后置** | 0.5–1w | **A** 撤销栈与自动保存对齐；**B** `edit_log` 快照恢复 MVP；只读摘要已部分落地；**非** R8 | [research](../specs/rev-loc-undo-edit-history-research.md) · [plan](../specs/rev-loc-undo-edit-history-plan.md) · [acceptance](../specs/rev-loc-undo-edit-history-acceptance.md) · [backlog §3.3](../specs/personal-solo-v1-backlog.md) |
 | — | **R3t（索引）** | 📋 | — | Epic 总览（含 L6） | [`recording-transcribe-llm-pipeline.md`](../../architecture/recording-transcribe-llm-pipeline.md) |
 | — | R3h-4 → **LLM-LOC** | v1 后 | 见 §6、[`llm-local-runtime-backlog.md`](../specs/llm-local-runtime-backlog.md)（**4a** Ollama ~0.5–1w；**4b** 自管 2–3w+） | remediation §Phase 4 |
 | — | R3h-E/F、R3g-B | 延后 / P1 spike | — | 高级 pip/本地构建；**Qwen3 SKU spike**（research ✅）、Nano+vLLM（P2）；索引 [`r3-asr-landscape-2026-05-improvement-backlog.md`](../specs/r3-asr-landscape-2026-05-improvement-backlog.md) §4.1.8 | remediation §5 Phase 5、[`r3g-b-qwen3-asr-sku-spike-research.md`](../specs/r3g-b-qwen3-asr-sku-spike-research.md) |
@@ -436,16 +439,17 @@ R4 + R4-GATE → R9
 **学习环（已交付 + MEM 规划）**：
 
 ```text
-glossary_terms ──► L2 hotwords（仅 canonical；SenseVoice 兼容 SKU 见 Q-ASR-1）
+glossary_terms ──► L2 hotwords（仅 canonical + aliases；禁止 before_text / 错形 alias，Q-ACC-5/8）
 落库 → infer + [MEM-P0] 显式 upsert → correction_memory
-         ├─ hit≥2 | accepted → hints / F1 / LexiconPack
-         └─ hit≥3 right → F6 → glossary 提示
+         ├─ hit≥2 | accepted → hints / F1 / LexiconPack（L4 改当前稿）
+         ├─ hit≥3 right → F6 弹窗 → glossary（L2 下次转写）
+         └─ [⑤″f-2+] 纳入记忆确认 → 可选一键 glossary + hotword_enabled（不必等 hit≥3）
 采纳为规则（R3t-E / MEM-P1）→ accepted_as_rule=1
 ```
 
 **增强项（排期）**：**HOT-UX** ✅；**MEM-P0～P2**（⑤″f-B～C）；**LEX-MINE-2+** §8.1；R3t-E3 项目级词表 **不做 v1**。
 
-**交付导出（L6）**：**EXP-WORD** 在 **R3t-E 之后**、**R4 之前**（§8.2 Q-WORD）；与 P3 DOCX **基线**分层。**REV-LOC** 在 EXP-WORD 后、R4 前（**v1 纳入 P1**，见 **Q-POS-4**）。
+**交付导出（L6）**：**EXP-WORD** 在 **R3t-E 之后**、**R4 之前**（§8.2 Q-WORD）；与 P3 DOCX **基线**分层。**REV-LOC** 主序仍在 EXP-WORD 后、R4 前；**2026-05-31** 三件套已定稿，**编码后置、不挡 R9**（见 **Q-REV-1**）。
 
 **个人 v1 补齐**：**TRN-DIAG**、**ASR-WARM**、**R4-GATE** — 见 §1.8。
 
@@ -517,6 +521,31 @@ glossary_terms ──► L2 hotwords（仅 canonical；SenseVoice 兼容 SKU 见
 | **—** | Parakeet / MiMo / WS 替换 R3e-C | 与 ADR-0003 或 SQLite 真源冲突 | — | — | **不做** v1 |
 
 **建议叠加顺序**（backlog §5）：（主序）**R3g-C** → ACC… → **⑤″f** → **⑤″f-E Qwen3 门控** → EXP-WORD；并行 **R3h-0 smoke**、R3e-C.5；**FunASR 1.3.3 全量升级 v1 后**。
+
+#### 4.1.9 ⑤″f 改进清单（2026-06-02 · ASR 热词业内调研吸收）
+
+> **调研真源**：[`asr-vocabulary-bias-practices.md`](../../architecture/asr-vocabulary-bias-practices.md)（L0/L1 阶梯、厂商对照、**§6 ASR-VOC-1～5**）；[`r3t-f-edit-memory-for-llm-research.md`](../specs/r3t-f-edit-memory-for-llm-research.md)（L1/L4 分通道）；[`r3t-f-chinese-text-diff-remediation-research.md`](../specs/r3t-f-chinese-text-diff-remediation-research.md)（纳入记忆算法，**非**热词替代）。  
+> **任务拆片**：[`r3-asr-voc-landing-plan.md`](../specs/r3-asr-voc-landing-plan.md) · [`r3-asr-voc-landing-acceptance.md`](../specs/r3-asr-voc-landing-acceptance.md)
+
+**原则（与业内一致，不调整）**：`correction_memory.before_text` **不得** 进 `hotwords`（**Q-ACC-8**）；L2 只服务「希望听成的正形」；同音形错靠 L4 + 词表闭环，不单靠热词堆错形。
+
+| 优先级 | ID | ⑤″f 期 | 改进项 | 估时 | 验收锚点 |
+|--------|-----|--------|--------|------|----------|
+| **P0** | VOC-1-手测 | **A** | ✅ 2026-06-02（契约+UI） | — | [`asr-voc-1-hand-test-checklist.md`](../specs/asr-voc-1-hand-test-checklist.md) |
+| **P0** | VOC-5 | **A** | 制控样例 **hotwords on/off** → `term_hit_rate` 可对比存档 | 1–2d | ⑤″f-5；**先于 F7** |
+| **P0** | VOC-2c/d | **B** | 术语库 **Custom Vocabulary** 文案；`hotword_enabled` tooltip；**别名勿填误听形**；空表/全关 CTA | 0.5–1d | acceptance §2c/2d |
+| **P0** | F6+ | **B** | 「纳入记忆」确认后可选 **同时进术语表并纳入热词**（不必等 hit≥3） | 0.5–1d | ⑤″f-2+ |
+| **P0** | F6 | **B** | hit≥3 弹窗 / GlossaryMine **手测**；`term≠before_text` 守卫 | 含 2a | r3t-f acceptance P1 F6 |
+| **P0** | VOC-GUARD | **B** | `build_glossary_hotwords` + 词表包 import **禁止** `before_text` | 0.5d | **Q-ACC-8** |
+| **P0** | MEM-P0 | **B** | 显式 upsert、hit 与自动保存解耦（已编码 → 手测签收） | 2–3d | MEM acceptance |
+| **P1** | F7 | **C** | `rushi_lexicon_bundle.v1` 小团队导出/导入/冲突 | 4–6d | Plan §3.3 |
+| **P1** | MEM-P1 | **B½** | 记忆 UI + LEX-MINE-1；中文纳入记忆矩阵 / `learnEditDelta` 回归 | 3–4d | MEM plan |
+| **P1** | VOC-3 | **D** | OpenAI prompt 排序截断；AssemblyAI/Deepgram 条数与文案 | 2–4d | Plan §4；在线 E2E 闸门 |
+| **P2** | ACC-HOT-W | §8.1 | FunASR `词 权重`；12k 截断 **高优先级先保留** | spike | landscape backlog |
+| **P2** | FUN-2PASS | §8.1 | 长音频句末 2pass（与热词互补） | spike | R3e 长音频 SKU |
+| **⏸** | ASR-VOC-4 | — | memory `after_text` 直连 hotwords | — | **默认 No**（**Q-ACC-8**） |
+
+**建议编码顺序（墙钟内）**：**VOC-1 手测** → **VOC-5** → **VOC-2c/d + F6+ + VOC-GUARD** ‖ **F1/F6 手测** → **F7** → **VOC-3**。
 
 ### 阶段状态（实施时更新）
 
@@ -780,13 +809,13 @@ React 预览 UI
 |----|------|
 | **零终端本机 ASR** | 无 shell 完成侧车安装 + 默认模型 + smoke（**依赖 R3h-1 + R3f**；[remediation §11](../specs/rushi-local-runtime-catalog-remediation-plan.md)） |
 | **弱网/断网** | 下载可重试；无网时 bundled 回退（**依赖 R3h-2**） |
-| **长音频主路径** | 30～60min：转写 →（**R3t-C 标点** 或手改）→ 编辑 → **REV-LOC** → **EXP-WORD**（见 **Q-R9-1 Mid**） |
+| **长音频主路径** | 30～60min：转写 →（**R3t-C 标点** 或手改）→ 编辑 → **EXP-WORD**（**REV-LOC** 编码后置，见 Q-REV-1） |
 | **TRN-DIAG** | 失败一次转写：UI/诊断包能指出阶段与建议动作 |
 | **ASR-WARM** | 同项目连续转写：第二次无明显冷启动劣化（手测） |
 | **R4-GATE** | eval 集已跑；质量 Tab 有摘要；**含 ACC-EVAL-1** |
 | **TEST-AUTO** | corrupt 侧车 fixture +（可选）长音频慢测 + Setup/转写 FSM contract 已跑 |
 | **LLM 档位 Mid** | **R3t-B + R3t-C** 为 R9 **硬门禁**；**R3t-D/E 可减 scope**（不挡 R9，仍尽量在 R4 前闭合）；无 LLM 配置仍可转写 → 手改 → 导出 |
-| **REV-LOC** | **v1 必做**（Q-POS-4）：至少只读变更时间线；恢复点按 acceptance 可减 scope |
+| **REV-LOC** | R9：**只读** `edit_log` 摘要（`text_changes` 已部分落地）；**恢复 MVP + 撤销对齐**按 [acceptance](../specs/rev-loc-undo-edit-history-acceptance.md) **编码后置**（Q-REV-1） |
 | 脚本 | `p0-acceptance.sh`、P1–P4 按需抽检 |
 | 文档 | §2 状态表；T-006 行数表对齐 |
 | 可选 | E2E 一条主干；波形性能记录 |
@@ -871,7 +900,7 @@ React 预览 UI
 | **LEX-MINE-2+** | 全量挖掘 + 可选 LLM 说明 / 语料扫描 | 计划书 §5.1.2 | §8.1 |
 | **ASR-FT** | ASR 训练 manifest / 可选 LoRA | 计划书 §5.2–5.3；Oumi 数据合成 **远期** | R9 ROI + memory 导出 schema（privacy/domain）+ 独立测试集 |
 | **CAT-TRAN** | 翻译 + 词典（CAT） | 中译英、`target_text`、富结构词典、子范围批注、双语 DOCX；**spec 已有** T1–T6 | **远期**；**当前不做**（2026-05-27）；Go 须转写主线签收 + 产品中译英优先级 |
-| **REV-LOC** | 单机修订时间线 | `edit_log` 只读/恢复点；非协作 revision | EXP-WORD 后；**v1 P1**（Q-POS-4） |
+| **REV-LOC** | 撤销对齐 + 历史恢复 MVP | 切片 A/B；[acceptance](../specs/rev-loc-undo-edit-history-acceptance.md) | EXP-WORD 后；**编码后置**（Q-REV-1） |
 | **STREAM-*** | 实时 mic / 流式 | 另立项 | R3t-D/E 签收后 |
 | **LLM-LOC** | 本机 LLM（Spike / 4a / 4b） | 规划真源 §9 Gate；**实施待 Q-LLM-5** | [`llm-local-runtime-backlog.md`](../specs/llm-local-runtime-backlog.md) |
 
@@ -893,7 +922,8 @@ React 预览 UI
 | **Q-POS-1** | **产品定位 = 个人单机 v1**；SQLite 真源；主路径见 §1.6 |
 | **Q-POS-2** | **R6–R8 非 v1 阻塞**；R9 可在 R4 后签收；R5 可后置 |
 | **Q-POS-3** | **ASR-WARM** 纳入 v1 P1（§4.1.1 **⑦½**）；**TRN-DIAG** 纳入 v1 P1（**⑤′½**） |
-| **Q-POS-4** | **R4-GATE** 为 R9 **硬门禁**；**REV-LOC** 为 **v1 P1 必做**（2026-05-30 拍板） |
+| **Q-POS-4** | **R4-GATE** 为 R9 **硬门禁**；**REV-LOC** 产品意图仍为 v1 P1（2026-05-30）；**实施节奏**见 **Q-REV-1** |
+| **Q-REV-1** | **2026-05-31**：REV-LOC [research](../specs/rev-loc-undo-edit-history-research.md) / [plan](../specs/rev-loc-undo-edit-history-plan.md) / [acceptance](../specs/rev-loc-undo-edit-history-acceptance.md) **已定稿**；**编码后置**（EXP-WORD 后择机，**不挡 R9**）；R9 仅要求只读历史摘要 |
 | **Q-LLM-1** | 本机 LLM **v1 后**做；**不阻塞 R9**；v1 仍以 **云端** 签收 R3t |
 | **Q-LLM-2** | **先 LLM-LOC-4a（Ollama）** 验证本地校对 ROI；**再 4b（LRC 自管）** |
 | **Q-LLM-3** | LLM **不进 ASR 侧车**；postprocess 仍为 Tauri OpenAI-compatible HTTP |
@@ -910,6 +940,7 @@ React 预览 UI
 | **Q-ACC-3** | ✅ **同音/专名双通道**：L2 热词 + L4 **R3t-E**/memory |
 | **Q-ACC-4** | ✅ **ACC-EVAL-1** 为 **R3g-C 合入硬门禁**；样例 **`fixtures/eval/samples/制控.mp3`**（`expected_terms: 制控`）；`eval-run.py` 输出 `term_hit_rate` |
 | **Q-ACC-5** | ✅ **术语表只放正确写法**：`term` = canonical；**不**用 aliases 承载误听/误写偏置（如 **智控**）；同音靠 L4 memory/R3t-E |
+| **Q-ACC-8** | ✅ **错形不进 ASR 偏置**（2026-06-02，对齐 Azure/FunASR/Descript 等 L0/L1 实践）：`correction_memory.before_text`、整对 `before→after` **不得** 写入 `hotwords`；稳定 **right** → **F6 / F6+ / glossary**；**ASR-VOC-4**（memory 直连 hotwords）**默认 No**；见 [`asr-vocabulary-bias-practices.md`](../../architecture/asr-vocabulary-bias-practices.md) §4.1、§6.5 |
 | **Q-ACC-6** | ✅ **ACC-STT-UNIFY v1**：U1 必接 **OpenAI + AssemblyAI + Deepgram**；U2 必做；**U3→R3h-3**；**U4 延后**；Azure/百炼仍 §8.1 |
 | **Q-ACC-7** | ✅ **SenseVoice ITN 默认开**（R3g-C C2）；识别语言 UI **默认 `zh`**（C4） |
 | **Q-R9-1** | ✅ **Mid 档位**：R9 硬门禁 **R3t-B + R3t-C**；**R3t-D/E 可减 scope**（不挡 R9）；无 LLM 仍可手改交付 |
@@ -962,21 +993,22 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 - [x] **R3g-A ⑤c**（Paraformer 13min 多语段；2026-05-27 复测签收）
 - [ ] **R3h §11 发行门禁**（零终端、构建 smoke、损坏可恢复…）
 
-**下一刀（2026-06-02 · 审查吸收后）**：[`r3-asr-voc-holistic-review-2026-05.md`](../specs/r3-asr-voc-holistic-review-2026-05.md) · [`r3t-f-correction-memory-optimization-plan.md`](../specs/r3t-f-correction-memory-optimization-plan.md)
+**下一刀（2026-06-02 · 审查 + ASR-VOC 调研吸收）**：[`r3-asr-voc-holistic-review-2026-05.md`](../specs/r3-asr-voc-holistic-review-2026-05.md) · [`asr-vocabulary-bias-practices.md`](../../architecture/asr-vocabulary-bias-practices.md) · **§4.1.9**
 
-1. **并行专轮**：**① R3h-0 smoke（2–3d）** ‖ **⑤″e R3t-E 手测**（不挡 VOC-1 纯 UI）  
-2. **⑤″f-A**：**VOC-1** ‖ **F2**（合入分支 `cursor/r3t-f-find-replace-toast-correct` 后手测）‖ **VOC-5**  
-3. **⑤″f-B**：**F1** + **F6** + L2/空表 + **MEM-P0**  
-4. **⑤″f-B½**：**MEM-P1**  
-5. **⑤″f-C**：**F7** + 可选 F0-lite ‖ **MEM-P2**  
+1. **并行专轮**：**① R3h-0 smoke（2–3d）** ‖ **⑤″e R3t-E 手测**（不挡 VOC-1）  
+2. **⑤″f-A**：**VOC-1 手测收尾** ‖ **F2** 合入分支手测 ‖ **VOC-5**（热词 on/off baseline，**先于 F7**）  
+3. **⑤″f-B**：**F1** + **F6 手测** + **VOC-2c/d** + **F6+** + **VOC-GUARD** + **MEM-P0 手测**（见 §4.1.9 表）  
+4. **⑤″f-B½**：**MEM-P1**（含中文纳入记忆矩阵巩固）  
+5. **⑤″f-C**：**F7 词表包** + 可选 F0-lite ‖ **MEM-P2**  
 6. **⑤″f-D**：**VOC-3**（在线 E2E ≥1 家）  
-7. **⑤″f-E**：**Qwen3 Go/No-go**（**EXP-WORD 前必过**）
+7. **⑤″f-E**：**Qwen3 Go/No-go**（**EXP-WORD 前必过**）  
+8. **§8.1 候选**（不挡 ⑤″f）：**ACC-HOT-W**、FunASR 2pass
 
 **墙钟**：⑤″f **4–6w**；R3 宏观 **12–15w**（含 R3h-0 / ⑤″f-E 缓冲）。
 
 **同轮或紧邻闭合**：**③ R3f**（**须在 R3h-0 后**）、**R3h §11**；`main` 上 `npm run test` **631/631 ✅**（合并功能分支前在目标分支复验）。
 
-**主序（⑤″f-E 之后）**：**EXP-WORD** → **REV-LOC** → **R4** → **R9**
+**主序（⑤″f-E 之后）**：**EXP-WORD** → **REV-LOC**（规格已定，编码后置）→ **R4** → **R9**
 
 ---
 
@@ -988,6 +1020,9 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | [`collaboration-foundation-plan.md`](./collaboration-foundation-plan.md) | 协作 Phase 1–7 细节；**顺序以本文 §4–§6 为准** |
 | [`p2-acceptance.md`](../p2-acceptance.md) | P2：术语库/热词/低置信/纠错记忆（**后端**）；管理 UI → GLY-1 |
 | [`docs/architecture/asr-hotword-bias-truth.md`](../../architecture/asr-hotword-bias-truth.md) | 术语如何拼进 ASR `hotwords` |
+| [`docs/architecture/asr-vocabulary-bias-practices.md`](../../architecture/asr-vocabulary-bias-practices.md) | **ASR-VOC** 业内对照 + L0/L1 纪律 + 落地路线图 §6 |
+| [`r3-asr-voc-landing-plan.md`](../specs/r3-asr-voc-landing-plan.md) | **⑤″f-1～5** 任务拆片 |
+| [`r3-asr-voc-landing-acceptance.md`](../specs/r3-asr-voc-landing-acceptance.md) | **ASR-VOC** 可勾选验收 |
 | [`docs/architecture/transcription-accuracy-program.md`](../../architecture/transcription-accuracy-program.md) | **ACC** 分层 L0–L7、问题矩阵、与 R3g-C/UNIFY 关系（**待立项**） |
 | [`docs/architecture/asr-generate-params-truth.md`](../../architecture/asr-generate-params-truth.md) | **R3g-C** FunASR `generate()` Profile 真源表（**待立项**） |
 | [`r3g-c-asr-generate-profile-acceptance.md`](../specs/r3g-c-asr-generate-profile-acceptance.md) | **R3g-C** 验收切片（**待立项**） |
@@ -1065,10 +1100,12 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | 2026-05-31 | **R3g-C ✅ 手测签收**：Profile + 识别语言 + mismatch 横幅；§10 下一刀 **ACC-STT-UNIFY** |
 | 2026-05-31 | **ACC-STT-UNIFY ✅ 本机手测签收**：Paraformer + hotwords 链路；在线 E2E ⏳；§10 下一刀 **R3t-D** |
 | 2026-05-31 | **R3t-D ✅ 手测签收**：段界整理 merge/改字 + 预览写回；§10 下一刀 **R3t-E** |
+| 2026-05-31 | **REV-LOC 规格三件套**：撤销栈对齐 + 历史恢复 MVP；[research](../specs/rev-loc-undo-edit-history-research.md) / plan / acceptance；**Q-REV-1** 编码后置、不挡 R9 |
 | 2026-05-31 | **R3e-C ✅ 手测签收**：制控.mp3 ~20.8min、197 段、首段 ~23.9s、blocking≡async；§10 下一刀 **R3g-C** |
 | 2026-05-30 | **R3e-C Phase 2 编码**：async preview + `cancelTranscribe` + preview 门禁 + controller 拆分；**§4.1.8** 并入 [`r3-asr-landscape-2026-05-improvement-backlog.md`](../specs/r3-asr-landscape-2026-05-improvement-backlog.md)；§4.1.1 **⑥½**；§10 下一刀 **R3e-C 手测 → R3g-C** |
 | 2026-05-30 | **外部评估吸收**：R3 **~10～13w**；Sherpa **轻量模式**（ADR-0003 附录）；Qwen3 **伪流式** / SenseVoice **弃用** 风险入 backlog + spike §8；FireRedASR2 / Moonshine **雷达项** |
 | 2026-06-02 | **路线图审查吸收**：R3 **12～15w**；⑤″f **4–6w** + MEM 子阶段；**R3h-0∥⑤″f-A**；**⑤″f-E Qwen3 门控**；**Q-ASR-1** SenseVoice 兼容定位；MEM plan/acceptance 入主仓 |
+| 2026-06-02 | **ASR 热词业内调研入路线图**：**Q-ACC-8**（错形不进 hotwords）；**§4.1.9** 改进清单（VOC-1 手测、VOC-5、2c/d、F6+、VOC-GUARD）；**⑤″f-1** 🟡 编码✅；§10/学习环/§11 链 `asr-vocabulary-bias-practices` |
 
 ---
 
