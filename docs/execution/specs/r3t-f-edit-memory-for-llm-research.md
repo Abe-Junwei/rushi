@@ -32,7 +32,7 @@ L4 LLM 改稿参考   → 结构化 Pack / few-shot 片段 / 编辑算子 JSON
 L5 离线模型适应   → 用户编辑进训练集（黑盒，非产品内可解释记忆）
 ```
 
-**结论**：手改记忆要服务 LLM，通常落在 **L3→L4**，且 **L1 与 L4 必须分通道**（Rushi 已规定：hotwords 不得塞进 LLM prompt）。ASR 阶段实践与落地见 [`asr-vocabulary-bias-practices.md`](../../docs/architecture/asr-vocabulary-bias-practices.md)。
+**结论**：手改记忆要服务 LLM，通常落在 **L3→L4**，且 **L1 与 L4 必须分通道**（Rushi 已规定：hotwords 不得塞进 LLM prompt）。ASR 阶段实践与落地见 [`asr-vocabulary-bias-practices.md`](../../architecture/asr-vocabulary-bias-practices.md)。
 
 ### 2.2 竞品与 API：具体实现
 

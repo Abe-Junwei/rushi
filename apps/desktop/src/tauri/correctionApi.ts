@@ -30,10 +30,18 @@ export type CorrectionMemorySavePayload = {
   replaceRight?: string;
 };
 
+function readStr(raw: Record<string, unknown>, ...keys: string[]): string {
+  for (const key of keys) {
+    const v = raw[key];
+    if (typeof v === "string") return v;
+  }
+  return "";
+}
+
 function parseRuleRow(raw: Record<string, unknown>): CorrectionRuleRow {
   return {
-    wrong: String(raw.wrong ?? ""),
-    right: String(raw.right ?? ""),
+    wrong: readStr(raw, "wrong"),
+    right: readStr(raw, "right"),
     hitCount: Number(raw.hitCount ?? raw.hit_count ?? 0),
     acceptedAsRule: Boolean(raw.acceptedAsRule ?? raw.accepted_as_rule),
   };
@@ -43,8 +51,8 @@ function parseMemoryEntryRow(raw: Record<string, unknown>): CorrectionMemoryEntr
   const hitCount = Number(raw.hitCount ?? raw.hit_count ?? 0);
   const acceptedAsRule = Boolean(raw.acceptedAsRule ?? raw.accepted_as_rule);
   return {
-    wrong: String(raw.wrong ?? ""),
-    right: String(raw.right ?? ""),
+    wrong: readStr(raw, "wrong"),
+    right: readStr(raw, "right"),
     hitCount,
     acceptedAsRule,
     updatedAtMs: Number(raw.updatedAtMs ?? raw.updated_at_ms ?? 0),
@@ -54,9 +62,9 @@ function parseMemoryEntryRow(raw: Record<string, unknown>): CorrectionMemoryEntr
 
 function parsePromptRow(raw: Record<string, unknown>): GlossaryLearnPromptRow {
   return {
-    afterText: String(raw.afterText ?? raw.after_text ?? ""),
+    afterText: readStr(raw, "afterText", "after_text"),
     hitCount: Number(raw.hitCount ?? raw.hit_count ?? 0),
-    sampleBefore: String(raw.sampleBefore ?? raw.sample_before ?? ""),
+    sampleBefore: readStr(raw, "sampleBefore", "sample_before"),
   };
 }
 

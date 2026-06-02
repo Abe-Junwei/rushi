@@ -271,7 +271,7 @@ undo：每阶段或最终一次（实施时二选一，写入 acceptance）。
 
 - UI：**「转写词汇表（Custom Vocabulary）」**。
 - 转写前 glossary 空 → 轻提示添加专名。
-- ASR 偏置业内对照：[`asr-vocabulary-bias-practices.md`](../../docs/architecture/asr-vocabulary-bias-practices.md)。**实施排期**：[`r3-asr-voc-landing-plan.md`](./r3-asr-voc-landing-plan.md)（VOC-1 与 P1 并行；VOC-2=F6/F7）。
+- ASR 偏置业内对照：[`asr-vocabulary-bias-practices.md`](../../architecture/asr-vocabulary-bias-practices.md)。**实施排期**：[`r3-asr-voc-landing-plan.md`](./r3-asr-voc-landing-plan.md)（VOC-1 与 P1 并行；VOC-2=F6/F7）。
 
 ---
 

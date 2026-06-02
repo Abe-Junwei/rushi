@@ -33,7 +33,9 @@ vi.mock("../services/ui/toast", () => ({
     info: vi.fn(),
     success: vi.fn(),
     warning: vi.fn(),
-    error: (...args: unknown[]) => toastError(...args),
+    error: (...args: unknown[]) => {
+      toastError(...args);
+    },
     dismiss: vi.fn(),
   },
 }));

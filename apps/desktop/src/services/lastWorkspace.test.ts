@@ -49,25 +49,25 @@ describe("lastWorkspace", () => {
       LAST_WORKSPACE_STORAGE_KEY,
       JSON.stringify({ projectId: "p-old", fileId: "f-old" }),
     );
-    vi.mocked(fileApi.listFiles).mockImplementation(async (projectId) => {
+    vi.mocked(fileApi.listFiles).mockImplementation((projectId) => {
       if (projectId === "p-old") {
-        return [
+        return Promise.resolve([
           {
             id: "f-old",
             name: "old",
             file_type: "text",
             updated_at_ms: 50,
           },
-        ];
+        ]);
       }
-      return [
+      return Promise.resolve([
         {
           id: "f-new",
           name: "new",
           file_type: "text",
           updated_at_ms: 999,
         },
-      ];
+      ]);
     });
 
     const target = await resolveEditorResumeTarget([

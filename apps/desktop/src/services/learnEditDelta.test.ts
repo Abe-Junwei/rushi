@@ -90,7 +90,7 @@ describe("learnEditDelta", () => {
       "deleteContentBackward",
       null,
     );
-    let live = applyLearnEditOpsToText(baseline, state.ops);
+    const live = applyLearnEditOpsToText(baseline, state.ops);
     const b = live.indexOf("扳手");
     state = applyBeforeInputToLearnEditState(state, baseline, live, b, b + 2, "deleteContentBackward", null);
     expect(state.ops).toHaveLength(2);

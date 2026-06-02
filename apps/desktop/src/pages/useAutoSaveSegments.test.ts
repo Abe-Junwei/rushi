@@ -25,7 +25,7 @@ describe("useAutoSaveSegments", () => {
     segmentDraftStore.resetAll();
   });
 
-  it("debounces save after segment text change", async () => {
+  it("debounces save after segment text change", () => {
     const saveSegments = vi.fn().mockResolvedValue(true);
     let dirty = true;
     const { rerender } = renderHook(
@@ -46,7 +46,7 @@ describe("useAutoSaveSegments", () => {
     rerender({ segments: [seg("b")] });
 
     expect(saveSegments).not.toHaveBeenCalled();
-    await act(async () => {
+    act(() => {
       vi.advanceTimersByTime(1500);
     });
     expect(saveSegments).toHaveBeenCalledTimes(1);
@@ -56,7 +56,7 @@ describe("useAutoSaveSegments", () => {
     rerender({ segments: [seg("b")] });
   });
 
-  it("schedules save when draft store updates", async () => {
+  it("schedules save when draft store updates", () => {
     const saveSegments = vi.fn().mockResolvedValue(true);
     const segments = [seg("committed", 0)];
     renderHook(() =>
@@ -72,10 +72,10 @@ describe("useAutoSaveSegments", () => {
     );
 
     act(() => {
-      segmentDraftStore.setDraft(segmentDraftKey(segments[0]!, 0), "draft edit");
+      segmentDraftStore.setDraft(segmentDraftKey(segments[0], 0), "draft edit");
     });
 
-    await act(async () => {
+    act(() => {
       vi.advanceTimersByTime(1500);
     });
     expect(saveSegments).toHaveBeenCalledTimes(1);

@@ -259,8 +259,8 @@ export function ProjectPanel() {
         onNext={c.findReplaceGoNext}
         onReplaceCurrent={c.findReplaceCurrent}
         onReplaceAndNext={c.findReplaceReplaceAndNext}
-        onRequestReplaceAll={c.findReplaceRequestReplaceAll}
-        onConfirmReplaceAll={c.findReplaceConfirmReplaceAll}
+        onRequestReplaceAll={() => void c.findReplaceRequestReplaceAll()}
+        onConfirmReplaceAll={() => void c.findReplaceConfirmReplaceAll()}
         onCancelReplaceAllPreview={c.findReplaceCancelReplaceAllPreview}
       />
 
@@ -268,7 +268,7 @@ export function ProjectPanel() {
         state={c.correctionRulesDialog}
         busy={c.busy}
         onCancel={c.cancelCorrectionRules}
-        onConfirm={c.confirmCorrectionRulesWriteback}
+        onConfirm={() => void c.confirmCorrectionRulesWriteback()}
       />
 
       <CorrectSuggestionsDialog
@@ -283,7 +283,7 @@ export function ProjectPanel() {
         busy={c.busy}
         onClose={c.closeGlossaryLearnPrompt}
         onDismiss={c.dismissGlossaryLearnPrompt}
-        onConfirm={c.confirmAddToGlossary}
+        onConfirm={(row) => void c.confirmAddToGlossary(row)}
       />
 
       <TranscribeOverwriteConfirmDialog

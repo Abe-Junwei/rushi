@@ -13,18 +13,18 @@ export function listRevisionChanges(baseline: string, live: string): RevisionCha
   const items: RevisionChangeItem[] = [];
   let i = 0;
   while (i < spans.length) {
-    if (spans[i]!.kind !== "delete" && spans[i]!.kind !== "insert") {
+    if (spans[i].kind !== "delete" && spans[i].kind !== "insert") {
       i += 1;
       continue;
     }
     let removed = "";
-    while (i < spans.length && spans[i]!.kind === "delete") {
-      removed += spans[i]!.text;
+    while (i < spans.length && spans[i].kind === "delete") {
+      removed += spans[i].text;
       i += 1;
     }
     let inserted = "";
-    while (i < spans.length && spans[i]!.kind === "insert") {
-      inserted += spans[i]!.text;
+    while (i < spans.length && spans[i].kind === "insert") {
+      inserted += spans[i].text;
       i += 1;
     }
     if (removed.length > 0 || inserted.length > 0) {
@@ -51,15 +51,15 @@ export function computeRevisionSpans(baseline: string, live: string): RevisionSp
   }
 
   const dp: number[][] = Array.from({ length: n + 1 }, () => Array<number>(m + 1).fill(0));
-  for (let i = 0; i <= n; i += 1) dp[i]![0] = i;
-  for (let j = 0; j <= m; j += 1) dp[0]![j] = j;
+  for (let i = 0; i <= n; i += 1) dp[i][0] = i;
+  for (let j = 0; j <= m; j += 1) dp[0][j] = j;
   for (let i = 1; i <= n; i += 1) {
     for (let j = 1; j <= m; j += 1) {
       const cost = a[i - 1] === b[j - 1] ? 0 : 1;
-      dp[i]![j] = Math.min(
-        dp[i - 1]![j - 1]! + cost,
-        dp[i - 1]![j]! + 1,
-        dp[i]![j - 1]! + 1,
+      dp[i][j] = Math.min(
+        dp[i - 1][j - 1] + cost,
+        dp[i - 1][j] + 1,
+        dp[i][j - 1] + 1,
       );
     }
   }
@@ -69,24 +69,24 @@ export function computeRevisionSpans(baseline: string, live: string): RevisionSp
   let j = m;
   while (i > 0 || j > 0) {
     if (i > 0 && j > 0 && a[i - 1] === b[j - 1]) {
-      raw.push({ kind: "equal", char: a[i - 1]! });
+      raw.push({ kind: "equal", char: a[i - 1] });
       i -= 1;
       j -= 1;
       continue;
     }
-    if (i > 0 && j > 0 && dp[i]![j] === dp[i - 1]![j - 1]! + 1) {
-      raw.push({ kind: "delete", char: a[i - 1]! });
-      raw.push({ kind: "insert", char: b[j - 1]! });
+    if (i > 0 && j > 0 && dp[i][j] === dp[i - 1][j - 1] + 1) {
+      raw.push({ kind: "delete", char: a[i - 1] });
+      raw.push({ kind: "insert", char: b[j - 1] });
       i -= 1;
       j -= 1;
       continue;
     }
-    if (i > 0 && dp[i]![j] === dp[i - 1]![j]! + 1) {
-      raw.push({ kind: "delete", char: a[i - 1]! });
+    if (i > 0 && dp[i][j] === dp[i - 1][j] + 1) {
+      raw.push({ kind: "delete", char: a[i - 1] });
       i -= 1;
       continue;
     }
-    raw.push({ kind: "insert", char: b[j - 1]! });
+    raw.push({ kind: "insert", char: b[j - 1] });
     j -= 1;
   }
   raw.reverse();
@@ -124,7 +124,7 @@ function foldOrphanDeleteBeforeEqual(spans: RevisionSpan[], baseline: string): R
       i += 4;
       continue;
     }
-    out.push(spans[i]!);
+    out.push(spans[i]);
     i += 1;
   }
   return out;

@@ -54,12 +54,12 @@ describe("segmentFindReplace", () => {
 
   it("buildFindMatchListItems includes segment number and time", () => {
     const segments = [seg("制控", 0), seg("其他", 1)];
-    segments[0]!.start_sec = 65;
-    segments[0]!.end_sec = 70;
+    segments[0].start_sec = 65;
+    segments[0].end_sec = 70;
     const matches = collectLiteralFindMatches(segments, "制");
     const items = buildFindMatchListItems(segments, matches);
     expect(items[0]?.segmentNumber).toBe(1);
-    expect(items[0]?.timeLabel).toBe(formatSegmentTimeLabel(segments[0]!));
+    expect(items[0]?.timeLabel).toBe(formatSegmentTimeLabel(segments[0]));
     expect(items[0]?.fullText).toBe("制控");
   });
 });

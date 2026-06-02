@@ -630,7 +630,7 @@ export function applyBeforeInputToLearnEditState(
     if (cur && isDeleteExtendingOp(cur, baselineAnchor, chunk)) {
       const ops = [...next.ops];
       const idx = next.activeIndex!;
-      const op = ops[idx]!;
+      const op = ops[idx];
       if (baselineAnchor + chunk.length === op.anchor) {
         ops[idx] = { ...op, anchor: baselineAnchor, removed: chunk + op.removed };
       } else {
@@ -696,7 +696,7 @@ export function applyBeforeInputToLearnEditState(
 
     const ops = [...next.ops];
     const idx = next.activeIndex!;
-    ops[idx] = { ...ops[idx]!, inserted: ops[idx]!.inserted + inserted };
+    ops[idx] = { ...ops[idx], inserted: ops[idx].inserted + inserted };
     return { ops, activeIndex: idx };
   }
 

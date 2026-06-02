@@ -39,7 +39,7 @@ vi.mock("../services/ui/toast", () => ({
 }));
 
 vi.mock("../services/asr/transcribeVocabularyPreflight", () => ({
-  loadTranscribeVocabularyPreflight: vi.fn(async () => ({
+  loadTranscribeVocabularyPreflight: vi.fn(() => Promise.resolve({
     hotwords: null,
     isOnlineMode: false,
     localSkuLabel: "SenseVoice 轻量（默认）",

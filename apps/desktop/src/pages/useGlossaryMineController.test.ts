@@ -64,13 +64,13 @@ describe("useGlossaryMineController", () => {
       result.current.toggleChecked("制控");
     });
 
-    await act(async () => {
-      result.current.adoptChecked();
+    act(() => {
+      void result.current.adoptChecked();
     });
 
+    await vi.waitFor(() => expect(onGlossaryChanged).toHaveBeenCalled());
     expect(glossaryAdd).toHaveBeenCalledWith(
       expect.objectContaining({ term: "制控", hotwordEnabled: true }),
     );
-    expect(onGlossaryChanged).toHaveBeenCalled();
   });
 });

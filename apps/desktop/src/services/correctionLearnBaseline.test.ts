@@ -68,7 +68,7 @@ describe("confirm learn baseline", () => {
   it("buildConfirmLearnBaseline uses focus baseline for confirmed segment", () => {
     const saved = [seg("u1", "敛喉")];
     const live = [seg("u1", "敛喉")];
-    const key = segmentDraftKey(live[0]!, 0);
+    const key = segmentDraftKey(live[0], 0);
     segmentDraftStore.setLearnFocusBaseline(key, "脸喉");
     expect(buildConfirmLearnBaseline(saved, 0, live)).toEqual([{ uid: "u1", text: "脸喉" }]);
   });

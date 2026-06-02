@@ -49,14 +49,14 @@ export function summarizeHistoryHeadline(detail: string, kind: string): string {
   if (parsed) {
     const n = parsed.text_changes.length;
     if (n === 1) {
-      const c = parsed.text_changes[0]!;
+      const c = parsed.text_changes[0];
       return `语段 ${c.segment_idx + 1}：「${c.before}」→「${c.after}」`;
     }
     if (n > 1) {
       return `修改 ${n} 处语段正文`;
     }
     if (parsed.correction_pairs.length > 0) {
-      const p = parsed.correction_pairs[0]!;
+      const p = parsed.correction_pairs[0];
       return `纳入记忆：「${p.before}」→「${p.after}」`;
     }
     const count = Number.isFinite(parsed.count) ? `${parsed.count} 条语段` : "";

@@ -64,7 +64,7 @@ describe("learnEdit edge cases matrix", () => {
 
   it("PASS: 选区+paste / 两处不相邻改词", () => {
     const b = "尤其是山通道场";
-    let st = applyBeforeInputToLearnEditState(emptyLearnEditState(), b, b, b.indexOf("山通"), b.indexOf("山通") + 2, "insertFromPaste", "禅宗");
+    const st = applyBeforeInputToLearnEditState(emptyLearnEditState(), b, b, b.indexOf("山通"), b.indexOf("山通") + 2, "insertFromPaste", "禅宗");
     expect(hasLearnablePair(b, "尤其是禅宗道场", st)).toBe(true);
 
     const b2 = "如果这个展场里面有二十个扳手。";
@@ -121,7 +121,7 @@ describe("learnEdit edge cases matrix", () => {
     const baseline = "尤其是其道场";
     const live = "尤其是七道场";
     const start = baseline.indexOf("其");
-    let st = applyBeforeInputToLearnEditState(
+    const st = applyBeforeInputToLearnEditState(
       emptyLearnEditState(),
       baseline,
       baseline,
@@ -153,7 +153,7 @@ describe("learnEdit edge cases matrix", () => {
     const baseline = "只有这种视死，悟道的决心。";
     const live = "只有这种誓死，悟道的决心。";
     const start = baseline.indexOf("视死，");
-    let st = applyBeforeInputToLearnEditState(
+    const st = applyBeforeInputToLearnEditState(
       emptyLearnEditState(),
       baseline,
       baseline,

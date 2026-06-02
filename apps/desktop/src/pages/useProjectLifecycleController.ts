@@ -592,19 +592,27 @@ export function useProjectLifecycleController(
     canApplyCorrectionRules: correctionRules.canApplyCorrectionRules,
     correctionRulesBlockReason: correctionRules.correctionRulesBlockReason,
     correctionRulesDialog: correctionRules.correctionRulesDialog,
-    requestCorrectionRules: correctionRules.requestCorrectionRules,
-    confirmCorrectionRulesWriteback: correctionRules.confirmCorrectionRulesWriteback,
+    requestCorrectionRules: () => {
+      void correctionRules.requestCorrectionRules();
+    },
+    confirmCorrectionRulesWriteback: () => {
+      void correctionRules.confirmCorrectionRulesWriteback();
+    },
     cancelCorrectionRules: correctionRules.cancelCorrectionRules,
     canCorrectSuggestions: correctSuggestions.canCorrectSuggestions,
     correctSuggestionsBlockReason: correctSuggestions.correctSuggestionsBlockReason,
     correctSuggestionsDialog: correctSuggestions.correctSuggestionsDialog,
-    requestCorrectSuggestions: correctSuggestions.requestCorrectSuggestions,
+    requestCorrectSuggestions: (selectionOverride?: string) => {
+      void correctSuggestions.requestCorrectSuggestions(selectionOverride);
+    },
     applyCorrectSuggestion: correctSuggestions.applyCorrectSuggestion,
     cancelCorrectSuggestions: correctSuggestions.cancelCorrectSuggestions,
     openFindReplaceForCorrectSelection: correctSuggestions.openFindReplaceForCorrectSelection,
     glossaryLearnDialog: glossaryLearn.glossaryLearnDialog,
     dismissGlossaryLearnPrompt: glossaryLearn.dismissGlossaryLearnPrompt,
-    confirmAddToGlossary: glossaryLearn.confirmAddToGlossary,
+    confirmAddToGlossary: (row) => {
+      void glossaryLearn.confirmAddToGlossary(row);
+    },
     closeGlossaryLearnPrompt: glossaryLearn.closeGlossaryLearnPrompt,
     bumpLlmRuntimeChanged,
     closeGateOpen: closeGate.closeGateOpen,

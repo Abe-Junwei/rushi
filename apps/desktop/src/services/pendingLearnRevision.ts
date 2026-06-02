@@ -18,7 +18,7 @@ function coalesceRevisionChangeItems(items: RevisionChangeItem[]): RevisionChang
   const out: RevisionChangeItem[] = [];
   let i = 0;
   while (i < items.length) {
-    const cur = items[i]!;
+    const cur = items[i];
     const next = items[i + 1];
     if (next) {
       const curOnlyDel = cur.removed.length > 0 && cur.inserted.length === 0;

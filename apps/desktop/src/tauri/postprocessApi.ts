@@ -106,8 +106,10 @@ export async function postprocessRefineSegments(
   return await invoke<PostprocessRefineSegmentsResponse>("postprocess_refine_segments", { req });
 }
 
+export type LexiconEvidenceType = "rule" | "glossary" | "inconsistent_term";
+
 export type LexiconEvidence = {
-  type: "rule" | "glossary" | "inconsistent_term" | string;
+  type: LexiconEvidenceType;
   ref: string;
 };
 
