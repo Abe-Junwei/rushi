@@ -106,6 +106,54 @@ export async function postprocessRefineSegments(
   return await invoke<PostprocessRefineSegmentsResponse>("postprocess_refine_segments", { req });
 }
 
+export type LexiconEvidence = {
+  type: "rule" | "glossary" | "inconsistent_term" | string;
+  ref: string;
+};
+
+export type GroundedLexiconOp = {
+  uid: string;
+  text: string;
+  evidence: LexiconEvidence;
+};
+
+export interface PostprocessLexiconProofreadRequest {
+  task: "lexicon_proofread";
+  request_id?: string;
+  segments: RefineSegmentItem[];
+  runtime?: PostprocessRuntimeBridge;
+}
+
+export interface PostprocessLexiconProofreadResponse {
+  ops: SegmentRefineOp[];
+  items: GroundedLexiconOp[];
+  warnings?: string[];
+  rationale?: string;
+  packMeta?: {
+    glossaryCount: number;
+    rulesCount: number;
+    truncated?: boolean;
+  };
+  provider: string;
+  latencyMs: number;
+  latency_ms?: number;
+}
+
+export async function postprocessLexiconProofread(
+  req: PostprocessLexiconProofreadRequest,
+): Promise<PostprocessLexiconProofreadResponse> {
+  return await invoke<PostprocessLexiconProofreadResponse>("postprocess_lexicon_proofread", {
+    req,
+  });
+}
+
+export async function correctionAcceptRule(
+  beforeText: string,
+  afterText: string,
+): Promise<void> {
+  await invoke("correction_accept_rule", { beforeText, afterText });
+}
+
 export async function llmSaveApiKey(req: LlmApiKeyRequest): Promise<string> {
   return await invoke<string>("llm_save_api_key", { req });
 }

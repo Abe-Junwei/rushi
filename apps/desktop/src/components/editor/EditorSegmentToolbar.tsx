@@ -1,4 +1,4 @@
-import { History, Minus, Plus, Redo2, Scissors, Sparkles, Undo2 } from "lucide-react";
+import { BookMarked, History, Minus, Plus, Redo2, Scissors, Sparkles, Undo2 } from "lucide-react";
 import { useEffect, useRef } from "react";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
@@ -94,6 +94,31 @@ export function EditorSegmentToolbar({
           <span className="inline-flex items-center gap-1.5">
             <Scissors className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
             {c.segmentRefineDialog.phase === "loading" ? "处理中..." : "段界整理"}
+          </span>
+        </button>
+        <button
+          type="button"
+          className={[
+            appearanceBtnBase,
+            "px-2.5",
+            c.lexiconProofreadDialog.phase === "loading"
+              ? "bg-notion-sidebar text-notion-text"
+              : "text-notion-text-muted hover:bg-notion-sidebar-hover hover:text-notion-text",
+          ].join(" ")}
+          disabled={!c.canLexiconProofread || c.lexiconProofreadDialog.phase === "loading"}
+          onClick={() => void c.requestLexiconProofread()}
+          aria-label="AI 校对（词表）"
+          title={
+            c.busy
+              ? "处理中"
+              : c.canLexiconProofread
+                ? "依据术语表与纠错记忆校对专名/术语（需确认）"
+                : (c.lexiconProofreadBlockReason ?? "词表校对不可用")
+          }
+        >
+          <span className="inline-flex items-center gap-1.5">
+            <BookMarked className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+            {c.lexiconProofreadDialog.phase === "loading" ? "处理中..." : "词表校对"}
           </span>
         </button>
         <button

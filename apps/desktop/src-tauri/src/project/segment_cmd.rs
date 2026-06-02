@@ -1,4 +1,6 @@
-use super::correction::{load_file_segment_texts, update_correction_memory_from_save};
+use super::correction::{
+    accept_correction_rule, load_file_segment_texts, update_correction_memory_from_save,
+};
 use super::segment_media_sanitize::sanitize_segments_for_media;
 use super::segment_uid::segment_uid_or_new;
 use super::transcribe_timeout::probe_audio_duration_sec;
@@ -173,4 +175,14 @@ pub fn file_save_segments(
     segments: Vec<SegmentDto>,
 ) -> Result<(), String> {
     file_save_segments_inner(state.deref(), &file_id, &segments)
+}
+
+#[tauri::command]
+pub fn correction_accept_rule(
+    state: State<DbState>,
+    before_text: String,
+    after_text: String,
+) -> Result<(), String> {
+    let conn = open_db(state.deref())?;
+    accept_correction_rule(&conn, &before_text, &after_text, now_ms())
 }

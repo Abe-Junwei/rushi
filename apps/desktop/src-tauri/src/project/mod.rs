@@ -5,6 +5,7 @@ pub mod app_data_paths;
 pub mod asr_cache_cmd;
 pub mod asr_runtime_paths_cmd;
 pub mod correction;
+pub mod lexicon_pack;
 pub mod export_cmd;
 pub mod file_cmd;
 pub mod glossary_aliases;

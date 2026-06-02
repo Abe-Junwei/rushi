@@ -2,6 +2,7 @@ import type { ProjectDetail, ProjectSummary, SegmentDto } from "../tauri/project
 import type { DocxExportMode } from "../tauri/exportDocxApi";
 import type { SegmentOverlapPolicy } from "../utils/segmentTimeRange";
 import type { SegmentRefineDialogState } from "./useSegmentRefineController";
+import type { LexiconProofreadDialogState } from "./useLexiconProofreadController";
 import type { AutoPunctuateDialogState } from "./useAutoPunctuateController";
 import type { BusyReason } from "./useProjectCrudController";
 
@@ -90,6 +91,16 @@ export interface ProjectLifecycleApi {
   confirmSegmentRefineConsent: () => void;
   confirmSegmentRefineWriteback: () => void;
   cancelSegmentRefine: () => void;
+  canLexiconProofread: boolean;
+  lexiconProofreadBlockReason: string | null;
+  lexiconProofreadDialog: LexiconProofreadDialogState;
+  requestLexiconProofread: () => void;
+  confirmLexiconProofreadConsent: () => void;
+  confirmLexiconProofreadWriteback: () => void;
+  setLexiconAcceptRulesOnWriteback: (value: boolean) => void;
+  toggleLexiconProofreadOp: (index: number, selected: boolean) => void;
+  setAllLexiconProofreadOps: (selected: boolean) => void;
+  cancelLexiconProofread: () => void;
   bumpLlmRuntimeChanged: () => void;
   closeGateOpen: boolean;
   closeGateIntent: "app-quit" | "navigate";

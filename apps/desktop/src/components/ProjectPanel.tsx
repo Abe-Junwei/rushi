@@ -5,6 +5,7 @@ import { EnvironmentPanel } from "./EnvironmentPanel";
 import { FloatingPanelTemplate } from "./PanelTemplate";
 import { AutoPunctuatePreviewDialog } from "./AutoPunctuatePreviewDialog";
 import { SegmentRefinePreviewDialog } from "./SegmentRefinePreviewDialog";
+import { LexiconProofreadPreviewDialog } from "./LexiconProofreadPreviewDialog";
 import { TranscribeOverwriteConfirmDialog } from "./TranscribeOverwriteConfirmDialog";
 import { EditorView } from "./EditorView";
 
@@ -232,6 +233,16 @@ export function ProjectPanel() {
         onCancel={c.cancelSegmentRefine}
         onConfirmConsent={c.confirmSegmentRefineConsent}
         onConfirmWriteback={c.confirmSegmentRefineWriteback}
+      />
+
+      <LexiconProofreadPreviewDialog
+        state={c.lexiconProofreadDialog}
+        onCancel={c.cancelLexiconProofread}
+        onConfirmConsent={c.confirmLexiconProofreadConsent}
+        onConfirmWriteback={c.confirmLexiconProofreadWriteback}
+        onAcceptRulesChange={c.setLexiconAcceptRulesOnWriteback}
+        onToggleOp={c.toggleLexiconProofreadOp}
+        onSelectAllOps={c.setAllLexiconProofreadOps}
       />
 
       <TranscribeOverwriteConfirmDialog

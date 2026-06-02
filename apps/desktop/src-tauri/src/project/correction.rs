@@ -109,6 +109,29 @@ pub fn update_correction_memory_from_save(
     Ok(())
 }
 
+pub fn accept_correction_rule(
+    conn: &Connection,
+    before_text: &str,
+    after_text: &str,
+    at_ms: i64,
+) -> Result<(), String> {
+    let before_text = before_text.trim();
+    let after_text = after_text.trim();
+    if before_text.is_empty() || after_text.is_empty() || before_text == after_text {
+        return Err("纠错规则前后文本无效。".to_string());
+    }
+    conn.execute(
+        "INSERT INTO correction_memory \
+         (before_text, after_text, hit_count, accepted_as_rule, created_at_ms, updated_at_ms)\
+         VALUES (?1, ?2, 1, 1, ?3, ?3)\
+         ON CONFLICT(before_text, after_text)\
+         DO UPDATE SET accepted_as_rule = 1, updated_at_ms = excluded.updated_at_ms",
+        params![before_text, after_text, at_ms],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
+
 pub fn collect_correction_rule_hints(
     conn: &Connection,
     segments: &[SegmentDto],

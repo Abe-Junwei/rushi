@@ -337,7 +337,11 @@ export function llmAutoPunctuateCapabilityBadge(status: LlmConnectionUiStatus): 
 
 export function llmKeychainReferenceMessage(apiKeyId: string | null, keychainPresent: boolean | null): string {
   const label = apiKeyId ? (normalizeLlmApiKeyId(apiKeyId) ?? DEFAULT_LLM_API_KEY_ID) : null;
-  const store = "系统密钥库（macOS 钥匙串 / Windows 凭据管理器；不可用时回退为应用数据目录下的受保护文件）";
+  const store =
+    typeof navigator !== "undefined" &&
+    /Mac/i.test(navigator.platform || navigator.userAgent || "")
+      ? "应用数据目录下的受保护文件（macOS 默认不走钥匙串，避免反复弹登录密码）"
+      : "系统密钥库（Windows 凭据管理器；不可用时回退为应用数据目录下的受保护文件）";
   if (!label) return `${store}：当前未保存 API Key。`;
   if (keychainPresent === null) return `${store}：正在检查已保存引用（标识：${label}）…`;
   if (keychainPresent) {

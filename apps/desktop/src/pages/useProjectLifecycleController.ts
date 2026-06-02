@@ -10,6 +10,7 @@ import { useProjectListState } from "./useProjectListState";
 import { useProjectEditorState } from "./useProjectEditorState";
 import { useAutoPunctuateController } from "./useAutoPunctuateController";
 import { useSegmentRefineController } from "./useSegmentRefineController";
+import { useLexiconProofreadController } from "./useLexiconProofreadController";
 import { useLlmKeychainReady } from "../hooks/useLlmKeychainReady";
 import {
   useProjectCloseGateController,
@@ -237,6 +238,23 @@ export function useProjectLifecycleController(
     llmKeychainChecking,
   });
 
+  const lexiconProofread = useLexiconProofreadController({
+    busy,
+    transcribePreviewActive: busy && busyReason === "transcribe",
+    currentFileId,
+    selectedIdx,
+    segments,
+    segmentsRef,
+    flushSegmentTextDrafts: mutations.flushSegmentTextDrafts,
+    setSegments,
+    setSelectedIdx,
+    pushUndo: mutations.pushUndo,
+    setError,
+    llmRuntimeEpoch,
+    llmKeychainReady,
+    llmKeychainChecking,
+  });
+
   const openAppDataFolder = useCallback(async () => {
     if (busy) return;
     setError("");
@@ -302,6 +320,16 @@ export function useProjectLifecycleController(
     confirmSegmentRefineConsent: segmentRefine.confirmSegmentRefineConsent,
     confirmSegmentRefineWriteback: segmentRefine.confirmSegmentRefineWriteback,
     cancelSegmentRefine: segmentRefine.cancelSegmentRefine,
+    canLexiconProofread: lexiconProofread.canLexiconProofread,
+    lexiconProofreadBlockReason: lexiconProofread.lexiconProofreadBlockReason,
+    lexiconProofreadDialog: lexiconProofread.lexiconProofreadDialog,
+    requestLexiconProofread: lexiconProofread.requestLexiconProofread,
+    confirmLexiconProofreadConsent: lexiconProofread.confirmLexiconProofreadConsent,
+    confirmLexiconProofreadWriteback: lexiconProofread.confirmLexiconProofreadWriteback,
+    setLexiconAcceptRulesOnWriteback: lexiconProofread.setLexiconAcceptRulesOnWriteback,
+    toggleLexiconProofreadOp: lexiconProofread.toggleLexiconProofreadOp,
+    setAllLexiconProofreadOps: lexiconProofread.setAllLexiconProofreadOps,
+    cancelLexiconProofread: lexiconProofread.cancelLexiconProofread,
     bumpLlmRuntimeChanged,
     closeGateOpen: closeGate.closeGateOpen,
     closeGateIntent: closeGate.closeGateIntent,
