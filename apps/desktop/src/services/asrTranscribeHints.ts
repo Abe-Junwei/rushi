@@ -19,6 +19,16 @@ export function deriveTranscribeHints(engine: string, warnings: string[], segmen
   if (warnings.some((w) => w.includes("hotwords_ignored_stub"))) {
     hints.push("本地术语已作为热词提交，但 stub 不会使用；配置 FunASR 后重新拉取可生效。");
   }
+  if (warnings.some((w) => w.startsWith("funasr_skipped:"))) {
+    hints.push(
+      "FunASR 未参与本次识别（侧车未就绪或模型未配置），已降级为 stub；请完成环境与 ASR 中的模型准备后重新拉取。",
+    );
+  }
+  if (warnings.some((w) => w.includes("stub_no_placeholder_segment"))) {
+    hints.push(
+      "FunASR 未产出语段（未安装、模型未准备或运行失败）；可在波形上手动新建语段，或先完成本机 ASR 准备。",
+    );
+  }
   if (warnings.some((w) => w.includes("hotword_param_unsupported"))) {
     hints.push("当前 FunASR 未接受热词参数，已自动回退；可升级 rushi-asr 依赖或忽略。");
   }

@@ -63,13 +63,9 @@ pub async fn set_local_asr_recognition_language_pref(
     state: State<'_, DbState>,
 ) -> Result<(), String> {
     let normalized = normalize_funasr_language(Some(&language));
-    let prev = read_language_pref(state.inner());
     write_language_pref(state.inner(), normalized)?;
-    let restart = restart_sidecar.unwrap_or(true);
-    if !restart || prev == normalized {
-        return Ok(());
-    }
-    if std::env::var("RUSHI_SKIP_BUNDLED_ASR").ok().as_deref() != Some("1") {
+    if restart_sidecar == Some(true) && crate::asr_sidecar::app_manages_bundled_sidecar() {
+        let app = app.clone();
         tauri::async_runtime::spawn_blocking(move || {
             crate::asr_sidecar::force_restart_bundled(&app);
         })

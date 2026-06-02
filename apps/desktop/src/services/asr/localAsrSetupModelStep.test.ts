@@ -33,6 +33,9 @@ vi.mock("../../config/env", () => ({
   isDefaultBundledAsrTarget: () => true,
 }));
 
+const asrAppManagesBundledSidecar = vi.fn<() => Promise<boolean>>();
+const killLoopbackAsrListeners = vi.fn<() => Promise<void>>();
+
 vi.mock("../../tauri/projectApi", () => ({
   getLocalAsrHubModelPref: () => getLocalAsrHubModelPref(),
   setLocalAsrHubModelPref: (hub: string, options?: { restartSidecar?: boolean }) =>
@@ -43,6 +46,8 @@ vi.mock("../../tauri/projectApi", () => ({
     options?: { restartSidecar?: boolean },
   ) => setLocalAsrRecognitionLanguagePref(language, options),
   retryBundledAsrSidecar: () => retryBundledAsrSidecar(),
+  asrAppManagesBundledSidecar: () => asrAppManagesBundledSidecar(),
+  killLoopbackAsrListeners: () => killLoopbackAsrListeners(),
 }));
 
 vi.mock("./asrHealthSnapshot", () => ({
@@ -73,7 +78,11 @@ describe("syncBundledSidecarToPreferredHub", () => {
     setLocalAsrHubModelPref.mockReset();
     getLocalAsrRecognitionLanguagePref.mockReset();
     setLocalAsrRecognitionLanguagePref.mockReset();
+    retryBundledAsrSidecar.mockReset();
     fetchAsrHealthCaps.mockReset();
+    retryBundledAsrSidecar.mockResolvedValue(undefined);
+    setLocalAsrHubModelPref.mockResolvedValue(undefined);
+    setLocalAsrRecognitionLanguagePref.mockResolvedValue(undefined);
     getLocalAsrHubModelPref.mockResolvedValue("iic/SenseVoiceSmall");
     getLocalAsrRecognitionLanguagePref.mockResolvedValue("zh");
     setLocalAsrHubModelPref.mockResolvedValue(undefined);
@@ -86,7 +95,10 @@ describe("syncBundledSidecarToPreferredHub", () => {
     const restarted = await syncBundledSidecarToPreferredHub(selection);
 
     expect(restarted).toBe(false);
-    expect(setLocalAsrHubModelPref).not.toHaveBeenCalled();
+    expect(retryBundledAsrSidecar).not.toHaveBeenCalled();
+    expect(setLocalAsrHubModelPref).toHaveBeenCalledWith("iic/SenseVoiceSmall", {
+      restartSidecar: false,
+    });
   });
 });
 
@@ -97,8 +109,12 @@ describe("applyHubModelToSidecar", () => {
     getLocalAsrRecognitionLanguagePref.mockReset();
     setLocalAsrRecognitionLanguagePref.mockReset();
     retryBundledAsrSidecar.mockReset();
+    asrAppManagesBundledSidecar.mockReset();
+    killLoopbackAsrListeners.mockReset();
     fetchAsrHealthCaps.mockReset();
     pollLoopbackHealthUntil.mockReset();
+    asrAppManagesBundledSidecar.mockResolvedValue(true);
+    killLoopbackAsrListeners.mockResolvedValue(undefined);
     getLocalAsrHubModelPref.mockResolvedValue("iic/SenseVoiceSmall");
     getLocalAsrRecognitionLanguagePref.mockResolvedValue("zh");
     setLocalAsrHubModelPref.mockResolvedValue(undefined);
@@ -106,14 +122,12 @@ describe("applyHubModelToSidecar", () => {
     retryBundledAsrSidecar.mockResolvedValue(undefined);
   });
 
-  it("waits for loopback after switching hub pref", async () => {
-    getLocalAsrHubModelPref.mockResolvedValue("iic/other");
+  it("writes prefs, restarts bundled sidecar, and waits for loopback config", async () => {
     fetchAsrHealthCaps.mockResolvedValue({
       ...readyCaps,
       funasr_model_id: "iic/other",
     });
     pollLoopbackHealthUntil.mockResolvedValue({
-      funasr_ready: true,
       funasr_model_id: "iic/SenseVoiceSmall",
       funasr_language: "zh",
     });
@@ -124,8 +138,33 @@ describe("applyHubModelToSidecar", () => {
     expect(setLocalAsrRecognitionLanguagePref).toHaveBeenCalledWith("zh", {
       restartSidecar: false,
     });
-    expect(setLocalAsrHubModelPref).toHaveBeenCalledWith("iic/SenseVoiceSmall", undefined);
-    expect(retryBundledAsrSidecar).not.toHaveBeenCalled();
+    expect(setLocalAsrHubModelPref).toHaveBeenCalledWith("iic/SenseVoiceSmall", {
+      restartSidecar: false,
+    });
+    expect(retryBundledAsrSidecar).toHaveBeenCalled();
+    expect(pollLoopbackHealthUntil).toHaveBeenCalled();
+  });
+
+  it("restarts source sidecar and waits when bundled is not managed", async () => {
+    asrAppManagesBundledSidecar.mockResolvedValue(false);
+    fetchAsrHealthCaps.mockResolvedValue({
+      ...readyCaps,
+      funasr_model_id: "iic/other",
+    });
+    pollLoopbackHealthUntil.mockResolvedValue({
+      funasr_model_id:
+        "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
+      funasr_language: "zh",
+    });
+
+    const result = await applyHubModelToSidecar({
+      ...selection,
+      selectedHubModelId:
+        "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
+    });
+
+    expect(result.ok).toBe(true);
+    expect(retryBundledAsrSidecar).toHaveBeenCalled();
     expect(pollLoopbackHealthUntil).toHaveBeenCalled();
   });
 });

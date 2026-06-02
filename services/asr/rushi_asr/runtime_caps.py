@@ -40,6 +40,7 @@ def get_runtime_caps() -> dict[str, object]:
     ready_for_transcribe = bool(runtime_ready and required_models_cached)
     transcription_mode: str = "funasr" if ready_for_transcribe else "stub"
     models_root = os.environ.get("RUSHI_MODELS_ROOT", "").strip() or None
+    local_token_required = bool(os.environ.get("RUSHI_LOCAL_TOKEN", "").strip())
 
     return {
         "ffmpeg_ok": ffmpeg_ok,
@@ -60,4 +61,5 @@ def get_runtime_caps() -> dict[str, object]:
         "funasr_loaded_model_id": loaded_funasr_model_id(),
         "funasr_language": effective_funasr_language(),
         "rushi_models_root": models_root,
+        "local_token_required": local_token_required,
     }

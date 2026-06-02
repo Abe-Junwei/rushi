@@ -17,25 +17,27 @@
 
 ## ASR-VOC-1 — 转写前可见性（1–2d）
 
+> **编码**：2026-05-31 起 ASR-VOC-1 实现中
+
 ### 功能
 
-- [ ] 打开「覆盖并拉取」确认框时，展示 `glossary_hotwords_preview` 摘要（token 数、字符、截断、dropped）
-- [ ] 同屏展示 **本机 SKU 名称**（当前选中 hub 对应 catalog label）
-- [ ] 同屏展示 **在线术语通道**一行（`glossaryBiasSummaryForProviderId` 或等价；不支持时明确「未传入厂商 API」）
-- [ ] `enabledEntryCount===0` 时轻提示添加专名（不阻断转写）
-- [ ] 选 **SenseVoice** 且词表非空时，额外一句「热词效果可能弱于 Paraformer」类说明
-- [ ] 首次拉取（无覆盖对话框）时，转写入口可见 **一行** 摘要或等价 tooltip（与确认框文案一致）
+- [x] 打开「覆盖并拉取」确认框时，展示 `glossary_hotwords_preview` 摘要（token 数、字符、截断、dropped）
+- [x] 同屏展示 **本机 SKU 名称**（当前选中 hub 对应 catalog label）
+- [x] 同屏展示 **在线术语通道**一行（`glossaryBiasSummaryForProviderId` 或等价；不支持时明确「未传入厂商 API」）
+- [x] `enabledEntryCount===0` 时轻提示添加专名（不阻断转写）
+- [x] 选 **SenseVoice** 且词表非空时，额外一句「热词效果可能弱于 Paraformer」类说明
+- [x] 首次拉取（无覆盖对话框）时，转写入口可见 **一行** 摘要或等价 tooltip（与确认框文案一致）
 
 ### 转写后（补强）
 
-- [ ] `warnings` 含 `funasr_skipped:` → hints 可读说明
-- [ ] `warnings` 含 `stub_no_placeholder_segment` → hints 可读说明
+- [x] `warnings` 含 `funasr_skipped:` → hints 可读说明
+- [x] `warnings` 含 `stub_no_placeholder_segment` → hints 可读说明
 - [ ] 既有：`hotwords_ignored_stub`、`hotword_param_unsupported`、`hotwords_truncated_12k`、`online_vocabulary_*` 仍通过 `deriveTranscribeHints`
 
 ### 测试
 
-- [ ] `transcribeVocabularyPreflight.test.ts`（或同名）覆盖：空词表、截断、unsupported channel、SenseVoice 注记
-- [ ] `asrTranscribeHints.test.ts` 新增 skipped/stub 用例
+- [x] `transcribeVocabularyPreflight.test.ts`（或同名）覆盖：空词表、截断、unsupported channel、SenseVoice 注记
+- [x] `asrTranscribeHints.test.ts` 新增 skipped/stub 用例
 
 ### 手测（可选，3 条）
 

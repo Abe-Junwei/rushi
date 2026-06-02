@@ -1,7 +1,8 @@
 import { memo, useEffect, useRef, useState } from "react";
 import type { ProjectControllerApi } from "../pages/useProjectController";
 import * as fileApi from "../tauri/fileApi";
-import { ArrowLeft, Download, FileInput, FileOutput, Settings, Square } from "lucide-react";
+import { Download, FileInput, FileOutput, Settings, Square } from "lucide-react";
+import { EditorWorkspaceNav } from "./EditorWorkspaceNav";
 import { CONTROL_BTN_DANGER } from "../config/controlStyles";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 const ghostBtn =
@@ -16,7 +17,6 @@ interface EditorToolbarProps {
   onExportSelect: (key: string) => void;
   projectName: string;
   currentFileName: string;
-  onBack: () => void;
   onOpenEnvironment: () => void;
 }
 export const EditorToolbar = memo(function EditorToolbar({
@@ -25,7 +25,6 @@ export const EditorToolbar = memo(function EditorToolbar({
   onExportSelect,
   projectName,
   currentFileName,
-  onBack,
   onOpenEnvironment,
 }: EditorToolbarProps) {
   const [pendingImport, setPendingImport] = useState<null | "audio" | "text" | "bundle">(null);
@@ -102,31 +101,21 @@ export const EditorToolbar = memo(function EditorToolbar({
 
   return (
     <div className="toolbar-popover-root z-[90] shrink-0 border-b border-notion-divider bg-notion-bg px-page-margin">
-      <div className="flex h-12 flex-nowrap items-center gap-3 overflow-visible">
-        <div className="mr-auto flex min-w-0 items-center gap-2.5 pr-2">
-          <button
-            type="button"
-            className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent text-notion-text-muted transition-colors hover:bg-notion-sidebar-hover hover:text-zen-saffron disabled:cursor-not-allowed disabled:opacity-40"
-            disabled={c.busy}
-            onClick={onBack}
-            aria-label="返回 Dashboard"
-          >
-            <ArrowLeft className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-          </button>
-          <div className="min-w-0 max-w-[14rem] sm:max-w-[18rem] lg:max-w-[24rem] xl:max-w-[28rem]">
-            <p className="truncate text-[14px] font-semibold tracking-tight text-notion-text">
-              <span>{projectName}</span>
-              <span className="px-1 text-notion-text-light">\</span>
-              <span className="text-[12px] font-medium text-notion-text-muted">{currentFileName}</span>
-            </p>
-          </div>
-        </div>
+      <div className="flex h-12 min-w-0 flex-nowrap items-center gap-2 overflow-visible">
+        <EditorWorkspaceNav
+          projectName={projectName}
+          currentLabel={currentFileName}
+          fileOpen
+          onBack={() => c.closeFile()}
+          onProjectHome={() => c.closeFile()}
+          disabled={c.busy}
+        />
 
-        <span className="shrink-0 whitespace-nowrap text-[11px] text-notion-text-muted">
+        <span className="hidden shrink-0 whitespace-nowrap text-[11px] text-notion-text-muted sm:inline">
           {c.prepareModelBusy ? "模型准备中，可继续编辑" : ""}
         </span>
 
-        <div className="ml-auto flex shrink-0 items-center gap-2">
+        <div className="flex shrink-0 items-center gap-2">
           <button
             type="button"
             className={ghostBtn}
@@ -262,7 +251,6 @@ function areEditorToolbarPropsEqual(prev: EditorToolbarProps, next: EditorToolba
     prev.projectName === next.projectName &&
     prev.currentFileName === next.currentFileName &&
     prev.onExportSelect === next.onExportSelect &&
-    prev.onBack === next.onBack &&
     prev.onOpenEnvironment === next.onOpenEnvironment &&
     prev.controller.current?.id === next.controller.current?.id &&
     prev.controller.currentFileId === next.controller.currentFileId &&

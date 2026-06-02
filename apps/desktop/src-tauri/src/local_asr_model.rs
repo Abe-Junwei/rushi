@@ -57,13 +57,11 @@ pub async fn set_local_asr_hub_model_pref(
     if hub.is_empty() {
         return Err("hub_model_id 不能为空".into());
     }
-    let prev = read_hub_model_pref(state.inner());
     write_hub_model_pref(state.inner(), hub)?;
-    let restart = restart_sidecar.unwrap_or(true);
-    if !restart || prev.as_deref() == Some(hub) {
-        return Ok(());
-    }
-    if std::env::var("RUSHI_SKIP_BUNDLED_ASR").ok().as_deref() != Some("1") {
+    // Restart is explicit via `retry_bundled_asr_sidecar` / apply-model flow — avoid
+    // skipping restart when pref file already matches but the running process is stale.
+    if restart_sidecar == Some(true) && crate::asr_sidecar::app_manages_bundled_sidecar() {
+        let app = app.clone();
         tauri::async_runtime::spawn_blocking(move || {
             crate::asr_sidecar::force_restart_bundled(&app);
         })

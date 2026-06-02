@@ -11,17 +11,28 @@ import { useProjectEditorState } from "./useProjectEditorState";
 import { useAutoPunctuateController } from "./useAutoPunctuateController";
 import { useSegmentRefineController } from "./useSegmentRefineController";
 import { useLexiconProofreadController } from "./useLexiconProofreadController";
+import { useFindReplaceController } from "./useFindReplaceController";
+import { useCorrectionRulesController } from "./useCorrectionRulesController";
+import { useCorrectSuggestionsController } from "./useCorrectSuggestionsController";
+import { useGlossaryLearnPromptController } from "./useGlossaryLearnPromptController";
 import { useLlmKeychainReady } from "../hooks/useLlmKeychainReady";
 import {
   useProjectCloseGateController,
   type ProjectCloseGateControllerApi,
 } from "./useProjectCloseGateController";
 import { useSegmentDirtyState } from "./useSegmentDirtyState";
+import { useAutoSaveSegments } from "./useAutoSaveSegments";
 import {
   useTranscribeJobController,
   type LocalTranscribePreflight,
 } from "./useTranscribeJobController";
-import { findSegmentIndexByUid, normalizeSegmentList, prepareSegmentsForPersist } from "./segmentListHelpers";
+import {
+  findSegmentIndexByUid,
+  normalizeSegmentList,
+  prepareSegmentsForPersist,
+  segmentsEqualForPersist,
+} from "./segmentListHelpers";
+import { toast } from "../services/ui/toast";
 import type { ProjectLifecycleApi } from "./ProjectLifecycleApi";
 
 export type { ProjectLifecycleApi } from "./ProjectLifecycleApi";
@@ -30,6 +41,7 @@ export type { LocalTranscribePreflight };
 
 export function useProjectLifecycleController(
   localTranscribePreflight: LocalTranscribePreflight = () => null,
+  sttOnlineRuntimeEpoch = 0,
 ): ProjectLifecycleApi {
   const { busy, busyReason, beginBusy, endBusy } = useProjectBusyState();
   const [error, setError] = useState<string>("");
@@ -72,12 +84,24 @@ export function useProjectLifecycleController(
     flushSegmentTextDrafts: mutations.flushSegmentTextDrafts,
   });
 
-  const saveSegments = useCallback(async (): Promise<boolean> => {
-    if (busy || !current || !currentFileId) {
+  const glossaryLearn = useGlossaryLearnPromptController({ setError });
+
+  const saveInFlightRef = useRef(false);
+  const clearAutoSaveRef = useRef<() => void>(() => {});
+  const notifySegmentsPersistedRef = useRef<() => void>(() => {});
+
+  const saveSegments = useCallback(async (options?: { quiet?: boolean }): Promise<boolean> => {
+    if (saveInFlightRef.current) return false;
+    if (!current || !currentFileId) {
       setError("请先打开一个文件后再保存");
       return false;
     }
-    beginBusy("save");
+    if (busy) {
+      setError("处理中，请稍候再保存");
+      return false;
+    }
+    clearAutoSaveRef.current();
+    saveInFlightRef.current = true;
     setError("");
     try {
       mutations.flushSegmentTextDrafts();
@@ -87,24 +111,66 @@ export function useProjectLifecycleController(
         p1.projectLoad(current.id),
         fileApi.loadFile(currentFileId),
       ]);
-      setCurrent(projectDetail);
+      setCurrent((prev) =>
+        prev?.id === projectDetail.id && prev.updated_at_ms === projectDetail.updated_at_ms
+          ? prev
+          : projectDetail,
+      );
       const prevUid = segmentsRef.current[selectedIdxRef.current]?.uid;
       const segs = normalizeSegmentList(fileDetail.segments);
-      segmentsRef.current = segs;
-      setSegments(segs);
-      dirty.setSavedSnapshot(segs);
-      const ni = findSegmentIndexByUid(segs, prevUid);
-      setSelectedIdx(
-        ni >= 0 ? ni : Math.min(selectedIdxRef.current, Math.max(0, segs.length - 1)),
-      );
+      const snapshotBase = segmentsEqualForPersist(segs, segmentsRef.current)
+        ? segmentsRef.current
+        : segs;
+      if (!segmentsEqualForPersist(segs, segmentsRef.current)) {
+        segmentsRef.current = segs;
+        setSegments(segs);
+        const ni = findSegmentIndexByUid(segs, prevUid);
+        setSelectedIdx(
+          ni >= 0 ? ni : Math.min(selectedIdxRef.current, Math.max(0, segs.length - 1)),
+        );
+      }
+      dirty.setSavedSnapshot(snapshotBase);
+      notifySegmentsPersistedRef.current();
+      if (!options?.quiet) {
+        toast.success("保存成功");
+      }
+      void glossaryLearn.checkGlossaryLearnAfterSave();
       return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
       return false;
     } finally {
-      endBusy();
+      saveInFlightRef.current = false;
     }
-  }, [busy, current, currentFileId, mutations, dirty, beginBusy, endBusy, setCurrent, setSegments, setSelectedIdx, segmentsRef, selectedIdxRef]);
+  }, [
+    busy,
+    current,
+    currentFileId,
+    mutations,
+    dirty,
+    setCurrent,
+    setSegments,
+    setSelectedIdx,
+    segmentsRef,
+    selectedIdxRef,
+    glossaryLearn.checkGlossaryLearnAfterSave,
+  ]);
+
+  const autoSave = useAutoSaveSegments({
+    enabled: Boolean(currentFileId),
+    currentFileId,
+    segments,
+    busy,
+    saveInFlightRef,
+    hasUnsavedSegmentChanges: dirty.hasUnsavedSegmentChanges,
+    saveSegments,
+    registerClearScheduled: (fn) => {
+      clearAutoSaveRef.current = fn;
+    },
+    registerOnPersisted: (fn) => {
+      notifySegmentsPersistedRef.current = fn;
+    },
+  });
 
   const applyDetailBaseOnly = useCallback(
     (d: ProjectDetail) => {
@@ -135,6 +201,7 @@ export function useProjectLifecycleController(
     },
     mutations,
     localTranscribePreflight,
+    sttOnlineRuntimeEpoch,
   });
 
   const applyDetail = useCallback(
@@ -255,6 +322,38 @@ export function useProjectLifecycleController(
     llmKeychainChecking,
   });
 
+  const findReplace = useFindReplaceController({
+    busy,
+    currentFileId,
+    segments,
+    segmentsRef,
+    selectedIdx,
+    flushSegmentTextDrafts: mutations.flushSegmentTextDrafts,
+    setSelectedIdx,
+    updateSegmentText: mutations.updateSegmentText,
+    setSegments,
+    pushUndo: mutations.pushUndo,
+    saveSegments,
+  });
+
+  const correctSuggestions = useCorrectSuggestionsController({
+    busy,
+    currentFileId,
+    openFindReplace: findReplace.openFindReplace,
+    setError,
+  });
+
+  const correctionRules = useCorrectionRulesController({
+    busy,
+    currentFileId,
+    segments,
+    segmentsRef,
+    flushSegmentTextDrafts: mutations.flushSegmentTextDrafts,
+    setSegments,
+    pushUndo: mutations.pushUndo,
+    setError,
+  });
+
   const openAppDataFolder = useCallback(async () => {
     if (busy) return;
     setError("");
@@ -284,6 +383,7 @@ export function useProjectLifecycleController(
     transcribePreviewActive: busy && busyReason === "transcribe",
     transcribeOverwriteDialogOpen: transcribeJob.overwriteDialogOpen,
     transcribeOverwriteSegmentCount: transcribeJob.overwriteSegmentCount,
+    transcribeVocabularyPreflightLines: transcribeJob.transcribeVocabularyPreflightLines,
     refreshProjects, pickAudio, clearPickedAudio,
     createProject: crud.createProject, createEmptyProject: crud.createEmptyProject, createProjectFromText: crud.createProjectFromText,
     loadProject: closeGate.loadProject, refreshCurrentProject, openFile: closeGate.openFileWrapped,
@@ -292,7 +392,9 @@ export function useProjectLifecycleController(
     cancelTranscribe: transcribeJob.cancelTranscribe,
     confirmTranscribeOverwrite: transcribeJob.confirmTranscribeOverwrite,
     cancelTranscribeOverwrite: transcribeJob.cancelTranscribeOverwrite,
-    saveSegments, deleteProject: crud.deleteProject,
+    saveSegments,
+    autoSaveFooterStatus: autoSave.autoSaveFooterStatus,
+    deleteProject: crud.deleteProject,
     exportTxt: exports.exportTxt, exportSrt: exports.exportSrt, exportDocx: exports.exportDocx,
     exportDiagnosticBundle: exports.exportDiagnosticBundle, exportProjectBundle: exports.exportProjectBundle, importProjectBundle: exports.importProjectBundle,
     openAppDataFolder, applyDetail, setError, beginBusy, endBusy,
@@ -330,6 +432,40 @@ export function useProjectLifecycleController(
     toggleLexiconProofreadOp: lexiconProofread.toggleLexiconProofreadOp,
     setAllLexiconProofreadOps: lexiconProofread.setAllLexiconProofreadOps,
     cancelLexiconProofread: lexiconProofread.cancelLexiconProofread,
+    canFindReplace: findReplace.canFindReplace,
+    findReplaceBlockReason: findReplace.findReplaceBlockReason,
+    findReplaceDialog: findReplace.findReplaceDialog,
+    openFindReplace: findReplace.openFindReplace,
+    closeFindReplace: findReplace.closeFindReplace,
+    setFindReplaceFindText: findReplace.setFindReplaceFindText,
+    setFindReplaceReplaceText: findReplace.setFindReplaceReplaceText,
+    findReplaceRunSearch: findReplace.findReplaceRunSearch,
+    findReplaceSelectMatch: findReplace.findReplaceSelectMatch,
+    findReplaceGoNext: findReplace.findReplaceGoNext,
+    findReplaceGoPrev: findReplace.findReplaceGoPrev,
+    findReplaceCurrent: findReplace.findReplaceCurrent,
+    findReplaceRequestReplaceAll: findReplace.findReplaceRequestReplaceAll,
+    findReplaceConfirmReplaceAll: findReplace.findReplaceConfirmReplaceAll,
+    findReplaceCancelReplaceAllPreview: findReplace.findReplaceCancelReplaceAllPreview,
+    findReplaceEditorHighlight: findReplace.findReplaceEditorHighlight,
+    findReplaceReplaceAndNext: findReplace.findReplaceReplaceAndNext,
+    canApplyCorrectionRules: correctionRules.canApplyCorrectionRules,
+    correctionRulesBlockReason: correctionRules.correctionRulesBlockReason,
+    correctionRulesDialog: correctionRules.correctionRulesDialog,
+    requestCorrectionRules: correctionRules.requestCorrectionRules,
+    confirmCorrectionRulesWriteback: correctionRules.confirmCorrectionRulesWriteback,
+    cancelCorrectionRules: correctionRules.cancelCorrectionRules,
+    canCorrectSuggestions: correctSuggestions.canCorrectSuggestions,
+    correctSuggestionsBlockReason: correctSuggestions.correctSuggestionsBlockReason,
+    correctSuggestionsDialog: correctSuggestions.correctSuggestionsDialog,
+    requestCorrectSuggestions: correctSuggestions.requestCorrectSuggestions,
+    applyCorrectSuggestion: correctSuggestions.applyCorrectSuggestion,
+    cancelCorrectSuggestions: correctSuggestions.cancelCorrectSuggestions,
+    openFindReplaceForCorrectSelection: correctSuggestions.openFindReplaceForCorrectSelection,
+    glossaryLearnDialog: glossaryLearn.glossaryLearnDialog,
+    dismissGlossaryLearnPrompt: glossaryLearn.dismissGlossaryLearnPrompt,
+    confirmAddToGlossary: glossaryLearn.confirmAddToGlossary,
+    closeGlossaryLearnPrompt: glossaryLearn.closeGlossaryLearnPrompt,
     bumpLlmRuntimeChanged,
     closeGateOpen: closeGate.closeGateOpen,
     closeGateIntent: closeGate.closeGateIntent,

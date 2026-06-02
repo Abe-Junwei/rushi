@@ -51,10 +51,15 @@ export default {
           "0%": { transform: "translateX(-100%)" },
           "100%": { transform: "translateX(300%)" },
         },
+        "toast-in": {
+          from: { opacity: "0", transform: "translateY(12px)" },
+          to: { opacity: "1", transform: "translateY(0)" },
+        },
       },
       animation: {
         "rushi-indeterminate": "rushi-indeterminate 1.5s linear infinite",
         "rushi-spin-slow": "spin 3s linear infinite",
+        "toast-in": "toast-in 0.25s ease-out",
       },
     },
   },

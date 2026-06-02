@@ -48,7 +48,10 @@ export function LocalAsrModelSection({ catalog, asrCaps, busy, prepareModelBusy 
       <div className="pb-1">
         <h3 className={PANEL_TYPOGRAPHY.sectionTitle}>转写模型</h3>
         <p className={PANEL_TYPOGRAPHY.sectionDescription}>
-          选择本机 FunASR 主模型。切换后需重启内置侧车；长音频推荐 Paraformer。
+          选择本机 FunASR 主模型。切换后点「应用并重启侧车」；长音频推荐 Paraformer。
+          {!catalog.bundledSidecarManaged
+            ? " 开发模式会重启源码侧车（services/asr/.venv），无需手动 Ctrl+C 终端。"
+            : null}
         </p>
       </div>
 
@@ -202,13 +205,12 @@ export function LocalAsrModelSection({ catalog, asrCaps, busy, prepareModelBusy 
           disabled={panelBusy || catalog.applyBusy}
           onClick={() => void catalog.applySelectedModel()}
         >
-          {catalog.applyBusy ? "正在应用…" : "应用并重启侧车"}
+          {catalog.applyBusy
+            ? "正在应用…"
+            : "应用并重启侧车"}
         </button>
       </div>
 
-      {catalog.applyMessage ? (
-        <p className={PANEL_TYPOGRAPHY.meta}>{catalog.applyMessage}</p>
-      ) : null}
       {sidecarHub ? (
         <p className={`${PANEL_TYPOGRAPHY.meta} font-mono text-[11px]`}>
           侧车运行中：{sidecarHub}

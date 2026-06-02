@@ -1,7 +1,7 @@
 pub mod launch;
 mod lifecycle;
-mod port;
+pub(crate) mod port;
 mod process;
 
 pub use launch::{BundledAsrLaunchReport, BundledAsrLaunchState};
-pub use lifecycle::{force_restart_bundled, retry_bundled, stop_bundled, try_start_bundled};
+pub use lifecycle::{force_restart_bundled, stop_bundled, try_start_bundled};

@@ -190,6 +190,16 @@ export async function retryBundledAsrSidecar(): Promise<void> {
   return invoke<void>("retry_bundled_asr_sidecar");
 }
 
+/** False when `RUSHI_SKIP_BUNDLED_ASR=1` (e.g. `npm run desktop:dev`); shell will not restart 8741. */
+export async function asrAppManagesBundledSidecar(): Promise<boolean> {
+  return invoke<boolean>("asr_app_manages_bundled_sidecar");
+}
+
+/** Stop any process on loopback :8741 (dev model apply / stale listener). */
+export async function killLoopbackAsrListeners(): Promise<void> {
+  return invoke<void>("kill_loopback_asr_listeners_cmd");
+}
+
 export async function openAppDataFolder(): Promise<void> {
   return invoke<void>("open_app_data_folder");
 }
@@ -232,7 +242,7 @@ export async function setLocalAsrHubModelPref(
 ): Promise<void> {
   return invoke<void>("set_local_asr_hub_model_pref", {
     hubModelId,
-    restartSidecar: options?.restartSidecar ?? true,
+    restartSidecar: options?.restartSidecar ?? false,
   });
 }
 
@@ -246,6 +256,6 @@ export async function setLocalAsrRecognitionLanguagePref(
 ): Promise<void> {
   return invoke<void>("set_local_asr_recognition_language_pref", {
     language,
-    restartSidecar: options?.restartSidecar ?? true,
+    restartSidecar: options?.restartSidecar ?? false,
   });
 }

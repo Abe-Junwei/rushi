@@ -21,6 +21,7 @@ export type SegmentTextListRowProps = {
   updateSegmentText: (idx: number, text: string) => void;
   onTextareaKeyDown: (idx: number, e: KeyboardEvent<HTMLTextAreaElement>) => void;
   onOpenContextMenu?: (e: MouseEvent<HTMLDivElement>, segmentIdx: number, pointerTimeSec: number) => void;
+  findReplaceHighlight?: { charStart: number; charEnd: number } | null;
 };
 
 export const SegmentTextListRow = memo(function SegmentTextListRow({
@@ -40,6 +41,7 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
   updateSegmentText,
   onTextareaKeyDown,
   onOpenContextMenu,
+  findReplaceHighlight,
 }: SegmentTextListRowProps) {
   const focusOnSelectRef = useRef(false);
   const editorRef = useRef<{ focusEditor: () => void } | null>(null);
@@ -50,16 +52,21 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
     transcriptFontItalic,
   );
 
-  const onClickRow = useCallback(() => {
-    if (busy) return;
-    if (selected) {
+  const onClickRow = useCallback(
+    (e: MouseEvent<HTMLDivElement>) => {
+      if (busy) return;
+      // 正文内拖选/点击由 textarea 处理，勿冒泡到行级（否则会 focusEditor 把选区移到末尾）
+      if ((e.target as HTMLElement).closest("textarea")) return;
+      if (selected) {
+        selectSegmentAt(i);
+        editorRef.current?.focusEditor();
+        return;
+      }
+      focusOnSelectRef.current = true;
       selectSegmentAt(i);
-      editorRef.current?.focusEditor();
-      return;
-    }
-    focusOnSelectRef.current = true;
-    selectSegmentAt(i);
-  }, [busy, i, selectSegmentAt, selected]);
+    },
+    [busy, i, selectSegmentAt, selected],
+  );
 
   const rowMinHeight = Math.max(60, Math.round(segmentRowHeightPx + 2));
   const metaWidth = Math.max(44, Math.round((segmentMetaWidthPx - 10) / 2));
@@ -105,6 +112,7 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
         selectSegmentAt={selectSegmentAt}
         updateSegmentText={updateSegmentText}
         onTextareaKeyDown={onTextareaKeyDown}
+        findReplaceHighlight={findReplaceHighlight}
       />
     </div>
   );

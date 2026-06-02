@@ -38,6 +38,16 @@ def test_health_ok() -> None:
     assert body["transcription_mode"] in ("funasr", "stub")
     assert isinstance(body.get("funasr_model_id"), str)
     assert body.get("funasr_language") in ("zh", "en", "ja", "ko", "yue", "auto")
+    assert body.get("local_token_required") is False
+
+
+def test_health_local_token_required_flag(monkeypatch) -> None:
+    monkeypatch.setenv("RUSHI_LOCAL_TOKEN", "secret")
+    app = create_app()
+    client = TestClient(app)
+    res = client.get("/health")
+    assert res.status_code == 200
+    assert res.json().get("local_token_required") is True
 
 
 def test_health_rushi_models_root_reflects_env(monkeypatch, tmp_path) -> None:

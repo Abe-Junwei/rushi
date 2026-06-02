@@ -1,19 +1,22 @@
 import * as projectApi from "../../tauri/projectApi";
 import { isDefaultBundledAsrTarget } from "../../config/env";
-import { fetchAsrHealthCaps, pollLoopbackHealthUntil } from "./asrHealthSnapshot";
+import { fetchAsrHealthCaps } from "./asrHealthSnapshot";
 import {
   shouldSkipSidecarRestartForSelection,
   type LocalAsrSetupSelectionContext,
 } from "./localAsrSidecarGuards";
 import {
-  normalizeLocalAsrRecognitionLanguage,
-  sidecarRecognitionLanguageMatchesSelection,
-} from "./localAsrRecognitionLanguage";
-import {
   catalogEntryForHub,
   computeLocalAsrTranscribeReady,
   resolveLocalAsrHubModelId,
 } from "./localAsrModelCatalog";
+import { normalizeLocalAsrRecognitionLanguage } from "./localAsrRecognitionLanguage";
+import {
+  restartLoopbackAsrSidecar,
+  sidecarConfigMatchesHub,
+  waitForSidecarConfig,
+  writeLocalAsrPrefs,
+} from "./localAsrSidecarRestart";
 
 export type { LocalAsrSetupSelectionContext };
 
@@ -25,37 +28,66 @@ export type SelectedModelPrepareSnapshot = {
 };
 
 export type ApplyHubModelResult =
-  | { ok: true }
+  | { ok: true; message: string }
   | { ok: false; message: string; needsManualSidecarRestart?: boolean };
+
+async function restartSidecarAndWait(
+  hub: string,
+  label: string,
+  language: string,
+  progress: (message: string) => void,
+): Promise<ApplyHubModelResult> {
+  progress("正在保存模型偏好…");
+  await writeLocalAsrPrefs(hub, language);
+  progress("正在重启侧车（约 10–45 秒）…");
+  try {
+    await restartLoopbackAsrSidecar();
+  } catch (e) {
+    const msg = e instanceof Error ? e.message : String(e);
+    return {
+      ok: false,
+      needsManualSidecarRestart: true,
+      message: `侧车重启失败：${msg}。可查看 /tmp/rushi-asr-dev.log 或重新运行 npm run desktop:dev。`,
+    };
+  }
+  progress(`正在等待侧车加载 ${label}…`);
+  const after = await waitForSidecarConfig({ hub, language });
+  if (after && sidecarConfigMatchesHub(after, hub, language)) {
+    return { ok: true, message: `侧车已切换为 ${label}，可以开始转写。` };
+  }
+  if (after && !sidecarConfigMatchesHub(after, hub, language)) {
+    const running =
+      after.funasr_loaded_model_id?.trim() || after.funasr_model_id?.trim() || "未知模型";
+    return {
+      ok: false,
+      message: `侧车已恢复，但仍运行 ${running}。请点「重试内置侧车」后再试。`,
+    };
+  }
+  const report = await projectApi.bundledAsrLaunchReport().catch(() => null);
+  let message = "侧车重启后未响应 /health。请点「重试内置侧车」，或完全退出应用后再打开。";
+  if (report?.attempted && !report.success && report.detail?.trim()) {
+    message = `${message} ${report.detail.trim()}`;
+  }
+  return { ok: false, needsManualSidecarRestart: true, message };
+}
 
 /** Write pref and restart sidecar when needed; wait until loopback reports target hub. */
 export async function applyHubModelToSidecar(
   ctx: LocalAsrSetupSelectionContext,
+  onProgress?: (message: string) => void,
 ): Promise<ApplyHubModelResult> {
+  const progress = onProgress ?? (() => {});
   const hub = resolveLocalAsrHubModelId(ctx.selectedHubModelId);
   const label = catalogEntryForHub(hub)?.label ?? hub;
   const language = ctx.recognitionLanguage ?? "zh";
   const caps = await fetchAsrHealthCaps();
   if (shouldSkipSidecarRestartForSelection(caps, ctx)) {
-    const [pref, langPref] = await Promise.all([
-      projectApi.getLocalAsrHubModelPref().catch(() => null),
-      projectApi.getLocalAsrRecognitionLanguagePref().catch(() => "zh"),
-    ]);
-    if (pref?.trim() !== hub) {
-      await projectApi.setLocalAsrHubModelPref(hub, { restartSidecar: false });
-    }
-    if (langPref.trim() !== language) {
-      await projectApi.setLocalAsrRecognitionLanguagePref(language, { restartSidecar: false });
-    }
-    return { ok: true };
+    await writeLocalAsrPrefs(hub, language);
+    return { ok: true, message: "侧车已在运行所选模型，无需重启。" };
   }
 
-  const prevPref = (await projectApi.getLocalAsrHubModelPref().catch(() => null))?.trim() ?? "";
-
-  await projectApi.setLocalAsrRecognitionLanguagePref(language, { restartSidecar: false });
-
   if (!isDefaultBundledAsrTarget()) {
-    await projectApi.setLocalAsrHubModelPref(hub, { restartSidecar: false });
+    await writeLocalAsrPrefs(hub, language);
     return {
       ok: false,
       needsManualSidecarRestart: true,
@@ -63,37 +95,7 @@ export async function applyHubModelToSidecar(
     };
   }
 
-  if (prevPref !== hub) {
-    await projectApi.setLocalAsrHubModelPref(hub);
-  } else {
-    await projectApi.retryBundledAsrSidecar();
-  }
-
-  const after = await pollLoopbackHealthUntil({
-    deadlineMs: 90_000,
-    predicate: (c) =>
-      c.funasr_ready === true &&
-      c.funasr_model_id === hub &&
-      sidecarRecognitionLanguageMatchesSelection(c.funasr_language, language),
-  });
-  if (
-    after?.funasr_model_id === hub &&
-    after.funasr_ready &&
-    sidecarRecognitionLanguageMatchesSelection(after.funasr_language, language)
-  ) {
-    return { ok: true };
-  }
-  if (after?.funasr_ready && after.funasr_model_id !== hub) {
-    return {
-      ok: false,
-      message: `侧车已恢复，但仍运行 ${after.funasr_model_id ?? "未知模型"}。请点「重试内置侧车」或 npm run asr:dev 后再试。`,
-    };
-  }
-  return {
-    ok: false,
-    needsManualSidecarRestart: true,
-    message: `侧车重启后未响应 /health。若使用 dev 模式，请执行 npm run asr:dev；否则点「重试内置侧车」。`,
-  };
+  return restartSidecarAndWait(hub, label, language, progress);
 }
 
 /** Read loopback caps + UI selection; D1=D2 aligned transcribe readiness for setup flows. */
@@ -116,26 +118,15 @@ export async function snapshotSelectedModelPrepare(
 export async function syncBundledSidecarToPreferredHub(
   ctx: LocalAsrSetupSelectionContext,
 ): Promise<boolean> {
-  const hub = resolveLocalAsrHubModelId(ctx.selectedHubModelId);
   const caps = await fetchAsrHealthCaps();
-  const pref = await projectApi.getLocalAsrHubModelPref().catch(() => null);
-  const prefHub = pref?.trim() ?? "";
-
+  const hub = resolveLocalAsrHubModelId(ctx.selectedHubModelId);
   const language = normalizeLocalAsrRecognitionLanguage(ctx.recognitionLanguage);
-  const langPref = await projectApi.getLocalAsrRecognitionLanguagePref().catch(() => "zh");
 
   if (shouldSkipSidecarRestartForSelection(caps, ctx)) {
-    if (prefHub !== hub) {
-      await projectApi.setLocalAsrHubModelPref(hub, { restartSidecar: false });
-    }
-    if (langPref.trim() !== language) {
-      await projectApi.setLocalAsrRecognitionLanguagePref(language, { restartSidecar: false });
-    }
+    await writeLocalAsrPrefs(hub, language);
     return false;
   }
-  if (langPref.trim() !== language) {
-    await projectApi.setLocalAsrRecognitionLanguagePref(language, { restartSidecar: false });
-  }
-  await projectApi.setLocalAsrHubModelPref(hub);
+  await writeLocalAsrPrefs(hub, language);
+  await restartLoopbackAsrSidecar();
   return true;
 }

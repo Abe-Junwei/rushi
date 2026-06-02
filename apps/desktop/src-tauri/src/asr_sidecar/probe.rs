@@ -6,9 +6,55 @@ use serde_json::Value;
 
 use super::ASR_HEALTH_URL;
 
+const LOOPBACK_ROOT_URL: &str = "http://127.0.0.1:8741/";
+
+fn blocking_loopback_client() -> reqwest::blocking::Client {
+    reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(8))
+        .build()
+        .unwrap_or_else(|_| reqwest::blocking::Client::new())
+}
+
+fn fetch_loopback_health_json_sync() -> Option<Value> {
+    let client = blocking_loopback_client();
+    let resp = client.get(ASR_HEALTH_URL).send().ok()?;
+    if !resp.status().is_success() {
+        return None;
+    }
+    let text = resp.text().ok()?;
+    serde_json::from_str::<Value>(&text).ok()
+}
+
+fn fetch_loopback_root_json_sync() -> Option<Value> {
+    let client = blocking_loopback_client();
+    let resp = client.get(LOOPBACK_ROOT_URL).send().ok()?;
+    if !resp.status().is_success() {
+        return None;
+    }
+    let text = resp.text().ok()?;
+    serde_json::from_str::<Value>(&text).ok()
+}
+
 pub fn is_rushi_asr_health_json(v: &Value) -> bool {
     v.get("service").and_then(|s| s.as_str()) == Some("rushi-asr")
         && v.get("status").and_then(|s| s.as_str()) == Some("ok")
+}
+
+pub fn health_declares_local_token_required(v: &Value) -> bool {
+    v.get("local_token_required")
+        .and_then(|x| x.as_bool())
+        .unwrap_or(false)
+}
+
+/// True when loopback rushi-asr was started with `RUSHI_LOCAL_TOKEN` (mutating routes need header).
+pub fn loopback_local_token_required() -> bool {
+    let Some(v) = fetch_loopback_health_json_sync() else {
+        return false;
+    };
+    if !is_rushi_asr_health_json(&v) {
+        return false;
+    }
+    health_declares_local_token_required(&v)
 }
 
 #[derive(Clone, Debug, PartialEq, Eq, Serialize)]
@@ -83,19 +129,6 @@ pub async fn probe_asr_port() -> AsrPortProbe {
     }
 }
 
-async fn fetch_loopback_root_json() -> Option<Value> {
-    let client = reqwest::Client::builder()
-        .timeout(Duration::from_secs(8))
-        .build()
-        .unwrap_or_else(|_| reqwest::Client::new());
-    let resp = client.get("http://127.0.0.1:8741/").send().await.ok()?;
-    if !resp.status().is_success() {
-        return None;
-    }
-    let text = resp.text().await.ok()?;
-    serde_json::from_str::<Value>(&text).ok()
-}
-
 /// True when loopback rushi-asr exposes R3g model catalog (fresh PyInstaller build).
 pub fn loopback_root_declares_model_catalog(v: &Value) -> bool {
     v.get("model_catalog").is_some()
@@ -128,32 +161,26 @@ pub fn bundled_sidecar_is_fresh_build() -> bool {
 
 /// True when loopback rushi-asr exposes R3g model catalog (fresh PyInstaller build).
 pub fn bundled_sidecar_supports_model_catalog() -> bool {
-    tauri::async_runtime::block_on(async {
-        let Some(v) = fetch_loopback_root_json().await else {
-            return false;
-        };
-        loopback_root_declares_model_catalog(&v)
-    })
+    let Some(v) = fetch_loopback_root_json_sync() else {
+        return false;
+    };
+    loopback_root_declares_model_catalog(&v)
 }
 
 /// True when loopback rushi-asr includes Paraformer punc prepare + cancel (2026-05-27+ build).
 pub fn bundled_sidecar_supports_punc_prepare() -> bool {
-    tauri::async_runtime::block_on(async {
-        let Some(v) = fetch_loopback_root_json().await else {
-            return false;
-        };
-        loopback_root_declares_punc_prepare(&v)
-    })
+    let Some(v) = fetch_loopback_root_json_sync() else {
+        return false;
+    };
+    loopback_root_declares_punc_prepare(&v)
 }
 
 /// True when loopback rushi-asr includes R3e-C async transcribe (2026-05-30+ build).
 pub fn bundled_sidecar_supports_transcribe_async() -> bool {
-    tauri::async_runtime::block_on(async {
-        let Some(v) = fetch_loopback_root_json().await else {
-            return false;
-        };
-        loopback_root_declares_transcribe_async(&v)
-    })
+    let Some(v) = fetch_loopback_root_json_sync() else {
+        return false;
+    };
+    loopback_root_declares_transcribe_async(&v)
 }
 
 pub(crate) fn loopback_port_accepts_tcp(port: u16) -> bool {
@@ -163,23 +190,8 @@ pub(crate) fn loopback_port_accepts_tcp(port: u16) -> bool {
 
 /// True when `GET /health` returns JSON that looks like **this** rushi-asr (not merely "something on :8741").
 pub fn bundled_health_looks_like_rushi_asr() -> bool {
-    tauri::async_runtime::block_on(async {
-        let client = reqwest::Client::builder()
-            .timeout(Duration::from_secs(8))
-            .build()
-            .unwrap_or_else(|_| reqwest::Client::new());
-        let Ok(resp) = client.get(ASR_HEALTH_URL).send().await else {
-            return false;
-        };
-        if !resp.status().is_success() {
-            return false;
-        }
-        let Ok(text) = resp.text().await else {
-            return false;
-        };
-        let Ok(v): Result<Value, _> = serde_json::from_str(&text) else {
-            return false;
-        };
-        is_rushi_asr_health_json(&v)
-    })
+    let Some(v) = fetch_loopback_health_json_sync() else {
+        return false;
+    };
+    is_rushi_asr_health_json(&v)
 }

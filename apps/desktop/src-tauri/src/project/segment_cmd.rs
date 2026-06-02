@@ -1,5 +1,7 @@
 use super::correction::{
-    accept_correction_rule, load_file_segment_texts, update_correction_memory_from_save,
+    accept_correction_rule, list_glossary_learn_prompts, list_stable_correction_rules,
+    load_file_segment_texts, update_correction_memory_from_save, CorrectionRuleRow,
+    GlossaryLearnPromptRow,
 };
 use super::segment_media_sanitize::sanitize_segments_for_media;
 use super::segment_uid::segment_uid_or_new;
@@ -185,4 +187,18 @@ pub fn correction_accept_rule(
 ) -> Result<(), String> {
     let conn = open_db(state.deref())?;
     accept_correction_rule(&conn, &before_text, &after_text, now_ms())
+}
+
+#[tauri::command]
+pub fn correction_stable_rules_list(state: State<DbState>) -> Result<Vec<CorrectionRuleRow>, String> {
+    let conn = open_db(state.deref())?;
+    list_stable_correction_rules(&conn)
+}
+
+#[tauri::command]
+pub fn correction_glossary_learn_prompts(
+    state: State<DbState>,
+) -> Result<Vec<GlossaryLearnPromptRow>, String> {
+    let conn = open_db(state.deref())?;
+    list_glossary_learn_prompts(&conn)
 }

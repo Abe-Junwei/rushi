@@ -1,15 +1,16 @@
 import { EditorToolbar } from "./EditorToolbar";
 import { SegmentContextMenu } from "./SegmentContextMenu";
-import { ArrowLeft } from "lucide-react";
+import { EditorWorkspaceNav } from "./EditorWorkspaceNav";
 import type { ProjectControllerApi } from "../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../pages/useTranscriptionLayer";
-import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 import { EmptyProjectPanel } from "./EmptyProjectPanel";
+import { ProjectFilesHubPanel } from "./ProjectFilesHubPanel";
 import { type SegmentContextMenuItem, type SegmentContextMenuKey } from "../utils/segmentContextMenuModel";
 import { EditorSegmentWorkbench } from "./editor/EditorSegmentWorkbench";
 import { EditorWaveformPane } from "./editor/EditorWaveformPane";
 import { useEditorEditHistory } from "./editor/useEditorEditHistory";
 import { useEditorTranscriptAppearance } from "./editor/useEditorTranscriptAppearance";
+import { autoSaveFooterLabel } from "../pages/useAutoSaveSegments";
 
 interface SegmentCtxMenuState {
   x: number;
@@ -45,9 +46,13 @@ export function EditorView({
   const editHistory = useEditorEditHistory(c.current?.id, c.busy);
 
   const projectName = c.current?.name ?? "未命名项目";
+  const projectFiles = c.current?.files ?? [];
+  const hasProjectFiles = projectFiles.length > 0;
   const currentFileName = c.currentFileId
     ? (c.current?.files.find((f) => f.id === c.currentFileId)?.name ?? "未命名文件")
-    : "未选择文件";
+    : hasProjectFiles
+      ? "选择文件"
+      : "未选择文件";
   const fallbackWaveFile =
     c.current?.files.find((f) => f.id !== c.currentFileId && f.file_type !== "text") ??
     c.current?.files.find((f) => f.id !== c.currentFileId) ??
@@ -56,25 +61,14 @@ export function EditorView({
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-notion-bg" data-purpose="editor-workspace">
       {!c.currentFileId ? (
-        <div className="relative flex h-12 shrink-0 items-center justify-between border-b border-notion-divider bg-notion-bg px-4 lg:px-10">
-          <div className="flex min-w-0 items-center gap-2.5">
-            <button
-              type="button"
-              className="inline-flex h-8 w-8 items-center justify-center rounded-md border border-transparent text-notion-text-muted transition-colors hover:border-notion-border hover:bg-notion-sidebar-hover hover:text-zen-saffron disabled:cursor-not-allowed disabled:opacity-40"
-              disabled={c.busy}
-              onClick={() => c.closeProject()}
-              aria-label="返回 Dashboard"
-            >
-              <ArrowLeft className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-            </button>
-            <div className="min-w-0 max-w-[70vw]">
-              <p className="truncate text-[14px] font-semibold tracking-tight text-notion-text">
-                <span>{projectName}</span>
-                <span className="px-1 text-notion-text-light">\</span>
-                <span className="text-[12px] font-medium text-notion-text-muted">{currentFileName}</span>
-              </p>
-            </div>
-          </div>
+        <div className="relative flex h-12 shrink-0 items-center justify-between gap-3 border-b border-notion-divider bg-notion-bg px-4 lg:px-10">
+          <EditorWorkspaceNav
+            projectName={projectName}
+            currentLabel={currentFileName}
+            fileOpen={false}
+            onBack={() => c.closeProject()}
+            disabled={c.busy}
+          />
 
           <div className="flex items-center gap-1.5">
             <button
@@ -96,7 +90,6 @@ export function EditorView({
             onExportSelect={onExportSelect}
             projectName={projectName}
             currentFileName={currentFileName}
-            onBack={() => c.closeProject()}
             onOpenEnvironment={onOpenEnvironment}
           />
 
@@ -136,7 +129,7 @@ export function EditorView({
           {c.audioSrc ? (
             <footer className="relative z-40 flex h-[30px] shrink-0 items-center border-t border-notion-divider bg-notion-bg px-2.5 text-[11px] text-notion-text-muted">
               <div className="flex min-w-0 flex-1 items-center gap-2">
-                <span>自动保存已激活</span>
+                <span>{autoSaveFooterLabel(c.autoSaveFooterStatus)}</span>
               </div>
               <span className="pointer-events-none absolute left-1/2 max-w-[50%] -translate-x-1/2 truncate text-center text-[11px] text-notion-text-muted" aria-live="polite">
                 {tx.waveformFooterStatusLabel ?? ""}
@@ -164,6 +157,8 @@ export function EditorView({
             </footer>
           ) : null}
         </>
+      ) : hasProjectFiles ? (
+        <ProjectFilesHubPanel controller={c} />
       ) : (
         <EmptyProjectPanel controller={c} />
       )}

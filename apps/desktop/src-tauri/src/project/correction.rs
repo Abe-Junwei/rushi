@@ -132,6 +132,121 @@ pub fn accept_correction_rule(
     Ok(())
 }
 
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct CorrectionRuleRow {
+    pub wrong: String,
+    pub right: String,
+    pub hit_count: i32,
+    pub accepted_as_rule: bool,
+}
+
+#[derive(Debug, Clone, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct GlossaryLearnPromptRow {
+    pub after_text: String,
+    pub hit_count: i32,
+    pub sample_before: String,
+}
+
+fn glossary_contains_term(conn: &Connection, term: &str) -> Result<bool, String> {
+    let needle = term.trim();
+    if needle.is_empty() {
+        return Ok(true);
+    }
+    let mut stmt = conn
+        .prepare("SELECT term, aliases FROM glossary_terms WHERE trim(term) != ''")
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))
+        .map_err(|e| e.to_string())?;
+    for row in rows {
+        let (term, aliases) = row.map_err(|e| e.to_string())?;
+        if term.trim() == needle {
+            return Ok(true);
+        }
+        for part in aliases.split(|c: char| c == ',' || c == '，' || c == ';' || c == '；') {
+            if part.trim() == needle {
+                return Ok(true);
+            }
+        }
+    }
+    Ok(false)
+}
+
+pub fn list_stable_correction_rules(conn: &Connection) -> Result<Vec<CorrectionRuleRow>, String> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT before_text, after_text, hit_count, accepted_as_rule FROM correction_memory \
+             WHERE accepted_as_rule = 1 OR hit_count >= 2 \
+             ORDER BY length(before_text) DESC, accepted_as_rule DESC, hit_count DESC, updated_at_ms DESC \
+             LIMIT 80",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([], |r| {
+            Ok(CorrectionRuleRow {
+                wrong: r.get(0)?,
+                right: r.get(1)?,
+                hit_count: r.get(2)?,
+                accepted_as_rule: r.get::<_, i32>(3)? != 0,
+            })
+        })
+        .map_err(|e| e.to_string())?;
+    let mut out = Vec::new();
+    for row in rows {
+        let row = row.map_err(|e| e.to_string())?;
+        let wrong = row.wrong.trim().to_string();
+        let right = row.right.trim().to_string();
+        if wrong.is_empty() || right.is_empty() || wrong == right {
+            continue;
+        }
+        out.push(CorrectionRuleRow {
+            wrong,
+            right,
+            hit_count: row.hit_count,
+            accepted_as_rule: row.accepted_as_rule,
+        });
+    }
+    Ok(out)
+}
+
+pub fn list_glossary_learn_prompts(conn: &Connection) -> Result<Vec<GlossaryLearnPromptRow>, String> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT after_text, MAX(hit_count) AS max_hit, MIN(before_text) AS sample_before \
+             FROM correction_memory \
+             WHERE hit_count >= 3 AND trim(after_text) != '' \
+             GROUP BY after_text \
+             ORDER BY max_hit DESC, after_text ASC \
+             LIMIT 8",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([], |r| {
+            Ok((
+                r.get::<_, String>(0)?,
+                r.get::<_, i32>(1)?,
+                r.get::<_, String>(2)?,
+            ))
+        })
+        .map_err(|e| e.to_string())?;
+    let mut out = Vec::new();
+    for row in rows {
+        let (after_text, hit_count, sample_before) = row.map_err(|e| e.to_string())?;
+        let after_text = after_text.trim().to_string();
+        if after_text.is_empty() || glossary_contains_term(conn, &after_text)? {
+            continue;
+        }
+        out.push(GlossaryLearnPromptRow {
+            after_text,
+            hit_count,
+            sample_before: sample_before.trim().to_string(),
+        });
+    }
+    Ok(out)
+}
+
 pub fn collect_correction_rule_hints(
     conn: &Connection,
     segments: &[SegmentDto],

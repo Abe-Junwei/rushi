@@ -28,6 +28,24 @@ pub fn describe_transcribe_request_error(err: &reqwest::Error, timeout: Duration
     format!("ASR 请求失败: {detail}")
 }
 
+/// Map `ASR HTTP 401: {"detail":"invalid_local_token"}` to actionable copy.
+pub fn describe_transcribe_http_status_error(status: u16, body_snippet: &str) -> Option<String> {
+    if status != 401 {
+        return None;
+    }
+    let lower = body_snippet.to_ascii_lowercase();
+    if !lower.contains("invalid_local_token") {
+        return None;
+    }
+    Some(
+        "本机 ASR 拒绝了转写请求（本地安全令牌不匹配）。\
+         常见于 8741 上仍是上一次内置侧车、而桌面已重启。\
+         请到「环境与 ASR」点「重试内置侧车」，或完全退出应用后重新打开；\
+         开发时也可执行 lsof -i :8741 结束旧进程后重新 npm run desktop:dev。"
+            .into(),
+    )
+}
+
 pub fn describe_transcribe_payload_error(code: &str, message: &str) -> String {
     let lower_code = code.to_ascii_lowercase();
     let lower_msg = message.to_ascii_lowercase();
@@ -59,5 +77,13 @@ mod tests {
     fn payload_error_maps_ffmpeg_timeout() {
         let msg = describe_transcribe_payload_error("ffmpeg_error", "ffmpeg_timeout:1200");
         assert!(msg.contains("规范化"));
+    }
+
+    #[test]
+    fn http_401_invalid_local_token_maps_actionable() {
+        let msg = describe_transcribe_http_status_error(401, r#"{"detail":"invalid_local_token"}"#)
+            .expect("mapped");
+        assert!(msg.contains("令牌"));
+        assert!(describe_transcribe_http_status_error(404, "not found").is_none());
     }
 }

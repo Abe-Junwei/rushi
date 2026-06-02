@@ -42,6 +42,7 @@ export interface AsrBridgeApi {
   installFunasrDepsInteractive: () => Promise<void>;
   copyFunasrManualCommands: () => Promise<void>;
   bumpSttOnlineRuntimeChanged: () => void;
+  sttOnlineRuntimeEpoch: number;
 }
 
 type AsrBridgeOptions = {
@@ -188,5 +189,6 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
     installFunasrDepsInteractive,
     copyFunasrManualCommands,
     bumpSttOnlineRuntimeChanged,
+    sttOnlineRuntimeEpoch: sttOnlineBridgeEpoch,
   };
 }
