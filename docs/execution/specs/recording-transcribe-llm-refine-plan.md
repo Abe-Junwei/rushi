@@ -3,7 +3,8 @@
 > **状态**：R3t-A **编码进行中**（`segmentation.py` 已合入）；R3t-B～E 未编码  
 > **Intent**：[`recording-transcribe-llm-refine-intent.md`](./recording-transcribe-llm-refine-intent.md)  
 > **Acceptance**：[`recording-transcribe-llm-refine-acceptance.md`](./recording-transcribe-llm-refine-acceptance.md)  
-> **架构**：[`recording-transcribe-llm-pipeline.md`](../../architecture/recording-transcribe-llm-pipeline.md)
+> **架构**：[`recording-transcribe-llm-pipeline.md`](../../architecture/recording-transcribe-llm-pipeline.md)  
+> **R3t-E 调研**：[`r3t-e-lexicon-proofread-research.md`](./r3t-e-lexicon-proofread-research.md)（编码前门禁 ✅ 2026-05-31）
 
 ## 1. 子阶段总览
 
@@ -141,6 +142,7 @@
 
 ## 6. R3t-E — 词表有据校对（Lexicon-guided proofread）
 
+> **调研**：[`r3t-e-lexicon-proofread-research.md`](./r3t-e-lexicon-proofread-research.md)  
 > **真源**：[`lexicon-guided-llm-refine.md`](../../architecture/lexicon-guided-llm-refine.md)
 
 ### 6.1 目标

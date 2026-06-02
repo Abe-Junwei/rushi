@@ -172,13 +172,14 @@
 
 ## R3t-E — 词表有据校对（Lexicon-guided）
 
+> **调研**：[`r3t-e-lexicon-proofread-research.md`](./r3t-e-lexicon-proofread-research.md)  
 > 架构：[`lexicon-guided-llm-refine.md`](../../architecture/lexicon-guided-llm-refine.md)  
-> **状态**：📋 未编码
+> **状态**：🔄 编码完成，手测待签（2026-05-31）
 
 ### 自动
 
-- [ ] `lexicon_pack` 组装单测：glossary 列表、memory rules 权重、截断标记
-- [ ] 响应校验：无 Pack 内依据的 op 被丢弃
+- [x] `lexicon_pack` 组装单测：glossary 列表、memory rules 权重、截断标记
+- [x] 响应校验：无 Pack 内依据的 op 被丢弃（`postprocess_lexicon_ops`）
 - [ ] `postprocess_lexicon_proofread` 契约测试（mock HTTP）
 
 ### 手测

@@ -1,7 +1,8 @@
 # 词表有据校对（Lexicon-guided LLM Refine）
 
-> **状态**：规划定稿（2026-05-27）；**未实施**  
+> **状态**：**编码完成**（2026-05-31）；手测签收待办  
 > **Epic**：R3t-E（[`recording-transcribe-llm-refine-plan.md`](../execution/specs/recording-transcribe-llm-refine-plan.md)）  
+> **调研 brief**：[`r3t-e-lexicon-proofread-research.md`](../execution/specs/r3t-e-lexicon-proofread-research.md)（编码前门禁 ✅ 2026-05-31）  
 > **关联**：[`asr-hotword-bias-truth.md`](./asr-hotword-bias-truth.md)、[`p2-acceptance.md`](../execution/p2-acceptance.md)、[`postprocess-remote-boundary.md`](./postprocess-remote-boundary.md)
 
 ## 1. 问题
