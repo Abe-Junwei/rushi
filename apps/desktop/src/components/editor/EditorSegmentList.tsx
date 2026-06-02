@@ -139,6 +139,9 @@ export function EditorSegmentList({
               updateSegmentText={c.updateSegmentText}
               onTextareaKeyDown={tx.onSegmentTextareaKeyDown}
               onOpenContextMenu={onOpenRowContextMenu}
+              findReplaceHighlight={
+                c.findReplaceEditorHighlight?.segmentIdx === i ? c.findReplaceEditorHighlight : null
+              }
             />
           );
         })}

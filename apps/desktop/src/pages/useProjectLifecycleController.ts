@@ -11,6 +11,10 @@ import { useProjectEditorState } from "./useProjectEditorState";
 import { useAutoPunctuateController } from "./useAutoPunctuateController";
 import { useSegmentRefineController } from "./useSegmentRefineController";
 import { useLexiconProofreadController } from "./useLexiconProofreadController";
+import { useFindReplaceController } from "./useFindReplaceController";
+import { useCorrectionRulesController } from "./useCorrectionRulesController";
+import { useCorrectSuggestionsController } from "./useCorrectSuggestionsController";
+import { useGlossaryLearnPromptController } from "./useGlossaryLearnPromptController";
 import { useLlmKeychainReady } from "../hooks/useLlmKeychainReady";
 import {
   useProjectCloseGateController,
@@ -30,6 +34,7 @@ export type { LocalTranscribePreflight };
 
 export function useProjectLifecycleController(
   localTranscribePreflight: LocalTranscribePreflight = () => null,
+  sttOnlineRuntimeEpoch = 0,
 ): ProjectLifecycleApi {
   const { busy, busyReason, beginBusy, endBusy } = useProjectBusyState();
   const [error, setError] = useState<string>("");
@@ -72,6 +77,8 @@ export function useProjectLifecycleController(
     flushSegmentTextDrafts: mutations.flushSegmentTextDrafts,
   });
 
+  const glossaryLearn = useGlossaryLearnPromptController({ setError });
+
   const saveSegments = useCallback(async (): Promise<boolean> => {
     if (busy || !current || !currentFileId) {
       setError("请先打开一个文件后再保存");
@@ -97,6 +104,7 @@ export function useProjectLifecycleController(
       setSelectedIdx(
         ni >= 0 ? ni : Math.min(selectedIdxRef.current, Math.max(0, segs.length - 1)),
       );
+      void glossaryLearn.checkGlossaryLearnAfterSave();
       return true;
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
@@ -104,7 +112,21 @@ export function useProjectLifecycleController(
     } finally {
       endBusy();
     }
-  }, [busy, current, currentFileId, mutations, dirty, beginBusy, endBusy, setCurrent, setSegments, setSelectedIdx, segmentsRef, selectedIdxRef]);
+  }, [
+    busy,
+    current,
+    currentFileId,
+    mutations,
+    dirty,
+    beginBusy,
+    endBusy,
+    setCurrent,
+    setSegments,
+    setSelectedIdx,
+    segmentsRef,
+    selectedIdxRef,
+    glossaryLearn.checkGlossaryLearnAfterSave,
+  ]);
 
   const applyDetailBaseOnly = useCallback(
     (d: ProjectDetail) => {
@@ -135,6 +157,7 @@ export function useProjectLifecycleController(
     },
     mutations,
     localTranscribePreflight,
+    sttOnlineRuntimeEpoch,
   });
 
   const applyDetail = useCallback(
@@ -255,6 +278,37 @@ export function useProjectLifecycleController(
     llmKeychainChecking,
   });
 
+  const findReplace = useFindReplaceController({
+    busy,
+    currentFileId,
+    segments,
+    segmentsRef,
+    selectedIdx,
+    flushSegmentTextDrafts: mutations.flushSegmentTextDrafts,
+    setSelectedIdx,
+    updateSegmentText: mutations.updateSegmentText,
+    setSegments,
+    pushUndo: mutations.pushUndo,
+  });
+
+  const correctSuggestions = useCorrectSuggestionsController({
+    busy,
+    currentFileId,
+    openFindReplace: findReplace.openFindReplace,
+    setError,
+  });
+
+  const correctionRules = useCorrectionRulesController({
+    busy,
+    currentFileId,
+    segments,
+    segmentsRef,
+    flushSegmentTextDrafts: mutations.flushSegmentTextDrafts,
+    setSegments,
+    pushUndo: mutations.pushUndo,
+    setError,
+  });
+
   const openAppDataFolder = useCallback(async () => {
     if (busy) return;
     setError("");
@@ -284,6 +338,7 @@ export function useProjectLifecycleController(
     transcribePreviewActive: busy && busyReason === "transcribe",
     transcribeOverwriteDialogOpen: transcribeJob.overwriteDialogOpen,
     transcribeOverwriteSegmentCount: transcribeJob.overwriteSegmentCount,
+    transcribeVocabularyPreflightLines: transcribeJob.transcribeVocabularyPreflightLines,
     refreshProjects, pickAudio, clearPickedAudio,
     createProject: crud.createProject, createEmptyProject: crud.createEmptyProject, createProjectFromText: crud.createProjectFromText,
     loadProject: closeGate.loadProject, refreshCurrentProject, openFile: closeGate.openFileWrapped,
@@ -330,6 +385,40 @@ export function useProjectLifecycleController(
     toggleLexiconProofreadOp: lexiconProofread.toggleLexiconProofreadOp,
     setAllLexiconProofreadOps: lexiconProofread.setAllLexiconProofreadOps,
     cancelLexiconProofread: lexiconProofread.cancelLexiconProofread,
+    canFindReplace: findReplace.canFindReplace,
+    findReplaceBlockReason: findReplace.findReplaceBlockReason,
+    findReplaceDialog: findReplace.findReplaceDialog,
+    openFindReplace: findReplace.openFindReplace,
+    closeFindReplace: findReplace.closeFindReplace,
+    setFindReplaceFindText: findReplace.setFindReplaceFindText,
+    setFindReplaceReplaceText: findReplace.setFindReplaceReplaceText,
+    findReplaceRunSearch: findReplace.findReplaceRunSearch,
+    findReplaceSelectMatch: findReplace.findReplaceSelectMatch,
+    findReplaceGoNext: findReplace.findReplaceGoNext,
+    findReplaceGoPrev: findReplace.findReplaceGoPrev,
+    findReplaceCurrent: findReplace.findReplaceCurrent,
+    findReplaceRequestReplaceAll: findReplace.findReplaceRequestReplaceAll,
+    findReplaceConfirmReplaceAll: findReplace.findReplaceConfirmReplaceAll,
+    findReplaceCancelReplaceAllPreview: findReplace.findReplaceCancelReplaceAllPreview,
+    findReplaceEditorHighlight: findReplace.findReplaceEditorHighlight,
+    findReplaceReplaceAndNext: findReplace.findReplaceReplaceAndNext,
+    canApplyCorrectionRules: correctionRules.canApplyCorrectionRules,
+    correctionRulesBlockReason: correctionRules.correctionRulesBlockReason,
+    correctionRulesDialog: correctionRules.correctionRulesDialog,
+    requestCorrectionRules: correctionRules.requestCorrectionRules,
+    confirmCorrectionRulesWriteback: correctionRules.confirmCorrectionRulesWriteback,
+    cancelCorrectionRules: correctionRules.cancelCorrectionRules,
+    canCorrectSuggestions: correctSuggestions.canCorrectSuggestions,
+    correctSuggestionsBlockReason: correctSuggestions.correctSuggestionsBlockReason,
+    correctSuggestionsDialog: correctSuggestions.correctSuggestionsDialog,
+    requestCorrectSuggestions: correctSuggestions.requestCorrectSuggestions,
+    applyCorrectSuggestion: correctSuggestions.applyCorrectSuggestion,
+    cancelCorrectSuggestions: correctSuggestions.cancelCorrectSuggestions,
+    openFindReplaceForCorrectSelection: correctSuggestions.openFindReplaceForCorrectSelection,
+    glossaryLearnDialog: glossaryLearn.glossaryLearnDialog,
+    dismissGlossaryLearnPrompt: glossaryLearn.dismissGlossaryLearnPrompt,
+    confirmAddToGlossary: glossaryLearn.confirmAddToGlossary,
+    closeGlossaryLearnPrompt: glossaryLearn.closeGlossaryLearnPrompt,
     bumpLlmRuntimeChanged,
     closeGateOpen: closeGate.closeGateOpen,
     closeGateIntent: closeGate.closeGateIntent,

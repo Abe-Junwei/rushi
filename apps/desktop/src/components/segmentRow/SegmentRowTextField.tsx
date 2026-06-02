@@ -6,6 +6,8 @@ import {
   segmentDraftStore,
   useSegmentDraft,
 } from "../../hooks/useSegmentDraftStore";
+import { FindReplaceMatchText } from "../FindReplaceMatchText";
+import { syncTranscriptTextareaSelection } from "../../utils/transcriptSelection";
 
 interface SegmentRowTextFieldProps {
   segment: SegmentDto;
@@ -20,6 +22,7 @@ interface SegmentRowTextFieldProps {
   selectSegmentAt: (idx: number) => void;
   updateSegmentText: (idx: number, text: string) => void;
   onTextareaKeyDown: (idx: number, e: KeyboardEvent<HTMLTextAreaElement>) => void;
+  findReplaceHighlight?: { charStart: number; charEnd: number } | null;
 }
 
 export const SegmentRowTextField = memo(function SegmentRowTextField({
@@ -35,10 +38,12 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
   selectSegmentAt,
   updateSegmentText,
   onTextareaKeyDown,
+  findReplaceHighlight,
 }: SegmentRowTextFieldProps) {
   const draftKey = segmentDraftKey(s, i);
   const [draft, setDraft] = useSegmentDraft(draftKey, s.text ?? "");
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const lastSyncedFindHighlightRef = useRef<string | null>(null);
 
   useImperativeHandle(
     editorRef,
@@ -81,6 +86,10 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
     [i, onTextareaKeyDown],
   );
 
+  const onSelectionChange = useCallback((e: React.SyntheticEvent<HTMLTextAreaElement>) => {
+    syncTranscriptTextareaSelection(e.currentTarget);
+  }, []);
+
   const onRowHeightHandlePointerDown = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
       if (!onSegmentRowHeightPointerDown) return;
@@ -91,14 +100,24 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
   );
 
   useEffect(() => {
-    if (!selected || !focusOnSelectRef.current || busy) return;
+    if (!selected || busy) return;
     const textarea = textareaRef.current;
     if (!textarea) return;
+    if (findReplaceHighlight) {
+      const key = `${findReplaceHighlight.charStart}:${findReplaceHighlight.charEnd}`;
+      if (lastSyncedFindHighlightRef.current === key) return;
+      lastSyncedFindHighlightRef.current = key;
+      textarea.focus();
+      textarea.setSelectionRange(findReplaceHighlight.charStart, findReplaceHighlight.charEnd);
+      return;
+    }
+    lastSyncedFindHighlightRef.current = null;
+    if (!focusOnSelectRef.current) return;
     textarea.focus();
     const end = textarea.value.length;
     textarea.setSelectionRange(end, end);
     focusOnSelectRef.current = false;
-  }, [busy, focusOnSelectRef, selected]);
+  }, [busy, findReplaceHighlight, focusOnSelectRef, selected]);
 
   useEffect(() => {
     if (selected) return;
@@ -126,6 +145,8 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
               style={{ ...textStyle, minHeight: textAreaMinHeight }}
               value={draft}
               disabled={busy}
+              onMouseDown={(e) => e.stopPropagation()}
+              onClick={(e) => e.stopPropagation()}
               onFocus={() => {
                 if (busy) return;
                 selectSegmentAt(i);
@@ -133,6 +154,9 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
               onChange={onTextAreaChange}
               onBlur={onBlurText}
               onKeyDown={onKeyDown}
+              onSelect={onSelectionChange}
+              onMouseUp={onSelectionChange}
+              onKeyUp={onSelectionChange}
               spellCheck={false}
               autoComplete="off"
               aria-label="语段正文"
@@ -159,7 +183,17 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
             aria-label="语段正文"
           >
             {committedText.trim().length > 0 ? (
-              <p className="overflow-hidden text-ellipsis whitespace-nowrap">{committedText}</p>
+              findReplaceHighlight ? (
+                <div className="max-h-[4.5rem] overflow-hidden">
+                  <FindReplaceMatchText
+                    text={committedText}
+                    charStart={findReplaceHighlight.charStart}
+                    charEnd={findReplaceHighlight.charEnd}
+                  />
+                </div>
+              ) : (
+                <p className="overflow-hidden text-ellipsis whitespace-nowrap">{committedText}</p>
+              )
             ) : (
               <p className="overflow-hidden text-ellipsis whitespace-nowrap text-notion-text-light">输入语段文本...</p>
             )}

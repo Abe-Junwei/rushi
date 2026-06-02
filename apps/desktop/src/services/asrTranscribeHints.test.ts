@@ -22,6 +22,16 @@ describe("deriveTranscribeHints", () => {
     expect(h.some((x) => x.includes("热词"))).toBe(true);
   });
 
+  it("flags funasr_skipped", () => {
+    const h = deriveTranscribeHints("stub", ["funasr_skipped:funasr_model_not_configured"], []);
+    expect(h.some((x) => x.includes("FunASR 未参与"))).toBe(true);
+  });
+
+  it("flags stub_no_placeholder_segment", () => {
+    const h = deriveTranscribeHints("stub", ["stub_no_placeholder_segment: x"], []);
+    expect(h.some((x) => x.includes("未产出语段"))).toBe(true);
+  });
+
   it("flags all-empty segments", () => {
     const h = deriveTranscribeHints("funasr+x", [], [{ text: "" }, { text: "  " }]);
     expect(h.some((x) => x.includes("均为空"))).toBe(true);

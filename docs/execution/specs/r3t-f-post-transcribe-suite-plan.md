@@ -69,9 +69,9 @@ correction_memory ─────┼──► L2 转写 hints（warning）
 
 | 包 | 名称 | 期 | 依赖 | 状态 |
 |----|------|-----|------|------|
-| **F2** | 手动查找替换 + Correct 浮层 | P1 | 语段编辑、undo | 未编码 |
-| **F1** | 全文纠错规则（memory 字面） | P1 | `correction_memory` | 未编码 |
-| **F6** | 手改记忆闭环（→glossary 提示） | P1 | save 学习 | 部分已有学习，UI 提示未做 |
+| **F2** | 手动查找替换 + Correct 浮层 | P1 | 语段编辑、undo | 🟡 已编码（含改正浮层/高亮/快捷键）；手测待办 |
+| **F1** | 全文纠错规则（memory 字面） | P1 | `correction_memory` | 🟡 已编码；手测待办 |
+| **F6** | 手改记忆闭环（→glossary 提示） | P1 | save 学习 | 🟡 保存后第 3 次提示已编码 |
 | **F0-lite** | 转写后处理编排 | P2 | F1、R3t-C | 未编码 |
 | **F4** | 置信门控（ASR + LLM 双轨） | P2 | 段 confidence | 未编码 |
 | **F7** | 词表包导出/导入/合并 | P2 | SQLite 全局表 | 未编码 |

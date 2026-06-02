@@ -1,7 +1,7 @@
 # Acceptance: R3t-F — 转写后后处理与编辑效率
 
 > **Plan v3**：[`r3t-f-post-transcribe-suite-plan.md`](./r3t-f-post-transcribe-suite-plan.md)（拍板 D1–D9）  
-> **状态**：📋 规划定稿 · **未编码**（2026-05-31）
+> **状态**：🟡 进行中 — **F2 首刀已编码**（2026-05-31）；F1/F6/F7 未编码
 
 ## 决策追溯（手测前对照 Plan §2）
 
@@ -15,27 +15,32 @@
 
 ## P1 — F2 查找替换（首刀）
 
-- [ ] 工具栏 + `Mod+F`；`busy` 不响应
-- [ ] 全文件字面匹配；`第 k/N 处`；上/下条跳转语段
-- [ ] 替换当前 / 全部替换（预览→一次写回）；可撤销
-- [ ] 搜索前 flush 草稿
+- [x] 工具栏 + `Mod+F`；`busy` 不响应
+- [x] 全文件字面匹配；`第 k/N 处`；上/下条跳转语段
+- [x] 替换当前 / 全部替换（预览→一次写回）；可撤销
+- [x] 搜索前 flush 草稿
 - [ ] 手测：长稿改 3 处专名 ≤10 次点击（不含保存）
 
 ## P1 — F2 Correct 浮层
 
-- [ ] 选中 → memory + glossary 列表（无谐音猜）
-- [ ] （可选）选中预填查找框
+- [x] 选中 → memory + glossary 列表（无谐音猜）
+- [x] 选中预填查找框（改正 / ⌘F）
+
+## P1 — F2 体验补齐
+
+- [x] 语段正文内高亮当前匹配 + 列表只读行高亮
+- [x] Enter / Shift+Enter / ⌘Enter 替换并下一处
 
 ## P1 — F1 全文规则
 
-- [ ] 仅 memory 规则；全文 diff 预览；确认写回；无 LLM
-- [ ] 单测：「城市」≠「市」误替换
+- [x] 仅 memory 规则；全文 diff 预览；确认写回；无 LLM
+- [x] 单测：「城市」≠「市」误替换（单字规则跳过）
 
 ## P1 — F6 记忆闭环
 
-- [ ] 第三次同 right 形 → 提示进 glossary
-- [ ] F2 写回 + save → `correction_memory` 增加
-- [ ] R3t-E：Pack 含 rule 时 `evidence: rule` 可校验
+- [x] 第三次同 right 形 → 保存后提示进 glossary
+- [ ] F2 写回 + save → `correction_memory` 增加（手测）
+- [ ] R3t-E：Pack 含 rule 时 `evidence: rule` 可校验（既有能力，手测）
 
 ---
 

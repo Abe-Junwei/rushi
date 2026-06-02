@@ -6,12 +6,15 @@ import { FloatingPanelTemplate } from "./PanelTemplate";
 import { AutoPunctuatePreviewDialog } from "./AutoPunctuatePreviewDialog";
 import { SegmentRefinePreviewDialog } from "./SegmentRefinePreviewDialog";
 import { LexiconProofreadPreviewDialog } from "./LexiconProofreadPreviewDialog";
+import { FindReplaceDialog } from "./FindReplaceDialog";
+import { CorrectionRulesPreviewDialog } from "./CorrectionRulesPreviewDialog";
+import { CorrectSuggestionsDialog } from "./CorrectSuggestionsDialog";
+import { GlossaryLearnPromptDialog } from "./GlossaryLearnPromptDialog";
 import { TranscribeOverwriteConfirmDialog } from "./TranscribeOverwriteConfirmDialog";
 import { EditorView } from "./EditorView";
 
 import { WelcomeView, type WelcomePageId } from "./WelcomeView";
 import { ProjectBusyOverlay, TranscribePreviewBanner } from "./ProjectStatusFeedback";
-import { TranscribeHintsBanner } from "./TranscribeHintsBanner";
 import { UnsavedCloseDialog } from "./UnsavedCloseDialog";
 import { useProjectController } from "../pages/useProjectController";
 
@@ -141,8 +144,6 @@ export function ProjectPanel() {
         </p>
       ) : null}
 
-      <TranscribeHintsBanner hints={c.transcribeHints} />
-
       {envOpen ? (
         <FloatingPanelTemplate id="environment-v3" title="环境与 ASR" preset="environment" onClose={() => setEnvOpen(false)}>
             <EnvironmentPanel
@@ -245,10 +246,50 @@ export function ProjectPanel() {
         onSelectAllOps={c.setAllLexiconProofreadOps}
       />
 
+      <FindReplaceDialog
+        state={c.findReplaceDialog}
+        busy={c.busy}
+        onClose={c.closeFindReplace}
+        onFindChange={c.setFindReplaceFindText}
+        onReplaceChange={c.setFindReplaceReplaceText}
+        onRunSearch={c.findReplaceRunSearch}
+        onSelectMatch={c.findReplaceSelectMatch}
+        onPrev={c.findReplaceGoPrev}
+        onNext={c.findReplaceGoNext}
+        onReplaceCurrent={c.findReplaceCurrent}
+        onReplaceAndNext={c.findReplaceReplaceAndNext}
+        onRequestReplaceAll={c.findReplaceRequestReplaceAll}
+        onConfirmReplaceAll={c.findReplaceConfirmReplaceAll}
+        onCancelReplaceAllPreview={c.findReplaceCancelReplaceAllPreview}
+      />
+
+      <CorrectionRulesPreviewDialog
+        state={c.correctionRulesDialog}
+        busy={c.busy}
+        onCancel={c.cancelCorrectionRules}
+        onConfirm={c.confirmCorrectionRulesWriteback}
+      />
+
+      <CorrectSuggestionsDialog
+        state={c.correctSuggestionsDialog}
+        onCancel={c.cancelCorrectSuggestions}
+        onApply={c.applyCorrectSuggestion}
+        onOpenFindReplace={c.openFindReplaceForCorrectSelection}
+      />
+
+      <GlossaryLearnPromptDialog
+        state={c.glossaryLearnDialog}
+        busy={c.busy}
+        onClose={c.closeGlossaryLearnPrompt}
+        onDismiss={c.dismissGlossaryLearnPrompt}
+        onConfirm={c.confirmAddToGlossary}
+      />
+
       <TranscribeOverwriteConfirmDialog
         open={c.transcribeOverwriteDialogOpen && !c.busy}
         busy={c.busy}
         segmentCount={c.transcribeOverwriteSegmentCount}
+        vocabularyLines={c.transcribeVocabularyPreflightLines}
         onCancel={c.cancelTranscribeOverwrite}
         onConfirm={c.confirmTranscribeOverwrite}
       />

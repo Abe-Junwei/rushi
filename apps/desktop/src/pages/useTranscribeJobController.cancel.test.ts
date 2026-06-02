@@ -8,6 +8,7 @@ import {
 } from "./transcribeJobController.testHelpers";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { pushTranscribeHintsToToast } from "../services/ui/toast";
 import { useTranscribeJobController } from "./useTranscribeJobController";
 
 const { projectTranscribeAsyncFinalize } = transcribeJobTestApi();
@@ -65,7 +66,7 @@ describe("useTranscribeJobController cancel", () => {
     });
 
     await waitFor(() => {
-      expect(result.current.transcribeHints).toContain("已停止转写，语段已恢复。");
+      expect(pushTranscribeHintsToToast).toHaveBeenCalledWith(["已停止转写，语段已恢复。"]);
     });
     expect(projectTranscribeAsyncFinalize).not.toHaveBeenCalled();
     expect(setError.mock.calls.some(([msg]) => typeof msg === "string" && msg.length > 0)).toBe(false);

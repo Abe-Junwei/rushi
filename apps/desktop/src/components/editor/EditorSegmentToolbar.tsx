@@ -1,4 +1,8 @@
-import { BookMarked, History, Minus, Plus, Redo2, Scissors, Sparkles, Undo2 } from "lucide-react";
+import { BookMarked, History, ListChecks, Minus, Plus, Redo2, Replace, Scissors, Sparkles, SpellCheck, Undo2 } from "lucide-react";
+import {
+  captureTranscriptTextareaSelection,
+  readTranscriptTextareaSelection,
+} from "../../utils/transcriptSelection";
 import { useEffect, useRef } from "react";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
@@ -25,6 +29,7 @@ export function EditorSegmentToolbar({
   editHistory: h,
 }: EditorSegmentToolbarProps) {
   const fontEntryRef = useRef<HTMLDivElement | null>(null);
+  const toolbarTextSelectionRef = useRef("");
   const appearanceBtnBase =
     "inline-flex h-8 items-center justify-center rounded-md border-0 bg-transparent px-3 text-[12px] font-medium leading-none transition-colors";
 
@@ -46,6 +51,91 @@ export function EditorSegmentToolbar({
   return (
     <div className="flex h-14 shrink-0 items-center justify-between bg-notion-bg px-6">
       <div className="relative flex items-center gap-1.5">
+        <button
+          type="button"
+          className={[
+            appearanceBtnBase,
+            "px-2.5",
+            c.correctSuggestionsDialog.phase !== "closed"
+              ? "bg-notion-sidebar text-notion-text"
+              : "text-notion-text-muted hover:bg-notion-sidebar-hover hover:text-notion-text",
+          ].join(" ")}
+          disabled={!c.canCorrectSuggestions}
+          onPointerDown={() => {
+            toolbarTextSelectionRef.current = captureTranscriptTextareaSelection();
+          }}
+          onClick={() => void c.requestCorrectSuggestions(toolbarTextSelectionRef.current || undefined)}
+          aria-label="改正建议"
+          title={
+            c.busy
+              ? "处理中"
+              : c.canCorrectSuggestions
+                ? "选中文字后查看术语表/纠错记忆（字面匹配）"
+                : (c.correctSuggestionsBlockReason ?? "改正建议不可用")
+          }
+        >
+          <span className="inline-flex items-center gap-1.5">
+            <SpellCheck className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+            改正
+          </span>
+        </button>
+        <button
+          type="button"
+          className={[
+            appearanceBtnBase,
+            "px-2.5",
+            c.findReplaceDialog.phase !== "closed"
+              ? "bg-notion-sidebar text-notion-text"
+              : "text-notion-text-muted hover:bg-notion-sidebar-hover hover:text-notion-text",
+          ].join(" ")}
+          disabled={!c.canFindReplace}
+          onPointerDown={() => {
+            toolbarTextSelectionRef.current = captureTranscriptTextareaSelection();
+          }}
+          onClick={() => {
+            const sel =
+              toolbarTextSelectionRef.current || readTranscriptTextareaSelection();
+            c.openFindReplace(sel || undefined);
+          }}
+          aria-label="查找替换"
+          title={
+            c.busy
+              ? "处理中"
+              : c.canFindReplace
+                ? "查找替换（⌘F）"
+                : (c.findReplaceBlockReason ?? "查找替换不可用")
+          }
+        >
+          <span className="inline-flex items-center gap-1.5">
+            <Replace className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+            查找替换
+          </span>
+        </button>
+        <button
+          type="button"
+          className={[
+            appearanceBtnBase,
+            "px-2.5",
+            c.correctionRulesDialog.phase !== "closed"
+              ? "bg-notion-sidebar text-notion-text"
+              : "text-notion-text-muted hover:bg-notion-sidebar-hover hover:text-notion-text",
+          ].join(" ")}
+          disabled={!c.canApplyCorrectionRules || c.correctionRulesDialog.phase === "loading"}
+          onClick={() => void c.requestCorrectionRules()}
+          aria-label="应用纠错规则"
+          title={
+            c.busy
+              ? "处理中"
+              : c.canApplyCorrectionRules
+                ? "全文应用纠错记忆规则（预览后写回）"
+                : (c.correctionRulesBlockReason ?? "纠错规则不可用")
+          }
+        >
+          <span className="inline-flex items-center gap-1.5">
+            <ListChecks className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+            {c.correctionRulesDialog.phase === "loading" ? "处理中..." : "纠错规则"}
+          </span>
+        </button>
         <button
           type="button"
           className={[

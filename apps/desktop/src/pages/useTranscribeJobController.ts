@@ -1,6 +1,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { asrBaseUrl } from "../config/env";
 import { deriveTranscribeHints } from "../services/asrTranscribeHints";
+import {
+  formatTranscribeVocabularyPreflightLines,
+  loadTranscribeVocabularyPreflight,
+} from "../services/asr/transcribeVocabularyPreflight";
+import { pushTranscribeHintsToToast, toast } from "../services/ui/toast";
 import { tryBuildOnlineTranscribeBridgePayload } from "../services/stt/sttOnlineProviderContract";
 import type { ProjectDetail } from "../tauri/projectApi";
 import * as p1 from "../tauri/projectApi";
@@ -47,6 +52,7 @@ type Deps = {
   closeGate: CloseGate;
   mutations: Mutations;
   localTranscribePreflight: LocalTranscribePreflight;
+  sttOnlineRuntimeEpoch?: number;
 };
 
 export function useTranscribeJobController(deps: Deps) {
@@ -64,9 +70,13 @@ export function useTranscribeJobController(deps: Deps) {
     closeGate,
     mutations,
     localTranscribePreflight,
+    sttOnlineRuntimeEpoch = 0,
   } = deps;
 
   const [transcribeHints, setTranscribeHints] = useState<string[]>([]);
+  const [transcribeVocabularyPreflightLines, setTranscribeVocabularyPreflightLines] = useState<
+    string[]
+  >([]);
   const [overwriteDialogOpen, setOverwriteDialogOpen] = useState(false);
   const [transcribeProgress, setTranscribeProgress] = useState<TranscribeProgress | null>(null);
   const [transcribeCancelling, setTranscribeCancelling] = useState(false);
@@ -75,6 +85,23 @@ export function useTranscribeJobController(deps: Deps) {
   const userCancelRequestedRef = useRef(false);
   const transcribeStartedAtRef = useRef(0);
   const firstSegmentsLoggedRef = useRef(false);
+
+  const refreshVocabularyPreflight = useCallback(async () => {
+    try {
+      const summary = await loadTranscribeVocabularyPreflight();
+      setTranscribeVocabularyPreflightLines(formatTranscribeVocabularyPreflightLines(summary));
+    } catch {
+      setTranscribeVocabularyPreflightLines([]);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!currentFileId) {
+      setTranscribeVocabularyPreflightLines([]);
+      return;
+    }
+    void refreshVocabularyPreflight();
+  }, [currentFileId, sttOnlineRuntimeEpoch, refreshVocabularyPreflight]);
 
   const runRefs = {
     activeJobId: activeJobIdRef,
@@ -101,7 +128,8 @@ export function useTranscribeJobController(deps: Deps) {
       if (import.meta.env.DEV && hints.length > 0) {
         hints.push("（开发模式）详见仓库 services/asr/README.md。");
       }
-      setTranscribeHints(hints);
+      setTranscribeHints([]);
+      pushTranscribeHintsToToast(hints);
     },
     [closeGate, current, mutations, setCurrent],
   );
@@ -114,7 +142,7 @@ export function useTranscribeJobController(deps: Deps) {
       localTranscribePreflight,
     });
     if (block) {
-      if (block !== "busy") setError(block);
+      if (block !== "busy") toast.error(block);
       return;
     }
     const fileId = currentFileId!;
@@ -122,6 +150,8 @@ export function useTranscribeJobController(deps: Deps) {
     beginBusy("transcribe");
     setError("");
     setTranscribeHints([]);
+    const vocabLine = transcribeVocabularyPreflightLines.find((l) => l.trim());
+    if (vocabLine) toast.info(vocabLine);
     setTranscribeProgress(null);
     setTranscribeCancelling(false);
     userCancelRequestedRef.current = false;
@@ -155,9 +185,10 @@ export function useTranscribeJobController(deps: Deps) {
       segmentsRef.current = restoreSnapshot;
       setSegments(restoreSnapshot);
       if (isTranscribeUserCancellation(e)) {
-        setTranscribeHints([TRANSCRIBE_CANCELLED_HINT]);
+        setTranscribeHints([]);
+        pushTranscribeHintsToToast([TRANSCRIBE_CANCELLED_HINT]);
       } else {
-        setError(e instanceof Error ? e.message : String(e));
+        toast.error(e instanceof Error ? e.message : String(e));
       }
     } finally {
       activeJobIdRef.current = null;
@@ -177,6 +208,7 @@ export function useTranscribeJobController(deps: Deps) {
     setSegments,
     segmentsRef,
     localTranscribePreflight,
+    transcribeVocabularyPreflightLines,
   ]);
 
   const requestTranscribe = useCallback(async () => {
@@ -187,15 +219,17 @@ export function useTranscribeJobController(deps: Deps) {
       localTranscribePreflight: () => null,
     });
     if (block) {
-      if (block !== "busy") setError(block);
+      if (block !== "busy") toast.error(block);
       return;
     }
     if (segmentsHaveNonEmptyText(segmentsRef.current)) {
+      await refreshVocabularyPreflight();
       setOverwriteDialogOpen(true);
       return;
     }
+    await refreshVocabularyPreflight();
     await executeTranscribe();
-  }, [busy, current, currentFileId, segmentsRef, setError, executeTranscribe]);
+  }, [busy, current, currentFileId, segmentsRef, setError, executeTranscribe, refreshVocabularyPreflight]);
 
   const cancelTranscribeOverwrite = useCallback(() => {
     if (busy) return;
@@ -233,6 +267,7 @@ export function useTranscribeJobController(deps: Deps) {
     transcribeCancelling,
     overwriteDialogOpen,
     overwriteSegmentCount: segments.length,
+    transcribeVocabularyPreflightLines,
     requestTranscribe,
     cancelTranscribe,
     cancelTranscribeOverwrite,
