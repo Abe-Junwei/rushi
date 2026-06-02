@@ -249,7 +249,7 @@ R0 → GLY-1 → R1–R2 → R3 → R4 → [R5] → [R6–R8] → R9
 #### 4.1.1 实施顺序（严格串行，勿跳步）
 
 > **2026-05-27 重排（Q-SEQ-1）**：**R3e-B 前移至 R3t-B 之后**（长音频在 LLM 块之前）；**HOT-UX 写入主序**（原仅在台账）。内核仍与 R3t-A 合并（Q-R3t-1）。  
-> **2026-05-30 实际进度**：**R3t-A/B/C**、**R3e-B/C ✅** 已合入；**下一编码刀**：**⑤g R3g-C** → **⑤h ACC-STT-UNIFY** → **⑤″d R3t-D**（见 §4.1.8）。
+> **2026-05-31 实际进度**：**R3g-C**、**ACC-STT-UNIFY**、**R3t-D ✅** 已合入；**下一编码刀**：**⑤″e R3t-E** 手测 → **⑤″f R3t-F + ASR-VOC**（见 §4.1.1 与 [`r3-asr-voc-landing-plan.md`](../specs/r3-asr-voc-landing-plan.md)）；并行 §4.1.8 P1。
 
 ```text
 [R3a–c 已完成]
@@ -297,6 +297,13 @@ R0 → GLY-1 → R1–R2 → R3 → R4 → [R5] → [R6–R8] → R9
 【D 可选 LLM — 可跳过，手改即可交付】
 ⑤″ R3t-C → R3t-D → R3t-E  用户显式触发 · 预览写回
     ↓
+⑤″f 词表与改稿轨（R3t-F + ASR-VOC）— 评估真源 [`r3-asr-voc-holistic-review-2026-05.md`](../specs/r3-asr-voc-holistic-review-2026-05.md)
+    ├ ⑤″f-A  VOC-1（1–2d）‖ F2 首刀 ‖ VOC-5=ACC-EVAL-1（1–2d，先于 F7）
+    ├ ⑤″f-B  F1 + F6 + L2/空表文案（VOC-2a/c/d）
+    ├ ⑤″f-C  F7 词表包（VOC-2b）+ F0-lite 可选
+    └ ⑤″f-D  VOC-3 在线传参优化（2–4d；ACC 在线 E2E 闸门）
+    （⑤″f-4 VOC-4 memory→hotwords：暂缓）
+    ↓
 【E 交付与质量】
 ⑤‴ EXP-WORD
     ↓
@@ -329,7 +336,13 @@ R4 + R4-GATE → R9
 | **⑧½** | **R3h-3.5** | ⏳ | ~1w | Sherpa-ONNX CER Spike；不阻塞 A–B 签收 | remediation §5 Phase 3.5 |
 | **⑤″c** | **R3t-C** | ✅ | 1–1.5w | 扩展 R2 标点（邻段上下文可选）；**可选/显式触发** | 同上 §4；[`r3t-c-hand-test-checklist.md`](../specs/r3t-c-hand-test-checklist.md) 2026-05-30 签收 |
 | **⑤″d** | **R3t-D** | ✅ **2026-05-31** | 1.5–2w | `postprocess_refine_segments` + 段界整理 UI | [`r3t-d-hand-test-checklist.md`](../specs/r3t-d-hand-test-checklist.md) |
-| **⑤″e** | **R3t-E** | 📋 | 1.5–2w | LexiconPack 有据校对；**无 RAG**；**无** R3t-E3 项目级词表 v1 | [`lexicon-guided-llm-refine.md`](../../architecture/lexicon-guided-llm-refine.md) |
+| **⑤″e** | **R3t-E** | 🔄 编码✅ 手测⏳ | 1.5–2w | LexiconPack 有据校对；**无 RAG**；**无** R3t-E3 项目级词表 v1 | [`r3t-e-lexicon-proofread-research.md`](../specs/r3t-e-lexicon-proofread-research.md) · [`lexicon-guided-llm-refine.md`](../../architecture/lexicon-guided-llm-refine.md) |
+| **⑤″f** | **R3t-F** | 📋 规划✅ | P1 10–14d / P2 8–12d | 转写后套件：P1 **F2→F1→F6**；P2 **F7** 词表包 + F0-lite | [`r3t-f-post-transcribe-suite-plan.md`](../specs/r3t-f-post-transcribe-suite-plan.md) |
+| **⑤″f-1** | **ASR-VOC-1** | 📋 | 1–2d | 转写前 `glossary_hotwords_preview` + 在线 channel + SenseVoice 注记；覆盖确认框 | [`r3-asr-voc-landing-plan.md`](../specs/r3-asr-voc-landing-plan.md) §2 |
+| **⑤″f-2** | **ASR-VOC-2** | 📋 | **7–10d** | F6 2–3d + F7 4–6d + L2/空表 0.5–1d；**§3 完整规格** | [`r3-asr-voc-landing-plan.md`](../specs/r3-asr-voc-landing-plan.md) §3 |
+| **⑤″f-3** | **ASR-VOC-3** | 📋 | 2–4d | 在线三家排序/截断；**⑤″f-D**；签收前 ACC 在线 E2E ≥1 家 | 同上 §4；holistic H3 |
+| **⑤″f-5** | **ASR-VOC-5 = ACC-EVAL-1** | 📋 | 1–2d | `eval-run` hotwords on/off；制控 `term_hit`；**⑤″f-A** 内、**F7 前** | holistic §5；[`r3-asr-voc-landing-plan.md`](../specs/r3-asr-voc-landing-plan.md) §5 |
+| **⑤″f-4** | **ASR-VOC-4** | ⏸ 暂缓 | — | memory→hotwords 直连；默认 **No**（走 F6） | Plan §6 |
 | **⑤‴** | **EXP-WORD** | 📋 | 1–1.5w | L6 交付：导出真源对齐；逐字稿/讲稿/干净稿版式；可选修订摘要附录；**不等 C6** | [`word-formatted-export-backlog.md`](../specs/word-formatted-export-backlog.md) |
 | **⑤‴½** | **REV-LOC** | 📋 | 0.5–1w | 单机 `edit_log` 时间线；**v1 P1 必做**；恢复点可减 scope；**非** R8 协作 revision | [`personal-solo-v1-backlog.md`](../specs/personal-solo-v1-backlog.md) §3.3 |
 | — | **R3t（索引）** | 📋 | — | Epic 总览（含 L6） | [`recording-transcribe-llm-pipeline.md`](../../architecture/recording-transcribe-llm-pipeline.md) |
@@ -344,6 +357,7 @@ R4 + R4-GATE → R9
 | **R3g-C 门禁** | **R3g-C PR-1（Profile 内核）须先于 R3t-B** 合入，避免 `funasr_engine.py` 冲突；R3g-C 与 R3t-B **勿同轮大改**侧车+编排 |
 | **ACC-STT-UNIFY** | 可与 **R3g-C2 之后** 并行（主改 Tauri `run_transcribe` / `stt_native`）；**须**在 R3t-B warnings UI 前或同轮接入 vocabulary hints |
 | **R3t 门禁** | **R3g ⑤c** 建议先签收再开 **R3t-A** 编码；R3e-B 与 R3t-A **同一分段真源**（禁止 fork 两套 VAD） |
+| **R3t-F + ASR-VOC** | **⑤″e R3t-E 手测后** 开 **⑤″f**；**ASR-VOC-1** 与 R3t-F **F2 同轮并行**（不同文件）；**ASR-VOC-3** 依赖 **⑤h ACC** ✅；**ASR-VOC-5** 可与 VOC-1 后并行，不挡 F7 |
 | **LLM 校准** | R3t-C/D/E **须用户显式触发**；禁止转写完成静默跑 |
 | **可并行设计** | R3e-A 与 R3g-A 接口；实施仍 **④ 先于 ⑤** |
 | **R3h-I 设计** | 可在 **② 后**并行做只读方案与接口草图；避免和 **①–③** 的止血实现混在同一刀 |
@@ -440,7 +454,7 @@ glossary_terms ──► L2 hotwords（转写偏置）
 | **L3** | 分段/长音频 | R3t-A、R3e-B | 否 |
 | **L4 改稿** | memory hints、R3t-E、可选 accepted 规则替换 | R3t-E、ACC-TXT-0（候选） | 改稿+保存；LLM 显式触发 |
 | **L5** | 低置信筛选、一键入术语表 | ACC-HITL-*、LEX-MINE | 可选 |
-| **L6** | CER / term_hit 回归集 | **ACC-EVAL-1**、R4 | 维护 eval manifest |
+| **L6** | CER / term_hit 回归集 | **ACC-EVAL-1**、**ASR-VOC-5**（⑤″f-5）、R4 | 维护 eval manifest；热词 on/off A/B |
 | **L7** | ASR-FT | §8.1 | Go 门槛后 |
 
 **问题类型 × 主路径**：
@@ -923,7 +937,7 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | **ASR 引擎路线** | **方案 A 已锁定** — FunASR + LRC 先行；Sherpa **R3h-3.5 Spike → 轻量模式候选**（非完全替代，[ADR-0003](../../adr/0003-asr-engine-funasr-first-sherpa-spike-gate.md) 附录 A） |
 | **排期真源** | **§4.1.1** |
 | **实施真源** | [`rushi-local-runtime-catalog-remediation-plan.md`](../specs/rushi-local-runtime-catalog-remediation-plan.md) **v1.1** |
-| **验收切片** | [`r3f-…`](../specs/r3f-asr-setup-wizard-acceptance.md) / [`r3g-…`](../specs/r3g-local-asr-model-catalog-acceptance.md) / [`r3g-c-…`](../specs/r3g-c-asr-generate-profile-acceptance.md)（✅ 2026-05-31） / [`acc-stt-unify-…`](../specs/acc-stt-unify-acceptance.md)（✅ 本机 2026-05-31） / [`r3e-…`](../specs/r3e-long-audio-transcribe-acceptance.md) / [`r3e-c-…`](../specs/r3e-c-incremental-transcribe-acceptance.md)（✅ 2026-05-31） / [`r3-asr-landscape-…`](../specs/r3-asr-landscape-2026-05-improvement-backlog.md) / [`trn-diag-…`](../specs/trn-diag-acceptance.md) / [`asr-warm-…`](../specs/asr-warm-acceptance.md) / [`exp-word-…`](../specs/exp-word-formatted-export-acceptance.md) |
+| **验收切片** | [`r3f-…`](../specs/r3f-asr-setup-wizard-acceptance.md) / [`r3g-…`](../specs/r3g-local-asr-model-catalog-acceptance.md) / [`r3g-c-…`](../specs/r3g-c-asr-generate-profile-acceptance.md)（✅ 2026-05-31） / [`acc-stt-unify-…`](../specs/acc-stt-unify-acceptance.md)（✅ 本机 2026-05-31） / [`r3e-…`](../specs/r3e-long-audio-transcribe-acceptance.md) / [`r3e-c-…`](../specs/r3e-c-incremental-transcribe-acceptance.md)（✅ 2026-05-31） / [`r3t-f-…`](../specs/r3t-f-post-transcribe-suite-acceptance.md) + [`r3-asr-voc-…`](../specs/r3-asr-voc-landing-acceptance.md)（**⑤″f** · 未编码） / [`r3-asr-landscape-…`](../specs/r3-asr-landscape-2026-05-improvement-backlog.md) / [`trn-diag-…`](../specs/trn-diag-acceptance.md) / [`asr-warm-…`](../specs/asr-warm-acceptance.md) / [`exp-word-…`](../specs/exp-word-formatted-export-acceptance.md) |
 | **不要** | 内置 LiteLLM/网关、Ollama 替代 ASR、主路径 pip/PyInstaller、R3f 在 R3h-0 前签收 |
 
 ### R3 规划门禁
@@ -937,11 +951,19 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 - [x] **R3g-A ⑤c**（Paraformer 13min 多语段；2026-05-27 复测签收）
 - [ ] **R3h §11 发行门禁**（零终端、构建 smoke、损坏可恢复…）
 
-**下一刀**：**⑤″e R3t-E**（词表有据校对，LexiconPack）
+**下一刀（⑤″f，2026-05-31 · 整体性评估后）**：[`r3-asr-voc-holistic-review-2026-05.md`](../specs/r3-asr-voc-holistic-review-2026-05.md)
 
-**同轮或紧邻闭合**：**③ R3f**、**① R3h-0**、**R3h §11**；ACC 在线 E2E 手测 ⏳；R3t-D split 可选补测
+1. **闸门**：**⑤″e R3t-E** 手测（不挡 **VOC-1** 纯 UI）  
+2. **⑤″f-A**：**VOC-1** ‖ **R3t-F F2**；同轮或紧接 **VOC-5**（= ACC-EVAL-1，**先于 F7**）  
+3. **⑤″f-B**：**F1** + **F6** + L2/空表文案  
+4. **⑤″f-C**：**F7** + 可选 F0-lite  
+5. **⑤″f-D**：**VOC-3**（ACC 在线 E2E 至少 1 家通过后签收）
 
-**主序（编码）**：**R3t-D** → **EXP-WORD** → …
+**墙钟**：⑤″f 整体约 **3.5–5 周**（单人）；非 ASR-VOC 与 R3t-F 估时简单相加。
+
+**同轮或紧邻闭合**：**③ R3f**、**① R3h-0**、**R3h §11**；ACC 在线 E2E 手测 ⏳
+
+**主序（编码，⑤″f 之后）**：**EXP-WORD** → **REV-LOC** → …
 
 **并行 P1（不阻塞主序）**：**R3h-ASR-VER**（FunASR ≥1.3.3）→ **R3g-B Qwen3 spike**（注意伪流式 — research §8）— 见 §4.1.8、[`r3-asr-landscape-2026-05-improvement-backlog.md`](../specs/r3-asr-landscape-2026-05-improvement-backlog.md)
 
@@ -1120,8 +1142,8 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 
 1. **R3t-A/B/C**、**R3e-B/C ✅**（C 2026-05-31）；§4.1.1 **⑥½** 闭合。  
 2. **§4.1.8** ASR 生态 backlog；P1 可并行 R3h-ASR-VER / Qwen3 spike。  
-3. **下一编码刀**：**R3g-C C1** → **ACC-STT-UNIFY U1** → **R3t-D**（§10）。  
-4. **理想序 vs 实际**：R3t-B/C、R3e-C 已超前于 ⑤g/⑤h。  
+3. **下一编码刀（2026-05-31）**：**R3t-E 手测** → **⑤″f-A**（VOC-1 ‖ F2；VOC-5）→ **⑤″f-B**（F1/F6/文案）→ **⑤″f-C**（F7）→ **⑤″f-D**（VOC-3）。见 holistic review §5。  
+4. **理想序 vs 实际**：R3g-C、ACC、R3t-D 已超前于原「下一刀」文案；以 §4.1.1 图为准。  
 5. **R3f / LRC** 发行闸门仍开放；**R3h-0 smoke** 仍为发行瓶颈（§13.5）。  
 6. **2026-05-30 外部评估**：R3 宏观 **~10～13w**。
 

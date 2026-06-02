@@ -18,6 +18,7 @@
 - [`r3f-asr-setup-wizard-acceptance.md`](../execution/specs/r3f-asr-setup-wizard-acceptance.md) — 本机 ASR 一键环境准备（诊断 + 编排）验收。
 - [`r3d-settings-ia-acceptance.md`](../execution/specs/r3d-settings-ia-acceptance.md) — 环境面板轻量 IA 收口（非全站重设计）。
 - [`asr-hotword-bias-truth.md`](./asr-hotword-bias-truth.md) — rushi-asr 热词是否进模型、`warnings` 与前端 `supportsHotwordBias` 占位说明（计划书 §4.3 / §6.1 对齐）。
+- [`asr-vocabulary-bias-practices.md`](./asr-vocabulary-bias-practices.md) — ASR 阶段词汇偏置业内对照 + **Rushi 落地评估**（ASR-VOC-0～5）。
 - [`stt-online-providers.md`](./stt-online-providers.md) — 在线 STT Provider 调研、与解语式合约对齐及后续接线说明。
 - [`asr-sidecar-funasr-policy.md`](./asr-sidecar-funasr-policy.md) — ASR 侧车 + FunASR：目标用户、联网与磁盘预算、CPU/GPU（MPS + CUDA）策略。
 - [`recording-transcribe-llm-pipeline.md`](./recording-transcribe-llm-pipeline.md) — **R3t 管线真源**

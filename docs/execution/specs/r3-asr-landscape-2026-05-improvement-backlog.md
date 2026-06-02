@@ -1,7 +1,8 @@
 # ASR 生态改进 backlog（2026-05 调研）
 
 > **状态**：📋 已采纳为路线图索引（2026-05-30）  
-> **排期真源**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) §4.1.8  
+> **排期真源**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) §4.1.1 **⑤″f**（R3t-F + ASR-VOC）、§4.1.8（并行 spike）  
+> **词汇偏置落地**：[`r3-asr-voc-landing-plan.md`](./r3-asr-voc-landing-plan.md)  
 > **专项 spike**：[`r3g-b-qwen3-asr-sku-spike-research.md`](./r3g-b-qwen3-asr-sku-spike-research.md)  
 > **背景**：2026-04～05 行业 STT 动态（FunASR 1.3.3、Qwen3-ASR、OpenAI Realtime-Whisper、CUDA perf 等）与 Rushi 代码现状对照
 
@@ -22,9 +23,9 @@
 | 优先级 | ID / 名称 | 收益摘要 | 估时 | 依赖 | 路线图落点 | 状态 |
 |--------|-----------|----------|------|------|------------|------|
 | **P0** | **R3e-C** | 长音频 preview + 停止转写 | — | R3e-B ✅ | §4.1.1 **⑥½** | ✅ 2026-05-31 |
-| **P0** | **R3g-C** | Profile/ITN/语言 UI；减 fallback warning | 3–5d | R3t-A ✅ | §4.1.1 **⑤g** | 📋 |
-| **P0** | **ACC-STT-UNIFY** | 术语表 → 本机+在线 adapter 一致 | 2–4d | R3t-B ✅ | §4.1.1 **⑤h** | 📋 |
-| **P0** | **ACC-EVAL-1** | 专名 term_hit 回归门禁 | 1–2d | fixtures/eval | §8.1 | 📋 |
+| **P0** | **R3g-C** | Profile/ITN/语言 UI；减 fallback warning | 3–5d | R3t-A ✅ | §4.1.1 **⑤g** | ✅ 2026-05-31 |
+| **P0** | **ACC-STT-UNIFY** | 术语表 → 本机+在线 adapter 一致 | 2–4d | R3t-B ✅ | §4.1.1 **⑤h** | ✅ 本机 2026-05-31 |
+| **P0** | **ACC-EVAL-1**（= **ASR-VOC-5**） | 专名 term_hit + hotwords on/off | 1–2d | fixtures/eval | §4.1.1 **⑤″f-5** / **⑤″f-A** | 📋 并入 ⑤″f |
 | **P1** | **R3h-ASR-VER** | FunASR **≥1.3.3** lock + sidecar 回归 | 1–2d | R3h-0 smoke | §4.1.8 | 📋 |
 | **P1** | **R3g-B Qwen3 spike** | 评估第三 SKU（0.6B）质量/磁盘；**须专测伪流式/G4** | 2–4d | R3h-ASR-VER 建议先 | §4.1.8、专项 research §8 | 📋 research ✅ |
 | **P1** | **R3h-CUDA-PERF** | CUDA 侧车 p95/首段 SLA（抄 Together 思路） | 3–5d spike | R3e-C SLA log | §4.1.8 | 📋 |

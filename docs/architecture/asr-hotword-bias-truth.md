@@ -1,5 +1,7 @@
 # rushi-asr 热词 / `supportsHotwordBias` 真值表
 
+> **业内实践与落地排期**：[`asr-vocabulary-bias-practices.md`](./asr-vocabulary-bias-practices.md)
+
 对照 Jieyu 计划书 **§4.3 能力分级** 与 **§6.1 `TranscriptionProvider`**：以 **HTTP 响应 `warnings` + `engine`** 为服务端真源；前端 `TranscriptionProvider.supportsHotwordBias` 当前为 **保守占位**（见下）。
 
 ## 1. 请求路径（桌面 → ASR）
