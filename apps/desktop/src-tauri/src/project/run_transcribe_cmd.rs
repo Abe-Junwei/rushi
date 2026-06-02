@@ -1,6 +1,6 @@
 use super::correction::collect_correction_rule_hints;
-use super::local_transcribe_gate::assert_local_asr_ready_for_transcribe;
 use super::correction::SaveSegmentsLearnOpts;
+use super::local_transcribe_gate::assert_local_asr_ready_for_transcribe;
 use super::segment_cmd::file_save_segments_inner;
 use super::segment_media_sanitize::{sanitize_segments_for_media, trim_adjacent_segment_overlaps};
 use super::stt_vocabulary::{
@@ -9,7 +9,7 @@ use super::stt_vocabulary::{
 use super::transcribe::{build_glossary_hotwords, post_transcribe_multipart};
 use super::transcribe_errors::describe_transcribe_payload_error;
 use super::transcribe_job::{
-    get_transcribe_job_status, post_transcribe_async_multipart, parse_transcribe_job_phase,
+    get_transcribe_job_status, parse_transcribe_job_phase, post_transcribe_async_multipart,
 };
 use super::transcribe_native_online::{transcribe_assemblyai_native, transcribe_openai_native};
 use super::transcribe_response::{merge_transcribe_warnings, parse_transcribe_segments_from_json};
@@ -65,10 +65,7 @@ pub async fn project_transcribe_async_start(
         .and_then(|x| x.as_str())
         .ok_or_else(|| "侧车未返回 job_id".to_string())?
         .to_string();
-    append_desktop_log_line(
-        &st,
-        &format!("INFO transcribe_async job_id={job_id}"),
-    );
+    append_desktop_log_line(&st, &format!("INFO transcribe_async job_id={job_id}"));
     Ok(TranscribeAsyncStartOutcome { job_id })
 }
 
@@ -95,13 +92,7 @@ pub async fn project_transcribe_async_finalize(
         .unwrap_or_else(|| "http://127.0.0.1:8741".to_string())
         .trim_end_matches('/')
         .to_string();
-    let status = get_transcribe_job_status(
-        &st,
-        &base,
-        &job_id,
-        Duration::from_secs(30),
-    )
-    .await?;
+    let status = get_transcribe_job_status(&st, &base, &job_id, Duration::from_secs(30)).await?;
     let phase = parse_transcribe_job_phase(&status);
     if phase != "done" {
         if phase == "cancelled" {
@@ -430,12 +421,7 @@ async fn save_transcribe_segments(
         serde_json::to_vec_pretty(&recovery_doc).map_err(|e| e.to_string())?,
     )
     .map_err(|e| format!("无法写入转写恢复文件: {e}"))?;
-    match file_save_segments_inner(
-        st,
-        file_id,
-        &segments,
-        SaveSegmentsLearnOpts::default(),
-    ) {
+    match file_save_segments_inner(st, file_id, &segments, SaveSegmentsLearnOpts::default()) {
         Ok(()) => {
             let _ = fs::remove_file(&recovery_path);
         }

@@ -18,7 +18,9 @@ pub struct CorrectionMemorySavePayload {
 }
 
 #[tauri::command]
-pub fn correction_memory_list(state: State<DbState>) -> Result<Vec<CorrectionMemoryEntryRow>, String> {
+pub fn correction_memory_list(
+    state: State<DbState>,
+) -> Result<Vec<CorrectionMemoryEntryRow>, String> {
     let conn = open_db(state.deref())?;
     list_correction_memory_entries(&conn)
 }

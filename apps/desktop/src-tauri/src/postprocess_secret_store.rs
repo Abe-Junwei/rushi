@@ -25,10 +25,7 @@ fn secrets_dir(app_data_root: &Path) -> PathBuf {
 }
 
 fn force_file_store() -> bool {
-    std::env::var("RUSHI_LLM_SECRET_FORCE_FILE")
-        .ok()
-        .as_deref()
-        == Some("1")
+    std::env::var("RUSHI_LLM_SECRET_FORCE_FILE").ok().as_deref() == Some("1")
 }
 
 /// macOS 开发构建签名常变，钥匙串读写会反复弹登录密码；桌面端默认改用 AppData 内 0600 文件。
@@ -123,11 +120,7 @@ fn keyring_presence_marker_exists(app_data_root: &Path, api_key_id: &str) -> boo
     keyring_presence_path(app_data_root, api_key_id).is_file()
 }
 
-fn write_file_secret(
-    app_data_root: &Path,
-    api_key_id: &str,
-    api_key: &str,
-) -> Result<(), String> {
+fn write_file_secret(app_data_root: &Path, api_key_id: &str, api_key: &str) -> Result<(), String> {
     let dir = secrets_dir(app_data_root);
     fs::create_dir_all(&dir).map_err(|e| format!("无法创建本地密钥目录：{e}"))?;
     let path = llm_secret_path(app_data_root, api_key_id);

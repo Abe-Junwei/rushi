@@ -351,7 +351,9 @@ pub fn list_stable_correction_rules(conn: &Connection) -> Result<Vec<CorrectionR
 }
 
 /// LEX-MINE-1: stable memory (hit≥2 or accepted) whose canonical「正词」is not yet in glossary.
-pub fn list_glossary_mine_candidates(conn: &Connection) -> Result<Vec<GlossaryLearnPromptRow>, String> {
+pub fn list_glossary_mine_candidates(
+    conn: &Connection,
+) -> Result<Vec<GlossaryLearnPromptRow>, String> {
     let mut stmt = conn
         .prepare(
             "SELECT after_text, MAX(hit_count) AS max_hit, MIN(before_text) AS sample_before \
@@ -387,7 +389,9 @@ pub fn list_glossary_mine_candidates(conn: &Connection) -> Result<Vec<GlossaryLe
     Ok(out)
 }
 
-pub fn list_glossary_learn_prompts(conn: &Connection) -> Result<Vec<GlossaryLearnPromptRow>, String> {
+pub fn list_glossary_learn_prompts(
+    conn: &Connection,
+) -> Result<Vec<GlossaryLearnPromptRow>, String> {
     let mut stmt = conn
         .prepare(
             "SELECT after_text, MAX(hit_count) AS max_hit, MIN(before_text) AS sample_before \
@@ -515,15 +519,8 @@ mod tests {
         )
         .unwrap();
         save_correction_memory_entry(&conn, "旧错", "旧对", false, None, None).unwrap();
-        save_correction_memory_entry(
-            &conn,
-            "新错",
-            "新对",
-            true,
-            Some("旧错"),
-            Some("旧对"),
-        )
-        .unwrap();
+        save_correction_memory_entry(&conn, "新错", "新对", true, Some("旧错"), Some("旧对"))
+            .unwrap();
         let n: i32 = conn
             .query_row("SELECT COUNT(*) FROM correction_memory", [], |r| r.get(0))
             .unwrap();

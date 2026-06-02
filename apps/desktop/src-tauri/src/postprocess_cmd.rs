@@ -1,13 +1,15 @@
+#[path = "postprocess_lexicon_ops.rs"]
+mod postprocess_lexicon_ops;
 #[path = "postprocess_probe.rs"]
 mod postprocess_probe;
 #[path = "postprocess_secret_store.rs"]
 mod postprocess_secret_store;
 #[path = "postprocess_segment_ops.rs"]
 mod postprocess_segment_ops;
-#[path = "postprocess_lexicon_ops.rs"]
-mod postprocess_lexicon_ops;
 
-use crate::project::lexicon_pack::{assemble_lexicon_pack, lexicon_pack_is_usable, LexiconPackMeta};
+use crate::project::lexicon_pack::{
+    assemble_lexicon_pack, lexicon_pack_is_usable, LexiconPackMeta,
+};
 use crate::project::utils::open_db;
 
 use crate::project::utils::append_desktop_log_line;
@@ -553,7 +555,10 @@ pub async fn postprocess_refine_segments(
     }
 
     let json: serde_json::Value = serde_json::from_str(&payload).map_err(|e| {
-        append_desktop_log_line(&state, &format!("ERROR postprocess refine invalid json {e}"));
+        append_desktop_log_line(
+            &state,
+            &format!("ERROR postprocess refine invalid json {e}"),
+        );
         "段界整理返回格式无法解析。".to_string()
     })?;
     let raw_content = extract_chat_completion_text(&json)?;
@@ -599,7 +604,9 @@ pub async fn postprocess_lexicon_proofread(
     let conn = open_db(&state)?;
     let pack = assemble_lexicon_pack(&conn)?;
     if !lexicon_pack_is_usable(&pack) {
-        return Err("词表为空：请先在「热词与记忆」添加术语，或通过保存语段积累纠错记忆。".to_string());
+        return Err(
+            "词表为空：请先在「热词与记忆」添加术语，或通过保存语段积累纠错记忆。".to_string(),
+        );
     }
     let pack_meta = pack.pack_meta.clone();
 
@@ -665,10 +672,7 @@ pub async fn postprocess_lexicon_proofread(
             .send()
             .await
             .map_err(|e| {
-                append_desktop_log_line(
-                    &state,
-                    &format!("ERROR postprocess lexicon connect {e}"),
-                );
+                append_desktop_log_line(&state, &format!("ERROR postprocess lexicon connect {e}"));
                 "词表校对请求失败，请检查网络、模型配置或 API Key。".to_string()
             })?;
         let status = resp.status();
@@ -715,7 +719,10 @@ pub async fn postprocess_lexicon_proofread(
     }
 
     let json: serde_json::Value = serde_json::from_str(&payload).map_err(|e| {
-        append_desktop_log_line(&state, &format!("ERROR postprocess lexicon invalid json {e}"));
+        append_desktop_log_line(
+            &state,
+            &format!("ERROR postprocess lexicon invalid json {e}"),
+        );
         "词表校对返回格式无法解析。".to_string()
     })?;
     let raw_content = extract_chat_completion_text(&json)?;

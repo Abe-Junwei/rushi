@@ -39,8 +39,7 @@ pub fn assemble_lexicon_pack(conn: &Connection) -> Result<LexiconPack, String> {
         let mut stmt = conn
             .prepare("SELECT COUNT(*) FROM glossary_terms WHERE trim(term) != ''")
             .map_err(|e| e.to_string())?;
-        stmt
-            .query_row([], |r| r.get::<_, i64>(0))
+        stmt.query_row([], |r| r.get::<_, i64>(0))
             .map_err(|e| e.to_string())? as usize
     };
     {
@@ -104,11 +103,7 @@ pub fn assemble_lexicon_pack(conn: &Connection) -> Result<LexiconPack, String> {
     let pack_meta = LexiconPackMeta {
         glossary_count: glossary_canonical.len(),
         rules_count: correction_rules.len(),
-        truncated: if glossary_truncated {
-            Some(true)
-        } else {
-            None
-        },
+        truncated: if glossary_truncated { Some(true) } else { None },
     };
 
     Ok(LexiconPack {

@@ -31,9 +31,11 @@ pub fn resolve_rushi_repo_root() -> Option<PathBuf> {
     let mut cur = manifest.as_path();
     for _ in 0..8 {
         if cur.join("services/asr/pyproject.toml").is_file() {
-            return cur.canonicalize().ok().map(|p| p.to_path_buf()).or_else(|| {
-                Some(cur.to_path_buf())
-            });
+            return cur
+                .canonicalize()
+                .ok()
+                .map(|p| p.to_path_buf())
+                .or_else(|| Some(cur.to_path_buf()));
         }
         cur = cur.parent()?;
     }
@@ -122,14 +124,11 @@ pub fn restart_source_asr_sidecar(app: &AppHandle, st: &DbState) -> Result<(), S
         .arg("-m")
         .arg("rushi_asr")
         .stdin(Stdio::null())
-        .stdout(Stdio::from(log_file.try_clone().map_err(|e| e.to_string())?))
+        .stdout(Stdio::from(
+            log_file.try_clone().map_err(|e| e.to_string())?,
+        ))
         .stderr(Stdio::from(log_file));
-    apply_asr_model_env(
-        &mut cmd,
-        &models,
-        hub.as_deref(),
-        Some(language.as_str()),
-    );
+    apply_asr_model_env(&mut cmd, &models, hub.as_deref(), Some(language.as_str()));
     #[cfg(target_os = "windows")]
     {
         use std::os::windows::process::CommandExt;
@@ -138,8 +137,7 @@ pub fn restart_source_asr_sidecar(app: &AppHandle, st: &DbState) -> Result<(), S
     }
 
     append_source_log(app, &format!("INFO source_asr_spawn {}", python.display()));
-    cmd.spawn()
-        .map_err(|e| format!("无法启动源码侧车：{e}"))?;
+    cmd.spawn().map_err(|e| format!("无法启动源码侧车：{e}"))?;
 
     let attempts = (HEALTH_WAIT_MS / HEALTH_POLL_MS) as usize;
     for _ in 0..attempts {

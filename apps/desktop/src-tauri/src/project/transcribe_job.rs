@@ -43,18 +43,18 @@ pub async fn get_transcribe_job_status(
         http_client().get(&url).timeout(timeout),
         url.as_str(),
     )
-        .send()
-        .await
-        .map_err(|e| {
-            append_desktop_log_line(
-                st,
-                &format!(
-                    "ERROR transcribe_status connect {}",
-                    redact_secrets_for_log(&e.to_string())
-                ),
-            );
-            describe_transcribe_request_error(&e, timeout)
-        })?;
+    .send()
+    .await
+    .map_err(|e| {
+        append_desktop_log_line(
+            st,
+            &format!(
+                "ERROR transcribe_status connect {}",
+                redact_secrets_for_log(&e.to_string())
+            ),
+        );
+        describe_transcribe_request_error(&e, timeout)
+    })?;
     let status = resp.status();
     if !status.is_success() {
         let body = resp.text().await.unwrap_or_default();
@@ -63,9 +63,7 @@ pub async fn get_transcribe_job_status(
             st,
             &format!("ERROR transcribe_status http {} {}", status, snippet),
         );
-        if let Some(msg) =
-            describe_transcribe_http_status_error(status.as_u16(), &snippet)
-        {
+        if let Some(msg) = describe_transcribe_http_status_error(status.as_u16(), &snippet) {
             return Err(msg);
         }
         return Err(format!("ASR status HTTP {}: {}", status, snippet));
@@ -92,18 +90,18 @@ pub async fn post_transcribe_cancel(
             .timeout(timeout),
         url.as_str(),
     )
-        .send()
-        .await
-        .map_err(|e| {
-            append_desktop_log_line(
-                st,
-                &format!(
-                    "ERROR transcribe_cancel connect {}",
-                    redact_secrets_for_log(&e.to_string())
-                ),
-            );
-            describe_transcribe_request_error(&e, timeout)
-        })?;
+    .send()
+    .await
+    .map_err(|e| {
+        append_desktop_log_line(
+            st,
+            &format!(
+                "ERROR transcribe_cancel connect {}",
+                redact_secrets_for_log(&e.to_string())
+            ),
+        );
+        describe_transcribe_request_error(&e, timeout)
+    })?;
     let status_code = resp.status();
     if !status_code.is_success() {
         let body = resp.text().await.unwrap_or_default();
@@ -112,9 +110,7 @@ pub async fn post_transcribe_cancel(
             st,
             &format!("ERROR transcribe_cancel http {} {}", status_code, snippet),
         );
-        if let Some(msg) =
-            describe_transcribe_http_status_error(status_code.as_u16(), &snippet)
-        {
+        if let Some(msg) = describe_transcribe_http_status_error(status_code.as_u16(), &snippet) {
             return Err(msg);
         }
         return Err(format!("ASR cancel HTTP {}: {}", status_code, snippet));
@@ -123,9 +119,7 @@ pub async fn post_transcribe_cancel(
 }
 
 pub fn parse_transcribe_job_phase(v: &serde_json::Value) -> &str {
-    v.get("phase")
-        .and_then(|x| x.as_str())
-        .unwrap_or("unknown")
+    v.get("phase").and_then(|x| x.as_str()).unwrap_or("unknown")
 }
 
 #[cfg(test)]

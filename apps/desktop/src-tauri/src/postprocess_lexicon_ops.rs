@@ -1,9 +1,9 @@
 //! R3t-E: lexicon-guided proofread — prompt, parse, evidence grounding.
 
-use crate::project::lexicon_pack::LexiconPack;
 use super::postprocess_segment_ops::{
     extract_json_object_from_llm_content, RefineSegmentItem, SegmentRefineOp,
 };
+use crate::project::lexicon_pack::LexiconPack;
 use serde::{Deserialize, Serialize};
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq)]
@@ -60,10 +60,7 @@ pub fn build_lexicon_proofread_prompt(
         lines.push("（空）".to_string());
     } else {
         for r in &pack.correction_rules {
-            lines.push(format!(
-                "- [{}] {}→{}",
-                r.weight, r.wrong, r.right
-            ));
+            lines.push(format!("- [{}] {}→{}", r.weight, r.wrong, r.right));
         }
     }
     lines.push("输入语段：".to_string());
@@ -93,7 +90,9 @@ fn parse_wrong_right_ref(reference: &str) -> Option<(String, String)> {
     let sep = if t.contains('→') {
         '→'
     } else if t.contains("->") {
-        return t.split_once("->").map(|(w, r)| (w.trim().to_string(), r.trim().to_string()));
+        return t
+            .split_once("->")
+            .map(|(w, r)| (w.trim().to_string(), r.trim().to_string()));
     } else {
         return None;
     };

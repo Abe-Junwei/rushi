@@ -8,8 +8,8 @@ use super::process::{reap_bundled_sidecar_if_exited, spawn_sidecar, wait_health_
 use crate::asr_sidecar::candidates::bundled_sidecar_candidates_for_launch;
 use crate::asr_sidecar::local_token::{clear_managed_local_token, resolve_local_token_for_request};
 use crate::asr_sidecar::probe::{
-    bundled_health_looks_like_rushi_asr, bundled_sidecar_is_fresh_build, loopback_local_token_required,
-    loopback_port_accepts_tcp,
+    bundled_health_looks_like_rushi_asr, bundled_sidecar_is_fresh_build,
+    loopback_local_token_required, loopback_port_accepts_tcp,
 };
 use crate::asr_sidecar::{
     with_asr_lifecycle, with_bundled_launch, AsrSidecarState, ASR_HEALTH_URL, ASR_LOOPBACK_PORT,
@@ -188,4 +188,3 @@ fn force_restart_bundled_inner(handle: &AppHandle) {
     });
     try_start_bundled_inner(handle);
 }
-

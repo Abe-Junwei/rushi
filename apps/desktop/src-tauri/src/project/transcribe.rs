@@ -57,9 +57,7 @@ pub async fn post_transcribe_multipart(
         let body = resp.text().await.unwrap_or_default();
         let snippet = redact_http_body_snippet(&body);
         append_desktop_log_line(st, &format!("ERROR transcribe http {} {}", status, snippet));
-        if let Some(msg) =
-            describe_transcribe_http_status_error(status.as_u16(), &snippet)
-        {
+        if let Some(msg) = describe_transcribe_http_status_error(status.as_u16(), &snippet) {
             return Err(msg);
         }
         return Err(format!("ASR HTTP {}: {}", status, snippet));

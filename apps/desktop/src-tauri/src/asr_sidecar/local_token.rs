@@ -78,8 +78,12 @@ mod tests {
     fn detects_loopback_asr_urls() {
         assert!(is_asr_loopback_url("http://127.0.0.1:8741/v1/transcribe"));
         assert!(is_asr_loopback_url("http://localhost:8741/health"));
-        assert!(!is_asr_loopback_url("https://api.openai.com/v1/audio/transcriptions"));
-        assert!(!is_asr_loopback_url("http://192.168.1.1:8741/v1/transcribe"));
+        assert!(!is_asr_loopback_url(
+            "https://api.openai.com/v1/audio/transcriptions"
+        ));
+        assert!(!is_asr_loopback_url(
+            "http://192.168.1.1:8741/v1/transcribe"
+        ));
     }
 
     #[test]

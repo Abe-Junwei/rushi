@@ -1,9 +1,9 @@
-use super::edit_log_detail::build_save_segments_edit_detail;
 use super::correction::{
     accept_correction_rule, list_glossary_learn_prompts, list_stable_correction_rules,
     upsert_explicit_correction_pairs, CorrectionExplicitPairDto, CorrectionLearnBaselineTextDto,
     CorrectionRuleRow, GlossaryLearnPromptRow, SaveSegmentsLearnOpts,
 };
+use super::edit_log_detail::build_save_segments_edit_detail;
 use super::segment_media_sanitize::sanitize_segments_for_media;
 use super::segment_uid::segment_uid_or_new;
 use super::transcribe_timeout::probe_audio_duration_sec;
@@ -152,13 +152,8 @@ pub fn file_save_segments_inner(
         params![t, &project_id],
     )
     .map_err(|e| e.to_string())?;
-    let edit_detail = build_save_segments_edit_detail(
-        &tx,
-        file_id,
-        segments,
-        t,
-        &learn.explicit_pairs,
-    )?;
+    let edit_detail =
+        build_save_segments_edit_detail(&tx, file_id, segments, t, &learn.explicit_pairs)?;
     let detail = serde_json::to_string(&edit_detail).map_err(|e| e.to_string())?;
     tx.execute(
         "INSERT INTO edit_log (project_id, at_ms, kind, detail) VALUES (?1, ?2, ?3, ?4)",
@@ -210,7 +205,9 @@ pub fn correction_accept_rule(
 }
 
 #[tauri::command]
-pub fn correction_stable_rules_list(state: State<DbState>) -> Result<Vec<CorrectionRuleRow>, String> {
+pub fn correction_stable_rules_list(
+    state: State<DbState>,
+) -> Result<Vec<CorrectionRuleRow>, String> {
     let conn = open_db(state.deref())?;
     list_stable_correction_rules(&conn)
 }

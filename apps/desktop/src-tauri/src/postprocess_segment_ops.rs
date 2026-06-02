@@ -173,7 +173,9 @@ pub fn validate_refine_ops(
                     return Err(format!("split({uid}) 两侧正文不能为空。"));
                 }
                 let at = *at_sec;
-                if at <= seg.start_sec + MIN_SPLIT_SIDE_SEC || at >= seg.end_sec - MIN_SPLIT_SIDE_SEC {
+                if at <= seg.start_sec + MIN_SPLIT_SIDE_SEC
+                    || at >= seg.end_sec - MIN_SPLIT_SIDE_SEC
+                {
                     return Err(format!(
                         "split({uid}) 的 at_sec={at:.3} 不在有效范围内 ({:.3},{:.3})。",
                         seg.start_sec, seg.end_sec

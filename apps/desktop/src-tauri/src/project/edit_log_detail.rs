@@ -44,7 +44,10 @@ fn preview_snippet(text: &str) -> String {
     format!("{head}…")
 }
 
-fn load_segment_text_by_uid(conn: &Connection, file_id: &str) -> Result<HashMap<String, (i32, String)>, String> {
+fn load_segment_text_by_uid(
+    conn: &Connection,
+    file_id: &str,
+) -> Result<HashMap<String, (i32, String)>, String> {
     let mut out = HashMap::new();
     let mut stmt = conn
         .prepare("SELECT uid, idx, text FROM segments WHERE file_id = ?1")
@@ -97,7 +100,10 @@ fn collect_text_changes(
     changes
 }
 
-fn build_summary(text_changes: &[TextChangeRow], correction_pairs: &[CorrectionPairRow]) -> Option<String> {
+fn build_summary(
+    text_changes: &[TextChangeRow],
+    correction_pairs: &[CorrectionPairRow],
+) -> Option<String> {
     if let Some(p) = correction_pairs.first() {
         let mut s = format!("纠错记忆：「{}」→「{}」", p.before, p.after);
         if correction_pairs.len() > 1 {
@@ -106,7 +112,12 @@ fn build_summary(text_changes: &[TextChangeRow], correction_pairs: &[CorrectionP
         return Some(s);
     }
     let c = text_changes.first()?;
-    let mut s = format!("语段 {}：「{}」→「{}」", c.segment_idx + 1, c.before, c.after);
+    let mut s = format!(
+        "语段 {}：「{}」→「{}」",
+        c.segment_idx + 1,
+        c.before,
+        c.after
+    );
     if text_changes.len() > 1 {
         s.push_str(&format!(" 等 {} 处正文", text_changes.len()));
     }
