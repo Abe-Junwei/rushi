@@ -3,7 +3,8 @@
 > **状态**：已采纳（2026-05-31）  
 > **关联**：[`r3t-f-post-transcribe-suite-research.md`](./r3t-f-post-transcribe-suite-research.md)、[`r3t-e-lexicon-proofread-research.md`](./r3t-e-lexicon-proofread-research.md)、[`lexicon-guided-llm-refine.md`](../../architecture/lexicon-guided-llm-refine.md)  
 > **用户诉求**：用户手动改稿应沉淀为记忆，并在 LLM 自动改稿时作为参考；需弄清业内**具体怎么做**，而非仅「有记忆」口号。  
-> **编码**：**未启动** — 细节已并入 [Plan v3](./r3t-f-post-transcribe-suite-plan.md) §2、§7、§10–§12；本文保留业内对照深度。
+> **编码**：**MEM 优化未启动** — 实施真源 [MEM Plan](./r3t-f-correction-memory-optimization-plan.md)（D10–D15）；套件 [Plan v4](./r3t-f-post-transcribe-suite-plan.md)。本文保留业内对照深度。  
+> **基线（2026-05-31）**：自动保存 1.5s + `saveSegments({ quiet })` 已落地；学习仍仅 `file_save_segments` 后 infer。
 
 ---
 

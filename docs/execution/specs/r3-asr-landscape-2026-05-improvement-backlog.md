@@ -101,7 +101,7 @@
 | **FunASR diarization (`campplus`)** | 需 schema + UI + 导出；**非** v1 薄片 |
 | **ASR-RADAR-FireRed**（FireRedASR2） | 2026-02 中文 SOTA（AED ~1.1B CER ~0.57%）；统一 VAD+LID+Punc 与 R3t-A 方向一致。**限制**：60s 最大输入（AED）、非 FunASR 生态、LLM 版 VRAM 高。**v1 不做**；Sherpa Spike Go 后评估第三引擎；跟踪 [`ADR-0003`](../../adr/0003-asr-engine-funasr-first-sherpa-spike-gate.md) 附录 A |
 | **ASR-RADAR-Moonshine** | 27M 参数 / ~26MB；低 RAM 边缘场景。**v1 不做**；中文精度未达 Paraformer |
-| **SenseVoice 弃用时间线** | 百炼等平台 approaching deprecation；**R3g-C C4** 去 SenseVoice「推荐」标签；Qwen3 spike Go 后评估默认 SKU 迁移（**不删** SenseVoice v1） |
+| **SenseVoice 弃用时间线** | 阿里云百炼 SenseVoice-v1 **2026-03-09 下线**（公告 2025-11）；Rushi **Q-ASR-1**：兼容/快轨 SKU，**主推 Paraformer**；**⑤″f-E Qwen3** Go/No-go 后定第三默认位（**不删** 本机 SenseVoice v1 权重） |
 
 ---
 
@@ -160,4 +160,5 @@
 |------|------|
 | 2026-05-30 | 初版：P0–P2 表 + 与 R3e-C/R3g-B/R3h 对齐 |
 | 2026-05-30 | 外部评估吸收：FireRedASR2 / Moonshine 雷达；SenseVoice 弃用；Qwen3 伪流式 → spike §8 |
+| 2026-06-02 | 路线图审查：SenseVoice 下线日期写入；Qwen3 门控 → ⑤″f-E；R3 **12～15w** |
 | 2026-05-31 | R3e-C 手测签收（制控.mp3） |

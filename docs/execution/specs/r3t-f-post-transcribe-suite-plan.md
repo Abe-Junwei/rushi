@@ -1,13 +1,14 @@
-# Plan: R3t-F — 转写后后处理与编辑效率（完整规划 v3）
+# Plan: R3t-F — 转写后后处理与编辑效率（完整规划 v4）
 
-> **状态**：**规划定稿**（2026-05-31）· **未编码**  
+> **状态**：**规划定稿**（2026-05-31）· **F2/F6/自动保存基线 🟡 工作区** · **MEM 优化未编码**  
 > **整体性评估 / 排期**：[`r3-asr-voc-holistic-review-2026-05.md`](./r3-asr-voc-holistic-review-2026-05.md)（路线图 **⑤″f**；ASR-VOC 为 L2 子包）  
 > **Intent**：[`r3t-f-post-transcribe-suite-intent.md`](./r3t-f-post-transcribe-suite-intent.md)  
 > **Acceptance**：[`r3t-f-post-transcribe-suite-acceptance.md`](./r3t-f-post-transcribe-suite-acceptance.md)  
 > **调研**  
 > - 套件可行性/竞品：[`r3t-f-post-transcribe-suite-research.md`](./r3t-f-post-transcribe-suite-research.md)  
 > - 手改记忆 / LLM / 小团队交换：[`r3t-f-edit-memory-for-llm-research.md`](./r3t-f-edit-memory-for-llm-research.md)  
-> **已编码依赖**：R3t-C/D/E（L4）、`correction_memory` + `glossary_terms`（P2）、R3t-E 词表校对（手测签收待办）
+> - **纠错记忆优化（MEM）**：[`r3t-f-correction-memory-optimization-plan.md`](./r3t-f-correction-memory-optimization-plan.md) · [acceptance](./r3t-f-correction-memory-optimization-acceptance.md)  
+> **已编码依赖**：R3t-C/D/E（L4）、`correction_memory` + `glossary_terms`（P2）、R3t-E 词表校对（手测签收待办）；**自动保存 1.5s**（`useAutoSaveSegments`）
 
 ---
 
@@ -45,7 +46,8 @@ correction_memory ─────┼──► L2 转写 hints（warning）
                          └──► L4 LexiconPack ──► LLM 词表校对 / F1 规则 / F5（禁止塞 hotwords 串进 prompt）
 ```
 
-手改 → save / 预览写回 → `infer_single_replacement`；**不** 用整稿手改史 RAG；**不** 第二套记忆表。
+手改 → **落库**（手动 / **自动保存 1.5s** / Replace All 后 save）→ `infer_single_replacement`（+ **MEM-P0** 显式 upsert）；**不** 用整稿手改史 RAG；**不** 第二套记忆表。  
+**hit 晋升** 与纯自动保存解耦见 MEM Plan **D10**。
 
 ---
 
@@ -69,14 +71,17 @@ correction_memory ─────┼──► L2 转写 hints（warning）
 
 | 包 | 名称 | 期 | 依赖 | 状态 |
 |----|------|-----|------|------|
-| **F2** | 手动查找替换 + Correct 浮层 | P1 | 语段编辑、undo | 未编码 |
-| **F1** | 全文纠错规则（memory 字面） | P1 | `correction_memory` | 未编码 |
-| **F6** | 手改记忆闭环（→glossary 提示） | P1 | save 学习 | 部分已有学习，UI 提示未做 |
+| **F2** | 手动查找替换 + Correct 浮层 | P1 | 语段编辑、undo | 🟡 已编码（含改正浮层/高亮/快捷键）；手测待办 |
+| **F1** | 全文纠错规则（memory 字面） | P1 | `correction_memory` | 🟡 已编码；手测待办 |
+| **F6** | 手改记忆闭环（→glossary 提示） | P1 | save 学习 | 🟡 保存后第 3 次提示已编码 |
 | **F0-lite** | 转写后处理编排 | P2 | F1、R3t-C | 未编码 |
 | **F4** | 置信门控（ASR + LLM 双轨） | P2 | 段 confidence | 未编码 |
 | **F7** | 词表包导出/导入/合并 | P2 | SQLite 全局表 | 未编码 |
 | **F8** | 导出前检查（小团队） | P2–P3 | F7 | 候选 |
-| **F3** | 术语推荐 LEX-MINE-1 | P3 | memory 聚合 | 未编码 |
+| **MEM-P0** | 记忆硬化（显式入库、写回即存、hit 策略） | P1·⑤″f-B | save 链、auto-save | 未编码 |
+| **MEM-P1** | 记忆管理 UI + 采纳为规则 + LEX-MINE-1 轻量 | P1·⑤″f-B½ | MEM-P0、GLY-1 | 未编码 |
+| **MEM-P2** | infer/uid 对齐 + ACC-TXT-0 spike | P2·⑤″f-C | MEM-P0 | 未编码 |
+| **F3** | 术语推荐 LEX-MINE-2/3（全量） | P3 | MEM-P1 | 未编码 |
 | **F5** | 语义审校（fluency/logic） | P3 | R3t-E 契约 | 未编码 |
 | **F0-full** | 含 D2 段界 + F5 的一键增强 | v2 | D2 spike | 未立项 |
 | **D2** | 全文/滑窗段界 spike | Spike | R3t-D | 调研 |
@@ -88,19 +93,21 @@ correction_memory ─────┼──► L2 转写 hints（warning）
 ## 4. 分期与实施顺序
 
 ```text
-P1  F2 → F1 → F6     日常改稿 + 记忆闭环
-P2  F7 → F0-lite → F4   小团队交换 + 转写后编排 + 门控
+P1  F2 → F1 → F6 → MEM-P0     日常改稿 + 记忆闭环（硬化）
+P1½ MEM-P1                    记忆可观测 + LEX-MINE-1 轻量
+P2  F7 → F0-lite → F4 ‖ MEM-P2   小团队交换 + 编排 + L2 预替换 spike
      F8（可与 F7 同轮）
-P3  F3、F5、F4-LLM
-Spike  D2（全文段界，不阻塞 P1/P2）
+P3  F3（全量 LEX-MINE）、F5、MEM-P3
+Spike  D2（全文段界）；MEM-S1（规则预替换）
 ```
 
 | 期 | 包 | 预估 | 用户可见价值 |
 |----|-----|------|----------------|
-| **P1** | F2, F1, F6 | 10–14d | 改稿效率 + 规则批处理 + 进词表提示 |
-| **P2** | F7, F0-lite, F4, F8? | 8–12d | 团队共享词表 + 转写后一键（诚实版）+ 少 token |
-| **P3** | F3, F5 | 5–8d | 术语挖掘 + 可选语义 |
-| **Spike** | D2 | ≤3d | 全文段界可行性 |
+| **P1** | F2, F1, F6, **MEM-P0** | 12–16d | 改稿效率 + **可靠记忆入库** + 进词表提示 |
+| **P1½** | **MEM-P1** | 3–4d | 词典透明度 + 采纳为规则 + 术语推荐列表 |
+| **P2** | F7, F0-lite, F4, **MEM-P2**, F8? | 10–14d | 词表包 + 转写后处理 + **更强学习/预替换** |
+| **P3** | F3, F5, MEM-P3 | 5–8d | 全量挖掘 + 语义 + 冲突治理 |
+| **Spike** | D2, MEM-S1 | ≤3d each | 段界 / 确定性规则消费 |
 
 **编码建议首刀**：**F2**（查找替换），次刀 F1，P2 主交付 **F7**（小团队）。
 
@@ -301,3 +308,4 @@ node scripts/check-architecture-guard.mjs
 |------|------|------|
 | v2 | 2026-05-31 | 可行性修订、F0-lite/F2 拆分 |
 | **v3** | 2026-05-31 | **完整规划**：合并拍板 D1–D9、记忆双通道、F7/F8 小团队、edit-memory 调研、分期与首刀顺序 |
+| **v4** | 2026-05-31 | **MEM 优化**并入：D10–D15、MEM-P0～S1、自动保存与 hit 解耦、⑤″f 墙钟 4–6w；真源 [`r3t-f-correction-memory-optimization-plan.md`](./r3t-f-correction-memory-optimization-plan.md) |
