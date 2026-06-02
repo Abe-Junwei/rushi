@@ -166,6 +166,7 @@ fn delete_file_secret(app_data_root: &Path, api_key_id: &str) -> Result<(), Stri
     }
 }
 
+#[allow(dead_code)]
 fn migrate_file_to_keyring(app_data_root: &Path, api_key_id: &str, key: &str) {
     if !use_keyring_store() {
         return;

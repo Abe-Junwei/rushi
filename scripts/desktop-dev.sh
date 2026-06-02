@@ -42,6 +42,14 @@ sys.exit(0 if root and expected and root.rstrip('/') == expected.rstrip('/') els
 " 2>/dev/null
 }
 
+health_local_token_required() {
+  curl -sf --max-time 2 "${ASR_BASE}/health" 2>/dev/null | python3 -c "
+import json, sys
+h = json.load(sys.stdin)
+sys.exit(0 if h.get('local_token_required') else 1)
+" 2>/dev/null
+}
+
 stop_sidecar_on_8741() {
   local pids
   pids="$(lsof -ti :8741 2>/dev/null || true)"
@@ -90,9 +98,13 @@ start_source_sidecar() {
 
 if curl -sf --max-time 2 "${ASR_BASE}/health" >/dev/null 2>&1; then
   if sidecar_looks_current; then
-    if health_models_root_matches; then
+    if health_models_root_matches && ! health_local_token_required; then
       export_asr_model_env
       echo "==> Using existing ASR on 8741 (models: ${RUSHI_MODELS_ROOT})"
+    elif health_local_token_required; then
+      echo "==> 8741 ASR requires RUSHI_LOCAL_TOKEN (leftover bundled sidecar) — restarting source ASR without token…"
+      stop_sidecar_on_8741
+      start_source_sidecar
     else
       echo "==> 8741 ASR is up but not using app model cache — restarting with RUSHI_MODELS_ROOT…"
       stop_sidecar_on_8741

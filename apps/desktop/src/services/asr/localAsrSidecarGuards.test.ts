@@ -58,6 +58,23 @@ describe("localAsrSidecarGuards", () => {
     ).toBe(false);
   });
 
+  it("shouldSkipSidecarRestartForSelection false when loaded hub differs from config", () => {
+    expect(
+      shouldSkipSidecarRestartForSelection(
+        {
+          ...readyCaps,
+          funasr_model_id: "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
+          funasr_loaded_model_id: "iic/SenseVoiceSmall",
+        },
+        {
+          ...selection,
+          selectedHubModelId:
+            "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
+        },
+      ),
+    ).toBe(false);
+  });
+
   it("shouldSkipSidecarRestartForSelection false when async transcribe missing", () => {
     expect(
       shouldSkipSidecarRestartForSelection(readyCaps, {

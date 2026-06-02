@@ -1,7 +1,9 @@
 //! R3e-C: async transcribe job HTTP helpers (sidecar poll + cancel).
 
 use super::transcribe::post_transcribe_multipart;
-use super::transcribe_errors::describe_transcribe_request_error;
+use super::transcribe_errors::{
+    describe_transcribe_http_status_error, describe_transcribe_request_error,
+};
 use super::utils::append_desktop_log_line;
 use crate::utils::http_client;
 use crate::utils::{redact_http_body_snippet, redact_secrets_for_log};
@@ -10,6 +12,7 @@ use std::path::Path;
 use std::time::Duration;
 
 /// All local FunASR file transcribe uses async preview (R3e-C); online STT stays blocking.
+#[cfg(test)]
 pub fn should_use_transcribe_async(_audio_duration_sec: Option<f64>, online: bool) -> bool {
     !online
 }
@@ -60,6 +63,11 @@ pub async fn get_transcribe_job_status(
             st,
             &format!("ERROR transcribe_status http {} {}", status, snippet),
         );
+        if let Some(msg) =
+            describe_transcribe_http_status_error(status.as_u16(), &snippet)
+        {
+            return Err(msg);
+        }
         return Err(format!("ASR status HTTP {}: {}", status, snippet));
     }
     resp.json().await.map_err(|e| {
@@ -68,6 +76,8 @@ pub async fn get_transcribe_job_status(
     })
 }
 
+/// Used by UI via loopback fetch today; kept for a future Tauri command path.
+#[allow(dead_code)]
 pub async fn post_transcribe_cancel(
     st: &DbState,
     base_url: &str,
@@ -102,6 +112,11 @@ pub async fn post_transcribe_cancel(
             st,
             &format!("ERROR transcribe_cancel http {} {}", status_code, snippet),
         );
+        if let Some(msg) =
+            describe_transcribe_http_status_error(status_code.as_u16(), &snippet)
+        {
+            return Err(msg);
+        }
         return Err(format!("ASR cancel HTTP {}: {}", status_code, snippet));
     }
     Ok(())

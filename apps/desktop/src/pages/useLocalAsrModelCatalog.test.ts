@@ -23,12 +23,26 @@ vi.mock("../services/asr/loopbackFetch", () => ({
 
 vi.mock("../tauri/projectApi", () => ({
   getLocalAsrHubModelPref: vi.fn(() => Promise.resolve("iic/SenseVoiceSmall")),
+  getLocalAsrRecognitionLanguagePref: vi.fn(() => Promise.resolve("zh")),
+  asrAppManagesBundledSidecar: vi.fn(() => Promise.resolve(true)),
+}));
+
+const toastError = vi.fn();
+vi.mock("../services/ui/toast", () => ({
+  toast: {
+    info: vi.fn(),
+    success: vi.fn(),
+    warning: vi.fn(),
+    error: (...args: unknown[]) => toastError(...args),
+    dismiss: vi.fn(),
+  },
 }));
 
 describe("useLocalAsrModelCatalog applySelectedModel", () => {
   beforeEach(() => {
     applyHubModelToSidecar.mockReset();
     applyHubModelToSidecar.mockResolvedValue({ ok: true });
+    toastError.mockReset();
   });
 
   it("delegates to applyHubModelToSidecar and surfaces failure message", async () => {
@@ -45,7 +59,7 @@ describe("useLocalAsrModelCatalog applySelectedModel", () => {
     });
 
     await waitFor(() => {
-      expect(result.current.applyMessage).toContain("asr:dev");
+      expect(toastError).toHaveBeenCalledWith(expect.stringContaining("asr:dev"));
     });
     expect(applyHubModelToSidecar).toHaveBeenCalled();
   });

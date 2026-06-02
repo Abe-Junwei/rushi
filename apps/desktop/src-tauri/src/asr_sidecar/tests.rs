@@ -3,8 +3,9 @@ use super::candidates::{
     bundled_sidecar_candidates_from_roots, candidate_resource_roots_from_parts,
 };
 use super::probe::{
-    is_rushi_asr_health_json, loopback_port_accepts_tcp, loopback_root_declares_model_catalog,
-    loopback_root_declares_punc_prepare, loopback_root_declares_transcribe_async,
+    health_declares_local_token_required, is_rushi_asr_health_json, loopback_port_accepts_tcp,
+    loopback_root_declares_model_catalog, loopback_root_declares_punc_prepare,
+    loopback_root_declares_transcribe_async,
 };
 use serde_json::json;
 use std::fs;
@@ -46,6 +47,22 @@ fn rejects_missing_fields() {
 
     let v = json!({ "service": "rushi-asr" });
     assert!(!is_rushi_asr_health_json(&v));
+}
+
+#[test]
+fn health_local_token_required_flag() {
+    let v = json!({
+        "service": "rushi-asr",
+        "status": "ok",
+        "local_token_required": true
+    });
+    assert!(health_declares_local_token_required(&v));
+    let v = json!({
+        "service": "rushi-asr",
+        "status": "ok",
+        "local_token_required": false
+    });
+    assert!(!health_declares_local_token_required(&v));
 }
 
 #[test]

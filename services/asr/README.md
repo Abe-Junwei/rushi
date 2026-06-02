@@ -47,7 +47,7 @@ python -m rushi_asr
 
 - `ASR_HOST`（默认 `127.0.0.1`）
 - `ASR_PORT`（默认 `8741`）
-- `RUSHI_LOCAL_TOKEN`（可选；设置后对写接口启用本地 token 校验，请在请求头带 `x-rushi-local-token`）。**桌面壳自动拉起 bundled 侧车时会生成随机 token 并注入子进程**；手动 `npm run asr:dev` 时若需与桌面一致，可在启动前导出同一 `RUSHI_LOCAL_TOKEN`。
+- `RUSHI_LOCAL_TOKEN`（可选；设置后对写接口启用本地 token 校验，请在请求头带 `x-rushi-local-token`）。**桌面壳自动拉起 bundled 侧车时会生成随机 token 并注入子进程**；手动 `npm run asr:dev` 默认**不**设置该变量。若 8741 上残留带 token 的内置侧车而桌面已重启，转写会返回 `401 invalid_local_token`——`npm run desktop:dev` 会自动重启无 token 的源码侧车；安装包路径会尝试结束旧进程并重新拉起内置侧车。
 
 ## 依赖
 

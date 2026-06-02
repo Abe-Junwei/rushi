@@ -8,6 +8,7 @@ import {
   type LocalAsrRecognitionLanguage,
 } from "../services/asr/localAsrRecognitionLanguage";
 import { applyHubModelToSidecar } from "../services/asr/localAsrSetupModelStep";
+import { toast } from "../services/ui/toast";
 import {
   DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
   LOCAL_ASR_HUB_MODEL_STORAGE_KEY,
@@ -52,6 +53,8 @@ export interface LocalAsrModelCatalogApi {
   sidecarAsyncTranscribeCapable: boolean;
   applyBusy: boolean;
   applyMessage: string;
+  /** False when `RUSHI_SKIP_BUNDLED_ASR=1` (npm run desktop:dev). */
+  bundledSidecarManaged: boolean;
   setSelectedHubModelId: (hubModelId: string) => void;
   recognitionLanguage: LocalAsrRecognitionLanguage;
   setRecognitionLanguage: (language: LocalAsrRecognitionLanguage) => void;
@@ -74,6 +77,7 @@ export function useLocalAsrModelCatalog(
   const [sidecarAsyncTranscribeCapable, setSidecarAsyncTranscribeCapable] = useState(false);
   const [applyBusy, setApplyBusy] = useState(false);
   const [applyMessage, setApplyMessage] = useState("");
+  const [bundledSidecarManaged, setBundledSidecarManaged] = useState(true);
   const [recognitionLanguage, setRecognitionLanguageState] = useState<LocalAsrRecognitionLanguage>(
     () => readStoredLocalAsrRecognitionLanguage(),
   );
@@ -143,10 +147,12 @@ export function useLocalAsrModelCatalog(
   const bootstrapFromTauri = useCallback(async () => {
     if (!tauriRuntime) return;
     try {
-      const [pref, langPref] = await Promise.all([
+      const [pref, langPref, managed] = await Promise.all([
         p1.getLocalAsrHubModelPref(),
         p1.getLocalAsrRecognitionLanguagePref(),
+        p1.asrAppManagesBundledSidecar().catch(() => true),
       ]);
+      setBundledSidecarManaged(managed);
       if (pref?.trim()) {
         setSelectedHubModelId(pref.trim());
       }
@@ -170,18 +176,22 @@ export function useLocalAsrModelCatalog(
       sidecarAsyncTranscribeCapable,
     };
     if (!tauriRuntime) {
-      setApplyMessage("浏览器预览无法切换侧车模型，请在桌面应用中操作。");
+      toast.warning("浏览器预览无法切换侧车模型，请在桌面应用中操作。");
       return;
     }
     setApplyBusy(true);
-    setApplyMessage("正在应用所选模型并等待侧车就绪…");
+    setApplyMessage("");
     try {
-      const result = await applyHubModelToSidecar(selectionCtx);
-      if (!result.ok) {
-        setApplyMessage(result.message);
-      } else {
-        setApplyMessage("");
-      }
+      const result = await withApplyTimeout(
+        applyHubModelToSidecar(selectionCtx, (msg) => {
+          toast.info(msg, 4_000);
+        }),
+        120_000,
+        "应用模型超时（120 秒）。请点「重试内置侧车」或重新运行 npm run desktop:dev。",
+      );
+      setApplyMessage("");
+      if (result.ok) toast.success(result.message);
+      else toast.error(result.message);
       await refreshAsrRuntimeInfo();
       const root = await probeSidecarRoot();
       if (root) {
@@ -193,7 +203,8 @@ export function useLocalAsrModelCatalog(
       }
       await refreshCatalogFromSidecar();
     } catch (e) {
-      setApplyMessage(
+      setApplyMessage("");
+      toast.error(
         `应用模型失败：${e instanceof Error ? e.message : String(e)}。可尝试「重试内置侧车」。`,
       );
     } finally {
@@ -219,6 +230,7 @@ export function useLocalAsrModelCatalog(
     sidecarAsyncTranscribeCapable,
     applyBusy,
     applyMessage,
+    bundledSidecarManaged,
     setSelectedHubModelId,
     recognitionLanguage,
     setRecognitionLanguage,
@@ -227,6 +239,27 @@ export function useLocalAsrModelCatalog(
     refreshCatalogFromSidecar,
     bootstrapFromTauri,
   };
+}
+
+async function withApplyTimeout(
+  promise: Promise<{ ok: boolean; message: string; needsManualSidecarRestart?: boolean }>,
+  ms: number,
+  timeoutMessage: string,
+): Promise<{ ok: boolean; message: string; needsManualSidecarRestart?: boolean }> {
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  try {
+    return await Promise.race([
+      promise,
+      new Promise<{ ok: false; message: string; needsManualSidecarRestart: true }>((resolve) => {
+        timer = setTimeout(
+          () => resolve({ ok: false, message: timeoutMessage, needsManualSidecarRestart: true }),
+          ms,
+        );
+      }),
+    ]);
+  } finally {
+    if (timer) clearTimeout(timer);
+  }
 }
 
 export { DEFAULT_LOCAL_ASR_HUB_MODEL_ID };

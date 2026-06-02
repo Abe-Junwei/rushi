@@ -62,10 +62,12 @@ pub fn install_funasr_deps_interactive(state: State<DbState>) -> Result<Option<S
 
 /// 结束由壳拉起的 bundled 侧车（若有）并再次尝试启动（8741 空闲时）。
 #[tauri::command]
-pub async fn retry_bundled_asr_sidecar(app: tauri::AppHandle) -> Result<(), String> {
-    tauri::async_runtime::spawn_blocking(move || {
-        asr_sidecar::retry_bundled(&app);
-    })
-    .await
-    .map_err(|e| e.to_string())
+pub async fn retry_bundled_asr_sidecar(
+    app: tauri::AppHandle,
+    state: State<'_, DbState>,
+) -> Result<(), String> {
+    let st = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || asr_sidecar::restart_loopback_asr(&app, &st))
+        .await
+        .map_err(|e| e.to_string())?
 }

@@ -52,5 +52,9 @@ export function shouldSkipSidecarRestartForSelection(
   if (!sidecarRecognitionLanguageMatchesSelection(caps.funasr_language, lang)) {
     return false;
   }
+  const loaded = caps.funasr_loaded_model_id?.trim();
+  if (loaded && loaded !== hub) {
+    return false;
+  }
   return caps.funasr_model_id === hub && isLoopbackTranscribeReadyForSelection(caps, ctx);
 }

@@ -3,13 +3,14 @@ import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../config/controlSty
 import { FloatingPanelTemplate } from "./PanelTemplate";
 
 const PANEL_ID = "transcribe-overwrite-confirm-v1";
-const DEFAULT_SIZE = { width: 320, height: 260 } as const;
-const MIN_SIZE = { width: 280, height: 240 } as const;
+const DEFAULT_SIZE = { width: 380, height: 340 } as const;
+const MIN_SIZE = { width: 300, height: 280 } as const;
 
 type Props = {
   open: boolean;
   busy: boolean;
   segmentCount: number;
+  vocabularyLines: string[];
   onCancel: () => void;
   onConfirm: () => void;
 };
@@ -18,6 +19,7 @@ export function TranscribeOverwriteConfirmDialog({
   open,
   busy,
   segmentCount,
+  vocabularyLines,
   onCancel,
   onConfirm,
 }: Props) {
@@ -47,6 +49,16 @@ export function TranscribeOverwriteConfirmDialog({
           <p className="mt-2.5 text-sm leading-relaxed text-notion-text-muted">
             建议先保存或导出；确认后继续转写。
           </p>
+          {vocabularyLines.length > 0 ? (
+            <div className="mt-3 rounded-md bg-notion-sidebar/80 px-3 py-2">
+              <p className="text-xs font-medium text-notion-text">本次术语偏置</p>
+              <ul className="mt-1.5 list-disc space-y-1 pl-4 text-xs leading-relaxed text-notion-text-muted">
+                {vocabularyLines.map((line) => (
+                  <li key={line}>{line}</li>
+                ))}
+              </ul>
+            </div>
+          ) : null}
           <div className="mt-3 flex justify-end gap-2">
             <button type="button" className={CONTROL_BTN_SECONDARY} disabled={busy} onClick={handleClose}>
               取消
