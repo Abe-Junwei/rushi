@@ -12,6 +12,9 @@ use zip::write::SimpleFileOptions;
 use zip::CompressionMethod;
 use zip::ZipWriter;
 
+use crate::diagnostic_db_sanitize::{
+    copy_sanitized_diagnostic_db, redact_diagnostic_log_tail, redact_edit_log_detail_cell,
+};
 use crate::DbState;
 
 const MAX_DB_BYTES: u64 = 5 * 1024 * 1024;
@@ -107,11 +110,18 @@ pub fn export_diagnostic_bundle(
         .map_err(|e| e.to_string())?;
 
     let mut include_db = false;
+    let mut sanitized_tmp: Option<PathBuf> = None;
     let db_note = if let Ok(meta_db) = fs::metadata(&st.db_path) {
         let len = meta_db.len();
         if len <= MAX_DB_BYTES {
-            include_db = true;
-            format!("included rushi.sqlite3 ({len} bytes)\n")
+            match copy_sanitized_diagnostic_db(&st.db_path) {
+                Ok(tmp) => {
+                    include_db = true;
+                    sanitized_tmp = Some(tmp);
+                    format!("included rushi.sqlite3 ({len} bytes, transcript redacted)\n")
+                }
+                Err(e) => format!("skipped rushi.sqlite3 (sanitize failed: {e})\n"),
+            }
         } else {
             format!("skipped rushi.sqlite3 (size {len} > {MAX_DB_BYTES})\n")
         }
@@ -125,13 +135,18 @@ pub fn export_diagnostic_bundle(
         .map_err(|e| e.to_string())?;
 
     if include_db {
-        let bytes = fs::read(&st.db_path).map_err(|e| e.to_string())?;
+        let db_src = sanitized_tmp.as_ref().unwrap_or(&st.db_path);
+        let bytes = fs::read(db_src).map_err(|e| e.to_string())?;
         zip.start_file("rushi.sqlite3", zip_opts())
             .map_err(|e| e.to_string())?;
         zip.write_all(&bytes).map_err(|e| e.to_string())?;
     }
 
-    match Connection::open_with_flags(&st.db_path, OpenFlags::SQLITE_OPEN_READ_ONLY) {
+    let db_for_edit_log = sanitized_tmp
+        .as_ref()
+        .map(|p| p.as_path())
+        .unwrap_or(st.db_path.as_path());
+    match Connection::open_with_flags(db_for_edit_log, OpenFlags::SQLITE_OPEN_READ_ONLY) {
         Ok(conn) => {
             if let Err(e) = zip_recent_edit_log_tsv(&conn, &mut zip) {
                 let note = format!("could not export edit_log: {e}\n");
@@ -181,10 +196,11 @@ pub fn export_diagnostic_bundle(
                     .unwrap_or("unknown.log");
                 match read_file_tail_utf8(&p, MAX_LOG_TAIL_BYTES) {
                     Ok(content) => {
+                        let redacted = redact_diagnostic_log_tail(&content);
                         let zip_name = format!("logs/{name}");
                         zip.start_file(zip_name, zip_opts())
                             .map_err(|e| e.to_string())?;
-                        zip.write_all(content.as_bytes())
+                        zip.write_all(redacted.as_bytes())
                             .map_err(|e| e.to_string())?;
                         logs_note.push_str(&format!("included tail: {name}\n"));
                     }
@@ -210,9 +226,9 @@ pub fn export_diagnostic_bundle(
 - local-runtime.txt - manifest source/status, runtime source, current/previous version, verify/install context, live installer progress\n\
 - asr-setup.txt - hub model pref, bundled launch report, loopback port probe\n\
 - database-readme.txt - whether rushi.sqlite3 is embedded\n\
-- rushi.sqlite3 - optional copy (small DB only)\n\
-- recent_edit_log.tsv - last 500 rows from SQLite edit_log (tab-separated)\n\
-- logs/*.log - tail of each .log file under app_data_root/logs\n\
+- rushi.sqlite3 - optional sanitized copy (segment text and names redacted)\n\
+- recent_edit_log.tsv - last 500 edit_log rows (detail redacted)\n\
+- logs/*.log - tail of each .log file (secrets/transcript snippets redacted)\n\
 - logs-readme.txt - which log tails were included\n",
     )
     .map_err(|e| e.to_string())?;
@@ -225,6 +241,9 @@ pub fn export_diagnostic_bundle(
         let _ = fs::remove_file(&tmp_path);
         format!("无法将诊断包移动到目标路径: {e}")
     })?;
+    if let Some(tmp_db) = sanitized_tmp {
+        let _ = fs::remove_file(tmp_db);
+    }
     Ok(Some(zip_path.to_string_lossy().to_string()))
 }
 
@@ -248,7 +267,8 @@ fn zip_recent_edit_log_tsv(conn: &Connection, zip: &mut ZipWriter<File>) -> Resu
     let mut body = String::from("id\tproject_id\tat_ms\tkind\tdetail\n");
     for row in rows {
         let (id, pid, at_ms, kind, detail) = row.map_err(|e| e.to_string())?;
-        let detail_esc = detail.replace(['\t', '\n', '\r'], " ");
+        let detail_redacted = redact_edit_log_detail_cell(&detail);
+        let detail_esc = detail_redacted.replace(['\t', '\n', '\r'], " ");
         body.push_str(&format!("{id}\t{pid}\t{at_ms}\t{kind}\t{detail_esc}\n"));
     }
     zip.start_file("recent_edit_log.tsv", zip_opts())

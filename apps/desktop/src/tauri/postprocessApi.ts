@@ -72,6 +72,11 @@ export async function postprocessCancelAutoPunctuate(requestId: string): Promise
   });
 }
 
+/** 词表校对与自动标点共用 Rust 侧 `PostprocessCancelState` 注册表。 */
+export async function postprocessCancelLexiconProofread(requestId: string): Promise<boolean> {
+  return postprocessCancelAutoPunctuate(requestId);
+}
+
 export type RefineSegmentItem = {
   uid: string;
   startSec: number;

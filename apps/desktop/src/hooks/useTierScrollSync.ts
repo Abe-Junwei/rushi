@@ -44,6 +44,7 @@ export function useTierScrollSync(args: {
     args.waveformReady,
     args.mediaDurationSec,
     args.pxPerSec,
+    tierScrollMetrics.clientWidthPx,
     tierScrollMetrics.refreshLayout,
   ]);
 

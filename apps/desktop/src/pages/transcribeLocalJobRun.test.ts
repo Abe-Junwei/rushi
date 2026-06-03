@@ -9,6 +9,7 @@ import {
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SegmentDto } from "../tauri/projectApi";
 import { runLocalTranscribeJob } from "./transcribeLocalJobRun";
+import { TranscribeUserCancelledError } from "./transcribePreviewState";
 
 const {
   projectTranscribeAsyncStart,
@@ -52,6 +53,7 @@ describe("runLocalTranscribeJob", () => {
       userCancelRequested: { current: false },
       transcribeStartedAtMs: { current: Date.now() },
       firstSegmentsLogged: { current: false },
+      pollAbort: { current: null as AbortController | null },
     };
 
     const out = await runLocalTranscribeJob({
@@ -84,6 +86,7 @@ describe("runLocalTranscribeJob", () => {
       userCancelRequested: { current: false },
       transcribeStartedAtMs: { current: Date.now() },
       firstSegmentsLogged: { current: false },
+      pollAbort: { current: null as AbortController | null },
     };
 
     const out = await runLocalTranscribeJob({
@@ -97,5 +100,30 @@ describe("runLocalTranscribeJob", () => {
     expect(out.usedAsyncFallback).toBe(true);
     expect(projectRunTranscribe).toHaveBeenCalled();
     expect(projectTranscribeAsyncFinalize).not.toHaveBeenCalled();
+  });
+
+  it("does not fall back to blocking when user cancelled during async-unavailable", async () => {
+    projectTranscribeAsyncStart.mockRejectedValue(
+      new Error('ASR HTTP 404 Not Found: {"detail":"Not Found"}'),
+    );
+
+    const refs = {
+      activeJobId: { current: null as string | null },
+      userCancelRequested: { current: true },
+      transcribeStartedAtMs: { current: Date.now() },
+      firstSegmentsLogged: { current: false },
+      pollAbort: { current: null as AbortController | null },
+    };
+
+    await expect(
+      runLocalTranscribeJob({
+        fileId: "file-1",
+        base: TRANSCRIBE_TEST_ASR_BASE,
+        segmentsRef: { current: [] },
+        refs,
+        callbacks: { setSegments: vi.fn(), setTranscribeProgress: vi.fn() },
+      }),
+    ).rejects.toBeInstanceOf(TranscribeUserCancelledError);
+    expect(projectRunTranscribe).not.toHaveBeenCalled();
   });
 });

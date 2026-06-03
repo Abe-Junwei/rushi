@@ -28,6 +28,14 @@ export {
 } from "./registry";
 
 export {
+  BUILTIN_PLUGIN_MANIFESTS,
+  isBuiltinPluginId,
+  isBuiltinPluginManifest,
+} from "./builtinRegistry";
+
+export {
+  activatePluginModule,
+  loadBuiltinPlugins,
   loadPlugin,
   loadPlugins,
   unloadPlugin,

@@ -52,7 +52,11 @@ fn replace_json_secret_fields(input: &str) -> String {
         "\"access_token\"",
         "\"authorization\"",
     ] {
-        if let Some(start) = out.find(key) {
+        let mut search_from = 0;
+        while let Some(rest) = out.get(search_from..) {
+            let Some(start) = rest.find(key) else { break; };
+            let start = search_from + start;
+            let mut replaced = false;
             if let Some(colon) = out[start..].find(':') {
                 let value_start = start + colon + 1;
                 if let Some(rest) = out.get(value_start..) {
@@ -62,10 +66,16 @@ fn replace_json_secret_fields(input: &str) -> String {
                             let replace_end =
                                 value_start + (rest.len() - trimmed.len()) + 1 + end_quote + 1;
                             out.replace_range(value_start..replace_end, " \"[REDACTED]\"");
+                            replaced = true;
                         }
                     }
                 }
             }
+            // Advance past this key to guarantee termination.
+            search_from = start + key.len();
+            // If we actually replaced, the value no longer contains a secret;
+            // searching from after the key is sufficient to find the next occurrence.
+            let _ = replaced;
         }
     }
     out
@@ -135,6 +145,18 @@ mod tests {
     fn redacts_sk_prefixed_tokens() {
         let out = redact_secrets_for_log("upstream said sk-abcdef1234567890 invalid");
         assert!(!out.contains("sk-abcdef1234567890"));
+    }
+
+    #[test]
+    fn redacts_multiple_json_secret_fields() {
+        let input = r#"{"api_key":"sk-first","api_key":"sk-second","secret":"shh"}"#;
+        let out = redact_secrets_for_log(input);
+        assert!(!out.contains("sk-first"));
+        assert!(!out.contains("sk-second"));
+        assert!(!out.contains("shh"));
+        // Should contain exactly three [REDACTED] markers.
+        let redacted_count = out.matches("[REDACTED]").count();
+        assert_eq!(redacted_count, 3, "expected 3 redactions, got {redacted_count} in: {out}");
     }
 
     #[test]

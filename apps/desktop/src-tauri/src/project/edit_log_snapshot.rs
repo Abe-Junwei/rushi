@@ -5,6 +5,9 @@ use rusqlite::{params, Connection, Transaction};
 
 pub const SNAPSHOTS_PER_FILE: i64 = 30;
 
+/// Bump when snapshot JSON shape gains required fields (see `db::migrate_edit_log_snapshots_schema`).
+pub const EDIT_LOG_SNAPSHOT_SCHEMA_VERSION: i32 = 1;
+
 pub fn insert_snapshot(
     tx: &Transaction<'_>,
     edit_log_id: i64,
@@ -14,9 +17,15 @@ pub fn insert_snapshot(
     let segments_json = serde_json::to_string(segments).map_err(|e| e.to_string())?;
     let segment_count = segments.len() as i64;
     tx.execute(
-        "INSERT INTO edit_log_snapshots (edit_log_id, file_id, segments_json, segment_count) \
-         VALUES (?1, ?2, ?3, ?4)",
-        params![edit_log_id, file_id, segments_json, segment_count],
+        "INSERT INTO edit_log_snapshots (edit_log_id, file_id, segments_json, segment_count, schema_version) \
+         VALUES (?1, ?2, ?3, ?4, ?5)",
+        params![
+            edit_log_id,
+            file_id,
+            segments_json,
+            segment_count,
+            EDIT_LOG_SNAPSHOT_SCHEMA_VERSION,
+        ],
     )
     .map_err(|e| e.to_string())?;
     prune_snapshots_for_file(tx, file_id)?;
@@ -98,6 +107,14 @@ mod tests {
         let tx = conn.unchecked_transaction().unwrap();
         insert_snapshot(&tx, edit_log_id, "f", &[seg("甲")]).unwrap();
         tx.commit().unwrap();
+        let schema_version: i32 = conn
+            .query_row(
+                "SELECT schema_version FROM edit_log_snapshots WHERE edit_log_id = ?1",
+                [edit_log_id],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(schema_version, EDIT_LOG_SNAPSHOT_SCHEMA_VERSION);
         let loaded = load_snapshot(&conn, edit_log_id, "f").unwrap();
         assert_eq!(loaded.len(), 1);
         assert_eq!(loaded[0].text, "甲");

@@ -26,8 +26,13 @@ pub struct LoopbackResponse {
 
 fn normalize_path(path: &str) -> Result<String, String> {
     let p = path.trim();
-    if !p.starts_with('/') || p.contains("..") {
+    if !p.starts_with('/') {
         return Err("invalid_loopback_path".into());
+    }
+    for component in std::path::Path::new(p).components() {
+        if matches!(component, std::path::Component::ParentDir) {
+            return Err("invalid_loopback_path".into());
+        }
     }
     Ok(p.to_string())
 }
@@ -113,7 +118,9 @@ mod tests {
     #[test]
     fn normalize_path_rejects_traversal() {
         assert!(normalize_path("/health").is_ok());
+        assert!(normalize_path("/v1/transcribe/status").is_ok());
         assert!(normalize_path("../health").is_err());
+        assert!(normalize_path("/foo/../health").is_err());
     }
 
     #[test]

@@ -72,10 +72,10 @@ export function resolveExportPolishBlockReason(segments: SegmentDto[]): string |
 }
 
 /** 导出时优先复用预览缓存，避免二次请求 LLM。 */
-export async function resolveExportPolishForDelivery(
+export function resolveExportPolishForDelivery(
   segments: SegmentDto[],
   polishPreview?: ExportPolishResult | null,
-): Promise<ExportPolishResult> {
+): ExportPolishResult {
   const fp = fingerprintExportPolishSegments(segments);
   if (polishPreview && polishPreview.segmentsFingerprint !== fp) {
     throw new Error("语段正文已变更，请重新生成预览后再导出。");

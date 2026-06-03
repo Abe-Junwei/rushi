@@ -27,11 +27,16 @@ export async function postTranscribeCancel(base: string, jobId: string): Promise
   });
 }
 
+export type PollTranscribeJobOptions = {
+  signal?: AbortSignal;
+};
+
 export async function pollTranscribeJob(
   jobId: string,
   base: string,
   onTick: (st: TranscribeStatusPayload) => void,
   shouldStop: () => boolean,
+  options?: PollTranscribeJobOptions,
 ): Promise<void> {
   const deadline = Date.now() + TRANSCRIBE_ASYNC_MAX_WAIT_MS;
   while (Date.now() < deadline) {
@@ -40,6 +45,7 @@ export async function pollTranscribeJob(
     }
     const res = await loopbackFetch(
       `${base}/v1/transcribe/status?job_id=${encodeURIComponent(jobId)}`,
+      { signal: options?.signal },
     );
     if (!res.ok) {
       const errBody = await res.text().catch(() => "");
@@ -53,7 +59,6 @@ export async function pollTranscribeJob(
     const st = (await res.json().catch(() => ({}))) as TranscribeStatusPayload;
     onTick(st);
     if (st.phase === "done") {
-      if (shouldStop()) throw new TranscribeUserCancelledError();
       return;
     }
     if (st.phase === "cancelled") {

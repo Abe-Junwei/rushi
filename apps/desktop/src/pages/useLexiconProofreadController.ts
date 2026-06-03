@@ -2,7 +2,7 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
 import {
   correctionAcceptRule,
-  postprocessCancelAutoPunctuate,
+  postprocessCancelLexiconProofread,
   postprocessLexiconProofread,
   type GroundedLexiconOp,
   type PostprocessLexiconProofreadRequest,
@@ -327,7 +327,7 @@ export function useLexiconProofreadController(
     acceptRulesRef.current = false;
     setDialog({ phase: "closed" });
     if (requestId) {
-      void postprocessCancelAutoPunctuate(requestId).catch(() => {
+      void postprocessCancelLexiconProofread(requestId).catch(() => {
         /* ignore */
       });
     }

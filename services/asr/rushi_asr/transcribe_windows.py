@@ -98,8 +98,14 @@ def offset_segments(
     return out
 
 
-def merge_window_segments(segments: list[TranscriptionSegment]) -> list[TranscriptionSegment]:
+def sort_window_segments(segments: list[TranscriptionSegment]) -> list[TranscriptionSegment]:
+    """Sort window slices by time; overlap trimming is done in the Rust desktop layer."""
     return sorted(segments, key=lambda s: (s.start_sec, s.end_sec))
+
+
+def merge_window_segments(segments: list[TranscriptionSegment]) -> list[TranscriptionSegment]:
+    """Deprecated alias — use :func:`sort_window_segments`."""
+    return sort_window_segments(segments)
 
 
 def transcribe_by_windows(

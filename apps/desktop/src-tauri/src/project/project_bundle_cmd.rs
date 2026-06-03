@@ -145,8 +145,14 @@ pub(super) fn export_project_bundle_to_path(
         .map_err(|e| e.to_string())?;
     zip.write_all(&audio_bytes).map_err(|e| e.to_string())?;
 
-    zip.finish().map_err(|e| format!("完成项目包失败: {e}"))?;
-    fs::rename(&tmp_path, zip_path).map_err(|e| format!("保存项目包失败: {e}"))?;
+    if let Err(e) = zip.finish().map_err(|e| format!("完成项目包失败: {e}")) {
+        let _ = fs::remove_file(&tmp_path);
+        return Err(e);
+    }
+    if let Err(e) = fs::rename(&tmp_path, zip_path).map_err(|e| format!("保存项目包失败: {e}")) {
+        let _ = fs::remove_file(&tmp_path);
+        return Err(e);
+    }
     Ok(zip_path.to_string_lossy().to_string())
 }
 

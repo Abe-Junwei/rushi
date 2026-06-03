@@ -2,11 +2,12 @@ import type { MutableRefObject } from "react";
 import { asrBaseUrl } from "../config/env";
 import type { SegmentDto } from "../tauri/projectApi";
 import * as p1 from "../tauri/projectApi";
-import { logFirstSegmentsVisibleMs, pollTranscribeJob } from "./transcribeAsyncPoll";
+import { logFirstSegmentsVisibleMs, pollTranscribeJob, postTranscribeCancel } from "./transcribeAsyncPoll";
 import {
   isTranscribeAsyncUnavailable,
   mergeTranscribeSegmentsDelta,
   parseTranscribeProgress,
+  TRANSCRIBE_PENDING_JOB_ID,
   TranscribeUserCancelledError,
   type TranscribeProgress,
   type TranscribeStatusPayload,
@@ -17,6 +18,7 @@ export type LocalTranscribeJobRunRefs = {
   userCancelRequested: { current: boolean };
   transcribeStartedAtMs: { current: number };
   firstSegmentsLogged: { current: boolean };
+  pollAbort: { current: AbortController | null };
 };
 
 export type LocalTranscribeJobRunCallbacks = {
@@ -50,26 +52,45 @@ function onTranscribeStatusTick(
   callbacks.setTranscribeProgress(parseTranscribeProgress(st));
 }
 
+function throwIfUserCancelled(refs: LocalTranscribeJobRunRefs): void {
+  if (refs.userCancelRequested.current) {
+    throw new TranscribeUserCancelledError();
+  }
+}
+
+async function bestEffortCancelSidecarJob(base: string, jobId: string): Promise<void> {
+  try {
+    await postTranscribeCancel(base, jobId);
+  } catch {
+    /* poll loop will surface sidecar errors or timeout */
+  }
+}
+
 export async function runLocalTranscribeJob(
   args: LocalTranscribeJobRunArgs,
 ): Promise<{ out: p1.RunTranscribeOutcome; usedAsyncFallback: boolean }> {
   const { fileId, base, segmentsRef, refs, callbacks } = args;
+  refs.activeJobId.current = TRANSCRIBE_PENDING_JOB_ID;
   try {
+    throwIfUserCancelled(refs);
     const { jobId } = await p1.projectTranscribeAsyncStart(fileId, asrBaseUrl());
     refs.activeJobId.current = jobId;
+    if (refs.userCancelRequested.current) {
+      await bestEffortCancelSidecarJob(base, jobId);
+      throw new TranscribeUserCancelledError();
+    }
     await pollTranscribeJob(
       jobId,
       base,
       (st) => onTranscribeStatusTick(st, segmentsRef, refs, callbacks),
       () => refs.userCancelRequested.current,
+      { signal: refs.pollAbort.current?.signal },
     );
-    if (refs.userCancelRequested.current) {
-      throw new TranscribeUserCancelledError();
-    }
     const out = await p1.projectTranscribeAsyncFinalize(fileId, jobId, asrBaseUrl());
     return { out, usedAsyncFallback: false };
   } catch (e) {
     if (!isTranscribeAsyncUnavailable(e)) throw e;
+    throwIfUserCancelled(refs);
     const out = await p1.projectRunTranscribe(fileId, asrBaseUrl(), null);
     return { out, usedAsyncFallback: true };
   } finally {

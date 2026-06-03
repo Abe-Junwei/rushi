@@ -59,6 +59,21 @@ describe("transcribeAsyncPoll", () => {
     expect(pollCount).toBeGreaterThanOrEqual(1);
   });
 
+  it("pollTranscribeJob resolves on done even if shouldStop becomes true after", async () => {
+    vi.mocked(loopbackFetch).mockResolvedValue(
+      new Response(JSON.stringify({ phase: "done" }), { status: 200 }),
+    );
+    let stop = false;
+    await pollTranscribeJob(
+      "job-1",
+      "http://127.0.0.1:8741",
+      () => {
+        stop = true;
+      },
+      () => stop,
+    );
+  });
+
   it("pollTranscribeJob throws on cancelled phase", async () => {
     vi.mocked(loopbackFetch).mockResolvedValue(
       new Response(JSON.stringify({ phase: "cancelled" }), { status: 200 }),

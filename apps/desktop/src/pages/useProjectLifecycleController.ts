@@ -270,6 +270,7 @@ export function useProjectLifecycleController(
     mutations,
     localTranscribePreflight,
     sttOnlineRuntimeEpoch,
+    clearScheduledAutoSave: () => clearAutoSaveRef.current(),
   });
 
   const applyDetail = useCallback(

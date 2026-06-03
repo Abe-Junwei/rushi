@@ -95,6 +95,17 @@ export const TRANSCRIBE_PREVIEW_BLOCK_REASON =
 
 export const TRANSCRIBE_CANCELLED_HINT = "已停止转写，语段已恢复。";
 
+/** Placeholder until `projectTranscribeAsyncStart` returns a sidecar job id. */
+export const TRANSCRIBE_PENDING_JOB_ID = "__transcribe_pending__";
+
+export function isSidecarCancellableTranscribeJobId(jobId: string): boolean {
+  return jobId !== TRANSCRIBE_PENDING_JOB_ID && !jobId.startsWith("online-stt-");
+}
+
+export function newOnlineTranscribeJobId(): string {
+  return `online-stt-${Date.now()}`;
+}
+
 export class TranscribeUserCancelledError extends Error {
   constructor() {
     super("转写已取消");

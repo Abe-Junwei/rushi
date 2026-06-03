@@ -39,8 +39,10 @@ export function useTierScrollLayout(
 
     let raf = 0;
     let activeUntil = 0;
+    let cancelled = false;
 
     const readLayout = () => {
+      if (cancelled) return;
       liveScrollLeftRef.current = el.scrollLeft;
       liveClientWidthRef.current = el.clientWidth;
       const next = {
@@ -56,7 +58,7 @@ export function useTierScrollLayout(
     const loop = () => {
       raf = 0;
       readLayout();
-      if (performance.now() < activeUntil) {
+      if (!cancelled && performance.now() < activeUntil) {
         raf = requestAnimationFrame(loop);
       }
     };
@@ -72,6 +74,7 @@ export function useTierScrollLayout(
     window.addEventListener("resize", scheduleBurst);
 
     return () => {
+      cancelled = true;
       el.removeEventListener("scroll", scheduleBurst);
       window.removeEventListener("resize", scheduleBurst);
       if (raf) cancelAnimationFrame(raf);

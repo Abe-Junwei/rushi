@@ -96,23 +96,29 @@ impl LevelWriter {
             fs::create_dir_all(parent).map_err(|e| e.to_string())?;
         }
         let tmp_path = path.with_extension("dat.tmp");
-        let file = File::create(&tmp_path).map_err(|e| e.to_string())?;
-        let mut w = BufWriter::new(file);
-        let length = self.pixels.len() as i32;
-        let samples_per_pixel = self.samples_per_pixel.min(i32::MAX as u64) as i32;
-        write_i32(&mut w, DAT_VERSION)?;
-        write_i32(&mut w, DAT_FLAGS)?;
-        write_i32(&mut w, sample_rate as i32)?;
-        write_i32(&mut w, samples_per_pixel)?;
-        write_i32(&mut w, length)?;
-        write_i32(&mut w, DAT_FORMAT_I16)?;
-        for (min_v, max_v) in &self.pixels {
-            write_i16(&mut w, *min_v)?;
-            write_i16(&mut w, *max_v)?;
+        let write_result = (|| -> Result<(), String> {
+            let file = File::create(&tmp_path).map_err(|e| e.to_string())?;
+            let mut w = BufWriter::new(file);
+            let length = self.pixels.len() as i32;
+            let samples_per_pixel = self.samples_per_pixel.min(i32::MAX as u64) as i32;
+            write_i32(&mut w, DAT_VERSION)?;
+            write_i32(&mut w, DAT_FLAGS)?;
+            write_i32(&mut w, sample_rate as i32)?;
+            write_i32(&mut w, samples_per_pixel)?;
+            write_i32(&mut w, length)?;
+            write_i32(&mut w, DAT_FORMAT_I16)?;
+            for (min_v, max_v) in &self.pixels {
+                write_i16(&mut w, *min_v)?;
+                write_i16(&mut w, *max_v)?;
+            }
+            w.flush().map_err(|e| e.to_string())?;
+            fs::rename(&tmp_path, path).map_err(|e| e.to_string())?;
+            Ok(())
+        })();
+        if write_result.is_err() {
+            let _ = fs::remove_file(&tmp_path);
         }
-        w.flush().map_err(|e| e.to_string())?;
-        fs::rename(&tmp_path, path).map_err(|e| e.to_string())?;
-        Ok(())
+        write_result
     }
 }
 

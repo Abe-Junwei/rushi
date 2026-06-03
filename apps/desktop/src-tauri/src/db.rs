@@ -4,7 +4,10 @@
 use rusqlite::Connection;
 
 fn table_columns(conn: &Connection, table: &str) -> rusqlite::Result<Vec<String>> {
-    if !matches!(table, "segments" | "files" | "projects" | "glossary_terms") {
+    if !matches!(
+        table,
+        "segments" | "files" | "projects" | "glossary_terms" | "edit_log_snapshots"
+    ) {
         return Err(rusqlite::Error::InvalidParameterName(table.to_string()));
     }
     let mut stmt = conn.prepare(&format!("PRAGMA table_info({table})"))?;
@@ -158,6 +161,18 @@ fn migrate_edit_log_snapshots(conn: &Connection) -> rusqlite::Result<()> {
         CREATE INDEX IF NOT EXISTS idx_edit_log_snapshots_file ON edit_log_snapshots(file_id);
         "#,
     )?;
+    migrate_edit_log_snapshots_schema(conn)?;
+    Ok(())
+}
+
+fn migrate_edit_log_snapshots_schema(conn: &Connection) -> rusqlite::Result<()> {
+    let cols = table_columns(conn, "edit_log_snapshots")?;
+    if !cols.iter().any(|c| c == "schema_version") {
+        conn.execute(
+            "ALTER TABLE edit_log_snapshots ADD COLUMN schema_version INTEGER NOT NULL DEFAULT 1",
+            [],
+        )?;
+    }
     Ok(())
 }
 

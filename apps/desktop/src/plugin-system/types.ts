@@ -89,10 +89,23 @@ export interface CommandPaletteItem extends ExtensionContribution {
 
 // ── Segment decorator extension point ──────────────────────────────────
 
+/**
+ * Plain-text decoration only. Return value must be rendered as text (React children
+ * or textContent), never as HTML — no innerHTML / dangerouslySetInnerHTML.
+ */
 export interface SegmentDecorator extends ExtensionContribution {
   type: "segment.decorator";
   decorate(segmentText: string): string;
 }
+
+/** Optional capability declarations for future sandboxing (v1: warn-only). */
+export type PluginPermission =
+  | "events"
+  | "register:tts.provider"
+  | "register:export.format"
+  | "register:menu.item"
+  | "register:command.palette"
+  | "register:segment.decorator";
 
 /** Union of all possible extension contributions. */
 export type ExtensionContributionUnion =
@@ -112,8 +125,10 @@ export interface PluginManifest {
   author?: string;
   /** Minimum Rushi app version required. */
   minAppVersion?: string;
-  /** Absolute or relative URL to the plugin entry module. */
+  /** Absolute or relative URL to the plugin entry module (no http/https). */
   entry: string;
+  /** Declared capabilities; omitted manifests log a dev warning at load time. */
+  permissions?: readonly PluginPermission[];
 }
 
 /** Context passed to `activate()` when a plugin is loaded. */

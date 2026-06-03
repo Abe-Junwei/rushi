@@ -18,10 +18,13 @@ import { resolveTranscribeExecuteBlock } from "./transcribeExecuteGate";
 import { segmentsHaveNonEmptyText } from "./transcribeJobHelpers";
 import { runLocalTranscribeJob } from "./transcribeLocalJobRun";
 import {
+  isSidecarCancellableTranscribeJobId,
   isTranscribeUserCancellation,
+  newOnlineTranscribeJobId,
   snapshotSegmentsForRestore,
   TRANSCRIBE_ASYNC_FALLBACK_HINT,
   TRANSCRIBE_CANCELLED_HINT,
+  TranscribeUserCancelledError,
   type TranscribeProgress,
 } from "./transcribePreviewState";
 
@@ -53,6 +56,7 @@ type Deps = {
   mutations: Mutations;
   localTranscribePreflight: LocalTranscribePreflight;
   sttOnlineRuntimeEpoch?: number;
+  clearScheduledAutoSave?: () => void;
 };
 
 export function useTranscribeJobController(deps: Deps) {
@@ -71,6 +75,7 @@ export function useTranscribeJobController(deps: Deps) {
     mutations,
     localTranscribePreflight,
     sttOnlineRuntimeEpoch = 0,
+    clearScheduledAutoSave,
   } = deps;
 
   const [transcribeHints, setTranscribeHints] = useState<string[]>([]);
@@ -85,6 +90,7 @@ export function useTranscribeJobController(deps: Deps) {
   const userCancelRequestedRef = useRef(false);
   const transcribeStartedAtRef = useRef(0);
   const firstSegmentsLoggedRef = useRef(false);
+  const pollAbortRef = useRef<AbortController | null>(null);
 
   const refreshVocabularyPreflight = useCallback(async () => {
     try {
@@ -108,12 +114,14 @@ export function useTranscribeJobController(deps: Deps) {
     userCancelRequested: userCancelRequestedRef,
     transcribeStartedAtMs: transcribeStartedAtRef,
     firstSegmentsLogged: firstSegmentsLoggedRef,
+    pollAbort: pollAbortRef,
   };
 
   useEffect(() => {
     return () => {
+      pollAbortRef.current?.abort();
+      pollAbortRef.current = null;
       activeJobIdRef.current = null;
-      userCancelRequestedRef.current = false;
     };
   }, []);
 
@@ -150,7 +158,10 @@ export function useTranscribeJobController(deps: Deps) {
     }
     const fileId = currentFileId!;
     setOverwriteDialogOpen(false);
+    clearScheduledAutoSave?.();
     beginBusy("transcribe");
+    pollAbortRef.current?.abort();
+    pollAbortRef.current = new AbortController();
     setError("");
     setTranscribeHints([]);
     const vocabLine = transcribeVocabularyPreflightLines.find((l) => l.trim());
@@ -181,7 +192,11 @@ export function useTranscribeJobController(deps: Deps) {
           extraHints = [TRANSCRIBE_ASYNC_FALLBACK_HINT];
         }
       } else {
+        activeJobIdRef.current = newOnlineTranscribeJobId();
         out = await p1.projectRunTranscribe(fileId, asrBaseUrl(), online ?? null);
+        if (userCancelRequestedRef.current) {
+          throw new TranscribeUserCancelledError();
+        }
       }
       await finishTranscribeSuccess(fileId, out, extraHints);
     } catch (e) {
@@ -196,6 +211,8 @@ export function useTranscribeJobController(deps: Deps) {
         setError(msg);
       }
     } finally {
+      pollAbortRef.current?.abort();
+      pollAbortRef.current = null;
       activeJobIdRef.current = null;
       userCancelRequestedRef.current = false;
       setTranscribeCancelling(false);
@@ -214,6 +231,7 @@ export function useTranscribeJobController(deps: Deps) {
     segmentsRef,
     localTranscribePreflight,
     transcribeVocabularyPreflightLines,
+    clearScheduledAutoSave,
   ]);
 
   const requestTranscribe = useCallback(async () => {
@@ -262,6 +280,8 @@ export function useTranscribeJobController(deps: Deps) {
     if (!jobId || transcribeCancelling) return;
     setTranscribeCancelling(true);
     userCancelRequestedRef.current = true;
+    pollAbortRef.current?.abort();
+    if (!isSidecarCancellableTranscribeJobId(jobId)) return;
     const base = asrBaseUrl().replace(/\/+$/, "");
     try {
       await postTranscribeCancel(base, jobId);

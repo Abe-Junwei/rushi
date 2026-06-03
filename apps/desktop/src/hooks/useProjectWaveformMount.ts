@@ -120,8 +120,12 @@ export function useProjectWaveformMount(
         resetAppliedPeaks(appliedZoom);
       }
 
+      if (disposed) return;
+      const mountEl = containerRef.current;
+      if (!mountEl?.isConnected) return;
+
       const ws = WaveSurfer.create({
-        container: el,
+        container: mountEl,
         url: mediaUrl,
         peaks,
         duration,

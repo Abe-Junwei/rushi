@@ -3,6 +3,7 @@ mod asr_sidecar;
 mod china_stt_shell;
 mod db;
 mod diagnostic;
+mod diagnostic_db_sanitize;
 mod export_docx;
 mod export_docx_polish_track;
 mod local_asr_language;

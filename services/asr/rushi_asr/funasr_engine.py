@@ -53,10 +53,20 @@ def loaded_funasr_model_id() -> str | None:
 
 def invalidate_funasr_model_cache() -> None:
     """Drop loaded AutoModel so the next transcribe picks up new weights (e.g. after prepare)."""
+    import gc
+
     global _model_singleton, _model_loaded_id
     with _runtime_lock:
         _model_singleton = None
         _model_loaded_id = None
+    gc.collect()
+    try:
+        import torch
+
+        if torch.cuda.is_available():
+            torch.cuda.empty_cache()
+    except ImportError:
+        pass
 
 
 def _reset_inference_executor_after_timeout() -> None:

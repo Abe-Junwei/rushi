@@ -71,13 +71,8 @@ export function useProjectCloseGateController(
 
   const closeAfterSaveRef = useRef(false);
   const navigateProceedRef = useRef<Proceed | null>(null);
-  const hasUnsavedRef = useRef(dirty.hasUnsavedSegmentChanges);
   const [closeGateOpen, setCloseGateOpen] = useState(false);
   const [closeGateIntent, setCloseGateIntent] = useState<"app-quit" | "navigate">("app-quit");
-
-  useEffect(() => {
-    hasUnsavedRef.current = dirty.hasUnsavedSegmentChanges;
-  }, [dirty.hasUnsavedSegmentChanges]);
 
   function closeFileWrapped() {
     closeFile();
@@ -233,7 +228,7 @@ export function useProjectCloseGateController(
   useEffect(() => {
     ensureAppWindowCloseGuardRegistered();
     setAppWindowCloseGuardBridge({
-      hasUnsaved: () => hasUnsavedRef.current(),
+      hasUnsaved: () => dirty.hasUnsavedSegmentChanges(),
       onBlocked: () => {
         navigateProceedRef.current = null;
         setCloseGateIntent("app-quit");
@@ -242,7 +237,7 @@ export function useProjectCloseGateController(
       isClosingAfterSave: () => closeAfterSaveRef.current,
     });
     return () => setAppWindowCloseGuardBridge(null);
-  }, []);
+  }, [dirty.hasUnsavedSegmentChanges]);
 
   return {
     closeFileWrapped,

@@ -225,6 +225,10 @@ export function useExportController(deps: ExportDeps): ExportApi {
   );
 
   const exportDiagnosticBundle = useCallback(async () => {
+    const proceed = window.confirm(
+      "诊断包将包含脱敏后的数据库副本与日志（语段正文、项目名称等已替换为 [REDACTED]）。仍可能含路径与操作元数据，仅分享给可信对象。确定继续导出？",
+    );
+    if (!proceed) return;
     setError("");
     try {
       await exportDiagnosticBundleImpl();

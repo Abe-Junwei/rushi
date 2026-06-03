@@ -398,9 +398,22 @@ async fn save_transcribe_segments(
             &format!("INFO transcribe filtered dominant spans removed={removed_dominant} file_id={file_id}"),
         );
     }
-    if let Ok(conn) = open_db(st) {
-        if let Ok(mut hint_warnings) = collect_correction_rule_hints(&conn, &segments) {
-            warnings.append(&mut hint_warnings);
+    match open_db(st) {
+        Ok(conn) => {
+            if let Ok(mut hint_warnings) = collect_correction_rule_hints(&conn, &segments) {
+                warnings.append(&mut hint_warnings);
+            } else {
+                append_desktop_log_line(
+                    st,
+                    &format!("WARN transcribe correction hints collect failed file_id={file_id}"),
+                );
+            }
+        }
+        Err(e) => {
+            append_desktop_log_line(
+                st,
+                &format!("WARN transcribe correction hints open_db failed file_id={file_id} err={e}"),
+            );
         }
     }
     append_desktop_log_line(st, "INFO transcribe_stage=save");

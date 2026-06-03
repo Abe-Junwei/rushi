@@ -16,6 +16,19 @@ use crate::asr_sidecar::{
 };
 use crate::DbState;
 
+fn reap_child_after_kill(child: &mut Child) {
+    let deadline = std::time::Instant::now() + Duration::from_secs(5);
+    loop {
+        match child.try_wait() {
+            Ok(Some(_)) => return,
+            Ok(None) if std::time::Instant::now() < deadline => {
+                std::thread::sleep(Duration::from_millis(50));
+            }
+            _ => return,
+        }
+    }
+}
+
 pub(crate) fn reap_bundled_sidecar_if_exited(handle: &AppHandle) {
     let Some(s) = handle.try_state::<AsrSidecarState>() else {
         return;
@@ -41,7 +54,7 @@ fn replace_bundled_child(handle: &AppHandle, mut child: Child) -> bool {
     };
     if let Some(mut old) = g.take() {
         let _ = old.kill();
-        let _ = old.wait();
+        reap_child_after_kill(&mut old);
     }
     *g = Some(child);
     true
@@ -58,7 +71,7 @@ fn drop_bundled_child(handle: &AppHandle) {
     };
     if let Some(mut c) = g.take() {
         let _ = c.kill();
-        let _ = c.wait();
+        reap_child_after_kill(&mut c);
     }
     clear_managed_local_token();
 }
