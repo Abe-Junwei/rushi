@@ -79,7 +79,7 @@ describe("learn tracking coverage", () => {
     const start = row.text.indexOf("不在新台");
     const end = start + 4;
     const afterDelete = row.text.slice(0, start) + row.text.slice(end);
-    segmentDraftStore.beginComposition(key, row.text, row.text, start, end);
+    segmentDraftStore.beginComposition(key);
     segmentDraftStore.applyLearnEditBeforeInput(
       key,
       row.text,

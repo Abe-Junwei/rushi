@@ -25,7 +25,7 @@ describe("confirm learn baseline", () => {
     segmentDraftStore.resetAll();
   });
 
-  it("needsLearnOnSegmentConfirm when tracked op is learnable", () => {
+  it("needsLearnOnSegmentConfirm is always false (manual memory only)", () => {
     const s = seg("u1", "敛喉");
     const key = segmentDraftKey(s, 0);
     segmentDraftStore.setLearnFocusBaseline(key, "脸喉");
@@ -39,7 +39,7 @@ describe("confirm learn baseline", () => {
       "insertReplacementText",
       "敛喉",
     );
-    expect(needsLearnOnSegmentConfirm([seg("u1", "敛喉")], 0, [s])).toBe(true);
+    expect(needsLearnOnSegmentConfirm([seg("u1", "敛喉")], 0, [s])).toBe(false);
   });
 
   it("needsLearnOnSegmentConfirm false when only baseline differs without tracking", () => {
@@ -49,7 +49,7 @@ describe("confirm learn baseline", () => {
     expect(needsLearnOnSegmentConfirm([seg("u1", "敛喉")], 0, [s])).toBe(false);
   });
 
-  it("segmentPendingLearnAtIndex requires learnable tracked ops", () => {
+  it("segmentPendingLearnAtIndex is always false (manual memory only)", () => {
     const s = seg("u9", "甲新词");
     const key = segmentDraftKey(s, 8);
     segmentDraftStore.setLearnFocusBaseline(key, "甲旧词");
@@ -62,7 +62,7 @@ describe("confirm learn baseline", () => {
       "旧词",
       "新词",
     );
-    expect(segmentPendingLearnAtIndex(s, 8)).toBe(true);
+    expect(segmentPendingLearnAtIndex(s, 8)).toBe(false);
   });
 
   it("buildConfirmLearnBaseline uses focus baseline for confirmed segment", () => {

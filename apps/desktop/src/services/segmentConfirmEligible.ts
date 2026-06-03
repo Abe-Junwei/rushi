@@ -4,8 +4,6 @@ import {
   segmentDraftStore,
 } from "../hooks/useSegmentDraftStore";
 import type { SegmentDto } from "../tauri/projectApi";
-import { needsLearnOnSegmentConfirm } from "./correctionLearnBaseline";
-import { segmentsWithDraftsApplied } from "./segmentDirtyRead";
 
 function segmentTextAt(
   segments: SegmentDto[],
@@ -35,25 +33,21 @@ export function segmentHasUnsavedText(
   return pair.live !== pair.saved;
 }
 
-/** 是否显示「纳入记忆」按钮（仅：聚焦后已改、尚未 ⌘/Ctrl+Enter 纳入纠错记忆）。 */
+/** @deprecated 改用语段选区右键「纳入更正记忆」。 */
 export function segmentShowConfirmLearnButton(
-  segments: SegmentDto[],
-  savedSnapshot: SegmentDto[],
-  segmentIdx: number,
+  _segments: SegmentDto[],
+  _savedSnapshot: SegmentDto[],
+  _segmentIdx: number,
 ): boolean {
-  if (segmentIdx < 0 || segmentIdx >= segments.length) return false;
-  const live = segmentsWithDraftsApplied(segments);
-  return needsLearnOnSegmentConfirm(savedSnapshot, segmentIdx, live);
+  return false;
 }
 
-/** 是否可响应 ⌘/Ctrl+Enter（待确认学习，或仍有未落库正文）。 */
+/** ⌘/Ctrl+Enter：仅当语段正文仍有未落库修改时可保存并跳下一条。 */
 export function segmentCanConfirmEdit(
   segments: SegmentDto[],
   savedSnapshot: SegmentDto[],
   segmentIdx: number,
 ): boolean {
   if (segmentIdx < 0 || segmentIdx >= segments.length) return false;
-  const live = segmentsWithDraftsApplied(segments);
-  if (segmentHasUnsavedText(live, savedSnapshot, segmentIdx)) return true;
-  return needsLearnOnSegmentConfirm(savedSnapshot, segmentIdx, live);
+  return segmentHasUnsavedText(segments, savedSnapshot, segmentIdx);
 }

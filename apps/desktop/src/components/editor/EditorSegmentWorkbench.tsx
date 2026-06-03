@@ -15,6 +15,10 @@ interface EditorSegmentWorkbenchProps {
   appearance: AppearanceApi;
   editHistory: EditHistoryApi;
   onOpenSegmentContextMenu: (menu: SegmentContextMenuOpen) => void;
+  onOpenSegmentTextContextMenu: (
+    e: React.MouseEvent<HTMLTextAreaElement>,
+    selectionText: string,
+  ) => void;
 }
 export const EditorSegmentWorkbench = memo(function EditorSegmentWorkbench({
   controller: c,
@@ -22,6 +26,7 @@ export const EditorSegmentWorkbench = memo(function EditorSegmentWorkbench({
   appearance: a,
   editHistory: h,
   onOpenSegmentContextMenu,
+  onOpenSegmentTextContextMenu,
 }: EditorSegmentWorkbenchProps) {
   return (
     <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden bg-notion-bg">
@@ -32,6 +37,7 @@ export const EditorSegmentWorkbench = memo(function EditorSegmentWorkbench({
         appearance={a}
         listRef={tx.segmentListRef}
         onOpenSegmentContextMenu={onOpenSegmentContextMenu}
+        onOpenSegmentTextContextMenu={onOpenSegmentTextContextMenu}
       />
       <ResizeBottomHit
         busy={c.busy}
@@ -62,6 +68,7 @@ function areEditorSegmentWorkbenchPropsEqual(
     prev.tx.onSegmentTextareaKeyDown === next.tx.onSegmentTextareaKeyDown &&
     prev.appearance === next.appearance &&
     prev.editHistory === next.editHistory &&
-    prev.onOpenSegmentContextMenu === next.onOpenSegmentContextMenu
+    prev.onOpenSegmentContextMenu === next.onOpenSegmentContextMenu &&
+    prev.onOpenSegmentTextContextMenu === next.onOpenSegmentTextContextMenu
   );
 }

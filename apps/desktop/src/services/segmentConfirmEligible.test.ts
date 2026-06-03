@@ -19,13 +19,11 @@ describe("segmentConfirmEligible", () => {
     segmentDraftStore.clearDraft(segmentDraftKey(rows[0], 0));
   });
 
-  it("shows learn button only when tracked ops are learnable", () => {
+  it("never shows auto纳入记忆 button (use text context menu instead)", () => {
     const saved = [seg("u1", "敛喉")];
     const live = [seg("u1", "敛喉")];
     const key = segmentDraftKey(live[0], 0);
     segmentDraftStore.setLearnFocusBaseline(key, "脸喉");
-    expect(segmentShowConfirmLearnButton(live, saved, 0)).toBe(false);
-
     segmentDraftStore.applyLearnEditBeforeInput(
       key,
       "脸喉",
@@ -36,8 +34,7 @@ describe("segmentConfirmEligible", () => {
       "insertReplacementText",
       "敛喉",
     );
-    expect(segmentShowConfirmLearnButton(live, saved, 0)).toBe(true);
-    expect(segmentHasUnsavedText(live, saved, 0)).toBe(false);
+    expect(segmentShowConfirmLearnButton(live, saved, 0)).toBe(false);
     segmentDraftStore.clearLearnFocusBaseline(key);
     segmentDraftStore.resetLearnEditState(key);
   });

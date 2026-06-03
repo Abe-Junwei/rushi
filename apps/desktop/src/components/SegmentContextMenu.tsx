@@ -1,6 +1,10 @@
 import { useLayoutEffect, useRef, useState } from "react";
 import { createPortal } from "react-dom";
-import type { SegmentContextMenuItem } from "../utils/segmentContextMenuModel";
+export type ContextMenuItem = {
+  key: string;
+  label: string;
+  disabled: boolean;
+};
 import {
   clampContextMenuPosition,
   estimateContextMenuSize,
@@ -9,8 +13,8 @@ import {
 type Props = {
   x: number;
   y: number;
-  items: SegmentContextMenuItem[];
-  onSelect: (key: SegmentContextMenuItem["key"]) => void;
+  items: ContextMenuItem[];
+  onSelect: (key: string) => void;
   onClose: () => void;
 };
 

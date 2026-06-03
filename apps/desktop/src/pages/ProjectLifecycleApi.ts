@@ -56,8 +56,14 @@ export interface ProjectLifecycleApi {
     countHits?: boolean;
     explicitPairs?: import("../tauri/fileApi").CorrectionExplicitPair[];
   }) => Promise<boolean>;
-  /** Cmd/Ctrl+Enter：落笔保存并计入纠错记忆，然后选中下一语段。 */
+  /** Cmd/Ctrl+Enter：落笔保存未提交正文并选中下一语段。 */
   confirmSegmentEditAndAdvance: (segmentIdx: number) => Promise<boolean>;
+  manualCorrectionMemoryDialog: import("./useManualCorrectionMemoryDialog").ManualCorrectionMemoryDialogState;
+  openManualCorrectionMemoryDialog: (wrong: string) => void;
+  closeManualCorrectionMemoryDialog: () => void;
+  setManualCorrectionRight: (right: string) => void;
+  setManualCorrectionAlsoGlossary: (value: boolean) => void;
+  confirmManualCorrectionMemory: () => void;
   canConfirmSegmentEdit: (segmentIdx: number) => boolean;
   getSavedSnapshot: () => import("../tauri/projectApi").SegmentDto[];
   editorSpansForText: (text: string) => import("../services/editor/findCorrectableSpans").CorrectableSpan[];

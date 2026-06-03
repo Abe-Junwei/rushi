@@ -1,10 +1,12 @@
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranscriptionLayer } from "../pages/useTranscriptionLayer";
 import {
   buildSegmentContextMenuItems,
   type SegmentContextMenuKey,
   type SegmentContextMenuOpen,
 } from "../utils/segmentContextMenuModel";
+import { buildSegmentTextContextMenuItems } from "../utils/segmentTextContextMenuModel";
+import { ManualCorrectionMemoryDialog } from "./segmentRow/ManualCorrectionMemoryDialog";
 import { EnvironmentPanel } from "./EnvironmentPanel";
 import { FloatingPanelTemplate } from "./PanelTemplate";
 import { AutoPunctuatePreviewDialog } from "./AutoPunctuatePreviewDialog";
@@ -29,6 +31,12 @@ export function ProjectPanel() {
   const [exportKey, setExportKey] = useState("");
   const [busyElapsedSec, setBusyElapsedSec] = useState(0);
   const [segmentCtxMenu, setSegmentCtxMenu] = useState<SegmentContextMenuOpen | null>(null);
+  const [segmentTextCtxMenu, setSegmentTextCtxMenu] = useState<{
+    x: number;
+    y: number;
+    wrong: string;
+  } | null>(null);
+  const pendingGlossaryNavRef = useRef(false);
 
   const { segments, busy } = c;
 
@@ -40,6 +48,33 @@ export function ProjectPanel() {
   useEffect(() => {
     if (workspacePhase !== "A") setWelcomePage("home");
   }, [workspacePhase]);
+
+  useEffect(() => {
+    if (workspacePhase === "A" && pendingGlossaryNavRef.current) {
+      pendingGlossaryNavRef.current = false;
+      setWelcomePage("glossary");
+    }
+  }, [workspacePhase]);
+
+  const showTranscribeGlossaryLink = useMemo(
+    () => c.transcribeVocabularyPreflightLines.some((line) => line.includes("暂无纳入热词")),
+    [c.transcribeVocabularyPreflightLines],
+  );
+
+  const openGlossaryFromTranscribe = useCallback(() => {
+    c.cancelTranscribeOverwrite();
+    pendingGlossaryNavRef.current = true;
+    if (c.current) {
+      c.closeProject();
+    } else {
+      setWelcomePage("glossary");
+    }
+  }, [c]);
+
+  const stayAfterCloseAttempt = useCallback(() => {
+    pendingGlossaryNavRef.current = false;
+    c.stayAfterCloseAttempt();
+  }, [c]);
 
   useEffect(() => {
     if (!c.busy) {
@@ -87,6 +122,17 @@ export function ProjectPanel() {
           })
         : [],
     [segmentCtxMenu, segments, busy],
+  );
+
+  const segmentTextCtxMenuItems = useMemo(
+    () =>
+      segmentTextCtxMenu
+        ? buildSegmentTextContextMenuItems({
+            selectionText: segmentTextCtxMenu.wrong,
+            busy,
+          })
+        : [],
+    [segmentTextCtxMenu, busy],
   );
 
   const onSegmentCtxMenuSelect = (key: SegmentContextMenuKey) => {
@@ -210,6 +256,15 @@ export function ProjectPanel() {
               setSegmentCtxMenu={setSegmentCtxMenu}
               segmentCtxMenuItems={segmentCtxMenuItems}
               onSegmentCtxMenuSelect={onSegmentCtxMenuSelect}
+              segmentTextCtxMenu={segmentTextCtxMenu}
+              setSegmentTextCtxMenu={setSegmentTextCtxMenu}
+              segmentTextCtxMenuItems={segmentTextCtxMenuItems}
+              onSegmentTextCtxMenuSelect={(key) => {
+                if (!segmentTextCtxMenu) return;
+                if (key === "addCorrectionMemory") {
+                  c.openManualCorrectionMemoryDialog(segmentTextCtxMenu.wrong);
+                }
+              }}
             />
           </main>
         )}
@@ -286,11 +341,22 @@ export function ProjectPanel() {
         onConfirm={(row) => void c.confirmAddToGlossary(row)}
       />
 
+      <ManualCorrectionMemoryDialog
+        state={c.manualCorrectionMemoryDialog}
+        busy={c.busy}
+        onClose={c.closeManualCorrectionMemoryDialog}
+        onRightChange={c.setManualCorrectionRight}
+        onAlsoAddToGlossaryChange={c.setManualCorrectionAlsoGlossary}
+        onConfirm={() => c.confirmManualCorrectionMemory()}
+      />
+
       <TranscribeOverwriteConfirmDialog
         open={c.transcribeOverwriteDialogOpen && !c.busy}
         busy={c.busy}
         segmentCount={c.transcribeOverwriteSegmentCount}
         vocabularyLines={c.transcribeVocabularyPreflightLines}
+        showOpenGlossaryLink={showTranscribeGlossaryLink}
+        onOpenGlossary={openGlossaryFromTranscribe}
         onCancel={c.cancelTranscribeOverwrite}
         onConfirm={c.confirmTranscribeOverwrite}
       />
@@ -299,7 +365,7 @@ export function ProjectPanel() {
         open={c.closeGateOpen}
         intent={c.closeGateIntent}
         busy={c.busy}
-        onStay={c.stayAfterCloseAttempt}
+        onStay={stayAfterCloseAttempt}
         onDiscardAndClose={() => void c.discardUnsavedAndClose()}
         onSaveAndClose={() => void c.saveAndClose()}
       />

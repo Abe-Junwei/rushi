@@ -6,11 +6,12 @@ import type { ProjectControllerApi } from "../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../pages/useTranscriptionLayer";
 import { EmptyProjectPanel } from "./EmptyProjectPanel";
 import { ProjectFilesHubPanel } from "./ProjectFilesHubPanel";
+import type { ContextMenuItem } from "./SegmentContextMenu";
 import {
-  type SegmentContextMenuItem,
   type SegmentContextMenuKey,
   type SegmentContextMenuOpen,
 } from "../utils/segmentContextMenuModel";
+import type { SegmentTextContextMenuKey } from "../utils/segmentTextContextMenuModel";
 import { EditorSegmentWorkbench } from "./editor/EditorSegmentWorkbench";
 import { EditorShortcutsDialog } from "./EditorShortcutsDialog";
 import { SegmentCorrectPopover } from "./segmentRow/SegmentCorrectPopover";
@@ -27,8 +28,12 @@ interface EditorViewProps {
   onOpenEnvironment: () => void;
   segmentCtxMenu: SegmentContextMenuOpen | null;
   setSegmentCtxMenu: (v: SegmentContextMenuOpen | null) => void;
-  segmentCtxMenuItems: SegmentContextMenuItem[];
+  segmentCtxMenuItems: ContextMenuItem[];
   onSegmentCtxMenuSelect: (key: SegmentContextMenuKey) => void;
+  segmentTextCtxMenu: { x: number; y: number; wrong: string } | null;
+  setSegmentTextCtxMenu: (v: { x: number; y: number; wrong: string } | null) => void;
+  segmentTextCtxMenuItems: ContextMenuItem[];
+  onSegmentTextCtxMenuSelect: (key: SegmentTextContextMenuKey) => void;
 }
 
 export function EditorView({
@@ -41,6 +46,10 @@ export function EditorView({
   setSegmentCtxMenu,
   segmentCtxMenuItems,
   onSegmentCtxMenuSelect,
+  segmentTextCtxMenu,
+  setSegmentTextCtxMenu,
+  segmentTextCtxMenuItems,
+  onSegmentTextCtxMenuSelect,
 }: EditorViewProps) {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const appearance = useEditorTranscriptAppearance(c.busy, Boolean(c.currentFileId));
@@ -124,6 +133,9 @@ export function EditorView({
               appearance={appearance}
               editHistory={editHistory}
               onOpenSegmentContextMenu={setSegmentCtxMenu}
+              onOpenSegmentTextContextMenu={(e, selectionText) => {
+                setSegmentTextCtxMenu({ x: e.clientX, y: e.clientY, wrong: selectionText });
+              }}
             />
           </main>
 
@@ -169,8 +181,20 @@ export function EditorView({
           x={segmentCtxMenu.x}
           y={segmentCtxMenu.y}
           items={segmentCtxMenuItems}
-          onSelect={onSegmentCtxMenuSelect}
+          onSelect={(key) => onSegmentCtxMenuSelect(key as SegmentContextMenuKey)}
           onClose={() => setSegmentCtxMenu(null)}
+        />
+      ) : null}
+      {segmentTextCtxMenu ? (
+        <SegmentContextMenu
+          x={segmentTextCtxMenu.x}
+          y={segmentTextCtxMenu.y}
+          items={segmentTextCtxMenuItems}
+          onSelect={(key) => {
+            onSegmentTextCtxMenuSelect(key as SegmentTextContextMenuKey);
+            setSegmentTextCtxMenu(null);
+          }}
+          onClose={() => setSegmentTextCtxMenu(null)}
         />
       ) : null}
       <EditorShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />

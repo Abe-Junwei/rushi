@@ -1,4 +1,10 @@
-import { useCallback, useLayoutEffect, useMemo, useState, type MouseEvent as ReactMouseEvent } from "react";
+import {
+  useCallback,
+  useLayoutEffect,
+  useMemo,
+  useState,
+  type MouseEvent as ReactMouseEvent,
+} from "react";
 import type { SegmentContextMenuOpen } from "../../utils/segmentContextMenuModel";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
@@ -21,6 +27,10 @@ interface EditorSegmentListProps {
   appearance: AppearanceApi;
   listRef: React.RefObject<HTMLDivElement | null>;
   onOpenSegmentContextMenu: (menu: SegmentCtxMenuState) => void;
+  onOpenSegmentTextContextMenu: (
+    e: ReactMouseEvent<HTMLTextAreaElement>,
+    selectionText: string,
+  ) => void;
 }
 
 export function EditorSegmentList({
@@ -29,6 +39,7 @@ export function EditorSegmentList({
   appearance: a,
   listRef: segmentListRef,
   onOpenSegmentContextMenu,
+  onOpenSegmentTextContextMenu,
 }: EditorSegmentListProps) {
   const [scrollTop, setScrollTop] = useState(0);
   const [viewportHeight, setViewportHeight] = useState(0);
@@ -144,7 +155,7 @@ export function EditorSegmentList({
               findReplaceHighlight={
                 c.findReplaceEditorHighlight?.segmentIdx === i ? c.findReplaceEditorHighlight : null
               }
-              onConfirmEdit={() => void c.confirmSegmentEditAndAdvance(i)}
+              onOpenTextContextMenu={onOpenSegmentTextContextMenu}
               spansForText={c.editorSpansForText}
               onCorrectableSpanClick={(span, event) =>
                 c.openEditorCorrectPopover(i, span, event.clientX, event.clientY)

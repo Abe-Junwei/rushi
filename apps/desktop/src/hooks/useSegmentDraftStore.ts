@@ -6,7 +6,6 @@ import {
   applyBeforeInputToLearnEditState,
   applyInputEventToLearnEditState,
   emptyLearnEditState,
-  finalizeLearnEditAfterComposition,
   liveAnchorToBaselineAnchor,
   projectLiveTextAfterBeforeInput,
   syncLearnEditStateToBaselineLive,
@@ -237,36 +236,14 @@ export const segmentDraftStore = {
     learnEditStateByKey.set(key, emptyLearnEditState());
     emit();
   },
-  beginComposition(
-    key: string,
-    committedText: string,
-    value: string,
-    selectionStart: number,
-    selectionEnd: number,
-  ): void {
-    ensureLearnFocusBaselineImpl(key, committedText);
+  beginComposition(key: string): void {
     if (composingKeys.has(key)) return;
     composingKeys.add(key);
-    if (selectionStart !== selectionEnd) {
-      pendingImeSelectionByKey.set(key, {
-        liveAnchor: selectionStart,
-        removed: value.slice(selectionStart, selectionEnd),
-      });
-    }
     emit();
   },
   endComposition(key: string): void {
-    if (!composingKeys.delete(key)) {
-      pendingImeSelectionByKey.delete(key);
-      return;
-    }
-    const pending = pendingImeSelectionByKey.get(key) ?? null;
+    if (!composingKeys.delete(key)) return;
     pendingImeSelectionByKey.delete(key);
-    const prev = learnEditStateByKey.get(key);
-    const next = finalizeLearnEditAfterComposition(prev, pending);
-    if (prev !== next) {
-      learnEditStateByKey.set(key, next);
-    }
     emit();
   },
   setComposing(key: string, active: boolean): void {

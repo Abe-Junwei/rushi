@@ -16,7 +16,6 @@ import {
   readTranscriptTextareaSelection,
 } from "../utils/transcriptSelection";
 import { toast } from "../services/ui/toast";
-import { normalizeSegmentDraftText } from "../hooks/useSegmentDraftStore";
 import type { SegmentTextUpdateMeta } from "./segmentTextLearnMeta";
 
 export type FindReplaceDialogState =
@@ -37,25 +36,6 @@ export type FindReplaceDialogState =
       rows: ReplaceAllPreviewRow[];
       matchCount: number;
     };
-
-function findReplaceLearnMeta(
-  row: SegmentDto,
-  charStart: number,
-  findText: string,
-  replaceText: string,
-): SegmentTextUpdateMeta | undefined {
-  if (findText.trim() === replaceText.trim()) return undefined;
-  const committedText = normalizeSegmentDraftText(row.text ?? "");
-  return {
-    learn: {
-      committedText,
-      liveTextBeforeEdit: committedText,
-      liveAnchor: charStart,
-      removed: findText,
-      inserted: replaceText,
-    },
-  };
-}
 
 type UseFindReplaceControllerArgs = {
   busy: boolean;
@@ -331,11 +311,7 @@ export function useFindReplaceController(args: UseFindReplaceControllerArgs): Fi
     if (!row) return;
     const nextText = replaceOnceInText(row.text, match.charStart, findText, replaceText);
     if (nextText === row.text) return;
-    updateSegmentText(
-      match.segmentIdx,
-      nextText,
-      findReplaceLearnMeta(row, match.charStart, findText, replaceText),
-    );
+    updateSegmentText(match.segmentIdx, nextText);
     const projected = segmentsRef.current.map((s, i) =>
       i === match.segmentIdx ? { ...s, text: nextText } : s,
     );
@@ -365,11 +341,7 @@ export function useFindReplaceController(args: UseFindReplaceControllerArgs): Fi
     if (!row) return;
     const nextText = replaceOnceInText(row.text, match.charStart, findText, replaceText);
     if (nextText !== row.text) {
-      updateSegmentText(
-        match.segmentIdx,
-        nextText,
-        findReplaceLearnMeta(row, match.charStart, findText, replaceText),
-      );
+      updateSegmentText(match.segmentIdx, nextText);
     }
     const projected = segmentsRef.current.map((s, i) =>
       i === match.segmentIdx ? { ...s, text: nextText } : s,

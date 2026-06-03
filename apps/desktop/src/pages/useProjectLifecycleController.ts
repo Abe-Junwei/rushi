@@ -15,6 +15,7 @@ import { useFindReplaceController } from "./useFindReplaceController";
 import { useCorrectionRulesController } from "./useCorrectionRulesController";
 import { useCorrectSuggestionsController } from "./useCorrectSuggestionsController";
 import { useGlossaryLearnPromptController } from "./useGlossaryLearnPromptController";
+import { useManualCorrectionMemoryDialog } from "./useManualCorrectionMemoryDialog";
 import { useLlmKeychainReady } from "../hooks/useLlmKeychainReady";
 import {
   useProjectCloseGateController,
@@ -32,17 +33,7 @@ import {
   prepareSegmentsForPersist,
   segmentsEqualForPersist,
 } from "./segmentListHelpers";
-import {
-  buildConfirmLearnBaseline,
-  needsLearnOnSegmentConfirm,
-  segmentsToLearnBaseline,
-} from "../services/correctionLearnBaseline";
-import { buildConfirmExplicitPairs } from "../services/correctionInferPair";
-import {
-  normalizeSegmentDraftText,
-  segmentDraftKey,
-  segmentDraftStore,
-} from "../hooks/useSegmentDraftStore";
+import { segmentsToLearnBaseline } from "../services/correctionLearnBaseline";
 import { segmentsWithDraftsApplied } from "../services/segmentDirtyRead";
 import { segmentCanConfirmEdit } from "../services/segmentConfirmEligible";
 import { waitForSaveIdle } from "../services/waitForSaveIdle";
@@ -101,6 +92,11 @@ export function useProjectLifecycleController(
   });
 
   const glossaryLearn = useGlossaryLearnPromptController({ setError });
+  const manualCorrectionMemory = useManualCorrectionMemoryDialog({
+    busy,
+    setError,
+    checkGlossaryLearnAfterSave: glossaryLearn.checkGlossaryLearnAfterSave,
+  });
 
   const saveInFlightRef = useRef(false);
   const clearAutoSaveRef = useRef<() => void>(() => {});
@@ -194,54 +190,19 @@ export function useProjectLifecycleController(
       clearAutoSaveRef.current();
       mutations.flushSegmentTextDrafts();
       const nextIdx = Math.min(segmentIdx + 1, segmentsRef.current.length - 1);
-      const savedSnapshot = dirty.getSavedSnapshot();
-      const liveSegments = segmentsWithDraftsApplied(segmentsRef.current);
-      const pendingLearn = needsLearnOnSegmentConfirm(savedSnapshot, segmentIdx, liveSegments);
-      const needsPersist = dirty.hasUnsavedSegmentChanges() || pendingLearn;
-      if (needsPersist) {
+      if (dirty.hasUnsavedSegmentChanges()) {
         if (saveInFlightRef.current) {
           const idle = await waitForSaveIdle(saveInFlightRef);
           if (!idle) {
-            toast.warning("确认改词失败：自动保存耗时过长，请稍候再试");
+            toast.warning("保存语段失败：自动保存耗时过长，请稍候再试");
             return false;
           }
         }
-        const learnBaselineTexts = buildConfirmLearnBaseline(
-          savedSnapshot,
-          segmentIdx,
-          segmentsRef.current,
-        );
-        const confirmSeg = liveSegments[segmentIdx];
-        const confirmKey = confirmSeg ? segmentDraftKey(confirmSeg, segmentIdx) : null;
-        const focusBase =
-          confirmKey !== null ? segmentDraftStore.getLearnFocusBaseline(confirmKey) : undefined;
-        const liveText = confirmSeg
-          ? normalizeSegmentDraftText(
-              (confirmKey !== null ? segmentDraftStore.getDraft(confirmKey) : undefined) ??
-                confirmSeg.text ??
-                "",
-            )
-          : "";
-        const learnState =
-          confirmKey !== null ? segmentDraftStore.getLearnEditState(confirmKey) : undefined;
-        const explicitPairs =
-          focusBase !== undefined && pendingLearn
-            ? buildConfirmExplicitPairs(focusBase, liveText, learnState)
-            : [];
-        const saved = await saveSegments({
-          quiet: true,
-          countHits: true,
-          learnBaselineTexts,
-          explicitPairs: explicitPairs.length > 0 ? explicitPairs : undefined,
-        });
+        const saved = await saveSegments({ quiet: true, countHits: true });
         if (!saved) {
-          toast.warning("确认改词失败：请稍候再试（可能正在自动保存）");
+          toast.warning("保存语段失败：请稍候再试（可能正在自动保存）");
           return false;
         }
-      }
-      const seg = segmentsRef.current[segmentIdx];
-      if (seg) {
-        segmentDraftStore.clearLearnFocusBaseline(segmentDraftKey(seg, segmentIdx));
       }
       if (nextIdx !== selectedIdxRef.current) {
         setSelectedIdx(nextIdx);
@@ -614,6 +575,14 @@ export function useProjectLifecycleController(
       void glossaryLearn.confirmAddToGlossary(row);
     },
     closeGlossaryLearnPrompt: glossaryLearn.closeGlossaryLearnPrompt,
+    manualCorrectionMemoryDialog: manualCorrectionMemory.manualCorrectionMemoryDialog,
+    openManualCorrectionMemoryDialog: manualCorrectionMemory.openManualCorrectionMemoryDialog,
+    closeManualCorrectionMemoryDialog: manualCorrectionMemory.closeManualCorrectionMemoryDialog,
+    setManualCorrectionRight: manualCorrectionMemory.setManualCorrectionRight,
+    setManualCorrectionAlsoGlossary: manualCorrectionMemory.setManualCorrectionAlsoGlossary,
+    confirmManualCorrectionMemory: () => {
+      void manualCorrectionMemory.confirmManualCorrectionMemory();
+    },
     bumpLlmRuntimeChanged,
     closeGateOpen: closeGate.closeGateOpen,
     closeGateIntent: closeGate.closeGateIntent,

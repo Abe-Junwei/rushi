@@ -56,24 +56,8 @@ export function useEditorSegmentCorrectPopover({
       const draft = segmentDraftStore.getDraft(key);
       const liveBase = normalizeSegmentDraftText(draft ?? seg.text ?? "");
       const replacement = item.kind === "rule" ? item.right : item.term;
-      const removed = liveBase.slice(popover.span.charStart, popover.span.charEnd) || popover.span.surface;
       const next = applySpanCorrection(liveBase, popover.span, replacement);
-      const committedText = normalizeSegmentDraftText(seg.text ?? "");
-      applySegmentTextChange(
-        seg,
-        idx,
-        next,
-        updateSegmentText,
-        {
-          learn: {
-            committedText,
-            liveTextBeforeEdit: liveBase,
-            liveAnchor: popover.span.charStart,
-            removed,
-            inserted: replacement,
-          },
-        },
-      );
+      applySegmentTextChange(seg, idx, next, updateSegmentText);
       segmentDraftStore.setDraft(key, next);
       setPopover(null);
     },
