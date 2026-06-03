@@ -115,6 +115,14 @@ export async function projectListEditLog(projectId: string, limit = 40): Promise
   return invoke<EditLogEntryDto[]>("project_list_edit_log", { projectId, limit });
 }
 
+export async function projectRecordEditLog(
+  projectId: string,
+  kind: string,
+  detail: string,
+): Promise<void> {
+  return invoke<void>("project_record_edit_log", { projectId, kind, detail });
+}
+
 export async function fileRestoreSegmentsFromEditLog(
   fileId: string,
   editLogId: number,

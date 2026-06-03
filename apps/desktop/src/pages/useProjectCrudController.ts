@@ -4,7 +4,14 @@ import * as p1 from "../tauri/projectApi";
 import * as fileApi from "../tauri/fileApi";
 import type { SegmentMutationApi } from "./useSegmentMutationController";
 
-export type BusyReason = "create" | "load" | "transcribe" | "save" | "delete" | "install_funasr";
+export type BusyReason =
+  | "create"
+  | "load"
+  | "transcribe"
+  | "save"
+  | "delete"
+  | "install_funasr"
+  | "export";
 
 export interface ProjectCrudApi {
   createProject: () => Promise<void>;

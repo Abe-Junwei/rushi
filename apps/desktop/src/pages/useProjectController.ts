@@ -121,6 +121,7 @@ export function useProjectController() {
     exportTxt: lifecycle.exportTxt,
     exportSrt: lifecycle.exportSrt,
     exportDocx: lifecycle.exportDocx,
+    exportDeliveryDocx: lifecycle.exportDeliveryDocx,
     exportDiagnosticBundle: lifecycle.exportDiagnosticBundle,
     exportProjectBundle: lifecycle.exportProjectBundle,
     importProjectBundle: lifecycle.importProjectBundle,

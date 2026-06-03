@@ -1,0 +1,23 @@
+{
+  "version": 1,
+  "cases": [
+    {
+      "id": "punct_only",
+      "before": "你好",
+      "after": "你好。",
+      "expectMarkup": true
+    },
+    {
+      "id": "typo_in_long_line",
+      "before": "脊柱向上屈肩背胸小胸小向两臂自然舒展",
+      "after": "脊柱向上，屈肩背，胸腔向两臂自然舒展",
+      "expectMarkup": true
+    },
+    {
+      "id": "large_rewrite",
+      "before": "嗯那个我们今天呢就来说一下这个问题",
+      "after": "今天我们讨论这个问题。",
+      "expectMarkup": true
+    }
+  ]
+}

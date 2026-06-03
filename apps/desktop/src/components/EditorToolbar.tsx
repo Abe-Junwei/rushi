@@ -226,8 +226,12 @@ export const EditorToolbar = memo(function EditorToolbar({
               <div className="dropdown-surface absolute right-0 top-full z-[100] mt-1 min-w-[12rem] py-1">
                 <button type="button" className={menuItem} disabled={c.busy} onClick={() => onExportSelect("txt")}>导出 TXT</button>
                 <button type="button" className={menuItem} disabled={c.busy} onClick={() => onExportSelect("srt")}>导出 SRT</button>
+                <button type="button" className={menuItem} disabled={c.busy} onClick={() => onExportSelect("docx_delivery")}>
+                  交付导出 Word…
+                </button>
                 <button type="button" className={menuItem} disabled={c.busy} onClick={() => onExportSelect("docx_verbatim")}>导出 DOCX 逐字稿</button>
                 <button type="button" className={menuItem} disabled={c.busy} onClick={() => onExportSelect("docx_lecture")}>导出 DOCX 讲稿</button>
+                <button type="button" className={menuItem} disabled={c.busy} onClick={() => onExportSelect("docx_clean")}>导出 DOCX 干净稿</button>
                 <button type="button" className={menuItem} disabled={c.busy} onClick={() => void c.exportProjectBundle()}>导出项目包（zip）</button>
                 <button type="button" className={menuItem} disabled={c.busy} onClick={() => void c.exportDiagnosticBundle()}>导出诊断包（zip）</button>
               </div>

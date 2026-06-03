@@ -3,13 +3,39 @@ import { formatSrt, formatTxt, type ExportSegment } from "../services/exportForm
 import type { ProjectDetail, SegmentDto } from "../tauri/projectApi";
 import * as p1 from "../tauri/projectApi";
 import { exportDocx as exportDocxImpl, type DocxExportMode } from "../tauri/exportDocxApi";
+import {
+  buildDeliveryExportAppendixLines,
+  buildDocxExportMetaLine,
+} from "../services/exportDeliveryAppendix";
+import {
+  exportModeSupportsLlmPolish,
+  type ExportPolishResult,
+  resolveExportPolishForDelivery,
+} from "../services/exportDocxPolish";
+import { joinSegmentTextsForExportPolish } from "../services/exportDocxPolish.helpers";
+import { assessExportPolishReadiness } from "../services/exportPolishDelivery";
+import {
+  buildExportPolishEditLogDetail,
+  buildExportPolishRevisionLines,
+} from "../services/exportPolishRevision";
 import { exportDiagnosticBundle as exportDiagnosticBundleImpl } from "../tauri/diagnosticApi";
 import { safeExportBasename } from "../utils/safeExportBasename";
+import type { BusyReason } from "./useProjectCrudController";
+
+export type DeliveryDocxExportRequest = {
+  mode: DocxExportMode;
+  includeRevisionAppendix: boolean;
+  /** 讲稿/干净稿：导出前 LLM 润色（纠错字、标点、语义分段）。 */
+  llmPolish?: boolean;
+  /** 交付导出对话框「生成预览」结果；与当前语段一致时复用，不再请求 LLM。 */
+  polishPreview?: ExportPolishResult | null;
+};
 
 export interface ExportApi {
   exportTxt: () => Promise<void>;
   exportSrt: () => Promise<void>;
   exportDocx: (mode: DocxExportMode) => Promise<void>;
+  exportDeliveryDocx: (request: DeliveryDocxExportRequest) => Promise<void>;
   exportDiagnosticBundle: () => Promise<void>;
   exportProjectBundle: () => Promise<void>;
   importProjectBundle: () => Promise<void>;
@@ -21,6 +47,8 @@ export interface ExportDeps {
   segmentsRef: React.MutableRefObject<SegmentDto[]>;
   setError: (msg: string) => void;
   flushSegmentTextDrafts: () => void;
+  beginBusy: (reason: BusyReason) => void;
+  endBusy: () => void;
   refreshProjects: () => Promise<void>;
   applyDetail: (d: ProjectDetail) => void;
 }
@@ -32,6 +60,8 @@ export function useExportController(deps: ExportDeps): ExportApi {
     segmentsRef,
     setError,
     flushSegmentTextDrafts,
+    beginBusy,
+    endBusy,
     refreshProjects,
     applyDetail,
   } = deps;
@@ -67,12 +97,131 @@ export function useExportController(deps: ExportDeps): ExportApi {
       flushSegmentTextDrafts();
       const normalized: SegmentDto[] = segmentsRef.current.map((s, i) => ({ ...s, idx: i }));
       try {
-        await exportDocxImpl(safeExportBasename(current.name, "docx"), current.name, mode, normalized);
+        await exportDocxImpl(safeExportBasename(current.name, "docx"), current.name, mode, normalized, {
+          exportMetaLine: buildDocxExportMetaLine(current.name),
+        });
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
       }
     },
     [current, segmentsRef, setError, flushSegmentTextDrafts],
+  );
+
+  const exportDeliveryDocx = useCallback(
+    async (request: DeliveryDocxExportRequest) => {
+      if (!current) return;
+      setError("");
+      flushSegmentTextDrafts();
+      const normalized: SegmentDto[] = segmentsRef.current.map((s, i) => ({ ...s, idx: i }));
+      beginBusy("export");
+      try {
+        let appendixLines: string[] = [];
+        if (request.includeRevisionAppendix && currentFileId) {
+          try {
+            const rows = await p1.projectListEditLog(current.id, 50);
+            appendixLines = buildDeliveryExportAppendixLines(rows, currentFileId);
+          } catch (e) {
+            setError(e instanceof Error ? e.message : String(e));
+            return;
+          }
+        }
+        const segmentTexts = normalized.map((s) => s.text ?? "");
+        let polishedParagraphs: string[] | undefined;
+        let polishCorrectedLines: string[] | undefined;
+        const polishBeforeJoined =
+          request.llmPolish && exportModeSupportsLlmPolish(request.mode)
+            ? joinSegmentTextsForExportPolish(normalized)
+            : undefined;
+        if (request.llmPolish && exportModeSupportsLlmPolish(request.mode)) {
+          const readiness = assessExportPolishReadiness(
+            normalized,
+            request.mode,
+            true,
+            request.polishPreview ?? null,
+          );
+          if (!readiness.canExport) {
+            setError(readiness.blockReason ?? "请先完成润色预览。");
+            return;
+          }
+          try {
+            const polish = await resolveExportPolishForDelivery(
+              normalized,
+              request.polishPreview,
+            );
+            polishedParagraphs = polish.paragraphs;
+            polishCorrectedLines =
+              polish.correctedLines.length > 0 ? polish.correctedLines : undefined;
+            if (request.includeRevisionAppendix && polishedParagraphs.length > 0) {
+              const polishLines = buildExportPolishRevisionLines(
+                segmentTexts,
+                polishedParagraphs,
+              );
+              if (polishLines.length > 0) {
+                if (appendixLines.length > 0) appendixLines.push("");
+                appendixLines.push("— 本次导出大模型润色 —");
+                appendixLines.push(...polishLines);
+              }
+            }
+          } catch (e) {
+            setError(e instanceof Error ? e.message : String(e));
+            return;
+          }
+        }
+        await exportDocxImpl(
+          safeExportBasename(current.name, "docx"),
+          current.name,
+          request.mode,
+          normalized,
+          {
+            exportMetaLine: buildDocxExportMetaLine(current.name),
+            appendixLines,
+            polishedParagraphs,
+            polishBeforeJoined:
+              polishedParagraphs != null ? polishBeforeJoined : undefined,
+            polishCorrectedLines:
+              polishedParagraphs != null ? polishCorrectedLines : undefined,
+            polishTrackChanges:
+              polishedParagraphs != null && polishCorrectedLines != null
+                ? true
+                : undefined,
+          },
+        );
+        if (
+          request.llmPolish &&
+          exportModeSupportsLlmPolish(request.mode) &&
+          polishedParagraphs != null &&
+          currentFileId
+        ) {
+          try {
+            const detail = buildExportPolishEditLogDetail(
+              currentFileId,
+              segmentTexts,
+              polishedParagraphs,
+            );
+            await p1.projectRecordEditLog(
+              current.id,
+              "export_llm_polish",
+              JSON.stringify(detail),
+            );
+          } catch {
+            /* 审计写入失败不阻断导出 */
+          }
+        }
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        endBusy();
+      }
+    },
+    [
+      current,
+      currentFileId,
+      segmentsRef,
+      setError,
+      flushSegmentTextDrafts,
+      beginBusy,
+      endBusy,
+    ],
   );
 
   const exportDiagnosticBundle = useCallback(async () => {
@@ -118,5 +267,13 @@ export function useExportController(deps: ExportDeps): ExportApi {
     }
   }, [applyDetail, refreshProjects, setError]);
 
-  return { exportTxt, exportSrt, exportDocx, exportDiagnosticBundle, exportProjectBundle, importProjectBundle };
+  return {
+    exportTxt,
+    exportSrt,
+    exportDocx,
+    exportDeliveryDocx,
+    exportDiagnosticBundle,
+    exportProjectBundle,
+    importProjectBundle,
+  };
 }

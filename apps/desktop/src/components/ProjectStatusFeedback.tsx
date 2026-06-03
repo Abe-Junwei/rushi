@@ -37,6 +37,8 @@ function busyOverlayCopy(
       return { title: "正在删除项目...", hint: "请稍候" };
     case "install_funasr":
       return { title: "正在执行安装脚本...", hint: "终端输出可在「环境与 ASR」中查看" };
+    case "export":
+      return { title: "正在导出 Word…", hint: "大模型润色与写入文档可能需要数十秒" };
     default:
       return { title: "处理中...", hint: "请稍候" };
   }

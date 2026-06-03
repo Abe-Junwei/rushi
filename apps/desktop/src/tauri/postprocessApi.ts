@@ -141,6 +141,34 @@ export interface PostprocessLexiconProofreadResponse {
   latency_ms?: number;
 }
 
+export interface PostprocessExportPolishRequest {
+  task: "export_polish";
+  requestId?: string;
+  body: string;
+  runtime: PostprocessRuntimeBridge;
+  ruleHints?: string;
+}
+
+export interface PostprocessExportPolishResponse {
+  /** 与语段一一对应，仅标点/空格（输入已为规则校正稿）。 */
+  punctLines: string[];
+  breakAfterLine: number[];
+  provider: string;
+  latency_ms: number;
+}
+
+export async function postprocessExportPolish(
+  req: PostprocessExportPolishRequest,
+): Promise<PostprocessExportPolishResponse> {
+  return invoke<PostprocessExportPolishResponse>("postprocess_export_polish", { req });
+}
+
+export async function postprocessCancelExportPolish(requestId: string): Promise<boolean> {
+  return invoke<boolean>("postprocess_cancel_export_polish", {
+    req: { request_id: requestId },
+  });
+}
+
 export async function postprocessLexiconProofread(
   req: PostprocessLexiconProofreadRequest,
 ): Promise<PostprocessLexiconProofreadResponse> {

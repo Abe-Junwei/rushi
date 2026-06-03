@@ -18,6 +18,8 @@ import { CorrectSuggestionsDialog } from "./CorrectSuggestionsDialog";
 import { GlossaryLearnPromptDialog } from "./GlossaryLearnPromptDialog";
 import { TranscribeOverwriteConfirmDialog } from "./TranscribeOverwriteConfirmDialog";
 import { EditorView } from "./EditorView";
+import { DeliveryExportDialog } from "./DeliveryExportDialog";
+import { resolveExportPolishBlockReason } from "../services/exportDocxPolish";
 
 import { WelcomeView, type WelcomePageId } from "./WelcomeView";
 import { ProjectBusyOverlay, TranscribePreviewBanner } from "./ProjectStatusFeedback";
@@ -29,6 +31,8 @@ export function ProjectPanel() {
   const [envOpen, setEnvOpen] = useState(false);
   const [welcomePage, setWelcomePage] = useState<WelcomePageId>("home");
   const [exportKey, setExportKey] = useState("");
+  const [deliveryExportOpen, setDeliveryExportOpen] = useState(false);
+  const [exportPolishBlockReason, setExportPolishBlockReason] = useState<string | null>(null);
   const [busyElapsedSec, setBusyElapsedSec] = useState(0);
   const [segmentCtxMenu, setSegmentCtxMenu] = useState<SegmentContextMenuOpen | null>(null);
   const [segmentTextCtxMenu, setSegmentTextCtxMenu] = useState<{
@@ -39,6 +43,19 @@ export function ProjectPanel() {
   const pendingGlossaryNavRef = useRef(false);
 
   const { segments, busy } = c;
+
+  useEffect(() => {
+    if (!deliveryExportOpen) {
+      setExportPolishBlockReason(null);
+      return;
+    }
+    c.flushSegmentTextDrafts();
+  }, [deliveryExportOpen, c.flushSegmentTextDrafts]);
+
+  useEffect(() => {
+    if (!deliveryExportOpen) return;
+    setExportPolishBlockReason(resolveExportPolishBlockReason(c.segments));
+  }, [deliveryExportOpen, c.segments]);
 
   const workspacePhase = useMemo<"A" | "C">(() => {
     if (c.current) return "C";
@@ -165,11 +182,17 @@ export function ProjectPanel() {
       case "srt":
         void c.exportSrt();
         break;
+      case "docx_delivery":
+        setDeliveryExportOpen(true);
+        break;
       case "docx_verbatim":
         void c.exportDocx("verbatim");
         break;
       case "docx_lecture":
         void c.exportDocx("lecture");
+        break;
+      case "docx_clean":
+        void c.exportDocx("clean");
         break;
       default:
         break;
@@ -359,6 +382,23 @@ export function ProjectPanel() {
         onOpenGlossary={openGlossaryFromTranscribe}
         onCancel={c.cancelTranscribeOverwrite}
         onConfirm={c.confirmTranscribeOverwrite}
+      />
+
+      <DeliveryExportDialog
+        open={deliveryExportOpen}
+        busy={c.busy}
+        segments={c.segments}
+        exportPolishBlockReason={exportPolishBlockReason}
+        onClose={() => setDeliveryExportOpen(false)}
+        onExport={(mode, includeRevisionAppendix, llmPolish, polishPreview) => {
+          setDeliveryExportOpen(false);
+          void c.exportDeliveryDocx({
+            mode,
+            includeRevisionAppendix,
+            llmPolish,
+            polishPreview,
+          });
+        }}
       />
 
       <UnsavedCloseDialog
