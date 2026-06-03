@@ -73,8 +73,14 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
   const { pushUndo, pushUndoForTextEdit, undo: undoStackPop, redo: redoStackPop } = undoRedo;
 
   const flushSegmentTextDrafts = useCallback(() => {
-    flushSegmentTextDraftsImpl(segmentsRef, setSegments);
-  }, [segmentsRef, setSegments]);
+    flushSegmentTextDraftsImpl(segmentsRef, setSegments, {
+      beforeApplyUpdates: (updates) => {
+        for (const { idx } of updates) {
+          pushUndoForTextEdit(idx);
+        }
+      },
+    });
+  }, [segmentsRef, setSegments, pushUndoForTextEdit]);
 
   const undo = useCallback(() => {
     flushSegmentTextDrafts();

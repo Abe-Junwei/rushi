@@ -6,17 +6,15 @@ import {
   segmentDraftStore,
 } from "../hooks/useSegmentDraftStore";
 
-/** 将草稿 store 中未提交的语段正文写回 `segments`（保存/合并/导出等前调用）。 */
-export function flushSegmentTextDrafts(
-  segmentsRef: React.MutableRefObject<SegmentDto[]>,
-  setSegments: React.Dispatch<React.SetStateAction<SegmentDto[]>>,
-): void {
-  const prev = segmentsRef.current;
-  const validKeys = new Set<string>();
-  const updates: { idx: number; text: string }[] = [];
-  prev.forEach((s, i) => {
+export type SegmentTextDraftFlushUpdate = { idx: number; text: string };
+
+/** 收集将把草稿写回 `segments` 的语段索引（不修改 state）。 */
+export function collectSegmentTextDraftFlushUpdates(
+  segments: SegmentDto[],
+): SegmentTextDraftFlushUpdate[] {
+  const updates: SegmentTextDraftFlushUpdate[] = [];
+  segments.forEach((s, i) => {
     const key = segmentDraftKey(s, i);
-    validKeys.add(key);
     if (segmentDraftStore.isComposing(key)) return;
     const draft = segmentDraftStore.getDraft(key);
     if (draft === undefined) return;
@@ -24,8 +22,29 @@ export function flushSegmentTextDrafts(
     if (draft === committed) return;
     updates.push({ idx: i, text: draft });
   });
+  return updates;
+}
+
+export type FlushSegmentTextDraftsOptions = {
+  /** REV-LOC A1：在写回 `segments` 前为每个将变更语段入撤销栈。 */
+  beforeApplyUpdates?: (updates: SegmentTextDraftFlushUpdate[]) => void;
+};
+
+/** 将草稿 store 中未提交的语段正文写回 `segments`（保存/合并/导出等前调用）。 */
+export function flushSegmentTextDrafts(
+  segmentsRef: React.MutableRefObject<SegmentDto[]>,
+  setSegments: React.Dispatch<React.SetStateAction<SegmentDto[]>>,
+  options?: FlushSegmentTextDraftsOptions,
+): void {
+  const prev = segmentsRef.current;
+  const validKeys = new Set<string>();
+  prev.forEach((s, i) => {
+    validKeys.add(segmentDraftKey(s, i));
+  });
+  const updates = collectSegmentTextDraftFlushUpdates(prev);
   segmentDraftStore.pruneMissingKeys(validKeys);
   if (updates.length === 0) return;
+  options?.beforeApplyUpdates?.(updates);
   flushSync(() => {
     setSegments((cur) => {
       let next = cur;
