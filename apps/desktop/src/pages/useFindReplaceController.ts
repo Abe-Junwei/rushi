@@ -16,7 +16,6 @@ import {
   readTranscriptTextareaSelection,
 } from "../utils/transcriptSelection";
 import { toast } from "../services/ui/toast";
-import type { SegmentTextUpdateMeta } from "./segmentTextLearnMeta";
 
 export type FindReplaceDialogState =
   | { phase: "closed" }
@@ -45,7 +44,7 @@ type UseFindReplaceControllerArgs = {
   selectedIdx: number;
   flushSegmentTextDrafts: () => void;
   setSelectedIdx: React.Dispatch<React.SetStateAction<number>>;
-  updateSegmentText: (idx: number, text: string, meta?: SegmentTextUpdateMeta) => void;
+  updateSegmentText: (idx: number, text: string) => void;
   setSegments: React.Dispatch<React.SetStateAction<SegmentDto[]>>;
   pushUndo: () => void;
   saveSegments: (options?: {

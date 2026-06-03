@@ -22,7 +22,6 @@ import {
 } from "../utils/waveformSegmentBounds";
 import { useSegmentSplitController } from "./useSegmentSplitController";
 import { useSegmentUndoRedo } from "./useSegmentUndoRedo";
-import { applySegmentTextLearnMeta, type SegmentTextUpdateMeta } from "./segmentTextLearnMeta";
 
 function roundSec3(x: number): number {
   return Math.round(x * 1000) / 1000;
@@ -32,7 +31,7 @@ export interface SegmentMutationApi {
   pushUndo: () => void;
   undo: () => void;
   redo: () => void;
-  updateSegmentText: (idx: number, text: string, meta?: SegmentTextUpdateMeta) => void;
+  updateSegmentText: (idx: number, text: string) => void;
   updateSegmentTime: (idx: number, field: "start_sec" | "end_sec", value: number) => void;
   updateSegmentBounds: (idx: number, startSec: number, endSec: number, phase?: "live" | "commit") => void;
   splitAtSelection: (selectedIdx: number) => void;
@@ -104,13 +103,10 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
   });
 
   const updateSegmentText = useCallback(
-    (idx: number, text: string, meta?: SegmentTextUpdateMeta) => {
+    (idx: number, text: string) => {
       const prev = segmentsRef.current;
       const cur = prev[idx];
       if (!cur || cur.text === text) return;
-      if (meta?.learn) {
-        applySegmentTextLearnMeta(cur, idx, meta.learn);
-      }
       pushUndoForTextEdit(idx);
       setSegments((p) => {
         const c = p[idx];

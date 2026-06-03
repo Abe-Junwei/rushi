@@ -1,75 +1,23 @@
-import { describe, expect, it, beforeEach } from "vitest";
-import type { SegmentDto } from "../tauri/projectApi";
-import { segmentDraftKey, segmentDraftStore } from "../hooks/useSegmentDraftStore";
-import {
-  buildConfirmLearnBaseline,
-  needsLearnOnSegmentConfirm,
-  segmentPendingLearnAtIndex,
-  segmentsToLearnBaseline,
-} from "./correctionLearnBaseline";
+import { describe, expect, it } from "vitest";
+import { segmentsToLearnBaseline } from "./correctionLearnBaseline";
 
-function seg(uid: string, text: string): SegmentDto {
-  return { uid, idx: 0, start_sec: 0, end_sec: 1, text };
+function seg(uid: string, text: string) {
+  return {
+    idx: 0,
+    uid,
+    start_sec: 0,
+    end_sec: 1,
+    text,
+    confidence: null,
+    low_confidence: false,
+    detail: null,
+  };
 }
 
 describe("segmentsToLearnBaseline", () => {
-  it("maps uid and text, skips empty uid", () => {
+  it("maps uid and text", () => {
     expect(segmentsToLearnBaseline([seg("u1", "旧"), seg("", "x")])).toEqual([
       { uid: "u1", text: "旧" },
     ]);
-  });
-});
-
-describe("confirm learn baseline", () => {
-  beforeEach(() => {
-    segmentDraftStore.resetAll();
-  });
-
-  it("needsLearnOnSegmentConfirm is always false (manual memory only)", () => {
-    const s = seg("u1", "敛喉");
-    const key = segmentDraftKey(s, 0);
-    segmentDraftStore.setLearnFocusBaseline(key, "脸喉");
-    segmentDraftStore.applyLearnEditBeforeInput(
-      key,
-      "脸喉",
-      "脸喉",
-      "脸喉",
-      0,
-      2,
-      "insertReplacementText",
-      "敛喉",
-    );
-    expect(needsLearnOnSegmentConfirm([seg("u1", "敛喉")], 0, [s])).toBe(false);
-  });
-
-  it("needsLearnOnSegmentConfirm false when only baseline differs without tracking", () => {
-    const s = seg("u1", "敛喉");
-    const key = segmentDraftKey(s, 0);
-    segmentDraftStore.setLearnFocusBaseline(key, "脸喉");
-    expect(needsLearnOnSegmentConfirm([seg("u1", "敛喉")], 0, [s])).toBe(false);
-  });
-
-  it("segmentPendingLearnAtIndex is always false (manual memory only)", () => {
-    const s = seg("u9", "甲新词");
-    const key = segmentDraftKey(s, 8);
-    segmentDraftStore.setLearnFocusBaseline(key, "甲旧词");
-    segmentDraftStore.setDraft(key, "甲新词");
-    segmentDraftStore.recordProgrammaticLearnReplacement(
-      key,
-      "甲旧词",
-      "甲旧词",
-      1,
-      "旧词",
-      "新词",
-    );
-    expect(segmentPendingLearnAtIndex(s, 8)).toBe(false);
-  });
-
-  it("buildConfirmLearnBaseline uses focus baseline for confirmed segment", () => {
-    const saved = [seg("u1", "敛喉")];
-    const live = [seg("u1", "敛喉")];
-    const key = segmentDraftKey(live[0], 0);
-    segmentDraftStore.setLearnFocusBaseline(key, "脸喉");
-    expect(buildConfirmLearnBaseline(saved, 0, live)).toEqual([{ uid: "u1", text: "脸喉" }]);
   });
 });

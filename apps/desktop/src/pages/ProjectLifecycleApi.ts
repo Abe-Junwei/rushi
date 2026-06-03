@@ -93,7 +93,7 @@ export interface ProjectLifecycleApi {
 
   undo: () => void;
   redo: () => void;
-  updateSegmentText: (idx: number, text: string, meta?: import("./segmentTextLearnMeta").SegmentTextUpdateMeta) => void;
+  updateSegmentText: (idx: number, text: string) => void;
   updateSegmentTime: (idx: number, field: "start_sec" | "end_sec", value: number) => void;
   updateSegmentBounds: (idx: number, startSec: number, endSec: number, phase?: "live" | "commit") => void;
   splitAtSelection: () => void;

@@ -55,32 +55,6 @@ describe("segmentDraftStore + flushSegmentTextDrafts", () => {
     expect(segmentsRef.current[0]?.text).toBe("same");
   });
 
-  it("resetAll clears learn focus baseline when drafts are empty", () => {
-    segmentDraftStore.resetAll();
-    const s = seg("脸喉");
-    const key = segmentDraftKey(s, 0);
-    segmentDraftStore.setLearnFocusBaseline(key, "脸喉");
-    segmentDraftStore.resetAll();
-    expect(segmentDraftStore.getLearnFocusBaseline(key)).toBeUndefined();
-  });
-
-  it("setLearnFocusBaseline does not overwrite existing revision baseline", () => {
-    segmentDraftStore.resetAll();
-    const key = segmentDraftKey(seg("a"), 0);
-    segmentDraftStore.setLearnFocusBaseline(key, "我们一千年前");
-    segmentDraftStore.setLearnFocusBaseline(key, "我们一天前");
-    expect(segmentDraftStore.getLearnFocusBaseline(key)).toBe("我们一千年前");
-  });
-
-  it("pruneMissingKeys removes orphan learn focus baseline", () => {
-    segmentDraftStore.resetAll();
-    const s = seg("a");
-    const key = segmentDraftKey(s, 0);
-    segmentDraftStore.setLearnFocusBaseline(key, "old");
-    segmentDraftStore.pruneMissingKeys(new Set());
-    expect(segmentDraftStore.getLearnFocusBaseline(key)).toBeUndefined();
-  });
-
   it("skips flush while IME composition is active", () => {
     segmentDraftStore.resetAll();
     const s = seg("脸喉");

@@ -1,6 +1,4 @@
-import type { CorrectionExplicitPair } from "../tauri/fileApi";
 import { graphemeCount, splitGraphemes } from "./text/grapheme";
-import { collectLearnablePairsForSession, type LearnEditState } from "./learnEditDelta";
 
 function isCjkChar(c: string): boolean {
   const code = c.codePointAt(0) ?? 0;
@@ -18,7 +16,7 @@ export function isCorrectionLearnNoiseChar(c: string): boolean {
   return /[，。！？；、,.!?;:：]/.test(c);
 }
 
-/** 从追踪 op / 显式对中去掉标点与空白，只保留要学的中文词面。 */
+/** 从词面中去掉标点与空白。 */
 export function stripCorrectionLearnNoise(text: string): string {
   let out = "";
   for (const g of splitGraphemes(text)) {
@@ -38,7 +36,7 @@ export function normalizeCorrectionLearnPair(
   return { beforeText, afterText };
 }
 
-/** 与 Rust `should_learn_inferred_replacement` 对齐（显式/推断共用门槛）。 */
+/** 与 Rust `should_learn_inferred_replacement` 对齐（手动纳入记忆 / Replace All 共用门槛）。 */
 export function shouldLearnInferredReplacement(removed: string, added: string): boolean {
   const pair = normalizeCorrectionLearnPair(removed, added);
   if (!pair) return false;
@@ -66,22 +64,4 @@ export function shouldLearnInferredReplacement(removed: string, added: string): 
   }
 
   return true;
-}
-
-/** 「纳入记忆」：消费 beforeinput / DOM input / 程序化写入记录的 removed→inserted。 */
-export function buildConfirmExplicitPairs(
-  focusBaseline: string,
-  liveText: string,
-  learnState?: LearnEditState,
-): CorrectionExplicitPair[] {
-  return collectLearnablePairsForSession(learnState, focusBaseline, liveText);
-}
-
-/** 兼容：取第一组可学习对。 */
-export function buildConfirmExplicitPair(
-  focusBaseline: string,
-  liveText: string,
-  learnState?: LearnEditState,
-): CorrectionExplicitPair | null {
-  return buildConfirmExplicitPairs(focusBaseline, liveText, learnState)[0] ?? null;
 }

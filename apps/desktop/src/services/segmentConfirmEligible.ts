@@ -33,15 +33,6 @@ export function segmentHasUnsavedText(
   return pair.live !== pair.saved;
 }
 
-/** @deprecated 改用语段选区右键「纳入更正记忆」。 */
-export function segmentShowConfirmLearnButton(
-  _segments: SegmentDto[],
-  _savedSnapshot: SegmentDto[],
-  _segmentIdx: number,
-): boolean {
-  return false;
-}
-
 /** ⌘/Ctrl+Enter：仅当语段正文仍有未落库修改时可保存并跳下一条。 */
 export function segmentCanConfirmEdit(
   segments: SegmentDto[],

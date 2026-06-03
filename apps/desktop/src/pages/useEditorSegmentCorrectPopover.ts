@@ -5,8 +5,6 @@ import { applySpanCorrection } from "../services/editor/applySpanCorrection";
 import { normalizeSegmentDraftText, segmentDraftKey, segmentDraftStore } from "../hooks/useSegmentDraftStore";
 import { applySegmentTextChange } from "./segmentTextLearnMeta";
 import type { SegmentDto } from "../tauri/projectApi";
-import type { SegmentTextUpdateMeta } from "./segmentTextLearnMeta";
-
 export type SegmentCorrectPopoverState = {
   segmentIdx: number;
   span: CorrectableSpan;
@@ -18,7 +16,7 @@ type Args = {
   busy: boolean;
   segmentsRef: React.MutableRefObject<SegmentDto[]>;
   suggestionsForSurface: (surface: string) => CorrectSuggestion[];
-  updateSegmentText: (idx: number, text: string, meta?: SegmentTextUpdateMeta) => void;
+  updateSegmentText: (idx: number, text: string) => void;
 };
 
 export function useEditorSegmentCorrectPopover({
