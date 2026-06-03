@@ -17,7 +17,8 @@ bash scripts/r3g-b-qwen3-asr-spike-hand-test.sh
 
 ```bash
 export RUSHI_FUNASR_MODEL=Qwen/Qwen3-ASR-0.6B
-npm run asr:dev
+# 若 8741 已被桌面或其它 asr:dev 占用，须先重启侧车（否则会仍用 Paraformer）：
+RUSHI_ASR_DEV_RESTART=1 npm run asr:dev
 ```
 
 3. `GET /health`：`funasr_model_id` 含 Qwen3；`ready_for_transcribe` 为 true。  
