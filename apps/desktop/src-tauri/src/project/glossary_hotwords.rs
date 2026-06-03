@@ -1,6 +1,7 @@
 //! Glossary → ASR `hotwords` string (≤12k **Unicode characters**, aligned with Python `len(str)`).
 
 use super::glossary_aliases::hotword_tokens_for_entry;
+use super::hotword_guard::{load_correction_before_text_blocklist, token_is_correction_before_text};
 use rusqlite::Connection;
 use std::collections::HashSet;
 
@@ -91,6 +92,7 @@ fn enabled_entry_count(conn: &Connection) -> Result<usize, String> {
 }
 
 pub fn build_glossary_hotwords(conn: &Connection) -> Result<GlossaryHotwordsBuild, String> {
+    let before_text_blocklist = load_correction_before_text_blocklist(conn)?;
     let enabled_entries = enabled_entry_count(conn)?;
     let mut stmt = conn
         .prepare(
@@ -107,6 +109,9 @@ pub fn build_glossary_hotwords(conn: &Connection) -> Result<GlossaryHotwordsBuil
     for r in rows {
         let (term, aliases) = r.map_err(|e| e.to_string())?;
         for token in hotword_tokens_for_entry(&term, &aliases) {
+            if token_is_correction_before_text(&token, &before_text_blocklist) {
+                continue;
+            }
             let key = token.to_lowercase();
             if seen_tokens.insert(key) {
                 unique_tokens.push(token);
@@ -265,6 +270,27 @@ mod tests {
         assert_eq!(build.hotwords, "三乘 主任");
         assert_eq!(build.preview.term_count, 2);
         assert_eq!(build.preview.enabled_entry_count, 1);
+    }
+
+    #[test]
+    fn db_excludes_correction_before_text_tokens() {
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        crate::db::migrate(&conn).unwrap();
+        conn.execute(
+            "INSERT INTO glossary_terms (term, aliases, domain, note, hotword_enabled, created_at_ms, updated_at_ms) \
+             VALUES ('制控', '智控', '', '', 1, 1, 1)",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO correction_memory (before_text, after_text, hit_count, accepted_as_rule, created_at_ms, updated_at_ms) \
+             VALUES ('智控', '制控', 1, 0, 1, 1)",
+            [],
+        )
+        .unwrap();
+        let build = build_glossary_hotwords(&conn).unwrap();
+        assert_eq!(build.hotwords, "制控");
+        assert_eq!(build.preview.term_count, 1);
     }
 
     #[test]

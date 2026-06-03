@@ -143,6 +143,46 @@ fn export_and_import_project_bundle_round_trip() {
 }
 
 #[test]
+fn project_bundle_zip_excludes_lexicon_bundle() {
+    let st = test_state("no_lexicon_in_project_zip");
+    let project_id = "project-no-lexicon";
+    let seeded = seed_project(&st, project_id, "词表隔离", "clip.wav");
+    let zip_path = st.root.join("project-only.zip");
+    export_project_bundle_to_path(
+        &st,
+        project_id,
+        &seeded.file_id,
+        &zip_path,
+        vec![SegmentDto {
+            uid: None,
+            idx: 0,
+            start_sec: 0.0,
+            end_sec: 1.0,
+            text: "测".into(),
+            confidence: None,
+            low_confidence: false,
+            detail: None,
+            kind: None,
+        }],
+    )
+    .unwrap();
+
+    let mut archive = ZipArchive::new(File::open(&zip_path).unwrap()).unwrap();
+    for i in 0..archive.len() {
+        let name = archive.by_index(i).unwrap().name().to_string();
+        assert!(
+            !name.contains("lexicon") && !name.contains("glossary-export"),
+            "项目包不应含词表包文件：{name}"
+        );
+    }
+    let manifest: ProjectBundleManifest = read_zip_json(&mut archive, "manifest.json").unwrap();
+    assert_eq!(manifest.kind, PROJECT_BUNDLE_KIND);
+    assert_ne!(manifest.kind, "rushi_lexicon_bundle");
+
+    let _ = fs::remove_dir_all(&st.root);
+}
+
+#[test]
 fn export_project_bundle_uses_requested_file_audio() {
     let st = test_state("export_file_pick");
     let project_id = "project-multi";

@@ -28,6 +28,7 @@ export type GlossaryImportResult = {
   parsed: number;
   added: number;
   skippedDup: number;
+  skippedWrongForm: number;
 };
 
 function readBool(raw: Record<string, unknown>, camel: string, snake: string): boolean | undefined {
@@ -117,6 +118,8 @@ type RawImportResult = {
   added?: number;
   skipped_dup?: number;
   skippedDup?: number;
+  skipped_wrong_form?: number;
+  skippedWrongForm?: number;
 };
 
 export function parseGlossaryImportResult(raw: unknown): GlossaryImportResult | null {
@@ -130,6 +133,12 @@ export function parseGlossaryImportResult(raw: unknown): GlossaryImportResult | 
         ? j.skippedDup
         : typeof j.skipped_dup === "number"
           ? j.skipped_dup
+          : 0,
+    skippedWrongForm:
+      typeof j.skippedWrongForm === "number"
+        ? j.skippedWrongForm
+        : typeof j.skipped_wrong_form === "number"
+          ? j.skipped_wrong_form
           : 0,
   };
 }

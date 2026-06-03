@@ -1,5 +1,6 @@
 use super::glossary_hotwords::build_glossary_hotwords;
 use super::glossary_hotwords::GlossaryHotwordsPreview;
+use super::hotword_guard::reject_glossary_correction_before_texts;
 use super::glossary_import::rows_from_glossary_file;
 use super::glossary_insert::GlossaryInsertRow;
 use super::types::GlossaryTermDto;
@@ -15,6 +16,7 @@ pub struct GlossaryImportResult {
     pub parsed: usize,
     pub added: usize,
     pub skipped_dup: usize,
+    pub skipped_wrong_form: usize,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]
@@ -50,11 +52,16 @@ fn insert_glossary_rows(
     let parsed = rows.len();
     let mut added = 0usize;
     let mut skipped_dup = 0usize;
+    let mut skipped_wrong_form = 0usize;
     let now = now_ms();
     let tx = conn.transaction().map_err(|e| e.to_string())?;
     for row in rows {
         let t = row.term.trim();
         if t.is_empty() {
+            continue;
+        }
+        if reject_glossary_correction_before_texts(&tx, t, row.aliases.trim()).is_err() {
+            skipped_wrong_form += 1;
             continue;
         }
         let res = tx.execute(
@@ -79,6 +86,7 @@ fn insert_glossary_rows(
         parsed,
         added,
         skipped_dup,
+        skipped_wrong_form,
     })
 }
 
@@ -147,6 +155,7 @@ pub fn glossary_add(
     let note = note.unwrap_or_default().trim().to_string();
     let hotword_enabled = hotword_enabled.unwrap_or(true);
     let conn = open_db(state.deref())?;
+    reject_glossary_correction_before_texts(&conn, &t, &aliases)?;
     let now = now_ms();
     let res = conn.execute(
         "INSERT INTO glossary_terms (term, aliases, domain, note, hotword_enabled, created_at_ms, updated_at_ms) VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?6)",
@@ -208,6 +217,7 @@ pub fn glossary_update(
     let domain = domain.unwrap_or_default().trim().to_string();
     let note = note.unwrap_or_default().trim().to_string();
     let conn = open_db(state.deref())?;
+    reject_glossary_correction_before_texts(&conn, &t, &aliases)?;
     let now = now_ms();
     let hotword_enabled = if let Some(v) = hotword_enabled {
         v

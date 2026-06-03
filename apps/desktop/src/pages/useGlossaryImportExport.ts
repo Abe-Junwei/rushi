@@ -4,7 +4,17 @@ import { buildGlossaryCsvExport } from "../services/glossaryTermHelpers";
 import { isTauriRuntime } from "../config/env";
 import type { GlossaryTermDto } from "../tauri/glossaryApi";
 import * as g from "../tauri/glossaryApi";
+import type { GlossaryImportResult } from "../tauri/glossaryApi";
 import { exportTextFile } from "../tauri/projectApi";
+
+function glossaryImportSkipSuffix(result: GlossaryImportResult): string {
+  const parts: string[] = [];
+  if (result.skippedDup > 0) parts.push(`${result.skippedDup} 条重复已跳过`);
+  if (result.skippedWrongForm > 0) {
+    parts.push(`${result.skippedWrongForm} 条纠错错形已跳过（请用正形作主术语）`);
+  }
+  return parts.length > 0 ? `，${parts.join("，")}` : "";
+}
 
 export function useGlossaryImportExport(
   terms: GlossaryTermDto[],
@@ -25,12 +35,17 @@ export function useGlossaryImportExport(
       const result = await g.glossaryAddBatch(pieces, true);
       setBulkPaste("");
       await refresh();
+      const skip = glossaryImportSkipSuffix(result);
       if (result.added > 0) {
-        setStatusMessage(
-          `批量添加 ${result.added} 条${result.skippedDup ? `，${result.skippedDup} 条重复已跳过` : ""}。`,
-        );
-      } else if (result.skippedDup > 0) {
+        setStatusMessage(`批量添加 ${result.added} 条${skip}。`);
+      } else if (result.skippedDup > 0 && result.skippedWrongForm === 0) {
         setError("所选术语均已存在（忽略大小写）。");
+      } else if (result.skippedWrongForm > 0) {
+        setError(
+          result.skippedDup > 0
+            ? "未添加新术语：均为重复或纠错记忆中的错形（术语表请填正形）。"
+            : "未添加：所列词条为纠错记忆中的错形，请使用正形作为主术语。",
+        );
       } else {
         setError("未添加任何术语。");
       }
@@ -54,7 +69,7 @@ export function useGlossaryImportExport(
       if (result == null) return;
       await refresh();
       setStatusMessage(
-        `已从表格导入 ${result.added} 条（识别 ${result.parsed} 行${result.skippedDup ? `，${result.skippedDup} 条重复已跳过` : ""}；含 hotword_enabled 列时按列导入）。`,
+        `已从表格导入 ${result.added} 条（识别 ${result.parsed} 行${glossaryImportSkipSuffix(result)}；含 hotword_enabled 列时按列导入）。`,
       );
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
