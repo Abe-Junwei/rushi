@@ -1,0 +1,105 @@
+# Full Tauri bundles — run on GitHub Release publish or manual dispatch (not on every PR).
+name: Release build
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: release-build-${{ github.ref }}
+  cancel-in-progress: false
+
+jobs:
+  tauri-linux:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Linux packages for Tauri
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev pandoc wkhtmltopdf
+
+      - name: Tauri build (deb + AppImage)
+        working-directory: apps/desktop
+        run: npm run tauri -- build --bundles deb,appimage
+        timeout-minutes: 30
+
+      - name: Report bundle sizes
+        working-directory: apps/desktop/src-tauri/target/release/bundle
+        run: |
+          echo "## Linux release bundles" >> "$GITHUB_STEP_SUMMARY"
+          find . -maxdepth 3 \( -name '*.deb' -o -name '*.AppImage' \) -print0 2>/dev/null \
+            | xargs -0 -I{} sh -c 'ls -lh "{}"; echo "- {}: $(du -h "{}" | cut -f1)" >> "$GITHUB_STEP_SUMMARY"' \
+            || echo "No Linux bundle artifacts found"
+
+  tauri-macos:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Install pandoc (user-guide PDF)
+        run: brew install pandoc
+
+      - name: Tauri build (app + dmg)
+        working-directory: apps/desktop
+        run: npm run tauri -- build --bundles app,dmg
+        timeout-minutes: 40
+
+      - name: Report bundle sizes
+        working-directory: apps/desktop/src-tauri/target/release/bundle
+        run: |
+          echo "## macOS release bundles" >> "$GITHUB_STEP_SUMMARY"
+          find . -maxdepth 4 \( -name '*.app' -o -name '*.dmg' \) -print0 2>/dev/null \
+            | xargs -0 -I{} sh -c 'du -sh "{}"; echo "- {}: $(du -sh "{}" | cut -f1)" >> "$GITHUB_STEP_SUMMARY"' \
+            || echo "No macOS bundle artifacts found"
+
+  tauri-windows:
+    runs-on: windows-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+
+      - uses: dtolnay/rust-toolchain@stable
+
+      - name: Tauri build (MSI)
+        working-directory: apps/desktop
+        run: npm run tauri -- build --bundles msi
+        timeout-minutes: 45
+
+      - name: Report bundle sizes
+        shell: bash
+        working-directory: apps/desktop/src-tauri/target/release/bundle
+        run: |
+          echo "## Windows release bundles" >> "$GITHUB_STEP_SUMMARY"
+          find . -maxdepth 3 -name '*.msi' -print0 2>/dev/null \
+            | xargs -0 -I{} sh -c 'ls -lh "{}"; echo "- {}: $(du -h "{}" | cut -f1)" >> "$GITHUB_STEP_SUMMARY"' \
+            || echo "No MSI artifact found"
