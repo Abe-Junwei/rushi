@@ -998,16 +998,16 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | **刚闭合** | [v1-release-installed-signoff](../v1-release-installed-signoff-2026-06.md) · R9 · R4 |
 | **Spike 真源** | [research](../specs/llm-loc-spike-research.md) · [plan](../specs/llm-loc-spike-plan.md) · [acceptance](../specs/llm-loc-spike-acceptance.md) · [backlog §9](../specs/llm-local-runtime-backlog.md) |
 | **预检** | `bash scripts/llm-loc-spike-preflight.sh` |
-| **近期不做** | **LLM-LOC-4a/4b 产品化**、**CAT-TRAN**、**R6–R8** — 未过 Gate |
+| **近期不做** | **LLM-LOC-4b**（LRC 自管）、**CAT-TRAN**、**R6–R8** — 4b 待 Gate-B |
 | **ASR 引擎路线** | **方案 A 已锁定** — FunASR + LRC 先行；Sherpa **R3h-3.5 Spike → 轻量模式候选**（非完全替代，[ADR-0003](../../adr/0003-asr-engine-funasr-first-sherpa-spike-gate.md) 附录 A） |
-| **不要** | Spike 未过 Gate 即改环境页 / llm-runtime catalog |
+| **不要** | Gate-B 未过即立项 **4b** / 改 llm-runtime catalog |
 
 ### v1 0.1.0 已可分发（2026-06-03）
 
 - **DMG**：`apps/desktop/src-tauri/target/release/bundle/dmg/如是我闻_0.1.0_aarch64.dmg`（**Mac 单机自用**；侧车见 **Q-SIDECAR-1**：本机 FunASR 需自启 `rushi-asr` 或 `npm run desktop:dev` 拉起，**非** Linux 式内置 onedir）
 - **签收**：[v1-release-installed-signoff](../v1-release-installed-signoff-2026-06.md)
 
-**主序（E 期）**：**EXP-WORD** ✅ → **REV-LOC** ✅ → **R4** ✅ → **R9** ✅ → **LLM-LOC-SPIKE** 🟡
+**主序（E 期）**：**EXP-WORD** ✅ → **REV-LOC** ✅ → **R4** ✅ → **R9** ✅ → **LLM-LOC-SPIKE** ✅ → **4a** ✅
 
 **LLM**：Spike ✅ · **4a Ollama** ✅（[acceptance](../specs/llm-loc-4a-acceptance.md)）；G-A1 人工可选；**4b 未立项**。
 
