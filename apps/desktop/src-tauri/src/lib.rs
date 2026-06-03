@@ -4,6 +4,7 @@ mod china_stt_shell;
 mod db;
 mod diagnostic;
 mod export_docx;
+mod export_docx_polish_track;
 mod local_asr_language;
 mod local_asr_model;
 mod local_runtime;
@@ -70,6 +71,7 @@ pub fn run() {
             project::project_list,
             project::project_load,
             project::project_list_edit_log,
+            project::project_record_edit_log,
             project::file_save_segments,
             project::file_restore_segments_from_edit_log,
             project::project_run_transcribe,
@@ -120,6 +122,8 @@ pub fn run() {
             postprocess_cmd::postprocess_refine_segments,
             postprocess_cmd::postprocess_lexicon_proofread,
             postprocess_cmd::postprocess_cancel_auto_punctuate,
+            postprocess_cmd::postprocess_cancel_export_polish,
+            postprocess_cmd::postprocess_export_polish_cmd::postprocess_export_polish,
             project::correction_accept_rule,
             project::correction_stable_rules_list,
             project::correction_glossary_learn_prompts,

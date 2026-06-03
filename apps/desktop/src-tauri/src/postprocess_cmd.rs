@@ -6,6 +6,15 @@ mod postprocess_probe;
 mod postprocess_secret_store;
 #[path = "postprocess_segment_ops.rs"]
 mod postprocess_segment_ops;
+#[path = "postprocess_export_polish.rs"]
+mod postprocess_export_polish;
+#[path = "postprocess_export_polish_cmd.rs"]
+pub mod postprocess_export_polish_cmd;
+
+pub use postprocess_export_polish_cmd::{
+    PostprocessExportPolishRequest, PostprocessExportPolishResponse,
+};
+
 
 use crate::project::lexicon_pack::{
     assemble_lexicon_pack, lexicon_pack_is_usable, LexiconPackMeta,
@@ -117,6 +126,7 @@ pub struct PostprocessLexiconProofreadRequest {
     #[serde(default)]
     pub runtime: Option<PostprocessRuntimeBridge>,
 }
+
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -764,19 +774,35 @@ pub async fn postprocess_lexicon_proofread(
     })
 }
 
+
 #[tauri::command]
 pub fn postprocess_cancel_auto_punctuate(
     cancel_state: State<'_, PostprocessCancelState>,
     req: PostprocessCancelAutoPunctuateRequest,
 ) -> Result<bool, String> {
-    let request_id = req.request_id.trim();
+    postprocess_cancel_by_request_id(&cancel_state, req.request_id.trim(), "自动标点")
+}
+
+#[tauri::command]
+pub fn postprocess_cancel_export_polish(
+    cancel_state: State<'_, PostprocessCancelState>,
+    req: PostprocessCancelAutoPunctuateRequest,
+) -> Result<bool, String> {
+    postprocess_cancel_by_request_id(&cancel_state, req.request_id.trim(), "导出润色")
+}
+
+fn postprocess_cancel_by_request_id(
+    cancel_state: &PostprocessCancelState,
+    request_id: &str,
+    label: &str,
+) -> Result<bool, String> {
     if request_id.is_empty() {
-        return Err("缺少自动标点请求 id。".to_string());
+        return Err(format!("缺少{label}请求 id。"));
     }
     let handle = cancel_state
         .0
         .lock()
-        .map_err(|_| "自动标点取消状态不可用。".to_string())?
+        .map_err(|_| format!("{label}取消状态不可用。"))?
         .remove(request_id);
     if let Some(handle) = handle {
         handle.abort();

@@ -74,3 +74,21 @@ pub fn project_list_edit_log(
     }
     Ok(out)
 }
+
+/// 写入一条项目级 edit_log（无 segments 快照；用于导出润色等旁路审计）。
+#[tauri::command]
+pub fn project_record_edit_log(
+    state: State<DbState>,
+    project_id: String,
+    kind: String,
+    detail: String,
+) -> Result<(), String> {
+    let conn = open_db(state.deref())?;
+    let now = chrono::Utc::now().timestamp_millis();
+    conn.execute(
+        "INSERT INTO edit_log (project_id, at_ms, kind, detail) VALUES (?1, ?2, ?3, ?4)",
+        params![project_id, now, kind, detail],
+    )
+    .map_err(|e| e.to_string())?;
+    Ok(())
+}
