@@ -22,7 +22,8 @@ RUSHI_ASR_DEV_RESTART=1 npm run asr:dev
 ```
 
 3. `GET /health`：`funasr_model_id` 含 Qwen3；`ready_for_transcribe` 为 true。  
-4. 记录 FunASR / torch 版本到 [results](./r3g-b-qwen3-asr-spike-results.md)。
+4. 若 prepare 报 `model_prepare_incomplete` 但日志已下完 ~1.75GB：多为旧校验只认 `model.pt`；拉最新代码后 **无需重下**，再跑一次 prepare 即可（Qwen 用 `model.safetensors`）。  
+5. 记录 FunASR / torch 版本到 [results](./r3g-b-qwen3-asr-spike-results.md)。
 
 - [ ] Phase 0 完成
 

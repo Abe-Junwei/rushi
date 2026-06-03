@@ -15,13 +15,13 @@ from rushi_asr.funasr_pipeline import effective_funasr_punc_model_id
 from rushi_asr.model_catalog import resolve_hub_model_id
 from rushi_asr.defaults import DEFAULT_FUNASR_MODEL_ID
 from rushi_asr.model_prepare_cache import (
-    DEFAULT_MODEL_REQUIRED_FILES,
     DEFAULT_PUNC_REQUIRED_FILES,
     DEFAULT_VAD_REQUIRED_FILES,
     default_model_cached_guess,
     disk_check_path,
     looks_like_complete_model_dir,
     punc_model_cached_guess,
+    recognizer_cache_spec,
     recognizer_model_cached_guess,
     required_models_cached_guess,
     vad_model_cached_guess,
@@ -141,10 +141,12 @@ def _download_models(resolved_model_id: str) -> dict[str, Any]:
             socket.setdefaulttimeout(old_timeout)
         finalize_prepare_download_progress()
         raise_if_prepare_cancelled()
+        req_files, weight_file, min_weight = recognizer_cache_spec(resolved_model_id)
         if not looks_like_complete_model_dir(
             model_dir,
-            DEFAULT_MODEL_REQUIRED_FILES,
-            100 * 1024 * 1024,
+            req_files,
+            min_weight,
+            weight_file=weight_file,
         ):
             raise RuntimeError("model_prepare_incomplete")
         if vad_model_id and vad_dir is not None and not looks_like_complete_model_dir(
