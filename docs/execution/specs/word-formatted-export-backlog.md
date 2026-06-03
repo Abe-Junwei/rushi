@@ -1,6 +1,6 @@
 # Backlog: 终稿 Word 格式化导出（EXP-WORD）
 
-> **状态**：规划定稿（2026-05-27）；**未排期编码**  
+> **状态**：✅ v1 已交付（2026-06-03 功能验收）；后续增强见下文 §4  
 > **验收真源**：[`exp-word-formatted-export-acceptance.md`](./exp-word-formatted-export-acceptance.md)  
 > **排期真源**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) §4.1、§8.1  
 > **关联**：[`p3-acceptance.md`](../p3-acceptance.md)（**已有**基础 DOCX）、[`recording-transcribe-llm-pipeline.md`](../../architecture/recording-transcribe-llm-pipeline.md)、[`collaboration-review-word-export.md`](./collaboration-review-word-export.md)（协作 **C6**，远期）
