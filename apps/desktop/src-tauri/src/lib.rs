@@ -119,6 +119,7 @@ pub fn run() {
             postprocess_cmd::llm_has_stored_api_key,
             postprocess_cmd::llm_migrate_legacy_api_key,
             postprocess_cmd::llm_probe_connection,
+            postprocess_cmd::ollama_detect_status,
             postprocess_cmd::postprocess_auto_punctuate,
             postprocess_cmd::postprocess_refine_segments,
             postprocess_cmd::postprocess_lexicon_proofread,

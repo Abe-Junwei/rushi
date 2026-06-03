@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   getLlmApiKeyFromMemory,
+  isLocalLoopbackLlmConfig,
   readLlmRuntimeConfigFromStorage,
 } from "../services/postprocess/postprocessRuntimeContract";
 import { llmHasStoredApiKey } from "../tauri/postprocessApi";
@@ -24,7 +25,13 @@ export function useLlmKeychainReady(refreshSeq: number): {
       return;
     }
 
-    const apiKeyId = readLlmRuntimeConfigFromStorage().apiKeyId?.trim();
+    const cfg = readLlmRuntimeConfigFromStorage();
+    if (isLocalLoopbackLlmConfig(cfg)) {
+      setKeychainReady(true);
+      setChecking(false);
+      return;
+    }
+    const apiKeyId = cfg.apiKeyId?.trim();
     if (!apiKeyId) {
       setKeychainReady(false);
       setChecking(false);

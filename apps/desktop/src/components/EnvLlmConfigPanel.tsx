@@ -3,13 +3,16 @@ import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY, CONTROL_TEXT_INPUT } from "
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { useLlmKeychainReady } from "../hooks/useLlmKeychainReady";
 import { EnvLlmCapabilitiesSection } from "./EnvLlmCapabilitiesSection";
+import { EnvOllamaStatusBanner } from "./EnvOllamaStatusBanner";
 import {
   DEFAULT_LLM_API_KEY_ID,
   LLM_PROVIDER_DEFINITIONS,
   LLM_STORAGE_KEYS,
+  OLLAMA_LOOPBACK_PLACEHOLDER_API_KEY,
   applyLlmProviderPreset,
   getLlmProviderDefinition,
   isCorruptLlmApiKeyId,
+  isLocalLoopbackLlmProvider,
   isLlmConnectionVerified,
   isLlmRuntimeReady,
   LLM_CONNECTION_VERIFIED_EVENT,
@@ -85,6 +88,7 @@ export function EnvLlmConfigPanel({ busy, onLlmRuntimeChanged }: Props) {
     return () => window.removeEventListener(LLM_CONNECTION_VERIFIED_EVENT, syncVerified);
   }, []);
   const def = getLlmProviderDefinition(providerId);
+  const localLoopback = isLocalLoopbackLlmProvider(providerId);
   const formBusy = busy || saveBusy || probeBusy;
   const hasLocalKeyRef = isLlmRuntimeReady();
   const { keychainReady, checking: keychainChecking } = useLlmKeychainReady(keychainRefreshSeq);
@@ -95,10 +99,11 @@ export function EnvLlmConfigPanel({ busy, onLlmRuntimeChanged }: Props) {
         hasTypedKey: apiKey.trim().length > 0,
         keychainPresent: keychainChecking ? null : keychainReady,
         probeState,
+        localLoopback,
       }),
-    [apiKey, hasLocalKeyRef, keychainChecking, keychainReady, probeState],
+    [apiKey, hasLocalKeyRef, keychainChecking, keychainReady, localLoopback, probeState],
   );
-  const connectionStatusMessage = llmConnectionStatusMessage(connectionStatus);
+  const connectionStatusMessage = llmConnectionStatusMessage(connectionStatus, { localLoopback });
   const connectionStatusTone = llmConnectionStatusTone(connectionStatus);
   const bumpKeychainCheck = useCallback(() => {
     setKeychainRefreshSeq((n) => n + 1);
@@ -116,22 +121,30 @@ export function EnvLlmConfigPanel({ busy, onLlmRuntimeChanged }: Props) {
   }, []);
   const buildProbeRuntime = useCallback((): PostprocessRuntimeBridge => {
     const typedApiKey = apiKey.trim();
+    if (!def) throw new Error("未知的 LLM 厂商预设。");
+    const stored = readLlmRuntimeConfigFromStorage();
+    const resolvedBaseUrl = baseUrl.trim() || stored.baseUrl || def.defaultBaseUrl;
+    const resolvedModel = model.trim() || stored.model || def.defaultModel;
+    const allowInsecureHttp =
+      resolvedBaseUrl.startsWith("http://127.0.0.1") ||
+      resolvedBaseUrl.startsWith("http://localhost");
+    if (localLoopback) {
+      return {
+        provider: def.label,
+        baseUrl: resolvedBaseUrl,
+        model: resolvedModel,
+        apiKey: typedApiKey || OLLAMA_LOOPBACK_PLACEHOLDER_API_KEY,
+        allowInsecureHttp: true,
+      };
+    }
     if (typedApiKey) {
-      if (!def) throw new Error("未知的 LLM 厂商预设。");
-      const stored = readLlmRuntimeConfigFromStorage();
-      const resolvedBaseUrl = baseUrl.trim() || stored.baseUrl || def.defaultBaseUrl;
       const runtime: PostprocessRuntimeBridge = {
         provider: def.label,
         baseUrl: resolvedBaseUrl,
-        model: model.trim() || stored.model || def.defaultModel,
+        model: resolvedModel,
         apiKey: typedApiKey,
       };
-      if (
-        resolvedBaseUrl.startsWith("http://127.0.0.1") ||
-        resolvedBaseUrl.startsWith("http://localhost")
-      ) {
-        runtime.allowInsecureHttp = true;
-      }
+      if (allowInsecureHttp) runtime.allowInsecureHttp = true;
       return runtime;
     }
     const bridge = tryBuildPostprocessRuntimeBridge();
@@ -139,7 +152,7 @@ export function EnvLlmConfigPanel({ busy, onLlmRuntimeChanged }: Props) {
       throw new Error("请先填写 API Key，或使用已保存的本地密钥。");
     }
     return bridge;
-  }, [apiKey, baseUrl, def, model]);
+  }, [apiKey, baseUrl, def, localLoopback, model]);
   const save = useCallback(async () => {
     setMsg(null);
     setProbeState("idle");
@@ -169,6 +182,16 @@ export function EnvLlmConfigPanel({ busy, onLlmRuntimeChanged }: Props) {
           setLegacyMisplacedKeyId(undefined);
         }
       }
+      if (localLoopback) {
+        persistLlmRuntimeConfig({ providerId, baseUrl, model }, { clearApiKeyId: true });
+        setSavedApiKeyId(null);
+        setLlmApiKeyInMemory(null);
+        setApiKey("");
+        bumpKeychainCheck();
+        onLlmRuntimeChanged?.();
+        setMsg("已保存本机 Ollama 连接。无需 API Key；请点击「探测连接」验证。");
+        return;
+      }
       if (!nextApiKeyId) {
         throw new Error("请先填写 API Key，再点击保存配置。");
       }
@@ -195,7 +218,7 @@ export function EnvLlmConfigPanel({ busy, onLlmRuntimeChanged }: Props) {
     } finally {
       setSaveBusy(false);
     }
-  }, [apiKey, baseUrl, bumpKeychainCheck, legacyMisplacedKeyId, model, onLlmRuntimeChanged, providerId, savedApiKeyId]);
+  }, [apiKey, baseUrl, bumpKeychainCheck, legacyMisplacedKeyId, localLoopback, model, onLlmRuntimeChanged, providerId, savedApiKeyId]);
   const clearSavedApiKey = useCallback(async () => {
     if (!savedApiKeyId && !readLlmRuntimeConfigFromStorage().apiKeyId) return;
     setMsg(null);
@@ -244,14 +267,15 @@ export function EnvLlmConfigPanel({ busy, onLlmRuntimeChanged }: Props) {
       <header className="space-y-2">
         <h3 className={PANEL_TYPOGRAPHY.sectionTitle}>LLM 配置</h3>
         <p className={PANEL_TYPOGRAPHY.sectionDescription}>
-          统一管理桌面端使用的<strong className="font-medium text-notion-text">远程文本大模型</strong>
-          （OpenAI 兼容 <code className={PANEL_TYPOGRAPHY.code}>/v1/chat/completions</code>
-          ）。转写仍走本机 ASR / 在线 STT，与此处配置无关。
+          管理<strong className="font-medium text-notion-text">云端</strong>或
+          <strong className="font-medium text-notion-text">本机 Ollama</strong>文本模型（OpenAI 兼容{" "}
+          <code className={PANEL_TYPOGRAPHY.code}>/v1/chat/completions</code>）。转写仍走本机 ASR / 在线 STT。
         </p>
         <p className={PANEL_TYPOGRAPHY.body}>
-          请求由应用壳（Tauri）直连厂商，语段正文仅在触发具体能力时发送；不会静默改写文稿。后续智能分段、文本规整等能力将共用本页连接信息。
+          语段正文仅在触发具体能力时发送；不会静默改写文稿。本机 Ollama 模式下数据不出本机；云端模式请求发往所选厂商。
         </p>
       </header>
+      <EnvOllamaStatusBanner refreshSeq={keychainRefreshSeq} disabled={formBusy} />
       <EnvLlmCapabilitiesSection connectionStatus={connectionStatus} />
       <section className="space-y-4">
         <div>
@@ -334,32 +358,41 @@ export function EnvLlmConfigPanel({ busy, onLlmRuntimeChanged }: Props) {
           </datalist>
         </label>
 
-        <label className="block space-y-1">
-          <span className={PANEL_TYPOGRAPHY.fieldLabel}>API Key</span>
-          <input
-            className={field}
-            type="password"
-            autoComplete="off"
-            aria-label="API Key"
-            value={apiKey}
-            disabled={formBusy}
-            onChange={(e) => {
-              invalidateProbe();
-              setApiKey(e.target.value);
-            }}
-            placeholder={savedApiKeyId ? "留空则沿用已保存的本地密钥" : "在厂商控制台创建并保存到本地安全存储"}
-          />
-          <span className={PANEL_TYPOGRAPHY.meta}>
-            与在线 STT 密钥分开存放；不写入 localStorage 或项目文件。macOS 默认保存到应用数据目录受保护文件（避免钥匙串反复要求登录密码）；Windows 优先系统凭据管理器。
-          </span>
-        </label>
+        {localLoopback ? (
+          <p className={PANEL_TYPOGRAPHY.meta}>
+            本机 Ollama 不需要 API Key。请确认上方「本机 LLM」检测为就绪，模型 ID 与{" "}
+            <code className={PANEL_TYPOGRAPHY.code}>ollama list</code> 中名称一致（推荐 qwen2.5:7b）。
+          </p>
+        ) : (
+          <>
+            <label className="block space-y-1">
+              <span className={PANEL_TYPOGRAPHY.fieldLabel}>API Key</span>
+              <input
+                className={field}
+                type="password"
+                autoComplete="off"
+                aria-label="API Key"
+                value={apiKey}
+                disabled={formBusy}
+                onChange={(e) => {
+                  invalidateProbe();
+                  setApiKey(e.target.value);
+                }}
+                placeholder={savedApiKeyId ? "留空则沿用已保存的本地密钥" : "在厂商控制台创建并保存到本地安全存储"}
+              />
+              <span className={PANEL_TYPOGRAPHY.meta}>
+                与在线 STT 密钥分开存放；不写入 localStorage 或项目文件。macOS 默认保存到应用数据目录受保护文件；Windows 优先系统凭据管理器。
+              </span>
+            </label>
 
-        <p className={PANEL_TYPOGRAPHY.meta}>
-          {llmKeychainReferenceMessage(
-            normalizeLlmApiKeyId(savedApiKeyId) ?? null,
-            keychainChecking ? null : keychainReady,
-          )}
-        </p>
+            <p className={PANEL_TYPOGRAPHY.meta}>
+              {llmKeychainReferenceMessage(
+                normalizeLlmApiKeyId(savedApiKeyId) ?? null,
+                keychainChecking ? null : keychainReady,
+              )}
+            </p>
+          </>
+        )}
 
         <div className="flex flex-wrap gap-2">
           <button type="button" className={btnPrimary} disabled={formBusy} onClick={() => void save()}>
@@ -376,9 +409,11 @@ export function EnvLlmConfigPanel({ busy, onLlmRuntimeChanged }: Props) {
           >
             恢复厂商默认
           </button>
-          <button type="button" className={btnSecondary} disabled={formBusy || !savedApiKeyId} onClick={() => void clearSavedApiKey()}>
-            清除已保存 Key
-          </button>
+          {!localLoopback ? (
+            <button type="button" className={btnSecondary} disabled={formBusy || !savedApiKeyId} onClick={() => void clearSavedApiKey()}>
+              清除已保存 Key
+            </button>
+          ) : null}
         </div>
 
         {msg ? <p className={PANEL_TYPOGRAPHY.meta}>{msg}</p> : null}

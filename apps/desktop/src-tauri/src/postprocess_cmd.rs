@@ -4,6 +4,8 @@ mod postprocess_lexicon_ops;
 mod postprocess_probe;
 #[path = "postprocess_secret_store.rs"]
 mod postprocess_secret_store;
+#[path = "postprocess_ollama.rs"]
+mod postprocess_ollama;
 #[path = "postprocess_segment_ops.rs"]
 mod postprocess_segment_ops;
 #[path = "postprocess_export_polish.rs"]
@@ -41,6 +43,8 @@ use url::Url;
 const DEFAULT_PROVIDER: &str = "openai-compatible";
 const DEFAULT_TIMEOUT_SECS: u64 = 30;
 const DEFAULT_API_KEY_ID: &str = "default";
+/// Ollama 等 loopback 服务忽略 Bearer；占位以满足 HTTP 客户端。
+pub(crate) const LOOPBACK_PLACEHOLDER_API_KEY: &str = "ollama";
 
 /// 桌面 UI 传入的运行时配置（DeepSeek / Kimi 等）；优先于进程环境变量。
 /// JSON 字段与前端 `PostprocessRuntimeBridge` 一致（camelCase；兼容 snake_case alias）。
@@ -298,6 +302,17 @@ pub fn llm_probe_connection(
         ),
     );
     Ok(out)
+}
+
+#[derive(Debug, Deserialize)]
+pub struct OllamaDetectRequest {
+    #[serde(default, alias = "tags_url")]
+    pub tags_url: Option<String>,
+}
+
+#[tauri::command]
+pub fn ollama_detect_status(req: OllamaDetectRequest) -> postprocess_ollama::OllamaDetectResponse {
+    postprocess_ollama::detect_ollama_tags(req.tags_url.as_deref())
 }
 
 #[tauri::command]
@@ -852,8 +867,12 @@ pub(crate) fn resolve_runtime_postprocess_config(
     } else {
         rt.provider.trim().to_string()
     };
+    let parsed_base = Url::parse(base_url)
+        .map_err(|_| "自动标点服务地址无效，请检查 API 基址。".to_string())?;
     let api_key = if !api_key.is_empty() {
         api_key.to_string()
+    } else if rt.allow_insecure_http && is_loopback_host(parsed_base.host_str()) {
+        LOOPBACK_PLACEHOLDER_API_KEY.to_string()
     } else {
         load_postprocess_api_key(app_data_root, rt.api_key_id.as_deref())?
     };

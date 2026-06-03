@@ -2,10 +2,13 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   DEFAULT_LLM_API_KEY_ID,
   LLM_STORAGE_KEYS,
+  OLLAMA_DEFAULT_BASE_URL,
+  OLLAMA_LOOPBACK_PLACEHOLDER_API_KEY,
   applyLlmProviderPreset,
   persistLlmRuntimeConfig,
   readLlmRuntimeConfigFromStorage,
   setLlmApiKeyInMemory,
+  isLocalLoopbackLlmProvider,
   isLlmRuntimeReady,
   tryBuildPostprocessRuntimeBridge,
   resolveLlmConnectionUiStatus,
@@ -107,6 +110,28 @@ describe("postprocessRuntimeContract", () => {
     const cfg = readLlmRuntimeConfigFromStorage();
     expect(cfg.apiKeyId).toBe(DEFAULT_LLM_API_KEY_ID);
     expect(localStorage.getItem(LLM_STORAGE_KEYS.apiKeyId)).toBe(DEFAULT_LLM_API_KEY_ID);
+  });
+
+  it("ollama preset is ready without api key and builds loopback bridge", () => {
+    persistLlmRuntimeConfig(applyLlmProviderPreset("ollama"));
+    expect(isLocalLoopbackLlmProvider("ollama")).toBe(true);
+    expect(isLlmRuntimeReady()).toBe(true);
+    expect(tryBuildPostprocessRuntimeBridge()).toEqual({
+      provider: "Ollama（本机）",
+      baseUrl: OLLAMA_DEFAULT_BASE_URL,
+      model: "qwen2.5:7b",
+      apiKey: OLLAMA_LOOPBACK_PLACEHOLDER_API_KEY,
+      allowInsecureHttp: true,
+    });
+    expect(
+      resolveLlmConnectionUiStatus({
+        hasLocalKeyRef: true,
+        hasTypedKey: false,
+        keychainPresent: true,
+        probeState: "ok",
+        localLoopback: true,
+      }),
+    ).toBe("verified");
   });
 
   it("resolveLlmConnectionUiStatus requires probe ok for verified", () => {

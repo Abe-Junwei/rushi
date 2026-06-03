@@ -26,10 +26,21 @@ export type LlmProviderId =
   | "siliconflow"
   | "doubao"
   | "openai"
-  | "openrouter";
+  | "openrouter"
+  | "ollama";
+
+/** 云端 API vs 本机 loopback（LLM-LOC-4a）。 */
+export type LlmProviderKind = "cloud" | "local_loopback";
+
+export const OLLAMA_LOOPBACK_PLACEHOLDER_API_KEY = "ollama";
+
+export const OLLAMA_DEFAULT_BASE_URL = "http://127.0.0.1:11434/v1";
+export const OLLAMA_DEFAULT_MODEL = "qwen2.5:7b";
+export const OLLAMA_TAGS_URL = "http://127.0.0.1:11434/api/tags";
 
 export type LlmProviderDefinition = {
   id: LlmProviderId;
+  kind: LlmProviderKind;
   label: string;
   description: string;
   docsUrl: string;
@@ -55,7 +66,19 @@ export const LLM_CAPABILITIES: LlmCapability[] = [
 
 export const LLM_PROVIDER_DEFINITIONS: LlmProviderDefinition[] = [
   {
+    id: "ollama",
+    kind: "local_loopback",
+    label: "Ollama（本机）",
+    description:
+      "数据不出本机：连接本机 Ollama OpenAI 兼容接口。须先安装 Ollama 并 pull 模型（推荐 qwen2.5:7b）。仅建议用于自动标点；段界/词表校对仍默认云端。",
+    docsUrl: "https://github.com/ollama/ollama/blob/main/docs/api.md",
+    defaultBaseUrl: OLLAMA_DEFAULT_BASE_URL,
+    defaultModel: OLLAMA_DEFAULT_MODEL,
+    modelExamples: ["qwen2.5:7b", "qwen2.5:14b", "qwen2.5:3b"],
+  },
+  {
     id: "deepseek",
+    kind: "cloud",
     label: "DeepSeek",
     description: "深度求索 OpenAI 兼容 API，适合中文标点与通用文本任务。",
     docsUrl: "https://platform.deepseek.com/api-docs/",
@@ -65,6 +88,7 @@ export const LLM_PROVIDER_DEFINITIONS: LlmProviderDefinition[] = [
   },
   {
     id: "kimi",
+    kind: "cloud",
     label: "Kimi（Moonshot）",
     description: "月之暗面 Moonshot 开放平台；Kimi 系列模型同一兼容端点。",
     docsUrl: "https://platform.moonshot.cn/docs/api/chat",
@@ -74,6 +98,7 @@ export const LLM_PROVIDER_DEFINITIONS: LlmProviderDefinition[] = [
   },
   {
     id: "qwen",
+    kind: "cloud",
     label: "通义千问（阿里百炼）",
     description: "阿里云百炼 OpenAI 兼容接口；适合中文通用任务，可直接切换 Qwen 系列模型。",
     docsUrl: "https://help.aliyun.com/zh/model-studio/compatibility-of-openai-with-dashscope",
@@ -83,6 +108,7 @@ export const LLM_PROVIDER_DEFINITIONS: LlmProviderDefinition[] = [
   },
   {
     id: "siliconflow",
+    kind: "cloud",
     label: "SiliconFlow",
     description: "硅基流动 OpenAI 兼容接口；国内开发者常用，适合按模型族灵活切换。",
     docsUrl: "https://docs.siliconflow.com/en/api-reference/chat-completions/chat-completions",
@@ -92,6 +118,7 @@ export const LLM_PROVIDER_DEFINITIONS: LlmProviderDefinition[] = [
   },
   {
     id: "doubao",
+    kind: "cloud",
     label: "火山方舟（Doubao）",
     description: "火山引擎方舟 OpenAI 兼容入口；`model` 通常填写你在方舟控制台创建的 endpoint ID。",
     docsUrl: "https://console.volcengine.com/ark",
@@ -101,6 +128,7 @@ export const LLM_PROVIDER_DEFINITIONS: LlmProviderDefinition[] = [
   },
   {
     id: "openai",
+    kind: "cloud",
     label: "OpenAI",
     description: "国际通用参考实现；适合作为兼容基线或海外直连备选。",
     docsUrl: "https://platform.openai.com/docs/api-reference/chat",
@@ -110,6 +138,7 @@ export const LLM_PROVIDER_DEFINITIONS: LlmProviderDefinition[] = [
   },
   {
     id: "openrouter",
+    kind: "cloud",
     label: "OpenRouter",
     description: "统一聚合多家海外模型的 OpenAI 兼容入口；适合兼顾国外模型覆盖面。",
     docsUrl: "https://openrouter.ai/docs/quickstart",
@@ -169,6 +198,24 @@ function migrateLegacyLlmStorageKeys(): void {
 
 export function getLlmProviderDefinition(id: string): LlmProviderDefinition | undefined {
   return LLM_PROVIDER_DEFINITIONS.find((d) => d.id === id);
+}
+
+export function getLlmProviderKind(providerId: LlmProviderId): LlmProviderKind {
+  return getLlmProviderDefinition(providerId)?.kind ?? "cloud";
+}
+
+export function isLocalLoopbackLlmProvider(providerId: string): boolean {
+  return getLlmProviderKind(providerId as LlmProviderId) === "local_loopback";
+}
+
+export function isLocalLoopbackLlmConfig(
+  config: Pick<LlmRuntimeConfig, "providerId" | "baseUrl"> = readLlmRuntimeConfigFromStorage(),
+): boolean {
+  if (isLocalLoopbackLlmProvider(config.providerId)) return true;
+  const base = config.baseUrl.trim();
+  return (
+    base.startsWith("http://127.0.0.1") || base.startsWith("http://localhost")
+  );
 }
 
 export function readLlmRuntimeConfigFromStorage(): LlmRuntimeConfig {
@@ -269,7 +316,8 @@ export function getLlmApiKeyFromMemory(): string | undefined {
 
 export function isLlmRuntimeReady(): boolean {
   const cfg = readLlmRuntimeConfigFromStorage();
-  if (!cfg.baseUrl || !cfg.model) return false;
+  if (!cfg.baseUrl?.trim() || !cfg.model?.trim()) return false;
+  if (isLocalLoopbackLlmConfig(cfg)) return true;
   return Boolean(getLlmApiKeyFromMemory()?.trim() || cfg.apiKeyId?.trim());
 }
 
@@ -286,7 +334,14 @@ export type LlmConnectionUiStatusInput = {
   probeState: "idle" | "ok" | "fail";
 };
 
-export function resolveLlmConnectionUiStatus(input: LlmConnectionUiStatusInput): LlmConnectionUiStatus {
+export function resolveLlmConnectionUiStatus(
+  input: LlmConnectionUiStatusInput & { localLoopback?: boolean },
+): LlmConnectionUiStatus {
+  if (input.localLoopback) {
+    if (!input.hasLocalKeyRef) return "missing";
+    if (input.probeState === "ok") return "verified";
+    return "unverified";
+  }
   if (input.hasTypedKey || input.hasLocalKeyRef) {
     if (input.keychainPresent === false && !input.hasTypedKey && !getLlmApiKeyFromMemory()?.trim()) {
       return "keychain_missing";
@@ -297,16 +352,26 @@ export function resolveLlmConnectionUiStatus(input: LlmConnectionUiStatusInput):
   return "missing";
 }
 
-export function llmConnectionStatusMessage(status: LlmConnectionUiStatus): string {
+export function llmConnectionStatusMessage(
+  status: LlmConnectionUiStatus,
+  options?: { localLoopback?: boolean },
+): string {
+  const loopback = options?.localLoopback ?? false;
   switch (status) {
     case "missing":
-      return llmConfigHint();
+      return loopback
+        ? "请选择 Ollama 预设并保存；确认本机已启动 Ollama（ollama serve 或 Ollama.app）。"
+        : llmConfigHint();
     case "keychain_missing":
-      return "配置里记录了密钥引用，但本地未找到已保存的密钥。请重新填写 DeepSeek API Key 并保存。";
+      return "配置里记录了密钥引用，但本地未找到已保存的密钥。请重新填写 API Key 并保存。";
     case "unverified":
-      return "密钥已就位，尚未验证连通性。请点击「探测连接」确认后再使用自动标点。";
+      return loopback
+        ? "本机 Ollama 配置已保存，尚未探测成功。请点击「探测连接」；数据不出本机。"
+        : "密钥已就位，尚未验证连通性。请点击「探测连接」确认后再使用自动标点。";
     case "verified":
-      return "连接已验证：编辑器中的自动标点等能力可用。";
+      return loopback
+        ? "本机 Ollama 已验证：自动标点可走 loopback，数据不出本机。本地模型可能改字，请用 diff 预览确认。"
+        : "连接已验证：编辑器中的自动标点等能力可用。";
   }
 }
 
@@ -362,6 +427,9 @@ export function resolveAutoPunctuateBlockReason(input: {
   if (!isLlmRuntimeReady()) {
     return llmConfigHint();
   }
+  if (isLocalLoopbackLlmConfig()) {
+    return null;
+  }
   if (input.keychainChecking) {
     return "正在检查 LLM 密钥状态…";
   }
@@ -374,24 +442,35 @@ export function resolveAutoPunctuateBlockReason(input: {
 export function tryBuildPostprocessRuntimeBridge(): PostprocessRuntimeBridge | null {
   const cfg = readLlmRuntimeConfigFromStorage();
   const def = getLlmProviderDefinition(cfg.providerId);
-  const apiKey = getLlmApiKeyFromMemory()?.trim();
-  const apiKeyId = normalizeLlmApiKeyId(cfg.apiKeyId?.trim());
-  if (!def || (!apiKey && !apiKeyId)) return null;
+  if (!def) return null;
   const base = cfg.baseUrl.trim() || def.defaultBaseUrl;
   const allowInsecureHttp =
     base.startsWith("http://127.0.0.1") || base.startsWith("http://localhost");
+  const loopback = isLocalLoopbackLlmConfig(cfg);
+  const apiKey = getLlmApiKeyFromMemory()?.trim();
+  const apiKeyId = normalizeLlmApiKeyId(cfg.apiKeyId?.trim());
+  if (!loopback && !apiKey && !apiKeyId) return null;
   const runtime: PostprocessRuntimeBridge = {
     provider: def.label,
     baseUrl: base,
     model: cfg.model.trim() || def.defaultModel,
     allowInsecureHttp: allowInsecureHttp || undefined,
   };
-  if (apiKey) runtime.apiKey = apiKey;
-  else if (apiKeyId) runtime.apiKeyId = apiKeyId;
+  if (loopback) {
+    runtime.apiKey = OLLAMA_LOOPBACK_PLACEHOLDER_API_KEY;
+  } else if (apiKey) {
+    runtime.apiKey = apiKey;
+  } else if (apiKeyId) {
+    runtime.apiKeyId = apiKeyId;
+  }
   return runtime;
 }
 
 export function llmConfigHint(): string {
+  const cfg = readLlmRuntimeConfigFromStorage();
+  if (isLocalLoopbackLlmConfig(cfg)) {
+    return "请打开「设置 → LLM 配置」，确认 Ollama 已启动并保存本机模型。";
+  }
   return "请打开「设置 → LLM 配置」，选择厂商并保存 API Key。";
 }
 

@@ -205,3 +205,16 @@ export async function llmProbeConnection(
 ): Promise<LlmProbeConnectionResponse> {
   return await invoke<LlmProbeConnectionResponse>("llm_probe_connection", { req });
 }
+
+export type OllamaDetectResponse = {
+  reachable: boolean;
+  modelCount: number;
+  hasQwen25_7b: boolean;
+  message: string;
+};
+
+export async function ollamaDetectStatus(tagsUrl?: string): Promise<OllamaDetectResponse> {
+  return await invoke<OllamaDetectResponse>("ollama_detect_status", {
+    req: tagsUrl ? { tagsUrl } : {},
+  });
+}

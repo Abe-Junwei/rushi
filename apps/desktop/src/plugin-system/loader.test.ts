@@ -1,7 +1,7 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { activatePluginModule, loadPlugin, loadedPluginIds, unloadAllPlugins, unloadPlugin } from "./loader";
 import { registryClear, registryQuery } from "./registry";
-import type { PluginManifest } from "./types";
+import type { PluginManifest, PluginModule } from "./types";
 
 type TestGlobal = typeof globalThis & {
   __pluginEvents?: unknown[];
@@ -20,12 +20,12 @@ function makeManifest(id: string, code: string): PluginManifest {
   };
 }
 
-async function loadTestPluginFromCode(manifest: PluginManifest, code: string): Promise<void> {
+async function loadTestPluginFromCode(manifest: PluginManifest): Promise<void> {
   const mod = (await import(/* @vite-ignore */ manifest.entry)) as {
-    default?: { activate?: (ctx: unknown) => void | Promise<void> };
-    activate?: (ctx: unknown) => void | Promise<void>;
+    default?: PluginModule;
+    activate?: PluginModule["activate"];
   };
-  const pluginModule =
+  const pluginModule: PluginModule =
     mod.default && typeof mod.default.activate === "function"
       ? mod.default
       : { activate: mod.activate! };
@@ -61,7 +61,7 @@ describe("plugin loader", () => {
       ].join("\n"),
     );
 
-    await expect(loadTestPluginFromCode(manifest, "")).rejects.toThrow("boom");
+    await expect(loadTestPluginFromCode(manifest)).rejects.toThrow("boom");
 
     const menuItems = registryQuery("menu.item");
     expect(menuItems.find((x) => x.id === "leaky-menu")).toBeUndefined();
@@ -112,14 +112,14 @@ describe("plugin loader", () => {
       ].join("\n"),
     );
 
-    await loadTestPluginFromCode(listener, listener.entry);
-    await loadTestPluginFromCode(emitterA, emitterA.entry);
+    await loadTestPluginFromCode(listener);
+    await loadTestPluginFromCode(emitterA);
 
     const g = globalThis as TestGlobal;
     expect(g.__pluginEvents).toEqual([{ from: "a" }]);
 
     await unloadPlugin(listener.id);
-    await loadTestPluginFromCode(emitterB, emitterB.entry);
+    await loadTestPluginFromCode(emitterB);
 
     expect(g.__pluginEvents).toEqual([{ from: "a" }]);
   });

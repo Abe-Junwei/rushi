@@ -193,6 +193,32 @@ fn runtime_bridge_prefers_inline_api_key() {
 }
 
 #[test]
+fn runtime_bridge_loopback_uses_placeholder_key_without_secret() {
+    let req = PostprocessAutoPunctuateRequest {
+        task: "auto_punctuate".into(),
+        request_id: None,
+        segment_uid: "u1".into(),
+        text: "你好".into(),
+        neighbor_snippets: vec![],
+        neighbor_context: vec![],
+        runtime: Some(PostprocessRuntimeBridge {
+            provider: "Ollama".into(),
+            base_url: "http://127.0.0.1:11434/v1".into(),
+            model: "qwen2.5:7b".into(),
+            api_key: String::new(),
+            api_key_id: None,
+            allow_insecure_http: true,
+        }),
+    };
+    let cfg = resolve_postprocess_config(&req, Path::new("/tmp/rushi-test-unused")).unwrap();
+    assert_eq!(cfg.api_key, "ollama");
+    assert_eq!(
+        cfg.endpoint.as_str(),
+        "http://127.0.0.1:11434/v1/chat/completions"
+    );
+}
+
+#[test]
 fn probe_reports_success() {
     let endpoint = spawn_http_server("200 OK", r#"{"data":[]}"#, Duration::from_millis(0));
     let cfg = PostprocessConfig {
