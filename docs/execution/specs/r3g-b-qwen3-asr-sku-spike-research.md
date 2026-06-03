@@ -1,6 +1,7 @@
 # 调研：R3g-B — Qwen3-ASR SKU Spike
 
-> **状态**：📋 spike 规划（2026-05-30）  
+> **状态**：📋 spike 执行包就绪（2026-06-02）· **实测待跑**  
+> **手测**：[r3g-b-qwen3-asr-spike-hand-test-checklist.md](./r3g-b-qwen3-asr-spike-hand-test-checklist.md) · [results 表](./r3g-b-qwen3-asr-spike-results.md) · `bash scripts/r3g-b-qwen3-asr-spike-hand-test.sh`  
 > **关联路线图**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) §4.1 **R3g-B**（延后 · Nano 等扩展 SKU）  
 > **前置**：**R3g-A ✅**（SenseVoice + Paraformer）；**R3e-B/C ✅**（长音频分窗 + async preview）  
 > **关联 spec（编码前须链接本文）**：`r3g-b-qwen3-asr-sku-intent.md` / `…-plan.md` / `…-acceptance.md`（**仅 spike Go 后立项**）  
@@ -242,7 +243,7 @@ npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs
 ### 门禁
 
 - [x] 调研 brief 完成（2026-05-30）  
-- [ ] spike 执行完成  
+- [ ] spike 执行完成（清单 + results 表；**EXP-WORD 前必过**）  
 - [ ] 用户或路线图确认是否进入 R3g-B 产品化  
 
 **变更记录**

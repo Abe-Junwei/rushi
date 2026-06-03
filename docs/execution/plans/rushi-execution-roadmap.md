@@ -10,7 +10,7 @@
 | 适用节奏 | 单人、每轮 2～4h、一轮一纵向薄片 |
 | 规划跨度 | **个人单机 v1**：约 **14～18 周（自当前）** 或 **18～22 周（自 W1）**；R3 薄片 **~12～15w**（§4.0，含发行 smoke 缓冲）；协作 **非 v1** |
 | 修订 | 每完成一个阶段更新 §2 状态表、§4 排期表与 §13 代码对照 |
-| 最近对照 | **2026-06-02**：**REV-LOC** ✅ · **ASR-VOC（含 VOC-3）** ✅ · 在线 STT E2E 有 Key 再补；下一刀 **⑤″f-E Qwen3 Go/No-go** → **EXP-WORD** |
+| 最近对照 | **2026-06-02**：**REV-LOC** ✅ · **ASR-VOC** ✅ · **⑤″f-E Qwen3 spike** 手测包就绪（待本机 GPU 跑 S1–S4）→ **EXP-WORD** |
 
 ### 状态标记约定（全文档统一）
 
@@ -344,7 +344,7 @@ R4 + R4-GATE → R9
 | **⑤″e** | **R3t-E** | 🔄 编码✅ 手测⏳ | 1.5–2w | LexiconPack 有据校对；**无 RAG**；**无** R3t-E3 项目级词表 v1 | [`r3t-e-lexicon-proofread-research.md`](../specs/r3t-e-lexicon-proofread-research.md) · [`lexicon-guided-llm-refine.md`](../../architecture/lexicon-guided-llm-refine.md) |
 | **⑤″f** | **R3t-F + MEM** | 📋 规划✅ v4 | P1 12–16d / P1½ 3–4d / P2 10–14d | **F2→F1→F6→MEM-P0→MEM-P1→F7→MEM-P2**；墙钟 **4–6w** | [`r3t-f-post-transcribe-suite-plan.md`](../specs/r3t-f-post-transcribe-suite-plan.md) v4 · [`r3t-f-correction-memory-optimization-plan.md`](../specs/r3t-f-correction-memory-optimization-plan.md) |
 | **⑤″f-MEM** | **纠错记忆优化** | 📋 | ⑤″f-B～C | MEM-P0～P3、S1；D10 hit/自动保存 | [MEM acceptance](../specs/r3t-f-correction-memory-optimization-acceptance.md) |
-| **⑤″f-E** | **Qwen3 SKU 门控** | 📋 | 2–4d | 第三 SKU Go/No-go；**⑤″f-D 后、EXP-WORD 前** | [`r3g-b-qwen3-asr-sku-spike-research.md`](../specs/r3g-b-qwen3-asr-sku-spike-research.md) |
+| **⑤″f-E** | **Qwen3 SKU 门控** | 🔬 手测中 | 2–4d | Spike S1–S4 + [results](../specs/r3g-b-qwen3-asr-spike-results.md)；**EXP-WORD 前必过** | [research](../specs/r3g-b-qwen3-asr-sku-spike-research.md) · [checklist](../specs/r3g-b-qwen3-asr-spike-hand-test-checklist.md) |
 | **⑤″f-1** | **ASR-VOC-1** | ✅ **2026-06-02** | 1–2d | 转写前 preview + 覆盖确认框 + toast；契约+UI 手测签收 | [`asr-voc-1-hand-test-checklist.md`](../specs/asr-voc-1-hand-test-checklist.md) |
 | **⑤″f-2** | **ASR-VOC-2** | 🟡 部分 | **7–10d** | **2a/2a+** ✅ · **2c/d** ✅ · **GUARD** ✅ · **2b** F7 ✅ 手测 | Plan §3 · **§4.1.9** |
 | **⑤″f-3** | **ASR-VOC-3** | ✅ **2026-06-02** | 2–4d | 文案手测 + 机器；在线 E2E 豁免（无 Key） | [signoff](../specs/asr-voc-3-signoff-2026-06.md) |
