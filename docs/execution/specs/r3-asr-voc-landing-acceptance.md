@@ -1,6 +1,7 @@
 # Acceptance: ASR-VOC — 词汇偏置落地
 
-> **状态**：进行中（2026-06-03）· **VOC-1** ✅ · **VOC-2a/F6+/F7** ✅ · **VOC-5** ✅ · **VOC-2c/d** + **VOC-GUARD** ✅；下一刀 **VOC-3**；见 **§4.1.9**  
+> **状态**：进行中（2026-06-02）· **VOC-1** ✅ · **VOC-2** ✅ · **VOC-5** ✅ · **VOC-GUARD** ✅ · **VOC-3** 机器 ✅ / 在线 E2E 待 Key · 见 **§4.1.9**  
+> **VOC-3 手测**：[asr-voc-3-hand-test-checklist.md](./asr-voc-3-hand-test-checklist.md) · [signoff](./asr-voc-3-signoff-2026-06.md)  
 > **VOC-1 手测**：[`asr-voc-1-hand-test-checklist.md`](./asr-voc-1-hand-test-checklist.md) ✅  
 > **整体性评估**：[`r3-asr-voc-holistic-review-2026-05.md`](./r3-asr-voc-holistic-review-2026-05.md)（⑤″f-A→D 顺序）  
 > **Plan**：[`r3-asr-voc-landing-plan.md`](./r3-asr-voc-landing-plan.md)  
@@ -10,7 +11,7 @@
 
 ## 全局（每 PR）
 
-- [ ] `npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs`
+- [x] `npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs`（VOC-3 · 2026-06-02）
 - [x] 未把 `correction_memory.before_text` 写入 hotwords（`hotword_guard` + `glossary_hotwords` 单测）
 - [x] 纠错错形不得写入术语表（`glossary_add` / `update` / 批量与表格导入 → `skipped_wrong_form`）
 - [ ] 未用全局 `/health.ready_for_transcribe` 表示「用户词表已进模型」（仍用 preview + warnings）
@@ -104,24 +105,25 @@
 
 ### OpenAI
 
-- [ ] 术语传入 `prompt` 前经 **确定排序**（文档写明规则，如 `updated_at_ms` 降序）
-- [ ] 超 224 字截断 + `online_vocabulary_truncated_openai_prompt`（或既有 warning）+ hints
+- [x] 术语传入 `prompt` 前经 **确定排序**（`glossary_terms` `COALESCE(updated_at_ms, created_at_ms) DESC`；`openai_prompt` 用 `terms` join）
+- [x] 超 224 字截断 + `online_vocabulary_truncated_openai_prompt` + hints（`stt_vocabulary` / `asrTranscribeHints`）
 
 ### AssemblyAI
 
-- [ ] keyterms ≤100；超长有 warning + hints
-- [ ] 文档区分：keyterms（识别偏置）≠ custom_spelling（转写后替换）
+- [x] keyterms ≤100；超长有 warning + hints（单测 `assemblyai_keyterms_caps_at_100`）
+- [x] 环境文案区分：keyterms（识别偏置）≠ custom_spelling（`sttVocabularyBias` FIELD_HINT）
 
 ### Deepgram
 
-- [ ] keywords ≤50；URL 编码正确（单测）
-- [ ] 默认 **不** 开启高强度 boost；若做 env 开关，默认 off 且文档说明
-- [ ] 环境页 1 行映射说明
+- [x] keywords ≤50；URL 编码正确（单测 `deepgram_keywords_caps_at_50`）
+- [x] 默认 **不** 开启高强度 boost（**Defer** Nova-3 `keyterm` / env boost；见 [asr-voc-3-signoff-2026-06.md](./asr-voc-3-signoff-2026-06.md)）
+- [x] 环境页 1 行映射说明（`glossaryBiasSummaryForProviderId` 含上限）
 
 ### 测试
 
-- [ ] `stt_vocabulary.rs` 或现有 Rust tests 覆盖排序/截断
-- [ ] 不破坏 ACC-STT-UNIFY 已有用例
+- [x] `stt_vocabulary.rs` + `glossary_hotwords` 覆盖排序/截断
+- [x] 不破坏 ACC-STT-UNIFY 契约（`bash scripts/asr-voc-3-hand-test.sh` · 2026-06-02）
+- [ ] ACC 在线 E2E ≥1 家手测（[asr-voc-3-hand-test-checklist.md](./asr-voc-3-hand-test-checklist.md) §3；待 API Key）
 
 ---
 
@@ -151,4 +153,5 @@
 
 | 日期 | 包 | 结果 | 证据 |
 |------|-----|------|------|
-| — | — | — | — |
+| 2026-06-02 | REV-LOC B | ✅ | [rev-loc-slice-b-signoff-2026-06.md](./rev-loc-slice-b-signoff-2026-06.md) |
+| 2026-06-02 | VOC-3 | 机器 ✅ / E2E ⏳ | [asr-voc-3-signoff-2026-06.md](./asr-voc-3-signoff-2026-06.md) |

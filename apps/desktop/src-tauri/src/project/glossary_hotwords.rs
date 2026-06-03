@@ -96,7 +96,8 @@ pub fn build_glossary_hotwords(conn: &Connection) -> Result<GlossaryHotwordsBuil
     let enabled_entries = enabled_entry_count(conn)?;
     let mut stmt = conn
         .prepare(
-            "SELECT term, aliases FROM glossary_terms WHERE hotword_enabled = 1 ORDER BY term COLLATE NOCASE ASC",
+            "SELECT term, aliases FROM glossary_terms WHERE hotword_enabled = 1 \
+             ORDER BY COALESCE(updated_at_ms, created_at_ms) DESC, term COLLATE NOCASE ASC",
         )
         .map_err(|e| e.to_string())?;
     let rows = stmt
@@ -294,6 +295,33 @@ mod tests {
     }
 
     #[test]
+    fn db_orders_entries_by_updated_at_ms_desc() {
+        let conn = rusqlite::Connection::open_in_memory().unwrap();
+        crate::db::migrate(&conn).unwrap();
+        conn.execute(
+            "INSERT INTO glossary_terms (term, aliases, domain, note, hotword_enabled, created_at_ms, updated_at_ms) \
+             VALUES ('旧词', '', '', '', 1, 1, 1000)",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO glossary_terms (term, aliases, domain, note, hotword_enabled, created_at_ms, updated_at_ms) \
+             VALUES ('新词', '', '', '', 1, 2, 2000)",
+            [],
+        )
+        .unwrap();
+        let build = build_glossary_hotwords(&conn).unwrap();
+        assert!(
+            build.hotwords.starts_with("新词"),
+            "expected newer term first, got: {}",
+            build.hotwords
+        );
+        let plan = crate::project::stt_vocabulary::SttVocabularyPlan::from_build(&build);
+        let prompt = crate::project::stt_vocabulary::openai_prompt(&plan).expect("prompt");
+        assert!(prompt.starts_with("新词"));
+    }
+
+    #[test]
     fn db_dedupes_tokens_across_entries() {
         let conn = rusqlite::Connection::open_in_memory().unwrap();
         crate::db::migrate(&conn).unwrap();
@@ -308,7 +336,8 @@ mod tests {
         )
         .unwrap();
         let build = build_glossary_hotwords(&conn).unwrap();
-        assert_eq!(build.hotwords, "三乘 主任");
+        // `主任` row has newer updated_at_ms → listed before `三乘` (dedupe keeps first-seen token order per entry pass).
+        assert_eq!(build.hotwords, "主任 三乘");
         assert_eq!(build.preview.term_count, 2);
     }
 }

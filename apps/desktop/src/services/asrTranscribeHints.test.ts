@@ -17,6 +17,15 @@ describe("deriveTranscribeHints", () => {
     expect(h.some((x) => x.includes("不支持术语偏置"))).toBe(true);
   });
 
+  it("flags openai prompt vocabulary truncation", () => {
+    const h = deriveTranscribeHints(
+      "openai",
+      ["online_vocabulary_truncated_openai_prompt"],
+      [{ text: "a" }],
+    );
+    expect(h.some((x) => x.includes("224") && x.includes("最近更新"))).toBe(true);
+  });
+
   it("flags hotwords ignored", () => {
     const h = deriveTranscribeHints("funasr+x", ["hotwords_ignored_stub"], [{ text: "a" }]);
     expect(h.some((x) => x.includes("热词"))).toBe(true);

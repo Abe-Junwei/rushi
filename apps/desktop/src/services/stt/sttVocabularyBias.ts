@@ -22,9 +22,12 @@ const CHANNEL_BY_PROVIDER_ID: Readonly<Record<string, SttOnlineVocabularyChannel
 };
 
 const FIELD_HINT: Readonly<Record<SttOnlineVocabularyChannel, string>> = {
-  openAiPrompt: "OpenAI 音频转写 `prompt`（≤224 字）",
-  assemblyAiKeyterms: "AssemblyAI `keyterms_prompt`",
-  deepgramKeywords: "Deepgram URL `keywords` 参数",
+  openAiPrompt:
+    "OpenAI 音频转写 `prompt`（≤224 字；按词条最近更新时间优先，超限截断）",
+  assemblyAiKeyterms:
+    "AssemblyAI `keyterms_prompt`（≤100 条；识别偏置，非 custom_spelling 转写后替换）",
+  deepgramKeywords:
+    "Deepgram URL `keywords` 参数（≤50 个；默认无强度 boost）",
   genericMultipartHotwords: "代理 multipart `hotwords`（须兼容 Rushi 契约）",
   unsupported: "",
 };

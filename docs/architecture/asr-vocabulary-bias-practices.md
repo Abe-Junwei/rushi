@@ -84,7 +84,7 @@ L3  用户校正训练   编辑 → active learning / LoRA（Otter 黑盒、Adap
 | glossary → 本机 `hotwords` | ✅ | `glossary_hotwords.rs` → `POST /v1/transcribe` |
 | 热词预览 | ✅ | `glossary_hotwords_preview` + `GlossaryPage` |
 | FunASR warnings 进 UI | ✅ | `asrTranscribeHints.ts` |
-| 在线 STT 分 channel 映射 | ✅ | `sttVocabularyBias.ts` + Rust `SttVocabularyPlan` |
+| 在线 STT 分 channel 映射 | ✅ | `sttVocabularyBias.ts` + Rust `SttVocabularyPlan`；VOC-3：`updated_at_ms` 排序 + 三家截断/warnings |
 | 转写后 memory hints | ✅ | `correction_rule_hint:*`（非热词） |
 | memory → hotwords 直连 | ❌ | 架构禁止；走 glossary |
 | Deepgram 逐词 boost 强度 | ❌ | 仅 generic keywords 通道，未暴露 intensifier UI |
@@ -139,7 +139,7 @@ ASR-VOC-5  专名 eval 集 + 回归                 与 R3-ACC / backlog 对齐
 |------|------|----------|
 | **Deepgram** | 映射 `keywords` | 调研是否传 `keyterm`（Nova-3）；**禁止**默认高强度；文档化「单词 OOV」 |
 | **AssemblyAI** | `keyterms_prompt` | 控制条数/总长度；与 custom_spelling 文档区分 |
-| **OpenAI** | `prompt` 截断 | 术语优先排序进 prompt（按 term 重要度 / hotword_enabled） |
+| **OpenAI** | `prompt` 截断 | ✅ `updated_at_ms DESC` 后 join；≤224 字（ASR-VOC-3） |
 | **custom-proxy** | multipart hotwords | 与 FunASR 契约一致 |
 
 落位：`apps/desktop/src-tauri/src/project/stt_vocabulary.rs`（或现有 adapter）、`sttVocabularyBias.ts`、厂商 adapter 测试。

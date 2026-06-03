@@ -56,12 +56,25 @@ pub fn channel_for_online(
     }
 }
 
+/// Joins `plan.terms` (glossary order: `updated_at_ms` DESC) then truncates to OpenAI limit.
 pub fn openai_prompt(plan: &SttVocabularyPlan) -> Option<String> {
-    let trimmed = plan.hotwords.trim();
+    if plan.terms.is_empty() {
+        return None;
+    }
+    let joined = plan.terms.join(" ");
+    let trimmed = joined.trim();
     if trimmed.is_empty() {
         return None;
     }
     Some(trimmed.chars().take(OPENAI_PROMPT_MAX_CHARS).collect())
+}
+
+/// Character length of the full joined prompt before OpenAI truncation (for warnings).
+pub fn openai_prompt_joined_char_count(plan: &SttVocabularyPlan) -> usize {
+    if plan.terms.is_empty() {
+        return 0;
+    }
+    plan.terms.join(" ").chars().count()
 }
 
 pub fn assemblyai_keyterms(plan: &SttVocabularyPlan) -> Vec<String> {
@@ -109,7 +122,7 @@ pub fn vocabulary_support_warnings(
             out.push("online_vocabulary_unsupported".to_string());
         }
         SttVocabularyChannel::OpenAiPrompt => {
-            if plan.hotwords.chars().count() > OPENAI_PROMPT_MAX_CHARS {
+            if openai_prompt_joined_char_count(plan) > OPENAI_PROMPT_MAX_CHARS {
                 out.push("online_vocabulary_truncated_openai_prompt".to_string());
             }
         }
@@ -138,10 +151,62 @@ mod tests {
         let long = "词".repeat(300);
         let plan = SttVocabularyPlan {
             hotwords: long.clone(),
-            terms: vec!["词".to_string()],
+            terms: vec![long],
         };
         let p = openai_prompt(&plan).expect("prompt");
         assert_eq!(p.chars().count(), OPENAI_PROMPT_MAX_CHARS);
+    }
+
+    #[test]
+    fn openai_prompt_keeps_recent_terms_at_start_of_truncated_prompt() {
+        let recent = "最近专名";
+        let filler: String = "填".repeat(260);
+        let plan = SttVocabularyPlan {
+            hotwords: format!("{recent} {filler}"),
+            terms: vec![recent.to_string(), filler],
+        };
+        let p = openai_prompt(&plan).expect("prompt");
+        assert!(
+            p.starts_with(recent),
+            "expected recent term first, got: {p}"
+        );
+        assert_eq!(p.chars().count(), OPENAI_PROMPT_MAX_CHARS);
+    }
+
+    #[test]
+    fn assemblyai_keyterms_caps_at_100() {
+        let terms: Vec<String> = (0..120).map(|i| format!("词{i}")).collect();
+        let plan = SttVocabularyPlan {
+            hotwords: terms.join(" "),
+            terms: terms.clone(),
+        };
+        assert_eq!(assemblyai_keyterms(&plan).len(), ASSEMBLYAI_KEYTERMS_MAX);
+        let w = vocabulary_support_warnings(
+            SttVocabularyChannel::AssemblyAiKeyterms,
+            &plan,
+            false,
+        );
+        assert!(
+            w.iter()
+                .any(|x| x == "online_vocabulary_truncated_assemblyai_keyterms")
+        );
+    }
+
+    #[test]
+    fn deepgram_keywords_caps_at_50() {
+        let terms: Vec<String> = (0..60).map(|i| format!("词{i}")).collect();
+        let plan = SttVocabularyPlan {
+            hotwords: terms.join(" "),
+            terms,
+        };
+        let url = append_deepgram_keywords("https://api.deepgram.com/v1/listen", &plan);
+        let kw_count = url.matches("keywords=").count();
+        assert_eq!(kw_count, DEEPGRAM_KEYWORDS_MAX);
+        let w = vocabulary_support_warnings(SttVocabularyChannel::DeepgramKeywords, &plan, false);
+        assert!(
+            w.iter()
+                .any(|x| x == "online_vocabulary_truncated_deepgram_keywords")
+        );
     }
 
     #[test]

@@ -40,7 +40,19 @@ export function deriveTranscribeHints(engine: string, warnings: string[], segmen
   if (warnings.some((w) => w === "online_vocabulary_unsupported")) {
     hints.push("当前在线识别引擎不支持术语偏置，术语表未传入厂商 API；专名依赖手改或换用本机 FunASR / 已支持词表的在线引擎。");
   }
-  if (warnings.some((w) => w.startsWith("online_vocabulary_truncated_"))) {
+  if (warnings.some((w) => w === "online_vocabulary_truncated_openai_prompt")) {
+    hints.push(
+      "术语表已写入 OpenAI prompt，但超过 224 字已截断；最近更新的词条优先保留。可在「热词与记忆」减少条目或合并别名。",
+    );
+  } else if (warnings.some((w) => w === "online_vocabulary_truncated_assemblyai_keyterms")) {
+    hints.push(
+      "术语表传入 AssemblyAI 时超过 100 条 keyterms 已截断；最近更新的词条优先。专名仍可能需手改。",
+    );
+  } else if (warnings.some((w) => w === "online_vocabulary_truncated_deepgram_keywords")) {
+    hints.push(
+      "术语表传入 Deepgram 时超过 50 个 keywords 已截断；最近更新的词条优先。",
+    );
+  } else if (warnings.some((w) => w.startsWith("online_vocabulary_truncated_"))) {
     hints.push("术语表已传入在线引擎，但因厂商上限已截断；可在「热词与记忆」减少条目或优先保留关键专名。");
   }
   const dominantRemoved = parseDominantSpanFilteredCount(warnings);

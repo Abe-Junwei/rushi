@@ -24,8 +24,9 @@
 ### OpenAI（有 API Key 时）
 
 - [ ] 环境页启用 OpenAI；厂商卡片有 **术语偏置** 角标
-- [ ] 说明区显示 prompt 映射摘要
+- [ ] 说明区显示 prompt 映射摘要（含 ≤224 字、最近更新优先 — ASR-VOC-3）
 - [ ] 拉取转写 → 无 `online_vocabulary_unsupported`
+- [ ] （VOC-3）100+ 术语时 hints 含 OpenAI prompt 截断说明 — 见 [asr-voc-3-hand-test-checklist.md](./asr-voc-3-hand-test-checklist.md) §2
 
 ### AssemblyAI / Deepgram（可选各测一条）
 
