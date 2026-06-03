@@ -145,6 +145,22 @@ fn migrate_glossary_gly3(conn: &Connection) -> rusqlite::Result<()> {
     Ok(())
 }
 
+fn migrate_edit_log_snapshots(conn: &Connection) -> rusqlite::Result<()> {
+    conn.execute_batch(
+        r#"
+        CREATE TABLE IF NOT EXISTS edit_log_snapshots (
+            edit_log_id INTEGER PRIMARY KEY,
+            file_id TEXT NOT NULL,
+            segments_json TEXT NOT NULL,
+            segment_count INTEGER NOT NULL,
+            FOREIGN KEY (edit_log_id) REFERENCES edit_log(id) ON DELETE CASCADE
+        );
+        CREATE INDEX IF NOT EXISTS idx_edit_log_snapshots_file ON edit_log_snapshots(file_id);
+        "#,
+    )?;
+    Ok(())
+}
+
 fn migrate_correction_memory_p2(conn: &Connection) -> rusqlite::Result<()> {
     conn.execute_batch(
         r#"
@@ -251,6 +267,7 @@ pub fn migrate(conn: &Connection) -> rusqlite::Result<()> {
     migrate_glossary_gly2(conn)?;
     migrate_glossary_gly3(conn)?;
     migrate_correction_memory_p2(conn)?;
+    migrate_edit_log_snapshots(conn)?;
     Ok(())
 }
 
@@ -276,6 +293,7 @@ mod tests {
         assert!(tables.contains(&"files".to_string()));
         assert!(tables.contains(&"segments".to_string()));
         assert!(tables.contains(&"edit_log".to_string()));
+        assert!(tables.contains(&"edit_log_snapshots".to_string()));
         assert!(tables.contains(&"glossary_terms".to_string()));
         assert!(tables.contains(&"correction_memory".to_string()));
     }

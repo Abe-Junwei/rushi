@@ -169,6 +169,7 @@ export interface ProjectLifecycleApi {
   dismissGlossaryLearnPrompt: (row: GlossaryLearnPromptRow) => void;
   confirmAddToGlossary: (row: GlossaryLearnPromptRow) => void;
   closeGlossaryLearnPrompt: () => void;
+  restoreEditorFromEditLog: (editLogId: number) => Promise<void>;
   bumpLlmRuntimeChanged: () => void;
   closeGateOpen: boolean;
   closeGateIntent: "app-quit" | "navigate";

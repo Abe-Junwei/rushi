@@ -7,6 +7,7 @@ pub mod asr_runtime_paths_cmd;
 pub mod correction;
 pub mod correction_memory_cmd;
 mod edit_log_detail;
+mod edit_log_snapshot;
 pub mod export_cmd;
 pub mod file_cmd;
 pub mod glossary_aliases;

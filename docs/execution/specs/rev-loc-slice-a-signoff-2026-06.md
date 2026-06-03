@@ -1,7 +1,7 @@
 # REV-LOC 切片 A 签收（2026-06-03）
 
 > **验收真源**：[rev-loc-undo-edit-history-acceptance.md](./rev-loc-undo-edit-history-acceptance.md) § 切片 A  
-> **切片 B**（快照恢复）仍未编码。
+> **切片 B**：见 [rev-loc-slice-b-signoff-2026-06.md](./rev-loc-slice-b-signoff-2026-06.md)（编码 ✅ · UI 手测待勾选）。
 
 ## 编码交付
 

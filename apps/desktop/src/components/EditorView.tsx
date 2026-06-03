@@ -16,6 +16,7 @@ import { EditorSegmentWorkbench } from "./editor/EditorSegmentWorkbench";
 import { EditorShortcutsDialog } from "./EditorShortcutsDialog";
 import { SegmentCorrectPopover } from "./segmentRow/SegmentCorrectPopover";
 import { EditorWaveformPane } from "./editor/EditorWaveformPane";
+import { RestoreEditLogConfirmDialog } from "./editor/RestoreEditLogConfirmDialog";
 import { useEditorEditHistory } from "./editor/useEditorEditHistory";
 import { useEditorTranscriptAppearance } from "./editor/useEditorTranscriptAppearance";
 import { autoSaveFooterLabel } from "../pages/useAutoSaveSegments";
@@ -53,7 +54,12 @@ export function EditorView({
 }: EditorViewProps) {
   const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const appearance = useEditorTranscriptAppearance(c.busy, Boolean(c.currentFileId));
-  const editHistory = useEditorEditHistory(c.current?.id, c.busy);
+  const editHistory = useEditorEditHistory({
+    projectId: c.current?.id,
+    fileId: c.currentFileId ?? undefined,
+    projectBusy: c.busy,
+    onRestoreVersion: c.restoreEditorFromEditLog,
+  });
 
   const projectName = c.current?.name ?? "未命名项目";
   const projectFiles = c.current?.files ?? [];
@@ -203,6 +209,13 @@ export function EditorView({
         suggestions={c.editorCorrectPopoverSuggestions}
         onClose={c.closeEditorCorrectPopover}
         onApply={c.applyEditorInlineCorrection}
+      />
+      <RestoreEditLogConfirmDialog
+        open={editHistory.restoreTarget != null}
+        busy={editHistory.restoreBusy}
+        row={editHistory.restoreTarget}
+        onCancel={editHistory.cancelRestore}
+        onConfirm={() => void editHistory.confirmRestore()}
       />
     </div>
   );

@@ -37,6 +37,7 @@ import { segmentsToLearnBaseline } from "../services/correctionLearnBaseline";
 import { segmentsWithDraftsApplied } from "../services/segmentDirtyRead";
 import { segmentCanConfirmEdit } from "../services/segmentConfirmEligible";
 import { waitForSaveIdle } from "../services/waitForSaveIdle";
+import { segmentDraftStore } from "../hooks/useSegmentDraftStore";
 import { toast } from "../services/ui/toast";
 import { useEditorCorrectionCatalog } from "./useEditorCorrectionCatalog";
 import { useEditorSegmentCorrectPopover } from "./useEditorSegmentCorrectPopover";
@@ -302,6 +303,50 @@ export function useProjectLifecycleController(
     await refreshCurrentProjectBase();
   }, [busy, current, refreshCurrentProjectBase]);
 
+  const restoreEditorFromEditLog = useCallback(
+    async (editLogId: number) => {
+      if (busy || !currentFileId) return;
+      await waitForSaveIdle(saveInFlightRef);
+      beginBusy("save");
+      setError("");
+      try {
+        mutations.resetMutationHistory();
+        segmentDraftStore.discardEditingSession();
+        await p1.fileRestoreSegmentsFromEditLog(currentFileId, editLogId);
+        const fd = await fileApi.loadFile(currentFileId);
+        const prevUid = segmentsRef.current[selectedIdxRef.current]?.uid;
+        const segs = normalizeSegmentList(fd.segments);
+        segmentsRef.current = segs;
+        setSegments(segs);
+        const ni = findSegmentIndexByUid(segs, prevUid);
+        setSelectedIdx(
+          ni >= 0 ? ni : Math.min(selectedIdxRef.current, Math.max(0, segs.length - 1)),
+        );
+        dirty.setSavedSnapshot(segs);
+        notifySegmentsPersistedRef.current();
+        toast.success("已恢复到所选版本");
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+        throw e;
+      } finally {
+        endBusy();
+      }
+    },
+    [
+      busy,
+      currentFileId,
+      beginBusy,
+      endBusy,
+      mutations,
+      dirty,
+      setSegments,
+      setSelectedIdx,
+      setError,
+      segmentsRef,
+      selectedIdxRef,
+    ],
+  );
+
   const pickAudio = useCallback(async () => {
     if (busy) return;
     setError("");
@@ -477,7 +522,10 @@ export function useProjectLifecycleController(
     transcribeVocabularyPreflightLines: transcribeJob.transcribeVocabularyPreflightLines,
     refreshProjects, pickAudio, clearPickedAudio,
     createProject: crud.createProject, createEmptyProject: crud.createEmptyProject, createProjectFromText: crud.createProjectFromText,
-    loadProject: closeGate.loadProject, refreshCurrentProject, openFile: closeGate.openFileWrapped,
+    loadProject: closeGate.loadProject,
+    refreshCurrentProject,
+    openFile: closeGate.openFileWrapped,
+    restoreEditorFromEditLog,
     openLastEditorWorkspace: closeGate.openLastEditorWorkspace,
     closeFile: closeGate.closeFileWrapped, closeProject: closeGate.closeProjectWrapped,
     runTranscribe: transcribeJob.requestTranscribe,

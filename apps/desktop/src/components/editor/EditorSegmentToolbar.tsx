@@ -275,6 +275,7 @@ export function EditorSegmentToolbar({
                 {h.historyRows.map((row) => {
                   const subLines = formatHistorySubLines(row.detail);
                   const headline = summarizeHistoryHeadline(row.detail, row.kind);
+                  const showRestore = h.canRestoreRow(row);
                   return (
                     <li
                       key={row.id}
@@ -297,6 +298,18 @@ export function EditorSegmentToolbar({
                             </li>
                           ))}
                         </ul>
+                      ) : null}
+                      {showRestore ? (
+                        <div className="mt-1.5 border-t border-notion-divider/60 pt-1.5">
+                          <button
+                            type="button"
+                            className="inline-flex h-6 items-center justify-center rounded-md border border-notion-border px-2 text-[10px] font-medium text-notion-text transition-colors hover:bg-notion-sidebar-hover disabled:cursor-not-allowed disabled:opacity-50"
+                            disabled={h.historyDisabled || h.restoreBusy}
+                            onClick={() => h.requestRestore(row)}
+                          >
+                            恢复此版本
+                          </button>
+                        </div>
                       ) : null}
                     </li>
                   );

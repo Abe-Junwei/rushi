@@ -97,6 +97,7 @@ export function useProjectController() {
     createProjectFromText: lifecycle.createProjectFromText,
     loadProject: lifecycle.loadProject,
     refreshCurrentProject: lifecycle.refreshCurrentProject,
+    restoreEditorFromEditLog: lifecycle.restoreEditorFromEditLog,
     openFile: lifecycle.openFile,
     openLastEditorWorkspace: lifecycle.openLastEditorWorkspace,
     closeFile: lifecycle.closeFile,

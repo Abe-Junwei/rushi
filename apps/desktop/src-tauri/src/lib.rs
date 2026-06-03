@@ -71,6 +71,7 @@ pub fn run() {
             project::project_load,
             project::project_list_edit_log,
             project::file_save_segments,
+            project::file_restore_segments_from_edit_log,
             project::project_run_transcribe,
             project::project_transcribe_async_start,
             project::project_transcribe_async_finalize,

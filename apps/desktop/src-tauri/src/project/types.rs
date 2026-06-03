@@ -51,6 +51,7 @@ pub struct EditLogEntryDto {
     pub at_ms: i64,
     pub kind: String,
     pub detail: String,
+    pub has_snapshot: bool,
 }
 
 #[derive(Debug, Serialize)]

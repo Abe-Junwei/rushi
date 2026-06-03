@@ -49,8 +49,11 @@ pub fn project_list_edit_log(
     let capped_limit = limit.unwrap_or(40).clamp(1, 200);
     let mut stmt = conn
         .prepare(
-            "SELECT id, project_id, at_ms, kind, detail \
-             FROM edit_log WHERE project_id = ?1 ORDER BY id DESC LIMIT ?2",
+            "SELECT e.id, e.project_id, e.at_ms, e.kind, e.detail, \
+             CASE WHEN s.edit_log_id IS NOT NULL THEN 1 ELSE 0 END AS has_snapshot \
+             FROM edit_log e \
+             LEFT JOIN edit_log_snapshots s ON s.edit_log_id = e.id \
+             WHERE e.project_id = ?1 ORDER BY e.id DESC LIMIT ?2",
         )
         .map_err(|e| e.to_string())?;
     let rows = stmt
@@ -61,6 +64,7 @@ pub fn project_list_edit_log(
                 at_ms: r.get(2)?,
                 kind: r.get(3)?,
                 detail: r.get(4)?,
+                has_snapshot: r.get::<_, i64>(5)? != 0,
             })
         })
         .map_err(|e| e.to_string())?;

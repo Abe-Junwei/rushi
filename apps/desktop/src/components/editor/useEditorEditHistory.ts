@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
 import * as projectApi from "../../tauri/projectApi";
+import type { EditLogEntryDto } from "../../tauri/projectApi";
 
 export type EditLogTextChange = {
   segment_idx: number;
@@ -11,6 +12,8 @@ export type EditLogTextChange = {
 export type EditLogParsedDetail = {
   op?: string;
   file_id?: string;
+  source_edit_log_id?: number;
+  source_summary?: string;
   count?: number;
   summary?: string;
   text_changes: EditLogTextChange[];
@@ -22,6 +25,8 @@ export function parseEditLogDetail(detail: string): EditLogParsedDetail | null {
     const parsed = JSON.parse(detail) as {
       op?: string;
       file_id?: string;
+      source_edit_log_id?: number;
+      source_summary?: string;
       count?: number;
       summary?: string;
       text_changes?: EditLogTextChange[];
@@ -30,6 +35,8 @@ export function parseEditLogDetail(detail: string): EditLogParsedDetail | null {
     return {
       op: parsed.op,
       file_id: parsed.file_id,
+      source_edit_log_id: parsed.source_edit_log_id,
+      source_summary: parsed.source_summary,
       count: parsed.count,
       summary: parsed.summary,
       text_changes: Array.isArray(parsed.text_changes) ? parsed.text_changes : [],
@@ -70,6 +77,9 @@ export function formatHistorySubLines(detail: string): string[] {
   const parsed = parseEditLogDetail(detail);
   if (!parsed) return [];
   const lines: string[] = [];
+  if (parsed.op === "restore_from_edit_log" && parsed.source_summary?.trim()) {
+    lines.push(`目标版本：${parsed.source_summary.trim()}`);
+  }
   let shown = 0;
   for (const p of parsed.correction_pairs) {
     if (shown >= 4) break;
@@ -88,16 +98,45 @@ export function formatHistorySubLines(detail: string): string[] {
   return lines;
 }
 
+export function editLogAppliesToFile(row: EditLogEntryDto, fileId: string | undefined): boolean {
+  if (!fileId) return false;
+  const parsed = parseEditLogDetail(row.detail);
+  return parsed?.file_id === fileId;
+}
+
+export function canRestoreEditLogRow(
+  row: EditLogEntryDto,
+  fileId: string | undefined,
+  projectBusy: boolean,
+): boolean {
+  if (projectBusy || !fileId || !row.has_snapshot) return false;
+  return editLogAppliesToFile(row, fileId);
+}
+
 /** @deprecated 使用 summarizeHistoryHeadline */
 export function summarizeHistoryDetail(detail: string): string {
   return summarizeHistoryHeadline(detail, "save_segments");
 }
 
-export function useEditorEditHistory(projectId: string | undefined, projectBusy: boolean) {
+type UseEditorEditHistoryArgs = {
+  projectId: string | undefined;
+  fileId: string | undefined;
+  projectBusy: boolean;
+  onRestoreVersion?: (editLogId: number) => Promise<void>;
+};
+
+export function useEditorEditHistory({
+  projectId,
+  fileId,
+  projectBusy,
+  onRestoreVersion,
+}: UseEditorEditHistoryArgs) {
   const [historyOpen, setHistoryOpen] = useState(false);
   const [historyBusy, setHistoryBusy] = useState(false);
   const [historyError, setHistoryError] = useState("");
   const [historyRows, setHistoryRows] = useState<projectApi.EditLogEntryDto[]>([]);
+  const [restoreTarget, setRestoreTarget] = useState<EditLogEntryDto | null>(null);
+  const [restoreBusy, setRestoreBusy] = useState(false);
 
   const loadEditHistory = useCallback(async () => {
     if (!projectId) return;
@@ -121,6 +160,30 @@ export function useEditorEditHistory(projectId: string | undefined, projectBusy:
     }
   }, [historyOpen, loadEditHistory]);
 
+  const requestRestore = useCallback((row: EditLogEntryDto) => {
+    if (!canRestoreEditLogRow(row, fileId, projectBusy)) return;
+    setRestoreTarget(row);
+  }, [fileId, projectBusy]);
+
+  const cancelRestore = useCallback(() => {
+    if (!restoreBusy) setRestoreTarget(null);
+  }, [restoreBusy]);
+
+  const confirmRestore = useCallback(async () => {
+    if (!restoreTarget || !onRestoreVersion) return;
+    setRestoreBusy(true);
+    setHistoryError("");
+    try {
+      await onRestoreVersion(restoreTarget.id);
+      setRestoreTarget(null);
+      await loadEditHistory();
+    } catch (e) {
+      setHistoryError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setRestoreBusy(false);
+    }
+  }, [restoreTarget, onRestoreVersion, loadEditHistory]);
+
   return {
     historyOpen,
     setHistoryOpen,
@@ -130,5 +193,11 @@ export function useEditorEditHistory(projectId: string | undefined, projectBusy:
     loadEditHistory,
     toggleHistory,
     historyDisabled: projectBusy || !projectId,
+    restoreTarget,
+    restoreBusy,
+    requestRestore,
+    cancelRestore,
+    confirmRestore,
+    canRestoreRow: (row: EditLogEntryDto) => canRestoreEditLogRow(row, fileId, projectBusy),
   };
 }

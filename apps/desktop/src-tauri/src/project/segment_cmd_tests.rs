@@ -1,7 +1,9 @@
 //! Integration tests for segment save (uid upsert + idx reorder).
 
 use super::correction::SaveSegmentsLearnOpts;
-use super::segment_cmd::file_save_segments_inner;
+use super::segment_cmd::{
+    file_restore_segments_from_edit_log_inner, file_save_segments_inner, SegmentSaveEditLog,
+};
 use super::types::SegmentDto;
 use super::utils::{file_detail_from_conn, now_ms, open_db};
 use crate::db;
@@ -75,7 +77,7 @@ fn file_save_segments_swaps_idx_without_unique_violation() {
         &st,
         &file_id,
         &[seg(&uid_a, 0, "a"), seg(&uid_b, 1, "b")],
-        SaveSegmentsLearnOpts::default(),
+        SegmentSaveEditLog::SaveSegments(SaveSegmentsLearnOpts::default()),
     )
     .unwrap();
 
@@ -83,7 +85,7 @@ fn file_save_segments_swaps_idx_without_unique_violation() {
         &st,
         &file_id,
         &[seg(&uid_a, 1, "a"), seg(&uid_b, 0, "b")],
-        SaveSegmentsLearnOpts::default(),
+        SegmentSaveEditLog::SaveSegments(SaveSegmentsLearnOpts::default()),
     )
     .unwrap();
 
@@ -96,4 +98,90 @@ fn file_save_segments_swaps_idx_without_unique_violation() {
         .collect();
     assert_eq!(by_uid.get(&uid_a).copied(), Some(1));
     assert_eq!(by_uid.get(&uid_b).copied(), Some(0));
+}
+
+#[test]
+fn file_save_segments_edit_log_records_text_changes() {
+    let st = test_state("edit_log_text_changes");
+    let (_project_id, file_id) = seed_file(&st);
+    let uid = Uuid::new_v4().to_string();
+
+    file_save_segments_inner(
+        &st,
+        &file_id,
+        &[seg(&uid, 0, "肩背胸襟向两臂")],
+        SegmentSaveEditLog::SaveSegments(SaveSegmentsLearnOpts::default()),
+    )
+    .unwrap();
+
+    file_save_segments_inner(
+        &st,
+        &file_id,
+        &[seg(&uid, 0, "肩背胸膺向两臂")],
+        SegmentSaveEditLog::SaveSegments(SaveSegmentsLearnOpts::default()),
+    )
+    .unwrap();
+
+    let detail_json: String = open_db(&st)
+        .unwrap()
+        .query_row(
+            "SELECT detail FROM edit_log WHERE kind = 'save_segments' ORDER BY id DESC LIMIT 1",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+    assert!(detail_json.contains("text_changes"));
+    assert!(detail_json.contains("胸襟"));
+    assert!(detail_json.contains("胸膺"));
+    assert!(detail_json.contains("summary"));
+}
+
+#[test]
+fn file_restore_segments_from_edit_log_replaces_text_and_audits() {
+    let st = test_state("restore_snapshot");
+    let (_project_id, file_id) = seed_file(&st);
+    let uid = Uuid::new_v4().to_string();
+
+    file_save_segments_inner(
+        &st,
+        &file_id,
+        &[seg(&uid, 0, "胸襟")],
+        SegmentSaveEditLog::SaveSegments(SaveSegmentsLearnOpts::default()),
+    )
+    .unwrap();
+    let first_log_id: i64 = open_db(&st)
+        .unwrap()
+        .query_row(
+            "SELECT id FROM edit_log ORDER BY id ASC LIMIT 1",
+            [],
+            |r| r.get(0),
+        )
+        .unwrap();
+
+    file_save_segments_inner(
+        &st,
+        &file_id,
+        &[seg(&uid, 0, "胸膺")],
+        SegmentSaveEditLog::SaveSegments(SaveSegmentsLearnOpts::default()),
+    )
+    .unwrap();
+
+    file_restore_segments_from_edit_log_inner(&st, &file_id, first_log_id).unwrap();
+
+    let detail = file_detail_from_conn(&open_db(&st).unwrap(), &file_id).unwrap();
+    assert_eq!(detail.segments[0].text, "胸襟");
+
+    let conn = open_db(&st).unwrap();
+    let (kind, detail_json): (String, String) = conn
+        .query_row(
+            "SELECT kind, detail FROM edit_log ORDER BY id DESC LIMIT 1",
+            [],
+            |r| Ok((r.get(0)?, r.get(1)?)),
+        )
+        .unwrap();
+    assert_eq!(kind, "restore_from_edit_log");
+    assert!(detail_json.contains(&first_log_id.to_string()));
+    assert!(detail_json.contains("胸襟"));
+    assert!(detail_json.contains("胸膺"));
+    assert!(detail_json.contains("text_changes"));
 }

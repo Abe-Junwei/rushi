@@ -25,6 +25,7 @@ export interface EditLogEntryDto {
   at_ms: number;
   kind: string;
   detail: string;
+  has_snapshot: boolean;
 }
 
 /** `GET /health` 扩展字段（rushi-asr ≥ 当前仓）；用于桌面自动检测 FunASR。 */
@@ -112,6 +113,13 @@ export async function projectLoad(projectId: string): Promise<ProjectDetail> {
 
 export async function projectListEditLog(projectId: string, limit = 40): Promise<EditLogEntryDto[]> {
   return invoke<EditLogEntryDto[]>("project_list_edit_log", { projectId, limit });
+}
+
+export async function fileRestoreSegmentsFromEditLog(
+  fileId: string,
+  editLogId: number,
+): Promise<void> {
+  return invoke<void>("file_restore_segments_from_edit_log", { fileId, editLogId });
 }
 
 export async function projectRunTranscribe(

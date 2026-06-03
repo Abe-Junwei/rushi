@@ -3,7 +3,11 @@ use super::correction::{
     upsert_explicit_correction_pairs, CorrectionExplicitPairDto, CorrectionLearnBaselineTextDto,
     CorrectionRuleRow, GlossaryLearnPromptRow, SaveSegmentsLearnOpts,
 };
-use super::edit_log_detail::build_save_segments_edit_detail;
+use super::edit_log_detail::{
+    build_restore_from_edit_log_detail, build_save_segments_edit_detail_from_baseline,
+    load_segment_text_by_uid,
+};
+use super::edit_log_snapshot;
 use super::segment_media_sanitize::sanitize_segments_for_media;
 use super::segment_uid::segment_uid_or_new;
 use super::transcribe_timeout::probe_audio_duration_sec;
@@ -24,12 +28,24 @@ fn file_audio_path(conn: &rusqlite::Connection, file_id: &str) -> Result<Option<
     .map_err(|e| e.to_string())
 }
 
+pub enum SegmentSaveEditLog {
+    SaveSegments(SaveSegmentsLearnOpts),
+    Custom {
+        kind: &'static str,
+        detail: String,
+    },
+}
+
 pub fn file_save_segments_inner(
     state: &DbState,
     file_id: &str,
     segments: &[SegmentDto],
-    learn: SaveSegmentsLearnOpts,
+    edit_log: SegmentSaveEditLog,
 ) -> Result<(), String> {
+    let learn = match &edit_log {
+        SegmentSaveEditLog::SaveSegments(learn) => learn.clone(),
+        SegmentSaveEditLog::Custom { .. } => SaveSegmentsLearnOpts::default(),
+    };
     let mut conn = open_db(state)?;
     let audio_path = file_audio_path(&conn, file_id)?;
     let duration_sec = audio_path
@@ -48,6 +64,7 @@ pub fn file_save_segments_inner(
     }
     let segments = &segments_owned;
     let t = now_ms();
+    let old_text_by_uid = load_segment_text_by_uid(&conn, file_id)?;
     let tx = conn.transaction().map_err(|e| e.to_string())?;
 
     let project_id: String = tx
@@ -152,14 +169,29 @@ pub fn file_save_segments_inner(
         params![t, &project_id],
     )
     .map_err(|e| e.to_string())?;
-    let edit_detail =
-        build_save_segments_edit_detail(&tx, file_id, segments, t, &learn.explicit_pairs)?;
-    let detail = serde_json::to_string(&edit_detail).map_err(|e| e.to_string())?;
+    let (kind, detail) = match &edit_log {
+        SegmentSaveEditLog::SaveSegments(learn_opts) => {
+            let edit_detail = build_save_segments_edit_detail_from_baseline(
+                &old_text_by_uid,
+                file_id,
+                segments,
+                t,
+                &learn_opts.explicit_pairs,
+            )?;
+            (
+                "save_segments",
+                serde_json::to_string(&edit_detail).map_err(|e| e.to_string())?,
+            )
+        }
+        SegmentSaveEditLog::Custom { kind, detail } => (*kind, detail.clone()),
+    };
     tx.execute(
         "INSERT INTO edit_log (project_id, at_ms, kind, detail) VALUES (?1, ?2, ?3, ?4)",
-        params![&project_id, t, "save_segments", detail.as_str()],
+        params![&project_id, t, kind, detail.as_str()],
     )
     .map_err(|e| e.to_string())?;
+    let edit_log_id = tx.last_insert_rowid();
+    edit_log_snapshot::insert_snapshot(&tx, edit_log_id, file_id, segments)?;
     tx.commit().map_err(|e| e.to_string())?;
     if !learn.explicit_pairs.is_empty() {
         if let Err(e) = upsert_explicit_correction_pairs(&conn, &learn.explicit_pairs, t) {
@@ -190,8 +222,56 @@ pub fn file_save_segments(
         state.deref(),
         &file_id,
         &segments,
-        SaveSegmentsLearnOpts { explicit_pairs },
+        SegmentSaveEditLog::SaveSegments(SaveSegmentsLearnOpts { explicit_pairs }),
     )
+}
+
+pub fn file_restore_segments_from_edit_log_inner(
+    state: &DbState,
+    file_id: &str,
+    edit_log_id: i64,
+) -> Result<(), String> {
+    let conn = open_db(state)?;
+    let project_id: String = conn
+        .query_row(
+            "SELECT project_id FROM files WHERE id = ?1",
+            params![file_id],
+            |r| r.get(0),
+        )
+        .map_err(|e| e.to_string())?;
+    let log_project: String = conn
+        .query_row(
+            "SELECT project_id FROM edit_log WHERE id = ?1",
+            params![edit_log_id],
+            |r| r.get(0),
+        )
+        .map_err(|_| "编辑历史记录不存在".to_string())?;
+    if log_project != project_id {
+        return Err("编辑历史与当前文件不属于同一项目".into());
+    }
+    let segments = edit_log_snapshot::load_snapshot(&conn, edit_log_id, file_id)?;
+    let t = now_ms();
+    let restore_detail =
+        build_restore_from_edit_log_detail(&conn, file_id, edit_log_id, &segments, t)?;
+    let detail = serde_json::to_string(&restore_detail).map_err(|e| e.to_string())?;
+    file_save_segments_inner(
+        state,
+        file_id,
+        &segments,
+        SegmentSaveEditLog::Custom {
+            kind: "restore_from_edit_log",
+            detail,
+        },
+    )
+}
+
+#[tauri::command]
+pub fn file_restore_segments_from_edit_log(
+    state: State<DbState>,
+    file_id: String,
+    edit_log_id: i64,
+) -> Result<(), String> {
+    file_restore_segments_from_edit_log_inner(state.deref(), &file_id, edit_log_id)
 }
 
 #[tauri::command]
