@@ -1,6 +1,6 @@
 # Backlog: 本机 LLM 校对（LLM-LOC）
 
-> **状态**：**仅规划**（2026-05-27）；**是否编码立项由 §9 Gate 决定**  
+> **状态**：**LLM-LOC-SPIKE 进行中**（2026-06-03）；**4a/4b 编码由 §9 Gate 决定**  
 > **排期索引**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) §6、§8.2 **Q-LLM**  
 > **实施真源（LRC Phase 4）**：[`rushi-local-runtime-catalog-remediation-plan.md`](./rushi-local-runtime-catalog-remediation-plan.md) §Phase 4  
 > **后处理边界**：[`postprocess-remote-boundary.md`](../../architecture/postprocess-remote-boundary.md)（v1 远程；本机 loopback 须扩展 provider 边界）

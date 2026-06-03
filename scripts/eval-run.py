@@ -10,6 +10,7 @@ P4 / ASR-VOC-5: 按 eval_manifest 逐条 POST 本机 ASR，输出 JSON 或 CSV �
   python3 scripts/eval-run.py --manifest fixtures/eval/eval_manifest.v1.json --asr-base http://127.0.0.1:8741
   python3 scripts/eval-run.py --hotwords-ab --filter-id proper-noun-zhikong --format csv
   python3 scripts/eval-run.py --hotwords-mode off --filter-id proper-noun-zhikong
+  python3 scripts/eval-run.py --output ~/.rushi-quality/last_eval_report.json
 """
 
 from __future__ import annotations
@@ -20,6 +21,7 @@ import importlib.util
 import json
 import subprocess
 import sys
+import time
 from io import StringIO
 from pathlib import Path
 from typing import Any, Literal
@@ -203,6 +205,12 @@ def main() -> int:
         default="json",
         help="Output format (csv suited for hotwords A/B spreadsheet)",
     )
+    ap.add_argument(
+        "--output",
+        type=Path,
+        default=None,
+        help="Write JSON report to this path (R4 quality Tab)",
+    )
     args = ap.parse_args()
 
     manifest_path: Path = args.manifest
@@ -249,9 +257,15 @@ def main() -> int:
         "hotwords_mode": hotwords_mode,
         "hotwords_ab": bool(args.hotwords_ab),
         "filter_id": args.filter_id,
+        "finished_at_ms": int(time.time() * 1000),
+        "exit_code": 1 if failed else 0,
         "items": out_rows,
     }
-    print(json.dumps(report, ensure_ascii=False, indent=2))
+    payload = json.dumps(report, ensure_ascii=False, indent=2)
+    if args.output is not None:
+        args.output.parent.mkdir(parents=True, exist_ok=True)
+        args.output.write_text(payload, encoding="utf-8")
+    print(payload)
     return 1 if failed else 0
 
 

@@ -50,6 +50,11 @@ sys.exit(0 if h.get('local_token_required') else 1)
 " 2>/dev/null
 }
 
+# curl -sf succeeds only when /health returns JSON quickly (detects hung listeners on :8741).
+asr_health_reachable() {
+  curl -sf --max-time 2 "${ASR_BASE}/health" >/dev/null 2>&1
+}
+
 stop_sidecar_on_8741() {
   local pids
   pids="$(lsof -ti :8741 2>/dev/null || true)"
@@ -85,18 +90,19 @@ start_source_sidecar() {
   "$VENV_PY" -m rushi_asr >>"${TMPDIR:-/tmp}/rushi-asr-dev.log" 2>&1 &
   ASR_PID=$!
   STARTED_ASR=1
-  for _ in $(seq 1 60); do
-    if curl -sf --max-time 1 "${ASR_BASE}/health" >/dev/null 2>&1; then
+  for _ in $(seq 1 120); do
+    if asr_health_reachable; then
       echo "==> ASR ready (log: ${TMPDIR:-/tmp}/rushi-asr-dev.log)"
       return 0
     fi
     sleep 0.5
   done
-  echo "FAIL: ASR did not become healthy within 30s. See ${TMPDIR:-/tmp}/rushi-asr-dev.log" >&2
+  echo "FAIL: ASR did not become healthy within 60s. See ${TMPDIR:-/tmp}/rushi-asr-dev.log" >&2
+  echo "      If :8741 is stuck: lsof -ti :8741 | xargs kill -9" >&2
   exit 1
 }
 
-if curl -sf --max-time 2 "${ASR_BASE}/health" >/dev/null 2>&1; then
+if asr_health_reachable; then
   if sidecar_looks_current; then
     if health_models_root_matches && ! health_local_token_required; then
       export_asr_model_env
@@ -116,6 +122,7 @@ if curl -sf --max-time 2 "${ASR_BASE}/health" >/dev/null 2>&1; then
     exit 1
   fi
 else
+  stop_sidecar_on_8741
   start_source_sidecar
 fi
 

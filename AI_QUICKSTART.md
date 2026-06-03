@@ -17,14 +17,15 @@
 | `docs/adr/` | 架构决策记录 |
 | `docs/execution/specs/` | 非 trivial feature 三件套 |
 
-## 当前热点（自动同步，2026-05-30）
+## 当前热点（自动同步，2026-06-03）
 
-**R3h / LRC / ASR Setup（排期主战场）**
+**LLM-LOC-SPIKE（v1 后主序，Gate 前无 4a 产品码）**
 
-- **Rust T-010 ✅**：`install_support/`、`integrity/`、`installer/`、`catalog/`、`manifest/`、`recovery/`、`asr_sidecar/bundled/`；业务 `.rs` 均 &lt;320 行（测试模块除外）
-- `apps/desktop/src/pages/useAsrSetupController.ts` ~122 行 + `useLocalRuntimeSetupSupport.ts` ~61 行（已拆分；**R3h-I3** Setup Machine 仍待收口）
-- `apps/desktop/src/components/envLocalAsr/LocalAsrSetupWizard.tsx` ~166 行
-- **R3t-A**：`services/asr/rushi_asr/segmentation.py` 已合入；**acceptance 手测待签**
+- 真源：[`docs/execution/specs/llm-loc-spike-research.md`](./docs/execution/specs/llm-loc-spike-research.md) · [`llm-local-runtime-backlog.md`](./docs/execution/specs/llm-local-runtime-backlog.md) §9
+- 预检：`bash scripts/llm-loc-spike-preflight.sh`（Ollama + `fixtures/llm-loc-eval/`）
+- 已有探针：`apps/desktop/src-tauri/src/postprocess_cmd.rs`（loopback OpenAI-compatible）
+
+**并行（不挡 Spike）**：R3h-2、TRN-DIAG、ASR-WARM
 
 **已降温（勿再当 R0 阻塞）**
 

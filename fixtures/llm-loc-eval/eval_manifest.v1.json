@@ -1,0 +1,257 @@
+{
+  "schema_version": "1",
+  "description": "LLM-LOC-SPIKE eval subset (exported from app DB)",
+  "exported_at": "2026-06-03T15:16:53Z",
+  "source_db": "/Users/junwei/Library/Application Support/studio.lingchuang.rushi/studio.lingchuang.rushi/rushi.sqlite3",
+  "glossary_sample": [
+    "制控",
+    "觉观",
+    "禅堂",
+    "禅场",
+    "禅修",
+    "经行",
+    "提腰收腹"
+  ],
+  "items": [
+    {
+      "id": "seg-afe7e4f8-1",
+      "segment_uid": "afe7e4f8-0ec5-435c-b155-2c358136410e",
+      "segment_idx": 1,
+      "segment_text": "提腰收腹，提振精神，脊柱向上屈肩背胸小胸小向两臂自然舒展。",
+      "file_name": "D3-堂3-2制控概讲（含禪堂开示）-5月2日（法砆法师）",
+      "project_name": "未命名项目测试"
+    },
+    {
+      "id": "seg-9c5cea5c-7",
+      "segment_uid": "9c5cea5c-b4bc-4f3e-926c-f5b25cc2e6d2",
+      "segment_idx": 7,
+      "segment_text": "禅堂也好， 吃， 住也好， 都比较简陋。 但是对于学生，对于，",
+      "file_name": "D3-堂3-2制控概讲（含禪堂开示）-5月2日（法砆法师）",
+      "project_name": "未命名项目测试"
+    },
+    {
+      "id": "seg-aa5b67d8-8",
+      "segment_uid": "aa5b67d8-2b38-4139-bfcf-749f2c1a0ca2",
+      "segment_idx": 8,
+      "segment_text": "我们是很进入的，",
+      "file_name": "D3-堂3-2制控概讲（含禪堂开示）-5月2日（法砆法师）",
+      "project_name": "未命名项目测试"
+    },
+    {
+      "id": "seg-1d5491a5-10",
+      "segment_uid": "1d5491a5-a759-44fd-91e8-2a6868d49381",
+      "segment_idx": 10,
+      "segment_text": "我们传统传讨打七之前要向头部上告知这样告什么项目， 生死项目，问我喔喔喔喔喔",
+      "file_name": "D3-堂3-2制控概讲（含禪堂开示）-5月2日（法砆法师）",
+      "project_name": "未命名项目测试"
+    },
+    {
+      "id": "seg-92a0e90b-12",
+      "segment_uid": "92a0e90b-3347-497c-895d-6871d8735877",
+      "segment_idx": 12,
+      "segment_text": "所以你要知道禅堂是什么地方，",
+      "file_name": "D3-堂3-2制控概讲（含禪堂开示）-5月2日（法砆法师）",
+      "project_name": "未命名项目测试"
+    },
+    {
+      "id": "seg-8530941b-13",
+      "segment_uid": "8530941b-9857-4294-b0e7-b649e5e0e377",
+      "segment_idx": 13,
+      "segment_text": "禅堂也叫选佛场。近代一些老和尚慈悲开放了。",
+      "file_name": "D3-堂3-2制控概讲（含禪堂开示）-5月2日（法砆法师）",
+      "project_name": "未命名项目测试"
+    },
+    {
+      "id": "seg-373c9460-14",
+      "segment_uid": "373c9460-78a5-46bf-bb33-0cf84926417c",
+      "segment_idx": 14,
+      "segment_text": "四众禅堂，啊啊啊",
+      "file_name": "D3-堂3-2制控概讲（含禪堂开示）-5月2日（法砆法师）",
+      "project_name": "未命名项目测试"
+    },
+    {
+      "id": "seg-be4eec5a-16",
+      "segment_uid": "be4eec5a-c2e4-457d-b2d6-39ffee460ded",
+      "segment_idx": 16,
+      "segment_text": "只是针对于出家人修行修炼层，",
+      "file_name": "D3-堂3-2制控概讲（含禪堂开示）-5月2日（法砆法师）",
+      "project_name": "未命名项目测试"
+    },
+    {
+      "id": "seg-c48b73ed-17",
+      "segment_uid": "c48b73ed-7cee-4209-86ea-815643fec180",
+      "segment_idx": 17,
+      "segment_text": "尤其是禅宗道场，",
+      "file_name": "D3-堂3-2制控概讲（含禪堂开示）-5月2日（法砆法师）",
+      "project_name": "未命名项目测试"
+    },
+    {
+      "id": "seg-e853b6ce-21",
+      "segment_uid": "e853b6ce-9917-4004-8f3e-ecb8cab25044",
+      "segment_idx": 21,
+      "segment_text": "懒惰放逸的地方，",
+      "file_name": "D3-堂3-2制控概讲（含禪堂开示）-5月2日（法砆法师）",
+      "project_name": "未命名项目测试"
+    },
+    {
+      "id": "seg-49ef36d1-22",
+      "segment_uid": "49ef36d1-b805-4cea-9ff3-43fb72e06199",
+      "segment_idx": 22,
+      "segment_text": "我们的禅风一直以来都是比较凌厉的，",
+      "file_name": "D3-堂3-2制控概讲（含禪堂开示）-5月2日（法砆法师）",
+      "project_name": "未命名项目测试"
+    },
+    {
+      "id": "seg-b94cf65e-25",
+      "segment_uid": "b94cf65e-9158-4293-8c46-fa04e6ab299d",
+      "segment_idx": 25,
+      "segment_text": "你不能够很完全的到，",
+      "file_name": "D3-堂3-2制控概讲（含禪堂开示）-5月2日（法砆法师）",
+      "project_name": "未命名项目测试"
+    },
+    {
+      "id": "seg-be5c0780-26",
+      "segment_uid": "be5c0780-3206-447d-bcf6-12cf2e41a611",
+      "segment_idx": 26,
+      "segment_text": "不知道这个只能靠自觉，",
+      "file_name": "D3-堂3-2制控概讲（含禪堂开示）-5月2日（法砆法师）",
+      "project_name": "未命名项目测试"
+    },
+    {
+      "id": "seg-60a8992b-27",
+      "segment_uid": "60a8992b-02bd-4b69-a5d7-d707c8e0d05b",
+      "segment_idx": 27,
+      "segment_text": "现阶段只能靠自觉。",
+      "file_name": "D3-堂3-2制控概讲（含禪堂开示）-5月2日（法砆法师）",
+      "project_name": "未命名项目测试"
+    },
+    {
+      "id": "seg-2f0e0c58-28",
+      "segment_uid": "2f0e0c58-c9e6-4d02-9709-095040f26e30",
+      "segment_idx": 28,
+      "segment_text": "如果这个里面有二十个师父去翻。",
+      "file_name": "D3-堂3-2制控概讲（含禪堂开示）-5月2日（法砆法师）",
+      "project_name": "未命名项目测试"
+    },
+    {
+      "id": "seg-ccb539aa-30",
+      "segment_uid": "ccb539aa-d048-460b-9048-d8480fe54700",
+      "segment_idx": 30,
+      "segment_text": "你们发现盯牢看牢就不是这个效果。",
+      "file_name": "D3-堂3-2制控概讲（含禪堂开示）-5月2日（法砆法师）",
+      "project_name": "未命名项目测试"
+    },
+    {
+      "id": "seg-76818da8-31",
+      "segment_uid": "76818da8-0919-48d1-b028-843703db527a",
+      "segment_idx": 31,
+      "segment_text": "我们这一次进行班两个班，",
+      "file_name": "D3-堂3-2制控概讲（含禪堂开示）-5月2日（法砆法师）",
+      "project_name": "未命名项目测试"
+    },
+    {
+      "id": "seg-68a83ed2-32",
+      "segment_uid": "68a83ed2-2d19-448b-aae3-d4b3c306b4bb",
+      "segment_idx": 32,
+      "segment_text": "二班的同学比你们的状态整体状态我不说个人内容啊，",
+      "file_name": "D3-堂3-2制控概讲（含禪堂开示）-5月2日（法砆法师）",
+      "project_name": "未命名项目测试"
+    },
+    {
+      "id": "seg-33724730-33",
+      "segment_uid": "33724730-e81d-4c8c-97bb-542cb4afd93d",
+      "segment_idx": 33,
+      "segment_text": "还是有一些还是比较用心，",
+      "file_name": "D3-堂3-2制控概讲（含禪堂开示）-5月2日（法砆法师）",
+      "project_name": "未命名项目测试"
+    },
+    {
+      "id": "seg-f75c5506-34",
+      "segment_uid": "f75c5506-0afb-40ba-a0b5-ba360faaa1cc",
+      "segment_idx": 34,
+      "segment_text": "用功的整体状态比你们早了一天，",
+      "file_name": "D3-堂3-2制控概讲（含禪堂开示）-5月2日（法砆法师）",
+      "project_name": "未命名项目测试"
+    },
+    {
+      "id": "seg-75c5042b-36",
+      "segment_uid": "75c5042b-ffe5-450f-8ae9-bda91523dc45",
+      "segment_idx": 36,
+      "segment_text": "整整一天就是你们今天的状态，",
+      "file_name": "D3-堂3-2制控概讲（含禪堂开示）-5月2日（法砆法师）",
+      "project_name": "未命名项目测试"
+    },
+    {
+      "id": "seg-2dfb0289-37",
+      "segment_uid": "2dfb0289-08ef-4883-a66e-9595f17efafd",
+      "segment_idx": 37,
+      "segment_text": "你们也是一天比一天有点进步。",
+      "file_name": "D3-堂3-2制控概讲（含禪堂开示）-5月2日（法砆法师）",
+      "project_name": "未命名项目测试"
+    },
+    {
+      "id": "seg-2214ad36-38",
+      "segment_uid": "2214ad36-fa2e-48b9-baf6-5ea8d65aec3e",
+      "segment_idx": 38,
+      "segment_text": "我们也看到你们今天的状态差不多是二班昨天的状态。",
+      "file_name": "D3-堂3-2制控概讲（含禪堂开示）-5月2日（法砆法师）",
+      "project_name": "未命名项目测试"
+    },
+    {
+      "id": "seg-ffa1bd26-39",
+      "segment_uid": "ffa1bd26-22e9-466b-97bc-d41c635663cd",
+      "segment_idx": 39,
+      "segment_text": "任何人进到一个陌生环境，",
+      "file_name": "D3-堂3-2制控概讲（含禪堂开示）-5月2日（法砆法师）",
+      "project_name": "未命名项目测试"
+    },
+    {
+      "id": "seg-0d14fc46-40",
+      "segment_uid": "0d14fc46-01ad-4ca2-ab6e-0067a4d7aa2a",
+      "segment_idx": 40,
+      "segment_text": "尤其是这种集训，",
+      "file_name": "D3-堂3-2制控概讲（含禪堂开示）-5月2日（法砆法师）",
+      "project_name": "未命名项目测试"
+    },
+    {
+      "id": "seg-f521c828-41",
+      "segment_uid": "f521c828-be28-497f-90c2-91f6490aa5a0",
+      "segment_idx": 41,
+      "segment_text": "他一定是需要一个身心适应的阶段的身心适应期的这个身心适应差不多，",
+      "file_name": "D3-堂3-2制控概讲（含禪堂开示）-5月2日（法砆法师）",
+      "project_name": "未命名项目测试"
+    },
+    {
+      "id": "seg-2c0e896d-42",
+      "segment_uid": "2c0e896d-be13-47cf-ac7b-58038b561111",
+      "segment_idx": 42,
+      "segment_text": "也就是三天体质差一点的是四天身体心理环境，",
+      "file_name": "D3-堂3-2制控概讲（含禪堂开示）-5月2日（法砆法师）",
+      "project_name": "未命名项目测试"
+    },
+    {
+      "id": "seg-11929412-44",
+      "segment_uid": "11929412-9616-448e-ae6c-122f970750fa",
+      "segment_idx": 44,
+      "segment_text": "这个没有什么好的办法，",
+      "file_name": "D3-堂3-2制控概讲（含禪堂开示）-5月2日（法砆法师）",
+      "project_name": "未命名项目测试"
+    },
+    {
+      "id": "seg-b8a87c8a-45",
+      "segment_uid": "b8a87c8a-ff36-419a-ab2d-e1d44e124255",
+      "segment_idx": 45,
+      "segment_text": "坚持熬鹅鹅鹅就过去了，",
+      "file_name": "D3-堂3-2制控概讲（含禪堂开示）-5月2日（法砆法师）",
+      "project_name": "未命名项目测试"
+    },
+    {
+      "id": "seg-30e855e8-46",
+      "segment_uid": "30e855e8-66f6-4e83-8ace-2a15a8342c26",
+      "segment_idx": 46,
+      "segment_text": "哪有那么哇哇哇哇哇。",
+      "file_name": "D3-堂3-2制控概讲（含禪堂开示）-5月2日（法砆法师）",
+      "project_name": "未命名项目测试"
+    }
+  ]
+}

@@ -10,7 +10,7 @@
 | 适用节奏 | 单人、每轮 2～4h、一轮一纵向薄片 |
 | 规划跨度 | **个人单机 v1**：约 **14～18 周（自当前）** 或 **18～22 周（自 W1）**；R3 薄片 **~12～15w**（§4.0，含发行 smoke 缓冲）；协作 **非 v1** |
 | 修订 | 每完成一个阶段更新 §2 状态表、§4 排期表与 §13 代码对照 |
-| 最近对照 | **2026-06-03**：**⑤‴ EXP-WORD** ✅ v1 功能验收 → **下一主序：⑤‴½ REV-LOC 编码 / R4**；**⑤″f-E Qwen3** ❌ No-go；**R3g-B-Align** ⏳ P2 |
+| 最近对照 | **2026-06-03**：**v1 0.1.0** ✅ · **R9** ✅ → **下一主序：LLM-LOC-SPIKE**；**REV-LOC** ✅ · **EXP-WORD** ✅ |
 
 ### 状态标记约定（全文档统一）
 
@@ -118,7 +118,7 @@
 | **P1** | 发版 eval 回归 + 专名样例 | **ACC-EVAL-1**（R3g-C 合入门禁）、**R4** + **R4-GATE**（R9 硬门禁） |
 | **P1** | Setup / 发布 / Supervisor 硬化 | **R3h-I1～I3** |
 | **P1** | 发版自动化子集 | **TEST-AUTO**（corrupt / 长音频慢测 / FSM contract；R9 硬门禁） |
-| **P1** | 单机修订时间线 | **REV-LOC**（规格 ✅；编码 **后置**，见 **Q-REV-1**、§4.1.1 **⑤‴½**） |
+| **P1** | 单机修订时间线 | **REV-LOC** ✅（§4.1.1 **⑤‴½**；[acceptance](../specs/rev-loc-undo-edit-history-acceptance.md) 2026-06-03） |
 | **P2** | MCP 只读 | R5（v1 后可做） |
 
 ---
@@ -164,7 +164,7 @@ bash scripts/p0-acceptance.sh
 | LLM 后处理（R2 标点） | ✅ 已交付 | `postprocess_cmd`；**R3t-C/D/E 未编码** |
 | MCP / 协作服务 | ❌ 未开始 | 无 `services/mcp`、`services/collab` |
 | 桌面 profile 导入导出（无 secret） | ✅ R3b | `profile.rs` + 环境页「配置迁移」 |
-| 桌面质量 Tab | ❌ 未开始 | eval 仍在 `scripts/eval-run.py` |
+| 桌面质量 Tab | ✅ | 欢迎页「质量概览」；[signoff](../specs/r4-quality-gate-signoff-2026-06.md) 2026-06-03 |
 | **术语库（glossary）后端** | ✅ 已有 | `glossary_terms` + `glossary_*` 命令 + 转写 `hotwords` 注入 |
 | **术语库管理 UI** | ✅ 独立页 | `GlossaryPage` + 欢迎页侧栏「术语管理」；`useGlossaryController` 已接线 |
 
@@ -225,8 +225,8 @@ R0 → GLY-1 → R1–R2 → R3 → R4 → [R5] → [R6–R8] → R9
 |---------|------|------|------|
 | R0 / GLY-1 / R1 / R2 | ✅ | 工程收口、术语 UI、LLM 标点规格与实现 | — |
 | **R3** | 🟡 | §4.1.1 全线 | ~12～15w |
-| **R4** | ⏳ | QLT-1 + R4-GATE | 1.5w |
-| **R9** | ⏳ | REL-1 个人 v1 | 1w |
+| **R4** | ✅ | QLT-1 + R4-GATE · 2026-06-03 | 1.5w |
+| **R9** | ✅ **验收通过** | REL-1 个人 v1 | 1w | [strict-signoff 2026-06-03](../specs/r9-rel-1-strict-signoff-2026-06.md) |
 | R5 | v1 后 | MCP 只读 | 2w |
 | R6–R8 | v1 后 | 协作 C1–C3 | ~5.5w |
 
@@ -246,12 +246,13 @@ R0 → GLY-1 → R1–R2 → R3 → R4 → [R5] → [R6–R8] → R9
 | **B 转写真源** | 声学分段 + 编排 + 精度/STT 统一 + 可观测 + **长音频增量 preview** | ⑤′ R3t-A/B、**⑤g R3g-C**、**⑤h ACC-STT-UNIFY**、TRN-DIAG、⑥ R3e-B、**⑥½ R3e-C** |
 | **C 发行成熟** | 弱网/回滚/三盏灯/可选 Spike | ⑦ R3h-2、⑦½ ASR-WARM、⑧ R3h-3、⑧½ R3h-3.5 |
 | **D 可选 LLM** | 云端校对可插拔 + 交付 | ⑤″ R3t-C/D/E |
-| **E 交付与质量** | Word + eval + 发版 | ⑤‴ EXP-WORD、⑤‴½ **REV-LOC**（规格已定·编码后置）、R4、R9 |
+| **E 交付与质量** | Word + eval + 发版 | ⑤‴ EXP-WORD ✅、⑤‴½ REV-LOC ✅、**R4** ✅、**R9** ✅ |
+| **F v1 后 LLM** | Spike → Gate → 4a/4b | **LLM-LOC-SPIKE** 🟡（§10） |
 
 #### 4.1.1 实施顺序（严格串行，勿跳步）
 
 > **2026-05-27 重排（Q-SEQ-1）**：**R3e-B 前移至 R3t-B 之后**（长音频在 LLM 块之前）；**HOT-UX 写入主序**（原仅在台账）。内核仍与 R3t-A 合并（Q-R3t-1）。  
-> **2026-06-02**：**R3g-C**、**ACC-STT-UNIFY**、**R3t-D ✅**；审查吸收 **MEM 规划**、**12～15w**、**R3h-0∥⑤″f-A**、**Qwen3 门控**（§10）。**下一编码刀**：**⑤″e R3t-E 手测** → **⑤″f**（F2 见分支 `cursor/r3t-f-find-replace-toast-correct`）。
+> **2026-06-03**：**⑤‴½ REV-LOC** ✅；**下一主序**：**R4 + R4-GATE**（§10）。**2026-06-02**：R3g-C、ACC-STT-UNIFY、R3t-D ✅；MEM / R3h-0∥⑤″f-A / Qwen3 门控见 §4.1.9。
 
 ```text
 [R3a–c 已完成]
@@ -312,9 +313,9 @@ R0 → GLY-1 → R1–R2 → R3 → R4 → [R5] → [R6–R8] → R9
     ↓
 ⑤‴ EXP-WORD
     ↓
-⑤‴½ REV-LOC（规格 ✅ · 编码后置；Q-REV-1；不挡 R9）
+⑤‴½ REV-LOC ✅ 2026-06-03（切片 A/B；[acceptance](../specs/rev-loc-undo-edit-history-acceptance.md)）
     ↓
-R4 + R4-GATE → R9
+R4 + R4-GATE ✅ → R9   ← **下一主序**
 ```
 
 #### 4.1.2 子项台账
@@ -353,7 +354,8 @@ R4 + R4-GATE → R9
 | **⑤″f-2+** | **F6+ 纳入记忆→术语表** | ✅ | 0.5–1d | 右键纳入 + 可选 `glossary_add`；第 3 次纳入后 F6 提示 | hand-test 2026-06-02 |
 | **⑤″f-G** | **VOC-GUARD** | ✅ | 0.5d | hotwords 过滤 + `glossary_add/update/import` 拒绝错形 | **Q-ACC-8** |
 | **⑤‴** | **EXP-WORD** | ✅ v1 功能验收 | 1–1.5w | 交付导出向导 + 三形态 DOCX + 润色预览门禁 + 修订轨/附录 | [`exp-word-formatted-export-acceptance.md`](../specs/exp-word-formatted-export-acceptance.md) |
-| **⑤‴½** | **REV-LOC** | 📋 **规格✅** / **编码后置** | 0.5–1w | **A** 撤销栈与自动保存对齐；**B** `edit_log` 快照恢复 MVP；只读摘要已部分落地；**非** R8 | [research](../specs/rev-loc-undo-edit-history-research.md) · [plan](../specs/rev-loc-undo-edit-history-plan.md) · [acceptance](../specs/rev-loc-undo-edit-history-acceptance.md) · [backlog §3.3](../specs/personal-solo-v1-backlog.md) |
+| **⑤‴½** | **REV-LOC** | ✅ **2026-06-03** | 0.5–1w | **A** 撤销栈与自动保存对齐；**B** `edit_log` 快照恢复 MVP；[slice A signoff](../specs/rev-loc-slice-a-signoff-2026-06.md) · [slice B signoff](../specs/rev-loc-slice-b-signoff-2026-06.md)；**非** R8 | [research](../specs/rev-loc-undo-edit-history-research.md) · [plan](../specs/rev-loc-undo-edit-history-plan.md) · [acceptance](../specs/rev-loc-undo-edit-history-acceptance.md) |
+| — | **R4** + **R4-GATE** | ✅ **2026-06-03** | 1.5w | 质量 Tab + 应用内 eval；[signoff](../specs/r4-quality-gate-signoff-2026-06.md) | [backlog §3.4](../specs/personal-solo-v1-backlog.md) · §732 |
 | — | **R3t（索引）** | 📋 | — | Epic 总览（含 L6） | [`recording-transcribe-llm-pipeline.md`](../../architecture/recording-transcribe-llm-pipeline.md) |
 | — | R3h-4 → **LLM-LOC** | v1 后 | 见 §6、[`llm-local-runtime-backlog.md`](../specs/llm-local-runtime-backlog.md)（**4a** Ollama ~0.5–1w；**4b** 自管 2–3w+） | remediation §Phase 4 |
 | — | R3h-E/F、R3g-B | 延后 / P1 spike | — | 高级 pip/本地构建；**Qwen3 SKU spike**（research ✅）、Nano+vLLM（P2）；索引 [`r3-asr-landscape-2026-05-improvement-backlog.md`](../specs/r3-asr-landscape-2026-05-improvement-backlog.md) §4.1.8 | remediation §5 Phase 5、[`r3g-b-qwen3-asr-sku-spike-research.md`](../specs/r3g-b-qwen3-asr-sku-spike-research.md) |
@@ -449,7 +451,7 @@ glossary_terms ──► L2 hotwords（仅 canonical + aliases；禁止 before_t
 
 **增强项（排期）**：**HOT-UX** ✅；**MEM-P0～P2**（⑤″f-B～C）；**LEX-MINE-2+** §8.1；R3t-E3 项目级词表 **不做 v1**。
 
-**交付导出（L6）**：**EXP-WORD** 在 **R3t-E 之后**、**R4 之前**（§8.2 Q-WORD）；与 P3 DOCX **基线**分层。**REV-LOC** 主序仍在 EXP-WORD 后、R4 前；**2026-05-31** 三件套已定稿，**编码后置、不挡 R9**（见 **Q-REV-1**）。
+**交付导出（L6）**：**EXP-WORD** 在 **R3t-E 之后**、**R4 之前**（§8.2 Q-WORD）；与 P3 DOCX **基线**分层。**REV-LOC** ✅ 2026-06-03（EXP-WORD 后、R4 前；见 **Q-REV-1**）。**下一主序**：**R4 + R4-GATE**。
 
 **个人 v1 补齐**：**TRN-DIAG**、**ASR-WARM**、**R4-GATE** — 见 §1.8。
 
@@ -521,7 +523,7 @@ glossary_terms ──► L2 hotwords（仅 canonical + aliases；禁止 before_t
 | **P2** | **STREAM-*** / 在线 Realtime | OpenAI Realtime-Whisper 等 | 新 Epic | ACC-STT-UNIFY | ⏳ |
 | **—** | Parakeet / MiMo / WS 替换 R3e-C | 与 ADR-0003 或 SQLite 真源冲突 | — | — | **不做** v1 |
 
-**建议叠加顺序**（backlog §5）：（主序）**⑤‴ EXP-WORD** → **⑤‴½ REV-LOC 编码**（若未合）→ R4；**⑤″f-E** 已 ❌ No-go；**R3g-B-Align** / Nano+vLLM **不挡 v1**；并行 **R3h-0 smoke**、R3e-C.5、**R3h-ASR-VER**（lock `funasr>=1.3.3`）。
+**建议叠加顺序**（backlog §5）：（主序）**⑤‴ EXP-WORD** ✅ → **⑤‴½ REV-LOC** ✅ → **R4 + R4-GATE**（下一刀）→ R9；**⑤″f-E** 已 ❌ No-go；**R3g-B-Align** / Nano+vLLM **不挡 v1**；并行 **R3h-0 smoke**、R3e-C.5、**R3h-ASR-VER**（lock `funasr>=1.3.3`）。
 
 #### 4.1.9 ⑤″f 改进清单（2026-06-02 · ASR 热词业内调研吸收）
 
@@ -810,13 +812,13 @@ React 预览 UI
 |----|------|
 | **零终端本机 ASR** | 无 shell 完成侧车安装 + 默认模型 + smoke（**依赖 R3h-1 + R3f**；[remediation §11](../specs/rushi-local-runtime-catalog-remediation-plan.md)） |
 | **弱网/断网** | 下载可重试；无网时 bundled 回退（**依赖 R3h-2**） |
-| **长音频主路径** | 30～60min：转写 →（**R3t-C 标点** 或手改）→ 编辑 → **EXP-WORD**（**REV-LOC** 编码后置，见 Q-REV-1） |
+| **长音频主路径** | 30～60min：转写 →（**R3t-C 标点** 或手改）→ 编辑 → **EXP-WORD**；撤销/历史恢复 **REV-LOC** ✅ |
 | **TRN-DIAG** | 失败一次转写：UI/诊断包能指出阶段与建议动作 |
 | **ASR-WARM** | 同项目连续转写：第二次无明显冷启动劣化（手测） |
 | **R4-GATE** | eval 集已跑；质量 Tab 有摘要；**含 ACC-EVAL-1** |
 | **TEST-AUTO** | corrupt 侧车 fixture +（可选）长音频慢测 + Setup/转写 FSM contract 已跑 |
 | **LLM 档位 Mid** | **R3t-B + R3t-C** 为 R9 **硬门禁**；**R3t-D/E 可减 scope**（不挡 R9，仍尽量在 R4 前闭合）；无 LLM 配置仍可转写 → 手改 → 导出 |
-| **REV-LOC** | R9：**只读** `edit_log` 摘要（`text_changes` 已部分落地）；**恢复 MVP + 撤销对齐**按 [acceptance](../specs/rev-loc-undo-edit-history-acceptance.md) **编码后置**（Q-REV-1） |
+| **REV-LOC** | ✅ 撤销对齐 + `edit_log` 快照恢复 MVP（[acceptance](../specs/rev-loc-undo-edit-history-acceptance.md) 2026-06-03） |
 | 脚本 | `p0-acceptance.sh`、P1–P4 按需抽检 |
 | 文档 | §2 状态表；T-006 行数表对齐 |
 | 可选 | E2E 一条主干；波形性能记录 |
@@ -901,7 +903,7 @@ React 预览 UI
 | **LEX-MINE-2+** | 全量挖掘 + 可选 LLM 说明 / 语料扫描 | 计划书 §5.1.2 | §8.1 |
 | **ASR-FT** | ASR 训练 manifest / 可选 LoRA | 计划书 §5.2–5.3；Oumi 数据合成 **远期** | R9 ROI + memory 导出 schema（privacy/domain）+ 独立测试集 |
 | **CAT-TRAN** | 翻译 + 词典（CAT） | 中译英、`target_text`、富结构词典、子范围批注、双语 DOCX；**spec 已有** T1–T6 | **远期**；**当前不做**（2026-05-27）；Go 须转写主线签收 + 产品中译英优先级 |
-| **REV-LOC** | 撤销对齐 + 历史恢复 MVP | 切片 A/B；[acceptance](../specs/rev-loc-undo-edit-history-acceptance.md) | EXP-WORD 后；**编码后置**（Q-REV-1） |
+| **REV-LOC** | 撤销对齐 + 历史恢复 MVP | ✅ 2026-06-03；[acceptance](../specs/rev-loc-undo-edit-history-acceptance.md) | 已合入主序（EXP-WORD 后） |
 | **STREAM-*** | 实时 mic / 流式 | 另立项 | R3t-D/E 签收后 |
 | **LLM-LOC** | 本机 LLM（Spike / 4a / 4b） | 规划真源 §9 Gate；**实施待 Q-LLM-5** | [`llm-local-runtime-backlog.md`](../specs/llm-local-runtime-backlog.md) |
 
@@ -924,7 +926,7 @@ React 预览 UI
 | **Q-POS-2** | **R6–R8 非 v1 阻塞**；R9 可在 R4 后签收；R5 可后置 |
 | **Q-POS-3** | **ASR-WARM** 纳入 v1 P1（§4.1.1 **⑦½**）；**TRN-DIAG** 纳入 v1 P1（**⑤′½**） |
 | **Q-POS-4** | **R4-GATE** 为 R9 **硬门禁**；**REV-LOC** 产品意图仍为 v1 P1（2026-05-30）；**实施节奏**见 **Q-REV-1** |
-| **Q-REV-1** | **2026-05-31**：REV-LOC [research](../specs/rev-loc-undo-edit-history-research.md) / [plan](../specs/rev-loc-undo-edit-history-plan.md) / [acceptance](../specs/rev-loc-undo-edit-history-acceptance.md) **已定稿**；**编码后置**（EXP-WORD 后择机，**不挡 R9**）；R9 仅要求只读历史摘要 |
+| **Q-REV-1** | **2026-05-31** 规格三件套定稿；**2026-06-03** 切片 A/B **✅ 验收签收**（[acceptance](../specs/rev-loc-undo-edit-history-acceptance.md)）；主序转入 **R4**；R9 恢复 MVP 已满足 |
 | **Q-LLM-1** | 本机 LLM **v1 后**做；**不阻塞 R9**；v1 仍以 **云端** 签收 R3t |
 | **Q-LLM-2** | **先 LLM-LOC-4a（Ollama）** 验证本地校对 ROI；**再 4b（LRC 自管）** |
 | **Q-LLM-3** | LLM **不进 ASR 侧车**；postprocess 仍为 Tauri OpenAI-compatible HTTP |
@@ -974,42 +976,25 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 
 | 项 | 内容 |
 |----|------|
-| **定位** | **个人单机 v1**（§1.6） |
-| **阶段** | **R3 — 转写主线（EXP-1 + R3h LRC + R3g/R3e/R3t + ACC + EXP-WORD）** |
-| **近期不做** | **CAT-TRAN**、LEX-MINE-2+、ASR-FT、**RAG**、**R6–R8** — §8 / §8.1 / §6 |
+| **定位** | **v1 已闭合** → **v1 后本机 LLM**（§1.6、§6） |
+| **阶段** | **LLM-LOC-SPIKE** 🟡 进行中（**Gate 前不写 4a/4b**，Q-LLM-5） |
+| **刚闭合** | [v1-release-installed-signoff](../v1-release-installed-signoff-2026-06.md) · R9 · R4 |
+| **Spike 真源** | [research](../specs/llm-loc-spike-research.md) · [plan](../specs/llm-loc-spike-plan.md) · [acceptance](../specs/llm-loc-spike-acceptance.md) · [backlog §9](../specs/llm-local-runtime-backlog.md) |
+| **预检** | `bash scripts/llm-loc-spike-preflight.sh` |
+| **近期不做** | **LLM-LOC-4a/4b 产品化**、**CAT-TRAN**、**R6–R8** — 未过 Gate |
 | **ASR 引擎路线** | **方案 A 已锁定** — FunASR + LRC 先行；Sherpa **R3h-3.5 Spike → 轻量模式候选**（非完全替代，[ADR-0003](../../adr/0003-asr-engine-funasr-first-sherpa-spike-gate.md) 附录 A） |
-| **排期真源** | **§4.1.1** |
-| **实施真源** | [`rushi-local-runtime-catalog-remediation-plan.md`](../specs/rushi-local-runtime-catalog-remediation-plan.md) **v1.1** |
-| **验收切片** | [`r3f-…`](../specs/r3f-asr-setup-wizard-acceptance.md) / [`r3g-…`](../specs/r3g-local-asr-model-catalog-acceptance.md) / [`r3g-c-…`](../specs/r3g-c-asr-generate-profile-acceptance.md)（✅ 2026-05-31） / [`acc-stt-unify-…`](../specs/acc-stt-unify-acceptance.md)（✅ 本机 2026-05-31） / [`r3e-…`](../specs/r3e-long-audio-transcribe-acceptance.md) / [`r3e-c-…`](../specs/r3e-c-incremental-transcribe-acceptance.md)（✅ 2026-05-31） / [`r3t-f-…`](../specs/r3t-f-post-transcribe-suite-acceptance.md) + [`r3-asr-voc-…`](../specs/r3-asr-voc-landing-acceptance.md)（**⑤″f** · 未编码） / [`r3-asr-landscape-…`](../specs/r3-asr-landscape-2026-05-improvement-backlog.md) / [`trn-diag-…`](../specs/trn-diag-acceptance.md) / [`asr-warm-…`](../specs/asr-warm-acceptance.md) / [`exp-word-…`](../specs/exp-word-formatted-export-acceptance.md) |
-| **不要** | 内置 LiteLLM/网关、Ollama 替代 ASR、主路径 pip/PyInstaller、R3f 在 R3h-0 前签收 |
+| **不要** | Spike 未过 Gate 即改环境页 / llm-runtime catalog |
 
-### R3 规划门禁
+### v1 0.1.0 已可分发（2026-06-03）
 
-- [x] Provider 调研；不引入捆绑网关；STT/LLM 分通道  
-- [x] 内置侧车优先；Win **仅双 exe**  
-- [x] R3a/b/c 已签收；R3f/g/e acceptance 已起草  
-- [x] **LRC 整改方案 + 审查吸收**（v1.1，2026-05-26）  
-- [x] **ASR 引擎方案 A**（FunASR 先行 + Sherpa Spike 门控；[ADR-0003](../../adr/0003-asr-engine-funasr-first-sherpa-spike-gate.md)）  
-- [x] **R3-STATE S3**（R3g-A ⑤b；2026-05-27 场景 1–2 手测签收）
-- [x] **R3g-A ⑤c**（Paraformer 13min 多语段；2026-05-27 复测签收）
-- [ ] **R3h §11 发行门禁**（零终端、构建 smoke、损坏可恢复…）
+- **DMG**：`apps/desktop/src-tauri/target/release/bundle/dmg/如是我闻_0.1.0_aarch64.dmg`  
+- **签收**：[v1-release-installed-signoff](../v1-release-installed-signoff-2026-06.md)  
 
-**下一刀（2026-06-02 · 审查 + ASR-VOC 调研吸收）**：[`r3-asr-voc-holistic-review-2026-05.md`](../specs/r3-asr-voc-holistic-review-2026-05.md) · [`asr-vocabulary-bias-practices.md`](../../architecture/asr-vocabulary-bias-practices.md) · **§4.1.9**
+**主序（E 期）**：**EXP-WORD** ✅ → **REV-LOC** ✅ → **R4** ✅ → **R9** ✅ → **LLM-LOC-SPIKE** 🟡
 
-1. **并行专轮**：**① R3h-0 smoke（2–3d）** ‖ **⑤″e R3t-E 手测**（不挡 VOC-1）  
-2. **⑤″f-A**：**VOC-5** ✅ · **VOC-1** ✅ · **F2** 合入分支手测 ⏳  
-3. **⑤″f-B**：**F1** + **MEM-P0 手测**（F6/F6+、VOC-2c/d、GUARD ✅ 2026-06-02；见 §4.1.9 表）  
-4. **⑤″f-B½**：**MEM-P1**（含中文纳入记忆矩阵巩固）  
-5. **⑤″f-C**：**F7 词表包** + 可选 F0-lite ‖ **MEM-P2**  
-6. **⑤″f-D**：**VOC-3**（在线 E2E ≥1 家）  
-7. **⑤″f-E**：**Qwen3 Go/No-go**（**EXP-WORD 前必过**）  
-8. **§8.1 候选**（不挡 ⑤″f）：**ACC-HOT-W**、FunASR 2pass
+**Spike 阻塞项（本机）**：`ollama pull qwen2.5:7b`（S1）；`DEEPSEEK_API_KEY` 云端基线；Gate-A 表待填。eval **30** 段 ✅。
 
-**墙钟**：⑤″f **4–6w**；R3 宏观 **12–15w**（含 R3h-0 / ⑤″f-E 缓冲）。
-
-**同轮或紧邻闭合**：**③ R3f**（**须在 R3h-0 后**）、**R3h §11**；`main` 上 `npm run test` **631/631 ✅**（合并功能分支前在目标分支复验）。
-
-**主序（⑤″f-E 之后）**：**EXP-WORD** → **REV-LOC**（规格已定，编码后置）→ **R4** → **R9**
+**并行（不挡 Spike）**：R3h-0 smoke、TRN-DIAG、ASR-WARM、R3h-2 · 对外分发可选：公证 · 干净账户 R9 §5 · R5 MCP
 
 ---
 
@@ -1107,6 +1092,8 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | 2026-05-30 | **外部评估吸收**：R3 **~10～13w**；Sherpa **轻量模式**（ADR-0003 附录）；Qwen3 **伪流式** / SenseVoice **弃用** 风险入 backlog + spike §8；FireRedASR2 / Moonshine **雷达项** |
 | 2026-06-02 | **路线图审查吸收**：R3 **12～15w**；⑤″f **4–6w** + MEM 子阶段；**R3h-0∥⑤″f-A**；**⑤″f-E Qwen3 门控**；**Q-ASR-1** SenseVoice 兼容定位；MEM plan/acceptance 入主仓 |
 | 2026-06-02 | **ASR 热词业内调研入路线图**：**Q-ACC-8**（错形不进 hotwords）；**§4.1.9** 改进清单（VOC-1 手测、VOC-5、2c/d、F6+、VOC-GUARD）；**⑤″f-1** 🟡 编码✅；§10/学习环/§11 链 `asr-vocabulary-bias-practices` |
+| 2026-06-03 | **⑤‴½ REV-LOC ✅**：切片 A/B 验收签收；**Q-REV-1** 闭环；§10 **下一主序 → R4 + R4-GATE** |
+| 2026-06-03 | **v1 0.1.0 + R9** ✅；§10 **下一主序 → LLM-LOC-SPIKE**（research/plan/acceptance + preflight；Gate 前无 4a） |
 
 ---
 

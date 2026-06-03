@@ -25,9 +25,9 @@
 | **P0** | 定稿 Word/文本与编辑一致 | P3 ✅、**EXP-WORD** | 部分 ✅ |
 | **P1** | 同项目多次转写不明显冷启动 | **ASR-WARM**（R3h-I4） | 📋 |
 | **P1** | 转写失败可理解、可重试 | R3e 分类 + **TRN-DIAG** | 部分 / 📋 |
-| **P1** | 发版质量可回归 | **R4** + **R4-GATE**（R9 硬门禁） | 📋 |
+| **P1** | 发版质量可回归 | **R4** + **R4-GATE**（R9 硬门禁） | ✅ 2026-06-03 |
 | **P1** | 架构硬化（FSM / 发布 / Setup） | **R3h-I1～I3** | 📋 |
-| **P2** | 单机修订可追溯 / 恢复 | **REV-LOC**（轻量，非 R8） | 📋 规格✅ · 编码后置 |
+| **P2** | 单机修订可追溯 / 恢复 | **REV-LOC**（轻量，非 R8） | ✅ 2026-06-03 |
 | **P2** | 外部 Agent 只读读稿 | R5 MCP | 📋 可后置 |
 | **v1 后** | 本机 LLM 校对 | **LLM-LOC** Spike→Gate | 📋 规划；**待 Gate** |
 | **—** | 词级时间轨、说话人分离、AAF/EDL、实时 mic | — | **v1 不做**（另立项或远期） |
@@ -75,7 +75,7 @@
 
 **验收真源**：[`rev-loc-undo-edit-history-acceptance.md`](./rev-loc-undo-edit-history-acceptance.md)（调研 [`rev-loc-undo-edit-history-research.md`](./rev-loc-undo-edit-history-research.md)）
 
-**v1 默认**：**P2 可选**；**2026-05-31** 规格三件套已定，**编码后置**（见路线图 **Q-REV-1**，不挡 R9）。
+**v1 默认**：**P1 已交付**；**2026-06-03** 切片 A/B 验收签收（[acceptance](./rev-loc-undo-edit-history-acceptance.md)）。
 
 ### 3.4 R4-GATE — 个人发版质量门禁
 
@@ -96,8 +96,8 @@
     → … → R3h-2
     → ASR-WARM（0.5～1w，R3h-I4）
     → … → R3t-E → EXP-WORD
-    → REV-LOC（0.5～1w；规格✅ · 编码后置，见 Q-REV-1）
-    → R4（含 R4-GATE）
+    → REV-LOC ✅ 2026-06-03
+    → R4（含 R4-GATE）  ← 下一主序
     → R9（个人单机主路径，不含 R6–R8）
 ```
 
@@ -107,12 +107,14 @@
 
 ## 5. R9 个人单机主路径手测（摘要）
 
+**验收真源（展开 + 勾选）**：[`r9-rel-1-personal-v1-acceptance.md`](./r9-rel-1-personal-v1-acceptance.md)
+
 1. 应用内完成本机 ASR 安装与 smoke（无必需 shell）。  
 2. 13min 与 30～60min 音频：多段转写、warnings 可理解。  
 3. 术语 + 保存一句 → 再转写可见 hints。  
 4. （可选）R3t 校对 → 预览确认写回。  
 5. 编辑 → **EXP-WORD** 导出 → Word 打开版式正确 → 重启后 SQLite 一致。  
-6. R4-GATE eval 已跑且质量 Tab 有摘要。
+6. R4-GATE eval 已跑且质量 Tab 有摘要。 ✅ 2026-06-03
 
 ---
 

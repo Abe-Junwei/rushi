@@ -1,6 +1,6 @@
 # Plan: REV-LOC — 撤销栈对齐 + 编辑历史恢复 MVP
 
-> **状态**：📋 规格已定 · **编码后置**（路线图 **Q-REV-1**）  
+> **状态**：✅ **已实施签收**（2026-06-03；路线图 **Q-REV-1** 闭环）  
 > **调研**：[rev-loc-undo-edit-history-research.md](./rev-loc-undo-edit-history-research.md)  
 > **验收**：[rev-loc-undo-edit-history-acceptance.md](./rev-loc-undo-edit-history-acceptance.md)  
 > **路线图**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) §4.1.1 **⑤‴½**
