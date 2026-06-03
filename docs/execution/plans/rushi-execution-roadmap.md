@@ -347,7 +347,7 @@ R4 + R4-GATE → R9
 | **⑤″f-E** | **Qwen3 SKU 门控** | 📋 | 2–4d | 第三 SKU Go/No-go；**⑤″f-D 后、EXP-WORD 前** | [`r3g-b-qwen3-asr-sku-spike-research.md`](../specs/r3g-b-qwen3-asr-sku-spike-research.md) |
 | **⑤″f-1** | **ASR-VOC-1** | ✅ **2026-06-02** | 1–2d | 转写前 preview + 覆盖确认框 + toast；契约+UI 手测签收 | [`asr-voc-1-hand-test-checklist.md`](../specs/asr-voc-1-hand-test-checklist.md) |
 | **⑤″f-2** | **ASR-VOC-2** | 🟡 部分 | **7–10d** | **2a/2a+** ✅ · **2c/d** ✅ · **GUARD** ✅ · **2b** F7 ✅ 手测 | Plan §3 · **§4.1.9** |
-| **⑤″f-3** | **ASR-VOC-3** | 📋 | 2–4d | 在线三家排序/截断；**⑤″f-D**；签收前 ACC 在线 E2E ≥1 家 | 同上 §4；holistic H3 |
+| **⑤″f-3** | **ASR-VOC-3** | ✅ 机器 **2026-06-02** / E2E ⏳ | 2–4d | 在线三家排序/截断；ACC 在线 E2E ≥1 家待 Key | [signoff](../specs/asr-voc-3-signoff-2026-06.md) |
 | **⑤″f-5** | **ASR-VOC-5 = ACC-EVAL-1** | ✅ | 1–2d | `eval-run` hotwords on/off A/B + CSV；制控 `term_hit` baseline | [`asr-voc-5-hand-test-checklist.md`](../specs/asr-voc-5-hand-test-checklist.md) |
 | **⑤″f-4** | **ASR-VOC-4** | ⏸ 暂缓 | — | 仅 `after_text` 直连 hotwords（≤20 词）；**默认 No**（**Q-ACC-8**；走 F6→glossary） | Plan §6 |
 | **⑤″f-2+** | **F6+ 纳入记忆→术语表** | ✅ | 0.5–1d | 右键纳入 + 可选 `glossary_add`；第 3 次纳入后 F6 提示 | hand-test 2026-06-02 |
