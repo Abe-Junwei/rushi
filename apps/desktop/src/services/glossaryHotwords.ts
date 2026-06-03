@@ -56,9 +56,12 @@ export function parseGlossaryHotwordsPreview(raw: unknown): GlossaryHotwordsPrev
   };
 }
 
-/** User-facing summary for the glossary page (HOT-UX). */
+/** User-facing summary for the glossary page (HOT-UX / ASR-VOC-2d). */
 export function formatGlossaryHotwordsTranscribeSummary(p: GlossaryHotwordsPreview | null): string {
   if (!p || p.termCount === 0) {
+    if (p && p.enabledEntryCount === 0) {
+      return "当前无词条纳入热词（0 个 token）；请在下方勾选「纳入下次转写（热词）」或新建词条。";
+    }
     return "当前无热词 token 纳入转写；本机 ASR 拉取语段时不会附带 hotwords。";
   }
   const base = `下次「从 ASR 拉取语段」将提交 ${p.includedTermCount} 个热词 token（${p.enabledEntryCount} 条已纳入词条），约 ${p.submittedCharCount.toLocaleString()} 字符（上限 ${p.maxChars.toLocaleString()}）。`;

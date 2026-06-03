@@ -42,6 +42,22 @@ describe("glossaryHotwords", () => {
     expect(formatGlossaryHotwordsTranscribeSummary(null)).toContain("无热词 token");
   });
 
+  it("formats glossary with entries but none enabled for hotwords", () => {
+    const text = formatGlossaryHotwordsTranscribeSummary({
+      enabledEntryCount: 0,
+      termCount: 0,
+      includedTermCount: 0,
+      droppedTermCount: 0,
+      joinedCharCount: 0,
+      submittedCharCount: 0,
+      maxChars: 12000,
+      truncated: false,
+      preview: "",
+    });
+    expect(text).toContain("0 个 token");
+    expect(text).toContain("纳入下次转写");
+  });
+
   it("formats truncated summary with token wording", () => {
     const text = formatGlossaryHotwordsTranscribeSummary({
       enabledEntryCount: 10,

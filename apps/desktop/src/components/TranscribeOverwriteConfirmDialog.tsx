@@ -11,6 +11,8 @@ type Props = {
   busy: boolean;
   segmentCount: number;
   vocabularyLines: string[];
+  showOpenGlossaryLink?: boolean;
+  onOpenGlossary?: () => void;
   onCancel: () => void;
   onConfirm: () => void;
 };
@@ -20,6 +22,8 @@ export function TranscribeOverwriteConfirmDialog({
   busy,
   segmentCount,
   vocabularyLines,
+  showOpenGlossaryLink = false,
+  onOpenGlossary,
   onCancel,
   onConfirm,
 }: Props) {
@@ -57,6 +61,16 @@ export function TranscribeOverwriteConfirmDialog({
                   <li key={line}>{line}</li>
                 ))}
               </ul>
+              {showOpenGlossaryLink && onOpenGlossary ? (
+                <button
+                  type="button"
+                  className="mt-2 text-xs font-medium text-zen-saffron underline-offset-2 hover:underline disabled:opacity-40"
+                  disabled={busy}
+                  onClick={onOpenGlossary}
+                >
+                  前往热词与记忆…
+                </button>
+              ) : null}
             </div>
           ) : null}
           <div className="mt-3 flex justify-end gap-2">

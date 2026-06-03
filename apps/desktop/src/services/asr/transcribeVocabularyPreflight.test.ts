@@ -115,6 +115,6 @@ describe("transcribeVocabularyPreflight", () => {
       isOnlineMode: false,
       onlineProviderId: null,
     });
-    expect(s.emptyGlossaryHint).toContain("词汇表为空");
+    expect(s.emptyGlossaryHint).toContain("暂无纳入热词");
   });
 });

@@ -38,8 +38,10 @@ export type TranscribeVocabularyPreflightSummary = {
 const SENSEVOICE_WEAK_HOTWORD_NOTE =
   "当前为 SenseVoice 轻量 SKU：热词参数会提交，但专名提升通常弱于 Paraformer 长音频；重要专名建议换模型或转写后改稿。";
 
-const EMPTY_GLOSSARY_HINT =
-  "转写词汇表为空，专名可能听错；可在「热词与记忆」添加希望听成的词条（纳入热词）。";
+export const EMPTY_GLOSSARY_TRANSCRIBE_HINT =
+  "转写词汇表暂无纳入热词的词条，专名可能听错；请添加希望听成的正形并勾选「纳入下次转写（热词）」。";
+
+const EMPTY_GLOSSARY_HINT = EMPTY_GLOSSARY_TRANSCRIBE_HINT;
 
 export function readLocalAsrHubModelIdFromStorage(): string {
   return resolveLocalAsrHubModelId(readStorage(LOCAL_ASR_HUB_MODEL_STORAGE_KEY));

@@ -66,7 +66,9 @@ export function GlossaryTermTable({
                 className="h-4 w-4 rounded border-notion-border text-zen-saffron focus:ring-zen-saffron/30"
               />
             </th>
-            <th className="w-14 px-2 py-2 font-semibold">热词</th>
+            <th className="w-14 px-2 py-2 font-semibold" title="纳入下次转写（热词）">
+              热词
+            </th>
             <th className="px-3 py-2 font-semibold">主术语</th>
             <th className="px-3 py-2 font-semibold">别名</th>
             <th className="px-3 py-2 font-semibold">领域</th>
@@ -111,7 +113,7 @@ export function GlossaryTermTable({
                     disabled={disabled}
                     onClick={() => void onToggleRowHotword(row)}
                     aria-label={hotwordOn ? `${row.term} 已纳入热词，点击移出` : `${row.term} 未纳入热词，点击纳入`}
-                    title={hotwordOn ? "已纳入热词" : "未纳入热词"}
+                    title={hotwordOn ? "已纳入下次转写（热词）" : "未纳入下次转写（热词）"}
                   >
                     <Flame className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
                   </button>

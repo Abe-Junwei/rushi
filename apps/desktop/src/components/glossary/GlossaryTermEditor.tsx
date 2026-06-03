@@ -66,15 +66,20 @@ export function GlossaryTermEditor({
           />
         </label>
 
-        <label className="flex cursor-pointer items-center gap-2 sm:col-span-2">
+        <label className="flex cursor-pointer gap-2 sm:col-span-2">
           <input
             type="checkbox"
             checked={draft.hotwordEnabled}
             onChange={(e) => onChange("hotwordEnabled", e.target.checked)}
             disabled={disabled}
-            className="h-4 w-4 rounded border-notion-border text-zen-saffron focus:ring-zen-saffron/30"
+            className="mt-0.5 h-4 w-4 shrink-0 rounded border-notion-border text-zen-saffron focus:ring-zen-saffron/30"
           />
-          <span className={PANEL_TYPOGRAPHY.fieldLabel}>纳入 ASR 热词（主术语与别名）</span>
+          <span className="flex flex-col gap-0.5">
+            <span className={PANEL_TYPOGRAPHY.fieldLabel}>纳入下次转写（热词）</span>
+            <span className="text-xs text-notion-text-muted">
+              勾选后主术语与别名会进入下次 ASR 拉取的热词串；纠错记忆中的错形不会进入热词。
+            </span>
+          </span>
         </label>
 
         <label className="flex flex-col gap-1 sm:col-span-2">
@@ -84,7 +89,7 @@ export function GlossaryTermEditor({
             value={draft.aliases}
             onChange={(e) => onChange("aliases", e.target.value)}
             disabled={disabled}
-            placeholder="逗号、顿号、分号或换行分隔；空格不作为分隔符"
+            placeholder="可填异体字或英文；勿填常听错的错形（如智控）"
             className={`min-h-[36px] rounded-lg border border-notion-border bg-notion-bg px-3 py-2 outline-none transition-colors focus:border-zen-saffron focus:ring-2 focus:ring-zen-saffron/30 disabled:opacity-50 ${PANEL_CONTROL_TYPOGRAPHY.compactInput}`}
           />
         </label>
