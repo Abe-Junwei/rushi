@@ -1,6 +1,6 @@
 # Acceptance: LLM-LOC-SPIKE
 
-> **状态**：🟡 进行中（2026-06-03）  
+> **状态**：🟡 待 G-A1 人工抽检（2026-06-03 跑批完成）  
 > **Research**：[llm-loc-spike-research.md](./llm-loc-spike-research.md)
 
 ---
@@ -8,10 +8,11 @@
 ## 交付物
 
 - [x] `fixtures/llm-loc-eval/` 子集就绪（**30** 段）— `bash scripts/llm-loc-spike-export-eval.sh`
-- [ ] `bash scripts/llm-loc-spike-preflight.sh` 通过（Ollama serve + `qwen2.5:7b`）
-- [ ] `results/` 基线 + Ollama 对比 JSON（计划步骤 3–4）
-- [ ] Gate-A 表（G-A1～G-A6）已填 — 见 backlog §9.1
-- [ ] **书面结论**（Go 4a / No-Go / defer）写入 `llm-loc-spike-results-YYYY-MM.md`
+- [x] `bash scripts/llm-loc-spike-preflight.sh` 通过（Ollama + `qwen2.5:7b`）
+- [x] `results/` 基线 + Ollama JSON — 见 `docs/execution/spike-output/`
+- [x] 自动对比 — `llm-loc-compare-2026-06-03.json`
+- [x] **书面结论** — [llm-loc-spike-results-2026-06.md](./llm-loc-spike-results-2026-06.md)（有条件 Go 4a）
+- [ ] Gate-A 终判 — G-A1 人工 20 段；G-A2/3/5 另薄片
 
 ---
 
@@ -19,11 +20,11 @@
 
 | ID | 阈值 | 实测 | 通过 |
 |----|------|------|------|
-| G-A1 | R3t-C ≥ 云端 95% | | ⏳ |
-| G-A2 | R3t-E evidence ≥90% | | ⏳ |
-| G-A3 | R3t-D JSON ≥85% | | ⏳ |
-| G-A4 | R3t-E P95 ≤45s | | ⏳ |
-| G-A5 | 16GB 同开不 OOM | | ⏳ |
-| G-A6 | 用户硬件分布 | 可选 | ⏳ |
+| G-A1 | R3t-C ≥ 云端 95% | 自动 sim≥0.85：**83.3%**；本地改字 7/30 | ⏳ 人工 |
+| G-A2 | R3t-E evidence ≥90% | 未测 | 跳过 |
+| G-A3 | R3t-D JSON ≥85% | 未测 | 跳过 |
+| G-A4 | P95 ≤45s（S1） | Ollama R3t-C P95 **916 ms** | ✅ |
+| G-A5 | 16GB 同开不 OOM | 未测 | 跳过 |
+| G-A6 | 用户硬件分布 | — | 可选 |
 
 **Gate-A 通过** → 起草 `r3-llm-local-runtime-acceptance.md` 并立项 **LLM-LOC-4a**。

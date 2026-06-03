@@ -11,11 +11,11 @@ limit_args=()
 
 bash "${ROOT}/scripts/llm-loc-spike-preflight.sh" || true
 
-echo "== cloud baseline (needs DEEPSEEK_API_KEY) =="
-if [[ -n "${DEEPSEEK_API_KEY:-}" ]]; then
+echo "== cloud baseline (DEEPSEEK_API_KEY or App Data default.key) =="
+if [[ -n "${DEEPSEEK_API_KEY:-}" ]] || [[ -f "${RUSHI_LLM_KEY_FILE:-${HOME}/Library/Application Support/studio.lingchuang.rushi/studio.lingchuang.rushi/secrets/postprocess/default.key}" ]]; then
   "${PY[@]}" --provider cloud "${limit_args[@]}"
 else
-  echo "  SKIP: export DEEPSEEK_API_KEY" >&2
+  echo "  SKIP: no cloud API key" >&2
 fi
 
 echo "== Ollama S1 =="

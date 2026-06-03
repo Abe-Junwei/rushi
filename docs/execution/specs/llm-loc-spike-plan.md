@@ -20,7 +20,7 @@
 | 2 | 准备 eval 子集 | `fixtures/llm-loc-eval/eval_manifest.v1.json` ≥20 段 |
 | 3 | 云端基线（DeepSeek） | 同 prompt 跑 R3t-C/E → `results/baseline.json` |
 | 4 | Ollama S1 `qwen2.5:7b`（+ 可选 S2/S3） | `docs/execution/spike-output/llm-loc-ollama-*.json` via `bash scripts/llm-loc-spike-run.sh` |
-| 5 | 填 Gate-A 表 + G-A5 同机 RAM | spike 结论 MD |
+| 5 | 填 Gate-A 表 + G-A5 同机 RAM | [llm-loc-spike-results-2026-06.md](./llm-loc-spike-results-2026-06.md) · `llm-loc-spike-compare.py` |
 | 6 | 路线图 **Q-LLM-5** 书面结论 | Go 4a / No-Go / 仅 hidden loopback |
 
 ---

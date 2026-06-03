@@ -10,7 +10,7 @@
 | 适用节奏 | 单人、每轮 2～4h、一轮一纵向薄片 |
 | 规划跨度 | **个人单机 v1**：约 **14～18 周（自当前）** 或 **18～22 周（自 W1）**；R3 薄片 **~12～15w**（§4.0，含发行 smoke 缓冲）；协作 **非 v1** |
 | 修订 | 每完成一个阶段更新 §2 状态表、§4 排期表与 §13 代码对照 |
-| 最近对照 | **2026-06-03**：**v1 0.1.0** ✅ · **R9** ✅ → **下一主序：LLM-LOC-SPIKE**；**REV-LOC** ✅ · **EXP-WORD** ✅ |
+| 最近对照 | **2026-06-03**：**v1 0.1.0** ✅ · **R9** ✅ → **下一主序：LLM-LOC-SPIKE**；**Q-CSP/STT-CANCEL/PLUGIN → v1.1**；**Q-SIDECAR-1 Mac L1+C2** |
 
 ### 状态标记约定（全文档统一）
 
@@ -100,6 +100,18 @@
 #### R2 与 R3t-C 关系
 
 - **R2 `auto_punctuate` ✅** 保留；**R3t-C** 为其超集（可选邻段上下文），**不废弃** R2 命令与 UI。
+
+#### 工程、安全与发行（2026-06 拍板）
+
+> 审查后续项；**v1 已分发 DMG（Mac）** 与下列 **v1.1 / 发行策略** 并存。
+
+| ID | 决定 | 落点 / 备注 |
+|----|------|-------------|
+| **Q-CSP-1** | **v1.1 硬化 CSP**（方案 B）：nonce/hash + Vite/Tauri 构建对齐；**去掉 `unsafe-inline`**（含 `script-src`）；引入富文本/HTML 渲染前必须完成 | `tauri.conf.json`；预估 2–5d + 三端 smoke |
+| **Q-SYMPH-1** | **symphonia 不裁剪**（方案 A）：保留 `aac, flac, isomp4, mp3, pcm, vorbis, wav`；波形/peaks 优先 symphonia，失败走 FFmpeg remux | `apps/desktop/src-tauri/Cargo.toml` |
+| **Q-STT-CANCEL-1** | **v1.1 在线 STT 真取消**（方案 B）：`project_run_transcribe` 各 native/HTTP 路径可 `Abort`；统一取消 command；**v1 维持**前端丢弃结果（`online-stt-*` job id） | `run_transcribe_cmd.rs`、`transcribe_native_*`；工作量大，按 adapter 分批 |
+| **Q-PLUGIN-1** | **Plugin 权限强制 v1.1**（方案 A）：v1 仅 **内置白名单** + `loadBuiltinPlugins()`；`permissions` 字段暂 warn-only | `plugin-system/` |
+| **Q-SIDECAR-1** | **L1 + C2，Mac 单机自用**：**仅 Linux 发行物内置** bundled FunASR sidecar；**macOS/Windows** 文档 + 本地 `python -m rushi_asr` / `desktop:dev`；**不**在 PR/Release CI 自动编 macOS/Windows sidecar 产物（C2 手动） | Release 桌面包以 **Mac DMG** 为主；与 [`asr-sidecar-build-nightly.yml`](../../.github/workflows/asr-sidecar-build-nightly.yml) 手动 workflow 一致 |
 
 ### 1.8 个人单机 v1 — 能力补齐索引（对齐工业「可用单机」）
 
@@ -247,7 +259,7 @@ R0 → GLY-1 → R1–R2 → R3 → R4 → [R5] → [R6–R8] → R9
 | **C 发行成熟** | 弱网/回滚/三盏灯/可选 Spike | ⑦ R3h-2、⑦½ ASR-WARM、⑧ R3h-3、⑧½ R3h-3.5 |
 | **D 可选 LLM** | 云端校对可插拔 + 交付 | ⑤″ R3t-C/D/E |
 | **E 交付与质量** | Word + eval + 发版 | ⑤‴ EXP-WORD ✅、⑤‴½ REV-LOC ✅、**R4** ✅、**R9** ✅ |
-| **F v1 后 LLM** | Spike → Gate → 4a/4b | **LLM-LOC-SPIKE** 🟡（§10） |
+| **F v1 后 LLM** | Spike → 4a → 4b | **LLM-LOC-4a** ✅ · 4b Gate-B 前不做 |
 
 #### 4.1.1 实施顺序（严格串行，勿跳步）
 
@@ -949,6 +961,11 @@ React 预览 UI
 | **Q-R9-1** | ✅ **Mid 档位**：R9 硬门禁 **R3t-B + R3t-C**；**R3t-D/E 可减 scope**（不挡 R9）；无 LLM 仍可手改交付 |
 | **Q-FUT-1** | ✅ **§9 分叉 B 否**（协作不提前）；**R3h-3.5 Sherpa Spike Go**；**ACC-MODEL-1/HOT-W 产品 Go**（ACC-EVAL-1 后插入主序）；**LLM-LOC** 仍 R9 后 Spike→Gate |
 | **Q-SEQ-3** | ✅ **§4.1.1 主序不变**（2026-05-30）：**R3g-C → ACC-STT-UNIFY → R3t-B → …**；不因 Mid/REV-LOC 重排薄片 |
+| **Q-CSP-1** | **v1.1** CSP 硬化（去 `unsafe-inline`）；v1 维持现状 + 禁止 HTML 注入 UI |
+| **Q-SYMPH-1** | symphonia **全 feature 保留**；不裁 codec |
+| **Q-STT-CANCEL-1** | **v1.1** 在线 STT 可中断；v1 仅丢弃结果 |
+| **Q-PLUGIN-1** | Plugin **v1.1** 再做 `register()` 权限校验；v1 内置-only |
+| **Q-SIDECAR-1** | **L1 + C2**：Linux 内置 sidecar；Mac 自用 + sidecar **手动**构建；CI 不编 mac/win sidecar |
 
 ---
 
@@ -977,7 +994,7 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | 项 | 内容 |
 |----|------|
 | **定位** | **v1 已闭合** → **v1 后本机 LLM**（§1.6、§6） |
-| **阶段** | **LLM-LOC-SPIKE** 🟡 进行中（**Gate 前不写 4a/4b**，Q-LLM-5） |
+| **阶段** | **LLM-LOC-4a** ✅ · **4b** 待 Gate-B |
 | **刚闭合** | [v1-release-installed-signoff](../v1-release-installed-signoff-2026-06.md) · R9 · R4 |
 | **Spike 真源** | [research](../specs/llm-loc-spike-research.md) · [plan](../specs/llm-loc-spike-plan.md) · [acceptance](../specs/llm-loc-spike-acceptance.md) · [backlog §9](../specs/llm-local-runtime-backlog.md) |
 | **预检** | `bash scripts/llm-loc-spike-preflight.sh` |
@@ -987,12 +1004,12 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 
 ### v1 0.1.0 已可分发（2026-06-03）
 
-- **DMG**：`apps/desktop/src-tauri/target/release/bundle/dmg/如是我闻_0.1.0_aarch64.dmg`  
-- **签收**：[v1-release-installed-signoff](../v1-release-installed-signoff-2026-06.md)  
+- **DMG**：`apps/desktop/src-tauri/target/release/bundle/dmg/如是我闻_0.1.0_aarch64.dmg`（**Mac 单机自用**；侧车见 **Q-SIDECAR-1**：本机 FunASR 需自启 `rushi-asr` 或 `npm run desktop:dev` 拉起，**非** Linux 式内置 onedir）
+- **签收**：[v1-release-installed-signoff](../v1-release-installed-signoff-2026-06.md)
 
 **主序（E 期）**：**EXP-WORD** ✅ → **REV-LOC** ✅ → **R4** ✅ → **R9** ✅ → **LLM-LOC-SPIKE** 🟡
 
-**Spike 阻塞项（本机）**：`ollama pull qwen2.5:7b`（S1）；`DEEPSEEK_API_KEY` 云端基线；Gate-A 表待填。eval **30** 段 ✅。
+**LLM**：Spike ✅ · **4a Ollama** ✅（[acceptance](../specs/llm-loc-4a-acceptance.md)）；G-A1 人工可选；**4b 未立项**。
 
 **并行（不挡 Spike）**：R3h-0 smoke、TRN-DIAG、ASR-WARM、R3h-2 · 对外分发可选：公证 · 干净账户 R9 §5 · R5 MCP
 
@@ -1094,6 +1111,7 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | 2026-06-02 | **ASR 热词业内调研入路线图**：**Q-ACC-8**（错形不进 hotwords）；**§4.1.9** 改进清单（VOC-1 手测、VOC-5、2c/d、F6+、VOC-GUARD）；**⑤″f-1** 🟡 编码✅；§10/学习环/§11 链 `asr-vocabulary-bias-practices` |
 | 2026-06-03 | **⑤‴½ REV-LOC ✅**：切片 A/B 验收签收；**Q-REV-1** 闭环；§10 **下一主序 → R4 + R4-GATE** |
 | 2026-06-03 | **v1 0.1.0 + R9** ✅；§10 **下一主序 → LLM-LOC-SPIKE**（research/plan/acceptance + preflight；Gate 前无 4a） |
+| 2026-06-03 | **工程拍板**：**Q-CSP-1** v1.1 硬化；**Q-SYMPH-1** 不裁 symphonia；**Q-STT-CANCEL-1** v1.1 真取消；**Q-PLUGIN-1** v1.1 权限；**Q-SIDECAR-1** L1+C2 Mac 自用 |
 
 ---
 

@@ -3,18 +3,34 @@
 from __future__ import annotations
 
 import argparse
+import http.client
 import json
 import os
 import sys
 import time
-import urllib.error
-import urllib.request
 from datetime import datetime, timezone
 from pathlib import Path
+from urllib.parse import urlparse
 
 ROOT = Path(__file__).resolve().parents[1]
 MANIFEST = ROOT / "fixtures/llm-loc-eval/eval_manifest.v1.json"
 OUT_DIR = ROOT / "docs/execution/spike-output"
+DEFAULT_APP_DATA = Path.home() / (
+    "Library/Application Support/studio.lingchuang.rushi/studio.lingchuang.rushi"
+)
+DEFAULT_KEY_FILE = DEFAULT_APP_DATA / "secrets/postprocess/default.key"
+
+
+def resolve_cloud_api_key() -> str | None:
+    key = os.environ.get("DEEPSEEK_API_KEY", "").strip()
+    if key:
+        return key
+    key_file = Path(
+        os.environ.get("RUSHI_LLM_KEY_FILE", str(DEFAULT_KEY_FILE))
+    )
+    if key_file.is_file():
+        return key_file.read_text(encoding="utf-8").strip() or None
+    return None
 
 SYSTEM = (
     "你是中文转写后处理助手。只给当前语段补充自然、克制的中文标点，"
@@ -52,18 +68,28 @@ def chat_completion(
         ],
     }
     data = json.dumps(body).encode("utf-8")
-    req = urllib.request.Request(
-        endpoint.rstrip("/") + "/chat/completions",
-        data=data,
-        headers={
-            "Content-Type": "application/json",
-            **({"Authorization": f"Bearer {api_key}"} if api_key else {}),
-        },
-        method="POST",
-    )
+    url = endpoint.rstrip("/") + "/chat/completions"
+    parsed = urlparse(url if "://" in url else f"http://{url}")
+    path = parsed.path or "/v1/chat/completions"
+    host = parsed.hostname or "127.0.0.1"
+    port = parsed.port or (443 if parsed.scheme == "https" else 80)
+    headers = {"Content-Type": "application/json", "Connection": "close"}
+    if api_key:
+        headers["Authorization"] = f"Bearer {api_key}"
     t0 = time.perf_counter()
-    with urllib.request.urlopen(req, timeout=timeout_s) as resp:
-        payload = json.loads(resp.read().decode("utf-8"))
+    if parsed.scheme == "https":
+        conn = http.client.HTTPSConnection(host, port, timeout=timeout_s)
+    else:
+        conn = http.client.HTTPConnection(host, port, timeout=timeout_s)
+    try:
+        conn.request("POST", path, body=data, headers=headers)
+        resp = conn.getresponse()
+        raw = resp.read().decode("utf-8")
+        if resp.status >= 400:
+            raise RuntimeError(f"HTTP {resp.status}: {raw[:200]}")
+        payload = json.loads(raw)
+    finally:
+        conn.close()
     latency_ms = int((time.perf_counter() - t0) * 1000)
     choices = payload.get("choices") or []
     if not choices:
@@ -120,8 +146,8 @@ def run_provider(
             row["output"] = out
             row["latency_ms"] = ms
             latencies.append(ms)
-        except (urllib.error.URLError, RuntimeError, TimeoutError) as e:
-            row["error"] = str(e)
+        except Exception as e:
+            row["error"] = f"{type(e).__name__}: {e}"
             errors += 1
         results.append(row)
     latencies.sort()
@@ -160,9 +186,12 @@ def main() -> int:
         return 1
 
     if args.provider == "cloud":
-        api_key = os.environ.get("DEEPSEEK_API_KEY", "").strip()
+        api_key = resolve_cloud_api_key()
         if not api_key:
-            print("Set DEEPSEEK_API_KEY for cloud baseline", file=sys.stderr)
+            print(
+                "Set DEEPSEEK_API_KEY or store key in App Data secrets/postprocess/default.key",
+                file=sys.stderr,
+            )
             return 1
         endpoint = os.environ.get(
             "DEEPSEEK_BASE_URL", "https://api.deepseek.com/v1"

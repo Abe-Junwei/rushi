@@ -40,9 +40,11 @@ ollama pull qwen2.5:7b
 | eval 导出脚本 | ✅ `scripts/llm-loc-spike-export-eval.sh` |
 | eval items ≥20 | ✅ **30** 段（`eval_manifest.v1.json`） |
 | Spike run 脚本 | ✅ `llm-loc-spike-run.py` / `llm-loc-spike-run.sh` |
-| Ollama serve | ✅ `ollama serve`；**S1 模型** `ollama pull qwen2.5:7b` ⏳ |
-| baseline / ollama results | ⏳ 需 `DEEPSEEK_API_KEY`；Ollama 首次推理可能需 `ollama run qwen2.5:7b` 预热 |
-| Gate-A 表 | ⏳ |
+| Ollama serve + S1 | ✅ `qwen2.5:7b` |
+| Ollama R3t-C eval (30 段) | ✅ `spike-output/llm-loc-ollama-qwen2.5-7b-2026-06-03.json`（errors=0，P95 **916ms**） |
+| 云端 baseline | ✅ DeepSeek 30 段（P95 1183 ms） |
+| 对比 + 结论 | ✅ [llm-loc-spike-results-2026-06.md](./llm-loc-spike-results-2026-06.md) |
+| Gate-A 终判 | ⏳ G-A1 人工 20 段 |
 | Gate-A 表 | ⏳ |
 
 ## 并行（不挡 Spike）
