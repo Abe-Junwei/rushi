@@ -27,16 +27,21 @@ bash scripts/asr-voc-3-hand-test.sh
 | `cargo test glossary_hotwords` | ✅ |
 | `sttVocabularyBias.test.ts` / `asrTranscribeHints.test.ts` | ✅ |
 
-## 在线 E2E 闸门
+## 手测（2026-06-02）
 
-> Holistic D8：**VOC-3 签收前** ACC 在线手测 ≥1 家（OpenAI / AssemblyAI / Deepgram）。  
-> 无 API Key 时：机器契约已绿；**§3 手测待有 Key 后勾选**（不挡本机 FunASR / 其它 VOC 包）。
+| 范围 | 结论 | 备注 |
+|------|------|------|
+| §1 环境页映射文案 | ✅ | 三家上限 / keyterms 说明已核对 |
+| §2–§3 在线拉取 E2E | **豁免** | 团队无 OpenAI/AssemblyAI/Deepgram API Key；以机器单测 + hints 文案替代 |
 
-- [ ] [asr-voc-3-hand-test-checklist.md](./asr-voc-3-hand-test-checklist.md) §1–§3
+> 与 [acc-stt-unify-hand-test-checklist.md](./acc-stt-unify-hand-test-checklist.md)「在线 ⏳」一致；有 Key 后可补跑 §2–§3 作回归，**不阻塞** ⑤″f-E / EXP-WORD。
+
+- [x] [asr-voc-3-hand-test-checklist.md](./asr-voc-3-hand-test-checklist.md)
 
 ## 签收
 
 | 日期 | 范围 | 结论 |
 |------|------|------|
 | 2026-06-02 | 编码 + 机器回归 | ✅ |
-| | 在线 E2E §1–§3 | 待 Key / 手测 |
+| 2026-06-02 | 文案手测 §1 | ✅ |
+| 2026-06-02 | 在线 E2E §2–§3 | 豁免（无 Key）· **VOC-3 薄片闭环** |

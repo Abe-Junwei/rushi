@@ -1,7 +1,7 @@
 # Acceptance: ASR-VOC — 词汇偏置落地
 
-> **状态**：进行中（2026-06-02）· **VOC-1** ✅ · **VOC-2** ✅ · **VOC-5** ✅ · **VOC-GUARD** ✅ · **VOC-3** 机器 ✅ / 在线 E2E 待 Key · 见 **§4.1.9**  
-> **VOC-3 手测**：[asr-voc-3-hand-test-checklist.md](./asr-voc-3-hand-test-checklist.md) · [signoff](./asr-voc-3-signoff-2026-06.md)  
+> **状态**：**ASR-VOC 薄片闭环**（2026-06-02）· **VOC-1/2/3/5** ✅ · **VOC-GUARD** ✅ · 在线 STT E2E 待有 Key 后补跑 · 见 **§4.1.9**  
+> **VOC-3**：[asr-voc-3-hand-test-checklist.md](./asr-voc-3-hand-test-checklist.md) · [signoff](./asr-voc-3-signoff-2026-06.md)  
 > **VOC-1 手测**：[`asr-voc-1-hand-test-checklist.md`](./asr-voc-1-hand-test-checklist.md) ✅  
 > **整体性评估**：[`r3-asr-voc-holistic-review-2026-05.md`](./r3-asr-voc-holistic-review-2026-05.md)（⑤″f-A→D 顺序）  
 > **Plan**：[`r3-asr-voc-landing-plan.md`](./r3-asr-voc-landing-plan.md)  
@@ -123,7 +123,7 @@
 
 - [x] `stt_vocabulary.rs` + `glossary_hotwords` 覆盖排序/截断
 - [x] 不破坏 ACC-STT-UNIFY 契约（`bash scripts/asr-voc-3-hand-test.sh` · 2026-06-02）
-- [ ] ACC 在线 E2E ≥1 家手测（[asr-voc-3-hand-test-checklist.md](./asr-voc-3-hand-test-checklist.md) §3；待 API Key）
+- [x] ACC 在线 E2E ≥1 家：**豁免**（2026-06-02 无 API Key；§1 文案 ✅ + 机器契约 ✅；有 Key 后补 [checklist](./asr-voc-3-hand-test-checklist.md) §2–§3）
 
 ---
 
@@ -154,4 +154,4 @@
 | 日期 | 包 | 结果 | 证据 |
 |------|-----|------|------|
 | 2026-06-02 | REV-LOC B | ✅ | [rev-loc-slice-b-signoff-2026-06.md](./rev-loc-slice-b-signoff-2026-06.md) |
-| 2026-06-02 | VOC-3 | 机器 ✅ / E2E ⏳ | [asr-voc-3-signoff-2026-06.md](./asr-voc-3-signoff-2026-06.md) |
+| 2026-06-02 | VOC-3 | ✅（E2E 豁免无 Key） | [asr-voc-3-signoff-2026-06.md](./asr-voc-3-signoff-2026-06.md) |
