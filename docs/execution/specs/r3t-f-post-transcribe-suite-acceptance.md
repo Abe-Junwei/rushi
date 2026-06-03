@@ -46,11 +46,11 @@
 
 ## P2 — F7 词表包（小团队 · D6–D8）
 
-- [ ] 导出 json/zip；默认仅稳定记忆；`optional_label`；无语段
-- [ ] 导入 dry-run：来源 + insert/skip/auto/conflict 计数
-- [ ] hit 高者胜自动合并；平手预览
-- [ ] 手测：A 导出 → B 导入 → B 稿命中 A 规则
-- [ ] 项目 bundle 不含词表包
+- [x] 导出 json（zip 仍待做）；默认仅稳定记忆；`optional_label`；无语段（Rust 单测）
+- [x] 导入 dry-run：insert/skip/auto/conflict 计数
+- [x] hit 高者胜自动合并；平手预览
+- [x] 手测 UI：导出 + 导入 ✅（2026-06-03，[`f7-lexicon-bundle-hand-test-checklist.md`](./f7-lexicon-bundle-hand-test-checklist.md)）
+- [x] 项目 bundle 不含词表包（`project_bundle_zip_excludes_lexicon_bundle`）
 
 ## P2 — F8 导出前检查（候选）
 

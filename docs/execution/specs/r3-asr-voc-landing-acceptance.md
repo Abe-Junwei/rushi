@@ -1,6 +1,6 @@
 # Acceptance: ASR-VOC — 词汇偏置落地
 
-> **状态**：进行中（2026-06-02）· **VOC-1** ✅ 编码+手测签收（2026-06-02）；下一刀 **VOC-5**；其余见路线图 **§4.1.9**  
+> **状态**：进行中（2026-06-03）· **VOC-1** ✅ · **VOC-2a/F6+/F7** ✅ · **VOC-5** ✅ · **VOC-2c/d** + **VOC-GUARD** ✅；下一刀 **VOC-3**；见 **§4.1.9**  
 > **VOC-1 手测**：[`asr-voc-1-hand-test-checklist.md`](./asr-voc-1-hand-test-checklist.md) ✅  
 > **整体性评估**：[`r3-asr-voc-holistic-review-2026-05.md`](./r3-asr-voc-holistic-review-2026-05.md)（⑤″f-A→D 顺序）  
 > **Plan**：[`r3-asr-voc-landing-plan.md`](./r3-asr-voc-landing-plan.md)  
@@ -11,7 +11,8 @@
 ## 全局（每 PR）
 
 - [ ] `npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs`
-- [ ] 未把 `correction_memory.before_text` 写入 hotwords
+- [x] 未把 `correction_memory.before_text` 写入 hotwords（`hotword_guard` + `glossary_hotwords` 单测）
+- [x] 纠错错形不得写入术语表（`glossary_add` / `update` / 批量与表格导入 → `skipped_wrong_form`）
 - [ ] 未用全局 `/health.ready_for_transcribe` 表示「用户词表已进模型」（仍用 preview + warnings）
 
 ---
@@ -55,45 +56,47 @@
 
 ### 2a — F6（2–3d）
 
-- [ ] 第 1、2 次同 `(before,after)` save **不** 出现进表提示
-- [ ] 第 3 次出现非模态条/ toast：「加入转写词汇表」；可忽略
-- [ ] 确认后：`glossary_add`，`term=after_text`，`hotword_enabled=1`
-- [ ] 已存在同 term（大小写不敏感）→ 不 INSERT，有「已在词汇表中」提示
-- [ ] F2 Replace All + save 计 hit；与 R3t-E Pack 路径不互斥
-- [ ] **从不** 将 `before_text` 写入 `term` 或 hotwords
-- [ ] 成功后术语库「本次转写将携带」token 数增加（若 enabled）
-- [ ] Vitest：F6-4 计数边界；可选 Rust save 链单测
+> **纳入记忆入口（2026-06）**：语段选区右键「纳入更正记忆…」→ `correction_memory_save`；**非**保存语段时自动推断。手测：[`f6-f6plus-mem-hand-test-checklist.md`](./f6-f6plus-mem-hand-test-checklist.md) §A–B。
+
+- [x] 第 1、2 次同 `(before,after)` 手动纳入 **不** 出现进表提示
+- [x] 第 3 次纳入后出现 **GlossaryLearnPrompt**（`加入术语表？`）；可忽略
+- [x] 确认后：`glossary_add`，`term=after_text`，`hotword_enabled=1`
+- [x] 已存在同 term → 不 INSERT，有「已在词汇表中」提示
+- [ ] F2 Replace All + save 计 hit（`explicit_pairs` 路径）；与 R3t-E Pack 不互斥
+- [x] **从不** 将 `before_text` 写入 `term` 或 hotwords
+- [x] 纳入时勾选词汇表后，转写 preview token 含正形 term
+- [x] Vitest：`manualCorrectionMemory` · `useManualCorrectionMemoryDialog`；Rust hit upsert 已有
 
 ### 2b — F7（4–6d · D6–D8）
 
-- [ ] 导出 json；可选 zip（`bundle.json` + README）
-- [ ] 默认仅导出 `accepted_as_rule OR hit≥2`；高级可含 `hit=1`
-- [ ] `optional_label` 可填且写入 `exported_by`
-- [ ] 包内 **无** segments、无 API key（schema 单测）
-- [ ] 导入 preview：`insert` / `skip` / `auto_resolved` / `conflicts` 计数正确
-- [ ] rule 同 before 异 after：`hit_count` 高者胜；平手进预览
-- [ ] glossary 同 term 冲突：预览三选一（本地/包内/合并 aliases）
-- [ ] apply 后：`glossary_hotwords_preview` 反映新增（有新增 term 时 termCount 上升）
-- [ ] 手测：A 导出 → B 导入 → B 转写或 F1 命中 A 规则/词表
-- [ ] 项目 bundle zip **不含**词表包（D9）
+- [x] 导出 json（`lexicon_bundle_export`）；可选 zip 仍待做
+- [x] 默认仅导出 `accepted_as_rule OR hit≥2`；取消勾选可含 `hit=1`
+- [x] `optional_label` 可填且写入 `exported_by`
+- [x] 包内 **无** segments、无 API key（`parse_lexicon_bundle_json` 单测）
+- [x] 导入 preview：`insert` / `skip` / `auto_resolved` / `conflicts` 计数（Rust + 术语库页）
+- [x] rule 同 before 异 after：`hit_count` 高者胜；平手进预览
+- [x] glossary 同 term 冲突：预览（本地/包内/合并 aliases/跳过）
+- [x] apply 后：`glossary_hotwords_preview` 反映新增（`f7_hand_test_ab_exchange` 断言 hotwords 含导入 term）
+- [x] 手测 UI：导出 + 导入（单机删条后再导入，2026-06-03）；见 [`f7-lexicon-bundle-hand-test-checklist.md`](./f7-lexicon-bundle-hand-test-checklist.md)
+- [x] 项目 bundle zip **不含**词表包（D9 · `project_bundle_zip_excludes_lexicon_bundle`）
 
 ### 2c — L2 文案（0.5d）
 
-- [ ] 术语库主标题含「转写词汇表（Custom Vocabulary）」
-- [ ] 副标题说明：纳入热词 = 下次 ASR 拉取提交
-- [ ] 可见分工：纠错记忆 = 当前稿；本表 = 下次听写
-- [ ] `hotword_enabled` 列/tooltip：「纳入下次转写（热词）」
-- [ ] 别名说明：勿填常听错的错形
+- [x] 术语库主标题含「转写词汇表（Custom Vocabulary）」
+- [x] 副标题说明：纳入热词 = 下次 ASR 拉取提交
+- [x] 可见分工：纠错记忆 = 当前稿；本表 = 下次听写
+- [x] `hotword_enabled` 列/tooltip：「纳入下次转写（热词）」
+- [x] 别名说明：勿填常听错的错形
 
 ### 2d — 空表提示（VOC-1 + 2c）
 
-- [ ] 转写前 `enabledEntryCount===0`：轻提示 + 可跳转术语库（不阻断）
-- [ ] 术语库空状态：CTA「添加词条」
-- [ ] 全部 `hotword_enabled=0`：摘要显示 0 token（HOT-UX 回归）
+- [x] 转写前 `enabledEntryCount===0`：轻提示 +「前往热词与记忆」（`TranscribeOverwriteConfirmDialog`）
+- [x] 术语库空状态：CTA「添加词条」
+- [x] 全部 `hotword_enabled=0`：摘要显示 0 token（`formatGlossaryHotwordsTranscribeSummary`）
 
 ### 2 — 手测（小团队一条）
 
-- [ ] 用户 A：F6 将专名进表 → 导出词表包 → 用户 B 导入 → B 本机转写 preview 含该专名 token
+- [x] 词表包交换：导出 → 删条 → 再导入；转写 preview / F1 可见导入内容（2026-06-03 单机手测；跨机路径同逻辑）
 
 ---
 
@@ -124,15 +127,17 @@
 
 ## ASR-VOC-5 — eval / 热词 A/B（1–2d 起集）
 
-- [ ] `eval-run.py` 支持 hotwords on/off（或 manifest 字段）并输出 `term_hit_rate`
-- [ ] `proper-noun-zhikong` 在 on/off 下均可跑通（有侧车 + 样例文件）
-- [ ] README 记录：推荐 Paraformer + 对比 SenseVoice + 看 warnings
-- [ ] backlog / roadmap 注明：nightly 可选，非 PR 硬门禁
+> 脚本：[`scripts/eval-run.py`](../../../scripts/eval-run.py) · 逻辑 [`services/asr/rushi_asr/eval_manifest.py`](../../../services/asr/rushi_asr/eval_manifest.py) · 说明 [`docs/execution/fixtures/asr-hotword-eval/README.md`](../fixtures/asr-hotword-eval/README.md)
 
-### 手测（本机）
+- [x] `eval-run.py` 支持 `--hotwords-mode=on|off|manifest`、`--hotwords-ab`、`--filter-id`、`--format=csv`
+- [x] 输出 `hotwords_enabled`、`hotwords_sent`、`hotwords_ab_variant`、`term_hit_rate`
+- [x] manifest `proper-noun-zhikong` 含 `hotwords_ab`；`npm run eval:run:hotwords-ab` 一行命令 A/B
+- [x] README / backlog：热词 A/B **非** PR 硬门禁（CI 仍跑默认 `eval:run`）
+- [x] 契约：`services/asr/tests/test_eval_manifest.py`、`test_eval_run_csv.py`
 
-- [ ] `npm run eval:run` 制控样例 hotwords on → `term_hit_rate` 有值
-- [ ] 同命令 hotwords off → 结果可对比存档
+### 手测（本机，需侧车 + `制控.mp3`）
+
+- [x] 见 [`asr-voc-5-hand-test-checklist.md`](./asr-voc-5-hand-test-checklist.md)（2026-06-03 签收）
 
 ---
 

@@ -10,7 +10,7 @@
 | 适用节奏 | 单人、每轮 2～4h、一轮一纵向薄片 |
 | 规划跨度 | **个人单机 v1**：约 **14～18 周（自当前）** 或 **18～22 周（自 W1）**；R3 薄片 **~12～15w**（§4.0，含发行 smoke 缓冲）；协作 **非 v1** |
 | 修订 | 每完成一个阶段更新 §2 状态表、§4 排期表与 §13 代码对照 |
-| 最近对照 | **2026-06-02**：**ASR-VOC-1** ✅ 手测签收；**下一刀 VOC-5**（§4.1.9）；§10 **⑤″f-A 余下 → ⑤″f-B** |
+| 最近对照 | **2026-06-03**：**REV-LOC A** 手测 ✅ · **F7** 词表包 ✅ · **VOC** 2a/F7/GUARD ✅；下一刀 **REV-LOC B** 或 **VOC-3** |
 
 ### 状态标记约定（全文档统一）
 
@@ -346,12 +346,12 @@ R4 + R4-GATE → R9
 | **⑤″f-MEM** | **纠错记忆优化** | 📋 | ⑤″f-B～C | MEM-P0～P3、S1；D10 hit/自动保存 | [MEM acceptance](../specs/r3t-f-correction-memory-optimization-acceptance.md) |
 | **⑤″f-E** | **Qwen3 SKU 门控** | 📋 | 2–4d | 第三 SKU Go/No-go；**⑤″f-D 后、EXP-WORD 前** | [`r3g-b-qwen3-asr-sku-spike-research.md`](../specs/r3g-b-qwen3-asr-sku-spike-research.md) |
 | **⑤″f-1** | **ASR-VOC-1** | ✅ **2026-06-02** | 1–2d | 转写前 preview + 覆盖确认框 + toast；契约+UI 手测签收 | [`asr-voc-1-hand-test-checklist.md`](../specs/asr-voc-1-hand-test-checklist.md) |
-| **⑤″f-2** | **ASR-VOC-2** | 🟡 部分 | **7–10d** | **2a** F6（hit≥3 弹窗 ✅；手测/边界 ⏳）+ **2a+** 纳入记忆确认后可选进术语表；**2c/d** 术语库 Custom Vocabulary 文案与空表 CTA；**2b** F7 `lexicon_bundle` ❌；**GUARD** hotwords 禁止 `before_text` 单测 | Plan §3 · **§4.1.9** |
+| **⑤″f-2** | **ASR-VOC-2** | 🟡 部分 | **7–10d** | **2a/2a+** ✅ · **2c/d** ✅ · **GUARD** ✅ · **2b** F7 ✅ 手测 | Plan §3 · **§4.1.9** |
 | **⑤″f-3** | **ASR-VOC-3** | 📋 | 2–4d | 在线三家排序/截断；**⑤″f-D**；签收前 ACC 在线 E2E ≥1 家 | 同上 §4；holistic H3 |
-| **⑤″f-5** | **ASR-VOC-5 = ACC-EVAL-1** | 📋 | 1–2d | `eval-run` hotwords on/off；制控 `term_hit` A/B；**⑤″f-A** 内、**F7 前**（验证 L2 真生效） | holistic §5；Plan §5 · **§4.1.9** |
+| **⑤″f-5** | **ASR-VOC-5 = ACC-EVAL-1** | ✅ | 1–2d | `eval-run` hotwords on/off A/B + CSV；制控 `term_hit` baseline | [`asr-voc-5-hand-test-checklist.md`](../specs/asr-voc-5-hand-test-checklist.md) |
 | **⑤″f-4** | **ASR-VOC-4** | ⏸ 暂缓 | — | 仅 `after_text` 直连 hotwords（≤20 词）；**默认 No**（**Q-ACC-8**；走 F6→glossary） | Plan §6 |
-| **⑤″f-2+** | **F6+ 纳入记忆→术语表** | 📋 | 0.5–1d | 「纳入记忆」确认后可选 **同时** `glossary_add` + `hotword_enabled=1`（不必等第 3 次 save） | §4.1.9 · R3t-F P1 |
-| **⑤″f-G** | **VOC-GUARD** | 📋 | 0.5d | `build_glossary_hotwords` / 词表包 import **永不** 读 `correction_memory.before_text`；架构守卫单测 | **Q-ACC-8** |
+| **⑤″f-2+** | **F6+ 纳入记忆→术语表** | ✅ | 0.5–1d | 右键纳入 + 可选 `glossary_add`；第 3 次纳入后 F6 提示 | hand-test 2026-06-02 |
+| **⑤″f-G** | **VOC-GUARD** | ✅ | 0.5d | hotwords 过滤 + `glossary_add/update/import` 拒绝错形 | **Q-ACC-8** |
 | **⑤‴** | **EXP-WORD** | 📋 | 1–1.5w | L6 交付：导出真源对齐；逐字稿/讲稿/干净稿版式；可选修订摘要附录；**不等 C6** | [`word-formatted-export-backlog.md`](../specs/word-formatted-export-backlog.md) |
 | **⑤‴½** | **REV-LOC** | 📋 **规格✅** / **编码后置** | 0.5–1w | **A** 撤销栈与自动保存对齐；**B** `edit_log` 快照恢复 MVP；只读摘要已部分落地；**非** R8 | [research](../specs/rev-loc-undo-edit-history-research.md) · [plan](../specs/rev-loc-undo-edit-history-plan.md) · [acceptance](../specs/rev-loc-undo-edit-history-acceptance.md) · [backlog §3.3](../specs/personal-solo-v1-backlog.md) |
 | — | **R3t（索引）** | 📋 | — | Epic 总览（含 L6） | [`recording-transcribe-llm-pipeline.md`](../../architecture/recording-transcribe-llm-pipeline.md) |
@@ -532,11 +532,11 @@ glossary_terms ──► L2 hotwords（仅 canonical + aliases；禁止 before_t
 | 优先级 | ID | ⑤″f 期 | 改进项 | 估时 | 验收锚点 |
 |--------|-----|--------|--------|------|----------|
 | **P0** | VOC-1-手测 | **A** | ✅ 2026-06-02（契约+UI） | — | [`asr-voc-1-hand-test-checklist.md`](../specs/asr-voc-1-hand-test-checklist.md) |
-| **P0** | VOC-5 | **A** | 制控样例 **hotwords on/off** → `term_hit_rate` 可对比存档 | 1–2d | ⑤″f-5；**先于 F7** |
-| **P0** | VOC-2c/d | **B** | 术语库 **Custom Vocabulary** 文案；`hotword_enabled` tooltip；**别名勿填误听形**；空表/全关 CTA | 0.5–1d | acceptance §2c/2d |
-| **P0** | F6+ | **B** | 「纳入记忆」确认后可选 **同时进术语表并纳入热词**（不必等 hit≥3） | 0.5–1d | ⑤″f-2+ |
-| **P0** | F6 | **B** | hit≥3 弹窗 / GlossaryMine **手测**；`term≠before_text` 守卫 | 含 2a | r3t-f acceptance P1 F6 |
-| **P0** | VOC-GUARD | **B** | `build_glossary_hotwords` + 词表包 import **禁止** `before_text` | 0.5d | **Q-ACC-8** |
+| **P0** | VOC-5 | **A** | 制控样例 **hotwords on/off** → `term_hit_rate` 可对比存档 | 1–2d | **✅** 编码 2026-06-02；手测 [`asr-voc-5-hand-test-checklist`](../specs/asr-voc-5-hand-test-checklist.md) |
+| **P0** | VOC-2c/d | **B** | 术语库 **Custom Vocabulary** 文案；`hotword_enabled` tooltip；**别名勿填误听形**；空表/全关 CTA | 0.5–1d | **✅** 编码 2026-06-02 |
+| **P0** | F6+ | **B** | 右键纳入记忆 + 可选进术语表；第 3 次纳入后 F6 提示 | 0.5–1d | **✅** hand-test 2026-06-02 |
+| **P0** | F6 | **B** | hit≥3 弹窗 / GlossaryMine；`term≠before_text` 守卫 | 含 2a | **✅** hand-test 2026-06-02 |
+| **P0** | VOC-GUARD | **B** | `build_glossary_hotwords` 过滤 `correction_memory.before_text` | 0.5d | **✅** `hotword_guard.rs` 单测 |
 | **P0** | MEM-P0 | **B** | 显式 upsert、hit 与自动保存解耦（已编码 → 手测签收） | 2–3d | MEM acceptance |
 | **P1** | F7 | **C** | `rushi_lexicon_bundle.v1` 小团队导出/导入/冲突 | 4–6d | Plan §3.3 |
 | **P1** | MEM-P1 | **B½** | 记忆 UI + LEX-MINE-1；中文纳入记忆矩阵 / `learnEditDelta` 回归 | 3–4d | MEM plan |
@@ -996,8 +996,8 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 **下一刀（2026-06-02 · 审查 + ASR-VOC 调研吸收）**：[`r3-asr-voc-holistic-review-2026-05.md`](../specs/r3-asr-voc-holistic-review-2026-05.md) · [`asr-vocabulary-bias-practices.md`](../../architecture/asr-vocabulary-bias-practices.md) · **§4.1.9**
 
 1. **并行专轮**：**① R3h-0 smoke（2–3d）** ‖ **⑤″e R3t-E 手测**（不挡 VOC-1）  
-2. **⑤″f-A**：**VOC-1 手测收尾** ‖ **F2** 合入分支手测 ‖ **VOC-5**（热词 on/off baseline，**先于 F7**）  
-3. **⑤″f-B**：**F1** + **F6 手测** + **VOC-2c/d** + **F6+** + **VOC-GUARD** + **MEM-P0 手测**（见 §4.1.9 表）  
+2. **⑤″f-A**：**VOC-5** ✅ · **VOC-1** ✅ · **F2** 合入分支手测 ⏳  
+3. **⑤″f-B**：**F1** + **MEM-P0 手测**（F6/F6+、VOC-2c/d、GUARD ✅ 2026-06-02；见 §4.1.9 表）  
 4. **⑤″f-B½**：**MEM-P1**（含中文纳入记忆矩阵巩固）  
 5. **⑤″f-C**：**F7 词表包** + 可选 F0-lite ‖ **MEM-P2**  
 6. **⑤″f-D**：**VOC-3**（在线 E2E ≥1 家）  

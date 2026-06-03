@@ -1,6 +1,6 @@
 # Acceptance: REV-LOC — 撤销栈对齐 + 编辑历史恢复 MVP
 
-> **状态**：📋 规格已定 · **编码后置**（路线图 **Q-REV-1**、§4.1.1 **⑤‴½**）  
+> **状态**：切片 **A** ✅ 手测（2026-06-03）· 切片 **B** 未编码 · 路线图 **Q-REV-1**  
 > **调研**：[rev-loc-undo-edit-history-research.md](./rev-loc-undo-edit-history-research.md)  
 > **Plan**：[rev-loc-undo-edit-history-plan.md](./rev-loc-undo-edit-history-plan.md)  
 > **路线图**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md)  
@@ -55,10 +55,10 @@
 
 ### 切片 A — 撤销栈
 
-- [ ] **A-1** 选中语段改正文（**不失焦**），等待自动保存（≥2s）后 ⌘Z：正文回到自动保存前内容（与 committed 或上一检查点一致）
-- [ ] **A-2** 同场景点工具栏「撤销」与 ⌘Z 结果一致
-- [ ] **A-3** 合并/拆分/删语段等结构操作撤销行为与改前一致（回归，无退化）
-- [ ] **A-4** `useSegmentMutationController.test.ts` 含「仅 draft + flush + undo」用例且 CI 通过
+- [x] **A-1** 选中语段改正文（**不失焦**），等待「已自动保存」后 ⌘Z：正文回到自动保存前（手测 2026-06-03）
+- [x] **A-2** 工具栏「撤销」与 ⌘Z 结果一致（手测 2026-06-03）
+- [x] **A-3** 结构操作撤销无退化（手测 2026-06-03）
+- [x] **A-4** `flushSegmentTextDrafts.test.ts` + `useSegmentMutationController.test.ts` undo 用例 CI 通过
 
 ### 切片 B — 编辑历史恢复
 
