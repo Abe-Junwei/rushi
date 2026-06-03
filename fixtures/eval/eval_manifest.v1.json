@@ -38,7 +38,8 @@
       "audio_relpath": "samples/制控.mp3",
       "reference_transcript": "",
       "expected_terms": ["制控"],
-      "hotwords": "制控"
+      "hotwords": "制控",
+      "hotwords_ab": { "on": "制控", "off": null }
     }
   ]
 }
