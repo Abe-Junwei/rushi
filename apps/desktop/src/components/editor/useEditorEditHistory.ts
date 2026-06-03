@@ -110,6 +110,7 @@ export function canRestoreEditLogRow(
   projectBusy: boolean,
 ): boolean {
   if (projectBusy || !fileId || !row.has_snapshot) return false;
+  if (row.kind !== "save_segments" && row.kind !== "restore_from_edit_log") return false;
   return editLogAppliesToFile(row, fileId);
 }
 

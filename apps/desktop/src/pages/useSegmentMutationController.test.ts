@@ -15,7 +15,7 @@ function makeSeg(props: Partial<SegmentDto> & { text: string; start_sec: number;
   };
 }
 
-function useTestController(initial: SegmentDto[]) {
+function useTestController(initial: SegmentDto[], busy = false) {
   const [segments, setSegments] = useState(initial);
   const [selectedIdx, setSelectedIdx] = useState(0);
   const segmentsRef = useRef(segments);
@@ -30,13 +30,33 @@ function useTestController(initial: SegmentDto[]) {
     selectedIdxRef,
     setSelectedIdx,
     setError,
-    busy: false,
+    busy,
   });
 
   return { mutations, segments, selectedIdx, error };
 }
 
 describe("useSegmentMutationController", () => {
+  it("undo and redo are ignored while busy", () => {
+    const { result } = renderHook(() =>
+      useTestController([makeSeg({ text: "b", start_sec: 0, end_sec: 1 })], true),
+    );
+
+    act(() => result.current.mutations.undo());
+
+    expect(result.current.segments[0].text).toBe("b");
+  });
+
+  it("updateSegmentText is ignored while busy (restore must not be overwritten by blur)", () => {
+    const { result } = renderHook(() =>
+      useTestController([makeSeg({ text: "restored", start_sec: 0, end_sec: 1 })], true),
+    );
+
+    act(() => result.current.mutations.updateSegmentText(0, "stale"));
+
+    expect(result.current.segments[0].text).toBe("restored");
+  });
+
   it("updateSegmentText changes text and preserves other fields", () => {
     const { result } = renderHook(() =>
       useTestController([makeSeg({ text: "hello", start_sec: 0, end_sec: 1 })])

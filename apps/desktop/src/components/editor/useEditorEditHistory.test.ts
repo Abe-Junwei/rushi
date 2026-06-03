@@ -57,5 +57,19 @@ describe("useEditorEditHistory", () => {
     expect(canRestoreEditLogRow(row, "f2", false)).toBe(false);
     expect(canRestoreEditLogRow({ ...row, has_snapshot: false }, "f1", false)).toBe(false);
     expect(canRestoreEditLogRow(row, "f1", true)).toBe(false);
+    expect(
+      canRestoreEditLogRow(
+        {
+          ...row,
+          kind: "restore_from_edit_log",
+          detail: JSON.stringify({ file_id: "f1" }),
+        },
+        "f1",
+        false,
+      ),
+    ).toBe(true);
+    expect(
+      canRestoreEditLogRow({ ...row, kind: "project_import" }, "f1", false),
+    ).toBe(false);
   });
 });

@@ -259,6 +259,7 @@ export function useSegmentKeyboard(args: {
       if (t?.closest("textarea, input, [contenteditable=true]")) return;
       e.preventDefault();
       const c = args.ctxRef.current;
+      if (c.busy) return;
       if (e.shiftKey) c.redo();
       else c.undo();
     };

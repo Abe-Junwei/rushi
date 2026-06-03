@@ -1,6 +1,6 @@
 # Acceptance: REV-LOC — 撤销栈对齐 + 编辑历史恢复 MVP
 
-> **状态**：切片 **A** ✅ 手测（2026-06-03）· 切片 **B** 编码 + 机器回归 ✅（2026-06-03）· **B UI 手测待签收** · 路线图 **Q-REV-1**  
+> **状态**：切片 **A** ✅ 手测（2026-06-03）· 切片 **B** ✅ 编码 + 机器 + UI 手测（2026-06-02）· 路线图 **Q-REV-1** 闭环  
 > **调研**：[rev-loc-undo-edit-history-research.md](./rev-loc-undo-edit-history-research.md)  
 > **Plan**：[rev-loc-undo-edit-history-plan.md](./rev-loc-undo-edit-history-plan.md)  
 > **路线图**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md)  
@@ -63,12 +63,12 @@
 ### 切片 B — 编辑历史恢复
 
 - [x] **B-1** 改至少 2 处语段正文并触发保存后，`edit_log` 对应行存在可查询快照（`segment_cmd_tests::file_save_segments_edit_log_*` + `edit_log_snapshot` roundtrip）
-- [ ] **B-2** 编辑历史主行仍显示人类可读摘要（含 `胸襟→胸膺` 类 diff，若适用）— **UI 手测**
-- [ ] **B-3** 对含快照条目点击「恢复此版本」→ 确认 → 列表与编辑器正文与**该保存点之后**状态一致（以快照为准）— **UI 手测**
+- [x] **B-2** 编辑历史主行仍显示人类可读摘要（含 `胸襟→胸膺` 类 diff，若适用）（手测 2026-06-02）
+- [x] **B-3** 对含快照条目点击「恢复此版本」→ 确认 → 列表与编辑器正文与**该保存点之后**状态一致（以快照为准）（手测 2026-06-02）
 - [x] **B-4** 恢复后产生新 `edit_log`（`restore_from_edit_log` 或等价 kind），detail 含 `source_edit_log_id`（`file_restore_segments_from_edit_log_replaces_text_and_audits`）
-- [ ] **B-5** 恢复后撤销栈已清空；再改字可重新入栈（不崩溃）— **UI 手测**
-- [ ] **B-6** 无快照条目（升级前历史 / 无正文变更的纯保存）不展示恢复按钮，不误点报错 — **UI 手测**
-- [ ] **B-7** busy（转写/保存中）时恢复入口 disabled — **UI 手测**
+- [x] **B-5** 恢复后撤销栈已清空；再改字可重新入栈（不崩溃）（手测 2026-06-02）
+- [x] **B-6** 无快照条目（升级前历史 / 无正文变更的纯保存）不展示恢复按钮，不误点报错（手测 2026-06-02）
+- [x] **B-7** busy（转写/保存中）时恢复入口 disabled（手测 2026-06-02）
 
 ### 机器守卫
 

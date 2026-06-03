@@ -28,13 +28,21 @@ cd apps/desktop/src-tauri && cargo test edit_log
 > 步骤真源：[rev-loc-slice-b-hand-test-checklist.md](./rev-loc-slice-b-hand-test-checklist.md)  
 > **须重编桌面端**后再测；旧 `edit_log` 行无 retroactive diff。
 
-- [ ] §1 胸襟→胸膺 双次保存 + 恢复第一次
-- [ ] §2 无快照 / busy 禁用
-- [ ] §3 恢复后 ⌘Z 栈空、可再编辑撤销
+- [x] §1 胸襟→胸膺 双次保存 + 恢复第一次
+- [x] §2 无快照 / busy 禁用
+- [x] §3 恢复后 ⌘Z 栈空、可再编辑撤销
+
+## 签收后补丁（2026-06-02）
+
+| 项 | 说明 |
+|----|------|
+| 恢复竞态 | `busy` 时跳过 blur / `updateSegmentText`；恢复 `flushSync` + 清草稿 |
+| 恢复入口 | `restore_from_edit_log` 带快照行可恢复；保存未 idle / busy 有 toast |
+| 撤销 | 全局 ⌘Z 与 `undo`/`redo` 在 `busy` 时 no-op |
 
 ## 签收
 
 | 日期 | 范围 | 结论 |
 |------|------|------|
 | 2026-06-03 | 编码 + 机器回归 | ✅ |
-| | UI 手测 §1–§3 | 待勾选 |
+| 2026-06-02 | UI 手测 §1–§3 | ✅ |

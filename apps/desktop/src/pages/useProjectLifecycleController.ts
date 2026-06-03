@@ -1,4 +1,5 @@
 import { useCallback, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import type { ProjectDetail } from "../tauri/projectApi";
 import * as p1 from "../tauri/projectApi";
 import * as fileApi from "../tauri/fileApi";
@@ -305,23 +306,38 @@ export function useProjectLifecycleController(
 
   const restoreEditorFromEditLog = useCallback(
     async (editLogId: number) => {
-      if (busy || !currentFileId) return;
-      await waitForSaveIdle(saveInFlightRef);
+      if (busy) {
+        toast.warning("处理中，请稍候再恢复");
+        return;
+      }
+      if (!currentFileId) {
+        toast.warning("请先打开一个文件");
+        return;
+      }
+      const idle = await waitForSaveIdle(saveInFlightRef);
+      if (!idle) {
+        setError("保存尚未结束，请稍候再恢复");
+        return;
+      }
+      clearAutoSaveRef.current();
+      saveInFlightRef.current = true;
       beginBusy("save");
       setError("");
       try {
         mutations.resetMutationHistory();
-        segmentDraftStore.discardEditingSession();
+        segmentDraftStore.resetAll();
         await p1.fileRestoreSegmentsFromEditLog(currentFileId, editLogId);
         const fd = await fileApi.loadFile(currentFileId);
         const prevUid = segmentsRef.current[selectedIdxRef.current]?.uid;
         const segs = normalizeSegmentList(fd.segments);
-        segmentsRef.current = segs;
-        setSegments(segs);
-        const ni = findSegmentIndexByUid(segs, prevUid);
-        setSelectedIdx(
-          ni >= 0 ? ni : Math.min(selectedIdxRef.current, Math.max(0, segs.length - 1)),
-        );
+        flushSync(() => {
+          segmentsRef.current = segs;
+          setSegments(segs);
+          const ni = findSegmentIndexByUid(segs, prevUid);
+          setSelectedIdx(
+            ni >= 0 ? ni : Math.min(selectedIdxRef.current, Math.max(0, segs.length - 1)),
+          );
+        });
         dirty.setSavedSnapshot(segs);
         notifySegmentsPersistedRef.current();
         toast.success("已恢复到所选版本");
@@ -329,6 +345,7 @@ export function useProjectLifecycleController(
         setError(e instanceof Error ? e.message : String(e));
         throw e;
       } finally {
+        saveInFlightRef.current = false;
         endBusy();
       }
     },
@@ -344,6 +361,8 @@ export function useProjectLifecycleController(
       setError,
       segmentsRef,
       selectedIdxRef,
+      clearAutoSaveRef,
+      saveInFlightRef,
     ],
   );
 

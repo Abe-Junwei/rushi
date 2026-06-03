@@ -144,6 +144,7 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
   const onBlurText = useCallback(() => {
     isFocusedRef.current = false;
     setTextareaFocused(false);
+    if (busy) return;
     segmentDraftStore.endComposition(draftKey);
     const el = textareaRef.current;
     const liveText = normalizeSegmentDraftText(el?.value ?? committedText);
@@ -153,7 +154,7 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
     } else {
       segmentDraftStore.clearDraft(draftKey);
     }
-  }, [committedText, draftKey, i, updateSegmentText]);
+  }, [busy, committedText, draftKey, i, updateSegmentText]);
 
   const onKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {

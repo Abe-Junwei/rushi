@@ -82,16 +82,18 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
   }, [segmentsRef, setSegments, pushUndoForTextEdit]);
 
   const undo = useCallback(() => {
+    if (busy) return;
     flushSegmentTextDrafts();
     undoStackPop();
     segmentDraftStore.discardEditingSession();
-  }, [flushSegmentTextDrafts, undoStackPop]);
+  }, [busy, flushSegmentTextDrafts, undoStackPop]);
 
   const redo = useCallback(() => {
+    if (busy) return;
     flushSegmentTextDrafts();
     redoStackPop();
     segmentDraftStore.discardEditingSession();
-  }, [flushSegmentTextDrafts, redoStackPop]);
+  }, [busy, flushSegmentTextDrafts, redoStackPop]);
 
   const splits = useSegmentSplitController({
     segmentsRef,
@@ -104,6 +106,7 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
 
   const updateSegmentText = useCallback(
     (idx: number, text: string) => {
+      if (busy) return;
       const prev = segmentsRef.current;
       const cur = prev[idx];
       if (!cur || cur.text === text) return;
@@ -116,7 +119,7 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
         return out;
       });
     },
-    [segmentsRef, setSegments, pushUndoForTextEdit],
+    [busy, segmentsRef, setSegments, pushUndoForTextEdit],
   );
 
   const updateSegmentTime = useCallback(
