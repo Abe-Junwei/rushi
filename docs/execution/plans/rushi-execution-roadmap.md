@@ -10,7 +10,7 @@
 | 适用节奏 | 单人、每轮 2～4h、一轮一纵向薄片 |
 | 规划跨度 | **个人单机 v1**：约 **14～18 周（自当前）** 或 **18～22 周（自 W1）**；R3 薄片 **~12～15w**（§4.0，含发行 smoke 缓冲）；协作 **非 v1** |
 | 修订 | 每完成一个阶段更新 §2 状态表、§4 排期表与 §13 代码对照 |
-| 最近对照 | **2026-06-02**：**REV-LOC** ✅ · **ASR-VOC** ✅ · **⑤″f-E Qwen3 spike** 手测包就绪（待本机 GPU 跑 S1–S4）→ **EXP-WORD** |
+| 最近对照 | **2026-06-03**：**⑤‴ EXP-WORD** ✅ v1 功能验收 → **下一主序：⑤‴½ REV-LOC 编码 / R4**；**⑤″f-E Qwen3** ❌ No-go；**R3g-B-Align** ⏳ P2 |
 
 ### 状态标记约定（全文档统一）
 
@@ -78,7 +78,7 @@
 | **L4 LLM（R3t-E）** | **LexiconPack**（`glossary_canonical[]` + `correction_rules[]`）；**不传** ASR `hotwords` 字符串 |
 | **纠错记忆** | **落库**学习 `correction_memory`（规划：**MEM-P0** 显式入库 + hit 与自动保存解耦）；转写 **hints**；R3t-E **改正** + evidence |
 | **越用越准** | **记忆 + 热词 + R3t-E**；**不**指望权重自动更新 |
-| **Q-ASR-1** | **SenseVoice** = **兼容/快轨遗留**（百炼 v1 已下线公告）；**v1 主推 Paraformer**；第三 SKU 以 **Qwen3 spike Go/No-go** 为准（**⑤″f-D 后、EXP-WORD 前** 硬门控，§10） |
+| **Q-ASR-1** | **SenseVoice** = **兼容/快轨遗留**；**v1 主推 Paraformer**；**Qwen3-ASR ❌ No-go**（2026-06-03）；重开第三 SKU 须先 **R3g-B-Align**（ForcedAligner spike Go） |
 | **FunASR 固有参数** | **用户不填** `use_itn` / `merge_vad` 等；由 **R3g-C Profile** 按 SKU+时长默认；仅 **模型、语言、术语表** 为用户控件（env 排障 override 另论） |
 | **本地 + 在线 STT** | **编排已统一**（`project_run_transcribe` → `TranscriptionResult` v1）；**词表偏置** 经 **ACC-STT-UNIFY** 分 adapter 映射（非同一 `hotword=` 字段） |
 | **同音/误写（如智控→制控）** | L2 热词 **偏置有限**；L4 **correction_memory + R3t-E**；**术语表只放正确 canonical**（**Q-ACC-5**）；**`before_text` 不进 hotwords**（**Q-ACC-8**） |
@@ -308,7 +308,7 @@ R0 → GLY-1 → R1–R2 → R3 → R4 → [R5] → [R6–R8] → R9
     （⑤″f-4 VOC-4 暂缓 · ACC-HOT-W/2pass → §8.1 · Spike MEM-S1）
     ↓
 【E 交付与质量 — SKU 门控】
-⑤″f-E  R3g-B Qwen3-ASR Go/No-go（2–4d；**EXP-WORD 前必过**，§10）
+⑤″f-E  R3g-B Qwen3-ASR Go/No-go  ❌ No-go 2026-06-03（不挡 ⑤‴）
     ↓
 ⑤‴ EXP-WORD
     ↓
@@ -344,7 +344,7 @@ R4 + R4-GATE → R9
 | **⑤″e** | **R3t-E** | 🔄 编码✅ 手测⏳ | 1.5–2w | LexiconPack 有据校对；**无 RAG**；**无** R3t-E3 项目级词表 v1 | [`r3t-e-lexicon-proofread-research.md`](../specs/r3t-e-lexicon-proofread-research.md) · [`lexicon-guided-llm-refine.md`](../../architecture/lexicon-guided-llm-refine.md) |
 | **⑤″f** | **R3t-F + MEM** | 📋 规划✅ v4 | P1 12–16d / P1½ 3–4d / P2 10–14d | **F2→F1→F6→MEM-P0→MEM-P1→F7→MEM-P2**；墙钟 **4–6w** | [`r3t-f-post-transcribe-suite-plan.md`](../specs/r3t-f-post-transcribe-suite-plan.md) v4 · [`r3t-f-correction-memory-optimization-plan.md`](../specs/r3t-f-correction-memory-optimization-plan.md) |
 | **⑤″f-MEM** | **纠错记忆优化** | 📋 | ⑤″f-B～C | MEM-P0～P3、S1；D10 hit/自动保存 | [MEM acceptance](../specs/r3t-f-correction-memory-optimization-acceptance.md) |
-| **⑤″f-E** | **Qwen3 SKU 门控** | 🔬 手测中 | 2–4d | Spike S1–S4 + [results](../specs/r3g-b-qwen3-asr-spike-results.md)；**EXP-WORD 前必过** | [research](../specs/r3g-b-qwen3-asr-sku-spike-research.md) · [checklist](../specs/r3g-b-qwen3-asr-spike-hand-test-checklist.md) |
+| **⑤″f-E** | **Qwen3 SKU 门控** | ❌ **No-go** 2026-06-03 | 2–4d | 0 语段（缺 ForcedAligner）；Paraformer 制控 **197** 段 / **155s** | [results](../specs/r3g-b-qwen3-asr-spike-results.md) · [research](../specs/r3g-b-qwen3-asr-sku-spike-research.md) |
 | **⑤″f-1** | **ASR-VOC-1** | ✅ **2026-06-02** | 1–2d | 转写前 preview + 覆盖确认框 + toast；契约+UI 手测签收 | [`asr-voc-1-hand-test-checklist.md`](../specs/asr-voc-1-hand-test-checklist.md) |
 | **⑤″f-2** | **ASR-VOC-2** | 🟡 部分 | **7–10d** | **2a/2a+** ✅ · **2c/d** ✅ · **GUARD** ✅ · **2b** F7 ✅ 手测 | Plan §3 · **§4.1.9** |
 | **⑤″f-3** | **ASR-VOC-3** | ✅ **2026-06-02** | 2–4d | 文案手测 + 机器；在线 E2E 豁免（无 Key） | [signoff](../specs/asr-voc-3-signoff-2026-06.md) |
@@ -352,7 +352,7 @@ R4 + R4-GATE → R9
 | **⑤″f-4** | **ASR-VOC-4** | ⏸ 暂缓 | — | 仅 `after_text` 直连 hotwords（≤20 词）；**默认 No**（**Q-ACC-8**；走 F6→glossary） | Plan §6 |
 | **⑤″f-2+** | **F6+ 纳入记忆→术语表** | ✅ | 0.5–1d | 右键纳入 + 可选 `glossary_add`；第 3 次纳入后 F6 提示 | hand-test 2026-06-02 |
 | **⑤″f-G** | **VOC-GUARD** | ✅ | 0.5d | hotwords 过滤 + `glossary_add/update/import` 拒绝错形 | **Q-ACC-8** |
-| **⑤‴** | **EXP-WORD** | 📋 | 1–1.5w | L6 交付：导出真源对齐；逐字稿/讲稿/干净稿版式；可选修订摘要附录；**不等 C6** | [`word-formatted-export-backlog.md`](../specs/word-formatted-export-backlog.md) |
+| **⑤‴** | **EXP-WORD** | ✅ v1 功能验收 | 1–1.5w | 交付导出向导 + 三形态 DOCX + 润色预览门禁 + 修订轨/附录 | [`exp-word-formatted-export-acceptance.md`](../specs/exp-word-formatted-export-acceptance.md) |
 | **⑤‴½** | **REV-LOC** | 📋 **规格✅** / **编码后置** | 0.5–1w | **A** 撤销栈与自动保存对齐；**B** `edit_log` 快照恢复 MVP；只读摘要已部分落地；**非** R8 | [research](../specs/rev-loc-undo-edit-history-research.md) · [plan](../specs/rev-loc-undo-edit-history-plan.md) · [acceptance](../specs/rev-loc-undo-edit-history-acceptance.md) · [backlog §3.3](../specs/personal-solo-v1-backlog.md) |
 | — | **R3t（索引）** | 📋 | — | Epic 总览（含 L6） | [`recording-transcribe-llm-pipeline.md`](../../architecture/recording-transcribe-llm-pipeline.md) |
 | — | R3h-4 → **LLM-LOC** | v1 后 | 见 §6、[`llm-local-runtime-backlog.md`](../specs/llm-local-runtime-backlog.md)（**4a** Ollama ~0.5–1w；**4b** 自管 2–3w+） | remediation §Phase 4 |
@@ -368,7 +368,7 @@ R4 + R4-GATE → R9
 | **R3t 门禁** | **R3g ⑤c** 建议先签收再开 **R3t-A** 编码；R3e-B 与 R3t-A **同一分段真源**（禁止 fork 两套 VAD） |
 | **R3t-F + ASR-VOC** | **⑤″e R3t-E 手测后** 开 **⑤″f**；**ASR-VOC-1** 与 **F2** 同轮并行（不同文件）；**ASR-VOC-3** 依赖 **⑤h ACC** ✅；**ASR-VOC-5** 先于 F7 |
 | **R3h-0 ∥ ⑤″f-A** | **① R3h-0 smoke（2–3d 专轮）** 与 **⑤″f-A** **可并行**（不同目录）；**勿**在 R3h-0 未闭环时签收 **③ R3f** |
-| **Qwen3 门控** | **⑤″f-E** 须在 **⑤‴ EXP-WORD** 前完成 Go/No-go；可与 **⑤″f-D** 后并行，**不**插入 ⑤″f-B 中途 |
+| **Qwen3 门控** | **⑤″f-E** ✅ 已签收 **No-go**（2026-06-03）；**EXP-WORD 不再等待**第三 SKU；重开须 **R3g-B-Align** Go |
 | **LLM 校准** | R3t-C/D/E **须用户显式触发**；禁止转写完成静默跑 |
 | **可并行设计** | R3e-A 与 R3g-A 接口；实施仍 **④ 先于 ⑤** |
 | **R3h-I 设计** | 可在 **② 后**并行做只读方案与接口草图；避免和 **①–③** 的止血实现混在同一刀 |
@@ -511,16 +511,17 @@ glossary_terms ──► L2 hotwords（仅 canonical + aliases；禁止 before_t
 | **P0** | **R3e-C** | 长音频 preview + 停止转写 | — | — | §4.1.1 **⑥½** | ✅ 2026-05-31 |
 | **P0** | （主序内）**R3g-C / ACC-STT-UNIFY / ACC-EVAL-1** | Profile + 词表统一 + 专名回归 | 见 §4.1.1 | R3t-B ✅ | R3g-C ✅ / ACC ✅（在线 E2E ⏳） |
 | **P1** | **R3h-ASR-VER** | FunASR **≥1.3.3** lock（**v1 后升级**，不阻塞 ⑤″f） | 1–2d | — | 📋 |
-| **P1** | **R3g-B / ⑤″f-E Qwen3 spike** | 第三 SKU Go/No-go；**G4**；**EXP-WORD 前硬门控**（§10） | 2–4d | ⑤″f-D 后并行 | 📋 research ✅ |
+| **P1** | **R3g-B / ⑤″f-E Qwen3 spike** | 第三 SKU Go/No-go | 2–4d | — | ❌ **No-go** 2026-06-03 |
+| **P2** | **R3g-B-Align** | Qwen3 **ForcedAligner** 时间轴 spike（`forced_aligner` + R3t-A 契约）；**Go 后才可重开 R3g-B catalog** | **2–4d** | ⑤″f-E No-go | 📋 [research](../specs/r3g-b-align-qwen3-forced-aligner-spike-research.md) ✅ |
 | **P1** | **R3h-CUDA-PERF** | CUDA 侧车 p95 / 首段 SLA | 3–5d spike | R3e-C DEV log | 📋 |
 | **P1** | **R3e-C.5 event** | poll → Tauri event，降 CPU | 1–2d | R3e-C ✅ | 📋 |
-| **P2** | **R3g-B Nano+vLLM** | GPU 长音频提速 | spike | Qwen3 Go/No-go | ⏳ |
+| **P2** | **R3g-B Nano+vLLM** | GPU 长音频提速 | spike | **R3g-B-Align Go** | ⏳ |
 | **P2** | **ASR-RADAR-FireRed** | 中文 CER SOTA；统一 VAD+LID+Punc；**v1 后**第三引擎评估 | 跟踪 | Sherpa Spike 结论 | 📋 雷达 |
 | **P2** | **ASR-RADAR-Moonshine** | 27M 边缘低 RAM；中文精度未达 Paraformer | 跟踪 | 边缘场景需求 | 📋 雷达 |
 | **P2** | **STREAM-*** / 在线 Realtime | OpenAI Realtime-Whisper 等 | 新 Epic | ACC-STT-UNIFY | ⏳ |
 | **—** | Parakeet / MiMo / WS 替换 R3e-C | 与 ADR-0003 或 SQLite 真源冲突 | — | — | **不做** v1 |
 
-**建议叠加顺序**（backlog §5）：（主序）**R3g-C** → ACC… → **⑤″f** → **⑤″f-E Qwen3 门控** → EXP-WORD；并行 **R3h-0 smoke**、R3e-C.5；**FunASR 1.3.3 全量升级 v1 后**。
+**建议叠加顺序**（backlog §5）：（主序）**⑤‴ EXP-WORD** → **⑤‴½ REV-LOC 编码**（若未合）→ R4；**⑤″f-E** 已 ❌ No-go；**R3g-B-Align** / Nano+vLLM **不挡 v1**；并行 **R3h-0 smoke**、R3e-C.5、**R3h-ASR-VER**（lock `funasr>=1.3.3`）。
 
 #### 4.1.9 ⑤″f 改进清单（2026-06-02 · ASR 热词业内调研吸收）
 
