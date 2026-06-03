@@ -5,6 +5,7 @@ import type { ProjectControllerApi } from "../pages/useProjectController";
 import { AsrErrorBanner } from "./ProjectStatusFeedback";
 import { CreateProjectModal } from "./CreateProjectModal";
 import { GlossaryPage } from "./GlossaryPage";
+import { QualityPage } from "./QualityPage";
 import { WelcomeSidebar } from "./WelcomeSidebar";
 import { WelcomeTopBar } from "./WelcomeTopBar";
 
@@ -92,6 +93,8 @@ export function WelcomeView({ controller: c, onOpenSettings, page, onPageChange 
 
         {page === "glossary" ? (
           <GlossaryPage busy={c.busy} />
+        ) : page === "quality" ? (
+          <QualityPage busy={c.busy} />
         ) : (
           <>
         {c.asrHealth === "error" ? (

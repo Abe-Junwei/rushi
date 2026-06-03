@@ -567,4 +567,72 @@ mod tests {
         assert!(doc_xml.contains("w:ins") || doc_xml.contains("w:del"));
         assert!(doc_xml.contains("你好"));
     }
+
+    /// R9 strict: export clean DOCX from live app DB (`RUSHI_APP_DB`, optional `RUSHI_STRICT_DOCX_OUT`).
+    #[test]
+    fn r9_strict_export_docx_from_app_db() {
+        use rusqlite::Connection;
+        use std::path::Path;
+
+        let db_path = match std::env::var("RUSHI_APP_DB") {
+            Ok(p) if Path::new(&p).is_file() => p,
+            _ => return,
+        };
+        let out = std::env::var("RUSHI_STRICT_DOCX_OUT")
+            .unwrap_or_else(|_| "/tmp/r9-strict-clean.docx".to_string());
+
+        let conn = Connection::open(&db_path).expect("open app db");
+        let file_id: String = conn
+            .query_row(
+                "SELECT file_id FROM segments GROUP BY file_id ORDER BY COUNT(*) DESC LIMIT 1",
+                [],
+                |r| r.get(0),
+            )
+            .expect("file with segments");
+
+        let mut stmt = conn
+            .prepare(
+                "SELECT uid, idx, start_sec, end_sec, text, confidence, low_confidence, detail, kind \
+                 FROM segments WHERE file_id = ?1 ORDER BY idx ASC",
+            )
+            .expect("prepare segments");
+        let rows = stmt
+            .query_map([&file_id], |r| {
+                let uid: String = r.get(0)?;
+                Ok(SegmentDto {
+                    uid: if uid.trim().is_empty() {
+                        None
+                    } else {
+                        Some(uid)
+                    },
+                    idx: r.get(1)?,
+                    start_sec: r.get(2)?,
+                    end_sec: r.get(3)?,
+                    text: r.get(4)?,
+                    confidence: r.get(5)?,
+                    low_confidence: r.get::<_, i64>(6)? != 0,
+                    detail: r.get::<_, Option<String>>(7)?,
+                    kind: r.get(8)?,
+                })
+            })
+            .expect("query segments");
+        let mut segments = Vec::new();
+        for row in rows {
+            segments.push(row.expect("segment row"));
+        }
+        assert!(!segments.is_empty(), "no segments for export");
+
+        let title: String = conn
+            .query_row(
+                "SELECT p.name FROM files f JOIN projects p ON p.id = f.project_id WHERE f.id = ?1",
+                [&file_id],
+                |r| r.get(0),
+            )
+            .unwrap_or_else(|_| "R9 strict export".to_string());
+
+        let bytes = build_docx_bytes(&title, "clean", &segments, None, &[], None, None, None, false)
+            .expect("build docx");
+        std::fs::write(&out, &bytes).expect("write docx");
+        eprintln!("r9_strict_export: file_id={file_id} segments={} out={out}", segments.len());
+    }
 }

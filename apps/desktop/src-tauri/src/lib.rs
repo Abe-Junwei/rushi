@@ -138,6 +138,14 @@ pub fn run() {
             profile::import_settings_profile,
             export_docx::export_docx,
             diagnostic::export_diagnostic_bundle,
+            project::quality_eval::quality_get_last_report,
+            project::quality_eval::quality_get_baseline_report,
+            project::quality_eval::quality_run_eval,
+            project::quality_eval::quality_import_report_file,
+            project::quality_eval::quality_save_report_from_json,
+            project::quality_eval::quality_set_baseline_from_last,
+            project::quality_eval::quality_last_report_path_cmd,
+            project::quality_eval::quality_export_correction_memory_jsonl,
         ])
         .build(tauri::generate_context!())
         .expect("error while building tauri application");

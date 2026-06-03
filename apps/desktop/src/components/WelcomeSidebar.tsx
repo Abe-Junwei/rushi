@@ -1,5 +1,17 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { BookOpen, ChevronRight, FileText, FolderOpen, List, Mic, Pencil, Settings, Trash2, X } from "lucide-react";
+import {
+  BarChart3,
+  BookOpen,
+  ChevronRight,
+  FileText,
+  FolderOpen,
+  List,
+  Mic,
+  Pencil,
+  Settings,
+  Trash2,
+  X,
+} from "lucide-react";
 import type { ProjectControllerApi } from "../pages/useProjectController";
 import type { WelcomePageId } from "./welcomeTypes";
 import type { ProjectSummary } from "../tauri/projectApi";
@@ -101,6 +113,12 @@ export function WelcomeSidebar({ controller: c, onOpenSettings, page, onPageChan
       label: "热词与记忆",
       active: page === "glossary",
       onClick: () => onPageChange("glossary"),
+    },
+    {
+      icon: <BarChart3 className={`${LUCIDE_ICON_SIZE_MD} shrink-0`} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />,
+      label: "质量概览",
+      active: page === "quality",
+      onClick: () => onPageChange("quality"),
     },
     {
       icon: <Pencil className={`${LUCIDE_ICON_SIZE_MD} shrink-0`} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />,

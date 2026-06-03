@@ -1,1 +1,1 @@
-export type WelcomePageId = "home" | "glossary";
+export type WelcomePageId = "home" | "glossary" | "quality";

@@ -25,6 +25,7 @@ pub mod lexicon_bundle_cmd;
 pub mod lexicon_pack;
 mod local_transcribe_gate;
 pub mod picker_cmd;
+pub mod quality_eval;
 mod project_bundle_cmd;
 pub mod project_create_cmd;
 pub mod project_delete_cmd;
