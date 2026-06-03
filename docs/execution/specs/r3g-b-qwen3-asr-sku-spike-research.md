@@ -1,6 +1,6 @@
 # 调研：R3g-B — Qwen3-ASR SKU Spike
 
-> **状态**：📋 spike 执行包就绪（2026-06-02）· **实测待跑**  
+> **状态**：❌ **No-go**（2026-06-03）· 实测见 [results](./r3g-b-qwen3-asr-spike-results.md) · 输出 `docs/execution/spike-output/qwen3-2026-06-03/`  
 > **手测**：[r3g-b-qwen3-asr-spike-hand-test-checklist.md](./r3g-b-qwen3-asr-spike-hand-test-checklist.md) · [results 表](./r3g-b-qwen3-asr-spike-results.md) · `bash scripts/r3g-b-qwen3-asr-spike-hand-test.sh`  
 > **关联路线图**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) §4.1 **R3g-B**（延后 · Nano 等扩展 SKU）  
 > **前置**：**R3g-A ✅**（SenseVoice + Paraformer）；**R3e-B/C ✅**（长音频分窗 + async preview）  
@@ -118,8 +118,8 @@ Spike 结论必须对照下表（**全部满足** 才 **Go → R3g-B 产品化**
 
 | 项 | 说明 |
 |----|------|
-| **用途** | 文本–语音强制对齐、英文句级时间戳 |
-| **何时单独立项** | R3t-A 英文/混合语时间戳不达标；或 FunCineForge 类长视频句切 |
+| **用途** | 文本–语音强制对齐、句/词级时间戳；**⑤″f-E 实测** Qwen3-ASR 无 Aligner 则 **0 语段** |
+| **后续薄片** | [**R3g-B-Align** 调研](./r3g-b-align-qwen3-forced-aligner-spike-research.md)（**P2**，不挡 EXP-WORD） |
 | **与本 spike 关系** | **禁止** 与 ASR SKU 同一 PR |
 
 ---

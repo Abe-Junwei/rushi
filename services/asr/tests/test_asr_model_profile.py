@@ -14,11 +14,19 @@ from rushi_asr.segmentation import funasr_generate_kwargs
 
 PARA = "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch"
 SENSE = "iic/SenseVoiceSmall"
+QWEN = "Qwen/Qwen3-ASR-0.6B"
 
 
 def test_resolve_profiles() -> None:
     assert resolve_asr_model_profile(SENSE).profile_id == "sensevoice_small_v1"
     assert resolve_asr_model_profile(PARA).profile_id == "paraformer_vad_punc_v1"
+    assert resolve_asr_model_profile(QWEN).sku_family == "qwen"
+
+
+def test_qwen_maps_zh_to_chinese() -> None:
+    kwargs = build_generate_kwargs(QWEN, "zh", "制控", duration_sec=900.0)
+    assert kwargs["language"] == "Chinese"
+    assert kwargs["hotword"] == "制控"
 
 
 def test_paraformer_snapshot() -> None:

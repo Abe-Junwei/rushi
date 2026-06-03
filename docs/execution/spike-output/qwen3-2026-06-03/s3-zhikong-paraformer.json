@@ -1,0 +1,1786 @@
+{
+  "schema_version": "1",
+  "segments": [
+    {
+      "start_sec": 0.23,
+      "end_sec": 0.85,
+      "text": "没关系，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 0.87,
+      "end_sec": 1.705,
+      "text": "我讲两句，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 3.29,
+      "end_sec": 8.18,
+      "text": "我们这一次的入学入学教育啊，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 8.44,
+      "end_sec": 9.965,
+      "text": "这个地方有讲到位，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 10.65,
+      "end_sec": 11.15,
+      "text": "三个班，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 11.15,
+      "end_sec": 13.81,
+      "text": "同时一起做很仓促，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 14.030000000000001,
+      "end_sec": 15.01,
+      "text": "你们人手也不够。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 15.47,
+      "end_sec": 16.23,
+      "text": "一开始规矩，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 16.23,
+      "end_sec": 27.835,
+      "text": "你们都没有学好注意到穿鞋的时候脚不能离地一坐，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 28.97,
+      "end_sec": 30.095,
+      "text": "要么是盘坐，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 31.470000000000002,
+      "end_sec": 32.39,
+      "text": "要么是挂座，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 32.47,
+      "end_sec": 34.77,
+      "text": "也就是我们这个禅堂给你们开许，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 34.81,
+      "end_sec": 35.89,
+      "text": "允许你们挂座，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 36.410000000000004,
+      "end_sec": 37.63,
+      "text": "知道很多人坐不住，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 37.71,
+      "end_sec": 39.675000000000004,
+      "text": "因为我们不是以修订为主，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 40.75,
+      "end_sec": 45.415,
+      "text": "没有必要让大家在这里好好的龇牙铃嘴。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 50.01,
+      "end_sec": 53.955,
+      "text": "但是不能以此作为放映的入口，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 56.1,
+      "end_sec": 56.955,
+      "text": "腿功不好，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 58.980000000000004,
+      "end_sec": 60.7,
+      "text": "如果从修订的角度来说，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 60.92,
+      "end_sec": 62.52,
+      "text": "肯定是有一定障碍的。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 62.800000000000004,
+      "end_sec": 65.08,
+      "text": "但是从修觉性的角度来说，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 65.38,
+      "end_sec": 68.88,
+      "text": "是没有影响行住坐卧都可以修。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 69.32000000000001,
+      "end_sec": 75.27,
+      "text": "但是坐要有坐向挂座，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 75.35000000000001,
+      "end_sec": 76.27,
+      "text": "我们是教了的，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 76.45,
+      "end_sec": 77.29,
+      "text": "怎么挂座？",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 77.87,
+      "end_sec": 87.19500000000001,
+      "text": "盘座我们也教了我们盘座这一座如果是盘坐盘到底中间不要动。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 90.08,
+      "end_sec": 91.48,
+      "text": "如果是挂作，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 92.04,
+      "end_sec": 93.565,
+      "text": "一开始你就画作，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 94.34,
+      "end_sec": 97.22,
+      "text": "大家也不要尝试去学他们挂座。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 97.3,
+      "end_sec": 98.52,
+      "text": "你你们结束以后，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 98.52,
+      "end_sec": 102.625,
+      "text": "你们可以问问他们挂座的也不好说，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 105.61,
+      "end_sec": 110.89,
+      "text": "不管是挂座还是盘做有一个基本的准则。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 111.11,
+      "end_sec": 112.69500000000001,
+      "text": "就是你们在做的时候，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 113.7,
+      "end_sec": 116.805,
+      "text": "在做的时候腰要挺起来，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 117.89,
+      "end_sec": 127.68,
+      "text": "腰要提起来这个这个上垫它是一个斜斜着的一个垫子腿，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 127.68,
+      "end_sec": 128.445,
+      "text": "做好的，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 129.31,
+      "end_sec": 130.495,
+      "text": "往前坐一坐，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 133.91,
+      "end_sec": 137.13,
+      "text": "新手稍稍往后坐一坐，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 137.19,
+      "end_sec": 139.59,
+      "text": "但是不要靠椅背椅背。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 140.07,
+      "end_sec": 141.37,
+      "text": "如果是长时间的，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 141.37,
+      "end_sec": 145.01,
+      "text": "靠一开始没有养成这个习惯，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 145.09,
+      "end_sec": 146.81,
+      "text": "一开始养成一个坏的习惯，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 146.95000000000002,
+      "end_sec": 148.17000000000002,
+      "text": "是揪不过来的。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 148.79,
+      "end_sec": 153.21,
+      "text": "长时间的这样去靠着坐这个腰就废了。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 153.71,
+      "end_sec": 155.29500000000002,
+      "text": "所以很多人生啥病，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 156.08,
+      "end_sec": 161.925,
+      "text": "过去这个散堂里面很多人生散病就是这么来的。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 163.63,
+      "end_sec": 168.135,
+      "text": "挂坐的时候坐好腰提起来，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 169.54,
+      "end_sec": 170.935,
+      "text": "脊柱拎起来，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 173.39000000000001,
+      "end_sec": 177.895,
+      "text": "上身的身姿的要求是跟大家讲过的，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 181.15,
+      "end_sec": 184.71,
+      "text": "要做一做就做到底啊，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 184.81,
+      "end_sec": 186.085,
+      "text": "我们的要求也不高。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 187.65,
+      "end_sec": 187.89000000000001,
+      "text": "好，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 188.05,
+      "end_sec": 250.975,
+      "text": "请上桌提交售后脊柱区分，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 257.11,
+      "end_sec": 267.13,
+      "text": "肩背雄鹰向两翼两侧舒展舒展。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 267.45,
+      "end_sec": 269.915,
+      "text": "注意到我们这里呢不讲挺胸，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 271.04,
+      "end_sec": 273.57,
+      "text": "不讲挺胸啊，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 274.21,
+      "end_sec": 275.13,
+      "text": "不讲挺胸，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 275.51,
+      "end_sec": 280.92,
+      "text": "也不讲八背是书展两翼自然的舒展。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 280.94,
+      "end_sec": 281.56,
+      "text": "这个舒展，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 281.58,
+      "end_sec": 282.825,
+      "text": "它不是景绷，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 283.86,
+      "end_sec": 287.04,
+      "text": "也不是放松自然的舒展，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 287.14,
+      "end_sec": 289.935,
+      "text": "像是小鸟将飞未飞的样子，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 291.24,
+      "end_sec": 291.86,
+      "text": "没去体会。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 291.86,
+      "end_sec": 297.225,
+      "text": "你肩部肩背舒展，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 303.42,
+      "end_sec": 306.875,
+      "text": "走部有提时，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 311.92,
+      "end_sec": 316.83,
+      "text": "手机定义男同胞，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 316.83,
+      "end_sec": 317.63,
+      "text": "左手在下，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 318.27,
+      "end_sec": 318.89,
+      "text": "女同胞，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 318.89,
+      "end_sec": 324.415,
+      "text": "右手在下拇指轻触而后分开一厘米，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 330.14,
+      "end_sec": 336.685,
+      "text": "头面中正脸喉贴紧，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 355.26,
+      "end_sec": 371.935,
+      "text": "学生端正安稳，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 407.33,
+      "end_sec": 408.255,
+      "text": "调整屏页，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 415.53000000000003,
+      "end_sec": 428.395,
+      "text": "止息内在的言辞互动去确定调整呼吸，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 435.78000000000003,
+      "end_sec": 441.205,
+      "text": "让呼吸神慢了，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 442.52,
+      "end_sec": 447.15500000000003,
+      "text": "戏长何缓，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 511.46000000000004,
+      "end_sec": 518.465,
+      "text": "异业调整检查。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 519.19,
+      "end_sec": 519.57,
+      "text": "此刻，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 519.57,
+      "end_sec": 527.995,
+      "text": "内在的心里念头是否有不正面、",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 529.6,
+      "end_sec": 532.875,
+      "text": "不善变杂念、",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 533.67,
+      "end_sec": 534.165,
+      "text": "恶念、",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 534.77,
+      "end_sec": 536.135,
+      "text": "邪业忘名。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 538.9,
+      "end_sec": 539.44,
+      "text": "有的话，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 539.72,
+      "end_sec": 553.24,
+      "text": "通通扫除检查。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 556.94,
+      "end_sec": 557.3000000000001,
+      "text": "此刻，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 557.3000000000001,
+      "end_sec": 564.205,
+      "text": "心神的状态唤醒度如何、",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 568.47,
+      "end_sec": 569.4250000000001,
+      "text": "活力如何，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 574.3000000000001,
+      "end_sec": 575.165,
+      "text": "力量如何。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 580.92,
+      "end_sec": 582.075,
+      "text": "内在语言提示，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 589.01,
+      "end_sec": 589.895,
+      "text": "我在打坐，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 594.79,
+      "end_sec": 595.855,
+      "text": "我在山丘，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 599.53,
+      "end_sec": 606.22,
+      "text": "我要专注的认真的大火。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 606.22,
+      "end_sec": 621.205,
+      "text": "这一座这一座我们要补充一些知识课的内容。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 623.6,
+      "end_sec": 630.345,
+      "text": "我们前面讲到金情有三个要素，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 632.83,
+      "end_sec": 634.635,
+      "text": "第一个要素是绝观，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 637.01,
+      "end_sec": 639.115,
+      "text": "第二个要素是智控。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 641.83,
+      "end_sec": 649.465,
+      "text": "第三个要素是内径贯注质控，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 652.03,
+      "end_sec": 655.825,
+      "text": "这两个字是控制倒过来。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 663.88,
+      "end_sec": 668.165,
+      "text": "什么质控的含义？",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 669.73,
+      "end_sec": 683.91,
+      "text": "我们前面粗略的做了一个介绍质控的含义啊，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 684.17,
+      "end_sec": 693.455,
+      "text": "跟早期瑜伽的含义是类似瑜伽呢有三种含义。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 694.5600000000001,
+      "end_sec": 701.04,
+      "text": "第一种含义叫做质感质感，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 701.5,
+      "end_sec": 703.4,
+      "text": "也就是感官的调制。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 704.12,
+      "end_sec": 705.385,
+      "text": "感官的调制，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 709.32,
+      "end_sec": 710.205,
+      "text": "非礼勿视、",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 711.13,
+      "end_sec": 711.41,
+      "text": "非礼，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 711.41,
+      "end_sec": 711.83,
+      "text": "勿听、",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 712.53,
+      "end_sec": 713.375,
+      "text": "非礼勿闻。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 716.24,
+      "end_sec": 717.385,
+      "text": "感官的调制。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 720.53,
+      "end_sec": 738.19,
+      "text": "第二层含义是驾驭驾驭驾驭这个词呢是来源于古代的驾马驾驭御驾驾马的时候，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 738.19,
+      "end_sec": 740.99,
+      "text": "御驾驭驾瑜伽，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 741.3100000000001,
+      "end_sec": 750.405,
+      "text": "驾驭从嫁嘛的教育演变为对心灵的教驭，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 751.16,
+      "end_sec": 753.22,
+      "text": "这是早期的云邪士啊，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 753.5,
+      "end_sec": 764.77,
+      "text": "也是一些修行人跟现在的啊这一个很多你们瑜伽管理的瑜伽啊不太不太是一回事啊。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 764.77,
+      "end_sec": 765.99,
+      "text": "过去的瑜伽瑜，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 765.99,
+      "end_sec": 771.075,
+      "text": "伽瑜前事指的是一些独立的修行人。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 779.6800000000001,
+      "end_sec": 783.7,
+      "text": "第三种含义是廉洁相应。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 787.4,
+      "end_sec": 787.58,
+      "text": "呃，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 787.58,
+      "end_sec": 796.475,
+      "text": "我们这里讲的质控呢更偏向于嗯第二层含义驾驭调育。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 798.46,
+      "end_sec": 800.035,
+      "text": "我们讲如来识德，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 801.07,
+      "end_sec": 804.47,
+      "text": "如来应控政殿之明，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 804.47,
+      "end_sec": 807.9300000000001,
+      "text": "恒足善事世间解调育丈夫，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 808.29,
+      "end_sec": 810.4300000000001,
+      "text": "如来如来实德的这个称号，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 810.4300000000001,
+      "end_sec": 812.415,
+      "text": "里面有个叫做调育丈夫。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 813.6800000000001,
+      "end_sec": 819.065,
+      "text": "这里的条语指的就是对新的条例驾令，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 821.13,
+      "end_sec": 825.125,
+      "text": "也是我们质控的含义。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 827.44,
+      "end_sec": 832.165,
+      "text": "对质控我们了解到它不是简单的控制。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 833.23,
+      "end_sec": 835.1850000000001,
+      "text": "当我们提到控制的时候，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 836.71,
+      "end_sec": 836.95,
+      "text": "好，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 837.1700000000001,
+      "end_sec": 838.75,
+      "text": "当我们提到控制的时候，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 838.77,
+      "end_sec": 840.595,
+      "text": "假如说我现在拿着一个木鱼，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 841.9200000000001,
+      "end_sec": 843.12,
+      "text": "我要控制这个木鱼，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 843.32,
+      "end_sec": 845.775,
+      "text": "从这个位置移动到这个位置。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 848.4,
+      "end_sec": 850.24,
+      "text": "当我们提到控制的时候，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 850.46,
+      "end_sec": 857.03,
+      "text": "这个时候我们的心是在这个对象上啊，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 857.45,
+      "end_sec": 861.02,
+      "text": "要把这个木鱼锤要拿的稳啊，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 861.5600000000001,
+      "end_sec": 863.08,
+      "text": "要控制啊，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 863.12,
+      "end_sec": 868.41,
+      "text": "比如说我们打这个木鱼敲这个木鱼要控制，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 868.65,
+      "end_sec": 873.9,
+      "text": "要有节奏啊，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 874.32,
+      "end_sec": 877.4350000000001,
+      "text": "我们是对对于木锤儿的控制。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 878.16,
+      "end_sec": 879.54,
+      "text": "那什么是智控呢？",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 880.0600000000001,
+      "end_sec": 883.635,
+      "text": "智控不仅仅是有控制，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 884.7,
+      "end_sec": 890.525,
+      "text": "更进一步对控制本身还要有主导。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 892.44,
+      "end_sec": 893.6,
+      "text": "注意到这个时候，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 893.96,
+      "end_sec": 896.825,
+      "text": "练质控主导的是什么？",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 898.29,
+      "end_sec": 903.35,
+      "text": "主导的不仅仅是这个木楚儿，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 903.39,
+      "end_sec": 904.875,
+      "text": "不仅仅是这个对象，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 905.91,
+      "end_sec": 910.14,
+      "text": "还要对我们的心理操作，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 910.82,
+      "end_sec": 913.135,
+      "text": "对我们的控制本身有助导，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 914.0,
+      "end_sec": 916.2950000000001,
+      "text": "这个是基于精神的主导，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 917.6800000000001,
+      "end_sec": 920.845,
+      "text": "知道这个叫做直控。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 922.74,
+      "end_sec": 929.835,
+      "text": "所以说质控的练习他不简单的在动作层面，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 933.14,
+      "end_sec": 936.265,
+      "text": "他要上行质控的，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 937.19,
+      "end_sec": 939.57,
+      "text": "我们有笼统的练习。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 939.87,
+      "end_sec": 944.73,
+      "text": "比如说刚刚我们在行进的时候带大家笼统的练习之空，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 945.29,
+      "end_sec": 947.87,
+      "text": "也可以分为好，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 948.1700000000001,
+      "end_sec": 952.575,
+      "text": "三步去练习哪三步呢？",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 953.34,
+      "end_sec": 960.515,
+      "text": "从动作的意识到动作的控制力时再到质控。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 963.19,
+      "end_sec": 963.4300000000001,
+      "text": "啊，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 963.49,
+      "end_sec": 965.455,
+      "text": "这个呢我们下来之后，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 968.04,
+      "end_sec": 977.15,
+      "text": "下来之后啊会带大家一层一层的去练啊。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 977.15,
+      "end_sec": 978.605,
+      "text": "但是笼统的质控，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 979.6700000000001,
+      "end_sec": 981.97,
+      "text": "我们前面已经提到了笼统的质控，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 982.0500000000001,
+      "end_sec": 984.77,
+      "text": "大家要先熟悉笼统的质控上来呢，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 984.77,
+      "end_sec": 989.1700000000001,
+      "text": "不要觉得这个很高大上有畏难情绪啊。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 989.1700000000001,
+      "end_sec": 990.6700000000001,
+      "text": "笼统的质控说白了，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 991.19,
+      "end_sec": 993.6800000000001,
+      "text": "人人都学得会啊，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 993.7,
+      "end_sec": 995.12,
+      "text": "小孩儿最最容易学。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 995.32,
+      "end_sec": 996.28,
+      "text": "我举那个例子，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 996.38,
+      "end_sec": 1003.97,
+      "text": "前面有一些小朋友有一天跟那个站在楼梯口，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 1004.57,
+      "end_sec": 1005.87,
+      "text": "跟我们卢老师讲，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 1006.41,
+      "end_sec": 1009.51,
+      "text": "很高兴跟我们卢老师说报告老师啊，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 1009.51,
+      "end_sec": 1010.75,
+      "text": "我刚刚想骂人，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 1011.23,
+      "end_sec": 1014.375,
+      "text": "我智控住了这个就是指控。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 1015.53,
+      "end_sec": 1020.41,
+      "text": "那当一个人开始对自己的身心有了反观，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 1020.83,
+      "end_sec": 1021.65,
+      "text": "有了自觉，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 1022.13,
+      "end_sec": 1023.87,
+      "text": "他更进一步会干嘛？",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 1024.47,
+      "end_sec": 1029.07,
+      "text": "他发现了自己的一些局限性，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 1029.69,
+      "end_sec": 1031.17,
+      "text": "甚至一些不好的地方，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 1031.17,
+      "end_sec": 1032.81,
+      "text": "一些惰性的地方性，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 1032.83,
+      "end_sec": 1034.385,
+      "text": "德中一些不好的地方。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 1035.96,
+      "end_sec": 1040.84,
+      "text": "这个时候他自然就会产生激发他的自我调整。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 1041.44,
+      "end_sec": 1044.475,
+      "text": "这个自我调整的过程就叫做质控，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 1045.67,
+      "end_sec": 1045.91,
+      "text": "人，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 1045.99,
+      "end_sec": 1047.71,
+      "text": "总是不那么完善，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 1047.77,
+      "end_sec": 1051.055,
+      "text": "不那么圆满的人人都有缺点，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 1051.96,
+      "end_sec": 1052.955,
+      "text": "都有局限，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 1055.53,
+      "end_sec": 1057.3700000000001,
+      "text": "打破自己的局限，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 1058.13,
+      "end_sec": 1060.15,
+      "text": "突破自身的坎线。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 1060.8700000000001,
+      "end_sec": 1062.825,
+      "text": "这个就是修行修道的价值，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 1064.49,
+      "end_sec": 1066.125,
+      "text": "这个也是我们质控的意义。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 1068.9,
+      "end_sec": 1071.175,
+      "text": "好时间已到大家写日志。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 1098.3600000000001,
+      "end_sec": 1183.77,
+      "text": "对嗯，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 1191.1100000000001,
+      "end_sec": 1191.3500000000001,
+      "text": "好，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 1191.3700000000001,
+      "end_sec": 1195.945,
+      "text": "十八分说自己不是能下床听音，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 1217.99,
+      "end_sec": 1218.805,
+      "text": "这什么问题，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 1229.3,
+      "end_sec": 1232.72,
+      "text": "有写个空说平气平安，",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    },
+    {
+      "start_sec": 1232.72,
+      "end_sec": 1233.505,
+      "text": "行自行车。",
+      "confidence": null,
+      "low_confidence": true,
+      "detail": null,
+      "kind": "speech"
+    }
+  ],
+  "full_text": "没关系，我讲两句，我们这一次的入学入学教育啊，这个地方有讲到位，三个班，同时一起做很仓促，你们人手也不够。一开始规矩，你们都没有学好注意到穿鞋的时候脚不能离地一坐，要么是盘坐，要么是挂座，也就是我们这个禅堂给你们开许，允许你们挂座，知道很多人坐不住，因为我们不是以修订为主，没有必要让大家在这里好好的龇牙铃嘴。但是不能以此作为放映的入口，腿功不好，如果从修订的角度来说，肯定是有一定障碍的。但是从修觉性的角度来说，是没有影响行住坐卧都可以修。但是坐要有坐向挂座，我们是教了的，怎么挂座？盘座我们也教了我们盘座这一座如果是盘坐盘到底中间不要动。如果是挂作，一开始你就画作，大家也不要尝试去学他们挂座。你你们结束以后，你们可以问问他们挂座的也不好说，不管是挂座还是盘做有一个基本的准则。就是你们在做的时候，在做的时候腰要挺起来，腰要提起来这个这个上垫它是一个斜斜着的一个垫子腿，做好的，往前坐一坐，新手稍稍往后坐一坐，但是不要靠椅背椅背。如果是长时间的，靠一开始没有养成这个习惯，一开始养成一个坏的习惯，是揪不过来的。长时间的这样去靠着坐这个腰就废了。所以很多人生啥病，过去这个散堂里面很多人生散病就是这么来的。挂坐的时候坐好腰提起来，脊柱拎起来，上身的身姿的要求是跟大家讲过的，要做一做就做到底啊，我们的要求也不高。好，请上桌提交售后脊柱区分，肩背雄鹰向两翼两侧舒展舒展。注意到我们这里呢不讲挺胸，不讲挺胸啊，不讲挺胸，也不讲八背是书展两翼自然的舒展。这个舒展，它不是景绷，也不是放松自然的舒展，像是小鸟将飞未飞的样子，没去体会。你肩部肩背舒展，走部有提时，手机定义男同胞，左手在下，女同胞，右手在下拇指轻触而后分开一厘米，头面中正脸喉贴紧，学生端正安稳，调整屏页，止息内在的言辞互动去确定调整呼吸，让呼吸神慢了，戏长何缓，异业调整检查。此刻，内在的心里念头是否有不正面、不善变杂念、恶念、邪业忘名。有的话，通通扫除检查。此刻，心神的状态唤醒度如何、活力如何，力量如何。内在语言提示，我在打坐，我在山丘，我要专注的认真的大火。这一座这一座我们要补充一些知识课的内容。我们前面讲到金情有三个要素，第一个要素是绝观，第二个要素是智控。第三个要素是内径贯注质控，这两个字是控制倒过来。什么质控的含义？我们前面粗略的做了一个介绍质控的含义啊，跟早期瑜伽的含义是类似瑜伽呢有三种含义。第一种含义叫做质感质感，也就是感官的调制。感官的调制，非礼勿视、非礼，勿听、非礼勿闻。感官的调制。第二层含义是驾驭驾驭驾驭这个词呢是来源于古代的驾马驾驭御驾驾马的时候，御驾驭驾瑜伽，驾驭从嫁嘛的教育演变为对心灵的教驭，这是早期的云邪士啊，也是一些修行人跟现在的啊这一个很多你们瑜伽管理的瑜伽啊不太不太是一回事啊。过去的瑜伽瑜，伽瑜前事指的是一些独立的修行人。第三种含义是廉洁相应。呃，我们这里讲的质控呢更偏向于嗯第二层含义驾驭调育。我们讲如来识德，如来应控政殿之明，恒足善事世间解调育丈夫，如来如来实德的这个称号，里面有个叫做调育丈夫。这里的条语指的就是对新的条例驾令，也是我们质控的含义。对质控我们了解到它不是简单的控制。当我们提到控制的时候，好，当我们提到控制的时候，假如说我现在拿着一个木鱼，我要控制这个木鱼，从这个位置移动到这个位置。当我们提到控制的时候，这个时候我们的心是在这个对象上啊，要把这个木鱼锤要拿的稳啊，要控制啊，比如说我们打这个木鱼敲这个木鱼要控制，要有节奏啊，我们是对对于木锤儿的控制。那什么是智控呢？智控不仅仅是有控制，更进一步对控制本身还要有主导。注意到这个时候，练质控主导的是什么？主导的不仅仅是这个木楚儿，不仅仅是这个对象，还要对我们的心理操作，对我们的控制本身有助导，这个是基于精神的主导，知道这个叫做直控。所以说质控的练习他不简单的在动作层面，他要上行质控的，我们有笼统的练习。比如说刚刚我们在行进的时候带大家笼统的练习之空，也可以分为好，三步去练习哪三步呢？从动作的意识到动作的控制力时再到质控。啊，这个呢我们下来之后，下来之后啊会带大家一层一层的去练啊。但是笼统的质控，我们前面已经提到了笼统的质控，大家要先熟悉笼统的质控上来呢，不要觉得这个很高大上有畏难情绪啊。笼统的质控说白了，人人都学得会啊，小孩儿最最容易学。我举那个例子，前面有一些小朋友有一天跟那个站在楼梯口，跟我们卢老师讲，很高兴跟我们卢老师说报告老师啊，我刚刚想骂人，我智控住了这个就是指控。那当一个人开始对自己的身心有了反观，有了自觉，他更进一步会干嘛？他发现了自己的一些局限性，甚至一些不好的地方，一些惰性的地方性，德中一些不好的地方。这个时候他自然就会产生激发他的自我调整。这个自我调整的过程就叫做质控，人，总是不那么完善，不那么圆满的人人都有缺点，都有局限，打破自己的局限，突破自身的坎线。这个就是修行修道的价值，这个也是我们质控的意义。好时间已到大家写日志。对嗯，好，十八分说自己不是能下床听音，这什么问题，有写个空说平气平安，行自行车。",
+  "engine": "funasr+iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
+  "duration_sec": 1249.776313,
+  "error": null,
+  "warnings": [],
+  "segmentation_mode": "sentence_info",
+  "_spike_wall_sec": 155.5,
+  "_spike_model_id": "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch"
+}

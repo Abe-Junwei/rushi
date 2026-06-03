@@ -1,0 +1,66 @@
+{
+  "long_audio": "/Users/junwei/开发/Rushi/fixtures/eval/samples/制控.mp3",
+  "short_audio": "/Users/junwei/开发/Rushi/fixtures/eval/samples/clear.wav",
+  "runs": [
+    {
+      "label": "S4-paraformer",
+      "segments": 0,
+      "engine": "funasr+iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
+      "duration_sec": 0.15,
+      "wall_sec": 30.8,
+      "whole_track_fallback": false,
+      "warnings_head": [
+        "funasr_no_sentence_segments",
+        "funasr_no_timestamps: 模型返回全文但无分句时间戳且时长未知；未创建语段。请换用输出 sentence_info 的模型/参数，或在桌面端波形上拖选新建语段。"
+      ],
+      "first_text_80": "",
+      "first_start": null,
+      "last_end": null
+    },
+    {
+      "label": "S4-qwen",
+      "segments": 0,
+      "engine": "stub",
+      "duration_sec": 0.15,
+      "wall_sec": 9.3,
+      "whole_track_fallback": false,
+      "warnings_head": [
+        "funasr_error:Qwen/Qwen3-ASR-0.6B is not registered",
+        "stub_no_placeholder_segment: FunASR 未安装、运行时不可用，或当前模型尚未准备完成；可在桌面端波形空白处拖选新建语段，或先完成 FunASR 安装与模型准备后再重试。"
+      ],
+      "first_text_80": "",
+      "first_start": null,
+      "last_end": null
+    },
+    {
+      "label": "S3-paraformer",
+      "segments": 197,
+      "engine": "funasr+iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
+      "duration_sec": 1249.776313,
+      "wall_sec": 155.5,
+      "whole_track_fallback": false,
+      "warnings_head": [],
+      "first_text_80": "没关系，",
+      "first_start": 0.23,
+      "last_end": 1233.505,
+      "term_hit_rate": 0.0
+    },
+    {
+      "label": "S3-qwen",
+      "segments": 0,
+      "engine": "stub",
+      "duration_sec": 1249.776313,
+      "wall_sec": 10.6,
+      "whole_track_fallback": false,
+      "warnings_head": [
+        "funasr_error:Qwen/Qwen3-ASR-0.6B is not registered",
+        "stub_no_placeholder_segment: FunASR 未安装、运行时不可用，或当前模型尚未准备完成；可在桌面端波形空白处拖选新建语段，或先完成 FunASR 安装与模型准备后再重试。",
+        "hotwords_ignored_stub"
+      ],
+      "first_text_80": "",
+      "first_start": null,
+      "last_end": null,
+      "term_hit_rate": 1.0
+    }
+  ]
+}

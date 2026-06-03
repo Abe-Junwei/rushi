@@ -16,7 +16,7 @@ from rushi_asr.defaults import effective_funasr_model_id, effective_funasr_vad_m
 from rushi_asr.funasr_pipeline import effective_funasr_punc_model_id, recognizer_needs_punc_pipeline
 from rushi_asr.model_prepare import required_models_cached_guess
 from rushi_asr.schemas import TranscriptionSegment
-from rushi_asr.asr_model_profile import LONG_AUDIO_SEC
+from rushi_asr.asr_model_profile import LONG_AUDIO_SEC, funasr_language_for_model
 from rushi_asr.segmentation import (
     funasr_generate_kwargs,
     segment_funasr_generate_result,
@@ -166,10 +166,13 @@ def generate_and_parse_funasr(
         raise RuntimeError("funasr_models_not_ready")
 
     model = _get_model(model_id)
-    language = effective_funasr_language()
     raw_lang = os.environ.get("RUSHI_FUNASR_LANGUAGE", "zh").strip() or "zh"
-    if language != raw_lang and out_warnings is not None:
-        out_warnings.append(f"funasr_language_fallback:{raw_lang!r}->{language!r}")
+    rushi_lang = effective_funasr_language()
+    if rushi_lang != raw_lang and out_warnings is not None:
+        out_warnings.append(f"funasr_language_fallback:{raw_lang!r}->{rushi_lang!r}")
+    language = funasr_language_for_model(model_id, rushi_lang)
+    if language != rushi_lang and out_warnings is not None:
+        out_warnings.append(f"funasr_language_model_map:{rushi_lang!r}->{language!r}")
     hw = hotwords
 
     def _warn(msg: str) -> None:

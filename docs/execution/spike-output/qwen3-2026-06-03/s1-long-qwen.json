@@ -1,0 +1,15 @@
+{
+  "schema_version": "1",
+  "segments": [],
+  "full_text": "",
+  "engine": "funasr+Qwen/Qwen3-ASR-0.6B",
+  "duration_sec": 1249.776313,
+  "error": null,
+  "warnings": [
+    "funasr_language_model_map:'zh'->'Chinese'",
+    "funasr_long_audio_no_segments: 长音频未得到分句时间戳；未生成整轨占位语段。请换用 Paraformer（VAD+标点）或检查 VAD/标点权重是否已缓存。",
+    "funasr_long_audio_no_segments: 长音频未得到分句时间戳；未生成整轨占位语段。请换用 Paraformer（VAD+标点）或检查 VAD/标点权重是否已缓存。"
+  ],
+  "segmentation_mode": null,
+  "_spike_wall_sec": 1012.9
+}
