@@ -7,6 +7,8 @@ import {
   useRef,
   useState,
   type KeyboardEvent,
+  type MouseEvent,
+  type PointerEvent,
 } from "react";
 import type { SegmentDto } from "../../tauri/projectApi";
 import {
@@ -15,13 +17,11 @@ import {
   segmentDraftStore,
   useSegmentDraft,
 } from "../../hooks/useSegmentDraftStore";
-import type { TextInputDomSnapshot } from "../../services/learnEditDelta";
-import { shouldDeferDomInputForIme } from "../../services/deferImeLearnInput";
 import { FindReplaceMatchText } from "../FindReplaceMatchText";
 import { CorrectableMatchText } from "./CorrectableMatchText";
+import { resolveSegmentTextContextMenuAction } from "../../utils/segmentTextContextMenuSelection";
 import { syncTranscriptTextareaSelection } from "../../utils/transcriptSelection";
 import type { CorrectableSpan } from "../../services/editor/findCorrectableSpans";
-import { shouldRetainDraftForPendingLearn } from "../../services/segmentLearnVisibility";
 
 interface SegmentRowTextFieldProps {
   segment: SegmentDto;
@@ -39,6 +39,9 @@ interface SegmentRowTextFieldProps {
   findReplaceHighlight?: { charStart: number; charEnd: number } | null;
   spansForText: (text: string) => CorrectableSpan[];
   onCorrectableSpanClick: (span: CorrectableSpan, event: React.MouseEvent<HTMLButtonElement>) => void;
+  onOpenTextContextMenu?: (e: MouseEvent<HTMLTextAreaElement>, selectionText: string) => void;
+  /** 无选区时右键：打开语段行菜单（删/并），避免正文区只有「纳入更正记忆」 */
+  onRequestRowContextMenu?: (e: MouseEvent<HTMLTextAreaElement>) => void;
 }
 
 function initialTextareaValue(draftKey: string, committedText: string): string {
@@ -60,25 +63,18 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
   findReplaceHighlight,
   spansForText,
   onCorrectableSpanClick,
+  onOpenTextContextMenu,
+  onRequestRowContextMenu,
 }: SegmentRowTextFieldProps) {
   const draftKey = segmentDraftKey(s, i);
   const committedText = normalizeSegmentDraftText(s.text ?? "");
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const preContextMenuSelectionRef = useRef<{ collapsed: boolean } | null>(null);
   const isFocusedRef = useRef(false);
   const lastSyncedFindHighlightRef = useRef<string | null>(null);
   const [textareaFocused, setTextareaFocused] = useState(false);
   const [textareaEpoch, setTextareaEpoch] = useState(0);
   const prevCommittedRef = useRef(committedText);
-  const preEditRef = useRef<TextInputDomSnapshot | null>(null);
-  const compositionStartSnapRef = useRef<TextInputDomSnapshot | null>(null);
-
-  const captureTextareaSnapshot = useCallback((el: HTMLTextAreaElement): TextInputDomSnapshot => {
-    return {
-      value: el.value,
-      start: el.selectionStart,
-      end: el.selectionEnd,
-    };
-  }, []);
 
   const defaultText = initialTextareaValue(draftKey, committedText);
   const [liveText] = useSegmentDraft(draftKey, committedText);
@@ -105,21 +101,13 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
     if (prevCommittedRef.current === committedText) {
       if (!isFocusedRef.current) {
         const stored = segmentDraftStore.getDraft(draftKey);
-        if (
-          stored !== undefined &&
-          stored === committedText &&
-          !shouldRetainDraftForPendingLearn(draftKey, committedText, stored)
-        ) {
+        if (stored !== undefined && stored === committedText) {
           segmentDraftStore.clearDraft(draftKey);
         }
       }
       return;
     }
     prevCommittedRef.current = committedText;
-    const stored = segmentDraftStore.getDraft(draftKey);
-    if (stored !== undefined && shouldRetainDraftForPendingLearn(draftKey, committedText, stored)) {
-      return;
-    }
     segmentDraftStore.clearDraft(draftKey);
     const el = textareaRef.current;
     if (el && !isFocusedRef.current) el.value = committedText;
@@ -136,84 +124,36 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
   const handleTextareaInput = useCallback(
     (el: HTMLTextAreaElement) => {
       if (segmentDraftStore.isComposing(draftKey)) return;
-      const snap = preEditRef.current;
-      if (snap && snap.value !== el.value && !shouldDeferDomInputForIme(snap, el.value)) {
-        segmentDraftStore.applyLearnEditFromDomInput(draftKey, committedText, snap, el.value);
-      }
-      preEditRef.current = captureTextareaSnapshot(el);
       syncDomToDraftStore(el);
     },
-    [captureTextareaSnapshot, committedText, draftKey, syncDomToDraftStore],
+    [draftKey, syncDomToDraftStore],
   );
 
-  const applyCompositionLearnEdit = useCallback(
-    (el: HTMLTextAreaElement) => {
-      const startSnap = compositionStartSnapRef.current;
-      compositionStartSnapRef.current = null;
-      if (startSnap && startSnap.value !== el.value) {
-        segmentDraftStore.applyLearnEditFromDomInput(draftKey, committedText, startSnap, el.value);
-      }
-      preEditRef.current = captureTextareaSnapshot(el);
-      syncDomToDraftStore(el);
-    },
-    [captureTextareaSnapshot, committedText, draftKey, syncDomToDraftStore],
-  );
-
-  const onBeforeInput = useCallback(
-    (e: React.FormEvent<HTMLTextAreaElement>) => {
-      preEditRef.current = captureTextareaSnapshot(e.currentTarget);
-    },
-    [captureTextareaSnapshot],
-  );
-
-  const onKeyDownCapture = useCallback(
-    (e: KeyboardEvent<HTMLTextAreaElement>) => {
-      if (e.key === "Dead" || e.ctrlKey || e.metaKey || e.altKey) return;
-      preEditRef.current = captureTextareaSnapshot(e.currentTarget);
-    },
-    [captureTextareaSnapshot],
-  );
-
-  const onCompositionStart = useCallback(
-    (e: React.CompositionEvent<HTMLTextAreaElement>) => {
-      const el = e.currentTarget;
-      const snap = captureTextareaSnapshot(el);
-      compositionStartSnapRef.current = snap;
-      preEditRef.current = snap;
-      segmentDraftStore.beginComposition(
-        draftKey,
-        committedText,
-        el.value,
-        el.selectionStart,
-        el.selectionEnd,
-      );
-    },
-    [captureTextareaSnapshot, committedText, draftKey],
-  );
+  const onCompositionStart = useCallback(() => {
+    segmentDraftStore.beginComposition(draftKey);
+  }, [draftKey]);
 
   const onCompositionEnd = useCallback(
     (e: React.CompositionEvent<HTMLTextAreaElement>) => {
       segmentDraftStore.endComposition(draftKey);
-      applyCompositionLearnEdit(e.currentTarget);
+      syncDomToDraftStore(e.currentTarget);
     },
-    [applyCompositionLearnEdit, draftKey],
+    [draftKey, syncDomToDraftStore],
   );
 
   const onBlurText = useCallback(() => {
     isFocusedRef.current = false;
     setTextareaFocused(false);
     segmentDraftStore.endComposition(draftKey);
-    segmentDraftStore.finalizeActiveLearnEditOp(draftKey);
     const el = textareaRef.current;
     const liveText = normalizeSegmentDraftText(el?.value ?? committedText);
     if (liveText !== committedText) updateSegmentText(i, liveText);
-    if (shouldRetainDraftForPendingLearn(draftKey, committedText, liveText)) {
+    if (liveText !== committedText) {
       segmentDraftStore.setDraft(draftKey, liveText);
     } else {
       segmentDraftStore.clearDraft(draftKey);
     }
-    if (el) preEditRef.current = captureTextareaSnapshot(el);
-  }, [captureTextareaSnapshot, committedText, draftKey, i, updateSegmentText]);
+  }, [committedText, draftKey, i, updateSegmentText]);
 
   const onKeyDown = useCallback(
     (e: KeyboardEvent<HTMLTextAreaElement>) => {
@@ -222,15 +162,51 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
     [i, onTextareaKeyDown],
   );
 
-  const onSelectionChange = useCallback(
-    (e: React.SyntheticEvent<HTMLTextAreaElement>) => {
+  const onSelectionChange = useCallback((e: React.SyntheticEvent<HTMLTextAreaElement>) => {
+    syncTranscriptTextareaSelection(e.currentTarget);
+  }, []);
+
+  const onTextPointerDownCapture = useCallback((e: PointerEvent<HTMLTextAreaElement>) => {
+    if (e.button !== 2) return;
+    const el = e.currentTarget;
+    const start = el.selectionStart;
+    const end = el.selectionEnd;
+    preContextMenuSelectionRef.current = {
+      collapsed: start == null || end == null || start === end,
+    };
+  }, []);
+
+  const onTextContextMenu = useCallback(
+    (e: MouseEvent<HTMLTextAreaElement>) => {
+      if (busy) return;
       const el = e.currentTarget;
-      syncTranscriptTextareaSelection(el);
-      if (document.activeElement === el) {
-        preEditRef.current = captureTextareaSnapshot(el);
+      const start = el.selectionStart ?? 0;
+      const end = el.selectionEnd ?? 0;
+      const wasCollapsed =
+        preContextMenuSelectionRef.current?.collapsed ?? start === end;
+      preContextMenuSelectionRef.current = null;
+
+      const action = resolveSegmentTextContextMenuAction({
+        wasCollapsedBeforeContextMenu: wasCollapsed,
+        selectionStart: start,
+        selectionEnd: end,
+        value: el.value,
+      });
+
+      if (action.kind === "row") {
+        if (onRequestRowContextMenu) {
+          e.preventDefault();
+          e.stopPropagation();
+          onRequestRowContextMenu(e);
+        }
+        return;
       }
+      if (!onOpenTextContextMenu) return;
+      e.preventDefault();
+      e.stopPropagation();
+      onOpenTextContextMenu(e, action.selectionText);
     },
-    [captureTextareaSnapshot],
+    [busy, onOpenTextContextMenu, onRequestRowContextMenu],
   );
 
   const onRowHeightHandlePointerDown = useCallback(
@@ -244,42 +220,20 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
 
   useEffect(() => {
     if (!selected || busy) return;
-    const anchor =
-      segmentDraftStore.getLearnFocusBaseline(draftKey) ??
-      normalizeSegmentDraftText(committedText);
-    segmentDraftStore.beginSegmentLearnSession(draftKey, anchor);
     const el = textareaRef.current;
-    if (el) preEditRef.current = captureTextareaSnapshot(el);
-    // eslint-disable-next-line react-hooks/exhaustive-deps -- committedText omitted: autosave must not reset ops
-  }, [busy, draftKey, selected, captureTextareaSnapshot]);
-
-  useEffect(() => {
-    const el = textareaRef.current;
-    if (!el || !selected) return;
-    const snapBeforeInput = () => {
-      preEditRef.current = captureTextareaSnapshot(el);
-    };
-    el.addEventListener("beforeinput", snapBeforeInput);
-    return () => el.removeEventListener("beforeinput", snapBeforeInput);
-  }, [selected, draftKey, textareaEpoch, captureTextareaSnapshot]);
-
-  useEffect(() => {
-    if (!selected || busy) return;
-    const textarea = textareaRef.current;
-    if (!textarea) return;
     if (findReplaceHighlight) {
       const key = `${findReplaceHighlight.charStart}:${findReplaceHighlight.charEnd}`;
       if (lastSyncedFindHighlightRef.current === key) return;
       lastSyncedFindHighlightRef.current = key;
-      textarea.focus();
-      textarea.setSelectionRange(findReplaceHighlight.charStart, findReplaceHighlight.charEnd);
+      el?.focus();
+      el?.setSelectionRange(findReplaceHighlight.charStart, findReplaceHighlight.charEnd);
       return;
     }
     lastSyncedFindHighlightRef.current = null;
-    if (!focusOnSelectRef.current) return;
-    textarea.focus();
-    const end = textarea.value.length;
-    textarea.setSelectionRange(end, end);
+    if (!el || !focusOnSelectRef.current) return;
+    el.focus();
+    const end = el.value.length;
+    el.setSelectionRange(end, end);
     focusOnSelectRef.current = false;
   }, [busy, findReplaceHighlight, focusOnSelectRef, selected]);
 
@@ -295,6 +249,7 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
     !findReplaceHighlight &&
     correctableSpans.length > 0 &&
     !busy;
+
   return (
     <div className="min-w-0 flex-1">
       <div className="rounded-lg bg-transparent transition-[background-color] duration-150">
@@ -314,20 +269,14 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
                 defaultValue={defaultText}
                 disabled={busy}
                 onMouseDown={(e) => e.stopPropagation()}
+                onPointerDownCapture={onTextPointerDownCapture}
                 onClick={(e) => e.stopPropagation()}
+                onContextMenu={onTextContextMenu}
                 onFocus={() => {
                   if (busy) return;
                   isFocusedRef.current = true;
                   setTextareaFocused(true);
-                  const el = textareaRef.current;
-                  if (el) preEditRef.current = captureTextareaSnapshot(el);
-                  const pendingBase = segmentDraftStore.getLearnFocusBaseline(draftKey);
-                  if (pendingBase !== undefined && pendingBase !== committedText) {
-                    return;
-                  }
-                  segmentDraftStore.setLearnFocusBaseline(draftKey, committedText);
                 }}
-                onBeforeInput={onBeforeInput}
                 onInput={(e) => {
                   if (e.nativeEvent.isComposing) return;
                   handleTextareaInput(e.currentTarget);
@@ -335,7 +284,6 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
                 onCompositionStart={onCompositionStart}
                 onCompositionEnd={onCompositionEnd}
                 onBlur={onBlurText}
-                onKeyDownCapture={onKeyDownCapture}
                 onKeyDown={onKeyDown}
                 onSelect={onSelectionChange}
                 onMouseUp={onSelectionChange}
