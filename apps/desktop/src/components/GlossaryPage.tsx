@@ -18,9 +18,11 @@ import { GLOSSARY_LIST_DISPLAY_CAP } from "../pages/glossaryListCap";
 import { useCorrectionMemoryController } from "../pages/useCorrectionMemoryController";
 import { useGlossaryController } from "../pages/useGlossaryController";
 import { useGlossaryMineController } from "../pages/useGlossaryMineController";
+import { useLexiconBundleController } from "../pages/useLexiconBundleController";
 import { groupCorrectionMemoryConflicts } from "../services/correctionMemoryConflicts";
 import { CorrectionMemoryConflictBanner } from "./glossary/CorrectionMemoryConflictBanner";
 import { GlossaryMineSection } from "./glossary/GlossaryMineSection";
+import { LexiconBundleImportDialog } from "./glossary/LexiconBundleImportDialog";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
 type GlossaryPageProps = {
@@ -30,13 +32,30 @@ type GlossaryPageProps = {
 export function GlossaryPage({ busy }: GlossaryPageProps) {
   const g = useGlossaryController();
   const mem = useCorrectionMemoryController();
+  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const [bundleBusy, setBundleBusy] = useState(false);
+  const [bundleStatus, setBundleStatus] = useState("");
+  const [bundleError, setBundleError] = useState("");
   const mine = useGlossaryMineController({
     onGlossaryChanged: () => g.refresh(),
   });
-  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
+  const lex = useLexiconBundleController({
+    onImported: async () => {
+      await Promise.all([g.refresh(), mem.refresh()]);
+    },
+    setError: setBundleError,
+    setStatusMessage: setBundleStatus,
+    setBusy: setBundleBusy,
+  });
   const headerCheckboxRef = useRef<HTMLInputElement>(null);
   const memoryHeaderCheckboxRef = useRef<HTMLInputElement>(null);
-  const disabled = busy || g.busy || mem.busy || mine.busy;
+  const termEditorRef = useRef<HTMLDivElement>(null);
+  const disabled = busy || g.busy || mem.busy || mine.busy || bundleBusy;
+
+  const scrollToTermEditor = useCallback(() => {
+    g.resetEditor();
+    termEditorRef.current?.scrollIntoView({ behavior: "smooth", block: "start" });
+  }, [g]);
 
   useEffect(() => {
     if (headerCheckboxRef.current) {
@@ -84,29 +103,34 @@ export function GlossaryPage({ busy }: GlossaryPageProps) {
             <div>
               <h1 className="m-0 text-[18px] font-semibold leading-[1.4] text-notion-text">热词与记忆</h1>
               <p className={PANEL_TYPOGRAPHY.sectionDescription}>
-                转写热词（术语表）与纠错记忆（错→对）分开展示；均可手动增删改，并影响下次转写与编辑内规则应用。
+                <strong className="font-medium text-notion-text">转写词汇表（Custom Vocabulary）</strong>
+                ：只收录希望听成的正形，纳入热词后在下次 ASR 拉取时提交。
+                <strong className="font-medium text-notion-text">纠错记忆</strong>
+                ：错→对，用于改正建议与编辑内规则，错形不会进入转写热词。
               </p>
             </div>
           </div>
         </header>
-
-        <h2 className={`m-0 ${PANEL_TYPOGRAPHY.sectionTitle}`}>转写热词</h2>
 
         <section
           className="flex flex-col gap-2 rounded-md border border-notion-divider bg-notion-callout-bg px-4 py-3"
           aria-labelledby="glossary-hotwords-heading"
         >
           <h2 id="glossary-hotwords-heading" className={PANEL_TYPOGRAPHY.sectionTitle}>
-            本次转写将携带
+            转写词汇表（Custom Vocabulary）
           </h2>
           <p className={`m-0 ${PANEL_TYPOGRAPHY.meta}`}>{g.hotwordsSummary}</p>
           <p className={`m-0 ${PANEL_TYPOGRAPHY.meta}`}>
-            共 {g.terms.length} 条术语，{g.hotwordEnabledCount} 条已纳入热词
+            共 {g.terms.length} 条词条，{g.hotwordEnabledCount} 条已勾选「纳入下次转写（热词）」
             {g.hotwordsPreview
               ? `；将提交 ${g.hotwordsPreview.termCount} 个唯一热词 token。`
               : "。"}
-            本机 FunASR 使用空格串 <code className="font-mono text-[11px]">hotwords</code>；在线 STT 按厂商映射（OpenAI /
-            AssemblyAI / Deepgram 等，见「环境与 ASR → 在线 STT」）。
+            本表影响<strong className="font-medium text-notion-text">下次听写</strong>；纠错记忆影响
+            <strong className="font-medium text-notion-text">当前稿改正</strong>，二者勿混用。
+          </p>
+          <p className={`m-0 ${PANEL_TYPOGRAPHY.meta}`}>
+            本机 FunASR 使用空格串 <code className="font-mono text-[11px]">hotwords</code>；在线 STT 按厂商映射（见「环境与
+            ASR → 在线 STT」）。
           </p>
           {g.hotwordsPreview?.truncated ? (
             <p className={`m-0 ${PANEL_TYPOGRAPHY.meta} text-zen-saffron`}>
@@ -122,8 +146,79 @@ export function GlossaryPage({ busy }: GlossaryPageProps) {
           ) : null}
         </section>
 
+        <section
+          className="flex flex-col gap-3 rounded-md bg-notion-callout-bg px-4 py-3"
+          aria-labelledby="lexicon-bundle-heading"
+        >
+          <h2 id="lexicon-bundle-heading" className={PANEL_TYPOGRAPHY.sectionTitle}>
+            词表包（小团队交换）
+          </h2>
+          <p className={`m-0 ${PANEL_TYPOGRAPHY.meta}`}>
+            导出/导入 <code className="font-mono text-[11px]">rushi_lexicon_bundle.v1.json</code>
+            ，仅含术语表与稳定纠错记忆，不含语段正文。
+          </p>
+          <label className="flex items-center gap-2 text-sm text-notion-text">
+            <input
+              type="checkbox"
+              checked={lex.exportStableOnly}
+              onChange={(e) => lex.setExportStableOnly(e.target.checked)}
+              disabled={disabled}
+            />
+            仅导出稳定记忆（hit≥2 或已采纳）
+          </label>
+          <label className="flex flex-col gap-1">
+            <span className={PANEL_TYPOGRAPHY.meta}>来源标签（可选）</span>
+            <input
+              type="text"
+              value={lex.exportLabel}
+              onChange={(e) => lex.setExportLabel(e.target.value)}
+              disabled={disabled}
+              placeholder="例如：栏目 A / 用户 B"
+              className={`min-h-[36px] rounded-lg border border-notion-border bg-notion-bg px-3 outline-none focus:border-zen-saffron focus:ring-2 focus:ring-zen-saffron/30 disabled:opacity-50 ${PANEL_CONTROL_TYPOGRAPHY.compactInput}`}
+            />
+          </label>
+          <div className="flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="inline-flex min-h-[36px] items-center justify-center gap-1.5 rounded-lg border border-notion-border bg-notion-bg px-3 text-sm font-medium text-notion-text-muted transition-colors hover:bg-notion-sidebar-hover hover:text-notion-text disabled:opacity-40"
+              disabled={disabled}
+              onClick={() => void lex.exportBundle()}
+            >
+              <Download className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+              导出词表包…
+            </button>
+            <button
+              type="button"
+              className="inline-flex min-h-[36px] items-center justify-center gap-1.5 rounded-lg border border-notion-border bg-notion-bg px-3 text-sm font-medium text-notion-text-muted transition-colors hover:bg-notion-sidebar-hover hover:text-notion-text disabled:opacity-40"
+              disabled={disabled}
+              onClick={() => void lex.startImportPreview()}
+            >
+              <FileSpreadsheet className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+              导入词表包…
+            </button>
+          </div>
+          {bundleStatus ? <p className={`m-0 ${PANEL_TYPOGRAPHY.meta} text-notion-text`}>{bundleStatus}</p> : null}
+          {bundleError ? (
+            <p className="m-0 rounded-md border border-zen-cinnabar/25 bg-zen-cinnabar/10 px-3 py-2 text-sm text-zen-cinnabar">
+              {bundleError}
+            </p>
+          ) : null}
+        </section>
+
+        {lex.pendingImport ? (
+          <LexiconBundleImportDialog
+            pending={lex.pendingImport}
+            resolutions={lex.resolutions}
+            disabled={disabled}
+            onChoice={lex.setConflictChoice}
+            onCancel={lex.cancelImport}
+            onConfirm={() => void lex.confirmImportWithResolutions()}
+          />
+        ) : null}
+
         <GlossaryMineSection mine={mine} disabled={disabled} />
 
+        <div ref={termEditorRef}>
         <GlossaryTermEditor
           mode={g.editorMode}
           draft={g.draft}
@@ -133,6 +228,7 @@ export function GlossaryPage({ busy }: GlossaryPageProps) {
           onReset={g.resetEditor}
           onDelete={g.editorMode === "edit" ? handleDeleteFromEditor : undefined}
         />
+        </div>
 
         <section className="flex flex-col gap-3">
           <h2 className={PANEL_TYPOGRAPHY.sectionTitle}>批量添加</h2>
@@ -241,9 +337,19 @@ export function GlossaryPage({ busy }: GlossaryPageProps) {
           </div>
 
           {g.terms.length === 0 ? (
-            <p className="rounded-md border border-dashed border-notion-divider bg-notion-bg/80 px-4 py-10 text-center text-sm text-notion-text-muted">
-              暂无术语。在上方新建词条，或使用批量添加 / 表格导入。
-            </p>
+            <div className="flex flex-col items-center gap-3 rounded-md border border-dashed border-notion-divider bg-notion-bg/80 px-4 py-10 text-center">
+              <p className="m-0 text-sm text-notion-text-muted">
+                转写词汇表为空。添加希望听成的专名/术语，并勾选「纳入下次转写（热词）」。
+              </p>
+              <button
+                type="button"
+                className="inline-flex min-h-[36px] items-center justify-center rounded-lg border-0 bg-zen-saffron px-4 text-sm font-semibold text-notion-bg transition-opacity hover:opacity-90 disabled:opacity-40"
+                disabled={disabled}
+                onClick={scrollToTermEditor}
+              >
+                添加词条
+              </button>
+            </div>
           ) : g.filteredTerms.length === 0 ? (
             <p className="rounded-md bg-notion-callout-bg px-4 py-8 text-center text-sm text-notion-text-muted">
               没有匹配的术语。
@@ -301,7 +407,7 @@ export function GlossaryPage({ busy }: GlossaryPageProps) {
         </section>
 
         <p className={PANEL_TYPOGRAPHY.helper}>
-          勾选后可批量删除或设置热词；搜索/筛选变更会清空选择。导出 CSV 与结构化导入均支持 hotword_enabled 列。
+          勾选后可批量删除或设置「纳入下次转写（热词）」；搜索/筛选变更会清空选择。导出 CSV 与导入均支持 hotword_enabled 列。
         </p>
 
         <div className="flex flex-col gap-2 border-t border-notion-divider pt-8">
@@ -317,7 +423,7 @@ export function GlossaryPage({ busy }: GlossaryPageProps) {
             </span>
           </div>
           <p className={`m-0 ${PANEL_TYPOGRAPHY.meta}`}>
-            来自手改、查找替换或本页新建。稳定后可用于工具栏「纠错规则」与转写提示；也可将正词加入术语表（保存语段后的 F6 提示）。
+            来自手改纳入、查找替换或本页新建。用于工具栏「纠错规则」与改正建议；正形可通过 F6 提示或右键纳入后加入上方转写词汇表（非自动进热词）。
           </p>
         </div>
 
