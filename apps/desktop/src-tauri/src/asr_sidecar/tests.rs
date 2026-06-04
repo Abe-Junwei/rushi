@@ -110,6 +110,12 @@ fn candidate_resource_roots_deduplicate_existing_resources_dir() {
 #[test]
 fn bundled_candidates_from_roots_deduplicate_same_executable() {
     let root = std::env::temp_dir().join(format!("rushi-asr-sidecar-test-{}", std::process::id()));
+    #[cfg(target_os = "windows")]
+    let exe = root
+        .join("bundled-asr")
+        .join("rushi-asr-sidecar")
+        .join("rushi-asr-sidecar.exe");
+    #[cfg(not(target_os = "windows"))]
     let exe = root
         .join("bundled-asr")
         .join("rushi-asr-sidecar")
