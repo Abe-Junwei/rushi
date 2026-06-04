@@ -1,14 +1,16 @@
-import { useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { Cloud, Cpu, Download, HelpCircle, Sparkles } from "lucide-react";
+import { ENV_STATUS_DOT_CLASS, type EnvStatusTone } from "./topBarStatusTone";
 import { EnvProfileActions } from "./EnvProfileActions";
 import { EnvLlmConfigPanel } from "./EnvLlmConfigPanel";
 import { EnvLocalAsrPanel } from "./EnvLocalAsrPanel";
 import { EnvOnlineSttPanel } from "./EnvOnlineSttPanel";
 import { EnvHelpPanel } from "./EnvHelpPanel";
-import { PANEL_TYPOGRAPHY } from "../config/typography";
+import { useLlmEnvStatus } from "../hooks/useLlmEnvStatus";
+import type { AsrEnvPresentation } from "../services/asr/asrEnvStatus";
+import { readOnlineSttEnvNavTone } from "../services/stt/readOnlineSttEnvNavPresentation";
 import type { AsrHealthCapabilities, AsrModelCacheInfo, BundledAsrLaunchReport, WaveformPeaksCacheInfo } from "../tauri/projectApi";
 import type { AsrHealthState } from "../pages/useProjectController";
-import type { AsrEnvPresentation } from "../services/asr/asrEnvStatus";
 import type { AsrSetupControllerApi } from "../pages/useAsrSetupController";
 import type { LocalAsrModelCatalogApi } from "../pages/useLocalAsrModelCatalog";
 import type { PrepareModelApi } from "../pages/usePrepareModelController";
@@ -16,6 +18,13 @@ import type { PrepareModelFailureCopy } from "../pages/prepareModelDownloadCopy"
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
 type EnvNavId = "local-asr" | "online-stt" | "llm" | "profile" | "help";
+
+function envNavStatusDotClass(tone: EnvStatusTone): string {
+  return ENV_STATUS_DOT_CLASS[tone];
+}
+
+const ENV_NAV_BTN_BASE =
+  "mb-1 flex w-full appearance-none items-center border-0 px-4 py-3 text-left shadow-none outline-none transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-saffron/30";
 
 const ENV_NAV_ITEMS: { id: EnvNavId; label: string; description: string; icon: React.ReactNode }[] = [
   { id: "local-asr", label: "本机 ASR", description: "FunASR 环境、模型下载与诊断", icon: <Cpu className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden /> },
@@ -58,6 +67,7 @@ export type EnvironmentPanelProps = {
   onLlmRuntimeChanged?: () => void;
   focusOnlineSttSeq?: number;
   focusLlmSeq?: number;
+  llmStatusRefreshSeq?: number;
 };
 
 export function EnvironmentPanel({
@@ -90,11 +100,24 @@ export function EnvironmentPanel({
   onLlmRuntimeChanged,
   focusOnlineSttSeq = 0,
   focusLlmSeq = 0,
+  llmStatusRefreshSeq = 0,
 }: EnvironmentPanelProps) {
   const [envSection, setEnvSection] = useState<EnvNavId>("local-asr");
   const [settingsEpoch, setSettingsEpoch] = useState(0);
+  const [sttNavRefreshSeq, setSttNavRefreshSeq] = useState(0);
   const rootRef = useRef<HTMLDivElement | null>(null);
-  const [panelScale, setPanelScale] = useState(1);
+  const [layoutCompact, setLayoutCompact] = useState(false);
+  const { presentation: llmPresentation } = useLlmEnvStatus(llmStatusRefreshSeq);
+
+  const bumpSttRuntimeRevision = useCallback(() => {
+    setSttNavRefreshSeq((n) => n + 1);
+    onSttOnlineRuntimeChanged?.();
+  }, [onSttOnlineRuntimeChanged]);
+
+  const onlineSttNavTone = useMemo(
+    () => readOnlineSttEnvNavTone(),
+    [settingsEpoch, sttNavRefreshSeq],
+  );
 
   useEffect(() => {
     if (focusOnlineSttSeq <= 0) return;
@@ -118,23 +141,13 @@ export function EnvironmentPanel({
     const root = rootRef.current;
     if (!root) return;
 
-    const baseWidth = 860;
-    const baseHeight = 620;
-
-    const updateScale = () => {
-      const rect = root.getBoundingClientRect();
-      const widthScale = rect.width / baseWidth;
-      const heightScale = rect.height / baseHeight;
-      const next = Math.min(widthScale, heightScale);
-      if (!Number.isFinite(next) || next <= 0) {
-        setPanelScale(1);
-        return;
-      }
-      setPanelScale(Math.min(1.35, Math.max(0.72, next)));
+    const updateLayout = () => {
+      const width = root.getBoundingClientRect().width;
+      setLayoutCompact(width > 0 && width < 720);
     };
 
-    updateScale();
-    const ro = new ResizeObserver(updateScale);
+    updateLayout();
+    const ro = new ResizeObserver(updateLayout);
     ro.observe(root);
 
     return () => {
@@ -142,45 +155,63 @@ export function EnvironmentPanel({
     };
   }, []);
 
+  const navWidthClass = layoutCompact ? "w-48" : "w-60";
+  const mainPaddingClass = layoutCompact ? "px-4 py-4" : "px-6 py-5";
+
   return (
-    <div ref={rootRef} className="h-full min-h-0 min-w-0 overflow-hidden bg-notion-bg">
-      <div
-        className="h-full origin-top-left"
-        style={{
-          transform: `scale(${panelScale})`,
-          width: `${100 / panelScale}%`,
-          height: `${100 / panelScale}%`,
-        }}
-      >
-        <div className="flex h-full min-h-0 flex-row bg-notion-bg">
+    <div ref={rootRef} className="workspace h-full min-h-0 min-w-0 overflow-hidden bg-notion-bg">
+      <div className="flex h-full min-h-0 flex-row bg-notion-bg">
           {/* 左侧导航 */}
-          <nav className="flex h-full w-[clamp(112px,22%,156px)] shrink-0 flex-col gap-1 overflow-y-auto border-r border-notion-divider bg-notion-sidebar px-2 py-4">
-            {ENV_NAV_ITEMS.map((item) => {
+          <nav className={`flex h-full ${navWidthClass} shrink-0 flex-col overflow-y-auto border-r border-notion-divider bg-notion-sidebar py-5`}>
+            <div className="flex flex-1 flex-col">
+            {ENV_NAV_ITEMS.map((item, index) => {
               const active = envSection === item.id;
+              const statusTone: EnvStatusTone | null =
+                item.id === "local-asr"
+                  ? asrPresentation.tone
+                  : item.id === "online-stt"
+                    ? onlineSttNavTone
+                    : item.id === "llm"
+                      ? llmPresentation.tone
+                      : null;
+              const isLast = index === ENV_NAV_ITEMS.length - 1;
               return (
                 <button
                   key={item.id}
                   type="button"
-                  className={`flex w-full flex-col gap-0.5 rounded border px-2 py-2 text-left outline-none transition-colors focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-saffron/30 ${
+                  className={`${ENV_NAV_BTN_BASE} ${isLast ? "mt-auto" : ""} ${
                     active
-                      ? "border-notion-border bg-notion-sidebar-active text-notion-text"
-                      : "border-transparent bg-transparent text-notion-text hover:bg-notion-sidebar-hover"
+                      ? "border-l-4 border-zen-saffron bg-notion-sidebar-active text-notion-text"
+                      : "border-l-4 border-transparent bg-transparent text-notion-text-muted hover:bg-notion-sidebar-hover"
                   }`}
                   aria-current={active ? "true" : undefined}
                   onClick={() => setEnvSection(item.id)}
                 >
-                  <span className="flex items-center gap-2 text-notion-text">
+                  <span className={`mr-3 shrink-0 ${active ? "text-notion-text" : "text-notion-text-muted"}`}>
                     {item.icon}
-                    <span className={PANEL_TYPOGRAPHY.navLabel}>{item.label}</span>
                   </span>
-                  <span className={PANEL_TYPOGRAPHY.navDescription}>{item.description}</span>
+                  <span className="min-w-0 flex-1">
+                    <span className={`block text-[13px] leading-snug ${active ? "font-bold text-notion-text" : "font-medium text-notion-text"}`}>
+                      {item.label}
+                    </span>
+                    <span className="mt-0.5 block truncate text-[11px] leading-tight text-notion-text-muted">
+                      {item.description}
+                    </span>
+                  </span>
+                  {statusTone ? (
+                    <span
+                      className={`ml-2 h-1.5 w-1.5 shrink-0 rounded-full ${envNavStatusDotClass(statusTone)}`}
+                      aria-hidden
+                    />
+                  ) : null}
                 </button>
               );
             })}
+            </div>
           </nav>
 
           {/* 右侧内容 */}
-          <main className="min-h-0 min-w-0 flex-1 overflow-y-auto bg-notion-bg p-[clamp(12px,2.4vw,30px)]">
+          <main className={`min-h-0 min-w-0 flex-1 overflow-y-auto bg-notion-bg ${mainPaddingClass}`}>
             <div className="flex flex-col gap-6">
               {envSection === "local-asr" ? (
                 <EnvLocalAsrPanel
@@ -216,7 +247,7 @@ export function EnvironmentPanel({
                 <EnvOnlineSttPanel
                   key={`online-stt-${settingsEpoch}`}
                   busy={busy}
-                  onSttOnlineRuntimeChanged={onSttOnlineRuntimeChanged}
+                  onSttOnlineRuntimeChanged={bumpSttRuntimeRevision}
                 />
               ) : null}
 
@@ -229,7 +260,7 @@ export function EnvironmentPanel({
                   busy={busy}
                   onImported={() => {
                     setSettingsEpoch((n) => n + 1);
-                    onSttOnlineRuntimeChanged?.();
+                    bumpSttRuntimeRevision();
                     onLlmRuntimeChanged?.();
                   }}
                 />
@@ -239,7 +270,6 @@ export function EnvironmentPanel({
             </div>
           </main>
         </div>
-      </div>
     </div>
   );
 }

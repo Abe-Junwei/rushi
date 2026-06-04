@@ -19,6 +19,7 @@ import {
 } from "../services/exportPolishPreviewCache";
 import { summarizeLineChange } from "../services/exportPolishPipeline";
 import { FloatingPanelTemplate } from "./PanelTemplate";
+import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { TopBarStatusIndicator } from "./TopBarStatusIndicator";
 import { useLlmEnvStatus } from "../hooks/useLlmEnvStatus";
 import {
@@ -187,7 +188,7 @@ export function DeliveryExportDialog({
         onClose={handleClose}
       >
         <div className="flex flex-col gap-3 px-5 py-3" role="dialog" aria-modal="true">
-          <p className="text-sm leading-relaxed text-notion-text-muted">
+          <p className={PANEL_TYPOGRAPHY.dialogBody}>
             导出前将自动保存编辑器中未提交的语段正文，与当前波形列表一致。
           </p>
           <fieldset className="m-0 flex flex-col gap-2 border-0 p-0">
@@ -208,7 +209,7 @@ export function DeliveryExportDialog({
                   onChange={() => setMode(opt.id)}
                 />
                 <span className="min-w-0">
-                  <span className="block text-sm font-semibold text-notion-text">{opt.label}</span>
+                  <span className={`block font-semibold ${PANEL_TYPOGRAPHY.dialogText}`}>{opt.label}</span>
                   <span className="block text-xs leading-snug text-notion-text-muted">{opt.hint}</span>
                 </span>
               </label>
@@ -217,7 +218,7 @@ export function DeliveryExportDialog({
           {polishAvailable ? (
             <div className="space-y-2">
               <label
-                className={`flex items-start gap-2 text-sm ${
+                className={`flex items-start gap-2 ${PANEL_TYPOGRAPHY.dialogBody} ${
                   exportPolishBlockReason ? "cursor-not-allowed opacity-60" : "cursor-pointer"
                 } text-notion-text`}
               >
@@ -242,7 +243,7 @@ export function DeliveryExportDialog({
                 <div className="flex flex-wrap items-center gap-2 pl-6">
                   <TopBarStatusIndicator
                     label={llmEnv.sourceLabel}
-                    ok={llmEnv.ok}
+                    tone={llmEnv.tone}
                     onClick={onOpenLlmSettings}
                     title={`${llmEnv.chipLabel} · 点击打开 LLM 配置`}
                   />
@@ -344,7 +345,7 @@ export function DeliveryExportDialog({
               ) : null}
             </div>
           ) : null}
-          <label className="flex cursor-pointer items-start gap-2 text-sm text-notion-text">
+          <label className={`flex cursor-pointer items-start gap-2 ${PANEL_TYPOGRAPHY.dialogText}`}>
             <input
               type="checkbox"
               className="mt-0.5"

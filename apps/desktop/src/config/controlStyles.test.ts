@@ -2,7 +2,15 @@ import { describe, expect, it } from "vitest";
 import {
   CONTROL_BTN_DANGER,
   CONTROL_BTN_DANGER_COMPACT,
+  CONTROL_BTN_GHOST,
+  CONTROL_BTN_LINK,
   CONTROL_BTN_PRIMARY,
+  ENV_COMPACT_BTN,
+  ENV_MONO_FIELD,
+  ENV_LLM_MODE_TOGGLE_TRACK,
+  ENV_SEGMENTED_ROW,
+  envLlmModeToggleBtnClass,
+  envSegmentedBtnClass,
   CONTROL_BTN_PRIMARY_PROMINENT,
   CONTROL_BTN_SECONDARY,
   CONTROL_BTN_SECONDARY_PROMINENT,
@@ -27,6 +35,29 @@ describe("controlStyles", () => {
   it("uses shadow-none on text inputs", () => {
     expect(CONTROL_TEXT_INPUT).toContain("shadow-none");
     expect(CONTROL_SELECT).toContain("shadow-none");
+  });
+
+  it("ghost and link buttons flatten UA gray fill", () => {
+    expect(CONTROL_BTN_GHOST).toContain("bg-transparent");
+    expect(CONTROL_BTN_LINK).toContain("bg-transparent");
+    expect(CONTROL_BTN_LINK).toContain("border-0");
+  });
+
+  it("exposes env panel compact control token", () => {
+    expect(ENV_COMPACT_BTN).toContain("rounded-sm");
+    expect(ENV_COMPACT_BTN).toContain("border-notion-border");
+    expect(ENV_MONO_FIELD).toContain("font-mono");
+  });
+
+  it("matches Stitch LLM mode state toggle control", () => {
+    expect(ENV_SEGMENTED_ROW).toContain("justify-center");
+    expect(ENV_LLM_MODE_TOGGLE_TRACK).toContain("bg-secondary-container");
+    expect(ENV_LLM_MODE_TOGGLE_TRACK).toContain("inline-flex");
+    expect(envLlmModeToggleBtnClass(false)).toContain("text-notion-text-variant");
+    expect(envLlmModeToggleBtnClass(false)).toContain("bg-transparent");
+    expect(envLlmModeToggleBtnClass(true)).toContain("text-zen-saffron-mid");
+    expect(envLlmModeToggleBtnClass(true)).toContain("bg-notion-bg");
+    expect(envSegmentedBtnClass(true)).toContain("text-zen-saffron-mid");
   });
 
   it("uses sidebar + hairline for secondary and canvas for inputs", () => {

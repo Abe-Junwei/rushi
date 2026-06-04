@@ -5,7 +5,7 @@ import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec"
 import { dismissToast, getToastSnapshot, subscribeToasts, type ToastItem, type ToastVariant } from "../services/ui/toast";
 
 const TOAST_SHELL =
-  "pointer-events-auto flex max-w-[min(28rem,calc(100vw-2rem))] cursor-pointer items-start gap-2.5 rounded-md border border-notion-divider bg-notion-bg py-2.5 pl-3 pr-4 text-left text-sm font-normal leading-snug text-notion-text shadow-sm";
+  "pointer-events-auto flex max-w-[min(28rem,calc(100vw-2rem))] cursor-pointer items-start gap-2.5 rounded-md border border-notion-divider bg-notion-bg py-2.5 pl-3 pr-4 text-left font-sans text-sm font-normal leading-snug text-notion-text shadow-sm";
 
 const VARIANT_ACCENT: Record<ToastVariant, string> = {
   info: "border-l-4 border-l-notion-text-light bg-notion-callout-bg",

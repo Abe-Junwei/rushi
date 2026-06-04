@@ -11,12 +11,12 @@ export function AsrTopStatusChips({ presentation }: Props) {
     <>
       <TopBarStatusIndicator
         label="FFmpeg"
-        ok={presentation.ffmpegChipOk}
+        tone={presentation.ffmpegChipOk ? "ok" : "error"}
         title={presentation.ffmpegChipTitle}
       />
       <TopBarStatusIndicator
         label={presentation.chipLabel}
-        ok={presentation.chipOk}
+        tone={presentation.tone}
         title={presentation.chipTitle}
       />
     </>

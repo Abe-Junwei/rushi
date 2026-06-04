@@ -19,6 +19,10 @@ export const CONTROL_BTN_ONLINE_STT =
 export const CONTROL_BTN_GHOST =
   "inline-flex h-8 min-h-[32px] items-center justify-center rounded-sm border border-transparent bg-transparent px-4 font-sans text-sm font-semibold text-notion-text-muted shadow-none ring-0 transition-colors hover:bg-notion-sidebar-hover hover:text-notion-text focus:shadow-none focus:ring-0 focus-visible:shadow-none focus-visible:ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-notion-text/20 disabled:cursor-not-allowed disabled:opacity-40";
 
+/** 行内文字链式按钮（透明底 + 下划线 hover；须再叠 text-* 色） */
+export const CONTROL_BTN_LINK =
+  "border-0 bg-transparent p-0 font-inherit shadow-none ring-0 appearance-none underline-offset-2 transition-colors hover:underline disabled:cursor-not-allowed disabled:opacity-40";
+
 /** 危险操作：白底 + cinnabar 边/字；hover 填 cinnabar */
 export const CONTROL_BTN_DANGER =
   "inline-flex h-8 shrink-0 items-center justify-center rounded-sm border border-zen-cinnabar bg-notion-bg px-4 font-sans text-sm font-semibold text-zen-cinnabar shadow-none ring-0 transition-colors hover:border-zen-cinnabar hover:bg-zen-cinnabar hover:text-notion-bg focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-cinnabar/30 disabled:cursor-not-allowed disabled:opacity-40";
@@ -41,3 +45,36 @@ export const CONTROL_BTN_PRIMARY_PROMINENT =
 
 export const CONTROL_BTN_SECONDARY_PROMINENT =
   "inline-flex h-10 min-h-[40px] items-center justify-center rounded-sm border border-notion-border bg-notion-sidebar px-5 font-sans text-sm font-semibold text-notion-text shadow-none ring-0 transition-colors hover:border-notion-text-light hover:bg-notion-sidebar-hover focus:shadow-none focus:ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-notion-text/20 disabled:cursor-not-allowed disabled:opacity-40";
+
+/** 环境页紧凑工具按钮（诊断 / 缓存 / 侧车等） */
+export const ENV_COMPACT_BTN =
+  "inline-flex items-center gap-1.5 rounded-sm border border-notion-border bg-notion-bg px-2.5 py-1 font-sans text-[12px] font-medium leading-[1.4] text-notion-text shadow-none transition-colors hover:bg-notion-sidebar-hover disabled:cursor-not-allowed disabled:opacity-40";
+
+/** 环境页 mono 技术输入（基于 CONTROL_TEXT_INPUT） */
+export const ENV_MONO_FIELD =
+  "block w-full font-mono text-[12px] leading-[1.4] text-notion-text placeholder:text-notion-text-light";
+
+/** LLM 模式状态切换：居中行 */
+export const ENV_SEGMENTED_ROW = "flex w-full justify-center";
+
+/** LLM 模式状态切换轨道（Stitch：secondary-container 底 + 选中项白底） */
+export const ENV_LLM_MODE_TOGGLE_TRACK =
+  "inline-flex gap-0 rounded-lg bg-secondary-container p-1";
+
+/** @deprecated 使用 ENV_LLM_MODE_TOGGLE_TRACK */
+export const ENV_SEGMENTED_TRACK = ENV_LLM_MODE_TOGGLE_TRACK;
+
+const ENV_LLM_MODE_TOGGLE_BTN_BASE =
+  "min-w-[7.5rem] rounded-md border-0 px-4 py-1.5 text-center font-sans text-[13px] font-medium whitespace-nowrap shadow-none ring-0 appearance-none transition-[color,background-color,box-shadow] duration-200 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-saffron/30 disabled:cursor-not-allowed disabled:opacity-40";
+
+/** 状态切换项：选中 = 白底 + shadow + primary 字色；未选 = 透明底 + on-surface-variant */
+export function envLlmModeToggleBtnClass(selected: boolean): string {
+  return selected
+    ? `${ENV_LLM_MODE_TOGGLE_BTN_BASE} bg-notion-bg text-zen-saffron-mid shadow-[0_1px_2px_rgba(0,0,0,0.06)]`
+    : `${ENV_LLM_MODE_TOGGLE_BTN_BASE} bg-transparent text-notion-text-variant hover:text-notion-text`;
+}
+
+/** @deprecated 使用 envLlmModeToggleBtnClass */
+export function envSegmentedBtnClass(active: boolean): string {
+  return envLlmModeToggleBtnClass(active);
+}
