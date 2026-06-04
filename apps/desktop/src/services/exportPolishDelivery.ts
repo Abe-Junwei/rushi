@@ -36,11 +36,12 @@ export function assessExportPolishReadiness(
   mode: DocxExportMode,
   llmPolish: boolean,
   preview: ExportPolishResult | null,
+  llmBlockReason?: string | null,
 ): ExportPolishReadiness {
   if (!llmPolish || !exportModeSupportsLlmPolish(mode)) {
     return { canExport: true, blockReason: null, previewCurrent: false };
   }
-  const block = resolveExportPolishBlockReason(segments);
+  const block = resolveExportPolishBlockReason(segments, llmBlockReason);
   if (block) {
     return { canExport: false, blockReason: block, previewCurrent: false };
   }

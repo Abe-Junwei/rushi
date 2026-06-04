@@ -1,13 +1,21 @@
 import { cleanup, fireEvent, render, screen, waitFor } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { EnvLlmConfigPanel } from "./EnvLlmConfigPanel";
-import { DEFAULT_LLM_API_KEY_ID, applyLlmProviderPreset, persistLlmRuntimeConfig } from "../services/postprocess/postprocessRuntimeContract";
+import {
+  DEFAULT_LLM_API_KEY_ID,
+  LLM_STORAGE_KEYS,
+  applyLlmProviderPreset,
+  persistLlmRuntimeConfig,
+} from "../services/postprocess/postprocessRuntimeContract";
 
 const llmProbeConnection = vi.fn<
   (req: unknown) => Promise<{ ok: boolean; message: string; status?: number; latency_ms?: number }>
 >();
 const llmSaveApiKey = vi.fn<(req: unknown) => Promise<string>>();
 const llmHasStoredApiKey = vi.fn<(req: unknown) => Promise<boolean>>();
+const ollamaDetectStatus = vi.fn<
+  () => Promise<{ reachable: boolean; modelCount: number; hasQwen25_7b: boolean; message: string }>
+>();
 
 vi.mock("../tauri/postprocessApi", () => ({
   llmProbeConnection: (req: unknown) => llmProbeConnection(req),
@@ -15,6 +23,7 @@ vi.mock("../tauri/postprocessApi", () => ({
   llmDeleteApiKey: vi.fn(),
   llmHasStoredApiKey: (req: unknown) => llmHasStoredApiKey(req),
   llmMigrateLegacyApiKey: vi.fn().mockResolvedValue(false),
+  ollamaDetectStatus: () => ollamaDetectStatus(),
 }));
 
 function installMockLocalStorage() {
@@ -39,8 +48,15 @@ describe("EnvLlmConfigPanel", () => {
     llmProbeConnection.mockReset();
     llmSaveApiKey.mockReset();
     llmHasStoredApiKey.mockReset();
+    ollamaDetectStatus.mockReset();
     llmSaveApiKey.mockResolvedValue(DEFAULT_LLM_API_KEY_ID);
     llmHasStoredApiKey.mockResolvedValue(true);
+    ollamaDetectStatus.mockResolvedValue({
+      reachable: true,
+      modelCount: 1,
+      hasQwen25_7b: true,
+      message: "Ollama 就绪",
+    });
   });
 
   afterEach(() => {
@@ -133,5 +149,56 @@ describe("EnvLlmConfigPanel", () => {
     };
     expect(req.runtime?.apiKeyId).toBe(DEFAULT_LLM_API_KEY_ID);
     expect(req.runtime?.apiKey).toBeUndefined();
+  });
+
+  it("shows LLM source switch; ollama banner only in local mode", async () => {
+    render(<EnvLlmConfigPanel busy={false} />);
+    expect(screen.getByRole("button", { name: "本机 Ollama" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "云端 API" })).toBeTruthy();
+    expect(screen.queryByText(/本机 LLM（Ollama）/)).toBeNull();
+    expect(screen.getByText(/云端 LLM/)).toBeTruthy();
+
+    fireEvent.click(screen.getByRole("button", { name: "本机 Ollama" }));
+    await waitFor(() => {
+      expect(screen.getByText(/本机 LLM（Ollama）/)).toBeTruthy();
+    });
+  });
+
+  it("switching to local mode persists ollama preset", async () => {
+    persistLlmRuntimeConfig({ ...applyLlmProviderPreset("deepseek"), apiKeyId: DEFAULT_LLM_API_KEY_ID });
+    render(<EnvLlmConfigPanel busy={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "本机 Ollama" }));
+    await waitFor(() => {
+      expect(screen.getByDisplayValue("qwen2.5:7b")).toBeTruthy();
+    });
+    expect(localStorage.getItem(LLM_STORAGE_KEYS.providerId)).toBe("ollama");
+  });
+
+  it("switching to cloud mode restores last saved cloud provider", async () => {
+    persistLlmRuntimeConfig({ ...applyLlmProviderPreset("kimi"), apiKeyId: DEFAULT_LLM_API_KEY_ID });
+    render(<EnvLlmConfigPanel busy={false} />);
+    fireEvent.click(screen.getByRole("button", { name: "本机 Ollama" }));
+    await waitFor(() => {
+      expect(localStorage.getItem(LLM_STORAGE_KEYS.providerId)).toBe("ollama");
+    });
+    fireEvent.click(screen.getByRole("button", { name: "云端 API" }));
+    await waitFor(() => {
+      expect(localStorage.getItem(LLM_STORAGE_KEYS.providerId)).toBe("kimi");
+      expect(screen.getByText(/云端 LLM（Kimi/)).toBeTruthy();
+    });
+  });
+
+  it("switching to cloud mode falls back to deepseek when no cloud snapshot exists", async () => {
+    persistLlmRuntimeConfig(applyLlmProviderPreset("ollama"));
+    render(<EnvLlmConfigPanel busy={false} />);
+    await waitFor(() => {
+      expect(screen.getByText(/本机 LLM（Ollama）/)).toBeTruthy();
+    });
+    fireEvent.click(screen.getByRole("button", { name: "云端 API" }));
+    await waitFor(() => {
+      expect(localStorage.getItem(LLM_STORAGE_KEYS.providerId)).toBe("deepseek");
+      expect(screen.queryByText(/本机 LLM（Ollama）· 服务就绪/)).toBeNull();
+      expect(screen.getByText(/云端 LLM（DeepSeek）/)).toBeTruthy();
+    });
   });
 });

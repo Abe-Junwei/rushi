@@ -5,7 +5,11 @@ import {
   type PostprocessExportPolishRequest,
 } from "../tauri/postprocessApi";
 import { countUnicodeScalars } from "./exportDocxPolish.helpers";
-import { tryBuildPostprocessRuntimeBridge } from "./postprocess/postprocessRuntimeContract";
+import {
+  isLocalLoopbackLlmConfig,
+  llmConfigHint,
+  tryBuildPostprocessRuntimeBridge,
+} from "./postprocess/postprocessRuntimeContract";
 import { correctionStableRulesList } from "../tauri/correctionApi";
 import {
   applyRulesToSegmentLines,
@@ -55,18 +59,30 @@ export function exportModeSupportsLlmPolish(mode: DocxExportMode): boolean {
   return POLISH_MODES.includes(mode);
 }
 
-export function resolveExportPolishBlockReason(segments: SegmentDto[]): string | null {
+export function resolveExportPolishBodyBlockReason(segments: SegmentDto[]): string | null {
   const lines = segmentLinesFromSegments(segments);
   if (lines.length === 0) {
     return "当前没有可导出的正文。";
   }
   const body = joinLinesForLlmBody(lines);
-  const runtime = tryBuildPostprocessRuntimeBridge();
-  if (!runtime) {
-    return "请打开「设置 → LLM 配置」，选择厂商并保存 API Key。";
+  if (isLocalLoopbackLlmConfig() && countUnicodeScalars(body) > 40_000) {
+    return "本机 LLM 润色建议单次不超过约 4 万字；请删减语段、分批导出，或改用云端模型。";
   }
   if (countUnicodeScalars(body) > 120_000) {
     return "正文过长（超过 12 万字），请先删减语段或取消大模型润色。";
+  }
+  return null;
+}
+
+export function resolveExportPolishBlockReason(
+  segments: SegmentDto[],
+  llmBlockReason?: string | null,
+): string | null {
+  const bodyBlock = resolveExportPolishBodyBlockReason(segments);
+  if (bodyBlock) return bodyBlock;
+  if (llmBlockReason?.trim()) return llmBlockReason.trim();
+  if (!tryBuildPostprocessRuntimeBridge()) {
+    return llmConfigHint();
   }
   return null;
 }

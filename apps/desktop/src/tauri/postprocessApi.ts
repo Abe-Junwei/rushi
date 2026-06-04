@@ -210,11 +210,17 @@ export type OllamaDetectResponse = {
   reachable: boolean;
   modelCount: number;
   hasQwen25_7b: boolean;
+  /** 传入 model 时：该 ID 是否在 Ollama tags 中 */
+  hasConfiguredModel?: boolean;
   message: string;
 };
 
-export async function ollamaDetectStatus(tagsUrl?: string): Promise<OllamaDetectResponse> {
-  return await invoke<OllamaDetectResponse>("ollama_detect_status", {
-    req: tagsUrl ? { tagsUrl } : {},
-  });
+export async function ollamaDetectStatus(options?: {
+  tagsUrl?: string;
+  model?: string;
+}): Promise<OllamaDetectResponse> {
+  const req: { tagsUrl?: string; model?: string } = {};
+  if (options?.tagsUrl) req.tagsUrl = options.tagsUrl;
+  if (options?.model?.trim()) req.model = options.model.trim();
+  return await invoke<OllamaDetectResponse>("ollama_detect_status", { req });
 }

@@ -37,7 +37,7 @@ export interface TranscriptionResult {
   segments: TranscriptionSegment[];
   /** Concatenation of segment texts (convenience; not authoritative over segments). */
   full_text: string;
-  /** e.g. `stub`, `funasr`, `funasr+iic/SenseVoiceSmall`. */
+  /** e.g. `stub`, `funasr`, `funasr+iic/speech_paraformer-large-vad-punc_...`. */
   engine: string;
   /** Duration of normalized audio in seconds, if known. */
   duration_sec: number | null;

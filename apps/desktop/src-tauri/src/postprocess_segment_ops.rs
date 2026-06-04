@@ -66,27 +66,129 @@ pub fn build_refine_segments_prompt(segments: &[RefineSegmentItem]) -> String {
     lines.join("\n")
 }
 
-pub fn extract_json_object_from_llm_content(raw: &str) -> Result<String, String> {
-    let trimmed = raw.trim();
-    if trimmed.starts_with('{') {
-        return Ok(trimmed.to_string());
+/// 去掉常见 reasoning / thinking 包裹，便于后续 JSON 提取。
+pub fn strip_llm_reasoning_wrappers(raw: &str) -> String {
+    let mut s = raw.trim().to_string();
+    const PAIRS: &[(&str, &str)] = &[
+        (concat!("<", "think", ">"), concat!("</", "think", ">")),
+        (concat!("<", "think", ">"), concat!("</", "think", ">")),
+        (concat!("<", "redacted_reasoning", ">"), concat!("</", "redacted_reasoning", ">")),
+    ];
+    loop {
+        let before = s.len();
+        for (open, close) in PAIRS {
+            if let Some(start) = s.find(open) {
+                if let Some(rel) = s[start..].find(close) {
+                    let end = start + rel + close.len();
+                    s = format!(
+                        "{}{}",
+                        s[..start].trim_end(),
+                        s[end..].trim_start()
+                    );
+                } else if start == 0 {
+                    s = s[open.len()..].trim_start().to_string();
+                }
+            }
+        }
+        if s.len() == before {
+            break;
+        }
     }
+    s.trim().to_string()
+}
+
+pub fn extract_json_object_from_llm_content(raw: &str) -> Result<String, String> {
+    let trimmed = strip_llm_reasoning_wrappers(raw);
     if let Some(start) = trimmed.find("```") {
         let rest = &trimmed[start + 3..];
         let rest = rest.strip_prefix("json").unwrap_or(rest).trim_start();
         if let Some(end) = rest.find("```") {
             let inner = rest[..end].trim();
-            if inner.starts_with('{') {
-                return Ok(inner.to_string());
+            if let Some(obj) = extract_balanced_json_object(inner) {
+                return Ok(obj);
             }
+        } else if let Some(obj) = extract_balanced_json_object(rest) {
+            return Ok(obj);
         }
     }
-    let start = trimmed.find('{').ok_or("LLM 返回中未找到 JSON 对象。")?;
-    let end = trimmed.rfind('}').ok_or("LLM 返回中未找到 JSON 对象。")?;
-    if end <= start {
-        return Err("LLM 返回中未找到 JSON 对象。".to_string());
+    extract_balanced_json_object(&trimmed).ok_or_else(|| {
+        let preview: String = trimmed.chars().take(120).collect();
+        format!("LLM 返回中未找到 JSON 对象。内容预览：{preview}")
+    })
+}
+
+/// 从 LLM 文本中提取首个平衡 `[…]` 数组（忽略字符串内的括号）。
+pub fn extract_balanced_json_array(s: &str) -> Option<String> {
+    let start = s.find('[')?;
+    let mut depth = 0i32;
+    let mut in_string = false;
+    let mut escape = false;
+    for (offset, ch) in s[start..].char_indices() {
+        if in_string {
+            if escape {
+                escape = false;
+                continue;
+            }
+            if ch == '\\' {
+                escape = true;
+                continue;
+            }
+            if ch == '"' {
+                in_string = false;
+            }
+            continue;
+        }
+        match ch {
+            '"' => in_string = true,
+            '[' => depth += 1,
+            ']' => {
+                depth -= 1;
+                if depth == 0 {
+                    let end = start + offset + ch.len_utf8();
+                    return Some(s[start..end].to_string());
+                }
+            }
+            _ => {}
+        }
     }
-    Ok(trimmed[start..=end].to_string())
+    None
+}
+
+/// 从 LLM 文本中提取首个平衡 `{…}` 对象（忽略字符串内的括号）。
+fn extract_balanced_json_object(s: &str) -> Option<String> {
+    let start = s.find('{')?;
+    let mut depth = 0i32;
+    let mut in_string = false;
+    let mut escape = false;
+    for (offset, ch) in s[start..].char_indices() {
+        if in_string {
+            if escape {
+                escape = false;
+                continue;
+            }
+            if ch == '\\' {
+                escape = true;
+                continue;
+            }
+            if ch == '"' {
+                in_string = false;
+            }
+            continue;
+        }
+        match ch {
+            '"' => in_string = true,
+            '{' => depth += 1,
+            '}' => {
+                depth -= 1;
+                if depth == 0 {
+                    let end = start + offset + ch.len_utf8();
+                    return Some(s[start..end].to_string());
+                }
+            }
+            _ => {}
+        }
+    }
+    None
 }
 
 pub fn parse_refine_ops_json(raw: &str) -> Result<SegmentRefineLlmPayload, String> {
@@ -259,5 +361,32 @@ mod tests {
         let p = parse_refine_ops_json(raw).unwrap();
         assert!(p.ops.is_empty());
         assert_eq!(p.rationale.as_deref(), Some("ok"));
+    }
+
+    #[test]
+    fn extract_json_ignores_trailing_prose() {
+        let raw = r#"{"ops":[]}
+
+以上是整理结果。"#;
+        let json = extract_json_object_from_llm_content(raw).unwrap();
+        assert_eq!(json, r#"{"ops":[]}"#);
+    }
+
+    #[test]
+    fn strip_think_block_before_json() {
+        let raw = format!(
+            "{open}先分析…{close}\n{{\"ops\":[],\"rationale\":\"ok\"}}",
+            open = concat!("<", "think", ">"),
+            close = concat!("</", "think", ">"),
+        );
+        let json = extract_json_object_from_llm_content(&raw).unwrap();
+        assert_eq!(json, r#"{"ops":[],"rationale":"ok"}"#);
+    }
+
+    #[test]
+    fn extract_balanced_json_array_works() {
+        let raw = r#"说明：["甲","乙"]"#;
+        let arr = extract_balanced_json_array(raw).unwrap();
+        assert_eq!(arr, r#"["甲","乙"]"#);
     }
 }

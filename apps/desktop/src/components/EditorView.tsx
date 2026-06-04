@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { EditorToolbar } from "./EditorToolbar";
+import { LlmTopStatusChip } from "./LlmTopStatusChip";
 import { SegmentContextMenu } from "./SegmentContextMenu";
 import { EditorWorkspaceNav } from "./EditorWorkspaceNav";
 import type { ProjectControllerApi } from "../pages/useProjectController";
@@ -27,6 +28,8 @@ interface EditorViewProps {
   exportKey: string;
   onExportSelect: (key: string) => void;
   onOpenEnvironment: () => void;
+  onOpenLlmSettings?: () => void;
+  llmStatusRefreshSeq?: number;
   segmentCtxMenu: SegmentContextMenuOpen | null;
   setSegmentCtxMenu: (v: SegmentContextMenuOpen | null) => void;
   segmentCtxMenuItems: ContextMenuItem[];
@@ -43,6 +46,8 @@ export function EditorView({
   exportKey,
   onExportSelect,
   onOpenEnvironment,
+  onOpenLlmSettings,
+  llmStatusRefreshSeq = 0,
   segmentCtxMenu,
   setSegmentCtxMenu,
   segmentCtxMenuItems,
@@ -86,7 +91,14 @@ export function EditorView({
             disabled={c.busy}
           />
 
-          <div className="flex items-center gap-1.5">
+          <div className="flex items-center gap-2">
+            {onOpenLlmSettings ? (
+              <LlmTopStatusChip
+                refreshSeq={llmStatusRefreshSeq}
+                onOpenLlmSettings={onOpenLlmSettings}
+                disabled={c.busy}
+              />
+            ) : null}
             <button
               type="button"
               className="inline-flex h-8 items-center justify-center rounded-md border border-notion-border bg-notion-bg px-2.5 text-[12px] text-notion-text-muted transition-colors hover:bg-notion-sidebar-hover hover:text-notion-text"
@@ -107,7 +119,9 @@ export function EditorView({
             projectName={projectName}
             currentFileName={currentFileName}
             onOpenEnvironment={onOpenEnvironment}
-          />
+            onOpenLlmSettings={onOpenLlmSettings}
+            llmStatusRefreshSeq={llmStatusRefreshSeq}
+            />
 
           <main className="flex min-h-0 min-w-0 flex-1 flex-col gap-0 bg-notion-bg pb-6">
             {c.audioSrc ? (

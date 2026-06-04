@@ -8,6 +8,7 @@ import { EnvHelpPanel } from "./EnvHelpPanel";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import type { AsrHealthCapabilities, AsrModelCacheInfo, BundledAsrLaunchReport, WaveformPeaksCacheInfo } from "../tauri/projectApi";
 import type { AsrHealthState } from "../pages/useProjectController";
+import type { AsrEnvPresentation } from "../services/asr/asrEnvStatus";
 import type { AsrSetupControllerApi } from "../pages/useAsrSetupController";
 import type { LocalAsrModelCatalogApi } from "../pages/useLocalAsrModelCatalog";
 import type { PrepareModelApi } from "../pages/usePrepareModelController";
@@ -25,6 +26,8 @@ const ENV_NAV_ITEMS: { id: EnvNavId; label: string; description: string; icon: R
 ];
 
 export type EnvironmentPanelProps = {
+  asrPresentation: AsrEnvPresentation;
+  /** @deprecated 使用 asrPresentation */
   asrHealth: AsrHealthState;
   asrHealthDetail: string;
   bundledAsrDiag: BundledAsrLaunchReport | null;
@@ -54,11 +57,11 @@ export type EnvironmentPanelProps = {
   onSttOnlineRuntimeChanged?: () => void;
   onLlmRuntimeChanged?: () => void;
   focusOnlineSttSeq?: number;
+  focusLlmSeq?: number;
 };
 
 export function EnvironmentPanel({
-  asrHealth,
-  asrHealthDetail,
+  asrPresentation,
   bundledAsrDiag,
   asrCaps,
   asrModelCacheInfo,
@@ -86,6 +89,7 @@ export function EnvironmentPanel({
   onSttOnlineRuntimeChanged,
   onLlmRuntimeChanged,
   focusOnlineSttSeq = 0,
+  focusLlmSeq = 0,
 }: EnvironmentPanelProps) {
   const [envSection, setEnvSection] = useState<EnvNavId>("local-asr");
   const [settingsEpoch, setSettingsEpoch] = useState(0);
@@ -100,6 +104,15 @@ export function EnvironmentPanel({
     });
     return () => window.cancelAnimationFrame(raf);
   }, [focusOnlineSttSeq]);
+
+  useEffect(() => {
+    if (focusLlmSeq <= 0) return;
+    setEnvSection("llm");
+    const raf = window.requestAnimationFrame(() => {
+      document.getElementById("llm-config")?.scrollIntoView({ block: "start", behavior: "smooth" });
+    });
+    return () => window.cancelAnimationFrame(raf);
+  }, [focusLlmSeq]);
 
   useEffect(() => {
     const root = rootRef.current;
@@ -171,8 +184,7 @@ export function EnvironmentPanel({
             <div className="flex flex-col gap-6">
               {envSection === "local-asr" ? (
                 <EnvLocalAsrPanel
-                  asrHealth={asrHealth}
-                  asrHealthDetail={asrHealthDetail}
+                  asrPresentation={asrPresentation}
                   bundledAsrDiag={bundledAsrDiag}
                   asrCaps={asrCaps}
                   asrModelCacheInfo={asrModelCacheInfo}

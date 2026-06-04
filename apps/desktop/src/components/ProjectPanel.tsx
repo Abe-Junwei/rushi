@@ -19,7 +19,6 @@ import { GlossaryLearnPromptDialog } from "./GlossaryLearnPromptDialog";
 import { TranscribeOverwriteConfirmDialog } from "./TranscribeOverwriteConfirmDialog";
 import { EditorView } from "./EditorView";
 import { DeliveryExportDialog } from "./DeliveryExportDialog";
-import { resolveExportPolishBlockReason } from "../services/exportDocxPolish";
 
 import { WelcomeView, type WelcomePageId } from "./WelcomeView";
 import { ProjectBusyOverlay, TranscribePreviewBanner } from "./ProjectStatusFeedback";
@@ -29,10 +28,11 @@ import { useProjectController } from "../pages/useProjectController";
 export function ProjectPanel() {
   const c = useProjectController();
   const [envOpen, setEnvOpen] = useState(false);
+  const [focusLlmSeq, setFocusLlmSeq] = useState(0);
+  const [llmUiEpoch, setLlmUiEpoch] = useState(0);
   const [welcomePage, setWelcomePage] = useState<WelcomePageId>("home");
   const [exportKey, setExportKey] = useState("");
   const [deliveryExportOpen, setDeliveryExportOpen] = useState(false);
-  const [exportPolishBlockReason, setExportPolishBlockReason] = useState<string | null>(null);
   const [busyElapsedSec, setBusyElapsedSec] = useState(0);
   const [segmentCtxMenu, setSegmentCtxMenu] = useState<SegmentContextMenuOpen | null>(null);
   const [segmentTextCtxMenu, setSegmentTextCtxMenu] = useState<{
@@ -42,20 +42,26 @@ export function ProjectPanel() {
   } | null>(null);
   const pendingGlossaryNavRef = useRef(false);
 
+  const openEnvironment = useCallback(() => {
+    setEnvOpen(true);
+  }, []);
+
+  const openLlmSettings = useCallback(() => {
+    setEnvOpen(true);
+    setFocusLlmSeq((n) => n + 1);
+  }, []);
+
+  const notifyLlmRuntimeChanged = useCallback(() => {
+    c.bumpLlmRuntimeChanged();
+    setLlmUiEpoch((n) => n + 1);
+  }, [c]);
+
   const { segments, busy } = c;
 
   useEffect(() => {
-    if (!deliveryExportOpen) {
-      setExportPolishBlockReason(null);
-      return;
-    }
+    if (!deliveryExportOpen) return;
     c.flushSegmentTextDrafts();
   }, [deliveryExportOpen, c.flushSegmentTextDrafts]);
-
-  useEffect(() => {
-    if (!deliveryExportOpen) return;
-    setExportPolishBlockReason(resolveExportPolishBlockReason(c.segments));
-  }, [deliveryExportOpen, c.segments]);
 
   const workspacePhase = useMemo<"A" | "C">(() => {
     if (c.current) return "C";
@@ -215,8 +221,9 @@ export function ProjectPanel() {
       ) : null}
 
       {envOpen ? (
-        <FloatingPanelTemplate id="environment-v3" title="环境与 ASR" preset="environment" onClose={() => setEnvOpen(false)}>
+        <FloatingPanelTemplate id="environment-v3" title="环境与 LLM" preset="environment" onClose={() => setEnvOpen(false)}>
             <EnvironmentPanel
+              asrPresentation={c.asrPresentation}
               asrHealth={c.asrHealth}
               asrHealthDetail={c.asrHealthDetail}
               bundledAsrDiag={c.bundledAsrDiag}
@@ -244,7 +251,8 @@ export function ProjectPanel() {
               asrSetup={c.asrSetup}
               localAsrModelCatalog={c.localAsrModelCatalog}
               onSttOnlineRuntimeChanged={c.bumpSttOnlineRuntimeChanged}
-              onLlmRuntimeChanged={c.bumpLlmRuntimeChanged}
+              onLlmRuntimeChanged={notifyLlmRuntimeChanged}
+              focusLlmSeq={focusLlmSeq}
             />
         </FloatingPanelTemplate>
       ) : null}
@@ -253,7 +261,9 @@ export function ProjectPanel() {
         {workspacePhase === "A" ? (
           <WelcomeView
             controller={c}
-            onOpenSettings={() => setEnvOpen(true)}
+            onOpenSettings={openEnvironment}
+            onOpenLlmSettings={openLlmSettings}
+            llmStatusRefreshSeq={llmUiEpoch}
             page={welcomePage}
             onPageChange={setWelcomePage}
           />
@@ -274,7 +284,9 @@ export function ProjectPanel() {
               tx={tx}
               exportKey={exportKey}
               onExportSelect={onExportSelect}
-              onOpenEnvironment={() => setEnvOpen(true)}
+              onOpenEnvironment={openEnvironment}
+              onOpenLlmSettings={openLlmSettings}
+              llmStatusRefreshSeq={llmUiEpoch}
               segmentCtxMenu={segmentCtxMenu}
               setSegmentCtxMenu={setSegmentCtxMenu}
               segmentCtxMenuItems={segmentCtxMenuItems}
@@ -388,7 +400,8 @@ export function ProjectPanel() {
         open={deliveryExportOpen}
         busy={c.busy}
         segments={c.segments}
-        exportPolishBlockReason={exportPolishBlockReason}
+        llmStatusRefreshSeq={llmUiEpoch}
+        onOpenLlmSettings={openLlmSettings}
         onClose={() => setDeliveryExportOpen(false)}
         onExport={(mode, includeRevisionAppendix, llmPolish, polishPreview) => {
           setDeliveryExportOpen(false);

@@ -19,6 +19,11 @@ import {
 } from "../services/exportPolishPreviewCache";
 import { summarizeLineChange } from "../services/exportPolishPipeline";
 import { FloatingPanelTemplate } from "./PanelTemplate";
+import { TopBarStatusIndicator } from "./TopBarStatusIndicator";
+import { useLlmEnvStatus } from "../hooks/useLlmEnvStatus";
+import {
+  resolveExportPolishBlockReason,
+} from "../services/exportDocxPolish";
 
 const PANEL_ID = "delivery-export-word-v1";
 const DEFAULT_SIZE = { width: 400, height: 440 } as const;
@@ -47,8 +52,9 @@ export type DeliveryExportDialogProps = {
   open: boolean;
   busy: boolean;
   segments: SegmentDto[];
-  /** 非 null 时禁用「大模型润色」并展示原因。 */
-  exportPolishBlockReason: string | null;
+  /** 切换 LLM 来源后递增，用于刷新就绪检测。 */
+  llmStatusRefreshSeq?: number;
+  onOpenLlmSettings?: () => void;
   onClose: () => void;
   onExport: (
     mode: DocxExportMode,
@@ -62,10 +68,16 @@ export function DeliveryExportDialog({
   open,
   busy,
   segments,
-  exportPolishBlockReason,
+  llmStatusRefreshSeq = 0,
+  onOpenLlmSettings,
   onClose,
   onExport,
 }: DeliveryExportDialogProps) {
+  const { presentation: llmEnv } = useLlmEnvStatus(llmStatusRefreshSeq);
+  const exportPolishBlockReason = resolveExportPolishBlockReason(
+    segments,
+    llmEnv.blockReason,
+  );
   const [mode, setMode] = useState<DocxExportMode>("verbatim");
   const [includeAppendix, setIncludeAppendix] = useState(false);
   const [llmPolish, setLlmPolish] = useState(false);
@@ -81,6 +93,7 @@ export function DeliveryExportDialog({
     mode,
     polishAvailable && llmPolish,
     preview,
+    llmEnv.blockReason,
   );
   const canPreviewPolish =
     polishAvailable && llmPolish && !exportPolishBlockReason && !busy;
@@ -202,28 +215,43 @@ export function DeliveryExportDialog({
             ))}
           </fieldset>
           {polishAvailable ? (
-            <label
-              className={`flex items-start gap-2 text-sm ${
-                exportPolishBlockReason ? "cursor-not-allowed opacity-60" : "cursor-pointer"
-              } text-notion-text`}
-            >
-              <input
-                type="checkbox"
-                className="mt-0.5"
-                checked={llmPolish}
-                disabled={busy || previewLoading || Boolean(exportPolishBlockReason)}
-                onChange={(e) => setLlmPolish(e.target.checked)}
-              />
-              <span>
-                大模型润色（可选）
-                <span className="block text-xs text-notion-text-muted">
-                  修订轨仅标错字与标点；口语重复字（喔喔喔等）本地自动压缩。请重新生成预览后再导出。
+            <div className="space-y-2">
+              <label
+                className={`flex items-start gap-2 text-sm ${
+                  exportPolishBlockReason ? "cursor-not-allowed opacity-60" : "cursor-pointer"
+                } text-notion-text`}
+              >
+                <input
+                  type="checkbox"
+                  className="mt-0.5"
+                  checked={llmPolish}
+                  disabled={busy || previewLoading || Boolean(exportPolishBlockReason)}
+                  onChange={(e) => setLlmPolish(e.target.checked)}
+                />
+                <span>
+                  大模型润色（可选）
+                  <span className="block text-xs text-notion-text-muted">
+                    修订轨仅标错字与标点；口语重复字（喔喔喔等）本地自动压缩。请重新生成预览后再导出。
+                  </span>
+                  {exportPolishBlockReason ? (
+                    <span className="mt-1 block text-xs text-zen-cinnabar">{exportPolishBlockReason}</span>
+                  ) : null}
                 </span>
-                {exportPolishBlockReason ? (
-                  <span className="mt-1 block text-xs text-zen-cinnabar">{exportPolishBlockReason}</span>
-                ) : null}
-              </span>
-            </label>
+              </label>
+              {llmPolish ? (
+                <div className="flex flex-wrap items-center gap-2 pl-6">
+                  <TopBarStatusIndicator
+                    label={llmEnv.sourceLabel}
+                    ok={llmEnv.ok}
+                    onClick={onOpenLlmSettings}
+                    title={`${llmEnv.chipLabel} · 点击打开 LLM 配置`}
+                  />
+                  {!llmEnv.ok && llmEnv.blockReason && !exportPolishBlockReason ? (
+                    <span className="text-xs text-zen-cinnabar">{llmEnv.blockReason}</span>
+                  ) : null}
+                </div>
+              ) : null}
+            </div>
           ) : null}
           {canPreviewPolish || previewLoading || preview || previewError ? (
             <div className="rounded-md bg-notion-callout-bg px-3 py-2">
@@ -238,7 +266,7 @@ export function DeliveryExportDialog({
                     disabled={!canPreviewPolish || previewLoading}
                     onClick={() => void handleRefreshPreview()}
                   >
-                    {previewLoading ? "生成中…" : preview ? "重新生成" : "生成预览"}
+                    {previewLoading ? llmEnv.polishActiveMessage : preview ? "重新生成" : "生成预览"}
                   </button>
                   {previewLoading ? (
                     <button

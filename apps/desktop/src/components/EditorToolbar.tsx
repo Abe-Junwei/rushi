@@ -3,6 +3,7 @@ import type { ProjectControllerApi } from "../pages/useProjectController";
 import * as fileApi from "../tauri/fileApi";
 import { Download, FileInput, FileOutput, Settings, Square } from "lucide-react";
 import { EditorWorkspaceNav } from "./EditorWorkspaceNav";
+import { LlmTopStatusChip } from "./LlmTopStatusChip";
 import { CONTROL_BTN_DANGER } from "../config/controlStyles";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 const ghostBtn =
@@ -18,6 +19,8 @@ interface EditorToolbarProps {
   projectName: string;
   currentFileName: string;
   onOpenEnvironment: () => void;
+  onOpenLlmSettings?: () => void;
+  llmStatusRefreshSeq?: number;
 }
 export const EditorToolbar = memo(function EditorToolbar({
   controller: c,
@@ -26,6 +29,8 @@ export const EditorToolbar = memo(function EditorToolbar({
   projectName,
   currentFileName,
   onOpenEnvironment,
+  onOpenLlmSettings,
+  llmStatusRefreshSeq = 0,
 }: EditorToolbarProps) {
   const [pendingImport, setPendingImport] = useState<null | "audio" | "text" | "bundle">(null);
   const importMenuRef = useRef<HTMLDetailsElement | null>(null);
@@ -116,6 +121,13 @@ export const EditorToolbar = memo(function EditorToolbar({
         </span>
 
         <div className="flex shrink-0 items-center gap-2">
+          {onOpenLlmSettings ? (
+            <LlmTopStatusChip
+              refreshSeq={llmStatusRefreshSeq}
+              onOpenLlmSettings={onOpenLlmSettings}
+              disabled={c.busy}
+            />
+          ) : null}
           <button
             type="button"
             className={ghostBtn}
