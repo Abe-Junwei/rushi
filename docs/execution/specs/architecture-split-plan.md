@@ -1,245 +1,236 @@
 # 架构拆分方案（盘点 + 设计）
 
-> 日期：2026-05-21  
+> 日期：2026-06-04（刷新自 2026-05-21 初版）  
 > 依据：架构守卫、`AI_QUICKSTART.md` 热点、[reviews/issues.md](../reviews/issues.md)、[file-container-refactor.md](./file-container-refactor.md)
 
 ## 1. 结论摘要
 
-| 类别 | 数量 | 建议 |
+| 类别 | 数量 | 状态 |
 |------|------|------|
-| **必须拆**（守卫 / >500 行 .rs / >400 行 TS 组件） | 3 | `project_cmd.rs`、`EditorView.tsx`、优先排期 |
-| **建议拆**（接近阈值或 hook 超标） | 4 | lifecycle 脏检查抽出、`SegmentTextListRow`、`EnvOnlineSttPanel`、`transcribe.rs` / `export_cmd.rs` |
-| **可暂缓**（未超线或已拆过） | 若干 | `WelcomeSidebar`、`useProjectWaveform`、`useProjectCrudController.test.ts` |
+| **>500 行 .rs / >400 行 TS 组件** | 0 | W3/W4 大文件已清零 |
+| **接近阈值（≤300 行 / hook 数）** | 32 警告 | 见 §2；无错误 |
+| **历史 P1（初版必须拆）** | 3 | 均已落地或显著缩小 |
 
 功能类问题（R2/R1/R5）已修；本方案只谈 **可维护性 / 守卫 / 编排层纪律**，不新增产品行为。
+
+**守卫趋势**：初版盘点 6 警告 → 拆分前峰值 ~40 警告 → **当前 32 警告**（2026-06-04）。
 
 ---
 
 ## 2. 当前守卫与阈值对照
 
 ```
-架构守卫（2026-05-21）：0 错误，6 警告
+架构守卫（2026-06-04）：0 错误，32 警告
 ```
 
-| 文件 | 行数 | Hook 数 | 阈值 | 判定 |
-|------|------|---------|------|------|
-| `project_cmd.rs` | **953**（含测试 ~280） | — | .rs >500 | **必须拆** |
-| `EditorView.tsx` | **762** | ~15+ | ≤300 行 | **必须拆** |
-| `useProjectLifecycleController.ts` | 358 | **14** | ≤300 / ≤12 | **建议拆** |
-| `EnvOnlineSttPanel.tsx` | 349 | — | ≤300 | **建议拆** |
-| `useProjectCrudController.test.ts` | 317 | — | ≤300 | 低优（测试） |
-| `export_cmd.rs` | 580 | — | >500 | **建议拆** |
-| `transcribe.rs` | 478 | — | >500 临近 | **建议拆** |
-| `SegmentTextListRow.tsx` | 228 | **17** | ≤12 | **建议拆** |
-| `useProjectWaveform.ts` | 275 | 13 | ≤12 临近 | 观察 / 第三期 |
-| `WelcomeSidebar.tsx` | 289 | — | ≤300 临近 | 观察 |
+验证命令：
 
-**已完成的拆分（不再作为 P1）**
+```bash
+npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs
+cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml
+```
 
-- `useProjectLifecycleController` 已抽出：`useProjectBusyState`、`useProjectListState`、`useProjectEditorState`（122 行）
-- 转写 / 保存 / 导出：已 `file_id` 对齐（R8-001 功能面关闭，模块命名仍可优化）
+### 2.1 仍触发警告（按优先级）
+
+| 文件 | 行数 / Hook | 判定 |
+|------|-------------|------|
+| `ProjectPanel.tsx` | 436 行 / 13 hook | **建议拆**（组件 + hook 双超标） |
+| `EditorSegmentToolbar.tsx` | 445 行 | **建议拆** |
+| `useWaveformSegmentDrag.ts` | 397 行 | 接近阈值 |
+| `DeliveryExportDialog.tsx` | 368 行 | 接近阈值 |
+| `FindReplaceDialog.tsx` | 365 行 | 接近阈值 |
+| `SegmentRowTextField.tsx` | 363 行 / 14 hook | hook 超标 |
+| `useSegmentMutationController.ts` | 361 行 | 接近阈值 |
+| `WaveformTimeRuler.tsx` | 349 行 / 13 hook | hook 超标 |
+| `useLexiconProofreadController.ts` | 349 行 | 接近阈值 |
+| `useWaveformPeaks.ts` | 347 行 | 接近阈值 |
+| `useCorrectionMemoryController.ts` | 303 行 / **25 hook** | hook 严重超标 |
+| `useProjectLifecycleController.ts` | 329 行 | 接近阈值（已从 671 降下来） |
+| `useEnvLlmConfigPanel.ts` | 334 行 | 接近阈值（W1 抽出后仍偏大） |
+| `pxPerSec.ts` | 376 行 | 接近阈值 |
+| `localAsrModelCatalog.ts` | 316 行 | 接近阈值 |
+| `reqwest::blocking` ×4 | `asr_sidecar/*`、`postprocess_ollama/probe` | 登记观察，非行数债 |
+
+### 2.2 已从守卫清单移除（W1–W4 ✅）
+
+| 原热点 | 拆分前 | 现状 |
+|--------|--------|------|
+| `postprocess_cmd.rs` | 1082 | **46** 行壳 + 子模块 |
+| `postprocessRuntimeContract.ts` | 519 | **79** 行 re-export 壳 |
+| `EnvLlmConfigPanel.tsx` | 482 | **73** 行 + `useEnvLlmConfigPanel` |
+| `useFindReplaceController.ts` | 521 | **247** 行 + search/mutations 子模块 |
+| `useProjectLifecycleController.ts` | 671 | **328** 行 + save/editor-tools 控制器 |
+| `lexicon_bundle.rs` | 1004 | **289** 行壳 + types/db/import |
+| `export_docx.rs` | 639 | **315** 行 + body/build |
+| `correction.rs` | 635 | **190** 行 + types/learn/store/hints |
+| `GlossaryPage.tsx` | 550 | **84** 行 + section 组件 |
+| `project_cmd.rs` | 953 | 已拆入 `project/*_cmd.rs`（S1 ✅） |
+| `EditorView.tsx` | 762 | **236** 行（S3 ✅） |
+| `export_cmd.rs` | 580 | **94** 行 re-export 壳 |
 
 ---
 
-## 3. Rust：`project_cmd.rs` 盘点（952 行生产 + 测试）
+## 3. 已完成拆分记录（W1–W4）
 
-### 3.1 职责块（按行号区间）
+### W1 — LLM / 后处理契约栈 ✅
 
-| 块 | 约行 | 内容 | Tauri commands |
-|----|------|------|----------------|
-| A | 34–113 | 语段保存事务 | `file_save_segments` |
-| B | 115–134 | 文件选择器 | `pick_audio_path`, `pick_text_path` |
-| C | 136–468 | 项目/文件**创建与导入** + `parse_srt` / `parse_txt` | `project_create_from_audio`, `create_empty_project`, `create_project_from_text`, `create_empty_text_file`, `import_*` |
-| D | 469–533 | 项目**读**与编辑日志 | `project_list`, `project_load`, `project_list_edit_log` |
-| E | 535–582 | 项目**删除** | `project_delete`（`project_delete_inner`） |
-| F | 584–683 | 文件 **CRUD** | `list_files`, `load_file`, `rename_file`, `delete_file` |
-| G | 685–952 | **单元测试** | — |
+| 新文件 | 职责 |
+|--------|------|
+| `services/postprocess/llmProviderCatalog.ts` | Provider 类型与目录 |
+| `services/postprocess/llmRuntimeStorage.ts` | 持久化 / bridge |
+| `services/postprocess/llmConnectionUi.ts` | 连接 UI 状态 |
+| `hooks/useEnvLlmConfigPanel.ts` | Env LLM 面板逻辑 |
+| `components/EnvLlmConnectionForm.tsx` | 连接表单 UI |
+| `postprocess_config.rs` | Rust 配置解析 |
+| `postprocess_api_key_cmd.rs` | API Key / probe 命令 |
 
-### 3.2 目标模块（与 file-container 命名对齐）
+### W2 — Lifecycle 保存 + 查找替换 ✅
 
-```
-apps/desktop/src-tauri/src/project/
-  segment_cmd.rs      # A：file_save_segments_inner + command
-  picker_cmd.rs       # B：pick_*（可选，并入 create 模块）
-  import_parse.rs     # C 纯函数：parse_srt / parse_txt
-  project_create_cmd.rs  # C 命令：create / import
-  project_query_cmd.rs   # D：list / load / edit_log
-  project_delete_cmd.rs  # E：delete_inner + command
-  file_cmd.rs         # F：list / load / rename / delete
-  project_cmd.rs      # 仅 `mod` 重导出 + `pub use`（或删除，改 mod.rs re-export）
-```
+| 新文件 | 职责 |
+|--------|------|
+| `pages/useProjectSaveController.ts` | 保存 / 自动保存 / edit-log 恢复 |
+| `pages/useProjectEditorToolsController.ts` | 编辑器工具编排 |
+| `pages/projectLifecycleEditorToolsReturn.ts` | lifecycle return 映射 |
+| `pages/findReplaceTypes.ts` | 类型 |
+| `pages/useFindReplaceSearch.ts` | 搜索 / 导航 |
+| `pages/useFindReplaceMutations.ts` | 替换 one/all |
 
-**约束**
+### W3 — Rust 后处理 + 词表 + 导出 + 纠错 ✅
 
-- `lib.rs` 的 `generate_handler![...]` **命令名不变**（前端零改动）
-- `project/mod.rs` 增加 `pub use xxx::*`，保持 `project::pick_audio_path` 路径
-- 测试按模块搬迁：`import_parse` 测 parser；`file_cmd` / `delete` 测 DB+FS
+**`postprocess_cmd.rs` 子模块**
 
-**预估**：单 PR 6–8 文件，纯搬家 + `mod`，约 2–4h；`cargo test` + clippy 门禁。
+| 文件 | 职责 |
+|------|------|
+| `postprocess_types.rs` | 请求/响应类型 |
+| `postprocess_auto_punctuate_cmd.rs` | 自动标点 |
+| `postprocess_refine_cmd.rs` | 段界整理 |
+| `postprocess_lexicon_proofread_cmd.rs` | 词表校对 |
+| `postprocess_cancel_cmd.rs` | 取消 |
+
+**`lexicon_bundle.rs` 子模块**：`lexicon_bundle_types` / `_db` / `_import`
+
+**`export_docx.rs` 子模块**：`export_docx_body` / `export_docx_build`
+
+**`correction.rs` 子模块**：`correction_types` / `_learn` / `_store` / `_hints`
+
+> Tauri 约束：`lib.rs` 中 LLM 与后处理 command 须指向 **定义所在子模块**（如 `postprocess_cmd::postprocess_api_key_cmd::llm_save_api_key`），不可仅靠 `pub use` re-export。
+
+### W4 — GlossaryPage ✅
+
+| 新文件 | 职责 |
+|--------|------|
+| `pages/useGlossaryPageController.ts` | 多 controller 编排 |
+| `glossary/GlossaryHotwordsSummarySection.tsx` | 热词摘要 |
+| `glossary/GlossaryLexiconBundleSection.tsx` | 词表包 |
+| `glossary/GlossaryTermManagementSection.tsx` | 术语编辑 / 批量 / 表 |
+| `glossary/GlossaryCorrectionMemorySection.tsx` | 纠错记忆区 |
+
+### 历史阶段（初版 S1–S3，早于 W 系列）
+
+- **S1** `project_cmd.rs` → `project/segment_cmd.rs`、`file_cmd.rs`、`project_*_cmd.rs` 等 ✅
+- **S3** `EditorView.tsx` → `components/editor/*` + hooks ✅
+- **S5 部分** `export_cmd.rs` → `project_bundle_cmd.rs` + re-export 壳 ✅
 
 ---
 
-## 4. Rust：`export_cmd.rs` / `transcribe.rs`
+## 4. Rust：仍待观察 / 低优
 
-### 4.1 `export_cmd.rs`（580 行）
+### 4.1 `transcribe.rs`（291 行）
 
-| 块 | 内容 |
-|----|------|
-| bundle | `export_project_bundle_*` / `import_project_bundle_*` + manifest 类型 |
-| desktop IO | `export_text_file`, `open_app_data_folder`, `reveal_path` |
-| tests | round_trip、unsafe path、多文件 audio |
-
-**建议**
-
-- `project_bundle_cmd.rs` — zip 导入导出 + 测试
-- `export_cmd.rs` — 保留小命令 + re-export
-
-### 4.2 `transcribe.rs`（478 行）
-
-| 块 | 内容 |
-|----|------|
-| 共享 | `glossary_hotwords_joined`, `post_transcribe_multipart` |
-| 在线 | `transcribe_openai_native`, `transcribe_assemblyai_native`, … |
-
-**建议**
+未超 500 行守卫，但 AI_QUICKSTART 仍标记为热点。若继续加在线 STT Provider：
 
 - `transcribe_http.rs` — multipart + ASR HTTP
-- `transcribe_native_online.rs` — OpenAI / AssemblyAI 等（或并入现有 `stt_native` 仅留 dispatch）
-- 优先级 **低于** `project_cmd`（未触发守卫，但 AI_QUICKSTART 已标记）
+- `transcribe_native_online.rs` — OpenAI / AssemblyAI dispatch（或并入现有模块）
+
+### 4.2 `reqwest::blocking`（4 处警告）
+
+`asr_sidecar/probe.rs`、`asr_sidecar/source.rs`、`postprocess_ollama.rs`、`postprocess_probe.rs`。  
+单独 PR：改 async 或明确 `spawn_blocking` 边界；与行数拆分正交。
 
 ---
 
-## 5. 前端：`EditorView.tsx` 盘点（762 行）
+## 5. 前端：下一批建议（W5+）
 
-### 5.1 内聚块（逻辑，非文件）
+按 **守卫严重度 + 回归面** 排序：
 
-```mermaid
-flowchart TB
-  EV[EditorView 编排]
-  EV --> TB[EditorToolbar 已有]
-  EV --> FONT[字体 / meta 列宽 / 系统字体加载]
-  EV --> HIST[编辑历史侧栏]
-  EV --> WAVE[波形区 + 播放 + 标尺 + 缩放]
-  EV --> SEG[语段列表 + 字号行高]
-  EV --> CTX[右键菜单状态]
-  EV --> EMPTY[EmptyProjectPanel 已有]
-```
+| 优先级 | 目标 | 策略 |
+|--------|------|------|
+| P1 | `useCorrectionMemoryController.ts`（25 hook） | 拆 selection / batch / editor 为 service 或子 hook；Glossary 页已薄，可复用 section 边界 |
+| P1 | `ProjectPanel.tsx`（436 行 / 13 hook） | 按 tab/区域切 section；编排留 `useProjectPanelController` |
+| P2 | `EditorSegmentToolbar.tsx`（445 行） | 按工具组切子组件 |
+| P2 | 波形簇：`useWaveformSegmentDrag`、`WaveformTimeRuler`、`useWaveformPeaks` | 仅在加功能时拆，避免薄 hook 平移 |
+| P3 | `useProjectLifecycleController.ts`（329 行） | 可选再抽 transcribe 委托；目标 ≤280 行 |
+| P3 | `useEnvLlmConfigPanel.ts`（334 行） | probe/save 分文件 |
+| P3 | `pxPerSec.ts`（376 行） | 纯函数按 concern 拆 test 友好模块 |
 
-| 块 | 约行 | 状态类型 | 建议落位 |
-|----|------|----------|----------|
-| 字体与 meta 列宽 | 134–276 | 8× useState + 3× useCallback | `useEditorTranscriptAppearance.ts` |
-| 编辑历史 | 144–297 | historyOpen/rows/busy | `useEditorEditHistory.ts` |
-| 无文件顶栏 | 301–332 | 纯 JSX | `EditorProjectChrome.tsx`（可选） |
-| 波形时间轴 | 347–520 | 依赖 `tx` | `EditorWaveformSection.tsx` |
-| 语段列表 + 字体工具条 | 520–710 | 列表 map + 字体 UI | `EditorSegmentListSection.tsx` |
-| Footer + SegmentContextMenu | 731–758 | 局部 | 保留在 Section 或 `EditorFooter.tsx` |
+### 5.1 初版未动、仍有效的建议
 
-### 5.2 目标结构
+**`SegmentTextListRow.tsx`**（228 行 / 17 hook）— hook 超标，行数未超：
 
-```
-apps/desktop/src/components/editor/
-  EditorView.tsx              # ≤150 行：组装 props，无业务写库
-  EditorWaveformSection.tsx   # ≤200 行
-  EditorSegmentListSection.tsx
-  useEditorTranscriptAppearance.ts
-  useEditorEditHistory.ts
-```
+- `SegmentTimestampColumn.tsx` — 时间 + 拖拽 handle
+- `SegmentTextarea.tsx` — focus/resize 局部状态
 
-**约束**
-
-- `ProjectPanel` 仍只 import `EditorView`（对外 API 不变）
-- 样式继续 token，不新增第 3 层 panel border
-- 拆分后各文件 `<300` 行，守卫清零 `EditorView` 警告
-
-**预估**：2 PR（先 hooks + SegmentListSection，再 WaveformSection）或 1 PR 纵向薄片，每片 2–4h + 手测主路径。
+**`EnvOnlineSttPanel.tsx`** — 若仍 >300 行，按 Provider 区块切 2 组件。
 
 ---
 
-## 6. 前端：Hook / 组件接近阈值
+## 6. 实施顺序（更新）
 
-### 6.1 `useProjectLifecycleController.ts`（358 行 / 14 hooks）
+| 阶段 | 范围 | 状态 | 验证 |
+|------|------|------|------|
+| **S1** | Rust `project_cmd` → 6 模块 | ✅ | `cargo test` |
+| **S2** | lifecycle 脏检查 / save 抽出 | ✅ 大部分（W2） | `useProjectController.test` |
+| **S3** | `EditorView` 纵向拆 | ✅ | 手测编辑器主路径 |
+| **W1–W4** | LLM / lifecycle / Rust 热点 / Glossary | ✅ | 见 §3 |
+| **W5** | `useCorrectionMemoryController` hook 债 | 待做 | 守卫 hook 数 |
+| **W6** | `ProjectPanel` + `EditorSegmentToolbar` | 待做 | 手测项目面板 |
+| **W7** | `transcribe.rs` / blocking HTTP | 按需 | 转写 / probe 手测 |
 
-**仍留在编排层的合理部分**：`loadProject`、`runTranscribe`、`saveSegments`、export 委托、CRUD 委托。
-
-**应再抽出**
-
-| 新模块 | 职责 | 大约行 |
-|--------|------|--------|
-| `useSegmentDirtyState.ts` | `savedSegmentsRef`、`markSaved`、`confirmDiscard` | ~60 |
-| （可选）`useProjectTranscribeActions.ts` | `runTranscribe` 单职责 | ~50 |
-
-抽出后 lifecycle **目标 ≤250 行、≤10 hooks**，并补 **focused test**（mock tauri invoke）。
-
-### 6.2 `SegmentTextListRow.tsx`（228 行 / 17 hooks）
-
-行数未超标，**hook 数超标**。
-
-**建议**
-
-- 纯展示：`SegmentTimestampColumn.tsx`（时间 + 拖拽 handle）
-- 交互：`SegmentTextarea.tsx`（local focus/resize 状态）
-- Row 只做 memo 组装（≤8 hooks）
-
-### 6.3 `EnvOnlineSttPanel.tsx`（349 行）
-
-按 **Provider 区块** 或 **表单 / 高级选项** 切成 2 组件，父组件只传 env 与 callback（无新持久化逻辑）。
-
-### 6.4 `useProjectWaveform.ts`（275 / 13 hooks）— 第三期
-
-- `useWaveformPlayback.ts` — play/pause/time
-- `useWaveformRegions.ts` — regions 同步、拖拽创建
-
-仅在继续加波形功能时再拆，避免「薄 hook 平移」。
+**纪律**：Rust 与 UI 拆分 **不同 PR**；每片合并后跑 §8 门禁。
 
 ---
 
-## 7. 实施顺序（推荐）
-
-| 阶段 | 范围 | PR 策略 | 验证 |
-|------|------|---------|------|
-| **S1** | Rust `project_cmd` → 6 模块 | 单 PR，零命令改名 | `cargo test` + clippy |
-| **S2** | `useSegmentDirtyState` 抽出 + lifecycle 单测 | 单 PR | `npm test` + 守卫 hook 数 |
-| **S3** | `EditorView` 纵向拆 2 section + 2 hooks | 1–2 PR | 手测：打开文件 / 波形 / 语段 / 字体 / 历史 |
-| **S4** | `SegmentTextListRow` 子组件 | 单 PR | 守卫 + 语段编辑手测 |
-| **S5** | `export_cmd` / `transcribe` / `EnvOnlineSttPanel` | 按需 | 导出、转写、在线 STT 手测 |
-
-**不建议同一 PR 同时改 S1 + S3**（Rust 与 UI 回归面正交，审查成本高）。
-
----
-
-## 8. 守卫与文档更新
+## 7. 守卫与文档更新
 
 每阶段合并后：
 
 ```bash
 npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs
 cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml
-cargo clippy --all-targets -- -D warnings
 ```
 
-更新：
+同步更新：
 
-- [reviews/issues.md](../reviews/issues.md)：`R1-001`、`R7-001`、`R3-002/003`、`R4-001` 标为 fixed 或登记例外
-- `AI_QUICKSTART.md` 热点列表
+- 本文 §2 守卫快照日期
+- [reviews/issues.md](../reviews/issues.md) 架构债条目
+- `AI_QUICKSTART.md` 热点列表（移除已拆文件）
 
 ---
 
-## 9. 明确不纳入本轮
+## 8. 明确不纳入本轮
 
 | 项 | 原因 |
 |----|------|
-| `china_stt_shell/*` 单文件 90–270 行 | 按厂商隔离，清晰 |
-| `WelcomeSidebar` 289 行 | 未超线；交互债单独 UX PR |
-| `useProjectCrudController.test.ts` 317 行 | 测试辅助函数抽取即可，非功能债 |
-| 协作 / 联机 schema 草案 | 未实现，不拆 |
+| `china_stt_shell/*` | 按厂商隔离，单文件清晰 |
+| `WelcomeSidebar.tsx`（327 行） | 仅接近阈值；UX 债单独 PR |
+| 测试文件超 300 行（如 `pxPerSec.test.ts`） | 低优；随源文件拆时搬迁 |
+| 协作 / 联机 schema | 未实现 |
 | bundle v2 多文件清单 | 产品扩展，非拆分 |
 
 ---
 
-## 10. 决策点（实施前确认）
+## 9. 已确认决策（归档）
 
-1. **S1 是否保留 `project_cmd.rs` 文件名** 仅作 re-export 壳（推荐：是，减少 `lib.rs` diff）。
-2. **Editor 子目录** 用 `components/editor/` 还是 flat `EditorXxx.tsx`（推荐：子目录，与 `ProjectPanel` 并列清晰）。
-3. **lifecycle 单测** 是否在 S2 必做（推荐：是，弥补编排层无测试缺口）。
+1. **`project_cmd.rs`** — 已删除 monolith，保留 `project/mod.rs` + `pub use *_cmd::*` ✅
+2. **Editor 子目录** — 使用 `components/editor/` ✅
+3. **Rust 拆分** — `#[path]` 子模块 + 薄壳 re-export；Tauri command 在子模块定义并在 `lib.rs` 全路径注册 ✅
+4. **Lifecycle / Glossary** — 编排下沉 controller hook，页面/组件只做组装 ✅
 
-确认后可按 S1→S2→S3 开工；需要我先落 S1 的 `mod` 骨架（空文件 + re-export）再逐步搬函数，也可以。
+---
+
+## 10. 变更日志
+
+| 日期 | 变更 |
+|------|------|
+| 2026-05-21 | 初版：S1–S5 盘点与 EditorView / project_cmd 设计 |
+| 2026-06-04 | 刷新：W1–W4 完成记录；守卫 32 警告；W5+ 下一批；S1/S3/export_cmd 标完成 |
