@@ -4,6 +4,7 @@ export const STT_ONLINE_PROVIDER_STORAGE_KEYS = {
   endpoint: "rushi.stt.online.endpoint",
   appKey: "rushi.stt.online.appKey",
   timeoutMs: "rushi.stt.online.timeoutMs",
+  connectionVerifiedFingerprint: "rushi.stt.online.connectionVerifiedFingerprint",
 } as const;
 
 /** OpenAI Audio Transcriptions；未填 endpoint 时 Tauri 走此默认。 */

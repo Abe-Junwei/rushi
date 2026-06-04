@@ -43,7 +43,7 @@ describe("tryBuildOnlineTranscribeBridgePayload", () => {
     setSttOnlineApiKeyInMemory(null);
   });
 
-  it("returns null when online STT is not enabled in storage", () => {
+  it("returns null when session api key is missing", () => {
     expect(tryBuildOnlineTranscribeBridgePayload()).toBeNull();
   });
 

@@ -58,6 +58,7 @@ export type ExternalSttOnlineHealthState =
   | "aborted"
   | "unauthorized"
   | "forbidden"
+  | "method-not-allowed"
   | "timeout"
   | "network-error"
   | "http-error"

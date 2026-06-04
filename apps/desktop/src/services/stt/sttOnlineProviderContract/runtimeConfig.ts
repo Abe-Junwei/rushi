@@ -1,4 +1,5 @@
 import { STT_ONLINE_PROVIDER_STORAGE_KEYS, DEFAULT_TIMEOUT_MS } from "./constants";
+import { clearSttConnectionVerified } from "./connectionVerified";
 import { isAllowedSttOnlineEndpoint, assertValidEndpoint } from "./endpoint";
 import { getSttOnlineProviderDefinition } from "./definitions";
 import { readStorage, writeStorage } from "./storage";
@@ -64,6 +65,7 @@ export function persistExternalSttOnlineRuntimeConfig(
   writeStorage(STT_ONLINE_PROVIDER_STORAGE_KEYS.endpoint, n.endpoint ?? null);
   writeStorage(STT_ONLINE_PROVIDER_STORAGE_KEYS.appKey, n.appKey ?? null);
   writeStorage(STT_ONLINE_PROVIDER_STORAGE_KEYS.timeoutMs, String(n.timeoutMs));
+  clearSttConnectionVerified();
   return n;
 }
 

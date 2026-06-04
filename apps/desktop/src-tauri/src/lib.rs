@@ -11,6 +11,7 @@ mod local_asr_model;
 mod local_runtime;
 mod online_stt_bridge;
 mod postprocess_cmd;
+mod stt_online_probe;
 mod profile;
 mod project;
 mod stt_native;
@@ -120,6 +121,7 @@ pub fn run() {
             postprocess_cmd::postprocess_api_key_cmd::llm_migrate_legacy_api_key,
             postprocess_cmd::postprocess_api_key_cmd::llm_probe_connection,
             postprocess_cmd::postprocess_api_key_cmd::ollama_detect_status,
+            stt_online_probe::stt_probe_online_health,
             postprocess_cmd::postprocess_auto_punctuate_cmd::postprocess_auto_punctuate,
             postprocess_cmd::postprocess_refine_cmd::postprocess_refine_segments,
             postprocess_cmd::postprocess_lexicon_proofread_cmd::postprocess_lexicon_proofread,

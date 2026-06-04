@@ -33,6 +33,12 @@ pub fn local_transcribe_gate_from_health(
                 .to_string(),
         );
     }
+    if health.get("ffmpeg_ok").and_then(|x| x.as_bool()) != Some(true) {
+        return Err(
+            "未检测到 FFmpeg，无法解码上传音频。请安装 ffmpeg/ffprobe 并加入 PATH 后重启侧车。"
+                .to_string(),
+        );
+    }
     if health.get("ready_for_transcribe").and_then(|x| x.as_bool()) != Some(true) {
         return Err(
             "本机 ASR 模型尚未就绪：请在环境页下载当前所选模型并完成侧车准备。".to_string(),
@@ -128,6 +134,7 @@ mod tests {
             "status": "ok",
             "transcription_mode": "funasr",
             "ready_for_transcribe": true,
+            "ffmpeg_ok": true,
             "funasr_model_id": model,
             "funasr_loaded_model_id": model,
         })
@@ -167,6 +174,15 @@ mod tests {
         let mut health = ok_health(PARA);
         health["funasr_loaded_model_id"] = json!("Qwen/Qwen3-ASR-0.6B");
         assert!(local_transcribe_gate_from_health(&health, Some(PARA)).is_err());
+    }
+
+    #[test]
+    fn gate_blocks_when_ffmpeg_missing() {
+        let mut health = ok_health(PARA);
+        health["ffmpeg_ok"] = json!(false);
+        health["ready_for_transcribe"] = json!(false);
+        let err = local_transcribe_gate_from_health(&health, Some(PARA)).unwrap_err();
+        assert!(err.contains("FFmpeg"));
     }
 
     #[test]

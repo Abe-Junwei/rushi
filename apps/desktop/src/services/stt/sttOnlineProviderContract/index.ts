@@ -6,6 +6,7 @@ export * from "./memorySecrets";
 export * from "./endpoint";
 export * from "./health";
 export * from "./bridge";
+export * from "./connectionVerified";
 export {
   glossaryBiasFieldHint,
   glossaryBiasSummaryForProviderId,

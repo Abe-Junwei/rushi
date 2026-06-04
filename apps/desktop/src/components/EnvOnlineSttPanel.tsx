@@ -1,20 +1,26 @@
-import { useCallback, useEffect, useState } from "react";
-import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY, CONTROL_TEXT_INPUT } from "../config/controlStyles";
+import { Info } from "lucide-react";
+import { useCallback, useEffect, useMemo, useState } from "react";
+import { CONTROL_BTN_PRIMARY } from "../config/controlStyles";
+import { PANEL_TYPOGRAPHY } from "../config/typography";
+import { toast } from "../services/ui/toast";
+import { buildOnlineSttEnvPresentation } from "../services/stt/onlineSttEnvStatus";
 import {
+  clearSttConnectionVerified,
   getSttOnlineProviderDefinition,
   glossaryBiasSummaryForProviderId,
+  isSttConnectionVerified,
+  markSttConnectionVerified,
   normalizeExternalSttOnlineRuntimeConfig,
   persistExternalSttOnlineRuntimeConfig,
   probeExternalSttOnlineHealth,
   readExternalSttOnlineRuntimeConfigFromStorage,
   setSttOnlineApiKeyInMemory,
 } from "../services/stt/sttOnlineProviderContract";
+import { EnvLlmStatusBanner } from "./EnvLlmStatusBanner";
+import { EnvOnlineSttConfigCard } from "./envOnlineStt/EnvOnlineSttConfigCard";
 import { OnlineSttProviderPicker } from "./envOnlineStt/OnlineSttProviderPicker";
 import { OnlineSttRuntimeForm } from "./envOnlineStt/OnlineSttRuntimeForm";
-
-const btnPrimary = CONTROL_BTN_PRIMARY;
-const btnSecondary = CONTROL_BTN_SECONDARY;
-const field = CONTROL_TEXT_INPUT;
+import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
 type Props = {
   busy: boolean;
@@ -22,29 +28,58 @@ type Props = {
 };
 
 export function EnvOnlineSttPanel({ busy, onSttOnlineRuntimeChanged }: Props) {
-  const [olEnabled, setOlEnabled] = useState(false);
   const [olProviderId, setOlProviderId] = useState("openai");
   const [olEndpoint, setOlEndpoint] = useState("");
   const [olTimeoutSec, setOlTimeoutSec] = useState(30);
   const [olAppKey, setOlAppKey] = useState("");
   const [olApiKey, setOlApiKey] = useState("");
-  const [olMsg, setOlMsg] = useState<string | null>(null);
   const [olProbeBusy, setOlProbeBusy] = useState(false);
+  const [lastProbeAvailable, setLastProbeAvailable] = useState<boolean | null>(null);
 
   useEffect(() => {
     const c = readExternalSttOnlineRuntimeConfigFromStorage();
-    setOlEnabled(c.enabled);
     setOlProviderId(c.selectedProviderId);
     setOlEndpoint(c.endpoint ?? "");
     setOlAppKey(c.appKey ?? "");
     setOlTimeoutSec(Math.max(30, Math.round(c.timeoutMs / 1000)));
   }, []);
 
+  const olDef = getSttOnlineProviderDefinition(olProviderId) ?? null;
+
+  const draftConfig = useMemo(
+    () =>
+      normalizeExternalSttOnlineRuntimeConfig({
+        enabled: true,
+        selectedProviderId: olProviderId,
+        endpoint: olEndpoint.trim() || undefined,
+        appKey: olAppKey.trim() || undefined,
+        timeoutMs: olTimeoutSec * 1000,
+      }),
+    [olAppKey, olEndpoint, olProviderId, olTimeoutSec],
+  );
+
+  const connectionVerified = useMemo(() => isSttConnectionVerified(draftConfig), [draftConfig]);
+
+  const presentation = useMemo(
+    () =>
+      buildOnlineSttEnvPresentation({
+        enabled: true,
+        providerId: olProviderId,
+        endpoint: olEndpoint,
+        appKey: olAppKey,
+        hasApiKeyInSession: olApiKey.trim().length > 0,
+        connectionVerified,
+        lastProbeAvailable,
+        lastProbeMessage: null,
+      }),
+    [olAppKey, olEndpoint, olProviderId, connectionVerified, lastProbeAvailable],
+  );
+
   const saveOnlineStt = useCallback(() => {
-    setOlMsg(null);
+    setLastProbeAvailable(null);
     try {
       const n = normalizeExternalSttOnlineRuntimeConfig({
-        enabled: olEnabled,
+        enabled: true,
         selectedProviderId: olProviderId,
         endpoint: olEndpoint.trim() || undefined,
         appKey: olAppKey.trim() || undefined,
@@ -52,97 +87,112 @@ export function EnvOnlineSttPanel({ busy, onSttOnlineRuntimeChanged }: Props) {
       });
       persistExternalSttOnlineRuntimeConfig(n);
       setSttOnlineApiKeyInMemory(olApiKey.trim() || null);
-      setOlMsg("已保存。应用标识（若有）已写入本机配置；根密钥仅保留在当前页面会话内存。");
+      toast.success("已保存在线 STT 配置。根密钥仍仅保留在当前页面会话内存。");
       onSttOnlineRuntimeChanged?.();
     } catch (e) {
-      setOlMsg(e instanceof Error ? e.message : String(e));
+      toast.error(e instanceof Error ? e.message : String(e));
     }
-  }, [olApiKey, olAppKey, olEnabled, olEndpoint, olProviderId, olTimeoutSec, onSttOnlineRuntimeChanged]);
+  }, [olApiKey, olAppKey, olEndpoint, olProviderId, olTimeoutSec, onSttOnlineRuntimeChanged]);
 
   const probeOnlineStt = useCallback(async () => {
     setOlProbeBusy(true);
-    setOlMsg(null);
     try {
       setSttOnlineApiKeyInMemory(olApiKey.trim() || null);
       const cfg = normalizeExternalSttOnlineRuntimeConfig({
-        enabled: olEnabled,
+        enabled: true,
         selectedProviderId: olProviderId,
         endpoint: olEndpoint.trim() || undefined,
         appKey: olAppKey.trim() || undefined,
         timeoutMs: olTimeoutSec * 1000,
       });
       const r = await probeExternalSttOnlineHealth({ runtimeConfig: cfg });
-      setOlMsg(r.available ? `可达（约 ${r.latencyMs ?? "?"} ms）` : `${r.state}: ${r.message ?? ""}`);
+      setLastProbeAvailable(r.available);
+      if (r.available) {
+        markSttConnectionVerified(cfg);
+        toast.success(`在线 STT 可达（约 ${r.latencyMs ?? "?"} ms）`);
+      } else {
+        toast.error(`${r.state}: ${r.message ?? ""}`.trim());
+      }
       onSttOnlineRuntimeChanged?.();
     } catch (e) {
-      setOlMsg(e instanceof Error ? e.message : String(e));
+      setLastProbeAvailable(false);
+      toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setOlProbeBusy(false);
     }
-  }, [olApiKey, olAppKey, olEnabled, olEndpoint, olProviderId, olTimeoutSec, onSttOnlineRuntimeChanged]);
+  }, [olApiKey, olAppKey, olEndpoint, olProviderId, olTimeoutSec, onSttOnlineRuntimeChanged]);
 
-  const olDef = getSttOnlineProviderDefinition(olProviderId) ?? null;
+  const formBusy = busy || olProbeBusy;
 
   return (
-    <div id="online-stt-provider" className="space-y-2">
-      <h3 className="text-[12px] font-semibold text-zen-ink">在线 STT（实验）</h3>
-      <p className="text-[11px] text-zen-stone">
-        厂商按<strong className="text-zen-ink"> 国内 / 国际 </strong>
-        分组列表展示；各组内<strong className="text-zen-ink"> 常见含试用/免费额 </strong>
-        的引擎排在前面（角标「试用/免费额」悬停可看备注，以各厂商控制台为准）。OpenAI / AssemblyAI 由壳直接调 API；其余厂商多为
-        <strong className="text-zen-ink"> TC3 签名、Token 轮询或 WebSocket</strong>
-        ，当前版本请优先走<strong className="text-zen-ink"> 自建 HTTPS 代理 </strong>
-        ，将响应归一为 Rushi JSON（multipart <code className="font-mono text-zen-indigo">file</code>
-        ）。若厂商需 AppKey + 根密钥：AppKey 可持久化，根密钥仅内存。启用在线转写时，全局术语表按厂商映射到各 API 字段（非统一{" "}
-        <code className="font-mono text-zen-indigo">hotwords</code>）：v1 支持
-        OpenAI <code className="font-mono text-zen-indigo">prompt</code>、AssemblyAI{" "}
-        <code className="font-mono text-zen-indigo">keyterms_prompt</code>、Deepgram{" "}
-        <code className="font-mono text-zen-indigo">keywords</code>；自定义代理走 multipart{" "}
-        <code className="font-mono text-zen-indigo">hotwords</code>。其它壳直连厂商转写时可能出现
-        「在线引擎不支持术语偏置」提示。
-      </p>
-      {olEnabled ? (
-        <p className="text-[11px] text-zen-stone">{glossaryBiasSummaryForProviderId(olProviderId)}</p>
-      ) : null}
-      <label className="flex cursor-pointer items-center gap-2 text-zen-ink">
-        <input type="checkbox" checked={olEnabled} onChange={(e) => setOlEnabled(e.target.checked)} disabled={busy} />
-        启用在线 STT（关闭则仍走本机基址）
-      </label>
-
-      <OnlineSttProviderPicker
-        busy={busy}
-        providerId={olProviderId}
-        onProviderChange={(id) => {
-          if (id !== olProviderId) {
-            setSttOnlineApiKeyInMemory(null);
-            setOlApiKey("");
-          }
-          setOlProviderId(id);
-        }}
+    <div id="online-stt-provider" className="flex max-w-[860px] flex-col gap-7">
+      <EnvOnlineSttConfigCard
+        banner={
+          <EnvLlmStatusBanner
+            connected
+            presentation={{
+              mode: "cloud",
+              tone: presentation.tone,
+              bannerTitle: presentation.bannerTitle,
+              bannerDetail: presentation.bannerDetail,
+            }}
+            disabled={formBusy}
+            busy={olProbeBusy}
+            refreshLabel="探测连接"
+            onRefresh={() => void probeOnlineStt()}
+          />
+        }
+        provider={
+          <OnlineSttProviderPicker
+            busy={formBusy}
+            providerId={olProviderId}
+            onProviderChange={(id) => {
+              if (id !== olProviderId) {
+                setSttOnlineApiKeyInMemory(null);
+                setOlApiKey("");
+                setLastProbeAvailable(null);
+                clearSttConnectionVerified();
+              }
+              setOlProviderId(id);
+            }}
+          />
+        }
+        form={
+          <OnlineSttRuntimeForm
+            busy={formBusy}
+            providerId={olProviderId}
+            providerDef={olDef}
+            endpoint={olEndpoint}
+            timeoutSec={olTimeoutSec}
+            appKey={olAppKey}
+            apiKey={olApiKey}
+            onEndpointChange={setOlEndpoint}
+            onTimeoutSecChange={setOlTimeoutSec}
+            onAppKeyChange={setOlAppKey}
+            onApiKeyChange={setOlApiKey}
+          />
+        }
+        footer={
+          <>
+            <span className="mr-auto" />
+            <button type="button" className={CONTROL_BTN_PRIMARY} disabled={formBusy} onClick={saveOnlineStt}>
+              保存在线配置
+            </button>
+          </>
+        }
       />
 
-      <OnlineSttRuntimeForm
-        busy={busy}
-        probeBusy={olProbeBusy}
-        fieldClassName={field}
-        btnPrimaryClassName={btnPrimary}
-        btnSecondaryClassName={btnSecondary}
-        providerId={olProviderId}
-        providerDef={olDef}
-        endpoint={olEndpoint}
-        timeoutSec={olTimeoutSec}
-        appKey={olAppKey}
-        apiKey={olApiKey}
-        message={olMsg}
-        onEndpointChange={setOlEndpoint}
-        onTimeoutSecChange={setOlTimeoutSec}
-        onAppKeyChange={setOlAppKey}
-        onApiKeyChange={setOlApiKey}
-        onSave={saveOnlineStt}
-        onProbe={() => {
-          void probeOnlineStt();
-        }}
-      />
+      <div className="flex items-start gap-3 border-t border-notion-divider/60 pt-5">
+        <Info className={`${LUCIDE_ICON_SIZE_SM} mt-0.5 shrink-0 text-notion-text-muted`} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+        <div className={`space-y-2 ${PANEL_TYPOGRAPHY.body}`}>
+          <p className="m-0">
+            国内 / 国际厂商分组展示；常见含试用或免费额的引擎带角标（以各厂商控制台为准）。OpenAI / AssemblyAI 由壳直接调
+            API；其余厂商多需 TC3 签名、Token 或 WebSocket，当前版本请优先走<strong className="font-medium text-notion-text"> 自建 HTTPS 代理 </strong>
+            并将响应归一为 Rushi JSON（multipart <code className="font-mono text-zen-indigo">file</code>）。
+          </p>
+          {glossaryBiasSummaryForProviderId(olProviderId)}
+        </div>
+      </div>
     </div>
   );
 }

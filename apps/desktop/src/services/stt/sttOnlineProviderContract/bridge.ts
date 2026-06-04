@@ -52,7 +52,7 @@ export function sttOnlineProviderAllowsEmptyEndpoint(providerId: string): boolea
 export function tryBuildOnlineTranscribeBridgePayload(): OnlineTranscribeBridgePayload | null {
   const c = readExternalSttOnlineRuntimeConfigFromStorage();
   const key = getSttOnlineApiKeyFromMemory()?.trim();
-  if (!c.enabled || !key) return null;
+  if (!key) return null;
   const def = getSttOnlineProviderDefinition(c.selectedProviderId);
   if (!def) return null;
   const timeoutSec = Math.min(600, Math.max(30, Math.round(c.timeoutMs / 1000)));
@@ -108,10 +108,10 @@ export function tryBuildOnlineTranscribeBridgePayload(): OnlineTranscribeBridgeP
   };
 }
 
-/** 已勾选在线但未凑齐 URL/密钥时用于主舞台提示。 */
-export function isSttOnlineEnabledButIncomplete(): boolean {
+/** 用户选择在线转写但配置/会话密钥未齐时用于主舞台提示。 */
+export function isSttOnlineTranscribeIncomplete(): boolean {
+  if (tryBuildOnlineTranscribeBridgePayload()) return false;
   const c = readExternalSttOnlineRuntimeConfigFromStorage();
-  if (!c.enabled) return false;
   const key = getSttOnlineApiKeyFromMemory()?.trim();
   if (!key) return true;
   const def = getSttOnlineProviderDefinition(c.selectedProviderId);
@@ -122,4 +122,18 @@ export function isSttOnlineEnabledButIncomplete(): boolean {
     return !isAllowedSttOnlineEndpoint(url);
   }
   return !url || !isAllowedSttOnlineEndpoint(url);
+}
+
+/** @deprecated 使用 isSttOnlineTranscribeIncomplete */
+export function isSttOnlineEnabledButIncomplete(): boolean {
+  return isSttOnlineTranscribeIncomplete();
+}
+
+export function resolveOnlineTranscribeBlock(): string | null {
+  if (tryBuildOnlineTranscribeBridgePayload()) return null;
+  const key = getSttOnlineApiKeyFromMemory()?.trim();
+  if (!key) {
+    return "在线 STT：请先在「环境 → 在线 STT」保存配置，并在该页填写 API Key（仅保留在当前会话）。";
+  }
+  return "在线 STT：请在「环境 → 在线 STT」补全厂商、URL 等配置并探测连接。";
 }
