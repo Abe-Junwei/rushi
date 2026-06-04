@@ -15,8 +15,8 @@ use url::Url;
 
 use super::postprocess_export_polish::{self, ExportPolishParsed};
 use super::{
-    chat_completion_finish_reason, extract_chat_completion_text, resolve_runtime_postprocess_config,
-    PostprocessCancelState, PostprocessRuntimeBridge,
+    chat_completion_finish_reason, extract_chat_completion_text,
+    resolve_runtime_postprocess_config, PostprocessCancelState, PostprocessRuntimeBridge,
 };
 
 #[derive(Debug, Clone, Deserialize)]
@@ -78,11 +78,7 @@ pub async fn postprocess_export_polish(
     .await
     .map_err(|e| format!("无法解析 LLM 配置：{e}"))??;
 
-    let rule_hints = req
-        .rule_hints
-        .as_deref()
-        .map(str::trim)
-        .unwrap_or("");
+    let rule_hints = req.rule_hints.as_deref().map(str::trim).unwrap_or("");
     let loopback = is_loopback_endpoint(&config.endpoint);
     let llm_cfg = ExportPolishLlmConfig {
         provider: config.provider.clone(),
@@ -132,9 +128,7 @@ pub async fn postprocess_export_polish(
         };
         append_desktop_log_line(
             &state,
-            &format!(
-                "INFO export_polish_batch {batch_no}/{batch_total} lines={batch_lines}"
-            ),
+            &format!("INFO export_polish_batch {batch_no}/{batch_total} lines={batch_lines}"),
         );
         let (parsed, batch_ms) = run_export_polish_batch(
             &state,
@@ -183,6 +177,7 @@ pub async fn postprocess_export_polish(
     })
 }
 
+#[allow(clippy::too_many_arguments)]
 async fn run_export_polish_batch(
     state: &DbState,
     cancel_state: &PostprocessCancelState,
@@ -193,8 +188,9 @@ async fn run_export_polish_batch(
     batch_note: Option<(usize, usize)>,
     request_id: Option<&str>,
 ) -> Result<(ExportPolishParsed, u64), String> {
-    let prompt =
-        postprocess_export_polish::build_export_polish_prompt(batch_body, line_count, rule_hints, batch_note);
+    let prompt = postprocess_export_polish::build_export_polish_prompt(
+        batch_body, line_count, rule_hints, batch_note,
+    );
     let char_count = batch_body.chars().count();
     let mut llm_body = json!({
         "model": cfg.model,

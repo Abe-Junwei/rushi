@@ -2,7 +2,9 @@ use std::io::Cursor;
 
 use docx_rs::*;
 
-use crate::export_docx_polish_track::{append_polished_with_track_changes, inject_track_revisions_flag};
+use crate::export_docx_polish_track::{
+    append_polished_with_track_changes, inject_track_revisions_flag,
+};
 use crate::project::SegmentDto;
 
 use super::export_docx_body::{
@@ -23,7 +25,10 @@ fn should_use_polish_track_changes(
     let Some(after) = polished_paragraphs else {
         return false;
     };
-    let Some(before) = polish_before_joined.map(str::trim).filter(|s| !s.is_empty()) else {
+    let Some(before) = polish_before_joined
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+    else {
         return false;
     };
     let Some(lines) = polish_corrected_lines.filter(|l| !l.is_empty()) else {
@@ -35,6 +40,7 @@ fn should_use_polish_track_changes(
     lines.len() == crate::export_docx_polish_track::before_lines_from_joined(before).len()
 }
 
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn build_docx_bytes(
     title: &str,
     export_mode: &str,
@@ -48,8 +54,7 @@ pub(crate) fn build_docx_bytes(
 ) -> Result<Vec<u8>, String> {
     let mode = normalize_export_mode(export_mode);
     let any_text = segments.iter().any(|s| !s.text.trim().is_empty());
-    let has_polished = polished_paragraphs
-        .is_some_and(|p| p.iter().any(|x| !x.trim().is_empty()));
+    let has_polished = polished_paragraphs.is_some_and(|p| p.iter().any(|x| !x.trim().is_empty()));
     let track_requested = polish_track_changes;
     let use_track = should_use_polish_track_changes(
         polish_track_changes,
@@ -109,9 +114,8 @@ pub(crate) fn build_docx_bytes(
         _ => append_verbatim_segments(doc, segments),
     };
     if !any_text && !has_polished {
-        doc = doc.add_paragraph(
-            Paragraph::new().add_run(Run::new().size(24).add_text("（无正文）")),
-        );
+        doc =
+            doc.add_paragraph(Paragraph::new().add_run(Run::new().size(24).add_text("（无正文）")));
     }
 
     doc = append_revision_appendix(doc, appendix_lines);

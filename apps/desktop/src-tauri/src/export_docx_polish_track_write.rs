@@ -27,9 +27,7 @@ fn track_body_run() -> Run {
 }
 
 fn flatten_for_compare(s: &str) -> String {
-    s.chars()
-        .filter(|c| *c != '\n' && *c != '\r')
-        .collect()
+    s.chars().filter(|c| *c != '\n' && *c != '\r').collect()
 }
 
 fn lines_paragraphs_chars_match(lines: &[String], paragraphs: &[String]) -> bool {
@@ -140,16 +138,13 @@ fn accumulate_line_diffs_into_paragraphs(
             flat_pos = flat_pos.saturating_add(after.chars().count());
             continue;
         }
-        let pi = char_para
-            .get(flat_pos)
-            .copied()
-            .unwrap_or_else(|| {
-                if para_count == 0 {
-                    0
-                } else {
-                    (li * para_count / before_lines.len().max(1)).min(para_count - 1)
-                }
-            });
+        let pi = char_para.get(flat_pos).copied().unwrap_or_else(|| {
+            if para_count == 0 {
+                0
+            } else {
+                (li * para_count / before_lines.len().max(1)).min(para_count - 1)
+            }
+        });
         let bucket = &mut buckets[pi];
         for piece in pieces {
             match piece {
@@ -189,13 +184,8 @@ pub fn append_polished_with_track_changes(
 
     let author = POLISH_TRACK_AUTHOR;
     let date = polish_revision_date();
-    let display =
-        display_paragraphs_from_lines(corrected_lines, display_paragraphs);
-    let buckets = accumulate_line_diffs_into_paragraphs(
-        &before_lines,
-        corrected_lines,
-        &display,
-    );
+    let display = display_paragraphs_from_lines(corrected_lines, display_paragraphs);
+    let buckets = accumulate_line_diffs_into_paragraphs(&before_lines, corrected_lines, &display);
 
     let mut char_budget = MAX_LECTURE_BODY_CHARS;
     let mut truncated = false;

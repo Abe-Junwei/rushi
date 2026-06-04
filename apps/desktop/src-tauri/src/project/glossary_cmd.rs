@@ -1,8 +1,8 @@
 use super::glossary_hotwords::build_glossary_hotwords;
 use super::glossary_hotwords::GlossaryHotwordsPreview;
-use super::hotword_guard::reject_glossary_correction_before_texts;
 use super::glossary_import::rows_from_glossary_file;
 use super::glossary_insert::GlossaryInsertRow;
+use super::hotword_guard::reject_glossary_correction_before_texts;
 use super::types::GlossaryTermDto;
 use super::utils::{is_sqlite_unique_violation, now_ms, open_db};
 use crate::DbState;

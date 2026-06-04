@@ -33,11 +33,8 @@ pub fn sanitize_diagnostic_db(conn: &Connection) -> Result<(), String> {
         [],
     )
     .map_err(|e| e.to_string())?;
-    conn.execute(
-        "UPDATE files SET name = 'file-' || substr(id, 1, 8)",
-        [],
-    )
-    .map_err(|e| e.to_string())?;
+    conn.execute("UPDATE files SET name = 'file-' || substr(id, 1, 8)", [])
+        .map_err(|e| e.to_string())?;
     conn.execute(
         "UPDATE edit_log SET detail = ?1 WHERE detail IS NOT NULL AND trim(detail) != ''",
         [REDACTED],
@@ -132,7 +129,8 @@ pub fn redact_json_string_field(input: &str, field: &str) -> String {
         let trimmed = rest_val.trim_start();
         if let Some(stripped) = trimmed.strip_prefix('"') {
             if let Some(end_quote) = stripped.find('"') {
-                let replace_end = value_start + (rest_val.len() - trimmed.len()) + 1 + end_quote + 1;
+                let replace_end =
+                    value_start + (rest_val.len() - trimmed.len()) + 1 + end_quote + 1;
                 out.replace_range(value_start..replace_end, &format!(" \"{REDACTED}\""));
             }
         }
@@ -193,7 +191,9 @@ mod tests {
         .unwrap();
         sanitize_diagnostic_db(&conn).unwrap();
         let text: String = conn
-            .query_row("SELECT text FROM segments WHERE file_id = 'f'", [], |r| r.get(0))
+            .query_row("SELECT text FROM segments WHERE file_id = 'f'", [], |r| {
+                r.get(0)
+            })
             .unwrap();
         assert_eq!(text, REDACTED);
         let pname: String = conn

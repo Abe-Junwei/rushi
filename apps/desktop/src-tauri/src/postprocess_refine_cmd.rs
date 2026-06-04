@@ -7,9 +7,9 @@ use std::time::Instant;
 use tauri::State;
 
 use super::{
-    extract_chat_completion_text, resolve_postprocess_config_async, DEFAULT_TIMEOUT_SECS,
+    extract_chat_completion_text, resolve_postprocess_config_async,
     PostprocessAutoPunctuateRequest, PostprocessCancelState, PostprocessRefineSegmentsRequest,
-    PostprocessRefineSegmentsResponse,
+    PostprocessRefineSegmentsResponse, DEFAULT_TIMEOUT_SECS,
 };
 
 #[tauri::command]

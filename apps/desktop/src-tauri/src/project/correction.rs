@@ -1,35 +1,36 @@
-#[path = "correction_types.rs"]
-mod correction_types;
+#[path = "correction_hints.rs"]
+mod correction_hints;
 #[path = "correction_learn.rs"]
 mod correction_learn;
 #[path = "correction_store.rs"]
 mod correction_store;
-#[path = "correction_hints.rs"]
-mod correction_hints;
+#[path = "correction_types.rs"]
+mod correction_types;
 
 pub use correction_hints::{
     collect_correction_rule_hints, list_glossary_learn_prompts, list_glossary_mine_candidates,
 };
 pub use correction_learn::{
-    accept_correction_rule, infer_single_replacement, learn_inferred_pairs_from_segment_save,
+    accept_correction_rule, learn_inferred_pairs_from_segment_save,
     upsert_explicit_correction_pairs,
 };
 pub use correction_store::{
-    delete_correction_memory_entry, list_correction_memory_entries,
-    list_stable_correction_rules, save_correction_memory_entry,
+    delete_correction_memory_entry, list_correction_memory_entries, list_stable_correction_rules,
+    save_correction_memory_entry,
 };
 pub use correction_types::*;
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use correction_learn::{
-        infer_single_replacement, learn_inferred_pairs_from_segment_save, normalize_correction_learn_pair,
-        should_learn_inferred_replacement, upsert_correction_memory,
-    };
     use crate::project::types::SegmentDto;
-    use std::collections::HashMap;
+    use correction_learn::{
+        infer_single_replacement, learn_inferred_pairs_from_segment_save,
+        normalize_correction_learn_pair, should_learn_inferred_replacement,
+        upsert_correction_memory,
+    };
     use rusqlite::Connection;
+    use std::collections::HashMap;
 
     #[test]
     fn should_learn_rejects_isolated_single_cjk_char_pair() {
@@ -254,9 +255,11 @@ mod tests {
             .unwrap();
         assert_eq!(hit, 3);
         let term_count: i32 = conn
-            .query_row("SELECT COUNT(*) FROM glossary_terms WHERE term = '制控'", [], |r| {
-                r.get(0)
-            })
+            .query_row(
+                "SELECT COUNT(*) FROM glossary_terms WHERE term = '制控'",
+                [],
+                |r| r.get(0),
+            )
             .unwrap();
         assert_eq!(term_count, 1);
     }

@@ -37,7 +37,10 @@ fn has_qwen25_7b_tag(names: &[String]) -> bool {
 const DEFAULT_TAGS_URL: &str = "http://127.0.0.1:11434/api/tags";
 const DETECT_TIMEOUT: Duration = Duration::from_secs(4);
 
-pub fn detect_ollama_tags(tags_url: Option<&str>, configured_model: Option<&str>) -> OllamaDetectResponse {
+pub fn detect_ollama_tags(
+    tags_url: Option<&str>,
+    configured_model: Option<&str>,
+) -> OllamaDetectResponse {
     let url = tags_url
         .map(str::trim)
         .filter(|s| !s.is_empty())
@@ -160,10 +163,7 @@ mod tests {
 
     #[test]
     fn ollama_model_installed_matches_tags() {
-        let names = vec![
-            "qwen2.5:7b".to_string(),
-            "llama3.2:latest".to_string(),
-        ];
+        let names = vec!["qwen2.5:7b".to_string(), "llama3.2:latest".to_string()];
         assert!(ollama_model_installed(&names, "qwen2.5:7b"));
         assert!(ollama_model_installed(&names, "llama3.2"));
         assert!(!ollama_model_installed(&names, "missing:7b"));

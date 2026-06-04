@@ -17,10 +17,7 @@ pub(crate) fn compare_rule_strength(a: &LocalRuleRow, b: &LocalRuleRow) -> std::
     )
 }
 
-fn compare_rule_strength_tuple(
-    a: (i32, bool, i64),
-    b: (i32, bool, i64),
-) -> std::cmp::Ordering {
+fn compare_rule_strength_tuple(a: (i32, bool, i64), b: (i32, bool, i64)) -> std::cmp::Ordering {
     a.0.cmp(&b.0)
         .then_with(|| a.1.cmp(&b.1))
         .then_with(|| a.2.cmp(&b.2))
@@ -30,11 +27,7 @@ pub(crate) fn compare_rule_pair(
     local: &LocalRuleRow,
     bundle: &LexiconBundleCorrectionRule,
 ) -> RuleCompare {
-    let l = (
-        local.hit_count,
-        local.accepted_as_rule,
-        local.updated_at_ms,
-    );
+    let l = (local.hit_count, local.accepted_as_rule, local.updated_at_ms);
     let b = (
         bundle.hit_count,
         bundle.accepted_as_rule,

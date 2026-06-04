@@ -12,11 +12,12 @@ pub(crate) use export_docx_body::{
 };
 pub(crate) use export_docx_build::build_docx_bytes;
 
-use export_docx_body::normalize_export_mode;
 use crate::project::SegmentDto;
+use export_docx_body::normalize_export_mode;
 
 /// `export_mode`: `verbatim` | `lecture` | `clean`.
 #[tauri::command]
+#[allow(clippy::too_many_arguments)]
 pub async fn export_docx(
     default_filename: String,
     title: String,
@@ -35,16 +36,12 @@ pub async fn export_docx(
         .map(str::trim)
         .filter(|s| !s.is_empty());
     let appendix = appendix_lines.unwrap_or_default();
-    let polished = polished_paragraphs
-        .as_deref()
-        .filter(|p| !p.is_empty());
+    let polished = polished_paragraphs.as_deref().filter(|p| !p.is_empty());
     let before_joined = polish_before_joined
         .as_deref()
         .map(str::trim)
         .filter(|s| !s.is_empty());
-    let corrected_lines = polish_corrected_lines
-        .as_deref()
-        .filter(|p| !p.is_empty());
+    let corrected_lines = polish_corrected_lines.as_deref().filter(|p| !p.is_empty());
     let track = polish_track_changes.unwrap_or(false);
     let bytes = build_docx_bytes(
         &title,
@@ -57,7 +54,6 @@ pub async fn export_docx(
         corrected_lines,
         track,
     )?;
-    let default_filename = default_filename;
     tauri::async_runtime::spawn_blocking(move || {
         let picked = rfd::FileDialog::new()
             .set_file_name(&default_filename)
@@ -306,9 +302,22 @@ mod tests {
             )
             .unwrap_or_else(|_| "R9 strict export".to_string());
 
-        let bytes = build_docx_bytes(&title, "clean", &segments, None, &[], None, None, None, false)
-            .expect("build docx");
+        let bytes = build_docx_bytes(
+            &title,
+            "clean",
+            &segments,
+            None,
+            &[],
+            None,
+            None,
+            None,
+            false,
+        )
+        .expect("build docx");
         std::fs::write(&out, &bytes).expect("write docx");
-        eprintln!("r9_strict_export: file_id={file_id} segments={} out={out}", segments.len());
+        eprintln!(
+            "r9_strict_export: file_id={file_id} segments={} out={out}",
+            segments.len()
+        );
     }
 }

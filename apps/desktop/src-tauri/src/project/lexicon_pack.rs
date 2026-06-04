@@ -1,4 +1,5 @@
 //! R3t-E: assemble LexiconPack from glossary_terms + correction_memory.
+#![allow(dead_code)]
 
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};

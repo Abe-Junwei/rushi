@@ -1,8 +1,7 @@
 //! EXP-WORD：交付导出润色 — LLM 行级错字/标点 + 语义断段；稳定规则在 TS 侧最后覆盖。
 
 use super::postprocess_segment_ops::{
-    extract_balanced_json_array, extract_json_object_from_llm_content,
-    strip_llm_reasoning_wrappers,
+    extract_balanced_json_array, extract_json_object_from_llm_content, strip_llm_reasoning_wrappers,
 };
 use serde::Deserialize;
 
@@ -129,11 +128,9 @@ pub fn paragraphs_from_break_after(lines: &[String], break_after: &[usize]) -> V
     let mut buf = String::new();
     for (i, line) in lines.iter().enumerate() {
         buf.push_str(line);
-        if breaks.contains(&i) {
-            if !buf.is_empty() {
-                out.push(buf);
-                buf = String::new();
-            }
+        if breaks.contains(&i) && !buf.is_empty() {
+            out.push(buf);
+            buf = String::new();
         }
     }
     if !buf.is_empty() {
@@ -230,7 +227,10 @@ fn try_plain_lines_fallback(s: &str, expected: usize) -> Option<ExportPolishPars
     }
 }
 
-pub fn parse_export_polish_json(raw: &str, expected_line_count: usize) -> Result<ExportPolishParsed, String> {
+pub fn parse_export_polish_json(
+    raw: &str,
+    expected_line_count: usize,
+) -> Result<ExportPolishParsed, String> {
     let stripped = strip_llm_reasoning_wrappers(raw);
 
     if let Ok(v) = serde_json::from_str::<ExportPolishPayload>(stripped.trim()) {

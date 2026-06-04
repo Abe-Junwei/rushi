@@ -1,5 +1,3 @@
-use crate::project::hotword_guard::reject_glossary_correction_before_texts;
-use crate::project::utils::now_ms;
 use super::lexicon_bundle_db::{
     apply_glossary_bundle_row, compare_rule_pair, compare_rule_strength, dedupe_bundle_rules,
     glossary_key, glossary_rows_compatible, insert_glossary_row, insert_rule_row,
@@ -10,6 +8,8 @@ use super::lexicon_bundle_types::{
     LexiconBundleConflict, LexiconBundleConflictResolution, LexiconBundleDocument,
     LexiconBundleImportApplyResult, LexiconBundleImportPreview,
 };
+use crate::project::hotword_guard::reject_glossary_correction_before_texts;
+use crate::project::utils::now_ms;
 use rusqlite::{params, Connection};
 use std::collections::{HashMap, HashSet};
 
@@ -73,15 +73,11 @@ pub fn preview_lexicon_bundle_import(
         if before.is_empty() || after.is_empty() || before == after {
             continue;
         }
-        if let Some(local) = local_rules
+        if let Some(_local) = local_rules
             .iter()
             .find(|r| r.before_text == before && r.after_text == after)
         {
-            if local.hit_count == rule.hit_count && local.accepted_as_rule == rule.accepted_as_rule {
-                skip_rules += 1;
-            } else {
-                skip_rules += 1;
-            }
+            skip_rules += 1;
             continue;
         }
         let locals_for_before: Vec<_> = local_rules

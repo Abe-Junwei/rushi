@@ -21,7 +21,10 @@ fn strip_correction_learn_noise(s: &str) -> String {
         .collect()
 }
 
-pub(crate) fn normalize_correction_learn_pair(removed: &str, added: &str) -> Option<(String, String)> {
+pub(crate) fn normalize_correction_learn_pair(
+    removed: &str,
+    added: &str,
+) -> Option<(String, String)> {
     let before = strip_correction_learn_noise(removed.trim());
     let after = strip_correction_learn_noise(added.trim());
     if before.is_empty() || after.is_empty() || before == after {

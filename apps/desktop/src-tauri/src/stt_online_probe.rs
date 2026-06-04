@@ -79,7 +79,9 @@ fn headers_from_map(raw: &HashMap<String, String>) -> HeaderMap {
     map
 }
 
-pub(crate) fn probe_stt_online_health_blocking(req: &SttOnlineProbeRequest) -> SttOnlineProbeResponse {
+pub(crate) fn probe_stt_online_health_blocking(
+    req: &SttOnlineProbeRequest,
+) -> SttOnlineProbeResponse {
     let endpoint = req.url.trim().to_string();
     if endpoint.is_empty() {
         return SttOnlineProbeResponse {

@@ -151,11 +151,9 @@ fn file_restore_segments_from_edit_log_replaces_text_and_audits() {
     .unwrap();
     let first_log_id: i64 = open_db(&st)
         .unwrap()
-        .query_row(
-            "SELECT id FROM edit_log ORDER BY id ASC LIMIT 1",
-            [],
-            |r| r.get(0),
-        )
+        .query_row("SELECT id FROM edit_log ORDER BY id ASC LIMIT 1", [], |r| {
+            r.get(0)
+        })
         .unwrap();
 
     file_save_segments_inner(

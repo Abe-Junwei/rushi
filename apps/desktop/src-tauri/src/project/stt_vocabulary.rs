@@ -181,15 +181,10 @@ mod tests {
             terms: terms.clone(),
         };
         assert_eq!(assemblyai_keyterms(&plan).len(), ASSEMBLYAI_KEYTERMS_MAX);
-        let w = vocabulary_support_warnings(
-            SttVocabularyChannel::AssemblyAiKeyterms,
-            &plan,
-            false,
-        );
-        assert!(
-            w.iter()
-                .any(|x| x == "online_vocabulary_truncated_assemblyai_keyterms")
-        );
+        let w = vocabulary_support_warnings(SttVocabularyChannel::AssemblyAiKeyterms, &plan, false);
+        assert!(w
+            .iter()
+            .any(|x| x == "online_vocabulary_truncated_assemblyai_keyterms"));
     }
 
     #[test]
@@ -203,10 +198,9 @@ mod tests {
         let kw_count = url.matches("keywords=").count();
         assert_eq!(kw_count, DEEPGRAM_KEYWORDS_MAX);
         let w = vocabulary_support_warnings(SttVocabularyChannel::DeepgramKeywords, &plan, false);
-        assert!(
-            w.iter()
-                .any(|x| x == "online_vocabulary_truncated_deepgram_keywords")
-        );
+        assert!(w
+            .iter()
+            .any(|x| x == "online_vocabulary_truncated_deepgram_keywords"));
     }
 
     #[test]

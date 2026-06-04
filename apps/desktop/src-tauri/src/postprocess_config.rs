@@ -1,7 +1,5 @@
-use super::{
-    NeighborContextItem, PostprocessAutoPunctuateRequest, PostprocessRuntimeBridge,
-};
 use super::postprocess_secret_store::read_llm_secret;
+use super::{NeighborContextItem, PostprocessAutoPunctuateRequest, PostprocessRuntimeBridge};
 use std::env;
 use std::path::Path;
 use url::Url;
@@ -60,8 +58,8 @@ pub(crate) fn resolve_runtime_postprocess_config(
     } else {
         rt.provider.trim().to_string()
     };
-    let parsed_base = Url::parse(base_url)
-        .map_err(|_| "自动标点服务地址无效，请检查 API 基址。".to_string())?;
+    let parsed_base =
+        Url::parse(base_url).map_err(|_| "自动标点服务地址无效，请检查 API 基址。".to_string())?;
     let api_key = if !api_key.is_empty() {
         api_key.to_string()
     } else if rt.allow_insecure_http && is_loopback_host(parsed_base.host_str()) {
@@ -103,7 +101,10 @@ fn load_postprocess_config_from_env(app_data_root: &Path) -> Result<PostprocessC
     })
 }
 
-pub(crate) fn parse_postprocess_endpoint(raw: &str, allow_insecure_http: bool) -> Result<Url, String> {
+pub(crate) fn parse_postprocess_endpoint(
+    raw: &str,
+    allow_insecure_http: bool,
+) -> Result<Url, String> {
     let mut url = Url::parse(raw.trim())
         .map_err(|_| "自动标点服务地址无效，请检查 API 基址。".to_string())?;
     match url.scheme() {
@@ -251,7 +252,10 @@ pub(crate) fn extract_chat_completion_text(v: &serde_json::Value) -> Result<Stri
     let out = if let Some(text) = content.as_str() {
         text.trim().to_string()
     } else if let Some(parts) = content.as_array() {
-        if parts.iter().all(|p| p.get("type").is_some() || p.get("text").is_some()) {
+        if parts
+            .iter()
+            .all(|p| p.get("type").is_some() || p.get("text").is_some())
+        {
             parts
                 .iter()
                 .filter_map(|p| p.get("text").and_then(|x| x.as_str()))
@@ -274,8 +278,5 @@ pub(crate) fn extract_chat_completion_text(v: &serde_json::Value) -> Result<Stri
 }
 
 pub(crate) fn chat_completion_finish_reason(v: &serde_json::Value) -> Option<&str> {
-    v.get("choices")?
-        .get(0)?
-        .get("finish_reason")?
-        .as_str()
+    v.get("choices")?.get(0)?.get("finish_reason")?.as_str()
 }

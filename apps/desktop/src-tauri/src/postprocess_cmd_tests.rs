@@ -76,51 +76,51 @@ fn extract_text_from_string_content() {
     assert_eq!(text, "你好，世界。");
 }
 
-    #[test]
-    fn extract_text_from_array_content() {
-        let payload = json!({
-            "choices": [{
-                "message": {
-                    "content": [
-                        { "type": "text", "text": "你好" },
-                        { "type": "text", "text": "，世界。" }
-                    ]
-                }
-            }]
-        });
-        let text = extract_chat_completion_text(&payload).unwrap();
-        assert_eq!(text, "你好，世界。");
-    }
+#[test]
+fn extract_text_from_array_content() {
+    let payload = json!({
+        "choices": [{
+            "message": {
+                "content": [
+                    { "type": "text", "text": "你好" },
+                    { "type": "text", "text": "，世界。" }
+                ]
+            }
+        }]
+    });
+    let text = extract_chat_completion_text(&payload).unwrap();
+    assert_eq!(text, "你好，世界。");
+}
 
-    #[test]
-    fn extract_text_from_json_object_content() {
-        let payload = json!({
-            "choices": [{
-                "message": {
-                    "content": {
-                        "lines": ["甲", "乙。"],
-                        "break_after_line": [0]
-                    }
+#[test]
+fn extract_text_from_json_object_content() {
+    let payload = json!({
+        "choices": [{
+            "message": {
+                "content": {
+                    "lines": ["甲", "乙。"],
+                    "break_after_line": [0]
                 }
-            }]
-        });
-        let text = extract_chat_completion_text(&payload).unwrap();
-        assert!(text.contains("\"lines\""));
-        assert!(text.contains("甲"));
-    }
+            }
+        }]
+    });
+    let text = extract_chat_completion_text(&payload).unwrap();
+    assert!(text.contains("\"lines\""));
+    assert!(text.contains("甲"));
+}
 
-    #[test]
-    fn extract_text_from_json_string_array_content() {
-        let payload = json!({
-            "choices": [{
-                "message": {
-                    "content": ["行一", "行二"]
-                }
-            }]
-        });
-        let text = extract_chat_completion_text(&payload).unwrap();
-        assert!(text.contains("行一"));
-    }
+#[test]
+fn extract_text_from_json_string_array_content() {
+    let payload = json!({
+        "choices": [{
+            "message": {
+                "content": ["行一", "行二"]
+            }
+        }]
+    });
+    let text = extract_chat_completion_text(&payload).unwrap();
+    assert!(text.contains("行一"));
+}
 
 #[test]
 fn prompt_includes_labeled_neighbor_context() {

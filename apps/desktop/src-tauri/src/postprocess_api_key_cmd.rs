@@ -2,12 +2,12 @@ use super::postprocess_config::{
     is_valid_secret_account_id, normalize_api_key_id, resolve_runtime_postprocess_config,
     DEFAULT_API_KEY_ID,
 };
-use super::LlmProbeConnectionResponse;
-use crate::DbState;
-use crate::project::utils::append_desktop_log_line;
 use super::postprocess_secret_store::{
     delete_llm_secret, llm_secret_exists, read_llm_secret, write_llm_secret,
 };
+use super::LlmProbeConnectionResponse;
+use crate::project::utils::append_desktop_log_line;
+use crate::DbState;
 use serde::Deserialize;
 use tauri::State;
 
@@ -131,8 +131,10 @@ pub fn llm_probe_connection(
         &state,
         &format!("INFO llm_probe endpoint={}", config.endpoint),
     );
-    let out =
-        super::postprocess_probe::probe_llm_connection_blocking(&config, super::postprocess_probe::PROBE_TIMEOUT);
+    let out = super::postprocess_probe::probe_llm_connection_blocking(
+        &config,
+        super::postprocess_probe::PROBE_TIMEOUT,
+    );
     let level = if out.ok { "INFO" } else { "WARN" };
     let status = out
         .status
@@ -156,6 +158,8 @@ pub fn llm_probe_connection(
 }
 
 #[tauri::command]
-pub fn ollama_detect_status(req: OllamaDetectRequest) -> super::postprocess_ollama::OllamaDetectResponse {
+pub fn ollama_detect_status(
+    req: OllamaDetectRequest,
+) -> super::postprocess_ollama::OllamaDetectResponse {
     super::postprocess_ollama::detect_ollama_tags(req.tags_url.as_deref(), req.model.as_deref())
 }

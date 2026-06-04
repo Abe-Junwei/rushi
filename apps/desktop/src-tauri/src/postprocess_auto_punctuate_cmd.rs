@@ -8,8 +8,8 @@ use tauri::State;
 
 use super::{
     build_auto_punctuate_prompt, extract_chat_completion_text, resolve_postprocess_config_async,
-    DEFAULT_TIMEOUT_SECS, PostprocessAutoPunctuateRawResponse, PostprocessAutoPunctuateRequest,
-    PostprocessCancelState,
+    PostprocessAutoPunctuateRawResponse, PostprocessAutoPunctuateRequest, PostprocessCancelState,
+    DEFAULT_TIMEOUT_SECS,
 };
 
 #[tauri::command]

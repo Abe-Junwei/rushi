@@ -4,7 +4,6 @@ use super::correction::{
     CorrectionLearnBaselineTextDto, CorrectionRuleRow, GlossaryLearnPromptRow,
     SaveSegmentsLearnOpts,
 };
-use std::collections::HashMap;
 use super::edit_log_detail::{
     build_restore_from_edit_log_detail, build_save_segments_edit_detail_from_baseline,
     load_segment_text_by_uid,
@@ -17,6 +16,7 @@ use super::types::SegmentDto;
 use super::utils::{append_desktop_log_line, now_ms, open_db};
 use crate::DbState;
 use rusqlite::params;
+use std::collections::HashMap;
 use std::ops::Deref;
 use std::path::Path;
 use tauri::State;
@@ -32,10 +32,7 @@ fn file_audio_path(conn: &rusqlite::Connection, file_id: &str) -> Result<Option<
 
 pub enum SegmentSaveEditLog {
     SaveSegments(SaveSegmentsLearnOpts),
-    Custom {
-        kind: &'static str,
-        detail: String,
-    },
+    Custom { kind: &'static str, detail: String },
 }
 
 pub fn file_save_segments_inner(
@@ -204,18 +201,14 @@ pub fn file_save_segments_inner(
         }
     }
     if learn.count_hits {
-        let mut baseline_by_uid: HashMap<String, String> = learn
-            .learn_baseline
-            .into_iter()
-            .map(|(uid, text)| (uid, text))
-            .collect();
+        let mut baseline_by_uid: HashMap<String, String> =
+            learn.learn_baseline.into_iter().collect();
         if baseline_by_uid.is_empty() {
             for (uid, (_idx, text)) in &old_text_by_uid {
                 baseline_by_uid.insert(uid.clone(), text.clone());
             }
         }
-        if let Err(e) =
-            learn_inferred_pairs_from_segment_save(&conn, &baseline_by_uid, segments, t)
+        if let Err(e) = learn_inferred_pairs_from_segment_save(&conn, &baseline_by_uid, segments, t)
         {
             append_desktop_log_line(
                 state,

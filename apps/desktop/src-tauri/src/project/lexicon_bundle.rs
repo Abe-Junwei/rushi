@@ -1,20 +1,20 @@
 //! F7: `rushi_lexicon_bundle.v1` export / import preview / apply (glossary + correction_memory).
 
-#[path = "lexicon_bundle_types.rs"]
-mod lexicon_bundle_types;
 #[path = "lexicon_bundle_db.rs"]
 mod lexicon_bundle_db;
 #[path = "lexicon_bundle_import.rs"]
 mod lexicon_bundle_import;
+#[path = "lexicon_bundle_types.rs"]
+mod lexicon_bundle_types;
 
-pub use lexicon_bundle_import::{
-    apply_lexicon_bundle_import, preview_lexicon_bundle_import,
-};
+pub use lexicon_bundle_import::{apply_lexicon_bundle_import, preview_lexicon_bundle_import};
 pub use lexicon_bundle_types::*;
 
 use super::utils::now_ms;
 use lexicon_bundle_db::{load_glossary_for_export, load_rules_for_export};
-use lexicon_bundle_types::{BUNDLE_KIND, BUNDLE_VERSION, FORBIDDEN_TOP_LEVEL_KEYS, LexiconBundleDocument};
+use lexicon_bundle_types::{
+    LexiconBundleDocument, BUNDLE_KIND, BUNDLE_VERSION, FORBIDDEN_TOP_LEVEL_KEYS,
+};
 use rusqlite::Connection;
 
 pub fn build_lexicon_bundle_export(
@@ -257,7 +257,9 @@ mod tests {
 
         let stable = list_stable_correction_rules(&conn_b).unwrap();
         assert!(
-            stable.iter().any(|r| r.wrong == "山通" && r.right == "禅宗"),
+            stable
+                .iter()
+                .any(|r| r.wrong == "山通" && r.right == "禅宗"),
             "B 机稳定规则应含 A 的 山通→禅宗"
         );
         assert!(
@@ -268,7 +270,9 @@ mod tests {
         let pack = assemble_lexicon_pack(&conn_b).unwrap();
         assert!(pack.glossary_canonical.iter().any(|t| t == "觉观"));
         assert!(
-            pack.correction_rules.iter().any(|r| r.wrong == "山通" && r.right == "禅宗"),
+            pack.correction_rules
+                .iter()
+                .any(|r| r.wrong == "山通" && r.right == "禅宗"),
             "R3t-E Pack 应可见导入规则"
         );
     }

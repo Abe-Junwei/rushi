@@ -224,7 +224,13 @@ pub fn build_save_segments_edit_detail(
     explicit_pairs: &[(String, String)],
 ) -> Result<SaveSegmentsEditDetail, String> {
     let old_by_uid = load_segment_text_by_uid(conn, file_id)?;
-    build_save_segments_edit_detail_from_baseline(&old_by_uid, file_id, segments, at_ms, explicit_pairs)
+    build_save_segments_edit_detail_from_baseline(
+        &old_by_uid,
+        file_id,
+        segments,
+        at_ms,
+        explicit_pairs,
+    )
 }
 
 #[cfg(test)]

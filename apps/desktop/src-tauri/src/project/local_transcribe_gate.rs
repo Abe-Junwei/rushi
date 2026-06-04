@@ -162,11 +162,10 @@ mod tests {
 
     #[test]
     fn gate_blocks_hub_mismatch() {
-        assert!(local_transcribe_gate_from_health(
-            &ok_health(PARA),
-            Some("Qwen/Qwen3-ASR-0.6B"),
-        )
-        .is_err());
+        assert!(
+            local_transcribe_gate_from_health(&ok_health(PARA), Some("Qwen/Qwen3-ASR-0.6B"),)
+                .is_err()
+        );
     }
 
     #[test]

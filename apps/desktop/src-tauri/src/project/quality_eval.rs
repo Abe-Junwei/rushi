@@ -190,9 +190,7 @@ pub fn run_eval_batch(
         cmd.arg("--filter-id").arg(fid);
     }
 
-    let output = cmd
-        .output()
-        .map_err(|e| format!("启动评测脚本失败: {e}"))?;
+    let output = cmd.output().map_err(|e| format!("启动评测脚本失败: {e}"))?;
     if !last.is_file() {
         let stderr = String::from_utf8_lossy(&output.stderr);
         let stdout = String::from_utf8_lossy(&output.stdout);
@@ -301,7 +299,9 @@ pub fn quality_save_report_from_json(
 }
 
 #[tauri::command]
-pub fn quality_import_report_file(state: State<DbState>) -> Result<Option<QualityEvalReport>, String> {
+pub fn quality_import_report_file(
+    state: State<DbState>,
+) -> Result<Option<QualityEvalReport>, String> {
     let picked = rfd::FileDialog::new()
         .add_filter("JSON", &["json"])
         .pick_file();

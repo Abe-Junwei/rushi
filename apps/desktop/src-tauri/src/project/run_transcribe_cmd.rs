@@ -412,7 +412,9 @@ async fn save_transcribe_segments(
         Err(e) => {
             append_desktop_log_line(
                 st,
-                &format!("WARN transcribe correction hints open_db failed file_id={file_id} err={e}"),
+                &format!(
+                    "WARN transcribe correction hints open_db failed file_id={file_id} err={e}"
+                ),
             );
         }
     }

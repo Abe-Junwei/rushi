@@ -142,10 +142,7 @@ pub fn export_diagnostic_bundle(
         zip.write_all(&bytes).map_err(|e| e.to_string())?;
     }
 
-    let db_for_edit_log = sanitized_tmp
-        .as_ref()
-        .map(|p| p.as_path())
-        .unwrap_or(st.db_path.as_path());
+    let db_for_edit_log = sanitized_tmp.as_deref().unwrap_or(st.db_path.as_path());
     match Connection::open_with_flags(db_for_edit_log, OpenFlags::SQLITE_OPEN_READ_ONLY) {
         Ok(conn) => {
             if let Err(e) = zip_recent_edit_log_tsv(&conn, &mut zip) {

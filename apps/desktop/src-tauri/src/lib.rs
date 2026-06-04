@@ -11,10 +11,10 @@ mod local_asr_model;
 mod local_runtime;
 mod online_stt_bridge;
 mod postprocess_cmd;
-mod stt_online_probe;
 mod profile;
 mod project;
 mod stt_native;
+mod stt_online_probe;
 mod utils;
 
 use std::path::PathBuf;

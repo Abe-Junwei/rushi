@@ -72,7 +72,10 @@ pub fn strip_llm_reasoning_wrappers(raw: &str) -> String {
     const PAIRS: &[(&str, &str)] = &[
         (concat!("<", "think", ">"), concat!("</", "think", ">")),
         (concat!("<", "think", ">"), concat!("</", "think", ">")),
-        (concat!("<", "redacted_reasoning", ">"), concat!("</", "redacted_reasoning", ">")),
+        (
+            concat!("<", "redacted_reasoning", ">"),
+            concat!("</", "redacted_reasoning", ">"),
+        ),
     ];
     loop {
         let before = s.len();
@@ -80,11 +83,7 @@ pub fn strip_llm_reasoning_wrappers(raw: &str) -> String {
             if let Some(start) = s.find(open) {
                 if let Some(rel) = s[start..].find(close) {
                     let end = start + rel + close.len();
-                    s = format!(
-                        "{}{}",
-                        s[..start].trim_end(),
-                        s[end..].trim_start()
-                    );
+                    s = format!("{}{}", s[..start].trim_end(), s[end..].trim_start());
                 } else if start == 0 {
                     s = s[open.len()..].trim_start().to_string();
                 }

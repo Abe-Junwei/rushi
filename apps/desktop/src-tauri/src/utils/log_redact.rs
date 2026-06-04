@@ -54,7 +54,9 @@ fn replace_json_secret_fields(input: &str) -> String {
     ] {
         let mut search_from = 0;
         while let Some(rest) = out.get(search_from..) {
-            let Some(start) = rest.find(key) else { break; };
+            let Some(start) = rest.find(key) else {
+                break;
+            };
             let start = search_from + start;
             let mut replaced = false;
             if let Some(colon) = out[start..].find(':') {
@@ -156,7 +158,10 @@ mod tests {
         assert!(!out.contains("shh"));
         // Should contain exactly three [REDACTED] markers.
         let redacted_count = out.matches("[REDACTED]").count();
-        assert_eq!(redacted_count, 3, "expected 3 redactions, got {redacted_count} in: {out}");
+        assert_eq!(
+            redacted_count, 3,
+            "expected 3 redactions, got {redacted_count} in: {out}"
+        );
     }
 
     #[test]

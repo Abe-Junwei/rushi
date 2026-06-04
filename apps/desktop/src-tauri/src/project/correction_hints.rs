@@ -35,7 +35,7 @@ fn glossary_contains_term(conn: &Connection, term: &str) -> Result<bool, String>
 pub fn maybe_auto_add_glossary_for_memory_hit(
     conn: &Connection,
     after_text: &str,
-    sample_before: &str,
+    _sample_before: &str,
     hit_count: i32,
     at_ms: i64,
 ) -> Result<bool, String> {

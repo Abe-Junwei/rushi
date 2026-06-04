@@ -1,7 +1,9 @@
 //! Glossary → ASR `hotwords` string (≤12k **Unicode characters**, aligned with Python `len(str)`).
 
 use super::glossary_aliases::hotword_tokens_for_entry;
-use super::hotword_guard::{load_correction_before_text_blocklist, token_is_correction_before_text};
+use super::hotword_guard::{
+    load_correction_before_text_blocklist, token_is_correction_before_text,
+};
 use rusqlite::Connection;
 use std::collections::HashSet;
 

@@ -11,8 +11,23 @@ fn is_punctuation_char(c: char) -> bool {
     c.is_ascii_punctuation()
         || matches!(
             c,
-            '，' | '。' | '！' | '？' | '；' | '、' | '：' | '「' | '」' | '『' | '』' | '（' | '）'
-                | '《' | '》' | '…' | '—' | '·'
+            '，' | '。'
+                | '！'
+                | '？'
+                | '；'
+                | '、'
+                | '：'
+                | '「'
+                | '」'
+                | '『'
+                | '』'
+                | '（'
+                | '）'
+                | '《'
+                | '》'
+                | '…'
+                | '—'
+                | '·'
         )
 }
 
@@ -99,7 +114,9 @@ fn hunk_eligible_for_export_track(del: &str, ins: &str) -> bool {
     }
     if del.is_empty() {
         return ins.chars().count() <= 2
-            || ins.chars().all(|c| is_punctuation_char(c) || c.is_whitespace());
+            || ins
+                .chars()
+                .all(|c| is_punctuation_char(c) || c.is_whitespace());
     }
     let (dist, max_len) = han_core_edit_distance(del, ins);
     dist <= 4 || dist * 100 <= max_len * 12
@@ -167,7 +184,7 @@ pub(crate) fn diff_pieces_for_export_track(before: &str, after: &str) -> Vec<Dif
 
 pub fn before_lines_from_joined(joined: &str) -> Vec<String> {
     joined
-        .split(|c| c == '\n' || c == '\r')
+        .split(['\n', '\r'])
         .map(str::trim)
         .filter(|s| !s.is_empty())
         .map(str::to_string)
@@ -386,9 +403,11 @@ mod tests {
             .iter()
             .filter(|p| matches!(p, DiffPiece::Del(_)))
             .count();
-        assert!(del_count >= 2, "expected multiple del regions, got {del_count:?}");
+        assert!(
+            del_count >= 2,
+            "expected multiple del regions, got {del_count:?}"
+        );
     }
-
 
     #[test]
     fn export_track_markup_shared_fixture() {

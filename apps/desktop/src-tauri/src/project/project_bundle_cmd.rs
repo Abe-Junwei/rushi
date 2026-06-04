@@ -149,7 +149,8 @@ pub(super) fn export_project_bundle_to_path(
         let _ = fs::remove_file(&tmp_path);
         return Err(e);
     }
-    if let Err(e) = fs::rename(&tmp_path, zip_path).map_err(|e| format!("保存项目包失败: {e}")) {
+    if let Err(e) = fs::rename(&tmp_path, zip_path).map_err(|e| format!("保存项目包失败: {e}"))
+    {
         let _ = fs::remove_file(&tmp_path);
         return Err(e);
     }

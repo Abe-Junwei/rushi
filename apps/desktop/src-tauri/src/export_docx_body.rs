@@ -22,9 +22,7 @@ fn is_xml_illegal_char(c: char) -> bool {
 
 /// Strip XML-illegal code points; entity escaping is delegated to `docx-rs` `add_text`.
 pub(crate) fn sanitize_docx_text(s: &str) -> String {
-    s.chars()
-        .filter(|c| !is_xml_illegal_char(*c))
-        .collect()
+    s.chars().filter(|c| !is_xml_illegal_char(*c)).collect()
 }
 
 pub(crate) fn normalize_export_mode(mode: &str) -> &'static str {
@@ -70,9 +68,7 @@ pub(crate) fn add_meta_paragraph(doc: Docx, line: &str) -> Docx {
 }
 
 pub(crate) fn add_body_paragraph(doc: Docx, text: &str, low_confidence: bool) -> Docx {
-    let mut run = Run::new()
-        .size(24)
-        .add_text(sanitize_docx_text(text));
+    let mut run = Run::new().size(24).add_text(sanitize_docx_text(text));
     if low_confidence {
         run = run.highlight(DOCX_HIGHLIGHT_LOW_CONFIDENCE);
     }
@@ -86,11 +82,7 @@ pub(crate) fn append_verbatim_segments(doc: Docx, segments: &[SegmentDto]) -> Do
         if t.is_empty() {
             continue;
         }
-        let meta = format!(
-            "[{} – {}]",
-            format_hms(s.start_sec),
-            format_hms(s.end_sec)
-        );
+        let meta = format!("[{} – {}]", format_hms(s.start_sec), format_hms(s.end_sec));
         doc = doc.add_paragraph(
             Paragraph::new().add_run(
                 Run::new()
@@ -119,7 +111,11 @@ pub(crate) fn append_clean_segments(doc: Docx, segments: &[SegmentDto]) -> Docx 
 }
 
 /// 大模型润色后的段落列表；`spaced` 为 true 时段后插空行（干净稿版式）。
-pub(crate) fn append_polished_paragraph_list(doc: Docx, paragraphs: &[String], spaced: bool) -> Docx {
+pub(crate) fn append_polished_paragraph_list(
+    doc: Docx,
+    paragraphs: &[String],
+    spaced: bool,
+) -> Docx {
     let mut doc = doc;
     let mut char_budget = MAX_LECTURE_BODY_CHARS;
     let mut truncated = false;
@@ -194,12 +190,7 @@ pub(crate) fn append_revision_appendix(doc: Docx, lines: &[String]) -> Docx {
     let mut doc = doc;
     doc = doc.add_paragraph(Paragraph::new());
     doc = doc.add_paragraph(
-        Paragraph::new().add_run(
-            Run::new()
-                .bold()
-                .size(28)
-                .add_text("附录：修订摘要"),
-        ),
+        Paragraph::new().add_run(Run::new().bold().size(28).add_text("附录：修订摘要")),
     );
     doc = doc.add_paragraph(Paragraph::new());
     let cap = lines.len().min(MAX_APPENDIX_LINES);

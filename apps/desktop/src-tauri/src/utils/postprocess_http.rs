@@ -41,13 +41,15 @@ pub fn export_polish_timeout_secs(char_count: usize, loopback: bool) -> u64 {
         const MAX_SECS: u64 = 900;
         // 长稿 JSON 生成：原 1500 字/秒使 12 万字仅 ~125s，改为 500 字/秒。
         const CHARS_PER_EXTRA_SEC: u64 = 500;
-        let extra = (char_count as u64 / CHARS_PER_EXTRA_SEC).min(MAX_SECS.saturating_sub(MIN_SECS));
+        let extra =
+            (char_count as u64 / CHARS_PER_EXTRA_SEC).min(MAX_SECS.saturating_sub(MIN_SECS));
         (MIN_SECS + extra).min(MAX_SECS)
     } else {
         const MIN_SECS: u64 = 45;
         const MAX_SECS: u64 = 180;
         const CHARS_PER_EXTRA_SEC: u64 = 1500;
-        let extra = (char_count as u64 / CHARS_PER_EXTRA_SEC).min(MAX_SECS.saturating_sub(MIN_SECS));
+        let extra =
+            (char_count as u64 / CHARS_PER_EXTRA_SEC).min(MAX_SECS.saturating_sub(MIN_SECS));
         (MIN_SECS + extra).min(MAX_SECS)
     }
 }

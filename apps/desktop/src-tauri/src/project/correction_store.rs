@@ -1,5 +1,7 @@
 use super::correction_learn::is_correction_memory_stable;
-use super::correction_types::{CorrectionMemoryEntryRow, CorrectionRuleRow, CORRECTION_MEMORY_STABLE_HIT};
+use super::correction_types::{
+    CorrectionMemoryEntryRow, CorrectionRuleRow, CORRECTION_MEMORY_STABLE_HIT,
+};
 use crate::project::utils::now_ms;
 use rusqlite::{params, Connection};
 
@@ -52,9 +54,9 @@ pub fn save_correction_memory_entry(
         }
     }
     let at_ms = now_ms();
-    super::correction_learn::upsert_correction_memory(&conn, wrong, right, at_ms)?;
+    super::correction_learn::upsert_correction_memory(conn, wrong, right, at_ms)?;
     if accepted_as_rule {
-        super::correction_learn::accept_correction_rule(&conn, wrong, right, at_ms)?;
+        super::correction_learn::accept_correction_rule(conn, wrong, right, at_ms)?;
     }
     Ok(())
 }
