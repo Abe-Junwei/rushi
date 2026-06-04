@@ -14,8 +14,12 @@ const toastSuccess = vi.fn();
 vi.mock("../services/ui/toast", () => ({
   toast: {
     info: vi.fn(),
-    success: (...args: unknown[]) => toastSuccess(...args),
-    error: (...args: unknown[]) => toastError(...args),
+    success: (...args: unknown[]) => {
+      toastSuccess(...args);
+    },
+    error: (...args: unknown[]) => {
+      toastError(...args);
+    },
     warning: vi.fn(),
     dismiss: vi.fn(),
   },

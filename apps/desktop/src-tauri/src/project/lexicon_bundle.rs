@@ -274,16 +274,16 @@ mod tests {
     }
 
     #[test]
-    fn stable_only_export_filters_hit_one() {
+    fn stable_only_export_filters_below_stable_threshold() {
         let conn = mem_db();
         conn.execute(
             "INSERT INTO correction_memory (before_text, after_text, hit_count, accepted_as_rule, created_at_ms, updated_at_ms) \
-             VALUES ('a', 'b', 1, 0, 1, 1), ('c', 'd', 2, 0, 1, 1)",
+             VALUES ('a', 'b', 1, 0, 1, 1), ('c', 'd', 2, 0, 1, 1), ('e', 'f', 3, 0, 1, 1)",
             [],
         )
         .unwrap();
         let stable = load_rules_for_export(&conn, true).unwrap();
         assert_eq!(stable.len(), 1);
-        assert_eq!(stable[0].before_text, "c");
+        assert_eq!(stable[0].before_text, "e");
     }
 }

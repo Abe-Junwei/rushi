@@ -65,19 +65,19 @@ fn bundled_sidecar_try_order(resource_root: &Path) -> Vec<PathBuf> {
         }
         return out;
     }
-    if let (Some(cuda_p), Some(cpu_p)) = (cuda, cpu) {
+    if let (Some(cuda_p), Some(cpu_p)) = (&cuda, &cpu) {
+        if windows_cuda_probe_ok() {
+            out.push(cuda_p.clone());
+        }
+        out.push(cpu_p.clone());
+    } else if let Some(cuda_p) = cuda {
         if windows_cuda_probe_ok() {
             out.push(cuda_p);
+        } else if let Some(cpu_p) = cpu {
+            out.push(cpu_p);
         }
+    } else if let Some(cpu_p) = cpu {
         out.push(cpu_p);
-    } else if let Some(p) = cuda {
-        if windows_cuda_probe_ok() {
-            out.push(p);
-        } else if let Some(p2) = cpu {
-            out.push(p2);
-        }
-    } else if let Some(p) = cpu {
-        out.push(p);
     }
     out
 }

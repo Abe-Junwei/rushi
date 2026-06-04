@@ -140,7 +140,7 @@ mod tests {
         }
         conn.execute(
             "INSERT INTO correction_memory (before_text, after_text, hit_count, accepted_as_rule, created_at_ms, updated_at_ms) \
-             VALUES ('错', '对', 2, 0, 1, 1)",
+             VALUES ('错', '对', 3, 0, 1, 1)",
             [],
         )
         .unwrap();

@@ -111,7 +111,7 @@
 | **Q-SYMPH-1** | **symphonia 不裁剪**（方案 A）：保留 `aac, flac, isomp4, mp3, pcm, vorbis, wav`；波形/peaks 优先 symphonia，失败走 FFmpeg remux | `apps/desktop/src-tauri/Cargo.toml` |
 | **Q-STT-CANCEL-1** | **v1.1 在线 STT 真取消**（方案 B）：`project_run_transcribe` 各 native/HTTP 路径可 `Abort`；统一取消 command；**v1 维持**前端丢弃结果（`online-stt-*` job id） | `run_transcribe_cmd.rs`、`transcribe_native_*`；工作量大，按 adapter 分批 |
 | **Q-PLUGIN-1** | **Plugin 权限强制 v1.1**（方案 A）：v1 仅 **内置白名单** + `loadBuiltinPlugins()`；`permissions` 字段暂 warn-only | `plugin-system/` |
-| **Q-SIDECAR-1** | **L1 + C2，Mac 单机自用**：**仅 Linux 发行物内置** bundled FunASR sidecar；**macOS/Windows** 文档 + 本地 `python -m rushi_asr` / `desktop:dev`；**不**在 PR/Release CI 自动编 macOS/Windows sidecar 产物（C2 手动） | Release 桌面包以 **Mac DMG** 为主；与 [`asr-sidecar-build-nightly.yml`](../../.github/workflows/asr-sidecar-build-nightly.yml) 手动 workflow 一致 |
+| **Q-SIDECAR-1** | **L1 + C2，Mac 单机自用**：**仅 Linux 发行物内置** bundled FunASR sidecar；**macOS/Windows** 文档 + 本地 `python -m rushi_asr` / `desktop:dev`；**不**在 PR/Release CI 自动编 macOS/Windows sidecar 产物（C2 手动） | Release 桌面包以 **Mac DMG** 为主；与 [`asr-sidecar-build-nightly.yml`](../../../.github/workflows/asr-sidecar-build-nightly.yml) 手动 workflow 一致 |
 
 ### 1.8 个人单机 v1 — 能力补齐索引（对齐工业「可用单机」）
 

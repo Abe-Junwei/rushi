@@ -94,7 +94,9 @@ export function useProjectLifecycleController(
     endBusy,
     mutations,
     dirty,
-    checkGlossaryLearnAfterSave: glossaryLearn.checkGlossaryLearnAfterSave,
+    checkGlossaryLearnAfterSave: () => {
+      void glossaryLearn.checkGlossaryLearnAfterSave();
+    },
   });
 
   const {

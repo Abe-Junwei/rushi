@@ -39,7 +39,7 @@ export function coalesceExportParagraphBreaks(
   for (let k = 1; k <= maxBreaks; k += 1) {
     const targetLine = Math.floor((lineCount * k) / EXPORT_POLISH_MAX_PARAGRAPHS) - 1;
     const b = Math.max(0, Math.min(lineCount - 2, targetLine));
-    if (out.length === 0 || b > out[out.length - 1]!) {
+    if (out.length === 0 || b > out[out.length - 1]) {
       out.push(b);
     }
   }

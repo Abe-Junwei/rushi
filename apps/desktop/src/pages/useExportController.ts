@@ -144,7 +144,7 @@ export function useExportController(deps: ExportDeps): ExportApi {
             return;
           }
           try {
-            const polish = await resolveExportPolishForDelivery(
+            const polish = resolveExportPolishForDelivery(
               normalized,
               request.polishPreview,
             );

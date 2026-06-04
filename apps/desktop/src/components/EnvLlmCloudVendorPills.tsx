@@ -18,7 +18,7 @@ type Props = {
 };
 
 function providerChipLabel(id: LlmProviderId): string {
-  if (FEATURED_DISPLAY[id]) return FEATURED_DISPLAY[id]!;
+  if (FEATURED_DISPLAY[id]) return FEATURED_DISPLAY[id];
   const label = getLlmProviderDefinition(id)?.label ?? id;
   return label.split("（")[0]?.split("(")[0]?.trim() ?? label;
 }

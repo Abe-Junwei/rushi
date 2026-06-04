@@ -79,9 +79,9 @@ describe("segmentListVirtualWindow", () => {
     row.setAttribute("data-seg-row", "5");
     root.appendChild(row);
     root.getBoundingClientRect = () =>
-      ({ top: 100, bottom: 500, left: 0, right: 400, width: 400, height: 400, x: 0, y: 100, toJSON: () => ({}) }) as DOMRect;
+      ({ top: 100, bottom: 500, left: 0, right: 400, width: 400, height: 400, x: 0, y: 100, toJSON: () => ({}) });
     row.getBoundingClientRect = () =>
-      ({ top: 520, bottom: 600, left: 0, right: 400, width: 400, height: 80, x: 0, y: 520, toJSON: () => ({}) }) as DOMRect;
+      ({ top: 520, bottom: 600, left: 0, right: 400, width: 400, height: 80, x: 0, y: 520, toJSON: () => ({}) });
 
     const next = scrollSegmentRowIntoViewContainer(5, root);
     expect(next).not.toBeNull();

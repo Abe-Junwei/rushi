@@ -23,7 +23,14 @@ function* walkMarkdownFiles(dir) {
   for (const ent of entries) {
     const full = path.join(dir, ent.name);
     if (ent.isDirectory()) {
-      if (ent.name === ".git" || ent.name === "node_modules" || ent.name === "dist" || ent.name === "target") {
+      if (
+        ent.name === ".git" ||
+        ent.name === "node_modules" ||
+        ent.name === "dist" ||
+        ent.name === "target" ||
+        ent.name === ".venv" ||
+        ent.name === "stitch-upload"
+      ) {
         continue;
       }
       yield* walkMarkdownFiles(full);

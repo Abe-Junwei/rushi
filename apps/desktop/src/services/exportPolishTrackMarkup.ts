@@ -39,15 +39,15 @@ function levenshteinGraphemes(a: string, b: string): number {
   if (n === 0) return m;
   if (m === 0) return n;
   const dp = Array.from({ length: n + 1 }, () => new Array<number>(m + 1).fill(0));
-  for (let i = 0; i <= n; i += 1) dp[i]![0] = i;
-  for (let j = 0; j <= m; j += 1) dp[0]![j] = j;
+  for (let i = 0; i <= n; i += 1) dp[i][0] = i;
+  for (let j = 0; j <= m; j += 1) dp[0][j] = j;
   for (let i = 1; i <= n; i += 1) {
     for (let j = 1; j <= m; j += 1) {
       const cost = ag[i - 1] === bg[j - 1] ? 0 : 1;
-      dp[i]![j] = Math.min(dp[i - 1]![j]! + 1, dp[i]![j - 1]! + 1, dp[i - 1]![j - 1]! + cost);
+      dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost);
     }
   }
-  return dp[n]![m]!;
+  return dp[n][m];
 }
 
 function hanCoreEditRatio(before: string, after: string): { dist: number; maxLen: number } {
@@ -87,10 +87,10 @@ function diffEditOpsSingleInterval(before: string[], after: string[]): DiffPiece
     aEnd -= 1;
   }
   const out: DiffPiece[] = [];
-  for (let i = 0; i < prefix; i += 1) out.push({ kind: "same", text: before[i]! });
-  for (let i = prefix; i < bEnd; i += 1) out.push({ kind: "del", text: before[i]! });
-  for (let i = prefix; i < aEnd; i += 1) out.push({ kind: "ins", text: after[i]! });
-  for (let i = aEnd; i < after.length; i += 1) out.push({ kind: "same", text: after[i]! });
+  for (let i = 0; i < prefix; i += 1) out.push({ kind: "same", text: before[i] });
+  for (let i = prefix; i < bEnd; i += 1) out.push({ kind: "del", text: before[i] });
+  for (let i = prefix; i < aEnd; i += 1) out.push({ kind: "ins", text: after[i] });
+  for (let i = aEnd; i < after.length; i += 1) out.push({ kind: "same", text: after[i] });
   return out;
 }
 
@@ -103,8 +103,8 @@ function diffEditOps(before: string[], after: string[]): DiffPiece[] {
   const dp = Array.from({ length: n + 1 }, () => new Array<number>(m + 1).fill(0));
   for (let i = 1; i <= n; i += 1) {
     for (let j = 1; j <= m; j += 1) {
-      if (before[i - 1] === after[j - 1]) dp[i]![j] = dp[i - 1]![j - 1]! + 1;
-      else dp[i]![j] = Math.max(dp[i - 1]![j]!, dp[i]![j - 1]!);
+      if (before[i - 1] === after[j - 1]) dp[i][j] = dp[i - 1][j - 1] + 1;
+      else dp[i][j] = Math.max(dp[i - 1][j], dp[i][j - 1]);
     }
   }
   const ops: Array<"k" | "d" | "i"> = [];
@@ -115,7 +115,7 @@ function diffEditOps(before: string[], after: string[]): DiffPiece[] {
       ops.push("k");
       i -= 1;
       j -= 1;
-    } else if (j > 0 && (i === 0 || dp[i]![j - 1]! >= dp[i - 1]![j]!)) {
+    } else if (j > 0 && (i === 0 || dp[i][j - 1] >= dp[i - 1][j])) {
       ops.push("i");
       j -= 1;
     } else {
@@ -130,14 +130,14 @@ function diffEditOps(before: string[], after: string[]): DiffPiece[] {
   let ai = 0;
   for (const op of ops) {
     if (op === "k") {
-      out.push({ kind: "same", text: before[bi]! });
+      out.push({ kind: "same", text: before[bi] });
       bi += 1;
       ai += 1;
     } else if (op === "d") {
-      out.push({ kind: "del", text: before[bi]! });
+      out.push({ kind: "del", text: before[bi] });
       bi += 1;
     } else {
-      out.push({ kind: "ins", text: after[ai]! });
+      out.push({ kind: "ins", text: after[ai] });
       ai += 1;
     }
   }
@@ -153,7 +153,7 @@ function filterCharDiffHunks(pieces: DiffPiece[]): DiffPiece[] {
   const out: DiffPiece[] = [];
   let i = 0;
   while (i < pieces.length) {
-    const p = pieces[i]!;
+    const p = pieces[i];
     if (p.kind === "same") {
       out.push(p);
       i += 1;
@@ -161,9 +161,9 @@ function filterCharDiffHunks(pieces: DiffPiece[]): DiffPiece[] {
     }
     let del = "";
     let ins = "";
-    while (i < pieces.length && pieces[i]!.kind !== "same") {
-      if (pieces[i]!.kind === "del") del += pieces[i]!.text;
-      if (pieces[i]!.kind === "ins") ins += pieces[i]!.text;
+    while (i < pieces.length && pieces[i].kind !== "same") {
+      if (pieces[i].kind === "del") del += pieces[i].text;
+      if (pieces[i].kind === "ins") ins += pieces[i].text;
       i += 1;
     }
     if (hunkEligibleForExportTrack(del, ins)) {

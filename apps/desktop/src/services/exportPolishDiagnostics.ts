@@ -57,15 +57,15 @@ function llmHanEditRatioForLine(before: string, llm: string): number {
   const n = ag.length;
   const m = bg.length;
   const dp = Array.from({ length: n + 1 }, () => new Array<number>(m + 1).fill(0));
-  for (let i = 0; i <= n; i += 1) dp[i]![0] = i;
-  for (let j = 0; j <= m; j += 1) dp[0]![j] = j;
+  for (let i = 0; i <= n; i += 1) dp[i][0] = i;
+  for (let j = 0; j <= m; j += 1) dp[0][j] = j;
   for (let i = 1; i <= n; i += 1) {
     for (let j = 1; j <= m; j += 1) {
       const cost = ag[i - 1] === bg[j - 1] ? 0 : 1;
-      dp[i]![j] = Math.min(dp[i - 1]![j]! + 1, dp[i]![j - 1]! + 1, dp[i - 1]![j - 1]! + cost);
+      dp[i][j] = Math.min(dp[i - 1][j] + 1, dp[i][j - 1] + 1, dp[i - 1][j - 1] + cost);
     }
   }
-  return (dp[n]![m] ?? maxLen) / maxLen;
+  return (dp[n][m] ?? maxLen) / maxLen;
 }
 
 export function buildExportPolishDiagnosticSummary(args: {

@@ -119,6 +119,7 @@ def test_default_model_cached_guess_requires_complete_model(monkeypatch, tmp_pat
     model_dir = ms / "models" / "iic" / para
     temp_dir = ms / "models" / "._____temp" / "iic" / para
     vad_dir = ms / "models" / "iic" / "speech_fsmn_vad_zh-cn-16k-common-pytorch"
+    punc_dir = ms / "models" / "iic" / "punc_ct-transformer_zh-cn-common-vocab272727-pytorch"
 
     temp_dir.mkdir(parents=True)
     (temp_dir / "model.pt").write_bytes(b"x" * (101 * 1024 * 1024))
@@ -139,6 +140,11 @@ def test_default_model_cached_guess_requires_complete_model(monkeypatch, tmp_pat
     vad_dir.mkdir(parents=True)
     (vad_dir / "model.pt").write_bytes(b"x" * (2 * 1024 * 1024))
     assert vad_model_cached_guess() is True
+    assert required_models_cached_guess() is False
+
+    punc_dir.mkdir(parents=True)
+    (punc_dir / "model.pt").write_bytes(b"x" * (2 * 1024 * 1024))
+    (punc_dir / "config.yaml").write_text("ok")
     assert required_models_cached_guess() is True
 
 
