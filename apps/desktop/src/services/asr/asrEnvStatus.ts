@@ -13,6 +13,7 @@ export type AsrEnvStatusRow = {
   label: string;
   ok: boolean;
   text: string;
+  warn?: boolean;
 };
 
 /** 本机 ASR 环境状态唯一 presentation 真源：顶栏芯片 / 设置页 / 转写预检共用。 */
@@ -55,32 +56,46 @@ export type BuildAsrEnvPresentationInput = {
   sidecarAsyncTranscribeCapable?: boolean;
 };
 
+/** 顶栏/转写预检：模型就绪且侧车支持 async 路由 */
+function effectiveTranscribeReady(input: {
+  transcribeReady: boolean;
+  sidecarAsyncTranscribeCapable?: boolean;
+}): boolean {
+  if (!input.transcribeReady) return false;
+  if (input.sidecarAsyncTranscribeCapable === false) return false;
+  return true;
+}
+
 function chipLabelFor(input: {
   asrHealth: AsrHealthState;
   transcribeReady: boolean;
+  sidecarAsyncTranscribeCapable?: boolean;
 }): string {
   if (input.asrHealth === "checking") return "ASR 检测中";
   if (input.asrHealth === "error") return "ASR 未连接";
-  return input.transcribeReady ? "ASR 就绪" : "ASR 未就绪";
+  const ready = effectiveTranscribeReady(input);
+  return ready ? "ASR 就绪" : "ASR 未就绪";
 }
 
 function toneFor(input: {
   asrHealth: AsrHealthState;
   transcribeReady: boolean;
   envOk: boolean;
+  sidecarAsyncTranscribeCapable?: boolean;
 }): AsrEnvTone {
   if (input.asrHealth === "checking") return "idle";
   if (input.asrHealth === "error" || !input.envOk) return "error";
-  return input.transcribeReady ? "ok" : "warn";
+  return effectiveTranscribeReady(input) ? "ok" : "warn";
 }
 
 function bannerTitleFor(input: {
   asrHealth: AsrHealthState;
   transcribeReady: boolean;
+  sidecarAsyncTranscribeCapable?: boolean;
 }): string {
   if (input.asrHealth === "checking") return "本机 ASR · 检测中";
-  if (input.asrHealth === "error") return "本机 ASR · 未连接";
-  return input.transcribeReady ? "本机 ASR · 可直接转写" : "本机 ASR · 已连接";
+  if (input.asrHealth === "error") return "本机 ASR · 环境异常";
+  return effectiveTranscribeReady(input) ? "本机 ASR · 可直接转写" : "本机 ASR · 已连接";
 }
 
 function bannerDetailFor(input: {
@@ -159,18 +174,35 @@ export function buildAsrEnvPresentation(input: BuildAsrEnvPresentationInput): As
       ? connectedGuidanceFor({ asrCaps: input.asrCaps, sidecarMatchesSelection })
       : null;
 
-  const chipLabel = chipLabelFor({ asrHealth: input.asrHealth, transcribeReady });
-  const tone = toneFor({ asrHealth: input.asrHealth, transcribeReady, envOk });
+  const chipLabel = chipLabelFor({
+    asrHealth: input.asrHealth,
+    transcribeReady,
+    sidecarAsyncTranscribeCapable: input.sidecarAsyncTranscribeCapable,
+  });
+  const tone = toneFor({
+    asrHealth: input.asrHealth,
+    transcribeReady,
+    envOk,
+    sidecarAsyncTranscribeCapable: input.sidecarAsyncTranscribeCapable,
+  });
+  const presentationTranscribeReady = effectiveTranscribeReady({
+    transcribeReady,
+    sidecarAsyncTranscribeCapable: input.sidecarAsyncTranscribeCapable,
+  });
 
   const statusRows: AsrEnvStatusRow[] = [
-    { id: "env", label: "环境", ok: envOk, text: envOk ? "正常" : "异常" },
-    { id: "ffmpeg", label: "FFmpeg", ok: ffmpegOk, text: ffmpegOk ? "已安装" : "未安装" },
-    { id: "runtime", label: "FunASR 运行时", ok: runtimeReady, text: runtimeReady ? "就绪" : "未就绪" },
+    { id: "env", label: "环境", ok: envOk, text: envOk ? "侧车已连接" : "连接失败" },
+    { id: "ffmpeg", label: "FFmpeg", ok: ffmpegOk, text: ffmpegOk ? "可用" : "未检测到" },
+    { id: "runtime", label: "运行时", ok: runtimeReady, text: runtimeReady ? "FunASR 就绪" : "未就绪" },
     {
       id: "transcribe",
-      label: "可直接转写",
-      ok: transcribeReady,
-      text: transcribeReady ? "就绪" : "未就绪",
+      label: "转写",
+      ok: presentationTranscribeReady,
+      text: presentationTranscribeReady
+        ? "所选模型可转写"
+        : input.sidecarAsyncTranscribeCapable === false
+          ? "侧车需升级"
+          : "不可用",
     },
   ];
 
@@ -183,16 +215,20 @@ export function buildAsrEnvPresentation(input: BuildAsrEnvPresentationInput): As
     runtimeReady,
     tone,
     chipLabel,
-    chipOk: transcribeReady,
+    chipOk: presentationTranscribeReady,
     chipTitle: "本机 ASR 是否可转写（当前所选模型）",
     ffmpegChipOk: ffmpegOk,
     ffmpegChipTitle: "FFmpeg 是否可用",
     statusRows,
-    bannerTitle: bannerTitleFor({ asrHealth: input.asrHealth, transcribeReady }),
+    bannerTitle: bannerTitleFor({
+      asrHealth: input.asrHealth,
+      transcribeReady,
+      sidecarAsyncTranscribeCapable: input.sidecarAsyncTranscribeCapable,
+    }),
     bannerDetail: bannerDetailFor({
       asrHealth: input.asrHealth,
       asrHealthDetail: input.asrHealthDetail,
-      transcribeReady,
+      transcribeReady: presentationTranscribeReady,
       runtimeReady,
       ffmpegOk,
       connectedGuidance,

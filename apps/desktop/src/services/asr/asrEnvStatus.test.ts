@@ -45,6 +45,29 @@ describe("buildAsrEnvPresentation", () => {
     expect(p.blockReason).toContain("不一致");
   });
 
+  it("shows ASR 未就绪 when async sidecar route missing despite model ready", () => {
+    const p = buildAsrEnvPresentation({
+      asrHealth: "ok",
+      asrHealthDetail: "",
+      asrCaps: {
+        ffmpeg_ok: true,
+        funasr_import_ok: true,
+        funasr_model_configured: true,
+        funasr_ready: true,
+        funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+        ready_for_transcribe: true,
+        transcription_mode: "funasr",
+      },
+      selectedHubModelId: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+      sidecarAsyncTranscribeCapable: false,
+    });
+    expect(p.chipOk).toBe(false);
+    expect(p.tone).toBe("warn");
+    expect(p.bannerTitle).toBe("本机 ASR · 已连接");
+    expect(p.statusRows.find((r) => r.id === "transcribe")?.text).toBe("侧车需升级");
+    expect(p.blockReason).toContain("transcribe/async");
+  });
+
   it("aligns top bar and banner for error state", () => {
     const p = buildAsrEnvPresentation({
       asrHealth: "error",
@@ -52,7 +75,7 @@ describe("buildAsrEnvPresentation", () => {
       asrCaps: null,
     });
     expect(p.chipLabel).toBe("ASR 未连接");
-    expect(p.bannerTitle).toBe("本机 ASR · 未连接");
+    expect(p.bannerTitle).toBe("本机 ASR · 环境异常");
     expect(p.bannerDetail).toContain("127.0.0.1:8741");
     expect(p.blockReason).toContain("未就绪");
   });

@@ -19,7 +19,7 @@ describe("LocalAsrAdvancedSection", () => {
       />,
     );
 
-    const summary = screen.getByText("高级 / 开发者（pip 与手动 ASR）");
+    const summary = screen.getByText("高级诊断");
     const details = summary.closest("details");
     expect(details?.open).toBe(false);
 

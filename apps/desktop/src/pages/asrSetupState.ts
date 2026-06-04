@@ -35,46 +35,46 @@ export function stepsFromReport(report: AsrSetupReport): AsrSetupStep[] {
   } else if (report.health.healthReachable) {
     steps = patchStep(steps, "sidecar", {
       status: "skipped",
-      detail: report.bundledAvailable ? "侧车已可用" : "当前服务已可用",
+      detail: report.bundledAvailable ? "侧车已就绪" : "服务已就绪",
     });
   } else if (report.bundledAvailable) {
-    steps = patchStep(steps, "sidecar", { status: "pending", detail: "待启动内置侧车" });
+    steps = patchStep(steps, "sidecar", { status: "pending", detail: "待启动" });
   } else {
-    steps = patchStep(steps, "sidecar", { status: "skipped", detail: "当前无内置侧车包" });
+    steps = patchStep(steps, "sidecar", { status: "skipped", detail: "无内置侧车包" });
   }
 
   if (report.health.healthReachable) {
     steps = patchStep(steps, "health", {
       status: report.health.funasrReady ? "ok" : "error",
-      detail: report.health.funasrReady ? "FunASR 运行时已就绪" : "FunASR 运行时未就绪",
+      detail: report.health.funasrReady ? "FunASR 就绪" : "FunASR 未就绪",
     });
   } else {
-    steps = patchStep(steps, "health", { status: "pending", detail: "待检测 /health" });
+    steps = patchStep(steps, "health", { status: "pending", detail: "待检测" });
   }
 
   if (report.health.funasrRequiredModelsCached) {
     steps = patchStep(steps, "model", {
       status: "ok",
-      detail: "当前所选模型与必需辅助模型已就绪",
+      detail: "模型已就绪",
     });
   } else if (report.health.funasrDefaultModelCached && !report.health.funasrVadModelCached) {
     steps = patchStep(steps, "model", {
       status: "error",
-      detail: "辅助 VAD 模型尚未完成",
+      detail: "VAD 模型未完成",
     });
   } else if (report.diskLow && report.health.funasrReady) {
-    steps = patchStep(steps, "model", { status: "error", detail: "磁盘可用空间不足" });
+    steps = patchStep(steps, "model", { status: "error", detail: "磁盘空间不足" });
   } else if (report.health.funasrReady) {
-    steps = patchStep(steps, "model", { status: "pending", detail: "待下载当前所选模型" });
+    steps = patchStep(steps, "model", { status: "pending", detail: "待下载模型" });
   } else {
     steps = patchStep(steps, "model", {
       status: "pending",
-      detail: "待 FunASR 运行时就绪后继续",
+      detail: "待 FunASR 就绪",
     });
   }
 
   if (report.readyForTranscribe) {
-    steps = patchStep(steps, "done", { status: "ok", detail: "本机 ASR 已可用于转写" });
+    steps = patchStep(steps, "done", { status: "ok", detail: "可开始转写" });
   }
   return steps;
 }

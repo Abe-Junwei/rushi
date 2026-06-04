@@ -1,10 +1,12 @@
 import { useEffect, useRef } from "react";
 import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../../config/typography";
+import { toast } from "../../services/ui/toast";
 import type { AsrSetupControllerApi } from "../../pages/useAsrSetupController";
 import { isTauriRuntime } from "../../config/env";
+import { buildDiskMetaLine } from "../../services/asr/localAsrSetupWizardPresentation";
 import { LocalAsrRuntimeInstallPanel } from "./LocalAsrRuntimeInstallPanel";
-import { LocalAsrSetupWizardSummary } from "./LocalAsrSetupWizardSummary";
+import { LocalAsrSetupStepList } from "./LocalAsrSetupStepList";
 
 type Props = {
   setup: AsrSetupControllerApi;
@@ -12,6 +14,10 @@ type Props = {
   prepareModelBusy?: boolean;
   openAppDataFolder: () => Promise<void>;
   exportDiagnosticBundle: () => Promise<void>;
+  /** 折叠区内：外层已有「安装向导」标题 */
+  embedded?: boolean;
+  /** 错误态主区：标题与说明、主操作与反馈与全量向导一致；省略步骤列表与侧车折叠 */
+  compact?: boolean;
 };
 
 export function LocalAsrSetupWizard({
@@ -20,6 +26,8 @@ export function LocalAsrSetupWizard({
   prepareModelBusy = false,
   openAppDataFolder,
   exportDiagnosticBundle,
+  embedded = false,
+  compact = false,
 }: Props) {
   const {
     setupReport,
@@ -44,6 +52,16 @@ export function LocalAsrSetupWizard({
   const wizardBusy = busy || setupBusy || diagnoseBusy || prepareModelBusy;
   const refreshDisabled = setupBusy || diagnoseBusy || !isTauriRuntime();
   const initialDiagnoseTriggeredRef = useRef(false);
+  const lastSetupToastRef = useRef<string | null>(null);
+  const diskMeta = buildDiskMetaLine(setupReport);
+
+  useEffect(() => {
+    if (!setupMessage || setupMessage === lastSetupToastRef.current) return;
+    lastSetupToastRef.current = setupMessage;
+    if (setupOutcome === "ready") toast.success(setupMessage);
+    else if (setupOutcome === "error" || setupOutcome === "blocked") toast.error(setupMessage);
+    else toast.info(setupMessage);
+  }, [setupMessage, setupOutcome]);
 
   useEffect(() => {
     if (isTauriRuntime() && !initialDiagnoseTriggeredRef.current && !setupReport && !setupBusy && !diagnoseBusy) {
@@ -53,17 +71,55 @@ export function LocalAsrSetupWizard({
   }, [diagnoseBusy, refreshSetupDiagnose, setupBusy, setupReport]);
 
   return (
-    <section className="flex flex-col gap-4">
-      <div className="pb-1">
-        <h3 className={PANEL_TYPOGRAPHY.sectionTitle}>一键准备本机 ASR</h3>
-        <p className={PANEL_TYPOGRAPHY.sectionDescription}>
-          自动诊断并依次完成：启动内置侧车 → 检测能力 → 下载当前所选模型（无需终端命令）。
-        </p>
+    <section className="flex flex-col gap-3">
+      {embedded ? (
+        <p className={PANEL_TYPOGRAPHY.meta}>自动完成侧车、能力检测与模型下载。</p>
+      ) : null}
+
+      <div className="flex flex-wrap items-center gap-2">
+        <button
+          type="button"
+          className={CONTROL_BTN_PRIMARY}
+          disabled={wizardBusy || !isTauriRuntime()}
+          onClick={() => void runOneClickAsrPrepare()}
+        >
+          {setupBusy ? "准备中…" : "一键准备"}
+        </button>
+        <button
+          type="button"
+          className={CONTROL_BTN_SECONDARY}
+          disabled={refreshDisabled}
+          onClick={() => void refreshSetupDiagnose()}
+        >
+          {diagnoseBusy ? "诊断中…" : "刷新诊断"}
+        </button>
+        {portConflict ? (
+          <button
+            type="button"
+            className={CONTROL_BTN_SECONDARY}
+            disabled={wizardBusy}
+            onClick={() => void acceptForeignPortService()}
+          >
+            使用当前 8741 服务
+          </button>
+        ) : null}
       </div>
 
-      <LocalAsrSetupWizardSummary setupReport={setupReport} />
+      {!setupReport ? (
+        <p className={PANEL_TYPOGRAPHY.meta}>尚未诊断；可先刷新环境，或直接一键准备。</p>
+      ) : null}
 
-      {localRuntimeDiag ? (
+      {!compact ? <LocalAsrSetupStepList steps={setupSteps} /> : null}
+
+      {portConflict ? (
+        <p className={PANEL_TYPOGRAPHY.meta}>
+          8741 端口被占用。若已是 rushi-asr 可点「使用当前 8741 服务」，否则结束占用进程后重试。
+        </p>
+      ) : null}
+
+      {!compact && diskMeta ? <p className={PANEL_TYPOGRAPHY.meta}>{diskMeta}</p> : null}
+
+      {!compact && localRuntimeDiag ? (
         <LocalAsrRuntimeInstallPanel
           localRuntimeDiag={localRuntimeDiag}
           wizardBusy={wizardBusy}
@@ -77,90 +133,6 @@ export function LocalAsrSetupWizard({
           exportDiagnosticBundle={exportDiagnosticBundle}
         />
       ) : null}
-
-      <ol className="flex flex-col gap-2">
-        {setupSteps.map((step) => (
-          <li
-            key={step.id}
-            className="flex flex-wrap items-start gap-2 rounded bg-notion-sidebar px-3 py-2"
-          >
-            <SetupStepDot status={step.status} />
-            <div className="min-w-0 flex-1">
-              <span className={PANEL_TYPOGRAPHY.fieldLabel}>{step.label}</span>
-              {step.detail ? (
-                <p className="mt-0.5 text-[11px] text-notion-text-muted">{step.detail}</p>
-              ) : null}
-            </div>
-          </li>
-        ))}
-      </ol>
-
-      <div className="flex flex-wrap gap-2">
-        <button
-          type="button"
-          className={CONTROL_BTN_PRIMARY}
-          disabled={wizardBusy || !isTauriRuntime()}
-          onClick={() => void runOneClickAsrPrepare()}
-        >
-          {setupBusy ? "准备中…" : "一键准备本机 ASR"}
-        </button>
-        <button
-          type="button"
-          className={CONTROL_BTN_SECONDARY}
-          disabled={refreshDisabled}
-          onClick={() => void refreshSetupDiagnose()}
-        >
-          {diagnoseBusy ? "诊断中…" : "刷新诊断"}
-        </button>
-      </div>
-
-      {portConflict ? (
-        <div className="rounded border border-notion-divider bg-notion-callout-bg px-3 py-2 text-sm text-notion-text">
-          <p className="font-medium text-notion-text">8741 端口冲突</p>
-          <p className="mt-1 text-notion-text-muted">
-            若该端口已是本机另一实例的 rushi-asr，可尝试使用当前服务；否则请先结束占用进程后再点一键准备。
-          </p>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <button
-              type="button"
-              className={CONTROL_BTN_SECONDARY}
-              disabled={wizardBusy}
-              onClick={() => void acceptForeignPortService()}
-            >
-              尝试使用当前服务
-            </button>
-          </div>
-        </div>
-      ) : null}
-
-      {setupMessage ? (
-        <p
-          className={`text-sm ${
-            setupOutcome === "ready"
-              ? "text-zen-success"
-              : setupOutcome === "error" || setupOutcome === "blocked"
-                ? "text-zen-cinnabar"
-                : "text-notion-text-muted"
-          }`}
-          role="status"
-        >
-          {setupMessage}
-        </p>
-      ) : null}
     </section>
   );
-}
-
-function SetupStepDot({ status }: { status: string }) {
-  const cls =
-    status === "ok"
-      ? "bg-zen-success"
-      : status === "running"
-        ? "bg-zen-saffron"
-        : status === "error"
-          ? "bg-zen-cinnabar"
-          : status === "skipped"
-            ? "bg-notion-text-light"
-            : "bg-notion-divider";
-  return <span className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${cls}`} aria-hidden />;
 }
