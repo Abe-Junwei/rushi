@@ -1,40 +1,79 @@
-import { PANEL_TYPOGRAPHY } from "../config/typography";
-import type { LlmEnvMode } from "../services/llm/llmEnvStatus";
+import {
+  ENV_LLM_MODE_TOGGLE_TRACK,
+  ENV_SEGMENTED_ROW,
+  envLlmModeToggleBtnClass,
+} from "../config/controlStyles";
+import {
+  LLM_STATUS_DOT_CLASS,
+  type LlmEnvMode,
+  type LlmOllamaTone,
+} from "../services/llm/llmEnvStatus";
 import type { LlmProviderId } from "../services/postprocess/postprocessRuntimeContract";
+
+const LLM_MODE_TOGGLE_TONE_LABEL: Record<LlmOllamaTone, string> = {
+  ok: "连接就绪",
+  warn: "待验证或未就绪",
+  error: "未连接或未配置",
+  idle: "检测中",
+};
 
 type Props = {
   mode: LlmEnvMode;
+  localTone: LlmOllamaTone;
+  cloudTone: LlmOllamaTone;
   disabled?: boolean;
   onSelectLocal: () => void;
   onSelectCloud: () => void;
 };
 
-export function EnvLlmModeSwitch({ mode, disabled, onSelectLocal, onSelectCloud }: Props) {
-  const btn = (active: boolean) =>
-    [
-      "rounded-md border px-4 py-2 text-[13px] font-medium transition-colors",
-      active
-        ? "border-zen-saffron/50 bg-zen-saffron/10 text-notion-text"
-        : "border-notion-divider bg-white text-notion-text-muted hover:bg-notion-sidebar-hover",
-    ].join(" ");
-
+function ModeToggleLabel({ label, tone }: { label: string; tone: LlmOllamaTone }) {
   return (
-    <fieldset className="space-y-2" disabled={disabled}>
-      <legend className={PANEL_TYPOGRAPHY.fieldLabel}>LLM 来源</legend>
-      <div className="flex flex-wrap gap-2" role="group" aria-label="LLM 来源">
-        <button type="button" className={btn(mode === "local")} aria-pressed={mode === "local"} onClick={onSelectLocal}>
-          本机 Ollama
+    <span className="inline-flex items-center justify-center gap-1.5">
+      <span
+        className={`h-2 w-2 shrink-0 rounded-full ${LLM_STATUS_DOT_CLASS[tone]}`}
+        title={LLM_MODE_TOGGLE_TONE_LABEL[tone]}
+        aria-hidden
+      />
+      {label}
+    </span>
+  );
+}
+
+export function EnvLlmModeSwitch({
+  mode,
+  localTone,
+  cloudTone,
+  disabled,
+  onSelectLocal,
+  onSelectCloud,
+}: Props) {
+  return (
+    <div className={ENV_SEGMENTED_ROW}>
+      <div className={ENV_LLM_MODE_TOGGLE_TRACK} role="radiogroup" aria-label="LLM 来源">
+        <button
+          type="button"
+          role="radio"
+          className={envLlmModeToggleBtnClass(mode === "local")}
+          aria-checked={mode === "local"}
+          aria-label={`本机 Ollama，${LLM_MODE_TOGGLE_TONE_LABEL[localTone]}`}
+          disabled={disabled}
+          onClick={onSelectLocal}
+        >
+          <ModeToggleLabel label="本机 Ollama" tone={localTone} />
         </button>
-        <button type="button" className={btn(mode === "cloud")} aria-pressed={mode === "cloud"} onClick={onSelectCloud}>
-          云端 API
+        <button
+          type="button"
+          role="radio"
+          className={envLlmModeToggleBtnClass(mode === "cloud")}
+          aria-checked={mode === "cloud"}
+          aria-label={`云端 API，${LLM_MODE_TOGGLE_TONE_LABEL[cloudTone]}`}
+          disabled={disabled}
+          onClick={onSelectCloud}
+        >
+          <ModeToggleLabel label="云端 API" tone={cloudTone} />
         </button>
       </div>
-      <p className={PANEL_TYPOGRAPHY.meta}>
-        {mode === "local"
-          ? "数据不出本机；须先安装 Ollama 并 pull 模型（推荐 qwen2.5:7b）。"
-          : "连接 DeepSeek 等云端厂商；须保存 API Key 并探测连接。"}
-      </p>
-    </fieldset>
+    </div>
   );
 }
 

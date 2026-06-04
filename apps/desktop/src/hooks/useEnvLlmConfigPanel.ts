@@ -1,13 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLlmKeychainReady } from "../hooks/useLlmKeychainReady";
 import { useLlmEnvStatus } from "../hooks/useLlmEnvStatus";
-import { activateLocalOllamaPreset } from "../services/llm/llmEnvStatus";
+import { toast } from "../services/ui/toast";
+import { activateLocalOllamaPreset, resolveLlmEnvEffectiveConfig } from "../services/llm/llmEnvStatus";
 import {
   DEFAULT_LLM_API_KEY_ID,
   OLLAMA_LOOPBACK_PLACEHOLDER_API_KEY,
   applyLlmProviderPreset,
   getLlmProviderDefinition,
   isCorruptLlmApiKeyId,
+  isLocalLoopbackLlmConfig,
   isLocalLoopbackLlmProvider,
   isLlmRuntimeReady,
   LLM_STORAGE_KEYS,
@@ -41,7 +43,6 @@ export function useEnvLlmConfigPanel({ busy, onLlmRuntimeChanged }: UseEnvLlmCon
   const [saveBusy, setSaveBusy] = useState(false);
   const [probeBusy, setProbeBusy] = useState(false);
   const [probeFailed, setProbeFailed] = useState(false);
-  const [msg, setMsg] = useState<string | null>(null);
   const [keychainRefreshSeq, setKeychainRefreshSeq] = useState(0);
 
   useEffect(() => {
@@ -68,21 +69,25 @@ export function useEnvLlmConfigPanel({ busy, onLlmRuntimeChanged }: UseEnvLlmCon
 
   const def = getLlmProviderDefinition(providerId);
   const localLoopback = isLocalLoopbackLlmProvider(providerId);
-  const llmEnvMode: LlmEnvMode = localLoopback ? "local" : "cloud";
+  const llmEnvMode: LlmEnvMode = isLocalLoopbackLlmConfig(
+    resolveLlmEnvEffectiveConfig({ providerId, baseUrl, model }),
+  )
+    ? "local"
+    : "cloud";
   const formBusy = busy || saveBusy || probeBusy;
-  const hasLocalKeyRef = isLlmRuntimeReady();
   const { keychainReady, checking: keychainChecking } = useLlmKeychainReady(keychainRefreshSeq);
 
   const settingsOverlay = useMemo(
     () => ({
-      hasLocalKeyRef,
+      hasLocalKeyRef: isLlmRuntimeReady() || (!localLoopback && apiKey.trim().length > 0),
       hasTypedKey: apiKey.trim().length > 0,
       keychainPresent: keychainChecking ? null : keychainReady,
+      configDraft: { providerId, baseUrl, model },
     }),
-    [apiKey, hasLocalKeyRef, keychainChecking, keychainReady],
+    [apiKey, baseUrl, keychainChecking, keychainReady, localLoopback, model, providerId],
   );
 
-  const { presentation, refreshDetect, detectBusy } = useLlmEnvStatus(
+  const { presentation, refreshDetect, detectBusy, modeToggleTones } = useLlmEnvStatus(
     keychainRefreshSeq,
     settingsOverlay,
   );
@@ -101,7 +106,6 @@ export function useEnvLlmConfigPanel({ busy, onLlmRuntimeChanged }: UseEnvLlmCon
     setBaseUrl(preset.baseUrl);
     setModel(preset.model);
     setProbeFailed(false);
-    setMsg(null);
   }, []);
 
   const selectLocalMode = useCallback(() => {
@@ -115,7 +119,7 @@ export function useEnvLlmConfigPanel({ busy, onLlmRuntimeChanged }: UseEnvLlmCon
     setSavedApiKeyId(null);
     setApiKey("");
     setProbeFailed(false);
-    setMsg("已切换到本机 Ollama。请确认上方检测就绪后点击「探测连接」。");
+    toast.info("已切换到本机 Ollama。请确认上方检测就绪后点击「刷新 Ollama 检测」。");
     bumpKeychainCheck();
     onLlmRuntimeChanged?.();
   }, [bumpKeychainCheck, onLlmRuntimeChanged, providerId]);
@@ -132,10 +136,10 @@ export function useEnvLlmConfigPanel({ busy, onLlmRuntimeChanged }: UseEnvLlmCon
     setApiKey("");
     setProbeFailed(false);
     const label = restoredDef?.label ?? "云端";
-    setMsg(
+    toast.info(
       restored.apiKeyId
-        ? `已切换到云端 API（${label}）。请确认配置后点击「探测连接」。`
-        : `已切换到云端 API（${label}）。请填写 API Key 并保存，再点击「探测连接」。`,
+        ? `已切换到云端 API（${label}）。请确认配置后点击 banner「探测连接」。`
+        : `已切换到云端 API（${label}）。请填写 API Key 并保存，再点击 banner「探测连接」。`,
     );
     bumpKeychainCheck();
     onLlmRuntimeChanged?.();
@@ -177,7 +181,6 @@ export function useEnvLlmConfigPanel({ busy, onLlmRuntimeChanged }: UseEnvLlmCon
   }, [apiKey, baseUrl, def, localLoopback, model]);
 
   const save = useCallback(async () => {
-    setMsg(null);
     setProbeFailed(false);
     setSaveBusy(true);
     try {
@@ -212,7 +215,7 @@ export function useEnvLlmConfigPanel({ busy, onLlmRuntimeChanged }: UseEnvLlmCon
         setApiKey("");
         bumpKeychainCheck();
         onLlmRuntimeChanged?.();
-        setMsg("已保存本机 Ollama 连接。无需 API Key；请点击「探测连接」验证。");
+        toast.success("已保存本机 Ollama 连接。无需 API Key；请点击 banner「刷新 Ollama 检测」验证。");
         return;
       }
       if (!nextApiKeyId) {
@@ -230,14 +233,14 @@ export function useEnvLlmConfigPanel({ busy, onLlmRuntimeChanged }: UseEnvLlmCon
       onLlmRuntimeChanged?.();
       if (typedApiKey) {
         setApiKey("");
-        setMsg("已保存。API Key 已写入本地受保护存储；当前页面不再保留明文。");
+        toast.success("已保存。API Key 已写入本地受保护存储；当前页面不再保留明文。");
       } else if (nextApiKeyId) {
-        setMsg("已保存连接信息，将继续使用本地已保存的 API Key。");
+        toast.success("已保存连接信息，将继续使用本地已保存的 API Key。");
       } else {
-        setMsg("已保存连接信息。请填写 API Key 并保存。");
+        toast.info("已保存连接信息。请填写 API Key 并保存。");
       }
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : String(e));
+      toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setSaveBusy(false);
     }
@@ -255,7 +258,6 @@ export function useEnvLlmConfigPanel({ busy, onLlmRuntimeChanged }: UseEnvLlmCon
 
   const clearSavedApiKey = useCallback(async () => {
     if (!savedApiKeyId && !readLlmRuntimeConfigFromStorage().apiKeyId) return;
-    setMsg(null);
     setProbeFailed(false);
     setSaveBusy(true);
     try {
@@ -273,33 +275,80 @@ export function useEnvLlmConfigPanel({ busy, onLlmRuntimeChanged }: UseEnvLlmCon
       setLlmApiKeyInMemory(null);
       bumpKeychainCheck();
       onLlmRuntimeChanged?.();
-      setMsg("已清除本地保存的 API Key。");
+      toast.success("已清除本地保存的 API Key。");
     } catch (e) {
-      setMsg(e instanceof Error ? e.message : String(e));
+      toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setSaveBusy(false);
     }
   }, [baseUrl, bumpKeychainCheck, model, onLlmRuntimeChanged, providerId, savedApiKeyId]);
 
   const probe = useCallback(async () => {
-    setMsg(null);
     setProbeBusy(true);
     try {
       const runtime = buildProbeRuntime();
       const out = await llmProbeConnection({ runtime });
       setProbeFailed(!out.ok);
       if (out.ok) {
-        markLlmConnectionVerified();
+        if (!def) throw new Error("未知的 LLM 厂商预设。");
+        const typedApiKey = apiKey.trim();
+        let nextApiKeyId = normalizeLlmApiKeyId(savedApiKeyId ?? readLlmRuntimeConfigFromStorage().apiKeyId);
+        if (!localLoopback && typedApiKey) {
+          if (legacyMisplacedKeyId) {
+            await llmDeleteApiKey({ apiKeyId: legacyMisplacedKeyId }).catch(() => {
+              /* ignore missing legacy entries */
+            });
+          }
+          nextApiKeyId = await llmSaveApiKey({
+            apiKeyId: DEFAULT_LLM_API_KEY_ID,
+            apiKey: typedApiKey,
+          });
+          setLegacyMisplacedKeyId(undefined);
+          setSavedApiKeyId(nextApiKeyId);
+          setApiKey("");
+        }
+        const probedConfig = {
+          providerId,
+          baseUrl: baseUrl.trim() || def.defaultBaseUrl,
+          model: model.trim() || def.defaultModel,
+          ...(localLoopback ? {} : { apiKeyId: nextApiKeyId ?? DEFAULT_LLM_API_KEY_ID }),
+        };
+        if (localLoopback) {
+          persistLlmRuntimeConfig(probedConfig, { clearApiKeyId: true });
+        } else {
+          if (!nextApiKeyId) {
+            throw new Error("请先填写 API Key，再点击探测连接。");
+          }
+          persistLlmRuntimeConfig({ ...probedConfig, apiKeyId: nextApiKeyId });
+        }
+        markLlmConnectionVerified(probedConfig);
+        bumpKeychainCheck();
         onLlmRuntimeChanged?.();
       }
-      setMsg(out.ok ? `${out.message}（约 ${out.latency_ms ?? "?"} ms）` : out.message);
+      if (out.ok) {
+        toast.success(`${out.message}（约 ${out.latency_ms ?? "?"} ms）`);
+      } else {
+        toast.error(out.message);
+      }
     } catch (e) {
       setProbeFailed(true);
-      setMsg(e instanceof Error ? e.message : String(e));
+      toast.error(e instanceof Error ? e.message : String(e));
     } finally {
       setProbeBusy(false);
     }
-  }, [buildProbeRuntime, onLlmRuntimeChanged]);
+  }, [
+    apiKey,
+    baseUrl,
+    buildProbeRuntime,
+    bumpKeychainCheck,
+    def,
+    legacyMisplacedKeyId,
+    localLoopback,
+    model,
+    onLlmRuntimeChanged,
+    providerId,
+    savedApiKeyId,
+  ]);
 
   return {
     llmEnvMode,
@@ -314,7 +363,6 @@ export function useEnvLlmConfigPanel({ busy, onLlmRuntimeChanged }: UseEnvLlmCon
     def,
     probeBusy,
     probeFailed,
-    msg,
     selectLocalMode,
     selectCloudMode,
     onProviderChange,
@@ -329,5 +377,6 @@ export function useEnvLlmConfigPanel({ busy, onLlmRuntimeChanged }: UseEnvLlmCon
     keychainReady,
     refreshDetect,
     detectBusy,
+    modeToggleTones,
   };
 }

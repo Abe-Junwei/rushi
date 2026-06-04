@@ -6,13 +6,15 @@ import {
   isLlmConnectionVerified,
   isLlmRuntimeReady,
   persistLlmRuntimeConfig,
+  readLastCloudRuntimeConfig,
   readLlmRuntimeConfigFromStorage,
   tryBuildPostprocessRuntimeBridge,
   type LlmProviderId,
+  type LlmRuntimeConfig,
 } from "../postprocess/postprocessRuntimeContract";
 import {
-  llmAutoPunctuateCapabilityBadge,
-  llmAutoPunctuateCapabilityBadgeClass,
+  llmExportPolishCapabilityBadge,
+  llmExportPolishCapabilityBadgeClass,
   resolveLlmConnectionUiStatus,
   type LlmConnectionUiStatus,
 } from "../postprocess/llmConnectionUi";
@@ -22,10 +24,18 @@ export type LlmEnvMode = "local" | "cloud";
 export type LlmOllamaTone = "ok" | "warn" | "error" | "idle";
 
 /** 设置页表单上下文（可选）；未传时按持久化配置推导。 */
+export type LlmEnvConfigDraft = {
+  providerId: LlmProviderId;
+  baseUrl: string;
+  model: string;
+};
+
 export type LlmEnvSettingsOverlay = {
   hasLocalKeyRef: boolean;
   hasTypedKey: boolean;
   keychainPresent: boolean | null;
+  /** 设置页表单草稿；与 storage 不一致时 banner 按草稿展示并提示保存/探测。 */
+  configDraft?: LlmEnvConfigDraft;
 };
 
 /** LLM 环境状态唯一 presentation 真源：顶栏芯片 / 设置条 / 能力徽章 / 导出润色共用。 */
@@ -48,6 +58,8 @@ export type LlmEnvPresentation = {
   capabilityBadgeClass: string;
   connectionStatus: LlmConnectionUiStatus;
   ollamaTagsReady: boolean;
+  /** 表单草稿与 localStorage 不一致（仅设置页 overlay 传入时） */
+  configDraftDirty: boolean;
   blockReason: string | null;
   polishActiveMessage: string;
 };
@@ -61,14 +73,66 @@ export const LLM_STATUS_DOT_CLASS: Record<LlmOllamaTone, string> = {
 };
 
 export const LLM_STATUS_PANEL_CLASS: Record<LlmOllamaTone, string> = {
-  ok: "bg-zen-success/10 text-notion-text",
+  ok: "bg-zen-success-surface text-notion-text",
   warn: "bg-zen-saffron/10 text-notion-text",
-  error: "bg-zen-cinnabar/10 text-zen-cinnabar",
+  error: "bg-zen-cinnabar/10 text-notion-text",
   idle: "bg-notion-sidebar-hover text-notion-text-muted",
+};
+
+/** 连体卡片 banner 标题色（Stitch F1） */
+export const LLM_STATUS_BANNER_TITLE_CLASS: Record<LlmOllamaTone, string> = {
+  ok: "text-zen-success",
+  warn: "text-zen-saffron",
+  error: "text-zen-cinnabar",
+  idle: "text-notion-text-muted",
+};
+
+/** 状态 banner 刷新/探测按钮基类（无 Preflight 时须压平 UA 灰底） */
+export const LLM_STATUS_REFRESH_BTN_BASE =
+  "inline-flex shrink-0 items-center gap-1 rounded border-0 bg-transparent px-2 py-1 text-[12px] font-medium shadow-none ring-0 appearance-none transition-colors disabled:opacity-40";
+
+/** 状态 banner 右侧刷新/探测按钮（ok 用 action 绿，与标题/圆点 primary 绿区分） */
+export const LLM_STATUS_REFRESH_BTN_CLASS: Record<LlmOllamaTone, string> = {
+  ok: "text-zen-success-action hover:bg-zen-success-border/80",
+  warn: "text-zen-saffron hover:bg-zen-saffron/10",
+  error: "text-notion-text-muted hover:bg-notion-sidebar-hover",
+  idle: "text-notion-text-muted hover:bg-notion-sidebar-hover",
 };
 
 export function readLlmEnvMode(): LlmEnvMode {
   return isLocalLoopbackLlmConfig() ? "local" : "cloud";
+}
+
+export function resolveLlmEnvEffectiveConfig(draft?: LlmEnvConfigDraft | null): LlmRuntimeConfig {
+  const stored = readLlmRuntimeConfigFromStorage();
+  if (!draft) return stored;
+  const def = getLlmProviderDefinition(draft.providerId);
+  return {
+    providerId: draft.providerId,
+    baseUrl: (draft.baseUrl.trim() || def?.defaultBaseUrl || stored.baseUrl).trim(),
+    model: (draft.model.trim() || def?.defaultModel || stored.model).trim(),
+    apiKeyId: stored.apiKeyId,
+  };
+}
+
+export function llmEnvConfigDraftDirty(draft?: LlmEnvConfigDraft | null): boolean {
+  if (!draft) return false;
+  const stored = readLlmRuntimeConfigFromStorage();
+  const effective = resolveLlmEnvEffectiveConfig(draft);
+  return (
+    effective.providerId !== stored.providerId ||
+    effective.baseUrl !== stored.baseUrl.trim() ||
+    effective.model !== stored.model.trim()
+  );
+}
+
+function readLlmEnvModeForConfig(cfg: LlmRuntimeConfig): LlmEnvMode {
+  return isLocalLoopbackLlmConfig(cfg) ? "local" : "cloud";
+}
+
+function appendConfigDraftHint(detail: string, dirty: boolean): string {
+  if (!dirty) return detail;
+  return `${detail} 连接参数已修改，请点击「保存配置」或「探测连接」。`;
 }
 
 export function ollamaDetectReady(detect: OllamaDetectResponse): boolean {
@@ -180,8 +244,14 @@ function bannerDetail(input: {
 }): string {
   if (input.mode === "local") {
     if (input.ollamaDetectBusy) return "正在检测 127.0.0.1:11434…";
+    if (input.ollamaDetect && !input.ollamaDetect.reachable) {
+      return (
+        input.ollamaDetect.message?.trim() ||
+        "无法连接 127.0.0.1:11434；请启动 Ollama.app 或 ollama serve。"
+      );
+    }
     if (input.connectionStatus === "verified") {
-      return "本机 Ollama 已验证：自动标点与导出润色可用，数据不出本机。";
+      return "本机 Ollama 已验证：导出润色可用，数据不出本机。";
     }
     if (input.connectionStatus === "missing") {
       return "请选择 Ollama 预设并保存；确认本机已启动 Ollama（ollama serve 或 Ollama.app）。";
@@ -189,7 +259,7 @@ function bannerDetail(input: {
     if (input.ollamaTagsReady) {
       return (
         input.ollamaDetect?.message?.trim() ||
-        "Ollama 服务已就绪；请点击「探测连接」验证 chat 接口。"
+        "Ollama 已响应；请点击「探测连接」验证 chat 接口。"
       );
     }
     return (
@@ -203,9 +273,9 @@ function bannerDetail(input: {
     case "keychain_missing":
       return "配置里记录了密钥引用，但本地未找到已保存的密钥。请重新填写 API Key 并保存。";
     case "unverified":
-      return "密钥已就位，尚未验证连通性。请点击「探测连接」确认后再使用自动标点与导出润色。";
+      return "尚未验证连通性；Key 已保存，请点击「探测连接」。";
     case "verified":
-      return "连接已验证：编辑器自动标点、导出大模型润色等能力可用。";
+      return "API Key 已验证；导出润色可用。";
   }
 }
 
@@ -217,7 +287,11 @@ function blockReasonForPresentation(input: {
   connectionVerified: boolean;
   runtimeReady: boolean;
   connectionStatus: LlmConnectionUiStatus;
+  configDraftDirty?: boolean;
 }): string | null {
+  if (input.configDraftDirty && !input.connectionVerified) {
+    return "连接参数已修改，请在设置 → LLM 配置 中保存或探测连接。";
+  }
   if (input.connectionStatus === "keychain_missing") {
     return "本地未找到已保存的 API Key，请重新填写并保存。";
   }
@@ -266,13 +340,89 @@ export function llmPolishSourceDetailLabel(input: {
   return `云端 ${vendorLabel(input.providerId)} · ${model}`;
 }
 
+export type LlmModeToggleTones = {
+  local: LlmOllamaTone;
+  cloud: LlmOllamaTone;
+};
+
+function readLocalOllamaToggleConfig(): LlmRuntimeConfig {
+  return applyLlmProviderPreset("ollama");
+}
+
+function llmToneForModeConfig(input: {
+  mode: LlmEnvMode;
+  cfg: LlmRuntimeConfig;
+  ollamaDetect: OllamaDetectResponse | null;
+  ollamaDetectBusy: boolean;
+  keychainPresent: boolean | null;
+  hasTypedKey: boolean;
+}): LlmOllamaTone {
+  const localLoopback = input.mode === "local";
+  const ollamaTone = localLoopback
+    ? toneFromOllamaDetect(input.ollamaDetect, input.ollamaDetectBusy)
+    : "ok";
+  const runtimeReady = localLoopback
+    ? Boolean(input.cfg.baseUrl.trim() && input.cfg.model.trim())
+    : Boolean(input.cfg.apiKeyId?.trim());
+  const connectionVerified = isLlmConnectionVerified(input.cfg);
+  const connectionStatus = resolveLlmConnectionUiStatus({
+    hasLocalKeyRef: runtimeReady,
+    hasTypedKey: input.hasTypedKey,
+    keychainPresent: input.keychainPresent,
+    connectionVerified,
+    localLoopback,
+  });
+  return toneFromConnectionPhase({
+    mode: input.mode,
+    ollamaTone,
+    runtimeReady,
+    connectionVerified,
+    connectionStatus,
+  });
+}
+
+/** LLM 模式切换按钮：本机 / 云端各自独立 tone（未激活侧也反映真实状态）。 */
+export function buildLlmModeToggleTones(input: {
+  ollamaDetect: OllamaDetectResponse | null;
+  ollamaDetectBusy: boolean;
+  settings?: LlmEnvSettingsOverlay;
+}): LlmModeToggleTones {
+  const activeCfg = resolveLlmEnvEffectiveConfig(input.settings?.configDraft);
+  const activeMode = readLlmEnvModeForConfig(activeCfg);
+  const keychainPresent = input.settings?.keychainPresent ?? null;
+  const hasTypedKey = input.settings?.hasTypedKey ?? false;
+
+  const localCfg = activeMode === "local" ? activeCfg : readLocalOllamaToggleConfig();
+  const cloudCfg = activeMode === "cloud" ? activeCfg : readLastCloudRuntimeConfig();
+
+  return {
+    local: llmToneForModeConfig({
+      mode: "local",
+      cfg: localCfg,
+      ollamaDetect: input.ollamaDetect,
+      ollamaDetectBusy: input.ollamaDetectBusy,
+      keychainPresent,
+      hasTypedKey: activeMode === "local" && hasTypedKey,
+    }),
+    cloud: llmToneForModeConfig({
+      mode: "cloud",
+      cfg: cloudCfg,
+      ollamaDetect: input.ollamaDetect,
+      ollamaDetectBusy: false,
+      keychainPresent,
+      hasTypedKey: activeMode === "cloud" && hasTypedKey,
+    }),
+  };
+}
+
 export function buildLlmEnvPresentation(input: {
   ollamaDetect: OllamaDetectResponse | null;
   ollamaDetectBusy: boolean;
   settings?: LlmEnvSettingsOverlay;
 }): LlmEnvPresentation {
-  const cfg = readLlmRuntimeConfigFromStorage();
-  const mode = readLlmEnvMode();
+  const configDraftDirty = llmEnvConfigDraftDirty(input.settings?.configDraft);
+  const cfg = resolveLlmEnvEffectiveConfig(input.settings?.configDraft);
+  const mode = readLlmEnvModeForConfig(cfg);
   const localLoopback = mode === "local";
   const runtimeReady = input.settings?.hasLocalKeyRef ?? isLlmRuntimeReady();
   const hasTypedKey = input.settings?.hasTypedKey ?? false;
@@ -295,7 +445,18 @@ export function buildLlmEnvPresentation(input: {
     connectionStatus,
   });
   const ok = llmEnvReady({ mode, ollamaTone, connectionVerified, runtimeReady });
-  const capOpts = { localLoopback, ollamaTagsReady };
+  const capOpts = {
+    localLoopback,
+    ollamaTagsReady,
+    ollamaReachable: input.ollamaDetect?.reachable,
+  };
+  const bannerDetailRaw = bannerDetail({
+    mode,
+    connectionStatus,
+    ollamaDetect: input.ollamaDetect,
+    ollamaDetectBusy: input.ollamaDetectBusy,
+    ollamaTagsReady,
+  });
 
   return {
     mode,
@@ -305,18 +466,13 @@ export function buildLlmEnvPresentation(input: {
     chipLabel: chipLabel({ mode, ollamaTone, providerId: cfg.providerId, connectionVerified, runtimeReady }),
     ok,
     bannerTitle: bannerTitle({ mode, providerId: cfg.providerId, ollamaTone, connectionVerified, runtimeReady }),
-    bannerDetail: bannerDetail({
-      mode,
-      connectionStatus,
-      ollamaDetect: input.ollamaDetect,
-      ollamaDetectBusy: input.ollamaDetectBusy,
-      ollamaTagsReady,
-    }),
+    bannerDetail: appendConfigDraftHint(bannerDetailRaw, configDraftDirty),
     sourceLabel: llmPolishSourceDetailLabel({ mode, providerId: cfg.providerId, model: cfg.model }),
-    capabilityBadge: llmAutoPunctuateCapabilityBadge(connectionStatus, capOpts),
-    capabilityBadgeClass: llmAutoPunctuateCapabilityBadgeClass(connectionStatus, capOpts),
+    capabilityBadge: llmExportPolishCapabilityBadge(connectionStatus, capOpts),
+    capabilityBadgeClass: llmExportPolishCapabilityBadgeClass(connectionStatus, capOpts),
     connectionStatus,
     ollamaTagsReady,
+    configDraftDirty,
     blockReason: blockReasonForPresentation({
       mode,
       ollamaTone,
@@ -325,6 +481,7 @@ export function buildLlmEnvPresentation(input: {
       connectionVerified,
       runtimeReady,
       connectionStatus,
+      configDraftDirty,
     }),
     polishActiveMessage: mode === "local" ? "正在使用本机 LLM 润色…" : "正在使用云端 LLM 润色…",
   };

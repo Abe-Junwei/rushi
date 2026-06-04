@@ -14,7 +14,7 @@ export function LlmTopStatusChip({ refreshSeq = 0, onOpenLlmSettings, disabled }
   return (
     <TopBarStatusIndicator
       label={presentation.chipLabel}
-      ok={presentation.ok}
+      tone={presentation.tone}
       disabled={disabled}
       onClick={onOpenLlmSettings}
       title={

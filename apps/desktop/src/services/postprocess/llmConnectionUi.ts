@@ -2,7 +2,7 @@ import {
   DEFAULT_LLM_API_KEY_ID,
   normalizeLlmApiKeyId,
 } from "./llmProviderCatalog";
-import { getLlmApiKeyFromMemory, llmConfigHint } from "./llmRuntimeStorage";
+import { getLlmApiKeyFromMemory } from "./llmRuntimeStorage";
 
 /** 设置页 / 编辑器共用的连接 UI 状态（不含探测结果以外的「假就绪」）。 */
 export type LlmConnectionUiStatus = "missing" | "keychain_missing" | "unverified" | "verified";
@@ -36,53 +36,12 @@ export function resolveLlmConnectionUiStatus(
   return "missing";
 }
 
-export function llmConnectionStatusMessage(
+export function llmExportPolishCapabilityBadge(
   status: LlmConnectionUiStatus,
-  options?: { localLoopback?: boolean; ollamaTagsReady?: boolean },
+  options?: { localLoopback?: boolean; ollamaTagsReady?: boolean; ollamaReachable?: boolean },
 ): string {
-  const loopback = options?.localLoopback ?? false;
-  switch (status) {
-    case "missing":
-      return loopback
-        ? "请选择 Ollama 预设并保存；确认本机已启动 Ollama（ollama serve 或 Ollama.app）。"
-        : llmConfigHint();
-    case "keychain_missing":
-      return "配置里记录了密钥引用，但本地未找到已保存的密钥。请重新填写 API Key 并保存。";
-    case "unverified":
-      return loopback
-        ? options?.ollamaTagsReady
-          ? "Ollama 服务已就绪；请点击「探测连接」验证 chat 接口后再用自动标点。"
-          : "本机 Ollama 配置已保存，尚未探测成功。请点击「探测连接」；数据不出本机。"
-        : "密钥已就位，尚未验证连通性。请点击「探测连接」确认后再使用自动标点。";
-    case "verified":
-      return loopback
-        ? "本机 Ollama 已验证：自动标点可走 loopback，数据不出本机。本地模型可能改字，请用 diff 预览确认。"
-        : "连接已验证：编辑器中的自动标点等能力可用。";
-  }
-}
-
-export function llmConnectionStatusTone(
-  status: LlmConnectionUiStatus,
-  options?: { localLoopback?: boolean; ollamaTagsReady?: boolean },
-): "error" | "warn" | "ok" {
-  switch (status) {
-    case "missing":
-    case "keychain_missing":
-      return "error";
-    case "unverified":
-      if (options?.localLoopback && options.ollamaTagsReady) return "ok";
-      return "warn";
-    case "verified":
-      return "ok";
-  }
-}
-
-export function llmAutoPunctuateCapabilityBadge(
-  status: LlmConnectionUiStatus,
-  options?: { localLoopback?: boolean; ollamaTagsReady?: boolean },
-): string {
-  if (options?.localLoopback && status === "unverified" && options.ollamaTagsReady) {
-    return "服务就绪";
+  if (options?.localLoopback && options.ollamaReachable === false) {
+    return "不可用";
   }
   switch (status) {
     case "missing":
@@ -96,19 +55,19 @@ export function llmAutoPunctuateCapabilityBadge(
   }
 }
 
-export function llmAutoPunctuateCapabilityBadgeClass(
+export function llmExportPolishCapabilityBadgeClass(
   status: LlmConnectionUiStatus,
-  options?: { localLoopback?: boolean; ollamaTagsReady?: boolean },
+  options?: { localLoopback?: boolean; ollamaTagsReady?: boolean; ollamaReachable?: boolean },
 ): string {
-  const base = "rounded px-1.5 py-0.5 text-[10px] font-semibold";
-  if (options?.localLoopback && status === "unverified" && options.ollamaTagsReady) {
-    return `${base} bg-zen-success/15 text-zen-success`;
+  const base = "rounded px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider";
+  if (options?.localLoopback && options.ollamaReachable === false) {
+    return `${base} bg-zen-cinnabar/10 text-zen-cinnabar`;
   }
   if (status === "verified") {
-    return `${base} bg-zen-success/15 text-zen-success`;
+    return `${base} bg-zen-success-surface text-zen-success`;
   }
   if (status === "unverified") {
-    return `${base} bg-zen-saffron/10 text-notion-text-muted`;
+    return `${base} border border-zen-saffron/20 bg-zen-saffron/10 text-zen-saffron`;
   }
   return `${base} bg-notion-sidebar text-notion-text-muted`;
 }

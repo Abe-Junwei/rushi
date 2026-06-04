@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it } from "vitest";
 import {
   activateLocalOllamaPreset,
   buildLlmEnvPresentation,
+  buildLlmModeToggleTones,
   buildLlmPolishReadiness,
   llmPolishActiveMessage,
   llmPolishSourceDetailLabel,
@@ -14,6 +15,7 @@ import {
   applyLlmProviderPreset,
   markLlmConnectionVerified,
   persistLlmRuntimeConfig,
+  snapshotLastCloudRuntimeFromStorage,
 } from "../postprocess/postprocessRuntimeContract";
 
 function installMockLocalStorage() {
@@ -169,7 +171,90 @@ describe("llmEnvStatus", () => {
     const p = buildLlmEnvPresentation({ ollamaDetect: null, ollamaDetectBusy: false });
     expect(p.chipLabel).toBe("云端 DeepSeek");
     expect(p.bannerTitle).toContain("连接就绪");
+    expect(p.bannerDetail).toContain("API Key 已验证");
     expect(p.ok).toBe(true);
     expect(p.capabilityBadge).toBe("可用");
+  });
+
+  it("local ollama tags ready shows F2 service-ready copy and pending capability", () => {
+    activateLocalOllamaPreset();
+    const p = buildLlmEnvPresentation({
+      ollamaDetect: {
+        reachable: true,
+        modelCount: 1,
+        hasQwen25_7b: true,
+        hasConfiguredModel: true,
+        message: "",
+      },
+      ollamaDetectBusy: false,
+    });
+    expect(p.bannerTitle).toBe("本机 LLM（Ollama）· 服务就绪");
+    expect(p.bannerDetail).toContain("Ollama 已响应");
+    expect(p.capabilityBadge).toBe("待验证");
+    expect(p.tone).toBe("warn");
+  });
+
+  it("buildLlmModeToggleTones reports both sides independently", () => {
+    activateLocalOllamaPreset();
+    markLlmConnectionVerified();
+    const ollamaOk = {
+      reachable: true,
+      modelCount: 1,
+      hasQwen25_7b: true,
+      hasConfiguredModel: true,
+      message: "ok",
+    } as const;
+    const localActive = buildLlmModeToggleTones({
+      ollamaDetect: ollamaOk,
+      ollamaDetectBusy: false,
+    });
+    expect(localActive.local).toBe("ok");
+    expect(localActive.cloud).toBe("error");
+
+    persistLlmRuntimeConfig({ ...applyLlmProviderPreset("deepseek"), apiKeyId: "test-key" });
+    markLlmConnectionVerified();
+    const cloudActive = buildLlmModeToggleTones({
+      ollamaDetect: {
+        reachable: false,
+        modelCount: 0,
+        hasQwen25_7b: false,
+        message: "down",
+      },
+      ollamaDetectBusy: false,
+    });
+    expect(cloudActive.cloud).toBe("ok");
+    expect(cloudActive.local).toBe("error");
+
+    snapshotLastCloudRuntimeFromStorage();
+    activateLocalOllamaPreset();
+    markLlmConnectionVerified();
+    const cloudSnapshot = buildLlmModeToggleTones({
+      ollamaDetect: ollamaOk,
+      ollamaDetectBusy: false,
+    });
+    expect(cloudSnapshot.local).toBe("ok");
+    expect(cloudSnapshot.cloud).toBe("warn");
+  });
+
+  it("config draft overlay drives banner vendor before save", () => {
+    persistLlmRuntimeConfig({ ...applyLlmProviderPreset("deepseek"), apiKeyId: "test-key" });
+    const p = buildLlmEnvPresentation({
+      ollamaDetect: null,
+      ollamaDetectBusy: false,
+      settings: {
+        hasLocalKeyRef: true,
+        hasTypedKey: false,
+        keychainPresent: true,
+        configDraft: {
+          providerId: "kimi",
+          baseUrl: "https://api.moonshot.cn/v1",
+          model: "moonshot-v1-8k",
+        },
+      },
+    });
+    expect(p.bannerTitle).toContain("Kimi");
+    expect(p.configDraftDirty).toBe(true);
+    expect(p.bannerDetail).toContain("连接参数已修改");
+    expect(p.blockReason).toContain("连接参数已修改");
   });
 });

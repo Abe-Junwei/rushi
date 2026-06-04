@@ -53,7 +53,7 @@ export type LlmProviderDefinition = {
 };
 
 export type LlmCapability = {
-  id: "auto_punctuate";
+  id: "export_polish";
   label: string;
   description: string;
 };
@@ -61,9 +61,9 @@ export type LlmCapability = {
 /** 共用本页 LLM 连接的能力清单（随功能迭代扩展）。 */
 export const LLM_CAPABILITIES: LlmCapability[] = [
   {
-    id: "auto_punctuate",
-    label: "自动标点",
-    description: "编辑器语段工具栏：为单条中文正文补充标点，预览 diff 后确认写回。",
+    id: "export_polish",
+    label: "导出润色",
+    description: "交付导出时的大模型润色：标点、语义断段与专名校对（在导出对话框中启用）。",
   },
 ];
 
@@ -73,7 +73,7 @@ export const LLM_PROVIDER_DEFINITIONS: LlmProviderDefinition[] = [
     kind: "local_loopback",
     label: "Ollama（本机）",
     description:
-      "数据不出本机：连接本机 Ollama OpenAI 兼容接口。须先安装 Ollama 并 pull 模型（推荐 qwen2.5:7b）。仅建议用于自动标点；段界/词表校对仍默认云端。",
+      "数据不出本机：连接本机 Ollama OpenAI 兼容接口。须先安装 Ollama 并 pull 模型（推荐 qwen2.5:7b）。适合导出润色与词表校对等本机 LLM 任务。",
     docsUrl: "https://github.com/ollama/ollama/blob/main/docs/api.md",
     defaultBaseUrl: OLLAMA_DEFAULT_BASE_URL,
     defaultModel: OLLAMA_DEFAULT_MODEL,

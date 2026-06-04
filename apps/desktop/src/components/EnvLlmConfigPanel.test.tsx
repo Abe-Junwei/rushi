@@ -8,6 +8,19 @@ import {
   persistLlmRuntimeConfig,
 } from "../services/postprocess/postprocessRuntimeContract";
 
+const toastError = vi.fn();
+const toastSuccess = vi.fn();
+
+vi.mock("../services/ui/toast", () => ({
+  toast: {
+    info: vi.fn(),
+    success: (...args: unknown[]) => toastSuccess(...args),
+    error: (...args: unknown[]) => toastError(...args),
+    warning: vi.fn(),
+    dismiss: vi.fn(),
+  },
+}));
+
 const llmProbeConnection = vi.fn<
   (req: unknown) => Promise<{ ok: boolean; message: string; status?: number; latency_ms?: number }>
 >();
@@ -45,6 +58,8 @@ describe("EnvLlmConfigPanel", () => {
   beforeEach(() => {
     installMockLocalStorage();
     localStorage.clear();
+    toastError.mockReset();
+    toastSuccess.mockReset();
     llmProbeConnection.mockReset();
     llmSaveApiKey.mockReset();
     llmHasStoredApiKey.mockReset();
@@ -72,8 +87,7 @@ describe("EnvLlmConfigPanel", () => {
       expect(screen.getByText(/尚未验证连通性/)).toBeTruthy();
     });
     expect(screen.queryByText(/连接就绪/)).toBeNull();
-    expect(screen.queryByText(/连接已验证/)).toBeNull();
-    expect(screen.getByText("待验证")).toBeTruthy();
+    expect(screen.queryByText(/API Key 已验证/)).toBeNull();
   });
 
   it("shows verified status only after a successful probe", async () => {
@@ -92,12 +106,12 @@ describe("EnvLlmConfigPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "探测连接" }));
 
     await waitFor(() => {
-      expect(screen.getByText(/连接已验证/)).toBeTruthy();
+      expect(screen.getByText(/API Key 已验证/)).toBeTruthy();
     });
-    expect(screen.getByText("可用")).toBeTruthy();
+    expect(toastSuccess).toHaveBeenCalled();
   });
 
-  it("hides verified hint after a failed probe", async () => {
+  it("shows toast on failed probe", async () => {
     persistLlmRuntimeConfig({ ...applyLlmProviderPreset("deepseek"), apiKeyId: DEFAULT_LLM_API_KEY_ID });
     llmProbeConnection.mockResolvedValue({
       ok: false,
@@ -113,9 +127,9 @@ describe("EnvLlmConfigPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "探测连接" }));
 
     await waitFor(() => {
-      expect(screen.getByText("认证失败（HTTP 401），请检查 API Key。")).toBeTruthy();
+      expect(toastError).toHaveBeenCalledWith("认证失败（HTTP 401），请检查 API Key。");
     });
-    expect(screen.queryByText(/连接已验证/)).toBeNull();
+    expect(screen.queryByText(/API Key 已验证/)).toBeNull();
   });
 
   it("probes with keychain id after save clears the input", async () => {
@@ -137,8 +151,7 @@ describe("EnvLlmConfigPanel", () => {
       expect(llmSaveApiKey).toHaveBeenCalled();
     });
 
-    const probeButton = screen.getAllByRole("button", { name: "探测连接" })[0];
-    expect(probeButton).toBeDefined();
+    const probeButton = screen.getByRole("button", { name: "探测连接" });
     fireEvent.click(probeButton);
 
     await waitFor(() => {
@@ -153,12 +166,12 @@ describe("EnvLlmConfigPanel", () => {
 
   it("shows LLM source switch; ollama banner only in local mode", async () => {
     render(<EnvLlmConfigPanel busy={false} />);
-    expect(screen.getByRole("button", { name: "本机 Ollama" })).toBeTruthy();
-    expect(screen.getByRole("button", { name: "云端 API" })).toBeTruthy();
+    expect(screen.getByRole("radio", { name: /本机 Ollama/ })).toBeTruthy();
+    expect(screen.getByRole("radio", { name: /云端 API/ })).toBeTruthy();
     expect(screen.queryByText(/本机 LLM（Ollama）/)).toBeNull();
     expect(screen.getByText(/云端 LLM/)).toBeTruthy();
 
-    fireEvent.click(screen.getByRole("button", { name: "本机 Ollama" }));
+    fireEvent.click(screen.getByRole("radio", { name: /本机 Ollama/ }));
     await waitFor(() => {
       expect(screen.getByText(/本机 LLM（Ollama）/)).toBeTruthy();
     });
@@ -167,7 +180,7 @@ describe("EnvLlmConfigPanel", () => {
   it("switching to local mode persists ollama preset", async () => {
     persistLlmRuntimeConfig({ ...applyLlmProviderPreset("deepseek"), apiKeyId: DEFAULT_LLM_API_KEY_ID });
     render(<EnvLlmConfigPanel busy={false} />);
-    fireEvent.click(screen.getByRole("button", { name: "本机 Ollama" }));
+    fireEvent.click(screen.getByRole("radio", { name: /本机 Ollama/ }));
     await waitFor(() => {
       expect(screen.getByDisplayValue("qwen2.5:7b")).toBeTruthy();
     });
@@ -177,11 +190,11 @@ describe("EnvLlmConfigPanel", () => {
   it("switching to cloud mode restores last saved cloud provider", async () => {
     persistLlmRuntimeConfig({ ...applyLlmProviderPreset("kimi"), apiKeyId: DEFAULT_LLM_API_KEY_ID });
     render(<EnvLlmConfigPanel busy={false} />);
-    fireEvent.click(screen.getByRole("button", { name: "本机 Ollama" }));
+    fireEvent.click(screen.getByRole("radio", { name: /本机 Ollama/ }));
     await waitFor(() => {
       expect(localStorage.getItem(LLM_STORAGE_KEYS.providerId)).toBe("ollama");
     });
-    fireEvent.click(screen.getByRole("button", { name: "云端 API" }));
+    fireEvent.click(screen.getByRole("radio", { name: /云端 API/ }));
     await waitFor(() => {
       expect(localStorage.getItem(LLM_STORAGE_KEYS.providerId)).toBe("kimi");
       expect(screen.getByText(/云端 LLM（Kimi/)).toBeTruthy();
@@ -194,7 +207,7 @@ describe("EnvLlmConfigPanel", () => {
     await waitFor(() => {
       expect(screen.getByText(/本机 LLM（Ollama）/)).toBeTruthy();
     });
-    fireEvent.click(screen.getByRole("button", { name: "云端 API" }));
+    fireEvent.click(screen.getByRole("radio", { name: /云端 API/ }));
     await waitFor(() => {
       expect(localStorage.getItem(LLM_STORAGE_KEYS.providerId)).toBe("deepseek");
       expect(screen.queryByText(/本机 LLM（Ollama）· 服务就绪/)).toBeNull();

@@ -230,6 +230,9 @@ export function resolveAutoPunctuateBlockReason(input: {
   hasSegmentText: boolean;
   keychainReady: boolean;
   keychainChecking: boolean;
+  /** 与 buildLlmEnvPresentation().ok 对齐；未传时不额外拦截（测试兼容） */
+  llmCapabilityOk?: boolean;
+  llmCapabilityBlockReason?: string | null;
 }): string | null {
   if (!input.currentFileId || !input.hasSegmentText) {
     return "请先选中一条有正文的语段。";
@@ -238,6 +241,9 @@ export function resolveAutoPunctuateBlockReason(input: {
     return llmConfigHint();
   }
   if (isLocalLoopbackLlmConfig()) {
+    if (input.llmCapabilityOk === false) {
+      return input.llmCapabilityBlockReason ?? "本机 LLM 尚未就绪，请在设置 → LLM 配置 中完成检测与探测。";
+    }
     return null;
   }
   if (input.keychainChecking) {
@@ -245,6 +251,9 @@ export function resolveAutoPunctuateBlockReason(input: {
   }
   if (!input.keychainReady && !getLlmApiKeyFromMemory()?.trim()) {
     return "本地未找到已保存的 API Key，请在设置 → LLM 配置 中重新保存。";
+  }
+  if (input.llmCapabilityOk === false) {
+    return input.llmCapabilityBlockReason ?? "云端 LLM 尚未就绪，请在设置 → LLM 配置 中完成探测。";
   }
   return null;
 }

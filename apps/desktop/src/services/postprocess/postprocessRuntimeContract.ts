@@ -43,10 +43,8 @@ export {
 } from "./llmRuntimeStorage";
 
 export {
-  llmAutoPunctuateCapabilityBadge,
-  llmAutoPunctuateCapabilityBadgeClass,
-  llmConnectionStatusMessage,
-  llmConnectionStatusTone,
+  llmExportPolishCapabilityBadge,
+  llmExportPolishCapabilityBadgeClass,
   llmKeychainReferenceMessage,
   resolveLlmConnectionUiStatus,
   type LlmConnectionUiStatus,
