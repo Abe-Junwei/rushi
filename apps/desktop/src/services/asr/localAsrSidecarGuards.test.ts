@@ -63,14 +63,9 @@ describe("localAsrSidecarGuards", () => {
       shouldSkipSidecarRestartForSelection(
         {
           ...readyCaps,
-          funasr_model_id: "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
-          funasr_loaded_model_id: "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
+          funasr_loaded_model_id: "iic/other-loaded-model",
         },
-        {
-          ...selection,
-          selectedHubModelId:
-            "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
-        },
+        selection,
       ),
     ).toBe(false);
   });
