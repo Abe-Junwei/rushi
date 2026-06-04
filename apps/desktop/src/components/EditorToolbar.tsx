@@ -3,6 +3,7 @@ import type { ProjectControllerApi } from "../pages/useProjectController";
 import * as fileApi from "../tauri/fileApi";
 import { Download, FileInput, FileOutput, Settings, Square } from "lucide-react";
 import { EditorWorkspaceNav } from "./EditorWorkspaceNav";
+import { TranscribeSourceSwitch } from "./editor/TranscribeSourceSwitch";
 import { LlmTopStatusChip } from "./LlmTopStatusChip";
 import { CONTROL_BTN_DANGER } from "../config/controlStyles";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
@@ -153,17 +154,26 @@ export const EditorToolbar = memo(function EditorToolbar({
               </span>
             </button>
           ) : (
-            <button
-              type="button"
-              className={ghostBtn}
-              disabled={c.busy || c.prepareModelBusy}
-              onClick={() => void c.runTranscribe()}
-            >
-              <span className="inline-flex items-center gap-1.5">
-                <Download className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-                {c.prepareModelBusy ? "模型准备中..." : "从 ASR 拉取语段"}
-              </span>
-            </button>
+            <>
+              <TranscribeSourceSwitch
+                source={c.transcribeSource}
+                onlineReady={c.onlineTranscribeReady}
+                disabled={c.busy || c.prepareModelBusy}
+                onSelectLocal={() => c.setTranscribeSource("local")}
+                onSelectOnline={() => c.setTranscribeSource("online")}
+              />
+              <button
+                type="button"
+                className={ghostBtn}
+                disabled={c.busy || c.prepareModelBusy}
+                onClick={() => void c.runTranscribe()}
+              >
+                <span className="inline-flex items-center gap-1.5">
+                  <Download className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+                  {c.prepareModelBusy ? "模型准备中..." : "拉取语段"}
+                </span>
+              </button>
+            </>
           )}
 
           <div className="ml-1 flex items-center gap-2">
@@ -274,6 +284,8 @@ function areEditorToolbarPropsEqual(prev: EditorToolbarProps, next: EditorToolba
     prev.controller.busy === next.controller.busy &&
     prev.controller.busyReason === next.controller.busyReason &&
     prev.controller.transcribeCancelling === next.controller.transcribeCancelling &&
-    prev.controller.prepareModelBusy === next.controller.prepareModelBusy
+    prev.controller.prepareModelBusy === next.controller.prepareModelBusy &&
+    prev.controller.transcribeSource === next.controller.transcribeSource &&
+    prev.controller.onlineTranscribeReady === next.controller.onlineTranscribeReady
   );
 }

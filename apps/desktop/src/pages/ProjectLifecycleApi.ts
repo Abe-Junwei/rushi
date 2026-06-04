@@ -2,9 +2,7 @@ import type { ProjectDetail, ProjectSummary, SegmentDto } from "../tauri/project
 import type { DocxExportMode } from "../tauri/exportDocxApi";
 import type { DeliveryDocxExportRequest } from "./useExportController";
 import type { SegmentOverlapPolicy } from "../utils/segmentTimeRange";
-import type { SegmentRefineDialogState } from "./useSegmentRefineController";
 import type { LexiconProofreadDialogState } from "./useLexiconProofreadController";
-import type { AutoPunctuateDialogState } from "./useAutoPunctuateController";
 import type { FindReplaceDialogState } from "./useFindReplaceController";
 import type { CorrectionRulesDialogState } from "./useCorrectionRulesController";
 import type { CorrectSuggestionsDialogState } from "./useCorrectSuggestionsController";
@@ -36,6 +34,9 @@ export interface ProjectLifecycleApi {
   transcribeOverwriteDialogOpen: boolean;
   transcribeOverwriteSegmentCount: number;
   transcribeVocabularyPreflightLines: string[];
+  transcribeSource: import("../services/stt/transcribeSource").TranscribeSource;
+  setTranscribeSource: (source: import("../services/stt/transcribeSource").TranscribeSource) => void;
+  onlineTranscribeReady: boolean;
   refreshProjects: () => Promise<void>;
   pickAudio: () => Promise<void>;
   clearPickedAudio: () => void;
@@ -113,20 +114,6 @@ export interface ProjectLifecycleApi {
     policy?: SegmentOverlapPolicy,
   ) => void;
   flushSegmentTextDrafts: () => void;
-  canAutoPunctuate: boolean;
-  autoPunctuateBlockReason: string | null;
-  autoPunctuateDialog: AutoPunctuateDialogState;
-  requestAutoPunctuate: () => void;
-  confirmAutoPunctuateConsent: () => void;
-  confirmAutoPunctuateWriteback: () => void;
-  cancelAutoPunctuate: () => void;
-  canRefineSegments: boolean;
-  segmentRefineBlockReason: string | null;
-  segmentRefineDialog: SegmentRefineDialogState;
-  requestSegmentRefine: () => void;
-  confirmSegmentRefineConsent: () => void;
-  confirmSegmentRefineWriteback: () => void;
-  cancelSegmentRefine: () => void;
   canLexiconProofread: boolean;
   lexiconProofreadBlockReason: string | null;
   lexiconProofreadDialog: LexiconProofreadDialogState;

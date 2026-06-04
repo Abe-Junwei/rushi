@@ -9,8 +9,6 @@ import { buildSegmentTextContextMenuItems } from "../utils/segmentTextContextMen
 import { ManualCorrectionMemoryDialog } from "./segmentRow/ManualCorrectionMemoryDialog";
 import { EnvironmentPanel } from "./EnvironmentPanel";
 import { FloatingPanelTemplate } from "./PanelTemplate";
-import { AutoPunctuatePreviewDialog } from "./AutoPunctuatePreviewDialog";
-import { SegmentRefinePreviewDialog } from "./SegmentRefinePreviewDialog";
 import { LexiconProofreadPreviewDialog } from "./LexiconProofreadPreviewDialog";
 import { FindReplaceDialog } from "./FindReplaceDialog";
 import { CorrectionRulesPreviewDialog } from "./CorrectionRulesPreviewDialog";
@@ -253,6 +251,7 @@ export function ProjectPanel() {
               onSttOnlineRuntimeChanged={c.bumpSttOnlineRuntimeChanged}
               onLlmRuntimeChanged={notifyLlmRuntimeChanged}
               focusLlmSeq={focusLlmSeq}
+              llmStatusRefreshSeq={llmUiEpoch}
             />
         </FloatingPanelTemplate>
       ) : null}
@@ -312,20 +311,6 @@ export function ProjectPanel() {
           transcribeProgress={c.transcribeProgress}
         />
       ) : null}
-
-      <AutoPunctuatePreviewDialog
-        state={c.autoPunctuateDialog}
-        onCancel={c.cancelAutoPunctuate}
-        onConfirmConsent={c.confirmAutoPunctuateConsent}
-        onConfirmWriteback={c.confirmAutoPunctuateWriteback}
-      />
-
-      <SegmentRefinePreviewDialog
-        state={c.segmentRefineDialog}
-        onCancel={c.cancelSegmentRefine}
-        onConfirmConsent={c.confirmSegmentRefineConsent}
-        onConfirmWriteback={c.confirmSegmentRefineWriteback}
-      />
 
       <LexiconProofreadPreviewDialog
         state={c.lexiconProofreadDialog}

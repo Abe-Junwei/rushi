@@ -2,14 +2,10 @@ import { describe, expect, it, vi } from "vitest";
 import { resolveTranscribeExecuteBlock } from "./transcribeExecuteGate";
 
 vi.mock("../services/stt/sttOnlineProviderContract", () => ({
-  isSttOnlineEnabledButIncomplete: vi.fn(() => false),
-  tryBuildOnlineTranscribeBridgePayload: vi.fn(() => null),
+  resolveOnlineTranscribeBlock: vi.fn(() => null),
 }));
 
-import {
-  isSttOnlineEnabledButIncomplete,
-  tryBuildOnlineTranscribeBridgePayload,
-} from "../services/stt/sttOnlineProviderContract";
+import { resolveOnlineTranscribeBlock } from "../services/stt/sttOnlineProviderContract";
 
 describe("resolveTranscribeExecuteBlock", () => {
   it("returns file hint when no file is open", () => {
@@ -19,6 +15,7 @@ describe("resolveTranscribeExecuteBlock", () => {
         hasCurrent: true,
         currentFileId: null,
         localTranscribePreflight: () => null,
+        source: "local",
       }),
     ).toBe("请先打开一个文件后再拉取语段");
   });
@@ -30,30 +27,32 @@ describe("resolveTranscribeExecuteBlock", () => {
         hasCurrent: true,
         currentFileId: "f1",
         localTranscribePreflight: () => null,
+        source: "local",
       }),
     ).toBe("busy");
   });
 
-  it("returns local preflight message for local path", () => {
-    vi.mocked(tryBuildOnlineTranscribeBridgePayload).mockReturnValue(null);
+  it("returns local preflight message for local source", () => {
     expect(
       resolveTranscribeExecuteBlock({
         busy: false,
         hasCurrent: true,
         currentFileId: "f1",
         localTranscribePreflight: () => "本机 ASR 未就绪",
+        source: "local",
       }),
     ).toBe("本机 ASR 未就绪");
   });
 
-  it("returns online STT incomplete message", () => {
-    vi.mocked(isSttOnlineEnabledButIncomplete).mockReturnValue(true);
+  it("returns online STT block message when source is online", () => {
+    vi.mocked(resolveOnlineTranscribeBlock).mockReturnValue("在线 STT：配置不完整");
     expect(
       resolveTranscribeExecuteBlock({
         busy: false,
         hasCurrent: true,
         currentFileId: "f1",
         localTranscribePreflight: () => null,
+        source: "online",
       }),
     ).toContain("在线 STT");
   });
