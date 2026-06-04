@@ -6,6 +6,7 @@ import {
   OLLAMA_LOOPBACK_PLACEHOLDER_API_KEY,
   applyLlmProviderPreset,
   persistLlmRuntimeConfig,
+  readLastCloudRuntimeConfig,
   readLlmRuntimeConfigFromStorage,
   setLlmApiKeyInMemory,
   isLocalLoopbackLlmProvider,
@@ -128,19 +129,31 @@ describe("postprocessRuntimeContract", () => {
         hasLocalKeyRef: true,
         hasTypedKey: false,
         keychainPresent: true,
-        probeState: "ok",
+        connectionVerified: true,
         localLoopback: true,
       }),
     ).toBe("verified");
   });
 
-  it("resolveLlmConnectionUiStatus requires probe ok for verified", () => {
+  it("snapshots and restores last cloud runtime config", () => {
+    persistLlmRuntimeConfig({ ...applyLlmProviderPreset("kimi"), apiKeyId: DEFAULT_LLM_API_KEY_ID });
+    persistLlmRuntimeConfig(applyLlmProviderPreset("ollama"), { clearApiKeyId: true });
+    const restored = readLastCloudRuntimeConfig();
+    expect(restored.providerId).toBe("kimi");
+    expect(restored.apiKeyId).toBe(DEFAULT_LLM_API_KEY_ID);
+  });
+
+  it("readLastCloudRuntimeConfig defaults to deepseek without snapshot", () => {
+    expect(readLastCloudRuntimeConfig().providerId).toBe("deepseek");
+  });
+
+  it("resolveLlmConnectionUiStatus uses persisted connectionVerified", () => {
     expect(
       resolveLlmConnectionUiStatus({
         hasLocalKeyRef: true,
         hasTypedKey: false,
         keychainPresent: true,
-        probeState: "idle",
+        connectionVerified: false,
       }),
     ).toBe("unverified");
     expect(
@@ -148,7 +161,7 @@ describe("postprocessRuntimeContract", () => {
         hasLocalKeyRef: true,
         hasTypedKey: false,
         keychainPresent: true,
-        probeState: "ok",
+        connectionVerified: true,
       }),
     ).toBe("verified");
     expect(
@@ -156,7 +169,7 @@ describe("postprocessRuntimeContract", () => {
         hasLocalKeyRef: true,
         hasTypedKey: false,
         keychainPresent: false,
-        probeState: "idle",
+        connectionVerified: false,
       }),
     ).toBe("keychain_missing");
   });
