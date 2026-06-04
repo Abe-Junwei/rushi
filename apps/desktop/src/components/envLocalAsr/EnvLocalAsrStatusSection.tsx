@@ -1,25 +1,17 @@
 import { RefreshCw } from "lucide-react";
 import { PANEL_TYPOGRAPHY } from "../../config/typography";
+import { LLM_STATUS_DOT_CLASS, LLM_STATUS_PANEL_CLASS } from "../../services/llm/llmEnvStatus";
+import type { AsrEnvPresentation } from "../../services/asr/asrEnvStatus";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";
 import { EnvLocalAsrSmallButton, EnvLocalAsrStatusRow } from "./envLocalAsrPanelUi";
 
 type Props = {
-  envOk: boolean;
-  ffmpegOk: boolean;
-  runtimeReady: boolean;
-  transcribeReady: boolean;
+  presentation: AsrEnvPresentation;
   busy: boolean;
   refreshAsrHealth: () => Promise<void>;
 };
 
-export function EnvLocalAsrStatusSection({
-  envOk,
-  ffmpegOk,
-  runtimeReady,
-  transcribeReady,
-  busy,
-  refreshAsrHealth,
-}: Props) {
+export function EnvLocalAsrStatusSection({ presentation, busy, refreshAsrHealth }: Props) {
   return (
     <section className="flex flex-col gap-4">
       <div className="pb-1">
@@ -27,11 +19,33 @@ export function EnvLocalAsrStatusSection({
         <p className={PANEL_TYPOGRAPHY.sectionDescription}>当前系统的 ASR 环境检测结果</p>
       </div>
 
+      <div
+        className={["rounded-lg px-3 py-2.5", LLM_STATUS_PANEL_CLASS[presentation.tone]].join(" ")}
+        role="status"
+        aria-live="polite"
+      >
+        <div className="flex items-start gap-2">
+          <span
+            className={`mt-1.5 h-2 w-2 shrink-0 rounded-full ${LLM_STATUS_DOT_CLASS[presentation.tone]}`}
+            aria-hidden
+          />
+          <div className="min-w-0 space-y-0.5">
+            <p className={PANEL_TYPOGRAPHY.fieldLabel}>{presentation.bannerTitle}</p>
+            <p className={PANEL_TYPOGRAPHY.meta}>{presentation.bannerDetail}</p>
+          </div>
+        </div>
+      </div>
+
       <div className="flex flex-col">
-        <EnvLocalAsrStatusRow label="环境" ok={envOk} text={envOk ? "正常" : "异常"} />
-        <EnvLocalAsrStatusRow label="FFmpeg" ok={ffmpegOk} text={ffmpegOk ? "已安装" : "未安装"} />
-        <EnvLocalAsrStatusRow label="FunASR 运行时" ok={runtimeReady} text={runtimeReady ? "就绪" : "未就绪"} />
-        <EnvLocalAsrStatusRow label="可直接转写" ok={transcribeReady} text={transcribeReady ? "就绪" : "未就绪"} last />
+        {presentation.statusRows.map((row, index) => (
+          <EnvLocalAsrStatusRow
+            key={row.id}
+            label={row.label}
+            ok={row.ok}
+            text={row.text}
+            last={index === presentation.statusRows.length - 1}
+          />
+        ))}
       </div>
 
       <div className="flex justify-start gap-3">

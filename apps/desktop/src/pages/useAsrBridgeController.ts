@@ -5,6 +5,7 @@ import * as p1 from "../tauri/projectApi";
 import { tryBuildOnlineTranscribeBridgePayload } from "../services/stt/sttOnlineProviderContract";
 import { usePrepareModelController, type PrepareModelApi } from "./usePrepareModelController";
 import { useLocalAsrModelCatalog, type LocalAsrModelCatalogApi } from "./useLocalAsrModelCatalog";
+import { buildAsrEnvPresentation, type AsrEnvPresentation } from "../services/asr/asrEnvStatus";
 import { funasrManualSetupCommands } from "../services/asr/asrHealthParse";
 import {
   useAsrHealthPoll,
@@ -20,6 +21,7 @@ export type { AsrHealthState };
 export interface AsrBridgeApi {
   asrHealth: AsrHealthState;
   asrHealthDetail: string;
+  asrPresentation: AsrEnvPresentation;
   bundledAsrDiag: p1.BundledAsrLaunchReport | null;
   asrCaps: AsrHealthCapabilities | null;
   asrModelCacheInfo: AsrModelCacheInfo | null;
@@ -122,6 +124,31 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
     return asrHealthDetail;
   }, [asrHealth, asrHealthDetail, bundledAsrDiag]);
 
+  const asrPresentation = useMemo(
+    () =>
+      buildAsrEnvPresentation({
+        asrHealth,
+        asrHealthDetail: asrHealthDetailDisplay,
+        asrCaps,
+        selectedHubModelId: localAsrModelCatalog.selectedHubModelId,
+        catalogStatus: localAsrModelCatalog.catalogStatus,
+        desktopModelsRoot: cacheCtrl.asrModelCacheInfo?.models_root ?? null,
+        sidecarModelsRoot: asrCaps?.rushi_models_root ?? null,
+        asrModelCacheBytes: cacheCtrl.asrModelCacheInfo?.total_bytes ?? 0,
+        sidecarAsyncTranscribeCapable: localAsrModelCatalog.sidecarAsyncTranscribeCapable,
+      }),
+    [
+      asrHealth,
+      asrHealthDetailDisplay,
+      asrCaps,
+      localAsrModelCatalog.selectedHubModelId,
+      localAsrModelCatalog.catalogStatus,
+      localAsrModelCatalog.sidecarAsyncTranscribeCapable,
+      cacheCtrl.asrModelCacheInfo?.models_root,
+      cacheCtrl.asrModelCacheInfo?.total_bytes,
+    ],
+  );
+
   const retryBundledAsrSidecar = useCallback(async () => {
     try {
       await p1.retryBundledAsrSidecar();
@@ -141,7 +168,7 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
       if (log != null && log.length > 0) {
         modelCtrl.setFunasrInstallMessage(
           [
-            "已在所选仓库中执行安装脚本。未设置 RUSHI_FUNASR_MODEL 时将使用内置 SenseVoiceSmall；请先下载当前所选模型，再开始正式转写。",
+            "已在所选仓库中执行安装脚本。未设置 RUSHI_FUNASR_MODEL 时将使用内置 Paraformer 长音频模型；请先下载当前所选模型，再开始正式转写。",
             "停止并重新执行 python -m rushi_asr，然后回到本页点「重新检测 ASR」。",
             "",
             "--- 脚本输出（节选）---",
@@ -167,6 +194,7 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
   return {
     asrHealth,
     asrHealthDetail: asrHealthDetailDisplay,
+    asrPresentation,
     bundledAsrDiag,
     asrCaps,
     asrModelCacheInfo: cacheCtrl.asrModelCacheInfo,

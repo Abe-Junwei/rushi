@@ -55,7 +55,7 @@ describe("parseAsrHealthJson", () => {
       funasr_ready: true,
       ready_for_transcribe: false,
       transcription_mode: "funasr",
-      funasr_model_id: "iic/SenseVoiceSmall",
+      funasr_model_id: "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
       rushi_models_root: "/tmp/models",
     });
     expect(result).toEqual({
@@ -71,7 +71,7 @@ describe("parseAsrHealthJson", () => {
       funasr_ready: true,
       ready_for_transcribe: false,
       transcription_mode: "funasr",
-      funasr_model_id: "iic/SenseVoiceSmall",
+      funasr_model_id: "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
       funasr_loaded_model_id: null,
       funasr_language: null,
       funasr_punc_model_id: null,

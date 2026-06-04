@@ -1,13 +1,11 @@
 import type { AsrHealthCapabilities } from "../tauri/projectApi";
 import type { AsrHealthState } from "../pages/useAsrBridgeController";
 import type { LocalAsrCatalogStatusItem } from "../services/asr/localAsrModelCatalog";
-import { computeLocalAsrTranscribeReady } from "../services/asr/localAsrModelCatalog";
+import type { AsrEnvPresentation } from "../services/asr/asrEnvStatus";
+import { AsrTopStatusChips } from "./AsrTopStatusChips";
 import { Bell, Search } from "lucide-react";
+import { LlmTopStatusChip } from "./LlmTopStatusChip";
 import { LUCIDE_ICON_SIZE_LG, LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
-
-function StatusDot({ ok }: { ok: boolean }) {
-  return <span className={`inline-block h-1.5 w-1.5 shrink-0 rounded-full ${ok ? "bg-zen-success" : "bg-zen-cinnabar"}`} aria-hidden />;
-}
 
 function UserAvatar() {
   return (
@@ -18,36 +16,32 @@ function UserAvatar() {
 }
 
 export interface WelcomeTopBarProps {
-  asrHealth: AsrHealthState;
-  asrCaps: AsrHealthCapabilities | null;
+  asrPresentation: AsrEnvPresentation;
+  /** @deprecated 使用 asrPresentation */
+  asrHealth?: AsrHealthState;
+  asrCaps?: AsrHealthCapabilities | null;
   selectedHubModelId?: string;
   catalogStatus?: LocalAsrCatalogStatusItem[] | null;
+  llmStatusRefreshSeq?: number;
+  onOpenLlmSettings?: () => void;
 }
 
-export function WelcomeTopBar({ asrHealth, asrCaps, selectedHubModelId, catalogStatus }: WelcomeTopBarProps) {
-  const { ready: transcribeReady } = computeLocalAsrTranscribeReady({
-    asrHealth,
-    asrCaps,
-    selectedHubModelId,
-    catalogStatus,
-  });
+export function WelcomeTopBar({
+  asrPresentation,
+  llmStatusRefreshSeq = 0,
+  onOpenLlmSettings,
+}: WelcomeTopBarProps) {
   return (
     <header className="flex h-12 shrink-0 items-center justify-between border-b border-notion-divider bg-notion-bg px-10">
       <div className="flex items-center gap-6" />
       <div className="flex items-center gap-4">
-        {/* Status indicators */}
         <div className="mr-2 flex items-center gap-4">
-          <div className="flex items-center gap-1.5">
-            <StatusDot ok={asrCaps?.ffmpeg_ok === true} />
-            <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-notion-text-muted">FFmpeg</span>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <StatusDot ok={transcribeReady} />
-            <span className="text-[11px] font-semibold uppercase tracking-[0.1em] text-notion-text-muted">ASR Ready</span>
-          </div>
+          <AsrTopStatusChips presentation={asrPresentation} />
+          {onOpenLlmSettings ? (
+            <LlmTopStatusChip refreshSeq={llmStatusRefreshSeq} onOpenLlmSettings={onOpenLlmSettings} />
+          ) : null}
         </div>
 
-        {/* Search (placeholder) */}
         <div className="relative">
           <span className="pointer-events-none absolute inset-y-0 left-3 flex items-center text-notion-text-light">
             <Search className={`block ${LUCIDE_ICON_SIZE_MD}`} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
@@ -60,7 +54,6 @@ export function WelcomeTopBar({ asrHealth, asrCaps, selectedHubModelId, catalogS
           />
         </div>
 
-        {/* Notification (placeholder) */}
         <button
           type="button"
           className="relative rounded-full border-0 bg-transparent p-2 text-notion-text-muted outline-none transition-colors hover:bg-notion-sidebar-hover focus:outline-none"
@@ -69,7 +62,6 @@ export function WelcomeTopBar({ asrHealth, asrCaps, selectedHubModelId, catalogS
           <span className="absolute right-1.5 top-1.5 h-2 w-2 rounded-full border border-notion-bg bg-zen-cinnabar" aria-hidden />
         </button>
 
-        {/* User avatar (placeholder) */}
         <UserAvatar />
       </div>
     </header>

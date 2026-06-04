@@ -16,7 +16,7 @@ describe("parseAsrHealthJson", () => {
       funasr_ready: false,
       ready_for_transcribe: false,
       transcription_mode: "stub",
-      funasr_model_id: "iic/SenseVoiceSmall",
+      funasr_model_id: "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
       rushi_models_root: "/tmp/models",
     });
     expect(caps).not.toBeNull();
@@ -54,7 +54,7 @@ describe("parseAsrHealthJson", () => {
       funasr_ready: true,
       ready_for_transcribe: true,
       transcription_mode: "funasr",
-      funasr_model_id: "iic/SenseVoiceSmall",
+      funasr_model_id: "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
       funasr_language: "auto",
     });
     expect(caps?.funasr_language).toBe("auto");
@@ -70,10 +70,10 @@ describe("parseAsrHealthJson", () => {
       funasr_ready: true,
       ready_for_transcribe: true,
       transcription_mode: "funasr",
-      funasr_model_id: "iic/SenseVoiceSmall",
-      funasr_loaded_model_id: "iic/SenseVoiceSmall",
+      funasr_model_id: "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
+      funasr_loaded_model_id: "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
     });
-    expect(caps?.funasr_loaded_model_id).toBe("iic/SenseVoiceSmall");
+    expect(caps?.funasr_loaded_model_id).toBe("iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch");
   });
 
   it("returns null for invalid payload", () => {

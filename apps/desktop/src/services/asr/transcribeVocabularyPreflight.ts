@@ -35,9 +35,6 @@ export type TranscribeVocabularyPreflightSummary = {
   emptyGlossaryHint: string | null;
 };
 
-const SENSEVOICE_WEAK_HOTWORD_NOTE =
-  "当前为 SenseVoice 轻量 SKU：热词参数会提交，但专名提升通常弱于 Paraformer 长音频；重要专名建议换模型或转写后改稿。";
-
 export const EMPTY_GLOSSARY_TRANSCRIBE_HINT =
   "转写词汇表暂无纳入热词的词条，专名可能听错；请添加希望听成的正形并勾选「纳入下次转写（热词）」。";
 
@@ -60,12 +57,6 @@ export function buildTranscribeVocabularyPreflightSummary(input: {
     ? vocabularyChannelForProviderId(onlineProviderId)
     : "unsupported";
 
-  let localHotwordNote: string | null = null;
-  if (!input.isOnlineMode && entry?.catalogId === "sensevoice-small") {
-    const hasHotwords = (input.hotwords?.includedTermCount ?? 0) > 0;
-    if (hasHotwords) localHotwordNote = SENSEVOICE_WEAK_HOTWORD_NOTE;
-  }
-
   const emptyGlossaryHint =
     input.hotwords && input.hotwords.enabledEntryCount === 0 ? EMPTY_GLOSSARY_HINT : null;
 
@@ -73,7 +64,7 @@ export function buildTranscribeVocabularyPreflightSummary(input: {
     hotwords: input.hotwords,
     isOnlineMode: input.isOnlineMode,
     localSkuLabel: input.isOnlineMode ? null : (entry?.label ?? hub),
-    localHotwordNote: input.isOnlineMode ? null : localHotwordNote,
+    localHotwordNote: null,
     onlineProviderId,
     onlineChannel: input.isOnlineMode ? onlineChannel : "unsupported",
     onlineBiasLine:

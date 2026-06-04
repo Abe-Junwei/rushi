@@ -22,6 +22,8 @@ export type { WelcomePageId } from "./welcomeTypes";
 interface WelcomeViewProps {
   controller: ProjectControllerApi;
   onOpenSettings: () => void;
+  onOpenLlmSettings?: () => void;
+  llmStatusRefreshSeq?: number;
   page: WelcomePageId;
   onPageChange: (page: WelcomePageId) => void;
 }
@@ -37,7 +39,14 @@ function formatFileType(type: string) {
   return type;
 }
 
-export function WelcomeView({ controller: c, onOpenSettings, page, onPageChange }: WelcomeViewProps) {
+export function WelcomeView({
+  controller: c,
+  onOpenSettings,
+  onOpenLlmSettings,
+  llmStatusRefreshSeq = 0,
+  page,
+  onPageChange,
+}: WelcomeViewProps) {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [recentFiles, setRecentFiles] = useState<RecentWorkspaceFile[]>([]);
   const [loadingRecentFiles, setLoadingRecentFiles] = useState(false);
@@ -85,10 +94,9 @@ export function WelcomeView({ controller: c, onOpenSettings, page, onPageChange 
 
       <div className="flex min-h-0 min-w-0 flex-col bg-notion-bg">
         <WelcomeTopBar
-          asrHealth={c.asrHealth}
-          asrCaps={c.asrCaps}
-          selectedHubModelId={c.localAsrModelCatalog.selectedHubModelId}
-          catalogStatus={c.localAsrModelCatalog.catalogStatus}
+          asrPresentation={c.asrPresentation}
+          llmStatusRefreshSeq={llmStatusRefreshSeq}
+          onOpenLlmSettings={onOpenLlmSettings ?? onOpenSettings}
         />
 
         {page === "glossary" ? (
@@ -97,9 +105,13 @@ export function WelcomeView({ controller: c, onOpenSettings, page, onPageChange 
           <QualityPage busy={c.busy} />
         ) : (
           <>
-        {c.asrHealth === "error" ? (
+        {c.asrPresentation.health === "error" ? (
           <div className="shrink-0 px-10 pt-4">
-            <AsrErrorBanner onOpenEnvironment={onOpenSettings} />
+            <AsrErrorBanner
+              message={c.asrPresentation.errorBannerMessage}
+              detail={c.asrPresentation.errorDetail}
+              onOpenEnvironment={onOpenSettings}
+            />
           </div>
         ) : null}
 

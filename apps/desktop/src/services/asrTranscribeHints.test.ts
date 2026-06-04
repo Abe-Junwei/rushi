@@ -64,14 +64,21 @@ describe("deriveTranscribeHints", () => {
   });
 
   it("flags whole-track fallback warning", () => {
-    const h = deriveTranscribeHints("funasr+iic/SenseVoiceSmall", ["funasr_whole_track_fallback: x"], [
+    const h = deriveTranscribeHints(
+      "funasr+iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
+      ["funasr_whole_track_fallback: x"],
+      [
       { text: "你好世界" },
     ]);
     expect(h.some((x) => x.includes("整轨单语段"))).toBe(true);
   });
 
   it("flags long audio without segments", () => {
-    const h = deriveTranscribeHints("funasr+iic/SenseVoiceSmall", ["funasr_long_audio_no_segments: x"], []);
+    const h = deriveTranscribeHints(
+      "funasr+iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
+      ["funasr_long_audio_no_segments: x"],
+      [],
+    );
     expect(h.some((x) => x.includes("Paraformer"))).toBe(true);
     expect(h.some((x) => x.includes("未生成任何语段"))).toBe(false);
   });

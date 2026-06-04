@@ -1,24 +1,25 @@
 import { describe, expect, it } from "vitest";
 import { localAsrTranscribePreflightMessage } from "./localAsrTranscribePreflight";
+import { DEFAULT_LOCAL_ASR_HUB_MODEL_ID } from "./localAsrModelCatalog";
 
 describe("localAsrTranscribePreflightMessage", () => {
   it("returns null when ready", () => {
     const msg = localAsrTranscribePreflightMessage({
       asrHealth: "ok",
       asrCaps: {
-        funasr_model_id: "iic/SenseVoiceSmall",
-        funasr_loaded_model_id: "iic/SenseVoiceSmall",
+        funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+        funasr_loaded_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
         ready_for_transcribe: true,
       },
-      selectedHubModelId: "iic/SenseVoiceSmall",
+      selectedHubModelId: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
       catalogStatus: [
         {
-          catalogId: "sensevoice-small",
-          label: "SenseVoice",
-          hubModelId: "iic/SenseVoiceSmall",
+          catalogId: "paraformer-long-vad-punc",
+          label: "Paraformer 长音频（推荐转写）",
+          hubModelId: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
           description: "",
           diskHint: "",
-          recommendLongAudio: false,
+          recommendLongAudio: true,
           cached: true,
           active: true,
           readyForTranscribe: true,
@@ -32,11 +33,11 @@ describe("localAsrTranscribePreflightMessage", () => {
     const msg = localAsrTranscribePreflightMessage({
       asrHealth: "ok",
       asrCaps: {
-        funasr_model_id: "iic/SenseVoiceSmall",
-        funasr_loaded_model_id: "iic/SenseVoiceSmall",
+        funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+        funasr_loaded_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
         ready_for_transcribe: true,
       },
-      selectedHubModelId: "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
+      selectedHubModelId: "Qwen/Qwen3-ASR-0.6B",
       catalogStatus: [],
     });
     expect(msg).toContain("不一致");
@@ -46,11 +47,11 @@ describe("localAsrTranscribePreflightMessage", () => {
     const msg = localAsrTranscribePreflightMessage({
       asrHealth: "ok",
       asrCaps: {
-        funasr_model_id: "iic/SenseVoiceSmall",
-        funasr_loaded_model_id: "iic/SenseVoiceSmall",
+        funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+        funasr_loaded_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
         ready_for_transcribe: true,
       },
-      selectedHubModelId: "iic/SenseVoiceSmall",
+      selectedHubModelId: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
       catalogStatus: [],
       sidecarAsyncTranscribeCapable: false,
     });

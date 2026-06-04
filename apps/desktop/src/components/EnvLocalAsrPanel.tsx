@@ -1,7 +1,7 @@
 import { asrBaseUrl, isDefaultBundledAsrTarget, isTauriRuntime } from "../config/env";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import type { PrepareModelFailureCopy } from "../pages/prepareModelDownloadCopy";
-import type { AsrHealthState } from "../pages/useProjectController";
+import type { AsrEnvPresentation } from "../services/asr/asrEnvStatus";
 import type { AsrHealthCapabilities, AsrModelCacheInfo, BundledAsrLaunchReport, WaveformPeaksCacheInfo } from "../tauri/projectApi";
 import type { PrepareDefaultModelOptions } from "../pages/usePrepareModelController";
 import type { AsrSetupControllerApi } from "../pages/useAsrSetupController";
@@ -9,10 +9,8 @@ import type { LocalAsrModelCatalogApi } from "../pages/useLocalAsrModelCatalog";
 import { LocalAsrModelSection } from "./envLocalAsr/LocalAsrModelSection";
 import {
   buildLocalAsrCatalogView,
-  computeLocalAsrTranscribeReady,
   selectedModelPrepareState,
 } from "../services/asr/localAsrModelCatalog";
-import { modelsRootMismatch } from "../services/asr/asrRuntimePathsAlign";
 import { LocalAsrAdvancedSection } from "./envLocalAsr/LocalAsrAdvancedSection";
 import { LocalAsrCacheSection } from "./envLocalAsr/LocalAsrCacheSection";
 import { LocalAsrSetupWizard } from "./envLocalAsr/LocalAsrSetupWizard";
@@ -21,8 +19,7 @@ import { EnvLocalAsrModelDownloadSection } from "./envLocalAsr/EnvLocalAsrModelD
 import { EnvLocalAsrSmallButton } from "./envLocalAsr/envLocalAsrPanelUi";
 
 type Props = {
-  asrHealth: AsrHealthState;
-  asrHealthDetail: string;
+  asrPresentation: AsrEnvPresentation;
   bundledAsrDiag: BundledAsrLaunchReport | null;
   asrCaps: AsrHealthCapabilities | null;
   asrModelCacheInfo: AsrModelCacheInfo | null;
@@ -50,8 +47,7 @@ type Props = {
 };
 
 export function EnvLocalAsrPanel({
-  asrHealth,
-  asrHealthDetail,
+  asrPresentation,
   bundledAsrDiag,
   asrCaps,
   asrModelCacheInfo,
@@ -77,15 +73,6 @@ export function EnvLocalAsrPanel({
   asrSetup,
   localAsrModelCatalog,
 }: Props) {
-  const envOk = asrHealth === "ok";
-  const ffmpegOk = asrCaps?.ffmpeg_ok === true;
-  const runtimeReady = asrHealth === "ok" && asrCaps?.funasr_ready === true;
-  const { ready: transcribeReady } = computeLocalAsrTranscribeReady({
-    asrHealth,
-    asrCaps,
-    selectedHubModelId: localAsrModelCatalog.selectedHubModelId,
-    catalogStatus: localAsrModelCatalog.catalogStatus,
-  });
   const catalogView = buildLocalAsrCatalogView(
     asrCaps,
     localAsrModelCatalog.catalogStatus,
@@ -100,18 +87,11 @@ export function EnvLocalAsrPanel({
   const progress = prepareModelBusy ? prepareModelProgress : modelsCached ? 100 : 0;
   const sidecarModelsRoot = asrCaps?.rushi_models_root ?? null;
   const desktopModelsRoot = asrModelCacheInfo?.models_root ?? null;
-  const cachePathMismatch =
-    asrHealth === "ok" && modelsRootMismatch(desktopModelsRoot, sidecarModelsRoot);
-  const modelsOnDiskButSidecarBlind =
-    asrHealth === "ok" && (asrModelCacheInfo?.total_bytes ?? 0) > 0 && !sidecarModelsRoot;
 
   return (
     <div className="flex w-full min-w-0 flex-col gap-8">
       <EnvLocalAsrStatusSection
-        envOk={envOk}
-        ffmpegOk={ffmpegOk}
-        runtimeReady={runtimeReady}
-        transcribeReady={transcribeReady}
+        presentation={asrPresentation}
         busy={busy}
         refreshAsrHealth={refreshAsrHealth}
       />
@@ -127,7 +107,7 @@ export function EnvLocalAsrPanel({
       />
 
       <LocalAsrAdvancedSection
-        asrHealth={asrHealth}
+        asrHealth={asrPresentation.health}
         asrCaps={asrCaps}
         funasrInstallMessage={funasrInstallMessage}
         busy={busy}
@@ -135,14 +115,13 @@ export function EnvLocalAsrPanel({
         copyFunasrManualCommands={copyFunasrManualCommands}
       />
 
-      {asrHealth === "ok" && asrCaps && !asrCaps.ffmpeg_ok ? (
-        <div className="rounded border border-notion-divider bg-notion-callout-bg px-3 py-2 text-sm">
-          <strong className="text-notion-text">未检测到 FFmpeg</strong>
-          <span className="text-notion-text-muted"> — ASR 无法解码上传音频。请安装 ffmpeg/ffprobe 并加入 PATH 后重启 ASR。</span>
+      {asrPresentation.ffmpegWarning ? (
+        <div className="rounded border border-notion-divider bg-notion-callout-bg px-3 py-2 text-sm text-notion-text-muted">
+          {asrPresentation.ffmpegWarning}
         </div>
       ) : null}
 
-      {asrHealth === "ok" && asrCaps ? (
+      {asrPresentation.health === "ok" && asrCaps ? (
         <p className={PANEL_TYPOGRAPHY.meta}>
           侧车模型目录{" "}
           <code className="font-mono text-[11px] text-zen-indigo">
@@ -158,35 +137,27 @@ export function EnvLocalAsrPanel({
         </p>
       ) : null}
 
-      {cachePathMismatch || modelsOnDiskButSidecarBlind ? (
+      {asrPresentation.cachePathMismatch || asrPresentation.modelsOnDiskButSidecarBlind ? (
         <div
           className="rounded border border-zen-saffron/30 bg-zen-saffron/10 px-3 py-2 text-sm text-notion-text"
           role="status"
         >
-          <p className="font-medium">磁盘上已有模型，但当前侧车未指向应用缓存目录。</p>
-          <p className={`${PANEL_TYPOGRAPHY.meta} mt-1`}>
-            请重新运行 <code className="font-mono text-[11px]">npm run desktop:dev</code> 或{" "}
-            <code className="font-mono text-[11px]">npm run asr:dev</code>，再点「刷新状态」。
+          <p className="font-medium">
+            {asrPresentation.cachePathMismatchDetail ?? asrPresentation.modelsOnDiskButSidecarBlindDetail}
           </p>
         </div>
       ) : null}
 
-      {asrHealth === "ok" && asrCaps && !transcribeReady && !cachePathMismatch && !modelsOnDiskButSidecarBlind ? (
+      {asrPresentation.connectedGuidance ? (
         <div className="rounded border border-notion-divider bg-notion-callout-bg px-3 py-2 text-sm text-notion-text">
           <strong>已连接侧车</strong>
-          <span className="text-notion-text-muted">
-            {" "}
-            —{" "}
-            {!selectedPrepare.sidecarMatchesSelection
-              ? "当前所选模型尚未应用到侧车。请先在下方点「应用并重启侧车」，再下载或转写。"
-              : `当前所选模型或 VAD/标点尚未齐备（mode: ${asrCaps.transcription_mode}）。请在下方下载当前模型，或切换已缓存的模型。`}
-          </span>
+          <span className="text-notion-text-muted"> — {asrPresentation.connectedGuidance}</span>
         </div>
       ) : null}
 
-      {asrHealth === "error" ? (
+      {asrPresentation.health === "error" ? (
         <div className="space-y-2 rounded bg-zen-cinnabar/10 px-3 py-2 text-sm text-zen-cinnabar">
-          <p>{asrHealthDetail}</p>
+          <p>{asrPresentation.errorDetail ?? asrPresentation.bannerDetail}</p>
           <div className="flex flex-wrap gap-2">
             {isDefaultBundledAsrTarget() && bundledAsrDiag?.attempted ? (
               <EnvLocalAsrSmallButton disabled={busy} onClick={() => void retryBundledAsrSidecar()}>

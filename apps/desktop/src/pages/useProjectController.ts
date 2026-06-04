@@ -1,6 +1,5 @@
 import { useAsrBridgeController, type AsrHealthState } from "./useAsrBridgeController";
 import { funasrManualSetupCommands, parseAsrHealthJson } from "../services/asr/asrHealthParse";
-import { localAsrTranscribePreflightMessage } from "../services/asr/localAsrTranscribePreflight";
 import { useAsrSetupController } from "./useAsrSetupController";
 import { useProjectLifecycleController, type BusyReason } from "./useProjectLifecycleController";
 import { useCallback, useRef } from "react";
@@ -44,21 +43,8 @@ export function useProjectController() {
   refreshSetupDiagnoseRef.current = asrSetup.refreshSetupDiagnose;
 
   const localTranscribePreflight = useCallback(
-    () =>
-      localAsrTranscribePreflightMessage({
-        asrHealth: asr.asrHealth,
-        asrCaps: asr.asrCaps,
-        selectedHubModelId: asr.localAsrModelCatalog.selectedHubModelId,
-        catalogStatus: asr.localAsrModelCatalog.catalogStatus,
-        sidecarAsyncTranscribeCapable: asr.localAsrModelCatalog.sidecarAsyncTranscribeCapable,
-      }),
-    [
-      asr.asrHealth,
-      asr.asrCaps,
-      asr.localAsrModelCatalog.selectedHubModelId,
-      asr.localAsrModelCatalog.catalogStatus,
-      asr.localAsrModelCatalog.sidecarAsyncTranscribeCapable,
-    ],
+    () => asr.asrPresentation.blockReason,
+    [asr.asrPresentation],
   );
 
   const lifecycle = useProjectLifecycleController(
@@ -218,6 +204,7 @@ export function useProjectController() {
     // ASR bridge
     asrHealth: asr.asrHealth,
     asrHealthDetail: asr.asrHealthDetail,
+    asrPresentation: asr.asrPresentation,
     bundledAsrDiag: asr.bundledAsrDiag,
     asrCaps: asr.asrCaps,
     asrModelCacheInfo: asr.asrModelCacheInfo,

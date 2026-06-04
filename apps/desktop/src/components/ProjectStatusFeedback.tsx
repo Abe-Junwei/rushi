@@ -149,12 +149,23 @@ export function TranscribePreviewBanner({
   );
 }
 
-export function AsrErrorBanner({ onOpenEnvironment }: { onOpenEnvironment: () => void }) {
+export function AsrErrorBanner({
+  message = "无法连接本机 ASR，请检查服务是否在运行。",
+  detail,
+  onOpenEnvironment,
+}: {
+  message?: string;
+  detail?: string | null;
+  onOpenEnvironment: () => void;
+}) {
   return (
     <div className="flex flex-col items-start justify-between gap-4 rounded-lg border border-zen-cinnabar/20 bg-zen-cinnabar/10 px-4 py-4 text-zen-cinnabar shadow-sm sm:flex-row sm:items-center">
       <div className="flex items-start gap-3 sm:items-center">
         <TriangleAlert className={`${LUCIDE_ICON_SIZE_LG} shrink-0 text-zen-cinnabar`} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-        <p className="font-sans text-sm font-semibold leading-relaxed">无法连接本机 ASR，请检查服务是否在运行。</p>
+        <div className="space-y-1">
+          <p className="font-sans text-sm font-semibold leading-relaxed">{message}</p>
+          {detail ? <p className="font-sans text-xs leading-relaxed opacity-90">{detail}</p> : null}
+        </div>
       </div>
       <button
         type="button"
