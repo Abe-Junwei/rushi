@@ -40,7 +40,7 @@ describe("useAsrSetupController one-click prepare", () => {
           funasr_ready: true,
           ready_for_transcribe: true,
           transcription_mode: "funasr",
-          funasr_model_id: "iic/SenseVoiceSmall",
+          funasr_model_id: "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
           funasr_language: "zh",
         }),
     } as Response);
@@ -56,7 +56,7 @@ describe("useAsrSetupController one-click prepare", () => {
       expect(result.current.setupOutcome).toBe("ready");
     });
     expect(retryBundledAsrSidecar).not.toHaveBeenCalled();
-    expect(setLocalAsrHubModelPref).toHaveBeenCalledWith("iic/SenseVoiceSmall", {
+    expect(setLocalAsrHubModelPref).toHaveBeenCalledWith("iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch", {
       restartSidecar: false,
     });
     expect(prepareDefaultFunasrModel).not.toHaveBeenCalled();
@@ -76,7 +76,7 @@ describe("useAsrSetupController one-click prepare", () => {
     fetchMock.mockResolvedValue(loopbackHealthResponse(true));
 
     const { result } = renderSetupController({
-      selectedHubModelId: "iic/SenseVoiceSmall",
+      selectedHubModelId: "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
     });
 
     await act(async () => {
@@ -87,7 +87,7 @@ describe("useAsrSetupController one-click prepare", () => {
       expect(result.current.setupOutcome).toBe("ready");
     });
     expect(retryBundledAsrSidecar).not.toHaveBeenCalled();
-    expect(setLocalAsrHubModelPref).toHaveBeenCalledWith("iic/SenseVoiceSmall", {
+    expect(setLocalAsrHubModelPref).toHaveBeenCalledWith("iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch", {
       restartSidecar: false,
     });
     expect(result.current.setupMessage).toContain("无需重复准备");
@@ -128,7 +128,7 @@ describe("useAsrSetupController one-click prepare", () => {
         refreshAsrRuntimeInfo: vi.fn(async () => {}),
         prepareDefaultFunasrModel: vi.fn(async () => {}),
         getSetupSelection: () => ({
-          selectedHubModelId: "iic/SenseVoiceSmall",
+          selectedHubModelId: "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
           catalogStatus: null,
         }),
       }),

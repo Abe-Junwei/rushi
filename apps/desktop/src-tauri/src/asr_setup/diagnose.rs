@@ -269,7 +269,7 @@ fn build_summary(summary: SummaryContext<'_>) -> (Vec<String>, Option<String>) {
                     Some("默认模型缓存未完整完成，请继续执行一键准备或重新下载模型。".into());
             }
         } else if summary.health.funasr_ready {
-            lines.push("默认模型尚未下载，一键准备将拉取 SenseVoiceSmall 权重。".into());
+            lines.push("默认模型尚未下载，一键准备将拉取 Paraformer 长音频权重。".into());
         }
     } else if blocking.is_none() && summary.sidecar_integrity != "corrupt" {
         lines.push("尚未连通 rushi-asr /health。".into());

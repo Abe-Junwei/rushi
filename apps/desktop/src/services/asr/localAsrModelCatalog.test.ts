@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+  DEPRECATED_LOCAL_ASR_HUB_MODEL_IDS,
   LOCAL_ASR_MODEL_CATALOG,
   buildLocalAsrCatalogView,
   catalogEntryForHub,
   computeLocalAsrTranscribeReady,
+  migrateDeprecatedHubModelId,
   parseCatalogStatusFromHealth,
   resolveLocalAsrHubModelId,
   selectedModelPrepareState,
@@ -14,25 +16,34 @@ import {
 } from "./localAsrModelCatalog";
 
 describe("localAsrModelCatalog", () => {
-  it("includes R3g-A curated models", () => {
-    expect(LOCAL_ASR_MODEL_CATALOG).toHaveLength(2);
-    expect(DEFAULT_LOCAL_ASR_HUB_MODEL_ID).toBe("iic/SenseVoiceSmall");
+  it("includes R3g-A curated Paraformer SKU only", () => {
+    expect(LOCAL_ASR_MODEL_CATALOG).toHaveLength(1);
+    expect(DEFAULT_LOCAL_ASR_HUB_MODEL_ID).toBe(
+      "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
+    );
+    expect(catalogEntryForHub("iic/SenseVoiceSmall")?.catalogId).toBe("paraformer-long-vad-punc");
   });
 
-  it("R3g-C C4: Paraformer label recommends long audio; SenseVoice does not", () => {
-    const para =
-      "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch";
-    const sense = catalogEntryForHub("iic/SenseVoiceSmall");
-    const paraformer = catalogEntryForHub(para);
+  it("migrates deprecated SenseVoice hub id to Paraformer default", () => {
+    expect(migrateDeprecatedHubModelId("iic/SenseVoiceSmall")).toBe(
+      DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+    );
+    expect(resolveLocalAsrHubModelId("iic/SenseVoiceSmall")).toBe(
+      DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+    );
+    expect(DEPRECATED_LOCAL_ASR_HUB_MODEL_IDS).toContain("iic/SenseVoiceSmall");
+  });
+
+  it("Paraformer label recommends long audio", () => {
+    const paraformer = catalogEntryForHub(DEFAULT_LOCAL_ASR_HUB_MODEL_ID);
     expect(paraformer?.label).toContain("推荐转写");
-    expect(sense?.label).not.toContain("推荐");
   });
 
   it("resolves hub model id with fallback", () => {
-    const para =
-      "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch";
     expect(resolveLocalAsrHubModelId(null)).toBe(DEFAULT_LOCAL_ASR_HUB_MODEL_ID);
-    expect(resolveLocalAsrHubModelId(para)).toBe(para);
+    expect(resolveLocalAsrHubModelId(DEFAULT_LOCAL_ASR_HUB_MODEL_ID)).toBe(
+      DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+    );
   });
 
   it("detects punc-prepare capability from sidecar root", () => {
@@ -58,22 +69,20 @@ describe("localAsrModelCatalog", () => {
   });
 
   it("flags paraformer SKUs as needing punc prepare", () => {
-    const para =
-      "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch";
-    expect(hubModelNeedsPuncPrepare(para)).toBe(true);
-    expect(hubModelNeedsPuncPrepare("iic/SenseVoiceSmall")).toBe(false);
+    expect(hubModelNeedsPuncPrepare(DEFAULT_LOCAL_ASR_HUB_MODEL_ID)).toBe(true);
+    expect(hubModelNeedsPuncPrepare("iic/SenseVoiceSmall")).toBe(true);
   });
 
   it("parses catalog status from health json", () => {
     const parsed = parseCatalogStatusFromHealth({
       local_asr_model_catalog: [
         {
-          catalog_id: "sensevoice-small",
-          label: "SenseVoice 轻量（默认）",
-          hub_model_id: "iic/SenseVoiceSmall",
-          description: "快",
-          disk_hint: "~1GB",
-          recommend_long_audio: false,
+          catalog_id: "paraformer-long-vad-punc",
+          label: "Paraformer 长音频（推荐转写）",
+          hub_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+          description: "长音频",
+          disk_hint: "~2GB",
+          recommend_long_audio: true,
           cached: true,
           active: true,
           ready_for_transcribe: true,
@@ -82,7 +91,6 @@ describe("localAsrModelCatalog", () => {
     });
     expect(parsed).toHaveLength(1);
     expect(parsed?.[0].readyForTranscribe).toBe(true);
-    expect(catalogEntryForHub("iic/SenseVoiceSmall")?.catalogId).toBe("sensevoice-small");
   });
 
   it("builds full catalog view with caps fallback when server status missing", () => {
@@ -96,10 +104,9 @@ describe("localAsrModelCatalog", () => {
       null,
       DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
     );
-    expect(view).toHaveLength(LOCAL_ASR_MODEL_CATALOG.length);
+    expect(view).toHaveLength(1);
     expect(view[0].cached).toBe(true);
     expect(view[0].readyForTranscribe).toBe(true);
-    expect(view[1].cached).toBe(false);
   });
 
   it("prefers caps when server catalog marks cached false", () => {
@@ -111,12 +118,12 @@ describe("localAsrModelCatalog", () => {
       },
       [
         {
-          catalogId: "sensevoice-small",
-          label: "SenseVoice",
+          catalogId: "paraformer-long-vad-punc",
+          label: "Paraformer",
           hubModelId: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
           description: "",
           diskHint: "",
-          recommendLongAudio: false,
+          recommendLongAudio: true,
           cached: false,
           active: true,
           readyForTranscribe: false,
@@ -129,8 +136,7 @@ describe("localAsrModelCatalog", () => {
   });
 
   it("selectedModelPrepareState respects sidecar mismatch", () => {
-    const para =
-      "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch";
+    const other = "Qwen/Qwen3-ASR-0.6B";
     const view = buildLocalAsrCatalogView(
       {
         funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
@@ -138,28 +144,11 @@ describe("localAsrModelCatalog", () => {
         funasr_required_models_cached: true,
       },
       null,
-      para,
+      other,
     );
-    const state = selectedModelPrepareState(view, para, DEFAULT_LOCAL_ASR_HUB_MODEL_ID);
+    const state = selectedModelPrepareState(view, other, DEFAULT_LOCAL_ASR_HUB_MODEL_ID);
     expect(state.sidecarMatchesSelection).toBe(false);
     expect(state.readyForTranscribe).toBe(false);
-    expect(state.cached).toBe(false);
-  });
-
-  it("computeLocalAsrTranscribeReady ignores global ready when sidecar mismatches selection", () => {
-    const para =
-      "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch";
-    const result = computeLocalAsrTranscribeReady({
-      asrHealth: "ok",
-      asrCaps: {
-        funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
-        funasr_required_models_cached: true,
-        ready_for_transcribe: true,
-      },
-      selectedHubModelId: para,
-    });
-    expect(result.sidecarMatchesSelection).toBe(false);
-    expect(result.ready).toBe(false);
   });
 
   it("computeLocalAsrTranscribeReady is true when sidecar matches and SKU ready", () => {
@@ -178,18 +167,29 @@ describe("localAsrModelCatalog", () => {
     expect(result.ready).toBe(true);
   });
 
-  it("computeLocalAsrTranscribeReady blocks when loaded memory mismatches config", () => {
-    const para =
-      "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch";
+  it("computeLocalAsrTranscribeReady treats deprecated sidecar id as matching Paraformer selection", () => {
     const result = computeLocalAsrTranscribeReady({
       asrHealth: "ok",
       asrCaps: {
-        funasr_model_id: para,
-        funasr_loaded_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+        funasr_model_id: "iic/SenseVoiceSmall",
         funasr_required_models_cached: true,
         ready_for_transcribe: true,
       },
-      selectedHubModelId: para,
+      selectedHubModelId: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+    });
+    expect(result.sidecarMatchesSelection).toBe(true);
+  });
+
+  it("computeLocalAsrTranscribeReady blocks when loaded memory mismatches config", () => {
+    const result = computeLocalAsrTranscribeReady({
+      asrHealth: "ok",
+      asrCaps: {
+        funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+        funasr_loaded_model_id: "Qwen/Qwen3-ASR-0.6B",
+        funasr_required_models_cached: true,
+        ready_for_transcribe: true,
+      },
+      selectedHubModelId: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
     });
     expect(result.sidecarMatchesSelection).toBe(true);
     expect(result.ready).toBe(false);

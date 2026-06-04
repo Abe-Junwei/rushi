@@ -5,7 +5,9 @@ from __future__ import annotations
 from dataclasses import dataclass
 from typing import Any
 
-from rushi_asr.defaults import effective_funasr_model_id
+from rushi_asr.defaults import DEFAULT_FUNASR_MODEL_ID, effective_funasr_model_id
+
+_DEPRECATED_HUB_MODEL_IDS = frozenset({"iic/SenseVoiceSmall"})
 
 
 @dataclass(frozen=True)
@@ -20,17 +22,9 @@ class LocalAsrCatalogEntry:
 
 LOCAL_ASR_MODEL_CATALOG: tuple[LocalAsrCatalogEntry, ...] = (
     LocalAsrCatalogEntry(
-        catalog_id="sensevoice-small",
-        label="SenseVoice 轻量（默认）",
-        hub_model_id="iic/SenseVoiceSmall",
-        description="速度快、占用较低；长音频可能只有整轨单语段。",
-        disk_hint="约 0.5–1 GB",
-        recommend_long_audio=False,
-    ),
-    LocalAsrCatalogEntry(
         catalog_id="paraformer-long-vad-punc",
         label="Paraformer 长音频（推荐转写）",
-        hub_model_id="iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
+        hub_model_id=DEFAULT_FUNASR_MODEL_ID,
         description="带 VAD、标点与时间戳，适合需要多语段的长音频。",
         disk_hint="约 1–2 GB",
         recommend_long_audio=True,
@@ -38,8 +32,15 @@ LOCAL_ASR_MODEL_CATALOG: tuple[LocalAsrCatalogEntry, ...] = (
 )
 
 
+def migrate_deprecated_hub_model_id(hub_model_id: str) -> str:
+    raw = (hub_model_id or "").strip()
+    if raw in _DEPRECATED_HUB_MODEL_IDS:
+        return DEFAULT_FUNASR_MODEL_ID
+    return raw
+
+
 def resolve_hub_model_id(model_id: str | None) -> str:
-    raw = (model_id or "").strip()
+    raw = migrate_deprecated_hub_model_id(model_id or "")
     if raw:
         known = {e.hub_model_id for e in LOCAL_ASR_MODEL_CATALOG}
         if raw in known:
@@ -50,8 +51,9 @@ def resolve_hub_model_id(model_id: str | None) -> str:
 
 
 def catalog_entry_for_hub(hub_model_id: str) -> LocalAsrCatalogEntry | None:
+    hub = migrate_deprecated_hub_model_id(hub_model_id)
     for entry in LOCAL_ASR_MODEL_CATALOG:
-        if entry.hub_model_id == hub_model_id:
+        if entry.hub_model_id == hub:
             return entry
     return None
 
@@ -62,7 +64,7 @@ def get_catalog_status(active_hub_model_id: str | None = None) -> list[dict[str,
         required_models_cached_guess,
     )
 
-    active = (active_hub_model_id or "").strip() or effective_funasr_model_id()
+    active = migrate_deprecated_hub_model_id(active_hub_model_id or "") or effective_funasr_model_id()
     items: list[dict[str, Any]] = []
     for entry in LOCAL_ASR_MODEL_CATALOG:
         cached = recognizer_model_cached_guess(entry.hub_model_id)
@@ -83,4 +85,7 @@ def get_catalog_status(active_hub_model_id: str | None = None) -> list[dict[str,
 
 
 def is_known_hub_model_id(hub_model_id: str) -> bool:
-    return hub_model_id in {e.hub_model_id for e in LOCAL_ASR_MODEL_CATALOG}
+    raw = (hub_model_id or "").strip()
+    if raw in _DEPRECATED_HUB_MODEL_IDS:
+        return False
+    return raw in {e.hub_model_id for e in LOCAL_ASR_MODEL_CATALOG}

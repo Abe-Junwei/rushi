@@ -5,7 +5,9 @@ from __future__ import annotations
 import os
 
 # ModelScope hub id used when RUSHI_FUNASR_MODEL is unset (runtime download into RUSHI_MODELS_ROOT).
-DEFAULT_FUNASR_MODEL_ID = "iic/SenseVoiceSmall"
+DEFAULT_FUNASR_MODEL_ID = (
+    "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch"
+)
 DEFAULT_FUNASR_VAD_MODEL_ID = "iic/speech_fsmn_vad_zh-cn-16k-common-pytorch"
 DEFAULT_FUNASR_PUNC_MODEL_ID = "iic/punc_ct-transformer_zh-cn-common-vocab272727-pytorch"
 

@@ -22,7 +22,7 @@ vi.mock("../services/asr/loopbackFetch", () => ({
 }));
 
 vi.mock("../tauri/projectApi", () => ({
-  getLocalAsrHubModelPref: vi.fn(() => Promise.resolve("iic/SenseVoiceSmall")),
+  getLocalAsrHubModelPref: vi.fn(() => Promise.resolve("iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch")),
   getLocalAsrRecognitionLanguagePref: vi.fn(() => Promise.resolve("zh")),
   asrAppManagesBundledSidecar: vi.fn(() => Promise.resolve(true)),
 }));

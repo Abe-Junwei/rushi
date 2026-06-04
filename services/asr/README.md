@@ -52,7 +52,7 @@ python -m rushi_asr
 ## 依赖
 
 - **ffmpeg / ffprobe**：须在 `PATH` 中，用于上传文件的解码与 **16 kHz mono WAV** 规范化。
-- **可选 FunASR**：`pip install -e ".[funasr]"` 后可选设置 `RUSHI_FUNASR_MODEL`（例如 `paraformer-zh`）；**未设置时使用内置默认** `iic/SenseVoiceSmall`。默认模型与必需辅助模型建议先通过 `POST /v1/models/prepare-default` 或桌面端「下载默认模型」准备完成；未安装 FunASR 时仍走 **stub**（单段、空文本、带 `detail` 说明）。
+- **可选 FunASR**：`pip install -e ".[funasr]"` 后可选设置 `RUSHI_FUNASR_MODEL`；**未设置时使用内置默认** Paraformer 长音频（`iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch`）。默认模型与必需辅助模型建议先通过 `POST /v1/models/prepare-default` 或桌面端「下载默认模型」准备完成；未安装 FunASR 时仍走 **stub**（单段、空文本、带 `detail` 说明）。
 - **模型缓存目录**：桌面与侧车约定 **`RUSHI_MODELS_ROOT=<app_data_root>/models`**（`app_data_root` 由 Tauri 解析；若存在 legacy 嵌套 `studio.lingchuang.rushi/studio.lingchuang.rushi/` 则用之，见 `project/app_data_paths.rs`）。壳启动侧车或 **`npm run asr:dev`** 时会设置 `RUSHI_MODELS_ROOT` 并映射 **`MODELSCOPE_CACHE`** / **`HF_HOME`**。**未设置时** `apply_models_root_env()` 不生效，`/health.rushi_models_root` 为 `null`，`*_cached` 探测失败——权重会落到 `~/.cache/modelscope`，环境页会显示「未缓存」。
 - **可选 manifest 校验**：`RUSHI_MODEL_VERIFY_MANIFEST` 指向 JSON 文件（相对路径则相对 `RUSHI_MODELS_ROOT`），在 `POST /v1/models/prepare-default`（及异步路径完成时）对列出的文件做 **SHA256** 校验；不匹配返回 **400**（见 `rushi_asr/model_manifest_verify.py`）。Manifest 为对象数组，每项含 `path` 或 `rel`（相对 `RUSHI_MODELS_ROOT`）、`sha256`（小写十六进制）。
 
@@ -60,7 +60,7 @@ python -m rushi_asr
 
 - `RUSHI_FUNASR_DEVICE`（默认 `cpu`）
 - `RUSHI_FUNASR_LANGUAGE`（默认 `zh`；allowlist：`zh` / `auto` / `en` / `ja` / `ko` / `yue`；桌面写入 `prefs/funasr_language.txt`）
-- `RUSHI_FUNASR_USE_ITN`（**R3g-C** 排障：SenseVoice 默认开 ITN；`0`/`false` 关闭）
+- `RUSHI_FUNASR_USE_ITN`（**R3g-C** 排障：部分 SKU 默认开 ITN；`0`/`false` 关闭）
 - `RUSHI_FUNASR_VAD_MODEL`（默认 `fsmn-vad`；设为空字符串可关闭 VAD 参数传递）
 - **Generate Profile（R3g-C）**：`use_itn` / `merge_vad` / `batch_size_*` 等由 `rushi_asr/asr_model_profile.py` 按 SKU+时长生成，见 [`docs/architecture/asr-generate-params-truth.md`](../../docs/architecture/asr-generate-params-truth.md)
 - **R3e-B blocking 长音频分窗**（≥30min）：`RUSHI_FUNASR_WINDOW_SEC`（默认 **300**）、`RUSHI_FUNASR_WINDOW_THRESHOLD_SEC`（默认 **1800**）

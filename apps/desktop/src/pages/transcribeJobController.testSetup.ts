@@ -42,7 +42,7 @@ vi.mock("../services/asr/transcribeVocabularyPreflight", () => ({
   loadTranscribeVocabularyPreflight: vi.fn(() => Promise.resolve({
     hotwords: null,
     isOnlineMode: false,
-    localSkuLabel: "SenseVoice 轻量（默认）",
+    localSkuLabel: "Paraformer 长音频（推荐转写）",
     localHotwordNote: null,
     onlineProviderId: null,
     onlineChannel: "unsupported",

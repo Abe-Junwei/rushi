@@ -5,7 +5,7 @@ import {
   normalizeLocalAsrRecognitionLanguage,
   sidecarRecognitionLanguageMatchesSelection,
 } from "./localAsrRecognitionLanguage";
-import { resolveLocalAsrHubModelId } from "./localAsrModelCatalog";
+import { migrateDeprecatedHubModelId, resolveLocalAsrHubModelId } from "./localAsrModelCatalog";
 
 /** Sidecar env/config matches UI hub (loaded weight may still be warming). */
 export function sidecarConfigMatchesHub(
@@ -13,13 +13,14 @@ export function sidecarConfigMatchesHub(
   hub: string,
   language: string,
 ): boolean {
+  const targetHub = migrateDeprecatedHubModelId(hub);
   const loaded = caps.funasr_loaded_model_id?.trim();
-  if (loaded && loaded !== hub) {
+  if (loaded && loaded !== targetHub) {
     return false;
   }
-  const configured = caps.funasr_model_id?.trim() || "";
+  const configured = migrateDeprecatedHubModelId(caps.funasr_model_id?.trim() || "");
   return (
-    configured === hub &&
+    configured === targetHub &&
     sidecarRecognitionLanguageMatchesSelection(
       caps.funasr_language,
       normalizeLocalAsrRecognitionLanguage(language),

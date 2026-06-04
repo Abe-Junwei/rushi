@@ -106,7 +106,7 @@ export function loopbackHealthResponse(ready: boolean): Response {
         funasr_ready: ready,
         ready_for_transcribe: ready,
         transcription_mode: ready ? "funasr" : "stub",
-        funasr_model_id: "iic/SenseVoiceSmall",
+        funasr_model_id: "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
         funasr_language: "zh",
       }),
   } as Response;
@@ -147,7 +147,7 @@ export function renderSetupController(overrides?: {
       refreshAsrRuntimeInfo: vi.fn(async () => {}),
       prepareDefaultFunasrModel: overrides?.prepareDefaultFunasrModel ?? vi.fn(async () => {}),
       getSetupSelection: () => ({
-        selectedHubModelId: overrides?.selectedHubModelId ?? "iic/SenseVoiceSmall",
+        selectedHubModelId: overrides?.selectedHubModelId ?? "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
         catalogStatus: null,
       }),
     }),
@@ -159,7 +159,7 @@ export function resetAsrSetupControllerTestMocks(): void {
   retryBundledAsrSidecar.mockReset();
   setLocalAsrHubModelPref.mockReset();
   getLocalAsrHubModelPref.mockReset();
-  getLocalAsrHubModelPref.mockResolvedValue("iic/SenseVoiceSmall");
+  getLocalAsrHubModelPref.mockResolvedValue("iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch");
   setLocalAsrHubModelPref.mockResolvedValue(undefined);
   getLocalAsrRecognitionLanguagePref.mockReset();
   getLocalAsrRecognitionLanguagePref.mockResolvedValue("zh");

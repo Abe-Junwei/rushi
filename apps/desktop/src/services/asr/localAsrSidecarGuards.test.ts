@@ -5,7 +5,7 @@ import {
 } from "./localAsrSidecarGuards";
 
 const selection = {
-  selectedHubModelId: "iic/SenseVoiceSmall",
+  selectedHubModelId: "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
   catalogStatus: null,
   recognitionLanguage: "zh" as const,
 };
@@ -21,7 +21,7 @@ const readyCaps = {
   funasr_ready: true,
   ready_for_transcribe: true,
   transcription_mode: "funasr" as const,
-  funasr_model_id: "iic/SenseVoiceSmall",
+  funasr_model_id: "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
   funasr_language: "zh",
 };
 
@@ -64,7 +64,7 @@ describe("localAsrSidecarGuards", () => {
         {
           ...readyCaps,
           funasr_model_id: "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
-          funasr_loaded_model_id: "iic/SenseVoiceSmall",
+          funasr_loaded_model_id: "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
         },
         {
           ...selection,

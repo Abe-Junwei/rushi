@@ -26,4 +26,4 @@ python -m pip install -U pip
 python -m pip install -e ".[funasr]"
 echo ""
 echo "OK: FunASR optional dependencies installed under $ASR/.venv"
-echo "Next: set RUSHI_FUNASR_MODEL (e.g. iic/SenseVoiceSmall), restart: python -m rushi_asr"
+echo "Next: optional RUSHI_FUNASR_MODEL override; default is Paraformer long-vad-punc; restart: python -m rushi_asr"

@@ -94,7 +94,12 @@ def test_prepare_async_without_funasr_returns_503() -> None:
     client = TestClient(app)
     res2 = client.post("/v1/models/prepare-default/async")
     assert res2.status_code == 503
-    res3 = client.post("/v1/models/prepare/async", json={"model_id": "iic/SenseVoiceSmall"})
+    res3 = client.post(
+        "/v1/models/prepare/async",
+        json={
+            "model_id": "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
+        },
+    )
     assert res3.status_code == 503
 
 
@@ -105,13 +110,14 @@ def test_models_catalog_endpoint() -> None:
     assert res.status_code == 200
     body = res.json()
     assert isinstance(body.get("items"), list)
-    assert len(body["items"]) >= 2
+    assert len(body["items"]) >= 1
 
 
 def test_default_model_cached_guess_requires_complete_model(monkeypatch, tmp_path: Path) -> None:
     ms = tmp_path / "modelscope"
-    model_dir = ms / "models" / "iic" / "SenseVoiceSmall"
-    temp_dir = ms / "models" / "._____temp" / "iic" / "SenseVoiceSmall"
+    para = "speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch"
+    model_dir = ms / "models" / "iic" / para
+    temp_dir = ms / "models" / "._____temp" / "iic" / para
     vad_dir = ms / "models" / "iic" / "speech_fsmn_vad_zh-cn-16k-common-pytorch"
 
     temp_dir.mkdir(parents=True)

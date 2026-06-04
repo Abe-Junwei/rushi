@@ -2,6 +2,9 @@
 
 export const LOCAL_ASR_HUB_MODEL_STORAGE_KEY = "rushi.localAsr.hubModelId";
 
+/** Removed from catalog; migrated to {@link DEFAULT_LOCAL_ASR_HUB_MODEL_ID} on read. */
+export const DEPRECATED_LOCAL_ASR_HUB_MODEL_IDS = ["iic/SenseVoiceSmall"] as const;
+
 export interface LocalAsrCatalogEntry {
   catalogId: string;
   label: string;
@@ -12,14 +15,6 @@ export interface LocalAsrCatalogEntry {
 }
 
 export const LOCAL_ASR_MODEL_CATALOG: readonly LocalAsrCatalogEntry[] = [
-  {
-    catalogId: "sensevoice-small",
-    label: "SenseVoice 轻量（默认）",
-    hubModelId: "iic/SenseVoiceSmall",
-    description: "速度快、占用较低；长音频可能只有整轨单语段。",
-    diskHint: "约 0.5–1 GB",
-    recommendLongAudio: false,
-  },
   {
     catalogId: "paraformer-long-vad-punc",
     label: "Paraformer 长音频（推荐转写）",
@@ -33,12 +28,21 @@ export const LOCAL_ASR_MODEL_CATALOG: readonly LocalAsrCatalogEntry[] = [
 
 export const DEFAULT_LOCAL_ASR_HUB_MODEL_ID = LOCAL_ASR_MODEL_CATALOG[0].hubModelId;
 
+export function migrateDeprecatedHubModelId(hubModelId: string): string {
+  const raw = hubModelId.trim();
+  if ((DEPRECATED_LOCAL_ASR_HUB_MODEL_IDS as readonly string[]).includes(raw)) {
+    return DEFAULT_LOCAL_ASR_HUB_MODEL_ID;
+  }
+  return raw;
+}
+
 export function catalogEntryForHub(hubModelId: string): LocalAsrCatalogEntry | undefined {
-  return LOCAL_ASR_MODEL_CATALOG.find((e) => e.hubModelId === hubModelId);
+  const hub = migrateDeprecatedHubModelId(hubModelId);
+  return LOCAL_ASR_MODEL_CATALOG.find((e) => e.hubModelId === hub);
 }
 
 export function resolveLocalAsrHubModelId(preferred: string | null | undefined): string {
-  const raw = (preferred ?? "").trim();
+  const raw = migrateDeprecatedHubModelId(preferred ?? "");
   if (raw && catalogEntryForHub(raw)) return raw;
   if (raw.includes("/")) return raw;
   return DEFAULT_LOCAL_ASR_HUB_MODEL_ID;
@@ -128,7 +132,7 @@ export function sidecarIsFreshBuildFromRoot(data: unknown): boolean {
 }
 
 export function hubModelNeedsPuncPrepare(hubModelId: string): boolean {
-  const mid = hubModelId.toLowerCase();
+  const mid = migrateDeprecatedHubModelId(hubModelId).toLowerCase();
   if (mid.includes("sensevoice") || mid.includes("fun-asr-nano") || mid.includes("qwen")) {
     return false;
   }
@@ -223,7 +227,10 @@ export function selectedModelMatchesSidecar(
   sidecarHubModelId: string | null | undefined,
 ): boolean {
   if (!sidecarHubModelId) return false;
-  return selectedHubModelId === sidecarHubModelId;
+  return (
+    migrateDeprecatedHubModelId(selectedHubModelId) ===
+    migrateDeprecatedHubModelId(sidecarHubModelId)
+  );
 }
 
 /** True when sidecar memory holds the same hub id as configured (D1). Null loaded = not yet loaded. */
@@ -237,7 +244,9 @@ export function sidecarMemoryModelMatchesConfig(
   if (!configured) return true;
   const loaded = asrCaps?.funasr_loaded_model_id;
   if (loaded == null || loaded === "") return true;
-  return loaded === configured;
+  return (
+    migrateDeprecatedHubModelId(loaded) === migrateDeprecatedHubModelId(configured)
+  );
 }
 
 export function selectedModelPrepareState(
@@ -269,14 +278,13 @@ export function buildLocalAsrCatalogView(
   serverStatus: LocalAsrCatalogStatusItem[] | null,
   selectedHubModelId: string,
 ): LocalAsrCatalogStatusItem[] {
-  const activeHub = caps?.funasr_model_id ?? selectedHubModelId;
+  const activeHub = migrateDeprecatedHubModelId(caps?.funasr_model_id ?? selectedHubModelId);
   return LOCAL_ASR_MODEL_CATALOG.map((entry) => {
     const fromServer = serverStatus?.find((s) => s.hubModelId === entry.hubModelId);
     const active = entry.hubModelId === activeHub;
     let cached = fromServer?.cached ?? false;
     let readyForTranscribe = fromServer?.readyForTranscribe ?? false;
 
-    // Only apply /health caps to the matching hub id (avoid SenseVoice cache bleeding into UI).
     if (entry.hubModelId === DEFAULT_LOCAL_ASR_HUB_MODEL_ID && caps?.funasr_default_model_cached === true) {
       cached = true;
     }
@@ -305,4 +313,3 @@ export function buildLocalAsrCatalogView(
     };
   });
 }
-

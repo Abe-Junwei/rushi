@@ -43,7 +43,9 @@ pub fn local_transcribe_gate_from_health(
         .and_then(|x| x.as_str())
         .unwrap_or("");
     if let Some(pref) = hub_pref.map(str::trim).filter(|s| !s.is_empty()) {
-        if sidecar_model != pref {
+        let pref_norm = crate::local_asr_model::normalize_hub_model_id(pref);
+        let sidecar_norm = crate::local_asr_model::normalize_hub_model_id(sidecar_model);
+        if sidecar_norm != pref_norm {
             return Err(format!(
                 "侧车当前模型（{sidecar_model}）与所选模型（{pref}）不一致；请先在环境页「应用并重启侧车」。"
             ));
@@ -131,18 +133,22 @@ mod tests {
         })
     }
 
+    const PARA: &str =
+        "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch";
+
     #[test]
     fn gate_passes_when_hub_matches_sidecar() {
-        local_transcribe_gate_from_health(
-            &ok_health("iic/SenseVoiceSmall"),
-            Some("iic/SenseVoiceSmall"),
-        )
-        .unwrap();
+        local_transcribe_gate_from_health(&ok_health(PARA), Some(PARA)).unwrap();
+    }
+
+    #[test]
+    fn gate_passes_when_deprecated_pref_matches_paraformer_sidecar() {
+        local_transcribe_gate_from_health(&ok_health(PARA), Some("iic/SenseVoiceSmall")).unwrap();
     }
 
     #[test]
     fn gate_blocks_stub_mode() {
-        let mut health = ok_health("iic/SenseVoiceSmall");
+        let mut health = ok_health(PARA);
         health["transcription_mode"] = json!("stub");
         assert!(local_transcribe_gate_from_health(&health, None).is_err());
     }
@@ -150,23 +156,17 @@ mod tests {
     #[test]
     fn gate_blocks_hub_mismatch() {
         assert!(local_transcribe_gate_from_health(
-            &ok_health("iic/SenseVoiceSmall"),
-            Some("iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch"),
+            &ok_health(PARA),
+            Some("Qwen/Qwen3-ASR-0.6B"),
         )
         .is_err());
     }
 
     #[test]
     fn gate_blocks_loaded_memory_mismatch() {
-        let mut health = ok_health(
-            "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
-        );
-        health["funasr_loaded_model_id"] = json!("iic/SenseVoiceSmall");
-        assert!(local_transcribe_gate_from_health(
-            &health,
-            Some("iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch"),
-        )
-        .is_err());
+        let mut health = ok_health(PARA);
+        health["funasr_loaded_model_id"] = json!("Qwen/Qwen3-ASR-0.6B");
+        assert!(local_transcribe_gate_from_health(&health, Some(PARA)).is_err());
     }
 
     #[test]

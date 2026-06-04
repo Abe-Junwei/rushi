@@ -39,7 +39,7 @@ describe("useAsrSetupController diagnose", () => {
         refreshAsrRuntimeInfo: vi.fn(async () => {}),
         prepareDefaultFunasrModel: vi.fn(async () => {}),
         getSetupSelection: () => ({
-          selectedHubModelId: "iic/SenseVoiceSmall",
+          selectedHubModelId: "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
           catalogStatus: null,
         }),
       }),
@@ -72,7 +72,7 @@ describe("useAsrSetupController diagnose", () => {
         funasr_ready: false,
         ready_for_transcribe: false,
         transcription_mode: "stub",
-        funasr_model_id: "iic/SenseVoiceSmall",
+        funasr_model_id: "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
         rushi_models_root: "/tmp/models",
         }),
     } as Response);
@@ -84,7 +84,7 @@ describe("useAsrSetupController diagnose", () => {
         refreshAsrRuntimeInfo: vi.fn(async () => {}),
         prepareDefaultFunasrModel: vi.fn(async () => {}),
         getSetupSelection: () => ({
-          selectedHubModelId: "iic/SenseVoiceSmall",
+          selectedHubModelId: "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
           catalogStatus: null,
         }),
       }),

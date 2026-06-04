@@ -6,6 +6,23 @@ use tauri::State;
 
 const PREF_REL: &str = "prefs/funasr_hub_model_id.txt";
 
+/// Keep in sync with `services/asr/rushi_asr/defaults.py` / desktop `localAsrModelCatalog.ts`.
+pub const DEFAULT_FUNASR_HUB_MODEL_ID: &str =
+    "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch";
+
+const DEPRECATED_FUNASR_HUB_MODEL_IDS: &[&str] = &["iic/SenseVoiceSmall"];
+
+pub fn normalize_hub_model_id(hub_model_id: &str) -> String {
+    let trimmed = hub_model_id.trim();
+    if trimmed.is_empty() {
+        return String::new();
+    }
+    if DEPRECATED_FUNASR_HUB_MODEL_IDS.contains(&trimmed) {
+        return DEFAULT_FUNASR_HUB_MODEL_ID.to_string();
+    }
+    trimmed.to_string()
+}
+
 pub fn pref_path(st: &DbState) -> PathBuf {
     st.root.join(PREF_REL)
 }
@@ -17,10 +34,20 @@ pub fn read_hub_model_pref_for_app_root(app_data_root: &std::path::Path) -> Opti
     };
     let trimmed = raw.trim();
     if trimmed.is_empty() {
-        None
-    } else {
-        Some(trimmed.to_string())
+        return None;
     }
+    let normalized = normalize_hub_model_id(trimmed);
+    if normalized != trimmed {
+        let path = app_data_root.join(PREF_REL);
+        if let Some(parent) = path.parent() {
+            let _ = std::fs::create_dir_all(parent);
+        }
+        let tmp = path.with_extension("txt.tmp");
+        if std::fs::write(&tmp, format!("{normalized}\n")).is_ok() {
+            let _ = std::fs::rename(&tmp, &path);
+        }
+    }
+    Some(normalized)
 }
 
 pub fn read_hub_model_pref(st: &DbState) -> Option<String> {
@@ -28,7 +55,7 @@ pub fn read_hub_model_pref(st: &DbState) -> Option<String> {
 }
 
 pub fn write_hub_model_pref(st: &DbState, hub_model_id: &str) -> Result<(), String> {
-    let hub = hub_model_id.trim();
+    let hub = normalize_hub_model_id(hub_model_id);
     if hub.is_empty() {
         return Err("hub_model_id 不能为空".into());
     }
@@ -90,7 +117,7 @@ mod tests {
         write_hub_model_pref(&st, "iic/SenseVoiceSmall").unwrap();
         assert_eq!(
             read_hub_model_pref(&st).as_deref(),
-            Some("iic/SenseVoiceSmall")
+            Some(DEFAULT_FUNASR_HUB_MODEL_ID)
         );
         let _ = fs::remove_dir_all(&tmp);
     }
