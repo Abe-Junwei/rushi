@@ -1,6 +1,6 @@
 # Spec: UI 重设计与前后端并行开发
 
-> **状态（2026-05-25）**：首轮 UI 重设计验收已完成。后续排期见 **[统一执行路线图](../execution/plans/rushi-execution-roadmap.md)**；能力边界见 [oumi-remediation-report.md](../execution/specs/oumi-remediation-report.md) Part I。
+> **状态（2026-05-25）**：首轮 UI 重设计验收已完成。后续排期见 **[统一执行路线图](../plans/rushi-execution-roadmap.md)**；能力边界见 [oumi-remediation-report.md](./oumi-remediation-report.md) Part I。
 
 ## 目标
 先完成桌面端核心工作流的 UI 重设计根部，再以纵向薄片方式推进后续功能，避免后端功能堆叠后才发现前端信息架构、交互状态和视觉系统无法承载。
@@ -127,7 +127,7 @@ Stitch 产物进入代码前，先沉淀为可维护的设计约束。
 
 ## 后续候选薄片
 
-> UI 根部已收工；下列项已映射至 [统一执行路线图](../execution/plans/rushi-execution-roadmap.md)（R2–R5、R9），不再单独开「纯 UI 轮次」。
+> UI 根部已收工；下列项已映射至 [统一执行路线图](../plans/rushi-execution-roadmap.md)（R2–R5、R9），不再单独开「纯 UI 轮次」。
 
 1. 在线 STT Provider：先完成一个 Provider 的配置、检测、提交、轮询、失败与结果落库 UI，再扩展更多 Provider。
 2. FunASR 模型准备：下载状态、等待时长、失败恢复、缓存位置说明、manifest 校验反馈。
@@ -183,4 +183,4 @@ Stitch 产物进入代码前，先沉淀为可维护的设计约束。
 
 - 改动：校对工作页（B）布局与波形/语段时间轴/底栏对齐 Serene Scholar；关窗守卫与未保存对话框（`allow-destroy`）；波形区控件与滚动同步等工程项并入工作流。
 - 验证：Tauri 手测通过（欢迎/建项、校对主路径、关窗）；`npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs` 通过。
-- 下一轮：**R1 LLM-0** — 见 [统一执行路线图](../execution/plans/rushi-execution-roadmap.md) §10。
+- 下一轮：**R1 LLM-0** — 见 [统一执行路线图](../plans/rushi-execution-roadmap.md) §10。

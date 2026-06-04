@@ -87,6 +87,27 @@ function checkTsFile(fullPath) {
       errors.push(`${rel}: Lucide 图标尺寸必须使用 LUCIDE_ICON_SIZE_SM/MD/LG（发现 ${rawIconSizes.length} 处硬编码尺寸）`);
     }
   }
+
+  // Preflight 关闭：内联 button className 须显式 bg-* 或使用带背景的 CSS 组件类
+  if (!rel.endsWith('.test.ts') && !rel.endsWith('.test.tsx')) {
+    const inlineButtonClassRe = /<button\b[^>]*\bclassName="([^"]+)"/g;
+    const safeButtonClassMarkers = [
+      'bg-',
+      'dropdown-item',
+      'icon-btn',
+      'region-action-btn',
+      'waveform-playback',
+      'waveform-minimap-switch',
+    ];
+    let bm;
+    while ((bm = inlineButtonClassRe.exec(source))) {
+      const cls = bm[1];
+      if (safeButtonClassMarkers.some((m) => cls.includes(m))) continue;
+      errors.push(
+        `${rel}: <button className="…"> 须含 bg-* 或 dropdown-item/icon-btn 等组件类（Preflight 关闭；可用 CONTROL_BTN_* / CONTROL_BTN_LINK）`,
+      );
+    }
+  }
 }
 
 function checkRustFile(fullPath) {

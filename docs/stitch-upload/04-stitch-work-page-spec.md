@@ -124,7 +124,7 @@
 
 ## 7. 波形与时间轴核心区
 
-> **波形精修（Stitch 本轮）：** 详见 [`stitch-waveform-polish-spec.md`](./19-stitch-waveform-polish-spec.md) 与静态原型 [`stitch-waveform-polish-layout.html`](../../apps/desktop/stitch-waveform-polish-layout.html)。  
+> **波形精修（Stitch 本轮）：** 详见 [`stitch-waveform-polish-spec.md`](./stitch-waveform-polish-spec.md) 与静态原型 [`stitch-waveform-polish-layout.html`](../stitch-waveform-polish-layout.html)。  
 > 现网实现为 **Notion Zen 波形 tier**（`EditorWaveformPane`）：可选 minimap、白底 peaks、语段 overlay、嵌入 22px 标尺、40px 底栏 transport/zoom。**不再是**早期 spec 中的深色 sticky 波形条。
 
 ### 7.1 外层滚动容器
@@ -143,7 +143,7 @@
 | 嵌入标尺 | 22px 透明叠层，无刻度背景带 |
 | 底栏 40px | 左：Lucide 播放/时间/倍速/跳转；右：缩放簇 |
 
-Token 与交互细节见 [`stitch-waveform-polish-spec.md`](./19-stitch-waveform-polish-spec.md)。
+Token 与交互细节见 [`stitch-waveform-polish-spec.md`](./stitch-waveform-polish-spec.md)。
 
 ### 7.3 语段列表（每行一条 segment）
 
