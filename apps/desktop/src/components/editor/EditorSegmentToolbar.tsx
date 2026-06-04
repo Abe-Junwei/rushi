@@ -1,4 +1,4 @@
-import { BookMarked, History, ListChecks, Minus, Plus, Redo2, Replace, SpellCheck, Undo2 } from "lucide-react";
+import { History, ListChecks, Minus, Plus, Redo2, Replace, SpellCheck, Undo2 } from "lucide-react";
 import {
   captureTranscriptTextareaSelection,
   readTranscriptTextareaSelection,
@@ -134,31 +134,6 @@ export function EditorSegmentToolbar({
           <span className="inline-flex items-center gap-1.5">
             <ListChecks className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
             {c.correctionRulesDialog.phase === "loading" ? "处理中..." : "纠错规则"}
-          </span>
-        </button>
-        <button
-          type="button"
-          className={[
-            appearanceBtnBase,
-            "px-2.5",
-            c.lexiconProofreadDialog.phase === "loading"
-              ? "bg-notion-sidebar text-notion-text"
-              : "text-notion-text-muted hover:bg-notion-sidebar-hover hover:text-notion-text",
-          ].join(" ")}
-          disabled={!c.canLexiconProofread || c.lexiconProofreadDialog.phase === "loading"}
-          onClick={() => void c.requestLexiconProofread()}
-          aria-label="AI 校对（词表）"
-          title={
-            c.busy
-              ? "处理中"
-              : c.canLexiconProofread
-                ? "依据术语表与纠错记忆校对专名/术语（需确认）"
-                : (c.lexiconProofreadBlockReason ?? "词表校对不可用")
-          }
-        >
-          <span className="inline-flex items-center gap-1.5">
-            <BookMarked className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-            {c.lexiconProofreadDialog.phase === "loading" ? "处理中..." : "词表校对"}
           </span>
         </button>
         <button

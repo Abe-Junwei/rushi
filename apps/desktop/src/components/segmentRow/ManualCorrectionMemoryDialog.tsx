@@ -37,7 +37,7 @@ export function ManualCorrectionMemoryDialog({
       >
         <div className="flex min-h-0 flex-1 flex-col gap-3 px-5 py-3">
           <p className={PANEL_TYPOGRAPHY.dialogBody}>
-            将选中的错形与正确形式写入纠错记忆，用于改正建议；错形不会进入转写热词。
+            开始学习这一对词。之后在稿中把错形改成正形，每次保存都会累计；满 3 次将自动加入术语表并可用于「纠错规则」。
           </p>
           <label className={`flex flex-col gap-1 ${PANEL_TYPOGRAPHY.dialogBody}`}>
             <span className={PANEL_TYPOGRAPHY.fieldLabel}>错形（选中文本）</span>

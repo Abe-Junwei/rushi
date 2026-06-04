@@ -162,7 +162,7 @@ pub(crate) fn load_rules_for_export(
     let sql = if stable_only {
         "SELECT before_text, after_text, hit_count, accepted_as_rule, updated_at_ms \
          FROM correction_memory \
-         WHERE accepted_as_rule = 1 OR hit_count >= 2 \
+         WHERE accepted_as_rule = 1 OR hit_count >= 3 \
          ORDER BY updated_at_ms DESC"
     } else {
         "SELECT before_text, after_text, hit_count, accepted_as_rule, updated_at_ms \

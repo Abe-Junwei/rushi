@@ -27,7 +27,7 @@ export function GlossaryMineSection({ mine, disabled }: Props) {
             推荐加入术语表
           </h2>
           <p className={`m-0 mt-1 ${PANEL_TYPOGRAPHY.meta}`}>
-            来自稳定纠错记忆（命中 ≥2 或已采纳），正词尚未在术语表中。采纳后正形会进入下次转写热词。
+            来自稳定纠错记忆（命中 ≥3 或已采纳为规则），正词尚未在术语表中。采纳后正形会进入下次转写热词（错形不会写入别名）。
           </p>
         </div>
         <button

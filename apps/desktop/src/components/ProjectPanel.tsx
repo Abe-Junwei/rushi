@@ -9,7 +9,6 @@ import { buildSegmentTextContextMenuItems } from "../utils/segmentTextContextMen
 import { ManualCorrectionMemoryDialog } from "./segmentRow/ManualCorrectionMemoryDialog";
 import { EnvironmentPanel } from "./EnvironmentPanel";
 import { FloatingPanelTemplate } from "./PanelTemplate";
-import { LexiconProofreadPreviewDialog } from "./LexiconProofreadPreviewDialog";
 import { FindReplaceDialog } from "./FindReplaceDialog";
 import { CorrectionRulesPreviewDialog } from "./CorrectionRulesPreviewDialog";
 import { CorrectSuggestionsDialog } from "./CorrectSuggestionsDialog";
@@ -311,16 +310,6 @@ export function ProjectPanel() {
           transcribeProgress={c.transcribeProgress}
         />
       ) : null}
-
-      <LexiconProofreadPreviewDialog
-        state={c.lexiconProofreadDialog}
-        onCancel={c.cancelLexiconProofread}
-        onConfirmConsent={c.confirmLexiconProofreadConsent}
-        onConfirmWriteback={c.confirmLexiconProofreadWriteback}
-        onAcceptRulesChange={c.setLexiconAcceptRulesOnWriteback}
-        onToggleOp={c.toggleLexiconProofreadOp}
-        onSelectAllOps={c.setAllLexiconProofreadOps}
-      />
 
       <FindReplaceDialog
         state={c.findReplaceDialog}

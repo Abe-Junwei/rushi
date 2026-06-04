@@ -1,9 +1,6 @@
 import { useCallback, useState } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
 import type { BusyReason } from "./useProjectCrudController";
-import { useLlmKeychainReady } from "../hooks/useLlmKeychainReady";
-import { useLlmEnvStatus } from "../hooks/useLlmEnvStatus";
-import { useLexiconProofreadController } from "./useLexiconProofreadController";
 import { useFindReplaceController } from "./useFindReplaceController";
 import { useCorrectionRulesController } from "./useCorrectionRulesController";
 import { useCorrectSuggestionsController } from "./useCorrectSuggestionsController";
@@ -40,7 +37,6 @@ type Args = {
 export function useProjectEditorToolsController(args: Args) {
   const {
     busy,
-    busyReason,
     currentFileId,
     selectedIdx,
     segments,
@@ -55,37 +51,10 @@ export function useProjectEditorToolsController(args: Args) {
     saveSegments,
   } = args;
 
-  const [llmRuntimeEpoch, setLlmRuntimeEpoch] = useState(0);
+  const [, setLlmRuntimeEpoch] = useState(0);
   const bumpLlmRuntimeChanged = useCallback(() => {
     setLlmRuntimeEpoch((n) => n + 1);
   }, []);
-  const { keychainReady: llmKeychainReady, checking: llmKeychainChecking } =
-    useLlmKeychainReady(llmRuntimeEpoch);
-  const { presentation: llmPresentation } = useLlmEnvStatus(llmRuntimeEpoch);
-
-  const transcribePreviewActive = busy && busyReason === "transcribe";
-  const llmShared = {
-    llmRuntimeEpoch,
-    llmKeychainReady,
-    llmKeychainChecking,
-    llmCapabilityOk: llmPresentation.ok,
-    llmCapabilityBlockReason: llmPresentation.blockReason,
-  };
-
-  const lexiconProofread = useLexiconProofreadController({
-    busy,
-    transcribePreviewActive,
-    currentFileId,
-    selectedIdx,
-    segments,
-    segmentsRef,
-    flushSegmentTextDrafts,
-    setSegments,
-    setSelectedIdx,
-    pushUndo,
-    setError,
-    ...llmShared,
-  });
 
   const findReplace = useFindReplaceController({
     busy,
@@ -146,7 +115,6 @@ export function useProjectEditorToolsController(args: Args) {
   return {
     bumpLlmRuntimeChanged,
     canConfirmSegmentEdit,
-    lexiconProofread,
     findReplace,
     editorCorrectionCatalog,
     editorSegmentCorrect,

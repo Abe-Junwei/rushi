@@ -13,7 +13,14 @@ export type RuntimeInstallPresentation = {
   needsAttention: boolean;
   manifestInstallBlocked: boolean;
   runtimeInstallRunning: boolean;
+  /** manifest 阻断时隐藏「下载 / 修复」，改展示手动安装引导。 */
+  showDownloadAction: boolean;
 };
+
+const MANIFEST_BLOCKED_MISSING_STATUS = "尚未安装 · 应用内下载不可用";
+
+const MANIFEST_BLOCKED_DEV_HINT =
+  "开发环境可在「环境与维护 → 高级诊断」查看手动命令，或在 services/asr 目录运行 python -m rushi_asr。";
 
 export function buildDiskMetaLine(report: AsrSetupReport | null): string | null {
   if (!report?.diskFreeBytes) return null;
@@ -30,6 +37,8 @@ export function buildRuntimeInstallPresentation(diag: LocalRuntimeDiagnose): Run
     !!diag.installed.version &&
     diag.availableVersion !== diag.installed.version;
 
+  const manifestDetail = diag.manifestIssue ?? diag.blockingIssue;
+
   const statusLine = runtimeInstallRunning
     ? diag.install.message
     : retainedCurrentAfterInstallError
@@ -38,7 +47,9 @@ export function buildRuntimeInstallPresentation(diag: LocalRuntimeDiagnose): Run
         ? (diag.installed.detail ?? "组件损坏，请下载 / 修复或恢复上一版本。")
         : diag.installed.status === "installed"
           ? `已安装${diag.installed.version ? ` ${diag.installed.version}` : ""}`
-          : (diag.blockingIssue ?? "尚未安装");
+          : manifestInstallBlocked && manifestDetail
+            ? MANIFEST_BLOCKED_MISSING_STATUS
+            : (diag.blockingIssue ?? "尚未安装");
 
   const shortStatus =
     runtimeInstallRunning
@@ -47,9 +58,12 @@ export function buildRuntimeInstallPresentation(diag: LocalRuntimeDiagnose): Run
         ? diag.installed.version ?? "已安装"
         : diag.installed.status === "corrupt"
           ? "损坏"
-          : "未安装";
+          : manifestInstallBlocked && diag.installed.status === "missing"
+            ? "应用内不可用"
+            : "未安装";
 
   const supplementalLines = [
+    manifestInstallBlocked && diag.installed.status === "missing" ? MANIFEST_BLOCKED_DEV_HINT : null,
     updateAvailable && diag.availableVersion ? `可升级至 ${diag.availableVersion}` : null,
     diag.requiredDiskBytes
       ? `安装约需 ${formatDiskFree(diag.requiredDiskBytes)}${
@@ -60,16 +74,23 @@ export function buildRuntimeInstallPresentation(diag: LocalRuntimeDiagnose): Run
   ].filter((line): line is string => Boolean(line));
 
   const alertParts = [
-    diag.manifestIssue
-      ? diag.installed.status === "installed"
-        ? `下载/升级已阻止：${diag.manifestIssue}`
-        : diag.manifestIssue
-      : null,
+    manifestDetail && manifestInstallBlocked && diag.installed.status === "missing"
+      ? manifestDetail
+      : diag.manifestIssue
+        ? diag.installed.status === "installed"
+          ? `下载/升级已阻止：${diag.manifestIssue}`
+          : diag.manifestIssue
+        : null,
     diag.installed.lastVerifyError ? `验证失败：${diag.installed.lastVerifyError}` : null,
     retainedCurrentAfterInstallError && diag.install.error ? `升级未生效：${diag.install.error}` : null,
   ].filter((line): line is string => Boolean(line));
 
-  const alertLine = alertParts.length > 0 ? alertParts.join(" ") : null;
+  let alertLine = alertParts.length > 0 ? alertParts.join(" ") : null;
+  if (alertLine && alertLine === statusLine) {
+    alertLine = null;
+  }
+
+  const showDownloadAction = !manifestInstallBlocked || runtimeInstallRunning;
 
   const needsAttention =
     runtimeInstallRunning ||
@@ -87,5 +108,6 @@ export function buildRuntimeInstallPresentation(diag: LocalRuntimeDiagnose): Run
     needsAttention,
     manifestInstallBlocked,
     runtimeInstallRunning,
+    showDownloadAction,
   };
 }

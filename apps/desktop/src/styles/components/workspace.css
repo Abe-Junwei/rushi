@@ -123,6 +123,32 @@
   caret-color: var(--zen-saffron-mid);
 }
 
+/* 语段错词：与正文同字号，仅虚线下划线（勿用 Tailwind font-inherit，其不含 font-size） */
+.workspace .seg-correctable-hit {
+  font: inherit;
+  letter-spacing: inherit;
+  line-height: inherit;
+  color: inherit;
+  text-decoration: underline;
+  text-decoration-color: color-mix(in srgb, var(--zen-saffron) 70%, transparent);
+  text-decoration-style: dotted;
+  text-underline-offset: 2px;
+  background: transparent;
+  border: 0;
+  padding: 0;
+  margin: 0;
+  box-shadow: none;
+}
+
+.workspace button.seg-correctable-hit {
+  cursor: pointer;
+  pointer-events: auto;
+}
+
+.workspace button.seg-correctable-hit:hover {
+  text-decoration-color: var(--zen-saffron);
+}
+
 .workspace textarea.seg-text.text-transparent::selection {
   color: transparent;
   background: color-mix(in srgb, var(--zen-saffron) 28%, var(--zen-paper));

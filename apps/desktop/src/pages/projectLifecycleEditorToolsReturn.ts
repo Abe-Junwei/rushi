@@ -5,7 +5,6 @@ type EditorTools = ReturnType<typeof useProjectEditorToolsController>;
 /** 将编辑器 LLM / 查找替换 / 纠错工具映射为 ProjectLifecycleApi 字段。 */
 export function mapEditorToolsLifecycleFields(tools: EditorTools) {
   const {
-    lexiconProofread,
     findReplace,
     editorCorrectionCatalog,
     editorSegmentCorrect,
@@ -23,16 +22,6 @@ export function mapEditorToolsLifecycleFields(tools: EditorTools) {
     openEditorCorrectPopover: editorSegmentCorrect.openPopover,
     closeEditorCorrectPopover: editorSegmentCorrect.closePopover,
     applyEditorInlineCorrection: editorSegmentCorrect.applyInlineCorrection,
-    canLexiconProofread: lexiconProofread.canLexiconProofread,
-    lexiconProofreadBlockReason: lexiconProofread.lexiconProofreadBlockReason,
-    lexiconProofreadDialog: lexiconProofread.lexiconProofreadDialog,
-    requestLexiconProofread: lexiconProofread.requestLexiconProofread,
-    confirmLexiconProofreadConsent: lexiconProofread.confirmLexiconProofreadConsent,
-    confirmLexiconProofreadWriteback: lexiconProofread.confirmLexiconProofreadWriteback,
-    setLexiconAcceptRulesOnWriteback: lexiconProofread.setLexiconAcceptRulesOnWriteback,
-    toggleLexiconProofreadOp: lexiconProofread.toggleLexiconProofreadOp,
-    setAllLexiconProofreadOps: lexiconProofread.setAllLexiconProofreadOps,
-    cancelLexiconProofread: lexiconProofread.cancelLexiconProofread,
     canFindReplace: findReplace.canFindReplace,
     findReplaceBlockReason: findReplace.findReplaceBlockReason,
     findReplaceDialog: findReplace.findReplaceDialog,

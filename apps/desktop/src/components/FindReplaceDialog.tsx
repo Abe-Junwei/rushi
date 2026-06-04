@@ -3,12 +3,13 @@ import { Search } from "lucide-react";
 import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../config/controlStyles";
 import { PANEL_CONTROL_TYPOGRAPHY, PANEL_TYPOGRAPHY } from "../config/typography";
 import type { FindReplaceDialogState } from "../pages/useFindReplaceController";
+import { FIND_REPLACE_PANEL_ID } from "../pages/findReplaceTypes";
 import { matchPositionLabel } from "../services/editor/segmentFindReplace";
 import { FindReplaceMatchText } from "./FindReplaceMatchText";
 import { FloatingPanelTemplate } from "./PanelTemplate";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
-const PANEL_ID = "find-replace-v2";
+const PANEL_ID = FIND_REPLACE_PANEL_ID;
 
 /** 按当前视口测算，避免 compactDialog 320×200 上限与编辑区工具栏遮挡。 */
 function resolveFindReplacePanelLayout() {
@@ -228,6 +229,29 @@ export function FindReplaceDialog({
 
   const layout = resolveFindReplacePanelLayout();
 
+  const handlePanelKeyDown = (e: React.KeyboardEvent) => {
+    if (e.key !== "Enter" || busy) return;
+    const mod = e.metaKey || e.ctrlKey;
+    if (mod) {
+      if (!canAct) return;
+      e.preventDefault();
+      onReplaceCurrent();
+      return;
+    }
+    if (e.shiftKey) {
+      if (!state.searchCommitted || !canAct) return;
+      e.preventDefault();
+      onPrev();
+      return;
+    }
+    e.preventDefault();
+    if (!state.searchCommitted) {
+      if (canSearch) onRunSearch();
+      return;
+    }
+    if (canAct) onReplaceAndNext();
+  };
+
   return createPortal(
     <div className="workspace">
       <FloatingPanelTemplate
@@ -243,16 +267,7 @@ export function FindReplaceDialog({
         persistState
         onClose={handleClose}
       >
-        <div
-          className="flex min-h-0 flex-1 flex-col gap-3 px-5 py-3"
-          onKeyDown={(e) => {
-            const mod = e.metaKey || e.ctrlKey;
-            if (mod && e.key === "Enter" && canAct) {
-              e.preventDefault();
-              onReplaceAndNext();
-            }
-          }}
-        >
+        <div className="flex min-h-0 flex-1 flex-col gap-3 px-5 py-3" onKeyDown={handlePanelKeyDown}>
           <label className="grid gap-1 text-xs text-notion-text-muted">
             <span>查找</span>
             <div className="flex gap-2">
@@ -265,17 +280,7 @@ export function FindReplaceDialog({
                 onBlur={() => {
                   if (state.findText.length > 0) onRunSearch();
                 }}
-                onKeyDown={(e) => {
-                  if (e.key === "Enter" && !e.shiftKey) {
-                    e.preventDefault();
-                    if (!state.searchCommitted) onRunSearch();
-                    else onNext();
-                  }
-                  if (e.key === "Enter" && e.shiftKey) {
-                    e.preventDefault();
-                    if (state.searchCommitted) onPrev();
-                  }
-                }}
+                onKeyDown={handlePanelKeyDown}
                 placeholder="区分大小写，字面匹配"
                 autoFocus
               />
@@ -301,6 +306,7 @@ export function FindReplaceDialog({
               value={state.replaceText}
               disabled={busy}
               onChange={(e) => onReplaceChange(e.target.value)}
+              onKeyDown={handlePanelKeyDown}
             />
           </label>
           <p className="text-xs text-notion-text-muted">{position}</p>
@@ -338,7 +344,7 @@ export function FindReplaceDialog({
           </div>
 
           <p className="text-[11px] text-notion-text-light">
-            输入后自动查找 · Enter 下一处 · Shift+Enter 上一处 · ⌘Enter 替换并下一处
+            输入后自动查找 · Enter 替换并下一处 · Shift+Enter 上一处 · ⌘Enter 替换当前
           </p>
           <div className="flex flex-wrap justify-start gap-2 border-t border-notion-divider pt-3">
             <button type="button" className={CONTROL_BTN_SECONDARY} disabled={!canAct} onClick={onPrev}>

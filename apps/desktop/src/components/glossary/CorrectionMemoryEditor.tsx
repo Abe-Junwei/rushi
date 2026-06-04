@@ -55,7 +55,7 @@ export function CorrectionMemoryEditor({
       </div>
 
       <p className={`m-0 ${PANEL_TYPOGRAPHY.meta}`}>
-        错词不会进入 ASR 热词；正词可用于转写提示、全文纠错规则（F1）与词表校对。命中 ≥2 次或勾选「采纳为规则」后视为稳定规则。
+        错词不会进入 ASR 热词。命中 ≥3 次或勾选「采纳为规则」后可用于工具栏「纠错规则」；满 3 次时正词会自动加入术语表（改善下次转写）。
       </p>
 
       <div className="grid gap-3 sm:grid-cols-2">

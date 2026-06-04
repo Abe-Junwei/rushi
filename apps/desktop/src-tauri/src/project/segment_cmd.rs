@@ -1,8 +1,10 @@
 use super::correction::{
-    accept_correction_rule, list_glossary_learn_prompts, list_stable_correction_rules,
-    upsert_explicit_correction_pairs, CorrectionExplicitPairDto, CorrectionLearnBaselineTextDto,
-    CorrectionRuleRow, GlossaryLearnPromptRow, SaveSegmentsLearnOpts,
+    accept_correction_rule, learn_inferred_pairs_from_segment_save, list_glossary_learn_prompts,
+    list_stable_correction_rules, upsert_explicit_correction_pairs, CorrectionExplicitPairDto,
+    CorrectionLearnBaselineTextDto, CorrectionRuleRow, GlossaryLearnPromptRow,
+    SaveSegmentsLearnOpts,
 };
+use std::collections::HashMap;
 use super::edit_log_detail::{
     build_restore_from_edit_log_detail, build_save_segments_edit_detail_from_baseline,
     load_segment_text_by_uid,
@@ -201,6 +203,26 @@ pub fn file_save_segments_inner(
             );
         }
     }
+    if learn.count_hits {
+        let mut baseline_by_uid: HashMap<String, String> = learn
+            .learn_baseline
+            .into_iter()
+            .map(|(uid, text)| (uid, text))
+            .collect();
+        if baseline_by_uid.is_empty() {
+            for (uid, (_idx, text)) in &old_text_by_uid {
+                baseline_by_uid.insert(uid.clone(), text.clone());
+            }
+        }
+        if let Err(e) =
+            learn_inferred_pairs_from_segment_save(&conn, &baseline_by_uid, segments, t)
+        {
+            append_desktop_log_line(
+                state,
+                &format!("WARN correction_memory_inferred_failed {e}"),
+            );
+        }
+    }
     Ok(())
 }
 
@@ -209,20 +231,36 @@ pub fn file_save_segments(
     state: State<DbState>,
     file_id: String,
     segments: Vec<SegmentDto>,
-    _count_hits: Option<bool>,
+    count_hits: Option<bool>,
     explicit_pairs: Option<Vec<CorrectionExplicitPairDto>>,
-    _learn_baseline_texts: Option<Vec<CorrectionLearnBaselineTextDto>>,
+    learn_baseline_texts: Option<Vec<CorrectionLearnBaselineTextDto>>,
 ) -> Result<(), String> {
     let explicit_pairs = explicit_pairs
         .unwrap_or_default()
         .into_iter()
         .map(|p| (p.before_text, p.after_text))
         .collect();
+    let learn_baseline = learn_baseline_texts
+        .unwrap_or_default()
+        .into_iter()
+        .filter_map(|b| {
+            let uid = b.uid.trim().to_string();
+            if uid.is_empty() {
+                None
+            } else {
+                Some((uid, b.text))
+            }
+        })
+        .collect();
     file_save_segments_inner(
         state.deref(),
         &file_id,
         &segments,
-        SegmentSaveEditLog::SaveSegments(SaveSegmentsLearnOpts { explicit_pairs }),
+        SegmentSaveEditLog::SaveSegments(SaveSegmentsLearnOpts {
+            explicit_pairs,
+            count_hits: count_hits.unwrap_or(true),
+            learn_baseline,
+        }),
     )
 }
 

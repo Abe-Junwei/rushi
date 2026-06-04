@@ -333,7 +333,7 @@ mod tests {
 
     #[test]
     fn parse_allows_fewer_lines_than_expected() {
-        let mut rows: Vec<String> = (0..175).map(|i| format!("行{i}")).collect();
+        let rows: Vec<String> = (0..175).map(|i| format!("行{i}")).collect();
         let raw = format!(
             r#"{{"lines":{},"break_after_line":[]}}"#,
             serde_json::to_string(&rows).unwrap()

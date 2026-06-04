@@ -1,7 +1,7 @@
 # Acceptance: R3t-F — 转写后后处理与编辑效率
 
 > **Plan v3**：[`r3t-f-post-transcribe-suite-plan.md`](./r3t-f-post-transcribe-suite-plan.md)（拍板 D1–D9）  
-> **状态**：🟡 进行中 — **F2 首刀已编码**（2026-05-31）；F1/F6/F7 未编码
+> **状态**：🟡 进行中 — **⑤″f-B** ✅ 2026-06-04（F1+MEM-P0+F6）· **F2** ✅ · R3t-E 已移除
 
 ## 决策追溯（手测前对照 Plan §2）
 
@@ -19,7 +19,7 @@
 - [x] 全文件字面匹配；`第 k/N 处`；上/下条跳转语段
 - [x] 替换当前 / 全部替换（预览→一次写回）；可撤销
 - [x] 搜索前 flush 草稿
-- [ ] 手测：长稿改 3 处专名 ≤10 次点击（不含保存）
+- [x] 手测：长稿改 3 处专名 ≤10 次点击（不含保存） — [`f2-hand-test-checklist.md`](./f2-hand-test-checklist.md) §3 ✅ 2026-06-04
 
 ## P1 — F2 Correct 浮层
 
@@ -35,12 +35,13 @@
 
 - [x] 仅 memory 规则；全文 diff 预览；确认写回；无 LLM
 - [x] 单测：「城市」≠「市」误替换（单字规则跳过）
+- [x] UI 手测 — [`f1-hand-test-checklist.md`](./f1-hand-test-checklist.md) / mem-p0 §3 ✅ 2026-06-04
 
 ## P1 — F6 记忆闭环
 
 - [x] 第三次同 right 形 → 保存后提示进 glossary
-- [ ] F2 写回 + save → `correction_memory` 增加（手测）
-- [ ] R3t-E：Pack 含 rule 时 `evidence: rule` 可校验（既有能力，手测）
+- [x] F2 写回 + save → `correction_memory` 增加（手测 ✅ 2026-06-04）
+- [x] ~~R3t-E~~ 已从产品移除（2026-06）
 
 ---
 
@@ -88,7 +89,7 @@
 ## 回归
 
 - [ ] L2 hotwords 与 F1 独立
-- [ ] R3t-E 独立入口可用
+- [x] ~~R3t-E 独立入口~~ 已移除（2026-06）
 
 ## 可选竞品对照
 

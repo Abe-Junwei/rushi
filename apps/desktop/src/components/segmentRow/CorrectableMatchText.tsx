@@ -1,27 +1,36 @@
+import type { CSSProperties, ReactNode } from "react";
 import type { CorrectableSpan } from "../../services/editor/findCorrectableSpans";
+
+const ROOT_CLASS = "m-0 whitespace-pre-wrap break-words leading-snug text-inherit";
+const HIT_CLASS = "seg-correctable-hit";
 
 type Props = {
   text: string;
   spans: CorrectableSpan[];
   className?: string;
+  textStyle?: CSSProperties;
   onSpanClick?: (span: CorrectableSpan, event: React.MouseEvent<HTMLButtonElement>) => void;
 };
 
-export function CorrectableMatchText({ text, spans, className, onSpanClick }: Props) {
+export function CorrectableMatchText({ text, spans, className, textStyle, onSpanClick }: Props) {
+  const rootClass = className ? `${ROOT_CLASS} ${className}` : ROOT_CLASS;
+
   if (!text) {
     return (
-      <p className={className ?? "whitespace-pre-wrap break-words text-sm leading-snug text-notion-text-light"}>
+      <p className={rootClass} style={textStyle}>
         输入语段文本...
       </p>
     );
   }
   if (!spans.length) {
     return (
-      <p className={className ?? "whitespace-pre-wrap break-words text-sm leading-snug text-notion-text"}>{text}</p>
+      <p className={rootClass} style={textStyle}>
+        {text}
+      </p>
     );
   }
 
-  const nodes: React.ReactNode[] = [];
+  const nodes: ReactNode[] = [];
   let cursor = 0;
   for (const span of spans) {
     const start = Math.max(0, Math.min(span.charStart, text.length));
@@ -36,7 +45,7 @@ export function CorrectableMatchText({ text, spans, className, onSpanClick }: Pr
           <button
             key={`m-${start}-${end}`}
             type="button"
-            className="pointer-events-auto cursor-pointer rounded-sm bg-zen-saffron/25 px-0.5 text-inherit underline decoration-zen-saffron/70 decoration-dotted underline-offset-2 hover:bg-zen-saffron/40"
+            className={HIT_CLASS}
             onClick={(e) => {
               e.stopPropagation();
               onSpanClick(span, e);
@@ -49,12 +58,9 @@ export function CorrectableMatchText({ text, spans, className, onSpanClick }: Pr
         );
       } else {
         nodes.push(
-          <mark
-            key={`m-${start}-${end}`}
-            className="rounded-sm bg-zen-saffron/25 px-0.5 text-inherit"
-          >
+          <span key={`m-${start}-${end}`} className={HIT_CLASS}>
             {slice}
-          </mark>,
+          </span>,
         );
       }
     }
@@ -65,6 +71,8 @@ export function CorrectableMatchText({ text, spans, className, onSpanClick }: Pr
   }
 
   return (
-    <p className={className ?? "whitespace-pre-wrap break-words text-sm leading-snug text-notion-text"}>{nodes}</p>
+    <p className={rootClass} style={textStyle}>
+      {nodes}
+    </p>
   );
 }

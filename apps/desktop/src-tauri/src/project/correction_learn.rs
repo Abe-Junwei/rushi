@@ -1,4 +1,8 @@
+use super::correction_hints::maybe_auto_add_glossary_for_memory_hit;
+use super::correction_types::CORRECTION_MEMORY_STABLE_HIT;
+use crate::project::types::SegmentDto;
 use rusqlite::{params, Connection};
+use std::collections::{HashMap, HashSet};
 
 fn is_correction_punctuation(c: char) -> bool {
     matches!(
@@ -62,6 +66,105 @@ pub(crate) fn should_learn_inferred_replacement(removed: &str, added: &str) -> b
     true
 }
 
+/// 语段保存前后最小单区间替换（整段词优先，否则字素级前缀/后缀剥离）。
+pub fn infer_single_replacement(before: &str, after: &str) -> Option<(String, String)> {
+    if let Some(whole) = normalize_correction_learn_pair(before, after) {
+        if should_learn_inferred_replacement(&whole.0, &whole.1) {
+            return Some(whole);
+        }
+    }
+    let b: Vec<char> = before.chars().collect();
+    let a: Vec<char> = after.chars().collect();
+    let mut prefix = 0usize;
+    while prefix < b.len() && prefix < a.len() && b[prefix] == a[prefix] {
+        prefix += 1;
+    }
+    let mut b_end = b.len();
+    let mut a_end = a.len();
+    while b_end > prefix && a_end > prefix && b[b_end - 1] == a[a_end - 1] {
+        b_end -= 1;
+        a_end -= 1;
+    }
+    let removed: String = b[prefix..b_end].iter().collect();
+    let added: String = a[prefix..a_end].iter().collect();
+    normalize_correction_learn_pair(&removed, &added)
+}
+
+fn learn_pairs_from_segment_text_change(
+    pairs: &mut HashSet<(String, String)>,
+    before_full: &str,
+    after_full: &str,
+    registered: &[(String, String)],
+) {
+    if before_full == after_full {
+        return;
+    }
+    for (before_text, after_text) in registered {
+        if !before_full.contains(before_text) {
+            continue;
+        }
+        if !after_full.contains(after_text) {
+            continue;
+        }
+        if after_full.contains(before_text) {
+            continue;
+        }
+        pairs.insert((before_text.clone(), after_text.clone()));
+    }
+    if let Some((before_text, after_text)) = infer_single_replacement(before_full, after_full) {
+        if should_learn_inferred_replacement(&before_text, &after_text) {
+            pairs.insert((before_text, after_text));
+        }
+    }
+}
+
+fn list_memory_pairs_for_save_learn(conn: &Connection) -> Result<Vec<(String, String)>, String> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT before_text, after_text FROM correction_memory \
+             WHERE trim(before_text) != '' AND trim(after_text) != '' \
+             ORDER BY updated_at_ms DESC LIMIT 200",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([], |r| Ok((r.get::<_, String>(0)?, r.get::<_, String>(1)?)))
+        .map_err(|e| e.to_string())?;
+    let mut out = Vec::new();
+    for row in rows {
+        let (b, a) = row.map_err(|e| e.to_string())?;
+        let b = b.trim().to_string();
+        let a = a.trim().to_string();
+        if !b.is_empty() && !a.is_empty() && b != a {
+            out.push((b, a));
+        }
+    }
+    Ok(out)
+}
+
+/// 保存语段时：对比 baseline 与当前正文，对已纳入记忆对或合法单区间替换计一次命中。
+pub fn learn_inferred_pairs_from_segment_save(
+    conn: &Connection,
+    baseline_by_uid: &HashMap<String, String>,
+    segments: &[SegmentDto],
+    at_ms: i64,
+) -> Result<(), String> {
+    let registered = list_memory_pairs_for_save_learn(conn)?;
+    let mut pairs: HashSet<(String, String)> = HashSet::new();
+    for s in segments {
+        let uid = s.uid.as_deref().unwrap_or("").trim();
+        if uid.is_empty() {
+            continue;
+        }
+        let before = baseline_by_uid.get(uid).map(String::as_str).unwrap_or("");
+        let after = s.text.as_str();
+        learn_pairs_from_segment_text_change(&mut pairs, before, after, &registered);
+    }
+    for (before_text, after_text) in pairs {
+        upsert_correction_memory(conn, &before_text, &after_text, at_ms)?;
+    }
+    Ok(())
+}
+
 /// User-confirmed wrong→right pairs (e.g. Replace All); always upserts when non-empty.
 pub fn upsert_explicit_correction_pairs(
     conn: &Connection,
@@ -97,7 +200,19 @@ pub fn upsert_correction_memory(
         params![before_text, after_text, at_ms],
     )
     .map_err(|e| e.to_string())?;
+    let hit_count: i32 = conn
+        .query_row(
+            "SELECT hit_count FROM correction_memory WHERE before_text = ?1 AND after_text = ?2",
+            params![before_text, after_text],
+            |r| r.get(0),
+        )
+        .map_err(|e| e.to_string())?;
+    let _ = maybe_auto_add_glossary_for_memory_hit(conn, after_text, before_text, hit_count, at_ms);
     Ok(())
+}
+
+pub fn is_correction_memory_stable(hit_count: i32, accepted_as_rule: bool) -> bool {
+    accepted_as_rule || hit_count >= CORRECTION_MEMORY_STABLE_HIT
 }
 
 pub fn accept_correction_rule(

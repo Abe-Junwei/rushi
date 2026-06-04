@@ -17,15 +17,16 @@
 | `docs/adr/` | 架构决策记录 |
 | `docs/execution/specs/` | 非 trivial feature 三件套 |
 
-## 当前热点（自动同步，2026-06-03）
+## 当前热点（自动同步，2026-06-04）
 
-**LLM-LOC-SPIKE（v1 后主序，Gate 前无 4a 产品码）**
+**工作区尾项**：**⑤″f-B½** ✅（2026-06-04）→ **下一刀 ⑤″f-C**（F7 词表包）— [`r3-5f-bhalf-phase-signoff-2026-06.md`](./docs/execution/specs/r3-5f-bhalf-phase-signoff-2026-06.md)
 
-- 真源：[`docs/execution/specs/llm-loc-spike-research.md`](./docs/execution/specs/llm-loc-spike-research.md) · [`llm-local-runtime-backlog.md`](./docs/execution/specs/llm-local-runtime-backlog.md) §9
-- 预检：`bash scripts/llm-loc-spike-preflight.sh`（Ollama + `fixtures/llm-loc-eval/`）
-- 已有探针：`apps/desktop/src-tauri/src/postprocess_cmd.rs`（loopback OpenAI-compatible）
+**v1 后主序：LLM-LOC**
 
-**并行（不挡 Spike）**：R3h-2、TRN-DIAG、ASR-WARM
+- **4a Ollama** ✅ · **4b LRC 自管** ❌ Gate-B No-Go — [`llm-loc-gate-b-decision-2026-06.md`](./docs/execution/specs/llm-loc-gate-b-decision-2026-06.md)
+- Spike / Gate-A：[`llm-loc-spike-results-2026-06.md`](./docs/execution/specs/llm-loc-spike-results-2026-06.md) · 预检 `bash scripts/llm-loc-spike-preflight.sh`
+
+**并行（不挡主序）**：[`parallel-backlog-2026-06.md`](./docs/execution/specs/parallel-backlog-2026-06.md) — R3h-0、TRN-DIAG、ASR-WARM、R3h-2
 
 **已降温（勿再当 R0 阻塞）**
 
@@ -45,7 +46,7 @@
 | 新 UI / 整页重设计 / Stitch 对齐 | 仓库根 `DESIGN.md` → 再映射到 `tailwind.config.js` + `apps/desktop/src/config/tokens.ts` |
 | **波形区 Stitch 精修** | [`apps/desktop/docs/stitch-waveform-polish-spec.md`](./apps/desktop/docs/stitch-waveform-polish-spec.md) + [`stitch-waveform-polish-layout.html`](./apps/desktop/stitch-waveform-polish-layout.html) → `bash scripts/prepare-stitch-upload.sh` |
 | 浮动确认/表单对话框 | `FloatingPanelTemplate` + `preset="compactDialog"`；`controlStyles.ts` 按钮；见 [`docs/architecture/desktop-floating-dialog-panels.md`](./docs/architecture/desktop-floating-dialog-panels.md) |
-| **后续排期 / 下一刀** | [`rushi-execution-roadmap.md`](./docs/execution/plans/rushi-execution-roadmap.md) §10；**当前**：**⑤″f 词表与改稿轨**（R3t-E 手测闸门 → VOC-1‖F2 → …）— [`r3-asr-voc-holistic-review-2026-05.md`](./docs/execution/specs/r3-asr-voc-holistic-review-2026-05.md) |
+| **后续排期 / 下一刀** | [`rushi-execution-roadmap.md`](./docs/execution/plans/rushi-execution-roadmap.md) §10；**当前**：**⑤″f-C**（F7）；**v1 后**：LLM-LOC（4b No-Go） |
 | **新功能 / 路线图薄片** | **先调研后编码**：`.cursor/rules/feature-research-gate.mdc` + `docs/execution/specs/*-research.md`；范例 [`r3-provider-configuration-research.md`](./docs/execution/specs/r3-provider-configuration-research.md) |
 | 单人 UI 重设计迭代（已验收） | `docs/execution/specs/ui-redesign-parallel-dev.md` + `bash scripts/prepare-stitch-upload.sh` |
 | 更换或更新 `DESIGN.md` 基底 | 仓库根执行 `npm run design:add -- <站点>`（站点名见 [awesome-design-md](https://github.com/VoltAgent/awesome-design-md) / [getdesign.md](https://getdesign.md/)，例：`npm run design:add -- cal`） |

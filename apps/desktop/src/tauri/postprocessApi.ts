@@ -72,11 +72,6 @@ export async function postprocessCancelAutoPunctuate(requestId: string): Promise
   });
 }
 
-/** 词表校对与自动标点共用 Rust 侧 `PostprocessCancelState` 注册表。 */
-export async function postprocessCancelLexiconProofread(requestId: string): Promise<boolean> {
-  return postprocessCancelAutoPunctuate(requestId);
-}
-
 export type RefineSegmentItem = {
   uid: string;
   startSec: number;
@@ -111,41 +106,6 @@ export async function postprocessRefineSegments(
   return await invoke<PostprocessRefineSegmentsResponse>("postprocess_refine_segments", { req });
 }
 
-export type LexiconEvidenceType = "rule" | "glossary" | "inconsistent_term";
-
-export type LexiconEvidence = {
-  type: LexiconEvidenceType;
-  ref: string;
-};
-
-export type GroundedLexiconOp = {
-  uid: string;
-  text: string;
-  evidence: LexiconEvidence;
-};
-
-export interface PostprocessLexiconProofreadRequest {
-  task: "lexicon_proofread";
-  request_id?: string;
-  segments: RefineSegmentItem[];
-  runtime?: PostprocessRuntimeBridge;
-}
-
-export interface PostprocessLexiconProofreadResponse {
-  ops: SegmentRefineOp[];
-  items: GroundedLexiconOp[];
-  warnings?: string[];
-  rationale?: string;
-  packMeta?: {
-    glossaryCount: number;
-    rulesCount: number;
-    truncated?: boolean;
-  };
-  provider: string;
-  latencyMs: number;
-  latency_ms?: number;
-}
-
 export interface PostprocessExportPolishRequest {
   task: "export_polish";
   requestId?: string;
@@ -171,14 +131,6 @@ export async function postprocessExportPolish(
 export async function postprocessCancelExportPolish(requestId: string): Promise<boolean> {
   return invoke<boolean>("postprocess_cancel_export_polish", {
     req: { request_id: requestId },
-  });
-}
-
-export async function postprocessLexiconProofread(
-  req: PostprocessLexiconProofreadRequest,
-): Promise<PostprocessLexiconProofreadResponse> {
-  return await invoke<PostprocessLexiconProofreadResponse>("postprocess_lexicon_proofread", {
-    req,
   });
 }
 

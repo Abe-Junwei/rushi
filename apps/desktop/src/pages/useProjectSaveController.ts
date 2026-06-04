@@ -86,7 +86,7 @@ export function useProjectSaveController(args: Args) {
       setError("");
       try {
         mutations.flushSegmentTextDrafts();
-        const countHits = options?.countHits ?? false;
+        const countHits = options?.countHits ?? true;
         const learnBaselineTexts = countHits
           ? (options?.learnBaselineTexts ?? segmentsToLearnBaseline(dirty.getSavedSnapshot()))
           : undefined;

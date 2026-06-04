@@ -44,7 +44,7 @@ export function CorrectionRulesPreviewDialog({ state, busy, onCancel, onConfirm 
           {state.phase === "empty" ? (
             <>
               <p className={PANEL_TYPOGRAPHY.dialogBody}>
-                没有可用的稳定纠错规则（需 hit≥2 或已采纳），或当前语段中无匹配项。
+                没有可用的稳定纠错规则（需命中 ≥3 次或已采纳），或当前语段中无匹配项。
               </p>
               <div className="mt-4 flex justify-end">
                 <button type="button" className={CONTROL_BTN_SECONDARY} onClick={handleClose}>

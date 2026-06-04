@@ -2,6 +2,7 @@ import { useCallback, useEffect, useRef } from "react";
 import type { TranscriptionLayerInput } from "../pages/transcriptionLayerTypes";
 import type { useProjectWaveform } from "./useProjectWaveform";
 import type { SegmentSelectSource } from "../utils/waveformViewMode";
+import { isFindReplacePanelOpen } from "../pages/findReplaceTypes";
 import { readStoredTabAdvanceLoopsSegment } from "../utils/waveformPrefs";
 
 type WfApi = ReturnType<typeof useProjectWaveform>;
@@ -197,6 +198,8 @@ export function useSegmentKeyboard(args: {
 
   const onSegmentTextareaKeyDown = useCallback(
     (segmentIdx: number, e: React.KeyboardEvent<HTMLTextAreaElement>) => {
+      if (e.key === "Enter" && isFindReplacePanelOpen()) return;
+
       const a = argsRef.current;
       const c = a.ctxRef.current;
       const w = a.wfApiRef.current;

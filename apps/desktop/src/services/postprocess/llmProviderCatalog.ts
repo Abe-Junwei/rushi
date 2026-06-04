@@ -73,7 +73,7 @@ export const LLM_PROVIDER_DEFINITIONS: LlmProviderDefinition[] = [
     kind: "local_loopback",
     label: "Ollama（本机）",
     description:
-      "数据不出本机：连接本机 Ollama OpenAI 兼容接口。须先安装 Ollama 并 pull 模型（推荐 qwen2.5:7b）。适合导出润色与词表校对等本机 LLM 任务。",
+      "数据不出本机：连接本机 Ollama OpenAI 兼容接口。须先安装 Ollama 并 pull 模型（推荐 qwen2.5:7b）。适合导出润色等本机 LLM 任务。",
     docsUrl: "https://github.com/ollama/ollama/blob/main/docs/api.md",
     defaultBaseUrl: OLLAMA_DEFAULT_BASE_URL,
     defaultModel: OLLAMA_DEFAULT_MODEL,

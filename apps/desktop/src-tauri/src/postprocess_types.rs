@@ -76,32 +76,6 @@ pub struct PostprocessRefineSegmentsResponse {
     pub latency_ms: u64,
 }
 
-#[derive(Debug, Clone, Deserialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PostprocessLexiconProofreadRequest {
-    pub task: String,
-    #[serde(default)]
-    pub request_id: Option<String>,
-    pub segments: Vec<super::postprocess_segment_ops::RefineSegmentItem>,
-    #[serde(default)]
-    pub runtime: Option<PostprocessRuntimeBridge>,
-}
-
-#[derive(Debug, Serialize)]
-#[serde(rename_all = "camelCase")]
-pub struct PostprocessLexiconProofreadResponse {
-    pub ops: Vec<super::postprocess_segment_ops::SegmentRefineOp>,
-    pub items: Vec<super::postprocess_lexicon_ops::GroundedLexiconOp>,
-    #[serde(default)]
-    pub warnings: Vec<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub rationale: Option<String>,
-    #[serde(skip_serializing_if = "Option::is_none")]
-    pub pack_meta: Option<crate::project::lexicon_pack::LexiconPackMeta>,
-    pub provider: String,
-    pub latency_ms: u64,
-}
-
 #[derive(Debug, Serialize)]
 pub struct LlmProbeConnectionResponse {
     pub ok: bool,

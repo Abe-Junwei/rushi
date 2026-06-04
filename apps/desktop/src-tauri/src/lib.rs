@@ -124,7 +124,6 @@ pub fn run() {
             stt_online_probe::stt_probe_online_health,
             postprocess_cmd::postprocess_auto_punctuate_cmd::postprocess_auto_punctuate,
             postprocess_cmd::postprocess_refine_cmd::postprocess_refine_segments,
-            postprocess_cmd::postprocess_lexicon_proofread_cmd::postprocess_lexicon_proofread,
             postprocess_cmd::postprocess_cancel_cmd::postprocess_cancel_auto_punctuate,
             postprocess_cmd::postprocess_cancel_cmd::postprocess_cancel_export_polish,
             postprocess_cmd::postprocess_export_polish_cmd::postprocess_export_polish,

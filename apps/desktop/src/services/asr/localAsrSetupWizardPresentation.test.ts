@@ -86,6 +86,34 @@ describe("localAsrSetupWizardPresentation", () => {
     expect(out.shortStatus).toBe("未安装");
   });
 
+  it("dedupes manifest blocker copy when sidecar is missing", () => {
+    const manifestMsg = "未配置本机语音识别组件 manifest，无法应用内下载安装侧车。";
+    const out = buildRuntimeInstallPresentation(
+      makeDiag({
+        manifestConfigured: false,
+        manifestStatus: "missing",
+        manifestIssue: manifestMsg,
+        blockingIssue: manifestMsg,
+        installed: {
+          status: "missing",
+          version: null,
+          previousVersion: null,
+          executablePath: "",
+          rootDir: "",
+          detail: null,
+          lastVerifyError: null,
+          lastInstallPhase: null,
+        },
+      }),
+    );
+    expect(out.statusLine).toBe("尚未安装 · 应用内下载不可用");
+    expect(out.alertLine).toBe(manifestMsg);
+    expect(out.statusLine).not.toBe(out.alertLine);
+    expect(out.showDownloadAction).toBe(false);
+    expect(out.shortStatus).toBe("应用内不可用");
+    expect(out.supplementalLines.some((line) => line.includes("高级诊断"))).toBe(true);
+  });
+
   it("merges manifest alert into a single line", () => {
     const out = buildRuntimeInstallPresentation(
       makeDiag({

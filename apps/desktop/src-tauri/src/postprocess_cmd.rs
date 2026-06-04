@@ -1,5 +1,3 @@
-#[path = "postprocess_lexicon_ops.rs"]
-mod postprocess_lexicon_ops;
 #[path = "postprocess_probe.rs"]
 mod postprocess_probe;
 #[path = "postprocess_secret_store.rs"]
@@ -24,8 +22,6 @@ pub mod postprocess_cancel_cmd;
 pub mod postprocess_auto_punctuate_cmd;
 #[path = "postprocess_refine_cmd.rs"]
 pub mod postprocess_refine_cmd;
-#[path = "postprocess_lexicon_proofread_cmd.rs"]
-pub mod postprocess_lexicon_proofread_cmd;
 
 pub(crate) use postprocess_config::{
     build_auto_punctuate_prompt, build_postprocess_models_endpoint, chat_completion_finish_reason,

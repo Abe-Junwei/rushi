@@ -85,10 +85,13 @@ export function useGlossaryMineController({ onGlossaryChanged }: Args) {
         for (const row of targets) {
           await glossaryAdd({
             term: row.afterText,
-            aliases:
-              row.sampleBefore && row.sampleBefore !== row.afterText ? row.sampleBefore : "",
+            aliases: "",
             domain: "",
-            note: `纠错记忆推荐 · 命中 ${row.hitCount} 次`,
+            note: `纠错记忆推荐 · 命中 ${row.hitCount} 次${
+              row.sampleBefore && row.sampleBefore !== row.afterText
+                ? ` · 例 ${row.sampleBefore}→${row.afterText}`
+                : ""
+            }`,
             hotwordEnabled: true,
           });
           dismissGlossaryPrompt(row.afterText);

@@ -2,7 +2,6 @@ import type { ProjectDetail, ProjectSummary, SegmentDto } from "../tauri/project
 import type { DocxExportMode } from "../tauri/exportDocxApi";
 import type { DeliveryDocxExportRequest } from "./useExportController";
 import type { SegmentOverlapPolicy } from "../utils/segmentTimeRange";
-import type { LexiconProofreadDialogState } from "./useLexiconProofreadController";
 import type { FindReplaceDialogState } from "./useFindReplaceController";
 import type { CorrectionRulesDialogState } from "./useCorrectionRulesController";
 import type { CorrectSuggestionsDialogState } from "./useCorrectSuggestionsController";
@@ -114,16 +113,6 @@ export interface ProjectLifecycleApi {
     policy?: SegmentOverlapPolicy,
   ) => void;
   flushSegmentTextDrafts: () => void;
-  canLexiconProofread: boolean;
-  lexiconProofreadBlockReason: string | null;
-  lexiconProofreadDialog: LexiconProofreadDialogState;
-  requestLexiconProofread: () => void;
-  confirmLexiconProofreadConsent: () => void;
-  confirmLexiconProofreadWriteback: () => void;
-  setLexiconAcceptRulesOnWriteback: (value: boolean) => void;
-  toggleLexiconProofreadOp: (index: number, selected: boolean) => void;
-  setAllLexiconProofreadOps: (selected: boolean) => void;
-  cancelLexiconProofread: () => void;
   canFindReplace: boolean;
   findReplaceBlockReason: string | null;
   findReplaceDialog: FindReplaceDialogState;

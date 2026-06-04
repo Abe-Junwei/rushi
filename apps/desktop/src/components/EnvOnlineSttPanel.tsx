@@ -1,5 +1,5 @@
 import { Info } from "lucide-react";
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState, type Ref } from "react";
 import { CONTROL_BTN_PRIMARY } from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { toast } from "../services/ui/toast";
@@ -24,10 +24,11 @@ import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec"
 
 type Props = {
   busy: boolean;
+  scrollAnchorRef?: Ref<HTMLDivElement>;
   onSttOnlineRuntimeChanged?: () => void;
 };
 
-export function EnvOnlineSttPanel({ busy, onSttOnlineRuntimeChanged }: Props) {
+export function EnvOnlineSttPanel({ busy, scrollAnchorRef, onSttOnlineRuntimeChanged }: Props) {
   const [olProviderId, setOlProviderId] = useState("openai");
   const [olEndpoint, setOlEndpoint] = useState("");
   const [olTimeoutSec, setOlTimeoutSec] = useState(30);
@@ -125,7 +126,7 @@ export function EnvOnlineSttPanel({ busy, onSttOnlineRuntimeChanged }: Props) {
   const formBusy = busy || olProbeBusy;
 
   return (
-    <div id="online-stt-provider" className="flex max-w-[860px] flex-col gap-7">
+    <div id="online-stt-provider" ref={scrollAnchorRef} className="flex max-w-[860px] flex-col gap-7">
       <EnvOnlineSttConfigCard
         banner={
           <EnvLlmStatusBanner

@@ -50,7 +50,7 @@ describe("useAutoSaveSegments", () => {
       vi.advanceTimersByTime(1500);
     });
     expect(saveSegments).toHaveBeenCalledTimes(1);
-    expect(saveSegments).toHaveBeenCalledWith({ quiet: true, countHits: false });
+    expect(saveSegments).toHaveBeenCalledWith({ quiet: true, countHits: true });
 
     dirty = false;
     rerender({ segments: [seg("b")] });
@@ -79,6 +79,6 @@ describe("useAutoSaveSegments", () => {
       vi.advanceTimersByTime(1500);
     });
     expect(saveSegments).toHaveBeenCalledTimes(1);
-    expect(saveSegments).toHaveBeenCalledWith({ quiet: true, countHits: false });
+    expect(saveSegments).toHaveBeenCalledWith({ quiet: true, countHits: true });
   });
 });

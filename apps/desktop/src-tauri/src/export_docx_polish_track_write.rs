@@ -308,7 +308,7 @@ pub fn inject_track_revisions_flag(bytes: &[u8]) -> Result<Vec<u8>, String> {
 
 #[cfg(test)]
 mod tests {
-    use super::super::diff::{diff_pieces_for_export_track, pieces_have_markup};
+    use super::super::diff::pieces_have_markup;
     use super::*;
 
     #[test]

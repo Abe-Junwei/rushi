@@ -1,6 +1,6 @@
 # Acceptance: R3t — 录音转写 · 声学分段 · LLM 校准
 
-> **状态（2026-05-31）**：**R3t-A/B/C/D ✅**（D 手测 2026-05-31）；**R3t-E** 📋 未编码  
+> **状态（2026-06-04）**：**R3t-A/B/C/D ✅**；**R3t-E** ❌ 已从产品移除（2026-06）  
 > **Intent**：[`recording-transcribe-llm-refine-intent.md`](./recording-transcribe-llm-refine-intent.md)  
 > **Plan**：[`recording-transcribe-llm-refine-plan.md`](./recording-transcribe-llm-refine-plan.md)  
 > **路线图索引**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) §4.1.2、§13
@@ -9,7 +9,7 @@
 
 - [x] 录音文件「拉取语段」主路径可重复手测通过（短音频 + 13min）— 2026-05-30 API 手测（见 §R3t-A 手测记录）
 - [x] LLM 标点（R3t-C）、段界（R3t-D）预览确认，取消不改库 — 2026-05-31
-- [ ] **词表校对（R3t-E）** 预览确认，取消不改库
+- [x] ~~**词表校对（R3t-E）**~~ 已从产品移除（2026-06）
 - [x] `npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs`（2026-05-30：567 vitest，0 守卫 error）
 - [ ] 动 Rust 时 `cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml`（R3t 全 Epic 签收时跑全量）
 - [x] 架构守卫无新增 error（2026-05-30）
@@ -174,13 +174,14 @@
 
 > **调研**：[`r3t-e-lexicon-proofread-research.md`](./r3t-e-lexicon-proofread-research.md)  
 > 架构：[`lexicon-guided-llm-refine.md`](../../architecture/lexicon-guided-llm-refine.md)  
-> **状态**：🔄 编码完成，手测待签（2026-05-31）
+> **手测清单**：[`r3t-e-hand-test-checklist.md`](./r3t-e-hand-test-checklist.md) · **⑤″f-A 追踪**：[`r3-5f-a-phase-signoff-2026-06.md`](./r3-5f-a-phase-signoff-2026-06.md)
 
 ### 自动
 
 - [x] `lexicon_pack` 组装单测：glossary 列表、memory rules 权重、截断标记
 - [x] 响应校验：无 Pack 内依据的 op 被丢弃（`postprocess_lexicon_ops`）
-- [ ] `postprocess_lexicon_proofread` 契约测试（mock HTTP）
+- [x] `useLexiconProofreadController` 契约测试（mock `postprocessLexiconProofread`）
+- [x] `parse_lexicon_proofread_json` 单测（含 markdown fence）
 
 ### 手测
 

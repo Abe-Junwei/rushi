@@ -6,6 +6,10 @@ import {
   collectLiteralFindMatches,
   type FindMatch,
 } from "../services/editor/segmentFindReplace";
+import {
+  querySegmentListScrollRoot,
+  scrollSegmentRowIntoViewContainer,
+} from "../utils/segmentListVirtualWindow";
 
 const FIND_SEARCH_DEBOUNCE_MS = 320;
 
@@ -56,12 +60,24 @@ export function useFindReplaceSearch(args: Args) {
     [matches, segments],
   );
 
+  const scrollToMatchSegment = useCallback((segmentIdx: number) => {
+    window.requestAnimationFrame(() => {
+      window.requestAnimationFrame(() => {
+        const root = querySegmentListScrollRoot();
+        if (!root) return;
+        const next = scrollSegmentRowIntoViewContainer(segmentIdx, root);
+        if (next != null) root.scrollTop = next;
+      });
+    });
+  }, []);
+
   const focusMatch = useCallback(
     (match: FindMatch | undefined) => {
       if (!match) return;
       setSelectedIdx(match.segmentIdx);
+      scrollToMatchSegment(match.segmentIdx);
     },
-    [setSelectedIdx],
+    [scrollToMatchSegment, setSelectedIdx],
   );
 
   const applySearchResults = useCallback(

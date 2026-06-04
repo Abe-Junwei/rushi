@@ -1,6 +1,6 @@
 # F6 / F6+ / 纳入记忆 — 手测清单
 
-> **状态**：✅ 手测签收（2026-06-02）  
+> **状态**：✅ 手测签收（2026-06-02）· **⑤″f-B** 子项 — [`r3-5f-b-hand-test-checklist.md`](./r3-5f-b-hand-test-checklist.md)  
 > **验收真源**：[`r3-asr-voc-landing-acceptance.md`](./r3-asr-voc-landing-acceptance.md) § ASR-VOC-2（2a / 2a+）· [`r3t-f-post-transcribe-suite-acceptance.md`](./r3t-f-post-transcribe-suite-acceptance.md) P1 F6  
 > **纳入记忆入口（2026-06）**：语段正文 **选区 + 右键「纳入更正记忆…」** → `ManualCorrectionMemoryDialog` → `correction_memory_save`（**不再**在保存语段时自动推断 learnEdit / explicit_pairs）。  
 > **机器回归**：`manualCorrectionMemory.test.ts` · `correctionLearnBaseline.test.ts` · `segmentTextContextMenuModel`（`jixingLearnSpan.test.ts` 等自动追踪用例已移除）

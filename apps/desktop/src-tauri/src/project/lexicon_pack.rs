@@ -65,7 +65,7 @@ pub fn assemble_lexicon_pack(conn: &Connection) -> Result<LexiconPack, String> {
         let mut stmt = conn
             .prepare(
                 "SELECT before_text, after_text, accepted_as_rule FROM correction_memory \
-                 WHERE accepted_as_rule = 1 OR hit_count >= 2 \
+                 WHERE accepted_as_rule = 1 OR hit_count >= 3 \
                  ORDER BY accepted_as_rule DESC, hit_count DESC, updated_at_ms DESC \
                  LIMIT ?1",
             )

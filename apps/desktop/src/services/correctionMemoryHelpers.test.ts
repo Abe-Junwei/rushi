@@ -20,7 +20,7 @@ const row = (partial: Partial<CorrectionMemoryEntryRow>): CorrectionMemoryEntryR
 describe("correctionMemoryHelpers", () => {
   it("stableLabel reflects accepted and hit threshold", () => {
     expect(correctionMemoryStableLabel(row({ acceptedAsRule: true }))).toBe("已采纳");
-    expect(correctionMemoryStableLabel(row({ hitCount: 2 }))).toBe("已稳定");
+    expect(correctionMemoryStableLabel(row({ hitCount: 3 }))).toBe("已稳定");
     expect(correctionMemoryStableLabel(row({ hitCount: 1 }))).toBe("学习中");
   });
 

@@ -91,7 +91,7 @@ export function useAutoSaveSegments(args: Args): { autoSaveFooterStatus: AutoSav
         return;
       }
       setAutoSaveFooterStatus("saving");
-      void saveSegmentsRef.current({ quiet: true, countHits: false });
+      void saveSegmentsRef.current({ quiet: true, countHits: true });
     }, AUTO_SAVE_DEBOUNCE_MS);
   }, [clearScheduledSave, saveInFlightRef]);
 

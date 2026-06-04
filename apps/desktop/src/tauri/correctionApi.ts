@@ -56,7 +56,7 @@ function parseMemoryEntryRow(raw: Record<string, unknown>): CorrectionMemoryEntr
     hitCount,
     acceptedAsRule,
     updatedAtMs: Number(raw.updatedAtMs ?? raw.updated_at_ms ?? 0),
-    isStable: Boolean(raw.isStable ?? raw.is_stable ?? (acceptedAsRule || hitCount >= 2)),
+    isStable: Boolean(raw.isStable ?? raw.is_stable ?? (acceptedAsRule || hitCount >= 3)),
   };
 }
 

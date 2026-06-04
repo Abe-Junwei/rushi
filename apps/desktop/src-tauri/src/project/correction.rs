@@ -10,7 +10,10 @@ mod correction_hints;
 pub use correction_hints::{
     collect_correction_rule_hints, list_glossary_learn_prompts, list_glossary_mine_candidates,
 };
-pub use correction_learn::{accept_correction_rule, upsert_explicit_correction_pairs};
+pub use correction_learn::{
+    accept_correction_rule, infer_single_replacement, learn_inferred_pairs_from_segment_save,
+    upsert_explicit_correction_pairs,
+};
 pub use correction_store::{
     delete_correction_memory_entry, list_correction_memory_entries,
     list_stable_correction_rules, save_correction_memory_entry,
@@ -20,7 +23,12 @@ pub use correction_types::*;
 #[cfg(test)]
 mod tests {
     use super::*;
-    use correction_learn::{normalize_correction_learn_pair, should_learn_inferred_replacement};
+    use correction_learn::{
+        infer_single_replacement, learn_inferred_pairs_from_segment_save, normalize_correction_learn_pair,
+        should_learn_inferred_replacement, upsert_correction_memory,
+    };
+    use crate::project::types::SegmentDto;
+    use std::collections::HashMap;
     use rusqlite::Connection;
 
     #[test]
@@ -116,7 +124,7 @@ mod tests {
         .unwrap();
         save_correction_memory_entry(&conn, "错A", "对A", false, None, None).unwrap();
         conn.execute(
-            "UPDATE correction_memory SET hit_count = 2 WHERE before_text = '错A'",
+            "UPDATE correction_memory SET hit_count = 3 WHERE before_text = '错A'",
             [],
         )
         .unwrap();
@@ -184,5 +192,72 @@ mod tests {
             )
             .unwrap();
         assert_eq!(hit, 1);
+    }
+
+    #[test]
+    fn infer_single_replacement_finds_word_pair() {
+        assert_eq!(
+            infer_single_replacement("智控", "制控"),
+            Some(("智控".to_string(), "制控".to_string()))
+        );
+    }
+
+    #[test]
+    fn learn_from_save_increments_hit_and_auto_glossary_at_three() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE correction_memory (
+                before_text TEXT NOT NULL,
+                after_text TEXT NOT NULL,
+                hit_count INTEGER NOT NULL,
+                accepted_as_rule INTEGER NOT NULL,
+                created_at_ms INTEGER NOT NULL,
+                updated_at_ms INTEGER NOT NULL,
+                PRIMARY KEY (before_text, after_text)
+            );
+            CREATE TABLE glossary_terms (
+                id INTEGER PRIMARY KEY AUTOINCREMENT,
+                term TEXT NOT NULL,
+                aliases TEXT NOT NULL DEFAULT '',
+                domain TEXT NOT NULL DEFAULT '',
+                note TEXT NOT NULL DEFAULT '',
+                created_at_ms INTEGER NOT NULL,
+                updated_at_ms INTEGER NOT NULL,
+                hotword_enabled INTEGER NOT NULL DEFAULT 1
+            );",
+        )
+        .unwrap();
+        upsert_correction_memory(&conn, "智控", "制控", 1).unwrap();
+        let seg = |uid: &str, text: &str| SegmentDto {
+            idx: 0,
+            uid: Some(uid.to_string()),
+            start_sec: 0.0,
+            end_sec: 1.0,
+            text: text.into(),
+            confidence: None,
+            low_confidence: false,
+            detail: None,
+            kind: None,
+        };
+        let baseline1 = HashMap::from([("u1".to_string(), "这是智控".to_string())]);
+        learn_inferred_pairs_from_segment_save(&conn, &baseline1, &[seg("u1", "这是制控")], 2)
+            .unwrap();
+        let baseline2 = HashMap::from([("u1".to_string(), "仍有智控".to_string())]);
+        learn_inferred_pairs_from_segment_save(&conn, &baseline2, &[seg("u1", "仍有制控")], 3)
+            .unwrap();
+        let hit: i32 = conn
+            .query_row(
+                "SELECT hit_count FROM correction_memory WHERE before_text = '智控'",
+                [],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(hit, 3);
+        let term_count: i32 = conn
+            .query_row("SELECT COUNT(*) FROM glossary_terms WHERE term = '制控'", [], |r| {
+                r.get(0)
+            })
+            .unwrap();
+        assert_eq!(term_count, 1);
     }
 }

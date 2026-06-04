@@ -106,6 +106,8 @@ export function EnvironmentPanel({
   const [settingsEpoch, setSettingsEpoch] = useState(0);
   const [sttNavRefreshSeq, setSttNavRefreshSeq] = useState(0);
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const onlineSttScrollRef = useRef<HTMLDivElement | null>(null);
+  const llmScrollRef = useRef<HTMLDivElement | null>(null);
   const [layoutCompact, setLayoutCompact] = useState(false);
   const { presentation: llmPresentation } = useLlmEnvStatus(llmStatusRefreshSeq);
 
@@ -123,7 +125,7 @@ export function EnvironmentPanel({
     if (focusOnlineSttSeq <= 0) return;
     setEnvSection("online-stt");
     const raf = window.requestAnimationFrame(() => {
-      document.getElementById("online-stt-provider")?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      onlineSttScrollRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
     });
     return () => window.cancelAnimationFrame(raf);
   }, [focusOnlineSttSeq]);
@@ -132,7 +134,7 @@ export function EnvironmentPanel({
     if (focusLlmSeq <= 0) return;
     setEnvSection("llm");
     const raf = window.requestAnimationFrame(() => {
-      document.getElementById("llm-config")?.scrollIntoView({ block: "start", behavior: "smooth" });
+      llmScrollRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
     });
     return () => window.cancelAnimationFrame(raf);
   }, [focusLlmSeq]);
@@ -246,13 +248,19 @@ export function EnvironmentPanel({
               {envSection === "online-stt" ? (
                 <EnvOnlineSttPanel
                   key={`online-stt-${settingsEpoch}`}
+                  scrollAnchorRef={onlineSttScrollRef}
                   busy={busy}
                   onSttOnlineRuntimeChanged={bumpSttRuntimeRevision}
                 />
               ) : null}
 
               {envSection === "llm" ? (
-                <EnvLlmConfigPanel key={`llm-${settingsEpoch}`} busy={busy} onLlmRuntimeChanged={onLlmRuntimeChanged} />
+                <EnvLlmConfigPanel
+                  key={`llm-${settingsEpoch}`}
+                  scrollAnchorRef={llmScrollRef}
+                  busy={busy}
+                  onLlmRuntimeChanged={onLlmRuntimeChanged}
+                />
               ) : null}
 
               {envSection === "profile" ? (

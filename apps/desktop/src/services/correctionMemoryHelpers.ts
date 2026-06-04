@@ -16,7 +16,7 @@ export const EMPTY_CORRECTION_MEMORY_DRAFT: CorrectionMemoryDraft = {
 
 export function correctionMemoryStableLabel(row: CorrectionMemoryEntryRow): string {
   if (row.acceptedAsRule) return "已采纳";
-  if (row.hitCount >= 2) return "已稳定";
+  if (row.hitCount >= 3) return "已稳定";
   return "学习中";
 }
 

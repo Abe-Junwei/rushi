@@ -33,7 +33,7 @@ export function GlossaryCorrectionMemorySection({
           </span>
         </div>
         <p className={`m-0 ${PANEL_TYPOGRAPHY.meta}`}>
-          来自手改纳入、查找替换或本页新建。用于工具栏「纠错规则」与改正建议；正形可通过 F6 提示或右键纳入后加入上方转写词汇表（非自动进热词）。
+          右键纳入后开始学习；之后每次保存（含自动保存）累计命中，满 3 次自动稳定并写入术语表。可在此查看、删除或批量「采纳为规则」。
         </p>
       </div>
 

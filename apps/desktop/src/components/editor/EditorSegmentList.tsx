@@ -11,6 +11,8 @@ import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
 import {
   computeSegmentListVirtualWindow,
   scrollSegmentListIndexIntoView,
+  scrollSegmentRowIntoViewContainer,
+  SEGMENT_LIST_SCROLL_ATTR,
   segmentListItemStridePx,
   segmentListRowMinHeightPx,
 } from "../../utils/segmentListVirtualWindow";
@@ -77,8 +79,24 @@ export function EditorSegmentList({
       rowMinHeightPx,
       itemStridePx,
     });
-    if (nextScrollTop != null) root.scrollTop = nextScrollTop;
+    if (nextScrollTop != null) {
+      root.scrollTop = nextScrollTop;
+      setScrollTop(nextScrollTop);
+    }
   }, [c.currentFileId, c.selectedIdx, itemStridePx, rowMinHeightPx, segmentListRef]);
+
+  useLayoutEffect(() => {
+    const root = segmentListRef.current;
+    if (!root || c.selectedIdx < 0) return;
+    const raf = window.requestAnimationFrame(() => {
+      const corrected = scrollSegmentRowIntoViewContainer(c.selectedIdx, root);
+      if (corrected == null) return;
+      if (Math.abs(corrected - root.scrollTop) < 1) return;
+      root.scrollTop = corrected;
+      setScrollTop(corrected);
+    });
+    return () => window.cancelAnimationFrame(raf);
+  }, [c.selectedIdx, segmentListRef]);
 
   const onOpenRowContextMenu = useCallback(
     (e: ReactMouseEvent<HTMLDivElement>, segmentIdx: number, pointerTimeSec: number) => {
@@ -120,6 +138,7 @@ export function EditorSegmentList({
   return (
     <div
       ref={segmentListRef}
+      {...{ [SEGMENT_LIST_SCROLL_ATTR]: "" }}
       className="min-h-0 flex-1 overflow-y-auto bg-notion-bg p-2.5"
       role="list"
       aria-label="语段文本列表"

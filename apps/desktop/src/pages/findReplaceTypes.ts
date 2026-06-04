@@ -5,6 +5,13 @@ import type {
   ReplaceAllPreviewRow,
 } from "../services/editor/segmentFindReplace";
 
+/** 与 `FindReplaceDialog` 面板根节点 id 一致 */
+export const FIND_REPLACE_PANEL_ID = "find-replace-v2";
+
+export function isFindReplacePanelOpen(): boolean {
+  return typeof document !== "undefined" && document.getElementById(FIND_REPLACE_PANEL_ID) != null;
+}
+
 export type FindReplaceDialogState =
   | { phase: "closed" }
   | {

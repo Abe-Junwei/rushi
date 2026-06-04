@@ -1,6 +1,6 @@
 # Plan: 纠错记忆优化（MEM）— 并入 R3t-F / ⑤″f
 
-> **状态**：规划定稿（2026-05-31）· **未编码**（MEM-P0 起）  
+> **状态**：**MEM-P0** ✅ · **MEM-P1** ✅（2026-06-04）— [`mem-p1-hand-test-checklist.md`](./mem-p1-hand-test-checklist.md)  
 > **排期真源**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) §4.1.1 **⑤″f**、§1.7  
 > **套件真源**：[`r3t-f-post-transcribe-suite-plan.md`](./r3t-f-post-transcribe-suite-plan.md) **v4**  
 > **调研**：[`r3t-f-edit-memory-for-llm-research.md`](./r3t-f-edit-memory-for-llm-research.md) §2–4、§4.3  
@@ -17,7 +17,7 @@
 | **学习触发** | 同上；**无**独立前端写 memory API |
 | **风险** | 停笔即落库 → `infer_single_replacement` 可能对**半成品 diff** 计 `hit_count`；与 Descript「≥3 次才进 glossary」的**意图计数**不完全一致 |
 
-**拍板方向（D10–D12，见 §2）**：自动保存 **继续负责落库**；**晋升 hit / 显式入库** 与「用户确认型操作」对齐业内 Sonix/Descript。
+**拍板方向（R-MEM-SAVE + D11–D12，见 §2）**：每次落库带一种 **保存意图**；**背景保存**只保语段，**确认型保存**才学记忆且 **立即** 落库（原 D10/D13 已并入 R-MEM-SAVE）。
 
 ---
 
@@ -38,14 +38,63 @@
 
 ## 2. 产品拍板（MEM，2026-05-31）
 
+### 2.0 R-MEM-SAVE — 保存意图（统一规则，取代 D10/D13 分拆）
+
+> **一句话**：**背景保存**只写语段；**确认型保存**在同一回合 **立即 quiet 落库** 且 **才更新纠错记忆**。
+
+| 保存意图 | 典型触发 | 语段落库 | 纠错记忆 | 前端参数（现状） |
+|----------|----------|----------|----------|------------------|
+| **`draft`** | 防抖自动保存（停笔 ~1.5s） | ✅ 立即 `quiet` | ❌ 不学、不计 hit | `saveSegments({ quiet: true, countHits: false })` |
+| **`confirmed`** | 手动保存；F2 全部替换确认；F1 规则写回确认；段间「确认并下一段」等 | ✅ **同一回合** 落库（批量工具 **不** 等自动保存） | ✅ 计 hit / 显式对 | `quiet` + `countHits: true`；F2 另传 `explicitPairs` |
+| **`explicit_only`** | F6「纳入更正记忆…」弹窗确认 | 可选（与语段保存无关） | ✅ `correction_memory_save` | 不经 `countHits` 链 |
+
+**三条硬规则**（手测 / code review 只认此表，不再单独记 D10、D13）：
+
+1. **`draft` 不学记忆** — 自动保存不得因 diff 推断而增加 `hit_count`（对标 Descript：计数跟「确认」，不跟「停笔」）。
+2. **批量写回必须 `confirmed`** — F1/F2 等「预览 → 确认写回」后，**必须** 立刻 `saveSegments({ quiet: true, countHits: true, … })`；禁止只改 UI state 再等 `draft`（对标 Sonix Correct All 即时生效）。
+3. **`confirmed` 才计命中** — 手动保存与批量确认共用 `countHits: true`；Replace All 另用 `explicitPairs` 显式 upsert（见 **D11**）；F6 走 **`explicit_only`** API。
+
+**实现映射（MEM-P0）**：`countHits` ≈ 是否允许「保存前后 diff → infer」；`explicitPairs` ≈ 用户已点名的 `错形→正形`；`quiet` ≈ 是否 toast（与是否学记忆正交）。
+
+| 旧 ID | 并入 |
+|-------|------|
+| **D10** | R-MEM-SAVE 规则 1 + 3 |
+| **D13** | R-MEM-SAVE 规则 2（`confirmed` 子集） |
+
+### 2.1 其它拍板
+
 | ID | 决策 | 对标 |
 |----|------|------|
-| **D10** | **自动保存**：`file_save_segments` **计持久化**；**`hit_count` 累加** 默认仅 **显式路径**（手动保存、Replace All 确认保存、写回后 `quiet save`）及 **infer 成功** 的显式 upsert；纯防抖自动保存 **可配置默认不计 hit**（实施二选一写入 acceptance） | Descript 计数 vs Otter 黑盒 |
-| **D11** | **Replace All**、**改正应用并保存**、**F1 确认写回** 后：除 infer 外支持 **`upsert_correction_memory` 显式**（`before=find, after=replace` 或段级聚合对） | Sonix 书图标、AssemblyAI custom_spelling |
-| **D12** | **F1 / 改正 / F1 预览** 提供 **「采纳为规则」** → `accept_correction_rule`（与 R3t-E 勾选同源） | Sonix dictionary |
-| **D13** | **F1 / 纠错规则写回** 后 **必须** `saveSegments({ quiet: true })`（不弹 toast），不依赖 1.5s 自动保存 | Correct All 即时生效 |
-| **D14** | **LEX-MINE-1** 提前至 **⑤″f-B½**（术语页「记忆推荐」列表）；F6 弹窗保留；**不**静默入库 | Descript 3 次 + 显式确认 |
-| **D15** | **ACC-TXT-0**（稳定规则转写后字面替换）降为 **MEM-P2 Spike**，通过后再进 §8.1 候选或 F0-lite 默认勾 | transcript-fixer Stage1、AssemblyAI |
+| **D11** | **Replace All**、**改正应用并保存**、**F1 确认写回** 后：除 infer 外支持 **`upsert_correction_memory` 显式**（`before=find, after=replace`） | Sonix 书图标、AssemblyAI custom_spelling |
+| **D12** | **F1 / 改正 / F1 预览** 提供 **「采纳为规则」** → `accept_correction_rule` | Sonix dictionary |
+| **D14** | **LEX-MINE-1** 提前至 **⑤″f-B½**；F6 弹窗保留；**不**静默入库 | Descript 3 次 + 显式确认 |
+| **D15** | **ACC-TXT-0** 降为 **MEM-P2 Spike** | transcript-fixer Stage1、AssemblyAI |
+
+### 2.2 晋升阶梯（Descript 对齐 · 产品北向）
+
+> **原则**：**计数跟「确认」**（R-MEM-SAVE `confirmed` / F6 `explicit_only`），**不跟停笔**；**进术语表（L1）比进 F1 规则更保守**。
+
+| 阶段 | 条件 | 用户可见 | 消费（L2/L4） | Descript 对照 |
+|------|------|----------|---------------|---------------|
+| **记录** | 第 1 次 `confirmed` 或 F6 纳入 | 纠错记忆表有行，`hit=1` | Pack **不进**；F1 **不**扫 | 尚未进 Transcription Glossary |
+| **稳定规则** | **`hit_count ≥ 3`** 或 **采纳为规则** | 表内「已稳定」；可删可管（MEM-P1 UI ✅） | **F1** 全文替换；LexiconPack；**LEX-MINE-1** 推荐进表 | 满 3 次自动术语表（MEM-P0）；管理/挖掘在 B½ |
+| **进术语表提示** | **`hit_count ≥ 3`** 且术语库 **无** 该 **正形** | **GlossaryLearnPrompt** 弹窗（须点「加入词汇表」） | 确认后 → `glossary_terms` → **下次转写 hotwords** | [Transcription Glossary](https://help.descript.com/hc/en-us/articles/10249407290637-Transcription-glossary) **同一词改 ≥3 次可自动入库（可关）** |
+| **显式规则** | 用户点 **采纳为规则** | 立即 stable | Pack **high**；F1 立即可用 | 强于纯计数 |
+
+**代码现状（2026-06）**
+
+| 阶梯 | 状态 | 真源 |
+|------|------|------|
+| 稳定 `hit≥2` | ✅ | `correction_store.rs` · F1 `list_stable_correction_rules` |
+| F6 第 3 次进表 **提示** | ✅ | `list_glossary_learn_prompts`（`hit_count >= 3`）· [`f6-f6plus-mem-hand-test-checklist.md`](./f6-f6plus-mem-hand-test-checklist.md) §B |
+| LEX-MINE-1 推荐列表 | ✅ MEM-P1 | `GlossaryMineSection` + `useGlossaryMineController` |
+| Descript 式 **满 3 次自动进 glossary（可关）** | ✅ MEM-P0 | 默认 **开**（自动进表）；可选设置项延后 |
+
+**不做什么（Descript 差异 intentional）**
+
+- **不**在 `hit=1` 时静默进 glossary 或静默跑 F1。  
+- **不**把 `before_text`（错形）进 hotwords（仅 **正形** `after_text` / glossary `term`）。  
+- **不**在 MEM-P0 做「跨项目自动挖词」；全量语料 **LEX-MINE-2+** 仍 §8.1 候选。
 
 ---
 
@@ -73,32 +122,33 @@
 | `save_segments` hit 策略 | 新增 `count_hits: bool`（默认：手动/显式 true，auto-save false） |
 | 日志 | `correction_memory_update_failed` 保留；可选 `correction_memory_learned n=` info |
 
-### 4.2 前端
+### 4.2 前端（按 R-MEM-SAVE 意图）
 
-| 路径 | 行为 |
-|------|------|
-| Replace All 确认 | `explicit_pairs` 或逐段 upsert + `save({ quiet, countHits: true })` |
-| F1 确认写回 | 写回 → **`save({ quiet: true })`** |
-| 改正 → 查找替换 → 用户替换 | 同 F2；或「应用建议」单段替换 + quiet save |
-| 自动保存 | `save({ quiet: true, countHits: false })` |
-| 手动保存 | `save` → toast「保存成功」+ `countHits: true` |
+| 路径 | 意图 | 行为 |
+|------|------|------|
+| 自动保存 | `draft` | `save({ quiet: true, countHits: false })` |
+| 手动保存 | `confirmed` | toast + `countHits: true` |
+| Replace All 确认 | `confirmed` | `explicitPairs` + `save({ quiet: true, countHits: true })` |
+| F1 确认写回 | `confirmed` | 写回 state → **同回合** `save({ quiet: true, countHits: true })` |
+| F6 纳入记忆 | `explicit_only` | `correction_memory_save`（不经 countHits） |
 
-### 4.3 验收要点
+### 4.3 验收要点（R-MEM-SAVE）
 
-- [ ] Replace All「智控→制控」后 DB 有 pair且 hit≥1（显式或 infer 至少其一）  
-- [ ] 仅自动保存、无手改：不增加 hit（若采用 D10 方案 A）  
-- [ ] F1 写回后 1s 内 DB 与 UI 一致（无需等 1.5s）
+- [ ] Replace All「智控→制控」后 DB 有 pair 且 hit≥1（显式或 infer 至少其一）  
+- [ ] 仅 `draft`（自动保存）、无 `confirmed`：不增加 hit  
+- [ ] F1 `confirmed` 写回后 1s 内 DB 与 UI 一致（无需等 `draft` 防抖）
 
 ---
 
-## 5. MEM-P1 — 可观测与晋升（⑤″f-B½）
+## 5. MEM-P1 — 可观测与晋升（⑤″f-B½ · Descript 体验补全）
 
-| 项 | 规格 |
-|----|------|
-| **记忆管理** | 术语库页或环境子页：列表 `wrong→right`、`hit_count`、`accepted`；删除；只读上限 80 条与 stable 规则同源 |
-| **采纳为规则** | F1 预览、改正结果行、（可选）语段工具栏 — 调 `correction_accept_rule` |
-| **LEX-MINE-1** | SQL 聚合推荐（`hit≥2` 或 accepted，未在 glossary）；批量采纳进 glossary / 忽略（降权表或 localStorage dismiss 扩展） |
-| **F6 文案** | 强调「正形进术语表、改善下次转写」；非 SQLite 技术用语 |
+| 项 | 规格 | Descript 对标 |
+|----|------|---------------|
+| **记忆管理** | 列表 `wrong→right`、`hit_count`、`accepted`；删除；与 stable 规则同源 | 词典透明度 |
+| **采纳为规则** | F1 预览、改正结果行 — `correction_accept_rule` | 显式词典项 |
+| **LEX-MINE-1** | 术语页「记忆推荐」：`hit≥2` 或 accepted、未在 glossary；**批量**采纳 / 忽略 | 减少只靠第 3 次弹窗才发现 |
+| **自动进表（可选）** | 设置：**「正形 hit≥3 时自动加入术语表」** 默认 **关**；开则跳过 GlossaryLearnPrompt（仍写 note 来源） | Transcription Glossary 自动添加（可关） |
+| **F6 文案** | 「多次改正的正形可进术语表，改善**下次转写**」 | 区分 L1 vs F1 当前稿 |
 
 ---
 
@@ -152,3 +202,5 @@ Rust 单测：`infer_single_replacement` 边界 + `update_correction_memory_from
 | 版本 | 日期 | 说明 |
 |------|------|------|
 | v1 | 2026-05-31 | 自对话优化建议并入 R3t-F；D10–D15；MEM-P0～S1 分期 |
+| v2 | 2026-06-04 | **R-MEM-SAVE** 统一保存意图；D10/D13 并入 §2.0，手测只认三条硬规则 |
+| v3 | 2026-06-04 | **§2.2 晋升阶梯** Descript 北向；MEM-P1 补 LEX-MINE-1 + 可选「hit≥3 自动进表」 |

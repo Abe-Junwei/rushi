@@ -1,4 +1,5 @@
-use super::correction_types::{CorrectionMemoryEntryRow, CorrectionRuleRow};
+use super::correction_learn::is_correction_memory_stable;
+use super::correction_types::{CorrectionMemoryEntryRow, CorrectionRuleRow, CORRECTION_MEMORY_STABLE_HIT};
 use crate::project::utils::now_ms;
 use rusqlite::{params, Connection};
 
@@ -51,16 +52,10 @@ pub fn save_correction_memory_entry(
         }
     }
     let at_ms = now_ms();
-    let accepted = if accepted_as_rule { 1 } else { 0 };
-    conn.execute(
-        "INSERT INTO correction_memory \
-         (before_text, after_text, hit_count, accepted_as_rule, created_at_ms, updated_at_ms)\
-         VALUES (?1, ?2, 1, ?3, ?4, ?4)\
-         ON CONFLICT(before_text, after_text) DO UPDATE SET \
-         accepted_as_rule = excluded.accepted_as_rule, updated_at_ms = excluded.updated_at_ms",
-        params![wrong, right, accepted, at_ms],
-    )
-    .map_err(|e| e.to_string())?;
+    super::correction_learn::upsert_correction_memory(&conn, wrong, right, at_ms)?;
+    if accepted_as_rule {
+        super::correction_learn::accept_correction_rule(&conn, wrong, right, at_ms)?;
+    }
     Ok(())
 }
 
@@ -89,7 +84,7 @@ pub fn list_correction_memory_entries(
                 hit_count,
                 accepted_as_rule: accepted,
                 updated_at_ms,
-                is_stable: accepted || hit_count >= 2,
+                is_stable: is_correction_memory_stable(hit_count, accepted),
             })
         })
         .map_err(|e| e.to_string())?;
@@ -117,13 +112,13 @@ pub fn list_stable_correction_rules(conn: &Connection) -> Result<Vec<CorrectionR
     let mut stmt = conn
         .prepare(
             "SELECT before_text, after_text, hit_count, accepted_as_rule FROM correction_memory \
-             WHERE accepted_as_rule = 1 OR hit_count >= 2 \
+             WHERE accepted_as_rule = 1 OR hit_count >= ?1 \
              ORDER BY length(before_text) DESC, accepted_as_rule DESC, hit_count DESC, updated_at_ms DESC \
              LIMIT 80",
         )
         .map_err(|e| e.to_string())?;
     let rows = stmt
-        .query_map([], |r| {
+        .query_map(params![CORRECTION_MEMORY_STABLE_HIT], |r| {
             Ok(CorrectionRuleRow {
                 wrong: r.get(0)?,
                 right: r.get(1)?,

@@ -5,8 +5,6 @@ pub struct CorrectionExplicitPairDto {
     pub after_text: String,
 }
 
-/// Tauri IPC：前端仍传 learn baseline；保存路径已不再消费 diff 推断。
-#[allow(dead_code)]
 #[derive(Debug, Clone, Default, serde::Deserialize)]
 #[serde(rename_all = "camelCase")]
 pub struct CorrectionLearnBaselineTextDto {
@@ -14,9 +12,15 @@ pub struct CorrectionLearnBaselineTextDto {
     pub text: String,
 }
 
+/// 稳定规则 / 自动进术语表：同一错→对累计命中次数阈值（含纳入记忆与保存推断）。
+pub const CORRECTION_MEMORY_STABLE_HIT: i32 = 3;
+
 #[derive(Debug, Clone, Default)]
 pub struct SaveSegmentsLearnOpts {
     pub explicit_pairs: Vec<(String, String)>,
+    pub count_hits: bool,
+    /// uid → 保存前正文；空时 save 路径回退 DB 快照。
+    pub learn_baseline: Vec<(String, String)>,
 }
 
 #[derive(Debug, Clone, serde::Serialize)]

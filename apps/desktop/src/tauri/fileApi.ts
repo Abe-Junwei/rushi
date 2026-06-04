@@ -79,7 +79,7 @@ export type CorrectionExplicitPair = { beforeText: string; afterText: string };
 export type LearnBaselineText = { uid: string; text: string };
 
 export type FileSaveSegmentsOptions = {
-  /** When false, infer-based hit_count learning is skipped. Explicit pairs still apply when true. */
+  /** When false, skip diff-based hit learning on save (explicit_pairs still apply). Default true. */
   countHits?: boolean;
   explicitPairs?: CorrectionExplicitPair[];
   /** Pre-save snapshot texts by uid; required when auto-save already persisted edits. */
@@ -94,7 +94,7 @@ export async function fileSaveSegments(
   return invoke<void>("file_save_segments", {
     fileId,
     segments,
-    countHits: options?.countHits ?? false,
+    countHits: options?.countHits ?? true,
     explicitPairs: options?.explicitPairs ?? [],
     learnBaselineTexts: options?.learnBaselineTexts ?? [],
   });

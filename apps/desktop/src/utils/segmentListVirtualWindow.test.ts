@@ -1,7 +1,9 @@
 import { describe, expect, it } from "vitest";
 import {
   computeSegmentListVirtualWindow,
+  ensureSegmentListVirtualWindowIncludesIndex,
   scrollSegmentListIndexIntoView,
+  scrollSegmentRowIntoViewContainer,
   segmentListItemStridePx,
 } from "./segmentListVirtualWindow";
 
@@ -53,5 +55,36 @@ describe("segmentListVirtualWindow", () => {
         itemStridePx: stride,
       }),
     ).toBeNull();
+  });
+
+  it("ensureSegmentListVirtualWindowIncludesIndex expands when pin is outside window", () => {
+    const stride = 80;
+    const base = computeSegmentListVirtualWindow({
+      scrollTop: 0,
+      viewportHeight: 400,
+      itemStridePx: stride,
+      totalCount: 200,
+      overscan: 4,
+    });
+    expect(base.endIndex).toBeLessThan(50);
+    const merged = ensureSegmentListVirtualWindowIncludesIndex(base, 120, 200, stride);
+    expect(merged.startIndex).toBeLessThanOrEqual(120);
+    expect(merged.endIndex).toBeGreaterThan(120);
+  });
+
+  it("scrollSegmentRowIntoViewContainer scrolls when row is below viewport", () => {
+    const root = document.createElement("div");
+    Object.defineProperty(root, "scrollTop", { writable: true, value: 0 });
+    const row = document.createElement("div");
+    row.setAttribute("data-seg-row", "5");
+    root.appendChild(row);
+    root.getBoundingClientRect = () =>
+      ({ top: 100, bottom: 500, left: 0, right: 400, width: 400, height: 400, x: 0, y: 100, toJSON: () => ({}) }) as DOMRect;
+    row.getBoundingClientRect = () =>
+      ({ top: 520, bottom: 600, left: 0, right: 400, width: 400, height: 80, x: 0, y: 520, toJSON: () => ({}) }) as DOMRect;
+
+    const next = scrollSegmentRowIntoViewContainer(5, root);
+    expect(next).not.toBeNull();
+    expect(next!).toBeGreaterThan(0);
   });
 });

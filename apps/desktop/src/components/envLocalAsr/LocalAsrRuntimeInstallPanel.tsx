@@ -1,7 +1,8 @@
-import { CONTROL_BTN_SECONDARY } from "../../config/controlStyles";
+import { CONTROL_BTN_LINK, CONTROL_BTN_SECONDARY } from "../../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../../config/typography";
 import { buildRuntimeInstallPresentation } from "../../services/asr/localAsrSetupWizardPresentation";
 import type { LocalRuntimeDiagnose } from "../../services/localRuntime/localRuntimeContract";
+import { scrollToEnvSection } from "./asrStatusRowActions";
 import {
   EnvCollapsibleMetaSummary,
   EnvCollapsibleSectionSummary,
@@ -56,14 +57,25 @@ export function LocalAsrRuntimeInstallPanel({
         ) : null}
 
         <div className="flex flex-wrap gap-2 pt-1">
-          <button
-            type="button"
-            className={CONTROL_BTN_SECONDARY}
-            disabled={wizardBusy || view.runtimeInstallRunning || view.manifestInstallBlocked}
-            onClick={() => void downloadLocalRuntime()}
-          >
-            下载 / 修复
-          </button>
+          {view.showDownloadAction ? (
+            <button
+              type="button"
+              className={CONTROL_BTN_SECONDARY}
+              disabled={wizardBusy || view.runtimeInstallRunning}
+              onClick={() => void downloadLocalRuntime()}
+            >
+              下载 / 修复
+            </button>
+          ) : (
+            <button
+              type="button"
+              className={`${CONTROL_BTN_LINK} ${PANEL_TYPOGRAPHY.button} text-zen-saffron-mid hover:text-zen-saffron`}
+              disabled={wizardBusy}
+              onClick={() => scrollToEnvSection("env-asr-utilities")}
+            >
+              查看手动安装说明
+            </button>
+          )}
           {view.runtimeInstallRunning ? (
             <button
               type="button"

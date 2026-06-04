@@ -27,4 +27,6 @@
 | G-A5 | 16GB 同开不 OOM | 未测 | 跳过 |
 | G-A6 | 用户硬件分布 | — | 可选 |
 
-**Gate-A 通过** → 起草 `r3-llm-local-runtime-acceptance.md` 并立项 **LLM-LOC-4a**。
+**Gate-A 通过** → 起草 `r3-llm-local-runtime-acceptance.md` 并立项 **LLM-LOC-4a**（**4a 已编码** 2026-06-03）。
+
+**Gate-B**：见 [`llm-loc-gate-b-decision-2026-06.md`](./llm-loc-gate-b-decision-2026-06.md) — **4b No-Go** 2026-06-04。

@@ -10,7 +10,7 @@
 | 适用节奏 | 单人、每轮 2～4h、一轮一纵向薄片 |
 | 规划跨度 | **个人单机 v1**：约 **14～18 周（自当前）** 或 **18～22 周（自 W1）**；R3 薄片 **~12～15w**（§4.0，含发行 smoke 缓冲）；协作 **非 v1** |
 | 修订 | 每完成一个阶段更新 §2 状态表、§4 排期表与 §13 代码对照 |
-| 最近对照 | **2026-06-03**：**v1 0.1.0** ✅ · **R9** ✅ → **下一主序：LLM-LOC-SPIKE**；**Q-CSP/STT-CANCEL/PLUGIN → v1.1**；**Q-SIDECAR-1 Mac L1+C2** |
+| 最近对照 | **2026-06-04**：**⑤″f-B½** ✅（MEM-P1）→ **下一刀 ⑤″f-C** F7 — [signoff](../specs/r3-5f-bhalf-phase-signoff-2026-06.md) |
 
 ### 状态标记约定（全文档统一）
 
@@ -356,7 +356,7 @@ R4 + R4-GATE ✅ → R9   ← **下一主序**
 | **⑤″d** | **R3t-D** | ✅ **2026-05-31** | 1.5–2w | `postprocess_refine_segments` + 段界整理 UI | [`r3t-d-hand-test-checklist.md`](../specs/r3t-d-hand-test-checklist.md) |
 | **⑤″e** | **R3t-E** | 🔄 编码✅ 手测⏳ | 1.5–2w | LexiconPack 有据校对；**无 RAG**；**无** R3t-E3 项目级词表 v1 | [`r3t-e-lexicon-proofread-research.md`](../specs/r3t-e-lexicon-proofread-research.md) · [`lexicon-guided-llm-refine.md`](../../architecture/lexicon-guided-llm-refine.md) |
 | **⑤″f** | **R3t-F + MEM** | 📋 规划✅ v4 | P1 12–16d / P1½ 3–4d / P2 10–14d | **F2→F1→F6→MEM-P0→MEM-P1→F7→MEM-P2**；墙钟 **4–6w** | [`r3t-f-post-transcribe-suite-plan.md`](../specs/r3t-f-post-transcribe-suite-plan.md) v4 · [`r3t-f-correction-memory-optimization-plan.md`](../specs/r3t-f-correction-memory-optimization-plan.md) |
-| **⑤″f-MEM** | **纠错记忆优化** | 📋 | ⑤″f-B～C | MEM-P0～P3、S1；D10 hit/自动保存 | [MEM acceptance](../specs/r3t-f-correction-memory-optimization-acceptance.md) |
+| **⑤″f-MEM** | **纠错记忆优化** | 📋 | ⑤″f-B～C | MEM-P0～P3、S1；**R-MEM-SAVE** 保存意图 | [MEM acceptance](../specs/r3t-f-correction-memory-optimization-acceptance.md) |
 | **⑤″f-E** | **Qwen3 SKU 门控** | ❌ **No-go** 2026-06-03 | 2–4d | 0 语段（缺 ForcedAligner）；Paraformer 制控 **197** 段 / **155s** | [results](../specs/r3g-b-qwen3-asr-spike-results.md) · [research](../specs/r3g-b-qwen3-asr-sku-spike-research.md) |
 | **⑤″f-1** | **ASR-VOC-1** | ✅ **2026-06-02** | 1–2d | 转写前 preview + 覆盖确认框 + toast；契约+UI 手测签收 | [`asr-voc-1-hand-test-checklist.md`](../specs/asr-voc-1-hand-test-checklist.md) |
 | **⑤″f-2** | **ASR-VOC-2** | 🟡 部分 | **7–10d** | **2a/2a+** ✅ · **2c/d** ✅ · **GUARD** ✅ · **2b** F7 ✅ 手测 | Plan §3 · **§4.1.9** |
@@ -994,11 +994,12 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | 项 | 内容 |
 |----|------|
 | **定位** | **v1 已闭合** → **v1 后本机 LLM**（§1.6、§6） |
-| **阶段** | **LLM-LOC-4a** ✅ · **4b** 待 Gate-B |
+| **阶段** | **LLM-LOC-4a** ✅ · **4b** ❌ Gate-B No-Go（[decision](../specs/llm-loc-gate-b-decision-2026-06.md) 2026-06-04） |
+| **工作区尾项** | **⑤″f-C** F7 词表包 — [f7 清单](../specs/f7-lexicon-bundle-hand-test-checklist.md)（B½ ✅ [signoff](../specs/r3-5f-bhalf-phase-signoff-2026-06.md)） |
 | **刚闭合** | [v1-release-installed-signoff](../v1-release-installed-signoff-2026-06.md) · R9 · R4 |
 | **Spike 真源** | [research](../specs/llm-loc-spike-research.md) · [plan](../specs/llm-loc-spike-plan.md) · [acceptance](../specs/llm-loc-spike-acceptance.md) · [backlog §9](../specs/llm-local-runtime-backlog.md) |
 | **预检** | `bash scripts/llm-loc-spike-preflight.sh` |
-| **近期不做** | **LLM-LOC-4b**（LRC 自管）、**CAT-TRAN**、**R6–R8** — 4b 待 Gate-B |
+| **近期不做** | **LLM-LOC-4b**（LRC 自管）、**CAT-TRAN**、**R6–R8** |
 | **ASR 引擎路线** | **方案 A 已锁定** — FunASR + LRC 先行；Sherpa **R3h-3.5 Spike → 轻量模式候选**（非完全替代，[ADR-0003](../../adr/0003-asr-engine-funasr-first-sherpa-spike-gate.md) 附录 A） |
 | **不要** | Gate-B 未过即立项 **4b** / 改 llm-runtime catalog |
 
@@ -1011,7 +1012,9 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 
 **LLM**：Spike ✅ · **4a Ollama** ✅（[acceptance](../specs/llm-loc-4a-acceptance.md)）；G-A1 人工可选；**4b 未立项**。
 
-**并行（不挡 Spike）**：R3h-0 smoke、TRN-DIAG、ASR-WARM、R3h-2 · 对外分发可选：公证 · 干净账户 R9 §5 · R5 MCP
+**并行（不挡主序）**：见 [parallel-backlog-2026-06.md](../specs/parallel-backlog-2026-06.md) — R3h-0、TRN-DIAG、ASR-WARM、R3h-2
+
+**⑤″f 主序**：**⑤″f-B** ✅ → **⑤″f-B½** ✅ → **⑤″f-C** F7 — [holistic](../specs/r3-asr-voc-holistic-review-2026-05.md) §5
 
 ---
 
@@ -1112,6 +1115,7 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | 2026-06-03 | **⑤‴½ REV-LOC ✅**：切片 A/B 验收签收；**Q-REV-1** 闭环；§10 **下一主序 → R4 + R4-GATE** |
 | 2026-06-03 | **v1 0.1.0 + R9** ✅；§10 **下一主序 → LLM-LOC-SPIKE**（research/plan/acceptance + preflight；Gate 前无 4a） |
 | 2026-06-03 | **工程拍板**：**Q-CSP-1** v1.1 硬化；**Q-SYMPH-1** 不裁 symphonia；**Q-STT-CANCEL-1** v1.1 真取消；**Q-PLUGIN-1** v1.1 权限；**Q-SIDECAR-1** L1+C2 Mac 自用 |
+| 2026-06-04 | **行动方案落地**：⑤″f-A 机器闸门 `scripts/r3-5f-a-machine-gate.sh`；**Gate-B No-Go 4b**；[parallel-backlog](../specs/parallel-backlog-2026-06.md)；§10 工作区尾项（R3t-E+F2 UI 手测） |
 
 ---
 

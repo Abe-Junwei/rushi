@@ -3,6 +3,10 @@ import { createPortal } from "react-dom";
 import type { CorrectSuggestion } from "../../services/editor/correctSuggestions";
 import type { SegmentCorrectPopoverState } from "../../pages/useEditorSegmentCorrectPopover";
 
+function suggestionLabel(item: CorrectSuggestion): string {
+  return item.kind === "rule" ? item.right : item.term;
+}
+
 type Props = {
   state: SegmentCorrectPopoverState | null;
   suggestions: CorrectSuggestion[];
@@ -22,8 +26,9 @@ export function SegmentCorrectPopover({ state, suggestions, onClose, onApply }: 
 
   if (!state || typeof document === "undefined") return null;
 
-  const left = Math.min(Math.max(8, state.clientX), window.innerWidth - 280);
-  const top = Math.min(Math.max(8, state.clientY + 6), window.innerHeight - 240);
+  const popoverMaxW = 200;
+  const left = Math.min(Math.max(8, state.clientX), window.innerWidth - popoverMaxW - 8);
+  const top = Math.min(Math.max(8, state.clientY + 4), window.innerHeight - 120);
 
   return createPortal(
     <>
@@ -36,35 +41,24 @@ export function SegmentCorrectPopover({ state, suggestions, onClose, onApply }: 
       <div
         role="dialog"
         aria-label="改正建议"
-        className="fixed z-[91] w-[min(272px,calc(100vw-16px))] rounded-lg border border-notion-border bg-notion-bg py-1 shadow-lg"
+        className="fixed z-[91] w-max max-w-[min(200px,calc(100vw-16px))] rounded-md border border-notion-border bg-notion-bg py-0.5 shadow-md"
         style={{ left, top }}
         onClick={(e) => e.stopPropagation()}
       >
-        <p className="border-b border-notion-divider px-3 py-2 text-[11px] text-notion-text-muted">
-          「{state.span.surface}」— 点击应用
-        </p>
         {suggestions.length === 0 ? (
-          <p className="px-3 py-3 text-xs text-notion-text-muted">无匹配建议</p>
+          <p className="m-0 px-2 py-1.5 text-[11px] leading-snug text-notion-text-muted">无匹配建议</p>
         ) : (
-          <ul className="max-h-48 overflow-y-auto py-1">
+          <ul className="m-0 max-h-40 list-none overflow-y-auto p-0" aria-label="更正建议">
             {suggestions.map((item, i) => (
-              <li key={`${item.kind}-${i}`}>
+              <li key={`${item.kind}-${i}`} className="list-none">
                 <button
                   type="button"
-                  className="w-full border-0 bg-transparent px-3 py-2 text-left text-sm text-notion-text transition-colors hover:bg-notion-sidebar-hover"
+                  className="block w-full border-0 bg-transparent px-2 py-1 text-left text-[11px] leading-snug text-notion-text transition-colors hover:bg-notion-sidebar-hover"
+                  title={`替换为「${suggestionLabel(item)}」`}
                   onClick={() => onApply(item)}
                 >
-                  {item.kind === "rule" ? (
-                    <>
-                      <span className="text-[11px] text-notion-text-muted">纠错记忆 · </span>
-                      {item.wrong} → {item.right}
-                    </>
-                  ) : (
-                    <>
-                      <span className="text-[11px] text-notion-text-muted">术语表 · </span>
-                      {item.term}
-                    </>
-                  )}
+                  <span className="text-notion-text-muted">更正建议：</span>
+                  {suggestionLabel(item)}
                 </button>
               </li>
             ))}

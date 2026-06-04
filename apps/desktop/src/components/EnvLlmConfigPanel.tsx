@@ -1,3 +1,4 @@
+import type { Ref } from "react";
 import { useEnvLlmConfigPanel } from "../hooks/useEnvLlmConfigPanel";
 import { EnvLlmCloudVendorPills } from "./EnvLlmCloudVendorPills";
 import { EnvLlmConnectionCard } from "./EnvLlmConnectionCard";
@@ -7,10 +8,11 @@ import { EnvLlmStatusBanner } from "./EnvLlmStatusBanner";
 
 type Props = {
   busy: boolean;
+  scrollAnchorRef?: Ref<HTMLDivElement>;
   onLlmRuntimeChanged?: () => void;
 };
 
-export function EnvLlmConfigPanel({ busy, onLlmRuntimeChanged }: Props) {
+export function EnvLlmConfigPanel({ busy, scrollAnchorRef, onLlmRuntimeChanged }: Props) {
   const panel = useEnvLlmConfigPanel({ busy, onLlmRuntimeChanged });
 
   const formProps = {
@@ -35,7 +37,7 @@ export function EnvLlmConfigPanel({ busy, onLlmRuntimeChanged }: Props) {
   };
 
   return (
-    <div id="llm-config" className="flex max-w-[860px] flex-col gap-7">
+    <div id="llm-config" ref={scrollAnchorRef} className="flex max-w-[860px] flex-col gap-7">
       <EnvLlmModeSwitch
         mode={panel.llmEnvMode}
         localTone={panel.modeToggleTones.local}

@@ -7,17 +7,17 @@
 
 ## MEM-P0（⑤″f-B）
 
-- [ ] Replace All 确认保存后，`correction_memory` 存在预期 `before→after`（显式或 infer）
-- [ ] F1 确认写回后 **1s 内** 落库（`quiet save`），无需等待自动保存
-- [ ] 自动保存与手动保存的 **hit 策略** 符合 Plan D10（手测：仅改一个字停笔 vs 点保存）
-- [ ] 学习失败可在 UI 或日志定位（非静默）
+> **手测**：[`mem-p0-hand-test-checklist.md`](./mem-p0-hand-test-checklist.md) · **机器** `bash scripts/r3-5f-b-machine-gate.sh` ✅ 2026-06-04
 
-## MEM-P1（⑤″f-B½）
+- [x] **MEM-P0 简化规则**（[`mem-p0-hand-test-checklist.md`](./mem-p0-hand-test-checklist.md) ✅ 2026-06-04）：纳入记忆 → 自动/手动保存计次 → hit≥3 稳定 + 自动术语表 + F1 写回
+- [ ] 学习失败可在 UI 或日志定位（非静默，本轮未强制）
 
-- [ ] 记忆列表可查看、删除 stable 规则（`hit≥2` 或 accepted）
-- [ ] F1 或改正路径可「采纳为规则」，下次 Pack/hints 立即可见
-- [ ] LEX-MINE-1：推荐列表、采纳进 glossary、忽略不再提示
-- [ ] F6 弹窗文案无 SQLite/技术库用语
+## MEM-P1（⑤″f-B½ · Descript 晋升补全）
+
+- [x] 记忆列表 / 搜索 / 删除 / 批量「采纳为规则」— [`mem-p1-hand-test-checklist.md`](./mem-p1-hand-test-checklist.md) ✅ 2026-06-04
+- [x] LEX-MINE-1：有候选时「推荐加入术语表」可采纳/忽略（无候选时区块隐藏；满 3 已由 MEM-P0 自动进表）
+- [x] F6 / 热词页文案与 MEM-P0 规则一致
+- [ ] （可选）设置「hit≥3 自动进术语表」开关 — 未做（MEM-P0 已默认自动进表）
 
 ## MEM-P2（⑤″f-C）
 

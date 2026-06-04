@@ -18,6 +18,7 @@ import {
   useSegmentDraft,
 } from "../../hooks/useSegmentDraftStore";
 import { FindReplaceMatchText } from "../FindReplaceMatchText";
+import { isFindReplacePanelOpen } from "../../pages/findReplaceTypes";
 import { CorrectableMatchText } from "./CorrectableMatchText";
 import { resolveSegmentTextContextMenuAction } from "../../utils/segmentTextContextMenuSelection";
 import { syncTranscriptTextareaSelection } from "../../utils/transcriptSelection";
@@ -72,15 +73,15 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
   const preContextMenuSelectionRef = useRef<{ collapsed: boolean } | null>(null);
   const isFocusedRef = useRef(false);
   const lastSyncedFindHighlightRef = useRef<string | null>(null);
-  const [textareaFocused, setTextareaFocused] = useState(false);
   const [textareaEpoch, setTextareaEpoch] = useState(0);
   const prevCommittedRef = useRef(committedText);
 
   const defaultText = initialTextareaValue(draftKey, committedText);
   const [liveText] = useSegmentDraft(draftKey, committedText);
+  const spanSourceText = selected ? liveText : committedText;
   const correctableSpans = useMemo(
-    () => spansForText(committedText),
-    [committedText, spansForText],
+    () => spansForText(spanSourceText),
+    [spanSourceText, spansForText],
   );
 
   useImperativeHandle(
@@ -143,7 +144,6 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
 
   const onBlurText = useCallback(() => {
     isFocusedRef.current = false;
-    setTextareaFocused(false);
     if (busy) return;
     segmentDraftStore.endComposition(draftKey);
     const el = textareaRef.current;
@@ -226,7 +226,7 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
       const key = `${findReplaceHighlight.charStart}:${findReplaceHighlight.charEnd}`;
       if (lastSyncedFindHighlightRef.current === key) return;
       lastSyncedFindHighlightRef.current = key;
-      el?.focus();
+      if (!isFindReplacePanelOpen()) el?.focus();
       el?.setSelectionRange(findReplaceHighlight.charStart, findReplaceHighlight.charEnd);
       return;
     }
@@ -244,9 +244,8 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
   }, [focusOnSelectRef, selected]);
 
   const textAreaMinHeight = Math.max(36, Math.round(segmentRowHeightPx - (selected ? 24 : 30)));
-  const showCorrectableOverlay =
+  const showCorrectableMirror =
     selected &&
-    !textareaFocused &&
     !findReplaceHighlight &&
     correctableSpans.length > 0 &&
     !busy;
@@ -262,6 +261,7 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
                 ref={textareaRef}
                 className={[
                   "seg-text relative z-[1] min-h-[3.1rem] w-full resize-none border-0 bg-transparent px-4 py-2.5 font-[inherit] text-notion-text outline-none transition-colors duration-150 placeholder:text-notion-text-light",
+                  showCorrectableMirror ? "text-transparent" : "",
                   "focus:ring-0 focus:ring-offset-0",
                   "disabled:cursor-not-allowed disabled:text-notion-text-light disabled:opacity-100",
                 ].join(" ")}
@@ -276,7 +276,6 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
                 onFocus={() => {
                   if (busy) return;
                   isFocusedRef.current = true;
-                  setTextareaFocused(true);
                 }}
                 onInput={(e) => {
                   if (e.nativeEvent.isComposing) return;
@@ -294,15 +293,15 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
                 aria-label="语段正文"
                 placeholder="输入语段文本..."
               />
-              {showCorrectableOverlay ? (
+              {showCorrectableMirror ? (
                 <div
-                  className="pointer-events-none absolute inset-0 z-[2] overflow-hidden px-4 py-2.5"
+                  className="pointer-events-none absolute inset-0 z-[2] overflow-hidden px-4 py-2.5 text-notion-text"
                   aria-hidden
                 >
                   <CorrectableMatchText
                     text={liveText}
                     spans={correctableSpans}
-                    className="whitespace-pre-wrap break-words text-sm leading-snug text-notion-text"
+                    textStyle={textStyle}
                     onSpanClick={onCorrectableSpanClick}
                   />
                 </div>
@@ -342,7 +341,8 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
                   <CorrectableMatchText
                     text={committedText}
                     spans={correctableSpans}
-                    className="overflow-hidden text-ellipsis whitespace-nowrap text-inherit"
+                    textStyle={textStyle}
+                    className="overflow-hidden text-ellipsis whitespace-nowrap"
                     onSpanClick={onCorrectableSpanClick}
                   />
                 </div>

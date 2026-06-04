@@ -70,7 +70,7 @@ describe("useGlossaryMineController", () => {
 
     await vi.waitFor(() => expect(onGlossaryChanged).toHaveBeenCalled());
     expect(glossaryAdd).toHaveBeenCalledWith(
-      expect.objectContaining({ term: "制控", hotwordEnabled: true }),
+      expect.objectContaining({ term: "制控", aliases: "", hotwordEnabled: true }),
     );
   });
 });
