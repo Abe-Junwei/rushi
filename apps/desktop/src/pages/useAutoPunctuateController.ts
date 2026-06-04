@@ -6,7 +6,6 @@ import {
 import { useCallback, useMemo, useRef, useState } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
 import {
-  isLlmRuntimeReady,
   llmConfigHint,
   markLlmConnectionVerified,
   resolveAutoPunctuateBlockReason,
@@ -52,6 +51,8 @@ type UseAutoPunctuateControllerArgs = {
   llmRuntimeEpoch?: number;
   llmKeychainReady?: boolean;
   llmKeychainChecking?: boolean;
+  llmCapabilityOk?: boolean;
+  llmCapabilityBlockReason?: string | null;
 };
 
 export type AutoPunctuateControllerApi = {
@@ -93,6 +94,8 @@ export function useAutoPunctuateController(
     llmRuntimeEpoch = 0,
     llmKeychainReady = false,
     llmKeychainChecking = false,
+    llmCapabilityOk,
+    llmCapabilityBlockReason = null,
   } = args;
 
   const [dialog, setDialog] = useState<AutoPunctuateDialogState>({ phase: "closed" });
@@ -100,8 +103,6 @@ export function useAutoPunctuateController(
   const activeRequestIdRef = useRef<string | null>(null);
   const pendingPayloadRef = useRef<PendingPayload | null>(null);
   const previewSegmentUidRef = useRef<string | null>(null);
-
-  const llmRuntimeReady = useMemo(() => isLlmRuntimeReady(), [llmRuntimeEpoch]);
 
   const selected = segments[selectedIdx] ?? null;
   const autoPunctuateBlockReason = useMemo(
@@ -112,11 +113,15 @@ export function useAutoPunctuateController(
         hasSegmentText: !!(selected?.text ?? "").trim(),
         keychainReady: llmKeychainReady,
         keychainChecking: llmKeychainChecking,
+        llmCapabilityOk,
+        llmCapabilityBlockReason,
       });
     },
     [
       transcribePreviewActive,
       currentFileId,
+      llmCapabilityBlockReason,
+      llmCapabilityOk,
       llmKeychainChecking,
       llmKeychainReady,
       llmRuntimeEpoch,
@@ -129,8 +134,8 @@ export function useAutoPunctuateController(
     !!currentFileId &&
     !!selected &&
     (selected.text ?? "").trim().length > 0 &&
-    llmRuntimeReady &&
-    autoPunctuateBlockReason === null;
+    autoPunctuateBlockReason === null &&
+    (llmCapabilityOk ?? true);
 
   const buildRequest = useCallback((): PendingPayload | null => {
     if (busy || !currentFileId) return null;

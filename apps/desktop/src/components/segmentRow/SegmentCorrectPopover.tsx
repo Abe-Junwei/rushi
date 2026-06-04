@@ -51,7 +51,7 @@ export function SegmentCorrectPopover({ state, suggestions, onClose, onApply }: 
               <li key={`${item.kind}-${i}`}>
                 <button
                   type="button"
-                  className="w-full px-3 py-2 text-left text-sm text-notion-text transition-colors hover:bg-notion-sidebar-hover"
+                  className="w-full border-0 bg-transparent px-3 py-2 text-left text-sm text-notion-text transition-colors hover:bg-notion-sidebar-hover"
                   onClick={() => onApply(item)}
                 >
                   {item.kind === "rule" ? (

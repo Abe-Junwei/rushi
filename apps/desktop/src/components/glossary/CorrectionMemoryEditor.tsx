@@ -44,7 +44,7 @@ export function CorrectionMemoryEditor({
         {isEdit ? (
           <button
             type="button"
-            className="inline-flex items-center gap-1 rounded-md px-2 py-1 text-[11px] font-medium text-notion-text-muted transition-colors hover:bg-notion-sidebar-hover hover:text-notion-text disabled:opacity-40"
+            className="inline-flex items-center gap-1 rounded-md border-0 bg-transparent px-2 py-1 text-[11px] font-medium text-notion-text-muted transition-colors hover:bg-notion-sidebar-hover hover:text-notion-text disabled:opacity-40"
             disabled={disabled}
             onClick={onReset}
           >

@@ -1,4 +1,4 @@
-import { BookMarked, History, ListChecks, Minus, Plus, Redo2, Replace, Scissors, Sparkles, SpellCheck, Undo2 } from "lucide-react";
+import { BookMarked, History, ListChecks, Minus, Plus, Redo2, Replace, SpellCheck, Undo2 } from "lucide-react";
 import {
   captureTranscriptTextareaSelection,
   readTranscriptTextareaSelection,
@@ -141,56 +141,6 @@ export function EditorSegmentToolbar({
           className={[
             appearanceBtnBase,
             "px-2.5",
-            c.autoPunctuateDialog.phase === "loading"
-              ? "bg-notion-sidebar text-notion-text"
-              : "text-notion-text-muted hover:bg-notion-sidebar-hover hover:text-notion-text",
-          ].join(" ")}
-          disabled={!c.canAutoPunctuate || c.autoPunctuateDialog.phase === "loading"}
-          onClick={() => void c.requestAutoPunctuate()}
-          aria-label="自动标点"
-          title={
-            c.busy
-              ? "处理中"
-              : c.canAutoPunctuate
-                ? "自动标点"
-                : (c.autoPunctuateBlockReason ?? "自动标点不可用")
-          }
-        >
-          <span className="inline-flex items-center gap-1.5">
-            <Sparkles className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-            {c.autoPunctuateDialog.phase === "loading" ? "处理中..." : "自动标点"}
-          </span>
-        </button>
-        <button
-          type="button"
-          className={[
-            appearanceBtnBase,
-            "px-2.5",
-            c.segmentRefineDialog.phase === "loading"
-              ? "bg-notion-sidebar text-notion-text"
-              : "text-notion-text-muted hover:bg-notion-sidebar-hover hover:text-notion-text",
-          ].join(" ")}
-          disabled={!c.canRefineSegments || c.segmentRefineDialog.phase === "loading"}
-          onClick={() => void c.requestSegmentRefine()}
-          aria-label="段界整理"
-          title={
-            c.busy
-              ? "处理中"
-              : c.canRefineSegments
-                ? "LLM 段界整理（合并/拆分/改字，需确认）"
-                : (c.segmentRefineBlockReason ?? "段界整理不可用")
-          }
-        >
-          <span className="inline-flex items-center gap-1.5">
-            <Scissors className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-            {c.segmentRefineDialog.phase === "loading" ? "处理中..." : "段界整理"}
-          </span>
-        </button>
-        <button
-          type="button"
-          className={[
-            appearanceBtnBase,
-            "px-2.5",
             c.lexiconProofreadDialog.phase === "loading"
               ? "bg-notion-sidebar text-notion-text"
               : "text-notion-text-muted hover:bg-notion-sidebar-hover hover:text-notion-text",
@@ -249,7 +199,7 @@ export function EditorSegmentToolbar({
               <div className="flex items-center gap-1">
                 <button
                   type="button"
-                  className="inline-flex h-6 items-center justify-center rounded-md border border-notion-border px-2 text-[11px] text-notion-text-muted transition-colors hover:bg-notion-sidebar-hover"
+                  className="inline-flex h-6 items-center justify-center rounded-md border border-notion-border bg-transparent px-2 text-[11px] text-notion-text-muted transition-colors hover:bg-notion-sidebar-hover"
                   onClick={() => void h.loadEditHistory()}
                   disabled={h.historyBusy}
                 >
@@ -257,7 +207,7 @@ export function EditorSegmentToolbar({
                 </button>
                 <button
                   type="button"
-                  className="inline-flex h-6 items-center justify-center rounded-md border border-notion-border px-2 text-[11px] text-notion-text-muted transition-colors hover:bg-notion-sidebar-hover"
+                  className="inline-flex h-6 items-center justify-center rounded-md border border-notion-border bg-transparent px-2 text-[11px] text-notion-text-muted transition-colors hover:bg-notion-sidebar-hover"
                   onClick={() => h.setHistoryOpen(false)}
                 >
                   关闭
@@ -303,7 +253,7 @@ export function EditorSegmentToolbar({
                         <div className="mt-1.5 border-t border-notion-divider/60 pt-1.5">
                           <button
                             type="button"
-                            className="inline-flex h-6 items-center justify-center rounded-md border border-notion-border px-2 text-[10px] font-medium text-notion-text transition-colors hover:bg-notion-sidebar-hover disabled:cursor-not-allowed disabled:opacity-50"
+                            className="inline-flex h-6 items-center justify-center rounded-md border border-notion-border bg-transparent px-2 text-[10px] font-medium text-notion-text transition-colors hover:bg-notion-sidebar-hover disabled:cursor-not-allowed disabled:opacity-50"
                             disabled={h.historyDisabled || h.restoreBusy}
                             onClick={() => h.requestRestore(row)}
                           >

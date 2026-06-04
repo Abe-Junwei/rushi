@@ -1,5 +1,6 @@
 import { createPortal } from "react-dom";
 import { CONTROL_BTN_PRIMARY } from "../config/controlStyles";
+import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { FloatingPanelTemplate } from "./PanelTemplate";
 
 type Props = {
@@ -32,10 +33,10 @@ export function EditorShortcutsDialog({ open, onClose }: Props) {
         onClose={onClose}
       >
         <div className="flex min-h-0 flex-1 flex-col gap-3 px-5 py-3">
-          <p className="m-0 text-xs leading-relaxed text-notion-text-muted">
+          <p className={`m-0 ${PANEL_TYPOGRAPHY.dialogBody}`}>
             自动保存只保证正文落库；要让手改进入「纠错记忆」，请用确认改词（右侧按钮或 ⌘/Ctrl+Enter），或使用查找替换的「全部替换」。
           </p>
-          <table className="w-full border-collapse text-left text-sm">
+          <table className={`w-full border-collapse text-left ${PANEL_TYPOGRAPHY.dialogBody}`}>
             <tbody>
               {ROWS.map((row) => (
                 <tr key={row.keys} className="border-t border-notion-divider first:border-t-0">

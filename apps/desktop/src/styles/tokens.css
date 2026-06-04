@@ -5,6 +5,7 @@
  */
 
 :root {
+  --font-sans: Inter, system-ui, sans-serif;
   --zen-ink: #2C2C2C;
   --zen-paper: #F2EFE8;
   --zen-saffron: #C58A43;
@@ -13,7 +14,10 @@
   --zen-indigo: #3D4F5D;
   --zen-cinnabar: #963530;
   --zen-ochre: #EAE0C5;
-  --zen-success: #22c55e;
+  --zen-success: #1e463a;
+  --zen-success-action: #2e6153;
+  --zen-success-surface: #eff3f1;
+  --zen-success-border: #e2e9e6;
 
   /* Notion 风格令牌 */
   --notion-divider: #e3e2e0;
@@ -22,7 +26,9 @@
   --notion-sidebar: #f7f7f5;
   --notion-sidebar-hover: #efefef;
   --notion-sidebar-active: #ebebea;
+  --secondary-container: #e7e2d9;
   --notion-text: #37352f;
+  --notion-text-variant: #514538;
   --notion-text-muted: #6b6b6b;
   --notion-text-light: #9ca3af;
   --notion-callout-bg: #f1f1ef;

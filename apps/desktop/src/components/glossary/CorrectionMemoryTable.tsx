@@ -119,7 +119,7 @@ export function CorrectionMemoryTable({
                   {!row.acceptedAsRule ? (
                     <button
                       type="button"
-                      className="inline-flex min-h-[28px] items-center gap-1 rounded-md px-2 text-[11px] font-medium text-notion-text-muted hover:bg-notion-sidebar-hover hover:text-notion-text disabled:opacity-40"
+                      className="inline-flex min-h-[28px] items-center gap-1 rounded-md border-0 bg-transparent px-2 text-[11px] font-medium text-notion-text-muted hover:bg-notion-sidebar-hover hover:text-notion-text disabled:opacity-40"
                       disabled={disabled}
                       onClick={() => void onAcceptRule(row)}
                     >

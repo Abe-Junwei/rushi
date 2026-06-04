@@ -57,6 +57,8 @@ type UseSegmentRefineControllerArgs = {
   llmRuntimeEpoch?: number;
   llmKeychainReady?: boolean;
   llmKeychainChecking?: boolean;
+  llmCapabilityOk?: boolean;
+  llmCapabilityBlockReason?: string | null;
 };
 
 export type SegmentRefineControllerApi = {
@@ -99,6 +101,8 @@ export function useSegmentRefineController(
     llmRuntimeEpoch = 0,
     llmKeychainReady = false,
     llmKeychainChecking = false,
+    llmCapabilityOk,
+    llmCapabilityBlockReason = null,
   } = args;
 
   const [dialog, setDialog] = useState<SegmentRefineDialogState>({ phase: "closed" });
@@ -116,6 +120,8 @@ export function useSegmentRefineController(
       hasSegmentText: !!(selected?.text ?? "").trim(),
       keychainReady: llmKeychainReady,
       keychainChecking: llmKeychainChecking,
+      llmCapabilityOk,
+      llmCapabilityBlockReason,
     });
     if (base) return base;
     if (!selected?.uid?.trim()) return "当前语段缺少 uid，无法整理段界。";
@@ -127,6 +133,8 @@ export function useSegmentRefineController(
     currentFileId,
     llmKeychainChecking,
     llmKeychainReady,
+    llmCapabilityBlockReason,
+    llmCapabilityOk,
     llmRuntimeEpoch,
     selected,
     segments,
@@ -137,8 +145,8 @@ export function useSegmentRefineController(
     !busy &&
     !transcribePreviewActive &&
     !!currentFileId &&
-    isLlmRuntimeReady() &&
-    segmentRefineBlockReason === null;
+    segmentRefineBlockReason === null &&
+    (llmCapabilityOk ?? isLlmRuntimeReady());
 
   const buildPayload = useCallback((): PendingPayload | null => {
     if (busy || !currentFileId) return null;

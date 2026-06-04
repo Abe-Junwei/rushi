@@ -1,15 +1,20 @@
 /**
  * P1 工作区：未注入 Tailwind Preflight 时，WebKit 会给 button/input/textarea
  * 默认 -webkit-appearance 立体绘制，与自定义 border 叠成「假重影 / 硬阴影」。
- * 另：装饰性 inset box-shadow 与 1px border 在圆角处会像第二条轮廓，故控件统一走扁平 border+背景。
- * 仅挂在 ProjectPanel 根节点（.workspace）。
- * select 不强制 appearance:none（避免去掉原生下拉箭头），但仍压平 UA 渐变/内阴影。
+ * 裸 button 灰底由 shell.css `:where(body) button` 统一压平；此处补 input/textarea 与 border 语义。
+ * 仅挂在 ProjectPanel 根节点（.workspace）或浮层内 .workspace 包裹。
  */
 .workspace,
 .workspace *,
 .workspace ::before,
 .workspace ::after {
   box-sizing: border-box;
+}
+
+.workspace {
+  font-family: inherit;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .workspace button,
@@ -19,10 +24,7 @@
   appearance: none !important;
 }
 
-.workspace button {
-  border-style: solid;
-  -webkit-tap-highlight-color: transparent;
-}
+/* button 基线 reset 见 shell.css :where(body) button */
 
 .workspace .border {
   border-style: solid;

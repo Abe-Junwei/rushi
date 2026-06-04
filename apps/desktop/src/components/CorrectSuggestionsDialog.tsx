@@ -1,5 +1,6 @@
 import { createPortal } from "react-dom";
 import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../config/controlStyles";
+import { PANEL_TYPOGRAPHY } from "../config/typography";
 import type { CorrectSuggestionsDialogState } from "../pages/useCorrectSuggestionsController";
 import type { CorrectSuggestion } from "../services/editor/correctSuggestions";
 import { FloatingPanelTemplate } from "./PanelTemplate";
@@ -28,11 +29,11 @@ export function CorrectSuggestionsDialog({ state, onCancel, onApply, onOpenFindR
       >
         <div className="flex min-h-0 flex-1 flex-col px-5 py-3">
           {state.phase === "loading" ? (
-            <p className="text-sm text-notion-text-muted">正在匹配术语表与纠错记忆…</p>
+            <p className={PANEL_TYPOGRAPHY.dialogBody}>正在匹配术语表与纠错记忆…</p>
           ) : null}
           {state.phase === "empty" ? (
             <>
-              <p className="text-sm leading-relaxed text-notion-text-muted">
+              <p className={PANEL_TYPOGRAPHY.dialogBody}>
                 选中「{state.selection}」在术语表与纠错记忆中没有字面匹配项。可手动在语段中修改，或使用查找替换批量处理。
               </p>
               <div className="mt-4 flex justify-start gap-2">
@@ -61,7 +62,7 @@ export function CorrectSuggestionsDialog({ state, onCancel, onApply, onOpenFindR
                       {item.kind === "rule" ? (
                         <>
                           <p className="text-xs font-medium text-notion-text">纠错记忆</p>
-                          <p className="mt-1 text-sm text-notion-text">
+                          <p className={`mt-1 ${PANEL_TYPOGRAPHY.dialogText}`}>
                             {item.wrong} → {item.right}
                           </p>
                           <p className="mt-0.5 text-xs text-notion-text-muted">
@@ -72,7 +73,7 @@ export function CorrectSuggestionsDialog({ state, onCancel, onApply, onOpenFindR
                       ) : (
                         <>
                           <p className="text-xs font-medium text-notion-text">术语表</p>
-                          <p className="mt-1 text-sm text-notion-text">{item.term}</p>
+                          <p className={`mt-1 ${PANEL_TYPOGRAPHY.dialogText}`}>{item.term}</p>
                           {item.aliases ? (
                             <p className="mt-0.5 text-xs text-notion-text-muted">别名：{item.aliases}</p>
                           ) : null}

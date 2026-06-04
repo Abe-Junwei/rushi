@@ -16,7 +16,10 @@ export const COLORS = {
   cinnabar: "#963530",
   indigo: "#3D4F5D",
 
-  success: "#22c55e",
+  success: "#1e463a",
+  successAction: "#2e6153",
+  successSurface: "#eff3f1",
+  successBorder: "#e2e9e6",
   danger: "#963530",
   warning: "#f59e0b",
 
@@ -25,9 +28,12 @@ export const COLORS = {
   notionSidebar: "#f7f7f5",
   notionSidebarHover: "#efefef",
   notionSidebarActive: "#ebebea",
+  secondaryContainer: "#e7e2d9",
   notionDivider: "#e3e2e0",
   notionBorder: "#e3e2e0",
   notionText: "#37352f",
+  /** Stitch on-surface-variant */
+  notionTextVariant: "#514538",
   notionTextMuted: "#6b6b6b",
   notionTextLight: "#9ca3af",
   notionCalloutBg: "#f1f1ef",

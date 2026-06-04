@@ -19,15 +19,24 @@ export default {
         "zen-stone": "#8E8E8E",
         "zen-cinnabar": "#963530",
         "zen-indigo": "#3D4F5D",
-        "zen-success": "#22c55e",
+        "zen-success": "#1e463a",
+        /** 环境面板成功态：操作/链接（刷新检测等） */
+        "zen-success-action": "#2e6153",
+        /** 环境面板成功态：banner 底 */
+        "zen-success-surface": "#eff3f1",
+        /** 环境面板成功态：banner 分隔/描边 */
+        "zen-success-border": "#e2e9e6",
         /** Notion 风格 surface 令牌 */
         "notion-bg": "#ffffff",
         "notion-sidebar": "#f7f7f5",
         "notion-sidebar-hover": "#efefef",
         "notion-sidebar-active": "#ebebea",
+        "secondary-container": "#e7e2d9",
         "notion-divider": "#e3e2e0",
         "notion-border": "#e3e2e0",
         "notion-text": "#37352f",
+        /** Stitch on-surface-variant：segmented 未选、表单辅助文案 */
+        "notion-text-variant": "#514538",
         "notion-text-muted": "#6b6b6b",
         "notion-text-light": "#9ca3af",
         "notion-callout-bg": "#f1f1ef",

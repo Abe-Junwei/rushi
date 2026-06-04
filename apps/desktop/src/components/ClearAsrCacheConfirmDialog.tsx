@@ -1,5 +1,6 @@
 import { createPortal } from "react-dom";
 import { CONTROL_BTN_DANGER_COMPACT, CONTROL_BTN_SECONDARY } from "../config/controlStyles";
+import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { FloatingPanelTemplate } from "./PanelTemplate";
 
 const btnSecondary = CONTROL_BTN_SECONDARY;
@@ -44,10 +45,10 @@ export function ClearAsrCacheConfirmDialog({ open, busy, totalBytes, onCancel, o
         onClose={handleClose}
       >
         <div className="flex flex-col px-5 py-3" role="alertdialog" aria-modal="true">
-          <p className="text-sm leading-relaxed text-zen-stone">
+          <p className={PANEL_TYPOGRAPHY.dialogBody}>
             将删除应用数据目录中已下载的 FunASR / ModelScope 权重，不会删除数据库或项目文件。
           </p>
-          <p className="mt-2.5 rounded-lg border border-notion-divider bg-notion-callout-bg px-3 py-2 text-sm leading-relaxed text-notion-text-muted">
+          <p className={`mt-2.5 rounded-lg border border-notion-divider bg-notion-callout-bg px-3 py-2 ${PANEL_TYPOGRAPHY.dialogBody}`}>
             {sizeHint}
           </p>
           <div className="mt-3 flex justify-end gap-2">

@@ -1,5 +1,6 @@
 import { createPortal } from "react-dom";
 import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../config/controlStyles";
+import { PANEL_TYPOGRAPHY } from "../config/typography";
 import type { GlossaryLearnPromptDialogState } from "../pages/useGlossaryLearnPromptController";
 import type { GlossaryLearnPromptRow } from "../tauri/correctionApi";
 import { FloatingPanelTemplate } from "./PanelTemplate";
@@ -28,13 +29,13 @@ export function GlossaryLearnPromptDialog({ state, busy, onClose, onDismiss, onC
         onClose={onClose}
       >
         <div className="flex min-h-0 flex-1 flex-col gap-3 px-5 py-3">
-          <p className="text-sm text-notion-text-muted">
+          <p className={PANEL_TYPOGRAPHY.dialogBody}>
             以下正词来自纠错记忆，已多次手改确认。加入术语表后，该写法会作为热词参与下次转写（错形不会进入热词）。
           </p>
           <ul className="min-h-0 flex-1 space-y-2 overflow-y-auto">
             {state.rows.map((row) => (
               <li key={row.afterText} className="rounded-md bg-notion-sidebar/80 px-3 py-2.5">
-                <p className="text-sm font-medium text-notion-text">「{row.afterText}」</p>
+                <p className={`font-medium ${PANEL_TYPOGRAPHY.dialogText}`}>「{row.afterText}」</p>
                 <p className="mt-1 text-xs text-notion-text-muted">
                   已记录 {row.hitCount} 次
                   {row.sampleBefore ? ` · 例：${row.sampleBefore} → ${row.afterText}` : ""}

@@ -2,8 +2,7 @@ import { useCallback, useState } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
 import type { BusyReason } from "./useProjectCrudController";
 import { useLlmKeychainReady } from "../hooks/useLlmKeychainReady";
-import { useAutoPunctuateController } from "./useAutoPunctuateController";
-import { useSegmentRefineController } from "./useSegmentRefineController";
+import { useLlmEnvStatus } from "../hooks/useLlmEnvStatus";
 import { useLexiconProofreadController } from "./useLexiconProofreadController";
 import { useFindReplaceController } from "./useFindReplaceController";
 import { useCorrectionRulesController } from "./useCorrectionRulesController";
@@ -62,41 +61,16 @@ export function useProjectEditorToolsController(args: Args) {
   }, []);
   const { keychainReady: llmKeychainReady, checking: llmKeychainChecking } =
     useLlmKeychainReady(llmRuntimeEpoch);
+  const { presentation: llmPresentation } = useLlmEnvStatus(llmRuntimeEpoch);
 
   const transcribePreviewActive = busy && busyReason === "transcribe";
   const llmShared = {
     llmRuntimeEpoch,
     llmKeychainReady,
     llmKeychainChecking,
+    llmCapabilityOk: llmPresentation.ok,
+    llmCapabilityBlockReason: llmPresentation.blockReason,
   };
-
-  const autoPunctuate = useAutoPunctuateController({
-    busy,
-    transcribePreviewActive,
-    currentFileId,
-    selectedIdx,
-    segments,
-    segmentsRef,
-    flushSegmentTextDrafts,
-    updateSegmentText,
-    setError,
-    ...llmShared,
-  });
-
-  const segmentRefine = useSegmentRefineController({
-    busy,
-    transcribePreviewActive,
-    currentFileId,
-    selectedIdx,
-    segments,
-    segmentsRef,
-    flushSegmentTextDrafts,
-    setSegments,
-    setSelectedIdx,
-    pushUndo,
-    setError,
-    ...llmShared,
-  });
 
   const lexiconProofread = useLexiconProofreadController({
     busy,
@@ -172,8 +146,6 @@ export function useProjectEditorToolsController(args: Args) {
   return {
     bumpLlmRuntimeChanged,
     canConfirmSegmentEdit,
-    autoPunctuate,
-    segmentRefine,
     lexiconProofread,
     findReplace,
     editorCorrectionCatalog,

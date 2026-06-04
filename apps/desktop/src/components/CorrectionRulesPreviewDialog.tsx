@@ -1,5 +1,6 @@
 import { createPortal } from "react-dom";
 import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../config/controlStyles";
+import { PANEL_TYPOGRAPHY } from "../config/typography";
 import type { CorrectionRulesDialogState } from "../pages/useCorrectionRulesController";
 import { FloatingPanelTemplate } from "./PanelTemplate";
 
@@ -38,11 +39,11 @@ export function CorrectionRulesPreviewDialog({ state, busy, onCancel, onConfirm 
       >
         <div className="flex min-h-0 flex-1 flex-col px-5 py-3">
           {state.phase === "loading" ? (
-            <p className="text-sm text-notion-text-muted">正在加载纠错记忆规则…</p>
+            <p className={PANEL_TYPOGRAPHY.dialogBody}>正在加载纠错记忆规则…</p>
           ) : null}
           {state.phase === "empty" ? (
             <>
-              <p className="text-sm text-notion-text-muted">
+              <p className={PANEL_TYPOGRAPHY.dialogBody}>
                 没有可用的稳定纠错规则（需 hit≥2 或已采纳），或当前语段中无匹配项。
               </p>
               <div className="mt-4 flex justify-end">
@@ -54,7 +55,7 @@ export function CorrectionRulesPreviewDialog({ state, busy, onCancel, onConfirm 
           ) : null}
           {state.phase === "preview" ? (
             <>
-              <p className="text-sm text-notion-text-muted">
+              <p className={PANEL_TYPOGRAPHY.dialogBody}>
                 将用 {state.ruleCount} 条记忆规则更新 {state.changes.length} 条语段（字面替换，最长优先）。
               </p>
               <ul className="mt-3 min-h-0 flex-1 space-y-2 overflow-y-auto text-xs">
@@ -67,10 +68,10 @@ export function CorrectionRulesPreviewDialog({ state, busy, onCancel, onConfirm 
                       <span className="mx-1.5">·</span>
                       {ch.replacementCount} 处
                     </p>
-                    <p className="mt-2 whitespace-pre-wrap break-words text-sm leading-relaxed line-through decoration-notion-text-light/50">
+                    <p className={`mt-2 whitespace-pre-wrap break-words ${PANEL_TYPOGRAPHY.dialogBody} line-through decoration-notion-text-light/50`}>
                       {ch.beforeText}
                     </p>
-                    <p className="mt-1 whitespace-pre-wrap break-words text-sm leading-relaxed text-notion-text">
+                    <p className={`mt-1 whitespace-pre-wrap break-words ${PANEL_TYPOGRAPHY.dialogText}`}>
                       {ch.afterText}
                     </p>
                   </li>

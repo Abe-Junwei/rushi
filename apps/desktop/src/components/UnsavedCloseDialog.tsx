@@ -2,6 +2,7 @@ import {
   UNSAVED_CLOSE_DISCARD_PROMPT,
   UNSAVED_NAV_DISCARD_PROMPT,
 } from "../pages/useSegmentDirtyState";
+import { PANEL_TYPOGRAPHY } from "../config/typography";
 
 export type UnsavedGateIntent = "app-quit" | "navigate";
 
@@ -44,13 +45,13 @@ export function UnsavedCloseDialog({
         aria-modal="true"
         aria-labelledby="unsaved-close-title"
         aria-describedby="unsaved-close-desc"
-        className="w-full max-w-md rounded-md border border-notion-divider bg-notion-bg px-6 py-5 shadow-lg"
+        className="w-full max-w-md rounded-md border border-notion-divider bg-notion-bg px-6 py-5 font-sans antialiased shadow-lg"
         onMouseDown={(e) => e.stopPropagation()}
       >
         <h2 id="unsaved-close-title" className="text-[18px] font-semibold leading-[1.4] text-notion-text">
           未保存的语段修改
         </h2>
-        <p id="unsaved-close-desc" className="mt-2 text-sm leading-relaxed text-notion-text-muted">
+        <p id="unsaved-close-desc" className={`mt-2 ${PANEL_TYPOGRAPHY.dialogBody}`}>
           {lines.map((line) => (
             <span key={line} className="block">
               {line}

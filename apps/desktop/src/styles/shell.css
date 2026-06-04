@@ -4,6 +4,9 @@ body,
 #root {
   height: 100%;
   margin: 0;
+  font-family: var(--font-sans);
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
 }
 
 .shell {
@@ -16,7 +19,7 @@ body,
   min-height: 100dvh;
   margin: 0;
   padding: 0.75rem clamp(0.75rem, 2vw, 1.5rem) 0.75rem;
-  font-family: Inter, system-ui, sans-serif;
+  font-family: inherit;
   line-height: 1.5;
   color: var(--notion-text);
   background: var(--notion-bg);
@@ -82,4 +85,20 @@ body,
   border-radius: 4px;
   background: var(--shell-footer-code-bg);
   color: var(--shell-footer-code-fg);
+}
+
+/**
+ * Tailwind Preflight 关闭时，WebKit 会给裸 <button> 默认灰底与立体 appearance。
+ * :where 保持 (0,0,1)，Tailwind bg-* 与组件类（.icon-btn 等）仍可覆盖。
+ * 覆盖 #root 内与 createPortal 挂到 body 的浮层/菜单。
+ */
+:where(body) button {
+  background-color: transparent;
+  background-image: none;
+  box-shadow: none;
+  border-width: 0;
+  border-style: solid;
+  -webkit-appearance: none;
+  appearance: none;
+  -webkit-tap-highlight-color: transparent;
 }

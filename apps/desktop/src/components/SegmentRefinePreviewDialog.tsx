@@ -1,4 +1,5 @@
 import type { SegmentRefineDialogState } from "../pages/useSegmentRefineController";
+import { PANEL_TYPOGRAPHY } from "../config/typography";
 
 type SegmentRefinePreviewDialogProps = {
   state: SegmentRefineDialogState;
@@ -27,10 +28,10 @@ export function SegmentRefinePreviewDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="segment-refine-title"
-        className="w-full max-w-xl rounded-md border border-notion-divider bg-notion-bg px-6 py-5 shadow-lg"
+        className="w-full max-w-xl rounded-md border border-notion-divider bg-notion-bg px-6 py-5 font-sans antialiased shadow-lg"
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <h2 id="segment-refine-title" className="text-base font-semibold text-notion-text">
+        <h2 id="segment-refine-title" className={`${PANEL_TYPOGRAPHY.dialogTitle} text-base`}>
           {state.phase === "consent"
             ? "将语段发送至云端 LLM"
             : state.phase === "loading"
@@ -40,7 +41,7 @@ export function SegmentRefinePreviewDialog({
 
         {state.phase === "consent" ? (
           <>
-            <p className="mt-3 text-sm leading-relaxed text-notion-text-muted">
+            <p className={`mt-3 ${PANEL_TYPOGRAPHY.dialogBody}`}>
               将把当前选中语段及相邻语段（共 {state.segmentCount} 条）发送至 LLM，生成合并/拆分/改字建议。确认前不会修改数据库。
             </p>
             <div className="mt-5 flex justify-end gap-2">
@@ -63,7 +64,7 @@ export function SegmentRefinePreviewDialog({
         ) : null}
 
         {state.phase === "loading" ? (
-          <p className="mt-4 text-sm text-notion-text-muted">正在请求远程 provider，请稍候…</p>
+          <p className={`mt-4 ${PANEL_TYPOGRAPHY.dialogBody}`}>正在请求远程 provider，请稍候…</p>
         ) : null}
 
         {state.phase === "preview" ? (
@@ -74,16 +75,16 @@ export function SegmentRefinePreviewDialog({
               {state.afterCount}
             </p>
             {state.rationale ? (
-              <p className="mt-2 text-sm text-notion-text-muted">{state.rationale}</p>
+              <p className={`mt-2 ${PANEL_TYPOGRAPHY.dialogBody}`}>{state.rationale}</p>
             ) : null}
             {state.opLabels.length > 0 ? (
-              <ul className="mt-3 max-h-48 list-disc space-y-1 overflow-y-auto pl-5 text-sm text-notion-text">
+              <ul className={`mt-3 max-h-48 list-disc space-y-1 overflow-y-auto pl-5 ${PANEL_TYPOGRAPHY.dialogText}`}>
                 {state.opLabels.map((label, i) => (
                   <li key={`${i}-${label.slice(0, 24)}`}>{label}</li>
                 ))}
               </ul>
             ) : (
-              <p className="mt-3 text-sm text-notion-text-muted">模型未返回调整建议（空 ops）。</p>
+              <p className={`mt-3 ${PANEL_TYPOGRAPHY.dialogBody}`}>模型未返回调整建议（空 ops）。</p>
             )}
             <div className="mt-5 flex justify-end gap-2">
               <button

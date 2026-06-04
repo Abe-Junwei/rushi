@@ -1,4 +1,6 @@
 import type { LexiconProofreadDialogState } from "../pages/useLexiconProofreadController";
+import { CONTROL_BTN_LINK } from "../config/controlStyles";
+import { PANEL_TYPOGRAPHY } from "../config/typography";
 
 type LexiconProofreadPreviewDialogProps = {
   state: LexiconProofreadDialogState;
@@ -40,10 +42,10 @@ export function LexiconProofreadPreviewDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="lexicon-proofread-title"
-        className="w-full max-w-xl rounded-md border border-notion-divider bg-notion-bg px-6 py-5 shadow-lg"
+        className="w-full max-w-xl rounded-md border border-notion-divider bg-notion-bg px-6 py-5 font-sans antialiased shadow-lg"
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <h2 id="lexicon-proofread-title" className="text-base font-semibold text-notion-text">
+        <h2 id="lexicon-proofread-title" className={`${PANEL_TYPOGRAPHY.dialogTitle} text-base`}>
           {state.phase === "consent"
             ? "将语段与词表发送至云端 LLM"
             : state.phase === "loading"
@@ -53,14 +55,14 @@ export function LexiconProofreadPreviewDialog({
 
         {state.phase === "consent" ? (
           <>
-            <p className="mt-3 text-sm leading-relaxed text-notion-text-muted">
+            <p className={`mt-3 ${PANEL_TYPOGRAPHY.dialogBody}`}>
               将把当前选中语段及相邻语段（共 {state.segmentCount} 条）连同术语表条目与纠错规则发送至
               LLM，生成有据改字建议。确认前不会修改数据库。
             </p>
             <div className="mt-5 flex justify-end gap-2">
               <button
                 type="button"
-                className="min-h-[36px] rounded-md border border-notion-border px-3 text-sm text-notion-text-muted hover:bg-notion-sidebar-hover"
+                className="min-h-[36px] rounded-md border border-notion-border bg-notion-bg px-3 text-sm text-notion-text-muted hover:bg-notion-sidebar-hover"
                 onClick={onCancel}
               >
                 取消
@@ -77,7 +79,7 @@ export function LexiconProofreadPreviewDialog({
         ) : null}
 
         {state.phase === "loading" ? (
-          <p className="mt-4 text-sm text-notion-text-muted">正在请求远程 provider，请稍候…</p>
+          <p className={`mt-4 ${PANEL_TYPOGRAPHY.dialogBody}`}>正在请求远程 provider，请稍候…</p>
         ) : null}
 
         {preview ? (
@@ -88,7 +90,7 @@ export function LexiconProofreadPreviewDialog({
               {preview.packTruncated ? " · 词表已截断（仅发送部分条目）" : ""}
             </p>
             {preview.rationale ? (
-              <p className="mt-2 text-sm text-notion-text-muted">{preview.rationale}</p>
+              <p className={`mt-2 ${PANEL_TYPOGRAPHY.dialogBody}`}>{preview.rationale}</p>
             ) : null}
             {preview.warnings.length > 0 ? (
               <div className="mt-2 text-xs text-notion-text-muted">
@@ -107,7 +109,7 @@ export function LexiconProofreadPreviewDialog({
                   <span className="shrink-0">
                     <button
                       type="button"
-                      className="text-zen-saffron hover:underline"
+                      className={`${CONTROL_BTN_LINK} text-zen-saffron`}
                       onClick={() => onSelectAllOps(true)}
                     >
                       全选
@@ -115,14 +117,14 @@ export function LexiconProofreadPreviewDialog({
                     <span className="mx-1">·</span>
                     <button
                       type="button"
-                      className="text-zen-saffron hover:underline"
+                      className={`${CONTROL_BTN_LINK} text-zen-saffron`}
                       onClick={() => onSelectAllOps(false)}
                     >
                       全不选
                     </button>
                   </span>
                 </div>
-                <ul className="mt-2 max-h-48 space-y-2 overflow-y-auto text-sm text-notion-text">
+                <ul className={`mt-2 max-h-48 space-y-2 overflow-y-auto ${PANEL_TYPOGRAPHY.dialogText}`}>
                   {preview.opLabels.map((label, i) => (
                     <li key={`${i}-${label.slice(0, 24)}`}>
                       <label className="flex cursor-pointer items-start gap-2 rounded-md bg-notion-sidebar/40 px-2 py-1.5">
@@ -139,10 +141,10 @@ export function LexiconProofreadPreviewDialog({
                 </ul>
               </>
             ) : (
-              <p className="mt-3 text-sm text-notion-text-muted">模型未返回可采纳的改字建议。</p>
+              <p className={`mt-3 ${PANEL_TYPOGRAPHY.dialogBody}`}>模型未返回可采纳的改字建议。</p>
             )}
             {hasRuleItems ? (
-              <label className="mt-4 flex cursor-pointer items-start gap-2 text-sm text-notion-text">
+              <label className={`mt-4 flex cursor-pointer items-start gap-2 ${PANEL_TYPOGRAPHY.dialogText}`}>
                 <input
                   type="checkbox"
                   className="mt-0.5"
@@ -155,7 +157,7 @@ export function LexiconProofreadPreviewDialog({
             <div className="mt-5 flex justify-end gap-2">
               <button
                 type="button"
-                className="min-h-[36px] rounded-md border border-notion-border px-3 text-sm text-notion-text-muted hover:bg-notion-sidebar-hover"
+                className="min-h-[36px] rounded-md border border-notion-border bg-notion-bg px-3 text-sm text-notion-text-muted hover:bg-notion-sidebar-hover"
                 onClick={onCancel}
               >
                 取消

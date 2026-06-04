@@ -1,6 +1,7 @@
 import { createPortal } from "react-dom";
 import { Search } from "lucide-react";
 import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../config/controlStyles";
+import { PANEL_CONTROL_TYPOGRAPHY, PANEL_TYPOGRAPHY } from "../config/typography";
 import type { FindReplaceDialogState } from "../pages/useFindReplaceController";
 import { matchPositionLabel } from "../services/editor/segmentFindReplace";
 import { FindReplaceMatchText } from "./FindReplaceMatchText";
@@ -29,7 +30,7 @@ function resolveFindReplacePanelLayout() {
 }
 
 const fieldClass =
-  "h-8 min-w-0 flex-1 rounded-md border border-notion-divider bg-notion-bg px-2.5 text-sm text-notion-text outline-none focus:border-zen-saffron/45";
+  `h-8 min-w-0 flex-1 rounded-md border border-notion-divider bg-notion-bg px-2.5 outline-none focus:border-zen-saffron/45 ${PANEL_CONTROL_TYPOGRAPHY.compactInput}`;
 
 type Props = {
   state: FindReplaceDialogState;
@@ -167,7 +168,7 @@ export function FindReplaceDialog({
           onClose={handleClose}
         >
           <div className="flex min-h-0 flex-1 flex-col px-5 py-3">
-            <p className="text-sm text-notion-text-muted">
+            <p className={PANEL_TYPOGRAPHY.dialogBody}>
               将替换 {state.matchCount} 处「{state.findText}」→「{state.replaceText || "（空）"}」。确认后将自动保存并写入纠错记忆（查找词与替换词不同时）。
             </p>
             <ul className={`${RESULT_LIST_CLASS} mt-3 text-xs`}>
@@ -182,13 +183,13 @@ export function FindReplaceDialog({
                   </p>
                   <div className="mt-1.5">
                     <p className="mb-0.5 text-[11px] uppercase tracking-wide text-notion-text-light">改前</p>
-                    <p className="whitespace-pre-wrap break-words text-sm leading-snug line-through decoration-notion-text-light/50">
+                    <p className={`whitespace-pre-wrap break-words ${PANEL_TYPOGRAPHY.dialogBody} leading-snug line-through decoration-notion-text-light/50`}>
                       {row.fullText}
                     </p>
                   </div>
                   <div className="mt-1.5">
                     <p className="mb-0.5 text-[11px] uppercase tracking-wide text-notion-text-light">改后</p>
-                    <p className="whitespace-pre-wrap break-words text-sm leading-snug text-notion-text">
+                    <p className={`whitespace-pre-wrap break-words ${PANEL_TYPOGRAPHY.dialogText} leading-snug`}>
                       {row.fullTextAfter}
                     </p>
                   </div>
@@ -306,11 +307,11 @@ export function FindReplaceDialog({
 
           <div className="flex min-h-0 flex-1 flex-col">
             {!state.searchCommitted ? (
-              <p className="rounded-md border border-notion-divider bg-notion-bg px-3 py-4 text-center text-sm text-notion-text-muted">
+              <p className={`rounded-md border border-notion-divider bg-notion-bg px-3 py-4 text-center ${PANEL_TYPOGRAPHY.dialogBody}`}>
                 输入查找内容后点击「查找」，将列出匹配的语段全文。
               </p>
             ) : state.matchCount === 0 ? (
-              <p className="rounded-md border border-notion-divider bg-notion-bg px-3 py-4 text-center text-sm text-notion-text-muted">
+              <p className={`rounded-md border border-notion-divider bg-notion-bg px-3 py-4 text-center ${PANEL_TYPOGRAPHY.dialogBody}`}>
                 未找到匹配「{state.findText}」的语段。
               </p>
             ) : state.matchCount === 1 && activeItem ? (

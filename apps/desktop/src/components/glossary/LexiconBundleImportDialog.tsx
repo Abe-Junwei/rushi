@@ -45,7 +45,7 @@ export function LexiconBundleImportDialog({
           <ul className="m-0 flex min-h-0 flex-1 list-none flex-col gap-3 overflow-y-auto p-0">
             {preview.conflicts.map((c) => (
               <li key={c.id} className="rounded-md bg-notion-callout-bg px-3 py-2">
-                <p className="m-0 mb-2 text-sm text-notion-text">{c.message}</p>
+                <p className={`m-0 mb-2 ${PANEL_TYPOGRAPHY.dialogText}`}>{c.message}</p>
                 <select
                   value={resolutions[c.id] ?? "local"}
                   disabled={disabled}

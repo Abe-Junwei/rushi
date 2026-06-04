@@ -1,5 +1,6 @@
 import { createPortal } from "react-dom";
 import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../../config/controlStyles";
+import { PANEL_CONTROL_TYPOGRAPHY, PANEL_TYPOGRAPHY } from "../../config/typography";
 import type { ManualCorrectionMemoryDialogState } from "../../pages/useManualCorrectionMemoryDialog";
 import { FloatingPanelTemplate } from "../PanelTemplate";
 
@@ -35,20 +36,20 @@ export function ManualCorrectionMemoryDialog({
         onClose={onClose}
       >
         <div className="flex min-h-0 flex-1 flex-col gap-3 px-5 py-3">
-          <p className="text-sm text-notion-text-muted">
+          <p className={PANEL_TYPOGRAPHY.dialogBody}>
             将选中的错形与正确形式写入纠错记忆，用于改正建议；错形不会进入转写热词。
           </p>
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="text-notion-text-muted">错形（选中文本）</span>
-            <span className="rounded-md bg-notion-sidebar/80 px-3 py-2 font-medium text-notion-text">
+          <label className={`flex flex-col gap-1 ${PANEL_TYPOGRAPHY.dialogBody}`}>
+            <span className={PANEL_TYPOGRAPHY.fieldLabel}>错形（选中文本）</span>
+            <span className={`rounded-md bg-notion-sidebar/80 px-3 py-2 font-medium ${PANEL_TYPOGRAPHY.dialogText}`}>
               {state.wrong}
             </span>
           </label>
-          <label className="flex flex-col gap-1 text-sm">
-            <span className="text-notion-text-muted">正确形式</span>
+          <label className={`flex flex-col gap-1 ${PANEL_TYPOGRAPHY.dialogBody}`}>
+            <span className={PANEL_TYPOGRAPHY.fieldLabel}>正确形式</span>
             <input
               type="text"
-              className="rounded-md border border-notion-border bg-notion-bg px-3 py-2 text-notion-text outline-none focus-visible:ring-2 focus-visible:ring-zen-saffron/40"
+              className={`rounded-md border border-notion-border bg-notion-bg px-3 py-2 outline-none focus-visible:ring-2 focus-visible:ring-zen-saffron/40 ${PANEL_CONTROL_TYPOGRAPHY.compactInput}`}
               value={state.right}
               disabled={busy}
               autoFocus
@@ -70,9 +71,9 @@ export function ManualCorrectionMemoryDialog({
               disabled={busy}
               onChange={(e) => onAlsoAddToGlossaryChange(e.target.checked)}
             />
-            <span className="flex flex-col gap-0.5 text-sm">
-              <span className="font-medium text-notion-text">同时加入转写词汇表</span>
-              <span className="text-xs text-notion-text-muted">
+            <span className={`flex flex-col gap-0.5 ${PANEL_TYPOGRAPHY.dialogBody}`}>
+              <span className={`font-medium ${PANEL_TYPOGRAPHY.dialogText}`}>同时加入转写词汇表</span>
+              <span className={PANEL_TYPOGRAPHY.meta}>
                 使用正形作为 term，纳入下次转写热词
               </span>
             </span>

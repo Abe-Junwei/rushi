@@ -1,4 +1,5 @@
 import type { AutoPunctuateDialogState } from "../pages/useAutoPunctuateController";
+import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { highlightTextByDiff } from "../utils/textDiff";
 
 type AutoPunctuatePreviewDialogProps = {
@@ -33,10 +34,10 @@ export function AutoPunctuatePreviewDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="auto-punctuate-title"
-        className="w-full max-w-2xl rounded-md border border-notion-divider bg-notion-bg px-6 py-5 shadow-lg"
+        className="w-full max-w-2xl rounded-md border border-notion-divider bg-notion-bg px-6 py-5 font-sans antialiased shadow-lg"
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <h2 id="auto-punctuate-title" className="text-base font-semibold text-notion-text">
+        <h2 id="auto-punctuate-title" className={`${PANEL_TYPOGRAPHY.dialogTitle} text-base`}>
           {state.phase === "consent"
             ? "将语段发送至云端 LLM"
             : state.phase === "loading"
@@ -50,17 +51,17 @@ export function AutoPunctuatePreviewDialog({
 
         {state.phase === "consent" ? (
           <>
-            <p className="mt-3 text-sm leading-relaxed text-notion-text-muted">
+            <p className={`mt-3 ${PANEL_TYPOGRAPHY.dialogBody}`}>
               当前语段将按「设置 → LLM 配置」中的厂商与模型发送，仅用于自动标点候选。正文不会在未经确认的情况下被改写。
             </p>
-            <pre className="mt-4 max-h-44 overflow-auto whitespace-pre-wrap rounded-lg border border-notion-divider bg-white px-3 py-3 text-sm text-notion-text">
+            <pre className={`mt-4 max-h-44 overflow-auto whitespace-pre-wrap rounded-lg border border-notion-divider bg-white px-3 py-3 ${PANEL_TYPOGRAPHY.dialogText}`}>
               {state.originalText}
             </pre>
           </>
         ) : null}
 
         {state.phase === "loading" ? (
-          <div className="mt-4 rounded-lg border border-notion-divider bg-white px-4 py-6 text-sm text-notion-text-muted">
+          <div className={`mt-4 rounded-lg border border-notion-divider bg-white px-4 py-6 ${PANEL_TYPOGRAPHY.dialogBody}`}>
             正在请求远程 provider 生成候选，请稍候...
           </div>
         ) : null}
@@ -71,7 +72,7 @@ export function AutoPunctuatePreviewDialog({
               <p className="mb-2 text-xs font-semibold uppercase tracking-[0.08em] text-notion-text-muted">
                 原文
               </p>
-              <pre className="min-h-[10rem] whitespace-pre-wrap rounded-lg border border-notion-divider bg-white px-3 py-3 text-sm leading-relaxed text-notion-text">
+              <pre className={`min-h-[10rem] whitespace-pre-wrap rounded-lg border border-notion-divider bg-white px-3 py-3 ${PANEL_TYPOGRAPHY.dialogText}`}>
                 {state.originalText}
               </pre>
             </section>
@@ -82,7 +83,7 @@ export function AutoPunctuatePreviewDialog({
                   {state.provider} · {state.latencyMs} ms
                 </span>
               </div>
-              <div className="min-h-[10rem] whitespace-pre-wrap rounded-lg border border-notion-divider bg-white px-3 py-3 text-sm leading-relaxed text-notion-text">
+              <div className={`min-h-[10rem] whitespace-pre-wrap rounded-lg border border-notion-divider bg-white px-3 py-3 ${PANEL_TYPOGRAPHY.dialogText}`}>
                 {candidate?.map((part, idx) => (
                   <span
                     key={`${idx}-${part.text}`}

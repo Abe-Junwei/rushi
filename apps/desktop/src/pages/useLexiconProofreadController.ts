@@ -64,6 +64,8 @@ type UseLexiconProofreadControllerArgs = {
   llmRuntimeEpoch?: number;
   llmKeychainReady?: boolean;
   llmKeychainChecking?: boolean;
+  llmCapabilityOk?: boolean;
+  llmCapabilityBlockReason?: string | null;
 };
 
 export type LexiconProofreadControllerApi = {
@@ -109,6 +111,8 @@ export function useLexiconProofreadController(
     llmRuntimeEpoch = 0,
     llmKeychainReady = false,
     llmKeychainChecking = false,
+    llmCapabilityOk,
+    llmCapabilityBlockReason = null,
   } = args;
 
   const [dialog, setDialog] = useState<LexiconProofreadDialogState>({ phase: "closed" });
@@ -128,6 +132,8 @@ export function useLexiconProofreadController(
       hasSegmentText: !!(selected?.text ?? "").trim(),
       keychainReady: llmKeychainReady,
       keychainChecking: llmKeychainChecking,
+      llmCapabilityOk,
+      llmCapabilityBlockReason,
     });
     if (base) return base;
     if (!selected?.uid?.trim()) return "当前语段缺少 uid，无法执行词表校对。";
@@ -139,6 +145,8 @@ export function useLexiconProofreadController(
     currentFileId,
     llmKeychainChecking,
     llmKeychainReady,
+    llmCapabilityBlockReason,
+    llmCapabilityOk,
     llmRuntimeEpoch,
     selected,
     segments,
@@ -149,8 +157,8 @@ export function useLexiconProofreadController(
     !busy &&
     !transcribePreviewActive &&
     !!currentFileId &&
-    isLlmRuntimeReady() &&
-    lexiconProofreadBlockReason === null;
+    lexiconProofreadBlockReason === null &&
+    (llmCapabilityOk ?? isLlmRuntimeReady());
 
   const buildPayload = useCallback((): PendingPayload | null => {
     if (busy || !currentFileId) return null;

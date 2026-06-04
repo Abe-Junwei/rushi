@@ -1,5 +1,6 @@
 import { createPortal } from "react-dom";
-import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../config/controlStyles";
+import { CONTROL_BTN_LINK, CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../config/controlStyles";
+import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { FloatingPanelTemplate } from "./PanelTemplate";
 
 const PANEL_ID = "transcribe-overwrite-confirm-v1";
@@ -46,11 +47,11 @@ export function TranscribeOverwriteConfirmDialog({
         onClose={handleClose}
       >
         <div className="flex flex-col px-5 py-3" role="alertdialog" aria-modal="true">
-          <p className="text-sm leading-relaxed text-zen-stone">
+          <p className={PANEL_TYPOGRAPHY.dialogBody}>
             当前文件已有 {segmentCount} 条语段且含正文。从 ASR 拉取将<strong className="font-medium">替换</strong>
             全部语段，未保存的手改将丢失。
           </p>
-          <p className="mt-2.5 text-sm leading-relaxed text-notion-text-muted">
+          <p className={`mt-2.5 ${PANEL_TYPOGRAPHY.dialogBody}`}>
             建议先保存或导出；确认后继续转写。
           </p>
           {vocabularyLines.length > 0 ? (
@@ -64,7 +65,7 @@ export function TranscribeOverwriteConfirmDialog({
               {showOpenGlossaryLink && onOpenGlossary ? (
                 <button
                   type="button"
-                  className="mt-2 text-xs font-medium text-zen-saffron underline-offset-2 hover:underline disabled:opacity-40"
+                  className={`${CONTROL_BTN_LINK} mt-2 text-xs font-medium text-zen-saffron`}
                   disabled={busy}
                   onClick={onOpenGlossary}
                 >

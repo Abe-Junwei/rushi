@@ -238,7 +238,7 @@ export function DraggableResizablePanel({
       <div className="absolute -bottom-1 -right-1 h-5 w-5 cursor-se-resize" onPointerDown={(e) => startDrag("se", e)} />
 
       {/* Panel */}
-      <div className="flex h-full w-full flex-col overflow-hidden rounded-lg border border-notion-divider bg-notion-bg shadow-2xl">
+      <div className="flex h-full w-full flex-col overflow-hidden rounded-lg border border-notion-divider bg-notion-bg font-sans antialiased text-notion-text shadow-2xl">
         {/* Title bar (draggable) — Notion/Zen */}
         <div
           className="flex shrink-0 cursor-move items-center justify-between border-b border-notion-divider bg-notion-sidebar px-6 py-4 select-none"
