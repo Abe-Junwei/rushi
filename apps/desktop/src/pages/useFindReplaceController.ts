@@ -1,82 +1,18 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import type { SegmentDto } from "../tauri/projectApi";
-import {
-  applyReplaceAllToSegments,
-  buildFindMatchListItems,
-  buildReplaceAllPreviewRows,
-  clampMatchIndex,
-  collectLiteralFindMatches,
-  replaceOnceInText,
-  type FindMatch,
-  type FindMatchListItem,
-  type ReplaceAllPreviewRow,
-} from "../services/editor/segmentFindReplace";
+import { buildFindMatchListItems, clampMatchIndex } from "../services/editor/segmentFindReplace";
 import {
   captureTranscriptTextareaSelection,
   readTranscriptTextareaSelection,
 } from "../utils/transcriptSelection";
-import { toast } from "../services/ui/toast";
+import type {
+  FindReplaceControllerApi,
+  FindReplaceDialogState,
+  UseFindReplaceControllerArgs,
+} from "./findReplaceTypes";
+import { useFindReplaceMutations } from "./useFindReplaceMutations";
+import { useFindReplaceSearch } from "./useFindReplaceSearch";
 
-export type FindReplaceDialogState =
-  | { phase: "closed" }
-  | {
-      phase: "panel";
-      findText: string;
-      replaceText: string;
-      activeMatchIndex: number;
-      matchCount: number;
-      searchCommitted: boolean;
-      resultItems: FindMatchListItem[];
-    }
-  | {
-      phase: "replaceAllPreview";
-      findText: string;
-      replaceText: string;
-      rows: ReplaceAllPreviewRow[];
-      matchCount: number;
-    };
-
-type UseFindReplaceControllerArgs = {
-  busy: boolean;
-  currentFileId: string | null;
-  segments: SegmentDto[];
-  segmentsRef: React.MutableRefObject<SegmentDto[]>;
-  selectedIdx: number;
-  flushSegmentTextDrafts: () => void;
-  setSelectedIdx: React.Dispatch<React.SetStateAction<number>>;
-  updateSegmentText: (idx: number, text: string) => void;
-  setSegments: React.Dispatch<React.SetStateAction<SegmentDto[]>>;
-  pushUndo: () => void;
-  saveSegments: (options?: {
-    quiet?: boolean;
-    countHits?: boolean;
-    explicitPairs?: import("../tauri/fileApi").CorrectionExplicitPair[];
-  }) => Promise<boolean>;
-};
-
-export type FindReplaceControllerApi = {
-  canFindReplace: boolean;
-  findReplaceBlockReason: string | null;
-  findReplaceDialog: FindReplaceDialogState;
-  openFindReplace: (initialFind?: string, initialReplace?: string) => void;
-  findReplaceEditorHighlight: {
-    segmentIdx: number;
-    charStart: number;
-    charEnd: number;
-  } | null;
-  findReplaceReplaceAndNext: () => void;
-  closeFindReplace: () => void;
-  setFindReplaceFindText: (value: string) => void;
-  setFindReplaceReplaceText: (value: string) => void;
-  findReplaceRunSearch: () => void;
-  findReplaceSelectMatch: (globalIndex: number) => void;
-  findReplaceGoNext: () => void;
-  findReplaceGoPrev: () => void;
-  findReplaceCurrent: () => void;
-  findReplaceRequestReplaceAll: () => void;
-  findReplaceConfirmReplaceAll: () => Promise<void>;
-  findReplaceCancelReplaceAllPreview: () => void;
-};
+export type { FindReplaceControllerApi, FindReplaceDialogState } from "./findReplaceTypes";
 
 export function useFindReplaceController(args: UseFindReplaceControllerArgs): FindReplaceControllerApi {
   const {
@@ -93,10 +29,6 @@ export function useFindReplaceController(args: UseFindReplaceControllerArgs): Fi
   } = args;
 
   const [dialog, setDialog] = useState<FindReplaceDialogState>({ phase: "closed" });
-  const [findText, setFindText] = useState("");
-  const [replaceText, setReplaceText] = useState("");
-  const [activeMatchIndex, setActiveMatchIndex] = useState(-1);
-  const [searchCommitted, setSearchCommitted] = useState(false);
 
   const busyRef = useRef(busy);
   busyRef.current = busy;
@@ -104,9 +36,6 @@ export function useFindReplaceController(args: UseFindReplaceControllerArgs): Fi
   currentFileIdRef.current = currentFileId;
   const canFindReplaceRef = useRef(false);
   const dialogPhaseRef = useRef<FindReplaceDialogState["phase"]>("closed");
-  const findSearchDebounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const FIND_SEARCH_DEBOUNCE_MS = 320;
 
   const findReplaceBlockReason = !currentFileId
     ? "请先打开一个文件"
@@ -120,95 +49,54 @@ export function useFindReplaceController(args: UseFindReplaceControllerArgs): Fi
   canFindReplaceRef.current = canFindReplace;
   dialogPhaseRef.current = dialog.phase;
 
-  const matches: FindMatch[] = useMemo(() => {
-    if (dialog.phase === "closed" || !searchCommitted) return [];
-    return collectLiteralFindMatches(segments, findText);
-  }, [dialog.phase, searchCommitted, segments, findText]);
+  const search = useFindReplaceSearch({
+    segments,
+    segmentsRef,
+    flushSegmentTextDrafts,
+    setSelectedIdx,
+  });
 
-  const resultItems = useMemo(
-    () => buildFindMatchListItems(segments, matches),
-    [matches, segments],
-  );
+  const closeFindReplace = useCallback(() => {
+    search.clearFindSearchDebounce();
+    setDialog({ phase: "closed" });
+    search.resetSearchState();
+  }, [search]);
 
-  const focusMatch = useCallback(
-    (match: FindMatch | undefined) => {
-      if (!match) return;
-      setSelectedIdx(match.segmentIdx);
+  const onRequestReplaceAllPreview = useCallback(
+    (rows: Extract<FindReplaceDialogState, { phase: "replaceAllPreview" }>["rows"]) => {
+      setDialog({
+        phase: "replaceAllPreview",
+        findText: search.findText,
+        replaceText: search.replaceText,
+        rows,
+        matchCount: search.matches.length,
+      });
     },
-    [setSelectedIdx],
+    [search.findText, search.matches.length, search.replaceText],
   );
 
-  const applySearchResults = useCallback(
-    (nextMatches: FindMatch[], preferredIndex?: number) => {
-      if (nextMatches.length === 0) {
-        setActiveMatchIndex(-1);
-        return;
-      }
-      const idx =
-        preferredIndex != null && preferredIndex >= 0 && preferredIndex < nextMatches.length
-          ? preferredIndex
-          : clampMatchIndex(0, nextMatches.length);
-      setActiveMatchIndex(idx);
-      focusMatch(nextMatches[idx]);
-    },
-    [focusMatch],
-  );
-
-  const focusFindInput = useCallback((selectAll = false) => {
-    window.requestAnimationFrame(() => {
-      const el = document.getElementById("find-replace-find-input");
-      if (!(el instanceof HTMLInputElement)) return;
-      el.focus();
-      if (selectAll) el.select();
-    });
-  }, []);
-
-  const commitFindSearch = useCallback(
-    (query: string, preferredIndex?: number) => {
-      if (!query) {
-        setSearchCommitted(false);
-        setActiveMatchIndex(-1);
-        setDialog((prev) =>
-          prev.phase === "panel"
-            ? {
-                ...prev,
-                searchCommitted: false,
-                matchCount: 0,
-                activeMatchIndex: -1,
-                resultItems: [],
-              }
-            : prev,
-        );
-        return;
-      }
-      flushSegmentTextDrafts();
-      setSearchCommitted(true);
-      const nextMatches = collectLiteralFindMatches(segmentsRef.current, query);
-      applySearchResults(nextMatches, preferredIndex);
-    },
-    [applySearchResults, flushSegmentTextDrafts, segmentsRef],
-  );
-
-  const runSearchOnCurrentSegments = useCallback(
-    (preferredIndex?: number) => {
-      commitFindSearch(findText, preferredIndex);
-    },
-    [commitFindSearch, findText],
-  );
+  const mutations = useFindReplaceMutations({
+    busy,
+    segmentsRef,
+    flushSegmentTextDrafts,
+    updateSegmentText,
+    setSegments,
+    pushUndo,
+    saveSegments,
+    findText: search.findText,
+    replaceText: search.replaceText,
+    activeMatchIndex: search.activeMatchIndex,
+    matches: search.matches,
+    applySearchResults: search.applySearchResults,
+    closeFindReplace,
+    onRequestReplaceAllPreview,
+  });
 
   const openFindReplace = useCallback(
     (initialFind?: string, initialReplace?: string) => {
       if (!canFindReplace) return;
-      if (findSearchDebounceRef.current !== null) {
-        clearTimeout(findSearchDebounceRef.current);
-        findSearchDebounceRef.current = null;
-      }
-      flushSegmentTextDrafts();
       const seed = initialFind ?? "";
       const repl = initialReplace ?? "";
-      setFindText(seed);
-      setReplaceText(repl);
-      setActiveMatchIndex(-1);
       setDialog({
         phase: "panel",
         findText: seed,
@@ -218,211 +106,44 @@ export function useFindReplaceController(args: UseFindReplaceControllerArgs): Fi
         searchCommitted: false,
         resultItems: [],
       });
-      if (seed) commitFindSearch(seed, 0);
-      else {
-        setSearchCommitted(false);
-      }
-      focusFindInput(seed.length > 0);
+      search.seedSearchForOpen(seed, repl);
     },
-    [canFindReplace, commitFindSearch, flushSegmentTextDrafts, focusFindInput],
+    [canFindReplace, search],
   );
-
-  const closeFindReplace = useCallback(() => {
-    if (findSearchDebounceRef.current !== null) {
-      clearTimeout(findSearchDebounceRef.current);
-      findSearchDebounceRef.current = null;
-    }
-    setDialog({ phase: "closed" });
-    setSearchCommitted(false);
-  }, []);
 
   const setFindReplaceFindText = useCallback(
     (value: string) => {
-      setFindText(value);
+      search.setFindReplaceFindText(value);
       setDialog((prev) => (prev.phase === "panel" ? { ...prev, findText: value } : prev));
-
-      if (findSearchDebounceRef.current !== null) {
-        clearTimeout(findSearchDebounceRef.current);
-        findSearchDebounceRef.current = null;
-      }
-
-      if (!value) {
-        commitFindSearch("");
-        return;
-      }
-
-      findSearchDebounceRef.current = setTimeout(() => {
-        findSearchDebounceRef.current = null;
-        commitFindSearch(value, 0);
-      }, FIND_SEARCH_DEBOUNCE_MS);
     },
-    [commitFindSearch],
+    [search],
   );
 
-  const setFindReplaceReplaceText = useCallback((value: string) => {
-    setReplaceText(value);
-    setDialog((prev) =>
-      prev.phase === "panel" ? { ...prev, replaceText: value } : prev.phase === "replaceAllPreview" ? { ...prev, replaceText: value } : prev,
-    );
-  }, []);
-
-  const findReplaceRunSearch = useCallback(() => {
-    if (!canFindReplace) return;
-    if (findSearchDebounceRef.current !== null) {
-      clearTimeout(findSearchDebounceRef.current);
-      findSearchDebounceRef.current = null;
-    }
-    flushSegmentTextDrafts();
-    runSearchOnCurrentSegments(0);
-  }, [canFindReplace, flushSegmentTextDrafts, runSearchOnCurrentSegments]);
-
-  const findReplaceSelectMatch = useCallback(
-    (globalIndex: number) => {
-      if (!searchCommitted) return;
-      const idx = matches.findIndex((m) => m.globalIndex === globalIndex);
-      if (idx < 0) return;
-      setActiveMatchIndex(idx);
-      focusMatch(matches[idx]);
+  const setFindReplaceReplaceText = useCallback(
+    (value: string) => {
+      search.setFindReplaceReplaceText(value);
+      setDialog((prev) =>
+        prev.phase === "panel"
+          ? { ...prev, replaceText: value }
+          : prev.phase === "replaceAllPreview"
+            ? { ...prev, replaceText: value }
+            : prev,
+      );
     },
-    [focusMatch, matches, searchCommitted],
+    [search],
   );
-
-  const findReplaceGoNext = useCallback(() => {
-    if (!matches.length) return;
-    const next = (activeMatchIndex + 1) % matches.length;
-    setActiveMatchIndex(next);
-    focusMatch(matches[next]);
-  }, [activeMatchIndex, focusMatch, matches]);
-
-  const findReplaceGoPrev = useCallback(() => {
-    if (!matches.length) return;
-    const next = (activeMatchIndex - 1 + matches.length) % matches.length;
-    setActiveMatchIndex(next);
-    focusMatch(matches[next]);
-  }, [activeMatchIndex, focusMatch, matches]);
-
-  const findReplaceCurrent = useCallback(() => {
-    if (!findText || activeMatchIndex < 0) return;
-    const match = matches[activeMatchIndex];
-    if (!match) return;
-    flushSegmentTextDrafts();
-    const row = segmentsRef.current[match.segmentIdx];
-    if (!row) return;
-    const nextText = replaceOnceInText(row.text, match.charStart, findText, replaceText);
-    if (nextText === row.text) return;
-    updateSegmentText(match.segmentIdx, nextText);
-    const projected = segmentsRef.current.map((s, i) =>
-      i === match.segmentIdx ? { ...s, text: nextText } : s,
-    );
-    const nextMatches = collectLiteralFindMatches(projected, findText);
-    const nextActive = clampMatchIndex(
-      Math.min(activeMatchIndex, Math.max(0, nextMatches.length - 1)),
-      nextMatches.length,
-    );
-    applySearchResults(nextMatches, nextActive >= 0 ? nextActive : undefined);
-  }, [
-    activeMatchIndex,
-    applySearchResults,
-    findText,
-    flushSegmentTextDrafts,
-    matches,
-    replaceText,
-    segmentsRef,
-    updateSegmentText,
-  ]);
-
-  const findReplaceReplaceAndNext = useCallback(() => {
-    if (!findText || activeMatchIndex < 0) return;
-    const match = matches[activeMatchIndex];
-    if (!match) return;
-    flushSegmentTextDrafts();
-    const row = segmentsRef.current[match.segmentIdx];
-    if (!row) return;
-    const nextText = replaceOnceInText(row.text, match.charStart, findText, replaceText);
-    if (nextText !== row.text) {
-      updateSegmentText(match.segmentIdx, nextText);
-    }
-    const projected = segmentsRef.current.map((s, i) =>
-      i === match.segmentIdx ? { ...s, text: nextText } : s,
-    );
-    const nextMatches = collectLiteralFindMatches(projected, findText);
-    if (!nextMatches.length) {
-      setActiveMatchIndex(-1);
-      return;
-    }
-    const next = (activeMatchIndex + 1) % nextMatches.length;
-    applySearchResults(nextMatches, next);
-  }, [
-    activeMatchIndex,
-    applySearchResults,
-    findText,
-    flushSegmentTextDrafts,
-    matches,
-    replaceText,
-    segmentsRef,
-    updateSegmentText,
-  ]);
-
-  const findReplaceRequestReplaceAll = useCallback(() => {
-    if (!findText || !matches.length) return;
-    flushSegmentTextDrafts();
-    const rows = buildReplaceAllPreviewRows(segmentsRef.current, findText, replaceText, matches);
-    setDialog({
-      phase: "replaceAllPreview",
-      findText,
-      replaceText,
-      rows,
-      matchCount: matches.length,
-    });
-  }, [findText, flushSegmentTextDrafts, matches, replaceText, segmentsRef]);
-
-  const findReplaceConfirmReplaceAll = useCallback(async () => {
-    if (!findText || !matches.length || busy) return;
-    const matchCount = matches.length;
-    flushSegmentTextDrafts();
-    pushUndo();
-    const next = applyReplaceAllToSegments(segmentsRef.current, findText, replaceText, matches);
-    segmentsRef.current = next;
-    setSegments(next);
-    const explicitPairs =
-      findText.trim() !== replaceText.trim()
-        ? [{ beforeText: findText.trim(), afterText: replaceText.trim() }]
-        : undefined;
-    const saved = await saveSegments({ quiet: true, countHits: true, explicitPairs });
-    if (!saved) {
-      toast.warning("已全部替换，但保存失败，请稍后手动保存以写入纠错记忆");
-      return;
-    }
-    closeFindReplace();
-    if (findText !== replaceText) {
-      toast.success(`已替换 ${matchCount} 处并已保存；符合条件的将写入纠错记忆`);
-    } else {
-      toast.info(`已处理 ${matchCount} 处并已保存`);
-    }
-  }, [
-    busy,
-    closeFindReplace,
-    findText,
-    flushSegmentTextDrafts,
-    matches,
-    pushUndo,
-    replaceText,
-    saveSegments,
-    segmentsRef,
-    setSegments,
-  ]);
 
   const findReplaceCancelReplaceAllPreview = useCallback(() => {
     setDialog({
       phase: "panel",
-      findText,
-      replaceText,
-      activeMatchIndex: clampMatchIndex(activeMatchIndex, matches.length),
-      matchCount: matches.length,
+      findText: search.findText,
+      replaceText: search.replaceText,
+      activeMatchIndex: clampMatchIndex(search.activeMatchIndex, search.matches.length),
+      matchCount: search.matches.length,
       searchCommitted: true,
-      resultItems: buildFindMatchListItems(segments, matches),
+      resultItems: buildFindMatchListItems(segments, search.matches),
     });
-  }, [activeMatchIndex, findText, matches, replaceText, segments]);
+  }, [search.activeMatchIndex, search.findText, search.matches, search.replaceText, segments]);
 
   useEffect(() => {
     if (dialog.phase !== "panel") return;
@@ -430,13 +151,19 @@ export function useFindReplaceController(args: UseFindReplaceControllerArgs): Fi
       if (prev.phase !== "panel") return prev;
       return {
         ...prev,
-        activeMatchIndex,
-        matchCount: matches.length,
-        searchCommitted,
-        resultItems,
+        activeMatchIndex: search.activeMatchIndex,
+        matchCount: search.matches.length,
+        searchCommitted: search.searchCommitted,
+        resultItems: search.resultItems,
       };
     });
-  }, [activeMatchIndex, dialog.phase, matches.length, resultItems, searchCommitted]);
+  }, [
+    dialog.phase,
+    search.activeMatchIndex,
+    search.matches.length,
+    search.resultItems,
+    search.searchCommitted,
+  ]);
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
@@ -448,15 +175,11 @@ export function useFindReplaceController(args: UseFindReplaceControllerArgs): Fi
       if (dialogPhaseRef.current === "panel") {
         const sel = captureTranscriptTextareaSelection() || readTranscriptTextareaSelection();
         if (sel) {
-          if (findSearchDebounceRef.current !== null) {
-            clearTimeout(findSearchDebounceRef.current);
-            findSearchDebounceRef.current = null;
-          }
-          setFindText(sel);
-          setDialog((prev) => (prev.phase === "panel" ? { ...prev, findText: sel } : prev));
-          commitFindSearch(sel, 0);
+          search.clearFindSearchDebounce();
+          setFindReplaceFindText(sel);
+          search.commitFindSearch(sel, 0);
         }
-        focusFindInput(Boolean(sel));
+        search.focusFindInput(Boolean(sel));
         return;
       }
       if (dialogPhaseRef.current !== "closed") return;
@@ -466,22 +189,26 @@ export function useFindReplaceController(args: UseFindReplaceControllerArgs): Fi
     window.addEventListener("keydown", onKey, true);
     return () => {
       window.removeEventListener("keydown", onKey, true);
-      if (findSearchDebounceRef.current !== null) {
-        clearTimeout(findSearchDebounceRef.current);
-      }
+      search.clearFindSearchDebounce();
     };
-  }, [commitFindSearch, focusFindInput, openFindReplace]);
+  }, [
+    openFindReplace,
+    search.clearFindSearchDebounce,
+    search.commitFindSearch,
+    search.focusFindInput,
+    setFindReplaceFindText,
+  ]);
 
   const findReplaceEditorHighlight = useMemo(() => {
-    if (dialog.phase === "closed" || !searchCommitted || activeMatchIndex < 0) return null;
-    const match = matches[activeMatchIndex];
-    if (!match || !findText) return null;
+    if (dialog.phase === "closed" || !search.searchCommitted || search.activeMatchIndex < 0) return null;
+    const match = search.matches[search.activeMatchIndex];
+    if (!match || !search.findText) return null;
     return {
       segmentIdx: match.segmentIdx,
       charStart: match.charStart,
       charEnd: match.charEnd,
     };
-  }, [activeMatchIndex, dialog.phase, findText, matches, searchCommitted]);
+  }, [dialog.phase, search.activeMatchIndex, search.findText, search.matches, search.searchCommitted]);
 
   const findReplaceDialog: FindReplaceDialogState =
     dialog.phase === "closed"
@@ -490,12 +217,12 @@ export function useFindReplaceController(args: UseFindReplaceControllerArgs): Fi
         ? dialog
         : {
             phase: "panel",
-            findText,
-            replaceText,
-            activeMatchIndex,
-            matchCount: matches.length,
-            searchCommitted,
-            resultItems,
+            findText: search.findText,
+            replaceText: search.replaceText,
+            activeMatchIndex: search.activeMatchIndex,
+            matchCount: search.matches.length,
+            searchCommitted: search.searchCommitted,
+            resultItems: search.resultItems,
           };
 
   return {
@@ -506,15 +233,15 @@ export function useFindReplaceController(args: UseFindReplaceControllerArgs): Fi
     closeFindReplace,
     setFindReplaceFindText,
     setFindReplaceReplaceText,
-    findReplaceRunSearch,
-    findReplaceSelectMatch,
-    findReplaceGoNext,
-    findReplaceGoPrev,
-    findReplaceCurrent,
-    findReplaceReplaceAndNext,
+    findReplaceRunSearch: search.findReplaceRunSearch,
+    findReplaceSelectMatch: search.findReplaceSelectMatch,
+    findReplaceGoNext: search.findReplaceGoNext,
+    findReplaceGoPrev: search.findReplaceGoPrev,
+    findReplaceCurrent: mutations.findReplaceCurrent,
+    findReplaceReplaceAndNext: mutations.findReplaceReplaceAndNext,
     findReplaceEditorHighlight,
-    findReplaceRequestReplaceAll,
-    findReplaceConfirmReplaceAll,
+    findReplaceRequestReplaceAll: mutations.findReplaceRequestReplaceAll,
+    findReplaceConfirmReplaceAll: mutations.findReplaceConfirmReplaceAll,
     findReplaceCancelReplaceAllPreview,
   };
 }
