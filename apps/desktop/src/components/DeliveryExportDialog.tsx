@@ -35,7 +35,7 @@ const MODE_OPTIONS: { id: DocxExportMode; label: string; hint: string }[] = [
   {
     id: "verbatim",
     label: "逐字稿",
-    hint: "每段带时间码；低置信语段黄底高亮。",
+    hint: "每段带起止时间码，正文与时间行分开排版。",
   },
   {
     id: "lecture",

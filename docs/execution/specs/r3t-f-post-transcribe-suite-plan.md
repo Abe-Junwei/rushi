@@ -6,6 +6,7 @@
 > **Acceptance**：[`r3t-f-post-transcribe-suite-acceptance.md`](./r3t-f-post-transcribe-suite-acceptance.md)  
 > **调研**  
 > - 套件可行性/竞品：[`r3t-f-post-transcribe-suite-research.md`](./r3t-f-post-transcribe-suite-research.md)  
+> - **转写后→导出前自动化 / F0 补齐**：[`post-transcribe-to-export-automation-research.md`](./post-transcribe-to-export-automation-research.md)  
 > - 手改记忆 / LLM / 小团队交换：[`r3t-f-edit-memory-for-llm-research.md`](./r3t-f-edit-memory-for-llm-research.md)  
 > - **纠错记忆优化（MEM）**：[`r3t-f-correction-memory-optimization-plan.md`](./r3t-f-correction-memory-optimization-plan.md) · [acceptance](./r3t-f-correction-memory-optimization-acceptance.md)  
 > **已编码依赖**：R3t-C/D/E（L4）、`correction_memory` + `glossary_terms`（P2）、R3t-E 词表校对（手测签收待办）；**自动保存 1.5s**（`useAutoSaveSegments`）
@@ -29,8 +30,8 @@
 
 | 路径 | 承诺 | 不承诺 |
 |------|------|--------|
-| **主路径（日常改稿）** | 转写后用 **查找替换（F2）**、**全文规则（F1）**、既有 **R3t-E** 入口；手改沉淀记忆，提升 **下次转写**（hotwords）与 **当前稿 LLM**（LexiconPack） | 一次点击全文 AI 润色；零预览写回 |
-| **增强路径（编排）** | **转写后处理（F0-lite）**：默认仅 **规则 + 批处理标点**；可选低置信 **词表/语义 LLM**（F4/F5） | 全文 LLM 段界（D2 前）；宣称等同 Descript「魔法一键」 |
+| **主路径（日常改稿）** | 转写后用 **查找替换（F2）**、**全文规则（F1）**；手改沉淀记忆，提升 **下次转写**（hotwords）；**R3t-E 已移除**（2026-06） | 一次点击全文 AI 润色；零预览写回；恢复 LexiconPack 校对 |
+| **增强路径（编排）** | **转写后处理（F0-lite）**：**仅规则（F1）**，与 MEM-P2 预检合并入口；**R3t-C/D 已移除**（2026-06） | 批处理标点/段界；宣称 Descript「魔法一键」 |
 
 ### 1.2 小团队场景（定锚）
 
@@ -55,7 +56,7 @@ correction_memory ─────┼──► L2 转写 hints（warning）
 
 | # | 决策 | 日期 | 落位 |
 |---|------|------|------|
-| D1 | **F0-lite 默认只勾** 全文规则（F1）+ 批处理标点（C）；**默认不勾** 词表 LLM（E）、语义（F5）、段界 | 2026-05-31 | §5 |
+| D1 | **F0-lite** = **仅 F1 规则**（与 MEM-P2 转写后预检合并）；**R3t-C/D 已移除**，F0 **无** 标点/段界/LLM 步 | 2026-06 修订 | §8、[`post-transcribe-to-export-automation-research.md`](./post-transcribe-to-export-automation-research.md) |
 | D2 | **F5 语义**：仅不通顺/逻辑；禁止风格、扩写、删整段；须预览 + 默认关 | 2026-05-31 | §7 |
 | D3 | **主路径优先 F2**（Cmd+F + Replace All 预览），再 F1；F0 不含 F2 | 2026-05-31 | §4 |
 | D4 | **全文一次 LLM 订正** 不作为默认精度策略；长稿用分窗/规则/门控 | 2026-05-31 | research §4 |
@@ -74,19 +75,19 @@ correction_memory ─────┼──► L2 转写 hints（warning）
 | **F2** | 手动查找替换 + Correct 浮层 | P1 | 语段编辑、undo | 🟡 已编码（含改正浮层/高亮/快捷键）；手测待办 |
 | **F1** | 全文纠错规则（memory 字面） | P1 | `correction_memory` | 🟡 已编码；手测待办 |
 | **F6** | 手改记忆闭环（→glossary 提示） | P1 | save 学习 | 🟡 保存后第 3 次提示已编码 |
-| **F0-lite** | 转写后处理编排 | P2 | F1、R3t-C | 未编码 |
+| **F0** | 转写后编排：**阶段 A（规则）→ 阶段 B（LLM）** | P2 | F1、MEM-P2、postprocess | 📋 [plan](./f0-post-transcribe-orchestration-plan.md)；**无** C/D 独立菜单 |
 | **F4** | 置信门控（ASR + LLM 双轨） | P2 | 段 confidence | 未编码 |
 | **F7** | 词表包导出/导入/合并 | P2 | SQLite 全局表 | 未编码 |
 | **F8** | 导出前检查（小团队） | P2–P3 | F7 | 候选 |
 | **MEM-P0** | 记忆硬化（显式入库、写回即存、hit 策略） | P1·⑤″f-B | save 链、auto-save | 未编码 |
 | **MEM-P1** | 记忆管理 UI + 采纳为规则 + LEX-MINE-1 轻量 | P1·⑤″f-B½ | MEM-P0、GLY-1 | 未编码 |
-| **MEM-P2** | infer/uid 对齐 + ACC-TXT-0 spike | P2·⑤″f-C | MEM-P0 | 未编码 |
+| **MEM-P2** | infer/uid 对齐 + ACC-TXT-0 spike | P2·⑤″f-C | MEM-P0 | ✅ 签收 2026-06-04 — [signoff](./r3-5f-mem-p2-phase-signoff-2026-06.md) |
 | **F3** | 术语推荐 LEX-MINE-2/3（全量） | P3 | MEM-P1 | 未编码 |
 | **F5** | 语义审校（fluency/logic） | P3 | R3t-E 契约 | 未编码 |
 | **F0-full** | 含 D2 段界 + F5 的一键增强 | v2 | D2 spike | 未立项 |
 | **D2** | 全文/滑窗段界 spike | Spike | R3t-D | 调研 |
 
-**已编码（本 Epic 消费，不重复造）**：R3t-E `postprocess_lexicon_proofread`、LexiconPack、`correction.rs` 学习、glossary CSV 导入导出。
+**已编码（本 Epic 消费）**：LexiconPack（**F7 词表包** 等）、`correction.rs` 学习、glossary CSV；~~R3t-E `postprocess_lexicon_proofread`~~ **已移除**（2026-06）。
 
 ---
 
@@ -95,7 +96,7 @@ correction_memory ─────┼──► L2 转写 hints（warning）
 ```text
 P1  F2 → F1 → F6 → MEM-P0     日常改稿 + 记忆闭环（硬化）
 P1½ MEM-P1                    记忆可观测 + LEX-MINE-1 轻量
-P2  F7 → F0-lite → F4 ‖ MEM-P2   小团队交换 + 编排 + L2 预替换 spike
+P2  F7 → F0（A→B）→ F4 ‖ MEM-P2   小团队交换 + 转写后编排 + L2 预替换 spike
      F8（可与 F7 同轮）
 P3  F3（全量 LEX-MINE）、F5、MEM-P3
 Spike  D2（全文段界）；MEM-S1（规则预替换）
@@ -105,7 +106,7 @@ Spike  D2（全文段界）；MEM-S1（规则预替换）
 |----|-----|------|----------------|
 | **P1** | F2, F1, F6, **MEM-P0** | 12–16d | 改稿效率 + **可靠记忆入库** + 进词表提示 |
 | **P1½** | **MEM-P1** | 3–4d | 词典透明度 + 采纳为规则 + 术语推荐列表 |
-| **P2** | F7, F0-lite, F4, **MEM-P2**, F8? | 10–14d | 词表包 + 转写后处理 + **更强学习/预替换** |
+| **P2** | F7, **F0**, F4, **MEM-P2**, F8? | 10–14d | 词表包 + **A→B 转写后处理** + 更强学习/预替换 |
 | **P3** | F3, F5, MEM-P3 | 5–8d | 全量挖掘 + 语义 + 冲突治理 |
 | **Spike** | D2, MEM-S1 | ≤3d each | 段界 / 确定性规则消费 |
 
@@ -155,26 +156,28 @@ F2 Replace All 写回后须 **save**，与现有路径一致。
 
 ---
 
-## 8. F0-lite — 转写后处理（P2）
+## 8. F0-lite — 转写后处理（P2 · 2026-06 修订）
 
-**标题**：「转写后处理」（非「一键智能」）。
+> **产品决策**：**R3t-C 自动标点**、**R3t-D 段界整理** 已主动移除；详见 [`post-transcribe-to-export-automation-research.md`](./post-transcribe-to-export-automation-research.md)。
 
-### 8.1 默认勾选（D1）
+**标题**：「转写后处理」= **仅稳定纠错规则（F1）**，非「一键智能」。
 
-- [x] 应用纠错规则（F1）
-- [x] 补全标点（R3t-C，`已处理 i/N 段`）
+### 8.1 范围（D1 修订）
 
-### 8.2 默认不勾选
+- [x] 应用纠错规则（F1）— 预览 → 确认写回
+- [x] 与 **MEM-P2** 转写后预检 **合并为单一入口**（避免双弹窗）
+- [ ] ~~补全标点（R3t-C）~~ — **已移除**
+- [ ] ~~整理段界（R3t-D）~~ — **已移除**
 
-- [ ] AI 词表校对（E，仅低置信段若勾选）
-- [ ] AI 语义审校（F5）
-- [ ] 整理段界（禁用 + 文案指向 R3t-D 当前窗）
+### 8.2 不含
+
+- R3t-C / R3t-D / F5 / F0-full 段界；F2 仍为主路径手改工具（不进 F0）
 
 ### 8.3 执行顺序
 
-`F1 预览确认 → 批处理 C（可取消）→ 若勾选 E：低置信/阈值段窗 → 预览`
+`可选提示 → 打开对话框 → F1 预览确认 → 写回（可取消）`
 
-undo：每阶段或最终一次（实施时二选一，写入 acceptance）。
+**编码可选**：若 MEM-P2 + 工具栏 F1 已够用，F0-lite 可仅作文档收口（research §5.4 选项 B）。
 
 ---
 

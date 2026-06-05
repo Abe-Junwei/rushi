@@ -1,9 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
+  annotateSegmentListScrollMetrics,
   computeSegmentListVirtualWindow,
   ensureSegmentListVirtualWindowIncludesIndex,
   scrollSegmentListIndexIntoView,
+  scrollSegmentListIndexToView,
   scrollSegmentRowIntoViewContainer,
+  SEGMENT_LIST_SCROLL_ATTR,
   segmentListItemStridePx,
 } from "./segmentListVirtualWindow";
 
@@ -70,6 +73,21 @@ describe("segmentListVirtualWindow", () => {
     const merged = ensureSegmentListVirtualWindowIncludesIndex(base, 120, 200, stride);
     expect(merged.startIndex).toBeLessThanOrEqual(120);
     expect(merged.endIndex).toBeGreaterThan(120);
+  });
+
+  it("scrollSegmentListIndexToView falls back to stride scroll when row is not mounted", () => {
+    const root = document.createElement("div");
+    Object.defineProperty(root, "clientHeight", { value: 400 });
+    Object.defineProperty(root, "scrollTop", { writable: true, value: 0 });
+    root.setAttribute(SEGMENT_LIST_SCROLL_ATTR, "");
+    annotateSegmentListScrollMetrics(root, { rowMinHeightPx: 70, itemStridePx: 80 });
+    document.body.appendChild(root);
+
+    const ok = scrollSegmentListIndexToView(25);
+    expect(ok).toBe(true);
+    expect(root.scrollTop).toBeGreaterThan(0);
+
+    document.body.removeChild(root);
   });
 
   it("scrollSegmentRowIntoViewContainer scrolls when row is below viewport", () => {

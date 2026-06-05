@@ -1,5 +1,7 @@
 # R3t-C — LLM 自动标点（邻段上下文）手测清单
 
+**状态**：**产品已移除**（2026-06，与 R3t-D 一并退出；历史签收 2026-05-30 仅作档案）
+
 > **前置**：R3t-B ✅；R2 `postprocess_auto_punctuate` ✅；LLM 配置 + 探测可用  
 > **自动化**：`bash scripts/r3t-c-hand-test.sh`  
 > **关联**：[`recording-transcribe-llm-refine-acceptance.md`](./recording-transcribe-llm-refine-acceptance.md) §R3t-C

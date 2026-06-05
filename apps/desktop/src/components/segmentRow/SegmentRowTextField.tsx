@@ -18,6 +18,7 @@ import {
   useSegmentDraft,
 } from "../../hooks/useSegmentDraftStore";
 import { FindReplaceMatchText } from "../FindReplaceMatchText";
+import { isCorrectionRulesPanelOpen } from "../../pages/correctionRulesPanelTypes";
 import { isFindReplacePanelOpen } from "../../pages/findReplaceTypes";
 import { CorrectableMatchText } from "./CorrectableMatchText";
 import { resolveSegmentTextContextMenuAction } from "../../utils/segmentTextContextMenuSelection";
@@ -38,6 +39,7 @@ interface SegmentRowTextFieldProps {
   updateSegmentText: (idx: number, text: string) => void;
   onTextareaKeyDown: (idx: number, e: KeyboardEvent<HTMLTextAreaElement>) => void;
   findReplaceHighlight?: { charStart: number; charEnd: number } | null;
+  correctionRulesHighlight?: { charStart: number; charEnd: number } | null;
   spansForText: (text: string) => CorrectableSpan[];
   onCorrectableSpanClick: (span: CorrectableSpan, event: React.MouseEvent<HTMLButtonElement>) => void;
   onOpenTextContextMenu?: (e: MouseEvent<HTMLTextAreaElement>, selectionText: string) => void;
@@ -62,6 +64,7 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
   updateSegmentText,
   onTextareaKeyDown,
   findReplaceHighlight,
+  correctionRulesHighlight,
   spansForText,
   onCorrectableSpanClick,
   onOpenTextContextMenu,
@@ -222,12 +225,15 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
   useEffect(() => {
     if (!selected || busy) return;
     const el = textareaRef.current;
-    if (findReplaceHighlight) {
-      const key = `${findReplaceHighlight.charStart}:${findReplaceHighlight.charEnd}`;
+    const panelHighlight = findReplaceHighlight ?? correctionRulesHighlight;
+    const panelPreviewOpen = isFindReplacePanelOpen() || isCorrectionRulesPanelOpen();
+    if (panelHighlight) {
+      if (panelPreviewOpen) return;
+      const key = `${panelHighlight.charStart}:${panelHighlight.charEnd}`;
       if (lastSyncedFindHighlightRef.current === key) return;
       lastSyncedFindHighlightRef.current = key;
-      if (!isFindReplacePanelOpen()) el?.focus();
-      el?.setSelectionRange(findReplaceHighlight.charStart, findReplaceHighlight.charEnd);
+      el?.focus();
+      el?.setSelectionRange(panelHighlight.charStart, panelHighlight.charEnd);
       return;
     }
     lastSyncedFindHighlightRef.current = null;
@@ -236,7 +242,7 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
     const end = el.value.length;
     el.setSelectionRange(end, end);
     focusOnSelectRef.current = false;
-  }, [busy, findReplaceHighlight, focusOnSelectRef, selected]);
+  }, [busy, correctionRulesHighlight, findReplaceHighlight, focusOnSelectRef, selected]);
 
   useEffect(() => {
     if (selected) return;
@@ -244,9 +250,13 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
   }, [focusOnSelectRef, selected]);
 
   const textAreaMinHeight = Math.max(36, Math.round(segmentRowHeightPx - (selected ? 24 : 30)));
+  const panelHighlight = findReplaceHighlight ?? correctionRulesHighlight;
+  const panelPreviewOpen = isFindReplacePanelOpen() || isCorrectionRulesPanelOpen();
+  const hasPanelHighlight = panelHighlight != null;
+  const showPanelHighlightMirror = selected && panelPreviewOpen && hasPanelHighlight && !busy;
   const showCorrectableMirror =
     selected &&
-    !findReplaceHighlight &&
+    !panelHighlight &&
     correctableSpans.length > 0 &&
     !busy;
 
@@ -261,7 +271,7 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
                 ref={textareaRef}
                 className={[
                   "seg-text relative z-[1] min-h-[3.1rem] w-full resize-none border-0 bg-transparent px-4 py-2.5 font-[inherit] text-notion-text outline-none transition-colors duration-150 placeholder:text-notion-text-light",
-                  showCorrectableMirror ? "text-transparent" : "",
+                  showCorrectableMirror || showPanelHighlightMirror ? "text-transparent" : "",
                   "focus:ring-0 focus:ring-offset-0",
                   "disabled:cursor-not-allowed disabled:text-notion-text-light disabled:opacity-100",
                 ].join(" ")}
@@ -293,6 +303,20 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
                 aria-label="语段正文"
                 placeholder="输入语段文本..."
               />
+              {showPanelHighlightMirror && panelHighlight ? (
+                <div
+                  className="pointer-events-none absolute inset-0 z-[2] overflow-hidden px-4 py-2.5 font-[inherit] text-notion-text"
+                  style={textStyle}
+                  aria-hidden
+                >
+                  <FindReplaceMatchText
+                    text={liveText}
+                    charStart={panelHighlight.charStart}
+                    charEnd={panelHighlight.charEnd}
+                    textStyle={textStyle}
+                  />
+                </div>
+              ) : null}
               {showCorrectableMirror ? (
                 <div
                   className="pointer-events-none absolute inset-0 z-[2] overflow-hidden px-4 py-2.5 text-notion-text"
@@ -323,17 +347,23 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
           </>
         ) : (
           <div
-            className="min-h-[3.1rem] px-4 py-2.5 text-notion-text-light transition-colors duration-150 group-hover:text-notion-text-muted"
+            className={[
+              "min-h-[3.1rem] px-4 py-2.5 transition-colors duration-150",
+              hasPanelHighlight
+                ? "text-notion-text"
+                : "text-notion-text-light group-hover:text-notion-text-muted",
+            ].join(" ")}
             style={textStyle}
             aria-label="语段正文"
           >
             {committedText.trim().length > 0 ? (
-              findReplaceHighlight ? (
+              hasPanelHighlight ? (
                 <div className="max-h-[4.5rem] overflow-hidden">
                   <FindReplaceMatchText
                     text={committedText}
-                    charStart={findReplaceHighlight.charStart}
-                    charEnd={findReplaceHighlight.charEnd}
+                    charStart={panelHighlight!.charStart}
+                    charEnd={panelHighlight!.charEnd}
+                    textStyle={textStyle}
                   />
                 </div>
               ) : correctableSpans.length > 0 ? (

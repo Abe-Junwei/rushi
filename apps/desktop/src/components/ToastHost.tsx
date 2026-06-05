@@ -2,7 +2,16 @@ import { useSyncExternalStore } from "react";
 import { createPortal } from "react-dom";
 import { AlertCircle, CheckCircle2, Info, TriangleAlert } from "lucide-react";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
-import { dismissToast, getToastSnapshot, subscribeToasts, type ToastItem, type ToastVariant } from "../services/ui/toast";
+import {
+  dismissToast,
+  getToastSnapshot,
+  runToastAction,
+  subscribeToasts,
+  type ToastItem,
+  type ToastVariant,
+} from "../services/ui/toast";
+import { toastBottomInsetCssVar } from "../services/ui/toastLayout";
+import { CONTROL_BTN_SECONDARY } from "../config/controlStyles";
 
 const TOAST_SHELL =
   "pointer-events-auto flex max-w-[min(28rem,calc(100vw-2rem))] cursor-pointer items-start gap-2.5 rounded-md border border-notion-divider bg-notion-bg py-2.5 pl-3 pr-4 text-left font-sans text-sm font-normal leading-snug text-notion-text shadow-sm";
@@ -27,6 +36,7 @@ const VARIANT_ICON: Record<
 function ToastCard({ item }: { item: ToastItem }) {
   const exiting = item.exiting === true;
   const { Icon, className: iconClass } = VARIANT_ICON[item.variant];
+  const actionLabel = item.actionLabel?.trim();
 
   return (
     <div
@@ -47,6 +57,18 @@ function ToastCard({ item }: { item: ToastItem }) {
         aria-hidden
       />
       <p className="min-w-0 flex-1">{item.message}</p>
+      {actionLabel ? (
+        <button
+          type="button"
+          className={`${CONTROL_BTN_SECONDARY} shrink-0 py-1 text-xs`}
+          onClick={(e) => {
+            e.stopPropagation();
+            runToastAction(item.id);
+          }}
+        >
+          {actionLabel}
+        </button>
+      ) : null}
     </div>
   );
 }
@@ -60,7 +82,7 @@ export function ToastHost() {
     <div
       className="pointer-events-none fixed left-1/2 z-[200] flex -translate-x-1/2 flex-col items-center gap-1.5"
       style={{
-        bottom: "calc(env(safe-area-inset-bottom, 0px) + 5.25rem)",
+        bottom: toastBottomInsetCssVar(),
       }}
       aria-label="通知"
     >

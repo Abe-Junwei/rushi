@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
 import type { BusyReason } from "./useProjectCrudController";
 import { useFindReplaceController } from "./useFindReplaceController";
-import { useCorrectionRulesController } from "./useCorrectionRulesController";
+import { usePostTranscribeOrchestrationController } from "./usePostTranscribeOrchestrationController";
 import { useCorrectSuggestionsController } from "./useCorrectSuggestionsController";
 import { useEditorCorrectionCatalog } from "./useEditorCorrectionCatalog";
 import { useEditorSegmentCorrectPopover } from "./useEditorSegmentCorrectPopover";
@@ -32,6 +32,7 @@ type Args = {
     countHits?: boolean;
     explicitPairs?: import("../tauri/fileApi").CorrectionExplicitPair[];
   }) => Promise<boolean>;
+  transcribeWarnings?: string[];
 };
 
 export function useProjectEditorToolsController(args: Args) {
@@ -49,9 +50,10 @@ export function useProjectEditorToolsController(args: Args) {
     dirty,
     setError,
     saveSegments,
+    transcribeWarnings = [],
   } = args;
 
-  const [, setLlmRuntimeEpoch] = useState(0);
+  const [llmRuntimeEpoch, setLlmRuntimeEpoch] = useState(0);
   const bumpLlmRuntimeChanged = useCallback(() => {
     setLlmRuntimeEpoch((n) => n + 1);
   }, []);
@@ -100,7 +102,7 @@ export function useProjectEditorToolsController(args: Args) {
     setError,
   });
 
-  const correctionRules = useCorrectionRulesController({
+  const postTranscribeOrchestration = usePostTranscribeOrchestrationController({
     busy,
     currentFileId,
     segments,
@@ -110,15 +112,19 @@ export function useProjectEditorToolsController(args: Args) {
     pushUndo,
     setError,
     saveSegments,
+    transcribeWarnings,
+    llmRuntimeEpoch,
   });
 
   return {
+    llmRuntimeEpoch,
     bumpLlmRuntimeChanged,
     canConfirmSegmentEdit,
     findReplace,
     editorCorrectionCatalog,
     editorSegmentCorrect,
     correctSuggestions,
-    correctionRules,
+    correctionRules: postTranscribeOrchestration,
+    postTranscribeOrchestration,
   };
 }

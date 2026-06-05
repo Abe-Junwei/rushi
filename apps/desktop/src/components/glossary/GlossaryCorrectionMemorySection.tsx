@@ -33,7 +33,7 @@ export function GlossaryCorrectionMemorySection({
           </span>
         </div>
         <p className={`m-0 ${PANEL_TYPOGRAPHY.meta}`}>
-          右键纳入后开始学习；之后每次保存（含自动保存）累计命中，满 3 次自动稳定并写入术语表。可在此查看、删除或批量「采纳为规则」。
+          仅选区右键「纳入更正记忆」可新增词对并开始学习；之后每次保存（含自动保存）仅对已纳入的错→对累计命中，满 3 次自动稳定并写入术语表。
         </p>
       </div>
 

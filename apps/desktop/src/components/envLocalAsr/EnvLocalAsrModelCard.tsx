@@ -12,6 +12,11 @@ import {
 } from "../../services/asr/localAsrModelCatalog";
 import { LOCAL_ASR_RECOGNITION_LANGUAGE_OPTIONS } from "../../services/asr/localAsrRecognitionLanguage";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";
+import {
+  PANEL_PROGRESS_FILL_COMPACT_CLASS,
+  PANEL_PROGRESS_FILL_SUCCESS_CLASS,
+  PANEL_PROGRESS_TRACK_COMPACT_CLASS,
+} from "../panelProgressStyles";
 import { EnvLocalAsrSmallButton } from "./envLocalAsrPanelUi";
 
 const fieldLabel = PANEL_TYPOGRAPHY.envFieldLabel;
@@ -70,8 +75,6 @@ export function EnvLocalAsrModelCard({
 
   const progressTone = modelsCached && !prepareModelBusy ? "text-zen-success" : "text-notion-text-muted";
 
-  const progressFillClass =
-    modelsCached && !prepareModelBusy ? "bg-zen-success" : "bg-zen-saffron";
 
   return (
     <section className="flex flex-col gap-6">
@@ -117,14 +120,18 @@ export function EnvLocalAsrModelCard({
             <span className={`font-mono text-[12px] ${progressTone}`}>{progressLabel}</span>
           </div>
           <div
-            className="h-1.5 w-full overflow-hidden rounded-full bg-notion-divider"
+            className={PANEL_PROGRESS_TRACK_COMPACT_CLASS}
             role="progressbar"
             aria-valuenow={progress}
             aria-valuemin={0}
             aria-valuemax={100}
           >
             <div
-              className={`h-full rounded-full transition-all duration-500 ${progressFillClass}`}
+              className={
+                modelsCached && !prepareModelBusy
+                  ? PANEL_PROGRESS_FILL_SUCCESS_CLASS
+                  : PANEL_PROGRESS_FILL_COMPACT_CLASS
+              }
               style={{ width: `${progress}%` }}
             />
           </div>

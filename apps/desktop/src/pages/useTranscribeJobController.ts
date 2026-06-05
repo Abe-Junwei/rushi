@@ -1,11 +1,15 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { asrBaseUrl } from "../config/env";
-import { deriveTranscribeHints } from "../services/asrTranscribeHints";
 import {
   formatTranscribeVocabularyPreflightLines,
   loadTranscribeVocabularyPreflight,
 } from "../services/asr/transcribeVocabularyPreflight";
-import { pushTranscribeHintsToToast, toast } from "../services/ui/toast";
+import { deriveTranscribeHints } from "../services/asrTranscribeHints";
+import {
+  buildTranscribeResultSummary,
+  countTranscribeCharacters,
+} from "../services/asr/transcribeResultToast";
+import { pushTranscribeHintsToToast, pushTranscribeResultToast, toast } from "../services/ui/toast";
 import { tryBuildOnlineTranscribeBridgePayload } from "../services/stt/sttOnlineProviderContract";
 import {
   persistTranscribeSource,
@@ -27,7 +31,6 @@ import {
   isTranscribeUserCancellation,
   newOnlineTranscribeJobId,
   snapshotSegmentsForRestore,
-  TRANSCRIBE_ASYNC_FALLBACK_HINT,
   TRANSCRIBE_CANCELLED_HINT,
   TranscribeUserCancelledError,
   type TranscribeProgress,
@@ -62,6 +65,7 @@ type Deps = {
   localTranscribePreflight: LocalTranscribePreflight;
   sttOnlineRuntimeEpoch?: number;
   clearScheduledAutoSave?: () => void;
+  onTranscribeSuccess?: (out: p1.RunTranscribeOutcome) => void;
 };
 
 export function useTranscribeJobController(deps: Deps) {
@@ -81,13 +85,15 @@ export function useTranscribeJobController(deps: Deps) {
     localTranscribePreflight,
     sttOnlineRuntimeEpoch = 0,
     clearScheduledAutoSave,
+    onTranscribeSuccess,
   } = deps;
 
   const [transcribeHints, setTranscribeHints] = useState<string[]>([]);
+  const [transcribeWarnings, setTranscribeWarnings] = useState<string[]>([]);
   const [transcribeVocabularyPreflightLines, setTranscribeVocabularyPreflightLines] = useState<
     string[]
   >([]);
-  const [overwriteDialogOpen, setOverwriteDialogOpen] = useState(false);
+  const [transcribeStartDialogOpen, setTranscribeStartDialogOpen] = useState(false);
   const [transcribeSource, setTranscribeSourceState] = useState<TranscribeSource>(readStoredTranscribeSource);
   const [transcribeProgress, setTranscribeProgress] = useState<TranscribeProgress | null>(null);
   const [transcribeCancelling, setTranscribeCancelling] = useState(false);
@@ -149,20 +155,26 @@ export function useTranscribeJobController(deps: Deps) {
   }, []);
 
   const finishTranscribeSuccess = useCallback(
-    async (fileId: string, out: p1.RunTranscribeOutcome, extraHints: string[] = []) => {
+    async (fileId: string, out: p1.RunTranscribeOutcome) => {
       mutations.resetMutationHistory();
       const projectDetail = await p1.projectLoad(current!.id);
       setCurrent(projectDetail);
       await closeGate.openFileWrapped(fileId);
-      const hints = deriveTranscribeHints(out.engine, out.warnings, out.detail.segments);
-      hints.push(...extraHints);
-      if (import.meta.env.DEV && hints.length > 0) {
-        hints.push("（开发模式）详见仓库 services/asr/README.md。");
-      }
-      setTranscribeHints([]);
-      pushTranscribeHintsToToast(hints);
+      const segments = out.detail.segments;
+      setTranscribeWarnings(out.warnings ?? []);
+      setTranscribeHints(
+        deriveTranscribeHints(out.engine ?? "", out.warnings ?? [], segments),
+      );
+      onTranscribeSuccess?.(out);
+      const elapsedMs = Date.now() - (transcribeStartedAtRef.current ?? Date.now());
+      const summary = buildTranscribeResultSummary({
+        segmentCount: segments.length,
+        charCount: countTranscribeCharacters(segments),
+        elapsedMs,
+      });
+      pushTranscribeResultToast(summary);
     },
-    [closeGate, current, mutations, setCurrent],
+    [closeGate, current, mutations, onTranscribeSuccess, setCurrent],
   );
 
   const executeTranscribe = useCallback(async () => {
@@ -181,15 +193,14 @@ export function useTranscribeJobController(deps: Deps) {
       return;
     }
     const fileId = currentFileId!;
-    setOverwriteDialogOpen(false);
+    setTranscribeStartDialogOpen(false);
     clearScheduledAutoSave?.();
     beginBusy("transcribe");
     pollAbortRef.current?.abort();
     pollAbortRef.current = new AbortController();
     setError("");
     setTranscribeHints([]);
-    const vocabLine = transcribeVocabularyPreflightLines.find((l) => l.trim());
-    if (vocabLine) toast.info(vocabLine);
+    setTranscribeWarnings([]);
     setTranscribeProgress(null);
     setTranscribeCancelling(false);
     userCancelRequestedRef.current = false;
@@ -203,7 +214,6 @@ export function useTranscribeJobController(deps: Deps) {
         transcribeSource === "online" ? tryBuildOnlineTranscribeBridgePayload() : null;
       const base = asrBaseUrl().replace(/\/+$/, "");
       let out: p1.RunTranscribeOutcome;
-      let extraHints: string[] = [];
       if (!online) {
         const local = await runLocalTranscribeJob({
           fileId,
@@ -213,9 +223,6 @@ export function useTranscribeJobController(deps: Deps) {
           callbacks: { setSegments, setTranscribeProgress },
         });
         out = local.out;
-        if (local.usedAsyncFallback) {
-          extraHints = [TRANSCRIBE_ASYNC_FALLBACK_HINT];
-        }
       } else {
         activeJobIdRef.current = newOnlineTranscribeJobId();
         out = await p1.projectRunTranscribe(fileId, asrBaseUrl(), online ?? null);
@@ -223,12 +230,13 @@ export function useTranscribeJobController(deps: Deps) {
           throw new TranscribeUserCancelledError();
         }
       }
-      await finishTranscribeSuccess(fileId, out, extraHints);
+      await finishTranscribeSuccess(fileId, out);
     } catch (e) {
       segmentsRef.current = restoreSnapshot;
       setSegments(restoreSnapshot);
       if (isTranscribeUserCancellation(e)) {
         setTranscribeHints([]);
+        setTranscribeWarnings([]);
         pushTranscribeHintsToToast([TRANSCRIBE_CANCELLED_HINT]);
       } else {
         const msg = e instanceof Error ? e.message : String(e);
@@ -255,12 +263,28 @@ export function useTranscribeJobController(deps: Deps) {
     setSegments,
     segmentsRef,
     localTranscribePreflight,
-    transcribeVocabularyPreflightLines,
     clearScheduledAutoSave,
     transcribeSource,
   ]);
 
   const requestTranscribe = useCallback(async () => {
+    if (busy) return;
+    if (!current || !currentFileId) {
+      const msg = "请先打开一个文件后再自动转录";
+      toast.error(msg);
+      setError(msg);
+      return;
+    }
+    await refreshVocabularyPreflight();
+    setTranscribeStartDialogOpen(true);
+  }, [busy, current, currentFileId, refreshVocabularyPreflight, setError]);
+
+  const cancelTranscribeStart = useCallback(() => {
+    if (busy) return;
+    setTranscribeStartDialogOpen(false);
+  }, [busy]);
+
+  const confirmTranscribeStart = useCallback(async () => {
     const block = resolveTranscribeExecuteBlock({
       busy,
       hasCurrent: !!current,
@@ -275,33 +299,22 @@ export function useTranscribeJobController(deps: Deps) {
       }
       return;
     }
-    if (segmentsHaveNonEmptyText(segmentsRef.current)) {
-      await refreshVocabularyPreflight();
-      setOverwriteDialogOpen(true);
-      return;
-    }
-    await refreshVocabularyPreflight();
+    setTranscribeStartDialogOpen(false);
     await executeTranscribe();
   }, [
     busy,
     current,
     currentFileId,
-    localTranscribePreflight,
-    segmentsRef,
-    setError,
     executeTranscribe,
-    refreshVocabularyPreflight,
+    localTranscribePreflight,
+    setError,
     transcribeSource,
   ]);
 
-  const cancelTranscribeOverwrite = useCallback(() => {
-    if (busy) return;
-    setOverwriteDialogOpen(false);
-  }, [busy]);
-
-  const confirmTranscribeOverwrite = useCallback(() => {
-    void executeTranscribe();
-  }, [executeTranscribe]);
+  const cancelTranscribeOverwrite = cancelTranscribeStart;
+  const confirmTranscribeOverwrite = () => {
+    void confirmTranscribeStart();
+  };
 
   const cancelTranscribe = useCallback(async () => {
     const jobId = activeJobIdRef.current;
@@ -320,17 +333,23 @@ export function useTranscribeJobController(deps: Deps) {
 
   const applyDetail = useCallback((_d: ProjectDetail) => {
     setTranscribeHints([]);
-    setOverwriteDialogOpen(false);
+    setTranscribeWarnings([]);
+    setTranscribeStartDialogOpen(false);
     setTranscribeProgress(null);
     setTranscribeCancelling(false);
   }, []);
 
   return {
     transcribeHints,
+    transcribeWarnings,
     setTranscribeHints,
+    setTranscribeWarnings,
     transcribeProgress,
     transcribeCancelling,
-    overwriteDialogOpen,
+    transcribeStartDialogOpen,
+    transcribeStartHasExistingText: segmentsHaveNonEmptyText(segmentsRef.current),
+    /** @deprecated Use transcribeStartDialogOpen */
+    overwriteDialogOpen: transcribeStartDialogOpen,
     overwriteSegmentCount: segments.length,
     transcribeVocabularyPreflightLines,
     transcribeSource,
@@ -338,6 +357,8 @@ export function useTranscribeJobController(deps: Deps) {
     onlineTranscribeReady,
     requestTranscribe,
     cancelTranscribe,
+    cancelTranscribeStart,
+    confirmTranscribeStart,
     cancelTranscribeOverwrite,
     confirmTranscribeOverwrite,
     applyDetailClearTranscribe: applyDetail,

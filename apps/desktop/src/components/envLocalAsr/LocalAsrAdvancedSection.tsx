@@ -1,8 +1,6 @@
-import { Wrench } from "lucide-react";
 import { ENV_COMPACT_BTN } from "../../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../../config/typography";
 import { funasrManualSetupCommands } from "../../pages/useProjectController";
-import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";
 import type { AsrHealthCapabilities } from "../../tauri/projectApi";
 import { EnvLocalAsrCollapsibleSection } from "./envLocalAsrPanelUi";
 
@@ -11,7 +9,6 @@ type Props = {
   asrCaps: AsrHealthCapabilities | null;
   funasrInstallMessage: string;
   busy: boolean;
-  installFunasrDepsInteractive: () => Promise<void>;
   copyFunasrManualCommands: () => Promise<void>;
   /** 外层 utilities 折叠内：不再套 details */
   embedded?: boolean;
@@ -22,7 +19,6 @@ export function LocalAsrAdvancedSection({
   asrCaps,
   funasrInstallMessage,
   busy,
-  installFunasrDepsInteractive,
   copyFunasrManualCommands,
   embedded = false,
 }: Props) {
@@ -36,13 +32,6 @@ export function LocalAsrAdvancedSection({
         <code className="mx-1 rounded bg-notion-bg px-1 font-mono text-[11px]">python -m rushi_asr</code>。
       </p>
       <div className="flex flex-wrap gap-2">
-        <EnvCompactButton
-          disabled={busy}
-          onClick={() => void installFunasrDepsInteractive()}
-          icon={<Wrench className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />}
-        >
-          安装 FunASR 依赖（pip）
-        </EnvCompactButton>
         <EnvCompactButton disabled={busy} onClick={() => void copyFunasrManualCommands()}>
           复制手动命令
         </EnvCompactButton>

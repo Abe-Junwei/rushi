@@ -1,5 +1,7 @@
 # R3t-D — LLM 段界整理 手测清单
 
+**状态**：**产品已移除**（2026-06；历史签收档案保留）
+
 > **前置**：R3t-C ✅；LLM 配置 + 探测可用；项目含 ≥2 条有正文语段  
 > **关联**：[`recording-transcribe-llm-refine-acceptance.md`](./recording-transcribe-llm-refine-acceptance.md) §R3t-D
 

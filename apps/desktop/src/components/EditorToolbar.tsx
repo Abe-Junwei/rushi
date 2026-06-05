@@ -1,11 +1,9 @@
 import { memo, useEffect, useRef, useState } from "react";
 import type { ProjectControllerApi } from "../pages/useProjectController";
 import * as fileApi from "../tauri/fileApi";
-import { Download, FileInput, FileOutput, Settings, Square } from "lucide-react";
+import { FileInput, FileOutput, Settings } from "lucide-react";
 import { EditorWorkspaceNav } from "./EditorWorkspaceNav";
-import { TranscribeSourceSwitch } from "./editor/TranscribeSourceSwitch";
 import { LlmTopStatusChip } from "./LlmTopStatusChip";
-import { CONTROL_BTN_DANGER } from "../config/controlStyles";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 const ghostBtn =
   "inline-flex h-8 items-center justify-center rounded-md border-0 bg-transparent px-2.5 text-[12px] font-medium text-notion-text-muted transition-colors hover:bg-notion-sidebar-hover hover:text-notion-text disabled:cursor-not-allowed disabled:opacity-40";
@@ -141,41 +139,6 @@ export const EditorToolbar = memo(function EditorToolbar({
             </span>
           </button>
 
-          {c.busy && c.busyReason === "transcribe" ? (
-            <button
-              type="button"
-              className={CONTROL_BTN_DANGER}
-              disabled={c.transcribeCancelling}
-              onClick={() => void c.cancelTranscribe()}
-            >
-              <span className="inline-flex items-center gap-1.5">
-                <Square className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-                {c.transcribeCancelling ? "正在停止…" : "停止转写"}
-              </span>
-            </button>
-          ) : (
-            <>
-              <TranscribeSourceSwitch
-                source={c.transcribeSource}
-                onlineReady={c.onlineTranscribeReady}
-                disabled={c.busy || c.prepareModelBusy}
-                onSelectLocal={() => c.setTranscribeSource("local")}
-                onSelectOnline={() => c.setTranscribeSource("online")}
-              />
-              <button
-                type="button"
-                className={ghostBtn}
-                disabled={c.busy || c.prepareModelBusy}
-                onClick={() => void c.runTranscribe()}
-              >
-                <span className="inline-flex items-center gap-1.5">
-                  <Download className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-                  {c.prepareModelBusy ? "模型准备中..." : "拉取语段"}
-                </span>
-              </button>
-            </>
-          )}
-
           <div className="ml-1 flex items-center gap-2">
             <details ref={importMenuRef} className="dropdown-anchor">
               <summary
@@ -283,9 +246,6 @@ function areEditorToolbarPropsEqual(prev: EditorToolbarProps, next: EditorToolba
     prev.controller.audioSrc === next.controller.audioSrc &&
     prev.controller.busy === next.controller.busy &&
     prev.controller.busyReason === next.controller.busyReason &&
-    prev.controller.transcribeCancelling === next.controller.transcribeCancelling &&
-    prev.controller.prepareModelBusy === next.controller.prepareModelBusy &&
-    prev.controller.transcribeSource === next.controller.transcribeSource &&
-    prev.controller.onlineTranscribeReady === next.controller.onlineTranscribeReady
+    prev.controller.prepareModelBusy === next.controller.prepareModelBusy
   );
 }

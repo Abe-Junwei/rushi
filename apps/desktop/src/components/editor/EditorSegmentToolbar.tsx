@@ -1,4 +1,17 @@
-import { History, ListChecks, Minus, Plus, Redo2, Replace, SpellCheck, Undo2 } from "lucide-react";
+import {
+  History,
+  ListChecks,
+  Mic,
+  Sparkles,
+  Minus,
+  Plus,
+  Redo2,
+  Replace,
+  SpellCheck,
+  Square,
+  Undo2,
+} from "lucide-react";
+import { CONTROL_BTN_DANGER } from "../../config/controlStyles";
 import {
   captureTranscriptTextareaSelection,
   readTranscriptTextareaSelection,
@@ -51,6 +64,93 @@ export function EditorSegmentToolbar({
   return (
     <div className="flex h-14 shrink-0 items-center justify-between bg-notion-bg px-6">
       <div className="relative flex items-center gap-1.5">
+        {c.busy && c.busyReason === "transcribe" ? (
+          <button
+            type="button"
+            className={[CONTROL_BTN_DANGER, "h-8 px-2.5 text-[12px]"].join(" ")}
+            disabled={c.transcribeCancelling}
+            onClick={() => void c.cancelTranscribe()}
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <Square className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+              {c.transcribeCancelling ? "正在停止…" : "停止转写"}
+            </span>
+          </button>
+        ) : (
+          <button
+            type="button"
+            className={[
+              appearanceBtnBase,
+              "px-2.5",
+              "text-notion-text-muted hover:bg-notion-sidebar-hover hover:text-notion-text",
+            ].join(" ")}
+            disabled={c.busy || c.prepareModelBusy}
+            onClick={() => void c.runTranscribe()}
+            aria-label="自动转录"
+            title={
+              c.prepareModelBusy
+                ? "模型准备中，请稍候"
+                : "打开对话框：选择本机或在线来源并开始转录"
+            }
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <Mic className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+              {c.prepareModelBusy ? "模型准备中..." : "自动转录"}
+            </span>
+          </button>
+        )}
+        <button
+          type="button"
+          className={[
+            appearanceBtnBase,
+            "px-2.5",
+            c.correctionRulesDialog.phase !== "closed"
+              ? "bg-notion-sidebar text-notion-text"
+              : "text-notion-text-muted hover:bg-notion-sidebar-hover hover:text-notion-text",
+          ].join(" ")}
+          disabled={!c.canApplyCorrectionRules || c.correctionRulesDialog.phase === "loading"}
+          onClick={() => void c.openCorrectionRulesManual()}
+          aria-label="规则纠错"
+          title={
+            c.busy
+              ? "处理中"
+              : c.canApplyCorrectionRules
+                ? "按稳定纠错规则全文替换（预览后写回，不含 LLM）"
+                : (c.correctionRulesBlockReason ?? "规则纠错不可用")
+          }
+        >
+          <span className="inline-flex items-center gap-1.5">
+            <ListChecks className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+            {c.correctionRulesDialog.phase === "loading" ? "处理中..." : "规则纠错"}
+          </span>
+        </button>
+        <button
+          type="button"
+          className={[
+            appearanceBtnBase,
+            "px-2.5",
+            c.postTranscribeStageBDialog.phase !== "closed"
+              ? "bg-notion-sidebar text-notion-text"
+              : "text-notion-text-muted hover:bg-notion-sidebar-hover hover:text-notion-text",
+          ].join(" ")}
+          disabled={
+            !c.canOfferPostTranscribeStageB || c.postTranscribeStageBDialog.phase === "loading"
+          }
+          onClick={() => c.openPostTranscribeStageB()}
+          aria-label="智能改稿"
+          title={
+            c.busy
+              ? "处理中"
+              : c.canOfferPostTranscribeStageB
+                ? "LLM 标点与改字（预览后写回，与规则纠错无关）"
+                : (c.postTranscribeStageBBlockReason ?? "智能改稿不可用")
+          }
+        >
+          <span className="inline-flex items-center gap-1.5">
+            <Sparkles className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+            {c.postTranscribeStageBDialog.phase === "loading" ? "处理中..." : "智能改稿"}
+          </span>
+        </button>
         <button
           type="button"
           className={[
@@ -109,31 +209,6 @@ export function EditorSegmentToolbar({
           <span className="inline-flex items-center gap-1.5">
             <Replace className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
             查找替换
-          </span>
-        </button>
-        <button
-          type="button"
-          className={[
-            appearanceBtnBase,
-            "px-2.5",
-            c.correctionRulesDialog.phase !== "closed"
-              ? "bg-notion-sidebar text-notion-text"
-              : "text-notion-text-muted hover:bg-notion-sidebar-hover hover:text-notion-text",
-          ].join(" ")}
-          disabled={!c.canApplyCorrectionRules || c.correctionRulesDialog.phase === "loading"}
-          onClick={() => void c.requestCorrectionRules()}
-          aria-label="应用纠错规则"
-          title={
-            c.busy
-              ? "处理中"
-              : c.canApplyCorrectionRules
-                ? "全文应用纠错记忆规则（预览后写回）"
-                : (c.correctionRulesBlockReason ?? "纠错规则不可用")
-          }
-        >
-          <span className="inline-flex items-center gap-1.5">
-            <ListChecks className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-            {c.correctionRulesDialog.phase === "loading" ? "处理中..." : "纠错规则"}
           </span>
         </button>
         <button

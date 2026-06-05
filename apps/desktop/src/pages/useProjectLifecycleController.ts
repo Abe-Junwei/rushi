@@ -57,7 +57,6 @@ export function useProjectLifecycleController(
   const [newName, setNewName] = useState("未命名项目");
   const [pickedPath, setPickedPath] = useState<string | null>(null);
   const closeGateRef = useRef<ProjectCloseGateControllerApi | null>(null);
-
   const mutations = useSegmentMutationController({
     segmentsRef,
     setSegments,
@@ -179,6 +178,9 @@ export function useProjectLifecycleController(
     setCurrent,
     setError,
     setTranscribeHints: transcribeJob.setTranscribeHints,
+    onClearTranscribeSession: () => {
+      transcribeJob.setTranscribeWarnings([]);
+    },
     resetMutationHistory: mutations.resetMutationHistory,
     projects,
   });
@@ -235,6 +237,7 @@ export function useProjectLifecycleController(
     dirty,
     setError,
     saveSegments,
+    transcribeWarnings: transcribeJob.transcribeWarnings,
   });
 
   const openAppDataFolder = useCallback(async () => {
@@ -266,7 +269,10 @@ export function useProjectLifecycleController(
     transcribeProgress: transcribeJob.transcribeProgress,
     transcribeCancelling: transcribeJob.transcribeCancelling,
     transcribePreviewActive: busy && busyReason === "transcribe",
-    transcribeOverwriteDialogOpen: transcribeJob.overwriteDialogOpen,
+    transcribeStartDialogOpen: transcribeJob.transcribeStartDialogOpen,
+    transcribeStartHasExistingText: transcribeJob.transcribeStartHasExistingText,
+    /** @deprecated */
+    transcribeOverwriteDialogOpen: transcribeJob.transcribeStartDialogOpen,
     transcribeOverwriteSegmentCount: transcribeJob.overwriteSegmentCount,
     transcribeVocabularyPreflightLines: transcribeJob.transcribeVocabularyPreflightLines,
     transcribeSource: transcribeJob.transcribeSource,
@@ -282,6 +288,8 @@ export function useProjectLifecycleController(
     closeFile: closeGate.closeFileWrapped, closeProject: closeGate.closeProjectWrapped,
     runTranscribe: transcribeJob.requestTranscribe,
     cancelTranscribe: transcribeJob.cancelTranscribe,
+    confirmTranscribeStart: transcribeJob.confirmTranscribeStart,
+    cancelTranscribeStart: transcribeJob.cancelTranscribeStart,
     confirmTranscribeOverwrite: transcribeJob.confirmTranscribeOverwrite,
     cancelTranscribeOverwrite: transcribeJob.cancelTranscribeOverwrite,
     saveSegments,

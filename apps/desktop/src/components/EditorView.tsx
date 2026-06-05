@@ -1,4 +1,6 @@
-import { useState } from "react";
+import { useEffect } from "react";
+import { useTranscriptFooterStats } from "../hooks/useTranscriptFooterStats";
+import { clearToastBottomInset, syncToastBottomInset } from "../services/ui/toastLayout";
 import { EditorToolbar } from "./EditorToolbar";
 import { LlmTopStatusChip } from "./LlmTopStatusChip";
 import { SegmentContextMenu } from "./SegmentContextMenu";
@@ -14,7 +16,6 @@ import {
 } from "../utils/segmentContextMenuModel";
 import type { SegmentTextContextMenuKey } from "../utils/segmentTextContextMenuModel";
 import { EditorSegmentWorkbench } from "./editor/EditorSegmentWorkbench";
-import { EditorShortcutsDialog } from "./EditorShortcutsDialog";
 import { SegmentCorrectPopover } from "./segmentRow/SegmentCorrectPopover";
 import { EditorWaveformPane } from "./editor/EditorWaveformPane";
 import { RestoreEditLogConfirmDialog } from "./editor/RestoreEditLogConfirmDialog";
@@ -57,8 +58,8 @@ export function EditorView({
   segmentTextCtxMenuItems,
   onSegmentTextCtxMenuSelect,
 }: EditorViewProps) {
-  const [shortcutsOpen, setShortcutsOpen] = useState(false);
   const appearance = useEditorTranscriptAppearance(c.busy, Boolean(c.currentFileId));
+  const transcriptStats = useTranscriptFooterStats(c.segments);
   const editHistory = useEditorEditHistory({
     projectId: c.current?.id,
     fileId: c.currentFileId ?? undefined,
@@ -78,6 +79,11 @@ export function EditorView({
     c.current?.files.find((f) => f.id !== c.currentFileId && f.file_type !== "text") ??
     c.current?.files.find((f) => f.id !== c.currentFileId) ??
     null;
+
+  useEffect(() => {
+    syncToastBottomInset(Boolean(c.currentFileId));
+    return () => clearToastBottomInset();
+  }, [c.currentFileId]);
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-notion-bg" data-purpose="editor-workspace">
@@ -159,34 +165,27 @@ export function EditorView({
             />
           </main>
 
-          {c.audioSrc ? (
+          {c.currentFileId ? (
             <footer className="relative z-40 flex h-[30px] shrink-0 items-center border-t border-notion-divider bg-notion-bg px-2.5 text-[11px] text-notion-text-muted">
               <div className="flex min-w-0 flex-1 items-center gap-2">
                 <span>{autoSaveFooterLabel(c.autoSaveFooterStatus)}</span>
               </div>
-              <span className="pointer-events-none absolute left-1/2 max-w-[50%] -translate-x-1/2 truncate text-center text-[11px] text-notion-text-muted" aria-live="polite">
-                {tx.waveformFooterStatusLabel ?? ""}
-              </span>
-              <div className="flex flex-1 items-center justify-end gap-1.5">
-                <button
-                  type="button"
-                  className="inline-flex h-6 items-center justify-center rounded-md border-0 bg-transparent px-2 text-[11px] text-notion-text-muted transition-colors hover:bg-notion-sidebar hover:text-notion-text"
-                  onClick={() => setShortcutsOpen(true)}
+              {c.audioSrc ? (
+                <span
+                  className="pointer-events-none absolute left-1/2 max-w-[50%] -translate-x-1/2 truncate text-center text-[11px] text-notion-text-muted"
+                  aria-live="polite"
                 >
-                  快捷键
-                </button>
-                <button
-                  type="button"
-                  className="inline-flex h-6 items-center justify-center rounded-md border-0 bg-transparent px-2 text-[11px] text-notion-text-muted transition-colors hover:bg-notion-sidebar hover:text-notion-text"
-                >
-                  文档
-                </button>
-                <button
-                  type="button"
-                  className="inline-flex h-6 items-center justify-center rounded-md border-0 bg-transparent px-2 text-[11px] text-notion-text-muted transition-colors hover:bg-notion-sidebar hover:text-notion-text"
-                >
-                  支持
-                </button>
+                  {tx.waveformFooterStatusLabel ?? ""}
+                </span>
+              ) : null}
+              <div className="flex flex-1 items-center justify-end tabular-nums">
+                <span>
+                  {transcriptStats.segmentCount} 条语段
+                  <span className="mx-1.5 text-notion-text-light" aria-hidden>
+                    ·
+                  </span>
+                  {transcriptStats.charCount.toLocaleString("zh-CN")} 字
+                </span>
               </div>
             </footer>
           ) : null}
@@ -217,7 +216,6 @@ export function EditorView({
           onClose={() => setSegmentTextCtxMenu(null)}
         />
       ) : null}
-      <EditorShortcutsDialog open={shortcutsOpen} onClose={() => setShortcutsOpen(false)} />
       <SegmentCorrectPopover
         state={c.editorCorrectPopover}
         suggestions={c.editorCorrectPopoverSuggestions}

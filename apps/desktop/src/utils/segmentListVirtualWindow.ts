@@ -80,6 +80,63 @@ export function querySegmentListScrollRoot(): HTMLElement | null {
   return el instanceof HTMLElement ? el : null;
 }
 
+const SEGMENT_LIST_ROW_MIN_HEIGHT_ATTR = "data-segment-list-row-min-height";
+const SEGMENT_LIST_ITEM_STRIDE_ATTR = "data-segment-list-item-stride";
+
+export function annotateSegmentListScrollMetrics(
+  root: HTMLElement,
+  metrics: { rowMinHeightPx: number; itemStridePx: number },
+): void {
+  root.setAttribute(SEGMENT_LIST_ROW_MIN_HEIGHT_ATTR, String(metrics.rowMinHeightPx));
+  root.setAttribute(SEGMENT_LIST_ITEM_STRIDE_ATTR, String(metrics.itemStridePx));
+}
+
+export function readSegmentListScrollMetrics(root: HTMLElement): {
+  rowMinHeightPx: number;
+  itemStridePx: number;
+} | null {
+  const stride = Number(root.getAttribute(SEGMENT_LIST_ITEM_STRIDE_ATTR));
+  const rowMin = Number(root.getAttribute(SEGMENT_LIST_ROW_MIN_HEIGHT_ATTR));
+  if (!Number.isFinite(stride) || stride <= 0) return null;
+  return {
+    itemStridePx: stride,
+    rowMinHeightPx:
+      Number.isFinite(rowMin) && rowMin > 0 ? rowMin : Math.max(1, stride - SEGMENT_LIST_ROW_GAP_PX),
+  };
+}
+
+/**
+ * 将语段滚入列表可视区：优先按真实 DOM 校正；行未挂载时按虚拟 stride 估算并二次校正。
+ */
+export function scrollSegmentListIndexToView(segmentIdx: number): boolean {
+  const root = querySegmentListScrollRoot();
+  if (!root || segmentIdx < 0) return false;
+
+  const domNext = scrollSegmentRowIntoViewContainer(segmentIdx, root);
+  if (domNext != null) {
+    root.scrollTop = domNext;
+    return true;
+  }
+
+  const metrics = readSegmentListScrollMetrics(root);
+  if (!metrics) return false;
+
+  const indexNext = scrollSegmentListIndexIntoView({
+    scrollTop: root.scrollTop,
+    viewportHeight: root.clientHeight,
+    index: segmentIdx,
+    rowMinHeightPx: metrics.rowMinHeightPx,
+    itemStridePx: metrics.itemStridePx,
+  });
+  if (indexNext != null) root.scrollTop = indexNext;
+
+  window.requestAnimationFrame(() => {
+    const corrected = scrollSegmentRowIntoViewContainer(segmentIdx, root);
+    if (corrected != null) root.scrollTop = corrected;
+  });
+  return true;
+}
+
 /**
  * 在列表滚动容器内将语段行滚入可视区（按真实 DOM 高度，修正虚拟列表固定 stride 偏差）。
  * @returns 建议的 scrollTop；无需滚动时返回 null

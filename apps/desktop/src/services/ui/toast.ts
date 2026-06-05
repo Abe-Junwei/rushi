@@ -10,7 +10,10 @@ export type ToastItem = {
   message: string;
   durationMs: number;
   exiting?: boolean;
+  actionLabel?: string;
 };
+
+const toastActionHandlers = new Map<string, () => void>();
 
 const DEDUP_MS = 2500;
 const FADE_OUT_MS = 260;
@@ -65,8 +68,14 @@ function clearTimers() {
 }
 
 function removeNow() {
+  if (current?.id) toastActionHandlers.delete(current.id);
   current = null;
   emit();
+}
+
+/** Runs optional toast action without dismissing the pill. */
+export function runToastAction(id: string): void {
+  toastActionHandlers.get(id)?.();
 }
 
 function beginDismiss() {
@@ -98,7 +107,9 @@ export function getToastSnapshot(): readonly ToastItem[] {
 export function dismissToast(id?: string): void {
   if (id !== undefined && current?.id !== id) return;
   clearTimers();
+  if (current?.id) toastActionHandlers.delete(current.id);
   current = null;
+  lastDedup = null;
   emit();
 }
 
@@ -106,6 +117,7 @@ export function showToast(input: {
   variant: ToastVariant;
   message: string;
   durationMs?: number;
+  action?: { label: string; onClick: () => void };
 }): string {
   const message = input.message.trim();
   if (!message) return "";
@@ -124,9 +136,21 @@ export function showToast(input: {
   lastDedup = { message, variant, at: now };
 
   clearTimers();
+  if (current?.id) toastActionHandlers.delete(current.id);
   const id = String(++seq);
   const durationMs = input.durationMs ?? defaultDurationMs(variant);
-  current = { id, variant, message, durationMs, exiting: false };
+  const actionLabel = input.action?.label.trim();
+  if (input.action?.onClick) {
+    toastActionHandlers.set(id, input.action.onClick);
+  }
+  current = {
+    id,
+    variant,
+    message,
+    durationMs,
+    exiting: false,
+    ...(actionLabel ? { actionLabel } : {}),
+  };
   emit();
 
   if (durationMs > 0 && durationMs < Number.POSITIVE_INFINITY) {
@@ -154,4 +178,11 @@ export function pushTranscribeHintsToToast(hints: string[]): void {
   const isError = lines.some((line) => line.includes("失败") || line.includes("错误"));
   if (isError) toast.error(message);
   else toast.warning(message);
+}
+
+/** Transcribe done: summary only (用时 / 语段数 / 字符数). */
+export function pushTranscribeResultToast(summary: string): void {
+  const message = summary.trim();
+  if (!message) return;
+  showToast({ variant: "success", message, durationMs: 6_000 });
 }

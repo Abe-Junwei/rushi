@@ -24,6 +24,7 @@ export type SegmentTextListRowProps = {
   onOpenContextMenu?: (e: MouseEvent<HTMLDivElement>, segmentIdx: number, pointerTimeSec: number) => void;
   onOpenTextContextMenu?: (e: MouseEvent<HTMLTextAreaElement>, selectionText: string) => void;
   findReplaceHighlight?: { charStart: number; charEnd: number } | null;
+  correctionRulesHighlight?: { charStart: number; charEnd: number } | null;
   spansForText: (text: string) => CorrectableSpan[];
   onCorrectableSpanClick: (span: CorrectableSpan, event: React.MouseEvent<HTMLButtonElement>) => void;
 };
@@ -47,6 +48,7 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
   onOpenContextMenu,
   onOpenTextContextMenu,
   findReplaceHighlight,
+  correctionRulesHighlight,
   spansForText,
   onCorrectableSpanClick,
 }: SegmentTextListRowProps) {
@@ -118,6 +120,7 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
         updateSegmentText={updateSegmentText}
         onTextareaKeyDown={onTextareaKeyDown}
         findReplaceHighlight={findReplaceHighlight}
+        correctionRulesHighlight={correctionRulesHighlight}
         spansForText={spansForText}
         onCorrectableSpanClick={onCorrectableSpanClick}
         onOpenTextContextMenu={onOpenTextContextMenu}

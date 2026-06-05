@@ -9,7 +9,12 @@ import type {
 export const FIND_REPLACE_PANEL_ID = "find-replace-v2";
 
 export function isFindReplacePanelOpen(): boolean {
-  return typeof document !== "undefined" && document.getElementById(FIND_REPLACE_PANEL_ID) != null;
+  if (typeof document === "undefined") return false;
+  const previewId = `${FIND_REPLACE_PANEL_ID}-preview`;
+  return (
+    document.getElementById(FIND_REPLACE_PANEL_ID) != null ||
+    document.getElementById(previewId) != null
+  );
 }
 
 export type FindReplaceDialogState =

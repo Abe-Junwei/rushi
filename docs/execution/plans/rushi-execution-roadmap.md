@@ -10,7 +10,7 @@
 | 适用节奏 | 单人、每轮 2～4h、一轮一纵向薄片 |
 | 规划跨度 | **个人单机 v1**：约 **14～18 周（自当前）** 或 **18～22 周（自 W1）**；R3 薄片 **~12～15w**（§4.0，含发行 smoke 缓冲）；协作 **非 v1** |
 | 修订 | 每完成一个阶段更新 §2 状态表、§4 排期表与 §13 代码对照 |
-| 最近对照 | **2026-06-04**：**⑤″f-B½** ✅（MEM-P1）→ **下一刀 ⑤″f-C** F7 — [signoff](../specs/r3-5f-bhalf-phase-signoff-2026-06.md) |
+| 最近对照 | **2026-06-04**：**MEM-P2** ✅ · F7 §B ⏸ → **下一刀** **R3h-0** — [mem-p2 signoff](../specs/r3-5f-mem-p2-phase-signoff-2026-06.md) · [f7 清单](../specs/f7-lexicon-bundle-hand-test-checklist.md) |
 
 ### 状态标记约定（全文档统一）
 
@@ -316,7 +316,7 @@ R0 → GLY-1 → R1–R2 → R3 → R4 → [R5] → [R6–R8] → R9
     ├ ⑤″f-A  VOC-1 收尾手测 ‖ F2 合入手测 ‖ VOC-5 eval（先于 F7）
     ├ ⑤″f-B  F1 + F6 + VOC-2c/d + F6+ + VOC-GUARD + MEM-P0
     ├ ⑤″f-B½ MEM-P1（记忆 UI + LEX-MINE-1 + 中文纳入记忆矩阵巩固）
-    ├ ⑤″f-C  F7 词表包 + F0-lite? ‖ MEM-P2（uid/infer + ACC-TXT-0 spike）
+    ├ ⑤″f-C  F7 词表包 + **F0（A→B 编排）** ‖ MEM-P2 ✅ — [F0 plan](../specs/f0-post-transcribe-orchestration-plan.md)
     └ ⑤″f-D  VOC-3 在线三家排序/截断（ACC 在线 E2E ≥1 家）
     （⑤″f-4 VOC-4 暂缓 · ACC-HOT-W/2pass → §8.1 · Spike MEM-S1）
     ↓
@@ -995,7 +995,7 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 |----|------|
 | **定位** | **v1 已闭合** → **v1 后本机 LLM**（§1.6、§6） |
 | **阶段** | **LLM-LOC-4a** ✅ · **4b** ❌ Gate-B No-Go（[decision](../specs/llm-loc-gate-b-decision-2026-06.md) 2026-06-04） |
-| **工作区尾项** | **⑤″f-C** F7 词表包 — [f7 清单](../specs/f7-lexicon-bundle-hand-test-checklist.md)（B½ ✅ [signoff](../specs/r3-5f-bhalf-phase-signoff-2026-06.md)） |
+| **工作区尾项** | **R3h-0**（**MEM-P2** ✅）；F7 §B 双机 ⏸ — [mem-p2 signoff](../specs/r3-5f-mem-p2-phase-signoff-2026-06.md) |
 | **刚闭合** | [v1-release-installed-signoff](../v1-release-installed-signoff-2026-06.md) · R9 · R4 |
 | **Spike 真源** | [research](../specs/llm-loc-spike-research.md) · [plan](../specs/llm-loc-spike-plan.md) · [acceptance](../specs/llm-loc-spike-acceptance.md) · [backlog §9](../specs/llm-local-runtime-backlog.md) |
 | **预检** | `bash scripts/llm-loc-spike-preflight.sh` |
@@ -1014,7 +1014,7 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 
 **并行（不挡主序）**：见 [parallel-backlog-2026-06.md](../specs/parallel-backlog-2026-06.md) — R3h-0、TRN-DIAG、ASR-WARM、R3h-2
 
-**⑤″f 主序**：**⑤″f-B** ✅ → **⑤″f-B½** ✅ → **⑤″f-C** F7 — [holistic](../specs/r3-asr-voc-holistic-review-2026-05.md) §5
+**⑤″f 主序**：**⑤″f-B** ✅ → **⑤″f-B½** ✅ → **⑤″f-D** ✅ → **MEM-P2** ✅ → **⑤″f-C** F7 §B ⏸ → **R3h-0**（下一刀）— [holistic](../specs/r3-asr-voc-holistic-review-2026-05.md) §5
 
 ---
 

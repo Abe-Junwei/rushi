@@ -21,8 +21,12 @@
 
 ## MEM-P2（⑤″f-C）
 
-- [ ] 合并/拆分后 1:1 uid 段的手改仍可学习（手测一条）
-- [ ] ACC-TXT-0 spike：转写后规则预替换 **有预览**、可取消；`before_text` 未进 hotwords
+> **机器**：`bash scripts/r3-5f-mem-p2-machine-gate.sh` ✅ · **手测**：[`mem-p2-hand-test-checklist.md`](./mem-p2-hand-test-checklist.md) ✅ 2026-06-04 · **签收**：[`r3-5f-mem-p2-phase-signoff-2026-06.md`](./r3-5f-mem-p2-phase-signoff-2026-06.md)
+
+- [x] uid 对齐 baseline + infer 32 字 / 空 baseline 跳过 infer（代码 + 单测）
+- [x] 合并/拆分后 1:1 uid 段的手改仍可学习（手测 §1–2）
+- [x] ACC-TXT-0 spike：转写后稳定规则 **有预览**、可取消（`offerPostTranscribeStableRules`）
+- [x] ACC-TXT-0：`before_text` 未进 hotwords（手测 §3）
 
 ## MEM-P3 / MEM-S1（P3 / Spike）
 

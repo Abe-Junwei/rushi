@@ -25,7 +25,6 @@ type Props = {
   prepareModelBusy: boolean;
   busy: boolean;
   refreshAsrHealth: () => Promise<void>;
-  installFunasrDepsInteractive: () => Promise<void>;
   copyFunasrManualCommands: () => Promise<void>;
   refreshAsrModelCacheInfo: () => Promise<void>;
   clearAsrModelCache: () => Promise<void>;
@@ -48,7 +47,6 @@ export function EnvLocalAsrUtilitiesSection({
   funasrInstallMessage,
   prepareModelBusy,
   busy,
-  installFunasrDepsInteractive,
   copyFunasrManualCommands,
   refreshAsrModelCacheInfo,
   clearAsrModelCache,
@@ -116,7 +114,6 @@ export function EnvLocalAsrUtilitiesSection({
           asrCaps={asrCaps}
           funasrInstallMessage={funasrInstallMessage}
           busy={busy}
-          installFunasrDepsInteractive={installFunasrDepsInteractive}
           copyFunasrManualCommands={copyFunasrManualCommands}
           embedded
         />

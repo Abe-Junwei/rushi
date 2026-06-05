@@ -10,6 +10,7 @@ export function mapEditorToolsLifecycleFields(tools: EditorTools) {
     editorSegmentCorrect,
     correctSuggestions,
     correctionRules,
+    postTranscribeOrchestration,
     bumpLlmRuntimeChanged,
     canConfirmSegmentEdit,
   } = tools;
@@ -42,13 +43,35 @@ export function mapEditorToolsLifecycleFields(tools: EditorTools) {
     canApplyCorrectionRules: correctionRules.canApplyCorrectionRules,
     correctionRulesBlockReason: correctionRules.correctionRulesBlockReason,
     correctionRulesDialog: correctionRules.correctionRulesDialog,
+    correctionRulesStableConflictMessage: correctionRules.correctionRulesStableConflictMessage,
     requestCorrectionRules: () => {
-      void correctionRules.requestCorrectionRules();
+      void correctionRules.openCorrectionRulesManual();
+    },
+    requestPostTranscribeProcessing: () => {
+      void correctionRules.requestPostTranscribeProcessing();
+    },
+    openCorrectionRulesManual: () => {
+      void correctionRules.openCorrectionRulesManual();
     },
     confirmCorrectionRulesWriteback: () => {
       void correctionRules.confirmCorrectionRulesWriteback();
     },
+    toggleCorrectionRulesSegment: correctionRules.toggleCorrectionRulesSegment,
+    focusCorrectionRulesPreviewSegment: correctionRules.focusCorrectionRulesPreviewSegment,
+    correctionRulesEditorHighlight: correctionRules.correctionRulesEditorHighlight,
     cancelCorrectionRules: correctionRules.cancelCorrectionRules,
+    closeCorrectionRulesEmpty: correctionRules.closeCorrectionRulesEmpty,
+    canOfferPostTranscribeStageB: postTranscribeOrchestration.canOfferPostTranscribeStageB,
+    postTranscribeStageBBlockReason: postTranscribeOrchestration.postTranscribeStageBBlockReason,
+    postTranscribeStageBDialog: postTranscribeOrchestration.postTranscribeStageBDialog,
+    openPostTranscribeStageB: postTranscribeOrchestration.offerPostTranscribeStageB,
+    confirmPostTranscribeStageBConsent: postTranscribeOrchestration.confirmPostTranscribeStageBConsent,
+    confirmPostTranscribeStageBWriteback: () => {
+      void postTranscribeOrchestration.confirmPostTranscribeStageBWriteback();
+    },
+    togglePostTranscribeStageBSegment: postTranscribeOrchestration.togglePostTranscribeStageBSegment,
+    cancelPostTranscribeStageB: postTranscribeOrchestration.cancelPostTranscribeStageB,
+    dismissPostTranscribeStageBBlocked: postTranscribeOrchestration.dismissPostTranscribeStageBBlocked,
     canCorrectSuggestions: correctSuggestions.canCorrectSuggestions,
     correctSuggestionsBlockReason: correctSuggestions.correctSuggestionsBlockReason,
     correctSuggestionsDialog: correctSuggestions.correctSuggestionsDialog,

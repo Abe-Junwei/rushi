@@ -14,7 +14,7 @@ export type TranscribeExecuteGateInput = {
 export function resolveTranscribeExecuteBlock(input: TranscribeExecuteGateInput): string | null {
   if (input.busy || !input.hasCurrent || !input.currentFileId) {
     if (!input.busy && input.hasCurrent && !input.currentFileId) {
-      return "请先打开一个文件后再拉取语段";
+      return "请先打开一个文件后再自动转录";
     }
     return "busy";
   }

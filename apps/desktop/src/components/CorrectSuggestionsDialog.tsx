@@ -3,6 +3,7 @@ import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../config/controlSty
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import type { CorrectSuggestionsDialogState } from "../pages/useCorrectSuggestionsController";
 import type { CorrectSuggestion } from "../services/editor/correctSuggestions";
+import { PanelAsyncProgress } from "./PanelAsyncProgress";
 import { FloatingPanelTemplate } from "./PanelTemplate";
 
 type Props = {
@@ -24,12 +25,12 @@ export function CorrectSuggestionsDialog({ state, onCancel, onApply, onOpenFindR
         minWidth={360}
         minHeight={280}
         defaultSize={{ width: 420, height: 360 }}
-        persistState={false}
+        persistState
         onClose={onCancel}
       >
         <div className="flex min-h-0 flex-1 flex-col px-5 py-3">
           {state.phase === "loading" ? (
-            <p className={PANEL_TYPOGRAPHY.dialogBody}>正在匹配术语表与纠错记忆…</p>
+            <PanelAsyncProgress mode="spinner" message="正在匹配术语表与纠错记忆…" />
           ) : null}
           {state.phase === "empty" ? (
             <>

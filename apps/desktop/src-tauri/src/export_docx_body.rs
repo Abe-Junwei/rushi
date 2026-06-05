@@ -6,8 +6,6 @@ use crate::project::SegmentDto;
 
 /// Muted meta text — aligns with `COLORS.notionTextMuted` (#6b6b6b).
 pub(crate) const DOCX_COLOR_MUTED: &str = "6B6B6B";
-/// Low-confidence highlight — Word named color (see DESIGN.md / tokens).
-pub(crate) const DOCX_HIGHLIGHT_LOW_CONFIDENCE: &str = "yellow";
 
 pub(crate) const MAX_LECTURE_BODY_CHARS: usize = 2_000_000;
 const MAX_APPENDIX_LINES: usize = 120;
@@ -67,12 +65,10 @@ pub(crate) fn add_meta_paragraph(doc: Docx, line: &str) -> Docx {
     )
 }
 
-pub(crate) fn add_body_paragraph(doc: Docx, text: &str, low_confidence: bool) -> Docx {
-    let mut run = Run::new().size(24).add_text(sanitize_docx_text(text));
-    if low_confidence {
-        run = run.highlight(DOCX_HIGHLIGHT_LOW_CONFIDENCE);
-    }
-    doc.add_paragraph(Paragraph::new().add_run(run))
+pub(crate) fn add_body_paragraph(doc: Docx, text: &str) -> Docx {
+    doc.add_paragraph(
+        Paragraph::new().add_run(Run::new().size(24).add_text(sanitize_docx_text(text))),
+    )
 }
 
 pub(crate) fn append_verbatim_segments(doc: Docx, segments: &[SegmentDto]) -> Docx {
@@ -91,7 +87,7 @@ pub(crate) fn append_verbatim_segments(doc: Docx, segments: &[SegmentDto]) -> Do
                     .add_text(sanitize_docx_text(&meta)),
             ),
         );
-        doc = add_body_paragraph(doc, t, s.low_confidence);
+        doc = add_body_paragraph(doc, t);
         doc = doc.add_paragraph(Paragraph::new());
     }
     doc
@@ -104,7 +100,7 @@ pub(crate) fn append_clean_segments(doc: Docx, segments: &[SegmentDto]) -> Docx 
         if t.is_empty() {
             continue;
         }
-        doc = add_body_paragraph(doc, t, false);
+        doc = add_body_paragraph(doc, t);
         doc = doc.add_paragraph(Paragraph::new());
     }
     doc
@@ -131,7 +127,7 @@ pub(crate) fn append_polished_paragraph_list(
         let take = t.chars().count().min(char_budget);
         let chunk: String = t.chars().take(take).collect();
         char_budget = char_budget.saturating_sub(take);
-        doc = add_body_paragraph(doc, &chunk, false);
+        doc = add_body_paragraph(doc, &chunk);
         if spaced {
             doc = doc.add_paragraph(Paragraph::new());
         }
@@ -141,11 +137,7 @@ pub(crate) fn append_polished_paragraph_list(
         }
     }
     if truncated {
-        doc = add_body_paragraph(
-            doc,
-            "…（正文过长已截断，请改用「逐字稿」导出或分批导出）",
-            false,
-        );
+        doc = add_body_paragraph(doc, "…（正文过长已截断，请改用「逐字稿」导出或分批导出）");
     }
     doc
 }
@@ -167,18 +159,14 @@ pub(crate) fn append_lecture_segments(doc: Docx, segments: &[SegmentDto]) -> Doc
         let take = t.chars().count().min(char_budget);
         let chunk: String = t.chars().take(take).collect();
         char_budget = char_budget.saturating_sub(take);
-        doc = add_body_paragraph(doc, &chunk, false);
+        doc = add_body_paragraph(doc, &chunk);
         if take < t.chars().count() {
             truncated = true;
             break;
         }
     }
     if truncated {
-        doc = add_body_paragraph(
-            doc,
-            "…（正文过长已截断，请改用「逐字稿」导出或分批导出）",
-            false,
-        );
+        doc = add_body_paragraph(doc, "…（正文过长已截断，请改用「逐字稿」导出或分批导出）");
     }
     doc
 }

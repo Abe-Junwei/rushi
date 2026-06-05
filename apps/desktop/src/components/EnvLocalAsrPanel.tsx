@@ -28,7 +28,6 @@ type Props = {
   prepareModelFailure: PrepareModelFailureCopy | null;
   busy: boolean;
   refreshAsrHealth: () => Promise<void>;
-  installFunasrDepsInteractive: () => Promise<void>;
   copyFunasrManualCommands: () => Promise<void>;
   prepareDefaultFunasrModel: (options?: PrepareDefaultModelOptions) => Promise<void>;
   cancelPrepareModel: () => void;
@@ -56,7 +55,6 @@ export function EnvLocalAsrPanel({
   prepareModelFailure,
   busy,
   refreshAsrHealth,
-  installFunasrDepsInteractive,
   copyFunasrManualCommands,
   prepareDefaultFunasrModel,
   cancelPrepareModel,
@@ -141,7 +139,6 @@ export function EnvLocalAsrPanel({
           prepareModelBusy={prepareModelBusy}
           busy={busy}
           refreshAsrHealth={refreshAsrHealth}
-          installFunasrDepsInteractive={installFunasrDepsInteractive}
           copyFunasrManualCommands={copyFunasrManualCommands}
           refreshAsrModelCacheInfo={refreshAsrModelCacheInfo}
           clearAsrModelCache={clearAsrModelCache}

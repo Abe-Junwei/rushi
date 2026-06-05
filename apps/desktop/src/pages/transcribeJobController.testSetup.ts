@@ -36,6 +36,7 @@ vi.mock("../services/ui/toast", () => ({
     dismiss: vi.fn(),
   },
   pushTranscribeHintsToToast: vi.fn(),
+  pushTranscribeResultToast: vi.fn(),
 }));
 
 vi.mock("../services/asr/transcribeVocabularyPreflight", () => ({

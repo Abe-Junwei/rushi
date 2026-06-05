@@ -12,10 +12,14 @@ export type FindMatch = {
 export type ReplaceAllPreviewRow = {
   globalIndex: number;
   segmentIdx: number;
+  segmentNumber: number;
   label: string;
   timeLabel: string;
+  startTimeLabel: string;
   fullText: string;
   fullTextAfter: string;
+  charStart: number;
+  charEnd: number;
   beforeSnippet: string;
   afterSnippet: string;
 };
@@ -25,6 +29,7 @@ export type FindMatchListItem = {
   segmentIdx: number;
   segmentNumber: number;
   timeLabel: string;
+  startTimeLabel: string;
   fullText: string;
   charStart: number;
   charEnd: number;
@@ -36,6 +41,11 @@ export function formatSegmentTimeLabel(seg: SegmentDto): string {
   return `${start} – ${end}`;
 }
 
+/** 浮窗列表左侧元信息：仅语段起点时间码。 */
+export function formatSegmentStartTimeLabel(seg: SegmentDto): string {
+  return formatMediaTime(segmentStartSec(seg));
+}
+
 export function buildFindMatchListItems(segments: SegmentDto[], matches: FindMatch[]): FindMatchListItem[] {
   return matches.map((m) => {
     const seg = segments[m.segmentIdx];
@@ -44,6 +54,7 @@ export function buildFindMatchListItems(segments: SegmentDto[], matches: FindMat
       segmentIdx: m.segmentIdx,
       segmentNumber: m.segmentIdx + 1,
       timeLabel: seg ? formatSegmentTimeLabel(seg) : "—",
+      startTimeLabel: seg ? formatSegmentStartTimeLabel(seg) : "—",
       fullText: seg?.text ?? "",
       charStart: m.charStart,
       charEnd: m.charEnd,
@@ -132,10 +143,14 @@ export function buildReplaceAllPreviewRows(
     return {
       globalIndex: m.globalIndex,
       segmentIdx: m.segmentIdx,
+      segmentNumber: m.segmentIdx + 1,
       label: `语段 ${m.segmentIdx + 1}`,
       timeLabel: seg ? formatSegmentTimeLabel(seg) : "—",
+      startTimeLabel: seg ? formatSegmentStartTimeLabel(seg) : "—",
       fullText: text,
       fullTextAfter: afterText,
+      charStart: m.charStart,
+      charEnd: m.charEnd,
       beforeSnippet: snippetAround(text, m.charStart, query.length),
       afterSnippet: snippetAround(afterText, m.charStart, replacement.length),
     };

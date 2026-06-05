@@ -9,7 +9,7 @@ import {
   prepareSegmentsForPersist,
   segmentsEqualForPersist,
 } from "./segmentListHelpers";
-import { segmentsToLearnBaseline } from "../services/correctionLearnBaseline";
+import { segmentsToLearnBaselineAligned } from "../services/correctionLearnBaseline";
 import { waitForSaveIdle } from "../services/waitForSaveIdle";
 import { segmentDraftStore } from "../hooks/useSegmentDraftStore";
 import { toast } from "../services/ui/toast";
@@ -88,7 +88,11 @@ export function useProjectSaveController(args: Args) {
         mutations.flushSegmentTextDrafts();
         const countHits = options?.countHits ?? true;
         const learnBaselineTexts = countHits
-          ? (options?.learnBaselineTexts ?? segmentsToLearnBaseline(dirty.getSavedSnapshot()))
+          ? (options?.learnBaselineTexts ??
+              segmentsToLearnBaselineAligned(
+                dirty.getSavedSnapshot(),
+                segmentsRef.current,
+              ))
           : undefined;
         const normalized = prepareSegmentsForPersist(segmentsRef.current, 0);
         await fileApi.fileSaveSegments(currentFileId, normalized, {

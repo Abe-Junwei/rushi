@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Cloud, Cpu, Download, HelpCircle, Sparkles } from "lucide-react";
+import { Cloud, Cpu, Download, HelpCircle, Keyboard, Sparkles } from "lucide-react";
 import { ENV_STATUS_DOT_CLASS, type EnvStatusTone } from "./topBarStatusTone";
 import { EnvProfileActions } from "./EnvProfileActions";
 import { EnvLlmConfigPanel } from "./EnvLlmConfigPanel";
 import { EnvLocalAsrPanel } from "./EnvLocalAsrPanel";
 import { EnvOnlineSttPanel } from "./EnvOnlineSttPanel";
+import { EnvEditorShortcutsPanel } from "./EnvEditorShortcutsPanel";
 import { EnvHelpPanel } from "./EnvHelpPanel";
 import { useLlmEnvStatus } from "../hooks/useLlmEnvStatus";
 import type { AsrEnvPresentation } from "../services/asr/asrEnvStatus";
@@ -17,7 +18,7 @@ import type { PrepareModelApi } from "../pages/usePrepareModelController";
 import type { PrepareModelFailureCopy } from "../pages/prepareModelDownloadCopy";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
-type EnvNavId = "local-asr" | "online-stt" | "llm" | "profile" | "help";
+type EnvNavId = "local-asr" | "online-stt" | "llm" | "profile" | "shortcuts" | "help";
 
 function envNavStatusDotClass(tone: EnvStatusTone): string {
   return ENV_STATUS_DOT_CLASS[tone];
@@ -31,7 +32,8 @@ const ENV_NAV_ITEMS: { id: EnvNavId; label: string; description: string; icon: R
   { id: "online-stt", label: "在线 STT", description: "在线转写提供方与 API 配置", icon: <Cloud className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden /> },
   { id: "llm", label: "LLM 配置", description: "云端或本机 Ollama 连接", icon: <Sparkles className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden /> },
   { id: "profile", label: "配置迁移", description: "环境配置导入、导出与迁移", icon: <Download className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden /> },
-  { id: "help", label: "使用说明", description: "快捷键、常见问题与导出格式", icon: <HelpCircle className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden /> },
+  { id: "shortcuts", label: "快捷键", description: "编辑器键盘操作一览", icon: <Keyboard className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden /> },
+  { id: "help", label: "使用说明", description: "常见问题与转写说明", icon: <HelpCircle className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden /> },
 ];
 
 export type EnvironmentPanelProps = {
@@ -51,7 +53,6 @@ export type EnvironmentPanelProps = {
   prepareModelFailure: PrepareModelFailureCopy | null;
   busy: boolean;
   refreshAsrHealth: () => Promise<void>;
-  installFunasrDepsInteractive: () => Promise<void>;
   copyFunasrManualCommands: () => Promise<void>;
   prepareDefaultFunasrModel: PrepareModelApi["prepareDefaultFunasrModel"];
   cancelPrepareModel: () => void;
@@ -84,7 +85,6 @@ export function EnvironmentPanel({
   prepareModelFailure,
   busy,
   refreshAsrHealth,
-  installFunasrDepsInteractive,
   copyFunasrManualCommands,
   prepareDefaultFunasrModel,
   cancelPrepareModel,
@@ -230,7 +230,6 @@ export function EnvironmentPanel({
                   prepareModelFailure={prepareModelFailure}
                   busy={busy}
                   refreshAsrHealth={refreshAsrHealth}
-                  installFunasrDepsInteractive={installFunasrDepsInteractive}
                   copyFunasrManualCommands={copyFunasrManualCommands}
                   prepareDefaultFunasrModel={prepareDefaultFunasrModel}
                   cancelPrepareModel={cancelPrepareModel}
@@ -273,6 +272,8 @@ export function EnvironmentPanel({
                   }}
                 />
               ) : null}
+
+              {envSection === "shortcuts" ? <EnvEditorShortcutsPanel /> : null}
 
               {envSection === "help" ? <EnvHelpPanel /> : null}
             </div>

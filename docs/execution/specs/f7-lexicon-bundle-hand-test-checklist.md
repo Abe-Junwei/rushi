@@ -1,6 +1,6 @@
 # F7 词表包 — 手测清单
 
-> **状态**：✅ 手测签收（2026-06-03）· §A 导出 · §B 导入（单机）· **自动化 A→B** ✅  
+> **状态**：🟡 **§A + 机器回归 ✅**（2026-06-03）；**§B 双机交换手测 ⏸ 暂缓**（2026-06-04 拍板：无第二台机器，**不挡**主序；签收以 `f7_hand_test_ab_exchange` 为准，恢复双机后再补 §B）  
 > **验收真源**：[`r3-asr-voc-landing-acceptance.md`](./r3-asr-voc-landing-acceptance.md) § ASR-VOC-2（2b）· [`r3t-f-post-transcribe-suite-acceptance.md`](./r3t-f-post-transcribe-suite-acceptance.md) P2 F7  
 > **机器回归**：`cargo test f7_hand_test_ab_exchange` · `cargo test project_bundle_zip_excludes_lexicon_bundle`
 

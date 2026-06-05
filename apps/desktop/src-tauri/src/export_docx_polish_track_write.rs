@@ -207,7 +207,7 @@ pub fn append_polished_with_track_changes(
         if pieces_have_markup(bucket) {
             doc = doc.add_paragraph(paragraph_from_diff_pieces(bucket, author, &date));
         } else {
-            doc = add_body_paragraph(doc, &chunk, false);
+            doc = add_body_paragraph(doc, &chunk);
         }
         if spaced {
             doc = doc.add_paragraph(Paragraph::new());
@@ -219,11 +219,7 @@ pub fn append_polished_with_track_changes(
     }
 
     if truncated {
-        doc = add_body_paragraph(
-            doc,
-            "…（正文过长已截断，请改用「逐字稿」导出或分批导出）",
-            false,
-        );
+        doc = add_body_paragraph(doc, "…（正文过长已截断，请改用「逐字稿」导出或分批导出）");
     }
     doc
 }

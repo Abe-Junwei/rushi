@@ -4,6 +4,7 @@ import {
   applyLlmProviderPreset,
   LLM_CONNECTION_VERIFIED_EVENT,
   isLocalLoopbackLlmConfig,
+  markLlmConnectionVerified,
   readLlmRuntimeConfigFromStorage,
 } from "../services/postprocess/postprocessRuntimeContract";
 import {
@@ -40,6 +41,10 @@ export function useLlmEnvStatus(refreshSeq = 0, settings?: LlmEnvSettingsOverlay
           : applyLlmProviderPreset("ollama").model;
       const out = await ollamaDetectStatus({ model: probeModel });
       setDetect(out);
+      // Ollama loopback：服务检测成功即视为连接已验证（同一进程，tags 通则 chat 基本通）
+      if (out.reachable && llmEnvModeFromOverlay(settings) === "local") {
+        markLlmConnectionVerified(cfg);
+      }
     } catch (e) {
       setDetect({
         reachable: false,

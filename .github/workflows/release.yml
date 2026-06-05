@@ -24,6 +24,10 @@ jobs:
           node-version: "22"
           cache: npm
 
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
       - run: npm ci
 
       - uses: dtolnay/rust-toolchain@stable
@@ -32,6 +36,18 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev pandoc wkhtmltopdf
+
+      - name: Install ffmpeg (sidecar bundle)
+        run: |
+          sudo apt-get install -y ffmpeg
+
+      - name: Build Linux x86_64 FunASR sidecar (PyInstaller)
+        run: bash scripts/build-asr-sidecar-unix.sh
+        timeout-minutes: 120
+
+      - name: Post-build sidecar health smoke
+        run: bash scripts/smoke-asr-sidecar-health.sh
+        timeout-minutes: 10
 
       - name: Tauri build (deb + AppImage)
         working-directory: apps/desktop

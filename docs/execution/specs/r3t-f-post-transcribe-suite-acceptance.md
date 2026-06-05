@@ -7,7 +7,7 @@
 
 | ID | 验收时必须满足 |
 |----|----------------|
-| D1 | F0 默认仅 F1+C |
+| D1 | F0 = **阶段 A→B**（见 [F0 acceptance](./f0-post-transcribe-orchestration-acceptance.md)）；~~仅 F1+C~~ 已作废 |
 | D2 | F5 边界 + 默认关 |
 | D6–D8 | F7 合并/冲突/小团队导出 |
 
@@ -58,11 +58,16 @@
 - [ ] 导出向导：条数预览；可剔 hit=1 未采纳
 - [ ] 同 before 多条本地 → 清理提示
 
-## P2 — F0-lite（D1）
+## P2 — F0 转写后编排（D1 · 2026-06-05）
 
-- [ ] 默认仅勾 F1 + 批处理 C；不勾 E/F5
-- [ ] localStorage 记忆用户勾选；C 有进度可取消
-- [ ] 段界禁用+说明
+> **真源**：[`f0-post-transcribe-orchestration-acceptance.md`](./f0-post-transcribe-orchestration-acceptance.md) · [`post-transcribe-to-export-automation-research.md`](./post-transcribe-to-export-automation-research.md)  
+> R3t-C/D **独立菜单已移除**；标点/错字在 **F0 阶段 B** 编排内，非工具栏 C/D。
+
+- [x] 阶段 A 核心（MEM-P2 / F1 稳定规则预览写回）— 手测 ✅ 2026-06-04
+- [x] **F0-v1** 工具栏「规则纠错」+ 转写 toast — 手测 ✅ 2026-06-05（见 F0 acceptance）
+- [x] **F0-v1.5** hints 只读 + 冲突门禁 — 手测 ✅ 2026-06-05
+- [x] **F0-v2** 阶段 B（LLM 标点 + 错字，A 完成后）— 手测 ✅ 2026-06-05
+- [ ] ~~批处理 C / 段界 独立入口~~ — **N/A**
 
 ## P2 — F4-ASR
 

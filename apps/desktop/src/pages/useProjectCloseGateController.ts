@@ -31,6 +31,7 @@ type UseProjectCloseGateControllerArgs = {
   setCurrent: React.Dispatch<React.SetStateAction<ProjectDetail | null>>;
   setError: React.Dispatch<React.SetStateAction<string>>;
   setTranscribeHints: React.Dispatch<React.SetStateAction<string[]>>;
+  onClearTranscribeSession?: () => void;
   resetMutationHistory: () => void;
   projects: ProjectSummary[];
 };
@@ -65,9 +66,15 @@ export function useProjectCloseGateController(
     setCurrent,
     setError,
     setTranscribeHints,
+    onClearTranscribeSession,
     resetMutationHistory,
     projects,
   } = args;
+
+  const clearTranscribeSession = () => {
+    setTranscribeHints([]);
+    onClearTranscribeSession?.();
+  };
 
   const closeAfterSaveRef = useRef(false);
   const navigateProceedRef = useRef<Proceed | null>(null);
@@ -83,7 +90,7 @@ export function useProjectCloseGateController(
   function runLeaveProject() {
     setCurrent(null);
     closeFileWrapped();
-    setTranscribeHints([]);
+    clearTranscribeSession();
   }
 
   function openUnsavedNavigateGate(onProceed: Proceed) {

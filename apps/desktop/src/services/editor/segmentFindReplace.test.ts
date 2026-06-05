@@ -4,6 +4,7 @@ import {
   applyReplaceAllToSegments,
   buildFindMatchListItems,
   collectLiteralFindMatches,
+  formatSegmentStartTimeLabel,
   formatSegmentTimeLabel,
   replaceOnceInText,
 } from "./segmentFindReplace";
@@ -60,6 +61,7 @@ describe("segmentFindReplace", () => {
     const items = buildFindMatchListItems(segments, matches);
     expect(items[0]?.segmentNumber).toBe(1);
     expect(items[0]?.timeLabel).toBe(formatSegmentTimeLabel(segments[0]));
+    expect(items[0]?.startTimeLabel).toBe(formatSegmentStartTimeLabel(segments[0]));
     expect(items[0]?.fullText).toBe("制控");
   });
 });

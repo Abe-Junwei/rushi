@@ -136,6 +136,6 @@ export function autoSaveFooterLabel(status: AutoSaveFooterStatus): string {
     case "saved":
       return "已自动保存";
     default:
-      return "自动保存仅落库；⌘/Ctrl+Enter 确认改词并记入纠错记忆";
+      return "自动保存仅落库；已纳入记忆的词对会在保存时累计命中";
   }
 }

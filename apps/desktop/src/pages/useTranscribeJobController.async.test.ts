@@ -9,7 +9,7 @@ import {
 } from "./transcribeJobController.testHelpers";
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { pushTranscribeHintsToToast } from "../services/ui/toast";
+import { pushTranscribeResultToast } from "../services/ui/toast";
 import { useTranscribeJobController } from "./useTranscribeJobController";
 
 const {
@@ -52,6 +52,9 @@ describe("useTranscribeJobController async paths", () => {
     await act(async () => {
       await result.current.requestTranscribe();
     });
+    await act(async () => {
+      await result.current.confirmTranscribeStart();
+    });
 
     expect(projectTranscribeAsyncFinalize).toHaveBeenCalledWith(
       "file-1",
@@ -74,6 +77,9 @@ describe("useTranscribeJobController async paths", () => {
 
     await act(async () => {
       await result.current.requestTranscribe();
+    });
+    await act(async () => {
+      await result.current.confirmTranscribeStart();
     });
 
     expect(setError).toHaveBeenCalledWith(expect.stringContaining("HTTP 502"));
@@ -98,15 +104,17 @@ describe("useTranscribeJobController async paths", () => {
     await act(async () => {
       await result.current.requestTranscribe();
     });
+    await act(async () => {
+      await result.current.confirmTranscribeStart();
+    });
 
     expect(projectTranscribeAsyncStart).toHaveBeenCalled();
     expect(projectRunTranscribe).toHaveBeenCalledWith("file-1", TRANSCRIBE_TEST_ASR_BASE, null);
     expect(projectTranscribeAsyncFinalize).not.toHaveBeenCalled();
-    expect(
-      vi.mocked(pushTranscribeHintsToToast).mock.calls.some((args) =>
-        args[0].some((h) => h.includes("/v1/transcribe/async")),
-      ),
-    ).toBe(true);
+    expect(vi.mocked(pushTranscribeResultToast)).toHaveBeenCalled();
+    expect(vi.mocked(pushTranscribeResultToast).mock.calls[0]?.[0]).toMatch(
+      /转写完成：用时 .+，\d+ 条语段，[\d,]+ 字/,
+    );
     expect(deps.setError).not.toHaveBeenCalledWith(expect.stringContaining("404"));
   });
 });

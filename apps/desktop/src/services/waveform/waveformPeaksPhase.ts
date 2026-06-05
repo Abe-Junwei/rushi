@@ -28,7 +28,14 @@ export function resolveWaveformPeaksPhase(input: {
     return "decode";
   }
   if (!input.backgroundPeaksEnabled) {
-    return input.waveformReady ? "decode" : "decode";
+    return "decode";
+  }
+  if (input.waveformReady && !input.peaksApplied && !input.peaksHotSwitchPending) {
+    const peaksStillLoading =
+      input.peaksLoading || (input.peakCache != null && !input.peaksApplied);
+    if (!peaksStillLoading) {
+      return "peaks";
+    }
   }
   if (input.peakCache && !input.peaksApplied) {
     return input.waveformReady ? "decode" : "generating";

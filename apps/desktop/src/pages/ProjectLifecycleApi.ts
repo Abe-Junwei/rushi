@@ -4,6 +4,7 @@ import type { DeliveryDocxExportRequest } from "./useExportController";
 import type { SegmentOverlapPolicy } from "../utils/segmentTimeRange";
 import type { FindReplaceDialogState } from "./useFindReplaceController";
 import type { CorrectionRulesDialogState } from "./useCorrectionRulesController";
+import type { PostTranscribeStageBDialogState } from "./usePostTranscribeStageBController";
 import type { CorrectSuggestionsDialogState } from "./useCorrectSuggestionsController";
 import type { GlossaryLearnPromptDialogState } from "./useGlossaryLearnPromptController";
 import type { CorrectSuggestion } from "../services/editor/correctSuggestions";
@@ -30,7 +31,6 @@ export interface ProjectLifecycleApi {
   transcribeProgress: import("./transcribePreviewState").TranscribeProgress | null;
   transcribeCancelling: boolean;
   transcribePreviewActive: boolean;
-  transcribeOverwriteDialogOpen: boolean;
   transcribeOverwriteSegmentCount: number;
   transcribeVocabularyPreflightLines: string[];
   transcribeSource: import("../services/stt/transcribeSource").TranscribeSource;
@@ -50,6 +50,12 @@ export interface ProjectLifecycleApi {
   refreshCurrentProject: () => Promise<void>;
   runTranscribe: () => Promise<void>;
   cancelTranscribe: () => Promise<void>;
+  transcribeStartDialogOpen: boolean;
+  transcribeStartHasExistingText: boolean;
+  confirmTranscribeStart: () => void | Promise<void>;
+  cancelTranscribeStart: () => void;
+  /** @deprecated Use transcribeStartDialogOpen */
+  transcribeOverwriteDialogOpen: boolean;
   confirmTranscribeOverwrite: () => void;
   cancelTranscribeOverwrite: () => void;
   saveSegments: (options?: {
@@ -133,9 +139,30 @@ export interface ProjectLifecycleApi {
   canApplyCorrectionRules: boolean;
   correctionRulesBlockReason: string | null;
   correctionRulesDialog: CorrectionRulesDialogState;
+  correctionRulesStableConflictMessage: string | null;
   requestCorrectionRules: () => void;
+  requestPostTranscribeProcessing: () => void;
+  openCorrectionRulesManual: () => void;
   confirmCorrectionRulesWriteback: () => void | Promise<void>;
+  toggleCorrectionRulesSegment: (segmentIdx: number) => void;
+  focusCorrectionRulesPreviewSegment: (segmentIdx: number) => void;
+  correctionRulesEditorHighlight: {
+    segmentIdx: number;
+    charStart: number;
+    charEnd: number;
+  } | null;
   cancelCorrectionRules: () => void;
+  closeCorrectionRulesEmpty: () => void;
+  canOfferPostTranscribeStageB: boolean;
+  postTranscribeStageBBlockReason: string | null;
+  postTranscribeStageBDialog: PostTranscribeStageBDialogState;
+  /** 工具栏「智能改稿」：与规则纠错独立，不经过阶段 A 门禁。 */
+  openPostTranscribeStageB: () => void;
+  confirmPostTranscribeStageBConsent: () => void;
+  confirmPostTranscribeStageBWriteback: () => void | Promise<void>;
+  togglePostTranscribeStageBSegment: (segmentIdx: number) => void;
+  cancelPostTranscribeStageB: () => void;
+  dismissPostTranscribeStageBBlocked: () => void;
   canCorrectSuggestions: boolean;
   correctSuggestionsBlockReason: string | null;
   correctSuggestionsDialog: CorrectSuggestionsDialogState;

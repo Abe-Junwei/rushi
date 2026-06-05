@@ -195,6 +195,26 @@ pub fn parse_refine_ops_json(raw: &str) -> Result<SegmentRefineLlmPayload, Strin
     serde_json::from_str(&json_str).map_err(|e| format!("段界整理 JSON 无法解析：{e}"))
 }
 
+/// 逐条解析 `ops`：结构不合法的项跳过（本机模型常漏 `split.right_text` 等字段）。
+pub fn parse_refine_ops_json_lenient(raw: &str) -> Result<SegmentRefineLlmPayload, String> {
+    let json_str = extract_json_object_from_llm_content(raw)?;
+    let root: serde_json::Value = serde_json::from_str(&json_str)
+        .map_err(|e| format!("段界整理 JSON 无法解析：{e}"))?;
+    let rationale = root
+        .get("rationale")
+        .and_then(|v| v.as_str())
+        .map(str::to_string);
+    let mut ops = Vec::new();
+    if let Some(arr) = root.get("ops").and_then(|v| v.as_array()) {
+        for item in arr {
+            if let Ok(op) = serde_json::from_value::<SegmentRefineOp>(item.clone()) {
+                ops.push(op);
+            }
+        }
+    }
+    Ok(SegmentRefineLlmPayload { ops, rationale })
+}
+
 pub fn validate_refine_ops(
     segments: &[RefineSegmentItem],
     ops: &[SegmentRefineOp],
@@ -360,6 +380,24 @@ mod tests {
         let p = parse_refine_ops_json(raw).unwrap();
         assert!(p.ops.is_empty());
         assert_eq!(p.rationale.as_deref(), Some("ok"));
+    }
+
+    #[test]
+    fn lenient_parse_skips_malformed_split_keeps_update_text() {
+        let raw = r#"{"ops":[
+            {"op":"split","uid":"a","at_sec":94.32,"left_text":"左"},
+            {"op":"update_text","uid":"b","text":"改后"}
+        ]}"#;
+        let p = parse_refine_ops_json_lenient(raw).unwrap();
+        assert_eq!(p.ops.len(), 1);
+        assert_eq!(
+            p.ops[0],
+            SegmentRefineOp::UpdateText {
+                uid: "b".into(),
+                text: "改后".into(),
+            }
+        );
+        assert!(parse_refine_ops_json(raw).is_err());
     }
 
     #[test]

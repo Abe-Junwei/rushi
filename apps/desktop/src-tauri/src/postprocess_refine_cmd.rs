@@ -144,7 +144,7 @@ pub async fn postprocess_refine_segments(
         "段界整理返回格式无法解析。".to_string()
     })?;
     let raw_content = extract_chat_completion_text(&json)?;
-    let parsed = super::postprocess_segment_ops::parse_refine_ops_json(&raw_content)?;
+    let parsed = super::postprocess_segment_ops::parse_refine_ops_json_lenient(&raw_content)?;
     super::postprocess_segment_ops::validate_refine_ops(&req.segments, &parsed.ops)?;
 
     let latency_ms = t0.elapsed().as_millis() as u64;

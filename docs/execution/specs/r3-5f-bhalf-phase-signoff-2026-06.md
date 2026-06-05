@@ -15,7 +15,7 @@
 
 ```text
 mem-p1-hand-test-checklist.md ✅
-→ ⑤″f-B½ 签收 ✅ → ⑤″f-C（F7 词表包）
+→ ⑤″f-B½ 签收 ✅ → ⑤″f-C F7 双机 §B 手测 ⏸（无第二台机器）→ ⑤″f-D / MEM-P2 / R3h-0
 ```
 
 ## 机器闸门
@@ -33,5 +33,5 @@ bash scripts/r3-5f-bhalf-machine-gate.sh
 ```text
 改动：MEM-P1 文案对齐 + 挖掘推荐进表不写错形别名
 验证：mem-p1-hand-test-checklist.md 用户手测 ✅
-下一轮：⑤″f-C — F7 词表包
+下一轮：⑤″f-D VOC-3 ‖ MEM-P2 ‖ R3h-0（F7 §B 双机手测暂缓）
 ```

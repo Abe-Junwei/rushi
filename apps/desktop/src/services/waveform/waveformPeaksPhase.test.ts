@@ -103,6 +103,22 @@ describe("resolveWaveformPeaksPhase", () => {
     ).toBe("generating");
   });
 
+  it("returns peaks when decode is ready and background peaks will not load", () => {
+    expect(
+      resolveWaveformPeaksPhase({
+        mediaUrl: "asset://a.mp3",
+        peaksLoading: false,
+        peakCache: null,
+        peaksUnavailable: false,
+        peaksApplied: false,
+        peaksHotSwitchPending: false,
+        waveformReady: true,
+        backgroundPeaksEnabled: true,
+        mountDeferred: false,
+      }),
+    ).toBe("peaks");
+  });
+
   it("returns decode when mount started while peaks still load", () => {
     expect(
       resolveWaveformPeaksPhase({

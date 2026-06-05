@@ -9,7 +9,9 @@ import type { SegmentContextMenuOpen } from "../../utils/segmentContextMenuModel
 import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
 import {
+  annotateSegmentListScrollMetrics,
   computeSegmentListVirtualWindow,
+  ensureSegmentListVirtualWindowIncludesIndex,
   scrollSegmentListIndexIntoView,
   scrollSegmentRowIntoViewContainer,
   SEGMENT_LIST_SCROLL_ATTR,
@@ -59,6 +61,7 @@ export function EditorSegmentList({
   useLayoutEffect(() => {
     const root = segmentListRef.current;
     if (!root) return;
+    annotateSegmentListScrollMetrics(root, { rowMinHeightPx, itemStridePx });
     syncScrollMetrics();
     root.addEventListener("scroll", syncScrollMetrics, { passive: true });
     const observer = new ResizeObserver(syncScrollMetrics);
@@ -67,7 +70,7 @@ export function EditorSegmentList({
       root.removeEventListener("scroll", syncScrollMetrics);
       observer.disconnect();
     };
-  }, [segmentListRef, syncScrollMetrics, c.segments.length]);
+  }, [itemStridePx, rowMinHeightPx, segmentListRef, syncScrollMetrics, c.segments.length]);
 
   useLayoutEffect(() => {
     const root = segmentListRef.current;
@@ -114,21 +117,38 @@ export function EditorSegmentList({
     [c.busy, onOpenSegmentContextMenu],
   );
 
-  const virtualWindow = useMemo(
-    () =>
-      computeSegmentListVirtualWindow({
-        scrollTop,
-        viewportHeight,
-        itemStridePx,
-        totalCount: c.segments.length,
-      }),
-    [scrollTop, viewportHeight, itemStridePx, c.segments.length],
-  );
+  const virtualWindow = useMemo(() => {
+    let win = computeSegmentListVirtualWindow({
+      scrollTop,
+      viewportHeight,
+      itemStridePx,
+      totalCount: c.segments.length,
+    });
+    const pinIndices = [
+      c.selectedIdx,
+      c.findReplaceEditorHighlight?.segmentIdx ?? -1,
+      c.correctionRulesEditorHighlight?.segmentIdx ?? -1,
+    ];
+    for (const idx of pinIndices) {
+      if (idx >= 0) {
+        win = ensureSegmentListVirtualWindowIncludesIndex(win, idx, c.segments.length, itemStridePx);
+      }
+    }
+    return win;
+  }, [
+    scrollTop,
+    viewportHeight,
+    itemStridePx,
+    c.segments.length,
+    c.selectedIdx,
+    c.findReplaceEditorHighlight?.segmentIdx,
+    c.correctionRulesEditorHighlight?.segmentIdx,
+  ]);
 
   if (c.segments.length === 0) {
     return (
       <div className="flex min-h-0 flex-1 items-center justify-center px-6 text-[14px] leading-relaxed text-notion-text-muted">
-        尚未有语段：请先「从 ASR 拉取语段」。
+        尚未有语段：请先点击「自动转录」。
       </div>
     );
   }
@@ -172,7 +192,20 @@ export function EditorSegmentList({
               onTextareaKeyDown={tx.onSegmentTextareaKeyDown}
               onOpenContextMenu={onOpenRowContextMenu}
               findReplaceHighlight={
-                c.findReplaceEditorHighlight?.segmentIdx === i ? c.findReplaceEditorHighlight : null
+                c.findReplaceEditorHighlight?.segmentIdx === i
+                  ? {
+                      charStart: c.findReplaceEditorHighlight.charStart,
+                      charEnd: c.findReplaceEditorHighlight.charEnd,
+                    }
+                  : null
+              }
+              correctionRulesHighlight={
+                c.correctionRulesEditorHighlight?.segmentIdx === i
+                  ? {
+                      charStart: c.correctionRulesEditorHighlight.charStart,
+                      charEnd: c.correctionRulesEditorHighlight.charEnd,
+                    }
+                  : null
               }
               onOpenTextContextMenu={onOpenSegmentTextContextMenu}
               spansForText={c.editorSpansForText}

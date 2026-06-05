@@ -6,7 +6,7 @@
 
 | 项 | 真源 |
 |----|------|
-| 面板壳 / 标题栏 | `DraggableResizablePanel`（固定 Notion 样式） |
+| 面板壳 / 标题栏 | `DraggableResizablePanel`（固定 Notion 样式；正文区 `.floating-panel-body-scroll` 溢出时右侧滚动条） |
 | 预设尺寸 | `PanelTemplate.tsx` → `compactDialog`（小确认框）/ `findReplace`（查找替换，z≥110） |
 | 页脚按钮 | `apps/desktop/src/config/controlStyles.ts`（`CONTROL_BTN_SECONDARY` / `CONTROL_BTN_DANGER_COMPACT` 等） |
 | 颜色 token | `tailwind.config.js` + `apps/desktop/src/config/tokens.ts`（`notion-*`、`zen-*`） |
@@ -36,7 +36,22 @@
 - 正文：`text-sm text-zen-stone` / `text-notion-text-muted`；说明块：`bg-notion-callout-bg` + `border-notion-divider`。
 - 不要用 `mt-auto` + `h-full` 把按钮顶到面板底部，除非刻意做大面板；优先按文案设 `defaultSize` / `minHeight`。
 
+## 异步 / 进度态
+
+浮动对话框内的 loading 统一用 `PanelAsyncProgress`（`apps/desktop/src/components/PanelAsyncProgress.tsx`）：
+
+| `mode` | 适用场景 | 表现 |
+|--------|----------|------|
+| `spinner` | 短任务、无确定步数（规则纠错加载、改正匹配） | 居中 `LoaderCircle` + 一行 `dialogBody` |
+| `determinate` | 多步 LLM（智能改稿标点+错字） | 步骤文案 + `panelProgressStyles` 进度条 + `% (done/total)` + 可选取消 |
+
+进度条 token 真源：`apps/desktop/src/components/panelProgressStyles.ts`（对话框 `h-2`、环境页内嵌 `h-1.5` 共用 `bg-notion-sidebar` 轨道与 `zen-saffron-mid` 填充）。
+
+全屏阻塞等待（保存/导出/转写等）用 `BlockingProgressCard`：`rounded-lg` 卡片 + 不确定进度条 + `已等待 Ns`；转写预览用 `variant="banner"`（不挡编辑，可停止转写）。
+
 ## 参考实现
 
 - `apps/desktop/src/components/FileDialogs.tsx`（删除 / 新建文件）
 - `apps/desktop/src/components/ClearAsrCacheConfirmDialog.tsx`（清除模型缓存）
+- `apps/desktop/src/components/PostTranscribeStageBDialog.tsx`（`determinate`）
+- `apps/desktop/src/components/CorrectionRulesPreviewDialog.tsx`（`spinner`）

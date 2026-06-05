@@ -3,12 +3,14 @@
 > **主序真源**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) §10  
 > **纪律**：每轮仍 **一轮一薄片**；下列项 **勿与 ⑤″f-B 或 LLM Gate 填表同 PR 大改**
 
-## 当前主序阻塞项（须先完成）
+## 当前主序（2026-06-04 拍板）
 
-| 项 | 状态 | 动作 |
+| 项 | 状态 | 说明 |
 |----|------|------|
-| **⑤″f-A 尾项** | 🟡 机器✅ 手测⏳ | R3t-E + F2 桌面手测 → [`r3-5f-a-phase-signoff-2026-06.md`](./r3-5f-a-phase-signoff-2026-06.md) |
-| **Gate-A G-A1** | ⏳ 可选 | 20 段人工可接受表 — [`llm-loc-spike-results-2026-06.md`](./llm-loc-spike-results-2026-06.md) |
+| **⑤″f-A/B/B½** | ✅ | [a](./r3-5f-a-phase-signoff-2026-06.md) · [b](./r3-5f-b-phase-signoff-2026-06.md) · [b½](./r3-5f-bhalf-phase-signoff-2026-06.md) |
+| **⑤″f-C F7 §B 双机手测** | ⏸ 暂缓 | 无第二台机器；F7 机器回归仍绿 — [f7 清单](./f7-lexicon-bundle-hand-test-checklist.md) |
+| **⑤″f-D VOC-3** | ✅ | [signoff](./r3-5f-d-phase-signoff-2026-06.md) · 2026-06-04 机器复验 |
+| **下一刀** | 📋 | **R3h-0**（MEM-P2 ✅ 2026-06-04） |
 | **Gate-B / 4b** | ❌ No-Go | [`llm-loc-gate-b-decision-2026-06.md`](./llm-loc-gate-b-decision-2026-06.md) |
 
 ## 并行候选（路线图 §10 · 不挡 Spike/4a）
@@ -29,10 +31,9 @@
 ## 推荐空档顺序（单人）
 
 ```text
-1. ⑤″f-A 手测（1 次 desktop:dev 会话，~45min）
-2. ⑤″f-B 薄片（F1 + F6 + MEM-P0）
-3. 空档二选一：R3h-0 smoke 专轮 | TRN-DIAG 0.5w
-4. LLM：G-A1 人工表（可选，不挡 ⑤″f-B）
+1. R3h-0 smoke（MEM-P2 ✅ · ⑤″f-D ✅）
+2. 有第二台机器时补：F7 §B 双机词表包手测 → ⑤″f-C 签收
+3. TRN-DIAG / ASR-WARM（仍不挡主序）
 ```
 
 ## 修订
@@ -40,3 +41,5 @@
 | 日期 | 说明 |
 |------|------|
 | 2026-06-04 | 初版：对齐路线图 §10 并行表 + Gate-B No-Go |
+| 2026-06-04 | F7 双机手测暂缓；下一刀改为 ⑤″f-D / MEM-P2 / R3h-0 |
+| 2026-06-04 | MEM-P2 手测签收 ✅；下一刀 R3h-0 |

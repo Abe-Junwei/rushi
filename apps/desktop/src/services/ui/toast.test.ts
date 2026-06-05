@@ -2,7 +2,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   dismissToast,
   getToasts,
+  pushTranscribeResultToast,
   pushTranscribeHintsToToast,
+  runToastAction,
   showToast,
   toast,
 } from "./toast";
@@ -54,5 +56,25 @@ describe("toast", () => {
   it("merges transcribe hints as error when any line looks like failure", () => {
     pushTranscribeHintsToToast(["部分完成", "转写失败"]);
     expect(getToasts()[0]?.variant).toBe("error");
+  });
+
+  it("runs toast action without dismissing", () => {
+    const onAction = vi.fn();
+    const id = showToast({
+      variant: "success",
+      message: "转写完成",
+      action: { label: "转写后处理…", onClick: onAction },
+    });
+    expect(getToasts()[0]?.actionLabel).toBe("转写后处理…");
+    runToastAction(id);
+    expect(onAction).toHaveBeenCalledTimes(1);
+    expect(getToasts()).toHaveLength(1);
+  });
+
+  it("pushTranscribeResultToast shows summary only", () => {
+    pushTranscribeResultToast("转写完成：用时 5 秒，3 条语段，120 字");
+    expect(getToasts()[0]?.message).toBe("转写完成：用时 5 秒，3 条语段，120 字");
+    expect(getToasts()[0]?.variant).toBe("success");
+    expect(getToasts()[0]?.actionLabel).toBeUndefined();
   });
 });

@@ -42,10 +42,99 @@ mod tests {
 
     #[test]
     fn should_learn_inferred_replacement_rejects_long_span() {
-        assert!(!should_learn_inferred_replacement(
-            "因为我们不是以修订为主",
-            "允许你们挂座"
-        ));
+        let over32: String = "山通".repeat(17);
+        assert!(over32.chars().count() > 32);
+        assert!(!should_learn_inferred_replacement(&over32, &over32));
+    }
+
+    #[test]
+    fn should_learn_inferred_replacement_accepts_up_to_32_chars() {
+        let sixteen = "一二三四五六七八九零一二三四五六";
+        assert_eq!(sixteen.chars().count(), 16);
+        let thirty_two = format!("{sixteen}{sixteen}");
+        assert_eq!(thirty_two.chars().count(), 32);
+        let mut after: String = thirty_two.chars().collect();
+        after.pop();
+        after.push('末');
+        assert!(should_learn_inferred_replacement(&thirty_two, &after));
+    }
+
+    #[test]
+    fn learn_save_does_not_create_pair_from_segment_edit_without_memory() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE correction_memory (
+                before_text TEXT NOT NULL,
+                after_text TEXT NOT NULL,
+                hit_count INTEGER NOT NULL,
+                accepted_as_rule INTEGER NOT NULL,
+                created_at_ms INTEGER NOT NULL,
+                updated_at_ms INTEGER NOT NULL,
+                PRIMARY KEY (before_text, after_text)
+            );",
+        )
+        .unwrap();
+        let seg = |uid: &str, text: &str| SegmentDto {
+            idx: 0,
+            uid: Some(uid.to_string()),
+            start_sec: 0.0,
+            end_sec: 1.0,
+            text: text.into(),
+            confidence: None,
+            low_confidence: false,
+            detail: None,
+            kind: None,
+        };
+        let baseline = HashMap::from([(
+            "u1".to_string(),
+            "对有嗯嗯好不是说自己不是的".to_string(),
+        )]);
+        learn_inferred_pairs_from_segment_save(
+            &conn,
+            &baseline,
+            &[seg("u1", "对有嗯嗯好")],
+            1,
+        )
+        .unwrap();
+        let count: i32 = conn
+            .query_row("SELECT COUNT(*) FROM correction_memory", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(count, 0);
+    }
+
+    #[test]
+    fn learn_save_skips_infer_without_baseline() {
+        let conn = Connection::open_in_memory().unwrap();
+        conn.execute_batch(
+            "CREATE TABLE correction_memory (
+                before_text TEXT NOT NULL,
+                after_text TEXT NOT NULL,
+                hit_count INTEGER NOT NULL,
+                accepted_as_rule INTEGER NOT NULL,
+                created_at_ms INTEGER NOT NULL,
+                updated_at_ms INTEGER NOT NULL,
+                PRIMARY KEY (before_text, after_text)
+            );",
+        )
+        .unwrap();
+        let baseline = HashMap::<String, String>::new();
+        let seg = |uid: &str, text: &str| SegmentDto {
+            idx: 0,
+            uid: Some(uid.to_string()),
+            start_sec: 0.0,
+            end_sec: 1.0,
+            text: text.into(),
+            confidence: None,
+            low_confidence: false,
+            detail: None,
+            kind: None,
+        };
+        learn_inferred_pairs_from_segment_save(&conn, &baseline, &[seg("u-new", "这是制控")], 1)
+            .unwrap();
+        let count: i32 = conn
+            .query_row("SELECT COUNT(*) FROM correction_memory", [], |r| r.get(0))
+            .unwrap();
+        assert_eq!(count, 0);
     }
 
     #[test]
@@ -201,6 +290,20 @@ mod tests {
             infer_single_replacement("智控", "制控"),
             Some(("智控".to_string(), "制控".to_string()))
         );
+    }
+
+    #[test]
+    fn infer_single_replacement_prefers_minimal_diff_not_whole_segment() {
+        assert_eq!(
+            infer_single_replacement("第二个要素是智控", "第二个要素是制控"),
+            Some(("智控".to_string(), "制控".to_string()))
+        );
+        assert_eq!(infer_single_replacement("对有嗯嗯好不是说自己不是的", "对有嗯嗯好"), None);
+        assert_eq!(
+            infer_single_replacement("我们这一次的入学入学教育啊啊", "我们这一次的入学入学教育啊"),
+            None,
+        );
+        assert_eq!(infer_single_replacement("好时间已到大家写日志", "好"), None);
     }
 
     #[test]

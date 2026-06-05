@@ -11,9 +11,10 @@ import { EnvironmentPanel } from "./EnvironmentPanel";
 import { FloatingPanelTemplate } from "./PanelTemplate";
 import { FindReplaceDialog } from "./FindReplaceDialog";
 import { CorrectionRulesPreviewDialog } from "./CorrectionRulesPreviewDialog";
+import { PostTranscribeStageBDialog } from "./PostTranscribeStageBDialog";
 import { CorrectSuggestionsDialog } from "./CorrectSuggestionsDialog";
 import { GlossaryLearnPromptDialog } from "./GlossaryLearnPromptDialog";
-import { TranscribeOverwriteConfirmDialog } from "./TranscribeOverwriteConfirmDialog";
+import { AutoTranscribeStartDialog } from "./AutoTranscribeStartDialog";
 import { EditorView } from "./EditorView";
 import { DeliveryExportDialog } from "./DeliveryExportDialog";
 
@@ -82,7 +83,7 @@ export function ProjectPanel() {
   );
 
   const openGlossaryFromTranscribe = useCallback(() => {
-    c.cancelTranscribeOverwrite();
+    c.cancelTranscribeStart();
     pendingGlossaryNavRef.current = true;
     if (c.current) {
       c.closeProject();
@@ -235,7 +236,6 @@ export function ProjectPanel() {
               prepareModelFailure={c.prepareModelFailure}
               busy={c.busy}
               refreshAsrHealth={c.refreshAsrHealth}
-              installFunasrDepsInteractive={c.installFunasrDepsInteractive}
               copyFunasrManualCommands={c.copyFunasrManualCommands}
               prepareDefaultFunasrModel={c.prepareDefaultFunasrModel}
               cancelPrepareModel={c.cancelPrepareModel}
@@ -331,8 +331,25 @@ export function ProjectPanel() {
       <CorrectionRulesPreviewDialog
         state={c.correctionRulesDialog}
         busy={c.busy}
+        stableConflictMessage={c.correctionRulesStableConflictMessage ?? null}
         onCancel={c.cancelCorrectionRules}
+        onCloseEmpty={c.closeCorrectionRulesEmpty}
         onConfirm={() => void c.confirmCorrectionRulesWriteback()}
+        onToggleSegment={c.toggleCorrectionRulesSegment}
+        onFocusSegment={c.focusCorrectionRulesPreviewSegment}
+        previewFocusSegmentIdx={
+          c.correctionRulesEditorHighlight?.segmentIdx ?? null
+        }
+      />
+
+      <PostTranscribeStageBDialog
+        state={c.postTranscribeStageBDialog}
+        busy={c.busy}
+        onCancel={c.cancelPostTranscribeStageB}
+        onDismissBlocked={c.dismissPostTranscribeStageBBlocked}
+        onConfirmConsent={c.confirmPostTranscribeStageBConsent}
+        onConfirmWriteback={() => void c.confirmPostTranscribeStageBWriteback()}
+        onToggleSegment={c.togglePostTranscribeStageBSegment}
       />
 
       <CorrectSuggestionsDialog
@@ -359,15 +376,20 @@ export function ProjectPanel() {
         onConfirm={() => c.confirmManualCorrectionMemory()}
       />
 
-      <TranscribeOverwriteConfirmDialog
-        open={c.transcribeOverwriteDialogOpen && !c.busy}
+      <AutoTranscribeStartDialog
+        open={c.transcribeStartDialogOpen && !c.busy}
         busy={c.busy}
+        source={c.transcribeSource}
+        onlineReady={c.onlineTranscribeReady}
+        onSelectLocal={() => c.setTranscribeSource("local")}
+        onSelectOnline={() => c.setTranscribeSource("online")}
+        hasExistingSegmentText={c.transcribeStartHasExistingText}
         segmentCount={c.transcribeOverwriteSegmentCount}
         vocabularyLines={c.transcribeVocabularyPreflightLines}
         showOpenGlossaryLink={showTranscribeGlossaryLink}
         onOpenGlossary={openGlossaryFromTranscribe}
-        onCancel={c.cancelTranscribeOverwrite}
-        onConfirm={c.confirmTranscribeOverwrite}
+        onCancel={c.cancelTranscribeStart}
+        onConfirm={() => void c.confirmTranscribeStart()}
       />
 
       <DeliveryExportDialog

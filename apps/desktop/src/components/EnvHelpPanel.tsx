@@ -9,7 +9,7 @@ export function EnvHelpPanel() {
           <p className="m-0">
             打开或创建项目后，在编辑器工具栏选择<strong className="font-medium text-notion-text"> 本机 </strong>
             或<strong className="font-medium text-notion-text"> 在线 </strong>
-            转写来源，再点「<strong className="font-medium text-notion-text">拉取语段</strong>
+            转写来源，再点「<strong className="font-medium text-notion-text">自动转录</strong>
             」。语段时间与文本写入表格后，请「
             <strong className="font-medium text-notion-text">保存到 SQLite</strong>」。
           </p>

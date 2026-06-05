@@ -12,11 +12,22 @@ import {
 } from "../services/waveform/waveformZoomSyncEngine";
 import {
   createWaveformAppliedZoomState,
+  isPeaksLoadedIntoWs,
   markAppliedPeaks,
+  readLoadedPeaksPx,
   type WaveformAppliedZoomState,
 } from "../utils/waveformAppliedZoom";
 
 export { WAVEFORM_DECODE_SAMPLE_RATE as DECODE_SAMPLE_RATE };
+
+function reconcilePeaksAppliedFromAppliedZoom(
+  appliedZoom: WaveformAppliedZoomState,
+  onPeaksApplied: (applied: boolean, loadPeaksPx: number) => void,
+): void {
+  if (isPeaksLoadedIntoWs(appliedZoom)) {
+    onPeaksApplied(true, readLoadedPeaksPx(appliedZoom));
+  }
+}
 
 type PendingPeaksLoad = {
   url: string;
@@ -203,12 +214,15 @@ export function useWaveformZoomSync(args: {
         case "noop":
           syncPeaksHotSwitchPending(false);
           finishZoom(currentWs);
+          reconcilePeaksAppliedFromAppliedZoom(appliedZoom, onPeaksApplied);
           break;
         case "finish-zoom":
           syncPeaksHotSwitchPending(false);
           if (!cache || !mediaUrl) {
             clearPeaksAppliedForDecode(appliedZoom);
             onPeaksApplied(false, Number.NaN);
+          } else {
+            reconcilePeaksAppliedFromAppliedZoom(appliedZoom, onPeaksApplied);
           }
           finishZoom(currentWs);
           break;

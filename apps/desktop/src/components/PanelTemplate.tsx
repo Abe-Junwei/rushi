@@ -1,4 +1,5 @@
 import { DraggableResizablePanel } from "./DraggableResizablePanel";
+import { centerFloatingPanelPosition, readFloatingPanelViewport } from "./floatingPanelViewport";
 
 /**
  * 浮动面板预设。对话框类请用 `compactDialog`（Notion/Zen，见 docs/architecture/desktop-floating-dialog-panels.md）。
@@ -68,26 +69,20 @@ function resolvePanelTemplateMetrics(
   preset: PanelTemplatePreset,
   defaultSizeOverride?: { width: number; height: number },
 ): PanelTemplateMetrics {
-  const viewportWidth = Math.floor(window.visualViewport?.width ?? window.innerWidth);
-  const viewportHeight = Math.floor(window.visualViewport?.height ?? window.innerHeight);
-  const availableWidth = Math.max(preset.minWidth, viewportWidth - preset.margin * 2);
-  const availableHeight = Math.max(preset.minHeight, viewportHeight - preset.margin * 2);
+  const viewport = readFloatingPanelViewport();
+  const availableWidth = Math.max(preset.minWidth, viewport.width - preset.margin * 2);
+  const availableHeight = Math.max(preset.minHeight, viewport.height - preset.margin * 2);
   const width = defaultSizeOverride
     ? Math.min(defaultSizeOverride.width, availableWidth)
     : Math.min(preset.maxWidth, availableWidth);
   const height = defaultSizeOverride
     ? Math.min(defaultSizeOverride.height, availableHeight)
     : Math.min(preset.maxHeight, availableHeight);
+  const defaultSize = { width, height };
 
   return {
-    defaultPosition: {
-      x: preset.margin + Math.max(0, Math.round((availableWidth - width) / 2)),
-      y: preset.margin + Math.max(0, Math.round((availableHeight - height) / 2)),
-    },
-    defaultSize: {
-      width,
-      height,
-    },
+    defaultPosition: centerFloatingPanelPosition(defaultSize, preset.margin, viewport),
+    defaultSize,
   };
 }
 
@@ -107,6 +102,8 @@ interface FloatingPanelTemplateProps {
   defaultPosition?: { x: number; y: number };
   /** Panel shell z-index; default 50. Editor modals use 110 to clear toolbar (z-90). */
   panelZIndex?: number;
+  /** 随内容（如语段条数）自动调整面板高度；用户拖放改尺寸后本会话内不再覆盖。 */
+  contentFitHeight?: number;
 }
 
 export function FloatingPanelTemplate({
@@ -124,6 +121,7 @@ export function FloatingPanelTemplate({
   defaultSize: defaultSizeOverride,
   defaultPosition: defaultPositionOverride,
   panelZIndex,
+  contentFitHeight,
 }: FloatingPanelTemplateProps) {
   const presetConfig = PANEL_TEMPLATE_PRESETS[preset];
   const mergedConfig: PanelTemplatePreset = {
@@ -147,8 +145,10 @@ export function FloatingPanelTemplate({
         defaultSize={defaultSizeOverride ?? metrics.defaultSize}
         minWidth={mergedConfig.minWidth}
         minHeight={mergedConfig.minHeight}
+        maxHeight={mergedConfig.maxHeight}
         persistState={mergedConfig.persistState}
         zIndex={panelZIndex}
+        contentFitHeight={contentFitHeight}
         onClose={onClose}
       >
         {children}

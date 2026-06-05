@@ -7,7 +7,7 @@
 1. **术语库（SQLite）**：`glossary_terms` 持久化，支持增删查。  
 2. **热词注入**：拉取转写时仅将 `hotword_enabled=1` 的词条（及别名 token，全局去重）拼接为 `hotwords` 提交 ASR；不支持时由 ASR 返回 warning。  
 3. **低置信工作流**：`confidence / low_confidence / detail` 全链路落库、展示、导出。  
-4. **纠错记忆（新增）**：保存语段时自动提取单一替换片段（如错词→正词）写入 `correction_memory`，累计命中。  
+4. **纠错记忆（新增）**：语段选区右键「纳入更正记忆」写入 `correction_memory`；保存语段仅对已纳入的错→对累计命中（不自动推断新词对）。  
 5. **错词规则提示（新增）**：后续转写若命中高频或已采纳规则（`accepted_as_rule=1` 或 `hit_count>=2`），会生成 `correction_rule_hint:*` 并在 UI 提示。
 
 ## 手测记录（术语库 UI · GLY-1）

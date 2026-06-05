@@ -51,7 +51,7 @@ describe("useTranscribeJobController cancel", () => {
     );
 
     act(() => {
-      result.current.confirmTranscribeOverwrite();
+      void result.current.confirmTranscribeStart();
     });
 
     await act(async () => {

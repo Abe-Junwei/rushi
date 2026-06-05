@@ -1,6 +1,14 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
+import {
+  centerFloatingPanelPosition,
+  clampFloatingPanelToViewport,
+  readFloatingPanelViewport,
+  resolveFloatingPanelInitialState,
+  snapshotFloatingPanelViewport,
+  type FloatingPanelPersistedState,
+} from "./floatingPanelViewport";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
 interface Position {
@@ -20,17 +28,20 @@ interface DraggableResizablePanelProps {
   defaultSize: Size;
   minWidth?: number;
   minHeight?: number;
+  maxHeight?: number;
   children: React.ReactNode;
   onClose: () => void;
   persistState?: boolean;
   zIndex?: number;
+  /** 随语段条数等内容变化自动调整面板高度；用户本会话内拖放改高后不再覆盖。 */
+  contentFitHeight?: number;
 }
 
-function loadState(key: string): { position: Position; size: Size } | null {
+function loadState(key: string): FloatingPanelPersistedState | null {
   try {
     const raw = localStorage.getItem(key);
     if (!raw) return null;
-    const parsed = JSON.parse(raw) as { position: Position; size: Size };
+    const parsed = JSON.parse(raw) as FloatingPanelPersistedState;
     if (parsed.position && parsed.size) return parsed;
   } catch {
     /* ignore corrupt storage */
@@ -38,7 +49,7 @@ function loadState(key: string): { position: Position; size: Size } | null {
   return null;
 }
 
-function saveState(key: string, state: { position: Position; size: Size }) {
+function saveState(key: string, state: FloatingPanelPersistedState) {
   try {
     localStorage.setItem(key, JSON.stringify(state));
   } catch {
@@ -61,57 +72,57 @@ export function DraggableResizablePanel({
   defaultSize,
   minWidth = 320,
   minHeight = 200,
+  maxHeight,
   children,
   onClose,
   persistState = true,
   zIndex = 50,
+  contentFitHeight,
 }: DraggableResizablePanelProps) {
   const storageKey = `panel-state-${id}`;
+  const viewportMargin = 16;
 
   const saved = persistState ? loadState(storageKey) : null;
-  const [position, setPosition] = useState<Position>(saved?.position ?? defaultPosition);
-  const [size, setSize] = useState<Size>(saved?.size ?? defaultSize);
-  const panelStateRef = useRef({ position: saved?.position ?? defaultPosition, size: saved?.size ?? defaultSize });
+
+  const clampPanel = useCallback(
+    (nextPosition: Position, nextSize: Size) =>
+      clampFloatingPanelToViewport(nextPosition, nextSize, {
+        minWidth,
+        minHeight,
+        margin: viewportMargin,
+      }),
+    [minHeight, minWidth],
+  );
+
+  const initialState = resolveFloatingPanelInitialState({
+    saved,
+    defaultPosition,
+    defaultSize,
+    margin: viewportMargin,
+    clamp: clampPanel,
+  });
+
+  const [position, setPosition] = useState<Position>(initialState.position);
+  const [size, setSize] = useState<Size>(initialState.size);
+  const panelStateRef = useRef(initialState);
+  const userResizedRef = useRef(false);
 
   useEffect(() => {
     panelStateRef.current = { position, size };
   }, [position, size]);
 
   const resolveViewportBounds = useCallback(() => {
-    const margin = 16;
-    const viewportWidth = Math.floor(window.visualViewport?.width ?? window.innerWidth);
-    const viewportHeight = Math.floor(window.visualViewport?.height ?? window.innerHeight);
-    const maxWidth = Math.max(240, viewportWidth - margin * 2);
-    const maxHeight = Math.max(180, viewportHeight - margin * 2);
-    const effectiveMinWidth = Math.min(minWidth, maxWidth);
-    const effectiveMinHeight = Math.min(minHeight, maxHeight);
+    const margin = viewportMargin;
+    const viewport = readFloatingPanelViewport();
+    const maxWidth = Math.max(240, viewport.width - margin * 2);
+    const maxHeight = Math.max(180, viewport.height - margin * 2);
     return {
-      margin,
-      maxWidth,
-      maxHeight,
-      effectiveMinWidth,
-      effectiveMinHeight,
+      effectiveMinWidth: Math.min(minWidth, maxWidth),
+      effectiveMinHeight: Math.min(minHeight, maxHeight),
     };
   }, [minHeight, minWidth]);
 
-  const clampToViewport = useCallback((nextPosition: Position, nextSize: Size) => {
-    const { margin, maxWidth, maxHeight, effectiveMinWidth, effectiveMinHeight } = resolveViewportBounds();
-    const clampedSize = {
-      width: Math.min(Math.max(nextSize.width, effectiveMinWidth), maxWidth),
-      height: Math.min(Math.max(nextSize.height, effectiveMinHeight), maxHeight),
-    };
-    const viewportWidth = Math.floor(window.visualViewport?.width ?? window.innerWidth);
-    const viewportHeight = Math.floor(window.visualViewport?.height ?? window.innerHeight);
-    const maxX = Math.max(margin, viewportWidth - clampedSize.width - margin);
-    const maxY = Math.max(margin, viewportHeight - clampedSize.height - margin);
-    return {
-      position: {
-        x: Math.min(Math.max(nextPosition.x, margin), maxX),
-        y: Math.min(Math.max(nextPosition.y, margin), maxY),
-      },
-      size: clampedSize,
-    };
-  }, [resolveViewportBounds]);
+  const clampToViewport = clampPanel;
 
   const dragRef = useRef<{
     mode: string;
@@ -123,6 +134,7 @@ export function DraggableResizablePanel({
 
   const startDrag = useCallback(
     (mode: string, e: React.PointerEvent) => {
+      if (mode !== "move") userResizedRef.current = true;
       (e.target as HTMLElement).setPointerCapture(e.pointerId);
       dragRef.current = {
         mode,
@@ -183,7 +195,10 @@ export function DraggableResizablePanel({
     const onUp = () => {
       if (dragRef.current) {
         if (persistState) {
-          saveState(storageKey, panelStateRef.current);
+          saveState(storageKey, {
+            ...panelStateRef.current,
+            viewport: snapshotFloatingPanelViewport(),
+          });
         }
         dragRef.current = null;
       }
@@ -197,26 +212,83 @@ export function DraggableResizablePanel({
     };
   }, [clampToViewport, persistState, resolveViewportBounds, storageKey]);
 
+  const trackedViewportRef = useRef(readFloatingPanelViewport());
+
   useEffect(() => {
-    const clamp = () => {
+    if (contentFitHeight == null || userResizedRef.current) return;
+
+    const viewport = readFloatingPanelViewport();
+    const viewportMaxHeight = Math.max(180, viewport.height - viewportMargin * 2);
+    const { effectiveMinHeight } = resolveViewportBounds();
+    const cap = maxHeight != null ? Math.min(maxHeight, viewportMaxHeight) : viewportMaxHeight;
+    const targetHeight = Math.min(cap, Math.max(effectiveMinHeight, contentFitHeight));
+
+    setSize((prev) => {
+      if (prev.height === targetHeight) return prev;
+      const clamped = clampToViewport(position, { ...prev, height: targetHeight });
+      setPosition(clamped.position);
+      if (persistState) {
+        saveState(storageKey, {
+          position: clamped.position,
+          size: clamped.size,
+          viewport: snapshotFloatingPanelViewport(viewport),
+        });
+      }
+      return clamped.size;
+    });
+  }, [
+    clampToViewport,
+    contentFitHeight,
+    maxHeight,
+    persistState,
+    position,
+    resolveViewportBounds,
+    storageKey,
+  ]);
+
+  useEffect(() => {
+    const reconcile = () => {
+      const viewport = readFloatingPanelViewport();
+      const tracked = trackedViewportRef.current;
+      const viewportChanged =
+        Math.abs(tracked.width - viewport.width) >= 48 ||
+        Math.abs(tracked.height - viewport.height) >= 48;
+
+      if (viewportChanged) {
+        trackedViewportRef.current = viewport;
+        const centered = centerFloatingPanelPosition(size, viewportMargin, viewport);
+        const next = clampToViewport(centered, size);
+        setPosition(next.position);
+        if (!sameSize(size, next.size)) setSize(next.size);
+        if (persistState) {
+          saveState(storageKey, {
+            position: next.position,
+            size: next.size,
+            viewport: snapshotFloatingPanelViewport(viewport),
+          });
+        }
+        return;
+      }
+
       const next = clampToViewport(position, size);
       if (!samePosition(position, next.position)) setPosition(next.position);
       if (!sameSize(size, next.size)) setSize(next.size);
     };
-    clamp();
+    reconcile();
     const vv = window.visualViewport;
-    window.addEventListener("resize", clamp);
-    vv?.addEventListener("resize", clamp);
-    vv?.addEventListener("scroll", clamp);
+    window.addEventListener("resize", reconcile);
+    vv?.addEventListener("resize", reconcile);
+    vv?.addEventListener("scroll", reconcile);
     return () => {
-      window.removeEventListener("resize", clamp);
-      vv?.removeEventListener("resize", clamp);
-      vv?.removeEventListener("scroll", clamp);
+      window.removeEventListener("resize", reconcile);
+      vv?.removeEventListener("resize", reconcile);
+      vv?.removeEventListener("scroll", reconcile);
     };
-  }, [clampToViewport, position, size]);
+  }, [clampToViewport, persistState, position, size, storageKey]);
 
   return (
     <div
+      id={id}
       data-panel-id={id}
       className="fixed"
       style={{
@@ -255,8 +327,8 @@ export function DraggableResizablePanel({
           </button>
         </div>
 
-        {/* Content */}
-        <div className="min-h-0 flex-1 overflow-auto">{children}</div>
+        {/* Content：壳层可滚动 + 可见滚动条；子面板内列表仍可用局部 overflow */}
+        <div className="floating-panel-body-scroll flex min-h-0 flex-1 flex-col">{children}</div>
       </div>
     </div>
   );

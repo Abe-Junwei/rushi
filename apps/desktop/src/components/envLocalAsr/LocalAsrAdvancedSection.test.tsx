@@ -7,14 +7,13 @@ vi.mock("../../pages/useProjectController", () => ({
 }));
 
 describe("LocalAsrAdvancedSection", () => {
-  it("keeps pip actions inside the collapsed advanced section", () => {
+  it("keeps advanced actions inside the collapsed section without pip install", () => {
     render(
       <LocalAsrAdvancedSection
         asrHealth="ok"
         asrCaps={null}
         funasrInstallMessage=""
         busy={false}
-        installFunasrDepsInteractive={vi.fn(async () => {})}
         copyFunasrManualCommands={vi.fn(async () => {})}
       />,
     );
@@ -26,7 +25,7 @@ describe("LocalAsrAdvancedSection", () => {
     fireEvent.click(summary);
 
     expect(details?.open).toBe(true);
-    expect(screen.getByRole("button", { name: "安装 FunASR 依赖（pip）" })).toBeTruthy();
+    expect(screen.queryByRole("button", { name: "安装 FunASR 依赖（pip）" })).toBeNull();
     expect(screen.getByRole("button", { name: "复制手动命令" })).toBeTruthy();
   });
 });

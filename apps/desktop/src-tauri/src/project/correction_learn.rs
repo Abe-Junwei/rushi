@@ -53,8 +53,8 @@ pub(crate) fn should_learn_inferred_replacement(removed: &str, added: &str) -> b
     if is_latin_letters_only(&removed) || is_latin_letters_only(&added) {
         return false;
     }
-    /// 词条级纠错，避免整句/相邻语段误学（通常 >8 字）
-    const MAX_SPAN_CHARS: usize = 8;
+    /// 词条级纠错，避免整句误学（MEM-P2 上限 32 字）
+    const MAX_SPAN_CHARS: usize = 32;
     if removed.chars().count() > MAX_SPAN_CHARS || added.chars().count() > MAX_SPAN_CHARS {
         return false;
     }
@@ -69,13 +69,12 @@ pub(crate) fn should_learn_inferred_replacement(removed: &str, added: &str) -> b
     true
 }
 
-/// 语段保存前后最小单区间替换（整段词优先，否则字素级前缀/后缀剥离）。
-pub fn infer_single_replacement(before: &str, after: &str) -> Option<(String, String)> {
-    if let Some(whole) = normalize_correction_learn_pair(before, after) {
-        if should_learn_inferred_replacement(&whole.0, &whole.1) {
-            return Some(whole);
-        }
-    }
+/// 保存路径已禁用自动推断；以下仅供单测锁定 diff 边界（见 F6 / MEM-P0）。
+#[cfg(test)]
+const MAX_WHOLE_INFER_CHARS: usize = 8;
+
+#[cfg(test)]
+fn infer_removed_added(before: &str, after: &str, strip_suffix: bool) -> (String, String) {
     let b: Vec<char> = before.chars().collect();
     let a: Vec<char> = after.chars().collect();
     let mut prefix = 0usize;
@@ -84,13 +83,48 @@ pub fn infer_single_replacement(before: &str, after: &str) -> Option<(String, St
     }
     let mut b_end = b.len();
     let mut a_end = a.len();
-    while b_end > prefix && a_end > prefix && b[b_end - 1] == a[a_end - 1] {
-        b_end -= 1;
-        a_end -= 1;
+    if strip_suffix {
+        while b_end > prefix && a_end > prefix && b[b_end - 1] == a[a_end - 1] {
+            b_end -= 1;
+            a_end -= 1;
+        }
     }
     let removed: String = b[prefix..b_end].iter().collect();
     let added: String = a[prefix..a_end].iter().collect();
-    normalize_correction_learn_pair(&removed, &added)
+    (removed, added)
+}
+
+#[cfg(test)]
+fn try_learn_pair(removed: &str, added: &str) -> Option<(String, String)> {
+    let pair = normalize_correction_learn_pair(removed, added)?;
+    if should_learn_inferred_replacement(&pair.0, &pair.1) {
+        Some(pair)
+    } else {
+        None
+    }
+}
+
+#[cfg(test)]
+pub fn infer_single_replacement(before: &str, after: &str) -> Option<(String, String)> {
+    let (removed, added) = infer_removed_added(before, after, true);
+    if let Some(pair) = try_learn_pair(&removed, &added) {
+        return Some(pair);
+    }
+    let single_char_skew = removed.chars().count() == 1
+        && added.chars().count() == 1
+        && normalize_correction_learn_pair(&removed, &added).is_some();
+    if single_char_skew {
+        let (removed, added) = infer_removed_added(before, after, false);
+        if let Some(pair) = try_learn_pair(&removed, &added) {
+            return Some(pair);
+        }
+    }
+    if before.chars().count() <= MAX_WHOLE_INFER_CHARS
+        && after.chars().count() <= MAX_WHOLE_INFER_CHARS
+    {
+        return try_learn_pair(before, after);
+    }
+    None
 }
 
 fn learn_pairs_from_segment_text_change(
@@ -113,11 +147,6 @@ fn learn_pairs_from_segment_text_change(
             continue;
         }
         pairs.insert((before_text.clone(), after_text.clone()));
-    }
-    if let Some((before_text, after_text)) = infer_single_replacement(before_full, after_full) {
-        if should_learn_inferred_replacement(&before_text, &after_text) {
-            pairs.insert((before_text, after_text));
-        }
     }
 }
 
@@ -144,7 +173,7 @@ fn list_memory_pairs_for_save_learn(conn: &Connection) -> Result<Vec<(String, St
     Ok(out)
 }
 
-/// 保存语段时：对比 baseline 与当前正文，对已纳入记忆对或合法单区间替换计一次命中。
+/// 保存语段时：仅对已入库的错→对，在 baseline→当前正文变化中匹配并计命中（不推断新词对）。
 pub fn learn_inferred_pairs_from_segment_save(
     conn: &Connection,
     baseline_by_uid: &HashMap<String, String>,
