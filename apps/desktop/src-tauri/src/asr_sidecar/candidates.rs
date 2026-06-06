@@ -2,6 +2,7 @@ use std::path::{Path, PathBuf};
 
 use tauri::{AppHandle, Manager};
 
+use crate::bundled_asr_assets::{self, candidate_resource_roots_from_parts};
 use crate::DbState;
 
 fn validate_bundled_exe(exe: &Path) -> Option<PathBuf> {
@@ -87,39 +88,10 @@ fn bundled_sidecar_try_order(resource_root: &Path) -> Vec<PathBuf> {
     bundled_cpu_executable(resource_root).into_iter().collect()
 }
 
-pub(crate) fn candidate_resource_roots_from_parts(
-    resource_dir: Option<PathBuf>,
-    manifest_dir: &Path,
-) -> Vec<PathBuf> {
-    let mut roots = Vec::new();
-    if let Some(res_dir) = resource_dir {
-        roots.push(res_dir.clone());
-        if res_dir.file_name().and_then(|s| s.to_str()) != Some("resources") {
-            roots.push(res_dir.join("resources"));
-        }
-    }
-
-    roots.push(manifest_dir.join("target").join("debug").join("resources"));
-    roots.push(
-        manifest_dir
-            .parent()
-            .unwrap_or(manifest_dir)
-            .join("target")
-            .join("debug")
-            .join("resources"),
-    );
-    roots.push(manifest_dir.join("resources"));
-
-    let mut unique = Vec::new();
-    for root in roots {
-        if !unique.iter().any(|existing: &PathBuf| existing == &root) {
-            unique.push(root);
-        }
-    }
-    unique
-}
-
 fn candidate_resource_roots(handle: &AppHandle) -> Vec<PathBuf> {
+    if let Some(cached) = bundled_asr_assets::cached_resource_roots() {
+        return cached.to_vec();
+    }
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
     candidate_resource_roots_from_parts(handle.path().resource_dir().ok(), &manifest_dir)
 }

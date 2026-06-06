@@ -7,6 +7,8 @@ import {
   resolveFloatingPanelFitHeight,
   resolveFloatingPanelSegmentListHeight,
   resolveStageBConsentFitHeight,
+  resolveStageBPreviewFitHeight,
+  POST_TRANSCRIBE_STAGE_B_PREVIEW_MAX_PANEL_HEIGHT_PX,
 } from "./floatingPanelSegmentListLayout";
 
 describe("floatingPanelSegmentListLayout", () => {
@@ -38,6 +40,12 @@ describe("floatingPanelSegmentListLayout", () => {
     const base = resolveStageBConsentFitHeight(false);
     const withHint = resolveStageBConsentFitHeight(true);
     expect(withHint).toBeGreaterThan(base);
+  });
+
+  it("stage B preview fit height is capped for first expand", () => {
+    const tall = resolveStageBPreviewFitHeight(24);
+    expect(tall).toBeLessThanOrEqual(POST_TRANSCRIBE_STAGE_B_PREVIEW_MAX_PANEL_HEIGHT_PX);
+    expect(tall).toBeLessThan(520);
   });
 
   it("empty fit height grows with lexicon health panel", () => {

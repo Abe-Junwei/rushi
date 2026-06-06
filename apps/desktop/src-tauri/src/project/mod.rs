@@ -2,6 +2,7 @@
 //! P2: segment confidence / low_confidence / detail; local glossary_terms.
 
 pub mod app_data_paths;
+pub mod asset_scope;
 pub mod asr_cache_cmd;
 pub mod asr_runtime_paths_cmd;
 pub mod correction;
@@ -44,6 +45,7 @@ mod transcribe_response;
 mod transcribe_timeout;
 pub mod types;
 pub mod utils;
+pub mod waveform_diag_cmd;
 pub mod waveform_peaks;
 pub mod waveform_peaks_cache_cmd;
 pub mod waveform_peaks_cmd;
@@ -67,6 +69,7 @@ pub use project_query_cmd::*;
 pub use run_transcribe_cmd::*;
 pub use segment_cmd::*;
 pub use types::*;
+pub use waveform_diag_cmd::*;
 pub use waveform_peaks_cache_cmd::*;
 pub use waveform_peaks_cmd::*;
 
@@ -96,9 +99,13 @@ pub fn setup_db(app: &tauri::AppHandle) -> Result<DbState, String> {
     db::migrate(&conn).map_err(|e| e.to_string())?;
     drop(conn);
     let st = DbState {
-        root: base,
+        root: base.clone(),
         db_path,
     };
+    match asset_scope::register_project_media_asset_scope(app, &st) {
+        Err(e) => append_desktop_log_line(&st, &format!("WARN asset_scope_failed: {e}")),
+        Ok(()) => {}
+    }
     append_desktop_log_line(&st, "INFO database_ready");
     Ok(st)
 }

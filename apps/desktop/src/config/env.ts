@@ -38,6 +38,11 @@ export function isTauriRuntime(): boolean {
   return typeof w.__TAURI__ !== "undefined" || typeof w.__TAURI_INTERNALS__ !== "undefined";
 }
 
+/** Tauri release bundle (not `tauri dev` + Vite dev server). */
+export function isPackagedDesktopApp(): boolean {
+  return import.meta.env.PROD && isTauriRuntime();
+}
+
 /** True when UI targets the default loopback ASR (same as bundled sidecar). */
 export function isDefaultBundledAsrTarget(): boolean {
   return asrBaseUrl() === DEFAULT_ASR_BASE_URL;

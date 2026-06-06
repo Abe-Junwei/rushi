@@ -4,10 +4,13 @@ export const FLOATING_PANEL_SEGMENT_ROW_HEIGHT_PX = 32;
 /** 语段列表最多展示高度；超出后列表内滚动。 */
 export const FLOATING_PANEL_SEGMENT_LIST_MAX_HEIGHT_PX = 256;
 
-export function resolveFloatingPanelSegmentListHeight(rowCount: number): number {
+export function resolveFloatingPanelSegmentListHeight(
+  rowCount: number,
+  maxListPx: number = FLOATING_PANEL_SEGMENT_LIST_MAX_HEIGHT_PX,
+): number {
   if (rowCount <= 0) return 0;
   const natural = rowCount * FLOATING_PANEL_SEGMENT_ROW_HEIGHT_PX;
-  return Math.min(natural, FLOATING_PANEL_SEGMENT_LIST_MAX_HEIGHT_PX);
+  return Math.min(natural, maxListPx);
 }
 
 /** 查找替换主面板：标题栏 + 表单 + 状态 + 底栏（不含语段列表）。 */
@@ -19,8 +22,14 @@ export const FIND_REPLACE_PREVIEW_STATIC_BODY_PX = 132;
 /** 规则纠错 preview：摘要 + 底栏（不含语段列表 / 词表卫生 / hints）。 */
 export const CORRECTION_RULES_PREVIEW_STATIC_BODY_PX = 168;
 
-/** 智能改稿预览：摘要 + 底栏（不含语段列表）。 */
-export const POST_TRANSCRIBE_STAGE_B_PREVIEW_STATIC_BODY_PX = 200;
+/** 智能改稿预览：摘要 + 操作说明 + 底栏（不含语段列表）。 */
+export const POST_TRANSCRIBE_STAGE_B_PREVIEW_STATIC_BODY_PX = 188;
+
+/** 智能改稿预览：语段列表区上限（首次展开略紧凑）。 */
+export const POST_TRANSCRIBE_STAGE_B_PREVIEW_LIST_MAX_HEIGHT_PX = 192;
+
+/** 智能改稿预览：面板总高度上限（含标题栏）。 */
+export const POST_TRANSCRIBE_STAGE_B_PREVIEW_MAX_PANEL_HEIGHT_PX = 420;
 
 /** 智能改稿 consent：说明文案 + 按钮行（不含 A→B 黄条）。 */
 export const POST_TRANSCRIBE_STAGE_B_CONSENT_STATIC_BODY_PX = 168;
@@ -140,4 +149,14 @@ export function resolveStageBEmptyFitHeight(hasPendingHint: boolean, hasPackHint
   if (hasPendingHint) extra += POST_TRANSCRIBE_STAGE_B_HINT_EXTRA_PX;
   if (hasPackHint) extra += POST_TRANSCRIBE_STAGE_B_HINT_EXTRA_PX;
   return resolveFloatingPanelCompactFitHeight(POST_TRANSCRIBE_STAGE_B_EMPTY_STATIC_BODY_PX, extra);
+}
+
+export function resolveStageBPreviewFitHeight(rowCount: number): number {
+  const listHeight = resolveFloatingPanelSegmentListHeight(
+    rowCount,
+    POST_TRANSCRIBE_STAGE_B_PREVIEW_LIST_MAX_HEIGHT_PX,
+  );
+  const natural =
+    FLOATING_PANEL_TITLE_BAR_PX + POST_TRANSCRIBE_STAGE_B_PREVIEW_STATIC_BODY_PX + listHeight;
+  return Math.min(natural, POST_TRANSCRIBE_STAGE_B_PREVIEW_MAX_PANEL_HEIGHT_PX);
 }

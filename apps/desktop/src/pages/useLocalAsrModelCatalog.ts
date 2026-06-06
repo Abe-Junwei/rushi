@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { asrBaseUrl, isTauriRuntime } from "../config/env";
+import { packagedOrDev } from "../services/packagedUserHints";
 import { loopbackFetch } from "../services/asr/loopbackFetch";
 import {
   normalizeLocalAsrRecognitionLanguage,
@@ -187,7 +188,10 @@ export function useLocalAsrModelCatalog(
           toast.info(msg, 4_000);
         }),
         120_000,
-        "应用模型超时（120 秒）。请点「重试内置侧车」或重新运行 npm run desktop:dev。",
+        packagedOrDev(
+          "应用模型超时（120 秒）。请点「重试内置侧车」或重新运行 npm run desktop:dev。",
+          "应用模型超时（120 秒）。请点「重试内置侧车」或「一键准备本机 ASR」。",
+        ),
       );
       setApplyMessage("");
       if (result.ok) toast.success(result.message);

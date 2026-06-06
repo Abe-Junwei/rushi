@@ -1,5 +1,6 @@
 import type WaveSurfer from "wavesurfer.js";
 import type { UseProjectWaveformOptions } from "./useProjectWaveformTypes";
+import { logDesktopUi } from "../services/desktopUiLog";
 
 type BindWaveformEventsParams = {
   ws: WaveSurfer;
@@ -56,20 +57,28 @@ export function bindProjectWaveformWaveSurferEvents(
     ws.on("error", (err) => {
       if (disposed()) return;
       if (err.name === "AbortError") return;
-      setLoadError(err.message || String(err));
+      const msg = err.message || String(err);
+      logDesktopUi("ERROR", `waveform wavesurfer: ${msg}`);
+      setLoadError(msg);
       setIsReady(false);
     }),
     ws.on("play", () => setIsPlaying(true)),
-    ws.on("pause", () => setIsPlaying(false)),
-    ws.on("finish", () => setIsPlaying(false)),
+    ws.on("pause", () => {
+      setIsPlaying(false);
+      if (!disposed()) {
+        setCurrentTime(lastTimeUiCommitRef.current);
+      }
+    }),
+    ws.on("finish", () => {
+      setIsPlaying(false);
+      if (!disposed()) {
+        setCurrentTime(lastTimeUiCommitRef.current);
+      }
+    }),
     ws.on("timeupdate", (t) => {
       if (disposed()) return;
       lastTimeUiCommitRef.current = t;
-      if (ws.isPlaying()) {
-        const now = performance.now();
-        if (now - lastTimeUiCommitMsRef.current < 250) return;
-        lastTimeUiCommitMsRef.current = now;
-      }
+      if (ws.isPlaying()) return;
       setCurrentTime(t);
     }),
     ws.on("seeking", (t) => {

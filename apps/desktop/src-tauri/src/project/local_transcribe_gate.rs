@@ -2,16 +2,19 @@
 
 use crate::asr_sidecar::is_rushi_asr_health_json;
 use crate::asr_sidecar::loopback_root_declares_transcribe_async;
+use crate::packaged_hints::dev_or_packaged_str;
 use crate::DbState;
 use serde_json::Value;
 
 pub fn local_transcribe_gate_from_root_catalog(root: &Value) -> Result<(), String> {
     if !loopback_root_declares_transcribe_async(root) {
-        return Err(
-            "侧车版本过旧，不支持增量转写（缺少 POST /v1/transcribe/async）。\
-             请在环境页「应用并重启侧车」，或执行 npm run asr:build-sidecar-unix 重建 bundled 侧车。"
-                .to_string(),
-        );
+        return Err(format!(
+            "侧车版本过旧，不支持增量转写（缺少 POST /v1/transcribe/async）。{}",
+            dev_or_packaged_str(
+                "请在环境页「应用并重启侧车」，或执行 npm run asr:build-sidecar-unix 重建 bundled 侧车。",
+                "请在「环境与 ASR」点「应用并重启侧车」或「一键准备本机 ASR」；仍失败请重新安装应用。",
+            )
+        ));
     }
     Ok(())
 }
@@ -34,10 +37,11 @@ pub fn local_transcribe_gate_from_health(
         );
     }
     if health.get("ffmpeg_ok").and_then(|x| x.as_bool()) != Some(true) {
-        return Err(
-            "未检测到 FFmpeg，无法解码上传音频。请安装 ffmpeg/ffprobe 并加入 PATH 后重启侧车。"
-                .to_string(),
-        );
+        return Err(dev_or_packaged_str(
+            "未检测到 FFmpeg，无法解码上传音频。请安装 ffmpeg/ffprobe 并加入 PATH 后重启侧车。",
+            "未检测到 FFmpeg，无法解码音频与生成波形。请在「环境与 ASR」点「重试内置侧车」或重新安装应用。",
+        )
+        .to_string());
     }
     if health.get("ready_for_transcribe").and_then(|x| x.as_bool()) != Some(true) {
         return Err(

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { SegmentDto } from "../../tauri/projectApi";
 import {
   collectStageBEligibleSegmentIndices,
+  describeStageBPreviewSummary,
   describeStageBProgress,
   estimateStageBProgressTotal,
   isLocalLoopbackRuntimeBridge,
@@ -97,6 +98,15 @@ describe("planStageBRefineChunks", () => {
     const chunks = planStageBRefineChunks(items, resolveStageBRefineBatchLimits(loopbackRuntime));
     expect(chunks).toHaveLength(1);
     expect(chunks[0]).toHaveLength(1);
+  });
+});
+
+describe("describeStageBPreviewSummary", () => {
+  it("returns headline and operator hint for preview list", () => {
+    const summary = describeStageBPreviewSummary(7);
+    expect(summary.headline).toBe("共 7 条语段有改稿建议");
+    expect(summary.hint).toContain("暖色高亮");
+    expect(summary.hint).toContain("确认写回");
   });
 });
 

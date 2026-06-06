@@ -1,7 +1,6 @@
 import { memo, useLayoutEffect, useRef, type RefObject } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
 import { drawWaveformSegmentBands } from "../services/waveform/drawWaveformSegmentBands";
-import { useTierViewportMetricsFrame } from "../hooks/useTierViewportMetricsFrame";
 import {
   resolveTierViewportMetrics,
   type TierScrollLayoutMetrics,
@@ -57,13 +56,6 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
   tierMetricsRef.current = { tierScrollRef, tierScrollLive, tierScrollLayout };
 
   const schedulePaintRef = useRef<(() => void) | null>(null);
-
-  // Keep overlay consumers aligned; band paint always reads live tier DOM (see paint()).
-  useTierViewportMetricsFrame({
-    tierScrollRef,
-    tierScrollLive,
-    tierScrollLayout,
-  });
 
   useLayoutEffect(() => {
     const canvas = canvasRef.current;

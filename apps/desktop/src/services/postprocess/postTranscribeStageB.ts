@@ -154,6 +154,18 @@ export function describeStageBProgress(args: {
   };
 }
 
+/** 智能改稿预览面板顶栏说明（PostTranscribeStageBDialog preview）。 */
+export function describeStageBPreviewSummary(changeCount: number): {
+  headline: string;
+  hint: string;
+} {
+  const n = Math.max(0, Math.floor(changeCount));
+  return {
+    headline: `共 ${n} 条语段有改稿建议`,
+    hint: "暖色高亮为拟修改内容；点击行可在编辑器定位；勾选后点「确认写回」。",
+  };
+}
+
 /** @deprecated 合并策略下进度 total = 批次数 */
 export function countStageBPunctuateSteps(segments: SegmentDto[]): number {
   return collectStageBEligibleSegmentIndices(segments).length;

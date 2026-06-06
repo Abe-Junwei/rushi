@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
   centerFloatingPanelPosition,
+  isFloatingPanelCentered,
+  reconcileFloatingPanelOnViewportResize,
   resolveFloatingPanelInitialState,
   shouldRecenterFloatingPanel,
 } from "./floatingPanelViewport";
@@ -51,5 +53,58 @@ describe("floatingPanelViewport", () => {
       viewport: { width: 1100, height: 700, offsetX: 0, offsetY: 0 },
     });
     expect(out.position.x).toBe(16 + Math.round((1100 - 32 - 400) / 2));
+  });
+
+  it("reconcileFloatingPanelOnViewportResize recenters centered panel on fullscreen", () => {
+    const size = { width: 420, height: 400 };
+    const windowed = { width: 1200, height: 800, offsetX: 0, offsetY: 0 };
+    const fullscreen = { width: 1920, height: 1080, offsetX: 0, offsetY: 0 };
+    const centered = centerFloatingPanelPosition(size, 16, windowed);
+    expect(isFloatingPanelCentered(centered, size, windowed, 16)).toBe(true);
+    const out = reconcileFloatingPanelOnViewportResize({
+      position: centered,
+      size,
+      prevViewport: windowed,
+      nextViewport: fullscreen,
+      margin: 16,
+      userMoved: false,
+    });
+    expect(out.recentered).toBe(true);
+    expect(out.position.x).toBe(centerFloatingPanelPosition(size, 16, fullscreen).x);
+  });
+
+  it("reconcileFloatingPanelOnViewportResize follows small viewport changes without threshold lag", () => {
+    const size = { width: 420, height: 400 };
+    const prev = { width: 1200, height: 800, offsetX: 0, offsetY: 0 };
+    const next = { width: 1210, height: 800, offsetX: 0, offsetY: 0 };
+    const centered = centerFloatingPanelPosition(size, 16, prev);
+    const out = reconcileFloatingPanelOnViewportResize({
+      position: centered,
+      size,
+      prevViewport: prev,
+      nextViewport: next,
+      margin: 16,
+      userMoved: false,
+    });
+    expect(out.recentered).toBe(true);
+    expect(out.position.x).toBe(centerFloatingPanelPosition(size, 16, next).x);
+  });
+
+  it("reconcileFloatingPanelOnViewportResize keeps user-dragged off-center position", () => {
+    const size = { width: 420, height: 400 };
+    const windowed = { width: 1200, height: 800, offsetX: 0, offsetY: 0 };
+    const fullscreen = { width: 1920, height: 1080, offsetX: 0, offsetY: 0 };
+    const dragged = { x: 40, y: 80 };
+    expect(isFloatingPanelCentered(dragged, size, windowed, 16)).toBe(false);
+    const out = reconcileFloatingPanelOnViewportResize({
+      position: dragged,
+      size,
+      prevViewport: windowed,
+      nextViewport: fullscreen,
+      margin: 16,
+      userMoved: true,
+    });
+    expect(out.recentered).toBe(false);
+    expect(out.position).toEqual(dragged);
   });
 });

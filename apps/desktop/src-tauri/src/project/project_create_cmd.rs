@@ -1,3 +1,4 @@
+use super::asset_scope;
 use super::import_parse::{parse_srt, parse_txt};
 use super::segment_uid::segment_uid_or_new;
 use super::types::ProjectDetail;
@@ -7,8 +8,8 @@ use rusqlite::params;
 use std::fs;
 use std::io::ErrorKind;
 use std::ops::Deref;
-use std::path::PathBuf;
-use tauri::State;
+use std::path::{Path, PathBuf};
+use tauri::{AppHandle, State};
 use uuid::Uuid;
 
 fn copy_audio_with_context(src: &PathBuf, dest: &PathBuf) -> Result<(), String> {
@@ -31,6 +32,7 @@ fn copy_audio_with_context(src: &PathBuf, dest: &PathBuf) -> Result<(), String> 
 
 #[tauri::command]
 pub fn project_create_from_audio(
+    app: AppHandle,
     state: State<DbState>,
     name: String,
     src_path: String,
@@ -75,7 +77,12 @@ pub fn project_create_from_audio(
         return Err(e.to_string());
     }
     tx.commit().map_err(|e| e.to_string())?;
+    allow_imported_audio_asset(&app, &dest_audio);
     project_detail_from_conn(&conn, &project_id)
+}
+
+fn allow_imported_audio_asset(app: &AppHandle, dest_audio: &Path) {
+    asset_scope::allow_project_media_file(app, dest_audio);
 }
 
 #[tauri::command]
@@ -179,6 +186,7 @@ pub fn create_empty_text_file(
 
 #[tauri::command]
 pub fn import_audio_to_project(
+    app: AppHandle,
     state: State<DbState>,
     project_id: String,
     name: String,
@@ -213,6 +221,7 @@ pub fn import_audio_to_project(
         params![t, &project_id],
     )
     .map_err(|e| e.to_string())?;
+    allow_imported_audio_asset(&app, &dest_audio);
     project_detail_from_conn(&conn, &project_id)
 }
 

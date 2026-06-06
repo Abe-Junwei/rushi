@@ -1,13 +1,13 @@
 #!/usr/bin/env bash
-# 个人单机 v1 — 发版打包（macOS 默认 .app + .dmg）
-# 前置：R9 验收通过 · 可选侧车 bash scripts/build-asr-sidecar-unix.sh
+# 个人单机 v1 — 发版打包（默认 .app；DMG 可选）
+# 前置：npm run asr:build-sidecar-unix · bash scripts/release-sidecar-preflight.sh
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "${ROOT}"
 
-BUNDLE="${RUSHI_RELEASE_BUNDLE:-}" # 空 = tauri.conf targets (all)
-SKIP_SIDEcar_CHECK="${RUSHI_SKIP_SIDECAR_CHECK:-0}"
+BUNDLE="${RUSHI_RELEASE_BUNDLE:-app}"
+SKIP_SIDECAR_CHECK="${RUSHI_SKIP_SIDECAR_CHECK:-0}"
 OUT_NOTE="${ROOT}/docs/execution/v1-release-build-evidence.md"
 
 echo "== v1 release preflight =="
@@ -16,27 +16,27 @@ npm run test -w @rushi/desktop
 node scripts/check-architecture-guard.mjs
 bash scripts/r9-rel-1-machine-gate.sh
 
-if [[ "${SKIP_SIDEcar_CHECK}" -eq 0 ]]; then
-  SIDECAR="${ROOT}/apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar/rushi-asr-sidecar"
-  if [[ -x "${SIDECAR}" ]]; then
-    echo "  bundled sidecar (source tree): ${SIDECAR}"
-  else
-    echo "  NOTE: source resources/ 无 onedir — 构建机若已有 sidecar 会打入 .app（见 installed-signoff）" >&2
-  fi
+if [[ "${SKIP_SIDECAR_CHECK}" -eq 0 ]]; then
+  bash scripts/release-sidecar-preflight.sh
+else
+  echo "  SKIP: RUSHI_SKIP_SIDECAR_CHECK=1"
 fi
 
-echo "== v1 release build (Tauri) =="
+AVAIL_GB="$(df -g . | awk 'NR==2 {print $4}')"
+if [[ "${AVAIL_GB}" -lt 5 ]]; then
+  echo "WARN: free disk ${AVAIL_GB}GB — DMG 打包建议 ≥5GB 可用空间" >&2
+fi
+
+bash scripts/release-cleanup-dmg-staging.sh
+
+echo "== v1 release build (Tauri bundles=${BUNDLE}) =="
 (
   cd apps/desktop
-  if [[ -n "${BUNDLE}" ]]; then
-    npm run tauri -- build --bundles "${BUNDLE}"
-  else
-    npm run tauri -- build
-  fi
+  npm run tauri -- build --bundles "${BUNDLE}"
 )
 
-APP_GLOB="${ROOT}/apps/desktop/src-tauri/target/release/bundle/macos/*.app"
-DMG_GLOB="${ROOT}/apps/desktop/src-tauri/target/release/bundle/dmg/*.dmg"
+APP_GLOB="${ROOT}/apps/desktop/src-tauri/target/release/bundle/macos/"*.app
+DMG_GLOB="${ROOT}/apps/desktop/src-tauri/target/release/bundle/dmg/"*.dmg
 TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 
 {
@@ -44,21 +44,31 @@ TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   echo ""
   echo "- **时间（UTC）**：${TS}"
   echo "- **版本**：\`$(node -p "require('./apps/desktop/package.json').version")\`"
-  echo "- **门禁**：typecheck · vitest · architecture-guard · r9-rel-1-machine-gate"
+  echo "- **门禁**：typecheck · vitest · architecture-guard · r9-rel-1 · release-sidecar-preflight"
+  echo "- **bundles**：\`${BUNDLE}\`"
   echo ""
   echo "## 产物"
   echo ""
   ls -lh ${APP_GLOB} 2>/dev/null || echo "(no .app — check bundle path)"
-  ls -lh ${DMG_GLOB} 2>/dev/null || echo "(no .dmg — check bundle path)"
+  ls -lh ${DMG_GLOB} 2>/dev/null || echo "(no .dmg — 可仅发 .app 或检查磁盘/rw.*.dmg)"
+  echo ""
+  echo "## 说明"
+  echo ""
+  echo "- **侧车**在 \`.app/Contents/Resources/resources/bundled-asr/\`；**语音模型**在 App Data \`models/\`，不在安装包内。"
+  echo "- 发版后机器冒烟：\`bash scripts/v1-release-installed-smoke.sh\`"
   echo ""
   echo "## 发版后手测（安装包）"
   echo ""
-  echo "1. 安装/打开 `.app`，环境页完成本机 ASR（无 shell）。"
-  echo "2. 打开既有项目 → 拉取语段 → 导出 Word。"
-  echo "3. 质量概览可见 R4 摘要。"
+  echo "1. 安装/打开 \`.app\`，环境页「一键准备本机 ASR」（无 shell）。"
+  echo "2. 导入音频 → 确认 \`projects/*/peaks/*.dat\` 生成 → 波形可见。"
+  echo "3. 拉取语段 → 导出 Word。"
 } > "${OUT_NOTE}"
 
 echo ""
 echo "OK: v1 release build finished."
 echo "Evidence: ${OUT_NOTE}"
 ls -lh ${APP_GLOB} ${DMG_GLOB} 2>/dev/null || true
+
+if [[ "${BUNDLE}" == "app" || "${BUNDLE}" == *"app"* ]]; then
+  bash scripts/release-postbuild-verify.sh
+fi

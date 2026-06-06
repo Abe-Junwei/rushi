@@ -43,10 +43,16 @@ fn loopback_connect_host() -> &'static str {
     "127.0.0.1"
 }
 
+use crate::packaged_hints::dev_or_packaged_str;
+
 fn loopback_connect_error(port: u16, err: reqwest::Error) -> String {
     if err.is_connect() {
         format!(
-            "本机 127.0.0.1:{port} 无 rushi-asr 在监听（侧车仅绑定 IPv4 loopback）。请在终端执行：cd services/asr && source .venv/bin/activate && python -m rushi_asr；或使用 npm run desktop:dev 自动拉起侧车。"
+            "本机 127.0.0.1:{port} 无 rushi-asr 在监听（侧车仅绑定 IPv4 loopback）。{}",
+            dev_or_packaged_str(
+                "请在终端执行：cd services/asr && source .venv/bin/activate && python -m rushi_asr；或使用 npm run desktop:dev 自动拉起侧车。",
+                "请在「环境与 ASR」点「一键准备本机 ASR」或「重试内置侧车」。",
+            )
         )
     } else {
         err.to_string()

@@ -45,7 +45,7 @@ export function resolveWaveformCenterStatusLabel(input: StatusInput): string | n
       if (waveformReady) return null;
       return "正在加载波形…";
     case "unavailable":
-      return waveformReady ? null : "正在加载波形…";
+      return null;
     default:
       return null;
   }

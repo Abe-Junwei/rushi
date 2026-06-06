@@ -14,6 +14,7 @@ use crate::local_asr_language::read_language_pref;
 use crate::local_asr_model::read_hub_model_pref;
 use crate::project::app_data_paths::apply_asr_model_env;
 use crate::project::models_root_for_app_data_root;
+use crate::packaged_hints::dev_or_packaged_str;
 use crate::DbState;
 
 const HEALTH_WAIT_MS: u64 = 45_000;
@@ -90,13 +91,20 @@ fn fetch_health_model_id() -> Option<String> {
 /// Kill :8741 and spawn `python -m rushi_asr` from source venv with current prefs.
 pub fn restart_source_asr_sidecar(app: &AppHandle, st: &DbState) -> Result<(), String> {
     let repo = resolve_rushi_repo_root().ok_or_else(|| {
-        "未找到 Rushi 仓库根目录（需含 services/asr/pyproject.toml）。请用 npm run desktop:dev 启动，或设置 RUSHI_REPO_ROOT。"
-            .to_string()
+        dev_or_packaged_str(
+            "未找到 Rushi 仓库根目录（需含 services/asr/pyproject.toml）。请用 npm run desktop:dev 启动，或设置 RUSHI_REPO_ROOT。",
+            "未找到开发仓库根目录。安装包内请使用「环境与 ASR」管理内置侧车。",
+        )
+        .to_string()
     })?;
     let python = source_asr_python(&repo).ok_or_else(|| {
         format!(
-            "未找到 ASR venv（{}）。请先运行 npm run desktop:dev 或 bash scripts/bootstrap-asr-venv.sh",
-            repo.join("services/asr/.venv").display()
+            "未找到 ASR venv（{}）。{}",
+            repo.join("services/asr/.venv").display(),
+            dev_or_packaged_str(
+                "请先运行 npm run desktop:dev 或 bash scripts/bootstrap-asr-venv.sh",
+                "安装包内无需源码 venv，请使用「环境与 ASR」",
+            )
         )
     })?;
     let asr_dir = repo.join("services/asr");
@@ -148,10 +156,11 @@ pub fn restart_source_asr_sidecar(app: &AppHandle, st: &DbState) -> Result<(), S
         if health_declares_local_token_required(
             &fetch_health_json().unwrap_or(serde_json::Value::Null),
         ) {
-            return Err(
-                "8741 侧车仍要求 local token（可能是旧 bundled 进程）。请完全退出应用后重新 npm run desktop:dev。"
-                    .into(),
-            );
+            return Err(dev_or_packaged_str(
+                "8741 侧车仍要求 local token（可能是旧 bundled 进程）。请完全退出应用后重新 npm run desktop:dev。",
+                "8741 侧车仍要求 local token（可能是旧进程）。请完全退出应用后重新打开，或在「环境与 ASR」点「重试内置侧车」。",
+            )
+            .into());
         }
         if let Some(expected) = expected_hub.as_deref() {
             if fetch_health_model_id().as_deref() == Some(expected) {
@@ -166,9 +175,13 @@ pub fn restart_source_asr_sidecar(app: &AppHandle, st: &DbState) -> Result<(), S
     }
 
     Err(format!(
-        "源码侧车启动后未在 {} 内就绪。请查看 {} 与终端 npm run desktop:dev 输出。",
+        "源码侧车启动后未在 {} 内就绪。请查看 {}；{}",
         format_duration_ms(HEALTH_WAIT_MS),
-        log_path.display()
+        log_path.display(),
+        dev_or_packaged_str(
+            "并查看终端 npm run desktop:dev 输出。",
+            "或在「环境与 ASR」点「重试内置侧车」。",
+        )
     ))
 }
 

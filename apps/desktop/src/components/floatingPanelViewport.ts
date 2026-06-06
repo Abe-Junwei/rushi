@@ -37,6 +37,51 @@ export function centerFloatingPanelPosition(
 
 const VIEWPORT_RECENTER_THRESHOLD_PX = 48;
 
+export function isFloatingPanelCentered(
+  position: { x: number; y: number },
+  size: { width: number; height: number },
+  viewport: FloatingPanelViewport,
+  margin: number,
+): boolean {
+  const centered = centerFloatingPanelPosition(size, margin, viewport);
+  return (
+    Math.abs(position.x - centered.x) < VIEWPORT_RECENTER_THRESHOLD_PX &&
+    Math.abs(position.y - centered.y) < VIEWPORT_RECENTER_THRESHOLD_PX
+  );
+}
+
+/** Runtime resize/fullscreen: keep centered panels centered; clamp user-dragged panels. */
+export function reconcileFloatingPanelOnViewportResize(args: {
+  position: { x: number; y: number };
+  size: { width: number; height: number };
+  prevViewport: FloatingPanelViewport;
+  nextViewport: FloatingPanelViewport;
+  margin: number;
+  userMoved: boolean;
+}): { position: { x: number; y: number }; recentered: boolean } {
+  const sameViewport =
+    args.prevViewport.width === args.nextViewport.width &&
+    args.prevViewport.height === args.nextViewport.height &&
+    args.prevViewport.offsetX === args.nextViewport.offsetX &&
+    args.prevViewport.offsetY === args.nextViewport.offsetY;
+  if (sameViewport) {
+    return { position: args.position, recentered: false };
+  }
+  const wasCentered = isFloatingPanelCentered(
+    args.position,
+    args.size,
+    args.prevViewport,
+    args.margin,
+  );
+  if (args.userMoved && !wasCentered) {
+    return { position: args.position, recentered: false };
+  }
+  return {
+    position: centerFloatingPanelPosition(args.size, args.margin, args.nextViewport),
+    recentered: true,
+  };
+}
+
 export function shouldRecenterFloatingPanel(
   saved: FloatingPanelPersistedState,
   viewport: FloatingPanelViewport = readFloatingPanelViewport(),

@@ -1,5 +1,6 @@
 mod asr_setup;
 mod asr_sidecar;
+mod bundled_asr_assets;
 mod china_stt_shell;
 mod db;
 mod diagnostic;
@@ -11,6 +12,7 @@ mod local_asr_model;
 mod local_runtime;
 mod online_stt_bridge;
 mod postprocess_cmd;
+mod packaged_hints;
 mod profile;
 mod project;
 mod stt_native;
@@ -36,8 +38,14 @@ fn app_version() -> String {
 pub fn run() {
     let app = tauri::Builder::default()
         .setup(|app| {
+            bundled_asr_assets::init_from_app(app.handle());
             let st = project::setup_db(app.handle())?;
             app.manage(st);
+            if std::env::var_os("RUSHI_DEVTOOLS").is_some() {
+                if let Some(w) = app.get_webview_window("main") {
+                    w.open_devtools();
+                }
+            }
             app.manage(asr_sidecar::AsrSidecarState(std::sync::Mutex::new(None)));
             app.manage(asr_sidecar::BundledAsrLaunchState(std::sync::Mutex::new(
                 asr_sidecar::BundledAsrLaunchReport::default(),
@@ -81,12 +89,14 @@ pub fn run() {
             project::project_transcribe_async_finalize,
             project::project_delete,
             project::pick_text_path,
+            project::ui_desktop_log,
             project::list_files,
             project::load_file,
             project::rename_file,
             project::delete_file,
             project::ensure_waveform_peaks,
             project::waveform_peaks_status,
+            project::waveform_release_probe,
             project::export_project_bundle,
             project::import_project_bundle,
             project::get_asr_runtime_paths,

@@ -1,14 +1,16 @@
 # v1 安装包冒烟证据
 
-- **时间（UTC）**：2026-06-03T14:54:34Z
+- **时间（UTC）**：2026-06-06T09:29:10Z
 - **包**：`/Users/junwei/开发/Rushi/apps/desktop/src-tauri/target/release/bundle/macos/如是我闻.app`
-- **机器结论**：进程启动 ✅ · 复用既有 App Data（若存在）✅
+- **App Data**：`/Users/junwei/Library/Application Support/studio.lingchuang.rushi/studio.lingchuang.rushi`
+- **机器结论**：进程启动 ✅ · bundled ffmpeg ✅
 
-## 仍需 UI 手测（5 步）
+## 仍需 UI 手测
 
 见 [v1-release-build-evidence.md](./v1-release-build-evidence.md) §发版后手测。
 
 ## 本次自动检查
 
-- `open -n` 启动后 `pgrep rushi-desktop` 通过
-- `desktop.log` / `rushi.sqlite3` / `quality/last_eval_report.json` 状态见构建日志
+- bundled `ffmpeg` 在 Resources
+- `open -n` 后 `pgrep rushi-desktop` 通过
+- `/health` 与 peaks 计数见构建日志

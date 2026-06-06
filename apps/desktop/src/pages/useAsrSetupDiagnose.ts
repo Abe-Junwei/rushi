@@ -1,4 +1,5 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
+import { packagedOrDev } from "../services/packagedUserHints";
 import type { AsrSetupOutcome, AsrSetupReport, AsrSetupStep } from "../services/asr/asrSetupContract";
 import type { LocalRuntimeDiagnose } from "../services/localRuntime/localRuntimeContract";
 import * as asrSetupApi from "../tauri/asrSetupApi";
@@ -72,7 +73,10 @@ export function useAsrSetupDiagnose(args: {
       } catch (error) {
         const msg = error instanceof Error ? error.message : String(error);
         setSetupMessage(
-          `诊断失败：${msg}。若刚更新代码，请完全退出并重新运行 desktop:dev 以加载新 Tauri 命令。`,
+          `诊断失败：${msg}。${packagedOrDev(
+            "若刚更新代码，请完全退出并重新运行 desktop:dev 以加载新 Tauri 命令。",
+            "请完全退出应用后重新打开；仍失败请重新安装最新版本。",
+          )}`,
         );
         setSetupOutcome("error");
         setSetupReport(null);

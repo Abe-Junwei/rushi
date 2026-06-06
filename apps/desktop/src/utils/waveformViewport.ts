@@ -24,6 +24,22 @@ export function tierViewportWidthStyle(fallbackPx: number): { width: string } {
   return { width: `var(${WAVEFORM_TIER_VIEWPORT_WIDTH_VAR}, ${fallback}px)` };
 }
 
+/** Stretch painted waveform to visual shell height while WaveSurfer redraw is pending. */
+export function resolveWaveformVerticalScalePreview(
+  visualHeightPx: number,
+  paintedHeightPx: number,
+): { scale: number; active: boolean; transform: string | undefined } {
+  const painted = Math.max(1, paintedHeightPx);
+  const visual = Math.max(1, visualHeightPx);
+  const scale = visual / painted;
+  const active = Math.abs(scale - 1) > 0.001;
+  return {
+    scale,
+    active,
+    transform: active ? `scaleY(${scale})` : undefined,
+  };
+}
+
 export function writeWaveformTierViewportWidthVar(
   tierEl: HTMLElement,
   viewportWidthPx: number,

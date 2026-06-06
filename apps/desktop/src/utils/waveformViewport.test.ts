@@ -3,7 +3,23 @@ import {
   resolveTierScrollLeftPx,
   resolveTierViewportMetrics,
   resolveTierViewportWidthPx,
+  resolveWaveformVerticalScalePreview,
 } from "./waveformViewport";
+
+describe("resolveWaveformVerticalScalePreview", () => {
+  it("stretches visual height to match painted canvas during drag", () => {
+    const preview = resolveWaveformVerticalScalePreview(160, 96);
+    expect(preview.active).toBe(true);
+    expect(preview.scale).toBeCloseTo(160 / 96);
+    expect(preview.transform).toBe(`scaleY(${160 / 96})`);
+  });
+
+  it("is inactive when visual matches painted height", () => {
+    const preview = resolveWaveformVerticalScalePreview(96, 96);
+    expect(preview.active).toBe(false);
+    expect(preview.transform).toBeUndefined();
+  });
+});
 
 describe("resolveTierViewportWidthPx", () => {
   it("returns the largest known viewport width", () => {

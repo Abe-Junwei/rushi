@@ -1,5 +1,10 @@
 import * as projectApi from "../../tauri/projectApi";
 import { isDefaultBundledAsrTarget } from "../../config/env";
+import {
+  packagedOrDev,
+  SIDEcarRestartFailedDev,
+  SIDEcarRestartFailedPackaged,
+} from "../packagedUserHints";
 import { fetchAsrHealthCaps } from "./asrHealthSnapshot";
 import {
   shouldSkipSidecarRestartForSelection,
@@ -47,7 +52,7 @@ async function restartSidecarAndWait(
     return {
       ok: false,
       needsManualSidecarRestart: true,
-      message: `侧车重启失败：${msg}。可查看 /tmp/rushi-asr-dev.log 或重新运行 npm run desktop:dev。`,
+      message: `侧车重启失败：${msg}。${packagedOrDev(SIDEcarRestartFailedDev, SIDEcarRestartFailedPackaged)}`,
     };
   }
   progress(`正在等待侧车加载 ${label}…`);

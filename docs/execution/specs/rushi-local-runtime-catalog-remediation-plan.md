@@ -349,6 +349,8 @@ sequenceDiagram
 
 **验收**：macOS arm64 本地 `npm run asr:build-sidecar-unix` 后 smoke 绿；损坏包被诊断识别；**Windows 手测**磁盘不足时有中文预警。
 
+**2026-06-06 签收**：mac bundled smoke + `bash scripts/r3h-0-machine-gate.sh` ✅ — 见 [`r3h-0-phase-signoff-2026-06.md`](./r3h-0-phase-signoff-2026-06.md)。Windows §4 仍 ⏳。
+
 ---
 
 ### Phase 1 — 应用数据侧车 + Manifest 下载（≈1–1.5 周）

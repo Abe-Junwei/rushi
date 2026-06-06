@@ -1,4 +1,5 @@
 import type { LocalRuntimeDiagnose } from "../services/localRuntime/localRuntimeContract";
+import { packagedOrDev } from "../services/packagedUserHints";
 
 export function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
@@ -13,14 +14,18 @@ export function retainedCurrentVersionMessage(diag: LocalRuntimeDiagnose | null 
   return `升级${targetVersion}失败，已保留当前版本${currentVersion}。`;
 }
 
-export const LOCAL_RUNTIME_DEV_RELOAD_HINT =
-  "若刚更新桌面端代码，请完全退出并重新运行 desktop:dev 后再试。";
+export function localRuntimeDevReloadHint(): string {
+  return packagedOrDev(
+    "若刚更新桌面端代码，请完全退出并重新运行 desktop:dev 后再试。",
+    "若刚更新应用，请完全退出后重新打开；仍失败请重新安装最新版本。",
+  );
+}
 
 export function describeLocalRuntimeActionError(action: string, error: unknown): string {
   const detail = error instanceof Error ? error.message : String(error);
-  return `${action}失败：${detail}。${LOCAL_RUNTIME_DEV_RELOAD_HINT}`;
+  return `${action}失败：${detail}。${localRuntimeDevReloadHint()}`;
 }
 
 export function missingRuntimeDiagnoseMessage(): string {
-  return `无法读取应用内侧车状态。${LOCAL_RUNTIME_DEV_RELOAD_HINT}`;
+  return `无法读取应用内侧车状态。${localRuntimeDevReloadHint()}`;
 }

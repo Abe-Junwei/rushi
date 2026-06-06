@@ -138,7 +138,9 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
 
   const destroyWave = useProjectWaveformDestroy(clearWsListeners, mountRefs, mountRefs);
 
-  useProjectWaveformMount(mediaUrl, deferDecodeMount, mountRefs, destroyWave);
+  const peakCacheGeneration = options.peakCacheGeneration ?? 0;
+
+  useProjectWaveformMount(mediaUrl, deferDecodeMount, peakCacheGeneration, mountRefs, destroyWave);
 
   const { refitFitAllIfNeeded, syncShellLayoutForZoom } = useWaveformViewportController({
     wsRef,
@@ -161,8 +163,6 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     peaksStageShellRef,
     viewportResizeHoldRef,
   });
-
-  const peakCacheGeneration = options.peakCacheGeneration ?? 0;
 
   const zoomSync = useWaveformZoomSync({
     wsRef,

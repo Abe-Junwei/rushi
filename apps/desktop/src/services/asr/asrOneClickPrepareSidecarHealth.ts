@@ -1,4 +1,4 @@
-import { isDefaultBundledAsrTarget } from "../../config/env";
+import { isDefaultBundledAsrTarget, isPackagedDesktopApp } from "../../config/env";
 import type { AsrSetupReport } from "./asrSetupContract";
 import { fetchAsrHealthCaps } from "./asrHealthSnapshot";
 import * as projectApi from "../../tauri/projectApi";
@@ -59,7 +59,9 @@ export async function runAsrOneClickPrepareSidecarHealth(
         ? "侧车已尝试启动，但 FunASR 运行时仍未就绪。请查看「ASR 状态」或导出诊断包。"
         : hasInstalledLocalRuntime
           ? "已检测到应用数据侧车并已尝试启动，但 FunASR 运行时仍未就绪。请查看组件状态与诊断信息后重试。"
-          : "未检测到可用侧车（dev 需先 npm run asr:build-sidecar-unix），或先通过「下载 / 修复语音识别组件」安装应用数据侧车。",
+          : isPackagedDesktopApp()
+            ? "未检测到可用侧车。请在「环境与 ASR」完成「一键准备本机 ASR」，或通过「下载 / 修复语音识别组件」安装应用数据侧车。"
+            : "未检测到可用侧车（dev 需先 npm run asr:build-sidecar-unix），或先通过「下载 / 修复语音识别组件」安装应用数据侧车。",
     );
     setSetupOutcome("error");
     return false;

@@ -34,31 +34,8 @@ pub fn long_audio_transcribe_hint(audio_duration_sec: Option<f64>) -> Option<&'s
         })
 }
 
-fn bundled_ffprobe_candidates() -> Vec<PathBuf> {
-    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let mut candidates = Vec::new();
-    for onedir in ["rushi-asr-sidecar", "rushi-asr-sidecar-cuda"] {
-        let internal = manifest_dir
-            .join("resources")
-            .join("bundled-asr")
-            .join(onedir)
-            .join("_internal");
-        #[cfg(target_os = "windows")]
-        let probe = internal.join("ffprobe.exe");
-        #[cfg(not(target_os = "windows"))]
-        let probe = internal.join("ffprobe");
-        if probe.is_file() {
-            candidates.push(probe);
-        }
-    }
-    candidates
-}
-
 fn resolve_ffprobe_command() -> PathBuf {
-    bundled_ffprobe_candidates()
-        .into_iter()
-        .next()
-        .unwrap_or_else(|| PathBuf::from("ffprobe"))
+    crate::bundled_asr_assets::resolve_bundled_ffprobe()
 }
 
 pub fn probe_audio_duration_sec(path: &Path) -> Option<f64> {
@@ -133,12 +110,23 @@ mod tests {
 
     #[test]
     fn resolve_ffprobe_prefers_bundled_when_present() {
-        let bundled = bundled_ffprobe_candidates();
+        let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
+        let roots = crate::bundled_asr_assets::candidate_resource_roots_from_parts(None, &manifest);
         let resolved = resolve_ffprobe_command();
-        if let Some(first) = bundled.first() {
-            assert_eq!(resolved, *first);
-        } else {
-            assert_eq!(resolved, PathBuf::from("ffprobe"));
+        let mut expected = PathBuf::from("ffprobe");
+        for root in &roots {
+            for onedir in ["rushi-asr-sidecar", "rushi-asr-sidecar-cuda"] {
+                let internal = root.join("bundled-asr").join(onedir).join("_internal");
+                #[cfg(target_os = "windows")]
+                let probe = internal.join("ffprobe.exe");
+                #[cfg(not(target_os = "windows"))]
+                let probe = internal.join("ffprobe");
+                if probe.is_file() {
+                    expected = probe;
+                    break;
+                }
+            }
         }
+        assert_eq!(resolved, expected);
     }
 }

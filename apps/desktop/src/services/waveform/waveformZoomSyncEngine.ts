@@ -2,6 +2,7 @@ import type { MutableRefObject, RefObject } from "react";
 import type WaveSurfer from "wavesurfer.js";
 import type { PeakCache } from "./PeakCache";
 import { isWaveSurferAbortError } from "./waveSurferProgressAbortWarn";
+import { logDesktopUi } from "../desktopUiLog";
 import {
   appliedZoomMatchesIntent,
   isPeaksLoadedIntoWs,
@@ -191,6 +192,8 @@ export function loadPeaksIntoWaveSurfer(input: {
     .catch((err) => {
       if (isWaveSurferAbortError(err)) return;
       if (wsRef.current !== ws) return;
+      const msg = err instanceof Error ? err.message : String(err);
+      logDesktopUi("ERROR", `waveform peaks load: ${msg}`);
       onPeaksApplied(false, Number.NaN);
       commitWaveSurferZoom({
         ws,

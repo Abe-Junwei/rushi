@@ -1,5 +1,11 @@
 import type { AsrHealthCapabilities } from "../../tauri/projectApi";
 import type { AsrHealthState } from "../../pages/useAsrHealthPoll";
+import { isPackagedDesktopApp } from "../../config/env";
+import {
+  modelsPathMismatchDev,
+  modelsPathMismatchPackaged,
+  packagedOrDev,
+} from "../packagedUserHints";
 import {
   computeLocalAsrTranscribeReady,
   type LocalAsrCatalogStatusItem,
@@ -143,10 +149,9 @@ function blockReasonFor(input: {
     return "本机 ASR 未就绪：请先在「环境与 ASR」完成侧车启动与模型准备。";
   }
   if (input.sidecarAsyncTranscribeCapable === false) {
-    return (
-      "侧车版本过旧，不支持增量转写（缺少 POST /v1/transcribe/async）。" +
-      "请在环境页「应用并重启侧车」，或执行 npm run asr:build-sidecar-unix 重建内置侧车。"
-    );
+    return isPackagedDesktopApp()
+      ? "侧车版本过旧，不支持增量转写。请在「环境与 ASR」点「应用并重启侧车」或「一键准备本机 ASR」；仍失败请重新安装应用。"
+      : "侧车版本过旧，不支持增量转写（缺少 POST /v1/transcribe/async）。请在环境页「应用并重启侧车」，或执行 npm run asr:build-sidecar-unix 重建内置侧车。";
   }
   if (input.transcribeReady) return null;
   if (!input.sidecarMatchesSelection) {
@@ -245,15 +250,17 @@ export function buildAsrEnvPresentation(input: BuildAsrEnvPresentationInput): As
     connectedGuidance,
     ffmpegWarning:
       envOk && input.asrCaps && !ffmpegOk
-        ? "未检测到 FFmpeg — ASR 无法解码上传音频。请安装 ffmpeg/ffprobe 并加入 PATH 后重启 ASR。"
+        ? isPackagedDesktopApp()
+          ? "未检测到 FFmpeg — 无法解码音频与生成波形。请在「环境与 ASR」点「重试内置侧车」或重新安装应用。"
+          : "未检测到 FFmpeg — ASR 无法解码上传音频。请安装 ffmpeg/ffprobe 并加入 PATH 后重启 ASR。"
         : null,
     cachePathMismatch,
     cachePathMismatchDetail: cachePathMismatch
-      ? "磁盘上已有模型，但当前侧车未指向应用缓存目录。请重新运行 npm run desktop:dev 或 npm run asr:dev，再点「刷新状态」。"
+      ? packagedOrDev(modelsPathMismatchDev, modelsPathMismatchPackaged)
       : null,
     modelsOnDiskButSidecarBlind,
     modelsOnDiskButSidecarBlindDetail: modelsOnDiskButSidecarBlind
-      ? "磁盘上已有模型，但当前侧车未指向应用缓存目录。请重新运行 npm run desktop:dev 或 npm run asr:dev，再点「刷新状态」。"
+      ? packagedOrDev(modelsPathMismatchDev, modelsPathMismatchPackaged)
       : null,
   };
 }

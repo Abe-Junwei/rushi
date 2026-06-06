@@ -10,7 +10,7 @@
 | 适用节奏 | 单人、每轮 2～4h、一轮一纵向薄片 |
 | 规划跨度 | **个人单机 v1**：约 **14～18 周（自当前）** 或 **18～22 周（自 W1）**；R3 薄片 **~12～15w**（§4.0，含发行 smoke 缓冲）；协作 **非 v1** |
 | 修订 | 每完成一个阶段更新 §2 状态表、§4 排期表与 §13 代码对照 |
-| 最近对照 | **2026-06-04**：**MEM-P2** ✅ · F7 §B ⏸ → **下一刀** **R3h-0** — [mem-p2 signoff](../specs/r3-5f-mem-p2-phase-signoff-2026-06.md) · [f7 清单](../specs/f7-lexicon-bundle-hand-test-checklist.md) |
+| 最近对照 | **2026-06-06**：**R3h-0** mac 机器闸门 ✅ · Win §4 ⏳ — [signoff](../specs/r3h-0-phase-signoff-2026-06.md) · F7 §B ⏸ |
 
 ### 状态标记约定（全文档统一）
 
@@ -335,7 +335,7 @@ R4 + R4-GATE ✅ → R9   ← **下一主序**
 | 序 | ID | 状态 | 预估 | 交付摘要 | 规格真源 |
 |----|-----|------|------|----------|----------|
 | — | R3a/b/c | ✅ | — | keychain、profile、缓存/manifest | 各 acceptance |
-| **①** | **R3h-0** | 🟡 | 2–3d | 构建脚本 / smoke / `sidecarIntegrity` / Win `disk_free_bytes` 已有工作区实现；待跨平台构建 smoke 与 Windows 手测 | [remediation §5 Phase 0](../specs/rushi-local-runtime-catalog-remediation-plan.md) |
+| **①** | **R3h-0** | 🟡 **mac ✅** / **Win ⏳** | 2–3d | 编码 + mac 机器闸门 ✅（2026-06-06）；待 Windows 构建 smoke + 磁盘手测 | [r3h-0 acceptance](../specs/r3h-0-asr-sidecar-build-smoke-acceptance.md) · [remediation §5 Phase 0](../specs/rushi-local-runtime-catalog-remediation-plan.md) |
 | **②** | **R3h-1** | 🟡 **编码✅** / **发行⏳** | 5–7d | 编码：`local_runtime/`、signed manifest、pinned key、**install 事务回滚**、**手动恢复 previous**。**非**自动升级健康回滚（→ R3h-2/I2）。发行门禁 remediation **§11** 未全绿 | remediation §5 Phase 1 + §11、§3.7、路线图 §4.1.5.1 |
 | **③** | **R3f** | 🟡 | 2–3d | 诊断 + 一键准备 + 8741 冲突；已接入 R3h-1 最小闭环，**须在 ①② 发行级补齐后手测** | [`r3f-asr-setup-wizard-acceptance.md`](../specs/r3f-asr-setup-wizard-acceptance.md) |
 | **④** | **R3e-A** | 🟡 | 2–3d | 动态超时 + 失败分类（已编码；50min 手测待签收） | [`r3e-long-audio-transcribe-acceptance.md`](../specs/r3e-long-audio-transcribe-acceptance.md) |

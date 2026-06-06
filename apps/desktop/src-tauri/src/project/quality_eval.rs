@@ -3,6 +3,7 @@
 use super::correction::list_correction_memory_entries;
 use super::utils::open_db;
 use crate::asr_sidecar::source::resolve_rushi_repo_root;
+use crate::packaged_hints::dev_or_packaged_str;
 use crate::DbState;
 use serde::{Deserialize, Serialize};
 use std::fs;
@@ -125,10 +126,11 @@ fn asr_health_ready(asr_base: &str) -> Result<(), String> {
         .output()
         .map_err(|e| format!("无法探测 ASR 健康状态: {e}"))?;
     if !output.status.success() {
-        return Err(
-            "本机 ASR（127.0.0.1:8741）未就绪或 /health 无响应。请先 npm run desktop:dev 或检查侧车。"
-                .into(),
-        );
+        return Err(dev_or_packaged_str(
+            "本机 ASR（127.0.0.1:8741）未就绪或 /health 无响应。请先 npm run desktop:dev 或检查侧车。",
+            "本机 ASR（127.0.0.1:8741）未就绪。请在「环境与 ASR」完成一键准备或重试内置侧车。",
+        )
+        .into());
     }
     Ok(())
 }
@@ -157,8 +159,11 @@ pub fn run_eval_batch(
     hotwords_mode: &str,
 ) -> Result<QualityEvalRunResult, String> {
     let repo = resolve_rushi_repo_root().ok_or_else(|| {
-        "未找到仓库根目录（需含 scripts/eval-run.py）。请用 npm run desktop:dev 启动，或设置 RUSHI_REPO_ROOT。"
-            .to_string()
+        dev_or_packaged_str(
+            "未找到仓库根目录（需含 scripts/eval-run.py）。请用 npm run desktop:dev 启动，或设置 RUSHI_REPO_ROOT。",
+            "评测批量运行需在开发环境中执行（依赖仓库 scripts/eval-run.py）。安装包内请使用「导入评测报告 JSON」。",
+        )
+        .to_string()
     })?;
     let script = repo.join("scripts/eval-run.py");
     if !script.is_file() {

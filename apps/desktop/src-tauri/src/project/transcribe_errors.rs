@@ -2,6 +2,8 @@
 
 use std::time::Duration;
 
+use crate::packaged_hints::dev_or_packaged_str;
+
 pub fn describe_transcribe_request_error(err: &reqwest::Error, timeout: Duration) -> String {
     let waited = timeout.as_secs();
     if err.is_timeout() {
@@ -37,13 +39,15 @@ pub fn describe_transcribe_http_status_error(status: u16, body_snippet: &str) ->
     if !lower.contains("invalid_local_token") {
         return None;
     }
-    Some(
+    Some(format!(
         "本机 ASR 拒绝了转写请求（本地安全令牌不匹配）。\
          常见于 8741 上仍是上一次内置侧车、而桌面已重启。\
-         请到「环境与 ASR」点「重试内置侧车」，或完全退出应用后重新打开；\
-         开发时也可执行 lsof -i :8741 结束旧进程后重新 npm run desktop:dev。"
-            .into(),
-    )
+         请到「环境与 ASR」点「重试内置侧车」，或完全退出应用后重新打开；{}",
+        dev_or_packaged_str(
+            "开发时也可执行 lsof -i :8741 结束旧进程后重新 npm run desktop:dev。",
+            "仍失败请重新安装应用。",
+        )
+    ))
 }
 
 pub fn describe_transcribe_payload_error(code: &str, message: &str) -> String {

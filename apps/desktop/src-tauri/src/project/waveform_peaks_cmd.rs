@@ -1,6 +1,6 @@
 use super::transcribe_timeout::probe_audio_duration_sec;
 use super::types::{WaveformPeakLevelStatus, WaveformPeaksStatus};
-use super::utils::open_db;
+use super::utils::{append_desktop_log_line, open_db};
 use super::waveform_peaks::{
     all_peak_levels_exist, load_peaks_meta, peak_file_path, peaks_cache_is_stale, peaks_dir,
     peaks_generation_in_progress, remove_peaks_for_file, try_acquire_peaks_lock,
@@ -66,6 +66,7 @@ fn status_from_disk_with_probe(
 }
 
 fn spawn_peaks_generation(
+    st: DbState,
     audio: PathBuf,
     peaks_root: PathBuf,
     file_id: String,
@@ -74,7 +75,10 @@ fn spawn_peaks_generation(
     std::thread::spawn(move || {
         let _lock = lock;
         if let Err(err) = generate_peaks_with_optional_ffmpeg_remux(&audio, &peaks_root, &file_id) {
-            eprintln!("[waveform_peaks] background generation failed for {file_id}: {err}");
+            append_desktop_log_line(
+                &st,
+                &format!("ERROR waveform_peaks generation failed {file_id}: {err}"),
+            );
         }
     });
 }
@@ -257,6 +261,7 @@ fn ensure_waveform_peaks_sync(
         }
 
         spawn_peaks_generation(
+            st.clone(),
             audio.to_path_buf(),
             peaks_root.clone(),
             file_id.to_string(),

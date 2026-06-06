@@ -3,31 +3,8 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-fn bundled_ffmpeg_candidates() -> Vec<PathBuf> {
-    let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let mut candidates = Vec::new();
-    for onedir in ["rushi-asr-sidecar", "rushi-asr-sidecar-cuda"] {
-        let internal = manifest_dir
-            .join("resources")
-            .join("bundled-asr")
-            .join(onedir)
-            .join("_internal");
-        #[cfg(target_os = "windows")]
-        let ffmpeg = internal.join("ffmpeg.exe");
-        #[cfg(not(target_os = "windows"))]
-        let ffmpeg = internal.join("ffmpeg");
-        if ffmpeg.is_file() {
-            candidates.push(ffmpeg);
-        }
-    }
-    candidates
-}
-
 pub fn resolve_ffmpeg_command() -> PathBuf {
-    bundled_ffmpeg_candidates()
-        .into_iter()
-        .next()
-        .unwrap_or_else(|| PathBuf::from("ffmpeg"))
+    crate::bundled_asr_assets::resolve_bundled_ffmpeg()
 }
 
 pub fn symphonia_error_eligible_for_ffmpeg_remux(err: &str) -> bool {

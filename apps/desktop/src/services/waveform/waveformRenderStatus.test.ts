@@ -59,4 +59,14 @@ describe("resolveWaveformCenterStatusLabel", () => {
       }),
     ).toBe("正在加载波形…");
   });
+
+  it("hides center overlay for unavailable — use peaksError banner instead", () => {
+    expect(
+      resolveWaveformCenterStatusLabel({
+        ...base,
+        phase: "unavailable",
+        waveformReady: false,
+      }),
+    ).toBeNull();
+  });
 });

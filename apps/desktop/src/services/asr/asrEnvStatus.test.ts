@@ -1,10 +1,25 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 import { DEFAULT_LOCAL_ASR_HUB_MODEL_ID } from "./localAsrModelCatalog";
-import { buildAsrEnvPresentation } from "./asrEnvStatus";
+
+const isPackagedDesktopApp = vi.fn(() => false);
+
+vi.mock("../../config/env", () => ({
+  isPackagedDesktopApp: () => isPackagedDesktopApp(),
+}));
 
 describe("buildAsrEnvPresentation", () => {
-  it("shows ASR 就绪 chip when selected model transcribe ready", () => {
-    const p = buildAsrEnvPresentation({
+  beforeEach(() => {
+    isPackagedDesktopApp.mockReturnValue(false);
+    vi.resetModules();
+  });
+
+  async function build(input: Parameters<typeof import("./asrEnvStatus").buildAsrEnvPresentation>[0]) {
+    const { buildAsrEnvPresentation } = await import("./asrEnvStatus");
+    return buildAsrEnvPresentation(input);
+  }
+
+  it("shows ASR 就绪 chip when selected model transcribe ready", async () => {
+    const p = await build({
       asrHealth: "ok",
       asrHealthDetail: "",
       asrCaps: {
@@ -24,8 +39,8 @@ describe("buildAsrEnvPresentation", () => {
     expect(p.statusRows.find((r) => r.id === "transcribe")?.ok).toBe(true);
   });
 
-  it("shows ASR 未就绪 when connected but model not ready", () => {
-    const p = buildAsrEnvPresentation({
+  it("shows ASR 未就绪 when connected but model not ready", async () => {
+    const p = await build({
       asrHealth: "ok",
       asrHealthDetail: "",
       asrCaps: {
@@ -45,8 +60,8 @@ describe("buildAsrEnvPresentation", () => {
     expect(p.blockReason).toContain("不一致");
   });
 
-  it("shows ASR 未就绪 when async sidecar route missing despite model ready", () => {
-    const p = buildAsrEnvPresentation({
+  it("shows ASR 未就绪 when async sidecar route missing despite model ready", async () => {
+    const p = await build({
       asrHealth: "ok",
       asrHealthDetail: "",
       asrCaps: {
@@ -66,10 +81,52 @@ describe("buildAsrEnvPresentation", () => {
     expect(p.bannerTitle).toBe("本机 ASR · 已连接");
     expect(p.statusRows.find((r) => r.id === "transcribe")?.text).toBe("侧车需升级");
     expect(p.blockReason).toContain("transcribe/async");
+    expect(p.blockReason).toContain("npm run asr:build-sidecar-unix");
   });
 
-  it("aligns top bar and banner for error state", () => {
-    const p = buildAsrEnvPresentation({
+  it("uses packaged copy when async sidecar route missing in release app", async () => {
+    isPackagedDesktopApp.mockReturnValue(true);
+    const p = await build({
+      asrHealth: "ok",
+      asrHealthDetail: "",
+      asrCaps: {
+        ffmpeg_ok: true,
+        funasr_import_ok: true,
+        funasr_model_configured: true,
+        funasr_ready: true,
+        funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+        ready_for_transcribe: true,
+        transcription_mode: "funasr",
+      },
+      selectedHubModelId: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+      sidecarAsyncTranscribeCapable: false,
+    });
+    expect(p.blockReason).toContain("重新安装应用");
+    expect(p.blockReason).not.toContain("npm run");
+  });
+
+  it("uses packaged ffmpeg warning without npm/dev hints", async () => {
+    isPackagedDesktopApp.mockReturnValue(true);
+    const p = await build({
+      asrHealth: "ok",
+      asrHealthDetail: "",
+      asrCaps: {
+        ffmpeg_ok: false,
+        funasr_import_ok: true,
+        funasr_model_configured: true,
+        funasr_ready: true,
+        funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+        ready_for_transcribe: false,
+        transcription_mode: "funasr",
+      },
+      selectedHubModelId: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+    });
+    expect(p.ffmpegWarning).toContain("波形");
+    expect(p.ffmpegWarning).not.toContain("PATH");
+  });
+
+  it("aligns top bar and banner for error state", async () => {
+    const p = await build({
       asrHealth: "error",
       asrHealthDetail: "无法连接 127.0.0.1:8741",
       asrCaps: null,

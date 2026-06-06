@@ -72,12 +72,27 @@ jobs:
           node-version: "22"
           cache: npm
 
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
       - run: npm ci
 
       - uses: dtolnay/rust-toolchain@stable
 
       - name: Install pandoc (user-guide PDF)
         run: brew install pandoc
+
+      - name: Install ffmpeg (sidecar bundle)
+        run: brew install ffmpeg
+
+      - name: Build macOS FunASR sidecar (PyInstaller)
+        run: bash scripts/build-asr-sidecar-unix.sh
+        timeout-minutes: 120
+
+      - name: Post-build sidecar health smoke
+        run: bash scripts/smoke-asr-sidecar-health.sh
+        timeout-minutes: 10
 
       - name: Tauri build (app + dmg)
         working-directory: apps/desktop
@@ -102,9 +117,25 @@ jobs:
           node-version: "22"
           cache: npm
 
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
       - run: npm ci
 
       - uses: dtolnay/rust-toolchain@stable
+
+      - name: Build Windows FunASR sidecar (PyInstaller)
+        run: npm run asr:build-sidecar-windows-cpu
+        timeout-minutes: 120
+
+      - name: Verify bundled sidecar artifacts
+        shell: bash
+        run: |
+          EXE="apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar/rushi-asr-sidecar.exe"
+          test -f "$EXE"
+          test -f "apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar/_internal/funasr/version.txt"
+          test -f "apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar/_internal/ffmpeg.exe"
 
       - name: Tauri build (MSI)
         working-directory: apps/desktop

@@ -21,8 +21,7 @@ export function useWaveformTimelineDurationSync(input: DurationSyncInput) {
   useEffect(() => {
     const d = resolveMediaDurationSec({
       wsDurationSec: input.wfDuration,
-      peaksStatusDurationSec:
-        input.wfIsReady || input.peakCache ? input.peaksStatusDurationSec : 0,
+      peaksStatusDurationSec: input.peaksStatusDurationSec,
     });
     if (d > 0) {
       input.setResolvedDurationSec((prev) => (Math.abs(prev - d) < 1e-6 ? prev : d));

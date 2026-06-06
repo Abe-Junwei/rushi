@@ -13,9 +13,26 @@ import {
 import { WAVEFORM_DECODE_SAMPLE_RATE } from "../services/waveform/waveformZoomSyncEngine";
 import { installWaveSurferProgressAbortWarnFilter } from "../services/waveform/waveSurferProgressAbortWarn";
 import { bindProjectWaveformWaveSurferEvents } from "./projectWaveformWaveSurferEvents";
+import { logDesktopUi } from "../services/desktopUiLog";
 import type { UseProjectWaveformOptions } from "./useProjectWaveformTypes";
 
 installWaveSurferProgressAbortWarnFilter();
+
+async function waitForWaveformContainer(
+  readContainer: () => HTMLDivElement | null,
+  isDisposed: () => boolean,
+  maxAttempts = 60,
+): Promise<HTMLDivElement | null> {
+  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
+    if (isDisposed()) return null;
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => resolve());
+    });
+    const el = readContainer();
+    if (el?.isConnected) return el;
+  }
+  return null;
+}
 
 type MountRefs = {
   optsRef: MutableRefObject<UseProjectWaveformOptions>;
@@ -44,6 +61,7 @@ type MountRefs = {
 export function useProjectWaveformMount(
   mediaUrl: string | null | undefined,
   deferDecodeMount: boolean,
+  peakCacheGeneration: number,
   refs: MountRefs,
   destroyWave: () => void,
 ) {
@@ -85,12 +103,13 @@ export function useProjectWaveformMount(
 
     let disposed = false;
     const run = async () => {
-      await new Promise<void>((r) => {
-        requestAnimationFrame(() => r());
-      });
+      const el = await waitForWaveformContainer(() => containerRef.current, () => disposed);
       if (disposed) return;
-      const el = containerRef.current;
-      if (!el?.isConnected) return;
+      if (!el) {
+        logDesktopUi("WARN", "waveform mount: container not connected after wait");
+        setLoadError("波形容器未就绪，请切换文件或重新打开项目");
+        return;
+      }
 
       const wantDragCreate = Boolean(optsRef.current.onWaveformCreateRange);
       const initialMps = minPxPerSecRef.current;
@@ -113,7 +132,11 @@ export function useProjectWaveformMount(
           peaks = bundle.peaks;
           duration = bundle.duration;
           markAppliedPeaks(appliedZoom, true, loadPx);
-        } catch {
+        } catch (err) {
+          logDesktopUi(
+            "ERROR",
+            `waveform mount peaks bootstrap: ${err instanceof Error ? err.message : String(err)}`,
+          );
           resetAppliedPeaks(appliedZoom);
         }
       } else {
@@ -183,6 +206,7 @@ export function useProjectWaveformMount(
   }, [
     mediaUrl,
     deferDecodeMount,
+    peakCacheGeneration,
     destroyWave,
     optsRef,
     containerRef,

@@ -14,7 +14,7 @@ import { WaveformZoomBar } from "../WaveformZoomBar";
 import { WaveformMinimapStrip } from "../WaveformMinimapStrip";
 import { resolveWaveformCenterStatusLabel } from "../../services/waveform/waveformRenderStatus";
 import { clampSegmentTimeBounds } from "../../utils/waveformSegmentBounds";
-import { resolveTierViewportMetrics, tierViewportWidthStyle } from "../../utils/waveformViewport";
+import { resolveTierViewportMetrics, resolveWaveformVerticalScalePreview, tierViewportWidthStyle } from "../../utils/waveformViewport";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
 
@@ -48,15 +48,14 @@ export function EditorWaveformPane({
   const innerPaintedHeightPx = tx.waveformPaintedHeightPx;
   const peaksPaintedHeightPx = Math.max(1, innerPaintedHeightPx);
   const segmentOverlayHeightPx = peaksPaintedHeightPx;
-  const waveformVisualScale =
-    peaksPaintedHeightPx > 0 ? peaksPaneHeightPx / peaksPaintedHeightPx : 1;
-  const waveformHeightPreviewActive =
-    Math.abs(waveformVisualScale - 1) > 0.001 && !tx.waveformHeightDragging;
-  const waveformVerticalTransform =
-    waveformHeightPreviewActive ? `scaleY(${waveformVisualScale})` : undefined;
+  const {
+    scale: waveformVisualScale,
+    active: waveformVerticalScaleActive,
+    transform: waveformVerticalTransform,
+  } = resolveWaveformVerticalScalePreview(peaksPaneHeightPx, peaksPaintedHeightPx);
   const waveformVerticalClass = tx.waveformHeightDragging
     ? "h-full w-full origin-top-left will-change-transform"
-    : waveformHeightPreviewActive
+    : waveformVerticalScaleActive
       ? "h-full w-full origin-top-left will-change-transform transition-transform duration-150 ease-out motion-reduce:transition-none"
       : "h-full w-full origin-top-left";
   const stripDisabled = c.busy || !tx.isReady;
@@ -105,13 +104,18 @@ export function EditorWaveformPane({
                 clientY: e.clientY,
                 overlayClientTop: paneTop,
                 peaksPaintedHeightPx: segmentOverlayHeightPx,
-                layoutYScale: waveformHeightPreviewActive ? waveformVisualScale : 1,
+                layoutYScale: waveformVerticalScaleActive ? waveformVisualScale : 1,
               });
             }}
           >
             {tx.loadError ? (
               <p className="absolute inset-x-4 top-4 z-30 rounded-md bg-zen-cinnabar/10 px-3 py-2 text-center text-[12px] text-zen-cinnabar">
                 {tx.loadError}
+              </p>
+            ) : null}
+            {tx.peaksError && !tx.loadError ? (
+              <p className="absolute inset-x-4 top-4 z-30 rounded-md bg-zen-cinnabar/10 px-3 py-2 text-center text-[12px] text-zen-cinnabar">
+                波形生成失败：{tx.peaksError}
               </p>
             ) : null}
             <div className="relative h-full bg-transparent">

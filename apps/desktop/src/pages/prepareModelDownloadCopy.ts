@@ -1,4 +1,5 @@
-/** User-facing copy for FunASR model prefetch (P1). */
+import { isPackagedDesktopApp } from "../config/env";
+import { packagedOrDev } from "../services/packagedUserHints";
 
 export type PrepareModelFailureCopy = {
   headline: string;
@@ -21,10 +22,15 @@ export function describePrepareModelFailure(code: string): PrepareModelFailureCo
   if (c === "funasr_not_installed") {
     return {
       headline: "当前 ASR 进程未加载 FunASR（或缺少依赖）。",
-      tips: [
-        "在 services/asr 的 venv 中执行 pip install -e \".[funasr]\"，然后重启 python -m rushi_asr。",
-        "也可用本页「一键安装 FunASR 依赖」后重启 ASR，再点「下载当前模型」。",
-      ],
+      tips: isPackagedDesktopApp()
+        ? [
+            "请在「环境与 ASR」点「一键准备本机 ASR」或「重试内置侧车」。",
+            "准备完成后点「下载当前模型」重试。",
+          ]
+        : [
+            "在 services/asr 的 venv 中执行 pip install -e \".[funasr]\"，然后重启 python -m rushi_asr。",
+            "也可用本页「一键安装 FunASR 依赖」后重启 ASR，再点「下载当前模型」。",
+          ],
     };
   }
   if (c === "modelscope_not_installed") {
@@ -98,9 +104,18 @@ export function describePrepareModelFailure(code: string): PrepareModelFailureCo
     return {
       headline: "无法连接本机 ASR 侧车（8741）。",
       tips: [
-        "确认侧车已启动：npm run desktop:dev（自动拉起）或 npm run asr:dev。",
-        "终端执行：curl -sf http://127.0.0.1:8741/health 应有 JSON 返回。",
-        "若磁盘已有模型但仍显示未缓存：侧车可能未绑定应用模型目录，请用上述命令重启侧车。",
+        packagedOrDev(
+          "确认侧车已启动：npm run desktop:dev（自动拉起）或 npm run asr:dev。",
+          "请在「环境与 ASR」点「一键准备本机 ASR」或「重试内置侧车」。",
+        ),
+        packagedOrDev(
+          "终端执行：curl -sf http://127.0.0.1:8741/health 应有 JSON 返回。",
+          "点「刷新状态」确认侧车 /health 正常。",
+        ),
+        packagedOrDev(
+          "若磁盘已有模型但仍显示未缓存：侧车可能未绑定应用模型目录，请用上述命令重启侧车。",
+          "若磁盘已有模型但仍显示未缓存：请点「一键准备本机 ASR」后再「刷新状态」。",
+        ),
         ...commonRetryTips(),
       ],
     };

@@ -16,6 +16,7 @@ import {
   peaksEnsureMediaDurationSec,
   shouldForcePeaksRegenerate,
 } from "../utils/peakMediaDuration";
+import { logDesktopUi } from "../services/desktopUiLog";
 
 function levelToEntry(level: WaveformPeakLevelStatus) {
   return {
@@ -216,7 +217,9 @@ export function useWaveformPeaks(
         setError(null);
       } catch (e) {
         if (cancelled || runId !== runIdRef.current) return;
-        setError(e instanceof Error ? e.message : String(e));
+        const msg = e instanceof Error ? e.message : String(e);
+        logDesktopUi("ERROR", `waveform peaks: ${msg}`);
+        setError(msg);
         setPeakCache(null);
       } finally {
         if (!cancelled && runId === runIdRef.current) {
@@ -274,7 +277,9 @@ export function useWaveformPeaks(
         setError(null);
       } catch (e) {
         if (cancelled || runId !== runIdRef.current) return;
-        setError(e instanceof Error ? e.message : String(e));
+        const msg = e instanceof Error ? e.message : String(e);
+        logDesktopUi("ERROR", `waveform peaks: ${msg}`);
+        setError(msg);
       } finally {
         if (!cancelled && runId === runIdRef.current) {
           setLoading(false);

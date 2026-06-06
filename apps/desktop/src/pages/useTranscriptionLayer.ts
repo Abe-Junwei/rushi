@@ -239,6 +239,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     peakCache: peaks.peakCache,
     peakCacheGeneration: peaks.peakCacheGeneration,
     peaksUnavailable: peaks.peaksUnavailable,
+    peaksError: peaks.error,
     exportMinimapPeaks: wf.exportMinimapPeaks,
     waveformPeaksPhase,
     waveformFooterStatusLabel,

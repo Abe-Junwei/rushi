@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useLayoutEffect, useRef, useState } from "react";
 import { X } from "lucide-react";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import {
@@ -10,7 +10,9 @@ import {
 } from "./floatingPanelPersist";
 import {
   clampFloatingPanelToViewport,
+  isFloatingPanelCentered,
   readFloatingPanelViewport,
+  reconcileFloatingPanelOnViewportResize,
   resolveFloatingPanelInitialState,
   snapshotFloatingPanelViewport,
 } from "./floatingPanelViewport";
@@ -131,6 +133,7 @@ export function DraggableResizablePanel({
   });
 
   const userSizedRef = useRef(phasePersist?.userSized === true);
+  const userMovedRef = useRef(false);
 
   const [position, setPosition] = useState<Position>(() => {
     if (!userSizedRef.current && fitTargetHeight != null && initialState.size.height < fitTargetHeight) {
@@ -144,6 +147,9 @@ export function DraggableResizablePanel({
     }
     return initialState.size;
   });
+  const [centerMode, setCenterMode] = useState(() =>
+    isFloatingPanelCentered(initialState.position, initialState.size, readFloatingPanelViewport(), viewportMargin),
+  );
   const panelStateRef = useRef({ position, size });
 
   useEffect(() => {
@@ -200,6 +206,9 @@ export function DraggableResizablePanel({
 
   const finishDragSession = () => {
     if (!dragRef.current) return;
+    if (dragRef.current.mode === "move") {
+      userMovedRef.current = true;
+    }
     if (persistStateRef.current) {
       persistSnapshot(
         panelStateRef.current.position,
@@ -215,6 +224,7 @@ export function DraggableResizablePanel({
   const startDrag = useCallback(
     (mode: string, e: React.PointerEvent) => {
       e.preventDefault();
+      setCenterMode(false);
       if (mode !== "move") userSizedRef.current = true;
       (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
       dragRef.current = {
@@ -316,28 +326,51 @@ export function DraggableResizablePanel({
   }, [clampToViewport, contentFitHeight, maxHeight, minHeight, persistSnapshot, position]);
 
   const trackedViewportRef = useRef(readFloatingPanelViewport());
+  const clampToViewportRef = useRef(clampToViewport);
+  clampToViewportRef.current = clampToViewport;
+  const persistSnapshotRef = useRef(persistSnapshot);
+  persistSnapshotRef.current = persistSnapshot;
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const reconcile = () => {
       const viewport = readFloatingPanelViewport();
-      const tracked = trackedViewportRef.current;
+      const prev = trackedViewportRef.current;
       const viewportChanged =
-        Math.abs(tracked.width - viewport.width) >= 48 ||
-        Math.abs(tracked.height - viewport.height) >= 48;
+        prev.width !== viewport.width ||
+        prev.height !== viewport.height ||
+        prev.offsetX !== viewport.offsetX ||
+        prev.offsetY !== viewport.offsetY;
+
+      const current = panelStateRef.current;
+      let pos = current.position;
+      let sz = current.size;
 
       if (viewportChanged) {
         trackedViewportRef.current = viewport;
+        const reconciled = reconcileFloatingPanelOnViewportResize({
+          position: pos,
+          size: sz,
+          prevViewport: prev,
+          nextViewport: viewport,
+          margin: viewportMargin,
+          userMoved: userMovedRef.current,
+        });
+        if (reconciled.recentered) {
+          pos = reconciled.position;
+          setCenterMode(true);
+        }
       }
 
-      const next = clampToViewport(position, size);
-      if (!samePosition(position, next.position)) setPosition(next.position);
-      if (!sameSize(size, next.size)) setSize(next.size);
-      if (
-        viewportChanged &&
-        persistState &&
-        (!samePosition(position, next.position) || !sameSize(size, next.size))
-      ) {
-        persistSnapshot(next.position, next.size, userSizedRef.current);
+      const next = clampToViewportRef.current(pos, sz);
+      const changed =
+        !samePosition(current.position, next.position) || !sameSize(current.size, next.size);
+      if (!samePosition(current.position, next.position)) setPosition(next.position);
+      if (!sameSize(current.size, next.size)) setSize(next.size);
+      if (changed) {
+        panelStateRef.current = next;
+      }
+      if (viewportChanged && persistState && changed) {
+        persistSnapshotRef.current(next.position, next.size, userSizedRef.current);
       }
     };
     reconcile();
@@ -345,15 +378,24 @@ export function DraggableResizablePanel({
     window.addEventListener("resize", reconcile);
     vv?.addEventListener("resize", reconcile);
     vv?.addEventListener("scroll", reconcile);
+
+    const ro =
+      typeof ResizeObserver !== "undefined"
+        ? new ResizeObserver(() => reconcile())
+        : null;
+    ro?.observe(document.documentElement);
+
     return () => {
       window.removeEventListener("resize", reconcile);
       vv?.removeEventListener("resize", reconcile);
       vv?.removeEventListener("scroll", reconcile);
+      ro?.disconnect();
     };
-  }, [clampToViewport, persistSnapshot, persistState, position, size]);
+  }, [persistState]);
 
   const handleTitleDoubleClick = useCallback(() => {
     userSizedRef.current = false;
+    userMovedRef.current = false;
     const targetHeight = resolveContentFitTargetHeight({
       contentFitHeight,
       maxHeight,
@@ -367,6 +409,7 @@ export function DraggableResizablePanel({
     const clamped = clampToViewport(position, nextSize);
     setPosition(clamped.position);
     setSize(clamped.size);
+    setCenterMode(true);
     persistSnapshot(clamped.position, clamped.size, false);
   }, [
     clampToViewport,
@@ -385,8 +428,8 @@ export function DraggableResizablePanel({
       data-panel-id={id}
       className="fixed"
       style={{
-        left: position.x,
-        top: position.y,
+        left: centerMode ? `calc(50vw - ${size.width / 2}px)` : position.x,
+        top: centerMode ? `calc(50vh - ${size.height / 2}px)` : position.y,
         width: size.width,
         height: size.height,
         zIndex,

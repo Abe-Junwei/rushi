@@ -3,13 +3,12 @@ import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../config/controlSty
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import type { PostTranscribeStageBDialogState } from "../pages/usePostTranscribeStageBController";
 import { isLocalLoopbackLlmConfig } from "../services/postprocess/postprocessRuntimeContract";
-import { describeStageBProgress } from "../services/postprocess/postTranscribeStageB";
+import { describeStageBPreviewSummary, describeStageBProgress } from "../services/postprocess/postTranscribeStageB";
 import { useFloatingPanelBodyMeasure } from "../hooks/useFloatingPanelBodyMeasure";
 import { FloatingPanelSegmentList } from "./FloatingPanelSegmentList";
 import {
   FLOATING_PANEL_COMPACT_MIN_HEIGHT,
-  POST_TRANSCRIBE_STAGE_B_PREVIEW_STATIC_BODY_PX,
-  resolveFloatingPanelFitHeight,
+  resolveStageBPreviewFitHeight,
   resolveStageBConsentFitHeight,
   resolveStageBEmptyFitHeight,
 } from "./floatingPanelSegmentListLayout";
@@ -31,7 +30,7 @@ import { highlightTextByDiff } from "../utils/textDiff";
 
 export const POST_TRANSCRIBE_STAGE_B_PANEL_ID = "post-transcribe-stage-b-v1";
 
-const STAGE_B_PANEL_DEFAULT_SIZE = { width: 520, height: 480 } as const;
+const STAGE_B_PANEL_DEFAULT_SIZE = { width: 480, height: 400 } as const;
 /** consent 默认宽度（说明短，较预览略窄） */
 const STAGE_B_CONSENT_DEFAULT_WIDTH = 480;
 /** loading 阶段 contentFitHeight：标题栏 + 进度区 + 取消按钮 */
@@ -44,7 +43,7 @@ function resolveStageBPanelBounds() {
     minWidth: 400,
     minHeight: 320,
     maxWidth: Math.min(720, Math.max(400, vw - margin * 2)),
-    maxHeight: Math.min(640, Math.max(320, vh - margin * 2)),
+    maxHeight: Math.min(520, Math.max(320, vh - margin * 2)),
   };
 }
 
@@ -152,12 +151,8 @@ export function PostTranscribeStageBDialog({
       ? state.pendingStageAHint
       : null;
 
-  const previewFitHeight = preview
-    ? resolveFloatingPanelFitHeight(
-        POST_TRANSCRIBE_STAGE_B_PREVIEW_STATIC_BODY_PX,
-        preview.changes.length,
-      )
-    : undefined;
+  const previewFitHeight = preview ? resolveStageBPreviewFitHeight(preview.changes.length) : undefined;
+  const previewSummary = preview ? describeStageBPreviewSummary(preview.changes.length) : null;
 
   const estimatedFit = isLoading
     ? STAGE_B_LOADING_PANEL_HEIGHT
@@ -269,10 +264,12 @@ export function PostTranscribeStageBDialog({
               <FloatingPanelDialogHeader>
                 {pendingHint ? <PendingStageAHint message={pendingHint} /> : null}
                 {packTruncationHint ? <PackTruncationHint message={packTruncationHint} /> : null}
-                <p className={PANEL_TYPOGRAPHY.dialogBody}>
-                  共 {preview.changes.length} 条语段有候选（高亮为将改部分）。
-                  <span className="text-notion-text-muted"> · 点击行定位语段</span>
-                </p>
+                {previewSummary ? (
+                  <div className="space-y-1">
+                    <p className={PANEL_TYPOGRAPHY.dialogBody}>{previewSummary.headline}</p>
+                    <p className={`${PANEL_TYPOGRAPHY.meta} text-notion-text-muted`}>{previewSummary.hint}</p>
+                  </div>
+                ) : null}
                 {preview.droppedUngroundedOps > 0 ? (
                   <p
                     className={`rounded-md bg-zen-saffron/10 px-3 py-2 ${PANEL_TYPOGRAPHY.dialogBody} text-notion-text`}
