@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { useEffect, useMemo, useCallback } from "react";
 import { useTranscriptFooterStats } from "../hooks/useTranscriptFooterStats";
 import { clearToastBottomInset, syncToastBottomInset } from "../services/ui/toastLayout";
 import { EditorToolbar } from "./EditorToolbar";
@@ -9,19 +9,30 @@ import type { ProjectControllerApi } from "../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../pages/useTranscriptionLayer";
 import { EmptyProjectPanel } from "./EmptyProjectPanel";
 import { ProjectFilesHubPanel } from "./ProjectFilesHubPanel";
-import type { ContextMenuItem } from "./SegmentContextMenu";
 import {
   type SegmentContextMenuKey,
   type SegmentContextMenuOpen,
 } from "../utils/segmentContextMenuModel";
-import type { SegmentTextContextMenuKey } from "../utils/segmentTextContextMenuModel";
+import {
+  clampTranscriptFontPx,
+  TRANSCRIPT_FONT_MAX,
+  TRANSCRIPT_FONT_MIN,
+} from "../utils/waveformPrefs";
+import {
+  buildSegmentRowContextMenuItems,
+  isSegmentTextContextMenuKey,
+  parseFontFamilyFromContextMenuKey,
+  type SegmentTextContextMenuKey,
+} from "../utils/segmentTextContextMenuModel";
+import { EditorStatusFooter } from "./editor/EditorStatusFooter";
 import { EditorSegmentWorkbench } from "./editor/EditorSegmentWorkbench";
 import { SegmentCorrectPopover } from "./segmentRow/SegmentCorrectPopover";
 import { EditorWaveformPane } from "./editor/EditorWaveformPane";
+import { EditorWorkbenchToolbar } from "./editor/EditorWorkbenchToolbar";
 import { RestoreEditLogConfirmDialog } from "./editor/RestoreEditLogConfirmDialog";
 import { useEditorEditHistory } from "./editor/useEditorEditHistory";
 import { useEditorTranscriptAppearance } from "./editor/useEditorTranscriptAppearance";
-import { autoSaveFooterLabel } from "../pages/useAutoSaveSegments";
+import { useEditorFooterShortcutHintRotation } from "../hooks/useEditorFooterShortcutHintRotation";
 
 interface EditorViewProps {
   controller: ProjectControllerApi;
@@ -33,12 +44,6 @@ interface EditorViewProps {
   llmStatusRefreshSeq?: number;
   segmentCtxMenu: SegmentContextMenuOpen | null;
   setSegmentCtxMenu: (v: SegmentContextMenuOpen | null) => void;
-  segmentCtxMenuItems: ContextMenuItem[];
-  onSegmentCtxMenuSelect: (key: SegmentContextMenuKey) => void;
-  segmentTextCtxMenu: { x: number; y: number; wrong: string } | null;
-  setSegmentTextCtxMenu: (v: { x: number; y: number; wrong: string } | null) => void;
-  segmentTextCtxMenuItems: ContextMenuItem[];
-  onSegmentTextCtxMenuSelect: (key: SegmentTextContextMenuKey) => void;
 }
 
 export function EditorView({
@@ -51,14 +56,100 @@ export function EditorView({
   llmStatusRefreshSeq = 0,
   segmentCtxMenu,
   setSegmentCtxMenu,
-  segmentCtxMenuItems,
-  onSegmentCtxMenuSelect,
-  segmentTextCtxMenu,
-  setSegmentTextCtxMenu,
-  segmentTextCtxMenuItems,
-  onSegmentTextCtxMenuSelect,
 }: EditorViewProps) {
   const appearance = useEditorTranscriptAppearance(c.busy, Boolean(c.currentFileId));
+  const transcriptFontPx = clampTranscriptFontPx(tx.transcriptFontPx);
+  const segmentCtxMenuItems = useMemo(
+    () =>
+      segmentCtxMenu
+        ? buildSegmentRowContextMenuItems({
+            segmentIdx: segmentCtxMenu.segmentIdx,
+            segments: c.segments,
+            busy: c.busy,
+            pointerTimeSec: segmentCtxMenu.pointerTimeSec,
+            origin: segmentCtxMenu.origin,
+            selectionText: segmentCtxMenu.selectionText,
+            appearance: {
+              appearanceDisabled: appearance.transcriptFontControlDisabled,
+              transcriptFontFamily: appearance.transcriptFontFamily,
+              transcriptFontWeight: appearance.transcriptFontWeight,
+              transcriptFontItalic: appearance.transcriptFontItalic,
+              transcriptFontPx,
+              fontSizeAtMin: transcriptFontPx <= TRANSCRIPT_FONT_MIN,
+              fontSizeAtMax: transcriptFontPx >= TRANSCRIPT_FONT_MAX,
+              fontOptions: appearance.fontOptions,
+            },
+          })
+        : [],
+    [
+      segmentCtxMenu,
+      c.segments,
+      c.busy,
+      appearance.transcriptFontControlDisabled,
+      appearance.transcriptFontFamily,
+      appearance.transcriptFontWeight,
+      appearance.transcriptFontItalic,
+      appearance.fontOptions,
+      transcriptFontPx,
+    ],
+  );
+
+  const onSegmentCtxMenuSelect = useCallback(
+    (key: string) => {
+      if (!segmentCtxMenu) return;
+
+      if (isSegmentTextContextMenuKey(key)) {
+        const actionKey: SegmentTextContextMenuKey = key;
+        if (actionKey === "addCorrectionMemory") {
+          c.openManualCorrectionMemoryDialog(segmentCtxMenu.selectionText);
+          return;
+        }
+        if (actionKey === "toggleBold") {
+          appearance.setTranscriptFontWeight((weight) => (weight >= 700 ? 500 : 700));
+          return;
+        }
+        if (actionKey === "toggleItalic") {
+          appearance.setTranscriptFontItalic((italic) => !italic);
+          return;
+        }
+        if (actionKey === "fontSizeDecrease") {
+          tx.nudgeTranscriptFontPx(-1);
+          return;
+        }
+        if (actionKey === "fontSizeIncrease") {
+          tx.nudgeTranscriptFontPx(1);
+          return;
+        }
+        if (actionKey.startsWith("font:")) {
+          const family = parseFontFamilyFromContextMenuKey(actionKey);
+          if (family && family !== "__empty") {
+            appearance.setTranscriptFontFamily(appearance.normalizeFontFamily(family));
+          }
+        }
+        return;
+      }
+
+      const segmentKey = key as SegmentContextMenuKey;
+      const i = segmentCtxMenu.segmentIdx;
+      switch (segmentKey) {
+        case "delete":
+          tx.deleteSegmentAt(i);
+          break;
+        case "mergePrev":
+          c.mergeWithPrevAt(i);
+          break;
+        case "mergeNext":
+          c.mergeWithNextAt(i);
+          break;
+        case "splitAtPointer":
+          tx.splitAtPlayhead(segmentCtxMenu.pointerTimeSec);
+          break;
+        default:
+          break;
+      }
+    },
+    [appearance, c, segmentCtxMenu, tx],
+  );
   const transcriptStats = useTranscriptFooterStats(c.segments);
   const editHistory = useEditorEditHistory({
     projectId: c.current?.id,
@@ -84,6 +175,13 @@ export function EditorView({
     syncToastBottomInset(Boolean(c.currentFileId));
     return () => clearToastBottomInset();
   }, [c.currentFileId]);
+
+  const statusCenterLabel = tx.editorHint || tx.waveformFooterStatusLabel || "";
+  const shortcutHint = useEditorFooterShortcutHintRotation(
+    Boolean(c.currentFileId) && !statusCenterLabel,
+  );
+  const footerCenterLabel = statusCenterLabel || shortcutHint;
+  const footerCenterHintKind = statusCenterLabel ? "status" : shortcutHint ? "shortcut" : "none";
 
   return (
     <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-notion-bg" data-purpose="editor-workspace">
@@ -153,41 +251,26 @@ export function EditorView({
               </div>
             )}
 
+            <EditorWorkbenchToolbar controller={c} tx={tx} hasAudio={Boolean(c.audioSrc)} />
+
             <EditorSegmentWorkbench
               controller={c}
               tx={tx}
               appearance={appearance}
-              editHistory={editHistory}
               onOpenSegmentContextMenu={setSegmentCtxMenu}
-              onOpenSegmentTextContextMenu={(e, selectionText) => {
-                setSegmentTextCtxMenu({ x: e.clientX, y: e.clientY, wrong: selectionText });
-              }}
             />
           </main>
 
           {c.currentFileId ? (
-            <footer className="relative z-40 flex h-[30px] shrink-0 items-center border-t border-notion-divider bg-notion-bg px-2.5 text-[11px] text-notion-text-muted">
-              <div className="flex min-w-0 flex-1 items-center gap-2">
-                <span>{autoSaveFooterLabel(c.autoSaveFooterStatus)}</span>
-              </div>
-              {c.audioSrc ? (
-                <span
-                  className="pointer-events-none absolute left-1/2 max-w-[50%] -translate-x-1/2 truncate text-center text-[11px] text-notion-text-muted"
-                  aria-live="polite"
-                >
-                  {tx.waveformFooterStatusLabel ?? ""}
-                </span>
-              ) : null}
-              <div className="flex flex-1 items-center justify-end tabular-nums">
-                <span>
-                  {transcriptStats.segmentCount} 条语段
-                  <span className="mx-1.5 text-notion-text-light" aria-hidden>
-                    ·
-                  </span>
-                  {transcriptStats.charCount.toLocaleString("zh-CN")} 字
-                </span>
-              </div>
-            </footer>
+            <EditorStatusFooter
+              controller={c}
+              editHistory={editHistory}
+              centerLabel={footerCenterLabel}
+              centerHintKind={footerCenterHintKind}
+              showCenterLabel={Boolean(c.currentFileId && footerCenterLabel)}
+              segmentCount={transcriptStats.segmentCount}
+              charCount={transcriptStats.charCount}
+            />
           ) : null}
         </>
       ) : hasProjectFiles ? (
@@ -200,20 +283,8 @@ export function EditorView({
           x={segmentCtxMenu.x}
           y={segmentCtxMenu.y}
           items={segmentCtxMenuItems}
-          onSelect={(key) => onSegmentCtxMenuSelect(key as SegmentContextMenuKey)}
+          onSelect={onSegmentCtxMenuSelect}
           onClose={() => setSegmentCtxMenu(null)}
-        />
-      ) : null}
-      {segmentTextCtxMenu ? (
-        <SegmentContextMenu
-          x={segmentTextCtxMenu.x}
-          y={segmentTextCtxMenu.y}
-          items={segmentTextCtxMenuItems}
-          onSelect={(key) => {
-            onSegmentTextCtxMenuSelect(key as SegmentTextContextMenuKey);
-            setSegmentTextCtxMenu(null);
-          }}
-          onClose={() => setSegmentTextCtxMenu(null)}
         />
       ) : null}
       <SegmentCorrectPopover

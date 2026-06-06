@@ -21,9 +21,16 @@ import { FindReplaceMatchText } from "../FindReplaceMatchText";
 import { isCorrectionRulesPanelOpen } from "../../pages/correctionRulesPanelTypes";
 import { isFindReplacePanelOpen } from "../../pages/findReplaceTypes";
 import { CorrectableMatchText } from "./CorrectableMatchText";
-import { resolveSegmentTextContextMenuAction } from "../../utils/segmentTextContextMenuSelection";
+import {
+  resolveSegmentTextContextMenuAction,
+  restoreSegmentTextContextMenuSelection,
+  type SegmentTextContextMenuSelectionSnapshot,
+} from "../../utils/segmentTextContextMenuSelection";
 import { syncTranscriptTextareaSelection } from "../../utils/transcriptSelection";
 import type { CorrectableSpan } from "../../services/editor/findCorrectableSpans";
+
+/** 正文区 DOM 标记：行级右键（删/并）应跳过此区域，统一走文本外观菜单。 */
+export const SEGMENT_TEXT_BODY_ATTR = "data-seg-text-body";
 
 interface SegmentRowTextFieldProps {
   segment: SegmentDto;
@@ -42,9 +49,7 @@ interface SegmentRowTextFieldProps {
   correctionRulesHighlight?: { charStart: number; charEnd: number } | null;
   spansForText: (text: string) => CorrectableSpan[];
   onCorrectableSpanClick: (span: CorrectableSpan, event: React.MouseEvent<HTMLButtonElement>) => void;
-  onOpenTextContextMenu?: (e: MouseEvent<HTMLTextAreaElement>, selectionText: string) => void;
-  /** 无选区时右键：打开语段行菜单（删/并），避免正文区只有「纳入更正记忆」 */
-  onRequestRowContextMenu?: (e: MouseEvent<HTMLTextAreaElement>) => void;
+  onOpenTextContextMenu?: (e: MouseEvent<HTMLElement>, selectionText: string) => void;
 }
 
 function initialTextareaValue(draftKey: string, committedText: string): string {
@@ -68,12 +73,11 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
   spansForText,
   onCorrectableSpanClick,
   onOpenTextContextMenu,
-  onRequestRowContextMenu,
 }: SegmentRowTextFieldProps) {
   const draftKey = segmentDraftKey(s, i);
   const committedText = normalizeSegmentDraftText(s.text ?? "");
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const preContextMenuSelectionRef = useRef<{ collapsed: boolean } | null>(null);
+  const preContextMenuSelectionRef = useRef<SegmentTextContextMenuSelectionSnapshot | null>(null);
   const isFocusedRef = useRef(false);
   const lastSyncedFindHighlightRef = useRef<string | null>(null);
   const [textareaEpoch, setTextareaEpoch] = useState(0);
@@ -170,13 +174,25 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
     syncTranscriptTextareaSelection(e.currentTarget);
   }, []);
 
+  const openTextContextMenu = useCallback(
+    (e: MouseEvent<HTMLElement>, selectionText: string) => {
+      if (busy || !onOpenTextContextMenu) return;
+      e.preventDefault();
+      e.stopPropagation();
+      onOpenTextContextMenu(e, selectionText);
+    },
+    [busy, onOpenTextContextMenu],
+  );
+
   const onTextPointerDownCapture = useCallback((e: PointerEvent<HTMLTextAreaElement>) => {
     if (e.button !== 2) return;
     const el = e.currentTarget;
-    const start = el.selectionStart;
-    const end = el.selectionEnd;
+    const start = el.selectionStart ?? 0;
+    const end = el.selectionEnd ?? 0;
     preContextMenuSelectionRef.current = {
-      collapsed: start == null || end == null || start === end,
+      start,
+      end,
+      collapsed: start === end,
     };
   }, []);
 
@@ -184,33 +200,26 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
     (e: MouseEvent<HTMLTextAreaElement>) => {
       if (busy) return;
       const el = e.currentTarget;
-      const start = el.selectionStart ?? 0;
-      const end = el.selectionEnd ?? 0;
-      const wasCollapsed =
-        preContextMenuSelectionRef.current?.collapsed ?? start === end;
+      const snapshot = preContextMenuSelectionRef.current;
       preContextMenuSelectionRef.current = null;
 
       const action = resolveSegmentTextContextMenuAction({
-        wasCollapsedBeforeContextMenu: wasCollapsed,
-        selectionStart: start,
-        selectionEnd: end,
+        snapshot,
         value: el.value,
       });
 
-      if (action.kind === "row") {
-        if (onRequestRowContextMenu) {
-          e.preventDefault();
-          e.stopPropagation();
-          onRequestRowContextMenu(e);
-        }
-        return;
-      }
-      if (!onOpenTextContextMenu) return;
-      e.preventDefault();
-      e.stopPropagation();
-      onOpenTextContextMenu(e, action.selectionText);
+      openTextContextMenu(e, action.selectionText);
+      queueMicrotask(() => restoreSegmentTextContextMenuSelection(el, snapshot));
     },
-    [busy, onOpenTextContextMenu, onRequestRowContextMenu],
+    [busy, openTextContextMenu],
+  );
+
+  const onStaticTextContextMenu = useCallback(
+    (e: MouseEvent<HTMLDivElement>) => {
+      if (busy) return;
+      openTextContextMenu(e, "");
+    },
+    [busy, openTextContextMenu],
   );
 
   const onRowHeightHandlePointerDown = useCallback(
@@ -261,7 +270,7 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
     !busy;
 
   return (
-    <div className="min-w-0 flex-1">
+    <div className="min-w-0 flex-1" {...{ [SEGMENT_TEXT_BODY_ATTR]: "" }}>
       <div className="rounded-lg bg-transparent transition-[background-color] duration-150">
         {selected ? (
           <>
@@ -351,10 +360,11 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
               "min-h-[3.1rem] px-4 py-2.5 transition-colors duration-150",
               hasPanelHighlight
                 ? "text-notion-text"
-                : "text-notion-text-light group-hover:text-notion-text-muted",
+                : "text-notion-text-muted group-hover:text-notion-text-muted",
             ].join(" ")}
             style={textStyle}
             aria-label="语段正文"
+            onContextMenu={onStaticTextContextMenu}
           >
             {committedText.trim().length > 0 ? (
               hasPanelHighlight ? (

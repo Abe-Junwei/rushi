@@ -3,6 +3,7 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useWaveformPlaybackScrollFollow } from "./useWaveformPlaybackScrollFollow";
+import type { WaveformPlaybackScrollFollowMode } from "../utils/waveformPlaybackScrollFollow";
 
 function createTier(clientWidth = 400) {
   const el = document.createElement("div");
@@ -139,6 +140,41 @@ describe("useWaveformPlaybackScrollFollow", () => {
 
     act(() => {});
     expect(setTierScrollPx).not.toHaveBeenCalled();
+  });
+
+  it("centers playhead immediately when switching to center while paused", async () => {
+    const tier = createTier(400);
+    const tierScrollRef = { current: tier };
+    const setTierScrollPx = vi.fn();
+
+    const { rerender } = renderHook(
+      (props: { followMode: WaveformPlaybackScrollFollowMode }) =>
+        useWaveformPlaybackScrollFollow({
+          tierScrollRef,
+          timelineWidthPx: 3000,
+          durationSec: 30,
+          isPlaying: false,
+          isReady: true,
+          enabled: true,
+          followMode: props.followMode,
+          getPlayheadTimeSec: () => 15,
+          setTierScrollPx,
+        }),
+      { initialProps: { followMode: "edge" as WaveformPlaybackScrollFollowMode } },
+    );
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    setTierScrollPx.mockClear();
+
+    rerender({ followMode: "center" });
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    expect(setTierScrollPx).toHaveBeenCalledWith(1300, { deferLayoutCommit: true, immediate: true });
   });
 
   it("pauses follow while user tier scroll suppress is active", async () => {

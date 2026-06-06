@@ -6,6 +6,8 @@ const LS_KEY = "rushi.p1.waveformPxPerSec";
 const LS_HEIGHT = "rushi.p1.waveformHeightPx";
 const LS_FONT = "rushi.p1.transcriptFontPx";
 const LS_GLOBAL_PLAYBACK_RATE = "rushi.p1.waveformGlobalPlaybackRate";
+/** @deprecated 已合并至 global；仅用于一次性迁移 */
+const LS_SEGMENT_PLAYBACK_RATE_LEGACY = "rushi.p1.segmentPlaybackRate";
 const LS_TAB_ADVANCE_LOOP = "rushi.p1.tabAdvanceLoopsSegment";
 const LS_MINIMAP = "rushi.p1.waveformMinimap";
 const LS_PLAYBACK_SCROLL_FOLLOW = "rushi.p1.waveformPlaybackScrollFollow";
@@ -111,6 +113,31 @@ export function writeStoredWaveformGlobalPlaybackRate(rate: number): void {
     localStorage.setItem(LS_GLOBAL_PLAYBACK_RATE, String(clampWaveformPlaybackRate(rate)));
   } catch {
     /* noop */
+  }
+}
+
+/**
+ * 语段倍速已废弃：若 global 仍为默认 1× 而 legacy segment key 有值，则迁移并删除旧 key。
+ * @returns 迁移后的倍速；无迁移时 null
+ */
+export function migrateLegacySegmentPlaybackRateToGlobal(): number | null {
+  try {
+    const segmentRaw = localStorage.getItem(LS_SEGMENT_PLAYBACK_RATE_LEGACY);
+    if (segmentRaw == null || segmentRaw === "") return null;
+    const segmentValue = Number(segmentRaw);
+    localStorage.removeItem(LS_SEGMENT_PLAYBACK_RATE_LEGACY);
+    if (!Number.isFinite(segmentValue)) return null;
+    const segmentRate = clampWaveformPlaybackRate(segmentValue);
+    const globalRaw = localStorage.getItem(LS_GLOBAL_PLAYBACK_RATE);
+    const globalIsDefault =
+      globalRaw == null || globalRaw === "" || Number(globalRaw) === 1;
+    if (globalIsDefault && segmentRate !== 1) {
+      writeStoredWaveformGlobalPlaybackRate(segmentRate);
+      return segmentRate;
+    }
+    return null;
+  } catch {
+    return null;
   }
 }
 

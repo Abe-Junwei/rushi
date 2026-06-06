@@ -158,7 +158,7 @@ export function useProjectWaveformMount(
         sampleRate: peaks ? undefined : WAVEFORM_DECODE_SAMPLE_RATE,
         waveColor: COLORS.waveformWave,
         progressColor: COLORS.waveformProgress,
-        cursorColor: COLORS.waveformCursor,
+        cursorColor: COLORS.indigo,
         cursorWidth: 1,
         barWidth: 2,
         barGap: 1,

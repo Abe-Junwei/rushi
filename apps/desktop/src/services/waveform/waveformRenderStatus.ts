@@ -9,7 +9,11 @@ type StatusInput = {
 
 /** Steady-state label for editor footer center (e.g. 正在优化波形…). */
 export function resolveWaveformFooterStatusLabel(input: StatusInput): string | null {
-  return resolveWaveformHeaderStatusLabel(input);
+  const label = resolveWaveformHeaderStatusLabel(input);
+  if (!label) return null;
+  // Idle「波形就绪」仅作波形区状态，不占底栏居中位（留给快捷键 hint 轮换）。
+  if (label === "波形就绪") return null;
+  return label;
 }
 
 /** @deprecated use resolveWaveformFooterStatusLabel */

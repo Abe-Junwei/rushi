@@ -5,15 +5,22 @@ import {
   formatWaveformPlaybackRateLabel,
 } from "../utils/waveformPlaybackRate";
 import {
+  migrateLegacySegmentPlaybackRateToGlobal,
   readStoredWaveformGlobalPlaybackRate,
   writeStoredWaveformGlobalPlaybackRate,
 } from "../utils/waveformPrefs";
+
+function readInitialGlobalPlaybackRate(): number {
+  const migrated = migrateLegacySegmentPlaybackRateToGlobal();
+  if (migrated != null) return migrated;
+  return readStoredWaveformGlobalPlaybackRate();
+}
 
 export function useWaveformGlobalPlayback(
   wsRef: React.MutableRefObject<WaveSurfer | null>,
   isReady: boolean,
 ) {
-  const [globalPlaybackRate, setGlobalPlaybackRateState] = useState(readStoredWaveformGlobalPlaybackRate);
+  const [globalPlaybackRate, setGlobalPlaybackRateState] = useState(readInitialGlobalPlaybackRate);
   const globalPlaybackRateRef = useRef(globalPlaybackRate);
   globalPlaybackRateRef.current = globalPlaybackRate;
 

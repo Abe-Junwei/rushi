@@ -1,37 +1,63 @@
 import { describe, expect, it } from "vitest";
-import { resolveSegmentTextContextMenuAction } from "./segmentTextContextMenuSelection";
+import {
+  resolveSegmentTextContextMenuAction,
+  restoreSegmentTextContextMenuSelection,
+} from "./segmentTextContextMenuSelection";
 
 describe("resolveSegmentTextContextMenuAction", () => {
-  it("opens row menu when selection was collapsed before context menu (browser auto-select)", () => {
+  it("opens text menu without correction selection when snapshot was collapsed", () => {
     expect(
       resolveSegmentTextContextMenuAction({
-        wasCollapsedBeforeContextMenu: true,
-        selectionStart: 4,
-        selectionEnd: 5,
+        snapshot: { start: 4, end: 4, collapsed: true },
         value: "你好。",
       }),
-    ).toEqual({ kind: "row" });
+    ).toEqual({ kind: "textMenu", selectionText: "" });
   });
 
-  it("opens correction memory when user had a range before right-click", () => {
+  it("passes selection text when user had a range before right-click", () => {
     expect(
       resolveSegmentTextContextMenuAction({
-        wasCollapsedBeforeContextMenu: false,
-        selectionStart: 0,
-        selectionEnd: 2,
+        snapshot: { start: 0, end: 2, collapsed: false },
         value: "你好。",
       }),
-    ).toEqual({ kind: "correctionMemory", selectionText: "你好" });
+    ).toEqual({ kind: "textMenu", selectionText: "你好" });
   });
 
-  it("opens row menu for whitespace-only selection", () => {
+  it("ignores contextmenu-time auto selection without pointerdown snapshot", () => {
     expect(
       resolveSegmentTextContextMenuAction({
-        wasCollapsedBeforeContextMenu: false,
-        selectionStart: 0,
-        selectionEnd: 1,
+        snapshot: null,
+        value: "你好。",
+      }),
+    ).toEqual({ kind: "textMenu", selectionText: "" });
+  });
+
+  it("opens text menu with empty selection for whitespace-only range", () => {
+    expect(
+      resolveSegmentTextContextMenuAction({
+        snapshot: { start: 0, end: 1, collapsed: false },
         value: " a",
       }),
-    ).toEqual({ kind: "row" });
+    ).toEqual({ kind: "textMenu", selectionText: "" });
+  });
+});
+
+describe("restoreSegmentTextContextMenuSelection", () => {
+  it("restores collapsed caret from snapshot", () => {
+    const textarea = document.createElement("textarea");
+    textarea.value = "你好。";
+    textarea.setSelectionRange(2, 3);
+    restoreSegmentTextContextMenuSelection(textarea, { start: 0, end: 0, collapsed: true });
+    expect(textarea.selectionStart).toBe(0);
+    expect(textarea.selectionEnd).toBe(0);
+  });
+
+  it("restores deliberate range from snapshot", () => {
+    const textarea = document.createElement("textarea");
+    textarea.value = "你好。";
+    textarea.setSelectionRange(2, 2);
+    restoreSegmentTextContextMenuSelection(textarea, { start: 0, end: 2, collapsed: false });
+    expect(textarea.selectionStart).toBe(0);
+    expect(textarea.selectionEnd).toBe(2);
   });
 });

@@ -21,8 +21,14 @@ export type SegmentTextListRowProps = {
   selectSegmentAt: (idx: number) => void;
   updateSegmentText: (idx: number, text: string) => void;
   onTextareaKeyDown: (idx: number, e: KeyboardEvent<HTMLTextAreaElement>) => void;
-  onOpenContextMenu?: (e: MouseEvent<HTMLDivElement>, segmentIdx: number, pointerTimeSec: number) => void;
-  onOpenTextContextMenu?: (e: MouseEvent<HTMLTextAreaElement>, selectionText: string) => void;
+  onOpenContextMenu?: (
+    e: MouseEvent<HTMLElement>,
+    segmentIdx: number,
+    pointerTimeSec: number,
+    selectionText?: string,
+  ) => void;
+  onOpenTextContextMenu?: (e: MouseEvent<HTMLElement>, selectionText: string) => void;
+  onRevealSelectedSegment?: () => void;
   findReplaceHighlight?: { charStart: number; charEnd: number } | null;
   correctionRulesHighlight?: { charStart: number; charEnd: number } | null;
   spansForText: (text: string) => CorrectableSpan[];
@@ -47,6 +53,7 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
   onTextareaKeyDown,
   onOpenContextMenu,
   onOpenTextContextMenu,
+  onRevealSelectedSegment,
   findReplaceHighlight,
   correctionRulesHighlight,
   spansForText,
@@ -61,27 +68,32 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
     transcriptFontItalic,
   );
 
+  const pointerTimeSec = (s.start_sec + s.end_sec) / 2;
+
   const onClickRow = useCallback(
     (e: MouseEvent<HTMLDivElement>) => {
       if (busy) return;
       if ((e.target as HTMLElement).closest("textarea")) return;
       if (selected) {
         editorRef.current?.focusEditor();
+        onRevealSelectedSegment?.();
         return;
       }
       focusOnSelectRef.current = true;
       selectSegmentAt(i);
     },
-    [busy, i, selectSegmentAt, selected],
+    [busy, i, onRevealSelectedSegment, selectSegmentAt, selected],
   );
 
   const rowMinHeight = Math.max(60, Math.round(segmentRowHeightPx + 2));
   const metaWidth = Math.max(44, Math.round((segmentMetaWidthPx - 10) / 2));
+
   const onRowContextMenu = useCallback(
     (e: MouseEvent<HTMLDivElement>) => {
-      onOpenContextMenu?.(e, i, (s.start_sec + s.end_sec) / 2);
+      if ((e.target as HTMLElement).closest('textarea[aria-label="语段正文"]')) return;
+      onOpenContextMenu?.(e, i, pointerTimeSec, "");
     },
-    [i, onOpenContextMenu, s.end_sec, s.start_sec],
+    [i, onOpenContextMenu, pointerTimeSec],
   );
 
   return (
@@ -90,9 +102,7 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
       style={{ minHeight: rowMinHeight }}
       className={[
         "group relative flex cursor-text items-start gap-2 rounded-md border border-transparent px-[9px] py-[9px] transition-[background-color,border-color,box-shadow]",
-        selected
-          ? "border-notion-border bg-zen-ochre/45 shadow-[inset_0_0_0_1px_var(--notion-border)]"
-          : "bg-transparent hover:bg-notion-sidebar/20",
+        selected ? "seg-row-selected" : "bg-transparent hover:border-notion-divider",
       ].join(" ")}
       onClick={onClickRow}
       onContextMenu={onRowContextMenu}
@@ -124,13 +134,6 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
         spansForText={spansForText}
         onCorrectableSpanClick={onCorrectableSpanClick}
         onOpenTextContextMenu={onOpenTextContextMenu}
-        onRequestRowContextMenu={(e) => {
-          onOpenContextMenu?.(
-            e as unknown as MouseEvent<HTMLDivElement>,
-            i,
-            (s.start_sec + s.end_sec) / 2,
-          );
-        }}
       />
     </div>
   );

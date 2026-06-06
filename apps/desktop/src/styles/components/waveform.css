@@ -40,15 +40,187 @@
   width: 100%;
   height: 40px;
   flex-shrink: 0;
-  align-items: center;
-  justify-content: space-between;
-  gap: 12px;
+  align-items: stretch;
   padding: 0 16px;
   overflow: visible;
   font-size: 12px;
   color: var(--notion-text-muted);
   background: color-mix(in srgb, var(--notion-sidebar) 88%, var(--notion-bg));
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--notion-bg) 55%, transparent);
+  scrollbar-width: thin;
+}
+
+.waveform-bottom-toolbar-track {
+  display: flex;
+  width: 100%;
+  min-width: min-content;
+  flex-wrap: nowrap;
+  align-items: center;
+  gap: 10px;
+}
+
+.waveform-toolbar-zone {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 10px;
+  min-width: 0;
+}
+
+.waveform-toolbar-transport {
+  overflow: visible;
+}
+
+.waveform-toolbar-view {
+  overflow: visible;
+}
+
+.waveform-toolbar-zoom,
+.waveform-toolbar-edit {
+  overflow: visible;
+}
+
+.editor-workbench-toolbar {
+  height: 40px;
+  padding: 0 16px;
+  border-bottom: 1px solid color-mix(in srgb, var(--notion-border) 55%, transparent);
+}
+
+/** 无音频文件：仅编辑动作，40px 单行居中（不保留空 transport/zoom 列） */
+.editor-workbench-toolbar--no-audio {
+  height: 40px;
+  padding: 0 16px;
+}
+
+.editor-workbench-toolbar-track--no-audio {
+  grid-template-columns: minmax(0, 1fr);
+  min-width: 0;
+}
+
+.workbench-toolbar-center--solo {
+  grid-column: 1;
+  justify-self: center;
+  width: 100%;
+  max-width: 100%;
+}
+
+.editor-workbench-toolbar--no-audio .workbench-toolbar-group--solo {
+  margin-inline: auto;
+}
+
+.editor-workbench-toolbar--no-audio .waveform-toolbar-transcribe {
+  justify-content: center;
+}
+
+.editor-workbench-toolbar .waveform-bottom-toolbar-track {
+  gap: 12px;
+}
+
+.editor-workbench-toolbar-track {
+  display: grid;
+  width: 100%;
+  min-width: min-content;
+  grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
+  align-items: center;
+  column-gap: 12px;
+  overflow: visible;
+  scrollbar-width: thin;
+}
+
+.workbench-toolbar-left {
+  display: flex;
+  min-width: 0;
+  justify-self: start;
+  align-items: center;
+}
+
+.workbench-toolbar-center {
+  display: flex;
+  position: relative;
+  z-index: 72;
+  grid-column: 2;
+  justify-self: center;
+  align-items: center;
+  min-width: 0;
+}
+
+.workbench-toolbar-right {
+  display: flex;
+  position: relative;
+  z-index: 72;
+  grid-column: 3;
+  justify-self: end;
+  align-items: center;
+  min-width: 0;
+}
+
+/** 左/右工具组：浅底 pill，无额外 border（遵守面板 ≤2 层 border） */
+.workbench-toolbar-group {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+  padding: 3px 6px;
+  border-radius: 10px;
+  background: color-mix(in srgb, var(--notion-bg) 78%, var(--notion-sidebar));
+}
+
+.editor-workbench-toolbar .workbench-toolbar-group.waveform-toolbar-zone,
+.editor-workbench-toolbar .workbench-toolbar-group.waveform-toolbar-subzone {
+  gap: 6px;
+}
+
+.editor-workbench-toolbar .waveform-toolbar-viewport {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 8px;
+}
+
+.editor-workbench-toolbar .waveform-toolbar-zone,
+.editor-workbench-toolbar .waveform-toolbar-subzone {
+  gap: 6px;
+}
+
+.editor-workbench-toolbar .waveform-toolbar-transcribe {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  gap: 4px;
+}
+
+.editor-workbench-toolbar .waveform-playback-btn {
+  width: 32px;
+  height: 32px;
+}
+
+.editor-workbench-toolbar .icon-btn {
+  height: 32px;
+  min-width: 32px;
+}
+
+.editor-workbench-toolbar .waveform-toolbar-time {
+  font-size: 12px;
+}
+
+.editor-workbench-toolbar .waveform-scroll-follow-segment-btn {
+  width: auto;
+  height: 32px;
+  padding: 0 8px;
+  gap: 4px;
+}
+
+.editor-workbench-toolbar .waveform-scroll-follow-segment-label {
+  font-size: 11px;
+  font-weight: 500;
+}
+
+.editor-workbench-toolbar .waveform-playback-rate-trigger {
+  height: 32px;
+}
+
+.editor-workbench-toolbar .waveform-playback-rate-menu-global {
+  width: 3.25rem;
 }
 
 .waveform-playback-cluster {
@@ -65,18 +237,29 @@
 .waveform-scroll-follow-segment {
   display: inline-flex;
   align-items: stretch;
-  overflow: hidden;
-  border-radius: 8px;
-  border: 1px solid color-mix(in srgb, var(--notion-border) 70%, transparent);
-  background: color-mix(in srgb, var(--notion-bg) 88%, var(--notion-sidebar));
+  gap: 2px;
+  padding: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+}
+
+.editor-workbench-toolbar .waveform-scroll-follow-segment {
+  gap: 3px;
 }
 
 .waveform-scroll-follow-segment-btn {
+  box-sizing: border-box;
   display: inline-flex;
+  width: auto;
+  min-width: 30px;
   height: 28px;
   align-items: center;
+  justify-content: center;
   gap: 4px;
   border: 0;
+  border-radius: 6px;
   padding: 0 8px;
   font-size: 11px;
   line-height: 1;
@@ -85,18 +268,9 @@
   transition: background-color 120ms ease, color 120ms ease;
 }
 
-.waveform-scroll-follow-segment-btn + .waveform-scroll-follow-segment-btn {
-  border-left: 1px solid color-mix(in srgb, var(--notion-border) 70%, transparent);
-}
-
-.waveform-scroll-follow-segment-btn:hover:not(:disabled) {
+.waveform-scroll-follow-segment-btn:hover:not(:disabled):not(.waveform-scroll-follow-segment-btn-active) {
   color: var(--notion-text);
   background: color-mix(in srgb, var(--notion-sidebar-hover) 80%, transparent);
-}
-
-.waveform-scroll-follow-segment-btn-active {
-  color: var(--notion-text);
-  background: color-mix(in srgb, var(--zen-saffron) 14%, var(--notion-sidebar-active));
 }
 
 .waveform-scroll-follow-segment-btn:disabled {
@@ -111,40 +285,7 @@
 
 .waveform-scroll-follow-segment-label {
   font-weight: 500;
-}
-
-.waveform-goto-time {
-  display: flex;
-  flex-shrink: 0;
-  align-items: center;
-  margin: 0;
-}
-
-.waveform-goto-time-input {
-  box-sizing: border-box;
-  width: 4.25rem;
-  height: 30px;
-  padding: 0 8px;
-  border: 1px solid var(--notion-border);
-  border-radius: 6px;
-  background: var(--notion-bg);
-  font-size: 12px;
-  font-variant-numeric: tabular-nums;
-  color: var(--notion-text);
-}
-
-.waveform-goto-time-input::placeholder {
-  color: var(--notion-text-muted);
-}
-
-.waveform-goto-time-input:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--notion-text) 40%, transparent);
-  outline-offset: 1px;
-}
-
-.waveform-goto-time-input:disabled {
-  opacity: 0.5;
-  cursor: not-allowed;
+  white-space: nowrap;
 }
 
 .waveform-playback-btn {
@@ -220,23 +361,33 @@
 
 .waveform-playback-rate-menu-segment .waveform-playback-rate-trigger {
   height: 24px;
-  padding: 0 6px;
-  border-color: transparent;
+  min-width: 24px;
+  width: auto;
+  padding: 0 4px;
+  border: 1px solid transparent;
+  border-radius: 4px;
   background: transparent;
+  opacity: 0.82;
+  color: color-mix(in srgb, var(--notion-text) 72%, transparent);
+  transition:
+    opacity 140ms ease,
+    background 140ms ease,
+    color 140ms ease,
+    border-color 140ms ease;
 }
 
 .waveform-playback-rate-menu-segment .waveform-playback-rate-trigger:hover:not(:disabled) {
-  border-color: color-mix(in srgb, var(--zen-saffron) 24%, transparent);
-  background: color-mix(in srgb, var(--zen-saffron) 16%, transparent);
+  opacity: 1;
+  background: color-mix(in srgb, var(--zen-indigo) 16%, transparent);
+  border-color: color-mix(in srgb, var(--zen-indigo) 24%, transparent);
   color: var(--notion-text);
 }
 
-.waveform-playback-rate-menu-segment .waveform-playback-rate-trigger-active {
-  background: color-mix(in srgb, var(--zen-saffron) 14%, transparent);
-  border-color: color-mix(in srgb, var(--zen-saffron) 32%, transparent);
+.waveform-playback-rate-menu-segment .waveform-playback-rate-trigger:active:not(:disabled) {
+  background: color-mix(in srgb, var(--zen-indigo) 24%, transparent);
 }
 
-.waveform-playback-rate-trigger:hover:not(:disabled) {
+.waveform-playback-rate-trigger:hover:not(:disabled):not(.waveform-playback-rate-trigger-state-active):not(.workbench-action-btn-engaged) {
   border-color: color-mix(in srgb, var(--notion-text) 22%, var(--notion-divider));
   color: var(--notion-text);
 }
@@ -265,12 +416,6 @@
 
 .waveform-playback-rate-chevron-open {
   transform: rotate(180deg);
-}
-
-.waveform-playback-rate-trigger-active {
-  color: var(--zen-saffron-mid);
-  background: color-mix(in srgb, var(--zen-saffron) 14%, var(--notion-bg));
-  border-color: color-mix(in srgb, var(--zen-saffron) 40%, var(--notion-border));
 }
 
 .waveform-playback-rate-popover {
@@ -309,7 +454,7 @@
 
 .waveform-playback-rate-popover-portal {
   position: fixed;
-  z-index: 100;
+  z-index: 200;
 }
 
 .waveform-playback-rate-portal-host {
@@ -344,13 +489,8 @@
   cursor: pointer;
 }
 
-.waveform-playback-rate-option:hover {
+.waveform-playback-rate-option:hover:not(.waveform-playback-rate-option-active) {
   background: var(--notion-sidebar-hover);
-}
-
-.waveform-playback-rate-option-active {
-  color: var(--zen-saffron-mid);
-  background: color-mix(in srgb, var(--zen-saffron) 14%, transparent);
 }
 
 .waveform-playback-rate-option:focus {
@@ -395,12 +535,6 @@
   cursor: not-allowed;
 }
 
-.waveform-nav-mode-btn-active {
-  background: var(--notion-bg);
-  color: var(--notion-text);
-  box-shadow: 0 1px 2px color-mix(in srgb, var(--notion-text) 8%, transparent);
-}
-
 .icon-btn-text {
   min-width: 0;
   padding: 0 8px;
@@ -408,17 +542,13 @@
 
 .waveform-zoom-toolbar {
   display: flex;
-  flex: 1;
-  min-width: 0;
+  flex-shrink: 0;
   align-items: center;
-  justify-content: flex-end;
-  gap: 24px;
+  gap: 10px;
   min-height: 100%;
-  min-width: 0;
   padding: 0;
   border: 0;
   border-radius: 0;
-  margin-top: 0;
   background: transparent;
 }
 
@@ -500,14 +630,6 @@
   transform: translateX(16px);
 }
 
-.toolbar-sep {
-  width: 1px;
-  height: 14px;
-  flex-shrink: 0;
-  border-radius: 1px;
-  background: color-mix(in srgb, var(--notion-text) 12%, transparent);
-}
-
 /** 波形总览：paper 底与下方 sidebar 底栏以色块分层，无额外边距。 */
 .waveform-minimap-strip {
   box-sizing: border-box;
@@ -551,9 +673,9 @@
   position: absolute;
   top: 0;
   height: 100%;
-  border: 1px solid color-mix(in srgb, var(--zen-saffron) 35%, transparent);
+  border: 1px solid color-mix(in srgb, var(--zen-indigo) 30%, transparent);
   border-radius: 3px;
-  background: color-mix(in srgb, var(--zen-saffron) 10%, transparent);
+  background: color-mix(in srgb, var(--zen-indigo) 15%, transparent);
 }
 
 .waveform-minimap-playhead {
@@ -562,7 +684,7 @@
   top: 0;
   width: 2px;
   height: 100%;
-  background: color-mix(in srgb, var(--zen-saffron-mid) 75%, transparent);
+  background: var(--zen-indigo);
 }
 
 .icon-btn {
@@ -580,7 +702,7 @@
   cursor: pointer;
 }
 
-.icon-btn:hover:not(:disabled) {
+.icon-btn:hover:not(:disabled):not(.icon-btn-state-active) {
   background: var(--notion-sidebar-hover);
   color: var(--notion-text);
 }
@@ -595,15 +717,8 @@
   cursor: not-allowed;
 }
 
-.icon-btn-active:disabled,
-.icon-btn[aria-pressed="true"]:disabled {
+.icon-btn-state-active:disabled {
   opacity: 0.72;
-}
-
-.icon-btn-active,
-.icon-btn[aria-pressed="true"] {
-  background: color-mix(in srgb, var(--zen-saffron) 18%, transparent);
-  color: var(--notion-text);
 }
 
 .icon-btn-label {
@@ -619,7 +734,7 @@
  *   z-1  WaveSurfer container（可见波形 + progress + 内置 cursor playhead）
  *   z-2  waveform-segment-band-canvas（语段条 display 层）
  *   z-3  waveform-segment-overlay（语段交互 DOM：选中 / 拖拽 draft）
- *   z-8  region-action-overlay（语段播放控制）
+ *   z-8  region-action-overlay（语段播放控制，sticky 视口坐标）
  *   z-10 .waveform-embedded-time-ruler（透明叠在 sticky 视口底边）
  *   z-30 loadError banner / peaks loading badge（EditorWaveformPane）
  */
@@ -661,8 +776,8 @@
 }
 
 .waveform-segment-region-selected {
-  border-left-color: color-mix(in srgb, var(--zen-saffron) 55%, transparent);
-  border-right-color: color-mix(in srgb, var(--zen-saffron) 55%, transparent);
+  border-left-color: color-mix(in srgb, var(--zen-indigo) 30%, transparent);
+  border-right-color: color-mix(in srgb, var(--zen-indigo) 30%, transparent);
 }
 
 .waveform-segment-handle {
@@ -727,29 +842,21 @@
     border-color 140ms ease;
 }
 
-.region-action-btn:hover:not(:disabled) {
+.region-action-btn:hover:not(:disabled):not(.region-action-btn-active) {
   opacity: 1;
-  background: color-mix(in srgb, var(--zen-saffron) 16%, transparent);
-  border-color: color-mix(in srgb, var(--zen-saffron) 24%, transparent);
+  background: color-mix(in srgb, var(--zen-indigo) 16%, transparent);
+  border-color: color-mix(in srgb, var(--zen-indigo) 24%, transparent);
   color: var(--notion-text);
 }
 
 .region-action-btn:active:not(:disabled) {
-  background: color-mix(in srgb, var(--zen-saffron) 24%, transparent);
+  background: color-mix(in srgb, var(--zen-indigo) 24%, transparent);
   box-shadow: none;
 }
 
 .region-action-btn:disabled {
   opacity: 0.45;
   cursor: not-allowed;
-}
-
-.region-action-btn-active {
-  opacity: 0.95;
-  color: var(--zen-saffron-mid);
-  border-color: color-mix(in srgb, var(--zen-saffron-mid) 32%, transparent);
-  background: color-mix(in srgb, var(--zen-saffron) 14%, transparent);
-  box-shadow: none;
 }
 
 .region-action-btn:focus-visible {
@@ -759,9 +866,171 @@
 
 .waveform-playback-rate-menu-segment {
   pointer-events: auto;
-  opacity: 0.88;
 }
 
-.waveform-playback-rate-menu-segment:hover {
+/*
+ * Workbench toggle visuals — must follow base .icon-btn / segment-btn / rate-trigger rules
+ * (same-specificity rules defined earlier would lose the cascade).
+ */
+
+.workbench-label-btn {
+  color: var(--notion-text-muted);
+  background: transparent;
+}
+
+.workbench-label-btn:hover:not(:disabled):not(.workbench-action-btn-engaged) {
+  color: var(--notion-text);
+  background: var(--notion-sidebar-hover);
+}
+
+.workbench-label-btn.workbench-action-btn-engaged {
+  color: var(--notion-text);
+  background: var(--notion-sidebar-active);
+}
+
+.workbench-label-btn.workbench-action-btn-engaged:hover:not(:disabled) {
+  color: var(--notion-text);
+  background: color-mix(in srgb, var(--notion-sidebar-active) 88%, var(--notion-sidebar-hover));
+}
+
+.waveform-scroll-follow-segment-btn.workbench-state-btn-active,
+.waveform-scroll-follow-segment-btn.waveform-scroll-follow-segment-btn-active {
+  font-weight: 600;
+  color: var(--workbench-toggle-active-text);
+  background: var(--workbench-toggle-active-bg);
+  border-color: var(--workbench-toggle-active-border);
+}
+
+.waveform-scroll-follow-segment-btn.workbench-state-btn-active:hover:not(:disabled),
+.waveform-scroll-follow-segment-btn.waveform-scroll-follow-segment-btn-active:hover:not(:disabled) {
+  color: var(--workbench-toggle-active-text);
+  background: var(--workbench-toggle-active-hover-bg);
+  border-color: var(--workbench-toggle-active-border);
+}
+
+.icon-btn.icon-btn-state-active {
+  color: var(--workbench-toggle-active-text);
+  background: var(--workbench-toggle-active-bg);
+  border-color: var(--workbench-toggle-active-border);
+}
+
+.icon-btn.icon-btn-state-active:hover:not(:disabled) {
+  color: var(--workbench-toggle-active-text);
+  background: var(--workbench-toggle-active-hover-bg);
+  border-color: var(--workbench-toggle-active-border);
+}
+
+.waveform-playback-rate-trigger.waveform-playback-rate-trigger-state-active {
+  color: var(--workbench-toggle-active-text);
+  background: var(--workbench-toggle-active-bg);
+  border-color: var(--workbench-toggle-active-border);
   opacity: 1;
+}
+
+.waveform-playback-rate-menu-segment .waveform-playback-rate-trigger.waveform-playback-rate-trigger-state-active {
+  color: var(--workbench-toggle-active-text);
+  background: var(--workbench-toggle-active-bg);
+  border-color: var(--workbench-toggle-active-border);
+  opacity: 1;
+}
+
+.waveform-playback-rate-menu-segment .waveform-playback-rate-trigger.waveform-playback-rate-trigger-state-active:hover:not(:disabled) {
+  color: var(--workbench-toggle-active-text);
+  background: var(--workbench-toggle-active-hover-bg);
+  border-color: var(--workbench-toggle-active-border);
+  opacity: 1;
+}
+
+.waveform-playback-rate-trigger.waveform-playback-rate-trigger-state-active:hover:not(:disabled) {
+  color: var(--workbench-toggle-active-text);
+  background: var(--workbench-toggle-active-hover-bg);
+  border-color: var(--workbench-toggle-active-border);
+}
+
+.waveform-playback-rate-trigger.workbench-action-btn-engaged:not(.waveform-playback-rate-trigger-state-active) {
+  color: var(--notion-text);
+  background: var(--notion-sidebar-active);
+  border-color: color-mix(in srgb, var(--notion-text) 22%, var(--notion-divider));
+}
+
+.waveform-playback-rate-trigger.workbench-action-btn-engaged:not(.waveform-playback-rate-trigger-state-active):hover:not(:disabled) {
+  color: var(--notion-text);
+  background: color-mix(in srgb, var(--notion-sidebar-active) 88%, var(--notion-sidebar-hover));
+}
+
+.waveform-playback-rate-option.waveform-playback-rate-option-active {
+  color: var(--workbench-toggle-active-text);
+  background: var(--workbench-toggle-active-bg);
+  border-color: var(--workbench-toggle-active-border);
+}
+
+.waveform-playback-rate-option.waveform-playback-rate-option-active:hover {
+  color: var(--workbench-toggle-active-text);
+  background: var(--workbench-toggle-active-hover-bg);
+  border-color: var(--workbench-toggle-active-border);
+}
+
+.waveform-nav-mode-btn.waveform-nav-mode-btn-active {
+  color: var(--workbench-toggle-active-text);
+  background: var(--workbench-toggle-active-bg);
+  border-color: var(--workbench-toggle-active-border);
+}
+
+.waveform-nav-mode-btn.waveform-nav-mode-btn-active:hover:not(:disabled) {
+  color: var(--workbench-toggle-active-text);
+  background: var(--workbench-toggle-active-hover-bg);
+  border-color: var(--workbench-toggle-active-border);
+}
+
+.region-action-btn.region-action-btn-active,
+.region-action-btn.workbench-state-btn-active {
+  opacity: 1;
+  color: var(--workbench-toggle-active-text);
+  background: var(--workbench-toggle-active-bg);
+  border-color: var(--workbench-toggle-active-border);
+}
+
+.region-action-btn.region-action-btn-active:hover:not(:disabled),
+.region-action-btn.workbench-state-btn-active:hover:not(:disabled) {
+  opacity: 1;
+  color: var(--workbench-toggle-active-text);
+  background: var(--workbench-toggle-active-hover-bg);
+  border-color: var(--workbench-toggle-active-border);
+}
+
+/** 工作条紧凑布局（<1024px）：编辑 / 缩放 overflow 菜单 */
+.workbench-compact-menu-chevron {
+  flex-shrink: 0;
+  transition: transform 140ms ease;
+}
+
+.workbench-compact-menu-open .workbench-compact-menu-chevron {
+  transform: rotate(180deg);
+}
+
+.workbench-compact-menu button:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--zen-saffron) 35%, transparent);
+  outline-offset: 2px;
+}
+
+.workbench-compact-menu-panel {
+  max-height: min(18rem, calc(100vh - 8rem));
+  overflow-y: auto;
+}
+
+.workbench-dropdown-item-active {
+  color: var(--zen-saffron-deep);
+  font-weight: 600;
+}
+
+.waveform-zoom-bar-compact {
+  gap: 4px;
+}
+
+.workbench-compact-menu-portal-host {
+  pointer-events: none;
+}
+
+.workbench-compact-menu-portal-host .workbench-compact-menu-panel {
+  pointer-events: auto;
 }

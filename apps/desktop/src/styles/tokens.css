@@ -40,6 +40,12 @@
   --zen-wf-progress: #8e8e93;
   --zen-wf-cursor: #6a6a6f;
 
+  /** 工作条 / 波形 toggle 选中态（与 CONTROL_BTN_PRIMARY / 保存 同色） */
+  --workbench-toggle-active-bg: var(--zen-saffron);
+  --workbench-toggle-active-text: var(--notion-bg);
+  --workbench-toggle-active-border: transparent;
+  --workbench-toggle-active-hover-bg: var(--zen-saffron-mid);
+
   /* App shell footer（shell.css 引用；深色底与主 Notion 工作台分离） */
   --shell-footer-bg: #31312c;
   --shell-footer-fg: #f3f0e9;

@@ -123,6 +123,23 @@
   caret-color: var(--zen-saffron-mid);
 }
 
+/* 语段行：Stitch 深色高亮（indigo 选中 + 左缘指示条） */
+.workspace [data-seg-row].seg-row-selected {
+  border-color: color-mix(in srgb, var(--zen-indigo) 20%, transparent);
+  background: color-mix(in srgb, var(--zen-indigo) 8%, transparent);
+}
+
+.workspace [data-seg-row].seg-row-selected::before {
+  content: "";
+  position: absolute;
+  left: 0;
+  top: 0;
+  bottom: 0;
+  width: 4px;
+  border-radius: 0.375rem 0 0 0.375rem;
+  background: var(--zen-indigo);
+}
+
 /* 语段错词：与正文同字号，仅虚线下划线（勿用 Tailwind font-inherit，其不含 font-size） */
 .workspace .seg-correctable-hit {
   font: inherit;
@@ -236,4 +253,71 @@
 .workspace textarea.seg-text::selection {
   color: var(--zen-saffron-mid);
   background: color-mix(in srgb, var(--zen-saffron) 20%, var(--zen-paper));
+}
+
+/** EditorView 底栏：三列 grid，居中 hint 独立列 truncate，避免 absolute 叠字 */
+.editor-status-footer {
+  position: relative;
+  z-index: 40;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(0, 1fr);
+  align-items: center;
+  gap: 0.5rem;
+  height: 30px;
+  flex-shrink: 0;
+  padding: 0 0.625rem;
+  border-top: 1px solid var(--notion-divider);
+  background: var(--notion-bg);
+  font-size: 11px;
+  color: var(--notion-text-muted);
+}
+
+.editor-status-footer-start {
+  display: flex;
+  min-width: 0;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.editor-status-footer-autosave {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editor-status-footer-center {
+  min-width: 0;
+  overflow: hidden;
+  text-align: center;
+}
+
+.editor-status-footer-hint {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editor-status-footer-hint--shortcut {
+  color: var(--notion-text-light);
+}
+
+.editor-status-footer-end {
+  min-width: 0;
+  overflow: hidden;
+  text-align: right;
+}
+
+.editor-status-footer-stats {
+  display: inline-block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.editor-status-footer-stats-sep {
+  margin: 0 0.375rem;
+  color: var(--notion-text-light);
 }

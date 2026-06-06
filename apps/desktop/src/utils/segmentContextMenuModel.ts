@@ -22,6 +22,8 @@ export type SegmentContextMenuOpen = {
   segmentIdx: number;
   pointerTimeSec: number;
   origin: SegmentContextMenuOrigin;
+  /** 刻意选中正文后再右键时非空；此时菜单仅显示纳入更正记忆。 */
+  selectionText: string;
 };
 
 export type SegmentContextMenuKey = "delete" | "mergePrev" | "mergeNext" | "splitAtPointer";

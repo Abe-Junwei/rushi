@@ -19,7 +19,6 @@ export function useEditorTranscriptAppearance(busy: boolean, hasCurrentFile: boo
     if (!Number.isFinite(parsed)) return 132;
     return Math.max(TRANSCRIPT_META_WIDTH_MIN, Math.min(TRANSCRIPT_META_WIDTH_MAX, Math.round(parsed)));
   });
-  const [fontPanelOpen, setFontPanelOpen] = useState(false);
   const [transcriptFontWeight, setTranscriptFontWeight] = useState<500 | 700>(500);
   const [transcriptFontItalic, setTranscriptFontItalic] = useState(false);
 
@@ -118,8 +117,6 @@ export function useEditorTranscriptAppearance(busy: boolean, hasCurrentFile: boo
     setTranscriptFontFamily,
     fontLoadBusy,
     transcriptMetaWidthPx,
-    fontPanelOpen,
-    setFontPanelOpen,
     transcriptFontWeight,
     setTranscriptFontWeight,
     transcriptFontItalic,

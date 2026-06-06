@@ -93,10 +93,7 @@ export function useSegmentKeyboard(args: {
       if (e.key === "Tab") {
         e.preventDefault();
         const tabLoop = readStoredTabAdvanceLoopsSegment();
-        const tabPlayOpts = {
-          loop: tabLoop,
-          useGlobalPlaybackRate: true,
-        } as const;
+        const tabPlayOpts = { loop: tabLoop } as const;
         if (!e.shiftKey) {
           if (c.selectedIdx < c.segments.length - 1) {
             const ni = c.selectedIdx + 1;
@@ -232,7 +229,7 @@ export function useSegmentKeyboard(args: {
       if (e.metaKey || e.ctrlKey || e.altKey) return;
       e.preventDefault();
       const tabLoop = readStoredTabAdvanceLoopsSegment();
-      const tabPlayOpts = { loop: tabLoop, useGlobalPlaybackRate: true } as const;
+      const tabPlayOpts = { loop: tabLoop } as const;
       if (e.shiftKey) {
         if (segmentIdx <= 0) return;
         const pi = segmentIdx - 1;

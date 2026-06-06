@@ -275,11 +275,27 @@ export function useTierScrollSync(args: {
     const viewportChanged =
       prevVw > 0 && vw > 0 && Math.abs(prevVw - vw) > 1;
 
-    if ((timelineChanged || viewportChanged) && dur > 0 && vw > 0) {
+    if (timelineChanged && dur > 0 && vw > 0) {
+      const maxSl = Math.max(0, newTw - vw);
+      const hasPendingProgrammaticScroll = pendingProgrammaticScrollRef.current != null;
+      const recentProgrammaticScroll = performance.now() < programmaticScrollUntilRef.current;
+      if (hasPendingProgrammaticScroll || recentProgrammaticScroll) {
+        targetSl = Math.min(maxSl, Math.max(0, liveSl));
+      } else {
+        const effectivePrevVw = prevVw > 0 ? prevVw : vw;
+        const centerPx = liveSl + effectivePrevVw / 2;
+        const centerTimeSec = (centerPx / Math.max(prevTw, 1)) * dur;
+        targetSl = scrollPxCenterTimeInViewport({
+          timeSec: centerTimeSec,
+          timelineWidthPx: newTw,
+          durationSec: dur,
+          viewportWidthPx: vw,
+        });
+      }
+    } else if (viewportChanged && dur > 0 && vw > 0) {
       const effectivePrevVw = prevVw > 0 ? prevVw : vw;
-      const effectivePrevTw = timelineChanged ? prevTw : newTw;
       const centerPx = liveSl + effectivePrevVw / 2;
-      const centerTimeSec = (centerPx / Math.max(effectivePrevTw, 1)) * dur;
+      const centerTimeSec = (centerPx / Math.max(newTw, 1)) * dur;
       targetSl = scrollPxCenterTimeInViewport({
         timeSec: centerTimeSec,
         timelineWidthPx: newTw,

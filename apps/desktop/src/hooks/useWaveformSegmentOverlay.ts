@@ -37,6 +37,7 @@ export function useWaveformSegmentOverlay(args: {
   onPlaySegment?: (idx: number) => void;
   seekToTime: (timeSec: number) => void;
   onDraftIdxChange?: (idx: number | null) => void;
+  revealSelectedSegmentInViewport?: () => void;
 }) {
   const argsRef = useRef(args);
   argsRef.current = args;
@@ -65,7 +66,7 @@ export function useWaveformSegmentOverlay(args: {
         pointerTimeSec,
         segment: seg,
       },
-      { onSelectSegmentAt: a.onSelectSegmentAt, seekToTime: a.seekToTime },
+      { onSelectSegmentAt: a.onSelectSegmentAt, seekToTime: a.seekToTime, revealSelectedSegmentInViewport: a.revealSelectedSegmentInViewport },
     );
   }, []);
 

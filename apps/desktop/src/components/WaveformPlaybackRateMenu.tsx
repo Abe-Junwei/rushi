@@ -133,8 +133,9 @@ export const WaveformPlaybackRateMenu = memo(function WaveformPlaybackRateMenu({
   const [anchorRect, setAnchorRect] = useState<DOMRect | null>(null);
   const activeRate = snapWaveformPlaybackRate(playbackRate);
   const label = formatWaveformPlaybackRateLabel(activeRate);
-  const anchorActive = activeRate === 1;
-  const usePortal = variant === "segment";
+  const rateStateActive = activeRate !== 1;
+  const menuEngaged = open && !rateStateActive;
+  const usePortal = true;
 
   const close = useCallback(() => setOpen(false), []);
 
@@ -152,21 +153,23 @@ export const WaveformPlaybackRateMenu = memo(function WaveformPlaybackRateMenu({
   }, []);
 
   useLayoutEffect(() => {
-    if (!open || !usePortal) return;
+    if (!open) return;
     syncAnchorRect();
-  }, [open, playbackRate, syncAnchorRect, usePortal]);
+  }, [open, playbackRate, syncAnchorRect]);
 
   useEffect(() => {
-    if (!open || !usePortal) return;
+    if (!open) return;
     const tier = tierScrollRef?.current;
-    const onScroll = () => syncAnchorRect();
-    tier?.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
+    const onReposition = () => syncAnchorRect();
+    tier?.addEventListener("scroll", onReposition, { passive: true });
+    window.addEventListener("resize", onReposition);
+    window.addEventListener("scroll", onReposition, { passive: true, capture: true });
     return () => {
-      tier?.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
+      tier?.removeEventListener("scroll", onReposition);
+      window.removeEventListener("resize", onReposition);
+      window.removeEventListener("scroll", onReposition, { capture: true });
     };
-  }, [open, syncAnchorRect, tierScrollRef, usePortal]);
+  }, [open, syncAnchorRect, tierScrollRef]);
 
   useEffect(() => {
     if (!open) return;
@@ -193,13 +196,13 @@ export const WaveformPlaybackRateMenu = memo(function WaveformPlaybackRateMenu({
       : "waveform-playback-rate-menu waveform-playback-rate-menu-global";
 
   const popovers =
-    open && (!usePortal || anchorRect) ? (
+    open && anchorRect ? (
       <PlaybackRatePopovers
         listboxId={listboxId}
         activeRate={activeRate}
         onPick={pick}
         portal={usePortal}
-        anchorRect={usePortal ? anchorRect : null}
+        anchorRect={anchorRect}
       />
     ) : null;
 
@@ -220,12 +223,12 @@ export const WaveformPlaybackRateMenu = memo(function WaveformPlaybackRateMenu({
         className={`${rootClass}${open ? " waveform-playback-rate-menu-open" : ""}`}
         onPointerDown={(e) => e.stopPropagation()}
       >
-        {open && !usePortal ? popovers : null}
-
         <button
           ref={triggerRef}
           type="button"
-          className={`waveform-playback-rate-trigger${anchorActive && open ? " waveform-playback-rate-trigger-active" : ""}`}
+          className={`waveform-playback-rate-trigger${
+            rateStateActive ? " waveform-playback-rate-trigger-state-active" : ""
+          }${menuEngaged ? " workbench-action-btn-engaged" : ""}`}
           disabled={disabled}
           aria-haspopup="listbox"
           aria-expanded={open}

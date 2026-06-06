@@ -1,13 +1,5 @@
 import { PANEL_TYPOGRAPHY } from "../config/typography";
-
-const ROWS: { keys: string; action: string }[] = [
-  { keys: "⌘/Ctrl + Enter", action: "确认改词：落库并写入纠错记忆，跳到下一语段" },
-  { keys: "⌘/Ctrl + S", action: "保存语段（不计入纠错记忆）" },
-  { keys: "停笔约 2s", action: "自动保存语段（仅落库，不计入纠错记忆）" },
-  { keys: "⌘/Ctrl + F", action: "查找与替换" },
-  { keys: "Tab / Shift+Tab", action: "在语段间前进 / 后退并联动播放" },
-  { keys: "点击高亮词", action: "查看改正建议并一键替换" },
-];
+import { EDITOR_FOOTER_SHORTCUT_HINTS } from "../utils/editorFooterShortcutHints";
 
 export function EnvEditorShortcutsPanel() {
   return (
@@ -20,12 +12,12 @@ export function EnvEditorShortcutsPanel() {
       </section>
       <table className={`w-full border-collapse text-left ${PANEL_TYPOGRAPHY.body}`}>
         <tbody>
-          {ROWS.map((row) => (
-            <tr key={row.keys} className="border-t border-notion-divider first:border-t-0">
+          {EDITOR_FOOTER_SHORTCUT_HINTS.map((row) => (
+            <tr key={row.id} className="border-t border-notion-divider first:border-t-0">
               <th className="w-[38%] py-2.5 pr-4 align-top font-mono text-[12px] font-medium text-notion-text">
                 {row.keys}
               </th>
-              <td className="py-2.5 text-notion-text-muted">{row.action}</td>
+              <td className="py-2.5 text-notion-text-muted">{row.panelAction}</td>
             </tr>
           ))}
         </tbody>

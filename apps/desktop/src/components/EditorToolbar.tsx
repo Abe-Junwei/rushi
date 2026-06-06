@@ -7,8 +7,7 @@ import { LlmTopStatusChip } from "./LlmTopStatusChip";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 const ghostBtn =
   "inline-flex h-8 items-center justify-center rounded-md border-0 bg-transparent px-2.5 text-[12px] font-medium text-notion-text-muted transition-colors hover:bg-notion-sidebar-hover hover:text-notion-text disabled:cursor-not-allowed disabled:opacity-40";
-const saveBtn =
-  "inline-flex h-8 items-center justify-center rounded-md border-0 bg-transparent px-4 text-[12px] font-medium text-notion-text-muted transition-colors hover:bg-notion-sidebar-hover hover:text-notion-text disabled:cursor-not-allowed disabled:opacity-40";
+const saveBtn = ghostBtn;
 const menuItem =
   "dropdown-item w-full px-3 py-2 text-left text-[12px] text-notion-text transition-colors hover:bg-notion-sidebar-hover disabled:cursor-not-allowed disabled:text-notion-text-light";
 interface EditorToolbarProps {
@@ -104,7 +103,7 @@ export const EditorToolbar = memo(function EditorToolbar({
   };
 
   return (
-    <div className="toolbar-popover-root z-[90] shrink-0 border-b border-notion-divider bg-notion-bg px-page-margin">
+    <div className="toolbar-popover-root z-[90] shrink-0 border-b border-notion-divider bg-notion-sidebar px-page-margin">
       <div className="flex h-12 min-w-0 flex-nowrap items-center gap-2 overflow-visible">
         <EditorWorkspaceNav
           projectName={projectName}

@@ -22,7 +22,10 @@ type WaveformZoomFitApi = {
 };
 
 type TierScrollApi = {
-  setTierScrollPx: (scrollLeftPx: number, options?: { timelineWidthPx?: number }) => void;
+  setTierScrollPx: (
+    scrollLeftPx: number,
+    options?: { timelineWidthPx?: number; immediate?: boolean; deferLayoutCommit?: boolean },
+  ) => void;
 };
 
 export type PendingViewportFit = { intent: ViewportFitScrollIntent; pxPerSec: number };
@@ -100,10 +103,10 @@ export function useTranscriptionViewportFit(args: {
 
   const writeTierScroll = useCallback(
     (targetSl: number, timelineWidthPx?: number) => {
-      scrollApiRef.current.setTierScrollPx(
-        targetSl,
-        timelineWidthPx != null ? { timelineWidthPx } : undefined,
-      );
+      scrollApiRef.current.setTierScrollPx(targetSl, {
+        ...(timelineWidthPx != null ? { timelineWidthPx } : {}),
+        immediate: true,
+      });
     },
     [scrollApiRef],
   );

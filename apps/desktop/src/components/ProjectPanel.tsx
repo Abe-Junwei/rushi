@@ -1,26 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { useTranscriptionLayer } from "../pages/useTranscriptionLayer";
-import {
-  buildSegmentContextMenuItems,
-  type SegmentContextMenuKey,
-  type SegmentContextMenuOpen,
-} from "../utils/segmentContextMenuModel";
-import { buildSegmentTextContextMenuItems } from "../utils/segmentTextContextMenuModel";
-import { ManualCorrectionMemoryDialog } from "./segmentRow/ManualCorrectionMemoryDialog";
+import type { SegmentContextMenuOpen } from "../utils/segmentContextMenuModel";
 import { EnvironmentPanel } from "./EnvironmentPanel";
 import { FloatingPanelTemplate } from "./PanelTemplate";
-import { FindReplaceDialog } from "./FindReplaceDialog";
-import { CorrectionRulesPreviewDialog } from "./CorrectionRulesPreviewDialog";
-import { PostTranscribeStageBDialog } from "./PostTranscribeStageBDialog";
-import { CorrectSuggestionsDialog } from "./CorrectSuggestionsDialog";
-import { GlossaryLearnPromptDialog } from "./GlossaryLearnPromptDialog";
-import { AutoTranscribeStartDialog } from "./AutoTranscribeStartDialog";
 import { EditorView } from "./EditorView";
-import { DeliveryExportDialog } from "./DeliveryExportDialog";
-
 import { WelcomeView, type WelcomePageId } from "./WelcomeView";
 import { ProjectBusyOverlay, TranscribePreviewBanner } from "./ProjectStatusFeedback";
-import { UnsavedCloseDialog } from "./UnsavedCloseDialog";
+import { ProjectPanelDialogs } from "./ProjectPanelDialogs";
 import { useProjectController } from "../pages/useProjectController";
 
 export function ProjectPanel() {
@@ -33,11 +19,6 @@ export function ProjectPanel() {
   const [deliveryExportOpen, setDeliveryExportOpen] = useState(false);
   const [busyElapsedSec, setBusyElapsedSec] = useState(0);
   const [segmentCtxMenu, setSegmentCtxMenu] = useState<SegmentContextMenuOpen | null>(null);
-  const [segmentTextCtxMenu, setSegmentTextCtxMenu] = useState<{
-    x: number;
-    y: number;
-    wrong: string;
-  } | null>(null);
   const pendingGlossaryNavRef = useRef(false);
 
   const openEnvironment = useCallback(() => {
@@ -53,8 +34,6 @@ export function ProjectPanel() {
     c.bumpLlmRuntimeChanged();
     setLlmUiEpoch((n) => n + 1);
   }, [c]);
-
-  const { segments, busy } = c;
 
   useEffect(() => {
     if (!deliveryExportOpen) return;
@@ -130,52 +109,6 @@ export function ProjectPanel() {
     confirmSegmentEditAndAdvance: c.confirmSegmentEditAndAdvance,
     onOpenSegmentContextMenu: setSegmentCtxMenu,
   });
-
-  const segmentCtxMenuItems = useMemo(
-    () =>
-      segmentCtxMenu
-        ? buildSegmentContextMenuItems({
-            segmentIdx: segmentCtxMenu.segmentIdx,
-            segments,
-            busy,
-            pointerTimeSec: segmentCtxMenu.pointerTimeSec,
-            origin: segmentCtxMenu.origin,
-          })
-        : [],
-    [segmentCtxMenu, segments, busy],
-  );
-
-  const segmentTextCtxMenuItems = useMemo(
-    () =>
-      segmentTextCtxMenu
-        ? buildSegmentTextContextMenuItems({
-            selectionText: segmentTextCtxMenu.wrong,
-            busy,
-          })
-        : [],
-    [segmentTextCtxMenu, busy],
-  );
-
-  const onSegmentCtxMenuSelect = (key: SegmentContextMenuKey) => {
-    if (!segmentCtxMenu) return;
-    const i = segmentCtxMenu.segmentIdx;
-    switch (key) {
-      case "delete":
-        tx.deleteSegmentAt(i);
-        break;
-      case "mergePrev":
-        c.mergeWithPrevAt(i);
-        break;
-      case "mergeNext":
-        c.mergeWithNextAt(i);
-        break;
-      case "splitAtPointer":
-        tx.splitAtPlayhead(segmentCtxMenu.pointerTimeSec);
-        break;
-      default:
-        break;
-    }
-  };
 
   const onExportSelect = (key: string) => {
     setExportKey("");
@@ -287,17 +220,6 @@ export function ProjectPanel() {
               llmStatusRefreshSeq={llmUiEpoch}
               segmentCtxMenu={segmentCtxMenu}
               setSegmentCtxMenu={setSegmentCtxMenu}
-              segmentCtxMenuItems={segmentCtxMenuItems}
-              onSegmentCtxMenuSelect={onSegmentCtxMenuSelect}
-              segmentTextCtxMenu={segmentTextCtxMenu}
-              setSegmentTextCtxMenu={setSegmentTextCtxMenu}
-              segmentTextCtxMenuItems={segmentTextCtxMenuItems}
-              onSegmentTextCtxMenuSelect={(key) => {
-                if (!segmentTextCtxMenu) return;
-                if (key === "addCorrectionMemory") {
-                  c.openManualCorrectionMemoryDialog(segmentTextCtxMenu.wrong);
-                }
-              }}
             />
           </main>
         )}
@@ -313,97 +235,17 @@ export function ProjectPanel() {
         />
       ) : null}
 
-      <FindReplaceDialog
-        state={c.findReplaceDialog}
-        busy={c.busy}
-        onClose={c.closeFindReplace}
-        onFindChange={c.setFindReplaceFindText}
-        onReplaceChange={c.setFindReplaceReplaceText}
-        onRunSearch={c.findReplaceRunSearch}
-        onSelectMatch={c.findReplaceSelectMatch}
-        onPrev={c.findReplaceGoPrev}
-        onNext={c.findReplaceGoNext}
-        onReplaceCurrent={c.findReplaceCurrent}
-        onReplaceAndNext={c.findReplaceReplaceAndNext}
-        onRequestReplaceAll={() => void c.findReplaceRequestReplaceAll()}
-        onConfirmReplaceAll={() => void c.findReplaceConfirmReplaceAll()}
-        onCancelReplaceAllPreview={c.findReplaceCancelReplaceAllPreview}
-      />
-
-      <CorrectionRulesPreviewDialog
-        state={c.correctionRulesDialog}
-        busy={c.busy}
-        stableConflictMessage={c.correctionRulesStableConflictMessage ?? null}
-        onCancel={c.cancelCorrectionRules}
-        onCloseEmpty={c.closeCorrectionRulesEmpty}
-        onConfirm={() => void c.confirmCorrectionRulesWriteback()}
-        onToggleSegment={c.toggleCorrectionRulesSegment}
-        onFocusSegment={c.focusCorrectionRulesPreviewSegment}
-        previewFocusSegmentIdx={
-          c.correctionRulesEditorHighlight?.segmentIdx ?? null
-        }
-      />
-
-      <PostTranscribeStageBDialog
-        state={c.postTranscribeStageBDialog}
-        busy={c.busy}
-        previewFocusSegmentIdx={c.postTranscribeStageBPreviewFocusSegmentIdx}
-        onCancel={c.cancelPostTranscribeStageB}
-        onConfirmConsent={c.confirmPostTranscribeStageBConsent}
-        onConfirmWriteback={() => void c.confirmPostTranscribeStageBWriteback()}
-        onToggleSegment={c.togglePostTranscribeStageBSegment}
-        onFocusSegment={c.focusPostTranscribeStageBSegment}
-      />
-
-      <CorrectSuggestionsDialog
-        state={c.correctSuggestionsDialog}
-        onCancel={c.cancelCorrectSuggestions}
-        onApply={c.applyCorrectSuggestion}
-        onOpenFindReplace={c.openFindReplaceForCorrectSelection}
-      />
-
-      <GlossaryLearnPromptDialog
-        state={c.glossaryLearnDialog}
-        busy={c.busy}
-        onClose={c.closeGlossaryLearnPrompt}
-        onDismiss={c.dismissGlossaryLearnPrompt}
-        onConfirm={(row) => void c.confirmAddToGlossary(row)}
-      />
-
-      <ManualCorrectionMemoryDialog
-        state={c.manualCorrectionMemoryDialog}
-        busy={c.busy}
-        onClose={c.closeManualCorrectionMemoryDialog}
-        onRightChange={c.setManualCorrectionRight}
-        onAlsoAddToGlossaryChange={c.setManualCorrectionAlsoGlossary}
-        onConfirm={() => c.confirmManualCorrectionMemory()}
-      />
-
-      <AutoTranscribeStartDialog
-        open={c.transcribeStartDialogOpen && !c.busy}
-        busy={c.busy}
-        source={c.transcribeSource}
-        onlineReady={c.onlineTranscribeReady}
-        onSelectLocal={() => c.setTranscribeSource("local")}
-        onSelectOnline={() => c.setTranscribeSource("online")}
-        hasExistingSegmentText={c.transcribeStartHasExistingText}
-        segmentCount={c.transcribeOverwriteSegmentCount}
-        vocabularyLines={c.transcribeVocabularyPreflightLines}
-        showOpenGlossaryLink={showTranscribeGlossaryLink}
-        onOpenGlossary={openGlossaryFromTranscribe}
-        onCancel={c.cancelTranscribeStart}
-        onConfirm={() => void c.confirmTranscribeStart()}
-      />
-
-      <DeliveryExportDialog
-        open={deliveryExportOpen}
-        busy={c.busy}
-        segments={c.segments}
+      <ProjectPanelDialogs
+        c={c}
+        deliveryExportOpen={deliveryExportOpen}
         llmStatusRefreshSeq={llmUiEpoch}
+        segments={c.segments}
+        showTranscribeGlossaryLink={showTranscribeGlossaryLink}
         onOpenLlmSettings={openLlmSettings}
-        onClose={() => setDeliveryExportOpen(false)}
-        onExport={(mode, includeRevisionAppendix, llmPolish, polishPreview) => {
-          setDeliveryExportOpen(false);
+        onOpenGlossaryFromTranscribe={openGlossaryFromTranscribe}
+        onStayAfterCloseAttempt={stayAfterCloseAttempt}
+        onDeliveryExportClose={() => setDeliveryExportOpen(false)}
+        onDeliveryExport={(mode, includeRevisionAppendix, llmPolish, polishPreview) => {
           void c.exportDeliveryDocx({
             mode,
             includeRevisionAppendix,
@@ -411,15 +253,6 @@ export function ProjectPanel() {
             polishPreview,
           });
         }}
-      />
-
-      <UnsavedCloseDialog
-        open={c.closeGateOpen}
-        intent={c.closeGateIntent}
-        busy={c.busy}
-        onStay={stayAfterCloseAttempt}
-        onDiscardAndClose={() => void c.discardUnsavedAndClose()}
-        onSaveAndClose={() => void c.saveAndClose()}
       />
     </section>
   );

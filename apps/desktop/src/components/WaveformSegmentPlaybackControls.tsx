@@ -1,12 +1,10 @@
-import { memo, useRef, type RefObject } from "react";
+import { memo, useLayoutEffect, useReducer, type RefObject } from "react";
 import { Play, Repeat, Square } from "lucide-react";
 import type { SegmentDto } from "../tauri/projectApi";
 import { useTierViewportMetricsFrame } from "../hooks/useTierViewportMetricsFrame";
-import { useWaveformSegmentPlaybackControlsOverlayFrame } from "../hooks/useWaveformSegmentPlaybackControlsOverlayFrame";
 import { resolveSegmentPlaybackControlsOverlayLayout } from "../utils/waveformRegionActionOverlay";
 import type { TierScrollLayoutMetrics, TierScrollLiveRefs } from "../utils/waveformViewport";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
-import { WaveformPlaybackRateMenu } from "./WaveformPlaybackRateMenu";
 
 type WaveformSegmentPlaybackControlsProps = {
   disabled: boolean;
@@ -19,9 +17,7 @@ type WaveformSegmentPlaybackControlsProps = {
   tierScrollLive: TierScrollLiveRefs;
   tierScrollLayout: TierScrollLayoutMetrics;
   selectedSegment: SegmentDto | null;
-  segmentPlaybackRate: number;
   segmentLoopPlayback: boolean;
-  onPlaybackRateChange: (rate: number) => void;
   onToggleLoop: () => void;
   onTogglePlay: () => void;
 };
@@ -36,18 +32,16 @@ export const WaveformSegmentPlaybackControls = memo(function WaveformSegmentPlay
   tierScrollLive,
   tierScrollLayout,
   selectedSegment,
-  segmentPlaybackRate,
   segmentLoopPlayback,
-  onPlaybackRateChange,
   onToggleLoop,
   onTogglePlay,
 }: WaveformSegmentPlaybackControlsProps) {
-  const overlayRef = useRef<HTMLDivElement | null>(null);
+  const [, bumpLayoutEpoch] = useReducer((n: number) => n + 1, 0);
   const { scrollLeftPx, viewportWidthPx } = useTierViewportMetricsFrame({
     tierScrollRef,
     tierScrollLive,
     tierScrollLayout,
-    commitScrollFrame: !isPlaying,
+    commitScrollFrame: true,
   });
 
   const segmentStartSec = selectedSegment
@@ -57,17 +51,16 @@ export const WaveformSegmentPlaybackControls = memo(function WaveformSegmentPlay
     ? Math.max(selectedSegment.start_sec, selectedSegment.end_sec)
     : 0;
 
-  useWaveformSegmentPlaybackControlsOverlayFrame({
-    enabled: isPlaying && selectedSegment != null,
-    overlayRef,
-    tierScrollRef,
-    tierScrollLive,
-    tierScrollLayout,
-    segmentStartSec,
-    segmentEndSec,
+  useLayoutEffect(() => {
+    bumpLayoutEpoch();
+  }, [
+    selectedSegment?.start_sec,
+    selectedSegment?.end_sec,
+    selectedSegment?.uid,
     timelineWidthPx,
-    durationSec,
-  });
+    scrollLeftPx,
+    viewportWidthPx,
+  ]);
 
   if (!selectedSegment) return null;
 
@@ -78,37 +71,24 @@ export const WaveformSegmentPlaybackControls = memo(function WaveformSegmentPlay
     durationSec,
     scrollLeftPx,
     viewportWidthPx,
+    coordinateSpace: "timeline",
   });
 
-  if (!isPlaying && !layout.visible) return null;
+  if (!layout.visible) return null;
 
   return (
     <div
-      ref={overlayRef}
       className="region-action-overlay"
-      style={
-        isPlaying
-          ? { bottom: rulerBandHeightPx + 4 }
-          : {
-              left: layout.overlayLeftPx,
-              width: layout.overlayWidthPx,
-              bottom: rulerBandHeightPx + 4,
-            }
-      }
+      style={{
+        left: layout.overlayLeftPx,
+        width: layout.overlayWidthPx,
+        bottom: rulerBandHeightPx + 4,
+      }}
     >
-      {layout.showSpeedMenu ? (
-        <WaveformPlaybackRateMenu
-          variant="segment"
-          tierScrollRef={tierScrollRef}
-          disabled={disabled}
-          playbackRate={segmentPlaybackRate}
-          onPlaybackRateChange={onPlaybackRateChange}
-        />
-      ) : null}
       {layout.showLoopBtn ? (
         <button
           type="button"
-          className={`region-action-btn${segmentLoopPlayback ? " region-action-btn-active" : ""}`}
+          className={`region-action-btn${segmentLoopPlayback ? " region-action-btn-active workbench-state-btn-active" : ""}`}
           disabled={disabled}
           aria-pressed={segmentLoopPlayback}
           aria-label={segmentLoopPlayback ? "关闭语段循环播放" : "开启语段循环播放"}

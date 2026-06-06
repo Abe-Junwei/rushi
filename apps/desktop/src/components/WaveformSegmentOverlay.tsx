@@ -31,6 +31,7 @@ export type WaveformSegmentOverlayProps = {
   ) => void;
   onPlaySegment?: (idx: number) => void;
   seekToTime: (timeSec: number) => void;
+  revealSelectedSegmentInViewport?: () => void;
 };
 
 export const WaveformSegmentOverlay = memo(function WaveformSegmentOverlay(props: WaveformSegmentOverlayProps) {

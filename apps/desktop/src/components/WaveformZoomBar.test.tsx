@@ -95,4 +95,45 @@ describe("WaveformZoomBar", () => {
     fireEvent.click(toggle);
     expect(onToggleMinimap).toHaveBeenCalledTimes(1);
   });
+
+  it("collapses overflow zoom actions into menu when compactLayout is true", () => {
+    const { container } = render(
+      <WaveformZoomBar
+        {...baseProps}
+        compactLayout
+        minimapEnabled
+        onToggleMinimap={vi.fn()}
+        selectedStartSec={10}
+        selectedEndSec={14}
+      />,
+    );
+
+    expect(screen.getByLabelText("缩放菜单")).toBeTruthy();
+    expect(screen.getByRole("button", { name: "缩小" })).toBeTruthy();
+    expect(screen.getByRole("button", { name: "放大" })).toBeTruthy();
+    expect(container.querySelector(".waveform-zoom-bar-compact")).toBeTruthy();
+    expect(container.querySelectorAll(".waveform-zoom-bar-compact > .icon-btn").length).toBe(2);
+  });
+
+  it("invokes overflow zoom handlers from compact menu", () => {
+    const onFitAll = vi.fn();
+    const onToggleMinimap = vi.fn();
+    render(
+      <WaveformZoomBar
+        {...baseProps}
+        compactLayout
+        onToggleMinimap={onToggleMinimap}
+        onFitAll={onFitAll}
+      />,
+    );
+
+    fireEvent.click(screen.getByLabelText("缩放菜单"));
+    expect(screen.getByLabelText("缩放菜单").getAttribute("aria-expanded")).toBe("true");
+    fireEvent.click(screen.getByRole("button", { name: "整段可见" }));
+    fireEvent.click(screen.getByLabelText("缩放菜单"));
+    fireEvent.click(screen.getByRole("button", { name: "波形总览" }));
+
+    expect(onFitAll).toHaveBeenCalledTimes(1);
+    expect(onToggleMinimap).toHaveBeenCalledTimes(1);
+  });
 });

@@ -1,17 +1,10 @@
-import { Pause, Play } from "lucide-react";
 import { useCallback, useState } from "react";
 import { ResizeBottomHit } from "../ResizeBottomHit";
-import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";
 import { WaveformLiveTimeRuler } from "../WaveformLiveTimeRuler";
 import { WAVEFORM_EMBEDDED_TIME_RULER_H_PX } from "../WaveformTimeRuler";
-import { WaveformGlobalPlaybackSpeed } from "../WaveformGlobalPlaybackSpeed";
-import { WaveformGoToTime } from "../WaveformGoToTime";
-import { WaveformPlaybackScrollFollowModeControl } from "../WaveformPlaybackScrollFollowMode";
-import { WaveformPlaybackTime } from "../WaveformPlaybackTime";
 import { WaveformSegmentPlaybackControls } from "../WaveformSegmentPlaybackControls";
 import { WaveformSegmentBandCanvas } from "../WaveformSegmentBandCanvas";
 import { WaveformSegmentOverlay } from "../WaveformSegmentOverlay";
-import { WaveformZoomBar } from "../WaveformZoomBar";
 import { WaveformMinimapStrip } from "../WaveformMinimapStrip";
 import { resolveWaveformCenterStatusLabel } from "../../services/waveform/waveformRenderStatus";
 import { clampSegmentTimeBounds } from "../../utils/waveformSegmentBounds";
@@ -205,6 +198,7 @@ export function EditorWaveformPane({
                     clientXToTimeSec={tx.clientXToTimeSec}
                     onSelectSegmentAt={(idx) => tx.selectSegmentAt(idx, "waveform")}
                     onFocusWaveformShell={tx.focusWaveformShell}
+                    revealSelectedSegmentInViewport={tx.revealSelectedSegmentInViewport}
                     onBoundsCommit={(idx, startSec, endSec) => {
                       const clamped =
                         mediaDurationSec > 0
@@ -228,9 +222,7 @@ export function EditorWaveformPane({
                     tierScrollLive={tx.tierScrollLive}
                     tierScrollLayout={tx.tierScrollLayout}
                     selectedSegment={selectedSegment}
-                    segmentPlaybackRate={tx.segmentPlaybackRate}
                     segmentLoopPlayback={tx.segmentLoopPlayback}
-                    onPlaybackRateChange={tx.handleSegmentPlaybackRateChange}
                     onToggleLoop={() => void tx.handleToggleSelectedWaveformLoop()}
                     onTogglePlay={() => void tx.handleToggleSelectedWaveformPlay()}
                   />
@@ -263,65 +255,6 @@ export function EditorWaveformPane({
           onSetScrollLeftPx={tx.setTierScrollPx}
         />
       ) : null}
-
-      <div className="waveform-bottom-toolbar">
-        <div className="waveform-playback-cluster">
-          <button
-            type="button"
-            className="waveform-playback-btn"
-            disabled={c.busy || !tx.isReady}
-            onClick={() => void tx.togglePlay()}
-            aria-label={tx.isPlaying ? "暂停" : "播放"}
-          >
-            {tx.isPlaying ? (
-              <Pause className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-            ) : (
-              <Play className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-            )}
-          </button>
-          <WaveformPlaybackTime
-            className="waveform-toolbar-time"
-            isPlaying={tx.isPlaying}
-            isReady={tx.isReady}
-            durationSec={mediaDurationSec}
-            currentTimeSec={tx.currentTime}
-            getPlayheadTime={tx.getPlayheadTime}
-            formatMediaTime={tx.formatMediaTime}
-          />
-          <WaveformGlobalPlaybackSpeed
-            disabled={c.busy || !tx.isReady}
-            playbackRate={tx.globalPlaybackRate}
-            onPlaybackRateChange={tx.setGlobalPlaybackRate}
-          />
-          <WaveformGoToTime
-            disabled={c.busy || !tx.isReady}
-            durationSec={mediaDurationSec}
-            onJump={tx.jumpToMediaTime}
-          />
-          <span className="toolbar-sep" aria-hidden />
-          <WaveformPlaybackScrollFollowModeControl
-            disabled={c.busy || !tx.isReady}
-            mode={tx.playbackScrollFollowMode}
-            onModeChange={tx.setPlaybackScrollFollowMode}
-          />
-        </div>
-        <WaveformZoomBar
-          disabled={c.busy}
-          isReady={tx.isReady}
-          minimapEnabled={tx.minimapEnabled}
-          onToggleMinimap={() => tx.setMinimapEnabled(!tx.minimapEnabled)}
-          pxPerSec={tx.pxPerSec}
-          layoutIntent={tx.layoutIntent}
-          viewportWidthPx={viewportWidthPx}
-          durationSec={mediaDurationSec}
-          selectedStartSec={selectedSegment?.start_sec} selectedEndSec={selectedSegment?.end_sec}
-          onFitSelection={tx.zoomToFitSelection}
-          onFitAll={tx.zoomToFitAll}
-          onResetDefaultZoom={() => tx.resetZoomForMedia(viewportWidthPx, mediaDurationSec)}
-          onPxPerSecChange={tx.setPxPerSecFromSlider}
-          editorHint={tx.editorHint}
-        />
-      </div>
     </div>
   );
 }

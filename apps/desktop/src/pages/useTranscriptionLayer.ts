@@ -13,7 +13,7 @@ import { computeZoomInPxPerSec, computeZoomOutPxPerSec } from "../utils/waveform
 import { assignSegmentOverlapLanes, computeSegmentLaneRowPx } from "../utils/segmentLayout";
 import { resolveSelectSegmentViewportPlan } from "../services/waveform/selectSegmentViewportPlan";
 import { resolveWaveformFooterStatusLabel } from "../services/waveform/waveformRenderStatus";
-import { parseMediaTimeInput, segmentStartSec } from "../utils/formatMediaTime";
+import { segmentStartSec } from "../utils/formatMediaTime";
 import type { SegmentSelectSource } from "../utils/waveformViewMode";
 import { shouldFocusWaveformShellForSelectSource, shouldFitSelectionOnWaveformSelect, shouldZoomViewportOnSelectSource } from "../utils/waveformViewMode";
 export { TIMELINE_PX_PER_SEC, clampPxPerSec } from "../utils/pxPerSec";
@@ -130,10 +130,21 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
         segmentIdx,
         pointerTimeSec,
         origin: "waveform",
+        selectionText: "",
       });
     },
     [segmentLaneLayout.laneByIndex, segmentLaneLayout.laneCount, timeline.wfApiRef],
   );
+
+  const revealSelectedSegmentInViewport = useCallback(() => {
+    const c = ctxRef.current;
+    const seg = c.segments[c.selectedIdx];
+    if (!seg) return;
+    scrollFitRef.current.timeline.viewportFit.revealSegmentInViewport({
+      start_sec: seg.start_sec,
+      end_sec: seg.end_sec,
+    });
+  }, []);
 
   const selectSegmentAt = useCallback(
     (idx: number, source: SegmentSelectSource = "waveform") => {
@@ -175,20 +186,6 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
   );
 
   selectSegmentAtRef.current = selectSegmentAt;
-
-  const jumpToMediaTime = useCallback(
-    (raw: string) => {
-      const dur = timeline.timelineMetrics.mediaDurationSec;
-      const sec = parseMediaTimeInput(raw, dur > 0 ? dur : undefined);
-      if (sec == null) {
-        showEditorHintRef.current("时间格式无效，请用 m:ss 或 h:mm:ss。");
-        return false;
-      }
-      timeline.wfApiRef.current.seek(sec);
-      return true;
-    },
-    [timeline.timelineMetrics.mediaDurationSec, timeline.wfApiRef],
-  );
 
   const { wf, display, peaks, zoom, routePrefs } = timeline;
   const waveformStageHeightPx = display.waveformHeightPx;
@@ -262,7 +259,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     setPxPerSecFromSlider: zoom.setPxPerSecFromSlider,
     selectSegmentAt,
     selectSegmentFromList: (idx: number) => selectSegmentAt(idx, "list"),
-    jumpToMediaTime,
+    revealSelectedSegmentInViewport,
     insertSegmentAfter: ctx.insertSegmentAfter,
     deleteSegmentAt: ctx.deleteSegmentAt,
     splitAtPlayhead: ctx.splitAtPlayhead,
@@ -284,9 +281,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     formatMediaTime: wf.formatMediaTime,
     globalPlaybackRate: wf.globalPlaybackRate,
     setGlobalPlaybackRate: wf.setGlobalPlaybackRate,
-    segmentPlaybackRate: wf.segmentPlaybackRate,
     segmentLoopPlayback: wf.segmentLoopPlayback,
-    handleSegmentPlaybackRateChange: wf.handleSegmentPlaybackRateChange,
     handleToggleSelectedWaveformLoop: wf.handleToggleSelectedWaveformLoop,
     handleToggleSelectedWaveformPlay: wf.handleToggleSelectedWaveformPlay,
     playSegmentAtIndex: wf.playSegmentAtIndex,

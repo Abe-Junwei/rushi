@@ -38,10 +38,6 @@ interface EditorSegmentListProps {
   appearance: AppearanceApi;
   listRef: React.RefObject<HTMLDivElement | null>;
   onOpenSegmentContextMenu: (menu: SegmentCtxMenuState) => void;
-  onOpenSegmentTextContextMenu: (
-    e: ReactMouseEvent<HTMLTextAreaElement>,
-    selectionText: string,
-  ) => void;
 }
 
 function readScrollMetrics(root: HTMLElement | null): { scrollTop: number; viewportHeight: number } {
@@ -60,7 +56,6 @@ export function EditorSegmentList({
   appearance: a,
   listRef: segmentListRef,
   onOpenSegmentContextMenu,
-  onOpenSegmentTextContextMenu,
 }: EditorSegmentListProps) {
   const scrollMetricsRef = useRef(readScrollMetrics(null));
   const [scrollEpoch, setScrollEpoch] = useState(0);
@@ -129,7 +124,12 @@ export function EditorSegmentList({
   }, [bumpScrollEpoch, c.selectedIdx, segmentListRef]);
 
   const onOpenRowContextMenu = useCallback(
-    (e: ReactMouseEvent<HTMLDivElement>, segmentIdx: number, pointerTimeSec: number) => {
+    (
+      e: ReactMouseEvent<HTMLElement>,
+      segmentIdx: number,
+      pointerTimeSec: number,
+      selectionText = "",
+    ) => {
       if (c.busy) return;
       e.preventDefault();
       e.stopPropagation();
@@ -139,6 +139,7 @@ export function EditorSegmentList({
         segmentIdx,
         pointerTimeSec,
         origin: "segmentList",
+        selectionText,
       });
     },
     [c.busy, onOpenSegmentContextMenu],
@@ -201,6 +202,10 @@ export function EditorSegmentList({
       updateSegmentText={c.updateSegmentText}
       onTextareaKeyDown={tx.onSegmentTextareaKeyDown}
       onOpenContextMenu={onOpenRowContextMenu}
+      onOpenTextContextMenu={(e, selectionText) =>
+        onOpenRowContextMenu(e, i, (s.start_sec + s.end_sec) / 2, selectionText)
+      }
+      onRevealSelectedSegment={tx.revealSelectedSegmentInViewport}
       findReplaceHighlight={
         c.findReplaceEditorHighlight?.segmentIdx === i
           ? {
@@ -217,7 +222,6 @@ export function EditorSegmentList({
             }
           : null
       }
-      onOpenTextContextMenu={onOpenSegmentTextContextMenu}
       spansForText={c.editorSpansForText}
       onCorrectableSpanClick={(span, event) =>
         c.openEditorCorrectPopover(i, span, event.clientX, event.clientY)

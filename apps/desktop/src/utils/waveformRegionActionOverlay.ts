@@ -1,18 +1,37 @@
 import { timeToTimelinePx } from "./waveformProjection";
 
-/** 语段播放控制条预估宽度（speed + loop + play）。 */
-export const WAVEFORM_REGION_ACTION_OVERLAY_EST_WIDTH_PX = 220;
+/** 语段播放控制条预估宽度（loop + play）。 */
+export const WAVEFORM_REGION_ACTION_OVERLAY_EST_WIDTH_PX = 160;
+
+export const REGION_ACTION_PLAY_BTN_PX = 24;
+export const REGION_ACTION_LOOP_BTN_PX = 24;
+export const REGION_ACTION_BTN_GAP_PX = 3;
+
+const REGION_ACTION_WIDTH_PLAY_ONLY_PX = REGION_ACTION_PLAY_BTN_PX;
+const REGION_ACTION_WIDTH_LOOP_PLAY_PX =
+  REGION_ACTION_PLAY_BTN_PX + REGION_ACTION_BTN_GAP_PX + REGION_ACTION_LOOP_BTN_PX;
 
 export type SegmentPlaybackControlsOverlayLayout = {
   visible: boolean;
+  /** Sticky 视口坐标（与语段 band canvas 一致），非 timeline shell 坐标。 */
   overlayLeftPx: number;
   overlayWidthPx: number;
-  showSpeedMenu: boolean;
   showLoopBtn: boolean;
   segmentWidthPx: number;
+  visibleSegmentWidthPx: number;
 };
 
-/** 语段播放控制条位置/可见性（随 tier scroll 变化）。 */
+/** 按语段（可见部分）宽度决定展示哪些控件，避免窄语段挤叠。 */
+export function resolveSegmentPlaybackControlVisibility(fitWidthPx: number): {
+  showLoopBtn: boolean;
+} {
+  if (fitWidthPx >= REGION_ACTION_WIDTH_LOOP_PLAY_PX) {
+    return { showLoopBtn: true };
+  }
+  return { showLoopBtn: false };
+}
+
+/** 语段播放控制条位置/可见性。`viewport` = sticky 壳内坐标；`timeline` = 随 tier 横向滚动。 */
 export function resolveSegmentPlaybackControlsOverlayLayout(input: {
   segmentStartSec: number;
   segmentEndSec: number;
@@ -20,43 +39,76 @@ export function resolveSegmentPlaybackControlsOverlayLayout(input: {
   durationSec: number;
   scrollLeftPx: number;
   viewportWidthPx: number;
+  coordinateSpace?: "viewport" | "timeline";
 }): SegmentPlaybackControlsOverlayLayout {
+  const timelineWidthPx = Math.max(1, input.timelineWidthPx);
+  const durationSec = Math.max(input.durationSec, 0.001);
+  const scrollLeftPx = Math.max(0, input.scrollLeftPx);
+  const viewportWidthPx = Math.max(1, input.viewportWidthPx);
+
   const lo = Math.min(input.segmentStartSec, input.segmentEndSec);
   const hi = Math.max(input.segmentStartSec, input.segmentEndSec);
-  const leftPx = timeToTimelinePx(lo, input.timelineWidthPx, input.durationSec);
-  const rightPx = timeToTimelinePx(hi, input.timelineWidthPx, input.durationSec);
+  const leftPx = timeToTimelinePx(lo, timelineWidthPx, durationSec);
+  const rightPx = timeToTimelinePx(hi, timelineWidthPx, durationSec);
   const segmentWidthPx = Math.max(2, rightPx - leftPx);
-  const visible =
-    leftPx + segmentWidthPx >= input.scrollLeftPx &&
-    leftPx <= input.scrollLeftPx + input.viewportWidthPx;
-  const showSpeedMenu = segmentWidthPx >= 88;
-  const showLoopBtn = segmentWidthPx >= 72;
-  const overlayWidthPx = estimateRegionActionOverlayWidthPx({ showSpeedMenu, showLoopBtn });
-  const overlayLeftPx = computeRegionActionOverlayCenterLeftPx({
-    segmentStartPx: leftPx,
-    segmentWidthPx,
-    scrollLeftPx: input.scrollLeftPx,
-    viewportWidthPx: input.viewportWidthPx,
-    overlayEstimatedWidthPx: overlayWidthPx,
-  });
+
+  const segLeftVp = leftPx - scrollLeftPx;
+  const segRightVp = rightPx - scrollLeftPx;
+  const visibleLeftVp = Math.max(segLeftVp, 0);
+  const visibleRightVp = Math.min(segRightVp, viewportWidthPx);
+  const visibleSegmentWidthPx = Math.max(0, visibleRightVp - visibleLeftVp);
+
+  const visible = visibleSegmentWidthPx > 0;
+  const fitWidthPx = Math.min(segmentWidthPx, visibleSegmentWidthPx);
+  const { showLoopBtn } = resolveSegmentPlaybackControlVisibility(fitWidthPx);
+  const overlayWidthPx = estimateRegionActionOverlayWidthPx({ showLoopBtn });
+
+  const coordinateSpace = input.coordinateSpace ?? "viewport";
+
+  if (coordinateSpace === "timeline") {
+    const segCenterTimelinePx = (leftPx + rightPx) / 2;
+    const segMinLeft = leftPx;
+    const segMaxLeft = Math.max(segMinLeft, rightPx - overlayWidthPx);
+    const overlayLeftPx = Math.max(
+      segMinLeft,
+      Math.min(segMaxLeft, segCenterTimelinePx - overlayWidthPx / 2),
+    );
+    return {
+      visible,
+      overlayLeftPx,
+      overlayWidthPx,
+      showLoopBtn,
+      segmentWidthPx,
+      visibleSegmentWidthPx,
+    };
+  }
+
+  const segCenterVp = (leftPx + rightPx) / 2 - scrollLeftPx;
+  let overlayLeftPx = segCenterVp - overlayWidthPx / 2;
+
+  if (visible) {
+    const segVisMinLeft = visibleLeftVp;
+    const segVisMaxLeft = Math.max(segVisMinLeft, visibleRightVp - overlayWidthPx);
+    overlayLeftPx = Math.max(segVisMinLeft, Math.min(segVisMaxLeft, overlayLeftPx));
+    overlayLeftPx = Math.max(0, Math.min(viewportWidthPx - overlayWidthPx, overlayLeftPx));
+  }
+
   return {
     visible,
     overlayLeftPx,
     overlayWidthPx,
-    showSpeedMenu,
     showLoopBtn,
     segmentWidthPx,
+    visibleSegmentWidthPx,
   };
 }
 
 /** 按可见控件估算播放控制条宽度。 */
 export function estimateRegionActionOverlayWidthPx(input: {
-  showSpeedMenu: boolean;
   showLoopBtn: boolean;
 }): number {
-  let widthPx = 24;
-  if (input.showLoopBtn) widthPx += 3 + 24;
-  if (input.showSpeedMenu) widthPx += 3 + 56;
+  let widthPx = REGION_ACTION_WIDTH_PLAY_ONLY_PX;
+  if (input.showLoopBtn) widthPx += REGION_ACTION_BTN_GAP_PX + REGION_ACTION_LOOP_BTN_PX;
   return widthPx;
 }
 
@@ -77,7 +129,7 @@ export function computeRegionActionOverlayLeftPx(input: {
   return Math.max(minLeft, Math.min(maxLeft, segStart));
 }
 
-/** 播放控制条在语段内水平居中，并钳在可见视口内。 */
+/** Timeline-shell 坐标下的居中 left（legacy）；控件已迁至 sticky 视口坐标。 */
 export function computeRegionActionOverlayCenterLeftPx(input: {
   segmentStartPx: number;
   segmentWidthPx: number;
@@ -86,11 +138,31 @@ export function computeRegionActionOverlayCenterLeftPx(input: {
   overlayEstimatedWidthPx: number;
 }): number {
   const est = input.overlayEstimatedWidthPx;
+  const segStart = input.segmentStartPx;
+  const segEndPx = segStart + input.segmentWidthPx;
+  const segMinLeft = segStart;
+  const segMaxLeft = Math.max(segMinLeft, segEndPx - est);
+
   const viewStart = Math.max(0, input.scrollLeftPx);
   const viewEnd = viewStart + Math.max(1, input.viewportWidthPx);
-  const segCenterPx = input.segmentStartPx + input.segmentWidthPx / 2;
-  const minLeft = viewStart;
-  const maxLeft = Math.max(minLeft, viewEnd - est);
-  const idealLeft = segCenterPx - est / 2;
-  return Math.max(minLeft, Math.min(maxLeft, idealLeft));
+
+  const visibleLeftPx = Math.max(segStart, viewStart);
+  const visibleRightPx = Math.min(segEndPx, viewEnd);
+  const hasVisibleIntersection = visibleRightPx > visibleLeftPx;
+
+  const anchorCenterPx = hasVisibleIntersection
+    ? (visibleLeftPx + visibleRightPx) / 2
+    : segStart + input.segmentWidthPx / 2;
+
+  let idealLeft = anchorCenterPx - est / 2;
+  idealLeft = Math.max(segMinLeft, Math.min(segMaxLeft, idealLeft));
+
+  if (hasVisibleIntersection) {
+    const viewMinLeft = viewStart;
+    const viewMaxLeft = Math.max(viewMinLeft, viewEnd - est);
+    idealLeft = Math.max(viewMinLeft, Math.min(viewMaxLeft, idealLeft));
+    idealLeft = Math.max(segMinLeft, Math.min(segMaxLeft, idealLeft));
+  }
+
+  return idealLeft;
 }

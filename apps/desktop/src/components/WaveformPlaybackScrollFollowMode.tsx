@@ -1,7 +1,7 @@
 import { memo } from "react";
 import { ChevronsLeftRight, Crosshair, type LucideIcon } from "lucide-react";
 import type { WaveformPlaybackScrollFollowMode } from "../utils/waveformPlaybackScrollFollow";
-import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
+import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
 export type WaveformPlaybackScrollFollowModeProps = {
   disabled: boolean;
@@ -50,14 +50,14 @@ export const WaveformPlaybackScrollFollowModeControl = memo(function WaveformPla
           <button
             key={id}
             type="button"
-            className={`waveform-scroll-follow-segment-btn${active ? " waveform-scroll-follow-segment-btn-active" : ""}`}
+            className={`waveform-scroll-follow-segment-btn${active ? " waveform-scroll-follow-segment-btn-active workbench-state-btn-active" : ""}`}
             disabled={disabled}
             title={title}
             aria-label={ariaLabel}
             aria-pressed={active}
             onClick={() => onModeChange(id)}
           >
-            <Icon className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+            <Icon className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
             <span className="waveform-scroll-follow-segment-label">{label}</span>
           </button>
         );

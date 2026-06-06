@@ -1,6 +1,11 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { clampPxPerSec } from "./pxPerSec";
-import { readStoredWaveformPxPerSec, writeStoredWaveformPxPerSec } from "./waveformPrefs";
+import {
+  migrateLegacySegmentPlaybackRateToGlobal,
+  readStoredWaveformGlobalPlaybackRate,
+  readStoredWaveformPxPerSec,
+  writeStoredWaveformPxPerSec,
+} from "./waveformPrefs";
 
 describe("waveformPrefs localStorage", () => {
   const mem: Record<string, string> = {};
@@ -35,5 +40,20 @@ describe("waveformPrefs localStorage", () => {
   it("clamps invalid stored values on read", () => {
     localStorage.setItem("rushi.p1.waveformPxPerSec", "99999");
     expect(readStoredWaveformPxPerSec()).toBe(clampPxPerSec(99999));
+  });
+
+  it("migrates legacy segment playback rate into global when global is default", () => {
+    localStorage.setItem("rushi.p1.segmentPlaybackRate", "1.5");
+    expect(migrateLegacySegmentPlaybackRateToGlobal()).toBe(1.5);
+    expect(readStoredWaveformGlobalPlaybackRate()).toBe(1.5);
+    expect(localStorage.getItem("rushi.p1.segmentPlaybackRate")).toBeNull();
+  });
+
+  it("drops legacy segment key without overwriting explicit global rate", () => {
+    localStorage.setItem("rushi.p1.waveformGlobalPlaybackRate", "2");
+    localStorage.setItem("rushi.p1.segmentPlaybackRate", "1.5");
+    expect(migrateLegacySegmentPlaybackRateToGlobal()).toBeNull();
+    expect(readStoredWaveformGlobalPlaybackRate()).toBe(2);
+    expect(localStorage.getItem("rushi.p1.segmentPlaybackRate")).toBeNull();
   });
 });

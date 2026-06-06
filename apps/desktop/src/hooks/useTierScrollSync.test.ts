@@ -325,6 +325,50 @@ describe("useTierScrollSync", () => {
     expect(result.current.tierScrollLayout.scrollLeftPx).toBe(144);
   });
 
+  it("preserves pending segment-fit scroll when timeline width changes", async () => {
+    const { el: tier } = createTierContainer(800);
+    const tierScrollRef = { current: tier };
+    const wfApiRef = { current: createWaveformApi() };
+
+    const { result, rerender } = renderHook(
+      (props: Parameters<typeof useTierScrollSync>[0]) => useTierScrollSync(props),
+      {
+        initialProps: {
+          tierScrollRef,
+          timelineWidthPx: 4000,
+          wfApiRef: wfApiRef as never,
+          waveformReady: true,
+          mediaUrl: "/audio.wav",
+          ...tierScrollDefaults,
+          mediaDurationSec: 600,
+        },
+      },
+    );
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    act(() => {
+      result.current.setTierScrollPx(1200, { timelineWidthPx: 6000, immediate: true });
+    });
+
+    await act(async () => {
+      rerender({
+        tierScrollRef,
+        timelineWidthPx: 6000,
+        wfApiRef: wfApiRef as never,
+        waveformReady: true,
+        mediaUrl: "/audio.wav",
+        ...tierScrollDefaults,
+        mediaDurationSec: 600,
+      });
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    expect(tier.scrollLeft).toBe(1200);
+  });
+
   it("does not extend playback-follow suppress for programmatic scroll writes", async () => {
     const { el: tier } = createTierContainer();
     const tierScrollRef = { current: tier };

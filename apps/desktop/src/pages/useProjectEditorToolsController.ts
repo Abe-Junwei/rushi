@@ -4,7 +4,6 @@ import type { SegmentDto } from "../tauri/projectApi";
 import type { BusyReason } from "./useProjectCrudController";
 import { useFindReplaceController } from "./useFindReplaceController";
 import { usePostTranscribeOrchestrationController } from "./usePostTranscribeOrchestrationController";
-import { useCorrectSuggestionsController } from "./useCorrectSuggestionsController";
 import { useEditorCorrectionCatalog } from "./useEditorCorrectionCatalog";
 import { useEditorSegmentCorrectPopover } from "./useEditorSegmentCorrectPopover";
 import { segmentsWithDraftsApplied } from "../services/segmentDirtyRead";
@@ -102,13 +101,6 @@ export function useProjectEditorToolsController(args: Args) {
     [busy, currentFileId, dirty, segments],
   );
 
-  const correctSuggestions = useCorrectSuggestionsController({
-    busy,
-    currentFileId,
-    openFindReplace: findReplace.openFindReplace,
-    setError,
-  });
-
   const postTranscribeOrchestration = usePostTranscribeOrchestrationController({
     busy,
     transcribePreviewActive: busyReason === "transcribe",
@@ -135,7 +127,6 @@ export function useProjectEditorToolsController(args: Args) {
     findReplace,
     editorCorrectionCatalog,
     editorSegmentCorrect,
-    correctSuggestions,
     correctionRules: postTranscribeOrchestration,
     postTranscribeOrchestration,
   };

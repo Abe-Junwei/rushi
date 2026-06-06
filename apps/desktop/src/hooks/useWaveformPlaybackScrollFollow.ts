@@ -22,6 +22,38 @@ export type UseWaveformPlaybackScrollFollowArgs = {
   userScrollSuppressUntilRef?: React.MutableRefObject<number>;
 };
 
+function applyPlaybackScrollFollowTarget(args: {
+  tierScrollRef: RefObject<HTMLElement | null>;
+  timelineWidthPx: number;
+  durationSec: number;
+  followMode: WaveformPlaybackScrollFollowMode;
+  getPlayheadTimeSec: () => number;
+  setTierScrollPx: UseWaveformPlaybackScrollFollowArgs["setTierScrollPx"];
+  userScrollSuppressUntilRef?: React.MutableRefObject<number>;
+}): void {
+  if (args.userScrollSuppressUntilRef && performance.now() < args.userScrollSuppressUntilRef.current) {
+    return;
+  }
+  const tier = args.tierScrollRef.current;
+  if (!tier) return;
+  const vw = tier.clientWidth;
+  if (vw <= 0) return;
+
+  const t = Math.max(0, Math.min(args.durationSec, args.getPlayheadTimeSec()));
+  const currentScrollLeftPx = tier.scrollLeft;
+  const target = resolvePlaybackScrollFollowTargetPx({
+    mode: args.followMode,
+    timeSec: t,
+    timelineWidthPx: args.timelineWidthPx,
+    durationSec: args.durationSec,
+    viewportWidthPx: vw,
+    currentScrollLeftPx,
+  });
+  if (Math.abs(target - currentScrollLeftPx) > WAVEFORM_SCROLL_SYNC_EPSILON_PX) {
+    args.setTierScrollPx(target, { deferLayoutCommit: true, immediate: true });
+  }
+}
+
 /**
  * Playback follow (ADR-0005): keep playhead in view by writing tier scroll only
  * (WaveSurfer `autoScroll` is off).
@@ -47,6 +79,31 @@ export function useWaveformPlaybackScrollFollow(args: UseWaveformPlaybackScrollF
   followModeRef.current = followMode;
 
   useEffect(() => {
+    if (!enabled || !isReady || durationSec < 0.5 || timelineWidthPx <= 0) {
+      return;
+    }
+    applyPlaybackScrollFollowTarget({
+      tierScrollRef,
+      timelineWidthPx,
+      durationSec,
+      followMode,
+      getPlayheadTimeSec,
+      setTierScrollPx,
+      userScrollSuppressUntilRef,
+    });
+  }, [
+    durationSec,
+    enabled,
+    followMode,
+    getPlayheadTimeSec,
+    isReady,
+    setTierScrollPx,
+    tierScrollRef,
+    timelineWidthPx,
+    userScrollSuppressUntilRef,
+  ]);
+
+  useEffect(() => {
     if (!enabled || !isPlaying || !isReady || durationSec < 0.5 || timelineWidthPx <= 0) {
       return;
     }
@@ -59,31 +116,15 @@ export function useWaveformPlaybackScrollFollow(args: UseWaveformPlaybackScrollF
         raf = requestAnimationFrame(tick);
         return;
       }
-      const tier = tierScrollRef.current;
-      if (!tier) {
-        raf = requestAnimationFrame(tick);
-        return;
-      }
-      const vw = tier.clientWidth;
-      if (vw <= 0) {
-        raf = requestAnimationFrame(tick);
-        return;
-      }
-
-      const t = Math.max(0, Math.min(durationSec, getPlayheadTimeSec()));
-      const currentScrollLeftPx = tier.scrollLeft;
-      const target = resolvePlaybackScrollFollowTargetPx({
-        mode: followModeRef.current,
-        timeSec: t,
+      applyPlaybackScrollFollowTarget({
+        tierScrollRef,
         timelineWidthPx,
         durationSec,
-        viewportWidthPx: vw,
-        currentScrollLeftPx,
+        followMode: followModeRef.current,
+        getPlayheadTimeSec,
+        setTierScrollPx,
+        userScrollSuppressUntilRef,
       });
-      if (Math.abs(target - currentScrollLeftPx) > WAVEFORM_SCROLL_SYNC_EPSILON_PX) {
-        setTierScrollPx(target, { deferLayoutCommit: true, immediate: true });
-      }
-
       raf = requestAnimationFrame(tick);
     };
 

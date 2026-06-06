@@ -2,42 +2,30 @@ import { memo } from "react";
 import { ResizeBottomHit } from "../ResizeBottomHit";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
-import type { useEditorEditHistory } from "./useEditorEditHistory";
 import type { useEditorTranscriptAppearance } from "./useEditorTranscriptAppearance";
 import type { SegmentContextMenuOpen } from "../../utils/segmentContextMenuModel";
 import { EditorSegmentList } from "./EditorSegmentList";
-import { EditorSegmentToolbar } from "./EditorSegmentToolbar";
-type EditHistoryApi = ReturnType<typeof useEditorEditHistory>;
 type AppearanceApi = ReturnType<typeof useEditorTranscriptAppearance>;
 interface EditorSegmentWorkbenchProps {
   controller: ProjectControllerApi;
   tx: TranscriptionLayerApi;
   appearance: AppearanceApi;
-  editHistory: EditHistoryApi;
   onOpenSegmentContextMenu: (menu: SegmentContextMenuOpen) => void;
-  onOpenSegmentTextContextMenu: (
-    e: React.MouseEvent<HTMLTextAreaElement>,
-    selectionText: string,
-  ) => void;
 }
 export const EditorSegmentWorkbench = memo(function EditorSegmentWorkbench({
   controller: c,
   tx,
   appearance: a,
-  editHistory: h,
   onOpenSegmentContextMenu,
-  onOpenSegmentTextContextMenu,
 }: EditorSegmentWorkbenchProps) {
   return (
     <div className="flex h-0 min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden bg-notion-bg">
-      <EditorSegmentToolbar controller={c} tx={tx} appearance={a} editHistory={h} />
       <EditorSegmentList
         controller={c}
         tx={tx}
         appearance={a}
         listRef={tx.segmentListRef}
         onOpenSegmentContextMenu={onOpenSegmentContextMenu}
-        onOpenSegmentTextContextMenu={onOpenSegmentTextContextMenu}
       />
       <ResizeBottomHit
         busy={c.busy}
@@ -68,8 +56,6 @@ function areEditorSegmentWorkbenchPropsEqual(
     prev.tx.selectSegmentAt === next.tx.selectSegmentAt &&
     prev.tx.onSegmentTextareaKeyDown === next.tx.onSegmentTextareaKeyDown &&
     prev.appearance === next.appearance &&
-    prev.editHistory === next.editHistory &&
-    prev.onOpenSegmentContextMenu === next.onOpenSegmentContextMenu &&
-    prev.onOpenSegmentTextContextMenu === next.onOpenSegmentTextContextMenu
+    prev.onOpenSegmentContextMenu === next.onOpenSegmentContextMenu
   );
 }

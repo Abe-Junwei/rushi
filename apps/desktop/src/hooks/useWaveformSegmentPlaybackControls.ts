@@ -3,26 +3,10 @@ import type WaveSurfer from "wavesurfer.js";
 import type { SegmentDto } from "../tauri/projectApi";
 
 import { resolveSegmentPlaybackStartSec } from "../utils/formatMediaTime";
-import { clampWaveformPlaybackRate } from "../utils/waveformPlaybackRate";
-
-const SEGMENT_PLAYBACK_RATE_KEY = "rushi.p1.segmentPlaybackRate";
-
-function readStoredSegmentPlaybackRate(): number {
-  try {
-    const raw = localStorage.getItem(SEGMENT_PLAYBACK_RATE_KEY);
-    if (!raw) return 1;
-    const value = Number(raw);
-    return Number.isFinite(value) ? clampWaveformPlaybackRate(value) : 1;
-  } catch {
-    return 1;
-  }
-}
 
 export type PlaySegmentAtIndexOptions = {
   /** Tab 听打：切段后自动循环当前语段。 */
   loop?: boolean;
-  /** 使用主 transport 全局变速（与语段条 slider 分离）。 */
-  useGlobalPlaybackRate?: boolean;
 };
 
 export function useWaveformSegmentPlaybackControls(args: {
@@ -30,17 +14,14 @@ export function useWaveformSegmentPlaybackControls(args: {
   isReady: boolean;
   segments: SegmentDto[];
   selectedIdx: number;
-  getGlobalPlaybackRate?: () => number;
+  getGlobalPlaybackRate: () => number;
 }) {
   const { wsRef, isReady, segments, selectedIdx, getGlobalPlaybackRate } = args;
-  const [segmentPlaybackRate, setSegmentPlaybackRateState] = useState(readStoredSegmentPlaybackRate);
   const [segmentLoopPlayback, setSegmentLoopPlayback] = useState(false);
   const segmentsRef = useRef(segments);
   segmentsRef.current = segments;
   const selectedIdxRef = useRef(selectedIdx);
   selectedIdxRef.current = selectedIdx;
-  const segmentPlaybackRateRef = useRef(segmentPlaybackRate);
-  segmentPlaybackRateRef.current = segmentPlaybackRate;
   const segmentLoopPlaybackRef = useRef(segmentLoopPlayback);
   segmentLoopPlaybackRef.current = segmentLoopPlayback;
   const preserveLoopOnNextSelectRef = useRef(false);
@@ -55,6 +36,12 @@ export function useWaveformSegmentPlaybackControls(args: {
   }, []);
 
   const playGenerationRef = useRef(0);
+
+  const applyGlobalPlaybackRate = useCallback(() => {
+    const ws = wsRef.current;
+    if (!ws) return;
+    ws.setPlaybackRate(getGlobalPlaybackRate());
+  }, [getGlobalPlaybackRate, wsRef]);
 
   const playSegmentAtIndex = useCallback(
     async (idx: number, options?: PlaySegmentAtIndexOptions) => {
@@ -71,10 +58,7 @@ export function useWaveformSegmentPlaybackControls(args: {
         end: Math.max(seg.start_sec, seg.end_sec),
       };
       const playFrom = resolveSegmentPlaybackStartSec(ws.getCurrentTime(), seg);
-      const rate = options?.useGlobalPlaybackRate
-        ? (getGlobalPlaybackRate?.() ?? segmentPlaybackRateRef.current)
-        : segmentPlaybackRateRef.current;
-      ws.setPlaybackRate(rate);
+      applyGlobalPlaybackRate();
       if (options?.loop) {
         setSegmentLoopPlayback(true);
       }
@@ -83,30 +67,16 @@ export function useWaveformSegmentPlaybackControls(args: {
         ws.pause();
       }
     },
-    [getGlobalPlaybackRate, isReady, wsRef],
+    [applyGlobalPlaybackRate, isReady, wsRef],
   );
 
   const playSelectedSegment = useCallback(async () => {
     const ws = wsRef.current;
     const range = resolveSelectedPlaybackRange();
     if (!ws || !isReady || !range) return;
-    ws.setPlaybackRate(segmentPlaybackRateRef.current);
+    applyGlobalPlaybackRate();
     await playSegmentAtIndex(selectedIdxRef.current);
-  }, [isReady, playSegmentAtIndex, resolveSelectedPlaybackRange, wsRef]);
-
-  const handleSegmentPlaybackRateChange = useCallback(
-    (rate: number) => {
-      const nextRate = clampWaveformPlaybackRate(rate);
-      setSegmentPlaybackRateState(nextRate);
-      try {
-        localStorage.setItem(SEGMENT_PLAYBACK_RATE_KEY, String(nextRate));
-      } catch {
-        /* noop */
-      }
-      wsRef.current?.setPlaybackRate(nextRate);
-    },
-    [wsRef],
-  );
+  }, [applyGlobalPlaybackRate, isReady, playSegmentAtIndex, resolveSelectedPlaybackRange, wsRef]);
 
   const handleToggleSelectedWaveformPlay = useCallback(async () => {
     const ws = wsRef.current;
@@ -174,11 +144,9 @@ export function useWaveformSegmentPlaybackControls(args: {
   }, [isReady, playSelectedSegment, resolveSelectedPlaybackRange, segmentLoopPlayback, wsRef]);
 
   return {
-    segmentPlaybackRate,
     segmentLoopPlayback,
     preserveLoopForNextSegmentSelect,
     playSegmentAtIndex,
-    handleSegmentPlaybackRateChange,
     handleToggleSelectedWaveformLoop,
     handleToggleSelectedWaveformPlay,
   };

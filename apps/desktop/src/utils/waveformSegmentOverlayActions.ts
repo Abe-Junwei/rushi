@@ -45,6 +45,7 @@ export function applySegmentOverlayTap(
   actions: {
     onSelectSegmentAt: (idx: number) => void;
     seekToTime: (timeSec: number) => void;
+    revealSelectedSegmentInViewport?: () => void;
   },
 ): void {
   const resolved = resolveSegmentOverlayTap(args);
@@ -52,6 +53,7 @@ export function applySegmentOverlayTap(
     actions.onSelectSegmentAt(resolved.segmentIdx);
     return;
   }
+  actions.revealSelectedSegmentInViewport?.();
   actions.seekToTime(resolved.timeSec);
 }
 

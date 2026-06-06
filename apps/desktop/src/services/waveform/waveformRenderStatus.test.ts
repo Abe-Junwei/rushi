@@ -15,6 +15,17 @@ describe("resolveWaveformFooterStatusLabel", () => {
   it("mirrors header steady-state labels for editor footer", () => {
     expect(resolveWaveformFooterStatusLabel({ ...base, phase: "decode" })).toBe("正在优化波形…");
   });
+
+  it("returns null for idle waveform ready so footer can rotate shortcut hints", () => {
+    expect(resolveWaveformFooterStatusLabel({ ...base, phase: "peaks" })).toBeNull();
+    expect(
+      resolveWaveformFooterStatusLabel({
+        ...base,
+        phase: "decode",
+        backgroundPeaksEnabled: false,
+      }),
+    ).toBeNull();
+  });
 });
 
 describe("resolveWaveformHeaderStatusLabel", () => {

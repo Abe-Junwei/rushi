@@ -1,5 +1,6 @@
 import { memo, useCallback, useMemo } from "react";
-import { Focus, Maximize2, ZoomIn, ZoomOut } from "lucide-react";
+import { Focus, Map, Maximize2, RotateCcw, ZoomIn, ZoomOut } from "lucide-react";
+import { useWorkbenchToolbarCompact } from "../hooks/useWorkbenchToolbarCompact";
 import {
   FIT_SELECTION_VIEWPORT_RATIO,
   PX_PER_SEC_MAX,
@@ -12,7 +13,11 @@ import {
   computeZoomInPxPerSec,
   computeZoomOutPxPerSec,
 } from "../utils/waveformZoomSlider";
-import { LUCIDE_ICON_SIZE_LG, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
+import {
+  workbenchDropdownItemActiveClass,
+} from "./editor/editorSegmentToolbarStyles";
+import { WorkbenchOverflowMenu } from "./editor/WorkbenchOverflowMenu";
+import { LUCIDE_ICON_SIZE_LG, LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
 function fitSelectionPercentLabel(): string {
   return `${Math.round(FIT_SELECTION_VIEWPORT_RATIO * 100)}%`;
@@ -72,7 +77,8 @@ export type WaveformZoomBarProps = {
   onFitAll: () => void;
   onResetDefaultZoom: () => void;
   onPxPerSecChange: (pxPerSec: number) => void;
-  editorHint?: string;
+  /** 测试/Story 覆盖：`true` 强制紧凑菜单，`false` 强制展开。 */
+  compactLayout?: boolean;
 };
 
 function hasWaveformSegmentSelection(
@@ -103,8 +109,11 @@ export const WaveformZoomBar = memo(function WaveformZoomBar({
   onFitAll,
   onResetDefaultZoom,
   onPxPerSecChange,
-  editorHint,
+  compactLayout,
 }: WaveformZoomBarProps) {
+  const compactFromMedia = useWorkbenchToolbarCompact();
+  const compact = compactLayout ?? compactFromMedia;
+
   const off = disabled || !isReady;
   const hasSelection = hasWaveformSegmentSelection(selectedStartSec, selectedEndSec);
 
@@ -143,50 +152,123 @@ export const WaveformZoomBar = memo(function WaveformZoomBar({
   const zoomInTitle = resolveZoomInTitle(atMaxZoom);
   const resetTitle = resolveResetTitle(atDefaultZoom);
 
+  const zoomMenuEngaged =
+    minimapEnabled || atFitSelectionZoom || atFitAllZoom || atDefaultZoom;
+
   return (
     <div className="waveform-zoom-toolbar" role="toolbar" aria-label="波形时间轴缩放">
-      <div className="waveform-zoom-bar">
-        {onToggleMinimap ? (
+      <div className={`waveform-zoom-bar${compact ? " waveform-zoom-bar-compact" : ""}`}>
+        {compact ? (
+          <WorkbenchOverflowMenu
+            label="缩放"
+            ariaLabel="缩放菜单"
+            engaged={zoomMenuEngaged}
+            align="end"
+            className="waveform-zoom-compact-menu"
+          >
+            {(close) => (
+              <>
+                {onToggleMinimap ? (
+                  <button
+                    type="button"
+                    className={workbenchDropdownItemActiveClass(minimapEnabled)}
+                    disabled={off}
+                    title={minimapEnabled ? "关闭波形总览条" : "显示波形总览条"}
+                    aria-pressed={minimapEnabled}
+                    onClick={() => {
+                      close();
+                      onToggleMinimap();
+                    }}
+                  >
+                    <Map className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+                    {minimapEnabled ? "关闭波形总览" : "波形总览"}
+                  </button>
+                ) : null}
+                <button
+                  type="button"
+                  className={workbenchDropdownItemActiveClass(atFitSelectionZoom)}
+                  disabled={off || !hasSelection}
+                  title={fitSelectionTitle}
+                  aria-pressed={atFitSelectionZoom}
+                  onClick={() => {
+                    close();
+                    onFitSelection();
+                  }}
+                >
+                  <Focus className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+                  适配语段
+                </button>
+                <button
+                  type="button"
+                  className={workbenchDropdownItemActiveClass(atFitAllZoom)}
+                  disabled={off}
+                  title={fitAllTitle}
+                  aria-pressed={atFitAllZoom}
+                  onClick={() => {
+                    close();
+                    onFitAll();
+                  }}
+                >
+                  <Maximize2 className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+                  整段可见
+                </button>
+                <button
+                  type="button"
+                  className={workbenchDropdownItemActiveClass(atDefaultZoom)}
+                  disabled={off}
+                  title={resetTitle}
+                  aria-pressed={atDefaultZoom}
+                  onClick={() => {
+                    close();
+                    onResetDefaultZoom();
+                  }}
+                >
+                  <RotateCcw className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+                  重置缩放
+                </button>
+              </>
+            )}
+          </WorkbenchOverflowMenu>
+        ) : (
           <>
-            <label className="waveform-minimap-toggle">
-              <span className="waveform-minimap-toggle-label">波形总览</span>
+            {onToggleMinimap ? (
               <button
                 type="button"
                 role="switch"
-                className="waveform-minimap-switch"
+                className={`icon-btn${minimapEnabled ? " icon-btn-state-active" : ""}`}
                 disabled={off}
+                aria-label="波形总览"
                 aria-checked={minimapEnabled}
+                title={minimapEnabled ? "关闭波形总览条" : "显示波形总览条"}
                 onClick={onToggleMinimap}
               >
-                <span className="waveform-minimap-switch-thumb" aria-hidden />
+                <Map className={LUCIDE_ICON_SIZE_LG} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
               </button>
-            </label>
-            <span className="toolbar-sep" aria-hidden />
+            ) : null}
+            <button
+              type="button"
+              className={`icon-btn${atFitSelectionZoom ? " icon-btn-state-active" : ""}`}
+              disabled={off || !hasSelection}
+              title={fitSelectionTitle}
+              aria-label="适配语段"
+              aria-pressed={atFitSelectionZoom}
+              onClick={onFitSelection}
+            >
+              <Focus className={LUCIDE_ICON_SIZE_LG} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+            </button>
+            <button
+              type="button"
+              className={`icon-btn${atFitAllZoom ? " icon-btn-state-active" : ""}`}
+              disabled={off}
+              title={fitAllTitle}
+              aria-label="整段可见"
+              aria-pressed={atFitAllZoom}
+              onClick={onFitAll}
+            >
+              <Maximize2 className={LUCIDE_ICON_SIZE_LG} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+            </button>
           </>
-        ) : null}
-        <button
-          type="button"
-          className={`icon-btn${atFitSelectionZoom ? " icon-btn-active" : ""}`}
-          disabled={off || !hasSelection}
-          title={fitSelectionTitle}
-          aria-label="适配语段"
-          aria-pressed={atFitSelectionZoom}
-          onClick={onFitSelection}
-        >
-          <Focus className={LUCIDE_ICON_SIZE_LG} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-        </button>
-        <button
-          type="button"
-          className={`icon-btn${atFitAllZoom ? " icon-btn-active" : ""}`}
-          disabled={off}
-          title={fitAllTitle}
-          aria-label="整段可见"
-          aria-pressed={atFitAllZoom}
-          onClick={onFitAll}
-        >
-          <Maximize2 className={LUCIDE_ICON_SIZE_LG} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-        </button>
-        <span className="toolbar-sep" aria-hidden />
+        )}
         <button
           type="button"
           className="icon-btn"
@@ -207,23 +289,20 @@ export const WaveformZoomBar = memo(function WaveformZoomBar({
         >
           <ZoomIn className={LUCIDE_ICON_SIZE_LG} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
         </button>
-        <button
-          type="button"
-          className={`icon-btn icon-btn-text${atDefaultZoom ? " icon-btn-active" : ""}`}
-          disabled={off}
-          title={resetTitle}
-          aria-label="重置缩放"
-          aria-pressed={atDefaultZoom}
-          onClick={onResetDefaultZoom}
-        >
-          <span className="icon-btn-label">重置</span>
-        </button>
+        {!compact ? (
+          <button
+            type="button"
+            className={`icon-btn${atDefaultZoom ? " icon-btn-state-active" : ""}`}
+            disabled={off}
+            title={resetTitle}
+            aria-label="重置缩放"
+            aria-pressed={atDefaultZoom}
+            onClick={onResetDefaultZoom}
+          >
+            <RotateCcw className={LUCIDE_ICON_SIZE_LG} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+          </button>
+        ) : null}
       </div>
-      {editorHint ? (
-        <p className="m-0 min-w-0 flex-1 truncate text-right text-[11px] text-notion-text-muted" aria-live="polite">
-          {editorHint}
-        </p>
-      ) : null}
     </div>
   );
 });

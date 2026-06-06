@@ -8,7 +8,6 @@ export function mapEditorToolsLifecycleFields(tools: EditorTools) {
     findReplace,
     editorCorrectionCatalog,
     editorSegmentCorrect,
-    correctSuggestions,
     correctionRules,
     postTranscribeOrchestration,
     bumpLlmRuntimeChanged,
@@ -74,15 +73,6 @@ export function mapEditorToolsLifecycleFields(tools: EditorTools) {
     postTranscribeStageBPreviewFocusSegmentIdx:
       postTranscribeOrchestration.postTranscribeStageBPreviewFocusSegmentIdx,
     cancelPostTranscribeStageB: postTranscribeOrchestration.cancelPostTranscribeStageB,
-    canCorrectSuggestions: correctSuggestions.canCorrectSuggestions,
-    correctSuggestionsBlockReason: correctSuggestions.correctSuggestionsBlockReason,
-    correctSuggestionsDialog: correctSuggestions.correctSuggestionsDialog,
-    requestCorrectSuggestions: (selectionOverride?: string) => {
-      void correctSuggestions.requestCorrectSuggestions(selectionOverride);
-    },
-    applyCorrectSuggestion: correctSuggestions.applyCorrectSuggestion,
-    cancelCorrectSuggestions: correctSuggestions.cancelCorrectSuggestions,
-    openFindReplaceForCorrectSelection: correctSuggestions.openFindReplaceForCorrectSelection,
     bumpLlmRuntimeChanged,
   };
 }

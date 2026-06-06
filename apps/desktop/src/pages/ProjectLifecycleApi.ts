@@ -5,9 +5,7 @@ import type { SegmentOverlapPolicy } from "../utils/segmentTimeRange";
 import type { FindReplaceDialogState } from "./useFindReplaceController";
 import type { CorrectionRulesDialogState } from "./useCorrectionRulesController";
 import type { PostTranscribeStageBDialogState } from "./usePostTranscribeStageBController";
-import type { CorrectSuggestionsDialogState } from "./useCorrectSuggestionsController";
 import type { GlossaryLearnPromptDialogState } from "./useGlossaryLearnPromptController";
-import type { CorrectSuggestion } from "../services/editor/correctSuggestions";
 import type { GlossaryLearnPromptRow } from "../tauri/correctionApi";
 import type { BusyReason } from "./useProjectCrudController";
 
@@ -164,13 +162,6 @@ export interface ProjectLifecycleApi {
   focusPostTranscribeStageBSegment: (segmentIdx: number) => void;
   postTranscribeStageBPreviewFocusSegmentIdx: number | null;
   cancelPostTranscribeStageB: () => void;
-  canCorrectSuggestions: boolean;
-  correctSuggestionsBlockReason: string | null;
-  correctSuggestionsDialog: CorrectSuggestionsDialogState;
-  requestCorrectSuggestions: (selectionOverride?: string) => void;
-  applyCorrectSuggestion: (item: CorrectSuggestion) => void;
-  cancelCorrectSuggestions: () => void;
-  openFindReplaceForCorrectSelection: () => void;
   glossaryLearnDialog: GlossaryLearnPromptDialogState;
   dismissGlossaryLearnPrompt: (row: GlossaryLearnPromptRow) => void;
   confirmAddToGlossary: (row: GlossaryLearnPromptRow) => void;

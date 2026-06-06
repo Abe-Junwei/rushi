@@ -67,15 +67,6 @@ export const LEXICON_HEALTH_PANEL_BODY_CHROME_PX = 20;
 /** 规则纠错 loading。 */
 export const CORRECTION_RULES_LOADING_BODY_PX = 88;
 
-/** 改正建议 empty：说明 + 双按钮。 */
-export const CORRECT_SUGGESTIONS_EMPTY_STATIC_BODY_PX = 156;
-
-/** 改正建议 loading。 */
-export const CORRECT_SUGGESTIONS_LOADING_BODY_PX = 88;
-
-/** 改正建议单条结果行高。 */
-export const CORRECT_SUGGESTIONS_RESULT_ROW_PX = 72;
-
 export const FLOATING_PANEL_TITLE_BAR_PX = 57;
 
 export function resolveFloatingPanelFitHeight(staticBodyPx: number, rowCount: number): number {
@@ -132,11 +123,6 @@ export function resolveCorrectionRulesPreviewFitHeight(input: {
     CORRECTION_RULES_PREVIEW_STATIC_BODY_PX + staticExtra,
     input.rowCount,
   );
-}
-
-export function resolveCorrectSuggestionsResultsFitHeight(itemCount: number): number {
-  const listHeight = Math.min(itemCount * CORRECT_SUGGESTIONS_RESULT_ROW_PX, 240);
-  return resolveFloatingPanelCompactFitHeight(120, listHeight);
 }
 
 export function resolveStageBConsentFitHeight(hasPendingHint: boolean): number {
