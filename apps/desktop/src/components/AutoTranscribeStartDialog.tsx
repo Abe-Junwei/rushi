@@ -4,6 +4,7 @@ import { PANEL_TYPOGRAPHY } from "../config/typography";
 import type { TranscribeSource } from "../services/stt/transcribeSource";
 import { TranscribeSourceSwitch } from "./editor/TranscribeSourceSwitch";
 import { FloatingPanelTemplate } from "./PanelTemplate";
+import { FloatingPanelDialogFooter, FloatingPanelDialogRoot, FloatingPanelDialogScroll } from "./FloatingPanelDialogLayout";
 
 const PANEL_ID = "auto-transcribe-start-v1";
 const DEFAULT_SIZE = { width: 420, height: 400 } as const;
@@ -64,8 +65,9 @@ export function AutoTranscribeStartDialog({
         persistState
         onClose={handleClose}
       >
-        <div className="flex flex-col px-5 py-3" role="dialog" aria-modal="true">
-          <div>
+        <FloatingPanelDialogRoot role="dialog" aria-modal="true">
+          <FloatingPanelDialogScroll className="flex flex-col gap-3">
+            <div>
             <div className="flex items-center justify-between gap-3">
               <span className="text-xs font-medium leading-none text-notion-text">转写来源</span>
               <TranscribeSourceSwitch
@@ -113,16 +115,16 @@ export function AutoTranscribeStartDialog({
               ) : null}
             </div>
           ) : null}
-
-          <div className="mt-4 flex justify-end gap-2">
+          </FloatingPanelDialogScroll>
+          <FloatingPanelDialogFooter justify="end">
             <button type="button" className={CONTROL_BTN_SECONDARY} disabled={busy} onClick={handleClose}>
               取消
             </button>
             <button type="button" className={CONTROL_BTN_PRIMARY} disabled={busy} onClick={onConfirm}>
               {confirmLabel}
             </button>
-          </div>
-        </div>
+          </FloatingPanelDialogFooter>
+        </FloatingPanelDialogRoot>
       </FloatingPanelTemplate>
     </div>,
     document.body,

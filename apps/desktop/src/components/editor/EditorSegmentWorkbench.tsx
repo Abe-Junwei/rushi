@@ -29,7 +29,7 @@ export const EditorSegmentWorkbench = memo(function EditorSegmentWorkbench({
   onOpenSegmentTextContextMenu,
 }: EditorSegmentWorkbenchProps) {
   return (
-    <div className="flex min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden bg-notion-bg">
+    <div className="flex h-0 min-h-0 min-w-0 w-full flex-1 flex-col overflow-hidden bg-notion-bg">
       <EditorSegmentToolbar controller={c} tx={tx} appearance={a} editHistory={h} />
       <EditorSegmentList
         controller={c}
@@ -57,6 +57,11 @@ function areEditorSegmentWorkbenchPropsEqual(
     prev.controller.selectedIdx === next.controller.selectedIdx &&
     prev.controller.currentFileId === next.controller.currentFileId &&
     prev.controller.segments === next.controller.segments &&
+    prev.controller.segments.length === next.controller.segments.length &&
+    prev.controller.findReplaceEditorHighlight === next.controller.findReplaceEditorHighlight &&
+    prev.controller.correctionRulesEditorHighlight === next.controller.correctionRulesEditorHighlight &&
+    prev.controller.updateSegmentText === next.controller.updateSegmentText &&
+    prev.controller.editorSpansForText === next.controller.editorSpansForText &&
     prev.tx.transcriptFontPx === next.tx.transcriptFontPx &&
     prev.tx.transcriptRowHeightPx === next.tx.transcriptRowHeightPx &&
     prev.tx.beginTranscriptRowHeightDrag === next.tx.beginTranscriptRowHeightDrag &&

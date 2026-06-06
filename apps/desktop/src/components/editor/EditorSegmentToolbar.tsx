@@ -46,6 +46,20 @@ export function EditorSegmentToolbar({
   const appearanceBtnBase =
     "inline-flex h-8 items-center justify-center rounded-md border-0 bg-transparent px-3 text-[12px] font-medium leading-none transition-colors";
 
+  const stageBPhase = c.postTranscribeStageBDialog.phase;
+  const stageBInFlight = stageBPhase === "loading";
+  const stageBDialogOccupied =
+    stageBPhase === "consent" || stageBPhase === "preview" || stageBPhase === "empty";
+  const stageBButtonDisabled = c.busy || stageBInFlight || stageBDialogOccupied;
+  const stageBHint = c.busy
+    ? "处理中"
+    : stageBInFlight
+      ? "智能改稿处理中…"
+      : (c.postTranscribeStageBBlockReason ??
+        (c.canOfferPostTranscribeStageB
+          ? "词表有据：LLM 标点与改字（一次请求，预览后写回）"
+          : "智能改稿不可用"));
+
   useEffect(() => {
     if (!a.fontPanelOpen) return;
     const onWindowPointerDown = (event: PointerEvent) => {
@@ -129,26 +143,20 @@ export function EditorSegmentToolbar({
           className={[
             appearanceBtnBase,
             "px-2.5",
-            c.postTranscribeStageBDialog.phase !== "closed"
+            stageBPhase !== "closed"
               ? "bg-notion-sidebar text-notion-text"
-              : "text-notion-text-muted hover:bg-notion-sidebar-hover hover:text-notion-text",
+              : !c.canOfferPostTranscribeStageB && !stageBButtonDisabled
+                ? "text-notion-text-muted opacity-75 hover:bg-notion-sidebar-hover hover:text-notion-text hover:opacity-100"
+                : "text-notion-text-muted hover:bg-notion-sidebar-hover hover:text-notion-text",
           ].join(" ")}
-          disabled={
-            !c.canOfferPostTranscribeStageB || c.postTranscribeStageBDialog.phase === "loading"
-          }
+          disabled={stageBButtonDisabled}
           onClick={() => c.openPostTranscribeStageB()}
           aria-label="智能改稿"
-          title={
-            c.busy
-              ? "处理中"
-              : c.canOfferPostTranscribeStageB
-                ? "LLM 标点与改字（预览后写回，与规则纠错无关）"
-                : (c.postTranscribeStageBBlockReason ?? "智能改稿不可用")
-          }
+          title={stageBHint}
         >
           <span className="inline-flex items-center gap-1.5">
             <Sparkles className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-            {c.postTranscribeStageBDialog.phase === "loading" ? "处理中..." : "智能改稿"}
+            {stageBInFlight ? "处理中..." : "智能改稿"}
           </span>
         </button>
         <button

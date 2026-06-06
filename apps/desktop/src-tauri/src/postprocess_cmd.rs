@@ -16,6 +16,10 @@ mod postprocess_ollama;
 mod postprocess_probe;
 #[path = "postprocess_refine_cmd.rs"]
 pub mod postprocess_refine_cmd;
+#[path = "postprocess_lexicon_ops.rs"]
+mod postprocess_lexicon_ops;
+#[path = "postprocess_stage_b_proofread_cmd.rs"]
+pub mod postprocess_stage_b_proofread_cmd;
 #[path = "postprocess_secret_store.rs"]
 mod postprocess_secret_store;
 #[path = "postprocess_segment_ops.rs"]
@@ -25,7 +29,8 @@ mod postprocess_types;
 
 pub(crate) use postprocess_config::{
     build_auto_punctuate_prompt, build_postprocess_models_endpoint, chat_completion_finish_reason,
-    extract_chat_completion_text, resolve_postprocess_config_async,
+    extract_chat_completion_text, extract_chat_completion_text_labeled,
+    resolve_postprocess_config_async,
     resolve_runtime_postprocess_config, PostprocessConfig, DEFAULT_TIMEOUT_SECS,
 };
 

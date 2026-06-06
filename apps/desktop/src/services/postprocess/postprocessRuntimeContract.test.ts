@@ -5,6 +5,8 @@ import {
   OLLAMA_DEFAULT_BASE_URL,
   OLLAMA_LOOPBACK_PLACEHOLDER_API_KEY,
   applyLlmProviderPreset,
+  isLlmConnectionVerified,
+  markLlmConnectionVerified,
   persistLlmRuntimeConfig,
   readLastCloudRuntimeConfig,
   readLlmRuntimeConfigFromStorage,
@@ -145,6 +147,28 @@ describe("postprocessRuntimeContract", () => {
 
   it("readLastCloudRuntimeConfig defaults to deepseek without snapshot", () => {
     expect(readLastCloudRuntimeConfig().providerId).toBe("deepseek");
+  });
+
+  it("keeps connection verified when persisting unchanged config", () => {
+    const cfg = { ...applyLlmProviderPreset("deepseek"), apiKeyId: DEFAULT_LLM_API_KEY_ID };
+    persistLlmRuntimeConfig(cfg);
+    markLlmConnectionVerified(cfg);
+    expect(isLlmConnectionVerified(cfg)).toBe(true);
+
+    persistLlmRuntimeConfig(cfg);
+    expect(isLlmConnectionVerified(cfg)).toBe(true);
+  });
+
+  it("clears connection verified when connection fingerprint changes", () => {
+    const cfg = { ...applyLlmProviderPreset("deepseek"), apiKeyId: DEFAULT_LLM_API_KEY_ID };
+    persistLlmRuntimeConfig(cfg);
+    markLlmConnectionVerified(cfg);
+    expect(isLlmConnectionVerified(cfg)).toBe(true);
+
+    const changed = { ...cfg, model: "deepseek-reasoner" };
+    persistLlmRuntimeConfig(changed);
+    expect(isLlmConnectionVerified(changed)).toBe(false);
+    expect(isLlmConnectionVerified(cfg)).toBe(false);
   });
 
   it("resolveLlmConnectionUiStatus uses persisted connectionVerified", () => {

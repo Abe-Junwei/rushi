@@ -38,7 +38,7 @@ describe("segmentListVirtualWindow", () => {
     expect(win.endIndex).toBe(12);
   });
 
-  it("scrolls selected row into view when off-screen", () => {
+  it("scrolls selected row into view when off-screen (minimal align)", () => {
     const stride = 80;
     expect(
       scrollSegmentListIndexIntoView({
@@ -60,6 +60,24 @@ describe("segmentListVirtualWindow", () => {
     ).toBeNull();
   });
 
+  it("centers selected row in viewport when align is center", () => {
+    const stride = 80;
+    const rowMin = 70;
+    const index = 20;
+    const viewport = 400;
+    const rowCenter = index * stride + rowMin / 2;
+    expect(
+      scrollSegmentListIndexIntoView({
+        scrollTop: 0,
+        viewportHeight: viewport,
+        index,
+        rowMinHeightPx: rowMin,
+        itemStridePx: stride,
+        align: "center",
+      }),
+    ).toBe(Math.round(rowCenter - viewport / 2));
+  });
+
   it("ensureSegmentListVirtualWindowIncludesIndex expands when pin is outside window", () => {
     const stride = 80;
     const base = computeSegmentListVirtualWindow({
@@ -78,6 +96,7 @@ describe("segmentListVirtualWindow", () => {
   it("scrollSegmentListIndexToView falls back to stride scroll when row is not mounted", () => {
     const root = document.createElement("div");
     Object.defineProperty(root, "clientHeight", { value: 400 });
+    Object.defineProperty(root, "scrollHeight", { value: 5000 });
     Object.defineProperty(root, "scrollTop", { writable: true, value: 0 });
     root.setAttribute(SEGMENT_LIST_SCROLL_ATTR, "");
     annotateSegmentListScrollMetrics(root, { rowMinHeightPx: 70, itemStridePx: 80 });
@@ -90,9 +109,11 @@ describe("segmentListVirtualWindow", () => {
     document.body.removeChild(root);
   });
 
-  it("scrollSegmentRowIntoViewContainer scrolls when row is below viewport", () => {
+  it("scrollSegmentRowIntoViewContainer scrolls when row is below viewport (minimal)", () => {
     const root = document.createElement("div");
     Object.defineProperty(root, "scrollTop", { writable: true, value: 0 });
+    Object.defineProperty(root, "scrollHeight", { value: 2000 });
+    Object.defineProperty(root, "clientHeight", { value: 400 });
     const row = document.createElement("div");
     row.setAttribute("data-seg-row", "5");
     root.appendChild(row);
@@ -104,5 +125,22 @@ describe("segmentListVirtualWindow", () => {
     const next = scrollSegmentRowIntoViewContainer(5, root);
     expect(next).not.toBeNull();
     expect(next!).toBeGreaterThan(0);
+  });
+
+  it("scrollSegmentRowIntoViewContainer centers row in viewport", () => {
+    const root = document.createElement("div");
+    Object.defineProperty(root, "scrollTop", { writable: true, value: 100 });
+    Object.defineProperty(root, "scrollHeight", { value: 2000 });
+    Object.defineProperty(root, "clientHeight", { value: 400 });
+    const row = document.createElement("div");
+    row.setAttribute("data-seg-row", "5");
+    root.appendChild(row);
+    root.getBoundingClientRect = () =>
+      ({ top: 100, bottom: 500, left: 0, right: 400, width: 400, height: 400, x: 0, y: 100, toJSON: () => ({}) });
+    row.getBoundingClientRect = () =>
+      ({ top: 520, bottom: 600, left: 0, right: 400, width: 400, height: 80, x: 0, y: 520, toJSON: () => ({}) });
+
+    const next = scrollSegmentRowIntoViewContainer(5, root, { align: "center" });
+    expect(next).toBe(360);
   });
 });

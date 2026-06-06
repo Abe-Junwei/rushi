@@ -13,15 +13,17 @@ describe("PanelAsyncProgress", () => {
       <PanelAsyncProgress
         mode="determinate"
         title="处理中"
-        stepLabel="标点"
-        stepDetail="语段 2 / 10"
+        stepDetail="批次 2 / 10"
+        providerLabel="Ollama（本机）"
         done={2}
         total={10}
         percent={20}
       />,
     );
     expect(screen.getByText("处理中")).toBeTruthy();
-    expect(screen.getByText(/20%/)).toBeTruthy();
+    expect(screen.getByText("Ollama（本机） · 批次 2 / 10")).toBeTruthy();
+    expect(screen.queryByText(/当前步骤/)).toBeNull();
+    expect(screen.queryByText(/20%/)).toBeNull();
     expect(screen.getByRole("progressbar")).toBeTruthy();
   });
 });

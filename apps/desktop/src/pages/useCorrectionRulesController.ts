@@ -82,7 +82,7 @@ export function useCorrectionRulesController(args: Args) {
     window.requestAnimationFrame(() => {
       const root = querySegmentListScrollRoot();
       if (!root) return;
-      const next = scrollSegmentRowIntoViewContainer(segmentIdx, root);
+      const next = scrollSegmentRowIntoViewContainer(segmentIdx, root, { align: "center" });
       if (next != null) root.scrollTop = next;
     });
   }, []);

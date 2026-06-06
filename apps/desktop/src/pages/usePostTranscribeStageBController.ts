@@ -2,15 +2,23 @@ import { useCallback, useMemo, useRef, useState } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
 import { postprocessCancelAutoPunctuate } from "../tauri/postprocessApi";
 import {
-  isLlmRuntimeReady,
   llmConfigHint,
   markLlmConnectionVerified,
-  resolveAutoPunctuateBlockReason,
   tryBuildPostprocessRuntimeBridge,
 } from "../services/postprocess/postprocessRuntimeContract";
+import {
+  ensureStageBLlmActionReady,
+  readStageBLlmGateSnapshot,
+  resolveStageBSyncBlockReason,
+} from "../services/postprocess/stageBLlmGate";
+import { resolvePendingStageAHint } from "../services/postprocess/stageBPendingRulesHint";
+import { toast } from "../services/ui/toast";
+import { scrollSegmentListIndexToView } from "../utils/segmentListVirtualWindow";
+import { findSegmentIndexByUid } from "./segmentListHelpers";
+import type { BusyReason } from "./useProjectCrudController";
 import { TRANSCRIBE_PREVIEW_BLOCK_REASON } from "./transcribePreviewState";
 import {
-  countStageBPunctuateSteps,
+  countStageBProofreadBatches,
   estimateStageBProgressTotal,
   runPostTranscribeStageBPreview,
   type PostTranscribeStageBSegmentChange,
@@ -20,18 +28,30 @@ const STAGE_B_CONSENT_KEY = "rushi:auto-punctuate-consent:v1";
 
 export type PostTranscribeStageBDialogState =
   | { phase: "closed" }
-  | { phase: "blocked"; reason: string }
-  | { phase: "consent"; segmentCount: number }
-  | { phase: "loading"; done: number; total: number; punctuateSteps: number }
+  | { phase: "consent"; segmentCount: number; pendingStageAHint: string | null }
+  | {
+      phase: "loading";
+      done: number;
+      total: number;
+      providerLabel: string;
+      pendingStageAHint: string | null;
+    }
   | {
       phase: "preview";
       changes: PostTranscribeStageBSegmentChange[];
       selectedSegmentIdxs: number[];
       provider: string;
-      rejectedBoundaryOps: number;
-      typoStepError: string | null;
+      droppedUngroundedOps: number;
+      stepError: string | null;
+      pendingStageAHint: string | null;
+      packTruncationHint: string | null;
     }
-  | { phase: "empty"; typoStepError: string | null };
+  | {
+      phase: "empty";
+      stepError: string | null;
+      pendingStageAHint: string | null;
+      packTruncationHint: string | null;
+    };
 
 type Args = {
   busy: boolean;
@@ -41,10 +61,14 @@ type Args = {
   segmentsRef: React.MutableRefObject<SegmentDto[]>;
   flushSegmentTextDrafts: () => void;
   setSegments: React.Dispatch<React.SetStateAction<SegmentDto[]>>;
+  setSelectedIdx: React.Dispatch<React.SetStateAction<number>>;
   pushUndo: () => void;
   setError: (msg: string) => void;
   saveSegments: (options?: { quiet?: boolean }) => Promise<boolean>;
   llmRuntimeEpoch?: number;
+  llmEnvRevision?: string;
+  beginBusy: (reason: BusyReason) => void;
+  endBusy: () => void;
 };
 
 export function usePostTranscribeStageBController(args: Args) {
@@ -56,66 +80,112 @@ export function usePostTranscribeStageBController(args: Args) {
     segmentsRef,
     flushSegmentTextDrafts,
     setSegments,
+    setSelectedIdx,
     pushUndo,
     setError,
     saveSegments,
     llmRuntimeEpoch = 0,
+    llmEnvRevision = "",
+    beginBusy,
+    endBusy,
   } = args;
 
   const [dialog, setDialog] = useState<PostTranscribeStageBDialogState>({ phase: "closed" });
+  const [previewFocusSegmentIdx, setPreviewFocusSegmentIdx] = useState<number | null>(null);
   const activeRequestSeqRef = useRef(0);
   const activeRequestIdRef = useRef<string | null>(null);
+  const pendingStageAHintRef = useRef<string | null>(null);
 
   const hasSegmentText = segments.some((s) => (s.text ?? "").trim().length > 0);
+  const llmGate = useMemo(
+    () => readStageBLlmGateSnapshot(),
+    [llmRuntimeEpoch, llmEnvRevision],
+  );
+
   const stageBBlockReason = useMemo(() => {
     if (transcribePreviewActive) return TRANSCRIBE_PREVIEW_BLOCK_REASON;
-    return resolveAutoPunctuateBlockReason({
-      currentFileId,
-      hasSegmentText,
-      keychainReady: true,
-      keychainChecking: false,
-      llmCapabilityOk: isLlmRuntimeReady() ? true : undefined,
-      llmCapabilityBlockReason: isLlmRuntimeReady() ? null : "请在设置 → LLM 配置 中完成探测后再使用改稿。",
-    });
-  }, [transcribePreviewActive, currentFileId, hasSegmentText, llmRuntimeEpoch]);
+    return resolveStageBSyncBlockReason({ currentFileId, hasSegmentText });
+  }, [
+    transcribePreviewActive,
+    currentFileId,
+    hasSegmentText,
+    llmGate,
+    llmRuntimeEpoch,
+    llmEnvRevision,
+  ]);
+
+  const isStageBDialogOpen = dialog.phase !== "closed";
 
   const canOfferPostTranscribeStageB =
-    !busy && !transcribePreviewActive && !!currentFileId && hasSegmentText && stageBBlockReason === null;
+    !busy &&
+    !transcribePreviewActive &&
+    !isStageBDialogOpen &&
+    !!currentFileId &&
+    hasSegmentText &&
+    stageBBlockReason === null &&
+    llmGate.llmCapabilityOk;
 
   const startPreview = useCallback(async () => {
     if (!currentFileId) return;
+    const actionBlockReason = await ensureStageBLlmActionReady({
+      currentFileId,
+      hasSegmentText,
+    });
+    if (actionBlockReason) {
+      toast.warning(actionBlockReason);
+      return;
+    }
     const runtime = tryBuildPostprocessRuntimeBridge();
     if (!runtime) {
-      setError(llmConfigHint());
-      setDialog({ phase: "blocked", reason: llmConfigHint() });
+      toast.warning(llmConfigHint());
       return;
     }
     flushSegmentTextDrafts();
     setError("");
     const seq = activeRequestSeqRef.current + 1;
     activeRequestSeqRef.current = seq;
-    const punctuateSteps = countStageBPunctuateSteps(segmentsRef.current);
+    const pendingStageAHint = pendingStageAHintRef.current;
+    const total = estimateStageBProgressTotal({ segments: segmentsRef.current, runtime });
+    setPreviewFocusSegmentIdx(null);
     setDialog({
       phase: "loading",
       done: 0,
-      total: estimateStageBProgressTotal({ segments: segmentsRef.current, runtime }),
-      punctuateSteps,
+      total,
+      providerLabel: runtime.provider,
+      pendingStageAHint,
     });
+    beginBusy("stage_b");
     try {
       const out = await runPostTranscribeStageBPreview({
         segments: segmentsRef.current,
         runtime,
-        onProgress: (done, total) => {
+        shouldContinue: () => activeRequestSeqRef.current === seq,
+        onActiveRequestId: (requestId) => {
           if (activeRequestSeqRef.current !== seq) return;
-          setDialog({ phase: "loading", done, total, punctuateSteps });
+          activeRequestIdRef.current = requestId;
+        },
+        onProgress: (done, progressTotal) => {
+          if (activeRequestSeqRef.current !== seq) return;
+          setDialog({
+            phase: "loading",
+            done,
+            total: progressTotal,
+            providerLabel: runtime.provider,
+            pendingStageAHint,
+          });
         },
       });
       if (activeRequestSeqRef.current !== seq) return;
-      markLlmConnectionVerified();
+      activeRequestIdRef.current = null;
+      if (out.changes.length > 0 || !out.typoStepError) {
+        markLlmConnectionVerified();
+      }
       if (!out.changes.length) {
         setDialog({
           phase: "empty",
-          typoStepError: out.typoStepError,
+          stepError: out.typoStepError,
+          pendingStageAHint,
+          packTruncationHint: out.packTruncationHint,
         });
         return;
       }
@@ -124,31 +194,74 @@ export function usePostTranscribeStageBController(args: Args) {
         changes: out.changes,
         selectedSegmentIdxs: out.changes.map((c) => c.segmentIdx),
         provider: out.provider,
-        rejectedBoundaryOps: out.rejectedBoundaryOps,
-        typoStepError: out.typoStepError,
+        droppedUngroundedOps: out.droppedUngroundedOps,
+        stepError: out.typoStepError,
+        pendingStageAHint,
+        packTruncationHint: out.packTruncationHint,
       });
     } catch (e) {
       if (activeRequestSeqRef.current !== seq) return;
       setDialog({ phase: "closed" });
       setError(e instanceof Error ? e.message : String(e));
-    }
-  }, [currentFileId, flushSegmentTextDrafts, segmentsRef, setError]);
-
-  const offerStageB = useCallback(() => {
-    if (!canOfferPostTranscribeStageB) {
-      if (stageBBlockReason) {
-        setDialog({ phase: "blocked", reason: stageBBlockReason });
+    } finally {
+      if (activeRequestSeqRef.current === seq) {
+        endBusy();
       }
+    }
+  }, [beginBusy, currentFileId, endBusy, flushSegmentTextDrafts, hasSegmentText, segmentsRef, setError]);
+
+  const offerStageB = useCallback(async () => {
+    if (isStageBDialogOpen) return;
+
+    const freshBlockReason = transcribePreviewActive
+      ? TRANSCRIBE_PREVIEW_BLOCK_REASON
+      : resolveStageBSyncBlockReason({ currentFileId, hasSegmentText });
+    const freshGate = readStageBLlmGateSnapshot();
+    const canRunNow =
+      !busy &&
+      !transcribePreviewActive &&
+      !!currentFileId &&
+      hasSegmentText &&
+      freshBlockReason === null &&
+      freshGate.llmCapabilityOk;
+
+    if (!canRunNow) {
+      const reason =
+        freshBlockReason ??
+        freshGate.llmCapabilityBlockReason ??
+        llmConfigHint();
+      toast.warning(reason);
       return;
     }
+
+    const actionBlockReason = await ensureStageBLlmActionReady({
+      currentFileId,
+      hasSegmentText,
+    });
+    if (actionBlockReason) {
+      toast.warning(actionBlockReason);
+      return;
+    }
+
     setError("");
     const count = segmentsRef.current.filter((s) => (s.text ?? "").trim()).length;
+    const pendingStageAHint = await resolvePendingStageAHint(segmentsRef.current).catch(() => null);
+    pendingStageAHintRef.current = pendingStageAHint;
     if (window.localStorage.getItem(STAGE_B_CONSENT_KEY) !== "accepted") {
-      setDialog({ phase: "consent", segmentCount: count });
+      setDialog({ phase: "consent", segmentCount: count, pendingStageAHint });
       return;
     }
     void startPreview();
-  }, [canOfferPostTranscribeStageB, segmentsRef, setError, stageBBlockReason, startPreview]);
+  }, [
+    busy,
+    currentFileId,
+    hasSegmentText,
+    isStageBDialogOpen,
+    segmentsRef,
+    setError,
+    startPreview,
+    transcribePreviewActive,
+  ]);
 
   const confirmStageBConsent = useCallback(() => {
     window.localStorage.setItem(STAGE_B_CONSENT_KEY, "accepted");
@@ -165,6 +278,15 @@ export function usePostTranscribeStageBController(args: Args) {
     });
   }, []);
 
+  const focusStageBSegment = useCallback(
+    (segmentIdx: number) => {
+      setPreviewFocusSegmentIdx(segmentIdx);
+      setSelectedIdx(segmentIdx);
+      scrollSegmentListIndexToView(segmentIdx);
+    },
+    [setSelectedIdx],
+  );
+
   const confirmStageBWriteback = useCallback(async () => {
     if (dialog.phase !== "preview") return;
     if (dialog.selectedSegmentIdxs.length === 0) return;
@@ -172,14 +294,26 @@ export function usePostTranscribeStageBController(args: Args) {
     pushUndo();
     const selected = new Set(dialog.selectedSegmentIdxs);
     const next = [...segmentsRef.current];
+    let applied = 0;
     for (const ch of dialog.changes) {
       if (!selected.has(ch.segmentIdx)) continue;
-      const row = next[ch.segmentIdx];
-      if (row) next[ch.segmentIdx] = { ...row, text: ch.afterText };
+      const idx = ch.uid.trim()
+        ? findSegmentIndexByUid(next, ch.uid)
+        : ch.segmentIdx;
+      if (idx < 0) continue;
+      const row = next[idx];
+      if (!row) continue;
+      next[idx] = { ...row, text: ch.afterText };
+      applied += 1;
+    }
+    if (applied === 0) {
+      setError("所选语段已不存在或 uid 已变化，请关闭预览后重新生成候选。");
+      return;
     }
     segmentsRef.current = next;
     setSegments(next);
     setDialog({ phase: "closed" });
+    setPreviewFocusSegmentIdx(null);
     const saved = await saveSegments({ quiet: true });
     if (!saved) {
       setError("改稿预览已写回，但保存失败，请稍后手动保存。");
@@ -191,26 +325,27 @@ export function usePostTranscribeStageBController(args: Args) {
     const requestId = activeRequestIdRef.current;
     activeRequestIdRef.current = null;
     setDialog({ phase: "closed" });
+    setPreviewFocusSegmentIdx(null);
+    endBusy();
     if (requestId) {
       void postprocessCancelAutoPunctuate(requestId).catch(() => {
         /* ignore */
       });
     }
-  }, []);
-
-  const dismissStageBBlocked = useCallback(() => {
-    setDialog({ phase: "closed" });
-  }, []);
+  }, [endBusy]);
 
   return {
     canOfferPostTranscribeStageB,
     postTranscribeStageBBlockReason: stageBBlockReason,
     postTranscribeStageBDialog: dialog,
+    postTranscribeStageBPreviewFocusSegmentIdx: previewFocusSegmentIdx,
     offerPostTranscribeStageB: offerStageB,
     confirmPostTranscribeStageBConsent: confirmStageBConsent,
     confirmPostTranscribeStageBWriteback: confirmStageBWriteback,
     togglePostTranscribeStageBSegment: toggleStageBSegment,
+    focusPostTranscribeStageBSegment: focusStageBSegment,
     cancelPostTranscribeStageB: cancelStageB,
-    dismissPostTranscribeStageBBlocked: dismissStageBBlocked,
+    countStageBProofreadBatches,
+    isPostTranscribeStageBDialogOpen: isStageBDialogOpen,
   };
 }

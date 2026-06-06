@@ -1,20 +1,20 @@
 import type { SegmentDto } from "../../tauri/projectApi";
 import {
-  postprocessAutoPunctuate,
-  postprocessRefineSegments,
-  type PostprocessAutoPunctuateRequest,
-  type SegmentRefineOp,
+  postprocessStageBProofread,
+  type GroundedLexiconOp,
+  type PostprocessStageBProofreadRequest,
 } from "../../tauri/postprocessApi";
 import { OLLAMA_LOOPBACK_PLACEHOLDER_API_KEY } from "./llmProviderCatalog";
 import type { PostprocessRuntimeBridge } from "./postprocessRuntimeContract";
-import { collectAutoPunctuateNeighborContext } from "../../pages/autoPunctuateNeighbors";
 import { computeSingleTextDiff, type TextDiffSpan } from "../../utils/textDiff";
 import {
   segmentDtoToRefineItem,
-  validateRefineOps,
   type RefineSegmentItem,
 } from "./postprocessSegmentOps";
 import { formatSegmentTimeLabel } from "../editor/segmentFindReplace";
+import {
+  classifyStageBSegmentChangeFlags,
+} from "./postprocessLexiconOps";
 
 /** 本机 loopback：每批最多语段数（兼顾 30s 超时与 JSON 稳定性）。 */
 export const STAGE_B_REFINE_LOCAL_MAX_SEGMENTS = 8;
@@ -52,7 +52,7 @@ export function resolveStageBRefineBatchLimits(runtime: PostprocessRuntimeBridge
   };
 }
 
-/** 收集有正文语段的下标；Stage B 处理全部 eligible，不再按 provider 截断。 */
+/** 收集有正文语段的下标；Stage B 处理全部 eligible。 */
 export function collectStageBEligibleSegmentIndices(segments: SegmentDto[]): number[] {
   const eligibleIdxs: number[] = [];
   for (let i = 0; i < segments.length; i++) {
@@ -72,6 +72,7 @@ export type PostTranscribeStageBSegmentChange = {
   diff: TextDiffSpan[];
   punctuateTouched: boolean;
   typoTouched: boolean;
+  evidenceSummary: string | null;
 };
 
 function createRequestId(prefix: string): string {
@@ -79,19 +80,6 @@ function createRequestId(prefix: string): string {
     return crypto.randomUUID();
   }
   return `${prefix}-${Date.now()}-${Math.random().toString(36).slice(2)}`;
-}
-
-export function filterTypoOnlyRefineOps(ops: SegmentRefineOp[]): {
-  typoOps: Array<Extract<SegmentRefineOp, { op: "update_text" }>>;
-  rejectedBoundaryOps: number;
-} {
-  let rejectedBoundaryOps = 0;
-  const typoOps: Array<Extract<SegmentRefineOp, { op: "update_text" }>> = [];
-  for (const op of ops) {
-    if (op.op === "update_text") typoOps.push(op);
-    else rejectedBoundaryOps += 1;
-  }
-  return { typoOps, rejectedBoundaryOps };
 }
 
 /** 按语段数 + 正文字数自适应切批；单段超长时仍单独成批。 */
@@ -132,103 +120,104 @@ function buildStageBRefineItems(segments: SegmentDto[], workIdxs: number[]): Ref
   return items;
 }
 
-/** 标点步数（= 有正文语段数），用于进度文案分段。 */
-export function countStageBPunctuateSteps(segments: SegmentDto[]): number {
-  return collectStageBEligibleSegmentIndices(segments).length;
-}
-
-export function describeStageBProgress(args: {
-  done: number;
-  total: number;
-  punctuateSteps: number;
-}): { phaseLabel: string; detail: string; percent: number } {
-  const { done, total, punctuateSteps } = args;
-  const percent = total > 0 ? Math.min(100, Math.round((done / total) * 100)) : 0;
-  if (punctuateSteps <= 0 || done < punctuateSteps) {
-    const step = Math.min(done + 1, Math.max(punctuateSteps, 1));
-    return {
-      phaseLabel: "标点",
-      detail: `语段 ${step} / ${Math.max(punctuateSteps, 1)}`,
-      percent,
-    };
-  }
-  const refineTotal = Math.max(total - punctuateSteps, 1);
-  const refineDone = Math.min(done - punctuateSteps + 1, refineTotal);
-  return {
-    phaseLabel: "错字",
-    detail: `批次 ${refineDone} / ${refineTotal}`,
-    percent,
-  };
-}
-
-/** 加载进度：标点语段数 + 错字批次数（按 provider 与正文字数估算）。 */
-export function estimateStageBProgressTotal(args: {
+export function countStageBProofreadBatches(args: {
   segments: SegmentDto[];
   runtime: PostprocessRuntimeBridge;
 }): number {
   const workIdxs = collectStageBEligibleSegmentIndices(args.segments);
   if (workIdxs.length === 0) return 0;
   const refineItems = buildStageBRefineItems(args.segments, workIdxs);
-  const refineBatches = planStageBRefineChunks(
-    refineItems,
-    resolveStageBRefineBatchLimits(args.runtime),
-  ).length;
-  return workIdxs.length + refineBatches;
+  return planStageBRefineChunks(refineItems, resolveStageBRefineBatchLimits(args.runtime)).length;
 }
 
-/** 将 Rust 段界整理文案映射为智能改稿语境。 */
-export function mapPostTranscribeStageBRefineError(err: unknown): string {
+export function describeStageBProgress(args: {
+  done: number;
+  total: number;
+}): { phaseLabel: string; detail: string; percent: number; stepDone: number; stepTotal: number } {
+  const { done, total } = args;
+  const stepTotal = Math.max(total, 1);
+  /** `done` = 已完成批次数；进行中显示下一批序号，percent 不含未完成批 */
+  const completed = Math.max(0, Math.min(done, stepTotal));
+  const activeBatch = completed < stepTotal ? completed + 1 : stepTotal;
+  const percent =
+    stepTotal > 0
+      ? completed >= stepTotal
+        ? 100
+        : Math.min(99, Math.round((completed / stepTotal) * 100))
+      : 0;
+  return {
+    phaseLabel: "智能改稿",
+    detail: `批次 ${activeBatch} / ${stepTotal}`,
+    percent,
+    stepDone: activeBatch,
+    stepTotal,
+  };
+}
+
+/** @deprecated 合并策略下进度 total = 批次数 */
+export function countStageBPunctuateSteps(segments: SegmentDto[]): number {
+  return collectStageBEligibleSegmentIndices(segments).length;
+}
+
+/** @deprecated 合并策略下等于批次数 */
+export function estimateStageBProgressTotal(args: {
+  segments: SegmentDto[];
+  runtime: PostprocessRuntimeBridge;
+}): number {
+  return countStageBProofreadBatches(args);
+}
+
+export function mapPostTranscribeStageBProofreadError(err: unknown): string {
   const raw = err instanceof Error ? err.message : String(err);
-  return raw.split("段界整理").join("智能改稿（错字）");
+  if (raw.includes("智能改稿")) return raw;
+  return raw
+    .split("段界整理")
+    .join("智能改稿")
+    .split("词表校对")
+    .join("智能改稿")
+    .split("自动标点")
+    .join("智能改稿");
+}
+
+export function formatStageBPackTruncationHint(
+  packMeta: { truncated?: boolean; glossaryCount?: number; rulesCount?: number } | undefined,
+): string | null {
+  if (!packMeta?.truncated) return null;
+  const parts = ["词表或纠错规则条目过多，本次请求仅携带部分 Pack 上下文"];
+  if (packMeta.glossaryCount != null || packMeta.rulesCount != null) {
+    parts.push(
+      `（已载入术语 ${packMeta.glossaryCount ?? "?"} 条、规则 ${packMeta.rulesCount ?? "?"} 条）`,
+    );
+  }
+  return `${parts.join("")}。若改字候选偏少，可先完成「规则纠错」或精简热词与记忆。`;
 }
 
 export async function runPostTranscribeStageBPreview(args: {
   segments: SegmentDto[];
   runtime: PostprocessRuntimeBridge;
   onProgress?: (done: number, total: number) => void;
+  /** 返回 false 时停止后续批次（用户取消） */
+  shouldContinue?: () => boolean;
+  /** 当前批次 request_id，供后端 abort 注册 */
+  onActiveRequestId?: (requestId: string) => void;
 }): Promise<{
   changes: PostTranscribeStageBSegmentChange[];
   provider: string;
   rejectedBoundaryOps: number;
   typoStepError: string | null;
+  droppedUngroundedOps: number;
+  packTruncationHint: string | null;
 }> {
   const workIdxs = collectStageBEligibleSegmentIndices(args.segments);
   const working = args.segments.map((s) => ({ ...s }));
-  const punctuateTouched = new Set<number>();
-  const typoTouched = new Set<number>();
+  const evidenceByIdx = new Map<number, GroundedLexiconOp[]>();
   let provider = "";
-  let rejectedBoundaryOps = 0;
   let typoStepError: string | null = null;
+  let droppedUngroundedOps = 0;
+  let packTruncationHint: string | null = null;
 
   const refineLimits = resolveStageBRefineBatchLimits(args.runtime);
-  const progressTotal = estimateStageBProgressTotal({
-    segments: args.segments,
-    runtime: args.runtime,
-  });
-
-  for (let n = 0; n < workIdxs.length; n++) {
-    const idx = workIdxs[n]!;
-    const row = working[idx];
-    if (!row?.uid?.trim() || !row.text.trim()) continue;
-    args.onProgress?.(n, progressTotal);
-    const neighbor_context = collectAutoPunctuateNeighborContext(working, idx);
-    const req: PostprocessAutoPunctuateRequest = {
-      task: "auto_punctuate",
-      request_id: createRequestId("f0-stage-b-punct"),
-      segment_uid: row.uid,
-      text: row.text,
-      neighbor_context,
-      runtime: args.runtime,
-    };
-    const out = await postprocessAutoPunctuate(req);
-    provider = out.provider || provider;
-    if (out.text.trim() && out.text !== row.text) {
-      working[idx] = { ...row, text: out.text };
-      punctuateTouched.add(idx);
-    }
-  }
-
-  const refineItems = buildStageBRefineItems(working, workIdxs);
+  const refineItems = buildStageBRefineItems(args.segments, workIdxs);
   const refineIdxByUid = new Map<string, number>();
   for (const idx of workIdxs) {
     const row = working[idx];
@@ -237,38 +226,47 @@ export async function runPostTranscribeStageBPreview(args: {
   }
 
   const refineChunks = planStageBRefineChunks(refineItems, refineLimits);
+  const progressTotal = refineChunks.length;
+
+  args.onProgress?.(0, progressTotal);
+
   for (let batch = 0; batch < refineChunks.length; batch++) {
+    if (args.shouldContinue && !args.shouldContinue()) break;
     const chunk = refineChunks[batch];
     if (!chunk?.length) continue;
-    args.onProgress?.(workIdxs.length + batch, progressTotal);
     try {
-      const refineOut = await postprocessRefineSegments({
-        task: "refine_segments",
-        request_id: createRequestId("f0-stage-b-typo"),
+      const requestId = createRequestId("f0-stage-b-merged");
+      args.onActiveRequestId?.(requestId);
+      const req: PostprocessStageBProofreadRequest = {
+        task: "stage_b_proofread",
+        request_id: requestId,
         segments: chunk,
         runtime: args.runtime,
-      });
+      };
+      const refineOut = await postprocessStageBProofread(req);
+      if (args.shouldContinue && !args.shouldContinue()) break;
       provider = refineOut.provider || provider;
-      const { typoOps, rejectedBoundaryOps: rejected } = filterTypoOnlyRefineOps(refineOut.ops);
-      rejectedBoundaryOps += rejected;
-      const err = validateRefineOps(chunk, typoOps);
-      if (err) {
-        typoStepError = err;
-        continue;
-      }
-      for (const op of typoOps) {
-        const idx = refineIdxByUid.get(op.uid.trim());
+      droppedUngroundedOps += refineOut.droppedOps ?? 0;
+      const batchPackHint = formatStageBPackTruncationHint(refineOut.packMeta);
+      if (batchPackHint) packTruncationHint = batchPackHint;
+
+      for (const item of refineOut.items) {
+        const idx = refineIdxByUid.get(item.uid.trim());
         if (idx === undefined) continue;
         const row = working[idx];
         if (!row) continue;
-        if (op.text.trim() && op.text !== row.text) {
-          working[idx] = { ...row, text: op.text };
-          typoTouched.add(idx);
+        if (item.text.trim() && item.text !== row.text) {
+          working[idx] = { ...row, text: item.text };
+          const prev = evidenceByIdx.get(idx) ?? [];
+          prev.push(item);
+          evidenceByIdx.set(idx, prev);
         }
       }
+      args.onProgress?.(batch + 1, progressTotal);
     } catch (e) {
-      typoStepError = mapPostTranscribeStageBRefineError(e);
-      break;
+      if (args.shouldContinue && !args.shouldContinue()) break;
+      typoStepError = mapPostTranscribeStageBProofreadError(e);
+      if (evidenceByIdx.size === 0) break;
     }
   }
 
@@ -280,6 +278,8 @@ export async function runPostTranscribeStageBPreview(args: {
     const beforeText = before.text ?? "";
     const afterText = after.text ?? "";
     if (beforeText === afterText) continue;
+    const evidenceItems = evidenceByIdx.get(idx) ?? [];
+    const flags = classifyStageBSegmentChangeFlags(beforeText, afterText, evidenceItems);
     changes.push({
       segmentIdx: idx,
       segmentNumber: idx + 1,
@@ -288,16 +288,18 @@ export async function runPostTranscribeStageBPreview(args: {
       beforeText,
       afterText,
       diff: computeSingleTextDiff(beforeText, afterText),
-      punctuateTouched: punctuateTouched.has(idx),
-      typoTouched: typoTouched.has(idx),
+      punctuateTouched: flags.punctuateTouched,
+      typoTouched: flags.typoTouched,
+      evidenceSummary: flags.evidenceSummary,
     });
   }
 
-  args.onProgress?.(progressTotal, progressTotal);
   return {
     changes,
     provider,
-    rejectedBoundaryOps,
+    rejectedBoundaryOps: 0,
     typoStepError,
+    droppedUngroundedOps,
+    packTruncationHint,
   };
 }

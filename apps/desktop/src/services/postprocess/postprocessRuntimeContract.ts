@@ -33,6 +33,7 @@ export {
   readLastCloudRuntimeConfig,
   readLlmRuntimeConfigFromStorage,
   resolveAutoPunctuateBlockReason,
+  resolveStageBBlockReason,
   setLlmApiKeyInMemory,
   snapshotLastCloudRuntimeFromStorage,
   tryBuildPostprocessRuntimeBridge,

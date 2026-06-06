@@ -303,7 +303,9 @@ export function ProjectPanel() {
         )}
       </div>
 
-      {c.busy && c.busyReason !== "transcribe" ? (
+      {c.busy &&
+      c.busyReason !== "transcribe" &&
+      !(c.busyReason === "stage_b" && c.postTranscribeStageBDialog.phase === "loading") ? (
         <ProjectBusyOverlay
           reason={c.busyReason}
           elapsedSec={busyElapsedSec}
@@ -345,11 +347,12 @@ export function ProjectPanel() {
       <PostTranscribeStageBDialog
         state={c.postTranscribeStageBDialog}
         busy={c.busy}
+        previewFocusSegmentIdx={c.postTranscribeStageBPreviewFocusSegmentIdx}
         onCancel={c.cancelPostTranscribeStageB}
-        onDismissBlocked={c.dismissPostTranscribeStageBBlocked}
         onConfirmConsent={c.confirmPostTranscribeStageBConsent}
         onConfirmWriteback={() => void c.confirmPostTranscribeStageBWriteback()}
         onToggleSegment={c.togglePostTranscribeStageBSegment}
+        onFocusSegment={c.focusPostTranscribeStageBSegment}
       />
 
       <CorrectSuggestionsDialog

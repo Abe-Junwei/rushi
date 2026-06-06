@@ -129,7 +129,7 @@ export function EditorView({
             llmStatusRefreshSeq={llmStatusRefreshSeq}
             />
 
-          <main className="flex min-h-0 min-w-0 flex-1 flex-col gap-0 bg-notion-bg pb-6">
+          <main className="flex h-0 min-h-0 min-w-0 flex-1 flex-col gap-0 bg-notion-bg pb-6">
             {c.audioSrc ? (
               <EditorWaveformPane
                 controller={c}

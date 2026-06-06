@@ -15,6 +15,12 @@ import { FloatingPanelSegmentRow } from "./FloatingPanelSegmentRow";
 import { FindReplaceMatchText } from "./FindReplaceMatchText";
 import { readFloatingPanelViewport } from "./floatingPanelViewport";
 import { FloatingPanelTemplate } from "./PanelTemplate";
+import {
+  FloatingPanelDialogFooter,
+  FloatingPanelDialogHeader,
+  FloatingPanelDialogListRegion,
+  FloatingPanelDialogRoot,
+} from "./FloatingPanelDialogLayout";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
 const PANEL_ID = FIND_REPLACE_PANEL_ID;
@@ -73,7 +79,7 @@ function FindResultList({
   if (items.length === 0) return null;
 
   return (
-    <FloatingPanelSegmentList rowCount={items.length}>
+    <FloatingPanelSegmentList rowCount={items.length} fillAvailable>
       {items.map((item) => {
         const active = item.globalIndex === activeMatchIndex;
         return (
@@ -146,29 +152,33 @@ export function FindReplaceDialog({
           persistState
           onClose={handleClose}
         >
-          <div className="flex flex-col px-5 py-3">
-            <p className={PANEL_TYPOGRAPHY.dialogBody}>
-              将替换 {state.matchCount} 处「{state.findText}」→「{state.replaceText || "（空）"}」。确认后将自动保存并写入纠错记忆（查找词与替换词不同时）。
-            </p>
-            <FloatingPanelSegmentList rowCount={state.rows.length} className="mt-3">
-              {state.rows.map((row) => (
-                <li key={`${row.segmentIdx}-${row.globalIndex}`} className="list-none">
-                  <FloatingPanelSegmentRow
-                    segmentNumber={row.segmentNumber}
-                    timeLabel={row.startTimeLabel}
-                    suffix={`#${row.globalIndex + 1}`}
-                  >
-                    <FindReplaceMatchText
-                      variant="inline"
-                      text={row.fullText}
-                      charStart={row.charStart}
-                      charEnd={row.charEnd}
-                    />
-                  </FloatingPanelSegmentRow>
-                </li>
-              ))}
-            </FloatingPanelSegmentList>
-            <div className="mt-3 flex justify-start gap-2">
+          <FloatingPanelDialogRoot>
+            <FloatingPanelDialogHeader>
+              <p className={PANEL_TYPOGRAPHY.dialogBody}>
+                将替换 {state.matchCount} 处「{state.findText}」→「{state.replaceText || "（空）"}」。确认后将自动保存并写入纠错记忆（查找词与替换词不同时）。
+              </p>
+            </FloatingPanelDialogHeader>
+            <FloatingPanelDialogListRegion className="min-h-[8rem]">
+              <FloatingPanelSegmentList rowCount={state.rows.length} fillAvailable>
+                  {state.rows.map((row) => (
+                    <li key={`${row.segmentIdx}-${row.globalIndex}`} className="list-none">
+                      <FloatingPanelSegmentRow
+                        segmentNumber={row.segmentNumber}
+                        timeLabel={row.startTimeLabel}
+                        suffix={`#${row.globalIndex + 1}`}
+                      >
+                        <FindReplaceMatchText
+                          variant="inline"
+                          text={row.fullText}
+                          charStart={row.charStart}
+                          charEnd={row.charEnd}
+                        />
+                      </FloatingPanelSegmentRow>
+                    </li>
+                  ))}
+                </FloatingPanelSegmentList>
+            </FloatingPanelDialogListRegion>
+            <FloatingPanelDialogFooter justify="start">
               <button type="button" className={CONTROL_BTN_SECONDARY} disabled={busy} onClick={onCancelReplaceAllPreview}>
                 返回
               </button>
@@ -180,8 +190,8 @@ export function FindReplaceDialog({
               >
                 确认替换并保存
               </button>
-            </div>
-          </div>
+            </FloatingPanelDialogFooter>
+          </FloatingPanelDialogRoot>
         </FloatingPanelTemplate>
       </div>,
       document.body,
@@ -240,7 +250,7 @@ export function FindReplaceDialog({
         persistState
         onClose={handleClose}
       >
-        <div className="flex flex-col gap-2 px-5 py-3" onKeyDown={handlePanelKeyDown}>
+        <FloatingPanelDialogRoot className="gap-2" onKeyDown={handlePanelKeyDown}>
           <div className="shrink-0 space-y-3">
             <div className="grid gap-1">
               <label htmlFor="find-replace-find-input" className="text-xs text-notion-text-muted">
@@ -310,13 +320,15 @@ export function FindReplaceDialog({
             </p>
           ) : null}
           {state.searchCommitted && state.matchCount > 0 ? (
-            <FindResultList
-              items={state.resultItems}
-              activeMatchIndex={state.activeMatchIndex}
-              onSelectMatch={onSelectMatch}
-            />
+            <FloatingPanelDialogListRegion>
+              <FindResultList
+                items={state.resultItems}
+                activeMatchIndex={state.activeMatchIndex}
+                onSelectMatch={onSelectMatch}
+              />
+            </FloatingPanelDialogListRegion>
           ) : null}
-          <div className="flex shrink-0 flex-wrap items-center gap-2 border-t border-notion-divider pt-3">
+          <FloatingPanelDialogFooter justify="start" className="flex-wrap">
             <button
               type="button"
               className={CONTROL_BTN_SECONDARY}
@@ -343,8 +355,8 @@ export function FindReplaceDialog({
             >
               全部替换…
             </button>
-          </div>
-        </div>
+          </FloatingPanelDialogFooter>
+        </FloatingPanelDialogRoot>
       </FloatingPanelTemplate>
     </div>,
     document.body,

@@ -154,7 +154,7 @@ pub fn extract_balanced_json_array(s: &str) -> Option<String> {
 }
 
 /// 从 LLM 文本中提取首个平衡 `{…}` 对象（忽略字符串内的括号）。
-fn extract_balanced_json_object(s: &str) -> Option<String> {
+pub fn extract_balanced_json_object(s: &str) -> Option<String> {
     let start = s.find('{')?;
     let mut depth = 0i32;
     let mut in_string = false;

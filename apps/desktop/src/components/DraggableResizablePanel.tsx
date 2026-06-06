@@ -131,11 +131,32 @@ export function DraggableResizablePanel({
     startPos: Position;
     startSize: Size;
   } | null>(null);
+  const persistStateRef = useRef(persistState);
+  const storageKeyRef = useRef(storageKey);
+
+  useEffect(() => {
+    persistStateRef.current = persistState;
+    storageKeyRef.current = storageKey;
+  }, [persistState, storageKey]);
+
+  const finishDragSession = () => {
+    if (!dragRef.current) return;
+    if (persistStateRef.current) {
+      saveState(storageKeyRef.current, {
+        ...panelStateRef.current,
+        viewport: snapshotFloatingPanelViewport(),
+      });
+    }
+    dragRef.current = null;
+    document.body.style.removeProperty("user-select");
+    document.body.style.removeProperty("-webkit-user-select");
+  };
 
   const startDrag = useCallback(
     (mode: string, e: React.PointerEvent) => {
+      e.preventDefault();
       if (mode !== "move") userResizedRef.current = true;
-      (e.target as HTMLElement).setPointerCapture(e.pointerId);
+      (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
       dragRef.current = {
         mode,
         startX: e.clientX,
@@ -143,8 +164,10 @@ export function DraggableResizablePanel({
         startPos: { ...position },
         startSize: { ...size },
       };
+      document.body.style.userSelect = "none";
+      document.body.style.webkitUserSelect = "none";
     },
-    [position, size]
+    [position, size],
   );
 
   useEffect(() => {
@@ -193,22 +216,18 @@ export function DraggableResizablePanel({
     };
 
     const onUp = () => {
-      if (dragRef.current) {
-        if (persistState) {
-          saveState(storageKey, {
-            ...panelStateRef.current,
-            viewport: snapshotFloatingPanelViewport(),
-          });
-        }
-        dragRef.current = null;
-      }
+      finishDragSession();
     };
 
     window.addEventListener("pointermove", onMove);
     window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
     return () => {
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+      document.body.style.removeProperty("user-select");
+      document.body.style.removeProperty("-webkit-user-select");
     };
   }, [clampToViewport, persistState, resolveViewportBounds, storageKey]);
 
@@ -300,17 +319,41 @@ export function DraggableResizablePanel({
       }}
     >
       {/* Resize handles — negative margins extend hit area outside the panel */}
-      <div className="absolute -top-1 left-5 right-5 h-2 cursor-n-resize" onPointerDown={(e) => startDrag("n", e)} />
-      <div className="absolute -bottom-1 left-5 right-5 h-2 cursor-s-resize" onPointerDown={(e) => startDrag("s", e)} />
-      <div className="absolute -left-1 top-5 bottom-5 w-2 cursor-w-resize" onPointerDown={(e) => startDrag("w", e)} />
-      <div className="absolute -right-1 top-5 bottom-5 w-2 cursor-e-resize" onPointerDown={(e) => startDrag("e", e)} />
-      <div className="absolute -top-1 -left-1 h-5 w-5 cursor-nw-resize" onPointerDown={(e) => startDrag("nw", e)} />
-      <div className="absolute -top-1 -right-1 h-5 w-5 cursor-ne-resize" onPointerDown={(e) => startDrag("ne", e)} />
-      <div className="absolute -bottom-1 -left-1 h-5 w-5 cursor-sw-resize" onPointerDown={(e) => startDrag("sw", e)} />
-      <div className="absolute -bottom-1 -right-1 h-5 w-5 cursor-se-resize" onPointerDown={(e) => startDrag("se", e)} />
+      <div
+        className="absolute -top-1 left-5 right-5 h-2 cursor-n-resize touch-none select-none"
+        onPointerDown={(e) => startDrag("n", e)}
+      />
+      <div
+        className="absolute -bottom-1 left-5 right-5 h-2 cursor-s-resize touch-none select-none"
+        onPointerDown={(e) => startDrag("s", e)}
+      />
+      <div
+        className="absolute -left-1 top-5 bottom-5 w-2 cursor-w-resize touch-none select-none"
+        onPointerDown={(e) => startDrag("w", e)}
+      />
+      <div
+        className="absolute -right-1 top-5 bottom-5 w-2 cursor-e-resize touch-none select-none"
+        onPointerDown={(e) => startDrag("e", e)}
+      />
+      <div
+        className="absolute -top-1 -left-1 h-5 w-5 cursor-nw-resize touch-none select-none"
+        onPointerDown={(e) => startDrag("nw", e)}
+      />
+      <div
+        className="absolute -top-1 -right-1 h-5 w-5 cursor-ne-resize touch-none select-none"
+        onPointerDown={(e) => startDrag("ne", e)}
+      />
+      <div
+        className="absolute -bottom-1 -left-1 h-5 w-5 cursor-sw-resize touch-none select-none"
+        onPointerDown={(e) => startDrag("sw", e)}
+      />
+      <div
+        className="absolute -bottom-1 -right-1 h-5 w-5 cursor-se-resize touch-none select-none"
+        onPointerDown={(e) => startDrag("se", e)}
+      />
 
-      {/* Panel */}
-      <div className="flex h-full w-full flex-col overflow-hidden rounded-lg border border-notion-divider bg-notion-bg font-sans antialiased text-notion-text shadow-2xl">
+      {/* Panel — z-10 确保标题栏关闭按钮在 resize 手柄之上 */}
+      <div className="relative z-10 flex h-full w-full flex-col overflow-hidden rounded-lg border border-notion-divider bg-notion-bg font-sans antialiased text-notion-text shadow-2xl">
         {/* Title bar (draggable) — Notion/Zen */}
         <div
           className="flex shrink-0 cursor-move items-center justify-between border-b border-notion-divider bg-notion-sidebar px-6 py-4 select-none"
@@ -321,14 +364,15 @@ export function DraggableResizablePanel({
             type="button"
             className="rounded border-0 bg-transparent p-1 text-notion-text-muted transition-colors hover:bg-notion-sidebar-hover hover:text-notion-text"
             onClick={onClose}
+            onPointerDown={(e) => e.stopPropagation()}
             aria-label="关闭面板"
           >
             <X className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
           </button>
         </div>
 
-        {/* Content：壳层可滚动 + 可见滚动条；子面板内列表仍可用局部 overflow */}
-        <div className="floating-panel-body-scroll flex min-h-0 flex-1 flex-col">{children}</div>
+        {/* Content：壳层不滚动，由对话框内部 flex 分区滚动，保留下方按钮可见 */}
+        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
       </div>
     </div>
   );

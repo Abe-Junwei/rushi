@@ -243,11 +243,18 @@ pub(crate) fn build_auto_punctuate_prompt(
 }
 
 pub(crate) fn extract_chat_completion_text(v: &serde_json::Value) -> Result<String, String> {
+    extract_chat_completion_text_labeled(v, "自动标点")
+}
+
+pub(crate) fn extract_chat_completion_text_labeled(
+    v: &serde_json::Value,
+    task_label: &str,
+) -> Result<String, String> {
     let Some(choice) = v.get("choices").and_then(|x| x.get(0)) else {
-        return Err("自动标点返回缺少 choices。".to_string());
+        return Err(format!("{task_label}返回缺少 choices。"));
     };
     let Some(content) = choice.get("message").and_then(|x| x.get("content")) else {
-        return Err("自动标点返回缺少 message.content。".to_string());
+        return Err(format!("{task_label}返回缺少 message.content。"));
     };
     let out = if let Some(text) = content.as_str() {
         text.trim().to_string()
@@ -272,7 +279,7 @@ pub(crate) fn extract_chat_completion_text(v: &serde_json::Value) -> Result<Stri
         String::new()
     };
     if out.is_empty() {
-        return Err("自动标点返回内容为空。".to_string());
+        return Err(format!("{task_label}返回内容为空。"));
     }
     Ok(out)
 }

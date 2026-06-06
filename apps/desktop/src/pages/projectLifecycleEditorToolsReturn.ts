@@ -70,8 +70,10 @@ export function mapEditorToolsLifecycleFields(tools: EditorTools) {
       void postTranscribeOrchestration.confirmPostTranscribeStageBWriteback();
     },
     togglePostTranscribeStageBSegment: postTranscribeOrchestration.togglePostTranscribeStageBSegment,
+    focusPostTranscribeStageBSegment: postTranscribeOrchestration.focusPostTranscribeStageBSegment,
+    postTranscribeStageBPreviewFocusSegmentIdx:
+      postTranscribeOrchestration.postTranscribeStageBPreviewFocusSegmentIdx,
     cancelPostTranscribeStageB: postTranscribeOrchestration.cancelPostTranscribeStageB,
-    dismissPostTranscribeStageBBlocked: postTranscribeOrchestration.dismissPostTranscribeStageBBlocked,
     canCorrectSuggestions: correctSuggestions.canCorrectSuggestions,
     correctSuggestionsBlockReason: correctSuggestions.correctSuggestionsBlockReason,
     correctSuggestionsDialog: correctSuggestions.correctSuggestionsDialog,

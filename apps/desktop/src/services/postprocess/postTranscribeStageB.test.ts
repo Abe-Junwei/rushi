@@ -4,9 +4,8 @@ import {
   collectStageBEligibleSegmentIndices,
   describeStageBProgress,
   estimateStageBProgressTotal,
-  filterTypoOnlyRefineOps,
   isLocalLoopbackRuntimeBridge,
-  mapPostTranscribeStageBRefineError,
+  mapPostTranscribeStageBProofreadError,
   planStageBRefineChunks,
   resolveStageBRefineBatchLimits,
   STAGE_B_REFINE_CLOUD_MAX_CHARS,
@@ -102,20 +101,21 @@ describe("planStageBRefineChunks", () => {
 });
 
 describe("describeStageBProgress", () => {
-  it("labels punctuate vs refine phases", () => {
-    expect(describeStageBProgress({ done: 2, total: 68, punctuateSteps: 60 })).toMatchObject({
-      phaseLabel: "标点",
-      detail: "语段 3 / 60",
+  it("labels merged proofread batches with aligned step counts", () => {
+    expect(describeStageBProgress({ done: 3, total: 25 })).toEqual({
+      phaseLabel: "智能改稿",
+      detail: "批次 4 / 25",
+      percent: 12,
+      stepDone: 4,
+      stepTotal: 25,
     });
-    expect(describeStageBProgress({ done: 60, total: 68, punctuateSteps: 60 })).toMatchObject({
-      phaseLabel: "错字",
-      detail: "批次 1 / 8",
-    });
+    expect(describeStageBProgress({ done: 0, total: 1 }).percent).toBe(0);
+    expect(describeStageBProgress({ done: 1, total: 1 }).percent).toBe(100);
   });
 });
 
 describe("stage B progress", () => {
-  it("includes punctuate steps plus provider-aware refine batches", () => {
+  it("uses provider-aware batch count only", () => {
     const segments = Array.from({ length: 20 }, (_, i) => ({
       uid: `u${i}`,
       idx: i,
@@ -124,27 +124,18 @@ describe("stage B progress", () => {
       text: `line ${i}`,
     })) as SegmentDto[];
     const cloudTotal = estimateStageBProgressTotal({ segments, runtime: cloudRuntime });
-    expect(cloudTotal).toBe(20 + 2);
+    expect(cloudTotal).toBe(2);
     const localTotal = estimateStageBProgressTotal({ segments, runtime: loopbackRuntime });
-    expect(localTotal).toBe(20 + 3);
+    expect(localTotal).toBe(3);
   });
 });
 
-describe("mapPostTranscribeStageBRefineError", () => {
-  it("rewrites segment-refine wording", () => {
-    expect(mapPostTranscribeStageBRefineError(new Error("段界整理请求失败"))).toContain(
-      "智能改稿（错字）",
+describe("mapPostTranscribeStageBProofreadError", () => {
+  it("rewrites legacy wording", () => {
+    expect(mapPostTranscribeStageBProofreadError(new Error("段界整理请求失败"))).toContain("智能改稿");
+    expect(mapPostTranscribeStageBProofreadError(new Error("自动标点返回内容为空"))).toContain("智能改稿");
+    expect(mapPostTranscribeStageBProofreadError(new Error("智能改稿请求已取消"))).toBe(
+      "智能改稿请求已取消",
     );
-  });
-});
-
-describe("filterTypoOnlyRefineOps", () => {
-  it("keeps update_text and counts boundary ops", () => {
-    const { typoOps, rejectedBoundaryOps } = filterTypoOnlyRefineOps([
-      { op: "update_text", uid: "a", text: "新" },
-      { op: "merge", uids: ["a", "b"] },
-    ]);
-    expect(typoOps).toHaveLength(1);
-    expect(rejectedBoundaryOps).toBe(1);
   });
 });

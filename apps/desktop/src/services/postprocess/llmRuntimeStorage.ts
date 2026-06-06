@@ -152,10 +152,28 @@ export function persistLlmRuntimeConfig(
   const def = getLlmProviderDefinition(config.providerId)!;
   const baseUrl = config.baseUrl.trim() || def.defaultBaseUrl;
   const model = config.model.trim() || def.defaultModel;
+  const previous = readLlmRuntimeConfigFromStorage();
+  const previousFingerprint = llmRuntimeConnectionFingerprint(previous);
+
+  let nextApiKeyId = previous.apiKeyId;
+  if (options?.clearApiKeyId) {
+    nextApiKeyId = undefined;
+  } else if (config.apiKeyId?.trim()) {
+    const normalized = normalizeLlmApiKeyId(config.apiKeyId);
+    nextApiKeyId = normalized ?? undefined;
+  }
+
+  const nextConfig: LlmRuntimeConfig = {
+    providerId: config.providerId,
+    baseUrl,
+    model,
+    apiKeyId: nextApiKeyId,
+  };
+  const nextFingerprint = llmRuntimeConnectionFingerprint(nextConfig);
+
   writeStorage(LLM_STORAGE_KEYS.providerId, config.providerId);
   writeStorage(LLM_STORAGE_KEYS.baseUrl, baseUrl);
   writeStorage(LLM_STORAGE_KEYS.model, model);
-  clearLlmConnectionVerified();
   if (options?.clearApiKeyId) {
     localStorage.removeItem(LLM_STORAGE_KEYS.apiKeyId);
   } else if (config.apiKeyId?.trim()) {
@@ -164,7 +182,10 @@ export function persistLlmRuntimeConfig(
     else localStorage.removeItem(LLM_STORAGE_KEYS.apiKeyId);
   }
   if (!isLocalLoopbackLlmProvider(config.providerId)) {
-    writeLastCloudRuntimeSnapshot({ ...config, baseUrl, model });
+    writeLastCloudRuntimeSnapshot(nextConfig);
+  }
+  if (previousFingerprint !== nextFingerprint) {
+    clearLlmConnectionVerified();
   }
 }
 
@@ -223,6 +244,48 @@ export function llmConfigHint(): string {
     return "请打开「设置 → LLM 配置」，确认 Ollama 已启动并保存本机模型。";
   }
   return "请打开「设置 → LLM 配置」，选择厂商并保存 API Key。";
+}
+
+/** 智能改稿（全文级）门禁；与单语段自动标点文案区分。 */
+export function resolveStageBBlockReason(input: {
+  currentFileId: string | null;
+  hasSegmentText: boolean;
+  keychainReady: boolean;
+  keychainChecking: boolean;
+  llmCapabilityOk?: boolean;
+  llmCapabilityBlockReason?: string | null;
+}): string | null {
+  if (!input.currentFileId) {
+    return "请先打开一个文件";
+  }
+  if (!input.hasSegmentText) {
+    return "当前文件没有语段正文，无法智能改稿。";
+  }
+  if (!isLlmRuntimeReady()) {
+    return llmConfigHint();
+  }
+  if (isLocalLoopbackLlmConfig()) {
+    if (input.llmCapabilityOk === false) {
+      return (
+        input.llmCapabilityBlockReason ??
+        "本机 LLM 尚未就绪，请在设置 → LLM 配置 中完成检测与探测。"
+      );
+    }
+    return null;
+  }
+  if (input.keychainChecking) {
+    return "正在检查 LLM 密钥状态…";
+  }
+  if (!input.keychainReady && !getLlmApiKeyFromMemory()?.trim()) {
+    return "本地未找到已保存的 API Key，请在设置 → LLM 配置 中重新保存。";
+  }
+  if (!isLlmConnectionVerified()) {
+    return "请先在设置 → LLM 配置 中完成探测后再使用智能改稿。";
+  }
+  if (input.llmCapabilityOk === false) {
+    return input.llmCapabilityBlockReason ?? "云端 LLM 尚未就绪，请在设置 → LLM 配置 中完成探测。";
+  }
+  return null;
 }
 
 export function resolveAutoPunctuateBlockReason(input: {

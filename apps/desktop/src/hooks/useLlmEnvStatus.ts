@@ -1,10 +1,6 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import { ollamaDetectStatus, type OllamaDetectResponse } from "../tauri/postprocessApi";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import {
-  applyLlmProviderPreset,
-  LLM_CONNECTION_VERIFIED_EVENT,
   isLocalLoopbackLlmConfig,
-  markLlmConnectionVerified,
   readLlmRuntimeConfigFromStorage,
 } from "../services/postprocess/postprocessRuntimeContract";
 import {
@@ -16,6 +12,12 @@ import {
   type LlmEnvPresentation,
   type LlmEnvSettingsOverlay,
 } from "../services/llm/llmEnvStatus";
+import {
+  ensureLlmOllamaDetect,
+  getLlmEnvRuntimeSnapshot,
+  refreshLlmOllamaDetect,
+  subscribeLlmEnvRuntime,
+} from "../services/llm/llmEnvRuntimeStore";
 
 function llmEnvModeFromOverlay(settings?: LlmEnvSettingsOverlay): "local" | "cloud" {
   if (settings?.configDraft) {
@@ -25,36 +27,12 @@ function llmEnvModeFromOverlay(settings?: LlmEnvSettingsOverlay): "local" | "clo
 }
 
 export function useLlmEnvStatus(refreshSeq = 0, settings?: LlmEnvSettingsOverlay) {
+  const runtime = useSyncExternalStore(subscribeLlmEnvRuntime, getLlmEnvRuntimeSnapshot, getLlmEnvRuntimeSnapshot);
   const [snapshot, setSnapshot] = useState(readLlmEnvSnapshot);
-  const [detect, setDetect] = useState<OllamaDetectResponse | null>(null);
-  const [detectBusy, setDetectBusy] = useState(false);
-  const [connectionVerifiedSeq, setConnectionVerifiedSeq] = useState(0);
   const envMode = llmEnvModeFromOverlay(settings);
 
   const refreshDetect = useCallback(async () => {
-    setDetectBusy(true);
-    try {
-      const cfg = resolveLlmEnvEffectiveConfig(settings?.configDraft);
-      const probeModel =
-        llmEnvModeFromOverlay(settings) === "local"
-          ? cfg.model
-          : applyLlmProviderPreset("ollama").model;
-      const out = await ollamaDetectStatus({ model: probeModel });
-      setDetect(out);
-      // Ollama loopback：服务检测成功即视为连接已验证（同一进程，tags 通则 chat 基本通）
-      if (out.reachable && llmEnvModeFromOverlay(settings) === "local") {
-        markLlmConnectionVerified(cfg);
-      }
-    } catch (e) {
-      setDetect({
-        reachable: false,
-        modelCount: 0,
-        hasQwen25_7b: false,
-        message: e instanceof Error ? e.message : String(e),
-      });
-    } finally {
-      setDetectBusy(false);
-    }
+    return refreshLlmOllamaDetect({ configDraft: settings?.configDraft });
   }, [settings?.configDraft?.model, settings?.configDraft?.providerId, settings?.configDraft?.baseUrl, settings]);
 
   useEffect(() => {
@@ -62,34 +40,35 @@ export function useLlmEnvStatus(refreshSeq = 0, settings?: LlmEnvSettingsOverlay
   }, [refreshSeq]);
 
   useEffect(() => {
-    const bumpConnectionVerified = () => setConnectionVerifiedSeq((n) => n + 1);
-    bumpConnectionVerified();
-    window.addEventListener(LLM_CONNECTION_VERIFIED_EVENT, bumpConnectionVerified);
-    return () => window.removeEventListener(LLM_CONNECTION_VERIFIED_EVENT, bumpConnectionVerified);
-  }, []);
-
-  useEffect(() => {
-    void refreshDetect();
-  }, [refreshDetect, refreshSeq]);
+    if (envMode !== "local") return;
+    ensureLlmOllamaDetect({ refreshSeq, configDraft: settings?.configDraft });
+  }, [
+    refreshSeq,
+    envMode,
+    settings?.configDraft?.model,
+    settings?.configDraft?.providerId,
+    settings?.configDraft?.baseUrl,
+    settings,
+  ]);
 
   const presentation: LlmEnvPresentation = useMemo(
     () =>
       buildLlmEnvPresentation({
-        ollamaDetect: envMode === "local" ? detect : null,
-        ollamaDetectBusy: envMode === "local" ? detectBusy : false,
+        ollamaDetect: envMode === "local" ? runtime.ollamaDetect : null,
+        ollamaDetectBusy: envMode === "local" ? runtime.ollamaDetectBusy : false,
         settings,
       }),
-    [detect, detectBusy, settings, connectionVerifiedSeq, refreshSeq, envMode],
+    [runtime.ollamaDetect, runtime.ollamaDetectBusy, runtime.connectionVerifiedSeq, settings, envMode],
   );
 
   const modeToggleTones = useMemo(
     () =>
       buildLlmModeToggleTones({
-        ollamaDetect: detect,
-        ollamaDetectBusy: detectBusy,
+        ollamaDetect: runtime.ollamaDetect,
+        ollamaDetectBusy: runtime.ollamaDetectBusy,
         settings,
       }),
-    [detect, detectBusy, settings, connectionVerifiedSeq, refreshSeq],
+    [runtime.ollamaDetect, runtime.ollamaDetectBusy, runtime.connectionVerifiedSeq, settings],
   );
 
   const polishReadiness = useMemo(
@@ -108,8 +87,8 @@ export function useLlmEnvStatus(refreshSeq = 0, settings?: LlmEnvSettingsOverlay
     presentation,
     modeToggleTones,
     mode: presentation.mode,
-    detect,
-    detectBusy,
+    detect: runtime.ollamaDetect,
+    detectBusy: runtime.ollamaDetectBusy,
     shortLabel: presentation.chipLabel,
     topBarOk: presentation.ok,
     polishReadiness,

@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { useLlmEnvRuntimeRevision } from "../hooks/useLlmEnvRuntimeRevision";
 import type { SegmentDto } from "../tauri/projectApi";
 import type { BusyReason } from "./useProjectCrudController";
 import { useFindReplaceController } from "./useFindReplaceController";
@@ -16,6 +17,8 @@ type SegmentDirtyApi = {
 type Args = {
   busy: boolean;
   busyReason: BusyReason | null;
+  beginBusy: (reason: BusyReason) => void;
+  endBusy: () => void;
   currentFileId: string | null;
   selectedIdx: number;
   segments: SegmentDto[];
@@ -38,6 +41,9 @@ type Args = {
 export function useProjectEditorToolsController(args: Args) {
   const {
     busy,
+    busyReason,
+    beginBusy,
+    endBusy,
     currentFileId,
     selectedIdx,
     segments,
@@ -54,6 +60,7 @@ export function useProjectEditorToolsController(args: Args) {
   } = args;
 
   const [llmRuntimeEpoch, setLlmRuntimeEpoch] = useState(0);
+  const llmEnvRevision = useLlmEnvRuntimeRevision();
   const bumpLlmRuntimeChanged = useCallback(() => {
     setLlmRuntimeEpoch((n) => n + 1);
   }, []);
@@ -104,16 +111,21 @@ export function useProjectEditorToolsController(args: Args) {
 
   const postTranscribeOrchestration = usePostTranscribeOrchestrationController({
     busy,
+    transcribePreviewActive: busyReason === "transcribe",
     currentFileId,
     segments,
     segmentsRef,
     flushSegmentTextDrafts,
     setSegments,
+    setSelectedIdx,
     pushUndo,
     setError,
     saveSegments,
     transcribeWarnings,
     llmRuntimeEpoch,
+    llmEnvRevision,
+    beginBusy,
+    endBusy,
   });
 
   return {

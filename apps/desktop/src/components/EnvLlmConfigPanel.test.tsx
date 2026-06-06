@@ -115,6 +115,32 @@ describe("EnvLlmConfigPanel", () => {
     expect(toastSuccess).toHaveBeenCalled();
   });
 
+  it("keeps verified status after save when config unchanged", async () => {
+    persistLlmRuntimeConfig({ ...applyLlmProviderPreset("deepseek"), apiKeyId: DEFAULT_LLM_API_KEY_ID });
+    llmProbeConnection.mockResolvedValue({
+      ok: true,
+      message: "连接成功。",
+      latency_ms: 42,
+    });
+
+    render(<EnvLlmConfigPanel busy={false} />);
+    await waitFor(() => {
+      expect(llmHasStoredApiKey).toHaveBeenCalled();
+    });
+
+    fireEvent.click(screen.getByRole("button", { name: "探测连接" }));
+    await waitFor(() => {
+      expect(screen.getByText(/API Key 已验证/)).toBeTruthy();
+    });
+
+    fireEvent.click(screen.getAllByRole("button", { name: "保存配置" })[0]);
+    await waitFor(() => {
+      expect(toastSuccess).toHaveBeenCalled();
+    });
+    expect(screen.getByText(/API Key 已验证/)).toBeTruthy();
+    expect(screen.queryByText(/尚未验证连通性/)).toBeNull();
+  });
+
   it("shows toast on failed probe", async () => {
     persistLlmRuntimeConfig({ ...applyLlmProviderPreset("deepseek"), apiKeyId: DEFAULT_LLM_API_KEY_ID });
     llmProbeConnection.mockResolvedValue({

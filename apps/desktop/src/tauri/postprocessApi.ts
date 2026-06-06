@@ -106,6 +106,48 @@ export async function postprocessRefineSegments(
   return await invoke<PostprocessRefineSegmentsResponse>("postprocess_refine_segments", { req });
 }
 
+export type LexiconEvidence = {
+  type: string;
+  ref: string;
+};
+
+export type GroundedLexiconOp = {
+  uid: string;
+  text: string;
+  evidence: LexiconEvidence;
+};
+
+export type LexiconPackMeta = {
+  glossaryCount: number;
+  rulesCount: number;
+  truncated?: boolean;
+};
+
+export interface PostprocessStageBProofreadRequest {
+  task: "stage_b_proofread";
+  request_id?: string;
+  segments: RefineSegmentItem[];
+  runtime?: PostprocessRuntimeBridge;
+}
+
+export interface PostprocessStageBProofreadResponse {
+  ops: Array<Extract<SegmentRefineOp, { op: "update_text" }>>;
+  items: GroundedLexiconOp[];
+  warnings: string[];
+  droppedOps: number;
+  rationale?: string;
+  packMeta?: LexiconPackMeta;
+  provider: string;
+  latencyMs: number;
+  latency_ms?: number;
+}
+
+export async function postprocessStageBProofread(
+  req: PostprocessStageBProofreadRequest,
+): Promise<PostprocessStageBProofreadResponse> {
+  return await invoke<PostprocessStageBProofreadResponse>("postprocess_stage_b_proofread", { req });
+}
+
 export interface PostprocessExportPolishRequest {
   task: "export_polish";
   requestId?: string;

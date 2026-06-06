@@ -91,6 +91,8 @@ interface FloatingPanelTemplateProps {
   title: string;
   preset: PanelTemplatePresetKey;
   onClose: () => void;
+  /** 点击遮罩关闭；未提供时与 onClose 相同 */
+  onOverlayClose?: () => void;
   children: React.ReactNode;
   minWidth?: number;
   minHeight?: number;
@@ -111,6 +113,7 @@ export function FloatingPanelTemplate({
   title,
   preset,
   onClose,
+  onOverlayClose,
   children,
   minWidth,
   minHeight,
@@ -137,7 +140,7 @@ export function FloatingPanelTemplate({
 
   return (
     <>
-      <div className={mergedConfig.overlayClassName} onClick={onClose} />
+      <div className={mergedConfig.overlayClassName} onClick={onOverlayClose ?? onClose} />
       <DraggableResizablePanel
         id={id}
         title={title}

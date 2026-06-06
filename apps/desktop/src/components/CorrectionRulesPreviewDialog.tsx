@@ -11,13 +11,24 @@ import {
 import { CorrectionRulesChangeText } from "./CorrectionRulesChangeText";
 import { FloatingPanelSegmentList } from "./FloatingPanelSegmentList";
 import {
+  CORRECTION_RULES_LOADING_BODY_PX,
   CORRECTION_RULES_PREVIEW_STATIC_BODY_PX,
+  FLOATING_PANEL_COMPACT_MIN_HEIGHT,
+  resolveCorrectionRulesEmptyFitHeight,
+  resolveFloatingPanelCompactFitHeight,
   resolveFloatingPanelFitHeight,
 } from "./floatingPanelSegmentListLayout";
 import { FloatingPanelSegmentRow } from "./FloatingPanelSegmentRow";
 import { readFloatingPanelViewport } from "./floatingPanelViewport";
 import { PanelAsyncProgress } from "./PanelAsyncProgress";
 import { FloatingPanelTemplate } from "./PanelTemplate";
+import {
+  FloatingPanelDialogFooter,
+  FloatingPanelDialogHeader,
+  FloatingPanelDialogListRegion,
+  FloatingPanelDialogRoot,
+  FloatingPanelDialogScroll,
+} from "./FloatingPanelDialogLayout";
 
 type Props = {
   state: CorrectionRulesDialogState;
@@ -161,15 +172,32 @@ export function CorrectionRulesPreviewDialog({
         : "规则纠错";
 
   const preview = state.phase === "preview" ? state : null;
+  const isEmpty = state.phase === "empty";
+  const isLoading = state.phase === "loading";
+  const isCompactBody = isEmpty || isLoading;
   const selectedCount = preview?.selectedSegmentIdxs.length ?? 0;
   const totalCount = preview?.changes.length ?? 0;
 
   const viewport = readFloatingPanelViewport();
   const panelMargin = 16;
   const panelMaxHeight = Math.min(720, Math.max(300, viewport.height - panelMargin * 2));
-  const previewFitHeight = preview
+
+  const hasReadOnlyHints =
+    isEmpty &&
+    state.readOnlyLearningHints.length + state.readOnlyTranscribeHints.length > 0;
+
+  const contentFitHeight = preview
     ? resolveFloatingPanelFitHeight(CORRECTION_RULES_PREVIEW_STATIC_BODY_PX, totalCount)
-    : undefined;
+    : isEmpty
+      ? resolveCorrectionRulesEmptyFitHeight({
+          hasReadOnlyHints,
+          postTranscribeExtra: postTranscribe,
+        })
+      : isLoading
+        ? resolveFloatingPanelCompactFitHeight(CORRECTION_RULES_LOADING_BODY_PX)
+        : undefined;
+
+  const defaultPanelHeight = Math.min(contentFitHeight ?? 400, panelMaxHeight);
 
   return createPortal(
     <div className="workspace">
@@ -178,100 +206,106 @@ export function CorrectionRulesPreviewDialog({
         title={title}
         preset="findReplace"
         minWidth={400}
-        minHeight={300}
+        minHeight={isCompactBody ? FLOATING_PANEL_COMPACT_MIN_HEIGHT : 300}
         maxHeight={panelMaxHeight}
         defaultSize={{
           width: 520,
-          height: Math.min(previewFitHeight ?? 400, panelMaxHeight),
+          height: defaultPanelHeight,
         }}
-        contentFitHeight={previewFitHeight}
+        contentFitHeight={contentFitHeight}
         panelZIndex={110}
         persistState
         onClose={handleClose}
       >
-        <div className="flex flex-col gap-2 px-5 py-3">
+        <FloatingPanelDialogRoot className="gap-2">
           {state.phase === "loading" ? (
             <PanelAsyncProgress mode="spinner" message="正在加载稳定纠错规则…" />
           ) : null}
           {state.phase === "empty" ? (
             <>
-              <p className={`shrink-0 ${PANEL_TYPOGRAPHY.dialogBody}`}>
-                {postTranscribe
-                  ? "转写已落库。当前没有可应用的稳定纠错规则（需命中 ≥3 次或已采纳），或语段中无匹配项。"
-                  : "没有可用的稳定纠错规则（需命中 ≥3 次或已采纳），或当前语段中无匹配项。"}
-              </p>
-              <ReadOnlyHintsDetails
-                learningHints={state.readOnlyLearningHints}
-                transcribeHints={state.readOnlyTranscribeHints}
-              />
-              {postTranscribe ? (
-                <p className={`shrink-0 ${PANEL_TYPOGRAPHY.dialogBody} text-notion-text-muted`}>
-                  可先用手动改正或查找替换继续改稿。
+              <FloatingPanelDialogScroll className="flex flex-col gap-2">
+                <p className={`shrink-0 ${PANEL_TYPOGRAPHY.dialogBody}`}>
+                  {postTranscribe
+                    ? "转写已落库。当前没有可应用的稳定纠错规则（需命中 ≥3 次或已采纳），或语段中无匹配项。"
+                    : "没有可用的稳定纠错规则（需命中 ≥3 次或已采纳），或当前语段中无匹配项。"}
                 </p>
-              ) : null}
-              <div className="mt-2 flex shrink-0 justify-end">
+                <ReadOnlyHintsDetails
+                  learningHints={state.readOnlyLearningHints}
+                  transcribeHints={state.readOnlyTranscribeHints}
+                />
+                {postTranscribe ? (
+                  <p className={`shrink-0 ${PANEL_TYPOGRAPHY.dialogBody} text-notion-text-muted`}>
+                    可先用手动改正或查找替换继续改稿。
+                  </p>
+                ) : null}
+              </FloatingPanelDialogScroll>
+              <FloatingPanelDialogFooter justify="end">
                 <button type="button" className={CONTROL_BTN_SECONDARY} onClick={onCloseEmpty}>
                   关闭
                 </button>
-              </div>
+              </FloatingPanelDialogFooter>
             </>
           ) : null}
           {preview ? (
             <>
-              <p className={`shrink-0 ${PANEL_TYPOGRAPHY.dialogBody}`}>
-                共 <span className="font-medium text-notion-text">{preview.ruleCount}</span> 条规则，
-                <span className="font-medium text-notion-text"> {totalCount}</span> 条语段有匹配
-                <span className="text-notion-text-muted"> · 点击行定位语段</span>
-              </p>
-              {stableConflictMessage ? (
-                <p
-                  className={`shrink-0 rounded-md bg-zen-saffron/10 px-3 py-2 ${PANEL_TYPOGRAPHY.dialogBody} text-notion-text`}
-                >
-                  {stableConflictMessage}
+              <FloatingPanelDialogHeader className="space-y-2">
+                <p className={PANEL_TYPOGRAPHY.dialogBody}>
+                  共 <span className="font-medium text-notion-text">{preview.ruleCount}</span> 条规则，
+                  <span className="font-medium text-notion-text"> {totalCount}</span> 条语段有匹配
+                  <span className="text-notion-text-muted"> · 点击行定位语段</span>
                 </p>
-              ) : null}
-              <ReadOnlyHintsDetails
-                learningHints={preview.readOnlyLearningHints}
-                transcribeHints={preview.readOnlyTranscribeHints}
-              />
-              <FloatingPanelSegmentList rowCount={totalCount}>
-                {preview.changes.map((ch) => {
-                  const checked = preview.selectedSegmentIdxs.includes(ch.segmentIdx);
-                  const focused = previewFocusSegmentIdx === ch.segmentIdx;
-                  return (
-                    <li key={ch.segmentIdx} className="list-none">
-                      <FloatingPanelSegmentRow
-                        segmentNumber={ch.segmentNumber}
-                        timeLabel={ch.startTimeLabel}
-                        suffix={`${ch.replacementCount}处`}
-                        active={focused}
-                        disabled={busy}
-                        onClick={() => onFocusSegment(ch.segmentIdx)}
-                        trailing={
-                          <input
-                            type="checkbox"
-                            className="h-3.5 w-3.5 shrink-0 accent-zen-saffron"
-                            checked={checked}
-                            disabled={busy}
-                            aria-label={`包含语段 ${ch.segmentNumber}`}
-                            onClick={(e) => e.stopPropagation()}
-                            onChange={() => onToggleSegment(ch.segmentIdx)}
+                {stableConflictMessage ? (
+                  <p
+                    className={`rounded-md bg-zen-saffron/10 px-3 py-2 ${PANEL_TYPOGRAPHY.dialogBody} text-notion-text`}
+                  >
+                    {stableConflictMessage}
+                  </p>
+                ) : null}
+                <ReadOnlyHintsDetails
+                  learningHints={preview.readOnlyLearningHints}
+                  transcribeHints={preview.readOnlyTranscribeHints}
+                />
+              </FloatingPanelDialogHeader>
+              <FloatingPanelDialogListRegion>
+                <FloatingPanelSegmentList rowCount={totalCount} fillAvailable>
+                  {preview.changes.map((ch) => {
+                    const checked = preview.selectedSegmentIdxs.includes(ch.segmentIdx);
+                    const focused = previewFocusSegmentIdx === ch.segmentIdx;
+                    return (
+                      <li key={ch.segmentIdx} className="list-none">
+                        <FloatingPanelSegmentRow
+                          segmentNumber={ch.segmentNumber}
+                          timeLabel={ch.startTimeLabel}
+                          suffix={`${ch.replacementCount}处`}
+                          active={focused}
+                          disabled={busy}
+                          onClick={() => onFocusSegment(ch.segmentIdx)}
+                          trailing={
+                            <input
+                              type="checkbox"
+                              className="h-3.5 w-3.5 shrink-0 accent-zen-saffron"
+                              checked={checked}
+                              disabled={busy}
+                              aria-label={`包含语段 ${ch.segmentNumber}`}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={() => onToggleSegment(ch.segmentIdx)}
+                            />
+                          }
+                        >
+                          <CorrectionRulesChangeText
+                            variant="inline"
+                            beforeText={ch.beforeText}
+                            afterText={ch.afterText}
+                            beforeHighlights={ch.beforeHighlights}
+                            afterHighlights={ch.afterHighlights}
                           />
-                        }
-                      >
-                        <CorrectionRulesChangeText
-                          variant="inline"
-                          beforeText={ch.beforeText}
-                          afterText={ch.afterText}
-                          beforeHighlights={ch.beforeHighlights}
-                          afterHighlights={ch.afterHighlights}
-                        />
-                      </FloatingPanelSegmentRow>
-                    </li>
-                  );
-                })}
-              </FloatingPanelSegmentList>
-              <div className="flex shrink-0 items-center justify-between gap-2 border-t border-notion-divider pt-3">
+                        </FloatingPanelSegmentRow>
+                      </li>
+                    );
+                  })}
+                </FloatingPanelSegmentList>
+              </FloatingPanelDialogListRegion>
+              <FloatingPanelDialogFooter>
                 <p className={`${PANEL_TYPOGRAPHY.dialogBody} text-notion-text-muted`}>
                   将写回 {selectedCount} / {totalCount} 条语段
                 </p>
@@ -288,10 +322,10 @@ export function CorrectionRulesPreviewDialog({
                     确认写回
                   </button>
                 </div>
-              </div>
+              </FloatingPanelDialogFooter>
             </>
           ) : null}
-        </div>
+        </FloatingPanelDialogRoot>
       </FloatingPanelTemplate>
     </div>,
     document.body,

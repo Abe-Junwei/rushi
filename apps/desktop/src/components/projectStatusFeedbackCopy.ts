@@ -35,6 +35,8 @@ export function busyOverlayCopy(
       return { title: "正在执行安装脚本...", hint: "终端输出可在「环境与 ASR」中查看" };
     case "export":
       return { title: "正在导出 Word…", hint: "大模型润色与写入文档可能需要数十秒" };
+    case "stage_b":
+      return { title: "智能改稿处理中…", hint: "正在请求 LLM 生成标点与改字候选，请勿切换文件或转写" };
     default:
       return { title: "处理中...", hint: "请稍候" };
   }

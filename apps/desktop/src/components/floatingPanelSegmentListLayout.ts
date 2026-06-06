@@ -19,9 +19,80 @@ export const FIND_REPLACE_PREVIEW_STATIC_BODY_PX = 132;
 /** 规则纠错预览：摘要 + 底栏（不含语段列表；只读 hints 折叠时额外增高由壳层滚动兜底）。 */
 export const CORRECTION_RULES_PREVIEW_STATIC_BODY_PX = 168;
 
+/** 智能改稿预览：摘要 + 底栏（不含语段列表）。 */
+export const POST_TRANSCRIBE_STAGE_B_PREVIEW_STATIC_BODY_PX = 200;
+
+/** 智能改稿 consent：说明文案 + 按钮行（不含 A→B 黄条）。 */
+export const POST_TRANSCRIBE_STAGE_B_CONSENT_STATIC_BODY_PX = 168;
+
+/** 智能改稿 empty：说明文案 + 关闭按钮（不含提示条）。 */
+export const POST_TRANSCRIBE_STAGE_B_EMPTY_STATIC_BODY_PX = 132;
+
+/** consent / empty 顶部每条提示（A→B 软提示 / pack 截断）的额外高度。 */
+export const POST_TRANSCRIBE_STAGE_B_HINT_EXTRA_PX = 56;
+
+/** 紧凑态面板壳层 minHeight（empty / consent / loading）。 */
+export const FLOATING_PANEL_COMPACT_MIN_HEIGHT = 200;
+
+/** 折叠 `<details>` 摘要行（如只读提示 header）。 */
+export const FLOATING_PANEL_DETAILS_SUMMARY_PX = 36;
+
+/** 额外一行 muted 说明。 */
+export const FLOATING_PANEL_MUTED_LINE_PX = 36;
+
+/** spinner loading 区（含 padding）。 */
+export const FLOATING_PANEL_SPINNER_BODY_PX = 88;
+
+/** 规则纠错 empty：说明 + 关闭按钮（不含 hints / 额外说明）。 */
+export const CORRECTION_RULES_EMPTY_STATIC_BODY_PX = 160;
+
+/** 规则纠错 loading。 */
+export const CORRECTION_RULES_LOADING_BODY_PX = 88;
+
+/** 改正建议 empty：说明 + 双按钮。 */
+export const CORRECT_SUGGESTIONS_EMPTY_STATIC_BODY_PX = 156;
+
+/** 改正建议 loading。 */
+export const CORRECT_SUGGESTIONS_LOADING_BODY_PX = 88;
+
+/** 改正建议单条结果行高。 */
+export const CORRECT_SUGGESTIONS_RESULT_ROW_PX = 72;
+
 const FLOATING_PANEL_TITLE_BAR_PX = 57;
 
 export function resolveFloatingPanelFitHeight(staticBodyPx: number, rowCount: number): number {
   const listHeight = resolveFloatingPanelSegmentListHeight(rowCount);
   return FLOATING_PANEL_TITLE_BAR_PX + staticBodyPx + listHeight;
+}
+
+/** 无列表的紧凑面板高度（empty / consent / loading）。 */
+export function resolveFloatingPanelCompactFitHeight(staticBodyPx: number, extraPx = 0): number {
+  return resolveFloatingPanelFitHeight(staticBodyPx, 0) + extraPx;
+}
+
+export function resolveCorrectionRulesEmptyFitHeight(input: {
+  hasReadOnlyHints: boolean;
+  postTranscribeExtra: boolean;
+}): number {
+  let extra = 0;
+  if (input.hasReadOnlyHints) extra += FLOATING_PANEL_DETAILS_SUMMARY_PX;
+  if (input.postTranscribeExtra) extra += FLOATING_PANEL_MUTED_LINE_PX;
+  return resolveFloatingPanelCompactFitHeight(CORRECTION_RULES_EMPTY_STATIC_BODY_PX, extra);
+}
+
+export function resolveCorrectSuggestionsResultsFitHeight(itemCount: number): number {
+  const listHeight = Math.min(itemCount * CORRECT_SUGGESTIONS_RESULT_ROW_PX, 240);
+  return resolveFloatingPanelCompactFitHeight(120, listHeight);
+}
+
+export function resolveStageBConsentFitHeight(hasPendingHint: boolean): number {
+  const base = resolveFloatingPanelCompactFitHeight(POST_TRANSCRIBE_STAGE_B_CONSENT_STATIC_BODY_PX);
+  return hasPendingHint ? base + POST_TRANSCRIBE_STAGE_B_HINT_EXTRA_PX : base;
+}
+
+export function resolveStageBEmptyFitHeight(hasPendingHint: boolean, hasPackHint: boolean): number {
+  let extra = 0;
+  if (hasPendingHint) extra += POST_TRANSCRIBE_STAGE_B_HINT_EXTRA_PX;
+  if (hasPackHint) extra += POST_TRANSCRIBE_STAGE_B_HINT_EXTRA_PX;
+  return resolveFloatingPanelCompactFitHeight(POST_TRANSCRIBE_STAGE_B_EMPTY_STATIC_BODY_PX, extra);
 }

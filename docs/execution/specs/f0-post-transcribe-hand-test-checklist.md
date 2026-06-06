@@ -12,6 +12,7 @@
 | **F0-v1** | §0–§4、§8 | ✅ 已编码且手测签收（自动转录、toast、规则纠错阶段 A） |
 | **F0-v1.5** | §5 | ✅ 已编码且手测签收（hints 只读、规则冲突门禁） |
 | **F0-v2** | §6–§7 | ✅ 已编码且手测签收（阶段 B LLM 标点 + 错字、A→B 顺序门禁） |
+| **F0-v2.1** | §7.1 | ✅ 已编码且手测签收（Pack 合并校对、门禁 toast、UX/云端回归 2026-06-06） |
 
 **主路径（目标态）**
 
@@ -30,7 +31,8 @@ npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs
 ```
 
 - [x] `useCorrectionRulesController.test.ts`
-- [x] `transcribeResultToast.test.ts` / 转写 job 对话框流程测试
+- [x] `usePostTranscribeStageBController.test.ts`（门禁 toast、consent）
+- [x] `postTranscribeStageB.test.ts` · `postprocess_lexicon_ops`（Rust）
 - [x] 手测 §0–§4、§8 已签收（2026-06-05）
 
 ---
@@ -165,7 +167,7 @@ npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs
 **期望**
 
 - [ ] 空态或无可应用项；**不** 用 ASR `/health` 类文案表示「可 LLM 改稿」
-- [ ] （F0-v2 起）无 LLM key 时阶段 B 仍应 disabled / 明确报错 — 本节 v1 **N/A**，记入 §6 待测
+- [ ] 无 LLM key / 未探测时：点 **智能改稿** → **warning toast** 中文原因，**不**弹 blocked 对话框（§7.1.6）
 
 ---
 
@@ -184,7 +186,8 @@ npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs
 
 1. 完成或关闭 **规则纠错**（确认 / 取消 / 空态关闭）→ **不**自动弹出智能改稿。
 2. 工具栏 **智能改稿** 在 LLM 就绪时始终可手动点开（与是否刚做过规则纠错无关）。
-3. 规则纠错预览打开时，可分别关闭；两对话框互不自动串联。
+3. LLM 未就绪时按钮 **仍可点**，以 **toast** 说明原因（非 blocked 对话框）；转写 / 全局 busy 时 **disabled**。
+4. 规则纠错预览打开时，可分别关闭；两对话框互不自动串联。
 
 ---
 
@@ -196,6 +199,103 @@ npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs
 2. 查看隐私说明 + diff 预览；**拒绝** consent → 不请求。
 3. **确认写回** → 仅目标语段变化；可撤销。
 4. **期望**：**无** 段界合并/拆分；**无** 静默全文改写。
+
+---
+
+## §7.1 — 阶段 B · Pack 合并校对（F0-v2.1）
+
+> **变更**：一次 LLM 调用合并标点 + LexiconPack 有据改字；预览展示 **依据**；Ollama 逐条容错 JSON。  
+> 机器 ✅ 2026-06（`postprocess_lexicon_ops` · `postTranscribeStageB.test.ts` · `usePostTranscribeStageBController.test.ts` · `stageBLlmGate.test.ts`）；手测 ✅ 2026-06-06
+
+### 环境
+
+- [ ] `npm run desktop:dev`（**须重编** Rust 后启动）
+- [ ] **设置 → LLM**：Ollama 或云端 provider 探测成功
+- [ ] **热词与记忆**：≥1 术语 canonical；≥1 稳定规则（`hit≥3` 或已采纳）且当前稿含可匹配错形
+- [ ] 另备 **仅标点** 场景：词表/记忆为空或无关，语段无标点
+
+### 7.1.1 合并请求与进度
+
+1. 打开含多条有正文语段的项目 → 点 **智能改稿**。
+2. 首次 consent：文案含「一次请求合并标点与词表有据改字」。
+3. 观察 loading：进度为 **「智能改稿 · 批次 x / y」**（**无** 单独的「标点语段 N」阶段）。
+
+**期望**
+
+- [ ] consent 拒绝 → 不请求 LLM
+- [ ] loading 仅批次进度；可取消
+- [ ] loading 仅批次进度；**模型名 · 批次 x / y** 单行在进度条上方（**无** 条下方 `45%（x/y）`）
+- [ ] 预览 footer 显示 provider（如 `DeepSeek`）
+
+### 7.1.2 有据改字 + 依据列
+
+1. 语段含 Pack 可匹配错形（如规则 `错→对` 或术语同音形）。
+2. 启动 B → 预览。
+
+**期望**
+
+- [ ] 候选语段显示 **依据：**（纠错记忆 / 术语表 / 术语统一）
+- [ ] 标签为 **改字** 或 **标点 + 改字**
+- [ ] **无** 段界 merge/split 写回
+- [ ] 无依据建议 **不出现**；若有丢弃则黄色条「已忽略 N 条…结构不完整」
+- [ ] **不出现** 整批 `JSON 无法解析` 导致零候选（Ollama 漏 `op` 字段时仍可有候选）
+
+### 7.1.3 仅标点（Pack 空或无关）
+
+1. 语段为连续汉字、无标点；Pack 无匹配规则。
+2. 启动 B。
+
+**期望**
+
+- [ ] 可有 **标点** 候选，依据为「标点 · 补标点」
+- [ ] 确认写回后仅标点变化；⌘Z 可撤销
+
+### 7.1.4 A→B 软提示
+
+1. 当前稿仍有 **稳定规则字面匹配** 但未做规则纠错。
+2. 点 **智能改稿**（consent 或 preview 屏）。
+
+**期望**
+
+- [ ] 黄色提示：「建议先使用「规则纠错」…」
+- [ ] 仍 **可继续** B（不强制顺序）
+
+### 7.1.5 写回与回归
+
+1. 预览中 **取消勾选** 一条 → 确认写回。
+2. 关闭 B → **改正** / **查找替换** 仍可用。
+
+**期望**
+
+- [ ] 仅勾选语段写回；quiet 保存
+- [ ] 与 **规则纠错** 对话框可同时存在，互不自动串联（§6）
+- [ ] 导出 **润色** 与 B 仍分离（§8）
+
+### 7.1.6 门禁与 toast（审计回归）
+
+1. **设置 → LLM** 未配置、未探测或本机 Ollama 不可达 → 点 **智能改稿**。
+2. 转写进行中或全局 busy 时查看按钮。
+3. loading 中点击对话框 **外** 遮罩；再点显式 **取消**。
+
+**期望**
+
+- [ ] 未就绪时按钮 **可点**（非 disabled）；tooltip 含中文原因
+- [ ] 底部 **warning toast** 说明原因；**不**弹出 blocked / 不可用对话框；**不**请求 LLM
+- [ ] 转写 / busy 时按钮 **disabled**；tooltip「处理中」
+- [ ] loading 误点遮罩 **不**取消；显式「取消」可停且 `busy` 释放
+- [ ] 标题栏 **×** 与底部「取消/关闭」行为一致（含 loading 可中止）
+
+### 7.1.7 云端就绪与对话框 UX（2026-06-06 回归）
+
+1. **设置 → LLM**：云端 provider 探测成功 → 关闭设置 → **直接**点 **智能改稿**（**不**再手动刷新状态）。
+2. 智能改稿 **预览** 屏：拖矮面板 → 确认底部 **取消 / 确认写回** 仍可见；仅语段列表滚动。
+3. 规则纠错预览、查找替换、交付导出等带双按钮浮窗：同样拖矮验证底部按钮不被遮挡。
+
+**期望**
+
+- [ ] 顶栏显示云端可用时，首次改稿 **不**误报「网络、模型配置或 API Key」（与探测同路径：代理失败时直连重试）
+- [ ] 改稿 loading / 预览 / empty：**×** 可关；loading 中 **×** 等同取消
+- [ ] 浮窗缩放时底部操作行 **固定**；中间内容区滚动
 
 ---
 
@@ -220,6 +320,7 @@ npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs
 | §5 | A 增强 v1.5 | ✅ | 2026-06-05 | hints 只读、冲突阻塞写回 |
 | §6 | 阶段 B 与 A 解耦 | ✅ | 2026-06-05 | 关闭 A 不自动弹 B |
 | §7 | 阶段 B LLM 改稿 | ✅ | 2026-06-05 | 预览写回、无段界 ops；本机/云端分批 |
-| §8 | 回归 | ✅ | 2026-06-05 | |
+| §7.1 | Pack 合并校对 | ✅ | 2026-06-06 | 含 §7.1.7 云端门禁 · ×关闭 · 底栏固定 · loading 单行进度 |
+| §8 | 回归 | ✅ | 2026-06-06 | |
 
-**F0 整包**：§0–§8 ✅ — 已同步 [`f0-post-transcribe-orchestration-acceptance.md`](./f0-post-transcribe-orchestration-acceptance.md)。
+**F0 整包**：§0–§8 ✅（含 F0-v2.1 §7.1 + §7.1.7）— 已同步 [`f0-post-transcribe-orchestration-acceptance.md`](./f0-post-transcribe-orchestration-acceptance.md)。

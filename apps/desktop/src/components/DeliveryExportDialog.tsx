@@ -19,6 +19,7 @@ import {
 } from "../services/exportPolishPreviewCache";
 import { summarizeLineChange } from "../services/exportPolishPipeline";
 import { FloatingPanelTemplate } from "./PanelTemplate";
+import { FloatingPanelDialogFooter, FloatingPanelDialogRoot, FloatingPanelDialogScroll } from "./FloatingPanelDialogLayout";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { TopBarStatusIndicator } from "./TopBarStatusIndicator";
 import { useLlmEnvStatus } from "../hooks/useLlmEnvStatus";
@@ -187,7 +188,8 @@ export function DeliveryExportDialog({
         persistState
         onClose={handleClose}
       >
-        <div className="flex flex-col gap-3 px-5 py-3" role="dialog" aria-modal="true">
+        <FloatingPanelDialogRoot role="dialog" aria-modal={true}>
+          <FloatingPanelDialogScroll className="flex flex-col gap-3">
           <p className={PANEL_TYPOGRAPHY.dialogBody}>
             导出前将自动保存编辑器中未提交的语段正文，与当前波形列表一致。
           </p>
@@ -363,7 +365,8 @@ export function DeliveryExportDialog({
           {exportBlockedByPolish && polishReadiness.blockReason ? (
             <p className="text-xs text-zen-cinnabar">{polishReadiness.blockReason}</p>
           ) : null}
-          <div className="flex justify-end gap-2 pt-1">
+          </FloatingPanelDialogScroll>
+          <FloatingPanelDialogFooter justify="end">
             <button
               type="button"
               className={CONTROL_BTN_SECONDARY}
@@ -387,8 +390,8 @@ export function DeliveryExportDialog({
             >
               {busy ? "导出中…" : "导出 DOCX…"}
             </button>
-          </div>
-        </div>
+          </FloatingPanelDialogFooter>
+        </FloatingPanelDialogRoot>
       </FloatingPanelTemplate>
     </div>,
     document.body,

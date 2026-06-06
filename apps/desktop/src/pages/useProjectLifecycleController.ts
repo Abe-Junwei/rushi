@@ -225,6 +225,8 @@ export function useProjectLifecycleController(
   const editorTools = useProjectEditorToolsController({
     busy,
     busyReason,
+    beginBusy,
+    endBusy,
     currentFileId,
     selectedIdx,
     segments,

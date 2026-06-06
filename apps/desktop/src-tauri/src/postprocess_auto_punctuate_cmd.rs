@@ -1,5 +1,5 @@
 use crate::project::utils::append_desktop_log_line;
-use crate::utils::http_client;
+use crate::utils::{format_postprocess_connect_error, send_postprocess_chat_request};
 use crate::DbState;
 use futures_util::future::{AbortHandle, Abortable};
 use serde_json::json;
@@ -74,17 +74,18 @@ pub async fn postprocess_auto_punctuate(
     });
 
     let http_future = async {
-        let resp = http_client()
-            .post(config.endpoint.clone())
-            .bearer_auth(api_key)
-            .timeout(std::time::Duration::from_secs(DEFAULT_TIMEOUT_SECS))
-            .json(&body)
-            .send()
-            .await
-            .map_err(|e| {
-                append_desktop_log_line(&state, &format!("ERROR postprocess connect {e}"));
-                "自动标点请求失败，请检查网络、模型配置或 API Key。".to_string()
-            })?;
+        let endpoint = config.endpoint.clone();
+        let resp = send_postprocess_chat_request(
+            &endpoint,
+            &api_key,
+            &body,
+            std::time::Duration::from_secs(DEFAULT_TIMEOUT_SECS),
+        )
+        .await
+        .map_err(|e| {
+            append_desktop_log_line(&state, &format!("ERROR postprocess connect {e}"));
+            format_postprocess_connect_error("自动标点", &e, &endpoint)
+        })?;
 
         let status = resp.status();
         let payload = resp.text().await.map_err(|e| {

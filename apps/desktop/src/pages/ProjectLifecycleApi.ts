@@ -161,8 +161,9 @@ export interface ProjectLifecycleApi {
   confirmPostTranscribeStageBConsent: () => void;
   confirmPostTranscribeStageBWriteback: () => void | Promise<void>;
   togglePostTranscribeStageBSegment: (segmentIdx: number) => void;
+  focusPostTranscribeStageBSegment: (segmentIdx: number) => void;
+  postTranscribeStageBPreviewFocusSegmentIdx: number | null;
   cancelPostTranscribeStageB: () => void;
-  dismissPostTranscribeStageBBlocked: () => void;
   canCorrectSuggestions: boolean;
   correctSuggestionsBlockReason: string | null;
   correctSuggestionsDialog: CorrectSuggestionsDialogState;

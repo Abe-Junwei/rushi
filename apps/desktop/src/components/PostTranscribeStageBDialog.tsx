@@ -2,15 +2,35 @@ import { createPortal } from "react-dom";
 import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import type { PostTranscribeStageBDialogState } from "../pages/usePostTranscribeStageBController";
+import { isLocalLoopbackLlmConfig } from "../services/postprocess/postprocessRuntimeContract";
 import { describeStageBProgress } from "../services/postprocess/postTranscribeStageB";
+import { FloatingPanelSegmentList } from "./FloatingPanelSegmentList";
+import {
+  FLOATING_PANEL_COMPACT_MIN_HEIGHT,
+  POST_TRANSCRIBE_STAGE_B_PREVIEW_STATIC_BODY_PX,
+  resolveFloatingPanelFitHeight,
+  resolveStageBConsentFitHeight,
+  resolveStageBEmptyFitHeight,
+} from "./floatingPanelSegmentListLayout";
+import { FloatingPanelSegmentRow } from "./FloatingPanelSegmentRow";
 import { PanelAsyncProgress } from "./PanelAsyncProgress";
 import { readFloatingPanelViewport } from "./floatingPanelViewport";
 import { FloatingPanelTemplate } from "./PanelTemplate";
+import {
+  FloatingPanelDialogFooter,
+  FloatingPanelDialogHeader,
+  FloatingPanelDialogListRegion,
+  FloatingPanelDialogRoot,
+} from "./FloatingPanelDialogLayout";
 import { highlightTextByDiff } from "../utils/textDiff";
 
 export const POST_TRANSCRIBE_STAGE_B_PANEL_ID = "post-transcribe-stage-b-v1";
 
-const STAGE_B_PANEL_DEFAULT_SIZE = { width: 560, height: 480 } as const;
+const STAGE_B_PANEL_DEFAULT_SIZE = { width: 520, height: 480 } as const;
+/** consent 默认宽度（说明短，较预览略窄） */
+const STAGE_B_CONSENT_DEFAULT_WIDTH = 480;
+/** loading 阶段 contentFitHeight：标题栏 + 进度区 + 取消按钮 */
+const STAGE_B_LOADING_PANEL_HEIGHT = 300;
 
 function resolveStageBPanelBounds() {
   const margin = 24;
@@ -24,70 +44,142 @@ function resolveStageBPanelBounds() {
 }
 
 function resolveStageBDialogTitle(state: PostTranscribeStageBDialogState): string {
-  if (state.phase === "blocked") return "智能改稿不可用";
-  if (state.phase === "consent") return "将语段发送至云端 LLM";
+  if (state.phase === "consent") {
+    return isLocalLoopbackLlmConfig() ? "将语段发送至本机 LLM" : "将语段发送至 LLM";
+  }
   if (state.phase === "loading") return "智能改稿";
   if (state.phase === "preview") return "智能改稿预览";
   return "智能改稿";
 }
 
+function PendingStageAHint({ message }: { message: string }) {
+  return (
+    <p
+      className={`rounded-md bg-zen-saffron/10 px-3 py-2 ${PANEL_TYPOGRAPHY.dialogBody} text-notion-text`}
+    >
+      {message}
+    </p>
+  );
+}
+
+function PackTruncationHint({ message }: { message: string }) {
+  return (
+    <p
+      className={`rounded-md bg-notion-callout-bg px-3 py-2 ${PANEL_TYPOGRAPHY.dialogBody} text-notion-text-muted`}
+    >
+      {message}
+    </p>
+  );
+}
+
 function StageBLoadingPanel({
   done,
   total,
-  punctuateSteps,
+  providerLabel,
+  pendingStageAHint,
   onCancel,
-  cancelDisabled,
 }: {
   done: number;
   total: number;
-  punctuateSteps: number;
+  providerLabel: string;
+  pendingStageAHint: string | null;
   onCancel: () => void;
-  cancelDisabled: boolean;
 }) {
-  const progress = describeStageBProgress({ done, total, punctuateSteps });
+  const progress = describeStageBProgress({ done, total });
   return (
-    <PanelAsyncProgress
-      mode="determinate"
-      title="正在生成标点与改字候选…"
-      stepLabel={progress.phaseLabel}
-      stepDetail={progress.detail}
-      done={done}
-      total={total}
-      percent={progress.percent}
-      onCancel={onCancel}
-      cancelDisabled={cancelDisabled}
-    />
+    <div className="space-y-3">
+      {pendingStageAHint ? <PendingStageAHint message={pendingStageAHint} /> : null}
+      <PanelAsyncProgress
+        mode="determinate"
+        title="正在生成标点与改字候选…"
+        stepDetail={progress.detail}
+        providerLabel={providerLabel}
+        done={progress.stepDone}
+        total={progress.stepTotal}
+        percent={progress.percent}
+        onCancel={onCancel}
+        cancelDisabled={false}
+      />
+    </div>
   );
 }
 
 type Props = {
   state: PostTranscribeStageBDialogState;
   busy: boolean;
+  previewFocusSegmentIdx: number | null;
   onCancel: () => void;
-  onDismissBlocked: () => void;
   onConfirmConsent: () => void;
   onConfirmWriteback: () => void;
   onToggleSegment: (segmentIdx: number) => void;
+  onFocusSegment: (segmentIdx: number) => void;
 };
 
 export function PostTranscribeStageBDialog({
   state,
   busy,
+  previewFocusSegmentIdx,
   onCancel,
-  onDismissBlocked,
   onConfirmConsent,
   onConfirmWriteback,
   onToggleSegment,
+  onFocusSegment,
 }: Props) {
   if (state.phase === "closed" || typeof document === "undefined") return null;
 
   const panelBounds = resolveStageBPanelBounds();
-  const preview = state.phase === "preview" ? state : null;
+  const isLoading = state.phase === "loading";
+  const isConsent = state.phase === "consent";
+  const isEmpty = state.phase === "empty";
+  const isPreview = state.phase === "preview";
+  const isCompactBody = isConsent || isEmpty;
+  const preview = isPreview ? state : null;
+  const packTruncationHint =
+    state.phase === "preview" || state.phase === "empty" ? state.packTruncationHint : null;
+  const pendingHint =
+    state.phase === "consent" ||
+    state.phase === "loading" ||
+    state.phase === "preview" ||
+    state.phase === "empty"
+      ? state.pendingStageAHint
+      : null;
 
-  const handleClose = () => {
+  const previewFitHeight = preview
+    ? resolveFloatingPanelFitHeight(
+        POST_TRANSCRIBE_STAGE_B_PREVIEW_STATIC_BODY_PX,
+        preview.changes.length,
+      )
+    : undefined;
+
+  const contentFitHeight = isLoading
+    ? STAGE_B_LOADING_PANEL_HEIGHT
+    : isPreview
+      ? previewFitHeight
+      : isConsent
+        ? resolveStageBConsentFitHeight(Boolean(pendingHint))
+        : isEmpty
+          ? resolveStageBEmptyFitHeight(Boolean(pendingHint), Boolean(packTruncationHint))
+          : undefined;
+
+  const defaultPanelHeight = Math.min(
+    contentFitHeight ?? STAGE_B_PANEL_DEFAULT_SIZE.height,
+    panelBounds.maxHeight,
+  );
+
+  const handleDismiss = () => {
+    onCancel();
+  };
+
+  /** 标题栏 ×：与底部「取消」一致，loading 中也可中止任务 */
+  const handleTitleClose = () => {
+    handleDismiss();
+  };
+
+  /** 遮罩点击：loading 中误点对话框外不取消 LLM 任务 */
+  const handleOverlayClose = () => {
+    if (state.phase === "loading") return;
     if (busy) return;
-    if (state.phase === "blocked") onDismissBlocked();
-    else onCancel();
+    handleDismiss();
   };
 
   return createPortal(
@@ -97,40 +189,39 @@ export function PostTranscribeStageBDialog({
         title={resolveStageBDialogTitle(state)}
         preset="compactDialog"
         minWidth={panelBounds.minWidth}
-        minHeight={panelBounds.minHeight}
+        minHeight={
+          isLoading ? 240 : isCompactBody ? FLOATING_PANEL_COMPACT_MIN_HEIGHT : panelBounds.minHeight
+        }
         maxWidth={panelBounds.maxWidth}
         maxHeight={panelBounds.maxHeight}
-        defaultSize={STAGE_B_PANEL_DEFAULT_SIZE}
+        defaultSize={{
+          width: isConsent ? STAGE_B_CONSENT_DEFAULT_WIDTH : STAGE_B_PANEL_DEFAULT_SIZE.width,
+          height: defaultPanelHeight,
+        }}
+        contentFitHeight={contentFitHeight}
         panelZIndex={111}
         persistState
-        onClose={handleClose}
+        onClose={handleTitleClose}
+        onOverlayClose={handleOverlayClose}
       >
-        <div className="flex h-full min-h-0 flex-col px-5 py-3">
-          {state.phase === "blocked" ? (
-            <>
-              <p className={`shrink-0 ${PANEL_TYPOGRAPHY.dialogBody}`}>{state.reason}</p>
-              <div className="mt-4 flex shrink-0 justify-end">
-                <button type="button" className={CONTROL_BTN_SECONDARY} onClick={onDismissBlocked}>
-                  关闭
-                </button>
-              </div>
-            </>
-          ) : null}
-
+        <FloatingPanelDialogRoot>
           {state.phase === "consent" ? (
             <>
-              <p className={`shrink-0 ${PANEL_TYPOGRAPHY.dialogBody}`}>
-                将对当前文件最多 {state.segmentCount} 条有正文的语段请求标点与改字候选（按「设置 → LLM
-                配置」发送）。正文不会在未经确认的情况下被改写；不会合并或拆分语段。
-              </p>
-              <div className="mt-4 flex shrink-0 justify-end gap-2">
-                <button type="button" className={CONTROL_BTN_SECONDARY} disabled={busy} onClick={handleClose}>
+              <FloatingPanelDialogHeader>
+                {pendingHint ? <PendingStageAHint message={pendingHint} /> : null}
+                <p className={PANEL_TYPOGRAPHY.dialogBody}>
+                  将对当前文件最多 {state.segmentCount} 条有正文的语段请求标点与改字候选（按「设置 → LLM
+                  配置」发送；一次请求合并标点与词表有据改字）。正文不会在未经确认的情况下被改写；不会合并或拆分语段。
+                </p>
+              </FloatingPanelDialogHeader>
+              <FloatingPanelDialogFooter justify="end">
+                <button type="button" className={CONTROL_BTN_SECONDARY} disabled={busy} onClick={handleTitleClose}>
                   取消
                 </button>
                 <button type="button" className={CONTROL_BTN_PRIMARY} disabled={busy} onClick={onConfirmConsent}>
                   我已知晓，继续
                 </button>
-              </div>
+              </FloatingPanelDialogFooter>
             </>
           ) : null}
 
@@ -138,79 +229,99 @@ export function PostTranscribeStageBDialog({
             <StageBLoadingPanel
               done={state.done}
               total={state.total}
-              punctuateSteps={state.punctuateSteps}
-              onCancel={handleClose}
-              cancelDisabled={busy}
+              providerLabel={state.providerLabel}
+              pendingStageAHint={state.pendingStageAHint}
+              onCancel={onCancel}
             />
           ) : null}
 
           {state.phase === "empty" ? (
             <>
-              <p className={`shrink-0 ${PANEL_TYPOGRAPHY.dialogBody}`}>
-                {state.typoStepError
-                  ? state.typoStepError
-                  : "LLM 未对当前语段提出可写回的标点或改字建议。"}
-              </p>
-              <div className="mt-4 flex shrink-0 justify-end">
-                <button type="button" className={CONTROL_BTN_SECONDARY} onClick={handleClose}>
+              <FloatingPanelDialogHeader>
+                {pendingHint ? <PendingStageAHint message={pendingHint} /> : null}
+                {packTruncationHint ? <PackTruncationHint message={packTruncationHint} /> : null}
+                <p className={PANEL_TYPOGRAPHY.dialogBody}>
+                  {state.stepError
+                    ? state.stepError
+                    : "LLM 未对当前语段提出可写回的标点或改字建议。"}
+                </p>
+              </FloatingPanelDialogHeader>
+              <FloatingPanelDialogFooter justify="end">
+                <button type="button" className={CONTROL_BTN_SECONDARY} onClick={handleTitleClose}>
                   关闭
                 </button>
-              </div>
+              </FloatingPanelDialogFooter>
             </>
           ) : null}
 
           {preview ? (
             <>
-              <div className="shrink-0 space-y-2">
+              <FloatingPanelDialogHeader>
+                {pendingHint ? <PendingStageAHint message={pendingHint} /> : null}
+                {packTruncationHint ? <PackTruncationHint message={packTruncationHint} /> : null}
                 <p className={PANEL_TYPOGRAPHY.dialogBody}>
                   共 {preview.changes.length} 条语段有候选（高亮为将改部分）。
-                  {preview.provider ? ` · ${preview.provider}` : null}
+                  <span className="text-notion-text-muted"> · 点击行定位语段</span>
                 </p>
-                {preview.rejectedBoundaryOps > 0 ? (
+                {preview.droppedUngroundedOps > 0 ? (
                   <p
                     className={`rounded-md bg-zen-saffron/10 px-3 py-2 ${PANEL_TYPOGRAPHY.dialogBody} text-notion-text`}
                   >
-                    模型返回了 {preview.rejectedBoundaryOps} 条段界建议，已忽略；仅展示标点与改字候选。
+                    已忽略 {preview.droppedUngroundedOps}{" "}
+                    条无词表/规则依据或 JSON 结构不完整的建议，仅展示有据候选。
                   </p>
                 ) : null}
-                {preview.typoStepError ? (
+                {preview.stepError ? (
                   <p
                     className={`rounded-md bg-zen-saffron/10 px-3 py-2 ${PANEL_TYPOGRAPHY.dialogBody} text-notion-text`}
                   >
-                    {preview.typoStepError} 标点候选仍可确认写回。
+                    {preview.stepError} 已成功批次的候选仍可确认写回。
                   </p>
                 ) : null}
-              </div>
-              <div className="mt-3 min-h-0 flex-1 space-y-2 overflow-y-auto text-xs">
-                {preview.changes.map((ch) => {
-                  const checked = preview.selectedSegmentIdxs.includes(ch.segmentIdx);
-                  const highlighted = highlightTextByDiff(ch.afterText, ch.diff);
-                  return (
-                    <div
-                      key={ch.segmentIdx}
-                      className={[
-                        "rounded-md px-3 py-2.5",
-                        checked ? "bg-notion-sidebar/80" : "bg-notion-sidebar/40 opacity-70",
-                      ].join(" ")}
-                    >
-                      <label className="flex cursor-pointer items-start gap-2.5">
-                        <span className="min-w-0 flex-1">
-                          <span className="text-notion-text-muted">
-                            <span className="font-semibold text-notion-text">语段 {ch.segmentNumber}</span>
-                            <span className="mx-1.5">·</span>
-                            <span className="tabular-nums">{ch.timeLabel}</span>
-                            <span className="mx-1.5">·</span>
-                            {ch.punctuateTouched && ch.typoTouched
-                              ? "标点 + 改字"
-                              : ch.punctuateTouched
-                                ? "标点"
-                                : "改字"}
-                          </span>
-                          <div className="mt-1.5 grid grid-cols-1 gap-2">
-                            <pre className="whitespace-pre-wrap rounded bg-white/60 px-2 py-1.5 text-notion-text">
+              </FloatingPanelDialogHeader>
+              <FloatingPanelDialogListRegion className="mt-3">
+                <FloatingPanelSegmentList rowCount={preview.changes.length} fillAvailable>
+                  {preview.changes.map((ch) => {
+                    const checked = preview.selectedSegmentIdxs.includes(ch.segmentIdx);
+                    const focused = previewFocusSegmentIdx === ch.segmentIdx;
+                    const highlighted = highlightTextByDiff(ch.afterText, ch.diff);
+                    const changeLabel =
+                      ch.punctuateTouched && ch.typoTouched
+                        ? "标点+改字"
+                        : ch.punctuateTouched
+                          ? "标点"
+                          : "改字";
+                    return (
+                      <li key={ch.uid || String(ch.segmentIdx)} className="list-none">
+                        <FloatingPanelSegmentRow
+                          segmentNumber={ch.segmentNumber}
+                          timeLabel={ch.timeLabel}
+                          suffix={changeLabel}
+                          active={focused}
+                          disabled={busy}
+                          onClick={() => onFocusSegment(ch.segmentIdx)}
+                          trailing={
+                            <input
+                              type="checkbox"
+                              className="h-3.5 w-3.5 shrink-0 accent-zen-saffron"
+                              checked={checked}
+                              disabled={busy}
+                              aria-label={`包含语段 ${ch.segmentNumber}`}
+                              onClick={(e) => e.stopPropagation()}
+                              onChange={() => onToggleSegment(ch.segmentIdx)}
+                            />
+                          }
+                        >
+                          <div className="min-w-0 space-y-1">
+                            {ch.evidenceSummary ? (
+                              <p className="truncate text-[11px] text-notion-text-muted">
+                                依据：{ch.evidenceSummary}
+                              </p>
+                            ) : null}
+                            <p className="truncate text-sm text-notion-text-muted line-through decoration-notion-text-light/70">
                               {ch.beforeText}
-                            </pre>
-                            <pre className="whitespace-pre-wrap rounded bg-white/60 px-2 py-1.5 text-notion-text">
+                            </p>
+                            <p className="truncate text-sm text-notion-text">
                               {highlighted.map((part, idx) => (
                                 <span
                                   key={`${idx}-${part.text}`}
@@ -219,27 +330,25 @@ export function PostTranscribeStageBDialog({
                                   {part.text}
                                 </span>
                               ))}
-                            </pre>
+                            </p>
                           </div>
-                        </span>
-                        <input
-                          type="checkbox"
-                          className="mt-0.5 h-3.5 w-3.5 shrink-0 accent-zen-saffron"
-                          checked={checked}
-                          disabled={busy}
-                          onChange={() => onToggleSegment(ch.segmentIdx)}
-                        />
-                      </label>
-                    </div>
-                  );
-                })}
-              </div>
-              <div className="mt-3 flex shrink-0 items-center justify-between gap-2 border-t border-notion-divider pt-3">
+                        </FloatingPanelSegmentRow>
+                      </li>
+                    );
+                  })}
+                </FloatingPanelSegmentList>
+              </FloatingPanelDialogListRegion>
+              <FloatingPanelDialogFooter>
                 <p className={`${PANEL_TYPOGRAPHY.dialogBody} text-notion-text-muted`}>
                   将写回 {preview.selectedSegmentIdxs.length} / {preview.changes.length} 条语段
                 </p>
-                <div className="flex shrink-0 gap-2">
-                  <button type="button" className={CONTROL_BTN_SECONDARY} disabled={busy} onClick={handleClose}>
+                <div className="flex shrink-0 items-center gap-2">
+                  {preview.provider ? (
+                    <span className={`${PANEL_TYPOGRAPHY.meta} text-notion-text-muted`}>
+                      {preview.provider}
+                    </span>
+                  ) : null}
+                  <button type="button" className={CONTROL_BTN_SECONDARY} disabled={busy} onClick={handleTitleClose}>
                     取消
                   </button>
                   <button
@@ -251,10 +360,10 @@ export function PostTranscribeStageBDialog({
                     确认写回
                   </button>
                 </div>
-              </div>
+              </FloatingPanelDialogFooter>
             </>
           ) : null}
-        </div>
+        </FloatingPanelDialogRoot>
       </FloatingPanelTemplate>
     </div>,
     document.body,

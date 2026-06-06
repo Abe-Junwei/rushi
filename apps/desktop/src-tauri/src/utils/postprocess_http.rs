@@ -1,10 +1,11 @@
-//! 后处理 LLM HTTP：本机 loopback 走 no_proxy + 更长超时，避免系统代理与短超时误伤 Ollama。
+//! 后处理 LLM HTTP：本机 loopback 走 no_proxy + 更长超时；云端与探测一致，代理失败时直连重试。
 
 use std::sync::OnceLock;
 use std::time::Duration;
 use url::Url;
 
 static LOOPBACK_ASYNC_CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
+static CLOUD_DIRECT_ASYNC_CLIENT: OnceLock<reqwest::Client> = OnceLock::new();
 
 pub fn is_loopback_host(host: Option<&str>) -> bool {
     matches!(host, Some("127.0.0.1" | "localhost" | "::1"))
@@ -25,6 +26,21 @@ fn build_loopback_async_client() -> reqwest::Client {
         .expect("loopback postprocess reqwest client")
 }
 
+fn build_cloud_direct_async_client() -> reqwest::Client {
+    reqwest::Client::builder()
+        .no_proxy()
+        .connect_timeout(Duration::from_secs(8))
+        .timeout(Duration::from_secs(30))
+        .user_agent(format!("rushi-desktop/{}", env!("CARGO_PKG_VERSION")))
+        .build()
+        .expect("cloud direct postprocess reqwest client")
+}
+
+/// 云端直连（绕过系统代理），与设置页探测的 no_proxy 重试路径一致。
+pub fn postprocess_cloud_direct_client() -> &'static reqwest::Client {
+    CLOUD_DIRECT_ASYNC_CLIENT.get_or_init(build_cloud_direct_async_client)
+}
+
 /// 本机 Ollama 用直连客户端；云端用全局 `http_client()`（可走系统代理）。
 pub fn postprocess_async_client(loopback: bool) -> &'static reqwest::Client {
     if loopback {
@@ -32,6 +48,56 @@ pub fn postprocess_async_client(loopback: bool) -> &'static reqwest::Client {
     } else {
         super::http_client()
     }
+}
+
+pub fn is_retryable_cloud_transport(err: &reqwest::Error) -> bool {
+    err.is_connect() || err.is_timeout() || err.is_request()
+}
+
+/// 发送 OpenAI 兼容 chat/completions POST。云端传输失败时自动 no_proxy 重试一次（与 llm_probe 对齐）。
+pub async fn send_postprocess_chat_request(
+    endpoint: &Url,
+    api_key: &str,
+    body: &serde_json::Value,
+    timeout: Duration,
+) -> Result<reqwest::Response, reqwest::Error> {
+    let loopback = is_loopback_endpoint(endpoint);
+    let primary_client = postprocess_async_client(loopback);
+    let build = |client: &reqwest::Client| {
+        client
+            .post(endpoint.clone())
+            .bearer_auth(api_key)
+            .timeout(timeout)
+            .json(body)
+    };
+
+    let primary = build(primary_client).send().await;
+    if loopback {
+        return primary;
+    }
+
+    match primary {
+        Ok(resp) => Ok(resp),
+        Err(e) if is_retryable_cloud_transport(&e) => build(postprocess_cloud_direct_client())
+            .send()
+            .await,
+        Err(e) => Err(e),
+    }
+}
+
+pub fn format_postprocess_connect_error(
+    task_label: &str,
+    err: &reqwest::Error,
+    endpoint: &Url,
+) -> String {
+    let loopback = is_loopback_endpoint(endpoint);
+    if loopback {
+        return format_postprocess_transport_error(err, true, task_label);
+    }
+    if err.is_timeout() {
+        return format!("{task_label}超时，请检查网络、系统代理或稍后重试。");
+    }
+    format!("{task_label}请求失败，请检查网络、系统代理、模型配置或 API Key。")
 }
 
 /// 导出润色单次 LLM 请求超时（秒）。本机 Ollama 需覆盖冷启动 + 长 JSON 生成。

@@ -1,5 +1,4 @@
-//! R3t-E: assemble LexiconPack from glossary_terms + correction_memory.
-#![allow(dead_code)]
+//! R3t-E / F0 stage B: assemble LexiconPack from glossary_terms + correction_memory.
 
 use rusqlite::{params, Connection};
 use serde::{Deserialize, Serialize};
@@ -62,6 +61,16 @@ pub fn assemble_lexicon_pack(conn: &Connection) -> Result<LexiconPack, String> {
     }
 
     let mut correction_rules = Vec::new();
+    let rules_total: usize = {
+        let mut stmt = conn
+            .prepare(
+                "SELECT COUNT(*) FROM correction_memory \
+                 WHERE accepted_as_rule = 1 OR hit_count >= 3",
+            )
+            .map_err(|e| e.to_string())?;
+        stmt.query_row([], |r| r.get::<_, i64>(0))
+            .map_err(|e| e.to_string())? as usize
+    };
     {
         let mut stmt = conn
             .prepare(
@@ -101,10 +110,15 @@ pub fn assemble_lexicon_pack(conn: &Connection) -> Result<LexiconPack, String> {
     }
 
     let glossary_truncated = glossary_total > glossary_canonical.len();
+    let rules_truncated = rules_total > correction_rules.len();
     let pack_meta = LexiconPackMeta {
         glossary_count: glossary_canonical.len(),
         rules_count: correction_rules.len(),
-        truncated: if glossary_truncated { Some(true) } else { None },
+        truncated: if glossary_truncated || rules_truncated {
+            Some(true)
+        } else {
+            None
+        },
     };
 
     Ok(LexiconPack {
@@ -114,6 +128,7 @@ pub fn assemble_lexicon_pack(conn: &Connection) -> Result<LexiconPack, String> {
     })
 }
 
+#[allow(dead_code)]
 pub fn lexicon_pack_is_usable(pack: &LexiconPack) -> bool {
     !pack.glossary_canonical.is_empty() || !pack.correction_rules.is_empty()
 }

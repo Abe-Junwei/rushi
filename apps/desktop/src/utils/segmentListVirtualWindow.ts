@@ -55,16 +55,39 @@ export function computeSegmentListVirtualWindow(input: {
   };
 }
 
+export type SegmentListScrollAlign = "minimal" | "center";
+
+function clampSegmentListScrollTop(
+  scrollTop: number,
+  maxScrollTop: number | undefined,
+): number {
+  const max = maxScrollTop ?? Number.POSITIVE_INFINITY;
+  return Math.round(Math.min(max, Math.max(0, scrollTop)));
+}
+
 export function scrollSegmentListIndexIntoView(input: {
   scrollTop: number;
   viewportHeight: number;
   index: number;
   rowMinHeightPx: number;
   itemStridePx: number;
+  align?: SegmentListScrollAlign;
+  maxScrollTop?: number;
 }): number | null {
   if (input.index < 0 || input.viewportHeight <= 0) return null;
   const rowTop = input.index * input.itemStridePx;
   const rowBottom = rowTop + input.rowMinHeightPx;
+
+  if (input.align === "center") {
+    const rowCenter = rowTop + input.rowMinHeightPx / 2;
+    const target = clampSegmentListScrollTop(
+      rowCenter - input.viewportHeight / 2,
+      input.maxScrollTop,
+    );
+    if (Math.abs(target - input.scrollTop) < 1) return null;
+    return target;
+  }
+
   const viewTop = input.scrollTop;
   const viewBottom = viewTop + input.viewportHeight;
   if (rowTop < viewTop) return rowTop;
@@ -112,7 +135,10 @@ export function scrollSegmentListIndexToView(segmentIdx: number): boolean {
   const root = querySegmentListScrollRoot();
   if (!root || segmentIdx < 0) return false;
 
-  const domNext = scrollSegmentRowIntoViewContainer(segmentIdx, root);
+  const scrollOpts = { align: "center" as const };
+  const maxScrollTop = Math.max(0, root.scrollHeight - root.clientHeight);
+
+  const domNext = scrollSegmentRowIntoViewContainer(segmentIdx, root, scrollOpts);
   if (domNext != null) {
     root.scrollTop = domNext;
     return true;
@@ -127,11 +153,13 @@ export function scrollSegmentListIndexToView(segmentIdx: number): boolean {
     index: segmentIdx,
     rowMinHeightPx: metrics.rowMinHeightPx,
     itemStridePx: metrics.itemStridePx,
+    align: "center",
+    maxScrollTop,
   });
   if (indexNext != null) root.scrollTop = indexNext;
 
   window.requestAnimationFrame(() => {
-    const corrected = scrollSegmentRowIntoViewContainer(segmentIdx, root);
+    const corrected = scrollSegmentRowIntoViewContainer(segmentIdx, root, scrollOpts);
     if (corrected != null) root.scrollTop = corrected;
   });
   return true;
@@ -144,6 +172,7 @@ export function scrollSegmentListIndexToView(segmentIdx: number): boolean {
 export function scrollSegmentRowIntoViewContainer(
   segmentIdx: number,
   scrollRoot: HTMLElement,
+  options?: { align?: SegmentListScrollAlign },
 ): number | null {
   if (segmentIdx < 0) return null;
   const row = scrollRoot.querySelector<HTMLElement>(`[data-seg-row="${segmentIdx}"]`);
@@ -151,6 +180,16 @@ export function scrollSegmentRowIntoViewContainer(
 
   const rowRect = row.getBoundingClientRect();
   const rootRect = scrollRoot.getBoundingClientRect();
+  const maxScrollTop = Math.max(0, scrollRoot.scrollHeight - scrollRoot.clientHeight);
+
+  if (options?.align === "center") {
+    const rowCenter = rowRect.top + rowRect.height / 2;
+    const rootCenter = rootRect.top + rootRect.height / 2;
+    const delta = rowCenter - rootCenter;
+    if (Math.abs(delta) < 1) return null;
+    return clampSegmentListScrollTop(scrollRoot.scrollTop + delta, maxScrollTop);
+  }
+
   const margin = 12;
   let next = scrollRoot.scrollTop;
 
@@ -162,7 +201,7 @@ export function scrollSegmentRowIntoViewContainer(
     return null;
   }
 
-  return Math.max(0, Math.round(next));
+  return clampSegmentListScrollTop(next, maxScrollTop);
 }
 
 /** 虚拟窗口未包含选中行时，向两侧扩展渲染范围（避免跳转后行未挂载） */

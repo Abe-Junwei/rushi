@@ -18,6 +18,7 @@ type DeterminateProps = {
   title: string;
   stepLabel?: string;
   stepDetail?: string;
+  providerLabel?: string;
   done: number;
   total: number;
   percent: number;
@@ -51,28 +52,29 @@ export function PanelAsyncProgress(props: PanelAsyncProgressProps) {
     title,
     stepLabel,
     stepDetail,
-    done,
-    total,
+    providerLabel,
     percent,
     onCancel,
     cancelDisabled = false,
     className,
   } = props;
 
+  const metaLine = [providerLabel, stepDetail].filter(Boolean).join(" · ");
+
   return (
     <div
       className={[
-        "flex min-h-0 flex-1 flex-col justify-center gap-5 py-2",
+        "flex min-h-0 flex-1 flex-col justify-center gap-4 py-2",
         className ?? "",
       ].join(" ")}
     >
-      <div className="space-y-2 text-center">
+      <div className="space-y-1.5 text-center">
         <p className={`${PANEL_TYPOGRAPHY.dialogBody} text-notion-text`}>{title}</p>
-        {stepLabel && stepDetail ? (
+        {metaLine ? (
+          <p className={`${PANEL_TYPOGRAPHY.meta} text-notion-text-muted`}>{metaLine}</p>
+        ) : stepLabel ? (
           <p className={PANEL_TYPOGRAPHY.dialogBody}>
             当前步骤：<span className="font-medium text-notion-text">{stepLabel}</span>
-            <span className="mx-2">·</span>
-            {stepDetail}
           </p>
         ) : null}
       </div>
@@ -87,9 +89,6 @@ export function PanelAsyncProgress(props: PanelAsyncProgressProps) {
         >
           <div className={PANEL_PROGRESS_FILL_CLASS} style={{ width: `${percent}%` }} />
         </div>
-        <p className="mt-2 text-center text-xs tabular-nums text-notion-text-muted">
-          {percent}%（{done} / {total}）
-        </p>
       </div>
       {onCancel ? (
         <div className="flex justify-center">

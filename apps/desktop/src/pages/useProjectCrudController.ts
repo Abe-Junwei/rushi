@@ -11,7 +11,8 @@ export type BusyReason =
   | "save"
   | "delete"
   | "install_funasr"
-  | "export";
+  | "export"
+  | "stage_b";
 
 export interface ProjectCrudApi {
   createProject: () => Promise<void>;
