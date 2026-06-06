@@ -1,0 +1,19 @@
+# LLM postprocess, API keys, Ollama probe.
+
+[[set]]
+identifier = "llm"
+description = "LLM and postprocess commands for the main window."
+permissions = [
+  "allow-llm-save-api-key",
+  "allow-llm-delete-api-key",
+  "allow-llm-has-stored-api-key",
+  "allow-llm-migrate-legacy-api-key",
+  "allow-llm-probe-connection",
+  "allow-ollama-detect-status",
+  "allow-postprocess-auto-punctuate",
+  "allow-postprocess-refine-segments",
+  "allow-postprocess-stage-b-proofread",
+  "allow-postprocess-cancel-auto-punctuate",
+  "allow-postprocess-cancel-export-polish",
+  "allow-postprocess-export-polish",
+]

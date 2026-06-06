@@ -176,6 +176,31 @@ walk(path.join(ROOT, 'services/asr/rushi_asr'), (p) => {
   if (/\.py$/.test(p)) checkPythonFile(p);
 });
 
+function cspDirectiveHasUnsafeInline(value) {
+  if (value == null) return false;
+  if (typeof value === 'string') return value.includes("'unsafe-inline'");
+  if (Array.isArray(value)) return value.some((entry) => entry.includes("'unsafe-inline'"));
+  return false;
+}
+
+function checkTauriProductionCsp() {
+  const confPath = path.join(ROOT, 'apps/desktop/src-tauri/tauri.conf.json');
+  const conf = JSON.parse(fs.readFileSync(confPath, 'utf-8'));
+  const csp = conf?.app?.security?.csp;
+  if (!csp || typeof csp === 'string') {
+    errors.push('apps/desktop/src-tauri/tauri.conf.json: 生产 CSP 须为对象格式并分域声明 directive');
+    return;
+  }
+  if (cspDirectiveHasUnsafeInline(csp['script-src'])) {
+    errors.push('apps/desktop/src-tauri/tauri.conf.json: 生产 script-src 禁止 unsafe-inline（Tauri 构建时注入 hash/nonce）');
+  }
+  if (cspDirectiveHasUnsafeInline(csp['style-src'])) {
+    errors.push('apps/desktop/src-tauri/tauri.conf.json: 生产 style-src 禁止 unsafe-inline（React 行内样式用 style-src-attr）');
+  }
+}
+
+checkTauriProductionCsp();
+
 console.log(`\n架构守卫报告：${errors.length} 错误，${warnings.length} 警告\n`);
 warnings.forEach(w => console.log(`⚠️  ${w}`));
 errors.forEach(e => console.log(`❌ ${e}`));

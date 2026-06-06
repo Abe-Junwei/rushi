@@ -1,0 +1,26 @@
+# Export, diagnostics, settings profile, quality eval, app metadata.
+
+[[set]]
+identifier = "system"
+description = "Export, diagnostics, and settings commands for the main window."
+permissions = [
+  "allow-app-version",
+  "allow-open-app-data-folder",
+  "allow-export-settings-profile",
+  "allow-import-settings-profile",
+  "allow-export-docx",
+  "allow-export-diagnostic-bundle",
+  "allow-quality-get-last-report",
+  "allow-quality-get-baseline-report",
+  "allow-quality-run-eval",
+  "allow-quality-import-report-file",
+  "allow-quality-save-report-from-json",
+  "allow-quality-set-baseline-from-last",
+  "allow-quality-last-report-path-cmd",
+  "allow-quality-export-correction-memory-jsonl",
+]
+
+[[set]]
+identifier = "main-window-full"
+description = "All application invoke commands granted to the primary editor window."
+permissions = ["project", "glossary", "llm", "asr", "system"]

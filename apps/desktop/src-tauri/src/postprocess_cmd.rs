@@ -16,7 +16,7 @@ mod postprocess_ollama;
 mod postprocess_probe;
 #[path = "postprocess_refine_cmd.rs"]
 pub mod postprocess_refine_cmd;
-#[path = "postprocess_lexicon_ops.rs"]
+#[path = "postprocess_lexicon_ops/mod.rs"]
 mod postprocess_lexicon_ops;
 #[path = "postprocess_stage_b_proofread_cmd.rs"]
 pub mod postprocess_stage_b_proofread_cmd;

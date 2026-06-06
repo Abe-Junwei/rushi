@@ -1,0 +1,36 @@
+# Project lifecycle, files, segments, transcribe, waveform, bundle I/O.
+
+[[set]]
+identifier = "project"
+description = "Project and editor file commands for the main window."
+permissions = [
+  "allow-pick-audio-path",
+  "allow-project-create-from-audio",
+  "allow-create-empty-project",
+  "allow-create-project-from-text",
+  "allow-create-empty-text-file",
+  "allow-import-audio-to-project",
+  "allow-import-text-to-project",
+  "allow-project-list",
+  "allow-project-load",
+  "allow-project-list-edit-log",
+  "allow-project-record-edit-log",
+  "allow-file-save-segments",
+  "allow-file-restore-segments-from-edit-log",
+  "allow-project-run-transcribe",
+  "allow-project-transcribe-async-start",
+  "allow-project-transcribe-async-finalize",
+  "allow-project-delete",
+  "allow-pick-text-path",
+  "allow-ui-desktop-log",
+  "allow-list-files",
+  "allow-load-file",
+  "allow-rename-file",
+  "allow-delete-file",
+  "allow-ensure-waveform-peaks",
+  "allow-waveform-peaks-status",
+  "allow-waveform-release-probe",
+  "allow-export-project-bundle",
+  "allow-import-project-bundle",
+  "allow-export-text-file",
+]

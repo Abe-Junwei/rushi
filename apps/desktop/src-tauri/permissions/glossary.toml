@@ -1,0 +1,26 @@
+# Glossary, correction memory, lexicon bundle, stable rules.
+
+[[set]]
+identifier = "glossary"
+description = "Glossary and correction memory commands for the main window."
+permissions = [
+  "allow-glossary-list",
+  "allow-glossary-add",
+  "allow-glossary-add-batch",
+  "allow-glossary-update",
+  "allow-glossary-delete-batch",
+  "allow-glossary-set-hotword-batch",
+  "allow-glossary-delete",
+  "allow-glossary-hotwords-preview",
+  "allow-glossary-import-from-file",
+  "allow-correction-accept-rule",
+  "allow-correction-stable-rules-list",
+  "allow-correction-glossary-learn-prompts",
+  "allow-correction-memory-list",
+  "allow-correction-memory-save",
+  "allow-correction-memory-delete",
+  "allow-correction-glossary-mine-candidates",
+  "allow-lexicon-bundle-export",
+  "allow-lexicon-bundle-import-preview",
+  "allow-lexicon-bundle-import-apply",
+]

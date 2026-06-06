@@ -1,0 +1,31 @@
+# ASR sidecar, local runtime, model prefs, online STT probe.
+
+[[set]]
+identifier = "asr"
+description = "ASR runtime and sidecar commands for the main window."
+permissions = [
+  "allow-asr-setup-diagnose",
+  "allow-bundled-asr-launch-report",
+  "allow-local-runtime-diagnose",
+  "allow-local-runtime-download-sidecar",
+  "allow-local-runtime-cancel-download",
+  "allow-local-runtime-revalidate-install",
+  "allow-local-runtime-clear-install",
+  "allow-local-runtime-restore-previous",
+  "allow-get-asr-runtime-paths",
+  "allow-asr-model-cache-info",
+  "allow-clear-asr-model-cache",
+  "allow-waveform-peaks-cache-info",
+  "allow-clear-orphan-waveform-peaks-cache",
+  "allow-clear-waveform-peaks-for-file",
+  "allow-install-funasr-deps-interactive",
+  "allow-retry-bundled-asr-sidecar",
+  "allow-asr-loopback-request",
+  "allow-asr-app-manages-bundled-sidecar",
+  "allow-kill-loopback-asr-listeners-cmd",
+  "allow-get-local-asr-hub-model-pref",
+  "allow-set-local-asr-hub-model-pref",
+  "allow-get-local-asr-recognition-language-pref",
+  "allow-set-local-asr-recognition-language-pref",
+  "allow-stt-probe-online-health",
+]
