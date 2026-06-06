@@ -1,5 +1,6 @@
 import { clampWaveformPlaybackRate } from "./waveformPlaybackRate";
 import { clampPxPerSec, resolveDefaultEditingPxPerSec, TIMELINE_PX_PER_SEC } from "./pxPerSec";
+import type { WaveformPlaybackScrollFollowMode } from "./waveformPlaybackScrollFollow";
 
 const LS_KEY = "rushi.p1.waveformPxPerSec";
 const LS_HEIGHT = "rushi.p1.waveformHeightPx";
@@ -7,6 +8,7 @@ const LS_FONT = "rushi.p1.transcriptFontPx";
 const LS_GLOBAL_PLAYBACK_RATE = "rushi.p1.waveformGlobalPlaybackRate";
 const LS_TAB_ADVANCE_LOOP = "rushi.p1.tabAdvanceLoopsSegment";
 const LS_MINIMAP = "rushi.p1.waveformMinimap";
+const LS_PLAYBACK_SCROLL_FOLLOW = "rushi.p1.waveformPlaybackScrollFollow";
 
 /** 程序内设定：后台预热/生成 peaks（Route C2）。 */
 export const WAVEFORM_BACKGROUND_PEAKS_ENABLED = true;
@@ -147,6 +149,28 @@ export function readStoredWaveformMinimapEnabled(): boolean {
 export function writeStoredWaveformMinimapEnabled(enabled: boolean): void {
   try {
     localStorage.setItem(LS_MINIMAP, enabled ? "1" : "0");
+  } catch {
+    /* noop */
+  }
+}
+
+/** 播放跟随：center = 居中固定（历史默认）；edge = 边缘跟随。 */
+export function readStoredWaveformPlaybackScrollFollowMode(): WaveformPlaybackScrollFollowMode {
+  try {
+    const raw = localStorage.getItem(LS_PLAYBACK_SCROLL_FOLLOW);
+    if (raw === "center") return "center";
+    if (raw === "edge") return "edge";
+  } catch {
+    /* noop */
+  }
+  return "center";
+}
+
+export function writeStoredWaveformPlaybackScrollFollowMode(
+  mode: WaveformPlaybackScrollFollowMode,
+): void {
+  try {
+    localStorage.setItem(LS_PLAYBACK_SCROLL_FOLLOW, mode);
   } catch {
     /* noop */
   }

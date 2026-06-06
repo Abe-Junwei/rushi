@@ -123,11 +123,8 @@ export const WaveformTimeRuler = memo(function WaveformTimeRuler({
     tierScrollLayout,
   });
   const scrollEl = tierScrollRef?.current;
-  const liveScrollLeftPx = scrollClipMode
-    ? tickBuildScrollLeftPx
-    : scrollEl != null
-      ? scrollEl.scrollLeft
-      : tierMetrics.scrollLeftPx;
+  const liveScrollLeftPx =
+    scrollEl != null ? scrollEl.scrollLeft : tierMetrics.scrollLeftPx;
   const liveViewportWidthPx =
     scrollEl != null ? Math.max(1, scrollEl.clientWidth) : tierMetrics.viewportWidthPx;
 

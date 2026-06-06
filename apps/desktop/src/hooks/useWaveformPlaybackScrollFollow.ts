@@ -1,5 +1,8 @@
 import { useEffect, useRef, type RefObject } from "react";
-import { scrollPxCenterTimeInViewport } from "../utils/waveformProjection";
+import {
+  resolvePlaybackScrollFollowTargetPx,
+  type WaveformPlaybackScrollFollowMode,
+} from "../utils/waveformPlaybackScrollFollow";
 import { WAVEFORM_SCROLL_SYNC_EPSILON_PX } from "../utils/waveformScrollSync";
 
 export type UseWaveformPlaybackScrollFollowArgs = {
@@ -9,8 +12,12 @@ export type UseWaveformPlaybackScrollFollowArgs = {
   isPlaying: boolean;
   isReady: boolean;
   enabled: boolean;
+  followMode: WaveformPlaybackScrollFollowMode;
   getPlayheadTimeSec: () => number;
-  setTierScrollPx: (scrollLeftPx: number, options?: { deferLayoutCommit?: boolean }) => void;
+  setTierScrollPx: (
+    scrollLeftPx: number,
+    options?: { deferLayoutCommit?: boolean; immediate?: boolean },
+  ) => void;
   /** Pause follow while user manually scrolls the tier. */
   userScrollSuppressUntilRef?: React.MutableRefObject<number>;
 };
@@ -18,6 +25,9 @@ export type UseWaveformPlaybackScrollFollowArgs = {
 /**
  * Playback follow (ADR-0005): keep playhead in view by writing tier scroll only
  * (WaveSurfer `autoScroll` is off).
+ *
+ * - center: stationary playhead (Logic scroll-in-play / Audition Centered)
+ * - edge: follow when playhead nears viewport edges (Audacity Follow Playhead)
  */
 export function useWaveformPlaybackScrollFollow(args: UseWaveformPlaybackScrollFollowArgs): void {
   const {
@@ -27,12 +37,14 @@ export function useWaveformPlaybackScrollFollow(args: UseWaveformPlaybackScrollF
     isPlaying,
     isReady,
     enabled,
+    followMode,
     getPlayheadTimeSec,
     setTierScrollPx,
     userScrollSuppressUntilRef,
   } = args;
 
-  const lastWrittenRef = useRef<number | null>(null);
+  const followModeRef = useRef(followMode);
+  followModeRef.current = followMode;
 
   useEffect(() => {
     if (!enabled || !isPlaying || !isReady || durationSec < 0.5 || timelineWidthPx <= 0) {
@@ -59,32 +71,30 @@ export function useWaveformPlaybackScrollFollow(args: UseWaveformPlaybackScrollF
       }
 
       const t = Math.max(0, Math.min(durationSec, getPlayheadTimeSec()));
-      const target = scrollPxCenterTimeInViewport({
+      const currentScrollLeftPx = tier.scrollLeft;
+      const target = resolvePlaybackScrollFollowTargetPx({
+        mode: followModeRef.current,
         timeSec: t,
         timelineWidthPx,
         durationSec,
         viewportWidthPx: vw,
+        currentScrollLeftPx,
       });
-      if (
-        lastWrittenRef.current == null ||
-        Math.abs(lastWrittenRef.current - target) > WAVEFORM_SCROLL_SYNC_EPSILON_PX
-      ) {
-        lastWrittenRef.current = target;
-        setTierScrollPx(target, { deferLayoutCommit: true });
+      if (Math.abs(target - currentScrollLeftPx) > WAVEFORM_SCROLL_SYNC_EPSILON_PX) {
+        setTierScrollPx(target, { deferLayoutCommit: true, immediate: true });
       }
 
       raf = requestAnimationFrame(tick);
     };
 
-    lastWrittenRef.current = null;
     raf = requestAnimationFrame(tick);
     return () => {
-      lastWrittenRef.current = null;
       if (raf) cancelAnimationFrame(raf);
     };
   }, [
     durationSec,
     enabled,
+    followMode,
     getPlayheadTimeSec,
     isPlaying,
     isReady,

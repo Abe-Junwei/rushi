@@ -45,6 +45,7 @@ describe("useWaveformPlaybackScrollFollow", () => {
         isPlaying: true,
         isReady: true,
         enabled: true,
+        followMode: "center",
         getPlayheadTimeSec: () => 15,
         setTierScrollPx,
       }),
@@ -55,7 +56,7 @@ describe("useWaveformPlaybackScrollFollow", () => {
     });
 
     // playhead at 50% → 1500px; center in 400px viewport → 1500 - 200 = 1300
-    expect(setTierScrollPx).toHaveBeenCalledWith(1300, { deferLayoutCommit: true });
+    expect(setTierScrollPx).toHaveBeenCalledWith(1300, { deferLayoutCommit: true, immediate: true });
   });
 
   it("follows sub-2px target changes while playing", async () => {
@@ -72,6 +73,7 @@ describe("useWaveformPlaybackScrollFollow", () => {
         isPlaying: true,
         isReady: true,
         enabled: true,
+        followMode: "center",
         getPlayheadTimeSec: () => playheadTimeSec,
         setTierScrollPx,
       }),
@@ -87,7 +89,34 @@ describe("useWaveformPlaybackScrollFollow", () => {
       await new Promise((r) => setTimeout(r, 0));
     });
 
-    expect(setTierScrollPx).toHaveBeenLastCalledWith(1300.6, { deferLayoutCommit: true });
+    expect(setTierScrollPx).toHaveBeenLastCalledWith(1300.6, { deferLayoutCommit: true, immediate: true });
+  });
+
+  it("edge mode keeps scroll when playhead stays in the middle band", async () => {
+    const tier = createTier(400);
+    const tierScrollRef = { current: tier };
+    const setTierScrollPx = vi.fn();
+    tier.scrollLeft = 1200;
+
+    renderHook(() =>
+      useWaveformPlaybackScrollFollow({
+        tierScrollRef,
+        timelineWidthPx: 3000,
+        durationSec: 30,
+        isPlaying: true,
+        isReady: true,
+        enabled: true,
+        followMode: "edge",
+        getPlayheadTimeSec: () => 15,
+        setTierScrollPx,
+      }),
+    );
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    expect(setTierScrollPx).not.toHaveBeenCalled();
   });
 
   it("does nothing when disabled", () => {
@@ -102,6 +131,7 @@ describe("useWaveformPlaybackScrollFollow", () => {
         isPlaying: true,
         isReady: true,
         enabled: false,
+        followMode: "center",
         getPlayheadTimeSec: () => 15,
         setTierScrollPx,
       }),
@@ -125,6 +155,7 @@ describe("useWaveformPlaybackScrollFollow", () => {
         isPlaying: true,
         isReady: true,
         enabled: true,
+        followMode: "center",
         getPlayheadTimeSec: () => 15,
         setTierScrollPx,
         userScrollSuppressUntilRef,

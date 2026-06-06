@@ -3,6 +3,7 @@ import {
   computeRegionActionOverlayCenterLeftPx,
   computeRegionActionOverlayLeftPx,
   estimateRegionActionOverlayWidthPx,
+  resolveSegmentPlaybackControlsOverlayLayout,
   WAVEFORM_REGION_ACTION_OVERLAY_EST_WIDTH_PX,
 } from "./waveformRegionActionOverlay";
 
@@ -55,5 +56,31 @@ describe("waveformRegionActionOverlay", () => {
 
   it("uses default estimated width", () => {
     expect(WAVEFORM_REGION_ACTION_OVERLAY_EST_WIDTH_PX).toBeGreaterThan(100);
+  });
+
+  it("resolveSegmentPlaybackControlsOverlayLayout hides off-screen segments", () => {
+    const layout = resolveSegmentPlaybackControlsOverlayLayout({
+      segmentStartSec: 0,
+      segmentEndSec: 2,
+      timelineWidthPx: 3000,
+      durationSec: 30,
+      scrollLeftPx: 500,
+      viewportWidthPx: 400,
+    });
+    expect(layout.visible).toBe(false);
+  });
+
+  it("resolveSegmentPlaybackControlsOverlayLayout positions visible segments", () => {
+    const layout = resolveSegmentPlaybackControlsOverlayLayout({
+      segmentStartSec: 10,
+      segmentEndSec: 12,
+      timelineWidthPx: 3000,
+      durationSec: 30,
+      scrollLeftPx: 900,
+      viewportWidthPx: 400,
+    });
+    expect(layout.visible).toBe(true);
+    expect(layout.overlayLeftPx).toBeGreaterThanOrEqual(900);
+    expect(layout.overlayLeftPx + layout.overlayWidthPx).toBeLessThanOrEqual(1300);
   });
 });

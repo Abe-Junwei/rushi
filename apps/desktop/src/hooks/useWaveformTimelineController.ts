@@ -180,6 +180,7 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
     isPlaying: wf.isPlaying,
     isReady: wf.isReady,
     enabled: Boolean(ctx.mediaUrl && wf.isReady),
+    followMode: routePrefs.playbackScrollFollowMode,
     getPlayheadTimeSec: wf.getPlayheadTime,
     setTierScrollPx: scroll.setTierScrollPx,
     userScrollSuppressUntilRef: playbackFollowSuppressUntilRef,

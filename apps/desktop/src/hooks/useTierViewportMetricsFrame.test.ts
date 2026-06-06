@@ -44,6 +44,43 @@ describe("useTierViewportMetricsFrame", () => {
     tier.remove();
   });
 
+  it("does not re-render on scroll when commitScrollFrame is false", () => {
+    const tier = document.createElement("div");
+    Object.defineProperty(tier, "clientWidth", { value: 400, configurable: true });
+    tier.scrollLeft = 0;
+    document.body.appendChild(tier);
+
+    const tierScrollRef = { current: tier };
+    const tierScrollLive = {
+      scrollLeftRef: { current: 0 },
+      clientWidthRef: { current: 400 },
+    };
+
+    let renderCount = 0;
+    const { result } = renderHook(() => {
+      renderCount += 1;
+      return useTierViewportMetricsFrame({
+        tierScrollRef,
+        tierScrollLive,
+        tierScrollLayout: { scrollLeftPx: 0, clientWidthPx: 400 },
+        commitScrollFrame: false,
+      });
+    });
+
+    const rendersAfterMount = renderCount;
+
+    act(() => {
+      tier.scrollLeft = 120;
+      tier.dispatchEvent(new Event("scroll"));
+    });
+
+    expect(renderCount).toBe(rendersAfterMount);
+    expect(tierScrollLive.scrollLeftRef.current).toBe(120);
+    expect(result.current.scrollLeftPx).toBe(0);
+
+    tier.remove();
+  });
+
   it("re-reads scrollLeft after tier wheel events", () => {
     const tier = document.createElement("div");
     Object.defineProperty(tier, "clientWidth", { value: 400, configurable: true });

@@ -5,29 +5,58 @@ import {
   type TierScrollLiveRefs,
 } from "../utils/waveformViewport";
 
-/** Tier viewport metrics that re-render on every tier scroll / resize (TRUTH-006). */
-export function useTierViewportMetricsFrame(input: {
+export type UseTierViewportMetricsFrameInput = {
   tierScrollRef: RefObject<HTMLElement | null>;
   tierScrollLive: TierScrollLiveRefs;
   tierScrollLayout: TierScrollLayoutMetrics;
-}): { scrollLeftPx: number; viewportWidthPx: number } {
+  /**
+   * When false, tier scroll/wheel only sync live refs — skip React re-render.
+   * Use during playback scroll-follow; pair with imperative overlay paint (rAF).
+   */
+  commitScrollFrame?: boolean;
+};
+
+/** Tier viewport metrics that re-render on tier scroll / resize (TRUTH-006). */
+export function useTierViewportMetricsFrame(input: UseTierViewportMetricsFrameInput): {
+  scrollLeftPx: number;
+  viewportWidthPx: number;
+} {
+  const commitScrollFrame = input.commitScrollFrame ?? true;
   const inputRef = useRef(input);
   inputRef.current = input;
+  const commitScrollFrameRef = useRef(commitScrollFrame);
+  commitScrollFrameRef.current = commitScrollFrame;
   const [scrollFrame, bumpScrollFrame] = useReducer((n: number) => n + 1, 0);
+
+  useLayoutEffect(() => {
+    if (commitScrollFrame) {
+      bumpScrollFrame();
+    }
+  }, [commitScrollFrame]);
 
   useLayoutEffect(() => {
     const el = input.tierScrollRef.current;
     if (!el) return;
+
+    const syncLiveRefs = () => {
+      const tier = inputRef.current.tierScrollRef.current;
+      if (!tier) return;
+      const live = inputRef.current.tierScrollLive;
+      live.scrollLeftRef.current = tier.scrollLeft;
+      live.clientWidthRef.current = tier.clientWidth;
+    };
+
     const notify = () => {
-      const el = inputRef.current.tierScrollRef.current;
-      if (el) {
-        const live = inputRef.current.tierScrollLive;
-        live.scrollLeftRef.current = el.scrollLeft;
-        live.clientWidthRef.current = el.clientWidth;
-      }
+      syncLiveRefs();
+      if (!commitScrollFrameRef.current) return;
       bumpScrollFrame();
     };
-    notify();
+
+    syncLiveRefs();
+    if (commitScrollFrameRef.current) {
+      bumpScrollFrame();
+    }
+
     el.addEventListener("scroll", notify, { passive: true });
     el.addEventListener("wheel", notify, { passive: true });
     window.addEventListener("resize", notify);

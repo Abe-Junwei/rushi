@@ -6,8 +6,6 @@ type UseWaveformRulerScrollTrackArgs = {
   tierScrollLive?: { scrollLeftRef: RefObject<number> };
   scrollTrackRef: RefObject<HTMLElement | null>;
   timelineWidthPx: number;
-  /** Rebuild tick set when scroll moves beyond this fraction of viewport width. */
-  tickRebuildViewportFrac?: number;
   onTickRebuild?: (scrollLeftPx: number) => void;
 };
 
@@ -27,7 +25,6 @@ export function useWaveformRulerScrollTrack({
   tierScrollLive,
   scrollTrackRef,
   timelineWidthPx,
-  tickRebuildViewportFrac = 0.55,
   onTickRebuild,
 }: UseWaveformRulerScrollTrackArgs): void {
   useLayoutEffect(() => {
@@ -44,10 +41,7 @@ export function useWaveformRulerScrollTrack({
       track.style.transform = `translate3d(${-scrollLeftPx}px, 0, 0)`;
 
       if (!onTickRebuild) return;
-      const viewportWidthPx = Math.max(1, scrollEl.clientWidth);
-      if (Math.abs(scrollLeftPx - lastTickBuildScrollPx) < viewportWidthPx * tickRebuildViewportFrac) {
-        return;
-      }
+      if (Math.abs(scrollLeftPx - lastTickBuildScrollPx) < 1) return;
       if (tickRebuildRaf) return;
       tickRebuildRaf = requestAnimationFrame(() => {
         tickRebuildRaf = 0;
@@ -72,7 +66,6 @@ export function useWaveformRulerScrollTrack({
     scrollTrackRef,
     tierScrollLive,
     tierScrollRef,
-    tickRebuildViewportFrac,
     timelineWidthPx,
   ]);
 }

@@ -288,6 +288,43 @@ describe("useTierScrollSync", () => {
     expect(tier.scrollLeft).toBe(800);
   });
 
+  it("immediate programmatic scroll still defers layout commits", async () => {
+    const { el: tier } = createTierContainer();
+    const tierScrollRef = { current: tier };
+    const wfApiRef = { current: createWaveformApi() };
+
+    const { result } = renderHook(() =>
+      useTierScrollSync({
+        tierScrollRef,
+        timelineWidthPx: 1200,
+        wfApiRef: wfApiRef as never,
+        waveformReady: true,
+        mediaUrl: "/audio.wav",
+        ...tierScrollDefaults,
+      }),
+    );
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    act(() => {
+      result.current.setTierScrollPx(144, { deferLayoutCommit: true, immediate: true });
+      tier.dispatchEvent(new Event("scroll"));
+      result.current.onTierScroll();
+    });
+
+    expect(tier.scrollLeft).toBe(144);
+    expect(result.current.tierScrollLive.scrollLeftRef.current).toBe(144);
+    expect(result.current.tierScrollLayout.scrollLeftPx).toBe(0);
+
+    act(() => {
+      result.current.refreshTierScrollLayout();
+    });
+
+    expect(result.current.tierScrollLayout.scrollLeftPx).toBe(144);
+  });
+
   it("does not extend playback-follow suppress for programmatic scroll writes", async () => {
     const { el: tier } = createTierContainer();
     const tierScrollRef = { current: tier };

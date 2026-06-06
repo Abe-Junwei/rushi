@@ -6,6 +6,7 @@ import { WaveformLiveTimeRuler } from "../WaveformLiveTimeRuler";
 import { WAVEFORM_EMBEDDED_TIME_RULER_H_PX } from "../WaveformTimeRuler";
 import { WaveformGlobalPlaybackSpeed } from "../WaveformGlobalPlaybackSpeed";
 import { WaveformGoToTime } from "../WaveformGoToTime";
+import { WaveformPlaybackScrollFollowModeControl } from "../WaveformPlaybackScrollFollowMode";
 import { WaveformPlaybackTime } from "../WaveformPlaybackTime";
 import { WaveformSegmentPlaybackControls } from "../WaveformSegmentPlaybackControls";
 import { WaveformSegmentBandCanvas } from "../WaveformSegmentBandCanvas";
@@ -296,6 +297,12 @@ export function EditorWaveformPane({
             disabled={c.busy || !tx.isReady}
             durationSec={mediaDurationSec}
             onJump={tx.jumpToMediaTime}
+          />
+          <span className="toolbar-sep" aria-hidden />
+          <WaveformPlaybackScrollFollowModeControl
+            disabled={c.busy || !tx.isReady}
+            mode={tx.playbackScrollFollowMode}
+            onModeChange={tx.setPlaybackScrollFollowMode}
           />
         </div>
         <WaveformZoomBar

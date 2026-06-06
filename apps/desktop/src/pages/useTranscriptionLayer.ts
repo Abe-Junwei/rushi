@@ -247,6 +247,8 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     backgroundPeaksEnabled: routePrefs.backgroundPeaksEnabled,
     minimapEnabled: routePrefs.minimapEnabled,
     setMinimapEnabled: routePrefs.setMinimapEnabled,
+    playbackScrollFollowMode: routePrefs.playbackScrollFollowMode,
+    setPlaybackScrollFollowMode: routePrefs.setPlaybackScrollFollowMode,
     hotSwitchWhilePlaying: routePrefs.hotSwitchWhilePlaying,
     mountDeferTimedOut: timeline.mountDeferTimedOut,
     currentTime: wf.currentTime,
