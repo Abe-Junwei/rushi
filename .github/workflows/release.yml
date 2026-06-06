@@ -1,6 +1,10 @@
 # Full Tauri bundles — GitHub Release publish or manual dispatch.
 # Sidecar is built before Tauri bundle; artifacts upload via gh/upload-artifact.
 # macOS signing (optional): set valid APPLE_* repository secrets (base64 .p12).
+#
+# IMPORTANT: To test workflow changes, use Actions → Release build → Run workflow
+# on branch `main`. Do NOT use "Re-run failed jobs" on an old run — that reuses
+# the workflow file from the original commit.
 name: Release build
 
 on:
@@ -36,6 +40,12 @@ jobs:
 
       - run: npm ci
 
+      - name: Workflow context
+        run: |
+          echo "Commit: ${{ github.sha }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "Event: ${{ github.event_name }}"
+
       - uses: dtolnay/rust-toolchain@stable
 
       - uses: swatinem/rust-cache@v2
@@ -63,25 +73,26 @@ jobs:
         run: npm run tauri -- build --bundles deb
         timeout-minutes: 60
 
-      - name: Tauri build (AppImage, optional)
-        id: linux_appimage
-        continue-on-error: true
-        working-directory: apps/desktop
-        env:
-          APPIMAGE_EXTRACT_AND_RUN: "1"
-          NO_STRIP: "1"
-        run: npm run tauri -- build --bundles appimage
-        timeout-minutes: 60
+      # AppImage linuxdeploy fails on CI with the bundled FunASR sidecar; ship .deb only.
+      # Re-enable when linuxdeploy/AppImage path is validated on ubuntu-latest.
+
+      - name: Verify Linux deb bundle
+        run: |
+          shopt -s nullglob
+          deb_files=("${{ env.BUNDLE_ROOT }}/deb/"*.deb)
+          if [ ${#deb_files[@]} -eq 0 ]; then
+            echo "No .deb bundle found" >&2
+            exit 1
+          fi
+          ls -lh "${deb_files[@]}"
 
       - name: Upload Linux workflow artifacts
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v7
         with:
           name: linux-release-bundles
-          path: |
-            ${{ env.BUNDLE_ROOT }}/deb/*.deb
-            ${{ env.BUNDLE_ROOT }}/appimage/*.AppImage
-          if-no-files-found: warn
+          path: ${{ env.BUNDLE_ROOT }}/deb/*.deb
+          if-no-files-found: error
 
       - name: Upload Linux bundles to GitHub Release
         if: github.event_name == 'release'
@@ -90,17 +101,12 @@ jobs:
         run: |
           shopt -s nullglob
           deb_files=("${{ env.BUNDLE_ROOT }}/deb/"*.deb)
-          appimage_files=("${{ env.BUNDLE_ROOT }}/appimage/"*.AppImage)
           if [ ${#deb_files[@]} -eq 0 ]; then
             echo "No .deb bundle found" >&2
             exit 1
           fi
           upload=( "${deb_files[@]}" )
-          if [ ${#appimage_files[@]} -gt 0 ]; then
-            upload+=( "${appimage_files[@]}" )
-          else
-            echo "::warning::AppImage bundle missing; uploading .deb only."
-          fi
+          echo "Uploading Linux .deb only (AppImage skipped in CI)."
           gh release upload "${{ github.event.release.tag_name }}" "${upload[@]}" --clobber
 
   tauri-macos:
@@ -118,6 +124,12 @@ jobs:
           python-version: "3.12"
 
       - run: npm ci
+
+      - name: Workflow context
+        run: |
+          echo "Commit: ${{ github.sha }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "Event: ${{ github.event_name }}"
 
       - uses: dtolnay/rust-toolchain@stable
 
@@ -225,6 +237,12 @@ jobs:
 
       - run: npm ci
 
+      - name: Workflow context
+        run: |
+          echo "Commit: ${{ github.sha }}"
+          echo "Ref: ${{ github.ref }}"
+          echo "Event: ${{ github.event_name }}"
+
       - uses: dtolnay/rust-toolchain@stable
 
       - uses: swatinem/rust-cache@v2
@@ -275,14 +293,23 @@ jobs:
           if (Test-Path "windows-portable-x64.zip") { Remove-Item -Force "windows-portable-x64.zip" }
           Compress-Archive -Path (Join-Path $stage "*") -DestinationPath "windows-portable-x64.zip"
 
+      - name: Verify Windows portable zip
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          if (-not (Test-Path "windows-portable-x64.zip")) {
+            throw "Missing windows-portable-x64.zip"
+          }
+          Get-Item "windows-portable-x64.zip"
+
       - name: Upload Windows workflow artifacts
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v7
         with:
           name: windows-release-bundles
           path: |
-            ${{ env.BUNDLE_ROOT }}/nsis/*-setup.exe
             windows-portable-x64.zip
+            ${{ env.BUNDLE_ROOT }}/nsis/*-setup.exe
           if-no-files-found: warn
 
       - name: Upload Windows bundles to GitHub Release
