@@ -45,7 +45,7 @@ jobs:
       - name: Linux packages for Tauri
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev pandoc wkhtmltopdf
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev pandoc wkhtmltopdf libfuse2
 
       - name: Install ffmpeg (sidecar bundle)
         run: sudo apt-get install -y ffmpeg
@@ -58,10 +58,20 @@ jobs:
         run: bash scripts/smoke-asr-sidecar-health.sh
         timeout-minutes: 10
 
-      - name: Tauri build (deb + AppImage)
+      - name: Tauri build (deb)
         working-directory: apps/desktop
-        run: npm run tauri -- build --bundles deb,appimage
-        timeout-minutes: 45
+        run: npm run tauri -- build --bundles deb
+        timeout-minutes: 60
+
+      - name: Tauri build (AppImage, optional)
+        id: linux_appimage
+        continue-on-error: true
+        working-directory: apps/desktop
+        env:
+          APPIMAGE_EXTRACT_AND_RUN: "1"
+          NO_STRIP: "1"
+        run: npm run tauri -- build --bundles appimage
+        timeout-minutes: 60
 
       - name: Upload Linux workflow artifacts
         if: github.event_name == 'workflow_dispatch'
@@ -71,17 +81,27 @@ jobs:
           path: |
             ${{ env.BUNDLE_ROOT }}/deb/*.deb
             ${{ env.BUNDLE_ROOT }}/appimage/*.AppImage
-          if-no-files-found: error
+          if-no-files-found: warn
 
       - name: Upload Linux bundles to GitHub Release
         if: github.event_name == 'release'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload "${{ github.event.release.tag_name }}" \
-            "${{ env.BUNDLE_ROOT }}/deb/"*.deb \
-            "${{ env.BUNDLE_ROOT }}/appimage/"*.AppImage \
-            --clobber
+          shopt -s nullglob
+          deb_files=("${{ env.BUNDLE_ROOT }}/deb/"*.deb)
+          appimage_files=("${{ env.BUNDLE_ROOT }}/appimage/"*.AppImage)
+          if [ ${#deb_files[@]} -eq 0 ]; then
+            echo "No .deb bundle found" >&2
+            exit 1
+          fi
+          upload=( "${deb_files[@]}" )
+          if [ ${#appimage_files[@]} -gt 0 ]; then
+            upload+=( "${appimage_files[@]}" )
+          else
+            echo "::warning::AppImage bundle missing; uploading .deb only."
+          fi
+          gh release upload "${{ github.event.release.tag_name }}" "${upload[@]}" --clobber
 
   tauri-macos:
     runs-on: macos-latest
@@ -223,13 +243,37 @@ jobs:
           test -f "apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar/_internal/funasr/version.txt"
           test -f "apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar/_internal/ffmpeg.exe"
 
-      - name: Tauri build (MSI)
+      - name: Tauri build binary (Windows)
+        working-directory: apps/desktop
+        run: npm run tauri -- build --no-bundle
+        timeout-minutes: 90
+
+      - name: Tauri build (NSIS installer, optional)
+        id: windows_nsis
+        continue-on-error: true
         working-directory: apps/desktop
         env:
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        run: npm run tauri -- build --bundles msi
-        timeout-minutes: 50
+        run: npm run tauri -- build --bundles nsis
+        timeout-minutes: 60
+
+      - name: Build Windows portable zip
+        shell: pwsh
+        run: |
+          $ErrorActionPreference = "Stop"
+          $root = "apps/desktop/src-tauri"
+          $exe = Join-Path $root "target/release/rushi-desktop.exe"
+          if (-not (Test-Path $exe)) {
+            Write-Error "Missing $exe — run tauri build before packaging portable zip."
+          }
+          $stage = "dist/windows-portable"
+          if (Test-Path $stage) { Remove-Item -Recurse -Force $stage }
+          New-Item -ItemType Directory -Force -Path $stage | Out-Null
+          Copy-Item $exe (Join-Path $stage "rushi-desktop.exe")
+          Copy-Item (Join-Path $root "resources") (Join-Path $stage "resources") -Recurse
+          if (Test-Path "windows-portable-x64.zip") { Remove-Item -Force "windows-portable-x64.zip" }
+          Compress-Archive -Path (Join-Path $stage "*") -DestinationPath "windows-portable-x64.zip"
 
       - name: Upload Windows workflow artifacts
         if: github.event_name == 'workflow_dispatch'
@@ -237,8 +281,9 @@ jobs:
         with:
           name: windows-release-bundles
           path: |
-            ${{ env.BUNDLE_ROOT }}/msi/*.msi
-          if-no-files-found: error
+            ${{ env.BUNDLE_ROOT }}/nsis/*-setup.exe
+            windows-portable-x64.zip
+          if-no-files-found: warn
 
       - name: Upload Windows bundles to GitHub Release
         if: github.event_name == 'release'
@@ -246,6 +291,13 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload "${{ github.event.release.tag_name }}" \
-            "${{ env.BUNDLE_ROOT }}/msi/"*.msi \
-            --clobber
+          set -euo pipefail
+          shopt -s nullglob
+          upload=( windows-portable-x64.zip )
+          nsis=( "${{ env.BUNDLE_ROOT }}/nsis/"*-setup.exe )
+          if [ ${#nsis[@]} -gt 0 ]; then
+            upload+=( "${nsis[@]}" )
+          else
+            echo "::warning::NSIS installer missing; uploading portable zip only."
+          fi
+          gh release upload "${{ github.event.release.tag_name }}" "${upload[@]}" --clobber
