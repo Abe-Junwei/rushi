@@ -65,4 +65,20 @@ describe("resolveOverlayPointerUpIntent", () => {
       }),
     ).toEqual({ kind: "create-range", startSec: 1, endSec: 3 });
   });
+
+  it("does not create range when span is long but pointer never moved", () => {
+    expect(
+      resolveOverlayPointerUpIntent({
+        mode: "create",
+        moved: false,
+        segmentIdx: -1,
+        pointerTimeSec: 3,
+        anchorTimeSec: 1,
+        initialStartSec: 1,
+        initialEndSec: 1,
+        clampedStartSec: 1,
+        clampedEndSec: 3,
+      }),
+    ).toEqual({ kind: "seek-blank", timeSec: 3 });
+  });
 });

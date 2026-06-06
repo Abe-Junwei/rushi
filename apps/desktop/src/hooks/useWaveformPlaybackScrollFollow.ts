@@ -1,5 +1,6 @@
 import { useEffect, useRef, type RefObject } from "react";
 import { scrollPxCenterTimeInViewport } from "../utils/waveformProjection";
+import { WAVEFORM_SCROLL_SYNC_EPSILON_PX } from "../utils/waveformScrollSync";
 
 export type UseWaveformPlaybackScrollFollowArgs = {
   tierScrollRef: RefObject<HTMLElement | null>;
@@ -9,7 +10,7 @@ export type UseWaveformPlaybackScrollFollowArgs = {
   isReady: boolean;
   enabled: boolean;
   getPlayheadTimeSec: () => number;
-  setTierScrollPx: (scrollLeftPx: number) => void;
+  setTierScrollPx: (scrollLeftPx: number, options?: { deferLayoutCommit?: boolean }) => void;
   /** Pause follow while user manually scrolls the tier. */
   userScrollSuppressUntilRef?: React.MutableRefObject<number>;
 };
@@ -64,9 +65,12 @@ export function useWaveformPlaybackScrollFollow(args: UseWaveformPlaybackScrollF
         durationSec,
         viewportWidthPx: vw,
       });
-      if (lastWrittenRef.current == null || Math.abs(lastWrittenRef.current - target) > 0.5) {
+      if (
+        lastWrittenRef.current == null ||
+        Math.abs(lastWrittenRef.current - target) > WAVEFORM_SCROLL_SYNC_EPSILON_PX
+      ) {
         lastWrittenRef.current = target;
-        setTierScrollPx(target);
+        setTierScrollPx(target, { deferLayoutCommit: true });
       }
 
       raf = requestAnimationFrame(tick);

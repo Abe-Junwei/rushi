@@ -26,6 +26,10 @@ export function resolveOverlayPointerUpIntent(input: {
   const minSpan = input.minSpanSec ?? WAVEFORM_SEGMENT_MIN_SPAN_SEC;
 
   if (input.mode === "create") {
+    // 空白区新建语段必须是明确拖动（pointer move 超阈值）而非点击抖动。
+    if (!input.moved) {
+      return { kind: "seek-blank", timeSec: input.pointerTimeSec };
+    }
     const lo = Math.min(input.initialStartSec, input.pointerTimeSec);
     const hi = Math.max(input.initialStartSec, input.pointerTimeSec);
     if (Math.abs(hi - lo) >= minSpan) {

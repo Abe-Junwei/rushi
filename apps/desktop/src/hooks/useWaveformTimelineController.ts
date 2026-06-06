@@ -105,8 +105,7 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
     () =>
       resolveWaveformTimelineMetrics({
         wsDurationSec: wf.duration,
-        peaksStatusDurationSec:
-          wf.isReady || peaks.peakCache ? (peaks.status?.durationSec ?? 0) : 0,
+        peaksStatusDurationSec: peaks.status?.durationSec ?? peaks.peakCache?.durationSec ?? 0,
         pxPerSec: zoom.pxPerSec,
       }),
     [zoom.pxPerSec, peaks.status?.durationSec, peaks.peakCache, wf.duration, wf.isReady],
@@ -185,6 +184,11 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
     setTierScrollPx: scroll.setTierScrollPx,
     userScrollSuppressUntilRef: playbackFollowSuppressUntilRef,
   });
+
+  useEffect(() => {
+    if (wf.isPlaying) return;
+    scroll.refreshTierScrollLayout();
+  }, [scroll.refreshTierScrollLayout, wf.isPlaying]);
 
   scrollApiRef.current = scroll;
 

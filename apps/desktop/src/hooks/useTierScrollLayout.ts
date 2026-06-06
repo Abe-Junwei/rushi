@@ -15,6 +15,7 @@ export type UseTierScrollLayoutResult = TierScrollLayout & {
 
 export type UseTierScrollLayoutOptions = {
   burstMs?: number;
+  shouldCommitScrollLayout?: () => boolean;
 };
 
 const DEFAULT_BURST_MS = 120;
@@ -27,6 +28,8 @@ export function useTierScrollLayout(
   const burstMs = options?.burstMs ?? DEFAULT_BURST_MS;
   const liveScrollLeftRef = useRef(0);
   const liveClientWidthRef = useRef(0);
+  const shouldCommitScrollLayoutRef = useRef(options?.shouldCommitScrollLayout);
+  shouldCommitScrollLayoutRef.current = options?.shouldCommitScrollLayout;
   const [layout, setLayout] = useState<TierScrollLayout>({
     scrollLeftPx: 0,
     clientWidthPx: 0,
@@ -41,10 +44,15 @@ export function useTierScrollLayout(
     let activeUntil = 0;
     let cancelled = false;
 
-    const readLayout = () => {
-      if (cancelled) return;
+    const updateRefs = () => {
       liveScrollLeftRef.current = el.scrollLeft;
       liveClientWidthRef.current = el.clientWidth;
+    };
+
+    const canCommitLayout = () => shouldCommitScrollLayoutRef.current?.() !== false;
+
+    const commitLayout = (options?: { force?: boolean }) => {
+      if (!options?.force && !canCommitLayout()) return;
       const next = {
         scrollLeftPx: liveScrollLeftRef.current,
         clientWidthPx: liveClientWidthRef.current,
@@ -53,30 +61,42 @@ export function useTierScrollLayout(
         prev.scrollLeftPx === next.scrollLeftPx && prev.clientWidthPx === next.clientWidthPx ? prev : next,
       );
     };
+
+    const readLayout = () => {
+      updateRefs();
+      commitLayout({ force: true });
+    };
     readLayoutRef.current = readLayout;
 
     const loop = () => {
       raf = 0;
-      readLayout();
+      updateRefs();
       if (!cancelled && performance.now() < activeUntil) {
         raf = requestAnimationFrame(loop);
+        return;
       }
+      commitLayout();
     };
 
     const scheduleBurst = () => {
       activeUntil = performance.now() + burstMs;
-      readLayout();
+      updateRefs();
+      commitLayout();
       if (!raf) raf = requestAnimationFrame(loop);
     };
 
     readLayout();
     el.addEventListener("scroll", scheduleBurst, { passive: true });
-    window.addEventListener("resize", scheduleBurst);
+    const onWindowResize = () => {
+      updateRefs();
+      commitLayout({ force: true });
+    };
+    window.addEventListener("resize", onWindowResize);
 
     return () => {
       cancelled = true;
       el.removeEventListener("scroll", scheduleBurst);
-      window.removeEventListener("resize", scheduleBurst);
+      window.removeEventListener("resize", onWindowResize);
       if (raf) cancelAnimationFrame(raf);
       readLayoutRef.current = () => {};
     };

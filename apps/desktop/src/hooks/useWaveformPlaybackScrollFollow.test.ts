@@ -1,3 +1,5 @@
+// @vitest-environment jsdom
+
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useWaveformPlaybackScrollFollow } from "./useWaveformPlaybackScrollFollow";
@@ -53,7 +55,39 @@ describe("useWaveformPlaybackScrollFollow", () => {
     });
 
     // playhead at 50% → 1500px; center in 400px viewport → 1500 - 200 = 1300
-    expect(setTierScrollPx).toHaveBeenCalledWith(1300);
+    expect(setTierScrollPx).toHaveBeenCalledWith(1300, { deferLayoutCommit: true });
+  });
+
+  it("follows sub-2px target changes while playing", async () => {
+    const tier = createTier(400);
+    const tierScrollRef = { current: tier };
+    const setTierScrollPx = vi.fn();
+    let playheadTimeSec = 15;
+
+    renderHook(() =>
+      useWaveformPlaybackScrollFollow({
+        tierScrollRef,
+        timelineWidthPx: 3000,
+        durationSec: 30,
+        isPlaying: true,
+        isReady: true,
+        enabled: true,
+        getPlayheadTimeSec: () => playheadTimeSec,
+        setTierScrollPx,
+      }),
+    );
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    playheadTimeSec = 15.006;
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    expect(setTierScrollPx).toHaveBeenLastCalledWith(1300.6, { deferLayoutCommit: true });
   });
 
   it("does nothing when disabled", () => {

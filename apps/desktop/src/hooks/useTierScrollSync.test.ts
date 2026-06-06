@@ -1,3 +1,5 @@
+// @vitest-environment jsdom
+
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useTierScrollSync } from "./useTierScrollSync";
@@ -32,6 +34,7 @@ function createWaveformApi() {
   return {
     isReady: true,
     duration: 30,
+    syncWaveSurferScrollPx: vi.fn(),
     clientXToTimeSec: vi.fn((clientX: number) => clientX / 10),
     seek: vi.fn(),
   };
@@ -105,14 +108,96 @@ describe("useTierScrollSync", () => {
 
     act(() => {
       result.current.setTierScrollPx(144);
-      tier.dispatchEvent(new Event("scroll"));
     });
     await act(async () => {
       await new Promise((r) => setTimeout(r, 0));
     });
 
+    act(() => {
+      result.current.onTierScroll();
+    });
+
     expect(tier.scrollLeft).toBe(144);
     expect(result.current.tierScrollLayout).toEqual({ clientWidthPx: 320, scrollLeftPx: 144 });
+  });
+
+  it("defers layout commits for playback-follow programmatic scroll", async () => {
+    const { el: tier } = createTierContainer();
+    const tierScrollRef = { current: tier };
+    const wfApiRef = { current: createWaveformApi() };
+
+    const { result } = renderHook(() =>
+      useTierScrollSync({
+        tierScrollRef,
+        timelineWidthPx: 1200,
+        wfApiRef: wfApiRef as never,
+        waveformReady: true,
+        mediaUrl: "/audio.wav",
+        ...tierScrollDefaults,
+      }),
+    );
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    act(() => {
+      result.current.setTierScrollPx(144, { deferLayoutCommit: true });
+      tier.dispatchEvent(new Event("scroll"));
+      result.current.onTierScroll();
+    });
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    expect(tier.scrollLeft).toBe(144);
+    expect(result.current.tierScrollLive.scrollLeftRef.current).toBe(144);
+    expect(result.current.tierScrollLayout).toEqual({ clientWidthPx: 320, scrollLeftPx: 0 });
+
+    act(() => {
+      result.current.refreshTierScrollLayout();
+    });
+
+    expect(result.current.tierScrollLayout).toEqual({ clientWidthPx: 320, scrollLeftPx: 144 });
+  });
+
+  it("coalesces multiple programmatic writes into one frame commit", async () => {
+    const { el: tier } = createTierContainer();
+    const tierScrollRef = { current: tier };
+    const wfApi = createWaveformApi();
+    const wfApiRef = { current: wfApi };
+
+    const { result } = renderHook(() =>
+      useTierScrollSync({
+        tierScrollRef,
+        timelineWidthPx: 1200,
+        wfApiRef: wfApiRef as never,
+        waveformReady: true,
+        mediaUrl: "/audio.wav",
+        ...tierScrollDefaults,
+      }),
+    );
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    wfApi.syncWaveSurferScrollPx.mockClear();
+
+    act(() => {
+      result.current.setTierScrollPx(100);
+      result.current.setTierScrollPx(120);
+      result.current.setTierScrollPx(140);
+    });
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    expect(tier.scrollLeft).toBe(140);
+    expect(wfApi.syncWaveSurferScrollPx).toHaveBeenCalledTimes(1);
+    expect(wfApi.syncWaveSurferScrollPx).toHaveBeenCalledWith(140);
   });
 
   it("uses smooth DOM scrolling for setTierScrollPxSmooth", () => {
@@ -138,7 +223,7 @@ describe("useTierScrollSync", () => {
     expect(scrollToMock).toHaveBeenCalledWith({ left: 180, behavior: "smooth" });
   });
 
-  it("clamps scroll when timeline floor is narrower than native width", () => {
+  it("clamps scroll when timeline floor is narrower than native width", async () => {
     const { el: tier } = createTierContainer(200);
     const tierScrollRef = { current: tier };
     const wfApiRef = { current: createWaveformApi() };
@@ -157,6 +242,10 @@ describe("useTierScrollSync", () => {
 
     act(() => {
       result.current.setTierScrollPx(160);
+    });
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
     });
 
     expect(tier.scrollLeft).toBe(120);
