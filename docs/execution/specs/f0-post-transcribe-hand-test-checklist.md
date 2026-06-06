@@ -13,6 +13,7 @@
 | **F0-v1.5** | §5 | ✅ 已编码且手测签收（hints 只读、规则冲突门禁） |
 | **F0-v2** | §6–§7 | ✅ 已编码且手测签收（阶段 B LLM 标点 + 错字、A→B 顺序门禁） |
 | **F0-v2.1** | §7.1 | ✅ 已编码且手测签收（Pack 合并校对、门禁 toast、UX/云端回归 2026-06-06） |
+| **F0-v2.2** | §5.2 | ✅ 已编码且手测签收（A6 标点全角、A9 词表卫生、浮动面板 v2） |
 
 **主路径（目标态）**
 
@@ -33,6 +34,7 @@ npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs
 - [x] `useCorrectionRulesController.test.ts`
 - [x] `usePostTranscribeStageBController.test.ts`（门禁 toast、consent）
 - [x] `postTranscribeStageB.test.ts` · `postprocess_lexicon_ops`（Rust）
+- [x] `segmentTextHygiene.test.ts` · `stageAPreviewPipeline.test.ts` · `lexiconHealthReport.test.ts`（F0-v2.2）
 - [x] 手测 §0–§4、§8 已签收（2026-06-05）
 
 ---
@@ -49,7 +51,12 @@ npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs
 - [ ] 至少一条 **稳定规则**（某 `wrong→right`，命中 ≥3 或已「采纳为规则」），且当前稿中存在可匹配字面
 - [ ] 另备一条 **无匹配** 场景（空稿转写或规则与正文无关），用于空态
 
-### F0-v2（§6–§7，立项后）
+### F0-v2.2（§5.2）
+
+- [ ] 至少一条语段含 **半角标点**（如 `你好,真的吗?`）或 **重复标点**（如 `结束。。。`），用于 A6 预览
+- [ ] 词表/记忆存在 **hit=1 噪声**、悬空规则或冲突时，用于 A9 只读摘要（可选）
+
+### F0-v2（§6–§7）
 
 - [ ] `设置 → LLM`：有效 provider + API key（或本机 postprocess 配置就绪）
 - [ ] 准备 1–2 条无标点 / 明显错形语段，用于 B 预览
@@ -180,6 +187,32 @@ npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs
 
 ---
 
+## §5.2 — 阶段 A · A6 标点全角 + A9 词表卫生（F0-v2.2）
+
+> 机器 ✅ 2026-06-06（`segmentTextHygiene.test.ts` · `stageAPreviewPipeline.test.ts` · `lexiconHealthReport.test.ts`）；手测 ✅ 2026-06-06
+
+### 5.2.1 A6 标点全角（规则纠错预览）
+
+1. 在语段中写入含半角标点的正文（如 `你好,真的吗?`）或重复标点（如 `结束。。。`）。
+2. 打开 **规则纠错**（可无稳定规则，仅测 hygiene）。
+
+**期望**
+
+- [x] 预览 **改后** 为全角标点：`你好，真的吗？`；重复标点压成单个 `。`
+- [x] 数字/时间 **不**误改：`3.14`、`12:30` 保持半角点/冒号
+- [x] 确认写回后语段与预览一致；⌘Z 可撤销
+
+### 5.2.2 A9 词表卫生（只读）
+
+1. 在存在 hit=1 噪声、悬空规则或冲突摘要的项目中打开 **规则纠错**（空态或预览均可）。
+
+**期望**
+
+- [x] 对话框内出现可展开的 **词表卫生** 面板；**只读**，不写回词表/记忆
+- [x] 有待关注项时 summary 可读；面板高度随内容适配，**不**被浮窗裁切
+
+---
+
 ## §6 — 阶段 B · 与规则纠错解耦（F0-v2）
 
 > 机器 ✅ 2026-06-05；手测 ✅ 2026-06-05。
@@ -275,14 +308,14 @@ npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs
 
 1. **设置 → LLM** 未配置、未探测或本机 Ollama 不可达 → 点 **智能改稿**。
 2. 转写进行中或全局 busy 时查看按钮。
-3. loading 中点击对话框 **外** 遮罩；再点显式 **取消**。
+3. loading / preview / empty 各阶段：点击对话框 **外** 遮罩；再点显式 **取消** 或 **×**。
 
 **期望**
 
 - [ ] 未就绪时按钮 **可点**（非 disabled）；tooltip 含中文原因
 - [ ] 底部 **warning toast** 说明原因；**不**弹出 blocked / 不可用对话框；**不**请求 LLM
 - [ ] 转写 / busy 时按钮 **disabled**；tooltip「处理中」
-- [ ] loading 误点遮罩 **不**取消；显式「取消」可停且 `busy` 释放
+- [ ] **各阶段**误点遮罩 **均不**关闭；须显式 **取消/关闭/确认写回** 或标题栏 **×**；loading 显式「取消」可停且 `busy` 释放
 - [ ] 标题栏 **×** 与底部「取消/关闭」行为一致（含 loading 可中止）
 
 ### 7.1.7 云端就绪与对话框 UX（2026-06-06 回归）
@@ -318,9 +351,10 @@ npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs
 | §3 | 规则纠错 · 阶段 A | ✅ | 2026-06-05 | 分处高亮、按语段勾选写回 |
 | §4 | 能力矩阵 A/B | ✅ | 2026-06-05 | |
 | §5 | A 增强 v1.5 | ✅ | 2026-06-05 | hints 只读、冲突阻塞写回 |
+| §5.2 | A6 标点全角 + A9 词表卫生 | ✅ | 2026-06-06 | 半角→全角、重复标点压缩、词表卫生只读 |
 | §6 | 阶段 B 与 A 解耦 | ✅ | 2026-06-05 | 关闭 A 不自动弹 B |
 | §7 | 阶段 B LLM 改稿 | ✅ | 2026-06-05 | 预览写回、无段界 ops；本机/云端分批 |
 | §7.1 | Pack 合并校对 | ✅ | 2026-06-06 | 含 §7.1.7 云端门禁 · ×关闭 · 底栏固定 · loading 单行进度 |
 | §8 | 回归 | ✅ | 2026-06-06 | |
 
-**F0 整包**：§0–§8 ✅（含 F0-v2.1 §7.1 + §7.1.7）— 已同步 [`f0-post-transcribe-orchestration-acceptance.md`](./f0-post-transcribe-orchestration-acceptance.md)。
+**F0 整包**：§0–§8 ✅（含 F0-v2.1 §7.1 + §7.1.7、F0-v2.2 §5.2）— 已同步 [`f0-post-transcribe-orchestration-acceptance.md`](./f0-post-transcribe-orchestration-acceptance.md)。

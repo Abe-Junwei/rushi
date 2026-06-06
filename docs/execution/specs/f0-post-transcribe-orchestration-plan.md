@@ -4,7 +4,7 @@
 > **Acceptance**：[`f0-post-transcribe-orchestration-acceptance.md`](./f0-post-transcribe-orchestration-acceptance.md)  
 > **手测**：[`f0-post-transcribe-hand-test-checklist.md`](./f0-post-transcribe-hand-test-checklist.md)  
 > **套件**：[`r3t-f-post-transcribe-suite-plan.md`](./r3t-f-post-transcribe-suite-plan.md) · 取代原「F0-lite = 仅规则」表述  
-> **状态**：✅ F0-v1 / v1.5 / v2 机器 + 手测签收（2026-06-05）
+> **状态**：✅ **F0-v1 / v1.5 / v2 / v2.1 / v2.2** 机器 + 手测签收（v2.2 · 2026-06-06）
 
 ---
 
@@ -31,7 +31,7 @@
 | **F0-v1** | A1+A2：工具栏「规则纠错」；转写 toast 用时/语段/字数 | 0.5–2d | MEM-P2 ✅、F1 ✅、手测 ✅ 2026-06-05 |
 | **F0-v1.5** | A3 hints 清单、A4 冲突门禁 | 1–2d | F7 冲突逻辑 |
 | **F0-v2** | 阶段 B：批处理标点 + 错字（一轮或两轮 LLM），接在 A 确认后 | 3–5d | `postprocess_*`、LLM 配置、隐私同意 |
-| **F0-v2+** | A5/A6/A9 spike（见 research §3.2） | TBD | — |
+| **F0-v2+** | A6 hygiene ✅、A9 词表卫生 ✅；A5/A7 仍为 Spike | — | research §3.2 |
 
 ---
 

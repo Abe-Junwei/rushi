@@ -2,7 +2,7 @@
 
 > **Plan**：[`f0-post-transcribe-orchestration-plan.md`](./f0-post-transcribe-orchestration-plan.md)  
 > **调研**：[`post-transcribe-to-export-automation-research.md`](./post-transcribe-to-export-automation-research.md)  
-> **状态**：✅ **F0-v1 / v1.5 / v2 / v2.1** 机器 + 手测签收（v2.1 · 2026-06-06）
+> **状态**：✅ **F0-v1 / v1.5 / v2 / v2.1 / v2.2** 机器 + 手测签收（v2.2 · 2026-06-06）
 > **套件追溯**：替代 [`r3t-f-post-transcribe-suite-acceptance.md`](./r3t-f-post-transcribe-suite-acceptance.md) §P2 F0-lite 旧定义
 
 ---
@@ -137,4 +137,4 @@
 | F0-v1.5 | ✅ | ✅ | 2026-06-05 |
 | F0-v2 | ✅ | ✅ | 2026-06-05 |
 | F0-v2.1 | ✅ | ✅ | 2026-06-06 |
-| F0-v2.2 | ✅ | — | 2026-06-06 |
+| F0-v2.2 | ✅ | ✅ | 2026-06-06 |
