@@ -1,4 +1,8 @@
-# Full Tauri bundles — run on GitHub Release publish or manual dispatch (not on every PR).
+# Full Tauri bundles — GitHub Release publish or manual dispatch.
+# Sprint A: upload artifacts + optional signing via repository secrets.
+# macOS (optional): APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD, APPLE_SIGNING_IDENTITY,
+#   APPLE_ID, APPLE_PASSWORD, APPLE_TEAM_ID
+# Updater / Windows (optional): TAURI_SIGNING_PRIVATE_KEY, TAURI_SIGNING_PRIVATE_KEY_PASSWORD
 name: Release build
 
 on:
@@ -7,11 +11,14 @@ on:
   workflow_dispatch:
 
 permissions:
-  contents: read
+  contents: write
 
 concurrency:
-  group: release-build-${{ github.ref }}
+  group: release-build-${{ github.event.release.id || github.sha }}
   cancel-in-progress: false
+
+env:
+  CI: true
 
 jobs:
   tauri-linux:
@@ -32,6 +39,10 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+
       - name: Linux packages for Tauri
         run: |
           sudo apt-get update
@@ -49,18 +60,16 @@ jobs:
         run: bash scripts/smoke-asr-sidecar-health.sh
         timeout-minutes: 10
 
-      - name: Tauri build (deb + AppImage)
-        working-directory: apps/desktop
-        run: npm run tauri -- build --bundles deb,appimage
-        timeout-minutes: 30
-
-      - name: Report bundle sizes
-        working-directory: apps/desktop/src-tauri/target/release/bundle
-        run: |
-          echo "## Linux release bundles" >> "$GITHUB_STEP_SUMMARY"
-          find . -maxdepth 3 \( -name '*.deb' -o -name '*.AppImage' \) -print0 2>/dev/null \
-            | xargs -0 -I{} sh -c 'ls -lh "{}"; echo "- {}: $(du -h "{}" | cut -f1)" >> "$GITHUB_STEP_SUMMARY"' \
-            || echo "No Linux bundle artifacts found"
+      - name: Tauri build and upload (Linux)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        with:
+          projectPath: apps/desktop
+          releaseId: ${{ github.event.release.id }}
+          uploadWorkflowArtifacts: ${{ github.event_name == 'workflow_dispatch' }}
+          args: --bundles deb,appimage
+        timeout-minutes: 45
 
   tauri-macos:
     runs-on: macos-latest
@@ -80,6 +89,10 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+
       - name: Install pandoc (user-guide PDF)
         run: brew install pandoc
 
@@ -94,18 +107,24 @@ jobs:
         run: bash scripts/smoke-asr-sidecar-health.sh
         timeout-minutes: 10
 
-      - name: Tauri build (app + dmg)
-        working-directory: apps/desktop
-        run: npm run tauri -- build --bundles app,dmg
-        timeout-minutes: 40
-
-      - name: Report bundle sizes
-        working-directory: apps/desktop/src-tauri/target/release/bundle
-        run: |
-          echo "## macOS release bundles" >> "$GITHUB_STEP_SUMMARY"
-          find . -maxdepth 4 \( -name '*.app' -o -name '*.dmg' \) -print0 2>/dev/null \
-            | xargs -0 -I{} sh -c 'du -sh "{}"; echo "- {}: $(du -sh "{}" | cut -f1)" >> "$GITHUB_STEP_SUMMARY"' \
-            || echo "No macOS bundle artifacts found"
+      - name: Tauri build and upload (macOS)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: apps/desktop
+          releaseId: ${{ github.event.release.id }}
+          uploadWorkflowArtifacts: ${{ github.event_name == 'workflow_dispatch' }}
+          args: --bundles app,dmg
+        timeout-minutes: 50
 
   tauri-windows:
     runs-on: windows-latest
@@ -125,6 +144,10 @@ jobs:
 
       - uses: dtolnay/rust-toolchain@stable
 
+      - uses: swatinem/rust-cache@v2
+        with:
+          workspaces: apps/desktop/src-tauri
+
       - name: Build Windows FunASR sidecar (PyInstaller)
         run: npm run asr:build-sidecar-windows-cpu
         timeout-minutes: 120
@@ -137,16 +160,15 @@ jobs:
           test -f "apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar/_internal/funasr/version.txt"
           test -f "apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar/_internal/ffmpeg.exe"
 
-      - name: Tauri build (MSI)
-        working-directory: apps/desktop
-        run: npm run tauri -- build --bundles msi
-        timeout-minutes: 45
-
-      - name: Report bundle sizes
-        shell: bash
-        working-directory: apps/desktop/src-tauri/target/release/bundle
-        run: |
-          echo "## Windows release bundles" >> "$GITHUB_STEP_SUMMARY"
-          find . -maxdepth 3 -name '*.msi' -print0 2>/dev/null \
-            | xargs -0 -I{} sh -c 'ls -lh "{}"; echo "- {}: $(du -h "{}" | cut -f1)" >> "$GITHUB_STEP_SUMMARY"' \
-            || echo "No MSI artifact found"
+      - name: Tauri build and upload (Windows)
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          projectPath: apps/desktop
+          releaseId: ${{ github.event.release.id }}
+          uploadWorkflowArtifacts: ${{ github.event_name == 'workflow_dispatch' }}
+          args: --bundles msi
+        timeout-minutes: 50
