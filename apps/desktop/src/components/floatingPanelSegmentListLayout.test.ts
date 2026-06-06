@@ -4,7 +4,6 @@ import {
   FLOATING_PANEL_SEGMENT_LIST_MAX_HEIGHT_PX,
   FLOATING_PANEL_SEGMENT_ROW_HEIGHT_PX,
   resolveCorrectionRulesEmptyFitHeight,
-  resolveFloatingPanelCompactFitHeight,
   resolveFloatingPanelFitHeight,
   resolveFloatingPanelSegmentListHeight,
   resolveStageBConsentFitHeight,
@@ -41,9 +40,19 @@ describe("floatingPanelSegmentListLayout", () => {
     expect(withHint).toBeGreaterThan(base);
   });
 
-  it("compact fit height adds optional extras", () => {
-    expect(resolveFloatingPanelCompactFitHeight(160, 36)).toBe(
-      resolveFloatingPanelCompactFitHeight(160) + 36,
-    );
+  it("empty fit height grows with lexicon health panel", () => {
+    const base = resolveCorrectionRulesEmptyFitHeight({
+      hasReadOnlyHints: false,
+      postTranscribeExtra: false,
+      lexiconHealthLineCount: 0,
+    });
+    const withHealth = resolveCorrectionRulesEmptyFitHeight({
+      hasReadOnlyHints: false,
+      postTranscribeExtra: false,
+      lexiconHealthLineCount: 3,
+      lexiconHealthExpanded: true,
+    });
+    expect(withHealth).toBeGreaterThan(base);
+    expect(withHealth).toBeGreaterThanOrEqual(320);
   });
 });

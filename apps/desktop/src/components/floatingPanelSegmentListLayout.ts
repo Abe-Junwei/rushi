@@ -16,7 +16,7 @@ export const FIND_REPLACE_PANEL_STATIC_BODY_PX = 281;
 /** 全部替换预览：说明文案 + 底栏（不含语段列表）。 */
 export const FIND_REPLACE_PREVIEW_STATIC_BODY_PX = 132;
 
-/** 规则纠错预览：摘要 + 底栏（不含语段列表；只读 hints 折叠时额外增高由壳层滚动兜底）。 */
+/** 规则纠错 preview：摘要 + 底栏（不含语段列表 / 词表卫生 / hints）。 */
 export const CORRECTION_RULES_PREVIEW_STATIC_BODY_PX = 168;
 
 /** 智能改稿预览：摘要 + 底栏（不含语段列表）。 */
@@ -43,8 +43,17 @@ export const FLOATING_PANEL_MUTED_LINE_PX = 36;
 /** spinner loading 区（含 padding）。 */
 export const FLOATING_PANEL_SPINNER_BODY_PX = 88;
 
-/** 规则纠错 empty：说明 + 关闭按钮（不含 hints / 额外说明）。 */
+/** 规则纠错 empty：说明 + 关闭按钮（不含 hints / 词表卫生 / 额外说明）。 */
 export const CORRECTION_RULES_EMPTY_STATIC_BODY_PX = 160;
+
+/** A9 词表卫生 `<details>` 摘要行（折叠态）。 */
+export const LEXICON_HEALTH_PANEL_SUMMARY_PX = 40;
+
+/** A9 词表卫生每条摘要 bullet 行。 */
+export const LEXICON_HEALTH_PANEL_LINE_PX = 26;
+
+/** A9 词表卫生列表区 padding + border。 */
+export const LEXICON_HEALTH_PANEL_BODY_CHROME_PX = 20;
 
 /** 规则纠错 loading。 */
 export const CORRECTION_RULES_LOADING_BODY_PX = 88;
@@ -58,7 +67,7 @@ export const CORRECT_SUGGESTIONS_LOADING_BODY_PX = 88;
 /** 改正建议单条结果行高。 */
 export const CORRECT_SUGGESTIONS_RESULT_ROW_PX = 72;
 
-const FLOATING_PANEL_TITLE_BAR_PX = 57;
+export const FLOATING_PANEL_TITLE_BAR_PX = 57;
 
 export function resolveFloatingPanelFitHeight(staticBodyPx: number, rowCount: number): number {
   const listHeight = resolveFloatingPanelSegmentListHeight(rowCount);
@@ -70,14 +79,50 @@ export function resolveFloatingPanelCompactFitHeight(staticBodyPx: number, extra
   return resolveFloatingPanelFitHeight(staticBodyPx, 0) + extraPx;
 }
 
+export function resolveLexiconHealthPanelHeight(
+  summaryLineCount: number,
+  expanded: boolean,
+): number {
+  if (summaryLineCount <= 0) return 0;
+  if (!expanded) return LEXICON_HEALTH_PANEL_SUMMARY_PX;
+  return (
+    LEXICON_HEALTH_PANEL_SUMMARY_PX +
+    LEXICON_HEALTH_PANEL_BODY_CHROME_PX +
+    summaryLineCount * LEXICON_HEALTH_PANEL_LINE_PX
+  );
+}
+
 export function resolveCorrectionRulesEmptyFitHeight(input: {
   hasReadOnlyHints: boolean;
   postTranscribeExtra: boolean;
+  lexiconHealthLineCount?: number;
+  lexiconHealthExpanded?: boolean;
 }): number {
   let extra = 0;
   if (input.hasReadOnlyHints) extra += FLOATING_PANEL_DETAILS_SUMMARY_PX;
   if (input.postTranscribeExtra) extra += FLOATING_PANEL_MUTED_LINE_PX;
+  extra += resolveLexiconHealthPanelHeight(
+    input.lexiconHealthLineCount ?? 0,
+    input.lexiconHealthExpanded ?? false,
+  );
   return resolveFloatingPanelCompactFitHeight(CORRECTION_RULES_EMPTY_STATIC_BODY_PX, extra);
+}
+
+export function resolveCorrectionRulesPreviewFitHeight(input: {
+  rowCount: number;
+  hasReadOnlyHints: boolean;
+  lexiconHealthLineCount?: number;
+  lexiconHealthExpanded?: boolean;
+}): number {
+  let staticExtra = resolveLexiconHealthPanelHeight(
+    input.lexiconHealthLineCount ?? 0,
+    input.lexiconHealthExpanded ?? false,
+  );
+  if (input.hasReadOnlyHints) staticExtra += FLOATING_PANEL_DETAILS_SUMMARY_PX;
+  return resolveFloatingPanelFitHeight(
+    CORRECTION_RULES_PREVIEW_STATIC_BODY_PX + staticExtra,
+    input.rowCount,
+  );
 }
 
 export function resolveCorrectSuggestionsResultsFitHeight(itemCount: number): number {

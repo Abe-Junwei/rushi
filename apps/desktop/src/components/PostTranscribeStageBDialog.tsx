@@ -4,6 +4,7 @@ import { PANEL_TYPOGRAPHY } from "../config/typography";
 import type { PostTranscribeStageBDialogState } from "../pages/usePostTranscribeStageBController";
 import { isLocalLoopbackLlmConfig } from "../services/postprocess/postprocessRuntimeContract";
 import { describeStageBProgress } from "../services/postprocess/postTranscribeStageB";
+import { useFloatingPanelBodyMeasure } from "../hooks/useFloatingPanelBodyMeasure";
 import { FloatingPanelSegmentList } from "./FloatingPanelSegmentList";
 import {
   FLOATING_PANEL_COMPACT_MIN_HEIGHT,
@@ -12,6 +13,10 @@ import {
   resolveStageBConsentFitHeight,
   resolveStageBEmptyFitHeight,
 } from "./floatingPanelSegmentListLayout";
+import {
+  mergeContentFitHeights,
+  resolveMeasuredPanelFitHeight,
+} from "./floatingPanelFitSections";
 import { FloatingPanelSegmentRow } from "./FloatingPanelSegmentRow";
 import { PanelAsyncProgress } from "./PanelAsyncProgress";
 import { readFloatingPanelViewport } from "./floatingPanelViewport";
@@ -125,7 +130,10 @@ export function PostTranscribeStageBDialog({
   onToggleSegment,
   onFocusSegment,
 }: Props) {
-  if (state.phase === "closed" || typeof document === "undefined") return null;
+  const isOpen = state.phase !== "closed" && typeof document !== "undefined";
+  const { bodyRef, bodyHeight } = useFloatingPanelBodyMeasure(isOpen);
+
+  if (!isOpen) return null;
 
   const panelBounds = resolveStageBPanelBounds();
   const isLoading = state.phase === "loading";
@@ -151,7 +159,7 @@ export function PostTranscribeStageBDialog({
       )
     : undefined;
 
-  const contentFitHeight = isLoading
+  const estimatedFit = isLoading
     ? STAGE_B_LOADING_PANEL_HEIGHT
     : isPreview
       ? previewFitHeight
@@ -161,10 +169,15 @@ export function PostTranscribeStageBDialog({
           ? resolveStageBEmptyFitHeight(Boolean(pendingHint), Boolean(packTruncationHint))
           : undefined;
 
+  const measuredFit = bodyHeight != null ? resolveMeasuredPanelFitHeight(bodyHeight) : null;
+  const contentFitHeight = mergeContentFitHeights(estimatedFit, measuredFit);
+
   const defaultPanelHeight = Math.min(
     contentFitHeight ?? STAGE_B_PANEL_DEFAULT_SIZE.height,
     panelBounds.maxHeight,
   );
+
+  const persistPhaseKey = state.phase;
 
   const handleDismiss = () => {
     onCancel();
@@ -175,12 +188,8 @@ export function PostTranscribeStageBDialog({
     handleDismiss();
   };
 
-  /** 遮罩点击：loading 中误点对话框外不取消 LLM 任务 */
-  const handleOverlayClose = () => {
-    if (state.phase === "loading") return;
-    if (busy) return;
-    handleDismiss();
-  };
+  /** 遮罩点击不关闭：loading 防误触；结果阶段须显式点按钮或标题栏 ×。 */
+  const handleOverlayClose = () => {};
 
   return createPortal(
     <div className="workspace">
@@ -199,12 +208,13 @@ export function PostTranscribeStageBDialog({
           height: defaultPanelHeight,
         }}
         contentFitHeight={contentFitHeight}
+        persistPhaseKey={persistPhaseKey}
         panelZIndex={111}
         persistState
         onClose={handleTitleClose}
         onOverlayClose={handleOverlayClose}
       >
-        <FloatingPanelDialogRoot>
+        <FloatingPanelDialogRoot measureRef={bodyRef}>
           {state.phase === "consent" ? (
             <>
               <FloatingPanelDialogHeader>

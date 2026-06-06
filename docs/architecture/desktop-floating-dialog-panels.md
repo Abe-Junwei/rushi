@@ -11,6 +11,47 @@
 | 页脚按钮 | `apps/desktop/src/config/controlStyles.ts`（`CONTROL_BTN_SECONDARY` / `CONTROL_BTN_DANGER_COMPACT` 等） |
 | 颜色 token | `tailwind.config.js` + `apps/desktop/src/config/tokens.ts`（`notion-*`、`zen-*`） |
 
+## 尺寸记忆（persist v2）
+
+`DraggableResizablePanel` 通过 `localStorage` 键 `panel-state-{id}` 记忆位置与尺寸。
+
+| 字段 | 含义 |
+|------|------|
+| `position` / `size` | 最近一次关闭时的全局位置与尺寸 |
+| `userSized` | 用户是否手动拖改过尺寸；`false` 时随 `contentFitHeight` 自动增高 |
+| `layoutRev` | 布局算法版本（当前 `2`）；变更后旧记忆作废 |
+| `phases[phaseKey]` | 各阶段独立 `size` + `userSized`（位置仍共享） |
+
+用法：
+
+- 对话框传 `contentFitHeight`（估算 + `ResizeObserver` 测量取 `max`，见 `floatingPanelFitSections.mergeContentFitHeights`）。
+- 多阶段对话框传 `persistPhaseKey`（如 `empty` / `preview` / `loading`）。
+- 传 `maxWidth` 限制东/西向缩放与 clamp（`FloatingPanelTemplate` 透传）。
+- **双击标题栏**恢复自动高度（清除 `userSized` 并按当前 `contentFitHeight` 重算）。
+
+相关模块：
+
+- `apps/desktop/src/components/floatingPanelPersist.ts`
+- `apps/desktop/src/components/floatingPanelFitSections.ts`
+- `apps/desktop/src/hooks/useFloatingPanelBodyMeasure.ts`
+- `apps/desktop/src/hooks/useFloatingPanelDetailsExpansion.ts`（`<details>` 展开影响估算高度）
+
+## 正文分区（ListRegion + fillAvailable）
+
+语段列表类对话框优先：
+
+```tsx
+<FloatingPanelDialogRoot measureRef={bodyRef}>
+  <FloatingPanelDialogHeader>…固定说明…</FloatingPanelDialogHeader>
+  <FloatingPanelDialogListRegion>
+    <FloatingPanelSegmentList rowCount={n} fillAvailable>…</FloatingPanelSegmentList>
+  </FloatingPanelDialogListRegion>
+  <FloatingPanelDialogFooter>…</FloatingPanelDialogFooter>
+</FloatingPanelDialogRoot>
+```
+
+缩放面板时仅列表区滚动，页脚按钮保持可见。
+
 ## 默认尺寸陷阱
 
 `FloatingPanelTemplate` 在未传 `defaultSize` 时，会把预设的 **`maxWidth` / `maxHeight` 当作首次打开的宽高**（见 `resolvePanelTemplateMetrics`）。例如 `createProject` 的 `maxHeight: 560` 会让内容区下方出现大块空白——与表单 `margin` 无关，而是**面板壳被撑高**。新对话框应显式传 `defaultSize`（可参考 `CreateProjectModal`、`ClearAsrCacheConfirmDialog`）。
@@ -43,7 +84,7 @@
 | `mode` | 适用场景 | 表现 |
 |--------|----------|------|
 | `spinner` | 短任务、无确定步数（规则纠错加载、改正匹配） | 居中 `LoaderCircle` + 一行 `dialogBody` |
-| `determinate` | 多步 LLM（智能改稿标点+错字） | 步骤文案 + `panelProgressStyles` 进度条 + `% (done/total)` + 可选取消 |
+| `determinate` | 多步 LLM（智能改稿） | 单行 `provider · 步骤详情` + `panelProgressStyles` 进度条 + 可选取消 |
 
 进度条 token 真源：`apps/desktop/src/components/panelProgressStyles.ts`（对话框 `h-2`、环境页内嵌 `h-1.5` 共用 `bg-notion-sidebar` 轨道与 `zen-saffron-mid` 填充）。
 

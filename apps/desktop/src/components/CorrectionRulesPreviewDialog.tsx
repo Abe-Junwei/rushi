@@ -9,15 +9,23 @@ import {
   type LearningCorrectionHint,
 } from "../services/editor/learningCorrectionRuleHints";
 import { CorrectionRulesChangeText } from "./CorrectionRulesChangeText";
+import { LexiconHealthPanel } from "./LexiconHealthPanel";
 import { FloatingPanelSegmentList } from "./FloatingPanelSegmentList";
 import {
+  CORRECTION_RULES_EMPTY_STATIC_BODY_PX,
   CORRECTION_RULES_LOADING_BODY_PX,
   CORRECTION_RULES_PREVIEW_STATIC_BODY_PX,
   FLOATING_PANEL_COMPACT_MIN_HEIGHT,
-  resolveCorrectionRulesEmptyFitHeight,
   resolveFloatingPanelCompactFitHeight,
-  resolveFloatingPanelFitHeight,
 } from "./floatingPanelSegmentListLayout";
+import {
+  mergeContentFitHeights,
+  resolveFloatingPanelSectionsFitHeight,
+  resolveMeasuredPanelFitHeight,
+  type FloatingPanelFitSection,
+} from "./floatingPanelFitSections";
+import { useFloatingPanelBodyMeasure } from "../hooks/useFloatingPanelBodyMeasure";
+import { useFloatingPanelDetailsExpansion } from "../hooks/useFloatingPanelDetailsExpansion";
 import { FloatingPanelSegmentRow } from "./FloatingPanelSegmentRow";
 import { readFloatingPanelViewport } from "./floatingPanelViewport";
 import { PanelAsyncProgress } from "./PanelAsyncProgress";
@@ -92,9 +100,13 @@ function ReadOnlyHintGroupLabel({ children }: { children: string }) {
 function ReadOnlyHintsDetails({
   learningHints,
   transcribeHints,
+  expanded,
+  onExpandedChange,
 }: {
   learningHints: LearningCorrectionHint[];
   transcribeHints: CorrectionRuleHintPair[];
+  expanded?: boolean;
+  onExpandedChange?: (open: boolean) => void;
 }) {
   const count = learningHints.length + transcribeHints.length;
   if (!count) return null;
@@ -102,7 +114,11 @@ function ReadOnlyHintsDetails({
   const showGroupLabels = learningHints.length > 0 && transcribeHints.length > 0;
 
   return (
-    <details className="shrink-0 rounded-md border border-notion-divider bg-notion-callout-bg">
+    <details
+      className="shrink-0 rounded-md border border-notion-divider bg-notion-callout-bg"
+      open={expanded}
+      onToggle={(e) => onExpandedChange?.(e.currentTarget.open)}
+    >
       <summary
         className={`cursor-pointer list-none px-3 py-1.5 ${PANEL_TYPOGRAPHY.meta} font-medium text-notion-text marker:content-none [&::-webkit-details-marker]:hidden`}
       >
@@ -154,7 +170,11 @@ export function CorrectionRulesPreviewDialog({
   onToggleSegment,
   onFocusSegment,
 }: Props) {
-  if (state.phase === "closed" || typeof document === "undefined") return null;
+  const isOpen = state.phase !== "closed" && typeof document !== "undefined";
+  const { isDetailsExpanded, setDetailsExpanded } = useFloatingPanelDetailsExpansion();
+  const { bodyRef, bodyHeight } = useFloatingPanelBodyMeasure(isOpen);
+
+  if (!isOpen) return null;
 
   const handleClose = () => {
     if (!busy) onCancel();
@@ -183,21 +203,67 @@ export function CorrectionRulesPreviewDialog({
   const panelMaxHeight = Math.min(720, Math.max(300, viewport.height - panelMargin * 2));
 
   const hasReadOnlyHints =
-    isEmpty &&
-    state.readOnlyLearningHints.length + state.readOnlyTranscribeHints.length > 0;
+    (isEmpty &&
+      state.readOnlyLearningHints.length + state.readOnlyTranscribeHints.length > 0) ||
+    (preview != null &&
+      preview.readOnlyLearningHints.length + preview.readOnlyTranscribeHints.length > 0);
 
-  const contentFitHeight = preview
-    ? resolveFloatingPanelFitHeight(CORRECTION_RULES_PREVIEW_STATIC_BODY_PX, totalCount)
+  const lexiconHealth =
+    state.phase === "empty" || state.phase === "preview" ? state.lexiconHealth : null;
+  const lexiconHealthLineCount = lexiconHealth?.summaryLines.length ?? 0;
+  const lexiconExpanded = isDetailsExpanded(
+    "lexiconHealth",
+    lexiconHealth?.hasActionableIssues ?? false,
+  );
+  const hintsExpanded = isDetailsExpanded("readOnlyHints", false);
+
+  const buildSections = (rowCount: number): FloatingPanelFitSection[] => {
+    const sections: FloatingPanelFitSection[] = [
+      {
+        kind: "static",
+        px: isEmpty ? CORRECTION_RULES_EMPTY_STATIC_BODY_PX : CORRECTION_RULES_PREVIEW_STATIC_BODY_PX,
+      },
+    ];
+    if (hasReadOnlyHints) {
+      sections.push({
+        kind: "details",
+        lineCount:
+          (state.phase === "empty"
+            ? state.readOnlyLearningHints.length + state.readOnlyTranscribeHints.length
+            : preview!.readOnlyLearningHints.length + preview!.readOnlyTranscribeHints.length) || 1,
+        expanded: hintsExpanded,
+      });
+    }
+    if (lexiconHealthLineCount > 0) {
+      sections.push({
+        kind: "details",
+        lineCount: lexiconHealthLineCount,
+        expanded: lexiconExpanded,
+      });
+    }
+    if (postTranscribe && isEmpty) {
+      sections.push({ kind: "mutedLine", show: true });
+    }
+    if (rowCount > 0) {
+      sections.push({ kind: "segmentList", rowCount });
+    }
+    return sections;
+  };
+
+  const estimatedFit = preview
+    ? resolveFloatingPanelSectionsFitHeight(buildSections(totalCount))
     : isEmpty
-      ? resolveCorrectionRulesEmptyFitHeight({
-          hasReadOnlyHints,
-          postTranscribeExtra: postTranscribe,
-        })
+      ? resolveFloatingPanelSectionsFitHeight(buildSections(0))
       : isLoading
         ? resolveFloatingPanelCompactFitHeight(CORRECTION_RULES_LOADING_BODY_PX)
         : undefined;
 
+  const measuredFit = bodyHeight != null ? resolveMeasuredPanelFitHeight(bodyHeight) : null;
+  const contentFitHeight = mergeContentFitHeights(estimatedFit, measuredFit);
+
   const defaultPanelHeight = Math.min(contentFitHeight ?? 400, panelMaxHeight);
+  const persistPhaseKey =
+    state.phase === "loading" ? "loading" : state.phase === "preview" ? "preview" : "empty";
 
   return createPortal(
     <div className="workspace">
@@ -207,17 +273,19 @@ export function CorrectionRulesPreviewDialog({
         preset="findReplace"
         minWidth={400}
         minHeight={isCompactBody ? FLOATING_PANEL_COMPACT_MIN_HEIGHT : 300}
+        maxWidth={720}
         maxHeight={panelMaxHeight}
         defaultSize={{
           width: 520,
           height: defaultPanelHeight,
         }}
         contentFitHeight={contentFitHeight}
+        persistPhaseKey={persistPhaseKey}
         panelZIndex={110}
         persistState
         onClose={handleClose}
       >
-        <FloatingPanelDialogRoot className="gap-2">
+        <FloatingPanelDialogRoot className="gap-2" measureRef={bodyRef}>
           {state.phase === "loading" ? (
             <PanelAsyncProgress mode="spinner" message="正在加载稳定纠错规则…" />
           ) : null}
@@ -232,6 +300,13 @@ export function CorrectionRulesPreviewDialog({
                 <ReadOnlyHintsDetails
                   learningHints={state.readOnlyLearningHints}
                   transcribeHints={state.readOnlyTranscribeHints}
+                  expanded={hintsExpanded}
+                  onExpandedChange={(open) => setDetailsExpanded("readOnlyHints", open)}
+                />
+                <LexiconHealthPanel
+                  report={state.lexiconHealth}
+                  expanded={lexiconExpanded}
+                  onExpandedChange={(open) => setDetailsExpanded("lexiconHealth", open)}
                 />
                 {postTranscribe ? (
                   <p className={`shrink-0 ${PANEL_TYPOGRAPHY.dialogBody} text-notion-text-muted`}>
@@ -251,7 +326,15 @@ export function CorrectionRulesPreviewDialog({
               <FloatingPanelDialogHeader className="space-y-2">
                 <p className={PANEL_TYPOGRAPHY.dialogBody}>
                   共 <span className="font-medium text-notion-text">{preview.ruleCount}</span> 条规则，
-                  <span className="font-medium text-notion-text"> {totalCount}</span> 条语段有匹配
+                  <span className="font-medium text-notion-text"> {totalCount}</span> 条语段有变更
+                  {preview.hygieneTouchedCount > 0 ? (
+                    <>
+                      {" "}
+                      <span className="text-notion-text-muted">
+                        （含文本清洗 {preview.hygieneTouchedCount} 段）
+                      </span>
+                    </>
+                  ) : null}
                   <span className="text-notion-text-muted"> · 点击行定位语段</span>
                 </p>
                 {stableConflictMessage ? (
@@ -261,9 +344,16 @@ export function CorrectionRulesPreviewDialog({
                     {stableConflictMessage}
                   </p>
                 ) : null}
+                <LexiconHealthPanel
+                  report={preview.lexiconHealth}
+                  expanded={lexiconExpanded}
+                  onExpandedChange={(open) => setDetailsExpanded("lexiconHealth", open)}
+                />
                 <ReadOnlyHintsDetails
                   learningHints={preview.readOnlyLearningHints}
                   transcribeHints={preview.readOnlyTranscribeHints}
+                  expanded={hintsExpanded}
+                  onExpandedChange={(open) => setDetailsExpanded("readOnlyHints", open)}
                 />
               </FloatingPanelDialogHeader>
               <FloatingPanelDialogListRegion>

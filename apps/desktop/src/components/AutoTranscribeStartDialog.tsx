@@ -2,6 +2,8 @@ import { createPortal } from "react-dom";
 import { CONTROL_BTN_LINK, CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import type { TranscribeSource } from "../services/stt/transcribeSource";
+import { useFloatingPanelBodyMeasure } from "../hooks/useFloatingPanelBodyMeasure";
+import { mergeContentFitHeights, resolveMeasuredPanelFitHeight } from "./floatingPanelFitSections";
 import { TranscribeSourceSwitch } from "./editor/TranscribeSourceSwitch";
 import { FloatingPanelTemplate } from "./PanelTemplate";
 import { FloatingPanelDialogFooter, FloatingPanelDialogRoot, FloatingPanelDialogScroll } from "./FloatingPanelDialogLayout";
@@ -41,7 +43,12 @@ export function AutoTranscribeStartDialog({
   onCancel,
   onConfirm,
 }: Props) {
+  const { bodyRef, bodyHeight } = useFloatingPanelBodyMeasure(open);
+
   if (!open || typeof document === "undefined") return null;
+
+  const measuredFit = bodyHeight != null ? resolveMeasuredPanelFitHeight(bodyHeight) : null;
+  const contentFitHeight = mergeContentFitHeights(DEFAULT_SIZE.height, measuredFit);
 
   const handleClose = () => {
     if (!busy) onCancel();
@@ -61,11 +68,14 @@ export function AutoTranscribeStartDialog({
         preset="compactDialog"
         minWidth={MIN_SIZE.width}
         minHeight={MIN_SIZE.height}
-        defaultSize={DEFAULT_SIZE}
+        maxWidth={480}
+        defaultSize={{ ...DEFAULT_SIZE, height: contentFitHeight ?? DEFAULT_SIZE.height }}
+        contentFitHeight={contentFitHeight}
+        persistPhaseKey="default"
         persistState
         onClose={handleClose}
       >
-        <FloatingPanelDialogRoot role="dialog" aria-modal="true">
+        <FloatingPanelDialogRoot role="dialog" aria-modal="true" measureRef={bodyRef}>
           <FloatingPanelDialogScroll className="flex flex-col gap-3">
             <div>
             <div className="flex items-center justify-between gap-3">

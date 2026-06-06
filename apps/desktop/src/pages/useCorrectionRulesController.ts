@@ -7,10 +7,15 @@ import {
 import type { SegmentDto } from "../tauri/projectApi";
 import { correctionMemoryList, correctionStableRulesList } from "../tauri/correctionApi";
 import {
-  buildSegmentCorrectionChanges,
   toRulePairs,
   type SegmentCorrectionChange,
 } from "../services/editor/segmentCorrectionRulesApply";
+import { buildLexiconHealthReport, type LexiconHealthReport } from "../services/editor/lexiconHealthReport";
+import {
+  applySegmentTextHygiene,
+  segmentTextHygieneChanged,
+} from "../services/editor/segmentTextHygiene";
+import { buildStageAPreviewChanges } from "../services/editor/stageAPreviewPipeline";
 import {
   filterReadOnlyCorrectionRuleHints,
   parseCorrectionRuleHintsFromWarnings,
@@ -35,6 +40,8 @@ export type CorrectionRulesDialogState =
       phase: "preview";
       changes: SegmentCorrectionChange[];
       ruleCount: number;
+      hygieneTouchedCount: number;
+      lexiconHealth: LexiconHealthReport;
       selectedSegmentIdxs: number[];
       readOnlyTranscribeHints: CorrectionRuleHintPair[];
       readOnlyLearningHints: LearningCorrectionHint[];
@@ -45,6 +52,7 @@ export type CorrectionRulesDialogState =
       phase: "empty";
       readOnlyTranscribeHints: CorrectionRuleHintPair[];
       readOnlyLearningHints: LearningCorrectionHint[];
+      lexiconHealth: LexiconHealthReport;
       trigger?: CorrectionRulesDialogTrigger;
     };
 
@@ -109,8 +117,21 @@ export function useCorrectionRulesController(args: Args) {
       correctionMemoryList(),
     ]);
     const pairs = toRulePairs(rows);
-    const changes = buildSegmentCorrectionChanges(segmentsRef.current, pairs);
+    const changes = buildStageAPreviewChanges(segmentsRef.current, pairs);
     const stableConflicts = detectStableCorrectionRuleConflicts(rows);
+    const lexiconHealth = buildLexiconHealthReport({
+      memoryEntries,
+      stableRules: rows,
+      stableConflicts,
+      segments: segmentsRef.current,
+    });
+    let hygieneTouchedCount = 0;
+    for (const seg of segmentsRef.current) {
+      const before = seg.text ?? "";
+      if (segmentTextHygieneChanged(before, applySegmentTextHygiene(before))) {
+        hygieneTouchedCount += 1;
+      }
+    }
     const hintPairs = filterReadOnlyCorrectionRuleHints(
       parseCorrectionRuleHintsFromWarnings(transcribeWarnings),
       pairs,
@@ -127,6 +148,8 @@ export function useCorrectionRulesController(args: Args) {
     return {
       changes,
       ruleCount: pairs.length,
+      hygieneTouchedCount,
+      lexiconHealth,
       readOnlyTranscribeHints,
       readOnlyLearningHints,
       stableConflicts,
@@ -142,12 +165,20 @@ export function useCorrectionRulesController(args: Args) {
         const {
           changes,
           ruleCount,
+          hygieneTouchedCount,
+          lexiconHealth,
           readOnlyTranscribeHints,
           readOnlyLearningHints,
           stableConflicts,
         } = await loadStableRulesPreview();
         if (!changes.length) {
-          setDialog({ phase: "empty", readOnlyTranscribeHints, readOnlyLearningHints, trigger });
+          setDialog({
+            phase: "empty",
+            readOnlyTranscribeHints,
+            readOnlyLearningHints,
+            lexiconHealth,
+            trigger,
+          });
           return;
         }
         const firstSegmentIdx = changes[0]?.segmentIdx ?? null;
@@ -157,6 +188,8 @@ export function useCorrectionRulesController(args: Args) {
           phase: "preview",
           changes,
           ruleCount,
+          hygieneTouchedCount,
+          lexiconHealth,
           selectedSegmentIdxs: changes.map((c) => c.segmentIdx),
           readOnlyTranscribeHints,
           readOnlyLearningHints,

@@ -1,16 +1,16 @@
-import type { HTMLAttributes, ReactNode } from "react";
+import type { HTMLAttributes, ReactNode, Ref } from "react";
 
 const ROOT_CLASS = "flex h-full min-h-0 flex-col px-5 py-3";
 const SCROLL_CLASS = "floating-panel-body-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden";
 const FOOTER_BASE =
   "mt-3 flex shrink-0 items-center gap-2 border-t border-notion-divider pt-3";
 
-type RootProps = HTMLAttributes<HTMLDivElement>;
+type RootProps = HTMLAttributes<HTMLDivElement> & { measureRef?: Ref<HTMLDivElement> };
 
 /** 占满面板正文区；配合 DraggableResizablePanel 的 flex 列与 overflow-hidden。 */
-export function FloatingPanelDialogRoot({ children, className, ...rest }: RootProps) {
+export function FloatingPanelDialogRoot({ children, className, measureRef, ...rest }: RootProps) {
   return (
-    <div className={[ROOT_CLASS, className].filter(Boolean).join(" ")} {...rest}>
+    <div ref={measureRef} className={[ROOT_CLASS, className].filter(Boolean).join(" ")} {...rest}>
       {children}
     </div>
   );

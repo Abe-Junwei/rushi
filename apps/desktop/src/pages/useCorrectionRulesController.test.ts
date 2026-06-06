@@ -50,6 +50,25 @@ describe("useCorrectionRulesController F0 stage A", () => {
     }
   });
 
+  it("openPostTranscribeStageA shows preview for hygiene-only when no rules match", async () => {
+    vi.mocked(correctionStableRulesList).mockResolvedValue([]);
+    const segments: SegmentDto[] = [
+      { uid: "s1", idx: 0, start_sec: 0, end_sec: 1, text: "你好。。。" },
+    ];
+    const args = { ...baseArgs(), segments, segmentsRef: { current: segments } };
+    const { result } = renderHook(() => useCorrectionRulesController(args));
+
+    await act(async () => {
+      await result.current.openPostTranscribeStageA();
+    });
+
+    expect(result.current.correctionRulesDialog.phase).toBe("preview");
+    if (result.current.correctionRulesDialog.phase === "preview") {
+      expect(result.current.correctionRulesDialog.changes[0]?.afterText).toBe("你好。");
+      expect(result.current.correctionRulesDialog.hygieneTouchedCount).toBe(1);
+    }
+  });
+
   it("openPostTranscribeStageA shows empty dialog when no segment matches", async () => {
     vi.mocked(correctionStableRulesList).mockResolvedValue([
       { wrong: "不存在", right: "正形", hitCount: 3, acceptedAsRule: false },
@@ -61,12 +80,15 @@ describe("useCorrectionRulesController F0 stage A", () => {
       await result.current.openPostTranscribeStageA();
     });
 
-    expect(result.current.correctionRulesDialog).toEqual({
+    expect(result.current.correctionRulesDialog).toMatchObject({
       phase: "empty",
       readOnlyTranscribeHints: [],
       readOnlyLearningHints: [],
       trigger: "postTranscribe",
     });
+    if (result.current.correctionRulesDialog.phase === "empty") {
+      expect(result.current.correctionRulesDialog.lexiconHealth.stableRuleCount).toBe(1);
+    }
   });
 
   it("blocks confirm when stable rules conflict", async () => {

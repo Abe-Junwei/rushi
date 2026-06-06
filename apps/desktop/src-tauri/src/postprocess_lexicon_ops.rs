@@ -80,6 +80,7 @@ pub fn build_stage_b_merged_proofread_prompt(
     lines.join("\n")
 }
 
+#[allow(dead_code)]
 pub fn parse_lexicon_proofread_json(raw: &str) -> Result<LexiconProofreadLlmPayload, String> {
     parse_lexicon_proofread_json_lenient(raw).map(|r| r.payload)
 }

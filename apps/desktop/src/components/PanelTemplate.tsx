@@ -104,8 +104,9 @@ interface FloatingPanelTemplateProps {
   defaultPosition?: { x: number; y: number };
   /** Panel shell z-index; default 50. Editor modals use 110 to clear toolbar (z-90). */
   panelZIndex?: number;
-  /** 随内容（如语段条数）自动调整面板高度；用户拖放改尺寸后本会话内不再覆盖。 */
   contentFitHeight?: number;
+  persistPhaseKey?: string;
+  layoutRev?: number;
 }
 
 export function FloatingPanelTemplate({
@@ -125,6 +126,8 @@ export function FloatingPanelTemplate({
   defaultPosition: defaultPositionOverride,
   panelZIndex,
   contentFitHeight,
+  persistPhaseKey,
+  layoutRev,
 }: FloatingPanelTemplateProps) {
   const presetConfig = PANEL_TEMPLATE_PRESETS[preset];
   const mergedConfig: PanelTemplatePreset = {
@@ -148,10 +151,13 @@ export function FloatingPanelTemplate({
         defaultSize={defaultSizeOverride ?? metrics.defaultSize}
         minWidth={mergedConfig.minWidth}
         minHeight={mergedConfig.minHeight}
+        maxWidth={mergedConfig.maxWidth}
         maxHeight={mergedConfig.maxHeight}
         persistState={mergedConfig.persistState}
         zIndex={panelZIndex}
         contentFitHeight={contentFitHeight}
+        persistPhaseKey={persistPhaseKey}
+        layoutRev={layoutRev}
         onClose={onClose}
       >
         {children}

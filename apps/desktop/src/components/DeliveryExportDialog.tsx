@@ -23,6 +23,8 @@ import { FloatingPanelDialogFooter, FloatingPanelDialogRoot, FloatingPanelDialog
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { TopBarStatusIndicator } from "./TopBarStatusIndicator";
 import { useLlmEnvStatus } from "../hooks/useLlmEnvStatus";
+import { useFloatingPanelBodyMeasure } from "../hooks/useFloatingPanelBodyMeasure";
+import { mergeContentFitHeights, resolveMeasuredPanelFitHeight } from "./floatingPanelFitSections";
 import {
   resolveExportPolishBlockReason,
 } from "../services/exportDocxPolish";
@@ -88,6 +90,7 @@ export function DeliveryExportDialog({
   const [preview, setPreview] = useState<ExportPolishResult | null>(null);
   const segmentsFingerprintRef = useRef("");
   const previewRequestIdRef = useRef<string | null>(null);
+  const { bodyRef, bodyHeight } = useFloatingPanelBodyMeasure(open);
 
   const polishAvailable = exportModeSupportsLlmPolish(mode);
   const polishReadiness = assessExportPolishReadiness(
@@ -176,6 +179,14 @@ export function DeliveryExportDialog({
   const punctCount = preview?.lineChanges.filter((r) => r.punctuationOnly).length ?? 0;
   const trackCount = preview?.lineChanges.filter((r) => r.hasTrackChange).length ?? 0;
 
+  const measuredFit = bodyHeight != null ? resolveMeasuredPanelFitHeight(bodyHeight) : null;
+  const contentFitHeight = mergeContentFitHeights(DEFAULT_SIZE.height, measuredFit);
+  const persistPhaseKey = previewLoading
+    ? "preview-loading"
+    : preview || previewError
+      ? "preview"
+      : "base";
+
   return createPortal(
     <div className="workspace">
       <FloatingPanelTemplate
@@ -184,11 +195,14 @@ export function DeliveryExportDialog({
         preset="compactDialog"
         minWidth={MIN_SIZE.width}
         minHeight={MIN_SIZE.height}
-        defaultSize={DEFAULT_SIZE}
+        maxWidth={480}
+        defaultSize={{ ...DEFAULT_SIZE, height: contentFitHeight ?? DEFAULT_SIZE.height }}
+        contentFitHeight={contentFitHeight}
+        persistPhaseKey={persistPhaseKey}
         persistState
         onClose={handleClose}
       >
-        <FloatingPanelDialogRoot role="dialog" aria-modal={true}>
+        <FloatingPanelDialogRoot role="dialog" aria-modal={true} measureRef={bodyRef}>
           <FloatingPanelDialogScroll className="flex flex-col gap-3">
           <p className={PANEL_TYPOGRAPHY.dialogBody}>
             导出前将自动保存编辑器中未提交的语段正文，与当前波形列表一致。
