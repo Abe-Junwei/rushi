@@ -181,7 +181,13 @@ jobs:
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
         run: |
           npm ci
-          npm run desktop:test:e2e
+          npm run desktop:test:e2e:asr
+
+      - name: Playwright E2E (desktop shell smoke)
+        working-directory: apps/desktop
+        run: |
+          npx playwright install chromium
+          npm run test:e2e:desktop
 
       - name: P4 eval placeholder wav (manifest paths; not in git)
         run: bash scripts/eval-generate-placeholders.sh

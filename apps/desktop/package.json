@@ -12,6 +12,8 @@
     "lint": "eslint .",
     "test": "vitest run",
     "test:e2e": "playwright test",
+    "test:e2e:asr": "playwright test --project=asr-api",
+    "test:e2e:desktop": "playwright test --project=desktop-ui",
     "check:doc-links": "node ../../scripts/check-internal-doc-links.mjs",
     "tauri": "tauri",
     "prepare": "husky"

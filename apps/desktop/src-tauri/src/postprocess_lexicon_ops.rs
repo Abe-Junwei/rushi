@@ -549,6 +549,17 @@ mod tests {
     }
 
     #[test]
+    fn stage_b_prompt_includes_lexicon_segments_and_constraints() {
+        let pack = sample_pack();
+        let segments = vec![seg("seg-a", "安波那那很好")];
+        let prompt = build_stage_b_merged_proofread_prompt(&segments, &pack);
+        assert!(prompt.contains("uid=seg-a"));
+        assert!(prompt.contains("安波那那很好"));
+        assert!(prompt.contains("安波那那→安那般那"));
+        assert!(prompt.contains("只输出一个 JSON 对象"));
+    }
+
+    #[test]
     fn is_punctuation_only_change_ignores_punct() {
         assert!(is_punctuation_only_change("你好世界", "你好，世界。"));
         assert!(!is_punctuation_only_change("你好", "您好"));
