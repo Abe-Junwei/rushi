@@ -1,8 +1,6 @@
 # Full Tauri bundles — GitHub Release publish or manual dispatch.
-# Sprint A: upload artifacts + optional signing via repository secrets.
-# macOS (optional): APPLE_CERTIFICATE, APPLE_CERTIFICATE_PASSWORD, APPLE_SIGNING_IDENTITY,
-#   APPLE_ID, APPLE_PASSWORD, APPLE_TEAM_ID
-# Updater / Windows (optional): TAURI_SIGNING_PRIVATE_KEY, TAURI_SIGNING_PRIVATE_KEY_PASSWORD
+# Sidecar is built before Tauri bundle; artifacts upload via gh/upload-artifact.
+# macOS signing (optional): set valid APPLE_* repository secrets (base64 .p12).
 name: Release build
 
 on:
@@ -19,6 +17,7 @@ concurrency:
 
 env:
   CI: true
+  BUNDLE_ROOT: apps/desktop/src-tauri/target/release/bundle
 
 jobs:
   tauri-linux:
@@ -49,8 +48,7 @@ jobs:
           sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev pandoc wkhtmltopdf
 
       - name: Install ffmpeg (sidecar bundle)
-        run: |
-          sudo apt-get install -y ffmpeg
+        run: sudo apt-get install -y ffmpeg
 
       - name: Build Linux x86_64 FunASR sidecar (PyInstaller)
         run: bash scripts/build-asr-sidecar-unix.sh
@@ -60,16 +58,30 @@ jobs:
         run: bash scripts/smoke-asr-sidecar-health.sh
         timeout-minutes: 10
 
-      - name: Tauri build and upload (Linux)
-        uses: tauri-apps/tauri-action@v0
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        with:
-          projectPath: apps/desktop
-          releaseId: ${{ github.event.release.id }}
-          uploadWorkflowArtifacts: ${{ github.event_name == 'workflow_dispatch' }}
-          args: --bundles deb,appimage
+      - name: Tauri build (deb + AppImage)
+        working-directory: apps/desktop
+        run: npm run tauri -- build --bundles deb,appimage
         timeout-minutes: 45
+
+      - name: Upload Linux workflow artifacts
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: linux-release-bundles
+          path: |
+            ${{ env.BUNDLE_ROOT }}/deb/*.deb
+            ${{ env.BUNDLE_ROOT }}/appimage/*.AppImage
+          if-no-files-found: error
+
+      - name: Upload Linux bundles to GitHub Release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" \
+            "${{ env.BUNDLE_ROOT }}/deb/"*.deb \
+            "${{ env.BUNDLE_ROOT }}/appimage/"*.AppImage \
+            --clobber
 
   tauri-macos:
     runs-on: macos-latest
@@ -107,10 +119,47 @@ jobs:
         run: bash scripts/smoke-asr-sidecar-health.sh
         timeout-minutes: 10
 
-      - name: Tauri build and upload (macOS)
-        uses: tauri-apps/tauri-action@v0
+      - name: Detect macOS signing secrets
+        id: mac_sign
+        shell: bash
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
+          APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
+          APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
+          APPLE_ID: ${{ secrets.APPLE_ID }}
+          APPLE_PASSWORD: ${{ secrets.APPLE_PASSWORD }}
+          APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+        run: |
+          if [ -z "$APPLE_CERTIFICATE" ]; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "No APPLE_CERTIFICATE — building unsigned."
+            exit 0
+          fi
+          if ! echo "$APPLE_CERTIFICATE" | base64 -d > /tmp/apple-cert.p12 2>/dev/null; then
+            echo "enabled=false" >> "$GITHUB_OUTPUT"
+            echo "::warning::APPLE_CERTIFICATE is not valid base64 — building unsigned."
+            exit 0
+          fi
+          for v in APPLE_CERTIFICATE_PASSWORD APPLE_SIGNING_IDENTITY APPLE_ID APPLE_PASSWORD APPLE_TEAM_ID; do
+            if [ -z "${!v}" ]; then
+              echo "enabled=false" >> "$GITHUB_OUTPUT"
+              echo "::warning::$v is missing — building unsigned."
+              exit 0
+            fi
+          done
+          echo "enabled=true" >> "$GITHUB_OUTPUT"
+          echo "Valid Apple signing secrets detected."
+
+      - name: Tauri build unsigned (app + dmg)
+        if: steps.mac_sign.outputs.enabled != 'true'
+        working-directory: apps/desktop
+        run: npm run tauri -- build --bundles app,dmg
+        timeout-minutes: 50
+
+      - name: Tauri build signed (app + dmg)
+        if: steps.mac_sign.outputs.enabled == 'true'
+        working-directory: apps/desktop
+        env:
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
@@ -119,12 +168,26 @@ jobs:
           APPLE_TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        with:
-          projectPath: apps/desktop
-          releaseId: ${{ github.event.release.id }}
-          uploadWorkflowArtifacts: ${{ github.event_name == 'workflow_dispatch' }}
-          args: --bundles app,dmg
+        run: npm run tauri -- build --bundles app,dmg
         timeout-minutes: 50
+
+      - name: Upload macOS workflow artifacts
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: macos-release-bundles
+          path: |
+            ${{ env.BUNDLE_ROOT }}/dmg/*.dmg
+          if-no-files-found: error
+
+      - name: Upload macOS bundles to GitHub Release
+        if: github.event_name == 'release'
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" \
+            "${{ env.BUNDLE_ROOT }}/dmg/"*.dmg \
+            --clobber
 
   tauri-windows:
     runs-on: windows-latest
@@ -160,15 +223,29 @@ jobs:
           test -f "apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar/_internal/funasr/version.txt"
           test -f "apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar/_internal/ffmpeg.exe"
 
-      - name: Tauri build and upload (Windows)
-        uses: tauri-apps/tauri-action@v0
+      - name: Tauri build (MSI)
+        working-directory: apps/desktop
         env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        with:
-          projectPath: apps/desktop
-          releaseId: ${{ github.event.release.id }}
-          uploadWorkflowArtifacts: ${{ github.event_name == 'workflow_dispatch' }}
-          args: --bundles msi
+        run: npm run tauri -- build --bundles msi
         timeout-minutes: 50
+
+      - name: Upload Windows workflow artifacts
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v4
+        with:
+          name: windows-release-bundles
+          path: |
+            ${{ env.BUNDLE_ROOT }}/msi/*.msi
+          if-no-files-found: error
+
+      - name: Upload Windows bundles to GitHub Release
+        if: github.event_name == 'release'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ github.event.release.tag_name }}" \
+            "${{ env.BUNDLE_ROOT }}/msi/"*.msi \
+            --clobber

@@ -46,7 +46,10 @@ function Ensure-FunasrOnedirData {
   }
 
   Write-Warning "$Marker missing after PyInstaller; copying funasr from build venv"
-  $Site = python -c "import funasr, pathlib; print(pathlib.Path(funasr.__file__).resolve().parent)"
+  $Site = & python -c "import funasr, pathlib; print(pathlib.Path(funasr.__file__).resolve().parent)"
+  if ($LASTEXITCODE -ne 0 -or [string]::IsNullOrWhiteSpace($Site)) {
+    throw "FATAL: funasr is not importable in the sidecar build venv"
+  }
   $FunasrDir = Join-Path $InternalDir "funasr"
   if (Test-Path $FunasrDir) { Remove-Item -Recurse -Force $FunasrDir }
   New-Item -ItemType Directory -Force $FunasrDir | Out-Null
@@ -68,10 +71,18 @@ Invoke-WebRequest -Uri "$Base/win32-x64.LICENSE" -OutFile (Join-Path $FfDir "LIC
 if (Test-Path $TmpVenv) { Remove-Item -Recurse -Force $TmpVenv }
 python -m venv $TmpVenv
 & (Join-Path $TmpVenv "Scripts\Activate.ps1")
-python -m pip install -U pip setuptools wheel
-python -m pip install pyinstaller
-python -m pip install -r $Lock
-python -m pip install -e $Asr --no-deps
+function Invoke-CheckedNative {
+  param([scriptblock]$Command)
+  & $Command
+  if ($LASTEXITCODE -ne 0) {
+    exit $LASTEXITCODE
+  }
+}
+
+Invoke-CheckedNative { python -m pip install -U pip setuptools wheel }
+Invoke-CheckedNative { python -m pip install pyinstaller }
+Invoke-CheckedNative { python -m pip install -r $Lock }
+Invoke-CheckedNative { python -m pip install -e $Asr --no-deps }
 
 Set-Location $Asr
 if (Test-Path build) { Remove-Item -Recurse -Force build }
@@ -104,6 +115,8 @@ pyinstaller --noconfirm --clean --onedir --name $PyInstallerName `
   --collect-submodules omegaconf `
   --collect-submodules torchaudio `
   rushi_sidecar_entry.py
+
+if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
 
 Ensure-FunasrOnedirData -InternalDir (Join-Path $Asr "dist\$PyInstallerName\_internal")
 
