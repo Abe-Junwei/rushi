@@ -110,23 +110,27 @@ mod tests {
 
     #[test]
     fn resolve_ffprobe_prefers_bundled_when_present() {
+        let temp = std::env::temp_dir().join(format!(
+            "rushi-ffprobe-resolve-{}",
+            uuid::Uuid::new_v4()
+        ));
+        let internal = temp
+            .join("bundled-asr")
+            .join("rushi-asr-sidecar")
+            .join("_internal");
+        std::fs::create_dir_all(&internal).unwrap();
+        #[cfg(target_os = "windows")]
+        let probe = internal.join("ffprobe.exe");
+        #[cfg(not(target_os = "windows"))]
+        let probe = internal.join("ffprobe");
+        std::fs::write(&probe, b"").unwrap();
+
         let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        let roots = crate::bundled_asr_assets::candidate_resource_roots_from_parts(None, &manifest);
-        let resolved = resolve_ffprobe_command();
-        let mut expected = PathBuf::from("ffprobe");
-        for root in &roots {
-            for onedir in ["rushi-asr-sidecar", "rushi-asr-sidecar-cuda"] {
-                let internal = root.join("bundled-asr").join(onedir).join("_internal");
-                #[cfg(target_os = "windows")]
-                let probe = internal.join("ffprobe.exe");
-                #[cfg(not(target_os = "windows"))]
-                let probe = internal.join("ffprobe");
-                if probe.is_file() {
-                    expected = probe;
-                    break;
-                }
-            }
-        }
-        assert_eq!(resolved, expected);
+        let roots =
+            crate::bundled_asr_assets::candidate_resource_roots_from_parts(Some(temp.clone()), &manifest);
+        let resolved = crate::bundled_asr_assets::resolve_bundled_ffprobe_from_roots(&roots);
+        assert_eq!(resolved, probe);
+
+        let _ = std::fs::remove_dir_all(temp);
     }
 }

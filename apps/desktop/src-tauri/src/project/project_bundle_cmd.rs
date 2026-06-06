@@ -14,6 +14,14 @@ use super::utils::{canonicalize_audio_storage_path, now_ms, open_db, project_det
 
 pub(super) const PROJECT_BUNDLE_KIND: &str = "rushi_project_bundle";
 pub(super) const PROJECT_BUNDLE_VERSION: u32 = 1;
+#[cfg(test)]
+pub(super) const MAX_BUNDLE_UNCOMPRESSED_BYTES: u64 = 16 * 1024;
+#[cfg(not(test))]
+pub(super) const MAX_BUNDLE_UNCOMPRESSED_BYTES: u64 = 500 * 1024 * 1024;
+#[cfg(test)]
+pub(super) const MAX_BUNDLE_SEGMENT_COUNT: usize = 10;
+#[cfg(not(test))]
+pub(super) const MAX_BUNDLE_SEGMENT_COUNT: usize = 100_000;
 
 #[derive(Debug, Serialize, Deserialize)]
 pub(super) struct ProjectBundleManifest {
@@ -51,10 +59,39 @@ pub(super) fn read_zip_bytes(
     let mut file = archive
         .by_name(name)
         .map_err(|e| format!("项目包缺少 {name}: {e}"))?;
-    let mut out = Vec::new();
+    let size = file.size();
+    if size > MAX_BUNDLE_UNCOMPRESSED_BYTES {
+        return Err(format!(
+            "项目包文件 {name} 过大（>{MAX_BUNDLE_UNCOMPRESSED_BYTES} 字节）。"
+        ));
+    }
+    let mut out = Vec::with_capacity(size.min(64 * 1024) as usize);
     file.read_to_end(&mut out)
         .map_err(|e| format!("读取项目包文件失败 {name}: {e}"))?;
     Ok(out)
+}
+
+fn validate_bundle_archive(archive: &mut ZipArchive<File>) -> Result<(), String> {
+    let mut total_uncompressed: u64 = 0;
+    for i in 0..archive.len() {
+        let file = archive
+            .by_index(i)
+            .map_err(|e| format!("读取项目包条目失败: {e}"))?;
+        if file.is_dir() {
+            continue;
+        }
+        let name = file.name();
+        if name.contains("..") || name.starts_with('/') || name.starts_with('\\') {
+            return Err("无法导入：项目包路径不安全。".into());
+        }
+        total_uncompressed = total_uncompressed.saturating_add(file.size());
+        if total_uncompressed > MAX_BUNDLE_UNCOMPRESSED_BYTES {
+            return Err(format!(
+                "无法导入：项目包解压体积过大（>{MAX_BUNDLE_UNCOMPRESSED_BYTES} 字节）。"
+            ));
+        }
+    }
+    Ok(())
 }
 
 pub(super) fn read_zip_json<T: for<'de> Deserialize<'de>>(
@@ -163,6 +200,7 @@ pub(super) fn import_project_bundle_from_path(
 ) -> Result<ProjectDetail, String> {
     let file = File::open(zip_path).map_err(|e| format!("打开项目包失败: {e}"))?;
     let mut archive = ZipArchive::new(file).map_err(|e| format!("读取项目包失败: {e}"))?;
+    validate_bundle_archive(&mut archive)?;
     let manifest: ProjectBundleManifest = read_zip_json(&mut archive, "manifest.json")?;
     if manifest.kind != PROJECT_BUNDLE_KIND {
         return Err("无法导入：不是受支持的 Rushi 项目包。".into());
@@ -184,6 +222,11 @@ pub(super) fn import_project_bundle_from_path(
     }
 
     let doc: ProjectBundleDocument = read_zip_json(&mut archive, "project.json")?;
+    if doc.segments.len() > MAX_BUNDLE_SEGMENT_COUNT {
+        return Err(format!(
+            "无法导入：语段数量超过上限（>{MAX_BUNDLE_SEGMENT_COUNT}）。"
+        ));
+    }
     let audio_bytes = read_zip_bytes(&mut archive, &format!("audio/{audio_file_name}"))?;
 
     let id = Uuid::new_v4().to_string();

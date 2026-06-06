@@ -44,7 +44,7 @@ export function shouldSkipSidecarRestartForSelection(
   ctx: LocalAsrSetupSelectionContext,
 ): boolean {
   if (ctx.sidecarAsyncTranscribeCapable === false) return false;
-  if (!caps?.funasr_ready || !caps.ready_for_transcribe) return false;
+  if (!caps?.funasr_ready) return false;
   const hub = resolveLocalAsrHubModelId(ctx.selectedHubModelId);
   const lang = normalizeLocalAsrRecognitionLanguage(
     ctx.recognitionLanguage ?? DEFAULT_LOCAL_ASR_RECOGNITION_LANGUAGE,

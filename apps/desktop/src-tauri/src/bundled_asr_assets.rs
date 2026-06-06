@@ -74,9 +74,12 @@ pub fn resolve_bundled_ffmpeg() -> PathBuf {
         .unwrap_or_else(|| PathBuf::from("ffmpeg"))
 }
 
+pub fn resolve_bundled_ffprobe_from_roots(roots: &[PathBuf]) -> PathBuf {
+    bundled_internal_tool(roots, "ffprobe").unwrap_or_else(|| PathBuf::from("ffprobe"))
+}
+
 pub fn resolve_bundled_ffprobe() -> PathBuf {
-    bundled_internal_tool(&resource_roots_for_lookup(), "ffprobe")
-        .unwrap_or_else(|| PathBuf::from("ffprobe"))
+    resolve_bundled_ffprobe_from_roots(&resource_roots_for_lookup())
 }
 
 pub fn cached_resource_roots() -> Option<&'static [PathBuf]> {

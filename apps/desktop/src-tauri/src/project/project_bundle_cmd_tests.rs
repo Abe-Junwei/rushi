@@ -1,7 +1,8 @@
 use super::project_bundle_cmd::{
     export_project_bundle_to_path, import_project_bundle_from_path, read_zip_bytes, read_zip_json,
     zip_opts, ProjectBundleDocument, ProjectBundleManifest, ProjectBundleProjectMeta,
-    PROJECT_BUNDLE_KIND, PROJECT_BUNDLE_VERSION,
+    MAX_BUNDLE_SEGMENT_COUNT, MAX_BUNDLE_UNCOMPRESSED_BYTES, PROJECT_BUNDLE_KIND,
+    PROJECT_BUNDLE_VERSION,
 };
 use super::types::SegmentDto;
 use super::utils::open_db;
@@ -294,6 +295,98 @@ fn import_project_bundle_rejects_unsafe_audio_path() {
 
     let err = import_project_bundle_from_path(&st, &zip_path).unwrap_err();
     assert!(err.contains("音频路径不安全"));
+
+    let _ = fs::remove_dir_all(&st.root);
+}
+
+#[test]
+fn import_project_bundle_rejects_zip_bomb_uncompressed_size() {
+    let st = test_state("zip_bomb");
+    let zip_path = st.root.join("bomb.zip");
+    let file = File::create(&zip_path).unwrap();
+    let mut zip = ZipWriter::new(file);
+    let manifest = ProjectBundleManifest {
+        kind: PROJECT_BUNDLE_KIND.to_string(),
+        version: PROJECT_BUNDLE_VERSION,
+        exported_at_ms: 1,
+        project: ProjectBundleProjectMeta {
+            original_id: "source-id".into(),
+            name: "原项目".into(),
+            created_at_ms: 2,
+            updated_at_ms: 3,
+        },
+        audio_file: "audio.wav".into(),
+    };
+    let doc = ProjectBundleDocument {
+        name: "导入项目".into(),
+        created_at_ms: 2,
+        updated_at_ms: 3,
+        segments: vec![],
+    };
+    zip.start_file("manifest.json", zip_opts()).unwrap();
+    zip.write_all(&serde_json::to_vec(&manifest).unwrap())
+        .unwrap();
+    zip.start_file("project.json", zip_opts()).unwrap();
+    zip.write_all(&serde_json::to_vec(&doc).unwrap()).unwrap();
+    let oversized = vec![0u8; (MAX_BUNDLE_UNCOMPRESSED_BYTES + 1) as usize];
+    zip.start_file("audio/audio.wav", zip_opts()).unwrap();
+    zip.write_all(&oversized).unwrap();
+    zip.finish().unwrap();
+
+    let err = import_project_bundle_from_path(&st, &zip_path).unwrap_err();
+    assert!(err.contains("解压体积过大") || err.contains("过大"));
+
+    let _ = fs::remove_dir_all(&st.root);
+}
+
+#[test]
+fn import_project_bundle_rejects_excessive_segment_count() {
+    let st = test_state("too_many_segments");
+    let zip_path = st.root.join("segments.zip");
+    let file = File::create(&zip_path).unwrap();
+    let mut zip = ZipWriter::new(file);
+    let manifest = ProjectBundleManifest {
+        kind: PROJECT_BUNDLE_KIND.to_string(),
+        version: PROJECT_BUNDLE_VERSION,
+        exported_at_ms: 1,
+        project: ProjectBundleProjectMeta {
+            original_id: "source-id".into(),
+            name: "原项目".into(),
+            created_at_ms: 2,
+            updated_at_ms: 3,
+        },
+        audio_file: "audio.wav".into(),
+    };
+    let segments: Vec<SegmentDto> = (0..=MAX_BUNDLE_SEGMENT_COUNT)
+        .map(|idx| SegmentDto {
+            uid: None,
+            idx: idx as i32,
+            start_sec: idx as f64,
+            end_sec: idx as f64 + 1.0,
+            text: "x".into(),
+            confidence: None,
+            low_confidence: false,
+            detail: None,
+            kind: None,
+        })
+        .collect();
+    let doc = ProjectBundleDocument {
+        name: "导入项目".into(),
+        created_at_ms: 2,
+        updated_at_ms: 3,
+        segments,
+    };
+    zip.start_file("manifest.json", zip_opts()).unwrap();
+    zip.write_all(&serde_json::to_vec(&manifest).unwrap())
+        .unwrap();
+    zip.start_file("project.json", zip_opts()).unwrap();
+    zip.write_all(&serde_json::to_vec(&doc).unwrap()).unwrap();
+    zip.start_file("audio/audio.wav", zip_opts()).unwrap();
+    zip.write_all(b"tiny").unwrap();
+    zip.finish().unwrap();
+
+    let err = import_project_bundle_from_path(&st, &zip_path).unwrap_err();
+    assert!(err.contains("语段数量超过上限"));
 
     let _ = fs::remove_dir_all(&st.root);
 }

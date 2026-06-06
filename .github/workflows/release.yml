@@ -261,6 +261,11 @@ jobs:
           test -f "apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar/_internal/funasr/version.txt"
           test -f "apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar/_internal/ffmpeg.exe"
 
+      - name: Post-build sidecar health smoke
+        shell: pwsh
+        run: pwsh scripts/smoke-asr-sidecar-health.ps1
+        timeout-minutes: 10
+
       - name: Tauri build binary (Windows)
         working-directory: apps/desktop
         run: npm run tauri -- build --no-bundle

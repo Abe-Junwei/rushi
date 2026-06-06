@@ -43,6 +43,19 @@ describe("localAsrSidecarGuards", () => {
     expect(shouldSkipSidecarRestartForSelection(readyCaps, selection)).toBe(true);
   });
 
+  it("shouldSkipSidecarRestartForSelection false when global ready but hub mismatches UI", () => {
+    expect(
+      shouldSkipSidecarRestartForSelection(
+        {
+          ...readyCaps,
+          ready_for_transcribe: true,
+          funasr_model_id: "iic/other",
+        },
+        selection,
+      ),
+    ).toBe(false);
+  });
+
   it("shouldSkipSidecarRestartForSelection false when funasr not ready", () => {
     expect(
       shouldSkipSidecarRestartForSelection({ ...readyCaps, funasr_ready: false }, selection),

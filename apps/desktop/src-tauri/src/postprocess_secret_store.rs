@@ -138,7 +138,21 @@ fn restrict_secret_file_permissions(path: &Path) -> Result<(), String> {
     }
     #[cfg(windows)]
     {
-        let _ = path;
+        use std::process::Command;
+        let path_str = path.to_string_lossy();
+        let username = std::env::var("USERNAME")
+            .or_else(|_| std::env::var("USER"))
+            .map_err(|e| format!("无法确定当前用户：{e}"))?;
+        let grant = format!("{username}:(R,W)");
+        let output = Command::new("icacls")
+            .args([&*path_str, "/inheritance:r", "/grant:r", &grant])
+            .output()
+            .map_err(|e| format!("设置密钥文件权限失败：{e}"))?;
+        if !output.status.success() {
+            let stderr = String::from_utf8_lossy(&output.stderr);
+            let stdout = String::from_utf8_lossy(&output.stdout);
+            return Err(format!("设置密钥文件 ACL 失败：{stdout}{stderr}"));
+        }
     }
     Ok(())
 }
