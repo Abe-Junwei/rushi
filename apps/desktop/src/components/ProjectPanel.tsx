@@ -6,9 +6,12 @@ import { FloatingPanelTemplate } from "./PanelTemplate";
 import { EditorView } from "./EditorView";
 import { ProjectHubView } from "./ProjectHubView";
 import { WelcomeView, type WelcomePageId } from "./WelcomeView";
+import { WelcomeSidebar } from "./WelcomeSidebar";
 import { ProjectBusyOverlay, TranscribePreviewBanner } from "./ProjectStatusFeedback";
 import { ProjectPanelDialogs } from "./ProjectPanelDialogs";
 import { useProjectController } from "../pages/useProjectController";
+import { useWorkspaceSidebarCollapse } from "../hooks/useWorkspaceSidebarCollapse";
+import { WorkspaceShellLayout, WORKSPACE_EDITOR_SHELL_PURPOSE } from "./WorkspaceShellLayout";
 
 export function ProjectPanel() {
   const c = useProjectController();
@@ -21,6 +24,12 @@ export function ProjectPanel() {
   const [busyElapsedSec, setBusyElapsedSec] = useState(0);
   const [segmentCtxMenu, setSegmentCtxMenu] = useState<SegmentContextMenuOpen | null>(null);
   const pendingWelcomePageRef = useRef<WelcomePageId | null>(null);
+  const { collapsed: editorSidebarCollapsed, setCollapsed: setEditorSidebarCollapsed } =
+    useWorkspaceSidebarCollapse();
+
+  const expandEditorSidebar = useCallback(() => {
+    setEditorSidebarCollapsed(false);
+  }, [setEditorSidebarCollapsed]);
 
   const openEnvironment = useCallback(() => {
     setEnvOpen(true);
@@ -255,30 +264,53 @@ export function ProjectPanel() {
             }
           />
         ) : (
-          <main className="relative flex min-h-[12rem] min-w-0 flex-1 flex-col bg-notion-bg lg:min-h-0">
-            {c.busy && c.busyReason === "transcribe" ? (
-              <TranscribePreviewBanner
-                elapsedSec={busyElapsedSec}
-                transcribeProgress={c.transcribeProgress}
-                cancelling={c.transcribeCancelling}
-                onCancel={() => {
-                  void c.cancelTranscribe();
-                }}
+          <WorkspaceShellLayout
+            purpose={WORKSPACE_EDITOR_SHELL_PURPOSE}
+            collapsible
+            sidebarCollapsed={editorSidebarCollapsed}
+            onSidebarCollapsedChange={setEditorSidebarCollapsed}
+            sidebar={
+              <WelcomeSidebar
+                controller={c}
+                onOpenSettings={openEnvironment}
+                page="home"
+                onPageChange={() => {}}
+                hubMode
+                editorMode
+                embeddedInCollapsibleShell
+                activeProjectId={c.current?.id ?? null}
+                activeFileId={c.currentFileId}
+                onLeaveProjectForWelcome={onLeaveProjectForWelcome}
               />
-            ) : null}
-            <EditorView
-              controller={c}
-              tx={tx}
-              exportKey={exportKey}
-              onExportSelect={onExportSelect}
-              onOpenEnvironment={openEnvironment}
-              onOpenLlmSettings={openLlmSettings}
-              llmStatusRefreshSeq={llmUiEpoch}
-              segmentCtxMenu={segmentCtxMenu}
-              setSegmentCtxMenu={setSegmentCtxMenu}
-              onOpenSegmentContextMenu={openSegmentContextMenu}
-            />
-          </main>
+            }
+          >
+            <main className="relative flex min-h-[12rem] min-w-0 flex-1 flex-col bg-notion-bg lg:min-h-0">
+              {c.busy && c.busyReason === "transcribe" ? (
+                <TranscribePreviewBanner
+                  elapsedSec={busyElapsedSec}
+                  transcribeProgress={c.transcribeProgress}
+                  cancelling={c.transcribeCancelling}
+                  onCancel={() => {
+                    void c.cancelTranscribe();
+                  }}
+                />
+              ) : null}
+              <EditorView
+                controller={c}
+                tx={tx}
+                exportKey={exportKey}
+                onExportSelect={onExportSelect}
+                onOpenEnvironment={openEnvironment}
+                onOpenLlmSettings={openLlmSettings}
+                llmStatusRefreshSeq={llmUiEpoch}
+                segmentCtxMenu={segmentCtxMenu}
+                setSegmentCtxMenu={setSegmentCtxMenu}
+                onOpenSegmentContextMenu={openSegmentContextMenu}
+                workspaceSidebarCollapsed={editorSidebarCollapsed}
+                onExpandWorkspaceSidebar={expandEditorSidebar}
+              />
+            </main>
+          </WorkspaceShellLayout>
         )}
       </div>
 

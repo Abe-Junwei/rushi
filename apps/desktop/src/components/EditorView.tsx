@@ -43,6 +43,8 @@ interface EditorViewProps {
   segmentCtxMenu: SegmentContextMenuOpen | null;
   setSegmentCtxMenu: (v: SegmentContextMenuOpen | null) => void;
   onOpenSegmentContextMenu: (menu: SegmentContextMenuOpen) => void;
+  workspaceSidebarCollapsed?: boolean;
+  onExpandWorkspaceSidebar?: () => void;
 }
 
 export function EditorView({
@@ -56,6 +58,8 @@ export function EditorView({
   segmentCtxMenu,
   setSegmentCtxMenu,
   onOpenSegmentContextMenu,
+  workspaceSidebarCollapsed = false,
+  onExpandWorkspaceSidebar,
 }: EditorViewProps) {
   const appearance = useEditorTranscriptAppearance(c.busy, Boolean(c.currentFileId));
   const transcriptFontPx = clampTranscriptFontPx(tx.transcriptFontPx);
@@ -295,6 +299,8 @@ export function EditorView({
         onOpenEnvironment={onOpenEnvironment}
         onOpenLlmSettings={onOpenLlmSettings}
         llmStatusRefreshSeq={llmStatusRefreshSeq}
+        workspaceSidebarCollapsed={workspaceSidebarCollapsed}
+        onExpandWorkspaceSidebar={onExpandWorkspaceSidebar}
       />
 
       <main className="flex h-0 min-h-0 min-w-0 flex-1 flex-col gap-0 bg-notion-bg pb-6">

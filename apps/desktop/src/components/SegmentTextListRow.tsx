@@ -170,6 +170,7 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
         focusOnSelectRef={focusOnSelectRef}
         editorRef={editorRef}
         onSegmentRowHeightPointerDown={onSegmentRowHeightPointerDown}
+        onRowRangePointerDown={onRowRangePointerDown}
         selectSegmentAt={selectSegmentAt}
         updateSegmentText={updateSegmentText}
         onTextareaKeyDown={onTextareaKeyDown}

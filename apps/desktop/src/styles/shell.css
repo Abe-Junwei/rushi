@@ -41,7 +41,8 @@ body,
 /* 欢迎页 / 项目 Hub / 编辑页铺满视口：避免 .shell 默认 padding 造成「套盒」留白 */
 .shell:has([data-purpose="workspace-home-shell"]),
 .shell:has([data-purpose="welcome-view"]),
-.shell:has([data-purpose="editor-workspace"]) {
+.shell:has([data-purpose="editor-workspace"]),
+.shell:has([data-purpose="editor-workspace-shell"]) {
   height: 100vh;
   height: 100dvh;
   padding: 0;

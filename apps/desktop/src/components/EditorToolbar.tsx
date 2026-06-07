@@ -1,6 +1,6 @@
 import { memo, useEffect, useRef, useState } from "react";
 import type { ProjectControllerApi } from "../pages/useProjectController";
-import { FileInput, FileOutput, Settings } from "lucide-react";
+import { FileInput, FileOutput, PanelLeftOpen, Settings } from "lucide-react";
 import { EditorWorkspaceNav } from "./EditorWorkspaceNav";
 import { LlmTopStatusChip } from "./LlmTopStatusChip";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
@@ -18,6 +18,8 @@ interface EditorToolbarProps {
   onOpenEnvironment: () => void;
   onOpenLlmSettings?: () => void;
   llmStatusRefreshSeq?: number;
+  workspaceSidebarCollapsed?: boolean;
+  onExpandWorkspaceSidebar?: () => void;
 }
 export const EditorToolbar = memo(function EditorToolbar({
   controller: c,
@@ -28,6 +30,8 @@ export const EditorToolbar = memo(function EditorToolbar({
   onOpenEnvironment,
   onOpenLlmSettings,
   llmStatusRefreshSeq = 0,
+  workspaceSidebarCollapsed = false,
+  onExpandWorkspaceSidebar,
 }: EditorToolbarProps) {
   const [pendingImport, setPendingImport] = useState<null | "audio" | "text" | "bundle">(null);
   const importMenuRef = useRef<HTMLDetailsElement | null>(null);
@@ -96,6 +100,23 @@ export const EditorToolbar = memo(function EditorToolbar({
   return (
     <div className="toolbar-popover-root z-[90] shrink-0 border-b border-notion-divider bg-notion-sidebar px-page-margin">
       <div className="flex h-12 min-w-0 flex-nowrap items-center gap-2 overflow-visible">
+        {workspaceSidebarCollapsed && onExpandWorkspaceSidebar ? (
+          <button
+            type="button"
+            className="inline-flex h-8 shrink-0 items-center gap-1.5 rounded-md border border-notion-border bg-notion-sidebar-active px-2.5 text-[12px] font-medium text-notion-text transition-colors hover:bg-notion-sidebar-hover disabled:cursor-not-allowed disabled:opacity-40"
+            onClick={onExpandWorkspaceSidebar}
+            aria-label="展开侧栏"
+            title="展开项目侧栏"
+            disabled={c.busy}
+          >
+            <PanelLeftOpen
+              className={LUCIDE_ICON_SIZE_MD}
+              strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
+              aria-hidden
+            />
+            <span>侧栏</span>
+          </button>
+        ) : null}
         <EditorWorkspaceNav
           projectName={projectName}
           currentLabel={currentFileName}

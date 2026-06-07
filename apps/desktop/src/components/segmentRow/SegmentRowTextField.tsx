@@ -44,6 +44,7 @@ interface SegmentRowTextFieldProps {
   focusOnSelectRef: React.MutableRefObject<boolean>;
   editorRef?: React.RefObject<{ focusEditor: () => void } | null>;
   onSegmentRowHeightPointerDown?: (e: React.PointerEvent<HTMLDivElement>) => void;
+  onRowRangePointerDown?: (index: number, e: React.PointerEvent<HTMLElement>) => void;
   selectSegmentAt: (idx: number) => void;
   updateSegmentText: (idx: number, text: string) => void;
   onTextareaKeyDown: (idx: number, e: KeyboardEvent<HTMLTextAreaElement>) => void;
@@ -68,6 +69,7 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
   focusOnSelectRef,
   editorRef,
   onSegmentRowHeightPointerDown,
+  onRowRangePointerDown,
   updateSegmentText,
   onTextareaKeyDown,
   findReplaceHighlight,
@@ -244,6 +246,15 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
     [onSegmentRowHeightPointerDown],
   );
 
+  const onTextareaRangePointerDown = useCallback(
+    (e: React.PointerEvent<HTMLTextAreaElement>) => {
+      if (e.button !== 0 || busy || !onRowRangePointerDown) return;
+      e.stopPropagation();
+      onRowRangePointerDown(i, e);
+    },
+    [busy, i, onRowRangePointerDown],
+  );
+
   useEffect(() => {
     if (!selected || busy) return;
     const el = textareaRef.current;
@@ -301,7 +312,7 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
                 style={{ ...textStyle, minHeight: textAreaMinHeight }}
                 defaultValue={defaultText}
                 disabled={busy}
-                onMouseDown={(e) => e.stopPropagation()}
+                onPointerDown={onTextareaRangePointerDown}
                 onPointerDownCapture={onTextPointerDownCapture}
                 onClick={(e) => e.stopPropagation()}
                 onContextMenu={onTextContextMenu}

@@ -472,6 +472,125 @@
   padding-bottom: 2.5rem;
 }
 
+/* 编辑页可折叠 workspace 侧栏（对照解语 side-pane collapse） */
+.workspace-shell-collapsible {
+  --workspace-sidebar-width: 20rem;
+  position: relative;
+}
+
+.workspace-shell-sidebar-collapsed {
+  --workspace-sidebar-width: 0px;
+}
+
+.workspace-shell-sidebar-column {
+  overflow: hidden;
+  background: var(--notion-sidebar);
+  transition:
+    border-color 180ms ease,
+    background-color 180ms ease;
+}
+
+.workspace-shell-collapsible .workspace-shell-sidebar-column {
+  border-right: 0;
+}
+
+/* 整根竖向分隔线；挂耳 pill 盖住中段，上下线条连续 */
+.workspace-shell-collapsible .workspace-shell-sidebar-column::after {
+  content: "";
+  position: absolute;
+  inset-block: 0;
+  right: 0;
+  width: 1px;
+  background: var(--notion-divider);
+  pointer-events: none;
+  z-index: 30;
+}
+
+.workspace-shell-sidebar-collapsed .workspace-shell-sidebar-column {
+  overflow: visible;
+}
+
+/* 编辑页侧栏内容不再自绘右边线，避免与 seam 双线 */
+.workspace-shell-collapsible [data-workspace-sidebar-panel] {
+  border-right-width: 0 !important;
+}
+
+/*
+ * 挂耳：pill 骑在 seam 上（translate ±50%），边框与分隔线同色。
+ */
+.workspace-shell-sidebar-toggle {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  z-index: 31;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 15px;
+  height: 30px;
+  margin: 0;
+  padding: 0;
+  border: 1px solid var(--notion-divider);
+  border-radius: 9999px;
+  background: var(--notion-sidebar);
+  color: var(--notion-text-light);
+  cursor: pointer;
+  transform: translate(50%, -50%);
+  box-shadow: none;
+  appearance: none;
+  transition:
+    background-color 120ms ease,
+    color 120ms ease,
+    border-color 120ms ease;
+}
+
+.workspace-shell-sidebar-toggle svg {
+  width: 11px;
+  height: 11px;
+  opacity: 0.75;
+  transition: opacity 120ms ease;
+}
+
+.workspace-shell-sidebar-toggle:hover,
+.workspace-shell-sidebar-toggle:focus-visible {
+  background: var(--notion-sidebar-hover);
+  border-color: color-mix(in srgb, var(--notion-divider) 55%, var(--notion-text-light));
+  color: var(--notion-text-muted);
+}
+
+.workspace-shell-sidebar-toggle:hover svg,
+.workspace-shell-sidebar-toggle:focus-visible svg {
+  opacity: 1;
+}
+
+.workspace-shell-sidebar-toggle:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--zen-saffron) 45%, transparent);
+  outline-offset: 1px;
+}
+
+/* 折叠态：同一 pill 居中骑在左 seam，右半露入主区 */
+.workspace-shell-sidebar-toggle-collapsed {
+  left: 0;
+  right: auto;
+  transform: translate(-50%, -50%);
+  color: var(--notion-text-muted);
+}
+
+.workspace-shell-sidebar-toggle-collapsed svg {
+  opacity: 0.9;
+}
+
+.workspace-shell-sidebar-collapsed .workspace-shell-sidebar-toggle-collapsed {
+  transform: translate(-50%, -50%);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .workspace-shell-sidebar-column,
+  .workspace-shell-sidebar-toggle {
+    transition: none;
+  }
+}
+
 @media (min-width: 640px) {
   .empty-project-page,
   .welcome-home-page {

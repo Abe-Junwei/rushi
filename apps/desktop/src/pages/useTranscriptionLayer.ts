@@ -16,6 +16,7 @@ import {
 import { computeZoomInPxPerSec, computeZoomOutPxPerSec } from "../utils/waveformZoomSlider";
 import { assignSegmentOverlapLanes, computeSegmentLaneRowPx } from "../utils/segmentLayout";
 import { resolveSelectSegmentViewportPlan } from "../services/waveform/selectSegmentViewportPlan";
+import { blurActiveTranscriptTextarea } from "../utils/transcriptSelection";
 import { resolveWaveformFooterStatusLabel } from "../services/waveform/waveformRenderStatus";
 import { segmentStartSec } from "../utils/formatMediaTime";
 import type { SegmentSelectSource } from "../utils/waveformViewMode";
@@ -204,7 +205,6 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     if (c.busy || e.button !== 0) return;
     if ((e.target as HTMLElement).closest('[role="separator"]')) return;
     e.stopPropagation();
-    e.preventDefault();
 
     segmentListRangeDragRef.current = { anchorIdx: idx, pointerId: e.pointerId, moved: false };
     if (e.shiftKey) {
@@ -226,7 +226,13 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
         ctxRef.current.segments.length,
       );
       if (hoverIdx == null) return;
-      if (hoverIdx !== drag.anchorIdx) drag.moved = true;
+      if (hoverIdx !== drag.anchorIdx) {
+        if (!drag.moved) {
+          drag.moved = true;
+          blurActiveTranscriptTextarea();
+        }
+        ev.preventDefault();
+      }
       ctxRef.current.selectSegmentRange(drag.anchorIdx, hoverIdx);
     };
 

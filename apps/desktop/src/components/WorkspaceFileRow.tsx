@@ -6,6 +6,7 @@ interface WorkspaceFileRowProps {
   name: string;
   meta: string;
   busy?: boolean;
+  selected?: boolean;
   onOpen: () => void;
   actionSlot?: ReactNode;
 }
@@ -21,11 +22,18 @@ export function WorkspaceFileRow({
   name,
   meta,
   busy,
+  selected = false,
   onOpen,
   actionSlot,
 }: WorkspaceFileRowProps) {
   return (
-    <div className={`${WORKSPACE_FILE_ROW_CLASS} pr-1`}>
+    <div
+      className={[
+        WORKSPACE_FILE_ROW_CLASS,
+        "pr-1",
+        selected ? "bg-notion-sidebar-active" : "",
+      ].join(" ")}
+    >
       <button
         type="button"
         className="flex min-w-0 flex-1 items-center gap-2 border-0 bg-transparent px-2.5 py-2 text-left disabled:opacity-40"

@@ -17,6 +17,7 @@ import type { ProjectSummary } from "../tauri/projectApi";
 import * as fileApi from "../tauri/fileApi";
 import { formatProjectFileType, formatWorkspaceFileTime } from "../utils/projectFileDisplay";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
+import { WORKSPACE_SIDEBAR_PANEL_ATTR } from "../config/workspaceShellLayout";
 import { WorkspaceFileRow } from "./WorkspaceFileRow";
 
 const PROJECT_ROW_ICON =
@@ -59,6 +60,11 @@ export interface WelcomeSidebarProps {
   activeProjectId?: string | null;
   /** Hub 下跳转欢迎页其它分区时先关闭当前项目 */
   onLeaveProjectForWelcome?: (page: WelcomePageId) => void;
+  /** 编辑页：Hub 侧栏 + 高亮当前文件；隐藏「打开编辑器」入口 */
+  editorMode?: boolean;
+  activeFileId?: string | null;
+  /** 可折叠壳层内：边线由 shell 绘制，侧栏本体不再 duplicate border */
+  embeddedInCollapsibleShell?: boolean;
 }
 
 export function WelcomeSidebar({
@@ -69,6 +75,9 @@ export function WelcomeSidebar({
   hubMode = false,
   activeProjectId = null,
   onLeaveProjectForWelcome,
+  editorMode = false,
+  activeFileId = null,
+  embeddedInCollapsibleShell = false,
 }: WelcomeSidebarProps) {
   const projects = useMemo(() => sortProjects(c.projects), [c.projects]);
   const [expandedProjectId, setExpandedProjectId] = useState<string | null>(null);
@@ -117,32 +126,34 @@ export function WelcomeSidebar({
     [ensureProjectFilesLoaded],
   );
 
+  const inProjectContext = hubMode || editorMode;
+
   const navigateWelcomePage = useCallback(
     (nextPage: WelcomePageId) => {
-      if (hubMode && onLeaveProjectForWelcome) {
+      if (inProjectContext && onLeaveProjectForWelcome) {
         onLeaveProjectForWelcome(nextPage);
         return;
       }
       onPageChange(nextPage);
     },
-    [hubMode, onLeaveProjectForWelcome, onPageChange],
+    [inProjectContext, onLeaveProjectForWelcome, onPageChange],
   );
 
   useEffect(() => {
-    if (!hubMode || !activeProjectId) return;
+    if ((!hubMode && !editorMode) || !activeProjectId) return;
     setExpandedProjectId(activeProjectId);
     void ensureProjectFilesLoaded(activeProjectId);
-  }, [activeProjectId, ensureProjectFilesLoaded, hubMode]);
+  }, [activeProjectId, editorMode, ensureProjectFilesLoaded, hubMode]);
 
-  const showProjectList = page === "home" || hubMode;
+  const showProjectList = page === "home" || hubMode || editorMode;
 
   const navItems = [
     {
       icon: <List className={`${LUCIDE_ICON_SIZE_MD} shrink-0`} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />,
       label: "项目与文件",
-      active: page === "home" || hubMode,
+      active: page === "home" || inProjectContext,
       onClick: () => {
-        if (!hubMode) onPageChange("home");
+        if (!inProjectContext) onPageChange("home");
         window.requestAnimationFrame(() => {
           projectListRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
         });
@@ -167,8 +178,9 @@ export function WelcomeSidebar({
       disabled: false,
       onClick: handleOpenEditor,
       title: "打开上次编辑的文件",
+      hidden: editorMode,
     },
-    ...(hubMode && onLeaveProjectForWelcome
+    ...(inProjectContext && onLeaveProjectForWelcome
       ? [
           {
             icon: (
@@ -188,7 +200,13 @@ export function WelcomeSidebar({
   ];
 
   return (
-    <aside className="flex h-full min-h-0 w-80 shrink-0 flex-col border-r border-notion-divider bg-notion-sidebar">
+    <aside
+      {...{ [WORKSPACE_SIDEBAR_PANEL_ATTR]: "" }}
+      className={[
+        "flex h-full min-h-0 w-full max-w-full shrink-0 flex-col bg-notion-sidebar",
+        embeddedInCollapsibleShell ? "" : "border-r border-notion-divider",
+      ].join(" ")}
+    >
       <div className="border-b border-notion-divider px-5 py-6">
         <div className="mb-5 flex items-center gap-3">
           <div className="flex h-8 w-8 items-center justify-center rounded bg-zen-saffron text-notion-bg">
@@ -200,7 +218,9 @@ export function WelcomeSidebar({
           </div>
         </div>
         <nav className="space-y-0.5">
-          {navItems.map((item) => (
+          {navItems
+            .filter((item) => !("hidden" in item && item.hidden))
+            .map((item) => (
             <button
               key={item.label}
               type="button"
@@ -248,7 +268,7 @@ export function WelcomeSidebar({
                   .filter(Boolean)
                   .join(" · ");
 
-                const isActiveProject = hubMode && p.id === activeProjectId;
+                const isActiveProject = inProjectContext && p.id === activeProjectId;
 
                 return (
                   <div
@@ -336,6 +356,7 @@ export function WelcomeSidebar({
                                     name={f.name}
                                     meta={`${formatProjectFileType(f.file_type)} · ${formatWorkspaceFileTime(f.updated_at_ms)}`}
                                     busy={c.busy}
+                                    selected={editorMode && activeFileId === f.id}
                                     onOpen={() => void handleOpenProjectFile(p.id, f.id)}
                                   />
                                 </li>
