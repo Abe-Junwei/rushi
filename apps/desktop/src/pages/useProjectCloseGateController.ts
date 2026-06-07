@@ -206,9 +206,10 @@ export function useProjectCloseGateController(
     }
   }
 
-  async function openLastEditorWorkspace() {
-    if (busy) return;
+  function openLastEditorWorkspace(): Promise<void> {
+    if (busy) return Promise.resolve();
     requestNavigateWithGuards(() => performResumeEditorWorkspace());
+    return Promise.resolve();
   }
 
   async function performLoadProject(id: string) {

@@ -172,9 +172,8 @@ export function WelcomeView({
                         <WorkspaceFileRow
                           name={f.name}
                           meta={`${formatProjectFileType(f.fileType)} · ${projectNameMap.get(f.projectId) ?? "未知项目"} · ${formatWorkspaceFileTime(f.updatedAtMs)}`}
-                          fileType={f.fileType}
                           busy={c.busy}
-                          onOpen={() => handleOpenRecentFile(f)}
+                          onOpen={() => void handleOpenRecentFile(f)}
                         />
                       </li>
                     ))

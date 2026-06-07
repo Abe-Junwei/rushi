@@ -336,7 +336,7 @@ export function WelcomeSidebar({
                                     name={f.name}
                                     meta={`${formatProjectFileType(f.file_type)} · ${formatWorkspaceFileTime(f.updated_at_ms)}`}
                                     busy={c.busy}
-                                    onOpen={() => handleOpenProjectFile(p.id, f.id)}
+                                    onOpen={() => void handleOpenProjectFile(p.id, f.id)}
                                   />
                                 </li>
                               ))}
