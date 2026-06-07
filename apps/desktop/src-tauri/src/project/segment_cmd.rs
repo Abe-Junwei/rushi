@@ -103,12 +103,13 @@ pub fn file_save_segments_inner(
             s.text_stage.as_str()
         };
         let finalize_via = s.finalize_via.as_deref().filter(|v| !v.trim().is_empty());
+        let annotation = s.annotation.as_deref().unwrap_or("").trim();
         let updated = tx
             .execute(
                 "UPDATE segments SET idx = ?1, start_sec = ?2, end_sec = ?3, text = ?4, \
                  confidence = ?5, low_confidence = ?6, detail = ?7, kind = ?8, \
-                 text_stage = ?9, finalize_via = ?10 \
-                 WHERE file_id = ?11 AND uid = ?12",
+                 text_stage = ?9, finalize_via = ?10, annotation = ?11 \
+                 WHERE file_id = ?12 AND uid = ?13",
                 params![
                     s.idx,
                     s.start_sec,
@@ -120,6 +121,7 @@ pub fn file_save_segments_inner(
                     kind,
                     text_stage,
                     finalize_via,
+                    annotation,
                     file_id,
                     uid.as_str(),
                 ],
@@ -127,8 +129,8 @@ pub fn file_save_segments_inner(
             .map_err(|e| e.to_string())?;
         if updated == 0 {
             tx.execute(
-                "INSERT INTO segments (file_id, uid, idx, start_sec, end_sec, text, confidence, low_confidence, detail, kind, text_stage, finalize_via) \
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
+                "INSERT INTO segments (file_id, uid, idx, start_sec, end_sec, text, confidence, low_confidence, detail, kind, text_stage, finalize_via, annotation) \
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12, ?13)",
                 params![
                     file_id,
                     uid.as_str(),
@@ -142,6 +144,7 @@ pub fn file_save_segments_inner(
                     kind,
                     text_stage,
                     finalize_via,
+                    annotation,
                 ],
             )
             .map_err(|e| e.to_string())?;
