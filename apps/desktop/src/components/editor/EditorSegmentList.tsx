@@ -171,7 +171,7 @@ export function EditorSegmentList({
       c.correctionRulesEditorHighlight?.segmentIdx ?? -1,
     ];
     if (c.isMultiSegmentSelection) {
-      for (let idx = c.selectionLo; idx <= c.selectionHi; idx += 1) {
+      for (const idx of c.selectedIndicesArray) {
         pinIndices.push(idx);
       }
     }
@@ -188,8 +188,7 @@ export function EditorSegmentList({
     c.segments.length,
     c.selectedIdx,
     c.isMultiSegmentSelection,
-    c.selectionLo,
-    c.selectionHi,
+    c.selectedIndicesArray,
     c.findReplaceEditorHighlight?.segmentIdx,
     c.correctionRulesEditorHighlight?.segmentIdx,
   ]);

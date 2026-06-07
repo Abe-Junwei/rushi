@@ -89,6 +89,7 @@ export function useProjectLifecycleController(
     flushSegmentTextDrafts: mutations.flushSegmentTextDrafts,
     deleteSegmentAt: mutations.deleteSegmentAt,
     deleteSegmentRange: mutations.deleteSegmentRange,
+    deleteSegmentIndices: mutations.deleteSegmentIndices,
   });
 
   const dirty = useSegmentDirtyState({
@@ -389,6 +390,7 @@ export function useProjectLifecycleController(
     mergeSegmentRange: mutations.mergeSegmentRange,
     deleteSegmentAt: segmentDeleteConfirm.requestDeleteSegmentAt,
     requestDeleteSelection: segmentDeleteConfirm.requestDeleteSelection,
+    requestDeleteSelectedIndices: segmentDeleteConfirm.requestDeleteSelectedIndices,
     pendingDeleteCount: segmentDeleteConfirm.pendingDeleteCount,
     segmentDeleteConfirmOpen: segmentDeleteConfirm.segmentDeleteConfirmOpen,
     confirmDeleteSegment: segmentDeleteConfirm.confirmDeleteSegment,
@@ -397,9 +399,13 @@ export function useProjectLifecycleController(
     selectionHi: segmentSelection.selectionHi,
     selectionCount: segmentSelection.selectionCount,
     isMultiSegmentSelection: segmentSelection.isMultiSegmentSelection,
+    isContiguousSelection: segmentSelection.isContiguousSelection,
+    selectedIndices: segmentSelection.selectedIndices,
+    selectedIndicesArray: segmentSelection.selectedIndicesArray,
     isIndexInSelection: segmentSelection.isIndexInSelection,
     selectSegmentAt: segmentSelection.selectSegmentAt,
     selectSegmentRange: segmentSelection.selectSegmentRange,
+    selectSegmentIndices: segmentSelection.selectSegmentIndices,
     insertSegmentAfter: mutations.insertSegmentAfter,
     insertSegmentFromTimeRange: mutations.insertSegmentFromTimeRange,
     flushSegmentTextDrafts: mutations.flushSegmentTextDrafts,

@@ -25,11 +25,11 @@ describe("waveformSegmentOverlayGeometry", () => {
     expect(style.width).toBe(300);
   });
 
-  it("boundsForOverlayDrag returns null for create mode", () => {
+  it("boundsForOverlayDrag returns null for lasso mode", () => {
     expect(
       boundsForOverlayDrag(
         {
-          mode: "create",
+          mode: "lasso",
           pointerId: 1,
           segmentIdx: -1,
           anchorTimeSec: 0,

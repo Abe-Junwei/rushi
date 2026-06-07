@@ -16,6 +16,10 @@ function makeCtx(overrides: Partial<TranscriptionLayerInput> = {}): Transcriptio
     selectionHi: 0,
     selectionCount: 1,
     isMultiSegmentSelection: false,
+    isContiguousSelection: true,
+    selectedIndicesArray: [0],
+    selectSegmentIndices: vi.fn(),
+    requestDeleteSelectedIndices: vi.fn(),
     isIndexInSelection: () => true,
     selectSegmentAt: vi.fn(),
     selectSegmentRange: vi.fn(),
@@ -48,30 +52,35 @@ function makeKeyEvent(key: string, opts: Partial<ReactKeyboardEvent> = {}): Reac
   } as ReactKeyboardEvent;
 }
 
-function useTestKeyboard(initialCtx: TranscriptionLayerInput) {
-  const ctxRef = useRef(initialCtx);
-  ctxRef.current = initialCtx;
-  const selectSegmentAtRef = useRef<
-    (idx: number, source?: string, opts?: { shiftKey?: boolean }) => void
-  >(vi.fn());
-  const wfApiRef = useRef({
-    togglePlay: vi.fn(),
-    getPlayheadTime: () => 0,
-    playSegmentAtIndex: vi.fn(),
-    preserveLoopForNextSegmentSelect: vi.fn(),
-    seekByDelta: vi.fn(),
-  });
+function renderKeyboard(initialCtx: TranscriptionLayerInput) {
+  return renderHook(
+    (ctx: TranscriptionLayerInput) => {
+      const ctxRef = useRef(ctx);
+      ctxRef.current = ctx;
+      const selectSegmentAtRef = useRef<
+        (idx: number, source?: string, opts?: { shiftKey?: boolean }) => void
+      >(vi.fn());
+      const wfApiRef = useRef({
+        togglePlay: vi.fn(),
+        getPlayheadTime: () => 0,
+        playSegmentAtIndex: vi.fn(),
+        preserveLoopForNextSegmentSelect: vi.fn(),
+        seekByDelta: vi.fn(),
+      });
 
-  const keyboard = useSegmentKeyboard({
-    ctxRef,
-    wfApiRef: wfApiRef as never,
-    selectSegmentAtRef,
-    tierScrollRef: useRef(null),
-    showEditorHintRef: useRef(vi.fn()),
-    stepWaveformZoomRef: useRef(vi.fn()),
-  });
+      const keyboard = useSegmentKeyboard({
+        ctxRef,
+        wfApiRef: wfApiRef as never,
+        selectSegmentAtRef,
+        tierScrollRef: useRef(null),
+        showEditorHintRef: useRef(vi.fn()),
+        stepWaveformZoomRef: useRef(vi.fn()),
+      });
 
-  return { keyboard, selectSegmentAtRef, ctxRef };
+      return { keyboard, selectSegmentAtRef };
+    },
+    { initialProps: initialCtx },
+  );
 }
 
 describe("useSegmentKeyboard", () => {
@@ -90,10 +99,10 @@ describe("useSegmentKeyboard", () => {
       isMultiSegmentSelection: true,
       requestDeleteSelection,
     });
-    const { keyboard } = useTestKeyboard(ctx);
+    const { result } = renderKeyboard(ctx);
 
     act(() => {
-      keyboard.onWaveformMainKeyDown(makeKeyEvent("Delete"));
+      result.current.keyboard.onWaveformMainKeyDown(makeKeyEvent("Delete"));
     });
 
     expect(requestDeleteSelection).toHaveBeenCalledWith(0, 2);
@@ -113,13 +122,67 @@ describe("useSegmentKeyboard", () => {
       isMultiSegmentSelection: true,
       mergeSegmentRange,
     });
-    const { keyboard } = useTestKeyboard(ctx);
+    const { result } = renderKeyboard(ctx);
 
     act(() => {
-      keyboard.onWaveformMainKeyDown(makeKeyEvent("m", { metaKey: true }));
+      result.current.keyboard.onWaveformMainKeyDown(makeKeyEvent("m", { metaKey: true }));
     });
 
     expect(mergeSegmentRange).toHaveBeenCalledWith(0, 1);
+  });
+
+  it("requests sparse delete when multi-select is non-contiguous", () => {
+    const requestDeleteSelectedIndices = vi.fn();
+    const ctx = makeCtx({
+      segments: [
+        { uid: "a", idx: 0, start_sec: 0, end_sec: 1, text: "a" },
+        { uid: "b", idx: 1, start_sec: 1, end_sec: 2, text: "b" },
+        { uid: "c", idx: 2, start_sec: 2, end_sec: 3, text: "c" },
+        { uid: "d", idx: 3, start_sec: 3, end_sec: 4, text: "d" },
+        { uid: "e", idx: 4, start_sec: 4, end_sec: 5, text: "e" },
+      ],
+      selectedIdx: 4,
+      selectionLo: 0,
+      selectionHi: 4,
+      selectionCount: 3,
+      isMultiSegmentSelection: true,
+      isContiguousSelection: false,
+      selectedIndicesArray: [0, 2, 4],
+      requestDeleteSelectedIndices,
+    });
+    const { result } = renderKeyboard(ctx);
+
+    act(() => {
+      result.current.keyboard.onWaveformMainKeyDown(makeKeyEvent("Delete"));
+    });
+
+    expect(requestDeleteSelectedIndices).toHaveBeenCalledWith([0, 2, 4]);
+  });
+
+  it("does not merge on Cmd+M when multi-select is non-contiguous", () => {
+    const mergeSegmentRange = vi.fn();
+    const ctx = makeCtx({
+      segments: [
+        { uid: "a", idx: 0, start_sec: 0, end_sec: 1, text: "a" },
+        { uid: "b", idx: 1, start_sec: 1, end_sec: 2, text: "b" },
+        { uid: "c", idx: 2, start_sec: 2, end_sec: 3, text: "c" },
+      ],
+      selectedIdx: 2,
+      selectionLo: 0,
+      selectionHi: 2,
+      selectionCount: 2,
+      isMultiSegmentSelection: true,
+      isContiguousSelection: false,
+      selectedIndicesArray: [0, 2],
+      mergeSegmentRange,
+    });
+    const { result } = renderKeyboard(ctx);
+
+    act(() => {
+      result.current.keyboard.onWaveformMainKeyDown(makeKeyEvent("m", { metaKey: true }));
+    });
+
+    expect(mergeSegmentRange).not.toHaveBeenCalled();
   });
 
   it("extends selection on Shift+ArrowRight", () => {
@@ -130,12 +193,14 @@ describe("useSegmentKeyboard", () => {
       ],
       selectedIdx: 0,
     });
-    const { keyboard, selectSegmentAtRef } = useTestKeyboard(ctx);
+    const { result } = renderKeyboard(ctx);
 
     act(() => {
-      keyboard.onWaveformMainKeyDown(makeKeyEvent("ArrowRight", { shiftKey: true }));
+      result.current.keyboard.onWaveformMainKeyDown(makeKeyEvent("ArrowRight", { shiftKey: true }));
     });
 
-    expect(selectSegmentAtRef.current).toHaveBeenCalledWith(1, "waveform", { shiftKey: true });
+    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(1, "waveform", {
+      shiftKey: true,
+    });
   });
 });

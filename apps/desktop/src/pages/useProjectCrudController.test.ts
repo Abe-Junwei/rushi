@@ -67,6 +67,7 @@ function useTestCrud(opts: {
     mergeWithNextAt: vi.fn(),
     mergeSegmentRange: vi.fn(),
     deleteSegmentRange: vi.fn(),
+    deleteSegmentIndices: vi.fn(),
     deleteSegmentAt: vi.fn(),
     insertSegmentAfter: vi.fn(),
     insertSegmentFromTimeRange: vi.fn(),

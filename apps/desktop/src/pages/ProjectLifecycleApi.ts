@@ -121,9 +121,14 @@ export interface ProjectLifecycleApi {
   selectionHi: number;
   selectionCount: number;
   isMultiSegmentSelection: boolean;
+  isContiguousSelection: boolean;
+  selectedIndices: ReadonlySet<number>;
+  selectedIndicesArray: number[];
   isIndexInSelection: (idx: number) => boolean;
-  selectSegmentAt: (idx: number, opts?: { shiftKey?: boolean }) => void;
+  selectSegmentAt: (idx: number, opts?: { shiftKey?: boolean; toggle?: boolean }) => void;
   selectSegmentRange: (lo: number, hi: number) => void;
+  selectSegmentIndices: (indices: number[], primaryIdx: number) => void;
+  requestDeleteSelectedIndices: (indices: number[]) => void;
   insertSegmentAfter: (idx: number, mediaDurationSec?: number) => void;
   insertSegmentFromTimeRange: (
     startSec: number,

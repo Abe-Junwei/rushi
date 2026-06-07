@@ -33,11 +33,18 @@ function useTestDeleteConfirm(initial: SegmentDto[]) {
     setSegments((prev) => prev.filter((_, j) => j < lo || j > hi));
   }, []);
 
+  const deleteSegmentIndices = useCallback((indices: number[]) => {
+    const remove = new Set(indices);
+    for (const idx of indices) deletedRef.current.push(idx);
+    setSegments((prev) => prev.filter((_, j) => !remove.has(j)));
+  }, []);
+
   const gate = useSegmentDeleteConfirmController({
     segmentsRef,
     flushSegmentTextDrafts: () => {},
     deleteSegmentAt,
     deleteSegmentRange,
+    deleteSegmentIndices,
   });
 
   return { ...gate, segments, deleted: deletedRef.current };
@@ -122,5 +129,35 @@ describe("useSegmentDeleteConfirmController", () => {
     expect(result.current.segmentDeleteConfirmOpen).toBe(false);
     expect(result.current.segments).toHaveLength(1);
     expect(result.current.segments[0].text).toBe("c");
+  });
+
+  it("requestDeleteSelectedIndices deletes sparse empty segments immediately", () => {
+    const { result } = renderHook(() =>
+      useTestDeleteConfirm([
+        makeSeg(""),
+        makeSeg(""),
+        makeSeg(""),
+        makeSeg(""),
+        makeSeg(""),
+      ]),
+    );
+
+    act(() => result.current.requestDeleteSelectedIndices([0, 2, 4]));
+
+    expect(result.current.segmentDeleteConfirmOpen).toBe(false);
+    expect(result.current.segments).toHaveLength(2);
+    expect(result.current.deleted.sort()).toEqual([0, 2, 4]);
+  });
+
+  it("requestDeleteSelectedIndices opens confirm when any selected segment has text", () => {
+    const { result } = renderHook(() =>
+      useTestDeleteConfirm([makeSeg(""), makeSeg("skip"), makeSeg("x"), makeSeg("skip"), makeSeg("")]),
+    );
+
+    act(() => result.current.requestDeleteSelectedIndices([0, 2, 4]));
+
+    expect(result.current.segmentDeleteConfirmOpen).toBe(true);
+    expect(result.current.pendingDeleteCount).toBe(3);
+    expect(result.current.deleted).toEqual([]);
   });
 });

@@ -22,6 +22,7 @@ import {
   snapSegmentRange,
 } from "../utils/segmentTimeSnap";
 import type { SegmentOverlapPolicy } from "../utils/segmentTimeRange";
+import { computeSegmentLassoOutcome } from "../utils/segmentSelection";
 import { applyOverlayPointerUpIntent, type OverlayPointerActions } from "../utils/waveformSegmentOverlayActions";
 import {
   boundsForOverlayDrag,
@@ -29,7 +30,10 @@ import {
   type OverlayDragState,
   type SegmentOverlayDraft,
 } from "../utils/waveformSegmentOverlayGeometry";
-import { resolveOverlayPointerUpIntent } from "../utils/waveformSegmentOverlayGestures";
+import {
+  resolveBlankOverlayShellDragMode,
+  resolveOverlayPointerUpIntent,
+} from "../utils/waveformSegmentOverlayGestures";
 
 export const WAVEFORM_OVERLAY_SUPPRESS_CLICK_MS = 250;
 /** Pointer move beyond this (px) counts as drag, not tap — stable across zoom levels. */
@@ -47,7 +51,9 @@ export type WaveformSegmentDragArgs = {
   laneCount: number;
   enableCreateRange: boolean;
   clientXToTimeSec: (clientX: number) => number;
-  onSelectSegmentAt: (idx: number, opts?: { shiftKey?: boolean }) => void;
+  onSelectSegmentAt: (idx: number, opts?: { shiftKey?: boolean; toggle?: boolean }) => void;
+  onSelectSegmentIndices?: (indices: number[], primaryIdx: number) => void;
+  getSelectedIndices?: () => ReadonlySet<number>;
   onBeginBoundsEdit?: () => void;
   onFocusWaveformShell?: () => void;
   onBoundsCommit: (idx: number, startSec: number, endSec: number) => void;
@@ -100,7 +106,7 @@ function finalizeEditDragBounds(
   snapEnabled: boolean,
   minSpanSec: number,
 ): { startSec: number; endSec: number } | null {
-  if (drag.mode === "create" || drag.mode === "select-marquee") return null;
+  if (drag.mode === "lasso") return null;
   const { targets, thresholdSec } = snapTargetsForOverlay(a, drag.segmentIdx);
   const prev = a.segments[drag.segmentIdx - 1];
   const next = a.segments[drag.segmentIdx + 1];
@@ -157,52 +163,36 @@ export function useWaveformSegmentDrag(
       const snapEnabled = isSegmentSnapEnabled(modifiers);
       const timeSec = a.clientXToTimeSec(ev.clientX);
 
-      if (drag.mode === "create") {
-        const lo = Math.min(drag.initialStartSec, timeSec);
-        const hi = Math.max(drag.initialStartSec, timeSec);
-        setCreatePreview(null);
-        const clamped = snapCreateRange(a, lo, hi, snapEnabled);
-        const overlapPolicy = resolveCreateOverlapPolicy(modifiers);
-        const intent = resolveOverlayPointerUpIntent({
-          mode: drag.mode,
-          moved: drag.moved,
-          segmentIdx: drag.segmentIdx,
-          pointerTimeSec: timeSec,
-          anchorTimeSec: drag.anchorTimeSec,
-          initialStartSec: drag.initialStartSec,
-          initialEndSec: drag.initialEndSec,
-          clampedStartSec: clamped.startSec,
-          clampedEndSec: clamped.endSec,
-        });
-        applySegmentDraft(null);
-        if (intent.kind === "create-range") {
-          applyOverlayPointerUpIntent(
-            { ...intent, overlapPolicy },
-            overlayPointerActions(a, onSegmentPointerTapRef.current),
-            suppressClickAfterPointer,
-          );
-          return;
-        }
-        applyOverlayPointerUpIntent(
-          intent,
-          overlayPointerActions(a, onSegmentPointerTapRef.current),
-          suppressClickAfterPointer,
-        );
-        return;
-      }
-
-      if (drag.mode === "select-marquee") {
+      if (drag.mode === "lasso") {
         const lo = Math.min(drag.initialStartSec, timeSec);
         const hi = Math.max(drag.initialStartSec, timeSec);
         setCreatePreview(null);
         applySegmentDraft(null);
-        if (drag.moved && Math.abs(hi - lo) >= WAVEFORM_SEGMENT_MIN_SPAN_SEC) {
-          suppressClickAfterPointer();
-          a.onSelectTimeRange?.(lo, hi);
-        } else if (!drag.moved) {
+        if (!drag.moved) {
           suppressClickAfterPointer();
           a.onFocusWaveformShell?.();
           a.seekToTime(drag.anchorTimeSec);
+          return;
+        }
+        const baseIndices = drag.baseIndices ?? new Set<number>();
+        const outcome = computeSegmentLassoOutcome(a.segments, lo, hi, a.durationSec, baseIndices);
+        if (outcome.mode === "select" && outcome.indices.size > 0) {
+          suppressClickAfterPointer();
+          a.onSelectSegmentIndices?.(
+            [...outcome.indices].sort((x, y) => x - y),
+            outcome.primaryIdx >= 0 ? outcome.primaryIdx : Math.min(...outcome.indices),
+          );
+          return;
+        }
+        if (Math.abs(hi - lo) >= WAVEFORM_SEGMENT_MIN_SPAN_SEC) {
+          const clamped = snapCreateRange(a, lo, hi, snapEnabled);
+          const overlapPolicy = resolveCreateOverlapPolicy(modifiers);
+          suppressClickAfterPointer();
+          a.onCreateRange?.(clamped.startSec, clamped.endSec, { overlapPolicy });
+        } else {
+          suppressClickAfterPointer();
+          a.onFocusWaveformShell?.();
+          a.seekToTime(timeSec);
         }
         return;
       }
@@ -232,11 +222,19 @@ export function useWaveformSegmentDrag(
         clampedStartSec: clamped.startSec,
         clampedEndSec: clamped.endSec,
       });
-      if (intent.kind === "select-segment" && ev.shiftKey) {
-        suppressClickAfterPointer();
-        a.onFocusWaveformShell?.();
-        a.onSelectSegmentAt(intent.segmentIdx, { shiftKey: true });
-        return;
+      if (intent.kind === "select-segment") {
+        if (ev.shiftKey) {
+          suppressClickAfterPointer();
+          a.onFocusWaveformShell?.();
+          a.onSelectSegmentAt(intent.segmentIdx, { shiftKey: true });
+          return;
+        }
+        if (ev.metaKey || ev.ctrlKey) {
+          suppressClickAfterPointer();
+          a.onFocusWaveformShell?.();
+          a.onSelectSegmentAt(intent.segmentIdx, { toggle: true });
+          return;
+        }
       }
       applyOverlayPointerUpIntent(
         intent,
@@ -287,7 +285,6 @@ export function useWaveformSegmentDrag(
     (ev: ReactPointerEvent<HTMLElement>) => {
       const a = argsRef.current;
       if (a.disabled || ev.button !== 0) return;
-      if ((ev.target as HTMLElement).closest("[data-waveform-segment]")) return;
 
       const timeSec = a.clientXToTimeSec(ev.clientX);
       const hitIdx = resolveSegmentIndexAtWaveformPointer({
@@ -306,25 +303,17 @@ export function useWaveformSegmentDrag(
         return;
       }
 
-      if (a.enableCreateRange && a.onCreateRange && !(ev.metaKey || ev.ctrlKey)) {
-        dragRef.current = {
-          mode: "create",
-          pointerId: ev.pointerId,
-          segmentIdx: -1,
-          anchorTimeSec: timeSec,
-          anchorClientX: ev.clientX,
-          initialStartSec: timeSec,
-          initialEndSec: timeSec,
-          moved: false,
-        };
-        setCreatePreview({ startSec: timeSec, endSec: timeSec });
-        ev.currentTarget.setPointerCapture(ev.pointerId);
-        return;
-      }
+      const blankMode = resolveBlankOverlayShellDragMode({
+        enableCreateRange: a.enableCreateRange,
+        hasOnCreateRange: Boolean(a.onCreateRange),
+      });
 
-      if (ev.metaKey || ev.ctrlKey) {
+      if (blankMode === "lasso") {
+        const baseIndices = ev.shiftKey
+          ? new Set(a.getSelectedIndices?.() ?? [])
+          : new Set<number>();
         dragRef.current = {
-          mode: "select-marquee",
+          mode: "lasso",
           pointerId: ev.pointerId,
           segmentIdx: -1,
           anchorTimeSec: timeSec,
@@ -332,6 +321,7 @@ export function useWaveformSegmentDrag(
           initialStartSec: timeSec,
           initialEndSec: timeSec,
           moved: false,
+          baseIndices,
         };
         setCreatePreview({ startSec: timeSec, endSec: timeSec });
         ev.currentTarget.setPointerCapture(ev.pointerId);
@@ -352,18 +342,14 @@ export function useWaveformSegmentDrag(
       const snapEnabled = isSegmentSnapEnabled(readSegmentOverlayModifiers(ev));
       const timeSec = a.clientXToTimeSec(ev.clientX);
 
-      if (drag.mode === "create" || drag.mode === "select-marquee") {
+      if (drag.mode === "lasso") {
         const lo = Math.min(drag.initialStartSec, timeSec);
         const hi = Math.max(drag.initialStartSec, timeSec);
         if (Math.abs(ev.clientX - drag.anchorClientX) > WAVEFORM_OVERLAY_DRAG_MOVE_THRESHOLD_PX) {
           drag.moved = true;
         }
-        if (drag.mode === "create") {
-          const clamped = snapCreateRange(a, lo, hi, snapEnabled);
-          setCreatePreview({ startSec: clamped.startSec, endSec: clamped.endSec });
-        } else {
-          setCreatePreview({ startSec: lo, endSec: hi });
-        }
+        const clamped = snapCreateRange(a, lo, hi, snapEnabled);
+        setCreatePreview({ startSec: clamped.startSec, endSec: clamped.endSec });
         return;
       }
 
@@ -407,8 +393,8 @@ export function useWaveformSegmentDrag(
       setCreatePreview(null);
       applySegmentDraft(null);
 
-      if (drag.mode === "create" || drag.mode === "select-marquee") {
-        if (!drag.moved && drag.mode === "create") {
+      if (drag.mode === "lasso") {
+        if (!drag.moved) {
           suppressClickAfterPointer();
           a.onFocusWaveformShell?.();
           a.seekToTime(drag.anchorTimeSec);
@@ -421,6 +407,8 @@ export function useWaveformSegmentDrag(
         a.onFocusWaveformShell?.();
         if (ev.shiftKey) {
           a.onSelectSegmentAt(drag.segmentIdx, { shiftKey: true });
+        } else if (ev.metaKey || ev.ctrlKey) {
+          a.onSelectSegmentAt(drag.segmentIdx, { toggle: true });
         } else {
           onSegmentPointerTapRef.current(drag.segmentIdx, drag.anchorTimeSec);
         }

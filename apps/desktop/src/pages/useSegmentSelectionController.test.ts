@@ -43,7 +43,7 @@ describe("useSegmentSelectionController", () => {
     expect(result.current.isMultiSegmentSelection).toBe(true);
   });
 
-  it("collapses range when selectedIdx changes externally", () => {
+  it("preserves multi-select when selectedIdx changes within the set", () => {
     const { result } = renderHook(() => useTestSelection(2, 6));
 
     act(() => {
@@ -53,9 +53,9 @@ describe("useSegmentSelectionController", () => {
       result.current.setSelectedIdx(3);
     });
 
-    expect(result.current.selectionLo).toBe(3);
-    expect(result.current.selectionHi).toBe(3);
-    expect(result.current.isMultiSegmentSelection).toBe(false);
+    expect(result.current.selectionLo).toBe(2);
+    expect(result.current.selectionHi).toBe(5);
+    expect(result.current.isMultiSegmentSelection).toBe(true);
   });
 
   it("replaces selection on plain click", () => {
@@ -86,5 +86,28 @@ describe("useSegmentSelectionController", () => {
     expect(result.current.isMultiSegmentSelection).toBe(false);
     expect(result.current.selectionLo).toBe(3);
     expect(result.current.selectionHi).toBe(3);
+  });
+
+  it("toggle adds and removes indices like Jieyu toggleSegmentSelection", () => {
+    const { result } = renderHook(() => useTestSelection(0, 6));
+
+    act(() => {
+      result.current.selectSegmentAt(2);
+    });
+    act(() => {
+      result.current.selectSegmentAt(4, { toggle: true });
+    });
+
+    expect(result.current.selectionCount).toBe(2);
+    expect(result.current.isIndexInSelection(2)).toBe(true);
+    expect(result.current.isIndexInSelection(4)).toBe(true);
+    expect(result.current.isContiguousSelection).toBe(false);
+
+    act(() => {
+      result.current.selectSegmentAt(4, { toggle: true });
+    });
+
+    expect(result.current.selectionCount).toBe(1);
+    expect(result.current.isIndexInSelection(2)).toBe(true);
   });
 });

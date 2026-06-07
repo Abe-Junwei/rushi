@@ -72,6 +72,7 @@ export function EditorView({
             selectionLo: c.selectionLo,
             selectionHi: c.selectionHi,
             selectionCount: c.selectionCount,
+            isContiguousSelection: c.isContiguousSelection,
             appearance: {
               appearanceDisabled: appearance.transcriptFontControlDisabled,
               transcriptFontFamily: appearance.transcriptFontFamily,
@@ -89,6 +90,7 @@ export function EditorView({
       c.segments,
       c.busy,
       c.selectionCount,
+      c.isContiguousSelection,
       c.selectionLo,
       c.selectionHi,
       appearance.transcriptFontControlDisabled,
@@ -168,7 +170,11 @@ export function EditorView({
       switch (segmentKey) {
         case "delete":
           if (c.isMultiSegmentSelection) {
-            c.requestDeleteSelection(c.selectionLo, c.selectionHi);
+            if (c.isContiguousSelection) {
+              c.requestDeleteSelection(c.selectionLo, c.selectionHi);
+            } else {
+              c.requestDeleteSelectedIndices(c.selectedIndicesArray);
+            }
           } else {
             tx.deleteSegmentAt(i);
           }
@@ -180,7 +186,9 @@ export function EditorView({
           c.mergeWithNextAt(i);
           break;
         case "mergeRange":
-          c.mergeSegmentRange(c.selectionLo, c.selectionHi);
+          if (c.isContiguousSelection) {
+            c.mergeSegmentRange(c.selectionLo, c.selectionHi);
+          }
           break;
         case "splitAtPointer":
           tx.splitAtPlayhead(segmentCtxMenu.pointerTimeSec);

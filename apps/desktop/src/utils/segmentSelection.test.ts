@@ -1,9 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { SegmentDto } from "../tauri/projectTypes";
 import {
+  computeSegmentLassoOutcome,
   mergeSegmentRangeFold,
   normalizeSegmentIndexRange,
   selectionRangeFromTimeMarquee,
+  toggleSegmentIndex,
 } from "./segmentSelection";
 
 function seg(start: number, end: number, text = "x"): SegmentDto {
@@ -36,5 +38,20 @@ describe("segmentSelection", () => {
     expect(merged.text).toBe("a\nb\nc");
     expect(merged.start_sec).toBe(0);
     expect(merged.end_sec).toBe(3);
+  });
+
+  it("computeSegmentLassoOutcome selects intersecting segments", () => {
+    const segments = [seg(0, 2), seg(2, 4), seg(4, 6)];
+    const outcome = computeSegmentLassoOutcome(segments, 1, 3.5, 6, new Set());
+    expect(outcome.mode).toBe("select");
+    expect(outcome.hitCount).toBe(2);
+    expect([...outcome.indices].sort()).toEqual([0, 1]);
+  });
+
+  it("toggleSegmentIndex seeds from primary when set is empty", () => {
+    expect(toggleSegmentIndex(new Set(), 0, 2)).toEqual({
+      indices: new Set([0, 2]),
+      primaryIdx: 2,
+    });
   });
 });

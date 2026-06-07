@@ -1,7 +1,18 @@
 import { WAVEFORM_SEGMENT_MIN_SPAN_SEC, type SegmentDragMode } from "./waveformSegmentBounds";
 import type { SegmentOverlapPolicy } from "./segmentTimeRange";
 
-export type OverlayDragMode = SegmentDragMode | "create" | "select-marquee";
+export type OverlayDragMode = SegmentDragMode | "lasso";
+
+/** Blank overlay shell pointer-down: lasso select/create (解语 wave lasso) or seek. */
+export type BlankOverlayShellDragMode = "lasso" | "seek";
+
+export function resolveBlankOverlayShellDragMode(input: {
+  enableCreateRange: boolean;
+  hasOnCreateRange: boolean;
+}): BlankOverlayShellDragMode {
+  if (input.enableCreateRange && input.hasOnCreateRange) return "lasso";
+  return "seek";
+}
 
 export type OverlayPointerUpIntent =
   | { kind: "select-segment"; segmentIdx: number; pointerTimeSec: number }
@@ -25,8 +36,7 @@ export function resolveOverlayPointerUpIntent(input: {
 }): OverlayPointerUpIntent {
   const minSpan = input.minSpanSec ?? WAVEFORM_SEGMENT_MIN_SPAN_SEC;
 
-  if (input.mode === "create") {
-    // 空白区新建语段必须是明确拖动（pointer move 超阈值）而非点击抖动。
+  if (input.mode === "lasso") {
     if (!input.moved) {
       return { kind: "seek-blank", timeSec: input.pointerTimeSec };
     }

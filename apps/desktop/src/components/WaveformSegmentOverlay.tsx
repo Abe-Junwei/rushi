@@ -3,7 +3,7 @@ import type { SegmentDto } from "../tauri/projectApi";
 import type { SegmentOverlapPolicy } from "../utils/segmentTimeRange";
 import { useWaveformSegmentOverlay } from "../hooks/useWaveformSegmentOverlay";
 import { computeCreatePreviewStyle } from "../utils/waveformSegmentOverlayGeometry";
-import { selectOverlayInteractiveSegmentIndices, resolveOverlaySelectionRange } from "../utils/waveformSegmentOverlayVisibility";
+import { selectOverlayInteractiveSegmentIndices } from "../utils/waveformSegmentOverlayVisibility";
 import { WaveformSegmentRegionItem } from "./WaveformSegmentRegionItem";
 
 export type WaveformSegmentOverlayProps = {
@@ -12,6 +12,10 @@ export type WaveformSegmentOverlayProps = {
   selectedIdx: number;
   selectionLo?: number;
   selectionHi?: number;
+  selectionCount?: number;
+  isContiguousSelection?: boolean;
+  selectedIndices?: ReadonlySet<number>;
+  isIndexInSelection?: (idx: number) => boolean;
   timelineWidthPx: number;
   durationSec: number;
   layoutHeightPx: number;
@@ -22,7 +26,9 @@ export type WaveformSegmentOverlayProps = {
   clientXToTimeSec: (clientX: number) => number;
   getPlayheadSec: () => number;
   onDraftIdxChange?: (idx: number | null) => void;
-  onSelectSegmentAt: (idx: number, opts?: { shiftKey?: boolean }) => void;
+  onSelectSegmentAt: (idx: number, opts?: { shiftKey?: boolean; toggle?: boolean }) => void;
+  onSelectSegmentIndices?: (indices: number[], primaryIdx: number) => void;
+  getSelectedIndices?: () => ReadonlySet<number>;
   onBeginBoundsEdit?: () => void;
   onFocusWaveformShell?: () => void;
   onBoundsCommit: (idx: number, startSec: number, endSec: number) => void;
@@ -52,25 +58,52 @@ export const WaveformSegmentOverlay = memo(function WaveformSegmentOverlay(props
     segmentOverlayGeometry,
   } = useWaveformSegmentOverlay(props);
 
-  const { timelineWidthPx, laneByIndex, laneCount, layoutHeightPx, segments, selectedIdx, selectionLo, selectionHi, durationSec } =
-    props;
+  const {
+    timelineWidthPx,
+    laneByIndex,
+    laneCount,
+    layoutHeightPx,
+    segments,
+    selectedIdx,
+    durationSec,
+    isIndexInSelection,
+  } = props;
 
   const segmentIndices = useMemo(
     () =>
       selectOverlayInteractiveSegmentIndices({
         segmentCount: segments.length,
         selectedIdx,
-        selectionLo,
-        selectionHi,
+        selectedIndices: props.selectedIndices,
+        selectionLo: props.selectionLo,
+        selectionHi: props.selectionHi,
+        selectionCount: props.selectionCount,
+        isContiguousSelection: props.isContiguousSelection,
         draftIdx: segmentDraftIdx,
       }),
-    [segments.length, selectedIdx, selectionLo, selectionHi, segmentDraftIdx],
+    [
+      segments.length,
+      selectedIdx,
+      props.selectedIndices,
+      props.selectionLo,
+      props.selectionHi,
+      props.selectionCount,
+      props.isContiguousSelection,
+      segmentDraftIdx,
+    ],
   );
+
+  const rangeLo = props.selectionLo ?? selectedIdx;
+  const rangeHi = props.selectionHi ?? selectedIdx;
+  const contiguousMulti =
+    props.isContiguousSelection === true &&
+    (props.selectionCount ?? 1) > 1 &&
+    rangeHi > rangeLo;
 
   return (
     <div
       className="waveform-segment-overlay"
-      title="框选：Shift 允许重叠，Alt+Shift 拒绝重叠，Alt 关闭吸附；⌘/Ctrl+拖动空白可选中语段"
+      title="拖动空白：选中相交语段；空白处无命中则新建。Shift+拖扩展已有选区；Shift 允许重叠新建；⌘/Ctrl+点击切换选中"
       onPointerDown={onShellPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -82,13 +115,10 @@ export const WaveformSegmentOverlay = memo(function WaveformSegmentOverlay(props
         const bounds = segmentBoundsAt(idx);
         if (!bounds) return null;
         const selected = idx === selectedIdx;
-        const { lo, hi } = resolveOverlaySelectionRange({
-          segmentCount: segments.length,
-          selectedIdx,
-          selectionLo,
-          selectionHi,
-        });
-        const inSelection = idx >= lo && idx <= hi && !selected;
+        const inContiguousRange = contiguousMulti && idx >= rangeLo && idx <= rangeHi;
+        const inSelection =
+          !selected &&
+          (inContiguousRange || (isIndexInSelection?.(idx) ?? false));
         return (
           <WaveformSegmentRegionItem
             key={seg.uid ? `${seg.uid}#${idx}` : `seg-${idx}`}

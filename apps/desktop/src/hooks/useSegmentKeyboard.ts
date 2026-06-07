@@ -64,7 +64,11 @@ export function useSegmentKeyboard(args: {
         e.preventDefault();
         if (c.segments.length > 0) {
           if (c.isMultiSegmentSelection) {
-            c.requestDeleteSelection(c.selectionLo, c.selectionHi);
+            if (c.isContiguousSelection) {
+              c.requestDeleteSelection(c.selectionLo, c.selectionHi);
+            } else {
+              c.requestDeleteSelectedIndices(c.selectedIndicesArray);
+            }
           } else {
             c.deleteSegmentAt(c.selectedIdx);
           }
@@ -73,7 +77,7 @@ export function useSegmentKeyboard(args: {
       }
       if (mod && e.key.toLowerCase() === "m" && e.shiftKey) {
         e.preventDefault();
-        if (c.isMultiSegmentSelection) {
+        if (c.isMultiSegmentSelection && c.isContiguousSelection) {
           c.mergeSegmentRange(c.selectionLo, c.selectionHi);
         } else if (c.selectedIdx > 0) {
           c.mergeWithPrev();
@@ -82,7 +86,7 @@ export function useSegmentKeyboard(args: {
       }
       if (mod && e.key.toLowerCase() === "m" && !e.shiftKey) {
         e.preventDefault();
-        if (c.isMultiSegmentSelection) {
+        if (c.isMultiSegmentSelection && c.isContiguousSelection) {
           c.mergeSegmentRange(c.selectionLo, c.selectionHi);
         } else if (c.selectedIdx >= 0 && c.selectedIdx < c.segments.length - 1) {
           c.mergeWithNext();

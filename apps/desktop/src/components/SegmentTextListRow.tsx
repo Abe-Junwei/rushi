@@ -23,7 +23,7 @@ export type SegmentTextListRowProps = {
   onTimestampPointerEnter?: (index: number) => void;
   onTimestampPointerUp?: (e: React.PointerEvent<HTMLElement>) => void;
   onSegmentRowHeightPointerDown?: (e: React.PointerEvent<HTMLDivElement>) => void;
-  selectSegmentAt: (idx: number, opts?: { shiftKey?: boolean }) => void;
+  selectSegmentAt: (idx: number, opts?: { shiftKey?: boolean; toggle?: boolean }) => void;
   updateSegmentText: (idx: number, text: string) => void;
   onTextareaKeyDown: (idx: number, e: KeyboardEvent<HTMLTextAreaElement>) => void;
   onOpenContextMenu?: (
@@ -90,6 +90,11 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
       if (e.shiftKey) {
         focusOnSelectRef.current = false;
         selectSegmentAt(i, { shiftKey: true });
+        return;
+      }
+      if (e.metaKey || e.ctrlKey) {
+        focusOnSelectRef.current = false;
+        selectSegmentAt(i, { toggle: true });
         return;
       }
       if (selected) {

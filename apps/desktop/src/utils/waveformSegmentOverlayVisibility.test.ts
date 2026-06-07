@@ -69,4 +69,34 @@ describe("selectOverlayInteractiveSegmentIndices", () => {
       }),
     ).toEqual([0, 1, 2]);
   });
+
+  it("fills contiguous range from selectedIndices when isContiguousSelection", () => {
+    expect(
+      selectOverlayInteractiveSegmentIndices({
+        segmentCount: 5,
+        selectedIdx: 0,
+        selectedIndices: new Set([0, 1, 2, 3]),
+        selectionLo: 0,
+        selectionHi: 3,
+        selectionCount: 4,
+        isContiguousSelection: true,
+        draftIdx: null,
+      }),
+    ).toEqual([0, 1, 2, 3]);
+  });
+
+  it("does not fill envelope gaps for sparse selectedIndices", () => {
+    expect(
+      selectOverlayInteractiveSegmentIndices({
+        segmentCount: 5,
+        selectedIdx: 4,
+        selectedIndices: new Set([0, 2, 4]),
+        selectionLo: 0,
+        selectionHi: 4,
+        selectionCount: 3,
+        isContiguousSelection: false,
+        draftIdx: null,
+      }),
+    ).toEqual([0, 2, 4]);
+  });
 });

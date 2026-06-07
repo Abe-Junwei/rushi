@@ -22,7 +22,7 @@ import {
   selectPackableSegments,
   WAVEFORM_SEGMENT_MIN_SPAN_SEC,
 } from "../utils/waveformSegmentBounds";
-import { mergeSegmentRangeFold } from "../utils/segmentSelection";
+import { mergeSegmentRangeFold, resolveSelectedIdxAfterIndexRemoval } from "../utils/segmentSelection";
 import { useSegmentSplitController } from "./useSegmentSplitController";
 import { useSegmentUndoRedo } from "./useSegmentUndoRedo";
 
@@ -46,6 +46,7 @@ export interface SegmentMutationApi {
   mergeSegmentRange: (lo: number, hi: number) => void;
   deleteSegmentAt: (idx: number) => void;
   deleteSegmentRange: (lo: number, hi: number) => void;
+  deleteSegmentIndices: (indices: number[]) => void;
   insertSegmentAfter: (idx: number, mediaDurationSec?: number) => void;
   insertSegmentFromTimeRange: (
     startSec: number,
@@ -302,6 +303,41 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
     [flushSegmentTextDrafts, onSelectionCollapsed, pushUndo, segmentsRef, selectedIdxRef, setError, setSegments, setSelectedIdx],
   );
 
+  const deleteSegmentIndices = useCallback(
+    (rawIndices: number[]) => {
+      flushSegmentTextDrafts();
+      const segs = segmentsRef.current;
+      const indices = [...new Set(rawIndices)]
+        .filter((idx) => idx >= 0 && idx < segs.length)
+        .sort((a, b) => b - a);
+      if (indices.length === 0) return;
+      if (indices.length === 1) {
+        deleteSegmentAt(indices[0]!);
+        return;
+      }
+      setError("");
+      pushUndo();
+      const remove = new Set(indices);
+      const prevSelected = selectedIdxRef.current;
+      const nextLen = segs.length - indices.length;
+      const nextSelected = resolveSelectedIdxAfterIndexRemoval(segs.length, indices, prevSelected);
+      setSegments((prev) => reindexSegments(prev.filter((_, j) => !remove.has(j))));
+      setSelectedIdx(Math.max(0, Math.min(nextSelected, nextLen - 1)));
+      onSelectionCollapsed?.(Math.max(0, Math.min(nextSelected, nextLen - 1)));
+    },
+    [
+      deleteSegmentAt,
+      flushSegmentTextDrafts,
+      onSelectionCollapsed,
+      pushUndo,
+      segmentsRef,
+      selectedIdxRef,
+      setError,
+      setSegments,
+      setSelectedIdx,
+    ],
+  );
+
   const insertSegmentAfter = useCallback(
     (idx: number, mediaDurationSec = 0) => {
       flushSegmentTextDrafts();
@@ -424,6 +460,7 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
     mergeSegmentRange,
     deleteSegmentAt,
     deleteSegmentRange,
+    deleteSegmentIndices,
     insertSegmentAfter,
     insertSegmentFromTimeRange,
     flushSegmentTextDrafts,

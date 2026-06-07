@@ -26,12 +26,15 @@ export function selectOverlayRenderedSegmentIndices(input: {
   return out;
 }
 
-/** DOM overlay indices: selected range + in-progress draft only (display bands use canvas). */
+/** DOM overlay / canvas skip indices: explicit set + contiguous range + draft. */
 export function selectOverlayInteractiveSegmentIndices(input: {
   segmentCount: number;
   selectedIdx: number;
+  selectedIndices?: ReadonlySet<number>;
   selectionLo?: number;
   selectionHi?: number;
+  selectionCount?: number;
+  isContiguousSelection?: boolean;
   draftIdx: number | null;
 }): number[] {
   const out: number[] = [];
@@ -42,7 +45,22 @@ export function selectOverlayInteractiveSegmentIndices(input: {
     out.push(idx);
   };
   const { lo, hi } = resolveOverlaySelectionRange(input);
-  for (let idx = lo; idx <= hi; idx += 1) add(idx);
+
+  if (input.selectedIndices && input.selectedIndices.size > 0) {
+    for (const idx of input.selectedIndices) add(idx);
+  }
+
+  const fillContiguousRange =
+    input.isContiguousSelection === true &&
+    (input.selectionCount ?? 0) > 1 &&
+    hi > lo;
+
+  if (fillContiguousRange) {
+    for (let idx = lo; idx <= hi; idx += 1) add(idx);
+  } else if (!input.selectedIndices || input.selectedIndices.size === 0) {
+    for (let idx = lo; idx <= hi; idx += 1) add(idx);
+  }
+
   if (input.draftIdx != null) add(input.draftIdx);
   return out;
 }

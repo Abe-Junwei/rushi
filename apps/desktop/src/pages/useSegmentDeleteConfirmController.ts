@@ -4,13 +4,15 @@ import { segmentHasTextContent } from "../services/segmentConfirmEligible";
 
 type PendingDelete =
   | { kind: "single"; idx: number }
-  | { kind: "range"; lo: number; hi: number };
+  | { kind: "range"; lo: number; hi: number }
+  | { kind: "indices"; indices: number[] };
 
 type Args = {
   segmentsRef: MutableRefObject<SegmentDto[]>;
   flushSegmentTextDrafts: () => void;
   deleteSegmentAt: (idx: number) => void;
   deleteSegmentRange: (lo: number, hi: number) => void;
+  deleteSegmentIndices: (indices: number[]) => void;
 };
 
 function rangeHasTextContent(segments: SegmentDto[], lo: number, hi: number): boolean {
@@ -20,8 +22,16 @@ function rangeHasTextContent(segments: SegmentDto[], lo: number, hi: number): bo
   return false;
 }
 
+function indicesHaveTextContent(segments: SegmentDto[], indices: number[]): boolean {
+  for (const idx of indices) {
+    if (segmentHasTextContent(segments, idx)) return true;
+  }
+  return false;
+}
+
 export function useSegmentDeleteConfirmController(args: Args) {
-  const { segmentsRef, flushSegmentTextDrafts, deleteSegmentAt, deleteSegmentRange } = args;
+  const { segmentsRef, flushSegmentTextDrafts, deleteSegmentAt, deleteSegmentRange, deleteSegmentIndices } =
+    args;
   const pendingRef = useRef<PendingDelete | null>(null);
   const [segmentDeleteConfirmOpen, setSegmentDeleteConfirmOpen] = useState(false);
   const [pendingDeleteCount, setPendingDeleteCount] = useState(1);
@@ -30,7 +40,13 @@ export function useSegmentDeleteConfirmController(args: Args) {
     pendingRef.current = pending;
     setSegmentDeleteConfirmOpen(pending != null);
     setPendingDeleteCount(
-      pending?.kind === "range" ? pending.hi - pending.lo + 1 : pending ? 1 : 1,
+      pending?.kind === "range"
+        ? pending.hi - pending.lo + 1
+        : pending?.kind === "indices"
+          ? pending.indices.length
+          : pending
+            ? 1
+            : 1,
     );
   }, []);
 
@@ -66,13 +82,33 @@ export function useSegmentDeleteConfirmController(args: Args) {
     [deleteSegmentRange, flushSegmentTextDrafts, requestDeleteSegmentAt, segmentsRef, setPending],
   );
 
+  const requestDeleteSelectedIndices = useCallback(
+    (indices: number[]) => {
+      flushSegmentTextDrafts();
+      const segs = segmentsRef.current;
+      const unique = [...new Set(indices)].filter((idx) => idx >= 0 && idx < segs.length);
+      if (unique.length === 0) return;
+      if (unique.length === 1) {
+        requestDeleteSegmentAt(unique[0]!);
+        return;
+      }
+      if (indicesHaveTextContent(segs, unique)) {
+        setPending({ kind: "indices", indices: unique.sort((a, b) => a - b) });
+        return;
+      }
+      deleteSegmentIndices(unique);
+    },
+    [deleteSegmentIndices, flushSegmentTextDrafts, requestDeleteSegmentAt, segmentsRef, setPending],
+  );
+
   const confirmDeleteSegment = useCallback(() => {
     const pending = pendingRef.current;
     if (!pending) return;
     if (pending.kind === "range") deleteSegmentRange(pending.lo, pending.hi);
+    else if (pending.kind === "indices") deleteSegmentIndices(pending.indices);
     else deleteSegmentAt(pending.idx);
     setPending(null);
-  }, [deleteSegmentAt, deleteSegmentRange, setPending]);
+  }, [deleteSegmentAt, deleteSegmentIndices, deleteSegmentRange, setPending]);
 
   const cancelDeleteSegment = useCallback(() => {
     setPending(null);
@@ -83,6 +119,7 @@ export function useSegmentDeleteConfirmController(args: Args) {
     pendingDeleteCount,
     requestDeleteSegmentAt,
     requestDeleteSelection,
+    requestDeleteSelectedIndices,
     confirmDeleteSegment,
     cancelDeleteSegment,
   };

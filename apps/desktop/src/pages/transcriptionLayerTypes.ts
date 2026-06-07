@@ -13,9 +13,13 @@ export type TranscriptionLayerInput = {
   selectionHi: number;
   selectionCount: number;
   isMultiSegmentSelection: boolean;
+  isContiguousSelection: boolean;
+  selectedIndicesArray: number[];
   isIndexInSelection: (idx: number) => boolean;
-  selectSegmentAt: (idx: number, opts?: { shiftKey?: boolean }) => void;
+  selectSegmentAt: (idx: number, opts?: { shiftKey?: boolean; toggle?: boolean }) => void;
   selectSegmentRange: (lo: number, hi: number) => void;
+  selectSegmentIndices: (indices: number[], primaryIdx: number) => void;
+  requestDeleteSelectedIndices: (indices: number[]) => void;
   undo: () => void;
   redo: () => void;
   updateSegmentBounds: (idx: number, startSec: number, endSec: number, phase?: "live" | "commit") => void;

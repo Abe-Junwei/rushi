@@ -101,12 +101,14 @@ export function ProjectPanel() {
 
   const openSegmentContextMenu = useCallback(
     (menu: SegmentContextMenuOpen) => {
-      if (!c.isIndexInSelection(menu.segmentIdx)) {
+      const preserveMulti =
+        c.isIndexInSelection(menu.segmentIdx) && c.selectionCount > 1;
+      if (!preserveMulti) {
         c.selectSegmentAt(menu.segmentIdx);
       }
       setSegmentCtxMenu(menu);
     },
-    [c.isIndexInSelection, c.selectSegmentAt],
+    [c.isIndexInSelection, c.selectSegmentAt, c.selectionCount],
   );
 
   const tx = useTranscriptionLayer({
@@ -120,9 +122,12 @@ export function ProjectPanel() {
     selectionHi: c.selectionHi,
     selectionCount: c.selectionCount,
     isMultiSegmentSelection: c.isMultiSegmentSelection,
+    isContiguousSelection: c.isContiguousSelection,
+    selectedIndicesArray: c.selectedIndicesArray,
     isIndexInSelection: c.isIndexInSelection,
     selectSegmentAt: c.selectSegmentAt,
     selectSegmentRange: c.selectSegmentRange,
+    selectSegmentIndices: c.selectSegmentIndices,
     undo: c.undo,
     redo: c.redo,
     updateSegmentBounds: c.updateSegmentBounds,
@@ -135,6 +140,7 @@ export function ProjectPanel() {
     insertSegmentAfter: c.insertSegmentAfter,
     deleteSegmentAt: c.deleteSegmentAt,
     requestDeleteSelection: c.requestDeleteSelection,
+    requestDeleteSelectedIndices: c.requestDeleteSelectedIndices,
     confirmSegmentEditAndAdvance: c.confirmSegmentEditAndAdvance,
     onOpenSegmentContextMenu: openSegmentContextMenu,
   });

@@ -45,6 +45,7 @@ export function buildSegmentContextMenuItems(args: {
   selectionLo?: number;
   selectionHi?: number;
   selectionCount?: number;
+  isContiguousSelection?: boolean;
 }): SegmentContextMenuItem[] {
   const {
     segmentIdx: i,
@@ -56,6 +57,7 @@ export function buildSegmentContextMenuItems(args: {
     selectionLo = i,
     selectionHi = i,
     selectionCount = 1,
+    isContiguousSelection = true,
   } = args;
   const n = segments.length;
   const seg = segments[i];
@@ -67,7 +69,7 @@ export function buildSegmentContextMenuItems(args: {
       {
         key: "mergeRange",
         label: `合并 ${selectionCount} 条语段`,
-        disabled: busy || selectionLo >= selectionHi,
+        disabled: busy || selectionLo >= selectionHi || !isContiguousSelection,
       },
       {
         key: "delete",

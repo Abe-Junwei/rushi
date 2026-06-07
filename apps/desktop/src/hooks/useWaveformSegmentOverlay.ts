@@ -27,7 +27,9 @@ export function useWaveformSegmentOverlay(args: {
   laneCount: number;
   enableCreateRange: boolean;
   clientXToTimeSec: (clientX: number) => number;
-  onSelectSegmentAt: (idx: number, opts?: { shiftKey?: boolean }) => void;
+  onSelectSegmentAt: (idx: number, opts?: { shiftKey?: boolean; toggle?: boolean }) => void;
+  onSelectSegmentIndices?: (indices: number[], primaryIdx: number) => void;
+  getSelectedIndices?: () => ReadonlySet<number>;
   onBeginBoundsEdit?: () => void;
   onFocusWaveformShell?: () => void;
   onBoundsCommit: (idx: number, startSec: number, endSec: number) => void;
@@ -85,6 +87,10 @@ export function useWaveformSegmentOverlay(args: {
       a.onFocusWaveformShell?.();
       if (ev.shiftKey) {
         a.onSelectSegmentAt(idx, { shiftKey: true });
+        return;
+      }
+      if (ev.metaKey || ev.ctrlKey) {
+        a.onSelectSegmentAt(idx, { toggle: true });
         return;
       }
       onSegmentPointerTap(idx, a.clientXToTimeSec(ev.clientX));

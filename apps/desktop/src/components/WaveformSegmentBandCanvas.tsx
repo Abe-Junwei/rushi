@@ -16,6 +16,9 @@ export type WaveformSegmentBandCanvasProps = {
   selectedIdx: number;
   selectionLo?: number;
   selectionHi?: number;
+  selectionCount?: number;
+  isContiguousSelection?: boolean;
+  selectedIndices?: ReadonlySet<number>;
   dominantSpanIndices?: readonly number[];
   draftIdx: number | null;
   tierScrollRef: RefObject<HTMLElement | null>;
@@ -31,6 +34,9 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
   selectedIdx,
   selectionLo,
   selectionHi,
+  selectionCount,
+  isContiguousSelection,
+  selectedIndices,
   dominantSpanIndices,
   draftIdx,
   tierScrollRef,
@@ -46,6 +52,9 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
     selectedIdx,
     selectionLo,
     selectionHi,
+    selectionCount,
+    isContiguousSelection,
+    selectedIndices,
     dominantSpanIndices,
     draftIdx,
   });
@@ -57,6 +66,9 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
     selectedIdx,
     selectionLo,
     selectionHi,
+    selectionCount,
+    isContiguousSelection,
+    selectedIndices,
     dominantSpanIndices,
     draftIdx,
   };
@@ -94,8 +106,11 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
       const skipIndices = selectOverlayInteractiveSegmentIndices({
         segmentCount: input.segments.length,
         selectedIdx: input.selectedIdx,
+        selectedIndices: input.selectedIndices,
         selectionLo: input.selectionLo,
         selectionHi: input.selectionHi,
+        selectionCount: input.selectionCount,
+        isContiguousSelection: input.isContiguousSelection,
         draftIdx: input.draftIdx,
       });
 
@@ -139,6 +154,9 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
     selectedIdx,
     selectionLo,
     selectionHi,
+    selectionCount,
+    isContiguousSelection,
+    selectedIndices,
     dominantSpanIndices,
     draftIdx,
     tierScrollRef,

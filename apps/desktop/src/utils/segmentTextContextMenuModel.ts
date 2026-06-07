@@ -86,6 +86,7 @@ export type SegmentRowContextMenuBuildArgs = {
   selectionLo?: number;
   selectionHi?: number;
   selectionCount?: number;
+  isContiguousSelection?: boolean;
 };
 
 /**
@@ -108,6 +109,7 @@ export function buildSegmentRowContextMenuItems(args: SegmentRowContextMenuBuild
     selectionLo: args.selectionLo,
     selectionHi: args.selectionHi,
     selectionCount: args.selectionCount,
+    isContiguousSelection: args.isContiguousSelection,
   });
 
   if (args.origin !== "segmentList") {

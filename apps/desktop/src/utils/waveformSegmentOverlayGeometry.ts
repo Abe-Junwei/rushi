@@ -23,6 +23,7 @@ export type OverlayDragState = {
   initialStartSec: number;
   initialEndSec: number;
   moved: boolean;
+  baseIndices?: Set<number>;
 };
 
 /** 语段条渲染边界：拖拽 draft 优先于 committed segment。 */
@@ -60,7 +61,7 @@ export function boundsForOverlayDrag(
   timeSec: number,
   durationSec: number,
 ): { startSec: number; endSec: number } | null {
-  if (drag.mode === "create" || drag.mode === "select-marquee") return null;
+  if (drag.mode === "lasso") return null;
   const delta = timeSec - drag.anchorTimeSec;
   return computeDragSegmentBounds(
     drag.mode,
