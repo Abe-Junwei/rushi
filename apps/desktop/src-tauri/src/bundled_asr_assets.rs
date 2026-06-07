@@ -10,7 +10,8 @@ static RESOURCE_ROOTS: OnceLock<Vec<PathBuf>> = OnceLock::new();
 
 pub fn init_from_app(handle: &AppHandle) {
     let manifest_dir = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-    let roots = candidate_resource_roots_from_parts(handle.path().resource_dir().ok(), &manifest_dir);
+    let roots =
+        candidate_resource_roots_from_parts(handle.path().resource_dir().ok(), &manifest_dir);
     let _ = RESOURCE_ROOTS.set(roots);
 }
 
@@ -92,10 +93,8 @@ mod tests {
 
     #[test]
     fn resolves_ffmpeg_from_release_style_resource_root() {
-        let temp = std::env::temp_dir().join(format!(
-            "rushi-bundled-assets-{}",
-            uuid::Uuid::new_v4()
-        ));
+        let temp =
+            std::env::temp_dir().join(format!("rushi-bundled-assets-{}", uuid::Uuid::new_v4()));
         let internal = temp
             .join("bundled-asr")
             .join("rushi-asr-sidecar")

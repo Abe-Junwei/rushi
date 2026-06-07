@@ -196,7 +196,7 @@ describe("usePostTranscribeStageBController", () => {
     await act(async () => {
       await result.current.offerPostTranscribeStageB();
     });
-    await act(async () => {
+    act(() => {
       result.current.confirmPostTranscribeStageBConsent();
     });
 
@@ -233,7 +233,7 @@ describe("usePostTranscribeStageBController", () => {
     await act(async () => {
       await result.current.offerPostTranscribeStageB();
     });
-    await act(async () => {
+    act(() => {
       result.current.confirmPostTranscribeStageBConsent();
     });
 

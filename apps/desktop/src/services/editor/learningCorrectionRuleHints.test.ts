@@ -21,7 +21,7 @@ describe("learningCorrectionRuleHints", () => {
       [{ text: "这是智控系统" }],
     );
     expect(hints).toEqual([{ beforeText: "智控", afterText: "制控", hitCount: 1 }]);
-    expect(formatLearningCorrectionHintLabel(hints[0]!)).toContain("学习中 1/3");
+    expect(formatLearningCorrectionHintLabel(hints[0])).toContain("学习中 1/3");
   });
 
   it("skips stable pairs and segments without wrong form", () => {

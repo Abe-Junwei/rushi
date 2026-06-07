@@ -28,7 +28,7 @@ const HALF_TO_FULL_PUNCT: Record<string, string> = {
 };
 
 const DUPLICATE_PUNCTUATION_RE =
-  /([，。！？；：、…—－,.!?;:\-])\1+/gu;
+  /([，。！？；：、…—－,.!?;:-])\1+/gu;
 
 function isDecimalOrTimeDot(before: string, after: string): boolean {
   return /\d$/.test(before) && /^\d/.test(after);
@@ -47,7 +47,7 @@ export function normalizeHalfWidthPunctuationToFullWidth(text: string): string {
   const withEllipsis = text.replace(/\.{2,}/g, "…");
   let out = "";
   for (let i = 0; i < withEllipsis.length; i++) {
-    const ch = withEllipsis[i]!;
+    const ch = withEllipsis[i];
     const before = withEllipsis[i - 1] ?? "";
     const after = withEllipsis[i + 1] ?? "";
 

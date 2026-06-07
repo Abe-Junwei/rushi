@@ -9,9 +9,8 @@ use tauri::State;
 
 use super::{
     chat_completion_finish_reason, extract_chat_completion_text_labeled,
-    resolve_postprocess_config_async, DEFAULT_TIMEOUT_SECS,
-    PostprocessAutoPunctuateRequest, PostprocessCancelState, PostprocessStageBProofreadRequest,
-    PostprocessStageBProofreadResponse,
+    resolve_postprocess_config_async, PostprocessAutoPunctuateRequest, PostprocessCancelState,
+    PostprocessStageBProofreadRequest, PostprocessStageBProofreadResponse, DEFAULT_TIMEOUT_SECS,
 };
 
 #[tauri::command]
@@ -100,18 +99,12 @@ pub async fn postprocess_stage_b_proofread(
         )
         .await
         .map_err(|e| {
-            append_desktop_log_line(
-                &state,
-                &format!("ERROR postprocess stage_b connect {e}"),
-            );
+            append_desktop_log_line(&state, &format!("ERROR postprocess stage_b connect {e}"));
             format_postprocess_connect_error("智能改稿", &e, &endpoint)
         })?;
         let status = resp.status();
         let payload = resp.text().await.map_err(|e| {
-            append_desktop_log_line(
-                &state,
-                &format!("ERROR postprocess stage_b read body {e}"),
-            );
+            append_desktop_log_line(&state, &format!("ERROR postprocess stage_b read body {e}"));
             "智能改稿返回体读取失败。".to_string()
         })?;
         Ok::<_, String>((status, payload))
@@ -161,15 +154,18 @@ pub async fn postprocess_stage_b_proofread(
     })?;
     let raw_content = extract_chat_completion_text_labeled(&json, "智能改稿")?;
     let finish_reason = chat_completion_finish_reason(&json).unwrap_or("unknown");
-    let parsed = super::postprocess_lexicon_ops::parse_lexicon_proofread_json_lenient(&raw_content)?;
+    let parsed =
+        super::postprocess_lexicon_ops::parse_lexicon_proofread_json_lenient(&raw_content)?;
     let parse_skipped = parsed.skipped_malformed_ops;
-    let (items, mut warnings, dropped) = super::postprocess_lexicon_ops::filter_grounded_lexicon_ops(
-        &pack,
-        &req.segments,
-        parsed.payload.ops,
-    )?;
+    let (items, mut warnings, dropped) =
+        super::postprocess_lexicon_ops::filter_grounded_lexicon_ops(
+            &pack,
+            &req.segments,
+            parsed.payload.ops,
+        )?;
     if finish_reason == "length" {
-        warnings.push("模型输出可能被截断（finish_reason=length），部分语段建议可能丢失。".to_string());
+        warnings
+            .push("模型输出可能被截断（finish_reason=length），部分语段建议可能丢失。".to_string());
     }
     if parse_skipped > 0 {
         warnings.push(format!("跳过 {parse_skipped} 条结构不完整的 LLM 建议"));
@@ -183,10 +179,12 @@ pub async fn postprocess_stage_b_proofread(
     }
     let ops: Vec<super::postprocess_segment_ops::SegmentRefineOp> = items
         .iter()
-        .map(|g| super::postprocess_segment_ops::SegmentRefineOp::UpdateText {
-            uid: g.uid.clone(),
-            text: g.text.clone(),
-        })
+        .map(
+            |g| super::postprocess_segment_ops::SegmentRefineOp::UpdateText {
+                uid: g.uid.clone(),
+                text: g.text.clone(),
+            },
+        )
         .collect();
 
     let latency_ms = t0.elapsed().as_millis() as u64;
@@ -203,7 +201,7 @@ pub async fn postprocess_stage_b_proofread(
         ops,
         items,
         warnings,
-        dropped_ops: dropped_ops,
+        dropped_ops,
         rationale: parsed.payload.rationale,
         pack_meta,
         provider: config.provider,

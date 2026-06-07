@@ -13,7 +13,7 @@ describe("useTranscriptFooterStats", () => {
     expect(result.current).toEqual({ segmentCount: 1, charCount: 2 });
 
     act(() => {
-      segmentDraftStore.setDraft(segmentDraftKey(segments[0]!, 0), "a");
+      segmentDraftStore.setDraft(segmentDraftKey(segments[0], 0), "a");
     });
 
     expect(result.current).toEqual({ segmentCount: 1, charCount: 1 });

@@ -1,11 +1,11 @@
 use super::bundled::BundledAsrLaunchReport;
 use super::candidates::bundled_sidecar_candidates_from_roots;
-use crate::bundled_asr_assets::candidate_resource_roots_from_parts;
 use super::probe::{
     health_declares_local_token_required, is_rushi_asr_health_json, loopback_port_accepts_tcp,
     loopback_root_declares_model_catalog, loopback_root_declares_punc_prepare,
     loopback_root_declares_transcribe_async,
 };
+use crate::bundled_asr_assets::candidate_resource_roots_from_parts;
 use serde_json::json;
 use std::fs;
 use std::net::TcpListener;

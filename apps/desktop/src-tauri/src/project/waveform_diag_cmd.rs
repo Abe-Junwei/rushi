@@ -4,7 +4,7 @@ use std::path::Path;
 
 use serde::Serialize;
 
-use super::waveform_peaks::{all_peak_levels_exist, load_peaks_meta, peaks_dir, PEAK_LEVELS};
+use super::waveform_peaks::{all_peak_levels_exist, load_peaks_meta, peaks_dir};
 use super::waveform_peaks_ffmpeg::resolve_ffmpeg_command;
 use crate::DbState;
 
@@ -35,7 +35,9 @@ pub fn waveform_release_probe(
             |r| r.get(0),
         )
         .map_err(|e| e.to_string())?;
-    let audio_path = audio_path.filter(|p| !p.trim().is_empty()).ok_or("文件无音频路径")?;
+    let audio_path = audio_path
+        .filter(|p| !p.trim().is_empty())
+        .ok_or("文件无音频路径")?;
     let audio = Path::new(&audio_path);
     let peaks_root = peaks_dir(&st.root.join("projects").join(&project_id));
     let peaks_complete = all_peak_levels_exist(&peaks_root, &file_id);
@@ -56,7 +58,7 @@ pub fn waveform_release_probe(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::project::waveform_peaks::peak_file_path;
+    use crate::project::waveform_peaks::{peak_file_path, PEAK_LEVELS};
     use std::fs;
     use uuid::Uuid;
 

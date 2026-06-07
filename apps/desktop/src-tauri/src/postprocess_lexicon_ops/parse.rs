@@ -1,7 +1,9 @@
 use super::super::postprocess_segment_ops::{
     extract_balanced_json_array, extract_balanced_json_object, extract_json_object_from_llm_content,
 };
-use super::types::{LexiconEvidence, LexiconProofreadLlmPayload, LexiconProofreadOp, LexiconProofreadParseResult};
+use super::types::{
+    LexiconEvidence, LexiconProofreadLlmPayload, LexiconProofreadOp, LexiconProofreadParseResult,
+};
 
 #[allow(dead_code)]
 pub fn parse_lexicon_proofread_json(raw: &str) -> Result<LexiconProofreadLlmPayload, String> {
@@ -65,9 +67,7 @@ fn format_stage_b_json_parse_error(_err: &serde_json::Error) -> String {
     "智能改稿返回格式不完整，已跳过该批次中无法解析的部分。".to_string()
 }
 
-fn collect_lexicon_ops_from_array(
-    items: &[serde_json::Value],
-) -> (Vec<LexiconProofreadOp>, usize) {
+fn collect_lexicon_ops_from_array(items: &[serde_json::Value]) -> (Vec<LexiconProofreadOp>, usize) {
     let mut ops = Vec::new();
     let mut skipped_malformed_ops = 0usize;
     for item in items {
@@ -134,7 +134,9 @@ fn salvage_lexicon_ops_from_broken_json(json_str: &str) -> Option<LexiconProofre
     })
 }
 
-pub fn parse_lexicon_proofread_json_lenient(raw: &str) -> Result<LexiconProofreadParseResult, String> {
+pub fn parse_lexicon_proofread_json_lenient(
+    raw: &str,
+) -> Result<LexiconProofreadParseResult, String> {
     let parse_json_body = |json_str: &str| -> Result<LexiconProofreadParseResult, String> {
         match serde_json::from_str::<serde_json::Value>(json_str) {
             Ok(root) => {
@@ -161,8 +163,7 @@ pub fn parse_lexicon_proofread_json_lenient(raw: &str) -> Result<LexiconProofrea
 
     match extract_json_object_from_llm_content(raw) {
         Ok(json_str) => parse_json_body(&json_str),
-        Err(_) => salvage_lexicon_ops_from_broken_json(raw).ok_or_else(|| {
-            "智能改稿返回格式不完整，已跳过该批次中无法解析的部分。".to_string()
-        }),
+        Err(_) => salvage_lexicon_ops_from_broken_json(raw)
+            .ok_or_else(|| "智能改稿返回格式不完整，已跳过该批次中无法解析的部分。".to_string()),
     }
 }

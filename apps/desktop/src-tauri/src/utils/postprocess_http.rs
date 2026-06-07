@@ -78,9 +78,9 @@ pub async fn send_postprocess_chat_request(
 
     match primary {
         Ok(resp) => Ok(resp),
-        Err(e) if is_retryable_cloud_transport(&e) => build(postprocess_cloud_direct_client())
-            .send()
-            .await,
+        Err(e) if is_retryable_cloud_transport(&e) => {
+            build(postprocess_cloud_direct_client()).send().await
+        }
         Err(e) => Err(e),
     }
 }

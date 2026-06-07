@@ -37,9 +37,7 @@ fn glossary_has_term(pack: &LexiconPack, term: &str) -> bool {
 }
 
 fn normalize_text_core(s: &str) -> String {
-    s.chars()
-        .filter(|c| c.is_alphanumeric())
-        .collect()
+    s.chars().filter(|c| c.is_alphanumeric()).collect()
 }
 
 /// 去掉标点与空白后比较，用于验证 punctuation evidence。
@@ -134,9 +132,7 @@ fn segment_inconsistent_term_matches_change(
         return false;
     }
     pack.glossary_canonical.iter().any(|term| {
-        reference.contains(term.as_str())
-            && after.contains(term.as_str())
-            && (before != after)
+        reference.contains(term.as_str()) && after.contains(term.as_str()) && (before != after)
     })
 }
 

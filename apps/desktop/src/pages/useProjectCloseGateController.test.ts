@@ -4,17 +4,17 @@ import type { ProjectDetail, ProjectSummary, SegmentDto } from "../tauri/project
 import { useProjectCloseGateController } from "./useProjectCloseGateController";
 import type { SegmentDirtyStateApi } from "./useSegmentDirtyState";
 
-const destroyMock = vi.fn<() => Promise<void>>(async () => undefined);
+const destroyMock = vi.fn<() => Promise<void>>(() => Promise.resolve(undefined));
 
 vi.mock("@tauri-apps/api/window", () => ({
   getCurrentWindow: vi.fn(() => ({
     destroy: destroyMock,
-    onCloseRequested: vi.fn(async () => () => undefined),
+    onCloseRequested: vi.fn(() => Promise.resolve(() => undefined)),
   })),
 }));
 
 vi.mock("../services/lastWorkspace", () => ({
-  resolveEditorResumeTarget: vi.fn(async () => null),
+  resolveEditorResumeTarget: vi.fn(() => Promise.resolve(null)),
   writeLastWorkspace: vi.fn(),
 }));
 
@@ -54,8 +54,10 @@ function makeDirty(hasUnsaved: boolean): SegmentDirtyStateApi {
 function baseArgs(overrides: Partial<Parameters<typeof useProjectCloseGateController>[0]> = {}) {
   const applyDetail = vi.fn();
   const closeFile = vi.fn();
-  const openFile = vi.fn(async () => [{ uid: "s1", idx: 0, start_sec: 0, end_sec: 1, text: "a" }] as SegmentDto[]);
-  const saveSegments = vi.fn(async () => true);
+  const openFile = vi.fn(() =>
+    Promise.resolve([{ uid: "s1", idx: 0, start_sec: 0, end_sec: 1, text: "a" }] as SegmentDto[]),
+  );
+  const saveSegments = vi.fn(() => Promise.resolve(true));
   const resetMutationHistory = vi.fn();
 
   return {
@@ -140,7 +142,7 @@ describe("useProjectCloseGateController", () => {
     expect(args.closeFile).not.toHaveBeenCalled();
   });
 
-  it("stayAfterCloseAttempt dismisses gate without leaving project", async () => {
+  it("stayAfterCloseAttempt dismisses gate without leaving project", () => {
     const args = baseArgs({ dirty: makeDirty(true) });
     const { result } = renderHook(() => useProjectCloseGateController(args));
 

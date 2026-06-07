@@ -87,17 +87,10 @@ mod tests {
             text_stage: "auto_transcribe".to_string(),
             finalize_via: None,
         };
-        let baseline = HashMap::from([(
-            "u1".to_string(),
-            "对有嗯嗯好不是说自己不是的".to_string(),
-        )]);
-        learn_inferred_pairs_from_segment_save(
-            &conn,
-            &baseline,
-            &[seg("u1", "对有嗯嗯好")],
-            1,
-        )
-        .unwrap();
+        let baseline =
+            HashMap::from([("u1".to_string(), "对有嗯嗯好不是说自己不是的".to_string())]);
+        learn_inferred_pairs_from_segment_save(&conn, &baseline, &[seg("u1", "对有嗯嗯好")], 1)
+            .unwrap();
         let count: i32 = conn
             .query_row("SELECT COUNT(*) FROM correction_memory", [], |r| r.get(0))
             .unwrap();
@@ -302,7 +295,10 @@ mod tests {
             infer_single_replacement("第二个要素是智控", "第二个要素是制控"),
             Some(("智控".to_string(), "制控".to_string()))
         );
-        assert_eq!(infer_single_replacement("对有嗯嗯好不是说自己不是的", "对有嗯嗯好"), None);
+        assert_eq!(
+            infer_single_replacement("对有嗯嗯好不是说自己不是的", "对有嗯嗯好"),
+            None
+        );
         assert_eq!(
             infer_single_replacement("我们这一次的入学入学教育啊啊", "我们这一次的入学入学教育啊"),
             None,

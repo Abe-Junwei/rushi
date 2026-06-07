@@ -343,7 +343,7 @@ export function DraggableResizablePanel({
 
       const current = panelStateRef.current;
       let pos = current.position;
-      let sz = current.size;
+      const sz = current.size;
 
       if (viewportChanged) {
         trackedViewportRef.current = viewport;

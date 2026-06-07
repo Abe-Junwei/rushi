@@ -51,7 +51,7 @@ export function segmentsToLearnBaselineAligned(
       while (j < savedSnapshot.length) {
         const absorbedUid = savedSnapshot[j]?.uid?.trim() ?? "";
         if (!absorbedUid || currentUids.has(absorbedUid)) break;
-        text = concatMergedBaselineTexts(text, savedSnapshot[j]!.text);
+        text = concatMergedBaselineTexts(text, savedSnapshot[j].text);
         j += 1;
       }
     }

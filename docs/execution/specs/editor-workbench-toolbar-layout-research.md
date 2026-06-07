@@ -59,7 +59,7 @@
 | 路线 | 复用度 | 可直接用的部分 | 与 Rushi 约束冲突 | 进度 / 内存 / 运维 |
 |------|--------|----------------|-------------------|---------------------|
 | **A Descript** | **中** | 文稿优先层级；transport **贴 timeline**；**单一** 倍速；空稿 Primary CTA；时间轴默认可折叠（未来） | 无 Descript 式 Storyboard/多轨；本地离线 ASR 流程更重 | 仅 UI/CSS，无运行时成本 |
-| **B NLE** | **高** | 工作条已在波形—语段缝；右区 zoom 预设已对齐 Fit selection/all/±/reset；底栏作 status | 不宜引入完整 editing mode 切换（刀片/滑移等） | 仅 UI；须遵守 [ADR-0005 单 scroll 真源](../adr/0005-waveform-single-scroll-authority.md) |
+| **B NLE** | **高** | 工作条已在波形—语段缝；右区 zoom 预设已对齐 Fit selection/all/±/reset；底栏作 status | 不宜引入完整 editing mode 切换（刀片/滑移等） | 仅 UI；须遵守 [ADR-0005 单 scroll 真源](../../adr/0005-waveform-single-scroll-authority.md) |
 | **C Otter** | **低** | **单一播放器**心智；快捷键文档化 | 侧栏 player 与现有 tier scroll / 波形 overlay **布局冲突** | — |
 | **D Notion Zen** | **高** | pill 分组、Primary/ghost、badge 状态；与 [`controlStyles.ts`](../../../apps/desktop/src/config/controlStyles.ts) 一致 | 面板 **≤2 层 border**（Jieyu）；新 pill 用 background 不用第三层 border | — |
 
@@ -84,7 +84,7 @@
 |------|------|
 | **选定方案** | **分阶段「B 骨架 + A 层级 + D 视觉」**，不推翻现有 `EditorWorkbenchToolbar` 位置：<br>**薄片 1（推荐先做）**：信息层级 + 分组视觉 — 中间 Primary（空稿/可转录时「自动转录」）、转写中 danger「停止」独占；左/右 **浅底 pill 分组**（替代已移除的竖线）；统一 icon 触控高（34px 或 DESIGN 对齐 32px）。<br>**薄片 2**：播放职责 — 语段浮层 **保留 play/loop**；倍速 **收敛为全局单一真源**（overlay 只读指示或点击聚焦 global menu）；segment rate 存储 deprecate 或迁移合并。<br>**薄片 3**：底栏 — 三列 grid 化 hint，避免 absolute 居中叠字；可选 32px 高。<br>**薄片 4**：响应式 — `<1024px` 中间四项收进「编辑 ▾」；右区 zoom 保留 ±，其余进菜单。 |
 | **不做什么** | ① 不做 Otter 式左栏 player 大改；② 不恢复「波形底栏 + 语段顶栏」双条；③ 不引入 Descript 多轨/Blade/Slip 工具栏；④ 不在本薄片改 peaks/scroll 引擎（见 waveform 调研）；⑤ 不合并 `EditorToolbar` 与工作条（文件层 vs 会话层职责分离）。 |
-| **与 ADR / architecture 关系** | [ADR-0005](../adr/0005-waveform-single-scroll-authority.md)：pill/折叠 **不得** 新增第二 scroll 容器；popover 继续 portal。[`desktop-waveform-engine.md`](../architecture/desktop-waveform-engine.md)：overlay 仍消费 `resolveTierViewportMetrics`。[`DESIGN.md`](../../../DESIGN.md)：实施后 **同步** 工作条高度/分组/transport 描述。 |
+| **与 ADR / architecture 关系** | [ADR-0005](../../adr/0005-waveform-single-scroll-authority.md)：pill/折叠 **不得** 新增第二 scroll 容器；popover 继续 portal。[`desktop-waveform-engine.md`](../../architecture/desktop-waveform-engine.md)：overlay 仍消费 `resolveTierViewportMetrics`。[`DESIGN.md`](../../../DESIGN.md)：实施后 **同步** 工作条高度/分组/transport 描述。 |
 | **风险与 spike 项** | **R1** 倍速合并可能影响「语段 Tab 听打」独立变速习惯 → acceptance 手测 + 保留 migration（读旧 segment key 写 global）。**R2** 断点折叠需定义 `min-width` 与 E2E 快照。**R3** Primary 化「自动转录」须与 `canOfferPostTranscribe` / busy 矩阵对齐（见 capability-ui-state 文档）。**Spike（≤0.5d，可选）**：Figma 式 pill 分组 2 方案静态 mock（仅 `waveform.css` 原型，不提交业务逻辑）。 |
 
 ### 4.1 推荐优先级（对应前期走查）

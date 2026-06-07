@@ -41,7 +41,7 @@ function makeDeps(overrides: Partial<Parameters<typeof useExportController>[0]> 
     flushSegmentTextDrafts: vi.fn(),
     beginBusy: vi.fn(),
     endBusy: vi.fn(),
-    refreshProjects: vi.fn(async () => undefined),
+    refreshProjects: vi.fn(() => Promise.resolve(undefined)),
     applyDetail: vi.fn(),
     ...overrides,
   };

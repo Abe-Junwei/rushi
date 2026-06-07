@@ -2,9 +2,9 @@
 //! P2: segment confidence / low_confidence / detail; local glossary_terms.
 
 pub mod app_data_paths;
-pub mod asset_scope;
 pub mod asr_cache_cmd;
 pub mod asr_runtime_paths_cmd;
+pub mod asset_scope;
 pub mod correction;
 pub mod correction_memory_cmd;
 mod edit_log_detail;
@@ -102,9 +102,8 @@ pub fn setup_db(app: &tauri::AppHandle) -> Result<DbState, String> {
         root: base.clone(),
         db_path,
     };
-    match asset_scope::register_project_media_asset_scope(app, &st) {
-        Err(e) => append_desktop_log_line(&st, &format!("WARN asset_scope_failed: {e}")),
-        Ok(()) => {}
+    if let Err(e) = asset_scope::register_project_media_asset_scope(app, &st) {
+        append_desktop_log_line(&st, &format!("WARN asset_scope_failed: {e}"));
     }
     append_desktop_log_line(&st, "INFO database_ready");
     Ok(st)

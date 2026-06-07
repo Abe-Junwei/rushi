@@ -190,7 +190,8 @@ pub fn extract_balanced_json_object(s: &str) -> Option<String> {
     None
 }
 
-pub fn parse_refine_ops_json(raw: &str) -> Result<SegmentRefineLlmPayload, String> {
+#[cfg(test)]
+pub(crate) fn parse_refine_ops_json(raw: &str) -> Result<SegmentRefineLlmPayload, String> {
     let json_str = extract_json_object_from_llm_content(raw)?;
     serde_json::from_str(&json_str).map_err(|e| format!("段界整理 JSON 无法解析：{e}"))
 }
@@ -198,8 +199,8 @@ pub fn parse_refine_ops_json(raw: &str) -> Result<SegmentRefineLlmPayload, Strin
 /// 逐条解析 `ops`：结构不合法的项跳过（本机模型常漏 `split.right_text` 等字段）。
 pub fn parse_refine_ops_json_lenient(raw: &str) -> Result<SegmentRefineLlmPayload, String> {
     let json_str = extract_json_object_from_llm_content(raw)?;
-    let root: serde_json::Value = serde_json::from_str(&json_str)
-        .map_err(|e| format!("段界整理 JSON 无法解析：{e}"))?;
+    let root: serde_json::Value =
+        serde_json::from_str(&json_str).map_err(|e| format!("段界整理 JSON 无法解析：{e}"))?;
     let rationale = root
         .get("rationale")
         .and_then(|v| v.as_str())

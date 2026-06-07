@@ -110,10 +110,8 @@ mod tests {
 
     #[test]
     fn resolve_ffprobe_prefers_bundled_when_present() {
-        let temp = std::env::temp_dir().join(format!(
-            "rushi-ffprobe-resolve-{}",
-            uuid::Uuid::new_v4()
-        ));
+        let temp =
+            std::env::temp_dir().join(format!("rushi-ffprobe-resolve-{}", uuid::Uuid::new_v4()));
         let internal = temp
             .join("bundled-asr")
             .join("rushi-asr-sidecar")
@@ -126,8 +124,10 @@ mod tests {
         std::fs::write(&probe, b"").unwrap();
 
         let manifest = PathBuf::from(env!("CARGO_MANIFEST_DIR"));
-        let roots =
-            crate::bundled_asr_assets::candidate_resource_roots_from_parts(Some(temp.clone()), &manifest);
+        let roots = crate::bundled_asr_assets::candidate_resource_roots_from_parts(
+            Some(temp.clone()),
+            &manifest,
+        );
         let resolved = crate::bundled_asr_assets::resolve_bundled_ffprobe_from_roots(&roots);
         assert_eq!(resolved, probe);
 

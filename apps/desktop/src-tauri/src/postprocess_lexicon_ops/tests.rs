@@ -1,5 +1,7 @@
 use super::super::postprocess_segment_ops::RefineSegmentItem;
-use super::ground::{evidence_is_grounded, filter_grounded_lexicon_ops, is_punctuation_only_change};
+use super::ground::{
+    evidence_is_grounded, filter_grounded_lexicon_ops, is_punctuation_only_change,
+};
 use super::parse::parse_lexicon_proofread_json_lenient;
 use super::prompt::build_stage_b_merged_proofread_prompt;
 use super::types::{LexiconEvidence, LexiconProofreadOp};

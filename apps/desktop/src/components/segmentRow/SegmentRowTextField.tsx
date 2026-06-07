@@ -371,8 +371,8 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
                 <div className="max-h-[4.5rem] overflow-hidden">
                   <FindReplaceMatchText
                     text={committedText}
-                    charStart={panelHighlight!.charStart}
-                    charEnd={panelHighlight!.charEnd}
+                    charStart={panelHighlight.charStart}
+                    charEnd={panelHighlight.charEnd}
                     textStyle={textStyle}
                   />
                 </div>

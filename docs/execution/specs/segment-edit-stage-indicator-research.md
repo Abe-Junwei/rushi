@@ -65,7 +65,7 @@
 |------|------|------|
 | 语段行布局 | [`SegmentTextListRow.tsx`](../../../apps/desktop/src/components/SegmentTextListRow.tsx) | 左时间戳 + 正文；**新增右列** |
 | 行 chrome | [`segmentChrome.ts`](../../../apps/desktop/src/utils/segmentChrome.ts) | 选中/低置信底色；徽标色与之协调 |
-| 确认改词 / 定稿 | [`segmentConfirmEligible.ts`](../../../apps/desktop/src/services/segmentConfirmEligible.ts) + [`finalizeSegment`](../../../apps/desktop/src/services/segmentFinalize.ts) | ⌘Enter / 右键 → `finalized` |
+| 确认改词 / 定稿 | [`segmentConfirmEligible.ts`](../../../apps/desktop/src/services/segmentConfirmEligible.ts) + [`useProjectSaveController.ts`](../../../apps/desktop/src/pages/useProjectSaveController.ts) | ⌘Enter / 右键 → `finalized` |
 | 转写落库 | [`run_transcribe_cmd.rs`](../../../apps/desktop/src-tauri/src/project/run_transcribe_cmd.rs) | 批量设 `auto_transcribe` |
 | LLM 写回 | Stage B / auto punctuate / refine 写路径 | 变更 uid → `ai_revised` |
 | 手改落库 | [`file_save_segments`](../../../apps/desktop/src-tauri/src/project/segment_cmd.rs) 非 confirm 路径 | 正文相对上一里程碑变更 → `manual_transcribe` |
@@ -113,7 +113,7 @@ stateDiagram-v2
 
 #### 4.1.2 定稿操作（统一入口 · v1）
 
-**单一写路径** [`finalizeSegment(segmentIdx, { advance })`](../../../apps/desktop/src/services/segmentFinalize.ts)（命名 Plan 定）；⌘Enter 与右键 **共用**，仅 `advance` 不同。
+**单一写路径** [`useProjectSaveController`](../../../apps/desktop/src/pages/useProjectSaveController.ts) 内 `finalizeSegmentAt`（命名 Plan 定）；⌘Enter 与右键 **共用**，仅 `advance` 不同。
 
 | 项 | 规格 |
 |----|------|
@@ -196,7 +196,7 @@ stateDiagram-v2
 | 重转写 | 全文件 → `auto_transcribe`；清空 `finalize_via` |
 | LLM 写回 | 变更 uid → `ai_revised`；清空 `finalize_via` |
 | 手改落库 | 非 finalize 的 save：文本相对 save 前已变 → `manual_transcribe`；清空 `finalize_via` |
-| 定稿 | [`finalizeSegment`](../../../apps/desktop/src/services/segmentFinalize.ts)（⌘Enter / 右键共用）：→ `finalized`；有 draft 差异 → `confirm_edit` + `countHits`；否则 → `mark_only` |
+| 定稿 | [`useProjectSaveController`](../../../apps/desktop/src/pages/useProjectSaveController.ts)（⌘Enter / 右键共用）：→ `finalized`；有 draft 差异 → `confirm_edit` + `countHits`；否则 → `mark_only` |
 
 ### 4.4 不做什么
 
@@ -244,7 +244,7 @@ stateDiagram-v2
 | Rust / DB | `db.rs` migration、`types.rs`、`segment_cmd.rs` | 新列 read/write |
 | Rust | `run_transcribe_cmd.rs` | 转写后 reset stage |
 | TS 写路径 | LLM 写回 controllers、`finalizeSegment`、`useProjectSaveController` | stage / finalize_via |
-| TS 服务 | `segmentFinalize.ts`、`segmentTextStage.ts` | 定稿 + 枚举 |
+| TS 服务 | `useProjectSaveController.ts`、`segmentTextStage.ts` | 定稿 + 枚举 |
 | UI | `SegmentRowStageBadge`、`SegmentTextListRow`、`SegmentContextMenu` | 右列 + 右键 |
 | 样式 | `workspace.css` 或 `segment-row.css` | pill token |
 | 文档 | `DESIGN.md` §Components、`04-stitch-work-page-spec.md` §7.3 | 右列 stage 说明 |
