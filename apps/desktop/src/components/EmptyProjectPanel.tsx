@@ -1,8 +1,11 @@
 import { useEffect, useRef, useState } from "react";
-import { FileAudio, FileInput, FileText, FolderOpen, LoaderCircle } from "lucide-react";
+import { FileAudio, FileInput, FileText } from "lucide-react";
+import { CONTROL_BTN_GHOST } from "../config/controlStyles";
+import { PANEL_TYPOGRAPHY } from "../config/typography";
+import { WORKSPACE_PAGE_PANEL_CLASS } from "../config/workspaceShellLayout";
 import type { ProjectControllerApi } from "../pages/useProjectController";
 import { toast } from "../services/ui/toast";
-import { LUCIDE_ICON_SIZE_LG, LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
+import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
 const DROP_IMPORT_UNSUPPORTED_MSG =
   "拖入失败：仅支持音频（.mp3/.wav/.m4a）或转录文本（.txt/.srt/.vtt）文件。";
@@ -10,11 +13,7 @@ const DROP_IMPORT_UNSUPPORTED_MSG =
 const AUDIO_EXTENSIONS = new Set(["mp3", "wav", "m4a"]);
 const TRANSCRIPT_EXTENSIONS = new Set(["txt", "srt", "vtt"]);
 
-const tileButtonBase =
-  "group flex min-w-0 flex-1 flex-col items-center rounded-lg border border-notion-divider bg-notion-bg px-4 py-4 text-center transition-colors hover:border-notion-border hover:bg-notion-sidebar-hover disabled:cursor-not-allowed disabled:opacity-40 sm:min-w-[168px] sm:flex-none sm:px-5 sm:py-5";
-
-const tileIconWrap =
-  "mb-2 flex h-10 w-10 items-center justify-center rounded-full bg-notion-sidebar text-notion-text-muted transition-colors group-hover:bg-zen-saffron/20 group-hover:text-zen-saffron sm:mb-3 sm:h-11 sm:w-11";
+const IMPORT_ACTION_BTN = `${CONTROL_BTN_GHOST} h-7 min-h-[28px] gap-1.5 px-2 text-[12px] font-medium`;
 
 async function importDroppedFiles(
   c: ProjectControllerApi,
@@ -67,38 +66,11 @@ function resolveDroppedFileKind(path: string): "audio" | "transcript" | null {
   return null;
 }
 
-function ImportTile({
-  title,
-  loadingTitle,
-  formats,
-  disabled,
-  loading,
-  onClick,
-  icon,
-}: {
-  title: string;
-  loadingTitle: string;
-  formats: string;
-  disabled: boolean;
-  loading: boolean;
-  onClick: () => void;
-  icon: React.ReactNode;
-}) {
-  return (
-    <button type="button" className={tileButtonBase} disabled={disabled} onClick={onClick}>
-      <span className={tileIconWrap}>
-        {loading ? <LoaderCircle className={`${LUCIDE_ICON_SIZE_MD} animate-spin`} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden /> : icon}
-      </span>
-      <span className="text-[14px] font-semibold text-notion-text">{loading ? loadingTitle : title}</span>
-      <span className="mt-1 text-[11px] text-notion-text-muted">{formats}</span>
-    </button>
-  );
-}
-
 export function EmptyProjectPanel({ controller: c }: { controller: ProjectControllerApi }) {
   const [pendingImport, setPendingImport] = useState<"audio" | "transcript" | "drop" | null>(null);
   const [isDragActive, setIsDragActive] = useState(false);
   const isImportBusy = c.busy || pendingImport !== null;
+  const projectName = c.current?.name ?? "当前项目";
 
   const controllerRef = useRef(c);
   const importBusyRef = useRef(isImportBusy);
@@ -189,98 +161,96 @@ export function EmptyProjectPanel({ controller: c }: { controller: ProjectContro
         ? "正在导入转录文本，请稍候..."
         : pendingImport === "drop"
           ? "正在处理拖入文件，请稍候..."
-        : c.busy
-          ? "正在处理任务，请稍候..."
-          : "";
+          : c.busy
+            ? "正在处理任务，请稍候..."
+            : "";
 
   return (
-    <div
-      className="empty-project-stage flex min-h-0 flex-1 flex-col overflow-y-auto px-4 py-4 sm:px-6 sm:py-6 lg:px-10 lg:py-8"
-      data-purpose="empty-project"
+    <section
+      className={`${WORKSPACE_PAGE_PANEL_CLASS} gap-6 transition-colors ${
+        isDragActive ? "rounded-xl bg-zen-saffron/5" : ""
+      }`}
+      data-purpose="empty-project-page"
     >
-      <div className="empty-project-card mx-auto w-full max-w-2xl">
-        <section
-          className={`relative w-full overflow-hidden rounded-md border bg-notion-bg p-5 text-center transition-colors sm:p-6 ${
-            isDragActive ? "border-zen-saffron bg-zen-saffron/5" : "border-notion-divider"
-          }`}
-        >
-          <div className="absolute inset-x-0 top-0 h-1 bg-zen-saffron/70" aria-hidden />
-          <div className="mb-3 flex justify-center text-notion-text-muted">
-            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-notion-sidebar sm:h-12 sm:w-12">
-              <FolderOpen className={LUCIDE_ICON_SIZE_LG} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-            </span>
-          </div>
-          <h2 className="mb-1.5 text-xl font-semibold text-zen-ink sm:text-2xl">暂无媒体文件</h2>
-          <p className="mx-auto mb-5 max-w-md text-[13px] leading-5 text-notion-text-muted sm:mb-6 sm:text-[14px] sm:leading-6">
-            要开始转录或编辑，请导入音频文件或现有的转录文本以映射到时间轴。
-          </p>
+      <header>
+        <h1 className="truncate text-[28px] font-semibold leading-[1.25] tracking-[-0.015em] text-notion-text">
+          {projectName}
+        </h1>
+      </header>
 
-          <div className="border-t border-notion-divider pt-4 sm:pt-5">
-            <p className="mb-3 text-[11px] font-semibold tracking-[0.1em] text-notion-text-muted sm:mb-4">
-              导入资源
-            </p>
-            <div className="flex flex-col gap-3 sm:flex-row sm:items-stretch sm:justify-center sm:gap-4">
-              <ImportTile
-                title="导入音频"
-                loadingTitle="导入音频中..."
-                formats=".mp3, .wav, .m4a"
-                disabled={isImportBusy}
-                loading={pendingImport === "audio"}
-                onClick={() =>
-                  runImport("audio", () => c.pickAndImportFileToProject("audio").then(() => undefined))
-                }
-                icon={<FileAudio className={LUCIDE_ICON_SIZE_LG} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />}
-              />
-              <ImportTile
-                title="导入转录文本"
-                loadingTitle="导入转录文本中..."
-                formats=".txt, .srt, .vtt"
-                disabled={isImportBusy}
-                loading={pendingImport === "transcript"}
-                onClick={() =>
-                  runImport("transcript", () => c.pickAndImportFileToProject("text").then(() => undefined))
-                }
-                icon={<FileText className={LUCIDE_ICON_SIZE_LG} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />}
-              />
-            </div>
-          </div>
+      <section className="flex flex-col gap-2" aria-label="项目文件">
+        <div className="flex items-center justify-between gap-2">
+          <h2 className="text-[13px] font-medium text-notion-text-muted">项目文件</h2>
+          <span className={`${PANEL_TYPOGRAPHY.meta} tabular-nums text-notion-text-muted`}>
+            0 个文件
+          </span>
+        </div>
+        <p className="rounded-md bg-notion-sidebar/55 px-2.5 py-4 text-sm text-notion-text-muted">
+          暂无文件。请导入音频或转录文本以开始。
+        </p>
+      </section>
 
-          <p className="my-3 text-[11px] font-medium tracking-wide text-notion-text-light sm:my-4">或</p>
-
-          <div
-            className={`flex min-h-[4rem] flex-col items-center justify-center gap-1.5 rounded-lg px-4 py-3 transition-colors sm:min-h-[4.5rem] sm:gap-2 sm:px-5 sm:py-4 ${
-              isDragActive
-                ? "border border-dashed border-zen-saffron bg-zen-saffron/10 text-zen-saffron"
-                : "bg-notion-sidebar/60 text-notion-text-muted"
-            }`}
-            aria-live="polite"
+      <section className="flex flex-col gap-2 pt-1" aria-label="继续导入">
+        <p className={`${PANEL_TYPOGRAPHY.fieldLabel} text-notion-text-muted`}>继续导入</p>
+        <div className="flex flex-col gap-1 sm:flex-row sm:flex-wrap">
+          <button
+            type="button"
+            className={`${IMPORT_ACTION_BTN} w-full justify-start sm:w-auto`}
+            disabled={isImportBusy}
+            onClick={() =>
+              runImport("audio", () => c.pickAndImportFileToProject("audio").then(() => undefined))
+            }
           >
-            <span
-              className={`flex h-9 w-9 items-center justify-center rounded-full transition-colors sm:h-10 sm:w-10 ${
-                isDragActive ? "bg-zen-saffron/15 text-zen-saffron" : "bg-notion-bg text-notion-text-muted"
-              }`}
-              aria-hidden
-            >
-              <FileInput className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} />
-            </span>
-            <p className="text-[12px] font-medium text-notion-text sm:text-[13px]">
-              {isDragActive ? (
-                <span className="text-zen-saffron">释放鼠标即可导入</span>
-              ) : (
-                "直接将文件拖放到此工作区"
-              )}
-            </p>
-            <p className="text-[10px] leading-4 text-notion-text-muted sm:text-[11px] sm:leading-5">
-              音频 .mp3 · .wav · .m4a　文本 .txt · .srt · .vtt
-            </p>
-          </div>
-        </section>
-        {statusMessage ? (
-          <p className="mt-3 text-center text-[11px] text-notion-text-muted" aria-live="polite">
-            {statusMessage}
-          </p>
-        ) : null}
+            <FileAudio className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+            导入音频
+          </button>
+          <button
+            type="button"
+            className={`${IMPORT_ACTION_BTN} w-full justify-start sm:w-auto`}
+            disabled={isImportBusy}
+            onClick={() =>
+              runImport("transcript", () => c.pickAndImportFileToProject("text").then(() => undefined))
+            }
+          >
+            <FileText className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+            导入转录文本
+          </button>
+        </div>
+      </section>
+
+      <div
+        className={`flex min-h-[4rem] flex-col items-center justify-center gap-1.5 rounded-lg px-4 py-3 transition-colors sm:min-h-[4.5rem] sm:gap-2 sm:px-5 sm:py-4 ${
+          isDragActive
+            ? "border border-dashed border-zen-saffron bg-zen-saffron/10 text-zen-saffron"
+            : "bg-notion-sidebar/60 text-notion-text-muted"
+        }`}
+        aria-live="polite"
+      >
+        <span
+          className={`flex h-9 w-9 items-center justify-center rounded-full transition-colors sm:h-10 sm:w-10 ${
+            isDragActive ? "bg-zen-saffron/15 text-zen-saffron" : "bg-notion-bg text-notion-text-muted"
+          }`}
+          aria-hidden
+        >
+          <FileInput className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} />
+        </span>
+        <p className="text-[12px] font-medium text-notion-text sm:text-[13px]">
+          {isDragActive ? (
+            <span className="text-zen-saffron">释放鼠标即可导入</span>
+          ) : (
+            "直接将文件拖放到此工作区"
+          )}
+        </p>
+        <p className="text-[10px] leading-4 text-notion-text-muted sm:text-[11px] sm:leading-5">
+          音频 .mp3 · .wav · .m4a  文本 .txt · .srt · .vtt
+        </p>
       </div>
-    </div>
+
+      {statusMessage ? (
+        <p className="w-full text-center text-[11px] text-notion-text-muted" aria-live="polite">
+          {statusMessage}
+        </p>
+      ) : null}
+    </section>
   );
 }

@@ -116,6 +116,11 @@ export function resolveMeasuredPanelFitHeight(bodyScrollHeight: number): number 
   );
 }
 
+/** 正文容器 scrollHeight（已含 padding）→ 面板总高度；用于 h-auto 静态表单。 */
+export function resolveMeasuredPanelFitHeightFromBox(bodyBoxScrollHeight: number): number {
+  return FLOATING_PANEL_TITLE_BAR_PX + Math.ceil(bodyBoxScrollHeight);
+}
+
 export function mergeContentFitHeights(
   estimated: number | undefined,
   measured: number | null,

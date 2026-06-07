@@ -1,0 +1,161 @@
+import { useEffect, useMemo, useState } from "react";
+import { PANEL_CONTROL_TYPOGRAPHY, PANEL_TYPOGRAPHY } from "../config/typography";
+import type { ProjectDetail, ProjectSummary } from "../tauri/projectApi";
+import type { ProjectMetadataForm } from "../pages/useProjectMutationController";
+import { findDuplicateProjectNames, suggestUniqueProjectName } from "../utils/projectDuplicateName";
+import { FloatingPanelTemplate } from "./PanelTemplate";
+import { CONTROL_BTN_PRIMARY_PROMINENT, CONTROL_BTN_SECONDARY_PROMINENT } from "../config/controlStyles";
+
+const METADATA_DIALOG_DEFAULT = { width: 440, height: 640 } as const;
+const METADATA_DIALOG_MIN = { width: 360, height: 520 } as const;
+
+const METADATA_FIELDS: Array<{
+  key: Exclude<keyof ProjectMetadataForm, "name">;
+  label: string;
+  placeholder: string;
+}> = [
+  { key: "narrator", label: "讲述人", placeholder: "主要说话人 / 被访者" },
+  { key: "recorded_at", label: "时间", placeholder: "如 2024-03、约 1990 年代" },
+  { key: "location", label: "地点", placeholder: "采集或内容相关地点" },
+  { key: "subject", label: "主题", placeholder: "场次主题（可与项目名区分）" },
+  { key: "transcriber", label: "转录人", placeholder: "转写 / 校对负责人" },
+];
+
+type ProjectMetadataDialogProps = {
+  open: boolean;
+  afterCreate?: boolean;
+  project: ProjectDetail | null;
+  projects: ProjectSummary[];
+  busy: boolean;
+  onClose: () => void;
+  onSave: (form: ProjectMetadataForm) => void | Promise<void>;
+};
+
+function formFromProject(project: ProjectDetail | null): ProjectMetadataForm {
+  if (!project) {
+    return { name: "", narrator: "", recorded_at: "", location: "", subject: "", transcriber: "" };
+  }
+  return {
+    name: project.name ?? "",
+    narrator: project.narrator ?? "",
+    recorded_at: project.recorded_at ?? "",
+    location: project.location ?? "",
+    subject: project.subject ?? "",
+    transcriber: project.transcriber ?? "",
+  };
+}
+
+export function ProjectMetadataDialog({
+  open,
+  afterCreate = false,
+  project,
+  projects,
+  busy,
+  onClose,
+  onSave,
+}: ProjectMetadataDialogProps) {
+  const initial = useMemo(() => formFromProject(project), [project, open]);
+  const [draft, setDraft] = useState<ProjectMetadataForm>(initial);
+
+  useEffect(() => {
+    if (open) setDraft(formFromProject(project));
+  }, [open, project]);
+
+  const duplicateProjects = useMemo(
+    () => findDuplicateProjectNames(projects, draft.name, project?.id),
+    [draft.name, project?.id, projects],
+  );
+
+  if (!open || !project) return null;
+
+  const intro = afterCreate
+    ? "项目已创建。请填写项目名称与场次信息，便于归档与导出（全部可选，可稍后在 Hub 补充）。"
+    : "记录场次元信息，便于归档与导出抬头。全部字段可选。";
+
+  return (
+    <FloatingPanelTemplate
+      id="project-metadata-dialog-v1"
+      title="项目信息"
+      preset="createProject"
+      minWidth={METADATA_DIALOG_MIN.width}
+      minHeight={METADATA_DIALOG_MIN.height}
+      maxHeight={720}
+      defaultSize={METADATA_DIALOG_DEFAULT}
+      onClose={onClose}
+    >
+      <div className="flex min-h-0 flex-1 flex-col overflow-y-auto px-6 py-5">
+        <p className={`mb-4 shrink-0 ${PANEL_TYPOGRAPHY.dialogBody}`}>{intro}</p>
+        <form
+          className="flex min-h-0 flex-1 flex-col"
+          onSubmit={(e) => {
+            e.preventDefault();
+            void onSave(draft);
+          }}
+        >
+          <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pb-4">
+            <label className="block">
+              <span className={`mb-1.5 block ${PANEL_TYPOGRAPHY.fieldLabel}`}>项目名称</span>
+              <input
+                type="text"
+                className={`w-full rounded-lg border border-notion-border bg-notion-bg px-3 py-2 ${PANEL_CONTROL_TYPOGRAPHY.compactInput} shadow-none outline-none transition-colors focus:border-zen-saffron focus:ring-2 focus:ring-zen-saffron/30 disabled:opacity-40`}
+                placeholder="未命名项目"
+                value={draft.name}
+                disabled={busy}
+                autoComplete="off"
+                autoFocus={afterCreate}
+                onChange={(e) => setDraft((prev) => ({ ...prev, name: e.target.value }))}
+              />
+              {duplicateProjects.length > 0 ? (
+                <p className={`mt-1.5 ${PANEL_TYPOGRAPHY.meta} text-zen-saffron`}>
+                  已有同名项目「{duplicateProjects[0].name}」。仍可保存，或使用建议名称：
+                  <button
+                    type="button"
+                    className="ml-1 border-0 bg-transparent p-0 font-semibold text-zen-saffron underline"
+                    disabled={busy}
+                    onClick={() =>
+                      setDraft((prev) => ({
+                        ...prev,
+                        name: suggestUniqueProjectName(projects, prev.name),
+                      }))
+                    }
+                  >
+                    {suggestUniqueProjectName(projects, draft.name)}
+                  </button>
+                </p>
+              ) : null}
+            </label>
+
+            {METADATA_FIELDS.map(({ key, label, placeholder }) => (
+              <label key={key} className="block">
+                <span className={`mb-1.5 block ${PANEL_TYPOGRAPHY.fieldLabel}`}>{label}</span>
+                <input
+                  type="text"
+                  className={`w-full rounded-lg border border-notion-border bg-notion-bg px-3 py-2 ${PANEL_CONTROL_TYPOGRAPHY.compactInput} shadow-none outline-none transition-colors focus:border-zen-saffron focus:ring-2 focus:ring-zen-saffron/30 disabled:opacity-40`}
+                  placeholder={placeholder}
+                  value={draft[key] ?? ""}
+                  disabled={busy}
+                  autoComplete="off"
+                  onChange={(e) => setDraft((prev) => ({ ...prev, [key]: e.target.value }))}
+                />
+              </label>
+            ))}
+          </div>
+
+          <div className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-notion-divider pt-4">
+            <button
+              type="button"
+              className={CONTROL_BTN_SECONDARY_PROMINENT}
+              disabled={busy}
+              onClick={onClose}
+            >
+              {afterCreate ? "稍后填写" : "取消"}
+            </button>
+            <button type="submit" className={CONTROL_BTN_PRIMARY_PROMINENT} disabled={busy}>
+              {busy ? "保存中…" : "保存"}
+            </button>
+          </div>
+        </form>
+      </div>
+    </FloatingPanelTemplate>
+  );
+}

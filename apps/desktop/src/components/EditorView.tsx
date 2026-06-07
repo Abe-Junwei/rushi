@@ -2,13 +2,9 @@ import { useEffect, useMemo, useCallback } from "react";
 import { useTranscriptFooterStats } from "../hooks/useTranscriptFooterStats";
 import { clearToastBottomInset, syncToastBottomInset } from "../services/ui/toastLayout";
 import { EditorToolbar } from "./EditorToolbar";
-import { LlmTopStatusChip } from "./LlmTopStatusChip";
 import { SegmentContextMenu } from "./SegmentContextMenu";
-import { EditorWorkspaceNav } from "./EditorWorkspaceNav";
 import type { ProjectControllerApi } from "../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../pages/useTranscriptionLayer";
-import { EmptyProjectPanel } from "./EmptyProjectPanel";
-import { ProjectFilesHubPanel } from "./ProjectFilesHubPanel";
 import {
   type SegmentContextMenuKey,
   type SegmentContextMenuOpen,
@@ -180,6 +176,18 @@ export function EditorView({
     return () => clearToastBottomInset();
   }, [c.currentFileId]);
 
+  useEffect(() => {
+    if (!c.currentFileId || c.busy) return;
+    const onKeyDown = (event: KeyboardEvent) => {
+      if (!(event.metaKey || event.ctrlKey) || !event.shiftKey) return;
+      if (event.key.toLowerCase() !== "e") return;
+      event.preventDefault();
+      c.closeFile();
+    };
+    window.addEventListener("keydown", onKeyDown);
+    return () => window.removeEventListener("keydown", onKeyDown);
+  }, [c.busy, c.closeFile, c.currentFileId]);
+
   const statusCenterLabel = tx.editorHint || tx.waveformFooterStatusLabel || "";
   const shortcutHint = useEditorFooterShortcutHintRotation(
     Boolean(c.currentFileId) && !statusCenterLabel,
@@ -187,101 +195,8 @@ export function EditorView({
   const footerCenterLabel = statusCenterLabel || shortcutHint;
   const footerCenterHintKind = statusCenterLabel ? "status" : shortcutHint ? "shortcut" : "none";
 
-  return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-notion-bg" data-purpose="editor-workspace">
-      {!c.currentFileId ? (
-        <div className="relative flex h-12 shrink-0 items-center justify-between gap-3 border-b border-notion-divider bg-notion-bg px-4 lg:px-10">
-          <EditorWorkspaceNav
-            projectName={projectName}
-            currentLabel={currentFileName}
-            fileOpen={false}
-            onBack={() => c.closeProject()}
-            disabled={c.busy}
-          />
-
-          <div className="flex items-center gap-2">
-            {onOpenLlmSettings ? (
-              <LlmTopStatusChip
-                refreshSeq={llmStatusRefreshSeq}
-                onOpenLlmSettings={onOpenLlmSettings}
-                disabled={c.busy}
-              />
-            ) : null}
-            <button
-              type="button"
-              className="inline-flex h-8 items-center justify-center rounded-md border border-notion-border bg-notion-bg px-2.5 text-[12px] text-notion-text-muted transition-colors hover:bg-notion-sidebar-hover hover:text-notion-text"
-              onClick={onOpenEnvironment}
-            >
-              环境与 ASR
-            </button>
-          </div>
-        </div>
-      ) : null}
-
-      {c.currentFileId ? (
-        <>
-          <EditorToolbar
-            controller={c}
-            exportKey={exportKey}
-            onExportSelect={onExportSelect}
-            projectName={projectName}
-            currentFileName={currentFileName}
-            onOpenEnvironment={onOpenEnvironment}
-            onOpenLlmSettings={onOpenLlmSettings}
-            llmStatusRefreshSeq={llmStatusRefreshSeq}
-            />
-
-          <main className="flex h-0 min-h-0 min-w-0 flex-1 flex-col gap-0 bg-notion-bg pb-6">
-            {c.audioSrc ? (
-              <EditorWaveformPane
-                controller={c}
-                tx={tx}
-              />
-            ) : (
-              <div className="shrink-0 px-4 py-6 text-center text-sm text-zen-stone">
-                <p>当前文件不包含音频轨道，因此无法显示波形。</p>
-                {fallbackWaveFile ? (
-                  <button
-                    type="button"
-                    className="mt-2 inline-flex h-8 items-center justify-center rounded-md border border-notion-border bg-notion-bg px-3 text-[11px] text-notion-text transition-colors hover:bg-notion-sidebar-hover"
-                    disabled={c.busy}
-                    onClick={() => void c.openFile(fallbackWaveFile.id)}
-                  >
-                    切换到可显示波形的文件
-                  </button>
-                ) : (
-                  <p className="mt-2 text-xs text-notion-text-muted">当前项目暂无可显示波形的文件。</p>
-                )}
-              </div>
-            )}
-
-            <EditorWorkbenchToolbar controller={c} tx={tx} hasAudio={Boolean(c.audioSrc)} />
-
-            <EditorSegmentWorkbench
-              controller={c}
-              tx={tx}
-              appearance={appearance}
-              onOpenSegmentContextMenu={setSegmentCtxMenu}
-            />
-          </main>
-
-          {c.currentFileId ? (
-            <EditorStatusFooter
-              controller={c}
-              editHistory={editHistory}
-              centerLabel={footerCenterLabel}
-              centerHintKind={footerCenterHintKind}
-              showCenterLabel={Boolean(c.currentFileId && footerCenterLabel)}
-              segmentCount={transcriptStats.segmentCount}
-              charCount={transcriptStats.charCount}
-            />
-          ) : null}
-        </>
-      ) : hasProjectFiles ? (
-        <ProjectFilesHubPanel controller={c} />
-      ) : (
-        <EmptyProjectPanel controller={c} />
-      )}
+  const editorDialogs = (
+    <>
       {segmentCtxMenu ? (
         <SegmentContextMenu
           x={segmentCtxMenu.x}
@@ -309,6 +224,67 @@ export function EditorView({
         onCancel={c.cancelDeleteSegment}
         onConfirm={c.confirmDeleteSegment}
       />
+    </>
+  );
+
+  if (!c.currentFileId) {
+    return null;
+  }
+
+  return (
+    <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-notion-bg" data-purpose="editor-workspace">
+      <EditorToolbar
+        controller={c}
+        exportKey={exportKey}
+        onExportSelect={onExportSelect}
+        projectName={projectName}
+        currentFileName={currentFileName}
+        onOpenEnvironment={onOpenEnvironment}
+        onOpenLlmSettings={onOpenLlmSettings}
+        llmStatusRefreshSeq={llmStatusRefreshSeq}
+      />
+
+      <main className="flex h-0 min-h-0 min-w-0 flex-1 flex-col gap-0 bg-notion-bg pb-6">
+        {c.audioSrc ? (
+          <EditorWaveformPane controller={c} tx={tx} />
+        ) : (
+          <div className="shrink-0 px-4 py-6 text-center text-sm text-zen-stone">
+            <p>当前文件不包含音频轨道，因此无法显示波形。</p>
+            {fallbackWaveFile ? (
+              <button
+                type="button"
+                className="mt-2 inline-flex h-8 items-center justify-center rounded-md border border-notion-border bg-notion-bg px-3 text-[11px] text-notion-text transition-colors hover:bg-notion-sidebar-hover"
+                disabled={c.busy}
+                onClick={() => void c.openFile(fallbackWaveFile.id)}
+              >
+                切换到可显示波形的文件
+              </button>
+            ) : (
+              <p className="mt-2 text-xs text-notion-text-muted">当前项目暂无可显示波形的文件。</p>
+            )}
+          </div>
+        )}
+
+        <EditorWorkbenchToolbar controller={c} tx={tx} hasAudio={Boolean(c.audioSrc)} />
+
+        <EditorSegmentWorkbench
+          controller={c}
+          tx={tx}
+          appearance={appearance}
+          onOpenSegmentContextMenu={setSegmentCtxMenu}
+        />
+      </main>
+
+      <EditorStatusFooter
+        controller={c}
+        editHistory={editHistory}
+        centerLabel={footerCenterLabel}
+        centerHintKind={footerCenterHintKind}
+        showCenterLabel={Boolean(footerCenterLabel)}
+        segmentCount={transcriptStats.segmentCount}
+        charCount={transcriptStats.charCount}
+      />
+      {editorDialogs}
     </div>
   );
 }

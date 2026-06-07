@@ -4,6 +4,7 @@ import type { SegmentContextMenuOpen } from "../utils/segmentContextMenuModel";
 import { EnvironmentPanel } from "./EnvironmentPanel";
 import { FloatingPanelTemplate } from "./PanelTemplate";
 import { EditorView } from "./EditorView";
+import { ProjectHubView } from "./ProjectHubView";
 import { WelcomeView, type WelcomePageId } from "./WelcomeView";
 import { ProjectBusyOverlay, TranscribePreviewBanner } from "./ProjectStatusFeedback";
 import { ProjectPanelDialogs } from "./ProjectPanelDialogs";
@@ -19,7 +20,7 @@ export function ProjectPanel() {
   const [deliveryExportOpen, setDeliveryExportOpen] = useState(false);
   const [busyElapsedSec, setBusyElapsedSec] = useState(0);
   const [segmentCtxMenu, setSegmentCtxMenu] = useState<SegmentContextMenuOpen | null>(null);
-  const pendingGlossaryNavRef = useRef(false);
+  const pendingWelcomePageRef = useRef<WelcomePageId | null>(null);
 
   const openEnvironment = useCallback(() => {
     setEnvOpen(true);
@@ -40,21 +41,31 @@ export function ProjectPanel() {
     c.flushSegmentTextDrafts();
   }, [deliveryExportOpen, c.flushSegmentTextDrafts]);
 
-  const workspacePhase = useMemo<"A" | "C">(() => {
-    if (c.current) return "C";
-    return "A";
-  }, [c]);
+  const workspaceShellVariant = useMemo<"welcome" | "hub" | "editor">(() => {
+    if (!c.current) return "welcome";
+    if (!c.currentFileId) return "hub";
+    return "editor";
+  }, [c.current, c.currentFileId]);
 
   useEffect(() => {
-    if (workspacePhase !== "A") setWelcomePage("home");
-  }, [workspacePhase]);
+    if (workspaceShellVariant !== "welcome") setWelcomePage("home");
+  }, [workspaceShellVariant]);
 
   useEffect(() => {
-    if (workspacePhase === "A" && pendingGlossaryNavRef.current) {
-      pendingGlossaryNavRef.current = false;
-      setWelcomePage("glossary");
+    if (workspaceShellVariant === "welcome" && pendingWelcomePageRef.current) {
+      const page = pendingWelcomePageRef.current;
+      pendingWelcomePageRef.current = null;
+      setWelcomePage(page);
     }
-  }, [workspacePhase]);
+  }, [workspaceShellVariant]);
+
+  const onLeaveProjectForWelcome = useCallback(
+    (page: WelcomePageId) => {
+      pendingWelcomePageRef.current = page;
+      c.closeProject();
+    },
+    [c],
+  );
 
   const showTranscribeGlossaryLink = useMemo(
     () => c.transcribeVocabularyPreflightLines.some((line) => line.includes("暂无纳入热词")),
@@ -63,7 +74,7 @@ export function ProjectPanel() {
 
   const openGlossaryFromTranscribe = useCallback(() => {
     c.cancelTranscribeStart();
-    pendingGlossaryNavRef.current = true;
+    pendingWelcomePageRef.current = "glossary";
     if (c.current) {
       c.closeProject();
     } else {
@@ -72,7 +83,7 @@ export function ProjectPanel() {
   }, [c]);
 
   const stayAfterCloseAttempt = useCallback(() => {
-    pendingGlossaryNavRef.current = false;
+    pendingWelcomePageRef.current = null;
     c.stayAfterCloseAttempt();
   }, [c]);
 
@@ -140,7 +151,7 @@ export function ProjectPanel() {
     <section
       className={[
         "workspace relative flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden select-none",
-        workspacePhase === "A"
+        workspaceShellVariant !== "editor"
           ? "rounded-none border-0 bg-notion-sidebar font-sans antialiased text-notion-text"
           : "rounded-none border-0 bg-notion-bg font-sans antialiased text-notion-text",
       ].join(" ")}
@@ -189,7 +200,7 @@ export function ProjectPanel() {
       ) : null}
 
       <div className="flex min-h-0 min-w-0 flex-1 flex-col">
-        {workspacePhase === "A" ? (
+        {workspaceShellVariant === "welcome" ? (
           <WelcomeView
             controller={c}
             onOpenSettings={openEnvironment}
@@ -197,6 +208,26 @@ export function ProjectPanel() {
             llmStatusRefreshSeq={llmUiEpoch}
             page={welcomePage}
             onPageChange={setWelcomePage}
+          />
+        ) : workspaceShellVariant === "hub" ? (
+          <ProjectHubView
+            controller={c}
+            onOpenSettings={openEnvironment}
+            onOpenLlmSettings={openLlmSettings}
+            llmStatusRefreshSeq={llmUiEpoch}
+            onLeaveProjectForWelcome={onLeaveProjectForWelcome}
+            headerSlot={
+              c.busy && c.busyReason === "transcribe" ? (
+                <TranscribePreviewBanner
+                  elapsedSec={busyElapsedSec}
+                  transcribeProgress={c.transcribeProgress}
+                  cancelling={c.transcribeCancelling}
+                  onCancel={() => {
+                    void c.cancelTranscribe();
+                  }}
+                />
+              ) : null
+            }
           />
         ) : (
           <main className="relative flex min-h-[12rem] min-w-0 flex-1 flex-col bg-notion-bg lg:min-h-0">

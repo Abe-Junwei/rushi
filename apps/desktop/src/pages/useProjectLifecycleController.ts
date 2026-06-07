@@ -15,6 +15,7 @@ import {
 } from "./useProjectCloseGateController";
 import { useProjectImportDuplicateController } from "./useProjectImportDuplicateController";
 import { useProjectFileMutationController } from "./useProjectFileMutationController";
+import { useProjectMutationController } from "./useProjectMutationController";
 import { syncSegmentStagesAfterTranscribeReload } from "../services/segmentStagePersist";
 import { useSegmentDirtyState } from "./useSegmentDirtyState";
 import { useAutoSaveSegments } from "./useAutoSaveSegments";
@@ -225,6 +226,32 @@ export function useProjectLifecycleController(
     setError,
   });
 
+  const crud = useProjectCrudController({
+    pickedPath,
+    newName,
+    current,
+    setError,
+    beginBusy,
+    endBusy,
+    applyDetail,
+    refreshProjects,
+    mutations,
+    setCurrent,
+    setSegments,
+    setAudioSrc,
+    setTranscribeHints: transcribeJob.setTranscribeHints,
+  });
+
+  const projectMutation = useProjectMutationController({
+    current,
+    busy,
+    refreshProjectHub: closeGate.refreshProjectHub,
+    refreshProjects,
+    deleteProject: crud.deleteProject,
+    setError,
+    setCurrent,
+  });
+
   const refreshCurrentProject = useCallback(async () => {
     if (busy || !current) return;
     await refreshCurrentProjectBase();
@@ -244,22 +271,6 @@ export function useProjectLifecycleController(
   const clearPickedAudio = useCallback(() => {
     setPickedPath(null);
   }, []);
-
-  const crud = useProjectCrudController({
-    pickedPath,
-    newName,
-    current,
-    setError,
-    beginBusy,
-    endBusy,
-    applyDetail,
-    refreshProjects,
-    mutations,
-    setCurrent,
-    setSegments,
-    setAudioSrc,
-    setTranscribeHints: transcribeJob.setTranscribeHints,
-  });
 
   const editorTools = useProjectEditorToolsController({
     busy,
@@ -406,5 +417,20 @@ export function useProjectLifecycleController(
     requestDeleteProjectFile: fileMutation.requestDeleteProjectFile,
     cancelDeleteProjectFile: fileMutation.cancelDeleteProjectFile,
     confirmDeleteProjectFile: () => void fileMutation.confirmDeleteProjectFile(),
+    isRenamingProject: projectMutation.isRenamingProject,
+    renameProjectDraft: projectMutation.renameProjectDraft,
+    setRenameProjectDraft: projectMutation.setRenameProjectDraft,
+    beginRenameProject: projectMutation.beginRenameProject,
+    cancelRenameProject: projectMutation.cancelRenameProject,
+    commitRenameProject: () => void projectMutation.commitRenameProject(),
+    projectMetadataDialogOpen: projectMutation.projectMetadataDialogOpen,
+    projectMetadataAfterCreate: projectMutation.projectMetadataAfterCreate,
+    openProjectMetadataDialog: projectMutation.openProjectMetadataDialog,
+    closeProjectMetadataDialog: projectMutation.closeProjectMetadataDialog,
+    saveProjectMetadata: (metadata) => void projectMutation.saveProjectMetadata(metadata),
+    pendingProjectDelete: projectMutation.pendingProjectDelete,
+    requestDeleteProject: projectMutation.requestDeleteProject,
+    cancelDeleteProject: projectMutation.cancelDeleteProject,
+    confirmDeleteProject: () => void projectMutation.confirmDeleteProject(),
   };
 }

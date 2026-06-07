@@ -124,6 +124,11 @@ export async function adaptToLegacyProjectDetail(
       updated_at_ms: detail.updated_at_ms,
       segments: fileDetail.segments,
       files: detail.files,
+      narrator: detail.narrator,
+      recorded_at: detail.recorded_at,
+      location: detail.location,
+      subject: detail.subject,
+      transcriber: detail.transcriber,
     };
   }
   return {
@@ -134,5 +139,10 @@ export async function adaptToLegacyProjectDetail(
     updated_at_ms: detail.updated_at_ms,
     segments: [],
     files: detail.files,
+    narrator: detail.narrator,
+    recorded_at: detail.recorded_at,
+    location: detail.location,
+    subject: detail.subject,
+    transcriber: detail.transcriber,
   };
 }

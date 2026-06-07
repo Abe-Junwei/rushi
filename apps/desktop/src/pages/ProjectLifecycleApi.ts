@@ -207,4 +207,19 @@ export interface ProjectLifecycleApi {
   requestDeleteProjectFile: (fileId: string, fileName: string) => void;
   cancelDeleteProjectFile: () => void;
   confirmDeleteProjectFile: () => void;
+  isRenamingProject: boolean;
+  renameProjectDraft: string;
+  setRenameProjectDraft: (value: string) => void;
+  beginRenameProject: (currentName: string) => void;
+  cancelRenameProject: () => void;
+  commitRenameProject: () => void;
+  projectMetadataDialogOpen: boolean;
+  projectMetadataAfterCreate: boolean;
+  openProjectMetadataDialog: (options?: { afterCreate?: boolean }) => void;
+  closeProjectMetadataDialog: () => void;
+  saveProjectMetadata: (form: import("./useProjectMutationController").ProjectMetadataForm) => void;
+  pendingProjectDelete: import("./useProjectMutationController").PendingProjectDelete;
+  requestDeleteProject: (projectId: string, projectName: string) => void;
+  cancelDeleteProject: () => void;
+  confirmDeleteProject: () => void;
 }

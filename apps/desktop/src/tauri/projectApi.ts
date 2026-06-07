@@ -6,6 +6,7 @@ export type {
   FileDetail,
   FileSummary,
   ProjectDetail,
+  ProjectMetadata,
   ProjectSummary,
   RawProjectDetail,
   SegmentDto,
@@ -167,6 +168,32 @@ export async function projectTranscribeAsyncFinalize(
 
 export async function projectDelete(projectId: string): Promise<void> {
   return invoke<void>("project_delete", { projectId });
+}
+
+export async function renameProject(projectId: string, name: string): Promise<ProjectDetail> {
+  return invoke<ProjectDetail>("rename_project", { projectId, name });
+}
+
+export type ProjectMetadataInput = {
+  narrator?: string | null;
+  recorded_at?: string | null;
+  location?: string | null;
+  subject?: string | null;
+  transcriber?: string | null;
+};
+
+export async function updateProjectMetadata(
+  projectId: string,
+  metadata: ProjectMetadataInput,
+): Promise<ProjectDetail> {
+  return invoke<ProjectDetail>("update_project_metadata", {
+    projectId,
+    narrator: metadata.narrator ?? null,
+    recorded_at: metadata.recorded_at ?? null,
+    location: metadata.location ?? null,
+    subject: metadata.subject ?? null,
+    transcriber: metadata.transcriber ?? null,
+  });
 }
 
 export async function exportProjectBundle(

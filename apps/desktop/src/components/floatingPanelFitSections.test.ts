@@ -4,6 +4,7 @@ import {
   resolveDetailsSectionHeight,
   resolveFloatingPanelSectionsFitHeight,
   resolveMeasuredPanelFitHeight,
+  resolveMeasuredPanelFitHeightFromBox,
 } from "./floatingPanelFitSections";
 import { FLOATING_PANEL_TITLE_BAR_PX } from "./floatingPanelSegmentListLayout";
 
@@ -33,5 +34,9 @@ describe("floatingPanelFitSections", () => {
 
   it("resolveMeasuredPanelFitHeight adds shell chrome", () => {
     expect(resolveMeasuredPanelFitHeight(200)).toBeGreaterThan(200 + FLOATING_PANEL_TITLE_BAR_PX);
+  });
+
+  it("resolveMeasuredPanelFitHeightFromBox adds title bar only", () => {
+    expect(resolveMeasuredPanelFitHeightFromBox(360)).toBe(FLOATING_PANEL_TITLE_BAR_PX + 360);
   });
 });

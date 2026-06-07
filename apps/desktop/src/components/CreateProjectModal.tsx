@@ -1,15 +1,22 @@
-import { useState, useCallback } from "react";
+import { useCallback, useMemo, useState } from "react";
 import { FileAudio, FileText } from "lucide-react";
 import { PANEL_CONTROL_TYPOGRAPHY, PANEL_TYPOGRAPHY } from "../config/typography";
 import type { ProjectControllerApi } from "../pages/useProjectController";
 import * as fileApi from "../tauri/fileApi";
+import { findDuplicateProjectNames, suggestUniqueProjectName } from "../utils/projectDuplicateName";
 import { FloatingPanelTemplate } from "./PanelTemplate";
-import { CONTROL_BTN_PRIMARY_PROMINENT, CONTROL_BTN_SECONDARY_PROMINENT } from "../config/controlStyles";
+import {
+  CONTROL_BTN_PRIMARY,
+  CONTROL_BTN_SECONDARY,
+  CONTROL_TEXT_INPUT,
+} from "../config/controlStyles";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
-/** 按当前表单文案测算；避免 preset 默认取 maxHeight=560 留下底部空白 */
-const CREATE_PROJECT_DIALOG_DEFAULT = { width: 400, height: 420 } as const;
-const CREATE_PROJECT_DIALOG_MIN = { width: 360, height: 320 } as const;
+const PANEL_ID = "create-project-modal-v2";
+const PANEL_WIDTH = 392;
+/** 按当前静态布局测算（标题栏 57px + 正文区）；有重名提示多一行。 */
+const PANEL_HEIGHT = { base: 290, duplicate: 336 } as const;
+const MIN_SIZE = { width: 340, height: 260 } as const;
 
 interface CreateProjectModalProps {
   controller: ProjectControllerApi;
@@ -21,13 +28,26 @@ export function CreateProjectModal({ controller: c, onClose }: CreateProjectModa
   const [busy, setBusy] = useState(false);
   const isBusy = busy || c.busy;
   const projectName = name.trim() || "未命名项目";
+  const duplicateProjects = useMemo(
+    () => findDuplicateProjectNames(c.projects, projectName),
+    [c.projects, projectName],
+  );
+  const hasDuplicateWarning = duplicateProjects.length > 0;
+  const suggestedName = useMemo(
+    () => suggestUniqueProjectName(c.projects, projectName),
+    [c.projects, projectName],
+  );
+  const panelHeight = hasDuplicateWarning ? PANEL_HEIGHT.duplicate : PANEL_HEIGHT.base;
 
   const runCreate = useCallback(async (action: () => Promise<boolean>) => {
     setBusy(true);
     c.setNewName(name);
     try {
       const created = await action();
-      if (created) onClose();
+      if (created) {
+        c.openProjectMetadataDialog({ afterCreate: true });
+        onClose();
+      }
     } catch (e) {
       c.setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -71,84 +91,98 @@ export function CreateProjectModal({ controller: c, onClose }: CreateProjectModa
 
   return (
     <FloatingPanelTemplate
-      id="create-project-modal-v1"
+      id={PANEL_ID}
       title="新建项目"
       preset="createProject"
-      minWidth={CREATE_PROJECT_DIALOG_MIN.width}
-      minHeight={CREATE_PROJECT_DIALOG_MIN.height}
-      defaultSize={CREATE_PROJECT_DIALOG_DEFAULT}
+      minWidth={MIN_SIZE.width}
+      minHeight={MIN_SIZE.height}
+      maxWidth={440}
+      maxHeight={400}
+      defaultSize={{ width: PANEL_WIDTH, height: panelHeight }}
+      contentFitHeight={panelHeight}
+      layoutRev={hasDuplicateWarning ? 1 : 0}
       onClose={onClose}
     >
-      <div className="px-6 py-5">
-          <form className="space-y-6" onSubmit={(e) => {
-            e.preventDefault();
-            void createEmpty();
-          }}>
-            <label className="block">
-              <span className={`mb-1.5 block ${PANEL_TYPOGRAPHY.fieldLabel}`}>
-              项目名称
-              </span>
-              <input
-                type="text"
-                className={`w-full rounded-lg border border-notion-border bg-notion-bg px-3 py-2 ${PANEL_CONTROL_TYPOGRAPHY.compactInput} shadow-none outline-none transition-colors focus:border-zen-saffron focus:ring-2 focus:ring-zen-saffron/30 disabled:opacity-40`}
-                placeholder="未命名项目"
-                value={name}
-                onChange={(e) => setName(e.target.value)}
-                disabled={isBusy}
-                autoComplete="off"
-              />
-            </label>
+      <form
+        className="flex flex-col px-5 py-3"
+        onSubmit={(e) => {
+          e.preventDefault();
+          void createEmpty();
+        }}
+      >
+        <label className="block shrink-0">
+          <span className={`mb-1 block ${PANEL_TYPOGRAPHY.fieldLabel}`}>项目名称</span>
+          <input
+            type="text"
+            className={`${CONTROL_TEXT_INPUT} ${PANEL_CONTROL_TYPOGRAPHY.compactInput}`}
+            placeholder="未命名项目"
+            value={name}
+            onChange={(e) => setName(e.target.value)}
+            disabled={isBusy}
+            autoComplete="off"
+            autoFocus
+          />
+        </label>
 
-            <button
-              type="submit"
-              className={`${CONTROL_BTN_PRIMARY_PROMINENT} w-full`}
-              disabled={isBusy}
-            >
-              {busy ? "创建中…" : "创建项目"}
-            </button>
-
-            <div className="relative py-2">
-              <div className="absolute inset-0 flex items-center" aria-hidden>
-                <div className="w-full border-t border-notion-divider" />
-              </div>
-              <div className="relative flex justify-center">
-                <span className={`bg-notion-bg px-2 ${PANEL_TYPOGRAPHY.meta}`}>或同时导入文件</span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
-              <button
-                type="button"
-                className={`${CONTROL_BTN_SECONDARY_PROMINENT} w-full gap-2`}
-                disabled={isBusy}
-                onClick={() => void createFromAudio()}
-              >
-                <FileAudio className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-                <span>导入音频</span>
-              </button>
-              <button
-                type="button"
-                className={`${CONTROL_BTN_SECONDARY_PROMINENT} w-full gap-2`}
-                disabled={isBusy}
-                onClick={() => void createFromText()}
-              >
-                <FileText className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-                <span>导入文本文件</span>
-              </button>
-            </div>
-          </form>
-
-          <div className="mt-8 flex justify-end">
+        {hasDuplicateWarning ? (
+          <p className={`mt-2 shrink-0 ${PANEL_TYPOGRAPHY.meta} leading-snug text-zen-saffron`}>
+            已有同名项目「{duplicateProjects[0].name}」。仍可创建，或使用
             <button
               type="button"
-              className={`border-0 bg-transparent ${PANEL_TYPOGRAPHY.button} text-notion-text-muted transition-colors hover:text-notion-text focus:outline-none disabled:opacity-40`}
-              onClick={onClose}
+              className="mx-1 border-0 bg-transparent p-0 font-semibold text-zen-saffron underline"
               disabled={isBusy}
+              onClick={() => setName(suggestedName)}
             >
-              取消
+              {suggestedName}
             </button>
+          </p>
+        ) : (
+          <p className={`mt-1.5 shrink-0 ${PANEL_TYPOGRAPHY.meta} leading-snug text-notion-text-muted`}>
+            可先建空项目，或导入首个音频 / 文本文件。
+          </p>
+        )}
+
+        <div className="relative my-3 shrink-0">
+          <div className="absolute inset-0 flex items-center" aria-hidden>
+            <div className="w-full border-t border-notion-divider" />
+          </div>
+          <div className="relative flex justify-center">
+            <span className={`bg-notion-bg px-2 ${PANEL_TYPOGRAPHY.meta} text-notion-text-muted`}>
+              导入首个文件
+            </span>
           </div>
         </div>
+
+        <div className="grid shrink-0 grid-cols-2 gap-2">
+          <button
+            type="button"
+            className={`${CONTROL_BTN_SECONDARY} w-full gap-1.5 px-3`}
+            disabled={isBusy}
+            onClick={() => void createFromAudio()}
+          >
+            <FileAudio className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+            <span>导入音频</span>
+          </button>
+          <button
+            type="button"
+            className={`${CONTROL_BTN_SECONDARY} w-full gap-1.5 px-3`}
+            disabled={isBusy}
+            onClick={() => void createFromText()}
+          >
+            <FileText className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+            <span>导入文本</span>
+          </button>
+        </div>
+
+        <div className="mt-3 flex shrink-0 items-center justify-end gap-2 border-t border-notion-divider pt-3">
+          <button type="button" className={CONTROL_BTN_SECONDARY} onClick={onClose} disabled={isBusy}>
+            取消
+          </button>
+          <button type="submit" className={CONTROL_BTN_PRIMARY} disabled={isBusy}>
+            {busy ? "创建中…" : "创建空项目"}
+          </button>
+        </div>
+      </form>
     </FloatingPanelTemplate>
   );
 }

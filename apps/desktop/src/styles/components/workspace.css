@@ -444,15 +444,33 @@
   color: var(--notion-text-light);
 }
 
-/* 空项目 / 文件 Hub：窗口较矮时顶对齐，避免垂直居中裁切底部拖放区 */
+/* 欢迎页 / Hub / 空项目：TopBar 下 72px 顶距 + 顶对齐（CSS 真源，不依赖 Tailwind 扫描） */
 .empty-project-stage,
-.project-files-hub-stage {
+.welcome-home-stage {
+  display: flex;
+  flex-direction: column;
   justify-content: flex-start;
+  align-items: stretch;
+  box-sizing: border-box;
+  padding-top: var(--workspace-home-stage-offset-top, 4.5rem);
 }
 
-@media (min-height: 720px) {
-  .empty-project-stage,
-  .project-files-hub-stage {
-    justify-content: center;
+.empty-project-page,
+.welcome-home-page {
+  box-sizing: border-box;
+  flex: 0 0 auto;
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  padding-inline: 2rem;
+  padding-bottom: 2.5rem;
+}
+
+@media (min-width: 640px) {
+  .empty-project-page,
+  .welcome-home-page {
+    padding-inline: 2.5rem;
+    padding-bottom: 3rem;
   }
 }

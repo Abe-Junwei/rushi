@@ -46,6 +46,9 @@
   --workbench-toggle-active-border: transparent;
   --workbench-toggle-active-hover-bg: var(--zen-saffron-mid);
 
+  /** 欢迎页 / Hub：TopBar 下缘 → Stage Card 顶（72px = 8px 栅格 × 9） */
+  --workspace-home-stage-offset-top: 4.5rem;
+
   /* App shell footer（shell.css 引用；深色底与主 Notion 工作台分离） */
   --shell-footer-bg: #31312c;
   --shell-footer-fg: #f3f0e9;

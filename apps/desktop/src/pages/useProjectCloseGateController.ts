@@ -225,32 +225,15 @@ export function useProjectCloseGateController(
         return;
       }
 
-      if (!sameProject) {
+      if (!sameProject || currentFileId) {
         performCloseFile();
       }
 
       applyDetail(detail);
 
       if (!detail.files?.length) {
-        if (currentFileId) {
-          performCloseFile();
-        } else {
-          dirty.clearSavedSnapshot();
-        }
-        return;
+        dirty.clearSavedSnapshot();
       }
-
-      if (sameProject && currentFileId === null) {
-        return;
-      }
-
-      if (sameProject && fileStillExists && currentFileId) {
-        await openFileWrapped(currentFileId);
-        return;
-      }
-
-      const sorted = [...detail.files].sort((a, b) => b.updated_at_ms - a.updated_at_ms);
-      await openFileWrapped(sorted[0].id);
     } catch (e) {
       setCurrent(null);
       performCloseFile();

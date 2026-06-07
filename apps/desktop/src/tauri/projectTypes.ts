@@ -4,6 +4,8 @@ export interface ProjectSummary {
   id: string;
   name: string;
   updated_at_ms: number;
+  /** 来自 project_list；未返回时可由展开加载的文件数补全 */
+  file_count?: number;
 }
 
 /**
@@ -59,6 +61,15 @@ export interface FileDetail {
   updated_at_ms: number;
 }
 
+/** P0 project-level session metadata (oral history fields). */
+export interface ProjectMetadata {
+  narrator?: string | null;
+  recorded_at?: string | null;
+  location?: string | null;
+  subject?: string | null;
+  transcriber?: string | null;
+}
+
 /** Project container returned by create/import commands (no inline segments). */
 export interface RawProjectDetail {
   id: string;
@@ -66,6 +77,11 @@ export interface RawProjectDetail {
   files: FileSummary[];
   created_at_ms: number;
   updated_at_ms: number;
+  narrator?: string | null;
+  recorded_at?: string | null;
+  location?: string | null;
+  subject?: string | null;
+  transcriber?: string | null;
 }
 
 export interface ProjectDetail {
@@ -77,4 +93,9 @@ export interface ProjectDetail {
   segments: SegmentDto[];
   /** File container schema: list of files in the project */
   files: FileSummary[];
+  narrator?: string | null;
+  recorded_at?: string | null;
+  location?: string | null;
+  subject?: string | null;
+  transcriber?: string | null;
 }

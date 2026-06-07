@@ -7,6 +7,8 @@ import { CorrectionRulesPreviewDialog } from "./CorrectionRulesPreviewDialog";
 import { DeliveryExportDialog } from "./DeliveryExportDialog";
 import { DuplicateImportConfirmDialog } from "./DuplicateImportConfirmDialog";
 import { DeleteProjectFileConfirmDialog } from "./DeleteProjectFileConfirmDialog";
+import { DeleteProjectConfirmDialog } from "./DeleteProjectConfirmDialog";
+import { ProjectMetadataDialog } from "./ProjectMetadataDialog";
 import { FindReplaceDialog } from "./FindReplaceDialog";
 import { GlossaryLearnPromptDialog } from "./GlossaryLearnPromptDialog";
 import { PostTranscribeStageBDialog } from "./PostTranscribeStageBDialog";
@@ -164,6 +166,24 @@ export function ProjectPanelDialogs({
         busy={c.busy}
         onCancel={c.cancelDeleteProjectFile}
         onConfirm={() => void c.confirmDeleteProjectFile()}
+      />
+
+      <DeleteProjectConfirmDialog
+        open={c.pendingProjectDelete != null}
+        projectName={c.pendingProjectDelete?.projectName ?? null}
+        busy={c.busy}
+        onCancel={c.cancelDeleteProject}
+        onConfirm={() => void c.confirmDeleteProject()}
+      />
+
+      <ProjectMetadataDialog
+        open={c.projectMetadataDialogOpen}
+        afterCreate={c.projectMetadataAfterCreate}
+        project={c.current}
+        projects={c.projects}
+        busy={c.busy}
+        onClose={c.closeProjectMetadataDialog}
+        onSave={(form) => void c.saveProjectMetadata(form)}
       />
     </>
   );

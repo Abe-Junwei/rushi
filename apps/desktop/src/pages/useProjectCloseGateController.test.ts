@@ -112,6 +112,8 @@ describe("useProjectCloseGateController", () => {
     expect(result.current.closeGateOpen).toBe(false);
     expect(projectLoad).toHaveBeenCalledWith("proj-b");
     expect(args.applyDetail).toHaveBeenCalled();
+    expect(args.closeFile).toHaveBeenCalled();
+    expect(args.openFile).not.toHaveBeenCalled();
   });
 
   it("saveAndClose saves then proceeds navigate intent", async () => {
