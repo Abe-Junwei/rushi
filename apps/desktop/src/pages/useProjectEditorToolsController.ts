@@ -7,7 +7,7 @@ import { usePostTranscribeOrchestrationController } from "./usePostTranscribeOrc
 import { useEditorCorrectionCatalog } from "./useEditorCorrectionCatalog";
 import { useEditorSegmentCorrectPopover } from "./useEditorSegmentCorrectPopover";
 import { segmentsWithDraftsApplied } from "../services/segmentDirtyRead";
-import { segmentCanConfirmEdit } from "../services/segmentConfirmEligible";
+import { segmentCanFinalize } from "../services/segmentConfirmEligible";
 
 type SegmentDirtyApi = {
   getSavedSnapshot: () => SegmentDto[];
@@ -52,7 +52,6 @@ export function useProjectEditorToolsController(args: Args) {
     flushSegmentTextDrafts,
     updateSegmentText,
     pushUndo,
-    dirty,
     setError,
     saveSegments,
     transcribeWarnings = [],
@@ -91,14 +90,10 @@ export function useProjectEditorToolsController(args: Args) {
 
   const canConfirmSegmentEdit = useCallback(
     (segmentIdx: number) => {
-      if (!currentFileId || busy) return false;
-      return segmentCanConfirmEdit(
-        segmentsWithDraftsApplied(segments),
-        dirty.getSavedSnapshot(),
-        segmentIdx,
-      );
+      if (!currentFileId) return false;
+      return segmentCanFinalize(segmentsWithDraftsApplied(segments), segmentIdx, busy);
     },
-    [busy, currentFileId, dirty, segments],
+    [busy, currentFileId, segments],
   );
 
   const postTranscribeOrchestration = usePostTranscribeOrchestrationController({

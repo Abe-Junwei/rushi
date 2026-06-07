@@ -1,4 +1,9 @@
 import type { SegmentDto } from "../tauri/projectApi";
+import {
+  inheritSplitLeftStage,
+  mergeSegmentStageFields,
+} from "../services/segmentStagePersist";
+import { withDefaultSegmentStage, newSegmentWithDefaultStage } from "../services/segmentTextStage";
 import { createSegmentUid, ensureSegmentUids, ensureUniqueSegmentUids } from "../utils/segmentUid";
 import { sanitizeSegmentsForMedia } from "../utils/segmentMediaSanitize";
 import { trimAdjacentSegmentOverlaps } from "../utils/segmentBoundaryTrim";
@@ -55,7 +60,11 @@ export function ensureExplicitSegmentKinds(segs: SegmentDto[]): SegmentDto[] {
 export function normalizeSegmentList(segs: SegmentDto[]): SegmentDto[] {
   return trimAdjacentSegmentOverlaps(
     sortSegmentsByStartSec(
-      ensureUniqueSegmentUids(ensureSegmentUids(cloneSegments(ensureExplicitSegmentKinds(segs)))),
+      ensureUniqueSegmentUids(
+        ensureSegmentUids(cloneSegments(ensureExplicitSegmentKinds(segs))).map((s) =>
+          withDefaultSegmentStage(s),
+        ),
+      ),
     ),
   );
 }
@@ -87,7 +96,9 @@ export function segmentsEqualForPersist(a: SegmentDto[], b: SegmentDto[]): boole
       (s.confidence ?? null) === (t.confidence ?? null) &&
       Boolean(s.low_confidence) === Boolean(t.low_confidence) &&
       (s.detail ?? null) === (t.detail ?? null) &&
-      (s.kind ?? null) === (t.kind ?? null)
+      (s.kind ?? null) === (t.kind ?? null) &&
+      (s.text_stage ?? "auto_transcribe") === (t.text_stage ?? "auto_transcribe") &&
+      (s.finalize_via ?? null) === (t.finalize_via ?? null)
     );
   });
 }
@@ -110,8 +121,8 @@ export function mergeTwoSegments(a: SegmentDto, b: SegmentDto): SegmentDto {
       confA != null && confB != null ? Math.min(confA, confB) : (confA ?? confB ?? null),
     low_confidence: Boolean(a.low_confidence || b.low_confidence),
     detail: [a.detail, b.detail].filter(Boolean).join(" / ") || null,
-    // 合并后为用户语段，显式 speech，避免合并出的长段被 0.85 启发式误判为占位。
     kind: "speech",
+    ...mergeSegmentStageFields(a, b),
   };
 }
 
@@ -119,8 +130,14 @@ export function mergeTwoSegments(a: SegmentDto, b: SegmentDto): SegmentDto {
 export function buildSplitPair(s: SegmentDto, mid: number): { left: SegmentDto; right: SegmentDto } | null {
   if (mid <= s.start_sec + 0.02 || mid >= s.end_sec - 0.02) return null;
   // 拆分产物均为真实子句，显式 speech（即便拆的是占位整段，拆后两半也是 speech）。
-  const left: SegmentDto = { ...s, end_sec: mid, text: s.text, kind: "speech" };
-  const right: SegmentDto = {
+  const left: SegmentDto = {
+    ...s,
+    end_sec: mid,
+    text: s.text,
+    kind: "speech",
+    ...inheritSplitLeftStage(s),
+  };
+  const right: SegmentDto = newSegmentWithDefaultStage({
     uid: createSegmentUid(),
     idx: s.idx + 1,
     start_sec: mid,
@@ -130,6 +147,6 @@ export function buildSplitPair(s: SegmentDto, mid: number): { left: SegmentDto; 
     low_confidence: false,
     detail: null,
     kind: "speech",
-  };
+  });
   return { left, right };
 }

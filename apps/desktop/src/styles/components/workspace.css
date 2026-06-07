@@ -140,6 +140,128 @@
   background: var(--zen-indigo);
 }
 
+/* 语段行：编辑阶段（Notion 式 pill · 图标 + 文案） */
+.workspace .seg-row-stage-badge {
+  min-width: 0;
+}
+
+.workspace .seg-row-stage-draft-dot {
+  flex-shrink: 0;
+  width: 0.375rem;
+  height: 0.375rem;
+  border-radius: 9999px;
+  background: var(--zen-saffron);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--zen-saffron) 28%, var(--notion-bg));
+}
+
+.workspace .seg-row-stage-chip {
+  --seg-stage-chip-h: 1.375rem;
+  --seg-stage-icon-size: 0.875rem;
+  display: inline-flex;
+  box-sizing: border-box;
+  height: var(--seg-stage-chip-h);
+  min-height: var(--seg-stage-chip-h);
+  max-width: 6.25rem;
+  align-items: center;
+  gap: 0.25rem;
+  border-radius: 9999px;
+  padding: 0 0.5rem 0 0.3125rem;
+  line-height: 1;
+  border: 1px solid transparent;
+  font-family: Inter, ui-sans-serif, system-ui, sans-serif;
+}
+
+.workspace .seg-row-stage-chip__icon {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: var(--seg-stage-icon-size);
+  height: var(--seg-stage-icon-size);
+  color: inherit;
+  opacity: 0.92;
+}
+
+.workspace .seg-row-stage-chip__icon svg {
+  width: 0.75rem;
+  height: 0.75rem;
+}
+
+.workspace .seg-row-stage-chip__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1;
+  letter-spacing: -0.01em;
+}
+
+.workspace .seg-row-stage-chip--compact {
+  width: var(--seg-stage-chip-h);
+  min-width: var(--seg-stage-chip-h);
+  max-width: var(--seg-stage-chip-h);
+  padding: 0;
+  justify-content: center;
+}
+
+/*
+ * 语段阶段 chip 四色系（互不复用 hue 族）：
+ * 自动转写 — 中性灰（机器默认）
+ * AI 改稿   — indigo 蓝（智能/LLM）
+ * 手动转写 — saffron 暖橙（人手编辑）
+ * 定稿     — success 绿（确认完成）
+ */
+
+/* 自动转写 · 中性灰 */
+.workspace .seg-row-stage-chip--auto_transcribe {
+  background: var(--notion-callout-bg);
+  border-color: var(--notion-callout-border);
+  color: var(--notion-text-muted);
+}
+
+/* AI 改稿 · 冷蓝 */
+.workspace .seg-row-stage-chip--ai_revised {
+  background: color-mix(in srgb, var(--zen-indigo) 16%, var(--notion-bg));
+  border-color: color-mix(in srgb, var(--zen-indigo) 34%, var(--notion-divider));
+  color: var(--zen-indigo);
+}
+
+/* 手动转写 · 暖橙 */
+.workspace .seg-row-stage-chip--manual_transcribe {
+  background: color-mix(in srgb, var(--zen-saffron) 14%, var(--notion-bg));
+  border-color: color-mix(in srgb, var(--zen-saffron) 28%, var(--notion-divider));
+  color: var(--zen-saffron-mid);
+}
+
+/* 定稿 · 森林绿 */
+.workspace .seg-row-stage-chip--finalized {
+  background: var(--zen-success-surface);
+  border-color: var(--zen-success-border);
+  color: var(--zen-success);
+}
+
+.workspace .seg-row-stage-chip--finalized .seg-row-stage-chip__icon {
+  width: var(--seg-stage-icon-size);
+  height: var(--seg-stage-icon-size);
+  border-radius: 9999px;
+  background: var(--zen-success);
+  color: var(--notion-bg);
+  opacity: 1;
+  box-shadow: 0 1px 2px color-mix(in srgb, var(--zen-success) 22%, transparent);
+}
+
+.workspace .seg-row-stage-chip--finalized .seg-row-stage-chip__icon svg {
+  width: 0.5625rem;
+  height: 0.5625rem;
+}
+
+.workspace .seg-row-stage-chip--compact.seg-row-stage-chip--finalized {
+  background: transparent;
+  border-color: transparent;
+}
+
 /* 语段错词：与正文同字号，仅虚线下划线（勿用 Tailwind font-inherit，其不含 font-size） */
 .workspace .seg-correctable-hit {
   font: inherit;

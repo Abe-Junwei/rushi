@@ -42,3 +42,24 @@ export function segmentCanConfirmEdit(
   if (segmentIdx < 0 || segmentIdx >= segments.length) return false;
   return segmentHasUnsavedText(segments, savedSnapshot, segmentIdx);
 }
+
+/** 语段当前可见正文（含 draft）是否有非空白字符。 */
+export function segmentHasTextContent(segments: SegmentDto[], segmentIdx: number): boolean {
+  const pair = segmentTextAt(segments, segments, segmentIdx);
+  if (!pair) return false;
+  return pair.live.trim().length > 0;
+}
+
+export const DELETE_SEGMENT_WITH_TEXT_CONFIRM = "该语段已有正文，确定删除？";
+
+/** 定稿（⌘Enter / 右键）：非 busy 且尚未定稿即可。 */
+export function segmentCanFinalize(
+  segments: SegmentDto[],
+  segmentIdx: number,
+  busy: boolean,
+): boolean {
+  if (busy) return false;
+  if (segmentIdx < 0 || segmentIdx >= segments.length) return false;
+  const stage = segments[segmentIdx]?.text_stage ?? "auto_transcribe";
+  return stage !== "finalized";
+}

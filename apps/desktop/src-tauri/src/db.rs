@@ -79,6 +79,23 @@ fn migrate_segments_kind(conn: &Connection) -> rusqlite::Result<()> {
     Ok(())
 }
 
+fn migrate_segments_text_stage(conn: &Connection) -> rusqlite::Result<()> {
+    let cols = table_columns(conn, "segments")?;
+    if cols.is_empty() {
+        return Ok(());
+    }
+    if !cols.iter().any(|c| c == "text_stage") {
+        conn.execute(
+            "ALTER TABLE segments ADD COLUMN text_stage TEXT NOT NULL DEFAULT 'auto_transcribe'",
+            [],
+        )?;
+    }
+    if !cols.iter().any(|c| c == "finalize_via") {
+        conn.execute("ALTER TABLE segments ADD COLUMN finalize_via TEXT", [])?;
+    }
+    Ok(())
+}
+
 fn migrate_glossary_p2(conn: &Connection) -> rusqlite::Result<()> {
     conn.execute_batch(
         r#"
@@ -278,6 +295,7 @@ pub fn migrate(conn: &Connection) -> rusqlite::Result<()> {
     migrate_segments_p2(conn)?;
     migrate_segments_uid(conn)?;
     migrate_segments_kind(conn)?;
+    migrate_segments_text_stage(conn)?;
     migrate_glossary_p2(conn)?;
     migrate_glossary_gly2(conn)?;
     migrate_glossary_gly3(conn)?;

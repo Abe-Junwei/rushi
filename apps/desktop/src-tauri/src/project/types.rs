@@ -92,6 +92,14 @@ pub struct SegmentDto {
     /// 旧数据 / 未标记为 None，按 0.85 跨度启发式回退判定。
     #[serde(default)]
     pub kind: Option<String>,
+    #[serde(default = "default_segment_text_stage")]
+    pub text_stage: String,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub finalize_via: Option<String>,
+}
+
+fn default_segment_text_stage() -> String {
+    "auto_transcribe".to_string()
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

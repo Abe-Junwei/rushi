@@ -36,6 +36,9 @@
 
   window.__TAURI__ = {};
   window.__TAURI_INTERNALS__ = {
+    metadata: {
+      currentWindow: { label: "main" },
+    },
     convertFileSrc: (path) => path,
     transformCallback: () => 0,
     invoke: async (cmd, args) => {

@@ -10,6 +10,14 @@ import {
   segmentsEqualForPersist,
 } from "./segmentListHelpers";
 import { segmentsToLearnBaselineAligned } from "../services/correctionLearnBaseline";
+import {
+  applyStagePatchesBeforePersist,
+  type FinalizeStageIntent,
+} from "../services/segmentStagePersist";
+import {
+  segmentHasUnsavedText,
+  segmentCanFinalize,
+} from "../services/segmentConfirmEligible";
 import { waitForSaveIdle } from "../services/waitForSaveIdle";
 import { segmentDraftStore } from "../hooks/useSegmentDraftStore";
 import { toast } from "../services/ui/toast";
@@ -40,6 +48,7 @@ type Args = {
   endBusy: () => void;
   mutations: MutationsApi;
   dirty: SegmentDirtyApi;
+  pendingAiRevisedUidsRef: MutableRefObject<Set<string>>;
   checkGlossaryLearnAfterSave: () => void;
 };
 
@@ -58,6 +67,7 @@ export function useProjectSaveController(args: Args) {
     endBusy,
     mutations,
     dirty,
+    pendingAiRevisedUidsRef,
     checkGlossaryLearnAfterSave,
   } = args;
 
@@ -71,6 +81,8 @@ export function useProjectSaveController(args: Args) {
       countHits?: boolean;
       explicitPairs?: fileApi.CorrectionExplicitPair[];
       learnBaselineTexts?: fileApi.LearnBaselineText[];
+      finalizeIntent?: FinalizeStageIntent;
+      aiRevisedUids?: ReadonlySet<string>;
     }): Promise<boolean> => {
       if (saveInFlightRef.current) return false;
       if (!current || !currentFileId) {
@@ -86,15 +98,23 @@ export function useProjectSaveController(args: Args) {
       setError("");
       try {
         mutations.flushSegmentTextDrafts();
-        const countHits = options?.countHits ?? true;
+        const savedSnapshot = dirty.getSavedSnapshot();
+        const aiRevisedUids = new Set<string>([
+          ...pendingAiRevisedUidsRef.current,
+          ...(options?.aiRevisedUids ?? []),
+        ]);
+        const countHits = options?.countHits ?? !options?.finalizeIntent;
+        const staged = applyStagePatchesBeforePersist(segmentsRef.current, savedSnapshot, {
+          finalizeIntent: options?.finalizeIntent,
+          aiRevisedUids: aiRevisedUids.size > 0 ? aiRevisedUids : undefined,
+        });
+        segmentsRef.current = staged;
+        setSegments(staged);
         const learnBaselineTexts = countHits
           ? (options?.learnBaselineTexts ??
-              segmentsToLearnBaselineAligned(
-                dirty.getSavedSnapshot(),
-                segmentsRef.current,
-              ))
+              segmentsToLearnBaselineAligned(savedSnapshot, staged))
           : undefined;
-        const normalized = prepareSegmentsForPersist(segmentsRef.current, 0);
+        const normalized = prepareSegmentsForPersist(staged, 0);
         await fileApi.fileSaveSegments(currentFileId, normalized, {
           countHits,
           explicitPairs: options?.explicitPairs,
@@ -123,6 +143,7 @@ export function useProjectSaveController(args: Args) {
           );
         }
         dirty.setSavedSnapshot(snapshotBase);
+        pendingAiRevisedUidsRef.current.clear();
         notifySegmentsPersistedRef.current();
         if (!options?.quiet) {
           toast.success("保存成功");
@@ -143,6 +164,7 @@ export function useProjectSaveController(args: Args) {
       currentFileId,
       dirty,
       mutations,
+      pendingAiRevisedUidsRef,
       segmentsRef,
       selectedIdxRef,
       setCurrent,
@@ -152,29 +174,45 @@ export function useProjectSaveController(args: Args) {
     ],
   );
 
-  const confirmSegmentEditAndAdvance = useCallback(
-    async (segmentIdx: number): Promise<boolean> => {
+  const finalizeSegmentAt = useCallback(
+    async (segmentIdx: number, advance: boolean): Promise<boolean> => {
       if (!current || !currentFileId || busy) return false;
       if (segmentIdx < 0 || segmentIdx >= segmentsRef.current.length) return false;
+      if (!segmentCanFinalize(segmentsRef.current, segmentIdx, busy)) return false;
       clearAutoSaveRef.current();
-      mutations.flushSegmentTextDrafts();
-      const nextIdx = Math.min(segmentIdx + 1, segmentsRef.current.length - 1);
-      if (dirty.hasUnsavedSegmentChanges()) {
-        if (saveInFlightRef.current) {
-          const idle = await waitForSaveIdle(saveInFlightRef);
-          if (!idle) {
-            toast.warning("保存语段失败：自动保存耗时过长，请稍候再试");
-            return false;
-          }
-        }
-        const saved = await saveSegments({ quiet: true, countHits: true });
-        if (!saved) {
-          toast.warning("保存语段失败：请稍候再试（可能正在自动保存）");
+      const hadUnsaved = segmentHasUnsavedText(
+        segmentsRef.current,
+        dirty.getSavedSnapshot(),
+        segmentIdx,
+      );
+      if (saveInFlightRef.current) {
+        const idle = await waitForSaveIdle(saveInFlightRef);
+        if (!idle) {
+          toast.warning("保存语段失败：自动保存耗时过长，请稍候再试");
           return false;
         }
       }
-      if (nextIdx !== selectedIdxRef.current) {
-        setSelectedIdx(nextIdx);
+      const finalizeSaveOptions = {
+        quiet: true,
+        countHits: hadUnsaved,
+        finalizeIntent: { segmentIdx, hadUnsavedDraft: hadUnsaved },
+      } as const;
+      let saved = await saveSegments(finalizeSaveOptions);
+      if (!saved && saveInFlightRef.current) {
+        const idle = await waitForSaveIdle(saveInFlightRef);
+        if (idle) {
+          saved = await saveSegments(finalizeSaveOptions);
+        }
+      }
+      if (!saved) {
+        toast.warning("定稿失败：请稍候再试（可能正在自动保存）");
+        return false;
+      }
+      if (advance) {
+        const nextIdx = Math.min(segmentIdx + 1, segmentsRef.current.length - 1);
+        if (nextIdx !== selectedIdxRef.current) {
+          setSelectedIdx(nextIdx);
+        }
       }
       return true;
     },
@@ -183,12 +221,21 @@ export function useProjectSaveController(args: Args) {
       current,
       currentFileId,
       dirty,
-      mutations,
       saveSegments,
       segmentsRef,
       selectedIdxRef,
       setSelectedIdx,
     ],
+  );
+
+  const confirmSegmentEditAndAdvance = useCallback(
+    async (segmentIdx: number): Promise<boolean> => finalizeSegmentAt(segmentIdx, true),
+    [finalizeSegmentAt],
+  );
+
+  const markSegmentFinalized = useCallback(
+    async (segmentIdx: number): Promise<boolean> => finalizeSegmentAt(segmentIdx, false),
+    [finalizeSegmentAt],
   );
 
   const restoreEditorFromEditLog = useCallback(
@@ -257,6 +304,7 @@ export function useProjectSaveController(args: Args) {
     notifySegmentsPersistedRef,
     saveSegments,
     confirmSegmentEditAndAdvance,
+    markSegmentFinalized,
     restoreEditorFromEditLog,
   };
 }

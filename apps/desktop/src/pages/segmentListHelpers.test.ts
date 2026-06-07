@@ -36,6 +36,108 @@ describe("segmentListHelpers", () => {
     expect(isPlaceholderSegment(merged, 10)).toBe(false);
   });
 
+  it("mergeTwoSegments downgrades to the least confirmed stage", () => {
+    const merged = mergeTwoSegments(
+      seg({
+        uid: "a",
+        start_sec: 0,
+        end_sec: 5,
+        text: "a",
+        text_stage: "finalized",
+        finalize_via: "confirm_edit",
+      }),
+      seg({
+        uid: "b",
+        start_sec: 5,
+        end_sec: 9,
+        text: "b",
+        text_stage: "auto_transcribe",
+      }),
+    );
+    expect(merged.text_stage).toBe("auto_transcribe");
+    expect(merged.finalize_via).toBeNull();
+  });
+
+  it("mergeTwoSegments keeps manual when paired with finalized", () => {
+    const merged = mergeTwoSegments(
+      seg({
+        uid: "a",
+        start_sec: 0,
+        end_sec: 5,
+        text: "a",
+        text_stage: "manual_transcribe",
+        finalize_via: null,
+      }),
+      seg({
+        uid: "b",
+        start_sec: 5,
+        end_sec: 9,
+        text: "b",
+        text_stage: "finalized",
+        finalize_via: "mark_only",
+      }),
+    );
+    expect(merged.text_stage).toBe("manual_transcribe");
+    expect(merged.finalize_via).toBeNull();
+  });
+
+  it("mergeTwoSegments keeps finalized only when both are finalized", () => {
+    const merged = mergeTwoSegments(
+      seg({
+        uid: "a",
+        start_sec: 0,
+        end_sec: 5,
+        text: "a",
+        text_stage: "finalized",
+        finalize_via: "confirm_edit",
+      }),
+      seg({ uid: "b", start_sec: 5, end_sec: 9, text: "b", text_stage: "auto_transcribe" }),
+    );
+    expect(merged.text_stage).toBe("auto_transcribe");
+    expect(merged.finalize_via).toBeNull();
+  });
+
+  it("mergeTwoSegments downgrades finalize_via to mark_only when either side used it", () => {
+    const merged = mergeTwoSegments(
+      seg({
+        uid: "a",
+        start_sec: 0,
+        end_sec: 5,
+        text: "a",
+        text_stage: "finalized",
+        finalize_via: "confirm_edit",
+      }),
+      seg({
+        uid: "b",
+        start_sec: 5,
+        end_sec: 9,
+        text: "b",
+        text_stage: "finalized",
+        finalize_via: "mark_only",
+      }),
+    );
+    expect(merged.text_stage).toBe("finalized");
+    expect(merged.finalize_via).toBe("mark_only");
+  });
+
+  it("buildSplitPair inherits left stage and resets right to auto_transcribe", () => {
+    const pair = buildSplitPair(
+      seg({
+        uid: "a",
+        start_sec: 0,
+        end_sec: 10,
+        text: "parent",
+        text_stage: "finalized",
+        finalize_via: "mark_only",
+      }),
+      5,
+    );
+    expect(pair?.left.text_stage).toBe("finalized");
+    expect(pair?.left.finalize_via).toBe("mark_only");
+    expect(pair?.right.text_stage).toBe("auto_transcribe");
+    expect(pair?.right.finalize_via).toBeNull();
+  });
+
   it("buildSplitPair marks both halves as explicit speech", () => {
     const pair = buildSplitPair(
       seg({ uid: "a", start_sec: 0, end_sec: 100, text: "whole", kind: "placeholder" }),

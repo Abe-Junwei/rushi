@@ -63,6 +63,8 @@ fn seg(uid: &str, idx: i32, text: &str) -> SegmentDto {
         low_confidence: false,
         detail: None,
         kind: None,
+        text_stage: "auto_transcribe".to_string(),
+        finalize_via: None,
     }
 }
 

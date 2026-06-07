@@ -20,6 +20,7 @@ import {
   segmentListRowMinHeightPx,
 } from "../../utils/segmentListVirtualWindow";
 import { SegmentTextListRow } from "../SegmentTextListRow";
+import { segmentHasUnsavedText } from "../../services/segmentConfirmEligible";
 import type { useEditorTranscriptAppearance } from "./useEditorTranscriptAppearance";
 
 type SegmentCtxMenuState = SegmentContextMenuOpen;
@@ -183,6 +184,8 @@ export function EditorSegmentList({
     c.correctionRulesEditorHighlight?.segmentIdx,
   ]);
 
+  const savedSnapshot = c.getSavedSnapshot();
+
   const renderSegmentRow = (s: (typeof c.segments)[number], i: number) => (
     <SegmentTextListRow
       key={s.uid ? `${s.uid}#${i}` : `seg-${i}`}
@@ -226,6 +229,7 @@ export function EditorSegmentList({
       onCorrectableSpanClick={(span, event) =>
         c.openEditorCorrectPopover(i, span, event.clientX, event.clientY)
       }
+      hasUnsavedDraft={segmentHasUnsavedText(c.segments, savedSnapshot, i)}
     />
   );
 

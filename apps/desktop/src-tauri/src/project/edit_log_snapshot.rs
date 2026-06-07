@@ -80,6 +80,8 @@ mod tests {
             low_confidence: false,
             detail: None,
             kind: None,
+            text_stage: "auto_transcribe".to_string(),
+            finalize_via: None,
         }
     }
 

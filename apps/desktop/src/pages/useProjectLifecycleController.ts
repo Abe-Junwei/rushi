@@ -20,6 +20,7 @@ import {
   type LocalTranscribePreflight,
 } from "./useTranscribeJobController";
 import { useProjectSaveController } from "./useProjectSaveController";
+import { useSegmentDeleteConfirmController } from "./useSegmentDeleteConfirmController";
 import { useProjectEditorToolsController } from "./useProjectEditorToolsController";
 import { mapEditorToolsLifecycleFields } from "./projectLifecycleEditorToolsReturn";
 import type { ProjectLifecycleApi } from "./ProjectLifecycleApi";
@@ -57,6 +58,7 @@ export function useProjectLifecycleController(
   const [newName, setNewName] = useState("未命名项目");
   const [pickedPath, setPickedPath] = useState<string | null>(null);
   const closeGateRef = useRef<ProjectCloseGateControllerApi | null>(null);
+  const pendingAiRevisedUidsRef = useRef(new Set<string>());
   const mutations = useSegmentMutationController({
     segmentsRef,
     setSegments,
@@ -64,6 +66,13 @@ export function useProjectLifecycleController(
     setSelectedIdx,
     setError,
     busy,
+    pendingAiRevisedUidsRef,
+  });
+
+  const segmentDeleteConfirm = useSegmentDeleteConfirmController({
+    segmentsRef,
+    flushSegmentTextDrafts: mutations.flushSegmentTextDrafts,
+    deleteSegmentAt: mutations.deleteSegmentAt,
   });
 
   const dirty = useSegmentDirtyState({
@@ -93,6 +102,7 @@ export function useProjectLifecycleController(
     endBusy,
     mutations,
     dirty,
+    pendingAiRevisedUidsRef,
     checkGlossaryLearnAfterSave: () => {
       void glossaryLearn.checkGlossaryLearnAfterSave();
     },
@@ -104,6 +114,7 @@ export function useProjectLifecycleController(
     notifySegmentsPersistedRef,
     saveSegments,
     confirmSegmentEditAndAdvance,
+    markSegmentFinalized,
     restoreEditorFromEditLog,
   } = saveController;
 
@@ -296,6 +307,7 @@ export function useProjectLifecycleController(
     cancelTranscribeOverwrite: transcribeJob.cancelTranscribeOverwrite,
     saveSegments,
     confirmSegmentEditAndAdvance,
+    markSegmentFinalized,
     getSavedSnapshot: dirty.getSavedSnapshot,
     autoSaveFooterStatus: autoSave.autoSaveFooterStatus,
     ...mapEditorToolsLifecycleFields(editorTools),
@@ -313,7 +325,11 @@ export function useProjectLifecycleController(
     mergeWithNext: () => mutations.mergeWithNext(selectedIdxRef.current),
     mergeWithPrev: () => mutations.mergeWithPrev(selectedIdxRef.current),
     mergeWithNextAt: mutations.mergeWithNextAt, mergeWithPrevAt: mutations.mergeWithPrevAt,
-    deleteSegmentAt: mutations.deleteSegmentAt, insertSegmentAfter: mutations.insertSegmentAfter,
+    deleteSegmentAt: segmentDeleteConfirm.requestDeleteSegmentAt,
+    segmentDeleteConfirmOpen: segmentDeleteConfirm.segmentDeleteConfirmOpen,
+    confirmDeleteSegment: segmentDeleteConfirm.confirmDeleteSegment,
+    cancelDeleteSegment: segmentDeleteConfirm.cancelDeleteSegment,
+    insertSegmentAfter: mutations.insertSegmentAfter,
     insertSegmentFromTimeRange: mutations.insertSegmentFromTimeRange,
     flushSegmentTextDrafts: mutations.flushSegmentTextDrafts,
     glossaryLearnDialog: glossaryLearn.glossaryLearnDialog,

@@ -97,11 +97,18 @@ pub fn file_save_segments_inner(
         let low = if s.low_confidence { 1i64 } else { 0i64 };
         let detail = s.detail.as_deref().unwrap_or("");
         let kind = s.kind.as_deref().filter(|k| !k.trim().is_empty());
+        let text_stage = if s.text_stage.trim().is_empty() {
+            "auto_transcribe"
+        } else {
+            s.text_stage.as_str()
+        };
+        let finalize_via = s.finalize_via.as_deref().filter(|v| !v.trim().is_empty());
         let updated = tx
             .execute(
                 "UPDATE segments SET idx = ?1, start_sec = ?2, end_sec = ?3, text = ?4, \
-                 confidence = ?5, low_confidence = ?6, detail = ?7, kind = ?8 \
-                 WHERE file_id = ?9 AND uid = ?10",
+                 confidence = ?5, low_confidence = ?6, detail = ?7, kind = ?8, \
+                 text_stage = ?9, finalize_via = ?10 \
+                 WHERE file_id = ?11 AND uid = ?12",
                 params![
                     s.idx,
                     s.start_sec,
@@ -111,6 +118,8 @@ pub fn file_save_segments_inner(
                     low,
                     detail,
                     kind,
+                    text_stage,
+                    finalize_via,
                     file_id,
                     uid.as_str(),
                 ],
@@ -118,8 +127,8 @@ pub fn file_save_segments_inner(
             .map_err(|e| e.to_string())?;
         if updated == 0 {
             tx.execute(
-                "INSERT INTO segments (file_id, uid, idx, start_sec, end_sec, text, confidence, low_confidence, detail, kind) \
-                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+                "INSERT INTO segments (file_id, uid, idx, start_sec, end_sec, text, confidence, low_confidence, detail, kind, text_stage, finalize_via) \
+                 VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11, ?12)",
                 params![
                     file_id,
                     uid.as_str(),
@@ -131,6 +140,8 @@ pub fn file_save_segments_inner(
                     low,
                     detail,
                     kind,
+                    text_stage,
+                    finalize_via,
                 ],
             )
             .map_err(|e| e.to_string())?;

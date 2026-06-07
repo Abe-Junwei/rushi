@@ -116,7 +116,8 @@ function ContextMenuPanel({
                   setOpenPath((prev) => [...prev.slice(0, depth), it.key]);
                   return;
                 }
-                setOpenPath((prev) => prev.slice(0, depth + 1));
+                // 移到无子菜单项：收起同级及更深 flyout（slice(0, depth+1) 会误留 depth=0 的 appearance）
+                setOpenPath((prev) => prev.slice(0, depth));
               }}
               onPointerDown={(e) => onItemPointerDown(e, it)}
             >

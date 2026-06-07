@@ -63,6 +63,7 @@ export interface ProjectLifecycleApi {
   }) => Promise<boolean>;
   /** Cmd/Ctrl+Enter：落笔保存未提交正文并选中下一语段。 */
   confirmSegmentEditAndAdvance: (segmentIdx: number) => Promise<boolean>;
+  markSegmentFinalized: (segmentIdx: number) => Promise<boolean>;
   manualCorrectionMemoryDialog: import("./useManualCorrectionMemoryDialog").ManualCorrectionMemoryDialogState;
   openManualCorrectionMemoryDialog: (wrong: string) => void;
   closeManualCorrectionMemoryDialog: () => void;
@@ -109,6 +110,9 @@ export interface ProjectLifecycleApi {
   mergeWithNextAt: (idx: number) => void;
   mergeWithPrevAt: (idx: number) => void;
   deleteSegmentAt: (idx: number) => void;
+  segmentDeleteConfirmOpen: boolean;
+  confirmDeleteSegment: () => void;
+  cancelDeleteSegment: () => void;
   insertSegmentAfter: (idx: number, mediaDurationSec?: number) => void;
   insertSegmentFromTimeRange: (
     startSec: number,

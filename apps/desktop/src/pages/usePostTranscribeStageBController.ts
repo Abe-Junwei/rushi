@@ -15,6 +15,7 @@ import { resolvePendingStageAHint } from "../services/postprocess/stageBPendingR
 import { toast } from "../services/ui/toast";
 import { scrollSegmentListIndexToView } from "../utils/segmentListVirtualWindow";
 import { findSegmentIndexByUid } from "./segmentListHelpers";
+import { applyAiRevisedStageToUids } from "../services/segmentStagePersist";
 import type { BusyReason } from "./useProjectCrudController";
 import { TRANSCRIBE_PREVIEW_BLOCK_REASON } from "./transcribePreviewState";
 import {
@@ -37,7 +38,11 @@ type Args = {
   setSelectedIdx: React.Dispatch<React.SetStateAction<number>>;
   pushUndo: () => void;
   setError: (msg: string) => void;
-  saveSegments: (options?: { quiet?: boolean }) => Promise<boolean>;
+  saveSegments: (options?: {
+    quiet?: boolean;
+    countHits?: boolean;
+    aiRevisedUids?: ReadonlySet<string>;
+  }) => Promise<boolean>;
   llmRuntimeEpoch?: number;
   llmEnvRevision?: string;
   beginBusy: (reason: BusyReason) => void;
@@ -267,6 +272,7 @@ export function usePostTranscribeStageBController(args: Args) {
     pushUndo();
     const selected = new Set(dialog.selectedSegmentIdxs);
     const next = [...segmentsRef.current];
+    const changedUids = new Set<string>();
     let applied = 0;
     for (const ch of dialog.changes) {
       if (!selected.has(ch.segmentIdx)) continue;
@@ -276,6 +282,10 @@ export function usePostTranscribeStageBController(args: Args) {
       if (idx < 0) continue;
       const row = next[idx];
       if (!row) continue;
+      if (row.text !== ch.afterText) {
+        const uid = row.uid?.trim();
+        if (uid) changedUids.add(uid);
+      }
       next[idx] = { ...row, text: ch.afterText };
       applied += 1;
     }
@@ -283,11 +293,12 @@ export function usePostTranscribeStageBController(args: Args) {
       setError("所选语段已不存在或 uid 已变化，请关闭预览后重新生成候选。");
       return;
     }
-    segmentsRef.current = next;
-    setSegments(next);
+    const staged = applyAiRevisedStageToUids(next, changedUids);
+    segmentsRef.current = staged;
+    setSegments(staged);
     setDialog({ phase: "closed" });
     setPreviewFocusSegmentIdx(null);
-    const saved = await saveSegments({ quiet: true });
+    const saved = await saveSegments({ quiet: true, aiRevisedUids: changedUids });
     if (!saved) {
       setError("改稿预览已写回，但保存失败，请稍后手动保存。");
     }

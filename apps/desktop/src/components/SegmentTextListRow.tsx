@@ -1,6 +1,7 @@
 import { memo, useCallback, useRef, type KeyboardEvent, type MouseEvent } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
 import { SegmentRowTextField } from "./segmentRow/SegmentRowTextField";
+import { SegmentRowStageBadge } from "./segmentRow/SegmentRowStageBadge";
 import { useSegmentRowTextStyle } from "./segmentRow/useSegmentRowTextStyle";
 import { SegmentRowTimestampColumn } from "./segmentRow/SegmentRowTimestampColumn";
 import type { CorrectableSpan } from "../services/editor/findCorrectableSpans";
@@ -33,6 +34,7 @@ export type SegmentTextListRowProps = {
   correctionRulesHighlight?: { charStart: number; charEnd: number } | null;
   spansForText: (text: string) => CorrectableSpan[];
   onCorrectableSpanClick: (span: CorrectableSpan, event: React.MouseEvent<HTMLButtonElement>) => void;
+  hasUnsavedDraft?: boolean;
 };
 
 export const SegmentTextListRow = memo(function SegmentTextListRow({
@@ -58,6 +60,7 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
   correctionRulesHighlight,
   spansForText,
   onCorrectableSpanClick,
+  hasUnsavedDraft = false,
 }: SegmentTextListRowProps) {
   const focusOnSelectRef = useRef(false);
   const editorRef = useRef<{ focusEditor: () => void } | null>(null);
@@ -135,6 +138,8 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
         onCorrectableSpanClick={onCorrectableSpanClick}
         onOpenTextContextMenu={onOpenTextContextMenu}
       />
+
+      <SegmentRowStageBadge segment={s} hasUnsavedDraft={hasUnsavedDraft} />
     </div>
   );
 });

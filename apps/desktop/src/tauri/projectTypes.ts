@@ -12,6 +12,14 @@ export interface ProjectSummary {
  */
 export type SegmentKind = "speech" | "placeholder";
 
+export type SegmentTextStage =
+  | "auto_transcribe"
+  | "ai_revised"
+  | "manual_transcribe"
+  | "finalized";
+
+export type SegmentFinalizeVia = "confirm_edit" | "mark_only";
+
 export interface SegmentDto {
   /** 稳定语段 id；旧数据可为空，打开文件时由前端补全。 */
   uid?: string;
@@ -27,6 +35,10 @@ export interface SegmentDto {
   detail?: string | null;
   /** 显式语段类型；缺省走启发式占位判定（见 SegmentKind）。 */
   kind?: SegmentKind | null;
+  /** 正文编辑阶段（§ segment-edit-stage-indicator-research） */
+  text_stage?: SegmentTextStage | null;
+  /** 定稿方式；仅 text_stage=finalized 时有意义 */
+  finalize_via?: SegmentFinalizeVia | null;
 }
 
 export interface FileSummary {

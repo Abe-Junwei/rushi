@@ -7,6 +7,6 @@ import {
 describe("editorFooterShortcutHints", () => {
   it("formats compact footer hint lines", () => {
     const hint = EDITOR_FOOTER_SHORTCUT_HINTS[0];
-    expect(formatEditorFooterShortcutHint(hint)).toBe("⌘/Ctrl + Enter · 确认改词并跳下一条");
+    expect(formatEditorFooterShortcutHint(hint)).toBe("⌘/Ctrl + Enter · 定稿并跳下一条");
   });
 });

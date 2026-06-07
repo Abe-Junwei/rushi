@@ -51,6 +51,8 @@ pub fn parse_transcribe_segments_from_json(arr: &[Value]) -> Result<Vec<SegmentD
             low_confidence,
             detail,
             kind,
+            text_stage: "auto_transcribe".to_string(),
+            finalize_via: None,
         });
     }
     Ok(segments)

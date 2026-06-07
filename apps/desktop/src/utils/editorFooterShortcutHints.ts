@@ -12,8 +12,8 @@ export const EDITOR_FOOTER_SHORTCUT_HINTS: EditorFooterShortcutHint[] = [
   {
     id: "confirm-edit",
     keys: "⌘/Ctrl + Enter",
-    footerAction: "确认改词并跳下一条",
-    panelAction: "确认改词：落库并写入纠错记忆，跳到下一语段",
+    footerAction: "定稿并跳下一条",
+    panelAction: "定稿：落库（有未保存改词时写入纠错记忆）并跳到下一语段",
   },
   {
     id: "save",

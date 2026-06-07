@@ -244,7 +244,7 @@ export function useAutoPunctuateController(
       return;
     }
     // 自动标点写回： intentionally 不传 learn（标点不计入 correction_memory）
-    applySegmentTextChange(seg, idx, dialog.candidateText, updateSegmentText);
+    applySegmentTextChange(seg, idx, dialog.candidateText, updateSegmentText, { fromLlm: true });
     setDialog({ phase: "closed" });
   }, [dialog, segmentsRef, updateSegmentText, setError]);
 

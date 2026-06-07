@@ -1,6 +1,8 @@
 import { useCallback, useRef } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
 import { createSegmentUid, mergeTwoSegments, reindexSegments } from "./segmentListHelpers";
+import { newUserCreatedSegment } from "../services/segmentTextStage";
+import { withAiRevisedStage } from "../services/segmentStagePersist";
 import { segmentDraftStore } from "../hooks/useSegmentDraftStore";
 import { flushSegmentTextDrafts as flushSegmentTextDraftsImpl } from "./flushSegmentTextDrafts";
 import {
@@ -31,7 +33,7 @@ export interface SegmentMutationApi {
   pushUndo: () => void;
   undo: () => void;
   redo: () => void;
-  updateSegmentText: (idx: number, text: string) => void;
+  updateSegmentText: (idx: number, text: string, options?: { fromLlm?: boolean }) => void;
   updateSegmentTime: (idx: number, field: "start_sec" | "end_sec", value: number) => void;
   updateSegmentBounds: (idx: number, startSec: number, endSec: number, phase?: "live" | "commit") => void;
   splitAtSelection: (selectedIdx: number) => void;
@@ -52,17 +54,18 @@ export interface SegmentMutationApi {
   resetMutationHistory: () => void;
 }
 
-export interface SegmentMutationDeps {
+type SegmentMutationDeps = {
   segmentsRef: React.MutableRefObject<SegmentDto[]>;
   setSegments: React.Dispatch<React.SetStateAction<SegmentDto[]>>;
   selectedIdxRef: React.MutableRefObject<number>;
   setSelectedIdx: React.Dispatch<React.SetStateAction<number>>;
   setError: (msg: string) => void;
   busy: boolean;
-}
+  pendingAiRevisedUidsRef?: React.MutableRefObject<Set<string>>;
+};
 
 export function useSegmentMutationController(deps: SegmentMutationDeps): SegmentMutationApi {
-  const { segmentsRef, setSegments, setSelectedIdx, setError, busy } = deps;
+  const { segmentsRef, setSegments, setSelectedIdx, setError, busy, pendingAiRevisedUidsRef } = deps;
   void deps.selectedIdxRef;
 
   const segmentBoundsLiveGestureRef = useRef(false);
@@ -105,21 +108,29 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
   });
 
   const updateSegmentText = useCallback(
-    (idx: number, text: string) => {
+    (idx: number, text: string, options?: { fromLlm?: boolean }) => {
       if (busy) return;
       const prev = segmentsRef.current;
       const cur = prev[idx];
       if (!cur || cur.text === text) return;
       pushUndoForTextEdit(idx);
+      const uid = cur.uid?.trim();
+      if (!options?.fromLlm && uid && pendingAiRevisedUidsRef) {
+        pendingAiRevisedUidsRef.current.delete(uid);
+      }
       setSegments((p) => {
         const c = p[idx];
         if (!c || c.text === text) return p;
         const out = [...p];
-        out[idx] = { ...c, text };
+        const nextRow = { ...c, text };
+        out[idx] = options?.fromLlm ? withAiRevisedStage(nextRow) : nextRow;
+        if (options?.fromLlm && uid && pendingAiRevisedUidsRef) {
+          pendingAiRevisedUidsRef.current.add(uid);
+        }
         return out;
       });
     },
-    [busy, segmentsRef, setSegments, pushUndoForTextEdit],
+    [busy, segmentsRef, setSegments, pushUndoForTextEdit, pendingAiRevisedUidsRef],
   );
 
   const updateSegmentTime = useCallback(
@@ -259,7 +270,7 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
       const { startSec, endSec } = span;
       setError("");
       pushUndo();
-      const newSeg: SegmentDto = {
+      const newSeg: SegmentDto = newUserCreatedSegment({
         uid: createSegmentUid(),
         idx: 0,
         start_sec: startSec,
@@ -269,7 +280,7 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
         low_confidence: false,
         detail: null,
         kind: "speech",
-      };
+      });
       setSegments((prev) => {
         const out = [...prev.slice(0, idx + 1), newSeg, ...prev.slice(idx + 1)];
         return reindexSegments(out);
@@ -318,7 +329,7 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
       setError("");
       pushUndo();
       const insertAt = findSegmentInsertIndexByStart(segs, fitLo);
-      const newSeg: SegmentDto = {
+      const newSeg: SegmentDto = newUserCreatedSegment({
         uid: createSegmentUid(),
         idx: 0,
         start_sec: fitLo,
@@ -328,7 +339,7 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
         low_confidence: false,
         detail: null,
         kind: "speech",
-      };
+      });
       setSegments((prev) => {
         const out = [...prev.slice(0, insertAt), newSeg, ...prev.slice(insertAt)];
         return reindexSegments(out);

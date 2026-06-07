@@ -26,7 +26,12 @@ export type SegmentContextMenuOpen = {
   selectionText: string;
 };
 
-export type SegmentContextMenuKey = "delete" | "mergePrev" | "mergeNext" | "splitAtPointer";
+export type SegmentContextMenuKey =
+  | "delete"
+  | "mergePrev"
+  | "mergeNext"
+  | "splitAtPointer"
+  | "markFinalized";
 
 export type SegmentContextMenuItem = {
   key: SegmentContextMenuKey;
@@ -44,13 +49,15 @@ export function buildSegmentContextMenuItems(args: {
   busy: boolean;
   pointerTimeSec: number;
   origin: SegmentContextMenuOrigin;
+  canFinalize?: boolean;
 }): SegmentContextMenuItem[] {
-  const { segmentIdx: i, segments, busy, pointerTimeSec, origin } = args;
+  const { segmentIdx: i, segments, busy, pointerTimeSec, origin, canFinalize = false } = args;
   const n = segments.length;
   const seg = segments[i];
   const canMergePrev = i >= 0 && i > 0 && !busy;
   const canMergeNext = i >= 0 && i < n - 1 && !busy;
   const items: SegmentContextMenuItem[] = [
+    { key: "markFinalized", label: "标记定稿", disabled: busy || !canFinalize },
     { key: "delete", label: "删除", disabled: busy || n === 0 },
     { key: "mergePrev", label: "与上一条合并", disabled: !canMergePrev },
     { key: "mergeNext", label: "与下一条合并", disabled: !canMergeNext },

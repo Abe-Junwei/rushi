@@ -5,7 +5,8 @@ export function applySegmentTextChange(
   _seg: SegmentDto,
   idx: number,
   nextText: string,
-  updateSegmentText: (idx: number, text: string) => void,
+  updateSegmentText: (idx: number, text: string, options?: { fromLlm?: boolean }) => void,
+  options?: { fromLlm?: boolean },
 ): void {
-  updateSegmentText(idx, nextText);
+  updateSegmentText(idx, nextText, options);
 }

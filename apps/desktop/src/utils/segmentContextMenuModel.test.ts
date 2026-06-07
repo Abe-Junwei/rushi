@@ -23,7 +23,7 @@ describe("pointerTimeFromSegmentCard", () => {
       pointerTimeSec: 5,
       origin: "segmentList",
     });
-    expect(items.map((i) => i.key)).toEqual(["delete", "mergePrev", "mergeNext"]);
+    expect(items.map((i) => i.key)).toEqual(["markFinalized", "delete", "mergePrev", "mergeNext"]);
   });
 
   it("waveform menu includes split at pointer when in range", () => {

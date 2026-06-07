@@ -1,5 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { segmentCanConfirmEdit, segmentHasUnsavedText } from "./segmentConfirmEligible";
+import {
+  segmentCanConfirmEdit,
+  segmentCanFinalize,
+  segmentHasTextContent,
+  segmentHasUnsavedText,
+} from "./segmentConfirmEligible";
 import type { SegmentDto } from "../tauri/projectApi";
 import { segmentDraftKey, segmentDraftStore } from "../hooks/useSegmentDraftStore";
 
@@ -30,6 +35,25 @@ describe("segmentConfirmEligible", () => {
     const rows = [seg("u1", "甲")];
     segmentDraftStore.setDraft(segmentDraftKey(rows[0], 0), "乙");
     expect(segmentCanConfirmEdit(rows, rows, 0)).toBe(true);
+    segmentDraftStore.clearDraft(segmentDraftKey(rows[0], 0));
+  });
+
+  it("allows finalize for non-finalized segments", () => {
+    const rows = [seg("u1", "甲")];
+    expect(segmentCanFinalize(rows, 0, false)).toBe(true);
+  });
+
+  it("blocks finalize when already finalized", () => {
+    const rows = [{ ...seg("u1", "甲"), text_stage: "finalized" as const }];
+    expect(segmentCanFinalize(rows, 0, false)).toBe(false);
+  });
+
+  it("detects segment text content including drafts", () => {
+    segmentDraftStore.resetAll();
+    const rows = [seg("u1", "")];
+    expect(segmentHasTextContent(rows, 0)).toBe(false);
+    segmentDraftStore.setDraft(segmentDraftKey(rows[0], 0), "草稿");
+    expect(segmentHasTextContent(rows, 0)).toBe(true);
     segmentDraftStore.clearDraft(segmentDraftKey(rows[0], 0));
   });
 });

@@ -84,6 +84,8 @@ mod tests {
             low_confidence: low,
             detail: None,
             kind: None,
+            text_stage: "auto_transcribe".to_string(),
+            finalize_via: None,
         }
     }
 
@@ -285,6 +287,8 @@ mod tests {
                     low_confidence: r.get::<_, i64>(6)? != 0,
                     detail: r.get::<_, Option<String>>(7)?,
                     kind: r.get(8)?,
+                    text_stage: "auto_transcribe".to_string(),
+                    finalize_via: None,
                 })
             })
             .expect("query segments");

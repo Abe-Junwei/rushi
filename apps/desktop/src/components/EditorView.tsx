@@ -30,6 +30,7 @@ import { SegmentCorrectPopover } from "./segmentRow/SegmentCorrectPopover";
 import { EditorWaveformPane } from "./editor/EditorWaveformPane";
 import { EditorWorkbenchToolbar } from "./editor/EditorWorkbenchToolbar";
 import { RestoreEditLogConfirmDialog } from "./editor/RestoreEditLogConfirmDialog";
+import { DeleteSegmentConfirmDialog } from "./editor/DeleteSegmentConfirmDialog";
 import { useEditorEditHistory } from "./editor/useEditorEditHistory";
 import { useEditorTranscriptAppearance } from "./editor/useEditorTranscriptAppearance";
 import { useEditorFooterShortcutHintRotation } from "../hooks/useEditorFooterShortcutHintRotation";
@@ -143,6 +144,9 @@ export function EditorView({
           break;
         case "splitAtPointer":
           tx.splitAtPlayhead(segmentCtxMenu.pointerTimeSec);
+          break;
+        case "markFinalized":
+          void c.markSegmentFinalized(i);
           break;
         default:
           break;
@@ -299,6 +303,11 @@ export function EditorView({
         row={editHistory.restoreTarget}
         onCancel={editHistory.cancelRestore}
         onConfirm={() => void editHistory.confirmRestore()}
+      />
+      <DeleteSegmentConfirmDialog
+        open={c.segmentDeleteConfirmOpen}
+        onCancel={c.cancelDeleteSegment}
+        onConfirm={c.confirmDeleteSegment}
       />
     </div>
   );

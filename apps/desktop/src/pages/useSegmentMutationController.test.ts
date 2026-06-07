@@ -151,6 +151,7 @@ describe("useSegmentMutationController", () => {
     expect(result.current.segments).toHaveLength(3);
     expect(result.current.segments[1].start_sec).toBe(1);
     expect(result.current.segments[1].text).toBe("");
+    expect(result.current.segments[1].text_stage).toBe("manual_transcribe");
     expect(result.current.selectedIdx).toBe(1);
   });
 
@@ -181,6 +182,7 @@ describe("useSegmentMutationController", () => {
     expect(result.current.segments).toHaveLength(3);
     expect(result.current.segments[1].start_sec).toBe(1.5);
     expect(result.current.segments[1].end_sec).toBe(2.5);
+    expect(result.current.segments[1].text_stage).toBe("manual_transcribe");
     expect(result.current.selectedIdx).toBe(1);
   });
 

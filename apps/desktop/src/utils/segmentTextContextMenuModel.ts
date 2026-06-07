@@ -4,6 +4,7 @@ import {
   buildSegmentContextMenuItems,
   type SegmentContextMenuOrigin,
 } from "./segmentContextMenuModel";
+import { segmentCanFinalize } from "../services/segmentConfirmEligible";
 
 /** 正文选区内右键：记忆 + 文本外观（字体/字号/加粗/斜体）；删/并/拆见 segmentContextMenuModel。 */
 export type SegmentTextContextMenuKey =
@@ -85,22 +86,12 @@ export type SegmentRowContextMenuBuildArgs = {
 
 /**
  * 语段列表 / 波形区统一菜单构建。
- * - 列表 + 有刻意选区：仅「纳入更正记忆」
- * - 列表 + 无选区：删/并 + 文本外观
+ * - 列表 + 有刻意选区：纳入更正记忆 + 删/并/定稿（无文本外观）
+ * - 列表 + 无选区：删/并/定稿 + 文本外观
  * - 波形：删/并/拆（无文本外观）
  */
 export function buildSegmentRowContextMenuItems(args: SegmentRowContextMenuBuildArgs): ContextMenuItem[] {
   const hasSelection = args.selectionText.trim().length > 0;
-
-  if (args.origin === "segmentList" && hasSelection) {
-    return [
-      {
-        key: "addCorrectionMemory",
-        label: "纳入更正记忆…",
-        disabled: args.busy,
-      },
-    ];
-  }
 
   const segmentItems: ContextMenuItem[] = buildSegmentContextMenuItems({
     segmentIdx: args.segmentIdx,
@@ -108,10 +99,22 @@ export function buildSegmentRowContextMenuItems(args: SegmentRowContextMenuBuild
     busy: args.busy,
     pointerTimeSec: args.pointerTimeSec,
     origin: args.origin,
+    canFinalize: segmentCanFinalize(args.segments, args.segmentIdx, args.busy),
   });
 
   if (args.origin !== "segmentList") {
     return segmentItems;
+  }
+
+  if (hasSelection) {
+    return [
+      {
+        key: "addCorrectionMemory",
+        label: "纳入更正记忆…",
+        disabled: args.busy,
+      },
+      ...segmentItems,
+    ];
   }
 
   return [...segmentItems, buildSegmentTextAppearanceMenuItem(args.appearance)];

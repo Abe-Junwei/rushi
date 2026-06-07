@@ -22,7 +22,7 @@ const appearanceArgs = {
 };
 
 describe("buildSegmentRowContextMenuItems", () => {
-  it("shows only correction memory when text is deliberately selected", () => {
+  it("shows correction memory and segment ops when text is deliberately selected", () => {
     const items = buildSegmentRowContextMenuItems({
       segmentIdx: 0,
       segments: [seg(0, 10)],
@@ -32,7 +32,13 @@ describe("buildSegmentRowContextMenuItems", () => {
       selectionText: "错词",
       appearance: appearanceArgs,
     });
-    expect(items.map((i) => i.key)).toEqual(["addCorrectionMemory"]);
+    expect(items.map((i) => i.key)).toEqual([
+      "addCorrectionMemory",
+      "markFinalized",
+      "delete",
+      "mergePrev",
+      "mergeNext",
+    ]);
   });
 
   it("merges segment ops and text appearance without selection", () => {
@@ -45,7 +51,13 @@ describe("buildSegmentRowContextMenuItems", () => {
       selectionText: "",
       appearance: appearanceArgs,
     });
-    expect(items.map((i) => i.key)).toEqual(["delete", "mergePrev", "mergeNext", "appearance"]);
+    expect(items.map((i) => i.key)).toEqual([
+      "markFinalized",
+      "delete",
+      "mergePrev",
+      "mergeNext",
+      "appearance",
+    ]);
   });
 
   it("waveform menu keeps split and omits text appearance", () => {
