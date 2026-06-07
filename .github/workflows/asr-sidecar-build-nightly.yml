@@ -30,3 +30,11 @@ jobs:
       - name: Post-build sidecar health smoke
         run: bash scripts/smoke-asr-sidecar-health.sh
         timeout-minutes: 10
+
+      - name: Upload sidecar artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: linux-asr-sidecar
+          path: apps/desktop/src-tauri/resources/bundled-asr/
+          retention-days: 7
+          if-no-files-found: warn

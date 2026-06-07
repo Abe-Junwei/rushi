@@ -86,12 +86,21 @@ jobs:
           fi
           ls -lh "${deb_files[@]}"
 
+      - name: Generate SHA256 checksums (Linux)
+        run: |
+          shopt -s nullglob
+          for f in "${{ env.BUNDLE_ROOT }}/deb/"*.deb; do
+            sha256sum "$f" > "$f.sha256"
+          done
+
       - name: Upload Linux workflow artifacts
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v7
         with:
           name: linux-release-bundles
-          path: ${{ env.BUNDLE_ROOT }}/deb/*.deb
+          path: |
+            ${{ env.BUNDLE_ROOT }}/deb/*.deb
+            ${{ env.BUNDLE_ROOT }}/deb/*.sha256
           if-no-files-found: error
 
       - name: Upload Linux bundles to GitHub Release
@@ -101,12 +110,13 @@ jobs:
         run: |
           shopt -s nullglob
           deb_files=("${{ env.BUNDLE_ROOT }}/deb/"*.deb)
+          sha_files=("${{ env.BUNDLE_ROOT }}/deb/"*.sha256)
           if [ ${#deb_files[@]} -eq 0 ]; then
             echo "No .deb bundle found" >&2
             exit 1
           fi
-          upload=( "${deb_files[@]}" )
-          echo "Uploading Linux .deb only (AppImage skipped in CI)."
+          upload=( "${deb_files[@]}" "${sha_files[@]}" )
+          echo "Uploading Linux .deb + checksums (AppImage skipped in CI)."
           gh release upload "${{ github.event.release.tag_name }}" "${upload[@]}" --clobber
 
   tauri-macos:
@@ -203,6 +213,14 @@ jobs:
         run: npm run tauri -- build --bundles app,dmg
         timeout-minutes: 50
 
+      - name: Generate SHA256 checksums (macOS)
+        if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+        run: |
+          shopt -s nullglob
+          for f in "${{ env.BUNDLE_ROOT }}/dmg/"*.dmg; do
+            sha256sum "$f" > "$f.sha256"
+          done
+
       - name: Upload macOS workflow artifacts
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v7
@@ -210,6 +228,7 @@ jobs:
           name: macos-release-bundles
           path: |
             ${{ env.BUNDLE_ROOT }}/dmg/*.dmg
+            ${{ env.BUNDLE_ROOT }}/dmg/*.sha256
           if-no-files-found: error
 
       - name: Upload macOS bundles to GitHub Release
@@ -217,9 +236,11 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
-          gh release upload "${{ github.event.release.tag_name }}" \
-            "${{ env.BUNDLE_ROOT }}/dmg/"*.dmg \
-            --clobber
+          shopt -s nullglob
+          dmg_files=("${{ env.BUNDLE_ROOT }}/dmg/"*.dmg)
+          sha_files=("${{ env.BUNDLE_ROOT }}/dmg/"*.sha256)
+          upload=( "${dmg_files[@]}" "${sha_files[@]}" )
+          gh release upload "${{ github.event.release.tag_name }}" "${upload[@]}" --clobber
 
   tauri-windows:
     runs-on: windows-latest
@@ -307,6 +328,37 @@ jobs:
           }
           Get-Item "windows-portable-x64.zip"
 
+      - name: Sign Windows executable (optional)
+        if: env.WINDOWS_CERTIFICATE != ''
+        shell: pwsh
+        env:
+          WINDOWS_CERTIFICATE: ${{ secrets.WINDOWS_CERTIFICATE }}
+          WINDOWS_CERTIFICATE_PASSWORD: ${{ secrets.WINDOWS_CERTIFICATE_PASSWORD }}
+        run: |
+          $certPath = "$env:TEMP\windows-cert.pfx"
+          [System.Convert]::FromBase64String($env:WINDOWS_CERTIFICATE) | Set-Content -Path $certPath -Encoding Byte
+          $exe = "apps/desktop/src-tauri/target/release/rushi-desktop.exe"
+          if (-not (Test-Path $exe)) { exit 0 }
+          $signtool = Get-ChildItem -Path "C:\Program Files (x86)\Windows Kits" -Recurse -Filter "signtool.exe" -ErrorAction SilentlyContinue | Select-Object -First 1
+          if (-not $signtool) {
+            Write-Warning "signtool.exe not found; skipping Windows signing."
+            exit 0
+          }
+          & $signtool.FullName sign /f $certPath /p $env:WINDOWS_CERTIFICATE_PASSWORD /tr http://timestamp.digicert.com /td sha256 /fd sha256 $exe
+          Write-Host "Signed $exe"
+
+      - name: Generate SHA256 checksums (Windows)
+        if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+        shell: bash
+        run: |
+          set -euo pipefail
+          shopt -s nullglob
+          for f in windows-portable-x64.zip "${{ env.BUNDLE_ROOT }}/nsis/"*-setup.exe; do
+            if [ -f "$f" ]; then
+              sha256sum "$f" > "$f.sha256"
+            fi
+          done
+
       - name: Upload Windows workflow artifacts
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v7
@@ -314,7 +366,9 @@ jobs:
           name: windows-release-bundles
           path: |
             windows-portable-x64.zip
+            windows-portable-x64.zip.sha256
             ${{ env.BUNDLE_ROOT }}/nsis/*-setup.exe
+            ${{ env.BUNDLE_ROOT }}/nsis/*.sha256
           if-no-files-found: warn
 
       - name: Upload Windows bundles to GitHub Release
@@ -326,9 +380,13 @@ jobs:
           set -euo pipefail
           shopt -s nullglob
           upload=( windows-portable-x64.zip )
+          if [ -f "windows-portable-x64.zip.sha256" ]; then
+            upload+=( "windows-portable-x64.zip.sha256" )
+          fi
           nsis=( "${{ env.BUNDLE_ROOT }}/nsis/"*-setup.exe )
+          nsis_sha=( "${{ env.BUNDLE_ROOT }}/nsis/"*.sha256 )
           if [ ${#nsis[@]} -gt 0 ]; then
-            upload+=( "${nsis[@]}" )
+            upload+=( "${nsis[@]}" "${nsis_sha[@]}" )
           else
             echo "::warning::NSIS installer missing; uploading portable zip only."
           fi
