@@ -47,7 +47,7 @@ export type WaveformSegmentDragArgs = {
   laneCount: number;
   enableCreateRange: boolean;
   clientXToTimeSec: (clientX: number) => number;
-  onSelectSegmentAt: (idx: number) => void;
+  onSelectSegmentAt: (idx: number, opts?: { shiftKey?: boolean }) => void;
   onBeginBoundsEdit?: () => void;
   onFocusWaveformShell?: () => void;
   onBoundsCommit: (idx: number, startSec: number, endSec: number) => void;
@@ -56,6 +56,7 @@ export type WaveformSegmentDragArgs = {
     endSec: number,
     options?: { overlapPolicy?: SegmentOverlapPolicy },
   ) => void;
+  onSelectTimeRange?: (startSec: number, endSec: number) => void;
   seekToTime: (timeSec: number) => void;
 };
 
@@ -67,6 +68,7 @@ function overlayPointerActions(
     onSegmentPointerTap,
     onBoundsCommit: a.onBoundsCommit,
     onCreateRange: a.onCreateRange,
+    onSelectTimeRange: a.onSelectTimeRange,
     onFocusWaveformShell: a.onFocusWaveformShell,
     seekToTime: a.seekToTime,
   };
@@ -98,7 +100,7 @@ function finalizeEditDragBounds(
   snapEnabled: boolean,
   minSpanSec: number,
 ): { startSec: number; endSec: number } | null {
-  if (drag.mode === "create") return null;
+  if (drag.mode === "create" || drag.mode === "select-marquee") return null;
   const { targets, thresholdSec } = snapTargetsForOverlay(a, drag.segmentIdx);
   const prev = a.segments[drag.segmentIdx - 1];
   const next = a.segments[drag.segmentIdx + 1];
@@ -189,6 +191,22 @@ export function useWaveformSegmentDrag(
         return;
       }
 
+      if (drag.mode === "select-marquee") {
+        const lo = Math.min(drag.initialStartSec, timeSec);
+        const hi = Math.max(drag.initialStartSec, timeSec);
+        setCreatePreview(null);
+        applySegmentDraft(null);
+        if (drag.moved && Math.abs(hi - lo) >= WAVEFORM_SEGMENT_MIN_SPAN_SEC) {
+          suppressClickAfterPointer();
+          a.onSelectTimeRange?.(lo, hi);
+        } else if (!drag.moved) {
+          suppressClickAfterPointer();
+          a.onFocusWaveformShell?.();
+          a.seekToTime(drag.anchorTimeSec);
+        }
+        return;
+      }
+
       let clamped = boundsForOverlayDrag(drag, timeSec, a.durationSec);
       applySegmentDraft(null);
       if (!clamped) return;
@@ -214,6 +232,12 @@ export function useWaveformSegmentDrag(
         clampedStartSec: clamped.startSec,
         clampedEndSec: clamped.endSec,
       });
+      if (intent.kind === "select-segment" && ev.shiftKey) {
+        suppressClickAfterPointer();
+        a.onFocusWaveformShell?.();
+        a.onSelectSegmentAt(intent.segmentIdx, { shiftKey: true });
+        return;
+      }
       applyOverlayPointerUpIntent(
         intent,
         overlayPointerActions(a, onSegmentPointerTapRef.current),
@@ -282,11 +306,25 @@ export function useWaveformSegmentDrag(
         return;
       }
 
-      if (a.enableCreateRange && a.onCreateRange) {
-        // 锚点保持原始时间：纯点击空白处用于 seek（不吸附），框选范围在
-        // move / finish 阶段由 snapCreateRange 对两端整体吸附。
+      if (a.enableCreateRange && a.onCreateRange && !(ev.metaKey || ev.ctrlKey)) {
         dragRef.current = {
           mode: "create",
+          pointerId: ev.pointerId,
+          segmentIdx: -1,
+          anchorTimeSec: timeSec,
+          anchorClientX: ev.clientX,
+          initialStartSec: timeSec,
+          initialEndSec: timeSec,
+          moved: false,
+        };
+        setCreatePreview({ startSec: timeSec, endSec: timeSec });
+        ev.currentTarget.setPointerCapture(ev.pointerId);
+        return;
+      }
+
+      if (ev.metaKey || ev.ctrlKey) {
+        dragRef.current = {
+          mode: "select-marquee",
           pointerId: ev.pointerId,
           segmentIdx: -1,
           anchorTimeSec: timeSec,
@@ -314,14 +352,18 @@ export function useWaveformSegmentDrag(
       const snapEnabled = isSegmentSnapEnabled(readSegmentOverlayModifiers(ev));
       const timeSec = a.clientXToTimeSec(ev.clientX);
 
-      if (drag.mode === "create") {
+      if (drag.mode === "create" || drag.mode === "select-marquee") {
         const lo = Math.min(drag.initialStartSec, timeSec);
         const hi = Math.max(drag.initialStartSec, timeSec);
         if (Math.abs(ev.clientX - drag.anchorClientX) > WAVEFORM_OVERLAY_DRAG_MOVE_THRESHOLD_PX) {
           drag.moved = true;
         }
-        const clamped = snapCreateRange(a, lo, hi, snapEnabled);
-        setCreatePreview({ startSec: clamped.startSec, endSec: clamped.endSec });
+        if (drag.mode === "create") {
+          const clamped = snapCreateRange(a, lo, hi, snapEnabled);
+          setCreatePreview({ startSec: clamped.startSec, endSec: clamped.endSec });
+        } else {
+          setCreatePreview({ startSec: lo, endSec: hi });
+        }
         return;
       }
 
@@ -365,8 +407,8 @@ export function useWaveformSegmentDrag(
       setCreatePreview(null);
       applySegmentDraft(null);
 
-      if (drag.mode === "create") {
-        if (!drag.moved) {
+      if (drag.mode === "create" || drag.mode === "select-marquee") {
+        if (!drag.moved && drag.mode === "create") {
           suppressClickAfterPointer();
           a.onFocusWaveformShell?.();
           a.seekToTime(drag.anchorTimeSec);
@@ -377,7 +419,11 @@ export function useWaveformSegmentDrag(
       if (!drag.moved) {
         suppressClickAfterPointer();
         a.onFocusWaveformShell?.();
-        onSegmentPointerTapRef.current(drag.segmentIdx, drag.anchorTimeSec);
+        if (ev.shiftKey) {
+          a.onSelectSegmentAt(drag.segmentIdx, { shiftKey: true });
+        } else {
+          onSegmentPointerTapRef.current(drag.segmentIdx, drag.anchorTimeSec);
+        }
       }
     },
     [applySegmentDraft, argsRef, setCreatePreview, suppressClickAfterPointer],

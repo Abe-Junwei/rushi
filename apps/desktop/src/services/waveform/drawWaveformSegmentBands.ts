@@ -6,7 +6,6 @@ import {
 } from "../../utils/waveformSegmentBounds";
 import {
   SEGMENT_BAND_BORDER_COLOR,
-  SEGMENT_BAND_BORDER_SELECTED_COLOR,
   segmentBandFillStyle,
 } from "../../utils/waveformSegmentBandCanvasColors";
 import { selectOverlayRenderedSegmentIndices } from "../../utils/waveformSegmentOverlayVisibility";
@@ -77,11 +76,12 @@ export function drawWaveformSegmentBands(input: {
     ctx.fillStyle = segmentBandFillStyle(seg, selected);
     ctx.fillRect(leftViewportPx, insetTop, bandWidthPx, bandHeight);
 
-    ctx.strokeStyle = selected ? SEGMENT_BAND_BORDER_SELECTED_COLOR : SEGMENT_BAND_BORDER_COLOR;
+    // 不在 overlay 选中层相邻处画分隔线，避免选中语段开头/结尾出现黑色竖线
+    if (skip.has(idx + 1) || skip.has(idx - 1)) continue;
+
+    ctx.strokeStyle = SEGMENT_BAND_BORDER_COLOR;
     ctx.lineWidth = 1;
     ctx.beginPath();
-    ctx.moveTo(leftViewportPx + 0.5, insetTop);
-    ctx.lineTo(leftViewportPx + 0.5, insetTop + bandHeight);
     ctx.moveTo(leftViewportPx + bandWidthPx - 0.5, insetTop);
     ctx.lineTo(leftViewportPx + bandWidthPx - 0.5, insetTop + bandHeight);
     ctx.stroke();

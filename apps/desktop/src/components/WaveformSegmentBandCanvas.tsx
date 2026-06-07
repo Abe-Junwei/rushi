@@ -1,6 +1,7 @@
 import { memo, useLayoutEffect, useRef, type RefObject } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
 import { drawWaveformSegmentBands } from "../services/waveform/drawWaveformSegmentBands";
+import { selectOverlayInteractiveSegmentIndices } from "../utils/waveformSegmentOverlayVisibility";
 import {
   resolveTierViewportMetrics,
   type TierScrollLayoutMetrics,
@@ -13,6 +14,8 @@ export type WaveformSegmentBandCanvasProps = {
   timelineWidthPx: number;
   layoutHeightPx: number;
   selectedIdx: number;
+  selectionLo?: number;
+  selectionHi?: number;
   dominantSpanIndices?: readonly number[];
   draftIdx: number | null;
   tierScrollRef: RefObject<HTMLElement | null>;
@@ -26,6 +29,8 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
   timelineWidthPx,
   layoutHeightPx,
   selectedIdx,
+  selectionLo,
+  selectionHi,
   dominantSpanIndices,
   draftIdx,
   tierScrollRef,
@@ -39,6 +44,8 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
     timelineWidthPx,
     layoutHeightPx,
     selectedIdx,
+    selectionLo,
+    selectionHi,
     dominantSpanIndices,
     draftIdx,
   });
@@ -48,6 +55,8 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
     timelineWidthPx,
     layoutHeightPx,
     selectedIdx,
+    selectionLo,
+    selectionHi,
     dominantSpanIndices,
     draftIdx,
   };
@@ -82,9 +91,13 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
       if (!ctx) return;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
 
-      const skipIndices: number[] = [];
-      if (input.draftIdx != null && input.draftIdx >= 0) skipIndices.push(input.draftIdx);
-      if (input.selectedIdx >= 0) skipIndices.push(input.selectedIdx);
+      const skipIndices = selectOverlayInteractiveSegmentIndices({
+        segmentCount: input.segments.length,
+        selectedIdx: input.selectedIdx,
+        selectionLo: input.selectionLo,
+        selectionHi: input.selectionHi,
+        draftIdx: input.draftIdx,
+      });
 
       drawWaveformSegmentBands({
         ctx,
@@ -124,6 +137,8 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
     durationSec,
     timelineWidthPx,
     selectedIdx,
+    selectionLo,
+    selectionHi,
     dominantSpanIndices,
     draftIdx,
     tierScrollRef,

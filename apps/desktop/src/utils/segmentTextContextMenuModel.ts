@@ -83,6 +83,9 @@ export type SegmentRowContextMenuBuildArgs = {
   origin: SegmentContextMenuOrigin;
   selectionText: string;
   appearance: SegmentTextAppearanceBuildArgs;
+  selectionLo?: number;
+  selectionHi?: number;
+  selectionCount?: number;
 };
 
 /**
@@ -102,6 +105,9 @@ export function buildSegmentRowContextMenuItems(args: SegmentRowContextMenuBuild
     pointerTimeSec: args.pointerTimeSec,
     origin: args.origin,
     canFinalize: segmentCanFinalize(args.segments, args.segmentIdx, args.busy),
+    selectionLo: args.selectionLo,
+    selectionHi: args.selectionHi,
+    selectionCount: args.selectionCount,
   });
 
   if (args.origin !== "segmentList") {
@@ -113,6 +119,10 @@ export function buildSegmentRowContextMenuItems(args: SegmentRowContextMenuBuild
     label: segment ? segmentAnnotationMenuLabel(segment) : "添加备注…",
     disabled: args.busy,
   };
+
+  if ((args.selectionCount ?? 1) > 1) {
+    return [annotationItem, ...segmentItems];
+  }
 
   if (hasSelection) {
     return [

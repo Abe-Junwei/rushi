@@ -60,4 +60,14 @@ describe("restoreSegmentTextContextMenuSelection", () => {
     expect(textarea.selectionStart).toBe(0);
     expect(textarea.selectionEnd).toBe(2);
   });
+
+  it("blurs focused textarea so custom context menu clicks are not stolen", () => {
+    const textarea = document.createElement("textarea");
+    document.body.appendChild(textarea);
+    textarea.focus();
+    expect(document.activeElement).toBe(textarea);
+    restoreSegmentTextContextMenuSelection(textarea, { start: 0, end: 0, collapsed: true });
+    expect(document.activeElement).not.toBe(textarea);
+    document.body.removeChild(textarea);
+  });
 });

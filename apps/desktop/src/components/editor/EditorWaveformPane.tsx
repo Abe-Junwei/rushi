@@ -9,6 +9,7 @@ import { WaveformMinimapStrip } from "../WaveformMinimapStrip";
 import { resolveWaveformCenterStatusLabel } from "../../services/waveform/waveformRenderStatus";
 import { clampSegmentTimeBounds } from "../../utils/waveformSegmentBounds";
 import { resolveTierViewportMetrics, resolveWaveformVerticalScalePreview, tierViewportWidthStyle } from "../../utils/waveformViewport";
+import { selectionRangeFromTimeMarquee } from "../../utils/segmentSelection";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
 
@@ -156,6 +157,8 @@ export function EditorWaveformPane({
                         timelineWidthPx={tx.timelineWidthPx}
                         layoutHeightPx={segmentOverlayHeightPx}
                         selectedIdx={c.selectedIdx}
+                        selectionLo={c.selectionLo}
+                        selectionHi={c.selectionHi}
                         dominantSpanIndices={tx.segmentLaneLayout.dominantSpanIndices}
                         draftIdx={overlayDraftIdx}
                         tierScrollRef={tx.tierScrollRef}
@@ -186,6 +189,8 @@ export function EditorWaveformPane({
                     disabled={stripDisabled}
                     segments={c.segments}
                     selectedIdx={c.selectedIdx}
+                    selectionLo={c.selectionLo}
+                    selectionHi={c.selectionHi}
                     timelineWidthPx={tx.timelineWidthPx}
                     durationSec={mediaDurationSec}
                     layoutHeightPx={segmentOverlayHeightPx}
@@ -196,7 +201,7 @@ export function EditorWaveformPane({
                     onDraftIdxChange={onOverlayDraftIdxChange}
                     enableCreateRange
                     clientXToTimeSec={tx.clientXToTimeSec}
-                    onSelectSegmentAt={(idx) => tx.selectSegmentAt(idx, "waveform")}
+                    onSelectSegmentAt={(idx, opts) => tx.selectSegmentAt(idx, "waveform", opts)}
                     onFocusWaveformShell={tx.focusWaveformShell}
                     revealSelectedSegmentInViewport={tx.revealSelectedSegmentInViewport}
                     onBoundsCommit={(idx, startSec, endSec) => {
@@ -209,6 +214,11 @@ export function EditorWaveformPane({
                     onCreateRange={(lo, hi, options) =>
                       c.insertSegmentFromTimeRange(lo, hi, mediaDurationSec, options?.overlapPolicy)
                     }
+                    onSelectTimeRange={(lo, hi) => {
+                      const range = selectionRangeFromTimeMarquee(c.segments, lo, hi, mediaDurationSec);
+                      if (!range) return;
+                      c.selectSegmentRange(range.lo, range.hi);
+                    }}
                     onPlaySegment={(idx) => void tx.playSegmentAtIndex(idx)}
                     seekToTime={tx.seek}
                   />

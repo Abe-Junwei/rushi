@@ -149,6 +149,7 @@ fn segments_fingerprint_from_db(
                 kind: None,
                 text_stage: String::new(),
                 finalize_via: None,
+            annotation: None,
             })
         })
         .map_err(|e| e.to_string())?;

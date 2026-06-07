@@ -86,6 +86,7 @@ mod tests {
             kind: None,
             text_stage: "auto_transcribe".to_string(),
             finalize_via: None,
+            annotation: None,
         };
         let baseline =
             HashMap::from([("u1".to_string(), "对有嗯嗯好不是说自己不是的".to_string())]);
@@ -125,6 +126,7 @@ mod tests {
             kind: None,
             text_stage: "auto_transcribe".to_string(),
             finalize_via: None,
+            annotation: None,
         };
         learn_inferred_pairs_from_segment_save(&conn, &baseline, &[seg("u-new", "这是制控")], 1)
             .unwrap();
@@ -344,6 +346,7 @@ mod tests {
             kind: None,
             text_stage: "auto_transcribe".to_string(),
             finalize_via: None,
+            annotation: None,
         };
         let baseline1 = HashMap::from([("u1".to_string(), "这是智控".to_string())]);
         learn_inferred_pairs_from_segment_save(&conn, &baseline1, &[seg("u1", "这是制控")], 2)

@@ -1,3 +1,4 @@
+import type { PointerEvent as ReactPointerEvent } from "react";
 import { formatTranscriptTimestamp } from "./segmentRowFormatting";
 
 interface SegmentRowTimestampColumnProps {
@@ -5,8 +6,12 @@ interface SegmentRowTimestampColumnProps {
   startSec: number;
   metaWidth: number;
   selected: boolean;
+  inSelection?: boolean;
   busy: boolean;
-  onMetaWidthPointerDown: (e: React.PointerEvent<HTMLDivElement>) => void;
+  onMetaWidthPointerDown: (e: ReactPointerEvent<HTMLDivElement>) => void;
+  onTimestampPointerDown?: (index: number, e: ReactPointerEvent<HTMLElement>) => void;
+  onTimestampPointerEnter?: (index: number) => void;
+  onTimestampPointerUp?: (e: ReactPointerEvent<HTMLElement>) => void;
 }
 
 export function SegmentRowTimestampColumn({
@@ -14,19 +19,33 @@ export function SegmentRowTimestampColumn({
   startSec,
   metaWidth,
   selected,
+  inSelection = false,
   busy,
   onMetaWidthPointerDown,
+  onTimestampPointerDown,
+  onTimestampPointerEnter,
+  onTimestampPointerUp,
 }: SegmentRowTimestampColumnProps) {
   const timestampLabel = formatTranscriptTimestamp(startSec);
+  const highlight = selected || inSelection;
 
   return (
     <>
-      <div style={{ width: metaWidth }} className="shrink-0 pt-2 pr-3 text-right">
+      <div
+        style={{ width: metaWidth }}
+        className={[
+          "shrink-0 touch-none select-none pt-2 pr-3 text-right",
+          busy ? "cursor-not-allowed" : "cursor-cell",
+        ].join(" ")}
+        onPointerDown={(e) => onTimestampPointerDown?.(index, e)}
+        onPointerEnter={() => onTimestampPointerEnter?.(index)}
+        onPointerUp={onTimestampPointerUp}
+      >
         <div className="flex flex-col gap-1">
           <span
             className={[
               "font-mono text-[11px] font-medium tabular-nums tracking-[0.01em]",
-              selected ? "text-notion-text-muted" : "text-notion-text-light group-hover:text-zen-saffron-mid",
+              highlight ? "text-notion-text-muted" : "text-notion-text-light group-hover:text-zen-saffron-mid",
             ].join(" ")}
           >
             {index + 1}.
@@ -34,7 +53,7 @@ export function SegmentRowTimestampColumn({
           <span
             className={[
               "font-mono text-[11px] font-medium tabular-nums tracking-[0.01em]",
-              selected ? "text-notion-text-muted" : "text-notion-text-light group-hover:text-zen-saffron-mid",
+              highlight ? "text-notion-text-muted" : "text-notion-text-light group-hover:text-zen-saffron-mid",
             ].join(" ")}
           >
             {timestampLabel}

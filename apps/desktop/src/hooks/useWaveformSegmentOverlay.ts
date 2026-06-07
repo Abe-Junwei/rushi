@@ -17,6 +17,8 @@ export function useWaveformSegmentOverlay(args: {
   disabled: boolean;
   segments: SegmentDto[];
   selectedIdx: number;
+  selectionLo?: number;
+  selectionHi?: number;
   timelineWidthPx: number;
   durationSec: number;
   getPlayheadSec?: () => number;
@@ -25,7 +27,7 @@ export function useWaveformSegmentOverlay(args: {
   laneCount: number;
   enableCreateRange: boolean;
   clientXToTimeSec: (clientX: number) => number;
-  onSelectSegmentAt: (idx: number) => void;
+  onSelectSegmentAt: (idx: number, opts?: { shiftKey?: boolean }) => void;
   onBeginBoundsEdit?: () => void;
   onFocusWaveformShell?: () => void;
   onBoundsCommit: (idx: number, startSec: number, endSec: number) => void;
@@ -34,6 +36,7 @@ export function useWaveformSegmentOverlay(args: {
     endSec: number,
     options?: { overlapPolicy?: SegmentOverlapPolicy },
   ) => void;
+  onSelectTimeRange?: (startSec: number, endSec: number) => void;
   onPlaySegment?: (idx: number) => void;
   seekToTime: (timeSec: number) => void;
   onDraftIdxChange?: (idx: number | null) => void;
@@ -80,6 +83,10 @@ export function useWaveformSegmentOverlay(args: {
       ev.stopPropagation();
       if (!a.segments[idx]) return;
       a.onFocusWaveformShell?.();
+      if (ev.shiftKey) {
+        a.onSelectSegmentAt(idx, { shiftKey: true });
+        return;
+      }
       onSegmentPointerTap(idx, a.clientXToTimeSec(ev.clientX));
     },
     [drag.dragRef, drag.suppressClickUntilRef, onSegmentPointerTap],

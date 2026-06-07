@@ -11,6 +11,7 @@ export type WaveformSegmentRegionItemProps = {
   startSec: number;
   endSec: number;
   selected: boolean;
+  inSelection?: boolean;
   showHandles?: boolean;
   timelineWidthPx: number;
   durationSec: number;
@@ -30,6 +31,7 @@ export const WaveformSegmentRegionItem = memo(
     startSec,
     endSec,
     selected,
+    inSelection = false,
     showHandles = selected,
     timelineWidthPx,
     durationSec,
@@ -68,13 +70,19 @@ export const WaveformSegmentRegionItem = memo(
       <div
         data-waveform-segment=""
         data-segment-idx={idx}
-        className={`waveform-segment-region${selected ? " waveform-segment-region-selected" : ""}`}
+        className={[
+          "waveform-segment-region",
+          selected ? "waveform-segment-region-selected" : "",
+          inSelection ? "waveform-segment-region-in-selection" : "",
+        ]
+          .filter(Boolean)
+          .join(" ")}
         style={{
           left: geom.leftPx,
           width: geom.widthPx,
           top: geom.topPx,
           height: geom.heightPx,
-          background: waveformRegionFillColor(seg, selected),
+          background: waveformRegionFillColor(seg, selected, inSelection),
         }}
         onPointerDown={(ev) => onSegmentPointerDown(idx, ev)}
         onClick={(ev) => onSegmentClick(idx, ev)}
@@ -95,6 +103,7 @@ export const WaveformSegmentRegionItem = memo(
     prev.startSec === next.startSec &&
     prev.endSec === next.endSec &&
     prev.selected === next.selected &&
+    prev.inSelection === next.inSelection &&
     prev.showHandles === next.showHandles &&
     prev.timelineWidthPx === next.timelineWidthPx &&
     prev.durationSec === next.durationSec &&

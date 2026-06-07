@@ -25,6 +25,7 @@ import {
 } from "./useTranscribeJobController";
 import { useProjectSaveController } from "./useProjectSaveController";
 import { useSegmentDeleteConfirmController } from "./useSegmentDeleteConfirmController";
+import { useSegmentSelectionController } from "./useSegmentSelectionController";
 import { useSegmentAnnotationController } from "./useSegmentAnnotationController";
 import { useProjectEditorToolsController } from "./useProjectEditorToolsController";
 import { mapEditorToolsLifecycleFields } from "./projectLifecycleEditorToolsReturn";
@@ -60,6 +61,14 @@ export function useProjectLifecycleController(
     applyDetailBase,
   } = useProjectEditorState(setError);
 
+  const segmentSelection = useSegmentSelectionController({
+    selectedIdx,
+    setSelectedIdx,
+    segmentCount: segments.length,
+    resetKey: currentFileId,
+    disabled: busy,
+  });
+
   const [newName, setNewName] = useState("未命名项目");
   const [pickedPath, setPickedPath] = useState<string | null>(null);
   const closeGateRef = useRef<ProjectCloseGateControllerApi | null>(null);
@@ -72,12 +81,14 @@ export function useProjectLifecycleController(
     setError,
     busy,
     pendingAiRevisedUidsRef,
+    onSelectionCollapsed: segmentSelection.collapseTo,
   });
 
   const segmentDeleteConfirm = useSegmentDeleteConfirmController({
     segmentsRef,
     flushSegmentTextDrafts: mutations.flushSegmentTextDrafts,
     deleteSegmentAt: mutations.deleteSegmentAt,
+    deleteSegmentRange: mutations.deleteSegmentRange,
   });
 
   const dirty = useSegmentDirtyState({
@@ -375,10 +386,20 @@ export function useProjectLifecycleController(
     mergeWithNext: () => mutations.mergeWithNext(selectedIdxRef.current),
     mergeWithPrev: () => mutations.mergeWithPrev(selectedIdxRef.current),
     mergeWithNextAt: mutations.mergeWithNextAt, mergeWithPrevAt: mutations.mergeWithPrevAt,
+    mergeSegmentRange: mutations.mergeSegmentRange,
     deleteSegmentAt: segmentDeleteConfirm.requestDeleteSegmentAt,
+    requestDeleteSelection: segmentDeleteConfirm.requestDeleteSelection,
+    pendingDeleteCount: segmentDeleteConfirm.pendingDeleteCount,
     segmentDeleteConfirmOpen: segmentDeleteConfirm.segmentDeleteConfirmOpen,
     confirmDeleteSegment: segmentDeleteConfirm.confirmDeleteSegment,
     cancelDeleteSegment: segmentDeleteConfirm.cancelDeleteSegment,
+    selectionLo: segmentSelection.selectionLo,
+    selectionHi: segmentSelection.selectionHi,
+    selectionCount: segmentSelection.selectionCount,
+    isMultiSegmentSelection: segmentSelection.isMultiSegmentSelection,
+    isIndexInSelection: segmentSelection.isIndexInSelection,
+    selectSegmentAt: segmentSelection.selectSegmentAt,
+    selectSegmentRange: segmentSelection.selectSegmentRange,
     insertSegmentAfter: mutations.insertSegmentAfter,
     insertSegmentFromTimeRange: mutations.insertSegmentFromTimeRange,
     flushSegmentTextDrafts: mutations.flushSegmentTextDrafts,

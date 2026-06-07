@@ -123,9 +123,9 @@
   caret-color: var(--zen-saffron-mid);
 }
 
-/* 语段行：Stitch 深色高亮（indigo 选中 + 左缘指示条） */
+/* 语段行：Stitch 深色高亮（indigo 选中 + 左缘指示条，无四周边框） */
 .workspace [data-seg-row].seg-row-selected {
-  border-color: color-mix(in srgb, var(--zen-indigo) 20%, transparent);
+  border-color: transparent;
   background: color-mix(in srgb, var(--zen-indigo) 8%, transparent);
 }
 
@@ -138,6 +138,11 @@
   width: 4px;
   border-radius: 0.375rem 0 0 0.375rem;
   background: var(--zen-indigo);
+}
+
+.workspace [data-seg-row].seg-row-in-selection {
+  border-color: transparent;
+  background: color-mix(in srgb, var(--zen-indigo) 5%, transparent);
 }
 
 /* 语段行：编辑阶段（Notion 式 pill · 图标 + 文案） */

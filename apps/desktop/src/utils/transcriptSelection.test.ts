@@ -1,7 +1,9 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  blurActiveTranscriptTextarea,
   captureTranscriptTextareaSelection,
   readTranscriptTextareaSelection,
+  suspendTranscriptTextareasForContextMenu,
   syncTranscriptTextareaSelection,
 } from "./transcriptSelection";
 
@@ -38,5 +40,18 @@ describe("transcriptSelection", () => {
     expect(captureTranscriptTextareaSelection()).toBe("禅宗");
     textarea.blur();
     expect(readTranscriptTextareaSelection()).toBe("禅宗");
+  });
+
+  it("blurActiveTranscriptTextarea releases focused segment textarea", () => {
+    expect(document.activeElement).toBe(textarea);
+    blurActiveTranscriptTextarea();
+    expect(document.activeElement).not.toBe(textarea);
+  });
+
+  it("suspendTranscriptTextareasForContextMenu disables pointer events", () => {
+    const resume = suspendTranscriptTextareasForContextMenu();
+    expect(textarea.style.pointerEvents).toBe("none");
+    resume();
+    expect(textarea.style.pointerEvents).toBe("");
   });
 });

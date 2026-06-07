@@ -9,6 +9,7 @@ export type OverlayPointerActions = {
     endSec: number,
     options?: { overlapPolicy?: SegmentOverlapPolicy },
   ) => void;
+  onSelectTimeRange?: (startSec: number, endSec: number) => void;
   onFocusWaveformShell?: () => void;
   seekToTime: (timeSec: number) => void;
 };
@@ -43,7 +44,7 @@ export function applySegmentOverlayTap(
     segment: { start_sec: number; end_sec: number };
   },
   actions: {
-    onSelectSegmentAt: (idx: number) => void;
+    onSelectSegmentAt: (idx: number, opts?: { shiftKey?: boolean }) => void;
     seekToTime: (timeSec: number) => void;
     revealSelectedSegmentInViewport?: () => void;
   },

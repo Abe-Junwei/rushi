@@ -21,6 +21,7 @@ import {
 } from "../../utils/segmentListVirtualWindow";
 import { SegmentTextListRow } from "../SegmentTextListRow";
 import { segmentHasUnsavedText } from "../../services/segmentConfirmEligible";
+import { blurActiveTranscriptTextarea } from "../../utils/transcriptSelection";
 import type { useEditorTranscriptAppearance } from "./useEditorTranscriptAppearance";
 
 type SegmentCtxMenuState = SegmentContextMenuOpen;
@@ -134,6 +135,7 @@ export function EditorSegmentList({
       if (c.busy) return;
       e.preventDefault();
       e.stopPropagation();
+      blurActiveTranscriptTextarea();
       onOpenSegmentContextMenu({
         x: e.clientX,
         y: e.clientY,
@@ -168,6 +170,11 @@ export function EditorSegmentList({
       c.findReplaceEditorHighlight?.segmentIdx ?? -1,
       c.correctionRulesEditorHighlight?.segmentIdx ?? -1,
     ];
+    if (c.isMultiSegmentSelection) {
+      for (let idx = c.selectionLo; idx <= c.selectionHi; idx += 1) {
+        pinIndices.push(idx);
+      }
+    }
     for (const idx of pinIndices) {
       if (idx >= 0) {
         win = ensureSegmentListVirtualWindowIncludesIndex(win, idx, c.segments.length, itemStridePx);
@@ -180,6 +187,9 @@ export function EditorSegmentList({
     itemStridePx,
     c.segments.length,
     c.selectedIdx,
+    c.isMultiSegmentSelection,
+    c.selectionLo,
+    c.selectionHi,
     c.findReplaceEditorHighlight?.segmentIdx,
     c.correctionRulesEditorHighlight?.segmentIdx,
   ]);
@@ -192,6 +202,7 @@ export function EditorSegmentList({
       segment={s}
       index={i}
       selected={i === c.selectedIdx}
+      inSelection={tx.isIndexInSelection(i) && i !== c.selectedIdx}
       busy={c.busy}
       transcriptFontPx={tx.transcriptFontPx}
       segmentRowHeightPx={tx.transcriptRowHeightPx}
@@ -202,6 +213,9 @@ export function EditorSegmentList({
       onSegmentMetaWidthPointerDown={a.beginTranscriptMetaWidthDrag}
       onSegmentRowHeightPointerDown={tx.beginTranscriptRowHeightDrag}
       selectSegmentAt={tx.selectSegmentFromList}
+      onTimestampPointerDown={tx.onTimestampPointerDown}
+      onTimestampPointerEnter={tx.onTimestampPointerEnter}
+      onTimestampPointerUp={tx.onTimestampPointerUp}
       updateSegmentText={c.updateSegmentText}
       onTextareaKeyDown={tx.onSegmentTextareaKeyDown}
       onOpenContextMenu={onOpenRowContextMenu}

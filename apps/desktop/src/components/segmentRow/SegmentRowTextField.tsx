@@ -23,10 +23,12 @@ import { isFindReplacePanelOpen } from "../../pages/findReplaceTypes";
 import { CorrectableMatchText } from "./CorrectableMatchText";
 import {
   resolveSegmentTextContextMenuAction,
-  restoreSegmentTextContextMenuSelection,
   type SegmentTextContextMenuSelectionSnapshot,
 } from "../../utils/segmentTextContextMenuSelection";
-import { syncTranscriptTextareaSelection } from "../../utils/transcriptSelection";
+import {
+  blurActiveTranscriptTextarea,
+  syncTranscriptTextareaSelection,
+} from "../../utils/transcriptSelection";
 import type { CorrectableSpan } from "../../services/editor/findCorrectableSpans";
 
 /** 正文区 DOM 标记：行级右键（删/并）应跳过此区域，统一走文本外观菜单。 */
@@ -190,6 +192,7 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
       if (busy || !onOpenTextContextMenu) return;
       e.preventDefault();
       e.stopPropagation();
+      blurActiveTranscriptTextarea();
       onOpenTextContextMenu(e, selectionText);
     },
     [busy, onOpenTextContextMenu],
@@ -220,7 +223,6 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
       });
 
       openTextContextMenu(e, action.selectionText);
-      queueMicrotask(() => restoreSegmentTextContextMenuSelection(el, snapshot));
     },
     [busy, openTextContextMenu],
   );

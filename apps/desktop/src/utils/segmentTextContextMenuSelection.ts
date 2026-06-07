@@ -35,7 +35,11 @@ export function restoreSegmentTextContextMenuSelection(
   if (!snapshot) return;
   if (snapshot.collapsed) {
     el.setSelectionRange(snapshot.start, snapshot.start);
-    return;
+  } else {
+    el.setSelectionRange(snapshot.start, snapshot.end);
   }
-  el.setSelectionRange(snapshot.start, snapshot.end);
+  // setSelectionRange 在 WebKit 上会重新聚焦 textarea，导致自定义菜单首击被派给正文而非菜单项。
+  if (document.activeElement === el) {
+    el.blur();
+  }
 }

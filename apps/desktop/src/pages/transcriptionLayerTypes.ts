@@ -8,8 +8,14 @@ export type TranscriptionLayerInput = {
   mediaUrl: string | null;
   segments: SegmentDto[];
   selectedIdx: number;
-  setSelectedIdx: (idx: number) => void;
   busy: boolean;
+  selectionLo: number;
+  selectionHi: number;
+  selectionCount: number;
+  isMultiSegmentSelection: boolean;
+  isIndexInSelection: (idx: number) => boolean;
+  selectSegmentAt: (idx: number, opts?: { shiftKey?: boolean }) => void;
+  selectSegmentRange: (lo: number, hi: number) => void;
   undo: () => void;
   redo: () => void;
   updateSegmentBounds: (idx: number, startSec: number, endSec: number, phase?: "live" | "commit") => void;
@@ -23,8 +29,10 @@ export type TranscriptionLayerInput = {
   splitAtPlayhead: (timeSec: number) => void;
   mergeWithNext: () => void;
   mergeWithPrev: () => void;
+  mergeSegmentRange: (lo: number, hi: number) => void;
   insertSegmentAfter: (idx: number, mediaDurationSec?: number) => void;
   deleteSegmentAt: (idx: number) => void;
+  requestDeleteSelection: (lo: number, hi: number) => void;
   confirmSegmentEditAndAdvance: (segmentIdx: number) => Promise<boolean>;
   onOpenSegmentContextMenu?: (menu: import("../utils/segmentContextMenuModel").SegmentContextMenuOpen) => void;
 };

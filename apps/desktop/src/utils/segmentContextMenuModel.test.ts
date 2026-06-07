@@ -43,4 +43,19 @@ describe("pointerTimeFromSegmentCard", () => {
     expect(pointerTimeFromSegmentCard(0, rect, seg)).toBe(0);
     expect(pointerTimeFromSegmentCard(500, rect, seg)).toBe(4);
   });
+
+  it("builds multi-select menu items", () => {
+    const items = buildSegmentContextMenuItems({
+      segmentIdx: 2,
+      segments: [seg(0, 1), seg(1, 2), seg(2, 3), seg(3, 4)],
+      busy: false,
+      pointerTimeSec: 2.5,
+      origin: "segmentList",
+      selectionLo: 1,
+      selectionHi: 3,
+      selectionCount: 3,
+    });
+    expect(items.map((i) => i.key)).toEqual(["markFinalized", "mergeRange", "delete"]);
+    expect(items.find((i) => i.key === "delete")?.label).toBe("删除 3 条语段");
+  });
 });

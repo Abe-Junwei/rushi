@@ -86,6 +86,7 @@ fn export_and_import_project_bundle_round_trip() {
             kind: None,
             text_stage: "auto_transcribe".to_string(),
             finalize_via: None,
+            annotation: None,
         },
         SegmentDto {
             uid: None,
@@ -99,6 +100,7 @@ fn export_and_import_project_bundle_round_trip() {
             kind: None,
             text_stage: "auto_transcribe".to_string(),
             finalize_via: None,
+            annotation: None,
         },
     ];
 
@@ -170,6 +172,7 @@ fn project_bundle_zip_excludes_lexicon_bundle() {
             kind: None,
             text_stage: "auto_transcribe".to_string(),
             finalize_via: None,
+            annotation: None,
         }],
     )
     .unwrap();
@@ -255,6 +258,7 @@ fn export_project_bundle_uses_requested_file_audio() {
             kind: None,
             text_stage: "auto_transcribe".to_string(),
             finalize_via: None,
+            annotation: None,
         }],
     )
     .unwrap();
@@ -378,6 +382,7 @@ fn import_project_bundle_rejects_excessive_segment_count() {
             kind: None,
             text_stage: "auto_transcribe".to_string(),
             finalize_via: None,
+            annotation: None,
         })
         .collect();
     let doc = ProjectBundleDocument {

@@ -3,13 +3,15 @@ import type { SegmentDto } from "../tauri/projectApi";
 import type { SegmentOverlapPolicy } from "../utils/segmentTimeRange";
 import { useWaveformSegmentOverlay } from "../hooks/useWaveformSegmentOverlay";
 import { computeCreatePreviewStyle } from "../utils/waveformSegmentOverlayGeometry";
-import { selectOverlayInteractiveSegmentIndices } from "../utils/waveformSegmentOverlayVisibility";
+import { selectOverlayInteractiveSegmentIndices, resolveOverlaySelectionRange } from "../utils/waveformSegmentOverlayVisibility";
 import { WaveformSegmentRegionItem } from "./WaveformSegmentRegionItem";
 
 export type WaveformSegmentOverlayProps = {
   disabled: boolean;
   segments: SegmentDto[];
   selectedIdx: number;
+  selectionLo?: number;
+  selectionHi?: number;
   timelineWidthPx: number;
   durationSec: number;
   layoutHeightPx: number;
@@ -20,7 +22,7 @@ export type WaveformSegmentOverlayProps = {
   clientXToTimeSec: (clientX: number) => number;
   getPlayheadSec: () => number;
   onDraftIdxChange?: (idx: number | null) => void;
-  onSelectSegmentAt: (idx: number) => void;
+  onSelectSegmentAt: (idx: number, opts?: { shiftKey?: boolean }) => void;
   onBeginBoundsEdit?: () => void;
   onFocusWaveformShell?: () => void;
   onBoundsCommit: (idx: number, startSec: number, endSec: number) => void;
@@ -29,6 +31,7 @@ export type WaveformSegmentOverlayProps = {
     endSec: number,
     options?: { overlapPolicy?: SegmentOverlapPolicy },
   ) => void;
+  onSelectTimeRange?: (startSec: number, endSec: number) => void;
   onPlaySegment?: (idx: number) => void;
   seekToTime: (timeSec: number) => void;
   revealSelectedSegmentInViewport?: () => void;
@@ -49,7 +52,7 @@ export const WaveformSegmentOverlay = memo(function WaveformSegmentOverlay(props
     segmentOverlayGeometry,
   } = useWaveformSegmentOverlay(props);
 
-  const { timelineWidthPx, laneByIndex, laneCount, layoutHeightPx, segments, selectedIdx, durationSec } =
+  const { timelineWidthPx, laneByIndex, laneCount, layoutHeightPx, segments, selectedIdx, selectionLo, selectionHi, durationSec } =
     props;
 
   const segmentIndices = useMemo(
@@ -57,15 +60,17 @@ export const WaveformSegmentOverlay = memo(function WaveformSegmentOverlay(props
       selectOverlayInteractiveSegmentIndices({
         segmentCount: segments.length,
         selectedIdx,
+        selectionLo,
+        selectionHi,
         draftIdx: segmentDraftIdx,
       }),
-    [segments.length, selectedIdx, segmentDraftIdx],
+    [segments.length, selectedIdx, selectionLo, selectionHi, segmentDraftIdx],
   );
 
   return (
     <div
       className="waveform-segment-overlay"
-      title="框选：Shift 允许重叠，Alt+Shift 拒绝重叠，Alt 关闭吸附"
+      title="框选：Shift 允许重叠，Alt+Shift 拒绝重叠，Alt 关闭吸附；⌘/Ctrl+拖动空白可选中语段"
       onPointerDown={onShellPointerDown}
       onPointerMove={onPointerMove}
       onPointerUp={onPointerUp}
@@ -77,6 +82,13 @@ export const WaveformSegmentOverlay = memo(function WaveformSegmentOverlay(props
         const bounds = segmentBoundsAt(idx);
         if (!bounds) return null;
         const selected = idx === selectedIdx;
+        const { lo, hi } = resolveOverlaySelectionRange({
+          segmentCount: segments.length,
+          selectedIdx,
+          selectionLo,
+          selectionHi,
+        });
+        const inSelection = idx >= lo && idx <= hi && !selected;
         return (
           <WaveformSegmentRegionItem
             key={seg.uid ? `${seg.uid}#${idx}` : `seg-${idx}`}
@@ -85,6 +97,7 @@ export const WaveformSegmentOverlay = memo(function WaveformSegmentOverlay(props
             startSec={bounds.startSec}
             endSec={bounds.endSec}
             selected={selected}
+            inSelection={inSelection}
             showHandles={selected || idx === segmentDraftIdx}
             timelineWidthPx={timelineWidthPx}
             durationSec={durationSec}

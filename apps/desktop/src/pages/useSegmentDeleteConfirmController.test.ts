@@ -28,10 +28,16 @@ function useTestDeleteConfirm(initial: SegmentDto[]) {
     setSegments((prev) => prev.filter((_, j) => j !== idx));
   }, []);
 
+  const deleteSegmentRange = useCallback((lo: number, hi: number) => {
+    for (let i = lo; i <= hi; i += 1) deletedRef.current.push(i);
+    setSegments((prev) => prev.filter((_, j) => j < lo || j > hi));
+  }, []);
+
   const gate = useSegmentDeleteConfirmController({
     segmentsRef,
     flushSegmentTextDrafts: () => {},
     deleteSegmentAt,
+    deleteSegmentRange,
   });
 
   return { ...gate, segments, deleted: deletedRef.current };
@@ -79,5 +85,42 @@ describe("useSegmentDeleteConfirmController", () => {
     expect(result.current.segmentDeleteConfirmOpen).toBe(false);
     expect(result.current.deleted).toEqual([]);
     expect(result.current.segments).toHaveLength(1);
+  });
+
+  it("requestDeleteSelection opens confirm for range with text", () => {
+    const { result } = renderHook(() =>
+      useTestDeleteConfirm([makeSeg("a"), makeSeg("b"), makeSeg("c")]),
+    );
+
+    act(() => result.current.requestDeleteSelection(0, 2));
+
+    expect(result.current.segmentDeleteConfirmOpen).toBe(true);
+    expect(result.current.pendingDeleteCount).toBe(3);
+    expect(result.current.deleted).toEqual([]);
+  });
+
+  it("requestDeleteSelection deletes empty range immediately", () => {
+    const { result } = renderHook(() =>
+      useTestDeleteConfirm([makeSeg(""), makeSeg(""), makeSeg("")]),
+    );
+
+    act(() => result.current.requestDeleteSelection(0, 1));
+
+    expect(result.current.segmentDeleteConfirmOpen).toBe(false);
+    expect(result.current.segments).toHaveLength(1);
+    expect(result.current.deleted).toEqual([0, 1]);
+  });
+
+  it("confirmDeleteSegment deletes pending range", () => {
+    const { result } = renderHook(() =>
+      useTestDeleteConfirm([makeSeg("a"), makeSeg("b"), makeSeg("c")]),
+    );
+
+    act(() => result.current.requestDeleteSelection(0, 1));
+    act(() => result.current.confirmDeleteSegment());
+
+    expect(result.current.segmentDeleteConfirmOpen).toBe(false);
+    expect(result.current.segments).toHaveLength(1);
+    expect(result.current.segments[0].text).toBe("c");
   });
 });

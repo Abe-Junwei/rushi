@@ -1,4 +1,4 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useRef, useState } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
@@ -15,7 +15,11 @@ function makeSeg(props: Partial<SegmentDto> & { text: string; start_sec: number;
   };
 }
 
-function useTestController(initial: SegmentDto[], busy = false) {
+function useTestController(
+  initial: SegmentDto[],
+  busy = false,
+  onSelectionCollapsed?: (idx: number) => void,
+) {
   const [segments, setSegments] = useState(initial);
   const [selectedIdx, setSelectedIdx] = useState(0);
   const segmentsRef = useRef(segments);
@@ -31,6 +35,7 @@ function useTestController(initial: SegmentDto[], busy = false) {
     setSelectedIdx,
     setError,
     busy,
+    onSelectionCollapsed,
   });
 
   return { mutations, segments, selectedIdx, error };
@@ -328,5 +333,69 @@ describe("useSegmentMutationController", () => {
     expect(result.current.segments).toHaveLength(2);
     expect(result.current.segments[0].end_sec).toBe(1.5);
     expect(result.current.segments[1].start_sec).toBe(1.5);
+  });
+
+  it("mergeSegmentRange folds contiguous segments", () => {
+    const { result } = renderHook(() =>
+      useTestController([
+        makeSeg({ text: "a", start_sec: 0, end_sec: 1 }),
+        makeSeg({ text: "b", start_sec: 1, end_sec: 2 }),
+        makeSeg({ text: "c", start_sec: 2, end_sec: 3 }),
+      ]),
+    );
+
+    act(() => result.current.mutations.mergeSegmentRange(0, 2));
+
+    expect(result.current.segments).toHaveLength(1);
+    expect(result.current.segments[0].text).toBe("a\nb\nc");
+    expect(result.current.selectedIdx).toBe(0);
+  });
+
+  it("deleteSegmentRange removes contiguous segments", () => {
+    const { result } = renderHook(() =>
+      useTestController([
+        makeSeg({ text: "a", start_sec: 0, end_sec: 1 }),
+        makeSeg({ text: "b", start_sec: 1, end_sec: 2 }),
+        makeSeg({ text: "c", start_sec: 2, end_sec: 3 }),
+        makeSeg({ text: "d", start_sec: 3, end_sec: 4 }),
+      ]),
+    );
+
+    act(() => {
+      result.current.mutations.deleteSegmentRange(1, 2);
+    });
+
+    expect(result.current.segments).toHaveLength(2);
+    expect(result.current.segments.map((s) => s.text)).toEqual(["a", "d"]);
+    expect(result.current.selectedIdx).toBe(0);
+  });
+
+  it("insertSegmentAfter invokes onSelectionCollapsed", () => {
+    const onSelectionCollapsed = vi.fn();
+    const { result } = renderHook(() =>
+      useTestController(
+        [
+          makeSeg({ text: "a", start_sec: 0, end_sec: 1 }),
+          makeSeg({ text: "b", start_sec: 2, end_sec: 3 }),
+        ],
+        false,
+        onSelectionCollapsed,
+      ),
+    );
+
+    act(() => result.current.mutations.insertSegmentAfter(0));
+
+    expect(onSelectionCollapsed).toHaveBeenCalledWith(1);
+  });
+
+  it("splitAtSelection invokes onSelectionCollapsed", () => {
+    const onSelectionCollapsed = vi.fn();
+    const { result } = renderHook(() =>
+      useTestController([makeSeg({ text: "hello world", start_sec: 0, end_sec: 2 })], false, onSelectionCollapsed),
+    );
+
+    act(() => result.current.mutations.splitAtSelection(0));
+
+    expect(onSelectionCollapsed).toHaveBeenCalledWith(1);
   });
 });

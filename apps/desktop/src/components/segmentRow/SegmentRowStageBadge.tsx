@@ -35,14 +35,14 @@ export const SegmentRowStageBadge = memo(function SegmentRowStageBadge({
 
   return (
     <div
-      className="seg-row-stage-badge flex shrink-0 flex-col items-end justify-start gap-1 self-start pt-1.5 pl-1"
+      className="seg-row-stage-badge relative flex shrink-0 self-stretch items-center justify-end pl-1"
       aria-label={labels.tooltip}
       title={labels.tooltip}
     >
       {hasAnnotation ? (
         <button
           type="button"
-          className="inline-flex shrink-0 items-center justify-center rounded p-0.5 text-notion-text-muted transition-colors hover:bg-notion-sidebar/70 hover:text-notion-text disabled:opacity-40"
+          className="absolute right-0 top-1.5 inline-flex shrink-0 items-center justify-center rounded p-0.5 text-notion-text-muted transition-colors hover:bg-notion-sidebar/70 hover:text-notion-text disabled:opacity-40"
           disabled={busy}
           title={annotationPreview}
           aria-label={`备注：${annotationPreview}`}

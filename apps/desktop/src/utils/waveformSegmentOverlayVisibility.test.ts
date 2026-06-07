@@ -45,4 +45,28 @@ describe("selectOverlayInteractiveSegmentIndices", () => {
       }),
     ).toEqual([1]);
   });
+
+  it("returns every index in the multi-select range", () => {
+    expect(
+      selectOverlayInteractiveSegmentIndices({
+        segmentCount: 8,
+        selectedIdx: 5,
+        selectionLo: 2,
+        selectionHi: 5,
+        draftIdx: null,
+      }),
+    ).toEqual([2, 3, 4, 5]);
+  });
+
+  it("includes index 0 when range starts at zero", () => {
+    expect(
+      selectOverlayInteractiveSegmentIndices({
+        segmentCount: 4,
+        selectedIdx: 2,
+        selectionLo: 0,
+        selectionHi: 2,
+        draftIdx: null,
+      }),
+    ).toEqual([0, 1, 2]);
+  });
 });

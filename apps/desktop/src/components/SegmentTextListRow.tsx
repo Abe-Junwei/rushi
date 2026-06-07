@@ -10,6 +10,7 @@ export type SegmentTextListRowProps = {
   segment: SegmentDto;
   index: number;
   selected: boolean;
+  inSelection?: boolean;
   busy: boolean;
   transcriptFontPx: number;
   segmentRowHeightPx: number;
@@ -18,8 +19,11 @@ export type SegmentTextListRowProps = {
   transcriptFontItalic: boolean;
   segmentMetaWidthPx: number;
   onSegmentMetaWidthPointerDown: (e: React.PointerEvent<HTMLDivElement>) => void;
+  onTimestampPointerDown?: (index: number, e: React.PointerEvent<HTMLElement>) => void;
+  onTimestampPointerEnter?: (index: number) => void;
+  onTimestampPointerUp?: (e: React.PointerEvent<HTMLElement>) => void;
   onSegmentRowHeightPointerDown?: (e: React.PointerEvent<HTMLDivElement>) => void;
-  selectSegmentAt: (idx: number) => void;
+  selectSegmentAt: (idx: number, opts?: { shiftKey?: boolean }) => void;
   updateSegmentText: (idx: number, text: string) => void;
   onTextareaKeyDown: (idx: number, e: KeyboardEvent<HTMLTextAreaElement>) => void;
   onOpenContextMenu?: (
@@ -42,6 +46,7 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
   segment: s,
   index: i,
   selected,
+  inSelection = false,
   busy,
   transcriptFontPx,
   segmentRowHeightPx,
@@ -50,6 +55,9 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
   transcriptFontItalic,
   segmentMetaWidthPx,
   onSegmentMetaWidthPointerDown,
+  onTimestampPointerDown,
+  onTimestampPointerEnter,
+  onTimestampPointerUp,
   onSegmentRowHeightPointerDown,
   selectSegmentAt,
   updateSegmentText,
@@ -79,6 +87,11 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
     (e: MouseEvent<HTMLDivElement>) => {
       if (busy) return;
       if ((e.target as HTMLElement).closest("textarea")) return;
+      if (e.shiftKey) {
+        focusOnSelectRef.current = false;
+        selectSegmentAt(i, { shiftKey: true });
+        return;
+      }
       if (selected) {
         editorRef.current?.focusEditor();
         onRevealSelectedSegment?.();
@@ -107,7 +120,11 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
       style={{ minHeight: rowMinHeight }}
       className={[
         "group relative flex cursor-text items-start gap-2 rounded-md border border-transparent px-[9px] py-[9px] transition-[background-color,border-color,box-shadow]",
-        selected ? "seg-row-selected" : "bg-transparent hover:border-notion-divider",
+        selected
+          ? "seg-row-selected"
+          : inSelection
+            ? "seg-row-in-selection"
+            : "bg-transparent hover:border-notion-divider",
       ].join(" ")}
       onClick={onClickRow}
       onContextMenu={onRowContextMenu}
@@ -117,8 +134,12 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
         startSec={s.start_sec}
         metaWidth={metaWidth}
         selected={selected}
+        inSelection={inSelection}
         busy={busy}
         onMetaWidthPointerDown={onSegmentMetaWidthPointerDown}
+        onTimestampPointerDown={onTimestampPointerDown}
+        onTimestampPointerEnter={onTimestampPointerEnter}
+        onTimestampPointerUp={onTimestampPointerUp}
       />
 
       <SegmentRowTextField

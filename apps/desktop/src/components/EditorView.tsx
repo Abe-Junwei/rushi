@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useCallback } from "react";
+import { useEffect, useLayoutEffect, useMemo, useCallback, useRef, useState } from "react";
 import { useTranscriptFooterStats } from "../hooks/useTranscriptFooterStats";
 import { clearToastBottomInset, syncToastBottomInset } from "../services/ui/toastLayout";
 import { EditorToolbar } from "./EditorToolbar";
@@ -20,6 +20,7 @@ import {
   parseFontFamilyFromContextMenuKey,
   type SegmentTextContextMenuKey,
 } from "../utils/segmentTextContextMenuModel";
+import type { ContextMenuItem } from "./SegmentContextMenu";
 import { EditorStatusFooter } from "./editor/EditorStatusFooter";
 import { EditorSegmentWorkbench } from "./editor/EditorSegmentWorkbench";
 import { SegmentCorrectPopover } from "./segmentRow/SegmentCorrectPopover";
@@ -41,6 +42,7 @@ interface EditorViewProps {
   llmStatusRefreshSeq?: number;
   segmentCtxMenu: SegmentContextMenuOpen | null;
   setSegmentCtxMenu: (v: SegmentContextMenuOpen | null) => void;
+  onOpenSegmentContextMenu: (menu: SegmentContextMenuOpen) => void;
 }
 
 export function EditorView({
@@ -53,6 +55,7 @@ export function EditorView({
   llmStatusRefreshSeq = 0,
   segmentCtxMenu,
   setSegmentCtxMenu,
+  onOpenSegmentContextMenu,
 }: EditorViewProps) {
   const appearance = useEditorTranscriptAppearance(c.busy, Boolean(c.currentFileId));
   const transcriptFontPx = clampTranscriptFontPx(tx.transcriptFontPx);
@@ -66,6 +69,9 @@ export function EditorView({
             pointerTimeSec: segmentCtxMenu.pointerTimeSec,
             origin: segmentCtxMenu.origin,
             selectionText: segmentCtxMenu.selectionText,
+            selectionLo: c.selectionLo,
+            selectionHi: c.selectionHi,
+            selectionCount: c.selectionCount,
             appearance: {
               appearanceDisabled: appearance.transcriptFontControlDisabled,
               transcriptFontFamily: appearance.transcriptFontFamily,
@@ -82,6 +88,9 @@ export function EditorView({
       segmentCtxMenu,
       c.segments,
       c.busy,
+      c.selectionCount,
+      c.selectionLo,
+      c.selectionHi,
       appearance.transcriptFontControlDisabled,
       appearance.transcriptFontFamily,
       appearance.transcriptFontWeight,
@@ -90,6 +99,29 @@ export function EditorView({
       transcriptFontPx,
     ],
   );
+
+  const segmentCtxMenuItemsRef = useRef(segmentCtxMenuItems);
+  segmentCtxMenuItemsRef.current = segmentCtxMenuItems;
+
+  const ctxMenuOpenKey = segmentCtxMenu
+    ? `${segmentCtxMenu.x}:${segmentCtxMenu.y}:${segmentCtxMenu.segmentIdx}:${segmentCtxMenu.origin}`
+    : null;
+
+  const [frozenCtxMenuItems, setFrozenCtxMenuItems] = useState<ContextMenuItem[]>([]);
+
+  useLayoutEffect(() => {
+    if (!ctxMenuOpenKey) {
+      setFrozenCtxMenuItems([]);
+      return;
+    }
+    setFrozenCtxMenuItems(segmentCtxMenuItemsRef.current);
+  }, [ctxMenuOpenKey]);
+
+  const segmentCtxMenuItemsForRender = segmentCtxMenu
+    ? frozenCtxMenuItems.length > 0
+      ? frozenCtxMenuItems
+      : segmentCtxMenuItems
+    : [];
 
   const onSegmentCtxMenuSelect = useCallback(
     (key: string) => {
@@ -135,13 +167,20 @@ export function EditorView({
       const i = segmentCtxMenu.segmentIdx;
       switch (segmentKey) {
         case "delete":
-          tx.deleteSegmentAt(i);
+          if (c.isMultiSegmentSelection) {
+            c.requestDeleteSelection(c.selectionLo, c.selectionHi);
+          } else {
+            tx.deleteSegmentAt(i);
+          }
           break;
         case "mergePrev":
           c.mergeWithPrevAt(i);
           break;
         case "mergeNext":
           c.mergeWithNextAt(i);
+          break;
+        case "mergeRange":
+          c.mergeSegmentRange(c.selectionLo, c.selectionHi);
           break;
         case "splitAtPointer":
           tx.splitAtPlayhead(segmentCtxMenu.pointerTimeSec);
@@ -206,7 +245,7 @@ export function EditorView({
         <SegmentContextMenu
           x={segmentCtxMenu.x}
           y={segmentCtxMenu.y}
-          items={segmentCtxMenuItems}
+          items={segmentCtxMenuItemsForRender}
           onSelect={onSegmentCtxMenuSelect}
           onClose={() => setSegmentCtxMenu(null)}
         />
@@ -226,6 +265,7 @@ export function EditorView({
       />
       <DeleteSegmentConfirmDialog
         open={c.segmentDeleteConfirmOpen}
+        deleteCount={c.pendingDeleteCount}
         onCancel={c.cancelDeleteSegment}
         onConfirm={c.confirmDeleteSegment}
       />
@@ -276,7 +316,7 @@ export function EditorView({
           controller={c}
           tx={tx}
           appearance={appearance}
-          onOpenSegmentContextMenu={setSegmentCtxMenu}
+          onOpenSegmentContextMenu={onOpenSegmentContextMenu}
         />
       </main>
 

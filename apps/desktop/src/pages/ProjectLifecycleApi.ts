@@ -110,10 +110,20 @@ export interface ProjectLifecycleApi {
   mergeWithPrev: () => void;
   mergeWithNextAt: (idx: number) => void;
   mergeWithPrevAt: (idx: number) => void;
+  mergeSegmentRange: (lo: number, hi: number) => void;
   deleteSegmentAt: (idx: number) => void;
+  requestDeleteSelection: (lo: number, hi: number) => void;
+  pendingDeleteCount: number;
   segmentDeleteConfirmOpen: boolean;
   confirmDeleteSegment: () => void;
   cancelDeleteSegment: () => void;
+  selectionLo: number;
+  selectionHi: number;
+  selectionCount: number;
+  isMultiSegmentSelection: boolean;
+  isIndexInSelection: (idx: number) => boolean;
+  selectSegmentAt: (idx: number, opts?: { shiftKey?: boolean }) => void;
+  selectSegmentRange: (lo: number, hi: number) => void;
   insertSegmentAfter: (idx: number, mediaDurationSec?: number) => void;
   insertSegmentFromTimeRange: (
     startSec: number,

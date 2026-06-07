@@ -1,8 +1,19 @@
 import type { SegmentDto } from "../tauri/projectApi";
 
-/**
- * Packable overlay indices (excludes dominant-span placeholders).
- */
+export function resolveOverlaySelectionRange(input: {
+  segmentCount: number;
+  selectedIdx: number;
+  selectionLo?: number;
+  selectionHi?: number;
+}): { lo: number; hi: number } {
+  if (input.segmentCount <= 0) return { lo: 0, hi: 0 };
+  const rawLo = input.selectionLo ?? input.selectedIdx;
+  const rawHi = input.selectionHi ?? input.selectedIdx;
+  const lo = Math.max(0, Math.min(rawLo, rawHi, input.segmentCount - 1));
+  const hi = Math.min(input.segmentCount - 1, Math.max(rawLo, rawHi));
+  return { lo, hi };
+}
+
 export function selectOverlayRenderedSegmentIndices(input: {
   segments: SegmentDto[];
   dominantSpanIndices?: readonly number[];
@@ -15,10 +26,12 @@ export function selectOverlayRenderedSegmentIndices(input: {
   return out;
 }
 
-/** DOM overlay indices: selected + in-progress draft only (display bands use canvas). */
+/** DOM overlay indices: selected range + in-progress draft only (display bands use canvas). */
 export function selectOverlayInteractiveSegmentIndices(input: {
   segmentCount: number;
   selectedIdx: number;
+  selectionLo?: number;
+  selectionHi?: number;
   draftIdx: number | null;
 }): number[] {
   const out: number[] = [];
@@ -28,7 +41,8 @@ export function selectOverlayInteractiveSegmentIndices(input: {
     seen.add(idx);
     out.push(idx);
   };
-  add(input.selectedIdx);
+  const { lo, hi } = resolveOverlaySelectionRange(input);
+  for (let idx = lo; idx <= hi; idx += 1) add(idx);
   if (input.draftIdx != null) add(input.draftIdx);
   return out;
 }

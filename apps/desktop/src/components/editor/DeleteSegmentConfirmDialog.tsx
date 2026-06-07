@@ -5,13 +5,19 @@ import { DELETE_SEGMENT_WITH_TEXT_CONFIRM } from "../../services/segmentConfirmE
 
 type Props = {
   open: boolean;
+  deleteCount?: number;
   onCancel: () => void;
   onConfirm: () => void;
 };
 
-/** Tauri WebView 下 `window.confirm` 不可靠，删除有正文语段时用此对话框。 */
-export function DeleteSegmentConfirmDialog({ open, onCancel, onConfirm }: Props) {
+export function DeleteSegmentConfirmDialog({ open, deleteCount = 1, onCancel, onConfirm }: Props) {
   if (!open || typeof document === "undefined") return null;
+
+  const title = deleteCount > 1 ? `删除 ${deleteCount} 条语段` : "删除语段";
+  const body =
+    deleteCount > 1
+      ? `将删除选中的 ${deleteCount} 条语段及其正文，此操作可撤销（⌘Z）。`
+      : DELETE_SEGMENT_WITH_TEXT_CONFIRM;
 
   return createPortal(
     <div
@@ -33,10 +39,10 @@ export function DeleteSegmentConfirmDialog({ open, onCancel, onConfirm }: Props)
           id="delete-segment-title"
           className="text-[18px] font-semibold leading-[1.4] text-notion-text"
         >
-          删除语段
+          {title}
         </h2>
         <p id="delete-segment-desc" className={`mt-2 ${PANEL_TYPOGRAPHY.dialogBody}`}>
-          {DELETE_SEGMENT_WITH_TEXT_CONFIRM}
+          {body}
         </p>
         <div className="mt-5 flex flex-wrap justify-end gap-2">
           <button type="button" className={CONTROL_BTN_SECONDARY} onClick={onCancel}>

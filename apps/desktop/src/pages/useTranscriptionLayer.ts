@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { useSegmentKeyboard } from "../hooks/useSegmentKeyboard";
 import { useWaveformTimelineController } from "../hooks/useWaveformTimelineController";
 import { useWaveformTierWheelForward } from "../hooks/useWaveformTierWheelForward";
@@ -33,8 +33,8 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
 
   const timeline = useWaveformTimelineController(ctx);
 
-  const setSelectedIdxUi = useCallback((idx: number) => {
-    ctxRef.current.setSelectedIdx(idx);
+  const setSelectedIdxUi = useCallback((idx: number, opts?: { shiftKey?: boolean }) => {
+    ctxRef.current.selectSegmentAt(idx, opts);
   }, []);
 
   const [editorHint, setEditorHint] = useState("");
@@ -71,7 +71,9 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     tl.zoom.setPxPerSecFromSlider(next);
   };
 
-  const selectSegmentAtRef = useRef<(idx: number, source?: SegmentSelectSource) => void>(() => {});
+  const selectSegmentAtRef = useRef<
+    (idx: number, source?: SegmentSelectSource, opts?: { shiftKey?: boolean }) => void
+  >(() => {});
 
   const keyboard = useSegmentKeyboard({
     ctxRef,
@@ -147,11 +149,12 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
   }, []);
 
   const selectSegmentAt = useCallback(
-    (idx: number, source: SegmentSelectSource = "waveform") => {
+    (idx: number, source: SegmentSelectSource = "waveform", opts?: { shiftKey?: boolean }) => {
       const c = ctxRef.current;
+      if (c.busy) return;
       const s = c.segments[idx];
       if (!s) return;
-      setSelectedIdxUi(idx);
+      setSelectedIdxUi(idx, opts);
       const plan = resolveSelectSegmentViewportPlan(s);
       const seg = plan.segment;
       if (shouldZoomViewportOnSelectSource(source)) {
@@ -186,6 +189,47 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
   );
 
   selectSegmentAtRef.current = selectSegmentAt;
+
+  const timestampDragRef = useRef<{ anchorIdx: number; pointerId: number } | null>(null);
+
+  const onTimestampPointerDown = useCallback((idx: number, e: ReactPointerEvent<HTMLElement>) => {
+    const c = ctxRef.current;
+    if (c.busy || e.button !== 0) return;
+    if ((e.target as HTMLElement).closest('[role="separator"]')) return;
+    e.stopPropagation();
+    timestampDragRef.current = { anchorIdx: idx, pointerId: e.pointerId };
+    c.selectSegmentAt(idx);
+    e.currentTarget.setPointerCapture(e.pointerId);
+  }, []);
+
+  const onTimestampPointerEnter = useCallback((idx: number) => {
+    const drag = timestampDragRef.current;
+    if (!drag) return;
+    ctxRef.current.selectSegmentRange(drag.anchorIdx, idx);
+  }, []);
+
+  const onTimestampPointerUp = useCallback((e: ReactPointerEvent<HTMLElement>) => {
+    const drag = timestampDragRef.current;
+    if (!drag || drag.pointerId !== e.pointerId) return;
+    timestampDragRef.current = null;
+    try {
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      /* noop */
+    }
+  }, []);
+
+  useEffect(() => {
+    const endTimestampDrag = () => {
+      timestampDragRef.current = null;
+    };
+    window.addEventListener("pointerup", endTimestampDrag);
+    window.addEventListener("pointercancel", endTimestampDrag);
+    return () => {
+      window.removeEventListener("pointerup", endTimestampDrag);
+      window.removeEventListener("pointercancel", endTimestampDrag);
+    };
+  }, []);
 
   const { wf, display, peaks, zoom, routePrefs } = timeline;
   const waveformStageHeightPx = display.waveformHeightPx;
@@ -258,10 +302,21 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     zoomToFitAll: timeline.viewportFit.zoomToFitAll,
     setPxPerSecFromSlider: zoom.setPxPerSecFromSlider,
     selectSegmentAt,
-    selectSegmentFromList: (idx: number) => selectSegmentAt(idx, "list"),
+    selectSegmentFromList: (idx: number, opts?: { shiftKey?: boolean }) => selectSegmentAt(idx, "list", opts),
+    selectSegmentRange: ctx.selectSegmentRange,
+    selectionLo: ctx.selectionLo,
+    selectionHi: ctx.selectionHi,
+    selectionCount: ctx.selectionCount,
+    isMultiSegmentSelection: ctx.isMultiSegmentSelection,
+    isIndexInSelection: ctx.isIndexInSelection,
+    onTimestampPointerDown,
+    onTimestampPointerEnter,
+    onTimestampPointerUp,
     revealSelectedSegmentInViewport,
     insertSegmentAfter: ctx.insertSegmentAfter,
     deleteSegmentAt: ctx.deleteSegmentAt,
+    requestDeleteSelection: ctx.requestDeleteSelection,
+    mergeSegmentRange: ctx.mergeSegmentRange,
     splitAtPlayhead: ctx.splitAtPlayhead,
     focusWaveformShell,
     onWaveformMainKeyDown: keyboard.onWaveformMainKeyDown,

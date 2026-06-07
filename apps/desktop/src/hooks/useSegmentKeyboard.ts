@@ -26,7 +26,9 @@ function focusSegmentTextarea(
 export function useSegmentKeyboard(args: {
   ctxRef: React.MutableRefObject<TranscriptionLayerInput>;
   wfApiRef: React.MutableRefObject<WfApi>;
-  selectSegmentAtRef: React.MutableRefObject<(idx: number, source?: SegmentSelectSource) => void>;
+  selectSegmentAtRef: React.MutableRefObject<
+    (idx: number, source?: SegmentSelectSource, opts?: { shiftKey?: boolean }) => void
+  >;
   tierScrollRef: React.RefObject<HTMLDivElement | null>;
   showEditorHintRef: React.MutableRefObject<(msg: string) => void>;
   stepWaveformZoomRef: React.MutableRefObject<(direction: "in" | "out") => void>;
@@ -44,8 +46,8 @@ export function useSegmentKeyboard(args: {
       if (t.closest("textarea, input, [contenteditable=true]")) return;
 
       const mod = e.metaKey || e.ctrlKey;
-      const selectSeg = (idx: number) => {
-        a.selectSegmentAtRef.current(idx, "waveform");
+      const selectSeg = (idx: number, opts?: { shiftKey?: boolean }) => {
+        a.selectSegmentAtRef.current(idx, "waveform", opts);
       };
 
       if (e.key === "Escape") {
@@ -60,17 +62,31 @@ export function useSegmentKeyboard(args: {
       }
       if (e.key === "Delete" || e.key === "Backspace") {
         e.preventDefault();
-        if (c.segments.length > 0) c.deleteSegmentAt(c.selectedIdx);
+        if (c.segments.length > 0) {
+          if (c.isMultiSegmentSelection) {
+            c.requestDeleteSelection(c.selectionLo, c.selectionHi);
+          } else {
+            c.deleteSegmentAt(c.selectedIdx);
+          }
+        }
         return;
       }
       if (mod && e.key.toLowerCase() === "m" && e.shiftKey) {
         e.preventDefault();
-        if (c.selectedIdx > 0) c.mergeWithPrev();
+        if (c.isMultiSegmentSelection) {
+          c.mergeSegmentRange(c.selectionLo, c.selectionHi);
+        } else if (c.selectedIdx > 0) {
+          c.mergeWithPrev();
+        }
         return;
       }
       if (mod && e.key.toLowerCase() === "m" && !e.shiftKey) {
         e.preventDefault();
-        if (c.selectedIdx >= 0 && c.selectedIdx < c.segments.length - 1) c.mergeWithNext();
+        if (c.isMultiSegmentSelection) {
+          c.mergeSegmentRange(c.selectionLo, c.selectionHi);
+        } else if (c.selectedIdx >= 0 && c.selectedIdx < c.segments.length - 1) {
+          c.mergeWithNext();
+        }
         return;
       }
       if (mod && e.shiftKey && e.key.toLowerCase() === "s") {
@@ -82,12 +98,18 @@ export function useSegmentKeyboard(args: {
       }
       if (e.key === "ArrowLeft" && !mod) {
         e.preventDefault();
-        if (c.selectedIdx > 0) selectSeg(c.selectedIdx - 1);
+        if (c.selectedIdx > 0) {
+          const ni = c.selectedIdx - 1;
+          selectSeg(ni, e.shiftKey ? { shiftKey: true } : undefined);
+        }
         return;
       }
       if (e.key === "ArrowRight" && !mod) {
         e.preventDefault();
-        if (c.selectedIdx < c.segments.length - 1) selectSeg(c.selectedIdx + 1);
+        if (c.selectedIdx < c.segments.length - 1) {
+          const ni = c.selectedIdx + 1;
+          selectSeg(ni, e.shiftKey ? { shiftKey: true } : undefined);
+        }
         return;
       }
       if (e.key === "Tab") {

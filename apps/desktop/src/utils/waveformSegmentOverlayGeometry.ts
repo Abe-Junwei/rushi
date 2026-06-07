@@ -60,7 +60,7 @@ export function boundsForOverlayDrag(
   timeSec: number,
   durationSec: number,
 ): { startSec: number; endSec: number } | null {
-  if (drag.mode === "create") return null;
+  if (drag.mode === "create" || drag.mode === "select-marquee") return null;
   const delta = timeSec - drag.anchorTimeSec;
   return computeDragSegmentBounds(
     drag.mode,

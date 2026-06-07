@@ -99,14 +99,30 @@ export function ProjectPanel() {
     return () => window.clearInterval(id);
   }, [c.busy]);
 
+  const openSegmentContextMenu = useCallback(
+    (menu: SegmentContextMenuOpen) => {
+      if (!c.isIndexInSelection(menu.segmentIdx)) {
+        c.selectSegmentAt(menu.segmentIdx);
+      }
+      setSegmentCtxMenu(menu);
+    },
+    [c.isIndexInSelection, c.selectSegmentAt],
+  );
+
   const tx = useTranscriptionLayer({
     projectId: c.current?.id ?? null,
     fileId: c.currentFileId,
     mediaUrl: c.audioSrc,
     segments: c.segments,
     selectedIdx: c.selectedIdx,
-    setSelectedIdx: c.setSelectedIdx,
     busy: c.busy,
+    selectionLo: c.selectionLo,
+    selectionHi: c.selectionHi,
+    selectionCount: c.selectionCount,
+    isMultiSegmentSelection: c.isMultiSegmentSelection,
+    isIndexInSelection: c.isIndexInSelection,
+    selectSegmentAt: c.selectSegmentAt,
+    selectSegmentRange: c.selectSegmentRange,
     undo: c.undo,
     redo: c.redo,
     updateSegmentBounds: c.updateSegmentBounds,
@@ -115,10 +131,12 @@ export function ProjectPanel() {
     splitAtPlayhead: c.splitAtPlayhead,
     mergeWithNext: c.mergeWithNext,
     mergeWithPrev: c.mergeWithPrev,
+    mergeSegmentRange: c.mergeSegmentRange,
     insertSegmentAfter: c.insertSegmentAfter,
     deleteSegmentAt: c.deleteSegmentAt,
+    requestDeleteSelection: c.requestDeleteSelection,
     confirmSegmentEditAndAdvance: c.confirmSegmentEditAndAdvance,
-    onOpenSegmentContextMenu: setSegmentCtxMenu,
+    onOpenSegmentContextMenu: openSegmentContextMenu,
   });
 
   const onExportSelect = (key: string) => {
@@ -251,6 +269,7 @@ export function ProjectPanel() {
               llmStatusRefreshSeq={llmUiEpoch}
               segmentCtxMenu={segmentCtxMenu}
               setSegmentCtxMenu={setSegmentCtxMenu}
+              onOpenSegmentContextMenu={openSegmentContextMenu}
             />
           </main>
         )}

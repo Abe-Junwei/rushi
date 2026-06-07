@@ -18,10 +18,19 @@ export interface SegmentSplitDeps {
   setError: (msg: string) => void;
   pushUndo: () => void;
   flushSegmentTextDrafts: () => void;
+  onSelectionCollapsed?: (idx: number) => void;
 }
 
 export function useSegmentSplitController(deps: SegmentSplitDeps): SegmentSplitApi {
-  const { segmentsRef, setSegments, setSelectedIdx, setError, pushUndo, flushSegmentTextDrafts } = deps;
+  const {
+    segmentsRef,
+    setSegments,
+    setSelectedIdx,
+    setError,
+    pushUndo,
+    flushSegmentTextDrafts,
+    onSelectionCollapsed,
+  } = deps;
 
   const splitAtSelection = useCallback((selectedIdx: number) => {
     flushSegmentTextDrafts();
@@ -43,8 +52,10 @@ export function useSegmentSplitController(deps: SegmentSplitDeps): SegmentSplitA
       out.splice(i, 1, pair.left, pair.right);
       return reindexSegments(out);
     });
-    setSelectedIdx(i + 1);
-  }, [flushSegmentTextDrafts, segmentsRef, setSegments, setSelectedIdx, setError, pushUndo]);
+    const nextIdx = i + 1;
+    setSelectedIdx(nextIdx);
+    onSelectionCollapsed?.(nextIdx);
+  }, [flushSegmentTextDrafts, onSelectionCollapsed, segmentsRef, setSegments, setSelectedIdx, setError, pushUndo]);
 
   const splitAtPlayhead = useCallback(
     (timeSec: number) => {
@@ -70,9 +81,11 @@ export function useSegmentSplitController(deps: SegmentSplitDeps): SegmentSplitA
         out.splice(i, 1, pair.left, pair.right);
         return reindexSegments(out);
       });
-      setSelectedIdx(i + 1);
+      const nextIdx = i + 1;
+      setSelectedIdx(nextIdx);
+      onSelectionCollapsed?.(nextIdx);
     },
-    [flushSegmentTextDrafts, segmentsRef, setSegments, setSelectedIdx, setError, pushUndo],
+    [flushSegmentTextDrafts, onSelectionCollapsed, segmentsRef, setSegments, setSelectedIdx, setError, pushUndo],
   );
 
   return { splitAtSelection, splitAtPlayhead };

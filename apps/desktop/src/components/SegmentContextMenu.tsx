@@ -3,6 +3,7 @@ import {
   useRef,
   useState,
   type Dispatch,
+  type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
   type SetStateAction,
 } from "react";
@@ -11,6 +12,7 @@ import {
   clampContextMenuPosition,
   estimateContextMenuSize,
 } from "../utils/clampContextMenuPosition";
+import { blurActiveTranscriptTextarea, suspendTranscriptTextareasForContextMenu } from "../utils/transcriptSelection";
 
 export type ContextMenuItem = {
   key: string;
@@ -53,6 +55,14 @@ function eventPathIncludesNode(event: Event, node: Node): boolean {
   return node.contains(event.target as Node);
 }
 
+/** WebKit 在 textarea 聚焦时可能把 event.target 重定向到正文，坐标仍落在菜单上。 */
+function pointerEventHitsMenu(event: PointerEvent, root: HTMLElement): boolean {
+  if (eventPathIncludesNode(event, root)) return true;
+  const rect = root.getBoundingClientRect();
+  const { clientX: x, clientY: y } = event;
+  return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
+}
+
 function ContextMenuPanel({
   items,
   onSelect,
@@ -84,12 +94,30 @@ function ContextMenuPanel({
     onClose();
   };
 
+  const lastActivationRef = useRef<{ key: string; ts: number } | null>(null);
+  const activateItemOnce = (it: ContextMenuItem) => {
+    const now = performance.now();
+    const last = lastActivationRef.current;
+    if (last && last.key === it.key && now - last.ts < 400) return;
+    lastActivationRef.current = { key: it.key, ts: now };
+    activateItem(it);
+  };
+
   const onItemPointerDown = (e: ReactPointerEvent<HTMLButtonElement>, it: ContextMenuItem) => {
     if (it.disabled) return;
+    // 仅响应主键；忽略右键抬起等偶发 pointer 事件。
+    if (e.button !== 0) return;
     // 避免 textarea 抢焦点导致首击无效（macOS / WebKit 常见）
     e.preventDefault();
     e.stopPropagation();
-    activateItem(it);
+    activateItemOnce(it);
+  };
+
+  const onItemClick = (e: ReactMouseEvent<HTMLButtonElement>, it: ContextMenuItem) => {
+    if (it.disabled) return;
+    e.preventDefault();
+    e.stopPropagation();
+    activateItemOnce(it);
   };
 
   return (
@@ -120,6 +148,7 @@ function ContextMenuPanel({
                 setOpenPath((prev) => prev.slice(0, depth));
               }}
               onPointerDown={(e) => onItemPointerDown(e, it)}
+              onClick={(e) => onItemClick(e, it)}
             >
               <span className="min-w-0 flex-1 truncate">{it.label}</span>
               {it.checked ? (
@@ -160,6 +189,7 @@ function ContextMenuPanel({
 
 export function SegmentContextMenu({ x, y, items, onSelect, onClose }: Props) {
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const suppressOutsideCloseUntilRef = useRef(0);
   const estimate = estimateContextMenuSize(countLeafItems(items));
   const [pos, setPos] = useState(() =>
     clampContextMenuPosition(x, y, estimate.width, estimate.height),
@@ -172,28 +202,51 @@ export function SegmentContextMenu({ x, y, items, onSelect, onClose }: Props) {
     const rect = el.getBoundingClientRect();
     const next = clampContextMenuPosition(x, y, rect.width, rect.height);
     setPos((prev) => (prev.left === next.left && prev.top === next.top ? prev : next));
-  }, [x, y, items, openPath]);
+    // 不在 items 变化时重定位：父级 re-render（如 auto-save）会导致菜单跳动，首项尤其难点中。
+  }, [x, y, openPath]);
 
   useLayoutEffect(() => {
-    const onPointerDown = (e: PointerEvent) => {
+    blurActiveTranscriptTextarea();
+    suppressOutsideCloseUntilRef.current = performance.now() + 300;
+    const resumeTextareas = suspendTranscriptTextareasForContextMenu();
+    return resumeTextareas;
+  }, [x, y]);
+
+  useLayoutEffect(() => {
+    const onMouseDown = (e: MouseEvent) => {
+      if (e.button !== 0) return;
+      if (performance.now() < suppressOutsideCloseUntilRef.current) return;
       const root = rootRef.current;
       if (!root) return;
-      if (eventPathIncludesNode(e, root)) return;
+      if (pointerEventHitsMenu(e as unknown as PointerEvent, root)) return;
       onClose();
     };
     const onKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") onClose();
     };
-    window.addEventListener("pointerdown", onPointerDown, true);
-    window.addEventListener("keydown", onKeyDown, true);
+    let active = true;
+    const raf = requestAnimationFrame(() => {
+      if (!active) return;
+      // 冒泡阶段：菜单项 pointerdown 先执行，再判定外部关闭（捕获阶段会抢在菜单项之前）。
+      window.addEventListener("mousedown", onMouseDown);
+      window.addEventListener("keydown", onKeyDown, true);
+    });
     return () => {
-      window.removeEventListener("pointerdown", onPointerDown, true);
+      active = false;
+      cancelAnimationFrame(raf);
+      window.removeEventListener("mousedown", onMouseDown);
       window.removeEventListener("keydown", onKeyDown, true);
     };
   }, [onClose]);
 
   const node = (
-    <div ref={rootRef} className="fixed" style={{ left: pos.left, top: pos.top }}>
+    <div
+      ref={rootRef}
+      className="fixed z-[150]"
+      style={{ left: pos.left, top: pos.top }}
+      onPointerDown={(e) => e.stopPropagation()}
+      onMouseDown={(e) => e.stopPropagation()}
+    >
       <ContextMenuPanel
         items={items}
         onSelect={onSelect}

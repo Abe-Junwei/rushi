@@ -86,6 +86,7 @@ mod tests {
             kind: None,
             text_stage: "auto_transcribe".to_string(),
             finalize_via: None,
+            annotation: None,
         }
     }
 
@@ -289,6 +290,7 @@ mod tests {
                     kind: r.get(8)?,
                     text_stage: "auto_transcribe".to_string(),
                     finalize_via: None,
+                    annotation: None,
                 })
             })
             .expect("query segments");

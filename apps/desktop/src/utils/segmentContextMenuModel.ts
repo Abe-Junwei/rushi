@@ -1,9 +1,5 @@
 import type { SegmentDto } from "../tauri/projectApi";
 
-/**
- * 语段卡右键「在指针时间拆分」：用卡内水平点击位置线性映射到 [start_sec, end_sec]（计划 C 默认规则）。
- * 波形区仍用 `clientXToTimeSec` 得到 `pointerTimeSec`。
- */
 export function pointerTimeFromSegmentCard(
   clientX: number,
   cardRect: Pick<DOMRect, "left" | "width">,
@@ -22,7 +18,6 @@ export type SegmentContextMenuOpen = {
   segmentIdx: number;
   pointerTimeSec: number;
   origin: SegmentContextMenuOrigin;
-  /** 刻意选中正文后再右键时非空；此时菜单仅显示纳入更正记忆。 */
   selectionText: string;
 };
 
@@ -30,6 +25,7 @@ export type SegmentContextMenuKey =
   | "delete"
   | "mergePrev"
   | "mergeNext"
+  | "mergeRange"
   | "splitAtPointer"
   | "markFinalized";
 
@@ -39,10 +35,6 @@ export type SegmentContextMenuItem = {
   disabled: boolean;
 };
 
-/**
- * 语段右键菜单（删 / 并上 / 并下；「在指针时间拆分」仅波形区）。
- * `pointerTimeSec`：波形区为鼠标 X 对应时间轴秒。
- */
 export function buildSegmentContextMenuItems(args: {
   segmentIdx: number;
   segments: SegmentDto[];
@@ -50,10 +42,45 @@ export function buildSegmentContextMenuItems(args: {
   pointerTimeSec: number;
   origin: SegmentContextMenuOrigin;
   canFinalize?: boolean;
+  selectionLo?: number;
+  selectionHi?: number;
+  selectionCount?: number;
 }): SegmentContextMenuItem[] {
-  const { segmentIdx: i, segments, busy, pointerTimeSec, origin, canFinalize = false } = args;
+  const {
+    segmentIdx: i,
+    segments,
+    busy,
+    pointerTimeSec,
+    origin,
+    canFinalize = false,
+    selectionLo = i,
+    selectionHi = i,
+    selectionCount = 1,
+  } = args;
   const n = segments.length;
   const seg = segments[i];
+  const multi = selectionCount > 1;
+
+  if (multi) {
+    const items: SegmentContextMenuItem[] = [
+      { key: "markFinalized", label: "标记定稿", disabled: true },
+      {
+        key: "mergeRange",
+        label: `合并 ${selectionCount} 条语段`,
+        disabled: busy || selectionLo >= selectionHi,
+      },
+      {
+        key: "delete",
+        label: `删除 ${selectionCount} 条语段`,
+        disabled: busy || n === 0,
+      },
+    ];
+    if (origin === "waveform") {
+      items.push({ key: "splitAtPointer", label: "在指针时间拆分", disabled: true });
+    }
+    return items;
+  }
+
   const canMergePrev = i >= 0 && i > 0 && !busy;
   const canMergeNext = i >= 0 && i < n - 1 && !busy;
   const items: SegmentContextMenuItem[] = [
