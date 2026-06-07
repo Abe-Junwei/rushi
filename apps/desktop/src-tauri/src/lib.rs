@@ -89,6 +89,8 @@ pub fn run() {
             project::project_transcribe_async_start,
             project::project_transcribe_async_finalize,
             project::project_delete,
+            project::rename_project,
+            project::update_project_metadata,
             project::pick_text_path,
             project::ui_desktop_log,
             project::list_files,

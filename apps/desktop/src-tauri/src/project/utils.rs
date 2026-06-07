@@ -51,11 +51,32 @@ pub fn project_detail_from_conn(
     conn: &Connection,
     project_id: &str,
 ) -> Result<ProjectDetail, String> {
-    let (name, c_ms, u_ms): (String, i64, i64) = conn
+    let (name, c_ms, u_ms, narrator, recorded_at, location, subject, transcriber): (
+        String,
+        i64,
+        i64,
+        Option<String>,
+        Option<String>,
+        Option<String>,
+        Option<String>,
+        Option<String>,
+    ) = conn
         .query_row(
-            "SELECT name, created_at_ms, updated_at_ms FROM projects WHERE id = ?1",
+            "SELECT name, created_at_ms, updated_at_ms, narrator, recorded_at, location, subject, transcriber \
+             FROM projects WHERE id = ?1",
             params![project_id],
-            |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
+            |r| {
+                Ok((
+                    r.get(0)?,
+                    r.get(1)?,
+                    r.get(2)?,
+                    r.get(3)?,
+                    r.get(4)?,
+                    r.get(5)?,
+                    r.get(6)?,
+                    r.get(7)?,
+                ))
+            },
         )
         .map_err(|e| e.to_string())?;
 
@@ -85,6 +106,11 @@ pub fn project_detail_from_conn(
         files,
         created_at_ms: c_ms,
         updated_at_ms: u_ms,
+        narrator,
+        recorded_at,
+        location,
+        subject,
+        transcriber,
     })
 }
 

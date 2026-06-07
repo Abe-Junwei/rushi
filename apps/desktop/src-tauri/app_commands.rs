@@ -27,6 +27,8 @@ pub const APP_COMMANDS: &[&str] = &[
     "project_transcribe_async_start",
     "project_transcribe_async_finalize",
     "project_delete",
+    "rename_project",
+    "update_project_metadata",
     "pick_text_path",
     "ui_desktop_log",
     "list_files",

@@ -22,6 +22,8 @@ permissions = [
   "allow-project-transcribe-async-start",
   "allow-project-transcribe-async-finalize",
   "allow-project-delete",
+  "allow-rename-project",
+  "allow-update-project-metadata",
   "allow-pick-text-path",
   "allow-ui-desktop-log",
   "allow-list-files",

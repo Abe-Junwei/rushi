@@ -22,6 +22,16 @@ pub struct ProjectDetail {
     pub files: Vec<FileSummary>,
     pub created_at_ms: i64,
     pub updated_at_ms: i64,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub narrator: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub recorded_at: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub location: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub subject: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub transcriber: Option<String>,
 }
 
 #[derive(Debug, Serialize)]

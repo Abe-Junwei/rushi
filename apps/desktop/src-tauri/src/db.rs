@@ -325,6 +325,26 @@ pub fn migrate(conn: &Connection) -> rusqlite::Result<()> {
     migrate_correction_memory_p2(conn)?;
     migrate_edit_log_snapshots(conn)?;
     migrate_files_import_provenance(conn)?;
+    migrate_projects_metadata(conn)?;
+    Ok(())
+}
+
+fn migrate_projects_metadata(conn: &Connection) -> rusqlite::Result<()> {
+    let cols = table_columns(conn, "projects")?;
+    if cols.is_empty() {
+        return Ok(());
+    }
+    for col in [
+        "narrator",
+        "recorded_at",
+        "location",
+        "subject",
+        "transcriber",
+    ] {
+        if !cols.iter().any(|c| c == col) {
+            conn.execute(&format!("ALTER TABLE projects ADD COLUMN {col} TEXT"), [])?;
+        }
+    }
     Ok(())
 }
 
@@ -332,6 +352,19 @@ pub fn migrate(conn: &Connection) -> rusqlite::Result<()> {
 mod tests {
     use super::*;
     use rusqlite::Connection;
+
+    #[test]
+    fn migrate_projects_metadata_adds_columns() {
+        let conn = Connection::open_in_memory().unwrap();
+        migrate(&conn).unwrap();
+        let cols = table_columns(&conn, "projects").unwrap();
+        assert!(cols.contains(&"narrator".to_string()));
+        assert!(cols.contains(&"recorded_at".to_string()));
+        assert!(cols.contains(&"location".to_string()));
+        assert!(cols.contains(&"subject".to_string()));
+        assert!(cols.contains(&"transcriber".to_string()));
+        migrate(&conn).unwrap();
+    }
 
     #[test]
     fn migrate_files_import_provenance_adds_columns() {
