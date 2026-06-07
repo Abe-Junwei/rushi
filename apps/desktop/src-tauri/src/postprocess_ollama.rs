@@ -37,7 +37,7 @@ fn has_qwen25_7b_tag(names: &[String]) -> bool {
 const DEFAULT_TAGS_URL: &str = "http://127.0.0.1:11434/api/tags";
 const DETECT_TIMEOUT: Duration = Duration::from_secs(4);
 
-pub fn detect_ollama_tags(
+pub async fn detect_ollama_tags(
     tags_url: Option<&str>,
     configured_model: Option<&str>,
 ) -> OllamaDetectResponse {
@@ -45,7 +45,7 @@ pub fn detect_ollama_tags(
         .map(str::trim)
         .filter(|s| !s.is_empty())
         .unwrap_or(DEFAULT_TAGS_URL);
-    let client = match reqwest::blocking::Client::builder()
+    let client = match reqwest::Client::builder()
         .connect_timeout(DETECT_TIMEOUT)
         .timeout(DETECT_TIMEOUT)
         .no_proxy()
@@ -62,7 +62,7 @@ pub fn detect_ollama_tags(
             };
         }
     };
-    let resp = match client.get(url).send() {
+    let resp = match client.get(url).send().await {
         Ok(r) => r,
         Err(e) => {
             return OllamaDetectResponse {
@@ -87,7 +87,7 @@ pub fn detect_ollama_tags(
             message: format!("Ollama 返回 HTTP {}。", resp.status().as_u16()),
         };
     }
-    let body = match resp.text() {
+    let body = match resp.text().await {
         Ok(b) => b,
         Err(e) => {
             return OllamaDetectResponse {
@@ -157,7 +157,10 @@ mod tests {
 
     #[test]
     fn detect_unreachable_host() {
-        let out = detect_ollama_tags(Some("http://127.0.0.1:1/api/tags"), None);
+        let out = tauri::async_runtime::block_on(detect_ollama_tags(
+            Some("http://127.0.0.1:1/api/tags"),
+            None,
+        ));
         assert!(!out.reachable);
     }
 

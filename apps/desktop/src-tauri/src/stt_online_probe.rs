@@ -223,7 +223,7 @@ fn map_http_status(status: u16, endpoint: &str, elapsed: Duration) -> SttOnlineP
 }
 
 #[tauri::command]
-pub fn stt_probe_online_health(
+pub async fn stt_probe_online_health(
     state: State<'_, DbState>,
     req: SttOnlineProbeRequest,
 ) -> Result<SttOnlineProbeResponse, String> {
@@ -231,7 +231,11 @@ pub fn stt_probe_online_health(
         &state,
         &format!("INFO stt_probe_start url={}", req.url.trim()),
     );
-    let out = probe_stt_online_health_blocking(&req);
+    let out = tauri::async_runtime::spawn_blocking(move || {
+        probe_stt_online_health_blocking(&req)
+    })
+    .await
+    .map_err(|e| format!("探测任务被取消：{e}"))?;
     let level = if out.available { "INFO" } else { "WARN" };
     append_desktop_log_line(
         &state,

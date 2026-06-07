@@ -115,7 +115,7 @@ pub fn llm_migrate_legacy_api_key(
 }
 
 #[tauri::command]
-pub fn llm_probe_connection(
+pub async fn llm_probe_connection(
     state: State<'_, DbState>,
     req: LlmProbeConnectionRequest,
 ) -> Result<LlmProbeConnectionResponse, String> {
@@ -131,10 +131,14 @@ pub fn llm_probe_connection(
         &state,
         &format!("INFO llm_probe endpoint={}", config.endpoint),
     );
-    let out = super::postprocess_probe::probe_llm_connection_blocking(
-        &config,
-        super::postprocess_probe::PROBE_TIMEOUT,
-    );
+    let out = tauri::async_runtime::spawn_blocking(move || {
+        super::postprocess_probe::probe_llm_connection_blocking(
+            &config,
+            super::postprocess_probe::PROBE_TIMEOUT,
+        )
+    })
+    .await
+    .map_err(|e| format!("探测任务被取消：{e}"))?;
     let level = if out.ok { "INFO" } else { "WARN" };
     let status = out
         .status
@@ -158,8 +162,12 @@ pub fn llm_probe_connection(
 }
 
 #[tauri::command]
-pub fn ollama_detect_status(
+pub async fn ollama_detect_status(
     req: OllamaDetectRequest,
 ) -> super::postprocess_ollama::OllamaDetectResponse {
-    super::postprocess_ollama::detect_ollama_tags(req.tags_url.as_deref(), req.model.as_deref())
+    super::postprocess_ollama::detect_ollama_tags(
+        req.tags_url.as_deref(),
+        req.model.as_deref(),
+    )
+    .await
 }
