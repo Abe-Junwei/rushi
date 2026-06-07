@@ -434,6 +434,7 @@ mod tests {
     use std::fs;
     use uuid::Uuid;
 
+    #[allow(clippy::too_many_arguments)]
     fn seed_project_with_file(
         conn: &Connection,
         project_id: &str,

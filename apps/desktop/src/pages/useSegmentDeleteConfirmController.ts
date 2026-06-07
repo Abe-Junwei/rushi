@@ -89,7 +89,8 @@ export function useSegmentDeleteConfirmController(args: Args) {
       const unique = [...new Set(indices)].filter((idx) => idx >= 0 && idx < segs.length);
       if (unique.length === 0) return;
       if (unique.length === 1) {
-        requestDeleteSegmentAt(unique[0]!);
+        const idx = unique[0];
+        if (idx !== undefined) requestDeleteSegmentAt(idx);
         return;
       }
       if (indicesHaveTextContent(segs, unique)) {

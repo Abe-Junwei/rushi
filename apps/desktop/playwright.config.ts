@@ -11,10 +11,10 @@ import { defineConfig } from "@playwright/test";
 const desktopWebServer = process.env.PW_DESKTOP_WEBSERVER
   ? {
       webServer: {
-        command: "npm run dev",
+        command: "npx vite --host 127.0.0.1 --port 1421 --strictPort",
         url: "http://127.0.0.1:1421",
         reuseExistingServer: !process.env.CI,
-        timeout: 120_000,
+        timeout: 180_000,
       },
     }
   : {};

@@ -312,7 +312,8 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
         .sort((a, b) => b - a);
       if (indices.length === 0) return;
       if (indices.length === 1) {
-        deleteSegmentAt(indices[0]!);
+        const idx = indices[0];
+        if (idx !== undefined) deleteSegmentAt(idx);
         return;
       }
       setError("");

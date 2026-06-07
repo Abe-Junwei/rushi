@@ -35,7 +35,7 @@ function makeCtx(overrides: Partial<TranscriptionLayerInput> = {}): Transcriptio
     insertSegmentAfter: vi.fn(),
     deleteSegmentAt: vi.fn(),
     requestDeleteSelection: vi.fn(),
-    confirmSegmentEditAndAdvance: vi.fn(async () => true),
+    confirmSegmentEditAndAdvance: vi.fn(() => Promise.resolve(true)),
     ...overrides,
   };
 }

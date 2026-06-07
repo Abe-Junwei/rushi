@@ -265,9 +265,9 @@ pub fn import_audio_to_project(
         tx.commit().map_err(|e| e.to_string())?;
         Ok(())
     })();
-    if db_result.is_err() {
+    if let Err(e) = db_result {
         let _ = fs::remove_file(&dest_audio);
-        return Err(db_result.unwrap_err());
+        return Err(e);
     }
     allow_imported_audio_asset(&app, &dest_audio);
     project_detail_from_conn(&conn, &project_id)

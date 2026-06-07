@@ -161,9 +161,15 @@ export function mergeSegmentRangeFold(
   lo: number,
   hi: number,
 ): SegmentDto {
-  let merged = segments[lo]!;
+  const first = segments[lo];
+  if (first === undefined) {
+    throw new Error("mergeSegmentRangeFold: empty range");
+  }
+  let merged = first;
   for (let i = lo + 1; i <= hi; i += 1) {
-    merged = mergeTwoSegments(merged, segments[i]!);
+    const seg = segments[i];
+    if (seg === undefined) continue;
+    merged = mergeTwoSegments(merged, seg);
   }
   return merged;
 }

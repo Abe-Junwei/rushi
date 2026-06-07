@@ -47,20 +47,22 @@ pub fn open_db(state: &DbState) -> Result<Connection, String> {
     Ok(conn)
 }
 
+type ProjectMetaRow = (
+    String,
+    i64,
+    i64,
+    Option<String>,
+    Option<String>,
+    Option<String>,
+    Option<String>,
+    Option<String>,
+);
+
 pub fn project_detail_from_conn(
     conn: &Connection,
     project_id: &str,
 ) -> Result<ProjectDetail, String> {
-    let (name, c_ms, u_ms, narrator, recorded_at, location, subject, transcriber): (
-        String,
-        i64,
-        i64,
-        Option<String>,
-        Option<String>,
-        Option<String>,
-        Option<String>,
-        Option<String>,
-    ) = conn
+    let (name, c_ms, u_ms, narrator, recorded_at, location, subject, transcriber): ProjectMetaRow = conn
         .query_row(
             "SELECT name, created_at_ms, updated_at_ms, narrator, recorded_at, location, subject, transcriber \
              FROM projects WHERE id = ?1",

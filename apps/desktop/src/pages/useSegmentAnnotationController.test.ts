@@ -48,12 +48,8 @@ describe("useSegmentAnnotationController", () => {
   });
 
   it("closes dialog after successful save and pushes undo", async () => {
-    let args!: ReturnType<typeof baseArgs>;
-    const saveSegments = vi.fn().mockImplementation(async () => {
-      expect(args.segmentsRef.current[0]?.annotation).toBe("已保存");
-      return true;
-    });
-    args = baseArgs(saveSegments);
+    const saveSegments = vi.fn(() => Promise.resolve(true));
+    const args = baseArgs(saveSegments);
     const { result } = renderHook(() => useSegmentAnnotationController(args));
 
     act(() => {
@@ -70,6 +66,7 @@ describe("useSegmentAnnotationController", () => {
     await waitFor(() => expect(result.current.segmentAnnotationDialog.phase).toBe("closed"));
 
     expect(args.segmentsRef.current[0]?.annotation).toBe("已保存");
+    expect(saveSegments).toHaveBeenCalled();
     expect(args.pushUndo).toHaveBeenCalledTimes(1);
     expect(args.setError).not.toHaveBeenCalled();
   });
