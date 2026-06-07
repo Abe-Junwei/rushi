@@ -1,8 +1,8 @@
 # 调研：编辑器工作条（波形—语段 chrome）布局与信息层级
 
-> **状态**：薄片 1–6 已编码（2026-06-06）  
+> **状态**：薄片 1–6 已编码；手测 ✅（2026-06-07）  
 > **关联路线图**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md)（桌面 UI 重设计期 · 纵向薄片）  
-> **关联 spec**：待 `editor-workbench-toolbar-layout-intent.md` / `…-acceptance.md`（编码前须链接本文）  
+> **关联 spec**：[`editor-workbench-toolbar-layout-intent.md`](./editor-workbench-toolbar-layout-intent.md) · [`…-plan.md`](./editor-workbench-toolbar-layout-plan.md) · [`…-acceptance.md`](./editor-workbench-toolbar-layout-acceptance.md)  
 > **前置**：波形渲染架构见 [`archive/waveform-pre-ws-only-2026-05/waveform-maturity-product-research.md`](./archive/waveform-pre-ws-only-2026-05/waveform-maturity-product-research.md)（**不重复** peaks/tile 议题）  
 > **门禁**：未完成本文 **不得** 进入 Plan 定稿与业务编码（见 [`AGENTS.md`](../../../AGENTS.md) · `.cursor/rules/feature-research-gate.mdc`）
 
@@ -126,8 +126,8 @@
 ## 6. 签收
 
 - [x] 调研 brief 完成（2026-06-06）
-- [ ] intent / plan / acceptance 已链接本文
-- [ ] 用户或路线图确认可进入编码
+- [x] intent / plan / acceptance 已链接本文（2026-06-07）
+- [x] 手测签收（2026-06-07）
 
 **变更记录**
 
@@ -136,3 +136,4 @@
 | 2026-06-06 | 初版：工作条布局/层级/播放双入口/竞品对照与分阶段决策 |
 | 2026-06-06 | 薄片 5：无音频文件 40px 居中编辑条（`editor-workbench-toolbar--no-audio`） |
 | 2026-06-06 | 薄片 6：有音频工作条 48→40px + 32px 触控；底栏快捷键 hint 8s 轮换 |
+| 2026-06-07 | 三件套 + 手测签收 |

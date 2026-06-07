@@ -227,9 +227,10 @@ Hierarchy through **background tone shifts** and **fine borders**—no drop shad
 ### Waveform stage
 - **Tier shell:** `notion-sidebar` 背景；横向滚动；高度可拖拽。
 - **Peaks:** 白底 + 中性灰柱；WaveSurfer **中性灰 playhead**（`waveform-cursor`）；底边嵌入 22px 透明时间尺（标尺带 saffron playhead 刻度线）。
-- **语段 overlay:** 全高竖向区域，左右 hairline；选中 saffron 边线；左右 **8px 透明 handle**（`ew-resize`，无可见 grip）拖拽改边界；播放控件 pill 浮于标尺上方居中。
+- **语段 overlay:** 全高竖向区域，左右 hairline；选中 saffron 边线；左右 **8px 透明 handle**（`ew-resize`，无可见 grip）拖拽改边界；语段浮层仅 **播放 + 循环**（倍速统一在工作条 global menu）。
 - **Minimap（可选）:** 56px 高；`zen-paper` 底（与下方 sidebar 底栏以色块分层）；波形缩略**垂直居中**；saffron 视口框 + 细 playhead；无上下 border / 无内边距。
-- **底栏 transport:** 40px；`notion-sidebar` 混底；播放 / 时间 / 倍速 / 跳转 | 缩放（Lucide：`Focus` 适配语段、`Maximize2` 整段可见、±、`重置` 文本）。
+- **工作条（波形与语段之间）:** **40px**（`h-8` 触控）；有音频时三栏 transport / 编辑 / zoom；无音频时单行居中仅编辑。视口 `<1024px` 时中间收进「编辑 ▾」、右区保留 ±。
+- **底栏（语段列表下）:** 30px 三列 grid；无状态 hint 时每 8s 轮换快捷键提示（与设置页共用真源）。
 - **语段点击（波形 overlay）：** 首次点击未选中语段 → 选中并 seek 到语段头；已在该语段内再次点击 → seek 到点击位置（钳在语段内）；语段播放从当前 playhead 起（若在语段内）。
 
 ### Floating dialogs

@@ -27,6 +27,8 @@ copy_file "apps/desktop/docs/stitch-waveform-polish-spec.md" "19-stitch-waveform
 copy_file "apps/desktop/stitch-waveform-polish-layout.html" "20-stitch-waveform-polish-layout.html"
 copy_file "apps/desktop/docs/stitch-environment-llm-panel-spec.md" "21-stitch-environment-llm-panel-spec.md"
 copy_file "apps/desktop/stitch-environment-llm-layout.html" "22-stitch-environment-llm-layout.html"
+copy_file "apps/desktop/docs/stitch-welcome-hub-unified-spec.md" "23-stitch-welcome-hub-unified-spec.md"
+copy_file "apps/desktop/stitch-welcome-hub-layout.html" "24-stitch-welcome-hub-layout.html"
 copy_file "apps/desktop/stitch-welcome-page-full.png" "05-stitch-welcome-page-full.png"
 
 # Fix relative links after copying docs from apps/desktop/docs into docs/stitch-upload.

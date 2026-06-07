@@ -2,36 +2,44 @@
 
 本文件夹包含上传到 Google Stitch 的素材。**设计真源：** 仓库根 [`DESIGN.md`](../../DESIGN.md)（Notion Zen）。
 
-## 本轮上传（波形精修）
+## 欢迎页 × 项目 Hub 统一重设计（本轮推荐）
 
 | 编号 | 文件名 | 类型 | 说明 |
 |------|--------|------|------|
 | 01 | `01-DESIGN.md` | 设计系统 | 由 `prepare-stitch-upload.sh` 从根 `DESIGN.md` 生成 |
-| 19 | `19-stitch-waveform-polish-spec.md` | 页面 spec | 波形舞台 6 Frame 需求 + Stitch 提示词 |
-| 20 | `20-stitch-waveform-polish-layout.html` | 静态原型 | 6 状态对照 HTML，浏览器可直接打开 |
+| 23 | `23-stitch-welcome-hub-unified-spec.md` | 页面 spec | Welcome + Hub 共享 Stage Card；8 Frame + 提示词 |
+| 24 | `24-stitch-welcome-hub-layout.html` | 静态原型 | W1 / H1 / E1 三栏对照 HTML |
 
 ### 上传组合
 
 ```text
 01-DESIGN.md
-19-stitch-waveform-polish-spec.md
-20-stitch-waveform-polish-layout.html
+23-stitch-welcome-hub-unified-spec.md
+24-stitch-welcome-hub-layout.html
 ```
 
 ### Stitch 使用方式
 
 1. 上传上述三文件。
-2. 主提示词：复制 `19-stitch-waveform-polish-spec.md` §7 英文块（或 §8 中文块）。
-3. 要求 Stitch **对照 `20-stitch-waveform-polish-layout.html` 的 DOM 层级与比例**出图。
-4. 定稿后按 spec §10 回写 `tokens.ts` / `waveform.css` 等。
+2. 主提示词：复制 `23-stitch-welcome-hub-unified-spec.md` §11 英文块（或 §12 中文块）。
+3. 要求 Stitch **对照 `24-stitch-welcome-hub-layout.html` 的 Stage Card 与 FileRow 比例**出图。
+4. 必出 **W1 与 H1 并排对照** Frame，验证两页文件行同构。
+5. 定稿后按 spec §14 回写 `WelcomeView` / `ProjectFilesHubPanel` / 抽取共享组件。
 
 本地预览 HTML：
 
 ```bash
-open apps/desktop/stitch-waveform-polish-layout.html
-# 或同步后：
-open docs/stitch-upload/20-stitch-waveform-polish-layout.html
+open apps/desktop/stitch-welcome-hub-layout.html
 ```
+
+---
+
+## 波形精修（历史）
+
+| 编号 | 文件名 | 类型 | 说明 |
+|------|--------|------|------|
+| 19 | `19-stitch-waveform-polish-spec.md` | 页面 spec | 波形舞台 6 Frame 需求 + Stitch 提示词 |
+| 20 | `20-stitch-waveform-polish-layout.html` | 静态原型 | 6 状态对照 HTML，浏览器可直接打开 |
 
 ---
 
@@ -51,9 +59,11 @@ open docs/stitch-upload/20-stitch-waveform-polish-layout.html
 | 编号 | 文件名 | 说明 |
 |------|--------|------|
 | 02 | `02-ui-redesign-parallel-dev.md` | UI 重设计流程 |
-| 03 | `03-stitch-welcome-page-spec.md` | 欢迎页 spec |
+| 03 | `03-stitch-welcome-page-spec.md` | 欢迎页 spec（**旧**；见 23 统一稿） |
 | 04 | `04-stitch-work-page-spec.md` | 工作页 spec（波形细节见 19） |
-| 05 | `05-stitch-welcome-page-full.png` | 欢迎页截图 |
+| 23 | `23-stitch-welcome-hub-unified-spec.md` | **Welcome × Hub 统一重设计** |
+| 24 | `24-stitch-welcome-hub-layout.html` | Welcome/Hub/Empty 静态对照 |
+| 05 | `05-stitch-welcome-page-full.png` | 欢迎页截图（历史） |
 
 ---
 

@@ -2,7 +2,7 @@
 
 > **Research**：[`project-import-dedupe-remediation-research.md`](./project-import-dedupe-remediation-research.md)  
 > **Architecture**：[`desktop-project-file-lifecycle.md`](../../architecture/desktop-project-file-lifecycle.md)  
-> **状态**：Phase 6 自动闸门 ✅ · 手测待签收（2026-06-06）
+> **状态**：Phase 6 签收完成 ✅（手测 2026-06-06 · commit `e9897e8`）
 
 ---
 
@@ -46,28 +46,28 @@
 
 ## 手测清单
 
-> Agent 无法替代桌面 UI 手测。请在本地 `npm run dev -w @rushi/desktop` 后逐条勾选；全部 ✅ 即 Phase 6 签收完成。
+> 手测签收：2026-06-06 ✅
 
 ### 重复导入
 
-- [ ] 同一路径再导入 → 对话框秒出，取消 / 打开已有 / 仍要导入均可点
-- [ ] 「仍要导入」→ 新项目文件出现在列表并打开
-- [ ] 「打开已有」→ 进入已有文件，无新副本
+- [x] 同一路径再导入 → 对话框秒出，取消 / 打开已有 / 仍要导入均可点
+- [x] 「仍要导入」→ 新项目文件出现在列表并打开
+- [x] 「打开已有」→ 进入已有文件，无新副本
 
 ### Close Gate
 
-- [ ] 编辑器未保存 → 关文件 / 换项目 / 换文件 → `UnsavedCloseDialog`
-- [ ] 转写中 → 回 Hub → `TranscribeNavBlockDialog`；停止后若仍有未保存 → 未保存对话框
-- [ ] 转写中无未保存 → 关窗 → 转写拦截对话框
+- [x] 编辑器未保存 → 关文件 / 换项目 / 换文件 → `UnsavedCloseDialog`
+- [x] 转写中 → 回 Hub → `TranscribeNavBlockDialog`；停止后若仍有未保存 → 未保存对话框
+- [x] 转写中无未保存 → 关窗 → 转写拦截对话框
 
 ### Hub CRUD
 
-- [ ] 重命名 inline → 列表刷新，停留 Hub
-- [ ] 删除文件 → 确认后列表刷新；若删最后一个 → 空项目态
+- [x] 重命名 inline → 列表刷新，停留 Hub
+- [x] 删除文件 → 确认后列表刷新；若删最后一个 → 空项目态
 
 ### 批量拖放（空项目）
 
-- [ ] 多文件拖入 → 全部导入完成后打开**最新**一个
+- [x] 多文件拖入 → 全部导入完成后打开**最新**一个
 
 ---
 

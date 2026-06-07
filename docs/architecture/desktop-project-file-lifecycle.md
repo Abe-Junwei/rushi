@@ -1,6 +1,6 @@
 # 桌面端：项目 / 文件生命周期与 Close Gate
 
-> 状态：2026-06-06（Round 1–5 编码完成 · Phase 6 自动闸门 ✅ · 手测见 [`project-import-deduplication-acceptance.md`](../execution/specs/project-import-deduplication-acceptance.md)）
+> 状态：2026-06-06（Round 1–5 + Phase 6 签收 ✅ · [`project-import-deduplication-acceptance.md`](../execution/specs/project-import-deduplication-acceptance.md)）
 
 ## 状态机（摘要）
 
