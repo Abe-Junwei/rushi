@@ -443,3 +443,16 @@
   margin: 0 0.375rem;
   color: var(--notion-text-light);
 }
+
+/* 空项目 / 文件 Hub：窗口较矮时顶对齐，避免垂直居中裁切底部拖放区 */
+.empty-project-stage,
+.project-files-hub-stage {
+  justify-content: flex-start;
+}
+
+@media (min-height: 720px) {
+  .empty-project-stage,
+  .project-files-hub-stage {
+    justify-content: center;
+  }
+}

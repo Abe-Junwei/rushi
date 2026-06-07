@@ -11,6 +11,7 @@ permissions = [
   "allow-create-empty-text-file",
   "allow-import-audio-to-project",
   "allow-import-text-to-project",
+  "allow-check-project-import-duplicate",
   "allow-project-list",
   "allow-project-load",
   "allow-project-list-edit-log",

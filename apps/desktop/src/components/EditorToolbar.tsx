@@ -1,6 +1,5 @@
 import { memo, useEffect, useRef, useState } from "react";
 import type { ProjectControllerApi } from "../pages/useProjectController";
-import * as fileApi from "../tauri/fileApi";
 import { FileInput, FileOutput, Settings } from "lucide-react";
 import { EditorWorkspaceNav } from "./EditorWorkspaceNav";
 import { LlmTopStatusChip } from "./LlmTopStatusChip";
@@ -65,11 +64,7 @@ export const EditorToolbar = memo(function EditorToolbar({
     if (!c.current) return;
     setPendingImport("audio");
     try {
-      const srcPath = await fileApi.pickAudioPath();
-      if (!srcPath) return;
-      const name = srcPath.replace(/^.*[/\\]/, "").replace(/\.[^.]+$/, "") || "未命名音频";
-      await fileApi.importAudioToProject(c.current.id, name, srcPath);
-      await c.loadProject(c.current.id);
+      await c.pickAndImportFileToProject("audio");
     } catch (e) {
       c.setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -80,11 +75,7 @@ export const EditorToolbar = memo(function EditorToolbar({
     if (!c.current) return;
     setPendingImport("text");
     try {
-      const srcPath = await fileApi.pickTextPath();
-      if (!srcPath) return;
-      const name = srcPath.replace(/^.*[/\\]/, "").replace(/\.[^.]+$/, "") || "未命名文本";
-      await fileApi.importTextToProject(c.current.id, name, srcPath);
-      await c.loadProject(c.current.id);
+      await c.pickAndImportFileToProject("text");
     } catch (e) {
       c.setError(e instanceof Error ? e.message : String(e));
     } finally {
@@ -109,6 +100,7 @@ export const EditorToolbar = memo(function EditorToolbar({
           projectName={projectName}
           currentLabel={currentFileName}
           fileOpen
+          hasUnsavedEdits={c.hasUnsavedFileEdits()}
           onBack={() => c.closeFile()}
           onProjectHome={() => c.closeFile()}
           disabled={c.busy}

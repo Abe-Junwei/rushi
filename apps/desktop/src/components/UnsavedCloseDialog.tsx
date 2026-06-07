@@ -3,6 +3,7 @@ import {
   UNSAVED_NAV_DISCARD_PROMPT,
 } from "../pages/useSegmentDirtyState";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
+import { DialogOverlay } from "./DialogOverlay";
 
 export type UnsavedGateIntent = "app-quit" | "navigate";
 
@@ -33,10 +34,10 @@ export function UnsavedCloseDialog({
   const saveLabel = intent === "app-quit" ? "保存并退出" : "保存并离开";
 
   return (
-    <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-zen-ink/25 p-6 backdrop-blur-[2px]"
-      role="presentation"
-      onMouseDown={(e) => {
+    <DialogOverlay
+      open={open}
+      layer="gate"
+      onBackdropMouseDown={(e) => {
         if (e.target === e.currentTarget) onStay();
       }}
     >
@@ -73,9 +74,9 @@ export function UnsavedCloseDialog({
           >
             {discardLabel}
           </button>
-            <button
-              type="button"
-              className="rounded-md border-0 bg-zen-saffron-mid px-3 py-1.5 text-sm font-medium text-notion-bg transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
+          <button
+            type="button"
+            className="rounded-md border-0 bg-zen-saffron-mid px-3 py-1.5 text-sm font-medium text-notion-bg transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
             disabled={busy}
             onClick={onSaveAndClose}
           >
@@ -83,6 +84,6 @@ export function UnsavedCloseDialog({
           </button>
         </div>
       </div>
-    </div>
+    </DialogOverlay>
   );
 }

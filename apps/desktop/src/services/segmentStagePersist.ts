@@ -34,10 +34,16 @@ export function withAutoTranscribeStage(seg: SegmentDto): SegmentDto {
   return { ...seg, text_stage: DEFAULT_SEGMENT_TEXT_STAGE, finalize_via: clearedFinalize() };
 }
 
-function savedTextForSegment(savedSnapshot: SegmentDto[], seg: SegmentDto, idx: number): string {
+/** 快照中找不到对应 uid 时返回 null（重转写后新 uid，勿当成空串基准）。 */
+function savedTextForSegment(
+  savedSnapshot: SegmentDto[],
+  seg: SegmentDto,
+  idx: number,
+): string | null {
   const uid = seg.uid?.trim();
   const saved = uid ? savedSnapshot.find((s) => s.uid?.trim() === uid) : savedSnapshot[idx];
-  return saved?.text ?? "";
+  if (!saved) return null;
+  return saved.text ?? "";
 }
 
 /** 普通 save 前：正文相对 savedSnapshot 变更 → manual_transcribe。 */
@@ -46,9 +52,16 @@ export function applyManualTranscribeStageOnTextSave(
   savedSnapshot: SegmentDto[],
 ): SegmentDto[] {
   return segments.map((seg, idx) => {
-    if (seg.text === savedTextForSegment(savedSnapshot, seg, idx)) return seg;
+    const savedText = savedTextForSegment(savedSnapshot, seg, idx);
+    if (savedText === null) return seg;
+    if (seg.text === savedText) return seg;
     return withManualTranscribeStage(seg);
   });
+}
+
+/** 转写落库重载后：全文件 auto_transcribe 并对齐脏检查快照（spec §4.3 重转写）。 */
+export function syncSegmentStagesAfterTranscribeReload(segments: SegmentDto[]): SegmentDto[] {
+  return allSegmentsAutoTranscribe(segments);
 }
 
 /** LLM 写回：变更 uid 集合 → ai_revised。 */

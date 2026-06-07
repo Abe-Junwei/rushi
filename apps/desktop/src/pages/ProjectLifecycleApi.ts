@@ -41,6 +41,7 @@ export interface ProjectLifecycleApi {
   createEmptyProject: () => Promise<void>;
   createProjectFromText: () => Promise<void>;
   loadProject: (id: string) => Promise<void>;
+  loadProjectAfterImport: (id: string) => Promise<void>;
   openFile: (fileId: string) => Promise<void>;
   openLastEditorWorkspace: () => Promise<void>;
   closeFile: () => void;
@@ -177,4 +178,33 @@ export interface ProjectLifecycleApi {
   stayAfterCloseAttempt: () => void;
   discardUnsavedAndClose: () => void;
   saveAndClose: () => void;
+  duplicateImportConfirmOpen: boolean;
+  duplicateImportChecking: boolean;
+  duplicateImportCheck: import("../utils/projectImportDuplicate").ImportDuplicateCheck | null;
+  cancelDuplicateImport: () => void;
+  openExistingDuplicateImport: () => void;
+  confirmDuplicateImportCopy: () => void;
+  importFileToProject: (
+    kind: "audio" | "text",
+    srcPath: string,
+    options?: import("./useProjectImportDuplicateController").ImportFileToProjectOptions,
+  ) => Promise<boolean>;
+  pickAndImportFileToProject: (
+    kind: "audio" | "text",
+    options?: import("./useProjectImportDuplicateController").ImportFileToProjectOptions,
+  ) => Promise<boolean>;
+  transcribeNavBlockOpen: boolean;
+  cancelTranscribeNavBlock: () => void;
+  confirmTranscribeNavBlock: () => void;
+  hasUnsavedFileEdits: () => boolean;
+  renamingProjectFileId: string | null;
+  renameProjectFileDraft: string;
+  setRenameProjectFileDraft: (value: string) => void;
+  beginRenameProjectFile: (fileId: string, currentName: string) => void;
+  cancelRenameProjectFile: () => void;
+  commitRenameProjectFile: () => void;
+  pendingProjectFileDelete: import("./useProjectFileMutationController").PendingProjectFileDelete;
+  requestDeleteProjectFile: (fileId: string, fileName: string) => void;
+  cancelDeleteProjectFile: () => void;
+  confirmDeleteProjectFile: () => void;
 }

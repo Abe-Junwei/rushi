@@ -78,6 +78,7 @@ pub fn run() {
             project::create_empty_text_file,
             project::import_audio_to_project,
             project::import_text_to_project,
+            project::check_project_import_duplicate,
             project::project_list,
             project::project_load,
             project::project_list_edit_log,

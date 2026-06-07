@@ -212,6 +212,29 @@ fn migrate_correction_memory_p2(conn: &Connection) -> rusqlite::Result<()> {
     Ok(())
 }
 
+fn migrate_files_import_provenance(conn: &Connection) -> rusqlite::Result<()> {
+    let cols = table_columns(conn, "files")?;
+    if cols.is_empty() {
+        return Ok(());
+    }
+    if !cols.iter().any(|c| c == "import_source_path") {
+        conn.execute("ALTER TABLE files ADD COLUMN import_source_path TEXT", [])?;
+    }
+    if !cols.iter().any(|c| c == "import_content_sha256") {
+        conn.execute("ALTER TABLE files ADD COLUMN import_content_sha256 TEXT", [])?;
+    }
+    if !cols.iter().any(|c| c == "import_source_size") {
+        conn.execute("ALTER TABLE files ADD COLUMN import_source_size INTEGER", [])?;
+    }
+    if !cols.iter().any(|c| c == "import_source_modified_ms") {
+        conn.execute("ALTER TABLE files ADD COLUMN import_source_modified_ms INTEGER", [])?;
+    }
+    if let Err(e) = crate::project::import_duplicate::backfill_files_import_provenance(conn) {
+        eprintln!("[db] backfill_files_import_provenance: {e}");
+    }
+    Ok(())
+}
+
 /// Greenfield: if an old project-centric projects table (with audio_storage_path) exists,
 /// drop all dependent tables so the new file-centric schema can be created.
 fn ensure_projects_schema_v2(conn: &Connection) -> rusqlite::Result<()> {
@@ -301,6 +324,7 @@ pub fn migrate(conn: &Connection) -> rusqlite::Result<()> {
     migrate_glossary_gly3(conn)?;
     migrate_correction_memory_p2(conn)?;
     migrate_edit_log_snapshots(conn)?;
+    migrate_files_import_provenance(conn)?;
     Ok(())
 }
 
@@ -308,6 +332,18 @@ pub fn migrate(conn: &Connection) -> rusqlite::Result<()> {
 mod tests {
     use super::*;
     use rusqlite::Connection;
+
+    #[test]
+    fn migrate_files_import_provenance_adds_columns() {
+        let conn = Connection::open_in_memory().unwrap();
+        migrate(&conn).unwrap();
+        let cols = table_columns(&conn, "files").unwrap();
+        assert!(cols.contains(&"import_source_path".to_string()));
+        assert!(cols.contains(&"import_content_sha256".to_string()));
+        assert!(cols.contains(&"import_source_size".to_string()));
+        assert!(cols.contains(&"import_source_modified_ms".to_string()));
+        migrate(&conn).unwrap();
+    }
 
     #[test]
     fn migrate_creates_all_tables() {

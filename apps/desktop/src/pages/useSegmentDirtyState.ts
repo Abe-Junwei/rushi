@@ -63,8 +63,7 @@ export function useSegmentDirtyState(deps: SegmentDirtyStateDeps): SegmentDirtyS
   }, [currentFileId, segmentsRef]);
 
   const confirmDiscardUnsavedIfNeeded = useCallback(() => {
-    if (!hasUnsavedSegmentChanges()) return true;
-    return window.confirm(UNSAVED_SEGMENTS_CONFIRM);
+    return !hasUnsavedSegmentChanges();
   }, [hasUnsavedSegmentChanges]);
 
   return {

@@ -64,6 +64,8 @@ function baseArgs(overrides: Partial<Parameters<typeof useProjectCloseGateContro
     applyDetail,
     beginBusy: vi.fn(),
     busy: false,
+    busyReason: null,
+    cancelTranscribe: vi.fn(),
     closeFile,
     current: makeDetail("proj-a"),
     currentFileId: "file-1",
@@ -155,6 +157,62 @@ describe("useProjectCloseGateController", () => {
     });
 
     expect(result.current.closeGateOpen).toBe(false);
+    expect(args.closeFile).not.toHaveBeenCalled();
+  });
+
+  it("loadProject on hub (no current file) refreshes list without opening editor", async () => {
+    const detail = makeDetail("proj-a");
+    vi.mocked(projectLoad).mockResolvedValue(detail);
+    const args = baseArgs({ currentFileId: null });
+    const { result } = renderHook(() => useProjectCloseGateController(args));
+
+    await act(async () => {
+      await result.current.loadProject("proj-a");
+    });
+
+    expect(projectLoad).toHaveBeenCalledWith("proj-a");
+    expect(args.applyDetail).toHaveBeenCalled();
+    expect(args.openFile).not.toHaveBeenCalled();
+  });
+
+  it("loadProjectAfterImport opens newest file", async () => {
+    const detail = makeDetail("proj-a");
+    detail.files = [
+      { id: "file-old", name: "old.wav", file_type: "paired", updated_at_ms: 1 },
+      { id: "file-new", name: "new.wav", file_type: "paired", updated_at_ms: 99 },
+    ];
+    vi.mocked(projectLoad).mockResolvedValue(detail);
+    const args = baseArgs({ currentFileId: null });
+    const { result } = renderHook(() => useProjectCloseGateController(args));
+
+    await act(async () => {
+      await result.current.loadProjectAfterImport("proj-a");
+    });
+
+    expect(args.openFile).toHaveBeenCalledWith("file-new");
+  });
+
+  it("confirmTranscribeNavBlock chains unsaved gate after stopping transcribe", async () => {
+    const args = baseArgs({
+      busy: true,
+      busyReason: "transcribe",
+      dirty: makeDirty(true),
+    });
+    const { result } = renderHook(() => useProjectCloseGateController(args));
+
+    act(() => {
+      result.current.closeFileWrapped();
+    });
+
+    expect(result.current.transcribeNavBlockOpen).toBe(true);
+
+    await act(async () => {
+      await result.current.confirmTranscribeNavBlock();
+    });
+
+    expect(args.cancelTranscribe).toHaveBeenCalled();
+    expect(result.current.transcribeNavBlockOpen).toBe(false);
+    expect(result.current.closeGateOpen).toBe(true);
     expect(args.closeFile).not.toHaveBeenCalled();
   });
 });

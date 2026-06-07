@@ -29,6 +29,8 @@ export function busyOverlayCopy(
       return { title: "正在创建项目...", hint: "正在复制音频并写入数据库" };
     case "load":
       return { title: "正在加载项目...", hint: "完整识别可能需数分钟" };
+    case "import":
+      return { title: "正在导入文件...", hint: "请稍候" };
     case "delete":
       return { title: "正在删除项目...", hint: "请稍候" };
     case "install_funasr":

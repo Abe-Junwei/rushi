@@ -11,6 +11,8 @@ const PROJECT_LINK =
 export type EditorWorkspaceNavProps = {
   projectName: string;
   currentLabel: string;
+  /** 当前打开文件有未保存语段修改 */
+  hasUnsavedEdits?: boolean;
   /** Chevron：打开文件时回到项目内页；未打开文件时离开项目 */
   onBack: () => void;
   /** 已打开文件时点击项目名，与 onBack 同为回到项目文件列表 */
@@ -31,6 +33,7 @@ export function EditorWorkspaceNav({
   fileOpen,
   backLabel,
   disabled = false,
+  hasUnsavedEdits = false,
 }: EditorWorkspaceNavProps) {
   const resolvedBackLabel =
     backLabel ?? (fileOpen ? "返回项目文件列表" : "返回项目列表");
@@ -87,7 +90,18 @@ export function EditorWorkspaceNav({
             className="min-w-0 flex-1 truncate text-[13px] font-semibold text-notion-text"
             title={currentLabel}
           >
-            {currentLabel}
+            {hasUnsavedEdits ? (
+              <span className="inline-flex min-w-0 items-center gap-1.5">
+                <span
+                  className="h-1.5 w-1.5 shrink-0 rounded-full bg-zen-saffron"
+                  title="有未保存修改"
+                  aria-hidden
+                />
+                <span className="truncate">{currentLabel}</span>
+              </span>
+            ) : (
+              currentLabel
+            )}
           </span>
         </div>
       </nav>

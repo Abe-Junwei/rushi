@@ -227,6 +227,8 @@ export function ProjectPanel() {
 
       {c.busy &&
       c.busyReason !== "transcribe" &&
+      !c.duplicateImportConfirmOpen &&
+      !c.duplicateImportChecking &&
       !(c.busyReason === "stage_b" && c.postTranscribeStageBDialog.phase === "loading") ? (
         <ProjectBusyOverlay
           reason={c.busyReason}

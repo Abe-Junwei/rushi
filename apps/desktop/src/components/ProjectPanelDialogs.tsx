@@ -5,10 +5,13 @@ import type { SegmentDto } from "../tauri/projectApi";
 import { AutoTranscribeStartDialog } from "./AutoTranscribeStartDialog";
 import { CorrectionRulesPreviewDialog } from "./CorrectionRulesPreviewDialog";
 import { DeliveryExportDialog } from "./DeliveryExportDialog";
+import { DuplicateImportConfirmDialog } from "./DuplicateImportConfirmDialog";
+import { DeleteProjectFileConfirmDialog } from "./DeleteProjectFileConfirmDialog";
 import { FindReplaceDialog } from "./FindReplaceDialog";
 import { GlossaryLearnPromptDialog } from "./GlossaryLearnPromptDialog";
 import { PostTranscribeStageBDialog } from "./PostTranscribeStageBDialog";
 import { ManualCorrectionMemoryDialog } from "./segmentRow/ManualCorrectionMemoryDialog";
+import { TranscribeNavBlockDialog } from "./TranscribeNavBlockDialog";
 import { UnsavedCloseDialog } from "./UnsavedCloseDialog";
 
 export type ProjectPanelDialogsProps = {
@@ -137,6 +140,30 @@ export function ProjectPanelDialogs({
         onStay={onStayAfterCloseAttempt}
         onDiscardAndClose={() => void c.discardUnsavedAndClose()}
         onSaveAndClose={() => void c.saveAndClose()}
+      />
+
+      <DuplicateImportConfirmDialog
+        open={c.duplicateImportConfirmOpen}
+        checking={c.duplicateImportChecking}
+        check={c.duplicateImportCheck}
+        onCancel={c.cancelDuplicateImport}
+        onOpenExisting={c.openExistingDuplicateImport}
+        onConfirmCopy={c.confirmDuplicateImportCopy}
+      />
+
+      <TranscribeNavBlockDialog
+        open={c.transcribeNavBlockOpen}
+        busy={c.busy}
+        onStay={c.cancelTranscribeNavBlock}
+        onStopAndLeave={() => void c.confirmTranscribeNavBlock()}
+      />
+
+      <DeleteProjectFileConfirmDialog
+        open={c.pendingProjectFileDelete != null}
+        fileName={c.pendingProjectFileDelete?.fileName ?? null}
+        busy={c.busy}
+        onCancel={c.cancelDeleteProjectFile}
+        onConfirm={() => void c.confirmDeleteProjectFile()}
       />
     </>
   );

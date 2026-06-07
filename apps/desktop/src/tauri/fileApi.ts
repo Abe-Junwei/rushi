@@ -6,6 +6,7 @@ import type {
   RawProjectDetail,
   SegmentDto,
 } from "./projectTypes";
+import type { ImportDuplicateCheck } from "../utils/projectImportDuplicate";
 
 export type { FileDetail, FileSummary, RawProjectDetail, SegmentDto } from "./projectTypes";
 
@@ -45,6 +46,13 @@ export async function importTextToProject(
   srcPath: string,
 ): Promise<RawProjectDetail> {
   return invoke<RawProjectDetail>("import_text_to_project", { projectId, name, srcPath });
+}
+
+export async function checkProjectImportDuplicate(
+  projectId: string,
+  srcPath: string,
+): Promise<ImportDuplicateCheck> {
+  return invoke<ImportDuplicateCheck>("check_project_import_duplicate", { projectId, srcPath });
 }
 
 export async function pickTextPath(): Promise<string | null> {

@@ -6,6 +6,7 @@ import {
   applyStagePatchesBeforePersist,
   inheritSplitLeftStage,
   mergeSegmentStageFields,
+  syncSegmentStagesAfterTranscribeReload,
 } from "./segmentStagePersist";
 
 function seg(text: string, uid = "u1", stage: SegmentDto["text_stage"] = "auto_transcribe"): SegmentDto {
@@ -27,6 +28,30 @@ describe("segmentStagePersist", () => {
     const live = [seg("ab")];
     const out = applyManualTranscribeStageOnTextSave(live, saved);
     expect(out[0]?.text_stage).toBe("manual_transcribe");
+  });
+
+  it("does not upgrade auto_transcribe when uid missing from snapshot (re-transcribe)", () => {
+    const saved = [seg("old text", "old-uid")];
+    const live = [seg("new asr text", "new-uid", "auto_transcribe")];
+    const out = applyManualTranscribeStageOnTextSave(live, saved);
+    expect(out[0]?.text_stage).toBe("auto_transcribe");
+  });
+
+  it("keeps manual_transcribe for new uid user segment without snapshot row", () => {
+    const saved = [seg("a", "u1")];
+    const live = [seg("a", "u1"), seg("hand typed", "u2", "manual_transcribe")];
+    const out = applyManualTranscribeStageOnTextSave(live, saved);
+    expect(out[1]?.text_stage).toBe("manual_transcribe");
+  });
+
+  it("syncSegmentStagesAfterTranscribeReload resets all stages", () => {
+    const rows = [
+      seg("a", "u1", "manual_transcribe"),
+      seg("b", "u2", "finalized"),
+    ];
+    const out = syncSegmentStagesAfterTranscribeReload(rows);
+    expect(out.every((s) => s.text_stage === "auto_transcribe")).toBe(true);
+    expect(out.every((s) => s.finalize_via === null)).toBe(true);
   });
 
   it("finalize with draft uses confirm_edit", () => {

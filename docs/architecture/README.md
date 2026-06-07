@@ -15,6 +15,7 @@
 - [`../execution/specs/segment-overlay-virtualization.md`](../execution/specs/segment-overlay-virtualization.md) — 密集语段 display/interaction 分离（**禁止** scroll viewport React cull）。
 - [`desktop-floating-dialog-panels.md`](./desktop-floating-dialog-panels.md) — 可拖动浮动对话框：默认 `compactDialog` + Notion/Zen + `controlStyles` 约定。
 - [`desktop-capability-ui-state-alignment.md`](./desktop-capability-ui-state-alignment.md) — **能力字段与 UI 状态对齐**（R3-STATE 闸门、维度假设、R3 疏漏台账）。
+- [`desktop-project-file-lifecycle.md`](./desktop-project-file-lifecycle.md) — 项目/文件生命周期、Close Gate、导入去重与 Hub CRUD。
 - [`r3f-asr-setup-wizard-acceptance.md`](../execution/specs/r3f-asr-setup-wizard-acceptance.md) — 本机 ASR 一键环境准备（诊断 + 编排）验收。
 - [`r3d-settings-ia-acceptance.md`](../execution/specs/r3d-settings-ia-acceptance.md) — 环境面板轻量 IA 收口（非全站重设计）。
 - [`asr-hotword-bias-truth.md`](./asr-hotword-bias-truth.md) — rushi-asr 热词是否进模型、`warnings` 与前端 `supportsHotwordBias` 占位说明（计划书 §4.3 / §6.1 对齐）。

@@ -13,6 +13,9 @@ import {
   useProjectCloseGateController,
   type ProjectCloseGateControllerApi,
 } from "./useProjectCloseGateController";
+import { useProjectImportDuplicateController } from "./useProjectImportDuplicateController";
+import { useProjectFileMutationController } from "./useProjectFileMutationController";
+import { syncSegmentStagesAfterTranscribeReload } from "../services/segmentStagePersist";
 import { useSegmentDirtyState } from "./useSegmentDirtyState";
 import { useAutoSaveSegments } from "./useAutoSaveSegments";
 import {
@@ -165,6 +168,12 @@ export function useProjectLifecycleController(
     localTranscribePreflight,
     sttOnlineRuntimeEpoch,
     clearScheduledAutoSave: () => clearAutoSaveRef.current(),
+    onTranscribeSuccess: () => {
+      const synced = syncSegmentStagesAfterTranscribeReload(segmentsRef.current);
+      segmentsRef.current = synced;
+      setSegments(synced);
+      dirty.setSavedSnapshot(synced);
+    },
   });
 
   const applyDetail = useCallback(
@@ -179,6 +188,8 @@ export function useProjectLifecycleController(
     applyDetail,
     beginBusy,
     busy,
+    busyReason,
+    cancelTranscribe: transcribeJob.cancelTranscribe,
     closeFile,
     current,
     currentFileId,
@@ -196,6 +207,23 @@ export function useProjectLifecycleController(
     projects,
   });
   closeGateRef.current = closeGate;
+
+  const importDuplicate = useProjectImportDuplicateController({
+    currentProjectId: current?.id,
+    busy,
+    beginBusy,
+    endBusy,
+    loadProjectAfterImport: closeGate.loadProjectAfterImport,
+    openFile: closeGate.openFileWrapped,
+    setError,
+  });
+
+  const fileMutation = useProjectFileMutationController({
+    projectId: current?.id,
+    busy,
+    refreshProjectHub: closeGate.refreshProjectHub,
+    setError,
+  });
 
   const refreshCurrentProject = useCallback(async () => {
     if (busy || !current) return;
@@ -294,6 +322,7 @@ export function useProjectLifecycleController(
     refreshProjects, pickAudio, clearPickedAudio,
     createProject: crud.createProject, createEmptyProject: crud.createEmptyProject, createProjectFromText: crud.createProjectFromText,
     loadProject: closeGate.loadProject,
+    loadProjectAfterImport: closeGate.loadProjectAfterImport,
     refreshCurrentProject,
     openFile: closeGate.openFileWrapped,
     restoreEditorFromEditLog,
@@ -355,5 +384,27 @@ export function useProjectLifecycleController(
     saveAndClose: () => {
       void closeGate.saveAndClose();
     },
+    transcribeNavBlockOpen: closeGate.transcribeNavBlockOpen,
+    cancelTranscribeNavBlock: closeGate.cancelTranscribeNavBlock,
+    confirmTranscribeNavBlock: () => void closeGate.confirmTranscribeNavBlock(),
+    hasUnsavedFileEdits: dirty.hasUnsavedSegmentChanges,
+    duplicateImportConfirmOpen: importDuplicate.duplicateImportConfirmOpen,
+    duplicateImportChecking: importDuplicate.duplicateImportChecking,
+    duplicateImportCheck: importDuplicate.duplicateImportCheck,
+    cancelDuplicateImport: importDuplicate.cancelDuplicateImport,
+    openExistingDuplicateImport: importDuplicate.openExistingDuplicateImport,
+    confirmDuplicateImportCopy: importDuplicate.confirmDuplicateImportCopy,
+    importFileToProject: importDuplicate.importFileToProject,
+    pickAndImportFileToProject: importDuplicate.pickAndImportFileToProject,
+    renamingProjectFileId: fileMutation.renamingProjectFileId,
+    renameProjectFileDraft: fileMutation.renameProjectFileDraft,
+    setRenameProjectFileDraft: fileMutation.setRenameProjectFileDraft,
+    beginRenameProjectFile: fileMutation.beginRenameProjectFile,
+    cancelRenameProjectFile: fileMutation.cancelRenameProjectFile,
+    commitRenameProjectFile: () => void fileMutation.commitRenameProjectFile(),
+    pendingProjectFileDelete: fileMutation.pendingProjectFileDelete,
+    requestDeleteProjectFile: fileMutation.requestDeleteProjectFile,
+    cancelDeleteProjectFile: fileMutation.cancelDeleteProjectFile,
+    confirmDeleteProjectFile: () => void fileMutation.confirmDeleteProjectFile(),
   };
 }

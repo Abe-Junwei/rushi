@@ -16,6 +16,7 @@ pub const APP_COMMANDS: &[&str] = &[
     "create_empty_text_file",
     "import_audio_to_project",
     "import_text_to_project",
+    "check_project_import_duplicate",
     "project_list",
     "project_load",
     "project_list_edit_log",

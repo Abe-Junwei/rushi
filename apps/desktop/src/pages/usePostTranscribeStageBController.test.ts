@@ -1,4 +1,4 @@
-import { act, renderHook } from "@testing-library/react";
+import { act, renderHook, waitFor } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SegmentDto } from "../tauri/projectApi";
 import { toast } from "../services/ui/toast";
@@ -181,7 +181,7 @@ describe("usePostTranscribeStageBController", () => {
   });
 
   it("startPreview does not mark connection verified when all batches fail", async () => {
-    window.localStorage.setItem("rushi:auto-punctuate-consent:v1", "1");
+    window.localStorage.setItem("rushi:auto-punctuate-consent:v1", "accepted");
     vi.mocked(runPostTranscribeStageBPreview).mockResolvedValue({
       changes: [],
       typoStepError: "网络错误",
@@ -196,16 +196,15 @@ describe("usePostTranscribeStageBController", () => {
     await act(async () => {
       await result.current.offerPostTranscribeStageB();
     });
-    act(() => {
-      result.current.confirmPostTranscribeStageBConsent();
+    await waitFor(() => {
+      expect(result.current.postTranscribeStageBDialog.phase).toBe("empty");
     });
 
     expect(markLlmConnectionVerified).not.toHaveBeenCalled();
-    expect(result.current.postTranscribeStageBDialog.phase).toBe("empty");
   });
 
   it("startPreview marks connection verified when preview succeeds", async () => {
-    window.localStorage.setItem("rushi:auto-punctuate-consent:v1", "1");
+    window.localStorage.setItem("rushi:auto-punctuate-consent:v1", "accepted");
     vi.mocked(runPostTranscribeStageBPreview).mockResolvedValue({
       changes: [
         {
@@ -233,11 +232,10 @@ describe("usePostTranscribeStageBController", () => {
     await act(async () => {
       await result.current.offerPostTranscribeStageB();
     });
-    act(() => {
-      result.current.confirmPostTranscribeStageBConsent();
+    await waitFor(() => {
+      expect(result.current.postTranscribeStageBDialog.phase).toBe("preview");
     });
 
     expect(markLlmConnectionVerified).toHaveBeenCalledTimes(1);
-    expect(result.current.postTranscribeStageBDialog.phase).toBe("preview");
   });
 });

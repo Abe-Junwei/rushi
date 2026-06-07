@@ -7,6 +7,7 @@ import type { SegmentMutationApi } from "./useSegmentMutationController";
 export type BusyReason =
   | "create"
   | "load"
+  | "import"
   | "transcribe"
   | "save"
   | "delete"

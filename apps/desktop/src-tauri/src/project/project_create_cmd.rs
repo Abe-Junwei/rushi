@@ -1,4 +1,5 @@
 use super::asset_scope;
+use super::import_duplicate::import_provenance_for_src;
 use super::import_parse::{parse_srt, parse_txt};
 use super::segment_uid::segment_uid_or_new;
 use super::types::ProjectDetail;
@@ -58,6 +59,7 @@ pub fn project_create_from_audio(
     let dest_str = canonicalize_audio_storage_path(&dest_audio).inspect_err(|_| {
         let _ = fs::remove_dir_all(&dest_dir);
     })?;
+    let provenance = import_provenance_for_src(&src_path)?;
     let t = now_ms();
     let mut conn = open_db(st)?;
     let tx = conn.transaction().map_err(|e| e.to_string())?;
@@ -69,9 +71,21 @@ pub fn project_create_from_audio(
         return Err(e.to_string());
     }
     if let Err(e) = tx.execute(
-        "INSERT INTO files (id, project_id, name, file_type, audio_path, created_at_ms, updated_at_ms) \
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-        params![&file_id, &project_id, &name, "paired", &dest_str, t, t],
+        "INSERT INTO files (id, project_id, name, file_type, audio_path, import_source_path, import_content_sha256, import_source_size, import_source_modified_ms, created_at_ms, updated_at_ms) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+        params![
+            &file_id,
+            &project_id,
+            &name,
+            "paired",
+            &dest_str,
+            &provenance.source_path,
+            &provenance.content_sha256,
+            provenance.source_size,
+            provenance.source_modified_ms,
+            t,
+            t,
+        ],
     ) {
         let _ = fs::remove_dir_all(&dest_dir);
         return Err(e.to_string());
@@ -123,6 +137,7 @@ pub fn create_project_from_text(
     };
     let project_id = Uuid::new_v4().to_string();
     let file_id = Uuid::new_v4().to_string();
+    let provenance = import_provenance_for_src(&src_path)?;
     let t = now_ms();
     let mut conn = open_db(st)?;
     let tx = conn.transaction().map_err(|e| e.to_string())?;
@@ -132,9 +147,20 @@ pub fn create_project_from_text(
     )
     .map_err(|e| e.to_string())?;
     tx.execute(
-        "INSERT INTO files (id, project_id, name, file_type, created_at_ms, updated_at_ms) \
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-        params![&file_id, &project_id, &name, "text", t, t],
+        "INSERT INTO files (id, project_id, name, file_type, import_source_path, import_content_sha256, import_source_size, import_source_modified_ms, created_at_ms, updated_at_ms) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+        params![
+            &file_id,
+            &project_id,
+            &name,
+            "text",
+            &provenance.source_path,
+            &provenance.content_sha256,
+            provenance.source_size,
+            provenance.source_modified_ms,
+            t,
+            t,
+        ],
     )
     .map_err(|e| e.to_string())?;
     for s in &segments {
@@ -208,19 +234,41 @@ pub fn import_audio_to_project(
     let dest_audio = dest_dir.join(format!("{file_id}.{ext}"));
     copy_audio_with_context(&src, &dest_audio)?;
     let dest_str = canonicalize_audio_storage_path(&dest_audio)?;
+    let provenance = import_provenance_for_src(&src_path)?;
     let t = now_ms();
-    let conn = open_db(st)?;
-    conn.execute(
-        "INSERT INTO files (id, project_id, name, file_type, audio_path, created_at_ms, updated_at_ms) \
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7)",
-        params![&file_id, &project_id, &name, "paired", &dest_str, t, t],
-    )
-    .map_err(|e| e.to_string())?;
-    conn.execute(
-        "UPDATE projects SET updated_at_ms = ?1 WHERE id = ?2",
-        params![t, &project_id],
-    )
-    .map_err(|e| e.to_string())?;
+    let mut conn = open_db(st)?;
+    let db_result = (|| -> Result<(), String> {
+        let tx = conn.transaction().map_err(|e| e.to_string())?;
+        tx.execute(
+            "INSERT INTO files (id, project_id, name, file_type, audio_path, import_source_path, import_content_sha256, import_source_size, import_source_modified_ms, created_at_ms, updated_at_ms) \
+             VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
+            params![
+                &file_id,
+                &project_id,
+                &name,
+                "paired",
+                &dest_str,
+                &provenance.source_path,
+                &provenance.content_sha256,
+                provenance.source_size,
+                provenance.source_modified_ms,
+                t,
+                t,
+            ],
+        )
+        .map_err(|e| e.to_string())?;
+        tx.execute(
+            "UPDATE projects SET updated_at_ms = ?1 WHERE id = ?2",
+            params![t, &project_id],
+        )
+        .map_err(|e| e.to_string())?;
+        tx.commit().map_err(|e| e.to_string())?;
+        Ok(())
+    })();
+    if db_result.is_err() {
+        let _ = fs::remove_file(&dest_audio);
+        return Err(db_result.unwrap_err());
+    }
     allow_imported_audio_asset(&app, &dest_audio);
     project_detail_from_conn(&conn, &project_id)
 }
@@ -249,13 +297,25 @@ pub fn import_text_to_project(
         parse_txt(&content)
     };
     let file_id = Uuid::new_v4().to_string();
+    let provenance = import_provenance_for_src(&src_path)?;
     let t = now_ms();
     let mut conn = open_db(st)?;
     let tx = conn.transaction().map_err(|e| e.to_string())?;
     tx.execute(
-        "INSERT INTO files (id, project_id, name, file_type, created_at_ms, updated_at_ms) \
-         VALUES (?1, ?2, ?3, ?4, ?5, ?6)",
-        params![&file_id, &project_id, &name, "text", t, t],
+        "INSERT INTO files (id, project_id, name, file_type, import_source_path, import_content_sha256, import_source_size, import_source_modified_ms, created_at_ms, updated_at_ms) \
+         VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
+        params![
+            &file_id,
+            &project_id,
+            &name,
+            "text",
+            &provenance.source_path,
+            &provenance.content_sha256,
+            provenance.source_size,
+            provenance.source_modified_ms,
+            t,
+            t,
+        ],
     )
     .map_err(|e| e.to_string())?;
     for s in &segments {

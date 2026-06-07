@@ -17,6 +17,8 @@ type UseProjectCloseGateControllerArgs = {
   applyDetail: (detail: ProjectDetail) => void;
   beginBusy: (reason: BusyReason) => void;
   busy: boolean;
+  busyReason: BusyReason | null;
+  cancelTranscribe: () => void | Promise<void>;
   closeFile: () => void;
   current: ProjectDetail | null;
   currentFileId: string | null;
@@ -43,11 +45,20 @@ export type ProjectCloseGateControllerApi = {
   closeProjectWrapped: () => void;
   discardUnsavedAndClose: () => Promise<void>;
   loadProject: (id: string) => Promise<void>;
+  loadProjectAfterImport: (id: string) => Promise<void>;
+  refreshProjectHub: (id: string) => Promise<void>;
   openFileWrapped: (fileId: string) => Promise<void>;
   openLastEditorWorkspace: () => Promise<void>;
   saveAndClose: () => Promise<void>;
   stayAfterCloseAttempt: () => void;
+  transcribeNavBlockOpen: boolean;
+  cancelTranscribeNavBlock: () => void;
+  confirmTranscribeNavBlock: () => Promise<void>;
 };
+
+function isTranscribeBusy(busy: boolean, busyReason: BusyReason | null): boolean {
+  return busy && busyReason === "transcribe";
+}
 
 export function useProjectCloseGateController(
   args: UseProjectCloseGateControllerArgs,
@@ -56,6 +67,8 @@ export function useProjectCloseGateController(
     applyDetail,
     beginBusy,
     busy,
+    busyReason,
+    cancelTranscribe,
     closeFile,
     current,
     currentFileId,
@@ -78,10 +91,21 @@ export function useProjectCloseGateController(
 
   const closeAfterSaveRef = useRef(false);
   const navigateProceedRef = useRef<Proceed | null>(null);
+  const bridgeStateRef = useRef({
+    busy,
+    busyReason,
+    hasUnsavedSegmentChanges: dirty.hasUnsavedSegmentChanges,
+  });
+  bridgeStateRef.current = {
+    busy,
+    busyReason,
+    hasUnsavedSegmentChanges: dirty.hasUnsavedSegmentChanges,
+  };
   const [closeGateOpen, setCloseGateOpen] = useState(false);
   const [closeGateIntent, setCloseGateIntent] = useState<"app-quit" | "navigate">("app-quit");
+  const [transcribeNavBlockOpen, setTranscribeNavBlockOpen] = useState(false);
 
-  function closeFileWrapped() {
+  function performCloseFile() {
     closeFile();
     dirty.clearSavedSnapshot();
     resetMutationHistory();
@@ -89,7 +113,7 @@ export function useProjectCloseGateController(
 
   function runLeaveProject() {
     setCurrent(null);
-    closeFileWrapped();
+    performCloseFile();
     clearTranscribeSession();
   }
 
@@ -99,12 +123,43 @@ export function useProjectCloseGateController(
     setCloseGateOpen(true);
   }
 
+  function openTranscribeNavBlock(onProceed: Proceed) {
+    navigateProceedRef.current = onProceed;
+    setTranscribeNavBlockOpen(true);
+  }
+
   function requestNavigateWithUnsavedCheck(onProceed: Proceed) {
     if (!dirty.hasUnsavedSegmentChanges()) {
       void onProceed();
       return;
     }
     openUnsavedNavigateGate(onProceed);
+  }
+
+  function requestNavigateWithGuards(onProceed: Proceed) {
+    if (isTranscribeBusy(busy, busyReason)) {
+      openTranscribeNavBlock(onProceed);
+      return;
+    }
+    requestNavigateWithUnsavedCheck(onProceed);
+  }
+
+  function closeFileWrapped() {
+    requestNavigateWithGuards(performCloseFile);
+  }
+
+  function cancelTranscribeNavBlock() {
+    setTranscribeNavBlockOpen(false);
+    navigateProceedRef.current = null;
+  }
+
+  async function confirmTranscribeNavBlock() {
+    const proceed = navigateProceedRef.current;
+    setTranscribeNavBlockOpen(false);
+    navigateProceedRef.current = null;
+    if (!proceed) return;
+    await cancelTranscribe();
+    requestNavigateWithUnsavedCheck(proceed);
   }
 
   async function openFileWrapped(fileId: string) {
@@ -116,13 +171,18 @@ export function useProjectCloseGateController(
       }
     };
 
-    if (currentFileId && fileId !== currentFileId && dirty.hasUnsavedSegmentChanges()) {
-      openUnsavedNavigateGate(async () => {
-        afterOpen(await openFile(fileId), fileId);
-      });
+    const performOpen = async () => {
+      afterOpen(await openFile(fileId), fileId);
+    };
+
+    if (currentFileId && fileId !== currentFileId) {
+      requestNavigateWithGuards(performOpen);
       return;
     }
-    afterOpen(await openFile(fileId), fileId);
+    if (currentFileId === fileId && dirty.hasUnsavedSegmentChanges()) {
+      return;
+    }
+    await performOpen();
   }
 
   async function performResumeEditorWorkspace() {
@@ -148,11 +208,7 @@ export function useProjectCloseGateController(
 
   async function openLastEditorWorkspace() {
     if (busy) return;
-    if (dirty.hasUnsavedSegmentChanges()) {
-      requestNavigateWithUnsavedCheck(() => performResumeEditorWorkspace());
-      return;
-    }
-    await performResumeEditorWorkspace();
+    requestNavigateWithGuards(() => performResumeEditorWorkspace());
   }
 
   async function performLoadProject(id: string) {
@@ -160,16 +216,90 @@ export function useProjectCloseGateController(
     beginBusy("load");
     try {
       const detail = await p1.projectLoad(id);
+      const sameProject = current?.id === id;
+      const fileStillExists =
+        currentFileId != null && detail.files?.some((f) => f.id === currentFileId);
+
+      if (sameProject && dirty.hasUnsavedSegmentChanges() && currentFileId && fileStillExists) {
+        applyDetail(detail);
+        return;
+      }
+
+      if (!sameProject) {
+        performCloseFile();
+      }
+
       applyDetail(detail);
-      if (detail.files && detail.files.length > 0) {
-        const sorted = [...detail.files].sort((a, b) => b.updated_at_ms - a.updated_at_ms);
-        await openFileWrapped(sorted[0].id);
-      } else {
+
+      if (!detail.files?.length) {
+        if (currentFileId) {
+          performCloseFile();
+        } else {
+          dirty.clearSavedSnapshot();
+        }
+        return;
+      }
+
+      if (sameProject && currentFileId === null) {
+        return;
+      }
+
+      if (sameProject && fileStillExists && currentFileId) {
+        await openFileWrapped(currentFileId);
+        return;
+      }
+
+      const sorted = [...detail.files].sort((a, b) => b.updated_at_ms - a.updated_at_ms);
+      await openFileWrapped(sorted[0].id);
+    } catch (e) {
+      setCurrent(null);
+      performCloseFile();
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      endBusy();
+    }
+  }
+
+  async function loadProjectAfterImport(id: string) {
+    setError("");
+    beginBusy("load");
+    try {
+      const detail = await p1.projectLoad(id);
+      applyDetail(detail);
+
+      if (!detail.files?.length) {
+        if (currentFileId) {
+          performCloseFile();
+        } else {
+          dirty.clearSavedSnapshot();
+        }
+        return;
+      }
+
+      const sorted = [...detail.files].sort((a, b) => b.updated_at_ms - a.updated_at_ms);
+      await openFileWrapped(sorted[0].id);
+    } catch (e) {
+      setCurrent(null);
+      performCloseFile();
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      endBusy();
+    }
+  }
+
+  async function refreshProjectHub(id: string) {
+    if (busy) return;
+    setError("");
+    beginBusy("load");
+    try {
+      const detail = await p1.projectLoad(id);
+      applyDetail(detail);
+      if (!detail.files?.length) {
         dirty.clearSavedSnapshot();
       }
     } catch (e) {
       setCurrent(null);
-      closeFileWrapped();
+      performCloseFile();
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       endBusy();
@@ -178,8 +308,12 @@ export function useProjectCloseGateController(
 
   async function loadProject(id: string) {
     if (busy) return;
-    if (current?.id !== id && dirty.hasUnsavedSegmentChanges()) {
-      openUnsavedNavigateGate(() => performLoadProject(id));
+    if (current?.id !== id) {
+      requestNavigateWithGuards(() => performLoadProject(id));
+      return;
+    }
+    if (dirty.hasUnsavedSegmentChanges() && currentFileId) {
+      await performLoadProject(id);
       return;
     }
     await performLoadProject(id);
@@ -235,8 +369,18 @@ export function useProjectCloseGateController(
   useEffect(() => {
     ensureAppWindowCloseGuardRegistered();
     setAppWindowCloseGuardBridge({
-      hasUnsaved: () => dirty.hasUnsavedSegmentChanges(),
+      shouldBlockClose: () => {
+        const s = bridgeStateRef.current;
+        return (
+          s.hasUnsavedSegmentChanges() || isTranscribeBusy(s.busy, s.busyReason)
+        );
+      },
       onBlocked: () => {
+        const s = bridgeStateRef.current;
+        if (isTranscribeBusy(s.busy, s.busyReason)) {
+          openTranscribeNavBlock(() => requestAppClose());
+          return;
+        }
         navigateProceedRef.current = null;
         setCloseGateIntent("app-quit");
         setCloseGateOpen(true);
@@ -244,18 +388,23 @@ export function useProjectCloseGateController(
       isClosingAfterSave: () => closeAfterSaveRef.current,
     });
     return () => setAppWindowCloseGuardBridge(null);
-  }, [dirty.hasUnsavedSegmentChanges]);
+  }, []);
 
   return {
     closeFileWrapped,
     closeGateIntent,
     closeGateOpen,
-    closeProjectWrapped: () => requestNavigateWithUnsavedCheck(runLeaveProject),
+    closeProjectWrapped: () => requestNavigateWithGuards(runLeaveProject),
     discardUnsavedAndClose,
     loadProject,
+    loadProjectAfterImport,
+    refreshProjectHub,
     openFileWrapped,
     openLastEditorWorkspace,
     saveAndClose,
     stayAfterCloseAttempt,
+    transcribeNavBlockOpen,
+    cancelTranscribeNavBlock,
+    confirmTranscribeNavBlock,
   };
 }

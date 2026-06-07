@@ -116,9 +116,20 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
       return;
     }
     prevCommittedRef.current = committedText;
+
+    // 自动保存 flush 写回 committed 时用户可能仍在输入；勿 remount textarea（会丢光标）。
+    if (isFocusedRef.current) {
+      const el = textareaRef.current;
+      const liveDom = normalizeSegmentDraftText(el?.value ?? "");
+      if (liveDom === committedText) {
+        segmentDraftStore.clearDraft(draftKey);
+      }
+      return;
+    }
+
     segmentDraftStore.clearDraft(draftKey);
     const el = textareaRef.current;
-    if (el && !isFocusedRef.current) el.value = committedText;
+    if (el) el.value = committedText;
     setTextareaEpoch((n) => n + 1);
   }, [committedText, draftKey]);
 

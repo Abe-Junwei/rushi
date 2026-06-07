@@ -39,32 +39,34 @@ pub fn load_file(state: State<DbState>, file_id: String) -> Result<FileDetail, S
 
 #[tauri::command]
 pub fn rename_file(state: State<DbState>, file_id: String, name: String) -> Result<(), String> {
-    let conn = open_db(state.deref())?;
+    let mut conn = open_db(state.deref())?;
     let t = now_ms();
-    conn.execute(
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+    tx.execute(
         "UPDATE files SET name = ?1, updated_at_ms = ?2 WHERE id = ?3",
         params![&name, t, &file_id],
     )
     .map_err(|e| e.to_string())?;
-    let project_id: String = conn
+    let project_id: String = tx
         .query_row(
             "SELECT project_id FROM files WHERE id = ?1",
             params![&file_id],
             |r| r.get(0),
         )
         .map_err(|e| e.to_string())?;
-    conn.execute(
+    tx.execute(
         "UPDATE projects SET updated_at_ms = ?1 WHERE id = ?2",
         params![t, &project_id],
     )
     .map_err(|e| e.to_string())?;
+    tx.commit().map_err(|e| e.to_string())?;
     Ok(())
 }
 
 #[tauri::command]
 pub fn delete_file(state: State<DbState>, file_id: String) -> Result<(), String> {
     let st: &DbState = state.deref();
-    let conn = open_db(st)?;
+    let mut conn = open_db(st)?;
 
     let audio_path: Result<String, rusqlite::Error> = conn.query_row(
         "SELECT audio_path FROM files WHERE id = ?1",
@@ -80,15 +82,16 @@ pub fn delete_file(state: State<DbState>, file_id: String) -> Result<(), String>
         )
         .map_err(|e| e.to_string())?;
 
-    conn.execute("DELETE FROM files WHERE id = ?1", params![&file_id])
-        .map_err(|e| e.to_string())?;
-
     let t = now_ms();
-    conn.execute(
+    let tx = conn.transaction().map_err(|e| e.to_string())?;
+    tx.execute("DELETE FROM files WHERE id = ?1", params![&file_id])
+        .map_err(|e| e.to_string())?;
+    tx.execute(
         "UPDATE projects SET updated_at_ms = ?1 WHERE id = ?2",
         params![t, &project_id],
     )
     .map_err(|e| e.to_string())?;
+    tx.commit().map_err(|e| e.to_string())?;
 
     if let Ok(p) = audio_path {
         cleanup_deleted_file_storage(st, &project_id, &file_id, Some(p.as_str()));

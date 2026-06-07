@@ -2,7 +2,8 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { isTauriRuntime } from "../config/env";
 
 export type AppWindowCloseGuardBridge = {
-  hasUnsaved: () => boolean;
+  /** 未保存语段或转写进行中时应拦截关窗 */
+  shouldBlockClose: () => boolean;
   onBlocked: () => void;
   isClosingAfterSave: () => boolean;
 };
@@ -24,7 +25,7 @@ export function ensureAppWindowCloseGuardRegistered(): void {
         const b = bridge;
         if (!b) return;
         if (b.isClosingAfterSave()) return;
-        if (!b.hasUnsaved()) return;
+        if (!b.shouldBlockClose()) return;
         event.preventDefault();
         b.onBlocked();
       } catch (e) {
