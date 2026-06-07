@@ -43,6 +43,8 @@ export function useWaveformSegmentOverlay(args: {
   seekToTime: (timeSec: number) => void;
   onDraftIdxChange?: (idx: number | null) => void;
   revealSelectedSegmentInViewport?: () => void;
+  onClearMultiSelection?: () => void;
+  isMultiSegmentSelection?: () => boolean;
 }) {
   const argsRef = useRef(args);
   argsRef.current = args;

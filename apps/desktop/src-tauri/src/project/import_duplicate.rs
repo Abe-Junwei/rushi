@@ -103,7 +103,11 @@ pub fn segments_content_fingerprint(segments: &[SegmentDto]) -> String {
 fn is_text_import_path(path: &Path) -> bool {
     path.extension()
         .and_then(|e| e.to_str())
-        .map(|e| e.eq_ignore_ascii_case("txt") || e.eq_ignore_ascii_case("srt") || e.eq_ignore_ascii_case("vtt"))
+        .map(|e| {
+            e.eq_ignore_ascii_case("txt")
+                || e.eq_ignore_ascii_case("srt")
+                || e.eq_ignore_ascii_case("vtt")
+        })
         .unwrap_or(false)
 }
 
@@ -116,8 +120,7 @@ pub fn text_source_segment_fingerprint(path: &Path) -> Result<Option<String>, St
         .and_then(|e| e.to_str())
         .unwrap_or("txt")
         .to_ascii_lowercase();
-    let content =
-        std::fs::read_to_string(path).map_err(|e| format!("读取文件失败: {e}"))?;
+    let content = std::fs::read_to_string(path).map_err(|e| format!("读取文件失败: {e}"))?;
     let segments = if ext == "srt" || ext == "vtt" {
         parse_srt(&content)?
     } else {
@@ -149,7 +152,7 @@ fn segments_fingerprint_from_db(
                 kind: None,
                 text_stage: String::new(),
                 finalize_via: None,
-            annotation: None,
+                annotation: None,
             })
         })
         .map_err(|e| e.to_string())?;
@@ -249,10 +252,7 @@ pub fn check_import_duplicate_inner(
 
     let mut by_source_path = Vec::new();
     for (file_id, file_name, _, stored_path, _, _, _, _) in &rows {
-        if stored_path
-            .as_deref()
-            .is_some_and(|sp| sp == canonical_src)
-        {
+        if stored_path.as_deref().is_some_and(|sp| sp == canonical_src) {
             by_source_path.push(ImportDuplicateFileMatch {
                 file_id: file_id.clone(),
                 file_name: file_name.clone(),
@@ -316,7 +316,8 @@ pub fn check_import_duplicate_inner(
                 if let Some(ap) = audio_path {
                     let ap_path = PathBuf::from(&ap);
                     if ap_path.is_file() {
-                        if let Some(cached_hash) = hash_audio_copy(&ap_path, &mut audio_hash_cache) {
+                        if let Some(cached_hash) = hash_audio_copy(&ap_path, &mut audio_hash_cache)
+                        {
                             hash_match = hashes_equal(&cached_hash, &incoming.bytes_hash);
                         }
                     }
@@ -557,8 +558,7 @@ mod tests {
             .unwrap();
         }
 
-        let check =
-            check_import_duplicate_inner(&conn, "p1", incoming.to_str().unwrap()).unwrap();
+        let check = check_import_duplicate_inner(&conn, "p1", incoming.to_str().unwrap()).unwrap();
         assert!(check.by_source_path.is_empty());
         assert_eq!(check.by_content_hash.len(), 1);
 

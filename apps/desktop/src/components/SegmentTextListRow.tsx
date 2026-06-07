@@ -1,4 +1,4 @@
-import { memo, useCallback, useRef, type KeyboardEvent, type MouseEvent } from "react";
+import { memo, useCallback, useRef, type KeyboardEvent, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
 import { SegmentRowTextField } from "./segmentRow/SegmentRowTextField";
 import { SegmentRowStageBadge } from "./segmentRow/SegmentRowStageBadge";
@@ -20,8 +20,8 @@ export type SegmentTextListRowProps = {
   segmentMetaWidthPx: number;
   onSegmentMetaWidthPointerDown: (e: React.PointerEvent<HTMLDivElement>) => void;
   onTimestampPointerDown?: (index: number, e: React.PointerEvent<HTMLElement>) => void;
-  onTimestampPointerEnter?: (index: number) => void;
-  onTimestampPointerUp?: (e: React.PointerEvent<HTMLElement>) => void;
+  onRowRangePointerDown?: (index: number, e: React.PointerEvent<HTMLElement>) => void;
+  consumeRowRangeClickSuppress?: () => boolean;
   onSegmentRowHeightPointerDown?: (e: React.PointerEvent<HTMLDivElement>) => void;
   selectSegmentAt: (idx: number, opts?: { shiftKey?: boolean; toggle?: boolean }) => void;
   updateSegmentText: (idx: number, text: string) => void;
@@ -56,8 +56,8 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
   segmentMetaWidthPx,
   onSegmentMetaWidthPointerDown,
   onTimestampPointerDown,
-  onTimestampPointerEnter,
-  onTimestampPointerUp,
+  onRowRangePointerDown,
+  consumeRowRangeClickSuppress,
   onSegmentRowHeightPointerDown,
   selectSegmentAt,
   updateSegmentText,
@@ -86,6 +86,7 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
   const onClickRow = useCallback(
     (e: MouseEvent<HTMLDivElement>) => {
       if (busy) return;
+      if (consumeRowRangeClickSuppress?.()) return;
       if ((e.target as HTMLElement).closest("textarea")) return;
       if (e.shiftKey) {
         focusOnSelectRef.current = false;
@@ -105,7 +106,20 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
       focusOnSelectRef.current = true;
       selectSegmentAt(i);
     },
-    [busy, i, onRevealSelectedSegment, selectSegmentAt, selected],
+    [busy, consumeRowRangeClickSuppress, i, onRevealSelectedSegment, selectSegmentAt, selected],
+  );
+
+  const onRowPointerDown = useCallback(
+    (e: ReactPointerEvent<HTMLDivElement>) => {
+      if (busy || e.button !== 0) return;
+      if ((e.target as HTMLElement).closest(
+        "textarea, button, [role='separator'], [aria-label='拖拽调整语段高度']",
+      )) {
+        return;
+      }
+      onRowRangePointerDown?.(i, e);
+    },
+    [busy, i, onRowRangePointerDown],
   );
 
   const rowMinHeight = Math.max(60, Math.round(segmentRowHeightPx + 2));
@@ -132,6 +146,7 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
             : "bg-transparent hover:border-notion-divider",
       ].join(" ")}
       onClick={onClickRow}
+      onPointerDown={onRowPointerDown}
       onContextMenu={onRowContextMenu}
     >
       <SegmentRowTimestampColumn
@@ -143,8 +158,6 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
         busy={busy}
         onMetaWidthPointerDown={onSegmentMetaWidthPointerDown}
         onTimestampPointerDown={onTimestampPointerDown}
-        onTimestampPointerEnter={onTimestampPointerEnter}
-        onTimestampPointerUp={onTimestampPointerUp}
       />
 
       <SegmentRowTextField

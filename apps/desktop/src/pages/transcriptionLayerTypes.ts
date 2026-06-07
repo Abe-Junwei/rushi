@@ -19,6 +19,7 @@ export type TranscriptionLayerInput = {
   selectSegmentAt: (idx: number, opts?: { shiftKey?: boolean; toggle?: boolean }) => void;
   selectSegmentRange: (lo: number, hi: number) => void;
   selectSegmentIndices: (indices: number[], primaryIdx: number) => void;
+  clearMultiSelection: () => void;
   requestDeleteSelectedIndices: (indices: number[]) => void;
   undo: () => void;
   redo: () => void;

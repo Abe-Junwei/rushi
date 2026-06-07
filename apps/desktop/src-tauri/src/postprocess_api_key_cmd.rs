@@ -165,9 +165,6 @@ pub async fn llm_probe_connection(
 pub async fn ollama_detect_status(
     req: OllamaDetectRequest,
 ) -> super::postprocess_ollama::OllamaDetectResponse {
-    super::postprocess_ollama::detect_ollama_tags(
-        req.tags_url.as_deref(),
-        req.model.as_deref(),
-    )
-    .await
+    super::postprocess_ollama::detect_ollama_tags(req.tags_url.as_deref(), req.model.as_deref())
+        .await
 }

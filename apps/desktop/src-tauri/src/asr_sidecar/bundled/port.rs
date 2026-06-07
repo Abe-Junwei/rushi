@@ -1,8 +1,7 @@
-use std::time::Duration;
-
 #[cfg(unix)]
 pub(crate) fn kill_loopback_listeners_on_port(port: u16) -> Result<(), String> {
     use std::process::Command;
+    use std::time::Duration;
     let port_arg = format!(":{port}");
     let pids = Command::new("lsof")
         .args(["-ti", &port_arg])

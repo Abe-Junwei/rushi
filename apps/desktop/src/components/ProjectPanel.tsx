@@ -142,6 +142,7 @@ export function ProjectPanel() {
     requestDeleteSelection: c.requestDeleteSelection,
     requestDeleteSelectedIndices: c.requestDeleteSelectedIndices,
     confirmSegmentEditAndAdvance: c.confirmSegmentEditAndAdvance,
+    clearMultiSelection: c.clearMultiSelection,
     onOpenSegmentContextMenu: openSegmentContextMenu,
   });
 

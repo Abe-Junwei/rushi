@@ -72,6 +72,11 @@ export function useSegmentSelectionController(args: Args) {
     [segmentCount],
   );
 
+  const clearMultiSelection = useCallback(() => {
+    if (segmentCount <= 0 || selectedIndices.size <= 1) return;
+    collapseTo(clampSegmentIndex(selectedIdx, segmentCount));
+  }, [collapseTo, segmentCount, selectedIdx, selectedIndices.size]);
+
   const selectSegmentAt = useCallback(
     (idx: number, opts?: { shiftKey?: boolean; toggle?: boolean }) => {
       if (disabled || idx < 0 || idx >= segmentCount) return;
@@ -157,5 +162,6 @@ export function useSegmentSelectionController(args: Args) {
     selectSegmentRange,
     selectSegmentIndices,
     collapseTo,
+    clearMultiSelection,
   };
 }

@@ -125,7 +125,12 @@ pub fn glossary_list(
     search: Option<String>,
 ) -> Result<Vec<GlossaryTermDto>, String> {
     let conn = open_db(state.deref())?;
-    let sql = if search.as_deref().map(str::trim).filter(|s| !s.is_empty()).is_some() {
+    let sql = if search
+        .as_deref()
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .is_some()
+    {
         format!(
             "{GLOSSARY_SELECT} WHERE term LIKE ?1 OR aliases LIKE ?1 ORDER BY term COLLATE NOCASE ASC"
         )

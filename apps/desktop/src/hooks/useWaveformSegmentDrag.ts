@@ -64,6 +64,8 @@ export type WaveformSegmentDragArgs = {
   ) => void;
   onSelectTimeRange?: (startSec: number, endSec: number) => void;
   seekToTime: (timeSec: number) => void;
+  onClearMultiSelection?: () => void;
+  isMultiSegmentSelection?: () => boolean;
 };
 
 function overlayPointerActions(
@@ -171,7 +173,11 @@ export function useWaveformSegmentDrag(
         if (!drag.moved) {
           suppressClickAfterPointer();
           a.onFocusWaveformShell?.();
-          a.seekToTime(drag.anchorTimeSec);
+          if (a.isMultiSegmentSelection?.()) {
+            a.onClearMultiSelection?.();
+          } else {
+            a.seekToTime(drag.anchorTimeSec);
+          }
           return;
         }
         const baseIndices = drag.baseIndices ?? new Set<number>();
@@ -192,7 +198,11 @@ export function useWaveformSegmentDrag(
         } else {
           suppressClickAfterPointer();
           a.onFocusWaveformShell?.();
-          a.seekToTime(timeSec);
+          if (a.isMultiSegmentSelection?.()) {
+            a.onClearMultiSelection?.();
+          } else {
+            a.seekToTime(timeSec);
+          }
         }
         return;
       }

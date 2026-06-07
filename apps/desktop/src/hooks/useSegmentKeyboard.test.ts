@@ -20,6 +20,7 @@ function makeCtx(overrides: Partial<TranscriptionLayerInput> = {}): Transcriptio
     selectedIndicesArray: [0],
     selectSegmentIndices: vi.fn(),
     requestDeleteSelectedIndices: vi.fn(),
+    clearMultiSelection: vi.fn(),
     isIndexInSelection: () => true,
     selectSegmentAt: vi.fn(),
     selectSegmentRange: vi.fn(),
@@ -161,6 +162,8 @@ describe("useSegmentKeyboard", () => {
 
   it("does not merge on Cmd+M when multi-select is non-contiguous", () => {
     const mergeSegmentRange = vi.fn();
+    const mergeWithNext = vi.fn();
+    const mergeWithPrev = vi.fn();
     const ctx = makeCtx({
       segments: [
         { uid: "a", idx: 0, start_sec: 0, end_sec: 1, text: "a" },
@@ -175,6 +178,8 @@ describe("useSegmentKeyboard", () => {
       isContiguousSelection: false,
       selectedIndicesArray: [0, 2],
       mergeSegmentRange,
+      mergeWithNext,
+      mergeWithPrev,
     });
     const { result } = renderKeyboard(ctx);
 
@@ -183,6 +188,24 @@ describe("useSegmentKeyboard", () => {
     });
 
     expect(mergeSegmentRange).not.toHaveBeenCalled();
+    expect(mergeWithNext).not.toHaveBeenCalled();
+    expect(mergeWithPrev).not.toHaveBeenCalled();
+  });
+
+  it("clears multi-selection on Escape", () => {
+    const clearMultiSelection = vi.fn();
+    const ctx = makeCtx({
+      isMultiSegmentSelection: true,
+      selectionCount: 3,
+      clearMultiSelection,
+    });
+    const { result } = renderKeyboard(ctx);
+
+    act(() => {
+      result.current.keyboard.onWaveformMainKeyDown(makeKeyEvent("Escape"));
+    });
+
+    expect(clearMultiSelection).toHaveBeenCalled();
   });
 
   it("extends selection on Shift+ArrowRight", () => {

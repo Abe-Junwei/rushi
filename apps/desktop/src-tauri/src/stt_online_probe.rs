@@ -231,11 +231,9 @@ pub async fn stt_probe_online_health(
         &state,
         &format!("INFO stt_probe_start url={}", req.url.trim()),
     );
-    let out = tauri::async_runtime::spawn_blocking(move || {
-        probe_stt_online_health_blocking(&req)
-    })
-    .await
-    .map_err(|e| format!("探测任务被取消：{e}"))?;
+    let out = tauri::async_runtime::spawn_blocking(move || probe_stt_online_health_blocking(&req))
+        .await
+        .map_err(|e| format!("探测任务被取消：{e}"))?;
     let level = if out.available { "INFO" } else { "WARN" };
     append_desktop_log_line(
         &state,

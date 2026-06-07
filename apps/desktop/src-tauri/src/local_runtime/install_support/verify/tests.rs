@@ -1,12 +1,17 @@
-use super::verify_installed_runtime;
 use crate::local_runtime::install_support::sha256_hex;
 use std::fs;
+use uuid::Uuid;
+
+#[cfg(unix)]
+use super::verify_installed_runtime;
 #[cfg(unix)]
 use std::os::unix::fs::PermissionsExt;
+#[cfg(unix)]
 use std::sync::atomic::{AtomicBool, Ordering};
+#[cfg(unix)]
 use std::sync::Arc;
+#[cfg(unix)]
 use std::time::{Duration, Instant};
-use uuid::Uuid;
 
 #[test]
 fn sha256_hex_matches_known_value() {

@@ -1,9 +1,13 @@
-import { useCallback, useEffect, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { useSegmentKeyboard } from "../hooks/useSegmentKeyboard";
 import { useWaveformTimelineController } from "../hooks/useWaveformTimelineController";
 import { useWaveformTierWheelForward } from "../hooks/useWaveformTierWheelForward";
 import { p1LaneBoundsSignature } from "../utils/boundsSignature";
 import { resolveWaveformSegmentContextMenuIndex } from "../utils/waveformSegmentContextMenu";
+import {
+  querySegmentListScrollRoot,
+  resolveSegmentListRowIndexFromPoint,
+} from "../utils/segmentListVirtualWindow";
 import {
   PX_PER_SEC_MAX,
   PX_PER_SEC_MIN,
@@ -190,46 +194,64 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
 
   selectSegmentAtRef.current = selectSegmentAt;
 
-  const timestampDragRef = useRef<{ anchorIdx: number; pointerId: number } | null>(null);
+  const segmentListRangeDragRef = useRef<{ anchorIdx: number; pointerId: number; moved: boolean } | null>(
+    null,
+  );
+  const suppressSegmentListRowClickRef = useRef(false);
 
-  const onTimestampPointerDown = useCallback((idx: number, e: ReactPointerEvent<HTMLElement>) => {
+  const onSegmentListRangePointerDown = useCallback((idx: number, e: ReactPointerEvent<HTMLElement>) => {
     const c = ctxRef.current;
     if (c.busy || e.button !== 0) return;
     if ((e.target as HTMLElement).closest('[role="separator"]')) return;
     e.stopPropagation();
-    timestampDragRef.current = { anchorIdx: idx, pointerId: e.pointerId };
-    c.selectSegmentAt(idx);
-    e.currentTarget.setPointerCapture(e.pointerId);
-  }, []);
+    e.preventDefault();
 
-  const onTimestampPointerEnter = useCallback((idx: number) => {
-    const drag = timestampDragRef.current;
-    if (!drag) return;
-    ctxRef.current.selectSegmentRange(drag.anchorIdx, idx);
-  }, []);
-
-  const onTimestampPointerUp = useCallback((e: ReactPointerEvent<HTMLElement>) => {
-    const drag = timestampDragRef.current;
-    if (!drag || drag.pointerId !== e.pointerId) return;
-    timestampDragRef.current = null;
-    try {
-      e.currentTarget.releasePointerCapture(e.pointerId);
-    } catch {
-      /* noop */
+    segmentListRangeDragRef.current = { anchorIdx: idx, pointerId: e.pointerId, moved: false };
+    if (e.shiftKey) {
+      c.selectSegmentAt(idx, { shiftKey: true });
+    } else if (e.metaKey || e.ctrlKey) {
+      c.selectSegmentAt(idx, { toggle: true });
+    } else {
+      c.selectSegmentAt(idx);
     }
+
+    const onMove = (ev: PointerEvent) => {
+      const drag = segmentListRangeDragRef.current;
+      if (!drag || ev.pointerId !== drag.pointerId) return;
+      const scrollRoot = segmentListRef.current ?? querySegmentListScrollRoot();
+      const hoverIdx = resolveSegmentListRowIndexFromPoint(
+        scrollRoot,
+        ev.clientX,
+        ev.clientY,
+        ctxRef.current.segments.length,
+      );
+      if (hoverIdx == null) return;
+      if (hoverIdx !== drag.anchorIdx) drag.moved = true;
+      ctxRef.current.selectSegmentRange(drag.anchorIdx, hoverIdx);
+    };
+
+    const onUp = (ev: PointerEvent) => {
+      const drag = segmentListRangeDragRef.current;
+      if (!drag || ev.pointerId !== drag.pointerId) return;
+      if (drag.moved) suppressSegmentListRowClickRef.current = true;
+      segmentListRangeDragRef.current = null;
+      window.removeEventListener("pointermove", onMove);
+      window.removeEventListener("pointerup", onUp);
+      window.removeEventListener("pointercancel", onUp);
+    };
+
+    window.addEventListener("pointermove", onMove);
+    window.addEventListener("pointerup", onUp);
+    window.addEventListener("pointercancel", onUp);
   }, []);
 
-  useEffect(() => {
-    const endTimestampDrag = () => {
-      timestampDragRef.current = null;
-    };
-    window.addEventListener("pointerup", endTimestampDrag);
-    window.addEventListener("pointercancel", endTimestampDrag);
-    return () => {
-      window.removeEventListener("pointerup", endTimestampDrag);
-      window.removeEventListener("pointercancel", endTimestampDrag);
-    };
+  const consumeSegmentListRangeClickSuppress = useCallback(() => {
+    if (!suppressSegmentListRowClickRef.current) return false;
+    suppressSegmentListRowClickRef.current = false;
+    return true;
   }, []);
+
+  const onTimestampPointerDown = onSegmentListRangePointerDown;
 
   const { wf, display, peaks, zoom, routePrefs } = timeline;
   const waveformStageHeightPx = display.waveformHeightPx;
@@ -310,8 +332,8 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     isMultiSegmentSelection: ctx.isMultiSegmentSelection,
     isIndexInSelection: ctx.isIndexInSelection,
     onTimestampPointerDown,
-    onTimestampPointerEnter,
-    onTimestampPointerUp,
+    onSegmentListRangePointerDown,
+    consumeSegmentListRangeClickSuppress,
     revealSelectedSegmentInViewport,
     insertSegmentAfter: ctx.insertSegmentAfter,
     deleteSegmentAt: ctx.deleteSegmentAt,

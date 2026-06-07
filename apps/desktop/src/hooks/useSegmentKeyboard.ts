@@ -52,6 +52,10 @@ export function useSegmentKeyboard(args: {
 
       if (e.key === "Escape") {
         e.preventDefault();
+        if (c.isMultiSegmentSelection) {
+          c.clearMultiSelection();
+          return;
+        }
         (e.target as HTMLElement).blur();
         return;
       }
@@ -77,18 +81,26 @@ export function useSegmentKeyboard(args: {
       }
       if (mod && e.key.toLowerCase() === "m" && e.shiftKey) {
         e.preventDefault();
-        if (c.isMultiSegmentSelection && c.isContiguousSelection) {
-          c.mergeSegmentRange(c.selectionLo, c.selectionHi);
-        } else if (c.selectedIdx > 0) {
+        if (c.isMultiSegmentSelection) {
+          if (c.isContiguousSelection) {
+            c.mergeSegmentRange(c.selectionLo, c.selectionHi);
+          }
+          return;
+        }
+        if (c.selectedIdx > 0) {
           c.mergeWithPrev();
         }
         return;
       }
       if (mod && e.key.toLowerCase() === "m" && !e.shiftKey) {
         e.preventDefault();
-        if (c.isMultiSegmentSelection && c.isContiguousSelection) {
-          c.mergeSegmentRange(c.selectionLo, c.selectionHi);
-        } else if (c.selectedIdx >= 0 && c.selectedIdx < c.segments.length - 1) {
+        if (c.isMultiSegmentSelection) {
+          if (c.isContiguousSelection) {
+            c.mergeSegmentRange(c.selectionLo, c.selectionHi);
+          }
+          return;
+        }
+        if (c.selectedIdx >= 0 && c.selectedIdx < c.segments.length - 1) {
           c.mergeWithNext();
         }
         return;

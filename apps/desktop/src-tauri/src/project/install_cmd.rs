@@ -1,10 +1,15 @@
-use super::utils::append_desktop_log_line;
 use crate::asr_sidecar;
 use crate::DbState;
-use std::ops::Deref;
-use std::path::Path;
 use tauri::State;
 
+#[cfg(not(target_os = "windows"))]
+use super::utils::append_desktop_log_line;
+#[cfg(not(target_os = "windows"))]
+use std::ops::Deref;
+#[cfg(not(target_os = "windows"))]
+use std::path::Path;
+
+#[cfg(not(target_os = "windows"))]
 fn run_funasr_install_script(repo_root: &Path) -> Result<String, String> {
     use std::process::Command;
     let script = repo_root.join("scripts/install-funasr-for-desktop.sh");
@@ -33,10 +38,10 @@ pub fn install_funasr_deps_interactive(state: State<DbState>) -> Result<Option<S
     #[cfg(target_os = "windows")]
     {
         let _ = state;
-        return Err(
+        Err(
             "当前版本仅在 macOS / Linux 支持从应用内一键安装；Windows 请按 services/asr/README.md 手动配置 venv 与 pip。"
                 .into(),
-        );
+        )
     }
     #[cfg(not(target_os = "windows"))]
     {

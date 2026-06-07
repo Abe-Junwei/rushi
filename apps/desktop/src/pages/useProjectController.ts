@@ -151,6 +151,7 @@ export function useProjectController() {
     selectSegmentAt: lifecycle.selectSegmentAt,
     selectSegmentRange: lifecycle.selectSegmentRange,
     selectSegmentIndices: lifecycle.selectSegmentIndices,
+    clearMultiSelection: lifecycle.clearMultiSelection,
     segmentDeleteConfirmOpen: lifecycle.segmentDeleteConfirmOpen,
     confirmDeleteSegment: lifecycle.confirmDeleteSegment,
     cancelDeleteSegment: lifecycle.cancelDeleteSegment,

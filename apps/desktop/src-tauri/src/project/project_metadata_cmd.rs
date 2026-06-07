@@ -137,7 +137,10 @@ mod tests {
     #[test]
     fn normalize_optional_text_trims_and_nullifies_empty() {
         assert_eq!(normalize_optional_text(Some("  ".to_string())), None);
-        assert_eq!(normalize_optional_text(Some("  讲述人  ".to_string())), Some("讲述人".to_string()));
+        assert_eq!(
+            normalize_optional_text(Some("  讲述人  ".to_string())),
+            Some("讲述人".to_string())
+        );
         assert_eq!(normalize_optional_text(None), None);
     }
 }

@@ -6,6 +6,7 @@ import {
   scrollSegmentListIndexIntoView,
   scrollSegmentListIndexToView,
   scrollSegmentRowIntoViewContainer,
+  resolveSegmentListRowIndexFromPoint,
   SEGMENT_LIST_SCROLL_ATTR,
   segmentListItemStridePx,
 } from "./segmentListVirtualWindow";
@@ -142,5 +143,34 @@ describe("segmentListVirtualWindow", () => {
 
     const next = scrollSegmentRowIntoViewContainer(5, root, { align: "center" });
     expect(next).toBe(360);
+  });
+
+  it("resolveSegmentListRowIndexFromPoint reads data-seg-row under cursor", () => {
+    const root = document.createElement("div");
+    root.setAttribute(SEGMENT_LIST_SCROLL_ATTR, "");
+    annotateSegmentListScrollMetrics(root, { rowMinHeightPx: 70, itemStridePx: 80 });
+    document.body.appendChild(root);
+
+    const row2 = document.createElement("div");
+    row2.setAttribute("data-seg-row", "2");
+    root.appendChild(row2);
+
+    document.elementFromPoint = () => row2;
+    expect(resolveSegmentListRowIndexFromPoint(root, 20, 230, 10)).toBe(2);
+    document.body.removeChild(root);
+  });
+
+  it("resolveSegmentListRowIndexFromPoint falls back to stride when row is unmounted", () => {
+    const root = document.createElement("div");
+    root.setAttribute(SEGMENT_LIST_SCROLL_ATTR, "");
+    annotateSegmentListScrollMetrics(root, { rowMinHeightPx: 70, itemStridePx: 80 });
+    Object.defineProperty(root, "scrollTop", { writable: true, value: 0 });
+    root.getBoundingClientRect = () =>
+      ({ top: 0, bottom: 400, left: 0, right: 400, width: 400, height: 400, x: 0, y: 0, toJSON: () => ({}) });
+    document.body.appendChild(root);
+
+    document.elementFromPoint = () => null;
+    expect(resolveSegmentListRowIndexFromPoint(root, 20, 170, 10)).toBe(2);
+    document.body.removeChild(root);
   });
 });

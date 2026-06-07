@@ -88,6 +88,22 @@ describe("useSegmentSelectionController", () => {
     expect(result.current.selectionHi).toBe(3);
   });
 
+  it("clearMultiSelection collapses to primary only", () => {
+    const { result } = renderHook(() => useTestSelection(0, 6));
+
+    act(() => {
+      result.current.selectSegmentRange(0, 3);
+    });
+    act(() => {
+      result.current.clearMultiSelection();
+    });
+
+    expect(result.current.isMultiSegmentSelection).toBe(false);
+    expect(result.current.selectionCount).toBe(1);
+    expect(result.current.selectedIdx).toBe(3);
+    expect(result.current.isIndexInSelection(3)).toBe(true);
+  });
+
   it("toggle adds and removes indices like Jieyu toggleSegmentSelection", () => {
     const { result } = renderHook(() => useTestSelection(0, 6));
 

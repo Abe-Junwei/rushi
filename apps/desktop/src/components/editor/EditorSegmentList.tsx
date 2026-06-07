@@ -213,8 +213,8 @@ export function EditorSegmentList({
       onSegmentRowHeightPointerDown={tx.beginTranscriptRowHeightDrag}
       selectSegmentAt={tx.selectSegmentFromList}
       onTimestampPointerDown={tx.onTimestampPointerDown}
-      onTimestampPointerEnter={tx.onTimestampPointerEnter}
-      onTimestampPointerUp={tx.onTimestampPointerUp}
+      onRowRangePointerDown={tx.onSegmentListRangePointerDown}
+      consumeRowRangeClickSuppress={tx.consumeSegmentListRangeClickSuppress}
       updateSegmentText={c.updateSegmentText}
       onTextareaKeyDown={tx.onSegmentTextareaKeyDown}
       onOpenContextMenu={onOpenRowContextMenu}
@@ -267,6 +267,10 @@ export function EditorSegmentList({
       role="list"
       aria-label="语段文本列表"
       onScroll={handleScroll}
+      onPointerDown={(e) => {
+        if ((e.target as HTMLElement).closest("[data-seg-row]")) return;
+        if (c.isMultiSegmentSelection) c.clearMultiSelection();
+      }}
     >
       {useVirtualList ? (
         <div

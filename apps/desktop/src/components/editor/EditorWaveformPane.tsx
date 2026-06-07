@@ -212,6 +212,8 @@ export function EditorWaveformPane({
                     getSelectedIndices={() => c.selectedIndices}
                     isIndexInSelection={c.isIndexInSelection}
                     selectedIndices={c.selectedIndices}
+                    onClearMultiSelection={c.clearMultiSelection}
+                    isMultiSegmentSelection={() => c.isMultiSegmentSelection}
                     onFocusWaveformShell={tx.focusWaveformShell}
                     revealSelectedSegmentInViewport={tx.revealSelectedSegmentInViewport}
                     onBoundsCommit={(idx, startSec, endSec) => {

@@ -10,8 +10,6 @@ interface SegmentRowTimestampColumnProps {
   busy: boolean;
   onMetaWidthPointerDown: (e: ReactPointerEvent<HTMLDivElement>) => void;
   onTimestampPointerDown?: (index: number, e: ReactPointerEvent<HTMLElement>) => void;
-  onTimestampPointerEnter?: (index: number) => void;
-  onTimestampPointerUp?: (e: ReactPointerEvent<HTMLElement>) => void;
 }
 
 export function SegmentRowTimestampColumn({
@@ -23,8 +21,6 @@ export function SegmentRowTimestampColumn({
   busy,
   onMetaWidthPointerDown,
   onTimestampPointerDown,
-  onTimestampPointerEnter,
-  onTimestampPointerUp,
 }: SegmentRowTimestampColumnProps) {
   const timestampLabel = formatTranscriptTimestamp(startSec);
   const highlight = selected || inSelection;
@@ -38,8 +34,6 @@ export function SegmentRowTimestampColumn({
           busy ? "cursor-not-allowed" : "cursor-cell",
         ].join(" ")}
         onPointerDown={(e) => onTimestampPointerDown?.(index, e)}
-        onPointerEnter={() => onTimestampPointerEnter?.(index)}
-        onPointerUp={onTimestampPointerUp}
       >
         <div className="flex flex-col gap-1">
           <span

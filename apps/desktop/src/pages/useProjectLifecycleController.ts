@@ -406,6 +406,7 @@ export function useProjectLifecycleController(
     selectSegmentAt: segmentSelection.selectSegmentAt,
     selectSegmentRange: segmentSelection.selectSegmentRange,
     selectSegmentIndices: segmentSelection.selectSegmentIndices,
+    clearMultiSelection: segmentSelection.clearMultiSelection,
     insertSegmentAfter: mutations.insertSegmentAfter,
     insertSegmentFromTimeRange: mutations.insertSegmentFromTimeRange,
     flushSegmentTextDrafts: mutations.flushSegmentTextDrafts,

@@ -128,6 +128,7 @@ export interface ProjectLifecycleApi {
   selectSegmentAt: (idx: number, opts?: { shiftKey?: boolean; toggle?: boolean }) => void;
   selectSegmentRange: (lo: number, hi: number) => void;
   selectSegmentIndices: (indices: number[], primaryIdx: number) => void;
+  clearMultiSelection: () => void;
   requestDeleteSelectedIndices: (indices: number[]) => void;
   insertSegmentAfter: (idx: number, mediaDurationSec?: number) => void;
   insertSegmentFromTimeRange: (

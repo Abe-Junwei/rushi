@@ -235,13 +235,22 @@ fn migrate_files_import_provenance(conn: &Connection) -> rusqlite::Result<()> {
         conn.execute("ALTER TABLE files ADD COLUMN import_source_path TEXT", [])?;
     }
     if !cols.iter().any(|c| c == "import_content_sha256") {
-        conn.execute("ALTER TABLE files ADD COLUMN import_content_sha256 TEXT", [])?;
+        conn.execute(
+            "ALTER TABLE files ADD COLUMN import_content_sha256 TEXT",
+            [],
+        )?;
     }
     if !cols.iter().any(|c| c == "import_source_size") {
-        conn.execute("ALTER TABLE files ADD COLUMN import_source_size INTEGER", [])?;
+        conn.execute(
+            "ALTER TABLE files ADD COLUMN import_source_size INTEGER",
+            [],
+        )?;
     }
     if !cols.iter().any(|c| c == "import_source_modified_ms") {
-        conn.execute("ALTER TABLE files ADD COLUMN import_source_modified_ms INTEGER", [])?;
+        conn.execute(
+            "ALTER TABLE files ADD COLUMN import_source_modified_ms INTEGER",
+            [],
+        )?;
     }
     if let Err(e) = crate::project::import_duplicate::backfill_files_import_provenance(conn) {
         eprintln!("[db] backfill_files_import_provenance: {e}");

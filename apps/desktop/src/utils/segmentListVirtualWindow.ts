@@ -128,6 +128,34 @@ export function readSegmentListScrollMetrics(root: HTMLElement): {
   };
 }
 
+/** 列表 range 拖选：pointer capture 会阻断 pointerenter，故用 hit-test + stride 回退。 */
+export function resolveSegmentListRowIndexFromPoint(
+  scrollRoot: HTMLElement | null,
+  clientX: number,
+  clientY: number,
+  segmentCount: number,
+): number | null {
+  if (!scrollRoot || segmentCount <= 0) return null;
+
+  const hit =
+    typeof document.elementFromPoint === "function"
+      ? document.elementFromPoint(clientX, clientY)
+      : null;
+  const rowEl = hit?.closest("[data-seg-row]");
+  if (rowEl instanceof HTMLElement) {
+    const idx = Number(rowEl.getAttribute("data-seg-row"));
+    if (Number.isFinite(idx) && idx >= 0 && idx < segmentCount) return idx;
+  }
+
+  const metrics = readSegmentListScrollMetrics(scrollRoot);
+  if (!metrics) return null;
+  const rect = scrollRoot.getBoundingClientRect();
+  if (clientY < rect.top || clientY > rect.bottom) return null;
+  const yInContent = clientY - rect.top + scrollRoot.scrollTop;
+  const idx = Math.floor(yInContent / metrics.itemStridePx);
+  return Math.max(0, Math.min(segmentCount - 1, idx));
+}
+
 /**
  * 将语段滚入列表可视区：优先按真实 DOM 校正；行未挂载时按虚拟 stride 估算并二次校正。
  */

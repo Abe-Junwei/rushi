@@ -90,7 +90,7 @@ pub fn disk_free_bytes(path: &Path) -> Option<u64> {
         unsafe {
             GetDiskFreeSpaceExW(PCWSTR(wide.as_ptr()), None, None, Some(&mut free)).ok()?;
         }
-        return Some(free);
+        Some(free)
     }
 
     #[cfg(not(any(unix, windows)))]
