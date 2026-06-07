@@ -5,6 +5,7 @@ import {
   type SegmentContextMenuOrigin,
 } from "./segmentContextMenuModel";
 import { segmentCanFinalize } from "../services/segmentConfirmEligible";
+import { segmentAnnotationMenuLabel } from "./segmentAnnotation";
 
 /** 正文选区内右键：记忆 + 文本外观（字体/字号/加粗/斜体）；删/并/拆见 segmentContextMenuModel。 */
 export type SegmentTextContextMenuKey =
@@ -92,6 +93,7 @@ export type SegmentRowContextMenuBuildArgs = {
  */
 export function buildSegmentRowContextMenuItems(args: SegmentRowContextMenuBuildArgs): ContextMenuItem[] {
   const hasSelection = args.selectionText.trim().length > 0;
+  const segment = args.segments[args.segmentIdx];
 
   const segmentItems: ContextMenuItem[] = buildSegmentContextMenuItems({
     segmentIdx: args.segmentIdx,
@@ -106,8 +108,15 @@ export function buildSegmentRowContextMenuItems(args: SegmentRowContextMenuBuild
     return segmentItems;
   }
 
+  const annotationItem: ContextMenuItem = {
+    key: "editAnnotation",
+    label: segment ? segmentAnnotationMenuLabel(segment) : "添加备注…",
+    disabled: args.busy,
+  };
+
   if (hasSelection) {
     return [
+      annotationItem,
       {
         key: "addCorrectionMemory",
         label: "纳入更正记忆…",
@@ -117,7 +126,7 @@ export function buildSegmentRowContextMenuItems(args: SegmentRowContextMenuBuild
     ];
   }
 
-  return [...segmentItems, buildSegmentTextAppearanceMenuItem(args.appearance)];
+  return [annotationItem, ...segmentItems, buildSegmentTextAppearanceMenuItem(args.appearance)];
 }
 
 export function isSegmentTextContextMenuKey(key: string): key is SegmentTextContextMenuKey {

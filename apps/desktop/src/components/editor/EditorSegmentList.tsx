@@ -230,6 +230,7 @@ export function EditorSegmentList({
         c.openEditorCorrectPopover(i, span, event.clientX, event.clientY)
       }
       hasUnsavedDraft={segmentHasUnsavedText(c.segments, savedSnapshot, i)}
+      onOpenAnnotation={c.openSegmentAnnotationDialog}
     />
   );
 

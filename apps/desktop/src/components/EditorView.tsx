@@ -95,6 +95,11 @@ export function EditorView({
     (key: string) => {
       if (!segmentCtxMenu) return;
 
+      if (key === "editAnnotation") {
+        c.openSegmentAnnotationDialog(segmentCtxMenu.segmentIdx);
+        return;
+      }
+
       if (isSegmentTextContextMenuKey(key)) {
         const actionKey: SegmentTextContextMenuKey = key;
         if (actionKey === "addCorrectionMemory") {

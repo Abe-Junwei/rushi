@@ -222,4 +222,11 @@ export interface ProjectLifecycleApi {
   requestDeleteProject: (projectId: string, projectName: string) => void;
   cancelDeleteProject: () => void;
   confirmDeleteProject: () => void;
+  segmentAnnotationDialog: import("./useSegmentAnnotationController").SegmentAnnotationDialogState;
+  segmentAnnotationSaving: boolean;
+  openSegmentAnnotationDialog: (segmentIdx: number) => void;
+  closeSegmentAnnotationDialog: () => void;
+  setSegmentAnnotationDraft: (draft: string) => void;
+  saveSegmentAnnotation: () => Promise<boolean>;
+  clearSegmentAnnotation: () => Promise<boolean>;
 }

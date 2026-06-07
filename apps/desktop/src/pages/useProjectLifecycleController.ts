@@ -25,6 +25,7 @@ import {
 } from "./useTranscribeJobController";
 import { useProjectSaveController } from "./useProjectSaveController";
 import { useSegmentDeleteConfirmController } from "./useSegmentDeleteConfirmController";
+import { useSegmentAnnotationController } from "./useSegmentAnnotationController";
 import { useProjectEditorToolsController } from "./useProjectEditorToolsController";
 import { mapEditorToolsLifecycleFields } from "./projectLifecycleEditorToolsReturn";
 import type { ProjectLifecycleApi } from "./ProjectLifecycleApi";
@@ -121,6 +122,15 @@ export function useProjectLifecycleController(
     markSegmentFinalized,
     restoreEditorFromEditLog,
   } = saveController;
+
+  const segmentAnnotation = useSegmentAnnotationController({
+    busy,
+    segmentsRef,
+    setSegments,
+    saveSegments,
+    pushUndo: mutations.pushUndo,
+    setError,
+  });
 
   const autoSave = useAutoSaveSegments({
     enabled: Boolean(currentFileId),
@@ -432,5 +442,12 @@ export function useProjectLifecycleController(
     requestDeleteProject: projectMutation.requestDeleteProject,
     cancelDeleteProject: projectMutation.cancelDeleteProject,
     confirmDeleteProject: () => void projectMutation.confirmDeleteProject(),
+    segmentAnnotationDialog: segmentAnnotation.segmentAnnotationDialog,
+    segmentAnnotationSaving: segmentAnnotation.segmentAnnotationSaving,
+    openSegmentAnnotationDialog: segmentAnnotation.openSegmentAnnotationDialog,
+    closeSegmentAnnotationDialog: segmentAnnotation.closeSegmentAnnotationDialog,
+    setSegmentAnnotationDraft: segmentAnnotation.setSegmentAnnotationDraft,
+    saveSegmentAnnotation: segmentAnnotation.saveSegmentAnnotation,
+    clearSegmentAnnotation: segmentAnnotation.clearSegmentAnnotation,
   };
 }

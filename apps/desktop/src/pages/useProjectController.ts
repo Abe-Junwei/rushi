@@ -235,6 +235,13 @@ export function useProjectController() {
     requestDeleteProject: lifecycle.requestDeleteProject,
     cancelDeleteProject: lifecycle.cancelDeleteProject,
     confirmDeleteProject: lifecycle.confirmDeleteProject,
+    segmentAnnotationDialog: lifecycle.segmentAnnotationDialog,
+    segmentAnnotationSaving: lifecycle.segmentAnnotationSaving,
+    openSegmentAnnotationDialog: lifecycle.openSegmentAnnotationDialog,
+    closeSegmentAnnotationDialog: lifecycle.closeSegmentAnnotationDialog,
+    setSegmentAnnotationDraft: lifecycle.setSegmentAnnotationDraft,
+    saveSegmentAnnotation: lifecycle.saveSegmentAnnotation,
+    clearSegmentAnnotation: lifecycle.clearSegmentAnnotation,
 
     // ASR bridge
     asrHealth: asr.asrHealth,

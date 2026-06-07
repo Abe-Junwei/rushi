@@ -147,6 +147,30 @@ describe("segmentListHelpers", () => {
     expect(pair?.right.kind).toBe("speech");
   });
 
+  it("mergeTwoSegments concatenates annotations per B5–B7", () => {
+    const merged = mergeTwoSegments(
+      seg({ start_sec: 0, end_sec: 1, text: "a", annotation: "L" }),
+      seg({ start_sec: 1, end_sec: 2, text: "b", annotation: "R" }),
+    );
+    expect(merged.annotation).toBe("L\n\n---\n\nR");
+  });
+
+  it("buildSplitPair keeps annotation on left and clears right", () => {
+    const pair = buildSplitPair(
+      seg({ uid: "a", start_sec: 0, end_sec: 10, text: "parent", annotation: "note" }),
+      5,
+    );
+    expect(pair?.left.annotation).toBe("note");
+    expect(pair?.right.annotation).toBeNull();
+  });
+
+  it("segmentsEqualForPersist compares annotation", () => {
+    const a = [seg({ start_sec: 0, end_sec: 1, text: "x", annotation: "n" })];
+    const b = [seg({ start_sec: 0, end_sec: 1, text: "x", annotation: null })];
+    expect(segmentsEqualForPersist(a, a)).toBe(true);
+    expect(segmentsEqualForPersist(a, b)).toBe(false);
+  });
+
   it("sortSegmentsByStartSec orders by start_sec and reindexes", () => {
     const input = [
       seg({ uid: "b", start_sec: 5, end_sec: 6, text: "b" }),

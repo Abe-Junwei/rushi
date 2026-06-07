@@ -41,6 +41,8 @@ export interface SegmentDto {
   text_stage?: SegmentTextStage | null;
   /** 定稿方式；仅 text_stage=finalized 时有意义 */
   finalize_via?: SegmentFinalizeVia | null;
+  /** 语段备注（与正文独立，经 file_save_segments 持久化） */
+  annotation?: string | null;
 }
 
 export interface FileSummary {

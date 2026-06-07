@@ -35,6 +35,7 @@ export type SegmentTextListRowProps = {
   spansForText: (text: string) => CorrectableSpan[];
   onCorrectableSpanClick: (span: CorrectableSpan, event: React.MouseEvent<HTMLButtonElement>) => void;
   hasUnsavedDraft?: boolean;
+  onOpenAnnotation?: (segmentIdx: number) => void;
 };
 
 export const SegmentTextListRow = memo(function SegmentTextListRow({
@@ -61,6 +62,7 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
   spansForText,
   onCorrectableSpanClick,
   hasUnsavedDraft = false,
+  onOpenAnnotation,
 }: SegmentTextListRowProps) {
   const focusOnSelectRef = useRef(false);
   const editorRef = useRef<{ focusEditor: () => void } | null>(null);
@@ -139,7 +141,13 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
         onOpenTextContextMenu={onOpenTextContextMenu}
       />
 
-      <SegmentRowStageBadge segment={s} hasUnsavedDraft={hasUnsavedDraft} />
+      <SegmentRowStageBadge
+        segment={s}
+        segmentIdx={i}
+        hasUnsavedDraft={hasUnsavedDraft}
+        busy={busy}
+        onOpenAnnotation={onOpenAnnotation}
+      />
     </div>
   );
 });

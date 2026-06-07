@@ -12,6 +12,7 @@ import { ProjectMetadataDialog } from "./ProjectMetadataDialog";
 import { FindReplaceDialog } from "./FindReplaceDialog";
 import { GlossaryLearnPromptDialog } from "./GlossaryLearnPromptDialog";
 import { PostTranscribeStageBDialog } from "./PostTranscribeStageBDialog";
+import { SegmentAnnotationDialog } from "./SegmentAnnotationDialog";
 import { ManualCorrectionMemoryDialog } from "./segmentRow/ManualCorrectionMemoryDialog";
 import { TranscribeNavBlockDialog } from "./TranscribeNavBlockDialog";
 import { UnsavedCloseDialog } from "./UnsavedCloseDialog";
@@ -47,6 +48,12 @@ export function ProjectPanelDialogs({
   onDeliveryExportClose,
   onDeliveryExport,
 }: ProjectPanelDialogsProps) {
+  const annotationDialog = c.segmentAnnotationDialog;
+  const annotationSegment =
+    annotationDialog.phase === "edit" ? (segments[annotationDialog.segmentIdx] ?? null) : null;
+  const annotationSegmentIdx =
+    annotationDialog.phase === "edit" ? annotationDialog.segmentIdx : 0;
+
   return (
     <>
       <FindReplaceDialog
@@ -184,6 +191,17 @@ export function ProjectPanelDialogs({
         busy={c.busy}
         onClose={c.closeProjectMetadataDialog}
         onSave={(form) => void c.saveProjectMetadata(form)}
+      />
+
+      <SegmentAnnotationDialog
+        state={annotationDialog}
+        segment={annotationSegment}
+        segmentIdx={annotationSegmentIdx}
+        busy={c.busy || c.segmentAnnotationSaving}
+        onClose={c.closeSegmentAnnotationDialog}
+        onDraftChange={c.setSegmentAnnotationDraft}
+        onSave={() => void c.saveSegmentAnnotation()}
+        onClear={() => void c.clearSegmentAnnotation()}
       />
     </>
   );

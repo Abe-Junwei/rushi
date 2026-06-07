@@ -33,6 +33,7 @@ describe("buildSegmentRowContextMenuItems", () => {
       appearance: appearanceArgs,
     });
     expect(items.map((i) => i.key)).toEqual([
+      "editAnnotation",
       "addCorrectionMemory",
       "markFinalized",
       "delete",
@@ -52,6 +53,7 @@ describe("buildSegmentRowContextMenuItems", () => {
       appearance: appearanceArgs,
     });
     expect(items.map((i) => i.key)).toEqual([
+      "editAnnotation",
       "markFinalized",
       "delete",
       "mergePrev",
@@ -72,6 +74,20 @@ describe("buildSegmentRowContextMenuItems", () => {
     });
     expect(items.map((i) => i.key)).toContain("splitAtPointer");
     expect(items.map((i) => i.key)).not.toContain("appearance");
+    expect(items.map((i) => i.key)).not.toContain("editAnnotation");
+  });
+
+  it("shows edit annotation label when segment has annotation", () => {
+    const items = buildSegmentRowContextMenuItems({
+      segmentIdx: 0,
+      segments: [{ ...seg(0, 10), annotation: "note" }],
+      busy: false,
+      pointerTimeSec: 5,
+      origin: "segmentList",
+      selectionText: "",
+      appearance: appearanceArgs,
+    });
+    expect(items[0]?.label).toBe("编辑备注…");
   });
 });
 

@@ -4,6 +4,7 @@ import {
   mergeSegmentStageFields,
 } from "../services/segmentStagePersist";
 import { withDefaultSegmentStage, newSegmentWithDefaultStage } from "../services/segmentTextStage";
+import { mergeSegmentAnnotations } from "../utils/segmentAnnotation";
 import { createSegmentUid, ensureSegmentUids, ensureUniqueSegmentUids } from "../utils/segmentUid";
 import { sanitizeSegmentsForMedia } from "../utils/segmentMediaSanitize";
 import { trimAdjacentSegmentOverlaps } from "../utils/segmentBoundaryTrim";
@@ -98,7 +99,8 @@ export function segmentsEqualForPersist(a: SegmentDto[], b: SegmentDto[]): boole
       (s.detail ?? null) === (t.detail ?? null) &&
       (s.kind ?? null) === (t.kind ?? null) &&
       (s.text_stage ?? "auto_transcribe") === (t.text_stage ?? "auto_transcribe") &&
-      (s.finalize_via ?? null) === (t.finalize_via ?? null)
+      (s.finalize_via ?? null) === (t.finalize_via ?? null) &&
+      (s.annotation ?? null) === (t.annotation ?? null)
     );
   });
 }
@@ -122,6 +124,7 @@ export function mergeTwoSegments(a: SegmentDto, b: SegmentDto): SegmentDto {
     low_confidence: Boolean(a.low_confidence || b.low_confidence),
     detail: [a.detail, b.detail].filter(Boolean).join(" / ") || null,
     kind: "speech",
+    annotation: mergeSegmentAnnotations(a, b),
     ...mergeSegmentStageFields(a, b),
   };
 }
@@ -147,6 +150,7 @@ export function buildSplitPair(s: SegmentDto, mid: number): { left: SegmentDto; 
     low_confidence: false,
     detail: null,
     kind: "speech",
+    annotation: null,
   });
   return { left, right };
 }
