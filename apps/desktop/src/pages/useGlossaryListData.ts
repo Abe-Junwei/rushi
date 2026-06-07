@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   applyGlossaryFilters,
   countHotwordEnabledTerms,
@@ -33,10 +33,10 @@ export function useGlossaryListData() {
   const visibleIdSet = useMemo(() => new Set(visibleIds), [visibleIds]);
   const hotwordEnabledCount = useMemo(() => countHotwordEnabledTerms(terms), [terms]);
 
-  const refresh = useCallback(async () => {
+  const refresh = useCallback(async (query?: string) => {
     setLoadError("");
     try {
-      const list = await g.glossaryList();
+      const list = await g.glossaryList(query);
       setTerms(list);
       try {
         const raw = await g.glossaryHotwordsPreview();
@@ -49,9 +49,21 @@ export function useGlossaryListData() {
     }
   }, []);
 
+  const lastBackendSearchRef = useRef("");
+
   useEffect(() => {
     void refresh();
   }, [refresh]);
+
+  useEffect(() => {
+    const q = searchQuery.trim();
+    if (q === lastBackendSearchRef.current) return;
+    lastBackendSearchRef.current = q;
+    const timer = setTimeout(() => {
+      void refresh(q || undefined);
+    }, 250);
+    return () => clearTimeout(timer);
+  }, [searchQuery, refresh]);
 
   return {
     terms,

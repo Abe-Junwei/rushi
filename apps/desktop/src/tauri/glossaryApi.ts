@@ -64,8 +64,8 @@ function parseBatchResult(raw: unknown): GlossaryBatchResult {
   };
 }
 
-export async function glossaryList(): Promise<GlossaryTermDto[]> {
-  const rows = await invoke<Array<Record<string, unknown>>>("glossary_list");
+export async function glossaryList(search?: string): Promise<GlossaryTermDto[]> {
+  const rows = await invoke<Array<Record<string, unknown>>>("glossary_list", { search: search?.trim() || null });
   return rows.map(parseGlossaryTermDto);
 }
 

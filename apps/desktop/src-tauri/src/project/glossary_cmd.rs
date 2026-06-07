@@ -120,16 +120,26 @@ fn execute_ids_in_chunks(
 }
 
 #[tauri::command]
-pub fn glossary_list(state: State<DbState>) -> Result<Vec<GlossaryTermDto>, String> {
+pub fn glossary_list(
+    state: State<DbState>,
+    search: Option<String>,
+) -> Result<Vec<GlossaryTermDto>, String> {
     let conn = open_db(state.deref())?;
-    let mut stmt = conn
-        .prepare(&format!(
-            "{GLOSSARY_SELECT} ORDER BY term COLLATE NOCASE ASC"
-        ))
-        .map_err(|e| e.to_string())?;
-    let rows = stmt
-        .query_map([], row_to_glossary_term)
-        .map_err(|e| e.to_string())?;
+    let sql = if search.as_deref().map(str::trim).filter(|s| !s.is_empty()).is_some() {
+        format!(
+            "{GLOSSARY_SELECT} WHERE term LIKE ?1 OR aliases LIKE ?1 ORDER BY term COLLATE NOCASE ASC"
+        )
+    } else {
+        format!("{GLOSSARY_SELECT} ORDER BY term COLLATE NOCASE ASC")
+    };
+    let mut stmt = conn.prepare(&sql).map_err(|e| e.to_string())?;
+    let rows = if let Some(s) = search.as_deref().map(str::trim).filter(|s| !s.is_empty()) {
+        stmt.query_map([format!("%{s}%")], row_to_glossary_term)
+            .map_err(|e| e.to_string())?
+    } else {
+        stmt.query_map([], row_to_glossary_term)
+            .map_err(|e| e.to_string())?
+    };
     let mut out = Vec::new();
     for row in rows {
         out.push(row.map_err(|e| e.to_string())?);
