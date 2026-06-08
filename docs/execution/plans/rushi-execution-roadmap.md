@@ -10,7 +10,7 @@
 | 适用节奏 | 单人、每轮 2～4h、一轮一纵向薄片 |
 | 规划跨度 | **个人单机 v1**：约 **14～18 周（自当前）** 或 **18～22 周（自 W1）**；R3 薄片 **~12～15w**（§4.0，含发行 smoke 缓冲）；协作 **非 v1** |
 | 修订 | 每完成一个阶段更新 §2 状态表、§4 排期表与 §13 代码对照 |
-| 最近对照 | **2026-06-06**：**R3h-0** mac 机器闸门 ✅ · Win §4 ⏳ — [signoff](../specs/r3h-0-phase-signoff-2026-06.md) · F7 §B ⏸ |
+| 最近对照 | **2026-06-08**：**R3h-0 mac** ✅ 签收 · Win §4 豁免 — [signoff](../specs/r3h-0-phase-signoff-2026-06.md) · 下一刀 R3f 手测 |
 
 ### 状态标记约定（全文档统一）
 
@@ -995,8 +995,8 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 |----|------|
 | **定位** | **v1 已闭合** → **v1 后本机 LLM**（§1.6、§6） |
 | **阶段** | **LLM-LOC-4a** ✅ · **4b** ❌ Gate-B No-Go（[decision](../specs/llm-loc-gate-b-decision-2026-06.md) 2026-06-04） |
-| **工作区尾项** | **R3h-0**（**MEM-P2** ✅）；F7 §B 双机 ⏸ — [mem-p2 signoff](../specs/r3-5f-mem-p2-phase-signoff-2026-06.md) |
-| **刚闭合** | [v1-release-installed-signoff](../v1-release-installed-signoff-2026-06.md) · R9 · R4 |
+| **工作区尾项** | **R3h-0 mac** ✅（Win §4 豁免）；**下一刀**：**R3f 安装包手测** / **Project Hub** — [r3h-0 signoff](../specs/r3h-0-phase-signoff-2026-06.md) |
+| **刚闭合** | **R3h-0 mac** · [v1-release-installed-signoff](../v1-release-installed-signoff-2026-06.md) · R9 · R4 |
 | **Spike 真源** | [research](../specs/llm-loc-spike-research.md) · [plan](../specs/llm-loc-spike-plan.md) · [acceptance](../specs/llm-loc-spike-acceptance.md) · [backlog §9](../specs/llm-local-runtime-backlog.md) |
 | **预检** | `bash scripts/llm-loc-spike-preflight.sh` |
 | **近期不做** | **LLM-LOC-4b**（LRC 自管）、**CAT-TRAN**、**R6–R8** |
@@ -1005,16 +1005,16 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 
 ### v1 0.1.0 已可分发（2026-06-03）
 
-- **DMG**：`apps/desktop/src-tauri/target/release/bundle/dmg/如是我闻_0.1.0_aarch64.dmg`（**Mac 单机自用**；侧车见 **Q-SIDECAR-1**：本机 FunASR 需自启 `rushi-asr` 或 `npm run desktop:dev` 拉起，**非** Linux 式内置 onedir）
+- **DMG**：仓库根 `如是我闻_0.1.0_aarch64.dmg`（`npm run desktop:build-dmg` 自动 staging；源路径 `apps/desktop/src-tauri/target/release/bundle/dmg/`）
 - **签收**：[v1-release-installed-signoff](../v1-release-installed-signoff-2026-06.md)
 
 **主序（E 期）**：**EXP-WORD** ✅ → **REV-LOC** ✅ → **R4** ✅ → **R9** ✅ → **LLM-LOC-SPIKE** ✅ → **4a** ✅
 
 **LLM**：Spike ✅ · **4a Ollama** ✅（[acceptance](../specs/llm-loc-4a-acceptance.md)）；G-A1 人工可选；**4b 未立项**。
 
-**并行（不挡主序）**：见 [parallel-backlog-2026-06.md](../specs/parallel-backlog-2026-06.md) — R3h-0、TRN-DIAG、ASR-WARM、R3h-2
+**并行（不挡主序）**：见 [parallel-backlog-2026-06.md](../specs/parallel-backlog-2026-06.md) — TRN-DIAG、ASR-WARM、R3h-2；Win §4 backlog
 
-**⑤″f 主序**：**⑤″f-B** ✅ → **⑤″f-B½** ✅ → **⑤″f-D** ✅ → **MEM-P2** ✅ → **⑤″f-C** F7 §B ⏸ → **R3h-0**（下一刀）— [holistic](../specs/r3-asr-voc-holistic-review-2026-05.md) §5
+**⑤″f 主序**：**⑤″f-B** ✅ → **⑤″f-B½** ✅ → **⑤″f-D** ✅ → **MEM-P2** ✅ → **⑤″f-C** F7 §B ⏸ → **R3h-0 mac** ✅ → **R3f 手测**（下一刀）
 
 ---
 

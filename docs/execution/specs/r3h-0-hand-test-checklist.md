@@ -76,7 +76,7 @@ npm run asr:build-sidecar-windows-cpu
 
 | 平台 | 机器闸门 | 手测 | 备注 |
 |------|----------|------|------|
-| macOS arm64 | ✅ 2026-06-06 | §1 ✅ | bundled 产物 smoke |
-| Windows x64 | ⏳ | §4 ⏳ | 有 Win 机时补测 |
+| macOS arm64 | ✅ 2026-06-06 · 复验 ✅ 2026-06-08 | §1 ✅ · §3 ✅ | bundled 产物 smoke；安装包波形/CSP 手测 ✅ |
+| Windows x64 | ⏳ | §4 ⏳ | **豁免**：无 Win 开发机；有 Win 机时补测 |
 
-**R3h-0 闭合条件**：mac ✅ + Win §4 全绿 → 可解除 **R3f 安装包手测**阻塞（仍受 R3h-1 发行门禁约束）。
+**R3h-0 mac 闭合**：mac ✅ → **R3f 安装包手测**可继续（仍受 R3h-1 约束）。Win §4 为 backlog 项。

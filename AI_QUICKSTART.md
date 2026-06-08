@@ -17,9 +17,9 @@
 | `docs/adr/` | 架构决策记录 |
 | `docs/execution/specs/` | 非 trivial feature 三件套 |
 
-## 当前热点（自动同步，2026-06-04）
+## 当前热点（自动同步，2026-06-08）
 
-**工作区尾项**：**MEM-P2** ✅ · F7 §B 双机 ⏸ → **下一刀**：**R3h-0** — [`r3-5f-mem-p2-phase-signoff-2026-06.md`](./docs/execution/specs/r3-5f-mem-p2-phase-signoff-2026-06.md)
+**工作区尾项**：**R3h-0 mac** ✅ · Win §4 豁免 → **下一刀**：**R3f 安装包手测** 或 **Project Hub 元信息** — [`r3h-0-phase-signoff-2026-06.md`](./docs/execution/specs/r3h-0-phase-signoff-2026-06.md)
 
 **v1 后主序：LLM-LOC**
 
@@ -46,7 +46,7 @@
 | 新 UI / 整页重设计 / Stitch 对齐 | 仓库根 `DESIGN.md` → 再映射到 `tailwind.config.js` + `apps/desktop/src/config/tokens.ts` |
 | **波形区 Stitch 精修** | [`apps/desktop/docs/stitch-waveform-polish-spec.md`](./apps/desktop/docs/stitch-waveform-polish-spec.md) + [`stitch-waveform-polish-layout.html`](./apps/desktop/stitch-waveform-polish-layout.html) → `bash scripts/prepare-stitch-upload.sh` |
 | 浮动确认/表单对话框 | `FloatingPanelTemplate` + `preset="compactDialog"`；`controlStyles.ts` 按钮；见 [`docs/architecture/desktop-floating-dialog-panels.md`](./docs/architecture/desktop-floating-dialog-panels.md) |
-| **后续排期 / 下一刀** | [`rushi-execution-roadmap.md`](./docs/execution/plans/rushi-execution-roadmap.md) §10；**当前**：**R3h-0**；**v1 后**：LLM-LOC（4b No-Go） |
+| **后续排期 / 下一刀** | [`rushi-execution-roadmap.md`](./docs/execution/plans/rushi-execution-roadmap.md) §10；**当前**：**R3f 手测** / **Project Hub**；**v1 后**：LLM-LOC（4b No-Go） |
 | **新功能 / 路线图薄片** | **先调研后编码**：`.cursor/rules/feature-research-gate.mdc` + `docs/execution/specs/*-research.md`；范例 [`r3-provider-configuration-research.md`](./docs/execution/specs/r3-provider-configuration-research.md) |
 | 单人 UI 重设计迭代（已验收） | `docs/execution/specs/ui-redesign-parallel-dev.md` + `bash scripts/prepare-stitch-upload.sh` |
 | 更换或更新 `DESIGN.md` 基底 | 仓库根执行 `npm run design:add -- <站点>`（站点名见 [awesome-design-md](https://github.com/VoltAgent/awesome-design-md) / [getdesign.md](https://getdesign.md/)，例：`npm run design:add -- cal`） |

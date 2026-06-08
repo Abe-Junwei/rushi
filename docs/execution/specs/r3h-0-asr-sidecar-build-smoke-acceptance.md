@@ -1,6 +1,6 @@
 # Acceptance: R3h-0 — 侧车构建 smoke + 发行止血门禁
 
-> **状态**：🟡 **macOS 机器闸门 ✅**（2026-06-06）；**Windows 手测 ⏳**（无 Win 机时登记豁免，不挡 mac 签收）  
+> **状态**：✅ **macOS 签收**（2026-06-08 机器闸门复验）；**Windows §4** ⏳ 豁免（无 Win 机，不挡 mac 签收）  
 > **Research / 整改真源**：[`rushi-local-runtime-catalog-remediation-plan.md`](./rushi-local-runtime-catalog-remediation-plan.md) **§5 Phase 0**  
 > **排期**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) **§4.1.1 ①**  
 > **手测**：[`r3h-0-hand-test-checklist.md`](./r3h-0-hand-test-checklist.md)  
