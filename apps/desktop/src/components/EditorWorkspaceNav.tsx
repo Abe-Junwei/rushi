@@ -1,4 +1,4 @@
-import { ChevronLeft } from "lucide-react";
+import { ChevronLeft, PanelLeftOpen } from "lucide-react";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
 /** 工作区顶栏：图标后退 + 面包屑（常态无灰底，hover 才显底） */
@@ -20,6 +20,9 @@ export type EditorWorkspaceNavProps = {
   fileOpen: boolean;
   backLabel?: string;
   disabled?: boolean;
+  /** 侧栏折叠时：在导航前显示 ghost 展开钮（与 Chevron 同套样式） */
+  workspaceSidebarCollapsed?: boolean;
+  onExpandWorkspaceSidebar?: () => void;
 };
 
 /**
@@ -34,6 +37,8 @@ export function EditorWorkspaceNav({
   backLabel,
   disabled = false,
   hasUnsavedEdits = false,
+  workspaceSidebarCollapsed = false,
+  onExpandWorkspaceSidebar,
 }: EditorWorkspaceNavProps) {
   const resolvedBackLabel =
     backLabel ?? (fileOpen ? "返回项目文件列表" : "返回项目列表");
@@ -41,6 +46,18 @@ export function EditorWorkspaceNav({
 
   return (
     <div className="flex min-w-0 flex-1 items-center gap-0.5">
+      {workspaceSidebarCollapsed && onExpandWorkspaceSidebar ? (
+        <button
+          type="button"
+          className={NAV_ICON_BTN}
+          disabled={disabled}
+          onClick={onExpandWorkspaceSidebar}
+          aria-label="展开侧栏"
+          title="展开项目侧栏"
+        >
+          <PanelLeftOpen className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+        </button>
+      ) : null}
       <button
         type="button"
         className={NAV_ICON_BTN}

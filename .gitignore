@@ -6,6 +6,9 @@
 node_modules/
 dist/
 target/
+# Tauri 打包产物（stage-release-artifacts.sh 复制到仓库根）
+/*.dmg
+/如是我闻.app
 .venv/
 __pycache__/
 *.egg-info/

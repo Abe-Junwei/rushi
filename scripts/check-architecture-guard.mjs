@@ -194,9 +194,8 @@ function checkTauriProductionCsp() {
   if (cspDirectiveHasUnsafeInline(csp['script-src'])) {
     errors.push('apps/desktop/src-tauri/tauri.conf.json: 生产 script-src 禁止 unsafe-inline（Tauri 构建时注入 hash/nonce）');
   }
-  if (cspDirectiveHasUnsafeInline(csp['style-src'])) {
-    errors.push('apps/desktop/src-tauri/tauri.conf.json: 生产 style-src 禁止 unsafe-inline（React 行内样式用 style-src-attr）');
-  }
+  // style-src 允许 unsafe-inline：WaveSurfer 7 shadow DOM 注入 <style>；React 行内 style= 仍走 style-src-attr。
+  // Q-CSP-1 v1.1 硬化时再改为 nonce + cspNonce 并移除此项。
 }
 
 checkTauriProductionCsp();

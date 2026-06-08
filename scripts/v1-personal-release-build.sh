@@ -46,6 +46,7 @@ TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   echo "- **版本**：\`$(node -p "require('./apps/desktop/package.json').version")\`"
   echo "- **门禁**：typecheck · vitest · architecture-guard · r9-rel-1 · release-sidecar-preflight"
   echo "- **bundles**：\`${BUNDLE}\`"
+  echo "- **根目录安装包**：打包完成后 \`*.dmg\` 会复制到仓库根目录（\`scripts/stage-release-artifacts.sh\`）"
   echo ""
   echo "## 产物"
   echo ""
@@ -72,3 +73,5 @@ ls -lh ${APP_GLOB} ${DMG_GLOB} 2>/dev/null || true
 if [[ "${BUNDLE}" == "app" || "${BUNDLE}" == *"app"* ]]; then
   bash scripts/release-postbuild-verify.sh
 fi
+
+bash scripts/stage-release-artifacts.sh || true

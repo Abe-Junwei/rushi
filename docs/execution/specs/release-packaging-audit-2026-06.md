@@ -55,7 +55,8 @@ Fixes landed:
 1. `tauri.conf.json` — CSP `asset:` + `$APPDATA/**/*` scope
 2. `project/asset_scope.rs` — startup + per-import registration
 3. Frontend — `desktopUiLog`, peaks error banner, render status copy
-4. Probe: `npm run release:waveform-probe`
+4. WaveSurfer — production `style-src` includes `'unsafe-inline'` (shadow DOM `<style>`); optional `cspNonce` probe + `applyWaveSurferShadowCspNonce` for Q-CSP-1 hardening path
+5. Probe: `npm run release:waveform-probe`
 
 Verify after rebuild:
 
@@ -117,6 +118,7 @@ npm run desktop:build-app
 npm run release:postbuild-verify
 bash scripts/v1-release-installed-smoke.sh
 open apps/desktop/src-tauri/target/release/bundle/macos/如是我闻.app
+# 或根目录：open 如是我闻.app / 安装 open 如是我闻_0.1.0_aarch64.dmg
 ```
 
 Optional debug: `RUSHI_DEVTOOLS=1 open …app`

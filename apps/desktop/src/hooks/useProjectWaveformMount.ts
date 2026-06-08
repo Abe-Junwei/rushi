@@ -14,6 +14,10 @@ import { WAVEFORM_DECODE_SAMPLE_RATE } from "../services/waveform/waveformZoomSy
 import { installWaveSurferProgressAbortWarnFilter } from "../services/waveform/waveSurferProgressAbortWarn";
 import { bindProjectWaveformWaveSurferEvents } from "./projectWaveformWaveSurferEvents";
 import { logDesktopUi } from "../services/desktopUiLog";
+import {
+  applyWaveSurferShadowCspNonce,
+  withWaveSurferCspNonce,
+} from "../utils/waveSurferShadowCspNonce";
 import type { UseProjectWaveformOptions } from "./useProjectWaveformTypes";
 
 installWaveSurferProgressAbortWarnFilter();
@@ -147,30 +151,33 @@ export function useProjectWaveformMount(
       const mountEl = containerRef.current;
       if (!mountEl?.isConnected) return;
 
-      const ws = WaveSurfer.create({
-        container: mountEl,
-        url: mediaUrl,
-        peaks,
-        duration,
-        height: initialH,
-        normalize: true,
-        maxPeak: 1,
-        sampleRate: peaks ? undefined : WAVEFORM_DECODE_SAMPLE_RATE,
-        waveColor: COLORS.waveformWave,
-        progressColor: COLORS.waveformProgress,
-        cursorColor: COLORS.indigo,
-        cursorWidth: 1,
-        barWidth: 2,
-        barGap: 1,
-        barRadius: 2,
-        minPxPerSec: initialMps,
-        dragToSeek: !wantDragCreate,
-        interact: !optsRef.current.disabled,
-        autoScroll: false,
-        autoCenter: false,
-        hideScrollbar: true,
-        fillParent: false,
-      });
+      const ws = WaveSurfer.create(
+        withWaveSurferCspNonce({
+          container: mountEl,
+          url: mediaUrl,
+          peaks,
+          duration,
+          height: initialH,
+          normalize: true,
+          maxPeak: 1,
+          sampleRate: peaks ? undefined : WAVEFORM_DECODE_SAMPLE_RATE,
+          waveColor: COLORS.waveformWave,
+          progressColor: COLORS.waveformProgress,
+          cursorColor: COLORS.indigo,
+          cursorWidth: 1,
+          barWidth: 2,
+          barGap: 1,
+          barRadius: 2,
+          minPxPerSec: initialMps,
+          dragToSeek: !wantDragCreate,
+          interact: !optsRef.current.disabled,
+          autoScroll: false,
+          autoCenter: false,
+          hideScrollbar: true,
+          fillParent: false,
+        }),
+      );
+      applyWaveSurferShadowCspNonce(mountEl);
 
       wsRef.current = ws;
 
