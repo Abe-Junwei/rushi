@@ -1,6 +1,6 @@
 # Acceptance: R3f — 本机 ASR 一键环境准备
 
-> **状态**：R3f-A/B/D/F 已编码并补强自动化对照；`bundled` 主路径、`8741` 冲突接受当前服务、主 UI 隐藏 `pip` 入口均已有回归覆盖。**`desktop:dev`（已 build sidecar）手测已签收**（2026-05-27：一键准备、真实模型下载进度、关键操作后自动刷新诊断）。**仍待安装包手测**（macOS / Windows 零终端首装，建议在 R3h-0 / R3h-1 全绿后签收）。  
+> **状态**：R3f-A/B/D/F 已编码并补强自动化对照；`desktop:dev` 手测已签收（2026-05-27）。**macOS 安装包机器闸门 ✅** + **首装空 App Data UI 一键准备 ✅**（2026-06-09 — [signoff](./r3f-phase-signoff-2026-06.md) · [fresh evidence](./r3f-fresh-appdata-hand-test-evidence.md)）。**仍待 Windows 安装包手测**。
 > **关联**：[`rushi-local-runtime-catalog-remediation-plan.md`](./rushi-local-runtime-catalog-remediation-plan.md)（发行整改真源）、[`asr-sidecar-funasr-policy.md`](../../architecture/asr-sidecar-funasr-policy.md)、[`r3c-local-asr-cache-manifest-acceptance.md`](./r3c-local-asr-cache-manifest-acceptance.md)、[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md)
 
 ## 产品决策（已锁定）

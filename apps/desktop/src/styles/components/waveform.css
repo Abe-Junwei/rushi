@@ -119,19 +119,22 @@
 .editor-workbench-toolbar-track {
   display: grid;
   width: 100%;
-  min-width: min-content;
+  min-width: 0;
   grid-template-columns: minmax(0, 1fr) auto minmax(0, 1fr);
   align-items: center;
   column-gap: 12px;
-  overflow: visible;
+  overflow-x: auto;
+  overflow-y: visible;
   scrollbar-width: thin;
 }
 
 .workbench-toolbar-left {
   display: flex;
   min-width: 0;
+  max-width: 100%;
   justify-self: start;
   align-items: center;
+  overflow: hidden;
 }
 
 .workbench-toolbar-center {
@@ -142,6 +145,7 @@
   justify-self: center;
   align-items: center;
   min-width: 0;
+  flex-shrink: 0;
 }
 
 .workbench-toolbar-right {
@@ -152,6 +156,8 @@
   justify-self: end;
   align-items: center;
   min-width: 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 /** 左/右工具组：浅底 pill，无额外 border（遵守面板 ≤2 层 border） */

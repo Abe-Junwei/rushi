@@ -101,10 +101,10 @@ ASR 侧车当前承载的是：
 
 在线 STT 当前采用：
 
-- 非密钥配置进 storage
-- 根密钥仅内存保存
+- 非密钥配置进 storage（含 `apiKeyId` 引用）
+- 根密钥经 Tauri 写入本地受保护存储（与 LLM `llm_save_api_key` 同构）
 
-`auto_punctuate` **不复用**该内存 secret 路径作为长期方案，原因是：
+`auto_punctuate` **不复用**在线 STT 的运行时内存注入路径作为 LLM 长期方案，原因是：
 
 1. 后处理动作需要由 Rust/Tauri 直接出站请求。
 2. 路线图 R3 已规划 `profile.rs` / `api_key_id`。

@@ -31,6 +31,7 @@
 | `openai` | ✅ | `prompt`（≤224 字） |
 | `assemblyai` | ✅ | `keyterms_prompt` |
 | `deepgram` | ✅ | URL `keywords` |
+| `dashscope-asr` | ✅ | 百炼 `vocabulary_id`（`speech-biasing` + `fun-asr-realtime`） |
 | `custom-proxy` | ✅ | multipart `hotwords`（代理须兼容 Rushi） |
 | 其它壳直连（腾讯/百度/阿里/讯飞等） | ❌ | 转写前 warning：`online_vocabulary_unsupported` |
 

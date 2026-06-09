@@ -1,3 +1,4 @@
+import { ENV_NAV } from "../../config/environmentNavCopy";
 import {
   ENV_LLM_MODE_TOGGLE_TRACK,
   envLlmModeToggleBtnClass,
@@ -58,7 +59,7 @@ export function TranscribeSourceSwitch({
         aria-checked={source === "online"}
         aria-label="在线 STT"
         disabled={disabled || !onlineReady}
-        title={onlineReady ? undefined : "请先在环境 → 在线 STT 完成配置并填写会话密钥"}
+        title={onlineReady ? undefined : `请先在「${ENV_NAV.onlineStt}」保存 API Key 并探测通过`}
         onClick={onSelectOnline}
       >
         在线

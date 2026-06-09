@@ -38,16 +38,11 @@ tokio-util = { version = "0.7", features = ["io"] }
 base64 = "0.22"
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 hex = "0.4"
-hmac = "0.12"
 keyring = { version = "3", features = ["apple-native", "windows-native", "sync-secret-service"] }
 sha2 = "0.10"
 urlencoding = "2.1"
 http = "1"
 flate2 = { version = "1", default-features = false, features = ["rust_backend"] }
-tungstenite = { version = "0.24", default-features = false, features = [
-  "handshake",
-  "rustls-tls-webpki-roots",
-] }
 calamine = "0.26.1"
 docx-rs = "0.4"
 zip = { version = "2.4", default-features = false, features = ["deflate"] }

@@ -70,7 +70,7 @@ describe("profileContract", () => {
       },
       online_stt: {
         enabled: true,
-        provider_id: "assemblyai",
+        provider_id: "custom-proxy",
         endpoint: "https://example.com/transcribe",
         app_key: "proj-a",
         timeout_ms: 90000,
@@ -82,7 +82,7 @@ describe("profileContract", () => {
     expect(localStorage.getItem("rushi.llm.providerId")).toBe("qwen");
     expect(localStorage.getItem("rushi.llm.apiKeyId")).toBe("work");
     const stt = readExternalSttOnlineRuntimeConfigFromStorage();
-    expect(stt.selectedProviderId).toBe("assemblyai");
+    expect(stt.selectedProviderId).toBe("custom-proxy");
     expect(stt.endpoint).toBe("https://example.com/transcribe");
     expect(stt.appKey).toBe("proj-a");
     expect(localStorage.getItem(STT_ONLINE_PROVIDER_STORAGE_KEYS.timeoutMs)).toBe("90000");

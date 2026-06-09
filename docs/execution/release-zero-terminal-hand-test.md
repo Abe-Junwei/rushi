@@ -10,10 +10,12 @@
 
 ## 1. Launch & environment
 
-- [ ] Open app from Applications or `.app` bundle
-- [ ] Open **环境与 ASR**
-- [ ] Tap **一键准备本机 ASR** — completes without terminal instructions mentioning `npm`
-- [ ] Status rows: 环境 / FFmpeg / 运行时 / 转写 — green or actionable Chinese copy (no `desktop:dev`)
+- [x] Open app from Applications or `.app` bundle
+- [x] Open **环境与 ASR**
+- [x] Tap **一键准备本机 ASR** — completes without terminal instructions mentioning `npm`
+- [x] Status rows: 环境 / FFmpeg / 运行时 / 转写 — green or actionable Chinese copy (no `desktop:dev`)
+
+> mac 首装签收：2026-06-09 · [r3f-fresh-appdata-hand-test-evidence.md](./specs/r3f-fresh-appdata-hand-test-evidence.md)
 
 ## 2. Import & waveform
 
@@ -55,9 +57,10 @@ Maintainer rebuild path: `npm run release:mac` then re-run this checklist.
 
 | Field | Value |
 |-------|-------|
-| Date | |
-| App version | |
-| macOS version | |
-| Tester | |
-| Result | PASS / FAIL |
-| Notes | |
+| Date | 2026-06-09 |
+| App version | 0.1.0 |
+| macOS version | 26.5.1 |
+| Tester | junwei（机器门禁 + R9/v1 代理） |
+| Result | **PASS（mac 安装包 ASR 就绪）** |
+| Notes | 首装空 App Data UI 一键准备 ✅ 2026-06-09 · [fresh evidence](./specs/r3f-fresh-appdata-hand-test-evidence.md) |
+| Signoff doc | [r3f-phase-signoff-2026-06.md](./specs/r3f-phase-signoff-2026-06.md) |

@@ -128,7 +128,7 @@ fn asr_health_ready(asr_base: &str) -> Result<(), String> {
     if !output.status.success() {
         return Err(dev_or_packaged_str(
             "本机 ASR（127.0.0.1:8741）未就绪或 /health 无响应。请先 npm run desktop:dev 或检查侧车。",
-            "本机 ASR（127.0.0.1:8741）未就绪。请在「环境与 ASR」完成一键准备或重试内置侧车。",
+            "本机 ASR（127.0.0.1:8741）未就绪。请在「环境 → 本机 ASR」完成一键准备或重试内置侧车。",
         )
         .into());
     }

@@ -1,21 +1,32 @@
 import { Info } from "lucide-react";
+import { formatSttProbeFailureMessage } from "../services/stt/sttProbeUserMessage";
 import { useCallback, useEffect, useMemo, useState, type Ref } from "react";
-import { CONTROL_BTN_PRIMARY } from "../config/controlStyles";
+import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
+import { useSttKeychainReady } from "../hooks/useSttKeychainReady";
 import { toast } from "../services/ui/toast";
 import { buildOnlineSttEnvPresentation } from "../services/stt/onlineSttEnvStatus";
+import { sttKeychainReferenceMessage } from "../services/stt/sttConnectionUi";
 import {
+  clampSttOnlineTimeoutSec,
   clearSttConnectionVerified,
+  DEFAULT_STT_API_KEY_ID,
+  ensureSttOnlineApiKeyForSession,
   getSttOnlineProviderDefinition,
   glossaryBiasSummaryForProviderId,
+  hasSttOnlineApiKeyReference,
   isSttConnectionVerified,
   markSttConnectionVerified,
   normalizeExternalSttOnlineRuntimeConfig,
+  normalizeSttApiKeyId,
   persistExternalSttOnlineRuntimeConfig,
   probeExternalSttOnlineHealth,
   readExternalSttOnlineRuntimeConfigFromStorage,
   setSttOnlineApiKeyInMemory,
+  STT_CONNECTION_VERIFIED_EVENT,
+  sttOnlineProviderEndpointUserConfigurable,
 } from "../services/stt/sttOnlineProviderContract";
+import { sttDeleteApiKey, sttSaveApiKey } from "../tauri/sttApi";
 import { EnvLlmStatusBanner } from "./EnvLlmStatusBanner";
 import { EnvOnlineSttConfigCard } from "./envOnlineStt/EnvOnlineSttConfigCard";
 import { OnlineSttProviderPicker } from "./envOnlineStt/OnlineSttProviderPicker";
@@ -34,16 +45,40 @@ export function EnvOnlineSttPanel({ busy, scrollAnchorRef, onSttOnlineRuntimeCha
   const [olTimeoutSec, setOlTimeoutSec] = useState(30);
   const [olAppKey, setOlAppKey] = useState("");
   const [olApiKey, setOlApiKey] = useState("");
+  const [savedApiKeyId, setSavedApiKeyId] = useState<string | null>(null);
   const [olProbeBusy, setOlProbeBusy] = useState(false);
+  const [olSaveBusy, setOlSaveBusy] = useState(false);
   const [lastProbeAvailable, setLastProbeAvailable] = useState<boolean | null>(null);
+  const [connectionVerifiedRevision, setConnectionVerifiedRevision] = useState(0);
+  const [keychainRefreshSeq, setKeychainRefreshSeq] = useState(0);
+
+  const bumpKeychainCheck = useCallback(() => {
+    setKeychainRefreshSeq((n) => n + 1);
+  }, []);
+
+  useEffect(() => {
+    const onConnectionVerifiedChange = () => {
+      setConnectionVerifiedRevision((n) => n + 1);
+    };
+    window.addEventListener(STT_CONNECTION_VERIFIED_EVENT, onConnectionVerifiedChange);
+    return () => {
+      window.removeEventListener(STT_CONNECTION_VERIFIED_EVENT, onConnectionVerifiedChange);
+    };
+  }, []);
 
   useEffect(() => {
     const c = readExternalSttOnlineRuntimeConfigFromStorage();
     setOlProviderId(c.selectedProviderId);
     setOlEndpoint(c.endpoint ?? "");
     setOlAppKey(c.appKey ?? "");
-    setOlTimeoutSec(Math.max(30, Math.round(c.timeoutMs / 1000)));
-  }, []);
+    setOlTimeoutSec(clampSttOnlineTimeoutSec(Math.round(c.timeoutMs / 1000)));
+    setSavedApiKeyId(c.apiKeyId ?? null);
+    void ensureSttOnlineApiKeyForSession().finally(() => {
+      bumpKeychainCheck();
+    });
+  }, [bumpKeychainCheck]);
+
+  const { keychainReady, checking: keychainChecking } = useSttKeychainReady(keychainRefreshSeq);
 
   const olDef = getSttOnlineProviderDefinition(olProviderId) ?? null;
 
@@ -52,14 +87,17 @@ export function EnvOnlineSttPanel({ busy, scrollAnchorRef, onSttOnlineRuntimeCha
       normalizeExternalSttOnlineRuntimeConfig({
         enabled: true,
         selectedProviderId: olProviderId,
-        endpoint: olEndpoint.trim() || undefined,
+        ...(sttOnlineProviderEndpointUserConfigurable(olProviderId)
+          ? { endpoint: olEndpoint.trim() || undefined }
+          : {}),
         appKey: olAppKey.trim() || undefined,
+        apiKeyId: savedApiKeyId ?? undefined,
         timeoutMs: olTimeoutSec * 1000,
       }),
-    [olAppKey, olEndpoint, olProviderId, olTimeoutSec],
+    [olAppKey, olEndpoint, olProviderId, olTimeoutSec, savedApiKeyId],
   );
 
-  const connectionVerified = useMemo(() => isSttConnectionVerified(draftConfig), [draftConfig]);
+  const connectionVerified = isSttConnectionVerified(draftConfig);
 
   const presentation = useMemo(
     () =>
@@ -68,62 +106,156 @@ export function EnvOnlineSttPanel({ busy, scrollAnchorRef, onSttOnlineRuntimeCha
         providerId: olProviderId,
         endpoint: olEndpoint,
         appKey: olAppKey,
-        hasApiKeyInSession: olApiKey.trim().length > 0,
+        hasApiKeyReference: hasSttOnlineApiKeyReference(),
+        hasTypedApiKey: olApiKey.trim().length > 0,
+        keychainReady: keychainChecking ? null : keychainReady,
         connectionVerified,
         lastProbeAvailable,
         lastProbeMessage: null,
       }),
-    [olAppKey, olEndpoint, olProviderId, connectionVerified, lastProbeAvailable],
+    [
+      olApiKey,
+      olEndpoint,
+      olProviderId,
+      olAppKey,
+      connectionVerified,
+      connectionVerifiedRevision,
+      keychainChecking,
+      keychainReady,
+      lastProbeAvailable,
+    ],
   );
 
-  const saveOnlineStt = useCallback(() => {
+  const buildDraftRuntimeConfig = useCallback(() => {
+    return normalizeExternalSttOnlineRuntimeConfig({
+      enabled: true,
+      selectedProviderId: olProviderId,
+      ...(sttOnlineProviderEndpointUserConfigurable(olProviderId)
+        ? { endpoint: olEndpoint.trim() || undefined }
+        : {}),
+      appKey: olAppKey.trim() || undefined,
+      timeoutMs: olTimeoutSec * 1000,
+    });
+  }, [olAppKey, olEndpoint, olProviderId, olTimeoutSec]);
+
+  const saveOnlineStt = useCallback(async () => {
     setLastProbeAvailable(null);
+    setOlSaveBusy(true);
     try {
-      const n = normalizeExternalSttOnlineRuntimeConfig({
-        enabled: true,
-        selectedProviderId: olProviderId,
-        endpoint: olEndpoint.trim() || undefined,
-        appKey: olAppKey.trim() || undefined,
-        timeoutMs: olTimeoutSec * 1000,
-      });
-      persistExternalSttOnlineRuntimeConfig(n);
-      setSttOnlineApiKeyInMemory(olApiKey.trim() || null);
-      toast.success("已保存在线 STT 配置。根密钥仍仅保留在当前页面会话内存。");
+      const typedApiKey = olApiKey.trim();
+      let nextApiKeyId = normalizeSttApiKeyId(savedApiKeyId ?? readExternalSttOnlineRuntimeConfigFromStorage().apiKeyId);
+      if (typedApiKey) {
+        nextApiKeyId = await sttSaveApiKey({
+          apiKeyId: DEFAULT_STT_API_KEY_ID,
+          apiKey: typedApiKey,
+        });
+        clearSttConnectionVerified();
+      }
+      if (!nextApiKeyId) {
+        throw new Error("请先填写 API Key，再点击保存在线配置。");
+      }
+      const n = buildDraftRuntimeConfig();
+      persistExternalSttOnlineRuntimeConfig({ ...n, apiKeyId: nextApiKeyId });
+      setSavedApiKeyId(nextApiKeyId);
+      setSttOnlineApiKeyInMemory(null);
+      bumpKeychainCheck();
       onSttOnlineRuntimeChanged?.();
+      if (typedApiKey) {
+        setOlApiKey("");
+        toast.success("API Key 已保存，请重新探测连接。");
+      } else {
+        toast.success("已保存，沿用已存 Key。");
+      }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
+      toast.errorFromUnknown(e);
+    } finally {
+      setOlSaveBusy(false);
     }
-  }, [olApiKey, olAppKey, olEndpoint, olProviderId, olTimeoutSec, onSttOnlineRuntimeChanged]);
+  }, [
+    bumpKeychainCheck,
+    buildDraftRuntimeConfig,
+    olApiKey,
+    onSttOnlineRuntimeChanged,
+    savedApiKeyId,
+  ]);
+
+  const clearSavedApiKey = useCallback(async () => {
+    if (!savedApiKeyId && !readExternalSttOnlineRuntimeConfigFromStorage().apiKeyId) return;
+    setOlSaveBusy(true);
+    try {
+      const rawId = savedApiKeyId ?? readExternalSttOnlineRuntimeConfigFromStorage().apiKeyId;
+      const ids = new Set<string>([DEFAULT_STT_API_KEY_ID]);
+      if (rawId?.trim()) ids.add(rawId.trim());
+      for (const id of ids) {
+        await sttDeleteApiKey({ apiKeyId: id }).catch(() => {
+          /* ignore missing legacy entries */
+        });
+      }
+      const n = buildDraftRuntimeConfig();
+      persistExternalSttOnlineRuntimeConfig(n, { clearApiKeyId: true });
+      setSavedApiKeyId(null);
+      setOlApiKey("");
+      setSttOnlineApiKeyInMemory(null);
+      setLastProbeAvailable(null);
+      bumpKeychainCheck();
+      onSttOnlineRuntimeChanged?.();
+      toast.success("已清除本地保存的 API Key。");
+    } catch (e) {
+      toast.errorFromUnknown(e);
+    } finally {
+      setOlSaveBusy(false);
+    }
+  }, [buildDraftRuntimeConfig, bumpKeychainCheck, onSttOnlineRuntimeChanged, savedApiKeyId]);
 
   const probeOnlineStt = useCallback(async () => {
     setOlProbeBusy(true);
     try {
-      setSttOnlineApiKeyInMemory(olApiKey.trim() || null);
-      const cfg = normalizeExternalSttOnlineRuntimeConfig({
-        enabled: true,
-        selectedProviderId: olProviderId,
-        endpoint: olEndpoint.trim() || undefined,
-        appKey: olAppKey.trim() || undefined,
-        timeoutMs: olTimeoutSec * 1000,
-      });
+      const typedApiKey = olApiKey.trim();
+      let nextApiKeyId = normalizeSttApiKeyId(savedApiKeyId ?? readExternalSttOnlineRuntimeConfigFromStorage().apiKeyId);
+      if (typedApiKey) {
+        nextApiKeyId = await sttSaveApiKey({
+          apiKeyId: DEFAULT_STT_API_KEY_ID,
+          apiKey: typedApiKey,
+        });
+        setSavedApiKeyId(nextApiKeyId ?? DEFAULT_STT_API_KEY_ID);
+        setOlApiKey("");
+      }
+      if (!nextApiKeyId && !hasSttOnlineApiKeyReference()) {
+        throw new Error("请先填写 API Key，再点击探测连接。");
+      }
+      if (typedApiKey) {
+        setSttOnlineApiKeyInMemory(typedApiKey);
+      } else {
+        await ensureSttOnlineApiKeyForSession();
+      }
+      const cfg = buildDraftRuntimeConfig();
       const r = await probeExternalSttOnlineHealth({ runtimeConfig: cfg });
       setLastProbeAvailable(r.available);
       if (r.available) {
-        markSttConnectionVerified(cfg);
+        persistExternalSttOnlineRuntimeConfig({ ...cfg, apiKeyId: nextApiKeyId ?? savedApiKeyId ?? DEFAULT_STT_API_KEY_ID });
+        markSttConnectionVerified({ ...cfg, apiKeyId: nextApiKeyId ?? savedApiKeyId ?? DEFAULT_STT_API_KEY_ID });
+        setSttOnlineApiKeyInMemory(null);
+        bumpKeychainCheck();
         toast.success(`在线 STT 可达（约 ${r.latencyMs ?? "?"} ms）`);
       } else {
-        toast.error(`${r.state}: ${r.message ?? ""}`.trim());
+        toast.error(formatSttProbeFailureMessage(r));
       }
       onSttOnlineRuntimeChanged?.();
     } catch (e) {
       setLastProbeAvailable(false);
-      toast.error(e instanceof Error ? e.message : String(e));
+      toast.errorFromUnknown(e);
     } finally {
       setOlProbeBusy(false);
     }
-  }, [olApiKey, olAppKey, olEndpoint, olProviderId, olTimeoutSec, onSttOnlineRuntimeChanged]);
+  }, [
+    bumpKeychainCheck,
+    buildDraftRuntimeConfig,
+    olApiKey,
+    onSttOnlineRuntimeChanged,
+    savedApiKeyId,
+  ]);
 
-  const formBusy = busy || olProbeBusy;
+  const formBusy = busy || olProbeBusy || olSaveBusy;
 
   return (
     <div id="online-stt-provider" ref={scrollAnchorRef} className="flex max-w-[860px] flex-col gap-7">
@@ -151,8 +283,15 @@ export function EnvOnlineSttPanel({ busy, scrollAnchorRef, onSttOnlineRuntimeCha
               if (id !== olProviderId) {
                 setSttOnlineApiKeyInMemory(null);
                 setOlApiKey("");
+                setOlEndpoint("");
                 setLastProbeAvailable(null);
                 clearSttConnectionVerified();
+                const def = getSttOnlineProviderDefinition(id);
+                if (def) {
+                  setOlTimeoutSec(
+                    clampSttOnlineTimeoutSec(Math.round(def.defaultTimeoutMs / 1000)),
+                  );
+                }
               }
               setOlProviderId(id);
             }}
@@ -167,16 +306,25 @@ export function EnvOnlineSttPanel({ busy, scrollAnchorRef, onSttOnlineRuntimeCha
             timeoutSec={olTimeoutSec}
             appKey={olAppKey}
             apiKey={olApiKey}
+            savedApiKeyId={savedApiKeyId}
+            keychainReady={keychainChecking ? null : keychainReady}
             onEndpointChange={setOlEndpoint}
-            onTimeoutSecChange={setOlTimeoutSec}
+            onTimeoutSecChange={(v) => setOlTimeoutSec(clampSttOnlineTimeoutSec(v))}
             onAppKeyChange={setOlAppKey}
             onApiKeyChange={setOlApiKey}
           />
         }
         footer={
           <>
-            <span className="mr-auto" />
-            <button type="button" className={CONTROL_BTN_PRIMARY} disabled={formBusy} onClick={saveOnlineStt}>
+            <button
+              type="button"
+              className={`${CONTROL_BTN_SECONDARY} mr-auto text-notion-text-muted`}
+              disabled={formBusy || !savedApiKeyId}
+              onClick={() => void clearSavedApiKey()}
+            >
+              清除已保存密钥
+            </button>
+            <button type="button" className={CONTROL_BTN_PRIMARY} disabled={formBusy} onClick={() => void saveOnlineStt()}>
               保存在线配置
             </button>
           </>
@@ -187,9 +335,13 @@ export function EnvOnlineSttPanel({ busy, scrollAnchorRef, onSttOnlineRuntimeCha
         <Info className={`${LUCIDE_ICON_SIZE_SM} mt-0.5 shrink-0 text-notion-text-muted`} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
         <div className={`space-y-2 ${PANEL_TYPOGRAPHY.body}`}>
           <p className="m-0">
-            国内 / 国际厂商分组展示；常见含试用或免费额的引擎带角标（以各厂商控制台为准）。OpenAI / AssemblyAI 由壳直接调
-            API；其余厂商多需 TC3 签名、Token 或 WebSocket，当前版本请优先走<strong className="font-medium text-notion-text"> 自建 HTTPS 代理 </strong>
-            并将响应归一为 Rushi JSON（multipart <code className="font-mono text-zen-indigo">file</code>）。
+            内置厂商端点已预置；仅「自定义代理」需填 HTTPS URL。
+          </p>
+          <p className={`m-0 ${PANEL_TYPOGRAPHY.meta}`}>
+            {sttKeychainReferenceMessage(
+              normalizeSttApiKeyId(savedApiKeyId) ?? null,
+              keychainChecking ? null : keychainReady,
+            )}
           </p>
           {glossaryBiasSummaryForProviderId(olProviderId)}
         </div>

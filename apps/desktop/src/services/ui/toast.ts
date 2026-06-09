@@ -1,6 +1,4 @@
-/**
- * Ephemeral bottom-center feedback (Jieyu-style pill: single visible, semantic surface).
- */
+import { humanizeInvokeError } from "./humanizeInvokeError";
 
 export type ToastVariant = "info" | "warning" | "error" | "success";
 
@@ -167,6 +165,7 @@ export const toast = {
   warning: (message: string, durationMs?: number) =>
     showToast({ variant: "warning", message, durationMs }),
   error: (message: string) => showToast({ variant: "error", message }),
+  errorFromUnknown: (raw: unknown) => showToast({ variant: "error", message: humanizeInvokeError(raw) }),
   dismiss: dismissToast,
 };
 

@@ -2,7 +2,8 @@ import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { isDefaultBundledAsrTarget, isTauriRuntime } from "../config/env";
 import type { AsrHealthCapabilities, AsrModelCacheInfo, WaveformPeaksCacheInfo } from "../tauri/projectApi";
 import * as p1 from "../tauri/projectApi";
-import { tryBuildOnlineTranscribeBridgePayload } from "../services/stt/sttOnlineProviderContract";
+import { isOnlineTranscribeReady } from "../services/stt/sttOnlineProviderContract";
+import { STT_ONLINE_RUNTIME_CHANGED_EVENT } from "../services/stt/sttOnlineRuntimeNotify";
 import { usePrepareModelController, type PrepareModelApi } from "./usePrepareModelController";
 import { useLocalAsrModelCatalog, type LocalAsrModelCatalogApi } from "./useLocalAsrModelCatalog";
 import { buildAsrEnvPresentation, type AsrEnvPresentation } from "../services/asr/asrEnvStatus";
@@ -55,7 +56,14 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
   const refreshEnvironmentDiagnostics = options?.refreshEnvironmentDiagnostics;
   const tauriRuntime = isTauriRuntime();
   const [sttOnlineBridgeEpoch, setSttOnlineBridgeEpoch] = useState(0);
+  const [sttRuntimeRevision, setSttRuntimeRevision] = useState(0);
   const refreshAsrRuntimeInfoRef = useRef<() => Promise<void>>(async () => {});
+
+  useEffect(() => {
+    const bump = () => setSttRuntimeRevision((n) => n + 1);
+    window.addEventListener(STT_ONLINE_RUNTIME_CHANGED_EVENT, bump);
+    return () => window.removeEventListener(STT_ONLINE_RUNTIME_CHANGED_EVENT, bump);
+  }, []);
 
   const catalogHooksRef = useRef({
     syncFromHealth: (_healthJson: unknown, _rootJson?: unknown) => {},
@@ -97,19 +105,13 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
   );
 
   const sttOnlineBridgeReady = useMemo(
-    () => tryBuildOnlineTranscribeBridgePayload() !== null,
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-    [sttOnlineBridgeEpoch],
+    () => isOnlineTranscribeReady(),
+    [sttOnlineBridgeEpoch, sttRuntimeRevision],
   );
 
   const bumpSttOnlineRuntimeChanged = useCallback(() => {
     setSttOnlineBridgeEpoch((n) => n + 1);
   }, []);
-
-  useEffect(() => {
-    void refreshAsrHealth();
-    void cacheCtrl.refreshAsrModelCacheInfo();
-  }, [cacheCtrl.refreshAsrModelCacheInfo, refreshAsrHealth]);
 
   const asrHealthDetailDisplay = useMemo(() => {
     if (asrHealth !== "error") return asrHealthDetail;

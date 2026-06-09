@@ -17,6 +17,24 @@ describe("deriveTranscribeHints", () => {
     expect(h.some((x) => x.includes("不支持术语偏置"))).toBe(true);
   });
 
+  it("flags dashscope term truncation hint", () => {
+    const h = deriveTranscribeHints(
+      "dashscope:fun-asr-realtime",
+      ["online_vocabulary_truncated_dashscope_terms"],
+      [{ text: "a" }],
+    );
+    expect(h.some((x) => x.includes("百炼热词") && x.includes("15"))).toBe(true);
+  });
+
+  it("flags dashscope vocabulary sync failure", () => {
+    const h = deriveTranscribeHints(
+      "dashscope:fun-asr-realtime",
+      ["online_vocabulary_sync_failed"],
+      [{ text: "a" }],
+    );
+    expect(h.some((x) => x.includes("vocabulary_id"))).toBe(true);
+  });
+
   it("flags openai prompt vocabulary truncation", () => {
     const h = deriveTranscribeHints(
       "openai",

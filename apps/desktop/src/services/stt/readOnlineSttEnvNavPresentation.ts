@@ -1,6 +1,6 @@
 import { buildOnlineSttEnvPresentation, type OnlineSttEnvTone } from "./onlineSttEnvStatus";
 import {
-  getSttOnlineApiKeyFromMemory,
+  hasSttOnlineApiKeyReference,
   isSttConnectionVerified,
   normalizeExternalSttOnlineRuntimeConfig,
   readExternalSttOnlineRuntimeConfigFromStorage,
@@ -14,6 +14,7 @@ export function readOnlineSttEnvNavTone(): OnlineSttEnvTone {
     selectedProviderId: stored.selectedProviderId,
     endpoint: stored.endpoint ?? "",
     appKey: stored.appKey ?? "",
+    apiKeyId: stored.apiKeyId,
     timeoutMs: stored.timeoutMs,
   });
   const presentation = buildOnlineSttEnvPresentation({
@@ -21,7 +22,9 @@ export function readOnlineSttEnvNavTone(): OnlineSttEnvTone {
     providerId: stored.selectedProviderId,
     endpoint: stored.endpoint ?? "",
     appKey: stored.appKey ?? "",
-    hasApiKeyInSession: Boolean(getSttOnlineApiKeyFromMemory()?.trim()),
+    hasApiKeyReference: hasSttOnlineApiKeyReference(),
+    hasTypedApiKey: false,
+    keychainReady: null,
     connectionVerified: isSttConnectionVerified(draftConfig),
     lastProbeAvailable: null,
     lastProbeMessage: null,

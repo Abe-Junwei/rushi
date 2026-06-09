@@ -29,7 +29,7 @@ mod postprocess_types;
 
 pub(crate) use postprocess_config::{
     build_auto_punctuate_prompt, build_postprocess_models_endpoint, chat_completion_finish_reason,
-    extract_chat_completion_text, extract_chat_completion_text_labeled,
+    extract_chat_completion_text, extract_chat_completion_text_labeled, normalize_api_key_id,
     resolve_postprocess_config_async, resolve_runtime_postprocess_config, PostprocessConfig,
     DEFAULT_TIMEOUT_SECS,
 };

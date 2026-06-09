@@ -1,48 +1,65 @@
-import {
-  STT_ONLINE_OPENAI_DEFAULT_TRANSCRIBE_URL,
-  STT_ONLINE_ASSEMBLYAI_DEFAULT_BASE_URL,
-} from "./constants";
+import { ENV_NAV } from "../../../config/environmentNavCopy";
 import { getSttOnlineProviderDefinition } from "./definitions";
+import { isSttConnectionVerified } from "./connectionVerified";
 import { isAllowedSttOnlineEndpoint } from "./endpoint";
+import { hasSttOnlineApiKeyReference } from "./apiKeyStorage";
 import { getSttOnlineApiKeyFromMemory } from "./memorySecrets";
-import { readExternalSttOnlineRuntimeConfigFromStorage } from "./runtimeConfig";
-import type { OnlineNativeAdapterId, OnlineTranscribeBridgePayload } from "./types";
+import {
+  resolveSttOnlinePresetTranscribeUrl,
+  sttOnlineProviderEndpointUserConfigurable,
+  sttOnlineProviderUsesPresetEndpoint,
+} from "./presetEndpoints";
+import {
+  normalizeExternalSttOnlineRuntimeConfig,
+  readExternalSttOnlineRuntimeConfigFromStorage,
+} from "./runtimeConfig";
+import type { OnlineTranscribeBridgePayload } from "./types";
+import { resolveShellNativeSttAdapterId } from "./nativeAdapters";
 
-/** 所选厂商是否由桌面壳内置 HTTP 直连（可省略自定义 endpoint，由 Rust 填默认 URL）。 */
-export function resolveShellNativeSttAdapterId(providerId: string): OnlineNativeAdapterId | null {
-  switch (providerId) {
-    case "openai":
-      return "openaiAudio";
-    case "assemblyai":
-      return "assemblyai";
-    case "baidu-speech":
-      return "baiduSpeech";
-    case "aliyun-nls":
-      return "aliyunNls";
-    case "deepgram":
-      return "deepgramListen";
-    case "tencent-asr":
-      return "tencentAsr";
-    case "azure-speech":
-      return "azureConversationV1";
-    case "google-cloud-stt":
-      return "googleSpeechV1";
-    case "iflytek-speech":
-      return "iflytekIatWs";
-    case "huawei-sis":
-      return "huaweiSisShortAudio";
-    case "aispeech":
-      return "aispeechLasrSentenceV2";
-    case "volcengine-speech":
-      return "volcengineBigmodelNostreamWs";
-    default:
-      return null;
-  }
+export { resolveShellNativeSttAdapterId } from "./nativeAdapters";
+
+export { sttOnlineProviderAllowsEmptyEndpoint } from "./presetEndpoints";
+
+function sttRuntimeConfigForVerification() {
+  const stored = readExternalSttOnlineRuntimeConfigFromStorage();
+  return normalizeExternalSttOnlineRuntimeConfig({
+    enabled: true,
+    selectedProviderId: stored.selectedProviderId,
+    endpoint: stored.endpoint ?? "",
+    appKey: stored.appKey ?? "",
+    apiKeyId: stored.apiKeyId,
+    timeoutMs: stored.timeoutMs,
+  });
 }
 
-/** 未填 endpoint 时仍可用默认厂商端点完成转写 / 探测的厂商。 */
-export function sttOnlineProviderAllowsEmptyEndpoint(providerId: string): boolean {
-  return resolveShellNativeSttAdapterId(providerId) != null;
+function isSttOnlineRuntimeConfigComplete(): boolean {
+  const c = readExternalSttOnlineRuntimeConfigFromStorage();
+  const def = getSttOnlineProviderDefinition(c.selectedProviderId);
+  if (!def) return false;
+  if (def.requiresPersistedAppKey && !c.appKey?.trim()) return false;
+  if (sttOnlineProviderEndpointUserConfigurable(c.selectedProviderId)) {
+    const url = c.endpoint?.trim() ?? "";
+    if (!url || !isAllowedSttOnlineEndpoint(url)) return false;
+  } else if (!sttOnlineProviderUsesPresetEndpoint(c.selectedProviderId)) {
+    const url = c.endpoint?.trim() ?? "";
+    if (!url || !isAllowedSttOnlineEndpoint(url)) return false;
+  }
+  return true;
+}
+
+/** 持久化配置指纹与最近一次探测成功一致。 */
+export function isSttOnlineRuntimeConnectionVerified(): boolean {
+  return isSttConnectionVerified(sttRuntimeConfigForVerification());
+}
+
+/**
+ * 编辑器「在线」选项与自动转录门控：密钥引用 + 配置完整 + 连接已验证。
+ * 实际转写前须 `ensureSttOnlineApiKeyForSession()` 将密钥注入内存以构建载荷。
+ */
+export function isOnlineTranscribeReady(): boolean {
+  if (!hasSttOnlineApiKeyReference()) return false;
+  if (!isSttOnlineRuntimeConfigComplete()) return false;
+  return isSttOnlineRuntimeConnectionVerified();
 }
 
 /**
@@ -59,37 +76,17 @@ export function tryBuildOnlineTranscribeBridgePayload(): OnlineTranscribeBridgeP
   const authorization = def.authStyle === "bearer" ? `Bearer ${key}` : key;
   const shellAdapter = resolveShellNativeSttAdapterId(c.selectedProviderId);
 
-  if (shellAdapter === "openaiAudio") {
-    const transcribeUrl = (c.endpoint?.trim() || STT_ONLINE_OPENAI_DEFAULT_TRANSCRIBE_URL).trim();
-    if (!isAllowedSttOnlineEndpoint(transcribeUrl)) return null;
-    const appKeyTrim = c.appKey?.trim();
-    return {
-      transcribeUrl,
-      authorization,
-      timeoutSec,
-      nativeAdapter: "openaiAudio",
-      ...(appKeyTrim ? { appKey: appKeyTrim } : {}),
-    };
-  }
-  if (shellAdapter === "assemblyai") {
-    const transcribeUrl = (c.endpoint?.trim() || STT_ONLINE_ASSEMBLYAI_DEFAULT_BASE_URL).replace(/\/+$/, "");
-    if (!isAllowedSttOnlineEndpoint(transcribeUrl)) return null;
-    const appKeyTrim = c.appKey?.trim();
-    return {
-      transcribeUrl,
-      authorization,
-      timeoutSec,
-      nativeAdapter: "assemblyai",
-      ...(appKeyTrim ? { appKey: appKeyTrim } : {}),
-    };
-  }
   if (shellAdapter) {
     if (def.requiresPersistedAppKey && !c.appKey?.trim()) return null;
-    const endpointTrim = c.endpoint?.trim() ?? "";
-    if (endpointTrim && !isAllowedSttOnlineEndpoint(endpointTrim)) return null;
+    const presetUrl = resolveSttOnlinePresetTranscribeUrl(c.selectedProviderId) ?? "";
+    const customOverride = c.endpoint?.trim() ?? "";
+    const transcribeUrl = sttOnlineProviderUsesPresetEndpoint(c.selectedProviderId)
+      ? presetUrl
+      : customOverride;
+    if (transcribeUrl && !isAllowedSttOnlineEndpoint(transcribeUrl)) return null;
     const appKeyTrim = c.appKey?.trim();
     return {
-      transcribeUrl: endpointTrim,
+      transcribeUrl,
       authorization,
       timeoutSec,
       nativeAdapter: shellAdapter,
@@ -110,16 +107,17 @@ export function tryBuildOnlineTranscribeBridgePayload(): OnlineTranscribeBridgeP
 
 /** 用户选择在线转写但配置/会话密钥未齐时用于主舞台提示。 */
 export function isSttOnlineTranscribeIncomplete(): boolean {
-  if (tryBuildOnlineTranscribeBridgePayload()) return false;
+  if (isOnlineTranscribeReady() && tryBuildOnlineTranscribeBridgePayload()) return false;
+  if (!hasSttOnlineApiKeyReference()) return true;
   const c = readExternalSttOnlineRuntimeConfigFromStorage();
-  const key = getSttOnlineApiKeyFromMemory()?.trim();
-  if (!key) return true;
   const def = getSttOnlineProviderDefinition(c.selectedProviderId);
   if (def?.requiresPersistedAppKey && !(c.appKey?.trim())) return true;
   const url = c.endpoint?.trim() ?? "";
-  if (sttOnlineProviderAllowsEmptyEndpoint(c.selectedProviderId)) {
-    if (!url) return false;
-    return !isAllowedSttOnlineEndpoint(url);
+  if (sttOnlineProviderUsesPresetEndpoint(c.selectedProviderId)) {
+    return false;
+  }
+  if (sttOnlineProviderEndpointUserConfigurable(c.selectedProviderId)) {
+    return !url || !isAllowedSttOnlineEndpoint(url);
   }
   return !url || !isAllowedSttOnlineEndpoint(url);
 }
@@ -130,10 +128,17 @@ export function isSttOnlineEnabledButIncomplete(): boolean {
 }
 
 export function resolveOnlineTranscribeBlock(): string | null {
-  if (tryBuildOnlineTranscribeBridgePayload()) return null;
-  const key = getSttOnlineApiKeyFromMemory()?.trim();
-  if (!key) {
-    return "在线 STT：请先在「环境 → 在线 STT」保存配置，并在该页填写 API Key（仅保留在当前会话）。";
+  if (isOnlineTranscribeReady() && tryBuildOnlineTranscribeBridgePayload()) {
+    return null;
   }
-  return "在线 STT：请在「环境 → 在线 STT」补全厂商、URL 等配置并探测连接。";
+  if (!hasSttOnlineApiKeyReference()) {
+    return `在线 STT：请到「${ENV_NAV.onlineStt}」保存 Key。`;
+  }
+  if (!isSttOnlineRuntimeConnectionVerified()) {
+    return `在线 STT：请到「${ENV_NAV.onlineStt}」探测连接。`;
+  }
+  if (!tryBuildOnlineTranscribeBridgePayload()) {
+    return "在线 STT：密钥未加载，请重新保存或重启。";
+  }
+  return `在线 STT：请到「${ENV_NAV.onlineStt}」补全配置并保存。`;
 }

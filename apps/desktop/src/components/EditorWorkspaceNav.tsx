@@ -5,6 +5,9 @@ import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec"
 const NAV_ICON_BTN =
   "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-sm border-0 bg-transparent p-0 text-notion-text-muted shadow-none transition-colors hover:bg-notion-sidebar-hover hover:text-notion-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-notion-text/20 disabled:cursor-not-allowed disabled:opacity-40";
 
+/** 侧栏折叠态：顶栏展开钮略向左贴齐主区左缘 */
+const NAV_SIDEBAR_EXPAND_BTN = `${NAV_ICON_BTN} -ml-2.5`;
+
 const PROJECT_LINK =
   "min-w-0 max-w-[40%] truncate rounded-sm border-0 bg-transparent p-0 text-left text-[13px] font-medium text-notion-text-muted shadow-none transition-colors hover:bg-notion-sidebar-hover hover:text-notion-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-notion-text/20 disabled:cursor-not-allowed disabled:opacity-40";
 
@@ -49,7 +52,7 @@ export function EditorWorkspaceNav({
       {workspaceSidebarCollapsed && onExpandWorkspaceSidebar ? (
         <button
           type="button"
-          className={NAV_ICON_BTN}
+          className={NAV_SIDEBAR_EXPAND_BTN}
           disabled={disabled}
           onClick={onExpandWorkspaceSidebar}
           aria-label="展开侧栏"

@@ -1,3 +1,4 @@
+import { ENV_NAV } from "../../config/environmentNavCopy";
 import { readStorage, writeStorage } from "../stt/sttOnlineProviderContract/storage";
 import {
   getLlmProviderDefinition,
@@ -241,9 +242,9 @@ export function tryBuildPostprocessRuntimeBridge(): PostprocessRuntimeBridge | n
 export function llmConfigHint(): string {
   const cfg = readLlmRuntimeConfigFromStorage();
   if (isLocalLoopbackLlmConfig(cfg)) {
-    return "请打开「设置 → LLM 配置」，确认 Ollama 已启动并保存本机模型。";
+    return `请在「${ENV_NAV.llm}」确认 Ollama 已启动并保存模型。`;
   }
-  return "请打开「设置 → LLM 配置」，选择厂商并保存 API Key。";
+  return `请在「${ENV_NAV.llm}」选择厂商并保存 API Key。`;
 }
 
 /** 智能改稿（全文级）门禁；与单语段自动标点文案区分。 */
@@ -268,7 +269,7 @@ export function resolveStageBBlockReason(input: {
     if (input.llmCapabilityOk === false) {
       return (
         input.llmCapabilityBlockReason ??
-        "本机 LLM 尚未就绪，请在设置 → LLM 配置 中完成检测与探测。"
+        `本机 LLM 未就绪，请在「${ENV_NAV.llm}」完成检测与探测。`
       );
     }
     return null;
@@ -277,13 +278,13 @@ export function resolveStageBBlockReason(input: {
     return "正在检查 LLM 密钥状态…";
   }
   if (!input.keychainReady && !getLlmApiKeyFromMemory()?.trim()) {
-    return "本地未找到已保存的 API Key，请在设置 → LLM 配置 中重新保存。";
+    return `本地未找到 API Key，请在「${ENV_NAV.llm}」重新保存。`;
   }
   if (!isLlmConnectionVerified()) {
-    return "请先在设置 → LLM 配置 中完成探测后再使用智能改稿。";
+    return `请在「${ENV_NAV.llm}」完成探测后再使用智能改稿。`;
   }
   if (input.llmCapabilityOk === false) {
-    return input.llmCapabilityBlockReason ?? "云端 LLM 尚未就绪，请在设置 → LLM 配置 中完成探测。";
+    return input.llmCapabilityBlockReason ?? `云端 LLM 未就绪，请在「${ENV_NAV.llm}」完成探测。`;
   }
   return null;
 }
@@ -305,7 +306,7 @@ export function resolveAutoPunctuateBlockReason(input: {
   }
   if (isLocalLoopbackLlmConfig()) {
     if (input.llmCapabilityOk === false) {
-      return input.llmCapabilityBlockReason ?? "本机 LLM 尚未就绪，请在设置 → LLM 配置 中完成检测与探测。";
+      return input.llmCapabilityBlockReason ?? `本机 LLM 未就绪，请在「${ENV_NAV.llm}」完成检测与探测。`;
     }
     return null;
   }
@@ -313,10 +314,10 @@ export function resolveAutoPunctuateBlockReason(input: {
     return "正在检查 LLM 密钥状态…";
   }
   if (!input.keychainReady && !getLlmApiKeyFromMemory()?.trim()) {
-    return "本地未找到已保存的 API Key，请在设置 → LLM 配置 中重新保存。";
+    return `本地未找到 API Key，请在「${ENV_NAV.llm}」重新保存。`;
   }
   if (input.llmCapabilityOk === false) {
-    return input.llmCapabilityBlockReason ?? "云端 LLM 尚未就绪，请在设置 → LLM 配置 中完成探测。";
+    return input.llmCapabilityBlockReason ?? `云端 LLM 未就绪，请在「${ENV_NAV.llm}」完成探测。`;
   }
   return null;
 }

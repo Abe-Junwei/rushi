@@ -24,6 +24,7 @@ vi.mock("../services/asr/loopbackFetch", () => ({
 
 vi.mock("../services/stt/sttOnlineProviderContract", () => ({
   isSttOnlineEnabledButIncomplete: () => false,
+  isOnlineTranscribeReady: () => false,
   tryBuildOnlineTranscribeBridgePayload: () => null,
 }));
 

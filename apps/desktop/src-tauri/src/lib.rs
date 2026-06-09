@@ -2,7 +2,6 @@ mod asr_setup;
 mod asr_sidecar;
 mod blocking_http;
 mod bundled_asr_assets;
-mod china_stt_shell;
 mod db;
 mod diagnostic;
 mod diagnostic_db_sanitize;
@@ -17,7 +16,9 @@ mod postprocess_cmd;
 mod profile;
 mod project;
 mod stt_native;
+mod stt_online_api_key_cmd;
 mod stt_online_probe;
+mod stt_online_secret_store;
 mod utils;
 
 use std::path::PathBuf;
@@ -136,6 +137,10 @@ pub fn run() {
             postprocess_cmd::postprocess_api_key_cmd::llm_probe_connection,
             postprocess_cmd::postprocess_api_key_cmd::ollama_detect_status,
             stt_online_probe::stt_probe_online_health,
+            stt_online_api_key_cmd::stt_save_api_key,
+            stt_online_api_key_cmd::stt_delete_api_key,
+            stt_online_api_key_cmd::stt_has_stored_api_key,
+            stt_online_api_key_cmd::stt_read_api_key,
             postprocess_cmd::postprocess_auto_punctuate_cmd::postprocess_auto_punctuate,
             postprocess_cmd::postprocess_refine_cmd::postprocess_refine_segments,
             postprocess_cmd::postprocess_stage_b_proofread_cmd::postprocess_stage_b_proofread,

@@ -11,7 +11,7 @@
 | 页脚按钮 | `apps/desktop/src/config/controlStyles.ts`（`CONTROL_BTN_SECONDARY` / `CONTROL_BTN_DANGER_COMPACT` 等） |
 | 颜色 token | `tailwind.config.js` + `apps/desktop/src/config/tokens.ts`（`notion-*`、`zen-*`） |
 
-## 尺寸记忆（persist v2）
+## 尺寸记忆（persist v3）
 
 `DraggableResizablePanel` 通过 `localStorage` 键 `panel-state-{id}` 记忆位置与尺寸。
 
@@ -19,8 +19,25 @@
 |------|------|
 | `position` / `size` | 最近一次关闭时的全局位置与尺寸 |
 | `userSized` | 用户是否手动拖改过尺寸；`false` 时随 `contentFitHeight` 自动增高 |
-| `layoutRev` | 布局算法版本（当前 `2`）；变更后旧记忆作废 |
+| `layoutRev` | 布局算法版本（当前 `3`）；变更后旧记忆作废 |
 | `phases[phaseKey]` | 各阶段独立 `size` + `userSized`（位置仍共享） |
+
+### compactDialog 尺寸陷阱（已统一修复）
+
+旧版 `compactDialog` 预设曾硬编码 **`maxHeight: 200` / `maxWidth: 320`**。许多对话框只覆写 `minHeight`（260–320）或 `maxWidth`，未覆写 `maxHeight`，导致：
+
+1. **面板被压到 200px**，正文区出现无意义滚动条、文案裁切  
+2. **`minHeight > maxHeight`**，东/南缩放手柄失效，无法手动拉高  
+3. **`contentFitHeight` 被 cap 在 200**，自动适应失效  
+
+**统一约定：**
+
+- 预设已改为 `maxWidth: 560`、`maxHeight: 720`（仍受视口 clamp）  
+- `FloatingPanelTemplate` 在 `min* > max*` 时自动抬升上限  
+- 内容随动的对话框传 `contentFitHeight` + `resolveCompactDialogBounds()`（见 `floatingPanelCompactDialogBounds.ts`）  
+- 短文案对话框用 `FloatingPanelDialogHeader` + `Footer`，**不要**把短说明塞进 `FloatingPanelDialogScroll`（`flex-1` 会误导测量）  
+- `mergeContentFitHeights`：实测 **更矮** 时缩面板；实测 **更高** 时防裁切  
+- 双击标题栏恢复自动高度；`layoutRev`  bump 后丢弃旧 200px 记忆  
 
 用法：
 
@@ -31,6 +48,7 @@
 
 相关模块：
 
+- `apps/desktop/src/components/floatingPanelCompactDialogBounds.ts`
 - `apps/desktop/src/components/floatingPanelPersist.ts`
 - `apps/desktop/src/components/floatingPanelFitSections.ts`
 - `apps/desktop/src/hooks/useFloatingPanelBodyMeasure.ts`

@@ -1,9 +1,16 @@
+import { useCallback, useRef } from "react";
 import { useAsrBridgeController, type AsrHealthState } from "./useAsrBridgeController";
 import { funasrManualSetupCommands, parseAsrHealthJson } from "../services/asr/asrHealthParse";
 import { useAsrSetupController } from "./useAsrSetupController";
 import { useProjectLifecycleController, type BusyReason } from "./useProjectLifecycleController";
-import { useCallback, useRef } from "react";
 import { refreshLocalAsrDiagnostics } from "./refreshLocalAsrDiagnostics";
+import { useEnvironmentCapabilitySync } from "../hooks/useEnvironmentCapabilitySync";
+import { getEnvironmentCapabilityBlockReason } from "../services/environmentCapabilityCoordinator";
+import {
+  isLocalLoopbackLlmConfig,
+  readLlmRuntimeConfigFromStorage,
+} from "../services/postprocess/postprocessRuntimeContract";
+import { refreshLlmOllamaDetect } from "../services/llm/llmEnvRuntimeStore";
 
 export type { AsrHealthState, BusyReason };
 export type BusyPack = { busy: boolean; reason: BusyReason | null };
@@ -43,7 +50,7 @@ export function useProjectController() {
   refreshSetupDiagnoseRef.current = asrSetup.refreshSetupDiagnose;
 
   const localTranscribePreflight = useCallback(
-    () => asr.asrPresentation.blockReason,
+    () => getEnvironmentCapabilityBlockReason() ?? asr.asrPresentation.blockReason,
     [asr.asrPresentation],
   );
 
@@ -51,6 +58,25 @@ export function useProjectController() {
     localTranscribePreflight,
     asr.sttOnlineRuntimeEpoch,
   );
+
+  useEnvironmentCapabilitySync({
+    projectId: lifecycle.current?.id,
+    refreshAsrHealth,
+    refreshAsrModelCacheInfo,
+    refreshSetupDiagnose: asrSetup.refreshSetupDiagnose,
+    bumpLlmRuntimeChanged: lifecycle.bumpLlmRuntimeChanged,
+    bumpSttOnlineRuntimeChanged: asr.bumpSttOnlineRuntimeChanged,
+    refreshLlmOllamaDetect: async () => {
+      const config = readLlmRuntimeConfigFromStorage();
+      if (isLocalLoopbackLlmConfig(config)) {
+        await refreshLlmOllamaDetect();
+      }
+    },
+    getCacheOverlay: () => ({
+      desktopModelsRoot: asr.asrModelCacheInfo?.models_root ?? null,
+      asrModelCacheBytes: asr.asrModelCacheInfo?.total_bytes ?? 0,
+    }),
+  });
 
   return {
     // Lifecycle

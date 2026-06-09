@@ -1,6 +1,8 @@
+import { useState, type ReactNode } from "react";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { WORKSPACE_FILE_ROW_CLASS } from "../config/workspaceShellLayout";
-import type { ReactNode } from "react";
+import { HoverRevealText } from "./HoverRevealText";
+import { WELCOME_SIDEBAR_FILE_INDENT } from "./welcomeSidebarFormatters";
 
 interface WorkspaceFileRowProps {
   name: string;
@@ -9,6 +11,8 @@ interface WorkspaceFileRowProps {
   selected?: boolean;
   onOpen: () => void;
   actionSlot?: ReactNode;
+  /** sidebar：嵌套于项目下，小字 + 缩进；panel：主舞台列表（默认） */
+  variant?: "panel" | "sidebar";
 }
 
 /**
@@ -25,27 +29,51 @@ export function WorkspaceFileRow({
   selected = false,
   onOpen,
   actionSlot,
+  variant = "panel",
 }: WorkspaceFileRowProps) {
+  const isSidebar = variant === "sidebar";
+  const [rowHovered, setRowHovered] = useState(false);
+
   return (
     <div
       className={[
         WORKSPACE_FILE_ROW_CLASS,
-        "pr-1",
-        selected ? "bg-notion-sidebar-active" : "",
+        selected ? "bg-notion-sidebar-active hover:bg-notion-sidebar-active" : "",
       ].join(" ")}
     >
       <button
         type="button"
-        className="flex min-w-0 flex-1 items-center gap-2 border-0 bg-transparent px-2.5 py-2 text-left disabled:opacity-40"
+        className={[
+          "flex min-w-0 flex-1 items-center gap-2 border-0 bg-transparent text-left disabled:opacity-40",
+          isSidebar ? `${WELCOME_SIDEBAR_FILE_INDENT} py-1.5` : "px-5 py-2",
+        ].join(" ")}
         disabled={busy}
         onClick={() => void onOpen()}
+        title={name}
+        onMouseEnter={() => setRowHovered(true)}
+        onMouseLeave={() => setRowHovered(false)}
+        onFocus={() => setRowHovered(true)}
+        onBlur={() => setRowHovered(false)}
       >
         <span className="min-w-0 flex-1 pr-3">
-          <span className="block truncate text-sm font-medium text-notion-text">
-            {name}
-          </span>
+          <HoverRevealText
+            text={name}
+            revealed={rowHovered}
+            className={[
+              isSidebar
+                ? selected
+                  ? "text-[12px] font-medium text-notion-text"
+                  : "text-[12px] font-normal text-notion-text-muted group-hover:text-notion-text"
+                : "text-sm font-medium text-notion-text",
+            ].join(" ")}
+          />
           <span
-            className={`block truncate ${PANEL_TYPOGRAPHY.meta} text-notion-text-muted`}
+            className={[
+              "block truncate",
+              isSidebar
+                ? "text-[11px] leading-4 text-notion-text-light"
+                : `${PANEL_TYPOGRAPHY.meta} text-notion-text-muted`,
+            ].join(" ")}
           >
             {meta}
           </span>
@@ -54,9 +82,7 @@ export function WorkspaceFileRow({
           打开
         </span>
       </button>
-      {actionSlot ? (
-        <div className="flex shrink-0 items-center pr-1">{actionSlot}</div>
-      ) : null}
+      {actionSlot ? <div className="flex shrink-0 items-center pr-5">{actionSlot}</div> : null}
     </div>
   );
 }

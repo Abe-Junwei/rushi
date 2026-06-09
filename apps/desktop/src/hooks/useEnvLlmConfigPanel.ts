@@ -119,7 +119,7 @@ export function useEnvLlmConfigPanel({ busy, onLlmRuntimeChanged }: UseEnvLlmCon
     setSavedApiKeyId(null);
     setApiKey("");
     setProbeFailed(false);
-    toast.info("已切换到本机 Ollama。请确认上方检测就绪后点击「刷新 Ollama 检测」。");
+    toast.info("已切换 Ollama，请探测连接。");
     bumpKeychainCheck();
     onLlmRuntimeChanged?.();
   }, [bumpKeychainCheck, onLlmRuntimeChanged, providerId]);
@@ -138,8 +138,8 @@ export function useEnvLlmConfigPanel({ busy, onLlmRuntimeChanged }: UseEnvLlmCon
     const label = restoredDef?.label ?? "云端";
     toast.info(
       restored.apiKeyId
-        ? `已切换到云端 API（${label}）。请确认配置后点击 banner「探测连接」。`
-        : `已切换到云端 API（${label}）。请填写 API Key 并保存，再点击 banner「探测连接」。`,
+        ? `已切换到 ${label}，请探测连接。`
+        : `已切换到 ${label}，请填写 Key 并保存。`,
     );
     bumpKeychainCheck();
     onLlmRuntimeChanged?.();
@@ -215,7 +215,7 @@ export function useEnvLlmConfigPanel({ busy, onLlmRuntimeChanged }: UseEnvLlmCon
         setApiKey("");
         bumpKeychainCheck();
         onLlmRuntimeChanged?.();
-        toast.success("已保存本机 Ollama 连接。无需 API Key；请点击 banner「刷新 Ollama 检测」验证。");
+        toast.success("已保存，请探测连接。");
         return;
       }
       if (!nextApiKeyId) {
@@ -233,14 +233,14 @@ export function useEnvLlmConfigPanel({ busy, onLlmRuntimeChanged }: UseEnvLlmCon
       onLlmRuntimeChanged?.();
       if (typedApiKey) {
         setApiKey("");
-        toast.success("已保存。API Key 已写入本地受保护存储；当前页面不再保留明文。");
+        toast.success("API Key 已保存。");
       } else if (nextApiKeyId) {
-        toast.success("已保存连接信息，将继续使用本地已保存的 API Key。");
+        toast.success("已保存，沿用已存 Key。");
       } else {
-        toast.info("已保存连接信息。请填写 API Key 并保存。");
+        toast.info("已保存配置，请填写 API Key。");
       }
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
+      toast.errorFromUnknown(e);
     } finally {
       setSaveBusy(false);
     }
@@ -275,9 +275,9 @@ export function useEnvLlmConfigPanel({ busy, onLlmRuntimeChanged }: UseEnvLlmCon
       setLlmApiKeyInMemory(null);
       bumpKeychainCheck();
       onLlmRuntimeChanged?.();
-      toast.success("已清除本地保存的 API Key。");
+      toast.success("已清除已保存的 API Key。");
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : String(e));
+      toast.errorFromUnknown(e);
     } finally {
       setSaveBusy(false);
     }
@@ -332,7 +332,7 @@ export function useEnvLlmConfigPanel({ busy, onLlmRuntimeChanged }: UseEnvLlmCon
       }
     } catch (e) {
       setProbeFailed(true);
-      toast.error(e instanceof Error ? e.message : String(e));
+      toast.errorFromUnknown(e);
     } finally {
       setProbeBusy(false);
     }

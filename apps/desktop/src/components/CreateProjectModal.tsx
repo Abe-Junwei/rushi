@@ -5,6 +5,7 @@ import type { ProjectControllerApi } from "../pages/useProjectController";
 import * as fileApi from "../tauri/fileApi";
 import { findDuplicateProjectNames, suggestUniqueProjectName } from "../utils/projectDuplicateName";
 import { FloatingPanelTemplate } from "./PanelTemplate";
+import { FLOATING_PANEL_DIALOG_BODY_PADDING_CLASS } from "./FloatingPanelDialogLayout";
 import {
   CONTROL_BTN_PRIMARY,
   CONTROL_BTN_SECONDARY,
@@ -15,7 +16,7 @@ import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec"
 const PANEL_ID = "create-project-modal-v2";
 const PANEL_WIDTH = 392;
 /** 按当前静态布局测算（标题栏 57px + 正文区）；有重名提示多一行。 */
-const PANEL_HEIGHT = { base: 290, duplicate: 336 } as const;
+const PANEL_HEIGHT = { base: 298, duplicate: 344 } as const;
 const MIN_SIZE = { width: 340, height: 260 } as const;
 
 interface CreateProjectModalProps {
@@ -104,7 +105,7 @@ export function CreateProjectModal({ controller: c, onClose }: CreateProjectModa
       onClose={onClose}
     >
       <form
-        className="flex flex-col px-5 py-3"
+        className={`flex flex-col ${FLOATING_PANEL_DIALOG_BODY_PADDING_CLASS}`}
         onSubmit={(e) => {
           e.preventDefault();
           void createEmpty();

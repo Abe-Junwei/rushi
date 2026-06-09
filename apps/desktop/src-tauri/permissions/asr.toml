@@ -28,4 +28,8 @@ permissions = [
   "allow-get-local-asr-recognition-language-pref",
   "allow-set-local-asr-recognition-language-pref",
   "allow-stt-probe-online-health",
+  "allow-stt-save-api-key",
+  "allow-stt-delete-api-key",
+  "allow-stt-has-stored-api-key",
+  "allow-stt-read-api-key",
 ]

@@ -15,7 +15,7 @@ export interface SttOnlineProviderDefinition {
   id: string;
   label: string;
   description: string;
-  /** 文档入口，便于环境与 ASR 面板外链 */
+  /** 文档入口，便于环境 → 本机 ASR 面板外链 */
   docsUrl: string;
   authStyle: SttOnlineAuthStyle;
   headerName?: string;
@@ -31,7 +31,14 @@ export interface SttOnlineProviderDefinition {
   requiresPersistedAppKey?: boolean;
   /** 持久化应用标识输入框标签 */
   persistedAppKeyFieldLabel?: string;
-  /** 典型网关或区域基址示例，用于占位提示（用户仍须填 HTTPS 完整转写 URL 或自建代理） */
+  /** 根凭证输入框下的说明（避免与同类云产品混淆） */
+  credentialHint?: string;
+  /** 根凭证 placeholder */
+  credentialPlaceholder?: string;
+  /**
+   * @deprecated 转写 URL 已迁至 `presetEndpoints.ts` 预置；仅 custom-proxy 需用户填写。
+   * 保留字段供旧文档引用，勿再用于 UI 占位。
+   */
   defaultEndpointExample?: string;
   /**
    * 若厂商常见提供新用户试用 / 免费额度，填简短备注；`sttOnlineProvidersByMarket` 会将其排在分组列表前。
@@ -48,6 +55,8 @@ export interface ExternalSttOnlineRuntimeConfig {
   endpoint?: string;
   /** 应用级标识（AppKey、ProjectId 等），可持久化；与解语 acoustic 分层存储一致 */
   appKey?: string;
+  /** 本地受保护存储中的 API Key 引用（不含明文） */
+  apiKeyId?: string;
   timeoutMs: number;
 }
 
@@ -83,16 +92,8 @@ export interface ExternalSttOnlineHealthCheckOptions {
 export type OnlineNativeAdapterId =
   | "openaiAudio"
   | "assemblyai"
-  | "baiduSpeech"
-  | "aliyunNls"
   | "deepgramListen"
-  | "tencentAsr"
-  | "azureConversationV1"
-  | "googleSpeechV1"
-  | "iflytekIatWs"
-  | "huaweiSisShortAudio"
-  | "aispeechLasrSentenceV2"
-  | "volcengineBigmodelNostreamWs";
+  | "dashscopeAsr";
 
 /** 供 Tauri `project_run_transcribe` 的 `online` 参数；与 Rust `OnlineTranscribeBridge` 字段 camelCase 对齐。 */
 export type OnlineTranscribeBridgePayload = {

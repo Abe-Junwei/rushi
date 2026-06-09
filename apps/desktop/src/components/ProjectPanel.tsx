@@ -190,12 +190,6 @@ export function ProjectPanel() {
           : "rounded-none border-0 bg-notion-bg font-sans antialiased text-notion-text",
       ].join(" ")}
     >
-      {c.error ? (
-        <p className="mx-4 mt-3 shrink-0 rounded border border-zen-cinnabar/25 bg-zen-cinnabar/10 px-3 py-2 text-sm text-zen-cinnabar">
-          {c.error}
-        </p>
-      ) : null}
-
       {envOpen ? (
         <FloatingPanelTemplate id="environment-v3" title="环境与 LLM" preset="environment" onClose={() => setEnvOpen(false)}>
             <EnvironmentPanel

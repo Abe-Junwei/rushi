@@ -27,8 +27,15 @@ describe("floatingPanelFitSections", () => {
     expect(mergeContentFitHeights(400, null)).toBe(400);
   });
 
-  it("mergeContentFitHeights prefers estimate unless measured panel is taller", () => {
-    expect(mergeContentFitHeights(300, 280)).toBe(300);
+  it("mergeContentFitHeights shrinks when measured is clearly shorter than estimate", () => {
+    expect(mergeContentFitHeights(300, 250)).toBe(250);
+  });
+
+  it("mergeContentFitHeights keeps estimate within measurement slack", () => {
+    expect(mergeContentFitHeights(441, 425)).toBe(441);
+  });
+
+  it("mergeContentFitHeights grows when measured exceeds estimate (alt)", () => {
     expect(mergeContentFitHeights(280, 320)).toBe(320);
   });
 

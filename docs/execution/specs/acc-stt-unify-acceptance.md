@@ -8,8 +8,8 @@
 
 - **术语真源**：仅全局 `glossary_terms`（canonical，不用 alias 堆误写形）
 - **本机**：multipart `hotwords`（FunASR `hotword=`）
-- **在线 v1**：OpenAI `prompt`、AssemblyAI `keyterms_prompt`、Deepgram `keywords`；其它 native → `online_vocabulary_unsupported`
-- **不做**：U4 自动回落本机；U3 环境三盏灯（R3h-3）；Azure/百炼 vocabulary_id（§8.1）
+- **在线 v1**：OpenAI `prompt`、AssemblyAI `keyterms_prompt`、Deepgram `keywords`、百炼 `vocabulary_id`（→ [`acc-stt-ali-acceptance.md`](./acc-stt-ali-acceptance.md)）；其它 native → `online_vocabulary_unsupported`
+- **不做**：U4 自动回落本机；U3 环境三盏灯（R3h-3）
 
 ## 能力—UI 状态矩阵（R3-STATE）
 

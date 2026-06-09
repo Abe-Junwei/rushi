@@ -31,6 +31,13 @@ export const WORKSPACE_HOME_PAGE_CLASS = "welcome-home-page";
 /** 开放式内容页宽度 — Welcome / Hub / 空项目页，不自带边框、圆角或阴影 */
 export const WORKSPACE_PAGE_PANEL_CLASS = "relative flex w-full max-w-[672px] flex-col";
 
-/** 文件列表行 — Welcome / Hub 共用：常态透明，hover 浅灰 */
+/** 文件列表行 — Welcome / Hub 共用：全宽贴边、无圆角 */
 export const WORKSPACE_FILE_ROW_CLASS =
-  "group flex w-full items-center rounded-md bg-transparent text-left transition-colors hover:bg-notion-sidebar-hover";
+  "group flex w-full items-center bg-transparent text-left transition-colors hover:bg-notion-sidebar-hover";
+
+/** 侧栏可点击行（导航、设置等）：全宽贴边、无圆角、内容 px-5 */
+export const WORKSPACE_SIDEBAR_ROW_INTERACTIVE =
+  "flex w-full items-center gap-3 border-0 px-5 py-2 text-sm font-medium transition-colors";
+
+/** 侧栏块级行容器（项目行等）：全宽贴边、无圆角 */
+export const WORKSPACE_SIDEBAR_ROW_SURFACE = "w-full transition-colors";

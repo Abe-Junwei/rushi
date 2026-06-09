@@ -1,5 +1,6 @@
 import { STT_ONLINE_PROVIDER_STORAGE_KEYS } from "./constants";
 import { readStorage, writeStorage } from "./storage";
+import { notifySttOnlineRuntimeChanged } from "../sttOnlineRuntimeNotify";
 import type { ExternalSttOnlineRuntimeConfig } from "./types";
 
 export const STT_CONNECTION_VERIFIED_EVENT = "rushi:stt-connection-verified";
@@ -7,7 +8,7 @@ export const STT_CONNECTION_VERIFIED_EVENT = "rushi:stt-connection-verified";
 export function sttRuntimeConnectionFingerprint(
   config: Pick<
     ExternalSttOnlineRuntimeConfig,
-    "enabled" | "selectedProviderId" | "endpoint" | "appKey" | "timeoutMs"
+    "enabled" | "selectedProviderId" | "endpoint" | "appKey" | "apiKeyId" | "timeoutMs"
   >,
 ): string {
   return [
@@ -15,6 +16,7 @@ export function sttRuntimeConnectionFingerprint(
     config.selectedProviderId,
     config.endpoint ?? "",
     config.appKey ?? "",
+    config.apiKeyId ?? "",
     String(config.timeoutMs),
   ].join("\0");
 }
@@ -27,6 +29,7 @@ export function markSttConnectionVerified(config: ExternalSttOnlineRuntimeConfig
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent(STT_CONNECTION_VERIFIED_EVENT));
   }
+  notifySttOnlineRuntimeChanged();
 }
 
 export function clearSttConnectionVerified(): void {
@@ -40,12 +43,13 @@ export function clearSttConnectionVerified(): void {
   if (typeof window !== "undefined") {
     window.dispatchEvent(new CustomEvent(STT_CONNECTION_VERIFIED_EVENT));
   }
+  notifySttOnlineRuntimeChanged();
 }
 
 export function isSttConnectionVerified(
   config: Pick<
     ExternalSttOnlineRuntimeConfig,
-    "enabled" | "selectedProviderId" | "endpoint" | "appKey" | "timeoutMs"
+    "enabled" | "selectedProviderId" | "endpoint" | "appKey" | "apiKeyId" | "timeoutMs"
   >,
 ): boolean {
   const stored = readStorage(STT_ONLINE_PROVIDER_STORAGE_KEYS.connectionVerifiedFingerprint);

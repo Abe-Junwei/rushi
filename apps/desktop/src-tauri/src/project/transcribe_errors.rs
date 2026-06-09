@@ -16,7 +16,7 @@ pub fn describe_transcribe_request_error(err: &reqwest::Error, timeout: Duration
     let lower = detail.to_ascii_lowercase();
 
     if err.is_connect() || lower.contains("connection refused") {
-        return "无法连接本机 ASR（127.0.0.1:8741 拒绝连接）。请在「环境与 ASR」执行一键准备，或确认侧车已启动。".into();
+        return "无法连接本机 ASR（127.0.0.1:8741 拒绝连接）。请在「环境 → 本机 ASR」执行一键准备，或确认侧车已启动。".into();
     }
 
     if lower.contains("error sending request")
@@ -24,7 +24,7 @@ pub fn describe_transcribe_request_error(err: &reqwest::Error, timeout: Duration
         || lower.contains("broken pipe")
         || lower.contains("unexpected eof")
     {
-        return "无法连接本机 ASR：侧车可能已崩溃或未响应（常见于 FunASR 内存不足被系统终止）。请回到「环境与 ASR」查看状态并重新一键准备。".into();
+        return "无法连接本机 ASR：侧车可能已崩溃或未响应（常见于 FunASR 内存不足被系统终止）。请回到「环境 → 本机 ASR」查看状态并重新一键准备。".into();
     }
 
     format!("ASR 请求失败: {detail}")
@@ -42,7 +42,7 @@ pub fn describe_transcribe_http_status_error(status: u16, body_snippet: &str) ->
     Some(format!(
         "本机 ASR 拒绝了转写请求（本地安全令牌不匹配）。\
          常见于 8741 上仍是上一次内置侧车、而桌面已重启。\
-         请到「环境与 ASR」点「重试内置侧车」，或完全退出应用后重新打开；{}",
+         请到「环境 → 本机 ASR」点「重试内置侧车」，或完全退出应用后重新打开；{}",
         dev_or_packaged_str(
             "开发时也可执行 lsof -i :8741 结束旧进程后重新 npm run desktop:dev。",
             "仍失败请重新安装应用。",

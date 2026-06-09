@@ -21,7 +21,7 @@ export function deriveTranscribeHints(engine: string, warnings: string[], segmen
   }
   if (warnings.some((w) => w.startsWith("funasr_skipped:"))) {
     hints.push(
-      "FunASR 未参与本次识别（侧车未就绪或模型未配置），已降级为 stub；请完成环境与 ASR 中的模型准备后重新拉取。",
+      "FunASR 未参与本次识别（侧车未就绪或模型未配置），已降级为 stub；请完成环境 → 本机 ASR 中的模型准备后重新拉取。",
     );
   }
   if (warnings.some((w) => w.includes("stub_no_placeholder_segment"))) {
@@ -52,6 +52,12 @@ export function deriveTranscribeHints(engine: string, warnings: string[], segmen
     hints.push(
       "术语表传入 Deepgram 时超过 50 个 keywords 已截断；最近更新的词条优先。",
     );
+  } else if (warnings.some((w) => w === "online_vocabulary_truncated_dashscope_terms")) {
+    hints.push(
+      "部分术语不符合百炼热词长度规则（非 ASCII 单条 ≤15 字；纯英文 ≤7 个词），已跳过；其余词条已同步为 vocabulary_id。",
+    );
+  } else if (warnings.some((w) => w === "online_vocabulary_sync_failed")) {
+    hints.push("百炼热词表同步失败，本次转写未携带 vocabulary_id；请检查 API Key 权限与网络。");
   } else if (warnings.some((w) => w.startsWith("online_vocabulary_truncated_"))) {
     hints.push("术语表已传入在线引擎，但因厂商上限已截断；可在「热词与记忆」减少条目或优先保留关键专名。");
   }
@@ -79,7 +85,7 @@ export function deriveTranscribeHints(engine: string, warnings: string[], segmen
     );
   } else if (warnings.some((w) => w.includes("funasr_no_sentence_segments"))) {
     hints.push(
-      "本次未识别到可写入的文本（语段列表为空）。请确认音频有清晰人声，并查看「环境与 ASR」中 FunASR 是否就绪。",
+      "本次未识别到可写入的文本（语段列表为空）。请确认音频有清晰人声，并查看「环境 → 本机 ASR」中 FunASR 是否就绪。",
     );
   }
   const allEmpty =

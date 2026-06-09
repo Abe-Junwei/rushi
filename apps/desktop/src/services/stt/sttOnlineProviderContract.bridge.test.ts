@@ -93,38 +93,25 @@ describe("tryBuildOnlineTranscribeBridgePayload", () => {
     expect(isSttOnlineEnabledButIncomplete()).toBe(false);
   });
 
-  it("is incomplete for aliyun-nls when token present but appKey missing", () => {
+  it("builds dashscope-asr native payload with preset endpoint", () => {
     vi.stubGlobal(
       "localStorage",
       mockLocalStorage({
         [STT_ONLINE_PROVIDER_STORAGE_KEYS.enabled]: "true",
-        [STT_ONLINE_PROVIDER_STORAGE_KEYS.selectedProviderId]: "aliyun-nls",
+        [STT_ONLINE_PROVIDER_STORAGE_KEYS.selectedProviderId]: "dashscope-asr",
         [STT_ONLINE_PROVIDER_STORAGE_KEYS.timeoutMs]: "120000",
       }),
     );
-    setSttOnlineApiKeyInMemory("some-token");
-    expect(isSttOnlineEnabledButIncomplete()).toBe(true);
-  });
-
-  it("builds aliyun-nls native payload with appKey and empty endpoint", () => {
-    vi.stubGlobal(
-      "localStorage",
-      mockLocalStorage({
-        [STT_ONLINE_PROVIDER_STORAGE_KEYS.enabled]: "true",
-        [STT_ONLINE_PROVIDER_STORAGE_KEYS.selectedProviderId]: "aliyun-nls",
-        [STT_ONLINE_PROVIDER_STORAGE_KEYS.appKey]: "my-nls-appkey",
-        [STT_ONLINE_PROVIDER_STORAGE_KEYS.timeoutMs]: "120000",
-      }),
-    );
-    setSttOnlineApiKeyInMemory("nls-token");
+    setSttOnlineApiKeyInMemory("sk-test-bailian");
     const p = tryBuildOnlineTranscribeBridgePayload();
-    expect(p?.nativeAdapter).toBe("aliyunNls");
-    expect(p?.transcribeUrl).toBe("");
-    expect(p?.appKey).toBe("my-nls-appkey");
-    expect(p?.authorization).toBe("nls-token");
+    expect(p?.nativeAdapter).toBe("dashscopeAsr");
+    expect(p?.transcribeUrl).toBe(
+      "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation",
+    );
+    expect(p?.authorization).toBe("Bearer sk-test-bailian");
   });
 
-  it("builds deepgram native payload with default empty listen URL", () => {
+  it("builds deepgram native payload with preset listen URL", () => {
     vi.stubGlobal(
       "localStorage",
       mockLocalStorage({
@@ -136,103 +123,32 @@ describe("tryBuildOnlineTranscribeBridgePayload", () => {
     setSttOnlineApiKeyInMemory("dg-key");
     const p = tryBuildOnlineTranscribeBridgePayload();
     expect(p?.nativeAdapter).toBe("deepgramListen");
-    expect(p?.transcribeUrl).toBe("");
+    expect(p?.transcribeUrl).toBe(
+      "https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true",
+    );
     expect(p?.authorization).toBe("Bearer dg-key");
   });
 
-  it("resolves china native adapters", () => {
-    expect(resolveShellNativeSttAdapterId("iflytek-speech")).toBe("iflytekIatWs");
-    expect(resolveShellNativeSttAdapterId("huawei-sis")).toBe("huaweiSisShortAudio");
-    expect(resolveShellNativeSttAdapterId("volcengine-speech")).toBe("volcengineBigmodelNostreamWs");
-    expect(resolveShellNativeSttAdapterId("aispeech")).toBe("aispeechLasrSentenceV2");
+  it("resolves remaining shell native adapters", () => {
+    expect(resolveShellNativeSttAdapterId("openai")).toBe("openaiAudio");
+    expect(resolveShellNativeSttAdapterId("assemblyai")).toBe("assemblyai");
+    expect(resolveShellNativeSttAdapterId("dashscope-asr")).toBe("dashscopeAsr");
+    expect(resolveShellNativeSttAdapterId("deepgram")).toBe("deepgramListen");
+    expect(resolveShellNativeSttAdapterId("aliyun-nls")).toBeNull();
   });
 
-  it("builds iflytek payload with pipe secret and app id", () => {
+  it("migrates removed provider id when building bridge payload", () => {
     vi.stubGlobal(
       "localStorage",
       mockLocalStorage({
         [STT_ONLINE_PROVIDER_STORAGE_KEYS.enabled]: "true",
-        [STT_ONLINE_PROVIDER_STORAGE_KEYS.selectedProviderId]: "iflytek-speech",
-        [STT_ONLINE_PROVIDER_STORAGE_KEYS.appKey]: "appid-123",
+        [STT_ONLINE_PROVIDER_STORAGE_KEYS.selectedProviderId]: "tencent-asr",
         [STT_ONLINE_PROVIDER_STORAGE_KEYS.timeoutMs]: "120000",
       }),
     );
-    setSttOnlineApiKeyInMemory("apikeyxxx|secretxxx");
+    setSttOnlineApiKeyInMemory("sk-test-bailian");
     const p = tryBuildOnlineTranscribeBridgePayload();
-    expect(p?.nativeAdapter).toBe("iflytekIatWs");
-    expect(p?.appKey).toBe("appid-123");
-    expect(p?.authorization).toBe("apikeyxxx|secretxxx");
-  });
-
-  it("builds huawei-sis native payload with pipe AK/SK and project id", () => {
-    vi.stubGlobal(
-      "localStorage",
-      mockLocalStorage({
-        [STT_ONLINE_PROVIDER_STORAGE_KEYS.enabled]: "true",
-        [STT_ONLINE_PROVIDER_STORAGE_KEYS.selectedProviderId]: "huawei-sis",
-        [STT_ONLINE_PROVIDER_STORAGE_KEYS.appKey]: "proj-abc",
-        [STT_ONLINE_PROVIDER_STORAGE_KEYS.timeoutMs]: "120000",
-      }),
-    );
-    setSttOnlineApiKeyInMemory("AKID|SECRETKEY");
-    const p = tryBuildOnlineTranscribeBridgePayload();
-    expect(p?.nativeAdapter).toBe("huaweiSisShortAudio");
-    expect(p?.appKey).toBe("proj-abc");
-    expect(p?.authorization).toBe("Bearer AKID|SECRETKEY");
-    expect(p?.transcribeUrl).toBe("");
-  });
-
-  it("builds aispeech native payload with bearer api key", () => {
-    vi.stubGlobal(
-      "localStorage",
-      mockLocalStorage({
-        [STT_ONLINE_PROVIDER_STORAGE_KEYS.enabled]: "true",
-        [STT_ONLINE_PROVIDER_STORAGE_KEYS.selectedProviderId]: "aispeech",
-        [STT_ONLINE_PROVIDER_STORAGE_KEYS.appKey]: "product-99",
-        [STT_ONLINE_PROVIDER_STORAGE_KEYS.timeoutMs]: "120000",
-      }),
-    );
-    setSttOnlineApiKeyInMemory("lasr-key");
-    const p = tryBuildOnlineTranscribeBridgePayload();
-    expect(p?.nativeAdapter).toBe("aispeechLasrSentenceV2");
-    expect(p?.appKey).toBe("product-99");
-    expect(p?.authorization).toBe("Bearer lasr-key");
-    expect(p?.transcribeUrl).toBe("");
-  });
-
-  it("builds volcengine-speech native payload with bearer token", () => {
-    vi.stubGlobal(
-      "localStorage",
-      mockLocalStorage({
-        [STT_ONLINE_PROVIDER_STORAGE_KEYS.enabled]: "true",
-        [STT_ONLINE_PROVIDER_STORAGE_KEYS.selectedProviderId]: "volcengine-speech",
-        [STT_ONLINE_PROVIDER_STORAGE_KEYS.appKey]: "app-key-volc",
-        [STT_ONLINE_PROVIDER_STORAGE_KEYS.timeoutMs]: "120000",
-      }),
-    );
-    setSttOnlineApiKeyInMemory("access-token-xyz");
-    const p = tryBuildOnlineTranscribeBridgePayload();
-    expect(p?.nativeAdapter).toBe("volcengineBigmodelNostreamWs");
-    expect(p?.appKey).toBe("app-key-volc");
-    expect(p?.authorization).toBe("Bearer access-token-xyz");
-    expect(p?.transcribeUrl).toBe("");
-  });
-
-  it("builds baidu native payload when API Key persisted and secret in memory", () => {
-    vi.stubGlobal(
-      "localStorage",
-      mockLocalStorage({
-        [STT_ONLINE_PROVIDER_STORAGE_KEYS.enabled]: "true",
-        [STT_ONLINE_PROVIDER_STORAGE_KEYS.selectedProviderId]: "baidu-speech",
-        [STT_ONLINE_PROVIDER_STORAGE_KEYS.appKey]: "baidu-api-key",
-        [STT_ONLINE_PROVIDER_STORAGE_KEYS.timeoutMs]: "120000",
-      }),
-    );
-    setSttOnlineApiKeyInMemory("baidu-secret");
-    const p = tryBuildOnlineTranscribeBridgePayload();
-    expect(p?.nativeAdapter).toBe("baiduSpeech");
-    expect(p?.appKey).toBe("baidu-api-key");
-    expect(p?.authorization).toBe("Bearer baidu-secret");
+    expect(p?.nativeAdapter).toBe("dashscopeAsr");
   });
 
   it("isSttOnlineEnabledButIncomplete is false for deepgram with key only", () => {

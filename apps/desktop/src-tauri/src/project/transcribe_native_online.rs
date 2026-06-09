@@ -40,6 +40,7 @@ pub async fn transcribe_openai_native(
     if let Some(p) = openai_prompt(vocabulary) {
         form = form.text("prompt", p);
     }
+    append_desktop_log_line(st, "INFO transcribe openai_native");
     let mut req = crate::stt_native::http_client()
         .post(url)
         .timeout(timeout)
@@ -50,7 +51,6 @@ pub async fn transcribe_openai_native(
             req = req.header("Authorization", t);
         }
     }
-    append_desktop_log_line(st, "INFO transcribe openai_native");
     let resp = req.send().await.map_err(|e| {
         append_desktop_log_line(st, &format!("ERROR openai transcribe connect {e}"));
         format!("OpenAI 请求失败: {e}")

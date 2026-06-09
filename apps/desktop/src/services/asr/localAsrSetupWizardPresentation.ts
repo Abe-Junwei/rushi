@@ -20,7 +20,7 @@ export type RuntimeInstallPresentation = {
 const MANIFEST_BLOCKED_MISSING_STATUS = "尚未安装 · 应用内下载不可用";
 
 const MANIFEST_BLOCKED_DEV_HINT =
-  "开发环境可在「环境与维护 → 高级诊断」查看手动命令，或在 services/asr 目录运行 python -m rushi_asr。";
+  "开发环境见「环境 → 本机 ASR」诊断，或运行 python -m rushi_asr。";
 
 export function buildDiskMetaLine(report: AsrSetupReport | null): string | null {
   if (!report?.diskFreeBytes) return null;

@@ -3,6 +3,7 @@ import {
   clearToastBottomInset,
   EDITOR_STATUS_FOOTER_PX,
   syncToastBottomInset,
+  TOAST_INSET_ABOVE_FOOTER,
   toastBottomInsetCssVar,
 } from "./toastLayout";
 
@@ -15,7 +16,7 @@ describe("toastLayout", () => {
     syncToastBottomInset(true);
     const v = document.documentElement.style.getPropertyValue("--rushi-toast-bottom");
     expect(v).toContain(`${EDITOR_STATUS_FOOTER_PX}px`);
-    expect(v).toContain("0.75rem");
+    expect(v).toContain(TOAST_INSET_ABOVE_FOOTER);
   });
 
   it("uses default inset without editor status footer", () => {

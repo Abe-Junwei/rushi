@@ -41,13 +41,13 @@ export const PANEL_TEMPLATE_PRESETS = {
     persistState: false,
     overlayClassName: "fixed inset-0 z-40 bg-zen-ink/20 backdrop-blur-sm",
   },
-  /** 确认/表单对话框：Notion/Zen 壳 + 可记忆拖放尺寸 */
+  /** 确认/表单对话框：Notion/Zen 壳 + 可记忆拖放尺寸（上限按视口，勿再用 320×200 硬顶） */
   compactDialog: {
     margin: 24,
     minWidth: 280,
     minHeight: 180,
-    maxWidth: 320,
-    maxHeight: 200,
+    maxWidth: 560,
+    maxHeight: 720,
     persistState: true,
     overlayClassName: "fixed inset-0 z-40 bg-zen-ink/20 backdrop-blur-sm",
   },
@@ -139,6 +139,12 @@ export function FloatingPanelTemplate({
     persistState: persistState ?? presetConfig.persistState,
     overlayClassName: overlayClassName ?? presetConfig.overlayClassName,
   };
+  if (mergedConfig.minHeight > mergedConfig.maxHeight) {
+    mergedConfig.maxHeight = mergedConfig.minHeight;
+  }
+  if (mergedConfig.minWidth > mergedConfig.maxWidth) {
+    mergedConfig.maxWidth = mergedConfig.minWidth;
+  }
   const metrics = resolvePanelTemplateMetrics(mergedConfig, defaultSizeOverride);
 
   return (

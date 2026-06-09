@@ -88,10 +88,10 @@ describe("EnvLlmConfigPanel", () => {
     render(<EnvLlmConfigPanel busy={false} />);
 
     await waitFor(() => {
-      expect(screen.getByText(/尚未验证连通性/)).toBeTruthy();
+      expect(screen.getByText(/Key 已保存，请探测连接/)).toBeTruthy();
     });
     expect(screen.queryByText(/连接就绪/)).toBeNull();
-    expect(screen.queryByText(/API Key 已验证/)).toBeNull();
+    expect(screen.queryByText(/已验证，导出润色可用/)).toBeNull();
   });
 
   it("shows verified status only after a successful probe", async () => {
@@ -110,7 +110,7 @@ describe("EnvLlmConfigPanel", () => {
     fireEvent.click(screen.getByRole("button", { name: "探测连接" }));
 
     await waitFor(() => {
-      expect(screen.getByText(/API Key 已验证/)).toBeTruthy();
+      expect(screen.getByText(/已验证，导出润色可用/)).toBeTruthy();
     });
     expect(toastSuccess).toHaveBeenCalled();
   });
@@ -130,15 +130,15 @@ describe("EnvLlmConfigPanel", () => {
 
     fireEvent.click(screen.getByRole("button", { name: "探测连接" }));
     await waitFor(() => {
-      expect(screen.getByText(/API Key 已验证/)).toBeTruthy();
+      expect(screen.getByText(/已验证，导出润色可用/)).toBeTruthy();
     });
 
     fireEvent.click(screen.getAllByRole("button", { name: "保存配置" })[0]);
     await waitFor(() => {
       expect(toastSuccess).toHaveBeenCalled();
     });
-    expect(screen.getByText(/API Key 已验证/)).toBeTruthy();
-    expect(screen.queryByText(/尚未验证连通性/)).toBeNull();
+    expect(screen.getByText(/已验证，导出润色可用/)).toBeTruthy();
+    expect(screen.queryByText(/Key 已保存，请探测连接/)).toBeNull();
   });
 
   it("shows toast on failed probe", async () => {
@@ -159,7 +159,7 @@ describe("EnvLlmConfigPanel", () => {
     await waitFor(() => {
       expect(toastError).toHaveBeenCalledWith("认证失败（HTTP 401），请检查 API Key。");
     });
-    expect(screen.queryByText(/API Key 已验证/)).toBeNull();
+    expect(screen.queryByText(/已验证，导出润色可用/)).toBeNull();
   });
 
   it("probes with keychain id after save clears the input", async () => {

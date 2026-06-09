@@ -1,6 +1,6 @@
 # P1 欢迎与建项流程 — Stitch 重设计说明
 
-本文描述 **无已打开项目**（`current == null`）时用户看到的界面，对应代码中的 `**workspacePhase === "A"`**（冷启动）与 `**workspacePhase === "B"**`（已选音频、待确认创建）。顶栏、环境与 ASR 折叠区、左轨在两阶段**共用**；主舞台在 A / B 之间切换。
+本文描述 **无已打开项目**（`current == null`）时用户看到的界面，对应代码中的 `**workspacePhase === "A"`**（冷启动）与 `**workspacePhase === "B"**`（已选音频、待确认创建）。顶栏、环境 → 本机 ASR 折叠区、左轨在两阶段**共用**；主舞台在 A / B 之间切换。
 
 实现参考：`[src/components/ProjectPanel.tsx](../src/components/ProjectPanel.tsx)`（`workspacePhase`、`showAsrBanner`、主区 A/B 分支）。
 
@@ -25,13 +25,13 @@
 
 ```
 ┌─────────────────────────────────────────────────────────────┐
-│ 顶栏：品牌文案 | ASR 状态点阵 | [环境与 ASR] | (宽屏) ASR URL │
+│ 顶栏：品牌文案 | ASR 状态点阵 | [环境 → 本机 ASR] | (宽屏) ASR URL │
 ├─────────────────────────────────────────────────────────────┤
 │ [可选] 全局错误条（红框，跨阶段）                              │
 ├─────────────────────────────────────────────────────────────┤
 │ [可选] ASR 不可达横幅（仅 A 阶段 + asrHealth===error）       │
 ├─────────────────────────────────────────────────────────────┤
-│ [可选] 环境与 ASR 折叠内容区（可滚动，有 max-height）         │
+│ [可选] 环境 → 本机 ASR 折叠内容区（可滚动，有 max-height）         │
 ├──────────────────┬──────────────────────────────────────────┤
 │ 左轨（Aside）     │ 主舞台（Main）← A 或 B 在此切换           │
 │                  │                                          │
@@ -39,8 +39,8 @@
 ```
 
 - **根容器**：全高 flex 列、`overflow-hidden`、圆角卡片、浅底 `zen-paper`、细边框、轻阴影。
-- **顶栏**：`shrink-0`，底部分割线；左侧可换行；右侧「环境与 ASR」为切换按钮（非路由）。
-- **环境与 ASR**：展开时占用 **纵向可变高度**，内部可滚动；**不要**默认展开，以免淹没欢迎主 CTA。
+- **顶栏**：`shrink-0`，底部分割线；左侧可换行；右侧「环境 → 本机 ASR」为切换按钮（非路由）。
+- **环境 → 本机 ASR**：展开时占用 **纵向可变高度**，内部可滚动；**不要**默认展开，以免淹没欢迎主 CTA。
 
 ---
 
@@ -76,7 +76,7 @@
 | ASR 检测中 | `正在检测 ASR…`                                                 | `asrHealth === "checking"`  |
 | ASR 正常  | 三列：`FFmpeg` / `FunASR` / `转写就绪`，每列前 **2px 圆点**（绿=ok，红=fail） | `asrHealth === "ok"` 且有能力对象 |
 | ASR 异常  | `ASR 不可达`，`zen-cinnabar`                                    | `asrHealth === "error"`     |
-| 环境与 ASR | 收起：`环境与 ASR`；展开：`收起环境与 ASR`                                 | `aria-expanded` 与面板同步       |
+| 环境 → 本机 ASR | 收起：`环境 → 本机 ASR`；展开：`收起环境 → 本机 ASR`                                 | `aria-expanded` 与面板同步       |
 | ASR 基址  | `asrBaseUrl()` 等宽截断                                         | **仅 `lg:` 及以上**显示           |
 
 
@@ -90,7 +90,7 @@
 | 元素  | 内容                          |
 | --- | --------------------------- |
 | 说明  | `无法连接本机 ASR，请检查服务是否在运行。`    |
-| 操作  | 次要按钮：`打开环境与 ASR`（将环境面板设为展开） |
+| 操作  | 次要按钮：`打开环境 → 本机 ASR`（将环境面板设为展开） |
 
 
 视觉：浅红底边框，与全局错误条区分（横幅更偏「引导」）。
@@ -212,7 +212,7 @@
 
 **欢迎（阶段 A）**
 
-> Desktop productivity app, calm Buddhist-inspired palette: warm paper background #F2EFE8, ink text #2C2C2C, saffron accent #C58A43 for primary CTA, muted stone #8E8E8E for secondary text. Centered empty state: title「开始校对」, short subtitle about local SQLite projects and ASR. One primary button「新建项目（选择音频）」. Below, section「最近项目」: list of up to 8 rows, project name left, date right, subtle list card with border. Left sidebar (wide screens): narrow rail with project dropdown + refresh + hint text. Top bar: small caps brand, three status dots FFmpeg/FunASR/转写就绪, tertiary button「环境与 ASR」. No waveform. Restrained, plenty of whitespace, not playful.
+> Desktop productivity app, calm Buddhist-inspired palette: warm paper background #F2EFE8, ink text #2C2C2C, saffron accent #C58A43 for primary CTA, muted stone #8E8E8E for secondary text. Centered empty state: title「开始校对」, short subtitle about local SQLite projects and ASR. One primary button「新建项目（选择音频）」. Below, section「最近项目」: list of up to 8 rows, project name left, date right, subtle list card with border. Left sidebar (wide screens): narrow rail with project dropdown + refresh + hint text. Top bar: small caps brand, three status dots FFmpeg/FunASR/转写就绪, tertiary button「环境 → 本机 ASR」. No waveform. Restrained, plenty of whitespace, not playful.
 
 **确认建项（阶段 B）**
 

@@ -1,4 +1,5 @@
 import { Pause, Play } from "lucide-react";
+import { useWorkbenchToolbarCompactFromElement } from "../../hooks/useWorkbenchToolbarCompact";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
 import { resolveTierViewportMetrics } from "../../utils/waveformViewport";
@@ -21,13 +22,18 @@ export function EditorWorkbenchToolbar({
   tx,
   hasAudio,
 }: EditorWorkbenchToolbarProps) {
+  const { trackRef, compact: compactLayout } = useWorkbenchToolbarCompactFromElement();
+
   if (!hasAudio) {
     return (
       <div className="waveform-bottom-toolbar editor-workbench-toolbar editor-workbench-toolbar--no-audio">
-        <div className="waveform-bottom-toolbar-track editor-workbench-toolbar-track editor-workbench-toolbar-track--no-audio">
+        <div
+          ref={trackRef}
+          className="waveform-bottom-toolbar-track editor-workbench-toolbar-track editor-workbench-toolbar-track--no-audio"
+        >
           <div className="workbench-toolbar-center workbench-toolbar-center--solo">
             <div className="workbench-toolbar-group workbench-toolbar-group--solo waveform-toolbar-subzone waveform-toolbar-transcribe">
-              <EditorSegmentTranscribeActions controller={c} />
+              <EditorSegmentTranscribeActions controller={c} compactLayout={compactLayout} />
             </div>
           </div>
         </div>
@@ -47,7 +53,7 @@ export function EditorWorkbenchToolbar({
 
   return (
     <div className="waveform-bottom-toolbar editor-workbench-toolbar">
-      <div className="waveform-bottom-toolbar-track editor-workbench-toolbar-track">
+      <div ref={trackRef} className="waveform-bottom-toolbar-track editor-workbench-toolbar-track">
         <div className="workbench-toolbar-left">
           <div className="workbench-toolbar-group waveform-toolbar-zone waveform-toolbar-transport">
               <button
@@ -86,7 +92,7 @@ export function EditorWorkbenchToolbar({
         </div>
 
         <div className="workbench-toolbar-center">
-          <EditorSegmentTranscribeActions controller={c} />
+          <EditorSegmentTranscribeActions controller={c} compactLayout={compactLayout} />
         </div>
 
         <div className="workbench-toolbar-right">
@@ -106,6 +112,7 @@ export function EditorWorkbenchToolbar({
                 onFitAll={tx.zoomToFitAll}
                 onResetDefaultZoom={() => tx.resetZoomForMedia(viewportWidthPx, mediaDurationSec)}
               onPxPerSecChange={tx.setPxPerSecFromSlider}
+              compactLayout={compactLayout}
             />
           </div>
         </div>

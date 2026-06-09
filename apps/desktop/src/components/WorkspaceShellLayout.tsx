@@ -1,5 +1,5 @@
 import { useCallback, useRef, type CSSProperties, type ReactNode } from "react";
-import { PanelLeftClose, PanelLeftOpen } from "lucide-react";
+import { PanelLeftClose } from "lucide-react";
 import { usePanelAutoCollapse } from "../hooks/usePanelAutoCollapse";
 import {
   WORKSPACE_EDITOR_SHELL_PURPOSE,
@@ -71,10 +71,10 @@ export function WorkspaceShellLayout({
       data-purpose={purpose}
       style={shellStyle}
     >
-      <div className="workspace-shell-sidebar-column relative min-h-0 min-w-0 overflow-visible">
+      <div className="workspace-shell-sidebar-column relative flex h-full min-h-0 min-w-0 flex-col">
         <div
           className={[
-            "h-full min-h-0 transition-opacity duration-200 ease-out",
+            "flex h-full min-h-0 flex-1 flex-col transition-opacity duration-200 ease-out",
             collapsible && sidebarCollapsed
               ? "pointer-events-none overflow-hidden opacity-0"
               : "opacity-100",
@@ -82,32 +82,21 @@ export function WorkspaceShellLayout({
         >
           {sidebar}
         </div>
-        {collapsible ? (
+        {collapsible && !sidebarCollapsed ? (
           <button
             type="button"
             {...{ [WORKSPACE_SIDEBAR_TOGGLE_ATTR]: "" }}
-            className={[
-              "workspace-shell-sidebar-toggle border-0 bg-notion-sidebar",
-              sidebarCollapsed ? "workspace-shell-sidebar-toggle-collapsed" : "",
-            ].join(" ")}
-            aria-expanded={!sidebarCollapsed}
-            aria-label={sidebarCollapsed ? "展开侧栏" : "折叠侧栏"}
-            title={sidebarCollapsed ? "展开侧栏" : "折叠侧栏"}
+            className="workspace-shell-sidebar-toggle border-0 bg-notion-sidebar"
+            aria-expanded
+            aria-label="折叠侧栏"
+            title="折叠侧栏"
             onClick={onToggleSidebar}
           >
-            {sidebarCollapsed ? (
-              <PanelLeftOpen
-                className={LUCIDE_ICON_SIZE_SM}
-                strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
-                aria-hidden
-              />
-            ) : (
-              <PanelLeftClose
-                className={LUCIDE_ICON_SIZE_SM}
-                strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
-                aria-hidden
-              />
-            )}
+            <PanelLeftClose
+              className={LUCIDE_ICON_SIZE_SM}
+              strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
+              aria-hidden
+            />
           </button>
         ) : null}
       </div>

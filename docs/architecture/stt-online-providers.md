@@ -22,7 +22,8 @@
 
 | 厂商 / 产品 | 典型认证与形态 | 与 P1 对齐备注 |
 |-------------|------------------|----------------|
-| **阿里云智能语音交互（NLS）** | AppKey + `X-NLS-Token`；区域 `nls-gateway-cn-*` 一句话识别 REST | 短音频 REST 较易代理；长音频用录音文件识别或异步接口。 |
+| **阿里云百炼 DashScope（Qwen3-ASR）** | 百炼 API Key（`sk-…`）；`compatible-mode/v1/chat/completions` | 桌面壳直连；与 LLM 百炼 Key 相同；建议 ≤5 分钟/10MB。 |
+| **阿里云智能语音交互（NLS）** | AppKey + `X-NLS-Token`；**非百炼 sk-** | 短音频 REST；长音频用录音文件识别或百炼 ASR。 |
 | **腾讯云 ASR** | API 3.0 `TC3-HMAC-SHA256`（`asr.tencentcloudapi.com`） | 桌面壳已实现 **SentenceRecognition** 直连（SecretId 持久化 + SecretKey 内存）；亦可自建代理。 |
 | **百度语音技术** | `access_token` 或 API Key；`vop.baidu.com` 等 | 桌面壳已实现 **server_api** 短音频路径（API Key 持久化 + Secret Key 内存）；长音频仍建议极速版或网关。 |
 | **科大讯飞开放平台** | AppId + API Secret 签名 / WebSocket 听写 | 大模型识别线持续迭代，建议网关统一版本。 |
@@ -34,7 +35,7 @@
 
 1. **是否必须流式**：P1 当前是「整段音频 → 语段列表」的 **离线拉取**，首版在线 Provider 以 **异步/批量 REST** 即可对齐现有 UX。  
 2. **输出形态**：能否稳定给出 **带起止时间的分句**（或至少词级时间戳便于后处理）；与现有 `TranscriptionSegment` / `schema_version: "1"` 对齐成本。  
-3. **合规与密钥**：API Key 不应写入 `localStorage`；优先 **Tauri 侧或 OS Keychain** 存密钥，前端只持有会话内内存（与解语 acoustic 外部 Key **不落盘**一致）。  
+3. **合规与密钥**：API Key **不得**写入 `localStorage` 明文；桌面端经 Tauri 写入 **OS 密钥库 / AppData 受保护文件**（`secrets/stt-online/`），前端 `localStorage` 仅保留 `apiKeyId` 引用，运行时按需读回会话内存。  
 4. **网络与 CORS**：浏览器直连第三方常受 CORS 限制；**推荐**由 **Tauri 命令** 或 **本机 ASR 反向代理** 转发请求（与当前 `project_run_transcribe` 走 Rust `reqwest` 的思路一致）。
 
 ## 2. 复用解语的设计要点（映射到 Rushi）
@@ -42,8 +43,8 @@
 解语在 `Jieyu/src/services/acoustic/acousticProviderContract.ts` 中对外部声学 Provider 已有一套可迁移的「壳」：
 
 - **Provider 定义表**：`id` / `label` / `description` / `capabilities`（STT 可改为 `batch` / `streaming` / `diarization` 等）。  
-- **运行时配置**：启用开关、`endpoint`、**`timeoutMs`**；对 **AppKey / ProjectId 等非根密钥** 可持久化（`rushi.stt.online.appKey`），与解语「敏感项仅内存、应用标识可落盘」分层一致。  
-- **持久化策略**：`localStorage` 仅存非敏感项；**根密钥 / Token 仅内存**（`inMemoryProviderSecrets` 模式）。  
+- **运行时配置**：启用开关、`endpoint`、**`timeoutMs`**；对 **AppKey / ProjectId 等非根密钥** 可持久化（`rushi.stt.online.appKey`）。  
+- **持久化策略**：`localStorage` 存非敏感项与 **`apiKeyId` 引用**；**根密钥 / Token** 经 Tauri `stt_save_api_key` 等命令写入本地受保护存储，重启后免填。  
 - **安全基线**：外部 `endpoint` 仅允许 **HTTPS** 或 **本机 HTTP**（`isAllowedExternalProviderEndpoint`）。  
 - **可达性探测**：`probeExternal*Health`（GET + 可选 Bearer，映射 HTTP 状态到 `available` / `401` / `timeout` 等）。  
 - **解析态**：`requestedProviderId` vs `effectiveProviderId`、`fellBackToLocal`（Rushi 可映射为「请求在线 → 失败回退本机 ASR」）。
@@ -53,20 +54,17 @@ Rushi 已在 `apps/desktop/src/contracts/transcription.ts` 定义 **`Transcripti
 ## 3. 代码落位与接线状态
 
 - `apps/desktop/src/services/stt/sttOnlineProviderContract.ts`：在线 STT 的 **定义表、运行时配置读写、HTTPS 校验、健康探测**（与解语 acoustic 合约同构，命名空间为 `rushi.stt.online.*`）。  
-- `apps/desktop/src-tauri/src/stt_native.rs`：百度 / 阿里云 NLS / Deepgram / 腾讯云 / Azure 对话 v1 / Google v1 等 **壳内直连** 与 `dispatch_native`。  
-- `apps/desktop/src-tauri/src/china_stt_shell.rs`：讯飞 WebSocket 听写、华为 SIS 短音频、思必驰 LASR v2、火山豆包大模型 ASR WebSocket 等 **壳内直连**。
+- `apps/desktop/src-tauri/src/stt_native/`：百炼 Fun-ASR（`dashscopeAsr`）、Deepgram（`deepgramListen`）等 **壳内直连** 与 `dispatch_native`。
 - `apps/desktop/src-tauri/src/online_stt_bridge.rs`：`OnlineTranscribeBridge` 反序列化与 `transcribeUrl` 安全校验。
-- 单元测试：`apps/desktop/src/services/stt/sttOnlineProviderContract.test.ts`（URL 策略与 `tryBuild` 载荷等）。在环境面板启用「在线 STT（实验）」并填写内存 API Key 后，主舞台「从 ASR 拉取语段」会调用 Tauri `project_run_transcribe`。载荷非空时：
+- 单元测试：`apps/desktop/src/services/stt/sttOnlineProviderContract.test.ts`（URL 策略与 `tryBuild` 载荷等）。在环境面板「在线 STT」保存 API Key 并探测通过后，主舞台「自动转录 → 在线」会调用 Tauri `project_run_transcribe`。载荷非空时：
 
 - 选择 **OpenAI** 或 **AssemblyAI**：Rust 内建 **厂商原生 HTTP**（OpenAI `audio/transcriptions` + `verbose_json`；AssemblyAI v2 `upload` + `transcript` 轮询），再归一为 **`TranscriptionResult`（schema_version 1）**；URL 可留空以使用默认 `api.openai.com` / `api.assemblyai.com`。**术语表**（ACC-STT-UNIFY + ASR-VOC-3）：全局 `glossary_terms`（按 `updated_at_ms` 降序拼入）→ `SttVocabularyPlan` → OpenAI `prompt`（≤224 字）/ AssemblyAI `keyterms_prompt`（≤100 条）/ Deepgram `keywords`（≤50）；超长见 `online_vocabulary_truncated_*` warnings 与 `deriveTranscribeHints` 分型文案。
 - 选择 **Deepgram**：壳直连 + **术语表** 映射为 URL `keywords`（ACC-STT-UNIFY）。
-- 选择 **百度 / 阿里云 NLS / 腾讯云 / Azure Speech（对话 v1）/ Google Speech-to-Text v1 / 讯飞 / 华为 SIS / 思必驰 LASR v2 / 火山豆包大模型 ASR（WebSocket）**：Rust 模块 `stt_native`（含 `china_stt_shell`）内 **壳直连**；v1 **不传**术语表（转写 warnings：`online_vocabulary_unsupported`）。（`native_adapter`：`baiduSpeech`、`aliyunNls`、`tencentAsr`、`deepgramListen`、`azureConversationV1`、`googleSpeechV1`、`iflytekIatWs`、`huaweiSisShortAudio`、`aispeechLasrSentenceV2`、`volcengineBigmodelNostreamWs`）。`transcribeUrl` 可留空则使用各厂商默认端点；非空时若为 **HTTPS 或本机 HTTP** 则作为覆盖 URL。**火山** 若 `endpoint` 不是 URL 而是一段 Resource-Id 字符串，壳会将其当作 `X-Api-Resource-Id` 使用。凭证分层与 `sttOnlineProviderContract` 一致：**根密钥 / Token 仅内存**，应用级标识可持久化到 `appKey`。
-- **国内壳直连 — 内存凭证形状（`|` 分隔，与 UI 说明一致）**  
-  - **讯飞**：`APIKey|APISecret`（`authStyle: header`，无 `Bearer` 前缀）。  
-  - **华为**：`AccessKeyId|SecretAccessKey`（`Bearer` 前缀若被粘贴进内存字段，壳侧会剥离后再拆分）。  
-  - **思必驰**：单段云对云 **apiKey**（Bearer 由合约 `tryBuild` 加上）。  
-  - **火山**：控制台 **Access Token**（Bearer）。
+- 选择 **百炼 Fun-ASR（`dashscope-asr`）**：`fun-asr-realtime` 同步识别 + 术语库 → 百炼 `speech-biasing` 热词表（`vocabulary_id`）；见 ACC-STT-ALI。
+- 上述 native adapter：`dashscopeAsr`（含热词）、`deepgramListen`（含热词）。**内置厂商转写 URL 已预置**；仅「自定义代理」需用户填写 POST URL。
 - **自定义代理**：须配置 **与本机 rushi-asr 兼容的** `POST` 完整 URL（`multipart`：`file` + 可选 `hotwords`）；响应须已为 Rushi JSON 契约。若配置了持久化 **AppKey**，Tauri 会额外附带请求头 **`X-Rushi-Stt-App-Key`**，供网关读取后与厂商 API 组合。
+
+> **已移除（2026-06）**：早期调研纳入的短窗口 REST/WebSocket 厂商（NLS、腾讯云一句话、百度短语音、讯飞听写、华为 SIS 短音频、思必驰 LASR、火山 WS、Azure 对话 v1 同步、Google v1 同步等）不适合口述史长音频，已从定义表与 Rust 壳内直连删除；旧 `selectedProviderId` 读取时自动迁移为 `dashscope-asr`。
 
 未启用或载荷不完整时仍走本机 `asrBaseUrl + /v1/transcribe`。
 
@@ -76,7 +74,7 @@ Rushi 已在 `apps/desktop/src/contracts/transcription.ts` 定义 **`Transcripti
 
 1. **OpenAI Audio Transcriptions**：已在 Tauri 以 `whisper-1` + `verbose_json` 打通（可再接 UI 模型选择）。  
 2. **AssemblyAI**：已在 Tauri 以 v2 轮询打通；后续可加 webhook、附加分析字段。  
-3. **百度 / 阿里云 NLS / 腾讯云 / Deepgram / Azure 对话 v1 / Google v1**：已在 `stt_native` 以壳直连打通短音频/默认识别路径；长音频、细粒度模型与区域端点可按产品迭代。
+3. **Deepgram / 百炼 Fun-ASR**：已在 `stt_native` 以壳直连打通；长口述史仍优先本机 FunASR 或 AssemblyAI 异步 Job。
 
 ---
 

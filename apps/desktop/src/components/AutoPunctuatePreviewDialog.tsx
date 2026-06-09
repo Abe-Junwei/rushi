@@ -52,7 +52,7 @@ export function AutoPunctuatePreviewDialog({
         {state.phase === "consent" ? (
           <>
             <p className={`mt-3 ${PANEL_TYPOGRAPHY.dialogBody}`}>
-              当前语段将按「设置 → LLM 配置」中的厂商与模型发送，仅用于自动标点候选。正文不会在未经确认的情况下被改写。
+              当前语段将按「环境 → LLM 配置」中的厂商与模型发送，仅用于自动标点候选。正文不会在未经确认的情况下被改写。
             </p>
             <pre className={`mt-4 max-h-44 overflow-auto whitespace-pre-wrap rounded-lg border border-notion-divider bg-white px-3 py-3 ${PANEL_TYPOGRAPHY.dialogText}`}>
               {state.originalText}

@@ -117,15 +117,15 @@ function bannerDetailFor(input: {
     return input.asrHealthDetail.trim() || "无法连接本机 ASR，请检查侧车是否在运行。";
   }
   if (input.transcribeReady) {
-    return "侧车、FFmpeg 与当前所选模型已就绪，可直接拉取语段与转写。";
+    return "侧车、FFmpeg 与模型已就绪，可直接转写。";
   }
   if (!input.ffmpegOk) {
-    return "侧车已连接，但未检测到 FFmpeg，无法解码上传音频。";
+    return "侧车已连接，但未检测到 FFmpeg，无法解码音频。";
   }
   if (!input.runtimeReady) {
-    return "侧车已连接，FunASR 运行时尚未就绪。请完成模型下载或一键准备。";
+    return "FunASR 未就绪，请下载模型或一键准备。";
   }
-  return input.connectedGuidance ?? "侧车已连接，当前所选模型尚未齐备。";
+  return input.connectedGuidance ?? "所选模型尚未齐备。";
 }
 
 function connectedGuidanceFor(input: {
@@ -133,9 +133,9 @@ function connectedGuidanceFor(input: {
   sidecarMatchesSelection: boolean;
 }): string {
   if (!input.sidecarMatchesSelection) {
-    return "当前所选模型尚未应用到侧车。请先在下方点「应用并重启侧车」，再下载或转写。";
+    return "所选模型未应用到侧车，请先「应用并重启侧车」。";
   }
-  return `当前所选模型或 VAD/标点尚未齐备（mode: ${input.asrCaps.transcription_mode}）。请在下方下载当前模型，或切换已缓存的模型。`;
+  return `模型或 VAD/标点未齐备（mode: ${input.asrCaps.transcription_mode}）。请下载当前模型或切换已缓存模型。`;
 }
 
 function blockReasonFor(input: {
@@ -146,18 +146,18 @@ function blockReasonFor(input: {
   sidecarAsyncTranscribeCapable?: boolean;
 }): string | null {
   if (input.asrHealth !== "ok" || !input.asrCaps) {
-    return "本机 ASR 未就绪：请先在「环境与 ASR」完成侧车启动与模型准备。";
+    return "本机 ASR 未就绪：请先在「环境 → 本机 ASR」完成侧车与模型准备。";
   }
   if (input.sidecarAsyncTranscribeCapable === false) {
     return isPackagedDesktopApp()
-      ? "侧车版本过旧，不支持增量转写。请在「环境与 ASR」点「应用并重启侧车」或「一键准备本机 ASR」；仍失败请重新安装应用。"
-      : "侧车版本过旧，不支持增量转写（缺少 POST /v1/transcribe/async）。请在环境页「应用并重启侧车」，或执行 npm run asr:build-sidecar-unix 重建内置侧车。";
+      ? "侧车版本过旧。请在「环境 → 本机 ASR」应用并重启侧车或一键准备；仍失败请重装应用。"
+      : "侧车版本过旧（缺少 async 转写）。请在环境页应用并重启侧车，或重建内置侧车。";
   }
   if (input.transcribeReady) return null;
   if (!input.sidecarMatchesSelection) {
-    return "所选模型与侧车当前模型不一致：请先在环境页「应用并重启侧车」后再拉取语段。";
+    return "所选模型与侧车不一致：请先「应用并重启侧车」。";
   }
-  return "所选模型尚未就绪：请先在环境页下载并完成当前模型的准备。";
+  return "所选模型未就绪：请先下载并完成准备。";
 }
 
 export function buildAsrEnvPresentation(input: BuildAsrEnvPresentationInput): AsrEnvPresentation {
@@ -251,8 +251,8 @@ export function buildAsrEnvPresentation(input: BuildAsrEnvPresentationInput): As
     ffmpegWarning:
       envOk && input.asrCaps && !ffmpegOk
         ? isPackagedDesktopApp()
-          ? "未检测到 FFmpeg — 无法解码音频与生成波形。请在「环境与 ASR」点「重试内置侧车」或重新安装应用。"
-          : "未检测到 FFmpeg — ASR 无法解码上传音频。请安装 ffmpeg/ffprobe 并加入 PATH 后重启 ASR。"
+          ? "未检测到 FFmpeg。请在「环境 → 本机 ASR」重试内置侧车或重装应用。"
+          : "未检测到 FFmpeg。请安装 ffmpeg/ffprobe 并加入 PATH 后重启 ASR。"
         : null,
     cachePathMismatch,
     cachePathMismatchDetail: cachePathMismatch

@@ -1,11 +1,8 @@
 //! 各在线 STT 厂商原生 HTTP 调用，归一为 Rushi `TranscriptionResult` JSON（schema_version 1）。
 
-pub mod aliyun;
-pub mod azure;
-pub mod baidu;
+pub mod dashscope_asr;
+pub mod dashscope_vocabulary;
 pub mod deepgram;
-pub mod google;
-pub mod tencent;
 
 use std::fs;
 use std::path::Path;
@@ -19,16 +16,43 @@ use crate::online_stt_bridge::{is_allowed_stt_transcribe_url, OnlineTranscribeBr
 use crate::project::stt_vocabulary::SttVocabularyPlan;
 
 static HTTP: OnceLock<reqwest::Client> = OnceLock::new();
+static HTTP_DIRECT: OnceLock<reqwest::Client> = OnceLock::new();
 const MAX_STT_AUDIO_BYTES: u64 = 512 * 1024 * 1024;
 
+fn build_stt_http_client(use_system_proxy: bool) -> reqwest::Client {
+    let mut builder = reqwest::Client::builder()
+        .pool_idle_timeout(Duration::from_secs(90))
+        .connect_timeout(Duration::from_secs(20))
+        .user_agent(format!("rushi-desktop/{}", env!("CARGO_PKG_VERSION")));
+    if !use_system_proxy {
+        builder = builder.no_proxy();
+    }
+    builder.build().expect("reqwest stt async client")
+}
+
 pub fn http_client() -> &'static reqwest::Client {
-    HTTP.get_or_init(|| {
-        reqwest::Client::builder()
-            .pool_idle_timeout(Duration::from_secs(90))
-            .connect_timeout(Duration::from_secs(20))
-            .build()
-            .expect("reqwest async client")
-    })
+    HTTP.get_or_init(|| build_stt_http_client(true))
+}
+
+/// 绕过系统代理直连云端（与 STT 探测 / LLM postprocess 的 no_proxy 重试一致）。
+pub fn http_client_direct() -> &'static reqwest::Client {
+    HTTP_DIRECT.get_or_init(|| build_stt_http_client(false))
+}
+
+pub fn is_retryable_stt_transport(err: &reqwest::Error) -> bool {
+    err.is_connect() || err.is_timeout() || err.is_request()
+}
+
+/// 云端 STT POST：代理路径失败时自动 no_proxy 重试一次。
+pub async fn send_stt_cloud_post(
+    build: impl Fn(&reqwest::Client) -> reqwest::RequestBuilder,
+) -> Result<reqwest::Response, reqwest::Error> {
+    let primary = build(http_client()).send().await;
+    match primary {
+        Ok(resp) => Ok(resp),
+        Err(e) if is_retryable_stt_transport(&e) => build(http_client_direct()).send().await,
+        Err(e) => Err(e),
+    }
 }
 
 pub(crate) fn read_audio_bytes_limited(path: &Path) -> Result<Vec<u8>, String> {
@@ -64,22 +88,6 @@ pub(crate) async fn multipart_part_from_file(
         part = part.file_name(name.to_string_lossy().into_owned());
     }
     Ok(part)
-}
-
-fn sha256_hex(data: &[u8]) -> String {
-    use sha2::{Digest, Sha256};
-    let mut h = Sha256::new();
-    h.update(data);
-    hex::encode(h.finalize())
-}
-
-fn hmac_sha256(key: &[u8], data: &[u8]) -> Vec<u8> {
-    use hmac::{Hmac, Mac};
-    use sha2::Sha256;
-    type HmacSha256 = Hmac<Sha256>;
-    let mut mac = HmacSha256::new_from_slice(key).expect("HMAC key length");
-    mac.update(data);
-    mac.finalize().into_bytes().to_vec()
 }
 
 fn rushi_value(
@@ -154,40 +162,13 @@ pub async fn dispatch_native(
         }
     }
     match adapter {
-        "baiduSpeech" => baidu::transcribe_baidu(client, audio_path, bridge, timeout, log).await,
-        "aliyunNls" => {
-            aliyun::transcribe_aliyun_nls(client, audio_path, bridge, timeout, log).await
+        "dashscopeAsr" => {
+            dashscope_asr::transcribe_dashscope_asr(client, audio_path, bridge, vocabulary, timeout, log)
+                .await
         }
         "deepgramListen" => {
             deepgram::transcribe_deepgram(client, audio_path, bridge, vocabulary, timeout, log)
                 .await
-        }
-        "tencentAsr" => tencent::transcribe_tencent(client, audio_path, bridge, timeout, log).await,
-        "azureConversationV1" => {
-            azure::transcribe_azure_conversation(client, audio_path, bridge, timeout, log).await
-        }
-        "googleSpeechV1" => {
-            google::transcribe_google(client, audio_path, bridge, timeout, log).await
-        }
-        "iflytekIatWs" => crate::china_stt_shell::iflytek::transcribe_iflytek_iat_ws(
-            audio_path, bridge, timeout, log,
-        ),
-        "huaweiSisShortAudio" => {
-            crate::china_stt_shell::huawei::transcribe_huawei_sis_short(
-                client, audio_path, bridge, timeout, log,
-            )
-            .await
-        }
-        "aispeechLasrSentenceV2" => {
-            crate::china_stt_shell::aispeech::transcribe_aispeech_lasr(
-                client, audio_path, bridge, timeout, log,
-            )
-            .await
-        }
-        "volcengineBigmodelNostreamWs" => {
-            crate::china_stt_shell::volcengine::transcribe_volcengine_bigmodel_nostream_ws(
-                audio_path, bridge, timeout, log,
-            )
         }
         _ => Err(format!("未知 native_adapter: {adapter}")),
     }

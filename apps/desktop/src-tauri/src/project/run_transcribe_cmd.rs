@@ -200,20 +200,7 @@ async fn project_run_transcribe_inner(
         let dur = Duration::from_secs(timeout_s);
         let use_multipart = !matches!(
             o.native_adapter.as_deref(),
-            Some(
-                "openaiAudio"
-                    | "assemblyai"
-                    | "baiduSpeech"
-                    | "aliyunNls"
-                    | "deepgramListen"
-                    | "tencentAsr"
-                    | "azureConversationV1"
-                    | "googleSpeechV1"
-                    | "iflytekIatWs"
-                    | "huaweiSisShortAudio"
-                    | "aispeechLasrSentenceV2"
-                    | "volcengineBigmodelNostreamWs"
-            )
+            Some("openaiAudio" | "assemblyai" | "dashscopeAsr" | "deepgramListen")
         );
         let channel = channel_for_online(o.native_adapter.as_deref(), use_multipart);
         let vocabulary_pre_warnings =
@@ -225,18 +212,7 @@ async fn project_run_transcribe_inner(
             Some("assemblyai") => {
                 transcribe_assemblyai_native(&st, audio_path, &vocabulary, o, dur).await?
             }
-            Some(
-                adapter @ ("baiduSpeech"
-                | "aliyunNls"
-                | "deepgramListen"
-                | "tencentAsr"
-                | "azureConversationV1"
-                | "googleSpeechV1"
-                | "iflytekIatWs"
-                | "huaweiSisShortAudio"
-                | "aispeechLasrSentenceV2"
-                | "volcengineBigmodelNostreamWs"),
-            ) => {
+            Some(adapter @ ("dashscopeAsr" | "deepgramListen")) => {
                 let client = crate::stt_native::http_client();
                 let log = |line: &str| append_desktop_log_line(&st, line);
                 crate::stt_native::dispatch_native(

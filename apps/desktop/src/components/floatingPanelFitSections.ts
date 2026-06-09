@@ -86,6 +86,34 @@ export function resolveFloatingPanelSectionsFitHeight(sections: FloatingPanelFit
   return FLOATING_PANEL_TITLE_BAR_PX + resolveFloatingPanelSectionsBodyPx(sections);
 }
 
+function measureFloatingPanelInlineStack(node: HTMLElement): number {
+  const style = getComputedStyle(node);
+  const padding = (parseFloat(style.paddingTop) || 0) + (parseFloat(style.paddingBottom) || 0);
+  const gap = parseFloat(style.rowGap) || 0;
+  const children = Array.from(node.children) as HTMLElement[];
+  if (children.length === 0) return node.scrollHeight;
+
+  let total = padding;
+  for (let i = 0; i < children.length; i++) {
+    if (i > 0) {
+      total += gap + (parseFloat(getComputedStyle(children[i]).marginTop) || 0);
+    }
+    total += children[i].scrollHeight;
+  }
+  return total;
+}
+
+function measureFloatingPanelBodyChildHeight(child: HTMLElement): number {
+  const childStyle = getComputedStyle(child);
+  const flexGrow = parseFloat(childStyle.flexGrow);
+  if (flexGrow > 0) {
+    const list = child.querySelector("ul");
+    if (list instanceof HTMLElement) return list.scrollHeight;
+    return measureFloatingPanelInlineStack(child);
+  }
+  return child.scrollHeight;
+}
+
 /** 累加 flex 列直接子节点高度（不受 h-full 拉伸误导）。 */
 export function measureFloatingPanelBodyStack(node: HTMLElement): number {
   const style = getComputedStyle(node);
@@ -94,21 +122,18 @@ export function measureFloatingPanelBodyStack(node: HTMLElement): number {
   if (children.length === 0) return node.scrollHeight;
 
   let total = 0;
-  for (const child of children) {
-    const childStyle = getComputedStyle(child);
-    const flexGrow = parseFloat(childStyle.flexGrow);
-    if (flexGrow > 0) {
-      const list = child.querySelector("ul");
-      total += list instanceof HTMLElement ? list.scrollHeight : child.scrollHeight;
-    } else {
-      total += child.scrollHeight;
+  for (let i = 0; i < children.length; i++) {
+    const child = children[i];
+    if (i > 0) {
+      total += parseFloat(getComputedStyle(child).marginTop) || 0;
     }
+    total += measureFloatingPanelBodyChildHeight(child);
   }
   return total + Math.max(0, children.length - 1) * gap;
 }
 
-/** FloatingPanelDialogRoot 的 py-3 + 常见 gap-2。 */
-export const FLOATING_PANEL_DIALOG_ROOT_CHROME_PX = 32;
+/** FloatingPanelDialogRoot 的 pt-3 pb-6（不含子节点 margin；footer mt-3 由 stack 测量计入）。 */
+export const FLOATING_PANEL_DIALOG_ROOT_CHROME_PX = 36;
 
 export function resolveMeasuredPanelFitHeight(bodyScrollHeight: number): number {
   return (
@@ -126,8 +151,13 @@ export function mergeContentFitHeights(
   measured: number | null,
 ): number | undefined {
   if (estimated == null && measured == null) return undefined;
-  if (estimated == null) return measured ?? undefined;
   if (measured == null) return estimated;
-  // 正文区 h-full 时 scrollHeight 会被面板高度撑大；仅在实测更高时采用（防裁切），否则信估算。
-  return measured > estimated ? measured : estimated;
+  if (estimated == null) return measured;
+  // 正文变短：以实测为准；测量误差（页脚 margin 等）不应把面板压到裁切
+  if (measured < estimated) {
+    const measurementSlackPx = 32;
+    if (estimated - measured <= measurementSlackPx) return estimated;
+    return measured;
+  }
+  return Math.max(estimated, measured);
 }

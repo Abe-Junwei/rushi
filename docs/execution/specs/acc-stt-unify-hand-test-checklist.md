@@ -32,6 +32,14 @@
 
 - [ ] 同上；无 unsupported（配置正确时）
 
+### 百炼 Fun-ASR（ACC-STT-ALI）
+
+> 细则见 [`acc-stt-ali-hand-test-checklist.md`](./acc-stt-ali-hand-test-checklist.md)。
+
+- [ ] 厂商 **术语偏置** 角标；说明含 `vocabulary_id`
+- [ ] 拉取 → 无 `online_vocabulary_unsupported`；日志含 `vocabulary=vocab-rushi-…`
+- [ ] engine 为 `dashscope:fun-asr-realtime`（非 qwen3）
+
 ### 不支持厂商（如腾讯云）
 
 - [ ] 启用该厂商并拉取 → hints 含「在线识别引擎不支持术语偏置」类文案

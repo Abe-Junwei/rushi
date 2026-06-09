@@ -14,28 +14,28 @@ export function resolveFloatingPanelSegmentListHeight(
 }
 
 /** 查找替换主面板：标题栏 + 表单 + 状态 + 底栏（不含语段列表）。 */
-export const FIND_REPLACE_PANEL_STATIC_BODY_PX = 281;
+export const FIND_REPLACE_PANEL_STATIC_BODY_PX = 289;
 
 /** 全部替换预览：说明文案 + 底栏（不含语段列表）。 */
-export const FIND_REPLACE_PREVIEW_STATIC_BODY_PX = 132;
+export const FIND_REPLACE_PREVIEW_STATIC_BODY_PX = 140;
 
-/** 规则纠错 preview：摘要 + 底栏（不含语段列表 / 词表卫生 / hints）。 */
-export const CORRECTION_RULES_PREVIEW_STATIC_BODY_PX = 168;
+/** 规则纠错 preview：摘要（含清洗说明换行）+ 底栏（不含语段列表 / 词表卫生 / hints）。 */
+export const CORRECTION_RULES_PREVIEW_STATIC_BODY_PX = 196;
 
 /** 智能改稿预览：摘要 + 操作说明 + 底栏（不含语段列表）。 */
-export const POST_TRANSCRIBE_STAGE_B_PREVIEW_STATIC_BODY_PX = 188;
+export const POST_TRANSCRIBE_STAGE_B_PREVIEW_STATIC_BODY_PX = 196;
 
 /** 智能改稿预览：语段列表区上限（首次展开略紧凑）。 */
 export const POST_TRANSCRIBE_STAGE_B_PREVIEW_LIST_MAX_HEIGHT_PX = 192;
 
 /** 智能改稿预览：面板总高度上限（含标题栏）。 */
-export const POST_TRANSCRIBE_STAGE_B_PREVIEW_MAX_PANEL_HEIGHT_PX = 420;
+export const POST_TRANSCRIBE_STAGE_B_PREVIEW_MAX_PANEL_HEIGHT_PX = 428;
 
 /** 智能改稿 consent：说明文案 + 按钮行（不含 A→B 黄条）。 */
-export const POST_TRANSCRIBE_STAGE_B_CONSENT_STATIC_BODY_PX = 168;
+export const POST_TRANSCRIBE_STAGE_B_CONSENT_STATIC_BODY_PX = 176;
 
 /** 智能改稿 empty：说明文案 + 关闭按钮（不含提示条）。 */
-export const POST_TRANSCRIBE_STAGE_B_EMPTY_STATIC_BODY_PX = 132;
+export const POST_TRANSCRIBE_STAGE_B_EMPTY_STATIC_BODY_PX = 140;
 
 /** consent / empty 顶部每条提示（A→B 软提示 / pack 截断）的额外高度。 */
 export const POST_TRANSCRIBE_STAGE_B_HINT_EXTRA_PX = 56;
@@ -53,7 +53,7 @@ export const FLOATING_PANEL_MUTED_LINE_PX = 36;
 export const FLOATING_PANEL_SPINNER_BODY_PX = 88;
 
 /** 规则纠错 empty：说明 + 关闭按钮（不含 hints / 词表卫生 / 额外说明）。 */
-export const CORRECTION_RULES_EMPTY_STATIC_BODY_PX = 160;
+export const CORRECTION_RULES_EMPTY_STATIC_BODY_PX = 188;
 
 /** A9 词表卫生 `<details>` 摘要行（折叠态）。 */
 export const LEXICON_HEALTH_PANEL_SUMMARY_PX = 40;

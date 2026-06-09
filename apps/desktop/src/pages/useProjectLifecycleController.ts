@@ -1,4 +1,6 @@
-import { useCallback, useRef, useState } from "react";
+import { useCallback, useRef, useState, type SetStateAction } from "react";
+import { humanizeInvokeError } from "../services/ui/humanizeInvokeError";
+import { toast } from "../services/ui/toast";
 import type { ProjectDetail } from "../tauri/projectApi";
 import * as p1 from "../tauri/projectApi";
 import { useExportController } from "./useExportController";
@@ -33,7 +35,17 @@ export function useProjectLifecycleController(
   sttOnlineRuntimeEpoch = 0,
 ): ProjectLifecycleApi {
   const { busy, busyReason, beginBusy, endBusy } = useProjectBusyState();
-  const [error, setError] = useState<string>("");
+  const [error, setErrorState] = useState<string>("");
+  const setError = useCallback((value: SetStateAction<string>) => {
+    setErrorState((prev) => {
+      const next = typeof value === "function" ? value(prev) : value;
+      const trimmed = next.trim();
+      if (trimmed && trimmed !== prev.trim()) {
+        toast.error(humanizeInvokeError(trimmed));
+      }
+      return next;
+    });
+  }, []);
   const { projects, refreshProjects } = useProjectListState(setError);
 
   const {

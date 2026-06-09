@@ -10,6 +10,7 @@ describe("sttVocabularyBias", () => {
     expect(vocabularyChannelForProviderId("openai")).toBe("openAiPrompt");
     expect(vocabularyChannelForProviderId("assemblyai")).toBe("assemblyAiKeyterms");
     expect(vocabularyChannelForProviderId("deepgram")).toBe("deepgramKeywords");
+    expect(vocabularyChannelForProviderId("dashscope-asr")).toBe("dashScopeVocabulary");
     expect(vocabularyChannelForProviderId("tencent")).toBe("unsupported");
   });
 

@@ -1,4 +1,5 @@
 import { createPortal } from "react-dom";
+import { ENV_NAV } from "../config/environmentNavCopy";
 import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import type { PostTranscribeStageBDialogState } from "../pages/usePostTranscribeStageBController";
@@ -34,7 +35,7 @@ const STAGE_B_PANEL_DEFAULT_SIZE = { width: 480, height: 400 } as const;
 /** consent 默认宽度（说明短，较预览略窄） */
 const STAGE_B_CONSENT_DEFAULT_WIDTH = 480;
 /** loading 阶段 contentFitHeight：标题栏 + 进度区 + 取消按钮 */
-const STAGE_B_LOADING_PANEL_HEIGHT = 300;
+const STAGE_B_LOADING_PANEL_HEIGHT = 308;
 
 function resolveStageBPanelBounds() {
   const margin = 24;
@@ -215,8 +216,7 @@ export function PostTranscribeStageBDialog({
               <FloatingPanelDialogHeader>
                 {pendingHint ? <PendingStageAHint message={pendingHint} /> : null}
                 <p className={PANEL_TYPOGRAPHY.dialogBody}>
-                  将对当前文件最多 {state.segmentCount} 条有正文的语段请求标点与改字候选（按「设置 → LLM
-                  配置」发送；一次请求合并标点与词表有据改字）。正文不会在未经确认的情况下被改写；不会合并或拆分语段。
+                  将对当前文件最多 {state.segmentCount} 条有正文的语段请求标点与改字候选（按「{ENV_NAV.llm}」发送；一次请求合并标点与词表有据改字）。正文不会在未经确认的情况下被改写；不会合并或拆分语段。
                 </p>
               </FloatingPanelDialogHeader>
               <FloatingPanelDialogFooter justify="end">

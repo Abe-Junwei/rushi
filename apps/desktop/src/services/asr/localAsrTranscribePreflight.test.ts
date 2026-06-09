@@ -55,6 +55,6 @@ describe("localAsrTranscribePreflightMessage", () => {
       catalogStatus: [],
       sidecarAsyncTranscribeCapable: false,
     });
-    expect(msg).toContain("transcribe/async");
+    expect(msg).toContain("async 转写");
   });
 });

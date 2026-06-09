@@ -1,16 +1,24 @@
 import { isTauriRuntime } from "../../../config/env";
 import { sttProbeOnlineHealth } from "../../../tauri/sttApi";
 import {
-  STT_ONLINE_OPENAI_DEFAULT_PROBE_URL,
   STT_ONLINE_ASSEMBLYAI_DEFAULT_PROBE_URL,
+  STT_ONLINE_DASHSCOPE_DEFAULT_PROBE_URL,
+  STT_ONLINE_DEEPGRAM_DEFAULT_PROBE_URL,
+  STT_ONLINE_OPENAI_DEFAULT_PROBE_URL,
 } from "./constants";
 import { getSttOnlineProviderDefinition } from "./definitions";
 import { isAllowedSttOnlineEndpoint } from "./endpoint";
 import { getSttOnlineApiKeyFromMemory } from "./memorySecrets";
+import { ensureSttOnlineApiKeyForSession } from "./apiKeyStorage";
 import {
   normalizeExternalSttOnlineRuntimeConfig,
   resolveExternalSttOnlineRuntimeConfig,
 } from "./runtimeConfig";
+import {
+  resolveSttOnlinePresetTranscribeUrl,
+  sttOnlineProviderEndpointUserConfigurable,
+  sttOnlineProviderUsesCredentialsOnlyProbe,
+} from "./presetEndpoints";
 import type {
   ExternalSttOnlineHealthCheckOptions,
   ExternalSttOnlineHealthCheckResult,
@@ -18,7 +26,15 @@ import type {
   SttOnlineProviderDefinition,
 } from "./types";
 
-function authHeaderForProbe(def: SttOnlineProviderDefinition, apiKey: string): Record<string, string> {
+function authHeaderForProbe(
+  def: SttOnlineProviderDefinition,
+  apiKey: string,
+  providerId: string,
+): Record<string, string> {
+  if (providerId === "deepgram") {
+    const token = apiKey.trim().replace(/^Bearer\s+/i, "").replace(/^Token\s+/i, "");
+    return { authorization: `Token ${token}` };
+  }
   if (def.authStyle === "bearer") {
     return { authorization: `Bearer ${apiKey}` };
   }
@@ -33,6 +49,17 @@ function authHeaderForProbe(def: SttOnlineProviderDefinition, apiKey: string): R
  * 健康探测实际请求的 URL（显式 endpoint 优先；OpenAI / AssemblyAI 无 endpoint 时用默认探测点）。
  */
 export function resolveSttOnlineProbeUrl(runtime: ExternalSttOnlineRuntimeConfig): string | null {
+  if (sttOnlineProviderUsesCredentialsOnlyProbe(runtime.selectedProviderId)) {
+    return null;
+  }
+  if (sttOnlineProviderEndpointUserConfigurable(runtime.selectedProviderId)) {
+    const explicit = runtime.endpoint?.trim();
+    if (explicit) {
+      if (!isAllowedSttOnlineEndpoint(explicit)) return null;
+      return explicit;
+    }
+    return null;
+  }
   const explicit = runtime.endpoint?.trim();
   if (explicit) {
     if (!isAllowedSttOnlineEndpoint(explicit)) return null;
@@ -40,6 +67,8 @@ export function resolveSttOnlineProbeUrl(runtime: ExternalSttOnlineRuntimeConfig
   }
   if (runtime.selectedProviderId === "openai") return STT_ONLINE_OPENAI_DEFAULT_PROBE_URL;
   if (runtime.selectedProviderId === "assemblyai") return STT_ONLINE_ASSEMBLYAI_DEFAULT_PROBE_URL;
+  if (runtime.selectedProviderId === "dashscope-asr") return STT_ONLINE_DASHSCOPE_DEFAULT_PROBE_URL;
+  if (runtime.selectedProviderId === "deepgram") return STT_ONLINE_DEEPGRAM_DEFAULT_PROBE_URL;
   return null;
 }
 
@@ -72,7 +101,7 @@ async function probeExternalSttOnlineHealthViaFetch(
   const started = Date.now();
   try {
     const headers: Record<string, string> = { accept: "application/json" };
-    if (def) Object.assign(headers, authHeaderForProbe(def, apiKey));
+    if (def) Object.assign(headers, authHeaderForProbe(def, apiKey, runtime.selectedProviderId));
     else headers.authorization = `Bearer ${apiKey}`;
 
     const res = await fetchImpl(endpoint, { method: "GET", headers, signal: ctrl.signal });
@@ -171,6 +200,36 @@ export async function probeExternalSttOnlineHealth(
       message: "在线 STT 端点须使用 HTTPS；仅 localhost / 127.0.0.1 / ::1 允许 HTTP。",
     };
   }
+  const def = getSttOnlineProviderDefinition(runtime.selectedProviderId);
+  await ensureSttOnlineApiKeyForSession();
+  const apiKey = getSttOnlineApiKeyFromMemory()?.trim();
+  if (!apiKey) {
+    return {
+      state: "unconfigured",
+      available: false,
+      endpoint: resolveSttOnlinePresetTranscribeUrl(runtime.selectedProviderId) ?? undefined,
+      message: "请填写并保存 API Key。",
+    };
+  }
+
+  if (sttOnlineProviderUsesCredentialsOnlyProbe(runtime.selectedProviderId)) {
+    if (def?.requiresPersistedAppKey && !runtime.appKey?.trim()) {
+      return {
+        state: "unconfigured",
+        available: false,
+        message: `请填写${def.persistedAppKeyFieldLabel ?? "应用标识"}。`,
+      };
+    }
+    const preset = resolveSttOnlinePresetTranscribeUrl(runtime.selectedProviderId);
+    return {
+      state: "available",
+      available: true,
+      endpoint: preset ?? undefined,
+      message:
+        "厂商转写端点已预置；凭证已填写。保存后即可转写，首次使用以实际识别结果为准。",
+    };
+  }
+
   const endpoint = resolveSttOnlineProbeUrl(runtime);
   if (!endpoint) {
     return {
@@ -185,17 +244,6 @@ export async function probeExternalSttOnlineHealth(
       available: false,
       endpoint,
       message: "在线 STT 端点须使用 HTTPS；仅 localhost / 127.0.0.1 / ::1 允许 HTTP。",
-    };
-  }
-
-  const def = getSttOnlineProviderDefinition(runtime.selectedProviderId);
-  const apiKey = getSttOnlineApiKeyFromMemory()?.trim();
-  if (!apiKey) {
-    return {
-      state: "unconfigured",
-      available: false,
-      endpoint,
-      message: "未在内存中设置 API Key（关闭页面后需重新输入）。",
     };
   }
 
@@ -217,7 +265,7 @@ export async function probeExternalSttOnlineHealth(
   }
 
   const headers: Record<string, string> = { accept: "application/json" };
-  if (def) Object.assign(headers, authHeaderForProbe(def, apiKey));
+  if (def) Object.assign(headers, authHeaderForProbe(def, apiKey, runtime.selectedProviderId));
   else headers.authorization = `Bearer ${apiKey}`;
 
   try {

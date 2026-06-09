@@ -2,13 +2,14 @@ import { createPortal } from "react-dom";
 import { CONTROL_BTN_DANGER_COMPACT, CONTROL_BTN_SECONDARY } from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { FloatingPanelTemplate } from "./PanelTemplate";
+import { FLOATING_PANEL_DIALOG_BODY_PADDING_CLASS } from "./FloatingPanelDialogLayout";
 
 const btnSecondary = CONTROL_BTN_SECONDARY;
 
 /** 首次打开默认尺寸（按当前文案测算） */
-const CLEAR_ASR_CACHE_DIALOG_DEFAULT = { width: 300, height: 292 } as const;
+const CLEAR_ASR_CACHE_DIALOG_DEFAULT = { width: 300, height: 300 } as const;
 /** 允许拖放记忆；下限略小于默认，上限留给加宽加高 */
-const CLEAR_ASR_CACHE_DIALOG_MIN = { width: 280, height: 268 } as const;
+const CLEAR_ASR_CACHE_DIALOG_MIN = { width: 280, height: 276 } as const;
 const CLEAR_ASR_CACHE_DIALOG_PANEL_ID = "clear-asr-model-cache-v2";
 
 type Props = {
@@ -44,7 +45,7 @@ export function ClearAsrCacheConfirmDialog({ open, busy, totalBytes, onCancel, o
         persistState
         onClose={handleClose}
       >
-        <div className="flex flex-col px-5 py-3" role="alertdialog" aria-modal="true">
+        <div className={`flex flex-col ${FLOATING_PANEL_DIALOG_BODY_PADDING_CLASS}`} role="alertdialog" aria-modal="true">
           <p className={PANEL_TYPOGRAPHY.dialogBody}>
             将删除应用数据目录中已下载的 FunASR / ModelScope 权重，不会删除数据库或项目文件。
           </p>

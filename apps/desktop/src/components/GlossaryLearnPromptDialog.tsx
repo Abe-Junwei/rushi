@@ -4,6 +4,7 @@ import { PANEL_TYPOGRAPHY } from "../config/typography";
 import type { GlossaryLearnPromptDialogState } from "../pages/useGlossaryLearnPromptController";
 import type { GlossaryLearnPromptRow } from "../tauri/correctionApi";
 import { FloatingPanelTemplate } from "./PanelTemplate";
+import { FLOATING_PANEL_DIALOG_BODY_PADDING_CLASS } from "./FloatingPanelDialogLayout";
 
 type Props = {
   state: GlossaryLearnPromptDialogState;
@@ -28,7 +29,7 @@ export function GlossaryLearnPromptDialog({ state, busy, onClose, onDismiss, onC
         persistState={false}
         onClose={onClose}
       >
-        <div className="flex min-h-0 flex-1 flex-col gap-3 px-5 py-3">
+        <div className={`flex min-h-0 flex-1 flex-col gap-3 ${FLOATING_PANEL_DIALOG_BODY_PADDING_CLASS}`}>
           <p className={PANEL_TYPOGRAPHY.dialogBody}>
             以下正词来自纠错记忆，已多次手改确认。加入术语表后，该写法会作为热词参与下次转写（错形不会进入热词）。
           </p>

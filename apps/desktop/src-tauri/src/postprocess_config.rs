@@ -79,7 +79,7 @@ fn load_postprocess_config_from_env(app_data_root: &Path) -> Result<PostprocessC
     let provider =
         env::var("RUSHI_POSTPROCESS_PROVIDER").unwrap_or_else(|_| DEFAULT_PROVIDER.to_string());
     let base_url = env::var("RUSHI_POSTPROCESS_BASE_URL").map_err(|_| {
-        "未配置 LLM：请在「设置 → LLM 配置」填写连接信息，或设置 RUSHI_POSTPROCESS_BASE_URL。"
+        "未配置 LLM：请在「环境 → LLM 配置」填写连接信息，或设置 RUSHI_POSTPROCESS_BASE_URL。"
             .to_string()
     })?;
     let model = env::var("RUSHI_POSTPROCESS_MODEL")
@@ -187,7 +187,7 @@ fn load_postprocess_api_key(
     }
 
     Err(format!(
-        "本地未找到 API Key（标识：{id}）。请在「设置 → LLM 配置」重新填写并保存。"
+        "本地未找到 API Key（标识：{id}）。请在「环境 → LLM 配置」重新填写并保存。"
     ))
 }
 

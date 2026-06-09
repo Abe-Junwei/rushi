@@ -3,6 +3,9 @@ import {
   CORRECTION_RULES_EMPTY_STATIC_BODY_PX,
   CORRECTION_RULES_LOADING_BODY_PX,
   CORRECTION_RULES_PREVIEW_STATIC_BODY_PX,
+  LEXICON_HEALTH_PANEL_BODY_CHROME_PX,
+  LEXICON_HEALTH_PANEL_LINE_PX,
+  LEXICON_HEALTH_PANEL_SUMMARY_PX,
   resolveFloatingPanelCompactFitHeight,
 } from "./floatingPanelSegmentListLayout";
 import {
@@ -59,6 +62,9 @@ export function resolveCorrectionRulesContentFitHeight(input: {
         kind: "details",
         lineCount: lexiconHealthLineCount,
         expanded: lexiconExpanded,
+        summaryPx: LEXICON_HEALTH_PANEL_SUMMARY_PX,
+        linePx: LEXICON_HEALTH_PANEL_LINE_PX,
+        bodyChromePx: LEXICON_HEALTH_PANEL_BODY_CHROME_PX,
       });
     }
     if (postTranscribe && isEmpty) {

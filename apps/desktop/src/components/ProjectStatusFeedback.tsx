@@ -89,7 +89,7 @@ export function AsrErrorBanner({
         </div>
       </div>
       <button type="button" className={CONTROL_BTN_DANGER} onClick={onOpenEnvironment}>
-        打开环境与 ASR
+        打开环境 → 本机 ASR
       </button>
     </div>
   );

@@ -13,6 +13,24 @@ export type AsrHealthRefreshOptions = {
   touchUi?: boolean;
 };
 
+export type AsrHealthRefreshResult = {
+  health: AsrHealthState;
+  healthDetail: string;
+  caps: AsrHealthCapabilities | null;
+  healthJson: unknown;
+  rootJson: unknown;
+};
+
+let lastAsrHealthRefreshResult: AsrHealthRefreshResult | undefined;
+
+export function getLastAsrHealthRefreshResult(): AsrHealthRefreshResult | undefined {
+  return lastAsrHealthRefreshResult;
+}
+
+export function resetLastAsrHealthRefreshResultForTests(): void {
+  lastAsrHealthRefreshResult = undefined;
+}
+
 export type AsrHealthCatalogHooks = {
   syncFromHealth: (healthJson: unknown, rootJson?: unknown) => void;
   refreshIfNeeded: (healthJson: unknown) => void;
@@ -46,12 +64,21 @@ export function useAsrHealthPoll({ tauriRuntime, catalogHooksRef }: Params) {
       }
       const touchUi = options?.touchUi !== false;
 
-      const run = async () => {
+      const run = async (): Promise<void> => {
         if (!tauriRuntime) {
+          const detail =
+            "浏览器预览环境不自动检测本机 ASR。请在 Tauri 桌面壳中验证本地 ASR 连通性。";
           setAsrHealth("ok");
-          setAsrHealthDetail("浏览器预览环境不自动检测本机 ASR。请在 Tauri 桌面壳中验证本地 ASR 连通性。");
+          setAsrHealthDetail(detail);
           setAsrCaps(null);
           setBundledAsrDiag(null);
+          lastAsrHealthRefreshResult = {
+            health: "ok",
+            healthDetail: detail,
+            caps: null,
+            healthJson: null,
+            rootJson: null,
+          };
           return;
         }
         if (touchUi) {
@@ -70,9 +97,17 @@ export function useAsrHealthPoll({ tauriRuntime, catalogHooksRef }: Params) {
             }
             const parsed = parseAsrHealthJson(data);
             if (!parsed) {
+              const detail = `无法解析 ${url} 的能力字段（响应格式不符合 rushi-asr /health 契约）。`;
               setAsrHealth("error");
-              setAsrHealthDetail(`无法解析 ${url} 的能力字段（响应格式不符合 rushi-asr /health 契约）。`);
+              setAsrHealthDetail(detail);
               await refreshBundledAsrDiag();
+              lastAsrHealthRefreshResult = {
+                health: "error",
+                healthDetail: detail,
+                caps: null,
+                healthJson: data,
+                rootJson: null,
+              };
               return;
             }
             setAsrCaps(parsed);
@@ -91,16 +126,41 @@ export function useAsrHealthPoll({ tauriRuntime, catalogHooksRef }: Params) {
             }
             setAsrHealth("ok");
             await refreshBundledAsrDiag();
+            lastAsrHealthRefreshResult = {
+              health: "ok",
+              healthDetail: "",
+              caps: parsed,
+              healthJson: data,
+              rootJson,
+            };
             return;
           }
+          const detail = `无法访问 ${url}（HTTP ${res.status}）。请先在本机启动 ASR：见说明中「启动本地 ASR」一节。`;
           setAsrHealth("error");
-          setAsrHealthDetail(`无法访问 ${url}（HTTP ${res.status}）。请先在本机启动 ASR：见说明中「启动本地 ASR」一节。`);
+          setAsrHealthDetail(detail);
+          await refreshBundledAsrDiag();
+          lastAsrHealthRefreshResult = {
+            health: "error",
+            healthDetail: detail,
+            caps: null,
+            healthJson: null,
+            rootJson: null,
+          };
+          return;
         } catch (e) {
           setAsrHealth("error");
           const msg = e instanceof Error ? e.message : String(e);
-          setAsrHealthDetail(`无法连接 ${url}：${msg}`);
+          const detail = `无法连接 ${url}：${msg}`;
+          setAsrHealthDetail(detail);
+          await refreshBundledAsrDiag();
+          lastAsrHealthRefreshResult = {
+            health: "error",
+            healthDetail: detail,
+            caps: null,
+            healthJson: null,
+            rootJson: null,
+          };
         }
-        await refreshBundledAsrDiag();
       };
 
       inflightRef.current = run().finally(() => {

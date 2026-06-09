@@ -117,7 +117,7 @@ export function EnvLocalAsrModelCard({
           </div>
           {!sidecarMatchesSelection ? (
             <p className={`mt-2 ${PANEL_TYPOGRAPHY.meta}`}>
-              已选 {selectedLabel}，侧车{sidecarHub ? ` 仍在运行 ${sidecarHub}` : " 尚未切换"}。请先「应用并重启侧车」。
+              已选 {selectedLabel}，侧车{sidecarHub ? ` 仍在 ${sidecarHub}` : " 未切换"}。请先「应用并重启侧车」。
             </p>
           ) : null}
         </div>

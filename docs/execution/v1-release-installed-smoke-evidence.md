@@ -1,6 +1,6 @@
 # v1 安装包冒烟证据
 
-- **时间（UTC）**：2026-06-06T09:29:10Z
+- **时间（UTC）**：2026-06-09T02:32:40Z
 - **包**：`/Users/junwei/开发/Rushi/apps/desktop/src-tauri/target/release/bundle/macos/如是我闻.app`
 - **App Data**：`/Users/junwei/Library/Application Support/studio.lingchuang.rushi/studio.lingchuang.rushi`
 - **机器结论**：进程启动 ✅ · bundled ffmpeg ✅

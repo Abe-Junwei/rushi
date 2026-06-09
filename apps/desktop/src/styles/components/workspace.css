@@ -568,22 +568,6 @@
   outline-offset: 1px;
 }
 
-/* 折叠态：同一 pill 居中骑在左 seam，右半露入主区 */
-.workspace-shell-sidebar-toggle-collapsed {
-  left: 0;
-  right: auto;
-  transform: translate(-50%, -50%);
-  color: var(--notion-text-muted);
-}
-
-.workspace-shell-sidebar-toggle-collapsed svg {
-  opacity: 0.9;
-}
-
-.workspace-shell-sidebar-collapsed .workspace-shell-sidebar-toggle-collapsed {
-  transform: translate(-50%, -50%);
-}
-
 @media (prefers-reduced-motion: reduce) {
   .workspace-shell-sidebar-column,
   .workspace-shell-sidebar-toggle {

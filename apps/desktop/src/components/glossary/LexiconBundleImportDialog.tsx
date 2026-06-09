@@ -5,6 +5,7 @@ import type { LexiconBundleConflictResolution } from "../../tauri/lexiconBundleA
 import type { LexiconBundleImportPreviewResult } from "../../tauri/lexiconBundleApi";
 import { formatLexiconBundlePreviewSummary } from "../../tauri/lexiconBundleApi";
 import { FloatingPanelTemplate } from "../PanelTemplate";
+import { FLOATING_PANEL_DIALOG_BODY_PADDING_CLASS } from "../FloatingPanelDialogLayout";
 
 type Props = {
   pending: LexiconBundleImportPreviewResult;
@@ -40,7 +41,7 @@ export function LexiconBundleImportDialog({
           if (!disabled) onCancel();
         }}
       >
-        <div className="flex min-h-0 flex-1 flex-col gap-3 px-5 py-3">
+        <div className={`flex min-h-0 flex-1 flex-col gap-3 ${FLOATING_PANEL_DIALOG_BODY_PADDING_CLASS}`}>
           <p className={`m-0 ${PANEL_TYPOGRAPHY.meta}`}>{formatLexiconBundlePreviewSummary(preview)}</p>
           <ul className="m-0 flex min-h-0 flex-1 list-none flex-col gap-3 overflow-y-auto p-0">
             {preview.conflicts.map((c) => (

@@ -1,29 +1,33 @@
 import { describe, expect, it } from "vitest";
 import { buildOnlineSttEnvPresentation } from "./onlineSttEnvStatus";
 
+const baseInput = {
+  enabled: true,
+  providerId: "openai",
+  endpoint: "",
+  appKey: "",
+  hasTypedApiKey: false,
+  keychainReady: null as boolean | null,
+  connectionVerified: false,
+  lastProbeAvailable: null as boolean | null,
+  lastProbeMessage: null as string | null,
+};
+
 describe("buildOnlineSttEnvPresentation", () => {
   it("shows idle when disabled", () => {
     const p = buildOnlineSttEnvPresentation({
+      ...baseInput,
       enabled: false,
-      providerId: "openai",
-      endpoint: "",
-      appKey: "",
-      hasApiKeyInSession: false,
-      connectionVerified: false,
-      lastProbeAvailable: null,
-      lastProbeMessage: null,
+      hasApiKeyReference: false,
     });
     expect(p.tone).toBe("idle");
     expect(p.bannerTitle).toContain("未启用");
   });
 
-  it("shows ok when verified with session key", () => {
+  it("shows ok when verified with saved key reference", () => {
     const p = buildOnlineSttEnvPresentation({
-      enabled: true,
-      providerId: "openai",
-      endpoint: "",
-      appKey: "",
-      hasApiKeyInSession: true,
+      ...baseInput,
+      hasApiKeyReference: true,
       connectionVerified: true,
       lastProbeAvailable: true,
       lastProbeMessage: "可达（约 120 ms）",
@@ -33,16 +37,11 @@ describe("buildOnlineSttEnvPresentation", () => {
     expect(p.bannerDetail).toContain("120 ms");
   });
 
-  it("warns when verified but session key missing", () => {
+  it("warns when verified but key reference missing", () => {
     const p = buildOnlineSttEnvPresentation({
-      enabled: true,
-      providerId: "openai",
-      endpoint: "",
-      appKey: "",
-      hasApiKeyInSession: false,
+      ...baseInput,
+      hasApiKeyReference: false,
       connectionVerified: true,
-      lastProbeAvailable: null,
-      lastProbeMessage: null,
     });
     expect(p.tone).toBe("warn");
     expect(p.bannerTitle).toContain("待填写凭证");
@@ -51,14 +50,10 @@ describe("buildOnlineSttEnvPresentation", () => {
 
   it("warns when gateway endpoint missing", () => {
     const p = buildOnlineSttEnvPresentation({
-      enabled: true,
+      ...baseInput,
       providerId: "custom-proxy",
-      endpoint: "",
-      appKey: "",
-      hasApiKeyInSession: true,
-      connectionVerified: false,
-      lastProbeAvailable: null,
-      lastProbeMessage: null,
+      hasApiKeyReference: true,
+      hasTypedApiKey: true,
     });
     expect(p.tone).toBe("warn");
     expect(p.bannerDetail).toContain("转写 URL");

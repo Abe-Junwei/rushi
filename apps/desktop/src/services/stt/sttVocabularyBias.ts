@@ -11,6 +11,7 @@ export type SttOnlineVocabularyChannel =
   | "openAiPrompt"
   | "assemblyAiKeyterms"
   | "deepgramKeywords"
+  | "dashScopeVocabulary"
   | "genericMultipartHotwords"
   | "unsupported";
 
@@ -18,6 +19,7 @@ const CHANNEL_BY_PROVIDER_ID: Readonly<Record<string, SttOnlineVocabularyChannel
   openai: "openAiPrompt",
   assemblyai: "assemblyAiKeyterms",
   deepgram: "deepgramKeywords",
+  "dashscope-asr": "dashScopeVocabulary",
   "custom-proxy": "genericMultipartHotwords",
 };
 
@@ -28,6 +30,8 @@ const FIELD_HINT: Readonly<Record<SttOnlineVocabularyChannel, string>> = {
     "AssemblyAI `keyterms_prompt`（≤100 条；识别偏置，非 custom_spelling 转写后替换）",
   deepgramKeywords:
     "Deepgram URL `keywords` 参数（≤50 个；默认无强度 boost）",
+  dashScopeVocabulary:
+    "百炼 `speech-biasing` 热词表（vocabulary_id；单条非 ASCII ≤15 字或 ASCII ≤7 词；target_model=fun-asr-realtime）",
   genericMultipartHotwords: "代理 multipart `hotwords`（须兼容 Rushi 契约）",
   unsupported: "",
 };
@@ -55,9 +59,9 @@ export function glossaryBiasSummaryForProviderId(providerId: string): string | n
   if (channel === "unsupported") {
     const def = getSttOnlineProviderDefinition(providerId);
     const label = def?.label ?? providerId;
-    return `当前在线厂商「${label}」不支持将术语表传入识别 API；转写仍可进行，专名需手改或换 OpenAI / AssemblyAI / Deepgram。`;
+    return `「${label}」不支持术语偏置；可手改专名，或换 OpenAI / 百炼等支持厂商。`;
   }
-  return `术语表将映射为 ${glossaryBiasFieldHint(channel)}。`;
+  return `术语表 → ${glossaryBiasFieldHint(channel)}`;
 }
 
 /** Native adapter id when shell-direct; null for custom-proxy-only path. */

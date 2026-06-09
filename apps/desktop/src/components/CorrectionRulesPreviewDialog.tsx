@@ -19,13 +19,15 @@ import {
   FloatingPanelDialogHeader,
   FloatingPanelDialogListRegion,
   FloatingPanelDialogRoot,
-  FloatingPanelDialogScroll,
 } from "./FloatingPanelDialogLayout";
 import { CorrectionRulesReadOnlyHintsDetails } from "./CorrectionRulesReadOnlyHints";
 import {
   resolveCorrectionRulesContentFitHeight,
   resolveCorrectionRulesDialogTitle,
 } from "./correctionRulesPreviewLayout";
+
+/** 预览区高度测算修正后 bump，丢弃偏矮的旧 phase 记忆。 */
+const CORRECTION_RULES_PANEL_LAYOUT_REV = 5;
 
 type Props = {
   state: CorrectionRulesDialogState;
@@ -123,6 +125,7 @@ export function CorrectionRulesPreviewDialog({
         }}
         contentFitHeight={contentFitHeight}
         persistPhaseKey={persistPhaseKey}
+        layoutRev={CORRECTION_RULES_PANEL_LAYOUT_REV}
         panelZIndex={110}
         persistState
         onClose={handleClose}
@@ -133,8 +136,8 @@ export function CorrectionRulesPreviewDialog({
           ) : null}
           {state.phase === "empty" ? (
             <>
-              <FloatingPanelDialogScroll className="flex flex-col gap-2">
-                <p className={`shrink-0 ${PANEL_TYPOGRAPHY.dialogBody}`}>
+              <FloatingPanelDialogHeader className="space-y-2">
+                <p className={PANEL_TYPOGRAPHY.dialogBody}>
                   {postTranscribe
                     ? "转写已落库。当前没有可应用的稳定纠错规则（需命中 ≥3 次或已采纳），或语段中无匹配项。"
                     : "没有可用的稳定纠错规则（需命中 ≥3 次或已采纳），或当前语段中无匹配项。"}
@@ -151,11 +154,11 @@ export function CorrectionRulesPreviewDialog({
                   onExpandedChange={(open) => setDetailsExpanded("lexiconHealth", open)}
                 />
                 {postTranscribe ? (
-                  <p className={`shrink-0 ${PANEL_TYPOGRAPHY.dialogBody} text-notion-text-muted`}>
+                  <p className={`${PANEL_TYPOGRAPHY.dialogBody} text-notion-text-muted`}>
                     可先用手动改正或查找替换继续改稿。
                   </p>
                 ) : null}
-              </FloatingPanelDialogScroll>
+              </FloatingPanelDialogHeader>
               <FloatingPanelDialogFooter justify="end">
                 <button type="button" className={CONTROL_BTN_SECONDARY} onClick={onCloseEmpty}>
                   关闭

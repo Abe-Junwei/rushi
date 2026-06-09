@@ -10,6 +10,8 @@ import { EnvHelpPanel } from "./EnvHelpPanel";
 import { useLlmEnvStatus } from "../hooks/useLlmEnvStatus";
 import type { AsrEnvPresentation } from "../services/asr/asrEnvStatus";
 import { readOnlineSttEnvNavTone } from "../services/stt/readOnlineSttEnvNavPresentation";
+import { STT_CONNECTION_VERIFIED_EVENT } from "../services/stt/sttOnlineProviderContract";
+import { STT_ONLINE_RUNTIME_CHANGED_EVENT } from "../services/stt/sttOnlineRuntimeNotify";
 import type { AsrHealthCapabilities, AsrModelCacheInfo, BundledAsrLaunchReport, WaveformPeaksCacheInfo } from "../tauri/projectApi";
 import type { AsrHealthState } from "../pages/useProjectController";
 import type { AsrSetupControllerApi } from "../pages/useAsrSetupController";
@@ -28,12 +30,12 @@ const ENV_NAV_BTN_BASE =
   "mb-1 flex w-full appearance-none items-center border-0 px-4 py-3 text-left shadow-none outline-none transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-saffron/30";
 
 const ENV_NAV_ITEMS: { id: EnvNavId; label: string; description: string; icon: React.ReactNode }[] = [
-  { id: "local-asr", label: "本机 ASR", description: "FunASR 环境、模型下载与诊断", icon: <Cpu className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden /> },
-  { id: "online-stt", label: "在线 STT", description: "在线转写提供方与 API 配置", icon: <Cloud className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden /> },
-  { id: "llm", label: "LLM 配置", description: "云端或本机 Ollama 连接", icon: <Sparkles className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden /> },
-  { id: "profile", label: "配置迁移", description: "环境配置导入、导出与迁移", icon: <Download className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden /> },
-  { id: "shortcuts", label: "快捷键", description: "编辑器键盘操作一览", icon: <Keyboard className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden /> },
-  { id: "help", label: "使用说明", description: "常见问题与转写说明", icon: <HelpCircle className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden /> },
+  { id: "local-asr", label: "本机 ASR", description: "侧车、模型与诊断", icon: <Cpu className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden /> },
+  { id: "online-stt", label: "在线 STT", description: "厂商与 API Key", icon: <Cloud className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden /> },
+  { id: "llm", label: "LLM 配置", description: "云端或本机 Ollama", icon: <Sparkles className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden /> },
+  { id: "profile", label: "配置迁移", description: "导入 / 导出偏好", icon: <Download className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden /> },
+  { id: "shortcuts", label: "快捷键", description: "编辑器键盘操作", icon: <Keyboard className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden /> },
+  { id: "help", label: "使用说明", description: "转写流程与 FAQ", icon: <HelpCircle className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden /> },
 ];
 
 export type EnvironmentPanelProps = {
@@ -120,6 +122,18 @@ export function EnvironmentPanel({
     () => readOnlineSttEnvNavTone(),
     [settingsEpoch, sttNavRefreshSeq],
   );
+
+  useEffect(() => {
+    const onConnectionVerifiedChange = () => {
+      setSttNavRefreshSeq((n) => n + 1);
+    };
+    window.addEventListener(STT_CONNECTION_VERIFIED_EVENT, onConnectionVerifiedChange);
+    window.addEventListener(STT_ONLINE_RUNTIME_CHANGED_EVENT, onConnectionVerifiedChange);
+    return () => {
+      window.removeEventListener(STT_CONNECTION_VERIFIED_EVENT, onConnectionVerifiedChange);
+      window.removeEventListener(STT_ONLINE_RUNTIME_CHANGED_EVENT, onConnectionVerifiedChange);
+    };
+  }, []);
 
   useEffect(() => {
     if (focusOnlineSttSeq <= 0) return;

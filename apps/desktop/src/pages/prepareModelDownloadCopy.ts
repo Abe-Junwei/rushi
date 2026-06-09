@@ -24,7 +24,7 @@ export function describePrepareModelFailure(code: string): PrepareModelFailureCo
       headline: "当前 ASR 进程未加载 FunASR（或缺少依赖）。",
       tips: isPackagedDesktopApp()
         ? [
-            "请在「环境与 ASR」点「一键准备本机 ASR」或「重试内置侧车」。",
+            "请在「环境 → 本机 ASR」点「一键准备本机 ASR」或「重试内置侧车」。",
             "准备完成后点「下载当前模型」重试。",
           ]
         : [
@@ -106,7 +106,7 @@ export function describePrepareModelFailure(code: string): PrepareModelFailureCo
       tips: [
         packagedOrDev(
           "确认侧车已启动：npm run desktop:dev（自动拉起）或 npm run asr:dev。",
-          "请在「环境与 ASR」点「一键准备本机 ASR」或「重试内置侧车」。",
+          "请在「环境 → 本机 ASR」点「一键准备本机 ASR」或「重试内置侧车」。",
         ),
         packagedOrDev(
           "终端执行：curl -sf http://127.0.0.1:8741/health 应有 JSON 返回。",

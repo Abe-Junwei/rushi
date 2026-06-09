@@ -2,6 +2,11 @@ import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY, CONTROL_TEXT_INPUT } from "
 import { ENV_EXTERNAL_LINK_CLASS } from "../config/envVendorChipStyles";
 import { PANEL_CONTROL_TYPOGRAPHY, PANEL_TYPOGRAPHY } from "../config/typography";
 import { llmKeychainReferenceMessage, normalizeLlmApiKeyId } from "../services/postprocess/postprocessRuntimeContract";
+import {
+  isSavedApiKeyMaskDisplayed,
+  normalizeSavedApiKeyInputChange,
+  resolveSavedApiKeyInputDisplay,
+} from "../services/secrets/savedApiKeyInput";
 import type { useEnvLlmConfigPanel } from "../hooks/useEnvLlmConfigPanel";
 
 const btnPrimary = CONTROL_BTN_PRIMARY;
@@ -35,6 +40,17 @@ type Props = Pick<
 >;
 
 export function EnvLlmConnectionForm(props: Props) {
+  const showSavedApiKeyMask = isSavedApiKeyMaskDisplayed(
+    props.apiKey,
+    props.savedApiKeyId,
+    props.keychainChecking ? null : props.keychainReady,
+  );
+  const apiKeyDisplay = resolveSavedApiKeyInputDisplay({
+    typedApiKey: props.apiKey,
+    savedApiKeyId: props.savedApiKeyId,
+    keychainReady: props.keychainChecking ? null : props.keychainReady,
+  });
+
   return (
     <div className="py-5">
       <div className="space-y-5">
@@ -93,15 +109,18 @@ export function EnvLlmConnectionForm(props: Props) {
                 type="password"
                 autoComplete="off"
                 aria-label="API Key"
-                value={props.apiKey}
+                value={apiKeyDisplay}
                 disabled={props.formBusy}
+                onFocus={(e) => {
+                  if (showSavedApiKeyMask) e.currentTarget.select();
+                }}
                 onChange={(e) => {
                   props.invalidateProbe();
-                  props.setApiKey(e.target.value);
+                  props.setApiKey(
+                    normalizeSavedApiKeyInputChange(e.target.value, showSavedApiKeyMask),
+                  );
                 }}
-                placeholder={
-                  props.savedApiKeyId ? "留空则沿用已保存的本地密钥" : "在厂商控制台创建并保存到本地安全存储"
-                }
+                placeholder="控制台创建后粘贴保存"
               />
             </label>
 

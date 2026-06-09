@@ -85,7 +85,7 @@ pub fn restart_source_asr_sidecar(app: &AppHandle, st: &DbState) -> Result<(), S
     let repo = resolve_rushi_repo_root().ok_or_else(|| {
         dev_or_packaged_str(
             "未找到 Rushi 仓库根目录（需含 services/asr/pyproject.toml）。请用 npm run desktop:dev 启动，或设置 RUSHI_REPO_ROOT。",
-            "未找到开发仓库根目录。安装包内请使用「环境与 ASR」管理内置侧车。",
+            "未找到开发仓库根目录。安装包内请使用「环境 → 本机 ASR」管理内置侧车。",
         )
         .to_string()
     })?;
@@ -95,7 +95,7 @@ pub fn restart_source_asr_sidecar(app: &AppHandle, st: &DbState) -> Result<(), S
             repo.join("services/asr/.venv").display(),
             dev_or_packaged_str(
                 "请先运行 npm run desktop:dev 或 bash scripts/bootstrap-asr-venv.sh",
-                "安装包内无需源码 venv，请使用「环境与 ASR」",
+                "安装包内无需源码 venv，请使用「环境 → 本机 ASR」",
             )
         )
     })?;
@@ -150,7 +150,7 @@ pub fn restart_source_asr_sidecar(app: &AppHandle, st: &DbState) -> Result<(), S
         ) {
             return Err(dev_or_packaged_str(
                 "8741 侧车仍要求 local token（可能是旧 bundled 进程）。请完全退出应用后重新 npm run desktop:dev。",
-                "8741 侧车仍要求 local token（可能是旧进程）。请完全退出应用后重新打开，或在「环境与 ASR」点「重试内置侧车」。",
+                "8741 侧车仍要求 local token（可能是旧进程）。请完全退出应用后重新打开，或在「环境 → 本机 ASR」点「重试内置侧车」。",
             )
             .into());
         }
@@ -172,7 +172,7 @@ pub fn restart_source_asr_sidecar(app: &AppHandle, st: &DbState) -> Result<(), S
         log_path.display(),
         dev_or_packaged_str(
             "并查看终端 npm run desktop:dev 输出。",
-            "或在「环境与 ASR」点「重试内置侧车」。",
+            "或在「环境 → 本机 ASR」点「重试内置侧车」。",
         )
     ))
 }

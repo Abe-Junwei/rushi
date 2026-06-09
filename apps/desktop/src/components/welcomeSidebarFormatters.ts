@@ -1,7 +1,14 @@
 import type { ProjectSummary } from "../tauri/projectApi";
 
+/** 侧栏项目行：图标槽（与 px-5 + gap-2 配合，文件行 pl-14 与标题左缘对齐） */
 export const WELCOME_PROJECT_ROW_ICON =
-  "mt-0.5 flex h-7 w-7 shrink-0 items-center justify-center rounded-md text-notion-text-muted";
+  "flex h-7 w-7 shrink-0 items-center justify-center text-notion-text-muted";
+export const WELCOME_SIDEBAR_PROJECT_NAME =
+  "block truncate text-sm font-semibold leading-5 text-notion-text";
+export const WELCOME_SIDEBAR_PROJECT_META =
+  "mt-0.5 block truncate text-[11px] leading-4 text-notion-text-muted";
+/** 侧栏嵌套文件行左内边距：px-5 + icon(28px) + gap-2(8px) */
+export const WELCOME_SIDEBAR_FILE_INDENT = "pl-14 pr-5";
 export const WELCOME_PROJECT_ACTION_BTN =
   "flex h-7 w-7 shrink-0 appearance-none items-center justify-center rounded-md border-0 bg-transparent p-0 text-notion-text-muted transition-[color,background-color,opacity] hover:bg-notion-sidebar-active hover:text-notion-text disabled:opacity-40";
 export const WELCOME_PROJECT_DELETE_BTN = `${WELCOME_PROJECT_ACTION_BTN} opacity-0 group-hover:opacity-100 group-focus-within:opacity-100 focus-visible:opacity-100`;

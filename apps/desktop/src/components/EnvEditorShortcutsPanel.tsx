@@ -7,7 +7,7 @@ export function EnvEditorShortcutsPanel() {
       <section className="flex flex-col gap-2">
         <h3 className={PANEL_TYPOGRAPHY.envSectionTitle}>编辑器快捷键</h3>
         <p className={`m-0 ${PANEL_TYPOGRAPHY.body} text-notion-text-muted`}>
-          自动保存只保证正文落库；要让手改进入「纠错记忆」，请用确认改词（右侧按钮或 ⌘/Ctrl+Enter），或使用查找替换的「全部替换」。
+          自动保存只落库正文；手改进「纠错记忆」请用确认改词（⌘/Ctrl+Enter）或查找替换「全部替换」。
         </p>
       </section>
       <table className={`w-full border-collapse text-left ${PANEL_TYPOGRAPHY.body}`}>

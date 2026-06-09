@@ -5,6 +5,20 @@ use super::glossary_hotwords::GlossaryHotwordsBuild;
 const OPENAI_PROMPT_MAX_CHARS: usize = 224;
 const ASSEMBLYAI_KEYTERMS_MAX: usize = 100;
 const DEEPGRAM_KEYWORDS_MAX: usize = 50;
+const DASHSCOPE_TERM_MAX_CHARS: usize = 15;
+const DASHSCOPE_ASCII_MAX_SEGMENTS: usize = 7;
+
+fn dashscope_term_valid(term: &str) -> bool {
+    let t = term.trim();
+    if t.is_empty() {
+        return false;
+    }
+    let has_non_ascii = t.chars().any(|c| !c.is_ascii());
+    if has_non_ascii {
+        return t.chars().count() <= DASHSCOPE_TERM_MAX_CHARS;
+    }
+    t.split_whitespace().count() <= DASHSCOPE_ASCII_MAX_SEGMENTS
+}
 
 /// Shared plan from ``build_glossary_hotwords`` (single term真源).
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -39,6 +53,7 @@ pub enum SttVocabularyChannel {
     OpenAiPrompt,
     AssemblyAiKeyterms,
     DeepgramKeywords,
+    DashScopeVocabulary,
     GenericMultipartHotwords,
     Unsupported,
 }
@@ -51,6 +66,7 @@ pub fn channel_for_online(
         Some("openaiAudio") => SttVocabularyChannel::OpenAiPrompt,
         Some("assemblyai") => SttVocabularyChannel::AssemblyAiKeyterms,
         Some("deepgramListen") => SttVocabularyChannel::DeepgramKeywords,
+        Some("dashscopeAsr") => SttVocabularyChannel::DashScopeVocabulary,
         _ if multipart_fallback => SttVocabularyChannel::GenericMultipartHotwords,
         _ => SttVocabularyChannel::Unsupported,
     }
@@ -134,6 +150,15 @@ pub fn vocabulary_support_warnings(
         SttVocabularyChannel::DeepgramKeywords => {
             if plan.terms.len() > DEEPGRAM_KEYWORDS_MAX {
                 out.push("online_vocabulary_truncated_deepgram_keywords".to_string());
+            }
+        }
+        SttVocabularyChannel::DashScopeVocabulary => {
+            if plan
+                .terms
+                .iter()
+                .any(|term| !term.trim().is_empty() && !dashscope_term_valid(term))
+            {
+                out.push("online_vocabulary_truncated_dashscope_terms".to_string());
             }
         }
         SttVocabularyChannel::LocalFunasrMultipart
@@ -232,5 +257,24 @@ mod tests {
         };
         let w = vocabulary_support_warnings(SttVocabularyChannel::Unsupported, &plan, false);
         assert!(w.iter().any(|x| x == "online_vocabulary_unsupported"));
+    }
+
+    #[test]
+    fn channel_for_dashscope_asr() {
+        assert_eq!(
+            channel_for_online(Some("dashscopeAsr"), false),
+            SttVocabularyChannel::DashScopeVocabulary
+        );
+    }
+
+    #[test]
+    fn dashscope_vocabulary_warns_on_invalid_terms() {
+        let long_ascii = "one two three four five six seven eight";
+        let plan = SttVocabularyPlan {
+            hotwords: format!("有效 {long_ascii}"),
+            terms: vec!["有效".to_string(), long_ascii.to_string()],
+        };
+        let w = vocabulary_support_warnings(SttVocabularyChannel::DashScopeVocabulary, &plan, false);
+        assert!(w.iter().any(|x| x == "online_vocabulary_truncated_dashscope_terms"));
     }
 }

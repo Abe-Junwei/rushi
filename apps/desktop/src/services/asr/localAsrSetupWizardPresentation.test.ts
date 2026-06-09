@@ -111,7 +111,7 @@ describe("localAsrSetupWizardPresentation", () => {
     expect(out.statusLine).not.toBe(out.alertLine);
     expect(out.showDownloadAction).toBe(false);
     expect(out.shortStatus).toBe("应用内不可用");
-    expect(out.supplementalLines.some((line) => line.includes("高级诊断"))).toBe(true);
+    expect(out.supplementalLines.some((line) => line.includes("本机 ASR"))).toBe(true);
   });
 
   it("merges manifest alert into a single line", () => {

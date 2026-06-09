@@ -11,7 +11,7 @@ pub struct OnlineTranscribeBridge {
     /// Bearer / Token / 订阅密钥等；部分厂商约定为内存 Secret（见 `native_adapter`）。
     pub authorization: Option<String>,
     pub timeout_sec: Option<u64>,
-    /// 如 `openaiAudio`、`assemblyai`、`baiduSpeech`、`tencentAsr` 等。
+    /// 如 `openaiAudio`、`assemblyai`、`dashscopeAsr`、`deepgramListen` 等。
     #[serde(default)]
     pub native_adapter: Option<String>,
     /// AppKey / SecretId 等可持久化标识；网关 multipart 时作 `X-Rushi-Stt-App-Key`。

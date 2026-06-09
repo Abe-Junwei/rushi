@@ -26,7 +26,7 @@ import { readFloatingPanelViewport } from "./floatingPanelViewport";
 
 const PANEL_ID = "delivery-export-word-v2";
 const DEFAULT_WIDTH = 440;
-const DEFAULT_BODY_HEIGHT = 520;
+const DEFAULT_BODY_HEIGHT = 528;
 const MIN_SIZE = { width: 360, height: 420 } as const;
 const PANEL_MARGIN = 24;
 

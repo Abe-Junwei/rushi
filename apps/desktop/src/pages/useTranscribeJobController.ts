@@ -9,8 +9,14 @@ import {
   buildTranscribeResultSummary,
   countTranscribeCharacters,
 } from "../services/asr/transcribeResultToast";
-import { pushTranscribeHintsToToast, pushTranscribeResultToast, toast } from "../services/ui/toast";
-import { tryBuildOnlineTranscribeBridgePayload } from "../services/stt/sttOnlineProviderContract";
+import { pushTranscribeHintsToToast, pushTranscribeResultToast } from "../services/ui/toast";
+import { humanizeInvokeError } from "../services/ui/humanizeInvokeError";
+import {
+  ensureSttOnlineApiKeyForSession,
+  isOnlineTranscribeReady,
+  tryBuildOnlineTranscribeBridgePayload,
+} from "../services/stt/sttOnlineProviderContract";
+import { STT_ONLINE_RUNTIME_CHANGED_EVENT } from "../services/stt/sttOnlineRuntimeNotify";
 import {
   persistTranscribeSource,
   readStoredTranscribeSource,
@@ -23,6 +29,7 @@ import type { useProjectEditorState } from "./useProjectEditorState";
 import type { useProjectBusyState } from "./useProjectBusyState";
 import type { useSegmentMutationController } from "./useSegmentMutationController";
 import { postTranscribeCancel } from "./transcribeAsyncPoll";
+import { awaitEnvironmentCapabilityRefresh } from "../services/environmentCapabilityCoordinator";
 import { resolveTranscribeExecuteBlock } from "./transcribeExecuteGate";
 import { segmentsHaveNonEmptyText } from "./transcribeJobHelpers";
 import { runLocalTranscribeJob } from "./transcribeLocalJobRun";
@@ -97,6 +104,13 @@ export function useTranscribeJobController(deps: Deps) {
   const [transcribeSource, setTranscribeSourceState] = useState<TranscribeSource>(readStoredTranscribeSource);
   const [transcribeProgress, setTranscribeProgress] = useState<TranscribeProgress | null>(null);
   const [transcribeCancelling, setTranscribeCancelling] = useState(false);
+  const [sttRuntimeRevision, setSttRuntimeRevision] = useState(0);
+
+  useEffect(() => {
+    const bump = () => setSttRuntimeRevision((n) => n + 1);
+    window.addEventListener(STT_ONLINE_RUNTIME_CHANGED_EVENT, bump);
+    return () => window.removeEventListener(STT_ONLINE_RUNTIME_CHANGED_EVENT, bump);
+  }, []);
 
   const activeJobIdRef = useRef<string | null>(null);
   const userCancelRequestedRef = useRef(false);
@@ -106,12 +120,12 @@ export function useTranscribeJobController(deps: Deps) {
 
   const refreshVocabularyPreflight = useCallback(async () => {
     try {
-      const summary = await loadTranscribeVocabularyPreflight();
+      const summary = await loadTranscribeVocabularyPreflight(transcribeSource);
       setTranscribeVocabularyPreflightLines(formatTranscribeVocabularyPreflightLines(summary));
     } catch {
       setTranscribeVocabularyPreflightLines([]);
     }
-  }, []);
+  }, [transcribeSource]);
 
   useEffect(() => {
     if (!currentFileId) {
@@ -119,11 +133,11 @@ export function useTranscribeJobController(deps: Deps) {
       return;
     }
     void refreshVocabularyPreflight();
-  }, [currentFileId, sttOnlineRuntimeEpoch, refreshVocabularyPreflight]);
+  }, [currentFileId, sttOnlineRuntimeEpoch, sttRuntimeRevision, transcribeSource, refreshVocabularyPreflight]);
 
   const onlineTranscribeReady = useMemo(
-    () => tryBuildOnlineTranscribeBridgePayload() !== null,
-    [sttOnlineRuntimeEpoch],
+    () => isOnlineTranscribeReady(),
+    [sttOnlineRuntimeEpoch, sttRuntimeRevision],
   );
 
   useEffect(() => {
@@ -178,6 +192,10 @@ export function useTranscribeJobController(deps: Deps) {
   );
 
   const executeTranscribe = useCallback(async () => {
+    await awaitEnvironmentCapabilityRefresh();
+    if (transcribeSource === "online") {
+      await ensureSttOnlineApiKeyForSession();
+    }
     const block = resolveTranscribeExecuteBlock({
       busy,
       hasCurrent: !!current,
@@ -187,7 +205,6 @@ export function useTranscribeJobController(deps: Deps) {
     });
     if (block) {
       if (block !== "busy") {
-        toast.error(block);
         setError(block);
       }
       return;
@@ -239,9 +256,7 @@ export function useTranscribeJobController(deps: Deps) {
         setTranscribeWarnings([]);
         pushTranscribeHintsToToast([TRANSCRIBE_CANCELLED_HINT]);
       } else {
-        const msg = e instanceof Error ? e.message : String(e);
-        toast.error(msg);
-        setError(msg);
+        setError(humanizeInvokeError(e));
       }
     } finally {
       pollAbortRef.current?.abort();
@@ -270,9 +285,7 @@ export function useTranscribeJobController(deps: Deps) {
   const requestTranscribe = useCallback(async () => {
     if (busy) return;
     if (!current || !currentFileId) {
-      const msg = "请先打开一个文件后再自动转录";
-      toast.error(msg);
-      setError(msg);
+      setError("请先打开一个文件后再自动转录");
       return;
     }
     await refreshVocabularyPreflight();
@@ -285,31 +298,9 @@ export function useTranscribeJobController(deps: Deps) {
   }, [busy]);
 
   const confirmTranscribeStart = useCallback(async () => {
-    const block = resolveTranscribeExecuteBlock({
-      busy,
-      hasCurrent: !!current,
-      currentFileId,
-      localTranscribePreflight,
-      source: transcribeSource,
-    });
-    if (block) {
-      if (block !== "busy") {
-        toast.error(block);
-        setError(block);
-      }
-      return;
-    }
     setTranscribeStartDialogOpen(false);
     await executeTranscribe();
-  }, [
-    busy,
-    current,
-    currentFileId,
-    executeTranscribe,
-    localTranscribePreflight,
-    setError,
-    transcribeSource,
-  ]);
+  }, [executeTranscribe]);
 
   const cancelTranscribeOverwrite = cancelTranscribeStart;
   const confirmTranscribeOverwrite = () => {

@@ -23,6 +23,7 @@ export type SettingsProfileV1 = {
     provider_id: string;
     endpoint?: string;
     app_key?: string;
+    api_key_id?: string;
     timeout_ms: number;
   };
 };
@@ -43,6 +44,7 @@ export function buildSettingsProfileV1(): SettingsProfileV1 {
       provider_id: stt.selectedProviderId,
       ...(stt.endpoint ? { endpoint: stt.endpoint } : {}),
       ...(stt.appKey ? { app_key: stt.appKey } : {}),
+      ...(stt.apiKeyId ? { api_key_id: stt.apiKeyId } : {}),
       timeout_ms: stt.timeoutMs,
     },
   };
@@ -75,6 +77,7 @@ export function applySettingsProfileV1(profile: SettingsProfileV1): void {
       endpoint: profile.online_stt.endpoint,
       appKey: profile.online_stt.app_key,
       timeoutMs: profile.online_stt.timeout_ms,
+      ...(profile.online_stt.api_key_id ? { apiKeyId: profile.online_stt.api_key_id } : {}),
     });
   }
 }

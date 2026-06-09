@@ -80,8 +80,8 @@ describe("buildAsrEnvPresentation", () => {
     expect(p.tone).toBe("warn");
     expect(p.bannerTitle).toBe("本机 ASR · 已连接");
     expect(p.statusRows.find((r) => r.id === "transcribe")?.text).toBe("侧车需升级");
-    expect(p.blockReason).toContain("transcribe/async");
-    expect(p.blockReason).toContain("npm run asr:build-sidecar-unix");
+    expect(p.blockReason).toContain("async 转写");
+    expect(p.blockReason).toContain("重建内置侧车");
   });
 
   it("uses packaged copy when async sidecar route missing in release app", async () => {
@@ -101,7 +101,7 @@ describe("buildAsrEnvPresentation", () => {
       selectedHubModelId: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
       sidecarAsyncTranscribeCapable: false,
     });
-    expect(p.blockReason).toContain("重新安装应用");
+    expect(p.blockReason).toContain("重装应用");
     expect(p.blockReason).not.toContain("npm run");
   });
 
@@ -121,7 +121,8 @@ describe("buildAsrEnvPresentation", () => {
       },
       selectedHubModelId: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
     });
-    expect(p.ffmpegWarning).toContain("波形");
+    expect(p.ffmpegWarning).toContain("FFmpeg");
+    expect(p.ffmpegWarning).toContain("重装应用");
     expect(p.ffmpegWarning).not.toContain("PATH");
   });
 

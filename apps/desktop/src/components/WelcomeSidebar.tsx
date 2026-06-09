@@ -11,7 +11,7 @@ import {
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 import type { ProjectControllerApi } from "../pages/useProjectController";
 import type { WelcomePageId } from "./welcomeTypes";
-import { WORKSPACE_SIDEBAR_PANEL_ATTR } from "../config/workspaceShellLayout";
+import { WORKSPACE_SIDEBAR_PANEL_ATTR, WORKSPACE_SIDEBAR_ROW_INTERACTIVE } from "../config/workspaceShellLayout";
 import { useWelcomeSidebarProjectTree } from "../hooks/useWelcomeSidebarProjectTree";
 import { sortWelcomeProjects } from "./welcomeSidebarFormatters";
 import { WelcomeSidebarProjectList } from "./WelcomeSidebarProjectList";
@@ -129,17 +129,19 @@ export function WelcomeSidebar({
         embeddedInCollapsibleShell ? "" : "border-r border-notion-divider",
       ].join(" ")}
     >
-      <div className="border-b border-notion-divider px-5 py-6">
-        <div className="mb-5 flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded bg-zen-saffron text-notion-bg">
-            <Mic className={`${LUCIDE_ICON_SIZE_MD} shrink-0`} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-          </div>
-          <div>
-            <h1 className="m-0 font-serif text-[18px] font-medium leading-[1.4] text-notion-text">如是我闻</h1>
-            <p className="m-0 mt-0.5 text-[11px] font-medium leading-snug text-notion-text-muted">口述史转写工作台</p>
+      <div className="border-b border-notion-divider">
+        <div className="px-5 pb-4 pt-6">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded bg-zen-saffron text-notion-bg">
+              <Mic className={`${LUCIDE_ICON_SIZE_MD} shrink-0`} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+            </div>
+            <div>
+              <h1 className="m-0 font-serif text-[18px] font-medium leading-[1.4] text-notion-text">如是我闻</h1>
+              <p className="m-0 mt-0.5 text-[11px] font-medium leading-snug text-notion-text-muted">口述史转写工作台</p>
+            </div>
           </div>
         </div>
-        <nav className="space-y-0.5">
+        <nav>
           {navItems
             .filter((item) => !("hidden" in item && item.hidden))
             .map((item) => (
@@ -150,7 +152,7 @@ export function WelcomeSidebar({
                 title={item.title}
                 onClick={() => item.onClick?.()}
                 className={[
-                  "flex w-full items-center gap-3 rounded-md border-0 px-3 py-2 text-sm font-medium transition-colors",
+                  WORKSPACE_SIDEBAR_ROW_INTERACTIVE,
                   item.active
                     ? "bg-notion-sidebar-active font-semibold text-notion-text"
                     : item.disabled
@@ -165,7 +167,7 @@ export function WelcomeSidebar({
         </nav>
       </div>
       {showProjectList ? (
-        <div ref={projectListRef}>
+        <div ref={projectListRef} className="flex min-h-0 flex-1 flex-col overflow-hidden">
           <WelcomeSidebarProjectList
             controller={c}
             projects={projects}
@@ -184,14 +186,17 @@ export function WelcomeSidebar({
       ) : (
         <div className="flex min-h-0 flex-1 flex-col justify-center px-5 py-8 text-center">
           <p className="text-[13px] leading-relaxed text-notion-text-muted">
-            热词与记忆为全局设置：术语表影响转写热词；纠错记忆影响全文规则与提示。
+            全局设置：术语表→转写热词；纠错记忆→编辑规则。
           </p>
         </div>
       )}
-      <div className="border-t border-notion-divider p-3">
+      <div className="mt-auto shrink-0 border-t border-notion-divider bg-notion-sidebar">
         <button
           type="button"
-          className="flex w-full items-center gap-3 rounded-md border-0 bg-transparent px-3 py-2 text-sm font-medium text-notion-text-muted transition-colors hover:bg-notion-sidebar-hover hover:text-notion-text"
+          className={[
+            WORKSPACE_SIDEBAR_ROW_INTERACTIVE,
+            "bg-transparent text-notion-text-muted hover:bg-notion-sidebar-hover hover:text-notion-text",
+          ].join(" ")}
           onClick={onOpenSettings}
           disabled={c.busy}
         >

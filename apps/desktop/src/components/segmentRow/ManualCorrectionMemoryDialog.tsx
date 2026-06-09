@@ -3,6 +3,7 @@ import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../../config/control
 import { PANEL_CONTROL_TYPOGRAPHY, PANEL_TYPOGRAPHY } from "../../config/typography";
 import type { ManualCorrectionMemoryDialogState } from "../../pages/useManualCorrectionMemoryDialog";
 import { FloatingPanelTemplate } from "../PanelTemplate";
+import { FLOATING_PANEL_DIALOG_BODY_PADDING_CLASS } from "../FloatingPanelDialogLayout";
 
 type Props = {
   state: ManualCorrectionMemoryDialogState;
@@ -35,7 +36,7 @@ export function ManualCorrectionMemoryDialog({
         persistState={false}
         onClose={onClose}
       >
-        <div className="flex min-h-0 flex-1 flex-col gap-3 px-5 py-3">
+        <div className={`flex min-h-0 flex-1 flex-col gap-3 ${FLOATING_PANEL_DIALOG_BODY_PADDING_CLASS}`}>
           <p className={PANEL_TYPOGRAPHY.dialogBody}>
             开始学习这一对词。之后在稿中把错形改成正形，每次保存都会累计；满 3 次将自动加入术语表并可用于「纠错规则」。
           </p>

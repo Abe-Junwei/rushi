@@ -14,13 +14,14 @@ import { toastBottomInsetCssVar } from "../services/ui/toastLayout";
 import { CONTROL_BTN_SECONDARY } from "../config/controlStyles";
 
 const TOAST_SHELL =
-  "pointer-events-auto flex max-w-[min(28rem,calc(100vw-2rem))] cursor-pointer items-start gap-2.5 rounded-md border border-notion-divider bg-notion-bg py-2.5 pl-3 pr-4 text-left font-sans text-sm font-normal leading-snug text-notion-text shadow-sm";
+  "pointer-events-auto flex max-w-[min(24rem,calc(100vw-2rem))] cursor-pointer items-start gap-2.5 rounded-md border py-2.5 pl-3 pr-4 text-left font-sans text-sm font-normal leading-snug shadow-md";
 
-const VARIANT_ACCENT: Record<ToastVariant, string> = {
-  info: "border-l-4 border-l-notion-text-light bg-notion-callout-bg",
-  success: "border-l-4 border-l-zen-success",
-  warning: "border-l-4 border-l-zen-saffron",
-  error: "border-l-4 border-l-zen-cinnabar",
+/** 语义底色 + 边框；避免与 notion-bg 主舞台融为一体。 */
+const VARIANT_SURFACE: Record<ToastVariant, string> = {
+  info: "border-notion-callout-border bg-notion-callout-bg text-notion-text",
+  success: "border-zen-success-border bg-zen-success-surface text-zen-success",
+  warning: "border-zen-saffron/30 bg-zen-saffron/10 text-notion-text",
+  error: "border-zen-cinnabar/35 bg-zen-cinnabar/10 text-zen-cinnabar",
 };
 
 const VARIANT_ICON: Record<
@@ -46,7 +47,7 @@ function ToastCard({ item }: { item: ToastItem }) {
       onClick={() => dismissToast(item.id)}
       className={[
         TOAST_SHELL,
-        VARIANT_ACCENT[item.variant],
+        VARIANT_SURFACE[item.variant],
         exiting ? "opacity-0 translate-y-2 scale-[0.98] saturate-[0.92]" : "animate-toast-in opacity-100 translate-y-0 scale-100",
         "transition-[opacity,transform,filter] duration-[260ms] ease-out",
       ].join(" ")}
@@ -80,7 +81,7 @@ export function ToastHost() {
 
   return createPortal(
     <div
-      className="pointer-events-none fixed left-1/2 z-[200] flex -translate-x-1/2 flex-col items-center gap-1.5"
+      className="pointer-events-none fixed inset-x-0 z-[200] flex justify-center px-4"
       style={{
         bottom: toastBottomInsetCssVar(),
       }}

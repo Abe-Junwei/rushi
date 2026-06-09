@@ -1,14 +1,28 @@
 import { Info } from "lucide-react";
+import { useEffect, useState } from "react";
 import { CONTROL_TEXT_INPUT, ENV_MONO_FIELD } from "../../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../../config/typography";
 import {
-  sttOnlineProviderAllowsEmptyEndpoint,
+  clampSttOnlineTimeoutSec,
+  STT_ONLINE_TIMEOUT_SEC_MAX,
+  STT_ONLINE_TIMEOUT_SEC_MIN,
+} from "../../services/stt/sttOnlineProviderContract/runtimeConfig";
+import {
+  resolveSttOnlinePresetEndpointDisplay,
+  sttOnlineProviderEndpointUserConfigurable,
   type SttOnlineProviderDefinition,
 } from "../../services/stt/sttOnlineProviderContract";
+import {
+  isSavedApiKeyMaskDisplayed,
+  normalizeSavedApiKeyInputChange,
+  resolveSavedApiKeyInputDisplay,
+} from "../../services/secrets/savedApiKeyInput";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";
 
 const fieldLabel = `mb-1.5 block ${PANEL_TYPOGRAPHY.envFieldLabel}`;
 const monoField = `${CONTROL_TEXT_INPUT} ${ENV_MONO_FIELD}`;
+const presetEndpointDisplay =
+  "mt-1.5 break-all rounded-sm border border-notion-border bg-notion-bg-secondary/60 px-3 py-2 font-mono text-[11px] font-normal normal-case leading-relaxed text-notion-text-muted";
 
 type Props = {
   busy: boolean;
@@ -18,6 +32,8 @@ type Props = {
   timeoutSec: number;
   appKey: string;
   apiKey: string;
+  savedApiKeyId: string | null;
+  keychainReady?: boolean | null;
   onEndpointChange: (value: string) => void;
   onTimeoutSecChange: (value: number) => void;
   onAppKeyChange: (value: string) => void;
@@ -32,16 +48,38 @@ export function OnlineSttRuntimeForm({
   timeoutSec,
   appKey,
   apiKey,
+  savedApiKeyId,
+  keychainReady = null,
   onEndpointChange,
   onTimeoutSecChange,
   onAppKeyChange,
   onApiKeyChange,
 }: Props) {
   const providerLabel = providerDef?.label ?? providerId;
+  const [timeoutInput, setTimeoutInput] = useState(String(timeoutSec));
+
+  useEffect(() => {
+    setTimeoutInput(String(timeoutSec));
+  }, [timeoutSec]);
+
+  const commitTimeoutInput = () => {
+    const clamped = clampSttOnlineTimeoutSec(Number(timeoutInput));
+    setTimeoutInput(String(clamped));
+    if (clamped !== timeoutSec) onTimeoutSecChange(clamped);
+  };
+
   const authSummary =
     providerDef?.authStyle === "header" && providerDef.headerName
       ? `HTTP 头 ${providerDef.headerName}`
       : "标准 Bearer / API Key";
+  const presetDisplay = resolveSttOnlinePresetEndpointDisplay(providerId);
+  const showCustomEndpoint = sttOnlineProviderEndpointUserConfigurable(providerId);
+  const showSavedApiKeyMask = isSavedApiKeyMaskDisplayed(apiKey, savedApiKeyId, keychainReady);
+  const apiKeyDisplay = resolveSavedApiKeyInputDisplay({
+    typedApiKey: apiKey,
+    savedApiKeyId,
+    keychainReady,
+  });
 
   return (
     <div className="space-y-6">
@@ -51,36 +89,52 @@ export function OnlineSttRuntimeForm({
         鉴权：<span className="font-medium text-notion-text">{authSummary}</span>
       </p>
 
-      <label className={fieldLabel}>
-        转写 POST 完整 URL
-        <input
-          type="url"
-          className={`${monoField} mt-0`}
-          value={endpoint}
-          onChange={(e) => onEndpointChange(e.target.value)}
-          placeholder={
-            sttOnlineProviderAllowsEmptyEndpoint(providerId)
-              ? "可留空：OpenAI 默认 api.openai.com；AssemblyAI 默认 api.assemblyai.com"
-              : providerDef?.defaultEndpointExample
-                ? `示例：${providerDef.defaultEndpointExample}`
-                : "https://你的网关/v1/transcribe"
-          }
-          disabled={busy}
-          autoComplete="off"
-        />
-      </label>
+      {showCustomEndpoint ? (
+        <label className={fieldLabel}>
+          转写 POST 完整 URL
+          <input
+            type="url"
+            className={`${monoField} mt-0`}
+            value={endpoint}
+            onChange={(e) => onEndpointChange(e.target.value)}
+            placeholder="https://你的网关/v1/transcribe"
+            disabled={busy}
+            autoComplete="off"
+          />
+        </label>
+      ) : presetDisplay ? (
+        <div>
+          <p className={fieldLabel}>预置转写端点</p>
+          <p className={presetEndpointDisplay} title={presetDisplay} aria-readonly>
+            {presetDisplay}
+          </p>
+          <p className={`mt-1.5 flex items-center gap-1 ${PANEL_TYPOGRAPHY.meta}`}>
+            <Info className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+            无需填 URL，保存凭证即可。
+          </p>
+        </div>
+      ) : null}
 
       <label className={fieldLabel}>
-        超时（秒，30–600）
+        超时（秒，{STT_ONLINE_TIMEOUT_SEC_MIN}–{STT_ONLINE_TIMEOUT_SEC_MAX}）
         <input
           type="number"
-          min={30}
-          max={600}
+          min={STT_ONLINE_TIMEOUT_SEC_MIN}
+          max={STT_ONLINE_TIMEOUT_SEC_MAX}
+          step={1}
+          inputMode="numeric"
           className={`${CONTROL_TEXT_INPUT} mt-0`}
-          value={timeoutSec}
-          onChange={(e) => onTimeoutSecChange(Number(e.target.value) || 30)}
+          value={timeoutInput}
+          onChange={(e) => setTimeoutInput(e.target.value)}
+          onBlur={commitTimeoutInput}
+          onKeyDown={(e) => {
+            if (e.key === "Enter") e.currentTarget.blur();
+          }}
           disabled={busy}
         />
+        <p className={`mt-1.5 ${PANEL_TYPOGRAPHY.meta}`}>
+          修改后需点击「保存在线配置」或「探测连接」才会用于转写。
+        </p>
       </label>
 
       {providerDef?.requiresPersistedAppKey ? (
@@ -100,21 +154,25 @@ export function OnlineSttRuntimeForm({
 
       <label className={fieldLabel}>
         {providerDef?.authStyle === "header" && providerDef.headerName
-          ? `根凭证 / Token（仅内存，HTTP 头 ${providerDef.headerName}）`
-          : "根凭证 / API Key（仅内存，不落盘）"}
+          ? `根凭证 / Token（HTTP 头 ${providerDef.headerName}）`
+          : "根凭证 / API Key"}
         <input
           type="password"
           className={`${monoField} mt-0`}
-          value={apiKey}
-          onChange={(e) => onApiKeyChange(e.target.value)}
-          placeholder="sk-… 或代理签发令牌"
+          value={apiKeyDisplay}
+          onFocus={(e) => {
+            if (showSavedApiKeyMask) e.currentTarget.select();
+          }}
+          onChange={(e) =>
+            onApiKeyChange(normalizeSavedApiKeyInputChange(e.target.value, showSavedApiKeyMask))
+          }
+          placeholder={providerDef?.credentialPlaceholder ?? "sk-… 或 Token"}
           disabled={busy}
           autoComplete="off"
         />
-        <p className={`mt-1.5 flex items-center gap-1 ${PANEL_TYPOGRAPHY.meta}`}>
-          <Info className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-          根凭证仅保留在当前页面会话内存，关闭页面后需重新输入。
-        </p>
+        {providerDef?.credentialHint ? (
+          <p className={`mt-1.5 ${PANEL_TYPOGRAPHY.meta}`}>{providerDef.credentialHint}</p>
+        ) : null}
       </label>
     </div>
   );

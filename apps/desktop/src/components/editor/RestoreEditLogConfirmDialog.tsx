@@ -2,12 +2,13 @@ import { createPortal } from "react-dom";
 import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../../config/typography";
 import { FloatingPanelTemplate } from "../PanelTemplate";
+import { FLOATING_PANEL_DIALOG_BODY_PADDING_CLASS } from "../FloatingPanelDialogLayout";
 import { summarizeHistoryHeadline } from "./useEditorEditHistory";
 import type { EditLogEntryDto } from "../../tauri/projectApi";
 
 const PANEL_ID = "restore-edit-log-confirm-v1";
-const DEFAULT_SIZE = { width: 320, height: 240 } as const;
-const MIN_SIZE = { width: 280, height: 200 } as const;
+const DEFAULT_SIZE = { width: 320, height: 248 } as const;
+const MIN_SIZE = { width: 280, height: 208 } as const;
 
 type Props = {
   open: boolean;
@@ -37,7 +38,7 @@ export function RestoreEditLogConfirmDialog({ open, busy, row, onCancel, onConfi
         persistState
         onClose={handleClose}
       >
-        <div className="flex flex-col px-5 py-3" role="alertdialog" aria-modal="true">
+        <div className={`flex flex-col ${FLOATING_PANEL_DIALOG_BODY_PADDING_CLASS}`} role="alertdialog" aria-modal="true">
           <p className={PANEL_TYPOGRAPHY.dialogBody}>
             将把当前文件的语段正文恢复到所选保存点。未保存的草稿修改将丢失。
           </p>

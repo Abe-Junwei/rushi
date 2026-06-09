@@ -22,7 +22,9 @@ import { readStorage } from "../stt/sttOnlineProviderContract/storage";
 import {
   readExternalSttOnlineRuntimeConfigFromStorage,
 } from "../stt/sttOnlineProviderContract/runtimeConfig";
-import { tryBuildOnlineTranscribeBridgePayload } from "../stt/sttOnlineProviderContract";
+import { isOnlineTranscribeReady } from "../stt/sttOnlineProviderContract/bridge";
+import type { TranscribeSource } from "../stt/transcribeSource";
+import { readStoredTranscribeSource } from "../stt/transcribeSource";
 
 export type TranscribeVocabularyPreflightSummary = {
   hotwords: GlossaryHotwordsPreview | null;
@@ -100,11 +102,12 @@ export function formatTranscribeVocabularyPreflightLines(
   return lines;
 }
 
-export async function loadTranscribeVocabularyPreflight(): Promise<TranscribeVocabularyPreflightSummary> {
+export async function loadTranscribeVocabularyPreflight(
+  source: TranscribeSource = readStoredTranscribeSource(),
+): Promise<TranscribeVocabularyPreflightSummary> {
   const raw = await glossaryHotwordsPreview();
   const hotwords = parseGlossaryHotwordsPreview(raw);
-  const onlinePayload = tryBuildOnlineTranscribeBridgePayload();
-  const isOnlineMode = onlinePayload != null;
+  const isOnlineMode = source === "online" && isOnlineTranscribeReady();
   const sttCfg = readExternalSttOnlineRuntimeConfigFromStorage();
   return buildTranscribeVocabularyPreflightSummary({
     hotwords,

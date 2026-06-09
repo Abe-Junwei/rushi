@@ -171,7 +171,7 @@ describe("llmEnvStatus", () => {
     const p = buildLlmEnvPresentation({ ollamaDetect: null, ollamaDetectBusy: false });
     expect(p.chipLabel).toBe("云端 DeepSeek");
     expect(p.bannerTitle).toContain("连接就绪");
-    expect(p.bannerDetail).toContain("API Key 已验证");
+    expect(p.bannerDetail).toContain("已验证");
     expect(p.ok).toBe(true);
     expect(p.capabilityBadge).toBe("可用");
   });
@@ -254,7 +254,7 @@ describe("llmEnvStatus", () => {
     });
     expect(p.bannerTitle).toContain("Kimi");
     expect(p.configDraftDirty).toBe(true);
-    expect(p.bannerDetail).toContain("连接参数已修改");
-    expect(p.blockReason).toContain("连接参数已修改");
+    expect(p.bannerDetail).toContain("连接已改");
+    expect(p.blockReason).toContain("连接已改");
   });
 });
