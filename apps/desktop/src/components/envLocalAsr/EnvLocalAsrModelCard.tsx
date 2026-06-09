@@ -5,11 +5,7 @@ import type { PrepareModelFailureCopy } from "../../pages/prepareModelDownloadCo
 import type { PrepareDefaultModelOptions } from "../../pages/usePrepareModelController";
 import type { LocalAsrModelCatalogApi } from "../../pages/useLocalAsrModelCatalog";
 import type { AsrHealthCapabilities } from "../../tauri/projectApi";
-import {
-  buildLocalAsrCatalogView,
-  catalogEntryForHub,
-  selectedModelMatchesSidecar,
-} from "../../services/asr/localAsrModelCatalog";
+import type { AsrCatalogPresentation } from "../../services/asr/asrCatalogPresentation";
 import { LOCAL_ASR_RECOGNITION_LANGUAGE_OPTIONS } from "../../services/asr/localAsrRecognitionLanguage";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";
 import {
@@ -22,21 +18,13 @@ import { EnvLocalAsrSmallButton } from "./envLocalAsrPanelUi";
 const fieldLabel = PANEL_TYPOGRAPHY.envFieldLabel;
 const selectField = `${CONTROL_TEXT_INPUT} cursor-pointer pr-9`;
 
-type SelectedPrepare = {
-  cached: boolean;
-  readyForTranscribe: boolean;
-  sidecarMatchesSelection: boolean;
-};
-
 type Props = {
   localAsrModelCatalog: LocalAsrModelCatalogApi;
   asrCaps: AsrHealthCapabilities | null;
-  selectedPrepare: SelectedPrepare;
-  progress: number;
+  catalogPresentation: AsrCatalogPresentation;
   prepareModelBusy: boolean;
   prepareModelFailure: PrepareModelFailureCopy | null;
   busy: boolean;
-  modelsCached: boolean;
   prepareDefaultFunasrModel: (options?: PrepareDefaultModelOptions) => Promise<void>;
   cancelPrepareModel: () => void;
 };
@@ -44,37 +32,29 @@ type Props = {
 export function EnvLocalAsrModelCard({
   localAsrModelCatalog,
   asrCaps,
-  selectedPrepare,
-  progress,
+  catalogPresentation,
   prepareModelBusy,
   prepareModelFailure,
   busy,
-  modelsCached,
   prepareDefaultFunasrModel,
   cancelPrepareModel,
 }: Props) {
   const catalog = localAsrModelCatalog;
-  const catalogView = buildLocalAsrCatalogView(
-    asrCaps,
-    catalog.catalogStatus,
-    catalog.selectedHubModelId,
-  );
+  const {
+    catalogView,
+    selectedPrepare,
+    modelsCached,
+    progress,
+    progressLabel,
+    progressTone,
+    sidecarMatchesSelection,
+    selectedLabel,
+  } = catalogPresentation;
   const panelBusy = busy || prepareModelBusy || catalog.applyBusy;
   const sidecarHub = asrCaps?.funasr_model_id ?? null;
-  const sidecarMatchesSelection = selectedModelMatchesSidecar(catalog.selectedHubModelId, sidecarHub);
-  const selectedLabel =
-    catalogEntryForHub(catalog.selectedHubModelId)?.label ?? catalog.selectedHubModelId;
 
-  const progressLabel = prepareModelBusy
-    ? `下载中… ${progress}%`
-    : modelsCached
-      ? "已缓存 · 100%"
-      : selectedPrepare.cached
-        ? "主模型已缓存 · 辅助模型待补齐"
-        : "未下载";
-
-  const progressTone = modelsCached && !prepareModelBusy ? "text-zen-success" : "text-notion-text-muted";
-
+  const progressToneClass =
+    progressTone === "success" ? "text-zen-success" : "text-notion-text-muted";
 
   return (
     <section className="flex flex-col gap-6">
@@ -117,7 +97,7 @@ export function EnvLocalAsrModelCard({
         <div>
           <div className="mb-2 flex items-end justify-between gap-2">
             <span className={fieldLabel}>下载进度</span>
-            <span className={`font-mono text-[12px] ${progressTone}`}>{progressLabel}</span>
+            <span className={`font-mono text-[12px] ${progressToneClass}`}>{progressLabel}</span>
           </div>
           <div
             className={PANEL_PROGRESS_TRACK_COMPACT_CLASS}

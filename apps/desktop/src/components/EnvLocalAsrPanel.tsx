@@ -1,14 +1,16 @@
 import type { PrepareModelFailureCopy } from "../pages/prepareModelDownloadCopy";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import type { AsrEnvPresentation } from "../services/asr/asrEnvStatus";
-import type { AsrHealthCapabilities, AsrModelCacheInfo, BundledAsrLaunchReport, WaveformPeaksCacheInfo } from "../tauri/projectApi";
+import { buildAsrCatalogPresentation } from "../services/asr/asrCatalogPresentation";
+import type {
+  AsrHealthCapabilities,
+  AsrModelCacheInfo,
+  BundledAsrLaunchReport,
+  WaveformPeaksCacheInfo,
+} from "../tauri/projectApi";
 import type { PrepareDefaultModelOptions } from "../pages/usePrepareModelController";
 import type { AsrSetupControllerApi } from "../pages/useAsrSetupController";
 import type { LocalAsrModelCatalogApi } from "../pages/useLocalAsrModelCatalog";
-import {
-  buildLocalAsrCatalogView,
-  selectedModelPrepareState,
-} from "../services/asr/localAsrModelCatalog";
 import { EnvLocalAsrModelCard } from "./envLocalAsr/EnvLocalAsrModelCard";
 import { EnvLocalAsrStatusSection } from "./envLocalAsr/EnvLocalAsrStatusSection";
 import { EnvLocalAsrUtilitiesSection } from "./envLocalAsr/EnvLocalAsrUtilitiesSection";
@@ -67,18 +69,13 @@ export function EnvLocalAsrPanel({
   asrSetup,
   localAsrModelCatalog,
 }: Props) {
-  const catalogView = buildLocalAsrCatalogView(
+  const catalogPresentation = buildAsrCatalogPresentation({
     asrCaps,
-    localAsrModelCatalog.catalogStatus,
-    localAsrModelCatalog.selectedHubModelId,
-  );
-  const selectedPrepare = selectedModelPrepareState(
-    catalogView,
-    localAsrModelCatalog.selectedHubModelId,
-    asrCaps?.funasr_model_id,
-  );
-  const modelsCached = selectedPrepare.cached;
-  const progress = prepareModelBusy ? prepareModelProgress : modelsCached ? 100 : 0;
+    catalogStatus: localAsrModelCatalog.catalogStatus,
+    selectedHubModelId: localAsrModelCatalog.selectedHubModelId,
+    prepareModelBusy,
+    prepareModelProgress,
+  });
 
   return (
     <div className="mx-auto flex w-full max-w-[860px] flex-col gap-7">
@@ -108,12 +105,10 @@ export function EnvLocalAsrPanel({
         <EnvLocalAsrModelCard
           localAsrModelCatalog={localAsrModelCatalog}
           asrCaps={asrCaps}
-          selectedPrepare={selectedPrepare}
-          progress={progress}
+          catalogPresentation={catalogPresentation}
           prepareModelBusy={prepareModelBusy}
           prepareModelFailure={prepareModelFailure}
           busy={busy}
-          modelsCached={modelsCached}
           prepareDefaultFunasrModel={prepareDefaultFunasrModel}
           cancelPrepareModel={cancelPrepareModel}
         />
