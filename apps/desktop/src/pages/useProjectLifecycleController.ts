@@ -2,33 +2,26 @@ import { useCallback, useRef, useState } from "react";
 import type { ProjectDetail } from "../tauri/projectApi";
 import * as p1 from "../tauri/projectApi";
 import { useExportController } from "./useExportController";
-import { useProjectCrudController } from "./useProjectCrudController";
-import { useSegmentMutationController } from "./useSegmentMutationController";
 import { useProjectBusyState } from "./useProjectBusyState";
+import { syncSegmentStagesAfterTranscribeReload } from "../services/segmentStagePersist";
 import { useProjectListState } from "./useProjectListState";
 import { useProjectEditorState } from "./useProjectEditorState";
-import { useGlossaryLearnPromptController } from "./useGlossaryLearnPromptController";
-import { useManualCorrectionMemoryDialog } from "./useManualCorrectionMemoryDialog";
 import {
   useProjectCloseGateController,
   type ProjectCloseGateControllerApi,
 } from "./useProjectCloseGateController";
-import { useProjectImportDuplicateController } from "./useProjectImportDuplicateController";
-import { useProjectFileMutationController } from "./useProjectFileMutationController";
-import { useProjectMutationController } from "./useProjectMutationController";
-import { syncSegmentStagesAfterTranscribeReload } from "../services/segmentStagePersist";
-import { useSegmentDirtyState } from "./useSegmentDirtyState";
-import { useAutoSaveSegments } from "./useAutoSaveSegments";
+import { useProjectLifecycleEditorStack } from "./useProjectLifecycleEditorStack";
+import { useProjectLifecycleHubStack } from "./useProjectLifecycleHubStack";
 import {
   useTranscribeJobController,
   type LocalTranscribePreflight,
 } from "./useTranscribeJobController";
-import { useProjectSaveController } from "./useProjectSaveController";
-import { useSegmentDeleteConfirmController } from "./useSegmentDeleteConfirmController";
-import { useSegmentSelectionController } from "./useSegmentSelectionController";
-import { useSegmentAnnotationController } from "./useSegmentAnnotationController";
 import { useProjectEditorToolsController } from "./useProjectEditorToolsController";
-import { mapEditorToolsLifecycleFields } from "./projectLifecycleEditorToolsReturn";
+import {
+  pickCloseGateLifecycleFacade,
+  pickExportLifecycleFacade,
+} from "./projectLifecycleFacades";
+import { buildProjectLifecycleReturn } from "./projectLifecycleReturn";
 import type { ProjectLifecycleApi } from "./ProjectLifecycleApi";
 
 export type { ProjectLifecycleApi } from "./ProjectLifecycleApi";
@@ -61,104 +54,41 @@ export function useProjectLifecycleController(
     applyDetailBase,
   } = useProjectEditorState(setError);
 
-  const segmentSelection = useSegmentSelectionController({
-    selectedIdx,
-    setSelectedIdx,
-    segmentCount: segments.length,
-    resetKey: currentFileId,
-    disabled: busy,
-  });
-
   const [newName, setNewName] = useState("未命名项目");
   const [pickedPath, setPickedPath] = useState<string | null>(null);
   const closeGateRef = useRef<ProjectCloseGateControllerApi | null>(null);
   const pendingAiRevisedUidsRef = useRef(new Set<string>());
-  const mutations = useSegmentMutationController({
-    segmentsRef,
-    setSegments,
-    selectedIdxRef,
-    setSelectedIdx,
+
+  const editorStack = useProjectLifecycleEditorStack({
+    busy,
+    beginBusy,
+    endBusy,
     setError,
-    busy,
-    pendingAiRevisedUidsRef,
-    onSelectionCollapsed: segmentSelection.collapseTo,
-  });
-
-  const segmentDeleteConfirm = useSegmentDeleteConfirmController({
-    segmentsRef,
-    flushSegmentTextDrafts: mutations.flushSegmentTextDrafts,
-    deleteSegmentAt: mutations.deleteSegmentAt,
-    deleteSegmentRange: mutations.deleteSegmentRange,
-    deleteSegmentIndices: mutations.deleteSegmentIndices,
-  });
-
-  const dirty = useSegmentDirtyState({
-    currentFileId,
-    segmentsRef,
-    flushSegmentTextDrafts: mutations.flushSegmentTextDrafts,
-  });
-
-  const glossaryLearn = useGlossaryLearnPromptController({ setError });
-  const manualCorrectionMemory = useManualCorrectionMemoryDialog({
-    busy,
-    setError,
-    checkGlossaryLearnAfterSave: glossaryLearn.checkGlossaryLearnAfterSave,
-  });
-
-  const saveController = useProjectSaveController({
-    busy,
     current,
     currentFileId,
+    segments,
     segmentsRef,
+    selectedIdx,
+    setSelectedIdx,
     selectedIdxRef,
     setCurrent,
     setSegments,
-    setSelectedIdx,
-    setError,
-    beginBusy,
-    endBusy,
-    mutations,
-    dirty,
     pendingAiRevisedUidsRef,
-    checkGlossaryLearnAfterSave: () => {
-      void glossaryLearn.checkGlossaryLearnAfterSave();
-    },
   });
 
   const {
-    saveInFlightRef,
-    clearAutoSaveRef,
-    notifySegmentsPersistedRef,
+    segmentSelection,
+    mutations,
+    segmentDeleteConfirm,
+    dirty,
+    glossaryLearn,
+    manualCorrectionMemory,
+    saveController,
     saveSegments,
-    confirmSegmentEditAndAdvance,
-    markSegmentFinalized,
-    restoreEditorFromEditLog,
-  } = saveController;
-
-  const segmentAnnotation = useSegmentAnnotationController({
-    busy,
-    segmentsRef,
-    setSegments,
-    saveSegments,
-    pushUndo: mutations.pushUndo,
-    setError,
-  });
-
-  const autoSave = useAutoSaveSegments({
-    enabled: Boolean(currentFileId),
-    currentFileId,
-    segments,
-    busy,
-    saveInFlightRef,
-    hasUnsavedSegmentChanges: dirty.hasUnsavedSegmentChanges,
-    saveSegments,
-    registerClearScheduled: (fn) => {
-      clearAutoSaveRef.current = fn;
-    },
-    registerOnPersisted: (fn) => {
-      notifySegmentsPersistedRef.current = fn;
-    },
-  });
+    segmentAnnotation,
+    autoSave,
+    clearScheduledAutoSave,
+  } = editorStack;
 
   const applyDetailBaseOnly = useCallback(
     (d: ProjectDetail) => {
@@ -190,7 +120,7 @@ export function useProjectLifecycleController(
     mutations,
     localTranscribePreflight,
     sttOnlineRuntimeEpoch,
-    clearScheduledAutoSave: () => clearAutoSaveRef.current(),
+    clearScheduledAutoSave,
     onTranscribeSuccess: () => {
       const synced = syncSegmentStagesAfterTranscribeReload(segmentsRef.current);
       segmentsRef.current = synced;
@@ -231,47 +161,22 @@ export function useProjectLifecycleController(
   });
   closeGateRef.current = closeGate;
 
-  const importDuplicate = useProjectImportDuplicateController({
-    currentProjectId: current?.id,
-    busy,
-    beginBusy,
-    endBusy,
-    loadProjectAfterImport: closeGate.loadProjectAfterImport,
-    openFile: closeGate.openFileWrapped,
-    setError,
-  });
-
-  const fileMutation = useProjectFileMutationController({
-    projectId: current?.id,
-    busy,
-    refreshProjectHub: closeGate.refreshProjectHub,
-    setError,
-  });
-
-  const crud = useProjectCrudController({
+  const { importDuplicate, fileMutation, crud, projectMutation } = useProjectLifecycleHubStack({
     pickedPath,
     newName,
     current,
-    setError,
+    busy,
     beginBusy,
     endBusy,
-    applyDetail,
-    refreshProjects,
-    mutations,
+    setError,
     setCurrent,
     setSegments,
     setAudioSrc,
-    setTranscribeHints: transcribeJob.setTranscribeHints,
-  });
-
-  const projectMutation = useProjectMutationController({
-    current,
-    busy,
-    refreshProjectHub: closeGate.refreshProjectHub,
+    applyDetail,
     refreshProjects,
-    deleteProject: crud.deleteProject,
-    setError,
-    setCurrent,
+    mutations,
+    closeGate,
+    setTranscribeHints: transcribeJob.setTranscribeHints,
   });
 
   const refreshCurrentProject = useCallback(async () => {
@@ -336,146 +241,49 @@ export function useProjectLifecycleController(
     applyDetail,
   });
 
-  return {
-    projects, current, currentFileId, segments, selectedIdx, setSelectedIdx,
-    audioSrc, error, busy, busyReason, newName, setNewName, pickedPath,
-    transcribeHints: transcribeJob.transcribeHints,
-    transcribeProgress: transcribeJob.transcribeProgress,
-    transcribeCancelling: transcribeJob.transcribeCancelling,
-    transcribePreviewActive: busy && busyReason === "transcribe",
-    transcribeStartDialogOpen: transcribeJob.transcribeStartDialogOpen,
-    transcribeStartHasExistingText: transcribeJob.transcribeStartHasExistingText,
-    /** @deprecated */
-    transcribeOverwriteDialogOpen: transcribeJob.transcribeStartDialogOpen,
-    transcribeOverwriteSegmentCount: transcribeJob.overwriteSegmentCount,
-    transcribeVocabularyPreflightLines: transcribeJob.transcribeVocabularyPreflightLines,
-    transcribeSource: transcribeJob.transcribeSource,
-    setTranscribeSource: transcribeJob.setTranscribeSource,
-    onlineTranscribeReady: transcribeJob.onlineTranscribeReady,
-    refreshProjects, pickAudio, clearPickedAudio,
-    createProject: crud.createProject, createEmptyProject: crud.createEmptyProject, createProjectFromText: crud.createProjectFromText,
-    loadProject: closeGate.loadProject,
-    loadProjectAfterImport: closeGate.loadProjectAfterImport,
+  const closeGateFacade = pickCloseGateLifecycleFacade(closeGate, dirty.hasUnsavedSegmentChanges);
+  const exportFacade = pickExportLifecycleFacade(exports);
+
+  return buildProjectLifecycleReturn({
+    projects,
+    current,
+    currentFileId,
+    segments,
+    selectedIdx,
+    setSelectedIdx,
+    audioSrc,
+    error,
+    busy,
+    busyReason,
+    newName,
+    setNewName,
+    pickedPath,
+    refreshProjects,
+    pickAudio,
+    clearPickedAudio,
     refreshCurrentProject,
-    openFile: closeGate.openFileWrapped,
-    restoreEditorFromEditLog,
-    openLastEditorWorkspace: closeGate.openLastEditorWorkspace,
-    closeFile: closeGate.closeFileWrapped, closeProject: closeGate.closeProjectWrapped,
-    runTranscribe: transcribeJob.requestTranscribe,
-    cancelTranscribe: transcribeJob.cancelTranscribe,
-    confirmTranscribeStart: transcribeJob.confirmTranscribeStart,
-    cancelTranscribeStart: transcribeJob.cancelTranscribeStart,
-    confirmTranscribeOverwrite: transcribeJob.confirmTranscribeOverwrite,
-    cancelTranscribeOverwrite: transcribeJob.cancelTranscribeOverwrite,
-    saveSegments,
-    confirmSegmentEditAndAdvance,
-    markSegmentFinalized,
-    getSavedSnapshot: dirty.getSavedSnapshot,
-    autoSaveFooterStatus: autoSave.autoSaveFooterStatus,
-    ...mapEditorToolsLifecycleFields(editorTools),
-    deleteProject: crud.deleteProject,
-    exportTxt: exports.exportTxt,
-    exportSrt: exports.exportSrt,
-    exportDocx: exports.exportDocx,
-    exportDeliveryDocx: exports.exportDeliveryDocx,
-    exportDiagnosticBundle: exports.exportDiagnosticBundle, exportProjectBundle: exports.exportProjectBundle, importProjectBundle: exports.importProjectBundle,
-    openAppDataFolder, applyDetail, setError, beginBusy, endBusy,
-    undo: mutations.undo, redo: mutations.redo, updateSegmentText: mutations.updateSegmentText,
-    updateSegmentTime: mutations.updateSegmentTime, updateSegmentBounds: mutations.updateSegmentBounds,
-    splitAtSelection: () => mutations.splitAtSelection(selectedIdxRef.current),
-    splitAtPlayhead: mutations.splitAtPlayhead,
-    mergeWithNext: () => mutations.mergeWithNext(selectedIdxRef.current),
-    mergeWithPrev: () => mutations.mergeWithPrev(selectedIdxRef.current),
-    mergeWithNextAt: mutations.mergeWithNextAt, mergeWithPrevAt: mutations.mergeWithPrevAt,
-    mergeSegmentRange: mutations.mergeSegmentRange,
-    deleteSegmentAt: segmentDeleteConfirm.requestDeleteSegmentAt,
-    requestDeleteSelection: segmentDeleteConfirm.requestDeleteSelection,
-    requestDeleteSelectedIndices: segmentDeleteConfirm.requestDeleteSelectedIndices,
-    pendingDeleteCount: segmentDeleteConfirm.pendingDeleteCount,
-    segmentDeleteConfirmOpen: segmentDeleteConfirm.segmentDeleteConfirmOpen,
-    confirmDeleteSegment: segmentDeleteConfirm.confirmDeleteSegment,
-    cancelDeleteSegment: segmentDeleteConfirm.cancelDeleteSegment,
-    selectionLo: segmentSelection.selectionLo,
-    selectionHi: segmentSelection.selectionHi,
-    selectionCount: segmentSelection.selectionCount,
-    isMultiSegmentSelection: segmentSelection.isMultiSegmentSelection,
-    isContiguousSelection: segmentSelection.isContiguousSelection,
-    selectedIndices: segmentSelection.selectedIndices,
-    selectedIndicesArray: segmentSelection.selectedIndicesArray,
-    isIndexInSelection: segmentSelection.isIndexInSelection,
-    selectSegmentAt: segmentSelection.selectSegmentAt,
-    selectSegmentRange: segmentSelection.selectSegmentRange,
-    selectSegmentIndices: segmentSelection.selectSegmentIndices,
-    clearMultiSelection: segmentSelection.clearMultiSelection,
-    insertSegmentAfter: mutations.insertSegmentAfter,
-    insertSegmentFromTimeRange: mutations.insertSegmentFromTimeRange,
-    flushSegmentTextDrafts: mutations.flushSegmentTextDrafts,
-    glossaryLearnDialog: glossaryLearn.glossaryLearnDialog,
-    dismissGlossaryLearnPrompt: glossaryLearn.dismissGlossaryLearnPrompt,
-    confirmAddToGlossary: (row) => {
-      void glossaryLearn.confirmAddToGlossary(row);
-    },
-    closeGlossaryLearnPrompt: glossaryLearn.closeGlossaryLearnPrompt,
-    manualCorrectionMemoryDialog: manualCorrectionMemory.manualCorrectionMemoryDialog,
-    openManualCorrectionMemoryDialog: manualCorrectionMemory.openManualCorrectionMemoryDialog,
-    closeManualCorrectionMemoryDialog: manualCorrectionMemory.closeManualCorrectionMemoryDialog,
-    setManualCorrectionRight: manualCorrectionMemory.setManualCorrectionRight,
-    setManualCorrectionAlsoGlossary: manualCorrectionMemory.setManualCorrectionAlsoGlossary,
-    confirmManualCorrectionMemory: () => {
-      void manualCorrectionMemory.confirmManualCorrectionMemory();
-    },
-    closeGateOpen: closeGate.closeGateOpen,
-    closeGateIntent: closeGate.closeGateIntent,
-    stayAfterCloseAttempt: closeGate.stayAfterCloseAttempt,
-    discardUnsavedAndClose: () => {
-      void closeGate.discardUnsavedAndClose();
-    },
-    saveAndClose: () => {
-      void closeGate.saveAndClose();
-    },
-    transcribeNavBlockOpen: closeGate.transcribeNavBlockOpen,
-    cancelTranscribeNavBlock: closeGate.cancelTranscribeNavBlock,
-    confirmTranscribeNavBlock: () => void closeGate.confirmTranscribeNavBlock(),
-    hasUnsavedFileEdits: dirty.hasUnsavedSegmentChanges,
-    duplicateImportConfirmOpen: importDuplicate.duplicateImportConfirmOpen,
-    duplicateImportChecking: importDuplicate.duplicateImportChecking,
-    duplicateImportCheck: importDuplicate.duplicateImportCheck,
-    cancelDuplicateImport: importDuplicate.cancelDuplicateImport,
-    openExistingDuplicateImport: importDuplicate.openExistingDuplicateImport,
-    confirmDuplicateImportCopy: importDuplicate.confirmDuplicateImportCopy,
-    importFileToProject: importDuplicate.importFileToProject,
-    pickAndImportFileToProject: importDuplicate.pickAndImportFileToProject,
-    renamingProjectFileId: fileMutation.renamingProjectFileId,
-    renameProjectFileDraft: fileMutation.renameProjectFileDraft,
-    setRenameProjectFileDraft: fileMutation.setRenameProjectFileDraft,
-    beginRenameProjectFile: fileMutation.beginRenameProjectFile,
-    cancelRenameProjectFile: fileMutation.cancelRenameProjectFile,
-    commitRenameProjectFile: () => void fileMutation.commitRenameProjectFile(),
-    pendingProjectFileDelete: fileMutation.pendingProjectFileDelete,
-    requestDeleteProjectFile: fileMutation.requestDeleteProjectFile,
-    cancelDeleteProjectFile: fileMutation.cancelDeleteProjectFile,
-    confirmDeleteProjectFile: () => void fileMutation.confirmDeleteProjectFile(),
-    isRenamingProject: projectMutation.isRenamingProject,
-    renameProjectDraft: projectMutation.renameProjectDraft,
-    setRenameProjectDraft: projectMutation.setRenameProjectDraft,
-    beginRenameProject: projectMutation.beginRenameProject,
-    cancelRenameProject: projectMutation.cancelRenameProject,
-    commitRenameProject: () => void projectMutation.commitRenameProject(),
-    projectMetadataDialogOpen: projectMutation.projectMetadataDialogOpen,
-    projectMetadataAfterCreate: projectMutation.projectMetadataAfterCreate,
-    openProjectMetadataDialog: projectMutation.openProjectMetadataDialog,
-    closeProjectMetadataDialog: projectMutation.closeProjectMetadataDialog,
-    saveProjectMetadata: (metadata) => void projectMutation.saveProjectMetadata(metadata),
-    pendingProjectDelete: projectMutation.pendingProjectDelete,
-    requestDeleteProject: projectMutation.requestDeleteProject,
-    cancelDeleteProject: projectMutation.cancelDeleteProject,
-    confirmDeleteProject: () => void projectMutation.confirmDeleteProject(),
-    segmentAnnotationDialog: segmentAnnotation.segmentAnnotationDialog,
-    segmentAnnotationSaving: segmentAnnotation.segmentAnnotationSaving,
-    openSegmentAnnotationDialog: segmentAnnotation.openSegmentAnnotationDialog,
-    closeSegmentAnnotationDialog: segmentAnnotation.closeSegmentAnnotationDialog,
-    setSegmentAnnotationDraft: segmentAnnotation.setSegmentAnnotationDraft,
-    saveSegmentAnnotation: segmentAnnotation.saveSegmentAnnotation,
-    clearSegmentAnnotation: segmentAnnotation.clearSegmentAnnotation,
-  };
+    openAppDataFolder,
+    applyDetail,
+    setError,
+    beginBusy,
+    endBusy,
+    selectedIdxRef,
+    closeGateFacade,
+    exportFacade,
+    transcribeJob,
+    editorTools,
+    crud,
+    saveController,
+    autoSave,
+    dirty,
+    mutations,
+    segmentSelection,
+    segmentDeleteConfirm,
+    glossaryLearn,
+    manualCorrectionMemory,
+    importDuplicate,
+    fileMutation,
+    projectMutation,
+    segmentAnnotation,
+  });
 }
