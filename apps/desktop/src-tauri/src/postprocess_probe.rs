@@ -10,37 +10,16 @@
 //! 4. 全程硬 deadline，保证 IPC 在 ~20s 内返回。
 
 use super::{build_postprocess_models_endpoint, LlmProbeConnectionResponse, PostprocessConfig};
-use reqwest::blocking::Client;
+use crate::blocking_http::{llm_probe_blocking_client, BlockingClient, BlockingResponse};
 use serde_json::json;
-use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 use url::Url;
 
 pub(crate) const PROBE_TIMEOUT: Duration = Duration::from_secs(12);
 pub(crate) const PROBE_TOTAL_DEADLINE: Duration = Duration::from_secs(20);
 
-static PROBE_BLOCKING_CLIENT: OnceLock<Client> = OnceLock::new();
-static PROBE_BLOCKING_DIRECT: OnceLock<Client> = OnceLock::new();
-
-fn probe_blocking_client(use_system_proxy: bool) -> &'static Client {
-    if use_system_proxy {
-        PROBE_BLOCKING_CLIENT.get_or_init(|| build_probe_blocking_client(true))
-    } else {
-        PROBE_BLOCKING_DIRECT.get_or_init(|| build_probe_blocking_client(false))
-    }
-}
-
-fn build_probe_blocking_client(use_system_proxy: bool) -> Client {
-    let mut builder = Client::builder()
-        .connect_timeout(Duration::from_secs(6))
-        .timeout(PROBE_TIMEOUT)
-        .user_agent(format!("rushi-desktop/{}", env!("CARGO_PKG_VERSION")));
-    if !use_system_proxy {
-        builder = builder.no_proxy();
-    }
-    builder
-        .build()
-        .expect("reqwest blocking probe client build")
+fn probe_blocking_client(use_system_proxy: bool) -> &'static BlockingClient {
+    llm_probe_blocking_client(use_system_proxy)
 }
 
 pub(crate) fn probe_llm_connection_blocking(
@@ -212,7 +191,7 @@ fn is_retryable_transport(message: &str) -> bool {
 }
 
 fn send_chat_completion_ping(
-    client: &Client,
+    client: &BlockingClient,
     input: &LlmProbeInput,
     timeout: Duration,
 ) -> LlmProbeConnectionResponse {
@@ -237,7 +216,7 @@ fn send_chat_completion_ping(
 }
 
 fn send_models_list(
-    client: &Client,
+    client: &BlockingClient,
     input: &LlmProbeInput,
     models_url: &Url,
     timeout: Duration,
@@ -261,7 +240,7 @@ enum ProbeKind {
 }
 
 fn map_http_result(
-    resp: Result<reqwest::blocking::Response, reqwest::Error>,
+    resp: Result<BlockingResponse, reqwest::Error>,
     t0: Instant,
     kind: ProbeKind,
     endpoint: &str,

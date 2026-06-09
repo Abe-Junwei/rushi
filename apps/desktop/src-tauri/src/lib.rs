@@ -1,5 +1,6 @@
 mod asr_setup;
 mod asr_sidecar;
+mod blocking_http;
 mod bundled_asr_assets;
 mod china_stt_shell;
 mod db;

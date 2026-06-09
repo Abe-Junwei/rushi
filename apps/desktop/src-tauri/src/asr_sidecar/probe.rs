@@ -1,6 +1,7 @@
 use std::net::{Ipv4Addr, SocketAddrV4, TcpStream};
 use std::time::Duration;
 
+use crate::blocking_http::{loopback_get_json, loopback_get_text};
 use serde::Serialize;
 use serde_json::Value;
 
@@ -8,30 +9,12 @@ use super::ASR_HEALTH_URL;
 
 const LOOPBACK_ROOT_URL: &str = "http://127.0.0.1:8741/";
 
-fn blocking_loopback_client() -> reqwest::blocking::Client {
-    reqwest::blocking::Client::builder()
-        .timeout(Duration::from_secs(8))
-        .build()
-        .unwrap_or_else(|_| reqwest::blocking::Client::new())
-}
-
 fn fetch_loopback_health_json_sync() -> Option<Value> {
-    let client = blocking_loopback_client();
-    let resp = client.get(ASR_HEALTH_URL).send().ok()?;
-    if !resp.status().is_success() {
-        return None;
-    }
-    let text = resp.text().ok()?;
-    serde_json::from_str::<Value>(&text).ok()
+    loopback_get_json(ASR_HEALTH_URL)
 }
 
 fn fetch_loopback_root_json_sync() -> Option<Value> {
-    let client = blocking_loopback_client();
-    let resp = client.get(LOOPBACK_ROOT_URL).send().ok()?;
-    if !resp.status().is_success() {
-        return None;
-    }
-    let text = resp.text().ok()?;
+    let text = loopback_get_text(LOOPBACK_ROOT_URL)?;
     serde_json::from_str::<Value>(&text).ok()
 }
 

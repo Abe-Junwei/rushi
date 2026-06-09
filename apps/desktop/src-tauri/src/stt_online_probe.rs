@@ -6,36 +6,16 @@
 use crate::online_stt_bridge::is_allowed_stt_transcribe_url;
 use crate::project::utils::append_desktop_log_line;
 use crate::DbState;
-use reqwest::blocking::Client;
+use crate::blocking_http::{stt_probe_blocking_client, BlockingClient};
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::str::FromStr;
-use std::sync::OnceLock;
 use std::time::{Duration, Instant};
 use tauri::State;
 
-static PROBE_BLOCKING_CLIENT: OnceLock<Client> = OnceLock::new();
-static PROBE_BLOCKING_DIRECT: OnceLock<Client> = OnceLock::new();
-
-fn probe_blocking_client(use_system_proxy: bool) -> &'static Client {
-    if use_system_proxy {
-        PROBE_BLOCKING_CLIENT.get_or_init(|| build_probe_blocking_client(true))
-    } else {
-        PROBE_BLOCKING_DIRECT.get_or_init(|| build_probe_blocking_client(false))
-    }
-}
-
-fn build_probe_blocking_client(use_system_proxy: bool) -> Client {
-    let mut builder = Client::builder()
-        .connect_timeout(Duration::from_secs(6))
-        .user_agent(format!("rushi-desktop/{}", env!("CARGO_PKG_VERSION")));
-    if !use_system_proxy {
-        builder = builder.no_proxy();
-    }
-    builder
-        .build()
-        .expect("reqwest blocking stt probe client build")
+fn probe_blocking_client(use_system_proxy: bool) -> &'static BlockingClient {
+    stt_probe_blocking_client(use_system_proxy)
 }
 
 #[derive(Debug, Deserialize)]
@@ -124,7 +104,7 @@ fn should_retry_without_proxy(out: &SttOnlineProbeResponse) -> bool {
 }
 
 fn send_probe_get(
-    client: &Client,
+    client: &BlockingClient,
     endpoint: &str,
     headers: &HeaderMap,
     timeout: Duration,

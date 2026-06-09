@@ -73,15 +73,7 @@ fn dev_asr_log_path() -> PathBuf {
 }
 
 fn fetch_health_model_id() -> Option<String> {
-    let client = reqwest::blocking::Client::builder()
-        .timeout(Duration::from_secs(8))
-        .build()
-        .ok()?;
-    let resp = client.get(ASR_HEALTH_URL).send().ok()?;
-    if !resp.status().is_success() {
-        return None;
-    }
-    let v: serde_json::Value = resp.json().ok()?;
+    let v = crate::blocking_http::loopback_get_json(ASR_HEALTH_URL)?;
     v.get("funasr_model_id")
         .and_then(|x| x.as_str())
         .map(|s| s.trim().to_string())
@@ -186,15 +178,7 @@ pub fn restart_source_asr_sidecar(app: &AppHandle, st: &DbState) -> Result<(), S
 }
 
 fn fetch_health_json() -> Option<serde_json::Value> {
-    let client = reqwest::blocking::Client::builder()
-        .timeout(Duration::from_secs(8))
-        .build()
-        .ok()?;
-    let resp = client.get(ASR_HEALTH_URL).send().ok()?;
-    if !resp.status().is_success() {
-        return None;
-    }
-    resp.json().ok()
+    crate::blocking_http::loopback_get_json(ASR_HEALTH_URL)
 }
 
 fn format_duration_ms(ms: u64) -> String {
