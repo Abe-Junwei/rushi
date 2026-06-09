@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { buildDeliveryExportAppendixLines, buildDocxExportMetaLine } from "./exportDeliveryAppendix";
+import { buildDeliveryExportAppendixLines, buildDocxExportMetaLine, listDocxProjectMetadataPreviewLines } from "./exportDeliveryAppendix";
 import type { EditLogEntryDto } from "../tauri/projectApi";
 
 describe("buildDeliveryExportAppendixLines", () => {
@@ -46,5 +46,45 @@ describe("buildDocxExportMetaLine", () => {
     const line = buildDocxExportMetaLine("课程 A", new Date("2026-06-03T12:00:00"));
     expect(line).toContain("课程 A");
     expect(line.startsWith("导出：")).toBe(true);
+  });
+
+  it("appends filled session metadata only when opted in", () => {
+    const metadata = {
+      narrator: "张三",
+      location: "北京",
+      subject: "",
+      transcriber: null,
+    };
+    const without = buildDocxExportMetaLine("口述史", new Date("2026-06-08T12:00:00"), {
+      includeProjectMetadata: false,
+      metadata,
+    });
+    expect(without).not.toContain("讲述人：张三");
+    expect(without).toContain("导出：口述史");
+
+    const withMeta = buildDocxExportMetaLine("口述史", new Date("2026-06-08T12:00:00"), {
+      includeProjectMetadata: true,
+      metadata,
+    });
+    expect(withMeta).toContain("讲述人：张三");
+    expect(withMeta).toContain("地点：北京");
+    expect(withMeta).not.toContain("主题：");
+    expect(withMeta).not.toContain("转录人：");
+  });
+});
+
+describe("listDocxProjectMetadataPreviewLines", () => {
+  it("returns only filled metadata fields", () => {
+    const lines = listDocxProjectMetadataPreviewLines({
+      narrator: "张三",
+      recorded_at: "  ",
+      location: "北京",
+      subject: null,
+      transcriber: undefined,
+    });
+    expect(lines).toEqual([
+      { label: "讲述人", value: "张三" },
+      { label: "地点", value: "北京" },
+    ]);
   });
 });

@@ -140,6 +140,35 @@ mod tests {
     }
 
     #[test]
+    fn build_docx_bytes_renders_multiline_project_metadata() {
+        use std::io::{Cursor, Read};
+        use zip::read::ZipArchive;
+
+        let meta = "导出：口述史 · 2026-06-08\n讲述人：张三\n地点：北京";
+        let bytes = build_docx_bytes(
+            "口述史",
+            "clean",
+            &[seg("正文。", false)],
+            Some(meta),
+            &[],
+            None,
+            None,
+            None,
+            false,
+        )
+        .unwrap();
+        let mut archive = ZipArchive::new(Cursor::new(bytes)).unwrap();
+        let mut doc_xml = String::new();
+        archive
+            .by_name("word/document.xml")
+            .unwrap()
+            .read_to_string(&mut doc_xml)
+            .unwrap();
+        assert!(doc_xml.contains("讲述人：张三"));
+        assert!(doc_xml.contains("地点：北京"));
+    }
+
+    #[test]
     fn lecture_mode_builds_per_segment() {
         let bytes = build_docx_bytes(
             "讲稿",

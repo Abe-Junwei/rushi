@@ -336,10 +336,11 @@ export function ProjectPanel() {
         onOpenGlossaryFromTranscribe={openGlossaryFromTranscribe}
         onStayAfterCloseAttempt={stayAfterCloseAttempt}
         onDeliveryExportClose={() => setDeliveryExportOpen(false)}
-        onDeliveryExport={(mode, includeRevisionAppendix, llmPolish, polishPreview) => {
+        onDeliveryExport={(mode, includeRevisionAppendix, includeProjectMetadata, llmPolish, polishPreview) => {
           void c.exportDeliveryDocx({
             mode,
             includeRevisionAppendix,
+            includeProjectMetadata,
             llmPolish,
             polishPreview,
           });

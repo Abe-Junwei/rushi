@@ -2,6 +2,7 @@ import { useCallback, useState } from "react";
 import type { ProjectDetail, ProjectMetadata } from "../tauri/projectApi";
 import * as p1 from "../tauri/projectApi";
 import { mergeProjectDetailMetadata } from "../utils/projectDuplicateName";
+import { normalizeRecordedAtForSave } from "../utils/projectRecordedAt";
 
 export type ProjectMetadataForm = ProjectMetadata & {
   name: string;
@@ -98,7 +99,7 @@ export function useProjectMutationController(deps: Deps): ProjectMutationControl
         }
         const metaDetail = await p1.updateProjectMetadata(projectId, {
           narrator: form.narrator,
-          recorded_at: form.recorded_at,
+          recorded_at: normalizeRecordedAtForSave(form.recorded_at),
           location: form.location,
           subject: form.subject,
           transcriber: form.transcriber,
@@ -110,6 +111,7 @@ export function useProjectMutationController(deps: Deps): ProjectMutationControl
         };
         deps.setCurrent((prev) => (prev ? mergeProjectDetailMetadata(prev, merged) : merged));
         await deps.refreshProjects();
+        await deps.refreshProjectHub(projectId);
         closeProjectMetadataDialog();
       } catch (e) {
         deps.setError(e instanceof Error ? e.message : String(e));

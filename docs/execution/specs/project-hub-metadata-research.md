@@ -151,8 +151,8 @@
 
 - [x] 调研 brief 完成
 - [x] 用户确认 P0 字段集（5 项；排除采访人/摘要/语言）
-- [ ] intent / plan / acceptance 已链接本文
-- [ ] 确认后可进入编码
+- [x] intent / plan / acceptance 已链接本文
+- [x] 确认后可进入编码（Phase 10 签收 2026-06-08）
 
 **变更记录**
 

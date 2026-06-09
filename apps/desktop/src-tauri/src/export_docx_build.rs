@@ -82,7 +82,9 @@ pub(crate) fn build_docx_bytes(
         ),
     );
     if let Some(ref meta) = effective_meta {
-        doc = add_meta_paragraph(doc, meta);
+        for line in meta.lines().map(str::trim).filter(|line| !line.is_empty()) {
+            doc = add_meta_paragraph(doc, line);
+        }
     }
     doc = doc.add_paragraph(Paragraph::new());
 

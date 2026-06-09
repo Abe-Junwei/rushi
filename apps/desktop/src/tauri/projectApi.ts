@@ -189,7 +189,7 @@ export async function updateProjectMetadata(
   return invoke<ProjectDetail>("update_project_metadata", {
     projectId,
     narrator: metadata.narrator ?? null,
-    recorded_at: metadata.recorded_at ?? null,
+    recordedAt: metadata.recorded_at ?? null,
     location: metadata.location ?? null,
     subject: metadata.subject ?? null,
     transcriber: metadata.transcriber ?? null,

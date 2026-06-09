@@ -30,6 +30,7 @@ export type ProjectPanelDialogsProps = {
   onDeliveryExport: (
     mode: DocxExportMode,
     includeRevisionAppendix: boolean,
+    includeProjectMetadata: boolean,
     llmPolish: boolean,
     polishPreview: ExportPolishResult | null,
   ) => void;
@@ -133,12 +134,20 @@ export function ProjectPanelDialogs({
         open={deliveryExportOpen}
         busy={c.busy}
         segments={segments}
+        projectName={c.current?.name ?? ""}
+        projectMetadata={{
+          narrator: c.current?.narrator,
+          recorded_at: c.current?.recorded_at,
+          location: c.current?.location,
+          subject: c.current?.subject,
+          transcriber: c.current?.transcriber,
+        }}
         llmStatusRefreshSeq={llmStatusRefreshSeq}
         onOpenLlmSettings={onOpenLlmSettings}
         onClose={onDeliveryExportClose}
-        onExport={(mode, includeRevisionAppendix, llmPolish, polishPreview) => {
+        onExport={(mode, includeRevisionAppendix, includeProjectMetadata, llmPolish, polishPreview) => {
           onDeliveryExportClose();
-          onDeliveryExport(mode, includeRevisionAppendix, llmPolish, polishPreview);
+          onDeliveryExport(mode, includeRevisionAppendix, includeProjectMetadata, llmPolish, polishPreview);
         }}
       />
 

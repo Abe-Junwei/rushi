@@ -3,6 +3,8 @@ import { PANEL_CONTROL_TYPOGRAPHY, PANEL_TYPOGRAPHY } from "../config/typography
 import type { ProjectDetail, ProjectSummary } from "../tauri/projectApi";
 import type { ProjectMetadataForm } from "../pages/useProjectMutationController";
 import { findDuplicateProjectNames, suggestUniqueProjectName } from "../utils/projectDuplicateName";
+import { normalizeRecordedAtForSave } from "../utils/projectRecordedAt";
+import { ProjectRecordedAtField } from "./ProjectRecordedAtField";
 import { FloatingPanelTemplate } from "./PanelTemplate";
 import { CONTROL_BTN_PRIMARY_PROMINENT, CONTROL_BTN_SECONDARY_PROMINENT } from "../config/controlStyles";
 
@@ -15,7 +17,6 @@ const METADATA_FIELDS: Array<{
   placeholder: string;
 }> = [
   { key: "narrator", label: "讲述人", placeholder: "主要说话人 / 被访者" },
-  { key: "recorded_at", label: "时间", placeholder: "如 2024-03、约 1990 年代" },
   { key: "location", label: "地点", placeholder: "采集或内容相关地点" },
   { key: "subject", label: "主题", placeholder: "场次主题（可与项目名区分）" },
   { key: "transcriber", label: "转录人", placeholder: "转写 / 校对负责人" },
@@ -89,7 +90,10 @@ export function ProjectMetadataDialog({
           className="flex min-h-0 flex-1 flex-col"
           onSubmit={(e) => {
             e.preventDefault();
-            void onSave(draft);
+            void onSave({
+              ...draft,
+              recorded_at: normalizeRecordedAtForSave(draft.recorded_at),
+            });
           }}
         >
           <div className="min-h-0 flex-1 space-y-4 overflow-y-auto pb-4">
@@ -124,6 +128,12 @@ export function ProjectMetadataDialog({
                 </p>
               ) : null}
             </label>
+
+            <ProjectRecordedAtField
+              value={draft.recorded_at ?? ""}
+              disabled={busy}
+              onChange={(recorded_at) => setDraft((prev) => ({ ...prev, recorded_at }))}
+            />
 
             {METADATA_FIELDS.map(({ key, label, placeholder }) => (
               <label key={key} className="block">

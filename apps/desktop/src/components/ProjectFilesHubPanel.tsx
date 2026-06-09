@@ -1,17 +1,17 @@
 import { useMemo } from "react";
-import { FileAudio, FileText, Info, Pencil, Trash2 } from "lucide-react";
+import { FileAudio, FileText, NotebookText, Pencil, Trash2 } from "lucide-react";
 import { CONTROL_BTN_GHOST, CONTROL_BTN_LINK } from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { WORKSPACE_FILE_ROW_CLASS, WORKSPACE_PAGE_PANEL_CLASS } from "../config/workspaceShellLayout";
 import { WorkspaceFileRow } from "./WorkspaceFileRow";
 import type { ProjectControllerApi } from "../pages/useProjectController";
 import type { FileSummary } from "../tauri/projectTypes";
-import { formatProjectFileType, formatWorkspaceFileTime } from "../utils/projectFileDisplay";
+import { formatProjectFileType, formatProjectHubMetadataLine, formatWorkspaceFileTime } from "../utils/projectFileDisplay";
 import { findDuplicateProjectNames, suggestUniqueProjectName } from "../utils/projectDuplicateName";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
 const HUB_ICON_BTN =
-  "flex h-7 w-7 shrink-0 items-center justify-center rounded-sm border-0 bg-transparent text-notion-text-light opacity-0 transition-[color,background-color,opacity] hover:opacity-100 hover:bg-notion-sidebar-hover hover:text-notion-text group-hover/header:opacity-100 disabled:cursor-not-allowed disabled:opacity-40";
+  "flex h-7 w-7 shrink-0 items-center justify-center rounded-sm border-0 bg-transparent text-notion-text-light transition-[color,background-color] hover:bg-notion-sidebar-hover hover:text-notion-text disabled:cursor-not-allowed disabled:opacity-40";
 
 const HUB_FILE_ACTION_BTN =
   "flex h-7 w-7 shrink-0 items-center justify-center rounded-sm border-0 bg-transparent text-notion-text-light opacity-0 transition-[color,background-color,opacity] group-hover:opacity-100 group-focus-visible:opacity-100 hover:bg-notion-sidebar-hover hover:text-notion-text disabled:opacity-40";
@@ -28,6 +28,15 @@ export function ProjectFilesHubPanel({ controller: c }: { controller: ProjectCon
     [c.current?.files],
   );
   const projectName = c.current?.name ?? "当前项目";
+  const projectMetadataLine = useMemo(
+    () =>
+      formatProjectHubMetadataLine({
+        recorded_at: c.current?.recorded_at,
+        subject: c.current?.subject,
+        narrator: c.current?.narrator,
+      }),
+    [c.current?.recorded_at, c.current?.subject, c.current?.narrator],
+  );
   const busy = c.busy;
   const projectId = c.current?.id;
   const renameDuplicates = useMemo(
@@ -108,22 +117,21 @@ export function ProjectFilesHubPanel({ controller: c }: { controller: ProjectCon
                 </div>
               </form>
             ) : (
-              <div className="relative flex min-h-10 items-center group/header">
-                <div className="min-w-0 flex-1 pr-[5.5rem]">
+              <div className="relative flex items-start">
+                <div className="min-w-0 flex-1 pr-16">
                   <h1 className="truncate text-[28px] font-semibold leading-[1.25] tracking-[-0.015em] text-notion-text">
                     {projectName}
                   </h1>
+                  {projectMetadataLine ? (
+                    <p
+                      className={`mt-1 truncate ${PANEL_TYPOGRAPHY.meta} text-notion-text-muted`}
+                      title={projectMetadataLine}
+                    >
+                      {projectMetadataLine}
+                    </p>
+                  ) : null}
                 </div>
-                <div className="absolute right-0 top-1/2 flex -translate-y-1/2 shrink-0 items-center gap-1">
-                  <button
-                    type="button"
-                    className={HUB_ICON_BTN}
-                    disabled={busy}
-                    aria-label="编辑项目名称"
-                    onClick={() => c.beginRenameProject(projectName)}
-                  >
-                    <Pencil className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-                  </button>
+                <div className="absolute right-0 top-0 flex shrink-0 items-center gap-1">
                   <button
                     type="button"
                     className={HUB_ICON_BTN}
@@ -131,7 +139,11 @@ export function ProjectFilesHubPanel({ controller: c }: { controller: ProjectCon
                     aria-label="项目信息"
                     onClick={() => c.openProjectMetadataDialog()}
                   >
-                    <Info className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+                    <NotebookText
+                      className={LUCIDE_ICON_SIZE_MD}
+                      strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
+                      aria-hidden
+                    />
                   </button>
                   {projectId ? (
                     <button

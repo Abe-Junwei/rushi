@@ -35,3 +35,34 @@ describe("projectRunTranscribe", () => {
     });
   });
 });
+
+describe("updateProjectMetadata", () => {
+  beforeEach(() => {
+    invokeMock.mockReset();
+    invokeMock.mockResolvedValue({
+      id: "proj-1",
+      name: "场次",
+      files: [],
+      created_at_ms: 0,
+      updated_at_ms: 1,
+      recorded_at: "2024-03",
+    });
+  });
+
+  it("passes recordedAt in camelCase for Tauri IPC", async () => {
+    const { updateProjectMetadata } = await import("./projectApi");
+    await updateProjectMetadata("proj-1", {
+      narrator: "张三",
+      recorded_at: "2024-03",
+      location: "北京",
+    });
+    expect(invokeMock).toHaveBeenCalledWith("update_project_metadata", {
+      projectId: "proj-1",
+      narrator: "张三",
+      recordedAt: "2024-03",
+      location: "北京",
+      subject: null,
+      transcriber: null,
+    });
+  });
+});

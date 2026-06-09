@@ -1,6 +1,6 @@
 # 桌面端：项目 / 文件生命周期与 Close Gate
 
-> 状态：2026-06-06（Round 1–5 + Phase 6 签收 ✅ · [`project-import-deduplication-acceptance.md`](../execution/specs/project-import-deduplication-acceptance.md)）
+> 状态：2026-06-08（Round 1–5 + Phase 6 签收 ✅ + Phase 10 项目 Hub 元信息 ✅ · [`project-hub-metadata-acceptance.md`](../execution/specs/project-hub-metadata-acceptance.md)）
 
 ## 状态机（摘要）
 
@@ -60,6 +60,21 @@ FileHub / Editor → closeProject → Welcome
 - 删除：`DeleteProjectFileConfirmDialog` → `delete_file`（事务 + 清理音频副本）
 - 控制器：`useProjectFileMutationController`
 
+## 项目 Hub CRUD 与元信息（Phase 10）
+
+| 动作 | 入口 | 行为 |
+|------|------|------|
+| 编辑 → 文件 Hub | 顶栏「文件」、面包屑项目名、`⌘⇧E` | `closeFile`（经 Close Gate）→ `currentFileId === null` |
+| 项目信息 | Hub header | `ProjectMetadataDialog` → `update_project_metadata` → `refreshProjectHub` |
+| 重命名项目 | Hub header inline | `rename_project`；重名软提示，可继续 |
+| 删除项目 | Hub header / Welcome 侧栏 | `DeleteProjectConfirmDialog` → `delete_project`；删当前项目 → Welcome |
+| 创建项目 | Welcome / 侧栏 | `CreateProjectModal`；重名软提示；成功后可选填元信息 |
+
+- 控制器：`useProjectMutationController`
+- Rust：`project_metadata_cmd.rs`（`rename_project`、`update_project_metadata`）
+- DB：`projects` 表 P0 五列（`narrator`、`recorded_at`、`location`、`subject`、`transcriber`）
+- DOCX 导出：封面抬头读取上述字段（见 `buildDocxExportMetaLine`）
+
 ## 未保存可见性
 
 - 编辑器面包屑：saffron ●（`hasUnsavedFileEdits`）
@@ -73,4 +88,5 @@ FileHub / Editor → closeProject → Welcome
 | 脏检测 | `apps/desktop/src/pages/useSegmentDirtyState.ts` |
 | 导入去重 | `apps/desktop/src/pages/useProjectImportDuplicateController.ts` |
 | Hub 变更 | `apps/desktop/src/pages/useProjectFileMutationController.ts` |
+| 项目 CRUD / 元信息 | `apps/desktop/src/pages/useProjectMutationController.ts` |
 | Rust 去重 | `apps/desktop/src-tauri/src/project/import_duplicate.rs` |

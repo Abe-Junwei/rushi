@@ -1,7 +1,9 @@
 # Phase 10：项目 Hub 导航 + 项目管理与场次元信息
 
 > **Research**：[project-hub-metadata-research.md](./project-hub-metadata-research.md)  
-> **状态**：编码中（2026-06-06）
+> **Plan**：[project-hub-metadata-plan.md](./project-hub-metadata-plan.md)  
+> **Acceptance**：[project-hub-metadata-acceptance.md](./project-hub-metadata-acceptance.md)  
+> **状态**：签收完成 ✅（2026-06-08）
 
 ## 意图
 
