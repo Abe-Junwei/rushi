@@ -335,7 +335,7 @@ R4 + R4-GATE ✅ → R9   ← **下一主序**
 | 序 | ID | 状态 | 预估 | 交付摘要 | 规格真源 |
 |----|-----|------|------|----------|----------|
 | — | R3a/b/c | ✅ | — | keychain、profile、缓存/manifest | 各 acceptance |
-| **①** | **R3h-0** | 🟡 **mac ✅** / **Win ⏳** | 2–3d | 编码 + mac 机器闸门 ✅（2026-06-06）；待 Windows 构建 smoke + 磁盘手测 | [r3h-0 acceptance](../specs/r3h-0-asr-sidecar-build-smoke-acceptance.md) · [remediation §5 Phase 0](../specs/rushi-local-runtime-catalog-remediation-plan.md) |
+| **①** | **R3h-0** | ✅ **mac** / Win §4 豁免 | 2–3d | mac 机器闸门 ✅（2026-06-06 · 复验 2026-06-08）；Win 有 Win 机时补 §4 | [r3h-0 acceptance](../specs/r3h-0-asr-sidecar-build-smoke-acceptance.md) · [signoff](../specs/r3h-0-phase-signoff-2026-06.md) |
 | **②** | **R3h-1** | 🟡 **编码✅** / **发行⏳** | 5–7d | 编码：`local_runtime/`、signed manifest、pinned key、**install 事务回滚**、**手动恢复 previous**。**非**自动升级健康回滚（→ R3h-2/I2）。发行门禁 remediation **§11** 未全绿 | remediation §5 Phase 1 + §11、§3.7、路线图 §4.1.5.1 |
 | **③** | **R3f** | 🟡 | 2–3d | 诊断 + 一键准备 + 8741 冲突；已接入 R3h-1 最小闭环，**须在 ①② 发行级补齐后手测** | [`r3f-asr-setup-wizard-acceptance.md`](../specs/r3f-asr-setup-wizard-acceptance.md) |
 | **④** | **R3e-A** | 🟡 | 2–3d | 动态超时 + 失败分类（已编码；50min 手测待签收） | [`r3e-long-audio-transcribe-acceptance.md`](../specs/r3e-long-audio-transcribe-acceptance.md) |
@@ -1213,7 +1213,7 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 |------|--------|------|
 | R3t-A 手测未签即开 R3t-B | — | ✅ 2026-05-30 已签 |
 | **R3e-C 手测滞后** | — | ✅ 2026-05-31 已签 |
-| **R3h-0 跨平台 smoke 未闭环** | **高** | **阻塞 R3f 手测与发行**；Win/mac 优先 |
+| **R3h-0 跨平台 smoke 未闭环** | **中** | Win §4 backlog；**mac ✅ 不挡 R3f**；CI Win 构建仍覆盖 smoke |
 | R3f / R3h-0 手测滞后 | 高 | R3e-C ✅；**R3h-0** 仍阻塞 R3f |
 | **R3 工期低估** | 中 | §4.0 **~12～15w**（2026-06-02）；⑤″f **4–6w** 含 MEM |
 | **Qwen3 伪流式**（chunk 无跨段上下文） | 中 | **⑤″f-E** spike **G4 加严**；20min Job 手测 |

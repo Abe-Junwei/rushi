@@ -1,6 +1,6 @@
 # Agent instructions (Rushi)
 
-**先读**：[`AI_QUICKSTART.md`](./AI_QUICKSTART.md) — 项目结构、当前热点、任务路由、典型模式；桌面端做 UI / 重设计时再读仓库根 [`DESIGN.md`](./DESIGN.md)（与 Google Stitch 的 DESIGN.md 约定一致）。
+**先读**：[`AI_QUICKSTART.md`](./AI_QUICKSTART.md) — 项目结构、当前热点、任务路由、典型模式；[`CONTEXT.md`](./CONTEXT.md) — 领域词汇表（对话与命名与此一致）；桌面端做 UI / 重设计时再读仓库根 [`DESIGN.md`](./DESIGN.md)（与 Google Stitch 的 DESIGN.md 约定一致）。
 
 ## 通用执行纪律
 
@@ -13,7 +13,7 @@
 
 ## 工作流四阶段
 
-1. **Explore**：读相关 `src/` + `docs/architecture/` + `docs/adr/`，产出"已读清单"
+1. **Explore**：读 [`CONTEXT.md`](./CONTEXT.md) + 相关 `src/` + `docs/architecture/` + `docs/adr/`，产出"已读清单"
 2. **Research**（**新功能 / 路线图薄片 / 中等及以上复杂度**）：对照业内 ≥2 条成熟路线，写 `docs/execution/specs/*-research.md`（模板 [`research-brief-template.md`](./docs/execution/specs/research-brief-template.md)），评估可复用度与「不做什么」；**未完成不得进入 Plan 定稿与业务编码**。细则：`.cursor/rules/feature-research-gate.mdc`；范例：[`r3-provider-configuration-research.md`](./docs/execution/specs/r3-provider-configuration-research.md)
 3. **Plan**：产出落位文件 + 验证方式；**顶部链接 research brief**；确认后再实施
 4. **Implement**：逐步验证（typecheck → 定向 test → 架构守卫）
@@ -50,8 +50,21 @@
 npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs
 ```
 
+## Agent skills
+
+项目技能在 [`.cursor/skills/`](./.cursor/skills/)（须**用户手动触发**）。索引：[`docs/agents/skills.md`](./docs/agents/skills.md)
+
+| 场景 | 技能 |
+|------|------|
+| 中等以上功能 / 架构改动前对齐 | `grill-with-docs` |
+| 难 bug / flaky / 侧车异常 | `diagnose` |
+| 周期性架构体检 / guard hotspot | `improve-architecture` |
+
+领域文档布局与 `CONTEXT.md` 消费规则：[`docs/agents/domain.md`](./docs/agents/domain.md)。工作追踪（spec 非 Issues）：[`docs/agents/issue-tracker.md`](./docs/agents/issue-tracker.md)。
+
 ## 文档与真源
 
+- **领域词汇**：[`CONTEXT.md`](./CONTEXT.md)（glossary only；实现见 architecture）
 - Rushi 内架构说明：`docs/architecture/`（索引见 [`docs/architecture/README.md`](./docs/architecture/README.md)）
 - ADR：`docs/adr/`（索引见 [`docs/adr/README.md`](./docs/adr/README.md)）
 - 桌面端产品视觉说明（Stitch / Agent 可读）：仓库根 [`DESIGN.md`](./DESIGN.md)

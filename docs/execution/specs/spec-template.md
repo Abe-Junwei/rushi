@@ -38,3 +38,23 @@
 | | | | |
 
 至少 **2 组** 可能矛盾的手测场景须在 acceptance 正文中列出（如「D1≠D2」「D4 与 D5 不一致」）。
+
+## TDD（Implement 阶段，service / controller / Rust 边界 **推荐**）
+
+> 源自 [mattpocock/skills `tdd`](https://github.com/mattpocock/skills)；术语对齐 [`CONTEXT.md`](../../../CONTEXT.md)。
+
+**禁止 horizontal slice**（先写完全部测试再写全部实现）。必须 **vertical tracer bullet**：
+
+```text
+RED → GREEN → RED → GREEN → … → Refactor
+```
+
+每个循环：
+
+- [ ] 一个测试只验证一种**可观察行为**（非实现细节）
+- [ ] 只通过**公开 interface**（service 导出、Tauri command、HTTP API）
+- [ ] 测试名使用 `CONTEXT.md` 词汇
+- [ ] 实现代码仅够当前测试通过；不 speculative
+- [ ] Refactor 仅在 GREEN 后进行
+
+验收时在 acceptance 正文列出本薄片的关键测试文件路径（如 `*.test.ts`、`cargo test` 名）。

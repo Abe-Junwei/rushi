@@ -9,6 +9,8 @@
 
 本仓 ADR 索引见 [`../adr/README.md`](../adr/README.md)。
 
+**领域词汇表**：[`../../CONTEXT.md`](../../CONTEXT.md)（Agent 命名与对话真源；细节见下表 architecture 文档）。
+
 ## 本仓独立架构说明
 
 - [`desktop-waveform-engine.md`](./desktop-waveform-engine.md) — 桌面端波形引擎真源（WaveSurfer-only；**Canvas 语段 bands + DOM interaction**，2026-05-30）。

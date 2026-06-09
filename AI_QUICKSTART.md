@@ -16,6 +16,8 @@
 | `docs/architecture/` | 架构真源 |
 | `docs/adr/` | 架构决策记录 |
 | `docs/execution/specs/` | 非 trivial feature 三件套 |
+| 仓库根 `CONTEXT.md` | 领域词汇表（Agent 对话与命名真源） |
+| `.cursor/skills/` | 手动触发的 Agent 技能（见 `docs/agents/skills.md`） |
 
 ## 当前热点（自动同步，2026-06-08）
 
@@ -47,7 +49,9 @@
 | **波形区 Stitch 精修** | [`apps/desktop/docs/stitch-waveform-polish-spec.md`](./apps/desktop/docs/stitch-waveform-polish-spec.md) + [`stitch-waveform-polish-layout.html`](./apps/desktop/stitch-waveform-polish-layout.html) → `bash scripts/prepare-stitch-upload.sh` |
 | 浮动确认/表单对话框 | `FloatingPanelTemplate` + `preset="compactDialog"`；`controlStyles.ts` 按钮；见 [`docs/architecture/desktop-floating-dialog-panels.md`](./docs/architecture/desktop-floating-dialog-panels.md) |
 | **后续排期 / 下一刀** | [`rushi-execution-roadmap.md`](./docs/execution/plans/rushi-execution-roadmap.md) §10；**当前**：**R3f 手测** / **Project Hub**；**v1 后**：LLM-LOC（4b No-Go） |
-| **新功能 / 路线图薄片** | **先调研后编码**：`.cursor/rules/feature-research-gate.mdc` + `docs/execution/specs/*-research.md`；范例 [`r3-provider-configuration-research.md`](./docs/execution/specs/r3-provider-configuration-research.md) |
+| **新功能 / 路线图薄片** | 可选先 **`grill-with-docs`** → **先调研后编码**：`.cursor/rules/feature-research-gate.mdc` + `docs/execution/specs/*-research.md`；范例 [`r3-provider-configuration-research.md`](./docs/execution/specs/r3-provider-configuration-research.md) |
+| **难 bug / 侧车 / flaky** | `.cursor/skills/diagnose` 或对话中说「按 diagnose 查」 |
+| **架构 hotspot / 定期体检** | `.cursor/skills/improve-architecture`；配合 `check-architecture-guard.mjs` |
 | 单人 UI 重设计迭代（已验收） | `docs/execution/specs/ui-redesign-parallel-dev.md` + `bash scripts/prepare-stitch-upload.sh` |
 | 更换或更新 `DESIGN.md` 基底 | 仓库根执行 `npm run design:add -- <站点>`（站点名见 [awesome-design-md](https://github.com/VoltAgent/awesome-design-md) / [getdesign.md](https://getdesign.md/)，例：`npm run design:add -- cal`） |
 | 导出格式 | `src/services/exportFormatters.ts` |
