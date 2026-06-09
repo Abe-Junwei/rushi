@@ -1,30 +1,18 @@
-import { useCallback, useRef } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
-import { createSegmentUid, mergeTwoSegments, reindexSegments } from "./segmentListHelpers";
-import { newUserCreatedSegment } from "../services/segmentTextStage";
 import { withAiRevisedStage } from "../services/segmentStagePersist";
 import { segmentDraftStore } from "../hooks/useSegmentDraftStore";
 import { flushSegmentTextDrafts as flushSegmentTextDraftsImpl } from "./flushSegmentTextDrafts";
 import {
-  describeCreateRangePolicyFailure,
-  resolveCreateRangeForPolicy,
-  type SegmentOverlapPolicy,
-} from "../utils/segmentTimeRange";
-import {
   clampSegmentBoundsToNeighbors,
-  findSegmentInsertIndexByStart,
-  resolveInsertAfterSpan,
   segmentBoundsMeetMinSpan,
   SEGMENT_BOUNDS_LIVE_MIN_SPAN_SEC,
 } from "../utils/segmentGapPolicy";
-import {
-  clampSegmentTimeBounds,
-  selectPackableSegments,
-  WAVEFORM_SEGMENT_MIN_SPAN_SEC,
-} from "../utils/waveformSegmentBounds";
-import { mergeSegmentRangeFold, resolveSelectedIdxAfterIndexRemoval } from "../utils/segmentSelection";
+import { WAVEFORM_SEGMENT_MIN_SPAN_SEC } from "../utils/waveformSegmentBounds";
 import { useSegmentSplitController } from "./useSegmentSplitController";
 import { useSegmentUndoRedo } from "./useSegmentUndoRedo";
+import { createSegmentMergeDeleteActions } from "./segmentMutationMergeDelete";
+import { createSegmentInsertActions } from "./segmentMutationInsert";
 
 function roundSec3(x: number): number {
   return Math.round(x * 1000) / 1000;
@@ -52,7 +40,7 @@ export interface SegmentMutationApi {
     startSec: number,
     endSec: number,
     mediaDurationSec?: number,
-    policy?: SegmentOverlapPolicy,
+    policy?: import("../utils/segmentTimeRange").SegmentOverlapPolicy,
   ) => void;
   flushSegmentTextDrafts: () => void;
   resetMutationHistory: () => void;
@@ -110,6 +98,54 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
     redoStackPop();
     segmentDraftStore.discardEditingSession();
   }, [busy, flushSegmentTextDrafts, redoStackPop]);
+
+  const mergeDelete = useMemo(
+    () =>
+      createSegmentMergeDeleteActions({
+        segmentsRef,
+        setSegments,
+        selectedIdxRef,
+        setSelectedIdx,
+        setError,
+        pushUndo,
+        flushSegmentTextDrafts,
+        onSelectionCollapsed,
+      }),
+    [
+      segmentsRef,
+      setSegments,
+      selectedIdxRef,
+      setSelectedIdx,
+      setError,
+      pushUndo,
+      flushSegmentTextDrafts,
+      onSelectionCollapsed,
+    ],
+  );
+
+  const insertActions = useMemo(
+    () =>
+      createSegmentInsertActions({
+        busy,
+        segmentsRef,
+        setSegments,
+        setSelectedIdx,
+        setError,
+        pushUndo,
+        flushSegmentTextDrafts,
+        onSelectionCollapsed,
+      }),
+    [
+      busy,
+      segmentsRef,
+      setSegments,
+      setSelectedIdx,
+      setError,
+      pushUndo,
+      flushSegmentTextDrafts,
+      onSelectionCollapsed,
+    ],
+  );
 
   const splits = useSegmentSplitController({
     segmentsRef,
@@ -197,254 +233,6 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
     [segmentsRef, setSegments, pushUndo],
   );
 
-  const mergeWithPrevAt = useCallback(
-    (idx: number) => {
-      if (idx <= 0) return;
-      flushSegmentTextDrafts();
-      const segs = segmentsRef.current;
-      const a = segs[idx - 1];
-      const b = segs[idx];
-      if (!a || !b) return;
-      pushUndo();
-      const merged = mergeTwoSegments(a, b);
-      setSegments((p) => {
-        const out = [...p];
-        out.splice(idx - 1, 2, merged);
-        return reindexSegments(out);
-      });
-      setSelectedIdx(idx - 1);
-      onSelectionCollapsed?.(idx - 1);
-    },
-    [flushSegmentTextDrafts, onSelectionCollapsed, segmentsRef, setSegments, setSelectedIdx, pushUndo],
-  );
-
-  const mergeWithNextAt = useCallback(
-    (idx: number) => {
-      flushSegmentTextDrafts();
-      const segs = segmentsRef.current;
-      if (idx >= segs.length - 1) return;
-      const a = segs[idx];
-      const b = segs[idx + 1];
-      if (!a || !b) return;
-      pushUndo();
-      const merged = mergeTwoSegments(a, b);
-      setSegments((p) => {
-        const out = [...p];
-        out.splice(idx, 2, merged);
-        return reindexSegments(out);
-      });
-      setSelectedIdx(idx);
-      onSelectionCollapsed?.(idx);
-    },
-    [flushSegmentTextDrafts, onSelectionCollapsed, segmentsRef, setSegments, setSelectedIdx, pushUndo],
-  );
-
-  const mergeWithPrev = (selectedIdx: number) => mergeWithPrevAt(selectedIdx);
-  const mergeWithNext = (selectedIdx: number) => mergeWithNextAt(selectedIdx);
-
-  const mergeSegmentRange = useCallback(
-    (lo: number, hi: number) => {
-      flushSegmentTextDrafts();
-      const segs = segmentsRef.current;
-      if (lo < 0 || hi >= segs.length || lo >= hi) return;
-      pushUndo();
-      const merged = mergeSegmentRangeFold(segs, lo, hi);
-      setSegments((prev) => {
-        const out = [...prev.slice(0, lo), merged, ...prev.slice(hi + 1)];
-        return reindexSegments(out);
-      });
-      setSelectedIdx(lo);
-      onSelectionCollapsed?.(lo);
-    },
-    [flushSegmentTextDrafts, onSelectionCollapsed, pushUndo, segmentsRef, setSegments, setSelectedIdx],
-  );
-
-  const deleteSegmentAt = useCallback(
-    (idx: number) => {
-      flushSegmentTextDrafts();
-      const segs = segmentsRef.current;
-      if (idx < 0 || idx >= segs.length) return;
-      setError("");
-      pushUndo();
-      setSegments((prev) => reindexSegments(prev.filter((_, j) => j !== idx)));
-      const nextLen = segs.length - 1;
-      const prevSelected = selectedIdxRef.current;
-      let nextSelected = prevSelected;
-      if (nextLen <= 0) nextSelected = 0;
-      else {
-        if (idx < prevSelected) nextSelected = prevSelected - 1;
-        else if (idx === prevSelected) nextSelected = Math.min(prevSelected, nextLen - 1);
-        nextSelected = Math.max(0, Math.min(nextSelected, nextLen - 1));
-      }
-      setSelectedIdx(nextSelected);
-      onSelectionCollapsed?.(nextSelected);
-    },
-    [flushSegmentTextDrafts, onSelectionCollapsed, pushUndo, segmentsRef, selectedIdxRef, setError, setSegments, setSelectedIdx],
-  );
-
-  const deleteSegmentRange = useCallback(
-    (lo: number, hi: number) => {
-      flushSegmentTextDrafts();
-      const segs = segmentsRef.current;
-      if (lo < 0 || hi >= segs.length || lo > hi) return;
-      setError("");
-      pushUndo();
-      const prevSelected = selectedIdxRef.current;
-      const nextLen = segs.length - (hi - lo + 1);
-      let nextSelected = prevSelected;
-      if (nextLen <= 0) nextSelected = 0;
-      else if (hi < prevSelected) nextSelected = prevSelected - (hi - lo + 1);
-      else if (lo <= prevSelected && prevSelected <= hi) nextSelected = Math.min(lo, nextLen - 1);
-      nextSelected = Math.max(0, Math.min(nextSelected, nextLen - 1));
-      setSegments((prev) => reindexSegments(prev.filter((_, j) => j < lo || j > hi)));
-      setSelectedIdx(nextSelected);
-      onSelectionCollapsed?.(nextSelected);
-    },
-    [flushSegmentTextDrafts, onSelectionCollapsed, pushUndo, segmentsRef, selectedIdxRef, setError, setSegments, setSelectedIdx],
-  );
-
-  const deleteSegmentIndices = useCallback(
-    (rawIndices: number[]) => {
-      flushSegmentTextDrafts();
-      const segs = segmentsRef.current;
-      const indices = [...new Set(rawIndices)]
-        .filter((idx) => idx >= 0 && idx < segs.length)
-        .sort((a, b) => b - a);
-      if (indices.length === 0) return;
-      if (indices.length === 1) {
-        const idx = indices[0];
-        if (idx !== undefined) deleteSegmentAt(idx);
-        return;
-      }
-      setError("");
-      pushUndo();
-      const remove = new Set(indices);
-      const prevSelected = selectedIdxRef.current;
-      const nextLen = segs.length - indices.length;
-      const nextSelected = resolveSelectedIdxAfterIndexRemoval(segs.length, indices, prevSelected);
-      setSegments((prev) => reindexSegments(prev.filter((_, j) => !remove.has(j))));
-      setSelectedIdx(Math.max(0, Math.min(nextSelected, nextLen - 1)));
-      onSelectionCollapsed?.(Math.max(0, Math.min(nextSelected, nextLen - 1)));
-    },
-    [
-      deleteSegmentAt,
-      flushSegmentTextDrafts,
-      onSelectionCollapsed,
-      pushUndo,
-      segmentsRef,
-      selectedIdxRef,
-      setError,
-      setSegments,
-      setSelectedIdx,
-    ],
-  );
-
-  const insertSegmentAfter = useCallback(
-    (idx: number, mediaDurationSec = 0) => {
-      flushSegmentTextDrafts();
-      const segs = segmentsRef.current;
-      if (idx < 0 || idx >= segs.length) return;
-      const a = segs[idx];
-      const b = segs[idx + 1];
-      if (!a) return;
-      const span = resolveInsertAfterSpan({
-        prevEndSec: a.end_sec,
-        nextStartSec: b?.start_sec,
-        mediaDurationSec: mediaDurationSec > 0 ? mediaDurationSec : undefined,
-      });
-      if (!span.ok) {
-        setError(
-          span.reason === "gap-too-small"
-            ? "与下一条无足够间隙：请在波形区拖动语段边界留出空档后再插入。"
-            : "无法插入：时间范围无效。",
-        );
-        return;
-      }
-      const { startSec, endSec } = span;
-      setError("");
-      pushUndo();
-      const newSeg: SegmentDto = newUserCreatedSegment({
-        uid: createSegmentUid(),
-        idx: 0,
-        start_sec: startSec,
-        end_sec: endSec,
-        text: "",
-        confidence: null,
-        low_confidence: false,
-        detail: null,
-        kind: "speech",
-      });
-      setSegments((prev) => {
-        const out = [...prev.slice(0, idx + 1), newSeg, ...prev.slice(idx + 1)];
-        return reindexSegments(out);
-      });
-      const nextIdx = idx + 1;
-      setSelectedIdx(nextIdx);
-      onSelectionCollapsed?.(nextIdx);
-    },
-    [flushSegmentTextDrafts, onSelectionCollapsed, segmentsRef, setSegments, setSelectedIdx, setError, pushUndo],
-  );
-
-  const insertSegmentFromTimeRange = useCallback(
-    (
-      startSec: number,
-      endSec: number,
-      mediaDurationSec = 0,
-      policy: SegmentOverlapPolicy = "trim",
-    ) => {
-      if (busy) return;
-      flushSegmentTextDrafts();
-      let lo = roundSec3(Math.min(startSec, endSec));
-      let hi = roundSec3(Math.max(startSec, endSec));
-      if (mediaDurationSec > 0) {
-        ({ startSec: lo, endSec: hi } = clampSegmentTimeBounds(lo, hi, mediaDurationSec));
-      }
-      if (hi - lo < WAVEFORM_SEGMENT_MIN_SPAN_SEC) {
-        setError(mediaDurationSec > 0 && hi <= lo ? "选区超出媒体时长。" : "选区过短。");
-        return;
-      }
-      const segs = segmentsRef.current;
-      // 重叠检测必须只看「波形上真实可见」的语段：整轨占位语段（dominant span）不渲染，
-      // 走同一个 selectPackableSegments 真源，确保与 overlay / lane / 命中测试判定一致，
-      // 否则空白区域会永远误报「选区与已有语段重叠」。
-      const overlapSegs = selectPackableSegments(segs, mediaDurationSec);
-      const clamped = resolveCreateRangeForPolicy(overlapSegs, lo, hi, policy);
-      if (!clamped) {
-        setError(describeCreateRangePolicyFailure(policy, lo, hi, overlapSegs));
-        return;
-      }
-      let { startSec: fitLo, endSec: fitHi } = clamped;
-      if (mediaDurationSec > 0) {
-        ({ startSec: fitLo, endSec: fitHi } = clampSegmentTimeBounds(fitLo, fitHi, mediaDurationSec));
-        if (fitHi - fitLo < WAVEFORM_SEGMENT_MIN_SPAN_SEC) {
-          setError("选区超出媒体时长。");
-          return;
-        }
-      }
-      setError("");
-      pushUndo();
-      const insertAt = findSegmentInsertIndexByStart(segs, fitLo);
-      const newSeg: SegmentDto = newUserCreatedSegment({
-        uid: createSegmentUid(),
-        idx: 0,
-        start_sec: fitLo,
-        end_sec: fitHi,
-        text: "",
-        confidence: null,
-        low_confidence: false,
-        detail: null,
-        kind: "speech",
-      });
-      setSegments((prev) => {
-        const out = [...prev.slice(0, insertAt), newSeg, ...prev.slice(insertAt)];
-        return reindexSegments(out);
-      });
-      setSelectedIdx(insertAt);
-      onSelectionCollapsed?.(insertAt);
-    },
-    [busy, flushSegmentTextDrafts, onSelectionCollapsed, segmentsRef, setSegments, setSelectedIdx, setError, pushUndo],
-  );
-
   return {
     pushUndo,
     undo,
@@ -454,16 +242,16 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
     updateSegmentBounds,
     splitAtSelection: splits.splitAtSelection,
     splitAtPlayhead: splits.splitAtPlayhead,
-    mergeWithPrev,
-    mergeWithNext,
-    mergeWithPrevAt,
-    mergeWithNextAt,
-    mergeSegmentRange,
-    deleteSegmentAt,
-    deleteSegmentRange,
-    deleteSegmentIndices,
-    insertSegmentAfter,
-    insertSegmentFromTimeRange,
+    mergeWithPrev: mergeDelete.mergeWithPrev,
+    mergeWithNext: mergeDelete.mergeWithNext,
+    mergeWithPrevAt: mergeDelete.mergeWithPrevAt,
+    mergeWithNextAt: mergeDelete.mergeWithNextAt,
+    mergeSegmentRange: mergeDelete.mergeSegmentRange,
+    deleteSegmentAt: mergeDelete.deleteSegmentAt,
+    deleteSegmentRange: mergeDelete.deleteSegmentRange,
+    deleteSegmentIndices: mergeDelete.deleteSegmentIndices,
+    insertSegmentAfter: insertActions.insertSegmentAfter,
+    insertSegmentFromTimeRange: insertActions.insertSegmentFromTimeRange,
     flushSegmentTextDrafts,
     resetMutationHistory: undoRedo.reset,
   };

@@ -1,39 +1,24 @@
 import { useCallback, useRef, type PointerEvent as ReactPointerEvent } from "react";
-import type { SegmentDto } from "../tauri/projectApi";
 import {
-  clampSegmentTimeBounds,
   hitSegmentEdgeFromTimelinePointer,
   resolveSegmentIndexAtWaveformPointer,
-  selectPackableSegmentIndices,
-  WAVEFORM_SEGMENT_MIN_SPAN_SEC,
 } from "../utils/waveformSegmentBounds";
-import {
-  finalizeSegmentOverlayBounds,
-  SEGMENT_BOUNDS_LIVE_MIN_SPAN_SEC,
-} from "../utils/segmentGapPolicy";
 import {
   isSegmentSnapEnabled,
   readSegmentOverlayModifiers,
-  resolveCreateOverlapPolicy,
 } from "../utils/segmentOverlayModifiers";
-import {
-  collectSegmentSnapTargets,
-  resolveSnapThresholdSec,
-  snapSegmentRange,
-} from "../utils/segmentTimeSnap";
-import type { SegmentOverlapPolicy } from "../utils/segmentTimeRange";
-import { computeSegmentLassoOutcome } from "../utils/segmentSelection";
-import { applyOverlayPointerUpIntent, type OverlayPointerActions } from "../utils/waveformSegmentOverlayActions";
-import {
-  boundsForOverlayDrag,
-  type CreateRangePreview,
-  type OverlayDragState,
-  type SegmentOverlayDraft,
-} from "../utils/waveformSegmentOverlayGeometry";
+import type { CreateRangePreview, OverlayDragState, SegmentOverlayDraft } from "../utils/waveformSegmentOverlayGeometry";
 import {
   resolveBlankOverlayShellDragMode,
-  resolveOverlayPointerUpIntent,
 } from "../utils/waveformSegmentOverlayGestures";
+import {
+  finalizeEditDragBounds,
+  finishWaveformEditDrag,
+  finishWaveformLassoDrag,
+  SEGMENT_BOUNDS_LIVE_MIN_SPAN_SEC,
+  snapCreateRange,
+} from "./waveformSegmentDragHelpers";
+import { boundsForOverlayDrag } from "../utils/waveformSegmentOverlayGeometry";
 
 export const WAVEFORM_OVERLAY_SUPPRESS_CLICK_MS = 250;
 /** Pointer move beyond this (px) counts as drag, not tap — stable across zoom levels. */
@@ -41,7 +26,7 @@ export const WAVEFORM_OVERLAY_DRAG_MOVE_THRESHOLD_PX = 4;
 
 export type WaveformSegmentDragArgs = {
   disabled: boolean;
-  segments: SegmentDto[];
+  segments: import("../tauri/projectApi").SegmentDto[];
   selectedIdx: number;
   timelineWidthPx: number;
   durationSec: number;
@@ -60,85 +45,13 @@ export type WaveformSegmentDragArgs = {
   onCreateRange?: (
     startSec: number,
     endSec: number,
-    options?: { overlapPolicy?: SegmentOverlapPolicy },
+    options?: { overlapPolicy?: import("../utils/segmentTimeRange").SegmentOverlapPolicy },
   ) => void;
   onSelectTimeRange?: (startSec: number, endSec: number) => void;
   seekToTime: (timeSec: number) => void;
   onClearMultiSelection?: () => void;
   isMultiSegmentSelection?: () => boolean;
 };
-
-function overlayPointerActions(
-  a: WaveformSegmentDragArgs,
-  onSegmentPointerTap: (segmentIdx: number, pointerTimeSec: number) => void,
-): OverlayPointerActions {
-  return {
-    onSegmentPointerTap,
-    onBoundsCommit: a.onBoundsCommit,
-    onCreateRange: a.onCreateRange,
-    onSelectTimeRange: a.onSelectTimeRange,
-    onFocusWaveformShell: a.onFocusWaveformShell,
-    seekToTime: a.seekToTime,
-  };
-}
-
-function snapTargetsForOverlay(
-  a: WaveformSegmentDragArgs,
-  excludeSegmentIndex?: number,
-): { targets: number[]; thresholdSec: number } {
-  const { packableIndices } = selectPackableSegmentIndices(a.segments, a.durationSec);
-  const snapSegments = packableIndices
-    .filter((i) => i !== excludeSegmentIndex)
-    .map((i) => a.segments[i])
-    .filter((s): s is SegmentDto => s != null);
-  return {
-    targets: collectSegmentSnapTargets({
-      segments: snapSegments,
-      durationSec: a.durationSec,
-      playheadSec: a.getPlayheadSec?.(),
-    }),
-    thresholdSec: resolveSnapThresholdSec(a.timelineWidthPx, a.durationSec),
-  };
-}
-
-function finalizeEditDragBounds(
-  a: WaveformSegmentDragArgs,
-  drag: OverlayDragState,
-  bounds: { startSec: number; endSec: number },
-  snapEnabled: boolean,
-  minSpanSec: number,
-): { startSec: number; endSec: number } | null {
-  if (drag.mode === "lasso") return null;
-  const { targets, thresholdSec } = snapTargetsForOverlay(a, drag.segmentIdx);
-  const prev = a.segments[drag.segmentIdx - 1];
-  const next = a.segments[drag.segmentIdx + 1];
-  return finalizeSegmentOverlayBounds({
-    bounds,
-    mode: drag.mode,
-    targets,
-    thresholdSec,
-    snapEnabled,
-    durationSec: a.durationSec,
-    neighbors: {
-      prevEndSec: prev?.end_sec,
-      nextStartSec: next?.start_sec,
-    },
-    minSpanSec,
-  });
-}
-
-function snapCreateRange(
-  a: WaveformSegmentDragArgs,
-  lo: number,
-  hi: number,
-  snapEnabled: boolean,
-): { startSec: number; endSec: number } {
-  const { targets, thresholdSec } = snapTargetsForOverlay(a);
-  const snapped = snapEnabled
-    ? snapSegmentRange(lo, hi, targets, thresholdSec)
-    : { startSec: lo, endSec: hi };
-  return clampSegmentTimeBounds(snapped.startSec, snapped.endSec, a.durationSec || hi);
-}
 
 export function useWaveformSegmentDrag(
   argsRef: React.MutableRefObject<WaveformSegmentDragArgs>,
@@ -166,91 +79,29 @@ export function useWaveformSegmentDrag(
       const timeSec = a.clientXToTimeSec(ev.clientX);
 
       if (drag.mode === "lasso") {
-        const lo = Math.min(drag.initialStartSec, timeSec);
-        const hi = Math.max(drag.initialStartSec, timeSec);
         setCreatePreview(null);
         applySegmentDraft(null);
-        if (!drag.moved) {
-          suppressClickAfterPointer();
-          a.onFocusWaveformShell?.();
-          if (a.isMultiSegmentSelection?.()) {
-            a.onClearMultiSelection?.();
-          } else {
-            a.seekToTime(drag.anchorTimeSec);
-          }
-          return;
-        }
-        const baseIndices = drag.baseIndices ?? new Set<number>();
-        const outcome = computeSegmentLassoOutcome(a.segments, lo, hi, a.durationSec, baseIndices);
-        if (outcome.mode === "select" && outcome.indices.size > 0) {
-          suppressClickAfterPointer();
-          a.onSelectSegmentIndices?.(
-            [...outcome.indices].sort((x, y) => x - y),
-            outcome.primaryIdx >= 0 ? outcome.primaryIdx : Math.min(...outcome.indices),
-          );
-          return;
-        }
-        if (Math.abs(hi - lo) >= WAVEFORM_SEGMENT_MIN_SPAN_SEC) {
-          const clamped = snapCreateRange(a, lo, hi, snapEnabled);
-          const overlapPolicy = resolveCreateOverlapPolicy(modifiers);
-          suppressClickAfterPointer();
-          a.onCreateRange?.(clamped.startSec, clamped.endSec, { overlapPolicy });
-        } else {
-          suppressClickAfterPointer();
-          a.onFocusWaveformShell?.();
-          if (a.isMultiSegmentSelection?.()) {
-            a.onClearMultiSelection?.();
-          } else {
-            a.seekToTime(timeSec);
-          }
-        }
+        finishWaveformLassoDrag({
+          drag,
+          timeSec,
+          args: a,
+          snapEnabled,
+          modifiers,
+          suppressClickAfterPointer,
+        });
         return;
       }
 
-      let clamped = boundsForOverlayDrag(drag, timeSec, a.durationSec);
       applySegmentDraft(null);
-      if (!clamped) return;
-
-      const finalized = finalizeEditDragBounds(
-        a,
+      finishWaveformEditDrag({
         drag,
-        clamped,
+        timeSec,
+        args: a,
         snapEnabled,
-        WAVEFORM_SEGMENT_MIN_SPAN_SEC,
-      );
-      if (!finalized) return;
-      clamped = finalized;
-
-      const intent = resolveOverlayPointerUpIntent({
-        mode: drag.mode,
-        moved: drag.moved,
-        segmentIdx: drag.segmentIdx,
-        pointerTimeSec: timeSec,
-        anchorTimeSec: drag.anchorTimeSec,
-        initialStartSec: drag.initialStartSec,
-        initialEndSec: drag.initialEndSec,
-        clampedStartSec: clamped.startSec,
-        clampedEndSec: clamped.endSec,
-      });
-      if (intent.kind === "select-segment") {
-        if (ev.shiftKey) {
-          suppressClickAfterPointer();
-          a.onFocusWaveformShell?.();
-          a.onSelectSegmentAt(intent.segmentIdx, { shiftKey: true });
-          return;
-        }
-        if (ev.metaKey || ev.ctrlKey) {
-          suppressClickAfterPointer();
-          a.onFocusWaveformShell?.();
-          a.onSelectSegmentAt(intent.segmentIdx, { toggle: true });
-          return;
-        }
-      }
-      applyOverlayPointerUpIntent(
-        intent,
-        overlayPointerActions(a, onSegmentPointerTapRef.current),
+        ev,
+        onSegmentPointerTap: onSegmentPointerTapRef.current,
         suppressClickAfterPointer,
-      );
+      });
     },
     [applySegmentDraft, argsRef, setCreatePreview, suppressClickAfterPointer],
   );

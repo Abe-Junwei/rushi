@@ -1,35 +1,9 @@
-import {
-  memo,
-  useCallback,
-  useEffect,
-  useImperativeHandle,
-  useMemo,
-  useRef,
-  useState,
-  type KeyboardEvent,
-  type MouseEvent,
-  type PointerEvent,
-} from "react";
+import { memo, type KeyboardEvent, type MouseEvent } from "react";
 import type { SegmentDto } from "../../tauri/projectApi";
-import {
-  normalizeSegmentDraftText,
-  segmentDraftKey,
-  segmentDraftStore,
-  useSegmentDraft,
-} from "../../hooks/useSegmentDraftStore";
-import { FindReplaceMatchText } from "../FindReplaceMatchText";
-import { isCorrectionRulesPanelOpen } from "../../pages/correctionRulesPanelTypes";
-import { isFindReplacePanelOpen } from "../../pages/findReplaceTypes";
-import { CorrectableMatchText } from "./CorrectableMatchText";
-import {
-  resolveSegmentTextContextMenuAction,
-  type SegmentTextContextMenuSelectionSnapshot,
-} from "../../utils/segmentTextContextMenuSelection";
-import {
-  blurActiveTranscriptTextarea,
-  syncTranscriptTextareaSelection,
-} from "../../utils/transcriptSelection";
 import type { CorrectableSpan } from "../../services/editor/findCorrectableSpans";
+import { FindReplaceMatchText } from "../FindReplaceMatchText";
+import { CorrectableMatchText } from "./CorrectableMatchText";
+import { useSegmentRowTextFieldController } from "../../hooks/useSegmentRowTextFieldController";
 
 /** 正文区 DOM 标记：行级右键（删/并）应跳过此区域，统一走文本外观菜单。 */
 export const SEGMENT_TEXT_BODY_ATTR = "data-seg-text-body";
@@ -55,243 +29,44 @@ interface SegmentRowTextFieldProps {
   onOpenTextContextMenu?: (e: MouseEvent<HTMLElement>, selectionText: string) => void;
 }
 
-function initialTextareaValue(draftKey: string, committedText: string): string {
-  return segmentDraftStore.getDraft(draftKey) ?? committedText;
-}
+export const SegmentRowTextField = memo(function SegmentRowTextField(props: SegmentRowTextFieldProps) {
+  const {
+    selected,
+    busy,
+    textStyle,
+    selectSegmentAt: _selectSegmentAt,
+    ...controllerArgs
+  } = props;
 
-export const SegmentRowTextField = memo(function SegmentRowTextField({
-  segment: s,
-  index: i,
-  selected,
-  busy,
-  segmentRowHeightPx,
-  textStyle,
-  focusOnSelectRef,
-  editorRef,
-  onSegmentRowHeightPointerDown,
-  onRowRangePointerDown,
-  updateSegmentText,
-  onTextareaKeyDown,
-  findReplaceHighlight,
-  correctionRulesHighlight,
-  spansForText,
-  onCorrectableSpanClick,
-  onOpenTextContextMenu,
-}: SegmentRowTextFieldProps) {
-  const draftKey = segmentDraftKey(s, i);
-  const committedText = normalizeSegmentDraftText(s.text ?? "");
-  const textareaRef = useRef<HTMLTextAreaElement | null>(null);
-  const preContextMenuSelectionRef = useRef<SegmentTextContextMenuSelectionSnapshot | null>(null);
-  const isFocusedRef = useRef(false);
-  const lastSyncedFindHighlightRef = useRef<string | null>(null);
-  const [textareaEpoch, setTextareaEpoch] = useState(0);
-  const prevCommittedRef = useRef(committedText);
+  const {
+    draftKey,
+    committedText,
+    liveText,
+    correctableSpans,
+    textareaRef,
+    textareaEpoch,
+    defaultText,
+    textAreaMinHeight,
+    panelHighlight,
+    hasPanelHighlight,
+    showPanelHighlightMirror,
+    showCorrectableMirror,
+    onTextareaRangePointerDown,
+    onTextPointerDownCapture,
+    onTextContextMenu,
+    onStaticTextContextMenu,
+    onRowHeightHandlePointerDown,
+    handleTextareaInput,
+    onCompositionStart,
+    onCompositionEnd,
+    onBlurText,
+    onKeyDown,
+    onSelectionChange,
+    onFocusText,
+    canResizeRowHeight,
+  } = useSegmentRowTextFieldController({ ...controllerArgs, selected, busy });
 
-  const defaultText = initialTextareaValue(draftKey, committedText);
-  const [liveText] = useSegmentDraft(draftKey, committedText);
-  const spanSourceText = selected ? liveText : committedText;
-  const correctableSpans = useMemo(
-    () => spansForText(spanSourceText),
-    [spanSourceText, spansForText],
-  );
-
-  useImperativeHandle(
-    editorRef,
-    () => ({
-      focusEditor: () => {
-        const textarea = textareaRef.current;
-        if (!textarea) return;
-        textarea.focus();
-        const end = textarea.value.length;
-        textarea.setSelectionRange(end, end);
-      },
-    }),
-    [],
-  );
-
-  useEffect(() => {
-    if (prevCommittedRef.current === committedText) {
-      if (!isFocusedRef.current) {
-        const stored = segmentDraftStore.getDraft(draftKey);
-        if (stored !== undefined && stored === committedText) {
-          segmentDraftStore.clearDraft(draftKey);
-        }
-      }
-      return;
-    }
-    prevCommittedRef.current = committedText;
-
-    // 自动保存 flush 写回 committed 时用户可能仍在输入；勿 remount textarea（会丢光标）。
-    if (isFocusedRef.current) {
-      const el = textareaRef.current;
-      const liveDom = normalizeSegmentDraftText(el?.value ?? "");
-      if (liveDom === committedText) {
-        segmentDraftStore.clearDraft(draftKey);
-      }
-      return;
-    }
-
-    segmentDraftStore.clearDraft(draftKey);
-    const el = textareaRef.current;
-    if (el) el.value = committedText;
-    setTextareaEpoch((n) => n + 1);
-  }, [committedText, draftKey]);
-
-  const syncDomToDraftStore = useCallback(
-    (el: HTMLTextAreaElement) => {
-      segmentDraftStore.setDraft(draftKey, el.value);
-    },
-    [draftKey],
-  );
-
-  const handleTextareaInput = useCallback(
-    (el: HTMLTextAreaElement) => {
-      if (segmentDraftStore.isComposing(draftKey)) return;
-      syncDomToDraftStore(el);
-    },
-    [draftKey, syncDomToDraftStore],
-  );
-
-  const onCompositionStart = useCallback(() => {
-    segmentDraftStore.beginComposition(draftKey);
-  }, [draftKey]);
-
-  const onCompositionEnd = useCallback(
-    (e: React.CompositionEvent<HTMLTextAreaElement>) => {
-      segmentDraftStore.endComposition(draftKey);
-      syncDomToDraftStore(e.currentTarget);
-    },
-    [draftKey, syncDomToDraftStore],
-  );
-
-  const onBlurText = useCallback(() => {
-    isFocusedRef.current = false;
-    if (busy) return;
-    segmentDraftStore.endComposition(draftKey);
-    const el = textareaRef.current;
-    const liveText = normalizeSegmentDraftText(el?.value ?? committedText);
-    if (liveText !== committedText) updateSegmentText(i, liveText);
-    if (liveText !== committedText) {
-      segmentDraftStore.setDraft(draftKey, liveText);
-    } else {
-      segmentDraftStore.clearDraft(draftKey);
-    }
-  }, [busy, committedText, draftKey, i, updateSegmentText]);
-
-  const onKeyDown = useCallback(
-    (e: KeyboardEvent<HTMLTextAreaElement>) => {
-      onTextareaKeyDown(i, e);
-    },
-    [i, onTextareaKeyDown],
-  );
-
-  const onSelectionChange = useCallback((e: React.SyntheticEvent<HTMLTextAreaElement>) => {
-    syncTranscriptTextareaSelection(e.currentTarget);
-  }, []);
-
-  const openTextContextMenu = useCallback(
-    (e: MouseEvent<HTMLElement>, selectionText: string) => {
-      if (busy || !onOpenTextContextMenu) return;
-      e.preventDefault();
-      e.stopPropagation();
-      blurActiveTranscriptTextarea();
-      onOpenTextContextMenu(e, selectionText);
-    },
-    [busy, onOpenTextContextMenu],
-  );
-
-  const onTextPointerDownCapture = useCallback((e: PointerEvent<HTMLTextAreaElement>) => {
-    if (e.button !== 2) return;
-    const el = e.currentTarget;
-    const start = el.selectionStart ?? 0;
-    const end = el.selectionEnd ?? 0;
-    preContextMenuSelectionRef.current = {
-      start,
-      end,
-      collapsed: start === end,
-    };
-  }, []);
-
-  const onTextContextMenu = useCallback(
-    (e: MouseEvent<HTMLTextAreaElement>) => {
-      if (busy) return;
-      const el = e.currentTarget;
-      const snapshot = preContextMenuSelectionRef.current;
-      preContextMenuSelectionRef.current = null;
-
-      const action = resolveSegmentTextContextMenuAction({
-        snapshot,
-        value: el.value,
-      });
-
-      openTextContextMenu(e, action.selectionText);
-    },
-    [busy, openTextContextMenu],
-  );
-
-  const onStaticTextContextMenu = useCallback(
-    (e: MouseEvent<HTMLDivElement>) => {
-      if (busy) return;
-      openTextContextMenu(e, "");
-    },
-    [busy, openTextContextMenu],
-  );
-
-  const onRowHeightHandlePointerDown = useCallback(
-    (e: React.PointerEvent<HTMLDivElement>) => {
-      if (!onSegmentRowHeightPointerDown) return;
-      e.stopPropagation();
-      onSegmentRowHeightPointerDown(e);
-    },
-    [onSegmentRowHeightPointerDown],
-  );
-
-  const onTextareaRangePointerDown = useCallback(
-    (e: React.PointerEvent<HTMLTextAreaElement>) => {
-      if (e.button !== 0 || busy || !onRowRangePointerDown) return;
-      e.stopPropagation();
-      onRowRangePointerDown(i, e);
-    },
-    [busy, i, onRowRangePointerDown],
-  );
-
-  useEffect(() => {
-    if (!selected || busy) return;
-    const el = textareaRef.current;
-    const panelHighlight = findReplaceHighlight ?? correctionRulesHighlight;
-    const panelPreviewOpen = isFindReplacePanelOpen() || isCorrectionRulesPanelOpen();
-    if (panelHighlight) {
-      if (panelPreviewOpen) return;
-      const key = `${panelHighlight.charStart}:${panelHighlight.charEnd}`;
-      if (lastSyncedFindHighlightRef.current === key) return;
-      lastSyncedFindHighlightRef.current = key;
-      el?.focus();
-      el?.setSelectionRange(panelHighlight.charStart, panelHighlight.charEnd);
-      return;
-    }
-    lastSyncedFindHighlightRef.current = null;
-    if (!el || !focusOnSelectRef.current) return;
-    el.focus();
-    const end = el.value.length;
-    el.setSelectionRange(end, end);
-    focusOnSelectRef.current = false;
-  }, [busy, correctionRulesHighlight, findReplaceHighlight, focusOnSelectRef, selected]);
-
-  useEffect(() => {
-    if (selected) return;
-    focusOnSelectRef.current = false;
-  }, [focusOnSelectRef, selected]);
-
-  const textAreaMinHeight = Math.max(36, Math.round(segmentRowHeightPx - (selected ? 24 : 30)));
-  const panelHighlight = findReplaceHighlight ?? correctionRulesHighlight;
-  const panelPreviewOpen = isFindReplacePanelOpen() || isCorrectionRulesPanelOpen();
-  const hasPanelHighlight = panelHighlight != null;
-  const showPanelHighlightMirror = selected && panelPreviewOpen && hasPanelHighlight && !busy;
-  const showCorrectableMirror =
-    selected &&
-    !panelHighlight &&
-    correctableSpans.length > 0 &&
-    !busy;
+  const { onCorrectableSpanClick } = props;
 
   return (
     <div className="min-w-0 flex-1" {...{ [SEGMENT_TEXT_BODY_ATTR]: "" }}>
@@ -316,10 +91,7 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
                 onPointerDownCapture={onTextPointerDownCapture}
                 onClick={(e) => e.stopPropagation()}
                 onContextMenu={onTextContextMenu}
-                onFocus={() => {
-                  if (busy) return;
-                  isFocusedRef.current = true;
-                }}
+                onFocus={onFocusText}
                 onInput={(e) => {
                   if (e.nativeEvent.isComposing) return;
                   handleTextareaInput(e.currentTarget);
@@ -371,9 +143,9 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
               aria-label="拖拽调整语段高度"
               className={[
                 "group/row-height relative h-2 rounded-b-md opacity-0 transition-opacity duration-150 group-hover:opacity-100 focus-within:opacity-100",
-                busy || !onSegmentRowHeightPointerDown
-                  ? "pointer-events-none cursor-not-allowed"
-                  : "pointer-events-none cursor-row-resize group-hover:pointer-events-auto focus-within:pointer-events-auto",
+                canResizeRowHeight
+                  ? "pointer-events-none cursor-row-resize group-hover:pointer-events-auto focus-within:pointer-events-auto"
+                  : "pointer-events-none cursor-not-allowed",
               ].join(" ")}
               onPointerDown={onRowHeightHandlePointerDown}
             />
@@ -395,8 +167,8 @@ export const SegmentRowTextField = memo(function SegmentRowTextField({
                 <div className="max-h-[4.5rem] overflow-hidden">
                   <FindReplaceMatchText
                     text={committedText}
-                    charStart={panelHighlight.charStart}
-                    charEnd={panelHighlight.charEnd}
+                    charStart={panelHighlight!.charStart}
+                    charEnd={panelHighlight!.charEnd}
                     textStyle={textStyle}
                   />
                 </div>
