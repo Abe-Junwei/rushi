@@ -1,0 +1,115 @@
+import type { EditLogEntryDto, SegmentDto } from "../tauri/projectApi";
+import { buildDeliveryExportAppendixLines } from "./exportDeliveryAppendix";
+import {
+  exportModeSupportsLlmPolish,
+  resolveExportPolishForDelivery,
+  type ExportPolishResult,
+} from "./exportDocxPolish";
+import { joinSegmentTextsForExportPolish } from "./exportDocxPolish.helpers";
+import { assessExportPolishReadiness } from "./exportPolishDelivery";
+import {
+  buildExportPolishEditLogDetail,
+  buildExportPolishRevisionLines,
+} from "./exportPolishRevision";
+import type { DeliveryDocxExportRequest } from "../pages/useExportController";
+
+export type DeliveryDocxExportPlanInput = {
+  request: DeliveryDocxExportRequest;
+  segments: SegmentDto[];
+  editLogRows: EditLogEntryDto[];
+  currentFileId: string | null;
+  exportMetaLine: string | undefined;
+};
+
+export type DeliveryDocxExportPlan =
+  | { ok: false; error: string }
+  | {
+      ok: true;
+      docxOptions: {
+        exportMetaLine: string | undefined;
+        appendixLines: string[];
+        polishedParagraphs?: string[];
+        polishBeforeJoined?: string;
+        polishCorrectedLines?: string[];
+        polishTrackChanges?: boolean;
+      };
+      recordEditLog:
+        | { kind: "none" }
+        | { kind: "export_llm_polish"; detail: ReturnType<typeof buildExportPolishEditLogDetail> };
+    };
+
+/** Delivery DOCX 编排真源：appendix + LLM polish + 修订轨决策（不含 IO）。 */
+export function planDeliveryDocxExport(input: DeliveryDocxExportPlanInput): DeliveryDocxExportPlan {
+  const { request, segments, editLogRows, currentFileId, exportMetaLine } = input;
+  const segmentTexts = segments.map((s) => s.text ?? "");
+
+  let appendixLines: string[] = [];
+  if (request.includeRevisionAppendix && currentFileId) {
+    appendixLines = buildDeliveryExportAppendixLines(editLogRows, currentFileId);
+  }
+
+  const wantsPolish = Boolean(
+    request.llmPolish && exportModeSupportsLlmPolish(request.mode),
+  );
+  let polishedParagraphs: string[] | undefined;
+  let polishCorrectedLines: string[] | undefined;
+  const polishBeforeJoined = wantsPolish
+    ? joinSegmentTextsForExportPolish(segments)
+    : undefined;
+
+  if (wantsPolish) {
+    const readiness = assessExportPolishReadiness(
+      segments,
+      request.mode,
+      true,
+      request.polishPreview ?? null,
+    );
+    if (!readiness.canExport) {
+      return { ok: false, error: readiness.blockReason ?? "请先完成润色预览。" };
+    }
+    try {
+      const polish = resolveExportPolishForDelivery(segments, request.polishPreview);
+      polishedParagraphs = polish.paragraphs;
+      polishCorrectedLines =
+        polish.correctedLines.length > 0 ? polish.correctedLines : undefined;
+      if (request.includeRevisionAppendix && polishedParagraphs.length > 0) {
+        const polishLines = buildExportPolishRevisionLines(segmentTexts, polishedParagraphs);
+        if (polishLines.length > 0) {
+          if (appendixLines.length > 0) appendixLines.push("");
+          appendixLines.push("— 本次导出大模型润色 —");
+          appendixLines.push(...polishLines);
+        }
+      }
+    } catch (e) {
+      return { ok: false, error: e instanceof Error ? e.message : String(e) };
+    }
+  }
+
+  const recordEditLog =
+    wantsPolish && polishedParagraphs != null && currentFileId
+      ? {
+          kind: "export_llm_polish" as const,
+          detail: buildExportPolishEditLogDetail(
+            currentFileId,
+            segmentTexts,
+            polishedParagraphs,
+          ),
+        }
+      : { kind: "none" as const };
+
+  return {
+    ok: true,
+    docxOptions: {
+      exportMetaLine,
+      appendixLines,
+      polishedParagraphs,
+      polishBeforeJoined: polishedParagraphs != null ? polishBeforeJoined : undefined,
+      polishCorrectedLines: polishedParagraphs != null ? polishCorrectedLines : undefined,
+      polishTrackChanges:
+        polishedParagraphs != null && polishCorrectedLines != null ? true : undefined,
+    },
+    recordEditLog,
+  };
+}
+
+export type { ExportPolishResult };
