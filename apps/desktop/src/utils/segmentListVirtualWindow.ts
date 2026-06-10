@@ -95,6 +95,21 @@ export function scrollSegmentListIndexIntoView(input: {
   return null;
 }
 
+/** 列表 range 拖选：低于此像素位移视为点击，不扩展多选。 */
+export const SEGMENT_LIST_RANGE_DRAG_SLOP_PX = 5;
+
+export function segmentListRangeDragExceededSlop(
+  startClientX: number,
+  startClientY: number,
+  clientX: number,
+  clientY: number,
+  slopPx = SEGMENT_LIST_RANGE_DRAG_SLOP_PX,
+): boolean {
+  const dx = clientX - startClientX;
+  const dy = clientY - startClientY;
+  return dx * dx + dy * dy >= slopPx * slopPx;
+}
+
 /** 语段列表滚动容器标记（`EditorSegmentList` 根节点） */
 export const SEGMENT_LIST_SCROLL_ATTR = "data-segment-list-scroll";
 

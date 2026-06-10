@@ -7,6 +7,7 @@ import { resolveWaveformSegmentContextMenuIndex } from "../utils/waveformSegment
 import {
   querySegmentListScrollRoot,
   resolveSegmentListRowIndexFromPoint,
+  segmentListRangeDragExceededSlop,
 } from "../utils/segmentListVirtualWindow";
 import {
   PX_PER_SEC_MAX,
@@ -38,7 +39,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
 
   const timeline = useWaveformTimelineController(ctx);
 
-  const setSelectedIdxUi = useCallback((idx: number, opts?: { shiftKey?: boolean }) => {
+  const setSelectedIdxUi = useCallback((idx: number, opts?: { shiftKey?: boolean; toggle?: boolean }) => {
     ctxRef.current.selectSegmentAt(idx, opts);
   }, []);
 
@@ -77,7 +78,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
   };
 
   const selectSegmentAtRef = useRef<
-    (idx: number, source?: SegmentSelectSource, opts?: { shiftKey?: boolean }) => void
+    (idx: number, source?: SegmentSelectSource, opts?: { shiftKey?: boolean; toggle?: boolean }) => void
   >(() => {});
 
   const keyboard = useSegmentKeyboard({
@@ -154,7 +155,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
   }, []);
 
   const selectSegmentAt = useCallback(
-    (idx: number, source: SegmentSelectSource = "waveform", opts?: { shiftKey?: boolean }) => {
+    (idx: number, source: SegmentSelectSource = "waveform", opts?: { shiftKey?: boolean; toggle?: boolean }) => {
       const c = ctxRef.current;
       if (c.busy) return;
       const s = c.segments[idx];
@@ -195,29 +196,56 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
 
   selectSegmentAtRef.current = selectSegmentAt;
 
-  const segmentListRangeDragRef = useRef<{ anchorIdx: number; pointerId: number; moved: boolean } | null>(
-    null,
-  );
+  const segmentListRangeDragRef = useRef<{
+    anchorIdx: number;
+    pointerId: number;
+    moved: boolean;
+    startClientX: number;
+    startClientY: number;
+  } | null>(null);
   const suppressSegmentListRowClickRef = useRef(false);
 
   const onSegmentListRangePointerDown = useCallback((idx: number, e: ReactPointerEvent<HTMLElement>) => {
     const c = ctxRef.current;
     if (c.busy || e.button !== 0) return;
     if ((e.target as HTMLElement).closest('[role="separator"]')) return;
+    // 正文 textarea 内拖选由浏览器处理，不得接入语段列表 range 拖选（会 blur + preventDefault）。
+    if ((e.target as HTMLElement).closest('textarea[aria-label="语段正文"]')) return;
     e.stopPropagation();
 
-    segmentListRangeDragRef.current = { anchorIdx: idx, pointerId: e.pointerId, moved: false };
+    segmentListRangeDragRef.current = {
+      anchorIdx: idx,
+      pointerId: e.pointerId,
+      moved: false,
+      startClientX: e.clientX,
+      startClientY: e.clientY,
+    };
     if (e.shiftKey) {
-      c.selectSegmentAt(idx, { shiftKey: true });
+      selectSegmentAtRef.current(idx, "list", { shiftKey: true });
     } else if (e.metaKey || e.ctrlKey) {
-      c.selectSegmentAt(idx, { toggle: true });
+      selectSegmentAtRef.current(idx, "list", { toggle: true });
     } else {
-      c.selectSegmentAt(idx);
+      selectSegmentAtRef.current(idx, "list");
     }
 
     const onMove = (ev: PointerEvent) => {
       const drag = segmentListRangeDragRef.current;
       if (!drag || ev.pointerId !== drag.pointerId) return;
+      if (
+        !drag.moved &&
+        !segmentListRangeDragExceededSlop(
+          drag.startClientX,
+          drag.startClientY,
+          ev.clientX,
+          ev.clientY,
+        )
+      ) {
+        return;
+      }
+      if (!drag.moved) {
+        drag.moved = true;
+        blurActiveTranscriptTextarea();
+      }
       const scrollRoot = segmentListRef.current ?? querySegmentListScrollRoot();
       const hoverIdx = resolveSegmentListRowIndexFromPoint(
         scrollRoot,
@@ -226,13 +254,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
         ctxRef.current.segments.length,
       );
       if (hoverIdx == null) return;
-      if (hoverIdx !== drag.anchorIdx) {
-        if (!drag.moved) {
-          drag.moved = true;
-          blurActiveTranscriptTextarea();
-        }
-        ev.preventDefault();
-      }
+      ev.preventDefault();
       ctxRef.current.selectSegmentRange(drag.anchorIdx, hoverIdx);
     };
 
@@ -330,7 +352,8 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     zoomToFitAll: timeline.viewportFit.zoomToFitAll,
     setPxPerSecFromSlider: zoom.setPxPerSecFromSlider,
     selectSegmentAt,
-    selectSegmentFromList: (idx: number, opts?: { shiftKey?: boolean }) => selectSegmentAt(idx, "list", opts),
+    selectSegmentFromList: (idx: number, opts?: { shiftKey?: boolean; toggle?: boolean }) =>
+      selectSegmentAt(idx, "list", opts),
     selectSegmentRange: ctx.selectSegmentRange,
     selectionLo: ctx.selectionLo,
     selectionHi: ctx.selectionHi,

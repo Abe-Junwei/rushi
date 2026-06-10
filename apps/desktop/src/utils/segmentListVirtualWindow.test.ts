@@ -7,6 +7,7 @@ import {
   scrollSegmentListIndexToView,
   scrollSegmentRowIntoViewContainer,
   resolveSegmentListRowIndexFromPoint,
+  segmentListRangeDragExceededSlop,
   SEGMENT_LIST_SCROLL_ATTR,
   segmentListItemStridePx,
 } from "./segmentListVirtualWindow";
@@ -143,6 +144,11 @@ describe("segmentListVirtualWindow", () => {
 
     const next = scrollSegmentRowIntoViewContainer(5, root, { align: "center" });
     expect(next).toBe(360);
+  });
+
+  it("segmentListRangeDragExceededSlop ignores sub-threshold jitter", () => {
+    expect(segmentListRangeDragExceededSlop(100, 200, 103, 202)).toBe(false);
+    expect(segmentListRangeDragExceededSlop(100, 200, 106, 200)).toBe(true);
   });
 
   it("resolveSegmentListRowIndexFromPoint reads data-seg-row under cursor", () => {

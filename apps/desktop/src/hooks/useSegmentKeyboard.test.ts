@@ -78,7 +78,7 @@ function renderKeyboard(initialCtx: TranscriptionLayerInput) {
         stepWaveformZoomRef: useRef(vi.fn()),
       });
 
-      return { keyboard, selectSegmentAtRef };
+      return { keyboard, selectSegmentAtRef, wfApiRef };
     },
     { initialProps: initialCtx },
   );
@@ -225,5 +225,77 @@ describe("useSegmentKeyboard", () => {
     expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(1, "waveform", {
       shiftKey: true,
     });
+  });
+
+  it("toggles play on global Space outside segment body text", () => {
+    const { result } = renderKeyboard(makeCtx());
+
+    act(() => {
+      window.dispatchEvent(
+        new KeyboardEvent("keydown", { code: "Space", key: " ", bubbles: true }),
+      );
+    });
+
+    expect(result.current.wfApiRef.current.togglePlay).toHaveBeenCalledTimes(1);
+  });
+
+  it("does not toggle play on global Space inside generic textarea", () => {
+    const textarea = document.createElement("textarea");
+    document.body.appendChild(textarea);
+    textarea.focus();
+
+    const { result } = renderKeyboard(makeCtx());
+
+    act(() => {
+      textarea.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          code: "Space",
+          key: " ",
+          bubbles: true,
+        }),
+      );
+    });
+
+    expect(result.current.wfApiRef.current.togglePlay).not.toHaveBeenCalled();
+    textarea.remove();
+  });
+
+  it("does not toggle play on global Space inside segment body text", () => {
+    const textarea = document.createElement("textarea");
+    textarea.className = "seg-text";
+    document.body.appendChild(textarea);
+    textarea.focus();
+
+    const { result } = renderKeyboard(makeCtx());
+
+    act(() => {
+      textarea.dispatchEvent(
+        new KeyboardEvent("keydown", {
+          code: "Space",
+          key: " ",
+          bubbles: true,
+        }),
+      );
+    });
+
+    expect(result.current.wfApiRef.current.togglePlay).not.toHaveBeenCalled();
+    textarea.remove();
+  });
+
+  it("does not toggle play on global Space while focus is in a generic text input", () => {
+    const input = document.createElement("input");
+    document.body.appendChild(input);
+    input.focus();
+
+    const { result } = renderKeyboard(makeCtx());
+
+    act(() => {
+      input.dispatchEvent(
+        new KeyboardEvent("keydown", { code: "Space", key: " ", bubbles: true }),
+      );
+    });
+
+    expect(result.current.wfApiRef.current.togglePlay).not.toHaveBeenCalled();
+    input.remove();
   });
 });

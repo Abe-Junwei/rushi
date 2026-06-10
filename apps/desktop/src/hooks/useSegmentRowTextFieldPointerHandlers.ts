@@ -6,14 +6,11 @@ import {
 import { blurActiveTranscriptTextarea } from "../utils/transcriptSelection";
 
 export function useSegmentRowTextFieldPointerHandlers(input: {
-  index: number;
   busy: boolean;
   onSegmentRowHeightPointerDown?: (e: React.PointerEvent<HTMLDivElement>) => void;
-  onRowRangePointerDown?: (index: number, e: React.PointerEvent<HTMLElement>) => void;
   onOpenTextContextMenu?: (e: MouseEvent<HTMLElement>, selectionText: string) => void;
 }) {
-  const { index: i, busy, onSegmentRowHeightPointerDown, onRowRangePointerDown, onOpenTextContextMenu } =
-    input;
+  const { busy, onSegmentRowHeightPointerDown, onOpenTextContextMenu } = input;
   const preContextMenuSelectionRef = useRef<SegmentTextContextMenuSelectionSnapshot | null>(null);
 
   const openTextContextMenu = useCallback(
@@ -73,21 +70,11 @@ export function useSegmentRowTextFieldPointerHandlers(input: {
     [onSegmentRowHeightPointerDown],
   );
 
-  const onTextareaRangePointerDown = useCallback(
-    (e: React.PointerEvent<HTMLTextAreaElement>) => {
-      if (e.button !== 0 || busy || !onRowRangePointerDown) return;
-      e.stopPropagation();
-      onRowRangePointerDown(i, e);
-    },
-    [busy, i, onRowRangePointerDown],
-  );
-
   return {
     onTextPointerDownCapture,
     onTextContextMenu,
     onStaticTextContextMenu,
     onRowHeightHandlePointerDown,
-    onTextareaRangePointerDown,
     canResizeRowHeight: Boolean(onSegmentRowHeightPointerDown) && !busy,
   };
 }

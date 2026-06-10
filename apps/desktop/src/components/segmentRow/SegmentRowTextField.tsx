@@ -51,7 +51,6 @@ export const SegmentRowTextField = memo(function SegmentRowTextField(props: Segm
     hasPanelHighlight,
     showPanelHighlightMirror,
     showCorrectableMirror,
-    onTextareaRangePointerDown,
     onTextPointerDownCapture,
     onTextContextMenu,
     onStaticTextContextMenu,
@@ -87,7 +86,6 @@ export const SegmentRowTextField = memo(function SegmentRowTextField(props: Segm
                 style={{ ...textStyle, minHeight: textAreaMinHeight }}
                 defaultValue={defaultText}
                 disabled={busy}
-                onPointerDown={onTextareaRangePointerDown}
                 onPointerDownCapture={onTextPointerDownCapture}
                 onClick={(e) => e.stopPropagation()}
                 onContextMenu={onTextContextMenu}

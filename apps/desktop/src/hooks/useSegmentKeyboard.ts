@@ -7,6 +7,28 @@ import { readStoredTabAdvanceLoopsSegment } from "../utils/waveformPrefs";
 
 type WfApi = ReturnType<typeof useProjectWaveform>;
 
+/** 焦点在可输入控件内时不触发全局播放快捷键。 */
+function isEditableKeyboardTarget(target: EventTarget | null): boolean {
+  const el = target as HTMLElement | null;
+  if (!el?.closest) return false;
+  const field = el.closest("textarea, input, select, [contenteditable='true'], [contenteditable='']");
+  if (!field) return false;
+  if (field instanceof HTMLInputElement) {
+    const type = field.type.toLowerCase();
+    if (
+      type === "button" ||
+      type === "submit" ||
+      type === "reset" ||
+      type === "checkbox" ||
+      type === "radio" ||
+      type === "file"
+    ) {
+      return false;
+    }
+  }
+  return true;
+}
+
 function focusSegmentTextarea(
   tierScrollRef: React.RefObject<HTMLDivElement | null>,
   segmentIdx: number,
@@ -57,11 +79,6 @@ export function useSegmentKeyboard(args: {
           return;
         }
         (e.target as HTMLElement).blur();
-        return;
-      }
-      if (e.code === "Space") {
-        e.preventDefault();
-        void w.togglePlay();
         return;
       }
       if (e.key === "Delete" || e.key === "Backspace") {
@@ -296,14 +313,28 @@ export function useSegmentKeyboard(args: {
       const t = e.target as HTMLElement | null;
       if (t?.closest("textarea, input, [contenteditable=true]")) return;
       e.preventDefault();
-      const c = args.ctxRef.current;
+      const c = argsRef.current.ctxRef.current;
       if (c.busy) return;
       if (e.shiftKey) c.redo();
       else c.undo();
     };
     window.addEventListener("keydown", onWinKey, true);
     return () => window.removeEventListener("keydown", onWinKey, true);
-  }, [args.ctxRef]);
+  }, []);
+
+  useEffect(() => {
+    const onWinSpace = (e: KeyboardEvent) => {
+      if (e.code !== "Space" && e.key !== " ") return;
+      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (isEditableKeyboardTarget(e.target)) return;
+      const c = argsRef.current.ctxRef.current;
+      if (c.busy || !c.mediaUrl) return;
+      e.preventDefault();
+      void argsRef.current.wfApiRef.current.togglePlay();
+    };
+    window.addEventListener("keydown", onWinSpace, true);
+    return () => window.removeEventListener("keydown", onWinSpace, true);
+  }, []);
 
   return { onWaveformMainKeyDown, onSegmentTextareaKeyDown };
 }

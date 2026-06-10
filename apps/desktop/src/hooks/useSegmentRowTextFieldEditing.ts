@@ -30,7 +30,6 @@ export function useSegmentRowTextFieldEditing({
   busy,
   editorRef,
   onSegmentRowHeightPointerDown,
-  onRowRangePointerDown,
   updateSegmentText,
   onTextareaKeyDown,
   spansForText,
@@ -140,10 +139,8 @@ export function useSegmentRowTextFieldEditing({
   }, []);
 
   const pointerHandlers = useSegmentRowTextFieldPointerHandlers({
-    index: i,
     busy,
     onSegmentRowHeightPointerDown,
-    onRowRangePointerDown,
     onOpenTextContextMenu,
   });
 
