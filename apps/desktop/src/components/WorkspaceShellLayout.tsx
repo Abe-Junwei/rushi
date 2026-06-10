@@ -51,7 +51,7 @@ export function WorkspaceShellLayout({
 
   const shellStyle = collapsible
     ? ({
-        ["--workspace-sidebar-width" as "--workspace-sidebar-width"]: sidebarCollapsed
+        ["--workspace-sidebar-width" as const]: sidebarCollapsed
           ? "0px"
           : WORKSPACE_SIDEBAR_WIDTH,
       } as CSSProperties)

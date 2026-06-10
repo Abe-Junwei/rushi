@@ -146,6 +146,8 @@ export function buildProjectLifecycleReturn(input: ProjectLifecycleReturnInput):
     setNewName,
     pickedPath,
     transcribeHints: transcribeJob.transcribeHints,
+    transcribeFailureDiag: transcribeJob.transcribeFailureDiag,
+    setTranscribeFailureDiag: transcribeJob.setTranscribeFailureDiag,
     transcribeProgress: transcribeJob.transcribeProgress,
     transcribeCancelling: transcribeJob.transcribeCancelling,
     transcribePreviewActive: deriveTranscribePreviewActive(busy, busyReason),

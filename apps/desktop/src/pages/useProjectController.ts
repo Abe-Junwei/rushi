@@ -95,6 +95,8 @@ export function useProjectController() {
     setNewName: lifecycle.setNewName,
     pickedPath: lifecycle.pickedPath,
     transcribeHints: lifecycle.transcribeHints,
+    transcribeFailureDiag: lifecycle.transcribeFailureDiag,
+    setTranscribeFailureDiag: lifecycle.setTranscribeFailureDiag,
     transcribeProgress: lifecycle.transcribeProgress,
     transcribeCancelling: lifecycle.transcribeCancelling,
     transcribePreviewActive: lifecycle.transcribePreviewActive,

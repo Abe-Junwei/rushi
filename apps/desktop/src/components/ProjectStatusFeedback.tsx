@@ -1,5 +1,7 @@
 import type { BusyReason } from "../pages/useProjectController";
 import type { TranscribeProgress } from "../pages/transcribePreviewState";
+import type { TranscribeTimelineSnapshot } from "../services/transcribeDiag";
+import { formatTranscribeDiagSummary, stageLabelZh } from "../services/transcribeDiag";
 import { createPortal } from "react-dom";
 import { TriangleAlert } from "lucide-react";
 import { CONTROL_BTN_DANGER } from "../config/controlStyles";
@@ -63,6 +65,65 @@ export function TranscribePreviewBanner({
       />
     </div>,
     document.body,
+  );
+}
+
+export function TranscribeDiagBanner({
+  diag,
+  errorMessage,
+  onDismiss,
+  onOpenEnvironment,
+}: {
+  diag: TranscribeTimelineSnapshot;
+  errorMessage?: string | null;
+  onDismiss?: () => void;
+  onOpenEnvironment?: () => void;
+}) {
+  const lines = formatTranscribeDiagSummary(diag);
+  const showEnv =
+    onOpenEnvironment &&
+    (diag.failedStage === "preflight" ||
+      diag.errorCode === "preflight_not_ready" ||
+      diag.errorCode === "sidecar_connect" ||
+      diag.errorCode === "sidecar_crash");
+
+  return (
+    <div className="flex flex-col items-start justify-between gap-4 rounded-lg border border-zen-cinnabar/20 bg-zen-cinnabar/10 px-4 py-4 text-zen-cinnabar shadow-sm sm:flex-row sm:items-start">
+      <div className="flex items-start gap-3">
+        <TriangleAlert
+          className={`${LUCIDE_ICON_SIZE_LG} shrink-0 text-zen-cinnabar`}
+          strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
+          aria-hidden
+        />
+        <div className="space-y-1">
+          <p className="font-sans text-sm font-semibold leading-relaxed">
+            {diag.outcome === "failed"
+              ? `转写失败（${stageLabelZh(diag.failedStage)}）`
+              : "转写提示"}
+          </p>
+          {errorMessage ? (
+            <p className="font-sans text-xs leading-relaxed opacity-90">{errorMessage}</p>
+          ) : null}
+          {lines.map((line) => (
+            <p key={line} className="font-sans text-xs leading-relaxed opacity-90">
+              {line}
+            </p>
+          ))}
+        </div>
+      </div>
+      <div className="flex flex-wrap gap-2">
+        {showEnv ? (
+          <button type="button" className={CONTROL_BTN_DANGER} onClick={onOpenEnvironment}>
+            打开环境 → 本机 ASR
+          </button>
+        ) : null}
+        {onDismiss ? (
+          <button type="button" className={CONTROL_BTN_DANGER} onClick={onDismiss}>
+            关闭
+          </button>
+        ) : null}
+      </div>
+    </div>
   );
 }
 

@@ -26,6 +26,10 @@ export interface ProjectLifecycleApi {
   setNewName: React.Dispatch<React.SetStateAction<string>>;
   pickedPath: string | null;
   transcribeHints: string[];
+  transcribeFailureDiag: import("../services/transcribeDiag").TranscribeTimelineSnapshot | null;
+  setTranscribeFailureDiag: React.Dispatch<
+    React.SetStateAction<import("../services/transcribeDiag").TranscribeTimelineSnapshot | null>
+  >;
   transcribeProgress: import("./transcribePreviewState").TranscribeProgress | null;
   transcribeCancelling: boolean;
   transcribePreviewActive: boolean;

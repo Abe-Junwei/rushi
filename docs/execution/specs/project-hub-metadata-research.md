@@ -13,7 +13,7 @@
 | 项 | 内容 |
 |----|------|
 | **用户场景** | 口述史 / 访谈转写：一个「项目」= 一场采集或一次任务。用户需在 **文件 Hub** 管理项目（重命名、元信息），并从 **编辑器** 快速回到文件列表，而非仅靠顶栏后退。元信息含讲述人、时间、地点、主题、转录人等，供归档、检索与导出抬头。 |
-| **本仓现状** | `projects` 表仅 `id, name, created_at_ms, updated_at_ms`（[`db.rs`](../../../apps/desktop/src-tauri/src/db.rs)）。文件 Hub = `ProjectFilesHubPanel`（`currentFileId === null`）；进 Hub 仅 `closeFile()`。项目 **重命名 / 元信息 / Hub 内删除** 无；欢迎页侧栏有 `deleteProject`（部分 `window.confirm`）。`CreateProjectModal` 只收 **项目名**，无重名提示。 |
+| **本仓现状** | `projects` 表仅 `id, name, created_at_ms, updated_at_ms`（[`db/mod.rs`](../../../apps/desktop/src-tauri/src/db/mod.rs)）。文件 Hub = `ProjectFilesHubPanel`（`currentFileId === null`）；进 Hub 仅 `closeFile()`。项目 **重命名 / 元信息 / Hub 内删除** 无；欢迎页侧栏有 `deleteProject`（部分 `window.confirm`）。`CreateProjectModal` 只收 **项目名**，无重名提示。 |
 | **成功标准** | （1）编辑中 ≥2 条路径进文件 Hub；（2）Hub 可编辑 **5 项核心元信息**（+ 可选 P1 扩展）并持久化；（3）创建/改名重名软提示；（4）Hub 内删/改名项目；（5）typecheck + 定向 test + 手测清单。 |
 
 ---

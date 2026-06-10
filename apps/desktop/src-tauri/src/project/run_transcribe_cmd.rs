@@ -1,19 +1,26 @@
 use super::correction::collect_correction_rule_hints;
 use super::correction::SaveSegmentsLearnOpts;
 use super::local_transcribe_gate::assert_local_asr_ready_for_transcribe;
+use super::online_segment_normalize::normalize_online_transcribe_json;
 use super::segment_cmd::{file_save_segments_inner, SegmentSaveEditLog};
 use super::segment_media_sanitize::{sanitize_segments_for_media, trim_adjacent_segment_overlaps};
 use super::stt_vocabulary::{
     channel_for_online, vocabulary_support_warnings, SttVocabularyChannel, SttVocabularyPlan,
 };
-use super::transcribe::{build_glossary_hotwords, post_transcribe_multipart};
+use super::transcribe::{
+    build_glossary_hotwords, post_transcribe_multipart, TranscribeRequestAuth,
+};
 use super::transcribe_errors::describe_transcribe_payload_error;
 use super::transcribe_job::{
     get_transcribe_job_status, parse_transcribe_job_phase, post_transcribe_async_multipart,
 };
-use super::online_segment_normalize::normalize_online_transcribe_json;
 use super::transcribe_native_online::{transcribe_assemblyai_native, transcribe_openai_native};
 use super::transcribe_response::{merge_transcribe_warnings, parse_transcribe_segments_from_json};
+use super::transcribe_timeline::{
+    infer_failed_stage_from_message, infer_transcribe_error_code, load_last_timeline,
+    store_active_timeline, take_active_timeline, TranscribeTimelineRecorder, STAGE_PREFLIGHT,
+    STAGE_SAVE, STAGE_TRANSCRIBE,
+};
 use super::transcribe_timeout::{
     local_transcribe_timeout_duration, long_audio_transcribe_hint, probe_audio_duration_sec,
 };
@@ -25,6 +32,25 @@ use std::fs;
 use std::path::Path;
 use std::time::Duration;
 use tauri::State;
+
+fn record_transcribe_err(tl: &mut TranscribeTimelineRecorder, err: String) -> String {
+    if tl.snapshot().outcome != "failed" {
+        let stage = infer_failed_stage_from_message(&err);
+        let code = infer_transcribe_error_code(&err);
+        tl.fail_stage(stage, code, &err);
+    }
+    err
+}
+
+fn apply_windowed_warning(tl: &mut TranscribeTimelineRecorder, warnings: &[String]) {
+    for w in warnings {
+        if let Some(rest) = w.strip_prefix("transcribe_windowed:windows=") {
+            if let Ok(total) = rest.parse::<u32>() {
+                tl.set_window_progress(total, total);
+            }
+        }
+    }
+}
 
 #[derive(serde::Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -39,17 +65,20 @@ pub async fn project_transcribe_async_start(
     asr_base_url: Option<String>,
 ) -> Result<TranscribeAsyncStartOutcome, String> {
     let st = state.inner().clone();
+    let mut tl = TranscribeTimelineRecorder::new(&file_id, "local");
+    tl.begin_stage(STAGE_PREFLIGHT);
     let conn = open_db(&st)?;
     let file_detail = file_detail_from_conn(&conn, &file_id)?;
     let hotwords_build = build_glossary_hotwords(&conn)?;
     let hotwords = SttVocabularyPlan::from_build(&hotwords_build).hotwords;
     drop(conn);
-    let audio_path = file_detail
-        .audio_path
-        .as_ref()
-        .ok_or("该文件没有关联音频，无法转写")?;
+    let audio_path = file_detail.audio_path.as_ref().ok_or_else(|| {
+        record_transcribe_err(&mut tl, "该文件没有关联音频，无法转写".to_string())
+    })?;
     let audio_path = Path::new(audio_path);
     if !audio_path.is_file() {
+        tl.fail_stage(STAGE_PREFLIGHT, "audio_missing", "项目音频文件缺失");
+        let _ = tl.persist(&st);
         return Err("项目音频文件缺失".to_string());
     }
     let audio_duration_sec = probe_audio_duration_sec(audio_path);
@@ -57,17 +86,29 @@ pub async fn project_transcribe_async_start(
         .unwrap_or_else(|| "http://127.0.0.1:8741".to_string())
         .trim_end_matches('/')
         .to_string();
-    assert_local_asr_ready_for_transcribe(&st, &base).await?;
+    if let Err(e) = assert_local_asr_ready_for_transcribe(&st, &base).await {
+        record_transcribe_err(&mut tl, e.clone());
+        let _ = tl.persist(&st);
+        return Err(e);
+    }
     let timeout = local_transcribe_timeout_duration(audio_duration_sec);
     append_desktop_log_line(&st, "INFO transcribe_async_start");
-    let v = post_transcribe_async_multipart(&st, &base, audio_path, hotwords, timeout).await?;
+    let v =
+        post_transcribe_async_multipart(&st, &base, audio_path, hotwords, timeout, Some(&mut tl))
+            .await
+            .inspect_err(|_| {
+                let _ = tl.persist(&st);
+            })?;
     let job_id = v
         .get("job_id")
         .and_then(|x| x.as_str())
-        .ok_or_else(|| "侧车未返回 job_id".to_string())?
-        .to_string();
+        .ok_or_else(|| record_transcribe_err(&mut tl, "侧车未返回 job_id".to_string()))?;
+    tl.set_job_id(job_id);
+    store_active_timeline(job_id, tl);
     append_desktop_log_line(&st, &format!("INFO transcribe_async job_id={job_id}"));
-    Ok(TranscribeAsyncStartOutcome { job_id })
+    Ok(TranscribeAsyncStartOutcome {
+        job_id: job_id.to_string(),
+    })
 }
 
 #[tauri::command]
@@ -95,20 +136,32 @@ pub async fn project_transcribe_async_finalize(
         .to_string();
     let status = get_transcribe_job_status(&st, &base, &job_id, Duration::from_secs(30)).await?;
     let phase = parse_transcribe_job_phase(&status);
+    let mut tl = take_active_timeline(&job_id)
+        .unwrap_or_else(|| TranscribeTimelineRecorder::new(&file_id, "local"));
+    tl.set_job_id(&job_id);
     if phase != "done" {
-        if phase == "cancelled" {
-            return Err("转写已取消".to_string());
-        }
-        if phase == "unknown" {
-            return Err("转写任务不存在（侧车可能已重启）".to_string());
-        }
-        let msg = status
-            .get("error")
-            .and_then(|e| e.get("message"))
-            .and_then(|m| m.as_str())
-            .or_else(|| status.get("message").and_then(|m| m.as_str()))
-            .unwrap_or("转写未完成");
-        return Err(msg.to_string());
+        let msg = if phase == "cancelled" {
+            "转写已取消".to_string()
+        } else if phase == "unknown" {
+            "转写任务不存在（侧车可能已重启）".to_string()
+        } else {
+            status
+                .get("error")
+                .and_then(|e| e.get("message"))
+                .and_then(|m| m.as_str())
+                .or_else(|| status.get("message").and_then(|m| m.as_str()))
+                .unwrap_or("转写未完成")
+                .to_string()
+        };
+        record_transcribe_err(&mut tl, msg.clone());
+        let _ = tl.persist(&st);
+        return Err(msg);
+    }
+    if let (Some(i), Some(n)) = (
+        status.get("window_index").and_then(|x| x.as_u64()),
+        status.get("window_count").and_then(|x| x.as_u64()),
+    ) {
+        tl.set_window_progress(i as u32, n as u32);
     }
 
     let audio_path = {
@@ -146,17 +199,30 @@ pub async fn project_transcribe_async_finalize(
         append_desktop_log_line(&st, "INFO transcribe_windowed_path");
     }
 
+    apply_windowed_warning(&mut tl, &warnings);
     let arr = status
         .get("segments")
         .and_then(|s| s.as_array())
         .ok_or_else(|| "响应缺少 segments 数组".to_string())?;
-    save_transcribe_segments(&st, &file_id, arr, &mut warnings, audio_duration_sec).await?;
+    save_transcribe_segments(
+        &st,
+        &file_id,
+        arr,
+        &mut warnings,
+        audio_duration_sec,
+        Some(&mut tl),
+    )
+    .await?;
     let conn = open_db(&st)?;
     let detail = file_detail_from_conn(&conn, &file_id)?;
+    tl.finish_success(&warnings);
+    let snap = tl.snapshot();
+    let _ = tl.persist(&st);
     Ok(RunTranscribeOutcome {
         detail,
         engine,
         warnings,
+        transcribe_timeline: Some(snap),
     })
 }
 
@@ -168,7 +234,31 @@ pub async fn project_run_transcribe(
     online: Option<OnlineTranscribeBridge>,
 ) -> Result<RunTranscribeOutcome, String> {
     let st = state.inner().clone();
-    project_run_transcribe_inner(st, file_id, asr_base_url, online).await
+    let source = if online.is_some() { "online" } else { "local" };
+    let mut tl = TranscribeTimelineRecorder::new(&file_id, source);
+    match project_run_transcribe_inner(st.clone(), file_id, asr_base_url, online, &mut tl).await {
+        Ok(mut out) => {
+            tl.finish_success(&out.warnings);
+            let snap = tl.snapshot();
+            let _ = tl.persist(&st);
+            out.transcribe_timeline = Some(snap);
+            Ok(out)
+        }
+        Err(e) => {
+            if tl.snapshot().outcome != "failed" {
+                record_transcribe_err(&mut tl, e.clone());
+            }
+            let _ = tl.persist(&st);
+            Err(e)
+        }
+    }
+}
+
+#[tauri::command]
+pub fn get_last_transcribe_timeline(
+    state: State<'_, DbState>,
+) -> Option<super::transcribe_timeline::TranscribeTimelineSnapshot> {
+    load_last_timeline(&state.inner().root)
 }
 
 async fn project_run_transcribe_inner(
@@ -176,7 +266,9 @@ async fn project_run_transcribe_inner(
     file_id: String,
     asr_base_url: Option<String>,
     online: Option<OnlineTranscribeBridge>,
+    tl: &mut TranscribeTimelineRecorder,
 ) -> Result<RunTranscribeOutcome, String> {
+    tl.begin_stage(STAGE_PREFLIGHT);
     let conn = open_db(&st)?;
     let file_detail = file_detail_from_conn(&conn, &file_id)?;
     let hotwords_build = build_glossary_hotwords(&conn)?;
@@ -187,10 +279,11 @@ async fn project_run_transcribe_inner(
     let audio_path = file_detail
         .audio_path
         .as_ref()
-        .ok_or("该文件没有关联音频，无法转写")?;
+        .ok_or_else(|| record_transcribe_err(tl, "该文件没有关联音频，无法转写".to_string()))?;
     let audio_path = Path::new(audio_path);
     if !audio_path.is_file() {
         append_desktop_log_line(&st, "ERROR transcribe audio_missing");
+        tl.fail_stage(STAGE_PREFLIGHT, "audio_missing", "项目音频文件缺失");
         return Err("项目音频文件缺失".to_string());
     }
     let audio_duration_sec = probe_audio_duration_sec(audio_path);
@@ -208,12 +301,19 @@ async fn project_run_transcribe_inner(
             vocabulary_support_warnings(channel, &vocabulary, hotwords_truncated);
         let v = match o.native_adapter.as_deref() {
             Some("openaiAudio") => {
-                transcribe_openai_native(&st, audio_path, &vocabulary, o, dur).await?
+                tl.begin_stage(STAGE_TRANSCRIBE);
+                transcribe_openai_native(&st, audio_path, &vocabulary, o, dur)
+                    .await
+                    .map_err(|e| record_transcribe_err(tl, e))?
             }
             Some("assemblyai") => {
-                transcribe_assemblyai_native(&st, audio_path, &vocabulary, o, dur).await?
+                tl.begin_stage(STAGE_TRANSCRIBE);
+                transcribe_assemblyai_native(&st, audio_path, &vocabulary, o, dur)
+                    .await
+                    .map_err(|e| record_transcribe_err(tl, e))?
             }
             Some(adapter @ ("dashscopeAsr" | "deepgramListen")) => {
+                tl.begin_stage(STAGE_TRANSCRIBE);
                 let client = crate::stt_native::http_client();
                 let log = |line: &str| append_desktop_log_line(&st, line);
                 crate::stt_native::dispatch_native(
@@ -225,18 +325,20 @@ async fn project_run_transcribe_inner(
                     dur,
                     &log,
                 )
-                .await?
+                .await
+                .map_err(|e| record_transcribe_err(tl, e))?
             }
             _ => {
                 let url = o.transcribe_url.trim();
                 if url.is_empty() {
-                    return Err("在线转写 URL 为空".to_string());
+                    return Err(record_transcribe_err(tl, "在线转写 URL 为空".to_string()));
                 }
                 if !is_allowed_stt_transcribe_url(url) {
-                    return Err(
+                    return Err(record_transcribe_err(
+                        tl,
                         "在线转写 URL 须为 https，或 http 且主机为 localhost / 127.0.0.1 / ::1"
                             .to_string(),
-                    );
+                    ));
                 }
                 let auth = o.authorization.as_deref();
                 let app_k = o.app_key.as_deref().and_then(|s| {
@@ -248,8 +350,19 @@ async fn project_run_transcribe_inner(
                     }
                 });
                 append_desktop_log_line(&st, "INFO transcribe online_multipart");
-                post_transcribe_multipart(&st, url, audio_path, hotwords.clone(), auth, app_k, dur)
-                    .await?
+                post_transcribe_multipart(
+                    &st,
+                    url,
+                    audio_path,
+                    hotwords.clone(),
+                    TranscribeRequestAuth {
+                        authorization: auth,
+                        app_key: app_k,
+                    },
+                    dur,
+                    Some(tl),
+                )
+                .await?
             }
         };
         (v, vocabulary_pre_warnings)
@@ -263,7 +376,9 @@ async fn project_run_transcribe_inner(
             .unwrap_or_else(|| "http://127.0.0.1:8741".to_string())
             .trim_end_matches('/')
             .to_string();
-        assert_local_asr_ready_for_transcribe(&st, &base).await?;
+        assert_local_asr_ready_for_transcribe(&st, &base)
+            .await
+            .map_err(|e| record_transcribe_err(tl, e))?;
         let url = format!("{base}/v1/transcribe");
         let timeout = local_transcribe_timeout_duration(audio_duration_sec);
         append_desktop_log_line(
@@ -273,8 +388,16 @@ async fn project_run_transcribe_inner(
                 timeout.as_secs()
             ),
         );
-        let v =
-            post_transcribe_multipart(&st, &url, audio_path, hotwords, None, None, timeout).await?;
+        let v = post_transcribe_multipart(
+            &st,
+            &url,
+            audio_path,
+            hotwords,
+            TranscribeRequestAuth::default(),
+            timeout,
+            Some(tl),
+        )
+        .await?;
         (v, vocabulary_pre_warnings)
     };
     if online.is_some() {
@@ -329,7 +452,10 @@ async fn project_run_transcribe_inner(
                 crate::utils::redact_secrets_for_log(&msg)
             ),
         );
-        return Err(describe_transcribe_payload_error(code, &msg));
+        return Err(record_transcribe_err(
+            tl,
+            describe_transcribe_payload_error(code, &msg),
+        ));
     }
 
     let engine = v
@@ -357,6 +483,7 @@ async fn project_run_transcribe_inner(
     if segmentation_mode == Some("transcribe_windowed") {
         append_desktop_log_line(&st, "INFO transcribe_windowed_path");
     }
+    apply_windowed_warning(tl, &warnings);
     for w in warnings.iter() {
         if w.starts_with("transcribe_windowed:") {
             append_desktop_log_line(&st, &format!("INFO transcribe {w}"));
@@ -367,14 +494,23 @@ async fn project_run_transcribe_inner(
     let arr = v
         .get("segments")
         .and_then(|s| s.as_array())
-        .ok_or_else(|| "响应缺少 segments 数组".to_string())?;
-    save_transcribe_segments(&st, &file_id, arr, &mut warnings, audio_duration_sec).await?;
+        .ok_or_else(|| record_transcribe_err(tl, "响应缺少 segments 数组".to_string()))?;
+    save_transcribe_segments(
+        &st,
+        &file_id,
+        arr,
+        &mut warnings,
+        audio_duration_sec,
+        Some(tl),
+    )
+    .await?;
     let conn = open_db(&st)?;
     let detail = file_detail_from_conn(&conn, &file_id)?;
     Ok(RunTranscribeOutcome {
         detail,
         engine,
         warnings,
+        transcribe_timeline: None,
     })
 }
 
@@ -384,6 +520,7 @@ async fn save_transcribe_segments(
     arr: &[serde_json::Value],
     warnings: &mut Vec<String>,
     audio_duration_sec: Option<f64>,
+    mut timeline: Option<&mut TranscribeTimelineRecorder>,
 ) -> Result<(), String> {
     let conn = open_db(st)?;
     let file_detail = file_detail_from_conn(&conn, file_id)?;
@@ -428,6 +565,9 @@ async fn save_transcribe_segments(
             );
         }
     }
+    if let Some(tl) = timeline.as_mut() {
+        tl.begin_stage(STAGE_SAVE);
+    }
     append_desktop_log_line(st, "INFO transcribe_stage=save");
     fs::create_dir_all(st.root.join("logs")).map_err(|e| e.to_string())?;
     let recovery_path = st
@@ -463,10 +603,11 @@ async fn save_transcribe_segments(
                     recovery_path.display()
                 ),
             );
-            return Err(format!(
-                "{e}（未落库语段已写入 {}）",
-                recovery_path.display()
-            ));
+            let msg = format!("{e}（未落库语段已写入 {}）", recovery_path.display());
+            if let Some(tl) = timeline.as_mut() {
+                tl.fail_stage(STAGE_SAVE, "save_failed", &msg);
+            }
+            return Err(msg);
         }
     }
     Ok(())

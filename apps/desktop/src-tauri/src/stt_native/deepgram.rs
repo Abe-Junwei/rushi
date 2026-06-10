@@ -53,10 +53,7 @@ pub async fn transcribe_deepgram(
             .timeout(timeout)
             .header("Authorization", &auth)
     };
-    let primary = build(super::http_client())
-        .multipart(form)
-        .send()
-        .await;
+    let primary = build(super::http_client()).multipart(form).send().await;
     let resp = match primary {
         Ok(r) => r,
         Err(e) if super::is_retryable_stt_transport(&e) => {

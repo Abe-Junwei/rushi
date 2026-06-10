@@ -127,7 +127,7 @@
 
 | 层 | 文件 / 模块 | 变更类型 |
 |----|-------------|----------|
-| **DB** | [`db.rs`](../../../apps/desktop/src-tauri/src/db.rs) | `migrate_segments_annotation` → `ALTER TABLE segments ADD COLUMN annotation TEXT NOT NULL DEFAULT ''` |
+| **DB** | [`db/mod.rs`](../../../apps/desktop/src-tauri/src/db/mod.rs) | `migrate_segments_annotation` → `ALTER TABLE segments ADD COLUMN annotation TEXT NOT NULL DEFAULT ''` |
 | **Rust 类型** | [`project/types.rs`](../../../apps/desktop/src-tauri/src/project/types.rs) | `SegmentDto.annotation` |
 | **Rust 读写** | [`segment_cmd.rs`](../../../apps/desktop/src-tauri/src/project/segment_cmd.rs) · bundle/import | SELECT/INSERT/UPDATE 含 `annotation` |
 | **TS 类型** | [`projectTypes.ts`](../../../apps/desktop/src/tauri/projectTypes.ts) | 对齐 DTO |

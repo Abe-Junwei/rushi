@@ -97,6 +97,7 @@ pub const APP_COMMANDS: &[&str] = &[
     "import_settings_profile",
     "export_docx",
     "export_diagnostic_bundle",
+    "get_last_transcribe_timeline",
     "quality_get_last_report",
     "quality_get_baseline_report",
     "quality_run_eval",

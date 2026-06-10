@@ -157,8 +157,10 @@ pub async fn dispatch_native(
     }
     match adapter {
         "dashscopeAsr" => {
-            dashscope_asr::transcribe_dashscope_asr(client, audio_path, bridge, vocabulary, timeout, log)
-                .await
+            dashscope_asr::transcribe_dashscope_asr(
+                client, audio_path, bridge, vocabulary, timeout, log,
+            )
+            .await
         }
         "deepgramListen" => {
             deepgram::transcribe_deepgram(client, audio_path, bridge, vocabulary, timeout, log)

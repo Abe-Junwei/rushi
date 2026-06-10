@@ -1,7 +1,9 @@
 use super::super::postprocess_segment_ops::{
     validate_refine_ops, RefineSegmentItem, SegmentRefineOp,
 };
-use super::types::{GroundedLexiconOp, LexiconEvidence, LexiconProofreadOp, StageBLexiconDropStats};
+use super::types::{
+    GroundedLexiconOp, LexiconEvidence, LexiconProofreadOp, StageBLexiconDropStats,
+};
 use crate::project::lexicon_pack::LexiconPack;
 
 fn normalize_evidence_type(raw: &str) -> String {
@@ -157,7 +159,7 @@ pub fn is_llm_homophone_candidate(before: &str, after: &str) -> bool {
         return len_a <= 32;
     }
     let ratio = len_a as f64 / len_b as f64;
-    ratio >= 0.7 && ratio <= 1.35
+    (0.7..=1.35).contains(&ratio)
 }
 
 fn llm_homophone_evidence(evidence: &LexiconEvidence) -> LexiconEvidence {
@@ -348,9 +350,7 @@ pub fn filter_grounded_lexicon_ops(
         }
 
         let evidence = normalize_lexicon_evidence(&op.evidence);
-        if let Some(grounded_evidence) =
-            try_ground_lexicon_op(pack, before, &op.text, &evidence)
-        {
+        if let Some(grounded_evidence) = try_ground_lexicon_op(pack, before, &op.text, &evidence) {
             grounded_by_uid.insert(
                 uid.to_string(),
                 GroundedLexiconOp {

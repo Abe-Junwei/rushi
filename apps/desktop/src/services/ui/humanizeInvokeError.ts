@@ -14,7 +14,16 @@ const COMMAND_DENIED_HINTS: Record<string, string> = {
 
 /** 将 Tauri invoke 等技术错误转为用户可读中文；无法识别时尽量保留原意。 */
 export function humanizeInvokeError(raw: unknown): string {
-  const message = raw instanceof Error ? raw.message : String(raw ?? "");
+  const message =
+    raw instanceof Error
+      ? raw.message
+      : typeof raw === "string"
+        ? raw
+        : raw == null
+          ? ""
+          : typeof raw === "number" || typeof raw === "boolean" || typeof raw === "bigint"
+            ? String(raw)
+            : "操作失败，请重试。";
   const trimmed = message.trim();
   if (!trimmed) return "操作失败，请重试。";
 

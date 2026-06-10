@@ -45,6 +45,7 @@ mod transcribe_errors;
 mod transcribe_job;
 mod transcribe_native_online;
 mod transcribe_response;
+pub mod transcribe_timeline;
 mod transcribe_timeout;
 pub mod types;
 pub mod utils;

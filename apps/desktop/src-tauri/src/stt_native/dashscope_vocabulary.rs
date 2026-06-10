@@ -32,7 +32,7 @@ pub fn dashscope_term_valid(term: &str) -> bool {
     if t.is_empty() {
         return false;
     }
-    let has_non_ascii = t.chars().any(|c| !c.is_ascii());
+    let has_non_ascii = !t.is_ascii();
     if has_non_ascii {
         return t.chars().count() <= DASHSCOPE_TERM_MAX_CHARS;
     }
@@ -75,7 +75,10 @@ fn vocabulary_items_hash(items: &[Value]) -> u64 {
 }
 
 fn strip_bearer(raw: &str) -> &str {
-    raw.trim().strip_prefix("Bearer ").unwrap_or(raw.trim()).trim()
+    raw.trim()
+        .strip_prefix("Bearer ")
+        .unwrap_or(raw.trim())
+        .trim()
 }
 
 async fn post_customization(

@@ -75,10 +75,7 @@ pub async fn upload_dashscope_temp_oss_url(
         http.get(DASHSCOPE_UPLOADS_URL)
             .header("Authorization", format!("Bearer {api_key}"))
             .header("Content-Type", "application/json")
-            .query(&[
-                ("action", "getPolicy"),
-                ("model", model_name),
-            ])
+            .query(&[("action", "getPolicy"), ("model", model_name)])
     })
     .await
     .map_err(|e| format!("百炼上传凭证请求失败: {e}"))?;
@@ -127,8 +124,8 @@ pub async fn upload_dashscope_temp_oss_url(
             bytes.clone(),
         ))
     })
-        .await
-        .map_err(|e| format!("百炼 OSS 上传失败: {e}"))?;
+    .await
+    .map_err(|e| format!("百炼 OSS 上传失败: {e}"))?;
     if !upload_resp.status().is_success() {
         let status = upload_resp.status();
         let body = upload_resp.text().await.unwrap_or_default();

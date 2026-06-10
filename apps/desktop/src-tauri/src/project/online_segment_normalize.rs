@@ -137,10 +137,7 @@ fn buf_exceeds_max_subsegment(
         return false;
     }
     let dur_sec = (seg_end_ms.saturating_sub(seg_start_ms)) as f64 / 1000.0;
-    if opts
-        .max_segment_sec
-        .is_some_and(|max| dur_sec > max)
-    {
+    if opts.max_segment_sec.is_some_and(|max| dur_sec > max) {
         return true;
     }
     opts.max_segment_chars
@@ -392,8 +389,8 @@ pub fn deepgram_words_to_timed_words(words: &[serde_json::Value]) -> Vec<TimedWo
         if piece.is_empty() {
             continue;
         }
-        let start_ms = (w.get("start").and_then(|x| x.as_f64()).unwrap_or(0.0) * 1000.0)
-            .max(0.0) as u64;
+        let start_ms =
+            (w.get("start").and_then(|x| x.as_f64()).unwrap_or(0.0) * 1000.0).max(0.0) as u64;
         let end_ms = (w
             .get("end")
             .and_then(|x| x.as_f64())
@@ -421,8 +418,8 @@ pub fn openai_words_to_timed_words(words: &[serde_json::Value]) -> Vec<TimedWord
         if piece.is_empty() {
             continue;
         }
-        let start_ms = (w.get("start").and_then(|x| x.as_f64()).unwrap_or(0.0) * 1000.0)
-            .max(0.0) as u64;
+        let start_ms =
+            (w.get("start").and_then(|x| x.as_f64()).unwrap_or(0.0) * 1000.0).max(0.0) as u64;
         let end_ms = (w
             .get("end")
             .and_then(|x| x.as_f64())
@@ -444,10 +441,7 @@ pub fn assemblyai_words_to_segments(words: &[serde_json::Value]) -> Vec<serde_js
 }
 
 /// 在线 JSON 含 `timed_words` 时对 Tier A 超长语段做 Tier B 精炼。
-pub fn refine_online_transcribe_segments(
-    v: &mut serde_json::Value,
-    engine: &str,
-) -> Option<usize> {
+pub fn refine_online_transcribe_segments(v: &mut serde_json::Value, engine: &str) -> Option<usize> {
     let timed_json = v.get("timed_words")?.as_array()?;
     if timed_json.len() < 2 {
         return None;
@@ -538,10 +532,11 @@ fn tier_c_time_range(v: &serde_json::Value, audio_duration_sec: Option<f64>) -> 
         let start = seg.get("start_sec").and_then(|x| x.as_f64()).unwrap_or(0.0);
         let end = seg.get("end_sec").and_then(|x| x.as_f64()).unwrap_or(start);
         let span = end - start;
-        if span > 0.0 && span.is_finite() {
-            if probe_end <= 0.0 || (end <= probe_end + 1.0 && span <= probe_end + 1.0) {
-                return (start, end);
-            }
+        if span > 0.0
+            && span.is_finite()
+            && (probe_end <= 0.0 || (end <= probe_end + 1.0 && span <= probe_end + 1.0))
+        {
+            return (start, end);
         }
     }
     (0.0, probe_end.max(0.0))
@@ -654,10 +649,7 @@ mod tests {
 
     #[test]
     fn punctuation_break_when_enabled() {
-        let words = vec![
-            ms_word("第一句。", 0, 500),
-            ms_word("第二句", 600, 1000),
-        ];
+        let words = vec![ms_word("第一句。", 0, 500), ms_word("第二句", 600, 1000)];
         let opts = OnlineSegmentNormalizeOptions {
             break_on_punctuation: true,
             ..OnlineSegmentNormalizeOptions::english_words()
@@ -720,8 +712,11 @@ mod tests {
             "text": "甲，很长。乙，也很长。",
             "kind": "speech",
         })];
-        let refined =
-            refine_long_speech_segments(segments, &timed, &OnlineSegmentNormalizeOptions::cjk_oral());
+        let refined = refine_long_speech_segments(
+            segments,
+            &timed,
+            &OnlineSegmentNormalizeOptions::cjk_oral(),
+        );
         assert_eq!(refined.len(), 2);
     }
 
@@ -763,8 +758,14 @@ mod tests {
             "segments": [{"start_sec": 0.0, "end_sec": 9.0, "text": "甲。乙。丙。", "kind": "placeholder"}],
             "duration_sec": 9.0
         });
-        let extra = normalize_online_transcribe_json(&mut v, Some(9.0), &OnlineSegmentNormalizeOptions::default());
-        assert!(extra.iter().any(|w| w == "online_segmentation_proportional"));
+        let extra = normalize_online_transcribe_json(
+            &mut v,
+            Some(9.0),
+            &OnlineSegmentNormalizeOptions::default(),
+        );
+        assert!(extra
+            .iter()
+            .any(|w| w == "online_segmentation_proportional"));
         assert!(segment_count(&v) >= 2);
     }
 
@@ -780,7 +781,11 @@ mod tests {
             }],
             "duration_sec": 9.0
         });
-        let extra = normalize_online_transcribe_json(&mut v, Some(9.0), &OnlineSegmentNormalizeOptions::default());
+        let extra = normalize_online_transcribe_json(
+            &mut v,
+            Some(9.0),
+            &OnlineSegmentNormalizeOptions::default(),
+        );
         assert!(extra.is_empty());
         assert_eq!(segment_count(&v), 1);
     }
@@ -794,7 +799,11 @@ mod tests {
                 {"start_sec": 1.0, "end_sec": 2.0, "text": "b"}
             ]
         });
-        let extra = normalize_online_transcribe_json(&mut v, Some(2.0), &OnlineSegmentNormalizeOptions::default());
+        let extra = normalize_online_transcribe_json(
+            &mut v,
+            Some(2.0),
+            &OnlineSegmentNormalizeOptions::default(),
+        );
         assert!(extra.is_empty());
         assert_eq!(segment_count(&v), 2);
     }

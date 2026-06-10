@@ -118,8 +118,7 @@ fn filters_ungrounded_ops() {
             },
         },
     ];
-    let (grounded, _warnings, stats) =
-        filter_grounded_lexicon_ops(&pack, &segments, ops).unwrap();
+    let (grounded, _warnings, stats) = filter_grounded_lexicon_ops(&pack, &segments, ops).unwrap();
     assert_eq!(grounded.len(), 1);
     assert_eq!(grounded[0].text, "安那般那");
     assert_eq!(stats.ignored_for_ui(), 1);

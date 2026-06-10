@@ -27,15 +27,15 @@ describe("useEnvironmentCapabilitySync", () => {
   });
 
   it("runs app-init once and debounces project-open refresh", async () => {
-    const refreshAsrHealth = vi.fn(async () => undefined);
+    const refreshAsrHealth = vi.fn(() => Promise.resolve(undefined));
 
-    const { rerender } = renderHook(
-      (projectId: string | null) =>
+    const { rerender } = renderHook<void, string | null>(
+      (projectId) =>
         useEnvironmentCapabilitySync({
           projectId,
           refreshAsrHealth,
         }),
-      { initialProps: null as string | null },
+      { initialProps: null },
     );
 
     await act(async () => {
@@ -47,7 +47,7 @@ describe("useEnvironmentCapabilitySync", () => {
       { touchUi: true },
     );
 
-    await act(async () => {
+    act(() => {
       rerender("proj-a");
     });
     expect(runEnvironmentCapabilityRefresh).not.toHaveBeenCalledWith(
@@ -64,15 +64,15 @@ describe("useEnvironmentCapabilitySync", () => {
   });
 
   it("skips repeat project-open refresh for the same project id", async () => {
-    const refreshAsrHealth = vi.fn(async () => undefined);
+    const refreshAsrHealth = vi.fn(() => Promise.resolve(undefined));
 
-    const { rerender } = renderHook(
-      (projectId: string | null) =>
+    const { rerender } = renderHook<void, string | null>(
+      (projectId) =>
         useEnvironmentCapabilitySync({
           projectId,
           refreshAsrHealth,
         }),
-      { initialProps: "proj-a" as string | null },
+      { initialProps: "proj-a" },
     );
 
     await act(async () => {
@@ -95,15 +95,15 @@ describe("useEnvironmentCapabilitySync", () => {
   });
 
   it("runs project-open again after closing and reopening the same project", async () => {
-    const refreshAsrHealth = vi.fn(async () => undefined);
+    const refreshAsrHealth = vi.fn(() => Promise.resolve(undefined));
 
-    const { rerender } = renderHook(
-      (projectId: string | null) =>
+    const { rerender } = renderHook<void, string | null>(
+      (projectId) =>
         useEnvironmentCapabilitySync({
           projectId,
           refreshAsrHealth,
         }),
-      { initialProps: "proj-a" as string | null },
+      { initialProps: "proj-a" },
     );
 
     await act(async () => {
@@ -118,7 +118,7 @@ describe("useEnvironmentCapabilitySync", () => {
       await Promise.resolve();
     });
 
-    await act(async () => {
+    act(() => {
       rerender("proj-a");
     });
 

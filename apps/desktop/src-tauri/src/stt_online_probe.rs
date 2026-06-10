@@ -3,10 +3,10 @@
 //! 使用 **reqwest blocking 客户端 + 同步 Tauri 命令**，与转写生产能力隔离；
 //! URL 策略与 `online_stt_bridge::is_allowed_stt_transcribe_url` 一致。
 
+use crate::blocking_http::{stt_probe_blocking_client, BlockingClient};
 use crate::online_stt_bridge::is_allowed_stt_transcribe_url;
 use crate::project::utils::append_desktop_log_line;
 use crate::DbState;
-use crate::blocking_http::{stt_probe_blocking_client, BlockingClient};
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use serde::{Deserialize, Serialize};
 use std::collections::HashMap;

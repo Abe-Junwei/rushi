@@ -5,6 +5,7 @@ const transcribeJobApiMocks = vi.hoisted(() => ({
   projectLoad: vi.fn(),
   projectTranscribeAsyncStart: vi.fn(),
   projectTranscribeAsyncFinalize: vi.fn(),
+  getLastTranscribeTimeline: vi.fn(),
 }));
 
 vi.mock("../tauri/projectApi", () => ({
@@ -12,6 +13,7 @@ vi.mock("../tauri/projectApi", () => ({
   projectLoad: transcribeJobApiMocks.projectLoad,
   projectTranscribeAsyncStart: transcribeJobApiMocks.projectTranscribeAsyncStart,
   projectTranscribeAsyncFinalize: transcribeJobApiMocks.projectTranscribeAsyncFinalize,
+  getLastTranscribeTimeline: transcribeJobApiMocks.getLastTranscribeTimeline,
 }));
 
 vi.mock("../config/env", () => ({

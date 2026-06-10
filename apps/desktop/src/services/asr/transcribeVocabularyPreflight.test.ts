@@ -2,11 +2,13 @@ import { describe, expect, it, vi } from "vitest";
 import { loadTranscribeVocabularyPreflight } from "./transcribeVocabularyPreflight";
 
 vi.mock("../../tauri/glossaryApi", () => ({
-  glossaryHotwordsPreview: vi.fn(async () => ({
-    enabledEntryCount: 0,
-    enabledEntries: [],
-    truncated: false,
-  })),
+  glossaryHotwordsPreview: vi.fn(() =>
+    Promise.resolve({
+      enabledEntryCount: 0,
+      enabledEntries: [],
+      truncated: false,
+    }),
+  ),
 }));
 
 vi.mock("../stt/sttOnlineProviderContract/bridge", () => ({

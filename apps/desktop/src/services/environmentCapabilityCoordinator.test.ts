@@ -33,20 +33,29 @@ const okHealthResult: AsrHealthRefreshResult = {
   rootJson: { transcribe: "POST /v1/transcribe/async" },
 };
 
-vi.mock("../pages/refreshLocalAsrDiagnostics", () => ({
-  refreshLocalAsrDiagnostics: vi.fn(async (input, options) => {
-    await input.refreshAsrHealth({ touchUi: options?.touchUi ?? false });
-    if (input.refreshAsrModelCacheInfo) await input.refreshAsrModelCacheInfo();
-    if (input.refreshSetupDiagnose) {
-      await input.refreshSetupDiagnose({
-        resetSteps: false,
-        touchUi: false,
-        ...options?.setupDiagnose,
-      });
-    }
-  }),
-  readLastAsrHealthRefreshResultAfterDiagnostics: () => mockHealthResult,
-}));
+vi.mock("../pages/refreshLocalAsrDiagnostics", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../pages/refreshLocalAsrDiagnostics")>();
+  return {
+    ...actual,
+    refreshLocalAsrDiagnostics: vi.fn(
+      async (
+        input: Parameters<typeof actual.refreshLocalAsrDiagnostics>[0],
+        options?: Parameters<typeof actual.refreshLocalAsrDiagnostics>[1],
+      ) => {
+        await input.refreshAsrHealth({ touchUi: options?.touchUi ?? false });
+        if (input.refreshAsrModelCacheInfo) await input.refreshAsrModelCacheInfo();
+        if (input.refreshSetupDiagnose) {
+          await input.refreshSetupDiagnose({
+            resetSteps: false,
+            touchUi: false,
+            ...options?.setupDiagnose,
+          });
+        }
+      },
+    ),
+    readLastAsrHealthRefreshResultAfterDiagnostics: () => mockHealthResult,
+  };
+});
 
 describe("environmentCapabilityCoordinator", () => {
   beforeEach(() => {
@@ -60,9 +69,9 @@ describe("environmentCapabilityCoordinator", () => {
   });
 
   function makeDeps() {
-    const refreshAsrHealth = vi.fn(async () => {});
-    const refreshAsrModelCacheInfo = vi.fn(async () => {});
-    const refreshSetupDiagnose = vi.fn(async () => null);
+    const refreshAsrHealth = vi.fn(() => Promise.resolve());
+    const refreshAsrModelCacheInfo = vi.fn(() => Promise.resolve());
+    const refreshSetupDiagnose = vi.fn(() => Promise.resolve(null));
     const bumpLlmRuntimeChanged = vi.fn();
     const bumpSttOnlineRuntimeChanged = vi.fn();
     const refreshLlmOllamaDetect = vi.fn(async () => {});

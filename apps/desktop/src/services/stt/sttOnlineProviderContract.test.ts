@@ -148,11 +148,11 @@ describe("resolveSttOnlineProbeUrl", () => {
   it("requires fetchImpl for deepgram HTTP probe in non-tauri test", async () => {
     setSttOnlineApiKeyInMemory("dg-key");
     const r = await probeExternalSttOnlineHealth({
-      fetchImpl: async () =>
-        ({
+      fetchImpl: () =>
+        Promise.resolve({
           ok: true,
           status: 200,
-        }) as Response,
+        } as Response),
       runtimeConfig: normalizeExternalSttOnlineRuntimeConfig({
         enabled: true,
         selectedProviderId: "deepgram",

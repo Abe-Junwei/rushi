@@ -1,10 +1,14 @@
 use serde::{Deserialize, Serialize};
 
+use super::transcribe_timeline::TranscribeTimelineSnapshot;
+
 #[derive(Debug, Serialize)]
 pub struct RunTranscribeOutcome {
     pub detail: FileDetail,
     pub engine: String,
     pub warnings: Vec<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub transcribe_timeline: Option<TranscribeTimelineSnapshot>,
 }
 
 #[derive(Debug, Serialize)]

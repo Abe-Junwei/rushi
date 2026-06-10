@@ -37,9 +37,7 @@ pub(crate) use postprocess_config::{
 #[cfg(test)]
 pub(crate) use postprocess_api_key_cmd::{secret_account_for_delete, LlmSaveApiKeyRequest};
 #[cfg(test)]
-pub(crate) use postprocess_config::{
-    parse_postprocess_endpoint, resolve_postprocess_config,
-};
+pub(crate) use postprocess_config::{parse_postprocess_endpoint, resolve_postprocess_config};
 
 pub use postprocess_types::*;
 

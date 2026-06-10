@@ -16,12 +16,7 @@ pub async fn transcribe_dashscope_asr(
     log: &impl Fn(&str),
 ) -> Result<serde_json::Value, String> {
     super::dashscope_file_asr::transcribe_dashscope_file_asr(
-        client,
-        audio_path,
-        bridge,
-        vocabulary,
-        timeout,
-        log,
+        client, audio_path, bridge, vocabulary, timeout, log,
     )
     .await
 }

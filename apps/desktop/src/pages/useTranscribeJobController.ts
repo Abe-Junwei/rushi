@@ -6,6 +6,10 @@ import {
 } from "../services/asr/transcribeVocabularyPreflight";
 import { deriveTranscribeHints } from "../services/asrTranscribeHints";
 import {
+  formatTranscribeDiagSummary,
+  type TranscribeTimelineSnapshot,
+} from "../services/transcribeDiag";
+import {
   buildTranscribeResultSummary,
   countTranscribeCharacters,
 } from "../services/asr/transcribeResultToast";
@@ -104,6 +108,8 @@ export function useTranscribeJobController(deps: Deps) {
   const [transcribeSource, setTranscribeSourceState] = useState<TranscribeSource>(readStoredTranscribeSource);
   const [transcribeProgress, setTranscribeProgress] = useState<TranscribeProgress | null>(null);
   const [transcribeCancelling, setTranscribeCancelling] = useState(false);
+  const [transcribeFailureDiag, setTranscribeFailureDiag] =
+    useState<TranscribeTimelineSnapshot | null>(null);
   const [sttRuntimeRevision, setSttRuntimeRevision] = useState(0);
 
   useEffect(() => {
@@ -181,9 +187,13 @@ export function useTranscribeJobController(deps: Deps) {
       onTranscribeSuccess?.(out);
       await closeGate.openFileWrapped(fileId);
       setTranscribeWarnings(out.warnings ?? []);
-      setTranscribeHints(
-        deriveTranscribeHints(out.engine ?? "", out.warnings ?? [], segments),
-      );
+      const diagSnap = out.transcribeTimeline ?? (await p1.getLastTranscribeTimeline().catch(() => null));
+      setTranscribeFailureDiag(null);
+      const diagLines = formatTranscribeDiagSummary(diagSnap);
+      setTranscribeHints([
+        ...deriveTranscribeHints(out.engine ?? "", out.warnings ?? [], segments),
+        ...diagLines,
+      ]);
       const elapsedMs = Date.now() - (transcribeStartedAtRef.current ?? Date.now());
       const summary = buildTranscribeResultSummary({
         segmentCount: segments.length,
@@ -222,6 +232,7 @@ export function useTranscribeJobController(deps: Deps) {
     setError("");
     setTranscribeHints([]);
     setTranscribeWarnings([]);
+    setTranscribeFailureDiag(null);
     setTranscribeProgress(null);
     setTranscribeCancelling(false);
     userCancelRequestedRef.current = false;
@@ -258,8 +269,11 @@ export function useTranscribeJobController(deps: Deps) {
       if (isTranscribeUserCancellation(e)) {
         setTranscribeHints([]);
         setTranscribeWarnings([]);
+        setTranscribeFailureDiag(null);
         pushTranscribeHintsToToast([TRANSCRIBE_CANCELLED_HINT]);
       } else {
+        const snap = await p1.getLastTranscribeTimeline().catch(() => null);
+        setTranscribeFailureDiag(snap);
         setError(humanizeInvokeError(e));
       }
     } finally {
@@ -329,6 +343,7 @@ export function useTranscribeJobController(deps: Deps) {
   const applyDetail = useCallback((_d: ProjectDetail) => {
     setTranscribeHints([]);
     setTranscribeWarnings([]);
+    setTranscribeFailureDiag(null);
     setTranscribeStartDialogOpen(false);
     setTranscribeProgress(null);
     setTranscribeCancelling(false);
@@ -341,6 +356,8 @@ export function useTranscribeJobController(deps: Deps) {
     setTranscribeWarnings,
     transcribeProgress,
     transcribeCancelling,
+    transcribeFailureDiag,
+    setTranscribeFailureDiag,
     transcribeStartDialogOpen,
     transcribeStartHasExistingText: segmentsHaveNonEmptyText(segmentsRef.current),
     /** @deprecated Use transcribeStartDialogOpen */

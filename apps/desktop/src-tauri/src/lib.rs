@@ -90,6 +90,7 @@ pub fn run() {
             project::project_run_transcribe,
             project::project_transcribe_async_start,
             project::project_transcribe_async_finalize,
+            project::get_last_transcribe_timeline,
             project::project_delete,
             project::rename_project,
             project::update_project_metadata,

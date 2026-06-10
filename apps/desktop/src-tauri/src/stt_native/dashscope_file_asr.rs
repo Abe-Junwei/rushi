@@ -22,6 +22,8 @@ pub const DASHSCOPE_TASKS_URL: &str = "https://dashscope.aliyuncs.com/api/v1/tas
 
 const POLL_INTERVAL: Duration = Duration::from_secs(2);
 
+type FunasrFileTranscriptionParse = (Vec<Value>, String, Option<f64>, Vec<Value>);
+
 fn json_f64(v: &Value) -> Option<f64> {
     v.as_f64()
         .or_else(|| v.as_i64().map(|n| n as f64))
@@ -29,7 +31,10 @@ fn json_f64(v: &Value) -> Option<f64> {
 }
 
 fn strip_bearer(raw: &str) -> &str {
-    raw.trim().strip_prefix("Bearer ").unwrap_or(raw.trim()).trim()
+    raw.trim()
+        .strip_prefix("Bearer ")
+        .unwrap_or(raw.trim())
+        .trim()
 }
 
 fn assemble_text_from_words(words: &[Value]) -> String {
@@ -120,9 +125,7 @@ fn segments_for_sentence(sentence: &Value) -> (Vec<Value>, Vec<Value>) {
 }
 
 /// 解析 Fun-ASR 文件转写结果 JSON（`transcription_url` 下载体）。
-pub fn parse_funasr_file_transcription(
-    j: &Value,
-) -> Result<(Vec<Value>, String, Option<f64>, Vec<Value>), String> {
+pub fn parse_funasr_file_transcription(j: &Value) -> Result<FunasrFileTranscriptionParse, String> {
     let duration_sec = j
         .pointer("/properties/original_duration_in_milliseconds")
         .and_then(json_f64)
@@ -200,9 +203,14 @@ pub async fn transcribe_dashscope_file_asr(
         .filter(|s| !s.is_empty())
         .ok_or_else(|| "百炼 ASR：请在内存凭证中填写百炼 API Key（sk-…）".to_string())?;
 
-    let oss_url =
-        upload_dashscope_temp_oss_url(client, api_key, DASHSCOPE_FUNASR_FILE_MODEL, audio_path, log)
-            .await?;
+    let oss_url = upload_dashscope_temp_oss_url(
+        client,
+        api_key,
+        DASHSCOPE_FUNASR_FILE_MODEL,
+        audio_path,
+        log,
+    )
+    .await?;
 
     let vocabulary_id = if vocabulary.is_empty() {
         None
@@ -432,7 +440,11 @@ mod tests {
         )
         .expect("json");
         let (segments, full_text, _, _) = parse_funasr_file_transcription(&j).expect("parse");
-        assert!(segments.len() >= 2, "expected refine, got {}", segments.len());
+        assert!(
+            segments.len() >= 2,
+            "expected refine, got {}",
+            segments.len()
+        );
         assert_eq!(segments[0]["text"], "甲，很长。");
         assert_eq!(segments[1]["text"], "乙，也很长。");
         assert_eq!(full_text, "甲，很长。乙，也很长。");

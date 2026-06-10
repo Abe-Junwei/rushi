@@ -215,6 +215,21 @@ pub fn export_diagnostic_bundle(
     zip.write_all(logs_note.as_bytes())
         .map_err(|e| e.to_string())?;
 
+    let timeline_note =
+        if let Some(snap) = crate::project::transcribe_timeline::load_last_timeline(&st.root) {
+            let bytes = serde_json::to_vec_pretty(&snap).map_err(|e| e.to_string())?;
+            zip.start_file("transcribe_timeline.json", zip_opts())
+                .map_err(|e| e.to_string())?;
+            zip.write_all(&bytes).map_err(|e| e.to_string())?;
+            "included transcribe_timeline.json (last transcribe task timeline)\n".to_string()
+        } else {
+            "skipped transcribe_timeline.json (no last transcribe timeline on disk)\n".to_string()
+        };
+    zip.start_file("transcribe-timeline-readme.txt", zip_opts())
+        .map_err(|e| e.to_string())?;
+    zip.write_all(timeline_note.as_bytes())
+        .map_err(|e| e.to_string())?;
+
     zip.start_file("diagnostic-contents.txt", zip_opts())
         .map_err(|e| e.to_string())?;
     zip.write_all(
@@ -226,7 +241,9 @@ pub fn export_diagnostic_bundle(
 - rushi.sqlite3 - optional sanitized copy (segment text and names redacted)\n\
 - recent_edit_log.tsv - last 500 edit_log rows (detail redacted)\n\
 - logs/*.log - tail of each .log file (secrets/transcript snippets redacted)\n\
-- logs-readme.txt - which log tails were included\n",
+- logs-readme.txt - which log tails were included\n\
+- transcribe_timeline.json - optional last transcribe task timeline (TRN-DIAG)\n\
+- transcribe-timeline-readme.txt - whether timeline JSON is embedded\n",
     )
     .map_err(|e| e.to_string())?;
 

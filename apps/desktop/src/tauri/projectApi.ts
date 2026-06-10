@@ -1,5 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { OnlineTranscribeBridgePayload } from "../services/stt/sttOnlineProviderContract";
+import type { TranscribeTimelineSnapshot } from "../services/transcribeDiag";
 import type { FileDetail, ProjectDetail, ProjectSummary, SegmentDto } from "./projectTypes";
 
 export type {
@@ -18,6 +19,7 @@ export interface RunTranscribeOutcome {
   detail: FileDetail;
   engine: string;
   warnings: string[];
+  transcribeTimeline?: TranscribeTimelineSnapshot | null;
 }
 
 export interface EditLogEntryDto {
@@ -164,6 +166,10 @@ export async function projectTranscribeAsyncFinalize(
     jobId,
     asrBaseUrl: asrBaseUrl ?? null,
   });
+}
+
+export async function getLastTranscribeTimeline(): Promise<TranscribeTimelineSnapshot | null> {
+  return invoke<TranscribeTimelineSnapshot | null>("get_last_transcribe_timeline");
 }
 
 export async function projectDelete(projectId: string): Promise<void> {

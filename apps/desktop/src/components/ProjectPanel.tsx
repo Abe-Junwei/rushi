@@ -7,7 +7,7 @@ import { EditorView } from "./EditorView";
 import { ProjectHubView } from "./ProjectHubView";
 import { WelcomeView, type WelcomePageId } from "./WelcomeView";
 import { WelcomeSidebar } from "./WelcomeSidebar";
-import { ProjectBusyOverlay, TranscribePreviewBanner } from "./ProjectStatusFeedback";
+import { ProjectBusyOverlay, TranscribeDiagBanner, TranscribePreviewBanner } from "./ProjectStatusFeedback";
 import { ProjectPanelDialogs } from "./ProjectPanelDialogs";
 import { useProjectController } from "../pages/useProjectController";
 import { useWorkspaceSidebarCollapse } from "../hooks/useWorkspaceSidebarCollapse";
@@ -279,6 +279,19 @@ export function ProjectPanel() {
             }
           >
             <main className="relative flex min-h-[12rem] min-w-0 flex-1 flex-col bg-notion-bg lg:min-h-0">
+              {c.transcribeFailureDiag ? (
+                <div className="shrink-0 px-4 pt-4">
+                  <TranscribeDiagBanner
+                    diag={c.transcribeFailureDiag}
+                    errorMessage={c.error || null}
+                    onDismiss={() => {
+                      c.setTranscribeFailureDiag(null);
+                      c.setError("");
+                    }}
+                    onOpenEnvironment={openEnvironment}
+                  />
+                </div>
+              ) : null}
               {c.busy && c.busyReason === "transcribe" ? (
                 <TranscribePreviewBanner
                   elapsedSec={busyElapsedSec}

@@ -1,7 +1,7 @@
 # Acceptance: TRN-DIAG — 转写任务可观测（单机）
 
-> **状态**：📋 未编码  
-> **排期**：路线图 §4.1.1 **⑤′½**（R3t-B 之后）  
+> **状态**：✅ 编码完成（2026-06-07）；手测待签收  
+> **自动化**：`bash scripts/trn-diag-hand-test.sh`  
 > **Backlog**：[`personal-solo-v1-backlog.md`](./personal-solo-v1-backlog.md) §3.2  
 > **依赖**：R3t-B 转写编排、R3e 失败分类文案
 
@@ -28,11 +28,11 @@
 
 ## 验收标准
 
+- [x] focused test：时间线序列化 + 至少 1 条失败映射（`transcribe_timeline.rs` + `transcribeDiag.test.ts`）
 - [ ] 故意在 **transcribe** 阶段失败（如断侧车）：UI 标明阶段为转写/侧车，非「未知错误」
 - [ ] 导出诊断包含 `transcribe_timeline[]`（或等价字段）且与 UI 一致
-- [ ] 与 R3e 失败分类文案不矛盾（同一 `error_code` 映射表）
-- [ ] focused test：时间线序列化 + 至少 1 条失败映射
-- [ ] `npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs`
+- [x] 与 R3e 失败分类文案不矛盾（同一 `error_code` 映射表 · `infer_transcribe_error_code`）
+- [x] `npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs`（编码轮）
 
 ## 手测场景（2 组）
 

@@ -1,10 +1,11 @@
-use super::transcribe_errors::{
-    describe_transcribe_http_status_error, describe_transcribe_request_error,
-};
 use super::online_segment_normalize::{
     assemblyai_words_to_timed_words, openai_words_to_timed_words, timed_words_to_json,
     timed_words_to_segments, OnlineSegmentNormalizeOptions,
 };
+use super::transcribe_errors::{
+    describe_transcribe_http_status_error, describe_transcribe_request_error,
+};
+use super::transcribe_timeline::{TranscribeTimelineRecorder, STAGE_TRANSCRIBE, STAGE_UPLOAD};
 use super::utils::append_desktop_log_line;
 use crate::utils::http_client;
 use crate::utils::{redact_http_body_snippet, redact_secrets_for_log};
@@ -13,15 +14,24 @@ use std::path::Path;
 
 pub use super::glossary_hotwords::build_glossary_hotwords;
 
+#[derive(Default, Clone, Copy)]
+pub struct TranscribeRequestAuth<'a> {
+    pub authorization: Option<&'a str>,
+    pub app_key: Option<&'a str>,
+}
+
 pub async fn post_transcribe_multipart(
     st: &DbState,
     url: &str,
     audio_path: &Path,
     hotwords: String,
-    authorization: Option<&str>,
-    app_key: Option<&str>,
+    auth: TranscribeRequestAuth<'_>,
     timeout: std::time::Duration,
+    mut timeline: Option<&mut TranscribeTimelineRecorder>,
 ) -> Result<serde_json::Value, String> {
+    if let Some(tl) = timeline.as_deref_mut() {
+        tl.begin_stage(STAGE_UPLOAD);
+    }
     let part = crate::stt_native::multipart_part_from_file(audio_path).await?;
     let form = {
         let mut f = reqwest::multipart::Form::new().part("file", part);
@@ -34,42 +44,69 @@ pub async fn post_transcribe_multipart(
         http_client().post(url).multipart(form).timeout(timeout),
         url,
     );
-    if let Some(a) = authorization {
+    if let Some(a) = auth.authorization {
         let t = a.trim();
         if !t.is_empty() {
             req = req.header("Authorization", t);
         }
     }
-    if let Some(k) = app_key {
+    if let Some(k) = auth.app_key {
         let t = k.trim();
         if !t.is_empty() {
             req = req.header("X-Rushi-Stt-App-Key", t);
         }
     }
-    let resp = req.send().await.map_err(|e| {
-        append_desktop_log_line(
-            st,
-            &format!(
-                "ERROR transcribe connect {}",
-                redact_secrets_for_log(&e.to_string())
-            ),
-        );
-        describe_transcribe_request_error(&e, timeout)
-    })?;
+    if let Some(tl) = timeline.as_deref_mut() {
+        tl.begin_stage(STAGE_TRANSCRIBE);
+    }
+    let resp = match req.send().await {
+        Ok(r) => r,
+        Err(e) => {
+            append_desktop_log_line(
+                st,
+                &format!(
+                    "ERROR transcribe connect {}",
+                    redact_secrets_for_log(&e.to_string())
+                ),
+            );
+            let msg = describe_transcribe_request_error(&e, timeout);
+            if let Some(tl) = timeline {
+                let code = super::transcribe_timeline::infer_transcribe_error_code(&msg);
+                tl.fail_stage(STAGE_TRANSCRIBE, code, &msg);
+            }
+            return Err(msg);
+        }
+    };
     let status = resp.status();
     if !status.is_success() {
         let body = resp.text().await.unwrap_or_default();
         let snippet = redact_http_body_snippet(&body);
         append_desktop_log_line(st, &format!("ERROR transcribe http {} {}", status, snippet));
         if let Some(msg) = describe_transcribe_http_status_error(status.as_u16(), &snippet) {
+            if let Some(tl) = timeline {
+                let code = super::transcribe_timeline::infer_transcribe_error_code(&msg);
+                tl.fail_stage(STAGE_TRANSCRIBE, code, &msg);
+            }
             return Err(msg);
         }
-        return Err(format!("ASR HTTP {}: {}", status, snippet));
+        let err = format!("ASR HTTP {}: {}", status, snippet);
+        if let Some(tl) = timeline {
+            tl.fail_stage(STAGE_TRANSCRIBE, "asr_payload", &err);
+        }
+        return Err(err);
     }
-    resp.json().await.map_err(|e| {
-        append_desktop_log_line(st, &format!("ERROR transcribe json {e}"));
-        e.to_string()
-    })
+    let out = match resp.json().await {
+        Ok(v) => v,
+        Err(e) => {
+            append_desktop_log_line(st, &format!("ERROR transcribe json {e}"));
+            let err = e.to_string();
+            if let Some(tl) = timeline {
+                tl.fail_stage(STAGE_TRANSCRIBE, "asr_payload", &err);
+            }
+            return Err(err);
+        }
+    };
+    Ok(out)
 }
 
 pub fn openai_verbose_json_to_rushi(v: &serde_json::Value) -> Result<serde_json::Value, String> {

@@ -13,7 +13,7 @@ fn dashscope_term_valid(term: &str) -> bool {
     if t.is_empty() {
         return false;
     }
-    let has_non_ascii = t.chars().any(|c| !c.is_ascii());
+    let has_non_ascii = !t.is_ascii();
     if has_non_ascii {
         return t.chars().count() <= DASHSCOPE_TERM_MAX_CHARS;
     }
@@ -274,7 +274,10 @@ mod tests {
             hotwords: format!("有效 {long_ascii}"),
             terms: vec!["有效".to_string(), long_ascii.to_string()],
         };
-        let w = vocabulary_support_warnings(SttVocabularyChannel::DashScopeVocabulary, &plan, false);
-        assert!(w.iter().any(|x| x == "online_vocabulary_truncated_dashscope_terms"));
+        let w =
+            vocabulary_support_warnings(SttVocabularyChannel::DashScopeVocabulary, &plan, false);
+        assert!(w
+            .iter()
+            .any(|x| x == "online_vocabulary_truncated_dashscope_terms"));
     }
 }

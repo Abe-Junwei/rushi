@@ -1,9 +1,10 @@
 //! R3e-C: async transcribe job HTTP helpers (sidecar poll + cancel).
 
-use super::transcribe::post_transcribe_multipart;
+use super::transcribe::{post_transcribe_multipart, TranscribeRequestAuth};
 use super::transcribe_errors::{
     describe_transcribe_http_status_error, describe_transcribe_request_error,
 };
+use super::transcribe_timeline::TranscribeTimelineRecorder;
 use super::utils::append_desktop_log_line;
 use crate::utils::http_client;
 use crate::utils::{redact_http_body_snippet, redact_secrets_for_log};
@@ -23,9 +24,19 @@ pub async fn post_transcribe_async_multipart(
     audio_path: &Path,
     hotwords: String,
     timeout: Duration,
+    timeline: Option<&mut TranscribeTimelineRecorder>,
 ) -> Result<serde_json::Value, String> {
     let url = format!("{}/v1/transcribe/async", base_url.trim_end_matches('/'));
-    post_transcribe_multipart(st, &url, audio_path, hotwords, None, None, timeout).await
+    post_transcribe_multipart(
+        st,
+        &url,
+        audio_path,
+        hotwords,
+        TranscribeRequestAuth::default(),
+        timeout,
+        timeline,
+    )
+    .await
 }
 
 pub async fn get_transcribe_job_status(
