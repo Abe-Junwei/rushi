@@ -16,6 +16,7 @@ export type PostTranscribeStageBDialogState =
       selectedSegmentIdxs: number[];
       provider: string;
       droppedUngroundedOps: number;
+      dropDetail: string | null;
       stepError: string | null;
       pendingStageAHint: string | null;
       packTruncationHint: string | null;

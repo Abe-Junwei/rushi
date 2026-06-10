@@ -89,9 +89,9 @@ fn accepts_punctuation_evidence_when_only_punct_changed() {
             r#ref: "补标点".into(),
         },
     }];
-    let (grounded, _, dropped) = filter_grounded_lexicon_ops(&pack, &segments, ops).unwrap();
+    let (grounded, _, stats) = filter_grounded_lexicon_ops(&pack, &segments, ops).unwrap();
     assert_eq!(grounded.len(), 1);
-    assert_eq!(dropped, 0);
+    assert_eq!(stats.ignored_for_ui(), 0);
 }
 
 #[test]
@@ -118,11 +118,11 @@ fn filters_ungrounded_ops() {
             },
         },
     ];
-    let (grounded, _warnings, dropped) =
+    let (grounded, _warnings, stats) =
         filter_grounded_lexicon_ops(&pack, &segments, ops).unwrap();
     assert_eq!(grounded.len(), 1);
     assert_eq!(grounded[0].text, "安那般那");
-    assert_eq!(dropped, 1);
+    assert_eq!(stats.ignored_for_ui(), 1);
 }
 
 #[test]
@@ -143,7 +143,7 @@ fn lenient_parse_skips_malformed_ops() {
 }
 
 #[test]
-fn rejects_rule_evidence_when_wrong_not_in_segment() {
+fn accepts_homophone_guess_when_cited_rule_does_not_apply() {
     let pack = LexiconPack {
         glossary_canonical: vec![],
         correction_rules: vec![CorrectionRule {
@@ -164,9 +164,10 @@ fn rejects_rule_evidence_when_wrong_not_in_segment() {
             r#ref: "智控→制控".into(),
         },
     }];
-    let (grounded, _, dropped) = filter_grounded_lexicon_ops(&pack, &segments, ops).unwrap();
-    assert_eq!(grounded.len(), 0);
-    assert_eq!(dropped, 1);
+    let (grounded, _, stats) = filter_grounded_lexicon_ops(&pack, &segments, ops).unwrap();
+    assert_eq!(grounded.len(), 1);
+    assert_eq!(grounded[0].evidence.evidence_type, "llm_homophone");
+    assert_eq!(stats.llm_homophone, 1);
 }
 
 #[test]
@@ -182,9 +183,9 @@ fn accepts_rule_evidence_when_segment_applies_cited_rule() {
             r#ref: "安波那那→安那般那".into(),
         },
     }];
-    let (grounded, _, dropped) = filter_grounded_lexicon_ops(&pack, &segments, ops).unwrap();
+    let (grounded, _, stats) = filter_grounded_lexicon_ops(&pack, &segments, ops).unwrap();
     assert_eq!(grounded.len(), 1);
-    assert_eq!(dropped, 0);
+    assert_eq!(stats.ignored_for_ui(), 0);
 }
 
 #[test]
@@ -200,9 +201,9 @@ fn accepts_rule_plus_punctuation_in_same_op() {
             r#ref: "安波那那→安那般那".into(),
         },
     }];
-    let (grounded, _, dropped) = filter_grounded_lexicon_ops(&pack, &segments, ops).unwrap();
+    let (grounded, _, stats) = filter_grounded_lexicon_ops(&pack, &segments, ops).unwrap();
     assert_eq!(grounded.len(), 1);
-    assert_eq!(dropped, 0);
+    assert_eq!(stats.ignored_for_ui(), 0);
 }
 
 #[test]
@@ -219,4 +220,104 @@ fn broken_json_without_salvageable_ops_is_user_friendly() {
     let err = parse_lexicon_proofread_json_lenient(raw).unwrap_err();
     assert!(err.contains("格式不完整"));
     assert!(!err.contains("expected"));
+}
+
+#[test]
+fn accepts_punctuation_only_even_with_wrong_evidence_type() {
+    let pack = LexiconPack {
+        glossary_canonical: vec![],
+        correction_rules: vec![],
+        pack_meta: None,
+    };
+    let segments = vec![seg("a", "你好世界")];
+    let ops = vec![LexiconProofreadOp {
+        op: "update_text".into(),
+        uid: "a".into(),
+        text: "你好，世界。".into(),
+        evidence: LexiconEvidence {
+            evidence_type: "标点".into(),
+            r#ref: "".into(),
+        },
+    }];
+    let (grounded, _, stats) = filter_grounded_lexicon_ops(&pack, &segments, ops).unwrap();
+    assert_eq!(grounded.len(), 1);
+    assert_eq!(grounded[0].evidence.evidence_type, "punctuation");
+    assert_eq!(stats.ignored_for_ui(), 0);
+}
+
+#[test]
+fn infers_rule_evidence_when_llm_cites_wrong_ref_but_change_matches_pack() {
+    let pack = sample_pack();
+    let segments = vec![seg("a", "安波那那很好")];
+    let ops = vec![LexiconProofreadOp {
+        op: "update_text".into(),
+        uid: "a".into(),
+        text: "安那般那，很好。".into(),
+        evidence: LexiconEvidence {
+            evidence_type: "glossary".into(),
+            r#ref: "不存在".into(),
+        },
+    }];
+    let (grounded, _, stats) = filter_grounded_lexicon_ops(&pack, &segments, ops).unwrap();
+    assert_eq!(grounded.len(), 1);
+    assert_eq!(grounded[0].evidence.evidence_type, "rule");
+    assert_eq!(stats.ignored_for_ui(), 0);
+}
+
+#[test]
+fn accepts_ungrounded_homophone_typo_as_llm_candidate() {
+    let pack = sample_pack();
+    let segments = vec![seg("a", "他们在传讨佛法")];
+    let ops = vec![LexiconProofreadOp {
+        op: "update_text".into(),
+        uid: "a".into(),
+        text: "他们在传统佛法".into(),
+        evidence: LexiconEvidence {
+            evidence_type: "homophone".into(),
+            r#ref: "传讨→传统".into(),
+        },
+    }];
+    let (grounded, _, stats) = filter_grounded_lexicon_ops(&pack, &segments, ops).unwrap();
+    assert_eq!(grounded.len(), 1);
+    assert_eq!(grounded[0].evidence.evidence_type, "llm_homophone");
+    assert_eq!(grounded[0].evidence.r#ref, "传讨→传统");
+    assert_eq!(stats.llm_homophone, 1);
+    assert_eq!(stats.ignored_for_ui(), 0);
+}
+
+#[test]
+fn rejects_whole_segment_rewrite_even_without_pack() {
+    let pack = sample_pack();
+    let segments = vec![seg("a", "安波那那")];
+    let ops = vec![LexiconProofreadOp {
+        op: "update_text".into(),
+        uid: "a".into(),
+        text: "x".into(),
+        evidence: LexiconEvidence {
+            evidence_type: "glossary".into(),
+            r#ref: "不存在".into(),
+        },
+    }];
+    let (grounded, _, stats) = filter_grounded_lexicon_ops(&pack, &segments, ops).unwrap();
+    assert_eq!(grounded.len(), 0);
+    assert_eq!(stats.ungrounded, 1);
+}
+
+#[test]
+fn unchanged_ops_do_not_count_as_ignored() {
+    let pack = sample_pack();
+    let segments = vec![seg("a", "安波那那")];
+    let ops = vec![LexiconProofreadOp {
+        op: "update_text".into(),
+        uid: "a".into(),
+        text: "安波那那".into(),
+        evidence: LexiconEvidence {
+            evidence_type: "rule".into(),
+            r#ref: "安波那那→安那般那".into(),
+        },
+    }];
+    let (grounded, _, stats) = filter_grounded_lexicon_ops(&pack, &segments, ops).unwrap();
+    assert_eq!(grounded.len(), 0);
+    assert_eq!(stats.unchanged, 1);
+    assert_eq!(stats.ignored_for_ui(), 0);
 }

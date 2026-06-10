@@ -157,12 +157,13 @@ pub async fn postprocess_stage_b_proofread(
     let parsed =
         super::postprocess_lexicon_ops::parse_lexicon_proofread_json_lenient(&raw_content)?;
     let parse_skipped = parsed.skipped_malformed_ops;
-    let (items, mut warnings, dropped) =
+    let (items, mut warnings, mut drop_stats) =
         super::postprocess_lexicon_ops::filter_grounded_lexicon_ops(
             &pack,
             &req.segments,
             parsed.payload.ops,
         )?;
+    drop_stats.parse_malformed += parse_skipped;
     if finish_reason == "length" {
         warnings
             .push("模型输出可能被截断（finish_reason=length），部分语段建议可能丢失。".to_string());
@@ -170,11 +171,18 @@ pub async fn postprocess_stage_b_proofread(
     if parse_skipped > 0 {
         warnings.push(format!("跳过 {parse_skipped} 条结构不完整的 LLM 建议"));
     }
-    let dropped_ops = dropped + parse_skipped;
-    if dropped_ops > 0 {
+    let dropped_ops = drop_stats.ignored_for_ui();
+    if dropped_ops > 0 || drop_stats.unchanged > 0 {
         append_desktop_log_line(
             &state,
-            &format!("WARN postprocess_stage_b_proofread dropped_ops={dropped_ops}"),
+            &format!(
+                "WARN postprocess_stage_b_proofread dropped_ops={dropped_ops} unchanged={} ungrounded={} mismatch={} parse_malformed={} llm_homophone={}",
+                drop_stats.unchanged,
+                drop_stats.ungrounded,
+                drop_stats.evidence_mismatch,
+                drop_stats.parse_malformed,
+                drop_stats.llm_homophone,
+            ),
         );
     }
     let ops: Vec<super::postprocess_segment_ops::SegmentRefineOp> = items
@@ -202,6 +210,7 @@ pub async fn postprocess_stage_b_proofread(
         items,
         warnings,
         dropped_ops,
+        drop_stats,
         rationale: parsed.payload.rationale,
         pack_meta,
         provider: config.provider,

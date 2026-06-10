@@ -270,12 +270,14 @@ export function PostTranscribeStageBDialog({
                     <p className={`${PANEL_TYPOGRAPHY.meta} text-notion-text-muted`}>{previewSummary.hint}</p>
                   </div>
                 ) : null}
-                {preview.droppedUngroundedOps > 0 ? (
+                {preview.dropDetail ? (
                   <p
                     className={`rounded-md bg-zen-saffron/10 px-3 py-2 ${PANEL_TYPOGRAPHY.dialogBody} text-notion-text`}
                   >
-                    已忽略 {preview.droppedUngroundedOps}{" "}
-                    条无词表/规则依据或 JSON 结构不完整的建议，仅展示有据候选。
+                    {preview.droppedUngroundedOps > 0
+                      ? `已忽略 ${preview.droppedUngroundedOps} 条建议。`
+                      : null}
+                    {preview.dropDetail}
                   </p>
                 ) : null}
                 {preview.stepError ? (
@@ -292,8 +294,10 @@ export function PostTranscribeStageBDialog({
                     const checked = preview.selectedSegmentIdxs.includes(ch.segmentIdx);
                     const focused = previewFocusSegmentIdx === ch.segmentIdx;
                     const highlighted = highlightTextByDiff(ch.afterText, ch.diff);
-                    const changeLabel =
-                      ch.punctuateTouched && ch.typoTouched
+                    const isHomophoneGuess = ch.evidenceSummary?.includes("同音推测") ?? false;
+                    const changeLabel = isHomophoneGuess
+                      ? "同音推测"
+                      : ch.punctuateTouched && ch.typoTouched
                         ? "标点+改字"
                         : ch.punctuateTouched
                           ? "标点"

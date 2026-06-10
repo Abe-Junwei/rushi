@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import type { SegmentDto } from "../../tauri/projectApi";
 import {
   collectStageBEligibleSegmentIndices,
+  describeStageBDropSummary,
   describeStageBPreviewSummary,
   describeStageBProgress,
   estimateStageBProgressTotal,
@@ -137,6 +138,23 @@ describe("stage B progress", () => {
     expect(cloudTotal).toBe(2);
     const localTotal = estimateStageBProgressTotal({ segments, runtime: loopbackRuntime });
     expect(localTotal).toBe(3);
+  });
+});
+
+describe("describeStageBDropSummary", () => {
+  it("breaks down ignored reasons and excludes unchanged", () => {
+    const out = describeStageBDropSummary({
+      parseMalformed: 2,
+      unchanged: 120,
+      invalid: 1,
+      ungrounded: 30,
+      evidenceMismatch: 7,
+      llmHomophone: 12,
+    });
+    expect(out.ignoredCount).toBe(40);
+    expect(out.detail).toContain("JSON 结构不完整 2 条");
+    expect(out.detail).toContain("同音推测已列入候选");
+    expect(out.detail).toContain("另有 120 条 LLM 返回但未改动正文");
   });
 });
 

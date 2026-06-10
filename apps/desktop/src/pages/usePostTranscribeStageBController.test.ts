@@ -188,6 +188,15 @@ describe("usePostTranscribeStageBController", () => {
       provider: "deepseek",
       rejectedBoundaryOps: 0,
       droppedUngroundedOps: 0,
+      dropStats: {
+        parseMalformed: 0,
+        unchanged: 0,
+        invalid: 0,
+        ungrounded: 0,
+        evidenceMismatch: 0,
+        llmHomophone: 0,
+      },
+      dropDetail: null,
       packTruncationHint: null,
     });
     const args = baseArgs();
@@ -224,6 +233,15 @@ describe("usePostTranscribeStageBController", () => {
       provider: "deepseek",
       rejectedBoundaryOps: 0,
       droppedUngroundedOps: 0,
+      dropStats: {
+        parseMalformed: 0,
+        unchanged: 0,
+        invalid: 0,
+        ungrounded: 0,
+        evidenceMismatch: 0,
+        llmHomophone: 0,
+      },
+      dropDetail: null,
       packTruncationHint: null,
     });
     const args = baseArgs();

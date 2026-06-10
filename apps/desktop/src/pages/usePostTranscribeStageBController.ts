@@ -173,6 +173,7 @@ export function usePostTranscribeStageBController(args: Args) {
         selectedSegmentIdxs: out.changes.map((c) => c.segmentIdx),
         provider: out.provider,
         droppedUngroundedOps: out.droppedUngroundedOps,
+        dropDetail: out.dropDetail,
         stepError: out.typoStepError,
         pendingStageAHint,
         packTruncationHint: out.packTruncationHint,

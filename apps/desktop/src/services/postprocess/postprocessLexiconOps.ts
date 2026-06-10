@@ -13,6 +13,7 @@ export function evidenceKindLabel(type: string): string {
   if (t === "rule") return "纠错记忆";
   if (t === "glossary") return "术语表";
   if (t === "inconsistent_term") return "术语统一";
+  if (t === "llm_homophone" || t === "homophone") return "同音推测";
   return type;
 }
 

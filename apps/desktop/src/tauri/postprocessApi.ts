@@ -123,6 +123,15 @@ export type LexiconPackMeta = {
   truncated?: boolean;
 };
 
+export type StageBLexiconDropStats = {
+  parseMalformed: number;
+  unchanged: number;
+  invalid: number;
+  ungrounded: number;
+  evidenceMismatch: number;
+  llmHomophone: number;
+};
+
 export interface PostprocessStageBProofreadRequest {
   task: "stage_b_proofread";
   request_id?: string;
@@ -135,6 +144,7 @@ export interface PostprocessStageBProofreadResponse {
   items: GroundedLexiconOp[];
   warnings: string[];
   droppedOps: number;
+  dropStats?: StageBLexiconDropStats;
   rationale?: string;
   packMeta?: LexiconPackMeta;
   provider: string;

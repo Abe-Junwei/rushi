@@ -13,6 +13,7 @@ describe("postprocessLexiconOps", () => {
     expect(evidenceKindLabel("punctuation")).toBe("标点");
     expect(evidenceKindLabel("rule")).toBe("纠错记忆");
     expect(evidenceKindLabel("glossary")).toBe("术语表");
+    expect(evidenceKindLabel("llm_homophone")).toBe("同音推测");
   });
 
   it("formats evidence summary", () => {

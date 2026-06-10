@@ -38,3 +38,22 @@ pub struct GroundedLexiconOp {
     pub text: String,
     pub evidence: LexiconEvidence,
 }
+
+/// 智能改稿过滤统计（`unchanged` 为 LLM 返回但未改动的语段，不计入 UI「已忽略」）。
+#[derive(Debug, Clone, Default, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(rename_all = "camelCase")]
+pub struct StageBLexiconDropStats {
+    pub parse_malformed: usize,
+    pub unchanged: usize,
+    pub invalid: usize,
+    pub ungrounded: usize,
+    pub evidence_mismatch: usize,
+    /// 无 Pack 依据但列入预览的同音改字（用户自行确认写回）。
+    pub llm_homophone: usize,
+}
+
+impl StageBLexiconDropStats {
+    pub fn ignored_for_ui(&self) -> usize {
+        self.parse_malformed + self.invalid + self.ungrounded + self.evidence_mismatch
+    }
+}

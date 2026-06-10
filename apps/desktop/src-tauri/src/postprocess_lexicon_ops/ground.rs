@@ -1,8 +1,104 @@
 use super::super::postprocess_segment_ops::{
     validate_refine_ops, RefineSegmentItem, SegmentRefineOp,
 };
-use super::types::{GroundedLexiconOp, LexiconEvidence, LexiconProofreadOp};
+use super::types::{GroundedLexiconOp, LexiconEvidence, LexiconProofreadOp, StageBLexiconDropStats};
 use crate::project::lexicon_pack::LexiconPack;
+
+fn normalize_evidence_type(raw: &str) -> String {
+    let t = raw.trim().to_lowercase();
+    match t.as_str() {
+        "punctuation" | "punct" | "标点" | "补标点" => "punctuation".to_string(),
+        "rule" | "规则" | "纠错" | "纠错记忆" => "rule".to_string(),
+        "homophone" | "同音" | "同音推测" | "同音猜测" => "homophone".to_string(),
+        "glossary" | "术语" | "词表" | "术语表" => "glossary".to_string(),
+        "inconsistent_term" | "术语统一" | "不一致" => "inconsistent_term".to_string(),
+        _ => t,
+    }
+}
+
+fn normalize_lexicon_evidence(evidence: &LexiconEvidence) -> LexiconEvidence {
+    let ty = evidence.evidence_type.trim().to_string();
+    let mut reference = evidence.r#ref.trim().to_string();
+
+    if ty == "补标点" && reference.is_empty() {
+        return LexiconEvidence {
+            evidence_type: "punctuation".to_string(),
+            r#ref: "补标点".to_string(),
+        };
+    }
+    if reference.is_empty() && (ty == "标点" || ty == "punctuation" || ty == "punct") {
+        return LexiconEvidence {
+            evidence_type: "punctuation".to_string(),
+            r#ref: "补标点".to_string(),
+        };
+    }
+
+    let normalized_type = normalize_evidence_type(&ty);
+    if normalized_type.is_empty() {
+        if reference == "补标点" || reference.contains("标点") {
+            return LexiconEvidence {
+                evidence_type: "punctuation".to_string(),
+                r#ref: if reference.is_empty() {
+                    "补标点".to_string()
+                } else {
+                    reference
+                },
+            };
+        }
+        if parse_wrong_right_ref(&reference).is_some() {
+            return LexiconEvidence {
+                evidence_type: "rule".to_string(),
+                r#ref: reference,
+            };
+        }
+        if !reference.is_empty() {
+            return LexiconEvidence {
+                evidence_type: "glossary".to_string(),
+                r#ref: reference,
+            };
+        }
+    }
+
+    if normalized_type == "punctuation" && reference.is_empty() {
+        reference = "补标点".to_string();
+    }
+
+    LexiconEvidence {
+        evidence_type: normalized_type,
+        r#ref: reference,
+    }
+}
+
+fn infer_rule_evidence_from_change(
+    pack: &LexiconPack,
+    before: &str,
+    after: &str,
+) -> Option<LexiconEvidence> {
+    for rule in &pack.correction_rules {
+        let reference = rule_ref(&rule.wrong, &rule.right);
+        if segment_rule_evidence_matches_change(before, after, &reference) {
+            return Some(LexiconEvidence {
+                evidence_type: "rule".to_string(),
+                r#ref: reference,
+            });
+        }
+    }
+    None
+}
+
+fn try_ground_lexicon_op(
+    pack: &LexiconPack,
+    before: &str,
+    after: &str,
+    evidence: &LexiconEvidence,
+) -> Option<LexiconEvidence> {
+    if evidence_is_grounded(pack, evidence)
+        && segment_evidence_matches_change(before, after, pack, evidence)
+    {
+        return Some(evidence.clone());
+    }
+    infer_rule_evidence_from_change(pack, before, after)
+}
 
 fn rule_ref(wrong: &str, right: &str) -> String {
     format!("{wrong}→{right}")
@@ -43,6 +139,37 @@ fn normalize_text_core(s: &str) -> String {
 /// 去掉标点与空白后比较，用于验证 punctuation evidence。
 pub fn is_punctuation_only_change(before: &str, after: &str) -> bool {
     normalize_text_core(before) == normalize_text_core(after)
+}
+
+/// 无 Pack 依据的同音改字候选：长度接近、非整段重写。
+pub fn is_llm_homophone_candidate(before: &str, after: &str) -> bool {
+    if is_punctuation_only_change(before, after) {
+        return false;
+    }
+    let b = normalize_text_core(before);
+    let a = normalize_text_core(after);
+    if a.is_empty() {
+        return false;
+    }
+    let len_b = b.chars().count();
+    let len_a = a.chars().count();
+    if len_b == 0 {
+        return len_a <= 32;
+    }
+    let ratio = len_a as f64 / len_b as f64;
+    ratio >= 0.7 && ratio <= 1.35
+}
+
+fn llm_homophone_evidence(evidence: &LexiconEvidence) -> LexiconEvidence {
+    let reference = evidence.r#ref.trim();
+    LexiconEvidence {
+        evidence_type: "llm_homophone".to_string(),
+        r#ref: if reference.is_empty() {
+            "模型同音推测".to_string()
+        } else {
+            reference.to_string()
+        },
+    }
 }
 
 pub fn evidence_is_grounded(pack: &LexiconPack, evidence: &LexiconEvidence) -> bool {
@@ -167,7 +294,7 @@ pub fn filter_grounded_lexicon_ops(
     pack: &LexiconPack,
     segments: &[RefineSegmentItem],
     raw_ops: Vec<LexiconProofreadOp>,
-) -> Result<(Vec<GroundedLexiconOp>, Vec<String>, usize), String> {
+) -> Result<(Vec<GroundedLexiconOp>, Vec<String>, StageBLexiconDropStats), String> {
     let mut by_uid: std::collections::HashSet<&str> = std::collections::HashSet::new();
     for s in segments {
         let uid = s.uid.trim();
@@ -179,73 +306,88 @@ pub fn filter_grounded_lexicon_ops(
     let mut grounded_by_uid: std::collections::HashMap<String, GroundedLexiconOp> =
         std::collections::HashMap::new();
     let mut warnings = Vec::new();
-    let mut dropped = 0usize;
+    let mut stats = StageBLexiconDropStats::default();
 
     for op in raw_ops {
         if op.op.trim() != "update_text" {
-            dropped += 1;
+            stats.invalid += 1;
             warnings.push(format!("丢弃非 update_text op：{}", op.op));
             continue;
         }
         let uid = op.uid.trim();
         if !by_uid.contains(uid) {
-            dropped += 1;
+            stats.invalid += 1;
             warnings.push(format!("丢弃未知 uid：{uid}"));
             continue;
         }
         if op.text.trim().is_empty() {
-            dropped += 1;
+            stats.invalid += 1;
             warnings.push(format!("丢弃空正文 uid：{uid}"));
             continue;
         }
 
-        let ty = op.evidence.evidence_type.trim().to_lowercase();
         let before = segment_text_by_uid(segments, uid).unwrap_or("");
         if before == op.text {
-            dropped += 1;
+            stats.unchanged += 1;
             continue;
         }
-        if ty == "punctuation" {
-            if !is_punctuation_only_change(before, &op.text) {
-                dropped += 1;
-                warnings.push(format!("丢弃非纯标点改动 uid={uid}"));
-                continue;
-            }
+
+        if is_punctuation_only_change(before, &op.text) {
             grounded_by_uid.insert(
                 uid.to_string(),
                 GroundedLexiconOp {
                     uid: uid.to_string(),
-                    text: op.text,
-                    evidence: op.evidence,
+                    text: op.text.clone(),
+                    evidence: LexiconEvidence {
+                        evidence_type: "punctuation".to_string(),
+                        r#ref: "补标点".to_string(),
+                    },
                 },
             );
             continue;
         }
 
-        if !evidence_is_grounded(pack, &op.evidence) {
-            dropped += 1;
+        let evidence = normalize_lexicon_evidence(&op.evidence);
+        if let Some(grounded_evidence) =
+            try_ground_lexicon_op(pack, before, &op.text, &evidence)
+        {
+            grounded_by_uid.insert(
+                uid.to_string(),
+                GroundedLexiconOp {
+                    uid: uid.to_string(),
+                    text: op.text,
+                    evidence: grounded_evidence,
+                },
+            );
+            continue;
+        }
+
+        if is_llm_homophone_candidate(before, &op.text) {
+            stats.llm_homophone += 1;
+            grounded_by_uid.insert(
+                uid.to_string(),
+                GroundedLexiconOp {
+                    uid: uid.to_string(),
+                    text: op.text,
+                    evidence: llm_homophone_evidence(&evidence),
+                },
+            );
+            continue;
+        }
+
+        if !evidence_is_grounded(pack, &evidence) {
+            stats.ungrounded += 1;
             warnings.push(format!(
                 "丢弃无依据 op uid={uid} evidence={}:{}",
-                op.evidence.evidence_type, op.evidence.r#ref
+                evidence.evidence_type, evidence.r#ref
             ));
-            continue;
-        }
-        if !segment_evidence_matches_change(before, &op.text, pack, &op.evidence) {
-            dropped += 1;
+        } else {
+            stats.evidence_mismatch += 1;
             warnings.push(format!(
                 "丢弃依据与语段不符 op uid={uid} evidence={}:{}",
-                op.evidence.evidence_type, op.evidence.r#ref
+                evidence.evidence_type, evidence.r#ref
             ));
-            continue;
         }
-        grounded_by_uid.insert(
-            uid.to_string(),
-            GroundedLexiconOp {
-                uid: uid.to_string(),
-                text: op.text,
-                evidence: op.evidence,
-            },
-        );
     }
 
     let grounded: Vec<GroundedLexiconOp> = grounded_by_uid.into_values().collect();
@@ -259,5 +401,5 @@ pub fn filter_grounded_lexicon_ops(
         .collect();
     validate_refine_ops(segments, &refine_ops)?;
 
-    Ok((grounded, warnings, dropped))
+    Ok((grounded, warnings, stats))
 }

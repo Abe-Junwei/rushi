@@ -96,6 +96,8 @@ pub struct PostprocessStageBProofreadResponse {
     pub warnings: Vec<String>,
     #[serde(default)]
     pub dropped_ops: usize,
+    #[serde(default)]
+    pub drop_stats: super::postprocess_lexicon_ops::StageBLexiconDropStats,
     #[serde(skip_serializing_if = "Option::is_none")]
     pub rationale: Option<String>,
     #[serde(skip_serializing_if = "Option::is_none")]

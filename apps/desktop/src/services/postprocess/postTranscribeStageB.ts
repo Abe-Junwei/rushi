@@ -160,9 +160,9 @@ export function describeStageBPreviewSummary(changeCount: number): {
   hint: string;
 } {
   const n = Math.max(0, Math.floor(changeCount));
-  return {
+    return {
     headline: `共 ${n} 条语段有改稿建议`,
-    hint: "暖色高亮为拟修改内容；点击行可在编辑器定位；勾选后点「确认写回」。",
+    hint: "暖色高亮为拟修改内容；含「同音推测」条目时请自行核对后再写回；勾选后点「确认写回」。",
   };
 }
 
@@ -204,6 +204,44 @@ export function formatStageBPackTruncationHint(
   return `${parts.join("")}。若改字候选偏少，可先完成「规则纠错」或精简热词与记忆。`;
 }
 
+/** 智能改稿「已忽略 N 条」说明：区分格式、无依据、依据不符与 LLM 空返。 */
+export function describeStageBDropSummary(stats: {
+  parseMalformed: number;
+  unchanged: number;
+  invalid: number;
+  ungrounded: number;
+  evidenceMismatch: number;
+  llmHomophone: number;
+}): { ignoredCount: number; detail: string | null } {
+  const ignoredCount =
+    stats.parseMalformed + stats.invalid + stats.ungrounded + stats.evidenceMismatch;
+  const parts: string[] = [];
+  if (stats.llmHomophone > 0) {
+    parts.push(`${stats.llmHomophone} 条同音推测已列入候选（无词表依据，请自行核对）`);
+  }
+  if (stats.parseMalformed > 0) {
+    parts.push(`JSON 结构不完整 ${stats.parseMalformed} 条`);
+  }
+  if (stats.invalid > 0) {
+    parts.push(`字段无效 ${stats.invalid} 条`);
+  }
+  if (stats.ungrounded > 0) {
+    parts.push(`改动过大或无法识别 ${stats.ungrounded} 条`);
+  }
+  if (stats.evidenceMismatch > 0) {
+    parts.push(`依据与改动不符 ${stats.evidenceMismatch} 条`);
+  }
+  const tail =
+    stats.unchanged > 0 ? `另有 ${stats.unchanged} 条 LLM 返回但未改动正文。` : "";
+  const detail =
+    parts.length > 0
+      ? `${parts.join("；")}。${tail}${ignoredCount > 0 ? "其余已忽略。" : ""}`
+      : stats.unchanged > 0
+        ? `${stats.unchanged} 条 LLM 返回但未改动正文，未计入忽略。`
+        : null;
+  return { ignoredCount, detail };
+}
+
 export async function runPostTranscribeStageBPreview(args: {
   segments: SegmentDto[];
   runtime: PostprocessRuntimeBridge;
@@ -218,6 +256,15 @@ export async function runPostTranscribeStageBPreview(args: {
   rejectedBoundaryOps: number;
   typoStepError: string | null;
   droppedUngroundedOps: number;
+  dropStats: {
+    parseMalformed: number;
+    unchanged: number;
+    invalid: number;
+    ungrounded: number;
+    evidenceMismatch: number;
+    llmHomophone: number;
+  };
+  dropDetail: string | null;
   packTruncationHint: string | null;
 }> {
   const workIdxs = collectStageBEligibleSegmentIndices(args.segments);
@@ -225,7 +272,14 @@ export async function runPostTranscribeStageBPreview(args: {
   const evidenceByIdx = new Map<number, GroundedLexiconOp[]>();
   let provider = "";
   let typoStepError: string | null = null;
-  let droppedUngroundedOps = 0;
+  const dropStats = {
+    parseMalformed: 0,
+    unchanged: 0,
+    invalid: 0,
+    ungrounded: 0,
+    evidenceMismatch: 0,
+    llmHomophone: 0,
+  };
   let packTruncationHint: string | null = null;
 
   const refineLimits = resolveStageBRefineBatchLimits(args.runtime);
@@ -258,7 +312,14 @@ export async function runPostTranscribeStageBPreview(args: {
       const refineOut = await postprocessStageBProofread(req);
       if (args.shouldContinue && !args.shouldContinue()) break;
       provider = refineOut.provider || provider;
-      droppedUngroundedOps += refineOut.droppedOps ?? 0;
+      if (refineOut.dropStats) {
+        dropStats.parseMalformed += refineOut.dropStats.parseMalformed ?? 0;
+        dropStats.unchanged += refineOut.dropStats.unchanged ?? 0;
+        dropStats.invalid += refineOut.dropStats.invalid ?? 0;
+        dropStats.ungrounded += refineOut.dropStats.ungrounded ?? 0;
+        dropStats.evidenceMismatch += refineOut.dropStats.evidenceMismatch ?? 0;
+        dropStats.llmHomophone += refineOut.dropStats.llmHomophone ?? 0;
+      }
       const batchPackHint = formatStageBPackTruncationHint(refineOut.packMeta);
       if (batchPackHint) packTruncationHint = batchPackHint;
 
@@ -306,12 +367,16 @@ export async function runPostTranscribeStageBPreview(args: {
     });
   }
 
+  const { ignoredCount, detail: dropDetail } = describeStageBDropSummary(dropStats);
+
   return {
     changes,
     provider,
     rejectedBoundaryOps: 0,
     typoStepError,
-    droppedUngroundedOps,
+    droppedUngroundedOps: ignoredCount,
+    dropStats,
+    dropDetail,
     packTruncationHint,
   };
 }
