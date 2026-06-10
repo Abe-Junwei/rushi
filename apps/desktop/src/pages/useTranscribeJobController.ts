@@ -173,13 +173,17 @@ export function useTranscribeJobController(deps: Deps) {
       mutations.resetMutationHistory();
       const projectDetail = await p1.projectLoad(current!.id);
       setCurrent(projectDetail);
-      await closeGate.openFileWrapped(fileId);
       const segments = out.detail.segments;
+      // 转写开始时 UI 会清空 segments 并标记 dirty；须先写回结果再 openFile，
+      // 否则 openFileWrapped 对同文件 noop-same-file-dirty，界面会一直空白。
+      segmentsRef.current = segments;
+      setSegments(segments);
+      onTranscribeSuccess?.(out);
+      await closeGate.openFileWrapped(fileId);
       setTranscribeWarnings(out.warnings ?? []);
       setTranscribeHints(
         deriveTranscribeHints(out.engine ?? "", out.warnings ?? [], segments),
       );
-      onTranscribeSuccess?.(out);
       const elapsedMs = Date.now() - (transcribeStartedAtRef.current ?? Date.now());
       const summary = buildTranscribeResultSummary({
         segmentCount: segments.length,
@@ -188,7 +192,7 @@ export function useTranscribeJobController(deps: Deps) {
       });
       pushTranscribeResultToast(summary);
     },
-    [closeGate, current, mutations, onTranscribeSuccess, setCurrent],
+    [closeGate, current, mutations, onTranscribeSuccess, segmentsRef, setCurrent, setSegments],
   );
 
   const executeTranscribe = useCallback(async () => {

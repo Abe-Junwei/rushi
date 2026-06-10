@@ -1,4 +1,6 @@
 import "./transcribeJobController.testSetup";
+import type { Dispatch, SetStateAction } from "react";
+import type { SegmentDto } from "../tauri/projectApi";
 import {
   baseTranscribeJobDeps,
   loopbackFetch,
@@ -116,5 +118,47 @@ describe("useTranscribeJobController async paths", () => {
       /转写完成：用时 .+，\d+ 条语段，[\d,]+ 字/,
     );
     expect(deps.setError).not.toHaveBeenCalledWith(expect.stringContaining("404"));
+    expect(deps.setSegments).toHaveBeenCalledWith([
+      expect.objectContaining({ text: "blocking" }),
+    ]);
+  });
+
+  it("repaints transcribed segments when same file was cleared at transcribe start", async () => {
+    projectTranscribeAsyncStart.mockRejectedValue(
+      new Error('ASR HTTP 404 Not Found: {"detail":"Not Found"}'),
+    );
+    const fresh = transcribeTestSeg("百炼结果");
+    projectRunTranscribe.mockResolvedValue({
+      engine: "dashscope:fun-asr:file",
+      warnings: [],
+      detail: { segments: [fresh] },
+    });
+    const existing = transcribeTestSeg("转写前已有语段");
+    const segmentsRef = { current: [existing] };
+    const setSegments = vi.fn((segs: SetStateAction<SegmentDto[]>) => {
+      segmentsRef.current =
+        typeof segs === "function" ? segs(segmentsRef.current) : segs;
+    }) as Dispatch<SetStateAction<SegmentDto[]>>;
+    const onTranscribeSuccess = vi.fn();
+    const deps = baseTranscribeJobDeps({
+      segments: [existing],
+      segmentsRef,
+      setSegments,
+      onTranscribeSuccess,
+    });
+    const { result } = renderHook(() =>
+      useTranscribeJobController(deps as Parameters<typeof useTranscribeJobController>[0]),
+    );
+
+    await act(async () => {
+      await result.current.requestTranscribe();
+    });
+    await act(async () => {
+      await result.current.confirmTranscribeStart();
+    });
+
+    expect(setSegments).toHaveBeenCalledWith([expect.objectContaining({ text: "百炼结果" })]);
+    expect(onTranscribeSuccess).toHaveBeenCalled();
+    expect(segmentsRef.current[0]?.text).toBe("百炼结果");
   });
 });

@@ -106,7 +106,7 @@ describe("tryBuildOnlineTranscribeBridgePayload", () => {
     const p = tryBuildOnlineTranscribeBridgePayload();
     expect(p?.nativeAdapter).toBe("dashscopeAsr");
     expect(p?.transcribeUrl).toBe(
-      "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation",
+      "https://dashscope.aliyuncs.com/api/v1/services/audio/asr/transcription",
     );
     expect(p?.authorization).toBe("Bearer sk-test-bailian");
   });

@@ -8,8 +8,8 @@ use serde_json::{json, Value};
 
 use crate::project::stt_vocabulary::SttVocabularyPlan;
 
-pub const DASHSCOPE_FUNASR_REALTIME_MODEL: &str = "fun-asr-realtime";
-pub const DASHSCOPE_VOCABULARY_TARGET_MODEL: &str = "fun-asr-realtime";
+pub const DASHSCOPE_FUNASR_FILE_MODEL: &str = "fun-asr";
+pub const DASHSCOPE_VOCABULARY_TARGET_MODEL: &str = "fun-asr";
 pub const DASHSCOPE_CUSTOMIZATION_URL: &str =
     "https://dashscope.aliyuncs.com/api/v1/services/audio/asr/customization";
 pub const DASHSCOPE_VOCABULARY_PREFIX: &str = "rushi";
@@ -26,11 +26,6 @@ pub struct DashscopeVocabularyBuild {
 }
 
 static VOCAB_CACHE: Mutex<Option<(String, u64)>> = Mutex::new(None);
-
-#[cfg(test)]
-pub fn reset_dashscope_vocabulary_cache_for_tests() {
-    *VOCAB_CACHE.lock().expect("vocab cache lock") = None;
-}
 
 pub fn dashscope_term_valid(term: &str) -> bool {
     let t = term.trim();

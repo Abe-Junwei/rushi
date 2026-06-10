@@ -26,6 +26,7 @@ pub mod lexicon_bundle;
 pub mod lexicon_bundle_cmd;
 pub mod lexicon_pack;
 mod local_transcribe_gate;
+pub mod online_segment_normalize;
 pub mod picker_cmd;
 mod project_bundle_cmd;
 pub mod project_create_cmd;

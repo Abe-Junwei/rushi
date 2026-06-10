@@ -71,6 +71,10 @@ export function deriveTranscribeHints(engine: string, warnings: string[], segmen
     hints.push(
       "识别完成，但模型未返回分句时间戳：已用整轨单语段承载全文。可在波形上拖选拆分，或换用带 sentence_info 的 FunASR 模型后重新拉取。",
     );
+  } else if (warnings.some((w) => w === "online_segmentation_proportional")) {
+    hints.push(
+      "在线识别已按标点拆成多段，但分段时间为按字数比例估算，不可用于精确剪辑；如需可靠时间轴请换用支持词级/句级时间戳的在线引擎或本机 Paraformer。",
+    );
   } else if (warnings.some((w) => w.includes("funasr_long_audio_no_segments"))) {
     hints.push(
       "长音频未得到分句时间戳，未生成整轨占位语段。建议换用「Paraformer 长音频（推荐转写）」并确认 VAD/标点权重已缓存，然后重新拉取。",

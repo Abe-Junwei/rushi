@@ -31,7 +31,7 @@ const FIELD_HINT: Readonly<Record<SttOnlineVocabularyChannel, string>> = {
   deepgramKeywords:
     "Deepgram URL `keywords` 参数（≤50 个；默认无强度 boost）",
   dashScopeVocabulary:
-    "百炼 `speech-biasing` 热词表（vocabulary_id；单条非 ASCII ≤15 字或 ASCII ≤7 词；target_model=fun-asr-realtime）",
+    "百炼 `speech-biasing` 热词表（vocabulary_id；单条非 ASCII ≤15 字或 ASCII ≤7 词；target_model=fun-asr）",
   genericMultipartHotwords: "代理 multipart `hotwords`（须兼容 Rushi 契约）",
   unsupported: "",
 };

@@ -19,9 +19,9 @@ export const STT_ONLINE_OPENAI_DEFAULT_PROBE_URL = "https://api.openai.com/v1/mo
 export const STT_ONLINE_ASSEMBLYAI_DEFAULT_PROBE_URL = "https://api.assemblyai.com/v2/transcript";
 export const STT_ONLINE_DEEPGRAM_DEFAULT_PROBE_URL = "https://api.deepgram.com/v1/projects";
 
-/** 百炼 Fun-ASR Realtime（multimodal-generation + 术语热词 vocabulary_id）。 */
+/** 百炼 Fun-ASR 录音文件异步转写（临时 OSS + Job；术语热词 vocabulary_id）。 */
 export const STT_ONLINE_DASHSCOPE_DEFAULT_TRANSCRIBE_URL =
-  "https://dashscope.aliyuncs.com/api/v1/services/aigc/multimodal-generation/generation";
+  "https://dashscope.aliyuncs.com/api/v1/services/audio/asr/transcription";
 export const STT_ONLINE_DASHSCOPE_DEFAULT_PROBE_URL =
   "https://dashscope.aliyuncs.com/compatible-mode/v1/models";
 

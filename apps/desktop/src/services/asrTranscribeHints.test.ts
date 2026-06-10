@@ -19,7 +19,7 @@ describe("deriveTranscribeHints", () => {
 
   it("flags dashscope term truncation hint", () => {
     const h = deriveTranscribeHints(
-      "dashscope:fun-asr-realtime",
+      "dashscope:fun-asr",
       ["online_vocabulary_truncated_dashscope_terms"],
       [{ text: "a" }],
     );
@@ -28,7 +28,7 @@ describe("deriveTranscribeHints", () => {
 
   it("flags dashscope vocabulary sync failure", () => {
     const h = deriveTranscribeHints(
-      "dashscope:fun-asr-realtime",
+      "dashscope:fun-asr",
       ["online_vocabulary_sync_failed"],
       [{ text: "a" }],
     );
@@ -79,6 +79,15 @@ describe("deriveTranscribeHints", () => {
       { text: "分句二" },
     ]);
     expect(h.some((x) => x.includes("已自动移除 2 条整轨占位语段"))).toBe(true);
+  });
+
+  it("flags online proportional segmentation hint", () => {
+    const h = deriveTranscribeHints(
+      "dashscope:fun-asr:file",
+      ["online_segmentation_proportional"],
+      [{ text: "甲。" }, { text: "乙。" }],
+    );
+    expect(h.some((x) => x.includes("比例估算") && x.includes("精确剪辑"))).toBe(true);
   });
 
   it("flags whole-track fallback warning", () => {

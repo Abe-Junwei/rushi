@@ -1,6 +1,8 @@
 //! 各在线 STT 厂商原生 HTTP 调用，归一为 Rushi `TranscriptionResult` JSON（schema_version 1）。
 
 pub mod dashscope_asr;
+pub mod dashscope_file_asr;
+pub mod dashscope_upload;
 pub mod dashscope_vocabulary;
 pub mod deepgram;
 
@@ -41,6 +43,18 @@ pub fn http_client_direct() -> &'static reqwest::Client {
 
 pub fn is_retryable_stt_transport(err: &reqwest::Error) -> bool {
     err.is_connect() || err.is_timeout() || err.is_request()
+}
+
+/// 云端 STT GET：代理路径失败时自动 no_proxy 重试一次。
+pub async fn send_stt_cloud_get(
+    build: impl Fn(&reqwest::Client) -> reqwest::RequestBuilder,
+) -> Result<reqwest::Response, reqwest::Error> {
+    let primary = build(http_client()).send().await;
+    match primary {
+        Ok(resp) => Ok(resp),
+        Err(e) if is_retryable_stt_transport(&e) => build(http_client_direct()).send().await,
+        Err(e) => Err(e),
+    }
 }
 
 /// 云端 STT POST：代理路径失败时自动 no_proxy 重试一次。
@@ -119,26 +133,6 @@ fn rushi_value(
         "duration_sec": duration_sec,
         "warnings": warnings,
     })
-}
-
-pub(crate) fn audio_bytes_and_format(path: &Path) -> Result<(Vec<u8>, &'static str), String> {
-    let bytes = read_audio_bytes_limited(path)?;
-    let ext = path
-        .extension()
-        .and_then(|e| e.to_str())
-        .unwrap_or("")
-        .to_ascii_lowercase();
-    let fmt = match ext.as_str() {
-        "wav" => "wav",
-        "mp3" => "mp3",
-        "m4a" | "aac" => "m4a",
-        "pcm" => "pcm",
-        "amr" => "amr",
-        "flac" => "flac",
-        "ogg" => "ogg",
-        _ => "wav",
-    };
-    Ok((bytes, fmt))
 }
 
 pub async fn dispatch_native(

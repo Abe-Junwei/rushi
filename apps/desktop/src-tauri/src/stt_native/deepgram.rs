@@ -4,13 +4,17 @@ use std::time::Duration;
 use serde_json::json;
 
 use crate::online_stt_bridge::OnlineTranscribeBridge;
+use crate::project::online_segment_normalize::{
+    deepgram_words_to_timed_words, timed_words_to_json, timed_words_to_segments,
+    OnlineSegmentNormalizeOptions,
+};
 use crate::project::stt_vocabulary::{append_deepgram_keywords, SttVocabularyPlan};
 
 use super::rushi_value;
 
 /// Deepgram：Bearer + multipart 文件；`transcribe_url` 可含 query（如 model）。
 pub async fn transcribe_deepgram(
-    client: &reqwest::Client,
+    _client: &reqwest::Client,
     audio_path: &Path,
     bridge: &OnlineTranscribeBridge,
     vocabulary: &SttVocabularyPlan,
@@ -41,14 +45,31 @@ pub async fn transcribe_deepgram(
     let part = super::multipart_part_from_file(audio_path).await?;
     let form = reqwest::multipart::Form::new().part("audio", part);
     log("INFO deepgram listen");
-    let resp = client
-        .post(url)
-        .timeout(timeout)
-        .header("Authorization", auth)
+    let url = url.clone();
+    let auth = auth.clone();
+    let build = |client: &reqwest::Client| {
+        client
+            .post(&url)
+            .timeout(timeout)
+            .header("Authorization", &auth)
+    };
+    let primary = build(super::http_client())
         .multipart(form)
         .send()
-        .await
-        .map_err(|e| format!("Deepgram 请求失败: {e}"))?;
+        .await;
+    let resp = match primary {
+        Ok(r) => r,
+        Err(e) if super::is_retryable_stt_transport(&e) => {
+            let part = super::multipart_part_from_file(audio_path).await?;
+            let form = reqwest::multipart::Form::new().part("audio", part);
+            build(super::http_client_direct())
+                .multipart(form)
+                .send()
+                .await
+                .map_err(|e| format!("Deepgram 请求失败: {e}"))?
+        }
+        Err(e) => return Err(format!("Deepgram 请求失败: {e}")),
+    };
     if !resp.status().is_success() {
         let status = resp.status();
         let t = resp.text().await.unwrap_or_default();
@@ -68,66 +89,22 @@ pub async fn transcribe_deepgram(
         .unwrap_or("")
         .to_string();
     let mut segments: Vec<serde_json::Value> = Vec::new();
+    let mut timed_words_json: Vec<serde_json::Value> = Vec::new();
     if let Some(words) = alt.get("words").and_then(|w| w.as_array()) {
-        const GAP_SEC: f64 = 0.85;
-        let mut seg_start: Option<f64> = None;
-        let mut seg_end = 0.0_f64;
-        let mut buf = String::new();
-        for w in words {
-            let s = w.get("start").and_then(|x| x.as_f64()).unwrap_or(0.0);
-            let e = w.get("end").and_then(|x| x.as_f64()).unwrap_or(s);
-            let word = w.get("word").and_then(|x| x.as_str()).unwrap_or("").trim();
-            if word.is_empty() {
-                continue;
-            }
-            match seg_start {
-                None => {
-                    seg_start = Some(s);
-                    seg_end = e;
-                    buf.push_str(word);
-                }
-                Some(s0) => {
-                    if s - seg_end > GAP_SEC {
-                        let text = std::mem::take(&mut buf).trim().to_string();
-                        if !text.is_empty() {
-                            segments.push(json!({
-                                "start_sec": s0,
-                                "end_sec": seg_end,
-                                "text": text,
-                                "confidence": serde_json::Value::Null,
-                                "low_confidence": false,
-                            }));
-                        }
-                        seg_start = Some(s);
-                        seg_end = e;
-                        buf.push_str(word);
-                    } else {
-                        buf.push(' ');
-                        buf.push_str(word);
-                        seg_end = e;
-                    }
-                }
-            }
-        }
-        if let Some(s0) = seg_start {
-            let text = buf.trim().to_string();
-            if !text.is_empty() {
-                segments.push(json!({
-                    "start_sec": s0,
-                    "end_sec": seg_end,
-                    "text": text,
-                    "confidence": serde_json::Value::Null,
-                    "low_confidence": false,
-                }));
-            }
-        }
+        let timed = deepgram_words_to_timed_words(words);
+        timed_words_json = timed_words_to_json(&timed);
+        segments = timed_words_to_segments(&timed, &OnlineSegmentNormalizeOptions::default());
     }
     let warnings: Vec<String> = Vec::new();
-    Ok(rushi_value(
+    let mut out = rushi_value(
         segments,
         full_text.clone(),
         "deepgram:listen",
         None,
         warnings,
-    ))
+    );
+    if !timed_words_json.is_empty() {
+        out["timed_words"] = json!(timed_words_json);
+    }
+    Ok(out)
 }

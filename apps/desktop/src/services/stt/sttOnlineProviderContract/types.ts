@@ -9,6 +9,8 @@ export interface SttOnlineProviderCapability {
   asyncJob: boolean;
   /** 厂商是否常提供分句级时间戳（或可由词级拼出） */
   segmentTimestamps: boolean;
+  /** 厂商是否常提供词级时间戳 */
+  wordTimestamps?: boolean;
 }
 
 export interface SttOnlineProviderDefinition {

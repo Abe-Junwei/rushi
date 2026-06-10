@@ -36,7 +36,9 @@ pub async fn transcribe_openai_native(
     let mut form = reqwest::multipart::Form::new()
         .part("file", part)
         .text("model", "whisper-1")
-        .text("response_format", "verbose_json");
+        .text("response_format", "verbose_json")
+        .text("timestamp_granularities[]", "word")
+        .text("timestamp_granularities[]", "segment");
     if let Some(p) = openai_prompt(vocabulary) {
         form = form.text("prompt", p);
     }

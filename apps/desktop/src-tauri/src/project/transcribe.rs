@@ -1,6 +1,10 @@
 use super::transcribe_errors::{
     describe_transcribe_http_status_error, describe_transcribe_request_error,
 };
+use super::online_segment_normalize::{
+    assemblyai_words_to_timed_words, openai_words_to_timed_words, timed_words_to_json,
+    timed_words_to_segments, OnlineSegmentNormalizeOptions,
+};
 use super::utils::append_desktop_log_line;
 use crate::utils::http_client;
 use crate::utils::{redact_http_body_snippet, redact_secrets_for_log};
@@ -85,7 +89,7 @@ pub fn openai_verbose_json_to_rushi(v: &serde_json::Value) -> Result<serde_json:
         .unwrap_or("")
         .to_string();
     let mut warnings: Vec<String> = Vec::new();
-    let rushi_segments: Vec<serde_json::Value> =
+    let mut rushi_segments: Vec<serde_json::Value> =
         if let Some(rows) = v.get("segments").and_then(|s| s.as_array()) {
             if rows.is_empty() {
                 Vec::new()
@@ -117,6 +121,15 @@ pub fn openai_verbose_json_to_rushi(v: &serde_json::Value) -> Result<serde_json:
         } else {
             Vec::new()
         };
+    if rushi_segments.len() <= 1 {
+        if let Some(words) = v.get("words").and_then(|w| w.as_array()) {
+            let timed = openai_words_to_timed_words(words);
+            if !timed.is_empty() {
+                rushi_segments =
+                    timed_words_to_segments(&timed, &OnlineSegmentNormalizeOptions::default());
+            }
+        }
+    }
     // 无子句但有全文 → 整轨占位兜底；显式标 placeholder，下游不再靠 0.85 跨度反推。
     let rushi_segments = if rushi_segments.is_empty() && !full_text.trim().is_empty() {
         vec![serde_json::json!({
@@ -133,78 +146,37 @@ pub fn openai_verbose_json_to_rushi(v: &serde_json::Value) -> Result<serde_json:
     if rushi_segments.is_empty() {
         warnings.push("OpenAI 返回空文本；请检查音频与模型。".to_string());
     }
-    Ok(serde_json::json!({
+    let mut doc = serde_json::json!({
         "schema_version": "1",
         "segments": rushi_segments,
         "full_text": full_text,
         "engine": "openai:whisper-1:verbose_json",
         "duration_sec": duration_sec,
         "warnings": warnings,
-    }))
+    });
+    if let Some(words) = v.get("words").and_then(|w| w.as_array()) {
+        let timed = openai_words_to_timed_words(words);
+        if !timed.is_empty() {
+            doc["timed_words"] = serde_json::json!(timed_words_to_json(&timed));
+        }
+    }
+    Ok(doc)
 }
 
 pub fn assemblyai_words_to_segments(words: &[serde_json::Value]) -> Vec<serde_json::Value> {
-    if words.is_empty() {
-        return Vec::new();
-    }
-    const GAP_SEC: f64 = 0.85;
-    let mut out: Vec<serde_json::Value> = Vec::new();
-    let mut seg_start_ms: Option<f64> = None;
-    let mut seg_end_ms: f64 = 0.0;
-    let mut buf = String::new();
+    super::online_segment_normalize::assemblyai_words_to_segments(words)
+}
 
-    for w in words {
-        let s_ms = w.get("start").and_then(|x| x.as_f64()).unwrap_or(0.0);
-        let e_ms = w.get("end").and_then(|x| x.as_f64()).unwrap_or(s_ms);
-        let piece = w.get("text").and_then(|x| x.as_str()).unwrap_or("").trim();
-        if piece.is_empty() {
-            continue;
-        }
-        match seg_start_ms {
-            None => {
-                seg_start_ms = Some(s_ms);
-                seg_end_ms = e_ms;
-                buf.push_str(piece);
-            }
-            Some(s0) => {
-                let gap = (s_ms - seg_end_ms) / 1000.0;
-                if gap > GAP_SEC {
-                    let text = std::mem::take(&mut buf).trim().to_string();
-                    if !text.is_empty() {
-                        out.push(serde_json::json!({
-                            "start_sec": s0 / 1000.0,
-                            "end_sec": seg_end_ms / 1000.0,
-                            "text": text,
-                            "confidence": serde_json::Value::Null,
-                            "low_confidence": false,
-                            "kind": "speech",
-                        }));
-                    }
-                    seg_start_ms = Some(s_ms);
-                    seg_end_ms = e_ms;
-                    buf.push_str(piece);
-                } else {
-                    buf.push(' ');
-                    buf.push_str(piece);
-                    seg_end_ms = e_ms;
-                }
-            }
-        }
-    }
-    if let Some(s0) = seg_start_ms {
-        let text = buf.trim().to_string();
-        if !text.is_empty() {
-            out.push(serde_json::json!({
-                "start_sec": s0 / 1000.0,
-                "end_sec": seg_end_ms / 1000.0,
-                "text": text,
-                "confidence": serde_json::Value::Null,
-                "low_confidence": false,
-                "kind": "speech",
-            }));
-        }
-    }
-    out
+/// AssemblyAI `audio_duration` 为毫秒（见官方 transcript JSON）。
+fn assemblyai_audio_duration_sec(j: &serde_json::Value) -> Option<f64> {
+    let ms = j
+        .get("audio_duration")
+        .and_then(|x| x.as_f64())
+        .or_else(|| {
+            j.get("audio_duration")
+                .and_then(|x| x.as_i64().map(|n| n as f64))
+        })?;
+    Some((ms / 1000.0).max(0.0))
 }
 
 pub fn assemblyai_transcript_json_to_rushi(
@@ -215,13 +187,7 @@ pub fn assemblyai_transcript_json_to_rushi(
             return Err(format!("AssemblyAI: {err}"));
         }
     }
-    let duration_sec = j
-        .get("audio_duration")
-        .and_then(|x| x.as_f64())
-        .or_else(|| {
-            j.get("audio_duration")
-                .and_then(|x| x.as_i64().map(|n| n as f64))
-        });
+    let duration_sec = assemblyai_audio_duration_sec(j);
     let full_text = j
         .get("text")
         .and_then(|t| t.as_str())
@@ -260,8 +226,13 @@ pub fn assemblyai_transcript_json_to_rushi(
         } else {
             Vec::new()
         };
+    let mut timed_words_json: Vec<serde_json::Value> = Vec::new();
     if rushi_segments.is_empty() {
         if let Some(words) = j.get("words").and_then(|w| w.as_array()) {
+            let timed = assemblyai_words_to_timed_words(words);
+            if !timed.is_empty() {
+                timed_words_json = timed_words_to_json(&timed);
+            }
             rushi_segments = assemblyai_words_to_segments(words);
         }
     }
@@ -280,12 +251,46 @@ pub fn assemblyai_transcript_json_to_rushi(
     if rushi_segments.is_empty() {
         warnings.push("AssemblyAI 返回空分句；请检查音频与账户额度。".to_string());
     }
-    Ok(serde_json::json!({
+    let mut doc = serde_json::json!({
         "schema_version": "1",
         "segments": rushi_segments,
         "full_text": full_text,
         "engine": "assemblyai:v2",
         "duration_sec": duration_sec,
         "warnings": warnings,
-    }))
+    });
+    if !timed_words_json.is_empty() {
+        doc["timed_words"] = serde_json::json!(timed_words_json);
+    }
+    Ok(doc)
+}
+
+#[cfg(test)]
+mod assemblyai_tests {
+    use super::*;
+
+    #[test]
+    fn audio_duration_ms_converted_to_seconds() {
+        let j = serde_json::json!({
+            "audio_duration": 180_000,
+            "text": "hello",
+            "words": [
+                {"text": "hello", "start": 0.0, "end": 500.0}
+            ]
+        });
+        let out = assemblyai_transcript_json_to_rushi(&j).expect("ok");
+        assert!((out["duration_sec"].as_f64().unwrap() - 180.0).abs() < 0.001);
+        assert!(out.get("timed_words").and_then(|w| w.as_array()).is_some());
+    }
+
+    #[test]
+    fn placeholder_end_uses_duration_sec_not_raw_ms() {
+        let j = serde_json::json!({
+            "audio_duration": 120_000,
+            "text": "only one block"
+        });
+        let out = assemblyai_transcript_json_to_rushi(&j).expect("ok");
+        let seg = &out["segments"].as_array().unwrap()[0];
+        assert!((seg["end_sec"].as_f64().unwrap() - 120.0).abs() < 0.001);
+    }
 }

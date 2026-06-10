@@ -11,6 +11,7 @@ use super::transcribe_errors::describe_transcribe_payload_error;
 use super::transcribe_job::{
     get_transcribe_job_status, parse_transcribe_job_phase, post_transcribe_async_multipart,
 };
+use super::online_segment_normalize::normalize_online_transcribe_json;
 use super::transcribe_native_online::{transcribe_assemblyai_native, transcribe_openai_native};
 use super::transcribe_response::{merge_transcribe_warnings, parse_transcribe_segments_from_json};
 use super::transcribe_timeout::{
@@ -195,7 +196,7 @@ async fn project_run_transcribe_inner(
     let audio_duration_sec = probe_audio_duration_sec(audio_path);
     append_desktop_log_line(&st, "INFO transcribe_stage=preflight");
 
-    let (v, vocabulary_pre_warnings) = if let Some(ref o) = online {
+    let (mut v, vocabulary_pre_warnings) = if let Some(ref o) = online {
         let timeout_s = o.timeout_sec.unwrap_or(600).clamp(30, 600);
         let dur = Duration::from_secs(timeout_s);
         let use_multipart = !matches!(
@@ -276,6 +277,39 @@ async fn project_run_transcribe_inner(
             post_transcribe_multipart(&st, &url, audio_path, hotwords, None, None, timeout).await?;
         (v, vocabulary_pre_warnings)
     };
+    if online.is_some() {
+        let engine = v
+            .get("engine")
+            .and_then(|x| x.as_str())
+            .unwrap_or("")
+            .to_string();
+        if let Some(refined_count) =
+            super::online_segment_normalize::refine_online_transcribe_segments(&mut v, &engine)
+        {
+            append_desktop_log_line(
+                &st,
+                &format!("INFO transcribe online_segment_refine segments={refined_count}"),
+            );
+        }
+        let extra = normalize_online_transcribe_json(
+            &mut v,
+            audio_duration_sec,
+            &super::online_segment_normalize::OnlineSegmentNormalizeOptions::default(),
+        );
+        if !extra.is_empty() {
+            append_desktop_log_line(
+                &st,
+                &format!("INFO transcribe online_segment_normalize {:?}", extra),
+            );
+            if let Some(warr) = v.get_mut("warnings").and_then(|w| w.as_array_mut()) {
+                for w in extra {
+                    warr.push(serde_json::Value::String(w));
+                }
+            } else {
+                v["warnings"] = serde_json::json!(extra);
+            }
+        }
+    }
     append_desktop_log_line(&st, "INFO transcribe_stage=parse");
     if let Some(err) = v.get("error").filter(|e| !e.is_null()) {
         let msg = err
