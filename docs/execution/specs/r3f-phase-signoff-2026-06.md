@@ -59,4 +59,4 @@ Windows: 待补
 
 ## 下一刀（路线图）
 
-**R3e-A** 长音频超时手测 · 并行 **TRN-DIAG** / **ASR-WARM** — 见 [`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) §10
+**TRN-DIAG** 转写阶段时间线 · 并行 **ASR-WARM** — 见 [`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) §10

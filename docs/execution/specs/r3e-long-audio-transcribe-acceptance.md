@@ -1,6 +1,6 @@
 # Acceptance: R3e — 长音频本机转写（超时 / 内存 / 分段）
 
-> **状态（2026-05-31）**：**R3e-A ✅**；**R3e-B ✅**（2026-05-30 ~48.6min）；**R3e-C ✅**（2026-05-31 手测 — [`r3e-c-incremental-transcribe-hand-test-checklist.md`](./r3e-c-incremental-transcribe-hand-test-checklist.md)）。  
+> **状态（2026-06-07）**：**R3e-A ✅**（[signoff](./r3e-a-phase-signoff-2026-06.md)）；**R3e-B ✅**（2026-05-30 ~48.6min）；**R3e-C ✅**（2026-05-31 手测 — [`r3e-c-incremental-transcribe-hand-test-checklist.md`](./r3e-c-incremental-transcribe-hand-test-checklist.md)）。  
 > **关联**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) §R3e、[`r3e-b-hand-test-checklist.md`](./r3e-b-hand-test-checklist.md)、[`../../architecture/asr-sidecar-funasr-policy.md`](../../architecture/asr-sidecar-funasr-policy.md)
 
 ## 背景（手测现象）

@@ -10,7 +10,7 @@
 | 适用节奏 | 单人、每轮 2～4h、一轮一纵向薄片 |
 | 规划跨度 | **个人单机 v1**：约 **14～18 周（自当前）** 或 **18～22 周（自 W1）**；R3 薄片 **~12～15w**（§4.0，含发行 smoke 缓冲）；协作 **非 v1** |
 | 修订 | 每完成一个阶段更新 §2 状态表、§4 排期表与 §13 代码对照 |
-| 最近对照 | **2026-06-09**：**R3f mac** ✅ · **Project Hub Phase 10** ✅ — 下一刀 **R3e-A** / 并行 TRN-DIAG |
+| 最近对照 | **2026-06-07**：**R3e-A** ✅ · **R3f mac** ✅ · **Project Hub Phase 10** ✅ — 下一刀 **TRN-DIAG** / 并行 ASR-WARM |
 
 ### 状态标记约定（全文档统一）
 
@@ -338,7 +338,7 @@ R4 + R4-GATE ✅ → R9   ← **下一主序**
 | **①** | **R3h-0** | ✅ **mac** / Win §4 豁免 | 2–3d | mac 机器闸门 ✅（2026-06-06 · 复验 2026-06-08）；Win 有 Win 机时补 §4 | [r3h-0 acceptance](../specs/r3h-0-asr-sidecar-build-smoke-acceptance.md) · [signoff](../specs/r3h-0-phase-signoff-2026-06.md) |
 | **②** | **R3h-1** | 🟡 **编码✅** / **发行⏳** | 5–7d | 编码：`local_runtime/`、signed manifest、pinned key、**install 事务回滚**、**手动恢复 previous**。**非**自动升级健康回滚（→ R3h-2/I2）。发行门禁 remediation **§11** 未全绿 | remediation §5 Phase 1 + §11、§3.7、路线图 §4.1.5.1 |
 | **③** | **R3f** | ✅ **mac** / Win ⏳ | 2–3d | 诊断 + 一键准备 + 8741 冲突；mac 安装包机器闸门 2026-06-09 | [`r3f-asr-setup-wizard-acceptance.md`](../specs/r3f-asr-setup-wizard-acceptance.md) · [signoff](../specs/r3f-phase-signoff-2026-06.md) |
-| **④** | **R3e-A** | 🟡 | 2–3d | 动态超时 + 失败分类（已编码；50min 手测待签收） | [`r3e-long-audio-transcribe-acceptance.md`](../specs/r3e-long-audio-transcribe-acceptance.md) |
+| **④** | **R3e-A** | ✅ | 2–3d | 动态超时 + 失败分类；**2026-06-07 复验签收** | [`r3e-long-audio-transcribe-acceptance.md`](../specs/r3e-long-audio-transcribe-acceptance.md) · [signoff](../specs/r3e-a-phase-signoff-2026-06.md) |
 | **⑤** | **R3g-A** | ✅ | 3–5d | 双 SKU + `prepare(model_id)`；**⑤a–c** 手测签收（2026-05-27） | [`r3g-local-asr-model-catalog-acceptance.md`](../specs/r3g-local-asr-model-catalog-acceptance.md) |
 | **⑤½** | **HOT-UX** | ✅ | 0.5w | 热词 12k 截断可观测；术语页「本次转写将携带」摘要 | [`hot-ux-acceptance.md`](../specs/hot-ux-acceptance.md) |
 | **⑤′a** | **R3t-A** | ✅ | 3–5d | `segmentation.py` + FunASR 接线 + 单测 + **手测签收**（2026-05-30） | [`recording-transcribe-llm-refine-acceptance.md`](../specs/recording-transcribe-llm-refine-acceptance.md) §R3t-A |
@@ -995,8 +995,8 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 |----|------|
 | **定位** | **v1 已闭合** → **v1 后本机 LLM**（§1.6、§6） |
 | **阶段** | **LLM-LOC-4a** ✅ · **4b** ❌ Gate-B No-Go（[decision](../specs/llm-loc-gate-b-decision-2026-06.md) 2026-06-04） |
-| **工作区尾项** | **R3f mac 安装包** ✅ — [signoff](../specs/r3f-phase-signoff-2026-06.md)；**下一刀**：**R3e-A 长音频手测** / 并行 **TRN-DIAG** |
-| **刚闭合** | **R3f mac** · **Project Hub Phase 10** · **R3h-0 mac** · R9 · R4 |
+| **工作区尾项** | **R3e-A** ✅ — [signoff](../specs/r3e-a-phase-signoff-2026-06.md)；**下一刀**：**TRN-DIAG** / 并行 **ASR-WARM** |
+| **刚闭合** | **R3e-A** · **R3f mac** · **Project Hub Phase 10** · **R3h-0 mac** · R9 · R4 |
 | **Spike 真源** | [research](../specs/llm-loc-spike-research.md) · [plan](../specs/llm-loc-spike-plan.md) · [acceptance](../specs/llm-loc-spike-acceptance.md) · [backlog §9](../specs/llm-local-runtime-backlog.md) |
 | **预检** | `bash scripts/llm-loc-spike-preflight.sh` |
 | **近期不做** | **LLM-LOC-4b**（LRC 自管）、**CAT-TRAN**、**R6–R8** |
@@ -1014,7 +1014,7 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 
 **并行（不挡主序）**：见 [parallel-backlog-2026-06.md](../specs/parallel-backlog-2026-06.md) — TRN-DIAG、ASR-WARM、R3h-2；Win §4 backlog
 
-**⑤″f 主序**：**⑤″f-B** ✅ → … → **R3h-0 mac** ✅ → **R3f mac** ✅ → **R3e-A 手测**（下一刀）
+**⑤″f 主序**：**⑤″f-B** ✅ → … → **R3h-0 mac** ✅ → **R3f mac** ✅ → **R3e-A** ✅ → **TRN-DIAG**（下一刀）
 
 ---
 
