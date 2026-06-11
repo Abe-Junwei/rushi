@@ -48,9 +48,11 @@ pub(crate) fn validate_manifest_source_policy(source: &str) -> Result<(), String
 #[cfg(test)]
 mod tests {
     use super::{configured_manifest_source, default_manifest_source, MANIFEST_URL_ENV};
+    use crate::local_runtime::catalog::test_support::env_test_lock;
 
     #[test]
     fn runtime_env_overrides_compile_time_default() {
+        let _guard = env_test_lock();
         let prior = std::env::var(MANIFEST_URL_ENV).ok();
         std::env::set_var(MANIFEST_URL_ENV, "https://example.invalid/runtime-manifest.json");
         assert_eq!(

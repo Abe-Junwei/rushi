@@ -1,4 +1,5 @@
 use super::{diagnose_configured_manifest, load_configured_manifest};
+use super::test_support::env_test_lock;
 use crate::local_runtime::manifest::current_platform_key;
 use base64::Engine;
 use ed25519_dalek::{Signer, SigningKey};
@@ -60,6 +61,7 @@ fn write_manifest(url: &str) -> String {
 
 #[test]
 fn load_configured_manifest_accepts_signed_fixture_manifest_in_debug_policy() {
+    let _guard = env_test_lock();
     let path = write_manifest("https://example.invalid/asr.zip");
     std::env::set_var("RUSHI_LOCAL_RUNTIME_MANIFEST_URL", &path);
     let loaded = load_configured_manifest().unwrap();
@@ -71,6 +73,7 @@ fn load_configured_manifest_accepts_signed_fixture_manifest_in_debug_policy() {
 
 #[test]
 fn diagnose_manifest_rejects_http_source_when_insecure_policy_disabled() {
+    let _guard = env_test_lock();
     std::env::set_var(
         "RUSHI_LOCAL_RUNTIME_MANIFEST_URL",
         "http://example.invalid/manifest.json",
@@ -84,6 +87,7 @@ fn diagnose_manifest_rejects_http_source_when_insecure_policy_disabled() {
 
 #[test]
 fn diagnose_manifest_rejects_tampered_signature() {
+    let _guard = env_test_lock();
     let path = write_manifest("https://example.invalid/asr.zip");
     let mut body = serde_json::from_slice::<serde_json::Value>(&fs::read(&path).unwrap()).unwrap();
     body["components"][0]["version"] = serde_json::Value::String("0.2.0".into());

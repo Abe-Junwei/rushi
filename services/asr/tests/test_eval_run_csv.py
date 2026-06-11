@@ -97,3 +97,11 @@ def test_check_min_segments_assertion_fail() -> None:
     assert mod.check_min_segments_assertion(item, row, assert_min_segments=True) is True
     assert row["min_segments_assertion_failed"] is True
     assert row["min_segments_required"] == 10
+
+
+def test_warmup_skippable_reason_for_stub_health() -> None:
+    mod = _load_eval_run_module()
+    assert mod.warmup_skippable_reason({"transcription_mode": "stub"}) == "stub_mode"
+    assert mod.warmup_skippable_reason({"funasr_import_ok": False}) == "funasr_not_available"
+    assert mod.warmup_skippable_reason({"funasr_import_ok": True, "ready_for_transcribe": False}) == "funasr_not_ready"
+    assert mod.warmup_skippable_reason({"funasr_import_ok": True, "ready_for_transcribe": True}) is None

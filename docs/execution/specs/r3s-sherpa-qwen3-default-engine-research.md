@@ -2,7 +2,7 @@
 
 > **状态**：已采纳（2026-06-11）  
 > **关联路线图**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) §4.1.1 **R3s-A**（新增）  
-> **前置 spike**：R3h-3.5 Partial Go（Paraformer ONNX）· R3g-B ForcedAligner 对照 [report](./r3g-b-qwen3-sherpa-funasr-compare-report.md) · [`qwen3-sherpa-retest-2026-06-11`](../spike-output/qwen3-sherpa-retest-2026-06-11/) · [`qwen3-0.6b-2026-06-11`](../spike-output/qwen3-0.6b-2026-06-11/)  
+> **前置 spike**：R3h-3.5 Partial Go（Paraformer ONNX）· R3g-B ForcedAligner 对照 [report](./r3g-b-qwen3-sherpa-funasr-compare-report.md) · spike 产物见 `docs/execution/spike-output/qwen3-sherpa-retest-2026-06-11/` · `docs/execution/spike-output/qwen3-0.6b-2026-06-11/`（本地手测目录，不入库）  
 > **关联 spec**：[`r3s-sherpa-qwen3-default-engine-intent.md`](./r3s-sherpa-qwen3-default-engine-intent.md) · [plan](./r3s-sherpa-qwen3-default-engine-plan.md) · [acceptance](./r3s-sherpa-qwen3-default-engine-acceptance.md)  
 > **门禁**：未完成本文 **不得** 改 `run_transcribe_cmd` 默认引擎或 catalog 默认 SKU  
 > **执行模式（2026-06-11）**：**Defer** — [plan §Defer](./r3s-sherpa-qwen3-default-engine-plan.md)；G1 前 **不** 开 Phase 1–3 产品编码

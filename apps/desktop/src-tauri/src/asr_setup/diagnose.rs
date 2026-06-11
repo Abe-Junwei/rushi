@@ -250,6 +250,18 @@ fn build_summary(summary: SummaryContext<'_>) -> (Vec<String>, Option<String>) {
             lines.push("FunASR 与必需模型均已就绪，可直接转写。".into());
         } else if summary.health.funasr_ready {
             lines.push("FunASR 运行时已就绪。".into());
+            if !summary.health.ffmpeg_ok {
+                lines.push("ASR 已连通，但未检测到 FFmpeg。".into());
+                if blocking.is_none() {
+                    blocking = Some(
+                        dev_or_packaged_str(
+                            "侧车内 FFmpeg 不可用。请安装 ffmpeg/ffprobe 并加入 PATH 后重启侧车，或重建内置侧车。",
+                            "侧车内 FFmpeg 不可用。请在「环境 → 本机 ASR」点「一键准备本机 ASR」修复侧车；仍失败请重装应用。",
+                        )
+                        .into(),
+                    );
+                }
+            }
         } else if summary.health.ffmpeg_ok {
             lines.push("ASR 已连通，但 FunASR 未就绪（可能仍为 stub）。".into());
             if blocking.is_none() && summary.sidecar_integrity != "corrupt" {

@@ -1,7 +1,7 @@
 # R3h-3.5 — Sherpa-ONNX Paraformer spike harness
 
 > **非产品路径**。Spike 结论前不得接入 `run_transcribe_cmd` 或环境页引擎切换。  
-> **Spec**：[`docs/execution/specs/r3h-3.5-sherpa-spike-acceptance.md`](../../../../docs/execution/specs/r3h-3.5-sherpa-spike-acceptance.md)
+> **Spec**：[`docs/execution/specs/r3h-3.5-sherpa-spike-acceptance.md`](../../../../../docs/execution/specs/r3h-3.5-sherpa-spike-acceptance.md)
 
 ## 对比基线
 
@@ -87,7 +87,7 @@ bash scripts/r3h-3.5-sherpa-long-compare.sh   # 780s
 # → quant-compare-{30,780}s.json
 ```
 
-**Spike 结论**：[ADR-0006](../../../../docs/adr/0006-sherpa-onnx-paraformer-spike-evaluation.md) — **Partial Go**。
+**Spike 结论**：[ADR-0006](../../../../../docs/adr/0006-sherpa-onnx-paraformer-spike-evaluation.md) — **Partial Go**。
 
 ## CLI
 

@@ -74,6 +74,48 @@ def curl_warmup(asr_base: str, *, timeout_sec: int = 1800) -> None:
         raise RuntimeError(f"warmup failed: {body}")
 
 
+def curl_health(asr_base: str, *, timeout_sec: int = 30) -> dict[str, Any]:
+    url = asr_base.rstrip("/") + "/health"
+    r = subprocess.run(
+        ["curl", "-sS", url, "--max-time", str(timeout_sec)],
+        capture_output=True,
+        text=True,
+        timeout=timeout_sec + 5,
+    )
+    if r.returncode != 0:
+        raise RuntimeError(r.stderr.strip() or f"health curl exit {r.returncode}")
+    body = json.loads(r.stdout.strip() or "{}")
+    if not isinstance(body, dict):
+        raise RuntimeError("invalid /health JSON")
+    return body
+
+
+def warmup_skippable_reason(health: dict[str, Any]) -> str | None:
+    if health.get("transcription_mode") == "stub":
+        return "stub_mode"
+    if health.get("funasr_import_ok") is not True:
+        return "funasr_not_available"
+    if health.get("ready_for_transcribe") is not True:
+        return "funasr_not_ready"
+    return None
+
+
+def maybe_curl_warmup(asr_base: str) -> str | None:
+    """Warm up FunASR when available. Returns skip reason or None on success."""
+    health = curl_health(asr_base)
+    skip = warmup_skippable_reason(health)
+    if skip is not None:
+        return skip
+    try:
+        curl_warmup(asr_base)
+    except RuntimeError as exc:
+        msg = str(exc)
+        if "funasr_not_installed" in msg or "funasr_models_not_ready" in msg:
+            return msg
+        raise
+    return None
+
+
 def curl_transcribe(
     wav: Path,
     asr_base: str,
@@ -349,7 +391,9 @@ def main() -> int:
 
     if args.warmup:
         try:
-            curl_warmup(args.asr_base)
+            skip_reason = maybe_curl_warmup(args.asr_base)
+            if skip_reason:
+                print(f"Warmup skipped: {skip_reason}", file=sys.stderr)
         except Exception as e:  # noqa: BLE001
             print(f"Warmup failed: {e}", file=sys.stderr)
             failed = True
