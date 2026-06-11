@@ -21,6 +21,7 @@ permissions = [
   "allow-correction-memory-delete",
   "allow-correction-glossary-mine-candidates",
   "allow-lexicon-bundle-export",
+  "allow-lexicon-bundle-export-preview",
   "allow-lexicon-bundle-import-preview",
   "allow-lexicon-bundle-import-apply",
 ]

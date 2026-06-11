@@ -148,6 +148,51 @@ pub(crate) fn load_glossary_for_export(
     Ok(out)
 }
 
+pub(crate) fn count_unstable_memory_rows(conn: &Connection) -> Result<(usize, usize), String> {
+    let hit1: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM correction_memory WHERE hit_count = 1 AND accepted_as_rule = 0",
+            [],
+            |r| r.get(0),
+        )
+        .map_err(|e| e.to_string())?;
+    let hit2: i64 = conn
+        .query_row(
+            "SELECT COUNT(*) FROM correction_memory WHERE hit_count = 2 AND accepted_as_rule = 0",
+            [],
+            |r| r.get(0),
+        )
+        .map_err(|e| e.to_string())?;
+    Ok((hit1 as usize, hit2 as usize))
+}
+
+pub(crate) fn list_duplicate_before_groups(
+    conn: &Connection,
+) -> Result<(usize, Vec<String>), String> {
+    let mut stmt = conn
+        .prepare(
+            "SELECT before_text FROM correction_memory \
+             WHERE trim(before_text) != '' AND trim(after_text) != '' AND before_text != after_text \
+             GROUP BY before_text \
+             HAVING COUNT(DISTINCT after_text) > 1 \
+             ORDER BY before_text COLLATE NOCASE",
+        )
+        .map_err(|e| e.to_string())?;
+    let rows = stmt
+        .query_map([], |r| r.get::<_, String>(0))
+        .map_err(|e| e.to_string())?;
+    let mut samples = Vec::new();
+    let mut count = 0usize;
+    for row in rows {
+        let before = row.map_err(|e| e.to_string())?;
+        count += 1;
+        if samples.len() < 5 {
+            samples.push(before);
+        }
+    }
+    Ok((count, samples))
+}
+
 pub(crate) fn load_rules_for_export(
     conn: &Connection,
     stable_only: bool,

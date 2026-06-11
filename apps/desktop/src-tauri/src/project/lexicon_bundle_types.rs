@@ -63,6 +63,18 @@ pub struct LexiconBundleDocument {
 
 #[derive(Debug, Clone, Serialize)]
 #[serde(rename_all = "camelCase")]
+pub struct LexiconBundleExportPreview {
+    pub glossary_count: usize,
+    pub rules_export_count: usize,
+    pub rules_all_deduped_count: usize,
+    pub excluded_hit1_unaccepted: usize,
+    pub excluded_learning_unaccepted: usize,
+    pub duplicate_before_group_count: usize,
+    pub duplicate_before_samples: Vec<String>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct LexiconBundleImportPreview {
     pub insert_glossary: usize,
     pub skip_glossary: usize,

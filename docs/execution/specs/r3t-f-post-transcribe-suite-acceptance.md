@@ -53,10 +53,10 @@
 - [x] 手测 UI：导出 + 导入 ✅（2026-06-03，[`f7-lexicon-bundle-hand-test-checklist.md`](./f7-lexicon-bundle-hand-test-checklist.md)）
 - [x] 项目 bundle 不含词表包（`project_bundle_zip_excludes_lexicon_bundle`）
 
-## P2 — F8 导出前检查（候选）
+## P2 — F8 导出前检查
 
-- [ ] 导出向导：条数预览；可剔 hit=1 未采纳
-- [ ] 同 before 多条本地 → 清理提示
+- [x] 导出向导：条数预览；可剔 hit=1 未采纳（`lexicon_bundle_export_preview` + `LexiconBundleExportDialog`）
+- [x] 同 before 多条本地 → 清理提示（`duplicate_before_group_count` + 记忆库合并建议）
 
 ## P2 — F0 转写后编排（D1 · 2026-06-05）
 

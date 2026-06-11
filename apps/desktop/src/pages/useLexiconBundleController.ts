@@ -3,6 +3,7 @@ import { isTauriRuntime } from "../config/env";
 import type {
   LexiconBundleConflict,
   LexiconBundleConflictResolution,
+  LexiconBundleExportPreview,
   LexiconBundleImportPreviewResult,
 } from "../tauri/lexiconBundleApi";
 import * as bundle from "../tauri/lexiconBundleApi";
@@ -18,6 +19,9 @@ export function useLexiconBundleController(args: Args) {
   const { onImported, setError, setStatusMessage, setBusy } = args;
   const [exportStableOnly, setExportStableOnly] = useState(true);
   const [exportLabel, setExportLabel] = useState("");
+  const [exportDialogOpen, setExportDialogOpen] = useState(false);
+  const [exportPreview, setExportPreview] = useState<LexiconBundleExportPreview | null>(null);
+  const [exportPreviewLoading, setExportPreviewLoading] = useState(false);
   const [pendingImport, setPendingImport] = useState<LexiconBundleImportPreviewResult | null>(
     null,
   );
@@ -25,7 +29,55 @@ export function useLexiconBundleController(args: Args) {
     {},
   );
 
-  const exportBundle = useCallback(async () => {
+  const loadExportPreview = useCallback(async (stableOnly: boolean) => {
+    return bundle.lexiconBundleExportPreview(stableOnly);
+  }, []);
+
+  const openExportDialog = useCallback(async () => {
+    if (!isTauriRuntime()) {
+      setError("浏览器预览无法导出词表包，请在桌面应用中操作。");
+      return;
+    }
+    setExportDialogOpen(true);
+    setExportPreviewLoading(true);
+    setError("");
+    setStatusMessage("");
+    try {
+      const preview = await loadExportPreview(exportStableOnly);
+      setExportPreview(preview);
+    } catch (e) {
+      setExportDialogOpen(false);
+      setExportPreview(null);
+      setError(e instanceof Error ? e.message : String(e));
+    } finally {
+      setExportPreviewLoading(false);
+    }
+  }, [exportStableOnly, loadExportPreview, setError, setStatusMessage]);
+
+  const handleExportStableOnlyChange = useCallback(
+    async (checked: boolean) => {
+      setExportStableOnly(checked);
+      if (!exportDialogOpen) return;
+      setExportPreviewLoading(true);
+      try {
+        const preview = await loadExportPreview(checked);
+        setExportPreview(preview);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : String(e));
+      } finally {
+        setExportPreviewLoading(false);
+      }
+    },
+    [exportDialogOpen, loadExportPreview, setError],
+  );
+
+  const cancelExport = useCallback(() => {
+    setExportDialogOpen(false);
+    setExportPreview(null);
+    setExportPreviewLoading(false);
+  }, []);
+
+  const confirmExport = useCallback(async () => {
     if (!isTauriRuntime()) {
       setError("浏览器预览无法导出词表包，请在桌面应用中操作。");
       return;
@@ -37,13 +89,14 @@ export function useLexiconBundleController(args: Args) {
       const path = await bundle.lexiconBundleExport(exportStableOnly, exportLabel);
       if (path) {
         setStatusMessage(`已导出词表包至 ${path}`);
+        cancelExport();
       }
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     } finally {
       setBusy(false);
     }
-  }, [exportLabel, exportStableOnly, setBusy, setError, setStatusMessage]);
+  }, [cancelExport, exportLabel, exportStableOnly, setBusy, setError, setStatusMessage]);
 
   const startImportPreview = useCallback(async () => {
     if (!isTauriRuntime()) {
@@ -114,10 +167,15 @@ export function useLexiconBundleController(args: Args) {
 
   return {
     exportStableOnly,
-    setExportStableOnly,
+    setExportStableOnly: handleExportStableOnlyChange,
     exportLabel,
     setExportLabel,
-    exportBundle,
+    exportDialogOpen,
+    exportPreview,
+    exportPreviewLoading,
+    openExportDialog,
+    cancelExport,
+    confirmExport,
     startImportPreview,
     pendingImport,
     resolutions,

@@ -92,6 +92,7 @@ pub const APP_COMMANDS: &[&str] = &[
     "correction_memory_delete",
     "correction_glossary_mine_candidates",
     "lexicon_bundle_export",
+    "lexicon_bundle_export_preview",
     "lexicon_bundle_import_preview",
     "lexicon_bundle_import_apply",
     "export_settings_profile",

@@ -6,6 +6,7 @@ import { GlossaryHotwordsSummarySection } from "./glossary/GlossaryHotwordsSumma
 import { GlossaryLexiconBundleSection } from "./glossary/GlossaryLexiconBundleSection";
 import { GlossaryMineSection } from "./glossary/GlossaryMineSection";
 import { GlossaryTermManagementSection } from "./glossary/GlossaryTermManagementSection";
+import { LexiconBundleExportDialog } from "./glossary/LexiconBundleExportDialog";
 import { LexiconBundleImportDialog } from "./glossary/LexiconBundleImportDialog";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
@@ -47,6 +48,20 @@ export function GlossaryPage({ busy }: GlossaryPageProps) {
           bundleStatus={page.bundleStatus}
           bundleError={page.bundleError}
         />
+
+        {page.lex.exportDialogOpen ? (
+          <LexiconBundleExportDialog
+            preview={page.lex.exportPreview}
+            previewLoading={page.lex.exportPreviewLoading}
+            stableOnly={page.lex.exportStableOnly}
+            exportLabel={page.lex.exportLabel}
+            disabled={page.disabled}
+            onStableOnlyChange={(checked) => void page.lex.setExportStableOnly(checked)}
+            onExportLabelChange={page.lex.setExportLabel}
+            onCancel={page.lex.cancelExport}
+            onConfirm={() => void page.lex.confirmExport()}
+          />
+        ) : null}
 
         {page.lex.pendingImport ? (
           <LexiconBundleImportDialog

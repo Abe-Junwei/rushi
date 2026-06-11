@@ -164,6 +164,7 @@ pub fn run() {
             project::correction_memory_delete,
             project::correction_glossary_mine_candidates,
             project::lexicon_bundle_export,
+            project::lexicon_bundle_export_preview,
             project::lexicon_bundle_import_preview,
             project::lexicon_bundle_import_apply,
             profile::export_settings_profile,

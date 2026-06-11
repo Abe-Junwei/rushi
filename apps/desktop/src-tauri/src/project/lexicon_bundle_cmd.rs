@@ -1,7 +1,8 @@
 use super::lexicon_bundle::{
-    apply_lexicon_bundle_import, build_lexicon_bundle_export, parse_lexicon_bundle_json,
-    preview_lexicon_bundle_import, serialize_lexicon_bundle, LexiconBundleConflictResolution,
-    LexiconBundleImportApplyResult, LexiconBundleImportPreview,
+    apply_lexicon_bundle_import, build_lexicon_bundle_export,
+    build_lexicon_bundle_export_preview, parse_lexicon_bundle_json, preview_lexicon_bundle_import,
+    serialize_lexicon_bundle, LexiconBundleConflictResolution, LexiconBundleImportApplyResult,
+    LexiconBundleImportPreview,
 };
 use super::utils::open_db;
 use crate::DbState;
@@ -14,6 +15,15 @@ use tauri::State;
 pub struct LexiconBundleImportPreviewResult {
     pub preview: LexiconBundleImportPreview,
     pub bundle_json: String,
+}
+
+#[tauri::command]
+pub fn lexicon_bundle_export_preview(
+    state: State<DbState>,
+    stable_only: bool,
+) -> Result<super::lexicon_bundle::LexiconBundleExportPreview, String> {
+    let conn = open_db(state.deref())?;
+    build_lexicon_bundle_export_preview(&conn, stable_only)
 }
 
 #[tauri::command]

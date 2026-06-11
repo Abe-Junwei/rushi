@@ -11,11 +11,36 @@ pub use lexicon_bundle_import::{apply_lexicon_bundle_import, preview_lexicon_bun
 pub use lexicon_bundle_types::*;
 
 use super::utils::now_ms;
-use lexicon_bundle_db::{load_glossary_for_export, load_rules_for_export};
+use lexicon_bundle_db::{
+    count_unstable_memory_rows, list_duplicate_before_groups, load_glossary_for_export,
+    load_rules_for_export,
+};
 use lexicon_bundle_types::{
     LexiconBundleDocument, BUNDLE_KIND, BUNDLE_VERSION, FORBIDDEN_TOP_LEVEL_KEYS,
 };
 use rusqlite::Connection;
+
+pub fn build_lexicon_bundle_export_preview(
+    conn: &Connection,
+    stable_only: bool,
+) -> Result<lexicon_bundle_types::LexiconBundleExportPreview, String> {
+    let glossary_terms = load_glossary_for_export(conn)?;
+    let rules_export = load_rules_for_export(conn, stable_only)?;
+    let rules_all = load_rules_for_export(conn, false)?;
+    let (excluded_hit1_unaccepted, excluded_learning_unaccepted) =
+        count_unstable_memory_rows(conn)?;
+    let (duplicate_before_group_count, duplicate_before_samples) =
+        list_duplicate_before_groups(conn)?;
+    Ok(lexicon_bundle_types::LexiconBundleExportPreview {
+        glossary_count: glossary_terms.len(),
+        rules_export_count: rules_export.len(),
+        rules_all_deduped_count: rules_all.len(),
+        excluded_hit1_unaccepted,
+        excluded_learning_unaccepted,
+        duplicate_before_group_count,
+        duplicate_before_samples,
+    })
+}
 
 pub fn build_lexicon_bundle_export(
     conn: &Connection,
@@ -208,6 +233,35 @@ mod tests {
             )
             .unwrap();
         assert_eq!(after, "战法");
+    }
+
+    #[test]
+    fn export_preview_counts_stable_filter_and_duplicate_before() {
+        let conn = mem_db();
+        conn.execute(
+            "INSERT INTO glossary_terms (term, aliases, domain, note, hotword_enabled, created_at_ms, updated_at_ms) \
+             VALUES ('觉观', '', '', '', 1, 1, 1)",
+            [],
+        )
+        .unwrap();
+        conn.execute(
+            "INSERT INTO correction_memory (before_text, after_text, hit_count, accepted_as_rule, created_at_ms, updated_at_ms) \
+             VALUES ('山通', '禅宗', 3, 0, 1, 1), ('闪法', '闪击', 1, 0, 1, 1), ('闪法', '战法', 3, 0, 1, 1), ('试', '测', 2, 0, 1, 1)",
+            [],
+        )
+        .unwrap();
+
+        let stable = build_lexicon_bundle_export_preview(&conn, true).unwrap();
+        assert_eq!(stable.glossary_count, 1);
+        assert_eq!(stable.rules_export_count, 2);
+        assert_eq!(stable.excluded_hit1_unaccepted, 1);
+        assert_eq!(stable.excluded_learning_unaccepted, 1);
+        assert_eq!(stable.duplicate_before_group_count, 1);
+        assert!(stable.duplicate_before_samples.contains(&"闪法".to_string()));
+
+        let all = build_lexicon_bundle_export_preview(&conn, false).unwrap();
+        assert_eq!(all.rules_export_count, 3);
+        assert_eq!(all.excluded_hit1_unaccepted, 1);
     }
 
     /// F7 手测主路径（A 导出 → B 导入）：术语进 hotwords、稳定规则可被 F1/Pack 消费。

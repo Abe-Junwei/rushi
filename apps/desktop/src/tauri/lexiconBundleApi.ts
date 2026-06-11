@@ -1,5 +1,15 @@
 import { invoke } from "@tauri-apps/api/core";
 
+export type LexiconBundleExportPreview = {
+  glossaryCount: number;
+  rulesExportCount: number;
+  rulesAllDedupedCount: number;
+  excludedHit1Unaccepted: number;
+  excludedLearningUnaccepted: number;
+  duplicateBeforeGroupCount: number;
+  duplicateBeforeSamples: string[];
+};
+
 export type LexiconBundleImportPreview = {
   insertGlossary: number;
   skipGlossary: number;
@@ -86,6 +96,39 @@ function mapPreview(raw: Record<string, unknown>): LexiconBundleImportPreview {
   };
 }
 
+function mapExportPreview(raw: Record<string, unknown>): LexiconBundleExportPreview {
+  const samplesRaw = raw.duplicateBeforeSamples ?? raw.duplicate_before_samples;
+  const duplicateBeforeSamples = Array.isArray(samplesRaw)
+    ? samplesRaw.filter((s): s is string => typeof s === "string")
+    : [];
+  return {
+    glossaryCount: readNum(raw, "glossaryCount", "glossary_count"),
+    rulesExportCount: readNum(raw, "rulesExportCount", "rules_export_count"),
+    rulesAllDedupedCount: readNum(raw, "rulesAllDedupedCount", "rules_all_deduped_count"),
+    excludedHit1Unaccepted: readNum(raw, "excludedHit1Unaccepted", "excluded_hit1_unaccepted"),
+    excludedLearningUnaccepted: readNum(
+      raw,
+      "excludedLearningUnaccepted",
+      "excluded_learning_unaccepted",
+    ),
+    duplicateBeforeGroupCount: readNum(
+      raw,
+      "duplicateBeforeGroupCount",
+      "duplicate_before_group_count",
+    ),
+    duplicateBeforeSamples,
+  };
+}
+
+export async function lexiconBundleExportPreview(
+  stableOnly: boolean,
+): Promise<LexiconBundleExportPreview> {
+  const raw = await invoke<Record<string, unknown>>("lexicon_bundle_export_preview", {
+    stableOnly,
+  });
+  return mapExportPreview(raw);
+}
+
 export async function lexiconBundleExport(
   stableOnly: boolean,
   optionalLabel?: string,
@@ -125,6 +168,52 @@ export async function lexiconBundleImportApply(
     mergedRules: readNum(raw, "mergedRules", "merged_rules"),
     replacedRules: readNum(raw, "replacedRules", "replaced_rules"),
   };
+}
+
+export function formatLexiconBundleExportPreviewSummary(
+  preview: LexiconBundleExportPreview,
+  stableOnly: boolean,
+): string {
+  const parts = [
+    `术语 ${preview.glossaryCount} 条`,
+    `纠错规则 ${preview.rulesExportCount} 条（将写入词表包）`,
+  ];
+  if (stableOnly && preview.rulesAllDedupedCount > preview.rulesExportCount) {
+    parts.push(`全量去重后共 ${preview.rulesAllDedupedCount} 条`);
+  }
+  return parts.join("；");
+}
+
+export function formatLexiconBundleExportCleanupHints(
+  preview: LexiconBundleExportPreview,
+  stableOnly: boolean,
+): string[] {
+  const lines: string[] = [];
+  if (stableOnly && preview.excludedHit1Unaccepted > 0) {
+    lines.push(
+      `${preview.excludedHit1Unaccepted} 条仅命中 1 次且未采纳，勾选「仅稳定记忆」时将不导出`,
+    );
+  }
+  if (stableOnly && preview.excludedLearningUnaccepted > 0) {
+    lines.push(
+      `${preview.excludedLearningUnaccepted} 条学习中（命中 2 次），勾选「仅稳定记忆」时将不导出`,
+    );
+  }
+  if (!stableOnly && preview.excludedHit1Unaccepted > 0) {
+    lines.push(
+      `将包含 ${preview.excludedHit1Unaccepted} 条仅命中 1 次且未采纳的记忆（建议导出前清理）`,
+    );
+  }
+  if (preview.duplicateBeforeGroupCount > 0) {
+    const sample =
+      preview.duplicateBeforeSamples.length > 0
+        ? `（如 ${preview.duplicateBeforeSamples.slice(0, 3).join("、")}）`
+        : "";
+    lines.push(
+      `${preview.duplicateBeforeGroupCount} 组同错形对应多个正形${sample}，导出时会保留命中更高的一条，建议在记忆库先合并`,
+    );
+  }
+  return lines;
 }
 
 export function formatLexiconBundlePreviewSummary(preview: LexiconBundleImportPreview): string {
