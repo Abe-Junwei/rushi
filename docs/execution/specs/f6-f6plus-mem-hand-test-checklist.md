@@ -114,3 +114,4 @@ npm run typecheck && npm run test -w @rushi/desktop && node scripts/check-archit
 | 日期 | §A 手动纳入 | §B hit≥3 | §C Mine | §D REV-LOC A | 备注 |
 |------|-------------|----------|---------|--------------|------|
 | 2026-06-02 | ✅ | ✅ | — | ✅ REV-LOC A | §C Mine 可另轮 |
+| 2026-06-11 | ✅ spot | ✅ spot | — | — | 语段 P0 后复测 §A/B |

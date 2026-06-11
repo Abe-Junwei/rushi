@@ -1,6 +1,6 @@
 # R3h-1-R：侧车 Runtime Manifest 发行激活
 
-> **状态**：✅ R0 / R1 / R2 手测签收（2026-06-10）· Release CI ⏳  
+> **状态**：✅ R0 / R1 / R2 手测签收（2026-06-10）· Release CI 编码 ✅（2026-06-11）  
 > **签收**：[`r3h-1-r-phase-signoff-2026-06.md`](./r3h-1-r-phase-signoff-2026-06.md)  
 > **路线图索引**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) §4.1.2 **②-R**、§4.1.5.2  
 > **实施真源（LRC 背景）**：[`rushi-local-runtime-catalog-remediation-plan.md`](./rushi-local-runtime-catalog-remediation-plan.md) §5 Phase 1、§11  
@@ -59,7 +59,7 @@
 - ✅ `scripts/publish-runtime-manifest.sh`：hash → sign → 输出 manifest（HTTPS 上传仍须 CI / 手工）
 - ✅ [`r3h-1-r-release-checklist.md`](./r3h-1-r-release-checklist.md)
 - ✅ 编译期默认 URL：`config.rs` + `RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL`
-- [ ] Release CI：上传 artifact + 注入 default URL 的 `tauri build`（本地发版 ✅）
+- [x] Release CI：`.github/workflows/release.yml` + `scripts/ci-publish-runtime-manifest-release.sh`（per-platform manifest；secret `RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX`）
 
 **B. 桌面壳默认 manifest 源**
 

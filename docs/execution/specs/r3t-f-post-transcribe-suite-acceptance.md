@@ -1,7 +1,7 @@
 # Acceptance: R3t-F — 转写后后处理与编辑效率
 
 > **Plan v3**：[`r3t-f-post-transcribe-suite-plan.md`](./r3t-f-post-transcribe-suite-plan.md)（拍板 D1–D9）  
-> **状态**：🟡 进行中 — **⑤″f-B** ✅ 2026-06-04（F1+MEM-P0+F6）· **F2** ✅ · R3t-E 已移除
+> **状态**：🟡 进行中 — **⑤″f-B** ✅ · **F2/F1/F6 复测** ✅ 2026-06-11（语段 P0 后）· R3t-E 已移除
 
 ## 决策追溯（手测前对照 Plan §2）
 
@@ -69,10 +69,13 @@
 - [x] **F0-v2** 阶段 B（LLM 标点 + 错字，A 完成后）— 手测 ✅ 2026-06-05
 - [ ] ~~批处理 C / 段界 独立入口~~ — **N/A**
 
-## P2 — F4-ASR
+## P2 — F4-ASR — ❌ **No-go**（2026-06-11）
 
-- [ ] `asr_llm_review_below`；无分→送审
-- [ ] 全稿高置信可跳过 LLM 步骤（若勾选）
+> **决策**：本机 FunASR（Paraformer 主路径）**无稳定句级/词级 `confidence`**；`segmentation.py` 无分则 `low_confidence=true`，F4 退化策略为「全段送 LLM」，**门控无产品价值**。真源：[`r3t-f-post-transcribe-suite-research.md`](./r3t-f-post-transcribe-suite-research.md) §5.1、§9。  
+> **替代**：F0 阶段 B 保持 **用户显式触发 + 全稿预览**；将来若复活须 **新 ASR 数据源**（在线 API 词级分等），非本机 FunASR 补丁。
+
+- [ ] ~~`asr_llm_review_below`；无分→送审~~ — **N/A（No-go）**
+- [ ] ~~全稿高置信可跳过 LLM 步骤（若勾选）~~ — **N/A（No-go）**
 
 ---
 

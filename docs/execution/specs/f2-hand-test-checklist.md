@@ -78,5 +78,6 @@ bash scripts/r3-5f-a-machine-gate.sh
 | 日期 | 结果 | 备注 |
 |------|------|------|
 | 2026-06-04 | ✅ | UI 手测全绿 |
+| 2026-06-11 | ✅ | 复测（语段 P0 后）；`r3-5f-a-machine-gate.sh` ✅；§1–§5 + P0 回归 |
 
 **签收后**：[`r3t-f-post-transcribe-suite-acceptance.md`](./r3t-f-post-transcribe-suite-acceptance.md) P1 F2 手测项已勾选；**⑤″f-A** 可闭合 → 开 **⑤″f-B**（F1 + F6 + MEM-P0）。

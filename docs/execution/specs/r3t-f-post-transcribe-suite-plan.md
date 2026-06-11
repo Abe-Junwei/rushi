@@ -76,9 +76,9 @@ correction_memory ─────┼──► L2 转写 hints（warning）
 | **F1** | 全文纠错规则（memory 字面） | P1 | `correction_memory` | 🟡 已编码；手测待办 |
 | **F6** | 手改记忆闭环（→glossary 提示） | P1 | save 学习 | 🟡 保存后第 3 次提示已编码 |
 | **F0** | 转写后编排：**阶段 A（规则）→ 阶段 B（LLM）** | P2 | F1、MEM-P2、postprocess | 📋 [plan](./f0-post-transcribe-orchestration-plan.md)；**无** C/D 独立菜单 |
-| **F4** | 置信门控（ASR + LLM 双轨） | P2 | 段 confidence | 未编码 |
+| **F4** | 置信门控（ASR + LLM 双轨） | P2 | 段 confidence | ❌ **No-go** 2026-06-11（本机 ASR 无置信） |
 | **F7** | 词表包导出/导入/合并 | P2 | SQLite 全局表 | 未编码 |
-| **F8** | 导出前检查（小团队） | P2–P3 | F7 | 候选 |
+| **F8** | 导出前检查（小团队） | P2–P3 | F7 | ✅ 2026-06-11 |
 | **MEM-P0** | 记忆硬化（显式入库、写回即存、hit 策略） | P1·⑤″f-B | save 链、auto-save | 未编码 |
 | **MEM-P1** | 记忆管理 UI + 采纳为规则 + LEX-MINE-1 轻量 | P1·⑤″f-B½ | MEM-P0、GLY-1 | 未编码 |
 | **MEM-P2** | infer/uid 对齐 + ACC-TXT-0 spike | P2·⑤″f-C | MEM-P0 | ✅ 签收 2026-06-04 — [signoff](./r3-5f-mem-p2-phase-signoff-2026-06.md) |
@@ -96,7 +96,7 @@ correction_memory ─────┼──► L2 转写 hints（warning）
 ```text
 P1  F2 → F1 → F6 → MEM-P0     日常改稿 + 记忆闭环（硬化）
 P1½ MEM-P1                    记忆可观测 + LEX-MINE-1 轻量
-P2  F7 → F0（A→B）→ F4 ‖ MEM-P2   小团队交换 + 转写后编排 + L2 预替换 spike
+P2  F7 → F0（A→B）→ ~~F4~~ ‖ MEM-P2   小团队交换 + 转写后编排（F4 No-go）
      F8（可与 F7 同轮）
 P3  F3（全量 LEX-MINE）、F5、MEM-P3
 Spike  D2（全文段界）；MEM-S1（规则预替换）
@@ -106,7 +106,7 @@ Spike  D2（全文段界）；MEM-S1（规则预替换）
 |----|-----|------|----------------|
 | **P1** | F2, F1, F6, **MEM-P0** | 12–16d | 改稿效率 + **可靠记忆入库** + 进词表提示 |
 | **P1½** | **MEM-P1** | 3–4d | 词典透明度 + 采纳为规则 + 术语推荐列表 |
-| **P2** | F7, **F0**, F4, **MEM-P2**, F8? | 10–14d | 词表包 + **A→B 转写后处理** + 更强学习/预替换 |
+| **P2** | F7, **F0**, ~~F4~~, **MEM-P2**, F8 | 10–14d | 词表包 + **A→B 转写后处理** + 更强学习/预替换（F4 已 No-go） |
 | **P3** | F3, F5, MEM-P3 | 5–8d | 全量挖掘 + 语义 + 冲突治理 |
 | **Spike** | D2, MEM-S1 | ≤3d each | 段界 / 确定性规则消费 |
 
@@ -181,14 +181,15 @@ F2 Replace All 写回后须 **save**，与现有路径一致。
 
 ---
 
-## 9. F4 — 置信门控（P2）
+## 9. F4 — 置信门控（P2）— ❌ **No-go** 2026-06-11
 
-| 设置键 | 默认 | 含义 |
-|--------|------|------|
+> **原因**：调研 §9 已登记「FunASR 无词级 confidence → F4 退化」；本机 Paraformer 主路径 `sentence_info` 常无 `confidence`，无分则全段 `low_confidence`，`asr_llm_review_below` 无法筛出「洁净稿可跳过」。**不实现假门控 UI。**  
+> **保留设计（归档）**：轨 2 `llm_apply_min_confidence` 仍属 **F5** 范畴，非本 No-go 范围。
+
+| 设置键 | 默认 | 含义（归档，v1 不编码） |
+|--------|------|-------------------------|
 | `asr_llm_review_below` | 0.85 | 低于此或 `low_confidence` 才送 E/F5 |
-| `llm_apply_min_confidence` | 0.85 | LLM op 写回阈值（轨 2） |
-
-无 ASR 分 → 保守送审。全稿高置信 +「跳过洁净稿」→ 不调 E/F5。
+| `llm_apply_min_confidence` | 0.85 | LLM op 写回阈值（轨 2 · F5） |
 
 ---
 
@@ -312,3 +313,4 @@ node scripts/check-architecture-guard.mjs
 | v2 | 2026-05-31 | 可行性修订、F0-lite/F2 拆分 |
 | **v3** | 2026-05-31 | **完整规划**：合并拍板 D1–D9、记忆双通道、F7/F8 小团队、edit-memory 调研、分期与首刀顺序 |
 | **v4** | 2026-05-31 | **MEM 优化**并入：D10–D15、MEM-P0～S1、自动保存与 hit 解耦、⑤″f 墙钟 4–6w；真源 [`r3t-f-correction-memory-optimization-plan.md`](./r3t-f-correction-memory-optimization-plan.md) |
+| **v5** | 2026-06-11 | **F4-ASR No-go**（本机 FunASR 无可用 confidence）；F8 ✅；acceptance §P2 F4 标 N/A |

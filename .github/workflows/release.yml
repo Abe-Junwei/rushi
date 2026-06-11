@@ -1,6 +1,10 @@
 # Full Tauri bundles — GitHub Release publish or manual dispatch.
 # Sidecar is built before Tauri bundle; artifacts upload via gh/upload-artifact.
 # macOS signing (optional): set valid APPLE_* repository secrets (base64 .p12).
+# LRC runtime manifest (release event): repository secret RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX
+#   (Ed25519 private key hex for rushi-runtime-release-v1). Publishes per-platform
+#   rushi-asr-sidecar-<platform>.zip + rushi-runtime-manifest-<platform>.json and injects
+#   RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL into the desktop build.
 #
 # IMPORTANT: To test workflow changes, use Actions → Release build → Run workflow
 # on branch `main`. Do NOT use "Re-run failed jobs" on an old run — that reuses
@@ -68,8 +72,20 @@ jobs:
         run: bash scripts/smoke-asr-sidecar-health.sh
         timeout-minutes: 10
 
+      - name: Publish signed runtime manifest (release)
+        if: github.event_name == 'release'
+        id: runtime_manifest
+        env:
+          RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX: ${{ secrets.RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX }}
+        run: |
+          bash scripts/ci-publish-runtime-manifest-release.sh \
+            --repository "${{ github.repository }}" \
+            --tag "${{ github.event.release.tag_name }}"
+
       - name: Tauri build (deb)
         working-directory: apps/desktop
+        env:
+          RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL: ${{ steps.runtime_manifest.outputs.manifest_url }}
         run: npm run tauri -- build --bundles deb
         timeout-minutes: 60
 
@@ -116,7 +132,10 @@ jobs:
             exit 1
           fi
           upload=( "${deb_files[@]}" "${sha_files[@]}" )
-          echo "Uploading Linux .deb + checksums (AppImage skipped in CI)."
+          if [ -n "${{ steps.runtime_manifest.outputs.zip_path }}" ]; then
+            upload+=( "${{ steps.runtime_manifest.outputs.zip_path }}" "${{ steps.runtime_manifest.outputs.manifest_path }}" )
+          fi
+          echo "Uploading Linux .deb + runtime manifest (AppImage skipped in CI)."
           gh release upload "${{ github.event.release.tag_name }}" "${upload[@]}" --clobber
 
   tauri-macos:
@@ -161,6 +180,16 @@ jobs:
         run: bash scripts/smoke-asr-sidecar-health.sh
         timeout-minutes: 10
 
+      - name: Publish signed runtime manifest (release)
+        if: github.event_name == 'release'
+        id: runtime_manifest
+        env:
+          RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX: ${{ secrets.RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX }}
+        run: |
+          bash scripts/ci-publish-runtime-manifest-release.sh \
+            --repository "${{ github.repository }}" \
+            --tag "${{ github.event.release.tag_name }}"
+
       - name: Detect macOS signing secrets
         id: mac_sign
         shell: bash
@@ -195,6 +224,8 @@ jobs:
       - name: Tauri build unsigned (app + dmg)
         if: steps.mac_sign.outputs.enabled != 'true'
         working-directory: apps/desktop
+        env:
+          RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL: ${{ steps.runtime_manifest.outputs.manifest_url }}
         run: npm run tauri -- build --bundles app,dmg
         timeout-minutes: 50
 
@@ -202,6 +233,7 @@ jobs:
         if: steps.mac_sign.outputs.enabled == 'true'
         working-directory: apps/desktop
         env:
+          RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL: ${{ steps.runtime_manifest.outputs.manifest_url }}
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
@@ -240,6 +272,9 @@ jobs:
           dmg_files=("${{ env.BUNDLE_ROOT }}/dmg/"*.dmg)
           sha_files=("${{ env.BUNDLE_ROOT }}/dmg/"*.sha256)
           upload=( "${dmg_files[@]}" "${sha_files[@]}" )
+          if [ -n "${{ steps.runtime_manifest.outputs.zip_path }}" ]; then
+            upload+=( "${{ steps.runtime_manifest.outputs.zip_path }}" "${{ steps.runtime_manifest.outputs.manifest_path }}" )
+          fi
           gh release upload "${{ github.event.release.tag_name }}" "${upload[@]}" --clobber
 
   tauri-windows:
@@ -287,8 +322,21 @@ jobs:
         run: pwsh scripts/smoke-asr-sidecar-health.ps1
         timeout-minutes: 10
 
+      - name: Publish signed runtime manifest (release)
+        if: github.event_name == 'release'
+        id: runtime_manifest
+        shell: bash
+        env:
+          RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX: ${{ secrets.RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX }}
+        run: |
+          bash scripts/ci-publish-runtime-manifest-release.sh \
+            --repository "${{ github.repository }}" \
+            --tag "${{ github.event.release.tag_name }}"
+
       - name: Tauri build binary (Windows)
         working-directory: apps/desktop
+        env:
+          RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL: ${{ steps.runtime_manifest.outputs.manifest_url }}
         run: npm run tauri -- build --no-bundle
         timeout-minutes: 90
 
@@ -297,6 +345,7 @@ jobs:
         continue-on-error: true
         working-directory: apps/desktop
         env:
+          RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL: ${{ steps.runtime_manifest.outputs.manifest_url }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: npm run tauri -- build --bundles nsis
@@ -389,5 +438,8 @@ jobs:
             upload+=( "${nsis[@]}" "${nsis_sha[@]}" )
           else
             echo "::warning::NSIS installer missing; uploading portable zip only."
+          fi
+          if [ -n "${{ steps.runtime_manifest.outputs.zip_path }}" ]; then
+            upload+=( "${{ steps.runtime_manifest.outputs.zip_path }}" "${{ steps.runtime_manifest.outputs.manifest_path }}" )
           fi
           gh release upload "${{ github.event.release.tag_name }}" "${upload[@]}" --clobber

@@ -47,7 +47,9 @@ bash scripts/v1-personal-release-build.sh
 
 落位：`local_runtime/catalog/config.rs` → `option_env!("RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL")`。
 
-- [ ] Release CI / 本地发版脚本 export 上述变量后再 `tauri build`（本地发版 ✅；CI ⏳）
+- [x] Release CI：`.github/workflows/release.yml` 在 `release` 事件打包 zip → `publish-runtime-manifest` → 注入 `RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL` → 上传 `rushi-asr-sidecar-<platform>.zip` + `rushi-runtime-manifest-<platform>.json`（secret `RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX` ✅）
+- [ ] **首次 CI 跑通**：Publish release 后核对 Release 页资产 + macOS job 日志中 `manifest_url=`
+- [ ] 本地发版：export `RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL` 后再 `tauri build`（可选；fat 包不强制）
 - [x] 安装包内 **不**含 manifest 私钥；仅 HTTPS URL + pinned 公钥验签
 
 ## 4. Phase R1 手测（干净 VM）
