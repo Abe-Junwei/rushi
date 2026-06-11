@@ -42,6 +42,27 @@ export function useSegmentRowTextFieldEditing({
   const [isTextareaFocused, setIsTextareaFocused] = useState(false);
   const [textareaEpoch, setTextareaEpoch] = useState(0);
   const prevCommittedRef = useRef(committedText);
+  const committedTextRef = useRef(committedText);
+  const busyRef = useRef(busy);
+  committedTextRef.current = committedText;
+  busyRef.current = busy;
+
+  const flushTextareaEdits = useCallback(
+    (el: HTMLTextAreaElement | null) => {
+      if (busyRef.current) return;
+      segmentDraftStore.endComposition(draftKey);
+      segmentDraftStore.flushPendingEmit();
+      const liveText = normalizeSegmentDraftText(el?.value ?? committedTextRef.current);
+      const committed = committedTextRef.current;
+      if (liveText !== committed) {
+        updateSegmentText(i, liveText);
+        segmentDraftStore.setDraft(draftKey, liveText);
+        return;
+      }
+      segmentDraftStore.clearDraft(draftKey);
+    },
+    [draftKey, i, updateSegmentText],
+  );
 
   const defaultText = initialTextareaValue(draftKey, committedText);
   const [liveText] = useSegmentDraft(draftKey, committedText);
@@ -64,6 +85,12 @@ export function useSegmentRowTextFieldEditing({
     }),
     [],
   );
+
+  useEffect(() => {
+    return () => {
+      flushTextareaEdits(textareaRef.current);
+    };
+  }, [flushTextareaEdits]);
 
   useEffect(() => {
     if (selected) return;
@@ -130,18 +157,8 @@ export function useSegmentRowTextFieldEditing({
   const onBlurText = useCallback(() => {
     isFocusedRef.current = false;
     setIsTextareaFocused(false);
-    if (busy) return;
-    segmentDraftStore.endComposition(draftKey);
-    segmentDraftStore.flushPendingEmit();
-    const el = textareaRef.current;
-    const liveText = normalizeSegmentDraftText(el?.value ?? committedText);
-    if (liveText !== committedText) updateSegmentText(i, liveText);
-    if (liveText !== committedText) {
-      segmentDraftStore.setDraft(draftKey, liveText);
-    } else {
-      segmentDraftStore.clearDraft(draftKey);
-    }
-  }, [busy, committedText, draftKey, i, updateSegmentText]);
+    flushTextareaEdits(textareaRef.current);
+  }, [flushTextareaEdits]);
 
   const onKeyDown = useSegmentRowTextFieldKeyHandler(i, onTextareaKeyDown);
 

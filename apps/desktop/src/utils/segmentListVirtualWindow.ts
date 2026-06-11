@@ -60,6 +60,12 @@ export type SegmentListScrollAlign = "minimal" | "center";
 /** 语段数达到此阈值时启用列表虚拟化（SEG-TEXT-P1）。 */
 export const SEGMENT_LIST_VIRTUALIZE_MIN_COUNT = 200;
 
+/** 虚拟列表默认 overscan（行数）。 */
+export const SEGMENT_LIST_VIRTUAL_OVERSCAN = 12;
+
+/** selectedIdx 距当前 scroll 窗口超过此行数时不 pin（避免远距合并整表）。 */
+export const SEGMENT_LIST_VIRTUAL_PIN_MAX_DISTANCE = 48;
+
 function clampSegmentListScrollTop(
   scrollTop: number,
   maxScrollTop: number | undefined,
@@ -300,4 +306,39 @@ export function ensureSegmentListVirtualWindowIncludesIndex(
     paddingBottomPx: Math.max(0, window.totalHeightPx - endIndex * itemStridePx),
     totalHeightPx: window.totalHeightPx,
   };
+}
+
+export type SegmentListVirtualWindow = {
+  startIndex: number;
+  endIndex: number;
+  paddingTopPx: number;
+  paddingBottomPx: number;
+  totalHeightPx: number;
+};
+
+/** 仅当 selected 距 scroll 窗口不远时 union 扩展，避免远距 pin 空白屏或整表挂载。 */
+export function maybePinSegmentListVirtualWindow(
+  window: SegmentListVirtualWindow,
+  pinIndex: number,
+  totalCount: number,
+  itemStridePx: number,
+  options?: { overscan?: number; maxDistance?: number },
+): SegmentListVirtualWindow {
+  if (pinIndex < 0 || pinIndex >= totalCount) return window;
+  if (pinIndex >= window.startIndex && pinIndex < window.endIndex) return window;
+
+  const maxDistance = options?.maxDistance ?? SEGMENT_LIST_VIRTUAL_PIN_MAX_DISTANCE;
+  const distance =
+    pinIndex < window.startIndex
+      ? window.startIndex - pinIndex
+      : pinIndex - window.endIndex + 1;
+  if (distance > maxDistance) return window;
+
+  return ensureSegmentListVirtualWindowIncludesIndex(
+    window,
+    pinIndex,
+    totalCount,
+    itemStridePx,
+    options?.overscan,
+  );
 }

@@ -12,9 +12,11 @@ import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
 import {
   annotateSegmentListScrollMetrics,
   computeSegmentListVirtualWindow,
+  maybePinSegmentListVirtualWindow,
   scrollSegmentListIndexIntoView,
   scrollSegmentRowIntoViewContainer,
   SEGMENT_LIST_SCROLL_ATTR,
+  SEGMENT_LIST_VIRTUAL_OVERSCAN,
   SEGMENT_LIST_VIRTUALIZE_MIN_COUNT,
   segmentListItemStridePx,
   segmentListRowMinHeightPx,
@@ -58,23 +60,34 @@ export function EditorSegmentList({
 }: EditorSegmentListProps) {
   const scrollMetricsRef = useRef(readScrollMetrics(null));
   const [scrollEpoch, setScrollEpoch] = useState(0);
+  const scrollEpochRafRef = useRef<number | null>(null);
+  const lastSelectedScrollKeyRef = useRef<string | null>(null);
 
   const rowMinHeightPx = segmentListRowMinHeightPx(tx.transcriptRowHeightPx);
   const itemStridePx = segmentListItemStridePx(rowMinHeightPx);
   const useVirtualList = c.segments.length >= SEGMENT_LIST_VIRTUALIZE_MIN_COUNT;
 
-  const bumpScrollEpoch = useCallback(() => {
-    const next = readScrollMetrics(segmentListRef.current);
-    const prev = scrollMetricsRef.current;
-    scrollMetricsRef.current = next;
-    if (prev.scrollTop !== next.scrollTop || prev.viewportHeight !== next.viewportHeight) {
+  const scheduleScrollEpochBump = useCallback(() => {
+    if (scrollEpochRafRef.current != null) return;
+    scrollEpochRafRef.current = window.requestAnimationFrame(() => {
+      scrollEpochRafRef.current = null;
       setScrollEpoch((n) => n + 1);
-    }
+    });
+  }, []);
+
+  const syncScrollMetrics = useCallback(() => {
+    scrollMetricsRef.current = readScrollMetrics(segmentListRef.current);
   }, [segmentListRef]);
 
+  const bumpScrollEpoch = useCallback(() => {
+    syncScrollMetrics();
+    scheduleScrollEpochBump();
+  }, [scheduleScrollEpochBump, syncScrollMetrics]);
+
   const handleScroll = useCallback(() => {
-    bumpScrollEpoch();
-  }, [bumpScrollEpoch]);
+    syncScrollMetrics();
+    scheduleScrollEpochBump();
+  }, [scheduleScrollEpochBump, syncScrollMetrics]);
 
   useLayoutEffect(() => {
     const root = segmentListRef.current;
@@ -86,6 +99,10 @@ export function EditorSegmentList({
     const raf = window.requestAnimationFrame(() => bumpScrollEpoch());
     return () => {
       window.cancelAnimationFrame(raf);
+      if (scrollEpochRafRef.current != null) {
+        window.cancelAnimationFrame(scrollEpochRafRef.current);
+        scrollEpochRafRef.current = null;
+      }
       observer.disconnect();
     };
   }, [bumpScrollEpoch, itemStridePx, rowMinHeightPx, segmentListRef, c.segments.length, useVirtualList]);
@@ -93,6 +110,11 @@ export function EditorSegmentList({
   useLayoutEffect(() => {
     const root = segmentListRef.current;
     if (!root || c.selectedIdx < 0) return;
+
+    const scrollKey = `${c.currentFileId ?? ""}:${c.selectedIdx}:${c.segments.length}`;
+    if (lastSelectedScrollKeyRef.current === scrollKey) return;
+    lastSelectedScrollKeyRef.current = scrollKey;
+
     const maxScrollTop = Math.max(0, root.scrollHeight - root.clientHeight);
     const nextScrollTop = scrollSegmentListIndexIntoView({
       scrollTop: root.scrollTop,
@@ -106,21 +128,34 @@ export function EditorSegmentList({
     if (nextScrollTop != null) {
       root.scrollTop = nextScrollTop;
       bumpScrollEpoch();
+      window.requestAnimationFrame(() => {
+        const corrected = scrollSegmentRowIntoViewContainer(c.selectedIdx, root, { align: "minimal" });
+        if (corrected == null) return;
+        if (Math.abs(corrected - root.scrollTop) < 1) return;
+        root.scrollTop = corrected;
+        bumpScrollEpoch();
+      });
+      return;
     }
-  }, [bumpScrollEpoch, c.currentFileId, c.selectedIdx, itemStridePx, rowMinHeightPx, segmentListRef]);
+
+    const corrected = scrollSegmentRowIntoViewContainer(c.selectedIdx, root, { align: "minimal" });
+    if (corrected == null) return;
+    if (Math.abs(corrected - root.scrollTop) < 1) return;
+    root.scrollTop = corrected;
+    bumpScrollEpoch();
+  }, [
+    bumpScrollEpoch,
+    c.currentFileId,
+    c.selectedIdx,
+    c.segments.length,
+    itemStridePx,
+    rowMinHeightPx,
+    segmentListRef,
+  ]);
 
   useLayoutEffect(() => {
-    const root = segmentListRef.current;
-    if (!root || c.selectedIdx < 0) return;
-    const raf = window.requestAnimationFrame(() => {
-      const corrected = scrollSegmentRowIntoViewContainer(c.selectedIdx, root, { align: "minimal" });
-      if (corrected == null) return;
-      if (Math.abs(corrected - root.scrollTop) < 1) return;
-      root.scrollTop = corrected;
-      bumpScrollEpoch();
-    });
-    return () => window.cancelAnimationFrame(raf);
-  }, [bumpScrollEpoch, c.selectedIdx, segmentListRef]);
+    lastSelectedScrollKeyRef.current = null;
+  }, [c.currentFileId]);
 
   const onOpenRowContextMenu = useCallback(
     (
@@ -156,13 +191,18 @@ export function EditorSegmentList({
       };
     }
     const { scrollTop, viewportHeight } = scrollMetricsRef.current;
-    return computeSegmentListVirtualWindow({
+    const base = computeSegmentListVirtualWindow({
       scrollTop,
       viewportHeight,
       itemStridePx,
       totalCount: c.segments.length,
+      overscan: SEGMENT_LIST_VIRTUAL_OVERSCAN,
     });
-  }, [scrollEpoch, useVirtualList, itemStridePx, c.segments.length]);
+    if (c.selectedIdx < 0) return base;
+    return maybePinSegmentListVirtualWindow(base, c.selectedIdx, c.segments.length, itemStridePx, {
+      overscan: SEGMENT_LIST_VIRTUAL_OVERSCAN,
+    });
+  }, [scrollEpoch, useVirtualList, itemStridePx, c.segments.length, c.selectedIdx]);
 
   const savedSnapshot = c.getSavedSnapshot();
 
@@ -247,16 +287,21 @@ export function EditorSegmentList({
         <div
           style={{
             height: virtualWindow.totalHeightPx,
-            paddingTop: virtualWindow.paddingTopPx,
-            paddingBottom: virtualWindow.paddingBottomPx,
-            boxSizing: "border-box",
+            position: "relative",
           }}
         >
-          {visibleSegments.map((s, offset) => renderSegmentRow(s, virtualWindow.startIndex + offset))}
+          <div
+            className="will-change-transform"
+            style={{
+              transform: `translate3d(0, ${virtualWindow.paddingTopPx}px, 0)`,
+            }}
+          >
+            {visibleSegments.map((s, offset) => renderSegmentRow(s, virtualWindow.startIndex + offset))}
+          </div>
         </div>
       ) : (
         <div className="space-y-2.5">{visibleSegments.map((s, i) => renderSegmentRow(s, i))}</div>
       )}
     </div>
   );
-}
+};

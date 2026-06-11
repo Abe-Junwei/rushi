@@ -3,6 +3,7 @@ import {
   annotateSegmentListScrollMetrics,
   computeSegmentListVirtualWindow,
   ensureSegmentListVirtualWindowIncludesIndex,
+  maybePinSegmentListVirtualWindow,
   scrollSegmentListIndexIntoView,
   scrollSegmentListIndexToView,
   scrollSegmentRowIntoViewContainer,
@@ -100,6 +101,36 @@ describe("segmentListVirtualWindow", () => {
     const merged = ensureSegmentListVirtualWindowIncludesIndex(base, 120, 200, stride);
     expect(merged.startIndex).toBe(base.startIndex);
     expect(merged.endIndex).toBeGreaterThan(120);
+  });
+
+  it("maybePinSegmentListVirtualWindow skips far selected index", () => {
+    const stride = 80;
+    const base = computeSegmentListVirtualWindow({
+      scrollTop: stride * 200,
+      viewportHeight: 400,
+      itemStridePx: stride,
+      totalCount: 500,
+      overscan: 4,
+    });
+    const pinned = maybePinSegmentListVirtualWindow(base, 5, 500, stride);
+    expect(pinned).toEqual(base);
+  });
+
+  it("maybePinSegmentListVirtualWindow merges nearby selected index", () => {
+    const stride = 80;
+    const base = computeSegmentListVirtualWindow({
+      scrollTop: stride * 200,
+      viewportHeight: 400,
+      itemStridePx: stride,
+      totalCount: 500,
+      overscan: 4,
+    });
+    expect(base.endIndex).toBeLessThanOrEqual(210);
+    const pinIndex = base.endIndex + 10;
+    expect(pinIndex).toBeLessThan(500);
+    const pinned = maybePinSegmentListVirtualWindow(base, pinIndex, 500, stride, { maxDistance: 48 });
+    expect(pinned.endIndex).toBeGreaterThan(base.endIndex);
+    expect(pinned.endIndex).toBeGreaterThan(pinIndex);
   });
 
   it("scrollSegmentListIndexToView falls back to stride scroll when row is not mounted", () => {

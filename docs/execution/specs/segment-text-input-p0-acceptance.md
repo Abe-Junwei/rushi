@@ -33,10 +33,22 @@
 - [x] `flushSegmentTextDrafts.test.ts`：仍绿
 - [x] `useTranscriptFooterStats.test.ts`：草稿变更后字数最终正确
 - [x] `segmentDirtyRead.test.ts`：仍绿
+- [x] `segmentListVirtualWindow.test.ts`：`maybePinSegmentListVirtualWindow`（远距 skip / 近距 merge）
 - [x] `npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs`
+
+## P1 回归修复（2026-06-11）
+
+| 项 | 落位 | 手测 |
+|----|------|------|
+| 虚拟列表滚远空白 | `maybePinSegmentListVirtualWindow` 近距 union | ✅ |
+| 滚动抖动 | `scrollEpoch` rAF 合并 + `translate3d` 布局 | ✅ |
+| 编辑后滚出视口丢字 | `useSegmentRowTextFieldEditing` 卸载 flush | ✅ |
+| range 拖选 | readOnly textarea + 垂直 intent slop | ✅ |
+| 右键菜单 | `SegmentContextMenu` backdrop | ✅ |
 
 ## 签收
 
 - [x] H1–H5 手测通过（2026-06-11）
-- [x] 自动化全绿
+- [x] P1 回归手测通过（2026-06-11）
+- [x] 自动化全绿（1177 tests）
 - [x] 无新增 architecture hotspot 例外
