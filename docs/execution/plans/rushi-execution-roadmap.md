@@ -10,7 +10,7 @@
 | 适用节奏 | 单人、每轮 2～4h、一轮一纵向薄片 |
 | 规划跨度 | **个人单机 v1**：约 **14～18 周（自当前）** 或 **18～22 周（自 W1）**；R3 薄片 **~12～15w**（§4.0，含发行 smoke 缓冲）；协作 **非 v1** |
 | 修订 | 每完成一个阶段更新 §2 状态表、§4 排期表与 §13 代码对照 |
-| 最近对照 | **2026-06-11**：**R3h-1-R Release CI 编码 ✅**；**当前薄片**：**TRN-DIAG 手测闭项** |
+| 最近对照 | **2026-06-11**：**R3h-1-R CI mac/linux ✅**（`v0.1.0`）；**当前薄片**：**TRN-DIAG 手测闭项** |
 
 ### 状态标记约定（全文档统一）
 
@@ -1053,7 +1053,7 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 
 | ID | 现状 | 缺口 | 建议优先级 |
 |----|------|------|------------|
-| **R3h-1-R CI** | `release.yml` + `ci-publish-runtime-manifest-release.sh` ✅ | **首次 release 跑通**（secret + 三平台 upload） | **P1** |
+| **R3h-1-R CI** | `v0.1.0` mac/linux manifest + 安装包 ✅ | **Windows** smoke.ps1 待修 | **P2** |
 | **TRN-DIAG** | `transcribe_timeline.rs`、`diagnostic.rs` | acceptance **2 项手测**未勾 | **P1** |
 | **ASR-WARM** | `warm.rs` idle/watchdog | **release 包** idle 回收未签（dev `SKIP_BUNDLED` 不测） | **P2 可选** |
 | **ACC-STT-ALI** | `dashscope_vocabulary.rs` + `dashscope_file_asr.rs` | 百炼热词 **手测 ⏳** | **P2**（有 Key） |
@@ -1091,7 +1091,7 @@ Step 4  ACC 在线 E2E                 （有 Key 时 · 百炼/三家）
 
 | 步 | ID | 状态 | 验收真源 |
 |----|-----|------|----------|
-| **1** | **R3h-1-R CI** | ✅ 编码 / 🟡 首次跑通 | [`r3h-1-r-release-checklist.md`](../specs/r3h-1-r-release-checklist.md) |
+| **1** | **R3h-1-R CI** | ✅ mac/linux · Win 🟡 | [`r3h-1-r-release-checklist.md`](../specs/r3h-1-r-release-checklist.md) |
 | **2** | **TRN-DIAG** | 🟡 ← 当前 | [`trn-diag-acceptance.md`](../specs/trn-diag-acceptance.md) |
 | **3** | **ASR-WARM release** | 🟡 可选 | [`asr-warm-handtest-signoff-2026-06-11.md`](../specs/asr-warm-handtest-signoff-2026-06-11.md) §H5 |
 | **4** | **ACC 在线 E2E** | ⏳ | [`acc-stt-ali-hand-test-checklist.md`](../specs/acc-stt-ali-hand-test-checklist.md) |

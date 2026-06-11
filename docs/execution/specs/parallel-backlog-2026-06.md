@@ -14,7 +14,7 @@ Step 4  ACC 在线 E2E                 （有 Key 时）
 
 | 步 | 项 | 状态 | 说明 |
 |----|-----|------|------|
-| **1** | **R3h-1-R CI** | ✅ 编码 | [checklist](./r3h-1-r-release-checklist.md) · `ci-publish-runtime-manifest-release.sh` |
+| **1** | **R3h-1-R CI** | ✅ mac/linux · Win 🟡 | [checklist](./r3h-1-r-release-checklist.md) · [`v0.1.0` release](https://github.com/Abe-Junwei/rushi/releases/tag/v0.1.0) |
 | **2** | **TRN-DIAG** | 🟡 ← 当前 | [`trn-diag-acceptance.md`](./trn-diag-acceptance.md) — 2 项手测待勾 |
 | **3** | **ASR-WARM release** | 🟡 可选 | dev ✅；[`handtest`](./asr-warm-handtest-signoff-2026-06-11.md) §H5 |
 | **4** | **ACC 在线 E2E** | ⏳ | 百炼/三家；有 Key 时 |
