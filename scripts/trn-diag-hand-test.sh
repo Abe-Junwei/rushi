@@ -10,26 +10,39 @@ echo "==> TRN-DIAG Layer 1: Rust transcribe_timeline"
   cargo test -q transcribe_timeline
 )
 
-echo "==> TRN-DIAG Layer 2: TS transcribeDiag"
+echo "==> TRN-DIAG Layer 2: TS transcribeDiag + banner + controller"
 (
   cd "${ROOT}/apps/desktop"
   npm run test -- src/services/transcribeDiag.test.ts
+  npm run test -- src/components/ProjectStatusFeedback.test.ts
+  npm run test -- src/pages/useTranscribeJobController.test.ts
 )
 
-echo "==> TRN-DIAG Layer 3: last timeline file (optional)"
+echo "==> TRN-DIAG Layer 3: last timeline file on disk (optional)"
 APP_ROOT="${RUSHI_APP_DATA:-${HOME}/Library/Application Support/studio.lingchuang.rushi/studio.lingchuang.rushi}"
 TL="${APP_ROOT}/transcribe_timeline_last.json"
 if [[ -f "${TL}" ]]; then
-  if grep -q '"transcribe_timeline"' "${TL}"; then
-    echo "  found transcribe_timeline_last.json with transcribe_timeline[]"
-  else
-    echo "  WARN: timeline file missing transcribe_timeline key"
-    exit 1
-  fi
+  python3 - "${TL}" <<'PY'
+import json, sys
+path = sys.argv[1]
+with open(path, encoding="utf-8") as f:
+    doc = json.load(f)
+timeline = doc.get("transcribe_timeline")
+if not isinstance(timeline, list) or not timeline:
+    raise SystemExit("transcribe_timeline[] missing or empty")
+print(f"  found {path} with {len(timeline)} stage(s); outcome={doc.get('outcome')}")
+PY
 else
-  echo "  (skip — no transcribe_timeline_last.json yet; run one transcribe first)"
+  echo "  (skip — no transcribe_timeline_last.json; optional after a failed transcribe)"
 fi
+
+echo "==> TRN-DIAG Layer 4: diagnostic export field contract (Rust)"
+(
+  cd "${ROOT}/apps/desktop/src-tauri"
+  cargo test -q persist_and_load_sidecar_failure_roundtrip
+  cargo test -q diagnostic_export_timeline_json_contract
+)
 
 echo ""
 echo "==> TRN-DIAG automated checks passed"
-echo "Manual: stop sidecar → transcribe → UI banner shows stage; export diagnostic includes transcribe_timeline.json"
+echo "Optional live: stop ASR on :8741 → transcribe → banner「转写失败（转写）」→ 导出诊断包含 transcribe_timeline.json"

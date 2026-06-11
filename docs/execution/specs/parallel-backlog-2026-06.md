@@ -7,16 +7,16 @@
 
 ```text
 Step 1  R3h-1-R Release CI          ✅ 编码 2026-06-11
-Step 2  TRN-DIAG 手测闭项           ← 当前主刀
-Step 3  ASR-WARM release idle        （可选）
+Step 2  TRN-DIAG 手测闭项           ✅ 2026-06-11
+Step 3  ASR-WARM release idle        ← 可选主刀
 Step 4  ACC 在线 E2E                 （有 Key 时）
 ```
 
 | 步 | 项 | 状态 | 说明 |
 |----|-----|------|------|
 | **1** | **R3h-1-R CI** | ✅ mac/linux · Win 🟡 | [checklist](./r3h-1-r-release-checklist.md) · [`v0.1.0` release](https://github.com/Abe-Junwei/rushi/releases/tag/v0.1.0) |
-| **2** | **TRN-DIAG** | 🟡 ← 当前 | [`trn-diag-acceptance.md`](./trn-diag-acceptance.md) — 2 项手测待勾 |
-| **3** | **ASR-WARM release** | 🟡 可选 | dev ✅；[`handtest`](./asr-warm-handtest-signoff-2026-06-11.md) §H5 |
+| **2** | **TRN-DIAG** | ✅ | [`trn-diag-hand-test-checklist.md`](./trn-diag-hand-test-checklist.md) |
+| **3** | **ASR-WARM release** | 🟡 可选 ← | dev ✅；[`handtest`](./asr-warm-handtest-signoff-2026-06-11.md) §H5 |
 | **4** | **ACC 在线 E2E** | ⏳ | 百炼/三家；有 Key 时 |
 
 ### 已闭合硬化步（不挡主刀）
@@ -40,7 +40,7 @@ Step 4  ACC 在线 E2E                 （有 Key 时）
 | **R3h-1-R** | Runtime manifest **发行激活** | 3–5d | ✅ R1+R2 · **CI 编码 ✅** | [signoff](./r3h-1-r-phase-signoff-2026-06.md) · [plan](./r3h-1-r-runtime-manifest-release-activation-plan.md) | 首次 release 待 secret |
 | **R3h-2** | 断点续传、GC、C 类升级回滚 | ~1w | ✅ | [`r3h-2 acceptance`](./r3h-2-local-runtime-resume-acceptance.md) | 已签收 |
 | **R3h-3.5** | Sherpa **Paraformer** Spike | ~1w | ✅ Partial Go | [`r3h-3.5-sherpa-spike-acceptance.md`](./r3h-3.5-sherpa-spike-acceptance.md) | R3h-3 ✅ |
-| **TRN-DIAG** | 转写阶段时间线 + 诊断包 | 0.5w | 🟡 | [`trn-diag-acceptance.md`](./trn-diag-acceptance.md) | Step 2 主刀候选 |
+| **TRN-DIAG** | 转写阶段时间线 + 诊断包 | 0.5w | ✅ | [`trn-diag-hand-test-checklist.md`](./trn-diag-hand-test-checklist.md) | 2026-06-11 |
 | **ASR-WARM** | 侧车保活、模型预热 | 0.5–1w | ✅ dev / 🟡 release | [`asr-warm-acceptance.md`](./asr-warm-acceptance.md) | release idle 可选 |
 | **ACC-STT-ALI** | 百炼热词 | — | 🟡 | [`acc-stt-ali-hand-test-checklist.md`](./acc-stt-ali-hand-test-checklist.md) | 有 Key |
 | **R3f Win** | 安装包零终端手测 | 2–3d | ⏸ **豁免** | [r3f signoff](./r3f-phase-signoff-2026-06.md) | 有 Win 机时补 |
@@ -62,8 +62,8 @@ Step 4  ACC 在线 E2E                 （有 Key 时）
 4. ~~F8 导出预览~~ ✅
 5. ~~F2/F1/F6 复测~~ ✅ 2026-06-11
 6. ~~**R3h-1-R Release CI**~~ ✅ 编码
-7. **TRN-DIAG 手测闭项** ← 下一刀
-8. ASR-WARM release idle（可选）
+7. ~~**TRN-DIAG 手测闭项**~~ ✅ 2026-06-11
+8. ASR-WARM release idle（可选）← 下一刀
 9. ACC 在线 E2E（有 Key）
 10. 背景：R3f Win ⏸ · R3s-A Defer · F3/F5 P3
 ```

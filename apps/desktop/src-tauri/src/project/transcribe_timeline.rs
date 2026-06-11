@@ -407,6 +407,39 @@ mod tests {
     }
 
     #[test]
+    fn persist_and_load_sidecar_failure_roundtrip() {
+        let dir = std::env::temp_dir().join(format!(
+            "rushi-trn-diag-test-{}",
+            std::process::id()
+        ));
+        let _ = fs::remove_dir_all(&dir);
+        fs::create_dir_all(&dir).expect("temp dir");
+        let mut rec = TranscribeTimelineRecorder::new("file-live", "local");
+        rec.begin_stage(STAGE_PREFLIGHT);
+        rec.begin_stage(STAGE_TRANSCRIBE);
+        rec.fail_stage(
+            STAGE_TRANSCRIBE,
+            "sidecar_connect",
+            "无法连接本机 ASR（127.0.0.1:8741 拒绝连接）",
+        );
+        let snap = rec.snapshot();
+        persist_timeline_at(&last_timeline_path(&dir), &snap).expect("persist");
+        let loaded = load_last_timeline(&dir).expect("load");
+        let _ = fs::remove_dir_all(&dir);
+        assert_eq!(loaded.outcome, "failed");
+        assert_eq!(loaded.failed_stage.as_deref(), Some(STAGE_TRANSCRIBE));
+        assert_eq!(loaded.error_code.as_deref(), Some("sidecar_connect"));
+        assert_eq!(loaded.transcribe_timeline.len(), 2);
+        let export_bytes = serde_json::to_vec_pretty(&loaded).expect("export json");
+        let export_json: serde_json::Value = serde_json::from_slice(&export_bytes).expect("parse");
+        assert!(export_json.get("transcribe_timeline").unwrap().is_array());
+        assert_eq!(
+            stage_label_zh(loaded.failed_stage.as_deref().unwrap_or("")),
+            "转写"
+        );
+    }
+
+    #[test]
     fn diagnostic_export_timeline_json_contract() {
         let mut rec = TranscribeTimelineRecorder::new("file-abc", "local");
         rec.set_job_id("job-1");

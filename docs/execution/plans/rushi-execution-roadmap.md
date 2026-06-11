@@ -10,7 +10,7 @@
 | 适用节奏 | 单人、每轮 2～4h、一轮一纵向薄片 |
 | 规划跨度 | **个人单机 v1**：约 **14～18 周（自当前）** 或 **18～22 周（自 W1）**；R3 薄片 **~12～15w**（§4.0，含发行 smoke 缓冲）；协作 **非 v1** |
 | 修订 | 每完成一个阶段更新 §2 状态表、§4 排期表与 §13 代码对照 |
-| 最近对照 | **2026-06-11**：**R3h-1-R CI mac/linux ✅**（`v0.1.0`）；**当前薄片**：**TRN-DIAG 手测闭项** |
+| 最近对照 | **2026-06-11**：**TRN-DIAG ✅**；**当前薄片**：**ASR-WARM release idle**（可选）/ **ACC 在线 E2E** |
 
 ### 状态标记约定（全文档统一）
 
@@ -172,7 +172,7 @@ bash scripts/p0-acceptance.sh
 | FunASR 模型下载 UI | ✅ 主体已有 | `usePrepareModelController` + `EnvLocalAsrPanel` |
 | 本机 ASR 一键诊断/准备（R3f） | ✅ **mac** / Win ⏳ | `asr_setup/` + `LocalAsrSetupWizard`；mac 安装包机器签收 2026-06-09 — [signoff](../specs/r3f-phase-signoff-2026-06.md) |
 | **本地运行时目录 LRC（R3h）** | 🟡 尾项硬化 | R3h-0/1/2/3 ✅ · **R3h-1-R CI 编码 ✅**；Win ⏸ |
-| 诊断包导出入口 | ✅ 已有 | 工具栏菜单；R9 + **TRN-DIAG** 增强（手测 2 项待签） |
+| 诊断包导出入口 | ✅ 已有 | 工具栏菜单；R9 + **TRN-DIAG** ✅ |
 | LLM 后处理（R2 标点） | ✅ 已交付 | `postprocess_cmd`；**R3t-C/D** 曾交付；**R3t-E** ⏸ 移除 → **F0 阶段 B** |
 | MCP / 协作服务 | ❌ 未开始 | 无 `services/mcp`、`services/collab` |
 | 桌面 profile 导入导出（无 secret） | ✅ R3b | `profile.rs` + 环境页「配置迁移」 |
@@ -347,7 +347,7 @@ R4 + R4-GATE ✅ → R9   ← **下一主序**
 | **⑤g** | **R3g-C** | ✅ | 3–5d | **AsrModelProfile**；SenseVoice `use_itn` + postprocess；Paraformer 保持 punc 路径；TypeError 剥参 + warnings；环境页 **识别语言**；**不**暴露全 generate UI | [`r3g-c-asr-generate-profile-acceptance.md`](../specs/r3g-c-asr-generate-profile-acceptance.md)、[`r3g-c-hand-test-checklist.md`](../specs/r3g-c-hand-test-checklist.md) 2026-05-31 签收；架构 [`asr-generate-params-truth.md`](../../architecture/asr-generate-params-truth.md) |
 | **⑤h** | **ACC-STT-UNIFY** | ✅ **2026-05-31** | 2–4d | **`SttVocabularyPlan`** + 三家 adapter；U2 `sttVocabularyBias`；**U3** ✅（R3h-3）；本机手测签收；**在线 E2E ⏳**；**U4 延后** | [`acc-stt-unify-acceptance.md`](../specs/acc-stt-unify-acceptance.md)、[`acc-stt-unify-hand-test-checklist.md`](../specs/acc-stt-unify-hand-test-checklist.md) |
 | **⑤′b** | **R3t-B** | ✅ | 2–4d | 转写任务、超时、原子写库、warnings UI；**不自动 LLM** | 同上 §3；[`r3t-b-hand-test-checklist.md`](../specs/r3t-b-hand-test-checklist.md) 2026-05-30 签收 |
-| **⑤′½** | **TRN-DIAG** | 🟡 编码✅ | 0.5w | 时间线 UI + 诊断包 `transcribe_timeline.json`；**手测 2 项待签** | [`trn-diag-acceptance.md`](../specs/trn-diag-acceptance.md) |
+| **⑤′½** | **TRN-DIAG** | ✅ | 0.5w | 时间线 UI + 诊断包 `transcribe_timeline.json` | [`trn-diag-acceptance.md`](../specs/trn-diag-acceptance.md) |
 | **⑥** | **R3e-B** | ✅ | 1.5–2w | 长音频侧车 5min 窗；**2026-05-30 签收** | [`r3e-b-hand-test-checklist.md`](../specs/r3e-b-hand-test-checklist.md) |
 | **⑥½** | **R3e-C** | ✅ | 1–1.5w | async Job + 120s 窗末 preview merge；停止转写；preview 禁 save/LLM；**2026-05-31 手测签收**（制控.mp3） | [`r3e-c-incremental-transcribe-acceptance.md`](../specs/r3e-c-incremental-transcribe-acceptance.md)、[`r3e-c-incremental-transcribe-hand-test-checklist.md`](../specs/r3e-c-incremental-transcribe-hand-test-checklist.md) |
 | **⑦** | **R3h-2** | ✅ | ~1w | Range 续传 · 下载进度 UI · GC · **C 类自动回滚**（集成测 `test-r3h-2-c-rollback.sh`） | [`r3h-2 acceptance`](../specs/r3h-2-local-runtime-resume-acceptance.md) · remediation §5 Phase 2 |
@@ -724,7 +724,7 @@ React 预览 UI
 | **R3g** | 模型目录 + Profile | ✅ |
 | **R3t** | 分段 + 编排 + F0 阶段 B | ✅；**R3t-E 独立** ⏸ |
 | **⑤″f** | 改稿套件 + MEM + F7/F8 | ✅；**F4** ❌ |
-| **TRN-DIAG** | 转写时间线 + 诊断包 | 🟡 手测 2 项 |
+| **TRN-DIAG** | 转写时间线 + 诊断包 | ✅ 2026-06-11 |
 | **R3d** | 环境 IA | ✅ 与 **R3h-3** 合并 |
 
 **实施顺序**：**仅 §4.1.1**。
@@ -1020,7 +1020,7 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 |----|------|
 | **定位** | **个人单机 v1 主序已闭合**（EXP-WORD → REV-LOC → R4 → R9 → LLM-LOC 4a）；进入 **v1 后硬化 + 发行自动化** |
 | **LLM** | **4a** ✅ · **4b** ❌ Gate-B No-Go（[decision](../specs/llm-loc-gate-b-decision-2026-06.md)） |
-| **当前薄片** | **TRN-DIAG 手测闭项**；**R3h-1-R CI** 编码 ✅（待 `RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX` + 首次 release 验证） |
+| **当前薄片** | **ASR-WARM release idle**（可选）· **ACC 在线 E2E**（有 Key） |
 | **刚闭合** | **⑤″f F2/F1/F6** 复测 ✅ · **F8** ✅ · **语段 P0** ✅ · **I1a+ASR-WARM** dev ✅ |
 | **近期不做** | **F4-ASR**、**F3/F5 P3**、**R3f/R3h-0 Win**（⏸）、**LLM-LOC-4b**、**CAT-TRAN**、**R6–R8**、**R3s-A**（Defer） |
 
@@ -1054,7 +1054,7 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | ID | 现状 | 缺口 | 建议优先级 |
 |----|------|------|------------|
 | **R3h-1-R CI** | `v0.1.0` mac/linux manifest + 安装包 ✅ | **Windows** smoke.ps1 待修 | **P2** |
-| **TRN-DIAG** | `transcribe_timeline.rs`、`diagnostic.rs` | acceptance **2 项手测**未勾 | **P1** |
+| **TRN-DIAG** | `transcribe_timeline.rs`、`diagnostic.rs` | ✅ 2026-06-11 | — |
 | **ASR-WARM** | `warm.rs` idle/watchdog | **release 包** idle 回收未签（dev `SKIP_BUNDLED` 不测） | **P2 可选** |
 | **ACC-STT-ALI** | `dashscope_vocabulary.rs` + `dashscope_file_asr.rs` | 百炼热词 **手测 ⏳** | **P2**（有 Key） |
 | **ACC-STT-UNIFY** | 在线 adapter 已编码 | 三家 **在线 E2E ⏳** | **P2**（有 Key） |
@@ -1080,10 +1080,9 @@ Step 1  R3h-1-R Release CI          ✅ 编码 2026-06-11
         └─ release.yml + ci-publish-runtime-manifest-release.sh
         └─ 待：secret + 首次 GitHub Release 验证
 
-Step 2  TRN-DIAG 手测闭项           ← 当前主刀（~1–2h）
-        └─ 断侧车失败 UI + 诊断包 transcribe_timeline.json
+Step 2  TRN-DIAG 手测闭项           ✅ 2026-06-11
 
-Step 3  ASR-WARM release idle      （可选 · ~0.5d）
+Step 3  ASR-WARM release idle      ← 可选主刀（~0.5d）
         └─ 安装包 + RUSHI_ASR_IDLE_STOP_SEC=120
 
 Step 4  ACC 在线 E2E                 （有 Key 时 · 百炼/三家）
@@ -1092,8 +1091,8 @@ Step 4  ACC 在线 E2E                 （有 Key 时 · 百炼/三家）
 | 步 | ID | 状态 | 验收真源 |
 |----|-----|------|----------|
 | **1** | **R3h-1-R CI** | ✅ mac/linux · Win 🟡 | [`r3h-1-r-release-checklist.md`](../specs/r3h-1-r-release-checklist.md) |
-| **2** | **TRN-DIAG** | 🟡 ← 当前 | [`trn-diag-acceptance.md`](../specs/trn-diag-acceptance.md) |
-| **3** | **ASR-WARM release** | 🟡 可选 | [`asr-warm-handtest-signoff-2026-06-11.md`](../specs/asr-warm-handtest-signoff-2026-06-11.md) §H5 |
+| **2** | **TRN-DIAG** | ✅ | [`trn-diag-hand-test-checklist.md`](../specs/trn-diag-hand-test-checklist.md) |
+| **3** | **ASR-WARM release** | 🟡 可选 ← | [`asr-warm-handtest-signoff-2026-06-11.md`](../specs/asr-warm-handtest-signoff-2026-06-11.md) §H5 |
 | **4** | **ACC 在线 E2E** | ⏳ | [`acc-stt-ali-hand-test-checklist.md`](../specs/acc-stt-ali-hand-test-checklist.md) |
 
 **已闭合硬化步（2026-06-11）**：R3h-I1 设计冻结 ✅ · I1a 编码 ✅ · ASR-WARM dev ✅ · 语段 P0 ✅ · F8 ✅ · F2/F1/F6 复测 ✅
@@ -1228,6 +1227,7 @@ Step 4  ACC 在线 E2E                 （有 Key 时 · 百炼/三家）
 | 2026-06-11 | **R3h-I1** Supervisor FSM 设计冻结 — [plan](../specs/r3h-i1-runtime-supervisor-fsm-plan.md)；§10 Step 2 → ASR-WARM |
 | 2026-06-11 | **v1 后硬化盘点**：§10.1 全量台账；**F4-ASR No-go**；**F2/F1/F6** 复测 ✅；**F8** ✅；主刀 → **R3h-1-R CI** |
 | 2026-06-11 | **R3h-1-R Release CI**：`release.yml` + `ci-publish-runtime-manifest-release.sh`；主刀 → **TRN-DIAG** |
+| 2026-06-11 | **TRN-DIAG ✅**：`trn-diag-hand-test.sh` + 手测清单；下一刀 → ASR-WARM release（可选） |
 | 2026-06-11 | §阶段状态：R4/R9 ✅；§4.1.9 F7/F8/MEM/F4；§13 对照刷新 |
 
 ---
@@ -1286,7 +1286,7 @@ Step 4  ACC 在线 E2E                 （有 Key 时 · 百炼/三家）
 | **R3t-E** | ⏸ 独立产品移除；Stage B 于 `postTranscribeStageB.ts` | ✅ via F0 |
 | **⑤″f F2/F1/F6/F7/F8** | 查找替换、规则、记忆、bundle、导出预览 | ✅ 2026-06-11 |
 | **F4-ASR** | ASR 置信门控 | ❌ No-go |
-| **TRN-DIAG** | `transcribe_timeline.rs` + 诊断包 | 🟡 编码✅；手测 2 项 |
+| **TRN-DIAG** | `transcribe_timeline.rs` + 诊断包 | ✅ 2026-06-11 |
 | **R3h-I1 I1a** | Supervisor FSM + watchdog | ✅ 2026-06-11 |
 | **ASR-WARM** | 保活 + 预热 | ✅ dev；release idle 🟡 |
 | **语段正文 P0** | draft defer + 页脚节流 | ✅ 2026-06-11 |
