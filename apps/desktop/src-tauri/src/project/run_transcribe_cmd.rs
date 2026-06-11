@@ -18,8 +18,9 @@ use super::transcribe_native_online::{transcribe_assemblyai_native, transcribe_o
 use super::transcribe_response::{merge_transcribe_warnings, parse_transcribe_segments_from_json};
 use super::transcribe_timeline::{
     fail_and_persist_active_timeline, infer_failed_stage_from_message, infer_transcribe_error_code,
-    load_last_timeline, store_active_timeline, take_active_timeline, update_active_timeline_progress,
-    TranscribeTimelineRecorder, STAGE_PREFLIGHT, STAGE_SAVE, STAGE_TRANSCRIBE,
+    load_last_timeline, store_active_timeline, take_active_timeline,
+    update_active_timeline_progress, TranscribeTimelineRecorder, STAGE_PREFLIGHT, STAGE_SAVE,
+    STAGE_TRANSCRIBE,
 };
 use super::transcribe_timeout::{
     local_transcribe_timeout_duration, long_audio_transcribe_hint, probe_audio_duration_sec,
@@ -270,7 +271,9 @@ pub async fn project_run_transcribe(
     crate::asr_sidecar::warm::inc_transcribe_in_flight();
     let source = if online.is_some() { "online" } else { "local" };
     let mut tl = TranscribeTimelineRecorder::new(&file_id, source);
-    let out = match project_run_transcribe_inner(st.clone(), file_id, asr_base_url, online, &mut tl).await {
+    let out = match project_run_transcribe_inner(st.clone(), file_id, asr_base_url, online, &mut tl)
+        .await
+    {
         Ok(mut out) => {
             tl.finish_success(&out.warnings);
             let snap = tl.snapshot();

@@ -24,9 +24,9 @@ pub use bundled::{
     force_restart_bundled, stop_bundled, try_start_bundled, BundledAsrLaunchReport,
     BundledAsrLaunchState,
 };
-pub use supervisor::{AsrSupervisorState, SupervisorSnapshot};
 pub use candidates::bundled_sidecar_resources_present;
 pub use source::restart_source_asr_sidecar;
+pub use supervisor::{AsrSupervisorState, SupervisorSnapshot};
 
 /// Restart loopback ASR: bundled PyInstaller or source venv when `RUSHI_SKIP_BUNDLED_ASR=1`.
 pub fn restart_loopback_asr(handle: &AppHandle, st: &DbState) -> Result<(), String> {

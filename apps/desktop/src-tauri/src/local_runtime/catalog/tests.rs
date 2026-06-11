@@ -1,5 +1,5 @@
-use super::{diagnose_configured_manifest, load_configured_manifest};
 use super::test_support::env_test_lock;
+use super::{diagnose_configured_manifest, load_configured_manifest};
 use crate::local_runtime::manifest::current_platform_key;
 use base64::Engine;
 use ed25519_dalek::{Signer, SigningKey};

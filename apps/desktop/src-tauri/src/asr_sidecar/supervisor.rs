@@ -9,7 +9,9 @@ use tauri::{AppHandle, Manager};
 use uuid::Uuid;
 
 use super::bundled::launch::{write_launch_report, BundledAsrLaunchReport};
-use super::probe::{AsrPortStatus, bundled_health_looks_like_rushi_asr, bundled_sidecar_is_fresh_build};
+use super::probe::{
+    bundled_health_looks_like_rushi_asr, bundled_sidecar_is_fresh_build, AsrPortStatus,
+};
 use super::ASR_LOOPBACK_PORT;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
@@ -177,8 +179,7 @@ pub fn note_ready_adopted(handle: &AppHandle) {
         snap.executable_source = ExecutableSource::ExternalListener;
         snap.managed_child_pid = None;
         snap.health_fresh = bundled_sidecar_is_fresh_build();
-        snap.local_token_managed =
-            super::local_token::resolve_local_token_for_request().is_some();
+        snap.local_token_managed = super::local_token::resolve_local_token_for_request().is_some();
         snap.last_error_code = None;
         snap.last_transition_ms = now_ms();
         sync_launch_report(handle, snap);
@@ -201,8 +202,7 @@ pub fn note_ready_spawned(
         snap.executable_source = source;
         snap.managed_child_pid = child_pid;
         snap.health_fresh = bundled_sidecar_is_fresh_build();
-        snap.local_token_managed =
-            super::local_token::resolve_local_token_for_request().is_some();
+        snap.local_token_managed = super::local_token::resolve_local_token_for_request().is_some();
         snap.active_executable = active;
         snap.last_error_code = None;
         snap.last_transition_ms = now_ms();
@@ -211,9 +211,7 @@ pub fn note_ready_spawned(
 }
 
 pub fn note_warming(handle: &AppHandle, exe: &Path) {
-    let active = exe
-        .file_name()
-        .map(|s| s.to_string_lossy().into_owned());
+    let active = exe.file_name().map(|s| s.to_string_lossy().into_owned());
     let _ = with_snapshot(handle, |snap| {
         snap.phase = SupervisorPhase::Warming;
         snap.active_executable = active;
@@ -265,11 +263,7 @@ pub fn classify_executable_source(exe: &Path, app_root: Option<&Path>) -> Execut
             }
             if let Ok(inst_canon) = installed.canonicalize() {
                 if let Ok(exe_canon) = exe.canonicalize() {
-                    if exe_canon.starts_with(
-                        inst_canon
-                            .parent()
-                            .unwrap_or(inst_canon.as_path()),
-                    ) {
+                    if exe_canon.starts_with(inst_canon.parent().unwrap_or(inst_canon.as_path())) {
                         return ExecutableSource::LrcInstalled;
                     }
                 }

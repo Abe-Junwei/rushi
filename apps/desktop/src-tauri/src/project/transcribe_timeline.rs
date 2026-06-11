@@ -417,10 +417,15 @@ mod tests {
         let snap = rec.snapshot();
         let json = serde_json::to_value(&snap).expect("json");
         assert_eq!(json.get("schemaVersion").and_then(|v| v.as_u64()), Some(1));
-        assert_eq!(json.get("fileId").and_then(|v| v.as_str()), Some("file-abc"));
+        assert_eq!(
+            json.get("fileId").and_then(|v| v.as_str()),
+            Some("file-abc")
+        );
         assert_eq!(json.get("jobId").and_then(|v| v.as_str()), Some("job-1"));
         assert_eq!(json.get("outcome").and_then(|v| v.as_str()), Some("failed"));
-        let timeline = json.get("transcribe_timeline").expect("transcribe_timeline");
+        let timeline = json
+            .get("transcribe_timeline")
+            .expect("transcribe_timeline");
         assert!(timeline.is_array());
         assert_eq!(timeline.as_array().unwrap().len(), 2);
         assert!(json.get("suggestedAction").is_some());

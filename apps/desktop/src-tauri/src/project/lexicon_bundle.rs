@@ -257,7 +257,9 @@ mod tests {
         assert_eq!(stable.excluded_hit1_unaccepted, 1);
         assert_eq!(stable.excluded_learning_unaccepted, 1);
         assert_eq!(stable.duplicate_before_group_count, 1);
-        assert!(stable.duplicate_before_samples.contains(&"闪法".to_string()));
+        assert!(stable
+            .duplicate_before_samples
+            .contains(&"闪法".to_string()));
 
         let all = build_lexicon_bundle_export_preview(&conn, false).unwrap();
         assert_eq!(all.rules_export_count, 3);

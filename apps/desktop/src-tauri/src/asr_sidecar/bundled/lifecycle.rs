@@ -116,12 +116,7 @@ fn try_start_bundled_inner(handle: &AppHandle) {
                 let guard = st.0.lock().ok()?;
                 Some(guard.as_ref()?.id())
             });
-            supervisor::note_ready_spawned(
-                handle,
-                &exe,
-                app_root.as_deref().map(Path::new),
-                pid,
-            );
+            supervisor::note_ready_spawned(handle, &exe, app_root.as_deref().map(Path::new), pid);
             warm::spawn_warmup_on_ready(handle);
             return;
         }
