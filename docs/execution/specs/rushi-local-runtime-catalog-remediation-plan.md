@@ -458,7 +458,7 @@ sequenceDiagram
 
 | 子轨 | 目标 | 主要落位 | 建议接入点 |
 |------|------|----------|------------|
-| **R3h-I1 Runtime Supervisor** | 把 sidecar 启动/探测收成显式 supervisor FSM、watchdog、runtime identity，统一 `bundled` / `app_data` 真相 | `apps/desktop/src-tauri/src/asr_sidecar.rs`、`lib.rs`、`asr_setup/diagnose.rs` | **Phase 1** 稳定后可设计；建议在 **Phase 2–3** 收口 |
+| **R3h-I1 Runtime Supervisor** | 把 sidecar 启动/探测收成显式 supervisor FSM、watchdog、runtime identity，统一 `bundled` / `app_data` 真相 | `asr_sidecar/supervisor.rs`（新）、`bundled/lifecycle.rs`、`asr_setup/diagnose.rs` | **设计冻结 ✅** 2026-06-11 — [plan](./r3h-i1-runtime-supervisor-fsm-plan.md)；编码建议与 **ASR-WARM** 合并 I1a |
 | **R3h-I2 Release System** | 在 Phase 1 已落地的签名校验、`current+previous`、rollback 之上继续收口成更完整的发布元数据、GC、事件化进度与长期可维护结构 | `apps/desktop/src-tauri/src/local_runtime/*.rs`、`apps/desktop/src/services/localRuntime/localRuntimeContract.ts` | 以 **Phase 2** 为主落点，避免早于 Phase 1 |
 | **R3h-I3 Setup Machine** | 将 `ASR setup` 编排改成 reducer/state-machine，统一消费 diagnose / installer / model prepare 事件 | `apps/desktop/src/pages/useAsrSetupController.ts`、`asrSetupState.ts`、相关 contract / wizard 测试 | 依赖 **I1/I2** 契约后再收口，建议靠近 **Phase 3** |
 
