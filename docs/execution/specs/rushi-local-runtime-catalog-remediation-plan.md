@@ -434,18 +434,21 @@ sequenceDiagram
 
 ---
 
-### Phase 3.5 — 引擎评估门控：Sherpa-ONNX Spike（≈1 周，**不阻塞** R3h-0～2）
+### Phase 3.5 — 引擎评估门控：Sherpa-ONNX Paraformer Spike（≈1 周，**不阻塞** R3h-0～3）
 
-**目标**：验证能否在保持 SenseVoice/Paraformer 精度的前提下，摆脱 ~2.5GB Python 侧车（LRC 分发层不变）。
+**目标**：验证 Sherpa-ONNX **Paraformer** 能否作为 FunASR Paraformer 侧车（~2.5GB）的轻量/中期候选（LRC 分发层不变）。
+
+> **2026-06-10 修订**：catalog 已弃用 SenseVoice、主推 Paraformer；Spike **不以 SenseVoice 为 Go 门控**。见 [`r3h-3.5-sherpa-spike-research.md`](./r3h-3.5-sherpa-spike-research.md)。
 
 | 项 | 内容 |
 |----|------|
-| Spike | `sherpa-onnx` crate + SenseVoice int8；AISHELL/内部样本 **CER 对比** FunASR 侧车 |
+| Spike | `sherpa-onnx` crate + **paraformer-zh-2023-09-14**（P0）+ INT8（P1）；AISHELL/13min 样本 **CER/语段** 对比 FunASR 默认 SKU |
+| 能力 | VAD、punc、timestamps、**hotwords** 差距表 |
 | 平台 | macOS CoreML、Windows CUDA/DirectML 各至少一条 smoke |
-| 结论 | 通过 → 规划 `asr_engine: funasr-sidecar \| sherpa-onnx`；不通过 → 在 policy **明示** Python 侧车为长期约束 |
-| 文档 | 结论写入 `docs/adr/00xx-sherpa-onnx-evaluation.md`（Spike 后） |
+| 结论 | Go / Partial Go / No-go → `asr_engine` 或 policy 明示 |
+| 文档 | [`r3h-3.5-sherpa-spike-acceptance.md`](./r3h-3.5-sherpa-spike-acceptance.md)；结论 `docs/adr/00xx-sherpa-onnx-evaluation.md` |
 
-**不采纳（Spike 前不变）**：faster-whisper（中文 CER 差）、纯 whisper.cpp 替代 SenseVoice（能力不匹配）。
+**不采纳**：SenseVoice 作 Spike 主模型；Qwen3-ASR；faster-whisper；纯 whisper.cpp。
 
 ---
 

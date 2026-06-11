@@ -3,7 +3,7 @@
 > **Research**：[`asr-landscape-top4-research-2026-06.md`](./asr-landscape-top4-research-2026-06.md) §④  
 > **Plan**：（编码前起草）`acc-eval-2-long-form-metrics-plan.md`  
 > **Acceptance**：（编码前起草）`acc-eval-2-long-form-metrics-acceptance.md`  
-> **Hand-test**：（编码前起草）`acc-eval-2-long-form-metrics-hand-test-checklist.md`  
+> **Hand-test**：[`acc-eval-2-long-form-metrics-hand-test-checklist.md`](./acc-eval-2-long-form-metrics-hand-test-checklist.md) ✅  
 > **前置（已签收）**：**ACC-EVAL-1** = **ASR-VOC-5**（`term_hit` + hotwords A/B）— [`asr-voc-5-hand-test-checklist.md`](./asr-voc-5-hand-test-checklist.md)  
 > **状态**：规划门禁（2026-06-11）  
 > **估时**：**1–2 人日**  
@@ -182,8 +182,8 @@ npm run eval:run -- --filter-id proper-noun-zhikong \
 
 - [x] Intent 完成（2026-06-11）
 - [x] 编码完成（2026-06-11）：`eval_metrics.rtfx`、`eval-run` 新列、`eval:run:long-form`
-- [ ] Plan + Acceptance 链接本文
-- [ ] 手测（Paraformer + 制控 baseline）
+- [ ] Plan + Acceptance 链接本文（本薄片 intent+手测即签收；plan/acceptance 可省略）
+- [x] 手测（Paraformer + 制控 baseline）— [`acc-eval-2-long-form-metrics-hand-test-checklist.md`](./acc-eval-2-long-form-metrics-hand-test-checklist.md)
 - [ ] research brief §7 勾选 intent
 
 **变更记录**

@@ -62,16 +62,19 @@ python -m rushi_asr
 - `RUSHI_FUNASR_LANGUAGE`（默认 `zh`；allowlist：`zh` / `auto` / `en` / `ja` / `ko` / `yue`；桌面写入 `prefs/funasr_language.txt`）
 - `RUSHI_FUNASR_USE_ITN`（**R3g-C** 排障：部分 SKU 默认开 ITN；`0`/`false` 关闭）
 - `RUSHI_FUNASR_VAD_MODEL`（默认 `fsmn-vad`；设为空字符串可关闭 VAD 参数传递）
+- `RUSHI_FUNASR_FORCED_ALIGNER`（**R3g-B-Align spike / env-only**：如 `Qwen/Qwen3-ForcedAligner-0.6B`；与 `RUSHI_FUNASR_MODEL=Qwen/Qwen3-ASR-0.6B` 配对启用 `return_time_stamps`；设置后 `prepare-default` 会一并下载该权重；**不进 catalog**）
+- `RUSHI_HF_ENDPOINT`（可选：如 `https://hf-mirror.com`；侧车启动时映射为 `HF_ENDPOINT`，仅在未设置时生效）
 - **Generate Profile（R3g-C）**：`use_itn` / `merge_vad` / `batch_size_*` 等由 `rushi_asr/asr_model_profile.py` 按 SKU+时长生成，见 [`docs/architecture/asr-generate-params-truth.md`](../../docs/architecture/asr-generate-params-truth.md)
 - **R3e-B blocking 长音频分窗**（≥30min）：`RUSHI_FUNASR_WINDOW_SEC`（默认 **300**）、`RUSHI_FUNASR_WINDOW_THRESHOLD_SEC`（默认 **1800**）
 - **R3e-C async 增量预览分窗**：`RUSHI_FUNASR_ASYNC_WINDOW_SEC`（默认 **120**）、`RUSHI_FUNASR_ASYNC_WINDOW_THRESHOLD_SEC`（默认与 async 窗宽相同，即 **≥120s** 音频走分窗 preview；blocking `/v1/transcribe` 仍用 300s/1800s 阈值）
 
 ## 接口
 
-- `GET /health` — 在 `status` / `service` 之外返回 **运行时能力**（供桌面自动检测）：`ffmpeg_ok`、`funasr_import_ok`（能否 `import funasr`）、`funasr_model_configured`（当前是否存在有效模型 id）、`funasr_model_explicit_from_env`（是否显式设置了 `RUSHI_FUNASR_MODEL`）、`funasr_ready`（仅表示运行时可用，不等于可直接转写）、`funasr_default_model_cached`、`funasr_vad_model_cached`、`funasr_required_models_cached`（当前必需模型是否完整）、`ready_for_transcribe`（运行时 + 必需模型均完成）、`transcription_mode`（`funasr` 或 `stub`）、`funasr_model_id`（未设置时返回内置默认 id）、`funasr_language`（**R3g-C** 当前 `RUSHI_FUNASR_LANGUAGE`）。
+- `GET /health` — 运行时能力：`ready_for_transcribe`、`funasr_model_id`、`funasr_loaded_model_id`、`funasr_forced_aligner_*`、`funasr_load_plan`（含 `uses_local_paths`，Align spike 应为 true）等。
 - `GET /` — 服务目录；桌面用 `transcribe_async` 字段检测 bundled 是否支持 R3e-C。
 - `POST /v1/models/prepare-default` — 同步触发默认 FunASR 模型准备（下载/校验）；无 FunASR 时 **503**；manifest 校验失败 **400**。
 - `POST /v1/models/prepare-default/async` — 在后台线程启动同上准备；立即返回 **202**；无 FunASR 时 **503**。
+- `POST /v1/models/warmup` — 将 FunASR `AutoModel` 预加载进内存（Qwen+ForcedAligner 首次加载可能数分钟）；权重未就绪 **503**。
 - `GET /v1/models/prepare-status` — 查询异步准备状态：`phase` 为 `idle` | `running` | `done` | `error`；`running` 时另含 `progress_percent`（0–99，按 ModelScope 下载回调累计字节 / 预算或已声明文件大小）、`bytes_downloaded`、`bytes_total`；`done` 时 `progress_percent` 为 100，并含 `result`（与同步成功体同形），`error` 时含 `message`。
 - **桌面一键安装（可选）**：仓库根脚本 `scripts/install-funasr-for-desktop.sh` 会在 `services/asr/.venv` 中执行 `pip install -e ".[funasr]"`；需本机已有 **Python 3**、**网络**与足够磁盘；**不会**代替用户设置 `RUSHI_FUNASR_MODEL`，也**不会**自动重启 ASR 进程。
 - `POST /v1/transcribe` — `multipart/form-data`：字段 **`file`**（必填）；可选字段 **`hotwords`**（UTF-8 文本，空格分隔热词，供 FunASR `generate(..., hotword=...)`；**stub 或未走 FunASR 时忽略**，并在 `warnings` 中加入 `hotwords_ignored_stub`）。响应为 **TranscriptionResult** JSON（`schema_version: "1"`）。

@@ -25,6 +25,10 @@ def test_cer_substitution() -> None:
     assert cer_chars("禅修", "蝉修") == 0.5
 
 
+def test_cer_ignores_whitespace() -> None:
+    assert cer_chars("制 控\n", "制控") == 0.0
+
+
 def test_term_hit_rate() -> None:
     assert term_hit_rate(["禅修", "打坐"], "今天禅修与打坐") == 1.0
     assert term_hit_rate(["禅修", "缺失"], "只有禅修") == 0.5

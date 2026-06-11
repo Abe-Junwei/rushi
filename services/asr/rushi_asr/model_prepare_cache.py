@@ -5,7 +5,7 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from rushi_asr.defaults import DEFAULT_FUNASR_MODEL_ID, effective_funasr_model_id, effective_funasr_vad_model_id
+from rushi_asr.defaults import DEFAULT_FUNASR_MODEL_ID, effective_funasr_forced_aligner_id, effective_funasr_model_id, effective_funasr_vad_model_id
 from rushi_asr.funasr_pipeline import effective_funasr_punc_model_id
 
 DEFAULT_MODEL_REQUIRED_FILES = ("model.pt", "config.yaml", "tokens.json")
@@ -41,10 +41,14 @@ def model_dir_candidates(root: Path, model_id: str) -> list[Path]:
     if len(parts) != 2:
         return []
     owner, name = parts
+    escaped = name.replace(".", "___")
     candidates = [
         root / "models" / owner / name,
+        root / "models" / owner / escaped,
         root / "hub" / "models" / owner / name,
+        root / "hub" / "models" / owner / escaped,
         root / "hub" / owner / name,
+        root / "hub" / owner / escaped,
     ]
 
     unique: list[Path] = []
@@ -83,12 +87,27 @@ def model_cached_guess(
     *,
     weight_file: str = "model.pt",
 ) -> bool:
+    return find_cached_model_dir(
+        model_id,
+        required_files,
+        min_weight_bytes,
+        weight_file=weight_file,
+    ) is not None
+
+
+def find_cached_model_dir(
+    model_id: str,
+    required_files: tuple[str, ...],
+    min_weight_bytes: int,
+    *,
+    weight_file: str = "model.pt",
+) -> Path | None:
     ms = os.environ.get("MODELSCOPE_CACHE", "").strip()
     if not ms:
-        return False
+        return None
     root = Path(ms)
     if not root.is_dir():
-        return False
+        return None
     for model_dir in model_dir_candidates(root, model_id):
         if looks_like_complete_model_dir(
             model_dir,
@@ -96,8 +115,61 @@ def model_cached_guess(
             min_weight_bytes,
             weight_file=weight_file,
         ):
-            return True
-    return False
+            return model_dir
+    return None
+
+
+def resolve_cached_hub_arg(
+    hub_id: str,
+    *,
+    required_files: tuple[str, ...] | None = None,
+    min_weight_bytes: int | None = None,
+    weight_file: str | None = None,
+) -> str:
+    """Local ModelScope directory for prepare / cache probes."""
+    if not hub_id:
+        return hub_id
+    req = required_files
+    weight = weight_file
+    min_b = min_weight_bytes
+    if req is None or weight is None or min_b is None:
+        spec_req, spec_weight, spec_min = recognizer_cache_spec(hub_id)
+        req = req or spec_req
+        weight = weight or spec_weight
+        min_b = min_b if min_b is not None else spec_min
+    cached = find_cached_model_dir(hub_id, req, min_b, weight_file=weight)
+    return str(cached) if cached is not None else hub_id
+
+
+def funasr_qwen_hub_id(hub_id: str) -> bool:
+    return "qwen" in (hub_id or "").lower()
+
+
+def resolve_funasr_automodel_arg(
+    hub_id: str,
+    *,
+    required_files: tuple[str, ...] | None = None,
+    min_weight_bytes: int | None = None,
+    weight_file: str | None = None,
+) -> str:
+    """FunASR AutoModel `model=` arg: Qwen SKUs must use registered hub ids + hub=ms."""
+    if not hub_id:
+        return hub_id
+    if funasr_qwen_hub_id(hub_id):
+        return hub_id
+    return resolve_cached_hub_arg(
+        hub_id,
+        required_files=required_files,
+        min_weight_bytes=min_weight_bytes,
+        weight_file=weight_file,
+    )
+
+
+def resolve_qwen_forced_aligner_arg(hub_id: str) -> str:
+    """qwen-asr loads forced aligner via transformers; prefer local ModelScope path."""
+    if not hub_id:
+        return hub_id
+    return resolve_cached_hub_arg(hub_id)
 
 
 def recognizer_model_cached_guess(model_id: str | None = None) -> bool:
@@ -133,10 +205,24 @@ def punc_model_cached_guess(model_id: str | None = None) -> bool:
     return model_cached_guess(punc_id, DEFAULT_PUNC_REQUIRED_FILES, 1 * 1024 * 1024)
 
 
+def forced_aligner_model_cached_guess() -> bool:
+    aligner_id = effective_funasr_forced_aligner_id()
+    if not aligner_id:
+        return True
+    required, weight_file, min_bytes = recognizer_cache_spec(aligner_id)
+    return model_cached_guess(
+        aligner_id,
+        required,
+        min_bytes,
+        weight_file=weight_file,
+    )
+
+
 def required_models_cached_guess(model_id: str | None = None) -> bool:
     resolved = (model_id or "").strip() or effective_funasr_model_id()
     return (
         recognizer_model_cached_guess(resolved)
         and vad_model_cached_guess()
         and punc_model_cached_guess(resolved)
+        and forced_aligner_model_cached_guess()
     )

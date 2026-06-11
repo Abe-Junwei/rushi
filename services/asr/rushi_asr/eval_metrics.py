@@ -2,6 +2,13 @@
 
 from __future__ import annotations
 
+import re
+
+
+def normalize_cer_text(text: str) -> str:
+    """Strip all whitespace for Chinese char-level CER (ref from docx, hyp from segment concat)."""
+    return re.sub(r"\s+", "", text.strip())
+
 
 def levenshtein_chars(a: str, b: str) -> int:
     """Unicode codepoint-level Levenshtein distance (DP, O(len(a)*len(b)))."""
@@ -29,8 +36,8 @@ def cer_chars(reference: str, hypothesis: str) -> float:
     Character error rate = edit_distance(ref, hyp) / max(len(ref), 1).
     Empty reference returns 0.0 if hypothesis empty else 1.0.
     """
-    ref = reference.strip()
-    hyp = hypothesis.strip()
+    ref = normalize_cer_text(reference)
+    hyp = normalize_cer_text(hypothesis)
     if not ref:
         return 0.0 if not hyp else 1.0
     return levenshtein_chars(ref, hyp) / len(ref)

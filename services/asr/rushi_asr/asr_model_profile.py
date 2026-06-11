@@ -6,6 +6,7 @@ import os
 from dataclasses import dataclass
 from typing import Any, Literal
 
+from rushi_asr.defaults import effective_funasr_forced_aligner_id
 from rushi_asr.funasr_pipeline import recognizer_needs_punc_pipeline
 
 # Kept in sync with rushi_asr.segmentation.LONG_AUDIO_SEC
@@ -98,6 +99,13 @@ def build_generate_kwargs(
         if sensevoice_use_itn_default():
             kwargs["use_itn"] = True
             kwargs["rich_transcription_postprocess"] = True
+    elif profile.sku_family == "qwen":
+        kwargs["merge_vad"] = not long_audio
+        if long_audio:
+            kwargs["batch_size_s"] = 60
+            kwargs["batch_size_threshold_s"] = 30
+        if effective_funasr_forced_aligner_id():
+            kwargs["return_time_stamps"] = True
     else:
         kwargs["merge_vad"] = not long_audio
         if long_audio:

@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import os
-
 import pytest
 
 from rushi_asr.asr_model_profile import (
@@ -23,10 +21,20 @@ def test_resolve_profiles() -> None:
     assert resolve_asr_model_profile(QWEN).sku_family == "qwen"
 
 
-def test_qwen_maps_zh_to_chinese() -> None:
+def test_qwen_maps_zh_to_chinese(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.delenv("RUSHI_FUNASR_FORCED_ALIGNER", raising=False)
     kwargs = build_generate_kwargs(QWEN, "zh", "制控", duration_sec=900.0)
     assert kwargs["language"] == "Chinese"
     assert kwargs["hotword"] == "制控"
+    assert "return_time_stamps" not in kwargs
+
+
+def test_qwen_with_forced_aligner_env_requests_timestamps(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setenv("RUSHI_FUNASR_FORCED_ALIGNER", "Qwen/Qwen3-ForcedAligner-0.6B")
+    kwargs = build_generate_kwargs(QWEN, "zh", None, duration_sec=900.0)
+    assert kwargs["return_time_stamps"] is True
+    assert kwargs["merge_vad"] is False
+    monkeypatch.delenv("RUSHI_FUNASR_FORCED_ALIGNER", raising=False)
 
 
 def test_paraformer_snapshot() -> None:

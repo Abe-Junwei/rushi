@@ -13,7 +13,7 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from rushi_asr.engine import transcribe_upload
-from rushi_asr.model_cache_env import apply_models_root_env
+from rushi_asr.model_cache_env import apply_models_root_env, configure_hub_env
 from rushi_asr.runtime_caps import get_runtime_caps
 
 _DEFAULT_HOST = "127.0.0.1"
@@ -51,7 +51,7 @@ class PrepareModelRequest(BaseModel):
 
 
 def create_app() -> FastAPI:
-    apply_models_root_env()
+    configure_hub_env()
     app = FastAPI(title="rushi-asr", version="0.1.0")
     # Local loopback service: desktop / Vite dev may POST from another origin.
     app.add_middleware(
@@ -81,6 +81,7 @@ def create_app() -> FastAPI:
             "prepare_model": "POST /v1/models/prepare (blocking prefetch, optional model_id)",
             "prepare_model_async": "POST /v1/models/prepare/async + GET /v1/models/prepare-status",
             "prepare_cancel": "POST /v1/models/prepare-cancel",
+            "warmup_model": "POST /v1/models/warmup",
             "transcribe_async": "POST /v1/transcribe/async + GET /v1/transcribe/status",
             "transcribe_cancel": "POST /v1/transcribe/cancel",
             "model_catalog": "GET /v1/models/catalog",
@@ -172,6 +173,23 @@ def create_app() -> FastAPI:
         from rushi_asr.model_prepare import cancel_prepare_async
 
         return cancel_prepare_async()
+
+    @app.post("/v1/models/warmup")
+    async def warmup_model_endpoint(request: Request) -> dict[str, object]:
+        """Load FunASR AutoModel into memory (Qwen+Aligner first transcribe can take minutes)."""
+        _require_local_token(request)
+        _require_funasr_import()
+        from rushi_asr.funasr_engine import warmup_funasr_model
+
+        try:
+            return await run_in_threadpool(warmup_funasr_model)
+        except RuntimeError as e:
+            code = str(e)
+            if code == "funasr_not_installed":
+                raise HTTPException(status_code=503, detail=code) from e
+            if code in ("funasr_model_not_configured", "funasr_models_not_ready"):
+                raise HTTPException(status_code=503, detail=code) from e
+            raise HTTPException(status_code=500, detail=code) from e
 
     async def _read_upload_to_temp(
         file: UploadFile,

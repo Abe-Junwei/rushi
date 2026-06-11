@@ -1,0 +1,11 @@
+{
+  "id": "d3-tang32-zhikong-gaijiang",
+  "title": "D3-堂3-2制控概讲（含禪堂开示）-5月2日（法砆法师）",
+  "audio_fixture": "fixtures/eval/samples/d3-tang32-zhikong-gaijiang.mp3",
+  "reference_fixture": "fixtures/eval/gold/d3-tang32-zhikong-gaijiang.reference.txt",
+  "source_audio": "/Users/junwei/Documents/转录/D3-堂3-2制控概讲（含禪堂开示）-5月2日（法砆法师）.mp3",
+  "source_docx": "/Users/junwei/Documents/转录/D3-堂3-2制控概讲（含禪堂开示）-5月2日（法砆法师).docx",
+  "duration_sec_approx": 1195.15,
+  "reference_char_count": 2005,
+  "extracted_at": "2026-06-11"
+}

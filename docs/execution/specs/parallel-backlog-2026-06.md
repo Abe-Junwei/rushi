@@ -22,6 +22,7 @@
 | **ASR-WARM** | 侧车保活、模型预热 | 0.5–1w | 📋 | [`asr-warm-acceptance.md`](./asr-warm-acceptance.md) | R3t-B ✅；R3h-I1 FSM 设计冻结后 |
 | **R3h-1-R** | Runtime manifest **发行激活** | 3–5d | ✅ R1+R2 签收 | [signoff](./r3h-1-r-phase-signoff-2026-06.md) · [plan](./r3h-1-r-runtime-manifest-release-activation-plan.md) | **R3h-1** ✅ |
 | **R3h-2** | 断点续传、GC、C 类升级回滚 | ~1w | ✅ | [`r3h-2 acceptance`](./r3h-2-local-runtime-resume-acceptance.md) · remediation §5 Phase 2 | 续传手测 ✅ · C 类集成测 ✅ |
+| **R3h-3.5** | Sherpa **Paraformer** Spike | ~1w | 🟡 规划✅ | [`r3h-3.5-sherpa-spike-acceptance.md`](./r3h-3.5-sherpa-spike-acceptance.md) | R3h-3 ✅；**非** SenseVoice |
 
 ## 禁忌（§4.1.3）
 

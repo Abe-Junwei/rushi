@@ -12,9 +12,19 @@ import threading
 from pathlib import Path
 from typing import Any
 
-from rushi_asr.defaults import effective_funasr_model_id, effective_funasr_vad_model_id
+from rushi_asr.defaults import effective_funasr_forced_aligner_id, effective_funasr_model_id, effective_funasr_vad_model_id
 from rushi_asr.funasr_pipeline import effective_funasr_punc_model_id, recognizer_needs_punc_pipeline
+from rushi_asr.funasr_load_plan import build_funasr_load_plan
+from rushi_asr.model_cache_env import configure_hub_env
 from rushi_asr.model_prepare import required_models_cached_guess
+from rushi_asr.model_prepare_cache import (
+    DEFAULT_PUNC_REQUIRED_FILES,
+    DEFAULT_VAD_REQUIRED_FILES,
+    funasr_qwen_hub_id,
+    resolve_cached_hub_arg,
+    resolve_funasr_automodel_arg,
+    resolve_qwen_forced_aligner_arg,
+)
 from rushi_asr.schemas import TranscriptionSegment
 from rushi_asr.asr_model_profile import LONG_AUDIO_SEC, funasr_language_for_model
 from rushi_asr.segmentation import (
@@ -26,6 +36,7 @@ log = logging.getLogger(__name__)
 
 _model_singleton: Any = None
 _model_loaded_id: str | None = None
+_model_loaded_forced_aligner: str | None = None
 _runtime_lock = threading.RLock()
 
 _inference_executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
@@ -55,10 +66,11 @@ def invalidate_funasr_model_cache() -> None:
     """Drop loaded AutoModel so the next transcribe picks up new weights (e.g. after prepare)."""
     import gc
 
-    global _model_singleton, _model_loaded_id
+    global _model_singleton, _model_loaded_id, _model_loaded_forced_aligner
     with _runtime_lock:
         _model_singleton = None
         _model_loaded_id = None
+        _model_loaded_forced_aligner = None
     gc.collect()
     try:
         import torch
@@ -92,39 +104,100 @@ def effective_funasr_language() -> str:
     return raw if raw in _ALLOWED_FUNASR_LANG else "zh"
 
 
+def _funasr_hub_extra_kwargs(hub_id: str, resolved_arg: str) -> dict[str, Any]:
+    """Qwen hub ids load via ModelScope (hub=ms), not HuggingFace."""
+    if funasr_qwen_hub_id(hub_id) and resolved_arg == hub_id:
+        return {"hub": "ms"}
+    if resolved_arg != hub_id:
+        return {}
+    if "qwen" in hub_id.lower():
+        return {"hub": "ms"}
+    return {}
+
+
+def warmup_funasr_model() -> dict[str, Any]:
+    """Load AutoModel into memory (separate from prepare download)."""
+    configure_hub_env()
+    model_id = effective_funasr_model_id()
+    if not model_id:
+        raise RuntimeError("funasr_model_not_configured")
+    if not required_models_cached_guess(model_id):
+        raise RuntimeError("funasr_models_not_ready")
+    _get_model(model_id)
+    plan = build_funasr_load_plan(model_id)
+    return {
+        "status": "ok",
+        "funasr_model_id": model_id,
+        "funasr_loaded_model_id": loaded_funasr_model_id(),
+        "funasr_forced_aligner_model_id": effective_funasr_forced_aligner_id(),
+        "load_plan": plan,
+    }
+
+
 def _get_model(model_id: str) -> Any:
-    global _model_singleton, _model_loaded_id
+    global _model_singleton, _model_loaded_id, _model_loaded_forced_aligner
+    forced_aligner = effective_funasr_forced_aligner_id()
     with _runtime_lock:
-        if _model_singleton is not None and _model_loaded_id == model_id:
+        if (
+            _model_singleton is not None
+            and _model_loaded_id == model_id
+            and _model_loaded_forced_aligner == forced_aligner
+        ):
             return _model_singleton
         _model_singleton = None
         _model_loaded_id = None
+        _model_loaded_forced_aligner = None
         try:
             from funasr import AutoModel
         except ImportError as e:
             raise RuntimeError("funasr_not_installed") from e
 
-        device = os.environ.get("RUSHI_FUNASR_DEVICE", "cpu")
-        kwargs: dict[str, Any] = {"model": model_id, "trust_remote_code": True, "device": device}
+        configure_hub_env()
+
+        device = os.getenv("RUSHI_FUNASR_DEVICE", "cpu")
+        model_arg = resolve_funasr_automodel_arg(model_id)
+        kwargs: dict[str, Any] = {
+            "model": model_arg,
+            "trust_remote_code": True,
+            "device": device,
+            **_funasr_hub_extra_kwargs(model_id, model_arg),
+        }
         vad = effective_funasr_vad_model_id()
         if vad:
-            kwargs["vad_model"] = vad
+            vad_arg = resolve_funasr_automodel_arg(
+                vad,
+                required_files=DEFAULT_VAD_REQUIRED_FILES,
+                min_weight_bytes=1 * 1024 * 1024,
+            )
+            kwargs["vad_model"] = vad_arg
+            kwargs.update(_funasr_hub_extra_kwargs(vad, vad_arg))
             kwargs["vad_kwargs"] = {
                 "max_single_segment_time": int(os.environ.get("RUSHI_FUNASR_VAD_MAX_MS", "30000")),
             }
         punc = effective_funasr_punc_model_id(model_id)
         if punc:
-            kwargs["punc_model"] = punc
+            punc_arg = resolve_funasr_automodel_arg(
+                punc,
+                required_files=DEFAULT_PUNC_REQUIRED_FILES,
+                min_weight_bytes=1 * 1024 * 1024,
+            )
+            kwargs["punc_model"] = punc_arg
+            kwargs.update(_funasr_hub_extra_kwargs(punc, punc_arg))
+        if forced_aligner:
+            aligner_arg = resolve_qwen_forced_aligner_arg(forced_aligner)
+            kwargs["forced_aligner"] = aligner_arg
 
         log.info(
-            "loading FunASR model %s device=%s vad=%s punc=%s",
-            model_id,
+            "loading FunASR model %s device=%s vad=%s punc=%s forced_aligner=%s",
+            model_arg,
             device,
-            vad or "-",
-            punc or "-",
+            kwargs.get("vad_model") or "-",
+            kwargs.get("punc_model") or "-",
+            kwargs.get("forced_aligner") or "-",
         )
         _model_singleton = AutoModel(**kwargs)
         _model_loaded_id = model_id
+        _model_loaded_forced_aligner = forced_aligner
         return _model_singleton
 
 
@@ -214,6 +287,7 @@ def generate_and_parse_funasr(
             "rich_transcription_postprocess",
             "use_itn",
             "output_timestamp",
+            "return_time_stamps",
             "sentence_timestamp",
             "batch_size_threshold_s",
             "batch_size_s",
@@ -229,6 +303,8 @@ def generate_and_parse_funasr(
                 _warn("funasr_rich_postprocess_unsupported")
             elif key == "sentence_timestamp":
                 _warn("sentence_timestamp_param_unsupported")
+            elif key == "return_time_stamps":
+                _warn("return_time_stamps_param_unsupported")
             return {k: v for k, v in current.items() if k != key}
 
         current = dict(kwargs)

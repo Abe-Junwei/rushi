@@ -10,7 +10,7 @@
 | 适用节奏 | 单人、每轮 2～4h、一轮一纵向薄片 |
 | 规划跨度 | **个人单机 v1**：约 **14～18 周（自当前）** 或 **18～22 周（自 W1）**；R3 薄片 **~12～15w**（§4.0，含发行 smoke 缓冲）；协作 **非 v1** |
 | 修订 | 每完成一个阶段更新 §2 状态表、§4 排期表与 §13 代码对照 |
-| 最近对照 | **2026-06-10**：**R3h-1-R** ✅ · **TRN-DIAG** ✅ · **R3h-2** ✅ · **R3h-3** ✅ — **当前薄片**：**ASR-WARM** / **R3h-3.5**；并行见 backlog |
+| 最近对照 | **2026-06-11**：**R3s-A** 📋 将来默认 = **Sherpa Qwen3 ONNX**（[research](../specs/r3s-sherpa-qwen3-default-engine-research.md) · [ADR-0007](../../adr/0007-sherpa-qwen3-default-asr-engine.md)）；**R3h-3.5** ✅ Partial Go；**当前薄片**：**R3h-I1** / **R3f** 发行闭环 |
 
 ### 状态标记约定（全文档统一）
 
@@ -353,7 +353,8 @@ R4 + R4-GATE ✅ → R9   ← **下一主序**
 | **⑦** | **R3h-2** | ✅ | ~1w | Range 续传 · 下载进度 UI · GC · **C 类自动回滚**（集成测 `test-r3h-2-c-rollback.sh`） | [`r3h-2 acceptance`](../specs/r3h-2-local-runtime-resume-acceptance.md) · remediation §5 Phase 2 |
 | **⑦½** | **ASR-WARM** | 📋 | 0.5–1w | 侧车保活、模型预热；**R3h-I4** | personal-solo §3.1 |
 | **⑧** | **R3h-3** + **R3d** | ✅ **2026-06-10** | 3–5d | 本机 ASR / 在线 STT / LLM 三盏灯；五栏 IA | [`r3h-3-environment-readiness-acceptance.md`](../specs/r3h-3-environment-readiness-acceptance.md) |
-| **⑧½** | **R3h-3.5** | ⏳ | ~1w | Sherpa-ONNX CER Spike；不阻塞 A–B 签收 | remediation §5 Phase 3.5 |
+| **⑧½** | **R3h-3.5** | ✅ **Partial Go** | ~1w | Sherpa Paraformer Spike；v1 仍 FunASR 主路径 | [`r3h-3.5-sherpa-spike-acceptance.md`](../specs/r3h-3.5-sherpa-spike-acceptance.md) · [ADR-0006](../../adr/0006-sherpa-onnx-paraformer-spike-evaluation.md) |
+| **R3s-A** | **Sherpa Qwen3 默认引擎** | 📋 **research ✅** | ~4–6w phased | 目标默认 = Qwen3 ONNX + VAD；FunASR 回退；**不**改 catalog 直至 Phase 3 Go | [research](../specs/r3s-sherpa-qwen3-default-engine-research.md) · [plan](../specs/r3s-sherpa-qwen3-default-engine-plan.md) · [ADR-0007](../../adr/0007-sherpa-qwen3-default-asr-engine.md) |
 | **⑤″c** | **R3t-C** | ✅ | 1–1.5w | 扩展 R2 标点（邻段上下文可选）；**可选/显式触发** | 同上 §4；[`r3t-c-hand-test-checklist.md`](../specs/r3t-c-hand-test-checklist.md) 2026-05-30 签收 |
 | **⑤″d** | **R3t-D** | ✅ **2026-05-31** | 1.5–2w | `postprocess_refine_segments` + 段界整理 UI | [`r3t-d-hand-test-checklist.md`](../specs/r3t-d-hand-test-checklist.md) |
 | **⑤″e** | **R3t-E** | 🔄 编码✅ 手测⏳ | 1.5–2w | LexiconPack 有据校对；**无 RAG**；**无** R3t-E3 项目级词表 v1 | [`r3t-e-lexicon-proofread-research.md`](../specs/r3t-e-lexicon-proofread-research.md) · [`lexicon-guided-llm-refine.md`](../../architecture/lexicon-guided-llm-refine.md) |

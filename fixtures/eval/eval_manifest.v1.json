@@ -1,6 +1,6 @@
 {
   "schema_version": "1",
-  "description": "P4 评测清单：向 items 追加条目并放置对应 wav；reference_transcript 可为空（仅跑通转写不写 CER）。",
+  "description": "P4 评测清单：向 items 追加条目并放置对应 wav；reference_transcript 可为空（仅跑通转写不写 CER）。reference_relpath 相对 fixtures/eval/ 目录。",
   "items": [
     {
       "id": "clear-placeholder",
@@ -33,6 +33,17 @@
       "reference_transcript": ""
     },
     {
+      "id": "d3-tang32-zhikong-gaijiang",
+      "category": "long_form",
+      "audio_relpath": "samples/d3-tang32-zhikong-gaijiang.mp3",
+      "reference_relpath": "gold/d3-tang32-zhikong-gaijiang.reference.txt",
+      "expected_terms": ["制控", "禅堂", "觉观", "经行"],
+      "hotwords": "制控,禅堂,觉观,经行",
+      "hotwords_ab": { "on": "制控,禅堂,觉观,经行", "off": null },
+      "min_segments": 50,
+      "notes": "ACC-EVAL-2 / R3s-A 主长样本：D3-堂3-2制控概讲（含禪堂开示）-5月2日（法砆法师）；金标来自同目录 docx 全文（~/Documents/转录/…docx）；~1195s"
+    },
+    {
       "id": "proper-noun-zhikong",
       "category": "long_form",
       "audio_relpath": "samples/制控.mp3",
@@ -41,7 +52,8 @@
       "hotwords": "制控",
       "hotwords_ab": { "on": "制控", "off": null },
       "min_segments": 10,
-      "notes": "ACC-EVAL-2 long-form track (~21min); R3g 13min substitute; Paraformer baseline 197 segments"
+      "optional": true,
+      "notes": "legacy ACC-EVAL-1 热词轨（~1250s）；无金标 CER；保留 term_hit 回归"
     }
   ]
 }

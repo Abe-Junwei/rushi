@@ -173,3 +173,23 @@ def test_transcribe_with_funasr_blocks_hidden_model_downloads(monkeypatch, tmp_p
 
     with pytest.raises(RuntimeError, match="funasr_models_not_ready"):
         funasr_engine.transcribe_with_funasr(tmp_path / "normalized.wav", 1.0)
+
+
+def test_warmup_funasr_model_delegates_to_get_model(monkeypatch) -> None:
+    calls: list[str] = []
+
+    def fake_get_model(model_id: str) -> str:
+        calls.append(model_id)
+        return "loaded"
+
+    monkeypatch.setattr(funasr_engine, "effective_funasr_model_id", lambda: "Qwen/Qwen3-ASR-0.6B")
+    monkeypatch.setattr(funasr_engine, "required_models_cached_guess", lambda _model_id=None: True)
+    monkeypatch.setattr(funasr_engine, "_get_model", fake_get_model)
+    monkeypatch.setattr(funasr_engine, "loaded_funasr_model_id", lambda: "Qwen/Qwen3-ASR-0.6B")
+    monkeypatch.setattr(funasr_engine, "effective_funasr_forced_aligner_id", lambda: "Qwen/Qwen3-ForcedAligner-0.6B")
+    monkeypatch.setattr(funasr_engine, "configure_hub_env", lambda: None)
+
+    body = funasr_engine.warmup_funasr_model()
+    assert calls == ["Qwen/Qwen3-ASR-0.6B"]
+    assert body["status"] == "ok"
+    assert body["funasr_loaded_model_id"] == "Qwen/Qwen3-ASR-0.6B"

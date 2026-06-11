@@ -21,7 +21,7 @@
 
 ## 当前热点（自动同步，2026-06-07）
 
-**工作区尾项**：**R3h-3** ✅ — [`r3h-3-environment-readiness-acceptance.md`](./docs/execution/specs/r3h-3-environment-readiness-acceptance.md)；下一刀 **ASR-WARM** / **R3h-3.5**
+**工作区尾项**：**R3h-3.5** 🟡 — [`r3h-3.5-sherpa-spike-acceptance.md`](./docs/execution/specs/r3h-3.5-sherpa-spike-acceptance.md)（Paraformer 对齐 catalog，非 SenseVoice）；**R3h-3** ✅
 
 **v1 后主序：LLM-LOC**
 

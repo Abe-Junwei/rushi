@@ -222,8 +222,9 @@ export RUSHI_FUNASR_FORCED_ALIGNER=Qwen/Qwen3-ForcedAligner-0.6B   # 待 funasr_
 ## 7. 签收
 
 - [x] 调研 brief 完成（2026-06-03）
-- [ ] `r3g-b-align-forced-aligner-spike-hand-test-checklist.md`（spike 开跑前）
-- [ ] `r3g-b-align-forced-aligner-spike-results.md`（实测后）
+- [x] `RUSHI_FUNASR_FORCED_ALIGNER` + `_get_model` + qwen `return_time_stamps` 接线（2026-06-11）
+- [x] [`r3g-b-align-forced-aligner-spike-hand-test-checklist.md`](./r3g-b-align-forced-aligner-spike-hand-test-checklist.md)
+- [ ] [`r3g-b-align-forced-aligner-spike-results.md`](./r3g-b-align-forced-aligner-spike-results.md)（实测待跑：须重启侧车 + Qwen 权重）
 - [ ] 路线图 §4.1.8 **R3g-B-Align** 状态更新为 🔬/✅/❌
 - [ ] 用户或路线图确认可进入 **Align spike 编码/手测**（仍 **不** 进 catalog）
 

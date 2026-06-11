@@ -9,6 +9,8 @@ from rushi_asr.model_prepare_cache import (
     looks_like_complete_model_dir,
     recognizer_cache_spec,
     recognizer_model_cached_guess,
+    resolve_cached_hub_arg,
+    resolve_funasr_automodel_arg,
 )
 
 
@@ -60,3 +62,65 @@ def test_recognizer_model_cached_guess_qwen_with_modelscope_layout(tmp_path: Pat
     (model_dir / "model.safetensors").write_bytes(b"x" * (101 * 1024 * 1024))
     monkeypatch.setenv("MODELSCOPE_CACHE", str(ms))
     assert recognizer_model_cached_guess("Qwen/Qwen3-ASR-0.6B")
+
+
+def test_resolve_cached_hub_arg_prefers_modelscope_path(tmp_path: Path, monkeypatch) -> None:
+    ms = tmp_path / "ms"
+    model_dir = ms / "models" / "Qwen" / "Qwen3-ForcedAligner-0.6B"
+    model_dir.mkdir(parents=True)
+    (model_dir / "config.json").write_text("{}", encoding="utf-8")
+    (model_dir / "model.safetensors").write_bytes(b"x" * (101 * 1024 * 1024))
+    monkeypatch.setenv("MODELSCOPE_CACHE", str(ms))
+    assert resolve_cached_hub_arg("Qwen/Qwen3-ForcedAligner-0.6B") == str(model_dir)
+    assert resolve_cached_hub_arg("iic/missing-hub") == "iic/missing-hub"
+
+
+def test_resolve_cached_hub_arg_qwen_asr_uses_local_path(tmp_path: Path, monkeypatch) -> None:
+    ms = tmp_path / "ms"
+    model_dir = ms / "models" / "Qwen" / "Qwen3-ASR-0.6B"
+    model_dir.mkdir(parents=True)
+    (model_dir / "config.json").write_text("{}", encoding="utf-8")
+    (model_dir / "model.safetensors").write_bytes(b"x" * (101 * 1024 * 1024))
+    monkeypatch.setenv("MODELSCOPE_CACHE", str(ms))
+    assert resolve_cached_hub_arg("Qwen/Qwen3-ASR-0.6B") == str(model_dir)
+
+
+def test_resolve_funasr_automodel_arg_qwen_uses_hub_id(tmp_path: Path, monkeypatch) -> None:
+    ms = tmp_path / "ms"
+    model_dir = ms / "models" / "Qwen" / "Qwen3-ASR-0.6B"
+    model_dir.mkdir(parents=True)
+    (model_dir / "config.json").write_text("{}", encoding="utf-8")
+    (model_dir / "model.safetensors").write_bytes(b"x" * (101 * 1024 * 1024))
+    monkeypatch.setenv("MODELSCOPE_CACHE", str(ms))
+    assert resolve_funasr_automodel_arg("Qwen/Qwen3-ASR-0.6B") == "Qwen/Qwen3-ASR-0.6B"
+
+
+def test_resolve_qwen_forced_aligner_arg_prefers_local_path(tmp_path: Path, monkeypatch) -> None:
+    from rushi_asr.model_prepare_cache import resolve_qwen_forced_aligner_arg
+
+    ms = tmp_path / "ms"
+    model_dir = ms / "models" / "Qwen" / "Qwen3-ForcedAligner-0.6B"
+    model_dir.mkdir(parents=True)
+    (model_dir / "config.json").write_text("{}", encoding="utf-8")
+    (model_dir / "model.safetensors").write_bytes(b"x" * (101 * 1024 * 1024))
+    monkeypatch.setenv("MODELSCOPE_CACHE", str(ms))
+    assert resolve_qwen_forced_aligner_arg("Qwen/Qwen3-ForcedAligner-0.6B") == str(model_dir)
+
+
+def test_resolve_funasr_automodel_arg_vad_prefers_local_path(tmp_path: Path, monkeypatch) -> None:
+    from rushi_asr.model_prepare_cache import DEFAULT_VAD_REQUIRED_FILES
+
+    ms = tmp_path / "ms"
+    vad_dir = ms / "models" / "iic" / "speech_fsmn_vad_zh-cn-16k-common-pytorch"
+    vad_dir.mkdir(parents=True)
+    (vad_dir / "model.pt").write_bytes(b"x" * (2 * 1024 * 1024))
+    monkeypatch.setenv("MODELSCOPE_CACHE", str(ms))
+    hub = "iic/speech_fsmn_vad_zh-cn-16k-common-pytorch"
+    assert (
+        resolve_funasr_automodel_arg(
+            hub,
+            required_files=DEFAULT_VAD_REQUIRED_FILES,
+            min_weight_bytes=1 * 1024 * 1024,
+        )
+        == str(vad_dir)
+    )

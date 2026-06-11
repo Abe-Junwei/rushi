@@ -10,6 +10,7 @@
 
 | 字段 | 说明 |
 |------|------|
+| `reference_relpath` | 相对 `fixtures/eval/` 的金标全文（用于 CER；与 docx 导出一致，去空白） |
 | `min_segments` | 长音频最少语段数；配合 `npm run eval:run -- --assert-min-segments` 本地断言 |
 | `notes` | 维护者备注（不参与脚本逻辑） |
 
@@ -30,7 +31,7 @@
 
 ```bash
 npm run eval:run                    # 全 manifest（CI 占位 wav）
-npm run eval:run:long-form          # 制控长样本 + min_segments 断言
+npm run eval:run:long-form          # D3 堂3-2 制控概讲长样本 + min_segments + CER 金标
 npm run eval:run:hotwords-ab        # 热词 on/off CSV（ACC-EVAL-1）
 ```
 

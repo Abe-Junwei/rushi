@@ -54,12 +54,38 @@ expand_manifest_runs = _eval_manifest.expand_manifest_runs
 HotwordsMode = Literal["manifest", "on", "off"]
 
 
-def curl_transcribe(wav: Path, asr_base: str, hotwords: str | None = None) -> dict[str, Any]:
+# Align with funasr_engine inference budget (long Qwen + ForcedAligner on CPU).
+_DEFAULT_CURL_TIMEOUT_SEC = 7200
+
+
+def curl_warmup(asr_base: str, *, timeout_sec: int = 1800) -> None:
+    """Preload AutoModel so transcribe does not hit empty reply during first load."""
+    url = asr_base.rstrip("/") + "/v1/models/warmup"
+    r = subprocess.run(
+        ["curl", "-sS", "-X", "POST", url, "--max-time", str(timeout_sec)],
+        capture_output=True,
+        text=True,
+        timeout=timeout_sec + 30,
+    )
+    if r.returncode != 0:
+        raise RuntimeError(r.stderr.strip() or f"warmup curl exit {r.returncode}")
+    body = json.loads(r.stdout.strip() or "{}")
+    if body.get("status") != "ok":
+        raise RuntimeError(f"warmup failed: {body}")
+
+
+def curl_transcribe(
+    wav: Path,
+    asr_base: str,
+    hotwords: str | None = None,
+    *,
+    timeout_sec: int = _DEFAULT_CURL_TIMEOUT_SEC,
+) -> dict[str, Any]:
     url = asr_base.rstrip("/") + "/v1/transcribe"
     wav_abs = wav.resolve()
     if not wav_abs.is_file():
         raise FileNotFoundError(str(wav_abs))
-    cmd = ["curl", "-sS", "-X", "POST", "-F", f"file=@{wav_abs}"]
+    cmd = ["curl", "-sS", "-X", "POST", "-F", f"file=@{wav_abs}", "--max-time", str(timeout_sec)]
     if hotwords and hotwords.strip():
         cmd.extend(["-F", f"hotwords={hotwords.strip()}"])
     cmd.append(url)
@@ -67,7 +93,7 @@ def curl_transcribe(wav: Path, asr_base: str, hotwords: str | None = None) -> di
         cmd,
         capture_output=True,
         text=True,
-        timeout=900,
+        timeout=timeout_sec + 30,
     )
     if r.returncode != 0:
         raise RuntimeError(r.stderr.strip() or f"curl exit {r.returncode}")
@@ -84,15 +110,28 @@ def transcribe_manifest_item(
     asr_base: str,
     hotwords_mode: HotwordsMode,
     ab_variant: str | None,
+    curl_timeout_sec: int = _DEFAULT_CURL_TIMEOUT_SEC,
 ) -> dict[str, Any]:
     iid = it.get("id", "?")
     rel = it.get("audio_relpath")
+    cat = it.get("category", "")
     ref = (it.get("reference_transcript") or "").strip()
+    ref_rel = it.get("reference_relpath")
+    if not ref and isinstance(ref_rel, str) and ref_rel.strip():
+        ref_path = (base_dir / ref_rel.strip()).resolve()
+        if ref_path.is_file():
+            ref = ref_path.read_text(encoding="utf-8").strip()
+        else:
+            return {
+                "id": iid,
+                "category": cat,
+                "audio_relpath": rel,
+                "error": f"reference not found: {ref_path}",
+            }
     expected_terms = it.get("expected_terms")
     if not isinstance(expected_terms, list):
         expected_terms = []
     optional = bool(it.get("optional"))
-    cat = it.get("category", "")
 
     hotwords_text, hotwords_enabled = resolve_hotwords(
         it,
@@ -124,7 +163,7 @@ def transcribe_manifest_item(
 
     try:
         t0 = time.perf_counter()
-        body = curl_transcribe(wav, asr_base, hotwords_text)
+        body = curl_transcribe(wav, asr_base, hotwords_text, timeout_sec=curl_timeout_sec)
         row["wall_sec"] = round(time.perf_counter() - t0, 3)
     except Exception as e:  # noqa: BLE001
         row["error"] = str(e)
@@ -148,6 +187,7 @@ def transcribe_manifest_item(
     row["segmentation_mode"] = resolve_segmentation_mode(body, warnings)
     hyp = "".join(str(s.get("text") or "") for s in segs if isinstance(s, dict))
     row["hypothesis_concat"] = hyp
+    row["reference_char_len"] = len(_eval_metrics.normalize_cer_text(ref)) if ref else None
     row["low_confidence_ratio"] = low_confidence_ratio(
         segs if all(isinstance(s, dict) for s in segs) else []
     )
@@ -271,6 +311,18 @@ def main() -> int:
         action="store_true",
         help="Exit 1 when item min_segments is set and segment_count is below it",
     )
+    ap.add_argument(
+        "--warmup",
+        action=argparse.BooleanOptionalAction,
+        default=True,
+        help="POST /v1/models/warmup before transcribe (default: true)",
+    )
+    ap.add_argument(
+        "--curl-timeout-sec",
+        type=int,
+        default=_DEFAULT_CURL_TIMEOUT_SEC,
+        help=f"curl timeout per transcribe (default {_DEFAULT_CURL_TIMEOUT_SEC})",
+    )
     args = ap.parse_args()
 
     manifest_path: Path = args.manifest
@@ -294,6 +346,14 @@ def main() -> int:
 
     out_rows: list[dict[str, Any]] = []
     failed = False
+
+    if args.warmup:
+        try:
+            curl_warmup(args.asr_base)
+        except Exception as e:  # noqa: BLE001
+            print(f"Warmup failed: {e}", file=sys.stderr)
+            failed = True
+
     for it, ab_variant in runs:
         row = transcribe_manifest_item(
             it,
@@ -301,6 +361,7 @@ def main() -> int:
             asr_base=args.asr_base,
             hotwords_mode=hotwords_mode,
             ab_variant=ab_variant,
+            curl_timeout_sec=args.curl_timeout_sec,
         )
         if row.get("error"):
             failed = True

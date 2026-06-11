@@ -257,9 +257,9 @@ for sent in res[0]["sentence_info"]:
 ```text
 【已签收】Paraformer + R3e-C + eval term_hit (ACC-EVAL-1)
     ↓
-【P1】④ ACC-EVAL-2：eval-run + RTFx + segment_count（1–2d，不挡其他）
+【P1】④ ACC-EVAL-2：eval-run + RTFx + segment_count ✅（2026-06-11）
     ↓
-【P1】② R3g-B-Align spike：Qwen3 + ForcedAligner（2–4d）
+【P1】② R3g-B-Align spike：代码接线 ✅ · 手测待跑（2–4d）
     ├─ Go  → Qwen3 catalog 产品化 intent
     └─ No-go ↓
 【P2】① Fun-ASR-Nano spike（2–4d，源码 venv）
@@ -292,7 +292,7 @@ for sent in res[0]["sentence_info"]:
 ## 7. 签收
 
 - [x] 调研 brief 完成（2026-06-11）
-- [x] ④ ACC-EVAL-2 intent — [`acc-eval-2-long-form-metrics-intent.md`](./acc-eval-2-long-form-metrics-intent.md)
+- [x] ④ ACC-EVAL-2 intent — [`acc-eval-2-long-form-metrics-intent.md`](./acc-eval-2-long-form-metrics-intent.md) · 手测 ✅
 - [ ] ② R3g-B-Align spike 手测清单 + results
 - [ ] 路线图 §4.1.8 链入本文
 - [ ] 用户确认 P1 顺序（④ 与 ② 可并行）
