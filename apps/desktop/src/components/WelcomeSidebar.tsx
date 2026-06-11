@@ -137,7 +137,7 @@ export function WelcomeSidebar({
             </div>
             <div>
               <h1 className="m-0 font-serif text-[18px] font-medium leading-[1.4] text-notion-text">如是我闻</h1>
-              <p className="m-0 mt-0.5 text-[11px] font-medium leading-snug text-notion-text-muted">口述史转写工作台</p>
+              <p className="m-0 mt-0.5 text-[11px] font-medium leading-snug text-notion-text-muted">本地课录音转写与校对</p>
             </div>
           </div>
         </div>
