@@ -28,14 +28,17 @@ if ($inUse) {
 }
 
 $log = Join-Path $env:TEMP "rushi-sidecar-smoke.log"
+$logErr = Join-Path $env:TEMP "rushi-sidecar-smoke.err"
 $healthJson = Join-Path $env:TEMP "rushi-sidecar-smoke-health.json"
 $rootJson = Join-Path $env:TEMP "rushi-sidecar-smoke-root.json"
 
 Push-Location $WorkDir
+$proc = $null
 try {
   $env:ASR_HOST = "127.0.0.1"
   $env:ASR_PORT = "$Port"
-  $proc = Start-Process -FilePath $Exe -PassThru -NoNewWindow -RedirectStandardOutput $log -RedirectStandardError $log
+  # Start-Process rejects identical RedirectStandardOutput/Error paths (unlike bash 2>&1).
+  $proc = Start-Process -FilePath $Exe -PassThru -NoNewWindow -RedirectStandardOutput $log -RedirectStandardError $logErr
 
   $ready = $false
   for ($i = 0; $i -lt 120; $i++) {
@@ -51,8 +54,8 @@ try {
   }
 
   if (-not $ready) {
-    Get-Content $log -Tail 30 -ErrorAction SilentlyContinue
-    throw "smoke: /health did not become ready (see $log)"
+    Get-Content $log, $logErr -Tail 30 -ErrorAction SilentlyContinue
+    throw "smoke: /health did not become ready (see $log and $logErr)"
   }
 
   python - @"
