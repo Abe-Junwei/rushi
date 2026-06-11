@@ -12,10 +12,10 @@ import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
 import {
   annotateSegmentListScrollMetrics,
   computeSegmentListVirtualWindow,
-  ensureSegmentListVirtualWindowIncludesIndex,
   scrollSegmentListIndexIntoView,
   scrollSegmentRowIntoViewContainer,
   SEGMENT_LIST_SCROLL_ATTR,
+  SEGMENT_LIST_VIRTUALIZE_MIN_COUNT,
   segmentListItemStridePx,
   segmentListRowMinHeightPx,
 } from "../../utils/segmentListVirtualWindow";
@@ -30,9 +30,6 @@ type AppearanceApi = ReturnType<typeof useEditorTranscriptAppearance>;
 
 /** clientHeight 尚未量到时的保守视口，避免 0 导致整表挂载 */
 const SEGMENT_LIST_FALLBACK_VIEWPORT_HEIGHT_PX = 480;
-
-/** 低于此规模直接全量渲染，避免虚拟窗口与 flex 滚动偶发不同步 */
-const SEGMENT_LIST_VIRTUALIZE_MIN_COUNT = 900;
 
 interface EditorSegmentListProps {
   controller: ProjectControllerApi;
@@ -103,7 +100,7 @@ export function EditorSegmentList({
       index: c.selectedIdx,
       rowMinHeightPx,
       itemStridePx,
-      align: "center",
+      align: "minimal",
       maxScrollTop,
     });
     if (nextScrollTop != null) {
@@ -116,7 +113,7 @@ export function EditorSegmentList({
     const root = segmentListRef.current;
     if (!root || c.selectedIdx < 0) return;
     const raf = window.requestAnimationFrame(() => {
-      const corrected = scrollSegmentRowIntoViewContainer(c.selectedIdx, root, { align: "center" });
+      const corrected = scrollSegmentRowIntoViewContainer(c.selectedIdx, root, { align: "minimal" });
       if (corrected == null) return;
       if (Math.abs(corrected - root.scrollTop) < 1) return;
       root.scrollTop = corrected;
@@ -159,39 +156,13 @@ export function EditorSegmentList({
       };
     }
     const { scrollTop, viewportHeight } = scrollMetricsRef.current;
-    let win = computeSegmentListVirtualWindow({
+    return computeSegmentListVirtualWindow({
       scrollTop,
       viewportHeight,
       itemStridePx,
       totalCount: c.segments.length,
     });
-    const pinIndices = [
-      c.selectedIdx,
-      c.findReplaceEditorHighlight?.segmentIdx ?? -1,
-      c.correctionRulesEditorHighlight?.segmentIdx ?? -1,
-    ];
-    if (c.isMultiSegmentSelection) {
-      for (const idx of c.selectedIndicesArray) {
-        pinIndices.push(idx);
-      }
-    }
-    for (const idx of pinIndices) {
-      if (idx >= 0) {
-        win = ensureSegmentListVirtualWindowIncludesIndex(win, idx, c.segments.length, itemStridePx);
-      }
-    }
-    return win;
-  }, [
-    scrollEpoch,
-    useVirtualList,
-    itemStridePx,
-    c.segments.length,
-    c.selectedIdx,
-    c.isMultiSegmentSelection,
-    c.selectedIndicesArray,
-    c.findReplaceEditorHighlight?.segmentIdx,
-    c.correctionRulesEditorHighlight?.segmentIdx,
-  ]);
+  }, [scrollEpoch, useVirtualList, itemStridePx, c.segments.length]);
 
   const savedSnapshot = c.getSavedSnapshot();
 

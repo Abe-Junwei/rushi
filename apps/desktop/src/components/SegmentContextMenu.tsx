@@ -48,21 +48,6 @@ function countLeafItems(items: ContextMenuItem[]): number {
   return count;
 }
 
-function eventPathIncludesNode(event: Event, node: Node): boolean {
-  if (typeof event.composedPath === "function") {
-    return event.composedPath().includes(node);
-  }
-  return node.contains(event.target as Node);
-}
-
-/** WebKit 在 textarea 聚焦时可能把 event.target 重定向到正文，坐标仍落在菜单上。 */
-function pointerEventHitsMenu(event: PointerEvent, root: HTMLElement): boolean {
-  if (eventPathIncludesNode(event, root)) return true;
-  const rect = root.getBoundingClientRect();
-  const { clientX: x, clientY: y } = event;
-  return x >= rect.left && x <= rect.right && y >= rect.top && y <= rect.bottom;
-}
-
 function ContextMenuPanel({
   items,
   onSelect,
@@ -189,7 +174,9 @@ function ContextMenuPanel({
 
 export function SegmentContextMenu({ x, y, items, onSelect, onClose }: Props) {
   const rootRef = useRef<HTMLDivElement | null>(null);
+  const onCloseRef = useRef(onClose);
   const suppressOutsideCloseUntilRef = useRef(0);
+  onCloseRef.current = onClose;
   const estimate = estimateContextMenuSize(countLeafItems(items));
   const [pos, setPos] = useState(() =>
     clampContextMenuPosition(x, y, estimate.width, estimate.height),
@@ -213,49 +200,45 @@ export function SegmentContextMenu({ x, y, items, onSelect, onClose }: Props) {
   }, [x, y]);
 
   useLayoutEffect(() => {
-    const onMouseDown = (e: MouseEvent) => {
-      if (e.button !== 0) return;
-      if (performance.now() < suppressOutsideCloseUntilRef.current) return;
-      const root = rootRef.current;
-      if (!root) return;
-      if (pointerEventHitsMenu(e as unknown as PointerEvent, root)) return;
-      onClose();
-    };
     const onKeyDown = (e: KeyboardEvent) => {
-      if (e.key === "Escape") onClose();
+      if (e.key === "Escape") onCloseRef.current();
     };
-    let active = true;
-    const raf = requestAnimationFrame(() => {
-      if (!active) return;
-      // 冒泡阶段：菜单项 pointerdown 先执行，再判定外部关闭（捕获阶段会抢在菜单项之前）。
-      window.addEventListener("mousedown", onMouseDown);
-      window.addEventListener("keydown", onKeyDown, true);
-    });
-    return () => {
-      active = false;
-      cancelAnimationFrame(raf);
-      window.removeEventListener("mousedown", onMouseDown);
-      window.removeEventListener("keydown", onKeyDown, true);
-    };
-  }, [onClose]);
+    window.addEventListener("keydown", onKeyDown, true);
+    return () => window.removeEventListener("keydown", onKeyDown, true);
+  }, []);
+
+  const dismissUnlessSuppressed = (event: ReactPointerEvent | ReactMouseEvent) => {
+    if (event.button !== 0) return;
+    if (performance.now() < suppressOutsideCloseUntilRef.current) return;
+    onCloseRef.current();
+  };
 
   const node = (
-    <div
-      ref={rootRef}
-      className="fixed z-[150]"
-      style={{ left: pos.left, top: pos.top }}
-      onPointerDown={(e) => e.stopPropagation()}
-      onMouseDown={(e) => e.stopPropagation()}
-    >
-      <ContextMenuPanel
-        items={items}
-        onSelect={onSelect}
-        onClose={onClose}
-        openPath={openPath}
-        setOpenPath={setOpenPath}
-        depth={0}
+    <>
+      <button
+        type="button"
+        className="fixed inset-0 z-[149] cursor-default border-0 bg-transparent p-0"
+        aria-label="关闭菜单"
+        onPointerDown={dismissUnlessSuppressed}
+        onMouseDown={dismissUnlessSuppressed}
       />
-    </div>
+      <div
+        ref={rootRef}
+        className="fixed z-[150]"
+        style={{ left: pos.left, top: pos.top }}
+        onPointerDown={(e) => e.stopPropagation()}
+        onMouseDown={(e) => e.stopPropagation()}
+      >
+        <ContextMenuPanel
+          items={items}
+          onSelect={onSelect}
+          onClose={() => onCloseRef.current()}
+          openPath={openPath}
+          setOpenPath={setOpenPath}
+          depth={0}
+        />
+      </div>
+    </>
   );
 
   return typeof document !== "undefined" ? createPortal(node, document.body) : null;

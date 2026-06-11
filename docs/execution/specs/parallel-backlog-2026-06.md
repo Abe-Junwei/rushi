@@ -8,14 +8,16 @@
 ```text
 Step 1  R3h-I1   Supervisor FSM 设计冻结     ✅ 2026-06-11
 Step 2  ASR-WARM 侧车保活 + 预热             ✅ dev 签收 2026-06-11
-Step 3  R3h-I1   I1a 编码签收 + commit       ← 当前
+Step 3  R3h-I1   I1a 编码签收 + commit       ✅ 2026-06-11
+Step 4  语段正文输入 P0（草稿 defer / 页脚节流） ✅ 2026-06-11
 ```
 
 | 步 | 项 | 状态 | 说明 |
 |----|-----|------|------|
 | **1** | **R3h-I1** | ✅ 设计冻结 | [plan](./r3h-i1-runtime-supervisor-fsm-plan.md) · [acceptance](./r3h-i1-runtime-supervisor-fsm-acceptance.md) |
 | **2** | **ASR-WARM** | ✅ dev 签收 | [`asr-warm-acceptance.md`](./asr-warm-acceptance.md) · [handtest](./asr-warm-handtest-signoff-2026-06-11.md) |
-| **3** | **R3h-I1 I1a** | 🟡 编码待签 | 与 Step 2 同批实现；勾选 acceptance §编码阶段 |
+| **3** | **R3h-I1 I1a** | ✅ | 与 Step 2 同批；[`acceptance`](./r3h-i1-runtime-supervisor-fsm-acceptance.md) §编码阶段 |
+| **4** | **语段正文输入 P0** | ✅ | [`segment-text-input-p0-acceptance.md`](./segment-text-input-p0-acceptance.md) |
 | — | **TRN-DIAG** | ✅ | 已闭合 |
 | — | **R3h-2** | ✅ | 续传 / GC / C 类回滚 |
 | — | **Gate-B / 4b** | ❌ No-Go | [`llm-loc-gate-b-decision-2026-06.md`](./llm-loc-gate-b-decision-2026-06.md) |
@@ -46,8 +48,9 @@ Step 3  R3h-I1   I1a 编码签收 + commit       ← 当前
 ```text
 1. ~~R3h-I1 FSM 设计冻结~~ ✅
 2. ~~ASR-WARM 编码 + 手测~~ ✅
-3. R3h-I1 I1a 编码签收 + git commit（**主刀**）
-4. 穿插：⑤″f F8/F4 尾项 · R3f Win（有 Win 机）
+3. ~~R3h-I1 I1a 编码签收 + git commit~~ ✅
+4. ~~语段正文输入 P0~~ ✅
+5. 穿插：**⑤″f F8/F4** 尾项 · **R3f Win**（有 Win 机）← 下一刀
 5. 背景：R3s-A Phase 0 金标（Defer，不编码）
 ```
 

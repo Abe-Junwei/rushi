@@ -7,8 +7,11 @@ import {
   scrollSegmentListIndexToView,
   scrollSegmentRowIntoViewContainer,
   resolveSegmentListRowIndexFromPoint,
+  isEditableSegmentBodyTextarea,
   segmentListRangeDragExceededSlop,
+  segmentListRangeDragVerticalIntentExceededSlop,
   SEGMENT_LIST_SCROLL_ATTR,
+  SEGMENT_LIST_VIRTUALIZE_MIN_COUNT,
   segmentListItemStridePx,
 } from "./segmentListVirtualWindow";
 
@@ -38,6 +41,10 @@ describe("segmentListVirtualWindow", () => {
     });
     expect(win.startIndex).toBe(0);
     expect(win.endIndex).toBe(12);
+  });
+
+  it("uses 200 segments as virtualize threshold", () => {
+    expect(SEGMENT_LIST_VIRTUALIZE_MIN_COUNT).toBe(200);
   });
 
   it("scrolls selected row into view when off-screen (minimal align)", () => {
@@ -80,7 +87,7 @@ describe("segmentListVirtualWindow", () => {
     ).toBe(Math.round(rowCenter - viewport / 2));
   });
 
-  it("ensureSegmentListVirtualWindowIncludesIndex expands when pin is outside window", () => {
+  it("ensureSegmentListVirtualWindowIncludesIndex merges pin with scroll window (no replace)", () => {
     const stride = 80;
     const base = computeSegmentListVirtualWindow({
       scrollTop: 0,
@@ -91,7 +98,7 @@ describe("segmentListVirtualWindow", () => {
     });
     expect(base.endIndex).toBeLessThan(50);
     const merged = ensureSegmentListVirtualWindowIncludesIndex(base, 120, 200, stride);
-    expect(merged.startIndex).toBeLessThanOrEqual(120);
+    expect(merged.startIndex).toBe(base.startIndex);
     expect(merged.endIndex).toBeGreaterThan(120);
   });
 
@@ -149,6 +156,22 @@ describe("segmentListVirtualWindow", () => {
   it("segmentListRangeDragExceededSlop ignores sub-threshold jitter", () => {
     expect(segmentListRangeDragExceededSlop(100, 200, 103, 202)).toBe(false);
     expect(segmentListRangeDragExceededSlop(100, 200, 106, 200)).toBe(true);
+  });
+
+  it("segmentListRangeDragVerticalIntentExceededSlop requires vertical-dominant movement", () => {
+    expect(segmentListRangeDragVerticalIntentExceededSlop(100, 200, 130, 206)).toBe(false);
+    expect(segmentListRangeDragVerticalIntentExceededSlop(100, 200, 103, 212)).toBe(true);
+  });
+
+  it("isEditableSegmentBodyTextarea ignores readOnly segment textareas", () => {
+    const readOnly = document.createElement("textarea");
+    readOnly.setAttribute("aria-label", "语段正文");
+    readOnly.readOnly = true;
+    expect(isEditableSegmentBodyTextarea(readOnly)).toBe(false);
+
+    const editable = document.createElement("textarea");
+    editable.setAttribute("aria-label", "语段正文");
+    expect(isEditableSegmentBodyTextarea(editable)).toBe(true);
   });
 
   it("resolveSegmentListRowIndexFromPoint reads data-seg-row under cursor", () => {

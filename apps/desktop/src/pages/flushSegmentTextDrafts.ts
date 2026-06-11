@@ -36,6 +36,7 @@ export function flushSegmentTextDrafts(
   setSegments: React.Dispatch<React.SetStateAction<SegmentDto[]>>,
   options?: FlushSegmentTextDraftsOptions,
 ): void {
+  segmentDraftStore.flushPendingEmit();
   const prev = segmentsRef.current;
   const validKeys = new Set<string>();
   prev.forEach((s, i) => {

@@ -1,6 +1,6 @@
-import { describe, expect, it } from "vitest";
 import { flushSync } from "react-dom";
 import type React from "react";
+import { describe, expect, it } from "vitest";
 import type { SegmentDto } from "../tauri/projectApi";
 import { flushSegmentTextDrafts } from "../pages/flushSegmentTextDrafts";
 import { segmentDraftKey, segmentDraftStore } from "./useSegmentDraftStore";
@@ -24,6 +24,7 @@ describe("segmentDraftStore + flushSegmentTextDrafts", () => {
     const s = seg("old");
     const key = segmentDraftKey(s, 0);
     segmentDraftStore.setDraft(key, "draft");
+    segmentDraftStore.flushPendingEmit();
 
     const segmentsRef: React.MutableRefObject<SegmentDto[]> = { current: [s] };
     let next: SegmentDto[] = [];
@@ -45,6 +46,7 @@ describe("segmentDraftStore + flushSegmentTextDrafts", () => {
     const s = seg("same");
     const key = segmentDraftKey(s, 0);
     segmentDraftStore.setDraft(key, "same");
+    segmentDraftStore.flushPendingEmit();
 
     const segmentsRef: React.MutableRefObject<SegmentDto[]> = { current: [s] };
     const setSegments = () => {
@@ -61,6 +63,7 @@ describe("segmentDraftStore + flushSegmentTextDrafts", () => {
     const key = segmentDraftKey(s, 0);
     segmentDraftStore.setDraft(key, "lian");
     segmentDraftStore.setComposing(key, true);
+    segmentDraftStore.flushPendingEmit();
 
     const segmentsRef: React.MutableRefObject<SegmentDto[]> = { current: [s] };
     const setSegments = () => {

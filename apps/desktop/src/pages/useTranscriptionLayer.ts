@@ -5,9 +5,11 @@ import { useWaveformTierWheelForward } from "../hooks/useWaveformTierWheelForwar
 import { p1LaneBoundsSignature } from "../utils/boundsSignature";
 import { resolveWaveformSegmentContextMenuIndex } from "../utils/waveformSegmentContextMenu";
 import {
+  isEditableSegmentBodyTextarea,
   querySegmentListScrollRoot,
   resolveSegmentListRowIndexFromPoint,
   segmentListRangeDragExceededSlop,
+  segmentListRangeDragVerticalIntentExceededSlop,
 } from "../utils/segmentListVirtualWindow";
 import {
   PX_PER_SEC_MAX,
@@ -200,6 +202,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     anchorIdx: number;
     pointerId: number;
     moved: boolean;
+    fromEditableText: boolean;
     startClientX: number;
     startClientY: number;
   } | null>(null);
@@ -209,14 +212,17 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     const c = ctxRef.current;
     if (c.busy || e.button !== 0) return;
     if ((e.target as HTMLElement).closest('[role="separator"]')) return;
-    // 正文 textarea 内拖选由浏览器处理，不得接入语段列表 range 拖选（会 blur + preventDefault）。
-    if ((e.target as HTMLElement).closest('textarea[aria-label="语段正文"]')) return;
     e.stopPropagation();
+
+    const fromEditableText = isEditableSegmentBodyTextarea(
+      (e.target as HTMLElement).closest('textarea[aria-label="语段正文"]'),
+    );
 
     segmentListRangeDragRef.current = {
       anchorIdx: idx,
       pointerId: e.pointerId,
       moved: false,
+      fromEditableText,
       startClientX: e.clientX,
       startClientY: e.clientY,
     };
@@ -233,12 +239,19 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
       if (!drag || ev.pointerId !== drag.pointerId) return;
       if (
         !drag.moved &&
-        !segmentListRangeDragExceededSlop(
-          drag.startClientX,
-          drag.startClientY,
-          ev.clientX,
-          ev.clientY,
-        )
+        !(drag.fromEditableText
+          ? segmentListRangeDragVerticalIntentExceededSlop(
+              drag.startClientX,
+              drag.startClientY,
+              ev.clientX,
+              ev.clientY,
+            )
+          : segmentListRangeDragExceededSlop(
+              drag.startClientX,
+              drag.startClientY,
+              ev.clientX,
+              ev.clientY,
+            ))
       ) {
         return;
       }

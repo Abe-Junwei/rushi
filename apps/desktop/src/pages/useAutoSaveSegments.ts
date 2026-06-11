@@ -39,6 +39,7 @@ export function useAutoSaveSegments(args: Args): { autoSaveFooterStatus: AutoSav
   } = args;
 
   const [autoSaveFooterStatus, setAutoSaveFooterStatus] = useState<AutoSaveFooterStatus>("idle");
+  const autoSaveFooterStatusRef = useRef<AutoSaveFooterStatus>("idle");
   const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const saveSegmentsRef = useRef(saveSegments);
   const hasUnsavedRef = useRef(hasUnsavedSegmentChanges);
@@ -51,6 +52,12 @@ export function useAutoSaveSegments(args: Args): { autoSaveFooterStatus: AutoSav
   enabledRef.current = enabled;
   currentFileIdRef.current = currentFileId;
   busyRef.current = busy;
+  autoSaveFooterStatusRef.current = autoSaveFooterStatus;
+
+  const markPendingIfNeeded = useCallback(() => {
+    if (autoSaveFooterStatusRef.current === "pending") return;
+    setAutoSaveFooterStatus("pending");
+  }, []);
 
   const clearScheduledSave = useCallback(() => {
     if (debounceRef.current !== null) {
@@ -81,7 +88,7 @@ export function useAutoSaveSegments(args: Args): { autoSaveFooterStatus: AutoSav
       return;
     }
     clearScheduledSave();
-    setAutoSaveFooterStatus("pending");
+    markPendingIfNeeded();
     debounceRef.current = setTimeout(() => {
       debounceRef.current = null;
       if (!enabledRef.current || !currentFileIdRef.current || busyRef.current || saveInFlightRef.current)
@@ -93,7 +100,7 @@ export function useAutoSaveSegments(args: Args): { autoSaveFooterStatus: AutoSav
       setAutoSaveFooterStatus("saving");
       void saveSegmentsRef.current({ quiet: true, countHits: true });
     }, AUTO_SAVE_DEBOUNCE_MS);
-  }, [clearScheduledSave, saveInFlightRef]);
+  }, [clearScheduledSave, markPendingIfNeeded, saveInFlightRef]);
 
   useEffect(() => {
     if (busy) {

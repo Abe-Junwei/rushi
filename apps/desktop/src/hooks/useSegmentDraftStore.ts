@@ -16,8 +16,31 @@ const drafts = new Map<string, string>();
 const composingKeys = new Set<string>();
 const listeners = new Set<() => void>();
 
+let emitRafId: number | null = null;
+
 function emit(): void {
   listeners.forEach((l) => l());
+}
+
+function scheduleEmit(): void {
+  if (emitRafId != null) return;
+  if (typeof requestAnimationFrame === "undefined") {
+    emit();
+    return;
+  }
+  emitRafId = requestAnimationFrame(() => {
+    emitRafId = null;
+    emit();
+  });
+}
+
+/** Flush a pending rAF notify so subscribers see the latest draft map (blur / tests). */
+function flushPendingEmit(): void {
+  if (emitRafId != null) {
+    cancelAnimationFrame(emitRafId);
+    emitRafId = null;
+  }
+  emit();
 }
 
 export const segmentDraftStore = {
@@ -28,38 +51,35 @@ export const segmentDraftStore = {
     const next = normalizeSegmentDraftText(text);
     if (drafts.get(key) === next) return;
     drafts.set(key, next);
-    emit();
+    scheduleEmit();
   },
   clearDraft(key: string): void {
     if (!drafts.delete(key)) return;
-    emit();
+    scheduleEmit();
   },
   resetAll(): void {
     if (drafts.size === 0 && composingKeys.size === 0) return;
     drafts.clear();
     composingKeys.clear();
-    emit();
+    flushPendingEmit();
   },
   discardEditingSession(): void {
     if (drafts.size === 0 && composingKeys.size === 0) return;
     drafts.clear();
     composingKeys.clear();
-    emit();
+    flushPendingEmit();
   },
   beginComposition(key: string): void {
     if (composingKeys.has(key)) return;
     composingKeys.add(key);
-    emit();
   },
   endComposition(key: string): void {
     if (!composingKeys.delete(key)) return;
-    emit();
+    scheduleEmit();
   },
   setComposing(key: string, active: boolean): void {
     if (active) {
-      if (composingKeys.has(key)) return;
-      composingKeys.add(key);
-      emit();
+      segmentDraftStore.beginComposition(key);
       return;
     }
     segmentDraftStore.endComposition(key);
@@ -84,8 +104,9 @@ export const segmentDraftStore = {
         changed = true;
       }
     }
-    if (changed) emit();
+    if (changed) scheduleEmit();
   },
+  flushPendingEmit,
 };
 
 function subscribe(listener: () => void): () => void {

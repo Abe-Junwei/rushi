@@ -57,6 +57,9 @@ export function computeSegmentListVirtualWindow(input: {
 
 export type SegmentListScrollAlign = "minimal" | "center";
 
+/** 语段数达到此阈值时启用列表虚拟化（SEG-TEXT-P1）。 */
+export const SEGMENT_LIST_VIRTUALIZE_MIN_COUNT = 200;
+
 function clampSegmentListScrollTop(
   scrollTop: number,
   maxScrollTop: number | undefined,
@@ -108,6 +111,28 @@ export function segmentListRangeDragExceededSlop(
   const dx = clientX - startClientX;
   const dy = clientY - startClientY;
   return dx * dx + dy * dy >= slopPx * slopPx;
+}
+
+/** 可编辑正文 textarea 上：仅当垂直位移主导时才视为语段 range 拖选（保留横向选字）。 */
+export function segmentListRangeDragVerticalIntentExceededSlop(
+  startClientX: number,
+  startClientY: number,
+  clientX: number,
+  clientY: number,
+  slopPx = SEGMENT_LIST_RANGE_DRAG_SLOP_PX,
+): boolean {
+  const dx = clientX - startClientX;
+  const dy = clientY - startClientY;
+  return Math.abs(dy) >= slopPx && Math.abs(dy) > Math.abs(dx);
+}
+
+export function isEditableSegmentBodyTextarea(el: Element | null): el is HTMLTextAreaElement {
+  return (
+    el instanceof HTMLTextAreaElement &&
+    el.getAttribute("aria-label") === "语段正文" &&
+    !el.readOnly &&
+    !el.disabled
+  );
 }
 
 /** 语段列表滚动容器标记（`EditorSegmentList` 根节点） */
@@ -247,7 +272,7 @@ export function scrollSegmentRowIntoViewContainer(
   return clampSegmentListScrollTop(next, maxScrollTop);
 }
 
-/** 虚拟窗口未包含选中行时，向两侧扩展渲染范围（避免跳转后行未挂载） */
+/** 虚拟窗口未包含索引时，与当前 scroll 窗口 **合并**（禁止整窗替换导致远距 pin 空白屏）。 */
 export function ensureSegmentListVirtualWindowIncludesIndex(
   window: {
     startIndex: number;
@@ -264,8 +289,10 @@ export function ensureSegmentListVirtualWindowIncludesIndex(
   if (index < 0 || index >= totalCount) return window;
   if (index >= window.startIndex && index < window.endIndex) return window;
 
-  const startIndex = Math.max(0, index - overscan);
-  const endIndex = Math.min(totalCount, index + overscan + 1);
+  const pinStart = Math.max(0, index - overscan);
+  const pinEnd = Math.min(totalCount, index + overscan + 1);
+  const startIndex = Math.min(window.startIndex, pinStart);
+  const endIndex = Math.max(window.endIndex, pinEnd);
   return {
     startIndex,
     endIndex,

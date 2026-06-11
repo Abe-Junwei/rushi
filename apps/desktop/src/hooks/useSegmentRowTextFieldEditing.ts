@@ -39,6 +39,7 @@ export function useSegmentRowTextFieldEditing({
   const committedText = normalizeSegmentDraftText(s.text ?? "");
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
   const isFocusedRef = useRef(false);
+  const [isTextareaFocused, setIsTextareaFocused] = useState(false);
   const [textareaEpoch, setTextareaEpoch] = useState(0);
   const prevCommittedRef = useRef(committedText);
 
@@ -63,6 +64,14 @@ export function useSegmentRowTextFieldEditing({
     }),
     [],
   );
+
+  useEffect(() => {
+    if (selected) return;
+    const el = textareaRef.current;
+    if (el && document.activeElement === el) {
+      el.blur();
+    }
+  }, [selected]);
 
   useEffect(() => {
     if (prevCommittedRef.current === committedText) {
@@ -120,8 +129,10 @@ export function useSegmentRowTextFieldEditing({
 
   const onBlurText = useCallback(() => {
     isFocusedRef.current = false;
+    setIsTextareaFocused(false);
     if (busy) return;
     segmentDraftStore.endComposition(draftKey);
+    segmentDraftStore.flushPendingEmit();
     const el = textareaRef.current;
     const liveText = normalizeSegmentDraftText(el?.value ?? committedText);
     if (liveText !== committedText) updateSegmentText(i, liveText);
@@ -147,6 +158,7 @@ export function useSegmentRowTextFieldEditing({
   const onFocusText = useCallback(() => {
     if (busy) return;
     isFocusedRef.current = true;
+    setIsTextareaFocused(true);
   }, [busy]);
 
   return {
@@ -154,6 +166,7 @@ export function useSegmentRowTextFieldEditing({
     committedText,
     liveText,
     correctableSpans,
+    isTextareaFocused,
     textareaRef,
     textareaEpoch,
     defaultText,

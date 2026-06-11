@@ -1,3 +1,4 @@
+import { useDeferredValue, useMemo } from "react";
 import { isCorrectionRulesPanelOpen } from "../pages/correctionRulesPanelTypes";
 import { isFindReplacePanelOpen } from "../pages/findReplaceTypes";
 import { useSegmentRowTextFieldEditing } from "./useSegmentRowTextFieldEditing";
@@ -14,11 +15,12 @@ export function useSegmentRowTextFieldController(args: SegmentRowTextFieldContro
     focusOnSelectRef,
     findReplaceHighlight,
     correctionRulesHighlight,
+    spansForText,
     onCorrectableSpanClick: _onCorrectableSpanClick,
     ...editingArgs
   } = args;
 
-  const editing = useSegmentRowTextFieldEditing({ ...editingArgs, selected, busy });
+  const editing = useSegmentRowTextFieldEditing({ ...editingArgs, spansForText, selected, busy });
 
   useSegmentRowTextFieldFocusSync({
     selected,
@@ -29,16 +31,28 @@ export function useSegmentRowTextFieldController(args: SegmentRowTextFieldContro
     correctionRulesHighlight,
   });
 
-  const textAreaMinHeight = Math.max(36, Math.round(segmentRowHeightPx - (selected ? 24 : 30)));
+  const textAreaMinHeight = Math.max(36, Math.round(segmentRowHeightPx - 24));
   const panelHighlight = findReplaceHighlight ?? correctionRulesHighlight;
   const panelPreviewOpen = isFindReplacePanelOpen() || isCorrectionRulesPanelOpen();
   const hasPanelHighlight = panelHighlight != null;
-  const showPanelHighlightMirror = selected && panelPreviewOpen && hasPanelHighlight && !busy;
+  const showPanelHighlightMirror = panelPreviewOpen && hasPanelHighlight && !busy;
+
+  const deferredLiveText = useDeferredValue(editing.liveText);
+  const mirrorLiveText = selected
+    ? panelPreviewOpen
+      ? editing.liveText
+      : deferredLiveText
+    : editing.committedText;
+  const mirrorCorrectableSpans = useMemo(
+    () => spansForText(mirrorLiveText),
+    [mirrorLiveText, spansForText],
+  );
+
   const showCorrectableMirror =
-    selected &&
     !panelHighlight &&
-    editing.correctableSpans.length > 0 &&
-    !busy;
+    mirrorCorrectableSpans.length > 0 &&
+    !busy &&
+    (!selected || !editing.isTextareaFocused);
 
   return {
     ...editing,
@@ -47,5 +61,7 @@ export function useSegmentRowTextFieldController(args: SegmentRowTextFieldContro
     hasPanelHighlight,
     showPanelHighlightMirror,
     showCorrectableMirror,
+    mirrorLiveText,
+    mirrorCorrectableSpans,
   };
 }

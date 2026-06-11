@@ -73,6 +73,7 @@ describe("useAutoSaveSegments", () => {
 
     act(() => {
       segmentDraftStore.setDraft(segmentDraftKey(segments[0], 0), "draft edit");
+      segmentDraftStore.flushPendingEmit();
     });
 
     act(() => {

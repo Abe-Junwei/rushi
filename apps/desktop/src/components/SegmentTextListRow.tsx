@@ -87,7 +87,8 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
     (e: MouseEvent<HTMLDivElement>) => {
       if (busy) return;
       if (consumeRowRangeClickSuppress?.()) return;
-      if ((e.target as HTMLElement).closest("textarea")) return;
+      const textarea = (e.target as HTMLElement).closest("textarea");
+      if (textarea && !textarea.readOnly) return;
       if (e.shiftKey) {
         focusOnSelectRef.current = false;
         selectSegmentAt(i, { shiftKey: true });
@@ -113,7 +114,7 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
     (e: ReactPointerEvent<HTMLDivElement>) => {
       if (busy || e.button !== 0) return;
       if ((e.target as HTMLElement).closest(
-        "textarea, button, [role='separator'], [aria-label='拖拽调整语段高度']",
+        "button, [role='separator'], [aria-label='拖拽调整语段高度']",
       )) {
         return;
       }
