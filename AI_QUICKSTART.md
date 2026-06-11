@@ -21,7 +21,7 @@
 
 ## 当前热点（自动同步，2026-06-07）
 
-**工作区尾项**：**R3h-2** ✅ — [`r3h-2-local-runtime-resume-acceptance.md`](./docs/execution/specs/r3h-2-local-runtime-resume-acceptance.md)；下一刀 **ASR-WARM** / **R3h-3**
+**工作区尾项**：**R3h-3** ✅ — [`r3h-3-environment-readiness-acceptance.md`](./docs/execution/specs/r3h-3-environment-readiness-acceptance.md)；下一刀 **ASR-WARM** / **R3h-3.5**
 
 **v1 后主序：LLM-LOC**
 

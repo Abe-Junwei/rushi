@@ -127,6 +127,11 @@ export function EnvOnlineSttPanel({ busy, scrollAnchorRef, onSttOnlineRuntimeCha
     ],
   );
 
+  const onlineGlossarySummary = useMemo(
+    () => glossaryBiasSummaryForProviderId(olProviderId),
+    [olProviderId],
+  );
+
   const buildDraftRuntimeConfig = useCallback(() => {
     return normalizeExternalSttOnlineRuntimeConfig({
       enabled: true,
@@ -346,7 +351,10 @@ export function EnvOnlineSttPanel({ busy, scrollAnchorRef, onSttOnlineRuntimeCha
               keychainChecking ? null : keychainReady,
             )}
           </p>
-          {glossaryBiasSummaryForProviderId(olProviderId)}
+          <p className={`m-0 ${PANEL_TYPOGRAPHY.meta}`}>
+            本机 FunASR 通过 hotwords 携带术语偏置。
+            {onlineGlossarySummary ? ` ${onlineGlossarySummary}` : ""}
+          </p>
         </div>
       </div>
     </div>

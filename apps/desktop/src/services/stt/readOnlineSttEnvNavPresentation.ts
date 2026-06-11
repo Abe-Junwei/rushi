@@ -1,4 +1,8 @@
-import { buildOnlineSttEnvPresentation, type OnlineSttEnvTone } from "./onlineSttEnvStatus";
+import {
+  buildOnlineSttEnvPresentation,
+  type OnlineSttEnvPresentation,
+  type OnlineSttEnvTone,
+} from "./onlineSttEnvStatus";
 import {
   hasSttOnlineApiKeyReference,
   isSttConnectionVerified,
@@ -8,6 +12,10 @@ import {
 
 /** 设置侧栏在线 STT 状态点（读持久化 + 会话密钥，不含表单草稿）。 */
 export function readOnlineSttEnvNavTone(): OnlineSttEnvTone {
+  return readOnlineSttEnvNavPresentation().tone;
+}
+
+export function readOnlineSttEnvNavPresentation(): OnlineSttEnvPresentation {
   const stored = readExternalSttOnlineRuntimeConfigFromStorage();
   const draftConfig = normalizeExternalSttOnlineRuntimeConfig({
     enabled: true,
@@ -17,7 +25,7 @@ export function readOnlineSttEnvNavTone(): OnlineSttEnvTone {
     apiKeyId: stored.apiKeyId,
     timeoutMs: stored.timeoutMs,
   });
-  const presentation = buildOnlineSttEnvPresentation({
+  return buildOnlineSttEnvPresentation({
     enabled: true,
     providerId: stored.selectedProviderId,
     endpoint: stored.endpoint ?? "",
@@ -29,5 +37,4 @@ export function readOnlineSttEnvNavTone(): OnlineSttEnvTone {
     lastProbeAvailable: null,
     lastProbeMessage: null,
   });
-  return presentation.tone;
 }

@@ -80,6 +80,8 @@ export function EnvLocalAsrPanel({
     prepareModelProgress,
   });
 
+  const showProminentSetup = !asrPresentation.chipOk;
+
   return (
     <div className="mx-auto flex w-full max-w-[860px] flex-col gap-7">
       <EnvLocalAsrStatusSection
@@ -88,9 +90,11 @@ export function EnvLocalAsrPanel({
         refreshAsrHealth={refreshAsrHealth}
       />
 
-      {asrPresentation.health === "error" ? (
+      {showProminentSetup ? (
         <section id="env-asr-setup" className="flex flex-col gap-3">
-          <h3 className={PANEL_TYPOGRAPHY.envSectionTitle}>安装向导</h3>
+          <h3 className={PANEL_TYPOGRAPHY.envSectionTitle}>
+            {asrPresentation.health === "error" ? "安装向导" : "一键准备"}
+          </h3>
           <LocalAsrSetupWizard
             setup={asrSetup}
             busy={busy}
@@ -99,7 +103,8 @@ export function EnvLocalAsrPanel({
             transcribeBlockReason={asrPresentation.blockReason}
             openAppDataFolder={openAppDataFolder}
             exportDiagnosticBundle={exportDiagnosticBundle}
-            compact
+            compact={asrPresentation.health === "error"}
+            embedded={asrPresentation.health !== "error"}
           />
         </section>
       ) : null}
@@ -150,6 +155,7 @@ export function EnvLocalAsrPanel({
           openAppDataFolder={openAppDataFolder}
           exportDiagnosticBundle={exportDiagnosticBundle}
           asrSetup={asrSetup}
+          hideSetupWizard={showProminentSetup}
         />
       </section>
     </div>

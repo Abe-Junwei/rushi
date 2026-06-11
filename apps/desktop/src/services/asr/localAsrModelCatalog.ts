@@ -172,6 +172,7 @@ export async function resolvePreferredLocalAsrHubModelId(): Promise<string> {
 export type LocalAsrTranscribeReadyInput = {
   asrHealth: "checking" | "ok" | "error";
   asrCaps: {
+    ffmpeg_ok?: boolean;
     funasr_model_id?: string | null;
     funasr_loaded_model_id?: string | null;
     funasr_default_model_cached?: boolean;

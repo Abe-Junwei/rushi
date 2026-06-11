@@ -1,7 +1,7 @@
 # Acceptance: R3d — 环境/设置信息架构（轻量收口）
 
-> **状态**：规划已定，待实施（**不大改视觉系统**）  
-> **关联**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) §4.1、现有 `EnvironmentPanel` 五栏导航
+> **状态**：✅ **与 R3h-3 合并完成**（2026-06-10）  
+> **关联**：[`r3h-3-environment-readiness-acceptance.md`](./r3h-3-environment-readiness-acceptance.md)、[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) §4.1
 
 ## 目标
 
@@ -18,10 +18,11 @@
 ## 验收
 
 1. 新用户能在 30 秒内从环境面板找到：本机 ASR 准备、在线 STT、LLM、配置迁移。
-2. 「本机 ASR」内区块顺序与 §4.1 能力一致：一键准备 → 状态/引导 → 模型（含目录）→ 缓存。
+2. 「本机 ASR」内区块顺序：状态 → 未就绪时主路径一键准备/安装向导 → 转写模型 → 环境与维护（缓存/高级）。
 3. 无新增第三层 `border` 容器违规（遵守面板两层边框规则）。
 
 ## 完成定义
 
-- [ ] 文档更新（本 spec + `EnvironmentPanel` 注释或 AI_QUICKSTART 一行）
-- [ ] 手测：从欢迎页打开环境 → 完成本机 ASR 准备路径无迷路
+- [x] 文档更新（本 spec + [`r3h-3-environment-readiness-acceptance.md`](./r3h-3-environment-readiness-acceptance.md) + AI_QUICKSTART）
+- [x] `EnvLocalAsrPanel` 区块顺序与 `EnvHelpPanel` 推荐路径一致
+- [ ] 手测：从欢迎页打开环境 → 完成本机 ASR 准备路径无迷路（跟 R3h-3 手测表）

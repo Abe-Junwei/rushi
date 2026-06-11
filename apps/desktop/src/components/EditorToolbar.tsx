@@ -2,6 +2,7 @@ import { memo, useEffect, useRef, useState } from "react";
 import type { ProjectControllerApi } from "../pages/useProjectController";
 import { FileInput, FileOutput, Settings } from "lucide-react";
 import { EditorWorkspaceNav } from "./EditorWorkspaceNav";
+import { AsrTopStatusChips } from "./AsrTopStatusChips";
 import { LlmTopStatusChip } from "./LlmTopStatusChip";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 const ghostBtn =
@@ -16,6 +17,7 @@ interface EditorToolbarProps {
   projectName: string;
   currentFileName: string;
   onOpenEnvironment: () => void;
+  onOpenAsrSettings?: () => void;
   onOpenLlmSettings?: () => void;
   llmStatusRefreshSeq?: number;
   workspaceSidebarCollapsed?: boolean;
@@ -28,6 +30,7 @@ export const EditorToolbar = memo(function EditorToolbar({
   projectName,
   currentFileName,
   onOpenEnvironment,
+  onOpenAsrSettings,
   onOpenLlmSettings,
   llmStatusRefreshSeq = 0,
   workspaceSidebarCollapsed = false,
@@ -121,6 +124,13 @@ export const EditorToolbar = memo(function EditorToolbar({
         </span>
 
         <div className="flex shrink-0 items-center gap-2">
+          {!c.asrPresentation.chipOk && onOpenAsrSettings ? (
+            <AsrTopStatusChips
+              presentation={c.asrPresentation}
+              onOpenAsrSettings={onOpenAsrSettings}
+              disabled={c.busy}
+            />
+          ) : null}
           {onOpenLlmSettings ? (
             <LlmTopStatusChip
               refreshSeq={llmStatusRefreshSeq}
@@ -242,6 +252,13 @@ function areEditorToolbarPropsEqual(prev: EditorToolbarProps, next: EditorToolba
     prev.currentFileName === next.currentFileName &&
     prev.onExportSelect === next.onExportSelect &&
     prev.onOpenEnvironment === next.onOpenEnvironment &&
+    prev.onOpenAsrSettings === next.onOpenAsrSettings &&
+    prev.onOpenLlmSettings === next.onOpenLlmSettings &&
+    prev.llmStatusRefreshSeq === next.llmStatusRefreshSeq &&
+    prev.controller.asrPresentation.chipOk === next.controller.asrPresentation.chipOk &&
+    prev.controller.asrPresentation.chipLabel === next.controller.asrPresentation.chipLabel &&
+    prev.controller.asrPresentation.tone === next.controller.asrPresentation.tone &&
+    prev.controller.asrPresentation.ffmpegChipOk === next.controller.asrPresentation.ffmpegChipOk &&
     prev.controller.current?.id === next.controller.current?.id &&
     prev.controller.currentFileId === next.controller.currentFileId &&
     prev.controller.audioSrc === next.controller.audioSrc &&

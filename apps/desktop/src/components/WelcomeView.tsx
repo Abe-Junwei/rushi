@@ -31,6 +31,7 @@ export type { WelcomePageId } from "./welcomeTypes";
 interface WelcomeViewProps {
   controller: ProjectControllerApi;
   onOpenSettings: () => void;
+  onOpenAsrSettings?: () => void;
   onOpenLlmSettings?: () => void;
   llmStatusRefreshSeq?: number;
   page: WelcomePageId;
@@ -41,6 +42,7 @@ interface WelcomeViewProps {
 export function WelcomeView({
   controller: c,
   onOpenSettings,
+  onOpenAsrSettings,
   onOpenLlmSettings,
   llmStatusRefreshSeq = 0,
   page,
@@ -105,6 +107,7 @@ export function WelcomeView({
         <WelcomeTopBar
           asrPresentation={c.asrPresentation}
           llmStatusRefreshSeq={llmStatusRefreshSeq}
+          onOpenAsrSettings={onOpenAsrSettings ?? onOpenSettings}
           onOpenLlmSettings={onOpenLlmSettings ?? onOpenSettings}
         />
 

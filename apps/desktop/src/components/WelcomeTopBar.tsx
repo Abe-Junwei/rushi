@@ -23,12 +23,14 @@ export interface WelcomeTopBarProps {
   selectedHubModelId?: string;
   catalogStatus?: LocalAsrCatalogStatusItem[] | null;
   llmStatusRefreshSeq?: number;
+  onOpenAsrSettings?: () => void;
   onOpenLlmSettings?: () => void;
 }
 
 export function WelcomeTopBar({
   asrPresentation,
   llmStatusRefreshSeq = 0,
+  onOpenAsrSettings,
   onOpenLlmSettings,
 }: WelcomeTopBarProps) {
   return (
@@ -36,7 +38,10 @@ export function WelcomeTopBar({
       <div className="flex items-center gap-6" />
       <div className="flex items-center gap-4">
         <div className="mr-2 flex items-center gap-4">
-          <AsrTopStatusChips presentation={asrPresentation} />
+          <AsrTopStatusChips
+            presentation={asrPresentation}
+            onOpenAsrSettings={onOpenAsrSettings ?? onOpenLlmSettings}
+          />
           {onOpenLlmSettings ? (
             <LlmTopStatusChip refreshSeq={llmStatusRefreshSeq} onOpenLlmSettings={onOpenLlmSettings} />
           ) : null}

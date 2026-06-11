@@ -69,7 +69,7 @@
 | P1 | `LocalAsrGuidanceSection` | 组件 **未引用**（死代码） | 若接回须 D1 | 📋 删除或 **R3d** 再接 |
 | P1 | `useAsrSetupHealthFlow` / `localAsrSetupModelStep` | 跟 D1 + `prepare(model_id)` | 曾 D5 | ✅ **编码** |
 | P2 | `useAsrSetupController` 摘要 | 「默认模型」措辞 | D1 | **R3f** |
-| P2 | 顶栏 vs 环境面板 | 两套 ASR 状态 | **R3d** | **R3h-3** |
+| P2 | 顶栏 vs 环境面板 | 两套 ASR 状态 | **R3d** | **R3h-3** ✅ 顶栏芯片与左导航点共用 presentation；内容区不重复总览 |
 
 **R3g-A 签收门槛**：P0 全绿（含 **真取消** Q-R3g-3）+ **S3** 2 组手测 + Paraformer 13min（⑤c）。
 

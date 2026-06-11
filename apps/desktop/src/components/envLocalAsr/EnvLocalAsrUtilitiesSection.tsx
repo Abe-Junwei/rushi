@@ -41,6 +41,8 @@ type Props = {
   openAppDataFolder: () => Promise<void>;
   exportDiagnosticBundle: () => Promise<void>;
   asrSetup: AsrSetupControllerApi;
+  /** 主路径已展示安装向导时，折叠区不再重复。 */
+  hideSetupWizard?: boolean;
 };
 
 /** 安装向导 / 高级诊断 / 缓存 — 三块独立折叠，默认收起。 */
@@ -65,13 +67,14 @@ export function EnvLocalAsrUtilitiesSection({
   openAppDataFolder,
   exportDiagnosticBundle,
   asrSetup,
+  hideSetupWizard = false,
 }: Props) {
   const sidecarModelsRoot = asrCaps?.rushi_models_root ?? null;
   const desktopModelsRoot = asrModelCacheInfo?.models_root ?? null;
 
   return (
     <div className="flex flex-col">
-      {presentation.health !== "error" ? (
+      {presentation.health !== "error" && !hideSetupWizard ? (
         <EnvLocalAsrCollapsibleSection id="env-asr-setup-wizard" title="安装向导">
           <LocalAsrSetupWizard
             setup={asrSetup}

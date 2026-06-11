@@ -12,6 +12,7 @@ import { WORKSPACE_HOME_SHELL_PURPOSE } from "../config/workspaceShellLayout";
 interface ProjectHubViewProps {
   controller: ProjectControllerApi;
   onOpenSettings: () => void;
+  onOpenAsrSettings?: () => void;
   onOpenLlmSettings?: () => void;
   llmStatusRefreshSeq?: number;
   onLeaveProjectForWelcome: (page: WelcomePageId) => void;
@@ -23,6 +24,7 @@ interface ProjectHubViewProps {
 export function ProjectHubView({
   controller: c,
   onOpenSettings,
+  onOpenAsrSettings,
   onOpenLlmSettings,
   llmStatusRefreshSeq = 0,
   onLeaveProjectForWelcome,
@@ -51,6 +53,7 @@ export function ProjectHubView({
       <WelcomeTopBar
         asrPresentation={c.asrPresentation}
         llmStatusRefreshSeq={llmStatusRefreshSeq}
+        onOpenAsrSettings={onOpenAsrSettings ?? onOpenSettings}
         onOpenLlmSettings={onOpenLlmSettings ?? onOpenSettings}
       />
 

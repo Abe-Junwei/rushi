@@ -69,6 +69,7 @@ export type EnvironmentPanelProps = {
   localAsrModelCatalog: LocalAsrModelCatalogApi;
   onSttOnlineRuntimeChanged?: () => void;
   onLlmRuntimeChanged?: () => void;
+  focusLocalAsrSeq?: number;
   focusOnlineSttSeq?: number;
   focusLlmSeq?: number;
   llmStatusRefreshSeq?: number;
@@ -102,6 +103,7 @@ export function EnvironmentPanel({
   localAsrModelCatalog,
   onSttOnlineRuntimeChanged,
   onLlmRuntimeChanged,
+  focusLocalAsrSeq = 0,
   focusOnlineSttSeq = 0,
   focusLlmSeq = 0,
   llmStatusRefreshSeq = 0,
@@ -136,6 +138,11 @@ export function EnvironmentPanel({
       window.removeEventListener(STT_ONLINE_RUNTIME_CHANGED_EVENT, onConnectionVerifiedChange);
     };
   }, []);
+
+  useEffect(() => {
+    if (focusLocalAsrSeq <= 0) return;
+    setEnvSection("local-asr");
+  }, [focusLocalAsrSeq]);
 
   useEffect(() => {
     if (focusOnlineSttSeq <= 0) return;

@@ -16,6 +16,7 @@ import { WorkspaceShellLayout, WORKSPACE_EDITOR_SHELL_PURPOSE } from "./Workspac
 export function ProjectPanel() {
   const c = useProjectController();
   const [envOpen, setEnvOpen] = useState(false);
+  const [focusLocalAsrSeq, setFocusLocalAsrSeq] = useState(0);
   const [focusLlmSeq, setFocusLlmSeq] = useState(0);
   const [llmUiEpoch, setLlmUiEpoch] = useState(0);
   const [welcomePage, setWelcomePage] = useState<WelcomePageId>("home");
@@ -33,6 +34,11 @@ export function ProjectPanel() {
 
   const openEnvironment = useCallback(() => {
     setEnvOpen(true);
+  }, []);
+
+  const openAsrSettings = useCallback(() => {
+    setEnvOpen(true);
+    setFocusLocalAsrSeq((n) => n + 1);
   }, []);
 
   const openLlmSettings = useCallback(() => {
@@ -246,6 +252,7 @@ export function ProjectPanel() {
               localAsrModelCatalog={c.localAsrModelCatalog}
               onSttOnlineRuntimeChanged={c.bumpSttOnlineRuntimeChanged}
               onLlmRuntimeChanged={notifyLlmRuntimeChanged}
+              focusLocalAsrSeq={focusLocalAsrSeq}
               focusLlmSeq={focusLlmSeq}
               llmStatusRefreshSeq={llmUiEpoch}
             />
@@ -257,6 +264,7 @@ export function ProjectPanel() {
           <WelcomeView
             controller={c}
             onOpenSettings={openEnvironment}
+            onOpenAsrSettings={openAsrSettings}
             onOpenLlmSettings={openLlmSettings}
             llmStatusRefreshSeq={llmUiEpoch}
             page={welcomePage}
@@ -266,6 +274,7 @@ export function ProjectPanel() {
           <ProjectHubView
             controller={c}
             onOpenSettings={openEnvironment}
+            onOpenAsrSettings={openAsrSettings}
             onOpenLlmSettings={openLlmSettings}
             llmStatusRefreshSeq={llmUiEpoch}
             onLeaveProjectForWelcome={onLeaveProjectForWelcome}
@@ -300,6 +309,7 @@ export function ProjectPanel() {
                 exportKey={exportKey}
                 onExportSelect={onExportSelect}
                 onOpenEnvironment={openEnvironment}
+                onOpenAsrSettings={openAsrSettings}
                 onOpenLlmSettings={openLlmSettings}
                 llmStatusRefreshSeq={llmUiEpoch}
                 segmentCtxMenu={segmentCtxMenu}

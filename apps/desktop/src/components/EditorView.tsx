@@ -38,6 +38,7 @@ interface EditorViewProps {
   exportKey: string;
   onExportSelect: (key: string) => void;
   onOpenEnvironment: () => void;
+  onOpenAsrSettings?: () => void;
   onOpenLlmSettings?: () => void;
   llmStatusRefreshSeq?: number;
   segmentCtxMenu: SegmentContextMenuOpen | null;
@@ -53,6 +54,7 @@ export function EditorView({
   exportKey,
   onExportSelect,
   onOpenEnvironment,
+  onOpenAsrSettings,
   onOpenLlmSettings,
   llmStatusRefreshSeq = 0,
   segmentCtxMenu,
@@ -297,6 +299,7 @@ export function EditorView({
         projectName={projectName}
         currentFileName={currentFileName}
         onOpenEnvironment={onOpenEnvironment}
+        onOpenAsrSettings={onOpenAsrSettings}
         onOpenLlmSettings={onOpenLlmSettings}
         llmStatusRefreshSeq={llmStatusRefreshSeq}
         workspaceSidebarCollapsed={workspaceSidebarCollapsed}

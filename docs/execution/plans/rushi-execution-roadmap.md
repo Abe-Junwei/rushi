@@ -10,7 +10,7 @@
 | 适用节奏 | 单人、每轮 2～4h、一轮一纵向薄片 |
 | 规划跨度 | **个人单机 v1**：约 **14～18 周（自当前）** 或 **18～22 周（自 W1）**；R3 薄片 **~12～15w**（§4.0，含发行 smoke 缓冲）；协作 **非 v1** |
 | 修订 | 每完成一个阶段更新 §2 状态表、§4 排期表与 §13 代码对照 |
-| 最近对照 | **2026-06-10**：**R3h-1-R** ✅ · **TRN-DIAG** ✅ · **R3h-2** ✅ — **当前薄片**：**ASR-WARM** / **R3h-3**；并行见 backlog |
+| 最近对照 | **2026-06-10**：**R3h-1-R** ✅ · **TRN-DIAG** ✅ · **R3h-2** ✅ · **R3h-3** ✅ — **当前薄片**：**ASR-WARM** / **R3h-3.5**；并行见 backlog |
 
 ### 状态标记约定（全文档统一）
 
@@ -345,14 +345,14 @@ R4 + R4-GATE ✅ → R9   ← **下一主序**
 | **⑤½** | **HOT-UX** | ✅ | 0.5w | 热词 12k 截断可观测；术语页「本次转写将携带」摘要 | [`hot-ux-acceptance.md`](../specs/hot-ux-acceptance.md) |
 | **⑤′a** | **R3t-A** | ✅ | 3–5d | `segmentation.py` + FunASR 接线 + 单测 + **手测签收**（2026-05-30） | [`recording-transcribe-llm-refine-acceptance.md`](../specs/recording-transcribe-llm-refine-acceptance.md) §R3t-A |
 | **⑤g** | **R3g-C** | ✅ | 3–5d | **AsrModelProfile**；SenseVoice `use_itn` + postprocess；Paraformer 保持 punc 路径；TypeError 剥参 + warnings；环境页 **识别语言**；**不**暴露全 generate UI | [`r3g-c-asr-generate-profile-acceptance.md`](../specs/r3g-c-asr-generate-profile-acceptance.md)、[`r3g-c-hand-test-checklist.md`](../specs/r3g-c-hand-test-checklist.md) 2026-05-31 签收；架构 [`asr-generate-params-truth.md`](../../architecture/asr-generate-params-truth.md) |
-| **⑤h** | **ACC-STT-UNIFY** | ✅ **2026-05-31** | 2–4d | **`SttVocabularyPlan`** + 三家 adapter；U2 `sttVocabularyBias`；本机手测签收；**在线 E2E ⏳**；**U3→R3h-3**；**U4 延后** | [`acc-stt-unify-acceptance.md`](../specs/acc-stt-unify-acceptance.md)、[`acc-stt-unify-hand-test-checklist.md`](../specs/acc-stt-unify-hand-test-checklist.md) |
+| **⑤h** | **ACC-STT-UNIFY** | ✅ **2026-05-31** | 2–4d | **`SttVocabularyPlan`** + 三家 adapter；U2 `sttVocabularyBias`；**U3** ✅（R3h-3）；本机手测签收；**在线 E2E ⏳**；**U4 延后** | [`acc-stt-unify-acceptance.md`](../specs/acc-stt-unify-acceptance.md)、[`acc-stt-unify-hand-test-checklist.md`](../specs/acc-stt-unify-hand-test-checklist.md) |
 | **⑤′b** | **R3t-B** | ✅ | 2–4d | 转写任务、超时、原子写库、warnings UI；**不自动 LLM** | 同上 §3；[`r3t-b-hand-test-checklist.md`](../specs/r3t-b-hand-test-checklist.md) 2026-05-30 签收 |
 | **⑤′½** | **TRN-DIAG** | 📋 | 0.5w | 转写阶段时间线；失败阶段 + 建议动作；并入诊断包 | [`personal-solo-v1-backlog.md`](../specs/personal-solo-v1-backlog.md) §3.2 |
 | **⑥** | **R3e-B** | ✅ | 1.5–2w | 长音频侧车 5min 窗；**2026-05-30 签收** | [`r3e-b-hand-test-checklist.md`](../specs/r3e-b-hand-test-checklist.md) |
 | **⑥½** | **R3e-C** | ✅ | 1–1.5w | async Job + 120s 窗末 preview merge；停止转写；preview 禁 save/LLM；**2026-05-31 手测签收**（制控.mp3） | [`r3e-c-incremental-transcribe-acceptance.md`](../specs/r3e-c-incremental-transcribe-acceptance.md)、[`r3e-c-incremental-transcribe-hand-test-checklist.md`](../specs/r3e-c-incremental-transcribe-hand-test-checklist.md) |
 | **⑦** | **R3h-2** | ✅ | ~1w | Range 续传 · 下载进度 UI · GC · **C 类自动回滚**（集成测 `test-r3h-2-c-rollback.sh`） | [`r3h-2 acceptance`](../specs/r3h-2-local-runtime-resume-acceptance.md) · remediation §5 Phase 2 |
 | **⑦½** | **ASR-WARM** | 📋 | 0.5–1w | 侧车保活、模型预热；**R3h-I4** | personal-solo §3.1 |
-| **⑧** | **R3h-3** + **R3d** | ⏳ | 3–5d | 本机 ASR / 在线 STT / LLM 三盏灯；五栏 IA | remediation §5 Phase 3 + [`r3d-settings-ia-acceptance.md`](../specs/r3d-settings-ia-acceptance.md) |
+| **⑧** | **R3h-3** + **R3d** | ✅ **2026-06-10** | 3–5d | 本机 ASR / 在线 STT / LLM 三盏灯；五栏 IA | [`r3h-3-environment-readiness-acceptance.md`](../specs/r3h-3-environment-readiness-acceptance.md) |
 | **⑧½** | **R3h-3.5** | ⏳ | ~1w | Sherpa-ONNX CER Spike；不阻塞 A–B 签收 | remediation §5 Phase 3.5 |
 | **⑤″c** | **R3t-C** | ✅ | 1–1.5w | 扩展 R2 标点（邻段上下文可选）；**可选/显式触发** | 同上 §4；[`r3t-c-hand-test-checklist.md`](../specs/r3t-c-hand-test-checklist.md) 2026-05-30 签收 |
 | **⑤″d** | **R3t-D** | ✅ **2026-05-31** | 1.5–2w | `postprocess_refine_segments` + 段界整理 UI | [`r3t-d-hand-test-checklist.md`](../specs/r3t-d-hand-test-checklist.md) |
@@ -715,11 +715,11 @@ React 预览 UI
 | R3a | LLM keychain + probe | ✅ |
 | R3b | Profile 导入导出 | ✅ |
 | R3c | 缓存 / manifest / 清缓存 | ✅ |
-| **R3h** | **本地运行时目录（LRC）** | 🟡 §4.1 ①–⑧ + `R3h-I`；**R3h-1 / R3h-1-R** ✅；**R3h-2** 下一薄片 |
+| **R3h** | **本地运行时目录（LRC）** | 🟡 §4.1 ①–⑧½ + `R3h-I`；**R3h-1 / R3h-1-R / R3h-2 / R3h-3** ✅；**⑧½** 下一薄片 |
 | **R3f** | 一键环境准备 | ✅ mac / Win ⏳ |
 | **R3e** | 长音频 | ✅ A/B/C（**C** 2026-05-31） |
 | **R3g** | 模型目录 | ✅ R3g-A ⑤a–c（2026-05-27） |
-| **R3d** | 环境 IA | ⏳ 与 **R3h-3** 合并实施 |
+| **R3d** | 环境 IA | ✅ 与 **R3h-3** 合并完成（2026-06-10） |
 
 **实施顺序**：**仅 §4.1.1**。
 
@@ -735,7 +735,7 @@ React 预览 UI
 | **R3h-1** | `local_runtime/` 编码：HTTPS 下载 + app_data 侧车 + signed manifest / current+previous / rollback | ✅ |
 | **R3h-1-R** | Runtime manifest **发行激活**：默认 HTTPS 源 + 发布流水线 + 零终端 VM 手测 | ✅ mac arm64 · CI ⏳ |
 | **R3h-2** | 断点续传、自动下载编排、GC / progress events / 升级收口 | 阻塞 R9 弱网场景 |
-| **R3h-3** | 三盏灯就绪页（合并 R3d） | 体验收口 |
+| **R3h-3** | 三盏灯就绪页（合并 R3d） | ✅ 2026-06-10 |
 | **R3h-I** | 工业成熟度对齐：`Runtime Supervisor` / signed release system / `Setup Machine` | **收口轨**；不改 ①–⑨ 主顺序 |
 | **R3h-3.5** | Sherpa-ONNX Spike | **不阻塞** ①–⑦ |
 | **R3h-4** | 本机 LLM catalog | R4 前或并行设计 | **已并入 LLM-LOC**（§6）；v1 后实施 |
