@@ -3,7 +3,24 @@
 > **Research**：[r3s-sherpa-qwen3-default-engine-research.md](./r3s-sherpa-qwen3-default-engine-research.md)  
 > **Intent / Acceptance**：同目录 `*-intent.md` / `*-acceptance.md`  
 > **ADR**：[ADR-0007](../../adr/0007-sherpa-qwen3-default-asr-engine.md)  
-> **状态**：2026-06-11 代码审查后定稿
+> **状态**：2026-06-11 代码审查定稿 · **2026-06-11 外部审查修订**（LRC manifest / eval / audio / Phase 2 拆分）  
+> **执行模式**：**Defer** — 本文 §2+ 为 **Active 后** 实施清单；G1 前 **不得** 按 Phase 1 开工（见 [plan §Defer](./r3s-sherpa-qwen3-default-engine-plan.md)）
+
+---
+
+## 0.1 审查修订摘要（2026-06-11）
+
+| 审查项 | 结论 | 本版修订 |
+|--------|------|----------|
+| 现状快照 | ✅ 准确 | 保留 §0 |
+| Phase 1 架构 | ✅ 合理 | 补充 eval / spike 依赖 / 体积基线出口 |
+| LRC Phase 2 | ⚠️ 低估 | **不改造 `RuntimeComponent`**；新增 `RuntimeModelArtifact` + 独立 installer |
+| `audio.rs` | ⚠️ remux 无 `-ar 16000` | Sherpa 专用 ffmpeg 须显式 **16 kHz mono** |
+| eval 优先级 | ⚠️ 与 acceptance 矛盾 | **`eval-sherpa-run` 升为 Phase 1 出口** |
+| async Sherpa | ⚠️ 设计不足 | **P2c 前须 design doc / spike** |
+| alignment E1–E3 | 建议 P1 预标注 | Phase 1 同步更新 architecture doc（标注 Phase 2 实现） |
+
+**门禁**：Phase 2 LRC **编码**须在 `RuntimeModelArtifact` schema 定稿后开始；Phase 1 可立即启动。
 
 ---
 
@@ -21,7 +38,7 @@
 | 段落库 | `run_transcribe_cmd.rs` → `save_transcribe_segments` | 统一 SQLite 写入；**所有引擎必须产出同形 JSON** |
 | 音频解码 | `symphonia` + `waveform_peaks_ffmpeg.rs` | 主 crate 已有 MP3/WAV；Sherpa 需 **16 kHz mono** |
 | bundled ffmpeg | `bundled_asr_assets::resolve_bundled_ffmpeg` | 可复用 remux → PCM WAV |
-| LRC 侧车下载 | `local_runtime/` | 现仅 **PyInstaller 侧车** artifact；**无 ONNX 权重 manifest** |
+| LRC 侧车下载 | `local_runtime/` | 现 **`RuntimeComponent` 仅可执行侧车**（`exe_relpath`、`verify_installed_runtime`→启动 exe+/health）；**无模型 artifact schema** |
 | Catalog | `localAsrModelCatalog.ts` + `model_catalog.py` | **仅 Paraformer** 一条 SKU |
 | 转写门控 | `local_transcribe_gate.rs` | **100% 绑定 8741 /health + FunASR 字段** |
 | 本机转写入口 | `run_transcribe_cmd.rs` | blocking + async **均** `post_transcribe_*` → 8741 |
@@ -33,9 +50,9 @@
 - `src/asr_sherpa/` 产品模块  
 - `local_asr_engine` pref / 路由  
 - Sherpa 就绪探测 Tauri 命令  
-- LRC manifest 中 Qwen3 ONNX + Silero VAD artifact  
+- LRC manifest 中 Qwen3 ONNX + Silero VAD（**`RuntimeModelArtifact`**，见 §3.1）  
 - catalog 中 `qwen3-asr-vad-0.6b`  
-- `eval-run.py` 对 Sherpa 内嵌路径的支持（可选 P2）  
+- `scripts/eval-sherpa-run.py`（**Phase 1 出口**，见 §2.9）  
 - async 长音频 Sherpa 路径（R3e-C 等价）
 
 ### 架构约束（须遵守）
@@ -102,17 +119,27 @@ asr_sherpa/
 sherpa-onnx = "1.13.2"
 ```
 
-**迁移策略**：spike crate **保留**作 CLI/benchmark；产品代码 **copy+adapt**（去掉 `Spike*` 命名），spike 可 later 依赖 `asr_sherpa` 或继续独立。
+**迁移策略（修订）**：Phase 1 完成后 **spike crate 必须依赖 `asr_sherpa` lib**（path dependency），CLI 仅作薄包装；**禁止** spike 与产品代码长期 copy 双轨。
 
 ### 2.2 音频前处理 `audio.rs`
 
-Sherpa `Wave::read` 仅稳定支持 WAV。路径：
+Sherpa `Wave::read` 要求 **16 kHz mono WAV**。
+
+**注意**：`waveform_peaks_ffmpeg::remux_audio_to_pcm_wav` 为波形峰值服务，当前仅 `-ac 1` + `pcm_s16le`，**未指定采样率**（见 `waveform_peaks_ffmpeg.rs` L30–47），输出可能是 **源采样率 mono**，不满足 Qwen3。
+
+Phase 1 须在 `asr_sherpa/audio.rs` 使用 **Sherpa 专用 ffmpeg 参数**（不复用波形 remux 原样）：
+
+```text
+ffmpeg -y -i INPUT -vn -ac 1 -ar 16000 -c:a pcm_s16le OUTPUT.wav
+```
+
+路径：
 
 1. 若已是 16 kHz mono WAV → 直读  
-2. 否则复用 `waveform_peaks_ffmpeg::remux_audio_to_pcm_wav` 到 `app_data/tmp/sherpa-{uuid}.wav`  
-3. 可选：symphonia 解码 + 重采样（后续优化，P1 可只用 ffmpeg）
+2. 否则 ffmpeg 显式重采样到 `app_data/tmp/sherpa-{uuid}.wav`  
+3. 单测：ffprobe 断言输出 `16000 Hz`、`mono`（可用 bundled ffmpeg）
 
-参考：`waveform_peaks_cmd.rs` 已有 symphonia 解码链。
+可选后续：symphonia 解码 + 重采样（减少 temp 文件）。
 
 ### 2.3 输出 JSON 契约
 
@@ -190,9 +217,28 @@ pub fn assert_sherpa_ready(st: &DbState) -> Result<SherpaResolvedPaths, String>
 | `resolve_qwen3_model_dir` 缺文件 | `asr_sherpa/model.rs` 单测（从 spike 迁） |
 | JSON → SegmentDto | 复用 `transcribe_response` 测 + 集成样例 |
 | router 默认 funasr | `local_transcribe_router` mock HTTP |
-| E2E（可选 gated） | `CARGO_TEST_SHERPA=1` + fixture ONNX 跑 3s clip |
+| E2E（gated） | `CARGO_TEST_SHERPA=1` + fixture ONNX 跑 3s clip |
+| ffmpeg 输出规格 | `asr_sherpa/audio.rs` 单测：16 kHz mono |
+| release 体积基线 | `cargo build --release` 对比 with/without `sherpa-onnx`（阈值见 §5.2） |
 
-### 2.8 Phase 1 验证清单
+### 2.9 Eval（Phase 1 必要出口）
+
+**修订**：acceptance G1–G4 依赖金标 CER；Sherpa 产品路径须可重复回归，**不得推迟到 Phase 2**。
+
+| 交付 | 落位 |
+|------|------|
+| `scripts/eval-sherpa-run.py` | 读 manifest → 调 `asr_sherpa`（或 `cargo run` 薄 CLI）→ 输出与 `eval-run.py` 同形 JSON（含 `cer_chars`） |
+| npm script | `eval:run:sherpa` → `--filter-id d3-tang32-zhikong-gaijiang` |
+| Phase 1 出口 | D3 样本 Sherpa 列 CER/RTFx/term_hit 可一键复跑 |
+
+ACC-EVAL-2 **双列**（Paraformer + Sherpa 同 manifest）可在 Phase 2 产品化；Phase 1 至少 Sherpa 单列自动化。
+
+### 2.10 Phase 1 文档（与代码同步）
+
+- [desktop-capability-ui-state-alignment.md](../../architecture/desktop-capability-ui-state-alignment.md) §2.1：预留 **E1–E3**（标注「Phase 2 实现 UI」）
+- spike `Cargo.toml`：`rushi-desktop` 内 `asr_sherpa` 为 path dep
+
+### 2.11 Phase 1 验证清单
 
 ```bash
 RUSHI_LOCAL_ASR_ENGINE=sherpa-onnx \
@@ -203,40 +249,79 @@ npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs
 cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml asr_sherpa
 ```
 
-**Phase 1 出口**：G5（E2E 写库）、G7（关 8741 仍可转写）在 dev flag 下成立。
+**Phase 1 出口**：
+
+- G5（E2E 写库）、G7（关 8741 仍可转写）在 dev flag 下成立  
+- G1–G4 可通过 `npm run eval:run:sherpa`（或等价）复跑  
+- spike 依赖 `asr_sherpa`，无独立推理副本  
+- release binary 体积基线已记录（§5.2）
 
 ---
 
-## 3. Phase 2 — LRC + Catalog + 双轨 UI（~2–3w）
+## 3. Phase 2 — 拆分 P2a / P2b / P2c（~3–4w）
 
-### 3.1 LRC manifest 扩展
+> **禁止**在 §3.1 schema 定稿前启动 LRC 模型安装编码。
 
-现 LRC（`local_runtime/manifest/`）管 **侧车 tarball**。ONNX 权重需 **新 artifact 类型** 或 **独立 manifest 条目**：
+### 3.1 LRC：模型 artifact 与可执行组件分离（P2a，~2w）
 
-建议（与 remediation plan 对齐）：
+**现状（代码真源）**：`local_runtime/manifest/types.rs` 中 `RuntimeComponent` **必须**含 `exe_relpath`、`min_shell_version`；installer `verify_installed_runtime` **启动 exe 并轮询 `/health`**（`install_support/verify/`）。该流程 **语义上仅适用于侧车**，不可将 ONNX 模型包硬塞进 `components[]`。
 
-```yaml
-# runtime-manifest 新增 components[] 或 model_artifacts[]
-- id: sherpa-qwen3-asr-0.6B-int8
-  kind: sherpa_onnx_model
-  install_dir: models/sherpa-qwen3-asr-0.6B
-  sources: [modelscope..., github...]
-  files_required: [conv_frontend.onnx, encoder.int8.onnx, decoder.int8.onnx, tokenizer.json]
-- id: sherpa-silero-vad
-  kind: sherpa_onnx_aux
-  install_dir: models/sherpa-vad
-  files_required: [silero_vad.onnx]
+**修订设计**：manifest 顶层新增 **`model_artifacts: Vec<RuntimeModelArtifact>`**（与 `components` 并列），**不修改**现有 `RuntimeComponent` / 侧车 install 路径。
+
+```rust
+// 拟议：local_runtime/manifest/types.rs
+pub struct RuntimeModelArtifact {
+    pub id: String,              // e.g. sherpa-qwen3-asr-0.6B-int8
+    pub version: String,
+    pub platform: String,
+    pub artifact: RuntimeArtifact,
+    pub install_relpath: String,  // e.g. models/sherpa-qwen3-asr-0.6B
+    pub files_required: Vec<String>,
+    pub unpack: ModelUnpackKind, // tar_bz2 | zip | directory
+}
 ```
 
-**Rust 落位**：
+**独立安装流程**（新模块 `local_runtime/model_install/` 或 `installer/model.rs`）：
 
-- `local_runtime/manifest/` — schema 扩展  
-- `local_runtime/installer/` — 解压 / 校验 ONNX 包（可复用 `download.rs` 断点续传）  
-- `local_runtime/catalog/diagnose.rs` — 报告 ONNX 缺失  
+```text
+download (复用 download.rs 断点续传)
+  → extract
+  → verify_files_required (无 exe、无 /health)
+  → promote + write model_marker.json
+```
 
-**脚本对齐**：`r3g-b-download-sherpa-qwen3-onnx.sh` 逻辑迁入 installer 或作为 fallback CLI。
+| 步骤 | 侧车 `RuntimeComponent` | `RuntimeModelArtifact` |
+|------|-------------------------|---------------------------|
+| verify | 启动 exe + `/health` | `files_required` 存在 + 可选 sha256 |
+| marker | `exe_relpath`, shell version | `install_relpath`, artifact id/version |
+| diagnose | `local_runtime_diagnose` | 扩展 `sherpa_model_artifacts[]` 状态 |
 
-### 3.2 Catalog 双 SKU
+**Manifest 示例条目**：
+
+```yaml
+model_artifacts:
+  - id: sherpa-qwen3-asr-0.6B-int8
+    install_relpath: models/sherpa-qwen3-asr-0.6B
+    files_required:
+      - conv_frontend.onnx
+      - encoder.int8.onnx
+      - decoder.int8.onnx
+      - tokenizer.json
+  - id: sherpa-silero-vad
+    install_relpath: models/sherpa-vad
+    files_required: [silero_vad.onnx]
+```
+
+**Rust 落位（P2a only）**：
+
+- `local_runtime/manifest/types.rs` — `RuntimeModelArtifact` + parse  
+- `local_runtime/model_install/` — download / extract / verify / promote  
+- `local_runtime/catalog/diagnose.rs` — ONNX 缺失报告  
+- `scripts/r3g-b-download-sherpa-qwen3-onnx.sh` — 逻辑迁入 installer 或 dev fallback  
+
+**P2a 出口**：G6（零终端安装 ONNX）；`sherpa_asr_diagnose` 读 LRC 路径。
+
+### 3.2 Catalog 双 SKU（P2b，~1–2w）
 
 **TS** `localAsrModelCatalog.ts`：
 
@@ -255,7 +340,7 @@ cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml asr_sherpa
 
 **Python** `model_catalog.py` — 同步；侧车 catalog API **仅 FunASR SKU**；Sherpa SKU 由 **Rust diagnose 命令** 提供状态（新 endpoint 或 Tauri command）。
 
-### 3.3 能力—UI 改造
+### 3.3 能力—UI 改造（P2b，续）
 
 按 [desktop-capability-ui-state-alignment.md](../../architecture/desktop-capability-ui-state-alignment.md) 扩展：
 
@@ -270,20 +355,30 @@ cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml asr_sherpa
 
 **硬规则**：选 Qwen ONNX 时，禁止显示「侧车模型不一致」类 FunASR 文案。
 
-### 3.4 长音频 async（最小）
+### 3.4 长音频 async Sherpa（P2c，design 先行）
 
-R3e-C 现依赖侧车 `POST /v1/transcribe/async`。Sherpa Phase 2 选项：
+R3e-C 现依赖侧车 `POST /v1/transcribe/async` + **HTTP job_id 轮询**（`project_transcribe_async_start/finalize`）。Sherpa 无 8741 job API。
 
-**方案 A（推荐 P2）**：Rust 内 `tokio::task::spawn_blocking` + 进度 channel；UI 复用现有 job polling 壳，**job 状态存 app 内存**（非 8741）  
+**P2c 编码前必须交付** mini design（`docs/execution/specs/r3s-sherpa-async-transcribe-design.md` 或 acceptance 附录），至少定义：
 
-**方案 B（Defer）**：Sherpa 仅 blocking；长音频提示「转写中请保持窗口打开」  
+| 议题 | 须明确 |
+|------|--------|
+| job 状态存储 | app 内存 vs `app_data/jobs/` 持久化；重启后行为 |
+| 进度通道 | `mpsc` / `watch` + Tauri event vs 新 poll command |
+| 前端接口 | 复用 `job_id` 字符串 vs 新 `sherpa_job_id`；与 `TranscribeTimelineRecorder` 集成 |
+| 取消 | 与 `postprocess` cancel 模式对齐 |
+| 长音频策略 | 全轨 blocking + 进度估算 vs 窗式 decode |
 
-实现 A 落位：
+**实现选项（design 后选型）**：
 
-- `project/transcribe_job_sherpa.rs`（新）  
-- `run_transcribe_cmd.rs` async_start 分支  
+- **方案 A**：`tokio::task::spawn_blocking` + Rust 内 job map + 新 Tauri `project_transcribe_sherpa_async_*`  
+- **方案 B（Defer 至 P3 后）**：Sherpa 仅 blocking；UI 长音频提示「请保持窗口打开」
 
-### 3.5 hotwords
+**不在 P2b 默认范围**；可与 P2b 并行，但 **无 design 不得开编码**。
+
+落位（P2c Go 后）：`project/transcribe_job_sherpa.rs`、`run_transcribe_cmd.rs` async 分支。
+
+### 3.5 hotwords（P2b）
 
 spike 已支持 `OfflineQwen3ASRModelConfig.hotwords`。Phase 2：
 
@@ -291,14 +386,18 @@ spike 已支持 `OfflineQwen3ASRModelConfig.hotwords`。Phase 2：
 - `SttVocabularyChannel` 新增 `LocalSherpaInline`  
 - acceptance 复验 D3 term_hit
 
-### 3.6 eval 双列
+### 3.6 eval 双列（P2b 末 / P2c 后）
 
-- `scripts/eval-sherpa-run.py`（新）：调 Tauri dev 命令或内嵌 CLI  
-- ACC-EVAL-2 报告同时含 `engine=paraformer|sherpa`
+- Phase 1 已有 Sherpa 单列（§2.9）  
+- P2b 末：`eval-run.py` 或统一 runner 输出 **paraformer + sherpa** 两列 CSV（ACC-EVAL-2）
 
 ### 3.7 Phase 2 出口
 
-G6 LRC 零终端安装；catalog 双条目；环境页 Sherpa 绿灯；ACC-EVAL-2 双列。
+| 子阶段 | 出口 |
+|--------|------|
+| **P2a** | G6；model manifest 签名 + installer 单测 |
+| **P2b** | catalog 双条目；环境页 Sherpa 绿灯；E1–E3 UI 实现 |
+| **P2c** | async 手测清单（若 Go）；否则文档化 Defer |
 
 ---
 
@@ -329,10 +428,16 @@ Sherpa Qwen3 无 ct-punc。选项：
 
 ### 5.2 二进制体积
 
-`sherpa-onnx` 静态链 ORT → 主 binary 增大。需：
+`sherpa-onnx` 静态链 ORT → 主 binary 增大。
 
-- release 构建实测 DMG 体积  
-- 与 ~2.5GB 侧车 **optional** 对比（用户磁盘可能两者并存）
+**Phase 1 必做基线**（首次 `cargo build --release` 链入 `sherpa-onnx` 后）：
+
+| 指标 | 记录方式 | 阈值（初版） |
+|------|----------|--------------|
+| `rushi-desktop` binary | `ls -lh target/release/rushi-desktop` | 对比未链入前增量 |
+| DMG（若可） | release 脚本 | **+200MB 可接受**；**+500MB 需 ADR 修订或动态库方案** |
+
+与 ~2.5GB 侧车 optional 对比用户磁盘（双栈并存期）。
 
 ### 5.3 Windows
 
@@ -367,14 +472,13 @@ Sherpa Qwen3 无 ct-punc。选项：
 
 ### Phase 2
 
-| 操作 | 路径 |
-|------|------|
-| 改 | `local_runtime/manifest/*`, `installer/*` |
-| 改 | `localAsrModelCatalog.ts`, `model_catalog.py` |
-| 改 | `asrEnvStatus.ts`, `EnvLocalAsrPanel.tsx`, `useAsrHealthPoll.ts` |
-| 改 | `usePrepareModelController.ts` |
-| 新建 | `project/transcribe_job_sherpa.rs`（async 可选） |
-| 改 | `docs/architecture/desktop-capability-ui-state-alignment.md`（E1–E3） |
+| 子阶段 | 操作 | 路径 |
+|--------|------|------|
+| **P2a** | 新增 | `local_runtime/manifest/types.rs`（`RuntimeModelArtifact`） |
+| **P2a** | 新建 | `local_runtime/model_install/` |
+| **P2b** | 改 | `localAsrModelCatalog.ts`, `model_catalog.py` |
+| **P2b** | 改 | `asrEnvStatus.ts`, `EnvLocalAsrPanel.tsx`, `useAsrHealthPoll.ts` |
+| **P2c** | 新建 | `r3s-sherpa-async-transcribe-design.md` → `transcribe_job_sherpa.rs` |
 
 ### Phase 3
 
@@ -386,29 +490,34 @@ Sherpa Qwen3 无 ct-punc。选项：
 
 ---
 
-## 7. 依赖与风险序
+## 7. 依赖与风险序（修订）
 
 ```text
+P0 金标 + eval（D3 已有数据）          ✅
 P1 asr_sherpa + router + blocking E2E
+    + eval-sherpa-run + spike→lib + 体积基线 + alignment E1–E3 预留
     ↓
-P2 LRC ONNX install + catalog + UI 双轨
+P2a RuntimeModelArtifact + model_install（无 UI）
     ↓
-P2b async 进度（可与 P2 并行）
+P2b catalog 双 SKU + 环境页双轨 UI
     ↓
-P2c hotwords + eval 双列
+P2c async design doc →（可选）async 实现
     ↓
-标点文案 / LLM 薄片（可与 P3 并行，但 P3 需文案）
+标点文案 / LLM 薄片（P3 前）
     ↓
 P3 默认切换（G1–G8）
 ```
 
 | 风险 | 缓解 |
 |------|------|
+| LRC schema 扭曲 | **`RuntimeModelArtifact` 独立**，不改 `RuntimeComponent` |
 | `run_transcribe_cmd` 膨胀 | router 拆分；async Sherpa 独立模块 |
-| UI 仍绑 8741 | Phase 2 必须改 `computeLocalAsrTranscribeReady` |
-| ONNX 4.4GB 弱网 | LRC 断点续传已有；manifest 签名 |
-| 双栈磁盘 | catalog 文案「互斥可选」；LRC 卸载旧 SKU |
-| spike / 产品漂移 | Phase 1 后 spike 改调 `asr_sherpa` lib |
+| UI 仍绑 8741 | P2b 改 `computeLocalAsrTranscribeReady` |
+| ONNX 4.4GB 弱网 | P2a 断点续传；manifest 签名 |
+| 双栈磁盘 | catalog 文案；可选互斥安装 |
+| spike / 产品漂移 | **P1 出口：spike 依赖 `asr_sherpa` lib** |
+| remux 采样率 | **P1：`audio.rs` 显式 `-ar 16000`** |
+| async 重启丢 job | P2c design 定持久化策略 |
 
 ---
 
@@ -421,8 +530,10 @@ P3 默认切换（G1–G8）
 3. `run_transcribe_cmd` blocking 分支  
 4. env：`RUSHI_LOCAL_ASR_ENGINE=sherpa-onnx`  
 5. 单测 + 「对照」项目手测记录  
+6. `npm run eval:run:sherpa`（D3 CER 复跑）  
+7. release binary 体积基线记录  
 
-**不含**：LRC manifest、catalog UI、async、默认切换。
+**不含**：LRC manifest（P2a）、catalog UI（P2b）、async（P2c）、默认切换。
 
 ---
 

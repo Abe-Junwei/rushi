@@ -3,7 +3,8 @@
 > **Research**：[r3s-sherpa-qwen3-default-engine-research.md](./r3s-sherpa-qwen3-default-engine-research.md)  
 > **Plan**：[r3s-sherpa-qwen3-default-engine-plan.md](./r3s-sherpa-qwen3-default-engine-plan.md)  
 > **Acceptance**：[r3s-sherpa-qwen3-default-engine-acceptance.md](./r3s-sherpa-qwen3-default-engine-acceptance.md)  
-> **ADR**：[ADR-0007](../../adr/0007-sherpa-qwen3-default-asr-engine.md)
+> **ADR**：[ADR-0007](../../adr/0007-sherpa-qwen3-default-asr-engine.md)  
+> **执行模式**：**Defer**（[plan §Defer](./r3s-sherpa-qwen3-default-engine-plan.md)）— G1 前不接入产品转写；默认仍为 FunASR Paraformer
 
 ## 意图
 
@@ -36,3 +37,4 @@
 - `project_run_transcribe` 默认走 Rust Sherpa，**不启动** 8741（或 sidecar 可选）
 - ACC-EVAL-2 对 Sherpa 列：**CER ≤ Paraformer 基线 + ε**（ε 在 acceptance 定）
 - FunASR Paraformer：**设置 → 高级 → 兼容引擎** 可切回
+- 远期 **Sherpa 双 SKU**（Qwen 默认 + Paraformer 标点/热词）：见 plan §证据更新、R3h-3.5 P2

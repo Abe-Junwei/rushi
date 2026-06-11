@@ -36,6 +36,24 @@
 3. **D3 过期**：禁止静默隐藏；须提示 stale 侧车或引导 force-restart（见 `asr_sidecar::force_restart_bundled`）。
 4. **同一 section 内** 所有行（下拉、列表、进度、按钮文案）必须同一 D1 或明确标注 D2（「侧车运行中」）。
 
+### 2.1 多引擎扩展（R3s-A，Phase 2 实现 UI）
+
+> Phase 1 仅文档预留；**禁止**用 D2/D5 表示 Sherpa ONNX SKU 状态。
+
+| 维度 ID | 含义 | FunASR 侧车 | Sherpa ONNX（目标默认） |
+|---------|------|-------------|-------------------------|
+| **E1 引擎选择** | 用户所选引擎 + SKU | `local_asr_engine=funasr-sidecar` + hub pref | `local_asr_engine=sherpa-onnx` + `qwen3-asr-vad-0.6b` |
+| **E2 权重就绪** | 当前 E1 所需文件落盘 | D4 hub 缓存 + D5 | LRC `RuntimeModelArtifact` + `files_required` |
+| **E3 运行时** | 转写执行载体 | 8741 `/health` | 进程内 ORT；**不占用 8741** |
+
+**硬规则（Sherpa）**
+
+1. E1=Sherpa 时：禁止展示「侧车模型不一致」「应用并重启侧车」等 FunASR 文案。  
+2. E2：禁止用 `/health.ready_for_transcribe` 表示 Qwen ONNX 就绪。  
+3. E3：环境页「可直接转写」须走 `sherpa_asr_diagnose` 或等价 Rust 真源。
+
+实现计划：[r3s-sherpa-qwen3-default-engine-implementation-plan.md](../execution/specs/r3s-sherpa-qwen3-default-engine-implementation-plan.md)
+
 ## 3. 推荐实现模式
 
 ### 3.1 纯函数派生（TS）

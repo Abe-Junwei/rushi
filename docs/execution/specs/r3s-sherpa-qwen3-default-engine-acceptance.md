@@ -2,6 +2,7 @@
 
 > **Research**：[r3s-sherpa-qwen3-default-engine-research.md](./r3s-sherpa-qwen3-default-engine-research.md)  
 > **Intent** · **Plan**：同目录 `*-intent.md` / `*-plan.md`  
+> **R3g-B 对照**：[r3g-b-qwen3-sherpa-funasr-compare-report.md](./r3g-b-qwen3-sherpa-funasr-compare-report.md)  
 > **ADR**：[ADR-0007](../../adr/0007-sherpa-qwen3-default-asr-engine.md)
 
 ## 目标
@@ -32,7 +33,7 @@ Sherpa-ONNX Qwen3-0.6B + Silero VAD 成为 **本机转写默认引擎**；FunASR
 | ID | 指标 | Paraformer 基线 | Sherpa 要求 |
 |----|------|-----------------|-------------|
 | **G1** | 金标 CER（D3 堂3-2 制控概讲） | 参照 docx 金标 | **≤ baseline + 5%**（或书面豁免） |
-| **G2** | 语段数（同样本） | TBD 首跑 | **≥ 50** 且 median dur **0.5–15s** |
+| **G2** | 语段数（同样本） | TBD 首跑 | **≥ 50** 且 median dur **0.5–15s**（R3g-B 780s：**172** 段 ✅ 形态；须 gold 样本复验） |
 | **G3** | RTFx（制控 CPU） | ~7.4 | **≥ 5.0** |
 | **G4** | term_hit（manifest） | 1.0 | **≥ 1.0**（同 expected_terms） |
 | **G5** | `project_run_transcribe` E2E | ✅ | ✅ SQLite 段写入 |
@@ -48,15 +49,31 @@ Sherpa-ONNX Qwen3-0.6B + Silero VAD 成为 **本机转写默认引擎**；FunASR
 
 ### Phase 1（内嵌，非默认）
 
-- [ ] `cargo test -p asr_sherpa`（或 module 等价）
-- [ ] Feature flag 下制控转写 → 编辑器可见段
+- [ ] `cargo test` asr_sherpa（或 module 等价）
+- [ ] Feature flag 下 D3 样本转写 → 编辑器可见段
 - [ ] 架构守卫：禁止页面层直连 spike bin
+- [ ] **`scripts/eval-sherpa-run.py` + `npm run eval:run:sherpa`**：D3 金标 CER/RTFx/term_hit 可复跑（G1–G4）
+- [ ] spike crate **path 依赖 `asr_sherpa`**（无独立推理副本）
+- [ ] release binary 体积基线记录（implementation-plan §5.2）
+- [ ] `asr_sherpa/audio.rs`：ffmpeg 输出 **16 kHz mono** 单测
 
 ### Phase 2（双轨）
 
+**P2a（LRC 模型，无 UI）**
+
+- [ ] `RuntimeModelArtifact` schema + model_install（**不**改 `RuntimeComponent`）
+- [ ] G6：零终端安装 ONNX + `files_required` 校验
+
+**P2b（catalog + UI）**
+
 - [ ] catalog 含 `qwen3-asr-vad-0.6b`
-- [ ] 环境页下载 ONNX 后 `ready_for_transcribe`
-- [ ] ACC-EVAL-2 报告含 sherpa 列
+- [ ] 环境页下载 ONNX 后 Sherpa ready（E1–E3）
+- [ ] ACC-EVAL-2 报告含 sherpa 列（双列）
+
+**P2c（async，可选）**
+
+- [ ] `r3s-sherpa-async-transcribe-design.md` 定稿后再编码
+- [ ] 或书面 Defer：Sherpa 仅 blocking
 
 ### Phase 3（默认）
 
@@ -79,8 +96,14 @@ Sherpa-ONNX Qwen3-0.6B + Silero VAD 成为 **本机转写默认引擎**；FunASR
 
 ## 引用 spike 产物
 
-- `docs/execution/spike-output/qwen3-sherpa-retest-2026-06-11/quant-compare-qwen3-0.6b-vad-1250s.json`
-- `docs/execution/spike-output/qwen3-sherpa-retest-2026-06-11/sherpa-vad-1250s-segments.md`
+| 产物 | 用途 |
+|------|------|
+| `spike-output/qwen3-sherpa-retest-2026-06-11/` | 制控全轨 retest（1250s）、term_hit |
+| `spike-output/qwen3-0.6b-2026-06-11/segment-compare-vad-forced-aligner.md` | **语段抽检主文件**（Sherpa vs FunASR+Aligner） |
+| `spike-output/qwen3-0.6b-2026-06-11/quant-compare-qwen3-0.6b-vad-{30,780}s.json` | 交叉 CER / RTF（**非** G1 裁定） |
+| `fixtures/eval/gold/d3-tang32-zhikong-gaijiang.reference.txt` | **G1** 金标（Rushi 审定后入库） |
+
+**闭卷**：FunASR Qwen3 + ForcedAligner 语段输出 **不** 作为 Go 基线（R3g-B §4.1 No-go）。
 
 ---
 

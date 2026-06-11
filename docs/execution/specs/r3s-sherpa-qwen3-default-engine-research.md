@@ -2,9 +2,10 @@
 
 > **状态**：已采纳（2026-06-11）  
 > **关联路线图**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) §4.1.1 **R3s-A**（新增）  
-> **前置 spike**：R3h-3.5 Partial Go（Paraformer ONNX）· R3g-B-Align Defer（FunASR Qwen）· [`qwen3-sherpa-retest-2026-06-11`](../spike-output/qwen3-sherpa-retest-2026-06-11/)  
+> **前置 spike**：R3h-3.5 Partial Go（Paraformer ONNX）· R3g-B ForcedAligner 对照 [report](./r3g-b-qwen3-sherpa-funasr-compare-report.md) · [`qwen3-sherpa-retest-2026-06-11`](../spike-output/qwen3-sherpa-retest-2026-06-11/) · [`qwen3-0.6b-2026-06-11`](../spike-output/qwen3-0.6b-2026-06-11/)  
 > **关联 spec**：[`r3s-sherpa-qwen3-default-engine-intent.md`](./r3s-sherpa-qwen3-default-engine-intent.md) · [plan](./r3s-sherpa-qwen3-default-engine-plan.md) · [acceptance](./r3s-sherpa-qwen3-default-engine-acceptance.md)  
-> **门禁**：未完成本文 **不得** 改 `run_transcribe_cmd` 默认引擎或 catalog 默认 SKU
+> **门禁**：未完成本文 **不得** 改 `run_transcribe_cmd` 默认引擎或 catalog 默认 SKU  
+> **执行模式（2026-06-11）**：**Defer** — [plan §Defer](./r3s-sherpa-qwen3-default-engine-plan.md)；G1 前 **不** 开 Phase 1–3 产品编码
 
 ---
 
@@ -24,7 +25,7 @@
 | # | 路线 | 代表 | 机制 | 与 Rushi |
 |---|------|------|------|----------|
 | **A** | **Sherpa-ONNX 内嵌 Rust** | k2-fsa/sherpa-onnx v1.12.34+ Qwen3 offline | `OfflineQwen3ASR` + Silero VAD；INT8 ONNX；Rust crate 静态链 ORT | **选定** — spike 已证 制控 RTFx ~7.7、270 段 |
-| **B** | **FunASR 侧车 + PyTorch Qwen3** | FunASR AutoModel + qwen-asr + ForcedAligner | HTTP 8741；双模型 CPU 慢；Aligner 字级轴 | **现实验轨 Defer** — 不作默认 |
+| **B** | **FunASR 侧车 + PyTorch Qwen3** | FunASR AutoModel + qwen-asr + ForcedAligner | HTTP 8741；双模型 CPU 慢；Aligner 语段塌缩（R3g-B） | **闭卷 No-go** — 不作默认、不进 G1–G4 |
 | **C** | **FunASR 侧车 + Paraformer** | 当前 v1 默认 | vad+punc+`sentence_info`；~168s/21min | **过渡基线 + 回退轨** — ADR-0006 Partial Go |
 | **D** | **Sherpa Paraformer ONNX** | R3h-3.5 P0 | 轻量但 13min CER ~67% vs FunASR | **不作默认** — 仅 R&D |
 
@@ -105,3 +106,4 @@
 | 日期 | 说明 |
 |------|------|
 | 2026-06-11 | 初版：用户选择「将来默认」Sherpa Qwen3 路线 |
+| 2026-06-11 | R3g-B：ForcedAligner 语段不合格；Sherpa 双 SKU 远期（Qwen → Paraformer on Sherpa） |

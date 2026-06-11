@@ -13,7 +13,7 @@ related: ["0003", "0006"]
 
 - [ADR-0003](./0003-asr-engine-funasr-first-sherpa-spike-gate.md) 锁定 **FunASR + LRC 先行**；附录 A 预期 Sherpa **轻量候选**，默认仍 Paraformer。
 - [ADR-0006](./0006-sherpa-onnx-paraformer-spike-evaluation.md)：**Sherpa Paraformer** Partial Go — **不能**替长音频主路径。
-- **2026-06-11 spike**：**Sherpa Qwen3-0.6B + Silero VAD** 在制控全轨 **162s / 270 段 / RTFx ~7.7 / term_hit 1.0**；FunASR Qwen+Aligner **Defer**（1338s、Aligner 轴差）。
+- **2026-06-11 spike**：**Sherpa Qwen3-0.6B + Silero VAD** 在制控全轨 **162s / 270 段 / RTFx ~7.7 / term_hit 1.0**；R3g-B 780s 对照 **172 可用语段 / RTF ~8×**；FunASR Qwen+ForcedAligner **No-go**（语段塌缩，全文仅同档交叉 CER）。
 - 产品决策：**走将来默认** Sherpa Qwen 路线（非 Paraformer ONNX）。
 
 Research：[r3s-sherpa-qwen3-default-engine-research.md](../execution/specs/r3s-sherpa-qwen3-default-engine-research.md)
@@ -43,7 +43,7 @@ Research：[r3s-sherpa-qwen3-default-engine-research.md](../execution/specs/r3s-
 
 ## 状态
 
-**proposed** — 待 Phase 0 金标 + Phase 1 落地后改 **accepted**（Phase 3 前）。
+**proposed** — 战略方向已采纳；**执行 Defer**（[plan §Defer](../execution/specs/r3s-sherpa-qwen3-default-engine-plan.md)）：G1 + 标点策略 + G4 满足前 **不** 开 Phase 1–3 产品编码。Phase 3 Go 后改 **accepted**。
 
 ## 验证
 
