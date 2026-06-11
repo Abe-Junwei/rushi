@@ -10,7 +10,7 @@
 | 适用节奏 | 单人、每轮 2～4h、一轮一纵向薄片 |
 | 规划跨度 | **个人单机 v1**：约 **14～18 周（自当前）** 或 **18～22 周（自 W1）**；R3 薄片 **~12～15w**（§4.0，含发行 smoke 缓冲）；协作 **非 v1** |
 | 修订 | 每完成一个阶段更新 §2 状态表、§4 排期表与 §13 代码对照 |
-| 最近对照 | **2026-06-11**：**R3s-A** 📋 将来默认 = **Sherpa Qwen3 ONNX**（[research](../specs/r3s-sherpa-qwen3-default-engine-research.md) · [ADR-0007](../../adr/0007-sherpa-qwen3-default-asr-engine.md)）；**R3h-3.5** ✅ Partial Go；**当前薄片**：**R3h-I1** / **R3f** 发行闭环 |
+| 最近对照 | **2026-06-11**：**ASR-WARM** ✅ dev 签收；**R3s-A** 📋 Defer；**当前薄片**：**R3h-I1 I1a 编码签收** · **R3f** 发行闭环 |
 
 ### 状态标记约定（全文档统一）
 
@@ -354,7 +354,7 @@ R4 + R4-GATE ✅ → R9   ← **下一主序**
 | **⑦½** | **ASR-WARM** | 📋 | 0.5–1w | 侧车保活、模型预热；**R3h-I4** | personal-solo §3.1 |
 | **⑧** | **R3h-3** + **R3d** | ✅ **2026-06-10** | 3–5d | 本机 ASR / 在线 STT / LLM 三盏灯；五栏 IA | [`r3h-3-environment-readiness-acceptance.md`](../specs/r3h-3-environment-readiness-acceptance.md) |
 | **⑧½** | **R3h-3.5** | ✅ **Partial Go** | ~1w | Sherpa Paraformer Spike；v1 仍 FunASR 主路径 | [`r3h-3.5-sherpa-spike-acceptance.md`](../specs/r3h-3.5-sherpa-spike-acceptance.md) · [ADR-0006](../../adr/0006-sherpa-onnx-paraformer-spike-evaluation.md) |
-| **R3s-A** | **Sherpa Qwen3 默认引擎** | 📋 **research ✅** | ~4–6w phased | 目标默认 = Qwen3 ONNX + VAD；FunASR 回退；**不**改 catalog 直至 Phase 3 Go | [research](../specs/r3s-sherpa-qwen3-default-engine-research.md) · [plan](../specs/r3s-sherpa-qwen3-default-engine-plan.md) · [ADR-0007](../../adr/0007-sherpa-qwen3-default-asr-engine.md) |
+| **R3s-A** | **Sherpa Qwen3 默认引擎** | 📋 **Defer**（research ✅） | ~4–6w phased（**G1 前不编码**） | 战略方向 = Qwen3 ONNX；**现默认仍 Paraformer**；薄预留 spike/eval/LRC schema；升级见 [plan §Defer](../specs/r3s-sherpa-qwen3-default-engine-plan.md) | [research](../specs/r3s-sherpa-qwen3-default-engine-research.md) · [plan](../specs/r3s-sherpa-qwen3-default-engine-plan.md) · [ADR-0007](../../adr/0007-sherpa-qwen3-default-asr-engine.md) |
 | **⑤″c** | **R3t-C** | ✅ | 1–1.5w | 扩展 R2 标点（邻段上下文可选）；**可选/显式触发** | 同上 §4；[`r3t-c-hand-test-checklist.md`](../specs/r3t-c-hand-test-checklist.md) 2026-05-30 签收 |
 | **⑤″d** | **R3t-D** | ✅ **2026-05-31** | 1.5–2w | `postprocess_refine_segments` + 段界整理 UI | [`r3t-d-hand-test-checklist.md`](../specs/r3t-d-hand-test-checklist.md) |
 | **⑤″e** | **R3t-E** | 🔄 编码✅ 手测⏳ | 1.5–2w | LexiconPack 有据校对；**无 RAG**；**无** R3t-E3 项目级词表 v1 | [`r3t-e-lexicon-proofread-research.md`](../specs/r3t-e-lexicon-proofread-research.md) · [`lexicon-guided-llm-refine.md`](../../architecture/lexicon-guided-llm-refine.md) |
@@ -1013,28 +1013,56 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 
 | 项 | 内容 |
 |----|------|
-| **定位** | **v1 已闭合** → **v1 后本机 LLM**（§1.6、§6） |
-| **阶段** | **LLM-LOC-4a** ✅ · **4b** ❌ Gate-B No-Go（[decision](../specs/llm-loc-gate-b-decision-2026-06.md) 2026-06-04） |
-| **工作区尾项** | **TRN-DIAG** ✅ — [`trn-diag-acceptance.md`](../specs/trn-diag-acceptance.md)；**下一刀**：**ASR-WARM** |
-| **刚闭合** | **R3e-A** · **R3f mac** · **Project Hub Phase 10** · **R3h-0 mac** · R9 · R4 |
-| **Spike 真源** | [research](../specs/llm-loc-spike-research.md) · [plan](../specs/llm-loc-spike-plan.md) · [acceptance](../specs/llm-loc-spike-acceptance.md) · [backlog §9](../specs/llm-local-runtime-backlog.md) |
-| **预检** | `bash scripts/llm-loc-spike-preflight.sh` |
-| **近期不做** | **LLM-LOC-4b**（LRC 自管）、**CAT-TRAN**、**R6–R8** |
-| **ASR 引擎路线** | **方案 A 已锁定** — FunASR + LRC 先行；Sherpa **R3h-3.5 Spike → 轻量模式候选**（非完全替代，[ADR-0003](../../adr/0003-asr-engine-funasr-first-sherpa-spike-gate.md) 附录 A） |
-| **不要** | Gate-B 未过即立项 **4b** / 改 llm-runtime catalog |
+| **定位** | **v1 已闭合** → **v1 后硬化 + 改稿效率**（R3h-I、ASR-WARM、⑤″f 手测尾项） |
+| **LLM** | **4a** ✅ · **4b** ❌ Gate-B No-Go（[decision](../specs/llm-loc-gate-b-decision-2026-06.md)） |
+| **当前薄片** | **R3h-I1 I1a 编码签收** · 并行 **R3f / ⑤″f 尾项**（Step 1–2 ✅） |
+| **刚闭合** | **TRN-DIAG** ✅ · **R3h-2/3** ✅ · **R3f mac** ✅ · R9 · R4 |
+| **近期不做** | **LLM-LOC-4b**、**CAT-TRAN**、**R6–R8**、**R3s-A 产品编码**（Defer） |
+
+### 下一刀（两步，须按序）
+
+```text
+Step 1  R3h-I1  Runtime Supervisor FSM 设计冻结          ✅ 2026-06-11
+        └─ spec：r3h-i1-runtime-supervisor-fsm-{research,plan,acceptance}.md
+        └─ 出口：九态 FSM + SupervisorSnapshot + watchdog 契约
+
+Step 2  ASR-WARM  侧车保活 + 模型预热                    ✅ dev 签收 2026-06-11
+        └─ 规格：asr-warm-acceptance.md（R3h-I4）
+        └─ 前置：Step 1 ✅ + R3t-B ✅
+        └─ 预估：0.5–1w；实现须挂接 supervisor FSM（plan §7 I1a 可与 WARM 合并）
+```
+
+| 步 | ID | 状态 | 验收真源 |
+|----|-----|------|----------|
+| **1** | **R3h-I1** | ✅ **设计冻结** | [`r3h-i1-runtime-supervisor-fsm-acceptance.md`](../specs/r3h-i1-runtime-supervisor-fsm-acceptance.md) |
+| **2** | **ASR-WARM** | ✅ **dev 签收**（release idle 补测） | [`asr-warm-acceptance.md`](../specs/asr-warm-acceptance.md) · [handtest](../specs/asr-warm-handtest-signoff-2026-06-11.md) |
+
+### 并行（不挡 Step 1–2）
+
+| ID | 说明 | 条件 |
+|----|------|------|
+| **R3f Win** | 零终端安装包手测 | 有 Win 机；补 R3h-0 §4 |
+| **R3h-1-R CI** | manifest 发行流水线 | R1+R2 ✅；CI ⏳ |
+| **R3t-E** | 词表校对手测签收 | 编码✅；穿插 2–4h 轮 |
+| **⑤″f F2/F1/F6** | Cmd+F / 全文规则 / 记忆提示 | 🟡 已编码；手测待签 |
+| **R3s-A Phase 0** | 金标 + spike eval（**非编码**） | [plan §Defer](../specs/r3s-sherpa-qwen3-default-engine-plan.md) |
+
+### ASR 引擎路线（2026-06-11）
+
+- **产品默认**：FunASR Paraformer + LRC（ADR-0003 方案 A）
+- **R3h-3.5**：Sherpa Paraformer Spike ✅ Partial Go（轻量候选，非主路径替代）
+- **R3s-A**：Sherpa Qwen3 **📋 Defer** — 战略方向 [ADR-0007](../../adr/0007-sherpa-qwen3-default-asr-engine.md)；**G1 前不编码**
 
 ### v1 0.1.0 已可分发（2026-06-03）
 
-- **DMG**：仓库根 `如是我闻_0.1.0_aarch64.dmg`（`npm run desktop:build-dmg` 自动 staging；源路径 `apps/desktop/src-tauri/target/release/bundle/dmg/`）
+- **DMG**：`npm run desktop:build-dmg` → `apps/desktop/src-tauri/target/release/bundle/dmg/`
 - **签收**：[v1-release-installed-signoff](../v1-release-installed-signoff-2026-06.md)
 
-**主序（E 期）**：**EXP-WORD** ✅ → **REV-LOC** ✅ → **R4** ✅ → **R9** ✅ → **LLM-LOC-SPIKE** ✅ → **4a** ✅
+**主序（E 期）**：EXP-WORD ✅ → REV-LOC ✅ → R4 ✅ → R9 ✅ → LLM-LOC 4a ✅
 
-**LLM**：Spike ✅ · **4a Ollama** ✅（[acceptance](../specs/llm-loc-4a-acceptance.md)）；G-A1 人工可选；**4b 未立项**。
+**R3 尾序**：… → R3e-A ✅ → TRN-DIAG ✅ → **I1 设计** → **ASR-WARM**
 
-**并行（不挡主序）**：见 [parallel-backlog-2026-06.md](../specs/parallel-backlog-2026-06.md) — **R3h-2**、ASR-WARM；Win §4 backlog
-
-**⑤″f 主序**：**⑤″f-B** ✅ → … → **R3h-0 mac** ✅ → **R3f mac** ✅ → **R3e-A** ✅ → **TRN-DIAG** ✅ → **ASR-WARM**（下一刀）
+**并行索引**：[parallel-backlog-2026-06.md](../specs/parallel-backlog-2026-06.md)
 
 ---
 
@@ -1138,6 +1166,8 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | 2026-06-03 | **v1 0.1.0 + R9** ✅；§10 **下一主序 → LLM-LOC-SPIKE**（research/plan/acceptance + preflight；Gate 前无 4a） |
 | 2026-06-03 | **工程拍板**：**Q-CSP-1** v1.1 硬化；**Q-SYMPH-1** 不裁 symphonia；**Q-STT-CANCEL-1** v1.1 真取消；**Q-PLUGIN-1** v1.1 权限；**Q-SIDECAR-1** L1+C2 Mac 自用 |
 | 2026-06-04 | **行动方案落地**：⑤″f-A 机器闸门 `scripts/r3-5f-a-machine-gate.sh`；**Gate-B No-Go 4b**；[parallel-backlog](../specs/parallel-backlog-2026-06.md)；§10 工作区尾项（R3t-E+F2 UI 手测） |
+| 2026-06-11 | **R3s-A Defer**（G1 前不编码）；§10 重写为 **R3h-I1 设计 → ASR-WARM** 两步 + 并行尾项表 |
+| 2026-06-11 | **R3h-I1** Supervisor FSM 设计冻结 — [plan](../specs/r3h-i1-runtime-supervisor-fsm-plan.md)；§10 Step 2 → ASR-WARM |
 
 ---
 

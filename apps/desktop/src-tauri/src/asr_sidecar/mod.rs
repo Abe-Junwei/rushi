@@ -14,6 +14,8 @@ pub(crate) mod local_token;
 pub mod loopback;
 mod probe;
 pub(crate) mod source;
+pub mod supervisor;
+pub mod warm;
 
 #[cfg(test)]
 mod tests;
@@ -22,6 +24,7 @@ pub use bundled::{
     force_restart_bundled, stop_bundled, try_start_bundled, BundledAsrLaunchReport,
     BundledAsrLaunchState,
 };
+pub use supervisor::{AsrSupervisorState, SupervisorSnapshot};
 pub use candidates::bundled_sidecar_resources_present;
 pub use source::restart_source_asr_sidecar;
 

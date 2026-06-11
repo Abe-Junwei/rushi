@@ -16,12 +16,54 @@ export interface AsrSetupHealthSnapshot {
 
 export type AsrSetupSidecarIntegrity = "ok" | "corrupt" | "unknown" | "not_installed";
 
+export type AsrSupervisorPhase =
+  | "idle"
+  | "unmanaged"
+  | "probing"
+  | "stopping"
+  | "spawning"
+  | "warming"
+  | "ready"
+  | "degraded"
+  | "stopped";
+
+export interface AsrSupervisorSnapshot {
+  runtimeSessionId: string;
+  launchGeneration: number;
+  phase: AsrSupervisorPhase;
+  executableSource: string;
+  managedChildPid?: number | null;
+  loopbackPort: number;
+  portStatus?: string | null;
+  healthFresh: boolean;
+  localTokenManaged: boolean;
+  lastTransitionMs: number;
+  lastErrorCode?: string | null;
+  activeExecutable?: string | null;
+  warmupCompleted: boolean;
+  lastActivityMs: number;
+}
+
+export const DEFAULT_ASR_SUPERVISOR_SNAPSHOT: AsrSupervisorSnapshot = {
+  runtimeSessionId: "test-session",
+  launchGeneration: 0,
+  phase: "idle",
+  executableSource: "none",
+  loopbackPort: 8741,
+  healthFresh: false,
+  localTokenManaged: false,
+  lastTransitionMs: 0,
+  warmupCompleted: false,
+  lastActivityMs: 0,
+};
+
 export interface AsrSetupReport {
   portStatus: AsrSetupPortStatus;
   portDetail?: string | null;
   bundledAvailable: boolean;
   sidecarIntegrity: AsrSetupSidecarIntegrity;
   bundledLaunch: BundledAsrLaunchReport;
+  supervisor: AsrSupervisorSnapshot;
   health: AsrSetupHealthSnapshot;
   modelsRoot: string;
   diskFreeBytes?: number | null;

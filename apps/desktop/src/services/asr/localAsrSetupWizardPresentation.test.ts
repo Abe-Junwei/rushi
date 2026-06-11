@@ -6,6 +6,7 @@ import {
   computeRuntimeDownloadProgress,
 } from "./localAsrSetupWizardPresentation";
 import type { LocalRuntimeDiagnose } from "../localRuntime/localRuntimeContract";
+import { DEFAULT_ASR_SUPERVISOR_SNAPSHOT } from "./asrSetupContract";
 
 function makeDiag(overrides: Partial<LocalRuntimeDiagnose> = {}): LocalRuntimeDiagnose {
   return {
@@ -48,6 +49,7 @@ describe("localAsrSetupWizardPresentation", () => {
         bundledAvailable: true,
         sidecarIntegrity: "ok",
         bundledLaunch: { attempted: false, success: false },
+        supervisor: { ...DEFAULT_ASR_SUPERVISOR_SNAPSHOT },
         health: {
           healthReachable: true,
           ffmpegOk: true,

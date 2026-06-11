@@ -1,6 +1,9 @@
 import { renderHook } from "@testing-library/react";
 import { vi } from "vitest";
-import type { AsrSetupReport } from "../services/asr/asrSetupContract";
+import {
+  DEFAULT_ASR_SUPERVISOR_SNAPSHOT,
+  type AsrSetupReport,
+} from "../services/asr/asrSetupContract";
 import type { LocalRuntimeDiagnose } from "../services/localRuntime/localRuntimeContract";
 import { useAsrSetupController } from "./useAsrSetupController";
 
@@ -69,6 +72,7 @@ export function makeReport(overrides: Partial<AsrSetupReport> = {}): AsrSetupRep
     bundledAvailable: true,
     sidecarIntegrity: "ok",
     bundledLaunch: { attempted: false, success: false },
+    supervisor: { ...DEFAULT_ASR_SUPERVISOR_SNAPSHOT },
     health: {
       healthReachable: true,
       ffmpegOk: true,

@@ -3,6 +3,7 @@ pub const APP_COMMANDS: &[&str] = &[
     "app_version",
     "asr_setup_diagnose",
     "bundled_asr_launch_report",
+    "asr_supervisor_snapshot",
     "local_runtime_diagnose",
     "local_runtime_download_sidecar",
     "local_runtime_cancel_download",

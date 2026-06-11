@@ -52,9 +52,13 @@ function onTranscribeStatusTick(
   const progress = parseTranscribeProgress(st);
   callbacks.setTranscribeProgress(progress);
   const jobId = refs.activeJobId.current;
-  if (progress && jobId && jobId !== TRANSCRIBE_PENDING_JOB_ID) {
+  if (jobId && jobId !== TRANSCRIBE_PENDING_JOB_ID) {
     void p1
-      .recordTranscribeTimelinePollProgress(jobId, progress.windowIndex, progress.windowCount)
+      .recordTranscribeTimelinePollProgress(
+        jobId,
+        progress?.windowIndex ?? 0,
+        progress?.windowCount ?? 0,
+      )
       .catch(() => null);
   }
 }

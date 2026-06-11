@@ -52,14 +52,19 @@ pub fn run() {
             app.manage(asr_sidecar::BundledAsrLaunchState(std::sync::Mutex::new(
                 asr_sidecar::BundledAsrLaunchReport::default(),
             )));
+            app.manage(asr_sidecar::AsrSupervisorState(std::sync::Mutex::new(
+                asr_sidecar::supervisor::SupervisorSnapshot::new_session(),
+            )));
             app.manage(local_runtime::installer::LocalRuntimeInstallerState::default());
             app.manage(postprocess_cmd::PostprocessCancelState::default());
             let handle = app.handle().clone();
+            let start_handle = handle.clone();
             tauri::async_runtime::spawn(async move {
                 let _ = tauri::async_runtime::spawn_blocking(move || {
-                    asr_sidecar::try_start_bundled(&handle);
+                    asr_sidecar::try_start_bundled(&start_handle);
                 })
                 .await;
+                asr_sidecar::warm::spawn_watchdog(handle);
             });
             Ok(())
         })
@@ -67,6 +72,7 @@ pub fn run() {
             app_version,
             asr_setup::diagnose::asr_setup_diagnose,
             asr_sidecar::bundled::launch::bundled_asr_launch_report,
+            asr_sidecar::supervisor::asr_supervisor_snapshot,
             local_runtime::local_runtime_diagnose,
             local_runtime::installer::commands::local_runtime_download_sidecar,
             local_runtime::installer::commands::local_runtime_cancel_download,

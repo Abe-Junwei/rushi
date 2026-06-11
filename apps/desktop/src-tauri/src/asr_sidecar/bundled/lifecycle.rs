@@ -1,8 +1,9 @@
+use std::path::Path;
 use std::time::Duration;
 
 use tauri::{AppHandle, Manager};
 
-use super::launch::{append_sidecar_log_line, write_launch_report, BundledAsrLaunchReport};
+use super::launch::append_sidecar_log_line;
 use super::port::kill_loopback_listeners_on_port;
 use super::process::{reap_bundled_sidecar_if_exited, spawn_sidecar, wait_health_store_child};
 use crate::asr_sidecar::candidates::bundled_sidecar_candidates_for_launch;
@@ -12,19 +13,33 @@ use crate::asr_sidecar::probe::{
     loopback_local_token_required, loopback_port_accepts_tcp,
 };
 use crate::asr_sidecar::{
-    with_asr_lifecycle, with_bundled_launch, AsrSidecarState, ASR_HEALTH_URL, ASR_LOOPBACK_PORT,
+    supervisor, warm, with_asr_lifecycle, with_bundled_launch, AsrSidecarState, ASR_HEALTH_URL,
+    ASR_LOOPBACK_PORT,
 };
 
 fn try_start_bundled_inner(handle: &AppHandle) {
-    write_launch_report(handle, BundledAsrLaunchReport::default());
+    supervisor::set_phase(handle, supervisor::SupervisorPhase::Probing);
     if std::env::var("RUSHI_SKIP_BUNDLED_ASR").ok().as_deref() == Some("1") {
         append_sidecar_log_line(handle, "INFO bundled_sidecar_skip_env");
+        if bundled_health_looks_like_rushi_asr() && bundled_sidecar_is_fresh_build() {
+            let token_required = loopback_local_token_required();
+            let has_token = resolve_local_token_for_request().is_some();
+            if !token_required || has_token {
+                append_sidecar_log_line(handle, "INFO bundled_sidecar_skip_adopt_healthy");
+                supervisor::note_ready_adopted(handle);
+                warm::spawn_warmup_on_ready(handle);
+                return;
+            }
+            append_sidecar_log_line(handle, "WARN bundled_sidecar_skip_token_mismatch");
+        }
+        supervisor::note_unmanaged(handle);
         return;
     }
     reap_bundled_sidecar_if_exited(handle);
     let candidates = bundled_sidecar_candidates_for_launch(handle);
     if candidates.is_empty() {
         append_sidecar_log_line(handle, "INFO bundled_sidecar_missing");
+        supervisor::note_degraded(handle, "spawn_failed");
         return;
     }
     if loopback_port_accepts_tcp(ASR_LOOPBACK_PORT) && !bundled_health_looks_like_rushi_asr() {
@@ -53,11 +68,14 @@ fn try_start_bundled_inner(handle: &AppHandle) {
                     ASR_HEALTH_URL
                 );
                 append_sidecar_log_line(handle, "INFO bundled_sidecar_already_healthy");
+                supervisor::note_ready_adopted(handle);
+                warm::spawn_warmup_on_ready(handle);
                 return;
             }
         } else {
             append_sidecar_log_line(handle, "INFO bundled_sidecar_stale_refresh");
         }
+        supervisor::set_phase(handle, supervisor::SupervisorPhase::Stopping);
         stop_bundled(handle);
         if let Err(e) = kill_loopback_listeners_on_port(ASR_LOOPBACK_PORT) {
             append_sidecar_log_line(
@@ -69,19 +87,13 @@ fn try_start_bundled_inner(handle: &AppHandle) {
         }
         std::thread::sleep(Duration::from_millis(300));
     }
-    write_launch_report(
-        handle,
-        BundledAsrLaunchReport {
-            attempted: true,
-            success: false,
-            detail: None,
-        },
-    );
+    supervisor::set_phase(handle, supervisor::SupervisorPhase::Spawning);
     for exe in candidates {
         eprintln!(
             "[rushi-asr-sidecar] trying bundled executable: {}",
             exe.display()
         );
+        supervisor::note_warming(handle, &exe);
         let child = match spawn_sidecar(&exe, handle) {
             Ok(c) => c,
             Err(e) => {
@@ -97,14 +109,20 @@ fn try_start_bundled_inner(handle: &AppHandle) {
             }
         };
         if wait_health_store_child(handle, child) {
-            write_launch_report(
+            let app_root = handle
+                .try_state::<crate::DbState>()
+                .map(|st| st.root.clone());
+            let pid = handle.try_state::<AsrSidecarState>().and_then(|st| {
+                let guard = st.0.lock().ok()?;
+                Some(guard.as_ref()?.id())
+            });
+            supervisor::note_ready_spawned(
                 handle,
-                BundledAsrLaunchReport {
-                    attempted: true,
-                    success: true,
-                    detail: None,
-                },
+                &exe,
+                app_root.as_deref().map(Path::new),
+                pid,
             );
+            warm::spawn_warmup_on_ready(handle);
             return;
         }
         eprintln!(
@@ -119,20 +137,7 @@ fn try_start_bundled_inner(handle: &AppHandle) {
             ),
         );
     }
-    let detail = Some(
-        "已尝试启动安装包内的推理侧车，但在等待时间内未收到 /health 成功响应（若同时存在 CUDA 与 CPU 包，可能均已失败）。\
-         请确认本机 8741 端口未被其他 rushi-asr 占用；可设置 RUSHI_SKIP_BUNDLED_ASR=1 后手动启动 ASR，\
-         或使用「导出诊断包」查看更多信息。"
-            .to_string(),
-    );
-    write_launch_report(
-        handle,
-        BundledAsrLaunchReport {
-            attempted: true,
-            success: false,
-            detail,
-        },
-    );
+    supervisor::note_degraded(handle, "health_timeout");
     eprintln!(
         "[rushi-asr-sidecar] bundled ASR did not become healthy. \
          Set RUSHI_SKIP_BUNDLED_ASR=1 to skip, RUSHI_FORCE_BUNDLED_ASR_CPU=1 to avoid CUDA bundle, \
@@ -148,8 +153,10 @@ pub fn try_start_bundled(handle: &AppHandle) {
 }
 
 pub fn stop_bundled(handle: &AppHandle) {
+    supervisor::set_phase(handle, supervisor::SupervisorPhase::Stopping);
     let Some(s) = handle.try_state::<AsrSidecarState>() else {
         clear_managed_local_token();
+        supervisor::set_phase(handle, supervisor::SupervisorPhase::Stopped);
         return;
     };
     let Ok(mut g) = s.0.lock() else {
@@ -161,6 +168,7 @@ pub fn stop_bundled(handle: &AppHandle) {
         let _ = c.wait();
     }
     clear_managed_local_token();
+    supervisor::set_phase(handle, supervisor::SupervisorPhase::Stopped);
 }
 
 /// Stop managed child and any stale listener on :8741, then start bundled sidecar again.
@@ -173,6 +181,7 @@ fn force_restart_bundled_inner(handle: &AppHandle) {
         append_sidecar_log_line(handle, "INFO bundled_sidecar_skip_env_restart");
         return;
     }
+    supervisor::note_force_restart(handle);
     with_asr_lifecycle(|| {
         stop_bundled(handle);
         if loopback_port_accepts_tcp(ASR_LOOPBACK_PORT) {

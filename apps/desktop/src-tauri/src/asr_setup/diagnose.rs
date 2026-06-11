@@ -1,5 +1,6 @@
 use crate::asr_sidecar::{
-    probe_asr_port, AsrPortStatus, BundledAsrLaunchReport, BundledAsrLaunchState,
+    probe_asr_port, AsrPortStatus, AsrSupervisorState, BundledAsrLaunchReport,
+    BundledAsrLaunchState, SupervisorSnapshot,
 };
 use crate::packaged_hints::dev_or_packaged_str;
 use crate::local_runtime::disk_free_bytes;
@@ -36,6 +37,7 @@ pub struct AsrSetupReport {
     /// `ok` | `corrupt` | `unknown` | `not_installed`
     pub sidecar_integrity: String,
     pub bundled_launch: BundledAsrLaunchReport,
+    pub supervisor: SupervisorSnapshot,
     pub health: AsrSetupHealthSnapshot,
     pub models_root: String,
     #[serde(skip_serializing_if = "Option::is_none")]
@@ -327,6 +329,11 @@ pub async fn asr_setup_diagnose(
         .try_state::<BundledAsrLaunchState>()
         .map(|s| s.0.lock().map(|g| g.clone()).unwrap_or_default())
         .unwrap_or_default();
+    let mut supervisor = app
+        .try_state::<AsrSupervisorState>()
+        .and_then(|s| s.0.lock().ok().map(|g| g.clone()))
+        .unwrap_or_else(SupervisorSnapshot::new_session);
+    supervisor.port_status = Some(port.status.clone());
     let local_runtime_info = inspect_installed_runtime(&st.root);
 
     let health_fetch = fetch_rushi_health().await;
@@ -376,6 +383,7 @@ pub async fn asr_setup_diagnose(
         bundled_available,
         sidecar_integrity,
         bundled_launch,
+        supervisor,
         health,
         models_root: models_root_str,
         disk_free_bytes,

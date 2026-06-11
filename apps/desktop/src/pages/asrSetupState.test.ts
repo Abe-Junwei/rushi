@@ -1,6 +1,9 @@
 import { describe, expect, it } from "vitest";
 import { outcomeFromReport } from "./asrSetupState";
-import type { AsrSetupReport } from "../services/asr/asrSetupContract";
+import {
+  DEFAULT_ASR_SUPERVISOR_SNAPSHOT,
+  type AsrSetupReport,
+} from "../services/asr/asrSetupContract";
 
 function makeReport(overrides: Partial<AsrSetupReport> = {}): AsrSetupReport {
   return {
@@ -8,6 +11,7 @@ function makeReport(overrides: Partial<AsrSetupReport> = {}): AsrSetupReport {
     bundledAvailable: true,
     sidecarIntegrity: "ok",
     bundledLaunch: { attempted: false, success: false },
+    supervisor: { ...DEFAULT_ASR_SUPERVISOR_SNAPSHOT },
     health: {
       healthReachable: false,
       ffmpegOk: false,

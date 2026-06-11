@@ -33,6 +33,14 @@ use std::path::Path;
 use std::time::Duration;
 use tauri::State;
 
+struct TranscribeInFlightGuard;
+
+impl Drop for TranscribeInFlightGuard {
+    fn drop(&mut self) {
+        crate::asr_sidecar::warm::dec_transcribe_in_flight();
+    }
+}
+
 fn record_transcribe_err(tl: &mut TranscribeTimelineRecorder, err: String) -> String {
     if tl.snapshot().outcome != "failed" {
         let stage = infer_failed_stage_from_message(&err);
@@ -91,22 +99,36 @@ pub async fn project_transcribe_async_start(
         .unwrap_or_else(|| "http://127.0.0.1:8741".to_string())
         .trim_end_matches('/')
         .to_string();
+    crate::asr_sidecar::warm::inc_transcribe_in_flight();
     if let Err(e) = assert_local_asr_ready_for_transcribe(&st, &base).await {
+        crate::asr_sidecar::warm::dec_transcribe_in_flight();
         record_transcribe_err(&mut tl, e.clone());
         let _ = tl.persist(&st);
         return Err(e);
     }
     let timeout = local_transcribe_timeout_duration(audio_duration_sec);
     append_desktop_log_line(&st, "INFO transcribe_async_start");
-    let v =
-        post_transcribe_async_multipart(&st, &base, audio_path, hotwords, timeout, Some(&mut tl))
-            .await
-            .inspect_err(|_| {
-                let _ = tl.persist(&st);
-            })?;
+    let v = match post_transcribe_async_multipart(
+        &st,
+        &base,
+        audio_path,
+        hotwords,
+        timeout,
+        Some(&mut tl),
+    )
+    .await
+    {
+        Ok(v) => v,
+        Err(e) => {
+            crate::asr_sidecar::warm::dec_transcribe_in_flight();
+            let _ = tl.persist(&st);
+            return Err(e);
+        }
+    };
     let job_id = match v.get("job_id").and_then(|x| x.as_str()) {
         Some(id) => id,
         None => {
+            crate::asr_sidecar::warm::dec_transcribe_in_flight();
             record_transcribe_err(&mut tl, "侧车未返回 job_id".to_string());
             let _ = tl.persist(&st);
             return Err("侧车未返回 job_id".to_string());
@@ -128,6 +150,8 @@ pub async fn project_transcribe_async_finalize(
     asr_base_url: Option<String>,
 ) -> Result<RunTranscribeOutcome, String> {
     let st = state.inner().clone();
+    let _in_flight = TranscribeInFlightGuard;
+    crate::asr_sidecar::supervisor::record_activity_global();
     let conn = open_db(&st)?;
     let hotwords_build = build_glossary_hotwords(&conn)?;
     let hotwords_truncated = hotwords_build.preview.truncated;
@@ -243,9 +267,10 @@ pub async fn project_run_transcribe(
     online: Option<OnlineTranscribeBridge>,
 ) -> Result<RunTranscribeOutcome, String> {
     let st = state.inner().clone();
+    crate::asr_sidecar::warm::inc_transcribe_in_flight();
     let source = if online.is_some() { "online" } else { "local" };
     let mut tl = TranscribeTimelineRecorder::new(&file_id, source);
-    match project_run_transcribe_inner(st.clone(), file_id, asr_base_url, online, &mut tl).await {
+    let out = match project_run_transcribe_inner(st.clone(), file_id, asr_base_url, online, &mut tl).await {
         Ok(mut out) => {
             tl.finish_success(&out.warnings);
             let snap = tl.snapshot();
@@ -260,7 +285,9 @@ pub async fn project_run_transcribe(
             let _ = tl.persist(&st);
             Err(e)
         }
-    }
+    };
+    crate::asr_sidecar::warm::dec_transcribe_in_flight();
+    out
 }
 
 #[tauri::command]
@@ -277,6 +304,7 @@ pub fn record_transcribe_timeline_poll_progress(
     window_index: u32,
     window_count: u32,
 ) -> Result<(), String> {
+    crate::asr_sidecar::supervisor::record_activity_global();
     update_active_timeline_progress(state.inner(), &job_id, window_index, window_count)
 }
 
@@ -395,6 +423,7 @@ async fn project_run_transcribe_inner(
         };
         (v, vocabulary_pre_warnings)
     } else {
+        crate::asr_sidecar::supervisor::record_activity_global();
         let vocabulary_pre_warnings = vocabulary_support_warnings(
             SttVocabularyChannel::LocalFunasrMultipart,
             &vocabulary,

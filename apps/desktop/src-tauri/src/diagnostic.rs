@@ -95,9 +95,17 @@ pub fn export_diagnostic_bundle(
         .and_then(|st| st.0.lock().ok().map(|g| g.clone()))
         .unwrap_or_default();
     let asr_port_probe = crate::asr_sidecar::probe_asr_port_sync();
+    let supervisor = app
+        .try_state::<crate::asr_sidecar::AsrSupervisorState>()
+        .and_then(|st| st.0.lock().ok().map(|g| g.clone()))
+        .unwrap_or_else(crate::asr_sidecar::supervisor::SupervisorSnapshot::new_session);
     let asr_setup_note = format!(
-        "hub_model_pref: {}\nbundled_launch_attempted: {}\nbundled_launch_success: {}\nbundled_launch_detail: {}\nasr_port_status: {:?}\nasr_port_detail: {}\n",
+        "hub_model_pref: {}\nruntime_session_id: {}\nsupervisor_phase: {:?}\nlaunch_generation: {}\nwarmup_completed: {}\nbundled_launch_attempted: {}\nbundled_launch_success: {}\nbundled_launch_detail: {}\nasr_port_status: {:?}\nasr_port_detail: {}\n",
         hub_model.as_deref().unwrap_or("(none)"),
+        supervisor.runtime_session_id,
+        supervisor.phase,
+        supervisor.launch_generation,
+        supervisor.warmup_completed,
         bundled_launch.attempted,
         bundled_launch.success,
         bundled_launch.detail.as_deref().unwrap_or("(none)"),

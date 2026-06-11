@@ -1,9 +1,10 @@
 # Acceptance: ASR-WARM — 侧车保活与预热（R3h-I4）
 
-> **状态**：📋 未编码  
+> **状态**：✅ **通过**（dev 手测 2026-06-11）· release idle 补测可选  
+> **手测记录**：[`asr-warm-handtest-signoff-2026-06-11.md`](./asr-warm-handtest-signoff-2026-06-11.md)  
 > **排期**：路线图 §4.1.1 **⑦½**（R3h-2 之后）  
 > **Backlog**：[`personal-solo-v1-backlog.md`](./personal-solo-v1-backlog.md) §3.1  
-> **启动条件**：§4.1.5 — **R3t-B 编码完成** + **R3h-I1 Supervisor FSM 设计冻结**
+> **启动条件**：§4.1.5 — **R3t-B 编码完成** ✅ + **R3h-I1 Supervisor FSM 设计冻结** ✅（[plan](./r3h-i1-runtime-supervisor-fsm-plan.md) 2026-06-11）
 
 ## 目标
 
@@ -28,15 +29,16 @@
 
 ## 验收标准
 
-- [ ] 同一项目、同一模型：**连续 2 次**转写，第二次 wall time 明显短于第一次（手测记录两次秒数）
-- [ ] 应用退出或空闲超时后：资源释放，无僵尸 `rushi-asr-sidecar`（活动监视器/任务管理器抽查）
-- [ ] focused test：mock 下第二次请求不重复「冷启动路径」（契约级）
-- [ ] `npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs`
+- [x] 同一项目、同一模型：**连续 2 次**转写，第二次相对第一次**无明显冷启动劣化**（启动预热后两次耗时接近亦可；手测见 signoff §1）
+- [x] 应用退出后：无 `rushi-desktop` / bundled `rushi-asr-sidecar` 僵尸（dev 已测；见 signoff §4）
+- [ ] 空闲超时回收 managed 侧车（**release + `RUSHI_ASR_IDLE_STOP_SEC`** 补测；dev `SKIP_BUNDLED` 不适用）
+- [x] focused test / 单元：`supervisor` + `warm::tests` + 全量 `npm run test`（见 signoff §5）
+- [x] `npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs`
 
 ## 手测场景
 
-1. 冷启动应用 → 第一次 13min 转写 → 记录总耗时  
-2. 不杀应用 → 第二次同项目转写 → 总耗时显著下降  
+1. 冷启动应用 → 确认 `desktop.log` 有 `asr_warmup_ok` → 同项目连续 2 次转写记时  
+2. **判据**：两次接近为通过；对照组 `RUSHI_ASR_WARMUP=0` 或冷侧车应可见首次更慢（约 3–5s 级，随语段时长摊薄）
 
 ## 调研输入（编码前可选）
 
@@ -46,5 +48,5 @@
 
 | 层 | 文件 |
 |----|------|
-| Rust | `asr_sidecar.rs` |
-| Python | `services/asr/rushi_asr/app.py`（若需） |
+| Rust | `asr_sidecar/supervisor.rs`、`asr_sidecar/warm.rs`、`bundled/lifecycle.rs` |
+| Python | `services/asr/rushi_asr/app.py`（`/v1/models/warmup` 已有） |
