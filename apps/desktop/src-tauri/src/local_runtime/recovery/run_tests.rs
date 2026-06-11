@@ -1,6 +1,8 @@
 //! C-class auto rollback integration tests (revalidate path).
 
+#[cfg(unix)]
 use super::run::{run_revalidate, RevalidateOutcome};
+#[cfg(unix)]
 use crate::local_runtime::integrity::{read_marker, version_dir, write_marker_with_previous};
 use std::path::{Path, PathBuf};
 use std::sync::atomic::AtomicBool;

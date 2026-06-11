@@ -110,6 +110,7 @@ fn run_warmup_once(handle: &AppHandle) {
             supervisor::note_warmup_done(handle);
         }
         Err(e) => {
+            supervisor::note_error(handle, "asr_warmup_failed");
             super::bundled::launch::append_sidecar_log_line(
                 handle,
                 &format!("WARN asr_warmup_failed {e}"),
@@ -134,6 +135,8 @@ pub fn spawn_warmup_on_ready(handle: &AppHandle) {
     });
 }
 
+/// Reserved for transcribe paths that hold an `AppHandle` (today uses `record_activity_global`).
+#[allow(dead_code)]
 pub fn record_transcribe_activity(handle: &AppHandle) {
     supervisor::record_activity(handle);
     touch_global_activity_ms();

@@ -14,7 +14,7 @@ fn trim_non_empty(raw: &str) -> Option<String> {
 }
 
 pub(crate) fn default_manifest_source() -> Option<String> {
-    DEFAULT_MANIFEST_URL.and_then(|url| trim_non_empty(url))
+    DEFAULT_MANIFEST_URL.and_then(trim_non_empty)
 }
 
 /// Runtime env overrides compile-time default.
@@ -54,7 +54,10 @@ mod tests {
     fn runtime_env_overrides_compile_time_default() {
         let _guard = env_test_lock();
         let prior = std::env::var(MANIFEST_URL_ENV).ok();
-        std::env::set_var(MANIFEST_URL_ENV, "https://example.invalid/runtime-manifest.json");
+        std::env::set_var(
+            MANIFEST_URL_ENV,
+            "https://example.invalid/runtime-manifest.json",
+        );
         assert_eq!(
             configured_manifest_source().as_deref(),
             Some("https://example.invalid/runtime-manifest.json")
@@ -67,13 +70,16 @@ mod tests {
 
     #[test]
     fn default_manifest_source_matches_compile_time_option() {
-        assert_eq!(default_manifest_source(), super::DEFAULT_MANIFEST_URL.and_then(|url| {
-            let trimmed = url.trim();
-            if trimmed.is_empty() {
-                None
-            } else {
-                Some(trimmed.to_string())
-            }
-        }));
+        assert_eq!(
+            default_manifest_source(),
+            super::DEFAULT_MANIFEST_URL.and_then(|url| {
+                let trimmed = url.trim();
+                if trimmed.is_empty() {
+                    None
+                } else {
+                    Some(trimmed.to_string())
+                }
+            })
+        );
     }
 }
