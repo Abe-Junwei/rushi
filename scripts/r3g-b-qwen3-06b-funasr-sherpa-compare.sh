@@ -307,5 +307,18 @@ print(f"wrote {results_md}")
 print(f"wrote {quant_json}")
 PY
 
+if [[ "$PIPELINE" == "vad" ]]; then
+  DUR_ARGS=()
+  for d in 30 780; do
+    if [[ -f "$OUT_DIR/sherpa-qwen3-vad-${d}s.json" || -f "$OUT_DIR/funasr-qwen3-${d}s.json" ]]; then
+      DUR_ARGS+=("$d")
+    fi
+  done
+  if [[ ${#DUR_ARGS[@]} -gt 0 ]]; then
+    python3 "$ROOT/scripts/r3g-b-qwen3-segment-compare-md.py" "$OUT_DIR" "${DUR_ARGS[@]}"
+    echo "OK: $OUT_DIR/segment-compare-vad-forced-aligner.md"
+  fi
+fi
+
 echo "OK: $RESULTS_MD"
 echo "OK: $QUANT_JSON"
