@@ -49,7 +49,14 @@ function onTranscribeStatusTick(
     segmentsRef.current = merged;
     callbacks.setSegments(merged);
   }
-  callbacks.setTranscribeProgress(parseTranscribeProgress(st));
+  const progress = parseTranscribeProgress(st);
+  callbacks.setTranscribeProgress(progress);
+  const jobId = refs.activeJobId.current;
+  if (progress && jobId && jobId !== TRANSCRIBE_PENDING_JOB_ID) {
+    void p1
+      .recordTranscribeTimelinePollProgress(jobId, progress.windowIndex, progress.windowCount)
+      .catch(() => null);
+  }
 }
 
 function throwIfUserCancelled(refs: LocalTranscribeJobRunRefs): void {
@@ -64,6 +71,18 @@ async function bestEffortCancelSidecarJob(base: string, jobId: string): Promise<
   } catch {
     /* poll loop will surface sidecar errors or timeout */
   }
+}
+
+async function persistPollFailureTimeline(
+  refs: LocalTranscribeJobRunRefs,
+  error: unknown,
+): Promise<void> {
+  const jobId = refs.activeJobId.current;
+  if (!jobId || jobId === TRANSCRIBE_PENDING_JOB_ID || error instanceof TranscribeUserCancelledError) {
+    return;
+  }
+  const message = error instanceof Error ? error.message : String(error);
+  await p1.recordTranscribeTimelinePollFailure(jobId, message).catch(() => null);
 }
 
 export async function runLocalTranscribeJob(
@@ -89,7 +108,10 @@ export async function runLocalTranscribeJob(
     const out = await p1.projectTranscribeAsyncFinalize(fileId, jobId, asrBaseUrl());
     return { out, usedAsyncFallback: false };
   } catch (e) {
-    if (!isTranscribeAsyncUnavailable(e)) throw e;
+    if (!isTranscribeAsyncUnavailable(e)) {
+      await persistPollFailureTimeline(refs, e);
+      throw e;
+    }
     throwIfUserCancelled(refs);
     const out = await p1.projectRunTranscribe(fileId, asrBaseUrl(), null);
     return { out, usedAsyncFallback: true };

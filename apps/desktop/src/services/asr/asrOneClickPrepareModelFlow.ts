@@ -138,6 +138,22 @@ export async function runAsrOneClickPrepareModelFlow(
   }
 
   setSetupSteps((steps) => patchStep(steps, "done", { status: "ok", detail: "本机 ASR 已可用于转写" }));
+
+  const finalSnap = await snapshotSelectedModelPrepare(selection);
+  const finalReport = await refreshSetupDiagnose({ resetSteps: false, touchUi: false });
+  if (
+    !finalSnap.ready ||
+    !finalSnap.sidecarMatchesSelection ||
+    !finalReport?.readyForTranscribe
+  ) {
+    setSetupSteps((steps) =>
+      patchStep(steps, "model", { status: "error", detail: "模型尚未完全就绪" }),
+    );
+    setSetupMessage("模型或侧车尚未完全准备好，请完成模型下载或重试侧车同步。");
+    setSetupOutcome("blocked");
+    return false;
+  }
+
   setSetupMessage("一键准备完成，可直接开始转写。");
   setSetupOutcome("ready");
   await deps.refreshAsrRuntimeInfo();

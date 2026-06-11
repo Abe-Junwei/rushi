@@ -4,6 +4,8 @@ import {
   buildLlmEnvPresentation,
   buildLlmModeToggleTones,
   buildLlmPolishReadiness,
+  LLM_STATUS_REFRESH_BTN_BASE,
+  LLM_STATUS_REFRESH_BTN_CLASS,
   llmPolishActiveMessage,
   llmPolishSourceDetailLabel,
   llmTopStatusShortLabel,
@@ -42,6 +44,16 @@ describe("llmEnvStatus", () => {
   it("readLlmEnvMode returns local after ollama preset", () => {
     activateLocalOllamaPreset();
     expect(readLlmEnvMode()).toBe("local");
+  });
+
+  it("refresh button uses semantic accent for error and idle tones", () => {
+    expect(LLM_STATUS_REFRESH_BTN_BASE).toContain("cursor-pointer");
+    expect(LLM_STATUS_REFRESH_BTN_BASE).toContain("enabled:hover:bg-notion-bg");
+    expect(LLM_STATUS_REFRESH_BTN_CLASS.error).toContain("text-zen-cinnabar");
+    expect(LLM_STATUS_REFRESH_BTN_CLASS.error).toContain("enabled:hover:border-zen-cinnabar-border");
+    expect(LLM_STATUS_REFRESH_BTN_CLASS.idle).toContain("text-zen-saffron");
+    expect(LLM_STATUS_REFRESH_BTN_CLASS.error).not.toContain("text-notion-text-muted");
+    expect(LLM_STATUS_REFRESH_BTN_CLASS.idle).not.toContain("text-notion-text-muted");
   });
 
   it("toneFromOllamaDetect uses hasConfiguredModel when present", () => {
@@ -174,6 +186,21 @@ describe("llmEnvStatus", () => {
     expect(p.bannerDetail).toContain("已验证");
     expect(p.ok).toBe(true);
     expect(p.capabilityBadge).toBe("可用");
+  });
+
+  it("local ollama detect busy shows in-progress banner copy", () => {
+    activateLocalOllamaPreset();
+    const p = buildLlmEnvPresentation({
+      ollamaDetect: {
+        reachable: false,
+        modelCount: 0,
+        hasQwen25_7b: false,
+        message: "未检测到 Ollama 服务",
+      },
+      ollamaDetectBusy: true,
+    });
+    expect(p.bannerTitle).toBe("本机 LLM（Ollama）· 检测中");
+    expect(p.bannerDetail).toBe("正在检测 127.0.0.1:11434…");
   });
 
   it("local ollama tags ready shows F2 service-ready copy and pending capability", () => {

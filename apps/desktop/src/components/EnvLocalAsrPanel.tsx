@@ -26,6 +26,7 @@ type Props = {
   asrCacheMessage: string;
   funasrInstallMessage: string;
   prepareModelBusy: boolean;
+  prepareModelCancelling: boolean;
   prepareModelProgress: number;
   prepareModelFailure: PrepareModelFailureCopy | null;
   busy: boolean;
@@ -53,6 +54,7 @@ export function EnvLocalAsrPanel({
   asrCacheMessage,
   funasrInstallMessage,
   prepareModelBusy,
+  prepareModelCancelling,
   prepareModelProgress,
   prepareModelFailure,
   busy,
@@ -74,6 +76,7 @@ export function EnvLocalAsrPanel({
     catalogStatus: localAsrModelCatalog.catalogStatus,
     selectedHubModelId: localAsrModelCatalog.selectedHubModelId,
     prepareModelBusy,
+    prepareModelCancelling,
     prepareModelProgress,
   });
 
@@ -81,7 +84,6 @@ export function EnvLocalAsrPanel({
     <div className="mx-auto flex w-full max-w-[860px] flex-col gap-7">
       <EnvLocalAsrStatusSection
         presentation={asrPresentation}
-        prepareModelBusy={prepareModelBusy}
         busy={busy}
         refreshAsrHealth={refreshAsrHealth}
       />
@@ -93,6 +95,8 @@ export function EnvLocalAsrPanel({
             setup={asrSetup}
             busy={busy}
             prepareModelBusy={prepareModelBusy}
+            prepareModelCancelling={prepareModelCancelling}
+            transcribeBlockReason={asrPresentation.blockReason}
             openAppDataFolder={openAppDataFolder}
             exportDiagnosticBundle={exportDiagnosticBundle}
             compact
@@ -107,7 +111,9 @@ export function EnvLocalAsrPanel({
           asrCaps={asrCaps}
           catalogPresentation={catalogPresentation}
           prepareModelBusy={prepareModelBusy}
+          prepareModelCancelling={prepareModelCancelling}
           prepareModelFailure={prepareModelFailure}
+          funasrInstallMessage={funasrInstallMessage}
           busy={busy}
           prepareDefaultFunasrModel={prepareDefaultFunasrModel}
           cancelPrepareModel={cancelPrepareModel}
@@ -132,6 +138,8 @@ export function EnvLocalAsrPanel({
           asrCacheMessage={asrCacheMessage}
           funasrInstallMessage={funasrInstallMessage}
           prepareModelBusy={prepareModelBusy}
+          prepareModelCancelling={prepareModelCancelling}
+          transcribeBlockReason={asrPresentation.blockReason}
           busy={busy}
           refreshAsrHealth={refreshAsrHealth}
           copyFunasrManualCommands={copyFunasrManualCommands}

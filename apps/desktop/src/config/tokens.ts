@@ -20,6 +20,10 @@ export const COLORS = {
   successAction: "#2e6153",
   successSurface: "#eff3f1",
   successBorder: "#e2e9e6",
+  saffronSurface: "#f9f3ec",
+  saffronBorder: "#eedcc7",
+  cinnabarSurface: "#f5ebea",
+  cinnabarBorder: "#dab8b7",
   danger: "#963530",
   warning: "#f59e0b",
 

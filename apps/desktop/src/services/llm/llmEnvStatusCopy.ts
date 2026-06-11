@@ -48,8 +48,10 @@ export function bannerTitle(input: {
   ollamaTone: LlmOllamaTone;
   connectionVerified: boolean;
   runtimeReady: boolean;
+  ollamaDetectBusy?: boolean;
 }): string {
   if (input.mode === "local") {
+    if (input.ollamaDetectBusy) return "本机 LLM（Ollama）· 检测中";
     if (input.ollamaTone === "ok" && input.connectionVerified) {
       return "本机 LLM（Ollama）· 连接就绪";
     }

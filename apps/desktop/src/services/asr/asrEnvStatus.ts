@@ -2,6 +2,12 @@ import type { AsrHealthCapabilities } from "../../tauri/projectApi";
 import type { AsrHealthState } from "../../pages/useAsrHealthPoll";
 import { isPackagedDesktopApp } from "../../config/env";
 import {
+  ffmpegBannerDetailDev,
+  ffmpegBannerDetailPackaged,
+  ffmpegBlockReasonDev,
+  ffmpegBlockReasonPackaged,
+  ffmpegMissingDev,
+  ffmpegMissingPackaged,
   modelsPathMismatchDev,
   modelsPathMismatchPackaged,
   packagedOrDev,
@@ -60,6 +66,9 @@ export type BuildAsrEnvPresentationInput = {
   sidecarModelsRoot?: string | null;
   asrModelCacheBytes?: number;
   sidecarAsyncTranscribeCapable?: boolean;
+  prepareModelBusy?: boolean;
+  prepareModelCancelling?: boolean;
+  prepareModelProgress?: number;
 };
 
 /** 顶栏/转写预检：模型就绪且侧车支持 async 路由 */
@@ -120,7 +129,7 @@ function bannerDetailFor(input: {
     return "侧车、FFmpeg 与模型已就绪，可直接转写。";
   }
   if (!input.ffmpegOk) {
-    return "侧车已连接，但未检测到 FFmpeg，无法解码音频。";
+    return packagedOrDev(ffmpegBannerDetailDev, ffmpegBannerDetailPackaged);
   }
   if (!input.runtimeReady) {
     return "FunASR 未就绪，请下载模型或一键准备。";
@@ -154,10 +163,56 @@ function blockReasonFor(input: {
       : "侧车版本过旧（缺少 async 转写）。请在环境页应用并重启侧车，或重建内置侧车。";
   }
   if (input.transcribeReady) return null;
+  if (input.asrCaps.ffmpeg_ok !== true) {
+    return packagedOrDev(ffmpegBlockReasonDev, ffmpegBlockReasonPackaged);
+  }
   if (!input.sidecarMatchesSelection) {
     return "所选模型与侧车不一致：请先「应用并重启侧车」。";
   }
   return "所选模型未就绪：请先下载并完成准备。";
+}
+
+function applyPrepareModelOverlay(
+  presentation: AsrEnvPresentation,
+  input: BuildAsrEnvPresentationInput,
+): AsrEnvPresentation {
+  if (input.prepareModelCancelling) {
+    return {
+      ...presentation,
+      transcribeReady: false,
+      tone: "warn",
+      chipLabel: "ASR 未就绪",
+      chipOk: false,
+      bannerTitle: "本机 ASR · 正在取消下载",
+      bannerDetail: "侧车将在当前文件传完后停止；完成后可重新点「下载当前模型」。",
+      statusRows: presentation.statusRows.map((row) =>
+        row.id === "transcribe" ? { ...row, ok: false, text: "取消中", warn: true } : row,
+      ),
+      blockReason: "模型下载取消中，暂不可转写。",
+    };
+  }
+
+  if (!input.prepareModelBusy) return presentation;
+
+  const progress = input.prepareModelProgress ?? 0;
+  return {
+    ...presentation,
+    transcribeReady: false,
+    tone: "warn",
+    chipLabel: "ASR 未就绪",
+    chipOk: false,
+    bannerTitle: "本机 ASR · 正在下载模型",
+    bannerDetail:
+      progress > 0
+        ? `正在下载转写模型（${progress}%），完成后方可转写。请保持应用开启并联网。`
+        : "正在下载转写模型，完成后方可转写。请保持应用开启并联网。",
+    statusRows: presentation.statusRows.map((row) => {
+      if (row.id === "runtime") return { ...row, ok: false, text: "下载中", warn: true };
+      if (row.id === "transcribe") return { ...row, ok: false, text: "下载中", warn: true };
+      return row;
+    }),
+    blockReason: "所选模型正在下载，完成后方可转写。",
+  };
 }
 
 export function buildAsrEnvPresentation(input: BuildAsrEnvPresentationInput): AsrEnvPresentation {
@@ -211,7 +266,8 @@ export function buildAsrEnvPresentation(input: BuildAsrEnvPresentationInput): As
     },
   ];
 
-  return {
+  return applyPrepareModelOverlay(
+    {
     health: input.asrHealth,
     transcribeReady,
     sidecarMatchesSelection,
@@ -250,9 +306,7 @@ export function buildAsrEnvPresentation(input: BuildAsrEnvPresentationInput): As
     connectedGuidance,
     ffmpegWarning:
       envOk && input.asrCaps && !ffmpegOk
-        ? isPackagedDesktopApp()
-          ? "未检测到 FFmpeg。请在「环境 → 本机 ASR」重试内置侧车或重装应用。"
-          : "未检测到 FFmpeg。请安装 ffmpeg/ffprobe 并加入 PATH 后重启 ASR。"
+        ? packagedOrDev(ffmpegMissingDev, ffmpegMissingPackaged)
         : null,
     cachePathMismatch,
     cachePathMismatchDetail: cachePathMismatch
@@ -262,5 +316,7 @@ export function buildAsrEnvPresentation(input: BuildAsrEnvPresentationInput): As
     modelsOnDiskButSidecarBlindDetail: modelsOnDiskButSidecarBlind
       ? packagedOrDev(modelsPathMismatchDev, modelsPathMismatchPackaged)
       : null,
-  };
+  },
+    input,
+  );
 }

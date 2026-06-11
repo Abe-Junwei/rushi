@@ -284,3 +284,35 @@ fn corrupt_local_runtime_adds_blocking_summary() {
     assert!(lines.iter().any(|l| l.contains("已损坏或不完整")));
     assert!(block.is_some());
 }
+
+#[test]
+fn ffmpeg_missing_adds_repair_blocking_summary() {
+    let health = AsrSetupHealthSnapshot {
+        health_reachable: true,
+        ffmpeg_ok: false,
+        funasr_import_ok: true,
+        funasr_ready: true,
+        funasr_default_model_cached: false,
+        funasr_vad_model_cached: false,
+        funasr_required_models_cached: false,
+        ready_for_transcribe: false,
+        transcription_mode: "funasr".into(),
+    };
+    let (lines, block) = build_summary(SummaryContext {
+        port_status: &AsrPortStatus::RushiAsr,
+        port_detail: &None,
+        bundled_available: true,
+        local_runtime_status: &InstalledRuntimeStatus::Missing,
+        sidecar_integrity: "ok",
+        bundled_launch: &BundledAsrLaunchReport::default(),
+        health: &health,
+        disk_low: false,
+    });
+    assert!(lines.iter().any(|l| l.contains("FFmpeg")));
+    let block = block.expect("ffmpeg missing should block");
+    assert!(block.contains("FFmpeg"));
+    #[cfg(debug_assertions)]
+    assert!(block.contains("PATH"));
+    #[cfg(not(debug_assertions))]
+    assert!(block.contains("一键准备"));
+}

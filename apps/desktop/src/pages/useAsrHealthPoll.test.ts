@@ -6,7 +6,16 @@ vi.mock("../services/asr/loopbackFetch", () => ({
   loopbackFetch: vi.fn(),
 }));
 
+vi.mock("../tauri/projectApi", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../tauri/projectApi")>();
+  return {
+    ...actual,
+    bundledAsrLaunchReport: vi.fn().mockRejectedValue(new Error("no tauri")),
+  };
+});
+
 import { loopbackFetch } from "../services/asr/loopbackFetch";
+import { MIN_VISIBLE_BUSY_MS } from "../services/ui/minVisibleBusy";
 
 const healthPayload = {
   status: "ok",
@@ -57,5 +66,33 @@ describe("useAsrHealthPoll", () => {
     await act(async () => {
       await Promise.all([p1, p2]);
     });
+  });
+
+  it("keeps checking visible for minimum duration when health fails instantly", async () => {
+    vi.useFakeTimers();
+    const catalogHooksRef = {
+      current: {
+        syncFromHealth: vi.fn(),
+        refreshIfNeeded: vi.fn(),
+      },
+    };
+    vi.mocked(loopbackFetch).mockRejectedValue(new Error("connection refused"));
+
+    const { result } = renderHook(() =>
+      useAsrHealthPoll({ tauriRuntime: true, catalogHooksRef }),
+    );
+
+    await act(async () => {
+      const refresh = result.current.refreshAsrHealth({ touchUi: true });
+      await Promise.resolve();
+      expect(result.current.asrHealth).toBe("checking");
+      await vi.advanceTimersByTimeAsync(MIN_VISIBLE_BUSY_MS - 1);
+      expect(result.current.asrHealth).toBe("checking");
+      await vi.advanceTimersByTimeAsync(1);
+      await refresh;
+    });
+
+    expect(result.current.asrHealth).toBe("error");
+    vi.useRealTimers();
   });
 });

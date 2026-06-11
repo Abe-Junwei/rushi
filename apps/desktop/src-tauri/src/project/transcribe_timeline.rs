@@ -111,6 +111,16 @@ impl TranscribeTimelineRecorder {
         }
     }
 
+    /// Windowed sync path: only total is known from warnings, not current index.
+    pub fn set_window_count_only(&mut self, total: u32) {
+        self.window_count = Some(total);
+        if let Some(entry) = self.entries.last_mut() {
+            if entry.stage == STAGE_TRANSCRIBE {
+                entry.segment_total = Some(total);
+            }
+        }
+    }
+
     pub fn begin_stage(&mut self, stage: &str) {
         self.close_open_stage(None);
         self.open_stage = Some(stage.to_string());
@@ -306,6 +316,46 @@ pub fn take_active_timeline(job_id: &str) -> Option<TranscribeTimelineRecorder> 
     }
 }
 
+fn with_active_timeline<F, R>(job_id: &str, f: F) -> Option<R>
+where
+    F: FnOnce(&mut TranscribeTimelineRecorder) -> R,
+{
+    let mut guard = ACTIVE_TIMELINE.lock().ok()?;
+    match guard.as_mut() {
+        Some((id, rec)) if id == job_id => Some(f(rec)),
+        _ => None,
+    }
+}
+
+pub fn update_active_timeline_progress(
+    st: &DbState,
+    job_id: &str,
+    window_index: u32,
+    window_count: u32,
+) -> Result<(), String> {
+    with_active_timeline(job_id, |rec| {
+        rec.set_window_progress(window_index, window_count);
+        rec.persist(st)
+    })
+    .unwrap_or(Ok(()))
+}
+
+pub fn fail_and_persist_active_timeline(
+    st: &DbState,
+    job_id: &str,
+    message: &str,
+) -> Result<(), String> {
+    let Some(mut rec) = take_active_timeline(job_id) else {
+        return Ok(());
+    };
+    if rec.snapshot().outcome != "failed" {
+        let stage = infer_failed_stage_from_message(message);
+        let code = infer_transcribe_error_code(message);
+        rec.fail_stage(stage, code, message);
+    }
+    rec.persist(st)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -335,5 +385,44 @@ mod tests {
     fn suggested_action_preflight() {
         let action = suggested_action_for(Some(STAGE_PREFLIGHT), None);
         assert!(action.unwrap().contains("一键准备"));
+    }
+
+    #[test]
+    fn set_window_count_only_does_not_set_index() {
+        let mut rec = TranscribeTimelineRecorder::new("f1", "local");
+        rec.begin_stage(STAGE_TRANSCRIBE);
+        rec.set_window_count_only(4);
+        let snap = rec.snapshot();
+        assert_eq!(snap.window_count, Some(4));
+        assert_eq!(snap.window_index, None);
+        rec.begin_stage(STAGE_SAVE);
+        let snap = rec.snapshot();
+        let entry = snap
+            .transcribe_timeline
+            .iter()
+            .find(|e| e.stage == STAGE_TRANSCRIBE)
+            .expect("transcribe entry");
+        assert_eq!(entry.segment_total, Some(4));
+        assert_eq!(entry.segment_index, None);
+    }
+
+    #[test]
+    fn diagnostic_export_timeline_json_contract() {
+        let mut rec = TranscribeTimelineRecorder::new("file-abc", "local");
+        rec.set_job_id("job-1");
+        rec.begin_stage(STAGE_PREFLIGHT);
+        rec.begin_stage(STAGE_TRANSCRIBE);
+        rec.set_window_progress(2, 5);
+        rec.fail_stage(STAGE_TRANSCRIBE, "sidecar_timeout", "请求超时");
+        let snap = rec.snapshot();
+        let json = serde_json::to_value(&snap).expect("json");
+        assert_eq!(json.get("schemaVersion").and_then(|v| v.as_u64()), Some(1));
+        assert_eq!(json.get("fileId").and_then(|v| v.as_str()), Some("file-abc"));
+        assert_eq!(json.get("jobId").and_then(|v| v.as_str()), Some("job-1"));
+        assert_eq!(json.get("outcome").and_then(|v| v.as_str()), Some("failed"));
+        let timeline = json.get("transcribe_timeline").expect("transcribe_timeline");
+        assert!(timeline.is_array());
+        assert_eq!(timeline.as_array().unwrap().len(), 2);
+        assert!(json.get("suggestedAction").is_some());
     }
 }

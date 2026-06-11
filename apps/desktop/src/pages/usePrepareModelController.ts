@@ -3,6 +3,7 @@ import { asrBaseUrl } from "../config/env";
 import { loopbackFetch } from "../services/asr/loopbackFetch";
 import { fetchAsrHealthCaps } from "../services/asr/asrHealthSnapshot";
 import { catalogEntryForHub, hubModelNeedsPuncPrepare } from "../services/asr/localAsrModelCatalog";
+import { toast } from "../services/ui/toast";
 import {
   describePrepareModelFailure,
   type PrepareModelFailureCopy,
@@ -16,6 +17,7 @@ export type PrepareDefaultModelOptions = {
 
 export interface PrepareModelApi {
   prepareModelBusy: boolean;
+  prepareModelCancelling: boolean;
   prepareModelProgress: number;
   prepareModelFailure: PrepareModelFailureCopy | null;
   funasrInstallMessage: string;
@@ -31,10 +33,12 @@ export function usePrepareModelController(
 ): PrepareModelApi {
   const [funasrInstallMessage, setFunasrInstallMessage] = useState<string>("");
   const [prepareModelBusy, setPrepareModelBusy] = useState(false);
+  const [prepareModelCancelling, setPrepareModelCancelling] = useState(false);
   const [prepareModelProgress, setPrepareModelProgress] = useState(0);
   const [prepareModelFailure, setPrepareModelFailure] = useState<PrepareModelFailureCopy | null>(null);
 
   const prepareModelAbortRef = useRef<AbortController | null>(null);
+  const prepareCancelRequestedRef = useRef(false);
   const prepareStageRef = useRef({ message: "", startedAt: 0 });
 
   useEffect(() => {
@@ -71,6 +75,8 @@ export function usePrepareModelController(
       setFunasrInstallMessage("");
     }
     setPrepareModelBusy(true);
+    setPrepareModelCancelling(false);
+    prepareCancelRequestedRef.current = false;
     setPrepareModelFailure(null);
     prepareStageRef.current = { message: "", startedAt: Date.now() };
     setPrepareModelProgress(0);
@@ -118,19 +124,23 @@ export function usePrepareModelController(
         const phase = typeof st.phase === "string" ? st.phase : "?";
         const message = typeof st.message === "string" ? st.message : "";
         if (phase === "running") {
-          const serverPercent = parsePrepareProgressPercent(st.progress_percent);
-          if (serverPercent != null) {
-            setPrepareModelProgress(serverPercent);
+          if (prepareCancelRequestedRef.current) {
+            setFunasrInstallMessage("正在取消下载，等待侧车结束当前传输…");
           } else {
-            bumpProgress(message);
+            const serverPercent = parsePrepareProgressPercent(st.progress_percent);
+            if (serverPercent != null) {
+              setPrepareModelProgress(serverPercent);
+            } else {
+              bumpProgress(message);
+            }
+            const stage =
+              message === "downloading_vad"
+                ? "正在下载必需辅助模型（VAD）…"
+                : message === "downloading_punc"
+                  ? "正在下载标点模型（ct-punc）…"
+                  : `正在下载主模型（${modelLabel}）…`;
+            setFunasrInstallMessage(`${stage} 已等待 ${formatWait()}。请保持应用开启并联网，尽量不要关闭当前窗口。`);
           }
-          const stage =
-            message === "downloading_vad"
-              ? "正在下载必需辅助模型（VAD）…"
-              : message === "downloading_punc"
-                ? "正在下载标点模型（ct-punc）…"
-                : `正在下载主模型（${modelLabel}）…`;
-          setFunasrInstallMessage(`${stage} 已等待 ${formatWait()}。请保持应用开启并联网，尽量不要关闭当前窗口。`);
         } else if (phase === "idle") {
           if (Date.now() - runT0 < 4000) {
             bumpProgress("starting");
@@ -173,10 +183,13 @@ export function usePrepareModelController(
           return;
         }
         if (phase === "cancelled") {
+          prepareCancelRequestedRef.current = false;
+          setPrepareModelCancelling(false);
           setPrepareModelProgress(0);
           setFunasrInstallMessage(
             "已停止后台模型下载。未完成部分可在联网后重新点「下载当前模型」（支持断点续传）。",
           );
+          toast.info("已取消模型下载。可稍后重新点「下载当前模型」续传。");
           await refreshAsrHealth();
           return;
         }
@@ -201,48 +214,64 @@ export function usePrepareModelController(
       setFunasrInstallMessage("");
       setPrepareModelFailure(describePrepareModelFailure("client_timeout"));
     } catch (e) {
-      if (e instanceof DOMException && e.name === "AbortError") return;
+      if (e instanceof DOMException && e.name === "AbortError") {
+        if (prepareCancelRequestedRef.current) {
+          setFunasrInstallMessage("已取消等待模型下载。");
+          toast.info("已取消模型下载。");
+        }
+        return;
+      }
       setFunasrInstallMessage("");
       setPrepareModelFailure(describePrepareModelFailure("fetch_failed"));
     } finally {
       setPrepareModelBusy(false);
+      setPrepareModelCancelling(false);
+      prepareCancelRequestedRef.current = false;
       setPrepareModelProgress(0);
       await refreshAsrHealth();
     }
   }, [getSelectedHubModelId, refreshAsrHealth]);
 
   const cancelPrepareModel = useCallback(async () => {
-    if (!prepareModelBusy) return;
+    if (!prepareModelBusy || prepareModelCancelling) return;
     setPrepareModelFailure(null);
     const base = asrBaseUrl().replace(/\/+$/, "");
+    setPrepareModelCancelling(true);
+    prepareCancelRequestedRef.current = true;
     setFunasrInstallMessage("正在请求停止后台下载…");
     try {
       const res = await loopbackFetch(`${base}/v1/models/prepare-cancel`, { method: "POST" });
       const body = (await res.json().catch(() => ({}))) as Record<string, unknown>;
       if (body.cancelled === true) {
-        setFunasrInstallMessage(
-          "正在停止后台下载（当前文件传完后结束）。请稍候，状态将变为已取消。",
-        );
+        setFunasrInstallMessage("正在取消下载，等待侧车结束当前传输…");
+        toast.info("已请求取消下载，侧车将在当前文件传完后停止。");
         return;
       }
       setFunasrInstallMessage("侧车无进行中的下载；已结束等待。");
+      toast.info("侧车无进行中的下载，已停止等待。");
       prepareModelAbortRef.current?.abort();
       setPrepareModelBusy(false);
+      setPrepareModelCancelling(false);
+      prepareCancelRequestedRef.current = false;
       setPrepareModelProgress(0);
       await refreshAsrHealth();
     } catch {
       setFunasrInstallMessage(
         "无法联系 ASR 取消下载；可点「重新检测 ASR」或重启侧车后再试。",
       );
+      toast.error("无法联系侧车取消下载；已停止等待。");
       prepareModelAbortRef.current?.abort();
       setPrepareModelBusy(false);
+      setPrepareModelCancelling(false);
+      prepareCancelRequestedRef.current = false;
       setPrepareModelProgress(0);
       await refreshAsrHealth();
     }
-  }, [prepareModelBusy, refreshAsrHealth]);
+  }, [prepareModelBusy, prepareModelCancelling, refreshAsrHealth]);
 
   return {
     prepareModelBusy,
+    prepareModelCancelling,
     prepareModelProgress,
     prepareModelFailure,
     funasrInstallMessage,

@@ -86,7 +86,45 @@ pub async fn probe_asr_port() -> AsrPortProbe {
     };
     let http_status = resp.status().as_u16();
     let text = resp.text().await.unwrap_or_default();
-    let Ok(v) = serde_json::from_str::<Value>(&text) else {
+    classify_asr_port_probe(http_status, &text)
+}
+
+/// Sync probe for diagnostic export (avoid `block_on` inside Tauri sync commands).
+pub fn probe_asr_port_sync() -> AsrPortProbe {
+    let client = match reqwest::blocking::Client::builder()
+        .timeout(Duration::from_secs(8))
+        .build()
+    {
+        Ok(c) => c,
+        Err(_) => reqwest::blocking::Client::new(),
+    };
+    let resp = match client.get(ASR_HEALTH_URL).send() {
+        Ok(resp) => resp,
+        Err(_) => {
+            return if loopback_port_accepts_tcp(super::ASR_LOOPBACK_PORT) {
+                AsrPortProbe {
+                    status: AsrPortStatus::Foreign,
+                    http_status: None,
+                    detail: Some(
+                        "8741 已有服务监听，但未能按 rushi-asr /health 响应；可能是其他进程占用，或是仍在启动中的旧实例。请稍候重试；若持续存在，请结束占用进程。".into(),
+                    ),
+                }
+            } else {
+                AsrPortProbe {
+                    status: AsrPortStatus::Free,
+                    http_status: None,
+                    detail: Some("8741 端口无监听，可启动内置侧车。".into()),
+                }
+            };
+        }
+    };
+    let http_status = resp.status().as_u16();
+    let text = resp.text().unwrap_or_default();
+    classify_asr_port_probe(http_status, &text)
+}
+
+fn classify_asr_port_probe(http_status: u16, text: &str) -> AsrPortProbe {
+    let Ok(v) = serde_json::from_str::<Value>(text) else {
         return AsrPortProbe {
             status: AsrPortStatus::Foreign,
             http_status: Some(http_status),

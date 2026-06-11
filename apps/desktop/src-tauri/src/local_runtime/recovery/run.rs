@@ -8,6 +8,7 @@ use std::path::Path;
 use std::sync::atomic::AtomicBool;
 use std::sync::Arc;
 
+#[derive(Debug)]
 pub(crate) enum RevalidateOutcome {
     Verified(String),
     AutoRolledBack(String),

@@ -76,6 +76,14 @@ export function useProjectController() {
       desktopModelsRoot: asr.asrModelCacheInfo?.models_root ?? null,
       asrModelCacheBytes: asr.asrModelCacheInfo?.total_bytes ?? 0,
     }),
+    getAsrPresentationOverlay: () => ({
+      selectedHubModelId: asr.localAsrModelCatalog.selectedHubModelId,
+      catalogStatus: asr.localAsrModelCatalog.catalogStatus,
+      sidecarAsyncTranscribeCapable: asr.localAsrModelCatalog.sidecarAsyncTranscribeCapable,
+      prepareModelBusy: asr.prepareModelBusy,
+      prepareModelCancelling: asr.prepareModelCancelling,
+      prepareModelProgress: asr.prepareModelProgress,
+    }),
   });
 
   return {
@@ -300,6 +308,7 @@ export function useProjectController() {
     sttOnlineBridgeReady: asr.sttOnlineBridgeReady,
     funasrInstallMessage: asr.funasrInstallMessage,
     prepareModelBusy: asr.prepareModelBusy,
+    prepareModelCancelling: asr.prepareModelCancelling,
     prepareModelProgress: asr.prepareModelProgress,
     prepareModelFailure: asr.prepareModelFailure,
     prepareDefaultFunasrModel: asr.prepareDefaultFunasrModel,

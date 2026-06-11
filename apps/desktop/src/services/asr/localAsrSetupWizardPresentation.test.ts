@@ -2,6 +2,8 @@ import { describe, expect, it } from "vitest";
 import {
   buildDiskMetaLine,
   buildRuntimeInstallPresentation,
+  buildRuntimeMaintenanceActions,
+  computeRuntimeDownloadProgress,
 } from "./localAsrSetupWizardPresentation";
 import type { LocalRuntimeDiagnose } from "../localRuntime/localRuntimeContract";
 
@@ -123,5 +125,104 @@ describe("localAsrSetupWizardPresentation", () => {
     );
     expect(out.alertLine).toContain("下载/升级已阻止");
     expect(out.needsAttention).toBe(true);
+  });
+
+  it("hides component maintenance when sidecar is missing", () => {
+    const maintenance = buildRuntimeMaintenanceActions(
+      makeDiag({
+        installed: {
+          status: "missing",
+          version: null,
+          previousVersion: null,
+          executablePath: "",
+          rootDir: "",
+          detail: null,
+          lastVerifyError: null,
+          lastInstallPhase: null,
+        },
+      }),
+      { wizardBusy: false, runtimeInstallRunning: false },
+    );
+    expect(maintenance.showComponentMaintenance).toBe(false);
+    expect(maintenance.canRevalidate).toBe(false);
+    expect(maintenance.canClear).toBe(false);
+  });
+
+  it("enables component maintenance for installed sidecar", () => {
+    const maintenance = buildRuntimeMaintenanceActions(makeDiag(), {
+      wizardBusy: false,
+      runtimeInstallRunning: false,
+    });
+    expect(maintenance.showComponentMaintenance).toBe(true);
+    expect(maintenance.canRevalidate).toBe(true);
+    expect(maintenance.canClear).toBe(true);
+  });
+
+  it("computeRuntimeDownloadProgress shows byte ratio during download", () => {
+    const progress = computeRuntimeDownloadProgress({
+      phase: "downloading",
+      message: "下载中",
+      downloadedBytes: 512 * 1024 * 1024,
+      totalBytes: 1024 * 1024 * 1024,
+      version: "0.2.0",
+      error: null,
+    });
+    expect(progress.showDownloadProgress).toBe(true);
+    expect(progress.downloadProgressPercent).toBe(50);
+    expect(progress.downloadProgressLabel).toContain("50%");
+  });
+
+  it("computeRuntimeDownloadProgress uses phase label when bytes unknown", () => {
+    const progress = computeRuntimeDownloadProgress({
+      phase: "verifying",
+      message: "验证中",
+      downloadedBytes: null,
+      totalBytes: null,
+      version: "0.2.0",
+      error: null,
+    });
+    expect(progress.showDownloadProgress).toBe(true);
+    expect(progress.downloadProgressLabel).toBe("验证中…");
+  });
+
+  it("buildRuntimeInstallPresentation includes download progress while installing", () => {
+    const out = buildRuntimeInstallPresentation(
+      makeDiag({
+        install: {
+          phase: "downloading",
+          message: "正在下载…",
+          downloadedBytes: 100,
+          totalBytes: 200,
+          version: "0.2.0",
+          error: null,
+        },
+      }),
+    );
+    expect(out.showDownloadProgress).toBe(true);
+    expect(out.downloadProgressPercent).toBe(50);
+  });
+
+  it("softens runtime panel when external sidecar already satisfies setup", () => {
+    const out = buildRuntimeInstallPresentation(
+      makeDiag({
+        manifestConfigured: false,
+        manifestStatus: "missing",
+        manifestIssue: "未配置本机语音识别组件 manifest，无法应用内下载安装侧车。",
+        installed: {
+          status: "missing",
+          version: null,
+          previousVersion: null,
+          executablePath: "",
+          rootDir: "",
+          detail: null,
+          lastVerifyError: null,
+          lastInstallPhase: null,
+        },
+      }),
+      { externalSidecarReady: true },
+    );
+    expect(out.needsAttention).toBe(false);
+    expect(out.shortStatus).toBe("使用当前侧车");
+    expect(out.alertLine).toBeNull();
   });
 });

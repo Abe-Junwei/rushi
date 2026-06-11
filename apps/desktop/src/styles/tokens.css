@@ -18,6 +18,10 @@
   --zen-success-action: #2e6153;
   --zen-success-surface: #eff3f1;
   --zen-success-border: #e2e9e6;
+  --zen-saffron-surface: #f9f3ec;
+  --zen-saffron-border: #eedcc7;
+  --zen-cinnabar-surface: #f5ebea;
+  --zen-cinnabar-border: #dab8b7;
 
   /* Notion 风格令牌 */
   --notion-divider: #e3e2e0;

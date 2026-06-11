@@ -8,6 +8,7 @@ import {
 } from "../services/postprocess/postprocessRuntimeContract";
 import { activateLocalOllamaPreset } from "../services/llm/llmEnvStatus";
 import {
+  getLlmEnvRuntimeSnapshot,
   refreshLlmOllamaDetect,
   resetLlmEnvRuntimeStoreForTests,
 } from "../services/llm/llmEnvRuntimeStore";
@@ -94,6 +95,7 @@ describe("useLlmEnvStatus", () => {
     await waitFor(() => {
       expect(header.result.current.topBarOk).toBe(false);
       expect(settings.result.current.topBarOk).toBe(false);
+      expect(getLlmEnvRuntimeSnapshot().ollamaDetectBusy).toBe(false);
     });
 
     ollamaDetectStatus.mockResolvedValue({

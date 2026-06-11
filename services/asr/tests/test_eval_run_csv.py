@@ -24,6 +24,8 @@ def test_zhikong_manifest_includes_hotwords_ab() -> None:
     item = next(i for i in manifest["items"] if i.get("id") == "proper-noun-zhikong")
     assert item.get("hotwords") == "制控"
     assert item.get("hotwords_ab", {}).get("on") == "制控"
+    assert item.get("category") == "long_form"
+    assert item.get("min_segments") == 10
 
 
 def test_print_csv_includes_ab_columns() -> None:
@@ -38,18 +40,30 @@ def test_print_csv_includes_ab_columns() -> None:
             [
                 {
                     "id": "proper-noun-zhikong",
+                    "category": "long_form",
                     "hotwords_ab_variant": "on",
                     "hotwords_enabled": True,
                     "hotwords_sent": "制控",
+                    "segment_count": 197,
+                    "duration_sec": 1249.7,
+                    "wall_sec": 155.5,
+                    "rtfx": 8.04,
+                    "segmentation_mode": "sentence_info",
                     "term_hit_rate": 0.0,
                     "engine": "test-engine",
                     "warnings": [],
                 },
                 {
                     "id": "proper-noun-zhikong",
+                    "category": "long_form",
                     "hotwords_ab_variant": "off",
                     "hotwords_enabled": False,
                     "hotwords_sent": None,
+                    "segment_count": 0,
+                    "duration_sec": None,
+                    "wall_sec": None,
+                    "rtfx": None,
+                    "segmentation_mode": None,
                     "term_hit_rate": 0.0,
                     "engine": "test-engine",
                     "warnings": ["hotwords_ignored_stub"],
@@ -59,6 +73,27 @@ def test_print_csv_includes_ab_columns() -> None:
     finally:
         sys.stdout = old
     text = buf.getvalue()
-    assert "hotwords_ab_variant" in text.splitlines()[0]
+    header = text.splitlines()[0]
+    assert "hotwords_ab_variant" in header
+    assert "segment_count" in header
+    assert "rtfx" in header
+    assert "segmentation_mode" in header
     assert ",on," in text or ',"on",' in text
     assert "term_hit_rate" in text
+
+
+def test_check_min_segments_assertion_pass() -> None:
+    mod = _load_eval_run_module()
+    item = {"min_segments": 10}
+    row = {"segment_count": 197}
+    assert mod.check_min_segments_assertion(item, row, assert_min_segments=True) is False
+    assert "min_segments_assertion_failed" not in row
+
+
+def test_check_min_segments_assertion_fail() -> None:
+    mod = _load_eval_run_module()
+    item = {"min_segments": 10}
+    row = {"segment_count": 0}
+    assert mod.check_min_segments_assertion(item, row, assert_min_segments=True) is True
+    assert row["min_segments_assertion_failed"] is True
+    assert row["min_segments_required"] == 10

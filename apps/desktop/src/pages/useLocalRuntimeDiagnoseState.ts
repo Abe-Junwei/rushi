@@ -1,4 +1,4 @@
-import { useCallback, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { isLocalRuntimeInstallRunning, type LocalRuntimeDiagnose } from "../services/localRuntime/localRuntimeContract";
 import * as localRuntimeApi from "../tauri/localRuntimeApi";
 import { sleep } from "./localRuntimeSetupHelpers";
@@ -20,6 +20,18 @@ export function useLocalRuntimeDiagnoseState(tauriRuntime: boolean) {
       return null;
     }
   }, [tauriRuntime]);
+
+  const installPhase = localRuntimeDiag?.install.phase;
+
+  useEffect(() => {
+    if (!tauriRuntime || !isLocalRuntimeInstallRunning(installPhase)) {
+      return;
+    }
+    const timer = window.setInterval(() => {
+      void refreshLocalRuntimeDiagnose();
+    }, 500);
+    return () => window.clearInterval(timer);
+  }, [installPhase, refreshLocalRuntimeDiagnose, tauriRuntime]);
 
   const waitForLocalRuntimeInstall = useCallback(async (): Promise<LocalRuntimeDiagnose | null> => {
     for (let i = 0; i < 90; i++) {

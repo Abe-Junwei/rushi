@@ -7,6 +7,7 @@ describe("localAsrTranscribePreflightMessage", () => {
     const msg = localAsrTranscribePreflightMessage({
       asrHealth: "ok",
       asrCaps: {
+        ffmpeg_ok: true,
         funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
         funasr_loaded_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
         ready_for_transcribe: true,
@@ -33,6 +34,7 @@ describe("localAsrTranscribePreflightMessage", () => {
     const msg = localAsrTranscribePreflightMessage({
       asrHealth: "ok",
       asrCaps: {
+        ffmpeg_ok: true,
         funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
         funasr_loaded_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
         ready_for_transcribe: true,
@@ -47,6 +49,7 @@ describe("localAsrTranscribePreflightMessage", () => {
     const msg = localAsrTranscribePreflightMessage({
       asrHealth: "ok",
       asrCaps: {
+        ffmpeg_ok: true,
         funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
         funasr_loaded_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
         ready_for_transcribe: true,

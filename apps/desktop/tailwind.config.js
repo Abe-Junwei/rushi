@@ -26,6 +26,12 @@ export default {
         "zen-success-surface": "#eff3f1",
         /** 环境面板成功态：banner 分隔/描边 */
         "zen-success-border": "#e2e9e6",
+        /** Toast / banner 警告态：saffron 10% on notion-bg */
+        "zen-saffron-surface": "#f9f3ec",
+        "zen-saffron-border": "#eedcc7",
+        /** Toast / banner 错误态：cinnabar 10% on notion-bg */
+        "zen-cinnabar-surface": "#f5ebea",
+        "zen-cinnabar-border": "#dab8b7",
         /** Notion 风格 surface 令牌 */
         "notion-bg": "#ffffff",
         "notion-sidebar": "#f7f7f5",

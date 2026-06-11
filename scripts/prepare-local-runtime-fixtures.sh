@@ -75,7 +75,7 @@ def sha256_hex(path: Path) -> str:
             h.update(chunk)
     return h.hexdigest()
 
-def manifest_for(zip_path: Path, sha256: str) -> dict:
+def manifest_for(zip_path: Path, sha256: str, component_version: str) -> dict:
     exe_name = "rushi-asr-sidecar.exe" if platform.system() == "Windows" else "rushi-asr-sidecar"
     payload = {
         "manifest_version": 1,
@@ -83,7 +83,7 @@ def manifest_for(zip_path: Path, sha256: str) -> dict:
         "components": [
             {
                 "id": "asr-sidecar",
-                "version": shell_version,
+                "version": component_version,
                 "platform": platform_key,
                 "artifact": {
                     "url": zip_path.as_uri(),
@@ -128,23 +128,33 @@ with tempfile.TemporaryDirectory(prefix="rushi-local-runtime-fixtures-") as temp
     zip_directory(healthy_copy, healthy_zip)
     zip_directory(corrupt_copy, corrupt_zip)
 
-    healthy_manifest = healthy_dir / "rushi-runtime-manifest.json"
-    corrupt_manifest = corrupt_dir / "rushi-runtime-manifest.json"
+    healthy_manifest = healthy_dir / "rushi-runtime-manifest-v0.1.0.json"
+    corrupt_manifest = corrupt_dir / "rushi-runtime-manifest-v0.1.0-corrupt.json"
+    upgrade_manifest = corrupt_dir / "rushi-runtime-manifest-v0.2.0-corrupt-upgrade.json"
     healthy_manifest.write_text(
-        json.dumps(manifest_for(healthy_zip, sha256_hex(healthy_zip)), ensure_ascii=False, indent=2) + "\n",
+        json.dumps(manifest_for(healthy_zip, sha256_hex(healthy_zip), "0.1.0"), ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
     corrupt_manifest.write_text(
-        json.dumps(manifest_for(corrupt_zip, sha256_hex(corrupt_zip)), ensure_ascii=False, indent=2) + "\n",
+        json.dumps(manifest_for(corrupt_zip, sha256_hex(corrupt_zip), "0.1.0"), ensure_ascii=False, indent=2) + "\n",
+        encoding="utf-8",
+    )
+    upgrade_manifest.write_text(
+        json.dumps(manifest_for(corrupt_zip, sha256_hex(corrupt_zip), "0.2.0"), ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
     )
 
 print("Prepared local runtime fixtures:")
-print(f"  healthy manifest: {healthy_manifest}")
-print(f"  corrupt manifest: {corrupt_manifest}")
+print(f"  healthy manifest (0.1.0): {healthy_manifest}")
+print(f"  corrupt manifest (0.1.0): {corrupt_manifest}")
+print(f"  upgrade corrupt manifest (0.2.0): {upgrade_manifest}")
 print()
 print("Use one of these before launching the desktop app:")
 print(f'  export RUSHI_LOCAL_RUNTIME_MANIFEST_URL="{healthy_manifest.as_uri()}"')
 print(f'  export RUSHI_LOCAL_RUNTIME_MANIFEST_URL="{corrupt_manifest.as_uri()}"')
+print(f'  export RUSHI_LOCAL_RUNTIME_MANIFEST_URL="{upgrade_manifest.as_uri()}"')
 print('  export RUSHI_LOCAL_RUNTIME_ALLOW_INSECURE_MANIFEST="1"')
+print()
+print("C-class rollback dev test:")
+print("  bash scripts/test-r3h-2-c-rollback.sh")
 PY

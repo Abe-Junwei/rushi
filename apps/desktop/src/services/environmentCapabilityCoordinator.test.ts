@@ -130,6 +130,18 @@ describe("environmentCapabilityCoordinator", () => {
     expect(getEnvironmentCapabilityBlockReason()).toMatch(/ASR|连接|启动/);
   });
 
+  it("applies prepareModelBusy overlay from getAsrPresentationOverlay", async () => {
+    const deps = {
+      ...makeDeps(),
+      getAsrPresentationOverlay: () => ({
+        prepareModelBusy: true,
+        prepareModelProgress: 42,
+      }),
+    };
+    await runEnvironmentCapabilityRefresh("manual", deps);
+    expect(getEnvironmentCapabilityBlockReason()).toBe("所选模型正在下载，完成后方可转写。");
+  });
+
   it("awaitEnvironmentCapabilityRefresh reuses fresh snapshot", async () => {
     const deps = makeDeps();
     syncEnvironmentCapabilityRefreshDeps(deps);

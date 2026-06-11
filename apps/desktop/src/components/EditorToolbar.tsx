@@ -113,7 +113,11 @@ export const EditorToolbar = memo(function EditorToolbar({
         />
 
         <span className="hidden shrink-0 whitespace-nowrap text-[11px] text-notion-text-muted sm:inline">
-          {c.prepareModelBusy ? "模型准备中，可继续编辑" : ""}
+          {c.prepareModelBusy
+            ? c.prepareModelCancelling
+              ? "正在取消模型下载…"
+              : "模型准备中，可继续编辑"
+            : ""}
         </span>
 
         <div className="flex shrink-0 items-center gap-2">

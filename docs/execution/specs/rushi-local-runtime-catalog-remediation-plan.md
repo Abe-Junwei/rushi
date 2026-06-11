@@ -371,6 +371,8 @@ sequenceDiagram
 
 **2026-05-26 代码对照**：工作区已出现 `local_runtime/` 最小闭环（manifest 读取、平台选择、sha256、staging 解压、app_data 优先、取消 / 清除 / 重新验证、UI 进度）。该实现可作为 R3h-1 起点，但**尚未等价于发行级 release system**。
 
+**2026-06-07 路线图补充**：编码与发行拆分 — **R3h-1-R** 发行激活（HTTPS 默认 manifest 源 + 发布流水线 + 零终端 VM 手测）见 [`r3h-1-r-runtime-manifest-release-activation-plan.md`](./r3h-1-r-runtime-manifest-release-activation-plan.md) 与路线图 §4.1.5.2。
+
 **R3h-1 收口补充**（从评估吸收；本轮按 release-system 口径前移）：
 
 | 项 | 要求 |

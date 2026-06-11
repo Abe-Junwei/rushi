@@ -98,6 +98,8 @@ pub const APP_COMMANDS: &[&str] = &[
     "export_docx",
     "export_diagnostic_bundle",
     "get_last_transcribe_timeline",
+    "record_transcribe_timeline_poll_progress",
+    "record_transcribe_timeline_poll_failure",
     "quality_get_last_report",
     "quality_get_baseline_report",
     "quality_run_eval",

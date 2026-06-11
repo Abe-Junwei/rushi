@@ -14,30 +14,13 @@ import {
   ENV_COLLAPSIBLE_DETAILS,
   EnvLocalAsrStatusRow,
 } from "./envLocalAsrPanelUi";
-import { resolveAsrStatusRowAction, scrollToEnvSection } from "./asrStatusRowActions";
+import { resolveAsrStatusRowAction } from "./asrStatusRowActions";
 
 type Props = {
   presentation: AsrEnvPresentation;
-  prepareModelBusy?: boolean;
   busy: boolean;
   refreshAsrHealth: () => Promise<void>;
 };
-
-function resolveDisplayPresentation(
-  presentation: AsrEnvPresentation,
-  prepareModelBusy: boolean,
-): AsrEnvPresentation {
-  if (!prepareModelBusy) return presentation;
-  return {
-    ...presentation,
-    tone: "warn",
-    bannerTitle: "本机 ASR · 正在准备模型",
-    bannerDetail: "环境已就绪，正在下载所选转写模型，请稍候…",
-    statusRows: presentation.statusRows.map((row) =>
-      row.id === "runtime" ? { ...row, ok: false, text: "初始化中", warn: true } : row,
-    ),
-  };
-}
 
 function countReadyRows(rows: AsrEnvPresentation["statusRows"]): number {
   return rows.filter((row) => row.ok && !row.warn).length;
@@ -65,7 +48,7 @@ function StatusRowList({
               actionSpec
                 ? {
                     label: actionSpec.label,
-                    onClick: () => scrollToEnvSection(actionSpec.targetId),
+                    onClick: actionSpec.navigate,
                   }
                 : undefined
             }
@@ -77,62 +60,63 @@ function StatusRowList({
   );
 }
 
-export function EnvLocalAsrStatusSection({
-  presentation,
-  prepareModelBusy = false,
-  busy,
-  refreshAsrHealth,
-}: Props) {
-  const display = resolveDisplayPresentation(presentation, prepareModelBusy);
-  const readyCount = countReadyRows(display.statusRows);
-  const totalCount = display.statusRows.length;
+export function EnvLocalAsrStatusSection({ presentation, busy, refreshAsrHealth }: Props) {
+  const readyCount = countReadyRows(presentation.statusRows);
+  const totalCount = presentation.statusRows.length;
   const allRowsReady = readyCount === totalCount;
+  const displayTone = busy ? "warn" : presentation.tone;
 
   return (
     <section className="flex flex-col gap-4">
       <div
-        className={["flex flex-col gap-1 px-4 py-3", LLM_STATUS_PANEL_CLASS[display.tone]].join(" ")}
+        className={["flex flex-col gap-1 px-4 py-3", LLM_STATUS_PANEL_CLASS[displayTone]].join(" ")}
         role="status"
         aria-live="polite"
+        aria-busy={busy || undefined}
       >
         <div className="flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between">
           <div className="min-w-0 flex-1 space-y-1">
             <div className="flex items-center gap-2">
               <span
-                className={`h-2 w-2 shrink-0 rounded-full ${LLM_STATUS_DOT_CLASS[display.tone]}`}
+                className={`h-2 w-2 shrink-0 rounded-full ${LLM_STATUS_DOT_CLASS[displayTone]}`}
                 aria-hidden
               />
               <p
                 className={[
                   PANEL_TYPOGRAPHY.envStatusBannerTitle,
-                  LLM_STATUS_BANNER_TITLE_CLASS[display.tone],
+                  LLM_STATUS_BANNER_TITLE_CLASS[displayTone],
                 ].join(" ")}
               >
-                {display.bannerTitle}
+                {presentation.bannerTitle}
               </p>
             </div>
-            <p className={`${PANEL_TYPOGRAPHY.meta} pl-4`}>{display.bannerDetail}</p>
+            <p className={`${PANEL_TYPOGRAPHY.meta} pl-4`}>{presentation.bannerDetail}</p>
             {allRowsReady ? (
               <details className={`${ENV_COLLAPSIBLE_DETAILS} pl-4 pt-0.5`}>
                 <EnvCollapsibleMetaSummary>
                   环境明细 · {readyCount}/{totalCount} 就绪
                 </EnvCollapsibleMetaSummary>
-                <StatusRowList rows={display.statusRows} health={display.health} />
+                <StatusRowList rows={presentation.statusRows} health={presentation.health} />
               </details>
             ) : null}
           </div>
           <button
             type="button"
-            className={[LLM_STATUS_REFRESH_BTN_BASE, LLM_STATUS_REFRESH_BTN_CLASS[display.tone]].join(" ")}
+            className={[LLM_STATUS_REFRESH_BTN_BASE, LLM_STATUS_REFRESH_BTN_CLASS[displayTone]].join(" ")}
             disabled={busy}
+            aria-busy={busy || undefined}
             onClick={() => void refreshAsrHealth()}
           >
-            <RefreshCw className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-            {busy ? "检测中…" : display.tone === "error" ? "重试检测" : "刷新状态"}
+            <RefreshCw
+              className={[LUCIDE_ICON_SIZE_SM, busy ? "animate-spin" : ""].join(" ")}
+              strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
+              aria-hidden
+            />
+            {busy ? "检测中…" : presentation.tone === "error" ? "重试检测" : "刷新状态"}
           </button>
         </div>
 
-        {!allRowsReady ? <StatusRowList rows={display.statusRows} health={display.health} /> : null}
+        {!allRowsReady ? <StatusRowList rows={presentation.statusRows} health={presentation.health} /> : null}
       </div>
     </section>
   );

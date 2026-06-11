@@ -8,6 +8,7 @@ import { planDeliveryDocxExport } from "../services/exportDeliveryPlan";
 import { exportDiagnosticBundle as exportDiagnosticBundleImpl } from "../tauri/diagnosticApi";
 import type { ExportPolishResult } from "../services/exportDocxPolish";
 import { safeExportBasename } from "../utils/safeExportBasename";
+import { toast } from "../services/ui/toast";
 import type { BusyReason } from "./useProjectCrudController";
 
 export type DeliveryDocxExportRequest = {
@@ -179,14 +180,18 @@ export function useExportController(deps: ExportDeps): ExportApi {
   );
 
   const exportDiagnosticBundle = useCallback(async () => {
-    const proceed = window.confirm(
-      "诊断包将包含脱敏后的数据库副本与日志（语段正文、项目名称等已替换为 [REDACTED]）。仍可能含路径与操作元数据，仅分享给可信对象。确定继续导出？",
-    );
-    if (!proceed) return;
     setError("");
     try {
-      await exportDiagnosticBundleImpl();
+      const out = await exportDiagnosticBundleImpl();
+      if (out) {
+        toast.success(
+          `已导出诊断包（语段正文等已脱敏）：${out}`,
+        );
+      } else {
+        toast.info("已取消导出诊断包");
+      }
     } catch (e) {
+      toast.errorFromUnknown(e);
       setError(e instanceof Error ? e.message : String(e));
     }
   }, [setError]);

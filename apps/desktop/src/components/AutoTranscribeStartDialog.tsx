@@ -1,19 +1,10 @@
-import { createPortal } from "react-dom";
-import { useMemo } from "react";
 import { CONTROL_BTN_LINK, CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import type { TranscribeSource } from "../services/stt/transcribeSource";
 import { resolveTranscribeSourceDescription } from "../services/stt/transcribeSourcePresentation";
-import { useFloatingPanelBodyMeasure } from "../hooks/useFloatingPanelBodyMeasure";
-import { mergeContentFitHeights, resolveMeasuredPanelFitHeight } from "./floatingPanelFitSections";
-import { resolveCompactDialogBounds } from "./floatingPanelCompactDialogBounds";
 import { TranscribeSourceSwitch } from "./editor/TranscribeSourceSwitch";
-import { FloatingPanelTemplate } from "./PanelTemplate";
-import {
-  FloatingPanelDialogFooter,
-  FloatingPanelDialogHeader,
-  FloatingPanelDialogRoot,
-} from "./FloatingPanelDialogLayout";
+import { CompactFloatingDialog } from "./CompactFloatingDialog";
+import { FloatingPanelDialogHeader } from "./FloatingPanelDialogLayout";
 
 const PANEL_ID = "auto-transcribe-start-v1";
 const DEFAULT_WIDTH = 420;
@@ -50,18 +41,6 @@ export function AutoTranscribeStartDialog({
   onCancel,
   onConfirm,
 }: Props) {
-  const { bodyRef, bodyHeight } = useFloatingPanelBodyMeasure(open);
-  const bounds = useMemo(
-    () => resolveCompactDialogBounds({ minWidth: 320, minHeight: 180, maxWidthCap: 480 }),
-    [],
-  );
-
-  if (!open || typeof document === "undefined") return null;
-
-  const measuredFit = bodyHeight != null ? resolveMeasuredPanelFitHeight(bodyHeight) : null;
-  const contentFitHeight = mergeContentFitHeights(FALLBACK_HEIGHT, measuredFit);
-  const defaultPanelHeight = Math.min(contentFitHeight ?? FALLBACK_HEIGHT, bounds.maxHeight);
-
   const handleClose = () => {
     if (!busy) onCancel();
   };
@@ -75,80 +54,74 @@ export function AutoTranscribeStartDialog({
   const sourceDescription = resolveTranscribeSourceDescription(source, { onlineReady });
   const confirmDisabled = busy || (source === "online" && !onlineReady);
 
-  return createPortal(
-    <div className="workspace">
-      <FloatingPanelTemplate
-        id={PANEL_ID}
-        title="自动转录"
-        preset="compactDialog"
-        minWidth={bounds.minWidth}
-        minHeight={bounds.minHeight}
-        maxWidth={bounds.maxWidth}
-        maxHeight={bounds.maxHeight}
-        defaultSize={{ width: DEFAULT_WIDTH, height: defaultPanelHeight }}
-        contentFitHeight={contentFitHeight}
-        persistPhaseKey="default"
-        persistState
-        onClose={handleClose}
-      >
-        <FloatingPanelDialogRoot role="dialog" aria-modal="true" measureRef={bodyRef}>
-          <FloatingPanelDialogHeader className="gap-3">
-            <div className="flex items-center justify-between gap-3">
-              <span className="text-xs font-medium leading-none text-notion-text">转写来源</span>
-              <TranscribeSourceSwitch
-                compact
-                source={source}
-                onlineReady={onlineReady}
+  return (
+    <CompactFloatingDialog
+      id={PANEL_ID}
+      title="自动转录"
+      open={open}
+      onClose={handleClose}
+      fallbackHeight={FALLBACK_HEIGHT}
+      defaultWidth={DEFAULT_WIDTH}
+      bounds={{ minWidth: 320, minHeight: 180, maxWidthCap: 480 }}
+      persistState
+      footer={
+        <>
+          <button type="button" className={CONTROL_BTN_SECONDARY} disabled={busy} onClick={handleClose}>
+            取消
+          </button>
+          <button type="button" className={CONTROL_BTN_PRIMARY} disabled={confirmDisabled} onClick={onConfirm}>
+            {confirmLabel}
+          </button>
+        </>
+      }
+      footerJustify="end"
+    >
+      <FloatingPanelDialogHeader className="gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <span className="text-xs font-medium leading-none text-notion-text">转写来源</span>
+          <TranscribeSourceSwitch
+            compact
+            source={source}
+            onlineReady={onlineReady}
+            disabled={busy}
+            onSelectLocal={onSelectLocal}
+            onSelectOnline={onSelectOnline}
+          />
+        </div>
+        <p className={`${PANEL_TYPOGRAPHY.dialogBody} text-notion-text-muted`}>{sourceDescription}</p>
+
+        {hasExistingSegmentText ? (
+          <p className={PANEL_TYPOGRAPHY.dialogBody}>
+            已有 {segmentCount} 条语段。开始将<strong className="font-medium">覆盖</strong>
+            全部正文，未保存手改会丢失，建议先保存或导出。
+          </p>
+        ) : (
+          <p className={`${PANEL_TYPOGRAPHY.dialogBody} text-notion-text-muted`}>
+            识别当前音频并写入语段。
+          </p>
+        )}
+
+        {vocabularyLines.length > 0 ? (
+          <div className="rounded-md bg-notion-sidebar/80 px-3 py-2">
+            <p className="text-xs font-medium text-notion-text">本次术语偏置</p>
+            <ul className="mt-1.5 list-disc space-y-1 pl-4 text-xs leading-relaxed text-notion-text-muted">
+              {vocabularyLines.map((line) => (
+                <li key={line}>{line}</li>
+              ))}
+            </ul>
+            {showOpenGlossaryLink && onOpenGlossary ? (
+              <button
+                type="button"
+                className={`${CONTROL_BTN_LINK} mt-2 text-xs font-medium text-zen-saffron`}
                 disabled={busy}
-                onSelectLocal={onSelectLocal}
-                onSelectOnline={onSelectOnline}
-              />
-            </div>
-            <p className={`${PANEL_TYPOGRAPHY.dialogBody} text-notion-text-muted`}>{sourceDescription}</p>
-
-            {hasExistingSegmentText ? (
-              <p className={PANEL_TYPOGRAPHY.dialogBody}>
-                已有 {segmentCount} 条语段。开始将<strong className="font-medium">覆盖</strong>
-                全部正文，未保存手改会丢失，建议先保存或导出。
-              </p>
-            ) : (
-              <p className={`${PANEL_TYPOGRAPHY.dialogBody} text-notion-text-muted`}>
-                识别当前音频并写入语段。
-              </p>
-            )}
-
-            {vocabularyLines.length > 0 ? (
-              <div className="rounded-md bg-notion-sidebar/80 px-3 py-2">
-                <p className="text-xs font-medium text-notion-text">本次术语偏置</p>
-                <ul className="mt-1.5 list-disc space-y-1 pl-4 text-xs leading-relaxed text-notion-text-muted">
-                  {vocabularyLines.map((line) => (
-                    <li key={line}>{line}</li>
-                  ))}
-                </ul>
-                {showOpenGlossaryLink && onOpenGlossary ? (
-                  <button
-                    type="button"
-                    className={`${CONTROL_BTN_LINK} mt-2 text-xs font-medium text-zen-saffron`}
-                    disabled={busy}
-                    onClick={onOpenGlossary}
-                  >
-                    前往热词与记忆…
-                  </button>
-                ) : null}
-              </div>
+                onClick={onOpenGlossary}
+              >
+                前往热词与记忆…
+              </button>
             ) : null}
-          </FloatingPanelDialogHeader>
-          <FloatingPanelDialogFooter justify="end">
-            <button type="button" className={CONTROL_BTN_SECONDARY} disabled={busy} onClick={handleClose}>
-              取消
-            </button>
-            <button type="button" className={CONTROL_BTN_PRIMARY} disabled={confirmDisabled} onClick={onConfirm}>
-              {confirmLabel}
-            </button>
-          </FloatingPanelDialogFooter>
-        </FloatingPanelDialogRoot>
-      </FloatingPanelTemplate>
-    </div>,
-    document.body,
+          </div>
+        ) : null}
+      </FloatingPanelDialogHeader>
+    </CompactFloatingDialog>
   );
 }

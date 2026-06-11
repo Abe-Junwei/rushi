@@ -2,7 +2,11 @@ import { ENV_COMPACT_BTN } from "../../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../../config/typography";
 import { funasrManualSetupCommands } from "../../pages/useProjectController";
 import type { AsrHealthCapabilities } from "../../tauri/projectApi";
-import { EnvLocalAsrCollapsibleSection } from "./envLocalAsrPanelUi";
+import {
+  EnvLocalAsrCollapsibleSection,
+  EnvUtilitiesActionRow,
+  EnvUtilitiesSubsection,
+} from "./envLocalAsrPanelUi";
 
 type Props = {
   asrHealth: string;
@@ -26,33 +30,37 @@ export function LocalAsrAdvancedSection({
     asrHealth === "ok" && asrCaps != null && asrCaps.ffmpeg_ok && !asrCaps.funasr_ready;
 
   const body = (
-    <div className="flex flex-col gap-3">
-      <p className={PANEL_TYPOGRAPHY.meta}>
-        主路径请使用上方「一键准备」。仅在开发环境或内置侧车不可用时，才需要 pip 安装 FunASR 依赖或手动启动
-        <code className="mx-1 rounded bg-notion-bg px-1 font-mono text-[11px]">python -m rushi_asr</code>。
-      </p>
-      <div className="flex flex-wrap gap-2">
+    <EnvUtilitiesSubsection
+      title="手动调试"
+      description={
+        <p className="m-0">
+          主路径请使用上方「一键准备」。仅在开发环境或内置侧车不可用时，才需要 pip 安装 FunASR 依赖或手动启动
+          <code className="mx-1 rounded bg-notion-bg px-1 font-mono text-[11px]">python -m rushi_asr</code>。
+        </p>
+      }
+    >
+      <EnvUtilitiesActionRow>
         <EnvCompactButton disabled={busy} onClick={() => void copyFunasrManualCommands()}>
           复制手动命令
         </EnvCompactButton>
-      </div>
+      </EnvUtilitiesActionRow>
       {funasrInstallMessage ? (
-        <pre className="max-h-32 overflow-auto whitespace-pre-wrap font-mono text-[11px] text-zen-indigo">
+        <pre className="m-0 max-h-32 overflow-auto whitespace-pre-wrap font-mono text-[11px] text-zen-indigo">
           {funasrInstallMessage}
         </pre>
       ) : null}
       {showFunasrStubHelp ? (
         <div className="flex flex-col gap-2">
-          <p className={PANEL_TYPOGRAPHY.meta}>
+          <p className={`m-0 ${PANEL_TYPOGRAPHY.meta}`}>
             FunASR 未就绪（stub：中文正文常为空）。可尝试安装依赖并重启 ASR；可选{" "}
             <code className="font-mono text-[11px]">RUSHI_FUNASR_MODEL</code>。
           </p>
-          <pre className="max-h-32 overflow-auto whitespace-pre-wrap font-mono text-[11px] text-zen-indigo">
+          <pre className="m-0 max-h-32 overflow-auto whitespace-pre-wrap font-mono text-[11px] text-zen-indigo">
             {funasrManualSetupCommands()}
           </pre>
         </div>
       ) : null}
-    </div>
+    </EnvUtilitiesSubsection>
   );
 
   if (embedded) return body;

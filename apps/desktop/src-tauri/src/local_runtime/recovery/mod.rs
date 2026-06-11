@@ -4,3 +4,6 @@ mod helpers;
 mod run;
 
 pub(crate) use auto_rollback::run_auto_health_rollback;
+
+#[cfg(test)]
+mod run_tests;

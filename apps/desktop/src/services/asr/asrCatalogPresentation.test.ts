@@ -87,4 +87,17 @@ describe("buildAsrCatalogPresentation", () => {
     expect(presentation.progress).toBe(100);
     expect(presentation.progressTone).toBe("success");
   });
+
+  it("shows cancelling label while prepare cancel is in flight", () => {
+    const presentation = buildAsrCatalogPresentation({
+      asrCaps: caps({ funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID }),
+      catalogStatus: null,
+      selectedHubModelId: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+      prepareModelBusy: true,
+      prepareModelCancelling: true,
+      prepareModelProgress: 42,
+    });
+
+    expect(presentation.progressLabel).toBe("正在取消下载…");
+  });
 });

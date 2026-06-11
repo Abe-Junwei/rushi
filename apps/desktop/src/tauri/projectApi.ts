@@ -172,6 +172,28 @@ export async function getLastTranscribeTimeline(): Promise<TranscribeTimelineSna
   return invoke<TranscribeTimelineSnapshot | null>("get_last_transcribe_timeline");
 }
 
+export async function recordTranscribeTimelinePollProgress(
+  jobId: string,
+  windowIndex: number,
+  windowCount: number,
+): Promise<void> {
+  return invoke<void>("record_transcribe_timeline_poll_progress", {
+    jobId,
+    windowIndex,
+    windowCount,
+  });
+}
+
+export async function recordTranscribeTimelinePollFailure(
+  jobId: string,
+  errorMessage: string,
+): Promise<void> {
+  return invoke<void>("record_transcribe_timeline_poll_failure", {
+    jobId,
+    errorMessage,
+  });
+}
+
 export async function projectDelete(projectId: string): Promise<void> {
   return invoke<void>("project_delete", { projectId });
 }

@@ -31,6 +31,7 @@ export interface AsrBridgeApi {
   sttOnlineBridgeReady: boolean;
   funasrInstallMessage: string;
   prepareModelBusy: boolean;
+  prepareModelCancelling: boolean;
   prepareModelProgress: number;
   prepareModelFailure: PrepareModelApi["prepareModelFailure"];
   refreshAsrHealth: (options?: AsrHealthRefreshOptions) => Promise<void>;
@@ -138,6 +139,9 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
         sidecarModelsRoot: asrCaps?.rushi_models_root ?? null,
         asrModelCacheBytes: cacheCtrl.asrModelCacheInfo?.total_bytes ?? 0,
         sidecarAsyncTranscribeCapable: localAsrModelCatalog.sidecarAsyncTranscribeCapable,
+        prepareModelBusy: modelCtrl.prepareModelBusy,
+        prepareModelCancelling: modelCtrl.prepareModelCancelling,
+        prepareModelProgress: modelCtrl.prepareModelProgress,
       }),
     [
       asrHealth,
@@ -148,6 +152,9 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
       localAsrModelCatalog.sidecarAsyncTranscribeCapable,
       cacheCtrl.asrModelCacheInfo?.models_root,
       cacheCtrl.asrModelCacheInfo?.total_bytes,
+      modelCtrl.prepareModelBusy,
+      modelCtrl.prepareModelCancelling,
+      modelCtrl.prepareModelProgress,
     ],
   );
 
@@ -205,6 +212,7 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
     sttOnlineBridgeReady,
     funasrInstallMessage: modelCtrl.funasrInstallMessage,
     prepareModelBusy: modelCtrl.prepareModelBusy,
+    prepareModelCancelling: modelCtrl.prepareModelCancelling,
     prepareModelProgress: modelCtrl.prepareModelProgress,
     prepareModelFailure: modelCtrl.prepareModelFailure,
     refreshAsrHealth,

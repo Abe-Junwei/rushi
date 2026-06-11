@@ -122,8 +122,56 @@ describe("buildAsrEnvPresentation", () => {
       selectedHubModelId: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
     });
     expect(p.ffmpegWarning).toContain("FFmpeg");
+    expect(p.ffmpegWarning).toContain("一键准备");
     expect(p.ffmpegWarning).toContain("重装应用");
     expect(p.ffmpegWarning).not.toContain("PATH");
+    expect(p.blockReason).toContain("一键准备");
+    expect(p.bannerDetail).toContain("一键准备");
+  });
+
+  it("uses dev ffmpeg guidance with PATH and rebuild hints", async () => {
+    const p = await build({
+      asrHealth: "ok",
+      asrHealthDetail: "",
+      asrCaps: {
+        ffmpeg_ok: false,
+        funasr_import_ok: true,
+        funasr_model_configured: true,
+        funasr_ready: true,
+        funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+        ready_for_transcribe: false,
+        transcription_mode: "funasr",
+      },
+      selectedHubModelId: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+    });
+    expect(p.ffmpegWarning).toContain("PATH");
+    expect(p.blockReason).toContain("PATH");
+    expect(p.bannerDetail).toContain("PATH");
+  });
+
+  it("shows downloading banner while model prepare is in flight", async () => {
+    const p = await build({
+      asrHealth: "ok",
+      asrHealthDetail: "",
+      asrCaps: {
+        ffmpeg_ok: true,
+        funasr_import_ok: true,
+        funasr_model_configured: true,
+        funasr_ready: true,
+        funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+        ready_for_transcribe: true,
+        transcription_mode: "funasr",
+      },
+      selectedHubModelId: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+      prepareModelBusy: true,
+      prepareModelProgress: 87,
+    });
+    expect(p.bannerTitle).toBe("本机 ASR · 正在下载模型");
+    expect(p.bannerDetail).toContain("87%");
+    expect(p.bannerDetail).not.toContain("可直接转写");
+    expect(p.chipOk).toBe(false);
+    expect(p.blockReason).toContain("正在下载");
+    expect(p.statusRows.find((r) => r.id === "transcribe")?.text).toBe("下载中");
   });
 
   it("aligns top bar and banner for error state", async () => {

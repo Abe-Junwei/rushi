@@ -1,11 +1,10 @@
-import { createPortal } from "react-dom";
 import { ENV_NAV } from "../config/environmentNavCopy";
 import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import type { PostTranscribeStageBDialogState } from "../pages/usePostTranscribeStageBController";
 import { isLocalLoopbackLlmConfig } from "../services/postprocess/postprocessRuntimeContract";
 import { describeStageBPreviewSummary, describeStageBProgress } from "../services/postprocess/postTranscribeStageB";
-import { useFloatingPanelBodyMeasure } from "../hooks/useFloatingPanelBodyMeasure";
+import { CompactFloatingDialog } from "./CompactFloatingDialog";
 import { FloatingPanelSegmentList } from "./FloatingPanelSegmentList";
 import {
   FLOATING_PANEL_COMPACT_MIN_HEIGHT,
@@ -13,19 +12,13 @@ import {
   resolveStageBConsentFitHeight,
   resolveStageBEmptyFitHeight,
 } from "./floatingPanelSegmentListLayout";
-import {
-  mergeContentFitHeights,
-  resolveMeasuredPanelFitHeight,
-} from "./floatingPanelFitSections";
 import { FloatingPanelSegmentRow } from "./FloatingPanelSegmentRow";
 import { PanelAsyncProgress } from "./PanelAsyncProgress";
 import { readFloatingPanelViewport } from "./floatingPanelViewport";
-import { FloatingPanelTemplate } from "./PanelTemplate";
 import {
   FloatingPanelDialogFooter,
   FloatingPanelDialogHeader,
   FloatingPanelDialogListRegion,
-  FloatingPanelDialogRoot,
 } from "./FloatingPanelDialogLayout";
 import { highlightTextByDiff } from "../utils/textDiff";
 
@@ -130,11 +123,7 @@ export function PostTranscribeStageBDialog({
   onToggleSegment,
   onFocusSegment,
 }: Props) {
-  const isOpen = state.phase !== "closed" && typeof document !== "undefined";
-  const { bodyRef, bodyHeight } = useFloatingPanelBodyMeasure(isOpen);
-
-  if (!isOpen) return null;
-
+  const open = state.phase !== "closed";
   const panelBounds = resolveStageBPanelBounds();
   const isLoading = state.phase === "loading";
   const isConsent = state.phase === "consent";
@@ -165,14 +154,6 @@ export function PostTranscribeStageBDialog({
           ? resolveStageBEmptyFitHeight(Boolean(pendingHint), Boolean(packTruncationHint))
           : undefined;
 
-  const measuredFit = bodyHeight != null ? resolveMeasuredPanelFitHeight(bodyHeight) : null;
-  const contentFitHeight = mergeContentFitHeights(estimatedFit, measuredFit);
-
-  const defaultPanelHeight = Math.min(
-    contentFitHeight ?? STAGE_B_PANEL_DEFAULT_SIZE.height,
-    panelBounds.maxHeight,
-  );
-
   const persistPhaseKey = state.phase;
 
   const handleDismiss = () => {
@@ -187,30 +168,26 @@ export function PostTranscribeStageBDialog({
   /** 遮罩点击不关闭：loading 防误触；结果阶段须显式点按钮或标题栏 ×。 */
   const handleOverlayClose = () => {};
 
-  return createPortal(
-    <div className="workspace">
-      <FloatingPanelTemplate
-        id={POST_TRANSCRIBE_STAGE_B_PANEL_ID}
-        title={resolveStageBDialogTitle(state)}
-        preset="compactDialog"
-        minWidth={panelBounds.minWidth}
-        minHeight={
-          isLoading ? 240 : isCompactBody ? FLOATING_PANEL_COMPACT_MIN_HEIGHT : panelBounds.minHeight
-        }
-        maxWidth={panelBounds.maxWidth}
-        maxHeight={panelBounds.maxHeight}
-        defaultSize={{
-          width: isConsent ? STAGE_B_CONSENT_DEFAULT_WIDTH : STAGE_B_PANEL_DEFAULT_SIZE.width,
-          height: defaultPanelHeight,
-        }}
-        contentFitHeight={contentFitHeight}
-        persistPhaseKey={persistPhaseKey}
-        panelZIndex={111}
-        persistState
-        onClose={handleTitleClose}
-        onOverlayClose={handleOverlayClose}
-      >
-        <FloatingPanelDialogRoot measureRef={bodyRef}>
+  return (
+    <CompactFloatingDialog
+      id={POST_TRANSCRIBE_STAGE_B_PANEL_ID}
+      title={resolveStageBDialogTitle(state)}
+      open={open}
+      onClose={handleTitleClose}
+      onOverlayClose={handleOverlayClose}
+      fallbackHeight={STAGE_B_PANEL_DEFAULT_SIZE.height}
+      estimatedFitHeight={estimatedFit ?? STAGE_B_PANEL_DEFAULT_SIZE.height}
+      defaultWidth={isConsent ? STAGE_B_CONSENT_DEFAULT_WIDTH : STAGE_B_PANEL_DEFAULT_SIZE.width}
+      minWidth={panelBounds.minWidth}
+      minHeight={
+        isLoading ? 240 : isCompactBody ? FLOATING_PANEL_COMPACT_MIN_HEIGHT : panelBounds.minHeight
+      }
+      maxWidth={panelBounds.maxWidth}
+      maxHeight={panelBounds.maxHeight}
+      persistPhaseKey={persistPhaseKey}
+      panelZIndex={111}
+      persistState
+    >
           {state.phase === "consent" ? (
             <>
               <FloatingPanelDialogHeader>
@@ -374,9 +351,6 @@ export function PostTranscribeStageBDialog({
               </FloatingPanelDialogFooter>
             </>
           ) : null}
-        </FloatingPanelDialogRoot>
-      </FloatingPanelTemplate>
-    </div>,
-    document.body,
+    </CompactFloatingDialog>
   );
 }

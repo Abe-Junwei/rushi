@@ -108,6 +108,33 @@ function checkTsFile(fullPath) {
       );
     }
   }
+
+  // compactDialog 成品壳：业务须用 CompactFloatingDialog（见 desktop-floating-dialog-panels.md）
+  const compactDialogAllowlist = new Set([
+    'apps/desktop/src/components/PanelTemplate.tsx',
+    'apps/desktop/src/components/CompactFloatingDialog.tsx',
+  ]);
+  if (
+    !rel.endsWith('.test.ts') &&
+    !rel.endsWith('.test.tsx') &&
+    /preset=["']compactDialog["']/.test(source) &&
+    !compactDialogAllowlist.has(rel)
+  ) {
+    errors.push(
+      `${rel}: compactDialog 须经由 CompactFloatingDialog / CompactConfirmDialog，禁止业务层直接 FloatingPanelTemplate`,
+    );
+  }
+  if (
+    !rel.endsWith('.test.ts') &&
+    !rel.endsWith('.test.tsx') &&
+    !rel.endsWith('config/controlStyles.ts') &&
+    /CONTROL_BTN_DANGER_COMPACT/.test(source) &&
+    /CONTROL_BTN_SECONDARY/.test(source)
+  ) {
+    errors.push(
+      `${rel}: 页脚勿混用 CONTROL_BTN_DANGER_COMPACT（h-7）与 CONTROL_BTN_SECONDARY（h-8），危险操作用 CONTROL_BTN_DANGER`,
+    );
+  }
 }
 
 function checkRustFile(fullPath) {

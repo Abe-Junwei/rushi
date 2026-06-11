@@ -23,7 +23,9 @@ type Props = {
   asrCaps: AsrHealthCapabilities | null;
   catalogPresentation: AsrCatalogPresentation;
   prepareModelBusy: boolean;
+  prepareModelCancelling: boolean;
   prepareModelFailure: PrepareModelFailureCopy | null;
+  funasrInstallMessage: string;
   busy: boolean;
   prepareDefaultFunasrModel: (options?: PrepareDefaultModelOptions) => Promise<void>;
   cancelPrepareModel: () => void;
@@ -34,7 +36,9 @@ export function EnvLocalAsrModelCard({
   asrCaps,
   catalogPresentation,
   prepareModelBusy,
+  prepareModelCancelling,
   prepareModelFailure,
+  funasrInstallMessage,
   busy,
   prepareDefaultFunasrModel,
   cancelPrepareModel,
@@ -50,7 +54,8 @@ export function EnvLocalAsrModelCard({
     sidecarMatchesSelection,
     selectedLabel,
   } = catalogPresentation;
-  const panelBusy = busy || prepareModelBusy || catalog.applyBusy;
+  const panelBusy = busy || prepareModelBusy || prepareModelCancelling || catalog.applyBusy;
+  const downloadActive = prepareModelBusy && !prepareModelCancelling;
   const sidecarHub = asrCaps?.funasr_model_id ?? null;
 
   const progressToneClass =
@@ -115,6 +120,11 @@ export function EnvLocalAsrModelCard({
               style={{ width: `${progress}%` }}
             />
           </div>
+          {funasrInstallMessage && (prepareModelBusy || prepareModelCancelling) ? (
+            <p className={`mt-2 ${PANEL_TYPOGRAPHY.meta}`} role="status" aria-live="polite">
+              {funasrInstallMessage}
+            </p>
+          ) : null}
           {!sidecarMatchesSelection ? (
             <p className={`mt-2 ${PANEL_TYPOGRAPHY.meta}`}>
               已选 {selectedLabel}，侧车{sidecarHub ? ` 仍在 ${sidecarHub}` : " 未切换"}。请先「应用并重启侧车」。
@@ -145,9 +155,15 @@ export function EnvLocalAsrModelCard({
                 onClick={() => void prepareDefaultFunasrModel(modelsCached ? { force: true } : undefined)}
               >
                 <Download className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-                {prepareModelBusy ? "正在下载…" : modelsCached ? "校验/刷新缓存" : "下载当前模型"}
+                {prepareModelCancelling
+                  ? "正在取消…"
+                  : downloadActive
+                    ? "正在下载…"
+                    : modelsCached
+                      ? "校验/刷新缓存"
+                      : "下载当前模型"}
               </button>
-              {prepareModelBusy ? (
+              {downloadActive ? (
                 <EnvLocalAsrSmallButton disabled={busy} onClick={cancelPrepareModel}>
                   取消下载
                 </EnvLocalAsrSmallButton>

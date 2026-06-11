@@ -1,6 +1,7 @@
 use crate::asr_sidecar::{
     probe_asr_port, AsrPortStatus, BundledAsrLaunchReport, BundledAsrLaunchState,
 };
+use crate::packaged_hints::dev_or_packaged_str;
 use crate::local_runtime::disk_free_bytes;
 use crate::local_runtime::integrity::{inspect_installed_runtime, InstalledRuntimeStatus};
 use crate::DbState;
@@ -255,7 +256,13 @@ fn build_summary(summary: SummaryContext<'_>) -> (Vec<String>, Option<String>) {
         } else {
             lines.push("ASR 已连通，但未检测到 FFmpeg。".into());
             if blocking.is_none() {
-                blocking = Some("侧车内 FFmpeg 不可用，无法解码音频。".into());
+                blocking = Some(
+                    dev_or_packaged_str(
+                        "侧车内 FFmpeg 不可用。请安装 ffmpeg/ffprobe 并加入 PATH 后重启侧车，或重建内置侧车。",
+                        "侧车内 FFmpeg 不可用。请在「环境 → 本机 ASR」点「一键准备本机 ASR」修复侧车；仍失败请重装应用。",
+                    )
+                    .into(),
+                );
             }
         }
         if summary.health.funasr_required_models_cached {

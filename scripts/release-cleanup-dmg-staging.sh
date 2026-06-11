@@ -18,7 +18,7 @@ detach_stale_mounts() {
         ;;
       /dev/*"/Volumes/dmg."*)
         mount="${line##*$'\t'}"
-        if [[ -n "${img}" && "${img}" == *"/bundle/macos/rw."* ]]; then
+        if [[ -n "${img}" && ( "${img}" == *"/bundle/macos/rw."* || "${img}" == *"/bundle/dmg/rw."* ) ]]; then
           echo "detach stale DMG mount: ${mount} (${img})"
           hdiutil detach "${mount}" -force 2>/dev/null || hdiutil detach "${img}" -force 2>/dev/null || true
         fi
@@ -26,14 +26,16 @@ detach_stale_mounts() {
     esac
   done < <(hdiutil info 2>/dev/null || true)
 
-  if [[ -d "${MACOS_BUNDLE}" ]]; then
-    local rw
-    for rw in "${MACOS_BUNDLE}"/rw.*.dmg; do
-      [[ -e "${rw}" ]] || continue
+  local rw dir
+  for dir in "${MACOS_BUNDLE}" "${DMG_BUNDLE}"; do
+    [[ -d "${dir}" ]] || continue
+    shopt -s nullglob
+    for rw in "${dir}"/rw.*.dmg; do
       echo "detach stale rw image: ${rw}"
       hdiutil detach "${rw}" -force 2>/dev/null || true
     done
-  fi
+    shopt -u nullglob
+  done
 }
 
 remove_rw_files() {

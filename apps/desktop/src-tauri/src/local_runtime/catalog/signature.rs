@@ -6,7 +6,7 @@ use super::config::insecure_manifest_source_allowed;
 
 const RELEASE_MANIFEST_KEY_ID: &str = "rushi-runtime-release-v1";
 const RELEASE_MANIFEST_PUBLIC_KEY_HEX: &str =
-    "e606847c5f1e9e9e701982aaeeb374673e6d0c0f2d495af59cc2ddb12576f94a";
+    "65fb88580ec0f3e1ef458c076086923ead7a8ec6b568f1a52acb4bbca59cfe50";
 const FIXTURE_MANIFEST_KEY_ID: &str = "rushi-runtime-fixture-v1";
 #[cfg(debug_assertions)]
 const FIXTURE_MANIFEST_PUBLIC_KEY_HEX: &str =

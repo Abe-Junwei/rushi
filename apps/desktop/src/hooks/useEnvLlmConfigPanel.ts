@@ -2,6 +2,7 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLlmKeychainReady } from "../hooks/useLlmKeychainReady";
 import { useLlmEnvStatus } from "../hooks/useLlmEnvStatus";
 import { toast } from "../services/ui/toast";
+import { waitMinVisibleBusy } from "../services/ui/minVisibleBusy";
 import { activateLocalOllamaPreset, resolveLlmEnvEffectiveConfig } from "../services/llm/llmEnvStatus";
 import {
   DEFAULT_LLM_API_KEY_ID,
@@ -284,6 +285,7 @@ export function useEnvLlmConfigPanel({ busy, onLlmRuntimeChanged }: UseEnvLlmCon
   }, [baseUrl, bumpKeychainCheck, model, onLlmRuntimeChanged, providerId, savedApiKeyId]);
 
   const probe = useCallback(async () => {
+    const startedAt = Date.now();
     setProbeBusy(true);
     try {
       const runtime = buildProbeRuntime();
@@ -334,6 +336,7 @@ export function useEnvLlmConfigPanel({ busy, onLlmRuntimeChanged }: UseEnvLlmCon
       setProbeFailed(true);
       toast.errorFromUnknown(e);
     } finally {
+      await waitMinVisibleBusy(startedAt);
       setProbeBusy(false);
     }
   }, [

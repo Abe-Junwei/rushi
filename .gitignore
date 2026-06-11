@@ -24,7 +24,7 @@ fixtures/p4-eval/samples/*.wav
 
 # 本机 LRC 手测 fixture（`npm run asr:prepare-local-runtime-fixtures` 生成，含侧车 zip，勿提交）
 fixtures/local-runtime/**/*.zip
-fixtures/local-runtime/**/rushi-runtime-manifest.json
+fixtures/local-runtime/**/rushi-runtime-manifest*.json
 
 # PyInstaller 侧车 ASR（由 scripts/build-asr-sidecar-* 生成，体积大，不提交）
 apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar/

@@ -17,9 +17,9 @@ use super::transcribe_job::{
 use super::transcribe_native_online::{transcribe_assemblyai_native, transcribe_openai_native};
 use super::transcribe_response::{merge_transcribe_warnings, parse_transcribe_segments_from_json};
 use super::transcribe_timeline::{
-    infer_failed_stage_from_message, infer_transcribe_error_code, load_last_timeline,
-    store_active_timeline, take_active_timeline, TranscribeTimelineRecorder, STAGE_PREFLIGHT,
-    STAGE_SAVE, STAGE_TRANSCRIBE,
+    fail_and_persist_active_timeline, infer_failed_stage_from_message, infer_transcribe_error_code,
+    load_last_timeline, store_active_timeline, take_active_timeline, update_active_timeline_progress,
+    TranscribeTimelineRecorder, STAGE_PREFLIGHT, STAGE_SAVE, STAGE_TRANSCRIBE,
 };
 use super::transcribe_timeout::{
     local_transcribe_timeout_duration, long_audio_transcribe_hint, probe_audio_duration_sec,
@@ -46,7 +46,7 @@ fn apply_windowed_warning(tl: &mut TranscribeTimelineRecorder, warnings: &[Strin
     for w in warnings {
         if let Some(rest) = w.strip_prefix("transcribe_windowed:windows=") {
             if let Ok(total) = rest.parse::<u32>() {
-                tl.set_window_progress(total, total);
+                tl.set_window_count_only(total);
             }
         }
     }
@@ -72,9 +72,14 @@ pub async fn project_transcribe_async_start(
     let hotwords_build = build_glossary_hotwords(&conn)?;
     let hotwords = SttVocabularyPlan::from_build(&hotwords_build).hotwords;
     drop(conn);
-    let audio_path = file_detail.audio_path.as_ref().ok_or_else(|| {
-        record_transcribe_err(&mut tl, "该文件没有关联音频，无法转写".to_string())
-    })?;
+    let audio_path = match file_detail.audio_path.as_ref() {
+        Some(p) => p,
+        None => {
+            record_transcribe_err(&mut tl, "该文件没有关联音频，无法转写".to_string());
+            let _ = tl.persist(&st);
+            return Err("该文件没有关联音频，无法转写".to_string());
+        }
+    };
     let audio_path = Path::new(audio_path);
     if !audio_path.is_file() {
         tl.fail_stage(STAGE_PREFLIGHT, "audio_missing", "项目音频文件缺失");
@@ -99,10 +104,14 @@ pub async fn project_transcribe_async_start(
             .inspect_err(|_| {
                 let _ = tl.persist(&st);
             })?;
-    let job_id = v
-        .get("job_id")
-        .and_then(|x| x.as_str())
-        .ok_or_else(|| record_transcribe_err(&mut tl, "侧车未返回 job_id".to_string()))?;
+    let job_id = match v.get("job_id").and_then(|x| x.as_str()) {
+        Some(id) => id,
+        None => {
+            record_transcribe_err(&mut tl, "侧车未返回 job_id".to_string());
+            let _ = tl.persist(&st);
+            return Err("侧车未返回 job_id".to_string());
+        }
+    };
     tl.set_job_id(job_id);
     store_active_timeline(job_id, tl);
     append_desktop_log_line(&st, &format!("INFO transcribe_async job_id={job_id}"));
@@ -259,6 +268,25 @@ pub fn get_last_transcribe_timeline(
     state: State<'_, DbState>,
 ) -> Option<super::transcribe_timeline::TranscribeTimelineSnapshot> {
     load_last_timeline(&state.inner().root)
+}
+
+#[tauri::command]
+pub fn record_transcribe_timeline_poll_progress(
+    state: State<'_, DbState>,
+    job_id: String,
+    window_index: u32,
+    window_count: u32,
+) -> Result<(), String> {
+    update_active_timeline_progress(state.inner(), &job_id, window_index, window_count)
+}
+
+#[tauri::command]
+pub fn record_transcribe_timeline_poll_failure(
+    state: State<'_, DbState>,
+    job_id: String,
+    error_message: String,
+) -> Result<(), String> {
+    fail_and_persist_active_timeline(state.inner(), &job_id, &error_message)
 }
 
 async fn project_run_transcribe_inner(

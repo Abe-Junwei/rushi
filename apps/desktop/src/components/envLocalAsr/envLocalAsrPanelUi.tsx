@@ -48,18 +48,58 @@ export function EnvCollapsibleMetaSummary({ children }: { children: React.ReactN
   );
 }
 
+/** 环境与维护：折叠正文与 chevron 后标题左缘对齐（≈ pl-5）。 */
+export const ENV_UTILITIES_BODY = "mt-2.5 flex flex-col gap-3 pl-5 pb-2";
+
+/** 嵌套折叠（侧车组件 / 维护与诊断）正文：再缩进一级。 */
+export const ENV_UTILITIES_NESTED_BODY = "mt-2 flex flex-col gap-2.5 pl-5 pb-0.5";
+
+/** 二级分组 — 小标题与间距区分层级，不用左侧竖线。 */
+export function EnvUtilitiesSubsection({
+  title,
+  description,
+  children,
+}: {
+  title?: string;
+  description?: React.ReactNode;
+  children?: React.ReactNode;
+}) {
+  return (
+    <div className="flex flex-col gap-2">
+      {title ? <span className={PANEL_TYPOGRAPHY.fieldLabel}>{title}</span> : null}
+      {description ? <div className={PANEL_TYPOGRAPHY.meta}>{description}</div> : null}
+      {children}
+    </div>
+  );
+}
+
+/** 元信息 / 说明段落组 — 统一行距。 */
+export function EnvUtilitiesMetaGroup({ children }: { children: React.ReactNode }) {
+  return <div className={`flex flex-col gap-1.5 ${PANEL_TYPOGRAPHY.meta}`}>{children}</div>;
+}
+
+/** 操作按钮行 — 与正文区保持相同上间距节奏。 */
+export function EnvUtilitiesActionRow({ children }: { children: React.ReactNode }) {
+  return <div className="flex flex-wrap items-center gap-2">{children}</div>;
+}
+
 /** 本机 ASR 折叠区块 — 与 LocalAsrAdvancedSection 同款 details 外观。 */
 export function EnvLocalAsrCollapsibleSection({
   title,
   children,
+  id,
 }: {
   title: string;
   children: React.ReactNode;
+  id?: string;
 }) {
   return (
-    <details className={`${ENV_COLLAPSIBLE_DETAILS} border-b border-notion-divider/60 py-2`}>
+    <details
+      id={id}
+      className={`${ENV_COLLAPSIBLE_DETAILS} border-b border-notion-divider/60 py-2.5 last:border-b-0`}
+    >
       <EnvCollapsibleSectionSummary title={title} />
-      <div className="mt-3 flex flex-col gap-4 pb-3">{children}</div>
+      <div className={ENV_UTILITIES_BODY}>{children}</div>
     </details>
   );
 }

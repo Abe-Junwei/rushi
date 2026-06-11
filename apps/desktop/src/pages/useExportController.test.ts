@@ -17,7 +17,18 @@ vi.mock("../tauri/diagnosticApi", () => ({
   exportDiagnosticBundle: vi.fn(),
 }));
 
+vi.mock("../services/ui/toast", () => ({
+  toast: {
+    success: vi.fn(),
+    info: vi.fn(),
+    error: vi.fn(),
+    errorFromUnknown: vi.fn(),
+  },
+}));
+
 import { exportTextFile, exportProjectBundle } from "../tauri/projectApi";
+import { exportDiagnosticBundle as exportDiagnosticBundleImpl } from "../tauri/diagnosticApi";
+import { toast } from "../services/ui/toast";
 
 function makeDeps(overrides: Partial<Parameters<typeof useExportController>[0]> = {}) {
   const segments: SegmentDto[] = [
@@ -96,5 +107,32 @@ describe("useExportController", () => {
       "示例项目.zip",
       expect.arrayContaining([expect.objectContaining({ text: "第一句" })]),
     );
+  });
+
+  it("exportDiagnosticBundle toasts success when user saves zip", async () => {
+    vi.mocked(exportDiagnosticBundleImpl).mockResolvedValue("/tmp/rushi-diagnostic.zip");
+    const deps = makeDeps();
+    const { result } = renderHook(() => useExportController(deps));
+
+    await act(async () => {
+      await result.current.exportDiagnosticBundle();
+    });
+
+    expect(deps.beginBusy).not.toHaveBeenCalled();
+    expect(toast.success).toHaveBeenCalledWith(
+      expect.stringContaining("/tmp/rushi-diagnostic.zip"),
+    );
+  });
+
+  it("exportDiagnosticBundle toasts info when user cancels save dialog", async () => {
+    vi.mocked(exportDiagnosticBundleImpl).mockResolvedValue(null);
+    const deps = makeDeps();
+    const { result } = renderHook(() => useExportController(deps));
+
+    await act(async () => {
+      await result.current.exportDiagnosticBundle();
+    });
+
+    expect(toast.info).toHaveBeenCalledWith("已取消导出诊断包");
   });
 });

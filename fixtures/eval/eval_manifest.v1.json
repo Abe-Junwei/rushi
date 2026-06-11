@@ -34,12 +34,14 @@
     },
     {
       "id": "proper-noun-zhikong",
-      "category": "term_hit",
+      "category": "long_form",
       "audio_relpath": "samples/制控.mp3",
       "reference_transcript": "",
       "expected_terms": ["制控"],
       "hotwords": "制控",
-      "hotwords_ab": { "on": "制控", "off": null }
+      "hotwords_ab": { "on": "制控", "off": null },
+      "min_segments": 10,
+      "notes": "ACC-EVAL-2 long-form track (~21min); R3g 13min substitute; Paraformer baseline 197 segments"
     }
   ]
 }

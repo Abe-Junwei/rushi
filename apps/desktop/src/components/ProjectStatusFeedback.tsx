@@ -127,6 +127,56 @@ export function TranscribeDiagBanner({
   );
 }
 
+/** TRN-DIAG: failure banner + in-progress preview for editor shell and project hub. */
+export function TranscribeWorkspaceBanners({
+  transcribeFailureDiag,
+  errorMessage,
+  busy,
+  busyReason,
+  busyElapsedSec,
+  transcribeProgress,
+  transcribeCancelling,
+  onCancelTranscribe,
+  onDismissDiag,
+  onOpenEnvironment,
+  diagWrapClassName = "shrink-0 px-4 pt-4",
+}: {
+  transcribeFailureDiag: TranscribeTimelineSnapshot | null;
+  errorMessage?: string | null;
+  busy: boolean;
+  busyReason: BusyReason | null;
+  busyElapsedSec: number;
+  transcribeProgress?: TranscribeProgress | null;
+  transcribeCancelling?: boolean;
+  onCancelTranscribe: () => void;
+  onDismissDiag: () => void;
+  onOpenEnvironment: () => void;
+  diagWrapClassName?: string;
+}) {
+  return (
+    <>
+      {transcribeFailureDiag ? (
+        <div className={diagWrapClassName}>
+          <TranscribeDiagBanner
+            diag={transcribeFailureDiag}
+            errorMessage={errorMessage}
+            onDismiss={onDismissDiag}
+            onOpenEnvironment={onOpenEnvironment}
+          />
+        </div>
+      ) : null}
+      {busy && busyReason === "transcribe" ? (
+        <TranscribePreviewBanner
+          elapsedSec={busyElapsedSec}
+          transcribeProgress={transcribeProgress}
+          cancelling={transcribeCancelling}
+          onCancel={onCancelTranscribe}
+        />
+      ) : null}
+    </>
+  );
+}
+
 export function AsrErrorBanner({
   message = "无法连接本机 ASR，请检查服务是否在运行。",
   detail,

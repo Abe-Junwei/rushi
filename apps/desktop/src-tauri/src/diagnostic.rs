@@ -94,7 +94,7 @@ pub fn export_diagnostic_bundle(
         .try_state::<crate::asr_sidecar::BundledAsrLaunchState>()
         .and_then(|st| st.0.lock().ok().map(|g| g.clone()))
         .unwrap_or_default();
-    let asr_port_probe = tauri::async_runtime::block_on(crate::asr_sidecar::probe_asr_port());
+    let asr_port_probe = crate::asr_sidecar::probe_asr_port_sync();
     let asr_setup_note = format!(
         "hub_model_pref: {}\nbundled_launch_attempted: {}\nbundled_launch_success: {}\nbundled_launch_detail: {}\nasr_port_status: {:?}\nasr_port_detail: {}\n",
         hub_model.as_deref().unwrap_or("(none)"),

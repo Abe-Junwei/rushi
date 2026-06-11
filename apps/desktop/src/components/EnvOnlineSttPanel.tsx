@@ -5,6 +5,7 @@ import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../config/controlSty
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { useSttKeychainReady } from "../hooks/useSttKeychainReady";
 import { toast } from "../services/ui/toast";
+import { waitMinVisibleBusy } from "../services/ui/minVisibleBusy";
 import { buildOnlineSttEnvPresentation } from "../services/stt/onlineSttEnvStatus";
 import { sttKeychainReferenceMessage } from "../services/stt/sttConnectionUi";
 import {
@@ -208,6 +209,7 @@ export function EnvOnlineSttPanel({ busy, scrollAnchorRef, onSttOnlineRuntimeCha
   }, [buildDraftRuntimeConfig, bumpKeychainCheck, onSttOnlineRuntimeChanged, savedApiKeyId]);
 
   const probeOnlineStt = useCallback(async () => {
+    const startedAt = Date.now();
     setOlProbeBusy(true);
     try {
       const typedApiKey = olApiKey.trim();
@@ -245,6 +247,7 @@ export function EnvOnlineSttPanel({ busy, scrollAnchorRef, onSttOnlineRuntimeCha
       setLastProbeAvailable(false);
       toast.errorFromUnknown(e);
     } finally {
+      await waitMinVisibleBusy(startedAt);
       setOlProbeBusy(false);
     }
   }, [

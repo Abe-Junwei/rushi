@@ -4,6 +4,7 @@ import {
   refreshLocalAsrDiagnostics,
 } from "../pages/refreshLocalAsrDiagnostics";
 import type { AsrEnvPresentation } from "./asr/asrEnvStatus";
+import type { AsrPresentationOverlay } from "./environmentCapabilityPresentation";
 import { buildEnvironmentCapabilityPresentation } from "./environmentCapabilityPresentation";
 
 /** R3h-I Runtime Supervisor will extend reasons with sidecar push events. */
@@ -28,6 +29,8 @@ export type EnvironmentCapabilityRefreshDeps = {
     desktopModelsRoot?: string | null;
     asrModelCacheBytes?: number;
   };
+  /** 与 useAsrBridgeController.asrPresentation 对齐，避免 preflight 与设置页 banner 分叉。 */
+  getAsrPresentationOverlay?: () => AsrPresentationOverlay | undefined;
 };
 
 export type EnvironmentCapabilitySnapshot = {
@@ -142,6 +145,7 @@ export async function runEnvironmentCapabilityRefresh(
       const presentation = buildEnvironmentCapabilityPresentation({
         healthResult: readLastAsrHealthRefreshResultAfterDiagnostics(),
         cacheOverlay: deps.getCacheOverlay?.(),
+        asrOverlay: deps.getAsrPresentationOverlay?.(),
       });
 
       latestSnapshot = {

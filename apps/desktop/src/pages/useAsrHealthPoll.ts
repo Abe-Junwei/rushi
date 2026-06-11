@@ -5,6 +5,7 @@ import * as p1 from "../tauri/projectApi";
 import { parseCatalogStatusFromHealth } from "../services/asr/localAsrModelCatalog";
 import { loopbackFetch } from "../services/asr/loopbackFetch";
 import { parseAsrHealthJson } from "../services/asr/asrHealthParse";
+import { waitMinVisibleBusy } from "../services/ui/minVisibleBusy";
 
 export type AsrHealthState = "checking" | "ok" | "error";
 
@@ -81,10 +82,20 @@ export function useAsrHealthPoll({ tauriRuntime, catalogHooksRef }: Params) {
           };
           return;
         }
+        const startedAt = Date.now();
         if (touchUi) {
           setAsrHealth("checking");
           setAsrHealthDetail("");
         }
+
+        const commit = async (result: AsrHealthRefreshResult, caps: AsrHealthCapabilities | null) => {
+          if (touchUi) await waitMinVisibleBusy(startedAt);
+          setAsrHealth(result.health);
+          setAsrHealthDetail(result.healthDetail);
+          setAsrCaps(caps);
+          lastAsrHealthRefreshResult = result;
+        };
+
         const url = asrHealthUrl();
         try {
           const res = await loopbackFetch(url, { method: "GET", signal: AbortSignal.timeout(8000) });
@@ -98,19 +109,19 @@ export function useAsrHealthPoll({ tauriRuntime, catalogHooksRef }: Params) {
             const parsed = parseAsrHealthJson(data);
             if (!parsed) {
               const detail = `无法解析 ${url} 的能力字段（响应格式不符合 rushi-asr /health 契约）。`;
-              setAsrHealth("error");
-              setAsrHealthDetail(detail);
               await refreshBundledAsrDiag();
-              lastAsrHealthRefreshResult = {
-                health: "error",
-                healthDetail: detail,
-                caps: null,
-                healthJson: data,
-                rootJson: null,
-              };
+              await commit(
+                {
+                  health: "error",
+                  healthDetail: detail,
+                  caps: null,
+                  healthJson: data,
+                  rootJson: null,
+                },
+                null,
+              );
               return;
             }
-            setAsrCaps(parsed);
             let rootJson: unknown = null;
             try {
               const rootRes = await loopbackFetch(`${asrBaseUrl()}/`, {
@@ -124,42 +135,46 @@ export function useAsrHealthPoll({ tauriRuntime, catalogHooksRef }: Params) {
             if (!parseCatalogStatusFromHealth(data)) {
               catalogHooksRef.current.refreshIfNeeded(data);
             }
-            setAsrHealth("ok");
             await refreshBundledAsrDiag();
-            lastAsrHealthRefreshResult = {
-              health: "ok",
-              healthDetail: "",
-              caps: parsed,
-              healthJson: data,
-              rootJson,
-            };
+            await commit(
+              {
+                health: "ok",
+                healthDetail: "",
+                caps: parsed,
+                healthJson: data,
+                rootJson,
+              },
+              parsed,
+            );
             return;
           }
           const detail = `无法访问 ${url}（HTTP ${res.status}）。请先在本机启动 ASR：见说明中「启动本地 ASR」一节。`;
-          setAsrHealth("error");
-          setAsrHealthDetail(detail);
           await refreshBundledAsrDiag();
-          lastAsrHealthRefreshResult = {
-            health: "error",
-            healthDetail: detail,
-            caps: null,
-            healthJson: null,
-            rootJson: null,
-          };
+          await commit(
+            {
+              health: "error",
+              healthDetail: detail,
+              caps: null,
+              healthJson: null,
+              rootJson: null,
+            },
+            null,
+          );
           return;
         } catch (e) {
-          setAsrHealth("error");
           const msg = e instanceof Error ? e.message : String(e);
           const detail = `无法连接 ${url}：${msg}`;
-          setAsrHealthDetail(detail);
           await refreshBundledAsrDiag();
-          lastAsrHealthRefreshResult = {
-            health: "error",
-            healthDetail: detail,
-            caps: null,
-            healthJson: null,
-            rootJson: null,
-          };
+          await commit(
+            {
+              health: "error",
+              healthDetail: detail,
+              caps: null,
+              healthJson: null,
+              rootJson: null,
+            },
+            null,
+          );
         }
       };
 

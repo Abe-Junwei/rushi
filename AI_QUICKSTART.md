@@ -21,7 +21,7 @@
 
 ## 当前热点（自动同步，2026-06-07）
 
-**工作区尾项**：**R3e-A** ✅ → **下一刀**：**TRN-DIAG** / 并行 **ASR-WARM** — [`r3e-a-phase-signoff-2026-06.md`](./docs/execution/specs/r3e-a-phase-signoff-2026-06.md)
+**工作区尾项**：**R3h-2** ✅ — [`r3h-2-local-runtime-resume-acceptance.md`](./docs/execution/specs/r3h-2-local-runtime-resume-acceptance.md)；下一刀 **ASR-WARM** / **R3h-3**
 
 **v1 后主序：LLM-LOC**
 
@@ -48,7 +48,7 @@
 | 新 UI / 整页重设计 / Stitch 对齐 | 仓库根 `DESIGN.md` → 再映射到 `tailwind.config.js` + `apps/desktop/src/config/tokens.ts` |
 | **波形区 Stitch 精修** | [`apps/desktop/docs/stitch-waveform-polish-spec.md`](./apps/desktop/docs/stitch-waveform-polish-spec.md) + [`stitch-waveform-polish-layout.html`](./apps/desktop/stitch-waveform-polish-layout.html) → `bash scripts/prepare-stitch-upload.sh` |
 | 浮动确认/表单对话框 | `FloatingPanelTemplate` + `preset="compactDialog"`；`controlStyles.ts` 按钮；见 [`docs/architecture/desktop-floating-dialog-panels.md`](./docs/architecture/desktop-floating-dialog-panels.md) |
-| **后续排期 / 下一刀** | [`rushi-execution-roadmap.md`](./docs/execution/plans/rushi-execution-roadmap.md) §10；**当前**：**TRN-DIAG** / 并行 ASR-WARM（R3e-A ✅ · R3f mac ✅ · Project Hub ✅） |
+| **后续排期 / 下一刀** | [`rushi-execution-roadmap.md`](./docs/execution/plans/rushi-execution-roadmap.md) §10；**当前**：**R3h-3** / **ASR-WARM**（R3h-2 ✅） |
 | **新功能 / 路线图薄片** | 可选先 **`grill-with-docs`** → **先调研后编码**：`.cursor/rules/feature-research-gate.mdc` + `docs/execution/specs/*-research.md`；范例 [`r3-provider-configuration-research.md`](./docs/execution/specs/r3-provider-configuration-research.md) |
 | **难 bug / 侧车 / flaky** | `.cursor/skills/diagnose` 或对话中说「按 diagnose 查」 |
 | **架构 hotspot / 定期体检** | `.cursor/skills/improve-architecture`；配合 `check-architecture-guard.mjs` |

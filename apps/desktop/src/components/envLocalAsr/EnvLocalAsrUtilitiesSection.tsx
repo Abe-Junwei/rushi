@@ -8,7 +8,13 @@ import type {
   WaveformPeaksCacheInfo,
 } from "../../tauri/projectApi";
 import type { AsrSetupControllerApi } from "../../pages/useAsrSetupController";
-import { EnvLocalAsrCollapsibleSection, EnvLocalAsrSmallButton } from "./envLocalAsrPanelUi";
+import {
+  EnvLocalAsrCollapsibleSection,
+  EnvLocalAsrSmallButton,
+  EnvUtilitiesActionRow,
+  EnvUtilitiesMetaGroup,
+  EnvUtilitiesSubsection,
+} from "./envLocalAsrPanelUi";
 import { LocalAsrAdvancedSection } from "./LocalAsrAdvancedSection";
 import { LocalAsrCacheSection } from "./LocalAsrCacheSection";
 import { LocalAsrSetupWizard } from "./LocalAsrSetupWizard";
@@ -23,6 +29,8 @@ type Props = {
   asrCacheMessage: string;
   funasrInstallMessage: string;
   prepareModelBusy: boolean;
+  prepareModelCancelling?: boolean;
+  transcribeBlockReason?: string | null;
   busy: boolean;
   refreshAsrHealth: () => Promise<void>;
   copyFunasrManualCommands: () => Promise<void>;
@@ -46,6 +54,8 @@ export function EnvLocalAsrUtilitiesSection({
   asrCacheMessage,
   funasrInstallMessage,
   prepareModelBusy,
+  prepareModelCancelling = false,
+  transcribeBlockReason = null,
   busy,
   copyFunasrManualCommands,
   refreshAsrModelCacheInfo,
@@ -60,13 +70,15 @@ export function EnvLocalAsrUtilitiesSection({
   const desktopModelsRoot = asrModelCacheInfo?.models_root ?? null;
 
   return (
-    <div className="flex flex-col gap-2">
+    <div className="flex flex-col">
       {presentation.health !== "error" ? (
-        <EnvLocalAsrCollapsibleSection title="安装向导">
+        <EnvLocalAsrCollapsibleSection id="env-asr-setup-wizard" title="安装向导">
           <LocalAsrSetupWizard
             setup={asrSetup}
             busy={busy}
             prepareModelBusy={prepareModelBusy}
+            prepareModelCancelling={prepareModelCancelling}
+            transcribeBlockReason={transcribeBlockReason}
             openAppDataFolder={openAppDataFolder}
             exportDiagnosticBundle={exportDiagnosticBundle}
             embedded
@@ -74,39 +86,48 @@ export function EnvLocalAsrUtilitiesSection({
         </EnvLocalAsrCollapsibleSection>
       ) : null}
 
-      <EnvLocalAsrCollapsibleSection title="高级诊断">
+      <EnvLocalAsrCollapsibleSection id="env-asr-advanced-diagnostics" title="高级诊断">
         {presentation.health === "error" ? (
-          <div className="flex flex-col gap-2">
-            <div className="flex flex-wrap gap-2">
-              {isDefaultBundledAsrTarget() && bundledAsrDiag?.attempted ? (
+          <EnvUtilitiesSubsection
+            title="连接状态"
+            description={
+              <p className="m-0">
+                基址 <code className="font-mono text-zen-indigo">{asrBaseUrl()}</code>
+              </p>
+            }
+          >
+            {isDefaultBundledAsrTarget() && bundledAsrDiag?.attempted ? (
+              <EnvUtilitiesActionRow>
                 <EnvLocalAsrSmallButton disabled={busy} onClick={() => void retryBundledAsrSidecar()}>
                   重试内置侧车
                 </EnvLocalAsrSmallButton>
-              ) : null}
-            </div>
-            <p className={PANEL_TYPOGRAPHY.meta}>
-              基址 <code className="font-mono text-zen-indigo">{asrBaseUrl()}</code>
-            </p>
-          </div>
+              </EnvUtilitiesActionRow>
+            ) : null}
+          </EnvUtilitiesSubsection>
         ) : null}
 
         {presentation.cachePathMismatch || presentation.modelsOnDiskButSidecarBlind ? (
-          <p className={`${PANEL_TYPOGRAPHY.meta} text-zen-saffron`} role="status">
-            {presentation.cachePathMismatchDetail ?? presentation.modelsOnDiskButSidecarBlindDetail}
-          </p>
+          <EnvUtilitiesSubsection title="路径告警">
+            <p className={`m-0 ${PANEL_TYPOGRAPHY.meta} text-zen-saffron`} role="status">
+              {presentation.cachePathMismatchDetail ?? presentation.modelsOnDiskButSidecarBlindDetail}
+            </p>
+          </EnvUtilitiesSubsection>
         ) : null}
 
         {presentation.health === "ok" && asrCaps ? (
-          <p className={PANEL_TYPOGRAPHY.meta}>
-            侧车模型目录{" "}
-            <code className="font-mono text-zen-indigo">{sidecarModelsRoot ?? "（未绑定）"}</code>
-            {desktopModelsRoot ? (
-              <>
-                {" "}
-                · 桌面缓存 <code className="font-mono text-zen-indigo">{desktopModelsRoot}</code>
-              </>
-            ) : null}
-          </p>
+          <EnvUtilitiesSubsection title="模型目录">
+            <EnvUtilitiesMetaGroup>
+              <p className="m-0">
+                侧车{" "}
+                <code className="font-mono text-zen-indigo">{sidecarModelsRoot ?? "（未绑定）"}</code>
+              </p>
+              {desktopModelsRoot ? (
+                <p className="m-0">
+                  桌面缓存 <code className="font-mono text-zen-indigo">{desktopModelsRoot}</code>
+                </p>
+              ) : null}
+            </EnvUtilitiesMetaGroup>
+          </EnvUtilitiesSubsection>
         ) : null}
 
         <LocalAsrAdvancedSection

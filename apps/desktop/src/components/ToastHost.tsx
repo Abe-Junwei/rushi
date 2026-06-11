@@ -20,8 +20,8 @@ const TOAST_SHELL =
 const VARIANT_SURFACE: Record<ToastVariant, string> = {
   info: "border-notion-callout-border bg-notion-callout-bg text-notion-text",
   success: "border-zen-success-border bg-zen-success-surface text-zen-success",
-  warning: "border-zen-saffron/30 bg-zen-saffron/10 text-notion-text",
-  error: "border-zen-cinnabar/35 bg-zen-cinnabar/10 text-zen-cinnabar",
+  warning: "border-zen-saffron-border bg-zen-saffron-surface text-notion-text",
+  error: "border-zen-cinnabar-border bg-zen-cinnabar-surface text-zen-cinnabar",
 };
 
 const VARIANT_ICON: Record<

@@ -8,19 +8,25 @@
 - 清单：`eval_manifest.v1.json`（`schema_version`、`items[]`）
 - 占位音频：`bash scripts/eval-generate-placeholders.sh`（需 ffmpeg）
 
-## 2. 指标（CER / 术语命中 / 低置信比例）
+## 2. 指标（CER / 术语命中 / 低置信 / 长音频 ACC-EVAL-2）
 
 Python 库：`services/asr/rushi_asr/eval_metrics.py`
 
 - `cer_chars(reference, hypothesis)`：按 **Unicode 码位** 的编辑距离 / `len(reference)`。
 - `term_hit_rate(terms, hypothesis)`：术语是否在识别结果中 **子串命中**（朴素版，后续可换对齐/分词）。
 - `low_confidence_ratio(segments)`：JSON 语段列表中带 `low_confidence` 的比例。
+- `rtfx(duration_sec, wall_sec)`：长音频 **RTFx**（音频秒 / 推理墙钟秒）。
+- `resolve_segmentation_mode(body, warnings)`：从 `TranscriptionResult` 或 warnings 解析分段模式。
 
 对比报告（引擎/规则前后差异）可由 CI 或本地脚本调用上述函数 + 固定 manifest 输出 JSON。
 
+**ACC-EVAL-1**（= ASR-VOC-5）：热词 on/off、`term_hit_rate` — [`asr-voc-5-hand-test-checklist.md`](specs/asr-voc-5-hand-test-checklist.md)
+
+**ACC-EVAL-2**：`segment_count`、`wall_sec`、`rtfx`、`segmentation_mode` — [`acc-eval-2-long-form-metrics-intent.md`](specs/acc-eval-2-long-form-metrics-intent.md)；`npm run eval:run:long-form`（本机 Paraformer + 制控 mp3）。
+
 **CI**：`asr` job 在 `pytest` 后 **后台启动 stub ASR**（`python -m rushi_asr`），待 `GET /health` 就绪后执行 `python3 scripts/eval-run.py`（仓库根 manifest + 占位 wav）。
 
-**批跑清单（需本机 ASR + curl）**：仓库根执行 `npm run p4:eval-run`（或 `python3 scripts/eval-run.py`）。会读取 `fixtures/eval/eval_manifest.v1.json`，对每条 `audio_relpath` 调用 `POST /v1/transcribe`，在 stdout 打印 JSON（含 `engine`、`warnings`、拼接假设文本、`low_confidence_ratio`、有参考稿时的 `cer_chars`）。若音频缺失或请求失败，对应 `item` 带 `error` 且进程退出码为 1。
+**批跑清单（需本机 ASR + curl）**：仓库根执行 `npm run eval:run`（或 `python3 scripts/eval-run.py`）。会读取 `fixtures/eval/eval_manifest.v1.json`，对每条 `audio_relpath` 调用 `POST /v1/transcribe`，在 stdout 打印 JSON（含 `engine`、`warnings`、拼接假设文本、`low_confidence_ratio`、ACC-EVAL-2 长音频字段、有参考稿时的 `cer_chars`）。若音频缺失或请求失败，对应 `item` 带 `error` 且进程退出码为 1。
 
 ## 3. 批量任务与失败恢复（约定）
 

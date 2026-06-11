@@ -54,3 +54,38 @@ def low_confidence_ratio(segments: list[dict]) -> float:
         return 0.0
     low = sum(1 for s in segments if s.get("low_confidence"))
     return low / len(segments)
+
+
+def rtfx(duration_sec: float | None, wall_sec: float | None) -> float | None:
+    """
+    Inverse real-time factor: audio duration / wall-clock transcribe time.
+
+    Matches ASR Leaderboard RTFx (audio_seconds / inference_seconds). Returns ``None``
+    when inputs are missing or non-positive.
+    """
+    if duration_sec is None or wall_sec is None:
+        return None
+    try:
+        d = float(duration_sec)
+        w = float(wall_sec)
+    except (TypeError, ValueError):
+        return None
+    if d <= 0 or w <= 0 or d != d or w != w:  # NaN
+        return None
+    return d / w
+
+
+def resolve_segmentation_mode(
+    body: dict[str, object],
+    warnings: list[object] | None,
+) -> str | None:
+    """Prefer response ``segmentation_mode``; else parse ``segmentation_mode:`` warnings."""
+    raw = body.get("segmentation_mode")
+    if raw is not None and str(raw).strip():
+        return str(raw).strip()
+    for w in warnings or []:
+        if isinstance(w, str) and w.startswith("segmentation_mode:"):
+            tail = w.split(":", 1)[1].strip()
+            if tail:
+                return tail
+    return None

@@ -5,7 +5,9 @@ import {
   markLlmConnectionVerified,
   readLlmRuntimeConfigFromStorage,
 } from "../postprocess/postprocessRuntimeContract";
+import { ollamaDetectReady } from "./llmEnvStatusTone";
 import { resolveLlmEnvEffectiveConfig, type LlmEnvConfigDraft } from "./llmEnvStatus";
+import { waitMinVisibleBusy } from "../ui/minVisibleBusy";
 
 /** Ollama 探测 + 连接验证序号：顶栏芯片 / 设置 banner / 导出 共用真源。 */
 export type LlmEnvRuntimeSnapshot = {
@@ -70,6 +72,7 @@ export async function refreshLlmOllamaDetect(args?: {
   if (inflightDetect) return inflightDetect;
 
   inflightDetect = (async () => {
+    const startedAt = Date.now();
     snapshot = { ...snapshot, ollamaDetectBusy: true };
     publish();
 
@@ -80,9 +83,10 @@ export async function refreshLlmOllamaDetect(args?: {
 
     try {
       const out = await ollamaDetectStatus({ model: probeModel });
+      await waitMinVisibleBusy(startedAt);
       snapshot = { ...snapshot, ollamaDetect: out, ollamaDetectBusy: false };
       publish();
-      if (out.reachable && isLocalLoopbackLlmConfig(cfg)) {
+      if (out.reachable && isLocalLoopbackLlmConfig(cfg) && ollamaDetectReady(out)) {
         markLlmConnectionVerified(cfg);
       }
       return out;
@@ -93,6 +97,7 @@ export async function refreshLlmOllamaDetect(args?: {
         hasQwen25_7b: false,
         message: e instanceof Error ? e.message : String(e),
       };
+      await waitMinVisibleBusy(startedAt);
       snapshot = { ...snapshot, ollamaDetect: out, ollamaDetectBusy: false };
       publish();
       return out;

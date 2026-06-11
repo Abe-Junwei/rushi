@@ -10,7 +10,7 @@
 | 适用节奏 | 单人、每轮 2～4h、一轮一纵向薄片 |
 | 规划跨度 | **个人单机 v1**：约 **14～18 周（自当前）** 或 **18～22 周（自 W1）**；R3 薄片 **~12～15w**（§4.0，含发行 smoke 缓冲）；协作 **非 v1** |
 | 修订 | 每完成一个阶段更新 §2 状态表、§4 排期表与 §13 代码对照 |
-| 最近对照 | **2026-06-07**：**R3e-A** ✅ · **R3f mac** ✅ · **Project Hub Phase 10** ✅ — 下一刀 **TRN-DIAG** / 并行 ASR-WARM |
+| 最近对照 | **2026-06-10**：**R3h-1-R** ✅ · **TRN-DIAG** ✅ · **R3h-2** ✅ — **当前薄片**：**ASR-WARM** / **R3h-3**；并行见 backlog |
 
 ### 状态标记约定（全文档统一）
 
@@ -171,7 +171,7 @@ bash scripts/p0-acceptance.sh
 | 在线 STT 环境 UI | ✅ 主体已有 | `EnvOnlineSttPanel` + 合约测试；非从零建设 |
 | FunASR 模型下载 UI | ✅ 主体已有 | `usePrepareModelController` + `EnvLocalAsrPanel` |
 | 本机 ASR 一键诊断/准备（R3f） | ✅ **mac** / Win ⏳ | `asr_setup/` + `LocalAsrSetupWizard`；mac 安装包机器签收 2026-06-09 — [signoff](../specs/r3f-phase-signoff-2026-06.md) |
-| **本地运行时目录 LRC（R3h）** | 🟡 进行中 | R3h-0 🟡；R3h-1 **编码✅ / 发行门禁⏳**；`local_runtime/` 模块树已合入；见 §13.1 |
+| **本地运行时目录 LRC（R3h）** | 🟡 进行中 | R3h-0 mac ✅ · **R3h-1** ✅ · **R3h-1-R** ✅；下一薄片 **R3h-2**（§4.1.5.2） |
 | 诊断包导出入口 | ✅ 已有 | 工具栏菜单；R9 + TRN-DIAG 增强 |
 | LLM 后处理（R2 标点） | ✅ 已交付 | `postprocess_cmd`；**R3t-C/D/E 未编码** |
 | MCP / 协作服务 | ❌ 未开始 | 无 `services/mcp`、`services/collab` |
@@ -272,7 +272,8 @@ R0 → GLY-1 → R1–R2 → R3 → R4 → [R5] → [R6–R8] → R9
 【A 能装能转】
 ① R3h-0   构建 smoke + Win 磁盘 + pip 主 UI 降级
     ↓
-② R3h-1   local_runtime + manifest 下载 + app_data 侧车     ← ✅ 已收口
+② R3h-1   local_runtime 编码（manifest 下载器 / 回滚）     ← ✅ 编码收口
+②-R R3h-1-R  runtime manifest **发行激活**（HTTPS 默认源 + 发布流水线）     ← ✅ R1+R2 签收
     ↓
 ③ R3f     一键准备手测签收
     ↓
@@ -336,7 +337,8 @@ R4 + R4-GATE ✅ → R9   ← **下一主序**
 |----|-----|------|------|----------|----------|
 | — | R3a/b/c | ✅ | — | keychain、profile、缓存/manifest | 各 acceptance |
 | **①** | **R3h-0** | ✅ **mac** / Win §4 豁免 | 2–3d | mac 机器闸门 ✅（2026-06-06 · 复验 2026-06-08）；Win 有 Win 机时补 §4 | [r3h-0 acceptance](../specs/r3h-0-asr-sidecar-build-smoke-acceptance.md) · [signoff](../specs/r3h-0-phase-signoff-2026-06.md) |
-| **②** | **R3h-1** | 🟡 **编码✅** / **发行⏳** | 5–7d | 编码：`local_runtime/`、signed manifest、pinned key、**install 事务回滚**、**手动恢复 previous**。**非**自动升级健康回滚（→ R3h-2/I2）。发行门禁 remediation **§11** 未全绿 | remediation §5 Phase 1 + §11、§3.7、路线图 §4.1.5.1 |
+| **②** | **R3h-1** | ✅ | 5–7d | 编码：`local_runtime/`、signed manifest、pinned key、**install 事务回滚**、**手动恢复 previous**。**非**自动升级健康回滚（→ R3h-2/I2）。**发行** → **②-R** ✅ | remediation §5 Phase 1 + §11、§4.1.5.1 |
+| **②-R** | **R3h-1-R** | ✅ | 3–5d | **HTTPS 默认 manifest URL**；`npm run runtime:publish-manifest`；R2 UI 降噪；R1+R2 签收 [`signoff`](../specs/r3h-1-r-phase-signoff-2026-06.md) | [`plan`](../specs/r3h-1-r-runtime-manifest-release-activation-plan.md) · [`checklist`](../specs/r3h-1-r-release-checklist.md) |
 | **③** | **R3f** | ✅ **mac** / Win ⏳ | 2–3d | 诊断 + 一键准备 + 8741 冲突；mac 安装包机器闸门 2026-06-09 | [`r3f-asr-setup-wizard-acceptance.md`](../specs/r3f-asr-setup-wizard-acceptance.md) · [signoff](../specs/r3f-phase-signoff-2026-06.md) |
 | **④** | **R3e-A** | ✅ | 2–3d | 动态超时 + 失败分类；**2026-06-07 复验签收** | [`r3e-long-audio-transcribe-acceptance.md`](../specs/r3e-long-audio-transcribe-acceptance.md) · [signoff](../specs/r3e-a-phase-signoff-2026-06.md) |
 | **⑤** | **R3g-A** | ✅ | 3–5d | 双 SKU + `prepare(model_id)`；**⑤a–c** 手测签收（2026-05-27） | [`r3g-local-asr-model-catalog-acceptance.md`](../specs/r3g-local-asr-model-catalog-acceptance.md) |
@@ -348,7 +350,7 @@ R4 + R4-GATE ✅ → R9   ← **下一主序**
 | **⑤′½** | **TRN-DIAG** | 📋 | 0.5w | 转写阶段时间线；失败阶段 + 建议动作；并入诊断包 | [`personal-solo-v1-backlog.md`](../specs/personal-solo-v1-backlog.md) §3.2 |
 | **⑥** | **R3e-B** | ✅ | 1.5–2w | 长音频侧车 5min 窗；**2026-05-30 签收** | [`r3e-b-hand-test-checklist.md`](../specs/r3e-b-hand-test-checklist.md) |
 | **⑥½** | **R3e-C** | ✅ | 1–1.5w | async Job + 120s 窗末 preview merge；停止转写；preview 禁 save/LLM；**2026-05-31 手测签收**（制控.mp3） | [`r3e-c-incremental-transcribe-acceptance.md`](../specs/r3e-c-incremental-transcribe-acceptance.md)、[`r3e-c-incremental-transcribe-hand-test-checklist.md`](../specs/r3e-c-incremental-transcribe-hand-test-checklist.md) |
-| **⑦** | **R3h-2** | ⏳ | ~1w | Range 续传；事件化下载进度；GC；**C 类自动升级回滚**；缺/坏侧车自动下载 | remediation §5 Phase 2 |
+| **⑦** | **R3h-2** | ✅ | ~1w | Range 续传 · 下载进度 UI · GC · **C 类自动回滚**（集成测 `test-r3h-2-c-rollback.sh`） | [`r3h-2 acceptance`](../specs/r3h-2-local-runtime-resume-acceptance.md) · remediation §5 Phase 2 |
 | **⑦½** | **ASR-WARM** | 📋 | 0.5–1w | 侧车保活、模型预热；**R3h-I4** | personal-solo §3.1 |
 | **⑧** | **R3h-3** + **R3d** | ⏳ | 3–5d | 本机 ASR / 在线 STT / LLM 三盏灯；五栏 IA | remediation §5 Phase 3 + [`r3d-settings-ia-acceptance.md`](../specs/r3d-settings-ia-acceptance.md) |
 | **⑧½** | **R3h-3.5** | ⏳ | ~1w | Sherpa-ONNX CER Spike；不阻塞 A–B 签收 | remediation §5 Phase 3.5 |
@@ -417,7 +419,23 @@ R4 + R4-GATE ✅ → R9   ← **下一主序**
 | **B 手动恢复 previous** | 用户触发「恢复上一版侧车」 | `local_runtime/recovery.rs` | **R3h-1 编码✅** |
 | **C 自动升级健康回滚** | 切换后运行时劣化 → 自动回退 | 规划 | **R3h-2 / R3h-I2** |
 
-> R3h-1 **不包含 C**；roadmap 勿写「企业级自动回滚已完成」。
+> R3h-1 **不包含 C**；roadmap 勿写「企业级自动回滚已完成」。**R3h-1-R** 默认 HTTPS 源 + R1/R2 手测 ✅（2026-06-10）；Release CI ⏳。
+
+#### 4.1.5.2 R3h-1-R — Runtime Manifest 发行激活（LRC 上线）
+
+**背景**：`RUSHI_LOCAL_RUNTIME_MANIFEST_URL` 今日仅环境变量；未配置时 UI 报「manifest 未配置」，但 bundled / dev 侧车仍可转写。**本轨**让「应用内下载 / 修复侧车」对发行用户生效。
+
+**三阶段**（详表见 [`r3h-1-r-runtime-manifest-release-activation-plan.md`](../specs/r3h-1-r-runtime-manifest-release-activation-plan.md)）：
+
+| 阶段 | 主题 | 交付 | 阻塞 |
+|------|------|------|------|
+| **R0** | 本地验通 | `prepare-local-runtime-fixtures.sh` + 无 bundled 手测 | 无 |
+| **R1** | 最小发行 | HTTPS 默认 manifest URL；CI `publish-runtime-manifest`；release 私钥签名；remediation §11 零终端 / 构建 smoke | ✅ **2026-06-10** |
+| **R2** | 产品串联 | 一键准备自动下载；bundled OK 时 UI 降噪；弱网续传归 **R3h-2** | ✅ **2026-06-10** |
+
+**与 Q-SIDECAR-1 关系**：Mac 侧车 **手动** build 进 bundled 与 manifest **OTA zip** 可并存 — manifest 管 app_data 安装位，bundled 管离线 fallback；fat DMG 策略下 manifest 主价值为 **损坏修复 + 侧车版本 OTA**。
+
+**勿混淆**：`RUSHI_MODEL_VERIFY_MANIFEST` = **模型权重**校验（R3c）；本轨 = **侧车运行时** `rushi-runtime-manifest.json`。
 
 | 子轨 | 对齐目标 | 主要落位 | **启动条件（定量）** |
 |------|----------|----------|----------------------|
@@ -697,7 +715,7 @@ React 预览 UI
 | R3a | LLM keychain + probe | ✅ |
 | R3b | Profile 导入导出 | ✅ |
 | R3c | 缓存 / manifest / 清缓存 | ✅ |
-| **R3h** | **本地运行时目录（LRC）** | ⏳ §4.1 ①–⑧ + `R3h-I`；`R3h-1` 按 release-system 最小闭环推进 |
+| **R3h** | **本地运行时目录（LRC）** | 🟡 §4.1 ①–⑧ + `R3h-I`；**R3h-1 / R3h-1-R** ✅；**R3h-2** 下一薄片 |
 | **R3f** | 一键环境准备 | ✅ mac / Win ⏳ |
 | **R3e** | 长音频 | ✅ A/B/C（**C** 2026-05-31） |
 | **R3g** | 模型目录 | ✅ R3g-A ⑤a–c（2026-05-27） |
@@ -714,7 +732,8 @@ React 预览 UI
 | 子阶段 | 主题 | 阻塞关系 |
 |--------|------|----------|
 | **R3h-0** | 构建正确 + CI smoke + 诊断 corrupt + Win 磁盘 | **阻塞一切发行手测** |
-| **R3h-1** | `local_runtime/` + HTTPS 下载 + app_data 侧车 + signed manifest / current+previous / rollback | 阻塞 R3f 签收 |
+| **R3h-1** | `local_runtime/` 编码：HTTPS 下载 + app_data 侧车 + signed manifest / current+previous / rollback | ✅ |
+| **R3h-1-R** | Runtime manifest **发行激活**：默认 HTTPS 源 + 发布流水线 + 零终端 VM 手测 | ✅ mac arm64 · CI ⏳ |
 | **R3h-2** | 断点续传、自动下载编排、GC / progress events / 升级收口 | 阻塞 R9 弱网场景 |
 | **R3h-3** | 三盏灯就绪页（合并 R3d） | 体验收口 |
 | **R3h-I** | 工业成熟度对齐：`Runtime Supervisor` / signed release system / `Setup Machine` | **收口轨**；不改 ①–⑨ 主顺序 |
@@ -995,7 +1014,7 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 |----|------|
 | **定位** | **v1 已闭合** → **v1 后本机 LLM**（§1.6、§6） |
 | **阶段** | **LLM-LOC-4a** ✅ · **4b** ❌ Gate-B No-Go（[decision](../specs/llm-loc-gate-b-decision-2026-06.md) 2026-06-04） |
-| **工作区尾项** | **R3e-A** ✅ — [signoff](../specs/r3e-a-phase-signoff-2026-06.md)；**下一刀**：**TRN-DIAG** / 并行 **ASR-WARM** |
+| **工作区尾项** | **TRN-DIAG** ✅ — [`trn-diag-acceptance.md`](../specs/trn-diag-acceptance.md)；**下一刀**：**ASR-WARM** |
 | **刚闭合** | **R3e-A** · **R3f mac** · **Project Hub Phase 10** · **R3h-0 mac** · R9 · R4 |
 | **Spike 真源** | [research](../specs/llm-loc-spike-research.md) · [plan](../specs/llm-loc-spike-plan.md) · [acceptance](../specs/llm-loc-spike-acceptance.md) · [backlog §9](../specs/llm-local-runtime-backlog.md) |
 | **预检** | `bash scripts/llm-loc-spike-preflight.sh` |
@@ -1012,9 +1031,9 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 
 **LLM**：Spike ✅ · **4a Ollama** ✅（[acceptance](../specs/llm-loc-4a-acceptance.md)）；G-A1 人工可选；**4b 未立项**。
 
-**并行（不挡主序）**：见 [parallel-backlog-2026-06.md](../specs/parallel-backlog-2026-06.md) — TRN-DIAG、ASR-WARM、R3h-2；Win §4 backlog
+**并行（不挡主序）**：见 [parallel-backlog-2026-06.md](../specs/parallel-backlog-2026-06.md) — **R3h-2**、ASR-WARM；Win §4 backlog
 
-**⑤″f 主序**：**⑤″f-B** ✅ → … → **R3h-0 mac** ✅ → **R3f mac** ✅ → **R3e-A** ✅ → **TRN-DIAG**（下一刀）
+**⑤″f 主序**：**⑤″f-B** ✅ → … → **R3h-0 mac** ✅ → **R3f mac** ✅ → **R3e-A** ✅ → **TRN-DIAG** ✅ → **ASR-WARM**（下一刀）
 
 ---
 
@@ -1049,6 +1068,8 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | [`ui-redesign-parallel-dev.md`](../specs/ui-redesign-parallel-dev.md) | UI 纪律与已验收记录 |
 | [`architecture-split-plan.md`](../specs/architecture-split-plan.md) | 文件拆分地图（R9 同步） |
 | [`rushi-local-runtime-catalog-remediation-plan.md`](../specs/rushi-local-runtime-catalog-remediation-plan.md) | **R3h 实施真源**（LRC、manifest、分阶段验收） |
+| [`r3h-1-r-phase-signoff-2026-06.md`](../specs/r3h-1-r-phase-signoff-2026-06.md) | **R3h-1-R** R1+R2 手测签收 |
+| [`r3h-1-r-runtime-manifest-release-activation-plan.md`](../specs/r3h-1-r-runtime-manifest-release-activation-plan.md) | **R3h-1-R** manifest 发行激活（HTTPS 默认源 + 发布流水线） |
 | [`rushi-local-runtime-catalog-remediation-plan-review.md`](../specs/rushi-local-runtime-catalog-remediation-plan-review.md) | R3h 审查报告（已吸收 v1.1） |
 | [`docs/architecture/README.md`](../../architecture/README.md) | 架构真源索引 |
 | [`docs/adr/README.md`](../../adr/README.md) | ADR 索引 |
@@ -1133,7 +1154,7 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | `cargo test`（desktop lib） | ✅ 见 `cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml` |
 | `profile.rs` / R3c 缓存 / 清缓存对话框 | ✅ 已合入 `main` |
 | `asr_setup_diagnose` / 一键准备 UI | 🟡 **已合入**（`asr_setup/`、`LocalAsrSetupWizard`）；**R3f 手测待 R3h-0** |
-| `local_runtime/` LRC | 🟡 **已合入**（manifest、installer、recovery、integrity…）；**R3h-1 发行门禁 §11 未全绿** |
+| `local_runtime/` LRC | ✅ **R3h-1-R 签收**（manifest HTTPS 真源 + R1/R2 手测）；**R3h-2** 续传/GC 待做 |
 | `segmentation.py` / R3t-A 内核 | ✅ **手测签收**（2026-05-30；`scripts/r3t-a-hand-test.sh`） |
 | `prepare(model_id)` / 模型目录 UI | ✅ R3g-A ⑤a–c 手测签收（2026-05-27） |
 | 长音频动态超时（R3e-A） | ✅ 2026-05-30 长音频 timeout 手测 |
@@ -1162,8 +1183,8 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | **R0–R2** | lifecycle ~261 行（**T-005 ✅**） | ✅ |
 | **R3a–b** | keychain/probe；profile 导入导出 | ✅ |
 | **R3c** | 引导/缓存/manifest/清缓存 | ✅ 手测通过 |
-| **R3f** | `asr_setup_diagnose`、一键准备、8741 探测、LRC 缺失/损坏修复 | 🟡 编码✅；**R3h-0 后手测** |
-| **R3h-0/1** | smoke、Win 磁盘、`local_runtime` 模块树、manifest 下载、A/B 回滚 | 🟡 编码✅；**§11 发行门禁未全绿** |
+| **R3f** | `asr_setup_diagnose`、一键准备、8741 探测、LRC 缺失/损坏修复 | ✅ mac 签收 |
+| **R3h-0/1-R** | smoke、Win 磁盘、`local_runtime`、manifest HTTPS 真源、A/B 回滚、R1+R2 手测 | ✅ mac arm64 · Win/CI ⏳ |
 | **R3g** | 双 SKU + prepare；R3-STATE 对齐 | ✅ ⑤a–c 签收 |
 | **R3t-A** | 分段内核 + 单测 + hints + 手测 | ✅ **2026-05-30 签收** |
 | **R3t-B～C** | 转写编排、overwrite、邻段标点 | ✅ **2026-05-30** |

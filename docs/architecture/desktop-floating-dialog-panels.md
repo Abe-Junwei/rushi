@@ -2,13 +2,13 @@
 
 ## 约定
 
-新增或改动的**可拖动浮动对话框**（`FloatingPanelTemplate` + `preset="compactDialog"`）统一走 **Notion / Zen** 视觉，禁止再使用已废弃的 `serene` 面板变体（衬线标题、`rounded-2xl` 等）。
+新增或改动的**可拖动浮动对话框**统一走 **Notion / Zen** 视觉；**短确认 / 标准 compact 框**须用 **`CompactFloatingDialog`**（或 **`CompactConfirmDialog`**），禁止业务层直接 `FloatingPanelTemplate` + `preset="compactDialog"`（机器守卫 **error**）。
 
 | 项 | 真源 |
 |----|------|
 | 面板壳 / 标题栏 | `DraggableResizablePanel`（固定 Notion 样式；正文区 `.floating-panel-body-scroll` 溢出时右侧滚动条） |
 | 预设尺寸 | `PanelTemplate.tsx` → `compactDialog`（小确认框）/ `findReplace`（查找替换，z≥110） |
-| 页脚按钮 | `apps/desktop/src/config/controlStyles.ts`（`CONTROL_BTN_SECONDARY` / `CONTROL_BTN_DANGER_COMPACT` 等） |
+| 页脚按钮 | `apps/desktop/src/config/controlStyles.ts`（`CONTROL_BTN_SECONDARY` + `CONTROL_BTN_PRIMARY` / `CONTROL_BTN_DANGER`，同 h-8） |
 | 颜色 token | `tailwind.config.js` + `apps/desktop/src/config/tokens.ts`（`notion-*`、`zen-*`） |
 
 ## 尺寸记忆（persist v3）
@@ -36,6 +36,8 @@
 - `FloatingPanelTemplate` 在 `min* > max*` 时自动抬升上限  
 - 内容随动的对话框传 `contentFitHeight` + `resolveCompactDialogBounds()`（见 `floatingPanelCompactDialogBounds.ts`）  
 - 短文案对话框用 `FloatingPanelDialogHeader` + `Footer`，**不要**把短说明塞进 `FloatingPanelDialogScroll`（`flex-1` 会误导测量）  
+- 危险确认与取消须同高：用 `CONTROL_BTN_DANGER`（h-8），**勿**与 `CONTROL_BTN_SECONDARY` 混用 `CONTROL_BTN_DANGER_COMPACT`（h-7）  
+- 范例：`ClearAsrCacheConfirmDialog`、`RestoreEditLogConfirmDialog`、`AutoTranscribeStartDialog`  
 - `mergeContentFitHeights`：实测 **更矮** 时缩面板；实测 **更高** 时防裁切  
 - 双击标题栏恢复自动高度；`layoutRev`  bump 后丢弃旧 200px 记忆  
 
@@ -74,26 +76,44 @@
 
 `FloatingPanelTemplate` 在未传 `defaultSize` 时，会把预设的 **`maxWidth` / `maxHeight` 当作首次打开的宽高**（见 `resolvePanelTemplateMetrics`）。例如 `createProject` 的 `maxHeight: 560` 会让内容区下方出现大块空白——与表单 `margin` 无关，而是**面板壳被撑高**。新对话框应显式传 `defaultSize`（可参考 `CreateProjectModal`、`ClearAsrCacheConfirmDialog`）。
 
-## 落位模板
+## 落位模板（短确认框）
 
 ```tsx
-<FloatingPanelTemplate
+<CompactConfirmDialog
   id="my-dialog-v1"
   title="…"
-  preset="compactDialog"
-  defaultSize={{ width: 300, height: 292 }}
-  minWidth={280}
-  minHeight={268}
+  open={open}
+  onCancel={onCancel}
+  onConfirm={onConfirm}
+  confirmLabel="确认"
+  confirmVariant="primary" // 或 "danger"
+  fallbackHeight={240}
+  defaultWidth={360}
+  bounds={{ minWidth: 280, minHeight: 200 }}
   persistState
-  onClose={onClose}
 >
-  <div className="flex flex-col px-5 py-3">…</div>
-</FloatingPanelTemplate>
+  <p className={PANEL_TYPOGRAPHY.dialogBody}>说明文案</p>
+</CompactConfirmDialog>
 ```
 
-- 需 `createPortal(..., document.body)` 时，外层包一层 `<div className="workspace">`，避免 WebKit 给 `<button>` 叠默认内阴影。
-- 正文：`text-sm text-zen-stone` / `text-notion-text-muted`；说明块：`bg-notion-callout-bg` + `border-notion-divider`。
-- 不要用 `mt-auto` + `h-full` 把按钮顶到面板底部，除非刻意做大面板；优先按文案设 `defaultSize` / `minHeight`。
+多区块 / 列表 / 自定义页脚 → **`CompactFloatingDialog`**（内置 `contentFitHeight` + portal + `workspace` 包装）：
+
+```tsx
+<CompactFloatingDialog
+  id="my-dialog-v1"
+  title="…"
+  open={open}
+  onClose={onClose}
+  fallbackHeight={280}
+  estimatedFitHeight={optionalSectionEstimate}
+  footer={<>…</>}
+>
+  <FloatingPanelDialogHeader>…</FloatingPanelDialogHeader>
+  <FloatingPanelDialogListRegion>…</FloatingPanelDialogListRegion>
+</CompactFloatingDialog>
+```
+
+- `check-architecture-guard.mjs`：业务文件出现 `preset="compactDialog"` 且非 `CompactFloatingDialog.tsx` → **error**。
 
 ## 异步 / 进度态
 
@@ -110,7 +130,9 @@
 
 ## 参考实现
 
-- `apps/desktop/src/components/FileDialogs.tsx`（删除 / 新建文件）
-- `apps/desktop/src/components/ClearAsrCacheConfirmDialog.tsx`（清除模型缓存）
-- `apps/desktop/src/components/PostTranscribeStageBDialog.tsx`（`determinate`）
-- `apps/desktop/src/components/CorrectionRulesPreviewDialog.tsx`（`spinner`）
+- `apps/desktop/src/components/CompactFloatingDialog.tsx`（成品壳）
+- `apps/desktop/src/components/CompactConfirmDialog.tsx`（短确认）
+- `apps/desktop/src/components/ClearAsrCacheConfirmDialog.tsx`（危险确认）
+- `apps/desktop/src/components/AutoTranscribeStartDialog.tsx`（多区块 + 页脚）
+- `apps/desktop/src/components/PostTranscribeStageBDialog.tsx`（多阶段 + 列表）
+- `apps/desktop/src/components/CorrectionRulesPreviewDialog.tsx`（`findReplace` + `spinner`）

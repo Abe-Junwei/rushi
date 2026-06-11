@@ -1,6 +1,15 @@
 from __future__ import annotations
 
-from rushi_asr.eval_metrics import cer_chars, levenshtein_chars, low_confidence_ratio, term_hit_rate
+import pytest
+
+from rushi_asr.eval_metrics import (
+    cer_chars,
+    levenshtein_chars,
+    low_confidence_ratio,
+    resolve_segmentation_mode,
+    rtfx,
+    term_hit_rate,
+)
 
 
 def test_levenshtein_ascii() -> None:
@@ -24,3 +33,23 @@ def test_term_hit_rate() -> None:
 def test_low_confidence_ratio() -> None:
     segs = [{"low_confidence": True}, {"low_confidence": False}]
     assert low_confidence_ratio(segs) == 0.5
+
+
+def test_rtfx_basic() -> None:
+    assert rtfx(1250.0, 155.5) == pytest.approx(8.039, rel=0.01)
+
+
+def test_rtfx_invalid() -> None:
+    assert rtfx(None, 10.0) is None
+    assert rtfx(100.0, 0.0) is None
+    assert rtfx(100.0, None) is None
+
+
+def test_resolve_segmentation_mode_from_body() -> None:
+    assert resolve_segmentation_mode({"segmentation_mode": "sentence_info"}, []) == "sentence_info"
+
+
+def test_resolve_segmentation_mode_from_warnings() -> None:
+    body: dict[str, object] = {}
+    warnings = ["segmentation_mode:vad_timestamp", "other"]
+    assert resolve_segmentation_mode(body, warnings) == "vad_timestamp"

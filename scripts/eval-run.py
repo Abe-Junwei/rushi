@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 """
-P4 / ASR-VOC-5: 按 eval_manifest 逐条 POST 本机 ASR，输出 JSON 或 CSV 报告。
+P4 / ASR-VOC-5 / ACC-EVAL-2: 按 eval_manifest 逐条 POST 本机 ASR，输出 JSON 或 CSV 报告。
 
 依赖：本机已启动 rushi-asr；系统 PATH 中有 curl、python3。
 评测指标：将仓库 services/asr 加入 PYTHONPATH 以导入 rushi_asr（无需 pip install 根目录）。
@@ -10,6 +10,7 @@ P4 / ASR-VOC-5: 按 eval_manifest 逐条 POST 本机 ASR，输出 JSON 或 CSV �
   python3 scripts/eval-run.py --manifest fixtures/eval/eval_manifest.v1.json --asr-base http://127.0.0.1:8741
   python3 scripts/eval-run.py --hotwords-ab --filter-id proper-noun-zhikong --format csv
   python3 scripts/eval-run.py --hotwords-mode off --filter-id proper-noun-zhikong
+  python3 scripts/eval-run.py --filter-id proper-noun-zhikong --assert-min-segments
   python3 scripts/eval-run.py --output ~/.rushi-quality/last_eval_report.json
 """
 
@@ -44,6 +45,8 @@ _eval_manifest = _load_module("rushi_eval_manifest", ASR_PKG / "eval_manifest.py
 
 cer_chars = _eval_metrics.cer_chars
 low_confidence_ratio = _eval_metrics.low_confidence_ratio
+resolve_segmentation_mode = _eval_metrics.resolve_segmentation_mode
+rtfx = _eval_metrics.rtfx
 term_hit_rate = _eval_metrics.term_hit_rate
 resolve_hotwords = _eval_manifest.resolve_hotwords
 expand_manifest_runs = _eval_manifest.expand_manifest_runs
@@ -120,16 +123,29 @@ def transcribe_manifest_item(
         return row
 
     try:
+        t0 = time.perf_counter()
         body = curl_transcribe(wav, asr_base, hotwords_text)
+        row["wall_sec"] = round(time.perf_counter() - t0, 3)
     except Exception as e:  # noqa: BLE001
         row["error"] = str(e)
         return row
 
     row["engine"] = body.get("engine")
-    row["warnings"] = body.get("warnings") or []
+    warnings = body.get("warnings") or []
+    if not isinstance(warnings, list):
+        warnings = []
+    row["warnings"] = warnings
     segs = body.get("segments") or []
     if not isinstance(segs, list):
         segs = []
+    row["segment_count"] = len([s for s in segs if isinstance(s, dict)])
+    duration_raw = body.get("duration_sec")
+    try:
+        row["duration_sec"] = float(duration_raw) if duration_raw is not None else None
+    except (TypeError, ValueError):
+        row["duration_sec"] = None
+    row["rtfx"] = rtfx(row.get("duration_sec"), row.get("wall_sec"))
+    row["segmentation_mode"] = resolve_segmentation_mode(body, warnings)
     hyp = "".join(str(s.get("text") or "") for s in segs if isinstance(s, dict))
     row["hypothesis_concat"] = hyp
     row["low_confidence_ratio"] = low_confidence_ratio(
@@ -143,16 +159,53 @@ def transcribe_manifest_item(
     return row
 
 
+def check_min_segments_assertion(
+    item: dict[str, Any],
+    row: dict[str, Any],
+    *,
+    assert_min_segments: bool,
+) -> bool:
+    """Return True when assertion fails (caller should mark run failed)."""
+    if not assert_min_segments:
+        return False
+    min_seg = item.get("min_segments")
+    if min_seg is None:
+        return False
+    try:
+        required = int(min_seg)
+    except (TypeError, ValueError):
+        return False
+    if required <= 0:
+        return False
+    count = row.get("segment_count")
+    if count is None or row.get("error") or row.get("skipped"):
+        row["min_segments_assertion_failed"] = True
+        row["min_segments_required"] = required
+        return True
+    if int(count) < required:
+        row["min_segments_assertion_failed"] = True
+        row["min_segments_required"] = required
+        return True
+    return False
+
+
 CSV_COLUMNS = [
     "id",
+    "category",
     "hotwords_ab_variant",
     "hotwords_enabled",
     "hotwords_sent",
+    "segment_count",
+    "duration_sec",
+    "wall_sec",
+    "rtfx",
+    "segmentation_mode",
     "term_hit_rate",
     "cer_chars",
     "low_confidence_ratio",
     "engine",
     "warnings",
+    "min_segments_assertion_failed",
     "error",
     "skipped",
 ]
@@ -171,7 +224,9 @@ def print_csv(rows: list[dict[str, Any]]) -> None:
 
 
 def main() -> int:
-    ap = argparse.ArgumentParser(description="P4 manifest batch transcribe + metrics (ASR-VOC-5)")
+    ap = argparse.ArgumentParser(
+        description="P4 manifest batch transcribe + metrics (ASR-VOC-5 / ACC-EVAL-2)",
+    )
     ap.add_argument(
         "--manifest",
         type=Path,
@@ -211,6 +266,11 @@ def main() -> int:
         default=None,
         help="Write JSON report to this path (R4 quality Tab)",
     )
+    ap.add_argument(
+        "--assert-min-segments",
+        action="store_true",
+        help="Exit 1 when item min_segments is set and segment_count is below it",
+    )
     args = ap.parse_args()
 
     manifest_path: Path = args.manifest
@@ -244,6 +304,12 @@ def main() -> int:
         )
         if row.get("error"):
             failed = True
+        if check_min_segments_assertion(
+            it,
+            row,
+            assert_min_segments=bool(args.assert_min_segments),
+        ):
+            failed = True
         out_rows.append(row)
 
     if args.format == "csv":
@@ -252,10 +318,12 @@ def main() -> int:
 
     report = {
         "schema_version": "1",
+        "metrics_schema": "acc-eval-2",
         "manifest": str(manifest_path),
         "asr_base": args.asr_base.rstrip("/"),
         "hotwords_mode": hotwords_mode,
         "hotwords_ab": bool(args.hotwords_ab),
+        "assert_min_segments": bool(args.assert_min_segments),
         "filter_id": args.filter_id,
         "finished_at_ms": int(time.time() * 1000),
         "exit_code": 1 if failed else 0,

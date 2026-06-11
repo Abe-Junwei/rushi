@@ -3,6 +3,11 @@ import { ClearAsrCacheConfirmDialog } from "../ClearAsrCacheConfirmDialog";
 import { ENV_COMPACT_BTN } from "../../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../../config/typography";
 import type { AsrModelCacheInfo, WaveformPeaksCacheInfo } from "../../tauri/projectApi";
+import {
+  EnvUtilitiesActionRow,
+  EnvUtilitiesMetaGroup,
+  EnvUtilitiesSubsection,
+} from "./envLocalAsrPanelUi";
 
 type Props = {
   asrModelCacheInfo: AsrModelCacheInfo | null;
@@ -51,7 +56,7 @@ export function LocalAsrCacheSection({
   };
 
   return (
-    <section className="flex flex-col gap-4">
+    <section className="flex flex-col gap-3">
       <ClearAsrCacheConfirmDialog
         open={confirmClearOpen}
         busy={asrModelCacheBusy}
@@ -60,69 +65,81 @@ export function LocalAsrCacheSection({
         onConfirm={onConfirmClear}
       />
       {!embedded ? (
-      <div className="pb-1">
-        <h3 className={PANEL_TYPOGRAPHY.sectionTitle}>缓存与校验</h3>
-        <p className={PANEL_TYPOGRAPHY.sectionDescription}>
-          查看模型缓存与项目音频/波形缓存占用；删除项目或文件后会自动清理对应副本。
-        </p>
-      </div>
+        <div>
+          <h3 className={PANEL_TYPOGRAPHY.sectionTitle}>缓存与校验</h3>
+          <p className={PANEL_TYPOGRAPHY.sectionDescription}>
+            查看模型缓存与项目音频/波形缓存占用；删除项目或文件后会自动清理对应副本。
+          </p>
+        </div>
       ) : (
-        <p className={PANEL_TYPOGRAPHY.sectionDescription}>
+        <p className={`m-0 ${PANEL_TYPOGRAPHY.meta}`}>
           查看模型缓存与项目音频/波形缓存占用；删除项目或文件后会自动清理对应副本。
         </p>
       )}
-      <div className="flex flex-col gap-2 border-t border-notion-divider/60 pt-3">
-        <InfoRow label="缓存目录" value={asrModelCacheInfo?.models_root ?? "未读取"} mono />
-        <InfoRow label="当前占用" value={formatBytes(asrModelCacheInfo?.total_bytes ?? 0)} />
-        <InfoRow label="ModelScope" value={asrModelCacheInfo?.modelscope_cache ?? "未读取"} mono />
-        <InfoRow label="HuggingFace" value={asrModelCacheInfo?.huggingface_cache ?? "未读取"} mono />
-        <InfoRow label="manifest 校验" value={manifestStatus} />
-        {asrModelCacheInfo?.manifest_path ? (
-          <p className={PANEL_TYPOGRAPHY.meta}>
-            manifest 路径：<code className="font-mono text-zen-indigo">{asrModelCacheInfo.manifest_path}</code>
+
+      <EnvUtilitiesSubsection title="模型缓存">
+        <div className="flex flex-col gap-2">
+          <InfoRow label="缓存目录" value={asrModelCacheInfo?.models_root ?? "未读取"} mono />
+          <InfoRow label="当前占用" value={formatBytes(asrModelCacheInfo?.total_bytes ?? 0)} />
+          <InfoRow label="ModelScope" value={asrModelCacheInfo?.modelscope_cache ?? "未读取"} mono />
+          <InfoRow label="HuggingFace" value={asrModelCacheInfo?.huggingface_cache ?? "未读取"} mono />
+          <InfoRow label="manifest 校验" value={manifestStatus} />
+        </div>
+        <EnvUtilitiesMetaGroup>
+          {asrModelCacheInfo?.manifest_path ? (
+            <p className="m-0">
+              manifest 路径：<code className="font-mono text-zen-indigo">{asrModelCacheInfo.manifest_path}</code>
+            </p>
+          ) : null}
+          {asrModelCacheInfo?.manifest_path && !asrModelCacheInfo.manifest_exists ? (
+            <p className="m-0 text-zen-cinnabar">
+              环境变量已设置，但该路径下尚无文件。请把 JSON（内容可为 <code className="font-mono">[]</code>
+              ）建在上方「manifest 路径」所指位置（不要只用单层 Application Support 目录），保存后点「刷新缓存信息」。
+            </p>
+          ) : null}
+          <p className="m-0">
+            占用仅统计应用数据目录下的 <code className="font-mono text-zen-indigo">models/</code>；若 ASR
+            在终端单独启动且未设置 RUSHI_MODELS_ROOT，权重可能在其他路径，此处清理不会生效。
           </p>
-        ) : null}
-        {asrModelCacheInfo?.manifest_path && !asrModelCacheInfo.manifest_exists ? (
-          <p className={`${PANEL_TYPOGRAPHY.meta} text-zen-cinnabar`}>
-            环境变量已设置，但该路径下尚无文件。请把 JSON（内容可为 <code className="font-mono">[]</code>）建在上方「manifest
-            路径」所指位置（不要只用单层 Application Support 目录），保存后点「刷新缓存信息」。
+          <p className="m-0">
+            manifest 状态读取自<strong className="font-medium text-notion-text">桌面应用进程</strong>的{" "}
+            <code className="font-mono text-zen-indigo">RUSHI_MODEL_VERIFY_MANIFEST</code>
+            （相对路径相对上方「缓存目录」解析）。
           </p>
-        ) : null}
-        <p className={PANEL_TYPOGRAPHY.meta}>
-          占用仅统计应用数据目录下的 <code className="font-mono text-zen-indigo">models/</code>；若 ASR 在终端单独启动且未设置
-          RUSHI_MODELS_ROOT，权重可能在其他路径，此处清理不会生效。
-        </p>
-        <p className={PANEL_TYPOGRAPHY.meta}>
-          manifest 状态读取自<strong className="font-medium text-notion-text">桌面应用进程</strong>的{" "}
-          <code className="font-mono text-zen-indigo">RUSHI_MODEL_VERIFY_MANIFEST</code>（相对路径相对上方「缓存目录」解析）。
-        </p>
-      </div>
-      <div className="flex flex-col gap-2 border-t border-notion-divider/60 pt-3">
-        <InfoRow
-          label="项目缓存目录"
-          value={waveformPeaksCacheInfo?.projects_root ?? "未读取"}
-          mono
-        />
-        <InfoRow label="项目缓存总占用" value={formatBytes(waveformPeaksCacheInfo?.total_bytes ?? 0)} />
-        <InfoRow
-          label="可清理旧缓存"
-          value={
-            waveformPeaksCacheInfo == null
-              ? "未读取"
-              : `${formatBytes(waveformPeaksCacheInfo.orphan_bytes)} · ${waveformPeaksCacheInfo.orphan_file_sets} 组波形 · ${waveformPeaksCacheInfo.orphan_project_dirs} 个孤立项目`
-          }
-        />
-        <p className={PANEL_TYPOGRAPHY.meta}>
-          包含项目内复制的音频与预计算波形（<code className="font-mono text-zen-indigo">projects/*/peaks</code>
+        </EnvUtilitiesMetaGroup>
+      </EnvUtilitiesSubsection>
+
+      <EnvUtilitiesSubsection title="项目缓存">
+        <div className="flex flex-col gap-2">
+          <InfoRow
+            label="项目缓存目录"
+            value={waveformPeaksCacheInfo?.projects_root ?? "未读取"}
+            mono
+          />
+          <InfoRow label="项目缓存总占用" value={formatBytes(waveformPeaksCacheInfo?.total_bytes ?? 0)} />
+          <InfoRow
+            label="可清理旧缓存"
+            value={
+              waveformPeaksCacheInfo == null
+                ? "未读取"
+                : `${formatBytes(waveformPeaksCacheInfo.orphan_bytes)} · ${waveformPeaksCacheInfo.orphan_file_sets} 组波形 · ${waveformPeaksCacheInfo.orphan_project_dirs} 个孤立项目`
+            }
+          />
+        </div>
+        <p className={`m-0 ${PANEL_TYPOGRAPHY.meta}`}>
+          包含项目内复制的音频与预计算波形（
+          <code className="font-mono text-zen-indigo">projects/*/peaks</code>
           ）。删除项目/文件时会自动清理；此处仅补清数据库已不存在但仍留在磁盘上的副本。
         </p>
-      </div>
+      </EnvUtilitiesSubsection>
+
       {asrCacheMessage ? (
-        <p className={PANEL_TYPOGRAPHY.meta} role="status">
+        <p className={`m-0 ${PANEL_TYPOGRAPHY.meta}`} role="status">
           {asrCacheMessage}
         </p>
       ) : null}
-      <div className="flex flex-wrap gap-2">
+
+      <EnvUtilitiesActionRow>
         <ActionButton disabled={busy || asrModelCacheBusy} onClick={() => void refreshAsrModelCacheInfo()}>
           {asrModelCacheBusy ? "处理中…" : "刷新缓存信息"}
         </ActionButton>
@@ -143,10 +160,9 @@ export function LocalAsrCacheSection({
         <ActionButton disabled={busy} onClick={() => void openAppDataFolder()}>
           打开数据目录
         </ActionButton>
-      </div>
-      {clearDisabledReason ? (
-        <p className={PANEL_TYPOGRAPHY.meta}>{clearDisabledReason}</p>
-      ) : null}
+      </EnvUtilitiesActionRow>
+
+      {clearDisabledReason ? <p className={`m-0 ${PANEL_TYPOGRAPHY.meta}`}>{clearDisabledReason}</p> : null}
     </section>
   );
 }

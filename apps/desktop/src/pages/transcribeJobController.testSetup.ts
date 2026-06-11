@@ -6,6 +6,8 @@ const transcribeJobApiMocks = vi.hoisted(() => ({
   projectTranscribeAsyncStart: vi.fn(),
   projectTranscribeAsyncFinalize: vi.fn(),
   getLastTranscribeTimeline: vi.fn(),
+  recordTranscribeTimelinePollProgress: vi.fn(),
+  recordTranscribeTimelinePollFailure: vi.fn(),
 }));
 
 vi.mock("../tauri/projectApi", () => ({
@@ -14,6 +16,8 @@ vi.mock("../tauri/projectApi", () => ({
   projectTranscribeAsyncStart: transcribeJobApiMocks.projectTranscribeAsyncStart,
   projectTranscribeAsyncFinalize: transcribeJobApiMocks.projectTranscribeAsyncFinalize,
   getLastTranscribeTimeline: transcribeJobApiMocks.getLastTranscribeTimeline,
+  recordTranscribeTimelinePollProgress: transcribeJobApiMocks.recordTranscribeTimelinePollProgress,
+  recordTranscribeTimelinePollFailure: transcribeJobApiMocks.recordTranscribeTimelinePollFailure,
 }));
 
 vi.mock("../config/env", () => ({

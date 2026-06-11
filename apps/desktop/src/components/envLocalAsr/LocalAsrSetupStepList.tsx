@@ -5,19 +5,16 @@ type Props = {
   steps: AsrSetupStep[];
 };
 
-/** 紧凑竖向 stepper：左侧连线 + 节点（GitHub Actions / macOS 安装器常见模式）。 */
+/** 紧凑竖向 stepper：圆点 + 文案，无左侧连线。 */
 export function LocalAsrSetupStepList({ steps }: Props) {
   if (steps.length === 0) return null;
 
   return (
-    <ol
-      aria-label="准备步骤"
-      className="m-0 ml-1.5 list-none border-l border-notion-divider/80 pl-3.5"
-    >
+    <ol aria-label="准备步骤" className="m-0 flex list-none flex-col gap-1.5">
       {steps.map((step) => (
-        <li key={step.id} className="relative pb-1 last:pb-0">
+        <li key={step.id} className="flex gap-2">
           <SetupStepNode status={step.status} />
-          <div className="min-w-0 leading-snug">
+          <div className="min-w-0 flex-1 leading-snug">
             <span className={stepLabelClass(step.status)}>{step.label}</span>
             {step.detail ? (
               <span className={`mt-px block ${PANEL_TYPOGRAPHY.meta}`}>{step.detail}</span>
@@ -42,10 +39,7 @@ function SetupStepNode({ status }: { status: AsrSetupStepStatus }) {
             : "bg-notion-divider";
 
   return (
-    <span
-      className={`absolute -left-[calc(0.875rem+1px)] top-[5px] h-1.5 w-1.5 rounded-full ring-2 ring-notion-bg ${tone}`}
-      aria-hidden
-    />
+    <span className={`mt-[5px] h-1.5 w-1.5 shrink-0 rounded-full ${tone}`} aria-hidden />
   );
 }
 

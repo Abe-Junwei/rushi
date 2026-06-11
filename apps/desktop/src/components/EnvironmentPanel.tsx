@@ -51,6 +51,7 @@ export type EnvironmentPanelProps = {
   asrCacheMessage: string;
   funasrInstallMessage: string;
   prepareModelBusy: boolean;
+  prepareModelCancelling: boolean;
   prepareModelProgress: number;
   prepareModelFailure: PrepareModelFailureCopy | null;
   busy: boolean;
@@ -83,6 +84,7 @@ export function EnvironmentPanel({
   asrCacheMessage,
   funasrInstallMessage,
   prepareModelBusy,
+  prepareModelCancelling,
   prepareModelProgress,
   prepareModelFailure,
   busy,
@@ -240,6 +242,7 @@ export function EnvironmentPanel({
                   asrCacheMessage={asrCacheMessage}
                   funasrInstallMessage={funasrInstallMessage}
                   prepareModelBusy={prepareModelBusy}
+                  prepareModelCancelling={prepareModelCancelling}
                   prepareModelProgress={prepareModelProgress}
                   prepareModelFailure={prepareModelFailure}
                   busy={busy}

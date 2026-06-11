@@ -142,8 +142,14 @@ export function useAsrSetupHealthFlow({
       }
 
       await deps.refreshAsrRuntimeInfo();
-      const afterSnap = await snapshotSelectedModelPrepare(deps.getSetupSelection());
-      if (afterSnap.ready || caps.ready_for_transcribe) {
+      const afterCaps = await fetchHealthSnapshot();
+      const afterSnap = await snapshotSelectedModelPrepare(selection);
+      const transcribeReady =
+        afterSnap.ready &&
+        afterSnap.sidecarMatchesSelection &&
+        afterCaps?.ready_for_transcribe === true &&
+        afterCaps.funasr_model_id === selection.selectedHubModelId;
+      if (transcribeReady) {
         markPortConflictAcknowledged();
         setSetupSteps((steps) =>
           patchStep(steps, "done", { status: "ok", detail: "当前 8741 服务已可用于转写" }),

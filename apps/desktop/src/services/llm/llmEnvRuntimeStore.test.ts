@@ -82,4 +82,43 @@ describe("llmEnvRuntimeStore", () => {
 
     expect(notifyCount).toBeGreaterThanOrEqual(2);
   });
+
+  it("does not mark connection verified when Ollama reachable but model missing", async () => {
+    activateLocalOllamaPreset();
+    ollamaDetectStatus.mockResolvedValue({
+      reachable: true,
+      modelCount: 0,
+      hasQwen25_7b: false,
+      hasConfiguredModel: false,
+      message: "Ollama 可达但未找到所选模型",
+    });
+
+    await refreshLlmOllamaDetect();
+
+    expect(localStorage.getItem("rushi.llm.connectionVerifiedFingerprint")).toBeNull();
+  });
+
+  it("keeps busy visible for minimum duration when detect resolves instantly", async () => {
+    vi.useFakeTimers();
+    activateLocalOllamaPreset();
+    ollamaDetectStatus.mockResolvedValue({
+      reachable: false,
+      modelCount: 0,
+      hasQwen25_7b: false,
+      message: "未检测到 Ollama 服务",
+    });
+
+    const promise = refreshLlmOllamaDetect();
+    await Promise.resolve();
+    expect(getLlmEnvRuntimeSnapshot().ollamaDetectBusy).toBe(true);
+
+    await vi.advanceTimersByTimeAsync(399);
+    expect(getLlmEnvRuntimeSnapshot().ollamaDetectBusy).toBe(true);
+
+    await vi.advanceTimersByTimeAsync(1);
+    await promise;
+    expect(getLlmEnvRuntimeSnapshot().ollamaDetectBusy).toBe(false);
+
+    vi.useRealTimers();
+  });
 });

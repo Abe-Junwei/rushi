@@ -22,3 +22,22 @@ export const modelsPathMismatchPackaged =
 
 export const modelsPathMismatchDev =
   "磁盘上已有模型，但当前侧车未指向应用缓存目录。请重新运行 npm run desktop:dev 或 npm run asr:dev，再点「刷新状态」。";
+
+/** FFmpeg 随侧车分发；缺失时修复 runtime，而非单独安装 FFmpeg。 */
+export const ffmpegMissingPackaged =
+  "未检测到 FFmpeg。FFmpeg 随侧车一并分发——请点「一键准备本机 ASR」修复侧车；仍失败请重装应用。";
+
+export const ffmpegMissingDev =
+  "未检测到 FFmpeg。请安装 ffmpeg/ffprobe 并加入 PATH，或重建内置侧车（npm run asr:build-sidecar-unix）后重启 ASR。";
+
+export const ffmpegBannerDetailPackaged =
+  "侧车已连接，但未检测到 FFmpeg。请点「一键准备」下载或修复侧车运行时。";
+
+export const ffmpegBannerDetailDev =
+  "侧车已连接，但未检测到 FFmpeg。请安装 ffmpeg/ffprobe 并加入 PATH 后重启侧车。";
+
+export const ffmpegBlockReasonPackaged =
+  "未检测到 FFmpeg：请在「环境 → 本机 ASR」点「一键准备本机 ASR」修复侧车；仍失败请重装应用。";
+
+export const ffmpegBlockReasonDev =
+  "未检测到 FFmpeg：请安装 ffmpeg/ffprobe 并加入 PATH，或重建内置侧车后重启 ASR。";

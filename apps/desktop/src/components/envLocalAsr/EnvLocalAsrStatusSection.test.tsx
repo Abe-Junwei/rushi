@@ -77,4 +77,27 @@ describe("EnvLocalAsrStatusSection", () => {
     expect(within(container).queryByText(/环境明细 ·/)).toBeNull();
     expect(within(container).getByText("未就绪")).toBeTruthy();
   });
+
+  it("shows cancelling banner while model download cancel is pending", () => {
+    const { container } = render(
+      <EnvLocalAsrStatusSection
+        presentation={makePresentation({
+          tone: "warn",
+          bannerTitle: "本机 ASR · 正在取消下载",
+          bannerDetail: "侧车将在当前文件传完后停止；完成后可重新点「下载当前模型」。",
+          statusRows: [
+            { id: "env", label: "环境", ok: true, text: "侧车已连接" },
+            { id: "ffmpeg", label: "FFmpeg", ok: true, text: "可用" },
+            { id: "runtime", label: "运行时", ok: true, text: "FunASR 就绪" },
+            { id: "transcribe", label: "转写", ok: false, text: "取消中", warn: true },
+          ],
+        })}
+        busy={false}
+        refreshAsrHealth={vi.fn()}
+      />,
+    );
+
+    expect(within(container).getByText("本机 ASR · 正在取消下载")).toBeTruthy();
+    expect(within(container).getByText("取消中")).toBeTruthy();
+  });
 });

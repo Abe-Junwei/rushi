@@ -12,6 +12,7 @@ export type BuildAsrCatalogPresentationInput = {
   catalogStatus: LocalAsrCatalogStatusItem[] | null;
   selectedHubModelId: string;
   prepareModelBusy?: boolean;
+  prepareModelCancelling?: boolean;
   prepareModelProgress?: number;
 };
 
@@ -41,20 +42,23 @@ export function buildAsrCatalogPresentation(
     sidecarHub,
   );
   const prepareModelBusy = input.prepareModelBusy ?? false;
+  const prepareModelCancelling = input.prepareModelCancelling ?? false;
   const prepareModelProgress = input.prepareModelProgress ?? 0;
   const modelsCached = selectedPrepare.cached;
   const progress = prepareModelBusy ? prepareModelProgress : modelsCached ? 100 : 0;
 
-  const progressLabel = prepareModelBusy
-    ? `下载中… ${progress}%`
-    : modelsCached
-      ? "已缓存 · 100%"
-      : selectedPrepare.cached
-        ? "主模型已缓存 · 辅助模型待补齐"
-        : "未下载";
+  const progressLabel = prepareModelCancelling
+    ? "正在取消下载…"
+    : prepareModelBusy
+      ? `下载中… ${progress}%`
+      : modelsCached
+        ? "已缓存 · 100%"
+        : selectedPrepare.cached
+          ? "主模型已缓存 · 辅助模型待补齐"
+          : "未下载";
 
   const progressTone: AsrCatalogPresentation["progressTone"] =
-    modelsCached && !prepareModelBusy ? "success" : "muted";
+    modelsCached && !prepareModelBusy && !prepareModelCancelling ? "success" : "muted";
 
   const selectedLabel =
     catalogEntryForHub(input.selectedHubModelId)?.label ?? input.selectedHubModelId;

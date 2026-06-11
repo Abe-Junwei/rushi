@@ -18,9 +18,10 @@
 | ID | 主题 | 预估 | 状态 | 规格 / 验收 | 启动条件 |
 |----|------|------|------|-------------|----------|
 | **R3h-0** | 构建 smoke + Win 磁盘 + pip UI 降级 | 2–3d | ✅ **mac** | [r3h-0 acceptance](./r3h-0-asr-sidecar-build-smoke-acceptance.md) · [signoff](./r3h-0-phase-signoff-2026-06.md) | mac ✅ 2026-06-08；Win §4 有 Win 机时补 |
-| **TRN-DIAG** | 转写阶段时间线 + 诊断包 | 0.5w | 📋 | [`trn-diag-acceptance.md`](./trn-diag-acceptance.md) | R3t-B ✅ 后；与 ⑤″f 不同目录 |
+| **TRN-DIAG** | 转写阶段时间线 + 诊断包 | 0.5w | ✅ | [`trn-diag-acceptance.md`](./trn-diag-acceptance.md) | R3t-B ✅ 后；与 ⑤″f 不同目录 |
 | **ASR-WARM** | 侧车保活、模型预热 | 0.5–1w | 📋 | [`asr-warm-acceptance.md`](./asr-warm-acceptance.md) | R3t-B ✅；R3h-I1 FSM 设计冻结后 |
-| **R3h-2** | 断点续传、GC、C 类升级回滚 | ~1w | ⏳ | remediation §5 Phase 2 | ⑦ 发行成熟轨；**4b 重开 Gate-B 前置** |
+| **R3h-1-R** | Runtime manifest **发行激活** | 3–5d | ✅ R1+R2 签收 | [signoff](./r3h-1-r-phase-signoff-2026-06.md) · [plan](./r3h-1-r-runtime-manifest-release-activation-plan.md) | **R3h-1** ✅ |
+| **R3h-2** | 断点续传、GC、C 类升级回滚 | ~1w | ✅ | [`r3h-2 acceptance`](./r3h-2-local-runtime-resume-acceptance.md) · remediation §5 Phase 2 | 续传手测 ✅ · C 类集成测 ✅ |
 
 ## 禁忌（§4.1.3）
 
@@ -45,3 +46,4 @@
 | 2026-06-04 | F7 双机手测暂缓；下一刀改为 ⑤″f-D / MEM-P2 / R3h-0 |
 | 2026-06-06 | R3h-0 mac 机器闸门 ✅；验收三件套 + `scripts/r3h-0-machine-gate.sh` |
 | 2026-06-08 | **R3h-0 mac 签收**；Win §4 豁免；下一刀 → R3f 手测 / Project Hub |
+| 2026-06-10 | **R3h-1-R** ✅；**R3h-2** 🟡 编码中 — [`r3h-2 acceptance`](./r3h-2-local-runtime-resume-acceptance.md) |

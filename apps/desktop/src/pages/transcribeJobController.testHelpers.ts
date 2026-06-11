@@ -56,6 +56,8 @@ export function resetTranscribeJobControllerTests(): void {
     projectTranscribeAsyncStart,
     projectTranscribeAsyncFinalize,
     getLastTranscribeTimeline,
+    recordTranscribeTimelinePollProgress,
+    recordTranscribeTimelinePollFailure,
   } = transcribeJobTestApi();
 
   projectRunTranscribe.mockReset();
@@ -63,9 +65,13 @@ export function resetTranscribeJobControllerTests(): void {
   projectTranscribeAsyncStart.mockReset();
   projectTranscribeAsyncFinalize.mockReset();
   getLastTranscribeTimeline.mockReset();
+  recordTranscribeTimelinePollProgress.mockReset();
+  recordTranscribeTimelinePollFailure.mockReset();
   vi.mocked(loopbackFetch).mockReset();
 
   getLastTranscribeTimeline.mockResolvedValue(null);
+  recordTranscribeTimelinePollProgress.mockResolvedValue(undefined);
+  recordTranscribeTimelinePollFailure.mockResolvedValue(undefined);
   projectTranscribeAsyncStart.mockResolvedValue({ jobId: "job-1" });
   projectTranscribeAsyncFinalize.mockResolvedValue({
     engine: "funasr",
