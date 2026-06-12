@@ -6,7 +6,7 @@
   "build": {
     "beforeDevCommand": "npm run dev",
     "devUrl": "http://localhost:1421",
-    "beforeBuildCommand": "npm run build && npm run build:user-guide-pdf",
+    "beforeBuildCommand": "npm run build",
     "frontendDist": "../dist"
   },
   "app": {
@@ -54,7 +54,8 @@
     "targets": ["app", "dmg"],
     "resources": [
       "resources/user-guide-zh.md",
-      "resources/user-guide-zh.pdf",
+      "resources/third-party-notices.txt",
+      "resources/third-party-license-texts.txt",
       "resources/bundled-asr"
     ],
     "icon": [

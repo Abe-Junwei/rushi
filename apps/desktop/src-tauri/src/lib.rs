@@ -1,3 +1,4 @@
+mod app_info;
 mod asr_setup;
 mod asr_sidecar;
 mod blocking_http;
@@ -31,11 +32,6 @@ pub struct DbState {
     pub db_path: PathBuf,
 }
 
-#[tauri::command]
-fn app_version() -> String {
-    env!("CARGO_PKG_VERSION").to_string()
-}
-
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let app = tauri::Builder::default()
@@ -66,10 +62,15 @@ pub fn run() {
                 .await;
                 asr_sidecar::warm::spawn_watchdog(handle);
             });
+            #[cfg(target_os = "macos")]
+            app_info::attach_macos_app_menu(app)?;
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
-            app_version,
+            app_info::app_version,
+            app_info::app_build_info,
+            app_info::read_third_party_licenses,
+            app_info::open_bundled_user_guide,
             asr_setup::diagnose::asr_setup_diagnose,
             asr_sidecar::bundled::launch::bundled_asr_launch_report,
             asr_sidecar::supervisor::asr_supervisor_snapshot,

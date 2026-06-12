@@ -1,11 +1,12 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Cloud, Cpu, Download, HelpCircle, Keyboard, Sparkles } from "lucide-react";
+import { Cloud, Cpu, Download, HelpCircle, Info, Keyboard, Sparkles } from "lucide-react";
 import { ENV_STATUS_DOT_CLASS, type EnvStatusTone } from "./topBarStatusTone";
 import { EnvProfileActions } from "./EnvProfileActions";
 import { EnvLlmConfigPanel } from "./EnvLlmConfigPanel";
 import { EnvLocalAsrPanel } from "./EnvLocalAsrPanel";
 import { EnvOnlineSttPanel } from "./EnvOnlineSttPanel";
 import { EnvEditorShortcutsPanel } from "./EnvEditorShortcutsPanel";
+import { EnvAboutPanel } from "./EnvAboutPanel";
 import { EnvHelpPanel } from "./EnvHelpPanel";
 import { useLlmEnvStatus } from "../hooks/useLlmEnvStatus";
 import type { AsrEnvPresentation } from "../services/asr/asrEnvStatus";
@@ -20,7 +21,7 @@ import type { PrepareModelApi } from "../pages/usePrepareModelController";
 import type { PrepareModelFailureCopy } from "../pages/prepareModelDownloadCopy";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
-type EnvNavId = "local-asr" | "online-stt" | "llm" | "profile" | "shortcuts" | "help";
+type EnvNavId = "local-asr" | "online-stt" | "llm" | "profile" | "shortcuts" | "about" | "help";
 
 function envNavStatusDotClass(tone: EnvStatusTone): string {
   return ENV_STATUS_DOT_CLASS[tone];
@@ -35,6 +36,7 @@ const ENV_NAV_ITEMS: { id: EnvNavId; label: string; description: string; icon: R
   { id: "llm", label: "LLM 配置", description: "云端或本机 Ollama", icon: <Sparkles className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden /> },
   { id: "profile", label: "配置迁移", description: "导入 / 导出偏好", icon: <Download className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden /> },
   { id: "shortcuts", label: "快捷键", description: "编辑器键盘操作", icon: <Keyboard className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden /> },
+  { id: "about", label: "关于", description: "版本与第三方许可", icon: <Info className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden /> },
   { id: "help", label: "使用说明", description: "转写流程与 FAQ", icon: <HelpCircle className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden /> },
 ];
 
@@ -298,6 +300,8 @@ export function EnvironmentPanel({
               ) : null}
 
               {envSection === "shortcuts" ? <EnvEditorShortcutsPanel /> : null}
+
+              {envSection === "about" ? <EnvAboutPanel /> : null}
 
               {envSection === "help" ? <EnvHelpPanel /> : null}
             </div>

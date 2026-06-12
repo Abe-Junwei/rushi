@@ -102,7 +102,7 @@ Python 单测（与 CI 一致，需本机 **Python 3.11+**，推荐 3.12）：**
 3. 输入名称 → **选择音频** → **创建项目**；在 **打开** 下拉中选中该项目。
 4. **从 ASR 拉取语段**（将项目内音频副本 POST 到 `/v1/transcribe`）；在表格中改时间或文本，必要时 **拆分 / 合并**。
 5. **保存到 SQLite**（应用数据目录下的 `studio.lingchuang.rushi/rushi.sqlite3`）；**导出 TXT / SRT**会弹出系统「另存为」，内容为 UTF-8、LF。**导出 DOCX（逐字稿 / 讲稿）** 同样为「另存为」，由壳内 `docx-rs` 生成最小版式（逐字稿：每段带时间行 + 正文，低置信段黄底高亮；讲稿：连续正文）。
-6. **P4 诊断**：点 **「导出诊断包（zip）」**，内含版本/平台说明、**最近编辑流水**（`edit_log`）、**`logs/*.log` 尾部**（含 `desktop.log` 转写失败摘要）；若本地库不超过 5MiB 会附带 `rushi.sqlite3`。安装包 **Resources** 内含 **`user-guide-zh.md` / `user-guide-zh.pdf`** 简版说明（路径随平台在 Tauri 资源目录）。
+6. **P4 诊断**：点 **「导出诊断包（zip）」**，内含版本/平台说明、**最近编辑流水**（`edit_log`）、**`logs/*.log` 尾部**（含 `desktop.log` 转写失败摘要）；若本地库不超过 5MiB 会附带 `rushi.sqlite3`。安装包 **Resources** 内含 **`user-guide-zh.md`** 简版说明（路径随平台在 Tauri 资源目录）；详细流程见应用内 **设置 → 使用说明**。
 
 **P1 验收口径（本仓）**：计划书 §8 P1 验收 3 在 Rushi 内**放宽**为「保存批次写入 `edit_log` + 诊断包导出取证」，不要求逐键/逐拖动的持久化审计；见 [`docs/execution/acceptance.md`](./docs/execution/acceptance.md)。
 

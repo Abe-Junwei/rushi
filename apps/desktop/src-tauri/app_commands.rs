@@ -1,6 +1,9 @@
 //! Tauri invoke command names (snake_case). Kept in sync with `src/lib.rs` `generate_handler!`.
 pub const APP_COMMANDS: &[&str] = &[
     "app_version",
+    "app_build_info",
+    "read_third_party_licenses",
+    "open_bundled_user_guide",
     "asr_setup_diagnose",
     "bundled_asr_launch_report",
     "asr_supervisor_snapshot",

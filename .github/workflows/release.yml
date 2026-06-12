@@ -59,7 +59,7 @@ jobs:
       - name: Linux packages for Tauri
         run: |
           sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev pandoc wkhtmltopdf libfuse2
+          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev libfuse2
 
       - name: Install ffmpeg (sidecar bundle)
         run: sudo apt-get install -y ffmpeg
@@ -165,9 +165,6 @@ jobs:
       - uses: swatinem/rust-cache@v2
         with:
           workspaces: apps/desktop/src-tauri
-
-      - name: Install pandoc (user-guide PDF)
-        run: brew install pandoc
 
       - name: Install ffmpeg (sidecar bundle)
         run: brew install ffmpeg

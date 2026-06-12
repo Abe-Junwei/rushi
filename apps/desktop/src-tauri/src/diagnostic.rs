@@ -42,15 +42,8 @@ pub fn export_diagnostic_bundle(
     let file = File::create(&tmp_path).map_err(|e| format!("创建 zip 失败: {e}"))?;
     let mut zip = ZipWriter::new(file);
 
-    let version = env!("CARGO_PKG_VERSION");
-    let os = std::env::consts::OS;
-    let arch = std::env::consts::ARCH;
-    let db_path = st.db_path.display().to_string();
-    let root = st.root.display().to_string();
-
-    let meta = format!(
-        "rushi-desktop {version}\nplatform: {os} {arch}\napp_data_root: {root}\ndb_path: {db_path}\n",
-    );
+    let build_info = crate::app_info::build_app_build_info(Some(&st.root), Some(&st.db_path));
+    let meta = crate::app_info::format_build_info_text(&build_info);
     zip.start_file("build-info.txt", zip_opts())
         .map_err(|e| e.to_string())?;
     zip.write_all(meta.as_bytes()).map_err(|e| e.to_string())?;
@@ -242,7 +235,7 @@ pub fn export_diagnostic_bundle(
         .map_err(|e| e.to_string())?;
     zip.write_all(
         b"Files in this zip:\n\
-- build-info.txt - version, OS, app_data_root, db_path\n\
+- build-info.txt - version, OS, identifier, app_data_root, db_path\n\
 - local-runtime.txt - manifest source/status, runtime source, current/previous version, verify/install context, live installer progress\n\
 - asr-setup.txt - hub model pref, bundled launch report, loopback port probe\n\
 - database-readme.txt - whether rushi.sqlite3 is embedded\n\

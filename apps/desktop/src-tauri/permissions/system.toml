@@ -5,6 +5,9 @@ identifier = "system"
 description = "Export, diagnostics, and settings commands for the main window."
 permissions = [
   "allow-app-version",
+  "allow-app-build-info",
+  "allow-read-third-party-licenses",
+  "allow-open-bundled-user-guide",
   "allow-open-app-data-folder",
   "allow-export-settings-profile",
   "allow-import-settings-profile",
