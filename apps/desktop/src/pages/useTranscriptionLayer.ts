@@ -1,38 +1,24 @@
-import { useCallback, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
+import { useCallback, useMemo, useRef, useState } from "react";
 import { useSegmentKeyboard } from "../hooks/useSegmentKeyboard";
 import { useEditorShortcutDispatcher } from "../hooks/useEditorShortcutDispatcher";
 import { useWaveformTimelineController } from "../hooks/useWaveformTimelineController";
 import { useWaveformTierWheelForward } from "../hooks/useWaveformTierWheelForward";
-import { p1LaneBoundsSignature } from "../utils/boundsSignature";
-import { resolveWaveformSegmentContextMenuIndex } from "../utils/waveformSegmentContextMenu";
-import {
-  isEditableSegmentBodyTextarea,
-  querySegmentListScrollRoot,
-  resolveSegmentListRowIndexFromPoint,
-  segmentListRangeDragExceededSlop,
-  segmentListRangeDragVerticalIntentExceededSlop,
-} from "../utils/segmentListVirtualWindow";
-import {
-  PX_PER_SEC_MAX,
-  PX_PER_SEC_MIN,
-  resolveWaveformZoomSliderRange,
-} from "../utils/pxPerSec";
-import { computeZoomInPxPerSec, computeZoomOutPxPerSec } from "../utils/waveformZoomSlider";
-import { assignSegmentOverlapLanes, computeSegmentLaneRowPx } from "../utils/segmentLayout";
-import { resolveSelectSegmentViewportPlan } from "../services/waveform/selectSegmentViewportPlan";
-import { blurActiveTranscriptTextarea } from "../utils/transcriptSelection";
+import { computeSegmentLaneRowPx } from "../utils/segmentLayout";
 import { resolveWaveformFooterStatusLabel } from "../services/waveform/waveformRenderStatus";
-import { segmentStartSec } from "../utils/formatMediaTime";
-import type { SegmentSelectSource } from "../utils/waveformViewMode";
-import { shouldFocusWaveformShellForSelectSource, shouldFitSelectionOnWaveformSelect, shouldZoomViewportOnSelectSource } from "../utils/waveformViewMode";
 import { nextListSelectSource } from "../utils/segmentListSelectSource";
+import type { TranscriptionLayerInput } from "./transcriptionLayerTypes";
+import { useTranscriptionLayerSegmentListDrag } from "./useTranscriptionLayerSegmentListDrag";
+import { useTranscriptionLayerSelection } from "./useTranscriptionLayerSelection";
+
 export { TIMELINE_PX_PER_SEC, clampPxPerSec } from "../utils/pxPerSec";
-export { computeSegmentLaneRowPx, assignSegmentOverlapLanes, computeTimelineWidthPx, SEGMENT_LANE_ROW_PX } from "../utils/segmentLayout";
+export {
+  computeSegmentLaneRowPx,
+  assignSegmentOverlapLanes,
+  computeTimelineWidthPx,
+  SEGMENT_LANE_ROW_PX,
+} from "../utils/segmentLayout";
 
 export type TranscriptionLayerApi = ReturnType<typeof useTranscriptionLayer>;
-
-import type { TranscriptionLayerInput } from "./transcriptionLayerTypes";
-
 export type { TranscriptionLayerInput } from "./transcriptionLayerTypes";
 
 export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
@@ -59,36 +45,24 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
   const showEditorHintRef = useRef(showEditorHint);
   showEditorHintRef.current = showEditorHint;
 
-  const scrollFitRef = useRef({ timeline });
-  scrollFitRef.current = { timeline };
+  const selection = useTranscriptionLayerSelection({
+    ctx,
+    ctxRef,
+    timeline,
+    waveformShellRef,
+    setSelectedIdxUi,
+  });
 
-  const stepWaveformZoomRef = useRef<(direction: "in" | "out") => void>(() => {});
-  stepWaveformZoomRef.current = (direction) => {
-    const { timeline: tl } = scrollFitRef.current;
-    const tier = tl.tierScrollRef.current;
-    const dur = tl.timelineMetrics.mediaDurationSec;
-    const vw = tier?.clientWidth ?? 0;
-    const px = tl.pxPerSec;
-    const sliderRange =
-      vw > 0 && dur >= 0.5
-        ? resolveWaveformZoomSliderRange(vw, dur)
-        : { minPxPerSec: PX_PER_SEC_MIN, maxPxPerSec: PX_PER_SEC_MAX };
-    const next =
-      direction === "in"
-        ? computeZoomInPxPerSec(px, sliderRange)
-        : computeZoomOutPxPerSec(px, sliderRange);
-    if (Math.abs(next - px) < 0.001) return;
-    tl.zoom.setPxPerSecFromSlider(next);
-  };
-
-  const selectSegmentAtRef = useRef<
-    (idx: number, source?: SegmentSelectSource, opts?: { shiftKey?: boolean; toggle?: boolean }) => void
-  >(() => {});
+  const segmentListDrag = useTranscriptionLayerSegmentListDrag({
+    ctxRef,
+    segmentListRef,
+    selectSegmentAtRef: selection.selectSegmentAtRef,
+  });
 
   const keyboard = useSegmentKeyboard({
     ctxRef,
     wfApiRef: timeline.wfApiRef,
-    selectSegmentAtRef,
+    selectSegmentAtRef: selection.selectSegmentAtRef,
     tierScrollRef: timeline.tierScrollRef,
   });
 
@@ -97,216 +71,16 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     ctxRef,
     wfApiRef: timeline.wfApiRef,
     waveformShellRef,
-    selectSegmentAtRef,
+    selectSegmentAtRef: selection.selectSegmentAtRef,
     focusSegmentTextarea: keyboard.focusSegmentTextarea,
     showEditorHintRef,
-    stepWaveformZoomRef,
+    stepWaveformZoomRef: selection.stepWaveformZoomRef,
   });
 
   const segmentLaneRowPx = useMemo(
     () => computeSegmentLaneRowPx(timeline.display.transcriptFontPx),
     [timeline.display.transcriptFontPx],
   );
-
-  const laneBoundsSig = p1LaneBoundsSignature(ctx.segments);
-  const segmentLaneLayout = useMemo(() => {
-    void laneBoundsSig;
-    return assignSegmentOverlapLanes(
-      ctxRef.current.segments,
-      timeline.timelineMetrics.mediaDurationSec,
-    );
-  }, [laneBoundsSig, timeline.timelineMetrics.mediaDurationSec]);
-
-  const focusWaveformShell = useCallback(() => {
-    waveformShellRef.current?.focus();
-  }, []);
-
-  const openSegmentContextMenuFromPointer = useCallback(
-    (input: {
-      clientX: number;
-      clientY: number;
-      overlayClientTop: number;
-      peaksPaintedHeightPx: number;
-      layoutYScale: number;
-    }) => {
-      const c = ctxRef.current;
-      if (c.busy || !c.onOpenSegmentContextMenu) return;
-      const pointerTimeSec = timeline.wfApiRef.current.clientXToTimeSec(input.clientX);
-      const segmentIdx = resolveWaveformSegmentContextMenuIndex({
-        segments: c.segments,
-        timeSec: pointerTimeSec,
-        pointerClientY: input.clientY,
-        overlayClientTop: input.overlayClientTop,
-        layoutHeightPx: input.peaksPaintedHeightPx,
-        layoutYScale: input.layoutYScale,
-        laneByIndex: segmentLaneLayout.laneByIndex,
-        laneCount: segmentLaneLayout.laneCount,
-        selectedIdx: c.selectedIdx,
-        durationSec: timeline.timelineMetrics.mediaDurationSec,
-      });
-      if (segmentIdx < 0) return;
-      c.onOpenSegmentContextMenu({
-        x: input.clientX,
-        y: input.clientY,
-        segmentIdx,
-        pointerTimeSec,
-        origin: "waveform",
-        selectionText: "",
-      });
-    },
-    [segmentLaneLayout.laneByIndex, segmentLaneLayout.laneCount, timeline.wfApiRef],
-  );
-
-  const revealSelectedSegmentInViewport = useCallback(() => {
-    const c = ctxRef.current;
-    const seg = c.segments[c.selectedIdx];
-    if (!seg) return;
-    scrollFitRef.current.timeline.viewportFit.revealSegmentInViewport({
-      start_sec: seg.start_sec,
-      end_sec: seg.end_sec,
-    });
-  }, []);
-
-  const selectSegmentAt = useCallback(
-    (idx: number, source: SegmentSelectSource = "waveform", opts?: { shiftKey?: boolean; toggle?: boolean }) => {
-      const c = ctxRef.current;
-      if (c.busy) return;
-      const s = c.segments[idx];
-      if (!s) return;
-      setSelectedIdxUi(idx, opts);
-      const plan = resolveSelectSegmentViewportPlan(s);
-      const seg = plan.segment;
-      if (shouldZoomViewportOnSelectSource(source)) {
-        scrollFitRef.current.timeline.viewportFit.zoomToFitSegment({
-          start_sec: seg.start_sec,
-          end_sec: seg.end_sec,
-        });
-      } else if (
-        shouldFitSelectionOnWaveformSelect(
-          source,
-          scrollFitRef.current.timeline.zoom.layoutIntentRef.current,
-        )
-      ) {
-        scrollFitRef.current.timeline.viewportFit.zoomToFitSegment(
-          { start_sec: seg.start_sec, end_sec: seg.end_sec },
-          { forceFullFit: true },
-        );
-      } else {
-        scrollFitRef.current.timeline.viewportFit.revealSegmentInViewport({
-          start_sec: seg.start_sec,
-          end_sec: seg.end_sec,
-        });
-      }
-      if (source !== "listAdvance") {
-        requestAnimationFrame(() => {
-          timeline.wfApiRef.current.seek(segmentStartSec(s));
-        });
-      }
-      if (shouldFocusWaveformShellForSelectSource(source)) {
-        focusWaveformShell();
-      }
-    },
-    [focusWaveformShell, setSelectedIdxUi, timeline.wfApiRef],
-  );
-
-  selectSegmentAtRef.current = selectSegmentAt;
-
-  const segmentListRangeDragRef = useRef<{
-    anchorIdx: number;
-    pointerId: number;
-    moved: boolean;
-    fromEditableText: boolean;
-    startClientX: number;
-    startClientY: number;
-  } | null>(null);
-  const suppressSegmentListRowClickRef = useRef(false);
-  const listSelectSourceStateRef = useRef({ lastAtMs: 0 });
-
-  const onSegmentListRangePointerDown = useCallback((idx: number, e: ReactPointerEvent<HTMLElement>) => {
-    const c = ctxRef.current;
-    if (c.busy || e.button !== 0) return;
-    if ((e.target as HTMLElement).closest('[role="separator"]')) return;
-    e.stopPropagation();
-
-    const fromEditableText = isEditableSegmentBodyTextarea(
-      (e.target as HTMLElement).closest('textarea[aria-label="语段正文"]'),
-    );
-
-    segmentListRangeDragRef.current = {
-      anchorIdx: idx,
-      pointerId: e.pointerId,
-      moved: false,
-      fromEditableText,
-      startClientX: e.clientX,
-      startClientY: e.clientY,
-    };
-    if (e.shiftKey) {
-      selectSegmentAtRef.current(idx, "list", { shiftKey: true });
-    } else if (e.metaKey || e.ctrlKey) {
-      selectSegmentAtRef.current(idx, "list", { toggle: true });
-    } else {
-      selectSegmentAtRef.current(idx, nextListSelectSource(Date.now(), listSelectSourceStateRef.current));
-    }
-
-    const onMove = (ev: PointerEvent) => {
-      const drag = segmentListRangeDragRef.current;
-      if (!drag || ev.pointerId !== drag.pointerId) return;
-      if (
-        !drag.moved &&
-        !(drag.fromEditableText
-          ? segmentListRangeDragVerticalIntentExceededSlop(
-              drag.startClientX,
-              drag.startClientY,
-              ev.clientX,
-              ev.clientY,
-            )
-          : segmentListRangeDragExceededSlop(
-              drag.startClientX,
-              drag.startClientY,
-              ev.clientX,
-              ev.clientY,
-            ))
-      ) {
-        return;
-      }
-      if (!drag.moved) {
-        drag.moved = true;
-        blurActiveTranscriptTextarea();
-      }
-      const scrollRoot = segmentListRef.current ?? querySegmentListScrollRoot();
-      const hoverIdx = resolveSegmentListRowIndexFromPoint(
-        scrollRoot,
-        ev.clientX,
-        ev.clientY,
-        ctxRef.current.segments.length,
-      );
-      if (hoverIdx == null) return;
-      ev.preventDefault();
-      ctxRef.current.selectSegmentRange(drag.anchorIdx, hoverIdx);
-    };
-
-    const onUp = (ev: PointerEvent) => {
-      const drag = segmentListRangeDragRef.current;
-      if (!drag || ev.pointerId !== drag.pointerId) return;
-      if (drag.moved) suppressSegmentListRowClickRef.current = true;
-      segmentListRangeDragRef.current = null;
-      window.removeEventListener("pointermove", onMove);
-      window.removeEventListener("pointerup", onUp);
-      window.removeEventListener("pointercancel", onUp);
-    };
-
-    window.addEventListener("pointermove", onMove);
-    window.addEventListener("pointerup", onUp);
-    window.addEventListener("pointercancel", onUp);
-  }, []);
-
-  const consumeSegmentListRangeClickSuppress = useCallback(() => {
-    if (!suppressSegmentListRowClickRef.current) return false;
-    suppressSegmentListRowClickRef.current = false;
-    return true;
-  }, []);
-
-  const onTimestampPointerDown = onSegmentListRangePointerDown;
 
   const { wf, display, peaks, zoom, routePrefs } = timeline;
   const waveformStageHeightPx = display.waveformHeightPx;
@@ -336,7 +110,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     tierScrollLayout: timeline.tierScrollLayout,
     seekFromTierClientX: timeline.seekFromTierClientX,
     setTierScrollPx: timeline.setTierScrollPx,
-    segmentLaneLayout,
+    segmentLaneLayout: selection.segmentLaneLayout,
     segmentLaneRowPx,
     waveformHeightPx: display.waveformHeightPx,
     waveformRenderHeightPx: display.waveformRenderHeightPx,
@@ -374,17 +148,17 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     layoutIntent: timeline.layoutIntent,
     resetZoom: zoom.resetZoom,
     resetZoomForMedia: zoom.resetZoomForMedia,
-    stepWaveformZoom: (direction: "in" | "out") => stepWaveformZoomRef.current(direction),
+    stepWaveformZoom: (direction: "in" | "out") => selection.stepWaveformZoomRef.current(direction),
     zoomToFitSelection: timeline.viewportFit.zoomToFitSelection,
     zoomToFitAll: timeline.viewportFit.zoomToFitAll,
     setPxPerSecFromSlider: zoom.setPxPerSecFromSlider,
-    selectSegmentAt,
+    selectSegmentAt: selection.selectSegmentAt,
     selectSegmentFromList: (idx: number, opts?: { shiftKey?: boolean; toggle?: boolean }) => {
       const source =
         opts?.shiftKey || opts?.toggle
           ? "list"
-          : nextListSelectSource(Date.now(), listSelectSourceStateRef.current);
-      selectSegmentAt(idx, source, opts);
+          : nextListSelectSource(Date.now(), segmentListDrag.listSelectSourceStateRef.current);
+      selection.selectSegmentAt(idx, source, opts);
     },
     selectSegmentRange: ctx.selectSegmentRange,
     selectionLo: ctx.selectionLo,
@@ -392,16 +166,16 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     selectionCount: ctx.selectionCount,
     isMultiSegmentSelection: ctx.isMultiSegmentSelection,
     isIndexInSelection: ctx.isIndexInSelection,
-    onTimestampPointerDown,
-    onSegmentListRangePointerDown,
-    consumeSegmentListRangeClickSuppress,
-    revealSelectedSegmentInViewport,
+    onTimestampPointerDown: segmentListDrag.onTimestampPointerDown,
+    onSegmentListRangePointerDown: segmentListDrag.onSegmentListRangePointerDown,
+    consumeSegmentListRangeClickSuppress: segmentListDrag.consumeSegmentListRangeClickSuppress,
+    revealSelectedSegmentInViewport: selection.revealSelectedSegmentInViewport,
     insertSegmentAfter: ctx.insertSegmentAfter,
     deleteSegmentAt: ctx.deleteSegmentAt,
     requestDeleteSelection: ctx.requestDeleteSelection,
     mergeSegmentRange: ctx.mergeSegmentRange,
     splitAtPlayhead: ctx.splitAtPlayhead,
-    focusWaveformShell,
+    focusWaveformShell: selection.focusWaveformShell,
     onSegmentTextareaKeyDown: keyboard.onSegmentTextareaKeyDown,
     containerRef: wf.containerRef,
     waveformStickyShellRef: wf.stickyShellRef,
@@ -426,6 +200,6 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     mediaDurationSec: timeline.timelineMetrics.mediaDurationSec,
     /** @deprecated use mediaDurationSec — same layout duration truth */
     duration: timeline.timelineMetrics.mediaDurationSec,
-    openSegmentContextMenuFromPointer,
+    openSegmentContextMenuFromPointer: selection.openSegmentContextMenuFromPointer,
   };
 }

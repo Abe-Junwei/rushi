@@ -3,6 +3,7 @@ import { CONTROL_BTN_DANGER, CONTROL_BTN_SECONDARY } from "../../config/controlS
 import { useDialogEscapeClose } from "../../hooks/useDialogEscapeClose";
 import { PANEL_TYPOGRAPHY } from "../../config/typography";
 import { DELETE_SEGMENT_WITH_TEXT_CONFIRM } from "../../services/segmentConfirmEligible";
+import { editorShortcutMenuHint } from "../../utils/editorShortcutMenuHint";
 
 type Props = {
   open: boolean;
@@ -17,9 +18,10 @@ export function DeleteSegmentConfirmDialog({ open, deleteCount = 1, onCancel, on
   if (!open || typeof document === "undefined") return null;
 
   const title = deleteCount > 1 ? `删除 ${deleteCount} 条语段` : "删除语段";
+  const undoHint = editorShortcutMenuHint("edit.undo");
   const body =
     deleteCount > 1
-      ? `将删除选中的 ${deleteCount} 条语段及其正文，此操作可撤销（⌘Z）。`
+      ? `将删除选中的 ${deleteCount} 条语段及其正文，此操作可撤销（${undoHint}）。`
       : DELETE_SEGMENT_WITH_TEXT_CONFIRM;
 
   return createPortal(

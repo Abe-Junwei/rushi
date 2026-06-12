@@ -11,7 +11,8 @@ import {
 } from "./transcribeJobController.testHelpers";
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
-import { pushTranscribeResultToast } from "../services/ui/toast";
+import { pushTranscribeDeliveryModeToast } from "../services/deliveryModeTranscribeToast";
+import { pushTranscribeHintsToToast } from "../services/ui/toast";
 import { useTranscribeJobController } from "./useTranscribeJobController";
 
 const {
@@ -113,8 +114,11 @@ describe("useTranscribeJobController async paths", () => {
     expect(projectTranscribeAsyncStart).toHaveBeenCalled();
     expect(projectRunTranscribe).toHaveBeenCalledWith("file-1", TRANSCRIBE_TEST_ASR_BASE, null);
     expect(projectTranscribeAsyncFinalize).not.toHaveBeenCalled();
-    expect(vi.mocked(pushTranscribeResultToast)).toHaveBeenCalled();
-    expect(vi.mocked(pushTranscribeResultToast).mock.calls[0]?.[0]).toMatch(
+    expect(vi.mocked(pushTranscribeHintsToToast)).toHaveBeenCalledWith([
+      expect.stringContaining("增量转写"),
+    ]);
+    expect(vi.mocked(pushTranscribeDeliveryModeToast)).toHaveBeenCalled();
+    expect(vi.mocked(pushTranscribeDeliveryModeToast).mock.calls[0]?.[0]).toMatch(
       /转写完成：用时 .+，\d+ 条语段，[\d,]+ 字/,
     );
     expect(deps.setError).not.toHaveBeenCalledWith(expect.stringContaining("404"));

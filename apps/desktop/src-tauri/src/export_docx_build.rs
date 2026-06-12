@@ -1,4 +1,5 @@
-use std::io::Cursor;
+use std::io::{Cursor, Seek, Write};
+use std::path::Path;
 
 use docx_rs::*;
 
@@ -41,6 +42,49 @@ fn should_use_polish_track_changes(
 }
 
 #[allow(clippy::too_many_arguments)]
+pub(crate) fn build_docx_to_path(
+    path: &Path,
+    title: &str,
+    export_mode: &str,
+    segments: &[SegmentDto],
+    export_meta_line: Option<&str>,
+    appendix_lines: &[String],
+    polished_paragraphs: Option<&[String]>,
+    polish_before_joined: Option<&str>,
+    polish_corrected_lines: Option<&[String]>,
+    polish_track_changes: bool,
+) -> Result<(), String> {
+    let file = std::fs::File::create(path).map_err(|e| format!("创建 DOCX 文件失败: {e}"))?;
+    let mut writer = std::io::BufWriter::new(file);
+    build_docx_into_writer(
+        &mut writer,
+        title,
+        export_mode,
+        segments,
+        export_meta_line,
+        appendix_lines,
+        polished_paragraphs,
+        polish_before_joined,
+        polish_corrected_lines,
+        polish_track_changes,
+    )?;
+    writer
+        .flush()
+        .map_err(|e| format!("写入 DOCX 失败: {e}"))?;
+    if should_use_polish_track_changes(
+        polish_track_changes,
+        polished_paragraphs,
+        polish_before_joined,
+        polish_corrected_lines,
+    ) {
+        let bytes = std::fs::read(path).map_err(|e| format!("读取 DOCX 失败: {e}"))?;
+        let patched = inject_track_revisions_flag(&bytes)?;
+        std::fs::write(path, &patched).map_err(|e| format!("写入修订轨 DOCX 失败: {e}"))?;
+    }
+    Ok(())
+}
+
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn build_docx_bytes(
     title: &str,
     export_mode: &str,
@@ -52,6 +96,44 @@ pub(crate) fn build_docx_bytes(
     polish_corrected_lines: Option<&[String]>,
     polish_track_changes: bool,
 ) -> Result<Vec<u8>, String> {
+    let mut buf = Vec::new();
+    let mut cur = Cursor::new(&mut buf);
+    build_docx_into_writer(
+        &mut cur,
+        title,
+        export_mode,
+        segments,
+        export_meta_line,
+        appendix_lines,
+        polished_paragraphs,
+        polish_before_joined,
+        polish_corrected_lines,
+        polish_track_changes,
+    )?;
+    if should_use_polish_track_changes(
+        polish_track_changes,
+        polished_paragraphs,
+        polish_before_joined,
+        polish_corrected_lines,
+    ) {
+        return inject_track_revisions_flag(&buf);
+    }
+    Ok(buf)
+}
+
+#[allow(clippy::too_many_arguments)]
+fn build_docx_into_writer<W: Write + Seek>(
+    writer: &mut W,
+    title: &str,
+    export_mode: &str,
+    segments: &[SegmentDto],
+    export_meta_line: Option<&str>,
+    appendix_lines: &[String],
+    polished_paragraphs: Option<&[String]>,
+    polish_before_joined: Option<&str>,
+    polish_corrected_lines: Option<&[String]>,
+    polish_track_changes: bool,
+) -> Result<(), String> {
     let mode = normalize_export_mode(export_mode);
     let any_text = segments.iter().any(|s| !s.text.trim().is_empty());
     let has_polished = polished_paragraphs.is_some_and(|p| p.iter().any(|x| !x.trim().is_empty()));
@@ -122,13 +204,8 @@ pub(crate) fn build_docx_bytes(
 
     doc = append_revision_appendix(doc, appendix_lines);
 
-    let mut buf = Vec::new();
-    let mut cur = Cursor::new(&mut buf);
     doc.build()
-        .pack(&mut cur)
+        .pack(writer)
         .map_err(|e| format!("生成 DOCX 失败: {e}"))?;
-    if use_track {
-        buf = inject_track_revisions_flag(&buf)?;
-    }
-    Ok(buf)
+    Ok(())
 }

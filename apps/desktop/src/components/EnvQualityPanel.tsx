@@ -7,7 +7,9 @@ import {
   CONTROL_BTN_SECONDARY,
 } from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
+import { isPackagedDesktopApp } from "../config/env";
 import { useQualityEvalController } from "../pages/useQualityEvalController";
+import { packagedOrDev } from "../services/packagedUserHints";
 import {
   formatFinishedAt,
   formatQualityCer,
@@ -21,6 +23,10 @@ type Props = {
 export function EnvQualityPanel({ busy: appBusy }: Props) {
   const q = useQualityEvalController();
   const disabled = appBusy || q.busy;
+  const evalRunHint = packagedOrDev(
+    "在仓库根执行 npm run eval:run 后导入 JSON。",
+    "点「导入报告」选择评测 JSON 文件。",
+  );
   const [exportRedact, setExportRedact] = useState(true);
 
   const handleExportMemory = useCallback(() => {
@@ -122,8 +128,7 @@ export function EnvQualityPanel({ busy: appBusy }: Props) {
         </section>
       ) : (
         <p className={PANEL_TYPOGRAPHY.helper}>
-          尚无评测报告。请确保本机 ASR（127.0.0.1:8741）已就绪，或在仓库根执行{" "}
-          <code className="text-notion-text">npm run eval:run</code> 后导入 JSON。
+          尚无评测报告。请确保本机 ASR（127.0.0.1:8741）已就绪，或{evalRunHint}
         </p>
       )}
 
@@ -176,9 +181,11 @@ export function EnvQualityPanel({ busy: appBusy }: Props) {
         </button>
       </section>
 
-      <p className={`${PANEL_TYPOGRAPHY.meta} text-notion-text-light`}>
-        终端等价命令：npm run eval:run · npm run eval:run:hotwords-on --filter-id proper-noun-zhikong
-      </p>
+      {!isPackagedDesktopApp() ? (
+        <p className={`${PANEL_TYPOGRAPHY.meta} text-notion-text-light`}>
+          终端等价命令：npm run eval:run · npm run eval:run:hotwords-on --filter-id proper-noun-zhikong
+        </p>
+      ) : null}
     </div>
   );
 }

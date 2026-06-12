@@ -96,7 +96,7 @@ use self::utils::append_desktop_log_line;
 use crate::db;
 use crate::DbState;
 
-/// One-shot DB bootstrap (migrations + WAL, idempotent).
+/// One-shot DB bootstrap (migrations, idempotent).
 pub fn setup_db(app: &tauri::AppHandle) -> Result<DbState, String> {
     let resolver = app.path();
     let app_data = resolver.app_data_dir().map_err(|e| e.to_string())?;

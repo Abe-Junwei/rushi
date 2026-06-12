@@ -47,6 +47,7 @@ import {
   newOnlineTranscribeJobId,
   snapshotSegmentsForRestore,
   TRANSCRIBE_CANCELLED_HINT,
+  transcribeAsyncFallbackHint,
   type TranscribeProgress,
 } from "./transcribePreviewState";
 
@@ -144,10 +145,11 @@ export function useTranscribeJobController(deps: Deps) {
     void refreshVocabularyPreflight();
   }, [currentFileId, sttOnlineRuntimeEpoch, sttRuntimeRevision, transcribeSource, refreshVocabularyPreflight]);
 
-  const onlineTranscribeReady = useMemo(
-    () => isOnlineTranscribeReady(),
-    [sttOnlineRuntimeEpoch, sttRuntimeRevision],
-  );
+  const onlineTranscribeReady = useMemo(() => {
+    void sttOnlineRuntimeEpoch;
+    void sttRuntimeRevision;
+    return isOnlineTranscribeReady();
+  }, [sttOnlineRuntimeEpoch, sttRuntimeRevision]);
 
   useEffect(() => {
     if (transcribeSource === "online" && !onlineTranscribeReady) {
@@ -259,6 +261,9 @@ export function useTranscribeJobController(deps: Deps) {
           callbacks: { setSegments, setTranscribeProgress },
         });
         out = local.out;
+        if (local.usedAsyncFallback) {
+          pushTranscribeHintsToToast([transcribeAsyncFallbackHint()]);
+        }
       } else {
         const requestId = newOnlineTranscribeJobId();
         activeJobIdRef.current = requestId;

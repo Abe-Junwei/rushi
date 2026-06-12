@@ -58,6 +58,14 @@ mod tests {
     use uuid::Uuid;
 
     #[test]
+    fn uses_app_data_root_when_no_legacy_state() {
+        let base = std::env::temp_dir().join(format!("rushi-paths-new-{}", Uuid::new_v4()));
+        fs::create_dir_all(&base).unwrap();
+        assert_eq!(resolve_app_data_root(base.clone()), base);
+        let _ = fs::remove_dir_all(base);
+    }
+
+    #[test]
     fn prefers_legacy_nested_root_when_sqlite_there() {
         let base = std::env::temp_dir().join(format!("rushi-paths-{}", Uuid::new_v4()));
         let legacy = base.join("studio.lingchuang.rushi");

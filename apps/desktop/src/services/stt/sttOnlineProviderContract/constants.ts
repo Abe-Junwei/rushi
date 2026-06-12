@@ -26,3 +26,11 @@ export const STT_ONLINE_DASHSCOPE_DEFAULT_PROBE_URL =
   "https://dashscope.aliyuncs.com/compatible-mode/v1/models";
 
 export const DEFAULT_TIMEOUT_MS = 30_000;
+
+/** 设置页「探测连接」上限（与长音频转写 Job 超时解耦）。 */
+export const STT_ONLINE_PROBE_TIMEOUT_MS_MAX = 120_000;
+
+export function capSttOnlineProbeTimeoutMs(ms: number): number {
+  if (!Number.isFinite(ms) || ms <= 0) return STT_ONLINE_PROBE_TIMEOUT_MS_MAX;
+  return Math.max(3_000, Math.min(STT_ONLINE_PROBE_TIMEOUT_MS_MAX, Math.round(ms)));
+}

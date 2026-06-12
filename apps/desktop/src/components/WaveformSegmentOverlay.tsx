@@ -105,6 +105,7 @@ export const WaveformSegmentOverlay = memo(function WaveformSegmentOverlay(props
   return (
     <div
       className="waveform-segment-overlay"
+      // Local interaction hints (not in editorShortcutRegistry).
       title="拖动空白：选中相交语段；空白处无命中则新建。Shift+拖扩展已有选区；Shift 允许重叠新建；⌘/Ctrl+点击切换选中"
       onPointerDown={onShellPointerDown}
       onPointerMove={onPointerMove}

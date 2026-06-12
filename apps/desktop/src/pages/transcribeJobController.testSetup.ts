@@ -24,6 +24,7 @@ vi.mock("../tauri/projectApi", () => ({
 
 vi.mock("../config/env", () => ({
   asrBaseUrl: () => "http://127.0.0.1:8741",
+  isPackagedDesktopApp: () => false,
 }));
 
 vi.mock("../services/asr/loopbackFetch", () => ({
@@ -50,6 +51,10 @@ vi.mock("../services/ui/toast", () => ({
   },
   pushTranscribeHintsToToast: vi.fn(),
   pushTranscribeResultToast: vi.fn(),
+}));
+
+vi.mock("../services/deliveryModeTranscribeToast", () => ({
+  pushTranscribeDeliveryModeToast: vi.fn(),
 }));
 
 vi.mock("../services/onboarding/onboardingAutoSync", () => ({

@@ -28,19 +28,9 @@ fn force_file_store() -> bool {
     std::env::var("RUSHI_LLM_SECRET_FORCE_FILE").ok().as_deref() == Some("1")
 }
 
-/// macOS 开发构建签名常变，钥匙串读写会反复弹登录密码；桌面端默认改用 AppData 内 0600 文件。
-/// 显式设置 `RUSHI_LLM_SECRET_USE_KEYRING=1` 可恢复钥匙串（不推荐日常开发）。
+/// macOS 开发构建签名常变时可用 `RUSHI_LLM_SECRET_FORCE_FILE=1` 回退文件存储（测试/CI）。
 fn use_keyring_store() -> bool {
-    if force_file_store() {
-        return false;
-    }
-    if cfg!(target_os = "macos") {
-        return std::env::var("RUSHI_LLM_SECRET_USE_KEYRING")
-            .ok()
-            .as_deref()
-            == Some("1");
-    }
-    true
+    !force_file_store()
 }
 
 fn keyring_user(api_key_id: &str) -> String {

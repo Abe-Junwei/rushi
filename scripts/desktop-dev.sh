@@ -128,4 +128,4 @@ fi
 
 export RUSHI_SKIP_BUNDLED_ASR=1
 cd "$ROOT"
-exec npm run tauri dev -w @rushi/desktop -- "$@"
+exec npm run tauri dev -w @rushi/desktop -- --features devtools "$@"

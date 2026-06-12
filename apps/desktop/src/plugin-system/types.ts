@@ -11,7 +11,6 @@ export type ExtensionPointId =
   | "tts.provider"
   | "export.format"
   | "menu.item"
-  | "command.palette"
   | "segment.decorator";
 
 /** Opaque handle returned when registering an extension; used to unregister. */
@@ -79,14 +78,6 @@ export interface MenuItem extends ExtensionContribution {
   action(): void | Promise<void>;
 }
 
-// ── Command palette extension point ────────────────────────────────────
-
-export interface CommandPaletteItem extends ExtensionContribution {
-  type: "command.palette";
-  keywords: string[];
-  action(): void | Promise<void>;
-}
-
 // ── Segment decorator extension point ──────────────────────────────────
 
 /**
@@ -104,7 +95,6 @@ export type PluginPermission =
   | "register:tts.provider"
   | "register:export.format"
   | "register:menu.item"
-  | "register:command.palette"
   | "register:segment.decorator";
 
 /** Union of all possible extension contributions. */
@@ -112,7 +102,6 @@ export type ExtensionContributionUnion =
   | TtsProvider
   | ExportFormat
   | MenuItem
-  | CommandPaletteItem
   | SegmentDecorator;
 
 // ── Plugin manifest ────────────────────────────────────────────────────

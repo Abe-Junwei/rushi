@@ -266,6 +266,14 @@ export function buildAsrEnvPresentation(input: BuildAsrEnvPresentationInput): As
     },
   ];
 
+  const blockReason = blockReasonFor({
+    asrHealth: input.asrHealth,
+    asrCaps: input.asrCaps,
+    transcribeReady,
+    sidecarMatchesSelection,
+    sidecarAsyncTranscribeCapable: input.sidecarAsyncTranscribeCapable,
+  });
+
   return applyPrepareModelOverlay(
     {
     health: input.asrHealth,
@@ -294,15 +302,12 @@ export function buildAsrEnvPresentation(input: BuildAsrEnvPresentationInput): As
       ffmpegOk,
       connectedGuidance,
     }),
-    blockReason: blockReasonFor({
-      asrHealth: input.asrHealth,
-      asrCaps: input.asrCaps,
-      transcribeReady,
-      sidecarMatchesSelection,
-      sidecarAsyncTranscribeCapable: input.sidecarAsyncTranscribeCapable,
-    }),
+    blockReason,
     errorDetail: input.asrHealth === "error" ? input.asrHealthDetail.trim() || null : null,
-    errorBannerMessage: "无法连接本机 ASR，请检查服务是否在运行。",
+    errorBannerMessage:
+      input.asrHealth === "error" && blockReason
+        ? blockReason
+        : "无法连接本机 ASR，请检查服务是否在运行。",
     connectedGuidance,
     ffmpegWarning:
       envOk && input.asrCaps && !ffmpegOk

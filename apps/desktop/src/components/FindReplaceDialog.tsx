@@ -333,6 +333,7 @@ export function FindReplaceDialog({
               type="button"
               className={CONTROL_BTN_SECONDARY}
               disabled={!canAct}
+              // Local shortcut (not in editorShortcutRegistry): replace current match.
               title="⌘Enter 替换当前"
               onClick={onReplaceCurrent}
             >

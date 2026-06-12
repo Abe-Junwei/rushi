@@ -6,6 +6,7 @@ description = "ASR runtime and sidecar commands for the main window."
 permissions = [
   "allow-asr-setup-diagnose",
   "allow-bundled-asr-launch-report",
+  "allow-asr-supervisor-snapshot",
   "allow-local-runtime-diagnose",
   "allow-local-runtime-download-sidecar",
   "allow-local-runtime-cancel-download",

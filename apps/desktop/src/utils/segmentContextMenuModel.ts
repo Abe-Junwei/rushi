@@ -129,11 +129,6 @@ export function buildSegmentContextMenuItems(args: {
     const t = pointerTimeSec;
     canSplit = t > seg.start_sec + 0.02 && t < seg.end_sec - 0.02;
   }
-  items.push(
-    menuItemWithShortcut(
-      { key: "splitAtPointer", label: "在指针时间拆分", disabled: !canSplit },
-      "segment.splitPlayhead",
-    ),
-  );
+  items.push({ key: "splitAtPointer", label: "在指针时间拆分", disabled: !canSplit });
   return items;
 }

@@ -5,6 +5,7 @@ import {
   STT_ONLINE_DASHSCOPE_DEFAULT_PROBE_URL,
   STT_ONLINE_DEEPGRAM_DEFAULT_PROBE_URL,
   STT_ONLINE_OPENAI_DEFAULT_PROBE_URL,
+  capSttOnlineProbeTimeoutMs,
 } from "./constants";
 import { getSttOnlineProviderDefinition } from "./definitions";
 import { isAllowedSttOnlineEndpoint } from "./endpoint";
@@ -79,9 +80,10 @@ async function probeExternalSttOnlineHealthViaFetch(
   def: SttOnlineProviderDefinition | undefined,
   apiKey: string,
 ): Promise<ExternalSttOnlineHealthCheckResult> {
+  const probeTimeoutMs = capSttOnlineProbeTimeoutMs(runtime.timeoutMs);
   const fetchImpl = options.fetchImpl ?? fetch;
   const ctrl = new AbortController();
-  const t = globalThis.setTimeout(() => ctrl.abort(), runtime.timeoutMs);
+  const t = globalThis.setTimeout(() => ctrl.abort(), probeTimeoutMs);
   const onAbort = () => ctrl.abort();
   if (options.signal) {
     if (options.signal.aborted) ctrl.abort();
@@ -158,7 +160,7 @@ async function probeExternalSttOnlineHealthViaFetch(
         state: "timeout",
         available: false,
         endpoint,
-        message: `探测超时（${runtime.timeoutMs}ms）。`,
+        message: `探测超时（${probeTimeoutMs}ms）。`,
       };
     }
     if (e instanceof TypeError) {
@@ -272,7 +274,7 @@ export async function probeExternalSttOnlineHealth(
     return await sttProbeOnlineHealth({
       url: endpoint,
       headers,
-      timeoutMs: runtime.timeoutMs,
+      timeoutMs: capSttOnlineProbeTimeoutMs(runtime.timeoutMs),
     });
   } catch (e) {
     return {

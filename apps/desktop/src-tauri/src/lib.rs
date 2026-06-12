@@ -39,6 +39,7 @@ pub fn run() {
             bundled_asr_assets::init_from_app(app.handle());
             let st = project::setup_db(app.handle())?;
             app.manage(st);
+            #[cfg(feature = "devtools")]
             if std::env::var_os("RUSHI_DEVTOOLS").is_some() {
                 if let Some(w) = app.get_webview_window("main") {
                     w.open_devtools();

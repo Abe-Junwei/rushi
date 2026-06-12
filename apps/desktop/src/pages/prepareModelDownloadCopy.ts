@@ -36,10 +36,16 @@ export function describePrepareModelFailure(code: string): PrepareModelFailureCo
   if (c === "modelscope_not_installed") {
     return {
       headline: "缺少 ModelScope 客户端，无法拉取模型权重。",
-      tips: [
-        "在同一 venv 中安装 funasr 扩展依赖（通常已包含 modelscope）；重启 ASR 后再试。",
-        ...commonRetryTips(),
-      ],
+      tips: isPackagedDesktopApp()
+        ? [
+            "请在「环境 → 本机 ASR」点「一键准备本机 ASR」或「重试内置侧车」。",
+            "准备完成后点「下载当前模型」重试。",
+            ...commonRetryTips(),
+          ]
+        : [
+            "在同一 venv 中安装 funasr 扩展依赖（通常已包含 modelscope）；重启 ASR 后再试。",
+            ...commonRetryTips(),
+          ],
     };
   }
   if (c === "model_prepare_disk_full") {

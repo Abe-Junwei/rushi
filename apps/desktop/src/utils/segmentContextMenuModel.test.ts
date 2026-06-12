@@ -37,6 +37,18 @@ describe("pointerTimeFromSegmentCard", () => {
     expect(items.map((i) => i.key)).toContain("splitAtPointer");
   });
 
+  it("split at pointer has no keyboard hint (Cmd+D is playhead split)", () => {
+    const items = buildSegmentContextMenuItems({
+      segmentIdx: 0,
+      segments: [seg(0, 10)],
+      busy: false,
+      pointerTimeSec: 5,
+      origin: "waveform",
+    });
+    const split = items.find((i) => i.key === "splitAtPointer");
+    expect(split?.shortcutHint).toBeUndefined();
+  });
+
   it("clamps clientX outside card", () => {
     const seg = { start_sec: 0, end_sec: 4 };
     const rect = { left: 50, width: 50 };

@@ -1,7 +1,16 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi, beforeEach } from "vitest";
 import { describePrepareModelFailure } from "./prepareModelDownloadCopy";
 
+const isPackagedDesktopApp = vi.fn(() => false);
+vi.mock("../config/env", () => ({
+  isPackagedDesktopApp: () => isPackagedDesktopApp(),
+}));
+
 describe("describePrepareModelFailure", () => {
+  beforeEach(() => {
+    isPackagedDesktopApp.mockReturnValue(false);
+  });
+
   it("maps funasr_not_installed", () => {
     const r = describePrepareModelFailure("funasr_not_installed");
     expect(r.headline).toContain("FunASR");
@@ -22,5 +31,12 @@ describe("describePrepareModelFailure", () => {
   it("maps fetch_failed", () => {
     const r = describePrepareModelFailure("fetch_failed");
     expect(r.headline).toContain("无法连接");
+  });
+
+  it("modelscope_not_installed uses packaged tips in release", () => {
+    isPackagedDesktopApp.mockReturnValue(true);
+    const r = describePrepareModelFailure("modelscope_not_installed");
+    expect(r.tips.some((t) => t.includes("一键准备"))).toBe(true);
+    expect(r.tips.some((t) => t.includes("venv"))).toBe(false);
   });
 });

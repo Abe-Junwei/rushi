@@ -263,8 +263,70 @@ function checkTauriStyleNonceProbe() {
   }
 }
 
+function checkTauriInvokeAcl() {
+  const tauriRoot = path.join(ROOT, 'apps/desktop/src-tauri');
+  const appCommandsPath = path.join(tauriRoot, 'app_commands.rs');
+  const libPath = path.join(tauriRoot, 'src/lib.rs');
+  const capsPath = path.join(tauriRoot, 'capabilities/default.json');
+
+  const appCommandsSource = fs.readFileSync(appCommandsPath, 'utf-8');
+  const commands = [...appCommandsSource.matchAll(/"([a-z][a-z0-9_]*)"/g)].map((m) => m[1]);
+
+  const libSource = fs.readFileSync(libPath, 'utf-8');
+  const handlerBlock = libSource.match(/generate_handler!\[([\s\S]*?)\]\)/)?.[1] ?? '';
+  const handlerCommands = handlerBlock
+    .split('\n')
+    .map((line) => line.trim().replace(/,$/, ''))
+    .filter((line) => line.length > 0)
+    .map((line) => line.match(/::([a-z][a-z0-9_]*)$/)?.[1] ?? null)
+    .filter(Boolean);
+  const handlerSet = new Set(handlerCommands);
+
+  for (const cmd of commands) {
+    if (!handlerSet.has(cmd)) {
+      errors.push(`apps/desktop/src-tauri: app_commands.rs 命令 "${cmd}" 未在 lib.rs generate_handler! 注册`);
+    }
+  }
+  for (const cmd of handlerCommands) {
+    if (!commands.includes(cmd)) {
+      errors.push(`apps/desktop/src-tauri: lib.rs 命令 "${cmd}" 未列入 app_commands.rs APP_COMMANDS`);
+    }
+  }
+
+  const allows = new Set();
+  const permDir = path.join(tauriRoot, 'permissions');
+  for (const file of fs.readdirSync(permDir).filter((name) => name.endsWith('.toml'))) {
+    const text = fs.readFileSync(path.join(permDir, file), 'utf-8');
+    for (const match of text.matchAll(/"(allow-[a-z0-9-]+)"/g)) {
+      allows.add(match[1]);
+    }
+  }
+
+  const toAllow = (cmd) => `allow-${cmd.replaceAll('_', '-')}`;
+  const missingAcl = commands.filter((cmd) => !allows.has(toAllow(cmd)));
+  if (missingAcl.length > 0) {
+    errors.push(
+      `apps/desktop/src-tauri/permissions: 缺少 invoke ACL: ${missingAcl.map(toAllow).join(', ')}`,
+    );
+  }
+
+  const caps = JSON.parse(fs.readFileSync(capsPath, 'utf-8'));
+  const perms = caps?.permissions ?? [];
+  if (!perms.includes('main-window-full')) {
+    errors.push('apps/desktop/src-tauri/capabilities/default.json: 主窗口须引用 main-window-full 域分组 ACL');
+  }
+  const domainSets = ['project', 'glossary', 'llm', 'asr', 'system'];
+  for (const setId of domainSets) {
+    const setPath = path.join(permDir, `${setId}.toml`);
+    if (!fs.existsSync(setPath)) {
+      errors.push(`apps/desktop/src-tauri/permissions: 缺少域分组 ${setId}.toml`);
+    }
+  }
+}
+
 checkTauriProductionCsp();
 checkTauriStyleNonceProbe();
+checkTauriInvokeAcl();
 
 console.log(`\n架构守卫报告：${errors.length} 错误，${warnings.length} 警告\n`);
 warnings.forEach(w => console.log(`⚠️  ${w}`));

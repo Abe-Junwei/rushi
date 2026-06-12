@@ -14,6 +14,7 @@ import {
   captureTranscriptTextareaSelection,
   readTranscriptTextareaSelection,
 } from "../../utils/transcriptSelection";
+import { editorShortcutMenuHint } from "../../utils/editorShortcutMenuHint";
 import {
   workbenchDropdownItem,
   workbenchLabelBtnClass,
@@ -53,6 +54,11 @@ export function EditorSegmentTranscribeActions({
   const isTranscribing = c.busy && c.busyReason === "transcribe";
   const transcribePrimary =
     c.segments.length === 0 && !isTranscribing && !c.prepareModelBusy && !c.busy;
+
+  const findReplaceTitle =
+    c.busy ? "处理中" : c.canFindReplace
+      ? `查找替换（${editorShortcutMenuHint("workflow.find")}）`
+      : (c.findReplaceBlockReason ?? "查找替换不可用");
 
   const editMenuEngaged =
     c.correctionRulesDialog.phase !== "closed" ||
@@ -140,13 +146,7 @@ export function EditorSegmentTranscribeActions({
                 type="button"
                 className={workbenchDropdownItem}
                 disabled={!c.canFindReplace}
-                title={
-                  c.busy
-                    ? "处理中"
-                    : c.canFindReplace
-                      ? "查找替换（⌘F）"
-                      : (c.findReplaceBlockReason ?? "查找替换不可用")
-                }
+                title={findReplaceTitle}
                 onPointerDown={() => {
                   toolbarTextSelectionRef.current = captureTranscriptTextareaSelection();
                 }}
@@ -230,13 +230,7 @@ export function EditorSegmentTranscribeActions({
           c.openFindReplace(sel || undefined);
         }}
         aria-label="查找替换"
-        title={
-          c.busy
-            ? "处理中"
-            : c.canFindReplace
-              ? "查找替换（⌘F）"
-              : (c.findReplaceBlockReason ?? "查找替换不可用")
-        }
+        title={findReplaceTitle}
       >
         <Replace className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
         查找替换

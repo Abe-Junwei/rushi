@@ -42,8 +42,13 @@ pub struct SttOnlineProbeResponse {
     pub message: Option<String>,
 }
 
+/// 设置页「探测连接」上限（产品：60–120s）；与长音频转写 Job 超时解耦。
+const STT_PROBE_MAX_MS: u64 = 120_000;
+const STT_PROBE_DEFAULT_MS: u64 = 120_000;
+
 fn clamp_timeout_ms(raw: u64) -> Duration {
-    Duration::from_millis(raw.clamp(1_000, 600_000))
+    let ms = if raw == 0 { STT_PROBE_DEFAULT_MS } else { raw };
+    Duration::from_millis(ms.clamp(1_000, STT_PROBE_MAX_MS))
 }
 
 fn headers_from_map(raw: &HashMap<String, String>) -> HeaderMap {
@@ -245,6 +250,13 @@ mod tests {
         });
         assert_eq!(out.state, "unconfigured");
         assert!(!out.available);
+    }
+
+    #[test]
+    fn clamps_probe_timeout_to_120s() {
+        assert_eq!(clamp_timeout_ms(600_000).as_millis(), 120_000);
+        assert_eq!(clamp_timeout_ms(0).as_millis(), 120_000);
+        assert_eq!(clamp_timeout_ms(60_000).as_millis(), 60_000);
     }
 
     #[test]

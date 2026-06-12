@@ -1,7 +1,5 @@
 //! EXP-WORD: delivery DOCX export — 逐字稿 / 讲稿 / 干净稿 + optional revision appendix.
 
-use std::fs;
-
 #[path = "export_docx_body.rs"]
 mod export_docx_body;
 #[path = "export_docx_build.rs"]
@@ -10,7 +8,7 @@ mod export_docx_build;
 pub(crate) use export_docx_body::{
     add_body_paragraph, append_polished_paragraph_list, sanitize_docx_text, MAX_LECTURE_BODY_CHARS,
 };
-pub(crate) use export_docx_build::build_docx_bytes;
+pub(crate) use export_docx_build::{build_docx_bytes, build_docx_to_path};
 
 use crate::project::SegmentDto;
 use export_docx_body::normalize_export_mode;
@@ -31,37 +29,38 @@ pub async fn export_docx(
     polish_track_changes: Option<bool>,
 ) -> Result<Option<String>, String> {
     let mode = normalize_export_mode(&export_mode);
-    let meta = export_meta_line
-        .as_deref()
-        .map(str::trim)
-        .filter(|s| !s.is_empty());
     let appendix = appendix_lines.unwrap_or_default();
-    let polished = polished_paragraphs.as_deref().filter(|p| !p.is_empty());
-    let before_joined = polish_before_joined
-        .as_deref()
-        .map(str::trim)
-        .filter(|s| !s.is_empty());
-    let corrected_lines = polish_corrected_lines.as_deref().filter(|p| !p.is_empty());
     let track = polish_track_changes.unwrap_or(false);
-    let bytes = build_docx_bytes(
-        &title,
-        mode,
-        &segments,
-        meta,
-        &appendix,
-        polished,
-        before_joined,
-        corrected_lines,
-        track,
-    )?;
+    let meta_owned = export_meta_line.filter(|s| !s.trim().is_empty());
+    let polished_owned = polished_paragraphs.filter(|p| !p.is_empty());
+    let before_owned = polish_before_joined.filter(|s| !s.trim().is_empty());
+    let corrected_owned = polish_corrected_lines.filter(|p| !p.is_empty());
+    let picked = tauri::async_runtime::spawn_blocking({
+        let default_filename = default_filename.clone();
+        move || {
+            rfd::FileDialog::new()
+                .set_file_name(&default_filename)
+                .save_file()
+        }
+    })
+    .await
+    .map_err(|e| format!("导出任务失败: {e}"))?;
+    let Some(path) = picked else {
+        return Ok(None);
+    };
     tauri::async_runtime::spawn_blocking(move || {
-        let picked = rfd::FileDialog::new()
-            .set_file_name(&default_filename)
-            .save_file();
-        let Some(path) = picked else {
-            return Ok(None);
-        };
-        fs::write(&path, bytes).map_err(|e| format!("写入 DOCX 失败: {e}"))?;
+        build_docx_to_path(
+            &path,
+            &title,
+            mode,
+            &segments,
+            meta_owned.as_deref(),
+            &appendix,
+            polished_owned.as_deref(),
+            before_owned.as_deref(),
+            corrected_owned.as_deref(),
+            track,
+        )?;
         Ok(Some(path.to_string_lossy().to_string()))
     })
     .await

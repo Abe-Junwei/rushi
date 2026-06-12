@@ -1,4 +1,5 @@
 import { isDefaultBundledAsrTarget } from "../../config/env";
+import { packagedOrDev } from "../packagedUserHints";
 import {
   applyHubModelToSidecar,
   snapshotSelectedModelPrepare,
@@ -84,7 +85,10 @@ export async function runAsrOneClickPrepareModelFlow(
         }),
       );
       setSetupMessage(
-        `侧车仍未加载 ${modelSnap.modelLabel}。请点「重试内置侧车」或 npm run asr:dev 后重试。`,
+        `侧车仍未加载 ${modelSnap.modelLabel}。${packagedOrDev(
+          `请点「重试内置侧车」或 npm run asr:dev 后重试。`,
+          `请点「重试内置侧车」或「一键准备本机 ASR」后重试。`,
+        )}`,
       );
       setSetupOutcome("blocked");
       return false;
