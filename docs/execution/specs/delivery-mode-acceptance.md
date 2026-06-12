@@ -13,6 +13,6 @@
 - [x] 定稿向导内委托规则纠错 / 智能改稿（预览写回，不自动串联）
 - [x] 转写成功 toast「定稿模式…」入口
 
-## 手测 H-DELIV-1（A-1 后部分）
+## 手测 H-DELIV-1
 
-- [ ] 转写 → 定稿向导 → 终检 → 讲稿/逐字稿导出
+- [x] 转写 → 定稿向导 → 终检 → 讲稿/逐字稿导出（[`delivery-mode-hand-test-checklist.md`](./delivery-mode-hand-test-checklist.md) ✅ 2026-06-12）

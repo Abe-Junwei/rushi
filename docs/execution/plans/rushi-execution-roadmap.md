@@ -1193,10 +1193,10 @@ Step 12  REL-1.1  signoff  H-CSP-* + H-STT-* + 回归 R9 主路径抽检
 | **7a** | **STT-CANCEL D-1** | ✅ | `TranscribeCancelState` + `project_cancel_transcribe` + 在线 `Abortable` + TS 接线（2026-06-12）|
 | **7b–d** | **STT-CANCEL** | ✅ | adapter + **H-STT-1/2/3 手测 ✅** 2026-06-12 |
 | **7e** | **STT-CANCEL D-5** | 📋 P2 | legacy multipart 文档化 |
-| **8** | **DELIV-MODE A-1** | ✅ | 定稿向导 + 终检 + 打开交付导出；**H-DELIV-1 手测待签** |
-| **9** | **DELIV-MODE A-2** | ✅ | 向导委托 F1/Stage B + 转写 toast；**H-DELIV-1 手测待签** |
-| **9a** | **ONBOARD O-1** | ✅ | 5 步清单 + dismiss/restore；**H-ONBOARD-1 手测待签** |
-| **9b** | **ONBOARD O-2** | ✅ | 自动勾选 + CTA；**H-ONBOARD-2/3 手测待签** |
+| **8** | **DELIV-MODE A-1** | ✅ | 定稿向导 + 终检 + 打开交付导出；**H-DELIV-1 ✅** 2026-06-12 |
+| **9** | **DELIV-MODE A-2** | ✅ | 向导委托 F1/Stage B + 转写 toast；**H-DELIV-1 ✅** 2026-06-12 |
+| **9a** | **ONBOARD O-1** | ✅ | 5 步清单 + dismiss/restore；**H-ONBOARD-1 ✅** 2026-06-12 |
+| **9b** | **ONBOARD O-2** | ✅ | 自动勾选 + CTA；**H-ONBOARD-2/3 ✅** 2026-06-12 |
 | **10–11** | **BATCH-TXN** | 📋 | ≥3 文件导入 + 队列串行；单项失败不阻断 |
 | **12** | **REL-1.1** | 📋 | 见下表 |
 
@@ -1209,13 +1209,13 @@ Step 12  REL-1.1  signoff  H-CSP-* + H-STT-* + 回归 R9 主路径抽检
 | H-STT-1 | 在线 STT（≥1 已配置 adapter）转写中停止，语段恢复 | ✅ 2026-06-12 百炼 file_asr |
 | H-STT-2 | TRN-DIAG / 诊断包 outcome=`cancelled` | ✅ 2026-06-12 |
 | H-STT-3 | 本机侧车 async 停止回归 | ✅ 2026-06-12 |
-| H-DELIV-1 | 定稿模式：转写 → 终检 → 讲稿/逐字稿导出 |
+| H-DELIV-1 | 定稿模式：转写 → 终检 → 讲稿/逐字稿导出 | ✅ 2026-06-12 |
 | H-BATCH-1 | Hub 批量导入 + 队列转写 ≥2 文件 |
 | H-PROD-1 | 设置 → 关于：marketing version 与 `app_version` / 诊断 `build-info.txt` 一致 |
 | H-PROD-2 | 关于页可打开 **ffmpeg-static** 等第三方许可全文 |
-| H-ONBOARD-1 | 清空 `localStorage` 后首启：Welcome 见 **5 步清单**；关闭后不再自动弹出；可从设置/侧栏 **恢复清单** |
-| H-ONBOARD-2 | 本机 ASR **就绪**后 Step「准备 ASR」自动勾选；完成一次转写后 Step「自动转录」勾选 |
-| H-ONBOARD-3 | 清单 CTA「本机 ASR」→ 环境页并聚焦 **LocalAsrSetupWizard**（不重复第二套安装 UI） |
+| H-ONBOARD-1 | 清空 `localStorage` 后首启：Welcome 见 **5 步清单**；关闭后不再自动弹出；可从设置/侧栏 **恢复清单** | ✅ 2026-06-12 |
+| H-ONBOARD-2 | 本机 ASR **就绪**后 Step「准备 ASR」自动勾选；完成一次转写后 Step「自动转录」勾选 | ✅ 2026-06-12 |
+| H-ONBOARD-3 | 清单 CTA「本机 ASR」→ 环境页并聚焦 **LocalAsrSetupWizard**（不重复第二套安装 UI） | ✅ 2026-06-12 |
 
 #### 10.4.2 Epic 落位摘要（编码时）
 

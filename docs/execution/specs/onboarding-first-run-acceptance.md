@@ -14,8 +14,10 @@
 
 ## 手测（REL-1.1）
 
-| ID | 项 |
-|----|-----|
-| H-ONBOARD-1 | 首启见清单；关闭后不自动弹；可恢复 |
-| H-ONBOARD-2 | O-2：ASR 就绪 / 转写后自动勾选 |
-| H-ONBOARD-3 | O-2：CTA → 环境页 LocalAsrSetupWizard |
+> 清单：[`onboarding-first-run-hand-test-checklist.md`](./onboarding-first-run-hand-test-checklist.md) ✅ 2026-06-12
+
+| ID | 项 | 结果 |
+|----|-----|------|
+| H-ONBOARD-1 | 首启见清单；关闭后不自动弹；可恢复 | ✅ |
+| H-ONBOARD-2 | O-2：ASR 就绪 / 转写后自动勾选 | ✅ |
+| H-ONBOARD-3 | O-2：CTA → 环境页 LocalAsrSetupWizard | ✅ |
