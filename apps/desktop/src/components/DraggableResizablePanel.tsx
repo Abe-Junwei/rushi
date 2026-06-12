@@ -1,6 +1,7 @@
 import { X } from "lucide-react";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { useDraggablePanelController } from "../hooks/useDraggablePanelController";
+import { dialogCloseButtonTitle } from "../utils/dialogPanelHints";
 import { DraggablePanelResizeHandles } from "./DraggablePanelResizeHandles";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
@@ -82,7 +83,8 @@ export function DraggableResizablePanel({
             className="rounded border-0 bg-transparent p-1 text-notion-text-muted transition-colors hover:bg-notion-sidebar-hover hover:text-notion-text"
             onClick={onClose}
             onPointerDown={(e) => e.stopPropagation()}
-            aria-label="关闭面板"
+            aria-label={dialogCloseButtonTitle()}
+            title={dialogCloseButtonTitle()}
           >
             <X className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
           </button>

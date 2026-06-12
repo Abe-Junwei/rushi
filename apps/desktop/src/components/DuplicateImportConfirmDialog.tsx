@@ -36,6 +36,8 @@ export function DuplicateImportConfirmDialog({
       onBackdropMouseDown={(e) => {
         if (e.target === e.currentTarget && !checking) onCancel();
       }}
+      onEscapeClose={onCancel}
+      canEscapeClose={() => !checking}
     >
       <div
         role="alertdialog"

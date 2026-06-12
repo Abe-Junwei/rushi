@@ -1,4 +1,5 @@
 import type { SegmentRefineDialogState } from "../pages/useSegmentRefineController";
+import { useDialogEscapeClose } from "../hooks/useDialogEscapeClose";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 
 type SegmentRefinePreviewDialogProps = {
@@ -14,6 +15,8 @@ export function SegmentRefinePreviewDialog({
   onConfirmConsent,
   onConfirmWriteback,
 }: SegmentRefinePreviewDialogProps) {
+  useDialogEscapeClose(state.phase !== "closed", onCancel, () => state.phase !== "loading");
+
   if (state.phase === "closed") return null;
 
   return (

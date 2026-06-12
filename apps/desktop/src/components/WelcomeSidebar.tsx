@@ -13,6 +13,7 @@ import type { ProjectControllerApi } from "../pages/useProjectController";
 import type { WelcomePageId } from "./welcomeTypes";
 import { WORKSPACE_SIDEBAR_PANEL_ATTR, WORKSPACE_SIDEBAR_ROW_INTERACTIVE } from "../config/workspaceShellLayout";
 import { useWelcomeSidebarProjectTree } from "../hooks/useWelcomeSidebarProjectTree";
+import { editorShortcutMenuHint } from "../utils/editorShortcutMenuHint";
 import { sortWelcomeProjects } from "./welcomeSidebarFormatters";
 import { WelcomeSidebarProjectList } from "./WelcomeSidebarProjectList";
 
@@ -68,6 +69,8 @@ export function WelcomeSidebar({
   );
 
   const showProjectList = page === "home" || hubMode || editorMode;
+
+  const settingsOpenHint = editorShortcutMenuHint("workflow.openSettings");
 
   const navItems = [
     {
@@ -199,6 +202,8 @@ export function WelcomeSidebar({
           ].join(" ")}
           onClick={onOpenSettings}
           disabled={c.busy}
+          aria-label={`设置 (${settingsOpenHint})`}
+          title={`设置 (${settingsOpenHint})`}
         >
           <Settings className={`${LUCIDE_ICON_SIZE_MD} shrink-0`} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
           <span>设置</span>

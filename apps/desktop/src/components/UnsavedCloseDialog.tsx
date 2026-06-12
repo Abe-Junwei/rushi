@@ -40,6 +40,8 @@ export function UnsavedCloseDialog({
       onBackdropMouseDown={(e) => {
         if (e.target === e.currentTarget) onStay();
       }}
+      onEscapeClose={onStay}
+      canEscapeClose={() => !busy}
     >
       <div
         role="alertdialog"

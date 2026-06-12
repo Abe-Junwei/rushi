@@ -23,6 +23,8 @@ export function TranscribeNavBlockDialog({
       onBackdropMouseDown={(e) => {
         if (e.target === e.currentTarget && !busy) onStay();
       }}
+      onEscapeClose={onStay}
+      canEscapeClose={() => !busy}
     >
       <div
         role="alertdialog"

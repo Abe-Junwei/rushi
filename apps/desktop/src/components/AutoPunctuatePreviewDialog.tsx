@@ -1,4 +1,5 @@
 import type { AutoPunctuateDialogState } from "../pages/useAutoPunctuateController";
+import { useDialogEscapeClose } from "../hooks/useDialogEscapeClose";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { highlightTextByDiff } from "../utils/textDiff";
 
@@ -15,6 +16,8 @@ export function AutoPunctuatePreviewDialog({
   onConfirmConsent,
   onConfirmWriteback,
 }: AutoPunctuatePreviewDialogProps) {
+  useDialogEscapeClose(state.phase !== "closed", onCancel, () => state.phase !== "loading");
+
   if (state.phase === "closed") return null;
 
   const candidate =

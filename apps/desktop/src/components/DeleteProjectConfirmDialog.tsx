@@ -26,6 +26,8 @@ export function DeleteProjectConfirmDialog({
       onBackdropMouseDown={(e) => {
         if (e.target === e.currentTarget && !busy) onCancel();
       }}
+      onEscapeClose={onCancel}
+      canEscapeClose={() => !busy}
     >
       <div
         role="alertdialog"

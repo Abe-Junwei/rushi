@@ -11,6 +11,7 @@ import {
   type EditorShortcutId,
 } from "../utils/editorShortcutRegistry";
 import { executeEditorShortcut } from "../utils/executeEditorShortcut";
+import { hasOpenDialogEscapeHandler } from "../utils/dialogEscapeStack";
 
 type WfApi = ReturnType<typeof useProjectWaveform>;
 
@@ -92,6 +93,8 @@ export function useEditorShortcutDispatcher(args: {
       const inTextarea = isTranscriptTextarea(e.target);
       const shortcutId = matchEditorShortcut(e, { inTextarea });
       if (!shortcutId) return;
+
+      if (shortcutId === "waveform.clearSelection" && hasOpenDialogEscapeHandler()) return;
 
       if (isFloatingEditorPanelOpen() && shortcutId !== "workflow.find" && shortcutId !== "workflow.openSettings") {
         return;

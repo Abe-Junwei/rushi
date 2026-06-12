@@ -136,6 +136,9 @@ describe("formatEditorShortcutPanelSections", () => {
     expect(waveform?.rows.some((r) => r.id === "waveform.clearSelection")).toBe(true);
     expect(waveform?.rows.length).toBeGreaterThan(0);
 
+    const other = sections.find((s) => s.id === "other");
+    expect(other?.rows.some((r) => r.id === "dialog-escape" && r.keys === "Esc")).toBe(true);
+
     const workflow = sections.find((s) => s.id === "workflow");
     expect(workflow?.rows.some((r) => r.keys === "⌘/Ctrl + F")).toBe(true);
   });

@@ -10,7 +10,7 @@ export function EnvEditorShortcutsPanel() {
       <section className="flex flex-col gap-2">
         <h3 className={PANEL_TYPOGRAPHY.envSectionTitle}>编辑器快捷键</h3>
         <p className={`m-0 ${PANEL_TYPOGRAPHY.body} text-notion-text-muted`}>
-          打开转写文件后生效。自动保存只落库正文；手改进「纠错记忆」请用定稿（⌘/Ctrl+Enter）或查找替换「全部替换」。每条组合最多
+          打开转写文件后生效。浮动面板与确认对话框可按 Esc 关闭（处理中除外）。自动保存只落库正文；手改进「纠错记忆」请用定稿（⌘/Ctrl+Enter）或查找替换「全部替换」。每条组合最多
           3 键（含修饰键）。macOS 请勿使用 ⌘Space 播放（系统 Spotlight）；正文内请用 ⇧⌘Space。
         </p>
       </section>

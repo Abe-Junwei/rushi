@@ -4,6 +4,7 @@ import {
   CONTROL_BTN_PRIMARY,
   CONTROL_BTN_SECONDARY,
 } from "../config/controlStyles";
+import { DIALOG_ESCAPE_KEYS_LABEL } from "../utils/dialogPanelHints";
 import {
   CompactFloatingDialog,
   type CompactFloatingDialogProps,
@@ -69,7 +70,13 @@ export function CompactConfirmDialog({
       rootRole={rootRole}
       footer={
         <>
-          <button type="button" className={CONTROL_BTN_SECONDARY} disabled={busy} onClick={handleClose}>
+          <button
+            type="button"
+            className={CONTROL_BTN_SECONDARY}
+            disabled={busy}
+            title={`${cancelLabel} (${DIALOG_ESCAPE_KEYS_LABEL})`}
+            onClick={handleClose}
+          >
             {cancelLabel}
           </button>
           <button type="button" className={confirmClass} disabled={busy} onClick={onConfirm}>

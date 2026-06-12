@@ -1,5 +1,7 @@
 /** 编辑器快捷键真源：绑定定义、匹配、展示文案。每条组合最多 3 键（含修饰键 + 主键）。 */
 
+import { DIALOG_ESCAPE_KEYS_LABEL } from "./dialogPanelHints";
+
 export type EditorShortcutScope = "global" | "waveform";
 
 export type EditorShortcutId =
@@ -450,6 +452,11 @@ export function formatEditorShortcutPanelSections(): EditorShortcutPanelSection[
       id: "other",
       title: "其它",
       rows: [
+        {
+          id: "dialog-escape",
+          keys: DIALOG_ESCAPE_KEYS_LABEL,
+          action: "关闭最上层的浮动面板或确认对话框（处理中时不关闭）",
+        },
         {
           id: "autosave",
           keys: "停笔约 2s",

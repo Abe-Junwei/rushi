@@ -52,6 +52,8 @@ export function SegmentAnnotationDialog({
       onBackdropMouseDown={(e) => {
         if (e.target === e.currentTarget && !busy) onClose();
       }}
+      onEscapeClose={onClose}
+      canEscapeClose={() => !busy}
     >
       <div
         role="dialog"

@@ -1,3 +1,4 @@
+import { useDialogEscapeClose } from "../hooks/useDialogEscapeClose";
 import { DraggableResizablePanel } from "./DraggableResizablePanel";
 import { centerFloatingPanelPosition, readFloatingPanelViewport } from "./floatingPanelViewport";
 
@@ -93,6 +94,9 @@ interface FloatingPanelTemplateProps {
   onClose: () => void;
   /** 点击遮罩关闭；未提供时与 onClose 相同 */
   onOverlayClose?: () => void;
+  /** Escape 关闭；未提供时与 onOverlayClose / onClose 相同 */
+  onEscapeClose?: () => void;
+  canEscapeClose?: () => boolean;
   children: React.ReactNode;
   minWidth?: number;
   minHeight?: number;
@@ -115,6 +119,8 @@ export function FloatingPanelTemplate({
   preset,
   onClose,
   onOverlayClose,
+  onEscapeClose,
+  canEscapeClose,
   children,
   minWidth,
   minHeight,
@@ -146,6 +152,8 @@ export function FloatingPanelTemplate({
     mergedConfig.maxWidth = mergedConfig.minWidth;
   }
   const metrics = resolvePanelTemplateMetrics(mergedConfig, defaultSizeOverride);
+  const handleEscapeClose = onEscapeClose ?? onOverlayClose ?? onClose;
+  useDialogEscapeClose(true, handleEscapeClose, canEscapeClose);
 
   return (
     <>

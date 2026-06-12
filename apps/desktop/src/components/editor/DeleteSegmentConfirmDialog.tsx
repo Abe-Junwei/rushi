@@ -1,5 +1,6 @@
 import { createPortal } from "react-dom";
 import { CONTROL_BTN_DANGER, CONTROL_BTN_SECONDARY } from "../../config/controlStyles";
+import { useDialogEscapeClose } from "../../hooks/useDialogEscapeClose";
 import { PANEL_TYPOGRAPHY } from "../../config/typography";
 import { DELETE_SEGMENT_WITH_TEXT_CONFIRM } from "../../services/segmentConfirmEligible";
 
@@ -11,6 +12,8 @@ type Props = {
 };
 
 export function DeleteSegmentConfirmDialog({ open, deleteCount = 1, onCancel, onConfirm }: Props) {
+  useDialogEscapeClose(open, onCancel);
+
   if (!open || typeof document === "undefined") return null;
 
   const title = deleteCount > 1 ? `删除 ${deleteCount} 条语段` : "删除语段";
