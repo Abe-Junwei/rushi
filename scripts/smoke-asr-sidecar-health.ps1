@@ -86,8 +86,31 @@ if body.get("service") != "rushi-asr":
     sys.exit(f"unexpected root service: {body!r}")
 if not body.get("prepare_model_async"):
     sys.exit(f"missing prepare_model_async on root: {body!r}")
-print("smoke root OK: catalog endpoints present")
+warmup_model = str(body.get("warmup_model", ""))
+if "warmup" not in warmup_model:
+    sys.exit(f"missing warmup_model on root: {body!r}")
+print("smoke root OK: catalog + warmup endpoints present")
 "@
+
+  $warmupJson = Join-Path $env:TEMP "rushi-sidecar-smoke-warmup.json"
+  try {
+    Invoke-WebRequest -Uri "http://127.0.0.1:$Port/v1/models/warmup" -Method POST -UseBasicParsing -OutFile $warmupJson -TimeoutSec 30 | Out-Null
+    $warmupCode = 200
+  } catch {
+    if ($_.Exception.Response -and $_.Exception.Response.StatusCode.value__ -eq 503) {
+      $warmupCode = 503
+    } elseif ($_.Exception.Response -and $_.Exception.Response.StatusCode.value__ -eq 404) {
+      Get-Content $log, $logErr -Tail 30 -ErrorAction SilentlyContinue
+      if (Test-Path $warmupJson) { Get-Content $warmupJson -ErrorAction SilentlyContinue }
+      throw "smoke: POST /v1/models/warmup returned 404 — rebuild sidecar from current services/asr (stale PyInstaller bundle)"
+    } else {
+      throw $_
+    }
+  }
+  if ($warmupCode -ne 200 -and $warmupCode -ne 503) {
+    throw "smoke: unexpected warmup HTTP $warmupCode"
+  }
+  Write-Host "smoke warmup OK: HTTP $warmupCode"
 } finally {
   if ($proc -and -not $proc.HasExited) {
     Stop-Process -Id $proc.Id -Force -ErrorAction SilentlyContinue

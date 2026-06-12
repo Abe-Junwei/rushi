@@ -10,7 +10,7 @@
 | 适用节奏 | 单人、每轮 2～4h、一轮一纵向薄片 |
 | 规划跨度 | **个人单机 v1**：约 **14～18 周（自当前）** 或 **18～22 周（自 W1）**；R3 薄片 **~12～15w**（§4.0，含发行 smoke 缓冲）；协作 **非 v1** |
 | 修订 | 每完成一个阶段更新 §2 状态表、§4 排期表与 §13 代码对照 |
-| 最近对照 | **2026-06-11**：**TRN-DIAG ✅**；**当前薄片**：**ASR-WARM release idle**（可选）/ **ACC 在线 E2E** |
+| 最近对照 | **2026-06-12**：**ASR-WARM release idle H5 ✅**；**当前**：sidecar 重打（warmup gate）/ **ACC 在线 E2E** |
 
 ### 状态标记约定（全文档统一）
 
@@ -1020,8 +1020,8 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 |----|------|
 | **定位** | **个人单机 v1 主序已闭合**（EXP-WORD → REV-LOC → R4 → R9 → LLM-LOC 4a）；进入 **v1 后硬化 + 发行自动化** |
 | **LLM** | **4a** ✅ · **4b** ❌ Gate-B No-Go（[decision](../specs/llm-loc-gate-b-decision-2026-06.md)） |
-| **当前薄片** | **ASR-WARM release idle**（可选）· **ACC 在线 E2E**（有 Key） |
-| **刚闭合** | **⑤″f F2/F1/F6** 复测 ✅ · **F8** ✅ · **语段 P0** ✅ · **I1a+ASR-WARM** dev ✅ |
+| **当前薄片** | **R3h-1-R Windows CI**（`smoke-asr-sidecar-health.ps1` warmup 对齐） |
+| **刚闭合** | **ACC 百炼 E2E** ✅ 2026-06-12 · **ASR-WARM release idle H5** ✅ |
 | **近期不做** | **F4-ASR**、**F3/F5 P3**、**R3f/R3h-0 Win**（⏸）、**LLM-LOC-4b**、**CAT-TRAN**、**R6–R8**、**R3s-A**（Defer） |
 
 ### 10.1 v1 后硬化盘点（2026-06-11 · 对照代码）
@@ -1056,8 +1056,8 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | **R3h-1-R CI** | `v0.1.0` mac/linux manifest + 安装包 ✅ | **Windows** smoke.ps1 待修 | **P2** |
 | **TRN-DIAG** | `transcribe_timeline.rs`、`diagnostic.rs` | ✅ 2026-06-11 | — |
 | **ASR-WARM** | `warm.rs` idle/watchdog | **release 包** idle 回收未签（dev `SKIP_BUNDLED` 不测） | **P2 可选** |
-| **ACC-STT-ALI** | `dashscope_vocabulary.rs` + `dashscope_file_asr.rs` | 百炼热词 **手测 ⏳** | **P2**（有 Key） |
-| **ACC-STT-UNIFY** | 在线 adapter 已编码 | 三家 **在线 E2E ⏳** | **P2**（有 Key） |
+| **ACC-STT-ALI** | `dashscope_vocabulary.rs` + `dashscope_file_asr.rs` | 百炼 E2E ✅ 2026-06-12 | — |
+| **ACC-STT-UNIFY** | 在线 adapter 已编码 | 百炼 ✅；OpenAI/AAI/DG 可选 | **P3**（有 Key） |
 | **F6 §C Mine** | `GlossaryMineSection` | 挖掘推荐 **可选手测** | **P3** |
 
 #### C. 明确不做 / 延后（⏸ / ❌ / 📋）
@@ -1082,10 +1082,12 @@ Step 1  R3h-1-R Release CI          ✅ 编码 2026-06-11
 
 Step 2  TRN-DIAG 手测闭项           ✅ 2026-06-11
 
-Step 3  ASR-WARM release idle      ← 可选主刀（~0.5d）
-        └─ 安装包 + RUSHI_ASR_IDLE_STOP_SEC=120
+Step 3  ASR-WARM release idle      ✅ H5 2026-06-12
+        └─ warmup：sidecar 重打 + smoke gate + 重装包
 
-Step 4  ACC 在线 E2E                 （有 Key 时 · 百炼/三家）
+Step 4  ACC 在线 E2E                 ✅ 百炼 2026-06-12
+
+Step 5  R3h-1-R Windows CI          🟡 smoke.ps1 warmup 对齐
 ```
 
 | 步 | ID | 状态 | 验收真源 |
@@ -1093,7 +1095,8 @@ Step 4  ACC 在线 E2E                 （有 Key 时 · 百炼/三家）
 | **1** | **R3h-1-R CI** | ✅ mac/linux · Win 🟡 | [`r3h-1-r-release-checklist.md`](../specs/r3h-1-r-release-checklist.md) |
 | **2** | **TRN-DIAG** | ✅ | [`trn-diag-hand-test-checklist.md`](../specs/trn-diag-hand-test-checklist.md) |
 | **3** | **ASR-WARM release** | 🟡 可选 ← | [`asr-warm-handtest-signoff-2026-06-11.md`](../specs/asr-warm-handtest-signoff-2026-06-11.md) §H5 |
-| **4** | **ACC 在线 E2E** | ⏳ | [`acc-stt-ali-hand-test-checklist.md`](../specs/acc-stt-ali-hand-test-checklist.md) |
+| **4** | **ACC 在线 E2E** | ✅ 百炼 | [`acc-stt-ali-hand-test-checklist.md`](../specs/acc-stt-ali-hand-test-checklist.md) |
+| **5** | **R3h-1-R Win CI** | 🟡 | [`r3h-1-r-release-checklist.md`](../specs/r3h-1-r-release-checklist.md) §3 Windows |
 
 **已闭合硬化步（2026-06-11）**：R3h-I1 设计冻结 ✅ · I1a 编码 ✅ · ASR-WARM dev ✅ · 语段 P0 ✅ · F8 ✅ · F2/F1/F6 复测 ✅
 

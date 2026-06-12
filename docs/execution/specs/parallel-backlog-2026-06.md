@@ -8,16 +8,16 @@
 ```text
 Step 1  R3h-1-R Release CI          ✅ 编码 2026-06-11
 Step 2  TRN-DIAG 手测闭项           ✅ 2026-06-11
-Step 3  ASR-WARM release idle        ← 可选主刀
-Step 4  ACC 在线 E2E                 （有 Key 时）
+Step 3  ASR-WARM release idle      ✅ H5 2026-06-12（warmup 随 sidecar 重打）
+Step 4  ACC 在线 E2E                 ✅ 百炼 2026-06-12
 ```
 
 | 步 | 项 | 状态 | 说明 |
 |----|-----|------|------|
 | **1** | **R3h-1-R CI** | ✅ mac/linux · Win 🟡 | [checklist](./r3h-1-r-release-checklist.md) · [`v0.1.0` release](https://github.com/Abe-Junwei/rushi/releases/tag/v0.1.0) |
 | **2** | **TRN-DIAG** | ✅ | [`trn-diag-hand-test-checklist.md`](./trn-diag-hand-test-checklist.md) |
-| **3** | **ASR-WARM release** | 🟡 可选 ← | dev ✅；[`handtest`](./asr-warm-handtest-signoff-2026-06-11.md) §H5 |
-| **4** | **ACC 在线 E2E** | ⏳ | 百炼/三家；有 Key 时 |
+| **3** | **ASR-WARM release** | ✅ | dev + idle H5 ✅；sidecar 重打 + smoke warmup gate ✅ 2026-06-12 |
+| **4** | **ACC 在线 E2E** | ✅ 百炼 | [`acc-stt-ali-hand-test-checklist.md`](./acc-stt-ali-hand-test-checklist.md) · 2026-06-12 |
 
 ### 已闭合硬化步（不挡主刀）
 
@@ -42,7 +42,7 @@ Step 4  ACC 在线 E2E                 （有 Key 时）
 | **R3h-3.5** | Sherpa **Paraformer** Spike | ~1w | ✅ Partial Go | [`r3h-3.5-sherpa-spike-acceptance.md`](./r3h-3.5-sherpa-spike-acceptance.md) | R3h-3 ✅ |
 | **TRN-DIAG** | 转写阶段时间线 + 诊断包 | 0.5w | ✅ | [`trn-diag-hand-test-checklist.md`](./trn-diag-hand-test-checklist.md) | 2026-06-11 |
 | **ASR-WARM** | 侧车保活、模型预热 | 0.5–1w | ✅ dev / 🟡 release | [`asr-warm-acceptance.md`](./asr-warm-acceptance.md) | release idle 可选 |
-| **ACC-STT-ALI** | 百炼热词 | — | 🟡 | [`acc-stt-ali-hand-test-checklist.md`](./acc-stt-ali-hand-test-checklist.md) | 有 Key |
+| **ACC-STT-ALI** | 百炼热词 | — | ✅ | [`acc-stt-ali-hand-test-checklist.md`](./acc-stt-ali-hand-test-checklist.md) | 2026-06-12 E2E |
 | **R3f Win** | 安装包零终端手测 | 2–3d | ⏸ **豁免** | [r3f signoff](./r3f-phase-signoff-2026-06.md) | 有 Win 机时补 |
 | **R3t-E** | 词表校对（独立产品） | — | ⏸ **已移除** | 能力在 **F0 阶段 B** | — |
 | **F3 / F5** | P3 未编码 | — | 📋 | r3t-f plan | v1 后按需 |
@@ -63,9 +63,10 @@ Step 4  ACC 在线 E2E                 （有 Key 时）
 5. ~~F2/F1/F6 复测~~ ✅ 2026-06-11
 6. ~~**R3h-1-R Release CI**~~ ✅ 编码
 7. ~~**TRN-DIAG 手测闭项**~~ ✅ 2026-06-11
-8. ASR-WARM release idle（可选）← 下一刀
-9. ACC 在线 E2E（有 Key）
-10. 背景：R3f Win ⏸ · R3s-A Defer · F3/F5 P3
+8. ~~**ASR-WARM release idle**~~ ✅ H5 2026-06-12
+9. ~~sidecar 重打 + smoke warmup gate~~ ✅ 2026-06-12（**重装 DMG** 后验 `asr_warmup_ok`）
+10. ~~ACC 在线 E2E（百炼）~~ ✅ 2026-06-12
+11. **R3h-1-R Windows CI**（smoke.ps1 与 bash warmup 对齐）
 ```
 
 ## 修订
