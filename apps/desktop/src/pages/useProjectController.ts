@@ -198,6 +198,7 @@ export function useProjectController() {
     findReplaceBlockReason: lifecycle.findReplaceBlockReason,
     findReplaceDialog: lifecycle.findReplaceDialog,
     openFindReplace: lifecycle.openFindReplace,
+    triggerFindReplaceShortcut: lifecycle.triggerFindReplaceShortcut,
     closeFindReplace: lifecycle.closeFindReplace,
     setFindReplaceFindText: lifecycle.setFindReplaceFindText,
     setFindReplaceReplaceText: lifecycle.setFindReplaceReplaceText,

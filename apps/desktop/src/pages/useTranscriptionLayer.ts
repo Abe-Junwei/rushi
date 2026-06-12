@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef, useState, type PointerEvent as ReactPointerEvent } from "react";
 import { useSegmentKeyboard } from "../hooks/useSegmentKeyboard";
+import { useEditorShortcutDispatcher } from "../hooks/useEditorShortcutDispatcher";
 import { useWaveformTimelineController } from "../hooks/useWaveformTimelineController";
 import { useWaveformTierWheelForward } from "../hooks/useWaveformTierWheelForward";
 import { p1LaneBoundsSignature } from "../utils/boundsSignature";
@@ -88,6 +89,15 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     wfApiRef: timeline.wfApiRef,
     selectSegmentAtRef,
     tierScrollRef: timeline.tierScrollRef,
+  });
+
+  useEditorShortcutDispatcher({
+    enabled: true,
+    ctxRef,
+    wfApiRef: timeline.wfApiRef,
+    waveformShellRef,
+    selectSegmentAtRef,
+    focusSegmentTextarea: keyboard.focusSegmentTextarea,
     showEditorHintRef,
     stepWaveformZoomRef,
   });
@@ -383,7 +393,6 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     mergeSegmentRange: ctx.mergeSegmentRange,
     splitAtPlayhead: ctx.splitAtPlayhead,
     focusWaveformShell,
-    onWaveformMainKeyDown: keyboard.onWaveformMainKeyDown,
     onSegmentTextareaKeyDown: keyboard.onSegmentTextareaKeyDown,
     containerRef: wf.containerRef,
     waveformStickyShellRef: wf.stickyShellRef,

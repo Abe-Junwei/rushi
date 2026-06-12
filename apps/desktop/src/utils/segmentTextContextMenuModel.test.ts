@@ -77,6 +77,21 @@ describe("buildSegmentRowContextMenuItems", () => {
     expect(items.map((i) => i.key)).not.toContain("editAnnotation");
   });
 
+  it("shows shortcut hints on annotation and correction memory items", () => {
+    const items = buildSegmentRowContextMenuItems({
+      segmentIdx: 0,
+      segments: [seg(0, 10)],
+      busy: false,
+      pointerTimeSec: 5,
+      origin: "segmentList",
+      selectionText: "错词",
+      appearance: appearanceArgs,
+    });
+    expect(items[0]?.shortcutHint).toBe("Ctrl+N");
+    expect(items[1]?.shortcutHint).toBe("Ctrl+L");
+    expect(items.find((i) => i.key === "mergeNext")?.shortcutHint).toBe("Ctrl+J");
+  });
+
   it("shows edit annotation label when segment has annotation", () => {
     const items = buildSegmentRowContextMenuItems({
       segmentIdx: 0,
@@ -98,7 +113,11 @@ describe("buildSegmentTextAppearanceMenuItem", () => {
       transcriptFontFamily: "Noto Serif SC",
       transcriptFontWeight: 700,
       transcriptFontItalic: true,
-      fontOptions: ["Noto Serif SC", "Inter"],
+      fontOptions: ["Noto Serif SC", "PingFang SC"],
+      fontDisplayLabels: {
+        "Noto Serif SC": "思源宋体-简",
+        "PingFang SC": "苹方-简",
+      },
     });
     expect(item.label).toBe("文本外观");
     expect(item.children?.map((c) => c.label)).toEqual([
@@ -110,6 +129,8 @@ describe("buildSegmentTextAppearanceMenuItem", () => {
     ]);
     expect(item.children?.[3]?.checked).toBe(true);
     expect(item.children?.[4]?.checked).toBe(true);
+    const fontMenu = item.children?.[0]?.children ?? [];
+    expect(fontMenu.map((entry) => entry.label)).toEqual(["思源宋体-简", "苹方-简"]);
   });
 });
 

@@ -117,7 +117,6 @@ export function EditorWaveformPane({
                 ref={tx.waveformShellRef}
                 tabIndex={0}
                 className="relative z-0 h-full outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-saffron/40"
-                onKeyDown={tx.onWaveformMainKeyDown}
                 onClick={() => tx.focusWaveformShell()}
               >
                 <div

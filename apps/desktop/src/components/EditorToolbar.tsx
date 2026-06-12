@@ -5,6 +5,7 @@ import { EditorWorkspaceNav } from "./EditorWorkspaceNav";
 import { AsrTopStatusChips } from "./AsrTopStatusChips";
 import { LlmTopStatusChip } from "./LlmTopStatusChip";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
+import { editorShortcutMenuHint } from "../utils/editorShortcutMenuHint";
 const ghostBtn =
   "inline-flex h-8 items-center justify-center rounded-md border-0 bg-transparent px-2.5 text-[12px] font-medium text-notion-text-muted transition-colors hover:bg-notion-sidebar-hover hover:text-notion-text disabled:cursor-not-allowed disabled:opacity-40";
 const saveBtn = ghostBtn;
@@ -143,6 +144,7 @@ export const EditorToolbar = memo(function EditorToolbar({
             className={ghostBtn}
             onClick={onOpenEnvironment}
             aria-label="设置"
+            title={`设置 (${editorShortcutMenuHint("workflow.openSettings")})`}
           >
             <span className="inline-flex items-center gap-1.5">
               <Settings className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />

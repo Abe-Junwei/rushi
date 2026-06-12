@@ -59,6 +59,7 @@ export type FindReplaceControllerApi = {
   findReplaceBlockReason: string | null;
   findReplaceDialog: FindReplaceDialogState;
   openFindReplace: (initialFind?: string, initialReplace?: string) => void;
+  triggerFindReplaceShortcut: () => void;
   findReplaceEditorHighlight: {
     segmentIdx: number;
     charStart: number;

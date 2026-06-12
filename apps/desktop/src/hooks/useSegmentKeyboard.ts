@@ -1,50 +1,14 @@
-import { useCallback, useEffect, useRef } from "react";
+import { useCallback, useRef } from "react";
 import type { TranscriptionLayerInput } from "../pages/transcriptionLayerTypes";
 import type { useProjectWaveform } from "./useProjectWaveform";
 import type { SegmentSelectSource } from "../utils/waveformViewMode";
 import { isFindReplacePanelOpen } from "../pages/findReplaceTypes";
 import { readStoredTabAdvanceLoopsSegment } from "../utils/waveformPrefs";
+import { focusTranscriptSegmentTextarea } from "../utils/focusTranscriptSegmentTextarea";
 
 type WfApi = ReturnType<typeof useProjectWaveform>;
 
-/** 焦点在可输入控件内时不触发全局播放快捷键。 */
-function isEditableKeyboardTarget(target: EventTarget | null): boolean {
-  const el = target as HTMLElement | null;
-  if (!el?.closest) return false;
-  const field = el.closest("textarea, input, select, [contenteditable='true'], [contenteditable='']");
-  if (!field) return false;
-  if (field instanceof HTMLInputElement) {
-    const type = field.type.toLowerCase();
-    if (
-      type === "button" ||
-      type === "submit" ||
-      type === "reset" ||
-      type === "checkbox" ||
-      type === "radio" ||
-      type === "file"
-    ) {
-      return false;
-    }
-  }
-  return true;
-}
-
-function focusSegmentTextarea(
-  tierScrollRef: React.RefObject<HTMLDivElement | null>,
-  segmentIdx: number,
-): void {
-  requestAnimationFrame(() => {
-    requestAnimationFrame(() => {
-      const root = tierScrollRef.current;
-      const selector = `[data-seg-row="${segmentIdx}"] textarea.seg-text, [data-seg-row="${segmentIdx}"] input.seg-text`;
-      const target =
-        root?.querySelector<HTMLElement>(selector) ??
-        document.querySelector<HTMLElement>(selector);
-      target?.focus();
-    });
-  });
-}
-
+/** 正文 textarea 专用键：段界合并 + ↑↓ 切语段（全局结构键见 editorShortcutRegistry）。 */
 export function useSegmentKeyboard(args: {
   ctxRef: React.MutableRefObject<TranscriptionLayerInput>;
   wfApiRef: React.MutableRefObject<WfApi>;
@@ -52,198 +16,13 @@ export function useSegmentKeyboard(args: {
     (idx: number, source?: SegmentSelectSource, opts?: { shiftKey?: boolean }) => void
   >;
   tierScrollRef: React.RefObject<HTMLDivElement | null>;
-  showEditorHintRef: React.MutableRefObject<(msg: string) => void>;
-  stepWaveformZoomRef: React.MutableRefObject<(direction: "in" | "out") => void>;
 }) {
   const argsRef = useRef(args);
   argsRef.current = args;
 
-  const onWaveformMainKeyDown = useCallback(
-    (e: React.KeyboardEvent) => {
-      const a = argsRef.current;
-      const c = a.ctxRef.current;
-      const w = a.wfApiRef.current;
-      if (c.busy) return;
-      const t = e.target as HTMLElement;
-      if (t.closest("textarea, input, [contenteditable=true]")) return;
-
-      const mod = e.metaKey || e.ctrlKey;
-      const selectSeg = (idx: number, opts?: { shiftKey?: boolean }) => {
-        a.selectSegmentAtRef.current(idx, "waveform", opts);
-      };
-
-      if (e.key === "Escape") {
-        e.preventDefault();
-        if (c.isMultiSegmentSelection) {
-          c.clearMultiSelection();
-          return;
-        }
-        (e.target as HTMLElement).blur();
-        return;
-      }
-      if (e.key === "Delete" || e.key === "Backspace") {
-        e.preventDefault();
-        if (c.segments.length > 0) {
-          if (c.isMultiSegmentSelection) {
-            if (c.isContiguousSelection) {
-              c.requestDeleteSelection(c.selectionLo, c.selectionHi);
-            } else {
-              c.requestDeleteSelectedIndices(c.selectedIndicesArray);
-            }
-          } else {
-            c.deleteSegmentAt(c.selectedIdx);
-          }
-        }
-        return;
-      }
-      if (mod && e.key.toLowerCase() === "m" && e.shiftKey) {
-        e.preventDefault();
-        if (c.isMultiSegmentSelection) {
-          if (c.isContiguousSelection) {
-            c.mergeSegmentRange(c.selectionLo, c.selectionHi);
-          }
-          return;
-        }
-        if (c.selectedIdx > 0) {
-          c.mergeWithPrev();
-        }
-        return;
-      }
-      if (mod && e.key.toLowerCase() === "m" && !e.shiftKey) {
-        e.preventDefault();
-        if (c.isMultiSegmentSelection) {
-          if (c.isContiguousSelection) {
-            c.mergeSegmentRange(c.selectionLo, c.selectionHi);
-          }
-          return;
-        }
-        if (c.selectedIdx >= 0 && c.selectedIdx < c.segments.length - 1) {
-          c.mergeWithNext();
-        }
-        return;
-      }
-      if (mod && e.shiftKey && e.key.toLowerCase() === "s") {
-        e.preventDefault();
-        if (c.selectedIdx >= 0 && c.selectedIdx < c.segments.length) {
-          c.splitAtPlayhead(w.getPlayheadTime());
-        }
-        return;
-      }
-      if (e.key === "ArrowLeft" && !mod) {
-        e.preventDefault();
-        if (c.selectedIdx > 0) {
-          const ni = c.selectedIdx - 1;
-          selectSeg(ni, e.shiftKey ? { shiftKey: true } : undefined);
-        }
-        return;
-      }
-      if (e.key === "ArrowRight" && !mod) {
-        e.preventDefault();
-        if (c.selectedIdx < c.segments.length - 1) {
-          const ni = c.selectedIdx + 1;
-          selectSeg(ni, e.shiftKey ? { shiftKey: true } : undefined);
-        }
-        return;
-      }
-      if (e.key === "Tab") {
-        e.preventDefault();
-        const tabLoop = readStoredTabAdvanceLoopsSegment();
-        const tabPlayOpts = { loop: tabLoop } as const;
-        if (!e.shiftKey) {
-          if (c.selectedIdx < c.segments.length - 1) {
-            const ni = c.selectedIdx + 1;
-            if (tabLoop) w.preserveLoopForNextSegmentSelect();
-            selectSeg(ni);
-            void w.playSegmentAtIndex(ni, tabPlayOpts);
-          }
-        } else if (c.selectedIdx > 0) {
-          const pi = c.selectedIdx - 1;
-          if (tabLoop) w.preserveLoopForNextSegmentSelect();
-          selectSeg(pi);
-          void w.playSegmentAtIndex(pi, tabPlayOpts);
-        }
-        return;
-      }
-      if (e.key === "," && !mod) {
-        e.preventDefault();
-        w.seekByDelta(-1 / 30);
-        return;
-      }
-      if (e.key === "." && !mod) {
-        e.preventDefault();
-        w.seekByDelta(1 / 30);
-        return;
-      }
-      if ((e.key === "=" || e.key === "+") && !mod) {
-        e.preventDefault();
-        a.stepWaveformZoomRef.current("in");
-        return;
-      }
-      if (e.key === "-" && !mod) {
-        e.preventDefault();
-        a.stepWaveformZoomRef.current("out");
-        return;
-      }
-      if (mod && (e.key === "=" || e.key === "+")) {
-        e.preventDefault();
-        a.stepWaveformZoomRef.current("in");
-        return;
-      }
-      if (mod && e.key === "-") {
-        e.preventDefault();
-        a.stepWaveformZoomRef.current("out");
-        return;
-      }
-      if (e.key === "[" && !mod) {
-        e.preventDefault();
-        const from = c.selectedIdx;
-        let j = -1;
-        for (let k = from - 1; k >= 0; k--) {
-          if (c.segments[k]?.low_confidence) {
-            j = k;
-            break;
-          }
-        }
-        if (j < 0) {
-          for (let k = c.segments.length - 1; k >= 0; k--) {
-            if (c.segments[k]?.low_confidence) {
-              j = k;
-              break;
-            }
-          }
-        }
-        if (j >= 0) {
-          selectSeg(j);
-        } else {
-          a.showEditorHintRef.current("没有低置信度语段。");
-        }
-        return;
-      }
-      if (e.key === "]" && !mod) {
-        e.preventDefault();
-        const from = c.selectedIdx;
-        let j = -1;
-        for (let k = from + 1; k < c.segments.length; k++) {
-          if (c.segments[k]?.low_confidence) {
-            j = k;
-            break;
-          }
-        }
-        if (j < 0) {
-          for (let k = 0; k < c.segments.length; k++) {
-            if (c.segments[k]?.low_confidence) {
-              j = k;
-              break;
-            }
-          }
-        }
-        if (j >= 0) {
-          selectSeg(j);
-        } else {
-          a.showEditorHintRef.current("没有低置信度语段。");
-        }
-        return;
-      }
+  const focusSegmentTextarea = useCallback(
+    (segmentIdx: number) => {
+      focusTranscriptSegmentTextarea(argsRef.current.tierScrollRef.current, segmentIdx);
     },
     [],
   );
@@ -256,85 +35,50 @@ export function useSegmentKeyboard(args: {
       const c = a.ctxRef.current;
       const w = a.wfApiRef.current;
 
-      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === "z" && !e.altKey) {
-        e.preventDefault();
-        if (c.busy) return;
-        if (e.shiftKey) c.redo();
-        else c.undo();
-        return;
+      if (!c.busy && !e.metaKey && !e.ctrlKey && !e.altKey && !e.shiftKey) {
+        const el = e.currentTarget;
+        const start = el.selectionStart ?? 0;
+        const end = el.selectionEnd ?? 0;
+        const collapsed = start === end;
+        if (e.key === "Backspace" && collapsed && start === 0 && segmentIdx > 0) {
+          e.preventDefault();
+          c.mergeWithPrevAt(segmentIdx);
+          focusSegmentTextarea(segmentIdx - 1);
+          return;
+        }
+        if (e.key === "Delete" && collapsed && end === el.value.length && segmentIdx < c.segments.length - 1) {
+          e.preventDefault();
+          c.mergeWithNextAt(segmentIdx);
+          focusSegmentTextarea(segmentIdx);
+          return;
+        }
       }
 
-      if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && !e.altKey) {
-        e.preventDefault();
-        if (c.busy) return;
-        void (async () => {
-          const ok = await c.confirmSegmentEditAndAdvance(segmentIdx);
-          if (!ok) return;
-          const segs = a.ctxRef.current.segments;
-          const ni = Math.min(segmentIdx + 1, Math.max(0, segs.length - 1));
-          if (ni !== segmentIdx) {
-            a.selectSegmentAtRef.current(ni, "list");
-            focusSegmentTextarea(a.tierScrollRef, ni);
-          }
-        })();
-        return;
-      }
-
-      if (e.key !== "Tab") return;
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
+      if (e.key !== "ArrowUp" && e.key !== "ArrowDown") return;
+      if (e.metaKey || e.ctrlKey || e.altKey || e.shiftKey) return;
       e.preventDefault();
-      const tabLoop = readStoredTabAdvanceLoopsSegment();
-      const tabPlayOpts = { loop: tabLoop } as const;
-      if (e.shiftKey) {
+      const advanceLoop = readStoredTabAdvanceLoopsSegment();
+      const playOpts = { loop: advanceLoop } as const;
+      if (e.key === "ArrowUp") {
         if (segmentIdx <= 0) return;
         const pi = segmentIdx - 1;
         if (!c.segments[pi]) return;
-        if (tabLoop) w.preserveLoopForNextSegmentSelect();
+        if (advanceLoop) w.preserveLoopForNextSegmentSelect();
         a.selectSegmentAtRef.current(pi, "list");
-        void w.playSegmentAtIndex(pi, tabPlayOpts);
-        focusSegmentTextarea(a.tierScrollRef, pi);
+        void w.playSegmentAtIndex(pi, playOpts);
+        focusSegmentTextarea(pi);
       } else {
         if (segmentIdx >= c.segments.length - 1) return;
         const ni = segmentIdx + 1;
         if (!c.segments[ni]) return;
-        if (tabLoop) w.preserveLoopForNextSegmentSelect();
+        if (advanceLoop) w.preserveLoopForNextSegmentSelect();
         a.selectSegmentAtRef.current(ni, "list");
-        void w.playSegmentAtIndex(ni, tabPlayOpts);
-        focusSegmentTextarea(a.tierScrollRef, ni);
+        void w.playSegmentAtIndex(ni, playOpts);
+        focusSegmentTextarea(ni);
       }
     },
-    [],
+    [focusSegmentTextarea],
   );
 
-  useEffect(() => {
-    const onWinKey = (e: KeyboardEvent) => {
-      if (!e.metaKey && !e.ctrlKey) return;
-      if (e.key.toLowerCase() !== "z") return;
-      const t = e.target as HTMLElement | null;
-      if (t?.closest("textarea, input, [contenteditable=true]")) return;
-      e.preventDefault();
-      const c = argsRef.current.ctxRef.current;
-      if (c.busy) return;
-      if (e.shiftKey) c.redo();
-      else c.undo();
-    };
-    window.addEventListener("keydown", onWinKey, true);
-    return () => window.removeEventListener("keydown", onWinKey, true);
-  }, []);
-
-  useEffect(() => {
-    const onWinSpace = (e: KeyboardEvent) => {
-      if (e.code !== "Space" && e.key !== " ") return;
-      if (e.metaKey || e.ctrlKey || e.altKey) return;
-      if (isEditableKeyboardTarget(e.target)) return;
-      const c = argsRef.current.ctxRef.current;
-      if (c.busy || !c.mediaUrl) return;
-      e.preventDefault();
-      void argsRef.current.wfApiRef.current.togglePlay();
-    };
-    window.addEventListener("keydown", onWinSpace, true);
-    return () => window.removeEventListener("keydown", onWinSpace, true);
-  }, []);
-
-  return { onWaveformMainKeyDown, onSegmentTextareaKeyDown };
+  return { onSegmentTextareaKeyDown, focusSegmentTextarea };
 }

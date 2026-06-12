@@ -1,11 +1,13 @@
 import type { ContextMenuItem } from "../components/SegmentContextMenu";
 import type { SegmentDto } from "../tauri/projectApi";
+import { transcriptFontFamilyCssStack, resolveTranscriptFontDisplayLabel } from "../components/editor/editorTranscriptAppearance";
 import {
   buildSegmentContextMenuItems,
   type SegmentContextMenuOrigin,
 } from "./segmentContextMenuModel";
 import { segmentCanFinalize } from "../services/segmentConfirmEligible";
 import { segmentAnnotationMenuLabel } from "./segmentAnnotation";
+import { editorShortcutMenuHint } from "./editorShortcutMenuHint";
 
 /** 正文选区内右键：记忆 + 文本外观（字体/字号/加粗/斜体）；删/并/拆见 segmentContextMenuModel。 */
 export type SegmentTextContextMenuKey =
@@ -25,14 +27,16 @@ export type SegmentTextAppearanceBuildArgs = {
   fontSizeAtMin: boolean;
   fontSizeAtMax: boolean;
   fontOptions: readonly string[];
+  fontDisplayLabels?: Readonly<Record<string, string>>;
 };
 
 export function buildSegmentTextAppearanceMenuItem(args: SegmentTextAppearanceBuildArgs): ContextMenuItem {
   const fontChildren: ContextMenuItem[] = args.fontOptions.map((family) => ({
     key: `font:${family}`,
-    label: family,
+    label: resolveTranscriptFontDisplayLabel(family, args.fontDisplayLabels),
     disabled: args.appearanceDisabled,
     checked: family === args.transcriptFontFamily,
+    labelStyle: { fontFamily: transcriptFontFamilyCssStack(family) },
   }));
 
   return {
@@ -120,6 +124,7 @@ export function buildSegmentRowContextMenuItems(args: SegmentRowContextMenuBuild
     key: "editAnnotation",
     label: segment ? segmentAnnotationMenuLabel(segment) : "添加备注…",
     disabled: args.busy,
+    shortcutHint: editorShortcutMenuHint("workflow.segmentAnnotation"),
   };
 
   if ((args.selectionCount ?? 1) > 1) {
@@ -133,6 +138,7 @@ export function buildSegmentRowContextMenuItems(args: SegmentRowContextMenuBuild
         key: "addCorrectionMemory",
         label: "纳入更正记忆…",
         disabled: args.busy,
+        shortcutHint: editorShortcutMenuHint("workflow.addCorrectionMemory"),
       },
       ...segmentItems,
     ];

@@ -1,9 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { buildFindMatchListItems, clampMatchIndex } from "../services/editor/segmentFindReplace";
-import {
-  captureTranscriptTextareaSelection,
-  readTranscriptTextareaSelection,
-} from "../utils/transcriptSelection";
+import { triggerFindReplaceShortcut as runFindReplaceShortcut } from "./triggerFindReplaceShortcut";
 import type {
   FindReplaceControllerApi,
   FindReplaceDialogState,
@@ -145,13 +142,23 @@ export function useFindReplaceController(args: UseFindReplaceControllerArgs): Fi
     });
   }, [search.activeMatchIndex, search.findText, search.matches, search.replaceText, segments]);
 
+  const triggerFindReplaceShortcut = useCallback(() => {
+    if (busyRef.current || !canFindReplaceRef.current) return;
+    runFindReplaceShortcut({
+      dialogPhase: dialogPhaseRef.current,
+      openFindReplace,
+      focusFindInput: (restore) => search.focusFindInput(restore),
+      clearFindSearchDebounce: () => search.clearFindSearchDebounce(),
+      setFindText: setFindReplaceFindText,
+      commitFindSearch: (query, idx) => search.commitFindSearch(query, idx),
+    });
+  }, [openFindReplace, search, setFindReplaceFindText]);
+
   const keyboardRef = useRef({
     search,
     mutations,
-    openFindReplace,
-    setFindReplaceFindText,
   });
-  keyboardRef.current = { search, mutations, openFindReplace, setFindReplaceFindText };
+  keyboardRef.current = { search, mutations };
 
   useEffect(() => {
     if (dialog.phase !== "panel") return;
@@ -175,8 +182,7 @@ export function useFindReplaceController(args: UseFindReplaceControllerArgs): Fi
 
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
-      const { search: s, mutations: m, openFindReplace: open, setFindReplaceFindText: setFind } =
-        keyboardRef.current;
+      const { search: s, mutations: m } = keyboardRef.current;
 
       if (dialogPhaseRef.current === "panel" && e.key === "Enter" && !e.altKey && !e.isComposing) {
         if (busyRef.current) return;
@@ -213,25 +219,6 @@ export function useFindReplaceController(args: UseFindReplaceControllerArgs): Fi
         }
         return;
       }
-
-      if (busyRef.current || !currentFileIdRef.current || !canFindReplaceRef.current) return;
-      const mod = e.metaKey || e.ctrlKey;
-      if (!mod || e.key.toLowerCase() !== "f" || e.shiftKey || e.altKey) return;
-      e.preventDefault();
-      e.stopPropagation();
-      if (dialogPhaseRef.current === "panel") {
-        const sel = captureTranscriptTextareaSelection() || readTranscriptTextareaSelection();
-        if (sel) {
-          s.clearFindSearchDebounce();
-          setFind(sel);
-          s.commitFindSearch(sel, 0);
-        }
-        s.focusFindInput(Boolean(sel));
-        return;
-      }
-      if (dialogPhaseRef.current !== "closed") return;
-      const sel = captureTranscriptTextareaSelection() || readTranscriptTextareaSelection();
-      open(sel || undefined);
     };
     window.addEventListener("keydown", onKey, true);
     return () => {
@@ -271,6 +258,7 @@ export function useFindReplaceController(args: UseFindReplaceControllerArgs): Fi
     findReplaceBlockReason,
     findReplaceDialog,
     openFindReplace,
+    triggerFindReplaceShortcut,
     closeFindReplace,
     setFindReplaceFindText,
     setFindReplaceReplaceText,

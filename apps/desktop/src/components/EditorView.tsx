@@ -88,6 +88,7 @@ export function EditorView({
               fontSizeAtMin: transcriptFontPx <= TRANSCRIPT_FONT_MIN,
               fontSizeAtMax: transcriptFontPx >= TRANSCRIPT_FONT_MAX,
               fontOptions: appearance.fontOptions,
+              fontDisplayLabels: appearance.fontDisplayLabels,
             },
           })
         : [],
@@ -104,6 +105,7 @@ export function EditorView({
       appearance.transcriptFontWeight,
       appearance.transcriptFontItalic,
       appearance.fontOptions,
+      appearance.fontDisplayLabels,
       transcriptFontPx,
     ],
   );
@@ -233,18 +235,6 @@ export function EditorView({
     syncToastBottomInset(Boolean(c.currentFileId));
     return () => clearToastBottomInset();
   }, [c.currentFileId]);
-
-  useEffect(() => {
-    if (!c.currentFileId || c.busy) return;
-    const onKeyDown = (event: KeyboardEvent) => {
-      if (!(event.metaKey || event.ctrlKey) || !event.shiftKey) return;
-      if (event.key.toLowerCase() !== "e") return;
-      event.preventDefault();
-      c.closeFile();
-    };
-    window.addEventListener("keydown", onKeyDown);
-    return () => window.removeEventListener("keydown", onKeyDown);
-  }, [c.busy, c.closeFile, c.currentFileId]);
 
   const statusCenterLabel = tx.editorHint || tx.waveformFooterStatusLabel || "";
   const shortcutHint = useEditorFooterShortcutHintRotation(

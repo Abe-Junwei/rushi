@@ -20,6 +20,8 @@ export const PANEL_TYPOGRAPHY = {
   body: "text-[12px] leading-relaxed text-notion-text-muted",
   fieldLabel: "text-[11px] font-medium leading-[1.6] text-notion-text",
   controlText: "text-[12px] leading-[1.4] text-notion-text",
+  /** 快捷键组合（sans，避免 mono 与 ⌘/中文混排时英文字形异常） */
+  shortcutKeys: "font-sans text-[12px] font-medium leading-snug text-notion-text",
   helper: "text-[12px] leading-relaxed text-notion-text-muted",
   meta: "text-[11px] leading-[1.4] text-notion-text-muted",
   code: "font-mono text-[12px] leading-[1.4] text-zen-indigo",

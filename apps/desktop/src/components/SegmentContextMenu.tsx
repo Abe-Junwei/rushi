@@ -2,6 +2,7 @@ import {
   useLayoutEffect,
   useRef,
   useState,
+  type CSSProperties,
   type Dispatch,
   type MouseEvent as ReactMouseEvent,
   type PointerEvent as ReactPointerEvent,
@@ -19,6 +20,8 @@ export type ContextMenuItem = {
   label: string;
   disabled: boolean;
   checked?: boolean;
+  shortcutHint?: string;
+  labelStyle?: CSSProperties;
   children?: ContextMenuItem[];
 };
 
@@ -135,7 +138,14 @@ function ContextMenuPanel({
               onPointerDown={(e) => onItemPointerDown(e, it)}
               onClick={(e) => onItemClick(e, it)}
             >
-              <span className="min-w-0 flex-1 truncate">{it.label}</span>
+              <span className="min-w-0 flex-1 truncate" style={it.labelStyle}>
+                {it.label}
+              </span>
+              {it.shortcutHint ? (
+                <span className="shrink-0 pl-3 font-sans text-[11px] font-normal tabular-nums text-notion-text-light">
+                  {it.shortcutHint}
+                </span>
+              ) : null}
               {it.checked ? (
                 <span className="shrink-0 text-[11px] font-semibold text-zen-saffron-mid" aria-hidden>
                   ✓

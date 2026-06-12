@@ -26,6 +26,7 @@ export function mapEditorToolsLifecycleFields(tools: EditorTools) {
     findReplaceBlockReason: findReplace.findReplaceBlockReason,
     findReplaceDialog: findReplace.findReplaceDialog,
     openFindReplace: findReplace.openFindReplace,
+    triggerFindReplaceShortcut: findReplace.triggerFindReplaceShortcut,
     closeFindReplace: findReplace.closeFindReplace,
     setFindReplaceFindText: findReplace.setFindReplaceFindText,
     setFindReplaceReplaceText: findReplace.setFindReplaceReplaceText,

@@ -146,6 +146,7 @@ export interface ProjectLifecycleApi {
   findReplaceBlockReason: string | null;
   findReplaceDialog: FindReplaceDialogState;
   openFindReplace: (initialFind?: string, initialReplace?: string) => void;
+  triggerFindReplaceShortcut: () => void;
   closeFindReplace: () => void;
   setFindReplaceFindText: (value: string) => void;
   setFindReplaceReplaceText: (value: string) => void;
