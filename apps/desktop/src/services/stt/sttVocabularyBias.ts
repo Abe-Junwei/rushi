@@ -64,6 +64,26 @@ export function glossaryBiasSummaryForProviderId(providerId: string): string | n
   return `术语表 → ${glossaryBiasFieldHint(channel)}`;
 }
 
+const PREFLIGHT_BIAS_HINT: Readonly<Record<SttOnlineVocabularyChannel, string>> = {
+  openAiPrompt: "在线 OpenAI：术语写入转写 prompt。",
+  assemblyAiKeyterms: "在线 AssemblyAI：术语作为识别偏置提交。",
+  deepgramKeywords: "在线 Deepgram：术语作为 keywords 提交。",
+  dashScopeVocabulary: "在线百炼：术语同步为厂商热词表。",
+  genericMultipartHotwords: "在线代理：术语随转写请求提交。",
+  unsupported: "",
+};
+
+/** Plain-language line for transcribe confirm / in-progress banner. */
+export function glossaryBiasPreflightLineForProviderId(providerId: string): string | null {
+  const channel = vocabularyChannelForProviderId(providerId);
+  if (channel === "unsupported") {
+    const def = getSttOnlineProviderDefinition(providerId);
+    const label = def?.label ?? providerId;
+    return `「${label}」不支持术语表；专名可能听错，可手改或换支持引擎。`;
+  }
+  return PREFLIGHT_BIAS_HINT[channel];
+}
+
 /** Native adapter id when shell-direct; null for custom-proxy-only path. */
 export function vocabularyNativeAdapterForProvider(providerId: string): string | null {
   return resolveShellNativeSttAdapterId(providerId);

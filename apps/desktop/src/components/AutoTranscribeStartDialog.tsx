@@ -4,6 +4,7 @@ import type { TranscribeSource } from "../services/stt/transcribeSource";
 import { resolveTranscribeSourceDescription } from "../services/stt/transcribeSourcePresentation";
 import { TranscribeSourceSwitch } from "./editor/TranscribeSourceSwitch";
 import { CompactFloatingDialog } from "./CompactFloatingDialog";
+import { TranscribeVocabularyPreflightLines } from "./TranscribeVocabularyPreflightLines";
 import { FloatingPanelDialogHeader } from "./FloatingPanelDialogLayout";
 
 const PANEL_ID = "auto-transcribe-start-v1";
@@ -102,24 +103,19 @@ export function AutoTranscribeStartDialog({
         )}
 
         {vocabularyLines.length > 0 ? (
-          <div className="rounded-md bg-notion-sidebar/80 px-3 py-2">
-            <p className="text-xs font-medium text-notion-text">本次术语偏置</p>
-            <ul className="mt-1.5 list-disc space-y-1 pl-4 text-xs leading-relaxed text-notion-text-muted">
-              {vocabularyLines.map((line) => (
-                <li key={line}>{line}</li>
-              ))}
-            </ul>
+          <>
+            <TranscribeVocabularyPreflightLines lines={vocabularyLines} />
             {showOpenGlossaryLink && onOpenGlossary ? (
               <button
                 type="button"
-                className={`${CONTROL_BTN_LINK} mt-2 text-xs font-medium text-zen-saffron`}
+                className={`${CONTROL_BTN_LINK} text-xs font-medium text-zen-saffron`}
                 disabled={busy}
                 onClick={onOpenGlossary}
               >
                 前往热词与记忆…
               </button>
             ) : null}
-          </div>
+          </>
         ) : null}
       </FloatingPanelDialogHeader>
     </CompactFloatingDialog>

@@ -60,13 +60,22 @@ export function parseGlossaryHotwordsPreview(raw: unknown): GlossaryHotwordsPrev
 export function formatGlossaryHotwordsTranscribeSummary(p: GlossaryHotwordsPreview | null): string {
   if (!p || p.termCount === 0) {
     if (p && p.enabledEntryCount === 0) {
-      return "当前无词条纳入热词（0 个 token）；请在下方勾选「纳入下次转写（热词）」或新建词条。";
+      return "当前无词条纳入热词；请在下方勾选「纳入下次转写（热词）」或新建词条。";
     }
-    return "当前无热词 token 纳入转写；本机 ASR 拉取语段时不会附带 hotwords。";
+    return "当前无热词；自动转录不会携带术语表。";
   }
-  const base = `下次「从 ASR 拉取语段」将提交 ${p.includedTermCount} 个热词 token（${p.enabledEntryCount} 条已纳入词条），约 ${p.submittedCharCount.toLocaleString()} 字符（上限 ${p.maxChars.toLocaleString()}）。`;
+  const base = `自动转录时将提交 ${p.includedTermCount} 个热词（${p.enabledEntryCount} 条已纳入词条，约 ${p.submittedCharCount.toLocaleString()} 字，上限 ${p.maxChars.toLocaleString()} 字）。`;
   if (!p.truncated) {
     return base;
   }
-  return `${base} 另有 ${p.droppedTermCount} 个 token 因超出 12k 未纳入；转写结果中会出现 hotwords_truncated_12k 提示。`;
+  return `${base} 另有 ${p.droppedTermCount} 个热词因超出上限未纳入；完成后转写提示条会说明。`;
+}
+
+/** Compact line for transcribe confirm / in-progress banner (ASR-VOC-1). */
+export function formatGlossaryHotwordsPreflightLine(p: GlossaryHotwordsPreview | null): string | null {
+  if (!p || p.termCount === 0) return null;
+  if (!p.truncated) {
+    return `将携带 ${p.includedTermCount} 个热词（${p.enabledEntryCount} 条词条）。`;
+  }
+  return `将携带 ${p.includedTermCount} 个热词（${p.enabledEntryCount} 条词条）；另有 ${p.droppedTermCount} 个因超出上限未纳入。`;
 }

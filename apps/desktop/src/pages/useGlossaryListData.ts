@@ -17,6 +17,7 @@ export function useGlossaryListData() {
   const [searchQuery, setSearchQuery] = useState("");
   const [hotwordFilter, setHotwordFilter] = useState<GlossaryHotwordFilter>("all");
   const [hotwordsPreview, setHotwordsPreview] = useState<GlossaryHotwordsPreview | null>(null);
+  const [hotwordsPreviewLoaded, setHotwordsPreviewLoaded] = useState(false);
   const [loadError, setLoadError] = useState("");
 
   const filteredTerms = useMemo(
@@ -43,6 +44,8 @@ export function useGlossaryListData() {
         setHotwordsPreview(parseGlossaryHotwordsPreview(raw));
       } catch {
         // Keep existing preview on error to avoid misleading "no hotwords" UI
+      } finally {
+        setHotwordsPreviewLoaded(true);
       }
     } catch (e) {
       setLoadError(e instanceof Error ? e.message : String(e));
@@ -76,6 +79,7 @@ export function useGlossaryListData() {
     visibleIds,
     visibleIdSet,
     hotwordsPreview,
+    hotwordsPreviewLoaded,
     hotwordEnabledCount,
     loadError,
     refresh,

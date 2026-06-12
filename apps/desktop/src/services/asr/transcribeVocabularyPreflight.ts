@@ -3,7 +3,7 @@
  */
 
 import {
-  formatGlossaryHotwordsTranscribeSummary,
+  formatGlossaryHotwordsPreflightLine,
   parseGlossaryHotwordsPreview,
   type GlossaryHotwordsPreview,
 } from "../glossaryHotwords";
@@ -14,7 +14,7 @@ import {
   resolveLocalAsrHubModelId,
 } from "./localAsrModelCatalog";
 import {
-  glossaryBiasSummaryForProviderId,
+  glossaryBiasPreflightLineForProviderId,
   vocabularyChannelForProviderId,
   type SttOnlineVocabularyChannel,
 } from "../stt/sttVocabularyBias";
@@ -71,7 +71,7 @@ export function buildTranscribeVocabularyPreflightSummary(input: {
     onlineChannel: input.isOnlineMode ? onlineChannel : "unsupported",
     onlineBiasLine:
       input.isOnlineMode && onlineProviderId
-        ? glossaryBiasSummaryForProviderId(onlineProviderId)
+        ? glossaryBiasPreflightLineForProviderId(onlineProviderId)
         : null,
     emptyGlossaryHint,
   };
@@ -87,14 +87,15 @@ export function formatTranscribeVocabularyPreflightLines(
   }
 
   if (summary.hotwords) {
-    lines.push(formatGlossaryHotwordsTranscribeSummary(summary.hotwords));
+    const hotwordLine = formatGlossaryHotwordsPreflightLine(summary.hotwords);
+    if (hotwordLine) lines.push(hotwordLine);
   }
 
   if (summary.isOnlineMode) {
     if (summary.onlineBiasLine) lines.push(summary.onlineBiasLine);
   } else {
     if (summary.localSkuLabel) {
-      lines.push(`本机模型：${summary.localSkuLabel}；术语经 multipart hotwords 提交。`);
+      lines.push(`本机 ${summary.localSkuLabel}：术语随转写提交。`);
     }
     if (summary.localHotwordNote) lines.push(summary.localHotwordNote);
   }

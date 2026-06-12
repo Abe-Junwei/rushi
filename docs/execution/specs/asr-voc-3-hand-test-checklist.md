@@ -13,10 +13,13 @@ bash scripts/asr-voc-3-hand-test.sh
 ## 1. 环境页映射（V3-4）
 
 1. 打开 **环境与 ASR → 在线 STT**，启用在线 STT。  
-2. 依次选择 **OpenAI / AssemblyAI / Deepgram**。  
-3. 确认各厂商下方出现一行术语映射说明（含上限；AssemblyAI 区分 keyterms ≠ custom_spelling）。
+2. 依次选择 **OpenAI / AssemblyAI / Deepgram / 百炼 Fun-ASR**。  
+3. 对每个支持术语的厂商确认：
+   - 选中 chip 后，**描述段落下方** 角标行含 **术语偏置**。
+   - 面板 **底部 info 区** 第二段 meta 含 `术语表 → …` 映射摘要（`EnvOnlineSttPanel` + `glossaryBiasSummaryForProviderId`）。
+   - AssemblyAI 文案区分 keyterms ≠ custom_spelling。
 
-- [x] §1 通过（2026-06-02：环境页三家映射文案手测）
+- [x] §1 通过（2026-06-02：环境页三家映射文案手测；2026-06-11 自检：百炼角标 + 底部 info 与代码一致）
 
 ## 2. OpenAI 截断 + hints（V3-1 / V3-5）
 

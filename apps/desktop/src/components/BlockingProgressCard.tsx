@@ -1,6 +1,7 @@
 import { LoaderCircle } from "lucide-react";
 import { CONTROL_BTN_DANGER } from "../config/controlStyles";
 import { LUCIDE_ICON_SIZE_LG, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
+import { TranscribeVocabularyPreflightLines } from "./TranscribeVocabularyPreflightLines";
 import {
   PANEL_PROGRESS_INDETERMINATE_CLASS,
   PANEL_PROGRESS_TRACK_CLASS,
@@ -12,6 +13,7 @@ type Props = {
   elapsedSec: number;
   /** banner：不挡编辑；blocking：全屏遮罩 */
   variant: "blocking" | "banner";
+  vocabularyLines?: string[];
   onCancel?: () => void;
   cancelling?: boolean;
 };
@@ -20,6 +22,7 @@ function ProgressCardBody({
   title,
   hint,
   elapsedSec,
+  vocabularyLines = [],
   onCancel,
   cancelling,
   cardClassName,
@@ -45,6 +48,7 @@ function ProgressCardBody({
         <h2 className="font-sans text-lg font-semibold leading-snug text-zen-ink">{title}</h2>
         <p className="font-sans text-[12px] leading-normal text-zen-stone">{hint}</p>
       </div>
+      <TranscribeVocabularyPreflightLines lines={vocabularyLines} />
       <div className={`relative mt-2 ${PANEL_PROGRESS_TRACK_CLASS}`}>
         <div className={PANEL_PROGRESS_INDETERMINATE_CLASS} />
       </div>
@@ -70,6 +74,7 @@ export function BlockingProgressCard({
   hint,
   elapsedSec,
   variant,
+  vocabularyLines,
   onCancel,
   cancelling,
 }: Props) {
@@ -83,6 +88,7 @@ export function BlockingProgressCard({
       title={title}
       hint={hint}
       elapsedSec={elapsedSec}
+      vocabularyLines={vocabularyLines}
       onCancel={onCancel}
       cancelling={cancelling}
       cardClassName={cardClassName}

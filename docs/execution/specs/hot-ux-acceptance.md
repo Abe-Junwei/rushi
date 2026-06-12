@@ -7,7 +7,7 @@
 ## 范围
 
 - 术语库 → 空格串 `hotwords`（仅 `hotword_enabled=1` 词条；别名拆 token；跨词条去重），上限 **12,000 字符**（Tauri 构建 + 侧车二次防护）。
-- **术语库页**：「本次转写将携带」摘要（纳入词条数、唯一 token 数、字符、是否截断、预览片段）；`hotword_enabled` 可逐条/批量切换；批量选择与删除。
+- **术语库页**（欢迎页 → **热词与记忆**）：区块标题 **「本次转写将携带」**（`GlossaryHotwordsSummarySection`）；摘要含纳入词条数、唯一 token 数、字符、是否截断、`<pre>` 预览片段；`hotword_enabled` 可逐条/批量切换；批量选择与删除。
 - **导入/导出**：CSV 往返含 `hotword_enabled` 列；结构化表头导入保留别名/领域/备注。
 - **转写后**：`warnings` 含 `hotwords_truncated_12k` 时，`deriveTranscribeHints` 给出可读说明。
 
@@ -22,7 +22,7 @@
 - [x] Rust unit：`glossary_hotwords` / `glossary_structured_import` / 批量 SQL
 - [x] Excel 粘贴与 `.xlsx`/`.csv` 导入（含结构化 CSV 的 hotword_enabled）
 - [x] 大量术语不闪退：热词增量拼接；列表仅渲染前 200 条
-- [ ] 手测（可选）：全部移出热词 → 摘要 0 token；跨词条重复 alias → 占用不重复计算
+- [ ] 手测（可选）：见 [`hot-ux-hand-test-checklist.md`](./hot-ux-hand-test-checklist.md)（§1 有热词；§2 全移出；§3 去重；§4 VOC-GUARD）
 
 ## 非范围
 

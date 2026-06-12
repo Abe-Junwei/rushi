@@ -42,7 +42,9 @@ export function useGlossaryController() {
     [batch.removeFromSelection, editor],
   );
 
-  const hotwordsSummary = formatGlossaryHotwordsTranscribeSummary(list.hotwordsPreview);
+  const hotwordsSummary = list.hotwordsPreviewLoaded
+    ? formatGlossaryHotwordsTranscribeSummary(list.hotwordsPreview)
+    : "正在加载热词摘要…";
   const selectedPreviewLabels = selectedGlossaryPreviewLabels(list.terms, batch.checkedIds);
 
   return {

@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   glossaryBiasFieldHint,
+  glossaryBiasPreflightLineForProviderId,
   glossaryBiasSummaryForProviderId,
   vocabularyChannelForProviderId,
 } from "./sttVocabularyBias";
@@ -26,5 +27,11 @@ describe("sttVocabularyBias", () => {
     const s = glossaryBiasSummaryForProviderId("openai");
     expect(s).toContain("prompt");
     expect(s).toContain("224");
+  });
+
+  it("preflight line uses plain language for transcribe UI", () => {
+    expect(glossaryBiasPreflightLineForProviderId("dashscope-asr")).toBe("在线百炼：术语同步为厂商热词表。");
+    expect(glossaryBiasPreflightLineForProviderId("openai")).toContain("在线 OpenAI");
+    expect(glossaryBiasPreflightLineForProviderId("tencent")).toContain("不支持术语表");
   });
 });

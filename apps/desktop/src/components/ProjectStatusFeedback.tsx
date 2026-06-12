@@ -41,11 +41,13 @@ export function ProjectBusyOverlay({
 export function TranscribePreviewBanner({
   elapsedSec,
   transcribeProgress = null,
+  vocabularyLines = [],
   cancelling = false,
   onCancel,
 }: {
   elapsedSec: number;
   transcribeProgress?: TranscribeProgress | null;
+  vocabularyLines?: string[];
   cancelling?: boolean;
   onCancel?: () => void;
 }) {
@@ -60,6 +62,7 @@ export function TranscribePreviewBanner({
         title={busyCopy.title}
         hint={busyCopy.hint}
         elapsedSec={elapsedSec}
+        vocabularyLines={vocabularyLines}
         onCancel={onCancel}
         cancelling={cancelling}
       />
@@ -135,6 +138,7 @@ export function TranscribeWorkspaceBanners({
   busyReason,
   busyElapsedSec,
   transcribeProgress,
+  transcribeVocabularyPreflightLines = [],
   transcribeCancelling,
   onCancelTranscribe,
   onDismissDiag,
@@ -147,6 +151,7 @@ export function TranscribeWorkspaceBanners({
   busyReason: BusyReason | null;
   busyElapsedSec: number;
   transcribeProgress?: TranscribeProgress | null;
+  transcribeVocabularyPreflightLines?: string[];
   transcribeCancelling?: boolean;
   onCancelTranscribe: () => void;
   onDismissDiag: () => void;
@@ -169,6 +174,7 @@ export function TranscribeWorkspaceBanners({
         <TranscribePreviewBanner
           elapsedSec={busyElapsedSec}
           transcribeProgress={transcribeProgress}
+          vocabularyLines={transcribeVocabularyPreflightLines}
           cancelling={transcribeCancelling}
           onCancel={onCancelTranscribe}
         />
