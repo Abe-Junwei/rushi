@@ -34,7 +34,7 @@
 |------|--------|------|
 | Otter 边界并段 | **高** | 保留：正文行首/行尾 Backspace/Delete |
 | 2 键优先合并 | **高** | **⌘J / ⌘K**（不用 ⌘M） |
-| 命令面板 | 低 | **未做**；⌘K 暂用于合并上一条，与 Descript 冲突待 v2 |
+| 命令面板 | 低 | **明确不做**；已有 ⌘F + registry + 设置页/右键 hint，⌘K 永久用于合并上一条 |
 | Tauri Menu Accelerator | 中 | **未做**；Web capture 为主 |
 
 ---
@@ -53,7 +53,7 @@
 | 设置 | **⌘,**（无打开文件也可用） |
 | 更正记忆 | **⌘L**（需正文选区） |
 | 展示 | `EnvEditorShortcutsPanel` 读 `formatEditorShortcutPanelSections()`；右键 `editorShortcutMenuHint`（**sans**，不用 mono） |
-| 不做什么 | 用户自定义绑定 UI、OS 全局 hotkey、命令面板（本轮） |
+| 不做什么 | 用户自定义绑定 UI、OS 全局 hotkey、**命令面板（产品确认不做）** |
 
 ### 已知系统冲突
 
@@ -61,7 +61,7 @@
 |----|------|
 | ⌘M | macOS 最小化；**未绑定** |
 | ⌘Space | Spotlight；正文播放改用 ⇧⌘Space |
-| ⌘K | 与 Descript 命令面板习惯冲突；当前=合并上一条 |
+| ⌘K | 合并上一条（**不**改为命令面板；与 Descript/Otter 搜索习惯不同，可接受） |
 | ⌘N | 可能与「新建」冲突；产品接受 |
 
 ---
@@ -85,5 +85,5 @@
 - [x] 调研 brief
 - [x] 编码与单测（1265+ tests）
 - [x] 手测通过（2026-06）
-- [ ] Tauri Menu Accelerator（可选后续）
-- [ ] 命令面板 + ⌘K 重分配（可选后续）
+- [x] 命令面板：**明确不做**（2026-06 产品确认）
+- [ ] Tauri Menu Accelerator（可选后续，非必须）

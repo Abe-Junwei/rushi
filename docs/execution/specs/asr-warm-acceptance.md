@@ -1,7 +1,7 @@
 # Acceptance: ASR-WARM — 侧车保活与预热（R3h-I4）
 
-> **状态**：✅ **通过**（dev 手测 2026-06-11）· release idle 补测可选  
-> **手测记录**：[`asr-warm-handtest-signoff-2026-06-11.md`](./asr-warm-handtest-signoff-2026-06-11.md)  
+> **状态**：✅ **通过**（dev 2026-06-11 · release idle 2026-06-12）  
+> **手测记录**：[`asr-warm-handtest-signoff-2026-06-11.md`](./asr-warm-handtest-signoff-2026-06-11.md) · [`asr-warm-release-idle-signoff-2026-06-12.md`](./asr-warm-release-idle-signoff-2026-06-12.md)  
 > **排期**：路线图 §4.1.1 **⑦½**（R3h-2 之后）  
 > **Backlog**：[`personal-solo-v1-backlog.md`](./personal-solo-v1-backlog.md) §3.1  
 > **启动条件**：§4.1.5 — **R3t-B 编码完成** ✅ + **R3h-I1 Supervisor FSM 设计冻结** ✅（[plan](./r3h-i1-runtime-supervisor-fsm-plan.md) 2026-06-11）
@@ -31,7 +31,8 @@
 
 - [x] 同一项目、同一模型：**连续 2 次**转写，第二次相对第一次**无明显冷启动劣化**（启动预热后两次耗时接近亦可；手测见 signoff §1）
 - [x] 应用退出后：无 `rushi-desktop` / bundled `rushi-asr-sidecar` 僵尸（dev 已测；见 signoff §4）
-- [ ] 空闲超时回收 managed 侧车（**release + `RUSHI_ASR_IDLE_STOP_SEC`** 补测；dev `SKIP_BUNDLED` 不适用）
+- [x] 空闲超时回收 managed 侧车（release · [`asr-warm-release-idle-signoff-2026-06-12.md`](./asr-warm-release-idle-signoff-2026-06-12.md)；dev `SKIP_BUNDLED` 不适用）
+- [x] release 侧车含 `POST /v1/models/warmup`（`smoke-asr-sidecar-health.sh` gate + `npm run asr:build-sidecar-unix` 2026-06-12）
 - [x] focused test / 单元：`supervisor` + `warm::tests` + 全量 `npm run test`（见 signoff §5）
 - [x] `npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs`
 

@@ -96,5 +96,22 @@ if body.get("service") != "rushi-asr":
     sys.exit(f"unexpected root service: {body!r}")
 if not body.get("prepare_model_async"):
     sys.exit(f"missing prepare_model_async on root: {body!r}")
-print("smoke root OK: catalog endpoints present")
+warmup_model = str(body.get("warmup_model", ""))
+if "warmup" not in warmup_model:
+    sys.exit(f"missing warmup_model on root: {body!r}")
+print("smoke root OK: catalog + warmup endpoints present")
 PY2
+
+WARMUP_URL="http://127.0.0.1:${PORT}/v1/models/warmup"
+WARMUP_CODE="$(curl -s -o /tmp/rushi-sidecar-smoke-warmup.json -w '%{http_code}' -X POST "$WARMUP_URL")"
+if [[ "$WARMUP_CODE" == "404" ]]; then
+  echo "smoke: POST /v1/models/warmup returned 404 — rebuild sidecar from current services/asr (stale PyInstaller bundle)" >&2
+  cat /tmp/rushi-sidecar-smoke-warmup.json >&2 || true
+  exit 1
+fi
+if [[ "$WARMUP_CODE" != "200" && "$WARMUP_CODE" != "503" ]]; then
+  echo "smoke: unexpected warmup HTTP $WARMUP_CODE" >&2
+  cat /tmp/rushi-sidecar-smoke-warmup.json >&2 || true
+  exit 1
+fi
+echo "smoke warmup OK: HTTP $WARMUP_CODE"

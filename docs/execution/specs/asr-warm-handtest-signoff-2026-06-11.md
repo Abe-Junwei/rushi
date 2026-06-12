@@ -62,7 +62,7 @@ cargo test warm::tests     ✅ 2 passed
 | H2 | 启动预热日志 + loaded model | ✅ |
 | H3 | 诊断含 runtime_session_id | ✅ 代验（安装包补测可选） |
 | H4 | 退出无 desktop/bundled 僵尸 | ✅ dev |
-| H5 | idle 回收 | ⏸ 安装包补测 |
+| H5 | idle 回收 | ✅ release — [2026-06-12 signoff](./asr-warm-release-idle-signoff-2026-06-12.md) |
 | H6 | 自动化闸门 | ✅ |
 
-**Step 2 ASR-WARM**：**dev 手测签收 ✅**；idle 回收保留 **release 补测** 一条。
+**ASR-WARM dev**：**✅** · **release idle H5**：**✅ 2026-06-12**（warmup release 见 signoff §附带）。
