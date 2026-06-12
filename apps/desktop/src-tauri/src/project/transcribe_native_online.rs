@@ -1,5 +1,8 @@
 use super::stt_vocabulary::openai_prompt;
 use super::transcribe::{assemblyai_transcript_json_to_rushi, openai_verbose_json_to_rushi};
+use super::transcribe_cancel_cmd::{
+    ensure_transcribe_not_cancelled, transcribe_poll_wait, TranscribeCancelPoll,
+};
 use super::utils::append_desktop_log_line;
 use crate::online_stt_bridge::{is_allowed_stt_transcribe_url, OnlineTranscribeBridge};
 use crate::project::stt_vocabulary::{assemblyai_keyterms, SttVocabularyPlan};
@@ -13,6 +16,7 @@ pub async fn transcribe_openai_native(
     vocabulary: &SttVocabularyPlan,
     o: &OnlineTranscribeBridge,
     timeout: Duration,
+    cancel: TranscribeCancelPoll<'_>,
 ) -> Result<serde_json::Value, String> {
     let url = o.transcribe_url.trim();
     if url.is_empty() {
@@ -43,6 +47,7 @@ pub async fn transcribe_openai_native(
         form = form.text("prompt", p);
     }
     append_desktop_log_line(st, "INFO transcribe openai_native");
+    ensure_transcribe_not_cancelled(cancel)?;
     let mut req = crate::stt_native::http_client()
         .post(url)
         .timeout(timeout)
@@ -57,6 +62,7 @@ pub async fn transcribe_openai_native(
         append_desktop_log_line(st, &format!("ERROR openai transcribe connect {e}"));
         format!("OpenAI 请求失败: {e}")
     })?;
+    ensure_transcribe_not_cancelled(cancel)?;
     let status = resp.status();
     if !status.is_success() {
         let body = resp.text().await.unwrap_or_default();
@@ -80,6 +86,7 @@ pub async fn transcribe_assemblyai_native(
     vocabulary: &SttVocabularyPlan,
     o: &OnlineTranscribeBridge,
     timeout: Duration,
+    cancel: TranscribeCancelPoll<'_>,
 ) -> Result<serde_json::Value, String> {
     let base = o.transcribe_url.trim().trim_end_matches('/');
     if base.is_empty() {
@@ -101,6 +108,7 @@ pub async fn transcribe_assemblyai_native(
     let bytes = crate::stt_native::read_audio_bytes_limited(audio_path)
         .map_err(|e| format!("读取音频失败: {e}"))?;
     append_desktop_log_line(st, "INFO transcribe assemblyai_upload");
+    ensure_transcribe_not_cancelled(cancel)?;
     let upload_res = client
         .post(format!("{base}/v2/upload"))
         .timeout(timeout)
@@ -122,6 +130,7 @@ pub async fn transcribe_assemblyai_native(
         .and_then(|x| x.as_str())
         .ok_or_else(|| "AssemblyAI 上传响应缺少 upload_url".to_string())?;
     append_desktop_log_line(st, "INFO transcribe assemblyai_create");
+    ensure_transcribe_not_cancelled(cancel)?;
     let keyterms = assemblyai_keyterms(vocabulary);
     let mut create_body = serde_json::json!({ "audio_url": audio_url });
     if !keyterms.is_empty() {
@@ -148,10 +157,12 @@ pub async fn transcribe_assemblyai_native(
         .and_then(|x| x.as_str())
         .ok_or_else(|| "AssemblyAI 创建响应缺少 id".to_string())?;
     loop {
+        ensure_transcribe_not_cancelled(cancel)?;
         if Instant::now() > deadline {
             return Err("AssemblyAI 轮询超时".to_string());
         }
-        tokio::time::sleep(Duration::from_secs(2)).await;
+        transcribe_poll_wait(Duration::from_secs(2), cancel).await?;
+        ensure_transcribe_not_cancelled(cancel)?;
         let poll = client
             .get(format!("{base}/v2/transcript/{tid}"))
             .timeout(Duration::from_secs(30))

@@ -32,6 +32,22 @@ describe("projectRunTranscribe", () => {
       fileId: "file-abc",
       asrBaseUrl: "http://127.0.0.1:8741",
       online: null,
+      requestId: null,
+    });
+  });
+});
+
+describe("projectCancelTranscribe", () => {
+  beforeEach(() => {
+    invokeMock.mockReset();
+    invokeMock.mockResolvedValue(true);
+  });
+
+  it("invokes project_cancel_transcribe with camelCase requestId", async () => {
+    const { projectCancelTranscribe } = await import("./projectApi");
+    await projectCancelTranscribe("online-stt-123");
+    expect(invokeMock).toHaveBeenCalledWith("project_cancel_transcribe", {
+      requestId: "online-stt-123",
     });
   });
 });

@@ -53,6 +53,7 @@ pub fn run() {
             )));
             app.manage(local_runtime::installer::LocalRuntimeInstallerState::default());
             app.manage(postprocess_cmd::PostprocessCancelState::default());
+            app.manage(project::TranscribeCancelState::default());
             let handle = app.handle().clone();
             let start_handle = handle.clone();
             tauri::async_runtime::spawn(async move {
@@ -95,6 +96,7 @@ pub fn run() {
             project::file_save_segments,
             project::file_restore_segments_from_edit_log,
             project::project_run_transcribe,
+            project::transcribe_cancel_cmd::project_cancel_transcribe,
             project::project_transcribe_async_start,
             project::project_transcribe_async_finalize,
             project::get_last_transcribe_timeline,

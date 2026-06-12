@@ -144,6 +144,14 @@ impl TranscribeTimelineRecorder {
         self.warnings = warnings.to_vec();
     }
 
+    pub fn finish_cancelled(&mut self) {
+        self.close_open_stage(None);
+        self.outcome = Some("cancelled".to_string());
+        self.failed_stage = None;
+        self.error_code = None;
+        self.error_message = Some("转写已取消".to_string());
+    }
+
     pub fn snapshot(&self) -> TranscribeTimelineSnapshot {
         let ended_at_ms = if self.outcome.is_some() {
             Some(now_ms())
@@ -459,5 +467,19 @@ mod tests {
         assert!(timeline.is_array());
         assert_eq!(timeline.as_array().unwrap().len(), 2);
         assert!(json.get("suggestedAction").is_some());
+    }
+
+    #[test]
+    fn finish_cancelled_clears_failed_metadata() {
+        let mut rec = TranscribeTimelineRecorder::new("file-online", "online");
+        rec.set_job_id("online-stt-99");
+        rec.begin_stage(STAGE_TRANSCRIBE);
+        rec.fail_stage(STAGE_TRANSCRIBE, "transcribe_failed", "转写已取消");
+        rec.finish_cancelled();
+        let snap = rec.snapshot();
+        assert_eq!(snap.outcome, "cancelled");
+        assert_eq!(snap.error_message.as_deref(), Some("转写已取消"));
+        assert!(snap.failed_stage.is_none());
+        assert!(snap.error_code.is_none());
     }
 }

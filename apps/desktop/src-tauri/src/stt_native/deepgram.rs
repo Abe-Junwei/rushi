@@ -9,6 +9,7 @@ use crate::project::online_segment_normalize::{
     OnlineSegmentNormalizeOptions,
 };
 use crate::project::stt_vocabulary::{append_deepgram_keywords, SttVocabularyPlan};
+use crate::project::transcribe_cancel_cmd::{ensure_transcribe_not_cancelled, TranscribeCancelPoll};
 
 use super::rushi_value;
 
@@ -20,6 +21,7 @@ pub async fn transcribe_deepgram(
     vocabulary: &SttVocabularyPlan,
     timeout: Duration,
     log: &impl Fn(&str),
+    cancel: TranscribeCancelPoll<'_>,
 ) -> Result<serde_json::Value, String> {
     let auth = bridge
         .authorization
@@ -45,6 +47,7 @@ pub async fn transcribe_deepgram(
     let part = super::multipart_part_from_file(audio_path).await?;
     let form = reqwest::multipart::Form::new().part("audio", part);
     log("INFO deepgram listen");
+    ensure_transcribe_not_cancelled(cancel)?;
     let url = url.clone();
     let auth = auth.clone();
     let build = |client: &reqwest::Client| {
@@ -57,6 +60,7 @@ pub async fn transcribe_deepgram(
     let resp = match primary {
         Ok(r) => r,
         Err(e) if super::is_retryable_stt_transport(&e) => {
+            ensure_transcribe_not_cancelled(cancel)?;
             let part = super::multipart_part_from_file(audio_path).await?;
             let form = reqwest::multipart::Form::new().part("audio", part);
             build(super::http_client_direct())
@@ -67,6 +71,7 @@ pub async fn transcribe_deepgram(
         }
         Err(e) => return Err(format!("Deepgram 请求失败: {e}")),
     };
+    ensure_transcribe_not_cancelled(cancel)?;
     if !resp.status().is_success() {
         let status = resp.status();
         let t = resp.text().await.unwrap_or_default();

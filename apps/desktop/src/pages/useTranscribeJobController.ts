@@ -38,12 +38,13 @@ import { resolveTranscribeExecuteBlock } from "./transcribeExecuteGate";
 import { segmentsHaveNonEmptyText } from "./transcribeJobHelpers";
 import { runLocalTranscribeJob } from "./transcribeLocalJobRun";
 import {
+  isOnlineTranscribeJobId,
   isSidecarCancellableTranscribeJobId,
+  isTranscribeInvokeCancelled,
   isTranscribeUserCancellation,
   newOnlineTranscribeJobId,
   snapshotSegmentsForRestore,
   TRANSCRIBE_CANCELLED_HINT,
-  TranscribeUserCancelledError,
   type TranscribeProgress,
 } from "./transcribePreviewState";
 
@@ -256,17 +257,15 @@ export function useTranscribeJobController(deps: Deps) {
         });
         out = local.out;
       } else {
-        activeJobIdRef.current = newOnlineTranscribeJobId();
-        out = await p1.projectRunTranscribe(fileId, asrBaseUrl(), online ?? null);
-        if (userCancelRequestedRef.current) {
-          throw new TranscribeUserCancelledError();
-        }
+        const requestId = newOnlineTranscribeJobId();
+        activeJobIdRef.current = requestId;
+        out = await p1.projectRunTranscribe(fileId, asrBaseUrl(), online ?? null, requestId);
       }
       await finishTranscribeSuccess(fileId, out);
     } catch (e) {
       segmentsRef.current = restoreSnapshot;
       setSegments(restoreSnapshot);
-      if (isTranscribeUserCancellation(e)) {
+      if (isTranscribeUserCancellation(e) || isTranscribeInvokeCancelled(e)) {
         setTranscribeHints([]);
         setTranscribeWarnings([]);
         setTranscribeFailureDiag(null);
@@ -331,6 +330,14 @@ export function useTranscribeJobController(deps: Deps) {
     setTranscribeCancelling(true);
     userCancelRequestedRef.current = true;
     pollAbortRef.current?.abort();
+    if (isOnlineTranscribeJobId(jobId)) {
+      try {
+        await p1.projectCancelTranscribe(jobId);
+      } catch {
+        /* invoke may still reject with 转写已取消 */
+      }
+      return;
+    }
     if (!isSidecarCancellableTranscribeJobId(jobId)) return;
     const base = asrBaseUrl().replace(/\/+$/, "");
     try {

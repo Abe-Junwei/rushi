@@ -1164,10 +1164,10 @@ Step 5c  PROD-META P-2  第三方许可 + build-info 对齐 + macOS About       
 【Phase B · v1.1 硬化 — 可并行，单人建议 CSP 先于 STT】
 Step 6a  CSP-HARDEN C-1  生产 style nonce + 守卫 + 波形 probe   ✅ 2026-06-12
 Step 6b  CSP-HARDEN C-2  全应用 CSP smoke + acceptance 签收     ✅ 2026-06-12（自动门禁 + H-CSP-1/2 mac 手测）
-Step 7a  STT-CANCEL D-1  TranscribeCancelState + project_cancel_transcribe + TS
-Step 7b  STT-CANCEL D-2  OpenAI + Deepgram native Abort
-Step 7c  STT-CANCEL D-3  百炼 Dashscope poll 可中断
-Step 7d  STT-CANCEL D-4  AssemblyAI poll 可中断
+Step 7a  STT-CANCEL D-1  TranscribeCancelState + project_cancel_transcribe + TS   调研 ✅ · 代码 ✅
+Step 7b  STT-CANCEL D-2  OpenAI + Deepgram native Abort                    代码 ✅
+Step 7c  STT-CANCEL D-3  百炼 Dashscope poll 可中断                        代码 ✅
+Step 7d  STT-CANCEL D-4  AssemblyAI poll 可中断                            代码 ✅
 Step 7e  STT-CANCEL D-5  generic multipart 尽力取消（P2 可选）
 
 【Phase C · 定稿 UX + 新手引导 — 与 B 可交错，勿与 CSP 大改同 PR】
@@ -1190,7 +1190,8 @@ Step 12  REL-1.1  signoff  H-CSP-* + H-STT-* + 回归 R9 主路径抽检
 | **5b–c** | **PROD-META** | ✅ | `EnvAboutPanel`（第三方组件 + 许可正文）+ 随包 `third-party-notices.txt` / `third-party-license-texts.txt`；诊断 `build-info.txt` 含 `identifier`；macOS 应用菜单 About |
 | **6a** | **CSP-HARDEN C-1** | ✅ | 生产 `style-src` 去 `unsafe-inline` + 删 `style-src-elem`；守卫拒绝 prod `style-src` `unsafe-inline` + 任何 `style-src-elem` 声明 |
 | **6b** | **CSP-HARDEN C-2** | ✅ | 生产产物 CSP 表面审计 + nonce probe 守卫（`checkTauriStyleNonceProbe`）+ 运行时 `<style>` 注入覆盖审计；H-CSP-1/2 mac Release 手测 ✅（2026-06-12）|
-| **7a–d** | **STT-CANCEL** | 📋 | 在线转写中停止 ≤2s 恢复语段；timeline `cancelled`；本机 async 回归 |
+| **7a** | **STT-CANCEL D-1** | ✅ | `TranscribeCancelState` + `project_cancel_transcribe` + 在线 `Abortable` + TS 接线（2026-06-12）|
+| **7b–d** | **STT-CANCEL** | ✅ | adapter + **H-STT-1/2/3 手测 ✅** 2026-06-12 |
 | **7e** | **STT-CANCEL D-5** | 📋 P2 | legacy multipart 文档化 |
 | **8–9** | **DELIV-MODE** | 📋 | 无 LLM 可走 1→4→5；有 LLM 可委托规则+Stage B 预览写回 |
 | **9a–b** | **ONBOARD** | 📋 | 5 步清单 outcome 导向；**非** blocking 全屏 tour；末步可链 DELIV / 交付导出 |
@@ -1203,9 +1204,9 @@ Step 12  REL-1.1  signoff  H-CSP-* + H-STT-* + 回归 R9 主路径抽检
 |----|-----|
 | H-CSP-1 | Release 包 Editor 波形加载；Console 无 style CSP violation |
 | H-CSP-2 | 交付导出 Dialog、环境页三盏灯正常 |
-| H-STT-1 | 在线 STT（≥1 已配置 adapter）转写中停止，语段恢复 |
-| H-STT-2 | TRN-DIAG / 诊断包 outcome=`cancelled` |
-| H-STT-3 | 本机侧车 async 停止回归 |
+| H-STT-1 | 在线 STT（≥1 已配置 adapter）转写中停止，语段恢复 | ✅ 2026-06-12 百炼 file_asr |
+| H-STT-2 | TRN-DIAG / 诊断包 outcome=`cancelled` | ✅ 2026-06-12 |
+| H-STT-3 | 本机侧车 async 停止回归 | ✅ 2026-06-12 |
 | H-DELIV-1 | 定稿模式：转写 → 终检 → 讲稿/逐字稿导出 |
 | H-BATCH-1 | Hub 批量导入 + 队列转写 ≥2 文件 |
 | H-PROD-1 | 设置 → 关于：marketing version 与 `app_version` / 诊断 `build-info.txt` 一致 |

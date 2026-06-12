@@ -16,6 +16,7 @@ use tokio_util::io::ReaderStream;
 
 use crate::online_stt_bridge::{is_allowed_stt_transcribe_url, OnlineTranscribeBridge};
 use crate::project::stt_vocabulary::SttVocabularyPlan;
+use crate::project::transcribe_cancel_cmd::TranscribeCancelPoll;
 
 static HTTP: OnceLock<reqwest::Client> = OnceLock::new();
 static HTTP_DIRECT: OnceLock<reqwest::Client> = OnceLock::new();
@@ -143,6 +144,7 @@ pub async fn dispatch_native(
     vocabulary: &SttVocabularyPlan,
     timeout: Duration,
     log: &impl Fn(&str),
+    cancel: TranscribeCancelPoll<'_>,
 ) -> Result<serde_json::Value, String> {
     let raw_url = bridge.transcribe_url.trim();
     if !raw_url.is_empty() {
@@ -158,13 +160,15 @@ pub async fn dispatch_native(
     match adapter {
         "dashscopeAsr" => {
             dashscope_asr::transcribe_dashscope_asr(
-                client, audio_path, bridge, vocabulary, timeout, log,
+                client, audio_path, bridge, vocabulary, timeout, log, cancel,
             )
             .await
         }
         "deepgramListen" => {
-            deepgram::transcribe_deepgram(client, audio_path, bridge, vocabulary, timeout, log)
-                .await
+            deepgram::transcribe_deepgram(
+                client, audio_path, bridge, vocabulary, timeout, log, cancel,
+            )
+            .await
         }
         _ => Err(format!("未知 native_adapter: {adapter}")),
     }

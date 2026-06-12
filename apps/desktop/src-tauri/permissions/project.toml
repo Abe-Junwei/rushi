@@ -19,6 +19,7 @@ permissions = [
   "allow-file-save-segments",
   "allow-file-restore-segments-from-edit-log",
   "allow-project-run-transcribe",
+  "allow-project-cancel-transcribe",
   "allow-project-transcribe-async-start",
   "allow-project-transcribe-async-finalize",
   "allow-get-last-transcribe-timeline",

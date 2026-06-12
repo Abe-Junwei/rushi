@@ -7,6 +7,7 @@ import {
   resetPreviewUidCounterForTests,
   snapshotSegmentsForRestore,
   TranscribeUserCancelledError,
+  isTranscribeInvokeCancelled,
 } from "./transcribePreviewState";
 import type { SegmentDto } from "../tauri/projectApi";
 
@@ -62,8 +63,13 @@ describe("transcribePreviewState", () => {
     expect(isTranscribeAsyncUnavailable(new Error("ASR HTTP 500 Internal Server Error"))).toBe(false);
   });
 
-  it("isTranscribeUserCancellation detects cancel error", () => {
+  it("isTranscribeUserCancellation detects cancel error class", () => {
     expect(isTranscribeUserCancellation(new TranscribeUserCancelledError())).toBe(true);
     expect(isTranscribeUserCancellation(new Error("转写已取消"))).toBe(false);
+  });
+
+  it("isTranscribeInvokeCancelled detects Rust abort message", () => {
+    expect(isTranscribeInvokeCancelled(new Error("转写已取消"))).toBe(true);
+    expect(isTranscribeInvokeCancelled(new Error("other"))).toBe(false);
   });
 });

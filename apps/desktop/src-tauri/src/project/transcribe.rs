@@ -6,6 +6,7 @@ use super::transcribe_errors::{
     describe_transcribe_http_status_error, describe_transcribe_request_error,
 };
 use super::transcribe_timeline::{TranscribeTimelineRecorder, STAGE_TRANSCRIBE, STAGE_UPLOAD};
+use super::transcribe_cancel_cmd::{ensure_transcribe_not_cancelled, TranscribeCancelPoll};
 use super::utils::append_desktop_log_line;
 use crate::utils::http_client;
 use crate::utils::{redact_http_body_snippet, redact_secrets_for_log};
@@ -28,6 +29,7 @@ pub async fn post_transcribe_multipart(
     auth: TranscribeRequestAuth<'_>,
     timeout: std::time::Duration,
     mut timeline: Option<&mut TranscribeTimelineRecorder>,
+    cancel: TranscribeCancelPoll<'_>,
 ) -> Result<serde_json::Value, String> {
     if let Some(tl) = timeline.as_deref_mut() {
         tl.begin_stage(STAGE_UPLOAD);
@@ -59,6 +61,7 @@ pub async fn post_transcribe_multipart(
     if let Some(tl) = timeline.as_deref_mut() {
         tl.begin_stage(STAGE_TRANSCRIBE);
     }
+    ensure_transcribe_not_cancelled(cancel)?;
     let resp = match req.send().await {
         Ok(r) => r,
         Err(e) => {

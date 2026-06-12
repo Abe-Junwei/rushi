@@ -116,6 +116,10 @@ export function isSidecarCancellableTranscribeJobId(jobId: string): boolean {
   return jobId !== TRANSCRIBE_PENDING_JOB_ID && !jobId.startsWith("online-stt-");
 }
 
+export function isOnlineTranscribeJobId(jobId: string): boolean {
+  return jobId.startsWith("online-stt-");
+}
+
 export function newOnlineTranscribeJobId(): string {
   return `online-stt-${Date.now()}`;
 }
@@ -129,6 +133,12 @@ export class TranscribeUserCancelledError extends Error {
 
 export function isTranscribeUserCancellation(error: unknown): boolean {
   return error instanceof TranscribeUserCancelledError;
+}
+
+/** Rust `project_run_transcribe` abort via `project_cancel_transcribe`. */
+export function isTranscribeInvokeCancelled(error: unknown): boolean {
+  const msg = error instanceof Error ? error.message : String(error);
+  return msg.includes("转写已取消");
 }
 
 export function describeTranscribeStatusError(st: TranscribeStatusPayload): string {

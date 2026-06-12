@@ -11,6 +11,9 @@ use crate::project::online_segment_normalize::{
     timed_words_to_json, OnlineSegmentNormalizeOptions,
 };
 use crate::project::stt_vocabulary::SttVocabularyPlan;
+use crate::project::transcribe_cancel_cmd::{
+    ensure_transcribe_not_cancelled, transcribe_poll_wait, TranscribeCancelPoll,
+};
 
 use super::dashscope_upload::upload_dashscope_temp_oss_url;
 use super::dashscope_vocabulary::{sync_dashscope_vocabulary, DASHSCOPE_FUNASR_FILE_MODEL};
@@ -195,6 +198,7 @@ pub async fn transcribe_dashscope_file_asr(
     vocabulary: &SttVocabularyPlan,
     timeout: Duration,
     log: &impl Fn(&str),
+    cancel: TranscribeCancelPoll<'_>,
 ) -> Result<Value, String> {
     let api_key = bridge
         .authorization
@@ -243,6 +247,7 @@ pub async fn transcribe_dashscope_file_asr(
         vocabulary_id.as_deref().unwrap_or("none")
     ));
 
+    ensure_transcribe_not_cancelled(cancel)?;
     let submit_resp = send_stt_cloud_post(|http| {
         http.post(DASHSCOPE_FILE_TRANSCRIPTION_URL)
             .timeout(timeout)
@@ -274,10 +279,12 @@ pub async fn transcribe_dashscope_file_asr(
 
     let deadline = Instant::now() + timeout;
     loop {
+        ensure_transcribe_not_cancelled(cancel)?;
         if Instant::now() > deadline {
             return Err("百炼文件转写轮询超时".to_string());
         }
-        tokio::time::sleep(POLL_INTERVAL).await;
+        transcribe_poll_wait(POLL_INTERVAL, cancel).await?;
+        ensure_transcribe_not_cancelled(cancel)?;
         let poll_url = format!("{DASHSCOPE_TASKS_URL}/{task_id}");
         let poll_resp = send_stt_cloud_get(|http| {
             http.get(&poll_url)
@@ -511,5 +518,43 @@ mod tests {
             segments.len()
         );
         assert!(full_text.ends_with('。'));
+    }
+
+    #[test]
+    fn file_asr_poll_interval_exits_when_transcribe_cancelled() {
+        use crate::project::transcribe_cancel_cmd::{
+            transcribe_cancel_by_request_id, transcribe_poll_wait, TranscribeCancelState,
+            TRANSCRIBE_CANCELLED_MESSAGE,
+        };
+        use futures_util::future::AbortHandle;
+
+        let rt = tokio::runtime::Builder::new_current_thread()
+            .enable_time()
+            .build()
+            .expect("tokio runtime");
+        rt.block_on(async {
+            let state = TranscribeCancelState::default();
+            let (handle, _reg) = AbortHandle::new_pair();
+            state
+                .0
+                .lock()
+                .unwrap()
+                .insert("dashscope-task".to_string(), handle);
+            let started = tokio::time::Instant::now();
+            let poll = transcribe_poll_wait(
+                POLL_INTERVAL,
+                Some((&state, "dashscope-task")),
+            );
+            let cancel = async {
+                tokio::time::sleep(Duration::from_millis(50)).await;
+                assert!(transcribe_cancel_by_request_id(&state, "dashscope-task").unwrap());
+            };
+            let (poll_out, _) = tokio::join!(poll, cancel);
+            assert_eq!(poll_out.unwrap_err(), TRANSCRIBE_CANCELLED_MESSAGE);
+            assert!(
+                started.elapsed() < POLL_INTERVAL,
+                "poll should abort before full Dashscope interval"
+            );
+        });
     }
 }

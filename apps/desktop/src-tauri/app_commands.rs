@@ -28,6 +28,7 @@ pub const APP_COMMANDS: &[&str] = &[
     "file_save_segments",
     "file_restore_segments_from_edit_log",
     "project_run_transcribe",
+    "project_cancel_transcribe",
     "project_transcribe_async_start",
     "project_transcribe_async_finalize",
     "project_delete",

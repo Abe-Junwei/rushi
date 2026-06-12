@@ -35,6 +35,7 @@ pub async fn post_transcribe_async_multipart(
         TranscribeRequestAuth::default(),
         timeout,
         timeline,
+        None,
     )
     .await
 }

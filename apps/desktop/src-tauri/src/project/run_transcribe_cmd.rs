@@ -25,6 +25,10 @@ use super::transcribe_timeline::{
 use super::transcribe_timeout::{
     local_transcribe_timeout_duration, long_audio_transcribe_hint, probe_audio_duration_sec,
 };
+use super::transcribe_cancel_cmd::{
+    run_transcribe_abortable, TranscribeCancelPoll, TranscribeCancelState,
+    TRANSCRIBE_CANCELLED_MESSAGE,
+};
 use super::types::RunTranscribeOutcome;
 use super::utils::{append_desktop_log_line, file_detail_from_conn, now_ms, open_db};
 use crate::online_stt_bridge::{is_allowed_stt_transcribe_url, OnlineTranscribeBridge};
@@ -43,7 +47,11 @@ impl Drop for TranscribeInFlightGuard {
 }
 
 fn record_transcribe_err(tl: &mut TranscribeTimelineRecorder, err: String) -> String {
-    if tl.snapshot().outcome != "failed" {
+    let outcome = tl.snapshot().outcome;
+    if err == TRANSCRIBE_CANCELLED_MESSAGE {
+        return err;
+    }
+    if outcome != "failed" && outcome != "cancelled" {
         let stage = infer_failed_stage_from_message(&err);
         let code = infer_transcribe_error_code(&err);
         tl.fail_stage(stage, code, &err);
@@ -263,16 +271,32 @@ pub async fn project_transcribe_async_finalize(
 #[tauri::command]
 pub async fn project_run_transcribe(
     state: State<'_, DbState>,
+    cancel_state: State<'_, TranscribeCancelState>,
     file_id: String,
     asr_base_url: Option<String>,
     online: Option<OnlineTranscribeBridge>,
+    request_id: Option<String>,
 ) -> Result<RunTranscribeOutcome, String> {
     let st = state.inner().clone();
     crate::asr_sidecar::warm::inc_transcribe_in_flight();
     let source = if online.is_some() { "online" } else { "local" };
     let mut tl = TranscribeTimelineRecorder::new(&file_id, source);
-    let out = match project_run_transcribe_inner(st.clone(), file_id, asr_base_url, online, &mut tl)
-        .await
+    if let Some(ref id) = request_id {
+        let trimmed = id.trim();
+        if !trimmed.is_empty() {
+            tl.set_job_id(trimmed);
+        }
+    }
+    let out = match project_run_transcribe_inner(
+        st.clone(),
+        cancel_state.inner(),
+        file_id,
+        asr_base_url,
+        online,
+        request_id,
+        &mut tl,
+    )
+    .await
     {
         Ok(mut out) => {
             tl.finish_success(&out.warnings);
@@ -282,7 +306,7 @@ pub async fn project_run_transcribe(
             Ok(out)
         }
         Err(e) => {
-            if tl.snapshot().outcome != "failed" {
+            if tl.snapshot().outcome != "failed" && tl.snapshot().outcome != "cancelled" {
                 record_transcribe_err(&mut tl, e.clone());
             }
             let _ = tl.persist(&st);
@@ -320,11 +344,94 @@ pub fn record_transcribe_timeline_poll_failure(
     fail_and_persist_active_timeline(state.inner(), &job_id, &error_message)
 }
 
+async fn fetch_online_transcribe_json(
+    st: &DbState,
+    tl: &mut TranscribeTimelineRecorder,
+    audio_path: &Path,
+    hotwords: &str,
+    vocabulary: &SttVocabularyPlan,
+    o: &OnlineTranscribeBridge,
+    cancel: TranscribeCancelPoll<'_>,
+) -> Result<serde_json::Value, String> {
+    let timeout_s = o.timeout_sec.unwrap_or(600).clamp(30, 600);
+    let dur = Duration::from_secs(timeout_s);
+    match o.native_adapter.as_deref() {
+        Some("openaiAudio") => {
+            tl.begin_stage(STAGE_TRANSCRIBE);
+            transcribe_openai_native(st, audio_path, vocabulary, o, dur, cancel)
+                .await
+                .map_err(|e| record_transcribe_err(tl, e))
+        }
+        Some("assemblyai") => {
+            tl.begin_stage(STAGE_TRANSCRIBE);
+            transcribe_assemblyai_native(st, audio_path, vocabulary, o, dur, cancel)
+                .await
+                .map_err(|e| record_transcribe_err(tl, e))
+        }
+        Some(adapter @ ("dashscopeAsr" | "deepgramListen")) => {
+            tl.begin_stage(STAGE_TRANSCRIBE);
+            let client = crate::stt_native::http_client();
+            let log = |line: &str| append_desktop_log_line(st, line);
+            crate::stt_native::dispatch_native(
+                adapter,
+                client,
+                audio_path,
+                o,
+                vocabulary,
+                dur,
+                &log,
+                cancel,
+            )
+            .await
+            .map_err(|e| record_transcribe_err(tl, e))
+        }
+        _ => {
+            let url = o.transcribe_url.trim();
+            if url.is_empty() {
+                return Err(record_transcribe_err(tl, "在线转写 URL 为空".to_string()));
+            }
+            if !is_allowed_stt_transcribe_url(url) {
+                return Err(record_transcribe_err(
+                    tl,
+                    "在线转写 URL 须为 https，或 http 且主机为 localhost / 127.0.0.1 / ::1"
+                        .to_string(),
+                ));
+            }
+            let auth = o.authorization.as_deref();
+            let app_k = o.app_key.as_deref().and_then(|s| {
+                let t = s.trim();
+                if t.is_empty() {
+                    None
+                } else {
+                    Some(t)
+                }
+            });
+            append_desktop_log_line(st, "INFO transcribe online_multipart");
+            post_transcribe_multipart(
+                st,
+                url,
+                audio_path,
+                hotwords.to_string(),
+                TranscribeRequestAuth {
+                    authorization: auth,
+                    app_key: app_k,
+                },
+                dur,
+                Some(tl),
+                cancel,
+            )
+            .await
+        }
+    }
+}
+
 async fn project_run_transcribe_inner(
     st: DbState,
+    cancel_state: &TranscribeCancelState,
     file_id: String,
     asr_base_url: Option<String>,
     online: Option<OnlineTranscribeBridge>,
+    request_id: Option<String>,
     tl: &mut TranscribeTimelineRecorder,
 ) -> Result<RunTranscribeOutcome, String> {
     tl.begin_stage(STAGE_PREFLIGHT);
@@ -349,8 +456,6 @@ async fn project_run_transcribe_inner(
     append_desktop_log_line(&st, "INFO transcribe_stage=preflight");
 
     let (mut v, vocabulary_pre_warnings) = if let Some(ref o) = online {
-        let timeout_s = o.timeout_sec.unwrap_or(600).clamp(30, 600);
-        let dur = Duration::from_secs(timeout_s);
         let use_multipart = !matches!(
             o.native_adapter.as_deref(),
             Some("openaiAudio" | "assemblyai" | "dashscopeAsr" | "deepgramListen")
@@ -358,72 +463,32 @@ async fn project_run_transcribe_inner(
         let channel = channel_for_online(o.native_adapter.as_deref(), use_multipart);
         let vocabulary_pre_warnings =
             vocabulary_support_warnings(channel, &vocabulary, hotwords_truncated);
-        let v = match o.native_adapter.as_deref() {
-            Some("openaiAudio") => {
-                tl.begin_stage(STAGE_TRANSCRIBE);
-                transcribe_openai_native(&st, audio_path, &vocabulary, o, dur)
-                    .await
-                    .map_err(|e| record_transcribe_err(tl, e))?
+        let cancel_poll = request_id
+            .as_deref()
+            .filter(|id| !id.trim().is_empty())
+            .map(|id| (cancel_state, id.trim()));
+        let st_ref = &st;
+        let v = run_transcribe_abortable(
+            cancel_state,
+            request_id.as_deref(),
+            fetch_online_transcribe_json(
+                st_ref,
+                tl,
+                audio_path,
+                &hotwords,
+                &vocabulary,
+                o,
+                cancel_poll,
+            ),
+        )
+        .await
+        .map_err(|e| {
+            if e == TRANSCRIBE_CANCELLED_MESSAGE {
+                append_desktop_log_line(&st, "INFO transcribe_cancelled");
+                tl.finish_cancelled();
             }
-            Some("assemblyai") => {
-                tl.begin_stage(STAGE_TRANSCRIBE);
-                transcribe_assemblyai_native(&st, audio_path, &vocabulary, o, dur)
-                    .await
-                    .map_err(|e| record_transcribe_err(tl, e))?
-            }
-            Some(adapter @ ("dashscopeAsr" | "deepgramListen")) => {
-                tl.begin_stage(STAGE_TRANSCRIBE);
-                let client = crate::stt_native::http_client();
-                let log = |line: &str| append_desktop_log_line(&st, line);
-                crate::stt_native::dispatch_native(
-                    adapter,
-                    client,
-                    audio_path,
-                    o,
-                    &vocabulary,
-                    dur,
-                    &log,
-                )
-                .await
-                .map_err(|e| record_transcribe_err(tl, e))?
-            }
-            _ => {
-                let url = o.transcribe_url.trim();
-                if url.is_empty() {
-                    return Err(record_transcribe_err(tl, "在线转写 URL 为空".to_string()));
-                }
-                if !is_allowed_stt_transcribe_url(url) {
-                    return Err(record_transcribe_err(
-                        tl,
-                        "在线转写 URL 须为 https，或 http 且主机为 localhost / 127.0.0.1 / ::1"
-                            .to_string(),
-                    ));
-                }
-                let auth = o.authorization.as_deref();
-                let app_k = o.app_key.as_deref().and_then(|s| {
-                    let t = s.trim();
-                    if t.is_empty() {
-                        None
-                    } else {
-                        Some(t)
-                    }
-                });
-                append_desktop_log_line(&st, "INFO transcribe online_multipart");
-                post_transcribe_multipart(
-                    &st,
-                    url,
-                    audio_path,
-                    hotwords.clone(),
-                    TranscribeRequestAuth {
-                        authorization: auth,
-                        app_key: app_k,
-                    },
-                    dur,
-                    Some(tl),
-                )
-                .await?
-            }
-        };
+            e
+        })?;
         (v, vocabulary_pre_warnings)
     } else {
         crate::asr_sidecar::supervisor::record_activity_global();
@@ -456,6 +521,7 @@ async fn project_run_transcribe_inner(
             TranscribeRequestAuth::default(),
             timeout,
             Some(tl),
+            None,
         )
         .await?;
         (v, vocabulary_pre_warnings)
@@ -671,4 +737,21 @@ async fn save_transcribe_segments(
         }
     }
     Ok(())
+}
+
+#[cfg(test)]
+mod cancel_err_tests {
+    use super::record_transcribe_err;
+    use crate::project::transcribe_cancel_cmd::TRANSCRIBE_CANCELLED_MESSAGE;
+    use crate::project::transcribe_timeline::{TranscribeTimelineRecorder, STAGE_TRANSCRIBE};
+
+    #[test]
+    fn record_transcribe_err_skips_cancel_message() {
+        let mut tl = TranscribeTimelineRecorder::new("file-1", "online");
+        tl.begin_stage(STAGE_TRANSCRIBE);
+        let msg = record_transcribe_err(&mut tl, TRANSCRIBE_CANCELLED_MESSAGE.to_string());
+        assert_eq!(msg, TRANSCRIBE_CANCELLED_MESSAGE);
+        assert_ne!(tl.snapshot().outcome, "failed");
+        assert!(tl.snapshot().failed_stage.is_none());
+    }
 }

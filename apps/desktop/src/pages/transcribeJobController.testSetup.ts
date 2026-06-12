@@ -2,6 +2,7 @@ import { vi } from "vitest";
 
 const transcribeJobApiMocks = vi.hoisted(() => ({
   projectRunTranscribe: vi.fn(),
+  projectCancelTranscribe: vi.fn(),
   projectLoad: vi.fn(),
   projectTranscribeAsyncStart: vi.fn(),
   projectTranscribeAsyncFinalize: vi.fn(),
@@ -12,6 +13,7 @@ const transcribeJobApiMocks = vi.hoisted(() => ({
 
 vi.mock("../tauri/projectApi", () => ({
   projectRunTranscribe: transcribeJobApiMocks.projectRunTranscribe,
+  projectCancelTranscribe: transcribeJobApiMocks.projectCancelTranscribe,
   projectLoad: transcribeJobApiMocks.projectLoad,
   projectTranscribeAsyncStart: transcribeJobApiMocks.projectTranscribeAsyncStart,
   projectTranscribeAsyncFinalize: transcribeJobApiMocks.projectTranscribeAsyncFinalize,
@@ -28,11 +30,15 @@ vi.mock("../services/asr/loopbackFetch", () => ({
   loopbackFetch: vi.fn(),
 }));
 
-vi.mock("../services/stt/sttOnlineProviderContract", () => ({
-  isSttOnlineEnabledButIncomplete: () => false,
-  isOnlineTranscribeReady: () => false,
-  tryBuildOnlineTranscribeBridgePayload: () => null,
-}));
+vi.mock("../services/stt/sttOnlineProviderContract", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../services/stt/sttOnlineProviderContract")>();
+  return {
+    ...actual,
+    isOnlineTranscribeReady: vi.fn(() => false),
+    tryBuildOnlineTranscribeBridgePayload: vi.fn(() => null),
+    ensureSttOnlineApiKeyForSession: vi.fn(async () => true),
+  };
+});
 
 vi.mock("../services/ui/toast", () => ({
   toast: {

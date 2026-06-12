@@ -2,6 +2,7 @@ import type { SegmentDto } from "../tauri/projectApi";
 import type { useTranscribeJobController } from "./useTranscribeJobController";
 import { loopbackFetch } from "../services/asr/loopbackFetch";
 import { transcribeJobTestApi } from "./transcribeJobController.testSetup";
+import * as sttContract from "../services/stt/sttOnlineProviderContract";
 import { vi } from "vitest";
 
 export const TRANSCRIBE_TEST_ASR_BASE = "http://127.0.0.1:8741";
@@ -52,6 +53,7 @@ export function baseTranscribeJobDeps(
 export function resetTranscribeJobControllerTests(): void {
   const {
     projectRunTranscribe,
+    projectCancelTranscribe,
     projectLoad,
     projectTranscribeAsyncStart,
     projectTranscribeAsyncFinalize,
@@ -61,6 +63,7 @@ export function resetTranscribeJobControllerTests(): void {
   } = transcribeJobTestApi();
 
   projectRunTranscribe.mockReset();
+  projectCancelTranscribe.mockReset();
   projectLoad.mockReset();
   projectTranscribeAsyncStart.mockReset();
   projectTranscribeAsyncFinalize.mockReset();
@@ -68,7 +71,11 @@ export function resetTranscribeJobControllerTests(): void {
   recordTranscribeTimelinePollProgress.mockReset();
   recordTranscribeTimelinePollFailure.mockReset();
   vi.mocked(loopbackFetch).mockReset();
+  vi.mocked(sttContract.isOnlineTranscribeReady).mockReturnValue(false);
+  vi.mocked(sttContract.tryBuildOnlineTranscribeBridgePayload).mockReturnValue(null);
+  vi.mocked(sttContract.ensureSttOnlineApiKeyForSession).mockResolvedValue(true);
 
+  projectCancelTranscribe.mockResolvedValue(true);
   getLastTranscribeTimeline.mockResolvedValue(null);
   recordTranscribeTimelinePollProgress.mockResolvedValue(undefined);
   recordTranscribeTimelinePollFailure.mockResolvedValue(undefined);

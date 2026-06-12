@@ -137,12 +137,18 @@ export async function projectRunTranscribe(
   fileId: string,
   asrBaseUrl?: string | null,
   online?: OnlineTranscribeBridgePayload | null,
+  requestId?: string | null,
 ): Promise<RunTranscribeOutcome> {
   return invoke<RunTranscribeOutcome>("project_run_transcribe", {
     fileId,
     asrBaseUrl: asrBaseUrl ?? null,
     online: online ?? null,
+    requestId: requestId ?? null,
   });
+}
+
+export async function projectCancelTranscribe(requestId: string): Promise<boolean> {
+  return invoke<boolean>("project_cancel_transcribe", { requestId });
 }
 
 export async function projectTranscribeAsyncStart(
