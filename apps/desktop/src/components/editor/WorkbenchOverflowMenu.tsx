@@ -17,6 +17,8 @@ export type WorkbenchOverflowMenuProps = {
   engaged?: boolean;
   /** 菜单相对触发器水平对齐 */
   align?: "center" | "end";
+  /** 下拉面板最小宽度（默认 max(176, 触发器宽)） */
+  panelMinWidth?: number;
   className?: string;
   children: ReactNode | ((close: () => void) => ReactNode);
 };
@@ -24,8 +26,9 @@ export type WorkbenchOverflowMenuProps = {
 function resolvePortalStyle(
   anchorRect: DOMRect,
   align: "center" | "end",
+  panelMinWidth?: number,
 ): { top: number; left: number; transform: string; minWidth: number } {
-  const minWidth = Math.max(176, anchorRect.width);
+  const minWidth = panelMinWidth ?? Math.max(176, anchorRect.width);
   if (align === "end") {
     return {
       top: anchorRect.bottom + 4,
@@ -48,6 +51,7 @@ export function WorkbenchOverflowMenu({
   ariaLabel,
   engaged = false,
   align = "center",
+  panelMinWidth,
   className = "",
   children,
 }: WorkbenchOverflowMenuProps) {
@@ -99,7 +103,7 @@ export function WorkbenchOverflowMenu({
     };
   }, [close, open]);
 
-  const portalStyle = open && anchorRect ? resolvePortalStyle(anchorRect, align) : null;
+  const portalStyle = open && anchorRect ? resolvePortalStyle(anchorRect, align, panelMinWidth) : null;
 
   const portalNode =
     open && portalStyle && typeof document !== "undefined"

@@ -305,13 +305,19 @@
   padding: 0;
   border: 0;
   border-radius: 9999px;
-  background: var(--notion-bg);
-  color: var(--notion-text);
+  background: var(--workbench-toggle-active-bg);
+  color: var(--workbench-toggle-active-text);
   cursor: pointer;
+  transition: background 120ms ease;
 }
 
 .waveform-playback-btn:hover:not(:disabled) {
-  background: var(--notion-sidebar-hover);
+  background: var(--workbench-toggle-active-hover-bg);
+}
+
+.waveform-playback-btn:focus-visible {
+  outline: 2px solid color-mix(in srgb, var(--zen-saffron) 55%, transparent);
+  outline-offset: 2px;
 }
 
 .waveform-playback-btn:disabled {
@@ -1031,6 +1037,134 @@
 .workbench-dropdown-item-active {
   color: var(--zen-saffron-deep);
   font-weight: 600;
+}
+
+/** 语段列表筛选下拉（工作条 · Notion 分区层次） */
+.segment-filter-menu {
+  min-width: 10.75rem;
+  padding: 4px 0 2px;
+}
+
+.segment-filter-menu-section {
+  padding-bottom: 2px;
+}
+
+.segment-filter-menu-section-head {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  padding: 6px 10px 4px;
+  font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
+  font-size: 11px;
+  font-weight: 600;
+  line-height: 1.35;
+  letter-spacing: 0.02em;
+  color: var(--notion-text-muted);
+}
+
+.segment-filter-menu-section-hint {
+  font-weight: 500;
+  font-size: 10px;
+  color: var(--notion-text-light);
+}
+
+.segment-filter-menu-list {
+  display: flex;
+  flex-direction: column;
+  margin: 0;
+  padding: 0 4px;
+  list-style: none;
+}
+
+.segment-filter-menu-option {
+  display: flex;
+  align-items: center;
+  width: 100%;
+  min-height: 28px;
+  margin: 1px 0;
+  padding: 0 8px 0 6px;
+  border-radius: 4px;
+  font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
+  font-size: 12px;
+  line-height: 1.35;
+  color: var(--notion-text);
+  cursor: pointer;
+}
+
+.segment-filter-menu-option--on .segment-filter-menu-option-label {
+  font-weight: 600;
+  color: var(--notion-text);
+}
+
+.segment-filter-menu-control {
+  flex-shrink: 0;
+  width: 12px;
+  height: 12px;
+  margin: 0;
+  accent-color: var(--zen-saffron);
+}
+
+.segment-filter-menu-option-icon {
+  display: inline-flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: center;
+  width: 14px;
+  height: 14px;
+  margin-left: 6px;
+  opacity: 0.82;
+}
+
+.segment-filter-menu-option-label {
+  min-width: 0;
+  flex: 1;
+  margin-left: 6px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.segment-filter-menu-divider {
+  height: 1px;
+  margin: 4px 10px;
+  background: color-mix(in srgb, var(--notion-divider) 85%, transparent);
+}
+
+.segment-filter-menu-footer {
+  margin-top: 4px;
+  padding: 4px;
+  border-top: 1px solid color-mix(in srgb, var(--notion-divider) 90%, transparent);
+}
+
+.segment-filter-menu-reset {
+  display: flex;
+  width: 100%;
+  align-items: center;
+  justify-content: center;
+  min-height: 28px;
+  padding: 0 8px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
+  font-size: 11px;
+  font-weight: 500;
+  line-height: 1.35;
+  color: var(--notion-text-muted);
+  cursor: pointer;
+}
+
+.segment-filter-menu-reset:hover:not(:disabled) {
+  color: var(--notion-text);
+}
+
+.segment-filter-menu-reset:disabled {
+  cursor: not-allowed;
+  opacity: 0.45;
+}
+
+.segment-filter-menu-reset svg {
+  margin-right: 4px;
 }
 
 .waveform-zoom-bar-compact {

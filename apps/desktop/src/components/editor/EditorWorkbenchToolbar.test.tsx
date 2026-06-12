@@ -31,6 +31,29 @@ vi.mock("./EditorSegmentToolbarActions", () => ({
   EditorSegmentTranscribeActions: () => <div data-testid="edit-actions" />,
 }));
 
+vi.mock("./EditorSegmentListFilterMenu", () => ({
+  EditorSegmentListFilterMenu: () => null,
+}));
+
+function makeSegmentFilter() {
+  return {
+    filter: {
+      stages: {
+        auto_transcribe: true,
+        ai_revised: true,
+        manual_transcribe: true,
+        finalized: true,
+      },
+      annotation: "all" as const,
+    },
+    filteredIndices: [],
+    isActive: false,
+    toggleStage: vi.fn(),
+    setAnnotation: vi.fn(),
+    resetFilter: vi.fn(),
+  };
+}
+
 function makeTx() {
   return {
     tierScrollRef: { current: null },
@@ -68,7 +91,12 @@ function makeTx() {
 describe("EditorWorkbenchToolbar", () => {
   it("uses compact solo layout when hasAudio is false", () => {
     const { container, queryByTestId } = render(
-      <EditorWorkbenchToolbar controller={makeController()} tx={makeTx()} hasAudio={false} />,
+      <EditorWorkbenchToolbar
+        controller={makeController()}
+        tx={makeTx()}
+        hasAudio={false}
+        segmentFilter={makeSegmentFilter()}
+      />,
     );
 
     expect(container.querySelector(".editor-workbench-toolbar--no-audio")).toBeTruthy();
@@ -82,7 +110,12 @@ describe("EditorWorkbenchToolbar", () => {
 
   it("renders transport and zoom when hasAudio is true", () => {
     const { container, getByTestId } = render(
-      <EditorWorkbenchToolbar controller={makeController()} tx={makeTx()} hasAudio />,
+      <EditorWorkbenchToolbar
+        controller={makeController()}
+        tx={makeTx()}
+        hasAudio
+        segmentFilter={makeSegmentFilter()}
+      />,
     );
 
     expect(container.querySelector(".editor-workbench-toolbar--no-audio")).toBeNull();

@@ -1,5 +1,6 @@
 import { Pause, Play } from "lucide-react";
 import { useWorkbenchToolbarCompactFromElement } from "../../hooks/useWorkbenchToolbarCompact";
+import type { SegmentListFilterApi } from "../../hooks/useSegmentListFilter";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
 import { resolveTierViewportMetrics } from "../../utils/waveformViewport";
@@ -8,12 +9,14 @@ import { WaveformGlobalPlaybackSpeed } from "../WaveformGlobalPlaybackSpeed";
 import { WaveformPlaybackScrollFollowModeControl } from "../WaveformPlaybackScrollFollowMode";
 import { WaveformPlaybackTime } from "../WaveformPlaybackTime";
 import { WaveformZoomBar } from "../WaveformZoomBar";
+import { EditorSegmentListFilterMenu } from "./EditorSegmentListFilterMenu";
 import { EditorSegmentTranscribeActions } from "./EditorSegmentToolbarActions";
 
 interface EditorWorkbenchToolbarProps {
   controller: ProjectControllerApi;
   tx: TranscriptionLayerApi;
   hasAudio: boolean;
+  segmentFilter: SegmentListFilterApi;
 }
 
 /** 波形区与语段区之间的统一单行工具条（左播放滚屏 / 中转录编辑 / 右缩放）。 */
@@ -21,8 +24,22 @@ export function EditorWorkbenchToolbar({
   controller: c,
   tx,
   hasAudio,
+  segmentFilter,
 }: EditorWorkbenchToolbarProps) {
   const { trackRef, compact: compactLayout } = useWorkbenchToolbarCompactFromElement();
+  const filterMenu =
+    c.segments.length > 0 ? (
+      <EditorSegmentListFilterMenu
+        filter={segmentFilter.filter}
+        filteredCount={segmentFilter.filteredIndices.length}
+        totalCount={c.segments.length}
+        busy={c.busy}
+        isActive={segmentFilter.isActive}
+        onToggleStage={segmentFilter.toggleStage}
+        onAnnotationChange={segmentFilter.setAnnotation}
+        onReset={segmentFilter.resetFilter}
+      />
+    ) : null;
 
   if (!hasAudio) {
     return (
@@ -34,6 +51,7 @@ export function EditorWorkbenchToolbar({
           <div className="workbench-toolbar-center workbench-toolbar-center--solo">
             <div className="workbench-toolbar-group workbench-toolbar-group--solo waveform-toolbar-subzone waveform-toolbar-transcribe">
               <EditorSegmentTranscribeActions controller={c} compactLayout={compactLayout} />
+              {filterMenu}
             </div>
           </div>
         </div>
@@ -97,6 +115,7 @@ export function EditorWorkbenchToolbar({
 
         <div className="workbench-toolbar-right">
           <div className="workbench-toolbar-group waveform-toolbar-zone waveform-toolbar-viewport">
+            {filterMenu}
             <WaveformZoomBar
                 disabled={c.busy}
                 isReady={tx.isReady}

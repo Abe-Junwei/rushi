@@ -38,6 +38,7 @@ interface EditorSegmentListProps {
   tx: TranscriptionLayerApi;
   appearance: AppearanceApi;
   listRef: React.RefObject<HTMLDivElement | null>;
+  filteredIndices: number[];
   onOpenSegmentContextMenu: (menu: SegmentCtxMenuState) => void;
 }
 
@@ -56,6 +57,7 @@ export function EditorSegmentList({
   tx,
   appearance: a,
   listRef: segmentListRef,
+  filteredIndices,
   onOpenSegmentContextMenu,
 }: EditorSegmentListProps) {
   const scrollMetricsRef = useRef(readScrollMetrics(null));
@@ -65,7 +67,10 @@ export function EditorSegmentList({
 
   const rowMinHeightPx = segmentListRowMinHeightPx(tx.transcriptRowHeightPx);
   const itemStridePx = segmentListItemStridePx(rowMinHeightPx);
-  const useVirtualList = c.segments.length >= SEGMENT_LIST_VIRTUALIZE_MIN_COUNT;
+  const displayCount = filteredIndices.length;
+  const useVirtualList = displayCount >= SEGMENT_LIST_VIRTUALIZE_MIN_COUNT;
+  const selectedDisplayIndex =
+    c.selectedIdx >= 0 ? filteredIndices.indexOf(c.selectedIdx) : -1;
 
   const scheduleScrollEpochBump = useCallback(() => {
     if (scrollEpochRafRef.current != null) return;
@@ -105,13 +110,13 @@ export function EditorSegmentList({
       }
       observer.disconnect();
     };
-  }, [bumpScrollEpoch, itemStridePx, rowMinHeightPx, segmentListRef, c.segments.length, useVirtualList]);
+  }, [bumpScrollEpoch, itemStridePx, rowMinHeightPx, segmentListRef, displayCount, useVirtualList]);
 
   useLayoutEffect(() => {
     const root = segmentListRef.current;
-    if (!root || c.selectedIdx < 0) return;
+    if (!root || selectedDisplayIndex < 0) return;
 
-    const scrollKey = `${c.currentFileId ?? ""}:${c.selectedIdx}:${c.segments.length}`;
+    const scrollKey = `${c.currentFileId ?? ""}:${c.selectedIdx}:${displayCount}:${filteredIndices.join(",")}`;
     if (lastSelectedScrollKeyRef.current === scrollKey) return;
     lastSelectedScrollKeyRef.current = scrollKey;
 
@@ -119,7 +124,7 @@ export function EditorSegmentList({
     const nextScrollTop = scrollSegmentListIndexIntoView({
       scrollTop: root.scrollTop,
       viewportHeight: root.clientHeight,
-      index: c.selectedIdx,
+      index: selectedDisplayIndex,
       rowMinHeightPx,
       itemStridePx,
       align: "minimal",
@@ -147,10 +152,12 @@ export function EditorSegmentList({
     bumpScrollEpoch,
     c.currentFileId,
     c.selectedIdx,
-    c.segments.length,
+    displayCount,
+    filteredIndices,
     itemStridePx,
     rowMinHeightPx,
     segmentListRef,
+    selectedDisplayIndex,
   ]);
 
   useLayoutEffect(() => {
@@ -184,7 +191,7 @@ export function EditorSegmentList({
     if (!useVirtualList) {
       return {
         startIndex: 0,
-        endIndex: c.segments.length,
+        endIndex: displayCount,
         paddingTopPx: 0,
         paddingBottomPx: 0,
         totalHeightPx: 0,
@@ -195,68 +202,72 @@ export function EditorSegmentList({
       scrollTop,
       viewportHeight,
       itemStridePx,
-      totalCount: c.segments.length,
+      totalCount: displayCount,
       overscan: SEGMENT_LIST_VIRTUAL_OVERSCAN,
     });
-    if (c.selectedIdx < 0) return base;
-    return maybePinSegmentListVirtualWindow(base, c.selectedIdx, c.segments.length, itemStridePx, {
+    if (selectedDisplayIndex < 0) return base;
+    return maybePinSegmentListVirtualWindow(base, selectedDisplayIndex, displayCount, itemStridePx, {
       overscan: SEGMENT_LIST_VIRTUAL_OVERSCAN,
     });
-  }, [scrollEpoch, useVirtualList, itemStridePx, c.segments.length, c.selectedIdx]);
+  }, [scrollEpoch, useVirtualList, itemStridePx, displayCount, selectedDisplayIndex]);
 
   const savedSnapshot = c.getSavedSnapshot();
 
-  const renderSegmentRow = (s: (typeof c.segments)[number], i: number) => (
-    <SegmentTextListRow
-      key={s.uid ? `${s.uid}#${i}` : `seg-${i}`}
-      segment={s}
-      index={i}
-      selected={i === c.selectedIdx}
-      inSelection={tx.isIndexInSelection(i) && i !== c.selectedIdx}
-      busy={c.busy}
-      transcriptFontPx={tx.transcriptFontPx}
-      segmentRowHeightPx={tx.transcriptRowHeightPx}
-      transcriptFontFamily={a.transcriptFontFamily}
-      transcriptFontWeight={a.transcriptFontWeight}
-      transcriptFontItalic={a.transcriptFontItalic}
-      segmentMetaWidthPx={a.transcriptMetaWidthPx}
-      onSegmentMetaWidthPointerDown={a.beginTranscriptMetaWidthDrag}
-      onSegmentRowHeightPointerDown={tx.beginTranscriptRowHeightDrag}
-      selectSegmentAt={tx.selectSegmentFromList}
-      onTimestampPointerDown={tx.onTimestampPointerDown}
-      onRowRangePointerDown={tx.onSegmentListRangePointerDown}
-      consumeRowRangeClickSuppress={tx.consumeSegmentListRangeClickSuppress}
-      updateSegmentText={c.updateSegmentText}
-      onTextareaKeyDown={tx.onSegmentTextareaKeyDown}
-      onOpenContextMenu={onOpenRowContextMenu}
-      onOpenTextContextMenu={(e, selectionText) =>
-        onOpenRowContextMenu(e, i, (s.start_sec + s.end_sec) / 2, selectionText)
-      }
-      onRevealSelectedSegment={tx.revealSelectedSegmentInViewport}
-      findReplaceHighlight={
-        c.findReplaceEditorHighlight?.segmentIdx === i
-          ? {
-              charStart: c.findReplaceEditorHighlight.charStart,
-              charEnd: c.findReplaceEditorHighlight.charEnd,
-            }
-          : null
-      }
-      correctionRulesHighlight={
-        c.correctionRulesEditorHighlight?.segmentIdx === i
-          ? {
-              charStart: c.correctionRulesEditorHighlight.charStart,
-              charEnd: c.correctionRulesEditorHighlight.charEnd,
-            }
-          : null
-      }
-      spansForText={c.editorSpansForText}
-      onCorrectableSpanClick={(span, event) =>
-        c.openEditorCorrectPopover(i, span, event.clientX, event.clientY)
-      }
-      hasUnsavedDraft={segmentHasUnsavedText(c.segments, savedSnapshot, i)}
-      onOpenAnnotation={c.openSegmentAnnotationDialog}
-    />
-  );
+  const renderSegmentRow = (segIdx: number) => {
+    const s = c.segments[segIdx];
+    if (!s) return null;
+    return (
+      <SegmentTextListRow
+        key={s.uid ? `${s.uid}#${segIdx}` : `seg-${segIdx}`}
+        segment={s}
+        index={segIdx}
+        selected={segIdx === c.selectedIdx}
+        inSelection={tx.isIndexInSelection(segIdx) && segIdx !== c.selectedIdx}
+        busy={c.busy}
+        transcriptFontPx={tx.transcriptFontPx}
+        segmentRowHeightPx={tx.transcriptRowHeightPx}
+        transcriptFontFamily={a.transcriptFontFamily}
+        transcriptFontWeight={a.transcriptFontWeight}
+        transcriptFontItalic={a.transcriptFontItalic}
+        segmentMetaWidthPx={a.transcriptMetaWidthPx}
+        onSegmentMetaWidthPointerDown={a.beginTranscriptMetaWidthDrag}
+        onSegmentRowHeightPointerDown={tx.beginTranscriptRowHeightDrag}
+        selectSegmentAt={tx.selectSegmentFromList}
+        onTimestampPointerDown={tx.onTimestampPointerDown}
+        onRowRangePointerDown={tx.onSegmentListRangePointerDown}
+        consumeRowRangeClickSuppress={tx.consumeSegmentListRangeClickSuppress}
+        updateSegmentText={c.updateSegmentText}
+        onTextareaKeyDown={tx.onSegmentTextareaKeyDown}
+        onOpenContextMenu={onOpenRowContextMenu}
+        onOpenTextContextMenu={(e, selectionText) =>
+          onOpenRowContextMenu(e, segIdx, (s.start_sec + s.end_sec) / 2, selectionText)
+        }
+        onRevealSelectedSegment={tx.revealSelectedSegmentInViewport}
+        findReplaceHighlight={
+          c.findReplaceEditorHighlight?.segmentIdx === segIdx
+            ? {
+                charStart: c.findReplaceEditorHighlight.charStart,
+                charEnd: c.findReplaceEditorHighlight.charEnd,
+              }
+            : null
+        }
+        correctionRulesHighlight={
+          c.correctionRulesEditorHighlight?.segmentIdx === segIdx
+            ? {
+                charStart: c.correctionRulesEditorHighlight.charStart,
+                charEnd: c.correctionRulesEditorHighlight.charEnd,
+              }
+            : null
+        }
+        spansForText={c.editorSpansForText}
+        onCorrectableSpanClick={(span, event) =>
+          c.openEditorCorrectPopover(segIdx, span, event.clientX, event.clientY)
+        }
+        hasUnsavedDraft={segmentHasUnsavedText(c.segments, savedSnapshot, segIdx)}
+        onOpenAnnotation={c.openSegmentAnnotationDialog}
+      />
+    );
+  };
 
   if (c.segments.length === 0) {
     return (
@@ -266,9 +277,20 @@ export function EditorSegmentList({
     );
   }
 
-  const visibleSegments = useVirtualList
-    ? c.segments.slice(virtualWindow.startIndex, virtualWindow.endIndex)
-    : c.segments;
+  if (displayCount === 0) {
+    return (
+      <div
+        ref={segmentListRef}
+        className="flex h-0 min-h-0 flex-1 items-center justify-center px-6 text-[14px] leading-relaxed text-notion-text-muted"
+      >
+        无匹配语段。
+      </div>
+    );
+  }
+
+  const visibleIndices = useVirtualList
+    ? filteredIndices.slice(virtualWindow.startIndex, virtualWindow.endIndex)
+    : filteredIndices;
 
   return (
     <div
@@ -296,11 +318,11 @@ export function EditorSegmentList({
               transform: `translate3d(0, ${virtualWindow.paddingTopPx}px, 0)`,
             }}
           >
-            {visibleSegments.map((s, offset) => renderSegmentRow(s, virtualWindow.startIndex + offset))}
+            {visibleIndices.map((segIdx) => renderSegmentRow(segIdx))}
           </div>
         </div>
       ) : (
-        <div className="space-y-2.5">{visibleSegments.map((s, i) => renderSegmentRow(s, i))}</div>
+        <div className="space-y-2.5">{visibleIndices.map((segIdx) => renderSegmentRow(segIdx))}</div>
       )}
     </div>
   );

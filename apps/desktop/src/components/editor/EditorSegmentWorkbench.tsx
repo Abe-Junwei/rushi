@@ -5,17 +5,20 @@ import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
 import type { useEditorTranscriptAppearance } from "./useEditorTranscriptAppearance";
 import type { SegmentContextMenuOpen } from "../../utils/segmentContextMenuModel";
 import { EditorSegmentList } from "./EditorSegmentList";
+
 type AppearanceApi = ReturnType<typeof useEditorTranscriptAppearance>;
 interface EditorSegmentWorkbenchProps {
   controller: ProjectControllerApi;
   tx: TranscriptionLayerApi;
   appearance: AppearanceApi;
+  filteredIndices: number[];
   onOpenSegmentContextMenu: (menu: SegmentContextMenuOpen) => void;
 }
 export const EditorSegmentWorkbench = memo(function EditorSegmentWorkbench({
   controller: c,
   tx,
   appearance: a,
+  filteredIndices,
   onOpenSegmentContextMenu,
 }: EditorSegmentWorkbenchProps) {
   return (
@@ -25,6 +28,7 @@ export const EditorSegmentWorkbench = memo(function EditorSegmentWorkbench({
         tx={tx}
         appearance={a}
         listRef={tx.segmentListRef}
+        filteredIndices={filteredIndices}
         onOpenSegmentContextMenu={onOpenSegmentContextMenu}
       />
       <ResizeBottomHit
@@ -46,6 +50,7 @@ function areEditorSegmentWorkbenchPropsEqual(
     prev.controller.currentFileId === next.controller.currentFileId &&
     prev.controller.segments === next.controller.segments &&
     prev.controller.segments.length === next.controller.segments.length &&
+    prev.filteredIndices === next.filteredIndices &&
     prev.controller.findReplaceEditorHighlight === next.controller.findReplaceEditorHighlight &&
     prev.controller.correctionRulesEditorHighlight === next.controller.correctionRulesEditorHighlight &&
     prev.controller.updateSegmentText === next.controller.updateSegmentText &&

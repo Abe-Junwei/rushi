@@ -31,6 +31,7 @@ import { DeleteSegmentConfirmDialog } from "./editor/DeleteSegmentConfirmDialog"
 import { useEditorEditHistory } from "./editor/useEditorEditHistory";
 import { useEditorTranscriptAppearance } from "./editor/useEditorTranscriptAppearance";
 import { useEditorFooterShortcutHintRotation } from "../hooks/useEditorFooterShortcutHintRotation";
+import { useSegmentListFilter } from "../hooks/useSegmentListFilter";
 
 interface EditorViewProps {
   controller: ProjectControllerApi;
@@ -242,6 +243,7 @@ export function EditorView({
   );
   const footerCenterLabel = statusCenterLabel || shortcutHint;
   const footerCenterHintKind = statusCenterLabel ? "status" : shortcutHint ? "shortcut" : "none";
+  const segmentFilter = useSegmentListFilter(c.currentFileId, c.segments);
 
   const editorDialogs = (
     <>
@@ -317,12 +319,18 @@ export function EditorView({
           </div>
         )}
 
-        <EditorWorkbenchToolbar controller={c} tx={tx} hasAudio={Boolean(c.audioSrc)} />
+        <EditorWorkbenchToolbar
+          controller={c}
+          tx={tx}
+          hasAudio={Boolean(c.audioSrc)}
+          segmentFilter={segmentFilter}
+        />
 
         <EditorSegmentWorkbench
           controller={c}
           tx={tx}
           appearance={appearance}
+          filteredIndices={segmentFilter.filteredIndices}
           onOpenSegmentContextMenu={onOpenSegmentContextMenu}
         />
       </main>
