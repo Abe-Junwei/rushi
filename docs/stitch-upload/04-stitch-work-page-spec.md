@@ -1,8 +1,8 @@
 # P1 校对工作页 — Stitch 重设计说明
 
-本文描述 **已打开项目**（`current != null`）时的界面，对应代码 **`workspacePhase === "C"`**。包含：**左轨（项目 / 新建另一项目 / 术语库 / 诊断）**、**主区工具条**、**转写提示**、**波形 + 时间轴语段列表**、**底栏**、**忙碌遮罩**。欢迎页说明见同目录 [`stitch-welcome-page-spec.md`](./03-stitch-welcome-page-spec.md)。
+本文描述 **已打开项目**（`current != null`）时的界面，对应代码 **`workspacePhase === "C"`**。包含：**左轨（项目 / 新建另一项目 / 术语库 / 诊断）**、**主区工具条**、**转写提示**、**波形 + 时间轴语段列表**、**底栏**、**忙碌遮罩**。欢迎页说明见同目录 [`stitch-welcome-page-spec.md`](./stitch-welcome-page-spec.md)。
 
-实现参考：[`src/components/ProjectPanel.tsx`](../../apps/desktop/src/components/ProjectPanel.tsx)（`workspacePhase === "C"` 分支、`TIMELINE_PX_PER_SEC`、`useProjectWaveform`）。
+实现参考：[`src/components/ProjectPanel.tsx`](../src/components/ProjectPanel.tsx)（`workspacePhase === "C"` 分支、`TIMELINE_PX_PER_SEC`、`useProjectWaveform`）。
 
 ---
 
@@ -37,7 +37,7 @@
 
 ## 3. 设计令牌
 
-与欢迎页相同，见 [`stitch-welcome-page-spec.md`](./03-stitch-welcome-page-spec.md) 第 3 节。工作页额外强调：
+与欢迎页相同，见 [`stitch-welcome-page-spec.md`](./stitch-welcome-page-spec.md) 第 3 节。工作页额外强调：
 
 - **波形条背景**：深色条（实现为 `bg-zen-ink`），上为 **WaveSurfer 画布**（固定高度约 `6rem`），下为 **播放控制行**（白半透明文字）。
 - **语段行**：浅分割底边；**选中**行浅 saffron 底；**低置信**行浅 ochre 底（与选中叠加时优先可读性）。

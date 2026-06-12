@@ -1,8 +1,9 @@
 import { RefreshCw } from "lucide-react";
-import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../../config/controlStyles";
-import { PANEL_CONTROL_TYPOGRAPHY, PANEL_TYPOGRAPHY } from "../../config/typography";
+import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY, ENV_COMPACT_BTN } from "../../config/controlStyles";
+import { PANEL_TYPOGRAPHY } from "../../config/typography";
 import type { useGlossaryMineController } from "../../pages/useGlossaryMineController";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";
+import { GLOSSARY_CARD, GLOSSARY_CHECKBOX, GLOSSARY_ERROR_TEXT } from "./glossaryPanelStyles";
 
 type MineApi = ReturnType<typeof useGlossaryMineController>;
 
@@ -18,7 +19,7 @@ export function GlossaryMineSection({ mine, disabled }: Props) {
 
   return (
     <section
-      className="flex flex-col gap-3 rounded-md border border-notion-divider bg-notion-callout-bg px-4 py-4"
+      className={`${GLOSSARY_CARD} flex flex-col gap-3 px-4 py-4`}
       aria-labelledby="glossary-mine-heading"
     >
       <div className="flex flex-wrap items-center justify-between gap-2">
@@ -32,7 +33,7 @@ export function GlossaryMineSection({ mine, disabled }: Props) {
         </div>
         <button
           type="button"
-          className="inline-flex min-h-[32px] items-center gap-1.5 rounded-lg border border-notion-border bg-notion-bg px-2.5 text-[11px] font-medium text-notion-text-muted hover:bg-notion-sidebar-hover hover:text-notion-text disabled:opacity-40"
+          className={ENV_COMPACT_BTN}
           disabled={disabled}
           onClick={() => void mine.refresh()}
           aria-label="刷新推荐列表"
@@ -42,11 +43,7 @@ export function GlossaryMineSection({ mine, disabled }: Props) {
         </button>
       </div>
 
-      {mine.loadError ? (
-        <p className="rounded-md border border-zen-cinnabar/25 bg-zen-cinnabar/10 px-3 py-2 text-sm text-zen-cinnabar">
-          {mine.loadError}
-        </p>
-      ) : null}
+      {mine.loadError ? <p className={GLOSSARY_ERROR_TEXT}>{mine.loadError}</p> : null}
 
       {mine.rows.length > 0 ? (
         <>
@@ -57,7 +54,7 @@ export function GlossaryMineSection({ mine, disabled }: Props) {
                 checked={mine.allChecked}
                 disabled={disabled}
                 onChange={mine.toggleAll}
-                className="h-4 w-4 rounded border-notion-border text-zen-saffron focus:ring-zen-saffron/30"
+                className={GLOSSARY_CHECKBOX}
               />
               全选（{mine.visibleCheckedCount}/{mine.rows.length}）
             </label>
@@ -79,11 +76,11 @@ export function GlossaryMineSection({ mine, disabled }: Props) {
             </button>
           </div>
 
-          <ul className="m-0 list-none space-y-2 p-0">
+          <ul className="m-0 list-none divide-y divide-notion-divider/60 p-0">
             {mine.rows.map((row) => (
               <li
                 key={row.afterText}
-                className="flex flex-col gap-2 rounded-md bg-notion-bg/90 px-3 py-2.5 sm:flex-row sm:items-center sm:justify-between"
+                className="flex flex-col gap-2 py-2.5 sm:flex-row sm:items-center sm:justify-between"
               >
                 <label className="flex min-w-0 flex-1 cursor-pointer items-start gap-2">
                   <input
@@ -91,7 +88,7 @@ export function GlossaryMineSection({ mine, disabled }: Props) {
                     checked={mine.checked.has(row.afterText)}
                     disabled={disabled}
                     onChange={() => mine.toggleChecked(row.afterText)}
-                    className="mt-0.5 h-4 w-4 shrink-0 rounded border-notion-border text-zen-saffron focus:ring-zen-saffron/30"
+                    className={`mt-0.5 shrink-0 ${GLOSSARY_CHECKBOX}`}
                   />
                   <span className="min-w-0">
                     <span className="text-sm font-medium text-notion-text">「{row.afterText}」</span>
@@ -106,7 +103,7 @@ export function GlossaryMineSection({ mine, disabled }: Props) {
                 <div className="flex shrink-0 justify-end gap-2">
                   <button
                     type="button"
-                    className={`min-h-[32px] rounded-md px-2.5 text-[11px] font-medium text-notion-text-muted hover:bg-notion-sidebar-hover hover:text-notion-text disabled:opacity-40 ${PANEL_CONTROL_TYPOGRAPHY.compactInput}`}
+                    className={ENV_COMPACT_BTN}
                     disabled={disabled}
                     onClick={() => mine.dismissOne(row)}
                   >

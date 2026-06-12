@@ -22,15 +22,15 @@ export function GlossaryPage({ busy }: GlossaryPageProps) {
       className="flex min-h-0 flex-1 flex-col overflow-y-auto bg-notion-bg px-10 py-8"
       data-purpose="hotwords-memory-page"
     >
-      <div className="mx-auto flex w-full max-w-4xl flex-col gap-10">
+      <div className="mx-auto flex w-full max-w-4xl flex-col gap-8">
         <header className="flex flex-col gap-2 border-b border-notion-divider pb-6">
-          <div className="flex items-center gap-3">
-            <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-zen-saffron/15 text-zen-saffron">
+          <div className="flex items-start gap-3">
+            <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-md bg-zen-saffron/15 text-zen-saffron">
               <BookOpen className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
             </div>
-            <div>
-              <h1 className="m-0 text-[18px] font-semibold leading-[1.4] text-notion-text">热词与记忆</h1>
-              <p className={PANEL_TYPOGRAPHY.sectionDescription}>
+            <div className="flex min-w-0 flex-col gap-1">
+              <h1 className={PANEL_TYPOGRAPHY.envPageTitle}>热词与记忆</h1>
+              <p className={PANEL_TYPOGRAPHY.envPageSubtitle}>
                 <strong className="font-medium text-notion-text">转写词汇表（Custom Vocabulary）</strong>
                 ：只收录希望听成的正形，纳入热词后在下次 ASR 拉取时提交。
                 <strong className="font-medium text-notion-text">纠错记忆</strong>
@@ -41,6 +41,34 @@ export function GlossaryPage({ busy }: GlossaryPageProps) {
         </header>
 
         <GlossaryHotwordsSummarySection g={page.g} />
+
+        <GlossaryTermManagementSection
+          g={page.g}
+          disabled={page.disabled}
+          deleteConfirmId={page.deleteConfirmId}
+          headerCheckboxRef={page.headerCheckboxRef}
+          termEditorRef={page.termEditorRef}
+          termEditorOpen={page.termEditorOpen}
+          openTermEditor={page.openTermEditor}
+          closeTermEditor={page.closeTermEditor}
+          handleSelectTerm={page.handleSelectTerm}
+          handleDeleteFromEditor={page.handleDeleteFromEditor}
+          handleRowDelete={page.handleRowDelete}
+        />
+
+        <GlossaryMineSection mine={page.mine} disabled={page.disabled} />
+
+        <GlossaryCorrectionMemorySection
+          mem={page.mem}
+          disabled={page.disabled}
+          memoryHeaderCheckboxRef={page.memoryHeaderCheckboxRef}
+          memoryEditorRef={page.memoryEditorRef}
+          memEditorOpen={page.memEditorOpen}
+          openMemEditor={page.openMemEditor}
+          closeMemEditor={page.closeMemEditor}
+          handleSelectMemoryRow={page.handleSelectMemoryRow}
+          memoryConflicts={page.memoryConflicts}
+        />
 
         <GlossaryLexiconBundleSection
           lex={page.lex}
@@ -73,26 +101,6 @@ export function GlossaryPage({ busy }: GlossaryPageProps) {
             onConfirm={() => void page.lex.confirmImportWithResolutions()}
           />
         ) : null}
-
-        <GlossaryMineSection mine={page.mine} disabled={page.disabled} />
-
-        <GlossaryTermManagementSection
-          g={page.g}
-          disabled={page.disabled}
-          deleteConfirmId={page.deleteConfirmId}
-          headerCheckboxRef={page.headerCheckboxRef}
-          termEditorRef={page.termEditorRef}
-          scrollToTermEditor={page.scrollToTermEditor}
-          handleDeleteFromEditor={page.handleDeleteFromEditor}
-          handleRowDelete={page.handleRowDelete}
-        />
-
-        <GlossaryCorrectionMemorySection
-          mem={page.mem}
-          disabled={page.disabled}
-          memoryHeaderCheckboxRef={page.memoryHeaderCheckboxRef}
-          memoryConflicts={page.memoryConflicts}
-        />
       </div>
     </div>
   );

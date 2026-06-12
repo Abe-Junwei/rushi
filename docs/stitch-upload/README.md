@@ -2,7 +2,40 @@
 
 本文件夹包含上传到 Google Stitch 的素材。**设计真源：** 仓库根 [`DESIGN.md`](../../DESIGN.md)（Notion Zen）。
 
-## 欢迎页 × 项目 Hub 统一重设计（本轮推荐）
+## 热词与记忆 Layout v2（本轮推荐）
+
+| 编号 | 文件名 | 类型 | 说明 |
+|------|--------|------|------|
+| 01 | `01-DESIGN.md` | 设计系统 | 由 `prepare-stitch-upload.sh` 从根 `DESIGN.md` 生成 |
+| 25 | `25-stitch-glossary-page-spec.md` | 页面 spec | 左 nav + Master–Detail；G1–G12 Frame + 窄屏/对话框 |
+| 26 | `26-stitch-glossary-page-layout.html` | 静态原型 | G1/G2/G4/G6/G7 + G9/G10/G12 对照 HTML |
+
+### 上传组合
+
+```text
+01-DESIGN.md
+25-stitch-glossary-page-spec.md
+26-stitch-glossary-page-layout.html
+```
+
+### Stitch 使用方式
+
+1. 运行 `bash scripts/prepare-stitch-upload.sh` 刷新上传包。
+2. 上传上述三文件。
+3. 主提示词：复制 `25-stitch-glossary-page-spec.md` §14 英文块（或 §14.2 中文块）。
+4. 要求 Stitch **对照 `26-stitch-glossary-page-layout.html` 的 58/42 分栏与左 nav 192px** 出图。
+5. 必出 **G1（词汇表默认）与 G6（纠错记忆）**；窄屏补 **G9–G11**；对话框补 **G12（批量添加）**。
+6. 定稿后按 spec §16 回写 `GlossaryPage` 与 workspace 组件。
+
+本地预览 HTML：
+
+```bash
+open apps/desktop/stitch-glossary-page-layout.html
+```
+
+---
+
+## 欢迎页 × 项目 Hub 统一重设计
 
 | 编号 | 文件名 | 类型 | 说明 |
 |------|--------|------|------|

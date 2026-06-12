@@ -1,5 +1,5 @@
-import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../../config/controlStyles";
-import { PANEL_CONTROL_TYPOGRAPHY, PANEL_TYPOGRAPHY } from "../../config/typography";
+import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY, CONTROL_TEXT_INPUT } from "../../config/controlStyles";
+import { PANEL_TYPOGRAPHY } from "../../config/typography";
 import { CORRECTION_MEMORY_STABLE_HIT } from "../../services/editor/learningCorrectionRuleHints";
 import type { LexiconBundleExportPreview } from "../../tauri/lexiconBundleApi";
 import {
@@ -95,7 +95,7 @@ export function LexiconBundleExportDialog({
               disabled={disabled || previewLoading}
               onChange={(e) => onExportLabelChange(e.target.value)}
               placeholder="例如：栏目 A / 用户 B"
-              className={`min-h-[36px] rounded-lg border border-notion-border bg-notion-bg px-3 outline-none focus:border-zen-saffron focus:ring-2 focus:ring-zen-saffron/30 disabled:opacity-50 ${PANEL_CONTROL_TYPOGRAPHY.compactInput}`}
+              className={CONTROL_TEXT_INPUT}
             />
           </label>
           {hasCleanupHints ? (

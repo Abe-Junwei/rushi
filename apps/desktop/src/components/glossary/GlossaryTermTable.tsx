@@ -3,6 +3,16 @@ import { Flame, Trash2 } from "lucide-react";
 import { PANEL_TYPOGRAPHY } from "../../config/typography";
 import type { GlossaryTermDto } from "../../tauri/glossaryApi";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";
+import {
+  GLOSSARY_CHECKBOX,
+  GLOSSARY_TABLE,
+  GLOSSARY_TABLE_HEAD_ROW,
+  GLOSSARY_TABLE_TH,
+  GLOSSARY_TABLE_WRAP,
+  glossaryRowActionsClass,
+  glossaryRowDeleteBtnClass,
+  glossaryTableRowClass,
+} from "./glossaryPanelStyles";
 
 type GlossaryTermTableProps = {
   rows: GlossaryTermDto[];
@@ -51,10 +61,10 @@ export function GlossaryTermTable({
   onRowDelete,
 }: GlossaryTermTableProps) {
   return (
-    <div className="overflow-x-auto rounded-md border border-notion-divider">
-      <table className="w-full min-w-[720px] border-collapse text-left text-[12px]">
+    <div className={GLOSSARY_TABLE_WRAP}>
+      <table className={`${GLOSSARY_TABLE} min-w-[720px]`}>
         <thead>
-          <tr className="border-b border-notion-divider bg-notion-callout-bg text-notion-text-muted">
+          <tr className={GLOSSARY_TABLE_HEAD_ROW}>
             <th className="w-10 px-2 py-2">
               <input
                 ref={headerCheckboxRef}
@@ -63,18 +73,18 @@ export function GlossaryTermTable({
                 onChange={onToggleVisibleSelection}
                 disabled={disabled || rows.length === 0}
                 aria-label="全选当前列表"
-                className="h-4 w-4 rounded border-notion-border text-zen-saffron focus:ring-zen-saffron/30"
+                className={GLOSSARY_CHECKBOX}
               />
             </th>
             <th className="w-14 px-2 py-2 font-semibold" title="纳入下次转写（热词）">
               热词
             </th>
-            <th className="px-3 py-2 font-semibold">主术语</th>
-            <th className="px-3 py-2 font-semibold">别名</th>
-            <th className="px-3 py-2 font-semibold">领域</th>
-            <th className="px-3 py-2 font-semibold">备注</th>
-            <th className="px-3 py-2 font-semibold">更新</th>
-            <th className="px-3 py-2 font-semibold" aria-label="操作" />
+            <th className={GLOSSARY_TABLE_TH}>主术语</th>
+            <th className={GLOSSARY_TABLE_TH}>别名</th>
+            <th className={GLOSSARY_TABLE_TH}>领域</th>
+            <th className={GLOSSARY_TABLE_TH}>备注</th>
+            <th className={GLOSSARY_TABLE_TH}>更新</th>
+            <th className={GLOSSARY_TABLE_TH} aria-label="操作" />
           </tr>
         </thead>
         <tbody>
@@ -84,13 +94,7 @@ export function GlossaryTermTable({
             const confirming = deleteConfirmId === row.id;
             const hotwordOn = row.hotword_enabled !== false;
             return (
-              <tr
-                key={row.id}
-                className={[
-                  "border-b border-notion-divider/60 transition-colors last:border-b-0",
-                  editing ? "bg-zen-saffron/10" : checked ? "bg-notion-callout-bg/80" : "bg-notion-bg hover:bg-notion-sidebar-hover/60",
-                ].join(" ")}
-              >
+              <tr key={row.id} className={glossaryTableRowClass({ active: editing, checked })}>
                 <td className="px-2 py-2.5">
                   <input
                     type="checkbox"
@@ -98,22 +102,22 @@ export function GlossaryTermTable({
                     onChange={() => onToggleChecked(row.id)}
                     disabled={disabled}
                     aria-label={`选择 ${row.term}`}
-                    className="h-4 w-4 rounded border-notion-border text-zen-saffron focus:ring-zen-saffron/30"
+                    className={GLOSSARY_CHECKBOX}
                   />
                 </td>
                 <td className="px-2 py-2.5">
                   <button
                     type="button"
                     className={[
-                      "inline-flex h-8 w-8 items-center justify-center rounded-md border transition-colors disabled:opacity-40",
+                      "inline-flex h-7 w-7 items-center justify-center rounded-sm border transition-colors disabled:opacity-40",
                       hotwordOn
                         ? "border-zen-saffron/30 bg-zen-saffron/15 text-zen-saffron hover:bg-zen-saffron/25"
-                        : "border-notion-border bg-notion-callout-bg text-notion-text-muted hover:bg-notion-sidebar-hover",
+                        : "border-notion-border bg-notion-bg text-notion-text-muted hover:bg-notion-sidebar-hover",
                     ].join(" ")}
                     disabled={disabled}
                     onClick={() => void onToggleRowHotword(row)}
                     aria-label={hotwordOn ? `${row.term} 已纳入热词，点击移出` : `${row.term} 未纳入热词，点击纳入`}
-                    title={hotwordOn ? "已纳入下次转写（热词）" : "未纳入下次转写（热词）"}
+                    title={hotwordOn ? "已纳入下次转写（热词），点击移出" : "未纳入下次转写（热词），点击纳入"}
                   >
                     <Flame className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
                   </button>
@@ -149,28 +153,10 @@ export function GlossaryTermTable({
                   {formatTermDate(row.updated_at_ms ?? row.created_at_ms)}
                 </td>
                 <td className="px-3 py-2.5">
-                  <div className="flex items-center gap-1">
+                  <div className={glossaryRowActionsClass(confirming)}>
                     <button
                       type="button"
-                      className={[
-                        "inline-flex items-center rounded-md border px-2.5 py-1 text-[11px] font-medium transition-colors disabled:opacity-40",
-                        hotwordOn
-                          ? "border-zen-saffron/30 bg-notion-bg text-zen-saffron hover:bg-zen-saffron/10"
-                          : "border-notion-border bg-notion-bg text-notion-text-muted hover:bg-notion-sidebar-hover hover:text-notion-text",
-                      ].join(" ")}
-                      disabled={disabled}
-                      onClick={() => void onToggleRowHotword(row)}
-                    >
-                      {hotwordOn ? "移出热词" : "纳入热词"}
-                    </button>
-                    <button
-                      type="button"
-                      className={[
-                        "inline-flex items-center gap-1 rounded-md border px-2.5 py-1 text-[11px] font-medium transition-colors disabled:opacity-40",
-                        confirming
-                          ? "border-zen-cinnabar bg-zen-cinnabar/10 text-zen-cinnabar"
-                          : "border-notion-border bg-notion-bg text-notion-text hover:bg-notion-sidebar-hover",
-                      ].join(" ")}
+                      className={glossaryRowDeleteBtnClass(confirming)}
                       disabled={disabled}
                       onClick={() => onRowDelete(row.id)}
                     >

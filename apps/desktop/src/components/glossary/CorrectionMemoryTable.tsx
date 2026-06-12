@@ -1,6 +1,6 @@
 import type { RefObject } from "react";
 import { ListChecks } from "lucide-react";
-import { PANEL_CONTROL_TYPOGRAPHY, PANEL_TYPOGRAPHY } from "../../config/typography";
+import { PANEL_TYPOGRAPHY } from "../../config/typography";
 import {
   correctionMemoryRowKey,
   correctionMemoryStableLabel,
@@ -8,6 +8,15 @@ import {
 import type { CorrectionMemoryEntryRow } from "../../tauri/correctionApi";
 import type { CorrectionMemoryKey } from "../../services/correctionMemoryHelpers";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";
+import {
+  GLOSSARY_CHECKBOX,
+  GLOSSARY_TABLE,
+  GLOSSARY_TABLE_HEAD_ROW,
+  GLOSSARY_TABLE_TH,
+  GLOSSARY_TABLE_WRAP,
+  glossaryRowActionsClass,
+  glossaryTableRowClass,
+} from "./glossaryPanelStyles";
 
 type Props = {
   rows: CorrectionMemoryEntryRow[];
@@ -44,54 +53,47 @@ export function CorrectionMemoryTable({
   onAcceptRule,
 }: Props) {
   return (
-    <div className="overflow-x-auto rounded-md bg-notion-bg/80">
-      <table
-        className={`w-full min-w-[32rem] border-collapse text-left ${PANEL_CONTROL_TYPOGRAPHY.compactInput}`}
-      >
+    <div className={GLOSSARY_TABLE_WRAP}>
+      <table className={`${GLOSSARY_TABLE} min-w-[32rem]`}>
         <thead>
-          <tr className="bg-notion-sidebar/60 text-notion-text-muted">
+          <tr className={GLOSSARY_TABLE_HEAD_ROW}>
             <th className="w-10 px-2 py-2">
               <input
                 ref={headerCheckboxRef}
                 type="checkbox"
-                className="h-4 w-4 rounded border-notion-border text-zen-saffron focus:ring-zen-saffron/30"
+                className={GLOSSARY_CHECKBOX}
                 checked={isAllVisibleSelected}
                 disabled={disabled || rows.length === 0}
                 aria-label="全选当前列表"
                 onChange={onToggleVisibleSelection}
               />
             </th>
-            <th className="px-3 py-2 font-semibold">错词</th>
-            <th className="px-3 py-2 font-semibold">正词</th>
-            <th className="px-3 py-2 font-semibold tabular-nums">命中</th>
-            <th className="px-3 py-2 font-semibold">状态</th>
-            <th className="px-3 py-2 font-semibold text-right">操作</th>
+            <th className={GLOSSARY_TABLE_TH}>错词</th>
+            <th className={GLOSSARY_TABLE_TH}>正词</th>
+            <th className={`${GLOSSARY_TABLE_TH} tabular-nums`}>命中</th>
+            <th className={GLOSSARY_TABLE_TH}>状态</th>
+            <th className={`${GLOSSARY_TABLE_TH} text-right`}>操作</th>
           </tr>
         </thead>
         <tbody>
           {rows.map((row) => {
             const rowId = correctionMemoryRowKey(row);
             const active = isEditingKey(selectedKey, row);
+            const checked = checkedKeys.has(rowId);
             return (
-              <tr
-                key={rowId}
-                className={[
-                  "border-t border-notion-divider/80 transition-colors",
-                  active ? "bg-notion-sidebar-active" : "hover:bg-notion-sidebar-hover",
-                ].join(" ")}
-              >
-                <td className="px-2 py-2 align-top">
+              <tr key={rowId} className={glossaryTableRowClass({ active, checked })}>
+                <td className="px-2 py-2.5 align-top">
                   <input
                     type="checkbox"
-                    className="mt-0.5 h-4 w-4 rounded border-notion-border text-zen-saffron focus:ring-zen-saffron/30"
-                    checked={checkedKeys.has(rowId)}
+                    className={`mt-0.5 ${GLOSSARY_CHECKBOX}`}
+                    checked={checked}
                     disabled={disabled}
                     aria-label={`选择 ${row.wrong} → ${row.right}`}
                     onChange={() => onToggleChecked(rowId)}
                     onClick={(e) => e.stopPropagation()}
                   />
                 </td>
-                <td className="px-3 py-2">
+                <td className="px-3 py-2.5">
                   <button
                     type="button"
                     className="w-full cursor-pointer border-0 bg-transparent p-0 text-left font-medium text-notion-text"
@@ -101,9 +103,9 @@ export function CorrectionMemoryTable({
                     {row.wrong}
                   </button>
                 </td>
-                <td className="px-3 py-2 text-notion-text">{row.right}</td>
-                <td className="px-3 py-2 tabular-nums text-notion-text-muted">{row.hitCount}</td>
-                <td className="px-3 py-2">
+                <td className="px-3 py-2.5 text-notion-text">{row.right}</td>
+                <td className="px-3 py-2.5 tabular-nums text-notion-text-muted">{row.hitCount}</td>
+                <td className="px-3 py-2.5">
                   <span
                     className={[
                       "inline-block rounded px-1.5 py-0.5 text-[11px] font-medium",
@@ -115,21 +117,23 @@ export function CorrectionMemoryTable({
                     {correctionMemoryStableLabel(row)}
                   </span>
                 </td>
-                <td className="px-3 py-2 text-right">
+                <td className="px-3 py-2.5 text-right">
                   {!row.acceptedAsRule ? (
-                    <button
-                      type="button"
-                      className="inline-flex min-h-[28px] items-center gap-1 rounded-md border-0 bg-transparent px-2 text-[11px] font-medium text-notion-text-muted hover:bg-notion-sidebar-hover hover:text-notion-text disabled:opacity-40"
-                      disabled={disabled}
-                      onClick={() => void onAcceptRule(row)}
-                    >
-                      <ListChecks
-                        className={LUCIDE_ICON_SIZE_SM}
-                        strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
-                        aria-hidden
-                      />
-                      采纳
-                    </button>
+                    <div className={glossaryRowActionsClass(false)}>
+                      <button
+                        type="button"
+                        className="inline-flex h-7 items-center gap-1 rounded-sm border-0 bg-transparent px-2 text-[11px] font-medium text-notion-text-muted transition-colors hover:bg-notion-sidebar-hover hover:text-notion-text disabled:opacity-40"
+                        disabled={disabled}
+                        onClick={() => void onAcceptRule(row)}
+                      >
+                        <ListChecks
+                          className={LUCIDE_ICON_SIZE_SM}
+                          strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
+                          aria-hidden
+                        />
+                        采纳
+                      </button>
+                    </div>
                   ) : (
                     <span className={`${PANEL_TYPOGRAPHY.meta} text-notion-text-light`}>—</span>
                   )}

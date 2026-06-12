@@ -1,5 +1,5 @@
-import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../../config/controlStyles";
-import { PANEL_CONTROL_TYPOGRAPHY, PANEL_TYPOGRAPHY } from "../../config/typography";
+import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY, CONTROL_SELECT } from "../../config/controlStyles";
+import { PANEL_TYPOGRAPHY } from "../../config/typography";
 import type { LexiconBundleConflictResolution } from "../../tauri/lexiconBundleApi";
 import type { LexiconBundleImportPreviewResult } from "../../tauri/lexiconBundleApi";
 import { formatLexiconBundlePreviewSummary } from "../../tauri/lexiconBundleApi";
@@ -66,7 +66,7 @@ export function LexiconBundleImportDialog({
                 value={resolutions[c.id] ?? "local"}
                 disabled={disabled}
                 onChange={(e) => onChoice(c.id, e.target.value as LexiconBundleConflictResolution["choice"])}
-                className={`w-full min-h-[36px] rounded-lg border border-notion-border bg-notion-bg px-2 ${PANEL_CONTROL_TYPOGRAPHY.compactInput}`}
+                className={CONTROL_SELECT}
                 aria-label={`冲突处理方式：${c.id}`}
               >
                 {c.kind === "glossary" ? (

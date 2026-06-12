@@ -1,6 +1,8 @@
 import { ListChecks, Trash2 } from "lucide-react";
+import { ENV_COMPACT_BTN } from "../../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../../config/typography";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";
+import { glossaryRowDeleteBtnClass } from "./glossaryPanelStyles";
 
 type Props = {
   selectedCount: number;
@@ -33,7 +35,7 @@ export function CorrectionMemoryBatchBar({
       : `已选 ${selectedCount} 条`;
 
   return (
-    <div className="flex flex-col gap-2 rounded-lg bg-notion-callout-bg px-3 py-2">
+    <div className="flex flex-col gap-2 rounded-md bg-notion-callout-bg px-3 py-2">
       <div className="flex flex-wrap items-center gap-2">
         <span className={PANEL_TYPOGRAPHY.meta}>{preview}</span>
         {hiddenSelectedCount > 0 ? (
@@ -45,7 +47,7 @@ export function CorrectionMemoryBatchBar({
       <div className="flex flex-wrap items-center gap-2">
         <button
           type="button"
-          className="inline-flex min-h-[32px] items-center gap-1 rounded-md border border-notion-border bg-notion-bg px-2.5 text-[11px] font-medium text-notion-text transition-colors hover:bg-notion-sidebar-hover disabled:opacity-40"
+          className={ENV_COMPACT_BTN}
           disabled={disabled || !canAcceptRules}
           onClick={onAcceptRules}
           title={canAcceptRules ? undefined : "所选条目均已采纳为规则"}
@@ -55,12 +57,7 @@ export function CorrectionMemoryBatchBar({
         </button>
         <button
           type="button"
-          className={[
-            "inline-flex min-h-[32px] items-center gap-1 rounded-md border px-2.5 text-[11px] font-medium transition-colors disabled:opacity-40",
-            deleteConfirm
-              ? "border-zen-cinnabar bg-zen-cinnabar/10 text-zen-cinnabar"
-              : "border-notion-border bg-notion-bg text-notion-text hover:bg-notion-sidebar-hover",
-          ].join(" ")}
+          className={glossaryRowDeleteBtnClass(deleteConfirm)}
           disabled={disabled}
           onClick={onDelete}
         >
@@ -69,7 +66,7 @@ export function CorrectionMemoryBatchBar({
         </button>
         <button
           type="button"
-          className="min-h-[32px] rounded-md border border-notion-border bg-notion-bg px-2 text-[11px] font-medium text-notion-text-muted transition-colors hover:text-notion-text disabled:opacity-40"
+          className={ENV_COMPACT_BTN}
           disabled={disabled}
           onClick={onClearSelection}
         >

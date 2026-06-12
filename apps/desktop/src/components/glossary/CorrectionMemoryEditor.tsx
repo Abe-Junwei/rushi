@@ -1,7 +1,13 @@
 import { Pencil, Plus, Save, Trash2, X } from "lucide-react";
-import { PANEL_CONTROL_TYPOGRAPHY, PANEL_TYPOGRAPHY } from "../../config/typography";
+import {
+  CONTROL_BTN_DANGER,
+  CONTROL_BTN_PRIMARY,
+  CONTROL_TEXT_INPUT,
+} from "../../config/controlStyles";
+import { PANEL_TYPOGRAPHY } from "../../config/typography";
 import type { CorrectionMemoryDraft } from "../../services/correctionMemoryHelpers";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";
+import { GLOSSARY_CARD, GLOSSARY_CHECKBOX } from "./glossaryPanelStyles";
 
 type Props = {
   mode: "create" | "edit";
@@ -26,9 +32,9 @@ export function CorrectionMemoryEditor({
   const canSave = draft.wrong.trim() !== "" && draft.right.trim() !== "" && draft.wrong.trim() !== draft.right.trim();
 
   return (
-    <div className="flex flex-col gap-4 rounded-md bg-notion-callout-bg px-4 py-4">
+    <div className={`${GLOSSARY_CARD} flex flex-col gap-4 px-4 py-4`}>
       <div className="flex items-center justify-between gap-2">
-        <h2 className={PANEL_TYPOGRAPHY.sectionTitle}>
+        <h3 className={PANEL_TYPOGRAPHY.sectionTitle}>
           {isEdit ? (
             <span className="inline-flex items-center gap-1.5">
               <Pencil className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
@@ -40,18 +46,16 @@ export function CorrectionMemoryEditor({
               新建纠错记忆
             </span>
           )}
-        </h2>
-        {isEdit ? (
-          <button
-            type="button"
-            className="inline-flex items-center gap-1 rounded-md border-0 bg-transparent px-2 py-1 text-[11px] font-medium text-notion-text-muted transition-colors hover:bg-notion-sidebar-hover hover:text-notion-text disabled:opacity-40"
-            disabled={disabled}
-            onClick={onReset}
-          >
-            <X className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-            取消
-          </button>
-        ) : null}
+        </h3>
+        <button
+          type="button"
+          className="inline-flex items-center gap-1 rounded-sm border-0 bg-transparent px-2 py-1 text-[11px] font-medium text-notion-text-muted transition-colors hover:bg-notion-sidebar-hover hover:text-notion-text disabled:opacity-40"
+          disabled={disabled}
+          onClick={onReset}
+        >
+          <X className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+          {isEdit ? "取消" : "收起"}
+        </button>
       </div>
 
       <p className={`m-0 ${PANEL_TYPOGRAPHY.meta}`}>
@@ -66,7 +70,7 @@ export function CorrectionMemoryEditor({
             value={draft.wrong}
             disabled={disabled}
             onChange={(e) => onChange("wrong", e.target.value)}
-            className={`min-h-[36px] rounded-lg border border-notion-border bg-notion-bg px-3 outline-none focus:border-zen-saffron focus:ring-2 focus:ring-zen-saffron/30 disabled:opacity-50 ${PANEL_CONTROL_TYPOGRAPHY.compactInput}`}
+            className={CONTROL_TEXT_INPUT}
             placeholder="例如：智控"
           />
         </label>
@@ -77,7 +81,7 @@ export function CorrectionMemoryEditor({
             value={draft.right}
             disabled={disabled}
             onChange={(e) => onChange("right", e.target.value)}
-            className={`min-h-[36px] rounded-lg border border-notion-border bg-notion-bg px-3 outline-none focus:border-zen-saffron focus:ring-2 focus:ring-zen-saffron/30 disabled:opacity-50 ${PANEL_CONTROL_TYPOGRAPHY.compactInput}`}
+            className={CONTROL_TEXT_INPUT}
             placeholder="例如：制控"
           />
         </label>
@@ -89,7 +93,7 @@ export function CorrectionMemoryEditor({
           checked={draft.acceptedAsRule}
           disabled={disabled}
           onChange={(e) => onChange("acceptedAsRule", e.target.checked)}
-          className="h-4 w-4 rounded border-notion-border text-zen-saffron focus:ring-zen-saffron/30"
+          className={GLOSSARY_CHECKBOX}
         />
         采纳为规则（立即用于 F1 / 转写提示，不等待命中次数）
       </label>
@@ -97,7 +101,7 @@ export function CorrectionMemoryEditor({
       <div className="flex flex-wrap gap-2">
         <button
           type="button"
-          className="inline-flex min-h-[36px] items-center justify-center gap-1.5 rounded-lg border-0 bg-zen-saffron px-4 text-sm font-semibold text-notion-bg transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-40"
+          className={`${CONTROL_BTN_PRIMARY} gap-1.5`}
           disabled={disabled || !canSave}
           onClick={onSave}
         >
@@ -107,7 +111,7 @@ export function CorrectionMemoryEditor({
         {isEdit && onDelete ? (
           <button
             type="button"
-            className="inline-flex min-h-[36px] items-center justify-center gap-1.5 rounded-lg border border-zen-cinnabar/30 bg-notion-bg px-3 text-sm font-medium text-zen-cinnabar transition-colors hover:bg-zen-cinnabar/10 disabled:opacity-40"
+            className={`${CONTROL_BTN_DANGER} gap-1.5`}
             disabled={disabled}
             onClick={onDelete}
           >
