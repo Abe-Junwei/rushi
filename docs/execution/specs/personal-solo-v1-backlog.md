@@ -29,6 +29,7 @@
 | **P1** | 架构硬化（FSM / 发布 / Setup） | **R3h-I1～I3** | 📋 |
 | **P2** | 单机修订可追溯 / 恢复 | **REV-LOC**（轻量，非 R8） | ✅ 2026-06-03 |
 | **P2** | 外部 Agent 只读读稿 | R5 MCP | 📋 可后置 |
+| **v1.1+** | 定稿向导 / 批量转写 / CSP / 在线取消 / **产品元信息** | **§10.4** DELIV-MODE · BATCH-TXN · CSP-HARDEN · STT-CANCEL · **PROD-META** | 📋 规划定稿 2026-06-12 |
 | **v1 后** | 本机 LLM 校对 | **LLM-LOC** Spike→Gate | 📋 规划；**待 Gate** |
 | **—** | 词级时间轨、说话人分离、AAF/EDL、实时 mic | — | **v1 不做**（另立项或远期） |
 
@@ -123,5 +124,6 @@
 | 日期 | 变更 |
 |------|------|
 | 2026-05-27 | 初版：个人单机定位；ASR-WARM / TRN-DIAG / REV-LOC / R4-GATE |
+| 2026-06-12 | 链路线图 **§10.4** v1.1+：DELIV-MODE · BATCH-TXN · CSP-HARDEN · STT-CANCEL · **PROD-META** |
 | 2026-05-27 | 链接 TRN-DIAG / ASR-WARM acceptance；EXP-WORD 见 `exp-word-formatted-export-acceptance.md` |
 | 2026-05-31 | REV-LOC 三件套 + 路线图 Q-REV-1；编码后置、不挡 R9 |

@@ -10,7 +10,7 @@
 | 适用节奏 | 单人、每轮 2～4h、一轮一纵向薄片 |
 | 规划跨度 | **个人单机 v1**：约 **14～18 周（自当前）** 或 **18～22 周（自 W1）**；R3 薄片 **~12～15w**（§4.0，含发行 smoke 缓冲）；协作 **非 v1** |
 | 修订 | 每完成一个阶段更新 §2 状态表、§4 排期表与 §13 代码对照 |
-| 最近对照 | **2026-06-12**：**ASR-WARM release idle H5 ✅**；**当前**：sidecar 重打（warmup gate）/ **ACC 在线 E2E** |
+| 最近对照 | **2026-06-12**：v1 后硬化 Step 1–4 ✅；**当前**：§10.4 **v1.1+ 统一后续路线图**（发行尾项 · 产品元信息 · **新手引导** · 定稿 UX · 安全/取消） |
 
 ### 状态标记约定（全文档统一）
 
@@ -1018,11 +1018,11 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 
 | 项 | 内容 |
 |----|------|
-| **定位** | **个人单机 v1 主序已闭合**（EXP-WORD → REV-LOC → R4 → R9 → LLM-LOC 4a）；进入 **v1 后硬化 + 发行自动化** |
+| **定位** | **个人单机 v1 主序已闭合**（EXP-WORD → REV-LOC → R4 → R9 → LLM-LOC 4a）；**v1 后硬化 Step 1–4 ✅**；进入 **§10.4 v1.1+ 统一后续** |
+| **排期真源** | **§10.4**（发行尾项 · 产品元信息 · **新手引导** · 定稿 UX · v1.1 安全/取消 · 并行禁忌） |
 | **LLM** | **4a** ✅ · **4b** ❌ Gate-B No-Go（[decision](../specs/llm-loc-gate-b-decision-2026-06.md)） |
-| **当前薄片** | **R3h-1-R Windows CI**（`smoke-asr-sidecar-health.ps1` warmup 对齐） |
-| **刚闭合** | **ACC 百炼 E2E** ✅ 2026-06-12 · **ASR-WARM release idle H5** ✅ |
-| **近期不做** | **F4-ASR**、**F3/F5 P3**、**R3f/R3h-0 Win**（⏸）、**LLM-LOC-4b**、**CAT-TRAN**、**R6–R8**、**R3s-A**（Defer） |
+| **当前主刀** | **Step 5** `R3h-1-R Win CI` → **Step 5b–c** `PROD-META`（可与 Step 6a 并行）→ **Step 6–7** v1.1 硬化 → **Step 8+** 定稿/批量 UX |
+| **近期不做** | 实时 mic（STREAM-*）、媒体剪辑（Overdub/按字剪波形）、协作/CAT/RAG、**F4-ASR**、**LLM-LOC-4b**、**R3s-A** Defer |
 
 ### 10.1 v1 后硬化盘点（2026-06-11 · 对照代码）
 
@@ -1055,7 +1055,7 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 |----|------|------|------------|
 | **R3h-1-R CI** | `v0.1.0` mac/linux manifest + 安装包 ✅ | **Windows** smoke.ps1 待修 | **P2** |
 | **TRN-DIAG** | `transcribe_timeline.rs`、`diagnostic.rs` | ✅ 2026-06-11 | — |
-| **ASR-WARM** | `warm.rs` idle/watchdog | **release 包** idle 回收未签（dev `SKIP_BUNDLED` 不测） | **P2 可选** |
+| **ASR-WARM** | `warm.rs` idle/watchdog | release idle H5 ✅ 2026-06-12 | — |
 | **ACC-STT-ALI** | `dashscope_vocabulary.rs` + `dashscope_file_asr.rs` | 百炼 E2E ✅ 2026-06-12 | — |
 | **ACC-STT-UNIFY** | 在线 adapter 已编码 | 百炼 ✅；OpenAI/AAI/DG 可选 | **P3**（有 Key） |
 | **F6 §C Mine** | `GlossaryMineSection` | 挖掘推荐 **可选手测** | **P3** |
@@ -1073,30 +1073,23 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | **F3 / F5** | 📋 P3 未编码 |
 | **R6–R8 / CAT-TRAN** | 📋 非 v1 |
 
-### 10.2 下一刀（v1 后硬化 · 须按序）
+### 10.2 v1 后硬化（Step 1–4 · 已闭合）
 
 ```text
 Step 1  R3h-1-R Release CI          ✅ 编码 2026-06-11
-        └─ release.yml + ci-publish-runtime-manifest-release.sh
-        └─ 待：secret + 首次 GitHub Release 验证
-
 Step 2  TRN-DIAG 手测闭项           ✅ 2026-06-11
-
 Step 3  ASR-WARM release idle      ✅ H5 2026-06-12
-        └─ warmup：sidecar 重打 + smoke gate + 重装包
-
 Step 4  ACC 在线 E2E                 ✅ 百炼 2026-06-12
-
-Step 5  R3h-1-R Windows CI          🟡 smoke.ps1 warmup 对齐
 ```
 
 | 步 | ID | 状态 | 验收真源 |
 |----|-----|------|----------|
 | **1** | **R3h-1-R CI** | ✅ mac/linux · Win 🟡 | [`r3h-1-r-release-checklist.md`](../specs/r3h-1-r-release-checklist.md) |
 | **2** | **TRN-DIAG** | ✅ | [`trn-diag-hand-test-checklist.md`](../specs/trn-diag-hand-test-checklist.md) |
-| **3** | **ASR-WARM release** | 🟡 可选 ← | [`asr-warm-handtest-signoff-2026-06-11.md`](../specs/asr-warm-handtest-signoff-2026-06-11.md) §H5 |
+| **3** | **ASR-WARM release** | ✅ | [`asr-warm-release-idle-signoff-2026-06-12.md`](../specs/asr-warm-release-idle-signoff-2026-06-12.md) |
 | **4** | **ACC 在线 E2E** | ✅ 百炼 | [`acc-stt-ali-hand-test-checklist.md`](../specs/acc-stt-ali-hand-test-checklist.md) |
-| **5** | **R3h-1-R Win CI** | 🟡 | [`r3h-1-r-release-checklist.md`](../specs/r3h-1-r-release-checklist.md) §3 Windows |
+
+> **后续 Step 5+** 见 **§10.4**（v1.1+ 统一路线图）。
 
 **已闭合硬化步（2026-06-11）**：R3h-I1 设计冻结 ✅ · I1a 编码 ✅ · ASR-WARM dev ✅ · 语段 P0 ✅ · F8 ✅ · F2/F1/F6 复测 ✅
 
@@ -1124,6 +1117,176 @@ Step 5  R3h-1-R Windows CI          🟡 smoke.ps1 warmup 对齐
 
 **并行索引**：[parallel-backlog-2026-06.md](../specs/parallel-backlog-2026-06.md)
 
+### 10.4 v1.1+ 统一后续路线图（2026-06-12 定稿）
+
+> **定位**：个人单机、**已有录音 → 转写 → 手改定稿 → Word**；对标 MacWhisper 文件链 / 听见「导入转写+规整」子集，**不对标**实时 mic、Descript 媒体编辑、协作 SaaS。  
+> **原则**：一轮一纵向薄片；**复用** F0 / EXP-WORD / LRC，**不**新造 ASR/LLM 栈。  
+> **规格**：各 Epic 编码前须 intent/plan/acceptance（模板 [`spec-template.md`](../specs/spec-template.md)）；环境/UI 类须 **能力—UI 状态矩阵**。
+
+#### 10.4.0 Epic 索引
+
+| Epic | 代号 | 决策/来源 | 用户价值 | 估时 | 规格（待/将建） |
+|------|------|-----------|----------|------|-----------------|
+| **发行尾项** | **R3h-1-R Win** | 路线图 §10.2 Step 5 | Windows CI smoke 与 mac/linux 对齐 | 0.5–1w | [`r3h-1-r-release-checklist.md`](../specs/r3h-1-r-release-checklist.md) §3 |
+| **产品元信息** | **PROD-META** | Win checklist · 产品元信息缺口 | **关于**页：版本/版权/第三方许可；与诊断包 **build-info** 一致 | 2 片 · ~0.5w | `product-metadata-v1.1-{intent,plan,acceptance}.md`（平台惯例；**免 research brief**） |
+| **定稿 UX** | **DELIV-MODE** | 产品对标缺口 §定稿链 | 转写后 → 规则/改稿 → 终检 → 交付导出 **单一向导** | 2 片 · ~1–1.5w | `delivery-mode-{research,intent,plan,acceptance}.md` |
+| **新手引导** | **ONBOARD** | MacWhisper 极简 + 业内 checklist 对照 | Welcome **首跑清单**（5 步 outcome）；可关闭/可恢复；**非**全屏 tour | 2 片 · ~0.5–1w | `onboarding-first-run-{research,intent,plan,acceptance}.md` |
+| **多场效率** | **BATCH-TXN** | MacWhisper Batch 子集 | Project Hub **多选导入 + 串行转写队列** | 2 片 · ~1–1.5w | `batch-transcribe-queue-{intent,plan,acceptance}.md` |
+| **v1.1 安全** | **CSP-HARDEN** | **Q-CSP-1** §1.7 | 生产 CSP 去 `style-src` **`unsafe-inline`**（nonce + WaveSurfer） | 2 片 · ~1w | `csp-harden-v1.1-{research,intent,plan,acceptance}.md` |
+| **v1.1 取消** | **STT-CANCEL** | **Q-STT-CANCEL-1** §1.7 | 在线 STT **真 Abort**（非 v1 丢弃结果） | 3–4 片 · ~1.5–2w | `online-stt-cancel-v1.1-{research,intent,plan,acceptance}.md` |
+
+**明确不纳入本轨**（仍 §8 / §10.1 C）：STREAM-*、Overdub/按字剪波形、R6–R8、CAT-TRAN、RAG、LLM-LOC-4b、Q-PLUGIN-1（另列 v1.1 可选）、Win 安装包手测（⏸ 有 Win 机时补）。
+
+#### 10.4.1 实施顺序（单人默认 · 须按 Step）
+
+```text
+【Phase A · 发行尾项 + 产品元信息】
+Step 5   R3h-1-R Windows CI                    🟡 ← 当前主刀
+Step 5b  PROD-META P-1  环境页「关于」+ app_version + 复制版本信息
+Step 5c  PROD-META P-2  第三方许可（ffmpeg 等）+ build-info 对齐 + macOS 菜单 About
+
+【Phase B · v1.1 硬化 — 可并行，单人建议 CSP 先于 STT】
+Step 6a  CSP-HARDEN C-1  生产 style nonce + 守卫 + 波形 probe
+Step 6b  CSP-HARDEN C-2  全应用 CSP smoke + acceptance 签收
+Step 7a  STT-CANCEL D-1  TranscribeCancelState + project_cancel_transcribe + TS
+Step 7b  STT-CANCEL D-2  OpenAI + Deepgram native Abort
+Step 7c  STT-CANCEL D-3  百炼 Dashscope poll 可中断
+Step 7d  STT-CANCEL D-4  AssemblyAI poll 可中断
+Step 7e  STT-CANCEL D-5  generic multipart 尽力取消（P2 可选）
+
+【Phase C · 定稿 UX + 新手引导 — 与 B 可交错，勿与 CSP 大改同 PR】
+Step 8   DELIV-MODE A-1  向导壳 + 终检 + 打开 DeliveryExportDialog
+Step 9   DELIV-MODE A-2  委托 F1/Stage B + 转写成功 toast 入口
+Step 9a  ONBOARD O-1  Welcome 首跑清单壳 + 进度持久化 + 可关闭/恢复入口
+Step 9b  ONBOARD O-2  步骤与能力态自动同步 + 情境 CTA（链本机 ASR / 定稿 / 导出）
+
+【Phase D · 多场效率 — 依赖多选导入，可与 Step 9b 并行】
+Step 10  BATCH-TXN B-1  pick_audio_paths + Hub 批量导入
+Step 11  BATCH-TXN B-2  串行转写队列 + Close Gate
+
+【Phase E · v1.1 签收】
+Step 12  REL-1.1  signoff  H-CSP-* + H-STT-* + 回归 R9 主路径抽检
+```
+
+| Step | ID | 状态 | 硬验收 |
+|------|-----|------|--------|
+| **5** | **R3h-1-R Win CI** | 🟡 | `smoke-asr-sidecar-health.ps1` 与 bash warmup gate 对齐 |
+| **5b–c** | **PROD-META** | 📋 | 设置「关于」展示版本；许可可访问；[`windows-release-checklist.md`](../windows-release-checklist.md) ffmpeg 项闭合 |
+| **6a–b** | **CSP-HARDEN** | 📋 | `release:postbuild-verify` + 波形 probe；守卫拒绝 prod `style-src` `unsafe-inline` |
+| **7a–d** | **STT-CANCEL** | 📋 | 在线转写中停止 ≤2s 恢复语段；timeline `cancelled`；本机 async 回归 |
+| **7e** | **STT-CANCEL D-5** | 📋 P2 | legacy multipart 文档化 |
+| **8–9** | **DELIV-MODE** | 📋 | 无 LLM 可走 1→4→5；有 LLM 可委托规则+Stage B 预览写回 |
+| **9a–b** | **ONBOARD** | 📋 | 5 步清单 outcome 导向；**非** blocking 全屏 tour；末步可链 DELIV / 交付导出 |
+| **10–11** | **BATCH-TXN** | 📋 | ≥3 文件导入 + 队列串行；单项失败不阻断 |
+| **12** | **REL-1.1** | 📋 | 见下表 |
+
+**REL-1.1 手测最小集**（Step 12）：
+
+| ID | 项 |
+|----|-----|
+| H-CSP-1 | Release 包 Editor 波形加载；Console 无 style CSP violation |
+| H-CSP-2 | 交付导出 Dialog、环境页三盏灯正常 |
+| H-STT-1 | 在线 STT（≥1 已配置 adapter）转写中停止，语段恢复 |
+| H-STT-2 | TRN-DIAG / 诊断包 outcome=`cancelled` |
+| H-STT-3 | 本机侧车 async 停止回归 |
+| H-DELIV-1 | 定稿模式：转写 → 终检 → 讲稿/逐字稿导出 |
+| H-BATCH-1 | Hub 批量导入 + 队列转写 ≥2 文件 |
+| H-PROD-1 | 设置 → 关于：marketing version 与 `app_version` / 诊断 `build-info.txt` 一致 |
+| H-PROD-2 | 关于页可打开 **ffmpeg-static** 等第三方许可全文 |
+| H-ONBOARD-1 | 清空 `localStorage` 后首启：Welcome 见 **5 步清单**；关闭后不再自动弹出；可从设置/侧栏 **恢复清单** |
+| H-ONBOARD-2 | 本机 ASR **就绪**后 Step「准备 ASR」自动勾选；完成一次转写后 Step「自动转录」勾选 |
+| H-ONBOARD-3 | 清单 CTA「本机 ASR」→ 环境页并聚焦 **LocalAsrSetupWizard**（不重复第二套安装 UI） |
+
+#### 10.4.2 Epic 落位摘要（编码时）
+
+**PROD-META**
+
+| 层 | 路径 |
+|----|------|
+| Rust | 已有 `app_version()`；可选 `app_build_info()`（platform / identifier）；Tauri **应用菜单 → 关于**（macOS） |
+| TS API | `tauri/projectApi.ts` 或 `appInfoApi.ts` → `invoke("app_version")` |
+| UI | `components/EnvAboutPanel.tsx`；`EnvironmentPanel` nav **`about`**（与 `help` 并列，**勿与项目元信息表单混页**） |
+| 资源 | 随包 `resources/third-party-licenses/`（ffmpeg 等）；或链到已有 `services/asr/third_party/ffmpeg/README.md` 摘要 |
+| 诊断 | `diagnostic.rs` `build-info.txt` 字段与 About **同一真源**（`CARGO_PKG_VERSION` + `tauri.conf.json` `identifier`） |
+| 文档 | 随包 `user-guide-zh.md` §许可 一句指向应用内关于（**非**全文使用说明重写） |
+| **不做** | SaaS 式 Legal 门户；Welcome 顶栏常驻版本号；与 `ProjectMetadataDialog` 合并 |
+
+**DELIV-MODE**
+
+| 层 | 路径 |
+|----|------|
+| 纯函数 | `services/deliveryModeSteps.ts`、`deliveryModeChecklist.ts` |
+| Controller | `pages/useDeliveryModeController.ts` |
+| UI | `components/DeliveryModeDialog.tsx` |
+| 委托 | 现有 `useCorrectionRulesController`、`usePostTranscribeStageBController`、`DeliveryExportDialog` |
+| 入口 | `EditorSegmentToolbarActions.tsx`、`useTranscribeJobController` 转写成功 toast |
+
+**ONBOARD**
+
+| 层 | 路径 |
+|----|------|
+| 纯函数 | `services/onboarding/onboardingChecklist.ts`（5 步定义 + 完成规则）；`onboardingProgress.ts`（`localStorage` / 可选 profile 键） |
+| Controller | `hooks/useOnboardingChecklistController.ts` |
+| UI | `components/WelcomeOnboardingChecklist.tsx`（Welcome 首页 Stage）；可选 `WelcomeSidebar` 恢复入口 |
+| 复用 | `AsrEnvPresentation` / `asrEnvStatus`（Step1 就绪）；`CreateProjectModal` + 首次转写事件（Step2–3）；`ProjectMetadataDialog`（Step4 可选）；`DeliveryModeDialog` / `DeliveryExportDialog`（Step5）；`EnvironmentPanel` `focusLocalAsrSeq` → **LocalAsrSetupWizard** |
+| 与 DELIV 关系 | **O-1** 可与 DELIV A-1 并行；**O-2** 转写成功 CTA **复用/对齐** DELIV A-2 toast，末步链定稿或直开交付导出 |
+| **清单 5 步（P0）** | ① 本机 ASR 就绪 ② 创建项目并导入音频 ③ 自动转录 ④（可选）填写场次信息 ⑤ 导出 Word / 进入定稿模式 |
+| **不做** | Spotlight 线性 product tour；Otter 式 Help Center；首启强制 modal 阻断；与 `EnvHelpPanel` 长文重复维护；第二套 ASR 安装向导 |
+
+**BATCH-TXN**
+
+| 层 | 路径 |
+|----|------|
+| Rust | `picker_cmd.rs` → `pick_audio_paths()` |
+| 纯函数 | `services/batchTranscribeQueue.ts`、`projectBatchImport.ts`（抽 `EmptyProjectPanel` 拖拽逻辑） |
+| Controller | `useBatchImportController.ts`、`useBatchTranscribeQueueController.ts` |
+| UI | `BatchTranscribeQueuePanel.tsx`、`ProjectFilesHubPanel.tsx` |
+| busy | `useProjectBusyState` → `busyReason: "batch_transcribe"` |
+
+**CSP-HARDEN（Q-CSP-1）**
+
+| 层 | 路径 |
+|----|------|
+| 配置 | `tauri.conf.json` 生产 `style-src` / `style-src-elem` → nonce（去 `unsafe-inline`） |
+| 运行时 | 已有 `index.html` nonce probe、`readTauriStyleCspNonce`、`applyWaveSurferShadowCspNonce` |
+| 守卫 | `scripts/check-architecture-guard.mjs` 升级 |
+| **v1.1 保留** | `style-src-attr: 'unsafe-inline'`（React 行内 style；v1.2 再评估） |
+| **dev 保留** | `devCsp.script-src` `unsafe-inline`（Vite HMR） |
+
+**STT-CANCEL（Q-STT-CANCEL-1）**
+
+| 层 | 路径 |
+|----|------|
+| Rust 状态 | `TranscribeCancelState`（对齐 `PostprocessCancelState`） |
+| 命令 | `project_cancel_transcribe`；`project_run_transcribe` + `request_id` + `Abortable` |
+| Adapter | `transcribe_native_online.rs`、`stt_native/*` 分批接入 cancel token |
+| TS | `transcribePreviewState.ts`（移除 `online-stt-*` 不可 cancel）；`useTranscribeJobController.ts` |
+| **不扩 scope** | 本机 `async_start` 不可中断窗口（fix-status 4c）另开 |
+
+#### 10.4.3 并行与禁忌
+
+| 规则 | 说明 |
+|------|------|
+| **勿同 PR** | CSP 改 `tauri.conf` + 大规模 UI 重设计；Release CI + BATCH 队列大改 |
+| **可并行** | Step **5b–c**（PROD-META）∥ Step 6a（CSP）；Step **9a**（ONBOARD 壳）∥ Step 8（DELIV A-1）；Step 6（CSP）∥ Step 7a（STT）；Step 10（BATCH）∥ Step 9b（ONBOARD 挂钩） |
+| **PROD-META 门禁** | REL-1.1 前须 **5c** 签收；Win 发行 checklist「关于 + ffmpeg 许可」依赖本 Epic |
+| **ONBOARD 门禁** | **O-2** 须在 **DELIV A-2** 之后或同 PR 协调转写 toast；清单 **不**替代 `EnvHelpPanel`（L2 帮助仍被动查阅） |
+| **DELIV 门禁** | 不自动串联 A→B；须预览写回（延续 F0 硬约束） |
+| **BATCH 门禁** | 串行转写；非空语段默认跳过（覆盖须 ASR-VOC-1 确认框） |
+| **v1.1 发版** | Step 12 前须 **6b + 7b** 至少一家在线 E2E 取消手测 |
+
+#### 10.4.4 日历估算（单人 · 2–4h/片）
+
+| Phase | 周次（约） | 交付 |
+|-------|------------|------|
+| A 发行尾项 + 元信息 | +0.5–1w | Step 5 Win CI + **PROD-META** |
+| B v1.1 硬化 | +2–3w | CSP + STT 取消 |
+| C 定稿 UX + 引导 | +1.5–2w | DELIV-MODE + **ONBOARD** |
+| D 多场 | +1–1.5w | BATCH-TXN |
+| E 签收 | +0.5w | REL-1.1 |
+
+**与 §6 远期关系**：R5 MCP、R6–R8、LLM-LOC-4b、Q-PLUGIN-1 **仍在 v1.1 之后**；本轨不阻塞协作立项。
+
 ---
 
 ## 11. 参考文档（非排期真源）
@@ -1150,6 +1313,7 @@ Step 5  R3h-1-R Windows CI          🟡 smoke.ps1 warmup 对齐
 | [`word-formatted-export-backlog.md`](../specs/word-formatted-export-backlog.md) | **EXP-WORD** L6 终稿 Word（单机；非 C6） |
 | [`p3-acceptance.md`](../p3-acceptance.md) | P3 DOCX **基线**签收 |
 | [`personal-solo-v1-backlog.md`](../specs/personal-solo-v1-backlog.md) | **个人单机 v1** 能力补齐与 R9 手测 |
+| **§10.4 v1.1+ 规格（规划落位）** | `product-metadata-v1.1-*` · `onboarding-first-run-*` · `delivery-mode-*` · `batch-transcribe-queue-*` · `csp-harden-v1.1-*` · `online-stt-cancel-v1.1-*`（编码前立项） |
 | [`llm-local-runtime-backlog.md`](../specs/llm-local-runtime-backlog.md) | **LLM-LOC** 本机 LLM（4a Ollama / 4b LRC） |
 | [`lexicon-mining-backlog.md`](../specs/lexicon-mining-backlog.md) | **候选** LEX-MINE / ASR-FT；历史 §5 与 Oumi 排除登记 |
 | [`translation-dictionary-module.md`](../specs/translation-dictionary-module.md) | **CAT 实施 spec**（T1–T6；未排期） |
@@ -1232,6 +1396,9 @@ Step 5  R3h-1-R Windows CI          🟡 smoke.ps1 warmup 对齐
 | 2026-06-11 | **R3h-1-R Release CI**：`release.yml` + `ci-publish-runtime-manifest-release.sh`；主刀 → **TRN-DIAG** |
 | 2026-06-11 | **TRN-DIAG ✅**：`trn-diag-hand-test.sh` + 手测清单；下一刀 → ASR-WARM release（可选） |
 | 2026-06-11 | §阶段状态：R4/R9 ✅；§4.1.9 F7/F8/MEM/F4；§13 对照刷新 |
+| 2026-06-12 | **§10.4 v1.1+ 统一后续路线图**：DELIV-MODE · BATCH-TXN · CSP-HARDEN（Q-CSP-1）· STT-CANCEL（Q-STT-CANCEL-1）；Step 5–12；REL-1.1 手测集 |
+| 2026-06-12 | **§10.4 + PROD-META**：Step **5b–c** 产品元信息（关于 / 版本 / 第三方许可）；H-PROD-*；Win checklist 闭合项 |
+| 2026-06-12 | **§10.4 + ONBOARD**：Step **9a–b** 新手引导（Welcome 首跑清单 · 非 tour）；H-ONBOARD-*；research brief 门禁 |
 
 ---
 

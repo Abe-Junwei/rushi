@@ -1,72 +1,89 @@
-# 并行薄片索引（不挡 v1 后主序 · 2026-06-11 刷新）
+# 并行薄片索引（v1.1+ · 2026-06-12 刷新）
 
-> **主序真源**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) §10  
-> **纪律**：每轮仍 **一轮一薄片**；下列项 **勿与 R3h-1-R CI 大改同 PR**
+> **主序真源**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) **§10.4**  
+> **纪律**：每轮仍 **一轮一薄片**；CSP / Release CI / 大规模 UI **勿同 PR**
 
-## 当前主序（2026-06-11 · v1 后硬化）
+## Phase A · v1 后硬化 Step 1–4（✅ 已闭合）
 
 ```text
 Step 1  R3h-1-R Release CI          ✅ 编码 2026-06-11
 Step 2  TRN-DIAG 手测闭项           ✅ 2026-06-11
-Step 3  ASR-WARM release idle      ✅ H5 2026-06-12（warmup 随 sidecar 重打）
+Step 3  ASR-WARM release idle      ✅ H5 2026-06-12
 Step 4  ACC 在线 E2E                 ✅ 百炼 2026-06-12
 ```
 
-| 步 | 项 | 状态 | 说明 |
-|----|-----|------|------|
-| **1** | **R3h-1-R CI** | ✅ mac/linux · Win 🟡 | [checklist](./r3h-1-r-release-checklist.md) · [`v0.1.0` release](https://github.com/Abe-Junwei/rushi/releases/tag/v0.1.0) |
-| **2** | **TRN-DIAG** | ✅ | [`trn-diag-hand-test-checklist.md`](./trn-diag-hand-test-checklist.md) |
-| **3** | **ASR-WARM release** | ✅ | dev + idle H5 ✅；sidecar 重打 + smoke warmup gate ✅ 2026-06-12 |
-| **4** | **ACC 在线 E2E** | ✅ 百炼 | [`acc-stt-ali-hand-test-checklist.md`](./acc-stt-ali-hand-test-checklist.md) · 2026-06-12 |
-
-### 已闭合硬化步（不挡主刀）
-
-| 项 | 状态 | 说明 |
-|----|------|------|
-| **R3h-I1** | ✅ | 设计冻结 + I1a 编码 |
-| **ASR-WARM dev** | ✅ | 侧车保活 + 预热 |
-| **语段正文 P0** | ✅ | [`segment-text-input-p0-acceptance.md`](./segment-text-input-p0-acceptance.md) |
-| **⑤″f F2/F1/F6** | ✅ | 复测 2026-06-11 |
-| **F8** | ✅ | 导出预览向导 |
-| **F4-ASR** | ❌ No-go | 无 ASR confidence 真源 |
-| **Gate-B / 4b** | ❌ No-Go | [`llm-loc-gate-b-decision-2026-06.md`](./llm-loc-gate-b-decision-2026-06.md) |
-| **R3s-A** | 📋 Defer | Qwen3 战略预留 |
-
-## 并行候选（路线图 §10.3 · 不挡 Step 1）
-
-| ID | 主题 | 预估 | 状态 | 规格 / 验收 | 启动条件 |
-|----|------|------|------|-------------|----------|
-| **R3h-0** | 构建 smoke + Win 磁盘 + pip UI 降级 | 2–3d | ✅ **mac** | [r3h-0 acceptance](./r3h-0-asr-sidecar-build-smoke-acceptance.md) | Win §4 ⏸ 有 Win 机时补 |
-| **R3h-1-R** | Runtime manifest **发行激活** | 3–5d | ✅ R1+R2 · **CI 编码 ✅** | [signoff](./r3h-1-r-phase-signoff-2026-06.md) · [plan](./r3h-1-r-runtime-manifest-release-activation-plan.md) | 首次 release 待 secret |
-| **R3h-2** | 断点续传、GC、C 类升级回滚 | ~1w | ✅ | [`r3h-2 acceptance`](./r3h-2-local-runtime-resume-acceptance.md) | 已签收 |
-| **R3h-3.5** | Sherpa **Paraformer** Spike | ~1w | ✅ Partial Go | [`r3h-3.5-sherpa-spike-acceptance.md`](./r3h-3.5-sherpa-spike-acceptance.md) | R3h-3 ✅ |
-| **TRN-DIAG** | 转写阶段时间线 + 诊断包 | 0.5w | ✅ | [`trn-diag-hand-test-checklist.md`](./trn-diag-hand-test-checklist.md) | 2026-06-11 |
-| **ASR-WARM** | 侧车保活、模型预热 | 0.5–1w | ✅ dev / 🟡 release | [`asr-warm-acceptance.md`](./asr-warm-acceptance.md) | release idle 可选 |
-| **ACC-STT-ALI** | 百炼热词 | — | ✅ | [`acc-stt-ali-hand-test-checklist.md`](./acc-stt-ali-hand-test-checklist.md) | 2026-06-12 E2E |
-| **R3f Win** | 安装包零终端手测 | 2–3d | ⏸ **豁免** | [r3f signoff](./r3f-phase-signoff-2026-06.md) | 有 Win 机时补 |
-| **R3t-E** | 词表校对（独立产品） | — | ⏸ **已移除** | 能力在 **F0 阶段 B** | — |
-| **F3 / F5** | P3 未编码 | — | 📋 | r3t-f plan | v1 后按需 |
-
-## 禁忌（§4.1.3）
-
-- **勿** R3f 大改与 R3e-B 分片同轮  
-- **勿** Gate-B 未过即改 `llm-runtime` catalog  
-- **勿** Release CI 与大规模 UI 重设计同 PR
-
-## 推荐空档顺序（单人）
+## Phase B–E · v1.1+ 统一后续（§10.4）
 
 ```text
-1. ~~R3h-I1 FSM 设计冻结~~ ✅
-2. ~~ASR-WARM dev~~ ✅
-3. ~~语段正文输入 P0~~ ✅
-4. ~~F8 导出预览~~ ✅
-5. ~~F2/F1/F6 复测~~ ✅ 2026-06-11
-6. ~~**R3h-1-R Release CI**~~ ✅ 编码
-7. ~~**TRN-DIAG 手测闭项**~~ ✅ 2026-06-11
-8. ~~**ASR-WARM release idle**~~ ✅ H5 2026-06-12
-9. ~~sidecar 重打 + smoke warmup gate~~ ✅ 2026-06-12（**重装 DMG** 后验 `asr_warmup_ok`）
-10. ~~ACC 在线 E2E（百炼）~~ ✅ 2026-06-12
-11. **R3h-1-R Windows CI**（smoke.ps1 与 bash warmup 对齐）
+Step 5   R3h-1-R Windows CI                    🟡 ← 当前主刀
+
+Step 5b  PROD-META P-1  环境页「关于」+ app_version
+Step 5c  PROD-META P-2  第三方许可 + build-info 对齐 + macOS About
+
+Step 6a  CSP-HARDEN C-1
+Step 6b  CSP-HARDEN C-2
+Step 7a  STT-CANCEL D-1
+Step 7b  STT-CANCEL D-2  (OpenAI + Deepgram)
+Step 7c  STT-CANCEL D-3  (百炼)
+Step 7d  STT-CANCEL D-4  (AssemblyAI)
+Step 7e  STT-CANCEL D-5  (P2 可选)
+
+Step 8   DELIV-MODE A-1
+Step 9   DELIV-MODE A-2
+
+Step 10  BATCH-TXN B-1
+Step 11  BATCH-TXN B-2
+
+Step 12  REL-1.1 signoff
+```
+
+| Step | Epic | 状态 | 规格（编码前） |
+|------|------|------|----------------|
+| **5** | R3h-1-R Win | 🟡 | [checklist §3](./r3h-1-r-release-checklist.md) |
+| **5b–c** | PROD-META | 📋 | `product-metadata-v1.1-*` |
+| **6a–b** | CSP-HARDEN | 📋 | `csp-harden-v1.1-*` |
+| **7a–d** | STT-CANCEL | 📋 | `online-stt-cancel-v1.1-*` |
+| **8–9** | DELIV-MODE | 📋 | `delivery-mode-*` |
+| **10–11** | BATCH-TXN | 📋 | `batch-transcribe-queue-*` |
+| **12** | REL-1.1 | 📋 | 路线图 §10.4.1 H-* 手测集 |
+
+### 已闭合（不挡主刀）
+
+| 项 | 状态 |
+|----|------|
+| R3h-I1 / ASR-WARM dev / 语段 P0 / F8 / F2/F1/F6 | ✅ |
+| TRN-DIAG / ACC 百炼 E2E / ASR-WARM release H5 | ✅ |
+| F4-ASR / Gate-B 4b / R3t-E 独立 | ❌ or ⏸ |
+
+## 并行候选（不挡 Step 5–7）
+
+| ID | 主题 | 状态 | 启动条件 |
+|----|------|------|----------|
+| **R3f Win** | 安装包零终端手测 | ⏸ | 有 Win 机时补 |
+| **R3s-A Phase 0** | 金标 eval | 📋 Defer | 非编码 |
+| **架构热点回收** | 波形 / lifecycle hotspot | 📋 | 守卫达线 |
+| **F3 / F5** | R3t-F P3 | 📋 | v1.1 后按需 |
+| **OpenAI/AAI E2E** | ACC 在线手测 | P3 | 有 Key |
+
+## 禁忌
+
+- **勿** CSP 硬化 + DELIV-MODE 大 UI 同 PR  
+- **勿** Release Win CI + BATCH 队列大改同 PR  
+- **勿** Gate-B 未过即改 `llm-runtime` catalog  
+- **勿** 在本轨开 STREAM-* / 协作 / CAT（§8 不做）
+
+## 单人推荐顺序
+
+```text
+1. ~~Step 1–4 硬化~~ ✅
+2. Step 5 Win CI
+3. Step 5b→5c PROD-META（可与 6a 并行）
+4. Step 6a CSP（可与 7a STT 基础设施并行）
+5. Step 7a→7b→7c→7d STT 取消
+6. Step 6b CSP 签收
+7. Step 8→9 DELIV-MODE
+8. Step 10→11 BATCH-TXN
+9. Step 12 REL-1.1
 ```
 
 ## 修订
@@ -77,4 +94,4 @@ Step 4  ACC 在线 E2E                 ✅ 百炼 2026-06-12
 | 2026-06-08 | **R3h-0 mac 签收**；Win §4 豁免 |
 | 2026-06-10 | **R3h-1-R** R1/R2 ✅；**R3h-2** ✅ |
 | 2026-06-11 | **I1 + ASR-WARM dev + 语段 P0 + F8 + F2/F1/F6** 闭合 |
-| 2026-06-11 | **v1 后硬化盘点**：主刀 → **R3h-1-R CI**；TRN-DIAG 🟡；F4 No-go；R3t-E ⏸ |
+| 2026-06-12 | **§10.4 统一后续**：DELIV-MODE · BATCH-TXN · CSP · STT-CANCEL · **PROD-META** · Step 5–12 |
