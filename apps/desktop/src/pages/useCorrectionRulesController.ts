@@ -1,4 +1,6 @@
 import { useCallback, useMemo, useState } from "react";
+import { publishSegmentTextBulkMutation } from "./flushSegmentTextDrafts";
+import { findSegmentIndexByUid } from "./segmentListHelpers";
 import { correctionHighlightSpanToCharRange } from "../services/editor/correctionHighlightCharRange";
 import {
   querySegmentListScrollRoot,
@@ -261,13 +263,21 @@ export function useCorrectionRulesController(args: Args) {
     pushUndo();
     const selected = new Set(dialog.selectedSegmentIdxs);
     const next = [...segmentsRef.current];
+    let applied = 0;
     for (const ch of dialog.changes) {
       if (!selected.has(ch.segmentIdx)) continue;
-      const row = next[ch.segmentIdx];
-      if (row) next[ch.segmentIdx] = { ...row, text: ch.afterText };
+      const idx = ch.uid.trim() ? findSegmentIndexByUid(next, ch.uid) : ch.segmentIdx;
+      if (idx < 0) continue;
+      const row = next[idx];
+      if (!row) continue;
+      next[idx] = { ...row, text: ch.afterText };
+      applied += 1;
     }
-    segmentsRef.current = next;
-    setSegments(next);
+    if (applied === 0) {
+      setError("所选语段已不存在或 uid 已变化，请关闭预览后重新生成候选。");
+      return;
+    }
+    publishSegmentTextBulkMutation(segmentsRef, setSegments, next);
     closeStageA();
     const saved = await saveSegments({ quiet: true, countHits: true });
     if (!saved) {

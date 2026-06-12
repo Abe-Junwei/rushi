@@ -1,16 +1,20 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import type { GlossaryWorkspaceId } from "../components/glossary/glossaryWorkspaceTypes";
 import { groupCorrectionMemoryConflicts } from "../services/correctionMemoryConflicts";
+
+export type { GlossaryWorkspaceId };
 import { useCorrectionMemoryController } from "./useCorrectionMemoryController";
+import { useGlossaryBulkAddDialog } from "./useGlossaryBulkAddDialog";
 import { useGlossaryController } from "./useGlossaryController";
 import { useGlossaryMineController } from "./useGlossaryMineController";
 import { useLexiconBundleController } from "./useLexiconBundleController";
 import type { GlossaryTermDto } from "../tauri/glossaryApi";
 import type { CorrectionMemoryEntryRow } from "../tauri/correctionApi";
 
-export function useGlossaryPageController(busy: boolean) {
+export function useGlossaryPageController(busy: boolean, workspaceId: GlossaryWorkspaceId) {
   const g = useGlossaryController();
+  const bulkAdd = useGlossaryBulkAddDialog(g);
   const mem = useCorrectionMemoryController();
-  const [deleteConfirmId, setDeleteConfirmId] = useState<number | null>(null);
   const [termEditorOpen, setTermEditorOpen] = useState(false);
   const [memEditorOpen, setMemEditorOpen] = useState(false);
   const [bundleBusy, setBundleBusy] = useState(false);
@@ -29,22 +33,21 @@ export function useGlossaryPageController(busy: boolean) {
   });
   const headerCheckboxRef = useRef<HTMLInputElement>(null);
   const memoryHeaderCheckboxRef = useRef<HTMLInputElement>(null);
-  const termEditorRef = useRef<HTMLDivElement>(null);
-  const memoryEditorRef = useRef<HTMLDivElement>(null);
   const disabled = busy || g.busy || mem.busy || mine.busy || bundleBusy;
 
-  const scrollIntoViewSoon = useCallback((ref: React.RefObject<HTMLDivElement | null>) => {
-    // 编辑器折叠展开后下一帧才有布局，再滚动到位
-    requestAnimationFrame(() => {
-      ref.current?.scrollIntoView({ behavior: "smooth", block: "nearest" });
-    });
-  }, []);
+  // 仅在工作区分段切换时重置；勿将 g/mem 放入 deps（对象引用每轮变化会立刻关掉编辑器/对话框）
+  useEffect(() => {
+    setTermEditorOpen(false);
+    setMemEditorOpen(false);
+    bulkAdd.closeDialog();
+    g.resetEditor();
+    mem.resetEditor();
+  }, [workspaceId]);
 
   const openTermEditor = useCallback(() => {
     g.resetEditor();
     setTermEditorOpen(true);
-    scrollIntoViewSoon(termEditorRef);
-  }, [g, scrollIntoViewSoon]);
+  }, [g]);
 
   const closeTermEditor = useCallback(() => {
     g.resetEditor();
@@ -55,16 +58,14 @@ export function useGlossaryPageController(busy: boolean) {
     (row: GlossaryTermDto) => {
       g.selectTerm(row);
       setTermEditorOpen(true);
-      scrollIntoViewSoon(termEditorRef);
     },
-    [g, scrollIntoViewSoon],
+    [g],
   );
 
   const openMemEditor = useCallback(() => {
     mem.resetEditor();
     setMemEditorOpen(true);
-    scrollIntoViewSoon(memoryEditorRef);
-  }, [mem, scrollIntoViewSoon]);
+  }, [mem]);
 
   const closeMemEditor = useCallback(() => {
     mem.resetEditor();
@@ -75,9 +76,8 @@ export function useGlossaryPageController(busy: boolean) {
     (row: CorrectionMemoryEntryRow) => {
       mem.selectRow(row);
       setMemEditorOpen(true);
-      scrollIntoViewSoon(memoryEditorRef);
     },
-    [mem, scrollIntoViewSoon],
+    [mem],
   );
 
   useEffect(() => {
@@ -95,37 +95,22 @@ export function useGlossaryPageController(busy: boolean) {
   const handleDeleteFromEditor = useCallback(() => {
     if (g.selectedId == null) return;
     void g.remove(g.selectedId);
-    setDeleteConfirmId(null);
     setTermEditorOpen(false);
   }, [g]);
 
   const memoryConflicts = useMemo(() => groupCorrectionMemoryConflicts(mem.rows), [mem.rows]);
-
-  const handleRowDelete = useCallback(
-    (id: number) => {
-      if (deleteConfirmId !== id) {
-        setDeleteConfirmId(id);
-        return;
-      }
-      setDeleteConfirmId(null);
-      void g.remove(id);
-    },
-    [deleteConfirmId, g],
-  );
 
   return {
     g,
     mem,
     mine,
     lex,
+    workspaceId,
     disabled,
     bundleStatus,
     bundleError,
-    deleteConfirmId,
     headerCheckboxRef,
     memoryHeaderCheckboxRef,
-    termEditorRef,
-    memoryEditorRef,
     memoryConflicts,
     termEditorOpen,
     openTermEditor,
@@ -136,7 +121,11 @@ export function useGlossaryPageController(busy: boolean) {
     closeMemEditor,
     handleSelectMemoryRow,
     handleDeleteFromEditor,
-    handleRowDelete,
+    bulkAddDialogOpen: bulkAdd.open,
+    openBulkAddDialog: bulkAdd.openDialog,
+    closeBulkAddDialog: bulkAdd.closeDialog,
+    handleBulkAddConfirm: bulkAdd.confirm,
+    handleBulkImportFromFile: bulkAdd.importFromFile,
   };
 }
 

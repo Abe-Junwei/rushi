@@ -25,9 +25,9 @@ export function useGlossaryImportExport(
 ) {
   const [bulkPaste, setBulkPaste] = useState("");
 
-  const bulkAdd = useCallback(async () => {
+  const bulkAdd = useCallback(async (): Promise<boolean> => {
     const pieces = splitGlossaryPasteInput(bulkPaste);
-    if (pieces.length === 0) return;
+    if (pieces.length === 0) return false;
     setBusy(true);
     setError("");
     setStatusMessage("");
@@ -38,7 +38,9 @@ export function useGlossaryImportExport(
       const skip = glossaryImportSkipSuffix(result);
       if (result.added > 0) {
         setStatusMessage(`批量添加 ${result.added} 条${skip}。`);
-      } else if (result.skippedDup > 0 && result.skippedWrongForm === 0) {
+        return true;
+      }
+      if (result.skippedDup > 0 && result.skippedWrongForm === 0) {
         setError("所选术语均已存在（忽略大小写）。");
       } else if (result.skippedWrongForm > 0) {
         setError(
@@ -49,8 +51,10 @@ export function useGlossaryImportExport(
       } else {
         setError("未添加任何术语。");
       }
+      return false;
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
+      return false;
     } finally {
       setBusy(false);
     }

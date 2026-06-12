@@ -1,46 +1,31 @@
 import type { RefObject } from "react";
-import { Flame, Trash2 } from "lucide-react";
+import { Flame } from "lucide-react";
 import { PANEL_TYPOGRAPHY } from "../../config/typography";
 import type { GlossaryTermDto } from "../../tauri/glossaryApi";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";
+import { GlossaryListSelectBar } from "./GlossaryListSelectBar";
 import {
   GLOSSARY_CHECKBOX,
-  GLOSSARY_TABLE,
-  GLOSSARY_TABLE_HEAD_ROW,
-  GLOSSARY_TABLE_TH,
-  GLOSSARY_TABLE_WRAP,
-  glossaryRowActionsClass,
-  glossaryRowDeleteBtnClass,
-  glossaryTableRowClass,
+  GLOSSARY_LIST_ROW_INNER,
+  GLOSSARY_LIST_TRAILING_PILL,
+  glossaryListRowClass,
 } from "./glossaryPanelStyles";
 
 type GlossaryTermTableProps = {
   rows: GlossaryTermDto[];
   selectedId: number | null;
   checkedIds: Set<number>;
-  deleteConfirmId: number | null;
   disabled: boolean;
+  compact?: boolean;
   isAllVisibleSelected: boolean;
-  isIndeterminate: boolean;
   headerCheckboxRef: RefObject<HTMLInputElement | null>;
   onToggleVisibleSelection: () => void;
   onToggleChecked: (id: number) => void;
   onSelectTerm: (row: GlossaryTermDto) => void;
   onToggleRowHotword: (row: GlossaryTermDto) => void;
-  onRowDelete: (id: number) => void;
 };
 
-function formatTermDate(ms: number): string {
-  return new Date(ms).toLocaleString("zh-CN", {
-    year: "numeric",
-    month: "2-digit",
-    day: "2-digit",
-    hour: "2-digit",
-    minute: "2-digit",
-  });
-}
-
-function truncateCell(text: string, max = 48): string {
+function truncateAliases(text: string, max = 64): string {
   const t = text.trim();
   if (t.length <= max) return t;
   return `${t.slice(0, max)}…`;
@@ -50,129 +35,93 @@ export function GlossaryTermTable({
   rows,
   selectedId,
   checkedIds,
-  deleteConfirmId,
   disabled,
+  compact = false,
   isAllVisibleSelected,
   headerCheckboxRef,
   onToggleVisibleSelection,
   onToggleChecked,
   onSelectTerm,
   onToggleRowHotword,
-  onRowDelete,
 }: GlossaryTermTableProps) {
+  if (rows.length === 0) {
+    return <p className={`m-0 px-4 py-8 text-center ${PANEL_TYPOGRAPHY.meta}`}>当前列表无词条。</p>;
+  }
+
+  const hotwordCount = rows.filter((r) => r.hotword_enabled !== false).length;
+
   return (
-    <div className={GLOSSARY_TABLE_WRAP}>
-      <table className={`${GLOSSARY_TABLE} min-w-[720px]`}>
-        <thead>
-          <tr className={GLOSSARY_TABLE_HEAD_ROW}>
-            <th className="w-10 px-2 py-2">
-              <input
-                ref={headerCheckboxRef}
-                type="checkbox"
-                checked={isAllVisibleSelected}
-                onChange={onToggleVisibleSelection}
-                disabled={disabled || rows.length === 0}
-                aria-label="全选当前列表"
-                className={GLOSSARY_CHECKBOX}
-              />
-            </th>
-            <th className="w-14 px-2 py-2 font-semibold" title="纳入下次转写（热词）">
-              热词
-            </th>
-            <th className={GLOSSARY_TABLE_TH}>主术语</th>
-            <th className={GLOSSARY_TABLE_TH}>别名</th>
-            <th className={GLOSSARY_TABLE_TH}>领域</th>
-            <th className={GLOSSARY_TABLE_TH}>备注</th>
-            <th className={GLOSSARY_TABLE_TH}>更新</th>
-            <th className={GLOSSARY_TABLE_TH} aria-label="操作" />
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => {
-            const editing = selectedId === row.id;
-            const checked = checkedIds.has(row.id);
-            const confirming = deleteConfirmId === row.id;
-            const hotwordOn = row.hotword_enabled !== false;
-            return (
-              <tr key={row.id} className={glossaryTableRowClass({ active: editing, checked })}>
-                <td className="px-2 py-2.5">
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    onChange={() => onToggleChecked(row.id)}
-                    disabled={disabled}
-                    aria-label={`选择 ${row.term}`}
-                    className={GLOSSARY_CHECKBOX}
-                  />
-                </td>
-                <td className="px-2 py-2.5">
-                  <button
-                    type="button"
-                    className={[
-                      "inline-flex h-7 w-7 items-center justify-center rounded-sm border transition-colors disabled:opacity-40",
-                      hotwordOn
-                        ? "border-zen-saffron/30 bg-zen-saffron/15 text-zen-saffron hover:bg-zen-saffron/25"
-                        : "border-notion-border bg-notion-bg text-notion-text-muted hover:bg-notion-sidebar-hover",
-                    ].join(" ")}
-                    disabled={disabled}
-                    onClick={() => void onToggleRowHotword(row)}
-                    aria-label={hotwordOn ? `${row.term} 已纳入热词，点击移出` : `${row.term} 未纳入热词，点击纳入`}
-                    title={hotwordOn ? "已纳入下次转写（热词），点击移出" : "未纳入下次转写（热词），点击纳入"}
-                  >
-                    <Flame className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-                  </button>
-                </td>
-                <td
-                  className="max-w-[140px] cursor-pointer truncate px-3 py-2.5 font-medium text-notion-text"
+    <div className="flex flex-col">
+      <GlossaryListSelectBar
+        headerCheckboxRef={headerCheckboxRef}
+        isAllVisibleSelected={isAllVisibleSelected}
+        onToggleVisibleSelection={onToggleVisibleSelection}
+        disabled={disabled}
+        rowCount={rows.length}
+        trailing={`${rows.length} 条 · ${hotwordCount} 条热词`}
+      />
+
+      <ul className="m-0 list-none p-0" role="list" aria-label="转写词汇表">
+        {rows.map((row) => {
+          const editing = selectedId === row.id;
+          const checked = checkedIds.has(row.id);
+          const hotwordOn = row.hotword_enabled !== false;
+          const aliases = row.aliases.trim();
+
+          return (
+            <li key={row.id} className={glossaryListRowClass({ active: editing, checked })}>
+              <div className={GLOSSARY_LIST_ROW_INNER}>
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => onToggleChecked(row.id)}
+                  disabled={disabled}
+                  aria-label={`选择 ${row.term}`}
+                  className={[
+                    "mt-0.5 shrink-0",
+                    GLOSSARY_CHECKBOX,
+                    checked || editing ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+                  ].join(" ")}
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <button
+                  type="button"
+                  className="min-w-0 flex-1 cursor-pointer border-0 bg-transparent p-0 text-left"
+                  disabled={disabled}
                   onClick={() => onSelectTerm(row)}
                 >
-                  {row.term}
-                </td>
-                <td
-                  className="max-w-[120px] cursor-pointer truncate px-3 py-2.5 text-notion-text-muted"
-                  onClick={() => onSelectTerm(row)}
+                  <span className="block truncate text-sm font-medium text-notion-text">{row.term}</span>
+                  {!compact && aliases ? (
+                    <span className={`mt-0.5 block truncate ${PANEL_TYPOGRAPHY.meta}`}>
+                      {truncateAliases(aliases)}
+                    </span>
+                  ) : null}
+                </button>
+                <button
+                  type="button"
+                  className={[
+                    GLOSSARY_LIST_TRAILING_PILL,
+                    "mt-0.5 border-0 transition-colors disabled:opacity-40",
+                    hotwordOn
+                      ? "bg-zen-saffron/15 text-zen-saffron hover:bg-zen-saffron/25"
+                      : "bg-notion-callout-bg text-notion-text-light hover:bg-notion-sidebar-hover hover:text-notion-text-muted",
+                  ].join(" ")}
+                  disabled={disabled}
+                  onClick={(e) => {
+                    e.stopPropagation();
+                    void onToggleRowHotword(row);
+                  }}
+                  aria-label={hotwordOn ? `${row.term} 已纳入热词` : `${row.term} 未纳入热词`}
+                  title={hotwordOn ? "已纳入下次转写（热词），点击移出" : "未纳入下次转写（热词），点击纳入"}
                 >
-                  {truncateCell(row.aliases) || "—"}
-                </td>
-                <td
-                  className="max-w-[100px] cursor-pointer truncate px-3 py-2.5 text-notion-text-muted"
-                  onClick={() => onSelectTerm(row)}
-                >
-                  {truncateCell(row.domain) || "—"}
-                </td>
-                <td
-                  className="max-w-[160px] cursor-pointer truncate px-3 py-2.5 text-notion-text-muted"
-                  onClick={() => onSelectTerm(row)}
-                >
-                  {truncateCell(row.note) || "—"}
-                </td>
-                <td
-                  className="cursor-pointer whitespace-nowrap px-3 py-2.5 text-notion-text-muted"
-                  onClick={() => onSelectTerm(row)}
-                >
-                  {formatTermDate(row.updated_at_ms ?? row.created_at_ms)}
-                </td>
-                <td className="px-3 py-2.5">
-                  <div className={glossaryRowActionsClass(confirming)}>
-                    <button
-                      type="button"
-                      className={glossaryRowDeleteBtnClass(confirming)}
-                      disabled={disabled}
-                      onClick={() => onRowDelete(row.id)}
-                    >
-                      <Trash2 className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-                      {confirming ? "确认删除" : "删除"}
-                    </button>
-                  </div>
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-      {rows.length === 0 ? (
-        <p className={`m-0 px-3 py-6 text-center ${PANEL_TYPOGRAPHY.meta}`}>当前列表无词条。</p>
-      ) : null}
+                  <Flame className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+                  <span>{hotwordOn ? "热词" : "未纳入"}</span>
+                </button>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }

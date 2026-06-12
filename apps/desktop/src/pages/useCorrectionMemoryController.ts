@@ -48,6 +48,8 @@ export function useCorrectionMemoryController() {
     statusMessage,
     searchQuery: list.searchQuery,
     setSearchQuery: list.setSearchQuery,
+    sortMode: list.sortMode,
+    setSortMode: list.setSortMode,
     selectedKey: editor.selectedKey,
     draft: editor.draft,
     editorMode: editor.editorMode,

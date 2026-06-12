@@ -1,5 +1,4 @@
 import type { RefObject } from "react";
-import { ListChecks } from "lucide-react";
 import { PANEL_TYPOGRAPHY } from "../../config/typography";
 import {
   correctionMemoryRowKey,
@@ -7,15 +6,12 @@ import {
 } from "../../services/correctionMemoryHelpers";
 import type { CorrectionMemoryEntryRow } from "../../tauri/correctionApi";
 import type { CorrectionMemoryKey } from "../../services/correctionMemoryHelpers";
-import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";
+import { GlossaryListSelectBar } from "./GlossaryListSelectBar";
 import {
   GLOSSARY_CHECKBOX,
-  GLOSSARY_TABLE,
-  GLOSSARY_TABLE_HEAD_ROW,
-  GLOSSARY_TABLE_TH,
-  GLOSSARY_TABLE_WRAP,
-  glossaryRowActionsClass,
-  glossaryTableRowClass,
+  GLOSSARY_LIST_ROW_INNER,
+  GLOSSARY_LIST_TRAILING_PILL,
+  glossaryListRowClass,
 } from "./glossaryPanelStyles";
 
 type Props = {
@@ -23,20 +19,22 @@ type Props = {
   selectedKey: CorrectionMemoryKey | null;
   checkedKeys: Set<string>;
   disabled: boolean;
+  compact?: boolean;
   isAllVisibleSelected: boolean;
-  isIndeterminate: boolean;
   headerCheckboxRef: RefObject<HTMLInputElement | null>;
   onToggleVisibleSelection: () => void;
   onToggleChecked: (rowKey: string) => void;
   onSelect: (row: CorrectionMemoryEntryRow) => void;
-  onAcceptRule: (row: CorrectionMemoryEntryRow) => void;
 };
 
-function isEditingKey(
-  selected: CorrectionMemoryKey | null,
-  row: CorrectionMemoryEntryRow,
-): boolean {
+function isEditingKey(selected: CorrectionMemoryKey | null, row: CorrectionMemoryEntryRow): boolean {
   return selected?.wrong === row.wrong && selected?.right === row.right;
+}
+
+function stablePillClass(row: CorrectionMemoryEntryRow): string {
+  return row.isStable || row.acceptedAsRule
+    ? "bg-zen-saffron/15 text-zen-saffron"
+    : "bg-notion-callout-bg text-notion-text-muted";
 }
 
 export function CorrectionMemoryTable({
@@ -44,110 +42,78 @@ export function CorrectionMemoryTable({
   selectedKey,
   checkedKeys,
   disabled,
+  compact = false,
   isAllVisibleSelected,
-  isIndeterminate,
   headerCheckboxRef,
   onToggleVisibleSelection,
   onToggleChecked,
   onSelect,
-  onAcceptRule,
 }: Props) {
+  if (rows.length === 0) {
+    return <p className={`m-0 px-4 py-8 text-center ${PANEL_TYPOGRAPHY.meta}`}>当前列表无纠错记忆。</p>;
+  }
+
+  const stableCount = rows.filter((r) => r.isStable || r.acceptedAsRule).length;
+
   return (
-    <div className={GLOSSARY_TABLE_WRAP}>
-      <table className={`${GLOSSARY_TABLE} min-w-[32rem]`}>
-        <thead>
-          <tr className={GLOSSARY_TABLE_HEAD_ROW}>
-            <th className="w-10 px-2 py-2">
-              <input
-                ref={headerCheckboxRef}
-                type="checkbox"
-                className={GLOSSARY_CHECKBOX}
-                checked={isAllVisibleSelected}
-                disabled={disabled || rows.length === 0}
-                aria-label="全选当前列表"
-                onChange={onToggleVisibleSelection}
-              />
-            </th>
-            <th className={GLOSSARY_TABLE_TH}>错词</th>
-            <th className={GLOSSARY_TABLE_TH}>正词</th>
-            <th className={`${GLOSSARY_TABLE_TH} tabular-nums`}>命中</th>
-            <th className={GLOSSARY_TABLE_TH}>状态</th>
-            <th className={`${GLOSSARY_TABLE_TH} text-right`}>操作</th>
-          </tr>
-        </thead>
-        <tbody>
-          {rows.map((row) => {
-            const rowId = correctionMemoryRowKey(row);
-            const active = isEditingKey(selectedKey, row);
-            const checked = checkedKeys.has(rowId);
-            return (
-              <tr key={rowId} className={glossaryTableRowClass({ active, checked })}>
-                <td className="px-2 py-2.5 align-top">
-                  <input
-                    type="checkbox"
-                    className={`mt-0.5 ${GLOSSARY_CHECKBOX}`}
-                    checked={checked}
-                    disabled={disabled}
-                    aria-label={`选择 ${row.wrong} → ${row.right}`}
-                    onChange={() => onToggleChecked(rowId)}
-                    onClick={(e) => e.stopPropagation()}
-                  />
-                </td>
-                <td className="px-3 py-2.5">
-                  <button
-                    type="button"
-                    className="w-full cursor-pointer border-0 bg-transparent p-0 text-left font-medium text-notion-text"
-                    disabled={disabled}
-                    onClick={() => onSelect(row)}
-                  >
+    <div className="flex flex-col">
+      <GlossaryListSelectBar
+        headerCheckboxRef={headerCheckboxRef}
+        isAllVisibleSelected={isAllVisibleSelected}
+        onToggleVisibleSelection={onToggleVisibleSelection}
+        disabled={disabled}
+        rowCount={rows.length}
+        trailing={`${rows.length} 条 · ${stableCount} 条稳定`}
+      />
+
+      <ul className="m-0 list-none p-0" role="list" aria-label="纠错记忆">
+        {rows.map((row) => {
+          const rowId = correctionMemoryRowKey(row);
+          const active = isEditingKey(selectedKey, row);
+          const checked = checkedKeys.has(rowId);
+
+          return (
+            <li key={rowId} className={glossaryListRowClass({ active, checked })}>
+              <div className={GLOSSARY_LIST_ROW_INNER}>
+                <input
+                  type="checkbox"
+                  checked={checked}
+                  onChange={() => onToggleChecked(rowId)}
+                  disabled={disabled}
+                  aria-label={`选择 ${row.wrong} → ${row.right}`}
+                  className={[
+                    "mt-0.5 shrink-0",
+                    GLOSSARY_CHECKBOX,
+                    checked || active ? "opacity-100" : "opacity-0 group-hover:opacity-100",
+                  ].join(" ")}
+                  onClick={(e) => e.stopPropagation()}
+                />
+                <button
+                  type="button"
+                  className="min-w-0 flex-1 cursor-pointer border-0 bg-transparent p-0 text-left"
+                  disabled={disabled}
+                  onClick={() => onSelect(row)}
+                >
+                  <span className="block truncate text-sm font-medium text-notion-text">
                     {row.wrong}
-                  </button>
-                </td>
-                <td className="px-3 py-2.5 text-notion-text">{row.right}</td>
-                <td className="px-3 py-2.5 tabular-nums text-notion-text-muted">{row.hitCount}</td>
-                <td className="px-3 py-2.5">
-                  <span
-                    className={[
-                      "inline-block rounded px-1.5 py-0.5 text-[11px] font-medium",
-                      row.isStable
-                        ? "bg-zen-saffron/15 text-zen-saffron"
-                        : "bg-notion-sidebar text-notion-text-muted",
-                    ].join(" ")}
-                  >
-                    {correctionMemoryStableLabel(row)}
+                    <span className="mx-1 font-normal text-notion-text-muted">→</span>
+                    {row.right}
                   </span>
-                </td>
-                <td className="px-3 py-2.5 text-right">
-                  {!row.acceptedAsRule ? (
-                    <div className={glossaryRowActionsClass(false)}>
-                      <button
-                        type="button"
-                        className="inline-flex h-7 items-center gap-1 rounded-sm border-0 bg-transparent px-2 text-[11px] font-medium text-notion-text-muted transition-colors hover:bg-notion-sidebar-hover hover:text-notion-text disabled:opacity-40"
-                        disabled={disabled}
-                        onClick={() => void onAcceptRule(row)}
-                      >
-                        <ListChecks
-                          className={LUCIDE_ICON_SIZE_SM}
-                          strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
-                          aria-hidden
-                        />
-                        采纳
-                      </button>
-                    </div>
-                  ) : (
-                    <span className={`${PANEL_TYPOGRAPHY.meta} text-notion-text-light`}>—</span>
-                  )}
-                </td>
-              </tr>
-            );
-          })}
-        </tbody>
-      </table>
-      {isIndeterminate && headerCheckboxRef.current ? (
-        <span className="sr-only" aria-live="polite">
-          部分选中
-        </span>
-      ) : null}
+                  {!compact ? (
+                    <span className={`mt-0.5 block ${PANEL_TYPOGRAPHY.meta}`}>命中 {row.hitCount} 次</span>
+                  ) : null}
+                </button>
+                <span
+                  className={[GLOSSARY_LIST_TRAILING_PILL, "mt-0.5", stablePillClass(row)].join(" ")}
+                  aria-label={`状态：${correctionMemoryStableLabel(row)}`}
+                >
+                  {correctionMemoryStableLabel(row)}
+                </span>
+              </div>
+            </li>
+          );
+        })}
+      </ul>
     </div>
   );
 }

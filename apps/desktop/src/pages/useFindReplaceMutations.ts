@@ -1,5 +1,6 @@
 import { useCallback } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
+import { publishSegmentTextBulkMutation } from "./flushSegmentTextDrafts";
 import {
   applyReplaceAllToSegments,
   buildReplaceAllPreviewRows,
@@ -124,8 +125,7 @@ export function useFindReplaceMutations(args: Args) {
     flushSegmentTextDrafts();
     pushUndo();
     const next = applyReplaceAllToSegments(segmentsRef.current, findText, replaceText, matches);
-    segmentsRef.current = next;
-    setSegments(next);
+    publishSegmentTextBulkMutation(segmentsRef, setSegments, next);
     const explicitPairs =
       findText.trim() !== replaceText.trim()
         ? [{ beforeText: findText.trim(), afterText: replaceText.trim() }]

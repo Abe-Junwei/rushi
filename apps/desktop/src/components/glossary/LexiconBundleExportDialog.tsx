@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY, CONTROL_TEXT_INPUT } from "../../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../../config/typography";
 import { CORRECTION_MEMORY_STABLE_HIT } from "../../services/editor/learningCorrectionRuleHints";
@@ -6,11 +7,12 @@ import {
   formatLexiconBundleExportCleanupHints,
   formatLexiconBundleExportPreviewSummary,
 } from "../../tauri/lexiconBundleApi";
+import { resolveFloatingPanelSectionsFitHeight } from "../floatingPanelFitSections";
 import { CompactFloatingDialog } from "../CompactFloatingDialog";
 import { FloatingPanelDialogHeader, FloatingPanelDialogScroll } from "../FloatingPanelDialogLayout";
 
 const PANEL_ID = "lexicon-bundle-export-v1";
-const FALLBACK_HEIGHT = 340;
+const FALLBACK_HEIGHT = 320;
 
 type Props = {
   preview: LexiconBundleExportPreview | null;
@@ -36,7 +38,21 @@ export function LexiconBundleExportDialog({
   onConfirm,
 }: Props) {
   const cleanupHints = preview ? formatLexiconBundleExportCleanupHints(preview, stableOnly) : [];
-  const hasCleanupHints = cleanupHints.length > 0;
+  const hintCount = cleanupHints.length;
+
+  const estimatedFitHeight = useMemo(
+    () =>
+      resolveFloatingPanelSectionsFitHeight([
+        { kind: "mutedLine", show: true },
+        { kind: "static", px: 112 },
+        hintCount > 0
+          ? { kind: "static", px: 56 + hintCount * 24 }
+          : { kind: "mutedLine", show: true },
+      ]),
+    [hintCount],
+  );
+
+  const layoutRev = hintCount + (stableOnly ? 100 : 0) + (previewLoading ? 1000 : 0);
 
   return (
     <CompactFloatingDialog
@@ -47,9 +63,10 @@ export function LexiconBundleExportDialog({
         if (!disabled) onCancel();
       }}
       fallbackHeight={FALLBACK_HEIGHT}
-      estimatedFitHeight={hasCleanupHints ? 380 : 300}
+      estimatedFitHeight={estimatedFitHeight}
+      layoutRev={layoutRev}
       defaultWidth={480}
-      bounds={{ minWidth: 400, minHeight: 280, maxWidthCap: 520, maxHeightCap: 560 }}
+      bounds={{ minWidth: 400, minHeight: 260, maxWidthCap: 520, maxHeightCap: 560 }}
       footer={
         <>
           <button type="button" className={CONTROL_BTN_SECONDARY} disabled={disabled} onClick={onCancel}>
@@ -98,7 +115,7 @@ export function LexiconBundleExportDialog({
               className={CONTROL_TEXT_INPUT}
             />
           </label>
-          {hasCleanupHints ? (
+          {hintCount > 0 ? (
             <div className="rounded-md bg-notion-callout-bg px-3 py-2">
               <p className={`m-0 mb-2 ${PANEL_TYPOGRAPHY.meta} font-medium text-notion-text`}>
                 导出前建议关注

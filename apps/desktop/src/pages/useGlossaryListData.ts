@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { sortGlossaryTerms, type GlossaryListSortMode } from "../services/glossaryListSort";
 import {
   applyGlossaryFilters,
   countHotwordEnabledTerms,
@@ -16,14 +17,15 @@ export function useGlossaryListData() {
   const [terms, setTerms] = useState<GlossaryTermDto[]>([]);
   const [searchQuery, setSearchQuery] = useState("");
   const [hotwordFilter, setHotwordFilter] = useState<GlossaryHotwordFilter>("all");
+  const [sortMode, setSortMode] = useState<GlossaryListSortMode>("updated");
   const [hotwordsPreview, setHotwordsPreview] = useState<GlossaryHotwordsPreview | null>(null);
   const [hotwordsPreviewLoaded, setHotwordsPreviewLoaded] = useState(false);
   const [loadError, setLoadError] = useState("");
 
-  const filteredTerms = useMemo(
-    () => applyGlossaryFilters(terms, searchQuery, hotwordFilter),
-    [terms, searchQuery, hotwordFilter],
-  );
+  const filteredTerms = useMemo(() => {
+    const filtered = applyGlossaryFilters(terms, searchQuery, hotwordFilter);
+    return sortGlossaryTerms(filtered, sortMode);
+  }, [terms, searchQuery, hotwordFilter, sortMode]);
 
   const visibleTerms = useMemo(
     () => filteredTerms.slice(0, GLOSSARY_LIST_DISPLAY_CAP),
@@ -74,6 +76,8 @@ export function useGlossaryListData() {
     setSearchQuery,
     hotwordFilter,
     setHotwordFilter,
+    sortMode,
+    setSortMode,
     filteredTerms,
     visibleTerms,
     visibleIds,
