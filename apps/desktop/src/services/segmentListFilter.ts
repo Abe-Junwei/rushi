@@ -5,6 +5,8 @@ import {
 } from "./segmentTextStage";
 import { segmentHasAnnotation } from "../utils/segmentAnnotation";
 
+/** 语段列表视图筛选（仅控制 EditorSegmentList 可见行；不改 selectedIdx / 波形选中）。 */
+
 export type SegmentAnnotationFilter = "all" | "with" | "without";
 
 export type SegmentStageFilterMap = Record<SegmentTextStage, boolean>;

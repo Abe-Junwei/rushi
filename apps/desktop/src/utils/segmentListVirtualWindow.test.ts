@@ -1,9 +1,11 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
   annotateSegmentListScrollMetrics,
   computeSegmentListVirtualWindow,
   ensureSegmentListVirtualWindowIncludesIndex,
   maybePinSegmentListVirtualWindow,
+  resetScheduledSegmentListScrollForTests,
+  scheduleScrollSegmentListIndexToView,
   scrollSegmentListIndexIntoView,
   scrollSegmentListIndexToView,
   scrollSegmentRowIntoViewContainer,
@@ -11,9 +13,11 @@ import {
   isEditableSegmentBodyTextarea,
   segmentListRangeDragExceededSlop,
   segmentListRangeDragVerticalIntentExceededSlop,
+  SEGMENT_LIST_FILTER_INDICES_ATTR,
   SEGMENT_LIST_SCROLL_ATTR,
   SEGMENT_LIST_VIRTUALIZE_MIN_COUNT,
   segmentListItemStridePx,
+  writeSegmentListFilterIndices,
 } from "./segmentListVirtualWindow";
 
 describe("segmentListVirtualWindow", () => {
@@ -103,7 +107,7 @@ describe("segmentListVirtualWindow", () => {
     expect(merged.endIndex).toBeGreaterThan(120);
   });
 
-  it("maybePinSegmentListVirtualWindow skips far selected index", () => {
+  it("maybePinSegmentListVirtualWindow skips pin when merged span exceeds cap", () => {
     const stride = 80;
     const base = computeSegmentListVirtualWindow({
       scrollTop: stride * 200,
@@ -128,7 +132,7 @@ describe("segmentListVirtualWindow", () => {
     expect(base.endIndex).toBeLessThanOrEqual(210);
     const pinIndex = base.endIndex + 10;
     expect(pinIndex).toBeLessThan(500);
-    const pinned = maybePinSegmentListVirtualWindow(base, pinIndex, 500, stride, { maxDistance: 48 });
+    const pinned = maybePinSegmentListVirtualWindow(base, pinIndex, 500, stride);
     expect(pinned.endIndex).toBeGreaterThan(base.endIndex);
     expect(pinned.endIndex).toBeGreaterThan(pinIndex);
   });
@@ -233,4 +237,62 @@ describe("segmentListVirtualWindow", () => {
     expect(resolveSegmentListRowIndexFromPoint(root, 20, 170, 10)).toBe(2);
     document.body.removeChild(root);
   });
+
+  it("resolveSegmentListRowIndexFromPoint maps stride fallback through filter indices", () => {
+    const root = document.createElement("div");
+    root.setAttribute(SEGMENT_LIST_SCROLL_ATTR, "");
+    annotateSegmentListScrollMetrics(root, { rowMinHeightPx: 70, itemStridePx: 80 });
+    writeSegmentListFilterIndices(root, [10, 20, 30], true);
+    Object.defineProperty(root, "scrollTop", { writable: true, value: 0 });
+    root.getBoundingClientRect = () =>
+      ({ top: 0, bottom: 400, left: 0, right: 400, width: 400, height: 400, x: 0, y: 0, toJSON: () => ({}) });
+    document.body.appendChild(root);
+
+    document.elementFromPoint = () => null;
+    expect(resolveSegmentListRowIndexFromPoint(root, 20, 150, 100)).toBe(20);
+
+    document.body.removeChild(root);
+  });
+
+  it("scrollSegmentListIndexToView uses display index when filter attr is set", () => {
+    const root = document.createElement("div");
+    Object.defineProperty(root, "clientHeight", { value: 100 });
+    Object.defineProperty(root, "scrollHeight", { value: 240 });
+    Object.defineProperty(root, "scrollTop", { writable: true, value: 0 });
+    root.setAttribute(SEGMENT_LIST_SCROLL_ATTR, "");
+    writeSegmentListFilterIndices(root, [0, 50, 99], true);
+    annotateSegmentListScrollMetrics(root, { rowMinHeightPx: 70, itemStridePx: 80 });
+    document.body.appendChild(root);
+
+    expect(scrollSegmentListIndexToView(99)).toBe(true);
+    expect(root.scrollTop).toBeGreaterThan(0);
+    expect(root.getAttribute(SEGMENT_LIST_FILTER_INDICES_ATTR)).toBe("0,50,99");
+
+    document.body.removeChild(root);
+  });
+
+  it("scheduleScrollSegmentListIndexToView coalesces rapid requests to the last index", () => {
+    vi.useFakeTimers();
+    const root = document.createElement("div");
+    Object.defineProperty(root, "clientHeight", { value: 100 });
+    Object.defineProperty(root, "scrollHeight", { value: 8000 });
+    Object.defineProperty(root, "scrollTop", { writable: true, value: 0 });
+    root.setAttribute(SEGMENT_LIST_SCROLL_ATTR, "");
+    annotateSegmentListScrollMetrics(root, { rowMinHeightPx: 70, itemStridePx: 80 });
+    document.body.appendChild(root);
+
+    scheduleScrollSegmentListIndexToView(5);
+    scheduleScrollSegmentListIndexToView(25);
+    vi.advanceTimersByTime(32);
+
+    expect(root.scrollTop).toBeGreaterThan(0);
+
+    document.body.removeChild(root);
+    resetScheduledSegmentListScrollForTests();
+    vi.useRealTimers();
+  });
+});
+
+afterEach(() => {
+  resetScheduledSegmentListScrollForTests();
 });

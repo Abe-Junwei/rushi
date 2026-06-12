@@ -7,8 +7,9 @@ import {
 } from "./waveformViewMode";
 
 describe("waveformViewMode", () => {
-  it("zooms viewport only when selecting from list", () => {
+  it("zooms viewport only when selecting from list click", () => {
     expect(shouldZoomViewportOnSelectSource("list")).toBe(true);
+    expect(shouldZoomViewportOnSelectSource("listAdvance")).toBe(false);
     expect(shouldZoomViewportOnSelectSource("waveform")).toBe(false);
   });
 

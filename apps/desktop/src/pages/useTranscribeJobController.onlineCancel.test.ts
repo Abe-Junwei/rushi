@@ -27,15 +27,17 @@ describe("useTranscribeJobController online cancel", () => {
 
   it("calls projectCancelTranscribe and restores segments when online invoke aborts", async () => {
     let releaseRun: (() => void) | null = null;
+    let capturedRequestId = "";
     projectRunTranscribe.mockImplementation(
-      () =>
+      (_pid, _fid, _bridge, requestId: string) =>
         new Promise((_resolve, reject) => {
+          capturedRequestId = requestId;
           releaseRun = () => reject(new Error("转写已取消"));
         }),
     );
-    projectCancelTranscribe.mockImplementation(async () => {
+    projectCancelTranscribe.mockImplementation(() => {
       releaseRun?.();
-      return true;
+      return Promise.resolve(true);
     });
 
     const existing = [transcribeTestSeg("转写前")];
@@ -47,28 +49,25 @@ describe("useTranscribeJobController online cancel", () => {
       useTranscribeJobController(deps as Parameters<typeof useTranscribeJobController>[0]),
     );
 
-    await act(async () => {
+    act(() => {
       result.current.setTranscribeSource("online");
     });
 
-    await act(async () => {
+    act(() => {
       void result.current.confirmTranscribeStart();
     });
 
     await waitFor(() => {
       expect(projectRunTranscribe).toHaveBeenCalled();
+      expect(capturedRequestId.startsWith("online-stt-")).toBe(true);
     });
-
-    const requestId = projectRunTranscribe.mock.calls[0]?.[3];
-    expect(typeof requestId).toBe("string");
-    expect(String(requestId).startsWith("online-stt-")).toBe(true);
 
     await act(async () => {
       await result.current.cancelTranscribe();
     });
 
     await waitFor(() => {
-      expect(projectCancelTranscribe).toHaveBeenCalledWith(String(requestId));
+      expect(projectCancelTranscribe).toHaveBeenCalledWith(capturedRequestId);
       expect(pushTranscribeHintsToToast).toHaveBeenCalledWith(["已停止转写，语段已恢复。"]);
     });
     expect(deps.endBusy).toHaveBeenCalled();

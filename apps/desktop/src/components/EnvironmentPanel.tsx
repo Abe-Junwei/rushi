@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
-import { Cloud, Cpu, Download, HelpCircle, Info, Keyboard, Sparkles } from "lucide-react";
+import { BarChart3, Cloud, Cpu, Download, HelpCircle, Info, Keyboard, Sparkles } from "lucide-react";
 import { ENV_STATUS_DOT_CLASS, type EnvStatusTone } from "./topBarStatusTone";
 import { EnvProfileActions } from "./EnvProfileActions";
 import { EnvLlmConfigPanel } from "./EnvLlmConfigPanel";
@@ -8,6 +8,7 @@ import { EnvOnlineSttPanel } from "./EnvOnlineSttPanel";
 import { EnvEditorShortcutsPanel } from "./EnvEditorShortcutsPanel";
 import { EnvAboutPanel } from "./EnvAboutPanel";
 import { EnvHelpPanel } from "./EnvHelpPanel";
+import { EnvQualityPanel } from "./EnvQualityPanel";
 import { useLlmEnvStatus } from "../hooks/useLlmEnvStatus";
 import type { AsrEnvPresentation } from "../services/asr/asrEnvStatus";
 import { readOnlineSttEnvNavTone } from "../services/stt/readOnlineSttEnvNavPresentation";
@@ -21,7 +22,7 @@ import type { PrepareModelApi } from "../pages/usePrepareModelController";
 import type { PrepareModelFailureCopy } from "../pages/prepareModelDownloadCopy";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
-type EnvNavId = "local-asr" | "online-stt" | "llm" | "profile" | "shortcuts" | "about" | "help";
+type EnvNavId = "local-asr" | "online-stt" | "llm" | "profile" | "shortcuts" | "quality" | "about" | "help";
 
 function envNavStatusDotClass(tone: EnvStatusTone): string {
   return ENV_STATUS_DOT_CLASS[tone];
@@ -30,14 +31,25 @@ function envNavStatusDotClass(tone: EnvStatusTone): string {
 const ENV_NAV_BTN_BASE =
   "mb-1 flex w-full appearance-none items-center border-0 px-4 py-3 text-left shadow-none outline-none transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-saffron/30";
 
-const ENV_NAV_ITEMS: { id: EnvNavId; label: string; description: string; icon: React.ReactNode }[] = [
+type EnvNavItem = {
+  id: EnvNavId;
+  label: string;
+  description: string;
+  icon: React.ReactNode;
+  /** 与下方说明类条目贴底（在「使用说明」首项上加 mt-auto） */
+  pinBottom?: boolean;
+};
+
+/** 顺序：转写能力 → 编辑 → 数据/维护 → 说明与关于（贴底） */
+const ENV_NAV_ITEMS: EnvNavItem[] = [
   { id: "local-asr", label: "本机 ASR", description: "侧车、模型与诊断", icon: <Cpu className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden /> },
   { id: "online-stt", label: "在线 STT", description: "厂商与 API Key", icon: <Cloud className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden /> },
   { id: "llm", label: "LLM 配置", description: "云端或本机 Ollama", icon: <Sparkles className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden /> },
-  { id: "profile", label: "配置迁移", description: "导入 / 导出偏好", icon: <Download className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden /> },
   { id: "shortcuts", label: "快捷键", description: "编辑器键盘操作", icon: <Keyboard className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden /> },
+  { id: "profile", label: "配置迁移", description: "导入 / 导出偏好", icon: <Download className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden /> },
+  { id: "quality", label: "质量评测", description: "CER / 发版门禁", icon: <BarChart3 className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden /> },
+  { id: "help", label: "使用说明", description: "转写流程与 FAQ", icon: <HelpCircle className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />, pinBottom: true },
   { id: "about", label: "关于", description: "版本与第三方许可", icon: <Info className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden /> },
-  { id: "help", label: "使用说明", description: "转写流程与 FAQ", icon: <HelpCircle className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden /> },
 ];
 
 export type EnvironmentPanelProps = {
@@ -191,7 +203,7 @@ export function EnvironmentPanel({
           {/* 左侧导航 */}
           <nav className={`flex h-full ${navWidthClass} shrink-0 flex-col overflow-y-auto border-r border-notion-divider bg-notion-sidebar py-5`}>
             <div className="flex flex-1 flex-col">
-            {ENV_NAV_ITEMS.map((item, index) => {
+            {ENV_NAV_ITEMS.map((item) => {
               const active = envSection === item.id;
               const statusTone: EnvStatusTone | null =
                 item.id === "local-asr"
@@ -201,12 +213,11 @@ export function EnvironmentPanel({
                     : item.id === "llm"
                       ? llmPresentation.tone
                       : null;
-              const isLast = index === ENV_NAV_ITEMS.length - 1;
               return (
                 <button
                   key={item.id}
                   type="button"
-                  className={`${ENV_NAV_BTN_BASE} ${isLast ? "mt-auto" : ""} ${
+                  className={`${ENV_NAV_BTN_BASE} ${item.pinBottom ? "mt-auto" : ""} ${
                     active
                       ? "border-l-4 border-zen-saffron bg-notion-sidebar-active text-notion-text"
                       : "border-l-4 border-transparent bg-transparent text-notion-text-muted hover:bg-notion-sidebar-hover"
@@ -300,6 +311,8 @@ export function EnvironmentPanel({
               ) : null}
 
               {envSection === "shortcuts" ? <EnvEditorShortcutsPanel /> : null}
+
+              {envSection === "quality" ? <EnvQualityPanel busy={busy} /> : null}
 
               {envSection === "about" ? <EnvAboutPanel /> : null}
 

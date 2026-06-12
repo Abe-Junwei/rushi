@@ -224,6 +224,9 @@ export const EditorToolbar = memo(function EditorToolbar({
               <div className="dropdown-surface absolute right-0 top-full z-[100] mt-1 min-w-[12rem] py-1">
                 <button type="button" className={menuItem} disabled={c.busy} onClick={() => onExportSelect("txt")}>导出 TXT</button>
                 <button type="button" className={menuItem} disabled={c.busy} onClick={() => onExportSelect("srt")}>导出 SRT</button>
+                <button type="button" className={menuItem} disabled={c.busy} onClick={() => onExportSelect("delivery_mode")}>
+                  定稿模式…
+                </button>
                 <button type="button" className={menuItem} disabled={c.busy} onClick={() => onExportSelect("docx_delivery")}>
                   交付导出 Word…
                 </button>

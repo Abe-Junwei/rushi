@@ -11,8 +11,13 @@ import { WelcomeSidebar } from "./WelcomeSidebar";
 import { ProjectBusyOverlay, TranscribeWorkspaceBanners } from "./ProjectStatusFeedback";
 import { ProjectPanelDialogs } from "./ProjectPanelDialogs";
 import { useProjectController } from "../pages/useProjectController";
+import { useDeliveryModeController } from "../pages/useDeliveryModeController";
+import { registerDeliveryModeTranscribeAction } from "../services/deliveryModeTranscribeToast";
+import { useOnboardingAutoSync } from "../hooks/useOnboardingAutoSync";
+import { syncOnboardingExport } from "../services/onboarding/onboardingAutoSync";
 import { useWorkspaceSidebarCollapse } from "../hooks/useWorkspaceSidebarCollapse";
 import { WorkspaceShellLayout, WORKSPACE_EDITOR_SHELL_PURPOSE } from "./WorkspaceShellLayout";
+import { hasRecordedProjectMetadata } from "../services/deliveryModeChecklist";
 
 export function ProjectPanel() {
   const c = useProjectController();
@@ -24,6 +29,13 @@ export function ProjectPanel() {
   const [glossaryWorkspaceId, setGlossaryWorkspaceId] = useState<GlossaryWorkspaceId>("vocabulary");
   const [exportKey, setExportKey] = useState("");
   const [deliveryExportOpen, setDeliveryExportOpen] = useState(false);
+  const deliveryMode = useDeliveryModeController();
+  useOnboardingAutoSync({ controller: c, asrChipOk: c.asrPresentation.chipOk });
+
+  useEffect(() => {
+    registerDeliveryModeTranscribeAction(deliveryMode.openDeliveryMode);
+    return () => registerDeliveryModeTranscribeAction(null);
+  }, [deliveryMode.openDeliveryMode]);
   const [busyElapsedSec, setBusyElapsedSec] = useState(0);
   const [segmentCtxMenu, setSegmentCtxMenu] = useState<SegmentContextMenuOpen | null>(null);
   const pendingWelcomePageRef = useRef<WelcomePageId | null>(null);
@@ -55,9 +67,9 @@ export function ProjectPanel() {
   }, [c]);
 
   useEffect(() => {
-    if (!deliveryExportOpen) return;
+    if (!deliveryExportOpen && !deliveryMode.deliveryModeOpen) return;
     c.flushSegmentTextDrafts();
-  }, [deliveryExportOpen, c.flushSegmentTextDrafts]);
+  }, [deliveryExportOpen, deliveryMode.deliveryModeOpen, c.flushSegmentTextDrafts]);
 
   const workspaceShellVariant = useMemo<"welcome" | "hub" | "editor">(() => {
     if (!c.current) return "welcome";
@@ -191,6 +203,9 @@ export function ProjectPanel() {
       case "docx_delivery":
         setDeliveryExportOpen(true);
         break;
+      case "delivery_mode":
+        deliveryMode.openDeliveryMode();
+        break;
       case "docx_verbatim":
         void c.exportDocx("verbatim");
         break;
@@ -240,7 +255,7 @@ export function ProjectPanel() {
       ].join(" ")}
     >
       {envOpen ? (
-        <FloatingPanelTemplate id="environment-v3" title="环境与 LLM" preset="environment" onClose={() => setEnvOpen(false)}>
+        <FloatingPanelTemplate id="environment-v3" title="设置" preset="environment" onClose={() => setEnvOpen(false)}>
             <EnvironmentPanel
               asrPresentation={c.asrPresentation}
               asrHealth={c.asrHealth}
@@ -362,6 +377,7 @@ export function ProjectPanel() {
 
       <ProjectPanelDialogs
         c={c}
+        deliveryModeOpen={deliveryMode.deliveryModeOpen}
         deliveryExportOpen={deliveryExportOpen}
         llmStatusRefreshSeq={llmUiEpoch}
         segments={c.segments}
@@ -369,8 +385,14 @@ export function ProjectPanel() {
         onOpenLlmSettings={openLlmSettings}
         onOpenGlossaryFromTranscribe={openGlossaryFromTranscribe}
         onStayAfterCloseAttempt={stayAfterCloseAttempt}
+        onDeliveryModeClose={deliveryMode.closeDeliveryMode}
+        onDeliveryModeContinue={() => {
+          syncOnboardingExport();
+          deliveryMode.continueToDeliveryExport(() => setDeliveryExportOpen(true));
+        }}
         onDeliveryExportClose={() => setDeliveryExportOpen(false)}
         onDeliveryExport={(mode, includeRevisionAppendix, includeProjectMetadata, llmPolish, polishPreview) => {
+          syncOnboardingExport();
           void c.exportDeliveryDocx({
             mode,
             includeRevisionAppendix,
@@ -379,6 +401,13 @@ export function ProjectPanel() {
             polishPreview,
           });
         }}
+        hasRecordedMetadata={hasRecordedProjectMetadata({
+          narrator: c.current?.narrator,
+          recorded_at: c.current?.recorded_at,
+          location: c.current?.location,
+          subject: c.current?.subject,
+          transcriber: c.current?.transcriber,
+        })}
       />
     </section>
   );

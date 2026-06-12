@@ -129,7 +129,7 @@ mod tests {
     #[test]
     fn cancel_by_request_id_returns_false_when_not_registered() {
         let state = TranscribeCancelState::default();
-        assert_eq!(transcribe_cancel_by_request_id(&state, "missing").unwrap(), false);
+        assert!(!transcribe_cancel_by_request_id(&state, "missing").unwrap());
     }
 
     #[test]

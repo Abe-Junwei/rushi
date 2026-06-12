@@ -36,7 +36,7 @@ vi.mock("../services/stt/sttOnlineProviderContract", async (importOriginal) => {
     ...actual,
     isOnlineTranscribeReady: vi.fn(() => false),
     tryBuildOnlineTranscribeBridgePayload: vi.fn(() => null),
-    ensureSttOnlineApiKeyForSession: vi.fn(async () => true),
+    ensureSttOnlineApiKeyForSession: vi.fn(() => Promise.resolve(true)),
   };
 });
 
@@ -50,6 +50,14 @@ vi.mock("../services/ui/toast", () => ({
   },
   pushTranscribeHintsToToast: vi.fn(),
   pushTranscribeResultToast: vi.fn(),
+}));
+
+vi.mock("../services/onboarding/onboardingAutoSync", () => ({
+  syncOnboardingTranscribe: vi.fn(),
+  syncOnboardingAsrReady: vi.fn(),
+  syncOnboardingProjectAudio: vi.fn(),
+  syncOnboardingMetadata: vi.fn(),
+  syncOnboardingExport: vi.fn(),
 }));
 
 vi.mock("../services/asr/transcribeVocabularyPreflight", () => ({

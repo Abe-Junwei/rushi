@@ -133,7 +133,7 @@ describe("useSegmentKeyboard", () => {
       result.current.keyboard.onSegmentTextareaKeyDown(0, makeTextareaKeyEvent("ArrowDown", textarea));
     });
 
-    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(1, "list");
+    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(1, "listAdvance");
     expect(result.current.wfApiRef.current.playSegmentAtIndex).toHaveBeenCalledWith(1, expect.any(Object));
   });
 
@@ -152,7 +152,7 @@ describe("useSegmentKeyboard", () => {
       result.current.keyboard.onSegmentTextareaKeyDown(1, makeTextareaKeyEvent("ArrowUp", textarea));
     });
 
-    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(0, "list");
+    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(0, "listAdvance");
     expect(result.current.wfApiRef.current.playSegmentAtIndex).toHaveBeenCalledWith(0, expect.any(Object));
   });
 

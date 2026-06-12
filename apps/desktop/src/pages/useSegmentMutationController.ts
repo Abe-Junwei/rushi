@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useRef } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
 import { withAiRevisedStage } from "../services/segmentStagePersist";
-import { segmentDraftStore } from "../hooks/useSegmentDraftStore";
+import { segmentDraftKey, segmentDraftStore } from "../hooks/useSegmentDraftStore";
 import {
   flushSegmentTextDrafts as flushSegmentTextDraftsImpl,
   syncDomTextareasFromSegments,
@@ -175,6 +175,8 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
       out[idx] = patched;
       segmentsRef.current = out;
       setSegments(out);
+      segmentDraftStore.endComposition(segmentDraftKey(cur, idx));
+      segmentDraftStore.clearDraft(segmentDraftKey(patched, idx));
       if (options?.fromLlm && uid && pendingAiRevisedUidsRef) {
         pendingAiRevisedUidsRef.current.add(uid);
       }

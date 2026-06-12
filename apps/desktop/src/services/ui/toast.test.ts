@@ -77,4 +77,14 @@ describe("toast", () => {
     expect(getToasts()[0]?.variant).toBe("success");
     expect(getToasts()[0]?.actionLabel).toBeUndefined();
   });
+
+  it("pushTranscribeResultToast can attach delivery mode action", () => {
+    const onAction = vi.fn();
+    pushTranscribeResultToast("转写完成", { label: "定稿模式…", onClick: onAction });
+    expect(getToasts()[0]?.actionLabel).toBe("定稿模式…");
+    const toasts = getToasts();
+    expect(toasts).toHaveLength(1);
+    runToastAction(toasts[0].id);
+    expect(onAction).toHaveBeenCalledTimes(1);
+  });
 });

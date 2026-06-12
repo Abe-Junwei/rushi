@@ -331,6 +331,7 @@ export function EditorView({
           tx={tx}
           appearance={appearance}
           filteredIndices={segmentFilter.filteredIndices}
+          filterActive={segmentFilter.isActive}
           onOpenSegmentContextMenu={onOpenSegmentContextMenu}
         />
       </main>

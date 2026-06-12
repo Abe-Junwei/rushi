@@ -179,9 +179,20 @@ export function pushTranscribeHintsToToast(hints: string[]): void {
   else toast.warning(message);
 }
 
-/** Transcribe done: summary only (用时 / 语段数 / 字符数). */
-export function pushTranscribeResultToast(summary: string): void {
+/** Transcribe done: summary only (用时 / 语段数 / 字符数). Optional action (A-2 定稿模式). */
+export function pushTranscribeResultToast(
+  summary: string,
+  action?: { label: string; onClick: () => void },
+): void {
   const message = summary.trim();
   if (!message) return;
-  showToast({ variant: "success", message, durationMs: 6_000 });
+  const actionLabel = action?.label.trim();
+  showToast({
+    variant: "success",
+    message,
+    durationMs: 6_000,
+    ...(action?.onClick && actionLabel
+      ? { action: { label: actionLabel, onClick: action.onClick } }
+      : {}),
+  });
 }

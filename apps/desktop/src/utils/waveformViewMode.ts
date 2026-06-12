@@ -1,7 +1,7 @@
 import type { WaveformZoomLayoutIntent } from "./pxPerSec";
 
 /** 语段选中来源（用于行为分支）。 */
-export type SegmentSelectSource = "list" | "waveform";
+export type SegmentSelectSource = "list" | "listAdvance" | "waveform";
 
 export type SegmentDragMode = "resize-start" | "resize-end" | "move" | "create";
 
@@ -9,7 +9,7 @@ export function shouldEnterZoomForOverlayGesture(mode: SegmentDragMode): boolean
   return mode === "resize-start" || mode === "resize-end" || mode === "move";
 }
 
-/** 列表选中时缩进视口以容纳语段；波形内点击默认仅滚动，语段适配模式下会 re-fit。 */
+/** 列表点击选中时缩进视口以容纳语段；↑↓ 切语段仅 reveal，避免连按卡死。 */
 export function shouldZoomViewportOnSelectSource(source: SegmentSelectSource): boolean {
   return source === "list";
 }

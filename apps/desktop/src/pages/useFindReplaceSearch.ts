@@ -6,7 +6,7 @@ import {
   collectLiteralFindMatches,
   type FindMatch,
 } from "../services/editor/segmentFindReplace";
-import { scrollSegmentListIndexToView } from "../utils/segmentListVirtualWindow";
+import { scheduleScrollSegmentListIndexToView } from "../utils/segmentListVirtualWindow";
 
 const FIND_SEARCH_DEBOUNCE_MS = 320;
 
@@ -58,9 +58,7 @@ export function useFindReplaceSearch(args: Args) {
   );
 
   const scrollToMatchSegment = useCallback((segmentIdx: number) => {
-    window.requestAnimationFrame(() => {
-      scrollSegmentListIndexToView(segmentIdx);
-    });
+    scheduleScrollSegmentListIndexToView(segmentIdx);
   }, []);
 
   const focusMatch = useCallback(

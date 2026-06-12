@@ -58,7 +58,7 @@ export function useSegmentKeyboard(args: {
         const pi = segmentIdx - 1;
         if (!c.segments[pi]) return;
         if (advanceLoop) w.preserveLoopForNextSegmentSelect();
-        a.selectSegmentAtRef.current(pi, "list");
+        a.selectSegmentAtRef.current(pi, "listAdvance");
         void w.playSegmentAtIndex(pi, playOpts);
         focusSegmentTextarea(pi);
       } else {
@@ -66,7 +66,7 @@ export function useSegmentKeyboard(args: {
         const ni = segmentIdx + 1;
         if (!c.segments[ni]) return;
         if (advanceLoop) w.preserveLoopForNextSegmentSelect();
-        a.selectSegmentAtRef.current(ni, "list");
+        a.selectSegmentAtRef.current(ni, "listAdvance");
         void w.playSegmentAtIndex(ni, playOpts);
         focusSegmentTextarea(ni);
       }

@@ -136,17 +136,21 @@ fn rushi_value(
     })
 }
 
+pub struct NativeTranscribeDispatch<'a> {
+    pub bridge: &'a OnlineTranscribeBridge,
+    pub vocabulary: &'a SttVocabularyPlan,
+    pub timeout: Duration,
+    pub cancel: TranscribeCancelPoll<'a>,
+}
+
 pub async fn dispatch_native(
     adapter: &str,
     client: &reqwest::Client,
     audio_path: &Path,
-    bridge: &OnlineTranscribeBridge,
-    vocabulary: &SttVocabularyPlan,
-    timeout: Duration,
+    dispatch: NativeTranscribeDispatch<'_>,
     log: &impl Fn(&str),
-    cancel: TranscribeCancelPoll<'_>,
 ) -> Result<serde_json::Value, String> {
-    let raw_url = bridge.transcribe_url.trim();
+    let raw_url = dispatch.bridge.transcribe_url.trim();
     if !raw_url.is_empty() {
         let scheme_ok = url::Url::parse(raw_url)
             .map(|u| matches!(u.scheme(), "http" | "https"))
@@ -160,13 +164,25 @@ pub async fn dispatch_native(
     match adapter {
         "dashscopeAsr" => {
             dashscope_asr::transcribe_dashscope_asr(
-                client, audio_path, bridge, vocabulary, timeout, log, cancel,
+                client,
+                audio_path,
+                dispatch.bridge,
+                dispatch.vocabulary,
+                dispatch.timeout,
+                log,
+                dispatch.cancel,
             )
             .await
         }
         "deepgramListen" => {
             deepgram::transcribe_deepgram(
-                client, audio_path, bridge, vocabulary, timeout, log, cancel,
+                client,
+                audio_path,
+                dispatch.bridge,
+                dispatch.vocabulary,
+                dispatch.timeout,
+                log,
+                dispatch.cancel,
             )
             .await
         }

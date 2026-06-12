@@ -102,11 +102,15 @@ export function useSegmentRowTextFieldEditing({
 
   useEffect(() => {
     return () => {
+      const el = textareaRef.current;
+      if (el && (segmentDraftStore.isComposing(draftKey) || normalizeSegmentDraftText(el.value) !== committedTextRef.current)) {
+        flushTextareaEdits(el);
+      }
       segmentDraftStore.endComposition(draftKey);
       segmentDraftStore.clearDraft(draftKey);
       segmentDraftStore.flushPendingEmit();
     };
-  }, [draftKey]);
+  }, [draftKey, flushTextareaEdits]);
 
   useEffect(() => {
     if (selected) return;

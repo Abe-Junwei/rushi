@@ -8,7 +8,7 @@ use super::stt_vocabulary::{
     channel_for_online, vocabulary_support_warnings, SttVocabularyChannel, SttVocabularyPlan,
 };
 use super::transcribe::{
-    build_glossary_hotwords, post_transcribe_multipart, TranscribeRequestAuth,
+    build_glossary_hotwords, post_transcribe_multipart, TranscribeHttpOptions, TranscribeRequestAuth,
 };
 use super::transcribe_errors::describe_transcribe_payload_error;
 use super::transcribe_job::{
@@ -376,11 +376,13 @@ async fn fetch_online_transcribe_json(
                 adapter,
                 client,
                 audio_path,
-                o,
-                vocabulary,
-                dur,
+                crate::stt_native::NativeTranscribeDispatch {
+                    bridge: o,
+                    vocabulary,
+                    timeout: dur,
+                    cancel,
+                },
                 &log,
-                cancel,
             )
             .await
             .map_err(|e| record_transcribe_err(tl, e))
@@ -412,13 +414,15 @@ async fn fetch_online_transcribe_json(
                 url,
                 audio_path,
                 hotwords.to_string(),
-                TranscribeRequestAuth {
-                    authorization: auth,
-                    app_key: app_k,
+                TranscribeHttpOptions {
+                    auth: TranscribeRequestAuth {
+                        authorization: auth,
+                        app_key: app_k,
+                    },
+                    timeout: dur,
+                    cancel,
                 },
-                dur,
                 Some(tl),
-                cancel,
             )
             .await
         }
@@ -518,10 +522,12 @@ async fn project_run_transcribe_inner(
             &url,
             audio_path,
             hotwords,
-            TranscribeRequestAuth::default(),
-            timeout,
+            TranscribeHttpOptions {
+                auth: TranscribeRequestAuth::default(),
+                timeout,
+                cancel: None,
+            },
             Some(tl),
-            None,
         )
         .await?;
         (v, vocabulary_pre_warnings)

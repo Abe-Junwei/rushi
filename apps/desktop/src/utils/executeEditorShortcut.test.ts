@@ -132,4 +132,29 @@ describe("executeEditorShortcut", () => {
     expect(openSegmentAnnotationDialog).toHaveBeenCalledWith(1);
     document.body.innerHTML = "";
   });
+
+  it("confirmAdvance uses listAdvance after save", async () => {
+    const confirmSegmentEditAndAdvance = vi.fn(() => Promise.resolve(true));
+    const ctx = makeCtx({ selectedIdx: 0, confirmSegmentEditAndAdvance });
+    const selectSegmentAt = vi.fn();
+    const focusSegmentTextarea = vi.fn();
+    document.body.innerHTML = `
+      <div data-seg-row="0">
+        <textarea aria-label="语段正文"></textarea>
+      </div>
+    `;
+    document.querySelector("textarea")!.focus();
+
+    executeEditorShortcut(
+      "workflow.confirmAdvance",
+      makeDeps({ ctx, selectSegmentAt, focusSegmentTextarea }),
+    );
+
+    await vi.waitFor(() => {
+      expect(confirmSegmentEditAndAdvance).toHaveBeenCalledWith(0);
+      expect(selectSegmentAt).toHaveBeenCalledWith(1, "listAdvance");
+      expect(focusSegmentTextarea).toHaveBeenCalledWith(1);
+    });
+    document.body.innerHTML = "";
+  });
 });

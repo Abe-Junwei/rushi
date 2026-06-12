@@ -1,10 +1,14 @@
-/** 用户可见的环境页导航路径（与 `EnvironmentPanel` 侧栏标签一致）。 */
+/** 用户可见的设置面板导航路径（与 `EnvironmentPanel` 侧栏标签一致）。 */
 export const ENV_NAV = {
-  panel: "环境",
-  localAsr: "环境 → 本机 ASR",
-  onlineStt: "环境 → 在线 STT",
-  llm: "环境 → LLM 配置",
-  profile: "环境 → 配置迁移",
+  panel: "设置",
+  localAsr: "设置 → 本机 ASR",
+  onlineStt: "设置 → 在线 STT",
+  llm: "设置 → LLM 配置",
+  shortcuts: "设置 → 快捷键",
+  profile: "设置 → 配置迁移",
+  quality: "设置 → 质量评测",
+  help: "设置 → 使用说明",
+  about: "设置 → 关于",
 } as const;
 
 export const LOCAL_SECRET_STORE_LABEL = "本地受保护存储";

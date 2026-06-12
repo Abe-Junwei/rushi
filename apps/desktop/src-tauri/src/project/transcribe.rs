@@ -21,15 +21,19 @@ pub struct TranscribeRequestAuth<'a> {
     pub app_key: Option<&'a str>,
 }
 
+pub struct TranscribeHttpOptions<'a> {
+    pub auth: TranscribeRequestAuth<'a>,
+    pub timeout: std::time::Duration,
+    pub cancel: TranscribeCancelPoll<'a>,
+}
+
 pub async fn post_transcribe_multipart(
     st: &DbState,
     url: &str,
     audio_path: &Path,
     hotwords: String,
-    auth: TranscribeRequestAuth<'_>,
-    timeout: std::time::Duration,
+    http: TranscribeHttpOptions<'_>,
     mut timeline: Option<&mut TranscribeTimelineRecorder>,
-    cancel: TranscribeCancelPoll<'_>,
 ) -> Result<serde_json::Value, String> {
     if let Some(tl) = timeline.as_deref_mut() {
         tl.begin_stage(STAGE_UPLOAD);
@@ -43,16 +47,16 @@ pub async fn post_transcribe_multipart(
         f
     };
     let mut req = crate::asr_sidecar::local_token::apply_local_token_if_asr_loopback(
-        http_client().post(url).multipart(form).timeout(timeout),
+        http_client().post(url).multipart(form).timeout(http.timeout),
         url,
     );
-    if let Some(a) = auth.authorization {
+    if let Some(a) = http.auth.authorization {
         let t = a.trim();
         if !t.is_empty() {
             req = req.header("Authorization", t);
         }
     }
-    if let Some(k) = auth.app_key {
+    if let Some(k) = http.auth.app_key {
         let t = k.trim();
         if !t.is_empty() {
             req = req.header("X-Rushi-Stt-App-Key", t);
@@ -61,7 +65,7 @@ pub async fn post_transcribe_multipart(
     if let Some(tl) = timeline.as_deref_mut() {
         tl.begin_stage(STAGE_TRANSCRIBE);
     }
-    ensure_transcribe_not_cancelled(cancel)?;
+    ensure_transcribe_not_cancelled(http.cancel)?;
     let resp = match req.send().await {
         Ok(r) => r,
         Err(e) => {
@@ -72,7 +76,7 @@ pub async fn post_transcribe_multipart(
                     redact_secrets_for_log(&e.to_string())
                 ),
             );
-            let msg = describe_transcribe_request_error(&e, timeout);
+            let msg = describe_transcribe_request_error(&e, http.timeout);
             if let Some(tl) = timeline {
                 let code = super::transcribe_timeline::infer_transcribe_error_code(&msg);
                 tl.fail_stage(STAGE_TRANSCRIBE, code, &msg);

@@ -13,7 +13,9 @@ import {
   buildTranscribeResultSummary,
   countTranscribeCharacters,
 } from "../services/asr/transcribeResultToast";
-import { pushTranscribeHintsToToast, pushTranscribeResultToast } from "../services/ui/toast";
+import { pushTranscribeHintsToToast } from "../services/ui/toast";
+import { pushTranscribeDeliveryModeToast } from "../services/deliveryModeTranscribeToast";
+import { syncOnboardingTranscribe } from "../services/onboarding/onboardingAutoSync";
 import { humanizeInvokeError } from "../services/ui/humanizeInvokeError";
 import {
   ensureSttOnlineApiKeyForSession,
@@ -201,7 +203,8 @@ export function useTranscribeJobController(deps: Deps) {
         charCount: countTranscribeCharacters(segments),
         elapsedMs,
       });
-      pushTranscribeResultToast(summary);
+      pushTranscribeDeliveryModeToast(summary);
+      syncOnboardingTranscribe();
     },
     [closeGate, current, mutations, onTranscribeSuccess, segmentsRef, setCurrent, setSegments],
   );

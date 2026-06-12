@@ -55,8 +55,9 @@ pub fn build_app_build_info(app_data_root: Option<&Path>, db_path: Option<&Path>
 
 pub fn format_build_info_text(info: &AppBuildInfo) -> String {
     format!(
-        "rushi-desktop {}\nplatform: {} {}\nidentifier: {}\napp_data_root: {}\ndb_path: {}\n",
+        "rushi-desktop {}\ncopyright: {}\nplatform: {} {}\nidentifier: {}\napp_data_root: {}\ndb_path: {}\n",
         info.version,
+        APP_COPYRIGHT,
         info.platform_os,
         info.platform_arch,
         info.identifier,
@@ -196,7 +197,7 @@ mod tests {
         );
         let text = format_build_info_text(&info);
         assert!(text.starts_with("rushi-desktop "));
-        assert!(text.contains("platform: "));
+        assert!(text.contains("copyright: "));
         assert!(text.contains("identifier: studio.lingchuang.rushi"));
         assert!(text.contains("app_data_root: /tmp/rushi-data"));
         assert!(text.contains("db_path: /tmp/rushi-data/rushi.sqlite3"));

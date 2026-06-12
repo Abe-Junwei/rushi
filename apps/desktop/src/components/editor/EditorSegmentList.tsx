@@ -20,6 +20,7 @@ import {
   SEGMENT_LIST_VIRTUALIZE_MIN_COUNT,
   segmentListItemStridePx,
   segmentListRowMinHeightPx,
+  writeSegmentListFilterIndices,
 } from "../../utils/segmentListVirtualWindow";
 import { SegmentTextListRow } from "../SegmentTextListRow";
 import { segmentHasUnsavedText } from "../../services/segmentConfirmEligible";
@@ -39,6 +40,7 @@ interface EditorSegmentListProps {
   appearance: AppearanceApi;
   listRef: React.RefObject<HTMLDivElement | null>;
   filteredIndices: number[];
+  filterActive: boolean;
   onOpenSegmentContextMenu: (menu: SegmentCtxMenuState) => void;
 }
 
@@ -58,6 +60,7 @@ export function EditorSegmentList({
   appearance: a,
   listRef: segmentListRef,
   filteredIndices,
+  filterActive,
   onOpenSegmentContextMenu,
 }: EditorSegmentListProps) {
   const scrollMetricsRef = useRef(readScrollMetrics(null));
@@ -163,6 +166,12 @@ export function EditorSegmentList({
   useLayoutEffect(() => {
     lastSelectedScrollKeyRef.current = null;
   }, [c.currentFileId]);
+
+  useLayoutEffect(() => {
+    const root = segmentListRef.current;
+    if (!root) return;
+    writeSegmentListFilterIndices(root, filteredIndices, filterActive);
+  }, [filterActive, filteredIndices, segmentListRef]);
 
   const onOpenRowContextMenu = useCallback(
     (

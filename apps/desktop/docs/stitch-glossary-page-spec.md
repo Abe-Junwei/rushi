@@ -26,7 +26,7 @@
 | 领域纪律 | [`asr-vocabulary-bias-practices.md`](../../../docs/architecture/asr-vocabulary-bias-practices.md) · [`desktop-capability-ui-state-alignment.md`](../../../docs/architecture/desktop-capability-ui-state-alignment.md) |
 | 壳层参照 | [`EnvironmentPanel.tsx`](../src/components/EnvironmentPanel.tsx)（左 nav + 右 scroll main） |
 
-**入口上下文**：用户从 [`WelcomeSidebar`](WelcomeSidebar.tsx) 点击「热词与记忆」进入；顶栏为 [`WelcomeTopBar`](WelcomeTopBar.tsx)（ASR/LLM 芯片），**不是**浮动环境面板。
+**入口上下文**：用户从 [`WelcomeSidebar`](../src/components/WelcomeSidebar.tsx) 点击「热词与记忆」进入；顶栏为 [`WelcomeTopBar`](../src/components/WelcomeTopBar.tsx)（ASR/LLM 芯片），**不是**浮动环境面板。
 
 ---
 
@@ -247,7 +247,7 @@
 
 ### 7.4 冲突 Banner
 
-- 保留 [`CorrectionMemoryConflictBanner`](CorrectionMemoryConflictBanner.tsx) 语义
+- 保留 [`CorrectionMemoryConflictBanner`](../src/components/glossary/CorrectionMemoryConflictBanner.tsx) 语义
 - 列表上方全宽；`bg-zen-saffron/10` + Alert 图标
 - 每条冲突：错形 → 正词列表 (hit N)
 

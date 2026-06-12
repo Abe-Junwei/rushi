@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef, useState } from "react";
+import { publishSegmentTextBulkMutation } from "./flushSegmentTextDrafts";
 import type { SegmentDto } from "../tauri/projectApi";
 import {
   postprocessCancelAutoPunctuate,
@@ -256,8 +257,7 @@ export function useSegmentRefineController(
       (uid) => findSegmentIndexByUid(segmentsRef.current, uid) >= 0,
     );
     pushUndo();
-    segmentsRef.current = applied;
-    setSegments(applied);
+    publishSegmentTextBulkMutation(segmentsRef, setSegments, applied);
     const ni = focusUid ? findSegmentIndexByUid(applied, focusUid) : 0;
     setSelectedIdx(ni >= 0 ? ni : Math.min(selectedIdx, Math.max(0, applied.length - 1)));
     setDialog({ phase: "closed" });

@@ -112,7 +112,7 @@ export function executeEditorShortcut(
         if (!ok) return;
         const ni = Math.min(idx + 1, Math.max(0, ctx.segments.length - 1));
         if (ni !== idx) {
-          deps.selectSegmentAt(ni, "list");
+          deps.selectSegmentAt(ni, "listAdvance");
           deps.focusSegmentTextarea(ni);
         }
       })();

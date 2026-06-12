@@ -11,7 +11,6 @@ import { AsrErrorBanner } from "./ProjectStatusFeedback";
 import { WorkspaceFileRow } from "./WorkspaceFileRow";
 import { CreateProjectModal } from "./CreateProjectModal";
 import { GlossaryPage } from "./GlossaryPage";
-import { QualityPage } from "./QualityPage";
 import { WelcomeSidebar } from "./WelcomeSidebar";
 import { WelcomeTopBar } from "./WelcomeTopBar";
 import { WorkspaceHomeMainStage } from "./WorkspaceHomeMainStage";
@@ -26,6 +25,8 @@ import {
 } from "../services/lastWorkspace";
 import { LUCIDE_ICON_SIZE_LG, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 import { formatProjectFileType, formatWorkspaceFileTime } from "../utils/projectFileDisplay";
+import { useOnboardingChecklistController } from "../hooks/useOnboardingChecklistController";
+import { WelcomeOnboardingChecklist } from "./WelcomeOnboardingChecklist";
 
 export type { WelcomePageId } from "./welcomeTypes";
 
@@ -56,6 +57,7 @@ export function WelcomeView({
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [recentFiles, setRecentFiles] = useState<RecentWorkspaceFile[]>([]);
   const [loadingRecentFiles, setLoadingRecentFiles] = useState(false);
+  const onboarding = useOnboardingChecklistController();
 
   const recentProjectIds = useMemo(() => recentProjectIdsForScan(c.projects), [c.projects]);
 
@@ -108,6 +110,8 @@ export function WelcomeView({
           onPageChange={onPageChange}
           glossaryWorkspaceId={glossaryWorkspaceId}
           onGlossaryWorkspaceChange={onGlossaryWorkspaceChange}
+          onRestoreOnboardingChecklist={onboarding.restore}
+          onboardingChecklistDismissed={!onboarding.visible}
         />
       }
     >
@@ -124,8 +128,6 @@ export function WelcomeView({
             workspaceId={glossaryWorkspaceId}
             onWorkspaceChange={onGlossaryWorkspaceChange}
           />
-        ) : page === "quality" ? (
-          <QualityPage busy={c.busy} />
         ) : (
           <WorkspaceHomeMainStage
             beforePage={
@@ -164,6 +166,16 @@ export function WelcomeView({
                   <span>新建项目</span>
                 </button>
               </header>
+
+              {onboarding.visible ? (
+                <WelcomeOnboardingChecklist
+                  progress={onboarding.progress}
+                  onDismiss={onboarding.dismiss}
+                  onOpenAsrSettings={onOpenAsrSettings ?? onOpenSettings}
+                  onCreateProject={() => setShowCreateModal(true)}
+                  onOpenLastEditor={() => void c.openLastEditorWorkspace()}
+                />
+              ) : null}
 
               <section className="flex flex-col gap-2" aria-label="最近文件">
                 <div className="flex items-center justify-between gap-2">

@@ -5,6 +5,7 @@ import type { SegmentDto } from "../tauri/projectApi";
 import { AutoTranscribeStartDialog } from "./AutoTranscribeStartDialog";
 import { CorrectionRulesPreviewDialog } from "./CorrectionRulesPreviewDialog";
 import { DeliveryExportDialog } from "./DeliveryExportDialog";
+import { DeliveryModeDialog } from "./DeliveryModeDialog";
 import { DuplicateImportConfirmDialog } from "./DuplicateImportConfirmDialog";
 import { DeleteProjectFileConfirmDialog } from "./DeleteProjectFileConfirmDialog";
 import { DeleteProjectConfirmDialog } from "./DeleteProjectConfirmDialog";
@@ -19,13 +20,17 @@ import { UnsavedCloseDialog } from "./UnsavedCloseDialog";
 
 export type ProjectPanelDialogsProps = {
   c: ProjectControllerApi;
+  deliveryModeOpen: boolean;
   deliveryExportOpen: boolean;
   llmStatusRefreshSeq: number;
   segments: SegmentDto[];
+  hasRecordedMetadata: boolean;
   showTranscribeGlossaryLink: boolean;
   onOpenLlmSettings: () => void;
   onOpenGlossaryFromTranscribe: () => void;
   onStayAfterCloseAttempt: () => void;
+  onDeliveryModeClose: () => void;
+  onDeliveryModeContinue: () => void;
   onDeliveryExportClose: () => void;
   onDeliveryExport: (
     mode: DocxExportMode,
@@ -39,13 +44,17 @@ export type ProjectPanelDialogsProps = {
 /** Floating dialogs owned by the project shell — extracted from ProjectPanel orchestration. */
 export function ProjectPanelDialogs({
   c,
+  deliveryModeOpen,
   deliveryExportOpen,
   llmStatusRefreshSeq,
   segments,
+  hasRecordedMetadata,
   showTranscribeGlossaryLink,
   onOpenLlmSettings,
   onOpenGlossaryFromTranscribe,
   onStayAfterCloseAttempt,
+  onDeliveryModeClose,
+  onDeliveryModeContinue,
   onDeliveryExportClose,
   onDeliveryExport,
 }: ProjectPanelDialogsProps) {
@@ -128,6 +137,28 @@ export function ProjectPanelDialogs({
         onOpenGlossary={onOpenGlossaryFromTranscribe}
         onCancel={c.cancelTranscribeStart}
         onConfirm={() => void c.confirmTranscribeStart()}
+      />
+
+      <DeliveryModeDialog
+        open={deliveryModeOpen}
+        busy={c.busy}
+        segments={segments}
+        projectName={c.current?.name ?? ""}
+        hasRecordedMetadata={hasRecordedMetadata}
+        canApplyCorrectionRules={c.canApplyCorrectionRules}
+        correctionRulesBlockReason={c.correctionRulesBlockReason}
+        onOpenPostTranscribeRules={() => {
+          onDeliveryModeClose();
+          c.requestPostTranscribeProcessing();
+        }}
+        canOfferPostTranscribeStageB={c.canOfferPostTranscribeStageB}
+        postTranscribeStageBBlockReason={c.postTranscribeStageBBlockReason}
+        onOpenPostTranscribeStageB={() => {
+          onDeliveryModeClose();
+          c.openPostTranscribeStageB();
+        }}
+        onClose={onDeliveryModeClose}
+        onContinueToExport={onDeliveryModeContinue}
       />
 
       <DeliveryExportDialog

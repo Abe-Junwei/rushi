@@ -1,6 +1,6 @@
 //! R3e-C: async transcribe job HTTP helpers (sidecar poll + cancel).
 
-use super::transcribe::{post_transcribe_multipart, TranscribeRequestAuth};
+use super::transcribe::{post_transcribe_multipart, TranscribeHttpOptions, TranscribeRequestAuth};
 use super::transcribe_errors::{
     describe_transcribe_http_status_error, describe_transcribe_request_error,
 };
@@ -32,10 +32,12 @@ pub async fn post_transcribe_async_multipart(
         &url,
         audio_path,
         hotwords,
-        TranscribeRequestAuth::default(),
-        timeout,
+        TranscribeHttpOptions {
+            auth: TranscribeRequestAuth::default(),
+            timeout,
+            cancel: None,
+        },
         timeline,
-        None,
     )
     .await
 }

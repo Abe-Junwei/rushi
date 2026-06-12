@@ -12,6 +12,7 @@ interface EditorSegmentWorkbenchProps {
   tx: TranscriptionLayerApi;
   appearance: AppearanceApi;
   filteredIndices: number[];
+  filterActive: boolean;
   onOpenSegmentContextMenu: (menu: SegmentContextMenuOpen) => void;
 }
 export const EditorSegmentWorkbench = memo(function EditorSegmentWorkbench({
@@ -19,6 +20,7 @@ export const EditorSegmentWorkbench = memo(function EditorSegmentWorkbench({
   tx,
   appearance: a,
   filteredIndices,
+  filterActive,
   onOpenSegmentContextMenu,
 }: EditorSegmentWorkbenchProps) {
   return (
@@ -29,6 +31,7 @@ export const EditorSegmentWorkbench = memo(function EditorSegmentWorkbench({
         appearance={a}
         listRef={tx.segmentListRef}
         filteredIndices={filteredIndices}
+        filterActive={filterActive}
         onOpenSegmentContextMenu={onOpenSegmentContextMenu}
       />
       <ResizeBottomHit
@@ -51,6 +54,7 @@ function areEditorSegmentWorkbenchPropsEqual(
     prev.controller.segments === next.controller.segments &&
     prev.controller.segments.length === next.controller.segments.length &&
     prev.filteredIndices === next.filteredIndices &&
+    prev.filterActive === next.filterActive &&
     prev.controller.findReplaceEditorHighlight === next.controller.findReplaceEditorHighlight &&
     prev.controller.correctionRulesEditorHighlight === next.controller.correctionRulesEditorHighlight &&
     prev.controller.updateSegmentText === next.controller.updateSegmentText &&

@@ -25,6 +25,7 @@ import { resolveWaveformFooterStatusLabel } from "../services/waveform/waveformR
 import { segmentStartSec } from "../utils/formatMediaTime";
 import type { SegmentSelectSource } from "../utils/waveformViewMode";
 import { shouldFocusWaveformShellForSelectSource, shouldFitSelectionOnWaveformSelect, shouldZoomViewportOnSelectSource } from "../utils/waveformViewMode";
+import { nextListSelectSource } from "../utils/segmentListSelectSource";
 export { TIMELINE_PX_PER_SEC, clampPxPerSec } from "../utils/pxPerSec";
 export { computeSegmentLaneRowPx, assignSegmentOverlapLanes, computeTimelineWidthPx, SEGMENT_LANE_ROW_PX } from "../utils/segmentLayout";
 
@@ -196,9 +197,11 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
           end_sec: seg.end_sec,
         });
       }
-      requestAnimationFrame(() => {
-        timeline.wfApiRef.current.seek(segmentStartSec(s));
-      });
+      if (source !== "listAdvance") {
+        requestAnimationFrame(() => {
+          timeline.wfApiRef.current.seek(segmentStartSec(s));
+        });
+      }
       if (shouldFocusWaveformShellForSelectSource(source)) {
         focusWaveformShell();
       }
@@ -217,6 +220,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     startClientY: number;
   } | null>(null);
   const suppressSegmentListRowClickRef = useRef(false);
+  const listSelectSourceStateRef = useRef({ lastAtMs: 0 });
 
   const onSegmentListRangePointerDown = useCallback((idx: number, e: ReactPointerEvent<HTMLElement>) => {
     const c = ctxRef.current;
@@ -241,7 +245,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     } else if (e.metaKey || e.ctrlKey) {
       selectSegmentAtRef.current(idx, "list", { toggle: true });
     } else {
-      selectSegmentAtRef.current(idx, "list");
+      selectSegmentAtRef.current(idx, nextListSelectSource(Date.now(), listSelectSourceStateRef.current));
     }
 
     const onMove = (ev: PointerEvent) => {
@@ -375,8 +379,13 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     zoomToFitAll: timeline.viewportFit.zoomToFitAll,
     setPxPerSecFromSlider: zoom.setPxPerSecFromSlider,
     selectSegmentAt,
-    selectSegmentFromList: (idx: number, opts?: { shiftKey?: boolean; toggle?: boolean }) =>
-      selectSegmentAt(idx, "list", opts),
+    selectSegmentFromList: (idx: number, opts?: { shiftKey?: boolean; toggle?: boolean }) => {
+      const source =
+        opts?.shiftKey || opts?.toggle
+          ? "list"
+          : nextListSelectSource(Date.now(), listSelectSourceStateRef.current);
+      selectSegmentAt(idx, source, opts);
+    },
     selectSegmentRange: ctx.selectSegmentRange,
     selectionLo: ctx.selectionLo,
     selectionHi: ctx.selectionHi,
