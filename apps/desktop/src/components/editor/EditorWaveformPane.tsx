@@ -231,7 +231,7 @@ export function EditorWaveformPane({
                   <WaveformSegmentPlaybackControls
                     disabled={stripDisabled}
                     rulerBandHeightPx={rulerHeightPx}
-                    isPlaying={tx.isPlaying}
+                    isPlaying={tx.isSelectedSegmentPlaying}
                     timelineWidthPx={tx.timelineWidthPx}
                     durationSec={mediaDurationSec}
                     tierScrollRef={tx.tierScrollRef}

@@ -214,6 +214,11 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     [isReady],
   );
 
+  const togglePlay = useCallback(async () => {
+    segmentPlayback.clearSegmentPlaybackBound();
+    await playback.togglePlay();
+  }, [playback.togglePlay, segmentPlayback.clearSegmentPlaybackBound]);
+
   return {
     containerRef,
     stickyShellRef,
@@ -232,6 +237,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     ...playback,
     ...globalPlayback,
     ...segmentPlayback,
+    togglePlay,
     formatMediaTime,
     destroyWave,
     cancelInFlightZoom,

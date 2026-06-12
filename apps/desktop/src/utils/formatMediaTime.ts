@@ -20,6 +20,7 @@ export function resolveSegmentPlaybackStartSec(
 ): number {
   const start = segmentStartSec(seg);
   const end = Math.max(seg.start_sec, seg.end_sec);
+  if (playheadSec >= end) return start;
   if (playheadSec >= start && playheadSec < end) return playheadSec;
   return start;
 }

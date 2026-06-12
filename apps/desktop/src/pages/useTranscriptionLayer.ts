@@ -410,6 +410,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     globalPlaybackRate: wf.globalPlaybackRate,
     setGlobalPlaybackRate: wf.setGlobalPlaybackRate,
     segmentLoopPlayback: wf.segmentLoopPlayback,
+    isSelectedSegmentPlaying: wf.isSelectedSegmentPlaying,
     handleToggleSelectedWaveformLoop: wf.handleToggleSelectedWaveformLoop,
     handleToggleSelectedWaveformPlay: wf.handleToggleSelectedWaveformPlay,
     playSegmentAtIndex: wf.playSegmentAtIndex,
