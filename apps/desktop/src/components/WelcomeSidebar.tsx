@@ -10,6 +10,8 @@ import {
 } from "lucide-react";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 import type { ProjectControllerApi } from "../pages/useProjectController";
+import type { GlossaryWorkspaceId } from "./glossary/glossaryWorkspaceTypes";
+import { GLOSSARY_WORKSPACE_NAV_ITEMS } from "./glossary/glossaryWorkspaceNav";
 import type { WelcomePageId } from "./welcomeTypes";
 import { WORKSPACE_SIDEBAR_PANEL_ATTR, WORKSPACE_SIDEBAR_ROW_INTERACTIVE } from "../config/workspaceShellLayout";
 import { useWelcomeSidebarProjectTree } from "../hooks/useWelcomeSidebarProjectTree";
@@ -24,7 +26,9 @@ export interface WelcomeSidebarProps {
   onPageChange: (page: WelcomePageId) => void;
   hubMode?: boolean;
   activeProjectId?: string | null;
-  onLeaveProjectForWelcome?: (page: WelcomePageId) => void;
+  onLeaveProjectForWelcome?: (page: WelcomePageId, glossaryWorkspace?: GlossaryWorkspaceId) => void;
+  glossaryWorkspaceId?: GlossaryWorkspaceId;
+  onGlossaryWorkspaceChange?: (id: GlossaryWorkspaceId) => void;
   editorMode?: boolean;
   activeFileId?: string | null;
   embeddedInCollapsibleShell?: boolean;
@@ -41,6 +45,8 @@ export function WelcomeSidebar({
   editorMode = false,
   activeFileId = null,
   embeddedInCollapsibleShell = false,
+  glossaryWorkspaceId = "vocabulary",
+  onGlossaryWorkspaceChange,
 }: WelcomeSidebarProps) {
   const projects = useMemo(() => sortWelcomeProjects(c.projects), [c.projects]);
   const projectListRef = useRef<HTMLDivElement | null>(null);
@@ -58,14 +64,17 @@ export function WelcomeSidebar({
   const inProjectContext = hubMode || editorMode;
 
   const navigateWelcomePage = useCallback(
-    (nextPage: WelcomePageId) => {
+    (nextPage: WelcomePageId, glossaryWorkspace?: GlossaryWorkspaceId) => {
       if (inProjectContext && onLeaveProjectForWelcome) {
-        onLeaveProjectForWelcome(nextPage);
+        onLeaveProjectForWelcome(nextPage, glossaryWorkspace);
         return;
       }
       onPageChange(nextPage);
+      if (nextPage === "glossary" && glossaryWorkspace) {
+        onGlossaryWorkspaceChange?.(glossaryWorkspace);
+      }
     },
-    [inProjectContext, onLeaveProjectForWelcome, onPageChange],
+    [inProjectContext, onLeaveProjectForWelcome, onGlossaryWorkspaceChange, onPageChange],
   );
 
   const showProjectList = page === "home" || hubMode || editorMode;
@@ -83,12 +92,6 @@ export function WelcomeSidebar({
           projectListRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
         });
       },
-    },
-    {
-      icon: <BookOpen className={`${LUCIDE_ICON_SIZE_MD} shrink-0`} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />,
-      label: "热词与记忆",
-      active: page === "glossary",
-      onClick: () => navigateWelcomePage("glossary"),
     },
     {
       icon: <BarChart3 className={`${LUCIDE_ICON_SIZE_MD} shrink-0`} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />,
@@ -167,6 +170,54 @@ export function WelcomeSidebar({
                 <span>{item.label}</span>
               </button>
             ))}
+
+          <div>
+            <button
+              type="button"
+              disabled={c.busy}
+              onClick={() => navigateWelcomePage("glossary", glossaryWorkspaceId)}
+              className={[
+                WORKSPACE_SIDEBAR_ROW_INTERACTIVE,
+                page === "glossary"
+                  ? "bg-notion-sidebar-active font-semibold text-notion-text"
+                  : "bg-transparent text-notion-text-muted hover:bg-notion-sidebar-hover hover:text-notion-text",
+              ].join(" ")}
+            >
+              <BookOpen className={`${LUCIDE_ICON_SIZE_MD} shrink-0`} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+              <span>热词与记忆</span>
+            </button>
+            {page === "glossary" ? (
+              <ul className="m-0 list-none space-y-0.5 p-0 pb-1">
+                {GLOSSARY_WORKSPACE_NAV_ITEMS.map((item) => {
+                  const selected = glossaryWorkspaceId === item.id;
+                  return (
+                    <li key={item.id}>
+                      <button
+                        type="button"
+                        disabled={c.busy}
+                        aria-current={selected ? "page" : undefined}
+                        onClick={() => {
+                          onGlossaryWorkspaceChange?.(item.id);
+                          if (page !== "glossary") {
+                            navigateWelcomePage("glossary", item.id);
+                          }
+                        }}
+                        className={[
+                          "flex w-full items-center gap-2 border-0 py-1.5 pl-12 pr-5 text-left text-[12px] font-medium transition-colors",
+                          selected
+                            ? "bg-notion-sidebar-active text-zen-saffron"
+                            : "bg-transparent text-notion-text-muted hover:bg-notion-sidebar-hover hover:text-notion-text",
+                        ].join(" ")}
+                      >
+                        <span className="shrink-0 opacity-80">{item.icon}</span>
+                        <span>{item.label}</span>
+                      </button>
+                    </li>
+                  );
+                })}
+              </ul>
+            ) : null}
+          </div>
         </nav>
       </div>
       {showProjectList ? (

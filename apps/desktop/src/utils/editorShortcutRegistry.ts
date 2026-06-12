@@ -427,8 +427,8 @@ export function formatEditorShortcutPanelSections(): EditorShortcutPanelSection[
         },
         {
           id: "segment-boundary-merge",
-          keys: "Backspace / Delete（段界）",
-          action: "行首 Backspace 与上一条合并；行尾 Delete 与下一条合并",
+          keys: "Delete（段界）",
+          action: "行尾 Delete 与下一条合并",
         },
         ...segmentDefs.map(definitionPanelRow),
       ],

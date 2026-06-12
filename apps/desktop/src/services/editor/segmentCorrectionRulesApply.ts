@@ -10,6 +10,7 @@ export type CorrectionHighlightSpan = { startG: number; endG: number };
 
 export type SegmentCorrectionChange = {
   segmentIdx: number;
+  uid: string;
   segmentNumber: number;
   timeLabel: string;
   startTimeLabel: string;
@@ -93,6 +94,7 @@ export function buildSegmentCorrectionChanges(
     if (applied.count <= 0 || applied.text === beforeText) continue;
     out.push({
       segmentIdx,
+      uid: seg.uid ?? "",
       segmentNumber: segmentIdx + 1,
       timeLabel: formatSegmentTimeLabel(seg),
       startTimeLabel: formatSegmentStartTimeLabel(seg),

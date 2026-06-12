@@ -95,29 +95,6 @@ function renderKeyboard(initialCtx: TranscriptionLayerInput) {
 }
 
 describe("useSegmentKeyboard", () => {
-  it("merges with previous segment on Backspace at textarea start", () => {
-    const mergeWithPrevAt = vi.fn();
-    const textarea = document.createElement("textarea");
-    textarea.value = "tail";
-    Object.defineProperty(textarea, "selectionStart", { value: 0, configurable: true });
-    Object.defineProperty(textarea, "selectionEnd", { value: 0, configurable: true });
-    const ctx = makeCtx({
-      segments: [
-        { uid: "a", idx: 0, start_sec: 0, end_sec: 1, text: "head" },
-        { uid: "b", idx: 1, start_sec: 1, end_sec: 2, text: "tail" },
-      ],
-      selectedIdx: 1,
-      mergeWithPrevAt,
-    });
-    const { result } = renderKeyboard(ctx);
-
-    act(() => {
-      result.current.keyboard.onSegmentTextareaKeyDown(1, makeTextareaKeyEvent("Backspace", textarea));
-    });
-
-    expect(mergeWithPrevAt).toHaveBeenCalledWith(1);
-  });
-
   it("merges with next segment on Delete at textarea end", () => {
     const mergeWithNextAt = vi.fn();
     const textarea = document.createElement("textarea");

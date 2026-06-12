@@ -8,6 +8,7 @@ import {
   flushSegmentTextDrafts,
   materializeSegmentTextDrafts,
   prepareSegmentTextDraftsForMutation,
+  publishSegmentTextBulkMutation,
   syncDomTextareaDraftsIntoStore,
   syncDomTextareasFromSegments,
   syncFocusedDomTextIntoSegments,
@@ -196,6 +197,41 @@ describe("flushSegmentTextDrafts undo", () => {
 
     expect(segmentsRef.current[0]?.text).toBe("live in textarea");
     expect(reactState[0]?.text).toBe("live in textarea");
+
+    row.remove();
+  });
+});
+
+describe("publishSegmentTextBulkMutation", () => {
+  it("clears stale drafts and DOM so a follow-up flush does not revert bulk writeback", () => {
+    segmentDraftStore.resetAll();
+    const row = document.createElement("div");
+    row.setAttribute("data-seg-row", "0");
+    const textarea = document.createElement("textarea");
+    textarea.setAttribute("aria-label", "语段正文");
+    textarea.value = "箱板";
+    row.appendChild(textarea);
+    document.body.appendChild(row);
+
+    const key = segmentDraftKey(seg("箱板"), 0);
+    segmentDraftStore.setDraft(key, "箱板");
+    segmentDraftStore.flushPendingEmit();
+
+    const segmentsRef = { current: [seg("箱板")] };
+    let reactState = segmentsRef.current;
+    const setSegments = (next: SetStateAction<SegmentDto[]>) => {
+      reactState = typeof next === "function" ? next(segmentsRef.current) : next;
+      segmentsRef.current = reactState;
+    };
+
+    publishSegmentTextBulkMutation(segmentsRef, setSegments, [seg("相板")]);
+
+    expect(segmentsRef.current[0]?.text).toBe("相板");
+    expect(textarea.value).toBe("相板");
+    expect(segmentDraftStore.getDraft(key)).toBeUndefined();
+
+    flushSegmentTextDrafts(segmentsRef, setSegments);
+    expect(segmentsRef.current[0]?.text).toBe("相板");
 
     row.remove();
   });

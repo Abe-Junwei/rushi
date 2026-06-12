@@ -5,6 +5,7 @@ import { EnvironmentPanel } from "./EnvironmentPanel";
 import { FloatingPanelTemplate } from "./PanelTemplate";
 import { EditorView } from "./EditorView";
 import { ProjectHubView } from "./ProjectHubView";
+import type { GlossaryWorkspaceId } from "./glossary/glossaryWorkspaceTypes";
 import { WelcomeView, type WelcomePageId } from "./WelcomeView";
 import { WelcomeSidebar } from "./WelcomeSidebar";
 import { ProjectBusyOverlay, TranscribeWorkspaceBanners } from "./ProjectStatusFeedback";
@@ -20,11 +21,13 @@ export function ProjectPanel() {
   const [focusLlmSeq, setFocusLlmSeq] = useState(0);
   const [llmUiEpoch, setLlmUiEpoch] = useState(0);
   const [welcomePage, setWelcomePage] = useState<WelcomePageId>("home");
+  const [glossaryWorkspaceId, setGlossaryWorkspaceId] = useState<GlossaryWorkspaceId>("vocabulary");
   const [exportKey, setExportKey] = useState("");
   const [deliveryExportOpen, setDeliveryExportOpen] = useState(false);
   const [busyElapsedSec, setBusyElapsedSec] = useState(0);
   const [segmentCtxMenu, setSegmentCtxMenu] = useState<SegmentContextMenuOpen | null>(null);
   const pendingWelcomePageRef = useRef<WelcomePageId | null>(null);
+  const pendingGlossaryWorkspaceRef = useRef<GlossaryWorkspaceId | null>(null);
   const { collapsed: editorSidebarCollapsed, setCollapsed: setEditorSidebarCollapsed } =
     useWorkspaceSidebarCollapse();
 
@@ -71,12 +74,19 @@ export function ProjectPanel() {
       const page = pendingWelcomePageRef.current;
       pendingWelcomePageRef.current = null;
       setWelcomePage(page);
+      if (pendingGlossaryWorkspaceRef.current) {
+        setGlossaryWorkspaceId(pendingGlossaryWorkspaceRef.current);
+        pendingGlossaryWorkspaceRef.current = null;
+      }
     }
   }, [workspaceShellVariant]);
 
   const onLeaveProjectForWelcome = useCallback(
-    (page: WelcomePageId) => {
+    (page: WelcomePageId, glossaryWorkspace?: GlossaryWorkspaceId) => {
       pendingWelcomePageRef.current = page;
+      if (glossaryWorkspace) {
+        pendingGlossaryWorkspaceRef.current = glossaryWorkspace;
+      }
       c.closeProject();
     },
     [c],
@@ -278,6 +288,8 @@ export function ProjectPanel() {
             llmStatusRefreshSeq={llmUiEpoch}
             page={welcomePage}
             onPageChange={setWelcomePage}
+            glossaryWorkspaceId={glossaryWorkspaceId}
+            onGlossaryWorkspaceChange={setGlossaryWorkspaceId}
           />
         ) : workspaceShellVariant === "hub" ? (
           <ProjectHubView
@@ -287,6 +299,8 @@ export function ProjectPanel() {
             onOpenLlmSettings={openLlmSettings}
             llmStatusRefreshSeq={llmUiEpoch}
             onLeaveProjectForWelcome={onLeaveProjectForWelcome}
+            glossaryWorkspaceId={glossaryWorkspaceId}
+            onGlossaryWorkspaceChange={setGlossaryWorkspaceId}
             headerSlot={transcribeBanners}
           />
         ) : (
@@ -307,6 +321,8 @@ export function ProjectPanel() {
                 activeProjectId={c.current?.id ?? null}
                 activeFileId={c.currentFileId}
                 onLeaveProjectForWelcome={onLeaveProjectForWelcome}
+                glossaryWorkspaceId={glossaryWorkspaceId}
+                onGlossaryWorkspaceChange={setGlossaryWorkspaceId}
               />
             }
           >

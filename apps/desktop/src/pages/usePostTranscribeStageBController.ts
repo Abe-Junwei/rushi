@@ -15,6 +15,7 @@ import { resolvePendingStageAHint } from "../services/postprocess/stageBPendingR
 import { toast } from "../services/ui/toast";
 import { scrollSegmentListIndexToView } from "../utils/segmentListVirtualWindow";
 import { findSegmentIndexByUid } from "./segmentListHelpers";
+import { publishSegmentTextBulkMutation } from "./flushSegmentTextDrafts";
 import { applyAiRevisedStageToUids } from "../services/segmentStagePersist";
 import type { BusyReason } from "./useProjectCrudController";
 import { TRANSCRIBE_PREVIEW_BLOCK_REASON } from "./transcribePreviewState";
@@ -295,8 +296,7 @@ export function usePostTranscribeStageBController(args: Args) {
       return;
     }
     const staged = applyAiRevisedStageToUids(next, changedUids);
-    segmentsRef.current = staged;
-    setSegments(staged);
+    publishSegmentTextBulkMutation(segmentsRef, setSegments, staged);
     setDialog({ phase: "closed" });
     setPreviewFocusSegmentIdx(null);
     const saved = await saveSegments({ quiet: true, aiRevisedUids: changedUids });

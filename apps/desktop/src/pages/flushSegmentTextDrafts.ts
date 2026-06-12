@@ -216,3 +216,22 @@ export function publishSegmentStructureMutation(
     setSegments(next);
   });
 }
+
+/** 批量写回语段正文后：刷新 state，并清除 stale draft / DOM，避免后续 flush 把旧字写回。 */
+export function publishSegmentTextBulkMutation(
+  segmentsRef: React.MutableRefObject<SegmentDto[]>,
+  setSegments: React.Dispatch<React.SetStateAction<SegmentDto[]>>,
+  next: SegmentDto[],
+): void {
+  segmentsRef.current = next;
+  flushSync(() => {
+    setSegments(next);
+  });
+  for (const [i, seg] of next.entries()) {
+    const key = segmentDraftKey(seg, i);
+    segmentDraftStore.endComposition(key);
+    segmentDraftStore.clearDraft(key);
+  }
+  syncDomTextareasFromSegments(next);
+  pruneDraftKeysForSegments(next);
+}

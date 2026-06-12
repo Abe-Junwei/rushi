@@ -17,6 +17,7 @@ import { WelcomeTopBar } from "./WelcomeTopBar";
 import { WorkspaceHomeMainStage } from "./WorkspaceHomeMainStage";
 import { WorkspaceShellLayout } from "./WorkspaceShellLayout";
 
+import type { GlossaryWorkspaceId } from "./glossary/glossaryWorkspaceTypes";
 import type { WelcomePageId } from "./welcomeTypes";
 import {
   listRecentWorkspaceFiles,
@@ -36,6 +37,8 @@ interface WelcomeViewProps {
   llmStatusRefreshSeq?: number;
   page: WelcomePageId;
   onPageChange: (page: WelcomePageId) => void;
+  glossaryWorkspaceId: GlossaryWorkspaceId;
+  onGlossaryWorkspaceChange: (id: GlossaryWorkspaceId) => void;
 }
 
 
@@ -47,6 +50,8 @@ export function WelcomeView({
   llmStatusRefreshSeq = 0,
   page,
   onPageChange,
+  glossaryWorkspaceId,
+  onGlossaryWorkspaceChange,
 }: WelcomeViewProps) {
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [recentFiles, setRecentFiles] = useState<RecentWorkspaceFile[]>([]);
@@ -101,6 +106,8 @@ export function WelcomeView({
           onOpenSettings={onOpenSettings}
           page={page}
           onPageChange={onPageChange}
+          glossaryWorkspaceId={glossaryWorkspaceId}
+          onGlossaryWorkspaceChange={onGlossaryWorkspaceChange}
         />
       }
     >
@@ -112,7 +119,11 @@ export function WelcomeView({
         />
 
         {page === "glossary" ? (
-          <GlossaryPage busy={c.busy} />
+          <GlossaryPage
+            busy={c.busy}
+            workspaceId={glossaryWorkspaceId}
+            onWorkspaceChange={onGlossaryWorkspaceChange}
+          />
         ) : page === "quality" ? (
           <QualityPage busy={c.busy} />
         ) : (

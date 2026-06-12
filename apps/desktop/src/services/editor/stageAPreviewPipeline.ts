@@ -33,6 +33,7 @@ export function buildStageAPreviewChanges(
 
     out.push({
       segmentIdx,
+      uid: seg.uid ?? "",
       segmentNumber: segmentIdx + 1,
       timeLabel: formatSegmentTimeLabel(seg),
       startTimeLabel: formatSegmentStartTimeLabel(seg),

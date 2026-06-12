@@ -8,7 +8,7 @@ import { focusTranscriptSegmentTextarea } from "../utils/focusTranscriptSegmentT
 
 type WfApi = ReturnType<typeof useProjectWaveform>;
 
-/** 正文 textarea 专用键：段界合并 + ↑↓ 切语段（全局结构键见 editorShortcutRegistry）。 */
+/** 正文 textarea 专用键：↑↓ 切语段（全局结构键见 editorShortcutRegistry）。 */
 export function useSegmentKeyboard(args: {
   ctxRef: React.MutableRefObject<TranscriptionLayerInput>;
   wfApiRef: React.MutableRefObject<WfApi>;
@@ -40,12 +40,6 @@ export function useSegmentKeyboard(args: {
         const start = el.selectionStart ?? 0;
         const end = el.selectionEnd ?? 0;
         const collapsed = start === end;
-        if (e.key === "Backspace" && collapsed && start === 0 && segmentIdx > 0) {
-          e.preventDefault();
-          c.mergeWithPrevAt(segmentIdx);
-          focusSegmentTextarea(segmentIdx - 1);
-          return;
-        }
         if (e.key === "Delete" && collapsed && end === el.value.length && segmentIdx < c.segments.length - 1) {
           e.preventDefault();
           c.mergeWithNextAt(segmentIdx);

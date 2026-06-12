@@ -1,5 +1,6 @@
 import type { ReactNode } from "react";
 import type { ProjectControllerApi } from "../pages/useProjectController";
+import type { GlossaryWorkspaceId } from "./glossary/glossaryWorkspaceTypes";
 import type { WelcomePageId } from "./welcomeTypes";
 import { EmptyProjectPanel } from "./EmptyProjectPanel";
 import { ProjectFilesHubPanel } from "./ProjectFilesHubPanel";
@@ -15,7 +16,9 @@ interface ProjectHubViewProps {
   onOpenAsrSettings?: () => void;
   onOpenLlmSettings?: () => void;
   llmStatusRefreshSeq?: number;
-  onLeaveProjectForWelcome: (page: WelcomePageId) => void;
+  onLeaveProjectForWelcome: (page: WelcomePageId, glossaryWorkspace?: GlossaryWorkspaceId) => void;
+  glossaryWorkspaceId: GlossaryWorkspaceId;
+  onGlossaryWorkspaceChange: (id: GlossaryWorkspaceId) => void;
   /** 转写进度条等，仅渲染于右侧主列 TopBar 之上 */
   headerSlot?: ReactNode;
 }
@@ -28,6 +31,8 @@ export function ProjectHubView({
   onOpenLlmSettings,
   llmStatusRefreshSeq = 0,
   onLeaveProjectForWelcome,
+  glossaryWorkspaceId,
+  onGlossaryWorkspaceChange,
   headerSlot,
 }: ProjectHubViewProps) {
   const hasProjectFiles = (c.current?.files ?? []).length > 0;
@@ -46,6 +51,8 @@ export function ProjectHubView({
           hubMode
           activeProjectId={c.current?.id ?? null}
           onLeaveProjectForWelcome={onLeaveProjectForWelcome}
+          glossaryWorkspaceId={glossaryWorkspaceId}
+          onGlossaryWorkspaceChange={onGlossaryWorkspaceChange}
         />
       }
     >
