@@ -1,16 +1,31 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 import {
+  buildTranscriptFontOptions,
   DEFAULT_FONT_OPTIONS,
   normalizeFontFamily,
-  SYSTEM_FONT_CANDIDATES,
+  readStoredTranscriptFontFamily,
+  readStoredTranscriptFontItalic,
+  readStoredTranscriptFontWeight,
+  transcriptFontFamilyDisplayLabel,
   TRANSCRIPT_META_WIDTH_MAX,
   TRANSCRIPT_META_WIDTH_MIN,
   TRANSCRIPT_META_WIDTH_STORAGE_KEY,
+  type LocalFontFaceMetadata,
+  writeStoredTranscriptFontFamily,
+  writeStoredTranscriptFontItalic,
+  writeStoredTranscriptFontWeight,
 } from "./editorTranscriptAppearance";
 
 export function useEditorTranscriptAppearance(busy: boolean, hasCurrentFile: boolean) {
   const [fontOptions, setFontOptions] = useState<string[]>(DEFAULT_FONT_OPTIONS);
-  const [transcriptFontFamily, setTranscriptFontFamily] = useState(DEFAULT_FONT_OPTIONS[0]);
+  const [fontDisplayLabels, setFontDisplayLabels] = useState<Record<string, string>>(() =>
+    Object.fromEntries(
+      DEFAULT_FONT_OPTIONS.map((family) => [family, transcriptFontFamilyDisplayLabel(family)]),
+    ),
+  );
+  const [transcriptFontFamily, setTranscriptFontFamily] = useState(
+    () => readStoredTranscriptFontFamily() ?? DEFAULT_FONT_OPTIONS[0],
+  );
   const [fontLoadBusy, setFontLoadBusy] = useState(false);
   const [transcriptMetaWidthPx, setTranscriptMetaWidthPx] = useState<number>(() => {
     if (typeof window === "undefined") return 132;
@@ -19,52 +34,37 @@ export function useEditorTranscriptAppearance(busy: boolean, hasCurrentFile: boo
     if (!Number.isFinite(parsed)) return 132;
     return Math.max(TRANSCRIPT_META_WIDTH_MIN, Math.min(TRANSCRIPT_META_WIDTH_MAX, Math.round(parsed)));
   });
-  const [transcriptFontWeight, setTranscriptFontWeight] = useState<500 | 700>(500);
-  const [transcriptFontItalic, setTranscriptFontItalic] = useState(false);
+  const [transcriptFontWeight, setTranscriptFontWeight] = useState<500 | 700>(() =>
+    readStoredTranscriptFontWeight(),
+  );
+  const [transcriptFontItalic, setTranscriptFontItalic] = useState(() => readStoredTranscriptFontItalic());
 
   const transcriptFontControlDisabled = useMemo(() => busy || !hasCurrentFile, [busy, hasCurrentFile]);
 
   const loadSystemFonts = useCallback(async () => {
     setFontLoadBusy(true);
-    const discovered = new Set<string>();
-
     try {
       const localFontWindow = window as Window & {
-        queryLocalFonts?: () => Promise<Array<{ family?: string }>>;
+        queryLocalFonts?: () => Promise<LocalFontFaceMetadata[]>;
       };
-      if (typeof localFontWindow.queryLocalFonts === "function") {
-        const localFonts = await localFontWindow.queryLocalFonts();
-        for (const f of localFonts) {
-          const family = normalizeFontFamily(f.family ?? "");
-          if (family) discovered.add(family);
-        }
-      }
-    } catch {
-      // ignore local font permission or runtime errors
+      const catalog = await buildTranscriptFontOptions({
+        queryLocalFonts:
+          typeof localFontWindow.queryLocalFonts === "function"
+            ? () => localFontWindow.queryLocalFonts!()
+            : undefined,
+        storedFamily: readStoredTranscriptFontFamily(),
+      });
+      setFontOptions(catalog.families);
+      setFontDisplayLabels(catalog.displayLabels);
+      setTranscriptFontFamily((cur) => {
+        const normalized = normalizeFontFamily(cur);
+        if (catalog.families.includes(normalized)) return normalized;
+        // 保留用户已选字体：列表异步加载完成前可能尚未收录，但 CSS 仍可生效。
+        return normalized || catalog.families[0];
+      });
+    } finally {
+      setFontLoadBusy(false);
     }
-
-    for (const family of SYSTEM_FONT_CANDIDATES) {
-      try {
-        if (document.fonts.check(`12px "${family}"`)) discovered.add(family);
-      } catch {
-        // ignore check errors
-      }
-    }
-
-    const preferred = SYSTEM_FONT_CANDIDATES.filter((f) => discovered.has(f));
-    const extras = Array.from(discovered)
-      .filter((f) => !preferred.includes(f as (typeof SYSTEM_FONT_CANDIDATES)[number]))
-      .sort((a, b) => a.localeCompare(b, "zh-Hans-CN"));
-    const merged = [...preferred, ...extras];
-    const nextOptions = merged.length > 0 ? merged : DEFAULT_FONT_OPTIONS;
-
-    setFontOptions(nextOptions);
-    setTranscriptFontFamily((cur) => {
-      const normalized = normalizeFontFamily(cur);
-      if (nextOptions.includes(normalized)) return normalized;
-      return nextOptions[0];
-    });
-    setFontLoadBusy(false);
   }, []);
 
   useEffect(() => {
@@ -75,6 +75,18 @@ export function useEditorTranscriptAppearance(busy: boolean, hasCurrentFile: boo
     if (typeof window === "undefined") return;
     window.localStorage.setItem(TRANSCRIPT_META_WIDTH_STORAGE_KEY, String(transcriptMetaWidthPx));
   }, [transcriptMetaWidthPx]);
+
+  useEffect(() => {
+    writeStoredTranscriptFontFamily(transcriptFontFamily);
+  }, [transcriptFontFamily]);
+
+  useEffect(() => {
+    writeStoredTranscriptFontWeight(transcriptFontWeight);
+  }, [transcriptFontWeight]);
+
+  useEffect(() => {
+    writeStoredTranscriptFontItalic(transcriptFontItalic);
+  }, [transcriptFontItalic]);
 
   const beginTranscriptMetaWidthDrag = useCallback(
     (e: React.PointerEvent<HTMLDivElement>) => {
@@ -113,6 +125,7 @@ export function useEditorTranscriptAppearance(busy: boolean, hasCurrentFile: boo
 
   return {
     fontOptions,
+    fontDisplayLabels,
     transcriptFontFamily,
     setTranscriptFontFamily,
     fontLoadBusy,

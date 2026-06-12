@@ -1,4 +1,5 @@
 import { useMemo } from "react";
+import { transcriptFontFamilyCssStack } from "../editor/editorTranscriptAppearance";
 
 export function useSegmentRowTextStyle(
   transcriptFontPx: number,
@@ -14,7 +15,7 @@ export function useSegmentRowTextStyle(
         letterSpacing: "0.005em",
         fontWeight: transcriptFontWeight,
         fontStyle: transcriptFontItalic ? "italic" : "normal",
-        fontFamily: `"${transcriptFontFamily}", "PingFang SC", "Hiragino Sans GB", "Noto Sans CJK SC", Inter, system-ui, sans-serif`,
+        fontFamily: transcriptFontFamilyCssStack(transcriptFontFamily),
       }) as const,
     [transcriptFontFamily, transcriptFontItalic, transcriptFontPx, transcriptFontWeight],
   );
