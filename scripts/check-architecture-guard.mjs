@@ -238,11 +238,33 @@ function checkTauriProductionCsp() {
   if (cspDirectiveHasUnsafeInline(csp['script-src'])) {
     errors.push('apps/desktop/src-tauri/tauri.conf.json: 生产 script-src 禁止 unsafe-inline（Tauri 构建时注入 hash/nonce）');
   }
-  // style-src 允许 unsafe-inline：WaveSurfer 7 shadow DOM 注入 <style>；React 行内 style= 仍走 style-src-attr。
-  // Q-CSP-1 v1.1 硬化时再改为 nonce + cspNonce 并移除此项。
+  // CSP-HARDEN (Q-CSP-1, Step 6a)：Tauri 仅向 script-src / style-src 注入 nonce + hash（见 manager/mod.rs replace_csp_nonce）。
+  // style-src 须去 unsafe-inline 改走 nonce；style-src-attr 的 unsafe-inline 保留（React 行内 style=；Tauri nonce 不覆盖 attr），故此处不检 style-src-attr。
+  if (cspDirectiveHasUnsafeInline(csp['style-src'])) {
+    errors.push('apps/desktop/src-tauri/tauri.conf.json: 生产 style-src 禁止 unsafe-inline（CSP-HARDEN：改走 Tauri nonce + cspNonce）');
+  }
+  // style-src-elem 不得声明：Tauri 不向该指令注入 nonce，一旦声明（无论是否含 unsafe-inline）会接管 <style>/<link>
+  // 判定并拦掉 nonce'd 样式 → 生产白样式。须删除让其回退到带 nonce 的 style-src。
+  if ('style-src-elem' in csp) {
+    errors.push('apps/desktop/src-tauri/tauri.conf.json: 生产禁止声明 style-src-elem（Tauri nonce 仅注入 style-src；删除该指令回退到 style-src）');
+  }
+}
+
+// CSP-HARDEN (Q-CSP-1, Step 6b)：硬化后生产产物 CSS 是外链 <link>，Tauri 仅给 <style> 注 nonce。
+// index.html 的 style nonce probe 是承重件——被删则 readTauriStyleCspNonce 在生产找不到任何 style[nonce]，
+// WaveSurfer shadow 样式会被拦。此处守住 probe（带 STYLE_NONCE token）存在。
+function checkTauriStyleNonceProbe() {
+  const htmlPath = path.join(ROOT, 'apps/desktop/index.html');
+  const html = fs.readFileSync(htmlPath, 'utf-8');
+  const hasProbeId = /id=["']rushi-tauri-style-csp-nonce["']/.test(html);
+  const hasNonceToken = /nonce=["']__TAURI_STYLE_NONCE__["']/.test(html);
+  if (!hasProbeId || !hasNonceToken) {
+    errors.push('apps/desktop/index.html: 缺少 style nonce probe（<style id="rushi-tauri-style-csp-nonce" nonce="__TAURI_STYLE_NONCE__">）— 硬化 CSP 下波形 nonce 会失效');
+  }
 }
 
 checkTauriProductionCsp();
+checkTauriStyleNonceProbe();
 
 console.log(`\n架构守卫报告：${errors.length} 错误，${warnings.length} 警告\n`);
 warnings.forEach(w => console.log(`⚠️  ${w}`));
