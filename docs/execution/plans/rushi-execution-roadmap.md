@@ -10,7 +10,7 @@
 | 适用节奏 | 单人、每轮 2～4h、一轮一纵向薄片 |
 | 规划跨度 | **个人单机 v1**：约 **14～18 周（自当前）** 或 **18～22 周（自 W1）**；R3 薄片 **~12～15w**（§4.0，含发行 smoke 缓冲）；协作 **非 v1** |
 | 修订 | 每完成一个阶段更新 §2 状态表、§4 排期表与 §13 代码对照 |
-| 最近对照 | **2026-06-12**：v1 后硬化 Step 1–4 ✅；**当前**：§10.4 **v1.1+ 统一后续路线图**（发行尾项 · 产品元信息 · **新手引导** · 定稿 UX · 安全/取消） |
+| 最近对照 | **2026-06-12**：审查吸收（R3g-A 单 SKU · guard **46** · I2/I3 🟡 · v1.1 估时缓冲） |
 
 ### 状态标记约定（全文档统一）
 
@@ -107,11 +107,11 @@
 
 | ID | 决定 | 落点 / 备注 |
 |----|------|-------------|
-| **Q-CSP-1** | **v1.1 硬化 CSP**（方案 B）：nonce/hash + Vite/Tauri 构建对齐；**去掉 `unsafe-inline`**（含 `script-src`）；引入富文本/HTML 渲染前必须完成 | `tauri.conf.json`；预估 2–5d + 三端 smoke |
+| **Q-CSP-1** | **v1.1 硬化 CSP**（方案 B）：**生产 `style-src` / `style-src-elem` 去 `unsafe-inline`**（nonce + WaveSurfer）；**`script-src` 生产已为 `'self'`**（v1 已闭合）；`style-src-attr` v1.1 暂保留；引入富文本/HTML 渲染前须完成 hardened CSP | `tauri.conf.json`；预估 ~1w + 三端 smoke（见 **CSP-HARDEN**） |
 | **Q-SYMPH-1** | **symphonia 不裁剪**（方案 A）：保留 `aac, flac, isomp4, mp3, pcm, vorbis, wav`；波形/peaks 优先 symphonia，失败走 FFmpeg remux | `apps/desktop/src-tauri/Cargo.toml` |
 | **Q-STT-CANCEL-1** | **v1.1 在线 STT 真取消**（方案 B）：`project_run_transcribe` 各 native/HTTP 路径可 `Abort`；统一取消 command；**v1 维持**前端丢弃结果（`online-stt-*` job id） | `run_transcribe_cmd.rs`、`transcribe_native_*`；工作量大，按 adapter 分批 |
 | **Q-PLUGIN-1** | **Plugin 权限强制 v1.1**（方案 A）：v1 仅 **内置白名单** + `loadBuiltinPlugins()`；`permissions` 字段暂 warn-only | `plugin-system/` |
-| **Q-SIDECAR-1** | **L1 + C2，Mac 单机自用**：**仅 Linux 发行物内置** bundled FunASR sidecar；**macOS/Windows** 文档 + 本地 `python -m rushi_asr` / `desktop:dev`；**不**在 PR/Release CI 自动编 macOS/Windows sidecar 产物（C2 手动） | Release 桌面包以 **Mac DMG** 为主；与 [`asr-sidecar-build-nightly.yml`](../../../.github/workflows/asr-sidecar-build-nightly.yml) 手动 workflow 一致 |
+| **Q-SIDECAR-1** | **2026-06-03 拍板 · 已被 R3h-1-R 部分取代**：Release CI **三平台**编 sidecar + smoke（[`release.yml`](../../../.github/workflows/release.yml)）；Mac DMG **仍含 bundled-asr** + manifest OTA 并存（checklist §7）。**仍有效**：侧车与模型分开展示（LRC）；[`asr-sidecar-build-nightly.yml`](../../../.github/workflows/asr-sidecar-build-nightly.yml) 作手动/夜间补充 | 勿再写「CI 不编 mac/win sidecar」 |
 
 ### 1.8 个人单机 v1 — 能力补齐索引（对齐工业「可用单机」）
 
@@ -128,7 +128,7 @@
 | **P1** | 侧车保活、少冷启动 | **ASR-WARM**（R3h-I4） |
 | **P1** | 转写失败可理解 | R3e 分类 + **TRN-DIAG** |
 | **P1** | 发版 eval 回归 + 专名样例 | **ACC-EVAL-1**（R3g-C 合入门禁）、**R4** + **R4-GATE**（R9 硬门禁） |
-| **P1** | Setup / 发布 / Supervisor 硬化 | **R3h-I1～I3** |
+| **P1** | Setup / 发布 / Supervisor 硬化 | **R3h-I1** ✅ · **I2/I3** 🟡 编码✅ / 架构收口未闭合 |
 | **P1** | 发版自动化子集 | **TEST-AUTO**（corrupt / 长音频慢测 / FSM contract；R9 硬门禁） |
 | **P1** | 单机修订时间线 | **REV-LOC** ✅（§4.1.1 **⑤‴½**；[acceptance](../specs/rev-loc-undo-edit-history-acceptance.md) 2026-06-03） |
 | **P2** | MCP 只读 | R5（v1 后可做） |
@@ -279,7 +279,7 @@ R0 → GLY-1 → R1–R2 → R3 → R4 → [R5] → [R6–R8] → R9
     ↓
 ④ R3e-A   长音频超时止血（**非**多段验收；50min 只验超时/文案，见 Q-R3e-1）
     ↓
-⑤ R3g-A   模型目录（SenseVoice + Paraformer）  ✅ 2026-05-27
+⑤ R3g-A   模型目录（**单 SKU Paraformer**；SenseVoice 已弃用/迁移）  ✅ 2026-05-27
     ├ ⑤a 后端 ✅
     ├ ⑤b UI 状态对齐 + S3 ✅
     └ ⑤c Paraformer 13min 多语段 ✅
@@ -328,7 +328,7 @@ R0 → GLY-1 → R1–R2 → R3 → R4 → [R5] → [R6–R8] → R9
     ↓
 ⑤‴½ REV-LOC ✅ 2026-06-03（切片 A/B；[acceptance](../specs/rev-loc-undo-edit-history-acceptance.md)）
     ↓
-R4 + R4-GATE ✅ → R9   ← **下一主序**
+R4 + R4-GATE ✅ → R9 ✅ 2026-06-03   ← **v1 主序已闭合**；**v1.1+ 见 §10.4**
 ```
 
 #### 4.1.2 子项台账
@@ -341,17 +341,17 @@ R4 + R4-GATE ✅ → R9   ← **下一主序**
 | **②-R** | **R3h-1-R** | ✅ | 3–5d | **HTTPS 默认 manifest URL**；`npm run runtime:publish-manifest`；R2 UI 降噪；R1+R2 签收 [`signoff`](../specs/r3h-1-r-phase-signoff-2026-06.md) | [`plan`](../specs/r3h-1-r-runtime-manifest-release-activation-plan.md) · [`checklist`](../specs/r3h-1-r-release-checklist.md) |
 | **③** | **R3f** | ✅ **mac** / Win ⏳ | 2–3d | 诊断 + 一键准备 + 8741 冲突；mac 安装包机器闸门 2026-06-09 | [`r3f-asr-setup-wizard-acceptance.md`](../specs/r3f-asr-setup-wizard-acceptance.md) · [signoff](../specs/r3f-phase-signoff-2026-06.md) |
 | **④** | **R3e-A** | ✅ | 2–3d | 动态超时 + 失败分类；**2026-06-07 复验签收** | [`r3e-long-audio-transcribe-acceptance.md`](../specs/r3e-long-audio-transcribe-acceptance.md) · [signoff](../specs/r3e-a-phase-signoff-2026-06.md) |
-| **⑤** | **R3g-A** | ✅ | 3–5d | 双 SKU + `prepare(model_id)`；**⑤a–c** 手测签收（2026-05-27） | [`r3g-local-asr-model-catalog-acceptance.md`](../specs/r3g-local-asr-model-catalog-acceptance.md) |
+| **⑤** | **R3g-A** | ✅ | 3–5d | **单 SKU（Paraformer）** + `prepare(model_id)`；SenseVoice hub id **deprecated** 自动迁移；**⑤a–c** 手测签收（2026-05-27） | [`r3g-local-asr-model-catalog-acceptance.md`](../specs/r3g-local-asr-model-catalog-acceptance.md) · `localAsrModelCatalog.ts` |
 | **⑤½** | **HOT-UX** | ✅ | 0.5w | 热词 12k 截断可观测；术语页「本次转写将携带」摘要 | [`hot-ux-acceptance.md`](../specs/hot-ux-acceptance.md) |
 | **⑤′a** | **R3t-A** | ✅ | 3–5d | `segmentation.py` + FunASR 接线 + 单测 + **手测签收**（2026-05-30） | [`recording-transcribe-llm-refine-acceptance.md`](../specs/recording-transcribe-llm-refine-acceptance.md) §R3t-A |
 | **⑤g** | **R3g-C** | ✅ | 3–5d | **AsrModelProfile**；SenseVoice `use_itn` + postprocess；Paraformer 保持 punc 路径；TypeError 剥参 + warnings；环境页 **识别语言**；**不**暴露全 generate UI | [`r3g-c-asr-generate-profile-acceptance.md`](../specs/r3g-c-asr-generate-profile-acceptance.md)、[`r3g-c-hand-test-checklist.md`](../specs/r3g-c-hand-test-checklist.md) 2026-05-31 签收；架构 [`asr-generate-params-truth.md`](../../architecture/asr-generate-params-truth.md) |
-| **⑤h** | **ACC-STT-UNIFY** | ✅ **2026-05-31** | 2–4d | **`SttVocabularyPlan`** + 三家 adapter；U2 `sttVocabularyBias`；**U3** ✅（R3h-3）；本机手测签收；**在线 E2E ⏳**；**U4 延后** | [`acc-stt-unify-acceptance.md`](../specs/acc-stt-unify-acceptance.md)、[`acc-stt-unify-hand-test-checklist.md`](../specs/acc-stt-unify-hand-test-checklist.md) |
+| **⑤h** | **ACC-STT-UNIFY** | ✅ **2026-05-31** | 2–4d | **`SttVocabularyPlan`** + 三家 adapter；U2 `sttVocabularyBias`；**U3** ✅（R3h-3）；本机手测 ✅；**百炼 E2E ✅** 2026-06-12；**U4 延后** | [`acc-stt-unify-acceptance.md`](../specs/acc-stt-unify-acceptance.md)、[`acc-stt-unify-hand-test-checklist.md`](../specs/acc-stt-unify-hand-test-checklist.md) |
 | **⑤′b** | **R3t-B** | ✅ | 2–4d | 转写任务、超时、原子写库、warnings UI；**不自动 LLM** | 同上 §3；[`r3t-b-hand-test-checklist.md`](../specs/r3t-b-hand-test-checklist.md) 2026-05-30 签收 |
 | **⑤′½** | **TRN-DIAG** | ✅ | 0.5w | 时间线 UI + 诊断包 `transcribe_timeline.json` | [`trn-diag-acceptance.md`](../specs/trn-diag-acceptance.md) |
 | **⑥** | **R3e-B** | ✅ | 1.5–2w | 长音频侧车 5min 窗；**2026-05-30 签收** | [`r3e-b-hand-test-checklist.md`](../specs/r3e-b-hand-test-checklist.md) |
 | **⑥½** | **R3e-C** | ✅ | 1–1.5w | async Job + 120s 窗末 preview merge；停止转写；preview 禁 save/LLM；**2026-05-31 手测签收**（制控.mp3） | [`r3e-c-incremental-transcribe-acceptance.md`](../specs/r3e-c-incremental-transcribe-acceptance.md)、[`r3e-c-incremental-transcribe-hand-test-checklist.md`](../specs/r3e-c-incremental-transcribe-hand-test-checklist.md) |
 | **⑦** | **R3h-2** | ✅ | ~1w | Range 续传 · 下载进度 UI · GC · **C 类自动回滚**（集成测 `test-r3h-2-c-rollback.sh`） | [`r3h-2 acceptance`](../specs/r3h-2-local-runtime-resume-acceptance.md) · remediation §5 Phase 2 |
-| **⑦½** | **ASR-WARM** | 🟡 dev ✅ | 0.5–1w | `supervisor.rs` + `warm.rs`；dev 手测 ✅；**release idle 补测** 可选 | [`asr-warm-acceptance.md`](../specs/asr-warm-acceptance.md) |
+| **⑦½** | **ASR-WARM** | ✅ **2026-06-12** | 0.5–1w | `supervisor.rs` + `warm.rs`；dev + **release idle H5** 签收 | [`asr-warm-acceptance.md`](../specs/asr-warm-acceptance.md)、[`asr-warm-release-idle-signoff-2026-06-12.md`](../specs/asr-warm-release-idle-signoff-2026-06-12.md) |
 | **⑧** | **R3h-3** + **R3d** | ✅ **2026-06-10** | 3–5d | 本机 ASR / 在线 STT / LLM 三盏灯；五栏 IA | [`r3h-3-environment-readiness-acceptance.md`](../specs/r3h-3-environment-readiness-acceptance.md) |
 | **⑧½** | **R3h-3.5** | ✅ **Partial Go** | ~1w | Sherpa Paraformer Spike；v1 仍 FunASR 主路径 | [`r3h-3.5-sherpa-spike-acceptance.md`](../specs/r3h-3.5-sherpa-spike-acceptance.md) · [ADR-0006](../../adr/0006-sherpa-onnx-paraformer-spike-evaluation.md) |
 | **R3s-A** | **Sherpa Qwen3 默认引擎** | 📋 **Defer**（research ✅） | ~4–6w phased（**G1 前不编码**） | 战略方向 = Qwen3 ONNX；**现默认仍 Paraformer**；薄预留 spike/eval/LRC schema；升级见 [plan §Defer](../specs/r3s-sherpa-qwen3-default-engine-plan.md) | [research](../specs/r3s-sherpa-qwen3-default-engine-research.md) · [plan](../specs/r3s-sherpa-qwen3-default-engine-plan.md) · [ADR-0007](../../adr/0007-sherpa-qwen3-default-asr-engine.md) |
@@ -369,6 +369,7 @@ R4 + R4-GATE ✅ → R9   ← **下一主序**
 | **⑤″f-2+** | **F6+ 纳入记忆→术语表** | ✅ | 0.5–1d | 右键纳入 + 可选 `glossary_add`；第 3 次纳入后 F6 提示 | hand-test 2026-06-02 |
 | **⑤″f-G** | **VOC-GUARD** | ✅ | 0.5d | hotwords 过滤 + `glossary_add/update/import` 拒绝错形 | **Q-ACC-8** |
 | **⑤‴** | **EXP-WORD** | ✅ v1 功能验收 | 1–1.5w | 交付导出向导 + 三形态 DOCX + 润色预览门禁 + 修订轨/附录 | [`exp-word-formatted-export-acceptance.md`](../specs/exp-word-formatted-export-acceptance.md) |
+| **Phase 10** | **项目 Hub + 场次元信息** | ✅ **2026-06-08** | ~1w | Hub 导航；`ProjectMetadataDialog` 五字段；重命名/删项目；Hub 编辑入口 | [`project-hub-metadata-acceptance.md`](../specs/project-hub-metadata-acceptance.md) |
 | **⑤‴½** | **REV-LOC** | ✅ **2026-06-03** | 0.5–1w | **A** 撤销栈与自动保存对齐；**B** `edit_log` 快照恢复 MVP；[slice A signoff](../specs/rev-loc-slice-a-signoff-2026-06.md) · [slice B signoff](../specs/rev-loc-slice-b-signoff-2026-06.md)；**非** R8 | [research](../specs/rev-loc-undo-edit-history-research.md) · [plan](../specs/rev-loc-undo-edit-history-plan.md) · [acceptance](../specs/rev-loc-undo-edit-history-acceptance.md) |
 | — | **R4** + **R4-GATE** | ✅ **2026-06-03** | 1.5w | 质量 Tab + 应用内 eval；[signoff](../specs/r4-quality-gate-signoff-2026-06.md) | [backlog §3.4](../specs/personal-solo-v1-backlog.md) · §732 |
 | — | **R3t（索引）** | 📋 | — | Epic 总览（含 L6） | [`recording-transcribe-llm-pipeline.md`](../../architecture/recording-transcribe-llm-pipeline.md) |
@@ -420,11 +421,13 @@ R4 + R4-GATE ✅ → R9   ← **下一主序**
 | **B 手动恢复 previous** | 用户触发「恢复上一版侧车」 | `local_runtime/recovery.rs` | **R3h-1 编码✅** |
 | **C 自动升级健康回滚** | 切换后运行时劣化 → 自动回退 | 规划 | **R3h-2 / R3h-I2** |
 
-> R3h-1 **不包含 C**；roadmap 勿写「企业级自动回滚已完成」。**R3h-1-R** 默认 HTTPS 源 + R1/R2 手测 ✅（2026-06-10）；Release CI ⏳。
+> R3h-1 **不包含 C**；roadmap 勿写「企业级自动回滚已完成」。**R3h-1-R** 默认 HTTPS 源 + R1/R2 手测 ✅（2026-06-10）；**Release CI mac/linux ✅**（v0.1.0）；**Windows job 🟡**（ps1 已对齐，待 release 重跑绿）。
+
+**与 Q-SIDECAR-1 关系（2026-06-12 修订）**：[`release.yml`](../../../.github/workflows/release.yml) **linux/macos/windows** 均在 Tauri 打包前编 sidecar 并 smoke；与 2026-06-03「CI 不编 mac/win sidecar」**已 supersede**。Mac fat DMG 仍含 **bundled-asr**；manifest zip 管 OTA / 损坏修复（checklist §7）。
 
 #### 4.1.5.2 R3h-1-R — Runtime Manifest 发行激活（LRC 上线）
 
-**背景**：`RUSHI_LOCAL_RUNTIME_MANIFEST_URL` 今日仅环境变量；未配置时 UI 报「manifest 未配置」，但 bundled / dev 侧车仍可转写。**本轨**让「应用内下载 / 修复侧车」对发行用户生效。
+**背景**：`RUSHI_LOCAL_RUNTIME_MANIFEST_URL` 未配置时 UI 可走 bundled / 应用内 manifest 下载；**本轨**让「应用内下载 / 修复侧车」对发行用户默认生效。
 
 **三阶段**（详表见 [`r3h-1-r-runtime-manifest-release-activation-plan.md`](../specs/r3h-1-r-runtime-manifest-release-activation-plan.md)）：
 
@@ -434,15 +437,13 @@ R4 + R4-GATE ✅ → R9   ← **下一主序**
 | **R1** | 最小发行 | HTTPS 默认 manifest URL；CI `publish-runtime-manifest`；release 私钥签名；remediation §11 零终端 / 构建 smoke | ✅ **2026-06-10** |
 | **R2** | 产品串联 | 一键准备自动下载；bundled OK 时 UI 降噪；弱网续传归 **R3h-2** | ✅ **2026-06-10** |
 
-**与 Q-SIDECAR-1 关系**：Mac 侧车 **手动** build 进 bundled 与 manifest **OTA zip** 可并存 — manifest 管 app_data 安装位，bundled 管离线 fallback；fat DMG 策略下 manifest 主价值为 **损坏修复 + 侧车版本 OTA**。
-
 **勿混淆**：`RUSHI_MODEL_VERIFY_MANIFEST` = **模型权重**校验（R3c）；本轨 = **侧车运行时** `rushi-runtime-manifest.json`。
 
 | 子轨 | 对齐目标 | 主要落位 | **启动条件（定量）** |
 |------|----------|----------|----------------------|
 | **R3h-I1 Runtime Supervisor** | 显式 sidecar supervisor FSM、watchdog、runtime identity | `asr_sidecar.rs`、`lib.rs`、`asr_setup/diagnose.rs` | **R3h-1 编码签收** + remediation §11 **零终端/诊断** 手测通过后 → 可开 **设计**；**编码收口**不早于 **R3h-2 开始** |
-| **R3h-I2 Release System** | GC、**事件化下载进度**（可恢复/可取消）、完整升级编排 | `local_runtime/*.rs`、`localRuntimeContract.ts` | **R3h-2 编码完成** + `npm run test` + `cargo test` 通过 → 本轨 **编码收口** |
-| **R3h-I3 Setup Machine** | ASR setup reducer/state-machine | `useAsrSetupController.ts`、`asrSetupState.ts` | **I1 设计评审通过** + **I2 manifest schema 冻结**（ADR/contract 一行变更记录）→ 可开编码；目标窗口 **R3h-3** |
+| **R3h-I2 Release System** | GC、Range 续传、**C 类自动回滚**、下载进度 | `local_runtime/*.rs` | **🟡 编码✅**（R3h-2）；**未**统一 progress event bus / reducer |
+| **R3h-I3 Setup Machine** | ASR setup 单一 reducer / 状态机 | `useAsrSetupController.ts`、`asr_setup/` | **🟡 编码✅**（前端 ~122 行）；Rust 仍为 diagnose 命令集，**无**完整 Setup FSM |
 | **R3h-I4 ASR-WARM** | Persistent worker、预热、空闲回收 | `asr_sidecar.rs`、侧车进程策略 | **R3t-B 编码完成** + **I1 Supervisor FSM 设计冻结** → 见 [`asr-warm-acceptance.md`](../specs/asr-warm-acceptance.md) |
 
 **R3h-2 进度事件（行业对照）**：侧车 zip 与模型拉取统一 **阶段 + 字节进度 + 可恢复**；参考 Tauri updater（签名/HTTPS/进度/代理）与 Ollama pull 流式 `status/digest/completed`（**取消须真停后台**，见 Q-R3g-3）。
@@ -519,7 +520,7 @@ glossary_terms ──► L2 hotwords（仅 canonical + aliases；禁止 before_t
 | **C1** | `asr_model_profile.py`；迁移 `funasr_generate_kwargs`；单测快照 |
 | **C2** | SenseVoice **`use_itn=True` 默认开** + `rich_transcription_postprocess` |
 | **C3** | 通用 `_run_generate` 剥参 + `asr-generate-params-truth.md` + hints |
-| **C4** | 环境页识别语言（**默认 `zh`**）；排障 override 另论；**SKU 文案**：Paraformer **「推荐转写」**；SenseVoice **「兼容/快轨」**（百炼 SenseVoice-v1 **2026-03-09 下线** — 见 §13.5、landscape backlog）；默认选中倾向 Paraformer 直至 **⑤″f-E Qwen3** 决策 |
+| **C4** | 环境页识别语言（**默认 `zh`**）；**产品目录仅 Paraformer**（`iic/SenseVoiceSmall` deprecated → 自动迁移）；R3g-C Profile 仍保留 SenseVoice **参数预设**供侧车 legacy id |
 
 **ACC-STT-UNIFY 子切片（§4.1.1 **⑤h**）**：
 
@@ -718,7 +719,7 @@ React 预览 UI
 | R3a | LLM keychain + probe | ✅ |
 | R3b | Profile 导入导出 | ✅ |
 | R3c | 缓存 / manifest / 清缓存 | ✅ |
-| **R3h** | **本地运行时目录（LRC）** | 🟡 **①–⑧½ + I1a + WARM dev ✅**；尾项 **1-R CI**、Win ⏸ |
+| **R3h** | **本地运行时目录（LRC）** | 🟡 **①–⑧½ + I1a + ASR-WARM ✅**；**I2/I3 编码✅ / 收口未闭合**；尾项 **Win Release CI 🟡** |
 | **R3f** | 一键环境准备 | ✅ mac / Win ⏸ |
 | **R3e** | 长音频 | ✅ A/B/C |
 | **R3g** | 模型目录 + Profile | ✅ |
@@ -739,7 +740,7 @@ React 预览 UI
 |--------|------|----------|
 | **R3h-0** | 构建正确 + CI smoke + 诊断 corrupt + Win 磁盘 | **阻塞一切发行手测** |
 | **R3h-1** | `local_runtime/` 编码：HTTPS 下载 + app_data 侧车 + signed manifest / current+previous / rollback | ✅ |
-| **R3h-1-R** | Runtime manifest **发行激活**：默认 HTTPS 源 + 发布流水线 + 零终端 VM 手测 | ✅ mac arm64 · CI ⏳ |
+| **R3h-1-R** | Runtime manifest **发行激活**：默认 HTTPS 源 + 发布流水线 + 零终端 VM 手测 | ✅ mac/linux/Win CI · **Win v0.1.0 资产待补** |
 | **R3h-2** | 断点续传、自动下载编排、GC / progress events / 升级收口 | 阻塞 R9 弱网场景 |
 | **R3h-3** | 三盏灯就绪页（合并 R3d） | ✅ 2026-06-10 |
 | **R3h-I** | 工业成熟度对齐：`Runtime Supervisor` / signed release system / `Setup Machine` | **收口轨**；不改 ①–⑨ 主顺序 |
@@ -892,7 +893,7 @@ React 预览 UI
 | T-008 | LRC / 侧车 corrupt 诊断 | **R3h-0** | `bundledAvailable` 仅 bool；见 remediation §1.3 |
 | T-009 | ~2.5GB Python 侧车技术债 | **R3h-3.5** | Sherpa-ONNX Spike；见 remediation §10.1 R1 |
 | T-005 | `useProjectLifecycleController` | **✅ 已解决** | ~261 行；原 R0 项，2026-05-27 对照 |
-| T-010 | `install_support.rs` / `asr_sidecar.rs` / `useAsrSetup*` | **R3h-2～I3** | 守卫 7 警告；随 LRC/I 薄片拆分，不单独开重构周 |
+| T-010 | `install_support.rs` / `asr_sidecar.rs` / `run_transcribe_cmd.rs` / `online_segment_normalize.rs` | **R3h-I2 + 热点回收** | 守卫 **46** 警告；v1.1 Step 8 前建议薄片 |
 | T-006 | `architecture-split-plan` 过期 | **R9** | 与 §2 基线同步 |
 | T-007 | 本机转写 600s 超时 + 整文件 FunASR | **R3e** | 50min 手测 OOM / request failed；见 r3e spec |
 
@@ -931,7 +932,7 @@ React 预览 UI
 | **ACC-EVAL-1** | 专名/术语回归 manifest（如 制控 term_hit） | `fixtures/eval` + term_hit；**R3g-C 合入硬门禁** | **Q-ACC-4**；产品补 1～2 条脱敏样例 |
 | **ACC-MODEL-1** | SenseVoiceSmall_hotword / contextual SKU | FunASR 官方 hotword 增强权重 | **产品 Go**；R3g-C + ACC-EVAL-1 后插入 §4.1.1 |
 | **ACC-HOT-W** | 带权热词（`词 权重`） | 对齐 FunASR Runtime SDK / 阿里百炼 weight | R3g-C；ACC-EVAL-2 |
-| **ACC-STT-ALI** | 百炼 `vocabulary_id` + `target_model` | Fun-ASR Realtime 热词 CRUD | ✅ 编码 2026-06-09；手测 ⏳ [`acc-stt-ali-hand-test-checklist.md`](../specs/acc-stt-ali-hand-test-checklist.md) |
+| **ACC-STT-ALI** | 百炼 `vocabulary_id` + `target_model` | Fun-ASR Realtime 热词 CRUD | ✅ 编码 2026-06-09；**百炼 E2E ✅** 2026-06-12（§10.2 Step 4） | [`acc-stt-ali-hand-test-checklist.md`](../specs/acc-stt-ali-hand-test-checklist.md) |
 | **ACC-TXT-0** | 稳定规则转写后字面预替换（Spike） | AssemblyAI custom_spelling | **⑤″f-C MEM-P2** |
 | **ACC-IN-2/3** | 音频增强 / 选区重转写 | 须 ACC-EVAL A/B | R4 前 |
 | **ACC-HITL-1/2** | 低置信筛选 / R3t-E 优先队列 | UX 薄片 | R3t-B/E |
@@ -986,11 +987,11 @@ React 预览 UI
 | **Q-R9-1** | ✅ **Mid 档位**：R9 硬门禁 **R3t-B + R3t-C**；**R3t-D/E 可减 scope**（不挡 R9）；无 LLM 仍可手改交付 |
 | **Q-FUT-1** | ✅ **§9 分叉 B 否**（协作不提前）；**R3h-3.5 Sherpa Spike Go**；**ACC-MODEL-1/HOT-W 产品 Go**（ACC-EVAL-1 后插入主序）；**LLM-LOC** 仍 R9 后 Spike→Gate |
 | **Q-SEQ-3** | ✅ **§4.1.1 主序不变**（2026-05-30）：**R3g-C → ACC-STT-UNIFY → R3t-B → …**；不因 Mid/REV-LOC 重排薄片 |
-| **Q-CSP-1** | **v1.1** CSP 硬化（去 `unsafe-inline`）；v1 维持现状 + 禁止 HTML 注入 UI |
+| **Q-CSP-1** | **v1.1** CSP 硬化：**生产 `style-src` 去 `unsafe-inline`**（CSP-HARDEN）；**`script-src` 生产已 `'self'`**；v1 禁止 HTML 注入 UI |
 | **Q-SYMPH-1** | symphonia **全 feature 保留**；不裁 codec |
 | **Q-STT-CANCEL-1** | **v1.1** 在线 STT 可中断；v1 仅丢弃结果 |
 | **Q-PLUGIN-1** | Plugin **v1.1** 再做 `register()` 权限校验；v1 内置-only |
-| **Q-SIDECAR-1** | **L1 + C2**：Linux 内置 sidecar；Mac 自用 + sidecar **手动**构建；CI 不编 mac/win sidecar |
+| **Q-SIDECAR-1** | **2026-06-03 拍板 · 已被 R3h-1-R 取代**：Release CI 三平台编 sidecar；Mac DMG 仍 bundled + manifest OTA（§4.1.5.1） |
 
 ---
 
@@ -1021,7 +1022,7 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | **定位** | **个人单机 v1 主序已闭合**（EXP-WORD → REV-LOC → R4 → R9 → LLM-LOC 4a）；**v1 后硬化 Step 1–4 ✅**；进入 **§10.4 v1.1+ 统一后续** |
 | **排期真源** | **§10.4**（发行尾项 · 产品元信息 · **新手引导** · 定稿 UX · v1.1 安全/取消 · 并行禁忌） |
 | **LLM** | **4a** ✅ · **4b** ❌ Gate-B No-Go（[decision](../specs/llm-loc-gate-b-decision-2026-06.md)） |
-| **当前主刀** | **Step 5** `R3h-1-R Win CI` → **Step 5b–c** `PROD-META`（可与 Step 6a 并行）→ **Step 6–7** v1.1 硬化 → **Step 8+** 定稿/批量 UX |
+| **当前主刀** | **Step 6–7** v1.1 硬化（CSP / STT 取消）→ **Step 8+** 定稿/批量 UX；**Step 5 Win CI ✅ 2026-06-12** · **PROD-META 5b–c ✅ 2026-06-12** |
 | **近期不做** | 实时 mic（STREAM-*）、媒体剪辑（Overdub/按字剪波形）、协作/CAT/RAG、**F4-ASR**、**LLM-LOC-4b**、**R3s-A** Defer |
 
 ### 10.1 v1 后硬化盘点（2026-06-11 · 对照代码）
@@ -1035,7 +1036,8 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | **R0–R2** | 标点/LLM 基线 |
 | **R3a–c** | keychain、profile、缓存/manifest |
 | **R3f mac** | `asr_setup/`、`LocalAsrSetupWizard` — [signoff](../specs/r3f-phase-signoff-2026-06.md) |
-| **R3g-A/C** | 模型目录 + `AsrModelProfile` |
+| **R3g-A/C** | **单 SKU** 模型目录（Paraformer）+ `AsrModelProfile`（含 legacy SenseVoice 参数路径） |
+| **R3h-I2 / I3** | LRC 续传/GC/回滚 ✅；Setup **🟡** 前端 reducer 已拆，统一 FSM **未闭合** |
 | **R3t-A/B** | `segmentation.py`、转写编排 |
 | **R3t-C/D** | 曾交付；**2026-06 独立菜单已移除** → 能力在 **F0 阶段 B** / 段界整理归档 |
 | **R3t-E** | **⏸ 产品移除**；Stage B 保留于 `postTranscribeStageB.ts` |
@@ -1045,6 +1047,7 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | **ACC-STT-UNIFY** | 本机手测 ✅；`stt_vocabulary` + 三家 adapter |
 | **⑤″f A–D** | VOC-1/5/2/GUARD、F2/F1/F6、MEM-P0–P2、F7、F0、F8 |
 | **EXP-WORD / REV-LOC** | 导出 + 撤销/快照 |
+| **Phase 10** | 项目 Hub + 场次元信息 — [`project-hub-metadata-acceptance.md`](../specs/project-hub-metadata-acceptance.md) **2026-06-08** |
 | **R4 / R9** | 质量 Tab + v1 严格签收 2026-06-03 |
 | **LLM-LOC 4a** | Ollama 路径 |
 | **语段正文 P0** | `useSegmentRowTextFieldEditing`、draft defer |
@@ -1053,11 +1056,13 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 
 | ID | 现状 | 缺口 | 建议优先级 |
 |----|------|------|------------|
-| **R3h-1-R CI** | `v0.1.0` mac/linux manifest + 安装包 ✅ | **Windows** smoke.ps1 待修 | **P2** |
+| **R3h-1-R CI** | `v0.1.0` mac/linux manifest + 安装包 ✅ · **Win workflow ✅** | **Win release 资产**（`v0.1.0` 未上传）待下一 tag | **P2** |
 | **TRN-DIAG** | `transcribe_timeline.rs`、`diagnostic.rs` | ✅ 2026-06-11 | — |
 | **ASR-WARM** | `warm.rs` idle/watchdog | release idle H5 ✅ 2026-06-12 | — |
 | **ACC-STT-ALI** | `dashscope_vocabulary.rs` + `dashscope_file_asr.rs` | 百炼 E2E ✅ 2026-06-12 | — |
-| **ACC-STT-UNIFY** | 在线 adapter 已编码 | 百炼 ✅；OpenAI/AAI/DG 可选 | **P3**（有 Key） |
+| **ACC-STT-UNIFY** | 在线 adapter 已编码 | 百炼 ✅；OpenAI/AAI/DG 可选 E2E | **P3**（有 Key） |
+| **Welcome 搜索** | `WelcomeTopBar` 搜索框 | **占位**（`readOnly`）；全文检索 **未排期** | **P3** 或 v1.2 |
+| **编辑器 Esc 栈** | `dialogEscapeStack` + 浮动面板 | ✅ 编码（多 dialog 接入）；无单独 Epic | — |
 | **F6 §C Mine** | `GlossaryMineSection` | 挖掘推荐 **可选手测** | **P3** |
 
 #### C. 明确不做 / 延后（⏸ / ❌ / 📋）
@@ -1099,14 +1104,24 @@ Step 4  ACC 在线 E2E                 ✅ 百炼 2026-06-12
 |----|------|------|
 | **R3f Win** | 安装包手测 | ⏸ 有 Win 机时补 |
 | **R3s-A Phase 0** | 金标 eval（非编码） | Defer |
-| **架构热点回收** | `pxPerSec` / `useTranscriptionLayer` 等 | 守卫 warning 达线再开 |
+| **架构热点回收** | `run_transcribe_cmd.rs` · `online_segment_normalize.rs` · `useTranscriptionLayer.ts` 等（guard **46**） | **建议 Step 6 后、Step 8 前** 开 T-010 薄片；勿与 DELIV/BATCH 大 UI 同 PR |
 | **文档 commit** | F4 No-go + 盘点 + 手测签收 | 随时 |
+| **编辑器快捷键调研** | [`editor-keyboard-shortcuts-research.md`](../specs/editor-keyboard-shortcuts-research.md) | 与 ONBOARD / EnvHelp 可链；非阻塞 |
 
 ### ASR 引擎路线（2026-06-11）
 
 - **产品默认**：FunASR Paraformer + LRC（ADR-0003）
 - **R3h-3.5**：Sherpa Paraformer ✅ Partial Go（非主路径）
-- **R3s-A**：Sherpa Qwen3 📋 Defer（G1 前不编码）
+- **R3s-A**：Sherpa Qwen3 📋 Defer（**G1 前不编码**）
+
+**R3s-A Phase 0 启动条件**（非 v1.1 阻塞）：
+
+| 条件 | 说明 |
+|------|------|
+| **触发** | 产品书面 Go **且** v1.1 主轨 Step 5–7 无红项 **或** 单独开 eval 薄片 |
+| **交付** | 金标 manifest + 制控/长轨 CER·term_hit 对比（FunASR Paraformer baseline） |
+| **Go 门槛** | [plan §G1–G4](../specs/r3s-sherpa-qwen3-default-engine-plan.md) + [spike 270 段证据](../specs/r3h-3.5-sherpa-quant-compare-report.md) 复验 |
+| **通过后** | v1.2+ 可升「默认引擎迁移」优先级；**未过**则维持 Paraformer + LRC |
 
 ### v1 0.1.0 可分发
 
@@ -1121,7 +1136,8 @@ Step 4  ACC 在线 E2E                 ✅ 百炼 2026-06-12
 
 > **定位**：个人单机、**已有录音 → 转写 → 手改定稿 → Word**；对标 MacWhisper 文件链 / 听见「导入转写+规整」子集，**不对标**实时 mic、Descript 媒体编辑、协作 SaaS。  
 > **原则**：一轮一纵向薄片；**复用** F0 / EXP-WORD / LRC，**不**新造 ASR/LLM 栈。  
-> **规格**：各 Epic 编码前须 intent/plan/acceptance（模板 [`spec-template.md`](../specs/spec-template.md)）；环境/UI 类须 **能力—UI 状态矩阵**。
+> **规格**：各 Epic 编码前须 intent/plan/acceptance（模板 [`spec-template.md`](../specs/spec-template.md)）；环境/UI 类须 **能力—UI 状态矩阵**。  
+> **⚠️ 2026-06-12**：§10.4 spec 立项进度 — **CSP-HARDEN 已立项**（`csp-harden-v1.1-{research,intent,plan,acceptance}.md`）；其余五组（`product-metadata-v1.1-*` 等）仍未立项 — **禁止**无 spec 开业务编码。
 
 #### 10.4.0 Epic 索引
 
@@ -1132,8 +1148,8 @@ Step 4  ACC 在线 E2E                 ✅ 百炼 2026-06-12
 | **定稿 UX** | **DELIV-MODE** | 产品对标缺口 §定稿链 | 转写后 → 规则/改稿 → 终检 → 交付导出 **单一向导** | 2 片 · ~1–1.5w | `delivery-mode-{research,intent,plan,acceptance}.md` |
 | **新手引导** | **ONBOARD** | MacWhisper 极简 + 业内 checklist 对照 | Welcome **首跑清单**（5 步 outcome）；可关闭/可恢复；**非**全屏 tour | 2 片 · ~0.5–1w | `onboarding-first-run-{research,intent,plan,acceptance}.md` |
 | **多场效率** | **BATCH-TXN** | MacWhisper Batch 子集 | Project Hub **多选导入 + 串行转写队列** | 2 片 · ~1–1.5w | `batch-transcribe-queue-{intent,plan,acceptance}.md` |
-| **v1.1 安全** | **CSP-HARDEN** | **Q-CSP-1** §1.7 | 生产 CSP 去 `style-src` **`unsafe-inline`**（nonce + WaveSurfer） | 2 片 · ~1w | `csp-harden-v1.1-{research,intent,plan,acceptance}.md` |
-| **v1.1 取消** | **STT-CANCEL** | **Q-STT-CANCEL-1** §1.7 | 在线 STT **真 Abort**（非 v1 丢弃结果） | 3–4 片 · ~1.5–2w | `online-stt-cancel-v1.1-{research,intent,plan,acceptance}.md` |
+| **v1.1 安全** | **CSP-HARDEN** | **Q-CSP-1** §1.7 | 生产 CSP 去 `style-src` **`unsafe-inline`**（nonce + WaveSurfer） | 2 片 · **~1.5–2w** | `csp-harden-v1.1-{research,intent,plan,acceptance}.md` |
+| **v1.1 取消** | **STT-CANCEL** | **Q-STT-CANCEL-1** §1.7 | 在线 STT **真 Abort**（非 v1 丢弃结果） | 3–4 片 · **~2–3w** | `online-stt-cancel-v1.1-{research,intent,plan,acceptance}.md` |
 
 **明确不纳入本轨**（仍 §8 / §10.1 C）：STREAM-*、Overdub/按字剪波形、R6–R8、CAT-TRAN、RAG、LLM-LOC-4b、Q-PLUGIN-1（另列 v1.1 可选）、Win 安装包手测（⏸ 有 Win 机时补）。
 
@@ -1141,13 +1157,13 @@ Step 4  ACC 在线 E2E                 ✅ 百炼 2026-06-12
 
 ```text
 【Phase A · 发行尾项 + 产品元信息】
-Step 5   R3h-1-R Windows CI                    🟡 ← 当前主刀
-Step 5b  PROD-META P-1  环境页「关于」+ app_version + 复制版本信息
-Step 5c  PROD-META P-2  第三方许可（ffmpeg 等）+ build-info 对齐 + macOS 菜单 About
+Step 5   R3h-1-R Windows CI                    ✅ 2026-06-12 · [run #27401814256](https://github.com/Abe-Junwei/rushi/actions/runs/27401814256)
+Step 5b  PROD-META P-1  环境页「关于」+ app_version + 复制版本信息          ✅
+Step 5c  PROD-META P-2  第三方许可 + build-info 对齐 + macOS About       ✅
 
 【Phase B · v1.1 硬化 — 可并行，单人建议 CSP 先于 STT】
-Step 6a  CSP-HARDEN C-1  生产 style nonce + 守卫 + 波形 probe
-Step 6b  CSP-HARDEN C-2  全应用 CSP smoke + acceptance 签收
+Step 6a  CSP-HARDEN C-1  生产 style nonce + 守卫 + 波形 probe   ✅ 2026-06-12
+Step 6b  CSP-HARDEN C-2  全应用 CSP smoke + acceptance 签收     ✅ 2026-06-12（自动门禁 + H-CSP-1/2 mac 手测）
 Step 7a  STT-CANCEL D-1  TranscribeCancelState + project_cancel_transcribe + TS
 Step 7b  STT-CANCEL D-2  OpenAI + Deepgram native Abort
 Step 7c  STT-CANCEL D-3  百炼 Dashscope poll 可中断
@@ -1170,9 +1186,10 @@ Step 12  REL-1.1  signoff  H-CSP-* + H-STT-* + 回归 R9 主路径抽检
 
 | Step | ID | 状态 | 硬验收 |
 |------|-----|------|--------|
-| **5** | **R3h-1-R Win CI** | 🟡 | `smoke-asr-sidecar-health.ps1` 与 bash warmup gate 对齐 |
-| **5b–c** | **PROD-META** | 📋 | 设置「关于」展示版本；许可可访问；[`windows-release-checklist.md`](../windows-release-checklist.md) ffmpeg 项闭合 |
-| **6a–b** | **CSP-HARDEN** | 📋 | `release:postbuild-verify` + 波形 probe；守卫拒绝 prod `style-src` `unsafe-inline` |
+| **5** | **R3h-1-R Win CI** | ✅ | `smoke-asr-sidecar-health.ps1` + `release.yml` **tauri-windows** 绿（2026-06-12） |
+| **5b–c** | **PROD-META** | ✅ | `EnvAboutPanel`（第三方组件 + 许可正文）+ 随包 `third-party-notices.txt` / `third-party-license-texts.txt`；诊断 `build-info.txt` 含 `identifier`；macOS 应用菜单 About |
+| **6a** | **CSP-HARDEN C-1** | ✅ | 生产 `style-src` 去 `unsafe-inline` + 删 `style-src-elem`；守卫拒绝 prod `style-src` `unsafe-inline` + 任何 `style-src-elem` 声明 |
+| **6b** | **CSP-HARDEN C-2** | ✅ | 生产产物 CSP 表面审计 + nonce probe 守卫（`checkTauriStyleNonceProbe`）+ 运行时 `<style>` 注入覆盖审计；H-CSP-1/2 mac Release 手测 ✅（2026-06-12）|
 | **7a–d** | **STT-CANCEL** | 📋 | 在线转写中停止 ≤2s 恢复语段；timeline `cancelled`；本机 async 回归 |
 | **7e** | **STT-CANCEL D-5** | 📋 P2 | legacy multipart 文档化 |
 | **8–9** | **DELIV-MODE** | 📋 | 无 LLM 可走 1→4→5；有 LLM 可委托规则+Stage B 预览写回 |
@@ -1206,9 +1223,9 @@ Step 12  REL-1.1  signoff  H-CSP-* + H-STT-* + 回归 R9 主路径抽检
 | Rust | 已有 `app_version()`；可选 `app_build_info()`（platform / identifier）；Tauri **应用菜单 → 关于**（macOS） |
 | TS API | `tauri/projectApi.ts` 或 `appInfoApi.ts` → `invoke("app_version")` |
 | UI | `components/EnvAboutPanel.tsx`；`EnvironmentPanel` nav **`about`**（与 `help` 并列，**勿与项目元信息表单混页**） |
-| 资源 | 随包 `resources/third-party-licenses/`（ffmpeg 等）；或链到已有 `services/asr/third_party/ffmpeg/README.md` 摘要 |
+| 资源 | 随包 `resources/third-party-notices.txt` + `third-party-license-texts.txt`（组件目录 + 许可正文）；ffmpeg 说明见 `services/asr/third_party/ffmpeg/README.md` |
 | 诊断 | `diagnostic.rs` `build-info.txt` 字段与 About **同一真源**（`CARGO_PKG_VERSION` + `tauri.conf.json` `identifier`） |
-| 文档 | 随包 `user-guide-zh.md` §许可 一句指向应用内关于（**非**全文使用说明重写） |
+| 文档 | 随包 **`user-guide-zh.md` §1–3** 对齐 bundled sidecar + 应用内转写（**仅 md，无 PDF**）；§许可 指向应用内关于 |
 | **不做** | SaaS 式 Legal 门户；Welcome 顶栏常驻版本号；与 `ProjectMetadataDialog` 合并 |
 
 **DELIV-MODE**
@@ -1247,6 +1264,7 @@ Step 12  REL-1.1  signoff  H-CSP-* + H-STT-* + 回归 R9 主路径抽检
 
 | 层 | 路径 |
 |----|------|
+| 范围 | **v1.1 仅硬化生产 `style-src` / `style-src-elem`**（去 `unsafe-inline`）；**`script-src` 生产已为 `'self'`**（Q-CSP-1 该项 v1 已闭合） |
 | 配置 | `tauri.conf.json` 生产 `style-src` / `style-src-elem` → nonce（去 `unsafe-inline`） |
 | 运行时 | 已有 `index.html` nonce probe、`readTauriStyleCspNonce`、`applyWaveSurferShadowCspNonce` |
 | 守卫 | `scripts/check-architecture-guard.mjs` 升级 |
@@ -1261,6 +1279,7 @@ Step 12  REL-1.1  signoff  H-CSP-* + H-STT-* + 回归 R9 主路径抽检
 | 命令 | `project_cancel_transcribe`；`project_run_transcribe` + `request_id` + `Abortable` |
 | Adapter | `transcribe_native_online.rs`、`stt_native/*` 分批接入 cancel token |
 | TS | `transcribePreviewState.ts`（移除 `online-stt-*` 不可 cancel）；`useTranscribeJobController.ts` |
+| **不扩 scope** | 本机 **R3e-C** `cancelTranscribe` / 侧车 `/v1/transcribe/cancel` **已 ✅** — 本 Epic 仅 **在线 native Abort** + `project_cancel_transcribe` 统一 command |
 | **不扩 scope** | 本机 `async_start` 不可中断窗口（fix-status 4c）另开 |
 
 #### 10.4.3 并行与禁忌
@@ -1274,16 +1293,21 @@ Step 12  REL-1.1  signoff  H-CSP-* + H-STT-* + 回归 R9 主路径抽检
 | **DELIV 门禁** | 不自动串联 A→B；须预览写回（延续 F0 硬约束） |
 | **BATCH 门禁** | 串行转写；非空语段默认跳过（覆盖须 ASR-VOC-1 确认框） |
 | **v1.1 发版** | Step 12 前须 **6b + 7b** 至少一家在线 E2E 取消手测 |
+| **规格门禁** | 各 Epic **intent/plan/acceptance 立项后**方可编码（见 §10.4.0 注） |
+| **热点门禁** | guard **≥46** 且持续叠功能前，优先 T-010 拆 `run_transcribe_cmd.rs` / `online_segment_normalize.rs` |
 
 #### 10.4.4 日历估算（单人 · 2–4h/片）
 
 | Phase | 周次（约） | 交付 |
 |-------|------------|------|
-| A 发行尾项 + 元信息 | +0.5–1w | Step 5 Win CI + **PROD-META** |
-| B v1.1 硬化 | +2–3w | CSP + STT 取消 |
+| A 发行尾项 + 元信息 | +0.5–1w | Step 5 Win CI ✅ · PROD-META ✅ |
+| B v1.1 硬化 | **+2.5–4w** | CSP + STT 取消（**较原估 +0.5–1w 缓冲**） |
 | C 定稿 UX + 引导 | +1.5–2w | DELIV-MODE + **ONBOARD** |
 | D 多场 | +1–1.5w | BATCH-TXN |
 | E 签收 | +0.5w | REL-1.1 |
+| **合计** | **~6.5–10w** | 单人 2–4h/片；CSP/STT 勿压缩 |
+
+**估时说明（2026-06-12 审查）**：CSP（nonce + WaveSurfer shadow + 全应用 smoke）与 STT-CANCEL（4 家 adapter + 状态机 + 手测）原表偏乐观；以 **Step 7a 基础设施 + 7b–d adapter 分批** 控制单 PR 风险。
 
 **与 §6 远期关系**：R5 MCP、R6–R8、LLM-LOC-4b、Q-PLUGIN-1 **仍在 v1.1 之后**；本轨不阻塞协作立项。
 
@@ -1399,28 +1423,30 @@ Step 12  REL-1.1  signoff  H-CSP-* + H-STT-* + 回归 R9 主路径抽检
 | 2026-06-12 | **§10.4 v1.1+ 统一后续路线图**：DELIV-MODE · BATCH-TXN · CSP-HARDEN（Q-CSP-1）· STT-CANCEL（Q-STT-CANCEL-1）；Step 5–12；REL-1.1 手测集 |
 | 2026-06-12 | **§10.4 + PROD-META**：Step **5b–c** 产品元信息（关于 / 版本 / 第三方许可）；H-PROD-*；Win checklist 闭合项 |
 | 2026-06-12 | **§10.4 + ONBOARD**：Step **9a–b** 新手引导（Welcome 首跑清单 · 非 tour）；H-ONBOARD-*；research brief 门禁 |
+| 2026-06-12 | **审查吸收**：R3g-A **单 SKU**；guard **46**；R3h-I2/I3 **🟡**；v1.1 CSP/STT **估时缓冲**；R3s-A Phase 0 触发；spec 未立项风险 |
 
 ---
 
-## 13. 代码对照评估（2026-06-11，`main`）
+## 13. 代码对照评估（2026-06-12，`main` / 工作区）
 
 > 对照 **已推送 `main` 或工作区等价**。发版轮末刷新本节测试数 / 守卫警告 / 热点行数。
 
-### 13.1 工程验证快照（实测）
+### 13.1 工程验证快照（实测 2026-06-12）
 
 | 检查项 | 结果 |
 |--------|------|
 | `npm run typecheck` | ✅ 通过 |
-| `npm run test`（desktop） | ✅ **619** passed（131 files，2026-05-30；含 R3e-C cancel/preview/gate 单测） |
-| `node scripts/check-architecture-guard.mjs` | ✅ 0 错误，**11 警告**（波形热点：`pxPerSec.ts`、`useWaveformSegmentDrag.ts` 等，§13.3） |
-| `cargo test`（desktop lib） | ✅ 见 `cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml` |
+| `npm run test`（desktop） | ✅ **1273** passed（**257** files） |
+| `cargo test --lib`（desktop） | ✅ **348** passed |
+| `node scripts/check-architecture-guard.mjs` | ✅ 0 错误，**46 警告**（§13.3；TS >300 行 ~35 处；hooks >12：**4** 处） |
 | `profile.rs` / R3c 缓存 / 清缓存对话框 | ✅ 已合入 `main` |
 | `asr_setup_diagnose` / 一键准备 UI | ✅ **R3f mac 签收**（`asr_setup/`、`LocalAsrSetupWizard`） |
-| `local_runtime/` LRC | ✅ **R3h-1/2/3**；**R3h-1-R** R1/R2 手测 ✅；**Release CI ⏳** |
-| `asr_sidecar/supervisor.rs` + `warm.rs` | ✅ **I1a + ASR-WARM dev**；release idle 补测可选 |
+| `local_runtime/` LRC | ✅ **R3h-1/2/3**；**R3h-1-R** R1/R2 手测 ✅；**Release CI mac/linux ✅ · Win 🟡** |
+| `asr_sidecar/supervisor.rs` + `warm.rs` | ✅ **I1a + ASR-WARM**（dev + release idle H5 2026-06-12） |
+| **Phase 10** Hub + `ProjectMetadataDialog` | ✅ 2026-06-08 — [`project-hub-metadata-acceptance.md`](../specs/project-hub-metadata-acceptance.md) |
 | `postTranscribeStageB.ts` / F0 | ✅ **R3t-E 能力**迁入阶段 B |
 | `segmentation.py` / R3t-A 内核 | ✅ **手测签收**（2026-05-30；`scripts/r3t-a-hand-test.sh`） |
-| `prepare(model_id)` / 模型目录 UI | ✅ R3g-A ⑤a–c 手测签收（2026-05-27） |
+| `prepare(model_id)` / 模型目录 UI | ✅ R3g-A ⑤a–c（**目录现仅 Paraformer SKU**；SenseVoice deprecated 迁移） |
 | 长音频动态超时（R3e-A） | ✅ 2026-05-30 长音频 timeout 手测 |
 | 长音频分段转写（R3e-B） | ✅ 2026-05-30 签收 — [`r3e-b-hand-test-checklist.md`](../specs/r3e-b-hand-test-checklist.md) |
 | **R3e-C 增量 preview** | ✅ **2026-05-31 手测签收** — 制控.mp3 197 段、首段 ~23.9s |
@@ -1448,8 +1474,9 @@ Step 12  REL-1.1  signoff  H-CSP-* + H-STT-* + 回归 R9 主路径抽检
 | **R3a–b** | keychain/probe；profile 导入导出 | ✅ |
 | **R3c** | 引导/缓存/manifest/清缓存 | ✅ 手测通过 |
 | **R3f** | `asr_setup_diagnose`、一键准备、8741 探测、LRC 缺失/损坏修复 | ✅ mac 签收 |
-| **R3h-0/1-R** | smoke、Win 磁盘、`local_runtime`、manifest HTTPS 真源、A/B 回滚、R1+R2 手测 | ✅ mac arm64 · Win/CI ⏳ |
-| **R3g** | 双 SKU + prepare；R3-STATE 对齐 | ✅ ⑤a–c 签收 |
+| **R3h-0/1-R** | smoke、Win 磁盘、`local_runtime`、manifest HTTPS 真源、A/B 回滚、R1+R2 手测 | ✅ mac/linux/Win CI |
+| **R3g** | **单 SKU** Paraformer + prepare；R3-STATE 对齐；Profile 仍含 SenseVoice 参数 | ✅ ⑤a–c 签收 |
+| **R3h-I2 / I3** | 续传/GC/C 回滚 vs Setup reducer | **🟡 编码✅**；统一 event bus / Rust Setup FSM **未闭合** |
 | **R3t-A** | 分段内核 + 单测 + hints + 手测 | ✅ **2026-05-30 签收** |
 | **R3t-B～C** | 转写编排、overwrite、邻段标点 | ✅ **2026-05-30** |
 | **R3t-D** | `postprocess_refine_segments` + 段界整理 UI | ✅ **2026-05-31** |
@@ -1458,46 +1485,47 @@ Step 12  REL-1.1  signoff  H-CSP-* + H-STT-* + 回归 R9 主路径抽检
 | **F4-ASR** | ASR 置信门控 | ❌ No-go |
 | **TRN-DIAG** | `transcribe_timeline.rs` + 诊断包 | ✅ 2026-06-11 |
 | **R3h-I1 I1a** | Supervisor FSM + watchdog | ✅ 2026-06-11 |
-| **ASR-WARM** | 保活 + 预热 | ✅ dev；release idle 🟡 |
+| **ASR-WARM** | 保活 + 预热 + idle 回收 | ✅ **2026-06-12**（H5 signoff） |
+| **Phase 10** | Hub + 项目场次元信息 | ✅ **2026-06-08** |
 | **语段正文 P0** | draft defer + 页脚节流 | ✅ 2026-06-11 |
 | **R3e-A** | 动态超时预算 | ✅ 2026-05-30 长音频 timeout 手测 |
 | **R3e-B** | `transcribe_windows.py` + 5min 窗 | ✅ **2026-05-30 签收** |
 | **R3e-C** | async Job + preview + cancel + 门禁 | ✅ **2026-05-31 签收** |
 | **密集语段 UX** | Canvas bands + 列表虚拟化 | ✅ 2026-05-30；[`segment-overlay-virtualization.md`](../specs/segment-overlay-virtualization.md) |
 | **R3g-C** | `asr_model_profile.py` + 识别语言 UI/pref | ✅ 2026-05-31 |
-| **ACC-STT-UNIFY** | `stt_vocabulary` + `sttVocabularyBias` | ✅ **2026-05-31** 本机手测 |
+| **ACC-STT-UNIFY** | `stt_vocabulary` + `sttVocabularyBias` | ✅ 本机 2026-05-31；**百炼 E2E ✅** 2026-06-12 |
 | **波形 UX** | 2026-05 minimap / zoom / tap seek | ✅ |
 | **R4** | 质量 Tab + gate signoff | ✅ 2026-06-03 |
 | **R5–R8** | MCP / collab / 非 v1 | ⏳ |
 | **R9** | v1 严格签收 + 诊断包 + R3e-B/C | ✅ 2026-06-03 |
 | **LLM-LOC 4a** | Ollama 本机路径 | ✅ 2026-06-03 |
-| **R3h-1-R CI** | `release.yml` + ci-publish script | ✅ 编码；首次 release 待验证 |
+| **R3h-1-R CI** | `release.yml` + ci-publish script | ✅ mac/linux **v0.1.0**；**Win job 🟡** |
 
-### 13.3 代码热点（2026-05-30 `wc -l`）
+### 13.3 代码热点（2026-06-12 · guard **46** 警告）
 
-| 文件 | 行数 | 路线图 / 守卫 | 判定 |
-|------|------|---------------|------|
-| `local_runtime/install_support/`（合计） | 仍大 | **T-010**；R3h-I2 | ⚠️ R3h-2 薄片内拆 |
-| `asr_sidecar.rs` | ~632 | **T-010**；R3h-I1 | ⚠️ 同上 |
-| `useAsrSetupController.ts` | ~122 | R3h-I3 | ✅ 已拆分（原 ~364） |
-| `useLocalRuntimeSetupSupport.ts` | ~61 | R3h-I3 | ✅ |
-| `LocalAsrSetupWizard.tsx` | ~166 | R3f | ✅ |
-| `useWaveformSegmentDrag.ts` | ~376 | 波形 | ⚠️ 守卫警告；再叠功能先拆 |
-| `pxPerSec.ts` | ~376 | 波形 fit/zoom | ⚠️ 同上 |
-| `useWaveformZoom.ts` | — | 13 hooks | ⚠️ 超 12 阈值 |
-| `WaveformTimeRuler.tsx` | ~349 | 波形 | ⚠️ 接近 300 行 + 13 hooks |
-| `useProjectLifecycleController.ts` | ~261 | **T-005 ✅** | ✅ |
-| `useProjectWaveform.ts` | ~275 | — | ✅ 观察 |
-| `useTranscribeJobController.ts` | ~230 | R3e-C | ✅ 已拆分（原 ~361；→ `transcribeAsyncPoll.ts` 等） |
-| `transcribe.rs` | ~300 | T-001 | ✅ 已拆 online |
+> **分布**：TS/TSX **>300 行 ~35 处**；**hooks >12：4 处**；Rust/Python 大模块见下表。Epic 签收后刷新本表。
+
+| 文件 | 行数 / 备注 | 路线图 / 守卫 | 判定 |
+|------|-------------|---------------|------|
+| `online_segment_normalize.rs` | **811** 行 | 在线 STT | ⚠️ **T-010 优先拆** |
+| `run_transcribe_cmd.rs` | **675** 行 | 转写入口 | ⚠️ **T-010 优先拆** |
+| `model_prepare.py` | **487** 行 | R3g prepare | ⚠️ 建议拆模块 |
+| `editorShortcutRegistry.ts` | **498** 行 | 快捷键 | ⚠️ 建议拆分 |
+| `useTranscriptionLayer.ts` | **423** 行 | 编辑器层 | ⚠️ 超 300 |
+| `useTranscribeJobController.ts` | **379** 行 · **14 hooks** | R3e-C + STT | ⚠️ 超 300 / 超 12 hooks |
+| `postTranscribeStageB.ts` | **383** 行 | F0 阶段 B | ⚠️ 接近上限 |
+| `pxPerSec.ts` / `.test.ts` | **376** / **360** | 波形 | ⚠️ |
+| `local_runtime/install_support/`（合计） | 仍大 | R3h-I2 | ⚠️ 随 LRC 薄片拆 |
+| `useAsrSetupController.ts` | ~122 | R3h-I3 前端 | ✅ 已拆分；Rust Setup FSM 🟡 |
+| `dialogEscapeStack.ts` | 新 | 浮动 dialog Esc | ✅ |
 
 ### 13.4 排期调整摘要（2026-05-30）
 
 1. **R3t-A/B/C**、**R3e-B/C ✅**（C 2026-05-31）；§4.1.1 **⑥½** 闭合。  
 2. **§4.1.8** ASR 生态 backlog；P1 可并行 R3h-ASR-VER / Qwen3 spike。  
-3. **下一编码刀（2026-06-02）**：**R3h-0∥R3t-E** → **⑤″f-A～D** → **⑤″f-E Qwen3** → EXP-WORD。见 §10、holistic §5、MEM plan。  
-4. **理想序 vs 实际**：R3g-C、ACC、R3t-D 已超前；以 §4.1.1 图为准。  
-5. **R3f / LRC** 发行闸门仍开放；**R3h-0 smoke** 仍为发行瓶颈（§13.5）。  
+3. **下一编码刀**：**§10.4 Step 6 CSP-HARDEN ✅**（2026-06-12）→ **Step 7 STT 取消** → DELIV / ONBOARD。
+4. **理想序 vs 实际**：R3g-C、ACC、Phase 10、R3t-D 已超前；以 §4.1.1 图 + §10.1 A 为准。  
+5. **R3f / LRC 发行闸门**：mac/linux/Win CI ✅；**Win v0.1.0 release 资产**待下一 tag 补传。  
 6. **R3 宏观**：**~12～15w**（2026-06-02 审查 +2w）；⑤″f **4–6w**（含 MEM）。  
 7. **分支待合入**：`cursor/r3t-f-find-replace-toast-correct`（F2、自动保存、toast）；合入前在目标分支跑全量 test。
 
@@ -1507,12 +1535,15 @@ Step 12  REL-1.1  signoff  H-CSP-* + H-STT-* + 回归 R9 主路径抽检
 |------|--------|------|
 | R3t-A 手测未签即开 R3t-B | — | ✅ 2026-05-30 已签 |
 | **R3e-C 手测滞后** | — | ✅ 2026-05-31 已签 |
-| **R3h-0 跨平台 smoke 未闭环** | **中** | Win §4 backlog；**mac ✅ 不挡 R3f**；CI Win 构建仍覆盖 smoke |
-| R3f / R3h-0 手测滞后 | 高 | R3e-C ✅；**R3h-0** 仍阻塞 R3f |
+| **R3h-0 跨平台 smoke 未闭环** | **低** | mac/linux/Win CI ✅；**Win v0.1.0 release 资产**待补 |
+| R3f / R3h-0 手测滞后 | — | ✅ mac 签收；Win ⏸ 有 Win 机时补 |
 | **R3 工期低估** | 中 | §4.0 **~12～15w**（2026-06-02）；⑤″f **4–6w** 含 MEM |
 | **Qwen3 伪流式**（chunk 无跨段上下文） | 中 | **⑤″f-E** spike **G4 加严**；20min Job 手测 |
-| **SenseVoice 平台弃用** | **高** | 百炼 **2026-03-09** 下线；**Q-ASR-1** 兼容 SKU + Paraformer 主推；**⑤″f-E** 第三 SKU 决策 |
-| **功能分支未合 main** | 中 | F2/自动保存在 `cursor/r3t-f-find-replace-toast-correct`；合入前 test + ⑤″f-A 手测 |
+| **SenseVoice 目录 SKU** | **低**（已收口） | UI 目录 **仅 Paraformer**；legacy hub id 迁移；百炼 SenseVoice-v1 **2026-03-09** 下线 — **Q-ASR-1** |
+| **v1.1 spec 未立项** | **中** | §10.4 六组 `*-intent/plan/acceptance` **缺失** — 编码前必补 |
+| **guard 46 警告** | **中** | Step 8 前 **T-010** 拆 `run_transcribe_cmd` / `online_segment_normalize` |
+| **功能分支未合 main** | — | 2026-06-02 条目已过期；以 `main` + §13.1 为准 |
+| **随包 user-guide 漂移** | **中** | **PROD-META 5c** 刷新 §1–3；L2 真源仍为 `EnvHelpPanel` |
 | **~2.5GB 侧车体积** | 中 | R3h-3.5 Sherpa → **轻量模式**候选（ADR-0003 附录），非 v1 必达 |
 | 文档 §13 与实测再次漂移 | 低 | 每 Epic 签收后刷新 §13.1 一行 |
 | 波形热点超阈值继续叠功能 | 中 | 下一波形刀先拆 `pxPerSec` 或 drag |

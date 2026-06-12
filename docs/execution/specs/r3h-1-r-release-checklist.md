@@ -49,7 +49,8 @@ bash scripts/v1-personal-release-build.sh
 
 - [x] Release CI：`.github/workflows/release.yml` 在 `release` 事件打包 zip → `publish-runtime-manifest` → 注入 `RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL` → 上传 `rushi-asr-sidecar-<platform>.zip` + `rushi-runtime-manifest-<platform>.json`（secret `RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX` ✅）
 - [x] **首次 CI 跑通（macOS + Linux）**：[`v0.1.0`](https://github.com/Abe-Junwei/rushi/releases/tag/v0.1.0) — manifest + sidecar zip + DMG/deb；macOS `manifest_url=` 已核对
-- [ ] **Windows CI**：`smoke-asr-sidecar-health.ps1` 已与 bash warmup 对齐（2026-06-12）；待 release job 重跑验证
+- [x] **Windows CI**：`smoke-asr-sidecar-health.ps1` 已与 bash warmup 对齐（2026-06-12）；[`release.yml` workflow_dispatch #27401814256](https://github.com/Abe-Junwei/rushi/actions/runs/27401814256) **tauri-windows ✅**（`9757b99`）
+- [ ] **Windows release 资产补传**：`v0.1.0` release 事件因旧 ps1 失败未上传 Win zip/manifest；下一 tag 或 patch release 时随 `release` 事件一并上传
 - [ ] 本地发版：export `RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL` 后再 `tauri build`（可选；fat 包不强制）
 - [x] 安装包内 **不**含 manifest 私钥；仅 HTTPS URL + pinned 公钥验签
 

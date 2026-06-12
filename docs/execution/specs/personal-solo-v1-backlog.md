@@ -22,14 +22,15 @@
 | **P0** | 长音频多段、时间轴可信 | R3t-A/B、R3e-A/B | ✅ 2026-05-30 签收（[`r3e-b-hand-test-checklist.md`](./r3e-b-hand-test-checklist.md)） |
 | **P0** | 术语热词 + 保存学 memory | glossary ✅、HOT-UX、R3t-E、**⑤″f**（路线图 §4.1.9：VOC-1 手测、VOC-5、F6+、F7） | 部分 ✅ |
 | **P0** | LLM 校对可控（预览写回） | R2 ✅、R3t-C/D/E | 部分 ✅ |
-| **P0** | 定稿 Word/文本与编辑一致 | P3 ✅、**EXP-WORD** | 部分 ✅ |
-| **P1** | 同项目多次转写不明显冷启动 | **ASR-WARM**（R3h-I4） | 📋 |
-| **P1** | 转写失败可理解、可重试 | R3e 分类 + **TRN-DIAG** | 部分 / 📋 |
+| **P0** | 定稿 Word/文本与编辑一致 | P3 ✅、**EXP-WORD** | ✅ |
+| **P0** | 项目 Hub + 场次元信息 | **Phase 10** | ✅ 2026-06-08（[`project-hub-metadata-acceptance.md`](./project-hub-metadata-acceptance.md)） |
+| **P1** | 同项目多次转写不明显冷启动 | **ASR-WARM**（R3h-I4） | ✅ 2026-06-12（[`asr-warm-release-idle-signoff-2026-06-12.md`](./asr-warm-release-idle-signoff-2026-06-12.md)） |
+| **P1** | 转写失败可理解、可重试 | R3e 分类 + **TRN-DIAG** | ✅ 2026-06-11 |
 | **P1** | 发版质量可回归 | **R4** + **R4-GATE**（R9 硬门禁） | ✅ 2026-06-03 |
-| **P1** | 架构硬化（FSM / 发布 / Setup） | **R3h-I1～I3** | 📋 |
+| **P1** | 架构硬化（FSM / 发布 / Setup） | **R3h-I1** ✅ · **I2/I3** 🟡 编码✅ / 收口未闭合 |
 | **P2** | 单机修订可追溯 / 恢复 | **REV-LOC**（轻量，非 R8） | ✅ 2026-06-03 |
 | **P2** | 外部 Agent 只读读稿 | R5 MCP | 📋 可后置 |
-| **v1.1+** | 定稿向导 / 批量转写 / CSP / 在线取消 / **产品元信息** | **§10.4** DELIV-MODE · BATCH-TXN · CSP-HARDEN · STT-CANCEL · **PROD-META** | 📋 规划定稿 2026-06-12 |
+| **v1.1+** | 定稿向导 / 批量转写 / CSP / 在线取消 / 产品元信息 / **新手引导** | **§10.4** DELIV-MODE · BATCH-TXN · CSP-HARDEN · STT-CANCEL · PROD-META · **ONBOARD** | 📋 规划定稿 2026-06-12 |
 | **v1 后** | 本机 LLM 校对 | **LLM-LOC** Spike→Gate | 📋 规划；**待 Gate** |
 | **—** | 词级时间轨、说话人分离、AAF/EDL、实时 mic | — | **v1 不做**（另立项或远期） |
 
@@ -44,12 +45,12 @@
 | **问题** | 每次转写重新拉起侧车/重载模型，长会话体验差 |
 | **目标** | 应用会话内 **Persistent worker**：模型预热、空闲回收策略、与 Runtime Supervisor 一致 |
 | **不做** | 多机 GPU 池、云端 queue |
-| **依赖** | R3h-I1 或 R3h-2 最小契约；**R3t-B** 转写任务状态稳定后实施 |
-| **验收** | 同一项目连续 2 次转写：第二次明显短于冷启动；诊断包含 runtime session id |
+| **依赖** | R3h-I1a + R3t-B ✅ |
+| **验收** | 同一项目连续 2 次转写：第二次明显短于冷启动；release idle H5 ✅ 2026-06-12 |
 
-**验收真源**：[`asr-warm-acceptance.md`](./asr-warm-acceptance.md)
+**验收真源**：[`asr-warm-acceptance.md`](./asr-warm-acceptance.md)、[`asr-warm-release-idle-signoff-2026-06-12.md`](./asr-warm-release-idle-signoff-2026-06-12.md)
 
-**落位**：`asr_sidecar.rs`、侧车 HTTP keep-alive / 常驻进程策略（实施 spec 立项时定）。
+**落位**：`asr_sidecar/warm.rs`、`supervisor.rs`。
 
 ### 3.2 TRN-DIAG — 转写任务可观测（单机排障）
 
@@ -124,6 +125,7 @@
 | 日期 | 变更 |
 |------|------|
 | 2026-05-27 | 初版：个人单机定位；ASR-WARM / TRN-DIAG / REV-LOC / R4-GATE |
-| 2026-06-12 | 链路线图 **§10.4** v1.1+：DELIV-MODE · BATCH-TXN · CSP-HARDEN · STT-CANCEL · **PROD-META** |
+| 2026-06-12 | 链路线图 **§10.4** v1.1+：DELIV-MODE · BATCH-TXN · CSP-HARDEN · STT-CANCEL · PROD-META · **ONBOARD** |
+| 2026-06-12 | **审查吸收**：R3g-A 单 SKU · guard 46 · I2/I3 🟡 · v1.1 估时 |
 | 2026-05-27 | 链接 TRN-DIAG / ASR-WARM acceptance；EXP-WORD 见 `exp-word-formatted-export-acceptance.md` |
 | 2026-05-31 | REV-LOC 三件套 + 路线图 Q-REV-1；编码后置、不挡 R9 |

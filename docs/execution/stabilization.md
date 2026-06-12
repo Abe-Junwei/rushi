@@ -48,8 +48,8 @@ Python 库：`services/asr/rushi_asr/eval_metrics.py`
 ## 4. 本地安装包
 
 - 根目录：`npm run desktop:build`（Tauri CLI；具体 bundle 受 `tauri.conf.json` 与平台影响）。
-- **内嵌用户说明**：`apps/desktop/src-tauri/resources/user-guide-zh.md` 与 `user-guide-zh.pdf` 通过 `bundle.resources` 打入安装包；构建前由 `scripts/build-user-guide-pdf.sh` 生成 PDF（优先 `pandoc` + `wkhtmltopdf`，否则 `xelatex` + 本机中文字体；均不可用时沿用仓库已提交的 PDF）。
-- CI：`desktop` job 安装 **pandoc、wkhtmltopdf** 后执行 `tauri build --bundles deb`（见 `.github/workflows/ci.yml`）。
+- **内嵌用户说明**：仅随包 **`user-guide-zh.md`**（`bundle.resources`）；**不**再打 PDF。L2 帮助真源为应用内 **设置 → 使用说明**（`EnvHelpPanel`）。可选本地转换：`npm run build:user-guide-pdf`（不进入发行链）。
+- CI：`desktop` job 执行 `tauri build --bundles deb`（见 `.github/workflows/ci.yml`）。
 
 ## 5. 诊断包
 

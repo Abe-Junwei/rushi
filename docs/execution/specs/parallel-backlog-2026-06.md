@@ -15,7 +15,7 @@ Step 4  ACC 在线 E2E                 ✅ 百炼 2026-06-12
 ## Phase B–E · v1.1+ 统一后续（§10.4）
 
 ```text
-Step 5   R3h-1-R Windows CI                    🟡 ← 当前主刀
+Step 5   R3h-1-R Windows CI                    ✅ 2026-06-12 · [run #27401814256](https://github.com/Abe-Junwei/rushi/actions/runs/27401814256)
 
 Step 5b  PROD-META P-1  环境页「关于」+ app_version
 Step 5c  PROD-META P-2  第三方许可 + build-info 对齐 + macOS About
@@ -31,6 +31,9 @@ Step 7e  STT-CANCEL D-5  (P2 可选)
 Step 8   DELIV-MODE A-1
 Step 9   DELIV-MODE A-2
 
+Step 9a  ONBOARD O-1  Welcome 首跑清单 + 进度持久化
+Step 9b  ONBOARD O-2  能力态自动勾选 + 情境 CTA
+
 Step 10  BATCH-TXN B-1
 Step 11  BATCH-TXN B-2
 
@@ -39,11 +42,12 @@ Step 12  REL-1.1 signoff
 
 | Step | Epic | 状态 | 规格（编码前） |
 |------|------|------|----------------|
-| **5** | R3h-1-R Win | 🟡 | [checklist §3](./r3h-1-r-release-checklist.md) |
+| **5** | R3h-1-R Win | ✅ | [checklist §3](./r3h-1-r-release-checklist.md) · `9757b99` |
 | **5b–c** | PROD-META | 📋 | `product-metadata-v1.1-*` |
 | **6a–b** | CSP-HARDEN | 📋 | `csp-harden-v1.1-*` |
 | **7a–d** | STT-CANCEL | 📋 | `online-stt-cancel-v1.1-*` |
 | **8–9** | DELIV-MODE | 📋 | `delivery-mode-*` |
+| **9a–b** | ONBOARD | 📋 | `onboarding-first-run-*` |
 | **10–11** | BATCH-TXN | 📋 | `batch-transcribe-queue-*` |
 | **12** | REL-1.1 | 📋 | 路线图 §10.4.1 H-* 手测集 |
 
@@ -76,14 +80,16 @@ Step 12  REL-1.1 signoff
 
 ```text
 1. ~~Step 1–4 硬化~~ ✅
-2. Step 5 Win CI
-3. Step 5b→5c PROD-META（可与 6a 并行）
+2. ~~Step 5 Win CI~~ ✅ 2026-06-12
+3. Step 5b→5c PROD-META（可与 6a 并行）← **当前主刀**
 4. Step 6a CSP（可与 7a STT 基础设施并行）
 5. Step 7a→7b→7c→7d STT 取消
 6. Step 6b CSP 签收
+6½. （可选）T-010 热点：`run_transcribe_cmd.rs` / `online_segment_normalize.rs` — **建议 Step 8 前**
 7. Step 8→9 DELIV-MODE
-8. Step 10→11 BATCH-TXN
-9. Step 12 REL-1.1
+8. Step 9a→9b ONBOARD（O-1 可与 8 并行；O-2 对齐 9 转写 toast）
+9. Step 10→11 BATCH-TXN
+10. Step 12 REL-1.1
 ```
 
 ## 修订
@@ -94,4 +100,5 @@ Step 12  REL-1.1 signoff
 | 2026-06-08 | **R3h-0 mac 签收**；Win §4 豁免 |
 | 2026-06-10 | **R3h-1-R** R1/R2 ✅；**R3h-2** ✅ |
 | 2026-06-11 | **I1 + ASR-WARM dev + 语段 P0 + F8 + F2/F1/F6** 闭合 |
-| 2026-06-12 | **§10.4 统一后续**：DELIV-MODE · BATCH-TXN · CSP · STT-CANCEL · **PROD-META** · Step 5–12 |
+| 2026-06-12 | **§10.4 统一后续**：DELIV-MODE · BATCH-TXN · CSP · STT-CANCEL · PROD-META · **ONBOARD** · Step 5–12 |
+| 2026-06-12 | **审查吸收**：guard 46 · v1.1 **~6.5–10w** · spec 未立项 · T-010 建议 |

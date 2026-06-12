@@ -22,7 +22,7 @@
 
 ## 3. 合规与说明
 
-- [ ] 安装包或「关于」中附 **ffmpeg-static 许可**（GPL/LGPL 等，见 `services/asr/third_party/ffmpeg/README.md`）。**编码真源**：路线图 **§10.4 Step 5c PROD-META**（`product-metadata-v1.1-*`）。
+- [x] 安装包或「关于」中附 **ffmpeg-static 许可**（GPL/LGPL 等，见 `services/asr/third_party/ffmpeg/README.md`）。**编码真源**：路线图 **§10.4 Step 5c PROD-META** — 环境页 **关于**（第三方组件 + 许可正文）+ 随包 `third-party-notices.txt` / `third-party-license-texts.txt`。
 - [ ] 用户可见说明：**模型权重**首次使用从 ModelScope 等拉取，占用应用数据目录下 `models/`（与壳内说明一致）。
 
 ## 4. 冒烟
