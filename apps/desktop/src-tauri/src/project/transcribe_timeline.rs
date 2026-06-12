@@ -408,10 +408,7 @@ mod tests {
 
     #[test]
     fn persist_and_load_sidecar_failure_roundtrip() {
-        let dir = std::env::temp_dir().join(format!(
-            "rushi-trn-diag-test-{}",
-            std::process::id()
-        ));
+        let dir = std::env::temp_dir().join(format!("rushi-trn-diag-test-{}", std::process::id()));
         let _ = fs::remove_dir_all(&dir);
         fs::create_dir_all(&dir).expect("temp dir");
         let mut rec = TranscribeTimelineRecorder::new("file-live", "local");
