@@ -57,7 +57,7 @@ describe("segmentDraftStore + flushSegmentTextDrafts", () => {
     expect(segmentsRef.current[0]?.text).toBe("same");
   });
 
-  it("skips flush while IME composition is active", () => {
+  it("flushes IME composition when merge/save ends composition first", () => {
     segmentDraftStore.resetAll();
     const s = seg("脸喉");
     const key = segmentDraftKey(s, 0);
@@ -66,11 +66,16 @@ describe("segmentDraftStore + flushSegmentTextDrafts", () => {
     segmentDraftStore.flushPendingEmit();
 
     const segmentsRef: React.MutableRefObject<SegmentDto[]> = { current: [s] };
-    const setSegments = () => {
-      throw new Error("should not update");
+    let next: SegmentDto[] = [];
+    const setSegments = (updater: React.SetStateAction<SegmentDto[]>) => {
+      flushSync(() => {
+        next = typeof updater === "function" ? updater(segmentsRef.current) : updater;
+        segmentsRef.current = next;
+      });
     };
 
     flushSegmentTextDrafts(segmentsRef, setSegments);
-    expect(segmentsRef.current[0]?.text).toBe("脸喉");
+    expect(next[0]?.text).toBe("lian");
+    expect(segmentDraftStore.isComposing(key)).toBe(false);
   });
 });

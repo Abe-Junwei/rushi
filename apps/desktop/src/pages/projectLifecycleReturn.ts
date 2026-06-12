@@ -19,6 +19,7 @@ import type { useAutoSaveSegments } from "./useAutoSaveSegments";
 import type { useSegmentDirtyState } from "./useSegmentDirtyState";
 import type { BusyReason } from "./useProjectCrudController";
 import type { ProjectDetail, ProjectSummary, SegmentDto } from "../tauri/projectApi";
+import { readFocusedSegmentTextareaIdx } from "./flushSegmentTextDrafts";
 
 type EditorTools = ReturnType<typeof useProjectEditorToolsController>;
 type TranscribeJob = ReturnType<typeof useTranscribeJobController>;
@@ -60,6 +61,7 @@ export type ProjectLifecycleReturnInput = {
   beginBusy: (reason: BusyReason) => void;
   endBusy: () => void;
   selectedIdxRef: React.MutableRefObject<number>;
+  segmentsRef: React.MutableRefObject<SegmentDto[]>;
   closeGateFacade: CloseGateLifecycleFacade;
   exportFacade: ExportLifecycleFacade;
   transcribeJob: TranscribeJob;
@@ -105,6 +107,7 @@ export function buildProjectLifecycleReturn(input: ProjectLifecycleReturnInput):
     beginBusy,
     endBusy,
     selectedIdxRef,
+    segmentsRef,
     closeGateFacade,
     exportFacade,
     transcribeJob,
@@ -195,8 +198,14 @@ export function buildProjectLifecycleReturn(input: ProjectLifecycleReturnInput):
     updateSegmentBounds: mutations.updateSegmentBounds,
     splitAtSelection: () => mutations.splitAtSelection(selectedIdxRef.current),
     splitAtPlayhead: mutations.splitAtPlayhead,
-    mergeWithNext: () => mutations.mergeWithNext(selectedIdxRef.current),
-    mergeWithPrev: () => mutations.mergeWithPrev(selectedIdxRef.current),
+    mergeWithNext: () => {
+      const focusIdx = readFocusedSegmentTextareaIdx(segmentsRef.current.length);
+      mutations.mergeWithNext(focusIdx ?? selectedIdxRef.current);
+    },
+    mergeWithPrev: () => {
+      const focusIdx = readFocusedSegmentTextareaIdx(segmentsRef.current.length);
+      mutations.mergeWithPrev(focusIdx ?? selectedIdxRef.current);
+    },
     mergeWithNextAt: mutations.mergeWithNextAt,
     mergeWithPrevAt: mutations.mergeWithPrevAt,
     mergeSegmentRange: mutations.mergeSegmentRange,

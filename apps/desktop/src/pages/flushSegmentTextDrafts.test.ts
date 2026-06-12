@@ -1,8 +1,17 @@
+import { flushSync } from "react-dom";
 import { renderHook, act } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
-import { useRef, useState } from "react";
+import { useRef, useState, type SetStateAction } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
-import { flushSegmentTextDrafts } from "./flushSegmentTextDrafts";
+import {
+  commitSegmentTextDraftsForStructureMutation,
+  flushSegmentTextDrafts,
+  materializeSegmentTextDrafts,
+  prepareSegmentTextDraftsForMutation,
+  syncDomTextareaDraftsIntoStore,
+  syncDomTextareasFromSegments,
+  syncFocusedDomTextIntoSegments,
+} from "./flushSegmentTextDrafts";
 import { segmentDraftKey, segmentDraftStore } from "../hooks/useSegmentDraftStore";
 import { useSegmentUndoRedo } from "./useSegmentUndoRedo";
 
@@ -52,5 +61,142 @@ describe("flushSegmentTextDrafts undo", () => {
     });
 
     expect(result.current.segments[0]?.text).toBe("before blur");
+  });
+
+  it("syncDomTextareaDraftsIntoStore reads live textarea value before flush", () => {
+    segmentDraftStore.resetAll();
+    const row = document.createElement("div");
+    row.setAttribute("data-seg-row", "1");
+    const textarea = document.createElement("textarea");
+    textarea.setAttribute("aria-label", "语段正文");
+    textarea.value = "typed in dom only";
+    row.appendChild(textarea);
+    document.body.appendChild(row);
+
+    const segments: SegmentDto[] = [
+      { ...seg("a"), uid: "uid-a", idx: 0 },
+      { ...seg("b"), uid: "uid-b", idx: 1 },
+    ];
+
+    syncDomTextareaDraftsIntoStore(segments);
+    expect(segmentDraftStore.getDraft(segmentDraftKey(segments[1], 1))).toBe("typed in dom only");
+
+    row.remove();
+  });
+
+  it("flush applies drafts using segmentsRef when React state is stale", () => {
+    segmentDraftStore.resetAll();
+    const refSeg = { ...seg("ref committed"), uid: "uid-ref" };
+    const staleSeg = { ...seg("stale react"), uid: "uid-stale" };
+
+    const segmentsRef: { current: SegmentDto[] } = { current: [refSeg] };
+    let reactState: SegmentDto[] = [staleSeg];
+    const setSegments = (updater: SetStateAction<SegmentDto[]>) => {
+      flushSync(() => {
+        reactState = typeof updater === "function" ? updater(reactState) : updater;
+        segmentsRef.current = reactState;
+      });
+    };
+
+    const key = segmentDraftKey(refSeg, 0);
+    segmentDraftStore.setDraft(key, "draft on ref row");
+
+    flushSegmentTextDrafts(segmentsRef, setSegments);
+
+    expect(reactState[0]?.text).toBe("draft on ref row");
+    expect(segmentsRef.current[0]?.text).toBe("draft on ref row");
+  });
+
+  it("prepareSegmentTextDraftsForMutation aligns DOM to segments without importing stale DOM to draft", () => {
+    segmentDraftStore.resetAll();
+    const row = document.createElement("div");
+    row.setAttribute("data-seg-row", "0");
+    const textarea = document.createElement("textarea");
+    textarea.setAttribute("aria-label", "语段正文");
+    textarea.value = "stale dom";
+    row.appendChild(textarea);
+    document.body.appendChild(row);
+
+    const segments = [seg("committed in ref")];
+    prepareSegmentTextDraftsForMutation(segments);
+
+    expect(textarea.value).toBe("committed in ref");
+    expect(segmentDraftStore.getDraft(segmentDraftKey(segments[0], 0))).toBeUndefined();
+
+    row.remove();
+  });
+
+  it("syncDomTextareasFromSegments overwrites stale textarea DOM from segments", () => {
+    const row = document.createElement("div");
+    row.setAttribute("data-seg-row", "0");
+    const textarea = document.createElement("textarea");
+    textarea.setAttribute("aria-label", "语段正文");
+    textarea.value = "stale dom";
+    row.appendChild(textarea);
+    document.body.appendChild(row);
+
+    syncDomTextareasFromSegments([seg("committed")]);
+    expect(textarea.value).toBe("committed");
+
+    row.remove();
+  });
+
+  it("materializeSegmentTextDrafts applies every pending draft", () => {
+    segmentDraftStore.resetAll();
+    const rows: SegmentDto[] = [
+      { ...seg("a"), uid: "uid-a", idx: 0 },
+      { ...seg("b"), uid: "uid-b", idx: 1 },
+    ];
+    segmentDraftStore.setDraft(segmentDraftKey(rows[0], 0), "A*");
+    segmentDraftStore.setDraft(segmentDraftKey(rows[1], 1), "B*");
+
+    const next = materializeSegmentTextDrafts(rows);
+    expect(next[0]?.text).toBe("A*");
+    expect(next[1]?.text).toBe("B*");
+  });
+
+  it("syncFocusedDomTextIntoSegments writes IME/partial textarea into segmentsRef", () => {
+    segmentDraftStore.resetAll();
+    const row = document.createElement("div");
+    row.setAttribute("data-seg-row", "0");
+    const textarea = document.createElement("textarea");
+    textarea.setAttribute("aria-label", "语段正文");
+    textarea.value = "组字未完成";
+    row.appendChild(textarea);
+    document.body.appendChild(row);
+
+    const segmentsRef = { current: [seg("committed")] };
+    segmentDraftStore.beginComposition(segmentDraftKey(segmentsRef.current[0], 0));
+    textarea.focus();
+
+    syncFocusedDomTextIntoSegments(segmentsRef);
+    expect(segmentsRef.current[0]?.text).toBe("组字未完成");
+
+    row.remove();
+  });
+
+  it("commitSegmentTextDraftsForStructureMutation includes focused textarea before merge", () => {
+    segmentDraftStore.resetAll();
+    const row = document.createElement("div");
+    row.setAttribute("data-seg-row", "0");
+    const textarea = document.createElement("textarea");
+    textarea.setAttribute("aria-label", "语段正文");
+    textarea.value = "live in textarea";
+    row.appendChild(textarea);
+    document.body.appendChild(row);
+
+    const segmentsRef = { current: [seg("old")] };
+    let reactState = segmentsRef.current;
+    const setSegments = (next: SegmentDto[] | ((p: SegmentDto[]) => SegmentDto[])) => {
+      reactState = typeof next === "function" ? next(reactState) : next;
+    };
+    textarea.focus();
+
+    commitSegmentTextDraftsForStructureMutation(segmentsRef, setSegments);
+
+    expect(segmentsRef.current[0]?.text).toBe("live in textarea");
+    expect(reactState[0]?.text).toBe("live in textarea");
+
+    row.remove();
   });
 });

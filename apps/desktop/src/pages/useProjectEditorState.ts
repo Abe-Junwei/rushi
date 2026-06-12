@@ -5,6 +5,7 @@ import * as p1 from "../tauri/projectApi";
 import * as fileApi from "../tauri/fileApi";
 import { segmentDraftStore } from "../hooks/useSegmentDraftStore";
 import { findSegmentIndexByUid, normalizeSegmentList } from "./segmentListHelpers";
+import { reconcileSegmentsRefWithState } from "./segmentSegmentsRefSync";
 
 export interface ProjectEditorApi {
   current: ProjectDetail | null;
@@ -34,7 +35,7 @@ export function useProjectEditorState(setError: (msg: string) => void): ProjectE
   const [audioSrc, setAudioSrc] = useState<string | null>(null);
 
   const segmentsRef = useRef(segments);
-  segmentsRef.current = segments;
+  reconcileSegmentsRefWithState(segmentsRef, segments);
   const selectedIdxRef = useRef(selectedIdx);
   selectedIdxRef.current = selectedIdx;
 

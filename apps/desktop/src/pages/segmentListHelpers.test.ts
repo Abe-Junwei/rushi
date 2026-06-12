@@ -8,6 +8,7 @@ import {
   prepareSegmentsForPersist,
   segmentsEqualForPersist,
   sortSegmentsByStartSec,
+  splitSegmentTextByTimeRatio,
 } from "./segmentListHelpers";
 import { ensureUniqueSegmentUids } from "../utils/segmentUid";
 import { isPlaceholderSegment } from "../utils/waveformSegmentBounds";
@@ -162,6 +163,20 @@ describe("segmentListHelpers", () => {
     );
     expect(pair?.left.annotation).toBe("note");
     expect(pair?.right.annotation).toBeNull();
+  });
+
+  it("splitSegmentTextByTimeRatio divides text by time proportion", () => {
+    expect(splitSegmentTextByTimeRatio("abcdef", 5, 0, 10)).toEqual({ left: "abc", right: "def" });
+    expect(splitSegmentTextByTimeRatio("hello world", 1, 0, 2)).toEqual({
+      left: "hello ",
+      right: "world",
+    });
+  });
+
+  it("buildSplitPair assigns proportional text to left and right halves", () => {
+    const pair = buildSplitPair(seg({ uid: "a", start_sec: 0, end_sec: 10, text: "abcdefghij" }), 5);
+    expect(pair?.left.text).toBe("abcde");
+    expect(pair?.right.text).toBe("fghij");
   });
 
   it("segmentsEqualForPersist compares annotation", () => {

@@ -10,7 +10,6 @@ import {
   normalizeSegmentDraftText,
   segmentDraftKey,
   segmentDraftStore,
-  useSegmentDraft,
 } from "./useSegmentDraftStore";
 import { syncTranscriptTextareaSelection } from "../utils/transcriptSelection";
 import {
@@ -18,10 +17,6 @@ import {
   useSegmentRowTextFieldPointerHandlers,
 } from "./useSegmentRowTextFieldPointerHandlers";
 import type { SegmentRowTextFieldEditingArgs } from "./useSegmentRowTextFieldEditing.types";
-
-function initialTextareaValue(draftKey: string, committedText: string): string {
-  return segmentDraftStore.getDraft(draftKey) ?? committedText;
-}
 
 export function useSegmentRowTextFieldEditing({
   segment: s,
@@ -44,29 +39,48 @@ export function useSegmentRowTextFieldEditing({
   const prevCommittedRef = useRef(committedText);
   const committedTextRef = useRef(committedText);
   const busyRef = useRef(busy);
-  committedTextRef.current = committedText;
+  if (!isFocusedRef.current) {
+    committedTextRef.current = committedText;
+  }
   busyRef.current = busy;
+
+  const syncInputToSegments = useCallback(
+    (el: HTMLTextAreaElement) => {
+      if (busyRef.current) return;
+      segmentDraftStore.endComposition(draftKey);
+      const liveText = normalizeSegmentDraftText(el.value);
+      const committed = committedTextRef.current;
+      if (liveText === committed) {
+        segmentDraftStore.clearDraft(draftKey);
+        return;
+      }
+      updateSegmentText(i, liveText);
+      committedTextRef.current = liveText;
+      segmentDraftStore.clearDraft(draftKey);
+    },
+    [draftKey, i, updateSegmentText],
+  );
 
   const flushTextareaEdits = useCallback(
     (el: HTMLTextAreaElement | null) => {
       if (busyRef.current) return;
       segmentDraftStore.endComposition(draftKey);
       segmentDraftStore.flushPendingEmit();
-      const liveText = normalizeSegmentDraftText(el?.value ?? committedTextRef.current);
+      if (!el) return;
+      const liveText = normalizeSegmentDraftText(el.value);
       const committed = committedTextRef.current;
       if (liveText !== committed) {
         updateSegmentText(i, liveText);
-        segmentDraftStore.setDraft(draftKey, liveText);
-        return;
+        committedTextRef.current = liveText;
       }
       segmentDraftStore.clearDraft(draftKey);
     },
     [draftKey, i, updateSegmentText],
   );
 
-  const defaultText = initialTextareaValue(draftKey, committedText);
-  const [liveText] = useSegmentDraft(draftKey, committedText);
-  const spanSourceText = selected ? liveText : committedText;
+  const defaultText = committedText;
+  const liveText = committedText;
+  const spanSourceText = committedText;
   const correctableSpans = useMemo(
     () => spansForText(spanSourceText),
     [spanSourceText, spansForText],
@@ -88,9 +102,11 @@ export function useSegmentRowTextFieldEditing({
 
   useEffect(() => {
     return () => {
-      flushTextareaEdits(textareaRef.current);
+      segmentDraftStore.endComposition(draftKey);
+      segmentDraftStore.clearDraft(draftKey);
+      segmentDraftStore.flushPendingEmit();
     };
-  }, [flushTextareaEdits]);
+  }, [draftKey]);
 
   useEffect(() => {
     if (selected) return;
@@ -103,10 +119,7 @@ export function useSegmentRowTextFieldEditing({
   useEffect(() => {
     if (prevCommittedRef.current === committedText) {
       if (!isFocusedRef.current) {
-        const stored = segmentDraftStore.getDraft(draftKey);
-        if (stored !== undefined && stored === committedText) {
-          segmentDraftStore.clearDraft(draftKey);
-        }
+        segmentDraftStore.clearDraft(draftKey);
       }
       return;
     }
@@ -116,8 +129,14 @@ export function useSegmentRowTextFieldEditing({
       const el = textareaRef.current;
       const liveDom = normalizeSegmentDraftText(el?.value ?? "");
       if (liveDom === committedText) {
+        committedTextRef.current = committedText;
         segmentDraftStore.clearDraft(draftKey);
+        return;
       }
+      if (segmentDraftStore.isComposing(draftKey)) return;
+      if (el) el.value = committedText;
+      committedTextRef.current = committedText;
+      segmentDraftStore.clearDraft(draftKey);
       return;
     }
 
@@ -127,19 +146,12 @@ export function useSegmentRowTextFieldEditing({
     setTextareaEpoch((n) => n + 1);
   }, [committedText, draftKey]);
 
-  const syncDomToDraftStore = useCallback(
-    (el: HTMLTextAreaElement) => {
-      segmentDraftStore.setDraft(draftKey, el.value);
-    },
-    [draftKey],
-  );
-
   const handleTextareaInput = useCallback(
     (el: HTMLTextAreaElement) => {
       if (segmentDraftStore.isComposing(draftKey)) return;
-      syncDomToDraftStore(el);
+      syncInputToSegments(el);
     },
-    [draftKey, syncDomToDraftStore],
+    [draftKey, syncInputToSegments],
   );
 
   const onCompositionStart = useCallback(() => {
@@ -149,9 +161,9 @@ export function useSegmentRowTextFieldEditing({
   const onCompositionEnd = useCallback(
     (e: React.CompositionEvent<HTMLTextAreaElement>) => {
       segmentDraftStore.endComposition(draftKey);
-      syncDomToDraftStore(e.currentTarget);
+      syncInputToSegments(e.currentTarget);
     },
-    [draftKey, syncDomToDraftStore],
+    [draftKey, syncInputToSegments],
   );
 
   const onBlurText = useCallback(() => {

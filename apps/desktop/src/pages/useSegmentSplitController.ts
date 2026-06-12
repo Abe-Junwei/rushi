@@ -1,6 +1,11 @@
 import { useCallback } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
+import { resolveLiveSegmentText } from "../hooks/useSegmentDraftStore";
 import { buildSplitPair, reindexSegments } from "./segmentListHelpers";
+import {
+  commitSegmentTextDraftsForStructureMutation,
+  publishSegmentStructureMutation,
+} from "./flushSegmentTextDrafts";
 
 function roundSec3(x: number): number {
   return Math.round(x * 1000) / 1000;
@@ -28,38 +33,41 @@ export function useSegmentSplitController(deps: SegmentSplitDeps): SegmentSplitA
     setSelectedIdx,
     setError,
     pushUndo,
-    flushSegmentTextDrafts,
     onSelectionCollapsed,
   } = deps;
 
-  const splitAtSelection = useCallback((selectedIdx: number) => {
-    flushSegmentTextDrafts();
-    const segs = segmentsRef.current;
-    if (segs.length === 0) return;
-    const i = Math.min(selectedIdx, segs.length - 1);
-    const s = segs[i];
-    if (!s) return;
-    const mid = (s.start_sec + s.end_sec) / 2;
-    const pair = buildSplitPair(s, mid);
-    if (!pair) {
-      setError("语段太短，无法拆分。");
-      return;
-    }
-    setError("");
-    pushUndo();
-    setSegments((prev) => {
-      const out = [...prev];
-      out.splice(i, 1, pair.left, pair.right);
-      return reindexSegments(out);
-    });
-    const nextIdx = i + 1;
-    setSelectedIdx(nextIdx);
-    onSelectionCollapsed?.(nextIdx);
-  }, [flushSegmentTextDrafts, onSelectionCollapsed, segmentsRef, setSegments, setSelectedIdx, setError, pushUndo]);
+  const splitAtSelection = useCallback(
+    (selectedIdx: number) => {
+      commitSegmentTextDraftsForStructureMutation(segmentsRef, setSegments);
+      const segs = segmentsRef.current;
+      if (segs.length === 0) return;
+      const i = Math.min(selectedIdx, segs.length - 1);
+      const s = segs[i];
+      if (!s) return;
+      const mid = (s.start_sec + s.end_sec) / 2;
+      const splitPair = buildSplitPair(
+        { ...s, text: resolveLiveSegmentText(s, i) },
+        mid,
+      );
+      if (!splitPair) {
+        setError("语段太短，无法拆分。");
+        return;
+      }
+      setError("");
+      pushUndo();
+      const out = [...segs];
+      out.splice(i, 1, splitPair.left, splitPair.right);
+      publishSegmentStructureMutation(segmentsRef, setSegments, reindexSegments(out));
+      const nextIdx = i + 1;
+      setSelectedIdx(nextIdx);
+      onSelectionCollapsed?.(nextIdx);
+    },
+    [onSelectionCollapsed, pushUndo, segmentsRef, setError, setSegments, setSelectedIdx],
+  );
 
   const splitAtPlayhead = useCallback(
     (timeSec: number) => {
-      flushSegmentTextDrafts();
+      commitSegmentTextDraftsForStructureMutation(segmentsRef, setSegments);
       const t = roundSec3(timeSec);
       const segs = segmentsRef.current;
       const i = segs.findIndex((s) => t > s.start_sec + 0.02 && t < s.end_sec - 0.02);
@@ -69,23 +77,21 @@ export function useSegmentSplitController(deps: SegmentSplitDeps): SegmentSplitA
       }
       const s = segs[i];
       if (!s) return;
-      const pair = buildSplitPair(s, t);
-      if (!pair) {
+      const splitPair = buildSplitPair({ ...s, text: resolveLiveSegmentText(s, i) }, t);
+      if (!splitPair) {
         setError("语段太短，无法在该时间拆分。");
         return;
       }
       setError("");
       pushUndo();
-      setSegments((prev) => {
-        const out = [...prev];
-        out.splice(i, 1, pair.left, pair.right);
-        return reindexSegments(out);
-      });
+      const out = [...segs];
+      out.splice(i, 1, splitPair.left, splitPair.right);
+      publishSegmentStructureMutation(segmentsRef, setSegments, reindexSegments(out));
       const nextIdx = i + 1;
       setSelectedIdx(nextIdx);
       onSelectionCollapsed?.(nextIdx);
     },
-    [flushSegmentTextDrafts, onSelectionCollapsed, segmentsRef, setSegments, setSelectedIdx, setError, pushUndo],
+    [onSelectionCollapsed, pushUndo, segmentsRef, setError, setSegments, setSelectedIdx],
   );
 
   return { splitAtSelection, splitAtPlayhead };

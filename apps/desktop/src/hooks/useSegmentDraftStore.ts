@@ -12,6 +12,50 @@ export function segmentDraftKey(seg: SegmentDto, idx: number): string {
   return uid ? `${uid}#${idx}` : `idx:${idx}`;
 }
 
+/** 语段正文真源：草稿 store 优先，否则 committed（与 UI liveText 一致）。 */
+export function resolveLiveSegmentText(seg: SegmentDto, idx: number): string {
+  const key = segmentDraftKey(seg, idx);
+  const draft = segmentDraftStore.getDraft(key);
+  if (draft !== undefined) return draft;
+  return normalizeSegmentDraftText(seg.text ?? "");
+}
+
+/** 将草稿 store 中的正文物化到 segments 数组副本（不修改 React state）。 */
+export function materializeSegmentTextDrafts(segments: SegmentDto[]): SegmentDto[] {
+  let next: SegmentDto[] | null = null;
+  for (let i = 0; i < segments.length; i += 1) {
+    const seg = segments[i];
+    if (!seg) continue;
+    const text = resolveLiveSegmentText(seg, i);
+    const committed = normalizeSegmentDraftText(seg.text ?? "");
+    if (text === committed) continue;
+    if (next === null) next = [...segments];
+    next[i] = { ...seg, text };
+  }
+  return next ?? segments;
+}
+
+/** 清除已与 committed 一致的草稿；结构变更后调用以避免 uid#旧idx 残留。 */
+export function clearCommittedDraftsForSegments(segments: SegmentDto[]): void {
+  for (const [i, seg] of segments.entries()) {
+    const key = segmentDraftKey(seg, i);
+    const draft = segmentDraftStore.getDraft(key);
+    if (draft === undefined) continue;
+    if (draft === normalizeSegmentDraftText(seg.text ?? "")) {
+      segmentDraftStore.clearDraft(key);
+    }
+  }
+}
+
+/** 丢弃不在当前 segments 列表中的草稿/composition 键（reindex 后清理 orphan）。 */
+export function pruneDraftKeysForSegments(segments: SegmentDto[]): void {
+  const validKeys = new Set<string>();
+  segments.forEach((s, i) => {
+    validKeys.add(segmentDraftKey(s, i));
+  });
+  segmentDraftStore.pruneMissingKeys(validKeys);
+}
+
 const drafts = new Map<string, string>();
 const composingKeys = new Set<string>();
 const listeners = new Set<() => void>();

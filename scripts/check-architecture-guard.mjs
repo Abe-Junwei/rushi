@@ -31,6 +31,21 @@ function checkTsFile(fullPath) {
 
   if (hookTotal > 12) warnings.push(`${rel}: ${hookTotal} 个 hook，超过 12 个阈值`);
 
+  // 结构 mutation 须读 segmentsRef，禁止 setSegments(prev => …) 做结构/正文合并
+  const structureMutationFiles = [
+    "apps/desktop/src/pages/segmentMutationMergeDelete.ts",
+    "apps/desktop/src/pages/segmentMutationInsert.ts",
+    "apps/desktop/src/pages/useSegmentSplitController.ts",
+  ];
+  if (structureMutationFiles.some((f) => rel === f)) {
+    if (/setSegments\s*\(\s*\(\s*(?:prev|p)\s*\)\s*=>/.test(source)) {
+      errors.push(`${rel}: 结构 mutation 须用 segmentsRef.current + publishSegmentStructureMutation，禁止 setSegments(prev => …)`);
+    }
+    if (!/segmentsRef\.current/.test(source)) {
+      errors.push(`${rel}: 结构 mutation 须读取 segmentsRef.current`);
+    }
+  }
+
   // 防回归：检测 setState updater 内的 DOM 查询（error）
   // 匹配 setXxx(... => ... { ... querySelector/getElementById ... })
   const setStateUpdaterDom = /set\w+\s*\(\s*\([^)]*\)\s*=>[\s\S]{0,800}?(?:querySelector|getElementById)/;

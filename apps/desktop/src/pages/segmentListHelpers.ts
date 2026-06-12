@@ -129,14 +129,38 @@ export function mergeTwoSegments(a: SegmentDto, b: SegmentDto): SegmentDto {
   };
 }
 
+/** 按时间比例切分正文（playhead / 中点拆分）。 */
+export function splitSegmentTextByTimeRatio(
+  text: string,
+  mid: number,
+  startSec: number,
+  endSec: number,
+): { left: string; right: string } {
+  const full = text ?? "";
+  const span = endSec - startSec;
+  if (full.length === 0) return { left: "", right: "" };
+  if (span <= 0) return { left: full, right: "" };
+  const ratio = Math.min(1, Math.max(0, (mid - startSec) / span));
+  const splitAt = Math.round(full.length * ratio);
+  if (splitAt <= 0) return { left: "", right: full };
+  if (splitAt >= full.length) return { left: full, right: "" };
+  return { left: full.slice(0, splitAt), right: full.slice(splitAt) };
+}
+
 /** 在 `mid` 处拆分；不满足最小时长则返回 `null`。 */
 export function buildSplitPair(s: SegmentDto, mid: number): { left: SegmentDto; right: SegmentDto } | null {
   if (mid <= s.start_sec + 0.02 || mid >= s.end_sec - 0.02) return null;
+  const { left: leftText, right: rightText } = splitSegmentTextByTimeRatio(
+    s.text ?? "",
+    mid,
+    s.start_sec,
+    s.end_sec,
+  );
   // 拆分产物均为真实子句，显式 speech（即便拆的是占位整段，拆后两半也是 speech）。
   const left: SegmentDto = {
     ...s,
     end_sec: mid,
-    text: s.text,
+    text: leftText,
     kind: "speech",
     ...inheritSplitLeftStage(s),
   };
@@ -145,7 +169,7 @@ export function buildSplitPair(s: SegmentDto, mid: number): { left: SegmentDto; 
     idx: s.idx + 1,
     start_sec: mid,
     end_sec: s.end_sec,
-    text: "",
+    text: rightText,
     confidence: null,
     low_confidence: false,
     detail: null,

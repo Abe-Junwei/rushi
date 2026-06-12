@@ -15,6 +15,10 @@ import {
   selectPackableSegments,
   WAVEFORM_SEGMENT_MIN_SPAN_SEC,
 } from "../utils/waveformSegmentBounds";
+import {
+  commitSegmentTextDraftsForStructureMutation,
+  publishSegmentStructureMutation,
+} from "./flushSegmentTextDrafts";
 
 function roundSec3(x: number): number {
   return Math.round(x * 1000) / 1000;
@@ -39,12 +43,11 @@ export function createSegmentInsertActions(deps: SegmentInsertDeps) {
     setSelectedIdx,
     setError,
     pushUndo,
-    flushSegmentTextDrafts,
     onSelectionCollapsed,
   } = deps;
 
   function insertSegmentAfter(idx: number, mediaDurationSec = 0) {
-    flushSegmentTextDrafts();
+    commitSegmentTextDraftsForStructureMutation(segmentsRef, setSegments);
     const segs = segmentsRef.current;
     if (idx < 0 || idx >= segs.length) return;
     const a = segs[idx];
@@ -77,10 +80,8 @@ export function createSegmentInsertActions(deps: SegmentInsertDeps) {
       detail: null,
       kind: "speech",
     });
-    setSegments((prev) => {
-      const out = [...prev.slice(0, idx + 1), newSeg, ...prev.slice(idx + 1)];
-      return reindexSegments(out);
-    });
+    const out = [...segs.slice(0, idx + 1), newSeg, ...segs.slice(idx + 1)];
+    publishSegmentStructureMutation(segmentsRef, setSegments, reindexSegments(out));
     const nextIdx = idx + 1;
     setSelectedIdx(nextIdx);
     onSelectionCollapsed?.(nextIdx);
@@ -93,7 +94,7 @@ export function createSegmentInsertActions(deps: SegmentInsertDeps) {
     policy: SegmentOverlapPolicy = "trim",
   ) {
     if (busy) return;
-    flushSegmentTextDrafts();
+    commitSegmentTextDraftsForStructureMutation(segmentsRef, setSegments);
     let lo = roundSec3(Math.min(startSec, endSec));
     let hi = roundSec3(Math.max(startSec, endSec));
     if (mediaDurationSec > 0) {
@@ -132,10 +133,8 @@ export function createSegmentInsertActions(deps: SegmentInsertDeps) {
       detail: null,
       kind: "speech",
     });
-    setSegments((prev) => {
-      const out = [...prev.slice(0, insertAt), newSeg, ...prev.slice(insertAt)];
-      return reindexSegments(out);
-    });
+    const out = [...segs.slice(0, insertAt), newSeg, ...segs.slice(insertAt)];
+    publishSegmentStructureMutation(segmentsRef, setSegments, reindexSegments(out));
     setSelectedIdx(insertAt);
     onSelectionCollapsed?.(insertAt);
   }

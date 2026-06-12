@@ -280,6 +280,7 @@ export function useProjectLifecycleController(
     beginBusy,
     endBusy,
     selectedIdxRef,
+    segmentsRef,
     closeGateFacade,
     exportFacade,
     transcribeJob,

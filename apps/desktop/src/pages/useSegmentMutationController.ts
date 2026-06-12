@@ -2,7 +2,10 @@ import { useCallback, useMemo, useRef } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
 import { withAiRevisedStage } from "../services/segmentStagePersist";
 import { segmentDraftStore } from "../hooks/useSegmentDraftStore";
-import { flushSegmentTextDrafts as flushSegmentTextDraftsImpl } from "./flushSegmentTextDrafts";
+import {
+  flushSegmentTextDrafts as flushSegmentTextDraftsImpl,
+  syncDomTextareasFromSegments,
+} from "./flushSegmentTextDrafts";
 import {
   clampSegmentBoundsToNeighbors,
   segmentBoundsMeetMinSpan,
@@ -87,17 +90,17 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
 
   const undo = useCallback(() => {
     if (busy) return;
-    flushSegmentTextDrafts();
-    undoStackPop();
+    syncDomTextareasFromSegments(segmentsRef.current);
     segmentDraftStore.discardEditingSession();
-  }, [busy, flushSegmentTextDrafts, undoStackPop]);
+    undoStackPop();
+  }, [busy, segmentsRef, undoStackPop]);
 
   const redo = useCallback(() => {
     if (busy) return;
-    flushSegmentTextDrafts();
-    redoStackPop();
+    syncDomTextareasFromSegments(segmentsRef.current);
     segmentDraftStore.discardEditingSession();
-  }, [busy, flushSegmentTextDrafts, redoStackPop]);
+    redoStackPop();
+  }, [busy, segmentsRef, redoStackPop]);
 
   const mergeDelete = useMemo(
     () =>
@@ -108,7 +111,6 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
         setSelectedIdx,
         setError,
         pushUndo,
-        flushSegmentTextDrafts,
         onSelectionCollapsed,
       }),
     [
@@ -118,7 +120,6 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
       setSelectedIdx,
       setError,
       pushUndo,
-      flushSegmentTextDrafts,
       onSelectionCollapsed,
     ],
   );
@@ -168,17 +169,15 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
       if (!options?.fromLlm && uid && pendingAiRevisedUidsRef) {
         pendingAiRevisedUidsRef.current.delete(uid);
       }
-      setSegments((p) => {
-        const c = p[idx];
-        if (!c || c.text === text) return p;
-        const out = [...p];
-        const nextRow = { ...c, text };
-        out[idx] = options?.fromLlm ? withAiRevisedStage(nextRow) : nextRow;
-        if (options?.fromLlm && uid && pendingAiRevisedUidsRef) {
-          pendingAiRevisedUidsRef.current.add(uid);
-        }
-        return out;
-      });
+      const nextRow = { ...cur, text };
+      const patched = options?.fromLlm ? withAiRevisedStage(nextRow) : nextRow;
+      const out = [...prev];
+      out[idx] = patched;
+      segmentsRef.current = out;
+      setSegments(out);
+      if (options?.fromLlm && uid && pendingAiRevisedUidsRef) {
+        pendingAiRevisedUidsRef.current.add(uid);
+      }
     },
     [busy, segmentsRef, setSegments, pushUndoForTextEdit, pendingAiRevisedUidsRef],
   );

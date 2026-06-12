@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import type { SegmentDto } from "../tauri/projectTypes";
+import { segmentDraftKey, segmentDraftStore } from "../hooks/useSegmentDraftStore";
 import {
   computeSegmentLassoOutcome,
   mergeSegmentRangeFold,
@@ -38,6 +39,17 @@ describe("segmentSelection", () => {
     expect(merged.text).toBe("a\nb\nc");
     expect(merged.start_sec).toBe(0);
     expect(merged.end_sec).toBe(3);
+  });
+
+  it("mergeSegmentRangeFold applies pending drafts", () => {
+    segmentDraftStore.resetAll();
+    const segments = [
+      { ...seg(0, 1, "a"), uid: "uid-a" },
+      { ...seg(1, 2, "b"), uid: "uid-b" },
+    ];
+    segmentDraftStore.setDraft(segmentDraftKey(segments[1], 1), "B*");
+    const merged = mergeSegmentRangeFold(segments, 0, 1);
+    expect(merged.text).toBe("a\nB*");
   });
 
   it("computeSegmentLassoOutcome selects intersecting segments", () => {

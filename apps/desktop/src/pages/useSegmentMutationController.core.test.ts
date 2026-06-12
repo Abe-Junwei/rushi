@@ -62,6 +62,19 @@ describe("useSegmentMutationController core", () => {
     expect(segmentDraftStore.getDraft(key)).toBeUndefined();
   });
 
+  it("redo works after undo when segmentsRef was ahead of React state", () => {
+    const { result } = renderHook(() =>
+      useTestSegmentMutationController([makeSeg({ text: "hello", start_sec: 0, end_sec: 1 })]),
+    );
+
+    act(() => result.current.mutations.updateSegmentText(0, "world"));
+    act(() => result.current.mutations.undo());
+    act(() => result.current.mutations.redo());
+
+    expect(result.current.segments[0]?.text).toBe("world");
+    expect(result.current.mutations).toBeDefined();
+  });
+
   it("undo restores previous state after mutation", () => {
     const { result } = renderHook(() =>
       useTestSegmentMutationController([makeSeg({ text: "hello", start_sec: 0, end_sec: 1 })]),
@@ -108,6 +121,8 @@ describe("useSegmentMutationController core", () => {
     expect(result.current.segments).toHaveLength(2);
     expect(result.current.segments[0].end_sec).toBe(1);
     expect(result.current.segments[1].start_sec).toBe(1);
+    expect(result.current.segments[0].text).toBe("hello ");
+    expect(result.current.segments[1].text).toBe("world");
     expect(result.current.selectedIdx).toBe(1);
   });
 
@@ -121,5 +136,68 @@ describe("useSegmentMutationController core", () => {
     expect(result.current.segments).toHaveLength(2);
     expect(result.current.segments[0].end_sec).toBe(1.5);
     expect(result.current.segments[1].start_sec).toBe(1.5);
+  });
+
+  it("splitAtSelection keeps committed text on both halves", () => {
+    segmentDraftStore.resetAll();
+    const seg = makeSeg({ text: "abcdef", start_sec: 0, end_sec: 10, uid: "uid-split" });
+    const { result } = renderHook(() => useTestSegmentMutationController([seg]));
+
+    act(() => result.current.mutations.updateSegmentText(0, "abcdef"));
+    act(() => result.current.mutations.splitAtSelection(0));
+
+    expect(result.current.segments[0]?.text).toBe("abc");
+    expect(result.current.segments[1]?.text).toBe("def");
+  });
+
+  it("mergeWithNextAt includes live segment text without draft store", () => {
+    segmentDraftStore.resetAll();
+    const { result } = renderHook(() =>
+      useTestSegmentMutationController([
+        makeSeg({ text: "hello", start_sec: 0, end_sec: 1, uid: "uid-a" }),
+        makeSeg({ text: "world", start_sec: 1, end_sec: 2, uid: "uid-b" }),
+      ]),
+    );
+
+    act(() => result.current.mutations.updateSegmentText(0, "edited head"));
+    act(() => result.current.mutations.mergeWithNextAt(0));
+
+    expect(result.current.segments).toHaveLength(1);
+    expect(result.current.segments[0]?.text).toBe("edited head\nworld");
+  });
+
+  it("mergeWithNextAt uses segmentsRef when React state lags behind ref", () => {
+    segmentDraftStore.resetAll();
+    const { result } = renderHook(() =>
+      useTestSegmentMutationController([
+        makeSeg({ text: "hello", start_sec: 0, end_sec: 1, uid: "uid-a" }),
+        makeSeg({ text: "world", start_sec: 1, end_sec: 2, uid: "uid-b" }),
+      ]),
+    );
+
+    act(() => {
+      result.current.segmentsRef.current = [
+        makeSeg({ text: "edited head", start_sec: 0, end_sec: 1, uid: "uid-a" }),
+        makeSeg({ text: "world", start_sec: 1, end_sec: 2, uid: "uid-b" }),
+      ];
+    });
+
+    act(() => result.current.mutations.mergeWithNextAt(0));
+
+    expect(result.current.segments).toHaveLength(1);
+    expect(result.current.segments[0]?.text).toBe("edited head\nworld");
+  });
+
+  it("updateSegmentText round-trip within same tick keeps segments in sync", () => {
+    const { result } = renderHook(() =>
+      useTestSegmentMutationController([makeSeg({ text: "hello", start_sec: 0, end_sec: 1 })]),
+    );
+
+    act(() => {
+      result.current.mutations.updateSegmentText(0, "hellox");
+      result.current.mutations.updateSegmentText(0, "hello");
+    });
+
+    expect(result.current.segments[0]?.text).toBe("hello");
   });
 });

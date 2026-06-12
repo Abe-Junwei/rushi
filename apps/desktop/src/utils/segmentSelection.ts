@@ -1,4 +1,5 @@
 import type { SegmentDto } from "../tauri/projectTypes";
+import { resolveLiveSegmentText } from "../hooks/useSegmentDraftStore";
 import { mergeTwoSegments } from "../pages/segmentListHelpers";
 import { selectPackableSegmentIndices } from "./waveformSegmentBounds";
 
@@ -165,11 +166,11 @@ export function mergeSegmentRangeFold(
   if (first === undefined) {
     throw new Error("mergeSegmentRangeFold: empty range");
   }
-  let merged = first;
+  let merged: SegmentDto = { ...first, text: resolveLiveSegmentText(first, lo) };
   for (let i = lo + 1; i <= hi; i += 1) {
     const seg = segments[i];
     if (seg === undefined) continue;
-    merged = mergeTwoSegments(merged, seg);
+    merged = mergeTwoSegments(merged, { ...seg, text: resolveLiveSegmentText(seg, i) });
   }
   return merged;
 }

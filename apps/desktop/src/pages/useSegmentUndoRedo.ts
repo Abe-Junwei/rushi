@@ -50,6 +50,7 @@ export function useSegmentUndoRedo(
     redoStack.current.push(cloneSegments(segmentsRef.current));
     if (redoStack.current.length > 40) redoStack.current.shift();
     textEditUndoRef.current = null;
+    segmentsRef.current = prev;
     setSegments(prev);
   }, [segmentsRef, setSegments]);
 
@@ -59,6 +60,7 @@ export function useSegmentUndoRedo(
     undoStack.current.push(cloneSegments(segmentsRef.current));
     if (undoStack.current.length > 40) undoStack.current.shift();
     textEditUndoRef.current = null;
+    segmentsRef.current = next;
     setSegments(next);
   }, [segmentsRef, setSegments]);
 
