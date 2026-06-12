@@ -39,7 +39,16 @@
 
 ## 验收
 
-- [x] `npm run typecheck && npm run test && npm run lint && node scripts/check-architecture-guard.mjs`（2026-06-12：typecheck 通过；lint 0 错误（46 条既有 warning）；1275/1275 测试通过；guard 仅既有 hotspot warning，无 glossary 文件）
+- [x] `npm run typecheck && npm run test && npm run lint && node scripts/check-architecture-guard.mjs`（2026-06-12：typecheck 通过；1285/1285 测试通过；guard 无 glossary hotspot）
 - [x] `grep -rn "min-h-\[36px\]\|rounded-lg" src/components/glossary src/components/GlossaryPage.tsx` 无残留（rounded-lg 仅允许真源常量内出现）
-- [ ] 手测：添加词条 → 勾热词 → 摘要刷新；行点击 → 编辑器展开回填；删除二次确认在 hover-reveal 下仍可见；纠错记忆新建 → 采纳；批量条操作。
-- [ ] 对照 `hot-ux-hand-test-checklist.md` 相关条目回归。
+- [x] 手测（2026-06-12）：添加词条 / 批量添加（G12）/ 工具栏 ⋯（G13）；拼音排序；导出词表包弹窗高度；窄屏分段 + 底部抽屉（G9–G11）；行点击检视器；批量条操作
+- [x] 对照 `hot-ux-hand-test-checklist.md` 相关条目回归（热词摘要、批量纳入/移出、术语表 CRUD）
+
+## 后续薄片（Stitch G1–G13，2026-06-12 已落地）
+
+| 项 | 落位 |
+|----|------|
+| G12 批量添加对话框 | `GlossaryBulkAddDialog.tsx` + `useGlossaryBulkAddDialog.ts` |
+| G13 工具栏 ⋯ | `GlossaryToolbarOverflowMenu.tsx` |
+| G9–G11 窄屏 | `useGlossaryPageCompact.ts` + `GlossaryWorkspaceSegmentedNav.tsx` + `GlossaryBottomSheet.tsx` |
+| 拼音排序 | `glossaryListSort.ts` + `glossarySortSelect.tsx` |

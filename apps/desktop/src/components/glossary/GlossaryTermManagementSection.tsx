@@ -1,4 +1,4 @@
-import { Download, ListPlus, Plus, RefreshCw, Search, Upload } from "lucide-react";
+import { Plus, RefreshCw, Search } from "lucide-react";
 import {
   CONTROL_BTN_ICON,
   CONTROL_BTN_PRIMARY,
@@ -25,6 +25,7 @@ import { GlossaryListEditHint } from "./GlossaryListEditHint";
 import { GlossarySortSelect } from "./glossarySortSelect";
 import { GlossaryTermEditor } from "./GlossaryTermEditor";
 import { GlossaryTermTable } from "./GlossaryTermTable";
+import { GlossaryToolbarOverflowMenu } from "./GlossaryToolbarOverflowMenu";
 
 type Props = Pick<
   GlossaryPageController,
@@ -122,33 +123,13 @@ export function GlossaryTermManagementSection({
               </button>
             </div>
             <div className="flex flex-wrap items-center gap-2">
-              <button
-                type="button"
-                className={`${CONTROL_BTN_SECONDARY} gap-1.5`}
+              <GlossaryToolbarOverflowMenu
                 disabled={disabled}
-                onClick={() => void g.importFromFile()}
-              >
-                <Upload className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-                从表格导入…
-              </button>
-              <button
-                type="button"
-                className={`${CONTROL_BTN_SECONDARY} gap-1.5`}
-                disabled={disabled || g.terms.length === 0}
-                onClick={() => void g.exportCsv()}
-              >
-                <Download className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-                导出 CSV
-              </button>
-              <button
-                type="button"
-                className={`${CONTROL_BTN_SECONDARY} gap-1.5`}
-                disabled={disabled}
-                onClick={openBulkAddDialog}
-              >
-                <ListPlus className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-                批量添加
-              </button>
+                exportDisabled={g.terms.length === 0}
+                onBulkAdd={openBulkAddDialog}
+                onImportFromFile={() => void g.importFromFile()}
+                onExportCsv={() => void g.exportCsv()}
+              />
               <button
                 type="button"
                 className={`${CONTROL_BTN_PRIMARY} gap-1.5`}
