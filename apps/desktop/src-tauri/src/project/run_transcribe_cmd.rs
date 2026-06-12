@@ -8,7 +8,12 @@ use super::stt_vocabulary::{
     channel_for_online, vocabulary_support_warnings, SttVocabularyChannel, SttVocabularyPlan,
 };
 use super::transcribe::{
-    build_glossary_hotwords, post_transcribe_multipart, TranscribeHttpOptions, TranscribeRequestAuth,
+    build_glossary_hotwords, post_transcribe_multipart, TranscribeHttpOptions,
+    TranscribeRequestAuth,
+};
+use super::transcribe_cancel_cmd::{
+    run_transcribe_abortable, TranscribeCancelPoll, TranscribeCancelState,
+    TRANSCRIBE_CANCELLED_MESSAGE,
 };
 use super::transcribe_errors::describe_transcribe_payload_error;
 use super::transcribe_job::{
@@ -24,10 +29,6 @@ use super::transcribe_timeline::{
 };
 use super::transcribe_timeout::{
     local_transcribe_timeout_duration, long_audio_transcribe_hint, probe_audio_duration_sec,
-};
-use super::transcribe_cancel_cmd::{
-    run_transcribe_abortable, TranscribeCancelPoll, TranscribeCancelState,
-    TRANSCRIBE_CANCELLED_MESSAGE,
 };
 use super::types::RunTranscribeOutcome;
 use super::utils::{append_desktop_log_line, file_detail_from_conn, now_ms, open_db};

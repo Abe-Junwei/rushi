@@ -14,9 +14,7 @@ pub const TRANSCRIBE_CANCELLED_MESSAGE: &str = "转写已取消";
 pub(crate) type TranscribeCancelPoll<'a> = Option<(&'a TranscribeCancelState, &'a str)>;
 
 /// Returns `Err` when `project_cancel_transcribe` removed the request handle.
-pub(crate) fn ensure_transcribe_not_cancelled(
-    ctx: TranscribeCancelPoll<'_>,
-) -> Result<(), String> {
+pub(crate) fn ensure_transcribe_not_cancelled(ctx: TranscribeCancelPoll<'_>) -> Result<(), String> {
     let Some((state, request_id)) = ctx else {
         return Ok(());
     };
@@ -98,10 +96,7 @@ where
     };
     let (handle, registration) = AbortHandle::new_pair();
     {
-        let mut handles = cancel_state
-            .0
-            .lock()
-            .map_err(|_| "转写取消状态不可用。")?;
+        let mut handles = cancel_state.0.lock().map_err(|_| "转写取消状态不可用。")?;
         if let Some(previous) = handles.insert(id.to_string(), handle) {
             previous.abort();
         }
@@ -136,11 +131,7 @@ mod tests {
     fn ensure_not_cancelled_when_unregistered() {
         let state = TranscribeCancelState::default();
         let (handle, _reg) = AbortHandle::new_pair();
-        state
-            .0
-            .lock()
-            .unwrap()
-            .insert("job-1".to_string(), handle);
+        state.0.lock().unwrap().insert("job-1".to_string(), handle);
         assert!(ensure_transcribe_not_cancelled(Some((&state, "job-1"))).is_ok());
         assert!(transcribe_cancel_by_request_id(&state, "job-1").unwrap());
         assert_eq!(
@@ -187,10 +178,7 @@ mod tests {
                 .unwrap()
                 .insert("poll-job".to_string(), handle);
             let started = tokio::time::Instant::now();
-            let poll = transcribe_poll_wait(
-                Duration::from_secs(2),
-                Some((&state, "poll-job")),
-            );
+            let poll = transcribe_poll_wait(Duration::from_secs(2), Some((&state, "poll-job")));
             let cancel = async {
                 tokio::time::sleep(Duration::from_millis(50)).await;
                 assert!(transcribe_cancel_by_request_id(&state, "poll-job").unwrap());
@@ -206,14 +194,10 @@ mod tests {
         let rt = cancel_test_runtime();
         rt.block_on(async {
             let state = TranscribeCancelState::default();
-            let worker = run_transcribe_abortable(
-                &state,
-                Some("online-stt-1"),
-                async {
-                    tokio::time::sleep(Duration::from_secs(5)).await;
-                    Ok::<(), String>(())
-                },
-            );
+            let worker = run_transcribe_abortable(&state, Some("online-stt-1"), async {
+                tokio::time::sleep(Duration::from_secs(5)).await;
+                Ok::<(), String>(())
+            });
             let cancel = async {
                 tokio::time::sleep(Duration::from_millis(50)).await;
                 assert!(transcribe_cancel_by_request_id(&state, "online-stt-1").unwrap());

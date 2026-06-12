@@ -541,10 +541,7 @@ mod tests {
                 .unwrap()
                 .insert("dashscope-task".to_string(), handle);
             let started = tokio::time::Instant::now();
-            let poll = transcribe_poll_wait(
-                POLL_INTERVAL,
-                Some((&state, "dashscope-task")),
-            );
+            let poll = transcribe_poll_wait(POLL_INTERVAL, Some((&state, "dashscope-task")));
             let cancel = async {
                 tokio::time::sleep(Duration::from_millis(50)).await;
                 assert!(transcribe_cancel_by_request_id(&state, "dashscope-task").unwrap());

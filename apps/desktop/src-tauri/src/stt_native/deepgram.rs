@@ -9,7 +9,9 @@ use crate::project::online_segment_normalize::{
     OnlineSegmentNormalizeOptions,
 };
 use crate::project::stt_vocabulary::{append_deepgram_keywords, SttVocabularyPlan};
-use crate::project::transcribe_cancel_cmd::{ensure_transcribe_not_cancelled, TranscribeCancelPoll};
+use crate::project::transcribe_cancel_cmd::{
+    ensure_transcribe_not_cancelled, TranscribeCancelPoll,
+};
 
 use super::rushi_value;
 

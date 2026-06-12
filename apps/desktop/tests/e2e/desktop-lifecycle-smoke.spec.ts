@@ -16,6 +16,8 @@ test.describe("desktop shell smoke", () => {
     await expect(page.getByRole("heading", { name: "欢迎回来" })).toBeVisible({
       timeout: 20_000,
     });
-    await expect(page.getByRole("button", { name: /新建项目/ })).toBeVisible();
+    await expect(
+      page.locator('[data-purpose="welcome-actions"]'),
+    ).toBeVisible();
   });
 });

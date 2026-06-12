@@ -2,11 +2,11 @@ use super::online_segment_normalize::{
     assemblyai_words_to_timed_words, openai_words_to_timed_words, timed_words_to_json,
     timed_words_to_segments, OnlineSegmentNormalizeOptions,
 };
+use super::transcribe_cancel_cmd::{ensure_transcribe_not_cancelled, TranscribeCancelPoll};
 use super::transcribe_errors::{
     describe_transcribe_http_status_error, describe_transcribe_request_error,
 };
 use super::transcribe_timeline::{TranscribeTimelineRecorder, STAGE_TRANSCRIBE, STAGE_UPLOAD};
-use super::transcribe_cancel_cmd::{ensure_transcribe_not_cancelled, TranscribeCancelPoll};
 use super::utils::append_desktop_log_line;
 use crate::utils::http_client;
 use crate::utils::{redact_http_body_snippet, redact_secrets_for_log};
@@ -47,7 +47,10 @@ pub async fn post_transcribe_multipart(
         f
     };
     let mut req = crate::asr_sidecar::local_token::apply_local_token_if_asr_loopback(
-        http_client().post(url).multipart(form).timeout(http.timeout),
+        http_client()
+            .post(url)
+            .multipart(form)
+            .timeout(http.timeout),
         url,
     );
     if let Some(a) = http.auth.authorization {
