@@ -52,7 +52,7 @@ export function EditorWorkspaceNav({
       {workspaceSidebarCollapsed && onExpandWorkspaceSidebar ? (
         <button
           type="button"
-          className={NAV_SIDEBAR_EXPAND_BTN}
+          className={`${NAV_SIDEBAR_EXPAND_BTN} workspace-nav-sidebar-expand-btn`}
           disabled={disabled}
           onClick={onExpandWorkspaceSidebar}
           aria-label="展开侧栏"

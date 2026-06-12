@@ -5,9 +5,9 @@ export const WORKSPACE_SIDEBAR_WIDTH = "20rem";
 export const WORKSPACE_SHELL_GRID_CLASS =
   "grid h-full min-h-0 w-full flex-1 grid-cols-[20rem_1fr]";
 
-/** 可折叠侧栏壳层 — 宽度由 CSS 变量控制 */
+/** 可折叠侧栏壳层 — 列宽过渡见 workspace.css `.workspace-shell-collapsible` */
 export const WORKSPACE_SHELL_COLLAPSIBLE_CLASS =
-  "workspace-shell-collapsible grid h-full min-h-0 w-full flex-1 grid-cols-[var(--workspace-sidebar-width)_minmax(0,1fr)]";
+  "workspace-shell-collapsible grid h-full min-h-0 w-full flex-1";
 
 export const WORKSPACE_SIDEBAR_PANEL_ATTR = "data-workspace-sidebar-panel";
 export const WORKSPACE_SIDEBAR_TOGGLE_ATTR = "data-workspace-sidebar-toggle";

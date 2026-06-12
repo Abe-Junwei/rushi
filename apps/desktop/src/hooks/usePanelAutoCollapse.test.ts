@@ -4,9 +4,11 @@ import { describe, expect, it, vi } from "vitest";
 import { usePanelAutoCollapse } from "./usePanelAutoCollapse";
 
 function firePointerDown(target: Element) {
-  const event = new Event("pointerdown", { bubbles: true, cancelable: true });
-  Object.defineProperty(event, "target", { value: target });
-  document.dispatchEvent(event);
+  const event =
+    typeof PointerEvent !== "undefined"
+      ? new PointerEvent("pointerdown", { bubbles: true, cancelable: true })
+      : new Event("pointerdown", { bubbles: true, cancelable: true });
+  target.dispatchEvent(event);
 }
 
 describe("usePanelAutoCollapse", () => {
@@ -88,6 +90,32 @@ describe("usePanelAutoCollapse", () => {
     rerender({ enabled: true, isCollapsed: true });
     firePointerDown(main);
     expect(setIsCollapsed).not.toHaveBeenCalled();
+
+    document.body.removeChild(boundary);
+  });
+
+  it("collapses when bubble phase stops propagation on target", () => {
+    const setIsCollapsed = vi.fn();
+    const boundary = document.createElement("div");
+    const panel = document.createElement("aside");
+    panel.setAttribute("data-panel", "");
+    const main = document.createElement("main");
+    main.addEventListener("pointerdown", (e) => e.stopPropagation());
+    boundary.append(panel, main);
+    document.body.appendChild(boundary);
+
+    renderHook(() =>
+      usePanelAutoCollapse({
+        enabled: true,
+        isCollapsed: false,
+        setIsCollapsed,
+        boundaryRef: { current: boundary },
+        panelSelector: "[data-panel]",
+      }),
+    );
+
+    firePointerDown(main);
+    expect(setIsCollapsed).toHaveBeenCalledWith(true);
 
     document.body.removeChild(boundary);
   });

@@ -1,4 +1,4 @@
-import { useCallback, useRef, type CSSProperties, type ReactNode } from "react";
+import { useCallback, useRef, type ReactNode } from "react";
 import { PanelLeftClose } from "lucide-react";
 import { usePanelAutoCollapse } from "../hooks/usePanelAutoCollapse";
 import {
@@ -7,7 +7,6 @@ import {
   WORKSPACE_SHELL_GRID_CLASS,
   WORKSPACE_SIDEBAR_PANEL_ATTR,
   WORKSPACE_SIDEBAR_TOGGLE_ATTR,
-  WORKSPACE_SIDEBAR_WIDTH,
 } from "../config/workspaceShellLayout";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
@@ -49,14 +48,6 @@ export function WorkspaceShellLayout({
     [onSidebarCollapsedChange, sidebarCollapsed],
   );
 
-  const shellStyle = collapsible
-    ? ({
-        ["--workspace-sidebar-width" as const]: sidebarCollapsed
-          ? "0px"
-          : WORKSPACE_SIDEBAR_WIDTH,
-      } as CSSProperties)
-    : undefined;
-
   const shellClassName = [
     collapsible ? WORKSPACE_SHELL_COLLAPSIBLE_CLASS : WORKSPACE_SHELL_GRID_CLASS,
     collapsible && sidebarCollapsed ? "workspace-shell-sidebar-collapsed" : "",
@@ -69,25 +60,26 @@ export function WorkspaceShellLayout({
       ref={shellRef}
       className={shellClassName}
       data-purpose={purpose}
-      style={shellStyle}
     >
       <div className="workspace-shell-sidebar-column relative flex h-full min-h-0 min-w-0 flex-col">
         <div
           className={[
-            "flex h-full min-h-0 flex-1 flex-col transition-opacity duration-200 ease-out",
-            collapsible && sidebarCollapsed
-              ? "pointer-events-none overflow-hidden opacity-0"
-              : "opacity-100",
-          ].join(" ")}
+            "workspace-shell-sidebar-content flex h-full min-h-0 flex-1 flex-col",
+            collapsible && sidebarCollapsed ? "pointer-events-none overflow-hidden" : "",
+          ]
+            .filter(Boolean)
+            .join(" ")}
         >
           {sidebar}
         </div>
-        {collapsible && !sidebarCollapsed ? (
+        {collapsible ? (
           <button
             type="button"
             {...{ [WORKSPACE_SIDEBAR_TOGGLE_ATTR]: "" }}
             className="workspace-shell-sidebar-toggle border-0 bg-notion-sidebar"
-            aria-expanded
+            aria-expanded={!sidebarCollapsed}
+            aria-hidden={sidebarCollapsed}
+            tabIndex={sidebarCollapsed ? -1 : 0}
             aria-label="折叠侧栏"
             title="折叠侧栏"
             onClick={onToggleSidebar}

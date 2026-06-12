@@ -30,13 +30,12 @@ export function usePanelAutoCollapse({
   useEffect(() => {
     if (!enabled || isCollapsed) return;
 
-    const onPointerDown = (event: PointerEvent) => {
-      const root = boundaryRef.current;
-      if (!root) return;
+    const root = boundaryRef.current;
+    if (!root) return;
 
+    const onPointerDown = (event: PointerEvent) => {
       const target = event.target;
       if (!(target instanceof Element)) return;
-      if (!root.contains(target)) return;
 
       if (
         matchesClosestSelector(target, [
@@ -51,9 +50,10 @@ export function usePanelAutoCollapse({
       setIsCollapsed(true);
     };
 
-    document.addEventListener("pointerdown", onPointerDown);
+    // 捕获阶段：波形/语段等常在冒泡阶段 stopPropagation，document 冒泡监听会失效
+    root.addEventListener("pointerdown", onPointerDown, true);
     return () => {
-      document.removeEventListener("pointerdown", onPointerDown);
+      root.removeEventListener("pointerdown", onPointerDown, true);
     };
   }, [
     boundaryRef,
