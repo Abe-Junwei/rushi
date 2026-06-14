@@ -1,0 +1,2177 @@
+{
+  "deleteCandidates": [
+    {
+      "name": "summarizeHistoryDetail",
+      "file": "apps/desktop/src/components/editor/useEditorEditHistory.ts",
+      "lineNo": 118,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "POST_TRANSCRIBE_STAGE_B_PREVIEW_STATIC_B…",
+      "file": "apps/desktop/src/components/floatingPanelSegmentListLayout.ts",
+      "lineNo": 26,
+      "refs": {
+        "total": 0,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "POST_TRANSCRIBE_STAGE_B_PREVIEW_LIST_MAX…",
+      "file": "apps/desktop/src/components/floatingPanelSegmentListLayout.ts",
+      "lineNo": 29,
+      "refs": {
+        "total": 0,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "POST_TRANSCRIBE_STAGE_B_CONSENT_STATIC_B…",
+      "file": "apps/desktop/src/components/floatingPanelSegmentListLayout.ts",
+      "lineNo": 35,
+      "refs": {
+        "total": 0,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "POST_TRANSCRIBE_STAGE_B_EMPTY_STATIC_BOD…",
+      "file": "apps/desktop/src/components/floatingPanelSegmentListLayout.ts",
+      "lineNo": 38,
+      "refs": {
+        "total": 0,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "FLOATING_PANEL_SPINNER_BODY_PX",
+      "file": "apps/desktop/src/components/floatingPanelSegmentListLayout.ts",
+      "lineNo": 53,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "GLOSSARY_TABLE_WRAP",
+      "file": "apps/desktop/src/components/glossary/glossaryPanelStyles.ts",
+      "lineNo": 18,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "GLOSSARY_TABLE",
+      "file": "apps/desktop/src/components/glossary/glossaryPanelStyles.ts",
+      "lineNo": 20,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "GLOSSARY_TABLE_HEAD_ROW",
+      "file": "apps/desktop/src/components/glossary/glossaryPanelStyles.ts",
+      "lineNo": 22,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "GLOSSARY_TABLE_TH",
+      "file": "apps/desktop/src/components/glossary/glossaryPanelStyles.ts",
+      "lineNo": 25,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "glossaryTableRowClass",
+      "file": "apps/desktop/src/components/glossary/glossaryPanelStyles.ts",
+      "lineNo": 28,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "glossaryRowActionsClass",
+      "file": "apps/desktop/src/components/glossary/glossaryPanelStyles.ts",
+      "lineNo": 40,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "GLOSSARY_INSPECTOR_FOOTER",
+      "file": "apps/desktop/src/components/glossary/glossaryPanelStyles.ts",
+      "lineNo": 77,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "GLOSSARY_TABLE_CELL",
+      "file": "apps/desktop/src/components/glossary/glossaryPanelStyles.ts",
+      "lineNo": 81,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "GLOSSARY_TABLE_HEAD_CELL",
+      "file": "apps/desktop/src/components/glossary/glossaryPanelStyles.ts",
+      "lineNo": 84,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "FLOATING_COMPACT_DIALOG_PRESET",
+      "file": "apps/desktop/src/components/PanelTemplate.tsx",
+      "lineNo": 19,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "CONTROL_BTN_ONLINE_STT",
+      "file": "apps/desktop/src/config/controlStyles.ts",
+      "lineNo": 15,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "describeLocalProtectedSecretStore",
+      "file": "apps/desktop/src/config/environmentNavCopy.ts",
+      "lineNo": 17,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "WORKSPACE_SIDEBAR_WIDTH",
+      "file": "apps/desktop/src/config/workspaceShellLayout.ts",
+      "lineNo": 2,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "WORKSPACE_SIDEBAR_ROW_INTERACTIVE",
+      "file": "apps/desktop/src/config/workspaceShellLayout.ts",
+      "lineNo": 39,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "readTierScrollLayout",
+      "file": "apps/desktop/src/hooks/useTierScrollLayout.ts",
+      "lineNo": 118,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "TRANSCRIBE_ASYNC_FALLBACK_HINT",
+      "file": "apps/desktop/src/pages/transcribePreviewState.ts",
+      "lineNo": 99,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "transcribeAsyncFallbackHintFromShellMana…",
+      "file": "apps/desktop/src/pages/transcribePreviewState.ts",
+      "lineNo": 101,
+      "refs": {
+        "total": 0,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "resetLastAsrHealthRefreshResultForTests",
+      "file": "apps/desktop/src/pages/useAsrHealthPoll.ts",
+      "lineNo": 31,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "UNSAVED_SEGMENTS_CONFIRM",
+      "file": "apps/desktop/src/pages/useSegmentDirtyState.ts",
+      "lineNo": 9,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "sidecarIsFreshBuildFromRoot",
+      "file": "apps/desktop/src/services/asr/localAsrModelCatalog.ts",
+      "lineNo": 126,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "resolvePreferredLocalAsrHubModelId",
+      "file": "apps/desktop/src/services/asr/localAsrModelCatalog.ts",
+      "lineNo": 161,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "activeSkuModelCached",
+      "file": "apps/desktop/src/services/asr/localAsrModelCatalog.ts",
+      "lineNo": 215,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "LOCAL_ASR_RECOGNITION_LANGUAGE_STORAGE_K…",
+      "file": "apps/desktop/src/services/asr/localAsrRecognitionLanguage.ts",
+      "lineNo": 3,
+      "refs": {
+        "total": 0,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "localAsrRecognitionLanguageLabel",
+      "file": "apps/desktop/src/services/asr/localAsrRecognitionLanguage.ts",
+      "lineNo": 50,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "DELIVERY_MODE_STEPS",
+      "file": "apps/desktop/src/services/deliveryModeSteps.ts",
+      "lineNo": 26,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "formatCorrectionRuleHintLabel",
+      "file": "apps/desktop/src/services/editor/correctionRuleHints.ts",
+      "lineNo": 36,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "normalizeFullWidthAscii",
+      "file": "apps/desktop/src/services/editor/segmentTextHygiene.ts",
+      "lineNo": 106,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "buildStageARuleOnlyPreviewChanges",
+      "file": "apps/desktop/src/services/editor/stageAPreviewPipeline.ts",
+      "lineNo": 51,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "getEnvironmentCapabilitySnapshot",
+      "file": "apps/desktop/src/services/environmentCapabilityCoordinator.ts",
+      "lineNo": 72,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "subscribeEnvironmentCapabilitySnapshot",
+      "file": "apps/desktop/src/services/environmentCapabilityCoordinator.ts",
+      "lineNo": 80,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "mergeLlmPolishLines",
+      "file": "apps/desktop/src/services/exportPolishPipeline.ts",
+      "lineNo": 155,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "countHiddenSelectedTerms",
+      "file": "apps/desktop/src/services/glossaryTermHelpers.ts",
+      "lineNo": 59,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "onboardingStepLabel",
+      "file": "apps/desktop/src/services/onboarding/onboardingChecklist.ts",
+      "lineNo": 44,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "mergeSegmentStageKeepLeft",
+      "file": "apps/desktop/src/services/segmentStagePersist.ts",
+      "lineNo": 114,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "isSegmentFinalized",
+      "file": "apps/desktop/src/services/segmentTextStage.ts",
+      "lineNo": 54,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "resetShellCapabilitiesCacheForTests",
+      "file": "apps/desktop/src/services/shellCapabilities.ts",
+      "lineNo": 43,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "setShellManagesBundledSidecarForTests",
+      "file": "apps/desktop/src/services/shellCapabilities.ts",
+      "lineNo": 49,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "vocabularyNativeAdapterForProvider",
+      "file": "apps/desktop/src/services/stt/sttVocabularyBias.ts",
+      "lineNo": 88,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "fetchAppVersion",
+      "file": "apps/desktop/src/tauri/appInfoApi.ts",
+      "lineNo": 21,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "createEmptyTextFile",
+      "file": "apps/desktop/src/tauri/fileApi.ts",
+      "lineNo": 28,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "postprocessRefineSegments",
+      "file": "apps/desktop/src/tauri/postprocessApi.ts",
+      "lineNo": 103,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "getAsrRuntimePaths",
+      "file": "apps/desktop/src/tauri/projectApi.ts",
+      "lineNo": 294,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "PEAKS_FORCE_REGENERATE_LONG_MEDIA_MIN_RA…",
+      "file": "apps/desktop/src/utils/peakMediaDuration.ts",
+      "lineNo": 8,
+      "refs": {
+        "total": 0,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "LONG_MEDIA_OPEN_FIT_ALL_SEC",
+      "file": "apps/desktop/src/utils/pxPerSec.ts",
+      "lineNo": 53,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "p1RegionFillColor",
+      "file": "apps/desktop/src/utils/segmentChrome.ts",
+      "lineNo": 13,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "segmentCardChrome",
+      "file": "apps/desktop/src/utils/segmentChrome.ts",
+      "lineNo": 20,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "SEGMENT_LIST_VIRTUAL_PIN_MAX_DISTANCE",
+      "file": "apps/desktop/src/utils/segmentListVirtualWindow.ts",
+      "lineNo": 67,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "segmentBoundsForPersist",
+      "file": "apps/desktop/src/utils/segmentMediaSanitize.ts",
+      "lineNo": 62,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "resolveSegmentSelectionRange",
+      "file": "apps/desktop/src/utils/segmentSelection.ts",
+      "lineNo": 121,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "computeAlignScrollPxForTimeSec",
+      "file": "apps/desktop/src/utils/waveformOverviewGeometry.ts",
+      "lineNo": 48,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "WAVEFORM_RULER_BAND_HEIGHT_PX",
+      "file": "apps/desktop/src/utils/waveformPeaksStageMetrics.ts",
+      "lineNo": 8,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "WAVEFORM_PLAYBACK_RATE_MIN",
+      "file": "apps/desktop/src/utils/waveformPlaybackRate.ts",
+      "lineNo": 16,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "WAVEFORM_PLAYBACK_RATE_MAX",
+      "file": "apps/desktop/src/utils/waveformPlaybackRate.ts",
+      "lineNo": 17,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "isWaveformPlaybackRatePreset",
+      "file": "apps/desktop/src/utils/waveformPlaybackRate.ts",
+      "lineNo": 50,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "SEGMENT_BAND_BORDER_SELECTED_COLOR",
+      "file": "apps/desktop/src/utils/waveformSegmentBandCanvasColors.ts",
+      "lineNo": 15,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "WAVEFORM_SEGMENT_LANE_GAP_PX",
+      "file": "apps/desktop/src/utils/waveformSegmentBounds.ts",
+      "lineNo": 64,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "resolveWaveformRulerView",
+      "file": "apps/desktop/src/utils/waveformViewport.ts",
+      "lineNo": 103,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "ColorToken",
+      "file": "apps/desktop/src/config/tokens.ts",
+      "lineNo": 57,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "LexiconBundleConflictItem",
+      "file": "apps/desktop/src/pages/useLexiconBundleController.ts",
+      "lineNo": 188,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "ProjectPanelShellApi",
+      "file": "apps/desktop/src/pages/useProjectPanelShell.ts",
+      "lineNo": 9,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "PostprocessProviderId",
+      "file": "apps/desktop/src/services/postprocess/postprocessRuntimeContract.ts",
+      "lineNo": 56,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "PostprocessRuntimeConfig",
+      "file": "apps/desktop/src/services/postprocess/postprocessRuntimeContract.ts",
+      "lineNo": 57,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "WaveformDataInstance",
+      "file": "apps/desktop/src/services/waveform/audiowaveformDat.ts",
+      "lineNo": 9,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "SttApiKeyRequest",
+      "file": "apps/desktop/src/tauri/sttApi.ts",
+      "lineNo": 10,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    }
+  ],
+  "unexportCandidates": [
+    {
+      "name": "scrollToEnvSection",
+      "file": "apps/desktop/src/components/envLocalAsr/asrStatusRowActions.ts",
+      "lineNo": 9,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "resolveSegmentListSectionHeight",
+      "file": "apps/desktop/src/components/floatingPanelFitSections.ts",
+      "lineNo": 44,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "resolveFloatingPanelSectionsBodyPx",
+      "file": "apps/desktop/src/components/floatingPanelFitSections.ts",
+      "lineNo": 56,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "FLOATING_PANEL_DIALOG_ROOT_CHROME_PX",
+      "file": "apps/desktop/src/components/floatingPanelFitSections.ts",
+      "lineNo": 136,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "POST_TRANSCRIBE_STAGE_B_HINT_EXTRA_PX",
+      "file": "apps/desktop/src/components/floatingPanelSegmentListLayout.ts",
+      "lineNo": 41,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "resolveLexiconHealthPanelHeight",
+      "file": "apps/desktop/src/components/floatingPanelSegmentListLayout.ts",
+      "lineNo": 82,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "FloatingPanelSegmentMeta",
+      "file": "apps/desktop/src/components/FloatingPanelSegmentRow.tsx",
+      "lineNo": 8,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "PANEL_TEMPLATE_PRESETS",
+      "file": "apps/desktop/src/components/PanelTemplate.tsx",
+      "lineNo": 26,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "POST_TRANSCRIBE_STAGE_B_PANEL_ID",
+      "file": "apps/desktop/src/components/PostTranscribeStageBDialog.tsx",
+      "lineNo": 25,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "TranscribePreviewBanner",
+      "file": "apps/desktop/src/components/ProjectStatusFeedback.tsx",
+      "lineNo": 41,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "SEGMENT_TEXT_BODY_ATTR",
+      "file": "apps/desktop/src/components/segmentRow/SegmentRowTextField.tsx",
+      "lineNo": 9,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "DIALOG_Z",
+      "file": "apps/desktop/src/config/dialogStack.ts",
+      "lineNo": 2,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "DIALOG_OVERLAY_CLASS",
+      "file": "apps/desktop/src/config/dialogStack.ts",
+      "lineNo": 11,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "DEFAULT_ASR_BASE_URL",
+      "file": "apps/desktop/src/config/env.ts",
+      "lineNo": 5,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "LOCAL_SECRET_STORE_LABEL",
+      "file": "apps/desktop/src/config/environmentNavCopy.ts",
+      "lineNo": 14,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "WAVEFORM_OVERLAY_SUPPRESS_CLICK_MS",
+      "file": "apps/desktop/src/hooks/useWaveformSegmentDrag.ts",
+      "lineNo": 23,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "WAVEFORM_OVERLAY_DRAG_MOVE_THRESHOLD_PX",
+      "file": "apps/desktop/src/hooks/useWaveformSegmentDrag.ts",
+      "lineNo": 25,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "isWorkbenchToolbarCompactViewport",
+      "file": "apps/desktop/src/hooks/useWorkbenchToolbarCompact.ts",
+      "lineNo": 14,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "overlayPointerActions",
+      "file": "apps/desktop/src/hooks/waveformSegmentDragHelpers.ts",
+      "lineNo": 26,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "snapTargetsForOverlay",
+      "file": "apps/desktop/src/hooks/waveformSegmentDragHelpers.ts",
+      "lineNo": 40,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "prepareSegmentTextDraftsForFlush",
+      "file": "apps/desktop/src/pages/flushSegmentTextDrafts.ts",
+      "lineNo": 118,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "collectSegmentTextDraftFlushUpdates",
+      "file": "apps/desktop/src/pages/flushSegmentTextDrafts.ts",
+      "lineNo": 124,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "localRuntimeDevReloadHint",
+      "file": "apps/desktop/src/pages/localRuntimeSetupHelpers.ts",
+      "lineNo": 17,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "compareSegmentsByStartSec",
+      "file": "apps/desktop/src/pages/segmentListHelpers.ts",
+      "lineNo": 24,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "isSegmentsSortedByStart",
+      "file": "apps/desktop/src/pages/segmentListHelpers.ts",
+      "lineNo": 32,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "ensureExplicitSegmentKinds",
+      "file": "apps/desktop/src/pages/segmentListHelpers.ts",
+      "lineNo": 52,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "TRANSCRIBE_POLL_MS",
+      "file": "apps/desktop/src/pages/transcribeAsyncPoll.ts",
+      "lineNo": 9,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "TRANSCRIBE_ASYNC_MAX_WAIT_MS",
+      "file": "apps/desktop/src/pages/transcribeAsyncPoll.ts",
+      "lineNo": 10,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "mockAsyncPollDone",
+      "file": "apps/desktop/src/pages/transcribeJobController.testHelpers.ts",
+      "lineNo": 27,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "TRANSCRIBE_ASYNC_FALLBACK_HINT_DEV",
+      "file": "apps/desktop/src/pages/transcribePreviewState.ts",
+      "lineNo": 92,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "TRANSCRIBE_ASYNC_FALLBACK_HINT_PACKAGED",
+      "file": "apps/desktop/src/pages/transcribePreviewState.ts",
+      "lineNo": 95,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "runZoomToFitAll",
+      "file": "apps/desktop/src/pages/useTranscriptionViewportFit.ts",
+      "lineNo": 44,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "selectedModelMatchesSidecar",
+      "file": "apps/desktop/src/services/asr/localAsrModelCatalog.ts",
+      "lineNo": 226,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "sidecarMemoryModelMatchesConfig",
+      "file": "apps/desktop/src/services/asr/localAsrModelCatalog.ts",
+      "lineNo": 238,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "asrLoopbackPort",
+      "file": "apps/desktop/src/services/asr/loopbackFetch.ts",
+      "lineNo": 28,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "canUseTauriLoopbackProxy",
+      "file": "apps/desktop/src/services/asr/loopbackFetch.ts",
+      "lineNo": 45,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "formatLoopbackInvokeError",
+      "file": "apps/desktop/src/services/asr/loopbackFetch.ts",
+      "lineNo": 73,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "isCorrectionLearnNoiseChar",
+      "file": "apps/desktop/src/services/correctionInferPair.ts",
+      "lineNo": 13,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "resolveExportPolishBodyBlockReason",
+      "file": "apps/desktop/src/services/exportDocxPolish.ts",
+      "lineNo": 62,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "countSingleCharRulesInHints",
+      "file": "apps/desktop/src/services/exportPolishDiagnostics.ts",
+      "lineNo": 36,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "EXPORT_POLISH_MIN_LINES_PER_PARAGRAPH",
+      "file": "apps/desktop/src/services/exportPolishParagraphs.ts",
+      "lineNo": 4,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "excerptLine",
+      "file": "apps/desktop/src/services/exportPolishPipeline.ts",
+      "lineNo": 230,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "normalizeSpreadsheetClipboard",
+      "file": "apps/desktop/src/services/glossaryPasteSplit.ts",
+      "lineNo": 3,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "GLOSSARY_DATA_CHANGED",
+      "file": "apps/desktop/src/services/glossaryRefresh.ts",
+      "lineNo": 3,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "findMostRecentWorkspaceFile",
+      "file": "apps/desktop/src/services/lastWorkspace.ts",
+      "lineNo": 83,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "bumpLlmEnvConnectionVerifiedSeq",
+      "file": "apps/desktop/src/services/llm/llmEnvRuntimeStore.ts",
+      "lineNo": 45,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "vendorLabel",
+      "file": "apps/desktop/src/services/llm/llmEnvStatusCopy.ts",
+      "lineNo": 16,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "writeOnboardingProgress",
+      "file": "apps/desktop/src/services/onboarding/onboardingProgress.ts",
+      "lineNo": 38,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "DEFAULT_SEGMENT_STAGE_FILTER",
+      "file": "apps/desktop/src/services/segmentListFilter.ts",
+      "lineNo": 26,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "segmentMatchesListFilter",
+      "file": "apps/desktop/src/services/segmentListFilter.ts",
+      "lineNo": 45,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "withFinalizedStage",
+      "file": "apps/desktop/src/services/segmentStagePersist.ts",
+      "lineNo": 14,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "withManualTranscribeStage",
+      "file": "apps/desktop/src/services/segmentStagePersist.ts",
+      "lineNo": 25,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "withAutoTranscribeStage",
+      "file": "apps/desktop/src/services/segmentStagePersist.ts",
+      "lineNo": 33,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "allSegmentsAutoTranscribe",
+      "file": "apps/desktop/src/services/segmentStagePersist.ts",
+      "lineNo": 110,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "lastGrapheme",
+      "file": "apps/desktop/src/services/text/grapheme.ts",
+      "lineNo": 65,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "TRANSCRIBE_EMPTY_OUTPUT_ERROR_CODES",
+      "file": "apps/desktop/src/services/transcribeDiag.ts",
+      "lineNo": 40,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "loadWaveformDatFromUrl",
+      "file": "apps/desktop/src/services/waveform/audiowaveformDat.ts",
+      "lineNo": 11,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "WAVEFORM_MINIMAP_PEAK_INSET_Y_RATIO",
+      "file": "apps/desktop/src/services/waveform/drawWaveformMinimap.ts",
+      "lineNo": 5,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "RULER_NICE_STEPS",
+      "file": "apps/desktop/src/services/waveform/waveformRulerTicks.ts",
+      "lineNo": 1,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "RULER_SUB_DIVS",
+      "file": "apps/desktop/src/services/waveform/waveformRulerTicks.ts",
+      "lineNo": 2,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "parseGlossaryTermDto",
+      "file": "apps/desktop/src/tauri/glossaryApi.ts",
+      "lineNo": 44,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "parseGlossaryImportResult",
+      "file": "apps/desktop/src/tauri/glossaryApi.ts",
+      "lineNo": 125,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "executeEditorLowConfidenceJump",
+      "file": "apps/desktop/src/utils/executeEditorShortcut.ts",
+      "lineNo": 219,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "isGlossaryPromptDismissed",
+      "file": "apps/desktop/src/utils/glossaryPromptDismiss.ts",
+      "lineNo": 19,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "PEAKS_MEDIA_MIN_COVERAGE_RATIO",
+      "file": "apps/desktop/src/utils/peakMediaDuration.ts",
+      "lineNo": 3,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "PEAKS_FORCE_REGENERATE_LONG_MEDIA_SEC",
+      "file": "apps/desktop/src/utils/peakMediaDuration.ts",
+      "lineNo": 6,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "VIEWPORT_FIT_HORIZONTAL_PADDING_PX",
+      "file": "apps/desktop/src/utils/pxPerSec.ts",
+      "lineNo": 13,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "MAX_WAVESURFER_PEAK_COLUMNS",
+      "file": "apps/desktop/src/utils/pxPerSec.ts",
+      "lineNo": 39,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "MAX_WAVESURFER_CANVAS_WIDTH_PX",
+      "file": "apps/desktop/src/utils/pxPerSec.ts",
+      "lineNo": 50,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "computeFitAllFillGapPx",
+      "file": "apps/desktop/src/utils/pxPerSec.ts",
+      "lineNo": 206,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "fitSelectionViewportWidthPx",
+      "file": "apps/desktop/src/utils/pxPerSec.ts",
+      "lineNo": 236,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "fitSelectionTargetWidthPx",
+      "file": "apps/desktop/src/utils/pxPerSec.ts",
+      "lineNo": 241,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "SEGMENT_NEIGHBOR_BOUND_EPS_SEC",
+      "file": "apps/desktop/src/utils/segmentGapPolicy.ts",
+      "lineNo": 6,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "SEGMENT_MIN_INSERT_GAP_SEC",
+      "file": "apps/desktop/src/utils/segmentGapPolicy.ts",
+      "lineNo": 9,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "SEGMENT_INSERT_AFTER_TAIL_SEC",
+      "file": "apps/desktop/src/utils/segmentGapPolicy.ts",
+      "lineNo": 12,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "SEGMENT_LANE_ROW_MIN_PX",
+      "file": "apps/desktop/src/utils/segmentLayout.ts",
+      "lineNo": 21,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "SEGMENT_LANE_ROW_MAX_PX",
+      "file": "apps/desktop/src/utils/segmentLayout.ts",
+      "lineNo": 22,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "SEGMENT_LANE_OVERLAP_SEPARATE_SEC",
+      "file": "apps/desktop/src/utils/segmentLayout.ts",
+      "lineNo": 46,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "SEGMENT_LANE_BOUNDARY_OVERLAP_MAX_SEC",
+      "file": "apps/desktop/src/utils/segmentLayout.ts",
+      "lineNo": 49,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "isSequentialBoundaryOverlap",
+      "file": "apps/desktop/src/utils/segmentLayout.ts",
+      "lineNo": 61,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "segmentSpansNeedSeparateLanes",
+      "file": "apps/desktop/src/utils/segmentLayout.ts",
+      "lineNo": 74,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "SEGMENT_LIST_ROW_GAP_PX",
+      "file": "apps/desktop/src/utils/segmentListVirtualWindow.ts",
+      "lineNo": 3,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "SEGMENT_LIST_RANGE_DRAG_SLOP_PX",
+      "file": "apps/desktop/src/utils/segmentListVirtualWindow.ts",
+      "lineNo": 108,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "SEGMENT_LIST_VIRTUAL_MAX_PIN_MERGE_SPAN",
+      "file": "apps/desktop/src/utils/segmentListVirtualWindow.ts",
+      "lineNo": 151,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "segmentIdxToDisplayIndex",
+      "file": "apps/desktop/src/utils/segmentListVirtualWindow.ts",
+      "lineNo": 181,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "displayIndexToSegmentIdx",
+      "file": "apps/desktop/src/utils/segmentListVirtualWindow.ts",
+      "lineNo": 190,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "readSegmentListScrollMetrics",
+      "file": "apps/desktop/src/utils/segmentListVirtualWindow.ts",
+      "lineNo": 221,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "SEGMENT_PLAYBACK_END_EPSILON_SEC",
+      "file": "apps/desktop/src/utils/segmentPlaybackBound.ts",
+      "lineNo": 2,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "SEGMENT_TIME_OVERLAP_EPS_SEC",
+      "file": "apps/desktop/src/utils/segmentTimeRange.ts",
+      "lineNo": 3,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "WAVEFORM_SEGMENT_SNAP_THRESHOLD_PX",
+      "file": "apps/desktop/src/utils/segmentTimeSnap.ts",
+      "lineNo": 4,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "WAVEFORM_MOUNT_DEFER_SHORT_TIMEOUT_MS",
+      "file": "apps/desktop/src/utils/waveformMountPolicy.ts",
+      "lineNo": 5,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "WAVEFORM_MOUNT_DEFER_LONG_MEDIA_SEC",
+      "file": "apps/desktop/src/utils/waveformMountPolicy.ts",
+      "lineNo": 8,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "timelinePxToViewportPx",
+      "file": "apps/desktop/src/utils/waveformProjection.ts",
+      "lineNo": 169,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "REGION_ACTION_PLAY_BTN_PX",
+      "file": "apps/desktop/src/utils/waveformRegionActionOverlay.ts",
+      "lineNo": 6,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "REGION_ACTION_LOOP_BTN_PX",
+      "file": "apps/desktop/src/utils/waveformRegionActionOverlay.ts",
+      "lineNo": 7,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "REGION_ACTION_BTN_GAP_PX",
+      "file": "apps/desktop/src/utils/waveformRegionActionOverlay.ts",
+      "lineNo": 8,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "REGION_ID_PREFIX",
+      "file": "apps/desktop/src/utils/waveformRegionId.ts",
+      "lineNo": 1,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "WAVEFORM_SEGMENT_EDGE_HIT_PX",
+      "file": "apps/desktop/src/utils/waveformSegmentBounds.ts",
+      "lineNo": 9,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "isDominantWaveformSpanSegment",
+      "file": "apps/desktop/src/utils/waveformSegmentBounds.ts",
+      "lineNo": 69,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "resolveOverlaySelectionRange",
+      "file": "apps/desktop/src/utils/waveformSegmentOverlayVisibility.ts",
+      "lineNo": 3,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "writeWaveformScrollLayerWidth",
+      "file": "apps/desktop/src/utils/waveformViewportStretch.ts",
+      "lineNo": 34,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "sliderMinTolerancePx",
+      "file": "apps/desktop/src/utils/waveformZoomBarState.ts",
+      "lineNo": 20,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "wasFitAllPxPerSecForTimelineWidth",
+      "file": "apps/desktop/src/utils/waveformZoomBarState.ts",
+      "lineNo": 39,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "isNearQuantizedFitSelectionPxPerSec",
+      "file": "apps/desktop/src/utils/waveformZoomBarState.ts",
+      "lineNo": 157,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "deriveWaveformZoomViewMode",
+      "file": "apps/desktop/src/utils/waveformZoomBarState.ts",
+      "lineNo": 237,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "resolveWaveSurferCspNonce",
+      "file": "apps/desktop/src/utils/waveSurferShadowCspNonce.ts",
+      "lineNo": 18,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "EditLogTextChange",
+      "file": "apps/desktop/src/components/editor/useEditorEditHistory.ts",
+      "lineNo": 5,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "FloatingPanelPhasePersist",
+      "file": "apps/desktop/src/components/floatingPanelPersist.ts",
+      "lineNo": 5,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "UnsavedGateIntent",
+      "file": "apps/desktop/src/components/UnsavedCloseDialog.tsx",
+      "lineNo": 8,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "TranscriptionSegment",
+      "file": "apps/desktop/src/contracts/transcription.ts",
+      "lineNo": 9,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "TranscriptionError",
+      "file": "apps/desktop/src/contracts/transcription.ts",
+      "lineNo": 26,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "DeferredRendererPersist",
+      "file": "apps/desktop/src/hooks/useDeferredRendererState.ts",
+      "lineNo": 3,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "NeighborContextRole",
+      "file": "apps/desktop/src/pages/autoPunctuateNeighbors.ts",
+      "lineNo": 5,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "SegmentTextDraftFlushUpdate",
+      "file": "apps/desktop/src/pages/flushSegmentTextDrafts.ts",
+      "lineNo": 102,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "LocalTranscribeJobRunRefs",
+      "file": "apps/desktop/src/pages/transcribeLocalJobRun.ts",
+      "lineNo": 17,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "LocalTranscribeJobRunCallbacks",
+      "file": "apps/desktop/src/pages/transcribeLocalJobRun.ts",
+      "lineNo": 25,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "AsrHealthCatalogHooks",
+      "file": "apps/desktop/src/pages/useAsrHealthPoll.ts",
+      "lineNo": 35,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "AutoPunctuateDialogState",
+      "file": "apps/desktop/src/pages/useAutoPunctuateController.ts",
+      "lineNo": 27,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "DuplicateImportDecision",
+      "file": "apps/desktop/src/pages/useProjectImportDuplicateController.ts",
+      "lineNo": 12,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "SegmentDecorator",
+      "file": "apps/desktop/src/plugin-system/types.ts",
+      "lineNo": 87,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "PluginPermission",
+      "file": "apps/desktop/src/plugin-system/types.ts",
+      "lineNo": 93,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "AsrEnvTone",
+      "file": "apps/desktop/src/services/asr/asrEnvStatus.ts",
+      "lineNo": 22,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "AsrSetupPortStatus",
+      "file": "apps/desktop/src/services/asr/asrSetupContract.ts",
+      "lineNo": 3,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "AsrSetupHealthSnapshot",
+      "file": "apps/desktop/src/services/asr/asrSetupContract.ts",
+      "lineNo": 5,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "AsrSetupSidecarIntegrity",
+      "file": "apps/desktop/src/services/asr/asrSetupContract.ts",
+      "lineNo": 17,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "AsrSupervisorPhase",
+      "file": "apps/desktop/src/services/asr/asrSetupContract.ts",
+      "lineNo": 19,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "DeliveryModeStepId",
+      "file": "apps/desktop/src/services/deliveryModeSteps.ts",
+      "lineNo": 1,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "ExportPolishLlmLineOutcome",
+      "file": "apps/desktop/src/services/exportPolishDiagnostics.ts",
+      "lineNo": 10,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "ExportPolishLineDiagnostic",
+      "file": "apps/desktop/src/services/exportPolishDiagnostics.ts",
+      "lineNo": 12,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "LocalRuntimeInstalledStatus",
+      "file": "apps/desktop/src/services/localRuntime/localRuntimeContract.ts",
+      "lineNo": 1,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "LocalRuntimeInstallPhase",
+      "file": "apps/desktop/src/services/localRuntime/localRuntimeContract.ts",
+      "lineNo": 2,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "LocalRuntimeManifestStatus",
+      "file": "apps/desktop/src/services/localRuntime/localRuntimeContract.ts",
+      "lineNo": 10,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "LocalRuntimeInstalledInfo",
+      "file": "apps/desktop/src/services/localRuntime/localRuntimeContract.ts",
+      "lineNo": 27,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "QualityEvalReportItem",
+      "file": "apps/desktop/src/services/quality/qualityEvalReport.ts",
+      "lineNo": 1,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "SttOnlineAuthStyle",
+      "file": "apps/desktop/src/services/stt/sttOnlineProviderContract/types.ts",
+      "lineNo": 1,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "SttOnlineProviderCapability",
+      "file": "apps/desktop/src/services/stt/sttOnlineProviderContract/types.ts",
+      "lineNo": 6,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "ExternalSttOnlineHealthState",
+      "file": "apps/desktop/src/services/stt/sttOnlineProviderContract/types.ts",
+      "lineNo": 65,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "TranscribeTimelineEntry",
+      "file": "apps/desktop/src/services/transcribeDiag.ts",
+      "lineNo": 1,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "PostprocessRefineSegmentsRequest",
+      "file": "apps/desktop/src/tauri/postprocessApi.ts",
+      "lineNo": 87,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "PostprocessRefineSegmentsResponse",
+      "file": "apps/desktop/src/tauri/postprocessApi.ts",
+      "lineNo": 94,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "LexiconEvidence",
+      "file": "apps/desktop/src/tauri/postprocessApi.ts",
+      "lineNo": 109,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "LexiconPackMeta",
+      "file": "apps/desktop/src/tauri/postprocessApi.ts",
+      "lineNo": 120,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "StageBLexiconDropStats",
+      "file": "apps/desktop/src/tauri/postprocessApi.ts",
+      "lineNo": 126,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "AsrRuntimePaths",
+      "file": "apps/desktop/src/tauri/projectApi.ts",
+      "lineNo": 287,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "SegmentSelectionState",
+      "file": "apps/desktop/src/utils/segmentSelection.ts",
+      "lineNo": 6,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "WaveformRulerView",
+      "file": "apps/desktop/src/utils/waveformViewport.ts",
+      "lineNo": 14,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    },
+    {
+      "name": "WaveformZoomViewMode",
+      "file": "apps/desktop/src/utils/waveformZoomBarState.ts",
+      "lineNo": 116,
+      "refs": {
+        "total": 1,
+        "others": 0,
+        "files": []
+      }
+    }
+  ],
+  "keepCount": 110
+}

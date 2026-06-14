@@ -5,7 +5,7 @@ export const footerHistoryIconBtn =
   "inline-flex h-7 w-7 items-center justify-center rounded-md border-0 bg-transparent text-notion-text-muted transition-colors hover:bg-notion-sidebar-hover hover:text-notion-text disabled:cursor-not-allowed disabled:opacity-40";
 
 /** 统一工作条：图标 + 说明文案按钮（32px，对齐 CONTROL h-8） */
-export const workbenchLabelBtn =
+const workbenchLabelBtn =
   "workbench-label-btn inline-flex h-8 shrink-0 items-center justify-center gap-1.5 rounded-md border-0 px-2.5 text-[12px] font-medium leading-none transition-colors disabled:cursor-not-allowed disabled:opacity-40";
 
 export function workbenchLabelBtnClass(dialogOpen: boolean): string {
@@ -21,7 +21,7 @@ export function workbenchTranscribePrimaryClass(): string {
 }
 
 /** 工作条紧凑菜单 `<details>` 触发器（与 label 按钮同高） */
-export const workbenchCompactMenuSummary =
+const workbenchCompactMenuSummary =
   "workbench-compact-menu-summary workbench-label-btn inline-flex h-8 shrink-0 list-none cursor-pointer items-center justify-center gap-1 rounded-md border-0 px-2.5 text-[12px] font-medium leading-none transition-colors marker:content-none [&::-webkit-details-marker]:hidden disabled:cursor-not-allowed disabled:opacity-40";
 
 export function workbenchCompactMenuSummaryClass(engaged: boolean): string {

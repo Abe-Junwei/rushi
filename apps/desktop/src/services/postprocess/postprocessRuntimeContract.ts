@@ -51,30 +51,3 @@ export {
   type LlmConnectionUiStatus,
   type LlmConnectionUiStatusInput,
 } from "./llmConnectionUi";
-
-// --- 兼容旧命名（内部调用逐步迁移） ---
-export type PostprocessProviderId = import("./llmProviderCatalog").LlmProviderId;
-export type PostprocessRuntimeConfig = import("./llmRuntimeStorage").LlmRuntimeConfig;
-
-import { LLM_PROVIDER_DEFINITIONS, LLM_STORAGE_KEYS } from "./llmProviderCatalog";
-import {
-  applyLlmProviderPreset,
-  getLlmApiKeyFromMemory,
-  isLlmRuntimeReady,
-  llmConfigHint,
-  persistLlmRuntimeConfig,
-  readLlmRuntimeConfigFromStorage,
-  setLlmApiKeyInMemory,
-} from "./llmRuntimeStorage";
-import { getLlmProviderDefinition } from "./llmProviderCatalog";
-
-export const POSTPROCESS_PROVIDER_DEFINITIONS = LLM_PROVIDER_DEFINITIONS;
-export const POSTPROCESS_STORAGE_KEYS = LLM_STORAGE_KEYS;
-export const getPostprocessProviderDefinition = getLlmProviderDefinition;
-export const readPostprocessRuntimeConfigFromStorage = readLlmRuntimeConfigFromStorage;
-export const persistPostprocessRuntimeConfig = persistLlmRuntimeConfig;
-export const applyPostprocessProviderPreset = applyLlmProviderPreset;
-export const setPostprocessApiKeyInMemory = setLlmApiKeyInMemory;
-export const getPostprocessApiKeyFromMemory = getLlmApiKeyFromMemory;
-export const isPostprocessRuntimeReady = isLlmRuntimeReady;
-export const postprocessConfigHint = llmConfigHint;

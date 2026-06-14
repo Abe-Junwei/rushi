@@ -1,5 +1,4 @@
-/** 欢迎页 / 项目 Hub / 编辑页共用侧栏宽度 */
-export const WORKSPACE_SIDEBAR_WIDTH = "20rem";
+/** 欢迎页 / 项目 Hub / 编辑页共用侧栏宽度（grid 列宽见 WORKSPACE_SHELL_GRID_CLASS） */
 
 /** 固定侧栏双栏 grid（Welcome / Hub） */
 export const WORKSPACE_SHELL_GRID_CLASS =
@@ -34,10 +33,6 @@ export const WORKSPACE_PAGE_PANEL_CLASS = "relative flex w-full max-w-[672px] fl
 /** 文件列表行 — Welcome / Hub 共用：全宽贴边、无圆角 */
 export const WORKSPACE_FILE_ROW_CLASS =
   "group flex w-full items-center bg-transparent text-left transition-colors hover:bg-notion-sidebar-hover";
-
-/** 侧栏可点击行（设置、恢复清单等工具项）：全宽贴边、无圆角 */
-export const WORKSPACE_SIDEBAR_ROW_INTERACTIVE =
-  "flex w-full items-center gap-3 border-0 px-5 py-2 text-sm font-medium transition-colors";
 
 /** 侧栏主功能区导航栈（Notion：左右内缩 + 项间 gap） */
 export const WORKSPACE_SIDEBAR_NAV_STACK = "flex flex-col gap-0.5 px-3 pb-3";

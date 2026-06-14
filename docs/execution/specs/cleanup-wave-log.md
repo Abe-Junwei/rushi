@@ -25,3 +25,11 @@
 - **改了啥**：删除/迁移 CLN-023～030、040～044、042～043；Python `sort_window_segments` 替代 `merge_window_segments`（CLN-071）；文档 CLN-060～063、065；**同批** ASR ffmpeg PATH 修复（侧车 `_internal` 注入 PATH）  
 - **验证了啥**：（提交前闸门）typecheck · test · guard · pytest ASR  
 - **下一轮**：Wave E knip export 二轮（人工台账）；CLN-070 Rust dead_code 逐项；CLN-045～047 迁移层 KEEP 至可证零
+
+---
+
+## Wave E1（2026-06-14）
+
+- **改了啥**：knip 二轮台账 + `knip.json`；删除/收口 47 项死 export（POSTPROCESS 别名、术语 table 样式、LLM 废弃类型等）；UNEXPORT 内部样式/helpers  
+- **验证了啥**：typecheck ✅ · 1371 tests ✅ · knip unused exports **296→249**（types 94→90）  
+- **下一轮**：Wave E2 — 按 `cleanup-wave-e-register.md` 继续 UNEXPORT utils 常量；`tauri/*` 类型面 KEEP 登记

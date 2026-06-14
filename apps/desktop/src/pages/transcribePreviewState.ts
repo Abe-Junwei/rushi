@@ -95,10 +95,7 @@ export const TRANSCRIBE_ASYNC_FALLBACK_HINT_DEV =
 export const TRANSCRIBE_ASYNC_FALLBACK_HINT_PACKAGED =
   "当前侧车不支持增量转写，已回退为整段拉取。请在「环境 → 本机 ASR」点「应用并重启侧车」或「一键准备本机 ASR」。";
 
-/** @deprecated Prefer `transcribeAsyncFallbackHint()` in UI paths that may run in release. */
-export const TRANSCRIBE_ASYNC_FALLBACK_HINT = TRANSCRIBE_ASYNC_FALLBACK_HINT_DEV;
-
-export function transcribeAsyncFallbackHintFromShellManaged(shellManaged: boolean): string {
+function transcribeAsyncFallbackHintFromShellManaged(shellManaged: boolean): string {
   return shellManaged
     ? TRANSCRIBE_ASYNC_FALLBACK_HINT_PACKAGED
     : TRANSCRIBE_ASYNC_FALLBACK_HINT_DEV;

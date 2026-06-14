@@ -56,14 +56,6 @@ export function countHotwordEnabledTerms(terms: GlossaryTermDto[]): number {
   return terms.filter((row) => row.hotword_enabled !== false).length;
 }
 
-export function countHiddenSelectedTerms(checkedIds: Set<number>, visibleIds: Set<number>): number {
-  let hidden = 0;
-  for (const id of checkedIds) {
-    if (!visibleIds.has(id)) hidden += 1;
-  }
-  return hidden;
-}
-
 export function selectedGlossaryPreviewLabels(
   terms: GlossaryTermDto[],
   checkedIds: Set<number>,

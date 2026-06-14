@@ -11,10 +11,6 @@ export const CONTROL_BTN_PRIMARY =
 export const CONTROL_BTN_SECONDARY =
   "inline-flex h-8 min-h-[32px] items-center justify-center rounded-sm border border-notion-border bg-notion-sidebar px-4 font-sans text-sm font-semibold text-notion-text shadow-none ring-0 transition-colors hover:border-notion-text-light hover:bg-notion-sidebar-hover focus:shadow-none focus:ring-0 focus-visible:shadow-none focus-visible:ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-notion-text/20 disabled:cursor-not-allowed disabled:opacity-40";
 
-/** 在线 STT 入口：secondary 形 + saffron 发线 */
-export const CONTROL_BTN_ONLINE_STT =
-  "inline-flex h-8 min-h-[32px] shrink-0 items-center justify-center rounded-sm border border-zen-saffron/35 bg-notion-bg px-4 font-sans text-sm font-semibold text-notion-text shadow-none ring-0 transition-colors hover:border-zen-saffron/55 hover:bg-zen-saffron/10 focus:shadow-none focus:ring-0 focus-visible:shadow-none focus-visible:ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-saffron/35 disabled:cursor-not-allowed disabled:opacity-40";
-
 /** 幽灵/第三态：透明底，hover sidebar */
 export const CONTROL_BTN_GHOST =
   "inline-flex h-8 min-h-[32px] items-center justify-center rounded-sm border border-transparent bg-transparent px-4 font-sans text-sm font-semibold text-notion-text-muted shadow-none ring-0 transition-colors hover:bg-notion-sidebar-hover hover:text-notion-text focus:shadow-none focus:ring-0 focus-visible:shadow-none focus-visible:ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-notion-text/20 disabled:cursor-not-allowed disabled:opacity-40";

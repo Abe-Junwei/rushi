@@ -6,12 +6,12 @@ export type AsrStatusRowAction = {
   navigate: () => void;
 };
 
-export function scrollToEnvSection(targetId: string): void {
+function scrollToEnvSection(targetId: string): void {
   document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth", block: "start" });
 }
 
 /** 展开「环境与维护 → 安装向导」并滚动到位（FFmpeg / 侧车修复入口）。 */
-export function openEnvSetupWizard(): void {
+function openEnvSetupWizard(): void {
   const wizard = document.getElementById("env-asr-setup-wizard");
   if (wizard instanceof HTMLDetailsElement) {
     wizard.open = true;

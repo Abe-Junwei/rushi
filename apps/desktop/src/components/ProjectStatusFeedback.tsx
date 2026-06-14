@@ -9,8 +9,6 @@ import { LUCIDE_ICON_SIZE_LG, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec"
 import { BlockingProgressCard } from "./BlockingProgressCard";
 import { busyOverlayCopy } from "./projectStatusFeedbackCopy";
 
-export { busyOverlayCopy } from "./projectStatusFeedbackCopy";
-
 export function ProjectBusyOverlay({
   reason,
   elapsedSec,
@@ -38,7 +36,7 @@ export function ProjectBusyOverlay({
 }
 
 /** R3e-C: centered status card; segment preview stays visible (no full-screen block). */
-export function TranscribePreviewBanner({
+function TranscribePreviewBanner({
   elapsedSec,
   transcribeProgress = null,
   vocabularyLines = [],

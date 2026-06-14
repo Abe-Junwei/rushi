@@ -6,9 +6,6 @@ import {
 } from "./segmentListHelpers";
 import { segmentsWithDraftsApplied } from "../services/segmentDirtyRead";
 
-export const UNSAVED_SEGMENTS_CONFIRM =
-  "当前文件有未保存的语段修改，确定放弃吗？";
-
 /** 关闭应用时对话框正文（由 `UnsavedCloseDialog` 展示，勿依赖 `window.confirm`）。 */
 export const UNSAVED_CLOSE_DISCARD_PROMPT =
   "关闭后未保存的正文修改将丢失。\n可先保存并退出，或放弃修改后退出。";

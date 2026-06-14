@@ -5,7 +5,6 @@ export type {
   LlmEnvSettingsOverlay,
   LlmModeToggleTones,
   LlmOllamaTone,
-  LlmPolishReadiness,
 } from "./llmEnvStatusTypes";
 
 export {
@@ -18,7 +17,6 @@ export {
 
 export {
   activateLocalOllamaPreset,
-  llmEnvConfigDraftDirty,
   readLlmEnvMode,
   readLlmEnvSnapshot,
   resolveLlmEnvEffectiveConfig,
@@ -27,10 +25,7 @@ export {
 export {
   buildLlmEnvPresentation,
   buildLlmModeToggleTones,
-  llmEnvReady,
   llmPolishActiveMessage,
   llmPolishSourceDetailLabel,
-  ollamaDetectReady,
-  toneFromConnectionPhase,
-  toneFromOllamaDetect,
 } from "./llmEnvStatusPresentation";
+export { ollamaDetectReady, toneFromOllamaDetect } from "./llmEnvStatusTone";

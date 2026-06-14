@@ -28,10 +28,6 @@ export function getLastAsrHealthRefreshResult(): AsrHealthRefreshResult | undefi
   return lastAsrHealthRefreshResult;
 }
 
-export function resetLastAsrHealthRefreshResultForTests(): void {
-  lastAsrHealthRefreshResult = undefined;
-}
-
 export type AsrHealthCatalogHooks = {
   syncFromHealth: (healthJson: unknown, rootJson?: unknown) => void;
   refreshIfNeeded: (healthJson: unknown) => void;

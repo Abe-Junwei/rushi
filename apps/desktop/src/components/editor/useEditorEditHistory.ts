@@ -114,11 +114,6 @@ export function canRestoreEditLogRow(
   return editLogAppliesToFile(row, fileId);
 }
 
-/** @deprecated 使用 summarizeHistoryHeadline */
-export function summarizeHistoryDetail(detail: string): string {
-  return summarizeHistoryHeadline(detail, "save_segments");
-}
-
 type UseEditorEditHistoryArgs = {
   projectId: string | undefined;
   fileId: string | undefined;

@@ -15,15 +15,12 @@ interface PanelTemplatePreset {
   overlayClassName: string;
 }
 
-/** 标准可拖动确认/表单对话框预设名 */
-export const FLOATING_COMPACT_DIALOG_PRESET = "compactDialog" as const;
-
 interface PanelTemplateMetrics {
   defaultPosition: { x: number; y: number };
   defaultSize: { width: number; height: number };
 }
 
-export const PANEL_TEMPLATE_PRESETS = {
+const PANEL_TEMPLATE_PRESETS = {
   createProject: {
     margin: 24,
     minWidth: 360,

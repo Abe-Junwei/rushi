@@ -49,13 +49,3 @@ export type LlmModeToggleTones = {
   local: LlmOllamaTone;
   cloud: LlmOllamaTone;
 };
-
-/** @deprecated 使用 buildLlmEnvPresentation */
-export type LlmPolishReadiness = {
-  mode: LlmEnvMode;
-  sourceLabel: string;
-  shortLabel: string;
-  tone: LlmOllamaTone;
-  ready: boolean;
-  blockReason: string | null;
-};

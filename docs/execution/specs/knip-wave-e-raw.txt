@@ -1,0 +1,401 @@
+Unused files (2)
+src/services/waveform/PeakCache.bench.ts
+tests/e2e/support/tauri-mock-init.js    
+Unused devDependencies (2)
+lint-staged  package.json:44:6
+prettier     package.json:46:6
+Unused exports (296)
+workbenchLabelBtn                                                 …/components/editor/editorSegmentToolbarStyles.ts:8:14
+workbenchCompactMenuSummary                                       …components/editor/editorSegmentToolbarStyles.ts:24:14
+TRANSCRIPT_FONT_FAMILY_STORAGE_KEY                                …components/editor/editorTranscriptAppearance.ts:10:14
+TRANSCRIPT_FONT_WEIGHT_STORAGE_KEY                                …components/editor/editorTranscriptAppearance.ts:11:14
+TRANSCRIPT_FONT_ITALIC_STORAGE_KEY                                …components/editor/editorTranscriptAppearance.ts:12:14
+SYSTEM_FONT_CANDIDATES                                            …components/editor/editorTranscriptAppearance.ts:80:14
+TRANSCRIPT_FONT_FAMILY_ZH_LABELS                                  …omponents/editor/editorTranscriptAppearance.ts:144:14
+canonicalFontFamilyKey                                  function  …omponents/editor/editorTranscriptAppearance.ts:240:17
+postscriptFamilyKey                                     function  …omponents/editor/editorTranscriptAppearance.ts:244:17
+ensureFontLoadedForCjkProbe                             function  …omponents/editor/editorTranscriptAppearance.ts:396:23
+summarizeHistoryDetail                                  function  src/components/editor/useEditorEditHistory.ts:118:17  
+scrollToEnvSection                                      function  src/components/envLocalAsr/asrStatusRowActions.ts:9:17
+openEnvSetupWizard                                      function  …c/components/envLocalAsr/asrStatusRowActions.ts:14:17
+ENV_UTILITIES_BODY                                                …c/components/envLocalAsr/envLocalAsrPanelUi.tsx:52:14
+resolveSegmentListSectionHeight                         function  src/components/floatingPanelFitSections.ts:44:17      
+resolveFloatingPanelSectionsBodyPx                      function  src/components/floatingPanelFitSections.ts:56:17      
+FLOATING_PANEL_DIALOG_ROOT_CHROME_PX                              src/components/floatingPanelFitSections.ts:136:14     
+POST_TRANSCRIBE_STAGE_B_PREVIEW_STATIC_B…                         src/components/floatingPanelSegmentListLayout.ts:26:14
+POST_TRANSCRIBE_STAGE_B_PREVIEW_LIST_MAX…                         src/components/floatingPanelSegmentListLayout.ts:29:14
+POST_TRANSCRIBE_STAGE_B_CONSENT_STATIC_B…                         src/components/floatingPanelSegmentListLayout.ts:35:14
+POST_TRANSCRIBE_STAGE_B_EMPTY_STATIC_BOD…                         src/components/floatingPanelSegmentListLayout.ts:38:14
+POST_TRANSCRIBE_STAGE_B_HINT_EXTRA_PX                             src/components/floatingPanelSegmentListLayout.ts:41:14
+FLOATING_PANEL_SPINNER_BODY_PX                                    src/components/floatingPanelSegmentListLayout.ts:53:14
+resolveLexiconHealthPanelHeight                         function  src/components/floatingPanelSegmentListLayout.ts:82:17
+resolveCorrectionRulesPreviewFitHeight                  function  …c/components/floatingPanelSegmentListLayout.ts:111:17
+FloatingPanelSegmentMeta                                function  src/components/FloatingPanelSegmentRow.tsx:8:17       
+GLOSSARY_TABLE_WRAP                                               src/components/glossary/glossaryPanelStyles.ts:18:14  
+GLOSSARY_TABLE                                                    src/components/glossary/glossaryPanelStyles.ts:20:14  
+GLOSSARY_TABLE_HEAD_ROW                                           src/components/glossary/glossaryPanelStyles.ts:22:14  
+GLOSSARY_TABLE_TH                                                 src/components/glossary/glossaryPanelStyles.ts:25:14  
+glossaryTableRowClass                                   function  src/components/glossary/glossaryPanelStyles.ts:28:17  
+glossaryRowActionsClass                                 function  src/components/glossary/glossaryPanelStyles.ts:40:17  
+GLOSSARY_INSPECTOR_FOOTER                                         src/components/glossary/glossaryPanelStyles.ts:77:14  
+GLOSSARY_TABLE_CELL                                               src/components/glossary/glossaryPanelStyles.ts:81:14  
+GLOSSARY_TABLE_HEAD_CELL                                          src/components/glossary/glossaryPanelStyles.ts:84:14  
+FLOATING_COMPACT_DIALOG_PRESET                                    src/components/PanelTemplate.tsx:19:14                
+PANEL_TEMPLATE_PRESETS                                            src/components/PanelTemplate.tsx:26:14                
+POST_TRANSCRIBE_STAGE_B_PANEL_ID                                  src/components/PostTranscribeStageBDialog.tsx:25:14   
+busyOverlayCopy                                                   src/components/ProjectStatusFeedback.tsx:12:10        
+TranscribePreviewBanner                                 function  src/components/ProjectStatusFeedback.tsx:41:17        
+SEGMENT_TEXT_BODY_ATTR                                            src/components/segmentRow/SegmentRowTextField.tsx:9:14
+WAVEFORM_MINIMAP_HEIGHT_PX                                        src/components/WaveformMinimapStrip.tsx:206:10        
+CONTROL_BTN_ONLINE_STT                                            src/config/controlStyles.ts:15:14                     
+DIALOG_Z                                                          src/config/dialogStack.ts:2:14                        
+DIALOG_OVERLAY_CLASS                                              src/config/dialogStack.ts:11:14                       
+DEFAULT_ASR_BASE_URL                                              src/config/env.ts:5:14                                
+isPackagedDesktopApp                                    function  src/config/env.ts:42:17                               
+LOCAL_SECRET_STORE_LABEL                                          src/config/environmentNavCopy.ts:14:14                
+describeLocalProtectedSecretStore                       function  src/config/environmentNavCopy.ts:17:17                
+WORKSPACE_SIDEBAR_WIDTH                                           src/config/workspaceShellLayout.ts:2:14               
+WORKSPACE_SIDEBAR_ROW_INTERACTIVE                                 src/config/workspaceShellLayout.ts:39:14              
+useSegmentDraft                                         function  src/hooks/useSegmentDraftStore.ts:167:17              
+readTierScrollLayout                                    function  src/hooks/useTierScrollLayout.ts:118:17               
+WAVEFORM_OVERLAY_SUPPRESS_CLICK_MS                                src/hooks/useWaveformSegmentDrag.ts:23:14             
+WAVEFORM_OVERLAY_DRAG_MOVE_THRESHOLD_PX                           src/hooks/useWaveformSegmentDrag.ts:25:14             
+hotSwitchWhilePlayingRef                                          src/hooks/useWaveformZoomSync.testHelpers.ts:35:14    
+DECODE_SAMPLE_RATE                                                src/hooks/useWaveformZoomSync.ts:21:41                
+createWaveformAppliedZoomState                                    src/hooks/useWaveformZoomSync.ts:296:10               
+isWorkbenchToolbarCompactViewport                       function  src/hooks/useWorkbenchToolbarCompact.ts:14:17         
+overlayPointerActions                                   function  src/hooks/waveformSegmentDragHelpers.ts:26:17         
+snapTargetsForOverlay                                   function  src/hooks/waveformSegmentDragHelpers.ts:40:17         
+prepareSegmentTextDraftsForFlush                        function  src/pages/flushSegmentTextDrafts.ts:118:17            
+collectSegmentTextDraftFlushUpdates                     function  src/pages/flushSegmentTextDrafts.ts:124:17            
+localRuntimeDevReloadHint                               function  src/pages/localRuntimeSetupHelpers.ts:17:17           
+ensureSegmentUids                                                 src/pages/segmentListHelpers.ts:12:28                 
+ensureUniqueSegmentUids                                           src/pages/segmentListHelpers.ts:12:47                 
+cloneSegments                                           function  src/pages/segmentListHelpers.ts:15:17                 
+compareSegmentsByStartSec                               function  src/pages/segmentListHelpers.ts:24:17                 
+isSegmentsSortedByStart                                 function  src/pages/segmentListHelpers.ts:32:17                 
+ensureExplicitSegmentKinds                              function  src/pages/segmentListHelpers.ts:52:17                 
+TRANSCRIBE_POLL_MS                                                src/pages/transcribeAsyncPoll.ts:9:14                 
+TRANSCRIBE_ASYNC_MAX_WAIT_MS                                      src/pages/transcribeAsyncPoll.ts:10:14                
+mockAsyncPollDone                                       function  src/pages/transcribeJobController.testHelpers.ts:27:17
+TRANSCRIBE_ASYNC_FALLBACK_HINT_DEV                                src/pages/transcribePreviewState.ts:92:14             
+TRANSCRIBE_ASYNC_FALLBACK_HINT_PACKAGED                           src/pages/transcribePreviewState.ts:95:14             
+TRANSCRIBE_ASYNC_FALLBACK_HINT                                    src/pages/transcribePreviewState.ts:99:14             
+transcribeAsyncFallbackHintFromShellMana…               function  src/pages/transcribePreviewState.ts:101:17            
+funasrManualSetupCommands                                         src/pages/useAsrBridgeController.ts:19:10             
+parseAsrHealthJson                                                src/pages/useAsrBridgeController.ts:19:37             
+resetLastAsrHealthRefreshResultForTests                 function  src/pages/useAsrHealthPoll.ts:31:17                   
+localRuntimeCancelDownload                                        src/pages/useAsrSetupController.test.shared.ts:16:14  
+localRuntimeRevalidateInstall                                     src/pages/useAsrSetupController.test.shared.ts:17:14  
+localRuntimeClearInstall                                          src/pages/useAsrSetupController.test.shared.ts:18:14  
+localRuntimeRestorePrevious                                       src/pages/useAsrSetupController.test.shared.ts:19:14  
+setLocalAsrRecognitionLanguagePref                                src/pages/useAsrSetupController.test.shared.ts:48:14  
+getLocalAsrRecognitionLanguagePref                                src/pages/useAsrSetupController.test.shared.ts:51:14  
+DEFAULT_LOCAL_ASR_HUB_MODEL_ID                                    src/pages/useLocalAsrModelCatalog.ts:269:10           
+UNSAVED_SEGMENTS_CONFIRM                                          src/pages/useSegmentDirtyState.ts:9:14                
+clampPxPerSec                                                     src/pages/useTranscriptionLayer.ts:14:31              
+computeSegmentLaneRowPx                                           src/pages/useTranscriptionLayer.ts:16:3               
+assignSegmentOverlapLanes                                         src/pages/useTranscriptionLayer.ts:17:3               
+computeTimelineWidthPx                                            src/pages/useTranscriptionLayer.ts:18:3               
+SEGMENT_LANE_ROW_PX                                               src/pages/useTranscriptionLayer.ts:19:3               
+runZoomToFitAll                                         function  src/pages/useTranscriptionViewportFit.ts:44:17        
+isBuiltinPluginId                                       function  src/plugin-system/builtinRegistry.ts:25:17            
+isBuiltinPluginManifest                                 function  src/plugin-system/builtinRegistry.ts:29:17            
+registryQuery                                                     src/plugin-system/index.ts:25:3                       
+registryFind                                                      src/plugin-system/index.ts:26:3                       
+registryClear                                                     src/plugin-system/index.ts:27:3                       
+BUILTIN_PLUGIN_MANIFESTS                                          src/plugin-system/index.ts:31:3                       
+isBuiltinPluginId                                                 src/plugin-system/index.ts:32:3                       
+isBuiltinPluginManifest                                           src/plugin-system/index.ts:33:3                       
+activatePluginModule                                              src/plugin-system/index.ts:37:3                       
+loadBuiltinPlugins                                                src/plugin-system/index.ts:38:3                       
+loadPlugin                                                        src/plugin-system/index.ts:39:3                       
+unloadPlugin                                                      src/plugin-system/index.ts:40:3                       
+unloadAllPlugins                                                  src/plugin-system/index.ts:41:3                       
+loadedPluginIds                                                   src/plugin-system/index.ts:42:3                       
+registryFind                                            function  src/plugin-system/registry.ts:53:17                   
+activate                                                function  src/plugins/export-markdown/index.ts:14:17            
+activate                                                function  src/plugins/tts-demo/index.ts:13:17                   
+deactivate                                              function  src/plugins/tts-demo/index.ts:59:17                   
+sidecarSupportsModelCatalog                             function  src/services/asr/localAsrModelCatalog.ts:99:17        
+sidecarIsFreshBuildFromRoot                             function  src/services/asr/localAsrModelCatalog.ts:126:17       
+resolvePreferredLocalAsrHubModelId                      function  src/services/asr/localAsrModelCatalog.ts:161:23       
+activeSkuModelCached                                    function  src/services/asr/localAsrModelCatalog.ts:215:17       
+selectedModelMatchesSidecar                             function  src/services/asr/localAsrModelCatalog.ts:226:17       
+sidecarMemoryModelMatchesConfig                         function  src/services/asr/localAsrModelCatalog.ts:238:17       
+LOCAL_ASR_RECOGNITION_LANGUAGE_STORAGE_K…                         src/services/asr/localAsrRecognitionLanguage.ts:3:14  
+localAsrRecognitionLanguageLabel                        function  src/services/asr/localAsrRecognitionLanguage.ts:50:17 
+computeLocalAsrTranscribeReady                                    src/services/asr/localAsrTranscribePreflight.ts:27:10 
+asrLoopbackPort                                         function  src/services/asr/loopbackFetch.ts:28:17               
+canUseTauriLoopbackProxy                                function  src/services/asr/loopbackFetch.ts:45:17               
+formatLoopbackInvokeError                               function  src/services/asr/loopbackFetch.ts:73:17               
+EMPTY_GLOSSARY_TRANSCRIBE_HINT                                    …c/services/asr/transcribeVocabularyPreflight.ts:40:14
+readLocalAsrHubModelIdFromStorage                       function  …c/services/asr/transcribeVocabularyPreflight.ts:45:17
+buildTranscribeVocabularyPreflightSummary               function  …c/services/asr/transcribeVocabularyPreflight.ts:49:17
+compactTranscribeVocabularyPreflightHint                function  …/services/asr/transcribeVocabularyPreflight.ts:121:17
+isCorrectionLearnNoiseChar                              function  src/services/correctionInferPair.ts:13:17             
+DELIVERY_MODE_STEPS                                               src/services/deliveryModeSteps.ts:26:14               
+formatCorrectionRuleHintLabel                           function  src/services/editor/correctionRuleHints.ts:36:17      
+normalizeFullWidthAscii                                 function  src/services/editor/segmentTextHygiene.ts:106:17      
+buildStageARuleOnlyPreviewChanges                       function  src/services/editor/stageAPreviewPipeline.ts:51:17    
+getEnvironmentCapabilitySnapshot                        function  src/services/environmentCapabilityCoordinator.ts:72:17
+subscribeEnvironmentCapabilitySnapshot                  function  src/services/environmentCapabilityCoordinator.ts:80:17
+resolveExportPolishBodyBlockReason                      function  src/services/exportDocxPolish.ts:62:17                
+countSingleCharRulesInHints                             function  src/services/exportPolishDiagnostics.ts:36:17         
+EXPORT_POLISH_MIN_LINES_PER_PARAGRAPH                             src/services/exportPolishParagraphs.ts:4:14           
+mergeLlmPolishLines                                     function  src/services/exportPolishPipeline.ts:155:17           
+excerptLine                                             function  src/services/exportPolishPipeline.ts:230:17           
+normalizeSpreadsheetClipboard                           function  src/services/glossaryPasteSplit.ts:3:17               
+GLOSSARY_DATA_CHANGED                                             src/services/glossaryRefresh.ts:3:14                  
+countHiddenSelectedTerms                                function  src/services/glossaryTermHelpers.ts:59:17             
+findMostRecentWorkspaceFile                             function  src/services/lastWorkspace.ts:83:23                   
+bumpLlmEnvConnectionVerifiedSeq                         function  src/services/llm/llmEnvRuntimeStore.ts:45:17          
+llmEnvConfigDraftDirty                                            src/services/llm/llmEnvStatus.ts:21:3                 
+llmEnvReady                                                       src/services/llm/llmEnvStatus.ts:30:3                 
+toneFromConnectionPhase                                           src/services/llm/llmEnvStatus.ts:34:3                 
+vendorLabel                                             function  src/services/llm/llmEnvStatusCopy.ts:16:17            
+llmEnvReady                                                       src/services/llm/llmEnvStatusPresentation.ts:38:3     
+toneFromConnectionPhase                                           src/services/llm/llmEnvStatusPresentation.ts:40:3     
+isLocalRuntimeUsable                                    function  …c/services/localRuntime/localRuntimeContract.ts:63:17
+onboardingStepLabel                                     function  src/services/onboarding/onboardingChecklist.ts:44:17  
+writeOnboardingProgress                                 function  src/services/onboarding/onboardingProgress.ts:38:17   
+OLLAMA_DEFAULT_MODEL                                              src/services/postprocess/llmProviderCatalog.ts:41:14  
+OLLAMA_TAGS_URL                                                   src/services/postprocess/llmProviderCatalog.ts:42:14  
+LLM_CAPABILITIES                                                  src/services/postprocess/llmProviderCatalog.ts:62:14  
+getLlmProviderKind                                      function  src/services/postprocess/llmProviderCatalog.ts:176:17 
+llmRuntimeConnectionFingerprint                         function  src/services/postprocess/llmRuntimeStorage.ts:70:17   
+describeLexiconOpsForPreview                            function  …c/services/postprocess/postprocessLexiconOps.ts:26:17
+rulePairsFromLexiconItems                               function  …c/services/postprocess/postprocessLexiconOps.ts:51:17
+getLlmProviderKind                                                …ervices/postprocess/postprocessRuntimeContract.ts:4:3
+LLM_CAPABILITIES                                                  …ervices/postprocess/postprocessRuntimeContract.ts:7:3
+LLM_CONNECTION_VERIFIED_EVENT                                     …ervices/postprocess/postprocessRuntimeContract.ts:8:3
+LLM_PROVIDER_DEFINITIONS                                          …ervices/postprocess/postprocessRuntimeContract.ts:9:3
+OLLAMA_DEFAULT_MODEL                                              …rvices/postprocess/postprocessRuntimeContract.ts:13:3
+OLLAMA_TAGS_URL                                                   …rvices/postprocess/postprocessRuntimeContract.ts:15:3
+llmRuntimeConnectionFingerprint                                   …rvices/postprocess/postprocessRuntimeContract.ts:30:3
+resolveStageBBlockReason                                          …rvices/postprocess/postprocessRuntimeContract.ts:36:3
+llmExportPolishCapabilityBadge                                    …rvices/postprocess/postprocessRuntimeContract.ts:47:3
+llmExportPolishCapabilityBadgeClass                               …rvices/postprocess/postprocessRuntimeContract.ts:48:3
+POSTPROCESS_PROVIDER_DEFINITIONS                                  …vices/postprocess/postprocessRuntimeContract.ts:71:14
+POSTPROCESS_STORAGE_KEYS                                          …vices/postprocess/postprocessRuntimeContract.ts:72:14
+getPostprocessProviderDefinition                                  …vices/postprocess/postprocessRuntimeContract.ts:73:14
+readPostprocessRuntimeConfigFromStorage                           …vices/postprocess/postprocessRuntimeContract.ts:74:14
+persistPostprocessRuntimeConfig                                   …vices/postprocess/postprocessRuntimeContract.ts:75:14
+applyPostprocessProviderPreset                                    …vices/postprocess/postprocessRuntimeContract.ts:76:14
+setPostprocessApiKeyInMemory                                      …vices/postprocess/postprocessRuntimeContract.ts:77:14
+getPostprocessApiKeyFromMemory                                    …vices/postprocess/postprocessRuntimeContract.ts:78:14
+isPostprocessRuntimeReady                                         …vices/postprocess/postprocessRuntimeContract.ts:79:14
+postprocessConfigHint                                             …vices/postprocess/postprocessRuntimeContract.ts:80:14
+describeRefineOps                                       function  …/services/postprocess/postprocessSegmentOps.ts:130:17
+countStageBPunctuateSteps                               function  …c/services/postprocess/postTranscribeStageB.ts:170:17
+formatStageBPackTruncationHint                          function  …c/services/postprocess/postTranscribeStageB.ts:194:17
+DEFAULT_SEGMENT_STAGE_FILTER                                      src/services/segmentListFilter.ts:26:14               
+segmentMatchesListFilter                                function  src/services/segmentListFilter.ts:45:17               
+withFinalizedStage                                      function  src/services/segmentStagePersist.ts:14:17             
+withManualTranscribeStage                               function  src/services/segmentStagePersist.ts:25:17             
+withAutoTranscribeStage                                 function  src/services/segmentStagePersist.ts:33:17             
+allSegmentsAutoTranscribe                               function  src/services/segmentStagePersist.ts:110:17            
+mergeSegmentStageKeepLeft                               function  src/services/segmentStagePersist.ts:114:17            
+isSegmentFinalized                                      function  src/services/segmentTextStage.ts:54:17                
+readShellManagesBundledSidecar                          function  src/services/shellCapabilities.ts:8:23                
+resetShellCapabilitiesCacheForTests                     function  src/services/shellCapabilities.ts:43:17               
+setShellManagesBundledSidecarForTests                   function  src/services/shellCapabilities.ts:49:17               
+readOnlineSttEnvNavPresentation                         function  …services/stt/readOnlineSttEnvNavPresentation.ts:18:17
+persistSttOnlineApiKeyId                   sttContract  function  …/stt/sttOnlineProviderContract/apiKeyStorage.ts:26:17
+sttOnlineProviderAllowsEmptyEndpoint       sttContract            …ervices/stt/sttOnlineProviderContract/bridge.ts:21:10
+isSttOnlineRuntimeConnectionVerified       sttContract  function  …ervices/stt/sttOnlineProviderContract/bridge.ts:51:17
+isSttOnlineTranscribeIncomplete            sttContract  function  …rvices/stt/sttOnlineProviderContract/bridge.ts:109:17
+STT_ONLINE_PROBE_TIMEOUT_MS_MAX            sttContract            …ices/stt/sttOnlineProviderContract/constants.ts:31:14
+STT_ONLINE_PROVIDER_DEFINITIONS            sttContract            …ces/stt/sttOnlineProviderContract/definitions.ts:4:14
+formatSttOnlineProviderSelectLabel         sttContract  function  …s/stt/sttOnlineProviderContract/definitions.ts:108:17
+glossaryBiasFieldHint                      sttContract            …/services/stt/sttOnlineProviderContract/index.ts:15:3
+supportsHotwordBiasForProviderId           sttContract            …/services/stt/sttOnlineProviderContract/index.ts:18:3
+vocabularyChannelForProviderId             sttContract            …/services/stt/sttOnlineProviderContract/index.ts:19:3
+STT_ONLINE_PRESET_TRANSCRIBE_URLS          sttContract            …stt/sttOnlineProviderContract/presetEndpoints.ts:9:14
+sttOnlineProviderAllowsEmptyEndpoint       sttContract  function  …tt/sttOnlineProviderContract/presetEndpoints.ts:65:17
+supportsHotwordBiasForProviderId           sttContract  function  src/services/stt/sttVocabularyBias.ts:52:17           
+vocabularyNativeAdapterForProvider                      function  src/services/stt/sttVocabularyBias.ts:88:17           
+lastGrapheme                                                      src/services/text/grapheme.ts:65:10                   
+TRANSCRIBE_EMPTY_OUTPUT_ERROR_CODES                               src/services/transcribeDiag.ts:40:14                  
+loadWaveformDatFromUrl                                  function  src/services/waveform/audiowaveformDat.ts:11:23       
+WAVEFORM_MINIMAP_PEAK_INSET_Y_RATIO                               src/services/waveform/drawWaveformMinimap.ts:5:14     
+SEGMENT_BAND_VIEWPORT_PAD_MUL                                     …c/services/waveform/drawWaveformSegmentBands.ts:13:14
+RULER_NICE_STEPS                                                  src/services/waveform/waveformRulerTicks.ts:1:14      
+RULER_SUB_DIVS                                                    src/services/waveform/waveformRulerTicks.ts:2:14      
+readWaveSurferGeom                                      function  …ices/waveform/waveformSurferProgressCoverage.ts:71:17
+logWaveSurferGeomOnScroll                               function  …ces/waveform/waveformSurferProgressCoverage.ts:118:17
+readWaveSurferWaveformLayers                            function  …ces/waveform/waveformSurferProgressCoverage.ts:150:17
+refreshWaveSurferProgressVisual                         function  …ces/waveform/waveformSurferProgressCoverage.ts:212:17
+notifyWaveSurferScrollContainer                         function  …ces/waveform/waveformSurferProgressCoverage.ts:238:17
+fetchAppVersion                                         function  src/tauri/appInfoApi.ts:21:23                         
+createEmptyTextFile                        fileApi      function  src/tauri/fileApi.ts:28:23                            
+parseGlossaryTermDto                       g            function  src/tauri/glossaryApi.ts:44:17                        
+parseGlossaryImportResult                  g            function  src/tauri/glossaryApi.ts:125:17                       
+postprocessRefineSegments                               function  src/tauri/postprocessApi.ts:103:23                    
+correctionAcceptRule                                              src/tauri/postprocessApi.ts:189:10                    
+killLoopbackAsrListeners                   p1           function  src/tauri/projectApi.ts:278:23                        
+getAsrRuntimePaths                         p1           function  src/tauri/projectApi.ts:294:23                        
+formatEditorShortcutPanelRows                           function  src/utils/editorShortcutFormat.ts:5:17                
+SEGMENT_MERGE_NEXT_SHORTCUT_LABEL                                 src/utils/editorShortcutFormat.ts:94:14               
+SEGMENT_MERGE_PREV_SHORTCUT_LABEL                                 src/utils/editorShortcutFormat.ts:96:14               
+SEGMENT_MERGE_NEXT_SHORTCUT_LABEL                                 src/utils/editorShortcutRegistry.ts:22:3              
+SEGMENT_MERGE_PREV_SHORTCUT_LABEL                                 src/utils/editorShortcutRegistry.ts:23:3              
+formatEditorShortcutPanelRows                                     src/utils/editorShortcutRegistry.ts:25:3              
+executeEditorLowConfidenceJump                          function  src/utils/executeEditorShortcut.ts:219:17             
+isGlossaryPromptDismissed                               function  src/utils/glossaryPromptDismiss.ts:19:17              
+PEAKS_MEDIA_MIN_COVERAGE_RATIO                                    src/utils/peakMediaDuration.ts:3:14                   
+PEAKS_FORCE_REGENERATE_LONG_MEDIA_SEC                             src/utils/peakMediaDuration.ts:6:14                   
+PEAKS_FORCE_REGENERATE_LONG_MEDIA_MIN_RA…                         src/utils/peakMediaDuration.ts:8:14                   
+VIEWPORT_FIT_HORIZONTAL_PADDING_PX                                src/utils/pxPerSec.ts:13:14                           
+MAX_WAVESURFER_PEAK_COLUMNS                                       src/utils/pxPerSec.ts:39:14                           
+MAX_WAVESURFER_CANVAS_WIDTH_PX                                    src/utils/pxPerSec.ts:50:14                           
+LONG_MEDIA_OPEN_FIT_ALL_SEC                                       src/utils/pxPerSec.ts:53:14                           
+computeFitAllFillGapPx                                  function  src/utils/pxPerSec.ts:206:17                          
+fitSelectionViewportWidthPx                             function  src/utils/pxPerSec.ts:236:17                          
+fitSelectionTargetWidthPx                               function  src/utils/pxPerSec.ts:241:17                          
+p1RegionFillColor                                       function  src/utils/segmentChrome.ts:13:17                      
+segmentCardChrome                                       function  src/utils/segmentChrome.ts:20:17                      
+SEGMENT_NEIGHBOR_BOUND_EPS_SEC                                    src/utils/segmentGapPolicy.ts:6:14                    
+SEGMENT_MIN_INSERT_GAP_SEC                                        src/utils/segmentGapPolicy.ts:9:14                    
+SEGMENT_INSERT_AFTER_TAIL_SEC                                     src/utils/segmentGapPolicy.ts:12:14                   
+SEGMENT_LANE_ROW_MIN_PX                                           src/utils/segmentLayout.ts:21:14                      
+SEGMENT_LANE_ROW_MAX_PX                                           src/utils/segmentLayout.ts:22:14                      
+SEGMENT_LANE_OVERLAP_SEPARATE_SEC                                 src/utils/segmentLayout.ts:46:14                      
+SEGMENT_LANE_BOUNDARY_OVERLAP_MAX_SEC                             src/utils/segmentLayout.ts:49:14                      
+isSequentialBoundaryOverlap                             function  src/utils/segmentLayout.ts:61:17                      
+segmentSpansNeedSeparateLanes                           function  src/utils/segmentLayout.ts:74:17                      
+SEGMENT_LIST_ROW_GAP_PX                                           src/utils/segmentListVirtualWindow.ts:3:14            
+SEGMENT_LIST_VIRTUAL_PIN_MAX_DISTANCE                             src/utils/segmentListVirtualWindow.ts:67:14           
+SEGMENT_LIST_RANGE_DRAG_SLOP_PX                                   src/utils/segmentListVirtualWindow.ts:108:14          
+SEGMENT_LIST_VIRTUAL_MAX_PIN_MERGE_SPAN                           src/utils/segmentListVirtualWindow.ts:151:14          
+segmentIdxToDisplayIndex                                function  src/utils/segmentListVirtualWindow.ts:181:17          
+displayIndexToSegmentIdx                                function  src/utils/segmentListVirtualWindow.ts:190:17          
+readSegmentListScrollMetrics                            function  src/utils/segmentListVirtualWindow.ts:221:17          
+WAVEFORM_DOMINANT_SPAN_RATIO                                      src/utils/segmentMediaSanitize.ts:9:10                
+segmentBoundsForPersist                                 function  src/utils/segmentMediaSanitize.ts:62:17               
+SEGMENT_PLAYBACK_END_EPSILON_SEC                                  src/utils/segmentPlaybackBound.ts:2:14                
+resolveSegmentSelectionRange                            function  src/utils/segmentSelection.ts:121:17                  
+SEGMENT_TIME_OVERLAP_EPS_SEC                                      src/utils/segmentTimeRange.ts:3:14                    
+WAVEFORM_SEGMENT_SNAP_THRESHOLD_PX                                src/utils/segmentTimeSnap.ts:4:14                     
+WAVEFORM_MOUNT_DEFER_SHORT_TIMEOUT_MS                             src/utils/waveformMountPolicy.ts:5:14                 
+WAVEFORM_MOUNT_DEFER_LONG_MEDIA_SEC                               src/utils/waveformMountPolicy.ts:8:14                 
+computeAlignScrollPxForTimeSec                          function  src/utils/waveformOverviewGeometry.ts:48:17           
+WAVEFORM_RULER_BAND_HEIGHT_PX                                     src/utils/waveformPeaksStageMetrics.ts:8:47           
+WAVEFORM_PLAYBACK_RATE_MIN                                        src/utils/waveformPlaybackRate.ts:16:14               
+WAVEFORM_PLAYBACK_RATE_MAX                                        src/utils/waveformPlaybackRate.ts:17:14               
+isWaveformPlaybackRatePreset                            function  src/utils/waveformPlaybackRate.ts:50:17               
+timelinePxToViewportPx                                  function  src/utils/waveformProjection.ts:169:17                
+REGION_ACTION_PLAY_BTN_PX                                         src/utils/waveformRegionActionOverlay.ts:6:14         
+REGION_ACTION_LOOP_BTN_PX                                         src/utils/waveformRegionActionOverlay.ts:7:14         
+REGION_ACTION_BTN_GAP_PX                                          src/utils/waveformRegionActionOverlay.ts:8:14         
+REGION_ID_PREFIX                                                  src/utils/waveformRegionId.ts:1:14                    
+SEGMENT_BAND_BORDER_SELECTED_COLOR                                src/utils/waveformSegmentBandCanvasColors.ts:15:14    
+WAVEFORM_SEGMENT_EDGE_HIT_PX                                      src/utils/waveformSegmentBounds.ts:9:14               
+WAVEFORM_SEGMENT_LANE_GAP_PX                                      src/utils/waveformSegmentBounds.ts:64:14              
+isDominantWaveformSpanSegment                           function  src/utils/waveformSegmentBounds.ts:69:17              
+resolveOverlaySelectionRange                            function  src/utils/waveformSegmentOverlayVisibility.ts:3:17    
+resolveWaveformRulerView                                function  src/utils/waveformViewport.ts:103:17                  
+writeWaveformScrollLayerWidth                           function  src/utils/waveformViewportStretch.ts:34:17            
+sliderMinTolerancePx                                    function  src/utils/waveformZoomBarState.ts:20:17               
+wasFitAllPxPerSecForTimelineWidth                       function  src/utils/waveformZoomBarState.ts:39:17               
+isNearQuantizedFitSelectionPxPerSec                     function  src/utils/waveformZoomBarState.ts:157:17              
+deriveWaveformZoomViewMode                              function  src/utils/waveformZoomBarState.ts:237:17              
+resolveWaveSurferCspNonce                               function  src/utils/waveSurferShadowCspNonce.ts:18:17           
+Unused exported types (94)
+EditLogTextChange                               type       src/components/editor/useEditorEditHistory.ts:5:13           
+FloatingPanelPhasePersist                       type       src/components/floatingPanelPersist.ts:5:13                  
+UnsavedGateIntent                               type       src/components/UnsavedCloseDialog.tsx:8:13                   
+ColorToken                                      type       src/config/tokens.ts:57:13                                   
+TranscriptionSegment                            interface  src/contracts/transcription.ts:9:18                          
+TranscriptionError                              interface  src/contracts/transcription.ts:26:18                         
+TranscriptionProvider                           interface  src/contracts/transcription.ts:51:18                         
+DeferredRendererPersist                         type       src/hooks/useDeferredRendererState.ts:3:13                   
+TierScrollLayout                                type       src/hooks/useTierScrollSync.ts:8:15                          
+NeighborContextRole                             type       src/pages/autoPunctuateNeighbors.ts:5:13                     
+SegmentTextDraftFlushUpdate                     type       src/pages/flushSegmentTextDrafts.ts:102:13                   
+LocalTranscribeJobRunRefs                       type       src/pages/transcribeLocalJobRun.ts:17:13                     
+LocalTranscribeJobRunCallbacks                  type       src/pages/transcribeLocalJobRun.ts:25:13                     
+AsrHealthCapabilities                           type       src/pages/useAsrBridgeController.ts:18:15                    
+AsrHealthCatalogHooks                           type       src/pages/useAsrHealthPoll.ts:35:13                          
+AutoPunctuateDialogState                        type       src/pages/useAutoPunctuateController.ts:27:13                
+LexiconBundleConflictItem                       type       src/pages/useLexiconBundleController.ts:188:13               
+AsrHealthState                                  type       src/pages/useProjectController.ts:15:15                      
+BusyPack                                        type       src/pages/useProjectController.ts:16:13                      
+PendingProjectFileDelete                        type       src/pages/useProjectFileMutationController.ts:4:13           
+DuplicateImportDecision                         type       src/pages/useProjectImportDuplicateController.ts:12:13       
+ImportFileToProjectOptions                      type       src/pages/useProjectImportDuplicateController.ts:14:13       
+PendingProjectDelete                            type       src/pages/useProjectMutationController.ts:11:13              
+ProjectPanelShellApi                            type       src/pages/useProjectPanelShell.ts:9:13                       
+ExtensionContribution                           type       src/plugin-system/index.ts:8:3                               
+ExtensionContributionUnion                      type       src/plugin-system/index.ts:9:3                               
+ExtensionHandle                                 type       src/plugin-system/index.ts:10:3                              
+ExtensionPointId                                type       src/plugin-system/index.ts:11:3                              
+MenuItem                                        type       src/plugin-system/index.ts:14:3                              
+PluginManifest                                  type       src/plugin-system/index.ts:16:3                              
+PluginModule                                    type       src/plugin-system/index.ts:17:3                              
+ExtensionContribution                           interface  src/plugin-system/types.ts:20:18                             
+MenuItem                                        interface  src/plugin-system/types.ts:73:18                             
+SegmentDecorator                                interface  src/plugin-system/types.ts:87:18                             
+PluginPermission                                type       src/plugin-system/types.ts:93:13                             
+AsrEnvTone                                      type       src/services/asr/asrEnvStatus.ts:22:13                       
+AsrSetupPortStatus                              type       src/services/asr/asrSetupContract.ts:3:13                    
+AsrSetupHealthSnapshot                          interface  src/services/asr/asrSetupContract.ts:5:18                    
+AsrSetupSidecarIntegrity                        type       src/services/asr/asrSetupContract.ts:17:13                   
+AsrSupervisorPhase                              type       src/services/asr/asrSetupContract.ts:19:13                   
+DeliveryModeStepId                              type       src/services/deliveryModeSteps.ts:1:13                       
+ExportPolishResult                              type       src/services/exportDeliveryPlan.ts:115:15                    
+ExportPolishLlmLineOutcome                      type       src/services/exportPolishDiagnostics.ts:10:13                
+ExportPolishLineDiagnostic                      type       src/services/exportPolishDiagnostics.ts:12:13                
+LlmModeToggleTones                              type       src/services/llm/llmEnvStatus.ts:6:3                         
+LlmPolishReadiness                              type       src/services/llm/llmEnvStatus.ts:8:3                         
+LlmPolishReadiness                              type       src/services/llm/llmEnvStatusTypes.ts:54:13                  
+LocalRuntimeInstalledStatus                     type       src/services/localRuntime/localRuntimeContract.ts:1:13       
+LocalRuntimeInstallPhase                        type       src/services/localRuntime/localRuntimeContract.ts:2:13       
+LocalRuntimeManifestStatus                      type       src/services/localRuntime/localRuntimeContract.ts:10:13      
+LocalRuntimeInstalledInfo                       interface  src/services/localRuntime/localRuntimeContract.ts:27:18      
+LlmProviderKind                                 type       src/services/postprocess/llmProviderCatalog.ts:36:13         
+LlmCapability                                   type       src/services/postprocess/llmProviderCatalog.ts:55:13         
+LlmCapability                                   type       src/services/postprocess/postprocessRuntimeContract.ts:16:8  
+LlmProviderDefinition                           type       src/services/postprocess/postprocessRuntimeContract.ts:17:8  
+LlmProviderKind                                 type       src/services/postprocess/postprocessRuntimeContract.ts:19:8  
+PersistLlmRuntimeConfigOptions                  type       src/services/postprocess/postprocessRuntimeContract.ts:42:8  
+LlmConnectionUiStatus                           type       src/services/postprocess/postprocessRuntimeContract.ts:51:8  
+LlmConnectionUiStatusInput                      type       src/services/postprocess/postprocessRuntimeContract.ts:52:8  
+PostprocessProviderId                           type       src/services/postprocess/postprocessRuntimeContract.ts:56:13 
+PostprocessRuntimeConfig                        type       src/services/postprocess/postprocessRuntimeContract.ts:57:13 
+QualityEvalReportItem                           type       src/services/quality/qualityEvalReport.ts:1:13               
+PersistSttOnlineApiKeyIdOptions    sttContract  type       …ervices/stt/sttOnlineProviderContract/apiKeyStorage.ts:22:13
+SttOnlineVocabularyChannel         sttContract  type       src/services/stt/sttOnlineProviderContract/index.ts:20:8     
+SttOnlineAuthStyle                 sttContract  type       src/services/stt/sttOnlineProviderContract/types.ts:1:13     
+SttOnlineProviderCapability        sttContract  interface  src/services/stt/sttOnlineProviderContract/types.ts:6:18     
+ExternalSttOnlineHealthState       sttContract  type       src/services/stt/sttOnlineProviderContract/types.ts:65:13    
+TranscribeTimelineEntry                         type       src/services/transcribeDiag.ts:1:13                          
+WaveformDataInstance                            type       src/services/waveform/audiowaveformDat.ts:9:13               
+PeakLodLevel                                    type       src/services/waveform/PeakCache.ts:13:13                     
+WaveSurferGeom                                  type       src/services/waveform/waveformSurferProgressCoverage.ts:52:13
+NeighborContextItem                             type       src/tauri/postprocessApi.ts:6:15                             
+SegmentRefineOp                                 type       src/tauri/postprocessApi.ts:82:13                            
+PostprocessRefineSegmentsRequest                interface  src/tauri/postprocessApi.ts:87:18                            
+PostprocessRefineSegmentsResponse               interface  src/tauri/postprocessApi.ts:94:18                            
+LexiconEvidence                                 type       src/tauri/postprocessApi.ts:109:13                           
+LexiconPackMeta                                 type       src/tauri/postprocessApi.ts:120:13                           
+StageBLexiconDropStats                          type       src/tauri/postprocessApi.ts:126:13                           
+FileDetail                         p1           type       src/tauri/projectApi.ts:7:3                                  
+FileSummary                        p1           type       src/tauri/projectApi.ts:8:3                                  
+RawProjectDetail                   p1           type       src/tauri/projectApi.ts:12:3                                 
+AsrRuntimePaths                    p1           type       src/tauri/projectApi.ts:287:13                               
+SegmentTextStage                                type       src/tauri/projectTypes.ts:17:13                              
+SegmentFinalizeVia                              type       src/tauri/projectTypes.ts:23:13                              
+SttApiKeyRequest                                type       src/tauri/sttApi.ts:10:13                                    
+EditorShortcutDefinition                        type       src/utils/editorShortcutRegistry.ts:4:3                      
+EditorShortcutPanelSection                      type       src/utils/editorShortcutRegistry.ts:6:3                      
+EditorShortcutScope                             type       src/utils/editorShortcutRegistry.ts:7:3                      
+SegmentMergeKeyboardIntent                      type       src/utils/editorShortcutRegistry.ts:8:3                      
+EditorShortcutScope                             type       src/utils/editorShortcutTypes.ts:1:13                        
+SegmentMergeKeyboardIntent                      type       src/utils/editorShortcutTypes.ts:55:13                       
+SegmentSelectionState                           type       src/utils/segmentSelection.ts:6:13                           
+WaveformRulerView                               type       src/utils/waveformViewport.ts:14:13                          
+WaveformZoomViewMode                            type       src/utils/waveformZoomBarState.ts:116:13                     
+Duplicate exports (2)
+TRANSCRIBE_ASYNC_FALLBACK_HINT_DEV|TRANSCRIBE_ASYNC_FALLBACK_HINT  src/pages/transcribePreviewState.ts         
+SEGMENT_BAND_BORDER_COLOR|SEGMENT_BAND_BORDER_SELECTED_COLOR       src/utils/waveformSegmentBandCanvasColors.ts

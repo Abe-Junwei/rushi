@@ -11,5 +11,3 @@ export function segmentBandFillStyle(seg: SegmentDto, selected: boolean): string
 }
 
 export const SEGMENT_BAND_BORDER_COLOR = `rgba(44, 44, 44, 0.10)`;
-/** Selected overlay bands skip canvas; keep for API symmetry if drawn. */
-export const SEGMENT_BAND_BORDER_SELECTED_COLOR = SEGMENT_BAND_BORDER_COLOR;

@@ -49,9 +49,6 @@ export const FLOATING_PANEL_DETAILS_SUMMARY_PX = 36;
 /** 额外一行 muted 说明。 */
 export const FLOATING_PANEL_MUTED_LINE_PX = 36;
 
-/** spinner loading 区（含 padding）。 */
-export const FLOATING_PANEL_SPINNER_BODY_PX = 88;
-
 /** 规则纠错 empty：说明 + 关闭按钮（不含 hints / 词表卫生 / 额外说明）。 */
 export const CORRECTION_RULES_EMPTY_STATIC_BODY_PX = 188;
 

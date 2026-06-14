@@ -151,11 +151,6 @@ export function reconcileLlmPolishLines(
   return { lines: out.slice(0, segmentCount), stats };
 }
 
-/** 对齐后采纳 LLM（允许行数不一致）。 */
-export function mergeLlmPolishLines(beforeLines: string[], llmLines: string[]): string[] {
-  return reconcileLlmPolishLines(beforeLines, llmLines).lines;
-}
-
 function levenshteinGraphemes(a: string, b: string): number {
   const ag = splitGraphemes(a);
   const bg = splitGraphemes(b);

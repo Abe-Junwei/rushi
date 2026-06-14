@@ -34,12 +34,6 @@ import type {
 } from "./llmEnvStatusTypes";
 
 export { buildLlmModeToggleTones } from "./llmEnvStatusTone";
-export {
-  llmEnvReady,
-  ollamaDetectReady,
-  toneFromConnectionPhase,
-  toneFromOllamaDetect,
-} from "./llmEnvStatusTone";
 export { llmPolishActiveMessage, llmPolishSourceDetailLabel } from "./llmEnvStatusCopy";
 
 export function buildLlmEnvPresentation(input: {

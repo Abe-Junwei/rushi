@@ -13,11 +13,6 @@ export const ENV_NAV = {
 
 export const LOCAL_SECRET_STORE_LABEL = "本地受保护存储";
 
-/** @deprecated 使用 `LOCAL_SECRET_STORE_LABEL` 或 `localSecretStoreReferenceMessage`。 */
-export function describeLocalProtectedSecretStore(): string {
-  return LOCAL_SECRET_STORE_LABEL;
-}
-
 /** API Key 保存状态一行说明（LLM / 在线 STT 共用）。 */
 export function localSecretStoreReferenceMessage(
   apiKeyId: string | null | undefined,
