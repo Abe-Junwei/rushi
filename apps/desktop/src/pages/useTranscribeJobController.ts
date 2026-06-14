@@ -6,6 +6,7 @@ import {
 } from "../services/asr/transcribeVocabularyPreflight";
 import { deriveTranscribeHints } from "../services/asrTranscribeHints";
 import {
+  buildTranscribeEmptyOutcomeDiag,
   formatTranscribeDiagSummary,
   type TranscribeTimelineSnapshot,
 } from "../services/transcribeDiag";
@@ -193,28 +194,39 @@ export function useTranscribeJobController(deps: Deps) {
       await closeGate.openFileWrapped(fileId);
       setTranscribeWarnings(out.warnings ?? []);
       const diagSnap = out.transcribeTimeline ?? (await p1.getLastTranscribeTimeline().catch(() => null));
-      setTranscribeFailureDiag(null);
       const diagLines = formatTranscribeDiagSummary(diagSnap);
       const elapsedMs = Date.now() - (transcribeStartedAtRef.current ?? Date.now());
       const charCount = countTranscribeCharacters(segments);
       const userHints = deriveTranscribeHints(out.engine ?? "", out.warnings ?? [], segments);
-      setTranscribeHints([
-        ...userHints,
-        ...diagLines,
-      ]);
       const presentation = resolveTranscribeResultPresentation({
         segmentCount: segments.length,
         charCount,
         elapsedMs,
       });
-      if (presentation.variant === "warning" && userHints.length > 0) {
-        pushTranscribeHintsToToast([presentation.summary, userHints[0]!]);
+      const emptyOutcome = presentation.variant === "warning";
+
+      if (emptyOutcome) {
+        const failureDiag = buildTranscribeEmptyOutcomeDiag(diagSnap, {
+          fileId,
+          engine: out.engine,
+          primaryHint: userHints[0],
+        });
+        setTranscribeFailureDiag(failureDiag);
+        setError("转写未产出可用语段。");
+        setTranscribeHints([...userHints, ...formatTranscribeDiagSummary(failureDiag), ...diagLines]);
+        if (userHints.length > 0) {
+          pushTranscribeHintsToToast([presentation.summary, userHints[0]!]);
+        } else {
+          pushTranscribeHintsToToast([presentation.summary]);
+        }
       } else {
+        setTranscribeFailureDiag(null);
+        setTranscribeHints([...userHints, ...diagLines]);
         pushTranscribeDeliveryModeToast(presentation);
+        syncOnboardingTranscribe();
       }
-      syncOnboardingTranscribe();
     },
-    [closeGate, current, mutations, onTranscribeSuccess, segmentsRef, setCurrent, setSegments],
+    [closeGate, current, mutations, onTranscribeSuccess, segmentsRef, setCurrent, setError, setSegments],
   );
 
   const executeTranscribe = useCallback(async () => {

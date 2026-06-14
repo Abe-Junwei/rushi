@@ -1,5 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { formatTranscribeDiagSummary, stageLabelZh } from "./transcribeDiag";
+import {
+  buildTranscribeEmptyOutcomeDiag,
+  formatTranscribeDiagSummary,
+  shouldShowTranscribeEnvAction,
+  stageLabelZh,
+  transcribeFailureBannerTitle,
+} from "./transcribeDiag";
 
 describe("transcribeDiag", () => {
   it("stageLabelZh maps known stages", () => {
@@ -39,5 +45,22 @@ describe("transcribeDiag", () => {
       transcribeTimeline: [],
     });
     expect(lines.some((l) => l.includes("3/10"))).toBe(true);
+  });
+
+  it("buildTranscribeEmptyOutcomeDiag marks stub engine as failed with env action", () => {
+    const diag = buildTranscribeEmptyOutcomeDiag(null, { fileId: "f1", engine: "stub" });
+    expect(diag.outcome).toBe("failed");
+    expect(diag.errorCode).toBe("transcribe_stub_no_output");
+    expect(diag.suggestedAction).toContain("本机 ASR");
+    expect(shouldShowTranscribeEnvAction(diag)).toBe(true);
+    expect(transcribeFailureBannerTitle(diag)).toBe("转写未产出结果");
+  });
+
+  it("buildTranscribeEmptyOutcomeDiag marks non-stub empty output without env action", () => {
+    const diag = buildTranscribeEmptyOutcomeDiag(null, { fileId: "f1", engine: "funasr" });
+    expect(diag.errorCode).toBe("transcribe_empty_output");
+    expect(shouldShowTranscribeEnvAction(diag)).toBe(false);
+    const lines = formatTranscribeDiagSummary(diag);
+    expect(lines.some((l) => l.includes("未写入任何可用语段"))).toBe(true);
   });
 });

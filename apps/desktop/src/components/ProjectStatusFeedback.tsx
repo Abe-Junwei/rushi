@@ -1,7 +1,7 @@
 import type { BusyReason } from "../pages/useProjectController";
 import type { TranscribeProgress } from "../pages/transcribePreviewState";
 import type { TranscribeTimelineSnapshot } from "../services/transcribeDiag";
-import { formatTranscribeDiagSummary, stageLabelZh } from "../services/transcribeDiag";
+import { formatTranscribeDiagSummary, shouldShowTranscribeEnvAction, transcribeFailureBannerTitle } from "../services/transcribeDiag";
 import { createPortal } from "react-dom";
 import { TriangleAlert } from "lucide-react";
 import { CONTROL_BTN_DANGER } from "../config/controlStyles";
@@ -83,12 +83,7 @@ export function TranscribeDiagBanner({
   onOpenEnvironment?: () => void;
 }) {
   const lines = formatTranscribeDiagSummary(diag);
-  const showEnv =
-    onOpenEnvironment &&
-    (diag.failedStage === "preflight" ||
-      diag.errorCode === "preflight_not_ready" ||
-      diag.errorCode === "sidecar_connect" ||
-      diag.errorCode === "sidecar_crash");
+  const showEnv = onOpenEnvironment && shouldShowTranscribeEnvAction(diag);
 
   return (
     <div className="flex flex-col items-start justify-between gap-4 rounded-lg border border-zen-cinnabar/20 bg-zen-cinnabar/10 px-4 py-4 text-zen-cinnabar shadow-sm sm:flex-row sm:items-start">
@@ -100,9 +95,7 @@ export function TranscribeDiagBanner({
         />
         <div className="space-y-1">
           <p className="font-sans text-sm font-semibold leading-relaxed">
-            {diag.outcome === "failed"
-              ? `转写失败（${stageLabelZh(diag.failedStage)}）`
-              : "转写提示"}
+            {transcribeFailureBannerTitle(diag)}
           </p>
           {errorMessage ? (
             <p className="font-sans text-xs leading-relaxed opacity-90">{errorMessage}</p>

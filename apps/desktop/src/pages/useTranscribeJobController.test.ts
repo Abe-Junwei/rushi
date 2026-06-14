@@ -8,6 +8,7 @@ import {
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { pushTranscribeDeliveryModeToast } from "../services/deliveryModeTranscribeToast";
+import { syncOnboardingTranscribe } from "../services/onboarding/onboardingAutoSync";
 import { pushTranscribeHintsToToast } from "../services/ui/toast";
 import { useTranscribeJobController } from "./useTranscribeJobController";
 
@@ -168,7 +169,7 @@ describe("useTranscribeJobController", () => {
     expect(deps.setError).toHaveBeenCalled();
   });
 
-  it("shows warning toast when local transcribe returns zero segments", async () => {
+  it("treats zero-segment transcribe as failure with diag banner (not onboarding success)", async () => {
     projectTranscribeAsyncFinalize.mockResolvedValue({
       engine: "funasr+x",
       warnings: ["funasr_no_sentence_segments"],
@@ -188,14 +189,41 @@ describe("useTranscribeJobController", () => {
     });
 
     expect(vi.mocked(pushTranscribeDeliveryModeToast)).not.toHaveBeenCalled();
+    expect(vi.mocked(syncOnboardingTranscribe)).not.toHaveBeenCalled();
     expect(vi.mocked(pushTranscribeHintsToToast)).toHaveBeenCalledWith(
       expect.arrayContaining([
         expect.stringContaining("未生成语段"),
         expect.stringContaining("未识别到可写入的文本"),
       ]),
     );
+    expect(result.current.transcribeFailureDiag?.errorCode).toBe("transcribe_empty_output");
+    expect(deps.setError).toHaveBeenCalledWith("转写未产出可用语段。");
     expect(result.current.transcribeHints.some((h) => h.includes("未识别到可写入的文本"))).toBe(
       true,
     );
+  });
+
+  it("treats stub engine with zero segments as stub failure diag", async () => {
+    projectTranscribeAsyncFinalize.mockResolvedValue({
+      engine: "stub",
+      warnings: [],
+      detail: { segments: [] },
+    });
+
+    const deps = baseTranscribeJobDeps({ segments: [], segmentsRef: { current: [] } });
+    const { result } = renderHook(() =>
+      useTranscribeJobController(deps as Parameters<typeof useTranscribeJobController>[0]),
+    );
+
+    await act(async () => {
+      await result.current.requestTranscribe();
+    });
+    await act(async () => {
+      await result.current.confirmTranscribeStart();
+    });
+
+    expect(result.current.transcribeFailureDiag?.errorCode).toBe("transcribe_stub_no_output");
+    expect(deps.setError).toHaveBeenCalledWith("转写未产出可用语段。");
+    expect(vi.mocked(syncOnboardingTranscribe)).not.toHaveBeenCalled();
   });
 });

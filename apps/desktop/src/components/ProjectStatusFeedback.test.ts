@@ -1,6 +1,6 @@
 import { render, screen } from "@testing-library/react";
 import { createElement } from "react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import type { BusyReason } from "../pages/useProjectController";
 import { TranscribeDiagBanner } from "./ProjectStatusFeedback";
 import { busyOverlayCopy } from "./projectStatusFeedbackCopy";
@@ -48,5 +48,31 @@ describe("TranscribeDiagBanner (TRN-DIAG)", () => {
     expect(screen.getByText(/转写失败（转写）/)).toBeTruthy();
     expect(screen.getByText(/sidecar_connect/)).toBeTruthy();
     expect(screen.queryByText(/未知阶段/)).toBeNull();
+  });
+
+  it("shows empty-outcome title and env action for stub no-output", () => {
+    const onOpenEnvironment = vi.fn();
+    render(
+      createElement(TranscribeDiagBanner, {
+        diag: {
+          schemaVersion: 1,
+          fileId: "file-1",
+          source: "local",
+          startedAtMs: 1,
+          outcome: "failed",
+          failedStage: "transcribe",
+          errorCode: "transcribe_stub_no_output",
+          errorMessage: "转写未产出可用语段",
+          suggestedAction: "请在「环境 → 本机 ASR」完成模型准备并「应用并重启侧车」后重试。",
+          transcribeTimeline: [],
+        },
+        errorMessage: "转写未产出可用语段。",
+        onOpenEnvironment,
+      }),
+    );
+    expect(screen.getByText("转写未产出结果")).toBeTruthy();
+    expect(screen.getByText(/transcribe_stub_no_output/)).toBeTruthy();
+    screen.getByRole("button", { name: "打开环境 → 本机 ASR" }).click();
+    expect(onOpenEnvironment).toHaveBeenCalled();
   });
 });
