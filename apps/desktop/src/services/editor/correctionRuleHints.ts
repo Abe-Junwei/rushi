@@ -32,7 +32,3 @@ export function filterReadOnlyCorrectionRuleHints(
   );
   return hints.filter((h) => !stableKeys.has(`${h.beforeText}\u0000${h.afterText}`));
 }
-
-export function formatCorrectionRuleHintLabel(hint: CorrectionRuleHintPair): string {
-  return `建议将「${hint.beforeText}」修正为「${hint.afterText}」（仅提示，需手改或采纳为规则）`;
-}

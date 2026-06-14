@@ -10,7 +10,7 @@ function isCjkChar(c: string): boolean {
 }
 
 /** 与 Rust `is_correction_punctuation` + 空白一致；不入库、仅用于剥离。 */
-export function isCorrectionLearnNoiseChar(c: string): boolean {
+function isCorrectionLearnNoiseChar(c: string): boolean {
   if (c.length === 0) return false;
   if (/^\s$/u.test(c)) return true;
   return /[，。！？；、,.!?;:：]/.test(c);

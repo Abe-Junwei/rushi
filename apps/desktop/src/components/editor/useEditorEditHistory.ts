@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import * as projectApi from "../../tauri/projectApi";
 import type { EditLogEntryDto } from "../../tauri/projectApi";
 
-export type EditLogTextChange = {
+type EditLogTextChange = {
   segment_idx: number;
   uid: string;
   before: string;

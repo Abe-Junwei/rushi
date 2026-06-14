@@ -40,7 +40,3 @@ export const ONBOARDING_STEPS: OnboardingStepDef[] = [
     description: "终检后导出讲稿或逐字稿，或进入定稿模式。",
   },
 ];
-
-export function onboardingStepLabel(id: OnboardingStepId): string {
-  return ONBOARDING_STEPS.find((s) => s.id === id)?.title ?? id;
-}

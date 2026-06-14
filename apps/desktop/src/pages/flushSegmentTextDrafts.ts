@@ -99,7 +99,7 @@ export function syncDomTextareaDraftsIntoStore(segments: SegmentDto[]): void {
   }
 }
 
-export type SegmentTextDraftFlushUpdate = { idx: number; text: string };
+type SegmentTextDraftFlushUpdate = { idx: number; text: string };
 
 function endAllSegmentCompositions(segments: SegmentDto[]): void {
   segmentDraftStore.flushPendingEmit();
@@ -115,13 +115,13 @@ export function prepareSegmentTextDraftsForMutation(segments: SegmentDto[]): voi
 }
 
 /** 保存/导出前：结束 IME、DOM→draft（兼容离屏 draft / 未走 S1 的路径）。 */
-export function prepareSegmentTextDraftsForFlush(segments: SegmentDto[]): void {
+function prepareSegmentTextDraftsForFlush(segments: SegmentDto[]): void {
   endAllSegmentCompositions(segments);
   syncDomTextareaDraftsIntoStore(segments);
 }
 
 /** 收集将把草稿写回 `segments` 的语段索引（不修改 state）。 */
-export function collectSegmentTextDraftFlushUpdates(
+function collectSegmentTextDraftFlushUpdates(
   segments: SegmentDto[],
 ): SegmentTextDraftFlushUpdate[] {
   const updates: SegmentTextDraftFlushUpdate[] = [];

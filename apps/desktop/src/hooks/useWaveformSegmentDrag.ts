@@ -20,9 +20,9 @@ import {
 } from "./waveformSegmentDragHelpers";
 import { boundsForOverlayDrag } from "../utils/waveformSegmentOverlayGeometry";
 
-export const WAVEFORM_OVERLAY_SUPPRESS_CLICK_MS = 250;
+const WAVEFORM_OVERLAY_SUPPRESS_CLICK_MS = 250;
 /** Pointer move beyond this (px) counts as drag, not tap — stable across zoom levels. */
-export const WAVEFORM_OVERLAY_DRAG_MOVE_THRESHOLD_PX = 4;
+const WAVEFORM_OVERLAY_DRAG_MOVE_THRESHOLD_PX = 4;
 
 export type WaveformSegmentDragArgs = {
   disabled: boolean;

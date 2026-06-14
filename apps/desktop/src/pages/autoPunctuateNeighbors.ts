@@ -2,7 +2,7 @@ import type { SegmentDto } from "../tauri/projectApi";
 
 export const AUTO_PUNCTUATE_NEIGHBOR_SNIPPET_MAX = 80;
 
-export type NeighborContextRole = "prev" | "next";
+type NeighborContextRole = "prev" | "next";
 
 export type NeighborContextItem = {
   role: NeighborContextRole;

@@ -5,7 +5,7 @@ import { PANEL_TYPOGRAPHY } from "../config/typography";
 const META_COL_CLASS =
   "w-[7.5rem] shrink-0 truncate text-left text-xs leading-4 tabular-nums text-notion-text-muted";
 
-export function FloatingPanelSegmentMeta({
+function FloatingPanelSegmentMeta({
   segmentNumber,
   timeLabel,
   suffix,

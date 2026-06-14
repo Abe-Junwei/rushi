@@ -216,7 +216,7 @@ export function executeEditorShortcut(
   }
 }
 
-export function executeEditorLowConfidenceJump(
+function executeEditorLowConfidenceJump(
   deps: EditorShortcutExecuteDeps,
   direction: "prev" | "next",
 ): void {

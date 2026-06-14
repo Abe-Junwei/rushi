@@ -51,10 +51,6 @@ export function normalizeSegmentFinalizeVia(raw: unknown): SegmentFinalizeVia | 
   return null;
 }
 
-export function isSegmentFinalized(stage: SegmentTextStage | undefined | null): boolean {
-  return stage === "finalized";
-}
-
 export function resolveSegmentStageLabels(
   stage: SegmentTextStage | undefined | null,
   finalizeVia: SegmentFinalizeVia | null | undefined,

@@ -31,7 +31,7 @@ export function writeWaveformShellLayout(input: WriteWaveformShellLayoutInput): 
 }
 
 /** Timeline-width layer translated by tier scroll (waveform + segment overlay). */
-export function writeWaveformScrollLayerWidth(scrollLayer: HTMLElement, timelineWidthPx: number): void {
+function writeWaveformScrollLayerWidth(scrollLayer: HTMLElement, timelineWidthPx: number): void {
   if (timelineWidthPx <= 0) return;
   scrollLayer.style.width = `${timelineWidthPx}px`;
 }

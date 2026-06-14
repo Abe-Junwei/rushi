@@ -6,8 +6,8 @@ import {
   type TranscribeStatusPayload,
 } from "./transcribePreviewState";
 
-export const TRANSCRIBE_POLL_MS = 800;
-export const TRANSCRIBE_ASYNC_MAX_WAIT_MS = 7_200_000;
+const TRANSCRIBE_POLL_MS = 800;
+const TRANSCRIBE_ASYNC_MAX_WAIT_MS = 7_200_000;
 
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));

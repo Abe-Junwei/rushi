@@ -11,8 +11,6 @@ export const ENV_NAV = {
   about: "设置 → 关于",
 } as const;
 
-export const LOCAL_SECRET_STORE_LABEL = "本地受保护存储";
-
 /** API Key 保存状态一行说明（LLM / 在线 STT 共用）。 */
 export function localSecretStoreReferenceMessage(
   apiKeyId: string | null | undefined,

@@ -22,7 +22,7 @@ import {
 } from "./FloatingPanelDialogLayout";
 import { highlightTextByDiff } from "../utils/textDiff";
 
-export const POST_TRANSCRIBE_STAGE_B_PANEL_ID = "post-transcribe-stage-b-v1";
+const POST_TRANSCRIBE_STAGE_B_PANEL_ID = "post-transcribe-stage-b-v1";
 
 const STAGE_B_PANEL_DEFAULT_SIZE = { width: 480, height: 400 } as const;
 /** consent 默认宽度（说明短，较预览略窄） */

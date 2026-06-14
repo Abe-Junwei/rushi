@@ -69,20 +69,8 @@ export function syncEnvironmentCapabilityRefreshDeps(deps: EnvironmentCapability
   registeredDeps = deps;
 }
 
-export function getEnvironmentCapabilitySnapshot(): EnvironmentCapabilitySnapshot | null {
-  return latestSnapshot;
-}
-
 export function getEnvironmentCapabilityBlockReason(): string | null {
   return latestSnapshot?.blockReason ?? null;
-}
-
-export function subscribeEnvironmentCapabilitySnapshot(
-  onChange: (snapshot: EnvironmentCapabilitySnapshot | null) => void,
-): () => void {
-  listeners.add(onChange);
-  onChange(latestSnapshot);
-  return () => listeners.delete(onChange);
 }
 
 export function resetEnvironmentCapabilityCoordinatorForTests(): void {

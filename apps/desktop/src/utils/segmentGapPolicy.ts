@@ -3,13 +3,13 @@ import { WAVEFORM_SEGMENT_MIN_SPAN_SEC, clampSegmentTimeBounds } from "./wavefor
 import { applySnapToDragBounds, type SnapDragMode } from "./segmentTimeSnap";
 
 /** Epsilon when clamping drag bounds against immediate neighbors (no overlap). */
-export const SEGMENT_NEIGHBOR_BOUND_EPS_SEC = 1e-6;
+const SEGMENT_NEIGHBOR_BOUND_EPS_SEC = 1e-6;
 
 /** Minimum clear gap required to insert a segment between two neighbors (toolbar insert-after). */
-export const SEGMENT_MIN_INSERT_GAP_SEC = 0.12;
+const SEGMENT_MIN_INSERT_GAP_SEC = 0.12;
 
 /** Default tail span when inserting after the last segment. */
-export const SEGMENT_INSERT_AFTER_TAIL_SEC = 1;
+const SEGMENT_INSERT_AFTER_TAIL_SEC = 1;
 
 /** Live drag preview may shrink slightly below commit min span. */
 export const SEGMENT_BOUNDS_LIVE_MIN_SPAN_SEC = 0.02;

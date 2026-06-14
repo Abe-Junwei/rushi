@@ -10,7 +10,7 @@ export const PX_PER_SEC_MAX = 400;
 export const PX_PER_SEC_FIT_SELECTION_MAX = 1200;
 
 /** 语段 fit 时左右留白（导航时判定「已能放下」用） */
-export const VIEWPORT_FIT_HORIZONTAL_PADDING_PX = 24;
+const VIEWPORT_FIT_HORIZONTAL_PADDING_PX = 24;
 
 /** 「适配语段」命令：选中语段目标宽度占视口比例 */
 export const FIT_SELECTION_VIEWPORT_RATIO = 0.8;
@@ -36,7 +36,7 @@ export function computeTimelineWidthPx(
 export const PX_PER_SEC_PEAKS_QUANTUM = 8;
 
 /** WaveSurfer 单帧 peaks 列数上限；超长音频高缩放时避免百万列 resample / 主线程卡顿。 */
-export const MAX_WAVESURFER_PEAK_COLUMNS = 32_768;
+const MAX_WAVESURFER_PEAK_COLUMNS = 32_768;
 
 /**
  * WaveSurfer 宿主容器固定宽度：≥ 任意缩放下的 WS 可滚宽度（`clampPxPerSecForWaveSurferRender`
@@ -47,10 +47,7 @@ export const MAX_WAVESURFER_PEAK_COLUMNS = 32_768;
 export const WAVEFORM_WS_HOST_WIDTH_PX = MAX_WAVESURFER_PEAK_COLUMNS + 256;
 
 /** decode 回退路径下单次 canvas 宽度上限（与 peaks 列数上限配套）。 */
-export const MAX_WAVESURFER_CANVAS_WIDTH_PX = 262_144;
-
-/** 超过此时长，打开文件默认「整段可见」而非 56 px/s。 */
-export const LONG_MEDIA_OPEN_FIT_ALL_SEC = 30 * 60;
+const MAX_WAVESURFER_CANVAS_WIDTH_PX = 262_144;
 
 /** ± 缩放：从默认 px/s 到 min/max 各需按键次数（对数对称步进）。 */
 export const WAVEFORM_ZOOM_STEPS_EACH_WAY = 5;
@@ -203,7 +200,7 @@ export function isTimelineFitInViewport(
   return computeTimelineWidthPx(sec, pxPerSec) <= vw + 0.5;
 }
 
-export function computeFitAllFillGapPx(
+function computeFitAllFillGapPx(
   viewportWidthPx: number,
   durationSec: number,
   pxPerSec: number,
@@ -233,12 +230,12 @@ export function isFitAllTimelineFilledInViewport(
 /** 用户显式选择的横向缩放布局意图（非持久偏好）。 */
 export type WaveformZoomLayoutIntent = "fit-all" | "fit-selection" | "default" | "manual";
 
-export function fitSelectionViewportWidthPx(viewportWidthPx: number): number {
+function fitSelectionViewportWidthPx(viewportWidthPx: number): number {
   return Math.max(160, Math.max(1, viewportWidthPx) - VIEWPORT_FIT_HORIZONTAL_PADDING_PX);
 }
 
 /** 「适配语段」目标宽度：视口宽度的 80%（极窄视口仍保留最小可读宽度）。 */
-export function fitSelectionTargetWidthPx(viewportWidthPx: number): number {
+function fitSelectionTargetWidthPx(viewportWidthPx: number): number {
   const vw = Math.max(1, viewportWidthPx);
   return Math.max(160, vw * FIT_SELECTION_VIEWPORT_RATIO);
 }

@@ -2,7 +2,7 @@
  * Default loopback URL for the local ASR HTTP service (see ADR-0001).
  * TCP from the desktop shell uses 127.0.0.1 via loopback proxy (rushi-asr binds IPv4 loopback only).
  */
-export const DEFAULT_ASR_BASE_URL = "http://127.0.0.1:8741";
+const DEFAULT_ASR_BASE_URL = "http://127.0.0.1:8741";
 
 function trimTrailingSlashes(s: string): string {
   return s.replace(/\/+$/, "");

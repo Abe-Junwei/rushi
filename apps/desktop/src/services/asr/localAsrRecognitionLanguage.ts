@@ -1,6 +1,6 @@
 /** FunASR recognition language preference (R3g-C C4). */
 
-export const LOCAL_ASR_RECOGNITION_LANGUAGE_STORAGE_KEY = "rushi.localAsr.recognitionLanguage";
+const LOCAL_ASR_RECOGNITION_LANGUAGE_STORAGE_KEY = "rushi.localAsr.recognitionLanguage";
 
 export type LocalAsrRecognitionLanguage = "zh" | "auto" | "en" | "ja" | "ko" | "yue";
 
@@ -45,14 +45,6 @@ export function writeStoredLocalAsrRecognitionLanguage(language: LocalAsrRecogni
   } catch {
     /* ignore */
   }
-}
-
-export function localAsrRecognitionLanguageLabel(
-  language: LocalAsrRecognitionLanguage,
-): string {
-  return (
-    LOCAL_ASR_RECOGNITION_LANGUAGE_OPTIONS.find((o) => o.id === language)?.label ?? language
-  );
 }
 
 /** True when sidecar-reported language (D2) matches UI selection (D1). */

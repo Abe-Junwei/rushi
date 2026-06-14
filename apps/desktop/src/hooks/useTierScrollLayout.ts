@@ -114,7 +114,3 @@ export function useTierScrollLayout(
     liveClientWidthRef,
   };
 }
-
-export function readTierScrollLayout(tier: HTMLElement): TierScrollLayout {
-  return { scrollLeftPx: tier.scrollLeft, clientWidthPx: tier.clientWidth };
-}

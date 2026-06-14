@@ -32,4 +32,12 @@
 
 - **改了啥**：knip 二轮台账 + `knip.json`；删除/收口 47 项死 export（POSTPROCESS 别名、术语 table 样式、LLM 废弃类型等）；UNEXPORT 内部样式/helpers  
 - **验证了啥**：typecheck ✅ · 1371 tests ✅ · knip unused exports **296→249**（types 94→90）  
-- **下一轮**：Wave E2 — 按 `cleanup-wave-e-register.md` 继续 UNEXPORT utils 常量；`tauri/*` 类型面 KEEP 登记
+- **下一轮**：Wave E2 — utils / floatingPanel / services 批量 UNEXPORT
+
+---
+
+## Wave E2（2026-06-14）
+
+- **改了啥**：E2 分析台账；批量 UNEXPORT 131 符号（73 文件）；DELETE 死函数/常量 20+ 项；收口 `floatingPanelSegmentListLayout` / ASR / segment 工具死 export  
+- **验证了啥**：typecheck ✅ · 1371 tests ✅ · guard 0 错误 / 42 警告 · knip unused exports **249→114**  
+- **下一轮**：Wave E3 — `tauri/*` 类型面 KEEP 登记；测试 shared export 收口；`editorTranscriptAppearance` DEFER 评审

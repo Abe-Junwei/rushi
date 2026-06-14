@@ -16,7 +16,7 @@ function writeSet(set: Set<string>): void {
   localStorage.setItem(KEY, JSON.stringify([...set]));
 }
 
-export function isGlossaryPromptDismissed(afterText: string): boolean {
+function isGlossaryPromptDismissed(afterText: string): boolean {
   return readSet().has(afterText.trim());
 }
 

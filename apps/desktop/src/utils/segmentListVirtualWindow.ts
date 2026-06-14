@@ -1,6 +1,6 @@
 /** Vertical list virtualization for fixed-height segment rows. */
 
-export const SEGMENT_LIST_ROW_GAP_PX = 10;
+const SEGMENT_LIST_ROW_GAP_PX = 10;
 
 export function segmentListItemStridePx(rowMinHeightPx: number): number {
   return Math.max(1, Math.round(rowMinHeightPx)) + SEGMENT_LIST_ROW_GAP_PX;
@@ -63,9 +63,6 @@ export const SEGMENT_LIST_VIRTUALIZE_MIN_COUNT = 200;
 /** 虚拟列表默认 overscan（行数）。 */
 export const SEGMENT_LIST_VIRTUAL_OVERSCAN = 12;
 
-/** selectedIdx 距当前 scroll 窗口超过此行数时不 pin（避免远距合并整表）。 */
-export const SEGMENT_LIST_VIRTUAL_PIN_MAX_DISTANCE = 48;
-
 function clampSegmentListScrollTop(
   scrollTop: number,
   maxScrollTop: number | undefined,
@@ -105,7 +102,7 @@ export function scrollSegmentListIndexIntoView(input: {
 }
 
 /** 列表 range 拖选：低于此像素位移视为点击，不扩展多选。 */
-export const SEGMENT_LIST_RANGE_DRAG_SLOP_PX = 5;
+const SEGMENT_LIST_RANGE_DRAG_SLOP_PX = 5;
 
 export function segmentListRangeDragExceededSlop(
   startClientX: number,
@@ -148,7 +145,7 @@ export const SEGMENT_LIST_SCROLL_ATTR = "data-segment-list-scroll";
 export const SEGMENT_LIST_FILTER_INDICES_ATTR = "data-segment-list-filter-indices";
 
 /** pin 合并后允许的最大挂载行数；超出则仅保留 scroll 窗口（选中远距时靠 scroll-into-view）。 */
-export const SEGMENT_LIST_VIRTUAL_MAX_PIN_MERGE_SPAN = 160;
+const SEGMENT_LIST_VIRTUAL_MAX_PIN_MERGE_SPAN = 160;
 
 export function querySegmentListScrollRoot(): HTMLElement | null {
   const el = document.querySelector(`[${SEGMENT_LIST_SCROLL_ATTR}]`);
@@ -178,7 +175,7 @@ export function readSegmentListFilterIndices(root: HTMLElement | null): number[]
   return indices.length > 0 ? indices : null;
 }
 
-export function segmentIdxToDisplayIndex(
+function segmentIdxToDisplayIndex(
   filteredIndices: readonly number[] | null,
   segmentIdx: number,
 ): number | null {
@@ -187,7 +184,7 @@ export function segmentIdxToDisplayIndex(
   return displayIdx >= 0 ? displayIdx : null;
 }
 
-export function displayIndexToSegmentIdx(
+function displayIndexToSegmentIdx(
   filteredIndices: readonly number[] | null,
   displayIdx: number,
 ): number | null {
@@ -218,7 +215,7 @@ export function annotateSegmentListScrollMetrics(
   root.setAttribute(SEGMENT_LIST_ITEM_STRIDE_ATTR, String(metrics.itemStridePx));
 }
 
-export function readSegmentListScrollMetrics(root: HTMLElement): {
+function readSegmentListScrollMetrics(root: HTMLElement): {
   rowMinHeightPx: number;
   itemStridePx: number;
 } | null {

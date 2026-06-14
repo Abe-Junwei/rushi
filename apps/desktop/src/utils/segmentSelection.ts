@@ -3,11 +3,6 @@ import { resolveLiveSegmentText } from "../hooks/useSegmentDraftStore";
 import { mergeTwoSegments } from "../pages/segmentListHelpers";
 import { selectPackableSegmentIndices } from "./waveformSegmentBounds";
 
-export type SegmentSelectionState = {
-  anchorIdx: number;
-  focusIdx: number;
-};
-
 export type SegmentLassoOutcome = {
   indices: Set<number>;
   hitCount: number;
@@ -116,21 +111,6 @@ export function normalizeSegmentIndexRange(
   const lo = clampSegmentIndex(Math.min(anchor, focus), segmentCount);
   const hi = clampSegmentIndex(Math.max(anchor, focus), segmentCount);
   return { lo, hi };
-}
-
-export function resolveSegmentSelectionRange(
-  selection: SegmentSelectionState | null,
-  selectedIdx: number,
-  segmentCount: number,
-): { lo: number; hi: number; count: number } | null {
-  if (segmentCount <= 0) return null;
-  if (selection) {
-    const range = normalizeSegmentIndexRange(selection.anchorIdx, selection.focusIdx, segmentCount);
-    if (!range) return null;
-    return { ...range, count: range.hi - range.lo + 1 };
-  }
-  const idx = clampSegmentIndex(selectedIdx, segmentCount);
-  return { lo: idx, hi: idx, count: 1 };
 }
 
 export function selectionRangeFromTimeMarquee(

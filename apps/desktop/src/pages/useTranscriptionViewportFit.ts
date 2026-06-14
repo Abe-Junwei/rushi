@@ -41,7 +41,7 @@ export function resolveViewportFitScrollPx(input: {
   return computeViewportFitScrollPx({ intent: pending.intent, viewportWidthPx, timelineWidthPx: tw, durationSec });
 }
 
-export function runZoomToFitAll(input: {
+function runZoomToFitAll(input: {
   tier: HTMLDivElement | null;
   durationSec: number;
   queueViewportFit: (pending: PendingViewportFit, options?: { fitAll?: boolean }) => void;

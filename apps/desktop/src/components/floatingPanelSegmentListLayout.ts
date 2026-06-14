@@ -23,22 +23,22 @@ export const FIND_REPLACE_PREVIEW_STATIC_BODY_PX = 140;
 export const CORRECTION_RULES_PREVIEW_STATIC_BODY_PX = 196;
 
 /** 智能改稿预览：摘要 + 操作说明 + 底栏（不含语段列表）。 */
-export const POST_TRANSCRIBE_STAGE_B_PREVIEW_STATIC_BODY_PX = 196;
+const POST_TRANSCRIBE_STAGE_B_PREVIEW_STATIC_BODY_PX = 196;
 
 /** 智能改稿预览：语段列表区上限（首次展开略紧凑）。 */
-export const POST_TRANSCRIBE_STAGE_B_PREVIEW_LIST_MAX_HEIGHT_PX = 192;
+const POST_TRANSCRIBE_STAGE_B_PREVIEW_LIST_MAX_HEIGHT_PX = 192;
 
 /** 智能改稿预览：面板总高度上限（含标题栏）。 */
 export const POST_TRANSCRIBE_STAGE_B_PREVIEW_MAX_PANEL_HEIGHT_PX = 428;
 
 /** 智能改稿 consent：说明文案 + 按钮行（不含 A→B 黄条）。 */
-export const POST_TRANSCRIBE_STAGE_B_CONSENT_STATIC_BODY_PX = 176;
+const POST_TRANSCRIBE_STAGE_B_CONSENT_STATIC_BODY_PX = 176;
 
 /** 智能改稿 empty：说明文案 + 关闭按钮（不含提示条）。 */
-export const POST_TRANSCRIBE_STAGE_B_EMPTY_STATIC_BODY_PX = 140;
+const POST_TRANSCRIBE_STAGE_B_EMPTY_STATIC_BODY_PX = 140;
 
 /** consent / empty 顶部每条提示（A→B 软提示 / pack 截断）的额外高度。 */
-export const POST_TRANSCRIBE_STAGE_B_HINT_EXTRA_PX = 56;
+const POST_TRANSCRIBE_STAGE_B_HINT_EXTRA_PX = 56;
 
 /** 紧凑态面板壳层 minHeight（empty / consent / loading）。 */
 export const FLOATING_PANEL_COMPACT_MIN_HEIGHT = 200;
@@ -76,7 +76,7 @@ export function resolveFloatingPanelCompactFitHeight(staticBodyPx: number, extra
   return resolveFloatingPanelFitHeight(staticBodyPx, 0) + extraPx;
 }
 
-export function resolveLexiconHealthPanelHeight(
+function resolveLexiconHealthPanelHeight(
   summaryLineCount: number,
   expanded: boolean,
 ): number {

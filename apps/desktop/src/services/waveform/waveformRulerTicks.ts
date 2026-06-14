@@ -1,5 +1,5 @@
-export const RULER_NICE_STEPS = [0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600] as const;
-export const RULER_SUB_DIVS = [10, 5, 4, 2, 1] as const;
+const RULER_NICE_STEPS = [0.05, 0.1, 0.2, 0.5, 1, 2, 5, 10, 15, 30, 60, 120, 300, 600] as const;
+const RULER_SUB_DIVS = [10, 5, 4, 2, 1] as const;
 
 export type RulerTick = { t: number; major: boolean };
 

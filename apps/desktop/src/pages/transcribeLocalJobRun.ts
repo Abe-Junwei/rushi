@@ -14,7 +14,7 @@ import {
   type TranscribeStatusPayload,
 } from "./transcribePreviewState";
 
-export type LocalTranscribeJobRunRefs = {
+type LocalTranscribeJobRunRefs = {
   activeJobId: { current: string | null };
   userCancelRequested: { current: boolean };
   transcribeStartedAtMs: { current: number };
@@ -22,7 +22,7 @@ export type LocalTranscribeJobRunRefs = {
   pollAbort: { current: AbortController | null };
 };
 
-export type LocalTranscribeJobRunCallbacks = {
+type LocalTranscribeJobRunCallbacks = {
   setSegments: (segments: SegmentDto[]) => void;
   setTranscribeProgress: (progress: TranscribeProgress | null) => void;
 };

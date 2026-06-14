@@ -102,11 +102,6 @@ export function normalizeFullWidthAlphanumeric(text: string): string {
   return out;
 }
 
-/** @deprecated 使用 normalizeFullWidthAlphanumeric + normalizeHalfWidthPunctuationToFullWidth */
-export function normalizeFullWidthAscii(text: string): string {
-  return normalizeFullWidthAlphanumeric(text);
-}
-
 /** 连续空白压成单空格；保留换行。 */
 export function collapseConsecutiveWhitespace(text: string): string {
   return text

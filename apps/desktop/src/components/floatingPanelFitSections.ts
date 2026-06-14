@@ -41,7 +41,7 @@ export function resolveDetailsSectionHeight(input: {
   return summaryPx + bodyChromePx + Math.max(1, input.lineCount) * linePx;
 }
 
-export function resolveSegmentListSectionHeight(input: {
+function resolveSegmentListSectionHeight(input: {
   rowCount: number;
   rowPx?: number;
   maxListPx?: number;
@@ -53,7 +53,7 @@ export function resolveSegmentListSectionHeight(input: {
 }
 
 /** 正文区 px（不含标题栏）→ 面板总高度。 */
-export function resolveFloatingPanelSectionsBodyPx(sections: FloatingPanelFitSection[]): number {
+function resolveFloatingPanelSectionsBodyPx(sections: FloatingPanelFitSection[]): number {
   let total = 0;
   for (const section of sections) {
     switch (section.kind) {
@@ -133,7 +133,7 @@ export function measureFloatingPanelBodyStack(node: HTMLElement): number {
 }
 
 /** FloatingPanelDialogRoot 的 pt-3 pb-6（不含子节点 margin；footer mt-3 由 stack 测量计入）。 */
-export const FLOATING_PANEL_DIALOG_ROOT_CHROME_PX = 36;
+const FLOATING_PANEL_DIALOG_ROOT_CHROME_PX = 36;
 
 export function resolveMeasuredPanelFitHeight(bodyScrollHeight: number): number {
   return (

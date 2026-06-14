@@ -21,7 +21,7 @@ export function reindexSegments(segs: SegmentDto[]): SegmentDto[] {
   return segs.map((x, j) => ({ ...x, idx: j }));
 }
 
-export function compareSegmentsByStartSec(
+function compareSegmentsByStartSec(
   a: Pick<SegmentDto, "start_sec" | "end_sec">,
   b: Pick<SegmentDto, "start_sec" | "end_sec">,
 ): number {
@@ -29,7 +29,7 @@ export function compareSegmentsByStartSec(
   return byStart !== 0 ? byStart : a.end_sec - b.end_sec;
 }
 
-export function isSegmentsSortedByStart(segs: Pick<SegmentDto, "start_sec" | "end_sec">[]): boolean {
+function isSegmentsSortedByStart(segs: Pick<SegmentDto, "start_sec" | "end_sec">[]): boolean {
   for (let i = 1; i < segs.length; i++) {
     if (compareSegmentsByStartSec(segs[i - 1], segs[i]) > 0) return false;
   }
@@ -49,7 +49,7 @@ export function findSegmentIndexByUid(segs: SegmentDto[], uid: string | null | u
 }
 
 /** 补全 ASR 语段缺省的显式 kind（手建语段已有 kind:"speech"）。 */
-export function ensureExplicitSegmentKinds(segs: SegmentDto[]): SegmentDto[] {
+function ensureExplicitSegmentKinds(segs: SegmentDto[]): SegmentDto[] {
   return segs.map((s) => {
     if (s.kind === "placeholder" || s.kind === "speech") return s;
     if (s.detail === "funasr_whole_track_fallback") return { ...s, kind: "placeholder" };

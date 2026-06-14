@@ -2,10 +2,10 @@
 export const WAVEFORM_MOUNT_DEFER_TIMEOUT_MS = 90_000;
 
 /** Shorter defer for long media — decode + Rust peaks run in parallel. */
-export const WAVEFORM_MOUNT_DEFER_SHORT_TIMEOUT_MS = 15_000;
+const WAVEFORM_MOUNT_DEFER_SHORT_TIMEOUT_MS = 15_000;
 
 /** Above this duration, skip peaks-first defer entirely. */
-export const WAVEFORM_MOUNT_DEFER_LONG_MEDIA_SEC = 30 * 60;
+const WAVEFORM_MOUNT_DEFER_LONG_MEDIA_SEC = 30 * 60;
 
 export function resolveWaveformMountDeferTimeoutMs(mediaDurationSec: number): number {
   if (mediaDurationSec > WAVEFORM_MOUNT_DEFER_LONG_MEDIA_SEC) {

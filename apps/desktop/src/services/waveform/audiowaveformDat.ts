@@ -8,7 +8,7 @@ const INT16_SCALE = 32767;
 
 export type WaveformDataInstance = WaveformData;
 
-export async function loadWaveformDatFromUrl(url: string): Promise<WaveformData> {
+async function loadWaveformDatFromUrl(url: string): Promise<WaveformData> {
   const res = await fetch(url);
   if (!res.ok) {
     throw new Error(`加载 peaks 失败: ${res.status}`);

@@ -1,0 +1,1566 @@
+{
+  "deleteCandidates": [
+    {
+      "name": "POST_TRANSCRIBE_STAGE_B_PREVIEW_STATIC_B…",
+      "file": "apps/desktop/src/components/floatingPanelSegmentListLayout.ts"
+    },
+    {
+      "name": "POST_TRANSCRIBE_STAGE_B_PREVIEW_LIST_MAX…",
+      "file": "apps/desktop/src/components/floatingPanelSegmentListLayout.ts"
+    },
+    {
+      "name": "POST_TRANSCRIBE_STAGE_B_CONSENT_STATIC_B…",
+      "file": "apps/desktop/src/components/floatingPanelSegmentListLayout.ts"
+    },
+    {
+      "name": "POST_TRANSCRIBE_STAGE_B_EMPTY_STATIC_BOD…",
+      "file": "apps/desktop/src/components/floatingPanelSegmentListLayout.ts"
+    },
+    {
+      "name": "LOCAL_SECRET_STORE_LABEL",
+      "file": "apps/desktop/src/config/environmentNavCopy.ts"
+    },
+    {
+      "name": "readTierScrollLayout",
+      "file": "apps/desktop/src/hooks/useTierScrollLayout.ts"
+    },
+    {
+      "name": "sidecarIsFreshBuildFromRoot",
+      "file": "apps/desktop/src/services/asr/localAsrModelCatalog.ts"
+    },
+    {
+      "name": "resolvePreferredLocalAsrHubModelId",
+      "file": "apps/desktop/src/services/asr/localAsrModelCatalog.ts"
+    },
+    {
+      "name": "activeSkuModelCached",
+      "file": "apps/desktop/src/services/asr/localAsrModelCatalog.ts"
+    },
+    {
+      "name": "LOCAL_ASR_RECOGNITION_LANGUAGE_STORAGE_K…",
+      "file": "apps/desktop/src/services/asr/localAsrRecognitionLanguage.ts"
+    },
+    {
+      "name": "localAsrRecognitionLanguageLabel",
+      "file": "apps/desktop/src/services/asr/localAsrRecognitionLanguage.ts"
+    },
+    {
+      "name": "DELIVERY_MODE_STEPS",
+      "file": "apps/desktop/src/services/deliveryModeSteps.ts"
+    },
+    {
+      "name": "formatCorrectionRuleHintLabel",
+      "file": "apps/desktop/src/services/editor/correctionRuleHints.ts"
+    },
+    {
+      "name": "normalizeFullWidthAscii",
+      "file": "apps/desktop/src/services/editor/segmentTextHygiene.ts"
+    },
+    {
+      "name": "buildStageARuleOnlyPreviewChanges",
+      "file": "apps/desktop/src/services/editor/stageAPreviewPipeline.ts"
+    },
+    {
+      "name": "getEnvironmentCapabilitySnapshot",
+      "file": "apps/desktop/src/services/environmentCapabilityCoordinator.ts"
+    },
+    {
+      "name": "subscribeEnvironmentCapabilitySnapshot",
+      "file": "apps/desktop/src/services/environmentCapabilityCoordinator.ts"
+    },
+    {
+      "name": "onboardingStepLabel",
+      "file": "apps/desktop/src/services/onboarding/onboardingChecklist.ts"
+    },
+    {
+      "name": "mergeSegmentStageKeepLeft",
+      "file": "apps/desktop/src/services/segmentStagePersist.ts"
+    },
+    {
+      "name": "isSegmentFinalized",
+      "file": "apps/desktop/src/services/segmentTextStage.ts"
+    },
+    {
+      "name": "resetShellCapabilitiesCacheForTests",
+      "file": "apps/desktop/src/services/shellCapabilities.ts"
+    },
+    {
+      "name": "setShellManagesBundledSidecarForTests",
+      "file": "apps/desktop/src/services/shellCapabilities.ts"
+    },
+    {
+      "name": "vocabularyNativeAdapterForProvider",
+      "file": "apps/desktop/src/services/stt/sttVocabularyBias.ts"
+    },
+    {
+      "name": "fetchAppVersion",
+      "file": "apps/desktop/src/tauri/appInfoApi.ts"
+    },
+    {
+      "name": "createEmptyTextFile",
+      "file": "apps/desktop/src/tauri/fileApi.ts"
+    },
+    {
+      "name": "postprocessRefineSegments",
+      "file": "apps/desktop/src/tauri/postprocessApi.ts"
+    },
+    {
+      "name": "getAsrRuntimePaths",
+      "file": "apps/desktop/src/tauri/projectApi.ts"
+    },
+    {
+      "name": "PEAKS_FORCE_REGENERATE_LONG_MEDIA_MIN_RA…",
+      "file": "apps/desktop/src/utils/peakMediaDuration.ts"
+    },
+    {
+      "name": "LONG_MEDIA_OPEN_FIT_ALL_SEC",
+      "file": "apps/desktop/src/utils/pxPerSec.ts"
+    },
+    {
+      "name": "p1RegionFillColor",
+      "file": "apps/desktop/src/utils/segmentChrome.ts"
+    },
+    {
+      "name": "segmentCardChrome",
+      "file": "apps/desktop/src/utils/segmentChrome.ts"
+    },
+    {
+      "name": "SEGMENT_LIST_VIRTUAL_PIN_MAX_DISTANCE",
+      "file": "apps/desktop/src/utils/segmentListVirtualWindow.ts"
+    },
+    {
+      "name": "segmentBoundsForPersist",
+      "file": "apps/desktop/src/utils/segmentMediaSanitize.ts"
+    },
+    {
+      "name": "resolveSegmentSelectionRange",
+      "file": "apps/desktop/src/utils/segmentSelection.ts"
+    },
+    {
+      "name": "computeAlignScrollPxForTimeSec",
+      "file": "apps/desktop/src/utils/waveformOverviewGeometry.ts"
+    },
+    {
+      "name": "WAVEFORM_RULER_BAND_HEIGHT_PX",
+      "file": "apps/desktop/src/utils/waveformPeaksStageMetrics.ts"
+    },
+    {
+      "name": "WAVEFORM_PLAYBACK_RATE_MIN",
+      "file": "apps/desktop/src/utils/waveformPlaybackRate.ts"
+    },
+    {
+      "name": "WAVEFORM_PLAYBACK_RATE_MAX",
+      "file": "apps/desktop/src/utils/waveformPlaybackRate.ts"
+    },
+    {
+      "name": "isWaveformPlaybackRatePreset",
+      "file": "apps/desktop/src/utils/waveformPlaybackRate.ts"
+    },
+    {
+      "name": "WAVEFORM_SEGMENT_LANE_GAP_PX",
+      "file": "apps/desktop/src/utils/waveformSegmentBounds.ts"
+    },
+    {
+      "name": "resolveWaveformRulerView",
+      "file": "apps/desktop/src/utils/waveformViewport.ts"
+    },
+    {
+      "name": "ColorToken",
+      "file": "apps/desktop/src/config/tokens.ts"
+    },
+    {
+      "name": "LexiconBundleConflictItem",
+      "file": "apps/desktop/src/pages/useLexiconBundleController.ts"
+    },
+    {
+      "name": "ProjectPanelShellApi",
+      "file": "apps/desktop/src/pages/useProjectPanelShell.ts"
+    },
+    {
+      "name": "WaveformDataInstance",
+      "file": "apps/desktop/src/services/waveform/audiowaveformDat.ts"
+    },
+    {
+      "name": "SttApiKeyRequest",
+      "file": "apps/desktop/src/tauri/sttApi.ts"
+    }
+  ],
+  "unexportCandidates": [
+    {
+      "name": "resolveSegmentListSectionHeight",
+      "file": "apps/desktop/src/components/floatingPanelFitSections.ts"
+    },
+    {
+      "name": "resolveFloatingPanelSectionsBodyPx",
+      "file": "apps/desktop/src/components/floatingPanelFitSections.ts"
+    },
+    {
+      "name": "FLOATING_PANEL_DIALOG_ROOT_CHROME_PX",
+      "file": "apps/desktop/src/components/floatingPanelFitSections.ts"
+    },
+    {
+      "name": "POST_TRANSCRIBE_STAGE_B_HINT_EXTRA_PX",
+      "file": "apps/desktop/src/components/floatingPanelSegmentListLayout.ts"
+    },
+    {
+      "name": "resolveLexiconHealthPanelHeight",
+      "file": "apps/desktop/src/components/floatingPanelSegmentListLayout.ts"
+    },
+    {
+      "name": "FloatingPanelSegmentMeta",
+      "file": "apps/desktop/src/components/FloatingPanelSegmentRow.tsx"
+    },
+    {
+      "name": "POST_TRANSCRIBE_STAGE_B_PANEL_ID",
+      "file": "apps/desktop/src/components/PostTranscribeStageBDialog.tsx"
+    },
+    {
+      "name": "SEGMENT_TEXT_BODY_ATTR",
+      "file": "apps/desktop/src/components/segmentRow/SegmentRowTextField.tsx"
+    },
+    {
+      "name": "DIALOG_Z",
+      "file": "apps/desktop/src/config/dialogStack.ts"
+    },
+    {
+      "name": "DIALOG_OVERLAY_CLASS",
+      "file": "apps/desktop/src/config/dialogStack.ts"
+    },
+    {
+      "name": "DEFAULT_ASR_BASE_URL",
+      "file": "apps/desktop/src/config/env.ts"
+    },
+    {
+      "name": "WAVEFORM_OVERLAY_SUPPRESS_CLICK_MS",
+      "file": "apps/desktop/src/hooks/useWaveformSegmentDrag.ts"
+    },
+    {
+      "name": "WAVEFORM_OVERLAY_DRAG_MOVE_THRESHOLD_PX",
+      "file": "apps/desktop/src/hooks/useWaveformSegmentDrag.ts"
+    },
+    {
+      "name": "isWorkbenchToolbarCompactViewport",
+      "file": "apps/desktop/src/hooks/useWorkbenchToolbarCompact.ts"
+    },
+    {
+      "name": "overlayPointerActions",
+      "file": "apps/desktop/src/hooks/waveformSegmentDragHelpers.ts"
+    },
+    {
+      "name": "snapTargetsForOverlay",
+      "file": "apps/desktop/src/hooks/waveformSegmentDragHelpers.ts"
+    },
+    {
+      "name": "prepareSegmentTextDraftsForFlush",
+      "file": "apps/desktop/src/pages/flushSegmentTextDrafts.ts"
+    },
+    {
+      "name": "collectSegmentTextDraftFlushUpdates",
+      "file": "apps/desktop/src/pages/flushSegmentTextDrafts.ts"
+    },
+    {
+      "name": "localRuntimeDevReloadHint",
+      "file": "apps/desktop/src/pages/localRuntimeSetupHelpers.ts"
+    },
+    {
+      "name": "compareSegmentsByStartSec",
+      "file": "apps/desktop/src/pages/segmentListHelpers.ts"
+    },
+    {
+      "name": "isSegmentsSortedByStart",
+      "file": "apps/desktop/src/pages/segmentListHelpers.ts"
+    },
+    {
+      "name": "ensureExplicitSegmentKinds",
+      "file": "apps/desktop/src/pages/segmentListHelpers.ts"
+    },
+    {
+      "name": "TRANSCRIBE_POLL_MS",
+      "file": "apps/desktop/src/pages/transcribeAsyncPoll.ts"
+    },
+    {
+      "name": "TRANSCRIBE_ASYNC_MAX_WAIT_MS",
+      "file": "apps/desktop/src/pages/transcribeAsyncPoll.ts"
+    },
+    {
+      "name": "mockAsyncPollDone",
+      "file": "apps/desktop/src/pages/transcribeJobController.testHelpers.ts"
+    },
+    {
+      "name": "TRANSCRIBE_ASYNC_FALLBACK_HINT_DEV",
+      "file": "apps/desktop/src/pages/transcribePreviewState.ts"
+    },
+    {
+      "name": "TRANSCRIBE_ASYNC_FALLBACK_HINT_PACKAGED",
+      "file": "apps/desktop/src/pages/transcribePreviewState.ts"
+    },
+    {
+      "name": "runZoomToFitAll",
+      "file": "apps/desktop/src/pages/useTranscriptionViewportFit.ts"
+    },
+    {
+      "name": "selectedModelMatchesSidecar",
+      "file": "apps/desktop/src/services/asr/localAsrModelCatalog.ts"
+    },
+    {
+      "name": "sidecarMemoryModelMatchesConfig",
+      "file": "apps/desktop/src/services/asr/localAsrModelCatalog.ts"
+    },
+    {
+      "name": "asrLoopbackPort",
+      "file": "apps/desktop/src/services/asr/loopbackFetch.ts"
+    },
+    {
+      "name": "canUseTauriLoopbackProxy",
+      "file": "apps/desktop/src/services/asr/loopbackFetch.ts"
+    },
+    {
+      "name": "formatLoopbackInvokeError",
+      "file": "apps/desktop/src/services/asr/loopbackFetch.ts"
+    },
+    {
+      "name": "isCorrectionLearnNoiseChar",
+      "file": "apps/desktop/src/services/correctionInferPair.ts"
+    },
+    {
+      "name": "resolveExportPolishBodyBlockReason",
+      "file": "apps/desktop/src/services/exportDocxPolish.ts"
+    },
+    {
+      "name": "countSingleCharRulesInHints",
+      "file": "apps/desktop/src/services/exportPolishDiagnostics.ts"
+    },
+    {
+      "name": "EXPORT_POLISH_MIN_LINES_PER_PARAGRAPH",
+      "file": "apps/desktop/src/services/exportPolishParagraphs.ts"
+    },
+    {
+      "name": "excerptLine",
+      "file": "apps/desktop/src/services/exportPolishPipeline.ts"
+    },
+    {
+      "name": "normalizeSpreadsheetClipboard",
+      "file": "apps/desktop/src/services/glossaryPasteSplit.ts"
+    },
+    {
+      "name": "GLOSSARY_DATA_CHANGED",
+      "file": "apps/desktop/src/services/glossaryRefresh.ts"
+    },
+    {
+      "name": "findMostRecentWorkspaceFile",
+      "file": "apps/desktop/src/services/lastWorkspace.ts"
+    },
+    {
+      "name": "bumpLlmEnvConnectionVerifiedSeq",
+      "file": "apps/desktop/src/services/llm/llmEnvRuntimeStore.ts"
+    },
+    {
+      "name": "vendorLabel",
+      "file": "apps/desktop/src/services/llm/llmEnvStatusCopy.ts"
+    },
+    {
+      "name": "writeOnboardingProgress",
+      "file": "apps/desktop/src/services/onboarding/onboardingProgress.ts"
+    },
+    {
+      "name": "DEFAULT_SEGMENT_STAGE_FILTER",
+      "file": "apps/desktop/src/services/segmentListFilter.ts"
+    },
+    {
+      "name": "segmentMatchesListFilter",
+      "file": "apps/desktop/src/services/segmentListFilter.ts"
+    },
+    {
+      "name": "withFinalizedStage",
+      "file": "apps/desktop/src/services/segmentStagePersist.ts"
+    },
+    {
+      "name": "withManualTranscribeStage",
+      "file": "apps/desktop/src/services/segmentStagePersist.ts"
+    },
+    {
+      "name": "withAutoTranscribeStage",
+      "file": "apps/desktop/src/services/segmentStagePersist.ts"
+    },
+    {
+      "name": "allSegmentsAutoTranscribe",
+      "file": "apps/desktop/src/services/segmentStagePersist.ts"
+    },
+    {
+      "name": "lastGrapheme",
+      "file": "apps/desktop/src/services/text/grapheme.ts"
+    },
+    {
+      "name": "TRANSCRIBE_EMPTY_OUTPUT_ERROR_CODES",
+      "file": "apps/desktop/src/services/transcribeDiag.ts"
+    },
+    {
+      "name": "loadWaveformDatFromUrl",
+      "file": "apps/desktop/src/services/waveform/audiowaveformDat.ts"
+    },
+    {
+      "name": "WAVEFORM_MINIMAP_PEAK_INSET_Y_RATIO",
+      "file": "apps/desktop/src/services/waveform/drawWaveformMinimap.ts"
+    },
+    {
+      "name": "RULER_NICE_STEPS",
+      "file": "apps/desktop/src/services/waveform/waveformRulerTicks.ts"
+    },
+    {
+      "name": "RULER_SUB_DIVS",
+      "file": "apps/desktop/src/services/waveform/waveformRulerTicks.ts"
+    },
+    {
+      "name": "parseGlossaryTermDto",
+      "file": "apps/desktop/src/tauri/glossaryApi.ts"
+    },
+    {
+      "name": "parseGlossaryImportResult",
+      "file": "apps/desktop/src/tauri/glossaryApi.ts"
+    },
+    {
+      "name": "executeEditorLowConfidenceJump",
+      "file": "apps/desktop/src/utils/executeEditorShortcut.ts"
+    },
+    {
+      "name": "isGlossaryPromptDismissed",
+      "file": "apps/desktop/src/utils/glossaryPromptDismiss.ts"
+    },
+    {
+      "name": "PEAKS_MEDIA_MIN_COVERAGE_RATIO",
+      "file": "apps/desktop/src/utils/peakMediaDuration.ts"
+    },
+    {
+      "name": "PEAKS_FORCE_REGENERATE_LONG_MEDIA_SEC",
+      "file": "apps/desktop/src/utils/peakMediaDuration.ts"
+    },
+    {
+      "name": "VIEWPORT_FIT_HORIZONTAL_PADDING_PX",
+      "file": "apps/desktop/src/utils/pxPerSec.ts"
+    },
+    {
+      "name": "MAX_WAVESURFER_PEAK_COLUMNS",
+      "file": "apps/desktop/src/utils/pxPerSec.ts"
+    },
+    {
+      "name": "MAX_WAVESURFER_CANVAS_WIDTH_PX",
+      "file": "apps/desktop/src/utils/pxPerSec.ts"
+    },
+    {
+      "name": "computeFitAllFillGapPx",
+      "file": "apps/desktop/src/utils/pxPerSec.ts"
+    },
+    {
+      "name": "fitSelectionViewportWidthPx",
+      "file": "apps/desktop/src/utils/pxPerSec.ts"
+    },
+    {
+      "name": "fitSelectionTargetWidthPx",
+      "file": "apps/desktop/src/utils/pxPerSec.ts"
+    },
+    {
+      "name": "SEGMENT_NEIGHBOR_BOUND_EPS_SEC",
+      "file": "apps/desktop/src/utils/segmentGapPolicy.ts"
+    },
+    {
+      "name": "SEGMENT_MIN_INSERT_GAP_SEC",
+      "file": "apps/desktop/src/utils/segmentGapPolicy.ts"
+    },
+    {
+      "name": "SEGMENT_INSERT_AFTER_TAIL_SEC",
+      "file": "apps/desktop/src/utils/segmentGapPolicy.ts"
+    },
+    {
+      "name": "SEGMENT_LANE_ROW_MIN_PX",
+      "file": "apps/desktop/src/utils/segmentLayout.ts"
+    },
+    {
+      "name": "SEGMENT_LANE_ROW_MAX_PX",
+      "file": "apps/desktop/src/utils/segmentLayout.ts"
+    },
+    {
+      "name": "SEGMENT_LANE_OVERLAP_SEPARATE_SEC",
+      "file": "apps/desktop/src/utils/segmentLayout.ts"
+    },
+    {
+      "name": "SEGMENT_LANE_BOUNDARY_OVERLAP_MAX_SEC",
+      "file": "apps/desktop/src/utils/segmentLayout.ts"
+    },
+    {
+      "name": "isSequentialBoundaryOverlap",
+      "file": "apps/desktop/src/utils/segmentLayout.ts"
+    },
+    {
+      "name": "segmentSpansNeedSeparateLanes",
+      "file": "apps/desktop/src/utils/segmentLayout.ts"
+    },
+    {
+      "name": "SEGMENT_LIST_ROW_GAP_PX",
+      "file": "apps/desktop/src/utils/segmentListVirtualWindow.ts"
+    },
+    {
+      "name": "SEGMENT_LIST_RANGE_DRAG_SLOP_PX",
+      "file": "apps/desktop/src/utils/segmentListVirtualWindow.ts"
+    },
+    {
+      "name": "SEGMENT_LIST_VIRTUAL_MAX_PIN_MERGE_SPAN",
+      "file": "apps/desktop/src/utils/segmentListVirtualWindow.ts"
+    },
+    {
+      "name": "segmentIdxToDisplayIndex",
+      "file": "apps/desktop/src/utils/segmentListVirtualWindow.ts"
+    },
+    {
+      "name": "displayIndexToSegmentIdx",
+      "file": "apps/desktop/src/utils/segmentListVirtualWindow.ts"
+    },
+    {
+      "name": "readSegmentListScrollMetrics",
+      "file": "apps/desktop/src/utils/segmentListVirtualWindow.ts"
+    },
+    {
+      "name": "SEGMENT_PLAYBACK_END_EPSILON_SEC",
+      "file": "apps/desktop/src/utils/segmentPlaybackBound.ts"
+    },
+    {
+      "name": "SEGMENT_TIME_OVERLAP_EPS_SEC",
+      "file": "apps/desktop/src/utils/segmentTimeRange.ts"
+    },
+    {
+      "name": "WAVEFORM_SEGMENT_SNAP_THRESHOLD_PX",
+      "file": "apps/desktop/src/utils/segmentTimeSnap.ts"
+    },
+    {
+      "name": "WAVEFORM_MOUNT_DEFER_SHORT_TIMEOUT_MS",
+      "file": "apps/desktop/src/utils/waveformMountPolicy.ts"
+    },
+    {
+      "name": "WAVEFORM_MOUNT_DEFER_LONG_MEDIA_SEC",
+      "file": "apps/desktop/src/utils/waveformMountPolicy.ts"
+    },
+    {
+      "name": "timelinePxToViewportPx",
+      "file": "apps/desktop/src/utils/waveformProjection.ts"
+    },
+    {
+      "name": "REGION_ACTION_PLAY_BTN_PX",
+      "file": "apps/desktop/src/utils/waveformRegionActionOverlay.ts"
+    },
+    {
+      "name": "REGION_ACTION_LOOP_BTN_PX",
+      "file": "apps/desktop/src/utils/waveformRegionActionOverlay.ts"
+    },
+    {
+      "name": "REGION_ACTION_BTN_GAP_PX",
+      "file": "apps/desktop/src/utils/waveformRegionActionOverlay.ts"
+    },
+    {
+      "name": "REGION_ID_PREFIX",
+      "file": "apps/desktop/src/utils/waveformRegionId.ts"
+    },
+    {
+      "name": "WAVEFORM_SEGMENT_EDGE_HIT_PX",
+      "file": "apps/desktop/src/utils/waveformSegmentBounds.ts"
+    },
+    {
+      "name": "isDominantWaveformSpanSegment",
+      "file": "apps/desktop/src/utils/waveformSegmentBounds.ts"
+    },
+    {
+      "name": "resolveOverlaySelectionRange",
+      "file": "apps/desktop/src/utils/waveformSegmentOverlayVisibility.ts"
+    },
+    {
+      "name": "writeWaveformScrollLayerWidth",
+      "file": "apps/desktop/src/utils/waveformViewportStretch.ts"
+    },
+    {
+      "name": "sliderMinTolerancePx",
+      "file": "apps/desktop/src/utils/waveformZoomBarState.ts"
+    },
+    {
+      "name": "wasFitAllPxPerSecForTimelineWidth",
+      "file": "apps/desktop/src/utils/waveformZoomBarState.ts"
+    },
+    {
+      "name": "isNearQuantizedFitSelectionPxPerSec",
+      "file": "apps/desktop/src/utils/waveformZoomBarState.ts"
+    },
+    {
+      "name": "deriveWaveformZoomViewMode",
+      "file": "apps/desktop/src/utils/waveformZoomBarState.ts"
+    },
+    {
+      "name": "resolveWaveSurferCspNonce",
+      "file": "apps/desktop/src/utils/waveSurferShadowCspNonce.ts"
+    },
+    {
+      "name": "EditLogTextChange",
+      "file": "apps/desktop/src/components/editor/useEditorEditHistory.ts"
+    },
+    {
+      "name": "FloatingPanelPhasePersist",
+      "file": "apps/desktop/src/components/floatingPanelPersist.ts"
+    },
+    {
+      "name": "UnsavedGateIntent",
+      "file": "apps/desktop/src/components/UnsavedCloseDialog.tsx"
+    },
+    {
+      "name": "TranscriptionSegment",
+      "file": "apps/desktop/src/contracts/transcription.ts"
+    },
+    {
+      "name": "TranscriptionError",
+      "file": "apps/desktop/src/contracts/transcription.ts"
+    },
+    {
+      "name": "DeferredRendererPersist",
+      "file": "apps/desktop/src/hooks/useDeferredRendererState.ts"
+    },
+    {
+      "name": "NeighborContextRole",
+      "file": "apps/desktop/src/pages/autoPunctuateNeighbors.ts"
+    },
+    {
+      "name": "SegmentTextDraftFlushUpdate",
+      "file": "apps/desktop/src/pages/flushSegmentTextDrafts.ts"
+    },
+    {
+      "name": "LocalTranscribeJobRunRefs",
+      "file": "apps/desktop/src/pages/transcribeLocalJobRun.ts"
+    },
+    {
+      "name": "LocalTranscribeJobRunCallbacks",
+      "file": "apps/desktop/src/pages/transcribeLocalJobRun.ts"
+    },
+    {
+      "name": "AsrHealthCatalogHooks",
+      "file": "apps/desktop/src/pages/useAsrHealthPoll.ts"
+    },
+    {
+      "name": "AutoPunctuateDialogState",
+      "file": "apps/desktop/src/pages/useAutoPunctuateController.ts"
+    },
+    {
+      "name": "DuplicateImportDecision",
+      "file": "apps/desktop/src/pages/useProjectImportDuplicateController.ts"
+    },
+    {
+      "name": "SegmentDecorator",
+      "file": "apps/desktop/src/plugin-system/types.ts"
+    },
+    {
+      "name": "PluginPermission",
+      "file": "apps/desktop/src/plugin-system/types.ts"
+    },
+    {
+      "name": "AsrEnvTone",
+      "file": "apps/desktop/src/services/asr/asrEnvStatus.ts"
+    },
+    {
+      "name": "AsrSetupPortStatus",
+      "file": "apps/desktop/src/services/asr/asrSetupContract.ts"
+    },
+    {
+      "name": "AsrSetupHealthSnapshot",
+      "file": "apps/desktop/src/services/asr/asrSetupContract.ts"
+    },
+    {
+      "name": "AsrSetupSidecarIntegrity",
+      "file": "apps/desktop/src/services/asr/asrSetupContract.ts"
+    },
+    {
+      "name": "AsrSupervisorPhase",
+      "file": "apps/desktop/src/services/asr/asrSetupContract.ts"
+    },
+    {
+      "name": "DeliveryModeStepId",
+      "file": "apps/desktop/src/services/deliveryModeSteps.ts"
+    },
+    {
+      "name": "ExportPolishLlmLineOutcome",
+      "file": "apps/desktop/src/services/exportPolishDiagnostics.ts"
+    },
+    {
+      "name": "ExportPolishLineDiagnostic",
+      "file": "apps/desktop/src/services/exportPolishDiagnostics.ts"
+    },
+    {
+      "name": "LocalRuntimeInstalledStatus",
+      "file": "apps/desktop/src/services/localRuntime/localRuntimeContract.ts"
+    },
+    {
+      "name": "LocalRuntimeInstallPhase",
+      "file": "apps/desktop/src/services/localRuntime/localRuntimeContract.ts"
+    },
+    {
+      "name": "LocalRuntimeManifestStatus",
+      "file": "apps/desktop/src/services/localRuntime/localRuntimeContract.ts"
+    },
+    {
+      "name": "LocalRuntimeInstalledInfo",
+      "file": "apps/desktop/src/services/localRuntime/localRuntimeContract.ts"
+    },
+    {
+      "name": "QualityEvalReportItem",
+      "file": "apps/desktop/src/services/quality/qualityEvalReport.ts"
+    },
+    {
+      "name": "SttOnlineAuthStyle",
+      "file": "apps/desktop/src/services/stt/sttOnlineProviderContract/types.ts"
+    },
+    {
+      "name": "SttOnlineProviderCapability",
+      "file": "apps/desktop/src/services/stt/sttOnlineProviderContract/types.ts"
+    },
+    {
+      "name": "ExternalSttOnlineHealthState",
+      "file": "apps/desktop/src/services/stt/sttOnlineProviderContract/types.ts"
+    },
+    {
+      "name": "TranscribeTimelineEntry",
+      "file": "apps/desktop/src/services/transcribeDiag.ts"
+    },
+    {
+      "name": "PostprocessRefineSegmentsRequest",
+      "file": "apps/desktop/src/tauri/postprocessApi.ts"
+    },
+    {
+      "name": "PostprocessRefineSegmentsResponse",
+      "file": "apps/desktop/src/tauri/postprocessApi.ts"
+    },
+    {
+      "name": "LexiconEvidence",
+      "file": "apps/desktop/src/tauri/postprocessApi.ts"
+    },
+    {
+      "name": "LexiconPackMeta",
+      "file": "apps/desktop/src/tauri/postprocessApi.ts"
+    },
+    {
+      "name": "StageBLexiconDropStats",
+      "file": "apps/desktop/src/tauri/postprocessApi.ts"
+    },
+    {
+      "name": "AsrRuntimePaths",
+      "file": "apps/desktop/src/tauri/projectApi.ts"
+    },
+    {
+      "name": "SegmentSelectionState",
+      "file": "apps/desktop/src/utils/segmentSelection.ts"
+    },
+    {
+      "name": "WaveformRulerView",
+      "file": "apps/desktop/src/utils/waveformViewport.ts"
+    },
+    {
+      "name": "WaveformZoomViewMode",
+      "file": "apps/desktop/src/utils/waveformZoomBarState.ts"
+    }
+  ],
+  "byFile": [
+    {
+      "file": "apps/desktop/src/utils/pxPerSec.ts",
+      "del": [
+        "LONG_MEDIA_OPEN_FIT_ALL_SEC"
+      ],
+      "un": [
+        "VIEWPORT_FIT_HORIZONTAL_PADDING_PX",
+        "MAX_WAVESURFER_PEAK_COLUMNS",
+        "MAX_WAVESURFER_CANVAS_WIDTH_PX",
+        "computeFitAllFillGapPx",
+        "fitSelectionViewportWidthPx",
+        "fitSelectionTargetWidthPx"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/utils/segmentListVirtualWindow.ts",
+      "del": [
+        "SEGMENT_LIST_VIRTUAL_PIN_MAX_DISTANCE"
+      ],
+      "un": [
+        "SEGMENT_LIST_ROW_GAP_PX",
+        "SEGMENT_LIST_RANGE_DRAG_SLOP_PX",
+        "SEGMENT_LIST_VIRTUAL_MAX_PIN_MERGE_SPAN",
+        "segmentIdxToDisplayIndex",
+        "displayIndexToSegmentIdx",
+        "readSegmentListScrollMetrics"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/components/floatingPanelSegmentListLayout.ts",
+      "del": [
+        "POST_TRANSCRIBE_STAGE_B_PREVIEW_STATIC_B…",
+        "POST_TRANSCRIBE_STAGE_B_PREVIEW_LIST_MAX…",
+        "POST_TRANSCRIBE_STAGE_B_CONSENT_STATIC_B…",
+        "POST_TRANSCRIBE_STAGE_B_EMPTY_STATIC_BOD…"
+      ],
+      "un": [
+        "POST_TRANSCRIBE_STAGE_B_HINT_EXTRA_PX",
+        "resolveLexiconHealthPanelHeight"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/tauri/postprocessApi.ts",
+      "del": [
+        "postprocessRefineSegments"
+      ],
+      "un": [
+        "PostprocessRefineSegmentsRequest",
+        "PostprocessRefineSegmentsResponse",
+        "LexiconEvidence",
+        "LexiconPackMeta",
+        "StageBLexiconDropStats"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/utils/segmentLayout.ts",
+      "del": [],
+      "un": [
+        "SEGMENT_LANE_ROW_MIN_PX",
+        "SEGMENT_LANE_ROW_MAX_PX",
+        "SEGMENT_LANE_OVERLAP_SEPARATE_SEC",
+        "SEGMENT_LANE_BOUNDARY_OVERLAP_MAX_SEC",
+        "isSequentialBoundaryOverlap",
+        "segmentSpansNeedSeparateLanes"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/services/asr/localAsrModelCatalog.ts",
+      "del": [
+        "sidecarIsFreshBuildFromRoot",
+        "resolvePreferredLocalAsrHubModelId",
+        "activeSkuModelCached"
+      ],
+      "un": [
+        "selectedModelMatchesSidecar",
+        "sidecarMemoryModelMatchesConfig"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/services/segmentStagePersist.ts",
+      "del": [
+        "mergeSegmentStageKeepLeft"
+      ],
+      "un": [
+        "withFinalizedStage",
+        "withManualTranscribeStage",
+        "withAutoTranscribeStage",
+        "allSegmentsAutoTranscribe"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/utils/waveformZoomBarState.ts",
+      "del": [],
+      "un": [
+        "sliderMinTolerancePx",
+        "wasFitAllPxPerSecForTimelineWidth",
+        "isNearQuantizedFitSelectionPxPerSec",
+        "deriveWaveformZoomViewMode",
+        "WaveformZoomViewMode"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/services/asr/asrSetupContract.ts",
+      "del": [],
+      "un": [
+        "AsrSetupPortStatus",
+        "AsrSetupHealthSnapshot",
+        "AsrSetupSidecarIntegrity",
+        "AsrSupervisorPhase"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/services/localRuntime/localRuntimeContract.ts",
+      "del": [],
+      "un": [
+        "LocalRuntimeInstalledStatus",
+        "LocalRuntimeInstallPhase",
+        "LocalRuntimeManifestStatus",
+        "LocalRuntimeInstalledInfo"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/utils/peakMediaDuration.ts",
+      "del": [
+        "PEAKS_FORCE_REGENERATE_LONG_MEDIA_MIN_RA…"
+      ],
+      "un": [
+        "PEAKS_MEDIA_MIN_COVERAGE_RATIO",
+        "PEAKS_FORCE_REGENERATE_LONG_MEDIA_SEC"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/utils/waveformPlaybackRate.ts",
+      "del": [
+        "WAVEFORM_PLAYBACK_RATE_MIN",
+        "WAVEFORM_PLAYBACK_RATE_MAX",
+        "isWaveformPlaybackRatePreset"
+      ],
+      "un": []
+    },
+    {
+      "file": "apps/desktop/src/utils/waveformSegmentBounds.ts",
+      "del": [
+        "WAVEFORM_SEGMENT_LANE_GAP_PX"
+      ],
+      "un": [
+        "WAVEFORM_SEGMENT_EDGE_HIT_PX",
+        "isDominantWaveformSpanSegment"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/components/floatingPanelFitSections.ts",
+      "del": [],
+      "un": [
+        "resolveSegmentListSectionHeight",
+        "resolveFloatingPanelSectionsBodyPx",
+        "FLOATING_PANEL_DIALOG_ROOT_CHROME_PX"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/pages/flushSegmentTextDrafts.ts",
+      "del": [],
+      "un": [
+        "prepareSegmentTextDraftsForFlush",
+        "collectSegmentTextDraftFlushUpdates",
+        "SegmentTextDraftFlushUpdate"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/pages/segmentListHelpers.ts",
+      "del": [],
+      "un": [
+        "compareSegmentsByStartSec",
+        "isSegmentsSortedByStart",
+        "ensureExplicitSegmentKinds"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/services/asr/loopbackFetch.ts",
+      "del": [],
+      "un": [
+        "asrLoopbackPort",
+        "canUseTauriLoopbackProxy",
+        "formatLoopbackInvokeError"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/services/exportPolishDiagnostics.ts",
+      "del": [],
+      "un": [
+        "countSingleCharRulesInHints",
+        "ExportPolishLlmLineOutcome",
+        "ExportPolishLineDiagnostic"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/utils/segmentGapPolicy.ts",
+      "del": [],
+      "un": [
+        "SEGMENT_NEIGHBOR_BOUND_EPS_SEC",
+        "SEGMENT_MIN_INSERT_GAP_SEC",
+        "SEGMENT_INSERT_AFTER_TAIL_SEC"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/utils/waveformRegionActionOverlay.ts",
+      "del": [],
+      "un": [
+        "REGION_ACTION_PLAY_BTN_PX",
+        "REGION_ACTION_LOOP_BTN_PX",
+        "REGION_ACTION_BTN_GAP_PX"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/services/stt/sttOnlineProviderContract/types.ts",
+      "del": [],
+      "un": [
+        "SttOnlineAuthStyle",
+        "SttOnlineProviderCapability",
+        "ExternalSttOnlineHealthState"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/services/asr/localAsrRecognitionLanguage.ts",
+      "del": [
+        "LOCAL_ASR_RECOGNITION_LANGUAGE_STORAGE_K…",
+        "localAsrRecognitionLanguageLabel"
+      ],
+      "un": []
+    },
+    {
+      "file": "apps/desktop/src/services/deliveryModeSteps.ts",
+      "del": [
+        "DELIVERY_MODE_STEPS"
+      ],
+      "un": [
+        "DeliveryModeStepId"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/services/environmentCapabilityCoordinator.ts",
+      "del": [
+        "getEnvironmentCapabilitySnapshot",
+        "subscribeEnvironmentCapabilitySnapshot"
+      ],
+      "un": []
+    },
+    {
+      "file": "apps/desktop/src/services/shellCapabilities.ts",
+      "del": [
+        "resetShellCapabilitiesCacheForTests",
+        "setShellManagesBundledSidecarForTests"
+      ],
+      "un": []
+    },
+    {
+      "file": "apps/desktop/src/tauri/projectApi.ts",
+      "del": [
+        "getAsrRuntimePaths"
+      ],
+      "un": [
+        "AsrRuntimePaths"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/utils/segmentChrome.ts",
+      "del": [
+        "p1RegionFillColor",
+        "segmentCardChrome"
+      ],
+      "un": []
+    },
+    {
+      "file": "apps/desktop/src/utils/segmentSelection.ts",
+      "del": [
+        "resolveSegmentSelectionRange"
+      ],
+      "un": [
+        "SegmentSelectionState"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/utils/waveformViewport.ts",
+      "del": [
+        "resolveWaveformRulerView"
+      ],
+      "un": [
+        "WaveformRulerView"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/services/waveform/audiowaveformDat.ts",
+      "del": [
+        "WaveformDataInstance"
+      ],
+      "un": [
+        "loadWaveformDatFromUrl"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/config/dialogStack.ts",
+      "del": [],
+      "un": [
+        "DIALOG_Z",
+        "DIALOG_OVERLAY_CLASS"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/hooks/useWaveformSegmentDrag.ts",
+      "del": [],
+      "un": [
+        "WAVEFORM_OVERLAY_SUPPRESS_CLICK_MS",
+        "WAVEFORM_OVERLAY_DRAG_MOVE_THRESHOLD_PX"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/hooks/waveformSegmentDragHelpers.ts",
+      "del": [],
+      "un": [
+        "overlayPointerActions",
+        "snapTargetsForOverlay"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/pages/transcribeAsyncPoll.ts",
+      "del": [],
+      "un": [
+        "TRANSCRIBE_POLL_MS",
+        "TRANSCRIBE_ASYNC_MAX_WAIT_MS"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/pages/transcribePreviewState.ts",
+      "del": [],
+      "un": [
+        "TRANSCRIBE_ASYNC_FALLBACK_HINT_DEV",
+        "TRANSCRIBE_ASYNC_FALLBACK_HINT_PACKAGED"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/services/segmentListFilter.ts",
+      "del": [],
+      "un": [
+        "DEFAULT_SEGMENT_STAGE_FILTER",
+        "segmentMatchesListFilter"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/services/transcribeDiag.ts",
+      "del": [],
+      "un": [
+        "TRANSCRIBE_EMPTY_OUTPUT_ERROR_CODES",
+        "TranscribeTimelineEntry"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/services/waveform/waveformRulerTicks.ts",
+      "del": [],
+      "un": [
+        "RULER_NICE_STEPS",
+        "RULER_SUB_DIVS"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/tauri/glossaryApi.ts",
+      "del": [],
+      "un": [
+        "parseGlossaryTermDto",
+        "parseGlossaryImportResult"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/utils/waveformMountPolicy.ts",
+      "del": [],
+      "un": [
+        "WAVEFORM_MOUNT_DEFER_SHORT_TIMEOUT_MS",
+        "WAVEFORM_MOUNT_DEFER_LONG_MEDIA_SEC"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/contracts/transcription.ts",
+      "del": [],
+      "un": [
+        "TranscriptionSegment",
+        "TranscriptionError"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/pages/transcribeLocalJobRun.ts",
+      "del": [],
+      "un": [
+        "LocalTranscribeJobRunRefs",
+        "LocalTranscribeJobRunCallbacks"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/plugin-system/types.ts",
+      "del": [],
+      "un": [
+        "SegmentDecorator",
+        "PluginPermission"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/config/environmentNavCopy.ts",
+      "del": [
+        "LOCAL_SECRET_STORE_LABEL"
+      ],
+      "un": []
+    },
+    {
+      "file": "apps/desktop/src/hooks/useTierScrollLayout.ts",
+      "del": [
+        "readTierScrollLayout"
+      ],
+      "un": []
+    },
+    {
+      "file": "apps/desktop/src/services/editor/correctionRuleHints.ts",
+      "del": [
+        "formatCorrectionRuleHintLabel"
+      ],
+      "un": []
+    },
+    {
+      "file": "apps/desktop/src/services/editor/segmentTextHygiene.ts",
+      "del": [
+        "normalizeFullWidthAscii"
+      ],
+      "un": []
+    },
+    {
+      "file": "apps/desktop/src/services/editor/stageAPreviewPipeline.ts",
+      "del": [
+        "buildStageARuleOnlyPreviewChanges"
+      ],
+      "un": []
+    },
+    {
+      "file": "apps/desktop/src/services/onboarding/onboardingChecklist.ts",
+      "del": [
+        "onboardingStepLabel"
+      ],
+      "un": []
+    },
+    {
+      "file": "apps/desktop/src/services/segmentTextStage.ts",
+      "del": [
+        "isSegmentFinalized"
+      ],
+      "un": []
+    },
+    {
+      "file": "apps/desktop/src/services/stt/sttVocabularyBias.ts",
+      "del": [
+        "vocabularyNativeAdapterForProvider"
+      ],
+      "un": []
+    },
+    {
+      "file": "apps/desktop/src/tauri/appInfoApi.ts",
+      "del": [
+        "fetchAppVersion"
+      ],
+      "un": []
+    },
+    {
+      "file": "apps/desktop/src/tauri/fileApi.ts",
+      "del": [
+        "createEmptyTextFile"
+      ],
+      "un": []
+    },
+    {
+      "file": "apps/desktop/src/utils/segmentMediaSanitize.ts",
+      "del": [
+        "segmentBoundsForPersist"
+      ],
+      "un": []
+    },
+    {
+      "file": "apps/desktop/src/utils/waveformOverviewGeometry.ts",
+      "del": [
+        "computeAlignScrollPxForTimeSec"
+      ],
+      "un": []
+    },
+    {
+      "file": "apps/desktop/src/utils/waveformPeaksStageMetrics.ts",
+      "del": [
+        "WAVEFORM_RULER_BAND_HEIGHT_PX"
+      ],
+      "un": []
+    },
+    {
+      "file": "apps/desktop/src/config/tokens.ts",
+      "del": [
+        "ColorToken"
+      ],
+      "un": []
+    },
+    {
+      "file": "apps/desktop/src/pages/useLexiconBundleController.ts",
+      "del": [
+        "LexiconBundleConflictItem"
+      ],
+      "un": []
+    },
+    {
+      "file": "apps/desktop/src/pages/useProjectPanelShell.ts",
+      "del": [
+        "ProjectPanelShellApi"
+      ],
+      "un": []
+    },
+    {
+      "file": "apps/desktop/src/tauri/sttApi.ts",
+      "del": [
+        "SttApiKeyRequest"
+      ],
+      "un": []
+    },
+    {
+      "file": "apps/desktop/src/components/FloatingPanelSegmentRow.tsx",
+      "del": [],
+      "un": [
+        "FloatingPanelSegmentMeta"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/components/PostTranscribeStageBDialog.tsx",
+      "del": [],
+      "un": [
+        "POST_TRANSCRIBE_STAGE_B_PANEL_ID"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/components/segmentRow/SegmentRowTextField.tsx",
+      "del": [],
+      "un": [
+        "SEGMENT_TEXT_BODY_ATTR"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/config/env.ts",
+      "del": [],
+      "un": [
+        "DEFAULT_ASR_BASE_URL"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/hooks/useWorkbenchToolbarCompact.ts",
+      "del": [],
+      "un": [
+        "isWorkbenchToolbarCompactViewport"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/pages/localRuntimeSetupHelpers.ts",
+      "del": [],
+      "un": [
+        "localRuntimeDevReloadHint"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/pages/transcribeJobController.testHelpers.ts",
+      "del": [],
+      "un": [
+        "mockAsyncPollDone"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/pages/useTranscriptionViewportFit.ts",
+      "del": [],
+      "un": [
+        "runZoomToFitAll"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/services/correctionInferPair.ts",
+      "del": [],
+      "un": [
+        "isCorrectionLearnNoiseChar"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/services/exportDocxPolish.ts",
+      "del": [],
+      "un": [
+        "resolveExportPolishBodyBlockReason"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/services/exportPolishParagraphs.ts",
+      "del": [],
+      "un": [
+        "EXPORT_POLISH_MIN_LINES_PER_PARAGRAPH"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/services/exportPolishPipeline.ts",
+      "del": [],
+      "un": [
+        "excerptLine"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/services/glossaryPasteSplit.ts",
+      "del": [],
+      "un": [
+        "normalizeSpreadsheetClipboard"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/services/glossaryRefresh.ts",
+      "del": [],
+      "un": [
+        "GLOSSARY_DATA_CHANGED"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/services/lastWorkspace.ts",
+      "del": [],
+      "un": [
+        "findMostRecentWorkspaceFile"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/services/llm/llmEnvRuntimeStore.ts",
+      "del": [],
+      "un": [
+        "bumpLlmEnvConnectionVerifiedSeq"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/services/llm/llmEnvStatusCopy.ts",
+      "del": [],
+      "un": [
+        "vendorLabel"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/services/onboarding/onboardingProgress.ts",
+      "del": [],
+      "un": [
+        "writeOnboardingProgress"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/services/text/grapheme.ts",
+      "del": [],
+      "un": [
+        "lastGrapheme"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/services/waveform/drawWaveformMinimap.ts",
+      "del": [],
+      "un": [
+        "WAVEFORM_MINIMAP_PEAK_INSET_Y_RATIO"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/utils/executeEditorShortcut.ts",
+      "del": [],
+      "un": [
+        "executeEditorLowConfidenceJump"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/utils/glossaryPromptDismiss.ts",
+      "del": [],
+      "un": [
+        "isGlossaryPromptDismissed"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/utils/segmentPlaybackBound.ts",
+      "del": [],
+      "un": [
+        "SEGMENT_PLAYBACK_END_EPSILON_SEC"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/utils/segmentTimeRange.ts",
+      "del": [],
+      "un": [
+        "SEGMENT_TIME_OVERLAP_EPS_SEC"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/utils/segmentTimeSnap.ts",
+      "del": [],
+      "un": [
+        "WAVEFORM_SEGMENT_SNAP_THRESHOLD_PX"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/utils/waveformProjection.ts",
+      "del": [],
+      "un": [
+        "timelinePxToViewportPx"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/utils/waveformRegionId.ts",
+      "del": [],
+      "un": [
+        "REGION_ID_PREFIX"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/utils/waveformSegmentOverlayVisibility.ts",
+      "del": [],
+      "un": [
+        "resolveOverlaySelectionRange"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/utils/waveformViewportStretch.ts",
+      "del": [],
+      "un": [
+        "writeWaveformScrollLayerWidth"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/utils/waveSurferShadowCspNonce.ts",
+      "del": [],
+      "un": [
+        "resolveWaveSurferCspNonce"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/components/editor/useEditorEditHistory.ts",
+      "del": [],
+      "un": [
+        "EditLogTextChange"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/components/floatingPanelPersist.ts",
+      "del": [],
+      "un": [
+        "FloatingPanelPhasePersist"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/components/UnsavedCloseDialog.tsx",
+      "del": [],
+      "un": [
+        "UnsavedGateIntent"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/hooks/useDeferredRendererState.ts",
+      "del": [],
+      "un": [
+        "DeferredRendererPersist"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/pages/autoPunctuateNeighbors.ts",
+      "del": [],
+      "un": [
+        "NeighborContextRole"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/pages/useAsrHealthPoll.ts",
+      "del": [],
+      "un": [
+        "AsrHealthCatalogHooks"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/pages/useAutoPunctuateController.ts",
+      "del": [],
+      "un": [
+        "AutoPunctuateDialogState"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/pages/useProjectImportDuplicateController.ts",
+      "del": [],
+      "un": [
+        "DuplicateImportDecision"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/services/asr/asrEnvStatus.ts",
+      "del": [],
+      "un": [
+        "AsrEnvTone"
+      ]
+    },
+    {
+      "file": "apps/desktop/src/services/quality/qualityEvalReport.ts",
+      "del": [],
+      "un": [
+        "QualityEvalReportItem"
+      ]
+    }
+  ]
+}

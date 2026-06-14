@@ -25,7 +25,7 @@ export type LoopbackFetchInit = RequestInit & {
 };
 
 /** Port from configured ASR base URL when loopback-only; else default 8741. */
-export function asrLoopbackPort(): number {
+function asrLoopbackPort(): number {
   try {
     const u = new URL(asrBaseUrl());
     if (u.protocol !== "http:") return 8741;
@@ -42,7 +42,7 @@ export function asrLoopbackPort(): number {
 }
 
 /** WebView fetch to loopback often fails ("Load failed"); Rust reqwest uses 127.0.0.1 (ASR bind addr). */
-export function canUseTauriLoopbackProxy(): boolean {
+function canUseTauriLoopbackProxy(): boolean {
   if (!isTauriRuntime()) return false;
   try {
     const u = new URL(asrBaseUrl());
@@ -70,7 +70,7 @@ export function defaultLoopbackTimeoutMs(method: string, path: string): number {
   return 60_000;
 }
 
-export function formatLoopbackInvokeError(error: unknown): string {
+function formatLoopbackInvokeError(error: unknown): string {
   const msg = error instanceof Error ? error.message : String(error);
   if (
     /asr_loopback_request/i.test(msg) &&

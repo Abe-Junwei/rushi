@@ -24,7 +24,7 @@ export function transcribeTestSeg(text: string): SegmentDto {
   };
 }
 
-export function mockAsyncPollDone(): void {
+function mockAsyncPollDone(): void {
   vi.mocked(loopbackFetch).mockResolvedValue(
     new Response(JSON.stringify({ phase: "done" }), { status: 200 }),
   );

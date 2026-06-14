@@ -6,7 +6,7 @@ export const WAVEFORM_SEGMENT_MIN_SPAN_SEC = 0.05;
 
 export type SegmentDragMode = "move" | "resize-start" | "resize-end";
 
-export const WAVEFORM_SEGMENT_EDGE_HIT_PX = 8;
+const WAVEFORM_SEGMENT_EDGE_HIT_PX = 8;
 
 /** 由语段条内局部 X 与宽度判定 resize / move（不读 DOM）。 */
 export function hitSegmentEdgeFromLocalPx(localPx: number, widthPx: number): SegmentDragMode {
@@ -66,7 +66,7 @@ export const WAVEFORM_SEGMENT_LANE_GAP_PX = 2;
 /** Span ratio above which a segment is treated as whole-track placeholder for waveform UI. */
 export const WAVEFORM_DOMINANT_SPAN_RATIO = 0.85;
 
-export function isDominantWaveformSpanSegment(
+function isDominantWaveformSpanSegment(
   startSec: number,
   endSec: number,
   durationSec: number,

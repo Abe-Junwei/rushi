@@ -1,5 +1,5 @@
 /** 语段 scoped 播放：在 end 前该 epsilon 内视为到达语段尾。 */
-export const SEGMENT_PLAYBACK_END_EPSILON_SEC = 0.016;
+const SEGMENT_PLAYBACK_END_EPSILON_SEC = 0.016;
 
 export type ActiveSegmentPlaybackBound = {
   startSec: number;

@@ -23,7 +23,7 @@ import { resolveOverlayPointerUpIntent } from "../utils/waveformSegmentOverlayGe
 import { computeSegmentLassoOutcome } from "../utils/segmentSelection";
 import type { WaveformSegmentDragArgs } from "./useWaveformSegmentDrag";
 
-export function overlayPointerActions(
+function overlayPointerActions(
   a: WaveformSegmentDragArgs,
   onSegmentPointerTap: (segmentIdx: number, pointerTimeSec: number) => void,
 ): OverlayPointerActions {
@@ -37,7 +37,7 @@ export function overlayPointerActions(
   };
 }
 
-export function snapTargetsForOverlay(
+function snapTargetsForOverlay(
   a: WaveformSegmentDragArgs,
   excludeSegmentIndex?: number,
 ): { targets: number[]; thresholdSec: number } {

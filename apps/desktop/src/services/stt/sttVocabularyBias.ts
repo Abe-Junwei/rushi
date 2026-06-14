@@ -4,7 +4,6 @@
  */
 
 import { getSttOnlineProviderDefinition } from "./sttOnlineProviderContract/definitions";
-import { resolveShellNativeSttAdapterId } from "./sttOnlineProviderContract/bridge";
 
 /** Mirrors Rust `SttVocabularyChannel` for UI / contracts. */
 export type SttOnlineVocabularyChannel =
@@ -82,9 +81,4 @@ export function glossaryBiasPreflightLineForProviderId(providerId: string): stri
     return `「${label}」不支持术语表；专名可能听错，可手改或换支持引擎。`;
   }
   return PREFLIGHT_BIAS_HINT[channel];
-}
-
-/** Native adapter id when shell-direct; null for custom-proxy-only path. */
-export function vocabularyNativeAdapterForProvider(providerId: string): string | null {
-  return resolveShellNativeSttAdapterId(providerId);
 }

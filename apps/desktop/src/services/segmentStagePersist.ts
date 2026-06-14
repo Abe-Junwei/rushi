@@ -4,14 +4,13 @@ import {
   leastConfirmedSegmentStage,
   normalizeSegmentTextStage,
   type SegmentFinalizeVia,
-  type SegmentTextStage,
 } from "./segmentTextStage";
 
 function clearedFinalize(): null {
   return null;
 }
 
-export function withFinalizedStage(
+function withFinalizedStage(
   seg: SegmentDto,
   via: SegmentFinalizeVia,
 ): SegmentDto {
@@ -22,7 +21,7 @@ export function withFinalizedStage(
   };
 }
 
-export function withManualTranscribeStage(seg: SegmentDto): SegmentDto {
+function withManualTranscribeStage(seg: SegmentDto): SegmentDto {
   return { ...seg, text_stage: "manual_transcribe", finalize_via: clearedFinalize() };
 }
 
@@ -30,7 +29,7 @@ export function withAiRevisedStage(seg: SegmentDto): SegmentDto {
   return { ...seg, text_stage: "ai_revised", finalize_via: clearedFinalize() };
 }
 
-export function withAutoTranscribeStage(seg: SegmentDto): SegmentDto {
+function withAutoTranscribeStage(seg: SegmentDto): SegmentDto {
   return { ...seg, text_stage: DEFAULT_SEGMENT_TEXT_STAGE, finalize_via: clearedFinalize() };
 }
 
@@ -107,12 +106,8 @@ export function applyStagePatchesBeforePersist(
   });
 }
 
-export function allSegmentsAutoTranscribe(segments: SegmentDto[]): SegmentDto[] {
+function allSegmentsAutoTranscribe(segments: SegmentDto[]): SegmentDto[] {
   return segments.map((seg) => withAutoTranscribeStage(seg));
-}
-
-export function mergeSegmentStageKeepLeft(left: SegmentDto): SegmentTextStage {
-  return left.text_stage ?? DEFAULT_SEGMENT_TEXT_STAGE;
 }
 
 function mergedFinalizeVia(left: SegmentDto, right: SegmentDto): SegmentFinalizeVia | null {

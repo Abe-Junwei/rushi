@@ -7,9 +7,9 @@ import {
 import { graphemeCount, splitGraphemes } from "./text/grapheme";
 import type { ExportRuleApplyStats } from "./exportPolishFinalize";
 
-export type ExportPolishLlmLineOutcome = "unchanged" | "adopted_punct" | "adopted_typo";
+type ExportPolishLlmLineOutcome = "unchanged" | "adopted_punct" | "adopted_typo";
 
-export type ExportPolishLineDiagnostic = {
+type ExportPolishLineDiagnostic = {
   lineIndex: number;
   llmOutcome: ExportPolishLlmLineOutcome;
   llmHanEditRatio: number;
@@ -33,7 +33,7 @@ function classifyLlmLine(before: string, llm: string): ExportPolishLlmLineOutcom
   return "adopted_typo";
 }
 
-export function countSingleCharRulesInHints(rules: CorrectionRuleRow[]): {
+function countSingleCharRulesInHints(rules: CorrectionRuleRow[]): {
   acceptedSingleCharRules: number;
   singleCharRulesSkipped: number;
 } {

@@ -62,4 +62,4 @@ function lastGrapheme(text: string): string | undefined {
   return glyphs[glyphs.length - 1];
 }
 
-export { lastGrapheme };
+lastGrapheme;

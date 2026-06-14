@@ -18,8 +18,8 @@ export function computeSegmentLaneRowPx(transcriptFontPx: number): number {
   return Math.max(64, headerAndControlsPx + bodyPx);
 }
 
-export const SEGMENT_LANE_ROW_MIN_PX = computeSegmentLaneRowPx(TRANSCRIPT_FONT_MIN);
-export const SEGMENT_LANE_ROW_MAX_PX = computeSegmentLaneRowPx(TRANSCRIPT_FONT_MAX);
+const SEGMENT_LANE_ROW_MIN_PX = computeSegmentLaneRowPx(TRANSCRIPT_FONT_MIN);
+const SEGMENT_LANE_ROW_MAX_PX = computeSegmentLaneRowPx(TRANSCRIPT_FONT_MAX);
 
 export function clampSegmentLaneRowPx(px: number): number {
   return Math.min(SEGMENT_LANE_ROW_MAX_PX, Math.max(SEGMENT_LANE_ROW_MIN_PX, Math.round(px)));
@@ -43,10 +43,10 @@ export function transcriptFontPxFromSegmentRowPx(rowPx: number): number {
 export const SEGMENT_LANE_ROW_PX = computeSegmentLaneRowPx(TRANSCRIPT_FONT_DEFAULT);
 
 /** 重叠超过此阈值且非包含关系时，才拆分到不同 lane（避免 ASR 微重叠把条带压成半高）。 */
-export const SEGMENT_LANE_OVERLAP_SEPARATE_SEC = 0.05;
+const SEGMENT_LANE_OVERLAP_SEPARATE_SEC = 0.05;
 
 /** ASR 相邻语段常见的尾/头边界重叠上限；超过才视为真并行（需分 lane）。 */
-export const SEGMENT_LANE_BOUNDARY_OVERLAP_MAX_SEC = 2.0;
+const SEGMENT_LANE_BOUNDARY_OVERLAP_MAX_SEC = 2.0;
 
 type SegmentSpan = { startSec: number; endSec: number };
 
@@ -58,7 +58,7 @@ function normalizeSpan(span: SegmentSpan): { lo: number; hi: number } {
 }
 
 /** 是否为 ASR/字幕常见的「前句 end 略大于后句 start」边界重叠（非并行说话）。 */
-export function isSequentialBoundaryOverlap(a: SegmentSpan, b: SegmentSpan): boolean {
+function isSequentialBoundaryOverlap(a: SegmentSpan, b: SegmentSpan): boolean {
   const { lo: aLo, hi: aHi } = normalizeSpan(a);
   const { lo: bLo, hi: bHi } = normalizeSpan(b);
   const overlap = Math.min(aHi, bHi) - Math.max(aLo, bLo);
@@ -71,7 +71,7 @@ export function isSequentialBoundaryOverlap(a: SegmentSpan, b: SegmentSpan): boo
 }
 
 /** 两语段时间上是否必须分到不同 lane（真并行重叠；忽略微重叠、包含关系与 ASR 边界重叠）。 */
-export function segmentSpansNeedSeparateLanes(a: SegmentSpan, b: SegmentSpan): boolean {
+function segmentSpansNeedSeparateLanes(a: SegmentSpan, b: SegmentSpan): boolean {
   const { lo: aLo, hi: aHi } = normalizeSpan(a);
   const { lo: bLo, hi: bHi } = normalizeSpan(b);
   const overlap = Math.min(aHi, bHi) - Math.max(aLo, bLo);

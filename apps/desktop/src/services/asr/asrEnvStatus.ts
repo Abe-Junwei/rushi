@@ -19,7 +19,7 @@ import {
 } from "./localAsrModelCatalog";
 import { modelsRootMismatch } from "./asrRuntimePathsAlign";
 
-export type AsrEnvTone = "ok" | "warn" | "error" | "idle";
+type AsrEnvTone = "ok" | "warn" | "error" | "idle";
 
 export type AsrEnvStatusRow = {
   id: "env" | "ffmpeg" | "runtime" | "transcribe";

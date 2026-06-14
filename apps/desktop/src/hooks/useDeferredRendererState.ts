@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 
-export type DeferredRendererPersist<T> = {
+type DeferredRendererPersist<T> = {
   read: () => T | null;
   write: (value: T) => void;
   debounceMs?: number;

@@ -11,7 +11,7 @@ export type TierScrollLayoutMetrics = {
   clientWidthPx: number;
 };
 
-export type WaveformRulerView = {
+type WaveformRulerView = {
   start: number;
   end: number;
 };

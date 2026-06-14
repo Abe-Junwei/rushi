@@ -13,7 +13,7 @@
 | **KEEP** | 有跨文件引用，或 `tauri/` / plugin 公共面 |
 | **DEFER** | 样式 token / Stitch 预留 / 迁移层 |
 
-## Wave E1（本波已执行）
+## Wave E1（已执行）
 
 | ID | 项 | 动作 |
 |----|-----|------|
@@ -31,10 +31,21 @@
 | CLN-E12 | `ProjectStatusFeedback` 死 re-export / 内部 banner | UNEXPORT |
 | CLN-E13 | `PANEL_TEMPLATE_PRESETS` | UNEXPORT |
 
-## 待续（DEFER / 下波）
+## Wave E2（已执行）
 
-- **~200** knip unused exports：多为 utils 常量、`tauri/*` 类型面、plugin-system 公共 API
-- **94** unused exported types：`projectApi` / `postprocessApi` 契约类型（外部/脚本可能消费）
+> **分析**：[`knip-wave-e2-analysis.json`](./knip-wave-e2-analysis.json)（46 DELETE · 143 UNEXPORT · 100 KEEP）  
+> **结果**：knip unused exports **249→114**
+
+| 批次 | 动作 | 范围 |
+|------|------|------|
+| E2-A | **UNEXPORT** 批量 | 73 文件 / 131 符号（跳过 `tauri/`、`plugin-system/`、`contracts/`） |
+| E2-B | **DELETE** | 死函数/常量：`formatCorrectionRuleHintLabel`、`onboardingStepLabel`、`isSegmentFinalized`、`readTierScrollLayout`、`vocabularyNativeAdapterForProvider`、`LOCAL_SECRET_STORE_LABEL`、`SEGMENT_LIST_VIRTUAL_PIN_MAX_DISTANCE`、`segmentBoundsForPersist`、`resolveSegmentSelectionRange`、`computeAlignScrollPxForTimeSec`、`WAVEFORM_RULER_BAND_HEIGHT_PX` 等 |
+| E2-C | **UNEXPORT** 手动 | `floatingPanelSegmentListLayout` Stage-B 布局常量；`LOCAL_ASR_RECOGNITION_LANGUAGE_STORAGE_KEY` |
+| E2-D | **DEFER** | `tauri/*` 死 export — 下波 E3 登记 KEEP |
+
+## 待续（DEFER / E3）
+
+- **114** knip unused exports：`tauri/*` 类型面、plugin-system、`editorTranscriptAppearance` 字体 token、测试 shared export
 - **样式模块**：`editorTranscriptAppearance.ts`、`floatingPanel*Layout.ts` 内布局常量（面板 fit 预留）
 - **测试 export**：`*.test.shared.ts` / `testHelpers.ts` — 改 `export` 为文件内或 vitest `import type` 直引
 

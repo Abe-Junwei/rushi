@@ -13,7 +13,7 @@ export function appendConfigDraftHint(detail: string, dirty: boolean): string {
   return `${detail} 连接已改，请保存或探测。`;
 }
 
-export function vendorLabel(providerId: LlmProviderId): string {
+function vendorLabel(providerId: LlmProviderId): string {
   return getLlmProviderDefinition(providerId)?.label ?? "API";
 }
 

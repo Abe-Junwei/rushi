@@ -1,6 +1,6 @@
 /** Split pasted glossary input (Excel TSV grid, CSV, plain lines). */
 
-export function normalizeSpreadsheetClipboard(raw: string): string {
+function normalizeSpreadsheetClipboard(raw: string): string {
   return raw
     .replace(/^\uFEFF/, "")
     .replace(/\r\n/g, "\n")

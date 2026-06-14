@@ -2,7 +2,7 @@ import type { FloatingPanelPersistedState } from "./floatingPanelViewport";
 
 export const FLOATING_PANEL_LAYOUT_REV = 3;
 
-export type FloatingPanelPhasePersist = {
+type FloatingPanelPhasePersist = {
   size: { width: number; height: number };
   userSized?: boolean;
 };

@@ -1,6 +1,6 @@
 import { roundSec3 } from "./boundsSignature";
 import { WAVEFORM_SEGMENT_MIN_SPAN_SEC } from "./waveformSegmentBounds";
-export const SEGMENT_TIME_OVERLAP_EPS_SEC = 0.02;
+const SEGMENT_TIME_OVERLAP_EPS_SEC = 0.02;
 
 export function segmentTimeRangesOverlap(
   aStart: number,

@@ -35,7 +35,7 @@ export function readOnboardingProgress(): OnboardingProgress {
   }
 }
 
-export function writeOnboardingProgress(progress: OnboardingProgress): void {
+function writeOnboardingProgress(progress: OnboardingProgress): void {
   if (!isBrowserStorage()) return;
   window.localStorage.setItem(STORAGE_KEY, JSON.stringify(progress));
   emitOnboardingProgressChanged();

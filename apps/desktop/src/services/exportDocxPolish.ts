@@ -59,7 +59,7 @@ export function exportModeSupportsLlmPolish(mode: DocxExportMode): boolean {
   return POLISH_MODES.includes(mode);
 }
 
-export function resolveExportPolishBodyBlockReason(segments: SegmentDto[]): string | null {
+function resolveExportPolishBodyBlockReason(segments: SegmentDto[]): string | null {
   const lines = segmentLinesFromSegments(segments);
   if (lines.length === 0) {
     return "当前没有可导出的正文。";

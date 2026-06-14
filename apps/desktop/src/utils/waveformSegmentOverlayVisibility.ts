@@ -1,6 +1,6 @@
 import type { SegmentDto } from "../tauri/projectApi";
 
-export function resolveOverlaySelectionRange(input: {
+function resolveOverlaySelectionRange(input: {
   segmentCount: number;
   selectedIdx: number;
   selectionLo?: number;

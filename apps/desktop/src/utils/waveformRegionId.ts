@@ -1,4 +1,4 @@
-export const REGION_ID_PREFIX = "rushi-seg-";
+const REGION_ID_PREFIX = "rushi-seg-";
 
 export function segmentRegionId(uid: string): string {
   return `${REGION_ID_PREFIX}${uid}`;

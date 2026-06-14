@@ -9,7 +9,7 @@ import {
 } from "../utils/projectImportDuplicate";
 import type { BusyReason } from "./useProjectCrudController";
 
-export type DuplicateImportDecision = "cancel" | "open_existing" | "import_copy";
+type DuplicateImportDecision = "cancel" | "open_existing" | "import_copy";
 
 export type ImportFileToProjectOptions = {
   /** 批量导入时跳过单次 reload，由调用方在末尾统一 loadProjectAfterImport */

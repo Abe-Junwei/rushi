@@ -17,7 +17,7 @@ import {
 const ZOOM_EPS = 0.001;
 
 /** px/s may sit slightly below computed fit-all min (binary search / rounding); don't treat as out-of-range. */
-export function sliderMinTolerancePx(sliderMinPx: number): number {
+function sliderMinTolerancePx(sliderMinPx: number): number {
   return Math.max(ZOOM_EPS, Math.min(PX_PER_SEC_PEAKS_QUANTUM, sliderMinPx * 0.05));
 }
 
@@ -36,7 +36,7 @@ export function isPxPerSecNearFitAll(
 }
 
 /** True when px/s was fit-all for the timeline width currently rendered. */
-export function wasFitAllPxPerSecForTimelineWidth(input: {
+function wasFitAllPxPerSecForTimelineWidth(input: {
   timelineWidthPx: number;
   durationSec: number;
   pxPerSec: number;
@@ -113,7 +113,7 @@ export function resolveFitAllPxPerSecAdjustment(
 }
 
 /** 当前横向缩放「视图模式」（由 px/s + 视口 + 时长 + 选中语段派生，非持久偏好）。 */
-export type WaveformZoomViewMode = "fit-selection" | "default" | "custom";
+type WaveformZoomViewMode = "fit-selection" | "default" | "custom";
 
 export type WaveformZoomBarUiInput = {
   pxPerSec: number;
@@ -154,7 +154,7 @@ function isNearEditingDefaultPxPerSec(pxPerSec: number, defaultPx: number): bool
   return Math.abs(pxPerSec - defaultPx) <= tol;
 }
 
-export function isNearQuantizedFitSelectionPxPerSec(
+function isNearQuantizedFitSelectionPxPerSec(
   pxPerSec: number,
   viewportWidthPx: number,
   selectedStartSec?: number,
@@ -234,7 +234,7 @@ export function isNearEditingDefaultForMedia(
   );
 }
 
-export function deriveWaveformZoomViewMode(input: WaveformZoomBarUiInput): WaveformZoomViewMode {
+function deriveWaveformZoomViewMode(input: WaveformZoomBarUiInput): WaveformZoomViewMode {
   const activeMode = resolveWaveformZoomBarActiveMode(input);
   if (activeMode === "default") {
     return "default";

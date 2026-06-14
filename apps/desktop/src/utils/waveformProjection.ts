@@ -166,7 +166,7 @@ export function playheadViewportLeftPx(
 }
 
 /** Timeline pixel offset → tier viewport x (sticky overlay / ruler). */
-export function timelinePxToViewportPx(timelinePx: number, scrollLeftPx: number): number {
+function timelinePxToViewportPx(timelinePx: number, scrollLeftPx: number): number {
   return timelinePx - Math.max(0, scrollLeftPx);
 }
 

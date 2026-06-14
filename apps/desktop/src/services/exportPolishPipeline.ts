@@ -222,7 +222,7 @@ export function buildExportPolishLineChanges(
   return rows;
 }
 
-export function excerptLine(text: string, max = 72): string {
+function excerptLine(text: string, max = 72): string {
   const t = text.replace(/\s+/g, " ").trim();
   if (t.length <= max) return t;
   return `${t.slice(0, max)}…`;

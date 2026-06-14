@@ -23,7 +23,7 @@ export const SEGMENT_TEXT_STAGES: readonly SegmentTextStage[] = [
   "finalized",
 ] as const;
 
-export const DEFAULT_SEGMENT_STAGE_FILTER: SegmentStageFilterMap = {
+const DEFAULT_SEGMENT_STAGE_FILTER: SegmentStageFilterMap = {
   auto_transcribe: true,
   ai_revised: true,
   manual_transcribe: true,
@@ -42,7 +42,7 @@ export function isDefaultSegmentListFilter(filter: SegmentListFilterState): bool
   );
 }
 
-export function segmentMatchesListFilter(
+function segmentMatchesListFilter(
   seg: SegmentDto,
   filter: SegmentListFilterState,
 ): boolean {

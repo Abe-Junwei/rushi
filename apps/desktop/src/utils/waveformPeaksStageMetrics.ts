@@ -4,5 +4,3 @@ import { WAVEFORM_EMBEDDED_TIME_RULER_H_PX } from "../components/WaveformTimeRul
 export function waveformPeaksBandHeightPx(totalHeightPx: number): number {
   return Math.max(1, totalHeightPx - WAVEFORM_EMBEDDED_TIME_RULER_H_PX);
 }
-
-export { WAVEFORM_EMBEDDED_TIME_RULER_H_PX as WAVEFORM_RULER_BAND_HEIGHT_PX };

@@ -1,5 +1,5 @@
-export type LocalRuntimeInstalledStatus = "missing" | "installed" | "corrupt";
-export type LocalRuntimeInstallPhase =
+type LocalRuntimeInstalledStatus = "missing" | "installed" | "corrupt";
+type LocalRuntimeInstallPhase =
   | "idle"
   | "downloading"
   | "installing"
@@ -7,7 +7,7 @@ export type LocalRuntimeInstallPhase =
   | "installed"
   | "error"
   | "cancelled";
-export type LocalRuntimeManifestStatus =
+type LocalRuntimeManifestStatus =
   | "missing"
   | "ok"
   | "error"
@@ -24,7 +24,7 @@ export interface LocalRuntimeInstallProgress {
   error?: string | null;
 }
 
-export interface LocalRuntimeInstalledInfo {
+interface LocalRuntimeInstalledInfo {
   status: LocalRuntimeInstalledStatus;
   version?: string | null;
   previousVersion?: string | null;

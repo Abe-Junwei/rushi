@@ -122,15 +122,6 @@ export function sidecarSupportsTranscribeAsyncFromRoot(data: unknown): boolean {
   return typeof raw === "string" && raw.includes("/v1/transcribe/async");
 }
 
-/** Loopback sidecar root looks like a current bundled build (catalog + punc + async). */
-export function sidecarIsFreshBuildFromRoot(data: unknown): boolean {
-  return (
-    sidecarSupportsModelCatalogFromRoot(data) &&
-    sidecarSupportsPuncPrepareFromRoot(data) &&
-    sidecarSupportsTranscribeAsyncFromRoot(data)
-  );
-}
-
 export function hubModelNeedsPuncPrepare(hubModelId: string): boolean {
   const mid = migrateDeprecatedHubModelId(hubModelId).toLowerCase();
   if (mid.includes("sensevoice") || mid.includes("fun-asr-nano") || mid.includes("qwen")) {
@@ -155,18 +146,6 @@ export function readStoredLocalAsrHubModelId(): string {
   } catch {
     return DEFAULT_LOCAL_ASR_HUB_MODEL_ID;
   }
-}
-
-/** @deprecated Setup flows must use UI `selectedHubModelId`; pref is persistence only. */
-export async function resolvePreferredLocalAsrHubModelId(): Promise<string> {
-  try {
-    const { getLocalAsrHubModelPref } = await import("../../tauri/projectApi");
-    const pref = await getLocalAsrHubModelPref();
-    if (pref?.trim()) return resolveLocalAsrHubModelId(pref);
-  } catch {
-    /* browser preview or command unavailable */
-  }
-  return readStoredLocalAsrHubModelId();
 }
 
 export type LocalAsrTranscribeReadyInput = {
@@ -212,18 +191,7 @@ export function computeLocalAsrTranscribeReady(input: LocalAsrTranscribeReadyInp
   return { ready, sidecarMatchesSelection };
 }
 
-export function activeSkuModelCached(
-  asrCaps: LocalAsrTranscribeReadyInput["asrCaps"],
-  catalogStatus: LocalAsrCatalogStatusItem[] | null,
-  sidecarHubModelId: string | null | undefined,
-): boolean {
-  if (!asrCaps || !sidecarHubModelId) return false;
-  const view = buildLocalAsrCatalogView(asrCaps, catalogStatus, sidecarHubModelId);
-  const row = view.find((item) => item.hubModelId === sidecarHubModelId);
-  return row?.cached ?? false;
-}
-
-export function selectedModelMatchesSidecar(
+function selectedModelMatchesSidecar(
   selectedHubModelId: string,
   sidecarHubModelId: string | null | undefined,
 ): boolean {
@@ -235,7 +203,7 @@ export function selectedModelMatchesSidecar(
 }
 
 /** True when sidecar memory holds the same hub id as configured (D1). Null loaded = not yet loaded. */
-export function sidecarMemoryModelMatchesConfig(
+function sidecarMemoryModelMatchesConfig(
   asrCaps: {
     funasr_model_id?: string | null;
     funasr_loaded_model_id?: string | null;

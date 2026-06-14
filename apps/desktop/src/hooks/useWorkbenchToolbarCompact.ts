@@ -11,7 +11,7 @@ export function isWorkbenchToolbarCompactWidth(widthPx: number): boolean {
   return widthPx > 0 && widthPx < WORKBENCH_TOOLBAR_COMPACT_BREAKPOINT_PX;
 }
 
-export function isWorkbenchToolbarCompactViewport(): boolean {
+function isWorkbenchToolbarCompactViewport(): boolean {
   if (typeof window === "undefined" || typeof window.matchMedia !== "function") {
     return false;
   }

@@ -15,7 +15,7 @@ export function applyWaveSurferShadowCspNonce(
   style.setAttribute("nonce", nonce);
 }
 
-export function resolveWaveSurferCspNonce(): string | undefined {
+function resolveWaveSurferCspNonce(): string | undefined {
   return readTauriStyleCspNonce();
 }
 

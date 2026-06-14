@@ -1,7 +1,6 @@
 import type { SegmentDto } from "../../tauri/projectApi";
 import {
   applyCorrectionRulesToText,
-  buildSegmentCorrectionChanges,
   type CorrectionRulePair,
   type SegmentCorrectionChange,
 } from "./segmentCorrectionRulesApply";
@@ -45,12 +44,4 @@ export function buildStageAPreviewChanges(
     });
   }
   return out;
-}
-
-/** @deprecated 仅规则、无 A6；保留供对比测试。 */
-export function buildStageARuleOnlyPreviewChanges(
-  segments: SegmentDto[],
-  rules: CorrectionRulePair[],
-): SegmentCorrectionChange[] {
-  return buildSegmentCorrectionChanges(segments, rules);
 }

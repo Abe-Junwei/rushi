@@ -1,7 +1,7 @@
 /** 讲稿/干净稿润色导出：语义分段（仅版式，不进修订轨）。 */
 
 /** 相邻分段至少间隔的语段行数。 */
-export const EXPORT_POLISH_MIN_LINES_PER_PARAGRAPH = 8;
+const EXPORT_POLISH_MIN_LINES_PER_PARAGRAPH = 8;
 
 /** Word 自然段上限（避免 LLM 几乎每行一分段）。 */
 export const EXPORT_POLISH_MAX_PARAGRAPHS = 12;

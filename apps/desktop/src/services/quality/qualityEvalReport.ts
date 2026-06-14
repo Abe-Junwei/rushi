@@ -1,4 +1,4 @@
-export type QualityEvalReportItem = {
+type QualityEvalReportItem = {
   id: string;
   category?: string;
   cerChars?: number | null;

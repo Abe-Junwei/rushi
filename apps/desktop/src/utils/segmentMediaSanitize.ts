@@ -1,5 +1,4 @@
 import type { SegmentDto } from "../tauri/projectApi";
-import { roundSec3 } from "./boundsSignature";
 import {
   clampSegmentTimeBounds,
   isPlaceholderSegment,
@@ -56,13 +55,4 @@ export function parseDominantSpanFilteredCount(warnings: string[]): number {
     if (Number.isFinite(n) && n > 0) return n;
   }
   return 0;
-}
-
-/** Stable signature helper for tests — mirrors clamp output. */
-export function segmentBoundsForPersist(startSec: number, endSec: number, durationSec: number) {
-  const bounds = clampSegmentTimeBounds(startSec, endSec, durationSec);
-  return {
-    start_sec: roundSec3(bounds.startSec),
-    end_sec: roundSec3(bounds.endSec),
-  };
 }

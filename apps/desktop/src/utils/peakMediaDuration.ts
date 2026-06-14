@@ -1,11 +1,11 @@
 /** Peaks `.dat` duration vs WaveSurfer / HTML media duration alignment. */
 
-export const PEAKS_MEDIA_MIN_COVERAGE_RATIO = 0.98;
+const PEAKS_MEDIA_MIN_COVERAGE_RATIO = 0.98;
 
 /** Skip expensive force-regenerate on long media when the gap is likely container over-reporting. */
-export const PEAKS_FORCE_REGENERATE_LONG_MEDIA_SEC = 3600;
+const PEAKS_FORCE_REGENERATE_LONG_MEDIA_SEC = 3600;
 
-export const PEAKS_FORCE_REGENERATE_LONG_MEDIA_MIN_RATIO = 0.95;
+const PEAKS_FORCE_REGENERATE_LONG_MEDIA_MIN_RATIO = 0.95;
 
 /** True when cached peaks cover less than ~98% of known media duration. */
 export function peaksMediaDurationMismatch(

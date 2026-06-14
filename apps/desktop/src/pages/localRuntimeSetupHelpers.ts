@@ -14,7 +14,7 @@ export function retainedCurrentVersionMessage(diag: LocalRuntimeDiagnose | null 
   return `升级${targetVersion}失败，已保留当前版本${currentVersion}。`;
 }
 
-export function localRuntimeDevReloadHint(): string {
+function localRuntimeDevReloadHint(): string {
   return packagedOrDev(
     "若刚更新桌面端代码，请完全退出并重新运行 desktop:dev 后再试。",
     "若刚更新应用，请完全退出后重新打开；仍失败请重新安装最新版本。",

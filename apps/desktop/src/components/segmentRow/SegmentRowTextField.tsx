@@ -6,7 +6,7 @@ import { CorrectableMatchText } from "./CorrectableMatchText";
 import { useSegmentRowTextFieldController } from "../../hooks/useSegmentRowTextFieldController";
 
 /** 正文区 DOM 标记：行级右键（删/并）应跳过此区域，统一走文本外观菜单。 */
-export const SEGMENT_TEXT_BODY_ATTR = "data-seg-text-body";
+const SEGMENT_TEXT_BODY_ATTR = "data-seg-text-body";
 
 interface SegmentRowTextFieldProps {
   segment: SegmentDto;

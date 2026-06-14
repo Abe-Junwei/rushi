@@ -13,10 +13,6 @@ export const WAVEFORM_PLAYBACK_RATE_SLOWER_PRESETS = WAVEFORM_PLAYBACK_RATE_PRES
 
 export type WaveformPlaybackRatePreset = (typeof WAVEFORM_PLAYBACK_RATE_PRESETS)[number];
 
-export const WAVEFORM_PLAYBACK_RATE_MIN = WAVEFORM_PLAYBACK_RATE_PRESETS[0];
-export const WAVEFORM_PLAYBACK_RATE_MAX =
-  WAVEFORM_PLAYBACK_RATE_PRESETS[WAVEFORM_PLAYBACK_RATE_PRESETS.length - 1];
-
 export function snapWaveformPlaybackRate(rate: number): WaveformPlaybackRatePreset {
   if (!Number.isFinite(rate)) return 1;
   let best: WaveformPlaybackRatePreset = 1;
@@ -45,8 +41,4 @@ export function formatWaveformPlaybackRateLabel(rate: number): string {
 export function formatWaveformPlaybackRatePresetMenuLabel(rate: WaveformPlaybackRatePreset): string {
   if (rate === 1) return "1.0";
   return String(rate);
-}
-
-export function isWaveformPlaybackRatePreset(rate: number): rate is WaveformPlaybackRatePreset {
-  return (WAVEFORM_PLAYBACK_RATE_PRESETS as readonly number[]).includes(rate);
 }

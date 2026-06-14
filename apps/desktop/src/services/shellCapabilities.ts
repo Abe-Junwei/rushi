@@ -38,15 +38,3 @@ export function readShellManagesBundledSidecarSync(): boolean {
 export async function bootstrapShellCapabilities(): Promise<void> {
   await readShellManagesBundledSidecar();
 }
-
-/** Test-only reset. */
-export function resetShellCapabilitiesCacheForTests(): void {
-  shellManagesBundledSidecar = null;
-  loadPromise = null;
-}
-
-/** Test-only seed (also satisfies readShellManagesBundledSidecar). */
-export function setShellManagesBundledSidecarForTests(value: boolean): void {
-  shellManagesBundledSidecar = value;
-  loadPromise = Promise.resolve(value);
-}

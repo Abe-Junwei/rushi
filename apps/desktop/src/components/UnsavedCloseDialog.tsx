@@ -5,7 +5,7 @@ import {
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { DialogOverlay } from "./DialogOverlay";
 
-export type UnsavedGateIntent = "app-quit" | "navigate";
+type UnsavedGateIntent = "app-quit" | "navigate";
 
 type UnsavedCloseDialogProps = {
   open: boolean;

@@ -80,7 +80,7 @@ export async function listRecentWorkspaceFiles(
     .slice(0, limit);
 }
 
-export async function findMostRecentWorkspaceFile(
+async function findMostRecentWorkspaceFile(
   projectIds: string[],
 ): Promise<WorkspaceFileTarget | null> {
   const recent = await listRecentWorkspaceFiles(projectIds, 1);

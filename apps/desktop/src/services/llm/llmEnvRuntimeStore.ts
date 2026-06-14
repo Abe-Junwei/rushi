@@ -42,7 +42,7 @@ export function subscribeLlmEnvRuntime(onStoreChange: () => void): () => void {
   return () => listeners.delete(onStoreChange);
 }
 
-export function bumpLlmEnvConnectionVerifiedSeq(): void {
+function bumpLlmEnvConnectionVerifiedSeq(): void {
   snapshot = { ...snapshot, connectionVerifiedSeq: snapshot.connectionVerifiedSeq + 1 };
   publish();
 }

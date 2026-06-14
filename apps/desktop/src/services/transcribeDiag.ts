@@ -1,4 +1,4 @@
-export type TranscribeTimelineEntry = {
+type TranscribeTimelineEntry = {
   stage: string;
   startedAtMs: number;
   endedAtMs?: number;
@@ -37,7 +37,7 @@ export function stageLabelZh(stage: string | undefined): string {
   return STAGE_LABEL[stage] ?? stage;
 }
 
-export const TRANSCRIBE_EMPTY_OUTPUT_ERROR_CODES = new Set([
+const TRANSCRIBE_EMPTY_OUTPUT_ERROR_CODES = new Set([
   "transcribe_stub_no_output",
   "transcribe_empty_output",
 ]);

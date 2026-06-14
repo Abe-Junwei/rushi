@@ -1,7 +1,7 @@
 import { roundSec3 } from "./boundsSignature";
 
 /** Pointer proximity (px) mapped to time threshold via timeline width — matches edge hit scale. */
-export const WAVEFORM_SEGMENT_SNAP_THRESHOLD_PX = 8;
+const WAVEFORM_SEGMENT_SNAP_THRESHOLD_PX = 8;
 
 export function resolveSnapThresholdSec(
   timelineWidthPx: number,

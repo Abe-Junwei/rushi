@@ -1,9 +1,9 @@
-export type SttOnlineAuthStyle = "bearer" | "header";
+type SttOnlineAuthStyle = "bearer" | "header";
 
 /** 与解语 acoustic 定义表「国内 / 国际」分组展示一致 */
 export type SttOnlineMarket = "china" | "global";
 
-export interface SttOnlineProviderCapability {
+interface SttOnlineProviderCapability {
   batchRest: boolean;
   streaming: boolean;
   asyncJob: boolean;
@@ -62,7 +62,7 @@ export interface ExternalSttOnlineRuntimeConfig {
   timeoutMs: number;
 }
 
-export type ExternalSttOnlineHealthState =
+type ExternalSttOnlineHealthState =
   | "available"
   | "disabled"
   | "unconfigured"

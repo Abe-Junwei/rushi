@@ -23,7 +23,6 @@ export function computeOverviewPxPerSec(overviewWidthPx: number, durationSec: nu
 }
 
 import {
-  scrollPxAlignTimeToViewportLeft,
   scrollPxCenterTimeInViewport,
 } from "./waveformProjection";
 
@@ -37,23 +36,6 @@ export function computeCenterScrollPxForTimeSec(input: {
   pxPerSec?: number;
 }): number {
   return scrollPxCenterTimeInViewport({
-    timeSec: input.timeSec,
-    timelineWidthPx: input.timelineWidthPx,
-    durationSec: input.durationSec,
-    viewportWidthPx: input.viewportWidthPx,
-  });
-}
-
-/** 使 `timeSec` 对齐主视口左缘时的 tier scrollLeft（overview 点击跳转）。 */
-export function computeAlignScrollPxForTimeSec(input: {
-  timeSec: number;
-  timelineWidthPx: number;
-  viewportWidthPx: number;
-  durationSec: number;
-  /** @deprecated 保留兼容；实际使用 timelineWidthPx / durationSec 投影 */
-  pxPerSec?: number;
-}): number {
-  return scrollPxAlignTimeToViewportLeft({
     timeSec: input.timeSec,
     timelineWidthPx: input.timelineWidthPx,
     durationSec: input.durationSec,

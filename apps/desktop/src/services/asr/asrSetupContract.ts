@@ -1,8 +1,8 @@
 import type { BundledAsrLaunchReport } from "../../tauri/projectApi";
 
-export type AsrSetupPortStatus = "free" | "rushi_asr" | "foreign";
+type AsrSetupPortStatus = "free" | "rushi_asr" | "foreign";
 
-export interface AsrSetupHealthSnapshot {
+interface AsrSetupHealthSnapshot {
   healthReachable: boolean;
   ffmpegOk: boolean;
   funasrImportOk: boolean;
@@ -14,9 +14,9 @@ export interface AsrSetupHealthSnapshot {
   transcriptionMode: string;
 }
 
-export type AsrSetupSidecarIntegrity = "ok" | "corrupt" | "unknown" | "not_installed";
+type AsrSetupSidecarIntegrity = "ok" | "corrupt" | "unknown" | "not_installed";
 
-export type AsrSupervisorPhase =
+type AsrSupervisorPhase =
   | "idle"
   | "unmanaged"
   | "probing"

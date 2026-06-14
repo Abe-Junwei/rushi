@@ -1,6 +1,6 @@
 # 代码库清理 — 候选登记表
 
-> **状态**：Wave A–D ✅ · Wave E1 ✅ · Wave E2 待执行  
+> **状态**：Wave A–D ✅ · Wave E1 ✅ · Wave E2 ✅ · Wave E3 待执行  
 > **基线**：[cleanup-scan-baseline.md](./cleanup-scan-baseline.md)  
 > **图例**：动作 `DELETE` / `ARCHIVE` / `MERGE` / `FIX` / `KEEP` / `DEFER` · 风险 `L0`低 `L1`中 `L2`高 `L3`禁止
 
@@ -94,7 +94,7 @@ knip 报告 **310 unused exports**。大量为：
 - `projectApi` / `postprocessApi` 公共类型
 - test helper export
 
-**建议**：Wave A 完成后再跑 knip；对「仅 export 无 import」且非 `tauri/` 边界的符号做第二轮台账，**每文件人工确认**。
+**建议**：Wave A 完成后再跑 knip；对「仅 export 无 import」且非 `tauri/` 边界的符号做第二轮台账，**每文件人工确认**。详见 [`cleanup-wave-e-register.md`](./cleanup-wave-e-register.md)（E1 已收口 47 项）。
 
 ---
 

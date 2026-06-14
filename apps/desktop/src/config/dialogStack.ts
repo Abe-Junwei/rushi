@@ -1,5 +1,5 @@
 /** 浮动对话框叠层：gate（Close Gate）高于 modal（导入/删文件）高于 overlay。 */
-export const DIALOG_Z = {
+const DIALOG_Z = {
   overlay: 100,
   modal: 110,
   gate: 120,
@@ -8,7 +8,7 @@ export const DIALOG_Z = {
 export type DialogStackLayer = keyof typeof DIALOG_Z;
 
 /** 须写完整字面量，Tailwind JIT 无法扫描模板字符串中的 z-[n]。 */
-export const DIALOG_OVERLAY_CLASS: Record<DialogStackLayer, string> = {
+const DIALOG_OVERLAY_CLASS: Record<DialogStackLayer, string> = {
   overlay:
     "fixed inset-0 z-[100] flex items-center justify-center bg-zen-ink/25 p-6 backdrop-blur-[2px]",
   modal:

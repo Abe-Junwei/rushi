@@ -28,7 +28,7 @@ export function getLastAsrHealthRefreshResult(): AsrHealthRefreshResult | undefi
   return lastAsrHealthRefreshResult;
 }
 
-export type AsrHealthCatalogHooks = {
+type AsrHealthCatalogHooks = {
   syncFromHealth: (healthJson: unknown, rootJson?: unknown) => void;
   refreshIfNeeded: (healthJson: unknown) => void;
 };
