@@ -1,6 +1,6 @@
 # 代码库清理 — 候选登记表
 
-> **状态**：Wave A–D ✅ · Wave E1–E4 ✅ · Wave F (CLN-070) ✅  
+> **状态**：Wave A–D ✅ · Wave E1–E4 ✅ · Wave F (CLN-070) ✅ · Wave G (CLN-072) ✅ · Wave H (CLN-073–074) ✅  
 > **基线**：[cleanup-scan-baseline.md](./cleanup-scan-baseline.md)  
 > **图例**：动作 `DELETE` / `ARCHIVE` / `MERGE` / `FIX` / `KEEP` / `DEFER` · 风险 `L0`低 `L1`中 `L2`高 `L3`禁止
 
@@ -81,8 +81,8 @@
 | CLN-070 | `allow(dead_code)` ×12 | 见 baseline；部分为 test-only helper | **DONE** Wave F：删 6 · `cfg(test)` 4 · 去 allow 1 |
 | CLN-071 | `transcribe_windows.merge_window_segments` | Deprecated alias；内部+测试用 | **DONE** → `sort_window_segments` |
 | CLN-072 | `reqwest::blocking` in `probe.rs` / `warm.rs` | guard 警告 | **DONE** Wave G → `blocking_http::loopback_*` |
-| CLN-073 | 54 个「未进 package.json」的 `.sh` | 手测/门禁脚本 | KEEP；补 `scripts/README.md` 索引 |
-| CLN-074 | 根目录 `如是我闻*.dmg` / `.app` symlink | 构建产物 | 确认 `.gitignore`；不提交 |
+| CLN-073 | 54 个「未进 package.json」的 `.sh` | 手测/门禁脚本 | **DONE** KEEP；[`scripts/README.md`](../../../scripts/README.md) 索引 |
+| CLN-074 | 根目录 `如是我闻*.dmg` / `.app` symlink | 构建产物 | **DONE** `/*.dmg` + `/*.app` + 产品名 symlink |
 
 ---
 

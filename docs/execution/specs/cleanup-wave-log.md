@@ -73,3 +73,11 @@
 - **改了啥**：`probe_asr_port_sync` / `post_model_warmup_sync` 迁至 `blocking_http`；新增 `loopback_get_send` + `loopback_post_ok`  
 - **验证了啥**：`cargo test` 364 passed · guard **0** probe/warm blocking 警告  
 - **下一轮**：release parity 手测（CLN-066）或 scripts README（CLN-073）
+
+---
+
+## Wave H / CLN-073–074（2026-06-14）
+
+- **改了啥**：新增 [`scripts/README.md`](../../../scripts/README.md)（npm 接线表 + 发布/ASR/门禁/手测/spike 分组）；`.gitignore` 补 `/*.app` 覆盖根目录 staged symlink  
+- **验证了啥**：根目录 DMG / `.app` 未进 git · README 链到现有 parity / smoke 文档  
+- **下一轮**：CLN-066 release parity 手测（人工）；或登记 Wave A–H 程序收尾
