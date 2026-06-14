@@ -19,6 +19,7 @@ import { WorkspaceShellLayout } from "./WorkspaceShellLayout";
 import type { GlossaryWorkspaceId } from "./glossary/glossaryWorkspaceTypes";
 import type { WelcomePageId } from "./welcomeTypes";
 import {
+  hasScannableWorkspaceFiles,
   listRecentWorkspaceFiles,
   recentProjectIdsForScan,
   type RecentWorkspaceFile,
@@ -61,6 +62,11 @@ export function WelcomeView({
 
   const recentProjectIds = useMemo(() => recentProjectIdsForScan(c.projects), [c.projects]);
 
+  const shouldFetchRecentFiles = useMemo(
+    () => recentProjectIds.length > 0 && hasScannableWorkspaceFiles(c.projects),
+    [recentProjectIds, c.projects],
+  );
+
   const projectNameMap = useMemo(() => {
     const map = new Map<string, string>();
     for (const p of c.projects) {
@@ -72,8 +78,9 @@ export function WelcomeView({
   useEffect(() => {
     let cancelled = false;
     void (async () => {
-      if (recentProjectIds.length === 0) {
+      if (!shouldFetchRecentFiles) {
         setRecentFiles([]);
+        setLoadingRecentFiles(false);
         return;
       }
       setLoadingRecentFiles(true);
@@ -90,7 +97,7 @@ export function WelcomeView({
     return () => {
       cancelled = true;
     };
-  }, [recentProjectIds]);
+  }, [recentProjectIds, shouldFetchRecentFiles]);
 
   const handleOpenRecentFile = async (item: RecentWorkspaceFile) => {
     if (c.current?.id !== item.projectId) {

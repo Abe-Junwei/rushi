@@ -169,3 +169,16 @@ export function playheadViewportLeftPx(
 export function timelinePxToViewportPx(timelinePx: number, scrollLeftPx: number): number {
   return timelinePx - Math.max(0, scrollLeftPx);
 }
+
+/** Embedded overlay + viewport ruler: timeline-wide scroll track (translate3d) for ticks, labels, and playhead. */
+export function embeddedRulerPlayheadUsesTimelineCoords(input: {
+  appearance?: "ink" | "light" | "embedded";
+  coordinateSpace?: "timeline" | "viewport";
+  overlayOnWaveform?: boolean;
+}): boolean {
+  return (
+    input.appearance === "embedded" &&
+    input.overlayOnWaveform === true &&
+    input.coordinateSpace === "viewport"
+  );
+}

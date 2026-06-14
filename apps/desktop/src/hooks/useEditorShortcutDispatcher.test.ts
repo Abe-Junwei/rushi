@@ -3,6 +3,7 @@ import { renderHook, act, cleanup } from "@testing-library/react";
 import { useRef } from "react";
 import type { TranscriptionLayerInput } from "../pages/transcriptionLayerTypes";
 import { useEditorShortcutDispatcher } from "./useEditorShortcutDispatcher";
+import { createEmptySegmentListFilterNavState } from "../utils/segmentListFilterNav";
 
 function makeCtx(overrides: Partial<TranscriptionLayerInput> = {}): TranscriptionLayerInput {
   return {
@@ -62,8 +63,13 @@ function dispatchKey(opts: Partial<KeyboardEventInit> & { key: string }) {
   window.dispatchEvent(event);
 }
 
-function mountDispatcher(ctx: TranscriptionLayerInput, opts: { waveformShell?: HTMLElement } = {}) {
+function mountDispatcher(
+  ctx: TranscriptionLayerInput,
+  opts: { waveformShell?: HTMLElement; scheduleAdvanceToSegment?: ReturnType<typeof vi.fn> } = {},
+) {
   const waveformShellRef = { current: opts.waveformShell ?? null };
+  const scheduleAdvanceToSegment = (opts.scheduleAdvanceToSegment ?? vi.fn()) as (targetIdx: number) => void;
+  const scheduleAdvanceToSegmentRef = { current: scheduleAdvanceToSegment };
   const hook = renderHook(() => {
     const ctxRef = useRef(ctx);
     ctxRef.current = ctx;
@@ -81,12 +87,14 @@ function mountDispatcher(ctx: TranscriptionLayerInput, opts: { waveformShell?: H
       waveformShellRef,
       selectSegmentAtRef: useRef(vi.fn()),
       focusSegmentTextarea: vi.fn(),
+      scheduleAdvanceToSegmentRef,
       showEditorHintRef: useRef(vi.fn()),
       stepWaveformZoomRef: useRef(vi.fn()),
+      segmentListFilterNavRef: useRef(createEmptySegmentListFilterNavState()),
     });
-    return { wfApiRef };
+    return { wfApiRef, scheduleAdvanceToSegment };
   });
-  return { wfApiRef: hook.result.current.wfApiRef };
+  return { wfApiRef: hook.result.current.wfApiRef, scheduleAdvanceToSegment };
 }
 
 describe("useEditorShortcutDispatcher", () => {
@@ -307,5 +315,43 @@ describe("useEditorShortcutDispatcher", () => {
     });
 
     expect(openEnvironment).toHaveBeenCalledTimes(1);
+  });
+
+  it("advances segment on ArrowDown when focus is outside textarea", () => {
+    const scheduleAdvanceToSegment = vi.fn();
+    const ctx = makeCtx({ selectedIdx: 0 });
+    mountDispatcher(ctx, { scheduleAdvanceToSegment });
+
+    act(() => {
+      dispatchKey({ key: "ArrowDown" });
+    });
+
+    expect(scheduleAdvanceToSegment).toHaveBeenCalledWith(1);
+  });
+
+  it("does not advance segment on ArrowDown inside textarea", () => {
+    const scheduleAdvanceToSegment = vi.fn();
+    const ctx = makeCtx({ selectedIdx: 0 });
+    const textarea = document.createElement("textarea");
+    textarea.setAttribute("aria-label", "语段正文");
+    const row = document.createElement("div");
+    row.setAttribute("data-seg-row", "0");
+    row.appendChild(textarea);
+    document.body.appendChild(row);
+    textarea.focus();
+    mountDispatcher(ctx, { scheduleAdvanceToSegment });
+
+    act(() => {
+      const event = new KeyboardEvent("keydown", {
+        key: "ArrowDown",
+        bubbles: true,
+        cancelable: true,
+      });
+      Object.defineProperty(event, "target", { value: textarea, configurable: true });
+      window.dispatchEvent(event);
+    });
+
+    expect(scheduleAdvanceToSegment).not.toHaveBeenCalled();
+    row.remove();
   });
 });

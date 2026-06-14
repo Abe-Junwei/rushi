@@ -60,6 +60,22 @@ export const EDITOR_SHORTCUT_DEFINITIONS: EditorShortcutDefinition[] = [
     allowInTextarea: true,
   },
   {
+    id: "segment.advancePrev",
+    bindings: [BINDING.plain("ArrowUp")],
+    keysLabel: "↑",
+    footerAction: "上一条语段",
+    panelAction: "选中上一条语段（语段正文内由正文键处理；失焦时全局生效）",
+    allowInTextarea: false,
+  },
+  {
+    id: "segment.advanceNext",
+    bindings: [BINDING.plain("ArrowDown")],
+    keysLabel: "↓",
+    footerAction: "下一条语段",
+    panelAction: "选中下一条语段（语段正文内由正文键处理；失焦时全局生效）",
+    allowInTextarea: false,
+  },
+  {
     id: "segment.splitPlayhead",
     bindings: [BINDING.mod("d")],
     keysLabel: "⌘/Ctrl + D",

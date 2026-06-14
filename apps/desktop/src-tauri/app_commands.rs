@@ -43,6 +43,7 @@ pub const APP_COMMANDS: &[&str] = &[
     "ensure_waveform_peaks",
     "waveform_peaks_status",
     "waveform_release_probe",
+    "scoped_waveform_file_meta",
     "export_project_bundle",
     "import_project_bundle",
     "get_asr_runtime_paths",

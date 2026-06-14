@@ -1,6 +1,7 @@
 # Release packaging audit — 2026-06
 
 > 12-batch zero-dead-angle audit for macOS personal v1 release.  
+> **主控策略**：[`release-parity-program-2026-06.md`](./release-parity-program-2026-06.md)；本文保留为 2026-06 packaging evidence，不再作为 release parity 主真源。  
 > Evidence baseline for waveform / sidecar / bundle path fixes in this cycle.
 
 ## Summary
@@ -107,7 +108,7 @@ grep -E 'asset_scope|ui waveform' \
 
 ## Batch 12 — Zero-terminal signoff
 
-See [release-zero-terminal-hand-test.md](../release-zero-terminal-hand-test.md).
+See [release-zero-terminal-hand-test.md](../release-zero-terminal-hand-test.md) and [dmg-vs-dev-parity-checklist.md](./dmg-vs-dev-parity-checklist.md) (WKWebView 专项).
 
 ## Rebuild checklist (operator)
 

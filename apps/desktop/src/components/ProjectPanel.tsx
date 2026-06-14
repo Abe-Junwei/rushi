@@ -54,6 +54,7 @@ export function ProjectPanel() {
     projectId: c.current?.id ?? null,
     fileId: c.currentFileId,
     mediaUrl: c.audioSrc,
+    mediaDiskPath: c.audioStoragePath,
     segments: c.segments,
     selectedIdx: c.selectedIdx,
     busy: c.busy,

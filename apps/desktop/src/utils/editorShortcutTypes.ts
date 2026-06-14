@@ -3,6 +3,8 @@ export type EditorShortcutScope = "global" | "waveform";
 export type EditorShortcutId =
   | "segment.mergeNext"
   | "segment.mergePrev"
+  | "segment.advancePrev"
+  | "segment.advanceNext"
   | "segment.splitPlayhead"
   | "segment.focusText"
   | "segment.delete"

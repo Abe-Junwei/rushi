@@ -1,7 +1,7 @@
 import type WaveformData from "waveform-data";
 import { computeTimelineWidthPx } from "../../utils/pxPerSec";
 import {
-  loadWaveformDatFromUrl,
+  loadWaveformDatFromPath,
   resampleWaveformForPxPerSec,
   resampleWaveformToWidth,
   waveformDataToWaveSurferPeaks,
@@ -41,14 +41,14 @@ export class PeakCache {
   }
 
   static async fromLevelUrls(
-    entries: Array<{ level: number; pixelsPerSecond: number; url: string }>,
+    entries: Array<{ level: number; pixelsPerSecond: number; path: string }>,
   ): Promise<PeakCache | null> {
     if (entries.length === 0) return null;
     const loaded = await Promise.all(
       entries.map(async (entry) => ({
         level: entry.level,
         pixelsPerSecond: entry.pixelsPerSecond,
-        data: await loadWaveformDatFromUrl(entry.url),
+        data: await loadWaveformDatFromPath(entry.path),
       })),
     );
     const finest = loaded.reduce((a, b) => (a.pixelsPerSecond >= b.pixelsPerSecond ? a : b));
@@ -57,7 +57,7 @@ export class PeakCache {
 
   /** Load additional LOD files into an existing cache (e.g. L2 after L0/L1 bootstrap). */
   async loadLevels(
-    entries: Array<{ level: number; pixelsPerSecond: number; url: string }>,
+    entries: Array<{ level: number; pixelsPerSecond: number; path: string }>,
   ): Promise<void> {
     const pending = entries.filter((entry) => !this.levels.has(entry.level));
     if (pending.length === 0) return;
@@ -65,7 +65,7 @@ export class PeakCache {
       pending.map(async (entry) => ({
         level: entry.level,
         pixelsPerSecond: entry.pixelsPerSecond,
-        data: await loadWaveformDatFromUrl(entry.url),
+        data: await loadWaveformDatFromPath(entry.path),
       })),
     );
     for (const entry of loaded) {

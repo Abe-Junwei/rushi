@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { formatMediaTime } from "../utils/formatMediaTime";
 import { exportMinimapPeaksFromWaveSurfer } from "../services/waveform/minimapPeaksSource";
+import { positionWaveformScrollLayersByTierScroll } from "../services/waveform/waveformSurferProgressCoverage";
 import { createWaveformAppliedZoomState } from "../utils/waveformAppliedZoom";
 import { useWaveformHeightSync } from "./useWaveformHeightSync";
 import { useWaveformPlayback } from "./useWaveformPlayback";
@@ -19,6 +20,7 @@ export type { UseProjectWaveformOptions } from "./useProjectWaveformTypes";
 export function useProjectWaveform(options: UseProjectWaveformOptions) {
   const {
     mediaUrl,
+    mediaDiskPath,
     segments,
     selectedIdx,
     disabled,
@@ -47,6 +49,8 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
   const appliedWaveformHeightRef = useRef(waveformHeightPx);
   const pendingAppliedWaveformHeightRef = useRef<number | null>(waveformHeightPx);
   const containerRef = useRef<HTMLDivElement | null>(null);
+  const waveformScrollLayerRef = useRef<HTMLDivElement | null>(null);
+  const overlayScrollLayerRef = useRef<HTMLDivElement | null>(null);
   const stickyShellRef = useRef<HTMLDivElement | null>(null);
   const stretchShellRef = useRef<HTMLDivElement | null>(null);
   const timelineShellRef = useRef<HTMLDivElement | null>(null);
@@ -101,7 +105,14 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     const ws = wsRef.current;
     if (!ws) return;
     try {
-      ws.setScroll(scrollLeftPx);
+      positionWaveformScrollLayersByTierScroll(
+        {
+          waveform: waveformScrollLayerRef.current,
+          overlay: overlayScrollLayerRef.current,
+        },
+        scrollLeftPx,
+        ws,
+      );
     } catch {
       /* noop */
     }
@@ -140,13 +151,22 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
 
   const peakCacheGeneration = options.peakCacheGeneration ?? 0;
 
-  useProjectWaveformMount(mediaUrl, deferDecodeMount, peakCacheGeneration, mountRefs, destroyWave);
+  useProjectWaveformMount(
+    mediaUrl,
+    mediaDiskPath,
+    deferDecodeMount,
+    peakCacheGeneration,
+    mountRefs,
+    destroyWave,
+  );
 
   const { refitFitAllIfNeeded, syncShellLayoutForZoom } = useWaveformViewportController({
     wsRef,
     containerRef,
     stickyShellRef,
     stretchShellRef,
+    waveformScrollLayerRef,
+    overlayScrollLayerRef,
     tierScrollRef: options.tierScrollRef,
     isReady,
     deferDecodeMount,
@@ -221,6 +241,8 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
 
   return {
     containerRef,
+    waveformScrollLayerRef,
+    overlayScrollLayerRef,
     stickyShellRef,
     stretchShellRef,
     timelineShellRef,

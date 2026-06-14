@@ -37,6 +37,7 @@ permissions = [
   "allow-ensure-waveform-peaks",
   "allow-waveform-peaks-status",
   "allow-waveform-release-probe",
+  "allow-scoped-waveform-file-meta",
   "allow-export-project-bundle",
   "allow-import-project-bundle",
   "allow-export-text-file",

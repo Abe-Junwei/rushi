@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useRef, type RefObject } from "react";
+import { useCallback, useEffect, useMemo, useRef, type RefObject } from "react";
 import { p1LaneBoundsSignature } from "../utils/boundsSignature";
 import { resolveWaveformSegmentContextMenuIndex } from "../utils/waveformSegmentContextMenu";
 import {
@@ -17,6 +17,7 @@ import {
   shouldZoomViewportOnSelectSource,
 } from "../utils/waveformViewMode";
 import type { useWaveformTimelineController } from "../hooks/useWaveformTimelineController";
+import { createListAdvanceCoalescedScheduler } from "../utils/scheduleListAdvanceSegmentPlayback";
 import type { TranscriptionLayerInput } from "./transcriptionLayerTypes";
 
 type TimelineApi = ReturnType<typeof useWaveformTimelineController>;
@@ -69,6 +70,23 @@ export function useTranscriptionLayerSelection(opts: {
     waveformShellRef.current?.focus();
   }, [waveformShellRef]);
 
+  const listAdvanceRevealSchedulerRef = useRef(
+    createListAdvanceCoalescedScheduler<{ start_sec: number; end_sec: number }>((seg) => {
+      scrollFitRef.current.timeline.viewportFit.revealSegmentInViewport(seg);
+    }),
+  );
+
+  useEffect(
+    () => () => {
+      listAdvanceRevealSchedulerRef.current.cancel();
+    },
+    [],
+  );
+
+  const queueListAdvanceReveal = useCallback((seg: { start_sec: number; end_sec: number }) => {
+    listAdvanceRevealSchedulerRef.current.schedule(seg);
+  }, []);
+
   const revealSelectedSegmentInViewport = useCallback(() => {
     const c = ctxRef.current;
     const seg = c.segments[c.selectedIdx];
@@ -103,13 +121,18 @@ export function useTranscriptionLayerSelection(opts: {
           { start_sec: seg.start_sec, end_sec: seg.end_sec },
           { forceFullFit: true },
         );
+      } else if (source === "listAdvance" || source === "listKeyboard") {
+        queueListAdvanceReveal({
+          start_sec: seg.start_sec,
+          end_sec: seg.end_sec,
+        });
       } else {
         scrollFitRef.current.timeline.viewportFit.revealSegmentInViewport({
           start_sec: seg.start_sec,
           end_sec: seg.end_sec,
         });
       }
-      if (source !== "listAdvance") {
+      if (source !== "listAdvance" && source !== "listKeyboard") {
         requestAnimationFrame(() => {
           timeline.wfApiRef.current.seek(segmentStartSec(s));
         });
@@ -118,7 +141,7 @@ export function useTranscriptionLayerSelection(opts: {
         focusWaveformShell();
       }
     },
-    [ctxRef, focusWaveformShell, setSelectedIdxUi, timeline.wfApiRef],
+    [ctxRef, focusWaveformShell, queueListAdvanceReveal, setSelectedIdxUi, timeline.wfApiRef],
   );
 
   selectSegmentAtRef.current = selectSegmentAt;

@@ -6,7 +6,6 @@ import {
 } from "./waveformRenderStatus";
 
 const base = {
-  backgroundPeaksEnabled: true,
   mountDeferTimedOut: false,
   waveformReady: true,
 } as const;
@@ -18,13 +17,6 @@ describe("resolveWaveformFooterStatusLabel", () => {
 
   it("returns null for idle waveform ready so footer can rotate shortcut hints", () => {
     expect(resolveWaveformFooterStatusLabel({ ...base, phase: "peaks" })).toBeNull();
-    expect(
-      resolveWaveformFooterStatusLabel({
-        ...base,
-        phase: "decode",
-        backgroundPeaksEnabled: false,
-      }),
-    ).toBeNull();
   });
 });
 
@@ -47,17 +39,6 @@ describe("resolveWaveformCenterStatusLabel", () => {
         waveformReady: false,
       }),
     ).toBe("正在生成波形…");
-  });
-
-  it("hides generating copy when background peaks are disabled", () => {
-    expect(
-      resolveWaveformCenterStatusLabel({
-        ...base,
-        phase: "generating",
-        backgroundPeaksEnabled: false,
-        waveformReady: false,
-      }),
-    ).toBeNull();
   });
 
   it("shows loading after defer timeout before decode mount", () => {

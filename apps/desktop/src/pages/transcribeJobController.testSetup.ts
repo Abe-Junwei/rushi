@@ -22,9 +22,13 @@ vi.mock("../tauri/projectApi", () => ({
   recordTranscribeTimelinePollFailure: transcribeJobApiMocks.recordTranscribeTimelinePollFailure,
 }));
 
+vi.mock("../services/shellCapabilities", () => ({
+  readShellManagesBundledSidecarSync: () => false,
+}));
+
 vi.mock("../config/env", () => ({
   asrBaseUrl: () => "http://127.0.0.1:8741",
-  isPackagedDesktopApp: () => false,
+  isTauriRuntime: () => false,
 }));
 
 vi.mock("../services/asr/loopbackFetch", () => ({

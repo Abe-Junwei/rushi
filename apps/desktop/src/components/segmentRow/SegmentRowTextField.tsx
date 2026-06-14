@@ -70,7 +70,7 @@ export const SegmentRowTextField = memo(function SegmentRowTextField(props: Segm
   const useTransparentText = showPanelHighlightMirror || showCorrectableMirror;
 
   return (
-    <div className="min-w-0 flex-1" {...{ [SEGMENT_TEXT_BODY_ATTR]: "" }}>
+    <div className="min-w-0 flex-1 overflow-hidden" {...{ [SEGMENT_TEXT_BODY_ATTR]: "" }}>
       <div className="rounded-lg bg-transparent transition-[background-color] duration-150">
         <div className="relative">
           <textarea

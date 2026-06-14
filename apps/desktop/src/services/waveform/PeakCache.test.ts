@@ -4,7 +4,7 @@ const resampleMock = vi.fn((data: unknown) => data);
 const toPeaksMock = vi.fn((_data?: unknown) => [[0, 0.5, -0.1, 0.2]]);
 
 vi.mock("./audiowaveformDat", () => ({
-  loadWaveformDatFromUrl: vi.fn(() => Promise.resolve({ sample_rate: 44100, length: 600 })),
+  loadWaveformDatFromPath: vi.fn(() => Promise.resolve({ sample_rate: 44100, length: 600 })),
   resampleWaveformForPxPerSec: (data: unknown) => resampleMock(data),
   resampleWaveformToWidth: (data: unknown) => resampleMock(data),
   waveformDataToWaveSurferPeaks: (data: unknown) => toPeaksMock(data),
@@ -23,10 +23,10 @@ describe("PeakCache", () => {
 
   it("returns distinct instances per fromLevelUrls call", async () => {
     const cacheA = await PeakCache.fromLevelUrls([
-      { level: 1, pixelsPerSecond: 20, url: "asset://a.dat" },
+      { level: 1, pixelsPerSecond: 20, path: "/tmp/a.dat" },
     ]);
     const cacheB = await PeakCache.fromLevelUrls([
-      { level: 1, pixelsPerSecond: 20, url: "asset://b.dat" },
+      { level: 1, pixelsPerSecond: 20, path: "/tmp/b.dat" },
     ]);
     expect(cacheA).not.toBeNull();
     expect(cacheB).not.toBeNull();
@@ -36,7 +36,7 @@ describe("PeakCache", () => {
 
   it("memoizes resample results per pxPerSec", async () => {
     const cache = await PeakCache.fromLevelUrls([
-      { level: 1, pixelsPerSecond: 20, url: "asset://x.dat" },
+      { level: 1, pixelsPerSecond: 20, path: "/tmp/x.dat" },
     ]);
     expect(cache).not.toBeNull();
     if (!cache) return;
@@ -52,7 +52,7 @@ describe("PeakCache", () => {
 
   it("uses layout duration in the returned bundle", async () => {
     const cache = await PeakCache.fromLevelUrls([
-      { level: 1, pixelsPerSecond: 20, url: "asset://x.dat" },
+      { level: 1, pixelsPerSecond: 20, path: "/tmp/x.dat" },
     ]);
     expect(cache).not.toBeNull();
     if (!cache) return;
@@ -63,7 +63,7 @@ describe("PeakCache", () => {
 
   it("evicts oldest resample entries beyond LRU cap", async () => {
     const cache = await PeakCache.fromLevelUrls([
-      { level: 0, pixelsPerSecond: 2, url: "asset://l0.dat" },
+      { level: 0, pixelsPerSecond: 2, path: "asset://l0.dat" },
     ]);
     expect(cache).not.toBeNull();
     if (!cache) return;
@@ -84,7 +84,7 @@ describe("PeakCache", () => {
 
   it("does not reuse resample cache across px/s that map to different target widths", async () => {
     const cache = await PeakCache.fromLevelUrls([
-      { level: 0, pixelsPerSecond: 2, url: "asset://l0.dat" },
+      { level: 0, pixelsPerSecond: 2, path: "asset://l0.dat" },
     ]);
     expect(cache).not.toBeNull();
     if (!cache) return;
@@ -108,7 +108,7 @@ describe("PeakCache", () => {
 
   it("getMinimapPeaks uses coarsest loaded LOD when L0 is absent", async () => {
     const cache = await PeakCache.fromLevelUrls([
-      { level: 1, pixelsPerSecond: 20, url: "asset://l1.dat" },
+      { level: 1, pixelsPerSecond: 20, path: "asset://l1.dat" },
     ]);
     expect(cache).not.toBeNull();
     if (!cache) return;
@@ -122,7 +122,7 @@ describe("PeakCache", () => {
 
   it("getMinimapPeaksAsync resolves minimap peaks", async () => {
     const cache = await PeakCache.fromLevelUrls([
-      { level: 0, pixelsPerSecond: 2, url: "asset://l0.dat" },
+      { level: 0, pixelsPerSecond: 2, path: "asset://l0.dat" },
     ]);
     expect(cache).not.toBeNull();
     if (!cache) return;

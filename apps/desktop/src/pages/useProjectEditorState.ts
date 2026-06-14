@@ -17,6 +17,8 @@ export interface ProjectEditorApi {
   selectedIdx: number;
   setSelectedIdx: React.Dispatch<React.SetStateAction<number>>;
   audioSrc: string | null;
+  /** Raw on-disk audio path (Tauri invoke → blob URL for WaveSurfer). */
+  audioStoragePath: string | null;
   setAudioSrc: React.Dispatch<React.SetStateAction<string | null>>;
   segmentsRef: React.MutableRefObject<SegmentDto[]>;
   selectedIdxRef: React.MutableRefObject<number>;
@@ -33,6 +35,7 @@ export function useProjectEditorState(setError: (msg: string) => void): ProjectE
   const [segments, setSegments] = useState<SegmentDto[]>([]);
   const [selectedIdx, setSelectedIdx] = useState(0);
   const [audioSrc, setAudioSrc] = useState<string | null>(null);
+  const [audioStoragePath, setAudioStoragePath] = useState<string | null>(null);
 
   const segmentsRef = useRef(segments);
   reconcileSegmentsRefWithState(segmentsRef, segments);
@@ -50,8 +53,10 @@ export function useProjectEditorState(setError: (msg: string) => void): ProjectE
       setSegments(segs);
       setSelectedIdx(0);
       try {
+        setAudioStoragePath(detail.audio_path ?? null);
         setAudioSrc(detail.audio_path ? convertFileSrc(detail.audio_path) : null);
       } catch {
+        setAudioStoragePath(null);
         setAudioSrc(null);
       }
       return segs;
@@ -67,6 +72,7 @@ export function useProjectEditorState(setError: (msg: string) => void): ProjectE
     setSegments([]);
     setSelectedIdx(0);
     setAudioSrc(null);
+    setAudioStoragePath(null);
   }, []);
 
   const closeProject = useCallback(() => {
@@ -89,8 +95,10 @@ export function useProjectEditorState(setError: (msg: string) => void): ProjectE
         const ni = findSegmentIndexByUid(segs, prevUid);
         setSelectedIdx(ni >= 0 ? ni : Math.min(selectedIdxRef.current, Math.max(0, segs.length - 1)));
         try {
+          setAudioStoragePath(fd.audio_path ?? null);
           setAudioSrc(fd.audio_path ? convertFileSrc(fd.audio_path) : null);
         } catch {
+          setAudioStoragePath(null);
           setAudioSrc(null);
         }
       }
@@ -114,6 +122,7 @@ export function useProjectEditorState(setError: (msg: string) => void): ProjectE
     setSelectedIdx,
     audioSrc,
     setAudioSrc,
+    audioStoragePath,
     segmentsRef,
     selectedIdxRef,
     openFile,

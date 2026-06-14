@@ -81,3 +81,4 @@
 | 2026-06-12 | 全计划执行：CX0/CX1 修复；user-guide §5；登记表扩至 C-15 |
 | 2026-06-12 | Sprint C 闭合：asrEnvStatus / EnvQualityPanel / async fallback toast；R-18 删 sidecarNotListening |
 | 2026-06-12 | Sprint B2：补 `allow-asr-supervisor-snapshot`；`checkTauriInvokeAcl` + 单测 |
+| 2026-06-11 | DMG parity：`dmg-vs-dev-parity-checklist.md` · build-info 侧车 stamp · `checkReleaseUserCopyDrift` |

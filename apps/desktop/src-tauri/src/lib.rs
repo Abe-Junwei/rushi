@@ -38,6 +38,27 @@ pub fn run() {
         .setup(|app| {
             bundled_asr_assets::init_from_app(app.handle());
             let st = project::setup_db(app.handle())?;
+            let build_info = app_info::build_app_build_info(Some(&st.root), Some(&st.db_path));
+            project::utils::append_desktop_log_line(
+                &st,
+                &format!(
+                    "INFO parity startup: profile={} platform={}-{}",
+                    build_info.shell_profile, build_info.platform_os, build_info.platform_arch
+                ),
+            );
+            project::utils::append_desktop_log_line(
+                &st,
+                &format!(
+                    "INFO parity bundle: asr_shell_managed={} bundled_sidecar_build={}",
+                    build_info.asr_shell_managed,
+                    if build_info.bundled_sidecar_build.is_some() {
+                        "present"
+                    } else {
+                        "missing"
+                    }
+                ),
+            );
+            let automation_diag_state = st.clone();
             app.manage(st);
             #[cfg(feature = "devtools")]
             if std::env::var_os("RUSHI_DEVTOOLS").is_some() {
@@ -55,6 +76,39 @@ pub fn run() {
             app.manage(local_runtime::installer::LocalRuntimeInstallerState::default());
             app.manage(postprocess_cmd::PostprocessCancelState::default());
             app.manage(project::TranscribeCancelState::default());
+            if std::env::var_os("RUSHI_AUTOMATION").as_deref() == Some(std::ffi::OsStr::new("1"))
+                && std::env::var_os("RUSHI_AUTOMATION_DIAGNOSTIC_ZIP").is_some()
+            {
+                let path = std::env::var_os("RUSHI_AUTOMATION_DIAGNOSTIC_ZIP").unwrap();
+                let diag_handle = app.handle().clone();
+                let diag_state = automation_diag_state.clone();
+                let diag_path = PathBuf::from(path);
+                tauri::async_runtime::spawn(async move {
+                    tokio::time::sleep(std::time::Duration::from_secs(20)).await;
+                    let diag_state_for_log = diag_state.clone();
+                    let diag_path_for_log = diag_path.clone();
+                    let result = tauri::async_runtime::spawn_blocking(move || {
+                        diagnostic::write_diagnostic_bundle_to_path(
+                            &diag_handle,
+                            &diag_state,
+                            &diag_path,
+                        )
+                    })
+                    .await
+                    .unwrap_or_else(|e| Err(format!("diagnostic task join failed: {e}")));
+                    let line = match result {
+                        Ok(()) => format!(
+                            "INFO parity startup: automation_diagnostic_zip=ok path={}",
+                            diag_path_for_log.display()
+                        ),
+                        Err(e) => format!(
+                            "WARN parity startup: automation_diagnostic_zip=failed err={}",
+                            e.replace(['\n', '\r'], " ")
+                        ),
+                    };
+                    project::utils::append_desktop_log_line(&diag_state_for_log, &line);
+                });
+            }
             let handle = app.handle().clone();
             let start_handle = handle.clone();
             tauri::async_runtime::spawn(async move {
@@ -115,6 +169,7 @@ pub fn run() {
             project::ensure_waveform_peaks,
             project::waveform_peaks_status,
             project::waveform_release_probe,
+            project::scoped_waveform_file_meta,
             project::export_project_bundle,
             project::import_project_bundle,
             project::get_asr_runtime_paths,

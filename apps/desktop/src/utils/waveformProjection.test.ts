@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import { computeTimelineWidthPx } from "./pxPerSec";
 import {
   effectiveTimelinePxPerSec,
+  embeddedRulerPlayheadUsesTimelineCoords,
   playheadTimelineLeftPct,
   scrollPxPreservingViewportCenterTime,
   timeToTimelinePx,
@@ -95,5 +96,27 @@ describe("waveformProjection — single horizontal scale", () => {
     const centerBefore = ((400 + 400) / 6720) * 120;
     const centerAfter = ((scroll + 400) / 13440) * 120;
     expect(centerAfter).toBeCloseTo(centerBefore, 4);
+  });
+});
+
+describe("embeddedRulerPlayheadUsesTimelineCoords", () => {
+  it("is true for embedded overlay viewport ruler (scroll-track SVG)", () => {
+    expect(
+      embeddedRulerPlayheadUsesTimelineCoords({
+        appearance: "embedded",
+        coordinateSpace: "viewport",
+        overlayOnWaveform: true,
+      }),
+    ).toBe(true);
+  });
+
+  it("is false for plain viewport sticky ruler", () => {
+    expect(
+      embeddedRulerPlayheadUsesTimelineCoords({
+        appearance: "embedded",
+        coordinateSpace: "viewport",
+        overlayOnWaveform: false,
+      }),
+    ).toBe(false);
   });
 });

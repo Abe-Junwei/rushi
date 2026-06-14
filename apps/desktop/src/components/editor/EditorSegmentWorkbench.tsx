@@ -30,6 +30,7 @@ export const EditorSegmentWorkbench = memo(function EditorSegmentWorkbench({
         tx={tx}
         appearance={a}
         listRef={tx.segmentListRef}
+        filterNavRef={tx.segmentListFilterNavRef}
         filteredIndices={filteredIndices}
         filterActive={filterActive}
         onOpenSegmentContextMenu={onOpenSegmentContextMenu}

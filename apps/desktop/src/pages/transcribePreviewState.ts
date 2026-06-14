@@ -78,7 +78,7 @@ export function isTranscribeTerminalPhase(phase: string): boolean {
   return phase === "done" || phase === "error" || phase === "cancelled" || phase === "unknown";
 }
 
-import { isPackagedDesktopApp } from "../config/env";
+import { readShellManagesBundledSidecarSync } from "../services/shellCapabilities";
 
 /** Sidecar lacks R3e-C async routes (stale PyInstaller build). */
 export function isTranscribeAsyncUnavailable(error: unknown): boolean {
@@ -98,10 +98,14 @@ export const TRANSCRIBE_ASYNC_FALLBACK_HINT_PACKAGED =
 /** @deprecated Prefer `transcribeAsyncFallbackHint()` in UI paths that may run in release. */
 export const TRANSCRIBE_ASYNC_FALLBACK_HINT = TRANSCRIBE_ASYNC_FALLBACK_HINT_DEV;
 
-export function transcribeAsyncFallbackHint(): string {
-  return isPackagedDesktopApp()
+export function transcribeAsyncFallbackHintFromShellManaged(shellManaged: boolean): string {
+  return shellManaged
     ? TRANSCRIBE_ASYNC_FALLBACK_HINT_PACKAGED
     : TRANSCRIBE_ASYNC_FALLBACK_HINT_DEV;
+}
+
+export function transcribeAsyncFallbackHint(): string {
+  return transcribeAsyncFallbackHintFromShellManaged(readShellManagesBundledSidecarSync());
 }
 
 export const TRANSCRIBE_PREVIEW_BLOCK_REASON =

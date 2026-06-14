@@ -8,7 +8,7 @@ mod export_docx_build;
 pub(crate) use export_docx_body::{
     add_body_paragraph, append_polished_paragraph_list, sanitize_docx_text, MAX_LECTURE_BODY_CHARS,
 };
-pub(crate) use export_docx_build::{build_docx_bytes, build_docx_to_path};
+pub(crate) use export_docx_build::build_docx_to_path;
 
 use crate::project::SegmentDto;
 use export_docx_body::normalize_export_mode;
@@ -70,6 +70,7 @@ pub async fn export_docx(
 #[cfg(test)]
 mod tests {
     use super::export_docx_body::{format_hms, normalize_export_mode, sanitize_docx_text};
+    use super::export_docx_build::build_docx_bytes;
     use super::*;
 
     fn seg(text: &str, low: bool) -> SegmentDto {

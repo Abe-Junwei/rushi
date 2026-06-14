@@ -19,6 +19,8 @@ export interface ProjectLifecycleApi {
   selectedIdx: number;
   setSelectedIdx: React.Dispatch<React.SetStateAction<number>>;
   audioSrc: string | null;
+  /** Raw on-disk audio path for Tauri blob URL load (bypasses asset:// truncation). */
+  audioStoragePath: string | null;
   error: string;
   busy: boolean;
   busyReason: BusyReason | null;

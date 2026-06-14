@@ -1,5 +1,3 @@
-use super::helpers::{apply_windowed_warning, record_transcribe_err, TranscribeInFlightGuard};
-use super::save::save_transcribe_segments;
 use super::super::local_transcribe_gate::assert_local_asr_ready_for_transcribe;
 use super::super::stt_vocabulary::{
     vocabulary_support_warnings, SttVocabularyChannel, SttVocabularyPlan,
@@ -17,6 +15,8 @@ use super::super::transcribe_timeout::{
 };
 use super::super::types::RunTranscribeOutcome;
 use super::super::utils::{append_desktop_log_line, file_detail_from_conn, open_db};
+use super::helpers::{apply_windowed_warning, record_transcribe_err, TranscribeInFlightGuard};
+use super::save::save_transcribe_segments;
 use crate::DbState;
 use std::path::Path;
 use std::time::Duration;

@@ -10,6 +10,18 @@ ASR="$ROOT/services/asr"
 DEST="$ROOT/apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar"
 TMPVENV="$ASR/.venv-sidecar-build"
 
+write_sidecar_build_stamp() {
+  local sidecar_dir="$1"
+  local sha ts
+  sha="$(git -C "$ROOT" rev-parse --short HEAD 2>/dev/null || echo unknown)"
+  ts="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
+  cat >"$sidecar_dir/sidecar-build-stamp.txt" <<EOF
+git_sha=${sha}
+built_at=${ts}
+platform=${OS}-${ARCH}
+EOF
+}
+
 command -v python3 >/dev/null 2>&1 || {
   echo "python3 not found" >&2
   exit 1
@@ -42,6 +54,7 @@ build_stub() {
   rm -rf "$DEST"
   mkdir -p "$(dirname "$DEST")"
   cp -R "$ASR/dist/rushi-asr-sidecar" "$DEST"
+  write_sidecar_build_stamp "$DEST"
   echo "OK (stub): $DEST"
 }
 
@@ -91,6 +104,7 @@ build_funasr() {
   rm -rf "$DEST"
   mkdir -p "$(dirname "$DEST")"
   cp -R "$ASR/dist/rushi-asr-sidecar" "$DEST"
+  write_sidecar_build_stamp "$DEST"
   echo "OK: FunASR sidecar onedir -> $DEST"
 }
 

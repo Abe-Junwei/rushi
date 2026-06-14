@@ -15,7 +15,7 @@ import { useTranscriptionViewportFit } from "../pages/useTranscriptionViewportFi
 import { useWaveformTimelineMountGate } from "./useWaveformTimelineMountGate";
 import { useWaveformTimelineDurationSync } from "./useWaveformTimelineDuration";
 import { useWaveformPeaksPhaseState } from "./useWaveformPeaksPhaseState";
-import { writeStoredWaveformPxPerSecForMedia } from "../utils/waveformPrefs";
+import { writeStoredWaveformPxPerSecForMedia, WAVEFORM_BACKGROUND_PEAKS_ENABLED } from "../utils/waveformPrefs";
 import type { TranscriptionLayerInput } from "../pages/transcriptionLayerTypes";
 
 type WfApi = ReturnType<typeof UseProjectWaveformHook>;
@@ -41,7 +41,7 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
     ctx.projectId,
     ctx.mediaUrl ? ctx.fileId : null,
     resolvedDurationSec,
-    routePrefs.backgroundPeaksEnabled,
+    WAVEFORM_BACKGROUND_PEAKS_ENABLED,
     ctx.mediaUrl,
   );
 
@@ -56,7 +56,7 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
   const { deferDecodeMount, mountDeferTimedOut } = useWaveformTimelineMountGate({
     mediaUrl: ctx.mediaUrl,
     mediaDurationSec: mountMediaDurationSec,
-    backgroundPeaksEnabled: routePrefs.backgroundPeaksEnabled,
+    backgroundPeaksEnabled: WAVEFORM_BACKGROUND_PEAKS_ENABLED,
     peaksLoading: peaks.loading,
     peakCache: peaks.peakCache,
     peaksUnavailable: peaks.peaksUnavailable,
@@ -64,6 +64,7 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
 
   const wf = useProjectWaveform({
     mediaUrl: ctx.mediaUrl,
+    mediaDiskPath: ctx.mediaDiskPath,
     segments: ctx.segments,
     selectedIdx: ctx.selectedIdx,
     disabled: ctx.busy,
@@ -217,7 +218,7 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
     peaksApplied: wf.peaksApplied,
     peaksHotSwitchPending: wf.peaksHotSwitchPending,
     waveformReady: wf.isReady,
-    backgroundPeaksEnabled: routePrefs.backgroundPeaksEnabled,
+    backgroundPeaksEnabled: WAVEFORM_BACKGROUND_PEAKS_ENABLED,
     mountDeferred: deferDecodeMount,
   });
 

@@ -10,6 +10,7 @@ import {
   writeWaveformShellLayout,
   writeWaveformStickyShellWidth,
 } from "../utils/waveformViewportStretch";
+import { subscribeWaveSurferAfterRender } from "../services/waveform/waveformSurferProgressCoverage";
 
 const WIDTH_EPSILON_PX = 1;
 const PX_PER_SEC_EPSILON = 1e-6;
@@ -19,6 +20,8 @@ export type UseWaveformViewportControllerArgs = {
   containerRef: RefObject<HTMLDivElement | null>;
   stickyShellRef?: RefObject<HTMLDivElement | null>;
   stretchShellRef?: RefObject<HTMLDivElement | null>;
+  waveformScrollLayerRef?: RefObject<HTMLDivElement | null>;
+  overlayScrollLayerRef?: RefObject<HTMLDivElement | null>;
   tierScrollRef?: RefObject<HTMLElement | null>;
   isReady: boolean;
   deferDecodeMount: boolean;
@@ -91,6 +94,8 @@ export function useWaveformViewportController(args: UseWaveformViewportControlle
       timelineShell: timelineShellRef?.current,
       peaksStageShell: peaksStageShellRef?.current,
       stickyShell: stickyShellRef?.current,
+      waveformScrollLayer: argsRef.current.waveformScrollLayerRef?.current,
+      overlayScrollLayer: argsRef.current.overlayScrollLayerRef?.current,
       timelineWidthPx,
       viewportWidthPx: tierW,
     });
@@ -117,6 +122,8 @@ export function useWaveformViewportController(args: UseWaveformViewportControlle
       timelineShell: timelineShellRef?.current,
       peaksStageShell: peaksStageShellRef?.current,
       stickyShell: stickyShellRef?.current,
+      waveformScrollLayer: argsRef.current.waveformScrollLayerRef?.current,
+      overlayScrollLayer: argsRef.current.overlayScrollLayerRef?.current,
       timelineWidthPx,
       viewportWidthPx: tierW,
     });
@@ -249,7 +256,7 @@ export function useWaveformViewportController(args: UseWaveformViewportControlle
   useEffect(() => {
     const ws = args.wsRef.current;
     if (!ws || !args.isReady || args.deferDecodeMount) return;
-    const unsub = ws.on("redrawcomplete", () => {
+    const unsub = subscribeWaveSurferAfterRender(ws, () => {
       clearStretch();
     });
     return unsub;

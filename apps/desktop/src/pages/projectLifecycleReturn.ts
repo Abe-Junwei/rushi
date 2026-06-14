@@ -45,6 +45,7 @@ export type ProjectLifecycleReturnInput = {
   selectedIdx: number;
   setSelectedIdx: React.Dispatch<React.SetStateAction<number>>;
   audioSrc: string | null;
+  audioStoragePath: string | null;
   error: string;
   busy: boolean;
   busyReason: BusyReason | null;
@@ -91,6 +92,7 @@ export function buildProjectLifecycleReturn(input: ProjectLifecycleReturnInput):
     selectedIdx,
     setSelectedIdx,
     audioSrc,
+    audioStoragePath,
     error,
     busy,
     busyReason,
@@ -142,6 +144,7 @@ export function buildProjectLifecycleReturn(input: ProjectLifecycleReturnInput):
     selectedIdx,
     setSelectedIdx,
     audioSrc,
+    audioStoragePath,
     error,
     busy,
     busyReason,

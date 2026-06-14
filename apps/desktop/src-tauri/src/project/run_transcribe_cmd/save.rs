@@ -1,7 +1,9 @@
 use super::super::correction::collect_correction_rule_hints;
 use super::super::correction::SaveSegmentsLearnOpts;
 use super::super::segment_cmd::{file_save_segments_inner, SegmentSaveEditLog};
-use super::super::segment_media_sanitize::{sanitize_segments_for_media, trim_adjacent_segment_overlaps};
+use super::super::segment_media_sanitize::{
+    sanitize_segments_for_media, trim_adjacent_segment_overlaps,
+};
 use super::super::transcribe_response::parse_transcribe_segments_from_json;
 use super::super::transcribe_timeline::{TranscribeTimelineRecorder, STAGE_SAVE};
 use super::super::utils::{append_desktop_log_line, file_detail_from_conn, now_ms, open_db};
@@ -31,7 +33,9 @@ pub(crate) async fn save_transcribe_segments(
     let (segments, removed_dominant) =
         sanitize_segments_for_media(segments, audio_duration_sec, true);
     if removed_dominant > 0 {
-        warnings.push(format!("segments_dominant_span_filtered:{removed_dominant}"));
+        warnings.push(format!(
+            "segments_dominant_span_filtered:{removed_dominant}"
+        ));
         append_desktop_log_line(
             st,
             &format!("INFO transcribe filtered dominant spans removed={removed_dominant} file_id={file_id}"),

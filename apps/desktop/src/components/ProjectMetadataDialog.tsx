@@ -130,6 +130,7 @@ export function ProjectMetadataDialog({
             </label>
 
             <ProjectRecordedAtField
+              key={project.id}
               value={draft.recorded_at ?? ""}
               disabled={busy}
               onChange={(recorded_at) => setDraft((prev) => ({ ...prev, recorded_at }))}

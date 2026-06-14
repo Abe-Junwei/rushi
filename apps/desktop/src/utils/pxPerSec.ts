@@ -38,6 +38,14 @@ export const PX_PER_SEC_PEAKS_QUANTUM = 8;
 /** WaveSurfer 单帧 peaks 列数上限；超长音频高缩放时避免百万列 resample / 主线程卡顿。 */
 export const MAX_WAVESURFER_PEAK_COLUMNS = 32_768;
 
+/**
+ * WaveSurfer 宿主容器固定宽度：≥ 任意缩放下的 WS 可滚宽度（`clampPxPerSecForWaveSurferRender`
+ * 已将 `px/s × duration` 钳制到 `MAX_WAVESURFER_PEAK_COLUMNS`）。容器恒比波形宽 → WS 永远「不可内部滚动」，
+ * 一次性渲染全部 canvas tile（消除懒渲染留白尾巴）；横向定位改用宿主 `translateX`。
+ * `+256` 余量吸收 `ceil` 取整，杜绝因 1px 偏差退回懒渲染。
+ */
+export const WAVEFORM_WS_HOST_WIDTH_PX = MAX_WAVESURFER_PEAK_COLUMNS + 256;
+
 /** decode 回退路径下单次 canvas 宽度上限（与 peaks 列数上限配套）。 */
 export const MAX_WAVESURFER_CANVAS_WIDTH_PX = 262_144;
 
@@ -59,9 +67,29 @@ export function resolveMaxRenderablePxPerSec(durationSec: number): number {
   return MAX_WAVESURFER_CANVAS_WIDTH_PX / sec;
 }
 
+/** peaks 路径下单帧列数上限对应的 px/s（与 `capWaveformPeakColumns` 一致）。 */
+export function resolveMaxPeaksTimelinePxPerSec(durationSec: number): number {
+  const sec = Math.max(durationSec, 0.5);
+  return MAX_WAVESURFER_PEAK_COLUMNS / sec;
+}
+
 export function clampPxPerSecForWaveSurferRender(pxPerSec: number, durationSec: number): number {
-  const capped = Math.min(pxPerSec, resolveMaxRenderablePxPerSec(durationSec));
+  const capped = Math.min(
+    pxPerSec,
+    resolveMaxRenderablePxPerSec(durationSec),
+    resolveMaxPeaksTimelinePxPerSec(durationSec),
+  );
   return clampPxPerSecForFitSelection(capped);
+}
+
+/** Timeline / tier / WS 共用可渲染宽度（peaks 列数与 canvas 宽度双上限）。 */
+export function computeRenderableTimelineWidthPx(
+  durationSec: number,
+  pxPerSec: number,
+): number {
+  const sec = Math.max(durationSec, 0.5);
+  const renderPxPerSec = clampPxPerSecForWaveSurferRender(pxPerSec, sec);
+  return computeTimelineWidthPx(sec, renderPxPerSec);
 }
 
 export function clampPxPerSec(x: number): number {

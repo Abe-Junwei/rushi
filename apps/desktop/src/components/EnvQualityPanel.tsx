@@ -7,7 +7,7 @@ import {
   CONTROL_BTN_SECONDARY,
 } from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
-import { isPackagedDesktopApp } from "../config/env";
+import { readShellManagesBundledSidecarSync } from "../services/shellCapabilities";
 import { useQualityEvalController } from "../pages/useQualityEvalController";
 import { packagedOrDev } from "../services/packagedUserHints";
 import {
@@ -40,7 +40,7 @@ export function EnvQualityPanel({ busy: appBusy }: Props) {
   }, [exportRedact, q]);
 
   return (
-    <div className="relative flex max-w-[860px] flex-col gap-6">
+    <div className="relative flex max-w-[860px] flex-col gap-7">
       {q.busy ? (
         <div
           className="pointer-events-none absolute inset-0 z-20 flex items-start justify-center bg-notion-bg/55 pt-16"
@@ -48,20 +48,19 @@ export function EnvQualityPanel({ busy: appBusy }: Props) {
           aria-live="polite"
         >
           <div className="pointer-events-auto max-w-md rounded-lg border border-notion-border bg-notion-bg px-5 py-4 shadow-sm">
-            <p className={`m-0 ${PANEL_TYPOGRAPHY.sectionTitle}`}>评测进行中</p>
-            <p className={`m-0 mt-2 ${PANEL_TYPOGRAPHY.helper}`}>{q.status || "请稍候…"}</p>
+            <p className={`m-0 ${PANEL_TYPOGRAPHY.envSectionTitle}`}>评测进行中</p>
+            <p className={`m-0 mt-2 ${PANEL_TYPOGRAPHY.meta}`}>{q.status || "请稍候…"}</p>
           </div>
         </div>
       ) : null}
 
-      <header className="flex flex-col gap-2">
-        <h2 className={PANEL_TYPOGRAPHY.envPageTitle}>质量评测</h2>
-        <p className={PANEL_TYPOGRAPHY.envPageSubtitle}>
+      <section className="flex flex-col gap-4">
+        <h3 className={PANEL_TYPOGRAPHY.envSectionTitle}>质量评测</h3>
+        <p className={`m-0 ${PANEL_TYPOGRAPHY.body} text-notion-text-muted`}>
           R4：展示最近一次 eval 批跑摘要（CER / 术语命中）。发版前请运行 R4-GATE（制控专名样例）并可选设定回归基线。
         </p>
-      </header>
 
-      <section className="flex flex-wrap items-center gap-2">
+        <div className="flex flex-wrap items-center gap-2">
         <button type="button" className={CONTROL_BTN_PRIMARY} disabled={disabled} onClick={() => void q.runEval()}>
           <Play className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
           运行全量 eval
@@ -86,17 +85,17 @@ export function EnvQualityPanel({ busy: appBusy }: Props) {
           <RefreshCw className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
           刷新
         </button>
-      </section>
+        </div>
 
-      {q.status ? <p className={`${PANEL_TYPOGRAPHY.helper} text-zen-saffron-mid`}>{q.status}</p> : null}
-      {q.error ? (
-        <p className={`${PANEL_TYPOGRAPHY.helper} text-cinnabar`} role="alert">
-          {q.error}
-        </p>
-      ) : null}
+        {q.status ? <p className={`m-0 ${PANEL_TYPOGRAPHY.meta} text-zen-saffron-mid`}>{q.status}</p> : null}
+        {q.error ? (
+          <p className={`m-0 ${PANEL_TYPOGRAPHY.meta} text-cinnabar`} role="alert">
+            {q.error}
+          </p>
+        ) : null}
 
-      {q.summary ? (
-        <section className="grid gap-4 rounded-lg bg-notion-callout-bg p-4 md:grid-cols-2 lg:grid-cols-4">
+        {q.summary ? (
+          <div className="grid gap-4 rounded-lg bg-notion-callout-bg p-4 md:grid-cols-2 lg:grid-cols-4">
           <Metric label="评测条目" value={String(q.summary.itemCount)} />
           <Metric label="平均 CER" value={formatQualityCer(q.summary.meanCer)} />
           <Metric label="平均术语命中" value={formatQualityPct(q.summary.meanTermHit)} />
@@ -125,48 +124,49 @@ export function EnvQualityPanel({ busy: appBusy }: Props) {
           ) : null}
           <Metric label="完成时间" value={formatFinishedAt(q.report?.finishedAtMs)} />
           <Metric label="失败条目" value={String(q.summary.errorCount)} />
-        </section>
-      ) : (
-        <p className={PANEL_TYPOGRAPHY.helper}>
-          尚无评测报告。请确保本机 ASR（127.0.0.1:8741）已就绪，或{evalRunHint}
-        </p>
-      )}
+          </div>
+        ) : (
+          <p className={`m-0 ${PANEL_TYPOGRAPHY.meta}`}>
+            尚无评测报告。请确保本机 ASR（127.0.0.1:8741）已就绪，或{evalRunHint}
+          </p>
+        )}
 
-      {q.reportPath ? (
-        <p className={`break-all ${PANEL_TYPOGRAPHY.meta}`}>报告路径：{q.reportPath}</p>
-      ) : null}
+        {q.reportPath ? (
+          <p className={`m-0 break-all ${PANEL_TYPOGRAPHY.meta}`}>报告路径：{q.reportPath}</p>
+        ) : null}
 
-      {q.report && q.report.items.length > 0 ? (
-        <div className="overflow-x-auto rounded-lg bg-notion-sidebar">
-          <table className="w-full min-w-[32rem] text-left text-sm text-notion-text">
-            <thead className="border-b border-notion-divider text-notion-text-muted">
-              <tr>
-                <th className="px-3 py-2 font-medium">ID</th>
-                <th className="px-3 py-2 font-medium">CER</th>
-                <th className="px-3 py-2 font-medium">term_hit</th>
-                <th className="px-3 py-2 font-medium">状态</th>
-              </tr>
-            </thead>
-            <tbody>
-              {q.report.items.map((it) => (
-                <tr
-                  key={`${it.id}-${it.error ?? ""}-${it.skipped ?? ""}`}
-                  className="border-b border-notion-divider/60"
-                >
-                  <td className="px-3 py-2 font-mono text-xs">{it.id}</td>
-                  <td className="px-3 py-2">{formatQualityCer(it.cerChars ?? null)}</td>
-                  <td className="px-3 py-2">{formatQualityPct(it.termHitRate ?? null)}</td>
-                  <td className="px-3 py-2 text-notion-text-muted">{it.error ?? it.skipped ?? "ok"}</td>
+        {q.report && q.report.items.length > 0 ? (
+          <div className="overflow-x-auto rounded-lg bg-notion-sidebar">
+            <table className={`w-full min-w-[32rem] text-left ${PANEL_TYPOGRAPHY.body}`}>
+              <thead className="border-b border-notion-divider text-notion-text-muted">
+                <tr>
+                  <th className="px-3 py-2 font-medium">ID</th>
+                  <th className="px-3 py-2 font-medium">CER</th>
+                  <th className="px-3 py-2 font-medium">term_hit</th>
+                  <th className="px-3 py-2 font-medium">状态</th>
                 </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      ) : null}
+              </thead>
+              <tbody>
+                {q.report.items.map((it) => (
+                  <tr
+                    key={`${it.id}-${it.error ?? ""}-${it.skipped ?? ""}`}
+                    className="border-b border-notion-divider/60"
+                  >
+                    <td className={`px-3 py-2 ${PANEL_TYPOGRAPHY.code}`}>{it.id}</td>
+                    <td className="px-3 py-2 text-notion-text">{formatQualityCer(it.cerChars ?? null)}</td>
+                    <td className="px-3 py-2 text-notion-text">{formatQualityPct(it.termHitRate ?? null)}</td>
+                    <td className="px-3 py-2 text-notion-text-muted">{it.error ?? it.skipped ?? "ok"}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        ) : null}
+      </section>
 
       <section className="flex flex-col gap-3 border-t border-notion-divider pt-6">
         <h3 className={PANEL_TYPOGRAPHY.envSectionTitle}>纠错记忆导出（R4）</h3>
-        <label className="flex items-center gap-2 text-sm text-notion-text">
+        <label className={`flex items-center gap-2 ${PANEL_TYPOGRAPHY.controlText}`}>
           <input
             type="checkbox"
             checked={exportRedact}
@@ -181,8 +181,8 @@ export function EnvQualityPanel({ busy: appBusy }: Props) {
         </button>
       </section>
 
-      {!isPackagedDesktopApp() ? (
-        <p className={`${PANEL_TYPOGRAPHY.meta} text-notion-text-light`}>
+      {!readShellManagesBundledSidecarSync() ? (
+        <p className={`m-0 ${PANEL_TYPOGRAPHY.meta} text-notion-text-light`}>
           终端等价命令：npm run eval:run · npm run eval:run:hotwords-on --filter-id proper-noun-zhikong
         </p>
       ) : null}
@@ -194,7 +194,7 @@ function Metric({ label, value }: { label: string; value: string }) {
   return (
     <div className="flex flex-col gap-1">
       <span className={PANEL_TYPOGRAPHY.meta}>{label}</span>
-      <span className="text-lg font-medium text-notion-text">{value}</span>
+      <span className={`${PANEL_TYPOGRAPHY.body} font-medium text-notion-text`}>{value}</span>
     </div>
   );
 }

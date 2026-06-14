@@ -1,5 +1,5 @@
 import { ENV_COMPACT_BTN } from "../../config/controlStyles";
-import { isPackagedDesktopApp } from "../../config/env";
+import { readShellManagesBundledSidecarSync } from "../../services/shellCapabilities";
 import { PANEL_TYPOGRAPHY } from "../../config/typography";
 import { funasrManualSetupCommands } from "../../pages/useProjectController";
 import type { AsrHealthCapabilities } from "../../tauri/projectApi";
@@ -50,7 +50,7 @@ export function LocalAsrAdvancedSection({
           {funasrInstallMessage}
         </pre>
       ) : null}
-      {showFunasrStubHelp && !isPackagedDesktopApp() ? (
+      {showFunasrStubHelp && !readShellManagesBundledSidecarSync() ? (
         <div className="flex flex-col gap-2">
           <p className={`m-0 ${PANEL_TYPOGRAPHY.meta}`}>
             FunASR 未就绪（stub：中文正文常为空）。可尝试安装依赖并重启 ASR；可选{" "}

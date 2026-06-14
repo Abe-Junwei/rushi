@@ -1,8 +1,10 @@
-import { describe, expect, it, vi } from "vitest";
+import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useRef, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { TranscriptionLayerInput } from "../pages/transcriptionLayerTypes";
 import { useSegmentKeyboard } from "./useSegmentKeyboard";
+import { LIST_ADVANCE_PLAY_COALESCE_MS } from "../utils/scheduleListAdvanceSegmentPlayback";
+import { createEmptySegmentListFilterNavState, type SegmentListFilterNavState } from "../utils/segmentListFilterNav";
 
 function makeCtx(overrides: Partial<TranscriptionLayerInput> = {}): TranscriptionLayerInput {
   return {
@@ -65,8 +67,18 @@ function makeTextareaKeyEvent(
   } as ReactKeyboardEvent<HTMLTextAreaElement>;
 }
 
-function renderKeyboard(initialCtx: TranscriptionLayerInput) {
-  return renderHook(
+function flushAdvanceRaf() {
+  act(() => {
+    vi.advanceTimersToNextFrame();
+  });
+}
+
+function renderKeyboard(
+  initialCtx: TranscriptionLayerInput,
+  filterNavState: SegmentListFilterNavState = createEmptySegmentListFilterNavState(),
+) {
+  const filterNavRef = { current: filterNavState };
+  const hook = renderHook(
     (ctx: TranscriptionLayerInput) => {
       const ctxRef = useRef(ctx);
       ctxRef.current = ctx;
@@ -76,6 +88,7 @@ function renderKeyboard(initialCtx: TranscriptionLayerInput) {
       const wfApiRef = useRef({
         togglePlay: vi.fn(),
         getPlayheadTime: () => 0,
+        seek: vi.fn(),
         playSegmentAtIndex: vi.fn(),
         preserveLoopForNextSegmentSelect: vi.fn(),
         seekByDelta: vi.fn(),
@@ -85,16 +98,26 @@ function renderKeyboard(initialCtx: TranscriptionLayerInput) {
         ctxRef,
         wfApiRef: wfApiRef as never,
         selectSegmentAtRef,
-        tierScrollRef: useRef(null),
+        segmentListRef: useRef(null),
+        segmentListFilterNavRef: filterNavRef,
       });
 
       return { keyboard, selectSegmentAtRef, wfApiRef };
     },
     { initialProps: initialCtx },
   );
+  return { ...hook, filterNavRef };
 }
 
 describe("useSegmentKeyboard", () => {
+  beforeEach(() => {
+    vi.useFakeTimers();
+  });
+
+  afterEach(() => {
+    vi.useRealTimers();
+  });
+
   it("merges with next segment on Delete at textarea end", () => {
     const mergeWithNextAt = vi.fn();
     const textarea = document.createElement("textarea");
@@ -118,7 +141,7 @@ describe("useSegmentKeyboard", () => {
     expect(mergeWithNextAt).toHaveBeenCalledWith(0);
   });
 
-  it("advances to next segment on ArrowDown", () => {
+  it("advances to next segment on ArrowDown with listKeyboard (no loop play)", () => {
     const ctx = makeCtx({
       segments: [
         { uid: "a", idx: 0, start_sec: 0, end_sec: 1, text: "a" },
@@ -132,9 +155,46 @@ describe("useSegmentKeyboard", () => {
     act(() => {
       result.current.keyboard.onSegmentTextareaKeyDown(0, makeTextareaKeyEvent("ArrowDown", textarea));
     });
+    flushAdvanceRaf();
 
-    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(1, "listAdvance");
-    expect(result.current.wfApiRef.current.playSegmentAtIndex).toHaveBeenCalledWith(1, expect.any(Object));
+    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(1, "listKeyboard");
+    expect(result.current.wfApiRef.current.playSegmentAtIndex).not.toHaveBeenCalled();
+    expect(result.current.wfApiRef.current.preserveLoopForNextSegmentSelect).not.toHaveBeenCalled();
+
+    act(() => {
+      vi.advanceTimersByTime(LIST_ADVANCE_PLAY_COALESCE_MS);
+    });
+    expect(result.current.wfApiRef.current.seek).toHaveBeenCalledWith(1);
+  });
+
+  it("coalesces ArrowDown seeks to the last selected segment", () => {
+    const ctx = makeCtx({
+      segments: [
+        { uid: "a", idx: 0, start_sec: 0, end_sec: 1, text: "a" },
+        { uid: "b", idx: 1, start_sec: 1, end_sec: 2, text: "b" },
+        { uid: "c", idx: 2, start_sec: 2, end_sec: 3, text: "c" },
+      ],
+      selectedIdx: 0,
+    });
+    const textarea = document.createElement("textarea");
+    const { result, rerender } = renderKeyboard(ctx);
+
+    act(() => {
+      result.current.keyboard.onSegmentTextareaKeyDown(0, makeTextareaKeyEvent("ArrowDown", textarea));
+    });
+    flushAdvanceRaf();
+    rerender({ ...ctx, selectedIdx: 1 });
+    act(() => {
+      result.current.keyboard.onSegmentTextareaKeyDown(1, makeTextareaKeyEvent("ArrowDown", textarea));
+    });
+    flushAdvanceRaf();
+
+    expect(result.current.wfApiRef.current.seek).not.toHaveBeenCalled();
+    act(() => {
+      vi.advanceTimersByTime(LIST_ADVANCE_PLAY_COALESCE_MS);
+    });
+    expect(result.current.wfApiRef.current.seek).toHaveBeenCalledTimes(1);
+    expect(result.current.wfApiRef.current.seek).toHaveBeenCalledWith(2);
   });
 
   it("goes to previous segment on ArrowUp", () => {
@@ -151,9 +211,35 @@ describe("useSegmentKeyboard", () => {
     act(() => {
       result.current.keyboard.onSegmentTextareaKeyDown(1, makeTextareaKeyEvent("ArrowUp", textarea));
     });
+    flushAdvanceRaf();
 
-    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(0, "listAdvance");
-    expect(result.current.wfApiRef.current.playSegmentAtIndex).toHaveBeenCalledWith(0, expect.any(Object));
+    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(0, "listKeyboard");
+    act(() => {
+      vi.advanceTimersByTime(LIST_ADVANCE_PLAY_COALESCE_MS);
+    });
+    expect(result.current.wfApiRef.current.seek).toHaveBeenCalledWith(0);
+    expect(result.current.wfApiRef.current.playSegmentAtIndex).not.toHaveBeenCalled();
+  });
+
+  it("coalesces duplicate ArrowDown presses in the same frame", () => {
+    const ctx = makeCtx({
+      segments: [
+        { uid: "a", idx: 0, start_sec: 0, end_sec: 1, text: "a" },
+        { uid: "b", idx: 1, start_sec: 1, end_sec: 2, text: "b" },
+      ],
+      selectedIdx: 0,
+    });
+    const textarea = document.createElement("textarea");
+    const { result } = renderKeyboard(ctx);
+
+    act(() => {
+      result.current.keyboard.onSegmentTextareaKeyDown(0, makeTextareaKeyEvent("ArrowDown", textarea));
+      result.current.keyboard.onSegmentTextareaKeyDown(0, makeTextareaKeyEvent("ArrowDown", textarea));
+    });
+    flushAdvanceRaf();
+
+    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledTimes(1);
+    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(1, "listKeyboard");
   });
 
   it("does not jump segments when Shift+ArrowDown (text selection)", () => {
@@ -175,5 +261,45 @@ describe("useSegmentKeyboard", () => {
     });
 
     expect(result.current.selectSegmentAtRef.current).not.toHaveBeenCalled();
+  });
+
+  it("stops at last filtered segment on ArrowDown", () => {
+    const ctx = makeCtx({
+      segments: [
+        { uid: "a", idx: 0, start_sec: 0, end_sec: 1, text: "a" },
+        { uid: "b", idx: 1, start_sec: 1, end_sec: 2, text: "b" },
+        { uid: "c", idx: 2, start_sec: 2, end_sec: 3, text: "c" },
+      ],
+      selectedIdx: 2,
+    });
+    const textarea = document.createElement("textarea");
+    const { result } = renderKeyboard(ctx, { active: true, indices: [0, 2] });
+
+    act(() => {
+      result.current.keyboard.onSegmentTextareaKeyDown(2, makeTextareaKeyEvent("ArrowDown", textarea));
+    });
+    flushAdvanceRaf();
+
+    expect(result.current.selectSegmentAtRef.current).not.toHaveBeenCalled();
+  });
+
+  it("steps only within filtered indices on ArrowDown", () => {
+    const ctx = makeCtx({
+      segments: [
+        { uid: "a", idx: 0, start_sec: 0, end_sec: 1, text: "a" },
+        { uid: "b", idx: 1, start_sec: 1, end_sec: 2, text: "b" },
+        { uid: "c", idx: 2, start_sec: 2, end_sec: 3, text: "c" },
+      ],
+      selectedIdx: 0,
+    });
+    const textarea = document.createElement("textarea");
+    const { result } = renderKeyboard(ctx, { active: true, indices: [0, 2] });
+
+    act(() => {
+      result.current.keyboard.onSegmentTextareaKeyDown(0, makeTextareaKeyEvent("ArrowDown", textarea));
+    });
+    flushAdvanceRaf();
+
+    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(2, "listKeyboard");
   });
 });

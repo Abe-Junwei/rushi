@@ -13,10 +13,10 @@ function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
+import { logRuntimeParity } from "../services/runtimeParity";
+
 export function logFirstSegmentsVisibleMs(ms: number): void {
-  if (import.meta.env.DEV) {
-    console.info("[r3e-c] first_segments_visible_ms=", ms);
-  }
+  logRuntimeParity("transcribe", `first_segments_visible_ms=${ms}`);
 }
 
 export async function postTranscribeCancel(base: string, jobId: string): Promise<void> {

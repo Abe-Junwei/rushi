@@ -2,6 +2,10 @@ import type { TranscriptionLayerInput } from "../pages/transcriptionLayerTypes";
 import type { useProjectWaveform } from "../hooks/useProjectWaveform";
 import type { SegmentSelectSource } from "../utils/waveformViewMode";
 import { readFocusedSegmentTextareaIdx, readFocusedTranscriptTextareaSelection } from "../pages/flushSegmentTextDrafts";
+import type { SegmentListFilterNavState } from "../utils/segmentListFilterNav";
+import { segmentStartSec } from "./formatMediaTime";
+import { resolveKeyboardAdvanceTarget } from "./segmentListKeyboardNav";
+import { readStoredTabAdvanceLoopsSegment } from "./waveformPrefs";
 import type { EditorShortcutId } from "./editorShortcutRegistry";
 
 type WfApi = ReturnType<typeof useProjectWaveform>;
@@ -11,6 +15,8 @@ export type EditorShortcutExecuteDeps = {
   wf: WfApi;
   selectSegmentAt: (idx: number, source?: SegmentSelectSource, opts?: { shiftKey?: boolean }) => void;
   focusSegmentTextarea: (segmentIdx: number) => void;
+  scheduleAdvanceToSegment: (targetIdx: number) => void;
+  segmentListFilterNavState: SegmentListFilterNavState;
   showEditorHint: (msg: string) => void;
   stepWaveformZoom: (direction: "in" | "out") => void;
   blurActiveElement: () => void;
@@ -77,6 +83,26 @@ export function executeEditorShortcut(
       }
       return true;
     }
+    case "segment.advancePrev": {
+      const targetIdx = resolveKeyboardAdvanceTarget(
+        ctx.selectedIdx,
+        -1,
+        ctx.segments.length,
+        deps.segmentListFilterNavState,
+      );
+      if (targetIdx != null && targetIdx !== ctx.selectedIdx) deps.scheduleAdvanceToSegment(targetIdx);
+      return true;
+    }
+    case "segment.advanceNext": {
+      const targetIdx = resolveKeyboardAdvanceTarget(
+        ctx.selectedIdx,
+        1,
+        ctx.segments.length,
+        deps.segmentListFilterNavState,
+      );
+      if (targetIdx != null && targetIdx !== ctx.selectedIdx) deps.scheduleAdvanceToSegment(targetIdx);
+      return true;
+    }
     case "segment.delete": {
       if (ctx.segments.length === 0) return true;
       if (ctx.isMultiSegmentSelection) {
@@ -114,6 +140,14 @@ export function executeEditorShortcut(
         if (ni !== idx) {
           deps.selectSegmentAt(ni, "listAdvance");
           deps.focusSegmentTextarea(ni);
+          const seg = ctx.segments[ni];
+          if (!seg) return;
+          if (readStoredTabAdvanceLoopsSegment()) {
+            wf.preserveLoopForNextSegmentSelect();
+            void wf.playSegmentAtIndex(ni, { loop: true });
+          } else {
+            wf.seek(segmentStartSec(seg));
+          }
         }
       })();
       return true;

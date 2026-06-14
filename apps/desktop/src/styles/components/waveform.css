@@ -699,6 +699,19 @@
   background: var(--zen-indigo);
 }
 
+/** Sticky viewport playhead — dev/release parity (not Tailwind stroke; not WS shadow cursor). */
+.waveform-viewport-playhead {
+  pointer-events: none;
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 0;
+  z-index: 9;
+  width: 1px;
+  background: color-mix(in srgb, var(--zen-saffron) 58%, transparent);
+  will-change: transform;
+}
+
 .icon-btn {
   box-sizing: border-box;
   display: inline-flex;
@@ -747,6 +760,7 @@
  *   z-2  waveform-segment-band-canvas（语段条 display 层）
  *   z-3  waveform-segment-overlay（语段交互 DOM：选中 / 拖拽 draft）
  *   z-8  region-action-overlay（语段播放控制，sticky 视口坐标）
+ *   z-9  .waveform-viewport-playhead（全高播放头，sticky 视口坐标）
  *   z-10 .waveform-embedded-time-ruler（透明叠在 sticky 视口底边）
  *   z-30 loadError banner / peaks loading badge（EditorWaveformPane）
  */
@@ -764,6 +778,12 @@
 .waveform-peaks-stage [role="img"] canvas,
 .waveform-peaks-stage [role="img"] > div {
   background: transparent !important;
+}
+
+/** Playhead 由嵌入标尺承担；隐藏 WaveSurfer 内置 cursor，避免双重/错位。 */
+.waveform-peaks-stage [part="cursor"],
+.waveform-peaks-stage .cursor {
+  display: none !important;
 }
 
 /** 语段 overlay 与波形同高；底部时间刻度在其上透明叠层。 */

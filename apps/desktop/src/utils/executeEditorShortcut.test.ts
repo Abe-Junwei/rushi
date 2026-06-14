@@ -1,6 +1,8 @@
 import { describe, expect, it, vi } from "vitest";
 import type { TranscriptionLayerInput } from "../pages/transcriptionLayerTypes";
 import { executeEditorShortcut } from "./executeEditorShortcut";
+import { createEmptySegmentListFilterNavState } from "./segmentListFilterNav";
+import * as waveformPrefs from "./waveformPrefs";
 
 function makeCtx(overrides: Partial<TranscriptionLayerInput> = {}): TranscriptionLayerInput {
   return {
@@ -53,9 +55,18 @@ function makeCtx(overrides: Partial<TranscriptionLayerInput> = {}): Transcriptio
 function makeDeps(overrides: Partial<Parameters<typeof executeEditorShortcut>[1]> = {}) {
   return {
     ctx: makeCtx(),
-    wf: { getPlayheadTime: () => 1.5, togglePlay: vi.fn(), seekByDelta: vi.fn() } as never,
+    wf: {
+      getPlayheadTime: () => 1.5,
+      togglePlay: vi.fn(),
+      seekByDelta: vi.fn(),
+      seek: vi.fn(),
+      playSegmentAtIndex: vi.fn(),
+      preserveLoopForNextSegmentSelect: vi.fn(),
+    } as never,
     selectSegmentAt: vi.fn(),
     focusSegmentTextarea: vi.fn(),
+    scheduleAdvanceToSegment: vi.fn(),
+    segmentListFilterNavState: createEmptySegmentListFilterNavState(),
     showEditorHint: vi.fn(),
     stepWaveformZoom: vi.fn(),
     blurActiveElement: vi.fn(),
@@ -156,5 +167,96 @@ describe("executeEditorShortcut", () => {
       expect(focusSegmentTextarea).toHaveBeenCalledWith(1);
     });
     document.body.innerHTML = "";
+  });
+
+  it("advances to next segment from selectedIdx when blurred", () => {
+    const scheduleAdvanceToSegment = vi.fn();
+    const ctx = makeCtx({ selectedIdx: 0 });
+    executeEditorShortcut("segment.advanceNext", makeDeps({ ctx, scheduleAdvanceToSegment }));
+    expect(scheduleAdvanceToSegment).toHaveBeenCalledWith(1);
+  });
+
+  it("advances to previous segment from selectedIdx when blurred", () => {
+    const scheduleAdvanceToSegment = vi.fn();
+    const ctx = makeCtx({ selectedIdx: 1 });
+    executeEditorShortcut("segment.advancePrev", makeDeps({ ctx, scheduleAdvanceToSegment }));
+    expect(scheduleAdvanceToSegment).toHaveBeenCalledWith(0);
+  });
+
+  it("respects active list filter for blurred arrow advance", () => {
+    const scheduleAdvanceToSegment = vi.fn();
+    const ctx = makeCtx({
+      selectedIdx: 0,
+      segments: [
+        { uid: "a", idx: 0, start_sec: 0, end_sec: 1, text: "a" },
+        { uid: "b", idx: 1, start_sec: 1, end_sec: 2, text: "b" },
+        { uid: "c", idx: 2, start_sec: 2, end_sec: 3, text: "c" },
+      ],
+    });
+    executeEditorShortcut(
+      "segment.advanceNext",
+      makeDeps({
+        ctx,
+        scheduleAdvanceToSegment,
+        segmentListFilterNavState: { active: true, indices: [0, 2] },
+      }),
+    );
+    expect(scheduleAdvanceToSegment).toHaveBeenCalledWith(2);
+  });
+
+  it("stops at last filtered segment for blurred arrow advance", () => {
+    const scheduleAdvanceToSegment = vi.fn();
+    const ctx = makeCtx({
+      selectedIdx: 2,
+      segments: [
+        { uid: "a", idx: 0, start_sec: 0, end_sec: 1, text: "a" },
+        { uid: "b", idx: 1, start_sec: 1, end_sec: 2, text: "b" },
+        { uid: "c", idx: 2, start_sec: 2, end_sec: 3, text: "c" },
+      ],
+    });
+    executeEditorShortcut(
+      "segment.advanceNext",
+      makeDeps({
+        ctx,
+        scheduleAdvanceToSegment,
+        segmentListFilterNavState: { active: true, indices: [0, 2] },
+      }),
+    );
+    expect(scheduleAdvanceToSegment).not.toHaveBeenCalled();
+  });
+
+  it("confirmAdvance loops next segment when tab advance preference is on", async () => {
+    vi.spyOn(waveformPrefs, "readStoredTabAdvanceLoopsSegment").mockReturnValue(true);
+    const confirmSegmentEditAndAdvance = vi.fn(() => Promise.resolve(true));
+    const ctx = makeCtx({ selectedIdx: 0, confirmSegmentEditAndAdvance });
+    const selectSegmentAt = vi.fn();
+    const focusSegmentTextarea = vi.fn();
+    const wf = {
+      getPlayheadTime: () => 0,
+      togglePlay: vi.fn(),
+      seekByDelta: vi.fn(),
+      seek: vi.fn(),
+      playSegmentAtIndex: vi.fn(),
+      preserveLoopForNextSegmentSelect: vi.fn(),
+    };
+    document.body.innerHTML = `
+      <div data-seg-row="0">
+        <textarea aria-label="语段正文"></textarea>
+      </div>
+    `;
+    document.querySelector("textarea")!.focus();
+
+    executeEditorShortcut(
+      "workflow.confirmAdvance",
+      makeDeps({ ctx, selectSegmentAt, focusSegmentTextarea, wf: wf as never }),
+    );
+
+    await vi.waitFor(() => {
+      expect(wf.preserveLoopForNextSegmentSelect).toHaveBeenCalled();
+      expect(wf.playSegmentAtIndex).toHaveBeenCalledWith(1, { loop: true });
+      expect(wf.seek).not.toHaveBeenCalled();
+    });
+    document.body.innerHTML = "";
+    vi.restoreAllMocks();
   });
 });

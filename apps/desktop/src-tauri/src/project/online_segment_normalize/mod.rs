@@ -3,21 +3,18 @@ mod types;
 mod vendor_words;
 mod word_axis;
 
-pub use json_pipeline::{
-    normalize_online_transcribe_json, proportional_segments_from_text, refine_online_transcribe_segments,
-};
-pub use types::{OnlineSegmentNormalizeOptions, TimedWord};
+pub use json_pipeline::{normalize_online_transcribe_json, refine_online_transcribe_segments};
+pub use types::OnlineSegmentNormalizeOptions;
 pub use vendor_words::{
     assemblyai_words_to_segments, assemblyai_words_to_timed_words, deepgram_words_to_timed_words,
     funasr_file_words_to_timed, funasr_word_piece, openai_words_to_timed_words,
 };
-pub use word_axis::{
-    long_span_needs_word_refinement, refine_long_speech_segments, timed_words_from_json_array,
-    timed_words_to_json, timed_words_to_segments, words_overlapping_range,
-};
+pub use word_axis::{refine_long_speech_segments, timed_words_to_json, timed_words_to_segments};
 
 #[cfg(test)]
 mod tests {
+    use super::json_pipeline::proportional_segments_from_text;
+    use super::types::TimedWord;
     use super::*;
     use json_pipeline::segment_count_for_test as segment_count;
     use serde_json::json;
@@ -159,7 +156,9 @@ mod tests {
             Some(9.0),
             &OnlineSegmentNormalizeOptions::default(),
         );
-        assert!(extra.iter().any(|w| w == "online_segmentation_proportional"));
+        assert!(extra
+            .iter()
+            .any(|w| w == "online_segmentation_proportional"));
         assert!(segment_count(&v) >= 2);
     }
 

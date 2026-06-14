@@ -1,10 +1,19 @@
 import type WaveSurfer from "wavesurfer.js";
 import type { UseProjectWaveformOptions } from "./useProjectWaveformTypes";
 import { logDesktopUi } from "../services/desktopUiLog";
+import {
+  logWaveSurferGeomDeferred,
+  readWaveSurferChannelCoverageSec,
+  subscribeWaveSurferAfterRender,
+} from "../services/waveform/waveformSurferProgressCoverage";
+
+import { probeWaveformAssetFetchParity } from "../services/waveform/waveformAssetFetchParity";
 
 type BindWaveformEventsParams = {
   ws: WaveSurfer;
   disposed: () => boolean;
+  mediaUrl: string | null | undefined;
+  mediaDiskPath: string | null | undefined;
   optsRef: { current: UseProjectWaveformOptions };
   minPxPerSecRef: { current: number };
   lastTimeUiCommitRef: { current: number };
@@ -27,6 +36,8 @@ export function bindProjectWaveformWaveSurferEvents(
   const {
     ws,
     disposed,
+    mediaUrl,
+    mediaDiskPath,
     optsRef,
     minPxPerSecRef: _minPxPerSecRef,
     lastTimeUiCommitRef,
@@ -52,6 +63,15 @@ export function bindProjectWaveformWaveSurferEvents(
       setLoadError(null);
       setIsReady(true);
       setDuration(d);
+      const channelSec = readWaveSurferChannelCoverageSec(ws);
+      if (channelSec > 0 && d > 0 && channelSec < d * 0.95) {
+        logDesktopUi(
+          "WARN",
+          `[wf-geom] channel_truncation channel_sec=${channelSec.toFixed(1)} ws_dur=${d.toFixed(1)}`,
+        );
+      }
+      logWaveSurferGeomDeferred(ws, "ready", "");
+      void probeWaveformAssetFetchParity("ws_ready", mediaDiskPath, mediaUrl);
       queueMicrotask(() => syncTierScrollAfterRenderRef.current());
     }),
     ws.on("error", (err) => {
@@ -86,6 +106,11 @@ export function bindProjectWaveformWaveSurferEvents(
       lastTimeUiCommitRef.current = t;
       lastTimeUiCommitMsRef.current = performance.now();
       setCurrentTime(t);
+      queueMicrotask(() => syncTierScrollAfterRenderRef.current());
+      requestAnimationFrame(() => {
+        if (disposed()) return;
+        syncTierScrollAfterRenderRef.current();
+      });
     }),
     ws.on("scroll", () => {
       if (disposed()) return;
@@ -93,7 +118,7 @@ export function bindProjectWaveformWaveSurferEvents(
     ws.on("zoom", () => {
       if (disposed()) return;
     }),
-    ws.on("redrawcomplete", () => {
+    subscribeWaveSurferAfterRender(ws, () => {
       if (disposed()) return;
       syncTierScrollAfterRenderRef.current();
       const appliedHeight = pendingAppliedWaveformHeightRef.current;

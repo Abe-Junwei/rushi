@@ -6,6 +6,7 @@ import { useWaveformTierWheelForward } from "../hooks/useWaveformTierWheelForwar
 import { computeSegmentLaneRowPx } from "../utils/segmentLayout";
 import { resolveWaveformFooterStatusLabel } from "../services/waveform/waveformRenderStatus";
 import { nextListSelectSource } from "../utils/segmentListSelectSource";
+import { createEmptySegmentListFilterNavState } from "../utils/segmentListFilterNav";
 import type { TranscriptionLayerInput } from "./transcriptionLayerTypes";
 import { useTranscriptionLayerSegmentListDrag } from "./useTranscriptionLayerSegmentListDrag";
 import { useTranscriptionLayerSelection } from "./useTranscriptionLayerSelection";
@@ -23,6 +24,7 @@ export type { TranscriptionLayerInput } from "./transcriptionLayerTypes";
 
 export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
   const segmentListRef = useRef<HTMLDivElement | null>(null);
+  const segmentListFilterNavRef = useRef(createEmptySegmentListFilterNavState());
   const waveformShellRef = useRef<HTMLDivElement | null>(null);
   const ctxRef = useRef(ctx);
   ctxRef.current = ctx;
@@ -63,8 +65,11 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     ctxRef,
     wfApiRef: timeline.wfApiRef,
     selectSegmentAtRef: selection.selectSegmentAtRef,
-    tierScrollRef: timeline.tierScrollRef,
+    segmentListRef,
+    segmentListFilterNavRef,
   });
+  const scheduleAdvanceToSegmentRef = useRef(keyboard.scheduleAdvanceToSegment);
+  scheduleAdvanceToSegmentRef.current = keyboard.scheduleAdvanceToSegment;
 
   useEditorShortcutDispatcher({
     enabled: true,
@@ -73,8 +78,10 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     waveformShellRef,
     selectSegmentAtRef: selection.selectSegmentAtRef,
     focusSegmentTextarea: keyboard.focusSegmentTextarea,
+    scheduleAdvanceToSegmentRef,
     showEditorHintRef,
     stepWaveformZoomRef: selection.stepWaveformZoomRef,
+    segmentListFilterNavRef,
   });
 
   const segmentLaneRowPx = useMemo(
@@ -87,7 +94,6 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
   const waveformPeaksPhase = timeline.waveformPeaksPhase;
   const waveformFooterStatusLabel = resolveWaveformFooterStatusLabel({
     phase: waveformPeaksPhase,
-    backgroundPeaksEnabled: routePrefs.backgroundPeaksEnabled,
     mountDeferTimedOut: timeline.mountDeferTimedOut,
     waveformReady: wf.isReady,
   });
@@ -102,6 +108,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
   return {
     tierScrollRef: timeline.tierScrollRef,
     segmentListRef,
+    segmentListFilterNavRef,
     waveformShellRef,
     editorHint,
     showEditorHint,
@@ -136,7 +143,6 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     waveformPeaksPhase,
     waveformFooterStatusLabel,
     peaksHotSwitchPending: wf.peaksHotSwitchPending,
-    backgroundPeaksEnabled: routePrefs.backgroundPeaksEnabled,
     minimapEnabled: routePrefs.minimapEnabled,
     setMinimapEnabled: routePrefs.setMinimapEnabled,
     playbackScrollFollowMode: routePrefs.playbackScrollFollowMode,
@@ -178,6 +184,8 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     focusWaveformShell: selection.focusWaveformShell,
     onSegmentTextareaKeyDown: keyboard.onSegmentTextareaKeyDown,
     containerRef: wf.containerRef,
+    waveformScrollLayerRef: wf.waveformScrollLayerRef,
+    overlayScrollLayerRef: wf.overlayScrollLayerRef,
     waveformStickyShellRef: wf.stickyShellRef,
     waveformStretchShellRef: wf.stretchShellRef,
     waveformTimelineShellRef: wf.timelineShellRef,

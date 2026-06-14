@@ -115,4 +115,24 @@ describe("planWaveformZoomApply", () => {
       }),
     ).toEqual({ type: "load-peaks", loadPeaksPx: 120, layoutDur: 120 });
   });
+
+  it("returns load-peaks when layout duration expands after an early peaks load", () => {
+    const appliedZoom = createWaveformAppliedZoomState(56);
+    markAppliedPeaks(appliedZoom, true, 56, 36);
+    markAppliedZoomWs(appliedZoom, 56);
+    expect(
+      planWaveformZoomApply({
+        intentPxPerSec: 56,
+        appliedZoom,
+        peakCache,
+        mediaUrl: "asset://a.mp3",
+        layoutDurationSec: 557,
+        peakCacheDurationSec: 557,
+        isPlaying: false,
+        hotSwitchWhilePlaying: true,
+        peaksLoadInFlight: false,
+        viewportResizeHold: false,
+      }),
+    ).toEqual({ type: "load-peaks", loadPeaksPx: 56, layoutDur: 557 });
+  });
 });

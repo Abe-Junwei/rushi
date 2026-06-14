@@ -1,6 +1,7 @@
 # Release zero-terminal hand-test (macOS v1)
 
 > No shell required after installing `.app`. Operator checklist for personal release signoff.  
+> **主控策略**：[`release-parity-program-2026-06.md`](./specs/release-parity-program-2026-06.md) L3；本文仅保留 macOS v1 人工签收清单。  
 > Linked from [release-packaging-audit-2026-06.md](./specs/release-packaging-audit-2026-06.md) batch 12.
 
 ## Preconditions
@@ -43,6 +44,15 @@
 - [ ] Quit app fully (Cmd+Q) → reopen → project + waveform still load
 - [ ] Second project import — waveform loads without restart
 
+## 7. WKWebView parity（DMG 专项，dev 不能替代）
+
+> 细则：[dmg-vs-dev-parity-checklist.md](./specs/dmg-vs-dev-parity-checklist.md)
+
+- [ ] **关于**页显示 `bundled_sidecar_build`（`git_sha=…`）；复制版本信息与诊断 zip 一致
+- [ ] Seek 后 playhead **左右**均有波形（非仅右侧）
+- [ ] 语段 ↑↓ 连按 10 次无明显卡死
+- [ ] 项目元数据 **年月 / 日期** 可键盘输入
+
 ## Failures → where to look (maintainer, not end user)
 
 | Symptom | Log / artifact |
@@ -51,7 +61,7 @@
 | ASR not ready | Same log — `bundled_sidecar_*`; env page status |
 | Peaks missing | `projects/<id>/peaks/*.dat` under App Data root |
 
-Maintainer rebuild path: `npm run release:mac` then re-run this checklist.
+Maintainer rebuild path: `npm run release:mac` then re-run this checklist. Quick open: `npm run desktop:open-release-app` (after `desktop:build-app`).
 
 ## Signoff
 

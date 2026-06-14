@@ -22,6 +22,13 @@ fi
 echo "== release postbuild verify =="
 echo "  app: ${APP}"
 
+BIN="${APP}/Contents/MacOS/rushi-desktop"
+if [[ ! -x "${BIN}" ]]; then
+  echo "FAIL: app binary missing: ${BIN}" >&2
+  exit 1
+fi
+echo "  app binary: OK"
+
 bash scripts/resolve-bundled-tool-in-app.sh "${APP}" ffmpeg
 bash scripts/resolve-bundled-tool-in-app.sh "${APP}" ffprobe
 
@@ -31,6 +38,19 @@ if [[ ! -x "${SIDECAR}" ]]; then
   exit 1
 fi
 echo "  sidecar: OK"
+
+STAMP="$(bash scripts/resolve-bundled-sidecar-stamp-in-app.sh "${APP}")"
+if [[ ! -s "${STAMP}" ]]; then
+  echo "FAIL: bundled sidecar build stamp missing: ${STAMP}" >&2
+  exit 1
+fi
+echo "  sidecar stamp: $(tr '\n' ' ' < "${STAMP}" | sed 's/[[:space:]]*$//')"
+
+if [[ ! -d "${APP}/Contents/Resources/resources" ]]; then
+  echo "FAIL: expected Tauri resource layout missing: Contents/Resources/resources" >&2
+  exit 1
+fi
+echo "  resource layout: OK"
 
 if [[ "${RUSHI_SKIP_WAVEFORM_PROBE:-0}" -eq 0 ]]; then
   bash scripts/waveform-release-probe.sh "${APP}"

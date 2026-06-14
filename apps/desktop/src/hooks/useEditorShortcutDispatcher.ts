@@ -12,6 +12,7 @@ import {
 } from "../utils/editorShortcutRegistry";
 import { executeEditorShortcut } from "../utils/executeEditorShortcut";
 import { hasOpenDialogEscapeHandler } from "../utils/dialogEscapeStack";
+import type { SegmentListFilterNavState } from "../utils/segmentListFilterNav";
 
 type WfApi = ReturnType<typeof useProjectWaveform>;
 
@@ -65,6 +66,8 @@ function shortcutAllowedInGenericEditable(shortcutId: EditorShortcutId): boolean
     shortcutId === "workflow.addCorrectionMemory" ||
     shortcutId === "playback.toggle" ||
     shortcutId === "segment.delete" ||
+    shortcutId === "segment.advancePrev" ||
+    shortcutId === "segment.advanceNext" ||
     shortcutId.startsWith("segment.")
   );
 }
@@ -78,8 +81,10 @@ export function useEditorShortcutDispatcher(args: {
     (idx: number, source?: SegmentSelectSource, opts?: { shiftKey?: boolean }) => void
   >;
   focusSegmentTextarea: (segmentIdx: number) => void;
+  scheduleAdvanceToSegmentRef: React.MutableRefObject<(targetIdx: number) => void>;
   showEditorHintRef: React.MutableRefObject<(msg: string) => void>;
   stepWaveformZoomRef: React.MutableRefObject<(direction: "in" | "out") => void>;
+  segmentListFilterNavRef: React.MutableRefObject<SegmentListFilterNavState>;
 }) {
   const argsRef = useRef(args);
   argsRef.current = args;
@@ -127,6 +132,9 @@ export function useEditorShortcutDispatcher(args: {
           wf: a.wfApiRef.current,
           selectSegmentAt: (idx, source, opts) => a.selectSegmentAtRef.current(idx, source, opts),
           focusSegmentTextarea: a.focusSegmentTextarea,
+          scheduleAdvanceToSegment: (targetIdx) =>
+            a.scheduleAdvanceToSegmentRef.current(targetIdx),
+          segmentListFilterNavState: a.segmentListFilterNavRef.current,
           showEditorHint: (msg) => a.showEditorHintRef.current(msg),
           stepWaveformZoom: (dir) => a.stepWaveformZoomRef.current(dir),
           blurActiveElement: () => {

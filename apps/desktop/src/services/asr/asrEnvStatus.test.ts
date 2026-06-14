@@ -1,15 +1,15 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { DEFAULT_LOCAL_ASR_HUB_MODEL_ID } from "./localAsrModelCatalog";
 
-const isPackagedDesktopApp = vi.fn(() => false);
+const readShellManagesBundledSidecarSync = vi.fn(() => false);
 
-vi.mock("../../config/env", () => ({
-  isPackagedDesktopApp: () => isPackagedDesktopApp(),
+vi.mock("../shellCapabilities", () => ({
+  readShellManagesBundledSidecarSync: () => readShellManagesBundledSidecarSync(),
 }));
 
 describe("buildAsrEnvPresentation", () => {
   beforeEach(() => {
-    isPackagedDesktopApp.mockReturnValue(false);
+    readShellManagesBundledSidecarSync.mockReturnValue(false);
     vi.resetModules();
   });
 
@@ -85,7 +85,7 @@ describe("buildAsrEnvPresentation", () => {
   });
 
   it("uses packaged copy when async sidecar route missing in release app", async () => {
-    isPackagedDesktopApp.mockReturnValue(true);
+    readShellManagesBundledSidecarSync.mockReturnValue(true);
     const p = await build({
       asrHealth: "ok",
       asrHealthDetail: "",
@@ -106,7 +106,7 @@ describe("buildAsrEnvPresentation", () => {
   });
 
   it("uses packaged ffmpeg warning without npm/dev hints", async () => {
-    isPackagedDesktopApp.mockReturnValue(true);
+    readShellManagesBundledSidecarSync.mockReturnValue(true);
     const p = await build({
       asrHealth: "ok",
       asrHealthDetail: "",

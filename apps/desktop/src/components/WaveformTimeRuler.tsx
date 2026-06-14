@@ -12,6 +12,7 @@ import {
 } from "../utils/waveformViewport";
 import {
   effectiveTimelinePxPerSec,
+  embeddedRulerPlayheadUsesTimelineCoords,
   paddedVisibleTimeWindow,
   playheadViewportLeftPx,
   timeToTimelinePx,
@@ -74,9 +75,14 @@ export const WaveformTimeRuler = memo(function WaveformTimeRuler({
   const ink = appearance === "ink";
   const embedded = appearance === "embedded";
   const embeddedOverlay = embedded && overlayOnWaveform;
-  const viewportSpace = coordinateSpace === "viewport";
-  /** embedded overlay：timeline 坐标 + translate3d 随 tier 滚动，避免 React 重绘延迟 */
-  const scrollClipMode = embeddedOverlay && viewportSpace;
+  const scrollTrackPlayhead = embeddedRulerPlayheadUsesTimelineCoords({
+    appearance,
+    coordinateSpace,
+    overlayOnWaveform,
+  });
+  const viewportSpace = coordinateSpace === "viewport" && !scrollTrackPlayhead;
+  /** embedded overlay + viewport: timeline-wide scroll track (translate3d), same gate as playhead timeline coords */
+  const scrollClipMode = scrollTrackPlayhead;
   const scrollTrackRef = useRef<HTMLDivElement | null>(null);
   const [, bumpScrollFrame] = useReducer((n: number) => n + 1, 0);
   const [tickBuildScrollLeftPx, setTickBuildScrollLeftPx] = useState(
@@ -301,6 +307,7 @@ export const WaveformTimeRuler = memo(function WaveformTimeRuler({
       playheadLineRef={playheadLineRef}
       hidePlayheadReact={hidePlayheadReact}
       playheadLeft={playheadLeft}
+      showPlayheadLine={!embeddedOverlay}
       rulerHeightPx={RULER_H}
       embeddedOverlay={embeddedOverlay}
     />

@@ -6,6 +6,9 @@ export type AppBuildInfo = {
   identifier: string;
   platformOs: string;
   platformArch: string;
+  shellProfile: string;
+  asrShellManaged: boolean;
+  bundledSidecarBuild: string | null;
   appDataRoot: string | null;
   dbPath: string | null;
 };

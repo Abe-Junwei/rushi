@@ -50,6 +50,13 @@ export function recentProjectIdsForScan(projects: ProjectSummary[]): string[] {
     .map((p) => p.id);
 }
 
+/** True when any recently scanned project may contain files (uses listProjects file_count). */
+export function hasScannableWorkspaceFiles(projects: ProjectSummary[]): boolean {
+  if (projects.length === 0) return false;
+  const ids = new Set(recentProjectIdsForScan(projects));
+  return projects.some((p) => ids.has(p.id) && (p.file_count ?? 0) > 0);
+}
+
 export async function listRecentWorkspaceFiles(
   projectIds: string[],
   limit = 8,

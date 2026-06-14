@@ -7,6 +7,7 @@ use std::process::Command;
 use serde::Serialize;
 use tauri::State;
 
+use crate::asr_sidecar::app_manages_bundled_sidecar;
 use crate::bundled_asr_assets;
 use crate::DbState;
 
@@ -33,12 +34,26 @@ pub struct AppBuildInfo {
     pub identifier: String,
     pub platform_os: String,
     pub platform_arch: String,
+    /// `debug` (tauri dev) vs `release` (shipped .app / DMG).
+    pub shell_profile: String,
+    /// True when the shell may spawn bundled PyInstaller sidecar (false in `desktop:dev`).
+    pub asr_shell_managed: bool,
+    /// `git_sha=… built_at=… platform=…` from bundled sidecar stamp, when present.
+    pub bundled_sidecar_build: Option<String>,
     pub app_data_root: Option<String>,
     pub db_path: Option<String>,
 }
 
 pub fn app_version_string() -> String {
     env!("CARGO_PKG_VERSION").to_string()
+}
+
+fn shell_profile_label() -> String {
+    if cfg!(debug_assertions) {
+        "debug".to_string()
+    } else {
+        "release".to_string()
+    }
 }
 
 pub fn build_app_build_info(app_data_root: Option<&Path>, db_path: Option<&Path>) -> AppBuildInfo {
@@ -48,6 +63,9 @@ pub fn build_app_build_info(app_data_root: Option<&Path>, db_path: Option<&Path>
         identifier: APP_IDENTIFIER.to_string(),
         platform_os: std::env::consts::OS.to_string(),
         platform_arch: std::env::consts::ARCH.to_string(),
+        shell_profile: shell_profile_label(),
+        asr_shell_managed: app_manages_bundled_sidecar(),
+        bundled_sidecar_build: bundled_asr_assets::read_bundled_sidecar_build_stamp(),
         app_data_root: app_data_root.map(|p| p.display().to_string()),
         db_path: db_path.map(|p| p.display().to_string()),
     }
@@ -55,12 +73,15 @@ pub fn build_app_build_info(app_data_root: Option<&Path>, db_path: Option<&Path>
 
 pub fn format_build_info_text(info: &AppBuildInfo) -> String {
     format!(
-        "rushi-desktop {}\ncopyright: {}\nplatform: {} {}\nidentifier: {}\napp_data_root: {}\ndb_path: {}\n",
+        "rushi-desktop {}\ncopyright: {}\nplatform: {} {}\nidentifier: {}\nshell_profile: {}\nasr_shell_managed: {}\nbundled_sidecar_build: {}\napp_data_root: {}\ndb_path: {}\n",
         info.version,
         APP_COPYRIGHT,
         info.platform_os,
         info.platform_arch,
         info.identifier,
+        info.shell_profile,
+        info.asr_shell_managed,
+        info.bundled_sidecar_build.as_deref().unwrap_or("(none)"),
         info.app_data_root.as_deref().unwrap_or("(unknown)"),
         info.db_path.as_deref().unwrap_or("(unknown)"),
     )
@@ -199,6 +220,9 @@ mod tests {
         assert!(text.starts_with("rushi-desktop "));
         assert!(text.contains("copyright: "));
         assert!(text.contains("identifier: studio.lingchuang.rushi"));
+        assert!(text.contains("shell_profile:"));
+        assert!(text.contains("asr_shell_managed:"));
+        assert!(text.contains("bundled_sidecar_build:"));
         assert!(text.contains("app_data_root: /tmp/rushi-data"));
         assert!(text.contains("db_path: /tmp/rushi-data/rushi.sqlite3"));
     }

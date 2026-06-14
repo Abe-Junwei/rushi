@@ -110,8 +110,8 @@ export function useWaveformZoomSync(args: {
   }, []);
 
   const onPeaksApplied = useCallback(
-    (applied: boolean, loadPeaksPx: number) => {
-      markAppliedPeaks(appliedZoom, applied, loadPeaksPx);
+    (applied: boolean, loadPeaksPx: number, layoutDurSec = 0) => {
+      markAppliedPeaks(appliedZoom, applied, loadPeaksPx, layoutDurSec);
       setPeaksApplied(applied);
     },
     [appliedZoom],

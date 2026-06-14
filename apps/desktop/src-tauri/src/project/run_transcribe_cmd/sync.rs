@@ -1,13 +1,11 @@
-use super::helpers::{apply_windowed_warning, record_transcribe_err};
-use super::online_fetch::fetch_online_transcribe_json;
-use super::save::save_transcribe_segments;
 use super::super::local_transcribe_gate::assert_local_asr_ready_for_transcribe;
 use super::super::online_segment_normalize::normalize_online_transcribe_json;
 use super::super::stt_vocabulary::{
     channel_for_online, vocabulary_support_warnings, SttVocabularyChannel, SttVocabularyPlan,
 };
 use super::super::transcribe::{
-    build_glossary_hotwords, post_transcribe_multipart, TranscribeHttpOptions, TranscribeRequestAuth,
+    build_glossary_hotwords, post_transcribe_multipart, TranscribeHttpOptions,
+    TranscribeRequestAuth,
 };
 use super::super::transcribe_cancel_cmd::{
     run_transcribe_abortable, TranscribeCancelState, TRANSCRIBE_CANCELLED_MESSAGE,
@@ -23,6 +21,9 @@ use super::super::transcribe_timeout::{
 };
 use super::super::types::RunTranscribeOutcome;
 use super::super::utils::{append_desktop_log_line, file_detail_from_conn, open_db};
+use super::helpers::{apply_windowed_warning, record_transcribe_err};
+use super::online_fetch::fetch_online_transcribe_json;
+use super::save::save_transcribe_segments;
 use crate::online_stt_bridge::OnlineTranscribeBridge;
 use crate::DbState;
 use std::path::Path;
@@ -214,7 +215,9 @@ async fn project_run_transcribe_inner(
             .unwrap_or("")
             .to_string();
         if let Some(refined_count) =
-            super::super::online_segment_normalize::refine_online_transcribe_segments(&mut v, &engine)
+            super::super::online_segment_normalize::refine_online_transcribe_segments(
+                &mut v, &engine,
+            )
         {
             append_desktop_log_line(
                 &st,

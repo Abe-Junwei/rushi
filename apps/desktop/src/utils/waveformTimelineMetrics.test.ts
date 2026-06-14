@@ -78,4 +78,15 @@ describe("resolveWaveformTimelineMetrics", () => {
 
     expect(m.timelineWidthPx).toBe(5600);
   });
+
+  it("caps timeline width to peaks column budget (release peaks path)", () => {
+    const m = resolveWaveformTimelineMetrics({
+      wsDurationSec: 360,
+      peaksStatusDurationSec: 360,
+      pxPerSec: 100,
+    });
+
+    expect(m.timelineWidthPx).toBeLessThanOrEqual(32_768);
+    expect(m.timelineWidthPx).toBeGreaterThan(32_000);
+  });
 });

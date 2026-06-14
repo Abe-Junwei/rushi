@@ -1,5 +1,11 @@
-import { isPackagedDesktopApp } from "../config/env";
-import { packagedOrDev } from "../services/packagedUserHints";
+import {
+  packagedOrDev,
+  packagedOrDevArray,
+  prepareModelFunasrMissingTipsDev,
+  prepareModelFunasrMissingTipsManaged,
+  prepareModelScopeMissingTipsDev,
+  prepareModelScopeMissingTipsManaged,
+} from "../services/packagedUserHints";
 
 export type PrepareModelFailureCopy = {
   headline: string;
@@ -22,30 +28,16 @@ export function describePrepareModelFailure(code: string): PrepareModelFailureCo
   if (c === "funasr_not_installed") {
     return {
       headline: "当前 ASR 进程未加载 FunASR（或缺少依赖）。",
-      tips: isPackagedDesktopApp()
-        ? [
-            "请在「环境 → 本机 ASR」点「一键准备本机 ASR」或「重试内置侧车」。",
-            "准备完成后点「下载当前模型」重试。",
-          ]
-        : [
-            "在 services/asr 的 venv 中执行 pip install -e \".[funasr]\"，然后重启 python -m rushi_asr。",
-            "也可用本页「一键安装 FunASR 依赖」后重启 ASR，再点「下载当前模型」。",
-          ],
+      tips: packagedOrDevArray(prepareModelFunasrMissingTipsDev, prepareModelFunasrMissingTipsManaged),
     };
   }
   if (c === "modelscope_not_installed") {
     return {
       headline: "缺少 ModelScope 客户端，无法拉取模型权重。",
-      tips: isPackagedDesktopApp()
-        ? [
-            "请在「环境 → 本机 ASR」点「一键准备本机 ASR」或「重试内置侧车」。",
-            "准备完成后点「下载当前模型」重试。",
-            ...commonRetryTips(),
-          ]
-        : [
-            "在同一 venv 中安装 funasr 扩展依赖（通常已包含 modelscope）；重启 ASR 后再试。",
-            ...commonRetryTips(),
-          ],
+      tips: [
+        ...packagedOrDevArray(prepareModelScopeMissingTipsDev, prepareModelScopeMissingTipsManaged),
+        ...commonRetryTips(),
+      ],
     };
   }
   if (c === "model_prepare_disk_full") {

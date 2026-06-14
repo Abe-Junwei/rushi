@@ -9,6 +9,7 @@ import {
 
 describe("waveformPrefs localStorage", () => {
   const mem: Record<string, string> = {};
+  const sessionMem: Record<string, string> = {};
 
   beforeEach(() => {
     vi.stubGlobal("localStorage", {
@@ -25,11 +26,27 @@ describe("waveformPrefs localStorage", () => {
       key: () => null,
       length: 0,
     });
+    vi.stubGlobal("sessionStorage", {
+      getItem: (k: string) =>
+        Object.prototype.hasOwnProperty.call(sessionMem, k) ? sessionMem[k] : null,
+      setItem: (k: string, v: string) => {
+        sessionMem[k] = v;
+      },
+      removeItem: (k: string) => {
+        delete sessionMem[k];
+      },
+      clear: () => {
+        for (const k of Object.keys(sessionMem)) delete sessionMem[k];
+      },
+      key: () => null,
+      length: 0,
+    });
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
     for (const k of Object.keys(mem)) delete mem[k];
+    for (const k of Object.keys(sessionMem)) delete sessionMem[k];
   });
 
   it("round-trips px/s after clamp", () => {

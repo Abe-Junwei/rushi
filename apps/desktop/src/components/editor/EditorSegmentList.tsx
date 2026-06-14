@@ -22,8 +22,10 @@ import {
   segmentListRowMinHeightPx,
   writeSegmentListFilterIndices,
 } from "../../utils/segmentListVirtualWindow";
+import { LIST_ADVANCE_PLAY_COALESCE_MS } from "../../utils/scheduleListAdvanceSegmentPlayback";
 import { SegmentTextListRow } from "../SegmentTextListRow";
 import { segmentHasUnsavedText } from "../../services/segmentConfirmEligible";
+import type { SegmentListFilterNavState } from "../../utils/segmentListFilterNav";
 import { blurActiveTranscriptTextarea } from "../../utils/transcriptSelection";
 import type { useEditorTranscriptAppearance } from "./useEditorTranscriptAppearance";
 
@@ -39,6 +41,7 @@ interface EditorSegmentListProps {
   tx: TranscriptionLayerApi;
   appearance: AppearanceApi;
   listRef: React.RefObject<HTMLDivElement | null>;
+  filterNavRef: React.MutableRefObject<SegmentListFilterNavState>;
   filteredIndices: number[];
   filterActive: boolean;
   onOpenSegmentContextMenu: (menu: SegmentCtxMenuState) => void;
@@ -59,6 +62,7 @@ export function EditorSegmentList({
   tx,
   appearance: a,
   listRef: segmentListRef,
+  filterNavRef,
   filteredIndices,
   filterActive,
   onOpenSegmentContextMenu,
@@ -67,13 +71,29 @@ export function EditorSegmentList({
   const [scrollEpoch, setScrollEpoch] = useState(0);
   const scrollEpochRafRef = useRef<number | null>(null);
   const lastSelectedScrollKeyRef = useRef<string | null>(null);
+  const pendingSelectedScrollKeyRef = useRef<string | null>(null);
+  const pendingSelectedScrollIdxRef = useRef<number>(-1);
+  const pendingSelectedDisplayIndexRef = useRef<number>(-1);
+  const selectedScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const rowMinHeightPx = segmentListRowMinHeightPx(tx.transcriptRowHeightPx);
   const itemStridePx = segmentListItemStridePx(rowMinHeightPx);
   const displayCount = filteredIndices.length;
   const useVirtualList = displayCount >= SEGMENT_LIST_VIRTUALIZE_MIN_COUNT;
   const selectedDisplayIndex =
-    c.selectedIdx >= 0 ? filteredIndices.indexOf(c.selectedIdx) : -1;
+    c.selectedIdx >= 0
+      ? filterActive
+        ? filteredIndices.indexOf(c.selectedIdx)
+        : c.selectedIdx < displayCount
+          ? c.selectedIdx
+          : -1
+      : -1;
+  const filteredIndicesScrollKey = useMemo(() => {
+    const first = filteredIndices[0] ?? -1;
+    const last = filteredIndices[filteredIndices.length - 1] ?? -1;
+    // Keep this O(1): rapid ↑↓ selection runs this path for every row change.
+    return `${filterActive ? "filtered" : "all"}:${displayCount}:${first}:${last}`;
+  }, [displayCount, filterActive, filteredIndices]);
 
   const scheduleScrollEpochBump = useCallback(() => {
     if (scrollEpochRafRef.current != null) return;
@@ -119,44 +139,65 @@ export function EditorSegmentList({
     const root = segmentListRef.current;
     if (!root || selectedDisplayIndex < 0) return;
 
-    const scrollKey = `${c.currentFileId ?? ""}:${c.selectedIdx}:${displayCount}:${filteredIndices.join(",")}`;
+    const scrollKey = `${c.currentFileId ?? ""}:${c.selectedIdx}:${selectedDisplayIndex}:${filteredIndicesScrollKey}`;
     if (lastSelectedScrollKeyRef.current === scrollKey) return;
-    lastSelectedScrollKeyRef.current = scrollKey;
+    pendingSelectedScrollKeyRef.current = scrollKey;
+    pendingSelectedScrollIdxRef.current = c.selectedIdx;
+    pendingSelectedDisplayIndexRef.current = selectedDisplayIndex;
+    if (selectedScrollTimerRef.current != null) clearTimeout(selectedScrollTimerRef.current);
+    selectedScrollTimerRef.current = setTimeout(() => {
+      selectedScrollTimerRef.current = null;
+      const pendingKey = pendingSelectedScrollKeyRef.current;
+      pendingSelectedScrollKeyRef.current = null;
+      if (!pendingKey || lastSelectedScrollKeyRef.current === pendingKey) return;
+      lastSelectedScrollKeyRef.current = pendingKey;
 
-    const maxScrollTop = Math.max(0, root.scrollHeight - root.clientHeight);
-    const nextScrollTop = scrollSegmentListIndexIntoView({
-      scrollTop: root.scrollTop,
-      viewportHeight: root.clientHeight,
-      index: selectedDisplayIndex,
-      rowMinHeightPx,
-      itemStridePx,
-      align: "minimal",
-      maxScrollTop,
-    });
-    if (nextScrollTop != null) {
-      root.scrollTop = nextScrollTop;
-      bumpScrollEpoch();
-      window.requestAnimationFrame(() => {
-        const corrected = scrollSegmentRowIntoViewContainer(c.selectedIdx, root, { align: "minimal" });
-        if (corrected == null) return;
-        if (Math.abs(corrected - root.scrollTop) < 1) return;
-        root.scrollTop = corrected;
-        bumpScrollEpoch();
+      const segmentIdx = pendingSelectedScrollIdxRef.current;
+      const displayIndex = pendingSelectedDisplayIndexRef.current;
+      if (segmentIdx < 0 || displayIndex < 0) return;
+
+      const maxScrollTop = Math.max(0, root.scrollHeight - root.clientHeight);
+      const nextScrollTop = scrollSegmentListIndexIntoView({
+        scrollTop: root.scrollTop,
+        viewportHeight: root.clientHeight,
+        index: displayIndex,
+        rowMinHeightPx,
+        itemStridePx,
+        align: "minimal",
+        maxScrollTop,
       });
-      return;
-    }
+      if (nextScrollTop != null) {
+        root.scrollTop = nextScrollTop;
+        bumpScrollEpoch();
+        window.requestAnimationFrame(() => {
+          const corrected = scrollSegmentRowIntoViewContainer(segmentIdx, root, { align: "minimal" });
+          if (corrected == null) return;
+          if (Math.abs(corrected - root.scrollTop) < 1) return;
+          root.scrollTop = corrected;
+          bumpScrollEpoch();
+        });
+        return;
+      }
 
-    const corrected = scrollSegmentRowIntoViewContainer(c.selectedIdx, root, { align: "minimal" });
-    if (corrected == null) return;
-    if (Math.abs(corrected - root.scrollTop) < 1) return;
-    root.scrollTop = corrected;
-    bumpScrollEpoch();
+      const corrected = scrollSegmentRowIntoViewContainer(segmentIdx, root, { align: "minimal" });
+      if (corrected == null) return;
+      if (Math.abs(corrected - root.scrollTop) < 1) return;
+      root.scrollTop = corrected;
+      bumpScrollEpoch();
+    }, LIST_ADVANCE_PLAY_COALESCE_MS);
+
+    return () => {
+      if (selectedScrollTimerRef.current != null) {
+        clearTimeout(selectedScrollTimerRef.current);
+        selectedScrollTimerRef.current = null;
+      }
+    };
   }, [
     bumpScrollEpoch,
     c.currentFileId,
     c.selectedIdx,
     displayCount,
-    filteredIndices,
+    filteredIndicesScrollKey,
     itemStridePx,
     rowMinHeightPx,
     segmentListRef,
@@ -169,9 +210,10 @@ export function EditorSegmentList({
 
   useLayoutEffect(() => {
     const root = segmentListRef.current;
+    filterNavRef.current = { active: filterActive, indices: filteredIndices };
     if (!root) return;
     writeSegmentListFilterIndices(root, filteredIndices, filterActive);
-  }, [filterActive, filteredIndices, segmentListRef]);
+  }, [filterActive, filteredIndices, filterNavRef, segmentListRef]);
 
   const onOpenRowContextMenu = useCallback(
     (

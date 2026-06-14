@@ -13,7 +13,7 @@ async function flushLayout() {
 function createSyncArgs(width: number) {
   const reRender = vi.fn();
   const syncScrollAfterRender = vi.fn();
-  const redrawcompleteHandlers: Array<() => void> = [];
+  const afterRenderHandlers: Array<() => void> = [];
   const tier = document.createElement("div");
   Object.defineProperty(tier, "clientWidth", { configurable: true, value: width });
   Object.defineProperty(tier, "offsetWidth", { configurable: true, value: width });
@@ -34,17 +34,17 @@ function createSyncArgs(width: number) {
     getRenderer: () => ({ reRender }),
     getWidth: () => tierScrollRef.current?.clientWidth ?? width,
     on: (event: string, cb: () => void) => {
-      if (event === "redrawcomplete") redrawcompleteHandlers.push(cb);
+      if (event === "redrawcomplete" || event === "rendered") afterRenderHandlers.push(cb);
       return () => {
-        const idx = redrawcompleteHandlers.indexOf(cb);
-        if (idx >= 0) redrawcompleteHandlers.splice(idx, 1);
+        const idx = afterRenderHandlers.indexOf(cb);
+        if (idx >= 0) afterRenderHandlers.splice(idx, 1);
       };
     },
   };
   return {
     reRender,
     syncScrollAfterRender,
-    redrawcompleteHandlers,
+    afterRenderHandlers,
     tierScrollRef,
     stickyShellRef,
     stretchShellRef,
@@ -121,7 +121,7 @@ describe("useWaveformViewportController", () => {
     expect(args.stretchShellRef.current.style.transform).toBe("scaleX(2)");
   });
 
-  it("clears stretch transform after redrawcomplete", async () => {
+  it("clears stretch transform after render complete", async () => {
     const args = createSyncArgs(800);
     const fireRo = mountWithRo(args);
 
@@ -130,7 +130,7 @@ describe("useWaveformViewportController", () => {
     expect(args.stretchShellRef.current.style.transform).toBe("scaleX(2)");
 
     act(() => {
-      args.redrawcompleteHandlers.forEach((handler) => handler());
+      args.afterRenderHandlers.forEach((handler) => handler());
     });
     await flushLayout();
 

@@ -7,7 +7,6 @@ import {
 import {
   clearWaveformPeaksForFile,
   ensureWaveformPeaks,
-  peakLevelAssetUrl,
   waveformPeaksStatus,
   type WaveformPeakLevelStatus,
   type WaveformPeaksStatus,
@@ -22,7 +21,7 @@ function levelToEntry(level: WaveformPeakLevelStatus) {
   return {
     level: level.level,
     pixelsPerSecond: level.pixelsPerSecond,
-    url: peakLevelAssetUrl(level.path),
+    path: level.path,
   };
 }
 

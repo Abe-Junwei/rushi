@@ -21,7 +21,7 @@ function mockWaveformData(length: number, durationSec: number, sampleRate = 4410
 }
 
 vi.mock("./audiowaveformDat", () => ({
-  loadWaveformDatFromUrl: () => Promise.resolve(mockWaveformData(2000, 600, 44100)),
+  loadWaveformDatFromPath: () => Promise.resolve(mockWaveformData(2000, 600, 44100)),
   resampleWaveformForPxPerSec: (data: unknown) => data,
   waveformDataToWaveSurferPeaks: (data: { length: number }) => {
     const peaks = new Array<number>(data.length * 2);
@@ -36,7 +36,7 @@ vi.mock("./audiowaveformDat", () => ({
 
 async function makeCache(): Promise<PeakCache> {
   const cache = await PeakCache.fromLevelUrls([
-    { level: 0, pixelsPerSecond: 2, url: "asset://l0.dat" },
+    { level: 0, pixelsPerSecond: 2, path: "/tmp/l0.dat" },
   ]);
   if (!cache) throw new Error("mock cache creation failed");
   return cache;

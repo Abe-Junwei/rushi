@@ -1,9 +1,19 @@
-import { isPackagedDesktopApp } from "../config/env";
+import { readShellManagesBundledSidecarSync } from "./shellCapabilities";
 
-/** Release .app vs dev: pick user-facing guidance without npm/terminal steps. */
-export function packagedOrDev(dev: string, packaged: string): string {
-  return isPackagedDesktopApp() ? packaged : dev;
+/**
+ * Shell-managed bundled sidecar vs source/venv sidecar user guidance.
+ * Uses Rust `asr_app_manages_bundled_sidecar` — not `import.meta.env.PROD`.
+ */
+export function packagedOrDev(dev: string, managed: string): string {
+  return readShellManagesBundledSidecarSync() ? managed : dev;
 }
+
+export function packagedOrDevArray<T>(dev: T, managed: T): T {
+  return readShellManagesBundledSidecarSync() ? managed : dev;
+}
+
+/** @deprecated Alias — prefer `managed` naming in new call sites. */
+export const shellManagedOrDev = packagedOrDev;
 
 export const SIDEcarRestartFailedPackaged =
   "侧车重启失败。请在「环境 → 本机 ASR」点「重试内置侧车」或「一键准备本机 ASR」；仍失败请完全退出应用后重新打开。";
@@ -35,3 +45,43 @@ export const ffmpegBlockReasonPackaged =
 
 export const ffmpegBlockReasonDev =
   "未检测到 FFmpeg：请安装 ffmpeg/ffprobe 并加入 PATH，或重建内置侧车后重启 ASR。";
+
+export const sidecarAsyncTranscribeBlockReasonManaged =
+  "侧车版本过旧。请在「环境 → 本机 ASR」应用并重启侧车或一键准备；仍失败请重装应用。";
+
+export const sidecarAsyncTranscribeBlockReasonDev =
+  "侧车版本过旧（缺少 async 转写）。请在环境页应用并重启侧车，或重建内置侧车。";
+
+export const sidecarMissingHealthBlockReasonManaged =
+  "未检测到可用侧车。请在「环境 → 本机 ASR」完成「一键准备本机 ASR」，或通过「下载 / 修复语音识别组件」安装应用数据侧车。";
+
+export const sidecarMissingHealthBlockReasonDev =
+  "未检测到可用侧车（dev 需先 npm run asr:build-sidecar-unix），或先通过「下载 / 修复语音识别组件」安装应用数据侧车。";
+
+export const prepareModelFunasrMissingTipsManaged = [
+  "请在「环境 → 本机 ASR」点「一键准备本机 ASR」或「重试内置侧车」。",
+  "准备完成后点「下载当前模型」重试。",
+];
+
+export const prepareModelFunasrMissingTipsDev = [
+  '在 services/asr 的 venv 中执行 pip install -e ".[funasr]"，然后重启 python -m rushi_asr。',
+  "也可用本页「一键安装 FunASR 依赖」后重启 ASR，再点「下载当前模型」。",
+];
+
+export const prepareModelScopeMissingTipsManaged = [
+  "请在「环境 → 本机 ASR」点「一键准备本机 ASR」或「重试内置侧车」。",
+  "准备完成后点「下载当前模型」重试。",
+];
+
+export const prepareModelScopeMissingTipsDev = [
+  "在同一 venv 中安装 funasr 扩展依赖（通常已包含 modelscope）；重启 ASR 后再试。",
+];
+
+export const loopbackInvokeMissingCommandManaged =
+  "请完全退出应用后重新打开；若仍出现此错误，请重新安装最新版本。";
+
+export const loopbackInvokeMissingCommandDev =
+  "请完全退出应用并重新运行 npm run desktop:dev 以加载最新 Tauri 命令。";
+
+export const asrStatusFfmpegActionLabelManaged = "一键准备";
+export const asrStatusFfmpegActionLabelDev = "修复侧车";

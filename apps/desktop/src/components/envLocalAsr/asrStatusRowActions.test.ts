@@ -1,15 +1,15 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { resolveAsrStatusRowAction } from "./asrStatusRowActions";
 
-const isPackagedDesktopApp = vi.fn(() => false);
+const readShellManagesBundledSidecarSync = vi.fn(() => false);
 
-vi.mock("../../config/env", () => ({
-  isPackagedDesktopApp: () => isPackagedDesktopApp(),
+vi.mock("../../services/shellCapabilities", () => ({
+  readShellManagesBundledSidecarSync: () => readShellManagesBundledSidecarSync(),
 }));
 
 describe("resolveAsrStatusRowAction", () => {
   beforeEach(() => {
-    isPackagedDesktopApp.mockReturnValue(false);
+    readShellManagesBundledSidecarSync.mockReturnValue(false);
   });
 
   it("returns null for ready rows", () => {
@@ -40,7 +40,7 @@ describe("resolveAsrStatusRowAction", () => {
   });
 
   it("routes ffmpeg failures to one-click prepare in packaged app", () => {
-    isPackagedDesktopApp.mockReturnValue(true);
+    readShellManagesBundledSidecarSync.mockReturnValue(true);
     const action = resolveAsrStatusRowAction(
       { id: "ffmpeg", label: "FFmpeg", ok: false, text: "未检测到" },
       "ok",

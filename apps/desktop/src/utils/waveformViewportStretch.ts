@@ -4,18 +4,36 @@ export type WriteWaveformShellLayoutInput = {
   timelineShell?: HTMLElement | null;
   peaksStageShell?: HTMLElement | null;
   stickyShell?: HTMLElement | null;
+  waveformScrollLayer?: HTMLElement | null;
+  overlayScrollLayer?: HTMLElement | null;
   timelineWidthPx: number;
   viewportWidthPx: number;
 };
 
 /** Imperatively sync timeline / stage / sticky shells (layout truth for resize + zoom). */
 export function writeWaveformShellLayout(input: WriteWaveformShellLayoutInput): void {
-  const { timelineShell, peaksStageShell, stickyShell, timelineWidthPx, viewportWidthPx } = input;
+  const {
+    timelineShell,
+    peaksStageShell,
+    stickyShell,
+    waveformScrollLayer,
+    overlayScrollLayer,
+    timelineWidthPx,
+    viewportWidthPx,
+  } = input;
   if (timelineWidthPx <= 0 || viewportWidthPx <= 0) return;
   const stageWidthPx = Math.max(timelineWidthPx, viewportWidthPx);
   if (timelineShell) writeWaveformTimelineShellWidth(timelineShell, timelineWidthPx);
   if (peaksStageShell) writeWaveformPeaksStageShellWidth(peaksStageShell, stageWidthPx);
   if (stickyShell) writeWaveformStickyShellWidth(stickyShell, viewportWidthPx);
+  if (waveformScrollLayer) writeWaveformScrollLayerWidth(waveformScrollLayer, timelineWidthPx);
+  if (overlayScrollLayer) writeWaveformScrollLayerWidth(overlayScrollLayer, timelineWidthPx);
+}
+
+/** Timeline-width layer translated by tier scroll (waveform + segment overlay). */
+export function writeWaveformScrollLayerWidth(scrollLayer: HTMLElement, timelineWidthPx: number): void {
+  if (timelineWidthPx <= 0) return;
+  scrollLayer.style.width = `${timelineWidthPx}px`;
 }
 
 /** Imperatively sync sticky clip shell — avoids waiting for React commit on resize. */

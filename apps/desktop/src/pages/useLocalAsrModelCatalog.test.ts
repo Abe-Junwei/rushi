@@ -6,11 +6,14 @@ const applyHubModelToSidecar = vi.fn<
   () => Promise<{ ok: boolean; message?: string; needsManualSidecarRestart?: boolean }>
 >();
 
+vi.mock("../services/shellCapabilities", () => ({
+  readShellManagesBundledSidecarSync: () => false,
+}));
+
 vi.mock("../config/env", () => ({
   asrBaseUrl: () => "http://127.0.0.1:8741",
   asrHealthUrl: () => "http://127.0.0.1:8741/health",
   isDefaultBundledAsrTarget: () => true,
-  isPackagedDesktopApp: () => false,
   isTauriRuntime: () => true,
 }));
 

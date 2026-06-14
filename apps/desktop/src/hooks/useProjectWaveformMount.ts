@@ -2,7 +2,11 @@ import { useCallback, useEffect, type Dispatch, type MutableRefObject, type RefO
 import WaveSurfer from "wavesurfer.js";
 import { COLORS } from "../config/tokens";
 import type { PeakCache } from "../services/waveform/PeakCache";
-import { quantizePxPerSecForPeaksLoad } from "../utils/pxPerSec";
+import {
+  quantizePxPerSecForPeaksLoad,
+  clampPxPerSecForWaveSurferRender,
+  WAVEFORM_WS_HOST_WIDTH_PX,
+} from "../utils/pxPerSec";
 import { resolveLayoutDurationSec } from "../utils/waveformTimelineMetrics";
 import {
   markAppliedPeaks,
@@ -12,8 +16,15 @@ import {
 } from "../utils/waveformAppliedZoom";
 import { WAVEFORM_DECODE_SAMPLE_RATE } from "../services/waveform/waveformZoomSyncEngine";
 import { installWaveSurferProgressAbortWarnFilter } from "../services/waveform/waveSurferProgressAbortWarn";
+import { installWaveSurferPlayedRegionDisplayFix } from "../services/waveform/waveformSurferProgressCoverage";
+import {
+  logWaveformRenderPath,
+  resetWaveformRenderPathLog,
+} from "../services/waveform/waveformRuntimePath";
 import { bindProjectWaveformWaveSurferEvents } from "./projectWaveformWaveSurferEvents";
 import { logDesktopUi } from "../services/desktopUiLog";
+import { logRuntimeParity } from "../services/runtimeParity";
+import { probeWaveformAssetFetchParity } from "../services/waveform/waveformAssetFetchParity";
 import {
   applyWaveSurferShadowCspNonce,
   withWaveSurferCspNonce,
@@ -64,6 +75,7 @@ type MountRefs = {
 
 export function useProjectWaveformMount(
   mediaUrl: string | null | undefined,
+  mediaDiskPath: string | null | undefined,
   deferDecodeMount: boolean,
   peakCacheGeneration: number,
   refs: MountRefs,
@@ -95,6 +107,7 @@ export function useProjectWaveformMount(
 
   useEffect(() => {
     destroyWave();
+    resetWaveformRenderPathLog();
     if (!mediaUrl) {
       setLoadError(null);
       return;
@@ -116,16 +129,18 @@ export function useProjectWaveformMount(
       }
 
       const wantDragCreate = Boolean(optsRef.current.onWaveformCreateRange);
-      const initialMps = minPxPerSecRef.current;
-      const initialH = waveformHeightRef.current;
-      pendingAppliedWaveformHeightRef.current = initialH;
-      markAppliedZoomWs(appliedZoom, initialMps);
-
       const cache = peakCacheRef.current;
       const layoutDur = resolveLayoutDurationSec({
         layoutDurationSecRef: layoutDurationSecRef.current,
         peakCacheDurationSec: cache?.durationSec ?? 0,
       });
+      const initialMps =
+        layoutDur > 0
+          ? clampPxPerSecForWaveSurferRender(minPxPerSecRef.current, layoutDur)
+          : minPxPerSecRef.current;
+      const initialH = waveformHeightRef.current;
+      pendingAppliedWaveformHeightRef.current = initialH;
+      markAppliedZoomWs(appliedZoom, initialMps);
 
       let peaks: Array<Float32Array | number[]> | undefined;
       let duration: number | undefined;
@@ -135,21 +150,38 @@ export function useProjectWaveformMount(
           const bundle = await cache.getWaveSurferPeaksAsync(loadPx, layoutDur);
           peaks = bundle.peaks;
           duration = bundle.duration;
-          markAppliedPeaks(appliedZoom, true, loadPx);
+          markAppliedPeaks(appliedZoom, true, loadPx, duration ?? layoutDur);
+          logWaveformRenderPath(
+            "peaks",
+            "mount_peaks_bootstrap",
+            `load_px=${loadPx} dur=${layoutDur.toFixed(1)} cols_cap=32768`,
+          );
         } catch (err) {
           logDesktopUi(
             "ERROR",
             `waveform mount peaks bootstrap: ${err instanceof Error ? err.message : String(err)}`,
           );
           resetAppliedPeaks(appliedZoom);
+          logWaveformRenderPath("decode", "mount_decode_no_cache", "peaks_bootstrap_failed");
         }
       } else {
         resetAppliedPeaks(appliedZoom);
+        logWaveformRenderPath(
+          "decode",
+          cache ? "mount_decode_no_cache" : "mount_decode_no_cache",
+          cache ? "cache_empty_layout" : "no_peak_cache",
+        );
       }
 
       if (disposed) return;
       const mountEl = containerRef.current;
       if (!mountEl?.isConnected) return;
+
+      // Host stays wider than any zoom's waveform width → WaveSurfer never scrolls
+      // internally, so it renders all canvas tiles eagerly (no lazy blank tail).
+      // Horizontal position is driven by `translateX` in `positionWaveSurferHostByScroll`.
+      mountEl.style.width = `${WAVEFORM_WS_HOST_WIDTH_PX}px`;
+      mountEl.style.transform = "translateX(0px)";
 
       const ws = WaveSurfer.create(
         withWaveSurferCspNonce({
@@ -181,10 +213,17 @@ export function useProjectWaveformMount(
 
       wsRef.current = ws;
 
+      wsUnsubsRef.current.push(installWaveSurferPlayedRegionDisplayFix(ws));
+      if (mediaUrl && !mediaDiskPath) {
+        logRuntimeParity("waveform", "mount_parity_probe_skipped no_mediaDiskPath", "WARN");
+      }
+
       wsUnsubsRef.current.push(
         ...bindProjectWaveformWaveSurferEvents({
           ws,
           disposed: () => disposed,
+          mediaUrl,
+          mediaDiskPath,
           optsRef,
           minPxPerSecRef,
           lastTimeUiCommitRef,
@@ -201,6 +240,10 @@ export function useProjectWaveformMount(
           setCurrentTime,
         }),
       );
+
+      if (peaks && mediaUrl) {
+        void probeWaveformAssetFetchParity("mount_peaks_bootstrap", mediaDiskPath, mediaUrl);
+      }
     };
 
     setLoadError(null);
@@ -212,6 +255,7 @@ export function useProjectWaveformMount(
     };
   }, [
     mediaUrl,
+    mediaDiskPath,
     deferDecodeMount,
     peakCacheGeneration,
     destroyWave,

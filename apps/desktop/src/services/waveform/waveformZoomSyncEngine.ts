@@ -3,6 +3,7 @@ import type WaveSurfer from "wavesurfer.js";
 import type { PeakCache } from "./PeakCache";
 import { isWaveSurferAbortError } from "./waveSurferProgressAbortWarn";
 import { logDesktopUi } from "../desktopUiLog";
+import { logWaveSurferGeomDeferred } from "./waveformSurferProgressCoverage";
 import {
   appliedZoomMatchesIntent,
   isPeaksLoadedIntoWs,
@@ -11,8 +12,13 @@ import {
   resetAppliedPeaks,
   type WaveformAppliedZoomState,
 } from "../../utils/waveformAppliedZoom";
-import { quantizePxPerSecForPeaksLoad, shouldZoomOnlyForSubMinFitAllRefit } from "../../utils/pxPerSec";
+import {
+  clampPxPerSecForWaveSurferRender,
+  quantizePxPerSecForPeaksLoad,
+  shouldZoomOnlyForSubMinFitAllRefit,
+} from "../../utils/pxPerSec";
 import { resolveLayoutDurationSec } from "../../utils/waveformTimelineMetrics";
+import { logWaveformRenderPath } from "./waveformRuntimePath";
 
 export const WAVEFORM_DECODE_SAMPLE_RATE = 8000;
 
@@ -67,8 +73,14 @@ export function planWaveformZoomApply(input: {
 
   const loadedPeaksPx = readLoadedPeaksPx(input.appliedZoom);
   const peaksLoaded = isPeaksLoadedIntoWs(input.appliedZoom);
+  const appliedLayoutDur = input.appliedZoom.appliedPeaksLayoutDurSecRef.current;
+  const layoutDurMismatch =
+    peaksLoaded &&
+    appliedLayoutDur > 0 &&
+    Math.abs(layoutDur - appliedLayoutDur) / Math.max(appliedLayoutDur, layoutDur, 1) > 0.02;
 
   if (
+    !layoutDurMismatch &&
     shouldZoomOnlyForSubMinFitAllRefit({
       requestedPeaksPxPerSec: loadPeaksPx,
       loadedPeaksPxPerSec: loadedPeaksPx,
@@ -78,8 +90,8 @@ export function planWaveformZoomApply(input: {
   ) {
     return { type: "finish-zoom" };
   }
-
-  const peaksAlreadyLoaded = peaksLoaded && loadedPeaksPx === loadPeaksPx;
+  const peaksAlreadyLoaded =
+    peaksLoaded && loadedPeaksPx === loadPeaksPx && !layoutDurMismatch;
   if (peaksAlreadyLoaded && appliedZoomMatchesIntent(input.appliedZoom, input.intentPxPerSec)) {
     return { type: "noop" };
   }
@@ -110,10 +122,20 @@ export function commitWaveSurferZoom(input: {
     return;
   }
   try {
-    if (!appliedZoomMatchesIntent(appliedZoom, intentPxPerSec)) {
-      ws.zoom(intentPxPerSec);
+    const durationSec = ws.getDuration();
+    const renderPxPerSec =
+      durationSec > 0
+        ? clampPxPerSecForWaveSurferRender(intentPxPerSec, durationSec)
+        : intentPxPerSec;
+    if (!appliedZoomMatchesIntent(appliedZoom, renderPxPerSec)) {
+      ws.zoom(renderPxPerSec);
+      logWaveSurferGeomDeferred(
+        ws,
+        "zoom",
+        `render_px=${renderPxPerSec.toFixed(2)} intent_px=${intentPxPerSec.toFixed(2)}`,
+      );
     }
-    markAppliedZoomWs(appliedZoom, intentPxPerSec);
+    markAppliedZoomWs(appliedZoom, renderPxPerSec);
     onZoomApplied?.(intentPxPerSec);
   } catch {
     /* noop */
@@ -136,7 +158,7 @@ export function loadPeaksIntoWaveSurfer(input: {
   appliedZoom: WaveformAppliedZoomState;
   inFlight: WaveformZoomSyncInFlight;
   onZoomApplied?: (pxPerSec: number) => boolean | void;
-  onPeaksApplied: (applied: boolean, loadPeaksPx: number) => void;
+  onPeaksApplied: (applied: boolean, loadPeaksPx: number, layoutDurSec: number) => void;
 }): void {
   const {
     ws,
@@ -153,7 +175,11 @@ export function loadPeaksIntoWaveSurfer(input: {
     onPeaksApplied,
   } = input;
 
-  if (inFlight.peaksLoadInFlightPxRef.current === loadPeaksPx) return;
+  const appliedLayoutDur = appliedZoom.appliedPeaksLayoutDurSecRef.current;
+  const layoutDurMismatch =
+    appliedLayoutDur > 0 &&
+    Math.abs(layoutDur - appliedLayoutDur) / Math.max(appliedLayoutDur, layoutDur, 1) > 0.02;
+  if (inFlight.peaksLoadInFlightPxRef.current === loadPeaksPx && !layoutDurMismatch) return;
   inFlight.peaksLoadInFlightPxRef.current = loadPeaksPx;
 
   const resumeTimeSec = ws.getCurrentTime();
@@ -179,7 +205,19 @@ export function loadPeaksIntoWaveSurfer(input: {
         } catch {
           /* noop */
         }
-        onPeaksApplied(true, loadPeaksPx);
+        onPeaksApplied(true, loadPeaksPx, layoutDur);
+        logWaveformRenderPath(
+          "peaks",
+          "peaks_load_applied",
+          `load_px=${loadPeaksPx} dur=${layoutDur.toFixed(1)}`,
+        );
+        const peaksLen = Array.isArray(bundle.peaks)
+          ? (bundle.peaks[0]?.length ?? 0)
+          : 0;
+        logDesktopUi(
+          "INFO",
+          `[wf-geom] peaks load_px=${loadPeaksPx} peaks_len=${peaksLen} bundle_dur=${bundle.duration.toFixed(1)} tier_dur=${layoutDur.toFixed(1)}`,
+        );
         commitWaveSurferZoom({
           ws,
           intentPxPerSec,
@@ -194,7 +232,8 @@ export function loadPeaksIntoWaveSurfer(input: {
       if (wsRef.current !== ws) return;
       const msg = err instanceof Error ? err.message : String(err);
       logDesktopUi("ERROR", `waveform peaks load: ${msg}`);
-      onPeaksApplied(false, Number.NaN);
+      logWaveformRenderPath("decode", "peaks_load_failed", msg.slice(0, 120));
+      onPeaksApplied(false, Number.NaN, 0);
       commitWaveSurferZoom({
         ws,
         intentPxPerSec,

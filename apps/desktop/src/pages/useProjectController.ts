@@ -95,6 +95,7 @@ export function useProjectController() {
     selectedIdx: lifecycle.selectedIdx,
     setSelectedIdx: lifecycle.setSelectedIdx,
     audioSrc: lifecycle.audioSrc,
+    audioStoragePath: lifecycle.audioStoragePath,
     error: lifecycle.error,
     setError: lifecycle.setError,
     busy: lifecycle.busy,

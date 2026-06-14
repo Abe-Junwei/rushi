@@ -1,4 +1,6 @@
-use std::io::{Cursor, Seek, Write};
+#[cfg(test)]
+use std::io::Cursor;
+use std::io::{Seek, Write};
 use std::path::Path;
 
 use docx_rs::*;
@@ -68,9 +70,7 @@ pub(crate) fn build_docx_to_path(
         polish_corrected_lines,
         polish_track_changes,
     )?;
-    writer
-        .flush()
-        .map_err(|e| format!("写入 DOCX 失败: {e}"))?;
+    writer.flush().map_err(|e| format!("写入 DOCX 失败: {e}"))?;
     if should_use_polish_track_changes(
         polish_track_changes,
         polished_paragraphs,
@@ -84,6 +84,7 @@ pub(crate) fn build_docx_to_path(
     Ok(())
 }
 
+#[cfg(test)]
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn build_docx_bytes(
     title: &str,

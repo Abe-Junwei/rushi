@@ -50,6 +50,7 @@ pub mod transcribe_timeline;
 mod transcribe_timeout;
 pub mod types;
 pub mod utils;
+pub mod waveform_asset_cmd;
 pub mod waveform_diag_cmd;
 pub mod waveform_peaks;
 pub mod waveform_peaks_cache_cmd;
@@ -77,6 +78,7 @@ pub use run_transcribe_cmd::*;
 pub use segment_cmd::*;
 pub use transcribe_cancel_cmd::TranscribeCancelState;
 pub use types::*;
+pub use waveform_asset_cmd::*;
 pub use waveform_diag_cmd::*;
 pub use waveform_peaks_cache_cmd::*;
 pub use waveform_peaks_cmd::*;
@@ -114,6 +116,14 @@ pub fn setup_db(app: &tauri::AppHandle) -> Result<DbState, String> {
         append_desktop_log_line(&st, &format!("WARN asset_scope_failed: {e}"));
     }
     append_desktop_log_line(&st, "INFO database_ready");
+    append_desktop_log_line(
+        &st,
+        &format!(
+            "INFO parity project: app_data_root=present db_path=present root={} db={}",
+            st.root.display(),
+            st.db_path.display()
+        ),
+    );
     Ok(st)
 }
 

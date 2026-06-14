@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { ResizeBottomHit } from "../ResizeBottomHit";
 import { WaveformLiveTimeRuler } from "../WaveformLiveTimeRuler";
+import { WaveformViewportPlayhead } from "../WaveformViewportPlayhead";
 import { WAVEFORM_EMBEDDED_TIME_RULER_H_PX } from "../WaveformTimeRuler";
 import { WaveformSegmentPlaybackControls } from "../WaveformSegmentPlaybackControls";
 import { WaveformSegmentBandCanvas } from "../WaveformSegmentBandCanvas";
@@ -59,7 +60,6 @@ export function EditorWaveformPane({
   }, []);
   const centerStatusLabel = resolveWaveformCenterStatusLabel({
     phase: tx.waveformPeaksPhase,
-    backgroundPeaksEnabled: tx.backgroundPeaksEnabled,
     mountDeferTimedOut: tx.mountDeferTimedOut,
     waveformReady: tx.isReady,
   });
@@ -131,22 +131,27 @@ export function EditorWaveformPane({
                   >
                     <div className="relative h-full w-full">
                       <div
-                        className={`absolute inset-0 ${waveformVerticalClass}`}
-                        style={{
-                          transform: waveformVerticalTransform,
-                          transformOrigin: "top left",
-                        }}
+                        ref={tx.waveformScrollLayerRef}
+                        className="absolute left-0 top-0 h-full will-change-transform"
                       >
                         <div
-                          ref={tx.waveformStretchShellRef}
-                          className="h-full w-full origin-top-left"
+                          className={`absolute inset-0 ${waveformVerticalClass}`}
+                          style={{
+                            transform: waveformVerticalTransform,
+                            transformOrigin: "top left",
+                          }}
                         >
                           <div
-                            ref={tx.containerRef}
-                            className="relative z-[1] h-full w-full shrink-0 bg-transparent"
-                            role="img"
-                            aria-label="转写波形与语段时间范围"
-                          />
+                            ref={tx.waveformStretchShellRef}
+                            className="h-full w-full origin-top-left"
+                          >
+                            <div
+                              ref={tx.containerRef}
+                              className="relative z-[1] h-full w-full shrink-0 bg-transparent"
+                              role="img"
+                              aria-label="转写波形与语段时间范围"
+                            />
+                          </div>
                         </div>
                       </div>
                       <WaveformSegmentBandCanvas
@@ -166,11 +171,67 @@ export function EditorWaveformPane({
                         tierScrollLive={tx.tierScrollLive}
                         tierScrollLayout={tx.tierScrollLayout}
                       />
+                      <div
+                        ref={tx.overlayScrollLayerRef}
+                        className="absolute left-0 top-0 z-[3] h-full will-change-transform"
+                      >
+                        <WaveformSegmentOverlay
+                          disabled={stripDisabled}
+                          segments={c.segments}
+                          selectedIdx={c.selectedIdx}
+                          selectionLo={c.selectionLo}
+                          selectionHi={c.selectionHi}
+                          selectionCount={c.selectionCount}
+                          isContiguousSelection={c.isContiguousSelection}
+                          timelineWidthPx={tx.timelineWidthPx}
+                          durationSec={mediaDurationSec}
+                          layoutHeightPx={segmentOverlayHeightPx}
+                          laneByIndex={tx.segmentLaneLayout.laneByIndex}
+                          laneCount={tx.segmentLaneLayout.laneCount}
+                          dominantSpanIndices={tx.segmentLaneLayout.dominantSpanIndices}
+                          getPlayheadSec={tx.getPlayheadTime}
+                          onDraftIdxChange={onOverlayDraftIdxChange}
+                          enableCreateRange
+                          clientXToTimeSec={tx.clientXToTimeSec}
+                          onSelectSegmentAt={(idx, opts) => tx.selectSegmentAt(idx, "waveform", opts)}
+                          onSelectSegmentIndices={(indices, primaryIdx) =>
+                            c.selectSegmentIndices(indices, primaryIdx)
+                          }
+                          getSelectedIndices={() => c.selectedIndices}
+                          isIndexInSelection={c.isIndexInSelection}
+                          selectedIndices={c.selectedIndices}
+                          onClearMultiSelection={c.clearMultiSelection}
+                          isMultiSegmentSelection={() => c.isMultiSegmentSelection}
+                          onFocusWaveformShell={tx.focusWaveformShell}
+                          revealSelectedSegmentInViewport={tx.revealSelectedSegmentInViewport}
+                          onBoundsCommit={(idx, startSec, endSec) => {
+                            const clamped =
+                              mediaDurationSec > 0
+                                ? clampSegmentTimeBounds(startSec, endSec, mediaDurationSec)
+                                : { startSec, endSec };
+                            c.updateSegmentBounds(idx, clamped.startSec, clamped.endSec, "commit");
+                          }}
+                          onCreateRange={(lo, hi, options) =>
+                            c.insertSegmentFromTimeRange(lo, hi, mediaDurationSec, options?.overlapPolicy)
+                          }
+                          onPlaySegment={(idx) => void tx.playSegmentAtIndex(idx)}
+                          seekToTime={tx.seek}
+                        />
+                      </div>
+                      <WaveformViewportPlayhead
+                        durationSec={mediaDurationSec}
+                        timelineWidthPx={tx.timelineWidthPx}
+                        {...tierScrollProps}
+                        isPlaying={tx.isPlaying}
+                        isReady={tx.isReady}
+                        currentTimeSec={tx.currentTime}
+                        getPlayheadTime={tx.getPlayheadTime}
+                        formatMediaTime={tx.formatMediaTime}
+                      />
                       <WaveformLiveTimeRuler
                         appearance="embedded"
                         coordinateSpace="viewport"
                         overlayOnWaveform
-                        suppressPlayhead
                         durationSec={mediaDurationSec}
                         timelineWidthPx={tx.timelineWidthPx}
                         {...tierScrollProps}
@@ -186,48 +247,6 @@ export function EditorWaveformPane({
                       />
                     </div>
                   </div>
-                  <WaveformSegmentOverlay
-                    disabled={stripDisabled}
-                    segments={c.segments}
-                    selectedIdx={c.selectedIdx}
-                    selectionLo={c.selectionLo}
-                    selectionHi={c.selectionHi}
-                    selectionCount={c.selectionCount}
-                    isContiguousSelection={c.isContiguousSelection}
-                    timelineWidthPx={tx.timelineWidthPx}
-                    durationSec={mediaDurationSec}
-                    layoutHeightPx={segmentOverlayHeightPx}
-                    laneByIndex={tx.segmentLaneLayout.laneByIndex}
-                    laneCount={tx.segmentLaneLayout.laneCount}
-                    dominantSpanIndices={tx.segmentLaneLayout.dominantSpanIndices}
-                    getPlayheadSec={tx.getPlayheadTime}
-                    onDraftIdxChange={onOverlayDraftIdxChange}
-                    enableCreateRange
-                    clientXToTimeSec={tx.clientXToTimeSec}
-                    onSelectSegmentAt={(idx, opts) => tx.selectSegmentAt(idx, "waveform", opts)}
-                    onSelectSegmentIndices={(indices, primaryIdx) =>
-                      c.selectSegmentIndices(indices, primaryIdx)
-                    }
-                    getSelectedIndices={() => c.selectedIndices}
-                    isIndexInSelection={c.isIndexInSelection}
-                    selectedIndices={c.selectedIndices}
-                    onClearMultiSelection={c.clearMultiSelection}
-                    isMultiSegmentSelection={() => c.isMultiSegmentSelection}
-                    onFocusWaveformShell={tx.focusWaveformShell}
-                    revealSelectedSegmentInViewport={tx.revealSelectedSegmentInViewport}
-                    onBoundsCommit={(idx, startSec, endSec) => {
-                      const clamped =
-                        mediaDurationSec > 0
-                          ? clampSegmentTimeBounds(startSec, endSec, mediaDurationSec)
-                          : { startSec, endSec };
-                      c.updateSegmentBounds(idx, clamped.startSec, clamped.endSec, "commit");
-                    }}
-                    onCreateRange={(lo, hi, options) =>
-                      c.insertSegmentFromTimeRange(lo, hi, mediaDurationSec, options?.overlapPolicy)
-                    }
-                    onPlaySegment={(idx) => void tx.playSegmentAtIndex(idx)}
-                    seekToTime={tx.seek}
-                  />
                   <WaveformSegmentPlaybackControls
                     disabled={stripDisabled}
                     rulerBandHeightPx={rulerHeightPx}

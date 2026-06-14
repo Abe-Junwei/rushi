@@ -26,6 +26,8 @@ export function makeWs(overrides: Record<string, unknown> = {}) {
     getCurrentTime: vi.fn(() => 0),
     setTime: vi.fn(),
     play: vi.fn().mockResolvedValue(undefined),
+    // commitWaveSurferZoom reads ws.getDuration() to clamp render px/s; mock so commit applies ws.zoom.
+    getDuration: vi.fn(() => 120),
     ...overrides,
   };
 }

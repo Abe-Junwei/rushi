@@ -6,6 +6,8 @@ export type TranscriptionLayerInput = {
   projectId: string | null;
   fileId: string | null;
   mediaUrl: string | null;
+  /** Raw on-disk path for asset_fetch_parity probe (load still uses convertFileSrc). */
+  mediaDiskPath?: string | null;
   segments: SegmentDto[];
   selectedIdx: number;
   busy: boolean;

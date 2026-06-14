@@ -147,7 +147,14 @@
 
 /* 语段行：编辑阶段（Notion 式 pill · 图标 + 文案） */
 .workspace .seg-row-stage-badge {
-  min-width: 0;
+  flex-shrink: 0;
+  align-self: flex-start;
+  /* chip + 可选备注图标；保证 trailing 列占位，正文 flex 区在其左侧折行 */
+  min-width: 5.75rem;
+}
+
+.workspace .seg-row-stage-badge:has(.seg-row-annotation-btn) {
+  min-width: 7.75rem;
 }
 
 .workspace .seg-row-stage-draft-dot {

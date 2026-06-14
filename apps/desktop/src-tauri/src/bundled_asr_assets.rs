@@ -70,6 +70,30 @@ fn bundled_internal_tool(roots: &[PathBuf], name: &str) -> Option<PathBuf> {
     None
 }
 
+/// PyInstaller sidecar build stamp (`sidecar-build-stamp.txt` from `build-asr-sidecar-unix.sh`).
+pub fn read_bundled_sidecar_build_stamp() -> Option<String> {
+    for root in resource_roots_for_lookup() {
+        for onedir in ["rushi-asr-sidecar", "rushi-asr-sidecar-cuda"] {
+            let path = root
+                .join("bundled-asr")
+                .join(onedir)
+                .join("sidecar-build-stamp.txt");
+            if let Ok(text) = std::fs::read_to_string(&path) {
+                let summary = text
+                    .lines()
+                    .map(str::trim)
+                    .filter(|line| !line.is_empty())
+                    .collect::<Vec<_>>()
+                    .join(" ");
+                if !summary.is_empty() {
+                    return Some(summary);
+                }
+            }
+        }
+    }
+    None
+}
+
 pub fn resolve_bundled_ffmpeg() -> PathBuf {
     bundled_internal_tool(&resource_roots_for_lookup(), "ffmpeg")
         .unwrap_or_else(|| PathBuf::from("ffmpeg"))

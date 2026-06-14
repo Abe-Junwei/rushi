@@ -2,6 +2,7 @@ use base64::engine::general_purpose::STANDARD as BASE64_STANDARD;
 use base64::Engine;
 use ed25519_dalek::{Signature, Verifier, VerifyingKey};
 
+#[cfg(debug_assertions)]
 use super::config::insecure_manifest_source_allowed;
 
 const RELEASE_MANIFEST_KEY_ID: &str = "rushi-runtime-release-v1";

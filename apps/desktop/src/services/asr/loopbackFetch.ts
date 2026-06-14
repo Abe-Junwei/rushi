@@ -1,5 +1,10 @@
 import { invoke } from "@tauri-apps/api/core";
-import { asrBaseUrl, isPackagedDesktopApp, isTauriRuntime } from "../../config/env";
+import { asrBaseUrl, isTauriRuntime } from "../../config/env";
+import {
+  loopbackInvokeMissingCommandDev,
+  loopbackInvokeMissingCommandManaged,
+  packagedOrDev,
+} from "../packagedUserHints";
 
 type LoopbackInvokeBody = {
   path: string;
@@ -71,9 +76,7 @@ export function formatLoopbackInvokeError(error: unknown): string {
     /asr_loopback_request/i.test(msg) &&
     (/not found/i.test(msg) || /unknown command/i.test(msg) || /Invalid args/i.test(msg))
   ) {
-    return isPackagedDesktopApp()
-      ? `${msg}。请完全退出应用后重新打开；若仍出现此错误，请重新安装最新版本。`
-      : `${msg}。请完全退出应用并重新运行 npm run desktop:dev 以加载最新 Tauri 命令。`;
+    return `${msg}。${packagedOrDev(loopbackInvokeMissingCommandDev, loopbackInvokeMissingCommandManaged)}`;
   }
   return msg;
 }

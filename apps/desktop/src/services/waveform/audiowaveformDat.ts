@@ -2,6 +2,7 @@
 
 import WaveformData from "waveform-data";
 import { capWaveformPeakColumns, computeTimelineWidthPx } from "../../utils/pxPerSec";
+import { peakLevelAssetUrl } from "../../tauri/waveformPeaksApi";
 
 const INT16_SCALE = 32767;
 
@@ -14,6 +15,11 @@ export async function loadWaveformDatFromUrl(url: string): Promise<WaveformData>
   }
   const buf = await res.arrayBuffer();
   return WaveformData.create(buf);
+}
+
+/** Load peaks `.dat` via asset URL (dev/release parity — single fetch path). */
+export async function loadWaveformDatFromPath(diskPath: string): Promise<WaveformData> {
+  return loadWaveformDatFromUrl(peakLevelAssetUrl(diskPath));
 }
 
 const ASYNC_PEAKS_MIN_SAMPLES = 200_000;

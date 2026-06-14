@@ -324,9 +324,156 @@ function checkTauriInvokeAcl() {
   }
 }
 
+function checkSegmentListRapidSelectGuard() {
+  const rel = 'apps/desktop/src/components/editor/EditorSegmentList.tsx';
+  const fullPath = path.join(ROOT, rel);
+  if (!fs.existsSync(fullPath)) return;
+  const source = fs.readFileSync(fullPath, 'utf-8');
+  if (/scrollKey[\s\S]{0,240}filteredIndices\.join\(/.test(source)) {
+    errors.push(
+      `${rel}: 快速 ↑↓ 切语段热路径禁止使用 filteredIndices.join(...) 构造 scrollKey；长稿会在每次选中变化时 O(n) 拼接导致 WKWebView 卡死`,
+    );
+  }
+  if (/selectedDisplayIndex\s*=\s*c\.selectedIdx\s*>=\s*0\s*\?\s*filteredIndices\.indexOf\(c\.selectedIdx\)/.test(source)) {
+    errors.push(
+      `${rel}: 未筛选长稿的 selectedDisplayIndex 必须由 selectedIdx O(1) 直达，只能在 filterActive 分支使用 filteredIndices.indexOf(...)`,
+    );
+  }
+
+  const keyboardRel = 'apps/desktop/src/hooks/useSegmentKeyboard.ts';
+  const keyboardPath = path.join(ROOT, keyboardRel);
+  if (!fs.existsSync(keyboardPath)) return;
+  const keyboardSource = fs.readFileSync(keyboardPath, 'utf-8');
+  if (/w\.seek\(segmentStartSec\(seg\)\)/.test(keyboardSource)) {
+    errors.push(
+      `${keyboardRel}: 快速 ↑↓ 切语段禁止同步 seek；应通过 list advance media scheduler 合并到最后一次`,
+    );
+  }
+  if (/readStoredTabAdvanceLoopsSegment/.test(keyboardSource)) {
+    errors.push(
+      `${keyboardRel}: ↑↓ 键盘切换禁止复用 Tab 听打 loop-play；仅 Tab confirmAdvance 可走 listAdvance + loop`,
+    );
+  }
+  if (!/segmentListFilterNavRef/.test(keyboardSource)) {
+    errors.push(`${keyboardRel}: ↑↓ 键盘切换须读取 segmentListFilterNavRef（筛选边界真源）`);
+  }
+  const shortcutRel = 'apps/desktop/src/utils/executeEditorShortcut.ts';
+  const shortcutPath = path.join(ROOT, shortcutRel);
+  if (fs.existsSync(shortcutPath)) {
+    const shortcutSource = fs.readFileSync(shortcutPath, 'utf-8');
+    if (!/readStoredTabAdvanceLoopsSegment/.test(shortcutSource)) {
+      errors.push(
+        `${shortcutRel}: Tab confirmAdvance 须在 listAdvance 后按偏好触发 loop-play 或 seek`,
+      );
+    }
+  }
+
+  const selectionRel = 'apps/desktop/src/pages/useTranscriptionLayerSelection.ts';
+  const selectionPath = path.join(ROOT, selectionRel);
+  if (fs.existsSync(selectionPath)) {
+    const selectionSource = fs.readFileSync(selectionPath, 'utf-8');
+    const queueRevealFn = selectionSource.match(
+      /const queueListAdvanceReveal = useCallback\([\s\S]{0,320}?\}, \[\]\);/,
+    )?.[0];
+    if (queueRevealFn && /requestAnimationFrame/.test(queueRevealFn)) {
+      errors.push(
+        `${selectionRel}: listAdvance 波形 reveal 禁止 RAF 直刷；须 coalesce 到最后一次（避免 [wf-geom] scroll 风暴）`,
+      );
+    }
+    if (!/createListAdvanceCoalescedScheduler/.test(selectionSource)) {
+      errors.push(
+        `${selectionRel}: listAdvance 波形 reveal 须使用 createListAdvanceCoalescedScheduler`,
+      );
+    }
+  }
+}
+
+function checkReleaseUserCopyDrift() {
+  const srcRoot = path.join(ROOT, 'apps/desktop/src');
+  const allowlist = new Set([
+    'apps/desktop/src/services/packagedUserHints.ts',
+    'apps/desktop/src/services/asr/asrHealthParse.ts',
+    'apps/desktop/src/pages/transcribePreviewState.ts',
+    'apps/desktop/src/components/EnvQualityPanel.tsx',
+    'apps/desktop/src/components/envLocalAsr/LocalAsrCacheSection.tsx',
+    'apps/desktop/src/pages/useAsrModelCacheController.ts',
+    'apps/desktop/src/services/asr/localAsrSetupModelStep.ts',
+    'apps/desktop/src/services/asr/asrOneClickPrepareSidecarHealth.ts',
+    'apps/desktop/src/tauri/projectApi.ts',
+    'apps/desktop/src/services/asr/localAsrSidecarRestart.ts',
+    'apps/desktop/src/pages/useLocalAsrModelCatalog.ts',
+  ]);
+  const guardedPattern =
+    /packagedOrDev|readShellManagesBundledSidecarSync|TRANSCRIBE_ASYNC_FALLBACK_HINT|funasrManualSetupCommands|localRuntimeDevReloadHint/;
+  const npmPattern = /npm run|desktop:dev|asr:dev/;
+
+  walk(srcRoot, (fullPath) => {
+    if (!/\.(ts|tsx)$/.test(fullPath)) return;
+    const rel = path.relative(ROOT, fullPath).replaceAll(path.sep, '/');
+    if (rel.includes('.test.')) return;
+    if (allowlist.has(rel)) return;
+
+    const lines = fs.readFileSync(fullPath, 'utf-8').split('\n');
+    for (const line of lines) {
+      const trimmed = line.trim();
+      if (trimmed.startsWith('//') || trimmed.startsWith('*') || trimmed.startsWith('/**')) continue;
+      if (!npmPattern.test(line)) continue;
+      const source = fs.readFileSync(fullPath, 'utf-8');
+      if (guardedPattern.test(source)) return;
+      errors.push(
+        `${rel}: 用户可见文案含 npm/desktop:dev，但未在同文件使用 packagedOrDev / readShellManagesBundledSidecarSync 等 release 分流`,
+      );
+      return;
+    }
+  });
+}
+
+function checkDevReleaseStyleCspParity() {
+  const confPath = path.join(ROOT, 'apps/desktop/src-tauri/tauri.conf.json');
+  const conf = JSON.parse(fs.readFileSync(confPath, 'utf-8'));
+  const prodStyle = conf?.app?.security?.csp?.['style-src'];
+  const devStyle = conf?.app?.security?.devCsp?.['style-src'];
+  if (!prodStyle || !devStyle) return;
+  const normalize = (v) => (Array.isArray(v) ? [...v].sort().join('|') : String(v));
+  if (normalize(prodStyle) !== normalize(devStyle)) {
+    errors.push(
+      'apps/desktop/src-tauri/tauri.conf.json: devCsp style-src 须与生产 csp style-src 一致（dev/release 同 CSP 策略，波形 nonce 路径一致）',
+    );
+  }
+}
+
+function checkDevReleaseBehaviorForks() {
+  const srcRoot = path.join(ROOT, 'apps/desktop/src');
+  const allowlist = new Set([
+    'apps/desktop/src/config/env.ts',
+    'apps/desktop/src/services/shellCapabilities.ts',
+  ]);
+  walk(srcRoot, (fullPath) => {
+    if (!/\.(ts|tsx)$/.test(fullPath)) return;
+    const rel = path.relative(ROOT, fullPath).replaceAll(path.sep, '/');
+    if (rel.includes('.test.')) return;
+    if (allowlist.has(rel)) return;
+    const source = fs.readFileSync(fullPath, 'utf-8');
+    if (/import\.meta\.env\.DEV/.test(source)) {
+      errors.push(
+        `${rel}: 禁止 import.meta.env.DEV 行为分叉 — 用 logRuntimeParity / shellCapabilities / packagedUserHints（文案）`,
+      );
+    }
+    if (/\bisPackagedDesktopApp\s*\(/.test(source)) {
+      errors.push(
+        `${rel}: 禁止 isPackagedDesktopApp() 行为分叉 — 用 readShellManagesBundledSidecarSync / packagedOrDev`,
+      );
+    }
+  });
+}
+
+checkDevReleaseStyleCspParity();
+checkDevReleaseBehaviorForks();
+checkReleaseUserCopyDrift();
 checkTauriProductionCsp();
 checkTauriStyleNonceProbe();
 checkTauriInvokeAcl();
+checkSegmentListRapidSelectGuard();
 
 console.log(`\n架构守卫报告：${errors.length} 错误，${warnings.length} 警告\n`);
 warnings.forEach(w => console.log(`⚠️  ${w}`));

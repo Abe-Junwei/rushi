@@ -4,6 +4,8 @@ import type { PeakCache } from "../services/waveform/PeakCache";
 /** Options for `useProjectWaveform` (shared to break hook import cycle). */
 export type UseProjectWaveformOptions = {
   mediaUrl: string | null;
+  /** Raw on-disk path — parity probe only (`asset_fetch_parity`); load uses convertFileSrc. */
+  mediaDiskPath?: string | null;
   segments: SegmentDto[];
   selectedIdx: number;
   disabled?: boolean;

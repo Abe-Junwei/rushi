@@ -1,4 +1,4 @@
-import { isPackagedDesktopApp } from "../../config/env";
+import { asrStatusFfmpegActionLabelDev, asrStatusFfmpegActionLabelManaged, packagedOrDev } from "../../services/packagedUserHints";
 import type { AsrEnvStatusRow } from "../../services/asr/asrEnvStatus";
 
 export type AsrStatusRowAction = {
@@ -33,7 +33,7 @@ export function resolveAsrStatusRowAction(
       };
     case "ffmpeg":
       return {
-        label: isPackagedDesktopApp() ? "一键准备" : "修复侧车",
+        label: packagedOrDev(asrStatusFfmpegActionLabelDev, asrStatusFfmpegActionLabelManaged),
         navigate: () =>
           health === "error" ? scrollToEnvSection("env-asr-setup") : openEnvSetupWizard(),
       };

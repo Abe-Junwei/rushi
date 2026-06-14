@@ -19,11 +19,14 @@ export const localRuntimeClearInstall = vi.fn<() => Promise<{ ok: boolean; reaso
 export const localRuntimeRestorePrevious = vi.fn<() => Promise<{ ok: boolean; reason?: string | null }>>();
 export const fetchMock = vi.fn<typeof fetch>();
 
+vi.mock("../services/shellCapabilities", () => ({
+  readShellManagesBundledSidecarSync: () => false,
+}));
+
 vi.mock("../config/env", () => ({
   asrBaseUrl: () => "http://127.0.0.1:8741",
   asrHealthUrl: () => "http://127.0.0.1:8741/health",
   isDefaultBundledAsrTarget: () => true,
-  isPackagedDesktopApp: () => false,
   isTauriRuntime: () => true,
 }));
 

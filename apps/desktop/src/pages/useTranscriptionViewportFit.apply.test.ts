@@ -14,8 +14,12 @@ describe("viewport fit layout px alignment", () => {
     const layoutPx = resolveViewportFitLayoutPxPerSec(raw, dur);
     expect(layoutPx).toBeLessThan(raw);
 
+    // Mid-file segment so the centered scroll is positive (unclamped) and its value
+    // depends on the render-capped tw — verifying layoutPx (not raw) feeds the scroll.
+    const segStartSec = dur / 2;
+    const segEndSec = segStartSec + 8;
     const pending = {
-      intent: { startSec: 20, endSec: 28 },
+      intent: { startSec: segStartSec, endSec: segEndSec },
       pxPerSec: layoutPx,
     };
     const tw = computeTimelineWidthPx(dur, layoutPx);
@@ -24,8 +28,10 @@ describe("viewport fit layout px alignment", () => {
       durationSec: dur,
       viewportWidthPx: w,
     });
-    const segStartPx = (20 / dur) * tw;
+    const segStartPx = (segStartSec / dur) * tw;
     const segWidthPx = (8 / dur) * tw;
-    expect(scroll).toBeCloseTo(segStartPx - (w - segWidthPx) / 2, 4);
+    const maxSl = Math.max(0, tw - w);
+    const targetSl = segStartPx - (w - segWidthPx) / 2;
+    expect(scroll).toBeCloseTo(Math.max(0, Math.min(maxSl, targetSl)), 4);
   });
 });

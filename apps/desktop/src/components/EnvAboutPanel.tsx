@@ -133,6 +133,15 @@ export function EnvAboutPanel() {
             <p className="m-0 text-notion-text-muted">应用标识：{buildInfo.identifier}</p>
             <p className="m-0 text-notion-text-muted">
               运行环境：{formatPlatformLabel(buildInfo.platformOs, buildInfo.platformArch)}
+              <span className="text-notion-text-muted"> · 壳 {buildInfo.shellProfile}</span>
+            </p>
+            {buildInfo.bundledSidecarBuild ? (
+              <p className="m-0 break-all text-notion-text-muted">
+                内置侧车构建：{buildInfo.bundledSidecarBuild}
+              </p>
+            ) : null}
+            <p className="m-0 text-notion-text-muted">
+              侧车托管：{buildInfo.asrShellManaged ? "应用内置（release）" : "外置 / dev 源码"}
             </p>
             {buildInfo.appDataRoot ? (
               <p className="m-0 break-all text-notion-text-muted">

@@ -2,6 +2,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import * as fileApi from "../tauri/fileApi";
 import {
   LAST_WORKSPACE_STORAGE_KEY,
+  hasScannableWorkspaceFiles,
   readLastWorkspace,
   recentProjectIdsForScan,
   resolveEditorResumeTarget,
@@ -42,6 +43,25 @@ describe("lastWorkspace", () => {
       { id: "c", name: "C", updated_at_ms: 200 },
     ]);
     expect(ids).toEqual(["b", "c", "a"]);
+  });
+
+  it("hasScannableWorkspaceFiles is false when every scanned project has file_count 0", () => {
+    expect(
+      hasScannableWorkspaceFiles([
+        { id: "a", name: "A", updated_at_ms: 100, file_count: 0 },
+        { id: "b", name: "B", updated_at_ms: 200, file_count: 0 },
+      ]),
+    ).toBe(false);
+    expect(hasScannableWorkspaceFiles([])).toBe(false);
+  });
+
+  it("hasScannableWorkspaceFiles is true when a scanned project has files", () => {
+    expect(
+      hasScannableWorkspaceFiles([
+        { id: "a", name: "A", updated_at_ms: 100, file_count: 0 },
+        { id: "b", name: "B", updated_at_ms: 200, file_count: 2 },
+      ]),
+    ).toBe(true);
   });
 
   it("resolveEditorResumeTarget prefers stored file when it still exists", async () => {

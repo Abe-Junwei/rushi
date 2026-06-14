@@ -1,6 +1,5 @@
 import type { AsrHealthCapabilities } from "../../tauri/projectApi";
 import type { AsrHealthState } from "../../pages/useAsrHealthPoll";
-import { isPackagedDesktopApp } from "../../config/env";
 import {
   ffmpegBannerDetailDev,
   ffmpegBannerDetailPackaged,
@@ -11,6 +10,8 @@ import {
   modelsPathMismatchDev,
   modelsPathMismatchPackaged,
   packagedOrDev,
+  sidecarAsyncTranscribeBlockReasonDev,
+  sidecarAsyncTranscribeBlockReasonManaged,
 } from "../packagedUserHints";
 import {
   computeLocalAsrTranscribeReady,
@@ -158,9 +159,10 @@ function blockReasonFor(input: {
     return "本机 ASR 未就绪：请先在「环境 → 本机 ASR」完成侧车与模型准备。";
   }
   if (input.sidecarAsyncTranscribeCapable === false) {
-    return isPackagedDesktopApp()
-      ? "侧车版本过旧。请在「环境 → 本机 ASR」应用并重启侧车或一键准备；仍失败请重装应用。"
-      : "侧车版本过旧（缺少 async 转写）。请在环境页应用并重启侧车，或重建内置侧车。";
+    return packagedOrDev(
+      sidecarAsyncTranscribeBlockReasonDev,
+      sidecarAsyncTranscribeBlockReasonManaged,
+    );
   }
   if (input.transcribeReady) return null;
   if (input.asrCaps.ffmpeg_ok !== true) {

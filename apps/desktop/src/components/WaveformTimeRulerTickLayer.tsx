@@ -16,8 +16,9 @@ type WaveformTimeRulerTickLayerProps = {
   timelineToDisplayPx: (timeSec: number) => number;
   formatMediaTime: (sec: number) => string;
   playheadLineRef?: RefObject<SVGLineElement | null>;
-  hidePlayheadReact: boolean;
-  playheadLeft: string;
+  hidePlayheadReact?: boolean;
+  playheadLeft?: string;
+  showPlayheadLine?: boolean;
   rulerHeightPx: number;
   /** embedded + overlay：刻度从波形底边向上 */
   embeddedOverlay?: boolean;
@@ -37,8 +38,9 @@ export function WaveformTimeRulerTickLayer({
   timelineToDisplayPx,
   formatMediaTime,
   playheadLineRef,
-  hidePlayheadReact,
-  playheadLeft,
+  hidePlayheadReact = false,
+  playheadLeft = "-1%",
+  showPlayheadLine = true,
   rulerHeightPx,
   embeddedOverlay = false,
 }: WaveformTimeRulerTickLayerProps) {
@@ -90,26 +92,28 @@ export function WaveformTimeRulerTickLayer({
             </g>
           );
         })}
-        <line
-          ref={playheadLineRef}
-          x1={hidePlayheadReact ? (viewportSpace ? "-8px" : "-1%") : playheadLeft}
-          x2={hidePlayheadReact ? (viewportSpace ? "-8px" : "-1%") : playheadLeft}
-          y1={embeddedOverlay ? 0 : -2}
-          y2={rulerHeightPx}
-          className={
-            hidePlayheadReact
-              ? "stroke-zen-saffron/58"
-              : embedded
-                ? interactionActive
-                  ? "stroke-zen-saffron/86"
-                  : "stroke-zen-saffron/58"
-                : ink
-                  ? "stroke-zen-saffron/90"
-                  : "stroke-zen-ink"
-          }
-          strokeWidth={1}
-          vectorEffect="non-scaling-stroke"
-        />
+        {showPlayheadLine ? (
+          <line
+            ref={playheadLineRef}
+            x1={hidePlayheadReact ? (viewportSpace ? "-8px" : "-1%") : playheadLeft}
+            x2={hidePlayheadReact ? (viewportSpace ? "-8px" : "-1%") : playheadLeft}
+            y1={embeddedOverlay ? 0 : -2}
+            y2={rulerHeightPx}
+            className={
+              hidePlayheadReact
+                ? "stroke-zen-saffron/90"
+                : embedded
+                  ? interactionActive
+                    ? "stroke-zen-saffron/90"
+                    : "stroke-zen-saffron/90"
+                  : ink
+                    ? "stroke-zen-saffron/90"
+                    : "stroke-zen-ink"
+            }
+            strokeWidth={1}
+            vectorEffect="non-scaling-stroke"
+          />
+        ) : null}
       </svg>
       <div className="pointer-events-none absolute inset-0 h-[22px]">
         {majorTicks.filter((_, index) => index % embeddedLabelStride === 0).map(({ t }) => {

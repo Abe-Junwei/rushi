@@ -9,6 +9,8 @@ export type WaveformAppliedZoomState = {
   appliedZoomPxPerSecRef: MutableRefObject<number>;
   /** px/s tier of last ws.load(peaks); NaN when decode-only. */
   appliedPeaksLoadPxPerSecRef: MutableRefObject<number>;
+  /** layout duration (sec) passed to last ws.load(peaks); 0 when decode-only. */
+  appliedPeaksLayoutDurSecRef: MutableRefObject<number>;
   /** Whether peaks were injected into the current WS instance. */
   appliedPeaksRef: MutableRefObject<boolean>;
 };
@@ -17,6 +19,7 @@ export function createWaveformAppliedZoomState(initialPxPerSec: number): Wavefor
   return {
     appliedZoomPxPerSecRef: { current: initialPxPerSec },
     appliedPeaksLoadPxPerSecRef: { current: Number.NaN },
+    appliedPeaksLayoutDurSecRef: { current: 0 },
     appliedPeaksRef: { current: false },
   };
 }
@@ -29,9 +32,12 @@ export function markAppliedPeaks(
   state: WaveformAppliedZoomState,
   applied: boolean,
   loadPeaksPx: number,
+  layoutDurSec = 0,
 ): void {
   state.appliedPeaksRef.current = applied;
   state.appliedPeaksLoadPxPerSecRef.current = applied ? loadPeaksPx : Number.NaN;
+  state.appliedPeaksLayoutDurSecRef.current =
+    applied && layoutDurSec > 0 ? layoutDurSec : 0;
 }
 
 export function resetAppliedPeaks(state: WaveformAppliedZoomState): void {

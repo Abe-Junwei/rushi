@@ -1,12 +1,14 @@
-use super::helpers::record_transcribe_err;
 use super::super::stt_vocabulary::SttVocabularyPlan;
 use super::super::transcribe::{
     post_transcribe_multipart, TranscribeHttpOptions, TranscribeRequestAuth,
 };
 use super::super::transcribe_cancel_cmd::TranscribeCancelPoll;
-use super::super::transcribe_native_online::{transcribe_assemblyai_native, transcribe_openai_native};
+use super::super::transcribe_native_online::{
+    transcribe_assemblyai_native, transcribe_openai_native,
+};
 use super::super::transcribe_timeline::{TranscribeTimelineRecorder, STAGE_TRANSCRIBE};
 use super::super::utils::append_desktop_log_line;
+use super::helpers::record_transcribe_err;
 use crate::online_stt_bridge::{is_allowed_stt_transcribe_url, OnlineTranscribeBridge};
 use crate::DbState;
 use std::path::Path;
@@ -63,7 +65,8 @@ pub(crate) async fn fetch_online_transcribe_json(
             if !is_allowed_stt_transcribe_url(url) {
                 return Err(record_transcribe_err(
                     tl,
-                    "在线转写 URL 须为 https，或 http 且主机为 localhost / 127.0.0.1 / ::1".to_string(),
+                    "在线转写 URL 须为 https，或 http 且主机为 localhost / 127.0.0.1 / ::1"
+                        .to_string(),
                 ));
             }
             let auth = o.authorization.as_deref();
