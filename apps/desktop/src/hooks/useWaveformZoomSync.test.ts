@@ -11,17 +11,17 @@ describe("useWaveformZoomSync", () => {
     const appliedZoom = createWaveformAppliedZoomState(56);
 
     const { rerender } = renderHook(
-      (props: { minPxPerSec: number }) =>
+      (props: { layoutPxPerSec: number }) =>
         useWaveformZoomSync({
           ...zoomSyncBase,
           wsRef,
-          minPxPerSec: props.minPxPerSec,
+          layoutPxPerSec: props.layoutPxPerSec,
           appliedZoom,
         }),
-      { initialProps: { minPxPerSec: 56 } },
+      { initialProps: { layoutPxPerSec: 56 } },
     );
 
-    rerender({ minPxPerSec: 80 });
+    rerender({ layoutPxPerSec: 80 });
     await flushRaf();
 
     expect(appliedZoom.appliedZoomPxPerSecRef.current).toBe(80);
@@ -37,18 +37,18 @@ describe("useWaveformZoomSync", () => {
     const onZoomAppliedRef = { current: onZoomApplied };
 
     const { rerender } = renderHook(
-      (props: { minPxPerSec: number }) =>
+      (props: { layoutPxPerSec: number }) =>
         useWaveformZoomSync({
           ...zoomSyncBase,
           wsRef,
-          minPxPerSec: props.minPxPerSec,
+          layoutPxPerSec: props.layoutPxPerSec,
           appliedZoom,
           onZoomAppliedRef,
         }),
-      { initialProps: { minPxPerSec: 56 } },
+      { initialProps: { layoutPxPerSec: 56 } },
     );
 
-    rerender({ minPxPerSec: 80 });
+    rerender({ layoutPxPerSec: 80 });
     await flushRaf();
 
     expect(onZoomApplied).toHaveBeenCalledWith(80);

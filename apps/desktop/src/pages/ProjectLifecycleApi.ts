@@ -59,10 +59,6 @@ export interface ProjectLifecycleApi {
   transcribeStartHasExistingText: boolean;
   confirmTranscribeStart: () => void | Promise<void>;
   cancelTranscribeStart: () => void;
-  /** @deprecated Use transcribeStartDialogOpen */
-  transcribeOverwriteDialogOpen: boolean;
-  confirmTranscribeOverwrite: () => void;
-  cancelTranscribeOverwrite: () => void;
   saveSegments: (options?: {
     quiet?: boolean;
     countHits?: boolean;

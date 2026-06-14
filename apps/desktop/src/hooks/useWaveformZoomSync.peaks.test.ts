@@ -18,7 +18,7 @@ describe("useWaveformZoomSync peaks", () => {
       useWaveformZoomSync({
         ...zoomSyncBase,
         wsRef,
-        minPxPerSec: 80,
+        layoutPxPerSec: 80,
         appliedZoom,
         peakCache: peakCache as never,
         peakCacheRef,
@@ -56,7 +56,7 @@ describe("useWaveformZoomSync peaks", () => {
           hotSwitchWhilePlaying: false,
           isPlaying: props.isPlaying,
           wsRef,
-          minPxPerSec: 80,
+          layoutPxPerSec: 80,
           appliedZoom,
           peakCache: peakCache as never,
           peakCacheRef,
@@ -95,7 +95,7 @@ describe("useWaveformZoomSync peaks", () => {
       useWaveformZoomSync({
         ...zoomSyncBase,
         wsRef,
-        minPxPerSec: 80,
+        layoutPxPerSec: 80,
         appliedZoom,
         peakCache: peakCache as never,
         peakCacheRef,
@@ -121,17 +121,17 @@ describe("useWaveformZoomSync peaks", () => {
     const layoutDurationSecRef = { current: 1249 };
 
     const { rerender } = renderHook(
-      (props: { minPxPerSec: number }) =>
+      (props: { layoutPxPerSec: number }) =>
         useWaveformZoomSync({
           ...zoomSyncBase,
           wsRef,
-          minPxPerSec: props.minPxPerSec,
+          layoutPxPerSec: props.layoutPxPerSec,
           appliedZoom,
           peakCache: peakCache as never,
           peakCacheRef,
           layoutDurationSecRef,
         }),
-      { initialProps: { minPxPerSec: 0.083 } },
+      { initialProps: { layoutPxPerSec: 0.083 } },
     );
 
     await Promise.resolve();
@@ -139,7 +139,7 @@ describe("useWaveformZoomSync peaks", () => {
     ws.load.mockClear();
     peakCache.getWaveSurferPeaksAsync.mockClear();
 
-    rerender({ minPxPerSec: 0.133 });
+    rerender({ layoutPxPerSec: 0.133 });
     await Promise.resolve();
 
     expect(peakCache.getWaveSurferPeaksAsync).toHaveBeenCalledWith(0.133, 1249);
@@ -157,17 +157,17 @@ describe("useWaveformZoomSync peaks", () => {
     const layoutDurationSecRef = { current: 1249 };
 
     const { rerender } = renderHook(
-      (props: { minPxPerSec: number }) =>
+      (props: { layoutPxPerSec: number }) =>
         useWaveformZoomSync({
           ...zoomSyncBase,
           wsRef,
-          minPxPerSec: props.minPxPerSec,
+          layoutPxPerSec: props.layoutPxPerSec,
           appliedZoom,
           peakCache: peakCache as never,
           peakCacheRef,
           layoutDurationSecRef,
         }),
-      { initialProps: { minPxPerSec: 56 } },
+      { initialProps: { layoutPxPerSec: 56 } },
     );
 
     await Promise.resolve();
@@ -175,7 +175,7 @@ describe("useWaveformZoomSync peaks", () => {
     ws.load.mockClear();
     peakCache.getWaveSurferPeaksAsync.mockClear();
 
-    rerender({ minPxPerSec: 0.96 });
+    rerender({ layoutPxPerSec: 0.96 });
     await Promise.resolve();
     await Promise.resolve();
 
@@ -195,17 +195,17 @@ describe("useWaveformZoomSync peaks", () => {
     const layoutDurationSecRef = { current: 14429 };
 
     const { rerender } = renderHook(
-      (props: { minPxPerSec: number }) =>
+      (props: { layoutPxPerSec: number }) =>
         useWaveformZoomSync({
           ...zoomSyncBase,
           wsRef,
-          minPxPerSec: props.minPxPerSec,
+          layoutPxPerSec: props.layoutPxPerSec,
           appliedZoom,
           peakCache: peakCache as never,
           peakCacheRef,
           layoutDurationSecRef,
         }),
-      { initialProps: { minPxPerSec: 0.083 } },
+      { initialProps: { layoutPxPerSec: 0.083 } },
     );
 
     await flushRaf();
@@ -215,7 +215,7 @@ describe("useWaveformZoomSync peaks", () => {
     ws.zoom.mockClear();
     peakCache.getWaveSurferPeaksAsync.mockClear();
 
-    rerender({ minPxPerSec: 0.133 });
+    rerender({ layoutPxPerSec: 0.133 });
     await flushRaf();
     await Promise.resolve();
 
@@ -235,17 +235,17 @@ describe("useWaveformZoomSync peaks", () => {
     const layoutDurationSecRef = { current: 120 };
 
     const { rerender } = renderHook(
-      (props: { minPxPerSec: number }) =>
+      (props: { layoutPxPerSec: number }) =>
         useWaveformZoomSync({
           ...zoomSyncBase,
           wsRef,
-          minPxPerSec: props.minPxPerSec,
+          layoutPxPerSec: props.layoutPxPerSec,
           appliedZoom,
           peakCache: peakCache as never,
           peakCacheRef,
           layoutDurationSecRef,
         }),
-      { initialProps: { minPxPerSec: 57 } },
+      { initialProps: { layoutPxPerSec: 57 } },
     );
 
     await flushRaf();
@@ -253,7 +253,7 @@ describe("useWaveformZoomSync peaks", () => {
     ws.load.mockClear();
     peakCache.getWaveSurferPeaksAsync.mockClear();
 
-    rerender({ minPxPerSec: 59 });
+    rerender({ layoutPxPerSec: 59 });
     await flushRaf();
     await Promise.resolve();
 
@@ -279,7 +279,7 @@ describe("useWaveformZoomSync peaks", () => {
       useWaveformZoomSync({
         ...zoomSyncBase,
         wsRef,
-        minPxPerSec: 80,
+        layoutPxPerSec: 80,
         appliedZoom,
         peakCache: peakCache as never,
         peakCacheRef,

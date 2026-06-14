@@ -3,18 +3,17 @@ import {
   activateLocalOllamaPreset,
   buildLlmEnvPresentation,
   buildLlmModeToggleTones,
-  buildLlmPolishReadiness,
   LLM_STATUS_REFRESH_BTN_BASE,
   LLM_STATUS_REFRESH_BTN_CLASS,
   llmPolishActiveMessage,
   llmPolishSourceDetailLabel,
-  llmTopStatusShortLabel,
   ollamaDetectReady,
   readLlmEnvMode,
   toneFromOllamaDetect,
 } from "./llmEnvStatus";
 import {
   applyLlmProviderPreset,
+  clearLlmConnectionVerified,
   markLlmConnectionVerified,
   persistLlmRuntimeConfig,
   snapshotLastCloudRuntimeFromStorage,
@@ -81,54 +80,64 @@ describe("llmEnvStatus", () => {
   });
 
   it("cloud label shows provider only when verified", () => {
-    persistLlmRuntimeConfig(applyLlmProviderPreset("deepseek"));
+    persistLlmRuntimeConfig({ ...applyLlmProviderPreset("deepseek"), apiKeyId: "test-key" });
     expect(
-      llmTopStatusShortLabel({
-        mode: "cloud",
-        ollamaTone: "ok",
-        providerId: "deepseek",
-        cloudConnectionVerified: true,
-        runtimeReady: true,
-      }),
-    ).toBe("云端 DeepSeek");
-    expect(
-      llmTopStatusShortLabel({
-        mode: "cloud",
-        ollamaTone: "ok",
-        providerId: "deepseek",
-        cloudConnectionVerified: false,
-        runtimeReady: true,
-      }),
+      buildLlmEnvPresentation({
+        ollamaDetect: null,
+        ollamaDetectBusy: false,
+      }).chipLabel,
     ).toBe("云端 DeepSeek 待验证");
+    markLlmConnectionVerified();
+    expect(
+      buildLlmEnvPresentation({
+        ollamaDetect: null,
+        ollamaDetectBusy: false,
+      }).chipLabel,
+    ).toBe("云端 DeepSeek");
   });
 
   it("local label distinguishes readiness states", () => {
+    activateLocalOllamaPreset();
+    markLlmConnectionVerified();
     expect(
-      llmTopStatusShortLabel({
-        mode: "local",
-        ollamaTone: "ok",
-        providerId: "ollama",
-        cloudConnectionVerified: true,
-        runtimeReady: true,
-      }),
+      buildLlmEnvPresentation({
+        ollamaDetect: {
+          reachable: true,
+          modelCount: 1,
+          hasQwen25_7b: true,
+          hasConfiguredModel: true,
+          message: "ok",
+        },
+        ollamaDetectBusy: false,
+      }).chipLabel,
     ).toBe("本机 LLM");
+
+    activateLocalOllamaPreset();
+    clearLlmConnectionVerified();
     expect(
-      llmTopStatusShortLabel({
-        mode: "local",
-        ollamaTone: "ok",
-        providerId: "ollama",
-        cloudConnectionVerified: false,
-        runtimeReady: true,
-      }),
+      buildLlmEnvPresentation({
+        ollamaDetect: {
+          reachable: true,
+          modelCount: 1,
+          hasQwen25_7b: true,
+          hasConfiguredModel: true,
+          message: "ok",
+        },
+        ollamaDetectBusy: false,
+      }).chipLabel,
     ).toBe("本机 LLM 待验证");
+
+    activateLocalOllamaPreset();
     expect(
-      llmTopStatusShortLabel({
-        mode: "local",
-        ollamaTone: "error",
-        providerId: "ollama",
-        cloudConnectionVerified: false,
-        runtimeReady: true,
-      }),
+      buildLlmEnvPresentation({
+        ollamaDetect: {
+          reachable: false,
+          modelCount: 0,
+          hasQwen25_7b: false,
+          message: "connection refused",
+        },
+        ollamaDetectBusy: false,
+      }).chipLabel,
     ).toBe("本机 LLM 未连接");
   });
 
@@ -146,10 +155,10 @@ describe("llmEnvStatus", () => {
     expect(llmPolishActiveMessage("cloud")).toBe("正在使用云端 LLM 润色…");
   });
 
-  it("buildLlmPolishReadiness for local requires ollama ready and verified", () => {
+  it("buildLlmEnvPresentation reflects local ollama readiness", () => {
     activateLocalOllamaPreset();
     markLlmConnectionVerified();
-    const ready = buildLlmPolishReadiness({
+    const ready = buildLlmEnvPresentation({
       ollamaDetect: {
         reachable: true,
         modelCount: 1,
@@ -160,11 +169,11 @@ describe("llmEnvStatus", () => {
       ollamaDetectBusy: false,
     });
     expect(ready.mode).toBe("local");
-    expect(ready.ready).toBe(true);
+    expect(ready.ok).toBe(true);
     expect(ready.sourceLabel).toContain("本机 Ollama");
     expect(ready.blockReason).toBeNull();
 
-    const blocked = buildLlmPolishReadiness({
+    const blocked = buildLlmEnvPresentation({
       ollamaDetect: {
         reachable: false,
         modelCount: 0,
@@ -173,7 +182,7 @@ describe("llmEnvStatus", () => {
       },
       ollamaDetectBusy: false,
     });
-    expect(blocked.ready).toBe(false);
+    expect(blocked.ok).toBe(false);
     expect(blocked.blockReason).toContain("connection refused");
   });
 

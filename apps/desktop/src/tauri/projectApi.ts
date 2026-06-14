@@ -34,6 +34,8 @@ export interface EditLogEntryDto {
 /** `GET /health` 扩展字段（rushi-asr ≥ 当前仓）；用于桌面自动检测 FunASR。 */
 export interface AsrHealthCapabilities {
   ffmpeg_ok: boolean;
+  /** 裸 ``ffmpeg`` 是否可由 PATH 解析（FunASR generate 依赖）。 */
+  ffmpeg_on_path?: boolean;
   funasr_import_ok: boolean;
   funasr_model_configured: boolean;
   /** 是否显式设置了 RUSHI_FUNASR_MODEL（否则为内置默认模型 id）。 */

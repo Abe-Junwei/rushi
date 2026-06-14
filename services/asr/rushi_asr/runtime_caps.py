@@ -22,7 +22,9 @@ from rushi_asr.model_prepare import (
 
 def get_runtime_caps() -> dict[str, object]:
     """Lightweight introspection for desktop auto-detect (no FunASR model load)."""
+    ffmpeg_audio.ensure_ffmpeg_on_path()
     ffmpeg_ok = ffmpeg_audio.ffmpeg_available()
+    ffmpeg_on_path = ffmpeg_audio.ffmpeg_on_path()
     try:
         import funasr  # noqa: F401, PLC0415 — optional heavy dep
 
@@ -42,13 +44,14 @@ def get_runtime_caps() -> dict[str, object]:
     forced_aligner_cached = forced_aligner_model_cached_guess()
     load_plan = build_funasr_load_plan(model)
     runtime_ready = bool(ffmpeg_ok and funasr_import_ok)
-    ready_for_transcribe = bool(runtime_ready and required_models_cached)
+    ready_for_transcribe = bool(runtime_ready and required_models_cached and ffmpeg_on_path)
     transcription_mode: str = "funasr" if ready_for_transcribe else "stub"
     models_root = os.environ.get("RUSHI_MODELS_ROOT", "").strip() or None
     local_token_required = bool(os.environ.get("RUSHI_LOCAL_TOKEN", "").strip())
 
     return {
         "ffmpeg_ok": ffmpeg_ok,
+        "ffmpeg_on_path": ffmpeg_on_path,
         "funasr_import_ok": funasr_import_ok,
         "funasr_model_configured": funasr_model_configured,
         "funasr_model_explicit_from_env": funasr_model_explicit_from_env(),

@@ -16,7 +16,7 @@ export {
   getEditorShortcutDefinition,
 } from "./editorShortcutDefinitions";
 
-export { matchEditorShortcut, readSegmentMergeKeyboardIntent } from "./editorShortcutMatch";
+export { matchEditorShortcut } from "./editorShortcutMatch";
 
 export {
   SEGMENT_MERGE_NEXT_SHORTCUT_LABEL,

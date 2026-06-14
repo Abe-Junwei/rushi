@@ -10,7 +10,6 @@ import {
   ENV_LLM_MODE_TOGGLE_TRACK,
   ENV_SEGMENTED_ROW,
   envLlmModeToggleBtnClass,
-  envSegmentedBtnClass,
   CONTROL_BTN_PRIMARY_PROMINENT,
   CONTROL_BTN_SECONDARY,
   CONTROL_BTN_SECONDARY_PROMINENT,
@@ -57,7 +56,6 @@ describe("controlStyles", () => {
     expect(envLlmModeToggleBtnClass(false)).toContain("bg-transparent");
     expect(envLlmModeToggleBtnClass(true)).toContain("text-zen-saffron-mid");
     expect(envLlmModeToggleBtnClass(true)).toContain("bg-notion-bg");
-    expect(envSegmentedBtnClass(true)).toContain("text-zen-saffron-mid");
   });
 
   it("uses sidebar + hairline for secondary and canvas for inputs", () => {

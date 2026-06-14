@@ -37,7 +37,6 @@ export {
   activatePluginModule,
   loadBuiltinPlugins,
   loadPlugin,
-  loadPlugins,
   unloadPlugin,
   unloadAllPlugins,
   loadedPluginIds,

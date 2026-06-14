@@ -20,9 +20,16 @@ export function deriveTranscribeHints(engine: string, warnings: string[], segmen
     hints.push("本地术语已作为热词提交，但 stub 不会使用；配置 FunASR 后重新拉取可生效。");
   }
   if (warnings.some((w) => w.startsWith("funasr_skipped:"))) {
-    hints.push(
-      "FunASR 未参与本次识别（侧车未就绪或模型未配置），已降级为 stub；请完成环境 → 本机 ASR 中的模型准备后重新拉取。",
-    );
+    const skipped = warnings.find((w) => w.startsWith("funasr_skipped:")) ?? "";
+    if (skipped.includes("ffmpeg")) {
+      hints.push(
+        "FunASR 在推理时需要系统 PATH 中的 ffmpeg；安装包侧车未正确注入 PATH 时会失败。请「应用并重启侧车」或重新安装最新版本后再试。",
+      );
+    } else {
+      hints.push(
+        "FunASR 未参与本次识别（侧车未就绪或模型未配置），已降级为 stub；请完成环境 → 本机 ASR 中的模型准备后重新拉取。",
+      );
+    }
   }
   if (warnings.some((w) => w.includes("stub_no_placeholder_segment"))) {
     hints.push(

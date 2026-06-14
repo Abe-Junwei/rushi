@@ -4,7 +4,7 @@
 > **欢迎页对照：** [`stitch-welcome-page-spec.md`](./stitch-welcome-page-spec.md) §3 令牌与侧栏/active 语义。  
 > **布局冻结：** 本稿 **只改配色与表面层次**，**禁止**改 DOM 结构、尺寸、间距、控件位置。布局真源见 [`16-stitch-editor-comfort-spec.md`](../../../docs/stitch-upload/16-stitch-editor-comfort-spec.md) 与现网 [`EditorView.tsx`](../src/components/EditorView.tsx)。  
 > **波形子域：** 波形舞台细节与 [`19-stitch-waveform-polish-spec.md`](../../../docs/stitch-upload/19-stitch-waveform-polish-spec.md) 对齐；本稿覆盖编辑主列 **全表面配色关系**，波形区不重复改 scroll/zoom 架构。  
-> **代码对照：** `EditorView` / `EditorToolbar` / `EditorSegmentToolbar` / `EditorWaveformPane` / `SegmentTextListRow` / `workspace.css` / `waveform.css` / `tokens.ts`。
+> **代码对照（2026-06）**：语段工具条已并入 `EditorWorkbenchToolbar`；`EditorSegmentToolbar.tsx` 已移除。
 
 ---
 
@@ -59,7 +59,7 @@
 |------|----------|------|
 | 顶栏（无文件时） | `h-12`，`px-4 lg:px-10` | `EditorView.tsx` |
 | 工具条 | 单行 + 可选第二行，`border-b`，`px-page-margin` | `EditorToolbar.tsx` |
-| 语段工具条 | `h-14`，`px-6` | `EditorSegmentToolbar.tsx` |
+| 语段工具条 | 单行工作条 `EditorWorkbenchToolbar`，`border-b`，`px-page-margin` | `EditorWorkbenchToolbar.tsx` |
 | 波形区高度 | 可拖拽，Comfort 230–250px 量级 | `EditorWaveformPane.tsx` |
 | 语段行 | min 60px+，`px-[9px] py-[9px]`，`rounded-md` | `SegmentTextListRow.tsx` |
 | 底栏 | `h-[30px]`，`border-t` | `EditorView.tsx` |
@@ -77,7 +77,7 @@
 │  [Minimap 56px — zen-paper]                                         │
 │  [Tier — notion-sidebar 壳 + 白 peaks + overlay]                    │
 │  [Transport + Zoom 底栏 — notion-sidebar mix]                       │
-├─ EditorSegmentToolbar（notion-bg）──────────────────────────────────┤
+├─ EditorWorkbenchToolbar（notion-bg）──────────────────────────────────┤
 ├─ EditorSegmentList 滚动区（★ 本轮纸感衬底优化区）────────────────────┤
 │  语段行 × N：timestamp | 正文 textarea                               │
 ├─ Footer 30px（notion-bg，顶 divider）────────────────────────────────┤
@@ -235,7 +235,7 @@ Deliver 6 frames: default, low-confidence, segment toolbar popover, waveform emp
 | 语段 chrome | `utils/segmentChrome.ts` | 去掉 `amber-*`，改 token mix |
 | 工作区 CSS | `styles/components/workspace.css` | textarea selection、错词、learn diff |
 | 波形 | `waveform.css`, `waveformSegmentBandCanvasColors.ts` | 与 §19 合并实施 |
-| 壳层 | `EditorView.tsx`, `EditorToolbar.tsx`, `EditorSegmentToolbar.tsx` | 仅 bg/text/border class |
+| 壳层 | `EditorView.tsx`, `EditorToolbar.tsx`, `EditorWorkbenchToolbar.tsx` | 仅 bg/text/border class |
 | 文档 | `stitch-work-page-spec.md` §3 | 修正过时 `bg-zen-ink` 波形描述 |
 
 **不要改：** `segmentListVirtualWindow.ts`、tier scroll hooks、布局 flex 结构。

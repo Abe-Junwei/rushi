@@ -123,7 +123,6 @@ export function ProjectPanel() {
         <FloatingPanelTemplate id="environment-v3" title="设置" preset="environment" onClose={() => setEnvOpen(false)}>
           <EnvironmentPanel
             asrPresentation={c.asrPresentation}
-            asrHealth={c.asrHealth}
             asrHealthDetail={c.asrHealthDetail}
             bundledAsrDiag={c.bundledAsrDiag}
             asrCaps={c.asrCaps}

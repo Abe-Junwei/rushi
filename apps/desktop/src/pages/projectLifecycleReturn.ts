@@ -159,8 +159,6 @@ export function buildProjectLifecycleReturn(input: ProjectLifecycleReturnInput):
     transcribePreviewActive: deriveTranscribePreviewActive(busy, busyReason),
     transcribeStartDialogOpen: transcribeJob.transcribeStartDialogOpen,
     transcribeStartHasExistingText: transcribeJob.transcribeStartHasExistingText,
-    /** @deprecated */
-    transcribeOverwriteDialogOpen: transcribeJob.transcribeStartDialogOpen,
     transcribeOverwriteSegmentCount: transcribeJob.overwriteSegmentCount,
     transcribeVocabularyPreflightLines: transcribeJob.transcribeVocabularyPreflightLines,
     transcribeSource: transcribeJob.transcribeSource,
@@ -179,8 +177,6 @@ export function buildProjectLifecycleReturn(input: ProjectLifecycleReturnInput):
     cancelTranscribe: transcribeJob.cancelTranscribe,
     confirmTranscribeStart: transcribeJob.confirmTranscribeStart,
     cancelTranscribeStart: transcribeJob.cancelTranscribeStart,
-    confirmTranscribeOverwrite: transcribeJob.confirmTranscribeOverwrite,
-    cancelTranscribeOverwrite: transcribeJob.cancelTranscribeOverwrite,
     saveSegments,
     confirmSegmentEditAndAdvance,
     markSegmentFinalized,

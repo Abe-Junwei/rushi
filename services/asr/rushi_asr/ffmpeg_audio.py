@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import os
 import shutil
 import subprocess
 import sys
@@ -44,6 +45,32 @@ def _bundled_binary(*names: str) -> str | None:
     return None
 
 
+def bundled_ffmpeg_dir() -> Path | None:
+    for d in _pyinstaller_bundle_dirs():
+        if (d / "ffmpeg").is_file() and (d / "ffprobe").is_file():
+            return d
+        if (d / "ffmpeg.exe").is_file() and (d / "ffprobe.exe").is_file():
+            return d
+    return None
+
+
+def ensure_ffmpeg_on_path() -> None:
+    """FunASR invokes bare ``ffmpeg``; prepend PyInstaller bundle dir when bundled."""
+    d = bundled_ffmpeg_dir()
+    if d is None:
+        return
+    prefix = str(d)
+    path = os.environ.get("PATH", "")
+    parts = [p for p in path.split(os.pathsep) if p]
+    if prefix not in parts:
+        os.environ["PATH"] = f"{prefix}{os.pathsep}{path}" if path else prefix
+
+
+def ffmpeg_on_path() -> bool:
+    ensure_ffmpeg_on_path()
+    return shutil.which("ffmpeg") is not None and shutil.which("ffprobe") is not None
+
+
 def ffmpeg_path() -> str:
     p = _bundled_binary("ffmpeg", "ffmpeg.exe")
     if p is not None:
@@ -65,8 +92,9 @@ def ffmpeg_available() -> bool:
         return (
             _bundled_binary("ffmpeg", "ffmpeg.exe") is not None
             and _bundled_binary("ffprobe", "ffprobe.exe") is not None
+            and ffmpeg_on_path()
         )
-    return shutil.which("ffmpeg") is not None and shutil.which("ffprobe") is not None
+    return ffmpeg_on_path()
 
 
 def ffprobe_duration_sec(path: Path) -> float | None:

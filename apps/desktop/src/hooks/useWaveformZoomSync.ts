@@ -47,8 +47,6 @@ export function useWaveformZoomSync(args: {
   layoutPxPerSec?: number;
   /** Debounced peaks-load px/s — ws.load quantum follows this track. */
   drawPxPerSec?: number;
-  /** @deprecated Use layoutPxPerSec + drawPxPerSec. When set alone, applies to both tracks. */
-  minPxPerSec?: number;
   appliedZoom: WaveformAppliedZoomState;
   peakCache?: PeakCache | null;
   peakCacheGeneration?: number;
@@ -70,7 +68,6 @@ export function useWaveformZoomSync(args: {
     disabled,
     layoutPxPerSec: layoutPxPerSecArg,
     drawPxPerSec: drawPxPerSecArg,
-    minPxPerSec: minPxPerSecArg,
     appliedZoom,
     peakCache,
     peakCacheGeneration = 0,
@@ -84,7 +81,7 @@ export function useWaveformZoomSync(args: {
     flushDeferredPeaksLoadRef,
   } = args;
 
-  const layoutPxPerSec = layoutPxPerSecArg ?? minPxPerSecArg ?? 56;
+  const layoutPxPerSec = layoutPxPerSecArg ?? 56;
   const drawPxPerSec = drawPxPerSecArg ?? layoutPxPerSec;
 
   const zoomSyncInFlightRef = useRef<number | null>(null);

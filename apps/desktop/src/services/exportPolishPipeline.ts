@@ -156,11 +156,6 @@ export function mergeLlmPolishLines(beforeLines: string[], llmLines: string[]): 
   return reconcileLlmPolishLines(beforeLines, llmLines).lines;
 }
 
-/** @deprecated 与 {@link mergeLlmPolishLines} 相同，全部采纳。 */
-export function mergePunctuationLines(baseLines: string[], llmLines: string[]): string[] {
-  return mergeLlmPolishLines(baseLines, llmLines);
-}
-
 function levenshteinGraphemes(a: string, b: string): number {
   const ag = splitGraphemes(a);
   const bg = splitGraphemes(b);

@@ -174,7 +174,7 @@
 
 > **调研**：[`r3t-e-lexicon-proofread-research.md`](./r3t-e-lexicon-proofread-research.md)  
 > 架构：[`lexicon-guided-llm-refine.md`](../../architecture/lexicon-guided-llm-refine.md)  
-> **手测清单**：[`r3t-e-hand-test-checklist.md`](./r3t-e-hand-test-checklist.md) · **⑤″f-A 追踪**：[`r3-5f-a-phase-signoff-2026-06.md`](./r3-5f-a-phase-signoff-2026-06.md)
+> **手测清单**：[`archive/r3t-e/r3t-e-hand-test-checklist.md`](./archive/r3t-e/r3t-e-hand-test-checklist.md)（已归档） · **⑤″f-A 追踪**：[`r3-5f-a-phase-signoff-2026-06.md`](./r3-5f-a-phase-signoff-2026-06.md)
 
 ### 自动
 

@@ -39,11 +39,6 @@ export async function restartLoopbackAsrSidecar(): Promise<void> {
   await projectApi.retryBundledAsrSidecar();
 }
 
-/** @deprecated use restartLoopbackAsrSidecar */
-export async function restartManagedBundledSidecar(): Promise<void> {
-  await restartLoopbackAsrSidecar();
-}
-
 export type WaitSidecarConfigOptions = {
   hub: string;
   language: string;

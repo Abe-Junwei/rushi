@@ -12,9 +12,6 @@ export function packagedOrDevArray<T>(dev: T, managed: T): T {
   return readShellManagesBundledSidecarSync() ? managed : dev;
 }
 
-/** @deprecated Alias — prefer `managed` naming in new call sites. */
-export const shellManagedOrDev = packagedOrDev;
-
 export const SIDEcarRestartFailedPackaged =
   "侧车重启失败。请在「环境 → 本机 ASR」点「重试内置侧车」或「一键准备本机 ASR」；仍失败请完全退出应用后重新打开。";
 

@@ -26,6 +26,7 @@ def test_health_ok() -> None:
     assert body["status"] == "ok"
     assert body["service"] == "rushi-asr"
     assert "ffmpeg_ok" in body
+    assert "ffmpeg_on_path" in body
     assert "funasr_import_ok" in body
     assert "funasr_model_configured" in body
     assert "funasr_model_explicit_from_env" in body

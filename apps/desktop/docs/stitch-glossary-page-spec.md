@@ -18,7 +18,7 @@
 | 页面壳 | [`GlossaryPage.tsx`](../src/components/GlossaryPage.tsx) |
 | 编排 | [`useGlossaryPageController.ts`](../src/pages/useGlossaryPageController.ts) |
 | 转写词汇表 | [`GlossaryTermManagementSection.tsx`](../src/components/glossary/GlossaryTermManagementSection.tsx) · [`GlossaryTermTable.tsx`](../src/components/glossary/GlossaryTermTable.tsx) · [`GlossaryTermEditor.tsx`](../src/components/glossary/GlossaryTermEditor.tsx) |
-| 携带摘要 | [`GlossaryHotwordsSummarySection.tsx`](../src/components/glossary/GlossaryHotwordsSummarySection.tsx) |
+> **代码对照（2026-06）**：`GlossaryHotwordsSummarySection` / `GlossaryLexiconBundleSection` 已移除；以当前 `GlossaryPanel` 为准。
 | 推荐采纳 | [`GlossaryMineSection.tsx`](../src/components/glossary/GlossaryMineSection.tsx) |
 | 纠错记忆 | [`GlossaryCorrectionMemorySection.tsx`](../src/components/glossary/GlossaryCorrectionMemorySection.tsx) · [`CorrectionMemoryTable.tsx`](../src/components/glossary/CorrectionMemoryTable.tsx) |
 | 词表包 | [`GlossaryLexiconBundleSection.tsx`](../src/components/glossary/GlossaryLexiconBundleSection.tsx) |

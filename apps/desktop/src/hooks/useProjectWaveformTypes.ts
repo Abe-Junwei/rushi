@@ -13,8 +13,6 @@ export type UseProjectWaveformOptions = {
   layoutPxPerSec?: number;
   /** Debounced peaks-load px/s — ws.load quantum; defaults to layout when omitted. */
   drawPxPerSec?: number;
-  /** @deprecated Use layoutPxPerSec + drawPxPerSec. When set alone, applies to both tracks. */
-  minPxPerSec?: number;
   /** Precomputed peaks (Tauri audiowaveform `.dat`). */
   peakCache?: PeakCache | null;
   /** Tier scrollLeft for zoom scroll preservation. */

@@ -345,11 +345,6 @@ export function useTranscribeJobController(deps: Deps) {
     await executeTranscribe();
   }, [executeTranscribe]);
 
-  const cancelTranscribeOverwrite = cancelTranscribeStart;
-  const confirmTranscribeOverwrite = () => {
-    void confirmTranscribeStart();
-  };
-
   const cancelTranscribe = useCallback(async () => {
     const jobId = activeJobIdRef.current;
     if (!jobId || transcribeCancelling) return;
@@ -393,8 +388,6 @@ export function useTranscribeJobController(deps: Deps) {
     setTranscribeFailureDiag,
     transcribeStartDialogOpen,
     transcribeStartHasExistingText: segmentsHaveNonEmptyText(segmentsRef.current),
-    /** @deprecated Use transcribeStartDialogOpen */
-    overwriteDialogOpen: transcribeStartDialogOpen,
     overwriteSegmentCount: segments.length,
     transcribeVocabularyPreflightLines,
     transcribeSource,
@@ -404,8 +397,6 @@ export function useTranscribeJobController(deps: Deps) {
     cancelTranscribe,
     cancelTranscribeStart,
     confirmTranscribeStart,
-    cancelTranscribeOverwrite,
-    confirmTranscribeOverwrite,
     applyDetailClearTranscribe: applyDetail,
   };
 }

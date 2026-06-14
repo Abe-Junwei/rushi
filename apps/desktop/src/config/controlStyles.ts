@@ -73,9 +73,6 @@ export const ENV_SEGMENTED_ROW = "flex w-full justify-center";
 export const ENV_LLM_MODE_TOGGLE_TRACK =
   "inline-flex gap-0 rounded-lg bg-secondary-container p-1";
 
-/** @deprecated 使用 ENV_LLM_MODE_TOGGLE_TRACK */
-export const ENV_SEGMENTED_TRACK = ENV_LLM_MODE_TOGGLE_TRACK;
-
 const ENV_LLM_MODE_TOGGLE_BTN_BASE =
   "min-w-[7.5rem] rounded-md border-0 px-4 py-1.5 text-center font-sans text-[13px] font-medium whitespace-nowrap shadow-none ring-0 appearance-none transition-[color,background-color,box-shadow] duration-200 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-saffron/30 disabled:cursor-not-allowed disabled:opacity-40";
 
@@ -84,9 +81,4 @@ export function envLlmModeToggleBtnClass(selected: boolean): string {
   return selected
     ? `${ENV_LLM_MODE_TOGGLE_BTN_BASE} bg-notion-bg text-zen-saffron-mid shadow-[0_1px_2px_rgba(0,0,0,0.06)]`
     : `${ENV_LLM_MODE_TOGGLE_BTN_BASE} bg-transparent text-notion-text-variant hover:text-notion-text`;
-}
-
-/** @deprecated 使用 envLlmModeToggleBtnClass */
-export function envSegmentedBtnClass(active: boolean): string {
-  return envLlmModeToggleBtnClass(active);
 }

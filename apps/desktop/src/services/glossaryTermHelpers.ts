@@ -52,11 +52,6 @@ export function applyGlossaryFilters(
   });
 }
 
-/** @deprecated use applyGlossaryFilters */
-export function filterGlossaryTerms(terms: GlossaryTermDto[], query: string): GlossaryTermDto[] {
-  return applyGlossaryFilters(terms, query, "all");
-}
-
 export function countHotwordEnabledTerms(terms: GlossaryTermDto[]): number {
   return terms.filter((row) => row.hotword_enabled !== false).length;
 }

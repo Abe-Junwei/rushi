@@ -68,7 +68,7 @@ def test_offset_and_merge_segments() -> None:
     ]
     shifted = transcribe_windows.offset_segments(base, 300.0)
     assert shifted[0].start_sec == 301.0
-    merged = transcribe_windows.merge_window_segments(shifted)
+    merged = transcribe_windows.sort_window_segments(shifted)
     assert [s.start_sec for s in merged] == [300.5, 301.0]
 
 

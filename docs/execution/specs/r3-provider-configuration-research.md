@@ -43,7 +43,7 @@
 
 ### 2.2 在线 STT（多厂商原生 / 代理）
 
-- **真源**：[`stt-online-providers.md`](../../architecture/stt-online-providers.md)、`sttOnlineProviderContract`、`stt_native` / `china_stt_shell`。
+- **真源**：[`stt-online-providers.md`](../../architecture/stt-online-providers.md)、`sttOnlineProviderContract`、`stt_native`（REST/代理；历史 `china_stt_shell` WS 栈已移除）。
 - **协议形态**（无统一标准）：
   - OpenAI / AssemblyAI：`audio/transcriptions` 或异步 Job
   - 国内云：TC3 签名、OAuth Token、WebSocket 听写等
@@ -100,7 +100,7 @@
 
 1. **无单一 OpenAI 式标准**  
    STT 厂商 API 差异大（multipart 上传、异步 Job、WebSocket 流式、云签名）。业内做法是：
-   - **适配器 per vendor**（Rushi：`stt_native` + `china_stt_shell`），或  
+   - **适配器 per vendor**（Rushi：`stt_native` 在线 STT 契约），或  
    - **自建归一化网关**（Rushi：`custom-proxy` → 统一 JSON）。
 
 2. **配置字段共性**  

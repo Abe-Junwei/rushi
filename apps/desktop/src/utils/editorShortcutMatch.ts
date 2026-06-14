@@ -1,4 +1,4 @@
-import type { EditorShortcutDefinition, EditorShortcutId, SegmentMergeKeyboardIntent, ShortcutBinding } from "./editorShortcutTypes";
+import type { EditorShortcutDefinition, EditorShortcutId, ShortcutBinding } from "./editorShortcutTypes";
 import { EDITOR_SHORTCUT_DEFINITIONS } from "./editorShortcutDefinitions";
 
 function normalizeEventKey(e: Pick<KeyboardEvent, "key" | "code">): string {
@@ -93,15 +93,5 @@ export function matchEditorShortcut(
       if (bindingMatches(binding, e)) return def.id;
     }
   }
-  return null;
-}
-
-/** @deprecated 使用 matchEditorShortcut */
-export function readSegmentMergeKeyboardIntent(
-  e: Pick<KeyboardEvent, "key" | "metaKey" | "ctrlKey" | "altKey" | "shiftKey">,
-): SegmentMergeKeyboardIntent | null {
-  const id = matchEditorShortcut(e as KeyboardEvent);
-  if (id === "segment.mergeNext") return "next";
-  if (id === "segment.mergePrev") return "prev";
   return null;
 }

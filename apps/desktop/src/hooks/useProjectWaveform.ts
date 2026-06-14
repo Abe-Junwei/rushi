@@ -24,7 +24,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     segments,
     selectedIdx,
     disabled,
-    minPxPerSec: layoutPxPerSec = 56,
+    layoutPxPerSec = 56,
     drawPxPerSec = layoutPxPerSec,
     peakCache = null,
     waveformHeightPx = 96,

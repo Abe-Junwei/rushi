@@ -1,6 +1,3 @@
-import type { AsrHealthCapabilities } from "../tauri/projectApi";
-import type { AsrHealthState } from "../pages/useAsrBridgeController";
-import type { LocalAsrCatalogStatusItem } from "../services/asr/localAsrModelCatalog";
 import type { AsrEnvPresentation } from "../services/asr/asrEnvStatus";
 import { AsrTopStatusChips } from "./AsrTopStatusChips";
 import { Bell, Search } from "lucide-react";
@@ -17,11 +14,6 @@ function UserAvatar() {
 
 export interface WelcomeTopBarProps {
   asrPresentation: AsrEnvPresentation;
-  /** @deprecated 使用 asrPresentation */
-  asrHealth?: AsrHealthState;
-  asrCaps?: AsrHealthCapabilities | null;
-  selectedHubModelId?: string;
-  catalogStatus?: LocalAsrCatalogStatusItem[] | null;
   llmStatusRefreshSeq?: number;
   onOpenAsrSettings?: () => void;
   onOpenLlmSettings?: () => void;

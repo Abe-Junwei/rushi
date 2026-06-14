@@ -206,8 +206,6 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     handleToggleSelectedWaveformPlay: wf.handleToggleSelectedWaveformPlay,
     playSegmentAtIndex: wf.playSegmentAtIndex,
     mediaDurationSec: timeline.timelineMetrics.mediaDurationSec,
-    /** @deprecated use mediaDurationSec — same layout duration truth */
-    duration: timeline.timelineMetrics.mediaDurationSec,
     openSegmentContextMenuFromPointer: selection.openSegmentContextMenuFromPointer,
   };
 }

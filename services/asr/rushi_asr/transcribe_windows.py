@@ -103,11 +103,6 @@ def sort_window_segments(segments: list[TranscriptionSegment]) -> list[Transcrip
     return sorted(segments, key=lambda s: (s.start_sec, s.end_sec))
 
 
-def merge_window_segments(segments: list[TranscriptionSegment]) -> list[TranscriptionSegment]:
-    """Deprecated alias — use :func:`sort_window_segments`."""
-    return sort_window_segments(segments)
-
-
 def transcribe_by_windows(
     wav_path: Path,
     total_duration_sec: float,
@@ -168,4 +163,4 @@ def transcribe_by_windows(
     finally:
         shutil.rmtree(slice_dir, ignore_errors=True)
 
-    return merge_window_segments(merged), engine_label, "transcribe_windowed"
+    return sort_window_segments(merged), engine_label, "transcribe_windowed"

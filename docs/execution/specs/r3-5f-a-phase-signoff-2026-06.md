@@ -5,7 +5,7 @@
 
 | 子项 | 状态 | 证据 |
 |------|------|------|
-| **R3t-E** | ❌ 已移除 | 产品决策 2026-06；见 [`r3t-e-hand-test-checklist.md`](./r3t-e-hand-test-checklist.md) |
+| **R3t-E** | ❌ 已移除 | 产品决策 2026-06；见 [`archive/r3t-e/r3t-e-hand-test-checklist.md`](./archive/r3t-e/r3t-e-hand-test-checklist.md) |
 | **VOC-1** | ✅ | [`asr-voc-1-hand-test-checklist.md`](./asr-voc-1-hand-test-checklist.md) 2026-06-02 |
 | **VOC-5 eval baseline** | ✅ | [`asr-voc-5-hand-test-checklist.md`](./asr-voc-5-hand-test-checklist.md) 2026-06-03 |
 | **F2 编码** | ✅ | `useFindReplaceController` + `FindReplaceDialog` |

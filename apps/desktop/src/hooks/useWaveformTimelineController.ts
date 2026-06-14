@@ -68,7 +68,7 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
     segments: ctx.segments,
     selectedIdx: ctx.selectedIdx,
     disabled: ctx.busy,
-    minPxPerSec: zoom.layoutPxPerSec,
+    layoutPxPerSec: zoom.layoutPxPerSec,
     drawPxPerSec: zoom.drawPxPerSec,
     peakCache: peaks.peakCache,
     peakCacheGeneration: peaks.peakCacheGeneration,

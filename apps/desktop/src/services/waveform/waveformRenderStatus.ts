@@ -15,7 +15,6 @@ export function resolveWaveformFooterStatusLabel(input: StatusInput): string | n
   return label;
 }
 
-/** @deprecated use resolveWaveformFooterStatusLabel */
 export function resolveWaveformHeaderStatusLabel(input: StatusInput): string | null {
   const { phase, waveformReady } = input;
 
@@ -50,11 +49,4 @@ export function resolveWaveformCenterStatusLabel(input: StatusInput): string | n
     default:
       return null;
   }
-}
-
-/** @deprecated Use resolveWaveformHeaderStatusLabel / resolveWaveformCenterStatusLabel */
-export function resolveWaveformRenderStatusLabel(input: StatusInput): string | null {
-  return (
-    resolveWaveformCenterStatusLabel(input) ?? resolveWaveformHeaderStatusLabel(input)
-  );
 }

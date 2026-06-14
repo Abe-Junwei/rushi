@@ -32,6 +32,3 @@ export function trimAdjacentSegmentOverlaps(segs: SegmentDto[]): SegmentDto[] {
   }
   return out;
 }
-
-/** @deprecated 使用 {@link trimAdjacentSegmentOverlaps} */
-export const trimAdjacentSegmentBoundaryOverlaps = trimAdjacentSegmentOverlaps;

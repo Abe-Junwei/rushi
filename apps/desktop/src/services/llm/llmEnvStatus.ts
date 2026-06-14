@@ -27,12 +27,9 @@ export {
 export {
   buildLlmEnvPresentation,
   buildLlmModeToggleTones,
-  buildLlmPolishReadiness,
   llmEnvReady,
   llmPolishActiveMessage,
   llmPolishSourceDetailLabel,
-  llmTopStatusOk,
-  llmTopStatusShortLabel,
   ollamaDetectReady,
   toneFromConnectionPhase,
   toneFromOllamaDetect,

@@ -238,13 +238,3 @@ export function EditorSegmentTranscribeActions({
     </div>
   );
 }
-
-/** @deprecated 已并入 EditorSegmentTranscribeActions */
-export function EditorSegmentEditActions(_props: EditorSegmentToolbarActionsProps) {
-  return null;
-}
-
-/** @deprecated 使用 EditorSegmentTranscribeActions */
-export function EditorSegmentToolbarActions({ controller: c, compactLayout }: EditorSegmentToolbarActionsProps) {
-  return <EditorSegmentTranscribeActions controller={c} compactLayout={compactLayout} />;
-}

@@ -5,7 +5,6 @@ import {
   EDITOR_SHORTCUT_MAX_KEYS,
   formatEditorShortcutPanelSections,
   matchEditorShortcut,
-  readSegmentMergeKeyboardIntent,
 } from "./editorShortcutRegistry";
 
 function keyEvent(
@@ -68,11 +67,6 @@ describe("editorShortcutRegistry", () => {
 
   it("ignores plain Cmd+M (macOS minimize)", () => {
     expect(matchEditorShortcut(keyEvent({ key: "m", metaKey: true }))).toBeNull();
-  });
-
-  it("readSegmentMergeKeyboardIntent maps merge ids", () => {
-    expect(readSegmentMergeKeyboardIntent(keyEvent({ key: "j", metaKey: true }))).toBe("next");
-    expect(readSegmentMergeKeyboardIntent(keyEvent({ key: "k", metaKey: true }))).toBe("prev");
   });
 
   it("distinguishes undo from redo by shift modifier", () => {

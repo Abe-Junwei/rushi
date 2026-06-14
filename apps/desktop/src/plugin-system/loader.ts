@@ -3,7 +3,7 @@
  */
 
 import type { PluginContext, PluginManifest, PluginModule } from "./types";
-import { BUILTIN_PLUGIN_MANIFESTS, isBuiltinPluginManifest } from "./builtinRegistry";
+import { BUILTIN_PLUGIN_MANIFESTS } from "./builtinRegistry";
 import { createPluginContext, disposePluginContext } from "./context";
 import { registryUnregister } from "./registry";
 import { validatePluginEntry } from "./validatePluginEntry";
@@ -117,21 +117,6 @@ export async function unloadPlugin(id: string): Promise<void> {
       ? deactivateError
       : new Error(formatUnknownError(deactivateError));
   }
-}
-
-/** @deprecated Use `loadBuiltinPlugins()` — non-built-in manifests are rejected. */
-export async function loadPlugins(manifests: PluginManifest[]): Promise<void> {
-  await Promise.all(
-    manifests.map((m) => {
-      if (!isTestPluginLoadingAllowed() && !isBuiltinPluginManifest(m)) {
-        console.error(`[plugin] rejected non-built-in ${m.id}`);
-        return Promise.resolve();
-      }
-      return loadPlugin(m).catch((e) => {
-        console.error(`[plugin] failed to load ${m.id}:`, e);
-      });
-    }),
-  );
 }
 
 export function loadedPluginIds(): string[] {

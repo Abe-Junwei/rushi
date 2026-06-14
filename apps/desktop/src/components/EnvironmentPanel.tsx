@@ -15,7 +15,6 @@ import { readOnlineSttEnvNavTone } from "../services/stt/readOnlineSttEnvNavPres
 import { STT_CONNECTION_VERIFIED_EVENT } from "../services/stt/sttOnlineProviderContract";
 import { STT_ONLINE_RUNTIME_CHANGED_EVENT } from "../services/stt/sttOnlineRuntimeNotify";
 import type { AsrHealthCapabilities, AsrModelCacheInfo, BundledAsrLaunchReport, WaveformPeaksCacheInfo } from "../tauri/projectApi";
-import type { AsrHealthState } from "../pages/useProjectController";
 import type { AsrSetupControllerApi } from "../pages/useAsrSetupController";
 import type { LocalAsrModelCatalogApi } from "../pages/useLocalAsrModelCatalog";
 import type { PrepareModelApi } from "../pages/usePrepareModelController";
@@ -54,8 +53,6 @@ const ENV_NAV_ITEMS: EnvNavItem[] = [
 
 export type EnvironmentPanelProps = {
   asrPresentation: AsrEnvPresentation;
-  /** @deprecated 使用 asrPresentation */
-  asrHealth: AsrHealthState;
   asrHealthDetail: string;
   bundledAsrDiag: BundledAsrLaunchReport | null;
   asrCaps: AsrHealthCapabilities | null;

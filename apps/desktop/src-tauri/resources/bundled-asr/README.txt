@@ -17,8 +17,9 @@ if health does not come up. Set RUSHI_FORCE_BUNDLED_ASR_CPU=1 to skip CUDA selec
 
 Layout (onedir):
 
-- Main executable at the path above; **`ffmpeg`** and **`ffprobe`** sit next to it
-  (from ffmpeg-static; see `services/asr/third_party/ffmpeg/README.md`).
+- Main executable at the path above.
+- **`ffmpeg`** and **`ffprobe`** live under `_internal/` (PyInstaller onedir; from ffmpeg-static).
+  The shell prepends `_internal` to `PATH` when spawning the sidecar so FunASR can invoke `ffmpeg`.
 - Python runtime and libraries under `_internal/`.
 
 Build from the repo root:

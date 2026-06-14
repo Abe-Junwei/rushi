@@ -97,6 +97,22 @@ fn bundled_child_exited(handle: &AppHandle) -> bool {
     false
 }
 
+fn prepend_path_env(cmd: &mut Command, dir: &Path) {
+    if !dir.is_dir() {
+        return;
+    }
+    let prefix = dir.to_string_lossy();
+    #[cfg(windows)]
+    let sep = ";";
+    #[cfg(not(windows))]
+    let sep = ":";
+    let merged = match std::env::var("PATH") {
+        Ok(existing) if !existing.is_empty() => format!("{prefix}{sep}{existing}"),
+        _ => prefix.to_string(),
+    };
+    cmd.env("PATH", merged);
+}
+
 pub(crate) fn spawn_sidecar(exe: &Path, handle: &AppHandle) -> std::io::Result<Child> {
     let workdir = exe
         .parent()
@@ -115,6 +131,7 @@ pub(crate) fn spawn_sidecar(exe: &Path, handle: &AppHandle) -> std::io::Result<C
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null());
+    prepend_path_env(&mut cmd, &workdir.join("_internal"));
     if let Some(st) = handle.try_state::<DbState>() {
         let models = crate::project::models_root_for_app_data_root(&st.root);
         let hub = crate::local_asr_model::read_hub_model_pref(st.inner());
