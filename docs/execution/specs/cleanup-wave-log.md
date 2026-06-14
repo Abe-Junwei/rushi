@@ -64,4 +64,12 @@
 
 - **改了啥**：清除 `src-tauri` 全部 12 处 `#[allow(dead_code)]` — 删 6 死符号、`cfg(test)` 收口 4 项、去掉 `MAX_PARAGRAPHS` 误标  
 - **验证了啥**：`cargo test` 364 passed · typecheck ✅ · 1371 vitest ✅ · guard 0 错误  
-- **下一轮**：CLN-072 blocking HTTP（DEFER）或 release parity 手测
+- **下一轮**：CLN-072 blocking HTTP
+
+---
+
+## Wave G / CLN-072（2026-06-14）
+
+- **改了啥**：`probe_asr_port_sync` / `post_model_warmup_sync` 迁至 `blocking_http`；新增 `loopback_get_send` + `loopback_post_ok`  
+- **验证了啥**：`cargo test` 364 passed · guard **0** probe/warm blocking 警告  
+- **下一轮**：release parity 手测（CLN-066）或 scripts README（CLN-073）

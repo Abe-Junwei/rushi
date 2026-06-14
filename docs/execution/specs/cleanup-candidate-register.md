@@ -80,7 +80,7 @@
 |----|-----|------|------|
 | CLN-070 | `allow(dead_code)` ×12 | 见 baseline；部分为 test-only helper | **DONE** Wave F：删 6 · `cfg(test)` 4 · 去 allow 1 |
 | CLN-071 | `transcribe_windows.merge_window_segments` | Deprecated alias；内部+测试用 | **DONE** → `sort_window_segments` |
-| CLN-072 | `reqwest::blocking` in `probe.rs` / `warm.rs` | guard 警告 | DEFER 或 spike 改 async |
+| CLN-072 | `reqwest::blocking` in `probe.rs` / `warm.rs` | guard 警告 | **DONE** Wave G → `blocking_http::loopback_*` |
 | CLN-073 | 54 个「未进 package.json」的 `.sh` | 手测/门禁脚本 | KEEP；补 `scripts/README.md` 索引 |
 | CLN-074 | 根目录 `如是我闻*.dmg` / `.app` symlink | 构建产物 | 确认 `.gitignore`；不提交 |
 

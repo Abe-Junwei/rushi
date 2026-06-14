@@ -1,7 +1,7 @@
 use std::net::{Ipv4Addr, SocketAddrV4, TcpStream};
 use std::time::Duration;
 
-use crate::blocking_http::{loopback_get_json, loopback_get_text};
+use crate::blocking_http::{loopback_get_json, loopback_get_send, loopback_get_text};
 use serde::Serialize;
 use serde_json::Value;
 
@@ -66,61 +66,40 @@ pub async fn probe_asr_port() -> AsrPortProbe {
         .unwrap_or_else(|_| reqwest::Client::new());
     let resp = match client.get(ASR_HEALTH_URL).send().await {
         Ok(resp) => resp,
-        Err(_) => {
-            return if loopback_port_accepts_tcp(super::ASR_LOOPBACK_PORT) {
-                AsrPortProbe {
-                    status: AsrPortStatus::Foreign,
-                    http_status: None,
-                    detail: Some(
-                        "8741 已有服务监听，但未能按 rushi-asr /health 响应；可能是其他进程占用，或是仍在启动中的旧实例。请稍候重试；若持续存在，请结束占用进程。".into(),
-                    ),
-                }
-            } else {
-                AsrPortProbe {
-                    status: AsrPortStatus::Free,
-                    http_status: None,
-                    detail: Some("8741 端口无监听，可启动内置侧车。".into()),
-                }
-            };
-        }
+        Err(_) => return probe_asr_port_when_health_unreachable(),
     };
     let http_status = resp.status().as_u16();
     let text = resp.text().await.unwrap_or_default();
     classify_asr_port_probe(http_status, &text)
 }
 
-/// Sync probe for diagnostic export (avoid `block_on` inside Tauri sync commands).
+/// Sync probe for diagnostic export (via `blocking_http` inside sync command path).
 pub fn probe_asr_port_sync() -> AsrPortProbe {
-    let client = match reqwest::blocking::Client::builder()
-        .timeout(Duration::from_secs(8))
-        .build()
-    {
-        Ok(c) => c,
-        Err(_) => reqwest::blocking::Client::new(),
-    };
-    let resp = match client.get(ASR_HEALTH_URL).send() {
+    let resp = match loopback_get_send(ASR_HEALTH_URL) {
         Ok(resp) => resp,
-        Err(_) => {
-            return if loopback_port_accepts_tcp(super::ASR_LOOPBACK_PORT) {
-                AsrPortProbe {
-                    status: AsrPortStatus::Foreign,
-                    http_status: None,
-                    detail: Some(
-                        "8741 已有服务监听，但未能按 rushi-asr /health 响应；可能是其他进程占用，或是仍在启动中的旧实例。请稍候重试；若持续存在，请结束占用进程。".into(),
-                    ),
-                }
-            } else {
-                AsrPortProbe {
-                    status: AsrPortStatus::Free,
-                    http_status: None,
-                    detail: Some("8741 端口无监听，可启动内置侧车。".into()),
-                }
-            };
-        }
+        Err(_) => return probe_asr_port_when_health_unreachable(),
     };
     let http_status = resp.status().as_u16();
     let text = resp.text().unwrap_or_default();
     classify_asr_port_probe(http_status, &text)
+}
+
+fn probe_asr_port_when_health_unreachable() -> AsrPortProbe {
+    if loopback_port_accepts_tcp(super::ASR_LOOPBACK_PORT) {
+        AsrPortProbe {
+            status: AsrPortStatus::Foreign,
+            http_status: None,
+            detail: Some(
+                "8741 已有服务监听，但未能按 rushi-asr /health 响应；可能是其他进程占用，或是仍在启动中的旧实例。请稍候重试；若持续存在，请结束占用进程。".into(),
+            ),
+        }
+    } else {
+        AsrPortProbe {
+            status: AsrPortStatus::Free,
+            http_status: None,
+            detail: Some("8741 端口无监听，可启动内置侧车。".into()),
+        }
+    }
 }
 
 fn classify_asr_port_probe(http_status: u16, text: &str) -> AsrPortProbe {

@@ -13,6 +13,6 @@ mod loopback;
 mod stt_probe;
 
 pub use llm_probe::llm_probe_blocking_client;
-pub use loopback::{loopback_get_json, loopback_get_text};
+pub use loopback::{loopback_get_json, loopback_get_send, loopback_get_text, loopback_post_ok};
 pub use reqwest::blocking::{Client as BlockingClient, Response as BlockingResponse};
 pub use stt_probe::stt_probe_blocking_client;

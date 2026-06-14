@@ -30,3 +30,31 @@ pub fn loopback_get_text(url: &str) -> Option<String> {
     }
     resp.text().ok()
 }
+
+/// GET loopback URL; returns response even when status is non-success (port probe).
+pub fn loopback_get_send(url: &str) -> Result<reqwest::blocking::Response, reqwest::Error> {
+    client().get(url).send()
+}
+
+/// POST with empty body; for long-running sidecar routes (e.g. model warmup).
+pub fn loopback_post_ok(
+    url: &str,
+    timeout_secs: u64,
+    extra_headers: &[(&str, &str)],
+) -> Result<(), String> {
+    let client = Client::builder()
+        .timeout(Duration::from_secs(timeout_secs))
+        .build()
+        .map_err(|e| e.to_string())?;
+    let mut req = client.post(url);
+    for (name, value) in extra_headers {
+        req = req.header(*name, *value);
+    }
+    let resp = req.send().map_err(|e| format!("loopback POST failed: {e}"))?;
+    let status = resp.status();
+    if !status.is_success() {
+        let body = resp.text().unwrap_or_default();
+        return Err(format!("loopback POST HTTP {status}: {body}"));
+    }
+    Ok(())
+}

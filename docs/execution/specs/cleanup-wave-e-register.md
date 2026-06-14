@@ -84,6 +84,16 @@
 | **去 allow** | `MAX_PARAGRAPHS`（同文件内使用） |
 
 **验证**：`cargo test` 364 passed · `allow(dead_code)` **0 处**
+
+## Wave G / CLN-072（已执行）
+
+| 动作 | 说明 |
+|------|------|
+| **迁移** | `probe_asr_port_sync` → `blocking_http::loopback_get_send`；`post_model_warmup_sync` → `loopback_post_ok` |
+| **新增** | `loopback_get_send`、`loopback_post_ok`（`blocking_http/loopback.rs`） |
+| **DRY** | `probe_asr_port_when_health_unreachable` 共用 async/sync 连接失败分支 |
+
+**验证**：architecture guard **0** `reqwest::blocking` 警告（probe/warm）
 - **样式模块**：`editorTranscriptAppearance.ts`、`floatingPanel*Layout.ts` 内布局常量（面板 fit 预留）
 - **测试 export**：`*.test.shared.ts` / `testHelpers.ts` — 改 `export` 为文件内或 vitest `import type` 直引
 

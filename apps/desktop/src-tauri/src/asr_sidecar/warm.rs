@@ -5,6 +5,8 @@ use std::time::Duration;
 
 use tauri::AppHandle;
 
+use crate::blocking_http::loopback_post_ok;
+
 use super::supervisor::{self, SupervisorPhase};
 use super::{app_manages_bundled_sidecar, stop_bundled};
 
@@ -77,23 +79,12 @@ pub fn post_model_warmup_sync() -> Result<(), String> {
     if !warmup_enabled() {
         return Ok(());
     }
-    let client = reqwest::blocking::Client::builder()
-        .timeout(Duration::from_secs(WARMUP_TIMEOUT_SEC))
-        .build()
-        .map_err(|e| e.to_string())?;
-    let mut req = client.post(WARMUP_URL);
-    if let Some(token) = super::local_token::resolve_local_token_for_request() {
-        req = req.header(super::local_token::TOKEN_HEADER, token);
-    }
-    let resp = req
-        .send()
-        .map_err(|e| format!("warmup request failed: {e}"))?;
-    let status = resp.status();
-    if !status.is_success() {
-        let body = resp.text().unwrap_or_default();
-        return Err(format!("warmup HTTP {status}: {body}"));
-    }
-    Ok(())
+    let token = super::local_token::resolve_local_token_for_request();
+    let headers: Vec<(&str, &str)> = match token.as_deref() {
+        Some(t) => vec![(super::local_token::TOKEN_HEADER, t)],
+        None => vec![],
+    };
+    loopback_post_ok(WARMUP_URL, WARMUP_TIMEOUT_SEC, &headers)
 }
 
 fn run_warmup_once(handle: &AppHandle) {
