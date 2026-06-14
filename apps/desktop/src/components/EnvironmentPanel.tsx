@@ -20,6 +20,7 @@ import type { LocalAsrModelCatalogApi } from "../pages/useLocalAsrModelCatalog";
 import type { PrepareModelApi } from "../pages/usePrepareModelController";
 import type { PrepareModelFailureCopy } from "../pages/prepareModelDownloadCopy";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
+import { resolveEnvironmentFocusSection } from "../utils/environmentPanelFocus";
 
 type EnvNavId = "local-asr" | "online-stt" | "llm" | "profile" | "shortcuts" | "quality" | "about" | "help";
 
@@ -151,27 +152,26 @@ export function EnvironmentPanel({
   }, []);
 
   useEffect(() => {
-    if (focusLocalAsrSeq <= 0) return;
-    setEnvSection("local-asr");
-  }, [focusLocalAsrSeq]);
-
-  useEffect(() => {
-    if (focusOnlineSttSeq <= 0) return;
-    setEnvSection("online-stt");
-    const raf = window.requestAnimationFrame(() => {
-      onlineSttScrollRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    const section = resolveEnvironmentFocusSection({
+      focusLocalAsrSeq,
+      focusOnlineSttSeq,
+      focusLlmSeq,
     });
-    return () => window.cancelAnimationFrame(raf);
-  }, [focusOnlineSttSeq]);
-
-  useEffect(() => {
-    if (focusLlmSeq <= 0) return;
-    setEnvSection("llm");
-    const raf = window.requestAnimationFrame(() => {
-      llmScrollRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
-    });
-    return () => window.cancelAnimationFrame(raf);
-  }, [focusLlmSeq]);
+    if (!section) return;
+    setEnvSection(section);
+    if (section === "online-stt") {
+      const raf = window.requestAnimationFrame(() => {
+        onlineSttScrollRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+      });
+      return () => window.cancelAnimationFrame(raf);
+    }
+    if (section === "llm") {
+      const raf = window.requestAnimationFrame(() => {
+        llmScrollRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+      });
+      return () => window.cancelAnimationFrame(raf);
+    }
+  }, [focusLocalAsrSeq, focusOnlineSttSeq, focusLlmSeq]);
 
   useEffect(() => {
     const root = rootRef.current;

@@ -50,14 +50,22 @@ export function useProjectPanelShell() {
   }, []);
 
   const openAsrSettings = useCallback(() => {
+    setFocusLlmSeq(0);
     setEnvOpen(true);
     setFocusLocalAsrSeq((n) => n + 1);
   }, []);
 
   const openLlmSettings = useCallback(() => {
+    setFocusLocalAsrSeq(0);
     setEnvOpen(true);
     setFocusLlmSeq((n) => n + 1);
   }, []);
+
+  useEffect(() => {
+    if (envOpen) return;
+    setFocusLocalAsrSeq(0);
+    setFocusLlmSeq(0);
+  }, [envOpen]);
 
   const notifyLlmRuntimeChanged = useCallback(() => {
     c.bumpLlmRuntimeChanged();

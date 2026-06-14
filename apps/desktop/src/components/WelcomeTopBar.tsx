@@ -32,7 +32,7 @@ export function WelcomeTopBar({
         <div className="mr-2 flex items-center gap-4">
           <AsrTopStatusChips
             presentation={asrPresentation}
-            onOpenAsrSettings={onOpenAsrSettings ?? onOpenLlmSettings}
+            onOpenAsrSettings={onOpenAsrSettings}
           />
           {onOpenLlmSettings ? (
             <LlmTopStatusChip refreshSeq={llmStatusRefreshSeq} onOpenLlmSettings={onOpenLlmSettings} />

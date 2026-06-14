@@ -81,3 +81,11 @@
 - **改了啥**：新增 [`scripts/README.md`](../../../scripts/README.md)（npm 接线表 + 发布/ASR/门禁/手测/spike 分组）；`.gitignore` 补 `/*.app` 覆盖根目录 staged symlink  
 - **验证了啥**：根目录 DMG / `.app` 未进 git · README 链到现有 parity / smoke 文档  
 - **下一轮**：CLN-066 release parity 手测（人工）；或登记 Wave A–H 程序收尾
+
+---
+
+## CLN-066 L2（2026-06-14）
+
+- **改了啥**：跑通 `release:postbuild-verify` + `v1-release-installed-smoke`；补 [release-parity-evidence-2026-06-14.md](../release-parity-evidence-2026-06-14.md)；`release-sidecar-preflight` 硬检 `sidecar-build-stamp.txt`  
+- **验证了啥**：parity startup/bundle/project/asr ✅ · diagnostic zip 7 项 ✅ · asset_scope_ok / peaks 探针 ✅  
+- **下一轮**：L3 UI 手测（7-A D1–D8 · 7-B S1–S6 · dmg-vs-dev §安装包内验收）；发版前 `npm run asr:build-sidecar-unix` 重生 stamp

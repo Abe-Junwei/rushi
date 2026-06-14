@@ -70,7 +70,7 @@
 | CLN-063 | `code-review-report-2026-06-06-full.md` | 整章 `china_stt_shell/` | **DONE** 历史注记 |
 | CLN-064 | ADR-0004 / 0005 | Superseded；仅 waveform-engine 引用 | KEEP；确保 `docs/architecture/README` 不链为现行 |
 | CLN-065 | `apps/desktop/docs/stitch-*.md` | 引用 CLN-004 / CLN-006 已死组件 | **DONE** FIX obsolete 注记 |
-| CLN-066 | `copy-code-drift-register` 动态项 7-A–7-E | 仍 ☐ release 手测 | DEFER（非代码清理） |
+| CLN-066 | `copy-code-drift-register` 动态项 7-A–7-E | L2 机器 ✅ · L3 UI ☐ | **IN PROGRESS** — [release-parity-evidence-2026-06-14.md](../release-parity-evidence-2026-06-14.md) |
 
 ---
 

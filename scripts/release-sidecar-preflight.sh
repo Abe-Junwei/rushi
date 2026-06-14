@@ -20,5 +20,13 @@ if [[ ! -f "${INTERNAL}" ]]; then
   exit 1
 fi
 
+STAMP="$(dirname "${SIDECAR}")/sidecar-build-stamp.txt"
+if [[ ! -s "${STAMP}" ]]; then
+  echo "FAIL: missing sidecar build stamp: ${STAMP}" >&2
+  echo "Run: npm run asr:build-sidecar-unix" >&2
+  exit 1
+fi
+echo "  sidecar stamp: $(tr '\n' ' ' < "${STAMP}" | sed 's/[[:space:]]*$//')"
+
 bash "${ROOT}/scripts/smoke-asr-sidecar-health.sh"
 echo "OK: release sidecar preflight passed."

@@ -71,6 +71,15 @@
 | 7-D 导出/质量 | ✅ | ☐ EXP-WORD / eval 抽检 |
 | 7-E 文档 | ✅ | N/A |
 
+### L2 机器门禁（2026-06-14 · git `87418b9`）
+
+| 门禁 | 结果 | 证据 |
+|------|------|------|
+| `release:postbuild-verify` | ✅ | [release-parity-evidence-2026-06-14.md](../release-parity-evidence-2026-06-14.md) |
+| `v1-release-installed-smoke` | ✅ | [v1-release-installed-smoke-evidence.md](../v1-release-installed-smoke-evidence.md) |
+
+> **L3 仍开放**：上表 7-A–7-D 动态列须在安装包 UI 手测后勾选；清单见 [release-zero-terminal-hand-test.md](../release-zero-terminal-hand-test.md) · [dmg-vs-dev-parity-checklist.md](./dmg-vs-dev-parity-checklist.md)。
+
 ---
 
 ## 修订
