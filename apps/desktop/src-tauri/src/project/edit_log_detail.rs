@@ -215,7 +215,7 @@ pub fn build_save_segments_edit_detail_from_baseline(
     })
 }
 
-#[allow(dead_code)] // used by `edit_log_detail` unit tests; production uses `from_baseline`
+#[cfg(test)]
 pub fn build_save_segments_edit_detail(
     conn: &Connection,
     file_id: &str,

@@ -15,7 +15,7 @@ fn convert_payload(raw: RawRuntimeManifestPayload) -> Result<RuntimeManifest, St
     })
 }
 
-#[allow(dead_code)]
+#[cfg(test)]
 pub fn parse_manifest(body: &str) -> Result<RuntimeManifest, String> {
     let raw: RawRuntimeManifestPayload =
         serde_json::from_str(body).map_err(|e| format!("manifest_parse_failed: {e}"))?;

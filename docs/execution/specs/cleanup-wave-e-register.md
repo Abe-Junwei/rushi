@@ -72,8 +72,18 @@
 
 ## 待续
 
-- **CLN-070** Rust `dead_code` 逐项（`src-tauri/`）
+- **CLN-072** `reqwest::blocking` in `probe.rs` / `warm.rs`（guard 警告，DEFER）
 - **editorTranscriptAppearance** 字体 token（Stitch 预留，已 `ignoreIssues`）
+
+## Wave F / CLN-070（已执行）
+
+| 动作 | 符号 |
+|------|------|
+| **DELETE** | `post_transcribe_cancel`、`record_transcribe_activity`、`file_type` mod、`lexicon_pack_is_usable`、`parse_lexicon_proofread_json`、`migrate_file_to_keyring` ×2 |
+| **`cfg(test)`** | `build_save_segments_edit_detail`、`stage_label_zh`、`parse_manifest`、`write_marker` |
+| **去 allow** | `MAX_PARAGRAPHS`（同文件内使用） |
+
+**验证**：`cargo test` 364 passed · `allow(dead_code)` **0 处**
 - **样式模块**：`editorTranscriptAppearance.ts`、`floatingPanel*Layout.ts` 内布局常量（面板 fit 预留）
 - **测试 export**：`*.test.shared.ts` / `testHelpers.ts` — 改 `export` 为文件内或 vitest `import type` 直引
 

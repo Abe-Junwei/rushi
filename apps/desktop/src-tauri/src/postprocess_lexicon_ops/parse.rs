@@ -5,11 +5,6 @@ use super::types::{
     LexiconEvidence, LexiconProofreadLlmPayload, LexiconProofreadOp, LexiconProofreadParseResult,
 };
 
-#[allow(dead_code)]
-pub fn parse_lexicon_proofread_json(raw: &str) -> Result<LexiconProofreadLlmPayload, String> {
-    parse_lexicon_proofread_json_lenient(raw).map(|r| r.payload)
-}
-
 fn read_evidence_from_value(evidence_obj: &serde_json::Value) -> (String, String) {
     let evidence_type = evidence_obj
         .get("type")

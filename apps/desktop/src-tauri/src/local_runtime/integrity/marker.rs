@@ -78,7 +78,7 @@ fn write_marker_with_state(
     .map_err(|e| format!("写入 local runtime marker 失败: {e}"))
 }
 
-#[allow(dead_code)]
+#[cfg(test)]
 pub fn write_marker(app_root: &Path, version: &str, exe_relpath: &str) -> Result<(), String> {
     write_marker_with_state(
         app_root,

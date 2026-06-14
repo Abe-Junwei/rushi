@@ -139,15 +139,3 @@ pub struct GlossaryTermDto {
 fn default_glossary_hotword_enabled() -> bool {
     true
 }
-
-/// File type classification persisted in the database.
-#[allow(dead_code)]
-pub mod file_type {
-    pub const TEXT: &str = "text";
-    pub const PAIRED: &str = "paired";
-    pub const AUDIO_ONLY: &str = "audio_only";
-
-    pub fn is_valid(t: &str) -> bool {
-        matches!(t, TEXT | PAIRED | AUDIO_ONLY)
-    }
-}

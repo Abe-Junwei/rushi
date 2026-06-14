@@ -135,13 +135,6 @@ pub fn spawn_warmup_on_ready(handle: &AppHandle) {
     });
 }
 
-/// Reserved for transcribe paths that hold an `AppHandle` (today uses `record_activity_global`).
-#[allow(dead_code)]
-pub fn record_transcribe_activity(handle: &AppHandle) {
-    supervisor::record_activity(handle);
-    touch_global_activity_ms();
-}
-
 fn maybe_idle_stop(handle: &AppHandle) {
     let idle_sec = idle_stop_secs();
     if idle_sec == 0 || !app_manages_bundled_sidecar() || transcribe_in_flight() {

@@ -170,17 +170,6 @@ fn delete_file_secret(app_data_root: &Path, api_key_id: &str) -> Result<(), Stri
     }
 }
 
-#[allow(dead_code)]
-fn migrate_file_to_keyring(app_data_root: &Path, api_key_id: &str, key: &str) {
-    if !use_keyring_store() {
-        return;
-    }
-    if write_keyring_secret(api_key_id, key).is_ok() {
-        let _ = delete_file_secret(app_data_root, api_key_id);
-        let _ = write_keyring_presence_marker(app_data_root, api_key_id);
-    }
-}
-
 pub fn write_stt_secret(
     app_data_root: &Path,
     api_key_id: &str,

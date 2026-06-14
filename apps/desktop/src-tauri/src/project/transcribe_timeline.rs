@@ -281,7 +281,7 @@ pub fn suggested_action_for(
     }
 }
 
-#[allow(dead_code)]
+#[cfg(test)]
 pub fn stage_label_zh(stage: &str) -> &'static str {
     match stage {
         STAGE_PREFLIGHT => "准备",

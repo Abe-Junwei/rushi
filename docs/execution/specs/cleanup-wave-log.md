@@ -56,4 +56,12 @@
 
 - **改了啥**：删除 7 个死 export type（`ColorToken`、`BusyPack`、`ProjectPanelShellApi` 等）；`PeakCache` 内部类型 UNEXPORT；`knip.json` 去掉冗余 entry  
 - **验证了啥**：typecheck ✅ · 1371 tests ✅ · guard 0 错误 / 42 警告 · **knip 全绿（0 exports / 0 types）**  
-- **下一轮**：CLN-070 Rust `dead_code` 或 release parity 手测
+- **下一轮**：CLN-070 Rust `dead_code`
+
+---
+
+## Wave F / CLN-070（2026-06-14）
+
+- **改了啥**：清除 `src-tauri` 全部 12 处 `#[allow(dead_code)]` — 删 6 死符号、`cfg(test)` 收口 4 项、去掉 `MAX_PARAGRAPHS` 误标  
+- **验证了啥**：`cargo test` 364 passed · typecheck ✅ · 1371 vitest ✅ · guard 0 错误  
+- **下一轮**：CLN-072 blocking HTTP（DEFER）或 release parity 手测

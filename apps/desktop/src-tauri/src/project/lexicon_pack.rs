@@ -128,11 +128,6 @@ pub fn assemble_lexicon_pack(conn: &Connection) -> Result<LexiconPack, String> {
     })
 }
 
-#[allow(dead_code)]
-pub fn lexicon_pack_is_usable(pack: &LexiconPack) -> bool {
-    !pack.glossary_canonical.is_empty() || !pack.correction_rules.is_empty()
-}
-
 #[cfg(test)]
 mod tests {
     use super::*;

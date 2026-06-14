@@ -88,50 +88,6 @@ pub async fn get_transcribe_job_status(
     })
 }
 
-/// Used by UI via loopback fetch today; kept for a future Tauri command path.
-#[allow(dead_code)]
-pub async fn post_transcribe_cancel(
-    st: &DbState,
-    base_url: &str,
-    job_id: &str,
-    timeout: Duration,
-) -> Result<(), String> {
-    let url = format!("{}/v1/transcribe/cancel", base_url.trim_end_matches('/'));
-    let resp = crate::asr_sidecar::local_token::apply_local_token_if_asr_loopback(
-        http_client()
-            .post(&url)
-            .json(&serde_json::json!({ "job_id": job_id }))
-            .timeout(timeout),
-        url.as_str(),
-    )
-    .send()
-    .await
-    .map_err(|e| {
-        append_desktop_log_line(
-            st,
-            &format!(
-                "ERROR transcribe_cancel connect {}",
-                redact_secrets_for_log(&e.to_string())
-            ),
-        );
-        describe_transcribe_request_error(&e, timeout)
-    })?;
-    let status_code = resp.status();
-    if !status_code.is_success() {
-        let body = resp.text().await.unwrap_or_default();
-        let snippet = redact_http_body_snippet(&body);
-        append_desktop_log_line(
-            st,
-            &format!("ERROR transcribe_cancel http {} {}", status_code, snippet),
-        );
-        if let Some(msg) = describe_transcribe_http_status_error(status_code.as_u16(), &snippet) {
-            return Err(msg);
-        }
-        return Err(format!("ASR cancel HTTP {}: {}", status_code, snippet));
-    }
-    Ok(())
-}
-
 pub fn parse_transcribe_job_phase(v: &serde_json::Value) -> &str {
     v.get("phase").and_then(|x| x.as_str()).unwrap_or("unknown")
 }
