@@ -6,8 +6,6 @@ import { peakLevelAssetUrl } from "../../tauri/waveformPeaksApi";
 
 const INT16_SCALE = 32767;
 
-export type WaveformDataInstance = WaveformData;
-
 async function loadWaveformDatFromUrl(url: string): Promise<WaveformData> {
   const res = await fetch(url);
   if (!res.ok) {

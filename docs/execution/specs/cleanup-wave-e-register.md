@@ -55,9 +55,24 @@
 | E3-C | **UNEXPORT** | 死 re-export barrel（`useTranscriptionLayer`、`useWaveformZoomSync`、`segmentListHelpers` 等）；测试改直引 `asrHealthParse` / `pxPerSec` |
 | E3-D | **KEEP（7 types）** | `ColorToken`、`BusyPack`、`ProjectPanelShellApi` 等控制器类型面 — 下轮按需 `ignoreIssues` 或消费 |
 
-## 待续（可选 E4）
+## Wave E4（已执行）
 
-- **7** knip unused exported types（控制器 / waveform 内部类型，非运行时死代码）
+> **结果**：knip **unused exports 0 · unused types 0**（全绿）
+
+| ID | 项 | 动作 |
+|----|-----|------|
+| CLN-E40 | `ColorToken` | DELETE |
+| CLN-E41 | `LexiconBundleConflictItem` 别名 | DELETE |
+| CLN-E42 | `BusyPack` 重复 export | DELETE |
+| CLN-E43 | `ProjectPanelShellApi` | DELETE |
+| CLN-E44 | `WaveformDataInstance` 别名 | DELETE |
+| CLN-E45 | `PeakLodLevel` / `LoadedPeakLevel` | UNEXPORT |
+| CLN-E46 | `SegmentMergeKeyboardIntent` | DELETE |
+| CLN-E47 | `knip.json` 冗余 `main.tsx` entry | DELETE |
+
+## 待续
+
+- **CLN-070** Rust `dead_code` 逐项（`src-tauri/`）
 - **editorTranscriptAppearance** 字体 token（Stitch 预留，已 `ignoreIssues`）
 - **样式模块**：`editorTranscriptAppearance.ts`、`floatingPanel*Layout.ts` 内布局常量（面板 fit 预留）
 - **测试 export**：`*.test.shared.ts` / `testHelpers.ts` — 改 `export` 为文件内或 vitest `import type` 直引

@@ -10,9 +10,7 @@ import {
 } from "./audiowaveformDat";
 import { PEAK_LOD_LEVELS, pickPeakLodLevel } from "./peakLevels";
 
-export type PeakLodLevel = (typeof PEAK_LOD_LEVELS)[number];
-
-export type LoadedPeakLevel = {
+type LoadedPeakLevel = {
   level: number;
   pixelsPerSecond: number;
   data: WaveformData;

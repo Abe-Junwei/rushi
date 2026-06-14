@@ -48,4 +48,12 @@
 
 - **改了啥**：`knip.json` 公共面 `ignoreIssues` + vitest entry；删除死 re-export barrel 与 30+ 死符号；测试改直引真源模块  
 - **验证了啥**：typecheck ✅ · 1371 tests ✅ · guard 0 错误 / 42 警告 · knip unused exports **114→0**（types 7 KEEP）  
-- **下一轮**：可选 E4 — 7 个 unused types；或转 CLN-070 Rust dead_code
+- **下一轮**：Wave E4 — 7 个 unused types 收口
+
+---
+
+## Wave E4（2026-06-14）
+
+- **改了啥**：删除 7 个死 export type（`ColorToken`、`BusyPack`、`ProjectPanelShellApi` 等）；`PeakCache` 内部类型 UNEXPORT；`knip.json` 去掉冗余 entry  
+- **验证了啥**：typecheck ✅ · 1371 tests ✅ · guard 0 错误 / 42 警告 · **knip 全绿（0 exports / 0 types）**  
+- **下一轮**：CLN-070 Rust `dead_code` 或 release parity 手测

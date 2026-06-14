@@ -1,7 +1,6 @@
 import { useCallback, useState } from "react";
 import { isTauriRuntime } from "../config/env";
 import type {
-  LexiconBundleConflict,
   LexiconBundleConflictResolution,
   LexiconBundleExportPreview,
   LexiconBundleImportPreviewResult,
@@ -184,5 +183,3 @@ export function useLexiconBundleController(args: Args) {
     confirmImportWithResolutions,
   };
 }
-
-export type LexiconBundleConflictItem = LexiconBundleConflict;

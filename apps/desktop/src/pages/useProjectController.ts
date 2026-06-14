@@ -12,7 +12,6 @@ import {
 import { refreshLlmOllamaDetect } from "../services/llm/llmEnvRuntimeStore";
 
 export type { AsrHealthState, BusyReason };
-export type BusyPack = { busy: boolean; reason: BusyReason | null };
 export type ProjectControllerApi = ReturnType<typeof useProjectController>;
 
 export function useProjectController() {

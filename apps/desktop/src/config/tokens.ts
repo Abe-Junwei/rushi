@@ -53,5 +53,3 @@ export const COLORS = {
   waveformRegionLaneLow: "#9ca3af",
   waveformRegionLaneIdle: "#d1d5db",
 } as const;
-
-export type ColorToken = keyof typeof COLORS;

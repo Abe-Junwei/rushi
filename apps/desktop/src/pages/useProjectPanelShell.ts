@@ -6,8 +6,6 @@ import { useDeliveryModeController } from "./useDeliveryModeController";
 import { useProjectController } from "./useProjectController";
 import { useProjectPanelWorkspaceNav } from "./useProjectPanelWorkspaceNav";
 
-export type ProjectPanelShellApi = ReturnType<typeof useProjectPanelShell>;
-
 /** Shell-level UI state and routing for the project workspace (not project domain logic). */
 export function useProjectPanelShell() {
   const c = useProjectController();

@@ -1,0 +1,4 @@
+# Wave E4 — knip clean (2026-06-14)
+# unused exports: 0
+# unused types: 0
+# configuration hints: 0

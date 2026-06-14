@@ -52,8 +52,6 @@ export type EditorShortcutDefinition = {
   requiresOpenFile?: boolean;
 };
 
-export type SegmentMergeKeyboardIntent = "next" | "prev";
-
 export type EditorShortcutPanelSection = {
   id: string;
   title: string;

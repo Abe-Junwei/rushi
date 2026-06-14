@@ -5,7 +5,6 @@ export type {
   EditorShortcutId,
   EditorShortcutPanelSection,
   EditorShortcutScope,
-  SegmentMergeKeyboardIntent,
   ShortcutBinding,
 } from "./editorShortcutTypes";
 
