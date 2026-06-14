@@ -1,4 +1,3 @@
-import { visibleTimeWindowFromScroll } from "./waveformProjection";
 import type { RefObject } from "react";
 
 export type TierScrollLiveRefs = {
@@ -9,11 +8,6 @@ export type TierScrollLiveRefs = {
 export type TierScrollLayoutMetrics = {
   scrollLeftPx: number;
   clientWidthPx: number;
-};
-
-type WaveformRulerView = {
-  start: number;
-  end: number;
 };
 
 /** Tier scrollport width — set imperatively on the tier element for sticky waveform clip. */
@@ -98,20 +92,4 @@ export function resolveTierViewportMetrics(input: {
       }),
     ),
   };
-}
-
-export function resolveWaveformRulerView(input: {
-  durationSec: number;
-  scrollLeftPx: number;
-  clientWidthPx: number;
-  timelineWidthPx: number;
-}): WaveformRulerView | null {
-  const dur = Math.max(0, input.durationSec);
-  if (dur <= 0) return null;
-  return visibleTimeWindowFromScroll({
-    scrollLeftPx: input.scrollLeftPx,
-    viewportWidthPx: input.clientWidthPx,
-    timelineWidthPx: input.timelineWidthPx,
-    durationSec: dur,
-  });
 }

@@ -60,10 +60,6 @@ export interface LocalRuntimeActionResult {
   reason?: string | null;
 }
 
-export function isLocalRuntimeUsable(diag: LocalRuntimeDiagnose | null): boolean {
-  return diag?.installed.status === "installed";
-}
-
 export function isLocalRuntimeInstallRunning(
   phase: LocalRuntimeInstallProgress["phase"] | null | undefined,
 ): boolean {

@@ -3,12 +3,24 @@
   "entry": [
     "src/main.tsx",
     "src/plugins/**/index.ts",
-    "tests/e2e/**/*.spec.ts"
+    "tests/e2e/**/*.spec.ts",
+    "src/**/*.test.{ts,tsx}"
   ],
   "project": ["src/**/*.{ts,tsx}", "tests/**/*.{ts,tsx,js}"],
   "ignore": [
     "src/services/waveform/PeakCache.bench.ts",
     "tests/e2e/support/**"
   ],
-  "ignoreDependencies": ["lint-staged", "prettier", "husky"]
+  "ignoreDependencies": ["lint-staged", "prettier"],
+  "ignoreExportsUsedInFile": true,
+  "ignoreIssues": {
+    "src/tauri/**": ["exports", "types"],
+    "src/plugin-system/**": ["exports", "types"],
+    "src/contracts/**": ["exports", "types"],
+    "src/services/stt/sttOnlineProviderContract/**": ["exports", "types"],
+    "src/services/postprocess/postprocessRuntimeContract.ts": ["exports", "types"],
+    "src/components/editor/editorTranscriptAppearance.ts": ["exports"],
+    "**/*.test.shared.ts": ["exports"],
+    "**/*testHelpers.ts": ["exports"]
+  }
 }

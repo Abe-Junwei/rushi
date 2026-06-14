@@ -19,9 +19,6 @@ export {
 export { matchEditorShortcut } from "./editorShortcutMatch";
 
 export {
-  SEGMENT_MERGE_NEXT_SHORTCUT_LABEL,
-  SEGMENT_MERGE_PREV_SHORTCUT_LABEL,
   editorShortcutFooterHints,
-  formatEditorShortcutPanelRows,
   formatEditorShortcutPanelSections,
 } from "./editorShortcutFormat";

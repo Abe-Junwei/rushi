@@ -68,7 +68,7 @@ function neededCanvases(scrollW: number, clientW: number): number {
   return Math.max(1, Math.ceil(scrollW / chunk));
 }
 
-export function readWaveSurferGeom(ws: WaveSurfer): WaveSurferGeom {
+function readWaveSurferGeom(ws: WaveSurfer): WaveSurferGeom {
   const renderer = ws.getRenderer() as unknown as WaveSurferRendererInternals;
   const scroll = renderer.scrollContainer ?? ws.getWrapper()?.parentElement ?? null;
   const layers = readWaveSurferWaveformLayers(ws);
@@ -115,7 +115,7 @@ export function logWaveSurferGeomDeferred(ws: WaveSurfer, label: string, extra: 
 
 let lastScrollGeomLogMs = 0;
 /** Throttled geom log on tier→WS scroll mirror — captures the scrolled (blank-tail) state. */
-export function logWaveSurferGeomOnScroll(ws: WaveSurfer): void {
+function logWaveSurferGeomOnScroll(ws: WaveSurfer): void {
   const now = typeof performance !== "undefined" ? performance.now() : Date.now();
   if (now - lastScrollGeomLogMs < 700) return;
   lastScrollGeomLogMs = now;
@@ -147,7 +147,7 @@ export function estimateWaveSurferCanvasCount(scrollWidthPx: number): number {
 }
 
 /** Prefer renderer fields — shadow DOM queries can fail in release WKWebView. */
-export function readWaveSurferWaveformLayers(ws: WaveSurfer): WaveSurferWaveformLayerNodes | null {
+function readWaveSurferWaveformLayers(ws: WaveSurfer): WaveSurferWaveformLayerNodes | null {
   const renderer = ws.getRenderer() as unknown as WaveSurferRendererInternals;
   if (renderer.canvasWrapper && renderer.progressWrapper) {
     return {
@@ -209,7 +209,7 @@ export function applyWaveSurferProgressWithoutClip(
   updateWaveSurferPlayheadCursor(renderer, ratio);
 }
 
-export function refreshWaveSurferProgressVisual(ws: WaveSurfer): void {
+function refreshWaveSurferProgressVisual(ws: WaveSurfer): void {
   const duration = ws.getDuration();
   if (!(duration > 0)) return;
   const ratio = Math.max(0, Math.min(1, ws.getCurrentTime() / duration));
@@ -235,7 +235,7 @@ export function installWaveSurferPlayedRegionDisplayFix(ws: WaveSurfer): () => v
 }
 
 /** WKWebView release builds may skip scroll listeners on programmatic scrollLeft. */
-export function notifyWaveSurferScrollContainer(ws: WaveSurfer): void {
+function notifyWaveSurferScrollContainer(ws: WaveSurfer): void {
   const renderer = ws.getRenderer() as unknown as WaveSurferRendererInternals;
   const scrollHost = renderer.scrollContainer ?? ws.getWrapper()?.parentElement;
   if (!scrollHost) return;

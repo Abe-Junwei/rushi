@@ -166,11 +166,6 @@ export function describeStageBPreviewSummary(changeCount: number): {
   };
 }
 
-/** @deprecated 合并策略下进度 total = 批次数 */
-export function countStageBPunctuateSteps(segments: SegmentDto[]): number {
-  return collectStageBEligibleSegmentIndices(segments).length;
-}
-
 /** @deprecated 合并策略下等于批次数 */
 export function estimateStageBProgressTotal(args: {
   segments: SegmentDto[];
@@ -191,7 +186,7 @@ export function mapPostTranscribeStageBProofreadError(err: unknown): string {
     .join("智能改稿");
 }
 
-export function formatStageBPackTruncationHint(
+function formatStageBPackTruncationHint(
   packMeta: { truncated?: boolean; glossaryCount?: number; rulesCount?: number } | undefined,
 ): string | null {
   if (!packMeta?.truncated) return null;

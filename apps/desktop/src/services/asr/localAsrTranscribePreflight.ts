@@ -1,7 +1,4 @@
-import {
-  computeLocalAsrTranscribeReady,
-  type LocalAsrTranscribeReadyInput,
-} from "./localAsrModelCatalog";
+import type { LocalAsrTranscribeReadyInput } from "./localAsrModelCatalog";
 import { buildAsrEnvPresentation, type BuildAsrEnvPresentationInput } from "./asrEnvStatus";
 
 export type LocalAsrTranscribePreflightInput = LocalAsrTranscribeReadyInput & {
@@ -23,5 +20,3 @@ export function localAsrTranscribePreflightMessage(
   };
   return buildAsrEnvPresentation(payload).blockReason;
 }
-
-export { computeLocalAsrTranscribeReady };

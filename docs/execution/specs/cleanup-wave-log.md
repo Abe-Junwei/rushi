@@ -40,4 +40,12 @@
 
 - **改了啥**：E2 分析台账；批量 UNEXPORT 131 符号（73 文件）；DELETE 死函数/常量 20+ 项；收口 `floatingPanelSegmentListLayout` / ASR / segment 工具死 export  
 - **验证了啥**：typecheck ✅ · 1371 tests ✅ · guard 0 错误 / 42 警告 · knip unused exports **249→114**  
-- **下一轮**：Wave E3 — `tauri/*` 类型面 KEEP 登记；测试 shared export 收口；`editorTranscriptAppearance` DEFER 评审
+- **下一轮**：Wave E3 — `tauri/*` KEEP 登记 + 测试 shared 收口
+
+---
+
+## Wave E3（2026-06-14）
+
+- **改了啥**：`knip.json` 公共面 `ignoreIssues` + vitest entry；删除死 re-export barrel 与 30+ 死符号；测试改直引真源模块  
+- **验证了啥**：typecheck ✅ · 1371 tests ✅ · guard 0 错误 / 42 警告 · knip unused exports **114→0**（types 7 KEEP）  
+- **下一轮**：可选 E4 — 7 个 unused types；或转 CLN-070 Rust dead_code

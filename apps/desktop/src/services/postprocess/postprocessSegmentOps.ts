@@ -125,12 +125,3 @@ export function describeRefineOpsForPreview(
     return `拆分 · ${base} @ ${op.at_sec.toFixed(1)}s → 「${snippetText(op.left_text, 20)}」|「${snippetText(op.right_text, 20)}」`;
   });
 }
-
-/** @deprecated Use describeRefineOpsForPreview; kept for tests that only need op kind. */
-export function describeRefineOps(ops: SegmentRefineOp[]): string[] {
-  return ops.map((op) => {
-    if (op.op === "update_text") return `改字 · ${op.uid}`;
-    if (op.op === "merge") return `合并 · ${op.uids.join(" + ")}`;
-    return `拆分 · ${op.uid} @ ${op.at_sec.toFixed(2)}s`;
-  });
-}

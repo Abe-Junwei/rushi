@@ -39,7 +39,6 @@ export const OLLAMA_LOOPBACK_PLACEHOLDER_API_KEY = "ollama";
 
 export const OLLAMA_DEFAULT_BASE_URL = "http://127.0.0.1:11434/v1";
 export const OLLAMA_DEFAULT_MODEL = "qwen2.5:7b";
-export const OLLAMA_TAGS_URL = "http://127.0.0.1:11434/api/tags";
 
 export type LlmProviderDefinition = {
   id: LlmProviderId;
@@ -51,21 +50,6 @@ export type LlmProviderDefinition = {
   defaultModel: string;
   modelExamples: string[];
 };
-
-export type LlmCapability = {
-  id: "export_polish";
-  label: string;
-  description: string;
-};
-
-/** 共用本页 LLM 连接的能力清单（随功能迭代扩展）。 */
-export const LLM_CAPABILITIES: LlmCapability[] = [
-  {
-    id: "export_polish",
-    label: "导出润色",
-    description: "交付导出时的大模型润色：标点、语义断段与专名校对（在导出对话框中启用）。",
-  },
-];
 
 export const LLM_PROVIDER_DEFINITIONS: LlmProviderDefinition[] = [
   {

@@ -96,7 +96,7 @@ function parseCatalogStatusItems(raw: unknown): LocalAsrCatalogStatusItem[] | nu
 }
 
 /** True when /health includes R3g-A catalog (rebuilt sidecar + fresh process on :8741). */
-export function sidecarSupportsModelCatalog(data: unknown): boolean {
+function sidecarSupportsModelCatalog(data: unknown): boolean {
   if (!data || typeof data !== "object") return false;
   return Array.isArray((data as Record<string, unknown>).local_asr_model_catalog);
 }

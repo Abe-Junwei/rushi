@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { funasrManualSetupCommands, parseAsrHealthJson } from "./useProjectController";
+import { funasrManualSetupCommands, parseAsrHealthJson } from "../services/asr/asrHealthParse";
 
 describe("parseAsrHealthJson", () => {
   it("returns null for non-objects", () => {

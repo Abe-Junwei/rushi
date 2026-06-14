@@ -1,6 +1,5 @@
 import { useCallback, useRef } from "react";
 import { useAsrBridgeController, type AsrHealthState } from "./useAsrBridgeController";
-import { funasrManualSetupCommands, parseAsrHealthJson } from "../services/asr/asrHealthParse";
 import { useAsrSetupController } from "./useAsrSetupController";
 import { useProjectLifecycleController, type BusyReason } from "./useProjectLifecycleController";
 import { refreshLocalAsrDiagnostics } from "./refreshLocalAsrDiagnostics";
@@ -15,8 +14,6 @@ import { refreshLlmOllamaDetect } from "../services/llm/llmEnvRuntimeStore";
 export type { AsrHealthState, BusyReason };
 export type BusyPack = { busy: boolean; reason: BusyReason | null };
 export type ProjectControllerApi = ReturnType<typeof useProjectController>;
-
-export { parseAsrHealthJson, funasrManualSetupCommands };
 
 export function useProjectController() {
   const refreshSetupDiagnoseRef = useRef<

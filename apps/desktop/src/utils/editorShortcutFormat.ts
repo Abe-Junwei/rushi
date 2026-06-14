@@ -1,13 +1,6 @@
 import { DIALOG_ESCAPE_KEYS_LABEL } from "./dialogPanelHints";
 import type { EditorShortcutDefinition, EditorShortcutPanelSection } from "./editorShortcutTypes";
-import { EDITOR_SHORTCUT_DEFINITIONS, getEditorShortcutDefinition } from "./editorShortcutDefinitions";
-
-export function formatEditorShortcutPanelRows(): Array<{ keys: string; action: string }> {
-  return EDITOR_SHORTCUT_DEFINITIONS.map((d) => ({
-    keys: d.keysLabel,
-    action: d.panelAction,
-  }));
-}
+import { EDITOR_SHORTCUT_DEFINITIONS } from "./editorShortcutDefinitions";
 
 function definitionPanelRow(def: EditorShortcutDefinition): {
   id: string;
@@ -89,8 +82,3 @@ export function editorShortcutFooterHints(): Array<{ keys: string; footerAction:
     footerAction: d.footerAction!,
   }));
 }
-
-/** @deprecated 使用 registry 标签 */
-export const SEGMENT_MERGE_NEXT_SHORTCUT_LABEL = getEditorShortcutDefinition("segment.mergeNext").keysLabel;
-/** @deprecated 使用 registry 标签 */
-export const SEGMENT_MERGE_PREV_SHORTCUT_LABEL = getEditorShortcutDefinition("segment.mergePrev").keysLabel;

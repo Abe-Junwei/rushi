@@ -16,7 +16,6 @@ import {
 import { useAsrModelCacheController } from "./useAsrModelCacheController";
 
 export type { AsrHealthCapabilities } from "../tauri/projectApi";
-export { funasrManualSetupCommands, parseAsrHealthJson } from "../services/asr/asrHealthParse";
 export type { AsrHealthState };
 
 export interface AsrBridgeApi {

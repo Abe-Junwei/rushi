@@ -15,7 +15,6 @@ export {
   glossaryBiasFieldHint,
   glossaryBiasSummaryForProviderId,
   providerSupportsGlossaryBias,
-  supportsHotwordBiasForProviderId,
   vocabularyChannelForProviderId,
   type SttOnlineVocabularyChannel,
 } from "../sttVocabularyBias";

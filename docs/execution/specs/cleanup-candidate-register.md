@@ -1,6 +1,6 @@
 # 代码库清理 — 候选登记表
 
-> **状态**：Wave A–D ✅ · Wave E1 ✅ · Wave E2 ✅ · Wave E3 待执行  
+> **状态**：Wave A–D ✅ · Wave E1–E3 ✅  
 > **基线**：[cleanup-scan-baseline.md](./cleanup-scan-baseline.md)  
 > **图例**：动作 `DELETE` / `ARCHIVE` / `MERGE` / `FIX` / `KEEP` / `DEFER` · 风险 `L0`低 `L1`中 `L2`高 `L3`禁止
 

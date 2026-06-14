@@ -7,7 +7,6 @@ vi.mock("@tauri-apps/api/core", () => ({
 vi.mock("../../config/env", () => ({
   asrBaseUrl: () => "http://localhost:8741",
   isTauriRuntime: () => true,
-  isPackagedDesktopApp: () => false,
 }));
 
 describe("defaultLoopbackTimeoutMs", () => {

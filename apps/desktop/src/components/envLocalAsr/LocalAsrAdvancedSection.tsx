@@ -1,7 +1,7 @@
 import { ENV_COMPACT_BTN } from "../../config/controlStyles";
 import { readShellManagesBundledSidecarSync } from "../../services/shellCapabilities";
 import { PANEL_TYPOGRAPHY } from "../../config/typography";
-import { funasrManualSetupCommands } from "../../pages/useProjectController";
+import { funasrManualSetupCommands } from "../../services/asr/asrHealthParse";
 import type { AsrHealthCapabilities } from "../../tauri/projectApi";
 import {
   EnvLocalAsrCollapsibleSection,

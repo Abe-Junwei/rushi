@@ -102,24 +102,7 @@ export function resolveCorrectionRulesEmptyFitHeight(input: {
     input.lexiconHealthLineCount ?? 0,
     input.lexiconHealthExpanded ?? false,
   );
-  return resolveFloatingPanelCompactFitHeight(CORRECTION_RULES_EMPTY_STATIC_BODY_PX, extra);
-}
-
-export function resolveCorrectionRulesPreviewFitHeight(input: {
-  rowCount: number;
-  hasReadOnlyHints: boolean;
-  lexiconHealthLineCount?: number;
-  lexiconHealthExpanded?: boolean;
-}): number {
-  let staticExtra = resolveLexiconHealthPanelHeight(
-    input.lexiconHealthLineCount ?? 0,
-    input.lexiconHealthExpanded ?? false,
-  );
-  if (input.hasReadOnlyHints) staticExtra += FLOATING_PANEL_DETAILS_SUMMARY_PX;
-  return resolveFloatingPanelFitHeight(
-    CORRECTION_RULES_PREVIEW_STATIC_BODY_PX + staticExtra,
-    input.rowCount,
-  );
+  return resolveFloatingPanelCompactFitHeight(CORRECTION_RULES_EMPTY_STATIC_BODY_PX, extra  );
 }
 
 export function resolveStageBConsentFitHeight(hasPendingHint: boolean): number {

@@ -81,7 +81,6 @@ vi.mock("../services/asr/transcribeVocabularyPreflight", () => ({
     emptyGlossaryHint: null,
   })),
   formatTranscribeVocabularyPreflightLines: () => [],
-  compactTranscribeVocabularyPreflightHint: () => null,
 }));
 
 /** Side-effect module: import first in transcribe job controller tests. */

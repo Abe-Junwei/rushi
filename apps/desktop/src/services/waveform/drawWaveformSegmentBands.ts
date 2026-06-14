@@ -10,7 +10,7 @@ import {
 } from "../../utils/waveformSegmentBandCanvasColors";
 import { selectOverlayRenderedSegmentIndices } from "../../utils/waveformSegmentOverlayVisibility";
 
-export const SEGMENT_BAND_VIEWPORT_PAD_MUL = 1.5;
+const SEGMENT_BAND_VIEWPORT_PAD_MUL = 1.5;
 
 export function drawWaveformSegmentBands(input: {
   ctx: CanvasRenderingContext2D;

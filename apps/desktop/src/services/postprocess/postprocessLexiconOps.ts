@@ -1,11 +1,5 @@
-import type { GroundedLexiconOp, RefineSegmentItem } from "../../tauri/postprocessApi";
+import type { GroundedLexiconOp } from "../../tauri/postprocessApi";
 import { isPunctuationOnlyLineDiff } from "../exportPolishPipeline";
-
-function snippetText(text: string, maxChars = 36): string {
-  const t = text.replace(/\s+/g, " ").trim();
-  if (!t) return "（空）";
-  return t.length <= maxChars ? t : `${t.slice(0, maxChars)}…`;
-}
 
 export function evidenceKindLabel(type: string): string {
   const t = type.trim().toLowerCase();
@@ -23,22 +17,6 @@ export function formatStageBEvidenceSummary(evidence: { type: string; ref: strin
   return ref ? `${kind} · ${ref}` : kind;
 }
 
-export function describeLexiconOpsForPreview(
-  window: RefineSegmentItem[],
-  items: GroundedLexiconOp[],
-): string[] {
-  const byUid = new Map(window.map((s) => [s.uid.trim(), s]));
-  return items.map((item) => {
-    const s = byUid.get(item.uid.trim());
-    const base = s
-      ? `[${s.startSec.toFixed(1)}–${s.endSec.toFixed(1)}s] ${snippetText(s.text)}`
-      : item.uid.length > 12
-        ? `${item.uid.slice(0, 8)}…`
-        : item.uid;
-    return `改字 · ${base} → ${snippetText(item.text, 48)}（依据：${formatStageBEvidenceSummary(item.evidence)}）`;
-  });
-}
-
 export function parseRuleEvidenceRef(ref: string): { before: string; after: string } | null {
   const t = ref.trim();
   const arrow = t.includes("→") ? "→" : t.includes("->") ? "->" : null;
@@ -46,16 +24,6 @@ export function parseRuleEvidenceRef(ref: string): { before: string; after: stri
   const [before, after] = t.split(arrow).map((s) => s.trim());
   if (!before || !after || before === after) return null;
   return { before, after };
-}
-
-export function rulePairsFromLexiconItems(items: GroundedLexiconOp[]): Array<{ before: string; after: string }> {
-  const out: Array<{ before: string; after: string }> = [];
-  for (const item of items) {
-    if (item.evidence.type !== "rule") continue;
-    const pair = parseRuleEvidenceRef(item.evidence.ref);
-    if (pair) out.push(pair);
-  }
-  return out;
 }
 
 export function classifyStageBEvidenceFlags(evidence: { type: string; ref: string }): {

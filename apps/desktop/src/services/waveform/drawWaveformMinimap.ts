@@ -1,6 +1,5 @@
 import { COLORS } from "../../config/tokens";
 
-export const WAVEFORM_MINIMAP_HEIGHT_PX = 56;
 /** 峰值绘制区相对 canvas 高度的上下留白（居中对称柱形）。 */
 const WAVEFORM_MINIMAP_PEAK_INSET_Y_RATIO = 0.22;
 

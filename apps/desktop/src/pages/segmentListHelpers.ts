@@ -9,10 +9,8 @@ import { createSegmentUid, ensureSegmentUids, ensureUniqueSegmentUids } from "..
 import { sanitizeSegmentsForMedia } from "../utils/segmentMediaSanitize";
 import { trimAdjacentSegmentOverlaps } from "../utils/segmentBoundaryTrim";
 
-export { createSegmentUid, ensureSegmentUids, ensureUniqueSegmentUids };
-
 /** 深拷贝语段数组（不重新索引）。 */
-export function cloneSegments(segs: SegmentDto[]): SegmentDto[] {
+function cloneSegments(segs: SegmentDto[]): SegmentDto[] {
   return segs.map((s) => ({ ...s }));
 }
 

@@ -1,4 +1,3 @@
-import { useCallback, useSyncExternalStore } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
 import { segmentUidOf } from "../utils/segmentUid";
 
@@ -161,15 +160,4 @@ function subscribe(listener: () => void): () => void {
 /** 订阅草稿变更（用于自动保存等）。 */
 export function subscribeSegmentDraftStore(listener: () => void): () => void {
   return subscribe(listener);
-}
-
-/** 语段正文草稿（按 uid / idx 键）；未编辑时与 committed 一致。 */
-export function useSegmentDraft(key: string, committedText: string): readonly [string, (text: string) => void] {
-  const committed = normalizeSegmentDraftText(committedText ?? "");
-  const getSnapshot = useCallback(() => drafts.get(key) ?? committed, [key, committed]);
-  const draft = useSyncExternalStore(subscribe, getSnapshot, getSnapshot);
-  const setDraft = useCallback((text: string) => {
-    segmentDraftStore.setDraft(key, text);
-  }, [key]);
-  return [draft, setDraft];
 }

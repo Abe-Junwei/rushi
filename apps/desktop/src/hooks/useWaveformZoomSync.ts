@@ -7,18 +7,14 @@ import {
   disableWaveSurferAutoScroll,
   loadPeaksIntoWaveSurfer,
   planWaveformZoomApply,
-  WAVEFORM_DECODE_SAMPLE_RATE,
   type WaveformZoomSyncInFlight,
 } from "../services/waveform/waveformZoomSyncEngine";
 import {
-  createWaveformAppliedZoomState,
   isPeaksLoadedIntoWs,
   markAppliedPeaks,
   readLoadedPeaksPx,
   type WaveformAppliedZoomState,
 } from "../utils/waveformAppliedZoom";
-
-export { WAVEFORM_DECODE_SAMPLE_RATE as DECODE_SAMPLE_RATE };
 
 function reconcilePeaksAppliedFromAppliedZoom(
   appliedZoom: WaveformAppliedZoomState,
@@ -292,5 +288,3 @@ export function useWaveformZoomSync(args: {
 
   return { cancelInFlightZoom, peaksHotSwitchPending, peaksApplied };
 }
-
-export { createWaveformAppliedZoomState };

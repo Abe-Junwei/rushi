@@ -43,9 +43,22 @@
 | E2-C | **UNEXPORT** 手动 | `floatingPanelSegmentListLayout` Stage-B 布局常量；`LOCAL_ASR_RECOGNITION_LANGUAGE_STORAGE_KEY` |
 | E2-D | **DEFER** | `tauri/*` 死 export — 下波 E3 登记 KEEP |
 
-## 待续（DEFER / E3）
+## Wave E3（已执行）
 
-- **114** knip unused exports：`tauri/*` 类型面、plugin-system、`editorTranscriptAppearance` 字体 token、测试 shared export
+> **配置**：[`apps/desktop/knip.json`](../../../apps/desktop/knip.json) — vitest entry + `ignoreIssues` 公共面  
+> **结果**：knip unused exports **114→0**（types 59→7 KEEP）
+
+| 批次 | 动作 | 范围 |
+|------|------|------|
+| E3-A | **knip.json** | `src/**/*.test.{ts,tsx}` entry；`ignoreIssues`：`tauri/`、`plugin-system/`、`contracts/`、`sttOnlineProviderContract/`、`postprocessRuntimeContract`、`editorTranscriptAppearance`、`**/*.test.shared.ts` |
+| E3-B | **DELETE** | `isPackagedDesktopApp`、`useSegmentDraft`、`resolveWaveformRulerView`、lexicon/stageB 死函数、`OLLAMA_TAGS_URL`、`LLM_CAPABILITIES`、`WAVEFORM_MINIMAP_HEIGHT_PX`、快捷键 deprecated 标签等 |
+| E3-C | **UNEXPORT** | 死 re-export barrel（`useTranscriptionLayer`、`useWaveformZoomSync`、`segmentListHelpers` 等）；测试改直引 `asrHealthParse` / `pxPerSec` |
+| E3-D | **KEEP（7 types）** | `ColorToken`、`BusyPack`、`ProjectPanelShellApi` 等控制器类型面 — 下轮按需 `ignoreIssues` 或消费 |
+
+## 待续（可选 E4）
+
+- **7** knip unused exported types（控制器 / waveform 内部类型，非运行时死代码）
+- **editorTranscriptAppearance** 字体 token（Stitch 预留，已 `ignoreIssues`）
 - **样式模块**：`editorTranscriptAppearance.ts`、`floatingPanel*Layout.ts` 内布局常量（面板 fit 预留）
 - **测试 export**：`*.test.shared.ts` / `testHelpers.ts` — 改 `export` 为文件内或 vitest `import type` 直引
 

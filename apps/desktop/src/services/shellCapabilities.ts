@@ -5,7 +5,7 @@ let shellManagesBundledSidecar: boolean | null = null;
 let loadPromise: Promise<boolean> | null = null;
 
 /** Rust truth: bundled sidecar lifecycle managed by shell (release default; dev when skip unset). */
-export async function readShellManagesBundledSidecar(): Promise<boolean> {
+async function readShellManagesBundledSidecar(): Promise<boolean> {
   if (!isTauriRuntime()) {
     shellManagesBundledSidecar = false;
     return false;

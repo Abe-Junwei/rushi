@@ -2,10 +2,7 @@ import type { SegmentDto } from "../tauri/projectApi";
 import {
   clampSegmentTimeBounds,
   isPlaceholderSegment,
-  WAVEFORM_DOMINANT_SPAN_RATIO,
 } from "./waveformSegmentBounds";
-
-export { WAVEFORM_DOMINANT_SPAN_RATIO };
 
 export type SanitizeSegmentsResult = {
   segments: SegmentDto[];

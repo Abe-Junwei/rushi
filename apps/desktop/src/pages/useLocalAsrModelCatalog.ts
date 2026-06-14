@@ -11,7 +11,6 @@ import {
 import { applyHubModelToSidecar } from "../services/asr/localAsrSetupModelStep";
 import { toast } from "../services/ui/toast";
 import {
-  DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
   LOCAL_ASR_HUB_MODEL_STORAGE_KEY,
   LOCAL_ASR_MODEL_CATALOG,
   catalogEntryForHub,
@@ -265,5 +264,3 @@ async function withApplyTimeout(
     if (timer) clearTimeout(timer);
   }
 }
-
-export { DEFAULT_LOCAL_ASR_HUB_MODEL_ID };

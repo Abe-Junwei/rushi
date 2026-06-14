@@ -37,16 +37,14 @@ export type TranscribeVocabularyPreflightSummary = {
   emptyGlossaryHint: string | null;
 };
 
-export const EMPTY_GLOSSARY_TRANSCRIBE_HINT =
+const EMPTY_GLOSSARY_HINT =
   "转写词汇表暂无纳入热词的词条，专名可能听错；请添加希望听成的正形并勾选「纳入下次转写（热词）」。";
 
-const EMPTY_GLOSSARY_HINT = EMPTY_GLOSSARY_TRANSCRIBE_HINT;
-
-export function readLocalAsrHubModelIdFromStorage(): string {
+function readLocalAsrHubModelIdFromStorage(): string {
   return resolveLocalAsrHubModelId(readStorage(LOCAL_ASR_HUB_MODEL_STORAGE_KEY));
 }
 
-export function buildTranscribeVocabularyPreflightSummary(input: {
+function buildTranscribeVocabularyPreflightSummary(input: {
   hotwords: GlossaryHotwordsPreview | null;
   hubModelId: string;
   isOnlineMode: boolean;
@@ -116,10 +114,4 @@ export async function loadTranscribeVocabularyPreflight(
     isOnlineMode,
     onlineProviderId: isOnlineMode ? sttCfg.selectedProviderId : null,
   });
-}
-
-export function compactTranscribeVocabularyPreflightHint(lines: string[]): string | null {
-  const trimmed = lines.map((l) => l.trim()).filter(Boolean);
-  if (trimmed.length === 0) return null;
-  return trimmed.join(" ");
 }

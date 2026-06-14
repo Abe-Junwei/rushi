@@ -15,7 +15,7 @@ export function readOnlineSttEnvNavTone(): OnlineSttEnvTone {
   return readOnlineSttEnvNavPresentation().tone;
 }
 
-export function readOnlineSttEnvNavPresentation(): OnlineSttEnvPresentation {
+function readOnlineSttEnvNavPresentation(): OnlineSttEnvPresentation {
   const stored = readExternalSttOnlineRuntimeConfigFromStorage();
   const draftConfig = normalizeExternalSttOnlineRuntimeConfig({
     enabled: true,

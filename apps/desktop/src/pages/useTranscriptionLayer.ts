@@ -11,14 +11,6 @@ import type { TranscriptionLayerInput } from "./transcriptionLayerTypes";
 import { useTranscriptionLayerSegmentListDrag } from "./useTranscriptionLayerSegmentListDrag";
 import { useTranscriptionLayerSelection } from "./useTranscriptionLayerSelection";
 
-export { TIMELINE_PX_PER_SEC, clampPxPerSec } from "../utils/pxPerSec";
-export {
-  computeSegmentLaneRowPx,
-  assignSegmentOverlapLanes,
-  computeTimelineWidthPx,
-  SEGMENT_LANE_ROW_PX,
-} from "../utils/segmentLayout";
-
 export type TranscriptionLayerApi = ReturnType<typeof useTranscriptionLayer>;
 export type { TranscriptionLayerInput } from "./transcriptionLayerTypes";
 

@@ -1,5 +1,6 @@
 import type { SegmentDto } from "../tauri/projectApi";
-import { createSegmentUid, reindexSegments } from "./segmentListHelpers";
+import { createSegmentUid } from "../utils/segmentUid";
+import { reindexSegments } from "./segmentListHelpers";
 import { newUserCreatedSegment } from "../services/segmentTextStage";
 import {
   describeCreateRangePolicyFailure,

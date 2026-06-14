@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { TIMELINE_PX_PER_SEC } from "./useTranscriptionLayer";
+import { TIMELINE_PX_PER_SEC } from "../utils/pxPerSec";
 import {
   assignSegmentOverlapLanes,
   computeSegmentLaneRowPx,

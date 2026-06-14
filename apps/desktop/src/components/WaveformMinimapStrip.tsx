@@ -2,7 +2,6 @@ import { useLayoutEffect, useMemo, useRef, useState, type RefObject } from "reac
 import type { PeakCache } from "../services/waveform/PeakCache";
 import {
   drawWaveformMinimap,
-  WAVEFORM_MINIMAP_HEIGHT_PX,
 } from "../services/waveform/drawWaveformMinimap";
 import { resolveMinimapPeaksForDraw } from "../services/waveform/minimapPeaksSource";
 import {
@@ -202,5 +201,3 @@ export function WaveformMinimapStrip({
     </div>
   );
 }
-
-export { WAVEFORM_MINIMAP_HEIGHT_PX };

@@ -47,11 +47,6 @@ export function glossaryBiasFieldHint(channel: SttOnlineVocabularyChannel): stri
   return FIELD_HINT[channel];
 }
 
-/** For `TranscriptionProvider.supportsHotwordBias` and environment copy. */
-export function supportsHotwordBiasForProviderId(providerId: string): boolean {
-  return providerSupportsGlossaryBias(providerId);
-}
-
 /** One-line hint for glossary / online STT panels. */
 export function glossaryBiasSummaryForProviderId(providerId: string): string | null {
   const channel = vocabularyChannelForProviderId(providerId);

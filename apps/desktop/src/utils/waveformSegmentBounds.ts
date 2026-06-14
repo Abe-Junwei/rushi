@@ -61,7 +61,6 @@ export function computeDragSegmentBounds(
 /** 语段 overlay 垂直 inset（贴满 canvas 高度） */
 export const WAVEFORM_SEGMENT_INSET_TOP_PX = 0;
 export const WAVEFORM_SEGMENT_INSET_BOTTOM_PX = 0;
-export const WAVEFORM_SEGMENT_LANE_GAP_PX = 2;
 
 /** Span ratio above which a segment is treated as whole-track placeholder for waveform UI. */
 export const WAVEFORM_DOMINANT_SPAN_RATIO = 0.85;

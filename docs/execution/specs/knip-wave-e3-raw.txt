@@ -1,0 +1,18 @@
+Unused exports (7)
+OLLAMA_TAGS_URL                                           src/services/postprocess/llmProviderCatalog.ts:42:14
+LLM_CAPABILITIES                                          src/services/postprocess/llmProviderCatalog.ts:62:14
+supportsHotwordBiasForProviderId   sttContract  function  src/services/stt/sttVocabularyBias.ts:51:17         
+WAVEFORM_MINIMAP_HEIGHT_PX                                src/services/waveform/drawWaveformMinimap.ts:3:14   
+formatEditorShortcutPanelRows                   function  src/utils/editorShortcutFormat.ts:5:17              
+SEGMENT_MERGE_NEXT_SHORTCUT_LABEL                         src/utils/editorShortcutFormat.ts:94:14             
+SEGMENT_MERGE_PREV_SHORTCUT_LABEL                         src/utils/editorShortcutFormat.ts:96:14             
+Unused exported types (7)
+ColorToken                  type  src/config/tokens.ts:57:13                    
+LexiconBundleConflictItem   type  src/pages/useLexiconBundleController.ts:188:13
+BusyPack                    type  src/pages/useProjectController.ts:15:13       
+ProjectPanelShellApi        type  src/pages/useProjectPanelShell.ts:9:13        
+WaveformDataInstance        type  src/services/waveform/audiowaveformDat.ts:9:13
+PeakLodLevel                type  src/services/waveform/PeakCache.ts:13:13      
+SegmentMergeKeyboardIntent  type  src/utils/editorShortcutTypes.ts:55:13        
+Configuration hints (1)
+src/main.tsx    knip.json  Remove redundant entry pattern
