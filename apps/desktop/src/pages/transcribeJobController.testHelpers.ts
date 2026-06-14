@@ -1,6 +1,8 @@
 import type { SegmentDto } from "../tauri/projectApi";
 import type { useTranscribeJobController } from "./useTranscribeJobController";
 import { loopbackFetch } from "../services/asr/loopbackFetch";
+import { pushTranscribeDeliveryModeToast } from "../services/deliveryModeTranscribeToast";
+import { pushTranscribeHintsToToast, pushTranscribeResultToast } from "../services/ui/toast";
 import { transcribeJobTestApi } from "./transcribeJobController.testSetup";
 import * as sttContract from "../services/stt/sttOnlineProviderContract";
 import { vi } from "vitest";
@@ -74,6 +76,9 @@ export function resetTranscribeJobControllerTests(): void {
   vi.mocked(sttContract.isOnlineTranscribeReady).mockReturnValue(false);
   vi.mocked(sttContract.tryBuildOnlineTranscribeBridgePayload).mockReturnValue(null);
   vi.mocked(sttContract.ensureSttOnlineApiKeyForSession).mockResolvedValue(true);
+  vi.mocked(pushTranscribeHintsToToast).mockClear();
+  vi.mocked(pushTranscribeResultToast).mockClear();
+  vi.mocked(pushTranscribeDeliveryModeToast).mockClear();
 
   projectCancelTranscribe.mockResolvedValue(true);
   getLastTranscribeTimeline.mockResolvedValue(null);

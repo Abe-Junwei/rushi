@@ -10,8 +10,8 @@ import {
   type TranscribeTimelineSnapshot,
 } from "../services/transcribeDiag";
 import {
-  buildTranscribeResultSummary,
   countTranscribeCharacters,
+  resolveTranscribeResultPresentation,
 } from "../services/asr/transcribeResultToast";
 import { pushTranscribeHintsToToast } from "../services/ui/toast";
 import { pushTranscribeDeliveryModeToast } from "../services/deliveryModeTranscribeToast";
@@ -195,17 +195,23 @@ export function useTranscribeJobController(deps: Deps) {
       const diagSnap = out.transcribeTimeline ?? (await p1.getLastTranscribeTimeline().catch(() => null));
       setTranscribeFailureDiag(null);
       const diagLines = formatTranscribeDiagSummary(diagSnap);
+      const elapsedMs = Date.now() - (transcribeStartedAtRef.current ?? Date.now());
+      const charCount = countTranscribeCharacters(segments);
+      const userHints = deriveTranscribeHints(out.engine ?? "", out.warnings ?? [], segments);
       setTranscribeHints([
-        ...deriveTranscribeHints(out.engine ?? "", out.warnings ?? [], segments),
+        ...userHints,
         ...diagLines,
       ]);
-      const elapsedMs = Date.now() - (transcribeStartedAtRef.current ?? Date.now());
-      const summary = buildTranscribeResultSummary({
+      const presentation = resolveTranscribeResultPresentation({
         segmentCount: segments.length,
-        charCount: countTranscribeCharacters(segments),
+        charCount,
         elapsedMs,
       });
-      pushTranscribeDeliveryModeToast(summary);
+      if (presentation.variant === "warning" && userHints.length > 0) {
+        pushTranscribeHintsToToast([presentation.summary, userHints[0]!]);
+      } else {
+        pushTranscribeDeliveryModeToast(presentation);
+      }
       syncOnboardingTranscribe();
     },
     [closeGate, current, mutations, onTranscribeSuccess, segmentsRef, setCurrent, setSegments],

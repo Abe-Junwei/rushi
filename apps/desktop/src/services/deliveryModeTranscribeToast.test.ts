@@ -19,7 +19,11 @@ describe("deliveryModeTranscribeToast", () => {
   it("opens delivery mode from transcribe toast action", () => {
     const open = vi.fn();
     registerDeliveryModeTranscribeAction(open);
-    pushTranscribeDeliveryModeToast("转写完成：用时 1 秒，1 条语段，10 字");
+    pushTranscribeDeliveryModeToast({
+      summary: "转写完成：用时 1 秒，1 条语段，10 字",
+      variant: "success",
+      showDeliveryModeAction: true,
+    });
     expect(getToasts()[0]?.actionLabel).toBe("定稿模式…");
     const toasts = getToasts();
     expect(toasts).toHaveLength(1);

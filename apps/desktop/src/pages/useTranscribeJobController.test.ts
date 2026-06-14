@@ -7,6 +7,8 @@ import {
 } from "./transcribeJobController.testHelpers";
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { pushTranscribeDeliveryModeToast } from "../services/deliveryModeTranscribeToast";
+import { pushTranscribeHintsToToast } from "../services/ui/toast";
 import { useTranscribeJobController } from "./useTranscribeJobController";
 
 const { projectTranscribeAsyncStart, projectTranscribeAsyncFinalize, projectRunTranscribe } =
@@ -164,5 +166,36 @@ describe("useTranscribeJobController", () => {
     expect(result.current.transcribeFailureDiag?.failedStage).toBe("transcribe");
     expect(result.current.transcribeFailureDiag?.errorCode).toBe("sidecar_connect");
     expect(deps.setError).toHaveBeenCalled();
+  });
+
+  it("shows warning toast when local transcribe returns zero segments", async () => {
+    projectTranscribeAsyncFinalize.mockResolvedValue({
+      engine: "funasr+x",
+      warnings: ["funasr_no_sentence_segments"],
+      detail: { segments: [] },
+    });
+
+    const deps = baseTranscribeJobDeps({ segments: [], segmentsRef: { current: [] } });
+    const { result } = renderHook(() =>
+      useTranscribeJobController(deps as Parameters<typeof useTranscribeJobController>[0]),
+    );
+
+    await act(async () => {
+      await result.current.requestTranscribe();
+    });
+    await act(async () => {
+      await result.current.confirmTranscribeStart();
+    });
+
+    expect(vi.mocked(pushTranscribeDeliveryModeToast)).not.toHaveBeenCalled();
+    expect(vi.mocked(pushTranscribeHintsToToast)).toHaveBeenCalledWith(
+      expect.arrayContaining([
+        expect.stringContaining("未生成语段"),
+        expect.stringContaining("未识别到可写入的文本"),
+      ]),
+    );
+    expect(result.current.transcribeHints.some((h) => h.includes("未识别到可写入的文本"))).toBe(
+      true,
+    );
   });
 });

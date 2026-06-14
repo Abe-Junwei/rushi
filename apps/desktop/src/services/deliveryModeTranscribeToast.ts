@@ -1,4 +1,5 @@
-import { pushTranscribeResultToast } from "./ui/toast";
+import { pushTranscribeHintsToToast, pushTranscribeResultToast } from "./ui/toast";
+import type { TranscribeResultPresentation } from "./asr/transcribeResultToast";
 
 let openDeliveryModeFromToast: (() => void) | null = null;
 
@@ -7,9 +8,15 @@ export function registerDeliveryModeTranscribeAction(fn: (() => void) | null): v
   openDeliveryModeFromToast = fn;
 }
 
-export function pushTranscribeDeliveryModeToast(summary: string): void {
-  const message = summary.trim();
+export function pushTranscribeDeliveryModeToast(
+  presentation: TranscribeResultPresentation,
+): void {
+  const message = presentation.summary.trim();
   if (!message) return;
+  if (presentation.variant === "warning") {
+    pushTranscribeHintsToToast([message]);
+    return;
+  }
   pushTranscribeResultToast(message, {
     label: "定稿模式…",
     onClick: () => openDeliveryModeFromToast?.(),

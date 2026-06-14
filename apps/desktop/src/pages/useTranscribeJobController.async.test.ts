@@ -117,9 +117,11 @@ describe("useTranscribeJobController async paths", () => {
     expect(vi.mocked(pushTranscribeHintsToToast)).toHaveBeenCalledWith([
       expect.stringContaining("增量转写"),
     ]);
-    expect(vi.mocked(pushTranscribeDeliveryModeToast)).toHaveBeenCalled();
-    expect(vi.mocked(pushTranscribeDeliveryModeToast).mock.calls[0]?.[0]).toMatch(
-      /转写完成：用时 .+，\d+ 条语段，[\d,]+ 字/,
+    expect(vi.mocked(pushTranscribeDeliveryModeToast)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variant: "success",
+        summary: expect.stringMatching(/转写完成：用时 .+，\d+ 条语段，[\d,]+ 字/),
+      }),
     );
     expect(deps.setError).not.toHaveBeenCalledWith(expect.stringContaining("404"));
     expect(deps.setSegments).toHaveBeenCalledWith([
