@@ -78,7 +78,7 @@
 | `release:postbuild-verify` | ✅ | [release-parity-evidence-2026-06-14.md](../release-parity-evidence-2026-06-14.md) |
 | `v1-release-installed-smoke` | ✅ | [v1-release-installed-smoke-evidence.md](../v1-release-installed-smoke-evidence.md) |
 
-> **L3 仍开放**：上表 7-A–7-D 动态列须在安装包 UI 手测后勾选；清单见 [release-zero-terminal-hand-test.md](../release-zero-terminal-hand-test.md) · [dmg-vs-dev-parity-checklist.md](./dmg-vs-dev-parity-checklist.md)。
+> **L3 仍开放**：上表 7-A–7-D 动态列须在安装包 UI 手测后勾选；清单见 [release-zero-terminal-hand-test.md](../release-zero-terminal-hand-test.md) · [dmg-vs-dev-parity-checklist.md](./dmg-vs-dev-parity-checklist.md) · **[L3 勾选表](../release-parity-l3-hand-test-checklist-2026-06-14.md)**。
 
 ---
 

@@ -68,4 +68,4 @@
 |----|------|
 | Go / No-Go | **L2 Go · L3 No-Go（待手测）** |
 | Blockers | 7-A–7-D 动态签收未勾选 |
-| Follow-up | 1) 重编侧车确保 stamp 随 build 产出 2) `release-zero-terminal-hand-test` §2–7 3) 更新 copy-code-drift 动态列 |
+| Follow-up | 1) 重编侧车确保 stamp 随 build 产出 2) [L3 勾选表](./release-parity-l3-hand-test-checklist-2026-06-14.md) 3) 更新 copy-code-drift 动态列 |
