@@ -15,6 +15,7 @@ from typing import Any
 from rushi_asr.defaults import effective_funasr_forced_aligner_id, effective_funasr_model_id, effective_funasr_vad_model_id
 from rushi_asr.funasr_pipeline import effective_funasr_punc_model_id, recognizer_needs_punc_pipeline
 from rushi_asr.funasr_load_plan import build_funasr_load_plan
+from rushi_asr.inference_queue import get_inference_queue, reset_inference_queue_after_timeout
 from rushi_asr.model_cache_env import configure_hub_env
 from rushi_asr.model_prepare import required_models_cached_guess
 from rushi_asr.model_prepare_cache import (
@@ -39,8 +40,8 @@ _model_loaded_id: str | None = None
 _model_loaded_forced_aligner: str | None = None
 _runtime_lock = threading.RLock()
 
-_inference_executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-_executor_lock = threading.Lock()
+# FunASR AutoModel + generate() are not thread-safe; all inference goes through a single FIFO worker.
+# Do not raise max_workers without a separate model instance per worker.
 
 # Timeout budget for a single inference call (seconds).
 # Formula: duration_sec * 4 + 300, clamped to [600, 7200].
@@ -82,11 +83,7 @@ def invalidate_funasr_model_cache() -> None:
 
 
 def _reset_inference_executor_after_timeout() -> None:
-    global _inference_executor
-    with _executor_lock:
-        old = _inference_executor
-        _inference_executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
-        old.shutdown(wait=False, cancel_futures=True)
+    reset_inference_queue_after_timeout()
 
 
 def _inference_timeout_sec(duration_sec: float | None) -> float:
@@ -268,9 +265,10 @@ def generate_and_parse_funasr(
 
     def _generate(kwargs: dict[str, Any]) -> Any:
         timeout = _inference_timeout_sec(_duration_sec)
-        with _executor_lock:
-            executor = _inference_executor
-        future = executor.submit(model.generate, input=str(wav_path), **kwargs)
+        frozen = dict(kwargs)
+        future = get_inference_queue().submit(
+            lambda: model.generate(input=str(wav_path), **frozen),
+        )
         try:
             return future.result(timeout=timeout)
         except concurrent.futures.TimeoutError as e:

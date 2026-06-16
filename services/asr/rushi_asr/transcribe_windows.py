@@ -16,6 +16,7 @@ log = logging.getLogger(__name__)
 DEFAULT_WINDOW_SEC = 300.0
 DEFAULT_ASYNC_WINDOW_SEC = 120.0
 DEFAULT_WINDOW_THRESHOLD_SEC = 1800.0
+DEFAULT_WINDOW_OVERLAP_SEC = 2.0
 
 
 class TranscribeCancelledError(Exception):
@@ -31,6 +32,22 @@ def _env_float(name: str, default: float) -> float:
     except ValueError:
         return default
     return value if value > 0 else default
+
+
+def window_overlap_sec() -> float:
+    raw = os.environ.get("RUSHI_FUNASR_WINDOW_OVERLAP_SEC", "").strip()
+    if not raw:
+        return DEFAULT_WINDOW_OVERLAP_SEC
+    try:
+        value = float(raw)
+    except ValueError:
+        return DEFAULT_WINDOW_OVERLAP_SEC
+    return max(0.0, value)
+
+
+def effective_window_overlap_sec(slice_sec: float, overlap_sec: float | None = None) -> float:
+    overlap = window_overlap_sec() if overlap_sec is None else max(0.0, overlap_sec)
+    return min(overlap, max(0.0, slice_sec - 0.5))
 
 
 def window_sec() -> float:
@@ -63,16 +80,27 @@ def should_transcribe_by_windows_async(duration_sec: float | None) -> bool:
     return duration_sec >= async_window_threshold_sec()
 
 
-def plan_windows(total_sec: float, slice_sec: float) -> list[tuple[float, float]]:
+def plan_windows(
+    total_sec: float,
+    slice_sec: float,
+    *,
+    overlap_sec: float | None = None,
+) -> list[tuple[float, float]]:
     """Return ``(start_offset_sec, slice_duration_sec)`` for each window."""
     if total_sec <= 0 or slice_sec <= 0:
         return []
+    overlap = effective_window_overlap_sec(slice_sec, overlap_sec)
+    step = slice_sec - overlap if overlap > 0 else slice_sec
+    if step <= 0:
+        return [(0.0, total_sec)]
     windows: list[tuple[float, float]] = []
     start = 0.0
     while start < total_sec - 1e-6:
         dur = min(slice_sec, total_sec - start)
         windows.append((start, dur))
-        start += slice_sec
+        if start + dur >= total_sec - 1e-6:
+            break
+        start += step
     return windows
 
 
@@ -99,8 +127,34 @@ def offset_segments(
 
 
 def sort_window_segments(segments: list[TranscriptionSegment]) -> list[TranscriptionSegment]:
-    """Sort window slices by time; overlap trimming is done in the Rust desktop layer."""
+    """Sort window slices by time; adjacent overlap trim is done in the Rust desktop layer."""
     return sorted(segments, key=lambda s: (s.start_sec, s.end_sec))
+
+
+def trim_window_prefix_overlap(
+    segments: list[TranscriptionSegment],
+    cutoff_sec: float,
+) -> list[TranscriptionSegment]:
+    """Drop/trim the overlapped prefix from a later window before preview/final merge."""
+    out: list[TranscriptionSegment] = []
+    for seg in segments:
+        if seg.end_sec <= cutoff_sec + 1e-6:
+            continue
+        start = max(seg.start_sec, cutoff_sec)
+        if seg.end_sec <= start + 1e-6:
+            continue
+        out.append(
+            TranscriptionSegment(
+                start_sec=start,
+                end_sec=seg.end_sec,
+                text=seg.text,
+                confidence=seg.confidence,
+                low_confidence=seg.low_confidence,
+                detail=seg.detail,
+                kind=seg.kind,
+            ),
+        )
+    return out
 
 
 def transcribe_by_windows(
@@ -121,6 +175,7 @@ def transcribe_by_windows(
             out_warnings.append(msg)
 
     effective_slice_sec = slice_sec if slice_sec is not None else window_sec()
+    effective_overlap_sec = effective_window_overlap_sec(effective_slice_sec)
     windows = plan_windows(total_duration_sec, effective_slice_sec)
     if not windows:
         raise RuntimeError("transcribe_window_plan_empty")
@@ -157,6 +212,8 @@ def transcribe_by_windows(
                 out_warnings,
             )
             offset = offset_segments(segs, start_sec)
+            if index > 1 and effective_overlap_sec > 0:
+                offset = trim_window_prefix_overlap(offset, start_sec + effective_overlap_sec)
             merged.extend(offset)
             if on_window_done is not None:
                 on_window_done(index, len(windows), offset)

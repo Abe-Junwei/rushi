@@ -50,6 +50,35 @@ class PrepareModelRequest(BaseModel):
     model_id: str | None = Field(default=None, description="FunASR hub model id")
 
 
+async def read_upload_to_temp(
+    file: UploadFile,
+    tmp_path: Path,
+) -> Path:
+    """Stream multipart upload to disk (bounded memory)."""
+    if not file.filename:
+        raise HTTPException(status_code=400, detail="missing file name")
+    suffix = Path(file.filename).suffix
+    in_path = tmp_path / f"upload{suffix or '.bin'}"
+    total = 0
+    try:
+        with in_path.open("wb") as out:
+            while True:
+                chunk = await file.read(_READ_CHUNK)
+                if not chunk:
+                    break
+                total += len(chunk)
+                if total > _MAX_UPLOAD_BYTES:
+                    raise HTTPException(status_code=413, detail="upload_too_large")
+                out.write(chunk)
+    except HTTPException:
+        in_path.unlink(missing_ok=True)
+        raise
+    except Exception:
+        in_path.unlink(missing_ok=True)
+        raise
+    return in_path
+
+
 def create_app() -> FastAPI:
     configure_hub_env()
     app = FastAPI(title="rushi-asr", version="0.1.0")
@@ -191,33 +220,6 @@ def create_app() -> FastAPI:
                 raise HTTPException(status_code=503, detail=code) from e
             raise HTTPException(status_code=500, detail=code) from e
 
-    async def _read_upload_to_temp(
-        file: UploadFile,
-        tmp_path: Path,
-    ) -> Path:
-        if not file.filename:
-            raise HTTPException(status_code=400, detail="missing file name")
-        suffix = Path(file.filename).suffix
-        in_path = tmp_path / f"upload{suffix or '.bin'}"
-        chunks: list[bytes] = []
-        total = 0
-        while True:
-            chunk = await file.read(_READ_CHUNK)
-            if not chunk:
-                break
-            total += len(chunk)
-            if total > _MAX_UPLOAD_BYTES:
-                raise HTTPException(status_code=413, detail="upload_too_large")
-            chunks.append(chunk)
-
-        def _write_upload() -> None:
-            with in_path.open("wb") as out:
-                for part in chunks:
-                    out.write(part)
-
-        await run_in_threadpool(_write_upload)
-        return in_path
-
     @app.post("/v1/transcribe")
     async def transcribe(
         request: Request,
@@ -228,7 +230,7 @@ def create_app() -> FastAPI:
         tmp = await run_in_threadpool(lambda: tempfile.mkdtemp(prefix="rushi_asr_"))
         tmp_path = Path(tmp)
         try:
-            in_path = await _read_upload_to_temp(file, tmp_path)
+            in_path = await read_upload_to_temp(file, tmp_path)
             result = await run_in_threadpool(transcribe_upload, in_path, tmp_path, hotwords)
             return result.model_dump()
         finally:
@@ -246,7 +248,7 @@ def create_app() -> FastAPI:
 
         tmp = await run_in_threadpool(lambda: tempfile.mkdtemp(prefix="rushi_asr_job_"))
         tmp_path = Path(tmp)
-        in_path = await _read_upload_to_temp(file, tmp_path)
+        in_path = await read_upload_to_temp(file, tmp_path)
         # Job thread owns tmp_path cleanup after completion.
         return start_transcribe_async(in_path, tmp_path, hotwords)
 

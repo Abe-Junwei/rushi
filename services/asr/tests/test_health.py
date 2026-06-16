@@ -25,6 +25,7 @@ def test_health_ok() -> None:
     body = res.json()
     assert body["status"] == "ok"
     assert body["service"] == "rushi-asr"
+    assert isinstance(body.get("version"), str) and body["version"]
     assert "ffmpeg_ok" in body
     assert "ffmpeg_on_path" in body
     assert "funasr_import_ok" in body
@@ -36,6 +37,7 @@ def test_health_ok() -> None:
     assert "ready_for_transcribe" in body
     assert "rushi_models_root" in body
     assert "funasr_default_model_cached" in body
+    assert isinstance(body.get("version"), str) and body["version"]
     assert body["transcription_mode"] in ("funasr", "stub")
     assert isinstance(body.get("funasr_model_id"), str)
     assert body.get("funasr_language") in ("zh", "en", "ja", "ko", "yue", "auto")

@@ -5,7 +5,7 @@ build-backend = "hatchling.build"
 [project]
 name = "rushi-asr"
 version = "0.1.0"
-description = "如是我闻本地 ASR HTTP 服务（占位 / 后续接 FunASR 等）"
+description = "如是我闻（Rushi）本地中文 ASR HTTP 侧车：FunASR 转写、分窗、模型准备与 /health 能力探测"
 readme = "README.md"
 requires-python = ">=3.11"
 license = { text = "ISC" }
