@@ -8,6 +8,7 @@ import {
 import { ollamaDetectReady } from "./llmEnvStatusTone";
 import { resolveLlmEnvEffectiveConfig, type LlmEnvConfigDraft } from "./llmEnvStatus";
 import { waitMinVisibleBusy } from "../ui/minVisibleBusy";
+import { createModuleStore } from "../shared/createModuleStore";
 
 /** Ollama 探测 + 连接验证序号：顶栏芯片 / 设置 banner / 导出 共用真源。 */
 export type LlmEnvRuntimeSnapshot = {
@@ -16,35 +17,33 @@ export type LlmEnvRuntimeSnapshot = {
   connectionVerifiedSeq: number;
 };
 
-const listeners = new Set<() => void>();
-
-let snapshot: LlmEnvRuntimeSnapshot = {
+const initialSnapshot: LlmEnvRuntimeSnapshot = {
   ollamaDetect: null,
   ollamaDetectBusy: false,
   connectionVerifiedSeq: 0,
 };
+
+const llmEnvRuntimeStore = createModuleStore<LlmEnvRuntimeSnapshot>(() => ({ ...initialSnapshot }));
 
 /** 按 refreshSeq 记录是否已为本机模式发起过探测，避免多 hook 重复触发。 */
 const ensuredRefreshSeqByKey = new Map<string, number>();
 
 let inflightDetect: Promise<OllamaDetectResponse> | null = null;
 
-function publish(): void {
-  for (const listener of listeners) listener();
+function setSnapshot(partial: Partial<LlmEnvRuntimeSnapshot>): void {
+  llmEnvRuntimeStore.setState((prev) => ({ ...prev, ...partial }));
 }
 
 export function getLlmEnvRuntimeSnapshot(): LlmEnvRuntimeSnapshot {
-  return snapshot;
+  return llmEnvRuntimeStore.getState();
 }
 
 export function subscribeLlmEnvRuntime(onStoreChange: () => void): () => void {
-  listeners.add(onStoreChange);
-  return () => listeners.delete(onStoreChange);
+  return llmEnvRuntimeStore.subscribe(onStoreChange);
 }
 
 function bumpLlmEnvConnectionVerifiedSeq(): void {
-  snapshot = { ...snapshot, connectionVerifiedSeq: snapshot.connectionVerifiedSeq + 1 };
-  publish();
+  setSnapshot({ connectionVerifiedSeq: getLlmEnvRuntimeSnapshot().connectionVerifiedSeq + 1 });
 }
 
 function ensureKey(refreshSeq: number, configDraft?: LlmEnvConfigDraft | null): string {
@@ -57,6 +56,7 @@ export function ensureLlmOllamaDetect(args: {
   refreshSeq: number;
   configDraft?: LlmEnvConfigDraft | null;
 }): void {
+  const snapshot = getLlmEnvRuntimeSnapshot();
   const key = ensureKey(args.refreshSeq, args.configDraft);
   if (ensuredRefreshSeqByKey.get(key) === args.refreshSeq && snapshot.ollamaDetect !== null) {
     return;
@@ -73,8 +73,7 @@ export async function refreshLlmOllamaDetect(args?: {
 
   inflightDetect = (async () => {
     const startedAt = Date.now();
-    snapshot = { ...snapshot, ollamaDetectBusy: true };
-    publish();
+    setSnapshot({ ollamaDetectBusy: true });
 
     const cfg = args?.configDraft
       ? resolveLlmEnvEffectiveConfig(args.configDraft)
@@ -84,8 +83,7 @@ export async function refreshLlmOllamaDetect(args?: {
     try {
       const out = await ollamaDetectStatus({ model: probeModel });
       await waitMinVisibleBusy(startedAt);
-      snapshot = { ...snapshot, ollamaDetect: out, ollamaDetectBusy: false };
-      publish();
+      setSnapshot({ ollamaDetect: out, ollamaDetectBusy: false });
       if (out.reachable && isLocalLoopbackLlmConfig(cfg) && ollamaDetectReady(out)) {
         markLlmConnectionVerified(cfg);
       }
@@ -98,8 +96,7 @@ export async function refreshLlmOllamaDetect(args?: {
         message: e instanceof Error ? e.message : String(e),
       };
       await waitMinVisibleBusy(startedAt);
-      snapshot = { ...snapshot, ollamaDetect: out, ollamaDetectBusy: false };
-      publish();
+      setSnapshot({ ollamaDetect: out, ollamaDetectBusy: false });
       return out;
     } finally {
       inflightDetect = null;
@@ -111,14 +108,9 @@ export async function refreshLlmOllamaDetect(args?: {
 
 /** 测试专用：重置 store */
 export function resetLlmEnvRuntimeStoreForTests(): void {
-  snapshot = {
-    ollamaDetect: null,
-    ollamaDetectBusy: false,
-    connectionVerifiedSeq: 0,
-  };
+  llmEnvRuntimeStore.setState({ ...initialSnapshot });
   ensuredRefreshSeqByKey.clear();
   inflightDetect = null;
-  publish();
 }
 
 if (typeof window !== "undefined") {

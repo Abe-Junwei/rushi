@@ -42,6 +42,7 @@ type Deps = {
 };
 
 export function useProjectMutationController(deps: Deps): ProjectMutationControllerApi {
+  const { busy, current } = deps;
   const [isRenamingProject, setIsRenamingProject] = useState(false);
   const [renameProjectDraft, setRenameProjectDraft] = useState("");
   const [projectMetadataDialogOpen, setProjectMetadataDialogOpen] = useState(false);
@@ -75,10 +76,12 @@ export function useProjectMutationController(deps: Deps): ProjectMutationControl
   }, [cancelRenameProject, deps, renameProjectDraft]);
 
   const openProjectMetadataDialog = useCallback((options?: { afterCreate?: boolean }) => {
-    if (deps.busy || !deps.current) return;
+    if (busy) return;
+    // afterCreate: applyDetail setState may not have flushed yet; dialog opens on same batched render.
+    if (!current && !options?.afterCreate) return;
     setProjectMetadataAfterCreate(options?.afterCreate ?? false);
     setProjectMetadataDialogOpen(true);
-  }, [deps.busy, deps.current]);
+  }, [busy, current]);
 
   const closeProjectMetadataDialog = useCallback(() => {
     setProjectMetadataDialogOpen(false);

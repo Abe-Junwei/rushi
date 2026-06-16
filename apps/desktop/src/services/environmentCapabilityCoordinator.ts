@@ -6,6 +6,7 @@ import {
 import type { AsrEnvPresentation } from "./asr/asrEnvStatus";
 import type { AsrPresentationOverlay } from "./environmentCapabilityPresentation";
 import { buildEnvironmentCapabilityPresentation } from "./environmentCapabilityPresentation";
+import { createModuleStore } from "./shared/createModuleStore";
 
 /** R3h-I Runtime Supervisor will extend reasons with sidecar push events. */
 export type EnvironmentCapabilityRefreshReason =
@@ -43,16 +44,27 @@ export type EnvironmentCapabilitySnapshot = {
 const FOCUS_MIN_INTERVAL_MS = 5000;
 const DEFAULT_MAX_STALE_MS = 10_000;
 
+const envCapabilityStore = createModuleStore<{
+  snapshot: EnvironmentCapabilitySnapshot | null;
+}>(() => ({ snapshot: null }));
+
 let registeredDeps: EnvironmentCapabilityRefreshDeps | null = null;
 let inflight: Promise<EnvironmentCapabilitySnapshot | null> | null = null;
-let latestSnapshot: EnvironmentCapabilitySnapshot | null = null;
 let generation = 0;
 let lastFocusRefreshAt = 0;
 
-const listeners = new Set<(snapshot: EnvironmentCapabilitySnapshot | null) => void>();
+function latestSnapshot(): EnvironmentCapabilitySnapshot | null {
+  return envCapabilityStore.getState().snapshot;
+}
 
-function publish(snapshot: EnvironmentCapabilitySnapshot | null): void {
-  for (const listener of listeners) listener(snapshot);
+function setLatestSnapshot(snapshot: EnvironmentCapabilitySnapshot | null): void {
+  envCapabilityStore.setState({ snapshot });
+}
+
+export function subscribeEnvironmentCapabilitySnapshot(
+  listener: (snapshot: EnvironmentCapabilitySnapshot | null) => void,
+): () => void {
+  return envCapabilityStore.subscribe((state) => listener(state.snapshot));
 }
 
 export function registerEnvironmentCapabilityRefreshDeps(
@@ -70,16 +82,15 @@ export function syncEnvironmentCapabilityRefreshDeps(deps: EnvironmentCapability
 }
 
 export function getEnvironmentCapabilityBlockReason(): string | null {
-  return latestSnapshot?.blockReason ?? null;
+  return latestSnapshot()?.blockReason ?? null;
 }
 
 export function resetEnvironmentCapabilityCoordinatorForTests(): void {
   registeredDeps = null;
   inflight = null;
-  latestSnapshot = null;
+  setLatestSnapshot(null);
   generation = 0;
   lastFocusRefreshAt = 0;
-  listeners.clear();
 }
 
 function shouldRunFocusRefresh(force?: boolean): boolean {
@@ -100,7 +111,7 @@ export async function runEnvironmentCapabilityRefresh(
   options?: { touchUi?: boolean; force?: boolean },
 ): Promise<EnvironmentCapabilitySnapshot | null> {
   if (reason === "app-focus" && !shouldRunFocusRefresh(options?.force)) {
-    return latestSnapshot;
+    return latestSnapshot();
   }
 
   if (inflight) return inflight;
@@ -136,14 +147,14 @@ export async function runEnvironmentCapabilityRefresh(
         asrOverlay: deps.getAsrPresentationOverlay?.(),
       });
 
-      latestSnapshot = {
+      const nextSnapshot: EnvironmentCapabilitySnapshot = {
         generation: ++generation,
         blockReason: presentation.blockReason,
         presentation,
         refreshedAtMs: Date.now(),
       };
-      publish(latestSnapshot);
-      return latestSnapshot;
+      setLatestSnapshot(nextSnapshot);
+      return nextSnapshot;
     } finally {
       inflight = null;
     }
@@ -158,10 +169,11 @@ export async function awaitEnvironmentCapabilityRefresh(options?: {
   if (inflight) return inflight;
 
   const maxStaleMs = options?.maxStaleMs ?? DEFAULT_MAX_STALE_MS;
-  const age = latestSnapshot ? Date.now() - latestSnapshot.refreshedAtMs : Number.POSITIVE_INFINITY;
-  if (age <= maxStaleMs && latestSnapshot) return latestSnapshot;
+  const current = latestSnapshot();
+  const age = current ? Date.now() - current.refreshedAtMs : Number.POSITIVE_INFINITY;
+  if (age <= maxStaleMs && current) return current;
 
-  if (!registeredDeps) return latestSnapshot;
+  if (!registeredDeps) return current;
   return runEnvironmentCapabilityRefresh("transcribe-preflight", registeredDeps, {
     touchUi: false,
   });

@@ -1,7 +1,6 @@
-import { useCallback, useEffect, type Dispatch, type MutableRefObject, type RefObject, type SetStateAction } from "react";
+import { useCallback, useEffect } from "react";
 import WaveSurfer from "wavesurfer.js";
 import { COLORS } from "../config/tokens";
-import type { PeakCache } from "../services/waveform/PeakCache";
 import {
   quantizePxPerSecForPeaksLoad,
   clampPxPerSecForWaveSurferRender,
@@ -12,7 +11,6 @@ import {
   markAppliedPeaks,
   markAppliedZoomWs,
   resetAppliedPeaks,
-  type WaveformAppliedZoomState,
 } from "../utils/waveformAppliedZoom";
 import { WAVEFORM_DECODE_SAMPLE_RATE } from "../services/waveform/waveformZoomSyncEngine";
 import { installWaveSurferProgressAbortWarnFilter } from "../services/waveform/waveSurferProgressAbortWarn";
@@ -29,56 +27,18 @@ import {
   applyWaveSurferShadowCspNonce,
   withWaveSurferCspNonce,
 } from "../utils/waveSurferShadowCspNonce";
-import type { UseProjectWaveformOptions } from "./useProjectWaveformTypes";
+import {
+  waitForWaveformContainer,
+  type ProjectWaveformMountRefs,
+} from "./projectWaveformMountSupport";
 
 installWaveSurferProgressAbortWarnFilter();
-
-async function waitForWaveformContainer(
-  readContainer: () => HTMLDivElement | null,
-  isDisposed: () => boolean,
-  maxAttempts = 60,
-): Promise<HTMLDivElement | null> {
-  for (let attempt = 0; attempt < maxAttempts; attempt += 1) {
-    if (isDisposed()) return null;
-    await new Promise<void>((resolve) => {
-      requestAnimationFrame(() => resolve());
-    });
-    const el = readContainer();
-    if (el?.isConnected) return el;
-  }
-  return null;
-}
-
-type MountRefs = {
-  optsRef: MutableRefObject<UseProjectWaveformOptions>;
-  containerRef: RefObject<HTMLDivElement | null>;
-  wsRef: MutableRefObject<WaveSurfer | null>;
-  wsUnsubsRef: MutableRefObject<Array<() => void>>;
-  minPxPerSecRef: MutableRefObject<number>;
-  peakCacheRef: MutableRefObject<PeakCache | null>;
-  layoutDurationSecRef: MutableRefObject<number>;
-  waveformHeightRef: MutableRefObject<number>;
-  appliedWaveformHeightRef: MutableRefObject<number>;
-  pendingAppliedWaveformHeightRef: MutableRefObject<number | null>;
-  appliedZoom: WaveformAppliedZoomState;
-  syncTierScrollAfterRenderRef: MutableRefObject<() => void>;
-  lastTimeUiCommitRef: MutableRefObject<number>;
-  lastTimeUiCommitMsRef: MutableRefObject<number>;
-  scrollNotifyRafRef: MutableRefObject<number>;
-  pendingScrollLeftRef: MutableRefObject<number>;
-  setLoadError: Dispatch<SetStateAction<string | null>>;
-  setIsReady: Dispatch<SetStateAction<boolean>>;
-  setIsPlaying: Dispatch<SetStateAction<boolean>>;
-  setDuration: Dispatch<SetStateAction<number>>;
-  setCurrentTime: Dispatch<SetStateAction<number>>;
-};
 
 export function useProjectWaveformMount(
   mediaUrl: string | null | undefined,
   mediaDiskPath: string | null | undefined,
   deferDecodeMount: boolean,
-  peakCacheGeneration: number,
-  refs: MountRefs,
+  refs: ProjectWaveformMountRefs,
   destroyWave: () => void,
 ) {
   const {
@@ -257,18 +217,19 @@ export function useProjectWaveformMount(
     mediaUrl,
     mediaDiskPath,
     deferDecodeMount,
-    peakCacheGeneration,
     destroyWave,
     optsRef,
     containerRef,
     wsRef,
     wsUnsubsRef,
     minPxPerSecRef,
+    peakCacheRef,
     layoutDurationSecRef,
     waveformHeightRef,
     appliedWaveformHeightRef,
     pendingAppliedWaveformHeightRef,
     appliedZoom,
+    syncTierScrollAfterRenderRef,
     lastTimeUiCommitRef,
     lastTimeUiCommitMsRef,
     scrollNotifyRafRef,
@@ -284,10 +245,13 @@ export function useProjectWaveformMount(
 export function useProjectWaveformDestroy(
   clearWsListeners: () => void,
   refs: Pick<
-    MountRefs,
+    ProjectWaveformMountRefs,
     "wsRef" | "scrollNotifyRafRef" | "pendingAppliedWaveformHeightRef" | "appliedZoom"
   >,
-  setters: Pick<MountRefs, "setIsReady" | "setIsPlaying" | "setDuration" | "setCurrentTime">,
+  setters: Pick<
+    ProjectWaveformMountRefs,
+    "setIsReady" | "setIsPlaying" | "setDuration" | "setCurrentTime"
+  >,
 ) {
   const { wsRef, scrollNotifyRafRef, pendingAppliedWaveformHeightRef, appliedZoom } = refs;
   const { setIsReady, setIsPlaying, setDuration, setCurrentTime } = setters;

@@ -28,6 +28,7 @@ describe("buildAsrEnvPresentation", () => {
         funasr_model_configured: true,
         funasr_ready: true,
         funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+        funasr_required_models_cached: true,
         ready_for_transcribe: true,
         transcription_mode: "funasr",
       },

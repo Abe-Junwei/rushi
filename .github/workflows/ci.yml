@@ -83,8 +83,16 @@ jobs:
       - name: TypeScript
         run: npm run typecheck
 
-      - name: Vitest
-        run: npm run test
+      - name: Vitest with coverage
+        run: npm run test:coverage -w @rushi/desktop
+
+      - name: Upload coverage artifact
+        uses: actions/upload-artifact@v7
+        with:
+          name: desktop-coverage
+          path: apps/desktop/coverage
+          retention-days: 14
+          if-no-files-found: ignore
 
       - name: Vite production build
         run: npm run build
@@ -185,7 +193,7 @@ jobs:
           node-version: "22"
           cache: npm
 
-      - name: Playwright E2E (loopback /health)
+      - name: Playwright E2E (ASR contract; self-hosted mock sidecar)
         env:
           PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: "1"
         run: |

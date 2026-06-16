@@ -185,10 +185,7 @@ export function computeLocalAsrTranscribeReady(input: LocalAsrTranscribeReadyInp
   }
   const view = buildLocalAsrCatalogView(asrCaps, input.catalogStatus ?? null, selected);
   const prepare = selectedModelPrepareState(view, selected, sidecarHub);
-  const ready =
-    prepare.readyForTranscribe ||
-    (asrCaps.ready_for_transcribe === true && sidecarMatchesSelection);
-  return { ready, sidecarMatchesSelection };
+  return { ready: prepare.readyForTranscribe, sidecarMatchesSelection };
 }
 
 function selectedModelMatchesSidecar(

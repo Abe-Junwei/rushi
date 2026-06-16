@@ -5,6 +5,8 @@
 !.env.example
 node_modules/
 dist/
+coverage/
+apps/desktop/coverage/
 target/
 # Tauri 打包产物（stage-release-artifacts.sh 复制 DMG + symlink .app 到仓库根；勿提交）
 /*.dmg

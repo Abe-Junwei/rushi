@@ -1,5 +1,6 @@
 import type { SegmentDto } from "../tauri/projectApi";
 import { segmentUidOf } from "../utils/segmentUid";
+import { createModuleStore } from "../services/shared/createModuleStore";
 
 export function normalizeSegmentDraftText(text: string): string {
   return text.replace(/\r\n|\r|\n/g, " ");
@@ -57,12 +58,13 @@ export function pruneDraftKeysForSegments(segments: SegmentDto[]): void {
 
 const drafts = new Map<string, string>();
 const composingKeys = new Set<string>();
-const listeners = new Set<() => void>();
+
+const draftNotifyStore = createModuleStore(() => ({ revision: 0 }));
 
 let emitRafId: number | null = null;
 
 function emit(): void {
-  listeners.forEach((l) => l());
+  draftNotifyStore.setState((state) => ({ revision: state.revision + 1 }));
 }
 
 function scheduleEmit(): void {
@@ -152,12 +154,7 @@ export const segmentDraftStore = {
   flushPendingEmit,
 };
 
-function subscribe(listener: () => void): () => void {
-  listeners.add(listener);
-  return () => listeners.delete(listener);
-}
-
 /** 订阅草稿变更（用于自动保存等）。 */
 export function subscribeSegmentDraftStore(listener: () => void): () => void {
-  return subscribe(listener);
+  return draftNotifyStore.subscribe(listener);
 }

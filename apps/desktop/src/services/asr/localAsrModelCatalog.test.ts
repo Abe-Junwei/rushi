@@ -167,6 +167,33 @@ describe("localAsrModelCatalog", () => {
     expect(result.ready).toBe(true);
   });
 
+  it("computeLocalAsrTranscribeReady ignores global ready when selected SKU is not ready", () => {
+    const result = computeLocalAsrTranscribeReady({
+      asrHealth: "ok",
+      asrCaps: {
+        funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+        funasr_active_model_cached: true,
+        ready_for_transcribe: true,
+      },
+      catalogStatus: [
+        {
+          catalogId: "paraformer-long-vad-punc",
+          label: "Paraformer",
+          hubModelId: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+          description: "",
+          diskHint: "",
+          recommendLongAudio: true,
+          cached: true,
+          active: true,
+          readyForTranscribe: false,
+        },
+      ],
+      selectedHubModelId: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+    });
+    expect(result.sidecarMatchesSelection).toBe(true);
+    expect(result.ready).toBe(false);
+  });
+
   it("computeLocalAsrTranscribeReady treats deprecated sidecar id as matching Paraformer selection", () => {
     const result = computeLocalAsrTranscribeReady({
       asrHealth: "ok",

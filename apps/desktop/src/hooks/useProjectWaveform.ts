@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { formatMediaTime } from "../utils/formatMediaTime";
 import { exportMinimapPeaksFromWaveSurfer } from "../services/waveform/minimapPeaksSource";
 import { positionWaveformScrollLayersByTierScroll } from "../services/waveform/waveformSurferProgressCoverage";
@@ -123,39 +123,39 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     syncWaveSurferScrollPx(getViewportScrollPxRef.current?.() ?? 0);
   };
 
-  const mountRefs = {
-    optsRef,
-    containerRef,
-    wsRef,
-    wsUnsubsRef,
-    minPxPerSecRef,
-    peakCacheRef,
-    layoutDurationSecRef,
-    waveformHeightRef,
-    appliedWaveformHeightRef,
-    pendingAppliedWaveformHeightRef,
-    appliedZoom,
-    syncTierScrollAfterRenderRef,
-    lastTimeUiCommitRef,
-    lastTimeUiCommitMsRef,
-    scrollNotifyRafRef,
-    pendingScrollLeftRef,
-    setLoadError,
-    setIsReady,
-    setIsPlaying,
-    setDuration,
-    setCurrentTime,
-  };
+  const mountRefs = useMemo(
+    () => ({
+      optsRef,
+      containerRef,
+      wsRef,
+      wsUnsubsRef,
+      minPxPerSecRef,
+      peakCacheRef,
+      layoutDurationSecRef,
+      waveformHeightRef,
+      appliedWaveformHeightRef,
+      pendingAppliedWaveformHeightRef,
+      appliedZoom,
+      syncTierScrollAfterRenderRef,
+      lastTimeUiCommitRef,
+      lastTimeUiCommitMsRef,
+      scrollNotifyRafRef,
+      pendingScrollLeftRef,
+      setLoadError,
+      setIsReady,
+      setIsPlaying,
+      setDuration,
+      setCurrentTime,
+    }),
+    [appliedZoom, layoutDurationSecRef],
+  );
 
   const destroyWave = useProjectWaveformDestroy(clearWsListeners, mountRefs, mountRefs);
-
-  const peakCacheGeneration = options.peakCacheGeneration ?? 0;
 
   useProjectWaveformMount(
     mediaUrl,
     mediaDiskPath,
     deferDecodeMount,
-    peakCacheGeneration,
     mountRefs,
     destroyWave,
   );
@@ -183,6 +183,8 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     peaksStageShellRef,
     viewportResizeHoldRef,
   });
+
+  const peakCacheGeneration = options.peakCacheGeneration ?? 0;
 
   const zoomSync = useWaveformZoomSync({
     wsRef,
@@ -237,7 +239,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
   const togglePlay = useCallback(async () => {
     segmentPlayback.clearSegmentPlaybackBound();
     await playback.togglePlay();
-  }, [playback.togglePlay, segmentPlayback.clearSegmentPlaybackBound]);
+  }, [playback, segmentPlayback]);
 
   return {
     containerRef,
