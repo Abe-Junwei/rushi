@@ -39,6 +39,7 @@ function checkTsFile(fullPath) {
   const segmentsRefAssignAllowlist = [
     "apps/desktop/src/pages/useProjectEditorState.ts",
     "apps/desktop/src/pages/segmentSegmentsRefSync.ts",
+    "apps/desktop/src/pages/flushSegmentTextDrafts.ts",
     "apps/desktop/src/pages/segmentMutationMergeDelete.ts",
     "apps/desktop/src/pages/segmentMutationInsert.ts",
     "apps/desktop/src/pages/useSegmentSplitController.ts",

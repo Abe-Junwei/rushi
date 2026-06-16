@@ -54,6 +54,12 @@ pub fn local_transcribe_gate_from_health(
                 .to_string(),
         );
     }
+    if health.get("selected_model_ready").and_then(|x| x.as_bool()) == Some(false) {
+        return Err(
+            "侧车所选模型尚未完全就绪；请在环境页完成模型下载与预热后再试。"
+                .to_string(),
+        );
+    }
     let sidecar_model = health
         .get("funasr_model_id")
         .and_then(|x| x.as_str())
@@ -147,6 +153,8 @@ mod tests {
             "ffmpeg_ok": true,
             "funasr_model_id": model,
             "funasr_loaded_model_id": model,
+            "model_memory_matches_config": true,
+            "selected_model_ready": true,
         })
     }
 
@@ -176,6 +184,13 @@ mod tests {
             local_transcribe_gate_from_health(&ok_health(PARA), Some("Qwen/Qwen3-ASR-0.6B"),)
                 .is_err()
         );
+    }
+
+    #[test]
+    fn gate_blocks_selected_model_not_ready() {
+        let mut health = ok_health(PARA);
+        health["selected_model_ready"] = json!(false);
+        assert!(local_transcribe_gate_from_health(&health, Some(PARA)).is_err());
     }
 
     #[test]

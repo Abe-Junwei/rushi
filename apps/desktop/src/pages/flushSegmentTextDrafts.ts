@@ -205,10 +205,14 @@ export function commitSegmentTextDraftsForStructureMutation(
   pruneDraftKeysForSegments(materialized);
 }
 
+type SegmentListSetter =
+  | React.Dispatch<React.SetStateAction<SegmentDto[]>>
+  | ((next: SegmentDto[]) => void);
+
 /** 结构变更后：同步 segmentsRef 与 React state（S1 下 ref 可能领先 state）。 */
 export function publishSegmentStructureMutation(
   segmentsRef: React.MutableRefObject<SegmentDto[]>,
-  setSegments: React.Dispatch<React.SetStateAction<SegmentDto[]>>,
+  setSegments: SegmentListSetter,
   next: SegmentDto[],
 ): void {
   segmentsRef.current = next;
@@ -220,7 +224,7 @@ export function publishSegmentStructureMutation(
 /** 批量写回语段正文后：刷新 state，并清除 stale draft / DOM，避免后续 flush 把旧字写回。 */
 export function publishSegmentTextBulkMutation(
   segmentsRef: React.MutableRefObject<SegmentDto[]>,
-  setSegments: React.Dispatch<React.SetStateAction<SegmentDto[]>>,
+  setSegments: SegmentListSetter,
   next: SegmentDto[],
 ): void {
   segmentsRef.current = next;

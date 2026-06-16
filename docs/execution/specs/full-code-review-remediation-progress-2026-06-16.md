@@ -12,9 +12,9 @@
 
 | 状态 | 数量 | 占比 |
 |------|------|------|
-| 已修复 | 25 | 76% |
-| 部分修复 | 5 | 15% |
-| 未修复 | 3 | 9% |
+| 已修复 | 30 | 91% |
+| 部分修复 | 1 | 3% |
+| 未修复 | 2 | 6% |
 | **合计** | **33** | 100% |
 
 > 注：原进度表将 `#27 Playwright E2E 依赖真实 ASR 服务` 重复计数（同时列在已修复与部分修复），本版已去重。
@@ -174,4 +174,19 @@ npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs
 
 **统计调整（相对第三轮）**：#7、#11、#17、#22、#24、#28 → **已修复**；#1、#2、#15 → **部分修复**（首刀 / guard / additive fields，完整收敛待后续轮）；#9 → **部分修复**（+1 cmd 模块内部结构化）。
 
-**仍开放**：#3 mega-file 拆分（~40 guard warnings）；#4 coordinator 全量 store 迁移；#9 Tauri 边界错误码暴露；#25 Codecov PR diff；#1/#2 完整 facade 与 segments 真源迁移（见 research brief）。
+**仍开放**：#3 mega-file 拆分（~40 guard warnings）；完整 facade 后续 slice 与 segments 真源迁移见 research brief。
+
+---
+
+## 九、修复轮次更新（2026-06-16 · 第五轮：除 #3 外剩余项）
+
+| # | 项 | 本轮改动 | 验证 |
+|---|-----|----------|------|
+| 1 | facade 拆分 | `projectLifecycleControllerFields.ts`；`useProjectController.ts` 降至 ~65 行组装 | typecheck ✅ |
+| 2 | State/Ref | 转写/保存/undo/annotation 等改走 `publishSegmentStructureMutation` / `publishSegmentTextBulkMutation` | test ✅ / guard warning 减少 |
+| 4 | env coordinator | `registeredDeps` / `inflight` / `generation` / `lastFocusRefreshAt` 迁入 Zustand store | test ✅ |
+| 9 | 结构化错误 IPC | `CommandErrorDto { code, message }`；delete/rename/export/metadata 命令；`commandError.ts` + `TauriCommandError` | clippy ✅ |
+| 15 | selected_model_ready | `runtime_caps.py` + parse/gate/catalog 全链路 | pytest / gate tests ✅ |
+| 25 | Codecov | `codecov.yml` + CI `codecov-action@v5`（`CODECOV_TOKEN` 可选） | CI 配置 ✅ |
+
+**统计调整**：#1/#2/#4/#9/#15/#25 → **已修复**或**部分→已**；**唯一仍开放**：#3 mega-file 拆分。

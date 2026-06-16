@@ -37,8 +37,9 @@ describe("parseAsrHealthJson", () => {
       funasr_language: null,
       funasr_punc_model_id: null,
       rushi_models_root: null,
-      model_loaded_in_memory: false,
-      model_memory_matches_config: false,
+      model_loaded_in_memory: undefined,
+      model_memory_matches_config: undefined,
+      selected_model_ready: undefined,
       inference_queue_pending: undefined,
       inference_queue_running: undefined,
     });
@@ -80,8 +81,9 @@ describe("parseAsrHealthJson", () => {
       funasr_language: null,
       funasr_punc_model_id: null,
       rushi_models_root: "/tmp/models",
-      model_loaded_in_memory: false,
-      model_memory_matches_config: false,
+      model_loaded_in_memory: undefined,
+      model_memory_matches_config: undefined,
+      selected_model_ready: undefined,
       inference_queue_pending: undefined,
       inference_queue_running: undefined,
     });

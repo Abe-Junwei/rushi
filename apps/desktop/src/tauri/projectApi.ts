@@ -1,4 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
+import { parseTauriCommandError, type CommandErrorDto } from "./commandError";
 import type { OnlineTranscribeBridgePayload } from "../services/stt/sttOnlineProviderContract";
 import type { TranscribeTimelineSnapshot } from "../services/transcribeDiag";
 import type { FileDetail, ProjectDetail, ProjectSummary, SegmentDto } from "./projectTypes";
@@ -13,6 +14,29 @@ export type {
   SegmentDto,
   SegmentKind,
 } from "./projectTypes";
+
+export type { CommandErrorDto } from "./commandError";
+export { parseTauriCommandError, tauriCommandErrorMessage } from "./commandError";
+
+export class TauriCommandError extends Error {
+  readonly code: string;
+  readonly dto: CommandErrorDto;
+
+  constructor(dto: CommandErrorDto) {
+    super(dto.message);
+    this.name = "TauriCommandError";
+    this.code = dto.code;
+    this.dto = dto;
+  }
+}
+
+async function invokeStructured<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
+  try {
+    return await invoke<T>(cmd, args);
+  } catch (error) {
+    throw new TauriCommandError(parseTauriCommandError(error));
+  }
+}
 
 /** `project_run_transcribe` 返回值（`detail` 为转写后的文件详情） */
 export interface RunTranscribeOutcome {
@@ -67,6 +91,8 @@ export interface AsrHealthCapabilities {
   model_loaded_in_memory?: boolean;
   /** 内存中 loaded id 是否与配置的 funasr_model_id 一致。 */
   model_memory_matches_config?: boolean;
+  /** 侧车 config 模型已加载且磁盘依赖齐备（D1=D2 对齐时的 selected-ready）。 */
+  selected_model_ready?: boolean;
   inference_queue_pending?: number;
   inference_queue_running?: number;
 }
@@ -209,11 +235,11 @@ export async function recordTranscribeTimelinePollFailure(
 }
 
 export async function projectDelete(projectId: string): Promise<void> {
-  return invoke<void>("project_delete", { projectId });
+  return invokeStructured<void>("project_delete", { projectId });
 }
 
 export async function renameProject(projectId: string, name: string): Promise<ProjectDetail> {
-  return invoke<ProjectDetail>("rename_project", { projectId, name });
+  return invokeStructured<ProjectDetail>("rename_project", { projectId, name });
 }
 
 export type ProjectMetadataInput = {
@@ -228,7 +254,7 @@ export async function updateProjectMetadata(
   projectId: string,
   metadata: ProjectMetadataInput,
 ): Promise<ProjectDetail> {
-  return invoke<ProjectDetail>("update_project_metadata", {
+  return invokeStructured<ProjectDetail>("update_project_metadata", {
     projectId,
     narrator: metadata.narrator ?? null,
     recordedAt: metadata.recorded_at ?? null,
@@ -244,7 +270,7 @@ export async function exportProjectBundle(
   defaultFilename: string,
   segments: SegmentDto[],
 ): Promise<string | null> {
-  return invoke<string | null>("export_project_bundle", {
+  return invokeStructured<string | null>("export_project_bundle", {
     projectId,
     fileId,
     defaultFilename,
@@ -253,12 +279,12 @@ export async function exportProjectBundle(
 }
 
 export async function importProjectBundle(): Promise<ProjectDetail | null> {
-  return invoke<ProjectDetail | null>("import_project_bundle");
+  return invokeStructured<ProjectDetail | null>("import_project_bundle");
 }
 
 /** 系统另存为；用户取消时返回 `null`。 */
 export async function exportTextFile(defaultFilename: string, content: string): Promise<string | null> {
-  return invoke<string | null>("export_text_file", { defaultFilename, content });
+  return invokeStructured<string | null>("export_text_file", { defaultFilename, content });
 }
 
 /** macOS/Linux：弹出文件夹选择器后在所选 Rushi 仓库内执行 FunASR 依赖安装脚本；取消返回 `null`。 */

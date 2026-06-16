@@ -1,7 +1,7 @@
-import { flushSync } from "react-dom";
 import { useCallback, useRef, useState } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
 import { normalizeSegmentAnnotationInput } from "../utils/segmentAnnotation";
+import { publishSegmentStructureMutation } from "./flushSegmentTextDrafts";
 
 export type SegmentAnnotationDialogState =
   | { phase: "closed" }
@@ -74,10 +74,7 @@ export function useSegmentAnnotationController({
         pushUndo();
         const next = [...segmentsRef.current];
         next[segmentIdx] = { ...row, annotation: nextValue };
-        flushSync(() => {
-          segmentsRef.current = next;
-          setSegments(next);
-        });
+        publishSegmentStructureMutation(segmentsRef, setSegments, next);
         const saved = await saveSegments({ quiet: true, countHits: false });
         if (saved) {
           closeSegmentAnnotationDialog();
@@ -87,10 +84,7 @@ export function useSegmentAnnotationController({
         const revertedRow = reverted[segmentIdx];
         if (revertedRow) {
           reverted[segmentIdx] = { ...revertedRow, annotation: prevAnnotation };
-          flushSync(() => {
-            segmentsRef.current = reverted;
-            setSegments(reverted);
-          });
+          publishSegmentStructureMutation(segmentsRef, setSegments, reverted);
         }
         setError("备注保存失败，请重试");
         return false;

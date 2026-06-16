@@ -94,6 +94,15 @@ jobs:
           retention-days: 14
           if-no-files-found: ignore
 
+      - name: Upload coverage to Codecov
+        uses: codecov/codecov-action@v5
+        with:
+          files: apps/desktop/coverage/lcov.info
+          flags: desktop
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
       - name: Vite production build
         run: npm run build
 

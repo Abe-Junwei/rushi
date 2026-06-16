@@ -1,5 +1,4 @@
 import { useCallback, useRef, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
-import { flushSync } from "react-dom";
 import type { ProjectDetail, SegmentDto } from "../tauri/projectApi";
 import * as p1 from "../tauri/projectApi";
 import * as fileApi from "../tauri/fileApi";
@@ -19,6 +18,10 @@ import {
   segmentCanFinalize,
 } from "../services/segmentConfirmEligible";
 import { waitForSaveIdle } from "../services/waitForSaveIdle";
+import {
+  publishSegmentStructureMutation,
+  publishSegmentTextBulkMutation,
+} from "./flushSegmentTextDrafts";
 import { segmentDraftStore } from "../hooks/useSegmentDraftStore";
 import { toast } from "../services/ui/toast";
 import type { BusyReason } from "./useProjectCrudController";
@@ -108,8 +111,7 @@ export function useProjectSaveController(args: Args) {
           finalizeIntent: options?.finalizeIntent,
           aiRevisedUids: aiRevisedUids.size > 0 ? aiRevisedUids : undefined,
         });
-        segmentsRef.current = staged;
-        setSegments(staged);
+        publishSegmentTextBulkMutation(segmentsRef, setSegments, staged);
         const learnBaselineTexts = countHits
           ? (options?.learnBaselineTexts ??
               segmentsToLearnBaselineAligned(savedSnapshot, staged))
@@ -135,8 +137,7 @@ export function useProjectSaveController(args: Args) {
           ? segmentsRef.current
           : segs;
         if (!segmentsEqualForPersist(segs, segmentsRef.current)) {
-          segmentsRef.current = segs;
-          setSegments(segs);
+          publishSegmentStructureMutation(segmentsRef, setSegments, segs);
           const ni = findSegmentIndexByUid(segs, prevUid);
           setSelectedIdx(
             ni >= 0 ? ni : Math.min(selectedIdxRef.current, Math.max(0, segs.length - 1)),
@@ -264,14 +265,11 @@ export function useProjectSaveController(args: Args) {
         const fd = await fileApi.loadFile(currentFileId);
         const prevUid = segmentsRef.current[selectedIdxRef.current]?.uid;
         const segs = normalizeSegmentList(fd.segments);
-        flushSync(() => {
-          segmentsRef.current = segs;
-          setSegments(segs);
-          const ni = findSegmentIndexByUid(segs, prevUid);
-          setSelectedIdx(
-            ni >= 0 ? ni : Math.min(selectedIdxRef.current, Math.max(0, segs.length - 1)),
-          );
-        });
+        publishSegmentStructureMutation(segmentsRef, setSegments, segs);
+        const ni = findSegmentIndexByUid(segs, prevUid);
+        setSelectedIdx(
+          ni >= 0 ? ni : Math.min(selectedIdxRef.current, Math.max(0, segs.length - 1)),
+        );
         dirty.setSavedSnapshot(segs);
         notifySegmentsPersistedRef.current();
         toast.success("已恢复到所选版本");

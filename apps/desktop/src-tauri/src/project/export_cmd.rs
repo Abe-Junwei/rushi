@@ -1,4 +1,4 @@
-use crate::command_error::{CommandError, CommandResultExt};
+use crate::command_error::{CommandError, CommandErrorDto, CommandResultExt};
 use crate::DbState;
 use std::fs;
 use std::ops::Deref;
@@ -14,7 +14,7 @@ use super::types::{ProjectDetail, SegmentDto};
 pub async fn export_text_file(
     default_filename: String,
     content: String,
-) -> Result<Option<String>, String> {
+) -> Result<Option<String>, CommandErrorDto> {
     let picked = tauri::async_runtime::spawn_blocking({
         let default_filename = default_filename.clone();
         move || {
@@ -28,13 +28,13 @@ pub async fn export_text_file(
         CommandError::ExportTextFile {
             detail: e.to_string(),
         }
-        .to_string()
+        .to_dto()
     })?;
     let Some(path) = picked else {
         return Ok(None);
     };
     if path.exists() {
-        return Err(CommandError::TargetFileExists.to_string());
+        return Err(CommandError::TargetFileExists.to_dto());
     }
     tauri::async_runtime::spawn_blocking(move || -> Result<Option<String>, CommandError> {
         fs::write(&path, content).map_err(CommandError::WriteFile)?;
@@ -45,9 +45,9 @@ pub async fn export_text_file(
         CommandError::ExportTextFile {
             detail: e.to_string(),
         }
-        .to_string()
+        .to_dto()
     })?
-    .map_command_err()
+    .map_command_err_dto()
 }
 
 #[tauri::command]
@@ -57,7 +57,7 @@ pub async fn export_project_bundle(
     file_id: String,
     default_filename: String,
     segments: Vec<SegmentDto>,
-) -> Result<Option<String>, String> {
+) -> Result<Option<String>, CommandErrorDto> {
     let st = state.inner().clone();
     let picked = tauri::async_runtime::spawn_blocking({
         let default_filename = default_filename.clone();
@@ -73,7 +73,7 @@ pub async fn export_project_bundle(
         CommandError::ExportProjectBundle {
             detail: e.to_string(),
         }
-        .to_string()
+        .to_dto()
     })?;
     let Some(zip_path) = picked else {
         return Ok(None);
@@ -86,15 +86,15 @@ pub async fn export_project_bundle(
         CommandError::ExportProjectBundle {
             detail: e.to_string(),
         }
-        .to_string()
+        .to_dto()
     })?
-    .map_command_err()
+    .map_command_err_dto()
 }
 
 #[tauri::command]
 pub async fn import_project_bundle(
     state: State<'_, DbState>,
-) -> Result<Option<ProjectDetail>, String> {
+) -> Result<Option<ProjectDetail>, CommandErrorDto> {
     let st = state.inner().clone();
     let picked = tauri::async_runtime::spawn_blocking(|| {
         rfd::FileDialog::new()
@@ -106,7 +106,7 @@ pub async fn import_project_bundle(
         CommandError::ImportProjectBundle {
             detail: e.to_string(),
         }
-        .to_string()
+        .to_dto()
     })?;
     let Some(zip_path) = picked else {
         return Ok(None);
@@ -119,9 +119,9 @@ pub async fn import_project_bundle(
         CommandError::ImportProjectBundle {
             detail: e.to_string(),
         }
-        .to_string()
+        .to_dto()
     })?
-    .map_command_err()
+    .map_command_err_dto()
 }
 
 fn reveal_path_in_file_manager(path: &Path) -> Result<(), String> {

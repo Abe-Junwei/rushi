@@ -3,6 +3,7 @@ import { asrBaseUrl } from "../config/env";
 import type { SegmentDto } from "../tauri/projectApi";
 import * as p1 from "../tauri/projectApi";
 import { materializeSegmentTextDrafts } from "../hooks/useSegmentDraftStore";
+import { publishSegmentStructureMutation } from "./flushSegmentTextDrafts";
 import { logFirstSegmentsVisibleMs, pollTranscribeJob, postTranscribeCancel } from "./transcribeAsyncPoll";
 import {
   isTranscribeAsyncUnavailable,
@@ -47,10 +48,8 @@ function onTranscribeStatusTick(
   }
   if (st.segments_delta?.length) {
     const base = materializeSegmentTextDrafts(segmentsRef.current);
-    segmentsRef.current = base;
     const merged = mergeTranscribeSegmentsDelta(base, st.segments_delta);
-    segmentsRef.current = merged;
-    callbacks.setSegments(merged);
+    publishSegmentStructureMutation(segmentsRef, callbacks.setSegments, merged);
   }
   const progress = parseTranscribeProgress(st);
   callbacks.setTranscribeProgress(progress);

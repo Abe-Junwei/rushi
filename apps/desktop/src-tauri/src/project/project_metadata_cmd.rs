@@ -1,6 +1,6 @@
 use super::types::ProjectDetail;
 use super::utils::{now_ms, open_db, project_detail_from_conn};
-use crate::command_error::{CommandError, CommandResult, CommandResultExt};
+use crate::command_error::{CommandError, CommandErrorDto, CommandResult, CommandResultExt};
 use crate::DbState;
 use rusqlite::params;
 use std::ops::Deref;
@@ -82,8 +82,8 @@ pub fn rename_project(
     state: State<DbState>,
     project_id: String,
     name: String,
-) -> Result<ProjectDetail, String> {
-    rename_project_inner(state.deref(), &project_id, &name).map_command_err()
+) -> Result<ProjectDetail, CommandErrorDto> {
+    rename_project_inner(state.deref(), &project_id, &name).map_command_err_dto()
 }
 
 #[tauri::command]
@@ -95,7 +95,7 @@ pub fn update_project_metadata(
     location: Option<String>,
     subject: Option<String>,
     transcriber: Option<String>,
-) -> Result<ProjectDetail, String> {
+) -> Result<ProjectDetail, CommandErrorDto> {
     update_project_metadata_inner(
         state.deref(),
         &project_id,
@@ -105,7 +105,7 @@ pub fn update_project_metadata(
         subject,
         transcriber,
     )
-    .map_command_err()
+    .map_command_err_dto()
 }
 
 #[cfg(test)]

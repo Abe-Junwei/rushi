@@ -6,6 +6,7 @@ import * as p1 from "../tauri/projectApi";
 import { useExportController } from "./useExportController";
 import { useProjectBusyState } from "./useProjectBusyState";
 import { syncSegmentStagesAfterTranscribeReload } from "../services/segmentStagePersist";
+import { publishSegmentStructureMutation } from "./flushSegmentTextDrafts";
 import { useProjectListState } from "./useProjectListState";
 import { useProjectEditorState } from "./useProjectEditorState";
 import {
@@ -136,8 +137,7 @@ export function useProjectLifecycleController(
     clearScheduledAutoSave,
     onTranscribeSuccess: () => {
       const synced = syncSegmentStagesAfterTranscribeReload(segmentsRef.current);
-      segmentsRef.current = synced;
-      setSegments(synced);
+      publishSegmentStructureMutation(segmentsRef, setSegments, synced);
       dirty.setSavedSnapshot(synced);
     },
   });

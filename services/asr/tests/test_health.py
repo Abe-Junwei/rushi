@@ -40,6 +40,7 @@ def test_health_ok() -> None:
     assert isinstance(body.get("version"), str) and body["version"]
     assert "model_loaded_in_memory" in body
     assert "model_memory_matches_config" in body
+    assert "selected_model_ready" in body
     assert body["transcription_mode"] in ("funasr", "stub")
     assert isinstance(body.get("funasr_model_id"), str)
     assert body.get("funasr_language") in ("zh", "en", "ja", "ko", "yue", "auto")

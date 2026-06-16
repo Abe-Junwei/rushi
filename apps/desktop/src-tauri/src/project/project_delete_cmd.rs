@@ -1,6 +1,6 @@
 use super::project_storage::cleanup_deleted_project_storage;
 use super::utils::open_db;
-use crate::command_error::{CommandError, CommandResult, CommandResultExt};
+use crate::command_error::{CommandError, CommandErrorDto, CommandResult, CommandResultExt};
 use crate::DbState;
 use rusqlite::params;
 use tauri::State;
@@ -25,7 +25,7 @@ pub(crate) fn project_delete_inner(st: &DbState, project_id: &str) -> CommandRes
 }
 
 #[tauri::command]
-pub async fn project_delete(state: State<'_, DbState>, project_id: String) -> Result<(), String> {
+pub async fn project_delete(state: State<'_, DbState>, project_id: String) -> Result<(), CommandErrorDto> {
     let st = state.inner().clone();
     tauri::async_runtime::spawn_blocking(move || project_delete_inner(&st, &project_id))
         .await
@@ -33,9 +33,9 @@ pub async fn project_delete(state: State<'_, DbState>, project_id: String) -> Re
             CommandError::DeleteProject {
                 detail: e.to_string(),
             }
-            .to_string()
+            .to_dto()
         })?
-        .map_command_err()
+        .map_command_err_dto()
 }
 
 #[cfg(test)]

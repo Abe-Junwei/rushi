@@ -158,6 +158,8 @@ export type LocalAsrTranscribeReadyInput = {
     funasr_active_model_cached?: boolean;
     funasr_required_models_cached?: boolean;
     ready_for_transcribe?: boolean;
+    model_memory_matches_config?: boolean;
+    selected_model_ready?: boolean;
   } | null;
   selectedHubModelId?: string | null;
   catalogStatus?: LocalAsrCatalogStatusItem[] | null;
@@ -183,6 +185,9 @@ export function computeLocalAsrTranscribeReady(input: LocalAsrTranscribeReadyInp
   if (!sidecarMemoryModelMatchesConfig(asrCaps)) {
     return { ready: false, sidecarMatchesSelection: true };
   }
+  if (asrCaps.selected_model_ready === false) {
+    return { ready: false, sidecarMatchesSelection: true };
+  }
   const view = buildLocalAsrCatalogView(asrCaps, input.catalogStatus ?? null, selected);
   const prepare = selectedModelPrepareState(view, selected, sidecarHub);
   return { ready: prepare.readyForTranscribe, sidecarMatchesSelection };
@@ -204,8 +209,12 @@ function sidecarMemoryModelMatchesConfig(
   asrCaps: {
     funasr_model_id?: string | null;
     funasr_loaded_model_id?: string | null;
+    model_memory_matches_config?: boolean;
   } | null,
 ): boolean {
+  if (typeof asrCaps?.model_memory_matches_config === "boolean") {
+    return asrCaps.model_memory_matches_config;
+  }
   const configured = asrCaps?.funasr_model_id;
   if (!configured) return true;
   const loaded = asrCaps?.funasr_loaded_model_id;

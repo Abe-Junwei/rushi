@@ -4,6 +4,7 @@ import { withAiRevisedStage } from "../services/segmentStagePersist";
 import { segmentDraftKey, segmentDraftStore } from "../hooks/useSegmentDraftStore";
 import {
   flushSegmentTextDrafts as flushSegmentTextDraftsImpl,
+  publishSegmentTextBulkMutation,
   syncDomTextareasFromSegments,
 } from "./flushSegmentTextDrafts";
 import {
@@ -173,8 +174,7 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
       const patched = options?.fromLlm ? withAiRevisedStage(nextRow) : nextRow;
       const out = [...prev];
       out[idx] = patched;
-      segmentsRef.current = out;
-      setSegments(out);
+      publishSegmentTextBulkMutation(segmentsRef, setSegments, out);
       segmentDraftStore.endComposition(segmentDraftKey(cur, idx));
       segmentDraftStore.clearDraft(segmentDraftKey(patched, idx));
       if (options?.fromLlm && uid && pendingAiRevisedUidsRef) {

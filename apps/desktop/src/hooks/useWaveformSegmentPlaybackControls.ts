@@ -25,8 +25,8 @@ export function useWaveformSegmentPlaybackControls(args: {
   const { wsRef, isReady, segments, selectedIdx, getGlobalPlaybackRate } = args;
   const [segmentLoopPlayback, setSegmentLoopPlayback] = useState(false);
   const [isSelectedSegmentPlaying, setIsSelectedSegmentPlaying] = useState(false);
-  const segmentsRef = useRef(segments);
-  segmentsRef.current = segments;
+  const latestSegmentsRef = useRef(segments);
+  latestSegmentsRef.current = segments;
   const selectedIdxRef = useRef(selectedIdx);
   selectedIdxRef.current = selectedIdx;
   const segmentLoopPlaybackRef = useRef(segmentLoopPlayback);
@@ -36,7 +36,7 @@ export function useWaveformSegmentPlaybackControls(args: {
   const preserveLoopOnNextSelectRef = useRef(false);
 
   const resolveSelectedPlaybackRange = useCallback(() => {
-    const seg = segmentsRef.current[selectedIdxRef.current];
+    const seg = latestSegmentsRef.current[selectedIdxRef.current];
     if (!seg) return null;
     return {
       start: Math.min(seg.start_sec, seg.end_sec),
@@ -63,7 +63,7 @@ export function useWaveformSegmentPlaybackControls(args: {
     async (idx: number, options?: PlaySegmentAtIndexOptions) => {
       const ws = wsRef.current;
       if (!ws || !isReady) return;
-      const seg = segmentsRef.current[idx];
+      const seg = latestSegmentsRef.current[idx];
       if (!seg) return;
       const gen = ++playGenerationRef.current;
       clearSegmentPlaybackBound();

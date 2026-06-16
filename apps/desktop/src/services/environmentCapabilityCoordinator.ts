@@ -44,21 +44,28 @@ export type EnvironmentCapabilitySnapshot = {
 const FOCUS_MIN_INTERVAL_MS = 5000;
 const DEFAULT_MAX_STALE_MS = 10_000;
 
-const envCapabilityStore = createModuleStore<{
+type EnvironmentCapabilityStoreState = {
   snapshot: EnvironmentCapabilitySnapshot | null;
-}>(() => ({ snapshot: null }));
+  registeredDeps: EnvironmentCapabilityRefreshDeps | null;
+  inflight: Promise<EnvironmentCapabilitySnapshot | null> | null;
+  generation: number;
+  lastFocusRefreshAt: number;
+};
 
-let registeredDeps: EnvironmentCapabilityRefreshDeps | null = null;
-let inflight: Promise<EnvironmentCapabilitySnapshot | null> | null = null;
-let generation = 0;
-let lastFocusRefreshAt = 0;
+const envCapabilityStore = createModuleStore<EnvironmentCapabilityStoreState>(() => ({
+  snapshot: null,
+  registeredDeps: null,
+  inflight: null,
+  generation: 0,
+  lastFocusRefreshAt: 0,
+}));
 
-function latestSnapshot(): EnvironmentCapabilitySnapshot | null {
-  return envCapabilityStore.getState().snapshot;
+function readStore(): EnvironmentCapabilityStoreState {
+  return envCapabilityStore.getState();
 }
 
-function setLatestSnapshot(snapshot: EnvironmentCapabilitySnapshot | null): void {
-  envCapabilityStore.setState({ snapshot });
+function patchStore(partial: Partial<EnvironmentCapabilityStoreState>): void {
+  envCapabilityStore.setState(partial);
 }
 
 export function subscribeEnvironmentCapabilitySnapshot(
@@ -70,34 +77,39 @@ export function subscribeEnvironmentCapabilitySnapshot(
 export function registerEnvironmentCapabilityRefreshDeps(
   deps: EnvironmentCapabilityRefreshDeps,
 ): () => void {
-  registeredDeps = deps;
+  patchStore({ registeredDeps: deps });
   return () => {
-    if (registeredDeps === deps) registeredDeps = null;
+    if (readStore().registeredDeps === deps) {
+      patchStore({ registeredDeps: null });
+    }
   };
 }
 
 /** Keep registered deps fresh without re-subscribing listeners. */
 export function syncEnvironmentCapabilityRefreshDeps(deps: EnvironmentCapabilityRefreshDeps): void {
-  registeredDeps = deps;
+  patchStore({ registeredDeps: deps });
 }
 
 export function getEnvironmentCapabilityBlockReason(): string | null {
-  return latestSnapshot()?.blockReason ?? null;
+  return readStore().snapshot?.blockReason ?? null;
 }
 
 export function resetEnvironmentCapabilityCoordinatorForTests(): void {
-  registeredDeps = null;
-  inflight = null;
-  setLatestSnapshot(null);
-  generation = 0;
-  lastFocusRefreshAt = 0;
+  patchStore({
+    snapshot: null,
+    registeredDeps: null,
+    inflight: null,
+    generation: 0,
+    lastFocusRefreshAt: 0,
+  });
 }
 
 function shouldRunFocusRefresh(force?: boolean): boolean {
   if (force) return true;
+  const { lastFocusRefreshAt } = readStore();
   const now = Date.now();
   if (now - lastFocusRefreshAt < FOCUS_MIN_INTERVAL_MS) return false;
-  lastFocusRefreshAt = now;
+  patchStore({ lastFocusRefreshAt: now });
   return true;
 }
 
@@ -111,12 +123,13 @@ export async function runEnvironmentCapabilityRefresh(
   options?: { touchUi?: boolean; force?: boolean },
 ): Promise<EnvironmentCapabilitySnapshot | null> {
   if (reason === "app-focus" && !shouldRunFocusRefresh(options?.force)) {
-    return latestSnapshot();
+    return readStore().snapshot;
   }
 
-  if (inflight) return inflight;
+  const existingInflight = readStore().inflight;
+  if (existingInflight) return existingInflight;
 
-  inflight = (async () => {
+  const inflight = (async () => {
     try {
       if (reason === "project-open" || reason === "app-init") {
         deps.bumpLlmRuntimeChanged?.();
@@ -147,34 +160,37 @@ export async function runEnvironmentCapabilityRefresh(
         asrOverlay: deps.getAsrPresentationOverlay?.(),
       });
 
+      const nextGeneration = readStore().generation + 1;
       const nextSnapshot: EnvironmentCapabilitySnapshot = {
-        generation: ++generation,
+        generation: nextGeneration,
         blockReason: presentation.blockReason,
         presentation,
         refreshedAtMs: Date.now(),
       };
-      setLatestSnapshot(nextSnapshot);
+      patchStore({ snapshot: nextSnapshot, generation: nextGeneration });
       return nextSnapshot;
     } finally {
-      inflight = null;
+      patchStore({ inflight: null });
     }
   })();
 
+  patchStore({ inflight });
   return inflight;
 }
 
 export async function awaitEnvironmentCapabilityRefresh(options?: {
   maxStaleMs?: number;
 }): Promise<EnvironmentCapabilitySnapshot | null> {
-  if (inflight) return inflight;
+  const store = readStore();
+  if (store.inflight) return store.inflight;
 
   const maxStaleMs = options?.maxStaleMs ?? DEFAULT_MAX_STALE_MS;
-  const current = latestSnapshot();
+  const current = store.snapshot;
   const age = current ? Date.now() - current.refreshedAtMs : Number.POSITIVE_INFINITY;
   if (age <= maxStaleMs && current) return current;
 
-  if (!registeredDeps) return current;
-  return runEnvironmentCapabilityRefresh("transcribe-preflight", registeredDeps, {
+  if (!store.registeredDeps) return current;
+  return runEnvironmentCapabilityRefresh("transcribe-preflight", store.registeredDeps, {
     touchUi: false,
   });
 }

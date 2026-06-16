@@ -28,8 +28,12 @@ export function parseAsrHealthJson(data: unknown): AsrHealthCapabilities | null 
         : null,
     funasr_loaded_model_id:
       typeof j.funasr_loaded_model_id === "string" ? j.funasr_loaded_model_id : null,
-    model_loaded_in_memory: j.model_loaded_in_memory === true,
-    model_memory_matches_config: j.model_memory_matches_config === true,
+    model_loaded_in_memory:
+      typeof j.model_loaded_in_memory === "boolean" ? j.model_loaded_in_memory : undefined,
+    model_memory_matches_config:
+      typeof j.model_memory_matches_config === "boolean" ? j.model_memory_matches_config : undefined,
+    selected_model_ready:
+      typeof j.selected_model_ready === "boolean" ? j.selected_model_ready : undefined,
     inference_queue_pending:
       typeof j.inference_queue_pending === "number" ? j.inference_queue_pending : undefined,
     inference_queue_running:

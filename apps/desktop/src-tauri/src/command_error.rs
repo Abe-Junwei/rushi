@@ -1,9 +1,16 @@
-//! Structured command-layer errors (Phase 3). Tauri handlers still expose `String` via [`CommandResultExt`].
+//! Structured command-layer errors. Tauri handlers expose [`CommandErrorDto`] at the IPC boundary.
 use std::io;
 
+use serde::{Deserialize, Serialize};
 use thiserror::Error;
 
 pub type CommandResult<T> = Result<T, CommandError>;
+
+#[derive(Debug, Clone, Serialize, Deserialize)]
+pub struct CommandErrorDto {
+    pub code: String,
+    pub message: String,
+}
 
 #[derive(Debug, Error)]
 pub enum CommandError {
@@ -151,15 +158,68 @@ impl CommandError {
     pub fn db_pool(message: impl Into<String>) -> Self {
         Self::DbPool(message.into())
     }
+
+    pub fn error_code(&self) -> &'static str {
+        match self {
+            Self::EmptyProjectName => "empty_project_name",
+            Self::ProjectNotFoundById { .. } => "project_not_found_by_id",
+            Self::ProjectNotFound => "project_not_found",
+            Self::TargetFileExists => "target_file_exists",
+            Self::DbPool(_) => "db_pool",
+            Self::Db(_) => "db",
+            Self::Io { .. } => "io",
+            Self::WriteFile(_) => "write_file",
+            Self::WriteLexiconBundle(_) => "write_lexicon_bundle",
+            Self::ReadLexiconBundle(_) => "read_lexicon_bundle",
+            Self::BundleNoExportableAudio => "bundle_no_exportable_audio",
+            Self::BundleAudioMissing { .. } => "bundle_audio_missing",
+            Self::BundleInvalidAudioFileName => "bundle_invalid_audio_file_name",
+            Self::BundleUnsupportedKind => "bundle_unsupported_kind",
+            Self::BundleUnsupportedVersion { .. } => "bundle_unsupported_version",
+            Self::BundleInvalidAudioName => "bundle_invalid_audio_name",
+            Self::BundleUnsafeAudioPath => "bundle_unsafe_audio_path",
+            Self::BundleUnsafeZipPath => "bundle_unsafe_zip_path",
+            Self::BundleUncompressedTooLarge { .. } => "bundle_uncompressed_too_large",
+            Self::BundleTooManySegments { .. } => "bundle_too_many_segments",
+            Self::BundleMissingEntry { .. } => "bundle_missing_entry",
+            Self::BundleEntryTooLarge { .. } => "bundle_entry_too_large",
+            Self::BundleReadEntry { .. } => "bundle_read_entry",
+            Self::BundleZipEntry(_) => "bundle_zip_entry",
+            Self::BundleOpen(_) => "bundle_open",
+            Self::BundleRead(_) => "bundle_read",
+            Self::BundleJsonParse { .. } => "bundle_json_parse",
+            Self::BundleCreate(_) => "bundle_create",
+            Self::BundleSerializeManifest(_) => "bundle_serialize_manifest",
+            Self::BundleSerializeProject(_) => "bundle_serialize_project",
+            Self::BundleFinish(_) => "bundle_finish",
+            Self::BundleSave(_) => "bundle_save",
+            Self::BundleCreateProjectDir(_) => "bundle_create_project_dir",
+            Self::BundleWriteAudio(_) => "bundle_write_audio",
+            Self::BundleReadAudio(_) => "bundle_read_audio",
+            Self::ExportProjectBundle { .. } => "export_project_bundle",
+            Self::ImportProjectBundle { .. } => "import_project_bundle",
+            Self::ExportTextFile { .. } => "export_text_file",
+            Self::DeleteProject { .. } => "delete_project",
+            Self::ExportLexiconBundle { .. } => "export_lexicon_bundle",
+            Self::ImportLexiconBundle { .. } => "import_lexicon_bundle",
+        }
+    }
+
+    pub fn to_dto(&self) -> CommandErrorDto {
+        CommandErrorDto {
+            code: self.error_code().to_string(),
+            message: self.to_string(),
+        }
+    }
 }
 
 pub trait CommandResultExt<T> {
-    fn map_command_err(self) -> Result<T, String>;
+    fn map_command_err_dto(self) -> Result<T, CommandErrorDto>;
 }
 
-impl<T, E: std::fmt::Display> CommandResultExt<T> for Result<T, E> {
-    fn map_command_err(self) -> Result<T, String> {
-        self.map_err(|e| e.to_string())
+impl<T> CommandResultExt<T> for Result<T, CommandError> {
+    fn map_command_err_dto(self) -> Result<T, CommandErrorDto> {
+        self.map_err(|e| e.to_dto())
     }
 }
 
@@ -176,10 +236,10 @@ mod tests {
     }
 
     #[test]
-    fn bundle_unsafe_audio_path_message_is_stable() {
+    fn empty_project_name_dto_has_stable_code() {
         assert_eq!(
-            CommandError::BundleUnsafeAudioPath.to_string(),
-            "无法导入：项目包内音频路径不安全。"
+            CommandError::EmptyProjectName.to_dto().code,
+            "empty_project_name"
         );
     }
 }

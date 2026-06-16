@@ -221,4 +221,21 @@ describe("localAsrModelCatalog", () => {
     expect(result.sidecarMatchesSelection).toBe(true);
     expect(result.ready).toBe(false);
   });
+
+  it("computeLocalAsrTranscribeReady blocks when selected_model_ready is false", () => {
+    const result = computeLocalAsrTranscribeReady({
+      asrHealth: "ok",
+      asrCaps: {
+        funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+        funasr_loaded_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+        funasr_required_models_cached: true,
+        ready_for_transcribe: true,
+        model_memory_matches_config: true,
+        selected_model_ready: false,
+      },
+      selectedHubModelId: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+    });
+    expect(result.sidecarMatchesSelection).toBe(true);
+    expect(result.ready).toBe(false);
+  });
 });
