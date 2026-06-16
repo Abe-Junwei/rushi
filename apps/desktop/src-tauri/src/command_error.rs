@@ -143,6 +143,9 @@ pub enum CommandError {
     #[error("删除项目失败: {detail}")]
     DeleteProject { detail: String },
 
+    #[error("加载项目详情失败: {detail}")]
+    ProjectDetailLoad { detail: String },
+
     #[error("导出词表包失败: {detail}")]
     ExportLexiconBundle { detail: String },
 
@@ -200,6 +203,7 @@ impl CommandError {
             Self::ImportProjectBundle { .. } => "import_project_bundle",
             Self::ExportTextFile { .. } => "export_text_file",
             Self::DeleteProject { .. } => "delete_project",
+            Self::ProjectDetailLoad { .. } => "project_detail_load",
             Self::ExportLexiconBundle { .. } => "export_lexicon_bundle",
             Self::ImportLexiconBundle { .. } => "import_lexicon_bundle",
         }

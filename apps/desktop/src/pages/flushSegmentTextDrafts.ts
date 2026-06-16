@@ -239,3 +239,22 @@ export function publishSegmentTextBulkMutation(
   syncDomTextareasFromSegments(next);
   pruneDraftKeysForSegments(next);
 }
+
+/** 转写开始前清空语段：丢弃 draft/DOM，避免旧 uid 污染新结果。 */
+export function publishTranscribeSegmentClear(
+  segmentsRef: React.MutableRefObject<SegmentDto[]>,
+  setSegments: SegmentListSetter,
+): void {
+  segmentDraftStore.resetAll();
+  publishSegmentStructureMutation(segmentsRef, setSegments, []);
+}
+
+/** 转写失败回滚：恢复语段并同步 draft/DOM。 */
+export function publishTranscribeSegmentRestore(
+  segmentsRef: React.MutableRefObject<SegmentDto[]>,
+  setSegments: SegmentListSetter,
+  next: SegmentDto[],
+): void {
+  segmentDraftStore.resetAll();
+  publishSegmentTextBulkMutation(segmentsRef, setSegments, next);
+}

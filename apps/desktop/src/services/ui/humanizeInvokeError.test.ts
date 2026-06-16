@@ -1,7 +1,16 @@
 import { describe, expect, it } from "vitest";
 import { humanizeInvokeError } from "./humanizeInvokeError";
+import { TauriCommandError } from "../../tauri/commandError";
 
 describe("humanizeInvokeError", () => {
+  it("returns structured TauriCommandError message directly", () => {
+    expect(
+      humanizeInvokeError(
+        new TauriCommandError({ code: "project_not_found", message: "项目不存在或已被删除。" }),
+      ),
+    ).toBe("项目不存在或已被删除。");
+  });
+
   it("maps Tauri ACL denial for stt_save_api_key", () => {
     expect(
       humanizeInvokeError(

@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import concurrent.futures
+import os
 import queue
 import threading
 from collections.abc import Callable
@@ -73,6 +74,7 @@ class SingleWorkerInferenceQueue:
             return {
                 "inference_queue_pending": pending,
                 "inference_queue_running": 1 if self._running else 0,
+                "inference_requested_workers": requested_inference_workers(),
                 "inference_max_workers": 1,
             }
 
@@ -132,6 +134,18 @@ def inference_queue_stats() -> dict[str, int]:
             return {
                 "inference_queue_pending": 0,
                 "inference_queue_running": 0,
+                "inference_requested_workers": requested_inference_workers(),
                 "inference_max_workers": 1,
             }
         return _queue.stats()
+
+
+def requested_inference_workers() -> int:
+    """Requested workers are reported for diagnostics, but real FunASR stays single-worker."""
+    raw = os.environ.get("RUSHI_FUNASR_INFERENCE_WORKERS", "").strip()
+    if not raw:
+        return 1
+    try:
+        return max(1, int(raw))
+    except ValueError:
+        return 1

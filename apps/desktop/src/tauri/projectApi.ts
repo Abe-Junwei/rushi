@@ -1,5 +1,5 @@
 import { invoke } from "@tauri-apps/api/core";
-import { parseTauriCommandError, type CommandErrorDto } from "./commandError";
+import { parseTauriCommandError, TauriCommandError } from "./commandError";
 import type { OnlineTranscribeBridgePayload } from "../services/stt/sttOnlineProviderContract";
 import type { TranscribeTimelineSnapshot } from "../services/transcribeDiag";
 import type { FileDetail, ProjectDetail, ProjectSummary, SegmentDto } from "./projectTypes";
@@ -16,19 +16,11 @@ export type {
 } from "./projectTypes";
 
 export type { CommandErrorDto } from "./commandError";
-export { parseTauriCommandError, tauriCommandErrorMessage } from "./commandError";
-
-export class TauriCommandError extends Error {
-  readonly code: string;
-  readonly dto: CommandErrorDto;
-
-  constructor(dto: CommandErrorDto) {
-    super(dto.message);
-    this.name = "TauriCommandError";
-    this.code = dto.code;
-    this.dto = dto;
-  }
-}
+export {
+  parseTauriCommandError,
+  tauriCommandErrorMessage,
+  TauriCommandError,
+} from "./commandError";
 
 async function invokeStructured<T>(cmd: string, args?: Record<string, unknown>): Promise<T> {
   try {

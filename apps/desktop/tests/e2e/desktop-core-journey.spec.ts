@@ -6,6 +6,12 @@ import { test, expect } from "@playwright/test";
 const __dirname = dirname(fileURLToPath(import.meta.url));
 const tauriMockInit = readFileSync(join(__dirname, "support/tauri-mock-init.js"), "utf8");
 
+declare global {
+  interface Window {
+    __RUSHI_E2E_INVOKES__?: Array<{ cmd: string; args?: { segments?: Array<{ text?: string }>; content?: string } }>;
+  }
+}
+
 test.describe("desktop core journey smoke (mocked Tauri)", () => {
   test.beforeEach(async ({ page }) => {
     await page.addInitScript(tauriMockInit);
@@ -51,5 +57,36 @@ test.describe("desktop core journey smoke (mocked Tauri)", () => {
     await expect(page.locator('[data-purpose="editor-workspace"]')).toBeVisible({
       timeout: 20_000,
     });
+
+    const textarea = page.locator('textarea[aria-label="语段正文"]').first();
+    await expect(textarea).toBeVisible();
+    await textarea.evaluate((node, value) => {
+      const setter = Object.getOwnPropertyDescriptor(
+        window.HTMLTextAreaElement.prototype,
+        "value",
+      )?.set;
+      setter?.call(node, value);
+      node.dispatchEvent(new InputEvent("input", { bubbles: true, inputType: "insertText", data: value }));
+    }, "编辑后的核心旅程语段");
+
+    await page.getByRole("button", { name: "保存" }).dispatchEvent("click");
+    await page.waitForFunction(() =>
+      window.__RUSHI_E2E_INVOKES__?.some(
+        (entry) =>
+          entry.cmd === "file_save_segments" &&
+          entry.args?.segments?.[0]?.text === "编辑后的核心旅程语段",
+      ),
+    );
+
+    await page.locator("details").filter({ hasText: "导出" }).locator("summary").dispatchEvent("click");
+    await page.getByRole("button", { name: "导出 TXT" }).dispatchEvent("click");
+    await page.waitForFunction(() =>
+      window.__RUSHI_E2E_INVOKES__?.some(
+        (entry) =>
+          entry.cmd === "export_text_file" &&
+          typeof entry.args?.content === "string" &&
+          entry.args.content.includes("编辑后的核心旅程语段"),
+      ),
+    );
   });
 });

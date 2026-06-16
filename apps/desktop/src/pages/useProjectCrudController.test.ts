@@ -1,7 +1,7 @@
 import { describe, expect, it, vi, beforeEach, type Mock } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { useRef, useState } from "react";
-import type { ProjectDetail, SegmentDto } from "../tauri/projectApi";
+import type { ProjectDetail } from "../tauri/projectApi";
 import type * as fileApi from "../tauri/fileApi";
 import { useProjectCrudController, type BusyReason } from "./useProjectCrudController";
 import type { SegmentMutationApi } from "./useSegmentMutationController";
@@ -30,20 +30,20 @@ function useTestCrud(opts: {
   current?: ProjectDetail | null;
 }) {
   const [current, setCurrent] = useState<ProjectDetail | null>(opts.current ?? null);
-  const [, setSegments] = useState<SegmentDto[]>([]);
-  const [, setAudioSrc] = useState<string | null>(null);
   const [, setHints] = useState<string[]>([]);
   const [error, setError] = useState("");
   const [busyReason, setBusyReason] = useState<BusyReason | null>(null);
   const [, setProjects] = useState<ProjectDetail[]>([]);
+  const closeProjectRef = useRef(vi.fn(() => {
+    setCurrent(null);
+  }));
+  const closeProject = closeProjectRef.current;
 
   const beginBusy = (reason: BusyReason) => setBusyReason(reason);
   const endBusy = () => setBusyReason(null);
 
   const applyDetail = (d: ProjectDetail) => {
     setCurrent(d);
-    setSegments(d.segments);
-    setAudioSrc(`asset://localhost${d.audio_storage_path}`);
   };
 
   const refreshProjectsRef = useRef(vi.fn(async () => {
@@ -86,13 +86,11 @@ function useTestCrud(opts: {
     applyDetail,
     refreshProjects,
     mutations,
-    setCurrent,
-    setSegments,
-    setAudioSrc,
+    closeProject,
     setTranscribeHints: setHints,
   });
 
-  return { crud, current, error, busyReason, refreshProjects, mutations };
+  return { crud, current, error, busyReason, refreshProjects, mutations, closeProject };
 }
 
 describe("useProjectCrudController", () => {
@@ -165,6 +163,7 @@ describe("useProjectCrudController", () => {
 
     expect(invoke).toHaveBeenCalledWith("project_delete", { projectId: "proj-4" });
     expect(result.current.refreshProjects).toHaveBeenCalled();
+    expect(result.current.closeProject).toHaveBeenCalled();
     expect(result.current.current).toBeNull();
   });
 

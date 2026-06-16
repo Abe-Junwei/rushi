@@ -3,6 +3,18 @@ export type CommandErrorDto = {
   message: string;
 };
 
+export class TauriCommandError extends Error {
+  readonly code: string;
+  readonly dto: CommandErrorDto;
+
+  constructor(dto: CommandErrorDto) {
+    super(dto.message);
+    this.name = "TauriCommandError";
+    this.code = dto.code;
+    this.dto = dto;
+  }
+}
+
 /** Parse Tauri invoke errors (structured DTO or legacy string). */
 export function parseTauriCommandError(error: unknown): CommandErrorDto {
   if (typeof error === "string") {

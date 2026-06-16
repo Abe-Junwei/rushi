@@ -33,9 +33,7 @@ export interface ProjectCrudDeps {
   applyDetail: (d: ProjectDetail) => void;
   refreshProjects: () => Promise<void>;
   mutations: SegmentMutationApi;
-  setCurrent: React.Dispatch<React.SetStateAction<ProjectDetail | null>>;
-  setSegments: React.Dispatch<React.SetStateAction<import("../tauri/projectApi").SegmentDto[]>>;
-  setAudioSrc: React.Dispatch<React.SetStateAction<string | null>>;
+  closeProject: () => void;
   setTranscribeHints: React.Dispatch<React.SetStateAction<string[]>>;
 }
 
@@ -50,9 +48,7 @@ export function useProjectCrudController(deps: ProjectCrudDeps): ProjectCrudApi 
     applyDetail,
     refreshProjects,
     mutations,
-    setCurrent,
-    setSegments,
-    setAudioSrc,
+    closeProject,
     setTranscribeHints,
   } = deps;
 
@@ -99,9 +95,7 @@ export function useProjectCrudController(deps: ProjectCrudDeps): ProjectCrudApi 
         await p1.projectDelete(id);
         if (current?.id === id) {
           mutations.resetMutationHistory();
-          setCurrent(null);
-          setSegments([]);
-          setAudioSrc(null);
+          closeProject();
           setTranscribeHints([]);
         }
         await refreshProjects();
@@ -111,7 +105,7 @@ export function useProjectCrudController(deps: ProjectCrudDeps): ProjectCrudApi 
         endBusy();
       }
     },
-    [current, refreshProjects, beginBusy, endBusy, mutations, setCurrent, setSegments, setAudioSrc, setTranscribeHints, setError],
+    [current, refreshProjects, beginBusy, endBusy, mutations, closeProject, setTranscribeHints, setError],
   );
 
   const createEmptyProject = useCallback(async () => {

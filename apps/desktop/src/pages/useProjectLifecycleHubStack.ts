@@ -22,6 +22,7 @@ type UseProjectLifecycleHubStackArgs = {
   refreshProjects: () => Promise<void>;
   mutations: SegmentMutationApi;
   closeGate: ProjectCloseGateControllerApi;
+  closeProject: () => void;
   setTranscribeHints: React.Dispatch<React.SetStateAction<string[]>>;
 };
 
@@ -53,9 +54,7 @@ export function useProjectLifecycleHubStack(args: UseProjectLifecycleHubStackArg
     applyDetail: args.applyDetail,
     refreshProjects: args.refreshProjects,
     mutations: args.mutations,
-    setCurrent: args.setCurrent,
-    setSegments: args.setSegments,
-    setAudioSrc: args.setAudioSrc,
+    closeProject: args.closeProject,
     setTranscribeHints: args.setTranscribeHints,
   });
 

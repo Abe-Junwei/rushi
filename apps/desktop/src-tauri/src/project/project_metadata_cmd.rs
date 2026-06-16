@@ -39,7 +39,7 @@ fn rename_project_inner(
             project_id: project_id.to_string(),
         });
     }
-    project_detail_from_conn(&conn, project_id).map_err(CommandError::db_pool)
+    project_detail_from_conn(&conn, project_id).map_err(|detail| CommandError::ProjectDetailLoad { detail })
 }
 
 fn update_project_metadata_inner(
@@ -74,7 +74,7 @@ fn update_project_metadata_inner(
             project_id: project_id.to_string(),
         });
     }
-    project_detail_from_conn(&conn, project_id).map_err(CommandError::db_pool)
+    project_detail_from_conn(&conn, project_id).map_err(|detail| CommandError::ProjectDetailLoad { detail })
 }
 
 #[tauri::command]

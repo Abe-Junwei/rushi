@@ -9,6 +9,8 @@ import {
   materializeSegmentTextDrafts,
   prepareSegmentTextDraftsForMutation,
   publishSegmentTextBulkMutation,
+  publishTranscribeSegmentClear,
+  publishTranscribeSegmentRestore,
   syncDomTextareaDraftsIntoStore,
   syncDomTextareasFromSegments,
   syncFocusedDomTextIntoSegments,
@@ -197,6 +199,54 @@ describe("flushSegmentTextDrafts undo", () => {
 
     expect(segmentsRef.current[0]?.text).toBe("live in textarea");
     expect(reactState[0]?.text).toBe("live in textarea");
+
+    row.remove();
+  });
+});
+
+describe("publishTranscribeSegmentClear / publishTranscribeSegmentRestore", () => {
+  it("clear resets drafts before emptying segments", () => {
+    segmentDraftStore.resetAll();
+    const segmentsRef = { current: [seg("keep ghost")] };
+    const key = segmentDraftKey(segmentsRef.current[0], 0);
+    segmentDraftStore.setDraft(key, "draft ghost");
+
+    let reactState = segmentsRef.current;
+    const setSegments = (next: SetStateAction<SegmentDto[]>) => {
+      reactState = typeof next === "function" ? next(segmentsRef.current) : next;
+      segmentsRef.current = reactState;
+    };
+
+    publishTranscribeSegmentClear(segmentsRef, setSegments);
+
+    expect(segmentsRef.current).toEqual([]);
+    expect(segmentDraftStore.getDraft(key)).toBeUndefined();
+  });
+
+  it("restore resets drafts and syncs DOM from restored segments", () => {
+    segmentDraftStore.resetAll();
+    const row = document.createElement("div");
+    row.setAttribute("data-seg-row", "0");
+    const textarea = document.createElement("textarea");
+    textarea.setAttribute("aria-label", "语段正文");
+    textarea.value = "stale dom";
+    row.appendChild(textarea);
+    document.body.appendChild(row);
+
+    const restored = [seg("restored text")];
+    const segmentsRef = { current: [] as SegmentDto[] };
+    let reactState = segmentsRef.current;
+    const setSegments = (next: SetStateAction<SegmentDto[]>) => {
+      reactState = typeof next === "function" ? next(segmentsRef.current) : next;
+      segmentsRef.current = reactState;
+    };
+    segmentDraftStore.setDraft(segmentDraftKey(restored[0], 0), "stale draft");
+
+    publishTranscribeSegmentRestore(segmentsRef, setSegments, restored);
+
+    expect(segmentsRef.current[0]?.text).toBe("restored text");
+    expect(textarea.value).toBe("restored text");
+    expect(segmentDraftStore.getDraft(segmentDraftKey(restored[0], 0))).toBeUndefined();
 
     row.remove();
   });

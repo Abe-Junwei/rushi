@@ -57,6 +57,7 @@ def get_runtime_caps() -> dict[str, object]:
     loaded_str = str(loaded_id).strip() if loaded_id else ""
     model_loaded_in_memory = bool(loaded_str)
     model_memory_matches_config = bool(model and loaded_str and loaded_str == model)
+    runtime_ready = bool(ffmpeg_ok and funasr_import_ok)
     selected_model_ready = bool(
         runtime_ready
         and required_models_cached
@@ -64,7 +65,6 @@ def get_runtime_caps() -> dict[str, object]:
         and model_loaded_in_memory
         and model_memory_matches_config
     )
-    runtime_ready = bool(ffmpeg_ok and funasr_import_ok)
     ready_for_transcribe = bool(runtime_ready and required_models_cached and ffmpeg_on_path)
     transcription_mode: str = "funasr" if ready_for_transcribe else "stub"
     models_root = os.environ.get("RUSHI_MODELS_ROOT", "").strip() or None

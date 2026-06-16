@@ -129,21 +129,23 @@ export async function runEnvironmentCapabilityRefresh(
   const existingInflight = readStore().inflight;
   if (existingInflight) return existingInflight;
 
+  const effectiveDeps = readStore().registeredDeps ?? deps;
+
   const inflight = (async () => {
     try {
       if (reason === "project-open" || reason === "app-init") {
-        deps.bumpLlmRuntimeChanged?.();
-        deps.bumpSttOnlineRuntimeChanged?.();
+        effectiveDeps.bumpLlmRuntimeChanged?.();
+        effectiveDeps.bumpSttOnlineRuntimeChanged?.();
       }
 
-      await deps.refreshLlmOllamaDetect?.();
+      await effectiveDeps.refreshLlmOllamaDetect?.();
 
       const touchUi = options?.touchUi ?? reason === "app-init";
       await refreshLocalAsrDiagnostics(
         {
-          refreshAsrHealth: (healthOptions) => deps.refreshAsrHealth(healthOptions),
-          refreshAsrModelCacheInfo: deps.refreshAsrModelCacheInfo,
-          refreshSetupDiagnose: deps.refreshSetupDiagnose,
+          refreshAsrHealth: (healthOptions) => effectiveDeps.refreshAsrHealth(healthOptions),
+          refreshAsrModelCacheInfo: effectiveDeps.refreshAsrModelCacheInfo,
+          refreshSetupDiagnose: effectiveDeps.refreshSetupDiagnose,
         },
         {
           touchUi,
@@ -156,8 +158,8 @@ export async function runEnvironmentCapabilityRefresh(
 
       const presentation = buildEnvironmentCapabilityPresentation({
         healthResult: readLastAsrHealthRefreshResultAfterDiagnostics(),
-        cacheOverlay: deps.getCacheOverlay?.(),
-        asrOverlay: deps.getAsrPresentationOverlay?.(),
+        cacheOverlay: effectiveDeps.getCacheOverlay?.(),
+        asrOverlay: effectiveDeps.getAsrPresentationOverlay?.(),
       });
 
       const nextGeneration = readStore().generation + 1;

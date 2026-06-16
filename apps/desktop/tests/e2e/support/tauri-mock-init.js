@@ -22,11 +22,39 @@
   const now = Date.now();
   const e2eProjectId = "proj-e2e-core";
   const e2eFileId = "file-e2e-core";
+  const e2eSegment = {
+    idx: 0,
+    uid: "seg-e2e-1",
+    start_sec: 0,
+    end_sec: 2,
+    text: "初始语段",
+    confidence: null,
+    low_confidence: false,
+    detail: null,
+    kind: "speech",
+  };
   /** @type {Array<{ id: string; name: string; created_at_ms: number; updated_at_ms: number; file_count?: number }>} */
   let projectSummaries = [];
+  let currentSegments = [e2eSegment];
+  /** @type {Array<{ cmd: string; args: unknown }>} */
+  const invocations = [];
 
   const invokeHandlers = {
     project_list: async () => projectSummaries,
+    project_load: async () => ({
+      id: e2eProjectId,
+      name: "未命名项目",
+      files: [
+        {
+          id: e2eFileId,
+          name: "未命名项目",
+          file_type: "text",
+          updated_at_ms: now,
+        },
+      ],
+      created_at_ms: now,
+      updated_at_ms: now,
+    }),
     create_empty_project: async (args) => {
       const detail = {
         id: e2eProjectId,
@@ -59,12 +87,15 @@
       name: "E2E 空项目",
       file_type: "text",
       audio_path: null,
-      segments: [],
+      segments: currentSegments,
       created_at_ms: now,
       updated_at_ms: now,
     }),
-    file_save_segments: async () => {},
+    file_save_segments: async (args) => {
+      currentSegments = args?.segments ?? currentSegments;
+    },
     export_text_file: async () => null,
+    export_docx: async () => "/tmp/e2e.docx",
     ollama_detect_status: async () => ({
       reachable: false,
       modelCount: 0,
@@ -84,6 +115,7 @@
     glossary_list: async () => [],
   };
 
+  window.__RUSHI_E2E_INVOKES__ = invocations;
   window.__TAURI__ = {};
   window.__TAURI_INTERNALS__ = {
     metadata: {
@@ -92,6 +124,7 @@
     convertFileSrc: (path) => path,
     transformCallback: () => 0,
     invoke: async (cmd, args) => {
+      invocations.push({ cmd, args });
       const handler = invokeHandlers[cmd];
       if (handler) return handler(args);
       return null;

@@ -7,6 +7,7 @@ from rushi_asr.inference_queue import (
     SingleWorkerInferenceQueue,
     get_inference_queue,
     inference_queue_stats,
+    requested_inference_workers,
     reset_inference_queue_after_timeout,
 )
 
@@ -79,3 +80,12 @@ def test_reset_after_timeout_does_not_start_parallel_worker() -> None:
 
     release.set()
     assert first.result(timeout=2) is True
+
+
+def test_requested_workers_are_diagnostic_only(monkeypatch) -> None:
+    monkeypatch.setenv("RUSHI_FUNASR_INFERENCE_WORKERS", "4")
+
+    assert requested_inference_workers() == 4
+    stats = inference_queue_stats()
+    assert stats["inference_requested_workers"] == 4
+    assert stats["inference_max_workers"] == 1

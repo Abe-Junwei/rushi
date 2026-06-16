@@ -12,8 +12,13 @@ const COMMAND_DENIED_HINTS: Record<string, string> = {
   llm_migrate_legacy_api_key: "无法迁移 LLM 密钥：应用权限未配置，请更新后重试。",
 };
 
+import { TauriCommandError } from "../../tauri/commandError";
+
 /** 将 Tauri invoke 等技术错误转为用户可读中文；无法识别时尽量保留原意。 */
 export function humanizeInvokeError(raw: unknown): string {
+  if (raw instanceof TauriCommandError) {
+    return raw.message;
+  }
   const message =
     raw instanceof Error
       ? raw.message

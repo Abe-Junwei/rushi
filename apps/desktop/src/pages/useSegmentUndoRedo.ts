@@ -1,6 +1,6 @@
 import { useCallback, useRef } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
-import { publishSegmentStructureMutation } from "./flushSegmentTextDrafts";
+import { publishSegmentTextBulkMutation } from "./flushSegmentTextDrafts";
 
 function cloneSegments(segs: SegmentDto[]): SegmentDto[] {
   return segs.map((s) => ({ ...s }));
@@ -51,7 +51,7 @@ export function useSegmentUndoRedo(
     redoStack.current.push(cloneSegments(segmentsRef.current));
     if (redoStack.current.length > 40) redoStack.current.shift();
     textEditUndoRef.current = null;
-    publishSegmentStructureMutation(segmentsRef, setSegments, prev);
+    publishSegmentTextBulkMutation(segmentsRef, setSegments, prev);
   }, [segmentsRef, setSegments]);
 
   const redo = useCallback(() => {
@@ -60,7 +60,7 @@ export function useSegmentUndoRedo(
     undoStack.current.push(cloneSegments(segmentsRef.current));
     if (undoStack.current.length > 40) undoStack.current.shift();
     textEditUndoRef.current = null;
-    publishSegmentStructureMutation(segmentsRef, setSegments, next);
+    publishSegmentTextBulkMutation(segmentsRef, setSegments, next);
   }, [segmentsRef, setSegments]);
 
   return { pushUndo, pushUndoForTextEdit, undo, redo, reset };

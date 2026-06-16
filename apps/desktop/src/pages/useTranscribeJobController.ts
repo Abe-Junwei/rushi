@@ -40,7 +40,11 @@ import { awaitEnvironmentCapabilityRefresh } from "../services/environmentCapabi
 import { resolveTranscribeExecuteBlock } from "./transcribeExecuteGate";
 import { segmentsHaveNonEmptyText } from "./transcribeJobHelpers";
 import { runLocalTranscribeJob } from "./transcribeLocalJobRun";
-import { publishSegmentStructureMutation } from "./flushSegmentTextDrafts";
+import {
+  publishSegmentTextBulkMutation,
+  publishTranscribeSegmentClear,
+  publishTranscribeSegmentRestore,
+} from "./flushSegmentTextDrafts";
 import {
   isOnlineTranscribeJobId,
   isSidecarCancellableTranscribeJobId,
@@ -189,7 +193,7 @@ export function useTranscribeJobController(deps: Deps) {
       const segments = out.detail.segments;
       // 转写开始时 UI 会清空 segments 并标记 dirty；须先写回结果再 openFile，
       // 否则 openFileWrapped 对同文件 noop-same-file-dirty，界面会一直空白。
-      publishSegmentStructureMutation(segmentsRef, setSegments, segments);
+      publishSegmentTextBulkMutation(segmentsRef, setSegments, segments);
       onTranscribeSuccess?.(out);
       await closeGate.openFileWrapped(fileId);
       setTranscribeWarnings(out.warnings ?? []);
@@ -263,7 +267,7 @@ export function useTranscribeJobController(deps: Deps) {
     firstSegmentsLoggedRef.current = false;
     transcribeStartedAtRef.current = Date.now();
     const restoreSnapshot = snapshotSegmentsForRestore(segmentsRef.current);
-    publishSegmentStructureMutation(segmentsRef, setSegments, []);
+    publishTranscribeSegmentClear(segmentsRef, setSegments);
     try {
       const online =
         transcribeSource === "online" ? tryBuildOnlineTranscribeBridgePayload() : null;
@@ -288,7 +292,7 @@ export function useTranscribeJobController(deps: Deps) {
       }
       await finishTranscribeSuccess(fileId, out);
     } catch (e) {
-      publishSegmentStructureMutation(segmentsRef, setSegments, restoreSnapshot);
+      publishTranscribeSegmentRestore(segmentsRef, setSegments, restoreSnapshot);
       if (isTranscribeUserCancellation(e) || isTranscribeInvokeCancelled(e)) {
         setTranscribeHints([]);
         setTranscribeWarnings([]);

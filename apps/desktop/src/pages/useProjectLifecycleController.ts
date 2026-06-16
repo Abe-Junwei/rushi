@@ -64,6 +64,7 @@ export function useProjectLifecycleController(
     selectedIdxRef,
     openFile,
     closeFile,
+    closeProject,
     refreshCurrentProject: refreshCurrentProjectBase,
     applyDetailBase,
   } = useProjectEditorState(setError);
@@ -189,6 +190,7 @@ export function useProjectLifecycleController(
     refreshProjects,
     mutations,
     closeGate,
+    closeProject,
     setTranscribeHints: transcribeJob.setTranscribeHints,
   });
 
