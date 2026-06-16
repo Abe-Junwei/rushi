@@ -3,6 +3,7 @@ mod asr_setup;
 mod asr_sidecar;
 mod blocking_http;
 mod bundled_asr_assets;
+mod command_error;
 mod db;
 mod diagnostic;
 mod diagnostic_db_sanitize;
@@ -23,13 +24,42 @@ mod stt_online_secret_store;
 mod utils;
 
 use std::path::PathBuf;
+use std::sync::Arc;
 
 use tauri::{Manager, RunEvent};
+
+use crate::db::DbPool;
 
 #[derive(Clone)]
 pub struct DbState {
     pub root: PathBuf,
     pub db_path: PathBuf,
+    pool: Arc<DbPool>,
+}
+
+impl DbState {
+    pub fn new(root: PathBuf, db_path: PathBuf, pool: DbPool) -> Self {
+        Self {
+            root,
+            db_path,
+            pool: Arc::new(pool),
+        }
+    }
+
+    pub(crate) fn pool(&self) -> &DbPool {
+        &self.pool
+    }
+
+    #[cfg(test)]
+    pub fn open_test_db(root: PathBuf) -> Self {
+        Self::open_test_db_at(root.clone(), root.join("rushi.sqlite3"))
+    }
+
+    #[cfg(test)]
+    pub fn open_test_db_at(root: PathBuf, db_path: PathBuf) -> Self {
+        let pool = crate::db::bootstrap_db_at(&db_path).expect("test db bootstrap");
+        Self::new(root, db_path, pool)
+    }
 }
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]

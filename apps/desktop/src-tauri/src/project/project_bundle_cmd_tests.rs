@@ -6,7 +6,6 @@ use super::project_bundle_cmd::{
 };
 use super::types::SegmentDto;
 use super::utils::open_db;
-use crate::db;
 use crate::DbState;
 use rusqlite::params;
 use std::fs::{self, File};
@@ -26,12 +25,7 @@ fn test_root(label: &str) -> PathBuf {
 }
 
 fn test_state(label: &str) -> DbState {
-    let root = test_root(label);
-    let db_path = root.join("rushi.sqlite3");
-    let conn = rusqlite::Connection::open(&db_path).unwrap();
-    db::migrate(&conn).unwrap();
-    drop(conn);
-    DbState { root, db_path }
+    DbState::open_test_db(test_root(label))
 }
 
 struct SeededProject {
@@ -305,7 +299,9 @@ fn import_project_bundle_rejects_unsafe_audio_path() {
     zip.write_all(&serde_json::to_vec(&doc).unwrap()).unwrap();
     zip.finish().unwrap();
 
-    let err = import_project_bundle_from_path(&st, &zip_path).unwrap_err();
+    let err = import_project_bundle_from_path(&st, &zip_path)
+        .unwrap_err()
+        .to_string();
     assert!(err.contains("音频路径不安全"));
 
     let _ = fs::remove_dir_all(&st.root);
@@ -345,7 +341,9 @@ fn import_project_bundle_rejects_zip_bomb_uncompressed_size() {
     zip.write_all(&oversized).unwrap();
     zip.finish().unwrap();
 
-    let err = import_project_bundle_from_path(&st, &zip_path).unwrap_err();
+    let err = import_project_bundle_from_path(&st, &zip_path)
+        .unwrap_err()
+        .to_string();
     assert!(err.contains("解压体积过大") || err.contains("过大"));
 
     let _ = fs::remove_dir_all(&st.root);
@@ -400,7 +398,9 @@ fn import_project_bundle_rejects_excessive_segment_count() {
     zip.write_all(b"tiny").unwrap();
     zip.finish().unwrap();
 
-    let err = import_project_bundle_from_path(&st, &zip_path).unwrap_err();
+    let err = import_project_bundle_from_path(&st, &zip_path)
+        .unwrap_err()
+        .to_string();
     assert!(err.contains("语段数量超过上限"));
 
     let _ = fs::remove_dir_all(&st.root);

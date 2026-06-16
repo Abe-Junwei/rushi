@@ -32,10 +32,7 @@ mod tests {
         let tmp = std::env::temp_dir().join(format!("rushi-runtime-paths-{}", std::process::id()));
         let _ = fs::remove_dir_all(&tmp);
         fs::create_dir_all(&tmp).unwrap();
-        let st = DbState {
-            root: tmp.clone(),
-            db_path: tmp.join("rushi.sqlite3"),
-        };
+        let st = DbState::open_test_db(tmp.clone());
         let models = models_root_for_app_data_root(&st.root);
         let paths = AsrRuntimePaths {
             app_data_root: st.root.to_string_lossy().to_string(),

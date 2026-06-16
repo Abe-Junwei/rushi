@@ -93,10 +93,7 @@ mod tests {
         let tmp = std::env::temp_dir().join(format!("rushi-local-asr-lang-{}", std::process::id()));
         let _ = fs::remove_dir_all(&tmp);
         fs::create_dir_all(&tmp).unwrap();
-        let st = DbState {
-            root: tmp.clone(),
-            db_path: tmp.join("app.db"),
-        };
+        let st = DbState::open_test_db_at(tmp.clone(), tmp.join("app.db"));
         assert_eq!(read_language_pref(&st), "zh");
         write_language_pref(&st, "auto").unwrap();
         assert_eq!(read_language_pref(&st).as_str(), "auto");

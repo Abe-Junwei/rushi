@@ -234,8 +234,8 @@ pub fn file_save_segments_inner(
 }
 
 #[tauri::command]
-pub fn file_save_segments(
-    state: State<DbState>,
+pub async fn file_save_segments(
+    state: State<'_, DbState>,
     file_id: String,
     segments: Vec<SegmentDto>,
     count_hits: Option<bool>,
@@ -259,16 +259,21 @@ pub fn file_save_segments(
             }
         })
         .collect();
-    file_save_segments_inner(
-        state.deref(),
-        &file_id,
-        &segments,
-        SegmentSaveEditLog::SaveSegments(SaveSegmentsLearnOpts {
-            explicit_pairs,
-            count_hits: count_hits.unwrap_or(true),
-            learn_baseline,
-        }),
-    )
+    let st = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        file_save_segments_inner(
+            &st,
+            &file_id,
+            &segments,
+            SegmentSaveEditLog::SaveSegments(SaveSegmentsLearnOpts {
+                explicit_pairs,
+                count_hits: count_hits.unwrap_or(true),
+                learn_baseline,
+            }),
+        )
+    })
+    .await
+    .map_err(|e| format!("保存语段失败: {e}"))?
 }
 
 pub fn file_restore_segments_from_edit_log_inner(

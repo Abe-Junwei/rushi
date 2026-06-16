@@ -6,7 +6,6 @@ use super::segment_cmd::{
 };
 use super::types::SegmentDto;
 use super::utils::{file_detail_from_conn, now_ms, open_db};
-use crate::db;
 use crate::DbState;
 use rusqlite::params;
 use std::fs;
@@ -25,12 +24,7 @@ fn test_root(label: &str) -> PathBuf {
 }
 
 fn test_state(label: &str) -> DbState {
-    let root = test_root(label);
-    let db_path = root.join("rushi.sqlite3");
-    let conn = rusqlite::Connection::open(&db_path).unwrap();
-    db::migrate(&conn).unwrap();
-    drop(conn);
-    DbState { root, db_path }
+    DbState::open_test_db(test_root(label))
 }
 
 fn seed_file(st: &DbState) -> (String, String) {

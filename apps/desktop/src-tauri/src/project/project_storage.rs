@@ -25,7 +25,10 @@ pub fn cleanup_deleted_file_storage(
     }
 }
 
-/// Remove the entire on-disk project bundle (`projects/{id}`: audio copies + peaks + staging).
+/// Best-effort removal of the on-disk project bundle after the DB row is already
+/// committed. A filesystem failure is logged (WARN) but never propagated, so it can
+/// only leave sweepable orphan files — never a reverse orphan (DB row whose media
+/// was already deleted).
 pub fn cleanup_deleted_project_storage(st: &DbState, project_id: &str) {
     if let Err(err) = remove_project_storage_dir(&st.root, project_id) {
         super::utils::append_desktop_log_line(
@@ -65,7 +68,6 @@ pub fn remove_project_storage_dir(app_root: &Path, project_id: &str) -> Result<(
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::db;
     use std::time::{SystemTime, UNIX_EPOCH};
     use uuid::Uuid;
 
@@ -76,11 +78,7 @@ mod tests {
             .as_nanos();
         let root = std::env::temp_dir().join(format!("rushi-project-storage-{label}-{unique}"));
         fs::create_dir_all(&root).unwrap();
-        let db_path = root.join("rushi.sqlite3");
-        let conn = rusqlite::Connection::open(&db_path).unwrap();
-        db::migrate(&conn).unwrap();
-        drop(conn);
-        DbState { root, db_path }
+        DbState::open_test_db(root)
     }
 
     #[test]
@@ -109,14 +107,14 @@ mod tests {
     }
 
     #[test]
-    fn cleanup_deleted_project_storage_removes_peaks_without_audio() {
+    fn remove_project_storage_dir_removes_peaks_without_audio() {
         let st = test_state("project");
         let project_id = Uuid::new_v4().to_string();
         let project_dir = project_storage_dir(&st.root, &project_id);
         fs::create_dir_all(project_dir.join("peaks")).unwrap();
         fs::write(project_dir.join("peaks").join("orphan_L0.dat"), b"x").unwrap();
 
-        cleanup_deleted_project_storage(&st, &project_id);
+        remove_project_storage_dir(&st.root, &project_id).unwrap();
 
         assert!(!project_dir.exists());
         let _ = fs::remove_dir_all(&st.root);

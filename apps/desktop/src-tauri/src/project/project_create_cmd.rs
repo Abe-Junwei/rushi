@@ -32,14 +32,28 @@ fn copy_audio_with_context(src: &PathBuf, dest: &PathBuf) -> Result<(), String> 
 }
 
 #[tauri::command]
-pub fn project_create_from_audio(
+pub async fn project_create_from_audio(
     app: AppHandle,
-    state: State<DbState>,
+    state: State<'_, DbState>,
     name: String,
     src_path: String,
 ) -> Result<ProjectDetail, String> {
-    let st: &DbState = state.deref();
-    let src = PathBuf::from(&src_path);
+    let st = state.inner().clone();
+    let (detail, dest_audio) = tauri::async_runtime::spawn_blocking(move || {
+        project_create_from_audio_inner(&st, &name, &src_path)
+    })
+    .await
+    .map_err(|e| format!("导入音频失败: {e}"))??;
+    allow_imported_audio_asset(&app, &dest_audio);
+    Ok(detail)
+}
+
+pub(crate) fn project_create_from_audio_inner(
+    st: &DbState,
+    name: &str,
+    src_path: &str,
+) -> Result<(ProjectDetail, PathBuf), String> {
+    let src = PathBuf::from(src_path);
     if !src.is_file() {
         return Err(format!("源文件不存在: {src_path}"));
     }
@@ -59,13 +73,13 @@ pub fn project_create_from_audio(
     let dest_str = canonicalize_audio_storage_path(&dest_audio).inspect_err(|_| {
         let _ = fs::remove_dir_all(&dest_dir);
     })?;
-    let provenance = import_provenance_for_src(&src_path)?;
+    let provenance = import_provenance_for_src(src_path)?;
     let t = now_ms();
     let mut conn = open_db(st)?;
     let tx = conn.transaction().map_err(|e| e.to_string())?;
     if let Err(e) = tx.execute(
         "INSERT INTO projects (id, name, created_at_ms, updated_at_ms) VALUES (?1, ?2, ?3, ?4)",
-        params![&project_id, &name, t, t],
+        params![&project_id, name, t, t],
     ) {
         let _ = fs::remove_dir_all(&dest_dir);
         return Err(e.to_string());
@@ -76,7 +90,7 @@ pub fn project_create_from_audio(
         params![
             &file_id,
             &project_id,
-            &name,
+            name,
             "paired",
             &dest_str,
             &provenance.source_path,
@@ -91,8 +105,8 @@ pub fn project_create_from_audio(
         return Err(e.to_string());
     }
     tx.commit().map_err(|e| e.to_string())?;
-    allow_imported_audio_asset(&app, &dest_audio);
-    project_detail_from_conn(&conn, &project_id)
+    let detail = project_detail_from_conn(&conn, &project_id)?;
+    Ok((detail, dest_audio))
 }
 
 fn allow_imported_audio_asset(app: &AppHandle, dest_audio: &Path) {
@@ -114,13 +128,25 @@ pub fn create_empty_project(state: State<DbState>, name: String) -> Result<Proje
 }
 
 #[tauri::command]
-pub fn create_project_from_text(
-    state: State<DbState>,
+pub async fn create_project_from_text(
+    state: State<'_, DbState>,
     name: String,
     src_path: String,
 ) -> Result<ProjectDetail, String> {
-    let st: &DbState = state.deref();
-    let src = PathBuf::from(&src_path);
+    let st = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        create_project_from_text_inner(&st, &name, &src_path)
+    })
+    .await
+    .map_err(|e| format!("导入文本失败: {e}"))?
+}
+
+pub(crate) fn create_project_from_text_inner(
+    st: &DbState,
+    name: &str,
+    src_path: &str,
+) -> Result<ProjectDetail, String> {
+    let src = PathBuf::from(src_path);
     if !src.is_file() {
         return Err(format!("源文件不存在: {src_path}"));
     }
@@ -137,13 +163,13 @@ pub fn create_project_from_text(
     };
     let project_id = Uuid::new_v4().to_string();
     let file_id = Uuid::new_v4().to_string();
-    let provenance = import_provenance_for_src(&src_path)?;
+    let provenance = import_provenance_for_src(src_path)?;
     let t = now_ms();
     let mut conn = open_db(st)?;
     let tx = conn.transaction().map_err(|e| e.to_string())?;
     tx.execute(
         "INSERT INTO projects (id, name, created_at_ms, updated_at_ms) VALUES (?1, ?2, ?3, ?4)",
-        params![&project_id, &name, t, t],
+        params![&project_id, name, t, t],
     )
     .map_err(|e| e.to_string())?;
     tx.execute(
@@ -152,7 +178,7 @@ pub fn create_project_from_text(
         params![
             &file_id,
             &project_id,
-            &name,
+            name,
             "text",
             &provenance.source_path,
             &provenance.content_sha256,
@@ -211,15 +237,30 @@ pub fn create_empty_text_file(
 }
 
 #[tauri::command]
-pub fn import_audio_to_project(
+pub async fn import_audio_to_project(
     app: AppHandle,
-    state: State<DbState>,
+    state: State<'_, DbState>,
     project_id: String,
     name: String,
     src_path: String,
 ) -> Result<ProjectDetail, String> {
-    let st: &DbState = state.deref();
-    let src = PathBuf::from(&src_path);
+    let st = state.inner().clone();
+    let (detail, dest_audio) = tauri::async_runtime::spawn_blocking(move || {
+        import_audio_to_project_inner(&st, &project_id, &name, &src_path)
+    })
+    .await
+    .map_err(|e| format!("导入音频失败: {e}"))??;
+    allow_imported_audio_asset(&app, &dest_audio);
+    Ok(detail)
+}
+
+pub(crate) fn import_audio_to_project_inner(
+    st: &DbState,
+    project_id: &str,
+    name: &str,
+    src_path: &str,
+) -> Result<(ProjectDetail, PathBuf), String> {
+    let src = PathBuf::from(src_path);
     if !src.is_file() {
         return Err(format!("源文件不存在: {src_path}"));
     }
@@ -229,12 +270,12 @@ pub fn import_audio_to_project(
         .unwrap_or("dat")
         .to_ascii_lowercase();
     let file_id = Uuid::new_v4().to_string();
-    let dest_dir = st.root.join("projects").join(&project_id);
+    let dest_dir = st.root.join("projects").join(project_id);
     fs::create_dir_all(&dest_dir).map_err(|e| e.to_string())?;
     let dest_audio = dest_dir.join(format!("{file_id}.{ext}"));
     copy_audio_with_context(&src, &dest_audio)?;
     let dest_str = canonicalize_audio_storage_path(&dest_audio)?;
-    let provenance = import_provenance_for_src(&src_path)?;
+    let provenance = import_provenance_for_src(src_path)?;
     let t = now_ms();
     let mut conn = open_db(st)?;
     let db_result = (|| -> Result<(), String> {
@@ -244,8 +285,8 @@ pub fn import_audio_to_project(
              VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10, ?11)",
             params![
                 &file_id,
-                &project_id,
-                &name,
+                project_id,
+                name,
                 "paired",
                 &dest_str,
                 &provenance.source_path,
@@ -259,7 +300,7 @@ pub fn import_audio_to_project(
         .map_err(|e| e.to_string())?;
         tx.execute(
             "UPDATE projects SET updated_at_ms = ?1 WHERE id = ?2",
-            params![t, &project_id],
+            params![t, project_id],
         )
         .map_err(|e| e.to_string())?;
         tx.commit().map_err(|e| e.to_string())?;
@@ -269,19 +310,32 @@ pub fn import_audio_to_project(
         let _ = fs::remove_file(&dest_audio);
         return Err(e);
     }
-    allow_imported_audio_asset(&app, &dest_audio);
-    project_detail_from_conn(&conn, &project_id)
+    let detail = project_detail_from_conn(&conn, project_id)?;
+    Ok((detail, dest_audio))
 }
 
 #[tauri::command]
-pub fn import_text_to_project(
-    state: State<DbState>,
+pub async fn import_text_to_project(
+    state: State<'_, DbState>,
     project_id: String,
     name: String,
     src_path: String,
 ) -> Result<ProjectDetail, String> {
-    let st: &DbState = state.deref();
-    let src = PathBuf::from(&src_path);
+    let st = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || {
+        import_text_to_project_inner(&st, &project_id, &name, &src_path)
+    })
+    .await
+    .map_err(|e| format!("导入文本失败: {e}"))?
+}
+
+pub(crate) fn import_text_to_project_inner(
+    st: &DbState,
+    project_id: &str,
+    name: &str,
+    src_path: &str,
+) -> Result<ProjectDetail, String> {
+    let src = PathBuf::from(src_path);
     if !src.is_file() {
         return Err(format!("源文件不存在: {src_path}"));
     }
@@ -297,7 +351,7 @@ pub fn import_text_to_project(
         parse_txt(&content)
     };
     let file_id = Uuid::new_v4().to_string();
-    let provenance = import_provenance_for_src(&src_path)?;
+    let provenance = import_provenance_for_src(src_path)?;
     let t = now_ms();
     let mut conn = open_db(st)?;
     let tx = conn.transaction().map_err(|e| e.to_string())?;
@@ -306,8 +360,8 @@ pub fn import_text_to_project(
          VALUES (?1, ?2, ?3, ?4, ?5, ?6, ?7, ?8, ?9, ?10)",
         params![
             &file_id,
-            &project_id,
-            &name,
+            project_id,
+            name,
             "text",
             &provenance.source_path,
             &provenance.content_sha256,
@@ -339,9 +393,9 @@ pub fn import_text_to_project(
     }
     tx.execute(
         "UPDATE projects SET updated_at_ms = ?1 WHERE id = ?2",
-        params![t, &project_id],
+        params![t, project_id],
     )
     .map_err(|e| e.to_string())?;
     tx.commit().map_err(|e| e.to_string())?;
-    project_detail_from_conn(&conn, &project_id)
+    project_detail_from_conn(&conn, project_id)
 }

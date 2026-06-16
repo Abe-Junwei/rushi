@@ -1,3 +1,4 @@
+use crate::command_error::{CommandError, CommandResultExt};
 use crate::DbState;
 use std::fs;
 use std::ops::Deref;
@@ -10,52 +11,117 @@ use super::types::{ProjectDetail, SegmentDto};
 
 /// 弹出系统「另存为」并写入 UTF-8 文本（Tauri WebView 内程序化 `<a download>` 常无效果）。
 #[tauri::command]
-pub fn export_text_file(
+pub async fn export_text_file(
     default_filename: String,
     content: String,
 ) -> Result<Option<String>, String> {
-    let picked = rfd::FileDialog::new()
-        .set_file_name(&default_filename)
-        .save_file();
+    let picked = tauri::async_runtime::spawn_blocking({
+        let default_filename = default_filename.clone();
+        move || {
+            rfd::FileDialog::new()
+                .set_file_name(&default_filename)
+                .save_file()
+        }
+    })
+    .await
+    .map_err(|e| {
+        CommandError::ExportTextFile {
+            detail: e.to_string(),
+        }
+        .to_string()
+    })?;
     let Some(path) = picked else {
         return Ok(None);
     };
     if path.exists() {
-        return Err("目标文件已存在，请另选文件名或先删除该文件。".into());
+        return Err(CommandError::TargetFileExists.to_string());
     }
-    fs::write(&path, content).map_err(|e| format!("写入文件失败: {e}"))?;
-    Ok(Some(path.to_string_lossy().to_string()))
+    tauri::async_runtime::spawn_blocking(move || -> Result<Option<String>, CommandError> {
+        fs::write(&path, content).map_err(CommandError::WriteFile)?;
+        Ok(Some(path.to_string_lossy().to_string()))
+    })
+    .await
+    .map_err(|e| {
+        CommandError::ExportTextFile {
+            detail: e.to_string(),
+        }
+        .to_string()
+    })?
+    .map_command_err()
 }
 
 #[tauri::command]
-pub fn export_project_bundle(
-    state: State<DbState>,
+pub async fn export_project_bundle(
+    state: State<'_, DbState>,
     project_id: String,
     file_id: String,
     default_filename: String,
     segments: Vec<SegmentDto>,
 ) -> Result<Option<String>, String> {
-    let st: &DbState = state.deref();
-    let picked = rfd::FileDialog::new()
-        .add_filter("ZIP", &["zip"])
-        .set_file_name(&default_filename)
-        .save_file();
+    let st = state.inner().clone();
+    let picked = tauri::async_runtime::spawn_blocking({
+        let default_filename = default_filename.clone();
+        move || {
+            rfd::FileDialog::new()
+                .add_filter("ZIP", &["zip"])
+                .set_file_name(&default_filename)
+                .save_file()
+        }
+    })
+    .await
+    .map_err(|e| {
+        CommandError::ExportProjectBundle {
+            detail: e.to_string(),
+        }
+        .to_string()
+    })?;
     let Some(zip_path) = picked else {
         return Ok(None);
     };
-    export_project_bundle_to_path(st, &project_id, &file_id, &zip_path, segments).map(Some)
+    tauri::async_runtime::spawn_blocking(move || {
+        export_project_bundle_to_path(&st, &project_id, &file_id, &zip_path, segments).map(Some)
+    })
+    .await
+    .map_err(|e| {
+        CommandError::ExportProjectBundle {
+            detail: e.to_string(),
+        }
+        .to_string()
+    })?
+    .map_command_err()
 }
 
 #[tauri::command]
-pub fn import_project_bundle(state: State<DbState>) -> Result<Option<ProjectDetail>, String> {
-    let st: &DbState = state.deref();
-    let picked = rfd::FileDialog::new()
-        .add_filter("ZIP", &["zip"])
-        .pick_file();
+pub async fn import_project_bundle(
+    state: State<'_, DbState>,
+) -> Result<Option<ProjectDetail>, String> {
+    let st = state.inner().clone();
+    let picked = tauri::async_runtime::spawn_blocking(|| {
+        rfd::FileDialog::new()
+            .add_filter("ZIP", &["zip"])
+            .pick_file()
+    })
+    .await
+    .map_err(|e| {
+        CommandError::ImportProjectBundle {
+            detail: e.to_string(),
+        }
+        .to_string()
+    })?;
     let Some(zip_path) = picked else {
         return Ok(None);
     };
-    import_project_bundle_from_path(st, &zip_path).map(Some)
+    tauri::async_runtime::spawn_blocking(move || {
+        import_project_bundle_from_path(&st, &zip_path).map(Some)
+    })
+    .await
+    .map_err(|e| {
+        CommandError::ImportProjectBundle {
+            detail: e.to_string(),
+        }
+        .to_string()
+    })?
+    .map_command_err()
 }
 
 fn reveal_path_in_file_manager(path: &Path) -> Result<(), String> {

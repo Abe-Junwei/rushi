@@ -247,7 +247,6 @@ fn peaks_dir_size_for_file(peaks_root: &Path, file_id: &str) -> u64 {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::db;
     use std::time::{SystemTime, UNIX_EPOCH};
     use uuid::Uuid;
 
@@ -258,11 +257,7 @@ mod tests {
             .as_nanos();
         let root = std::env::temp_dir().join(format!("rushi-peaks-gc-{label}-{unique}"));
         fs::create_dir_all(&root).unwrap();
-        let db_path = root.join("rushi.sqlite3");
-        let conn = rusqlite::Connection::open(&db_path).unwrap();
-        db::migrate(&conn).unwrap();
-        drop(conn);
-        DbState { root, db_path }
+        DbState::open_test_db(root)
     }
 
     fn seed_project(st: &DbState, project_id: &str, file_id: &str) {

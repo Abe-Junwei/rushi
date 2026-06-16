@@ -70,7 +70,7 @@ pub fn write_diagnostic_bundle_to_path(
         crate::local_runtime::integrity::InstalledRuntimeStatus::Installed
         | crate::local_runtime::integrity::InstalledRuntimeStatus::Corrupt => "app_data",
         crate::local_runtime::integrity::InstalledRuntimeStatus::Missing
-            if crate::asr_sidecar::bundled_sidecar_resources_present(&app) =>
+            if crate::asr_sidecar::bundled_sidecar_resources_present(app) =>
         {
             "bundled"
         }
@@ -295,7 +295,7 @@ pub fn write_diagnostic_bundle_to_path(
         let _ = fs::remove_file(&tmp_path);
         e.to_string()
     })?;
-    fs::rename(&tmp_path, &zip_path).map_err(|e| {
+    fs::rename(&tmp_path, zip_path).map_err(|e| {
         let _ = fs::remove_file(&tmp_path);
         format!("无法将诊断包移动到目标路径: {e}")
     })?;

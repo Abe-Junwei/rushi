@@ -236,6 +236,7 @@ pub fn note_warmup_done(handle: &AppHandle) {
     });
 }
 
+#[allow(dead_code)]
 pub fn record_activity(handle: &AppHandle) {
     let _ = with_snapshot(handle, |snap| {
         snap.last_activity_ms = now_ms();

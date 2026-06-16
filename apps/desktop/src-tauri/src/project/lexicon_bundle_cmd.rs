@@ -4,6 +4,7 @@ use super::lexicon_bundle::{
     LexiconBundleConflictResolution, LexiconBundleImportApplyResult, LexiconBundleImportPreview,
 };
 use super::utils::open_db;
+use crate::command_error::CommandError;
 use crate::DbState;
 use std::fs;
 use std::ops::Deref;
@@ -26,46 +27,69 @@ pub fn lexicon_bundle_export_preview(
 }
 
 #[tauri::command]
-pub fn lexicon_bundle_export(
-    state: State<DbState>,
+pub async fn lexicon_bundle_export(
+    state: State<'_, DbState>,
     stable_only: bool,
     optional_label: Option<String>,
 ) -> Result<Option<String>, String> {
-    let conn = open_db(state.deref())?;
-    let doc = build_lexicon_bundle_export(&conn, stable_only, optional_label)?;
-    let content = serialize_lexicon_bundle(&doc)?;
-    let picked = rfd::FileDialog::new()
-        .add_filter("JSON", &["json"])
-        .set_file_name("rushi-lexicon-bundle.json")
-        .save_file();
-    let Some(path) = picked else {
-        return Ok(None);
-    };
-    if path.exists() {
-        return Err("目标文件已存在，请另选文件名或先删除该文件。".into());
-    }
-    fs::write(&path, content).map_err(|e| format!("写入词表包失败: {e}"))?;
-    Ok(Some(path.to_string_lossy().to_string()))
+    let st = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || -> Result<Option<String>, String> {
+        let conn = open_db(&st)?;
+        let doc = build_lexicon_bundle_export(&conn, stable_only, optional_label)?;
+        let content = serialize_lexicon_bundle(&doc)?;
+        let picked = rfd::FileDialog::new()
+            .add_filter("JSON", &["json"])
+            .set_file_name("rushi-lexicon-bundle.json")
+            .save_file();
+        let Some(path) = picked else {
+            return Ok(None);
+        };
+        if path.exists() {
+            return Err(CommandError::TargetFileExists.to_string());
+        }
+        fs::write(&path, content).map_err(|e| CommandError::WriteLexiconBundle(e).to_string())?;
+        Ok(Some(path.to_string_lossy().to_string()))
+    })
+    .await
+    .map_err(|e| {
+        CommandError::ExportLexiconBundle {
+            detail: e.to_string(),
+        }
+        .to_string()
+    })?
 }
 
 #[tauri::command]
-pub fn lexicon_bundle_import_preview(
-    state: State<DbState>,
+pub async fn lexicon_bundle_import_preview(
+    state: State<'_, DbState>,
 ) -> Result<Option<LexiconBundleImportPreviewResult>, String> {
-    let conn = open_db(state.deref())?;
-    let picked = rfd::FileDialog::new()
-        .add_filter("JSON", &["json"])
-        .pick_file();
-    let Some(path) = picked else {
-        return Ok(None);
-    };
-    let raw = fs::read_to_string(&path).map_err(|e| format!("读取词表包失败: {e}"))?;
-    let doc = parse_lexicon_bundle_json(&raw)?;
-    let preview = preview_lexicon_bundle_import(&conn, &doc)?;
-    Ok(Some(LexiconBundleImportPreviewResult {
-        preview,
-        bundle_json: raw,
-    }))
+    let st = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(
+        move || -> Result<Option<LexiconBundleImportPreviewResult>, String> {
+            let conn = open_db(&st)?;
+            let picked = rfd::FileDialog::new()
+                .add_filter("JSON", &["json"])
+                .pick_file();
+            let Some(path) = picked else {
+                return Ok(None);
+            };
+            let raw = fs::read_to_string(&path)
+                .map_err(|e| CommandError::ReadLexiconBundle(e).to_string())?;
+            let doc = parse_lexicon_bundle_json(&raw)?;
+            let preview = preview_lexicon_bundle_import(&conn, &doc)?;
+            Ok(Some(LexiconBundleImportPreviewResult {
+                preview,
+                bundle_json: raw,
+            }))
+        },
+    )
+    .await
+    .map_err(|e| {
+        CommandError::ImportLexiconBundle {
+            detail: e.to_string(),
+        }
+        .to_string()
+    })?
 }
 
 #[tauri::command]

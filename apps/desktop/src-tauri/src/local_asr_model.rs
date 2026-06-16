@@ -109,10 +109,7 @@ mod tests {
             std::env::temp_dir().join(format!("rushi-local-asr-model-{}", std::process::id()));
         let _ = fs::remove_dir_all(&tmp);
         fs::create_dir_all(&tmp).unwrap();
-        let st = DbState {
-            root: tmp.clone(),
-            db_path: tmp.join("app.db"),
-        };
+        let st = DbState::open_test_db_at(tmp.clone(), tmp.join("app.db"));
         assert_eq!(read_hub_model_pref(&st), None);
         write_hub_model_pref(&st, "iic/SenseVoiceSmall").unwrap();
         assert_eq!(

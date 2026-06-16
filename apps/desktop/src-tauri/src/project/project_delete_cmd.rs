@@ -1,33 +1,46 @@
 use super::project_storage::cleanup_deleted_project_storage;
 use super::utils::open_db;
+use crate::command_error::{CommandError, CommandResult, CommandResultExt};
 use crate::DbState;
 use rusqlite::params;
-use std::ops::Deref;
 use tauri::State;
 
-pub(crate) fn project_delete_inner(st: &DbState, project_id: &str) -> Result<(), String> {
-    let conn = open_db(st)?;
+pub(crate) fn project_delete_inner(st: &DbState, project_id: &str) -> CommandResult<()> {
+    let mut conn = open_db(st).map_err(CommandError::db_pool)?;
+    let tx = conn.transaction().map_err(CommandError::from)?;
 
-    let deleted = conn
+    let deleted = tx
         .execute("DELETE FROM projects WHERE id = ?1", params![project_id])
-        .map_err(|e| e.to_string())?;
+        .map_err(CommandError::from)?;
     if deleted == 0 {
-        return Err("项目不存在或已被删除。".into());
+        return Err(CommandError::ProjectNotFound);
     }
+    tx.commit().map_err(CommandError::from)?;
 
+    // DB is the source of truth: commit the row deletion first, then remove the
+    // on-disk bundle best-effort. A filesystem failure here leaves only sweepable
+    // orphan files, never a DB row pointing at already-deleted media.
     cleanup_deleted_project_storage(st, project_id);
     Ok(())
 }
 
 #[tauri::command]
-pub fn project_delete(state: State<DbState>, project_id: String) -> Result<(), String> {
-    project_delete_inner(state.deref(), &project_id)
+pub async fn project_delete(state: State<'_, DbState>, project_id: String) -> Result<(), String> {
+    let st = state.inner().clone();
+    tauri::async_runtime::spawn_blocking(move || project_delete_inner(&st, &project_id))
+        .await
+        .map_err(|e| {
+            CommandError::DeleteProject {
+                detail: e.to_string(),
+            }
+            .to_string()
+        })?
+        .map_command_err()
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
-    use crate::db;
     use crate::project::project_storage::project_storage_dir;
     use std::fs;
     use std::path::PathBuf;
@@ -45,12 +58,7 @@ mod tests {
     }
 
     fn test_state(label: &str) -> DbState {
-        let root = test_root(label);
-        let db_path = root.join("rushi.sqlite3");
-        let conn = rusqlite::Connection::open(&db_path).unwrap();
-        db::migrate(&conn).unwrap();
-        drop(conn);
-        DbState { root, db_path }
+        DbState::open_test_db(test_root(label))
     }
 
     #[test]
@@ -97,5 +105,39 @@ mod tests {
             )
             .unwrap();
         assert_eq!(count, 0);
+    }
+
+    #[test]
+    fn project_delete_commits_db_even_when_storage_cleanup_fails() {
+        // A regular file at projects/{id} makes remove_dir_all fail. The DB delete is
+        // committed first, so a cleanup failure must not produce a reverse orphan: the
+        // row is gone and the un-removable file remains as a sweepable orphan.
+        let st = test_state("project_delete_cleanup_fail");
+        let project_id = Uuid::new_v4().to_string();
+        let projects_dir = st.root.join("projects");
+        fs::create_dir_all(&projects_dir).unwrap();
+        let stray = projects_dir.join(&project_id);
+        fs::write(&stray, b"not-a-directory").unwrap();
+        let conn = super::super::utils::open_db(&st).unwrap();
+        let t = super::super::utils::now_ms();
+        conn.execute(
+            "INSERT INTO projects (id, name, created_at_ms, updated_at_ms) VALUES (?1, ?2, ?3, ?4)",
+            params![&project_id, "Del", t, t],
+        )
+        .unwrap();
+        drop(conn);
+
+        project_delete_inner(&st, &project_id).unwrap();
+
+        let conn = super::super::utils::open_db(&st).unwrap();
+        let count: i64 = conn
+            .query_row(
+                "SELECT COUNT(*) FROM projects WHERE id = ?1",
+                params![&project_id],
+                |r| r.get(0),
+            )
+            .unwrap();
+        assert_eq!(count, 0);
+        assert!(stray.exists());
     }
 }

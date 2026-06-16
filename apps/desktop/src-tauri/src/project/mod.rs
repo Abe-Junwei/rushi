@@ -90,7 +90,6 @@ mod project_bundle_cmd_tests;
 #[cfg(test)]
 mod segment_cmd_tests;
 
-use rusqlite::Connection;
 use std::fs;
 use tauri::Manager;
 
@@ -105,13 +104,8 @@ pub fn setup_db(app: &tauri::AppHandle) -> Result<DbState, String> {
     let base = app_data_paths::resolve_app_data_root(app_data);
     fs::create_dir_all(&base).map_err(|e| e.to_string())?;
     let db_path = base.join("rushi.sqlite3");
-    let conn = Connection::open(&db_path).map_err(|e| e.to_string())?;
-    db::migrate(&conn).map_err(|e| e.to_string())?;
-    drop(conn);
-    let st = DbState {
-        root: base.clone(),
-        db_path,
-    };
+    let pool = db::bootstrap_db_at(&db_path)?;
+    let st = DbState::new(base.clone(), db_path, pool);
     if let Err(e) = asset_scope::register_project_media_asset_scope(app, &st) {
         append_desktop_log_line(&st, &format!("WARN asset_scope_failed: {e}"));
     }

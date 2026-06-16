@@ -6,6 +6,7 @@ use super::postprocess_segment_ops::{
 use serde::Deserialize;
 
 pub const MAX_EXPORT_POLISH_INPUT_CHARS: usize = 120_000;
+#[cfg(test)]
 pub const MAX_PARAGRAPHS: usize = 500;
 /// 超过此行数则拆成多批 LLM 请求（避免输出 token 截断）。
 pub const EXPORT_POLISH_BATCH_LINE_THRESHOLD: usize = 200;

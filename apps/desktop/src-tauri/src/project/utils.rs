@@ -1,11 +1,13 @@
 use super::types::{FileDetail, FileSummary, ProjectDetail, SegmentDto};
 use crate::DbState;
+use r2d2::PooledConnection;
+use r2d2_sqlite::SqliteConnectionManager;
 use rusqlite::{params, Connection};
 use std::fs;
 use std::io::Write;
 use std::path::{Path, PathBuf};
 use std::sync::Mutex;
-use std::time::{Duration, SystemTime, UNIX_EPOCH};
+use std::time::{SystemTime, UNIX_EPOCH};
 
 pub fn now_ms() -> i64 {
     SystemTime::now()
@@ -38,13 +40,8 @@ pub fn append_desktop_log_line(st: &DbState, line: &str) {
     }
 }
 
-pub fn open_db(state: &DbState) -> Result<Connection, String> {
-    let conn = Connection::open(&state.db_path).map_err(|e| e.to_string())?;
-    conn.pragma_update(None, "foreign_keys", "ON")
-        .map_err(|e| e.to_string())?;
-    conn.busy_timeout(Duration::from_millis(5000))
-        .map_err(|e| e.to_string())?;
-    Ok(conn)
+pub fn open_db(state: &DbState) -> Result<PooledConnection<SqliteConnectionManager>, String> {
+    state.pool().get().map_err(|e| e.to_string())
 }
 
 type ProjectMetaRow = (

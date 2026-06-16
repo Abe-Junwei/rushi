@@ -50,7 +50,9 @@ pub fn loopback_post_ok(
     for (name, value) in extra_headers {
         req = req.header(*name, *value);
     }
-    let resp = req.send().map_err(|e| format!("loopback POST failed: {e}"))?;
+    let resp = req
+        .send()
+        .map_err(|e| format!("loopback POST failed: {e}"))?;
     let status = resp.status();
     if !status.is_success() {
         let body = resp.text().unwrap_or_default();

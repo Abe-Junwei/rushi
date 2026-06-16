@@ -1,3 +1,4 @@
+use crate::command_error::{CommandError, CommandResult};
 use crate::DbState;
 use rusqlite::params;
 use serde::{Deserialize, Serialize};
@@ -52,43 +53,45 @@ pub(super) fn zip_opts() -> SimpleFileOptions {
     SimpleFileOptions::default().compression_method(CompressionMethod::Deflated)
 }
 
-pub(super) fn read_zip_bytes(
-    archive: &mut ZipArchive<File>,
-    name: &str,
-) -> Result<Vec<u8>, String> {
+pub(super) fn read_zip_bytes(archive: &mut ZipArchive<File>, name: &str) -> CommandResult<Vec<u8>> {
     let mut file = archive
         .by_name(name)
-        .map_err(|e| format!("项目包缺少 {name}: {e}"))?;
+        .map_err(|e| CommandError::BundleMissingEntry {
+            name: name.to_string(),
+            detail: e.to_string(),
+        })?;
     let size = file.size();
     if size > MAX_BUNDLE_UNCOMPRESSED_BYTES {
-        return Err(format!(
-            "项目包文件 {name} 过大（>{MAX_BUNDLE_UNCOMPRESSED_BYTES} 字节）。"
-        ));
+        return Err(CommandError::BundleEntryTooLarge {
+            name: name.to_string(),
+            limit: MAX_BUNDLE_UNCOMPRESSED_BYTES,
+        });
     }
     let mut out = Vec::with_capacity(size.min(64 * 1024) as usize);
     file.read_to_end(&mut out)
-        .map_err(|e| format!("读取项目包文件失败 {name}: {e}"))?;
+        .map_err(|e| CommandError::BundleReadEntry {
+            name: name.to_string(),
+            source: e,
+        })?;
     Ok(out)
 }
 
-fn validate_bundle_archive(archive: &mut ZipArchive<File>) -> Result<(), String> {
+fn validate_bundle_archive(archive: &mut ZipArchive<File>) -> CommandResult<()> {
     let mut total_uncompressed: u64 = 0;
     for i in 0..archive.len() {
-        let file = archive
-            .by_index(i)
-            .map_err(|e| format!("读取项目包条目失败: {e}"))?;
+        let file = archive.by_index(i).map_err(CommandError::BundleZipEntry)?;
         if file.is_dir() {
             continue;
         }
         let name = file.name();
         if name.contains("..") || name.starts_with('/') || name.starts_with('\\') {
-            return Err("无法导入：项目包路径不安全。".into());
+            return Err(CommandError::BundleUnsafeZipPath);
         }
         total_uncompressed = total_uncompressed.saturating_add(file.size());
         if total_uncompressed > MAX_BUNDLE_UNCOMPRESSED_BYTES {
-            return Err(format!(
-                "无法导入：项目包解压体积过大（>{MAX_BUNDLE_UNCOMPRESSED_BYTES} 字节）。"
-            ));
+            return Err(CommandError::BundleUncompressedTooLarge {
+                limit: MAX_BUNDLE_UNCOMPRESSED_BYTES,
+            });
         }
     }
     Ok(())
@@ -97,9 +100,12 @@ fn validate_bundle_archive(archive: &mut ZipArchive<File>) -> Result<(), String>
 pub(super) fn read_zip_json<T: for<'de> Deserialize<'de>>(
     archive: &mut ZipArchive<File>,
     name: &str,
-) -> Result<T, String> {
+) -> CommandResult<T> {
     let bytes = read_zip_bytes(archive, name)?;
-    serde_json::from_slice(&bytes).map_err(|e| format!("解析项目包文件失败 {name}: {e}"))
+    serde_json::from_slice(&bytes).map_err(|e| CommandError::BundleJsonParse {
+        name: name.to_string(),
+        source: e,
+    })
 }
 
 pub(super) fn export_project_bundle_to_path(
@@ -108,19 +114,19 @@ pub(super) fn export_project_bundle_to_path(
     file_id: &str,
     zip_path: &Path,
     segments: Vec<SegmentDto>,
-) -> Result<String, String> {
+) -> CommandResult<String> {
     if zip_path.exists() {
-        return Err("目标文件已存在，请另选文件名或先删除该文件。".into());
+        return Err(CommandError::TargetFileExists);
     }
 
-    let conn = open_db(st)?;
+    let conn = open_db(st).map_err(CommandError::db_pool)?;
     let (name, created_at_ms, updated_at_ms): (String, i64, i64) = conn
         .query_row(
             "SELECT name, created_at_ms, updated_at_ms FROM projects WHERE id = ?1",
             params![project_id],
             |r| Ok((r.get(0)?, r.get(1)?, r.get(2)?)),
         )
-        .map_err(|e| e.to_string())?;
+        .map_err(CommandError::from)?;
 
     let (audio_storage_path,): (String,) = conn
         .query_row(
@@ -128,18 +134,20 @@ pub(super) fn export_project_bundle_to_path(
             params![file_id, project_id],
             |r| Ok((r.get(0)?,)),
         )
-        .map_err(|_| "该文件没有可导出的音频，或文件不属于当前项目。".to_string())?;
+        .map_err(|_| CommandError::BundleNoExportableAudio)?;
 
     let audio_path = PathBuf::from(&audio_storage_path);
     if !audio_path.is_file() {
-        return Err(format!("项目音频不存在：{audio_storage_path}"));
+        return Err(CommandError::BundleAudioMissing {
+            path: audio_storage_path,
+        });
     }
     let audio_file = audio_path
         .file_name()
         .and_then(|n| n.to_str())
-        .ok_or_else(|| "项目音频文件名无效。".to_string())?
+        .ok_or(CommandError::BundleInvalidAudioFileName)?
         .to_string();
-    let audio_bytes = fs::read(&audio_path).map_err(|e| format!("读取项目音频失败: {e}"))?;
+    let audio_bytes = fs::read(&audio_path).map_err(CommandError::BundleReadAudio)?;
 
     let doc = ProjectBundleDocument {
         name: name.clone(),
@@ -161,33 +169,31 @@ pub(super) fn export_project_bundle_to_path(
     };
 
     let tmp_path = zip_path.with_extension("zip.part");
-    let file = File::create(&tmp_path).map_err(|e| format!("创建项目包失败: {e}"))?;
+    let file = File::create(&tmp_path).map_err(CommandError::BundleCreate)?;
     let mut zip = ZipWriter::new(file);
 
     zip.start_file("manifest.json", zip_opts())
-        .map_err(|e| e.to_string())?;
+        .map_err(CommandError::BundleFinish)?;
     zip.write_all(
-        &serde_json::to_vec_pretty(&manifest).map_err(|e| format!("序列化 manifest 失败: {e}"))?,
+        &serde_json::to_vec_pretty(&manifest).map_err(CommandError::BundleSerializeManifest)?,
     )
-    .map_err(|e| e.to_string())?;
+    .map_err(|e| CommandError::io("写入 manifest", e))?;
 
     zip.start_file("project.json", zip_opts())
-        .map_err(|e| e.to_string())?;
-    zip.write_all(
-        &serde_json::to_vec_pretty(&doc).map_err(|e| format!("序列化项目数据失败: {e}"))?,
-    )
-    .map_err(|e| e.to_string())?;
+        .map_err(CommandError::BundleFinish)?;
+    zip.write_all(&serde_json::to_vec_pretty(&doc).map_err(CommandError::BundleSerializeProject)?)
+        .map_err(|e| CommandError::io("写入 project.json", e))?;
 
     zip.start_file(format!("audio/{audio_file}"), zip_opts())
-        .map_err(|e| e.to_string())?;
-    zip.write_all(&audio_bytes).map_err(|e| e.to_string())?;
+        .map_err(CommandError::BundleFinish)?;
+    zip.write_all(&audio_bytes)
+        .map_err(|e| CommandError::io("写入项目包音频", e))?;
 
-    if let Err(e) = zip.finish().map_err(|e| format!("完成项目包失败: {e}")) {
+    if let Err(e) = zip.finish().map_err(CommandError::BundleFinish) {
         let _ = fs::remove_file(&tmp_path);
         return Err(e);
     }
-    if let Err(e) = fs::rename(&tmp_path, zip_path).map_err(|e| format!("保存项目包失败: {e}"))
-    {
+    if let Err(e) = fs::rename(&tmp_path, zip_path).map_err(CommandError::BundleSave) {
         let _ = fs::remove_file(&tmp_path);
         return Err(e);
     }
@@ -197,41 +203,41 @@ pub(super) fn export_project_bundle_to_path(
 pub(super) fn import_project_bundle_from_path(
     st: &DbState,
     zip_path: &Path,
-) -> Result<ProjectDetail, String> {
-    let file = File::open(zip_path).map_err(|e| format!("打开项目包失败: {e}"))?;
-    let mut archive = ZipArchive::new(file).map_err(|e| format!("读取项目包失败: {e}"))?;
+) -> CommandResult<ProjectDetail> {
+    let file = File::open(zip_path).map_err(CommandError::BundleOpen)?;
+    let mut archive = ZipArchive::new(file).map_err(CommandError::BundleRead)?;
     validate_bundle_archive(&mut archive)?;
     let manifest: ProjectBundleManifest = read_zip_json(&mut archive, "manifest.json")?;
     if manifest.kind != PROJECT_BUNDLE_KIND {
-        return Err("无法导入：不是受支持的 Rushi 项目包。".into());
+        return Err(CommandError::BundleUnsupportedKind);
     }
     if manifest.version != PROJECT_BUNDLE_VERSION {
-        return Err(format!(
-            "无法导入：项目包版本 {} 与当前支持版本 {} 不匹配。",
-            manifest.version, PROJECT_BUNDLE_VERSION
-        ));
+        return Err(CommandError::BundleUnsupportedVersion {
+            found: manifest.version,
+            supported: PROJECT_BUNDLE_VERSION,
+        });
     }
     let Some(audio_file_name) = Path::new(&manifest.audio_file)
         .file_name()
         .and_then(|n| n.to_str())
     else {
-        return Err("无法导入：项目包内音频文件名无效。".into());
+        return Err(CommandError::BundleInvalidAudioName);
     };
     if audio_file_name != manifest.audio_file {
-        return Err("无法导入：项目包内音频路径不安全。".into());
+        return Err(CommandError::BundleUnsafeAudioPath);
     }
 
     let doc: ProjectBundleDocument = read_zip_json(&mut archive, "project.json")?;
     if doc.segments.len() > MAX_BUNDLE_SEGMENT_COUNT {
-        return Err(format!(
-            "无法导入：语段数量超过上限（>{MAX_BUNDLE_SEGMENT_COUNT}）。"
-        ));
+        return Err(CommandError::BundleTooManySegments {
+            limit: MAX_BUNDLE_SEGMENT_COUNT,
+        });
     }
     let audio_bytes = read_zip_bytes(&mut archive, &format!("audio/{audio_file_name}"))?;
 
     let id = Uuid::new_v4().to_string();
     let dest_dir = st.root.join("projects").join(&id);
-    fs::create_dir_all(&dest_dir).map_err(|e| format!("创建项目目录失败: {e}"))?;
+    fs::create_dir_all(&dest_dir).map_err(CommandError::BundleCreateProjectDir)?;
     let ext = Path::new(audio_file_name)
         .extension()
         .and_then(|e| e.to_str())
@@ -240,11 +246,13 @@ pub(super) fn import_project_bundle_from_path(
     let dest_audio = dest_dir.join(format!("audio.{ext}"));
     if let Err(e) = fs::write(&dest_audio, &audio_bytes) {
         let _ = fs::remove_dir_all(&dest_dir);
-        return Err(format!("写入项目音频失败: {e}"));
+        return Err(CommandError::BundleWriteAudio(e));
     }
-    let audio_path = canonicalize_audio_storage_path(&dest_audio).inspect_err(|_| {
-        let _ = fs::remove_dir_all(&dest_dir);
-    })?;
+    let audio_path = canonicalize_audio_storage_path(&dest_audio)
+        .inspect_err(|_| {
+            let _ = fs::remove_dir_all(&dest_dir);
+        })
+        .map_err(|detail| CommandError::ImportProjectBundle { detail })?;
 
     let imported_name = if doc.name.trim().is_empty() {
         manifest.project.name.trim()
@@ -260,14 +268,14 @@ pub(super) fn import_project_bundle_from_path(
     let mut normalized_segments = doc.segments;
     normalized_segments.sort_by_key(|s| s.idx);
 
-    let db_result = (|| -> Result<(), String> {
-        let mut conn = open_db(st)?;
-        let tx = conn.transaction().map_err(|e| e.to_string())?;
+    let db_result = (|| -> CommandResult<()> {
+        let mut conn = open_db(st).map_err(CommandError::db_pool)?;
+        let tx = conn.transaction().map_err(CommandError::from)?;
         tx.execute(
             "INSERT INTO projects (id, name, created_at_ms, updated_at_ms) VALUES (?1, ?2, ?3, ?4)",
             params![&id, imported_name, created_at_ms, now],
         )
-        .map_err(|e| e.to_string())?;
+        .map_err(CommandError::from)?;
         let file_id = Uuid::new_v4().to_string();
         tx.execute(
             "INSERT INTO files (id, project_id, name, file_type, audio_path, created_at_ms, updated_at_ms) \
@@ -282,7 +290,7 @@ pub(super) fn import_project_bundle_from_path(
                 now,
             ],
         )
-        .map_err(|e| e.to_string())?;
+        .map_err(CommandError::from)?;
         for (idx, s) in normalized_segments.iter().enumerate() {
             let uid = segment_uid_or_new(&s.uid);
             let low = if s.low_confidence { 1i64 } else { 0i64 };
@@ -302,7 +310,7 @@ pub(super) fn import_project_bundle_from_path(
                     detail,
                 ],
             )
-            .map_err(|e| e.to_string())?;
+            .map_err(CommandError::from)?;
         }
         let detail = serde_json::json!({
             "op": "import_project_bundle",
@@ -320,8 +328,8 @@ pub(super) fn import_project_bundle_from_path(
             "INSERT INTO edit_log (project_id, at_ms, kind, detail) VALUES (?1, ?2, ?3, ?4)",
             params![&id, now, "import_project_bundle", detail.as_str()],
         )
-        .map_err(|e| e.to_string())?;
-        tx.commit().map_err(|e| e.to_string())?;
+        .map_err(CommandError::from)?;
+        tx.commit().map_err(CommandError::from)?;
         Ok(())
     })();
 
@@ -330,6 +338,7 @@ pub(super) fn import_project_bundle_from_path(
         return Err(e);
     }
 
-    let conn = open_db(st)?;
+    let conn = open_db(st).map_err(CommandError::db_pool)?;
     project_detail_from_conn(&conn, &id)
+        .map_err(|detail| CommandError::ImportProjectBundle { detail })
 }

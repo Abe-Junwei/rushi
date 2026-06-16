@@ -5,7 +5,6 @@ use super::utils::{
     canonicalize_audio_storage_path, file_detail_from_conn, now_ms, open_db,
     project_detail_from_conn,
 };
-use crate::db;
 use crate::DbState;
 use rusqlite::params;
 use std::fs;
@@ -24,12 +23,7 @@ fn test_root(label: &str) -> PathBuf {
 }
 
 fn test_state(label: &str) -> DbState {
-    let root = test_root(label);
-    let db_path = root.join("rushi.sqlite3");
-    let conn = rusqlite::Connection::open(&db_path).unwrap();
-    db::migrate(&conn).unwrap();
-    drop(conn);
-    DbState { root, db_path }
+    DbState::open_test_db(test_root(label))
 }
 
 #[test]
