@@ -7,6 +7,25 @@ describe("deriveTranscribeHints", () => {
     expect(h.some((x) => x.includes("stub"))).toBe(true);
   });
 
+  it("flags hotword param unsupported", () => {
+    const h = deriveTranscribeHints("funasr+x", ["hotword_param_unsupported"], [{ text: "a" }]);
+    expect(h.some((x) => x.includes("热词参数"))).toBe(true);
+  });
+
+  it("flags funasr param strip warnings", () => {
+    const cases: Array<[string, string]> = [
+      ["funasr_use_itn_unsupported", "ITN"],
+      ["funasr_rich_postprocess_unsupported", "rich postprocess"],
+      ["sentence_timestamp_param_unsupported", "sentence_timestamp"],
+      ["return_time_stamps_param_unsupported", "return_time_stamps"],
+      ["funasr_generate_minimal_sentence_timestamp", "最小参数"],
+    ];
+    for (const [code, fragment] of cases) {
+      const h = deriveTranscribeHints("funasr+x", [code], [{ text: "a" }]);
+      expect(h.some((x) => x.includes(fragment)), code).toBe(true);
+    }
+  });
+
   it("flags hotwords truncated at 12k", () => {
     const h = deriveTranscribeHints("funasr+x", ["hotwords_truncated_12k"], [{ text: "a" }]);
     expect(h.some((x) => x.includes("12,000"))).toBe(true);

@@ -39,6 +39,21 @@ export function deriveTranscribeHints(engine: string, warnings: string[], segmen
   if (warnings.some((w) => w.includes("hotword_param_unsupported"))) {
     hints.push("当前 FunASR 未接受热词参数，已自动回退；可升级 rushi-asr 依赖或忽略。");
   }
+  if (warnings.some((w) => w.includes("funasr_use_itn_unsupported"))) {
+    hints.push("当前 FunASR 模型不支持 ITN（数字/符号归一化）参数，已跳过；专名数字格式可能需手改。");
+  }
+  if (warnings.some((w) => w.includes("funasr_rich_postprocess_unsupported"))) {
+    hints.push("当前 FunASR 不支持 rich postprocess 参数，已跳过；标点/分段质量可能略低于预期。");
+  }
+  if (warnings.some((w) => w.includes("sentence_timestamp_param_unsupported"))) {
+    hints.push("当前 FunASR 不接受 sentence_timestamp 参数，已降级重试；语段时间戳可能缺失或需整轨 fallback。");
+  }
+  if (warnings.some((w) => w.includes("return_time_stamps_param_unsupported"))) {
+    hints.push("当前 FunASR 不接受 return_time_stamps 参数，已降级重试；时间戳输出可能不完整。");
+  }
+  if (warnings.some((w) => w.includes("funasr_generate_minimal_sentence_timestamp"))) {
+    hints.push("FunASR 已用最小参数集重试以获取分句时间戳；若语段边界异常，请检查侧车日志或换用 Paraformer 长音频模型。");
+  }
   if (warnings.some((w) => w.includes("hotwords_truncated_12k"))) {
     hints.push(
       "术语热词超过 12,000 字符上限，已截断后提交；部分术语未进入识别。可在「热词与记忆」查看「本次转写将携带」摘要。",

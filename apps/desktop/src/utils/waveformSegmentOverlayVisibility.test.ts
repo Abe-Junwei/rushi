@@ -99,4 +99,24 @@ describe("selectOverlayInteractiveSegmentIndices", () => {
       }),
     ).toEqual([0, 2, 4]);
   });
+
+  it("caps DOM overlay indices for very large sparse multi-select", () => {
+    const selectedIndices = new Set<number>();
+    for (let i = 0; i < 80; i += 2) selectedIndices.add(i);
+    const out = selectOverlayInteractiveSegmentIndices({
+      segmentCount: 80,
+      selectedIdx: 40,
+      selectedIndices,
+      selectionLo: 0,
+      selectionHi: 78,
+      selectionCount: 40,
+      isContiguousSelection: false,
+      draftIdx: 79,
+    });
+    expect(out.length).toBeLessThan(40);
+    expect(out).toContain(40);
+    expect(out).toContain(79);
+    expect(out).toContain(0);
+    expect(out).toContain(78);
+  });
 });

@@ -167,6 +167,7 @@ pub fn write_diagnostic_bundle_to_path(
     let db_for_edit_log = sanitized_tmp.as_deref().unwrap_or(st.db_path.as_path());
     match Connection::open_with_flags(db_for_edit_log, OpenFlags::SQLITE_OPEN_READ_ONLY) {
         Ok(conn) => {
+            let _ = crate::db::configure_sqlite_connection_readonly(&conn);
             if let Err(e) = zip_recent_edit_log_tsv(&conn, &mut zip) {
                 let note = format!("could not export edit_log: {e}\n");
                 zip.start_file("recent_edit_log-readme.txt", zip_opts())
@@ -361,7 +362,10 @@ fn count_peak_dat_files(app_root: &Path) -> String {
 
 fn format_project_summary(db_path: &Path, app_root: &Path) -> String {
     let conn = match Connection::open_with_flags(db_path, OpenFlags::SQLITE_OPEN_READ_ONLY) {
-        Ok(conn) => conn,
+        Ok(conn) => {
+            let _ = crate::db::configure_sqlite_connection_readonly(&conn);
+            conn
+        },
         Err(e) => {
             return format!(
                 "db_open: error:{e}\npeak_dat_files: {}\n",

@@ -63,6 +63,12 @@ export interface AsrHealthCapabilities {
   funasr_punc_model_id?: string | null;
   /** 侧车 / 壳传入的模型缓存根目录（若有）。 */
   rushi_models_root?: string | null;
+  /** FunASR 权重是否已加载到侧车进程内存。 */
+  model_loaded_in_memory?: boolean;
+  /** 内存中 loaded id 是否与配置的 funasr_model_id 一致。 */
+  model_memory_matches_config?: boolean;
+  inference_queue_pending?: number;
+  inference_queue_running?: number;
 }
 
 /** Tauri：安装包内推理侧车最近一次启动结果（供 P1 在 ASR 不可达时提示）。 */

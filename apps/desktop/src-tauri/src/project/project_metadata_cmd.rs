@@ -1,5 +1,6 @@
 use super::types::ProjectDetail;
 use super::utils::{now_ms, open_db, project_detail_from_conn};
+use crate::command_error::{CommandError, CommandResult, CommandResultExt};
 use crate::DbState;
 use rusqlite::params;
 use std::ops::Deref;
@@ -16,41 +17,41 @@ fn normalize_optional_text(value: Option<String>) -> Option<String> {
     })
 }
 
-#[tauri::command]
-pub fn rename_project(
-    state: State<DbState>,
-    project_id: String,
-    name: String,
-) -> Result<ProjectDetail, String> {
+fn rename_project_inner(
+    state: &DbState,
+    project_id: &str,
+    name: &str,
+) -> CommandResult<ProjectDetail> {
     let trimmed = name.trim();
     if trimmed.is_empty() {
-        return Err("项目名称不能为空。".to_string());
+        return Err(CommandError::EmptyProjectName);
     }
-    let conn = open_db(state.deref())?;
+    let conn = open_db(state).map_err(CommandError::db_pool)?;
     let t = now_ms();
     let updated = conn
         .execute(
             "UPDATE projects SET name = ?1, updated_at_ms = ?2 WHERE id = ?3",
-            params![trimmed, t, &project_id],
+            params![trimmed, t, project_id],
         )
-        .map_err(|e| e.to_string())?;
+        .map_err(CommandError::from)?;
     if updated == 0 {
-        return Err(format!("项目不存在：{project_id}"));
+        return Err(CommandError::ProjectNotFoundById {
+            project_id: project_id.to_string(),
+        });
     }
-    project_detail_from_conn(&conn, &project_id)
+    project_detail_from_conn(&conn, project_id).map_err(CommandError::db_pool)
 }
 
-#[tauri::command]
-pub fn update_project_metadata(
-    state: State<DbState>,
-    project_id: String,
+fn update_project_metadata_inner(
+    state: &DbState,
+    project_id: &str,
     narrator: Option<String>,
     recorded_at: Option<String>,
     location: Option<String>,
     subject: Option<String>,
     transcriber: Option<String>,
-) -> Result<ProjectDetail, String> {
-    let conn = open_db(state.deref())?;
+) -> CommandResult<ProjectDetail> {
+    let conn = open_db(state).map_err(CommandError::db_pool)?;
     let t = now_ms();
     let updated = conn
         .execute(
@@ -64,14 +65,47 @@ pub fn update_project_metadata(
                 normalize_optional_text(subject),
                 normalize_optional_text(transcriber),
                 t,
-                &project_id,
+                project_id,
             ],
         )
-        .map_err(|e| e.to_string())?;
+        .map_err(CommandError::from)?;
     if updated == 0 {
-        return Err(format!("项目不存在：{project_id}"));
+        return Err(CommandError::ProjectNotFoundById {
+            project_id: project_id.to_string(),
+        });
     }
-    project_detail_from_conn(&conn, &project_id)
+    project_detail_from_conn(&conn, project_id).map_err(CommandError::db_pool)
+}
+
+#[tauri::command]
+pub fn rename_project(
+    state: State<DbState>,
+    project_id: String,
+    name: String,
+) -> Result<ProjectDetail, String> {
+    rename_project_inner(state.deref(), &project_id, &name).map_command_err()
+}
+
+#[tauri::command]
+pub fn update_project_metadata(
+    state: State<DbState>,
+    project_id: String,
+    narrator: Option<String>,
+    recorded_at: Option<String>,
+    location: Option<String>,
+    subject: Option<String>,
+    transcriber: Option<String>,
+) -> Result<ProjectDetail, String> {
+    update_project_metadata_inner(
+        state.deref(),
+        &project_id,
+        narrator,
+        recorded_at,
+        location,
+        subject,
+        transcriber,
+    )
+    .map_command_err()
 }
 
 #[cfg(test)]
@@ -142,5 +176,13 @@ mod tests {
             Some("讲述人".to_string())
         );
         assert_eq!(normalize_optional_text(None), None);
+    }
+
+    #[test]
+    fn empty_project_name_error_message_is_stable() {
+        assert_eq!(
+            CommandError::EmptyProjectName.to_string(),
+            "项目名称不能为空。"
+        );
     }
 }

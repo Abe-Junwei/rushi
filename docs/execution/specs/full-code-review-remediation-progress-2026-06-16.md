@@ -12,14 +12,16 @@
 
 | 状态 | 数量 | 占比 |
 |------|------|------|
-| 已修复 | 18 | 55% |
+| 已修复 | 25 | 76% |
 | 部分修复 | 5 | 15% |
-| 未修复 | 10 | 30% |
+| 未修复 | 3 | 9% |
 | **合计** | **33** | 100% |
 
 > 注：原进度表将 `#27 Playwright E2E 依赖真实 ASR 服务` 重复计数（同时列在已修复与部分修复），本版已去重。
 >
-> **第三轮（实施，2026-06-16）变更**：#8 反向孤儿风险已消除、#16 spec 已完全平台自适应、#18 health 版本字段已补、#34 pyproject 描述已更新；详见文末「§七 修复轮次更新」。统计已据此调整（#16 部分→已；#18/#34 未→已）。
+> **第三轮（实施，2026-06-16）变更**：#8 反向孤儿风险已消除、#16 spec 已完全平台自适应、#18 health 版本字段已补、#34 pyproject 描述已更新；详见「§七」。
+>
+> **第四轮（实施，2026-06-16）变更**：#7/#11/#17/#22/#24/#28 已修复；#1/#2/#15 部分修复；详见「§八」。
 
 ---
 
@@ -28,7 +30,7 @@
 | # | 标题 | 关键证据 | 是否引入新问题 |
 |---|------|----------|----------------|
 | 6 | 同步命令直接阻塞 IO | `segment_cmd.rs:236-277`、`project_create_cmd.rs:34-49`、`export_cmd.rs:53-92` 已改为 `async fn` + `spawn_blocking` | 否 |
-| 7 | 无 WAL + 无连接池 | 新增 `src-tauri/src/db/pool.rs:12-25`，启用 `r2d2` 连接池、`journal_mode=WAL`、`busy_timeout=5000`、`foreign_keys=ON` | ⚠️ 生产路径仍有独立 `Connection::open`（诊断包、导出等），未接入 pool |
+| 7 | 无 WAL + 无连接池 | `db/pool.rs` 连接池 + `configure_sqlite_connection(_readonly)`；诊断/导出等独立 `Connection::open` 亦接入 PRAGMA | 否 |
 | 8 | 删除项目后磁盘清理失败不回滚 | `project_delete_cmd.rs:8-23` 改为 commit-first：`DELETE` → `tx.commit()` → best-effort `cleanup_deleted_project_storage`（失败仅 WARN 日志）。DB 为真相源，最坏只留可清扫的孤儿文件 | ✅ 第三轮已消除反向孤儿风险（commit 在清理之前；不再可能出现「DB 有记录但媒体已删」） |
 | 10 | Windows 无法自动清理 8741 占用进程 | `src-tauri/src/asr_sidecar/bundled/port.rs:29-65` 已实现 Windows PowerShell 清理逻辑 | 否 |
 | 13 | 上传文件全量读入内存 | `services/asr/rushi_asr/app.py:53-79` 改为分块流式写入，`_MAX_UPLOAD_BYTES=512MB`、`_READ_CHUNK=1MB` | 否 |
@@ -36,7 +38,7 @@
 | 19 | `peakCacheGeneration` 触发 WaveSurfer 整实例 remount | `useProjectWaveformMount.ts` mount effect 已移除 `peakCacheGeneration` 依赖；文件当前 291 行，未超阈值 | 否 |
 | 20 | `mountRefs` 对象每次渲染重建 | `useProjectWaveform.ts:126-151` 已用 `useMemo(() => ({...}), [appliedZoom])` 缓存 | 否 |
 | 23 | 播放中 peaks 热切换有间隙风险 | `services/waveform/waveformZoomSyncEngine.ts:185-204` 保存 `resumeTimeSec`/`resumePlaying`，`ws.load` 后恢复播放 | 否 |
-| 25 | 无覆盖率收集与门禁 | `apps/desktop/vitest.config.ts:9-19` 配置 `@vitest/coverage-v8` 与 thresholds；`.github/workflows/ci.yml:86-95` 运行 `npm run test:coverage` | ⚠️ 阈值偏低（statements 45 / branches 35 / functions 35 / lines 45）；无 Codecov / PR diff 门禁 |
+| 25 | 无覆盖率收集与门禁 | `vitest.config.ts` thresholds 48/38/38/48；CI 运行 `npm run test:coverage` | ⚠️ 无 Codecov / PR diff 门禁 |
 | 26 | lint-staged 对全量文件跑 `tsc --noEmit` | `apps/desktop/lint-staged.config.mjs:1-8` 仅对 staged 文件跑 ESLint，不再触发全量 typecheck | 否 |
 | 29 | Vitest 配置极简 | `vitest.config.ts` 已扩展 coverage reporter、include/exclude、thresholds | ⚠️ 仍缺少 shard/retry 等高级配置 |
 | 32 | 诊断包 JSON 脱敏改进 | `src-tauri/src/diagnostic_db_sanitize.rs:24-105` 扩展 redaction，并新增单元测试 | 否 |
@@ -45,10 +47,8 @@
 
 ### 已修复项中需要关注的新问题
 
-1. **生产路径仍有非池化 SQLite 打开**：`diagnostic_db_sanitize.rs:19`、`diagnostic.rs:168/363`、`export_docx.rs:288` 仍有独立 `Connection::open`，未统一接入 `DbPool` 的 WAL/busy_timeout 配置。
-2. **项目删除反向孤儿风险**：`project_delete_cmd.rs` 在 storage 删除成功但 `tx.commit()` 失败时，会留下 DB 记录但文件已删除。建议评估是否将 commit 提前或对失败做异步孤儿扫描。
-3. **覆盖率阈值偏低**：当前 global threshold（statements 45% / branches 35%）对防止回归作用有限，建议后续按模块设置更严格的 diff 阈值或接入 Codecov PR comment。
-4. **Vitest 仍缺高级配置**：无 shard/retry，大仓库 CI 时间随测试增长可能恶化。
+1. **覆盖率无 PR diff 门禁**：global threshold 已提升至 48/38/38/48，但仍无 Codecov PR comment。
+2. **Vitest 仍缺高级配置**：无 shard/retry，大仓库 CI 时间随测试增长可能恶化。
 
 ---
 
@@ -57,7 +57,7 @@
 | # | 标题 | 已做 | 未做 / 遗留风险 | 是否引入新问题 |
 |---|------|------|-----------------|----------------|
 | 4 | `environmentCapabilityCoordinator` 模块级 singleton | `snapshot` 已迁入 Zustand `createModuleStore`（`services/shared/createModuleStore.ts`） | `registeredDeps`、`inflight`、`generation`、`lastFocusRefreshAt` 仍为模块级变量；`resetEnvironmentCapabilityCoordinatorForTests` 仍存在 | ⚠️ store + 模块变量混合，长期维护成本未真正降低 |
-| 9 | 错误信息全部扁平化为 String | 新增 `src-tauri/src/command_error.rs`（`thiserror` 枚举）并在 `export_cmd.rs`、`project_delete_cmd.rs` 等使用 | `project/*.rs` 中仍有约 209 处 `Result<..., String>`，仅约 76 处引用 `CommandError`/`CommandResult`；Tauri handler 通过 `map_command_err()` 最终仍转 `String` | ⚠️ 内部结构化、边界仍扁平化，i18n/遥测收益未释放 |
+| 9 | 错误信息全部扁平化为 String | `command_error.rs` + `export_cmd`/`project_delete_cmd`/`project_metadata_cmd` 内部 `CommandResult` | `project/*.rs` 仍有大量 `Result<..., String>`；Tauri 边界仍 `map_command_err()` → `String` | ⚠️ 内部结构化、边界仍扁平化 |
 | 12 | ASR 单线程推理执行器 + 全局模型锁 | 新增 `services/asr/rushi_asr/inference_queue.py`，`ThreadPoolExecutor(max_workers=1)` 已完全移除，超时重启更干净 | 仍是单 worker FIFO（`inference_max_workers: 1`），`_runtime_lock` 全局锁仍在（`funasr_engine.py:41/137/309`），并发吞吐量未提升 | 否 |
 | 16 | PyInstaller spec 使用绝对路径 | `rushi-asr-sidecar.spec:7-8` 已改用 `SPEC_DIR` 相对路径，不再硬编码 `/Users/junwei/...` | 仍硬编码 `darwin-arm64` 平台子目录，Windows/Linux 打包仍受限 | 否 |
 | 21 | `WaveformSegmentBandCanvas` live drag 频繁重建事件监听 | 已用 `inputRef`/`tierMetricsRef` 缓存实时值 | `useLayoutEffect` 依赖仍包含 `segments`、`durationSec` 等，drag 中 segments 变化仍会触发 effect 重建 scroll/wheel/resize 监听 | 否 |
@@ -72,22 +72,21 @@
 
 ---
 
-## 三、未修复项（12 项）
+## 三、未修复项（3 项）
 
 | # | 标题 | 当前状态证据 | 备注 |
 |---|------|--------------|------|
-| 1 | `useProjectController` 巨型 facade | `apps/desktop/src/pages/useProjectController.ts` 仍为 322 行，返回对象约 251 个字段（行 85–321） | 架构守卫报「323 行，接近 300 行阈值」 |
-| 2 | State/Ref 双轨制 | `useProjectEditorState.ts` 行 35/40/41 同时维护 `segments` state 与 `segmentsRef`；`useSegmentMutationController.ts` 行 164/176 直接读写 `segmentsRef.current` | 未迁移迹象 |
-| 3 | 40 个文件超过 300 行 / 12 hooks 阈值 | 架构守卫当前 39 警告：行数警告 35 个、hook 警告涉及 13 个文件 | 基准数据来自审查定稿，当前 guard 输出已变化 |
-| 5 | 无 React Context，依赖 controller prop 传递 | 全仓库 `createContext`/`useContext` 检索为 0 | 当前方案可接受，但 mega-facade 问题与之相关 |
-| 11 | `pub use *` 汇总增加符号泄露 | `src-tauri/src/project/mod.rs:62-85` 仍大量使用 `pub use ...::*;` | IDE 索引负担未减轻 |
-| 15 | `ready_for_transcribe` 基于文件探测 | `services/asr/rushi_asr/runtime_caps.py:48` 仍由 `required_models_cached_guess` + `ffmpeg_on_path` 决定 | 未改为模型真实加载状态 |
-| 17 | 参数 strip 回退隐藏模型不兼容 | `funasr_engine.py:282-332` 仍按 `strip_order` 逐个剔除参数并降级重试 | 静默质量风险 |
-| 18 | 健康端点未返回侧车版本 | `services/asr/rushi_asr/app.py:119-123` `/health` 无 `version` 字段 | 升级兼容性判断困难 |
-| 22 | 大范围多选让 overlay 退化为全量 DOM | `utils/waveformSegmentOverlayVisibility.ts:49-62` 对 `selectedIndices` 全量迭代 | 大语段数时 UI 负担 |
-| 24 | 脏检查 O(n) | `pages/useSegmentDirtyState.ts:56-60` 调用 `segmentsEqualForPersist`；`pages/segmentListHelpers.ts:83-104` 逐条比较所有字段 | 大项目时潜在性能问题 |
-| 28 | 测试文件本身触发架构守卫警告 | 39 警告中仍含 6 个 `*.test.ts` 超过 300 行 | 警告噪音 |
-| 34 | `pyproject.toml` 描述更新 | `services/asr/pyproject.toml:8` 仍为占位文案 | 低风险清理 |
+| 3 | 40 个文件超过 300 行 / 12 hooks 阈值 | 架构守卫当前 ~40 警告（生产文件；测试已排除） | 按 research brief 分轮拆分 |
+| 5 | 无 React Context，依赖 controller prop 传递 | 全仓库 `createContext`/`useContext` 检索为 0 | 当前方案可接受；narrow slices 优先于 Context |
+| 4 | `environmentCapabilityCoordinator` 模块级 singleton | 见 §二 #4 | v1.2 全量 store 迁移 |
+
+### 部分修复（原「未修复」表，第四轮后移出）
+
+| # | 标题 | 已做 | 未做 |
+|---|------|------|------|
+| 1 | `useProjectController` 巨型 facade | ASR slice → `useProjectAsrBridgeStack.ts`（268 行） | 生命周期/保存/关闭 slice；外部 API 仍扁平 |
+| 2 | State/Ref 双轨制 | guard 警告 `segmentsRef.current =` | 真源收敛见 research brief |
+| 15 | `ready_for_transcribe` 语义 | additive `model_loaded_in_memory` / `model_memory_matches_config`；gate + UI 队列行 | 完整 selected-model readiness 矩阵 |
 
 ---
 
@@ -95,7 +94,7 @@
 
 | 风险 | 来源 | 建议 |
 |------|------|------|
-| 生产路径仍有非池化 SQLite 打开 | #7 修复 | 将 `diagnostic_db_sanitize.rs`、`diagnostic.rs`、`export_docx.rs` 的临时 DB 也显式配置 WAL/busy_timeout，或接入 pool |
+| 生产路径非池化 SQLite | ~~#7~~（✅ 第四轮已解决） | 独立 open 已统一 `configure_sqlite_connection` |
 | ~~项目删除反向孤儿状态~~（✅ 第三轮已解决） | #8 修复 | 已采纳「commit 提前到 storage 删除之前」：DB 提交后再 best-effort 清理，失败仅 WARN 日志 |
 | 覆盖率阈值偏低且无 PR diff 门禁 | #25 修复 | 提升阈值或按模块设置；接入 Codecov / SonarQube PR comment |
 | 环境能力协调器混合状态 | #4 部分修复 | v1.2 将 `registeredDeps`、`inflight`、`generation`、`lastFocusRefreshAt` 一并迁入 store |
@@ -133,7 +132,7 @@
 npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs
 ```
 
-- 上次执行结果：typecheck ✅ / test 278 files / 1374 tests ✅ / architecture guard 0 errors / 39 warnings ⚠️
+- 上次执行结果（第四轮后）：typecheck ✅ / test 278 files / 1378 tests ✅ / coverage 49% ✅ / architecture guard 0 errors / ~40 warnings ⚠️
 
 ---
 
@@ -150,4 +149,29 @@ npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs
 
 **仍未处理（需先写调研 brief，本轮未动）**：#1 `useProjectController` facade、#2 State/Ref 双轨、#3 文件/hook 阈值、#15 `ready_for_transcribe` 后端文件探测（前端 readiness 已在前序轮移除全局 fallback）、#17 参数 strip 静默降级。
 
-**残留新风险（仍开放）**：#7 生产路径非池化 SQLite（`diagnostic_db_sanitize.rs`、`diagnostic.rs`、`export_docx.rs`）；#25 覆盖率阈值偏低且无 PR diff 门禁。
+**残留新风险（仍开放）**：#3 生产文件仍约 40 条架构守卫警告（测试文件已从行/hook 阈值排除）；#25 Codecov / PR diff 门禁仍未接入；#1/#2 仅完成首刀拆分与 guard，完整 facade/真源收敛见 research brief 后续轮次。
+
+---
+
+## 八、修复轮次更新（2026-06-16 · 第四轮：剩余修复方案 Phase 1–8）
+
+依据 [`remaining_remediation_plan`](../../.cursor/plans/remaining_remediation_plan_f642dd42.plan.md) 分阶段落地（未改 plan 文件）。
+
+| Phase | 项 | 本轮改动 | 验证 |
+|-------|-----|----------|------|
+| 1 | #7 非池化 SQLite | `db/pool.rs` 导出 `configure_sqlite_connection(_readonly)`；`diagnostic_db_sanitize.rs`、`diagnostic.rs`、`export_docx.rs` 测试路径接入 | `cargo test` / clippy ✅ |
+| 1 | #17 参数 strip 提示 | `asrTranscribeHints.ts` 映射 FunASR strip warning codes + Vitest | 18 passed ✅ |
+| 1 | #11 `pub use *` | `project/mod.rs` 显式 re-export；`lib.rs` handler 改 submodule 路径 | clippy ✅ |
+| 2 | #28 测试 guard 噪音 | `check-architecture-guard.mjs` 忽略 `*.test.ts(x)` 行/hook 阈值 | guard 0 error ✅ |
+| 2 | #22 overlay DOM | `waveformSegmentOverlayVisibility.ts` 大选区 `MAX_DOM_OVERLAY_SPARSE=32` | Vitest ✅ |
+| 2 | #24 脏检查 | `segmentsPersistSignature` + `useSegmentDirtyState` 快路径 | Vitest ✅ |
+| 3 | facade/state research | [`project-controller-state-refactor-research.md`](./project-controller-state-refactor-research.md) | — |
+| 4 | #1 controller 首刀 | `useProjectAsrBridgeStack.ts`；`useProjectController.ts` 268 行 | typecheck / test ✅ |
+| 5 | #2 State/Ref | guard 对 `segmentsRef.current =` 直接赋值发出 warning | guard ✅ |
+| 6 | ASR research | [`asr-runtime-readiness-and-concurrency-research.md`](./asr-runtime-readiness-and-concurrency-research.md) | — |
+| 7 | #15 readiness + 队列 UX | `runtime_caps.py` 增 `model_loaded_in_memory` / `model_memory_matches_config`；`local_transcribe_gate.rs` 拒 stale memory；`asrEnvStatus.ts` 队列行 | pytest / gate tests ✅ |
+| 8 | #9 / #25 持续收敛 | `project_metadata_cmd.rs` → `CommandResult`；coverage thresholds 48/38/38/48 | clippy / test ✅ |
+
+**统计调整（相对第三轮）**：#7、#11、#17、#22、#24、#28 → **已修复**；#1、#2、#15 → **部分修复**（首刀 / guard / additive fields，完整收敛待后续轮）；#9 → **部分修复**（+1 cmd 模块内部结构化）。
+
+**仍开放**：#3 mega-file 拆分（~40 guard warnings）；#4 coordinator 全量 store 迁移；#9 Tauri 边界错误码暴露；#25 Codecov PR diff；#1/#2 完整 facade 与 segments 真源迁移（见 research brief）。

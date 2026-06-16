@@ -17,6 +17,7 @@ pub fn copy_sanitized_diagnostic_db(src_db: &Path) -> Result<PathBuf, String> {
     ));
     fs::copy(src_db, &tmp).map_err(|e| format!("copy db for sanitize: {e}"))?;
     let conn = Connection::open(&tmp).map_err(|e| e.to_string())?;
+    crate::db::configure_sqlite_connection(&conn).map_err(|e| e.to_string())?;
     sanitize_diagnostic_db(&conn)?;
     Ok(tmp)
 }

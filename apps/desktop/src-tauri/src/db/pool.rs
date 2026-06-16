@@ -9,11 +9,22 @@ use super::migrate;
 
 pub type DbPool = Pool<SqliteConnectionManager>;
 
-fn configure_pooled_connection(conn: &mut Connection) -> rusqlite::Result<()> {
+/// Shared PRAGMA for any non-pooled SQLite connection (WAL + busy_timeout + FK).
+pub fn configure_sqlite_connection(conn: &Connection) -> rusqlite::Result<()> {
     conn.pragma_update(None, "foreign_keys", "ON")?;
     conn.pragma_update(None, "journal_mode", "WAL")?;
     conn.busy_timeout(Duration::from_millis(5000))?;
     Ok(())
+}
+
+/// Read-only opens: busy_timeout only (no journal_mode change on RO handles).
+pub fn configure_sqlite_connection_readonly(conn: &Connection) -> rusqlite::Result<()> {
+    conn.busy_timeout(Duration::from_millis(5000))?;
+    Ok(())
+}
+
+fn configure_pooled_connection(conn: &mut Connection) -> rusqlite::Result<()> {
+    configure_sqlite_connection(conn)
 }
 
 pub fn open_pool(db_path: &Path) -> Result<DbPool, String> {

@@ -1,5 +1,8 @@
 import type { SegmentDto } from "../tauri/projectApi";
 
+/** Max DOM overlay regions for sparse multi-select; larger sets rely on canvas band. */
+export const MAX_DOM_OVERLAY_SPARSE = 32;
+
 function resolveOverlaySelectionRange(input: {
   segmentCount: number;
   selectedIdx: number;
@@ -47,7 +50,16 @@ export function selectOverlayInteractiveSegmentIndices(input: {
   const { lo, hi } = resolveOverlaySelectionRange(input);
 
   if (input.selectedIndices && input.selectedIndices.size > 0) {
-    for (const idx of input.selectedIndices) add(idx);
+    if (input.selectedIndices.size <= MAX_DOM_OVERLAY_SPARSE) {
+      for (const idx of input.selectedIndices) add(idx);
+    } else {
+      add(input.selectedIdx);
+      const sorted = [...input.selectedIndices].sort((a, b) => a - b);
+      add(sorted[0]!);
+      add(sorted[sorted.length - 1]!);
+      add(lo);
+      add(hi);
+    }
   }
 
   const fillContiguousRange =

@@ -286,6 +286,7 @@ mod tests {
             .unwrap_or_else(|_| "/tmp/r9-strict-clean.docx".to_string());
 
         let conn = Connection::open(&db_path).expect("open app db");
+        crate::db::configure_sqlite_connection_readonly(&conn).expect("configure sqlite");
         let file_id: String = conn
             .query_row(
                 "SELECT file_id FROM segments GROUP BY file_id ORDER BY COUNT(*) DESC LIMIT 1",

@@ -18,6 +18,7 @@ function walk(dir, cb) {
 
 function checkTsFile(fullPath) {
   const rel = path.relative(ROOT, fullPath).replaceAll(path.sep, '/');
+  const isTestFile = rel.endsWith('.test.ts') || rel.endsWith('.test.tsx');
   const source = fs.readFileSync(fullPath, 'utf-8');
   const lines = source.split('\n').length;
   const useEffects = (source.match(/useEffect\(/g) ?? []).length;
@@ -26,10 +27,30 @@ function checkTsFile(fullPath) {
   const hookTotal = useEffects + useCallbacks + useMemos;
 
   // 文件大小和 hook 数量：已知债务记 warning，增量拦截用 code review
-  if (lines > 400) warnings.push(`${rel}: ${lines} 行，建议拆分到 ≤300 行`);
-  else if (lines > 300) warnings.push(`${rel}: ${lines} 行，接近 300 行阈值`);
+  // 测试文件豁免 line/hook 阈值（避免 guard 噪音；生产代码仍受约束）
+  if (!isTestFile) {
+    if (lines > 400) warnings.push(`${rel}: ${lines} 行，建议拆分到 ≤300 行`);
+    else if (lines > 300) warnings.push(`${rel}: ${lines} 行，接近 300 行阈值`);
 
-  if (hookTotal > 12) warnings.push(`${rel}: ${hookTotal} 个 hook，超过 12 个阈值`);
+    if (hookTotal > 12) warnings.push(`${rel}: ${hookTotal} 个 hook，超过 12 个阈值`);
+  }
+
+  // segmentsRef 直接赋值须仅在 editor state / ref sync 模块（结构 mutation 走 publishSegmentStructureMutation）
+  const segmentsRefAssignAllowlist = [
+    "apps/desktop/src/pages/useProjectEditorState.ts",
+    "apps/desktop/src/pages/segmentSegmentsRefSync.ts",
+    "apps/desktop/src/pages/segmentMutationMergeDelete.ts",
+    "apps/desktop/src/pages/segmentMutationInsert.ts",
+    "apps/desktop/src/pages/useSegmentSplitController.ts",
+  ];
+  if (
+    /segmentsRef\.current\s*=/.test(source) &&
+    !segmentsRefAssignAllowlist.some((allowed) => rel === allowed) &&
+    !rel.endsWith(".test.ts") &&
+    !rel.endsWith(".test.tsx")
+  ) {
+    warnings.push(`${rel}: 直接赋值 segmentsRef.current；结构性变更应经由 publishSegmentStructureMutation`);
+  }
 
   // 结构 mutation 须读 segmentsRef，禁止 setSegments(prev => …) 做结构/正文合并
   const structureMutationFiles = [

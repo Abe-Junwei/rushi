@@ -107,6 +107,16 @@ export function snapshotSegmentsForPersist(segs: SegmentDto[]): SegmentDto[] {
   return cloneSegments(reindexSegments(segs));
 }
 
+/** Cheap fingerprint for dirty-check fast path (same fields as segmentsEqualForPersist). */
+export function segmentsPersistSignature(segs: SegmentDto[]): string {
+  return reindexSegments(segs)
+    .map(
+      (s) =>
+        `${s.uid ?? ""}|${s.start_sec}|${s.end_sec}|${s.text}|${s.confidence ?? ""}|${Boolean(s.low_confidence)}|${s.detail ?? ""}|${s.kind ?? ""}|${s.text_stage ?? "auto_transcribe"}|${s.finalize_via ?? ""}|${s.annotation ?? ""}`,
+    )
+    .join("\n");
+}
+
 /** 合并两条相邻语段（时间、文本、置信度与 detail）。 */
 export function mergeTwoSegments(a: SegmentDto, b: SegmentDto): SegmentDto {
   const confA = a.confidence ?? null;

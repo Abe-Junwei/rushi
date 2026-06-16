@@ -22,7 +22,7 @@ import { modelsRootMismatch } from "./asrRuntimePathsAlign";
 type AsrEnvTone = "ok" | "warn" | "error" | "idle";
 
 export type AsrEnvStatusRow = {
-  id: "env" | "ffmpeg" | "runtime" | "transcribe";
+  id: "env" | "ffmpeg" | "runtime" | "transcribe" | "inference_queue";
   label: string;
   ok: boolean;
   text: string;
@@ -267,6 +267,16 @@ export function buildAsrEnvPresentation(input: BuildAsrEnvPresentationInput): As
           : "不可用",
     },
   ];
+  const queuePending = input.asrCaps?.inference_queue_pending ?? 0;
+  const queueRunning = input.asrCaps?.inference_queue_running ?? 0;
+  if (queuePending + queueRunning > 0) {
+    statusRows.push({
+      id: "inference_queue",
+      label: "推理队列",
+      ok: true,
+      text: `排队 ${queuePending} · 运行 ${queueRunning}`,
+    });
+  }
 
   const blockReason = blockReasonFor({
     asrHealth: input.asrHealth,

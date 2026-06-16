@@ -1,54 +1,27 @@
-import { useCallback, useRef } from "react";
-import { useAsrBridgeController, type AsrHealthState } from "./useAsrBridgeController";
-import { useAsrSetupController } from "./useAsrSetupController";
 import { useProjectLifecycleController, type BusyReason } from "./useProjectLifecycleController";
-import { refreshLocalAsrDiagnostics } from "./refreshLocalAsrDiagnostics";
 import { useEnvironmentCapabilitySync } from "../hooks/useEnvironmentCapabilitySync";
-import { getEnvironmentCapabilityBlockReason } from "../services/environmentCapabilityCoordinator";
 import {
   isLocalLoopbackLlmConfig,
   readLlmRuntimeConfigFromStorage,
 } from "../services/postprocess/postprocessRuntimeContract";
 import { refreshLlmOllamaDetect } from "../services/llm/llmEnvRuntimeStore";
+import {
+  projectAsrControllerFields,
+  useProjectAsrBridgeStack,
+} from "./useProjectAsrBridgeStack";
+import type { AsrHealthState } from "./useAsrBridgeController";
 
 export type { AsrHealthState, BusyReason };
 export type ProjectControllerApi = ReturnType<typeof useProjectController>;
 
 export function useProjectController() {
-  const refreshSetupDiagnoseRef = useRef<
-    ((options?: { resetSteps?: boolean; touchUi?: boolean }) => Promise<unknown>) | null
-  >(null);
-
-  const asr = useAsrBridgeController({
-    refreshEnvironmentDiagnostics: async () => {
-      const refreshSetup = refreshSetupDiagnoseRef.current;
-      if (!refreshSetup) return;
-      await refreshSetup({ resetSteps: false, touchUi: false });
-    },
-  });
-  const { refreshAsrHealth, refreshAsrModelCacheInfo } = asr;
-  const refreshAsrRuntimeInfo = useCallback(async () => {
-    await refreshLocalAsrDiagnostics({
-      refreshAsrHealth,
-      refreshAsrModelCacheInfo,
-      refreshSetupDiagnose: refreshSetupDiagnoseRef.current ?? undefined,
-    });
-  }, [refreshAsrHealth, refreshAsrModelCacheInfo]);
-  const asrSetup = useAsrSetupController({
-    refreshAsrHealth: asr.refreshAsrHealth,
-    refreshAsrRuntimeInfo,
-    prepareDefaultFunasrModel: asr.prepareDefaultFunasrModel,
-    getSetupSelection: () => ({
-      selectedHubModelId: asr.localAsrModelCatalog.selectedHubModelId,
-      catalogStatus: asr.localAsrModelCatalog.catalogStatus,
-    }),
-  });
-  refreshSetupDiagnoseRef.current = asrSetup.refreshSetupDiagnose;
-
-  const localTranscribePreflight = useCallback(
-    () => getEnvironmentCapabilityBlockReason() ?? asr.asrPresentation.blockReason,
-    [asr.asrPresentation],
-  );
+  const {
+    asr,
+    asrSetup,
+    refreshAsrHealth,
+    refreshAsrModelCacheInfo,
+    localTranscribePreflight,
+  } = useProjectAsrBridgeStack();
 
   const lifecycle = useProjectLifecycleController(
     localTranscribePreflight,
@@ -290,33 +263,6 @@ export function useProjectController() {
     saveSegmentAnnotation: lifecycle.saveSegmentAnnotation,
     clearSegmentAnnotation: lifecycle.clearSegmentAnnotation,
 
-    // ASR bridge
-    asrHealth: asr.asrHealth,
-    asrHealthDetail: asr.asrHealthDetail,
-    asrPresentation: asr.asrPresentation,
-    bundledAsrDiag: asr.bundledAsrDiag,
-    asrCaps: asr.asrCaps,
-    asrModelCacheInfo: asr.asrModelCacheInfo,
-    waveformPeaksCacheInfo: asr.waveformPeaksCacheInfo,
-    asrModelCacheBusy: asr.asrModelCacheBusy,
-    asrCacheMessage: asr.asrCacheMessage,
-    sttOnlineBridgeReady: asr.sttOnlineBridgeReady,
-    funasrInstallMessage: asr.funasrInstallMessage,
-    prepareModelBusy: asr.prepareModelBusy,
-    prepareModelCancelling: asr.prepareModelCancelling,
-    prepareModelProgress: asr.prepareModelProgress,
-    prepareModelFailure: asr.prepareModelFailure,
-    prepareDefaultFunasrModel: asr.prepareDefaultFunasrModel,
-    cancelPrepareModel: asr.cancelPrepareModel,
-    localAsrModelCatalog: asr.localAsrModelCatalog,
-    refreshAsrModelCacheInfo: asr.refreshAsrModelCacheInfo,
-    clearAsrModelCache: asr.clearAsrModelCache,
-    clearOrphanWaveformPeaksCache: asr.clearOrphanWaveformPeaksCache,
-    retryBundledAsrSidecar: asr.retryBundledAsrSidecar,
-    refreshAsrHealth: asr.refreshAsrHealth,
-    installFunasrDepsInteractive: asr.installFunasrDepsInteractive,
-    copyFunasrManualCommands: asr.copyFunasrManualCommands,
-    bumpSttOnlineRuntimeChanged: asr.bumpSttOnlineRuntimeChanged,
-    asrSetup,
+    ...projectAsrControllerFields(asr, asrSetup),
   };
 }

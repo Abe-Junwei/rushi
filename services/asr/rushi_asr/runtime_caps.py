@@ -53,6 +53,10 @@ def get_runtime_caps() -> dict[str, object]:
     forced_aligner_id = effective_funasr_forced_aligner_id()
     forced_aligner_cached = forced_aligner_model_cached_guess()
     load_plan = build_funasr_load_plan(model)
+    loaded_id = loaded_funasr_model_id()
+    loaded_str = str(loaded_id).strip() if loaded_id else ""
+    model_loaded_in_memory = bool(loaded_str)
+    model_memory_matches_config = bool(model and loaded_str and loaded_str == model)
     runtime_ready = bool(ffmpeg_ok and funasr_import_ok)
     ready_for_transcribe = bool(runtime_ready and required_models_cached and ffmpeg_on_path)
     transcription_mode: str = "funasr" if ready_for_transcribe else "stub"
@@ -80,7 +84,9 @@ def get_runtime_caps() -> dict[str, object]:
         "ready_for_transcribe": ready_for_transcribe,
         "transcription_mode": transcription_mode,
         "funasr_model_id": model,
-        "funasr_loaded_model_id": loaded_funasr_model_id(),
+        "funasr_loaded_model_id": loaded_id,
+        "model_loaded_in_memory": model_loaded_in_memory,
+        "model_memory_matches_config": model_memory_matches_config,
         "funasr_language": effective_funasr_language(),
         "rushi_models_root": models_root,
         "local_token_required": local_token_required,

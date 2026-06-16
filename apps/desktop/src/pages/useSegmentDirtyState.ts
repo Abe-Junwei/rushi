@@ -2,6 +2,7 @@ import { useCallback, useRef } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
 import {
   segmentsEqualForPersist,
+  segmentsPersistSignature,
   snapshotSegmentsForPersist,
 } from "./segmentListHelpers";
 import { segmentsWithDraftsApplied } from "../services/segmentDirtyRead";
@@ -56,7 +57,9 @@ export function useSegmentDirtyState(deps: SegmentDirtyStateDeps): SegmentDirtyS
   const hasUnsavedSegmentChanges = useCallback(() => {
     if (!currentFileId) return false;
     const withDrafts = segmentsWithDraftsApplied(segmentsRef.current);
-    return !segmentsEqualForPersist(withDrafts, savedSegmentsRef.current);
+    const saved = savedSegmentsRef.current;
+    if (segmentsPersistSignature(withDrafts) === segmentsPersistSignature(saved)) return false;
+    return !segmentsEqualForPersist(withDrafts, saved);
   }, [currentFileId, segmentsRef]);
 
   const confirmDiscardUnsavedIfNeeded = useCallback(() => {

@@ -48,6 +48,12 @@ pub fn local_transcribe_gate_from_health(
             "本机 ASR 模型尚未就绪：请在环境页下载当前所选模型并完成侧车准备。".to_string(),
         );
     }
+    if health.get("model_memory_matches_config").and_then(|x| x.as_bool()) == Some(false) {
+        return Err(
+            "侧车模型权重尚未加载到内存；请在环境页完成模型准备或等待侧车预热完成。"
+                .to_string(),
+        );
+    }
     let sidecar_model = health
         .get("funasr_model_id")
         .and_then(|x| x.as_str())

@@ -7,6 +7,12 @@ pub type CommandResult<T> = Result<T, CommandError>;
 
 #[derive(Debug, Error)]
 pub enum CommandError {
+    #[error("项目名称不能为空。")]
+    EmptyProjectName,
+
+    #[error("项目不存在：{project_id}")]
+    ProjectNotFoundById { project_id: String },
+
     #[error("项目不存在或已被删除。")]
     ProjectNotFound,
 
