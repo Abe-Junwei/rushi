@@ -167,16 +167,16 @@ export function DeliveryExportDialog({
               </label>
               {includeProjectMetadata ? (
                 <div
-                  className="rounded-md bg-notion-callout-bg px-3 py-2"
+                  className="flex flex-col gap-2 rounded-md bg-notion-callout-bg px-3 py-2"
                   aria-live="polite"
                   aria-label="Word 抬头预览"
                 >
                   <p className="text-xs font-semibold uppercase tracking-wide text-notion-text-light">
                     将写入 Word 标题下方
                   </p>
-                  <p className="mt-1 text-xs text-notion-text-muted">{exportTitleLine}</p>
+                  <p className="text-xs text-notion-text-muted">{exportTitleLine}</p>
                   {metadataPreviewLines.length > 0 ? (
-                    <ul className="mt-2 list-none space-y-1 p-0 text-xs text-notion-text">
+                    <ul className="list-none space-y-1 p-0 text-xs text-notion-text">
                       {metadataPreviewLines.map((row) => (
                         <li key={row.label} className="leading-snug">
                           <span className="text-notion-text-muted">{row.label}：</span>
@@ -185,7 +185,7 @@ export function DeliveryExportDialog({
                       ))}
                     </ul>
                   ) : (
-                    <p className="mt-2 text-xs text-zen-cinnabar">
+                    <p className="text-xs text-zen-cinnabar">
                       当前项目尚未填写场次信息；勾选后 Word 中仍只有导出行。请先在 Hub「项目信息」中填写。
                     </p>
                   )}
@@ -212,7 +212,7 @@ export function DeliveryExportDialog({
                       修订轨仅标错字与标点；口语重复字（喔喔喔等）本地自动压缩。请重新生成预览后再导出。
                     </span>
                     {exportPolishBlockReason ? (
-                      <span className="mt-1 block text-xs text-zen-cinnabar">{exportPolishBlockReason}</span>
+                      <span className="block text-xs text-zen-cinnabar">{exportPolishBlockReason}</span>
                     ) : null}
                   </span>
                 </label>

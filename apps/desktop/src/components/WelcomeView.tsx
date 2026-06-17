@@ -154,11 +154,11 @@ export function WelcomeView({
               data-purpose="welcome-home-page"
             >
               <header className="flex flex-col items-center gap-4 text-center" data-purpose="hero-content">
-                <div>
+                <div className="flex flex-col gap-2">
                   <h1 className="text-[28px] font-semibold leading-[1.25] tracking-[-0.015em] text-notion-text">
                     欢迎回来
                   </h1>
-                  <p className="mt-2 text-sm leading-relaxed text-notion-text-muted">
+                  <p className="text-sm leading-relaxed text-notion-text-muted">
                     继续您的转写任务或开始新的项目
                   </p>
                 </div>

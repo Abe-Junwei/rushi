@@ -41,13 +41,13 @@ export function GlossaryLearnPromptDialog({ state, busy, onClose, onDismiss, onC
         <ul className="m-0 max-h-[280px] list-none space-y-2 overflow-y-auto p-0">
           {state.phase === "prompt"
             ? state.rows.map((row) => (
-                <li key={row.afterText} className="rounded-md bg-notion-sidebar/80 px-3 py-2.5">
+                <li key={row.afterText} className="flex flex-col gap-2 rounded-md bg-notion-sidebar/80 px-3 py-2.5">
                   <p className={`font-medium ${PANEL_TYPOGRAPHY.dialogText}`}>「{row.afterText}」</p>
-                  <p className="mt-1 text-xs text-notion-text-muted">
+                  <p className="text-xs text-notion-text-muted">
                     已记录 {row.hitCount} 次
                     {row.sampleBefore ? ` · 例：${row.sampleBefore} → ${row.afterText}` : ""}
                   </p>
-                  <div className="mt-2 flex justify-end gap-2">
+                  <div className="flex justify-end gap-2">
                     <button
                       type="button"
                       className={CONTROL_BTN_SECONDARY}

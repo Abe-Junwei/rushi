@@ -7,6 +7,7 @@ import type { LocalAsrModelCatalogApi } from "../../pages/useLocalAsrModelCatalo
 import type { AsrHealthCapabilities } from "../../tauri/projectApi";
 import type { AsrCatalogPresentation } from "../../services/asr/asrCatalogPresentation";
 import { LOCAL_ASR_RECOGNITION_LANGUAGE_OPTIONS } from "../../services/asr/localAsrRecognitionLanguage";
+import { ENV_PANEL_BUTTON_ROW_CLASS, ENV_PANEL_FORM_FIELDS_CLASS, ENV_PANEL_FORM_FIELD_CLASS } from "../../utils/environmentPanelNav";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";
 import {
   PANEL_PROGRESS_FILL_COMPACT_CLASS,
@@ -16,6 +17,7 @@ import {
 import { EnvLocalAsrSmallButton } from "./envLocalAsrPanelUi";
 
 const fieldLabel = PANEL_TYPOGRAPHY.envFieldLabel;
+const fieldGroup = ENV_PANEL_FORM_FIELD_CLASS;
 const selectField = `${CONTROL_TEXT_INPUT} cursor-pointer pr-9`;
 
 type Props = {
@@ -62,8 +64,8 @@ export function EnvLocalAsrModelCard({
     progressTone === "success" ? "text-zen-success" : "text-notion-text-muted";
 
   return (
-    <section className="flex flex-col gap-6">
-        <label className="block space-y-2">
+    <section className={ENV_PANEL_FORM_FIELDS_CLASS}>
+        <label className={fieldGroup}>
           <span className={fieldLabel}>所选模型</span>
           <select
             className={`${selectField} ${PANEL_CONTROL_TYPOGRAPHY.compactTechnicalInput}`}
@@ -81,7 +83,7 @@ export function EnvLocalAsrModelCard({
           </select>
         </label>
 
-        <label className="block space-y-2">
+        <label className={ENV_PANEL_FORM_FIELD_CLASS}>
           <span className={fieldLabel}>识别语言</span>
           <select
             className={selectField}
@@ -99,8 +101,8 @@ export function EnvLocalAsrModelCard({
           </select>
         </label>
 
-        <div>
-          <div className="mb-2 flex items-end justify-between gap-2">
+        <div className="flex flex-col gap-2">
+          <div className="flex items-end justify-between gap-2">
             <span className={fieldLabel}>下载进度</span>
             <span className={`font-mono text-[12px] ${progressToneClass}`}>{progressLabel}</span>
           </div>
@@ -120,15 +122,20 @@ export function EnvLocalAsrModelCard({
               style={{ width: `${progress}%` }}
             />
           </div>
-          {funasrInstallMessage && (prepareModelBusy || prepareModelCancelling) ? (
-            <p className={`mt-2 ${PANEL_TYPOGRAPHY.meta}`} role="status" aria-live="polite">
-              {funasrInstallMessage}
-            </p>
-          ) : null}
-          {!sidecarMatchesSelection ? (
-            <p className={`mt-2 ${PANEL_TYPOGRAPHY.meta}`}>
-              已选 {selectedLabel}，侧车{sidecarHub ? ` 仍在 ${sidecarHub}` : " 未切换"}。请先「应用并重启侧车」。
-            </p>
+          {(funasrInstallMessage && (prepareModelBusy || prepareModelCancelling)) ||
+          !sidecarMatchesSelection ? (
+            <div className="flex flex-col gap-2">
+              {funasrInstallMessage && (prepareModelBusy || prepareModelCancelling) ? (
+                <p className={PANEL_TYPOGRAPHY.meta} role="status" aria-live="polite">
+                  {funasrInstallMessage}
+                </p>
+              ) : null}
+              {!sidecarMatchesSelection ? (
+                <p className={PANEL_TYPOGRAPHY.meta}>
+                  已选 {selectedLabel}，侧车{sidecarHub ? ` 仍在 ${sidecarHub}` : " 未切换"}。请先「应用并重启侧车」。
+                </p>
+              ) : null}
+            </div>
           ) : null}
         </div>
 
@@ -145,7 +152,7 @@ export function EnvLocalAsrModelCard({
           </div>
         ) : null}
 
-        <div className="flex flex-wrap items-center justify-end gap-2 border-t border-notion-divider pt-5">
+        <div className={ENV_PANEL_BUTTON_ROW_CLASS}>
           {!modelsCached || prepareModelBusy ? (
             <>
               <button

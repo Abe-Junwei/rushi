@@ -2,7 +2,12 @@ import {
   UNSAVED_CLOSE_DISCARD_PROMPT,
   UNSAVED_NAV_DISCARD_PROMPT,
 } from "../pages/useSegmentDirtyState";
-import { PANEL_TYPOGRAPHY } from "../config/typography";
+import {
+  CONTROL_BTN_GHOST,
+  CONTROL_BTN_PRIMARY,
+  CONTROL_BTN_SECONDARY,
+} from "../config/controlStyles";
+import { COMPACT_DIALOG_LAYOUT, PANEL_TYPOGRAPHY } from "../config/typography";
 import { DialogOverlay } from "./DialogOverlay";
 
 type UnsavedGateIntent = "app-quit" | "navigate";
@@ -48,42 +53,33 @@ export function UnsavedCloseDialog({
         aria-modal="true"
         aria-labelledby="unsaved-close-title"
         aria-describedby="unsaved-close-desc"
-        className="w-full max-w-md rounded-md border border-notion-divider bg-notion-bg px-6 py-5 font-sans antialiased shadow-lg"
+        className={COMPACT_DIALOG_LAYOUT.card}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <h2 id="unsaved-close-title" className="text-[18px] font-semibold leading-[1.4] text-notion-text">
-          未保存的语段修改
-        </h2>
-        <p id="unsaved-close-desc" className={`mt-2 ${PANEL_TYPOGRAPHY.dialogBody}`}>
-          {lines.map((line) => (
-            <span key={line} className="block">
-              {line}
-            </span>
-          ))}
-        </p>
-        <div className="mt-5 flex flex-wrap justify-end gap-2">
-          <button
-            type="button"
-            className="rounded-md border border-notion-divider bg-notion-bg px-3 py-1.5 text-sm text-notion-text transition-colors hover:bg-notion-sidebar-hover"
-            onClick={onStay}
-          >
-            {stayLabel}
-          </button>
-          <button
-            type="button"
-            className="rounded-md border border-notion-divider bg-notion-sidebar px-3 py-1.5 text-sm text-notion-text transition-colors hover:bg-notion-sidebar-hover"
-            onClick={onDiscardAndClose}
-          >
-            {discardLabel}
-          </button>
-          <button
-            type="button"
-            className="rounded-md border-0 bg-zen-saffron-mid px-3 py-1.5 text-sm font-medium text-notion-bg transition-opacity hover:opacity-90 disabled:cursor-not-allowed disabled:opacity-50"
-            disabled={busy}
-            onClick={onSaveAndClose}
-          >
-            {saveLabel}
-          </button>
+        <div className={COMPACT_DIALOG_LAYOUT.stack}>
+          <h2 id="unsaved-close-title" className={COMPACT_DIALOG_LAYOUT.title}>
+            未保存的语段修改
+          </h2>
+          <p id="unsaved-close-desc" className={PANEL_TYPOGRAPHY.dialogBody}>
+            {lines.map((line) => (
+              <span key={line} className="block">
+                {line}
+              </span>
+            ))}
+          </p>
+          <div className={COMPACT_DIALOG_LAYOUT.actionRowSplit}>
+            <button type="button" className={CONTROL_BTN_GHOST} onClick={onStay}>
+              {stayLabel}
+            </button>
+            <div className="flex flex-wrap justify-end gap-2">
+              <button type="button" className={CONTROL_BTN_SECONDARY} onClick={onDiscardAndClose}>
+                {discardLabel}
+              </button>
+              <button type="button" className={CONTROL_BTN_PRIMARY} disabled={busy} onClick={onSaveAndClose}>
+                {saveLabel}
+              </button>
+            </div>
+          </div>
         </div>
       </div>
     </DialogOverlay>

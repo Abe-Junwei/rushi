@@ -1,7 +1,8 @@
 import type { Ref } from "react";
 import { useEnvLlmConfigPanel } from "../hooks/useEnvLlmConfigPanel";
+import { ENV_PANEL_CONFIG_FLOW_CLASS } from "../utils/environmentPanelNav";
+import { EnvFlatConfigStack } from "./EnvFlatConfigStack";
 import { EnvLlmCloudVendorPills } from "./EnvLlmCloudVendorPills";
-import { EnvLlmConnectionCard } from "./EnvLlmConnectionCard";
 import { EnvLlmConnectionForm } from "./EnvLlmConnectionForm";
 import { EnvLlmModeSwitch } from "./EnvLlmModeSwitch";
 import { EnvLlmStatusBanner } from "./EnvLlmStatusBanner";
@@ -37,7 +38,7 @@ export function EnvLlmConfigPanel({ busy, scrollAnchorRef, onLlmRuntimeChanged }
   };
 
   return (
-    <div id="llm-config" ref={scrollAnchorRef} className="flex max-w-[860px] flex-col gap-7">
+    <div id="llm-config" ref={scrollAnchorRef} className={ENV_PANEL_CONFIG_FLOW_CLASS}>
       <EnvLlmModeSwitch
         mode={panel.llmEnvMode}
         localTone={panel.modeToggleTones.local}
@@ -47,19 +48,18 @@ export function EnvLlmConfigPanel({ busy, scrollAnchorRef, onLlmRuntimeChanged }
         onSelectCloud={panel.selectCloudMode}
       />
 
-      <EnvLlmConnectionCard
-        vendorPills={
+      <EnvFlatConfigStack
+        middle={
           panel.llmEnvMode === "cloud" ? (
             <EnvLlmCloudVendorPills
               providerId={panel.providerId}
               disabled={panel.formBusy}
               onProviderChange={panel.onProviderChange}
             />
-          ) : null
+          ) : undefined
         }
         banner={
           <EnvLlmStatusBanner
-            connected
             presentation={panel.presentation}
             disabled={panel.formBusy}
             busy={panel.llmEnvMode === "local" ? panel.detectBusy : panel.probeBusy}
@@ -72,7 +72,6 @@ export function EnvLlmConfigPanel({ busy, scrollAnchorRef, onLlmRuntimeChanged }
         }
         form={<EnvLlmConnectionForm {...formProps} />}
       />
-
     </div>
   );
 }

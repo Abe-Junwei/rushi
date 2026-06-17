@@ -175,7 +175,6 @@ export function EnvironmentPanel({
         />
 
         <main className={`min-h-0 min-w-0 flex-1 overflow-y-auto bg-notion-bg ${mainPaddingClass}`}>
-          <div className="flex flex-col gap-6">
             {envSection === "local-asr" ? (
               <EnvLocalAsrPanel
                 asrPresentation={asrPresentation}
@@ -242,7 +241,6 @@ export function EnvironmentPanel({
             {envSection === "about" ? <EnvAboutPanel /> : null}
 
             {envSection === "help" ? <EnvHelpPanel /> : null}
-          </div>
         </main>
       </div>
     </div>

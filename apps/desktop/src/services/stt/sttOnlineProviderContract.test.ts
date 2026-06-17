@@ -8,6 +8,7 @@ import {
   resolveSttOnlineProbeUrl,
   setSttOnlineApiKeyInMemory,
   sttOnlineProviderEndpointUserConfigurable,
+  sttOnlineProviderPickerOptions,
   sttOnlineProvidersByMarket,
 } from "./sttOnlineProviderContract";
 
@@ -75,6 +76,13 @@ describe("sttOnlineProvidersByMarket", () => {
 
     const globalIds = sttOnlineProvidersByMarket("global").map((d) => d.id);
     expect(globalIds[globalIds.length - 1]).toBe("custom-proxy");
+  });
+});
+
+describe("sttOnlineProviderPickerOptions", () => {
+  it("returns all providers in definition order without market grouping", () => {
+    const ids = sttOnlineProviderPickerOptions().map((d) => d.id);
+    expect(ids).toEqual(["dashscope-asr", "openai", "assemblyai", "deepgram", "custom-proxy"]);
   });
 });
 

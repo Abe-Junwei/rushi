@@ -6,6 +6,7 @@ import { findDuplicateProjectNames, suggestUniqueProjectName } from "../utils/pr
 import { normalizeRecordedAtForSave } from "../utils/projectRecordedAt";
 import { ProjectRecordedAtField } from "./ProjectRecordedAtField";
 import { FloatingPanelTemplate } from "./PanelTemplate";
+import { FLOATING_PANEL_DIALOG_FOOTER_CLASS } from "./FloatingPanelDialogLayout";
 import { CONTROL_BTN_PRIMARY_PROMINENT, CONTROL_BTN_SECONDARY_PROMINENT } from "../config/controlStyles";
 
 const METADATA_DIALOG_DEFAULT = { width: 440, height: 640 } as const;
@@ -152,7 +153,7 @@ export function ProjectMetadataDialog({
             ))}
           </div>
 
-          <div className="flex shrink-0 flex-wrap justify-end gap-2 border-t border-notion-divider pt-4">
+          <div className={`${FLOATING_PANEL_DIALOG_FOOTER_CLASS} justify-end`}>
             <button
               type="button"
               className={CONTROL_BTN_SECONDARY_PROMINENT}

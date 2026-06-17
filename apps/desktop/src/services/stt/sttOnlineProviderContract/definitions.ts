@@ -129,3 +129,8 @@ export function sttOnlineProvidersByMarket(market: SttOnlineMarket): SttOnlinePr
 export function getSttOnlineProviderDefinition(id: string): SttOnlineProviderDefinition | undefined {
   return STT_ONLINE_PROVIDER_DEFINITIONS.find((d) => d.id === id);
 }
+
+/** 环境页厂商 chip 单行列表（定义表顺序，不分国内/国际）。 */
+export function sttOnlineProviderPickerOptions(): SttOnlineProviderDefinition[] {
+  return [...STT_ONLINE_PROVIDER_DEFINITIONS];
+}

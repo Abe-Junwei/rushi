@@ -1,17 +1,10 @@
 import { ENV_EXTERNAL_LINK_CLASS, ENV_VENDOR_CHIP_BASE, envVendorChipClass } from "../../config/envVendorChipStyles";
-import { PANEL_TYPOGRAPHY } from "../../config/typography";
 import {
   getSttOnlineProviderDefinition,
   providerSupportsGlossaryBias,
-  sttOnlineProvidersByMarket,
-  type SttOnlineMarket,
+  sttOnlineProviderPickerOptions,
   type SttOnlineProviderDefinition,
 } from "../../services/stt/sttOnlineProviderContract";
-
-const STT_MARKET_GROUPS: { market: SttOnlineMarket; label: string }[] = [
-  { market: "china", label: "国内" },
-  { market: "global", label: "国际" },
-];
 
 type Props = {
   busy: boolean;
@@ -28,44 +21,36 @@ const chipBtnBase = `${ENV_VENDOR_CHIP_BASE} bg-transparent`;
 
 export function OnlineSttProviderPicker({ busy, providerId, onProviderChange }: Props) {
   const providerDef = getSttOnlineProviderDefinition(providerId);
+  const providers = sttOnlineProviderPickerOptions();
 
   return (
-    <div className="space-y-4">
-      {STT_MARKET_GROUPS.map(({ market, label: groupLabel }) => {
-        const providers = sttOnlineProvidersByMarket(market);
-        if (providers.length === 0) return null;
-        return (
-          <div key={market} className="space-y-2">
-            <p className={PANEL_TYPOGRAPHY.envFieldLabel}>{groupLabel}</p>
-            <div
-              className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
-              role="radiogroup"
-              aria-label={`${groupLabel}在线 STT 厂商`}
+    <div className="flex flex-col gap-3">
+      <div
+        className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        role="radiogroup"
+        aria-label="在线 STT 厂商"
+      >
+        {providers.map((definition) => {
+          const selected = definition.id === providerId;
+          return (
+            <button
+              key={definition.id}
+              type="button"
+              role="radio"
+              aria-checked={selected}
+              disabled={busy}
+              title={definition.label}
+              onClick={() => onProviderChange(definition.id)}
+              className={`${chipBtnBase} ${envVendorChipClass(selected)}`}
             >
-              {providers.map((definition) => {
-                const selected = definition.id === providerId;
-                return (
-                  <button
-                    key={definition.id}
-                    type="button"
-                    role="radio"
-                    aria-checked={selected}
-                    disabled={busy}
-                    title={definition.label}
-                    onClick={() => onProviderChange(definition.id)}
-                    className={`${chipBtnBase} ${envVendorChipClass(selected)}`}
-                  >
-                    {providerChipLabel(definition)}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-        );
-      })}
+              {providerChipLabel(definition)}
+            </button>
+          );
+        })}
+      </div>
 
       {providerDef ? (
-        <div className="space-y-2 border-t border-notion-divider/40 pt-3">
+        <div className="flex flex-col gap-2">
           <p className="text-[12px] leading-relaxed text-notion-text-muted">{providerDef.description}</p>
           <div className="flex flex-wrap gap-1.5">
             {providerDef.experimental ? (

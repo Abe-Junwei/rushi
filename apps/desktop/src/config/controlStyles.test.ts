@@ -1,15 +1,23 @@
 import { describe, expect, it } from "vitest";
 import {
+  CONTROL_BTN_COMPACT_SECONDARY,
   CONTROL_BTN_DANGER,
   CONTROL_BTN_DANGER_COMPACT,
   CONTROL_BTN_GHOST,
+  CONTROL_BTN_ICON_GHOST,
   CONTROL_BTN_LINK,
   CONTROL_BTN_PRIMARY,
+  CONTROL_BTN_TOOLBAR_GHOST,
+  CONTROL_BTN_WORKSPACE_IMPORT,
+  CONTROL_TEXTAREA,
   ENV_COMPACT_BTN,
   ENV_MONO_FIELD,
   ENV_LLM_MODE_TOGGLE_TRACK,
   ENV_SEGMENTED_ROW,
+  ENV_SEGMENTED_TOGGLE_TRACK_COMPACT,
   envLlmModeToggleBtnClass,
+  envSegmentedToggleBtnClass,
+  envSegmentedToggleTrackClass,
   CONTROL_BTN_PRIMARY_PROMINENT,
   CONTROL_BTN_SECONDARY,
   CONTROL_BTN_SECONDARY_PROMINENT,
@@ -58,6 +66,12 @@ describe("controlStyles", () => {
     expect(envLlmModeToggleBtnClass(true)).toContain("bg-notion-bg");
   });
 
+  it("uses box-border on text controls (portal dialogs outside .workspace)", () => {
+    expect(CONTROL_TEXT_INPUT).toContain("box-border");
+    expect(CONTROL_TEXTAREA).toContain("box-border");
+    expect(CONTROL_SELECT).toContain("box-border");
+  });
+
   it("uses sidebar + hairline for secondary and canvas for inputs", () => {
     expect(CONTROL_BTN_SECONDARY).toContain("bg-notion-sidebar");
     expect(CONTROL_BTN_SECONDARY).toContain("border-notion-border");
@@ -72,9 +86,33 @@ describe("controlStyles", () => {
     expect(CONTROL_BTN_DANGER_COMPACT).toContain("text-zen-cinnabar");
   });
 
+  it("uses 12px semibold on standard buttons (panel rhythm)", () => {
+    expect(CONTROL_BTN_PRIMARY).toContain("text-[12px]");
+    expect(CONTROL_BTN_PRIMARY).toContain("font-semibold");
+    expect(CONTROL_BTN_SECONDARY).toContain("text-[12px]");
+  });
+
+  it("exposes toolbar ghost and workspace import tokens", () => {
+    expect(CONTROL_BTN_TOOLBAR_GHOST).toContain("rounded-sm");
+    expect(CONTROL_BTN_TOOLBAR_GHOST).toContain("text-[12px]");
+    expect(CONTROL_BTN_WORKSPACE_IMPORT).toContain("h-7");
+    expect(CONTROL_BTN_COMPACT_SECONDARY).toContain("text-[11px]");
+  });
+
   it("exposes prominent 40px hero controls", () => {
     expect(CONTROL_BTN_PRIMARY_PROMINENT).toContain("h-10");
     expect(CONTROL_BTN_PRIMARY_PROMINENT).toContain("min-h-[40px]");
     expect(CONTROL_BTN_SECONDARY_PROMINENT).toContain("rounded-sm");
+    expect(CONTROL_BTN_PRIMARY_PROMINENT).toContain("text-sm");
+  });
+
+  it("exposes icon ghost and compact segmented toggle API", () => {
+    expect(CONTROL_BTN_ICON_GHOST).toContain("h-7");
+    expect(CONTROL_BTN_ICON_GHOST).toContain("rounded-sm");
+    expect(CONTROL_TEXTAREA).toContain("rounded-sm");
+    expect(ENV_SEGMENTED_TOGGLE_TRACK_COMPACT).toContain("bg-secondary-container");
+    expect(envSegmentedToggleTrackClass(true)).toBe(ENV_SEGMENTED_TOGGLE_TRACK_COMPACT);
+    expect(envSegmentedToggleBtnClass(true, true)).toContain("bg-notion-bg");
+    expect(envSegmentedToggleBtnClass(false, true)).toContain("bg-transparent");
   });
 });

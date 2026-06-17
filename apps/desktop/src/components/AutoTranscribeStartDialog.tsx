@@ -77,7 +77,7 @@ export function AutoTranscribeStartDialog({
       }
       footerJustify="end"
     >
-      <FloatingPanelDialogHeader className="gap-3">
+      <FloatingPanelDialogHeader>
         <div className="flex items-center justify-between gap-3">
           <span className="text-xs font-medium leading-none text-notion-text">转写来源</span>
           <TranscribeSourceSwitch

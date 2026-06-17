@@ -1,13 +1,13 @@
 import { memo, useEffect, useRef, useState } from "react";
 import type { ProjectControllerApi } from "../pages/useProjectController";
 import { FileInput, FileOutput, Settings } from "lucide-react";
+import { CONTROL_BTN_TOOLBAR_GHOST } from "../config/controlStyles";
 import { EditorWorkspaceNav } from "./EditorWorkspaceNav";
 import { AsrTopStatusChips } from "./AsrTopStatusChips";
 import { LlmTopStatusChip } from "./LlmTopStatusChip";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 import { editorShortcutMenuHint } from "../utils/editorShortcutMenuHint";
-const ghostBtn =
-  "inline-flex h-8 items-center justify-center rounded-md border-0 bg-transparent px-2.5 text-[12px] font-medium text-notion-text-muted transition-colors hover:bg-notion-sidebar-hover hover:text-notion-text disabled:cursor-not-allowed disabled:opacity-40";
+const ghostBtn = CONTROL_BTN_TOOLBAR_GHOST;
 const saveBtn = ghostBtn;
 const menuItem =
   "dropdown-item w-full px-3 py-2 text-left text-[12px] text-notion-text transition-colors hover:bg-notion-sidebar-hover disabled:cursor-not-allowed disabled:text-notion-text-light";

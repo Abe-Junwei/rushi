@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from "react";
 import { FileAudio, FileInput, FileText } from "lucide-react";
-import { CONTROL_BTN_GHOST } from "../config/controlStyles";
+import { CONTROL_BTN_WORKSPACE_IMPORT } from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { WORKSPACE_PAGE_PANEL_CLASS } from "../config/workspaceShellLayout";
 import type { ProjectControllerApi } from "../pages/useProjectController";
@@ -13,7 +13,7 @@ const DROP_IMPORT_UNSUPPORTED_MSG =
 const AUDIO_EXTENSIONS = new Set(["mp3", "wav", "m4a"]);
 const TRANSCRIPT_EXTENSIONS = new Set(["txt", "srt", "vtt"]);
 
-const IMPORT_ACTION_BTN = `${CONTROL_BTN_GHOST} h-7 min-h-[28px] gap-1.5 px-2 text-[12px] font-medium`;
+const IMPORT_ACTION_BTN = CONTROL_BTN_WORKSPACE_IMPORT;
 
 async function importDroppedFiles(
   c: ProjectControllerApi,

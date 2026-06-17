@@ -1,12 +1,12 @@
 import { Info } from "lucide-react";
 import type { Ref } from "react";
-import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { sttKeychainReferenceMessage } from "../services/stt/sttConnectionUi";
 import { normalizeSttApiKeyId } from "../services/stt/sttOnlineProviderContract";
 import { useEnvOnlineSttPanel } from "../hooks/useEnvOnlineSttPanel";
+import { ENV_PANEL_CONFIG_FLOW_CLASS } from "../utils/environmentPanelNav";
+import { EnvFlatConfigStack } from "./EnvFlatConfigStack";
 import { EnvLlmStatusBanner } from "./EnvLlmStatusBanner";
-import { EnvOnlineSttConfigCard } from "./envOnlineStt/EnvOnlineSttConfigCard";
 import { OnlineSttProviderPicker } from "./envOnlineStt/OnlineSttProviderPicker";
 import { OnlineSttRuntimeForm } from "./envOnlineStt/OnlineSttRuntimeForm";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
@@ -21,11 +21,10 @@ export function EnvOnlineSttPanel({ busy, scrollAnchorRef, onSttOnlineRuntimeCha
   const panel = useEnvOnlineSttPanel({ busy, onSttOnlineRuntimeChanged });
 
   return (
-    <div id="online-stt-provider" ref={scrollAnchorRef} className="flex max-w-[860px] flex-col gap-7">
-      <EnvOnlineSttConfigCard
+    <div id="online-stt-provider" ref={scrollAnchorRef} className={ENV_PANEL_CONFIG_FLOW_CLASS}>
+      <EnvFlatConfigStack
         banner={
           <EnvLlmStatusBanner
-            connected
             presentation={{
               mode: "cloud",
               tone: panel.presentation.tone,
@@ -38,7 +37,7 @@ export function EnvOnlineSttPanel({ busy, scrollAnchorRef, onSttOnlineRuntimeCha
             onRefresh={() => void panel.probeOnlineStt()}
           />
         }
-        provider={
+        middle={
           <OnlineSttProviderPicker
             busy={panel.formBusy}
             providerId={panel.olProviderId}
@@ -60,43 +59,33 @@ export function EnvOnlineSttPanel({ busy, scrollAnchorRef, onSttOnlineRuntimeCha
             onTimeoutSecChange={panel.setOlTimeoutSec}
             onAppKeyChange={panel.setOlAppKey}
             onApiKeyChange={panel.setOlApiKey}
+            onClearSavedApiKey={() => void panel.clearSavedApiKey()}
+            onSave={() => void panel.saveOnlineStt()}
           />
         }
-        footer={
-          <>
-            <button
-              type="button"
-              className={`${CONTROL_BTN_SECONDARY} mr-auto text-notion-text-muted`}
-              disabled={panel.formBusy || !panel.savedApiKeyId}
-              onClick={() => void panel.clearSavedApiKey()}
-            >
-              清除已保存密钥
-            </button>
-            <button type="button" className={CONTROL_BTN_PRIMARY} disabled={panel.formBusy} onClick={() => void panel.saveOnlineStt()}>
-              保存在线配置
-            </button>
-          </>
+        trailing={
+          <div className="flex items-start gap-3">
+            <Info
+              className={`${LUCIDE_ICON_SIZE_SM} shrink-0 text-notion-text-muted`}
+              strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
+              aria-hidden
+            />
+            <div className={`flex flex-col gap-2 ${PANEL_TYPOGRAPHY.body}`}>
+              <p className="m-0">内置厂商端点已预置；仅「自定义代理」需填 HTTPS URL。</p>
+              <p className={`m-0 ${PANEL_TYPOGRAPHY.meta}`}>
+                {sttKeychainReferenceMessage(
+                  normalizeSttApiKeyId(panel.savedApiKeyId) ?? null,
+                  panel.keychainChecking ? null : panel.keychainReady,
+                )}
+              </p>
+              <p className={`m-0 ${PANEL_TYPOGRAPHY.meta}`}>
+                本机 FunASR 通过 hotwords 携带术语偏置。
+                {panel.onlineGlossarySummary ? ` ${panel.onlineGlossarySummary}` : ""}
+              </p>
+            </div>
+          </div>
         }
       />
-
-      <div className="flex items-start gap-3 border-t border-notion-divider/60 pt-5">
-        <Info className={`${LUCIDE_ICON_SIZE_SM} mt-0.5 shrink-0 text-notion-text-muted`} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-        <div className={`space-y-2 ${PANEL_TYPOGRAPHY.body}`}>
-          <p className="m-0">
-            内置厂商端点已预置；仅「自定义代理」需填 HTTPS URL。
-          </p>
-          <p className={`m-0 ${PANEL_TYPOGRAPHY.meta}`}>
-            {sttKeychainReferenceMessage(
-              normalizeSttApiKeyId(panel.savedApiKeyId) ?? null,
-              panel.keychainChecking ? null : panel.keychainReady,
-            )}
-          </p>
-          <p className={`m-0 ${PANEL_TYPOGRAPHY.meta}`}>
-            本机 FunASR 通过 hotwords 携带术语偏置。
-            {panel.onlineGlossarySummary ? ` ${panel.onlineGlossarySummary}` : ""}
-          </p>
-        </div>
-      </div>
     </div>
   );
 }

@@ -90,7 +90,7 @@ export function DeliveryModeDialog({
       }
       footerJustify="end"
     >
-      <FloatingPanelDialogHeader className="gap-2">
+      <FloatingPanelDialogHeader>
         <p className="text-sm leading-relaxed text-notion-text-muted">
           定稿向导 · 项目「{projectName || "未命名"}」：可选规则纠错与智能改稿 → 终检 → 交付导出 Word。
         </p>
@@ -102,12 +102,12 @@ export function DeliveryModeDialog({
         </h3>
         <ul className="flex flex-col gap-2">
           {rulesStep ? (
-            <li className="rounded-md bg-notion-sidebar/50 px-2.5 py-2 text-[13px]">
+            <li className="flex flex-col gap-1.5 rounded-md bg-notion-sidebar/50 px-2.5 py-2 text-[13px]">
               <p className="font-medium text-notion-text">{rulesStep.title}</p>
-              <p className="mt-0.5 text-[12px] leading-relaxed text-notion-text-muted">{rulesStep.description}</p>
+              <p className="text-[12px] leading-relaxed text-notion-text-muted">{rulesStep.description}</p>
               <button
                 type="button"
-                className={`${CONTROL_BTN_LINK} mt-1.5 text-[12px]`}
+                className={`${CONTROL_BTN_LINK} self-start text-[12px]`}
                 disabled={busy || !canApplyCorrectionRules}
                 title={canApplyCorrectionRules ? undefined : (correctionRulesBlockReason ?? "不可用")}
                 onClick={onOpenPostTranscribeRules}
@@ -117,12 +117,12 @@ export function DeliveryModeDialog({
             </li>
           ) : null}
           {stageBStep ? (
-            <li className="rounded-md bg-notion-sidebar/50 px-2.5 py-2 text-[13px]">
+            <li className="flex flex-col gap-1.5 rounded-md bg-notion-sidebar/50 px-2.5 py-2 text-[13px]">
               <p className="font-medium text-notion-text">{stageBStep.title}</p>
-              <p className="mt-0.5 text-[12px] leading-relaxed text-notion-text-muted">{stageBStep.description}</p>
+              <p className="text-[12px] leading-relaxed text-notion-text-muted">{stageBStep.description}</p>
               <button
                 type="button"
-                className={`${CONTROL_BTN_LINK} mt-1.5 text-[12px]`}
+                className={`${CONTROL_BTN_LINK} self-start text-[12px]`}
                 disabled={busy || !canOfferPostTranscribeStageB}
                 title={
                   canOfferPostTranscribeStageB ? undefined : (postTranscribeStageBBlockReason ?? "不可用")
@@ -147,7 +147,7 @@ export function DeliveryModeDialog({
                 item.ok ? "bg-notion-sidebar/50 text-notion-text" : "bg-zen-cinnabar/8 text-notion-text",
               ].join(" ")}
             >
-              <span className="mt-0.5 shrink-0" aria-hidden>
+              <span className="shrink-0" aria-hidden>
                 {item.ok ? (
                   <Check className={`${LUCIDE_ICON_SIZE_SM} text-zen-forest`} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} />
                 ) : (
@@ -157,10 +157,10 @@ export function DeliveryModeDialog({
                   />
                 )}
               </span>
-              <div>
+              <div className="flex min-w-0 flex-col gap-0.5">
                 <p className="font-medium">{item.label}</p>
                 {item.hint ? (
-                  <p className="mt-0.5 text-[12px] leading-relaxed text-notion-text-muted">{item.hint}</p>
+                  <p className="text-[12px] leading-relaxed text-notion-text-muted">{item.hint}</p>
                 ) : null}
               </div>
             </li>

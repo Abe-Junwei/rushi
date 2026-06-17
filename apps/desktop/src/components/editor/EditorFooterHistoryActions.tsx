@@ -1,4 +1,5 @@
 import { History, Redo2, Undo2 } from "lucide-react";
+import { CONTROL_BTN_COMPACT_SECONDARY } from "../../config/controlStyles";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";
 import { footerHistoryIconBtn } from "./editorSegmentToolbarStyles";
@@ -54,7 +55,7 @@ export function EditorFooterHistoryActions({ controller: c, editHistory: h }: Ed
             <div className="flex items-center gap-1">
               <button
                 type="button"
-                className="inline-flex h-6 items-center justify-center rounded-md border border-notion-border bg-transparent px-2 text-[11px] text-notion-text-muted transition-colors hover:bg-notion-sidebar-hover"
+                className={CONTROL_BTN_COMPACT_SECONDARY}
                 onClick={() => void h.loadEditHistory()}
                 disabled={h.historyBusy}
               >
@@ -62,7 +63,7 @@ export function EditorFooterHistoryActions({ controller: c, editHistory: h }: Ed
               </button>
               <button
                 type="button"
-                className="inline-flex h-6 items-center justify-center rounded-md border border-notion-border bg-transparent px-2 text-[11px] text-notion-text-muted transition-colors hover:bg-notion-sidebar-hover"
+                className={CONTROL_BTN_COMPACT_SECONDARY}
                 onClick={() => h.setHistoryOpen(false)}
               >
                 关闭
@@ -98,7 +99,7 @@ export function EditorFooterHistoryActions({ controller: c, editHistory: h }: Ed
                       <div className="mt-1.5 border-t border-notion-divider/60 pt-1.5">
                         <button
                           type="button"
-                          className="inline-flex h-6 items-center justify-center rounded-md border border-notion-border bg-transparent px-2 text-[10px] font-medium text-notion-text transition-colors hover:bg-notion-sidebar-hover disabled:cursor-not-allowed disabled:opacity-50"
+                          className={CONTROL_BTN_COMPACT_SECONDARY}
                           disabled={h.historyDisabled || h.restoreBusy}
                           onClick={() => h.requestRestore(row)}
                         >

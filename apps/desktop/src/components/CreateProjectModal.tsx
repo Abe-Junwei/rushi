@@ -5,7 +5,7 @@ import type { ProjectControllerApi } from "../pages/useProjectController";
 import * as fileApi from "../tauri/fileApi";
 import { findDuplicateProjectNames, suggestUniqueProjectName } from "../utils/projectDuplicateName";
 import { FloatingPanelTemplate } from "./PanelTemplate";
-import { FLOATING_PANEL_DIALOG_BODY_PADDING_CLASS } from "./FloatingPanelDialogLayout";
+import { FLOATING_PANEL_DIALOG_BODY_PADDING_CLASS, FLOATING_PANEL_DIALOG_FOOTER_CLASS } from "./FloatingPanelDialogLayout";
 import {
   CONTROL_BTN_PRIMARY,
   CONTROL_BTN_SECONDARY,
@@ -105,7 +105,7 @@ export function CreateProjectModal({ controller: c, onClose }: CreateProjectModa
       onClose={onClose}
     >
       <form
-        className={`flex flex-col ${FLOATING_PANEL_DIALOG_BODY_PADDING_CLASS}`}
+        className={`flex flex-col gap-3 ${FLOATING_PANEL_DIALOG_BODY_PADDING_CLASS}`}
         onSubmit={(e) => {
           e.preventDefault();
           void createEmpty();
@@ -126,7 +126,7 @@ export function CreateProjectModal({ controller: c, onClose }: CreateProjectModa
         </label>
 
         {hasDuplicateWarning ? (
-          <p className={`mt-2 shrink-0 ${PANEL_TYPOGRAPHY.meta} leading-snug text-zen-saffron`}>
+          <p className={`shrink-0 ${PANEL_TYPOGRAPHY.meta} leading-snug text-zen-saffron`}>
             已有同名项目「{duplicateProjects[0].name}」。仍可创建，或使用
             <button
               type="button"
@@ -138,12 +138,12 @@ export function CreateProjectModal({ controller: c, onClose }: CreateProjectModa
             </button>
           </p>
         ) : (
-          <p className={`mt-1.5 shrink-0 ${PANEL_TYPOGRAPHY.meta} leading-snug text-notion-text-muted`}>
+          <p className={`shrink-0 ${PANEL_TYPOGRAPHY.meta} leading-snug text-notion-text-muted`}>
             可先建空项目，或导入首个音频 / 文本文件。
           </p>
         )}
 
-        <div className="relative my-3 shrink-0">
+        <div className="relative shrink-0">
           <div className="absolute inset-0 flex items-center" aria-hidden>
             <div className="w-full border-t border-notion-divider" />
           </div>
@@ -175,7 +175,7 @@ export function CreateProjectModal({ controller: c, onClose }: CreateProjectModa
           </button>
         </div>
 
-        <div className="mt-3 flex shrink-0 items-center justify-end gap-2 border-t border-notion-divider pt-3">
+        <div className={`${FLOATING_PANEL_DIALOG_FOOTER_CLASS} justify-end`}>
           <button type="button" className={CONTROL_BTN_SECONDARY} onClick={onClose} disabled={isBusy}>
             取消
           </button>
