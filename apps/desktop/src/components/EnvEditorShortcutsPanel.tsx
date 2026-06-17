@@ -1,13 +1,14 @@
 import { useMemo } from "react";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
+import { ENV_PANEL_PAGE_CLASS, ENV_PANEL_SECTION_CLASS } from "../utils/environmentPanelNav";
 import { formatEditorShortcutPanelSections } from "../utils/editorShortcutRegistry";
 
 export function EnvEditorShortcutsPanel() {
   const sections = useMemo(() => formatEditorShortcutPanelSections(), []);
 
   return (
-    <div className="flex max-w-[860px] flex-col gap-5">
-      <section className="flex flex-col gap-2">
+    <div className={ENV_PANEL_PAGE_CLASS}>
+      <section className={ENV_PANEL_SECTION_CLASS}>
         <h3 className={PANEL_TYPOGRAPHY.envSectionTitle}>编辑器快捷键</h3>
         <p className={`m-0 ${PANEL_TYPOGRAPHY.body} text-notion-text-muted`}>
           打开转写文件后生效。浮动面板与确认对话框可按 Esc 关闭（处理中除外）。自动保存只落库正文；手改进「纠错记忆」请用定稿（⌘/Ctrl+Enter）或查找替换「全部替换」。每条组合最多
@@ -15,7 +16,7 @@ export function EnvEditorShortcutsPanel() {
         </p>
       </section>
       {sections.map((section) => (
-        <section key={section.id} className="flex flex-col gap-2">
+        <section key={section.id} className={ENV_PANEL_SECTION_CLASS}>
           <h4 className={`m-0 ${PANEL_TYPOGRAPHY.body} font-medium text-notion-text`}>
             {section.title}
           </h4>

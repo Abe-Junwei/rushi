@@ -47,7 +47,7 @@ export function ManualCorrectionMemoryDialog({
       }
       footerJustify="end"
     >
-      <FloatingPanelDialogHeader className="gap-3">
+      <FloatingPanelDialogHeader>
         <p className={PANEL_TYPOGRAPHY.dialogBody}>
           开始学习这一对词。之后在稿中把错形改成正形，每次保存都会累计；满 3 次将自动加入术语表并可用于「纠错规则」。
         </p>

@@ -45,7 +45,7 @@ export function EnvLlmCloudVendorPills({ providerId, disabled, onProviderChange 
 
   return (
     <div className="flex flex-col gap-2">
-      <div className="mb-1 flex flex-wrap gap-2" role="group" aria-label="云端厂商">
+      <div className="flex flex-wrap gap-2" role="group" aria-label="云端厂商">
         {FEATURED_CLOUD_PROVIDER_IDS.map(renderChip)}
         {moreIds.length > 0 ? (
           <button

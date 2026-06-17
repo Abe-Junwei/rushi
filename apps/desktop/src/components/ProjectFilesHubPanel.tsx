@@ -118,13 +118,13 @@ export function ProjectFilesHubPanel({ controller: c }: { controller: ProjectCon
               </form>
             ) : (
               <div className="relative flex items-start">
-                <div className="min-w-0 flex-1 pr-16">
+                <div className="min-w-0 flex flex-1 flex-col gap-1 pr-16">
                   <h1 className="truncate text-[28px] font-semibold leading-[1.25] tracking-[-0.015em] text-notion-text">
                     {projectName}
                   </h1>
                   {projectMetadataLine ? (
                     <p
-                      className={`mt-1 truncate ${PANEL_TYPOGRAPHY.meta} text-notion-text-muted`}
+                      className={`truncate ${PANEL_TYPOGRAPHY.meta} text-notion-text-muted`}
                       title={projectMetadataLine}
                     >
                       {projectMetadataLine}

@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { Copy, ExternalLink } from "lucide-react";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
+import { ENV_PANEL_PAGE_CLASS, ENV_PANEL_SECTION_CLASS } from "../utils/environmentPanelNav";
 import { CONTROL_BTN_SECONDARY } from "../config/controlStyles";
 import { toast } from "../services/ui/toast";
 import {
@@ -115,8 +116,8 @@ export function EnvAboutPanel() {
   }, []);
 
   return (
-    <div className="flex max-w-[860px] flex-col gap-7">
-      <section className="flex flex-col gap-3">
+    <div className={ENV_PANEL_PAGE_CLASS}>
+      <section className={ENV_PANEL_SECTION_CLASS}>
         <h3 className={PANEL_TYPOGRAPHY.envSectionTitle}>关于</h3>
         {buildInfoState === "error" ? (
           <p className={`m-0 ${PANEL_TYPOGRAPHY.body} text-notion-text-muted`}>{buildInfoError}</p>
@@ -152,7 +153,7 @@ export function EnvAboutPanel() {
         ) : (
           <p className={`m-0 ${PANEL_TYPOGRAPHY.body} text-notion-text-muted`}>加载中…</p>
         )}
-        <div className="flex flex-wrap gap-2 pt-1">
+        <div className="flex flex-wrap gap-2">
           <button
             type="button"
             className={CONTROL_BTN_SECONDARY}
@@ -181,7 +182,7 @@ export function EnvAboutPanel() {
         </p>
       </section>
 
-      <section className="flex flex-col gap-3">
+      <section className={ENV_PANEL_SECTION_CLASS}>
         <h3 className={PANEL_TYPOGRAPHY.envSectionTitle}>第三方组件</h3>
         <p className={`m-0 ${PANEL_TYPOGRAPHY.meta}`}>
           按组件列出名称、著作权、许可类型与来源；正式许可全文见下一节。
@@ -193,7 +194,7 @@ export function EnvAboutPanel() {
         />
       </section>
 
-      <section className="flex flex-col gap-3">
+      <section className={ENV_PANEL_SECTION_CLASS}>
         <h3 className={PANEL_TYPOGRAPHY.envSectionTitle}>许可正文</h3>
         <LicenseProseBlock
           state={licensesState}

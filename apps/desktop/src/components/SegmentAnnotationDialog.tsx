@@ -3,7 +3,7 @@ import {
   CONTROL_BTN_PRIMARY,
   CONTROL_BTN_SECONDARY,
 } from "../config/controlStyles";
-import { PANEL_CONTROL_TYPOGRAPHY, PANEL_TYPOGRAPHY } from "../config/typography";
+import { COMPACT_DIALOG_LAYOUT, PANEL_CONTROL_TYPOGRAPHY, PANEL_TYPOGRAPHY } from "../config/typography";
 import type { SegmentAnnotationDialogState } from "../pages/useSegmentAnnotationController";
 import type { SegmentDto } from "../tauri/projectApi";
 import { formatSegmentAnnotationPreview } from "../utils/segmentAnnotation";
@@ -59,58 +59,60 @@ export function SegmentAnnotationDialog({
         role="dialog"
         aria-modal="true"
         aria-labelledby="segment-annotation-title"
-        className="w-full max-w-lg rounded-md border border-notion-divider bg-notion-bg px-6 py-5 font-sans antialiased shadow-lg"
+        className={COMPACT_DIALOG_LAYOUT.cardWide}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <h2 id="segment-annotation-title" className="text-[18px] font-semibold leading-[1.4] text-notion-text">
-          {state.hadAnnotation ? "编辑备注" : "添加备注"}
-        </h2>
-        <p className={`mt-2 ${PANEL_TYPOGRAPHY.dialogBody}`}>
-          语段 {segmentIdx + 1} · {formatSegmentTimeRange(segment.start_sec, segment.end_sec)}
-        </p>
-        <p
-          className={`mt-1 rounded-md bg-notion-sidebar/55 px-3 py-2 ${PANEL_TYPOGRAPHY.meta} text-notion-text-muted`}
-        >
-          {truncatedText}
-        </p>
-
-        <label className={`mt-4 flex flex-col gap-1.5 ${PANEL_TYPOGRAPHY.dialogBody}`}>
-          <span className={PANEL_TYPOGRAPHY.fieldLabel}>备注内容</span>
-          <textarea
-            className={`min-h-[120px] resize-y rounded-md border border-notion-border bg-notion-bg px-3 py-2 outline-none focus-visible:ring-2 focus-visible:ring-zen-saffron/40 ${PANEL_CONTROL_TYPOGRAPHY.compactInput}`}
-            value={state.draft}
-            disabled={busy}
-            autoFocus
-            placeholder="背景说明、待核对项、引用来源等…"
-            onChange={(e) => onDraftChange(e.target.value)}
-          />
-        </label>
-        {state.hadAnnotation && state.draft.trim() ? (
-          <p className={`mt-2 ${PANEL_TYPOGRAPHY.meta} text-notion-text-muted`}>
-            预览：{formatSegmentAnnotationPreview(state.draft)}
+        <div className={COMPACT_DIALOG_LAYOUT.stack}>
+          <h2 id="segment-annotation-title" className={COMPACT_DIALOG_LAYOUT.title}>
+            {state.hadAnnotation ? "编辑备注" : "添加备注"}
+          </h2>
+          <p className={PANEL_TYPOGRAPHY.dialogBody}>
+            语段 {segmentIdx + 1} · {formatSegmentTimeRange(segment.start_sec, segment.end_sec)}
           </p>
-        ) : null}
+          <p
+            className={`rounded-md bg-notion-sidebar/55 px-3 py-2 ${PANEL_TYPOGRAPHY.meta} text-notion-text-muted`}
+          >
+            {truncatedText}
+          </p>
 
-        <div className="mt-5 flex flex-wrap items-center justify-between gap-2">
-          <div>
-            {state.hadAnnotation ? (
-              <button
-                type="button"
-                className={CONTROL_BTN_DANGER}
-                disabled={busy}
-                onClick={onClear}
-              >
-                清除备注
+          <label className={`flex flex-col gap-1.5 ${PANEL_TYPOGRAPHY.dialogBody}`}>
+            <span className={PANEL_TYPOGRAPHY.fieldLabel}>备注内容</span>
+            <textarea
+              className={`min-h-[120px] resize-y rounded-md border border-notion-border bg-notion-bg px-3 py-2 outline-none focus-visible:ring-2 focus-visible:ring-zen-saffron/40 ${PANEL_CONTROL_TYPOGRAPHY.compactInput}`}
+              value={state.draft}
+              disabled={busy}
+              autoFocus
+              placeholder="背景说明、待核对项、引用来源等…"
+              onChange={(e) => onDraftChange(e.target.value)}
+            />
+          </label>
+          {state.hadAnnotation && state.draft.trim() ? (
+            <p className={`${PANEL_TYPOGRAPHY.meta} text-notion-text-muted`}>
+              预览：{formatSegmentAnnotationPreview(state.draft)}
+            </p>
+          ) : null}
+
+          <div className={COMPACT_DIALOG_LAYOUT.actionRowSplit}>
+            <div>
+              {state.hadAnnotation ? (
+                <button
+                  type="button"
+                  className={CONTROL_BTN_DANGER}
+                  disabled={busy}
+                  onClick={onClear}
+                >
+                  清除备注
+                </button>
+              ) : null}
+            </div>
+            <div className="flex flex-wrap justify-end gap-2">
+              <button type="button" className={CONTROL_BTN_SECONDARY} disabled={busy} onClick={onClose}>
+                取消
               </button>
-            ) : null}
-          </div>
-          <div className="flex flex-wrap justify-end gap-2">
-            <button type="button" className={CONTROL_BTN_SECONDARY} disabled={busy} onClick={onClose}>
-              取消
-            </button>
-            <button type="button" className={CONTROL_BTN_PRIMARY} disabled={busy} onClick={onSave}>
-              保存
-            </button>
+              <button type="button" className={CONTROL_BTN_PRIMARY} disabled={busy} onClick={onSave}>
+                保存
+              </button>
+            </div>
           </div>
         </div>
       </div>

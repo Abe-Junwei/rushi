@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { Download, Upload } from "lucide-react";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
+import { ENV_PANEL_PAGE_CLASS, ENV_PANEL_SECTION_TOOLS_CLASS } from "../utils/environmentPanelNav";
 import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../config/controlStyles";
 import { toast } from "../services/ui/toast";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
@@ -49,8 +50,8 @@ export function EnvProfileActions({ busy, onImported }: Props) {
   const disabled = busy || actionBusy !== "idle";
 
   return (
-    <div className="flex max-w-[860px] flex-col gap-7">
-      <section className="flex flex-col gap-4">
+    <div className={ENV_PANEL_PAGE_CLASS}>
+      <section className={ENV_PANEL_SECTION_TOOLS_CLASS}>
         <h3 className={PANEL_TYPOGRAPHY.envSectionTitle}>导出与导入</h3>
         <p className={PANEL_TYPOGRAPHY.meta}>
           不含 Key 明文；导入后请逐页确认密钥与探测。

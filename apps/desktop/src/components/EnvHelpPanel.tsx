@@ -1,10 +1,11 @@
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { ENV_NAV } from "../config/environmentNavCopy";
+import { ENV_PANEL_PAGE_CLASS, ENV_PANEL_SECTION_CLASS } from "../utils/environmentPanelNav";
 
 export function EnvHelpPanel() {
   return (
-    <div className="flex max-w-[860px] flex-col gap-7">
-      <section className="flex flex-col gap-3">
+    <div className={ENV_PANEL_PAGE_CLASS}>
+      <section className={ENV_PANEL_SECTION_CLASS}>
         <h3 className={PANEL_TYPOGRAPHY.envSectionTitle}>转写流程</h3>
         <div className={`space-y-2 ${PANEL_TYPOGRAPHY.body}`}>
           <p className="m-0">
@@ -20,7 +21,7 @@ export function EnvHelpPanel() {
         </div>
       </section>
 
-      <section className="flex flex-col gap-3">
+      <section className={ENV_PANEL_SECTION_CLASS}>
         <h3 className={PANEL_TYPOGRAPHY.envSectionTitle}>推荐顺序</h3>
         <ol className={`m-0 list-inside list-decimal space-y-1.5 ${PANEL_TYPOGRAPHY.body}`}>
           <li>
@@ -35,7 +36,7 @@ export function EnvHelpPanel() {
         </ol>
       </section>
 
-      <section className="flex flex-col gap-3">
+      <section className={ENV_PANEL_SECTION_CLASS}>
         <h3 className={PANEL_TYPOGRAPHY.envSectionTitle}>常见问题</h3>
         <div className={`space-y-3 ${PANEL_TYPOGRAPHY.body}`}>
           <div>

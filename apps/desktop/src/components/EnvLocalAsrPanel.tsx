@@ -1,5 +1,6 @@
 import type { PrepareModelFailureCopy } from "../pages/prepareModelDownloadCopy";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
+import { ENV_PANEL_PAGE_CLASS, ENV_PANEL_SECTION_CLASS, ENV_PANEL_SECTION_TOOLS_CLASS } from "../utils/environmentPanelNav";
 import type { AsrEnvPresentation } from "../services/asr/asrEnvStatus";
 import { buildAsrCatalogPresentation } from "../services/asr/asrCatalogPresentation";
 import type {
@@ -83,7 +84,7 @@ export function EnvLocalAsrPanel({
   const showProminentSetup = !asrPresentation.chipOk;
 
   return (
-    <div className="mx-auto flex w-full max-w-[860px] flex-col gap-7">
+    <div className={ENV_PANEL_PAGE_CLASS}>
       <EnvLocalAsrStatusSection
         presentation={asrPresentation}
         busy={busy}
@@ -91,7 +92,7 @@ export function EnvLocalAsrPanel({
       />
 
       {showProminentSetup ? (
-        <section id="env-asr-setup" className="flex flex-col gap-3">
+        <section id="env-asr-setup" className={ENV_PANEL_SECTION_CLASS}>
           <h3 className={PANEL_TYPOGRAPHY.envSectionTitle}>
             {asrPresentation.health === "error" ? "安装向导" : "一键准备"}
           </h3>
@@ -109,7 +110,7 @@ export function EnvLocalAsrPanel({
         </section>
       ) : null}
 
-      <section id="env-asr-models" className="flex flex-col gap-4">
+      <section id="env-asr-models" className={ENV_PANEL_SECTION_TOOLS_CLASS}>
         <h3 className={PANEL_TYPOGRAPHY.envSectionTitle}>转写模型</h3>
         <EnvLocalAsrModelCard
           localAsrModelCatalog={localAsrModelCatalog}
@@ -126,12 +127,12 @@ export function EnvLocalAsrPanel({
       </section>
 
       {asrPresentation.ffmpegWarning ? (
-        <p className={`border-t border-notion-divider/60 pt-4 ${PANEL_TYPOGRAPHY.body}`}>
+        <p className={`m-0 ${PANEL_TYPOGRAPHY.body}`}>
           {asrPresentation.ffmpegWarning}
         </p>
       ) : null}
 
-      <section id="env-asr-utilities" className="flex flex-col gap-3">
+      <section id="env-asr-utilities" className={ENV_PANEL_SECTION_CLASS}>
         <h3 className={PANEL_TYPOGRAPHY.envSectionTitle}>环境与维护</h3>
         <EnvLocalAsrUtilitiesSection
           presentation={asrPresentation}

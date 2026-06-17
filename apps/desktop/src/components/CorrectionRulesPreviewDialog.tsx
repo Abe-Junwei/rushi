@@ -136,7 +136,7 @@ export function CorrectionRulesPreviewDialog({
           ) : null}
           {state.phase === "empty" ? (
             <>
-              <FloatingPanelDialogHeader className="space-y-2">
+              <FloatingPanelDialogHeader>
                 <p className={PANEL_TYPOGRAPHY.dialogBody}>
                   {postTranscribe
                     ? "转写已落库。当前没有可应用的稳定纠错规则（需命中 ≥3 次或已采纳），或语段中无匹配项。"
@@ -168,7 +168,7 @@ export function CorrectionRulesPreviewDialog({
           ) : null}
           {preview ? (
             <>
-              <FloatingPanelDialogHeader className="space-y-2">
+              <FloatingPanelDialogHeader>
                 <p className={PANEL_TYPOGRAPHY.dialogBody}>
                   共 <span className="font-medium text-notion-text">{preview.ruleCount}</span> 条规则，
                   <span className="font-medium text-notion-text"> {totalCount}</span> 条语段有变更

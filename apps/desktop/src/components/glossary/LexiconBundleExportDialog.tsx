@@ -116,8 +116,8 @@ export function LexiconBundleExportDialog({
             />
           </label>
           {hintCount > 0 ? (
-            <div className="rounded-md bg-notion-callout-bg px-3 py-2">
-              <p className={`m-0 mb-2 ${PANEL_TYPOGRAPHY.meta} font-medium text-notion-text`}>
+            <div className="flex flex-col gap-2 rounded-md bg-notion-callout-bg px-3 py-2">
+              <p className={`m-0 ${PANEL_TYPOGRAPHY.meta} font-medium text-notion-text`}>
                 导出前建议关注
               </p>
               <ul

@@ -7,6 +7,7 @@ import {
   CONTROL_BTN_SECONDARY,
 } from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
+import { ENV_PANEL_PAGE_CLASS, ENV_PANEL_SECTION_CLASS, ENV_PANEL_SECTION_TOOLS_CLASS } from "../utils/environmentPanelNav";
 import { readShellManagesBundledSidecarSync } from "../services/shellCapabilities";
 import { useQualityEvalController } from "../pages/useQualityEvalController";
 import { packagedOrDev } from "../services/packagedUserHints";
@@ -40,7 +41,7 @@ export function EnvQualityPanel({ busy: appBusy }: Props) {
   }, [exportRedact, q]);
 
   return (
-    <div className="relative flex max-w-[860px] flex-col gap-7">
+    <div className={`relative ${ENV_PANEL_PAGE_CLASS}`}>
       {q.busy ? (
         <div
           className="pointer-events-none absolute inset-0 z-20 flex items-start justify-center bg-notion-bg/55 pt-16"
@@ -54,7 +55,7 @@ export function EnvQualityPanel({ busy: appBusy }: Props) {
         </div>
       ) : null}
 
-      <section className="flex flex-col gap-4">
+      <section className={ENV_PANEL_SECTION_TOOLS_CLASS}>
         <h3 className={PANEL_TYPOGRAPHY.envSectionTitle}>质量评测</h3>
         <p className={`m-0 ${PANEL_TYPOGRAPHY.body} text-notion-text-muted`}>
           R4：展示最近一次 eval 批跑摘要（CER / 术语命中）。发版前请运行 R4-GATE（制控专名样例）并可选设定回归基线。
@@ -164,7 +165,7 @@ export function EnvQualityPanel({ busy: appBusy }: Props) {
         ) : null}
       </section>
 
-      <section className="flex flex-col gap-3 border-t border-notion-divider pt-6">
+      <section className={ENV_PANEL_SECTION_CLASS}>
         <h3 className={PANEL_TYPOGRAPHY.envSectionTitle}>纠错记忆导出（R4）</h3>
         <label className={`flex items-center gap-2 ${PANEL_TYPOGRAPHY.controlText}`}>
           <input

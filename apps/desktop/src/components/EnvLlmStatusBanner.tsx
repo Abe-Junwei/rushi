@@ -15,8 +15,6 @@ type Props = {
   disabled?: boolean;
   busy?: boolean;
   onRefresh?: () => void;
-  /** 连体卡片上半：无独立圆角/边框 */
-  connected?: boolean;
   /** 默认：检测中… / 重试检测 / 刷新检测 */
   refreshLabel?: string;
 };
@@ -45,15 +43,14 @@ function inProgressButtonLabel(refreshLabel?: string): string {
 }
 
 /** 设置页 LLM 状态条（本机 / 云端共用，文案来自 buildLlmEnvPresentation）。 */
-export function EnvLlmStatusBanner({ presentation, disabled, busy, onRefresh, connected, refreshLabel }: Props) {
+export function EnvLlmStatusBanner({ presentation, disabled, busy, onRefresh, refreshLabel }: Props) {
   const displayTone = busy ? "warn" : presentation.tone;
   const bannerCopy = resolveBusyBannerCopy(presentation, busy === true);
 
   return (
     <div
       className={[
-        "flex flex-col gap-2 px-4 py-3 sm:flex-row sm:items-start sm:justify-between",
-        connected ? "rounded-none" : "rounded-lg",
+        "flex flex-col gap-2 rounded-lg px-4 py-3 sm:flex-row sm:items-start sm:justify-between",
         LLM_STATUS_PANEL_CLASS[displayTone],
       ].join(" ")}
       role="status"

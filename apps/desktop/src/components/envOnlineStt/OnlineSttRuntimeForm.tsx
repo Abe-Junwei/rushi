@@ -1,7 +1,13 @@
 import { Info } from "lucide-react";
 import { useEffect, useState } from "react";
-import { CONTROL_TEXT_INPUT, ENV_MONO_FIELD } from "../../config/controlStyles";
+import {
+  CONTROL_BTN_PRIMARY,
+  CONTROL_BTN_SECONDARY,
+  CONTROL_TEXT_INPUT,
+  ENV_MONO_FIELD,
+} from "../../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../../config/typography";
+import { ENV_PANEL_ACTION_ROW_CLASS } from "../../utils/environmentPanelNav";
 import {
   clampSttOnlineTimeoutSec,
   STT_ONLINE_TIMEOUT_SEC_MAX,
@@ -38,6 +44,8 @@ type Props = {
   onTimeoutSecChange: (value: number) => void;
   onAppKeyChange: (value: string) => void;
   onApiKeyChange: (value: string) => void;
+  onClearSavedApiKey: () => void;
+  onSave: () => void;
 };
 
 export function OnlineSttRuntimeForm({
@@ -54,6 +62,8 @@ export function OnlineSttRuntimeForm({
   onTimeoutSecChange,
   onAppKeyChange,
   onApiKeyChange,
+  onClearSavedApiKey,
+  onSave,
 }: Props) {
   const providerLabel = providerDef?.label ?? providerId;
   const [timeoutInput, setTimeoutInput] = useState(String(timeoutSec));
@@ -174,6 +184,20 @@ export function OnlineSttRuntimeForm({
           <p className={`mt-1.5 ${PANEL_TYPOGRAPHY.meta}`}>{providerDef.credentialHint}</p>
         ) : null}
       </label>
+
+      <div className={ENV_PANEL_ACTION_ROW_CLASS}>
+        <button
+          type="button"
+          className={`${CONTROL_BTN_SECONDARY} mr-auto text-notion-text-muted`}
+          disabled={busy || !savedApiKeyId}
+          onClick={onClearSavedApiKey}
+        >
+          清除已保存密钥
+        </button>
+        <button type="button" className={CONTROL_BTN_PRIMARY} disabled={busy} onClick={onSave}>
+          保存在线配置
+        </button>
+      </div>
     </div>
   );
 }

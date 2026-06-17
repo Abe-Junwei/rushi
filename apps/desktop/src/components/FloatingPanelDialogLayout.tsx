@@ -26,7 +26,11 @@ type RegionProps = {
 
 /** 固定不滚动区（说明、摘要、提示条等）。 */
 export function FloatingPanelDialogHeader({ children, className }: RegionProps) {
-  return <div className={["shrink-0 space-y-2", className].filter(Boolean).join(" ")}>{children}</div>;
+  return (
+    <div className={["flex shrink-0 flex-col gap-3", className].filter(Boolean).join(" ")}>
+      {children}
+    </div>
+  );
 }
 
 /** 可滚动中间区（语段列表、长表单等）；缩放面板时仅本区滚动。 */

@@ -36,7 +36,7 @@ export function DeliveryExportPolishPreviewSection({
     : null;
 
   return (
-    <div className="rounded-md bg-notion-callout-bg px-3 py-2">
+    <div className="flex flex-col gap-2 rounded-md bg-notion-callout-bg px-3 py-2">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <span className="text-xs font-semibold uppercase tracking-wide text-notion-text-light">
           修订预览
@@ -57,10 +57,10 @@ export function DeliveryExportPolishPreviewSection({
           ) : null}
         </div>
       </div>
-      {previewError ? <p className="mt-2 text-xs text-zen-cinnabar">{previewError}</p> : null}
+      {previewError ? <p className="text-xs text-zen-cinnabar">{previewError}</p> : null}
       {preview ? (
-        <>
-          <p className="mt-2 text-xs text-notion-text-muted">
+        <div className="flex flex-col gap-1.5">
+          <p className="text-xs text-notion-text-muted">
             共 {preview.lineChanges.length} 处语段改动（Word 修订轨 {trackCount}，错字/用词 {typoCount}，标点/空格{" "}
             {punctCount}）；自然段 {preview.paragraphs.length} 段。LLM 采纳错字 {preview.diagnostic.llmTypoLines}{" "}
             行 / 标点 {preview.diagnostic.llmPunctLines} 行
@@ -69,18 +69,18 @@ export function DeliveryExportPolishPreviewSection({
               : ""}
           </p>
           {preview.diagnosticHint ? (
-            <p className="mt-1 text-xs text-zen-cinnabar">{preview.diagnosticHint}</p>
+            <p className="text-xs text-zen-cinnabar">{preview.diagnosticHint}</p>
           ) : null}
           {polishReadinessPreviewCurrent ? (
-            <p className="mt-1 text-xs text-notion-text-muted">导出将复用本次预览，不会再次请求 LLM。</p>
+            <p className="text-xs text-notion-text-muted">导出将复用本次预览，不会再次请求 LLM。</p>
           ) : null}
           {previewNotes && previewNotes.paddedLineIndices.length > 0 ? (
-            <p className="mt-1 text-xs text-notion-text-muted">
+            <p className="text-xs text-notion-text-muted">
               保留原文（对齐补行）：语段 {previewNotes.paddedLineIndices.map((i) => `#${i + 1}`).join("、")}
             </p>
           ) : null}
           {previewNotes && previewNotes.noTrackChangeLineIndices.length > 0 ? (
-            <p className="mt-1 text-xs text-notion-text-muted">
+            <p className="text-xs text-notion-text-muted">
               有改动但不进 Word 修订轨：语段{" "}
               {previewNotes.noTrackChangeLineIndices
                 .slice(0, 8)
@@ -91,7 +91,7 @@ export function DeliveryExportPolishPreviewSection({
                 : ""}
             </p>
           ) : null}
-          <ul className="mt-2 max-h-36 list-none space-y-1 overflow-y-auto p-0 text-xs text-notion-text">
+          <ul className="max-h-36 list-none space-y-1 overflow-y-auto p-0 text-xs text-notion-text">
             {preview.lineChanges.slice(0, PREVIEW_MAX_ROWS).map((row) => (
               <li key={row.lineIndex} className="leading-snug">
                 <span className="text-notion-text-muted">#{row.lineIndex + 1}</span> {summarizeLineChange(row)}
@@ -104,9 +104,9 @@ export function DeliveryExportPolishPreviewSection({
               <li className="text-notion-text-muted">无错字/标点修订（仅语义分段）。</li>
             ) : null}
           </ul>
-        </>
+        </div>
       ) : !previewLoading && !previewError ? (
-        <p className={`mt-2 ${PANEL_TYPOGRAPHY.meta} text-notion-text-muted`}>
+        <p className={`${PANEL_TYPOGRAPHY.meta} text-notion-text-muted`}>
           导出前可先生成预览；确认后导出将复用预览结果（语段正文未改则不重复请求 LLM）。
         </p>
       ) : null}

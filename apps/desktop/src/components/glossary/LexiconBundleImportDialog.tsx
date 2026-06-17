@@ -60,8 +60,8 @@ export function LexiconBundleImportDialog({
       <FloatingPanelDialogScroll>
         <ul className="m-0 list-none space-y-3 p-0">
           {preview.conflicts.map((c) => (
-            <li key={c.id} className="rounded-md bg-notion-callout-bg px-3 py-2">
-              <p className={`m-0 mb-2 ${PANEL_TYPOGRAPHY.dialogText}`}>{c.message}</p>
+            <li key={c.id} className="flex flex-col gap-2 rounded-md bg-notion-callout-bg px-3 py-2">
+              <p className={`m-0 ${PANEL_TYPOGRAPHY.dialogText}`}>{c.message}</p>
               <select
                 value={resolutions[c.id] ?? "local"}
                 disabled={disabled}

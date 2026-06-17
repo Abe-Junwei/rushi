@@ -1,6 +1,7 @@
 import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY, CONTROL_TEXT_INPUT } from "../config/controlStyles";
 import { ENV_EXTERNAL_LINK_CLASS } from "../config/envVendorChipStyles";
 import { PANEL_CONTROL_TYPOGRAPHY, PANEL_TYPOGRAPHY } from "../config/typography";
+import { ENV_PANEL_ACTION_ROW_CLASS } from "../utils/environmentPanelNav";
 import { llmKeychainReferenceMessage, normalizeLlmApiKeyId } from "../services/postprocess/postprocessRuntimeContract";
 import {
   isSavedApiKeyMaskDisplayed,
@@ -52,7 +53,7 @@ export function EnvLlmConnectionForm(props: Props) {
   });
 
   return (
-    <div className="py-5">
+    <div className="flex flex-col gap-5 py-5">
       <div className="space-y-5">
         <label className="block space-y-2">
           <span className={fieldLabel}>API 基址</span>
@@ -148,7 +149,7 @@ export function EnvLlmConnectionForm(props: Props) {
         )}
       </div>
 
-      <div className="mt-6 flex flex-wrap items-center gap-2 border-t border-notion-divider pt-5">
+      <div className={ENV_PANEL_ACTION_ROW_CLASS}>
         <button
           type="button"
           className={`${btnSecondary} mr-auto text-notion-text-muted`}

@@ -2,7 +2,7 @@ import { createPortal } from "react-dom";
 import { CONTROL_BTN_DANGER, CONTROL_BTN_SECONDARY } from "../../config/controlStyles";
 import { overlayScrimCentered } from "../../config/overlayStyles";
 import { useDialogEscapeClose } from "../../hooks/useDialogEscapeClose";
-import { PANEL_TYPOGRAPHY } from "../../config/typography";
+import { COMPACT_DIALOG_LAYOUT, PANEL_TYPOGRAPHY } from "../../config/typography";
 import { DELETE_SEGMENT_WITH_TEXT_CONFIRM } from "../../services/segmentConfirmEligible";
 import { editorShortcutMenuHint } from "../../utils/editorShortcutMenuHint";
 
@@ -38,25 +38,24 @@ export function DeleteSegmentConfirmDialog({ open, deleteCount = 1, onCancel, on
         aria-modal="true"
         aria-labelledby="delete-segment-title"
         aria-describedby="delete-segment-desc"
-        className="w-full max-w-md rounded-md border border-notion-divider bg-notion-bg px-6 py-5 font-sans antialiased shadow-lg"
+        className={COMPACT_DIALOG_LAYOUT.card}
         onMouseDown={(e) => e.stopPropagation()}
       >
-        <h2
-          id="delete-segment-title"
-          className="text-[18px] font-semibold leading-[1.4] text-notion-text"
-        >
-          {title}
-        </h2>
-        <p id="delete-segment-desc" className={`mt-2 ${PANEL_TYPOGRAPHY.dialogBody}`}>
-          {body}
-        </p>
-        <div className="mt-5 flex flex-wrap justify-end gap-2">
-          <button type="button" className={CONTROL_BTN_SECONDARY} onClick={onCancel}>
-            取消
-          </button>
-          <button type="button" className={CONTROL_BTN_DANGER} onClick={onConfirm}>
-            确认删除
-          </button>
+        <div className={COMPACT_DIALOG_LAYOUT.stack}>
+          <h2 id="delete-segment-title" className={COMPACT_DIALOG_LAYOUT.title}>
+            {title}
+          </h2>
+          <p id="delete-segment-desc" className={PANEL_TYPOGRAPHY.dialogBody}>
+            {body}
+          </p>
+          <div className={COMPACT_DIALOG_LAYOUT.actionRow}>
+            <button type="button" className={CONTROL_BTN_SECONDARY} onClick={onCancel}>
+              取消
+            </button>
+            <button type="button" className={CONTROL_BTN_DANGER} onClick={onConfirm}>
+              确认删除
+            </button>
+          </div>
         </div>
       </div>
     </div>,
