@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  applyBatchQueueStop,
   initialBatchQueueItems,
   isBatchTranscribableFile,
   patchBatchQueueItem,
@@ -52,5 +53,17 @@ describe("batchTranscribeQueue", () => {
       file({ id: "mid", name: "mid.wav", file_type: "audio_only", updated_at_ms: 200 }),
     ]);
     expect(items.map((i) => i.fileId)).toEqual(["new", "mid", "old"]);
+  });
+
+  it("applyBatchQueueStop marks running failed and pending skipped", () => {
+    const items = [
+      { fileId: "1", fileName: "a", status: "done" as const },
+      { fileId: "2", fileName: "b", status: "running" as const },
+      { fileId: "3", fileName: "c", status: "pending" as const },
+    ];
+    const next = applyBatchQueueStop(items);
+    expect(next[0]?.status).toBe("done");
+    expect(next[1]).toMatchObject({ status: "failed", detail: "已停止" });
+    expect(next[2]).toMatchObject({ status: "skipped", detail: "未处理（已停止）" });
   });
 });

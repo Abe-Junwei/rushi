@@ -1,6 +1,6 @@
 import { CheckCircle2, Circle, CircleAlert, Loader2, MinusCircle } from "lucide-react";
 import { useMemo } from "react";
-import { CONTROL_BTN_SECONDARY } from "../config/controlStyles";
+import { CONTROL_BTN_DANGER, CONTROL_BTN_SECONDARY } from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { CompactFloatingDialog } from "./CompactFloatingDialog";
 import { FloatingPanelDialogHeader } from "./FloatingPanelDialogLayout";
@@ -101,6 +101,7 @@ type Props = {
   items: BatchQueueItem[];
   transcribeProgress: TranscribeProgress | null;
   onClose: () => void;
+  onStop?: () => void;
 };
 
 export function BatchTranscribeQueueDialog({
@@ -109,6 +110,7 @@ export function BatchTranscribeQueueDialog({
   items,
   transcribeProgress,
   onClose,
+  onStop,
 }: Props) {
   const summary = summarizeBatchQueue(items);
   const estimatedFitHeight = useMemo(
@@ -131,14 +133,21 @@ export function BatchTranscribeQueueDialog({
       bounds={{ minWidth: 320, minHeight: 280, maxWidthCap: 480 }}
       persistState
       footer={
-        <button
-          type="button"
-          className={CONTROL_BTN_SECONDARY}
-          disabled={running}
-          onClick={onClose}
-        >
-          {running ? "转写进行中…" : "关闭"}
-        </button>
+        <div className="flex w-full flex-wrap items-center justify-end gap-2">
+          {running && onStop ? (
+            <button type="button" className={CONTROL_BTN_DANGER} onClick={onStop}>
+              停止批量转写
+            </button>
+          ) : null}
+          <button
+            type="button"
+            className={CONTROL_BTN_SECONDARY}
+            disabled={running}
+            onClick={onClose}
+          >
+            {running ? "转写进行中…" : "关闭"}
+          </button>
+        </div>
       }
     >
       <FloatingPanelDialogHeader>

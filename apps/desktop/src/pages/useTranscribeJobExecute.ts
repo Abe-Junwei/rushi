@@ -164,7 +164,9 @@ export function useTranscribeJobExecute(args: Args) {
   );
 
   const executeTranscribe = useCallback(async (opts?: ExecuteTranscribeOptions): Promise<ExecuteTranscribeResult> => {
-    await awaitEnvironmentCapabilityRefresh();
+    if (!opts?.batchChild) {
+      await awaitEnvironmentCapabilityRefresh();
+    }
     if (transcribeSource === "online") {
       await ensureSttOnlineApiKeyForSession();
     }

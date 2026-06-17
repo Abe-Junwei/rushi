@@ -32,7 +32,10 @@ export function resolveTranscribeExecuteBlock(input: TranscribeExecuteGateInput)
     return "busy";
   }
   if (input.source === "online") {
+    if (batchActive) return null;
     return resolveOnlineTranscribeBlock();
   }
+  // Batch parent preflighted once; re-checking while sidecar is busy often false-negatives.
+  if (batchActive) return null;
   return input.localTranscribePreflight();
 }

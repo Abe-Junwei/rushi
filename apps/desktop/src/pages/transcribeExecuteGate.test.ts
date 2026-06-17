@@ -85,4 +85,18 @@ describe("resolveTranscribeExecuteBlock", () => {
       }),
     ).toBeNull();
   });
+
+  it("skips local preflight for batch child while batch_transcribe busy", () => {
+    expect(
+      resolveTranscribeExecuteBlock({
+        busy: true,
+        busyReason: "batch_transcribe",
+        batchChild: true,
+        hasCurrent: true,
+        currentFileId: "f1",
+        localTranscribePreflight: () => "本机 ASR 未就绪",
+        source: "local",
+      }),
+    ).toBeNull();
+  });
 });

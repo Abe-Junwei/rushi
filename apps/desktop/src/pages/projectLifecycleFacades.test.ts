@@ -31,6 +31,7 @@ describe("projectLifecycleFacades contract", () => {
       discardUnsavedAndClose: async () => {},
       saveAndClose: async () => {},
       transcribeNavBlockOpen: false,
+      transcribeNavBlockStopping: false,
       cancelTranscribeNavBlock: () => {},
       confirmTranscribeNavBlock: async () => {},
     } satisfies ProjectCloseGateControllerApi;

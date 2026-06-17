@@ -198,6 +198,7 @@ export function ProjectPanelDialogs({
         items={c.batchQueueItems}
         transcribeProgress={c.transcribeProgress}
         onClose={c.closeBatchQueueDialog}
+        onStop={() => void c.cancelBatchTranscribe()}
       />
 
       <DuplicateImportConfirmDialog
@@ -211,7 +212,8 @@ export function ProjectPanelDialogs({
 
       <TranscribeNavBlockDialog
         open={c.transcribeNavBlockOpen}
-        busy={c.busy}
+        stopping={c.transcribeNavBlockStopping}
+        mode={c.busyReason === "batch_transcribe" ? "batch" : "single"}
         onStay={c.cancelTranscribeNavBlock}
         onStopAndLeave={() => void c.confirmTranscribeNavBlock()}
       />

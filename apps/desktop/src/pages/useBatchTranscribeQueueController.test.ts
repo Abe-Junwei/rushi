@@ -25,6 +25,7 @@ function makeDeps(
   const beginBusy = vi.fn();
   const endBusy = vi.fn();
   const openFileWrapped = vi.fn(() => Promise.resolve());
+  const cancelTranscribe = vi.fn(() => Promise.resolve());
   const executeTranscribeForBatch = vi.fn(
     (): Promise<ExecuteTranscribeResult> => Promise.resolve({ ok: true }),
   );
@@ -40,6 +41,7 @@ function makeDeps(
       beginBusy,
       endBusy,
       openFileWrapped,
+      cancelTranscribe,
       executeTranscribeForBatch,
       localTranscribePreflight: () => null,
       transcribeSource: "local" as const,
