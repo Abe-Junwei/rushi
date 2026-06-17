@@ -697,7 +697,7 @@
   top: 0;
   width: 2px;
   height: 100%;
-  background: var(--zen-indigo);
+  background: var(--zen-saffron-mid);
 }
 
 /** Sticky viewport playhead — dev/release parity (not Tailwind stroke; not WS shadow cursor). */
@@ -709,7 +709,7 @@
   left: 0;
   z-index: 9;
   width: 1px;
-  background: color-mix(in srgb, var(--zen-saffron) 58%, transparent);
+  background: color-mix(in srgb, var(--zen-saffron) 90%, transparent);
   will-change: transform;
 }
 
@@ -781,7 +781,7 @@
   background: transparent !important;
 }
 
-/** Playhead 由嵌入标尺承担；隐藏 WaveSurfer 内置 cursor，避免双重/错位。 */
+/** Playhead 由 WaveformViewportPlayhead 承担；WS cursor 在 shadow DOM 内，须 JS hide（见 waveformSurferProgressCoverage）。 */
 .waveform-peaks-stage [part="cursor"],
 .waveform-peaks-stage .cursor {
   display: none !important;

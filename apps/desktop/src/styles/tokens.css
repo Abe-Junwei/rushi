@@ -52,6 +52,7 @@
   --zen-wf-surface: #ffffff;
   --zen-wf-wave: #c4c4c8;
   --zen-wf-progress: #8e8e93;
+  --zen-wf-progress-played: color-mix(in srgb, var(--zen-saffron-mid) 22%, var(--zen-wf-progress));
   --zen-wf-cursor: #6a6a6f;
 
   /** Type scale（5 级；@theme text-* 与 Tailwind utilities 同源） */
@@ -124,5 +125,6 @@
   --zen-wf-surface: #1f1f1f;
   --zen-wf-wave: #5a5a5f;
   --zen-wf-progress: #8e8e93;
+  --zen-wf-progress-played: color-mix(in srgb, var(--zen-saffron-mid) 22%, var(--zen-wf-progress));
   --zen-wf-cursor: #b0b0b5;
 }

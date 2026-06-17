@@ -51,8 +51,13 @@ export const COLORS = {
   /** WaveSurfer 白底波形条（与 tailwind `zen-wf-*` 同源） */
   waveformSurface: "#ffffff",
   waveformWave: "#c4c4c8",
-  /** 已播放 peaks tint */
+  /** 已播放 peaks 基色（progress 层未混 saffron 前） */
   waveformProgress: "#8e8e93",
+  /**
+   * 已播放 peaks tint — `color-mix(in srgb, saffron-mid 22%, wf-progress)`（Stitch 原型）。
+   * CSS 真源：`--zen-wf-progress-played` in tokens.css
+   */
+  waveformProgressPlayed: "#8c8176",
   waveformCursor: "#6a6a6f",
   /** 波形 region 叠色（与 waveformRegionFillColor 一致） */
   waveformRegionLaneLow: "#9ca3af",

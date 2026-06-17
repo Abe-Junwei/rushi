@@ -43,6 +43,7 @@
   --color-zen-wf-surface: var(--zen-wf-surface);
   --color-zen-wf-wave: var(--zen-wf-wave);
   --color-zen-wf-progress: var(--zen-wf-progress);
+  --color-zen-wf-progress-played: var(--zen-wf-progress-played);
   --color-zen-wf-cursor: var(--zen-wf-cursor);
 
   --spacing-page-margin: 2rem;
