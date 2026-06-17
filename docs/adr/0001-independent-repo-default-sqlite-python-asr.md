@@ -30,5 +30,5 @@ Rushi（如是我闻）与 Jieyu（解语） sibling 平级，产品范围以 Ji
 
 ## 参考
 
-- [如是我闻-独立新仓库与-Jieyu-对齐策略.md](../../../Jieyu/docs/architecture/如是我闻-独立新仓库与-Jieyu-对齐策略.md) §2、§6  
-- [如是我闻-本地版改进计划书-2026-05-11.md](../../../Jieyu/docs/execution/plans/如是我闻-本地版改进计划书-2026-05-11.md)
+- Jieyu sibling 文档：`docs/architecture/如是我闻-独立新仓库与-Jieyu-对齐策略.md` §2、§6  
+- Jieyu sibling 文档：`docs/execution/plans/如是我闻-本地版改进计划书-2026-05-11.md`

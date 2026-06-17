@@ -57,9 +57,3 @@ export function graphemeIndexToCodeUnitOffset(text: string, graphemeIndex: numbe
   return Math.min(graphemeIndex, text.length);
 }
 
-function lastGrapheme(text: string): string | undefined {
-  const glyphs = splitGraphemes(text);
-  return glyphs[glyphs.length - 1];
-}
-
-lastGrapheme;

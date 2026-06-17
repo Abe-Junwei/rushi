@@ -161,12 +161,14 @@ function readWaveSurferWaveformLayers(ws: WaveSurfer): WaveSurferWaveformLayerNo
   const root = wrapper.getRootNode();
   const scope: ParentNode = root instanceof ShadowRoot ? root : wrapper.ownerDocument ?? document;
   const canvasWrapper =
-    (scope.querySelector('[part="canvases"]') as HTMLElement | null) ??
+    (scope.querySelector('[part="canvases"]')) ??
     wrapper.querySelector(".canvases");
   const progressWrapper =
-    (scope.querySelector('[part="progress"]') as HTMLElement | null) ??
+    (scope.querySelector('[part="progress"]')) ??
     wrapper.querySelector(".progress");
-  if (!canvasWrapper || !progressWrapper) return null;
+  if (!(canvasWrapper instanceof HTMLElement) || !(progressWrapper instanceof HTMLElement)) {
+    return null;
+  }
   return { canvasWrapper, progressWrapper };
 }
 

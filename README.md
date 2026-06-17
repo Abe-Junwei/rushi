@@ -1,6 +1,6 @@
 # Rushi
 
-与 sibling 仓库 **[Jieyu](../Jieyu/)**（解语）**平级**，本目录路径：
+与 sibling 仓库 **Jieyu**（解语）**平级**，本目录路径：
 
 `…/Obsremote/（50）开发/Rushi`
 
@@ -114,8 +114,8 @@ Python 单测（与 CI 一致，需本机 **Python 3.11+**，推荐 3.12）：**
 
 | 文档 | 相对路径（从本 README） |
 |------|-------------------------|
-| 独立仓与 Jieyu 对齐策略（规范 / 白名单 / 禁止项） | [`../Jieyu/docs/architecture/如是我闻-独立新仓库与-Jieyu-对齐策略.md`](../Jieyu/docs/architecture/如是我闻-独立新仓库与-Jieyu-对齐策略.md) |
-| 本地版改进计划书（阶段 / 验收） | [`../Jieyu/docs/execution/plans/如是我闻-本地版改进计划书-2026-05-11.md`](../Jieyu/docs/execution/plans/如是我闻-本地版改进计划书-2026-05-11.md) |
+| 独立仓与 Jieyu 对齐策略（规范 / 白名单 / 禁止项） | `../Jieyu/docs/architecture/如是我闻-独立新仓库与-Jieyu-对齐策略.md` |
+| 本地版改进计划书（阶段 / 验收） | `../Jieyu/docs/execution/plans/如是我闻-本地版改进计划书-2026-05-11.md` |
 
 本仓 [`docs/architecture/README.md`](./docs/architecture/README.md) 中有从 `docs/` 子路径出发的等价链接。
 

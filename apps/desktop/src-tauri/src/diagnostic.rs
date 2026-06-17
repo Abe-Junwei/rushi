@@ -365,7 +365,7 @@ fn format_project_summary(db_path: &Path, app_root: &Path) -> String {
         Ok(conn) => {
             let _ = crate::db::configure_sqlite_connection_readonly(&conn);
             conn
-        },
+        }
         Err(e) => {
             return format!(
                 "db_open: error:{e}\npeak_dat_files: {}\n",

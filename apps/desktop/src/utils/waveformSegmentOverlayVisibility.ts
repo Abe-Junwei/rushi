@@ -55,8 +55,8 @@ export function selectOverlayInteractiveSegmentIndices(input: {
     } else {
       add(input.selectedIdx);
       const sorted = [...input.selectedIndices].sort((a, b) => a - b);
-      add(sorted[0]!);
-      add(sorted[sorted.length - 1]!);
+      add(sorted[0]);
+      add(sorted[sorted.length - 1]);
       add(lo);
       add(hi);
     }

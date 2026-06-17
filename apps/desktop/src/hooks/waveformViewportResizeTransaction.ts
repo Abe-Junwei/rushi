@@ -1,5 +1,4 @@
 import type { MutableRefObject } from "react";
-import type WaveSurfer from "wavesurfer.js";
 import { computeTimelineWidthPx } from "../utils/pxPerSec";
 import { markAppliedZoomWs } from "../utils/waveformAppliedZoom";
 import { writeWaveformTierViewportWidthVar } from "../utils/waveformViewport";
@@ -137,7 +136,7 @@ export function createWaveformViewportResizeTransaction(ctx: WaveformViewportRes
       viewportResizeHoldRef,
       stickyShellRef,
     } = ctx.getArgs();
-    const ws = wsRef.current as WaveSurfer | null;
+    const ws = wsRef.current;
     const container = containerRef.current;
     const tier = tierScrollRef?.current;
     const stretch = stretchShellRef?.current;

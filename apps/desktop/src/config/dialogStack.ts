@@ -1,11 +1,4 @@
-/** 浮动对话框叠层：gate（Close Gate）高于 modal（导入/删文件）高于 overlay。 */
-const DIALOG_Z = {
-  overlay: 100,
-  modal: 110,
-  gate: 120,
-} as const;
-
-export type DialogStackLayer = keyof typeof DIALOG_Z;
+export type DialogStackLayer = "overlay" | "modal" | "gate";
 
 /** 须写完整字面量，Tailwind JIT 无法扫描模板字符串中的 z-[n]。 */
 const DIALOG_OVERLAY_CLASS: Record<DialogStackLayer, string> = {

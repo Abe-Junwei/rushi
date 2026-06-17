@@ -3,7 +3,7 @@
 > **状态**：**已移除**（2026-06，产品决策；功能与 `postprocess_lexicon_proofread` 已从桌面端删除）  
 > ~~**机器闸门 ✅** 2026-06-04~~ — 以下清单仅作历史参考  
 > **前置**：R3t-C/D ✅；LLM 配置 + 探测可用；**热词与记忆** 含 ≥1 条术语  
-> **关联**：[`recording-transcribe-llm-refine-acceptance.md`](./recording-transcribe-llm-refine-acceptance.md) §R3t-E · [`r3-asr-voc-holistic-review-2026-05.md`](./r3-asr-voc-holistic-review-2026-05.md) §5 闸门
+> **关联**：[`recording-transcribe-llm-refine-acceptance.md`](../../recording-transcribe-llm-refine-acceptance.md) §R3t-E · [`r3-asr-voc-holistic-review-2026-05.md`](../../r3-asr-voc-holistic-review-2026-05.md) §5 闸门
 
 ## 机器闸门（编码签收前必绿）
 
@@ -89,4 +89,4 @@ bash scripts/r3-5f-a-machine-gate.sh
 |------|------|------|
 | | ⏳ | |
 
-**签收后**：更新 [`recording-transcribe-llm-refine-acceptance.md`](./recording-transcribe-llm-refine-acceptance.md) §R3t-E 手测项；若 §1–§4 全绿，可开 **⑤″f-B**（F1+F6+MEM-P0）。
+**签收后**：更新 [`recording-transcribe-llm-refine-acceptance.md`](../../recording-transcribe-llm-refine-acceptance.md) §R3t-E 手测项；若 §1–§4 全绿，可开 **⑤″f-B**（F1+F6+MEM-P0）。

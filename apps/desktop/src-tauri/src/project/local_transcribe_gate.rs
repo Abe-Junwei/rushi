@@ -48,17 +48,17 @@ pub fn local_transcribe_gate_from_health(
             "本机 ASR 模型尚未就绪：请在环境页下载当前所选模型并完成侧车准备。".to_string(),
         );
     }
-    if health.get("model_memory_matches_config").and_then(|x| x.as_bool()) == Some(false) {
+    if health
+        .get("model_memory_matches_config")
+        .and_then(|x| x.as_bool())
+        == Some(false)
+    {
         return Err(
-            "侧车模型权重尚未加载到内存；请在环境页完成模型准备或等待侧车预热完成。"
-                .to_string(),
+            "侧车模型权重尚未加载到内存；请在环境页完成模型准备或等待侧车预热完成。".to_string(),
         );
     }
     if health.get("selected_model_ready").and_then(|x| x.as_bool()) == Some(false) {
-        return Err(
-            "侧车所选模型尚未完全就绪；请在环境页完成模型下载与预热后再试。"
-                .to_string(),
-        );
+        return Err("侧车所选模型尚未完全就绪；请在环境页完成模型下载与预热后再试。".to_string());
     }
     let sidecar_model = health
         .get("funasr_model_id")

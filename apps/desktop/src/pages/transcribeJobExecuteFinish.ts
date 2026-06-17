@@ -80,7 +80,7 @@ export async function finishTranscribeSuccess(args: FinishTranscribeSuccessArgs)
     setError("转写未产出可用语段。");
     setTranscribeHints([...userHints, ...formatTranscribeDiagSummary(failureDiag), ...diagLines]);
     if (userHints.length > 0) {
-      pushTranscribeHintsToToast([presentation.summary, userHints[0]!]);
+      pushTranscribeHintsToToast([presentation.summary, userHints[0]]);
     } else {
       pushTranscribeHintsToToast([presentation.summary]);
     }

@@ -60,7 +60,7 @@ CREATE TABLE edit_log_snapshots (
 ### 3.3 UI
 
 - [`useEditorEditHistory.ts`](../../../apps/desktop/src/components/editor/useEditorEditHistory.ts)：条目含 `has_snapshot`（或根据 `kind===save_segments` + 查询）。
-- [`EditorSegmentToolbar.tsx`](../../../apps/desktop/src/components/editor/EditorSegmentToolbar.tsx)：按钮「恢复此版本」→ `compactDialog` 确认 → invoke 恢复 → `loadFile` 刷新 → `resetMutationHistory` + `discardEditingSession`。
+- [`EditorSegmentToolbarActions.tsx`](../../../apps/desktop/src/components/editor/EditorSegmentToolbarActions.tsx)：按钮「恢复此版本」→ `compactDialog` 确认 → invoke 恢复 → `loadFile` 刷新 → `resetMutationHistory` + `discardEditingSession`。
 
 **验证**：Rust integration test + 手测 acceptance §手测
 

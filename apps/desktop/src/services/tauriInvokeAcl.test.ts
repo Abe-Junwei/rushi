@@ -8,14 +8,14 @@ import projectPermissionsSource from "../../src-tauri/permissions/project.toml?r
 import systemPermissionsSource from "../../src-tauri/permissions/system.toml?raw";
 
 function readAppCommands(source: string): string[] {
-  return [...source.matchAll(/"([a-z][a-z0-9_]*)"/g)].map((m) => m[1]!);
+  return [...source.matchAll(/"([a-z][a-z0-9_]*)"/g)].map((m) => m[1]);
 }
 
 function readAllowPermissions(sources: string[]): Set<string> {
   const allows = new Set<string>();
   for (const text of sources) {
     for (const match of text.matchAll(/"(allow-[a-z0-9-]+)"/g)) {
-      allows.add(match[1]!);
+      allows.add(match[1]);
     }
   }
   return allows;

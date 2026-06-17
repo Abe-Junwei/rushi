@@ -8,7 +8,9 @@ mod schema;
 
 use rusqlite::Connection;
 
-pub use pool::{bootstrap_db_at, configure_sqlite_connection, configure_sqlite_connection_readonly, DbPool};
+pub use pool::{
+    bootstrap_db_at, configure_sqlite_connection, configure_sqlite_connection_readonly, DbPool,
+};
 
 pub fn migrate(conn: &Connection) -> rusqlite::Result<()> {
     schema::ensure_projects_schema_v2(conn)?;

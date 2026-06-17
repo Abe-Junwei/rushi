@@ -32,7 +32,8 @@ export default tseslint.config(
       "react-refresh": reactRefresh,
     },
     rules: {
-      ...reactHooks.configs.recommended.rules,
+      "react-hooks/rules-of-hooks": "error",
+      "react-hooks/exhaustive-deps": "warn",
       "react-refresh/only-export-components": ["warn", { allowConstantExport: true }],
       // 防止浮空 Promise
       "@typescript-eslint/no-floating-promises": ["error", { ignoreVoid: true }],
@@ -57,6 +58,8 @@ export default tseslint.config(
     // mocking libraries. Relax it for test files only.
     files: ["src/**/*.test.{ts,tsx}"],
     rules: {
+      "@typescript-eslint/no-unsafe-assignment": "off",
+      "@typescript-eslint/no-unsafe-return": "off",
       "@typescript-eslint/unbound-method": "off",
     },
   },

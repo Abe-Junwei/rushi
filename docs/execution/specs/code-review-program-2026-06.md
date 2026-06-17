@@ -1,7 +1,7 @@
 # Rushi 全方位代码审查计划（2026-06）
 
 > **状态**：规划定稿 · **v2 报告** [`code-review-report-2026-06-v2.md`](../../code-review-report-2026-06-v2.md)  
-> **关联**：[`code-review-report-2026-06-06-full.md`](../code-review-report-2026-06-06-full.md)（静态 17 轮）· [`desktop-capability-ui-state-alignment.md`](../../architecture/desktop-capability-ui-state-alignment.md)  
+> **关联**：[`code-review-report-2026-06-06-full.md`](../../code-review-report-2026-06-06-full.md)（静态 17 轮）· [`desktop-capability-ui-state-alignment.md`](../../architecture/desktop-capability-ui-state-alignment.md)  
 > **节奏**：单人 · 每轮 2–4h · 一轮一主题 · 轮末 L0 闸门 + 3 行日志
 
 ---
@@ -311,7 +311,7 @@ bash scripts/release-sidecar-preflight.sh
 
 ### 6.1 每轮报告
 
-见 [`code-review-report-2026-06-06-full.md`](../code-review-report-2026-06-06-full.md) 格式；**Phase 7 增加列**：`文案ID (C-xx)`、`CX 等级`、`真源层 L0–L5`。
+见 [`code-review-report-2026-06-06-full.md`](../../code-review-report-2026-06-06-full.md) 格式；**Phase 7 增加列**：`文案ID (C-xx)`、`CX 等级`、`真源层 L0–L5`。
 
 ### 6.2 文案漂移登记表（Phase 7-E 产出）
 

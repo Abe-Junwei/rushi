@@ -88,7 +88,7 @@ npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs
 
 ## 手测清单
 
-建议单独产出 [`r3g-c-funasr-nano-hand-test-checklist.md`](./r3g-c-funasr-nano-hand-test-checklist.md)。核心条目：
+如后续需要，可单独产出 `r3g-c-funasr-nano-hand-test-checklist.md`。核心条目：
 
 | ID | 场景 | 通过标准 |
 |----|------|----------|
