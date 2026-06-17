@@ -1,14 +1,15 @@
 # REL-1.1 手测清单（v1.1 signoff）
 
 > **路线图**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) §10.4 Step 12  
-> **前置**：BATCH-TXN B-1/B-2 编码完成
+> **前置**：BATCH-TXN B-1/B-2 编码完成  
+> **Release 操作**：[`rel-1.1-release-signoff-runbook.md`](./rel-1.1-release-signoff-runbook.md)（构建 · H-CSP · tag/CI）
 
 ## 发行与安全
 
 | ID | 项 | 状态 |
 |----|-----|------|
-| H-CSP-1 | Release 包 Editor 波形加载；Console 无 style CSP violation | |
-| H-CSP-2 | 交付导出 Dialog、环境页三盏灯正常 | |
+| H-CSP-1 | Release 包 Editor 波形加载；Console 无 style CSP violation | 见 [runbook §C](./rel-1.1-release-signoff-runbook.md) |
+| H-CSP-2 | 交付导出 Dialog、环境页三盏灯正常 | 见 [runbook §C](./rel-1.1-release-signoff-runbook.md) |
 | H-PROD-1 | 设置 → 关于：版本与诊断 `build-info.txt` 一致 | ✅ 2026-06-12 |
 | H-PROD-2 | 关于页可打开 ffmpeg 等第三方许可全文 | ✅ 2026-06-12 |
 
