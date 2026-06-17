@@ -49,7 +49,7 @@ describe("segmentDraftStore + flushSegmentTextDrafts", () => {
     segmentDraftStore.setDraft(key, "same");
     segmentDraftStore.flushPendingEmit();
 
-    let reactState: SegmentDto[] = [s];
+    const reactState: SegmentDto[] = [s];
     const getCurrentSegmentsSnapshot = () => reactState;
     const setSegments = () => {
       throw new Error("should not update");
