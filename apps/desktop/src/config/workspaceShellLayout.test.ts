@@ -7,6 +7,18 @@ import {
   workspaceSidebarFooterItemClass,
 } from "./workspaceShellLayout";
 
+describe("workspaceShellLayout shell grid", () => {
+  it("uses CSS-fixed class for welcome/hub grid (not Tailwind-only arbitrary cols)", async () => {
+    const { WORKSPACE_SHELL_GRID_CLASS, WORKSPACE_SHELL_COLLAPSIBLE_CLASS } = await import(
+      "./workspaceShellLayout"
+    );
+    expect(WORKSPACE_SHELL_GRID_CLASS).toContain("workspace-shell-fixed");
+    expect(WORKSPACE_SHELL_GRID_CLASS).not.toContain("grid-cols-[");
+    expect(WORKSPACE_SHELL_COLLAPSIBLE_CLASS).toContain("workspace-shell-collapsible");
+    expect(WORKSPACE_SHELL_COLLAPSIBLE_CLASS).not.toContain("grid-cols-[20rem");
+  });
+});
+
 describe("workspaceShellLayout sidebar nav", () => {
   it("uses inset rounded blocks for primary nav", () => {
     expect(WORKSPACE_SIDEBAR_NAV_STACK).toContain("px-3");

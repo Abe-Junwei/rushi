@@ -26,7 +26,7 @@ export function GlossaryBottomSheet({ title, onClose, children }: Props) {
     <div className="fixed inset-0 z-30 flex flex-col justify-end" role="presentation">
       <button
         type="button"
-        className="min-h-0 flex-1 border-0 bg-notion-bg/60 backdrop-blur-sm"
+        className="min-h-0 flex-1 border-0 bg-notion-bg/60 backdrop-blur-xs"
         aria-label="关闭检视器"
         onClick={onClose}
       />

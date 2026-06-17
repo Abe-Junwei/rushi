@@ -56,7 +56,7 @@ export function glossaryListRowClass(opts: { active?: boolean; checked?: boolean
 
 /** List 视图顶栏：左全选、右计数（无表头列） */
 export const GLOSSARY_LIST_SELECT_BAR =
-  "sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-notion-divider/60 bg-notion-bg/95 px-4 py-1.5 backdrop-blur-sm";
+  "sticky top-0 z-10 flex items-center justify-between gap-3 border-b border-notion-divider/60 bg-notion-bg/95 px-4 py-1.5 backdrop-blur-xs";
 
 /** List 行内层：leading 主内容 + trailing 元数据贴右 */
 export const GLOSSARY_LIST_ROW_INNER =

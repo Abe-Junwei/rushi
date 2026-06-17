@@ -1,5 +1,10 @@
-/* 仅 utilities：避免 preflight 与 App.css 壳层冲突 */
-@tailwind utilities;
+/* Tailwind v4：仅引入 theme + utilities，刻意不引 preflight（避免与 App.css 壳层 reset 冲突）。
+ * 颜色/间距/字体真源仍是 tailwind.config.js，经 @config 以 legacy 方式加载。
+ * utilities 故意不入 @layer：与本仓 v3 时一致，保证 .bg-* 等能压过 shell.css 中
+ * 未分层的全局 button/input 重置（v4 下分层 utilities 会被未分层规则反超）。 */
+@import "tailwindcss/theme.css" layer(theme);
+@import "tailwindcss/utilities.css";
+@config "../tailwind.config.js";
 
 /** 确认创建页：抵消 WebKit 自动填充黄底，避免看起来像配色错误 */
 .confirm-project-input:-webkit-autofill,

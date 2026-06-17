@@ -1,9 +1,9 @@
 /** 欢迎页 / 项目 Hub / 编辑页共用侧栏宽度 */
 export const WORKSPACE_SIDEBAR_WIDTH = "20rem";
 
-/** 固定侧栏双栏 grid（Welcome / Hub） */
+/** 固定侧栏双栏 grid（Welcome / Hub）— 列宽见 workspace.css `.workspace-shell-fixed` */
 export const WORKSPACE_SHELL_GRID_CLASS =
-  "grid h-full min-h-0 w-full flex-1 grid-cols-[20rem_1fr]";
+  "workspace-shell-fixed grid h-full min-h-0 w-full flex-1";
 
 /** 可折叠侧栏壳层 — overlay + transform，主区宽度不变，见 workspace.css */
 export const WORKSPACE_SHELL_COLLAPSIBLE_CLASS =

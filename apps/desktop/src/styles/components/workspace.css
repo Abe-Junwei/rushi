@@ -479,6 +479,11 @@
   padding-bottom: 2.5rem;
 }
 
+/* Welcome / Hub：固定双栏 grid（CSS 真源，不依赖 Tailwind 扫描） */
+.workspace-shell-fixed {
+  grid-template-columns: var(--workspace-sidebar-width, 20rem) minmax(0, 1fr);
+}
+
 /* 编辑页可折叠 workspace 侧栏
  * 成熟方案（解语 app-side-pane / Chrome compositor-only）：
  * - 主区始终满宽，不参与折叠动画 → 波形/语段零 reflow
@@ -513,7 +518,7 @@
     background-color 180ms ease;
 }
 
-.workspace-shell-sidebar-collapsed .workspace-shell-sidebar-column {
+.workspace-shell-collapsible.workspace-shell-sidebar-collapsed .workspace-shell-sidebar-column {
   transform: translate3d(-100%, 0, 0);
   pointer-events: none;
 }
@@ -530,7 +535,7 @@
   transition: opacity 260ms cubic-bezier(0.32, 0.72, 0, 1) 70ms;
 }
 
-.workspace-shell-sidebar-collapsed .workspace-shell-sidebar-content {
+.workspace-shell-collapsible.workspace-shell-sidebar-collapsed .workspace-shell-sidebar-content {
   opacity: 0;
   transition-delay: 0ms;
 }
@@ -583,7 +588,7 @@
     transform 200ms cubic-bezier(0.32, 0.72, 0, 1);
 }
 
-.workspace-shell-sidebar-collapsed .workspace-shell-sidebar-toggle {
+.workspace-shell-collapsible.workspace-shell-sidebar-collapsed .workspace-shell-sidebar-toggle {
   opacity: 0;
   pointer-events: none;
   transform: translate(50%, -50%) scale(0.9);

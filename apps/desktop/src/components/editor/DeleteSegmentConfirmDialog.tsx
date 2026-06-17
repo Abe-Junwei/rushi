@@ -26,7 +26,7 @@ export function DeleteSegmentConfirmDialog({ open, deleteCount = 1, onCancel, on
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-zen-ink/25 p-6 backdrop-blur-[2px]"
+      className="fixed inset-0 z-[100] flex items-center justify-center bg-zen-ink/10 p-6"
       role="presentation"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onCancel();

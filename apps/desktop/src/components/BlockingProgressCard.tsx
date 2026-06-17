@@ -80,7 +80,7 @@ export function BlockingProgressCard({
 }: Props) {
   const cardClassName =
     variant === "banner"
-      ? "border-zen-saffron/25 bg-notion-bg/95 shadow-lg backdrop-blur-sm"
+      ? "border-zen-saffron/25 bg-notion-bg/95 shadow-lg backdrop-blur-xs"
       : undefined;
 
   const shell = (
