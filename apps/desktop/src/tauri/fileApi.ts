@@ -18,6 +18,10 @@ export async function pickAudioPath(): Promise<string | null> {
   return invoke<string | null>("pick_audio_path");
 }
 
+export async function pickAudioPaths(): Promise<string[]> {
+  return invoke<string[]>("pick_audio_paths");
+}
+
 export async function createProjectFromAudio(
   name: string,
   srcPath: string,

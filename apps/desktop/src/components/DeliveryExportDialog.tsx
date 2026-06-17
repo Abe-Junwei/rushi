@@ -133,7 +133,7 @@ export function DeliveryExportDialog({
         persistState
         onClose={handleClose}
       >
-        <FloatingPanelDialogRoot role="dialog" aria-modal={true} measureRef={bodyRef}>
+        <FloatingPanelDialogRoot role="dialog" aria-modal={true} measureRef={bodyRef} hasFooter fillHeight>
           <FloatingPanelDialogScroll className="flex flex-col gap-3">
             <p className={PANEL_TYPOGRAPHY.dialogBody}>
               导出前将自动保存编辑器中未提交的语段正文，与当前波形列表一致。

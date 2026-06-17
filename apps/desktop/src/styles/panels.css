@@ -2,8 +2,8 @@
 .panel {
   padding: 1rem 1rem 1.1rem;
   border-radius: 10px;
-  background: var(--notion-bg);
-  box-shadow: 0 1px 2px color-mix(in srgb, var(--zen-ink) 12%, transparent);
+  background: var(--overlay-panel-bg);
+  border: 1px solid var(--overlay-panel-border);
 }
 
 .panel-spaced {

@@ -40,6 +40,7 @@ export type UseEnvLlmConfigPanelPersistenceArgs = {
   localLoopback: boolean;
   onLlmRuntimeChanged?: () => void;
   onInvalidateProbe: () => void;
+  persistPromptDraft: () => void;
 };
 
 export function useEnvLlmConfigPanelPersistence({
@@ -54,6 +55,7 @@ export function useEnvLlmConfigPanelPersistence({
   localLoopback,
   onLlmRuntimeChanged,
   onInvalidateProbe,
+  persistPromptDraft,
 }: UseEnvLlmConfigPanelPersistenceArgs) {
   const { providerId, baseUrl, model, apiKey, savedApiKeyId, legacyMisplacedKeyId } = fields;
   const [saveBusy, setSaveBusy] = useState(false);
@@ -182,6 +184,7 @@ export function useEnvLlmConfigPanelPersistence({
       }
       if (localLoopback) {
         persistLlmRuntimeConfig({ providerId, baseUrl, model }, { clearApiKeyId: true });
+        persistPromptDraft();
         setSavedApiKeyId(null);
         setLlmApiKeyInMemory(null);
         setApiKey("");
@@ -191,7 +194,14 @@ export function useEnvLlmConfigPanelPersistence({
         return;
       }
       if (!nextApiKeyId) {
-        throw new Error("请先填写 API Key，再点击保存配置。");
+        persistLlmRuntimeConfig({ providerId, baseUrl, model }, { clearApiKeyId: true });
+        persistPromptDraft();
+        setSavedApiKeyId(null);
+        setLlmApiKeyInMemory(null);
+        bumpKeychainCheck();
+        onLlmRuntimeChanged?.();
+        toast.info("已保存 LLM 配置与提示词；云端调用前仍需填写 API Key。");
+        return;
       }
       persistLlmRuntimeConfig({
         providerId,
@@ -199,6 +209,7 @@ export function useEnvLlmConfigPanelPersistence({
         model,
         apiKeyId: nextApiKeyId ?? DEFAULT_LLM_API_KEY_ID,
       });
+      persistPromptDraft();
       setSavedApiKeyId(nextApiKeyId ?? DEFAULT_LLM_API_KEY_ID);
       setLlmApiKeyInMemory(null);
       bumpKeychainCheck();
@@ -225,6 +236,7 @@ export function useEnvLlmConfigPanelPersistence({
     model,
     onInvalidateProbe,
     onLlmRuntimeChanged,
+    persistPromptDraft,
     providerId,
     savedApiKeyId,
     setApiKey,

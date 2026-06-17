@@ -1,11 +1,14 @@
 import { isLocalLoopbackLlmConfig } from "../services/postprocess/postprocessRuntimeContract";
 import type { PostTranscribeStageBDialogState } from "../pages/usePostTranscribeStageBController";
+import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../config/controlStyles";
+import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { CompactFloatingDialog } from "./CompactFloatingDialog";
 import {
   FLOATING_PANEL_COMPACT_MIN_HEIGHT,
-  resolveStageBPreviewFitHeight,
   resolveStageBConsentFitHeight,
   resolveStageBEmptyFitHeight,
+  resolveStageBLoadingFitHeight,
+  resolveStageBPreviewFitHeight,
 } from "./floatingPanelSegmentListLayout";
 import { readFloatingPanelViewport } from "./floatingPanelViewport";
 import { PostTranscribeStageBConsentPanel } from "./postTranscribeStageB/PostTranscribeStageBConsentPanel";
@@ -18,8 +21,6 @@ const POST_TRANSCRIBE_STAGE_B_PANEL_ID = "post-transcribe-stage-b-v1";
 const STAGE_B_PANEL_DEFAULT_SIZE = { width: 480, height: 400 } as const;
 /** consent 默认宽度（说明短，较预览略窄） */
 const STAGE_B_CONSENT_DEFAULT_WIDTH = 480;
-/** loading 阶段 contentFitHeight：标题栏 + 进度区 + 取消按钮 */
-const STAGE_B_LOADING_PANEL_HEIGHT = 308;
 
 function resolveStageBPanelBounds() {
   const margin = 24;
@@ -83,7 +84,7 @@ export function PostTranscribeStageBDialog({
   const previewFitHeight = preview ? resolveStageBPreviewFitHeight(preview.changes.length) : undefined;
 
   const estimatedFit = isLoading
-    ? STAGE_B_LOADING_PANEL_HEIGHT
+    ? resolveStageBLoadingFitHeight(Boolean(pendingHint))
     : isPreview
       ? previewFitHeight
       : isConsent
@@ -97,6 +98,53 @@ export function PostTranscribeStageBDialog({
   const handleDismiss = () => {
     onCancel();
   };
+
+  const footer =
+    state.phase === "consent" ? (
+      <>
+        <button type="button" className={CONTROL_BTN_SECONDARY} disabled={busy} onClick={handleDismiss}>
+          取消
+        </button>
+        <button type="button" className={CONTROL_BTN_PRIMARY} disabled={busy} onClick={onConfirmConsent}>
+          我已知晓，继续
+        </button>
+      </>
+    ) : state.phase === "empty" ? (
+      <button type="button" className={CONTROL_BTN_SECONDARY} onClick={handleDismiss}>
+        关闭
+      </button>
+    ) : preview ? (
+      <>
+        <p className={`${PANEL_TYPOGRAPHY.dialogBody} text-notion-text-muted`}>
+          将写回 {preview.selectedSegmentIdxs.length} / {preview.changes.length} 条语段
+        </p>
+        <div className="flex shrink-0 items-center gap-2">
+          {preview.provider ? (
+            <span className={`${PANEL_TYPOGRAPHY.meta} text-notion-text-muted`}>
+              {preview.provider}
+            </span>
+          ) : null}
+          <button type="button" className={CONTROL_BTN_SECONDARY} disabled={busy} onClick={handleDismiss}>
+            取消
+          </button>
+          <button
+            type="button"
+            className={CONTROL_BTN_PRIMARY}
+            disabled={busy || preview.selectedSegmentIdxs.length === 0}
+            onClick={onConfirmWriteback}
+          >
+            确认写回
+          </button>
+        </div>
+      </>
+    ) : null;
+
+  const footerJustify =
+    state.phase === "consent" || state.phase === "empty"
+      ? "end"
+      : preview
+        ? "between"
+        : "end";
 
   return (
     <CompactFloatingDialog
@@ -115,17 +163,15 @@ export function PostTranscribeStageBDialog({
       maxWidth={panelBounds.maxWidth}
       maxHeight={panelBounds.maxHeight}
       persistPhaseKey={persistPhaseKey}
+      layoutRev={preview ? preview.changes.length : pendingHint ? 1 : 0}
       panelZIndex={111}
       persistState
+      footer={footer}
+      footerJustify={footerJustify}
+      fillHeight={isPreview}
     >
       {state.phase === "consent" ? (
-        <PostTranscribeStageBConsentPanel
-          state={state}
-          busy={busy}
-          pendingHint={pendingHint}
-          onCancel={handleDismiss}
-          onConfirmConsent={onConfirmConsent}
-        />
+        <PostTranscribeStageBConsentPanel state={state} pendingHint={pendingHint} />
       ) : null}
 
       {state.phase === "loading" ? (
@@ -143,7 +189,6 @@ export function PostTranscribeStageBDialog({
           state={state}
           pendingHint={pendingHint}
           packTruncationHint={packTruncationHint}
-          onClose={handleDismiss}
         />
       ) : null}
 
@@ -154,8 +199,6 @@ export function PostTranscribeStageBDialog({
           previewFocusSegmentIdx={previewFocusSegmentIdx}
           pendingHint={pendingHint}
           packTruncationHint={packTruncationHint}
-          onCancel={handleDismiss}
-          onConfirmWriteback={onConfirmWriteback}
           onToggleSegment={onToggleSegment}
           onFocusSegment={onFocusSegment}
         />

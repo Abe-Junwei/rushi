@@ -1,6 +1,6 @@
 # Spec(acceptance): R3g-C — Fun-ASR-Nano-2512 SKU Spike
 
-> **状态**：🟡 待 spike 完成后签收  
+> **状态**：🟡 spike 完成 — **Defer**（不上架 catalog）  
 > **调研**：[`r3g-c-funasr-nano-mimo-v2-5-asr-feasibility-research.md`](./r3g-c-funasr-nano-mimo-v2-5-asr-feasibility-research.md)  
 > **Intent**：[`r3g-c-funasr-nano-intent.md`](./r3g-c-funasr-nano-intent.md)  
 > **Plan**：[`r3g-c-funasr-nano-plan.md`](./r3g-c-funasr-nano-plan.md)
@@ -19,14 +19,14 @@
 
 | # | 指标 | Paraformer 基准 | Fun-ASR-Nano 要求 | 实测值 | 结果 |
 |---|------|-----------------|-------------------|--------|------|
-| N1 | 长音频语段数（制控 ~21min） | 197 | **≥ 10**，且无 `funasr_whole_track_fallback` | | |
-| N2 | 相对 baseline | 197 | **≥ max(15, 90%×baseline)** 或书面降级 | | |
-| N3 | `segmentation_mode` | `sentence_info` | `sentence_info` / `timestamp` | | |
-| N4 | 热词 `term_hit_rate`（制控） | baseline | **≥ baseline** | | |
-| N5 | wall clock（制控 ~21min） | ~168s | **≤ 2.0×** Go；**≤ 3.0×** Defer | | |
-| N6 | 磁盘增量（recognizer 相关） | — | **≤ 2GB** | | |
-| N7 | prepare / health | ✅ | `/health` ready；prepare 完成即可转写 | | |
-| N8 | PyInstaller 打包 | ✅ | bundled `/health` import 不 500 | | |
+| N1 | 长音频语段数（制控 ~21min） | 197 | **≥ 10**，且无 `funasr_whole_track_fallback` | **0**（默认路径 stub）；180s 强制窗 **108** | ❌ |
+| N2 | 相对 baseline | 197 | **≥ max(15, 90%×baseline)** 或书面降级 | 0 / 108（阈值 178） | ❌ |
+| N3 | `segmentation_mode` | `sentence_info` | `sentence_info` / `timestamp` | `vad_timestamp` / `transcribe_windowed` | ❌ |
+| N4 | 热词 `term_hit_rate`（制控） | 0.0 | **≥ baseline** | N/A / **0.0** | ❌ |
+| N5 | wall clock（制控 ~21min） | ~168s | **≤ 2.0×** Go；**≤ 3.0×** Defer | 失败 / **343.7s**（~2.05×） | ⚠️ |
+| N6 | 磁盘增量（recognizer 相关） | — | **≤ 2GB** | ~1.97GB | ✅ |
+| N7 | prepare / health | ✅ | `/health` ready；prepare 完成即可转写 | warmup ok | ✅ |
+| N8 | PyInstaller 打包 | ✅ | bundled `/health` import 不 500 | 未测 | — |
 
 > 实测值在 spike 执行后由执行人填写；未填写前不得宣称 Go/Defer/No-go。
 
@@ -111,7 +111,7 @@ npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs
 
 | 日期 | 执行人 | 结论 | 理由 |
 |------|--------|------|------|
-| | | Go / Defer / No-go | |
+| 2026-06-17 | spike | **Defer** | 默认路径全量制控 stub（tiktoken `<\|no\|>`）；短窗/3min 可转写但仅 `vad_timestamp`；180s 强制窗 108 段仍低于 N2 且非 `sentence_info`；不上架 catalog |
 
 ## 关联文档
 

@@ -41,7 +41,7 @@ export function SegmentCorrectPopover({ state, suggestions, onClose, onApply }: 
       <div
         role="dialog"
         aria-label="改正建议"
-        className="fixed z-[91] w-max max-w-[min(200px,calc(100vw-16px))] rounded-md border border-notion-border bg-notion-bg py-0.5 shadow-md"
+        className="fixed z-[91] w-max max-w-[min(200px,calc(100vw-16px))] rounded-md border border-notion-border bg-notion-bg py-0.5 shadow-none"
         style={{ left, top }}
         onClick={(e) => e.stopPropagation()}
       >

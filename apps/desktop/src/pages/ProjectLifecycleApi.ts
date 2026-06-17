@@ -212,9 +212,19 @@ export interface ProjectLifecycleApi {
     kind: "audio" | "text",
     options?: import("./useProjectImportDuplicateController").ImportFileToProjectOptions,
   ) => Promise<boolean>;
+  pickAndImportAudioPathsToProject: () => Promise<{ imported: number; skipped: number }>;
+  batchQueueOpen: boolean;
+  batchQueueItems: import("../services/batchTranscribeQueue").BatchQueueItem[];
+  batchTranscribeRunning: boolean;
+  batchTranscribableCount: number;
+  canStartBatchTranscribe: boolean;
+  startBatchTranscribe: () => Promise<void>;
+  cancelBatchTranscribe: () => Promise<void>;
+  closeBatchQueueDialog: () => void;
   transcribeNavBlockOpen: boolean;
+  transcribeNavBlockStopping: boolean;
   cancelTranscribeNavBlock: () => void;
-  confirmTranscribeNavBlock: () => void;
+  confirmTranscribeNavBlock: () => Promise<void>;
   hasUnsavedFileEdits: () => boolean;
   renamingProjectFileId: string | null;
   renameProjectFileDraft: string;

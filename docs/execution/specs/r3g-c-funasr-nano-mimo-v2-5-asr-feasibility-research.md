@@ -40,12 +40,12 @@
 |------|------|
 | **复用度** | **高** |
 | **可直接用** | `funasr_engine.py` 的 `_get_model` 单例、`transcribe_windows.py` 窗循环、`segmentation.py`、HTTP 面、LRC prepare 机制 |
-| **冲突 / 缺口** | ① `trust_remote_code=True` + `remote_code="./model.py"`；PyInstaller 需验证 `model.py` 能打包；② `language="中文"` 而非 `zh`，需补 `asr_model_profile` 映射；③ `recognizer_needs_punc_pipeline` 应为 False（内置标点）；④ 磁盘 ~800M–1GB |
-| **速度/资源** | CPU 可跑；MPS/CUDA 更快；官方未给明确 RTF，但 0.8B LLM-ASR 预计慢于 Paraformer，需实测 |
+| **冲突 / 缺口** | ① `trust_remote_code=True`，本地缓存若使用 Fun-ASR GitHub `model.py` 还需同步 `ctc.py` 与 `tools/`；② `language="中文"` 而非 `zh`；③ generate 参数是 `hotwords=[...]` + `batch_size=1`，不是 Paraformer 的 `hotword` / `batch_size_s`；④ README 当前仍把 timestamps / diarization 列为 TODO，不可默认等价 `sentence_info` |
+| **速度/资源** | CPU 可跑；官方 vLLM 文档显示 PyTorch baseline 远慢于 vLLM / offline service；桌面 CPU 需单独实测 |
 | **标点** | ✅ 内置，无需 ct-punc |
 | **热词** | ✅ API 支持 `hotwords=[...]` |
-| **时间轴/语段** | ✅ `sentence_timestamp=True` 输出句级时间轴；与 `segmentation.py` 契约对齐 |
-| **长音频** | 需 VAD（`fsmn-vad`）切分，与现有 R3e-C 窗循环兼容 |
+| **时间轴/语段** | ⚠️ 官方模型卡展示文本输出，timestamps / diarization 仍列 TODO；本仓 spike 中短片段可落 `vad_timestamp`，未证明 `sentence_info` 稳定可用 |
+| **长音频** | 需 VAD（`fsmn-vad`，`max_single_segment_time=30000`）切分；成熟音频 LLM 方案通常避免整轨直接喂给自回归解码器 |
 
 **接入方式示例（调研用）**：
 
@@ -71,6 +71,18 @@ res = model.generate(
     sentence_timestamp=True,
 )
 ```
+
+### 3.1.1 Spike 后补充调研（2026-06-17）
+
+| 来源 | 关键处理方案 | 对 Rushi 的含义 |
+|------|--------------|----------------|
+| Fun-ASR-Nano README / Fun-ASR README | AutoModel 示例使用 `batch_size=1`、`hotwords=[...]`、`language="中文"`；长音频示例挂 `vad_model` + `max_single_segment_time=30000` | Nano 不能复用 Paraformer 的 `hotword` 字符串和 `batch_size_s` 分窗参数；必须按 SKU profile 分开 |
+| FunASR vLLM guide | Nano 架构为 PyTorch audio encoder/adaptor + Qwen3 LLM decoder；vLLM batch / offline service 是高吞吐主推，PyTorch 是 baseline | vLLM / service 属第二运行时，不进入本 spike；PyTorch AutoModel 只做可行性验证 |
+| Qwen3-ASR / Qwen3-ASR-Toolkit | 长音频通过 VAD 分块、并行处理；时间戳由独立 ForcedAligner 支持，且 aligner 单段上限约 5 分钟 | 音频 LLM 的时间戳更适合独立对齐模块，不应直接要求 Nano 返回 Paraformer 等价 `sentence_info` |
+| Whisper / WhisperX | Whisper 内部 30s window；WhisperX 用 VAD cut-and-merge + forced alignment 得到长音频 word timestamps | 成熟方案把“转写”和“精确时间轴”拆开，不把整轨直接压给解码器 |
+| NeMo Canary / NFA | long-form 使用动态 chunking；时间戳可由 forced aligner 或专门 timestamp token 路径生成 | 若 Rushi 要产品化 Nano，需先证明短窗可稳定，再决定是否接受 `vad_timestamp` 降级或引入对齐链路 |
+
+**当前判断**：Fun-ASR-Nano 仍值得保留为 spike 方向，但在 N1/N3 通过前不得上架 catalog。当前证据更支持“文本质量候选 SKU”，不支持替代 Paraformer 的长音频多语段默认 SKU。
 
 ### 3.2 MiMo-V2.5-ASR
 

@@ -1,4 +1,6 @@
 /** 欢迎页 / 项目 Hub / 编辑页共用侧栏宽度 */
+import { MAIN_SHELL_SURFACE_CLASS } from "./shellVisualTokens";
+
 export const WORKSPACE_SIDEBAR_WIDTH = "20rem";
 
 /** 固定侧栏双栏 grid（Welcome / Hub）— 列宽见 workspace.css `.workspace-shell-fixed` */
@@ -21,9 +23,14 @@ export const WORKSPACE_HOME_SHELL_PURPOSE = "workspace-home-shell";
 /** 编辑页可折叠侧栏壳层 — 与 welcome 同样 full-bleed */
 export const WORKSPACE_EDITOR_SHELL_PURPOSE = "editor-workspace-shell";
 
+/** EditorToolbar 行高（Tailwind `h-12`）— 侧栏 overlay 顶 inset 须与此对齐 */
+export const EDITOR_WORKSPACE_TOOLBAR_HEIGHT = "3rem";
+
+/** `.editor-status-footer` 固定高度 — 侧栏 overlay 底 inset 须与此对齐 */
+export const EDITOR_WORKSPACE_FOOTER_HEIGHT = "30px";
+
 /** TopBar 下方主舞台：自顶向下滚动，顶距见 workspace.css `--workspace-home-stage-offset-top` */
-export const WORKSPACE_HOME_STAGE_CLASS =
-  "welcome-home-stage flex min-h-0 flex-1 flex-col overflow-y-auto bg-notion-bg";
+export const WORKSPACE_HOME_STAGE_CLASS = `welcome-home-stage flex min-h-0 flex-1 flex-col overflow-y-auto ${MAIN_SHELL_SURFACE_CLASS.pageBg}`;
 
 /** Stage 内容页水平留白容器；顶距由 stage 壳层 padding-top 控制 */
 export const WORKSPACE_HOME_PAGE_CLASS = "welcome-home-page";

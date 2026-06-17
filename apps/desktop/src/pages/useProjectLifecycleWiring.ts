@@ -22,6 +22,7 @@ import {
   pickCloseGateLifecycleFacade,
   pickExportLifecycleFacade,
 } from "./projectLifecycleFacades";
+import { useBatchTranscribeQueueController } from "./useBatchTranscribeQueueController";
 import { buildProjectLifecycleReturn } from "./projectLifecycleReturn";
 import type { ProjectLifecycleApi } from "./ProjectLifecycleApi";
 
@@ -55,6 +56,7 @@ export function useProjectLifecycleWiring(
   const [newName, setNewName] = useState("未命名项目");
   const [pickedPath, setPickedPath] = useState<string | null>(null);
   const closeGateRef = useRef<ProjectCloseGateControllerApi | null>(null);
+  const cancelBatchTranscribeRef = useRef<() => Promise<void>>(async () => {});
   const pendingAiRevisedUidsRef = useRef(new Set<string>());
 
   const editorStack = useProjectLifecycleEditorStack({
@@ -100,6 +102,7 @@ export function useProjectLifecycleWiring(
 
   const transcribeJob = useTranscribeJobController({
     busy,
+    busyReason,
     beginBusy,
     endBusy,
     current,
@@ -140,6 +143,7 @@ export function useProjectLifecycleWiring(
     busy,
     busyReason,
     cancelTranscribe: transcribeJob.cancelTranscribe,
+    cancelBatchTranscribe: () => cancelBatchTranscribeRef.current(),
     closeFile,
     current,
     currentFileId,
@@ -157,6 +161,23 @@ export function useProjectLifecycleWiring(
     projects,
   });
   closeGateRef.current = closeGate;
+
+  const batchTranscribe = useBatchTranscribeQueueController({
+    projectId: current?.id,
+    projectFiles: current?.files,
+    busy,
+    hasUnsavedSegmentChanges: dirty.hasUnsavedSegmentChanges,
+    beginBusy,
+    endBusy,
+    openFileWrapped: closeGate.openFileWrapped,
+    executeTranscribeForBatch: transcribeJob.executeTranscribeForBatch,
+    cancelTranscribe: transcribeJob.cancelTranscribe,
+    localTranscribePreflight,
+    transcribeSource: transcribeJob.transcribeSource,
+    setError,
+    refreshProjectHub: closeGate.refreshProjectHub,
+  });
+  cancelBatchTranscribeRef.current = batchTranscribe.cancelBatchTranscribe;
 
   const { importDuplicate, fileMutation, crud, projectMutation } = useProjectLifecycleHubStack({
     pickedPath,
@@ -284,5 +305,6 @@ export function useProjectLifecycleWiring(
     fileMutation,
     projectMutation,
     segmentAnnotation,
+    batchTranscribe,
   });
 }

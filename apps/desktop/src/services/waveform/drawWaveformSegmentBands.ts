@@ -5,7 +5,7 @@ import {
   WAVEFORM_SEGMENT_INSET_TOP_PX,
 } from "../../utils/waveformSegmentBounds";
 import {
-  SEGMENT_BAND_BORDER_COLOR,
+  readWaveformSegmentBandPalette,
   segmentBandFillStyle,
 } from "../../utils/waveformSegmentBandCanvasColors";
 import { selectOverlayRenderedSegmentIndices } from "../../utils/waveformSegmentOverlayVisibility";
@@ -22,6 +22,7 @@ export function drawWaveformSegmentBands(input: {
   durationSec: number;
   layoutHeightPx: number;
   selectedIdx?: number;
+  playheadSec?: number;
   skipIndices?: readonly number[];
 }): void {
   const {
@@ -33,6 +34,7 @@ export function drawWaveformSegmentBands(input: {
     durationSec,
     layoutHeightPx,
     selectedIdx = -1,
+    playheadSec,
   } = input;
   const widthPx = Math.max(1, Math.floor(viewportWidthPx));
   const heightPx = Math.max(1, Math.floor(layoutHeightPx));
@@ -57,6 +59,7 @@ export function drawWaveformSegmentBands(input: {
 
   const insetTop = WAVEFORM_SEGMENT_INSET_TOP_PX;
   const bandHeight = Math.max(20, heightPx - insetTop - WAVEFORM_SEGMENT_INSET_BOTTOM_PX);
+  const palette = readWaveformSegmentBandPalette();
 
   for (const idx of packable) {
     if (skip.has(idx)) continue;
@@ -73,13 +76,13 @@ export function drawWaveformSegmentBands(input: {
     if (leftViewportPx + bandWidthPx < 0 || leftViewportPx > widthPx) continue;
 
     const selected = idx === selectedIdx;
-    ctx.fillStyle = segmentBandFillStyle(seg, selected);
+    ctx.fillStyle = segmentBandFillStyle(seg, selected, playheadSec, palette);
     ctx.fillRect(leftViewportPx, insetTop, bandWidthPx, bandHeight);
 
     // 不在 overlay 选中层相邻处画分隔线，避免选中语段开头/结尾出现黑色竖线
     if (skip.has(idx + 1) || skip.has(idx - 1)) continue;
 
-    ctx.strokeStyle = SEGMENT_BAND_BORDER_COLOR;
+    ctx.strokeStyle = palette.border;
     ctx.lineWidth = 1;
     ctx.beginPath();
     ctx.moveTo(leftViewportPx + bandWidthPx - 0.5, insetTop);

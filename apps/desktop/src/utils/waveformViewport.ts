@@ -18,6 +18,17 @@ export function tierViewportWidthStyle(fallbackPx: number): { width: string } {
   return { width: `var(${WAVEFORM_TIER_VIEWPORT_WIDTH_VAR}, ${fallback}px)` };
 }
 
+/** Segment chrome height during drag/preview — match visual shell, not deferred painted height. */
+export function resolveWaveformSegmentLayoutHeightPx(
+  visualHeightPx: number,
+  paintedHeightPx: number,
+  previewActive: boolean,
+): number {
+  const visual = Math.max(1, visualHeightPx);
+  const painted = Math.max(1, paintedHeightPx);
+  return previewActive ? visual : painted;
+}
+
 /** Stretch painted waveform to visual shell height while WaveSurfer redraw is pending. */
 export function resolveWaveformVerticalScalePreview(
   visualHeightPx: number,

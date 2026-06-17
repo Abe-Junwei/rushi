@@ -8,6 +8,8 @@ import {
   DEFAULT_LLM_API_KEY_ID,
   applyLlmProviderPreset,
   persistLlmRuntimeConfig,
+  persistLlmPromptOverrides,
+  readLlmPromptOverridesFromStorage,
   setLlmApiKeyInMemory,
 } from "../postprocess/postprocessRuntimeContract";
 import {
@@ -57,6 +59,43 @@ describe("profileContract", () => {
     expect(profile.llm?.api_key_id).toBe(DEFAULT_LLM_API_KEY_ID);
     expect(dumped).not.toContain("sk-secret-should-not-export");
     expect((profile.llm as { api_key?: string }).api_key).toBeUndefined();
+  });
+
+  it("exports and imports llm prompt overrides", () => {
+    persistLlmRuntimeConfig({ ...applyLlmProviderPreset("deepseek"), apiKeyId: DEFAULT_LLM_API_KEY_ID });
+    persistLlmPromptOverrides({
+      stageBSystem: "profile system",
+      autoPunctuateInstructions: "profile auto",
+      exportPolishSystem: "profile export",
+    });
+
+    const profile = buildSettingsProfileV1();
+    expect(profile.llm?.prompt).toEqual({
+      stage_b_system: "profile system",
+      auto_punctuate_instructions: "profile auto",
+      export_polish_system: "profile export",
+    });
+
+    localStorage.clear();
+    applySettingsProfileV1(profile);
+    expect(readLlmPromptOverridesFromStorage()).toEqual({
+      stageBSystem: "profile system",
+      autoPunctuateInstructions: "profile auto",
+      exportPolishSystem: "profile export",
+    });
+  });
+
+  it("import without prompt leaves existing prompt overrides unchanged", () => {
+    persistLlmPromptOverrides({ stageBSystem: "keep me" });
+    applySettingsProfileV1({
+      version: 1,
+      llm: {
+        provider_id: "deepseek",
+        base_url: "https://api.deepseek.com/v1",
+        model: "deepseek-chat",
+      },
+    });
+    expect(readLlmPromptOverridesFromStorage()).toEqual({ stageBSystem: "keep me" });
   });
 
   it("applies llm and online stt sections back to storage", () => {

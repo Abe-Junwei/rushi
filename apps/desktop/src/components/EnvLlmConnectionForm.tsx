@@ -12,6 +12,7 @@ import {
   isSavedApiKeyMaskDisplayed,
   normalizeSavedApiKeyInputChange,
   resolveSavedApiKeyInputDisplay,
+  shouldClearSavedKeyFromMaskInput,
 } from "../services/secrets/savedApiKeyInput";
 import type { useEnvLlmConfigPanel } from "../hooks/useEnvLlmConfigPanel";
 
@@ -121,9 +122,12 @@ export function EnvLlmConnectionForm(props: Props) {
                 }}
                 onChange={(e) => {
                   props.invalidateProbe();
-                  props.setApiKey(
-                    normalizeSavedApiKeyInputChange(e.target.value, showSavedApiKeyMask),
-                  );
+                  const next = normalizeSavedApiKeyInputChange(e.target.value, showSavedApiKeyMask);
+                  if (shouldClearSavedKeyFromMaskInput(showSavedApiKeyMask, next)) {
+                    void props.clearSavedApiKey();
+                    return;
+                  }
+                  props.setApiKey(next);
                 }}
                 placeholder="控制台创建后粘贴保存"
               />

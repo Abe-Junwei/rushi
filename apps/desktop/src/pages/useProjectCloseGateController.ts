@@ -21,6 +21,7 @@ type UseProjectCloseGateControllerArgs = {
   busy: boolean;
   busyReason: BusyReason | null;
   cancelTranscribe: () => void | Promise<void>;
+  cancelBatchTranscribe?: () => Promise<void>;
   closeFile: () => void;
   current: ProjectDetail | null;
   currentFileId: string | null;
@@ -54,6 +55,7 @@ export type ProjectCloseGateControllerApi = {
   saveAndClose: () => Promise<void>;
   stayAfterCloseAttempt: () => void;
   transcribeNavBlockOpen: boolean;
+  transcribeNavBlockStopping: boolean;
   cancelTranscribeNavBlock: () => void;
   confirmTranscribeNavBlock: () => Promise<void>;
 };
@@ -67,6 +69,7 @@ export function useProjectCloseGateController(
     busy,
     busyReason,
     cancelTranscribe,
+    cancelBatchTranscribe,
     closeFile,
     current,
     currentFileId,
@@ -102,6 +105,7 @@ export function useProjectCloseGateController(
   const [closeGateOpen, setCloseGateOpen] = useState(false);
   const [closeGateIntent, setCloseGateIntent] = useState<"app-quit" | "navigate">("app-quit");
   const [transcribeNavBlockOpen, setTranscribeNavBlockOpen] = useState(false);
+  const [transcribeNavBlockStopping, setTranscribeNavBlockStopping] = useState(false);
 
   const navigateState = {
     setCloseGateOpen,
@@ -175,11 +179,20 @@ export function useProjectCloseGateController(
 
   async function confirmTranscribeNavBlock() {
     const proceed = navigateProceedRef.current;
-    setTranscribeNavBlockOpen(false);
-    navigateProceedRef.current = null;
-    if (!proceed) return;
-    await cancelTranscribe();
-    navigate.requestNavigateWithUnsavedCheck(proceed);
+    setTranscribeNavBlockStopping(true);
+    try {
+      setTranscribeNavBlockOpen(false);
+      navigateProceedRef.current = null;
+      if (!proceed) return;
+      if (busyReason === "batch_transcribe" && cancelBatchTranscribe) {
+        await cancelBatchTranscribe();
+      } else {
+        await cancelTranscribe();
+      }
+      navigate.requestNavigateWithUnsavedCheck(proceed);
+    } finally {
+      setTranscribeNavBlockStopping(false);
+    }
   }
 
   function openLastEditorWorkspace(): Promise<void> {
@@ -275,6 +288,7 @@ export function useProjectCloseGateController(
     saveAndClose,
     stayAfterCloseAttempt,
     transcribeNavBlockOpen,
+    transcribeNavBlockStopping,
     cancelTranscribeNavBlock: navigate.cancelTranscribeNavBlock,
     confirmTranscribeNavBlock,
   };

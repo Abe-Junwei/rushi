@@ -217,4 +217,29 @@ describe("useProjectCloseGateController", () => {
     expect(result.current.closeGateOpen).toBe(true);
     expect(args.closeFile).not.toHaveBeenCalled();
   });
+
+  it("confirmTranscribeNavBlock stops batch transcribe before navigate", async () => {
+    const cancelBatchTranscribe = vi.fn(() => Promise.resolve());
+    const args = baseArgs({
+      busy: true,
+      busyReason: "batch_transcribe",
+      cancelBatchTranscribe,
+    });
+    const { result } = renderHook(() => useProjectCloseGateController(args));
+
+    act(() => {
+      result.current.closeFileWrapped();
+    });
+
+    expect(result.current.transcribeNavBlockOpen).toBe(true);
+
+    await act(async () => {
+      await result.current.confirmTranscribeNavBlock();
+    });
+
+    expect(cancelBatchTranscribe).toHaveBeenCalled();
+    expect(args.cancelTranscribe).not.toHaveBeenCalled();
+    expect(result.current.transcribeNavBlockOpen).toBe(false);
+    expect(args.closeFile).toHaveBeenCalled();
+  });
 });

@@ -144,7 +144,7 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
           ? "seg-row-selected"
           : inSelection
             ? "seg-row-in-selection"
-            : "bg-transparent hover:border-notion-divider",
+            : "bg-transparent hover:border-notion-divider hover:bg-notion-sidebar/35",
       ].join(" ")}
       onClick={onClickRow}
       onPointerDown={onRowPointerDown}

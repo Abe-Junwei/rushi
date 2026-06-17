@@ -7,7 +7,10 @@ import { ensureAppWindowCloseGuardRegistered } from "./services/appWindowCloseGu
 import { logRuntimeParityBootstrap } from "./services/runtimeParityBootstrap";
 import { bootstrapShellCapabilities } from "./services/shellCapabilities";
 import { installWaveformZoomProfileDevTools } from "./services/waveform/waveformZoomProfile";
+import { initOfficeShellTheme } from "./services/ui/officeShellTheme";
 import "./zen-tailwind.css";
+
+initOfficeShellTheme();
 
 ensureAppWindowCloseGuardRegistered();
 installWaveformZoomProfileDevTools();

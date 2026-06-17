@@ -18,6 +18,7 @@ export type CloseGateLifecycleFacade = Pick<
   | "discardUnsavedAndClose"
   | "saveAndClose"
   | "transcribeNavBlockOpen"
+  | "transcribeNavBlockStopping"
   | "cancelTranscribeNavBlock"
   | "confirmTranscribeNavBlock"
   | "hasUnsavedFileEdits"
@@ -40,8 +41,9 @@ export function pickCloseGateLifecycleFacade(
     discardUnsavedAndClose: () => void closeGate.discardUnsavedAndClose(),
     saveAndClose: () => void closeGate.saveAndClose(),
     transcribeNavBlockOpen: closeGate.transcribeNavBlockOpen,
+    transcribeNavBlockStopping: closeGate.transcribeNavBlockStopping,
     cancelTranscribeNavBlock: closeGate.cancelTranscribeNavBlock,
-    confirmTranscribeNavBlock: () => void closeGate.confirmTranscribeNavBlock(),
+    confirmTranscribeNavBlock: () => closeGate.confirmTranscribeNavBlock(),
     hasUnsavedFileEdits,
   };
 }

@@ -7,9 +7,9 @@ use std::time::Instant;
 use tauri::State;
 
 use super::{
-    build_auto_punctuate_prompt, extract_chat_completion_text, resolve_postprocess_config_async,
-    PostprocessAutoPunctuateRawResponse, PostprocessAutoPunctuateRequest, PostprocessCancelState,
-    DEFAULT_TIMEOUT_SECS,
+    build_auto_punctuate_prompt, extract_chat_completion_text, resolve_auto_punctuate_system_prompt,
+    resolve_postprocess_config_async, PostprocessAutoPunctuateRawResponse,
+    PostprocessAutoPunctuateRequest, PostprocessCancelState, DEFAULT_TIMEOUT_SECS,
 };
 
 #[tauri::command]
@@ -32,14 +32,24 @@ pub async fn postprocess_auto_punctuate(
     let app_root = state.root.clone();
     let config = resolve_postprocess_config_async(&req, &app_root).await?;
     let api_key = config.api_key.clone();
-    let prompt = build_auto_punctuate_prompt(text, &req.neighbor_context, &req.neighbor_snippets);
+    let prompt_overrides = req.runtime.as_ref().and_then(|rt| rt.prompt_overrides.as_ref());
+    let instructions_override = prompt_overrides.and_then(|o| o.auto_punctuate_instructions.as_deref());
+    let system_prompt = resolve_auto_punctuate_system_prompt(
+        prompt_overrides.and_then(|o| o.auto_punctuate_system.as_deref()),
+    );
+    let prompt = build_auto_punctuate_prompt(
+        text,
+        &req.neighbor_context,
+        &req.neighbor_snippets,
+        instructions_override,
+    );
     let body = json!({
         "model": config.model,
         "temperature": 0.2,
         "messages": [
             {
                 "role": "system",
-                "content": "你是中文转写后处理助手。只给当前语段补充自然、克制的中文标点，不改写词语，不补充解释，不输出 markdown，不返回额外说明。"
+                "content": system_prompt
             },
             {
                 "role": "user",

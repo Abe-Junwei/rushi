@@ -47,6 +47,8 @@ export interface SttOnlineProviderDefinition {
    * 文案勿写死具体金额，以各控制台为准。
    */
   freeTierNote?: string;
+  /** 简明计费说明（环境页厂商说明下方展示）。 */
+  billingNote?: string;
 }
 
 export interface ExternalSttOnlineRuntimeConfig {

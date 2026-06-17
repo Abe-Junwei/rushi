@@ -1,5 +1,6 @@
 import { memo, useLayoutEffect, useRef, type RefObject } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
+import { subscribeAppAppearance } from "../services/ui/appAppearance";
 import { drawWaveformSegmentBands } from "../services/waveform/drawWaveformSegmentBands";
 import { selectOverlayInteractiveSegmentIndices } from "../utils/waveformSegmentOverlayVisibility";
 import {
@@ -23,6 +24,7 @@ export type WaveformSegmentBandCanvasProps = {
   selectedIndices?: ReadonlySet<number>;
   dominantSpanIndices?: readonly number[];
   draftIdx: number | null;
+  getPlayheadSec?: () => number;
   tierScrollRef: RefObject<HTMLElement | null>;
   tierScrollLive: TierScrollLiveRefs;
   tierScrollLayout: TierScrollLayoutMetrics;
@@ -41,6 +43,7 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
   selectedIndices,
   dominantSpanIndices,
   draftIdx,
+  getPlayheadSec,
   tierScrollRef,
   tierScrollLive,
   tierScrollLayout,
@@ -59,6 +62,7 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
     selectedIndices,
     dominantSpanIndices,
     draftIdx,
+    getPlayheadSec,
   });
   inputRef.current = {
     segments,
@@ -73,6 +77,7 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
     selectedIndices,
     dominantSpanIndices,
     draftIdx,
+    getPlayheadSec,
   };
 
   const tierMetricsRef = useRef({ tierScrollRef, tierScrollLive, tierScrollLayout });
@@ -127,6 +132,7 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
           durationSec: input.durationSec,
           layoutHeightPx: heightPx,
           selectedIdx: input.selectedIdx,
+          playheadSec: input.getPlayheadSec?.(),
           skipIndices,
         });
       };
@@ -147,7 +153,9 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
     tier?.addEventListener("scroll", schedulePaint, { passive: true });
     tier?.addEventListener("wheel", schedulePaint, { passive: true });
     window.addEventListener("resize", schedulePaint);
+    const unsubAppearance = subscribeAppAppearance(schedulePaint);
     return () => {
+      unsubAppearance();
       unregisterMirrorPaint();
       schedulePaintRef.current = null;
       tier?.removeEventListener("scroll", schedulePaint);

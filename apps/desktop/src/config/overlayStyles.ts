@@ -1,13 +1,27 @@
 /**
  * Modal scrim — single source for dialog/panel overlays.
- * No backdrop-blur (see docs/architecture/desktop-tailwind-v4.md).
+ * Scrim 压暗底层；浮层壳 flat（见 shellVisualTokens FLAT_OVERLAY_PANEL_SHELL_CLASS）。
  */
 
-/** Background utility only — pair with fixed/inset/z-* */
-export const OVERLAY_SCRIM_BG = "bg-zen-ink/10";
+import {
+  FLAT_OVERLAY_PANEL_SHELL_CLASS,
+  FLAT_SHELL_ELEVATION_CLASS,
+  MAIN_SHELL_SURFACE_CLASS,
+  OVERLAY_SCRIM_LAYER_CLASS,
+  OVERLAY_SCRIM_SURFACE_CLASS,
+} from "./shellVisualTokens";
+
+export {
+  FLAT_OVERLAY_PANEL_SHELL_CLASS,
+  FLAT_SHELL_ELEVATION_CLASS,
+  MAIN_SHELL_SURFACE_CLASS,
+  OVERLAY_SCRIM_SURFACE_CLASS,
+};
+
+export const OVERLAY_SCRIM_BG = OVERLAY_SCRIM_SURFACE_CLASS.bg;
 
 /** Full-viewport scrim without flex layout */
-export const OVERLAY_SCRIM_LAYER = `fixed inset-0 ${OVERLAY_SCRIM_BG}`;
+export const OVERLAY_SCRIM_LAYER = OVERLAY_SCRIM_LAYER_CLASS;
 
 /** Centered modal overlay; pass Tailwind z-* class (literal, for JIT scan). */
 export function overlayScrimCentered(zIndexClass: string): string {

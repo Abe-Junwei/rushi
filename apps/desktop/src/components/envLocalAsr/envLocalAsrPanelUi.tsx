@@ -49,7 +49,7 @@ export function EnvCollapsibleMetaSummary({ children }: { children: React.ReactN
 }
 
 /** 环境与维护：折叠正文与 chevron 后标题左缘对齐（≈ pl-5）。 */
-const ENV_UTILITIES_BODY = "mt-2.5 flex flex-col gap-3 pl-5 pb-2";
+export const ENV_UTILITIES_BODY = "mt-2.5 flex flex-col gap-3 pl-5 pb-2";
 
 /** 嵌套折叠（侧车组件 / 维护与诊断）正文：再缩进一级。 */
 export const ENV_UTILITIES_NESTED_BODY = "mt-2 flex flex-col gap-2.5 pl-5 pb-0.5";

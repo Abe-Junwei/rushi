@@ -7,6 +7,7 @@ import {
   resolveFloatingPanelFitHeight,
   resolveFloatingPanelSegmentListHeight,
   resolveStageBConsentFitHeight,
+  resolveStageBLoadingFitHeight,
   resolveStageBPreviewFitHeight,
   POST_TRANSCRIBE_STAGE_B_PREVIEW_MAX_PANEL_HEIGHT_PX,
 } from "./floatingPanelSegmentListLayout";
@@ -39,6 +40,12 @@ describe("floatingPanelSegmentListLayout", () => {
   it("stage B consent grows with pending hint", () => {
     const base = resolveStageBConsentFitHeight(false);
     const withHint = resolveStageBConsentFitHeight(true);
+    expect(withHint).toBeGreaterThan(base);
+  });
+
+  it("stage B loading grows with pending hint", () => {
+    const base = resolveStageBLoadingFitHeight(false);
+    const withHint = resolveStageBLoadingFitHeight(true);
     expect(withHint).toBeGreaterThan(base);
   });
 

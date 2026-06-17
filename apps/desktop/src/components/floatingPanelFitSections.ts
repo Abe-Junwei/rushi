@@ -132,8 +132,8 @@ export function measureFloatingPanelBodyStack(node: HTMLElement): number {
   return total + Math.max(0, children.length - 1) * gap;
 }
 
-/** FloatingPanelDialogRoot 的 pt-3 pb-6（不含子节点 margin；footer mt-3 由 stack 测量计入）。 */
-const FLOATING_PANEL_DIALOG_ROOT_CHROME_PX = 36;
+/** FloatingPanelDialogRoot 的 pt-3（底边距在页脚 pb-5 或无页脚 root pb-5 中）。 */
+const FLOATING_PANEL_DIALOG_ROOT_CHROME_PX = 12;
 
 export function resolveMeasuredPanelFitHeight(bodyScrollHeight: number): number {
   return (

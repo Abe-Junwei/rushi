@@ -14,7 +14,7 @@ import { toastBottomInsetCssVar } from "../services/ui/toastLayout";
 import { CONTROL_BTN_SECONDARY } from "../config/controlStyles";
 
 const TOAST_SHELL =
-  "pointer-events-auto flex max-w-[min(24rem,calc(100vw-2rem))] cursor-pointer items-start gap-2.5 rounded-md border py-2.5 pl-3 pr-4 text-left font-sans text-sm font-normal leading-snug shadow-md";
+  "pointer-events-auto flex max-w-[min(24rem,calc(100vw-2rem))] cursor-pointer items-start gap-2.5 rounded-md border py-2.5 pl-3 pr-4 text-left font-sans text-sm font-normal leading-snug shadow-none";
 
 /** 语义底色 + 边框；避免与 notion-bg 主舞台融为一体。 */
 const VARIANT_SURFACE: Record<ToastVariant, string> = {

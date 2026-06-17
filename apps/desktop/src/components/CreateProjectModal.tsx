@@ -4,8 +4,7 @@ import { PANEL_CONTROL_TYPOGRAPHY, PANEL_TYPOGRAPHY } from "../config/typography
 import type { ProjectControllerApi } from "../pages/useProjectController";
 import * as fileApi from "../tauri/fileApi";
 import { findDuplicateProjectNames, suggestUniqueProjectName } from "../utils/projectDuplicateName";
-import { FloatingPanelTemplate } from "./PanelTemplate";
-import { FLOATING_PANEL_DIALOG_BODY_PADDING_CLASS, FLOATING_PANEL_DIALOG_FOOTER_CLASS } from "./FloatingPanelDialogLayout";
+import { CompactFloatingDialog } from "./CompactFloatingDialog";
 import {
   CONTROL_BTN_PRIMARY,
   CONTROL_BTN_SECONDARY,
@@ -14,10 +13,10 @@ import {
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
 const PANEL_ID = "create-project-modal-v2";
+const FORM_ID = "create-project-form";
 const PANEL_WIDTH = 392;
-/** 按当前静态布局测算（标题栏 57px + 正文区）；有重名提示多一行。 */
-const PANEL_HEIGHT = { base: 298, duplicate: 344 } as const;
-const MIN_SIZE = { width: 340, height: 260 } as const;
+/** 含页脚按钮行；重名提示多一行时由 layoutRev 触发实测对齐。 */
+const FALLBACK_HEIGHT = { base: 340, duplicate: 372 } as const;
 
 interface CreateProjectModalProps {
   controller: ProjectControllerApi;
@@ -38,7 +37,7 @@ export function CreateProjectModal({ controller: c, onClose }: CreateProjectModa
     () => suggestUniqueProjectName(c.projects, projectName),
     [c.projects, projectName],
   );
-  const panelHeight = hasDuplicateWarning ? PANEL_HEIGHT.duplicate : PANEL_HEIGHT.base;
+  const estimatedFitHeight = hasDuplicateWarning ? FALLBACK_HEIGHT.duplicate : FALLBACK_HEIGHT.base;
 
   const runCreate = useCallback(async (action: () => Promise<boolean>) => {
     setBusy(true);
@@ -91,21 +90,33 @@ export function CreateProjectModal({ controller: c, onClose }: CreateProjectModa
   }, [c, projectName, runCreate]);
 
   return (
-    <FloatingPanelTemplate
+    <CompactFloatingDialog
       id={PANEL_ID}
       title="新建项目"
-      preset="createProject"
-      minWidth={MIN_SIZE.width}
-      minHeight={MIN_SIZE.height}
-      maxWidth={440}
-      maxHeight={400}
-      defaultSize={{ width: PANEL_WIDTH, height: panelHeight }}
-      contentFitHeight={panelHeight}
-      layoutRev={hasDuplicateWarning ? 1 : 0}
+      open
       onClose={onClose}
+      fallbackHeight={FALLBACK_HEIGHT.base}
+      estimatedFitHeight={estimatedFitHeight}
+      layoutRev={hasDuplicateWarning ? 1 : 0}
+      measureBody
+      fillHeight={false}
+      defaultWidth={PANEL_WIDTH}
+      bounds={{ minWidth: 340, minHeight: 260, maxWidthCap: 440, maxHeightCap: 480 }}
+      footer={
+        <>
+          <button type="button" className={CONTROL_BTN_SECONDARY} onClick={onClose} disabled={isBusy}>
+            取消
+          </button>
+          <button type="submit" form={FORM_ID} className={CONTROL_BTN_PRIMARY} disabled={isBusy}>
+            {busy ? "创建中…" : "创建空项目"}
+          </button>
+        </>
+      }
+      footerJustify="end"
     >
       <form
-        className={`flex flex-col gap-3 ${FLOATING_PANEL_DIALOG_BODY_PADDING_CLASS}`}
+        id={FORM_ID}
+        className="flex flex-col gap-3"
         onSubmit={(e) => {
           e.preventDefault();
           void createEmpty();
@@ -174,16 +185,7 @@ export function CreateProjectModal({ controller: c, onClose }: CreateProjectModa
             <span>导入文本</span>
           </button>
         </div>
-
-        <div className={`${FLOATING_PANEL_DIALOG_FOOTER_CLASS} justify-end`}>
-          <button type="button" className={CONTROL_BTN_SECONDARY} onClick={onClose} disabled={isBusy}>
-            取消
-          </button>
-          <button type="submit" className={CONTROL_BTN_PRIMARY} disabled={isBusy}>
-            {busy ? "创建中…" : "创建空项目"}
-          </button>
-        </div>
       </form>
-    </FloatingPanelTemplate>
+    </CompactFloatingDialog>
   );
 }

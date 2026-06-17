@@ -192,6 +192,7 @@ export function useEnvOnlineSttPanel({ busy, onSttOnlineRuntimeChanged }: UseEnv
       setSavedApiKeyId(null);
       setOlApiKey("");
       setSttOnlineApiKeyInMemory(null);
+      clearSttConnectionVerified();
       setLastProbeAvailable(null);
       bumpKeychainCheck();
       onSttOnlineRuntimeChanged?.();

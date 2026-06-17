@@ -1,4 +1,5 @@
 import { Component, type ErrorInfo, type ReactNode } from "react";
+import { MAIN_SHELL_SURFACE_CLASS } from "../config/shellVisualTokens";
 
 type AppErrorBoundaryProps = {
   children: ReactNode;
@@ -29,8 +30,8 @@ export class AppErrorBoundary extends Component<
   render(): ReactNode {
     if (this.state.error) {
       return (
-        <div className="flex min-h-screen items-center justify-center bg-zen-paper px-6 py-10">
-          <div className="max-w-md rounded-xl bg-notion-bg px-6 py-5 shadow-sm">
+        <div className={`flex min-h-screen items-center justify-center ${MAIN_SHELL_SURFACE_CLASS.pageBg} px-6 py-10`}>
+          <div className={`max-w-md rounded-xl border ${MAIN_SHELL_SURFACE_CLASS.hairlineBorder} bg-notion-bg px-6 py-5 shadow-none`}>
             <h1 className="text-base font-semibold text-zen-ink">界面遇到问题</h1>
             <p className="mt-2 text-sm leading-relaxed text-notion-text-muted">
               应用遇到意外错误。你可以重试；若问题持续，请重启应用。

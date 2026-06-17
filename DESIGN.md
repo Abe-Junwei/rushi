@@ -96,11 +96,24 @@ The palette is a **Notion-neutral base + warm saffron accent**:
 - **Text (`notion-text` #37352f):** Notion's signature soft black. High legibility without the harshness of pure #000.
 - **Muted Text (`notion-text-muted` #6b6b6b):** For secondary labels, descriptions, placeholders.
 - **Dividers (`notion-divider` #e3e2e0):** Very light borders for separation. Used extensively for hairlines.
-- **Primary (Saffron #C58A43):** Accent for selection, borders, highlights. Solid primary buttons: **saffron 底 + 白字**；hover saffron-mid + 白字。
+- **Primary (Saffron #C58A43):** **动作 / 进度 / CTA**（Primary 按钮、工作条 toggle、手动编辑提示、播放头刻度）。
+- **Edit accent (Indigo #3D4F5D):** **编辑选中 / 焦点**（语段当前行、波形 overlay 选中语段、AI 改稿 stage chip）。
 - **Danger (Cinnabar #963530):** Used exclusively for destructive actions (delete, remove).
 - **Success:** Green for positive status indicators.
 
-**Legacy warm surfaces (`paper`, `surface-card`, `ochre`):** Retained for语段卡、欢迎页 hero、部分 callout；主工作台壳层与波形区优先 `notion-*`。
+**Dual accent（双 accent，全应用统一）**
+
+| 语义 | Token | 用途 |
+|------|-------|------|
+| 编辑选中 / 焦点 | `zen-indigo` / `--accent-edit` | 语段 `seg-row-selected`、波形 overlay 选中、AI/LLM chip |
+| 动作 / 进度 / CTA | `zen-saffron` / `--accent-action` | Primary 按钮、播放头、minimap 视口框、draft 点、错词下划线 |
+
+**Main shell vs 内容装饰**
+
+- **主壳层**（Welcome / Project Hub / Editor chrome）：`notion-bg` · `notion-sidebar` · `notion-divider`（`tokens.css` `--main-shell-*`）。导航侧栏、顶栏、波形 tier 外壳、minimap 条 **禁止** `zen-paper`。
+- **内容装饰面**：`zen-paper` · `surface-card`（`--content-decoration-*`）仅用于 Welcome hero、语段卡等 **内容区**，不进导航壳。
+
+**Legacy warm surfaces (`paper`, `surface-card`, `ochre`):** 仅作内容装饰；主工作台壳层优先 `notion-*` / `--main-shell-*`。
 
 ### Waveform tokens
 
@@ -113,7 +126,8 @@ The palette is a **Notion-neutral base + warm saffron accent**:
 | `waveform-progress` | `#8e8e93` | `zen-wf-progress` / `COLORS.waveformProgress` | 已播放 peaks tint |
 | `waveform-cursor` | `#6a6a6f` | `zen-wf-cursor` / `COLORS.waveformCursor` | WaveSurfer 内置 playhead |
 | — | — | `bg-notion-sidebar` | 波形 tier 外壳、minimap 条背景 |
-| — | — | `zen-saffron` | 选中语段边线、minimap 视口框、缩放 active 态 |
+| — | — | `zen-indigo` | 语段列表当前行、波形 overlay **选中** |
+| — | — | `zen-saffron-mid` | 波形语段带 **已播放未选中**（进度 tint）；minimap 视口框、视口 playhead |
 
 ## Typography
 
@@ -154,13 +168,15 @@ Single sans-serif font family (Inter) for all UI. No serif display fonts—Notio
 
 ## Elevation & Depth
 
-Hierarchy through **background tone shifts** and **fine borders**—no drop shadows on most elements.
+Hierarchy through **background tone shifts** and **fine borders**—**no drop shadows** on shell chrome or body-portaled overlays (dialogs, menus, toast).
 
-- **Surfaces:** Main content is white. Cards use white with a 1px `notion-border`. Sidebar uses `#f7f7f5`.
-- **Borders:** 1px borders in `notion-divider` define boundaries. This creates a crisp, architectural look.
-- **Interactive Depth:** Only floating panels (modals, dropdowns) use subtle shadows. Hover effects use background color shifts (`notion-sidebar-hover`).
-- **The Busy Layer:** Semi-transparent white wash with light backdrop blur during processing.
+- **Surfaces:** Main content is white (`--main-shell-bg`). Sidebar uses `#f7f7f5` (`--main-shell-sidebar-bg`). Cards use white with a 1px `notion-border`.
+- **Borders:** 1px borders in `notion-divider` / `notion-border` define boundaries. Collapsible sidebar uses **border-right only**—no edge box-shadow.
+- **Interactive Depth:** Hover uses background color shifts (`notion-sidebar-hover`). Floating panels use **`border-notion-border` + `bg-notion-bg` + `shadow-none`**（见 `shellVisualTokens.ts` `FLAT_OVERLAY_PANEL_SHELL_CLASS`）。
+- **The Busy Layer:** 半透明遮罩 `--overlay-scrim-bg`（约 26% ink mix）；浮层面板仍 flat、无 drop shadow、**无 backdrop-blur**。
 - **Panel CSS:** 同一路径上最多 2 层可见容器 `border`；更深层级用背景色差与间距区分（见 Jieyu 面板规则）。
+
+**落码真源：** `apps/desktop/src/styles/tokens.css`（`--shell-elevation-shadow: none`）· `apps/desktop/src/config/shellVisualTokens.ts`
 
 ## Shapes
 
@@ -185,7 +201,7 @@ Hierarchy through **background tone shifts** and **fine borders**—no drop shad
 - White background, 1px `notion-border`, **4px radius**, **height 32px**. On focus: border shifts to saffron with a subtle ring. Use `text-body` for user input.
 
 ### Cards
-- White background, 1px `notion-border`, **6px radius (`rounded-md`)**. No shadow unless floating. Padding 16px–20px.
+- White background, 1px `notion-border`, **6px radius (`rounded-md`)**. **No shadow** (including floating). Padding 16px–20px.
 
 ### Navigation (Sidebar)
 - Items: 4px radius, padding `px-3 py-2`.

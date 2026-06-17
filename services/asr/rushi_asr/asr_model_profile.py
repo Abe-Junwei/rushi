@@ -8,12 +8,12 @@ from dataclasses import dataclass
 from typing import Any, Literal
 
 from rushi_asr.defaults import effective_funasr_forced_aligner_id
-from rushi_asr.funasr_pipeline import recognizer_needs_punc_pipeline
+from rushi_asr.funasr_pipeline import is_funasr_nano_model, recognizer_needs_punc_pipeline
 
 # Kept in sync with rushi_asr.segmentation.LONG_AUDIO_SEC
 LONG_AUDIO_SEC = 180.0
 
-SkuFamily = Literal["paraformer", "sensevoice", "qwen", "generic"]
+SkuFamily = Literal["paraformer", "sensevoice", "qwen", "funasr_nano", "generic"]
 
 _COMMON_GENERATE_KEYS = frozenset({
     "language",
@@ -28,6 +28,8 @@ _PROFILE_GENERATE_KEYS: dict[SkuFamily, frozenset[str]] = {
     "sensevoice": _COMMON_GENERATE_KEYS
     | frozenset({"use_itn", "rich_transcription_postprocess"}),
     "qwen": _COMMON_GENERATE_KEYS | frozenset({"return_time_stamps"}),
+    "funasr_nano": _COMMON_GENERATE_KEYS
+    | frozenset({"sentence_timestamp", "itn", "hotwords", "batch_size"}),
     "generic": _COMMON_GENERATE_KEYS,
 }
 
@@ -41,16 +43,26 @@ _QWEN_FUNASR_LANGUAGE: dict[str, str] = {
     "auto": "Chinese",
 }
 
+# Fun-ASR-Nano-2512 README uses full Chinese labels for zh/en/ja.
+_NANO_FUNASR_LANGUAGE: dict[str, str] = {
+    "zh": "中文",
+    "en": "英文",
+    "ja": "日文",
+    "auto": "中文",
+}
+
 
 def is_qwen_asr_model(model_id: str) -> bool:
     return "qwen" in (model_id or "").lower()
 
 
 def funasr_language_for_model(model_id: str, language: str) -> str:
-    """Map Rushi short codes to FunASR Qwen3-ASR language labels."""
-    if not is_qwen_asr_model(model_id):
-        return language
-    return _QWEN_FUNASR_LANGUAGE.get(language, language)
+    """Map Rushi short codes to FunASR SKU-specific language labels."""
+    if is_qwen_asr_model(model_id):
+        return _QWEN_FUNASR_LANGUAGE.get(language, language)
+    if is_funasr_nano_model(model_id):
+        return _NANO_FUNASR_LANGUAGE.get(language, language)
+    return language
 
 
 @dataclass(frozen=True)
@@ -65,6 +77,8 @@ def resolve_asr_model_profile(model_id: str) -> AsrModelProfile:
     mid = (model_id or "").lower()
     if "sensevoice" in mid:
         return AsrModelProfile(profile_id="sensevoice_small_v1", sku_family="sensevoice")
+    if is_funasr_nano_model(model_id):
+        return AsrModelProfile(profile_id="funasr_nano_2512_v1", sku_family="funasr_nano")
     if is_qwen_asr_model(model_id):
         return AsrModelProfile(profile_id="qwen3_asr_0_6b_v1", sku_family="qwen")
     if recognizer_needs_punc_pipeline(model_id):
@@ -150,12 +164,18 @@ def build_generate_kwargs(
             kwargs["batch_size_threshold_s"] = 30
         if effective_funasr_forced_aligner_id():
             kwargs["return_time_stamps"] = True
+    elif profile.sku_family == "funasr_nano":
+        kwargs["sentence_timestamp"] = True
+        kwargs["merge_vad"] = False
+        kwargs["batch_size"] = 1
+        if hotwords:
+            kwargs["hotwords"] = [w for w in hotwords.split() if w.strip()]
     else:
         kwargs["merge_vad"] = not long_audio
         if long_audio:
             kwargs["batch_size_s"] = 60
             kwargs["batch_size_threshold_s"] = 30
 
-    if hotwords:
+    if hotwords and profile.sku_family != "funasr_nano":
         kwargs["hotword"] = hotwords
     return kwargs

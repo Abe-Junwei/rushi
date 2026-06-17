@@ -130,7 +130,7 @@ export function CorrectionRulesPreviewDialog({
         persistState
         onClose={handleClose}
       >
-        <FloatingPanelDialogRoot className="gap-2" measureRef={bodyRef}>
+        <FloatingPanelDialogRoot className="gap-2" measureRef={bodyRef} hasFooter={state.phase !== "loading"} fillHeight>
           {state.phase === "loading" ? (
             <PanelAsyncProgress mode="spinner" message="正在加载稳定纠错规则…" />
           ) : null}

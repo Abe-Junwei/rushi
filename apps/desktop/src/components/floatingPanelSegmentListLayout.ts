@@ -31,6 +31,9 @@ const POST_TRANSCRIBE_STAGE_B_PREVIEW_LIST_MAX_HEIGHT_PX = 192;
 /** 智能改稿预览：面板总高度上限（含标题栏）。 */
 export const POST_TRANSCRIBE_STAGE_B_PREVIEW_MAX_PANEL_HEIGHT_PX = 428;
 
+/** 智能改稿 loading：进度区 + 取消按钮（不含 A→B 黄条）。 */
+const POST_TRANSCRIBE_STAGE_B_LOADING_STATIC_BODY_PX = 200;
+
 /** 智能改稿 consent：说明文案 + 按钮行（不含 A→B 黄条）。 */
 const POST_TRANSCRIBE_STAGE_B_CONSENT_STATIC_BODY_PX = 176;
 
@@ -115,6 +118,11 @@ export function resolveStageBEmptyFitHeight(hasPendingHint: boolean, hasPackHint
   if (hasPendingHint) extra += POST_TRANSCRIBE_STAGE_B_HINT_EXTRA_PX;
   if (hasPackHint) extra += POST_TRANSCRIBE_STAGE_B_HINT_EXTRA_PX;
   return resolveFloatingPanelCompactFitHeight(POST_TRANSCRIBE_STAGE_B_EMPTY_STATIC_BODY_PX, extra);
+}
+
+export function resolveStageBLoadingFitHeight(hasPendingHint: boolean): number {
+  const base = resolveFloatingPanelCompactFitHeight(POST_TRANSCRIBE_STAGE_B_LOADING_STATIC_BODY_PX);
+  return hasPendingHint ? base + POST_TRANSCRIBE_STAGE_B_HINT_EXTRA_PX : base;
 }
 
 export function resolveStageBPreviewFitHeight(rowCount: number): number {

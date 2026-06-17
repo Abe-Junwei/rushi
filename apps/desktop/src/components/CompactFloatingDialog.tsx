@@ -1,7 +1,8 @@
 import { createPortal } from "react-dom";
 import { useMemo, type ReactNode } from "react";
 import { useFloatingPanelBodyMeasure } from "../hooks/useFloatingPanelBodyMeasure";
-import { mergeContentFitHeights, resolveMeasuredPanelFitHeight } from "./floatingPanelFitSections";
+import { useFrozenPanelBodyHeight } from "../hooks/useFrozenPanelBodyHeight";
+import { resolveMeasuredPanelFitHeight } from "./floatingPanelFitSections";
 import {
   resolveCompactDialogBounds,
   type CompactDialogBoundsOptions,
@@ -33,6 +34,10 @@ export type CompactFloatingDialogProps = {
   footer?: ReactNode;
   footerJustify?: "between" | "end" | "start";
   portal?: boolean;
+  /** 是否 ResizeObserver 测高；配合 layoutRev 冻结可避免输入时抖动。 */
+  measureBody?: boolean;
+  /** 含 flex-1 列表/滚动区时为 true；静态表单保持 false。 */
+  fillHeight?: boolean;
   children: ReactNode;
 };
 
@@ -55,16 +60,19 @@ export function CompactFloatingDialog({
   estimatedFitHeight,
   persistState = false,
   persistPhaseKey = "default",
-  layoutRev,
+  layoutRev = 0,
   panelZIndex,
   onOverlayClose,
   rootRole = "dialog",
   footer,
   footerJustify = "end",
   portal = true,
+  measureBody = true,
+  fillHeight = false,
   children,
 }: CompactFloatingDialogProps) {
-  const { bodyRef, bodyHeight } = useFloatingPanelBodyMeasure(open);
+  const { bodyRef, bodyHeight } = useFloatingPanelBodyMeasure(open && measureBody);
+  const frozenBodyHeight = useFrozenPanelBodyHeight(bodyHeight, layoutRev, measureBody);
   const resolvedBounds = useMemo(
     () => resolveCompactDialogBounds(boundsOptions ?? {}),
     [boundsOptions],
@@ -75,8 +83,11 @@ export function CompactFloatingDialog({
   const panelMaxWidth = maxWidth ?? resolvedBounds.maxWidth;
   const panelMaxHeight = maxHeight ?? resolvedBounds.maxHeight;
 
-  const measuredFit = bodyHeight != null ? resolveMeasuredPanelFitHeight(bodyHeight) : null;
-  const contentFitHeight = mergeContentFitHeights(estimatedFitHeight ?? fallbackHeight, measuredFit);
+  const measuredFit =
+    frozenBodyHeight != null ? resolveMeasuredPanelFitHeight(frozenBodyHeight) : null;
+  const baseHeight = estimatedFitHeight ?? fallbackHeight;
+  /** 有冻结实测时以实测为准，避免估算偏高导致页脚下方留白。 */
+  const contentFitHeight = measuredFit ?? baseHeight;
   const defaultPanelHeight = Math.min(contentFitHeight ?? fallbackHeight, panelMaxHeight);
 
   const panel = (
@@ -97,7 +108,13 @@ export function CompactFloatingDialog({
       onClose={onClose}
       onOverlayClose={onOverlayClose}
     >
-      <FloatingPanelDialogRoot role={rootRole} aria-modal="true" measureRef={bodyRef}>
+      <FloatingPanelDialogRoot
+        role={rootRole}
+        aria-modal="true"
+        measureRef={measureBody ? bodyRef : undefined}
+        hasFooter={Boolean(footer)}
+        fillHeight={fillHeight}
+      >
         {children}
         {footer ? <FloatingPanelDialogFooter justify={footerJustify}>{footer}</FloatingPanelDialogFooter> : null}
       </FloatingPanelDialogRoot>

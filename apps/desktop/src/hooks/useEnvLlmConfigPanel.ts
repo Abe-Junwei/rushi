@@ -1,6 +1,7 @@
 import { useMemo, useState } from "react";
 import { useLlmKeychainReady } from "../hooks/useLlmKeychainReady";
 import { useLlmEnvStatus } from "../hooks/useLlmEnvStatus";
+import { useEnvLlmPromptConfig } from "../hooks/useEnvLlmPromptConfig";
 import { resolveLlmEnvEffectiveConfig } from "../services/llm/llmEnvStatus";
 import {
   getLlmProviderDefinition,
@@ -38,6 +39,7 @@ export function useEnvLlmConfigPanel({ busy, onLlmRuntimeChanged }: UseEnvLlmCon
   )
     ? "local"
     : "cloud";
+  const promptConfig = useEnvLlmPromptConfig();
 
   const probeHook = useEnvLlmConfigPanelProbe({
     fields,
@@ -62,6 +64,7 @@ export function useEnvLlmConfigPanel({ busy, onLlmRuntimeChanged }: UseEnvLlmCon
     localLoopback,
     onLlmRuntimeChanged,
     onInvalidateProbe: probeHook.invalidateProbe,
+    persistPromptDraft: promptConfig.persistDraft,
   });
 
   const formBusy = busy || persistence.saveBusy || probeHook.probeBusy;
@@ -110,5 +113,6 @@ export function useEnvLlmConfigPanel({ busy, onLlmRuntimeChanged }: UseEnvLlmCon
     refreshDetect,
     detectBusy,
     modeToggleTones,
+    promptConfig,
   };
 }

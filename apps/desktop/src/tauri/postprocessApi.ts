@@ -1,6 +1,6 @@
 import { invoke } from "@tauri-apps/api/core";
 import type { NeighborContextItem } from "../pages/autoPunctuateNeighbors";
-import type { PostprocessRuntimeBridge } from "../services/postprocess/postprocessRuntimeContract";
+import type { LlmPromptDefaults, PostprocessRuntimeBridge } from "../services/postprocess/postprocessRuntimeContract";
 import { computeSingleTextDiff, type TextDiffSpan } from "../utils/textDiff";
 
 export type { NeighborContextItem };
@@ -52,6 +52,10 @@ export type LlmProbeConnectionResponse = {
   probeMethod?: string;
   endpoint?: string;
 };
+
+export async function getLlmPromptDefaults(): Promise<LlmPromptDefaults> {
+  return await invoke<LlmPromptDefaults>("get_llm_prompt_defaults");
+}
 
 export async function postprocessAutoPunctuate(
   req: PostprocessAutoPunctuateRequest,

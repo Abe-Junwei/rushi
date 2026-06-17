@@ -14,6 +14,7 @@ import {
   estimateContextMenuSize,
 } from "../utils/clampContextMenuPosition";
 import { blurActiveTranscriptTextarea, suspendTranscriptTextareasForContextMenu } from "../utils/transcriptSelection";
+import { FLAT_SHELL_ELEVATION_CLASS } from "../config/overlayStyles";
 
 export type ContextMenuItem = {
   key: string;
@@ -34,10 +35,10 @@ type Props = {
 };
 
 const menuShellRoot =
-  "relative z-[100] min-w-[11rem] max-w-[min(16rem,calc(100vw-16px))] rounded-md border border-notion-border bg-notion-bg py-1 shadow-[0_8px_24px_color-mix(in_srgb,var(--zen-ink)_14%,transparent),0_0_0_1px_color-mix(in_srgb,var(--zen-ink)_4%,transparent)]";
+  `relative z-[100] min-w-[11rem] max-w-[min(16rem,calc(100vw-16px))] rounded-md border border-notion-border bg-notion-bg py-1 ${FLAT_SHELL_ELEVATION_CLASS}`;
 
 const menuShellFlyout =
-  "relative z-[101] min-w-[11rem] max-w-[min(16rem,calc(100vw-16px))] rounded-md border border-notion-border bg-notion-bg py-1 shadow-[0_8px_24px_color-mix(in_srgb,var(--zen-ink)_14%,transparent),0_0_0_1px_color-mix(in_srgb,var(--zen-ink)_4%,transparent)]";
+  `relative z-[101] min-w-[11rem] max-w-[min(16rem,calc(100vw-16px))] rounded-md border border-notion-border bg-notion-bg py-1 ${FLAT_SHELL_ELEVATION_CLASS}`;
 
 const menuItemBase =
   "dropdown-item mx-1 flex min-h-[32px] w-[calc(100%-0.5rem)] items-center gap-2 rounded-sm px-2.5 py-1.5 text-left font-sans text-sm leading-snug text-notion-text transition-colors focus-visible:outline-none disabled:cursor-not-allowed disabled:text-notion-text-light";

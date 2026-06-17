@@ -16,4 +16,5 @@ permissions = [
   "allow-postprocess-cancel-auto-punctuate",
   "allow-postprocess-cancel-export-polish",
   "allow-postprocess-export-polish",
+  "allow-get-llm-prompt-defaults",
 ]

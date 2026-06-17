@@ -12,7 +12,7 @@
 
 | # | 主题 | 与 Rushi 关系 | 当前结论（2026-06-11） |
 |---|------|---------------|------------------------|
-| **①** | Fun-ASR 报告 + **Fun-ASR-Nano** 注册与 `sentence_info` 契约 | 同栈 **Paraformer 继任**；Nano 已支持时间戳 + diarization | **Defer 产品化**；先做源码 venv spike，不 bump 侧车 lock |
+| **①** | Fun-ASR 报告 + **Fun-ASR-Nano** 注册与 `sentence_info` 契约 | 同栈 **Paraformer 继任**；Nano 已支持时间戳 + diarization | **PyTorch spike ❌ Defer**（2026-06-17）；**vLLM research ✅**；不上 catalog |
 | **②** | **Qwen3-ASR** + **ForcedAligner** 中期 SKU | 第三 SKU 质量线；本仓 **0 语段** 根因已定位 | ASR 线 **No-go**；**必须先跑 R3g-B-Align spike** |
 | **③** | **说话人分离**（Fun-ASR-Nano diarization · FireRedASR2S） | Descript 类缺口；schema/UI 均未就绪 | **P2 新 Epic**；FunASR `cam++` 路径优先于换引擎 |
 | **④** | **ASR Leaderboard** 长音频 + **RTFx** 评测体系 | 补 `fixtures/eval`；别只看短句 WER | **P1 薄 slice**：扩展 manifest + `eval-run` 指标列 |
@@ -80,11 +80,12 @@ Qwen3-ASR:   无 Aligner → 无 timestamp → Rushi 0 段（见 ②）
 
 | 问题 | 结论 |
 |------|------|
-| **选定方案** | **Defer 产品化**；下一 spike：**Fun-ASR-Nano-2512 + fsmn-vad**（不含 vLLM、不含 diarization），对照制控 + clear 短样本 |
+| **选定方案** | **PyTorch 路径 ❌ Defer 产品化**（2026-06-17 签收 [`acceptance`](./r3g-c-funasr-nano-acceptance.md)）；下一验证：**Nano + vLLM**（[`vllm-research`](./r3g-c-funasr-nano-vllm-research.md) ✅，待 **CUDA** spike） |
 | **不做什么** | 不在本 slice bump `requirements-sidecar-*.lock`；不上 catalog；不替换 Paraformer 默认推荐 |
-| **Go 闸门（建议）** | N1：制控 **≥10 段**；N2：`sentence_info` 模式；N3：wall **≤2×** Paraformer；N4：prepare 磁盘 **≤2GB** 增量；N5：bundled PyInstaller **import 不 500**（Phase 3） |
+| **Spike 摘要** | 制控 ~21min：默认 **0 段**（`<\|no\|>`）；180s 强制窗 **108 段** / ~325s wall / **`vad_timestamp` 非 `sentence_info`**；Paraformer 对照 **197 段** |
+| **Go 闸门（建议）** | N1/N2/N3 **未过**；重开须新 spike 证据或上游修复 |
 | **与 ADR** | ADR-0003 FunASR-first ✅；Nano 仍在 FunASR 栈内 |
-| **排序** | **Qwen3-Align Go/No-go 之后** 再 Nano spike（backlog §7：质量线 Qwen → 速度线 Nano） |
+| **排序** | vLLM CUDA spike **不挡 v1.1**；与 **R3g-B-Align** 并行雷达 |
 
 ---
 
@@ -262,18 +263,19 @@ for sent in res[0]["sentence_info"]:
 【P1】② R3g-B-Align spike：代码接线 ✅ · 手测待跑（2–4d）
     ├─ Go  → Qwen3 catalog 产品化 intent
     └─ No-go ↓
-【P2】① Fun-ASR-Nano spike（2–4d，源码 venv）
-    ├─ Go  → Nano catalog 或替换 SenseVoice 生态位
+【P2】① Fun-ASR-Nano PyTorch spike ✅ **Defer** 2026-06-17
+    ├─ vLLM CUDA spike（research ✅，待 GPU 机）
     └─ 并行雷达 FireRed（只文档，不编码）
-【P2】③ R3g-D diarization Epic（依赖 ① + schema）
+【P2】③ R3g-D diarization Epic（依赖 Nano Go 或 Paraformer + schema）
 ```
 
 | 优先级 | ID | 估时 | 依赖 |
 |--------|-----|------|------|
 | **P1** | ACC-EVAL-2 | 1–2d | 无 |
 | **P1** | R3g-B-Align spike | 2–4d | funasr≥1.3.3 ✅ |
-| **P2** | Fun-ASR-Nano spike | 2–4d | Align 结论；R3h-ASR-VER 建议 |
-| **P2** | R3g-D diarization | 大 | ① + schema |
+| **P2** | Fun-ASR-Nano PyTorch | — | ❌ **Defer** 2026-06-17 |
+| **P2** | Fun-ASR-Nano vLLM | 2–4d CUDA | research ✅ |
+| **P2** | R3g-D diarization | 大 | Nano Go 或 schema 先行 |
 | **雷达** | FireRedASR2S | — | ADR-0003；不 v1 编码 |
 
 ---
@@ -302,3 +304,4 @@ for sent in res[0]["sentence_info"]:
 | 日期 | 说明 |
 |------|------|
 | 2026-06-11 | 初版：paperswithcode 迁移说明 + 前四项（Nano / Qwen+Align / diarization / eval） |
+| 2026-06-17 | **① PyTorch spike Defer**；vLLM research ✅；§5 执行顺序刷新 |

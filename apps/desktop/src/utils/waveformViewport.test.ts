@@ -3,8 +3,19 @@ import {
   resolveTierScrollLeftPx,
   resolveTierViewportMetrics,
   resolveTierViewportWidthPx,
+  resolveWaveformSegmentLayoutHeightPx,
   resolveWaveformVerticalScalePreview,
 } from "./waveformViewport";
+
+describe("resolveWaveformSegmentLayoutHeightPx", () => {
+  it("uses visual height while preview is active", () => {
+    expect(resolveWaveformSegmentLayoutHeightPx(160, 96, true)).toBe(160);
+  });
+
+  it("uses painted height when preview is inactive", () => {
+    expect(resolveWaveformSegmentLayoutHeightPx(160, 96, false)).toBe(96);
+  });
+});
 
 describe("resolveWaveformVerticalScalePreview", () => {
   it("stretches visual height to match painted canvas during drag", () => {

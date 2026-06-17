@@ -28,7 +28,7 @@ test.describe("desktop core journey smoke (mocked Tauri)", () => {
     await expect(page.getByRole("heading", { name: "新建项目" })).toBeVisible();
 
     const createButton = page
-      .locator('form:has(button:text("创建空项目"))')
+      .locator('[data-panel-id="create-project-modal-v2"]')
       .getByRole("button", { name: "创建空项目" });
     await expect(createButton).toBeVisible();
     await createButton.dispatchEvent("click");

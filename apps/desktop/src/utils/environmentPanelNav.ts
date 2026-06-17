@@ -2,6 +2,7 @@ export type EnvNavId =
   | "local-asr"
   | "online-stt"
   | "llm"
+  | "appearance"
   | "profile"
   | "shortcuts"
   | "quality"
@@ -24,6 +25,7 @@ export const ENV_NAV_ITEM_DEFS: EnvNavItemDef[] = [
   { id: "local-asr", label: "本机 ASR", description: "侧车、模型与诊断" },
   { id: "online-stt", label: "在线 STT", description: "厂商与 API Key" },
   { id: "llm", label: "LLM 配置", description: "云端或本机 Ollama" },
+  { id: "appearance", label: "外观", description: "界面主题与主题色" },
   { id: "shortcuts", label: "快捷键", description: "编辑器键盘操作" },
   { id: "profile", label: "配置迁移", description: "导入 / 导出偏好" },
   { id: "quality", label: "质量评测", description: "CER / 发版门禁" },

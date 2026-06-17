@@ -32,6 +32,20 @@ import {
   type TranscribeProgress,
 } from "./transcribePreviewState";
 import type { LocalTranscribePreflight } from "./transcribeJobHelpers";
+import type { BusyReason } from "./useProjectCrudController";
+
+export type ExecuteTranscribeOptions = {
+  /** Parent holds `batch_transcribe` busy; skip inner begin/end busy. */
+  batchChild?: boolean;
+  /** Required for batch child when editor `currentFileId` may be stale. */
+  fileId?: string;
+  /** Batch queue: skip per-file delivery toasts. */
+  suppressUserToasts?: boolean;
+};
+
+export type ExecuteTranscribeResult =
+  | { ok: true }
+  | { ok: false; message: string };
 
 type CloseGate = Pick<
   ReturnType<typeof useProjectCloseGateController>,
@@ -46,6 +60,7 @@ type Mutations = Pick<ReturnType<typeof useSegmentMutationController>, "resetMut
 
 type Args = {
   busy: Busy["busy"];
+  busyReason: BusyReason | null;
   beginBusy: Busy["beginBusy"];
   endBusy: Busy["endBusy"];
   current: Editor["current"];
@@ -65,6 +80,7 @@ type Args = {
 export function useTranscribeJobExecute(args: Args) {
   const {
     busy,
+    busyReason,
     beginBusy,
     endBusy,
     current,
@@ -113,9 +129,13 @@ export function useTranscribeJobExecute(args: Args) {
   }, []);
 
   const finishTranscribeSuccessCb = useCallback(
-    async (fileId: string, out: p1.RunTranscribeOutcome) => {
-      if (!current) return;
-      await finishTranscribeSuccess({
+    async (
+      fileId: string,
+      out: p1.RunTranscribeOutcome,
+      suppressUserToasts: boolean,
+    ): Promise<boolean> => {
+      if (!current) return false;
+      return finishTranscribeSuccess({
         fileId,
         out,
         projectId: current.id,
@@ -129,6 +149,7 @@ export function useTranscribeJobExecute(args: Args) {
         setTranscribeFailureDiag,
         setTranscribeHints,
         setError,
+        suppressUserToasts,
       });
     },
     [
@@ -142,15 +163,21 @@ export function useTranscribeJobExecute(args: Args) {
     ],
   );
 
-  const executeTranscribe = useCallback(async () => {
-    await awaitEnvironmentCapabilityRefresh();
+  const executeTranscribe = useCallback(async (opts?: ExecuteTranscribeOptions): Promise<ExecuteTranscribeResult> => {
+    if (!opts?.batchChild) {
+      await awaitEnvironmentCapabilityRefresh();
+    }
     if (transcribeSource === "online") {
       await ensureSttOnlineApiKeyForSession();
     }
+    const targetFileId = opts?.fileId ?? currentFileId;
     const block = resolveTranscribeExecuteBlock({
       busy,
+      busyReason,
+      batchChild: opts?.batchChild,
       hasCurrent: !!current,
       currentFileId,
+      targetFileId,
       localTranscribePreflight,
       source: transcribeSource,
     });
@@ -158,12 +185,16 @@ export function useTranscribeJobExecute(args: Args) {
       if (block !== "busy") {
         setError(block);
       }
-      return;
+      return { ok: false, message: block === "busy" ? "当前有任务进行中" : block };
     }
-    const fileId = currentFileId!;
-    setTranscribeStartDialogOpen(false);
+    const fileId = targetFileId!;
+    if (!opts?.batchChild) {
+      setTranscribeStartDialogOpen(false);
+    }
     clearScheduledAutoSave?.();
-    beginBusy("transcribe");
+    if (!opts?.batchChild) {
+      beginBusy("transcribe");
+    }
     pollAbortRef.current?.abort();
     pollAbortRef.current = new AbortController();
     setError("");
@@ -177,6 +208,7 @@ export function useTranscribeJobExecute(args: Args) {
     transcribeStartedAtRef.current = Date.now();
     const restoreSnapshot = snapshotSegmentsForRestore(getCurrentSegmentsSnapshot());
     segmentPublish.publishTranscribeClear();
+    const suppressUserToasts = Boolean(opts?.suppressUserToasts ?? opts?.batchChild);
     try {
       const online =
         transcribeSource === "online" ? tryBuildOnlineTranscribeBridgePayload() : null;
@@ -199,19 +231,27 @@ export function useTranscribeJobExecute(args: Args) {
         activeJobIdRef.current = requestId;
         out = await p1.projectRunTranscribe(fileId, asrBaseUrl(), online ?? null, requestId);
       }
-      await finishTranscribeSuccessCb(fileId, out);
+      const produced = await finishTranscribeSuccessCb(fileId, out, suppressUserToasts);
+      if (!produced) {
+        return { ok: false, message: "转写未产出可用语段。" };
+      }
+      return { ok: true };
     } catch (e) {
       segmentPublish.publishTranscribeRestore(restoreSnapshot);
       if (isTranscribeUserCancellation(e) || isTranscribeInvokeCancelled(e)) {
         setTranscribeHints([]);
         setTranscribeWarnings([]);
         setTranscribeFailureDiag(null);
-        pushTranscribeHintsToToast([TRANSCRIBE_CANCELLED_HINT]);
-      } else {
-        const snap = await p1.getLastTranscribeTimeline().catch(() => null);
-        setTranscribeFailureDiag(snap);
-        setError(humanizeInvokeError(e));
+        if (!suppressUserToasts) {
+          pushTranscribeHintsToToast([TRANSCRIBE_CANCELLED_HINT]);
+        }
+        return { ok: false, message: TRANSCRIBE_CANCELLED_HINT };
       }
+      const snap = await p1.getLastTranscribeTimeline().catch(() => null);
+      setTranscribeFailureDiag(snap);
+      const message = humanizeInvokeError(e);
+      setError(message);
+      return { ok: false, message };
     } finally {
       pollAbortRef.current?.abort();
       pollAbortRef.current = null;
@@ -219,10 +259,13 @@ export function useTranscribeJobExecute(args: Args) {
       userCancelRequestedRef.current = false;
       setTranscribeCancelling(false);
       setTranscribeProgress(null);
-      endBusy();
+      if (!opts?.batchChild) {
+        endBusy();
+      }
     }
   }, [
     busy,
+    busyReason,
     current,
     currentFileId,
     finishTranscribeSuccessCb,

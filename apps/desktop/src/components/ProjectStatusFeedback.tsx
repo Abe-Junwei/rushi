@@ -84,7 +84,7 @@ export function TranscribeDiagBanner({
   const showEnv = onOpenEnvironment && shouldShowTranscribeEnvAction(diag);
 
   return (
-    <div className="flex flex-col items-start justify-between gap-4 rounded-lg border border-zen-cinnabar/20 bg-zen-cinnabar/10 px-4 py-4 text-zen-cinnabar shadow-sm sm:flex-row sm:items-start">
+    <div className="flex flex-col items-start justify-between gap-4 rounded-lg border border-zen-cinnabar/20 bg-zen-cinnabar/10 px-4 py-4 text-zen-cinnabar sm:flex-row sm:items-start">
       <div className="flex items-start gap-3">
         <TriangleAlert
           className={`${LUCIDE_ICON_SIZE_LG} shrink-0 text-zen-cinnabar`}
@@ -184,7 +184,7 @@ export function AsrErrorBanner({
   onOpenEnvironment: () => void;
 }) {
   return (
-    <div className="flex flex-col items-start justify-between gap-4 rounded-lg border border-zen-cinnabar/20 bg-zen-cinnabar/10 px-4 py-4 text-zen-cinnabar shadow-sm sm:flex-row sm:items-center">
+    <div className="flex flex-col items-start justify-between gap-4 rounded-lg border border-zen-cinnabar/20 bg-zen-cinnabar/10 px-4 py-4 text-zen-cinnabar sm:flex-row sm:items-center">
       <div className="flex items-start gap-3 sm:items-center">
         <TriangleAlert
           className={`${LUCIDE_ICON_SIZE_LG} shrink-0 text-zen-cinnabar`}

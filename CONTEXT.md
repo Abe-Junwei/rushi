@@ -94,6 +94,22 @@ _Avoid_: region, marker（WS 语境）
 一次交付一个可验收端到端路径；spec 与 TDD 均按此粒度拆分。
 _Avoid_: 横向批次, big bang
 
+**Main shell surface**（主壳层）:
+Welcome / Project Hub / Editor 的导航与 chrome（侧栏、顶栏、波形 tier 外壳、minimap 条等）统一 `notion-*` 中性底与 `notion-divider` 边线。
+_Avoid_: 壳层使用 zen-paper, surface-card, ochre
+
+**Content decoration surface**（内容装饰面）:
+暖色 legacy token（`zen-paper`、`surface-card` 等）仅用于内容区装饰（Welcome hero、语段卡等），不进入导航壳层。
+_Avoid_: 侧栏/工具栏暖纸底
+
+**Dual accent**（双 accent）:
+**Indigo**（`zen-indigo`）= 编辑选中 / 焦点（语段行、波形 overlay）；**Saffron**（`zen-saffron` / `primary-action`）= CTA、进度、手动编辑提示；AI/LLM 语义 chip 沿用 indigo 族。
+_Avoid_: 语段选中改 saffron, 单一 accent 覆盖全部高亮
+
+**Flat shell elevation**（扁平壳层层次）:
+壳层与挂 `body` 的浮层（对话框、菜单、Toast）均靠背景差 + `1px notion-border` 分层，不用 drop shadow。
+_Avoid_: shadow-2xl, 侧栏 edge shadow, 壳层阴影分层
+
 ## Language — 工程与 spec
 
 **Controller**:
@@ -132,3 +148,5 @@ _Avoid_: design doc（泛指）
 - 「文件 Hub」与「项目 Hub」— 统一称 **Project Hub**；`closeFile` 指 Editor → Hub，不是关项目。
 - 「ready / cached / 可转写」— 必须标明 D1–D6 中哪一维；禁止混用全局 health 与用户所选 SKU。
 - 「ticket / issue」— 本仓工作真源在 `docs/execution/specs/`，不是 GitHub Issues。
+- 「选中 / highlight」— 须区分 **indigo**（编辑选中）与 **saffron**（动作 / 进度 / CTA）；禁止混为单一 accent。
+- 「编辑页 / 视角 / 层次感」— 全应用壳层精调时 scope = Welcome → Hub → Editor → 环境浮层；**Editor** 仅指已打开文件的转写工作区。

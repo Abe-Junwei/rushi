@@ -1,4 +1,5 @@
 import { ChevronDown, ChevronUp, Search } from "lucide-react";
+import type { Ref } from "react";
 import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY, CONTROL_TEXT_INPUT } from "../config/controlStyles";
 import { PANEL_CONTROL_TYPOGRAPHY, PANEL_TYPOGRAPHY } from "../config/typography";
 import type { FindReplaceDialogState } from "../pages/useFindReplaceController";
@@ -62,6 +63,7 @@ function FindResultList({
 export type FindReplaceDialogBodyProps = {
   state: PanelState;
   busy: boolean;
+  measureRef?: Ref<HTMLDivElement>;
   onFindChange: (value: string) => void;
   onReplaceChange: (value: string) => void;
   onRunSearch: () => void;
@@ -76,6 +78,7 @@ export type FindReplaceDialogBodyProps = {
 export function FindReplaceDialogBody({
   state,
   busy,
+  measureRef,
   onFindChange,
   onReplaceChange,
   onRunSearch,
@@ -116,7 +119,7 @@ export function FindReplaceDialogBody({
   };
 
   return (
-    <FloatingPanelDialogRoot className="gap-2" onKeyDown={handlePanelKeyDown}>
+    <FloatingPanelDialogRoot className="gap-2" measureRef={measureRef} hasFooter fillHeight onKeyDown={handlePanelKeyDown}>
       <div className="shrink-0 space-y-3">
         <div className="grid gap-1">
           <label htmlFor="find-replace-find-input" className="text-xs text-notion-text-muted">

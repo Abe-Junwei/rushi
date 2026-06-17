@@ -92,19 +92,23 @@ export function WelcomeSidebarNav({
 
   return (
     <div className="border-b border-notion-divider">
-      <div className="px-5 pb-4 pt-6">
-        <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded bg-zen-primary-action-bg text-zen-primary-action-fg">
-            <BrandMark size={18} variant="onPrimary" />
-          </div>
-          <div>
-            <h1 className="m-0 font-serif text-heading font-medium leading-[1.4] text-notion-text">如是我闻</h1>
-            <p className="m-0 mt-0.5 text-label font-medium leading-snug text-notion-text-muted">本地课录音转写与校对</p>
+      {!editorMode ? (
+        <div className="px-5 pb-4 pt-6">
+          <div className="flex items-center gap-3">
+            <div className="flex h-8 w-8 items-center justify-center rounded bg-zen-primary-action-bg text-zen-primary-action-fg">
+              <BrandMark size={18} variant="onPrimary" />
+            </div>
+            <div>
+              <h1 className="m-0 font-serif text-heading font-medium leading-[1.4] text-notion-text">如是我闻</h1>
+              <p className="m-0 mt-0.5 text-label font-medium leading-snug text-notion-text-muted">
+                本地课录音转写与校对
+              </p>
+            </div>
           </div>
         </div>
-      </div>
+      ) : null}
       <nav aria-label="主工作区">
-        <div className={WORKSPACE_SIDEBAR_NAV_STACK}>
+        <div className={[WORKSPACE_SIDEBAR_NAV_STACK, editorMode ? "pt-3" : ""].filter(Boolean).join(" ")}>
           {navItems
             .filter((item) => !("hidden" in item && item.hidden))
             .map((item) => (

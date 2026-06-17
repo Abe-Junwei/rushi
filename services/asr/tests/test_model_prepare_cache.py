@@ -27,6 +27,13 @@ def test_recognizer_cache_spec_paraformer_uses_model_pt() -> None:
     assert weight == "model.pt"
 
 
+def test_recognizer_cache_spec_nano_omits_tokens_json() -> None:
+    req, weight, _ = recognizer_cache_spec("FunAudioLLM/Fun-ASR-Nano-2512")
+    assert req == ("model.pt", "config.yaml")
+    assert weight == "model.pt"
+    assert "tokens.json" not in req
+
+
 def test_looks_like_complete_qwen_dir(tmp_path: Path) -> None:
     d = tmp_path / "qwen"
     d.mkdir()

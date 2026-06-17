@@ -24,9 +24,9 @@ export function OnlineSttProviderPicker({ busy, providerId, onProviderChange }: 
   const providers = sttOnlineProviderPickerOptions();
 
   return (
-    <div className="flex flex-col gap-3">
+    <div className="flex flex-col gap-2">
       <div
-        className="flex gap-2 overflow-x-auto pb-1 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+        className="flex gap-2 overflow-x-auto pb-0.5 [-ms-overflow-style:none] [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
         role="radiogroup"
         aria-label="在线 STT 厂商"
       >
@@ -50,8 +50,13 @@ export function OnlineSttProviderPicker({ busy, providerId, onProviderChange }: 
       </div>
 
       {providerDef ? (
-        <div className="flex flex-col gap-2">
-          <p className="text-body leading-relaxed text-notion-text-muted">{providerDef.description}</p>
+        <div className="flex flex-col gap-1.5">
+          <div className="flex flex-col gap-1">
+            <p className="m-0 text-body leading-snug text-notion-text-muted">{providerDef.description}</p>
+            {providerDef.billingNote ? (
+              <p className="m-0 text-body leading-snug text-notion-text-muted">{providerDef.billingNote}</p>
+            ) : null}
+          </div>
           <div className="flex flex-wrap gap-1.5">
             {providerDef.experimental ? (
               <span className="rounded-full bg-zen-saffron/15 px-2 py-0.5 text-label font-medium text-notion-text">
@@ -76,7 +81,7 @@ export function OnlineSttProviderPicker({ busy, providerId, onProviderChange }: 
             ) : null}
           </div>
           {providerDef.docsUrl && providerDef.docsUrl.startsWith("http") && !providerDef.docsUrl.includes("example.com") ? (
-            <p className="text-label text-notion-text-muted">
+            <p className="m-0 text-label leading-snug text-notion-text-muted">
               文档:{" "}
               <a href={providerDef.docsUrl} target="_blank" rel="noreferrer" className={ENV_EXTERNAL_LINK_CLASS}>
                 {providerDef.docsUrl.replace(/^https?:\/\//, "").split("/")[0]}

@@ -1,6 +1,6 @@
 # Spec(plan): R3g-C — Fun-ASR-Nano-2512 SKU Spike
 
-> **状态**：🟡 立项 / spike 待执行  
+> **状态**：🟢 spike 执行中（Phase 0）  
 > **调研**：[`r3g-c-funasr-nano-mimo-v2-5-asr-feasibility-research.md`](./r3g-c-funasr-nano-mimo-v2-5-asr-feasibility-research.md)  
 > **Intent**：[`r3g-c-funasr-nano-intent.md`](./r3g-c-funasr-nano-intent.md)  
 > **验收**：[`r3g-c-funasr-nano-acceptance.md`](./r3g-c-funasr-nano-acceptance.md)

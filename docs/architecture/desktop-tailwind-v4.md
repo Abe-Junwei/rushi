@@ -23,7 +23,7 @@ DESIGN.md → tokens.css (:root hex) → @theme (zen-tailwind.css) → utilities
 |-------|------|
 | `rounded-sm` | 接受 v4 默认 **4px**（与 DESIGN / `controlStyles` 一致） |
 | `shadow-sm` | 接受 v4 默认；过重则 follow-up pin |
-| 模态遮罩 | `bg-zen-ink/10`，无 blur |
+| 模态遮罩 | `bg-[var(--overlay-scrim-bg)]`（真源 `tokens.css`），无 blur |
 
 ## 结构 CSS 真源
 

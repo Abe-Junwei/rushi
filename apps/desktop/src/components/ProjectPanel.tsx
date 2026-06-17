@@ -1,5 +1,6 @@
 import { useTranscriptionLayer } from "../pages/useTranscriptionLayer";
 import { useProjectPanelShell } from "../pages/useProjectPanelShell";
+import { MAIN_SHELL_SURFACE_CLASS } from "../config/shellVisualTokens";
 import { EnvironmentPanel } from "./EnvironmentPanel";
 import { FloatingPanelTemplate } from "./PanelTemplate";
 import { EditorView } from "./EditorView";
@@ -113,8 +114,8 @@ export function ProjectPanel() {
       className={[
         "workspace relative flex h-full min-h-0 w-full min-w-0 flex-1 flex-col overflow-hidden select-none",
         workspaceShellVariant !== "editor"
-          ? "rounded-none border-0 bg-notion-sidebar font-sans antialiased text-notion-text"
-          : "rounded-none border-0 bg-notion-bg font-sans antialiased text-notion-text",
+          ? `rounded-none border-0 ${MAIN_SHELL_SURFACE_CLASS.sidebarBg} font-sans antialiased text-notion-text`
+          : `rounded-none border-0 ${MAIN_SHELL_SURFACE_CLASS.pageBg} font-sans antialiased text-notion-text`,
       ].join(" ")}
     >
       {envOpen ? (
@@ -200,7 +201,7 @@ export function ProjectPanel() {
               />
             }
           >
-            <main className="relative flex min-h-[12rem] min-w-0 flex-1 flex-col bg-notion-bg lg:min-h-0">
+            <main className={`relative flex min-h-[12rem] min-w-0 flex-1 flex-col ${MAIN_SHELL_SURFACE_CLASS.pageBg} lg:min-h-0`}>
               {transcribeBanners}
               <EditorView
                 controller={c}
@@ -222,6 +223,7 @@ export function ProjectPanel() {
 
       {c.busy &&
       c.busyReason !== "transcribe" &&
+      c.busyReason !== "batch_transcribe" &&
       !c.duplicateImportConfirmOpen &&
       !c.duplicateImportChecking &&
       !(c.busyReason === "stage_b" && c.postTranscribeStageBDialog.phase === "loading") ? (

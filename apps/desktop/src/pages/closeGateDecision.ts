@@ -11,7 +11,7 @@ export type NavigateGuardDecision =
   | { kind: "unsaved-block" };
 
 export function isTranscribeBusy(busy: boolean, busyReason: BusyReason | null): boolean {
-  return busy && busyReason === "transcribe";
+  return busy && (busyReason === "transcribe" || busyReason === "batch_transcribe");
 }
 
 export function decideNavigateGuard(input: NavigateGuardInput): NavigateGuardDecision {

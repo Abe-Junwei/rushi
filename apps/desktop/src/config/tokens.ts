@@ -48,6 +48,20 @@ export const COLORS = {
   notionCalloutBg: "#f1f1ef",
   notionCalloutBorder: "#e3e2e0",
 
+  /** 主壳层 — 对齐 tokens.css --main-shell-* */
+  mainShellBg: "#ffffff",
+  mainShellSidebarBg: "#f7f7f5",
+  mainShellBorder: "#e3e2e0",
+  mainShellMinimapBg: "#f7f7f5",
+  /** 内容装饰面 — 不进导航壳 */
+  contentDecorationPaper: "#F2EFE8",
+  contentDecorationCard: "#f5f0e0",
+  /** Dual accent */
+  accentEdit: "#3D4F5D",
+  accentAction: "#C58A43",
+  accentActionStrong: "#85530f",
+  shellElevationShadow: "none",
+
   /** WaveSurfer 白底波形条（与 tailwind `zen-wf-*` 同源） */
   waveformSurface: "#ffffff",
   waveformWave: "#c4c4c8",
@@ -59,7 +73,8 @@ export const COLORS = {
    */
   waveformProgressPlayed: "#8c8176",
   waveformCursor: "#6a6a6f",
-  /** 波形 region 叠色（与 waveformRegionFillColor 一致） */
+  /** 波形 region 叠色（与 segmentChrome.ts waveformRegionFillColor 一致） */
   waveformRegionLaneLow: "#9ca3af",
   waveformRegionLaneIdle: "#d1d5db",
+  waveformRegionVisitedMix: "#85530f",
 } as const;

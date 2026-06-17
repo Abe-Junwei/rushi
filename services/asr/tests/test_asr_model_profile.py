@@ -15,12 +15,15 @@ from rushi_asr.segmentation import funasr_generate_kwargs
 PARA = "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch"
 SENSE = "iic/SenseVoiceSmall"
 QWEN = "Qwen/Qwen3-ASR-0.6B"
+NANO = "FunAudioLLM/Fun-ASR-Nano-2512"
 
 
 def test_resolve_profiles() -> None:
     assert resolve_asr_model_profile(SENSE).profile_id == "sensevoice_small_v1"
     assert resolve_asr_model_profile(PARA).profile_id == "paraformer_vad_punc_v1"
     assert resolve_asr_model_profile(QWEN).sku_family == "qwen"
+    assert resolve_asr_model_profile(NANO).profile_id == "funasr_nano_2512_v1"
+    assert resolve_asr_model_profile(NANO).sku_family == "funasr_nano"
 
 
 def test_qwen_maps_zh_to_chinese(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -37,6 +40,23 @@ def test_qwen_with_forced_aligner_env_requests_timestamps(monkeypatch: pytest.Mo
     assert kwargs["return_time_stamps"] is True
     assert kwargs["merge_vad"] is False
     monkeypatch.delenv("RUSHI_FUNASR_FORCED_ALIGNER", raising=False)
+
+
+def test_nano_maps_zh_to_chinese_label() -> None:
+    kwargs = build_generate_kwargs(NANO, "zh", "制控", duration_sec=900.0)
+    assert kwargs["language"] == "中文"
+    assert kwargs["sentence_timestamp"] is True
+    assert kwargs["merge_vad"] is False
+    assert kwargs["batch_size"] == 1
+    assert "batch_size_s" not in kwargs
+    assert kwargs["hotwords"] == ["制控"]
+    assert "hotword" not in kwargs
+
+
+def test_nano_supported_generate_keys() -> None:
+    keys = supported_generate_param_keys(NANO)
+    assert "sentence_timestamp" in keys
+    assert "return_time_stamps" not in keys
 
 
 def test_paraformer_snapshot() -> None:

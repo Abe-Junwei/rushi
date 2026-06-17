@@ -8,7 +8,7 @@ export function resolveSavedApiKeyInputDisplay(args: {
 }): string {
   if (args.typedApiKey.length > 0) return args.typedApiKey;
   if (!args.savedApiKeyId?.trim()) return "";
-  if (args.keychainReady === false) return "";
+  if (args.keychainReady !== true) return "";
   return SAVED_API_KEY_MASK;
 }
 
@@ -20,7 +20,7 @@ export function isSavedApiKeyMaskDisplayed(
   return (
     typedApiKey.length === 0 &&
     Boolean(savedApiKeyId?.trim()) &&
-    keychainReady !== false
+    keychainReady === true
   );
 }
 
@@ -32,4 +32,12 @@ export function normalizeSavedApiKeyInputChange(
   if (!wasShowingMask) return nextValue;
   if (nextValue === "" || nextValue === SAVED_API_KEY_MASK) return "";
   return nextValue.replace(/•/g, "");
+}
+
+/** 用户在 mask 态清空输入时，应同步清除本地已存 Key 引用。 */
+export function shouldClearSavedKeyFromMaskInput(
+  wasShowingMask: boolean,
+  normalizedDraft: string,
+): boolean {
+  return wasShowingMask && normalizedDraft === "";
 }

@@ -28,9 +28,12 @@ type FinishTranscribeSuccessArgs = {
   setTranscribeFailureDiag: (diag: TranscribeTimelineSnapshot | null) => void;
   setTranscribeHints: (hints: string[]) => void;
   setError: (msg: string) => void;
+  /** Batch queue: skip per-file delivery toasts and onboarding sync. */
+  suppressUserToasts?: boolean;
 };
 
-export async function finishTranscribeSuccess(args: FinishTranscribeSuccessArgs): Promise<void> {
+/** `true` when segments were produced; `false` for empty outcome. */
+export async function finishTranscribeSuccess(args: FinishTranscribeSuccessArgs): Promise<boolean> {
   const {
     fileId,
     out,
@@ -45,6 +48,7 @@ export async function finishTranscribeSuccess(args: FinishTranscribeSuccessArgs)
     setTranscribeFailureDiag,
     setTranscribeHints,
     setError,
+    suppressUserToasts = false,
   } = args;
 
   resetMutationHistory();
@@ -76,15 +80,21 @@ export async function finishTranscribeSuccess(args: FinishTranscribeSuccessArgs)
     setTranscribeFailureDiag(failureDiag);
     setError("转写未产出可用语段。");
     setTranscribeHints([...userHints, ...formatTranscribeDiagSummary(failureDiag), ...diagLines]);
-    if (userHints.length > 0) {
-      pushTranscribeHintsToToast([presentation.summary, userHints[0]]);
-    } else {
-      pushTranscribeHintsToToast([presentation.summary]);
+    if (!suppressUserToasts) {
+      if (userHints.length > 0) {
+        pushTranscribeHintsToToast([presentation.summary, userHints[0]]);
+      } else {
+        pushTranscribeHintsToToast([presentation.summary]);
+      }
     }
-  } else {
-    setTranscribeFailureDiag(null);
-    setTranscribeHints([...userHints, ...diagLines]);
+    return false;
+  }
+
+  setTranscribeFailureDiag(null);
+  setTranscribeHints([...userHints, ...diagLines]);
+  if (!suppressUserToasts) {
     pushTranscribeDeliveryModeToast(presentation);
     syncOnboardingTranscribe();
   }
+  return true;
 }

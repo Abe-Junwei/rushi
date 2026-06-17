@@ -16,7 +16,8 @@ use url::Url;
 use super::postprocess_export_polish::{self, ExportPolishParsed};
 use super::{
     chat_completion_finish_reason, extract_chat_completion_text,
-    resolve_runtime_postprocess_config, PostprocessCancelState, PostprocessRuntimeBridge,
+    resolve_runtime_postprocess_config, PostprocessCancelState, PostprocessPromptOverrides,
+    PostprocessRuntimeBridge,
 };
 
 #[derive(Debug, Clone, Deserialize)]
@@ -79,6 +80,13 @@ pub async fn postprocess_export_polish(
     .map_err(|e| format!("无法解析 LLM 配置：{e}"))??;
 
     let rule_hints = req.rule_hints.as_deref().map(str::trim).unwrap_or("");
+    let prompt_overrides = req.runtime.prompt_overrides.clone();
+    if let Some(template) = prompt_overrides
+        .as_ref()
+        .and_then(|o| o.export_polish_instructions.as_deref())
+    {
+        postprocess_export_polish::validate_export_polish_instructions_template(template)?;
+    }
     let loopback = is_loopback_endpoint(&config.endpoint);
     let llm_cfg = ExportPolishLlmConfig {
         provider: config.provider.clone(),
@@ -139,6 +147,7 @@ pub async fn postprocess_export_polish(
             rule_hints,
             batch_note,
             request_id.as_deref(),
+            prompt_overrides.as_ref(),
         )
         .await?;
         batch_latencies.push(batch_ms);
@@ -187,9 +196,14 @@ async fn run_export_polish_batch(
     rule_hints: &str,
     batch_note: Option<(usize, usize)>,
     request_id: Option<&str>,
+    prompt_overrides: Option<&PostprocessPromptOverrides>,
 ) -> Result<(ExportPolishParsed, u64), String> {
+    let system_prompt = postprocess_export_polish::resolve_export_polish_system_prompt(
+        prompt_overrides.and_then(|o| o.export_polish_system.as_deref()),
+    );
+    let instructions_override = prompt_overrides.and_then(|o| o.export_polish_instructions.as_deref());
     let prompt = postprocess_export_polish::build_export_polish_prompt(
-        batch_body, line_count, rule_hints, batch_note,
+        batch_body, line_count, rule_hints, batch_note, instructions_override,
     );
     let char_count = batch_body.chars().count();
     let mut llm_body = json!({
@@ -198,7 +212,7 @@ async fn run_export_polish_batch(
         "messages": [
             {
                 "role": "system",
-                "content": "你是中文讲稿 ASR 润色助手。lines 会被程序原样写入导出稿，不得增删行。须逐行改正文错字、同音误识别、口语重复字并规范标点；另给 break_after_line。禁止 paragraphs 字段与整句编造。只输出合法 JSON。"
+                "content": system_prompt
             },
             {
                 "role": "user",

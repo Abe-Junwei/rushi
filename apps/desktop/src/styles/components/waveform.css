@@ -643,7 +643,7 @@
   transform: translateX(16px);
 }
 
-/** 波形总览：paper 底与下方 sidebar 底栏以色块分层，无额外边距。 */
+/** 波形总览：主壳 minimap 底与下方 sidebar 底栏以色块分层，无额外边距。 */
 .waveform-minimap-strip {
   box-sizing: border-box;
   display: flex;
@@ -651,7 +651,7 @@
   height: 56px;
   flex-shrink: 0;
   align-items: stretch;
-  background: var(--zen-paper);
+  background: var(--main-shell-minimap-bg);
 }
 
 .waveform-minimap-well {
@@ -678,7 +678,7 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  background: color-mix(in srgb, var(--zen-paper) 72%, transparent);
+  background: color-mix(in srgb, var(--main-shell-minimap-bg) 72%, transparent);
 }
 
 .waveform-minimap-viewport {
@@ -801,8 +801,8 @@
   content-visibility: auto;
   contain-intrinsic-size: auto 96px;
   border: none;
-  border-left: 1px solid color-mix(in srgb, var(--notion-text) 10%, transparent);
-  border-right: 1px solid color-mix(in srgb, var(--notion-text) 10%, transparent);
+  border-left: 1px solid color-mix(in srgb, var(--notion-text) 14%, transparent);
+  border-right: 1px solid color-mix(in srgb, var(--notion-text) 14%, transparent);
   border-radius: 0;
   cursor: grab;
   touch-action: none;

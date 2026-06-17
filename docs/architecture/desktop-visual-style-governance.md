@@ -19,8 +19,26 @@
 | 环境页 spacing | `apps/desktop/src/utils/environmentPanelNav.ts` | 表单区 / CTA 行 / 状态条 shell |
 | 环境状态色 | `apps/desktop/src/services/llm/llmEnvStatusTokens.ts` | `ENV_STATUS_*`（LLM + ASR 共用） |
 | 浮动对话框 | `FloatingPanelDialogLayout.tsx` + `COMPACT_DIALOG_LAYOUT` | footer / body padding |
+| **主壳层 / 扁平浮层** | `apps/desktop/src/config/shellVisualTokens.ts` + `tokens.css` `--main-shell-*` / `--overlay-panel-*` | 双 accent、无 shadow 壳层串 |
 
-**禁止**：业务组件内复制 `rounded-md border border-notion-border bg-notion-bg` 等 ad-hoc 控件串；禁止 `bg-[#...]`；禁止 `text-[Npx]` 与 CSS 裸 `font-size: Npx`（用 `text-*` 工具类或 `var(--text-*)`；行内 `0.85em` 相对值除外）。
+**禁止**：业务组件内复制 `rounded-md border border-notion-border bg-notion-bg` 等 ad-hoc 控件串；禁止 `bg-[#...]`；禁止 `text-[Npx]` 与 CSS 裸 `font-size: Npx`（用 `text-*` 工具类或 `var(--text-*)`；行内 `0.85em` 相对值除外）；**禁止**在壳层/浮层壳使用 `shadow-md` 及以上（须 `shadow-none` + `border-notion-border`）。
+
+---
+
+## 主壳层与双 accent（Round 1+）
+
+| Token / 常量 | 含义 |
+|--------------|------|
+| `--main-shell-bg` / `MAIN_SHELL_SURFACE_CLASS.pageBg` | Welcome · Hub · Editor 主区白底 |
+| `--main-shell-sidebar-bg` | 侧栏、波形 tier 外壳、**minimap 条（R2 接线）** |
+| `--main-shell-border` | 壳层 hairline（侧栏右边线等） |
+| `--content-decoration-paper` | 仅内容装饰；**禁止**导航壳 |
+| `--accent-edit`（`zen-indigo`） | 语段/波形 **编辑选中** |
+| `--accent-action`（`zen-saffron`） | CTA / 进度 / 播放头强调 |
+| `FLAT_OVERLAY_PANEL_SHELL_CLASS` | 对话框 / 菜单 / Toast 壳：`rounded-lg border … shadow-none` |
+| `--shell-elevation-shadow: none` | 全局扁平 elevation 声明 |
+
+**R7 UI 债务（守卫 warning）**：已全部接线 — 见 `SHELL_SURFACE_MIGRATION_MAP` 与 `shellVisualTokens.ts`。
 
 ---
 
@@ -64,6 +82,9 @@
 3. Tailwind arbitrary hex 颜色（warning，逐步收敛）
 4. **`text-[Npx]` arbitrary 字号**（error → 用 `text-display/heading/title/body/label`）
 5. **CSS 裸 `font-size: Npx`**（error → 用 `var(--text-*)`；`tokens.css` 与 `0.85em` 除外）
+6. **壳层/浮层 `shadow-md|lg|xl|2xl`**（warning → 改 `FLAT_OVERLAY_PANEL_SHELL_CLASS` / `shadow-none`；见 `shellVisualTokens.ts`）
+7. **壳层 CSS `box-shadow` 债务**（warning → `workspace.css` 侧栏、`panels.css` `.panel` 等）
+8. **导航壳层 `bg-zen-paper`**（warning → `MAIN_SHELL_SURFACE_CLASS`；见 `shellVisualTokens.ts`）
 
 ---
 
