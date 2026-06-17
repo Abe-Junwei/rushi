@@ -18,7 +18,7 @@
 | R3 | 输入控件 → `CONTROL_TEXT_*` | ✅ |
 | R4 | 按钮漂移 + dialog layout token | ✅ |
 | R5 | `ENV_STATUS_*` 命名 + 清理 alias/shadow | ✅ |
-| R6 | 全量验证 + README 索引 | 本 commit |
+| R6 | 全量验证 + README 索引 | ✅ `c061375` |
 
 ## 验证
 
