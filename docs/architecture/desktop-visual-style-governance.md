@@ -25,7 +25,7 @@
 
 - **标准按钮**：`h-8` · `rounded-sm` (4px) · `text-[12px]` semibold · `shadow-none`
 - **Prominent CTA**：`h-10` · 仍 `rounded-sm` · `text-sm`
-- **输入**：`CONTROL_TEXT_INPUT` / `CONTROL_SELECT` / `CONTROL_TEXTAREA`
+- **输入**：`CONTROL_TEXT_INPUT` / `CONTROL_SELECT` / `CONTROL_TEXTAREA`（须含 `box-border`；portal 对话框不在 `.workspace` 内）
 - **图标 ghost**：`CONTROL_BTN_ICON_GHOST`（28px 方块，Hub / 历史 / 顶栏）
 - **分段 toggle**：`envSegmentedToggleTrackClass` + `envSegmentedToggleBtnClass`（compact 用于对话框）
 
@@ -39,6 +39,16 @@
 | `ENV_PANEL_ACTION_ROW_CLASS` | 仅 `mt-4` | 父级**不得**再有 `gap-*` |
 | `ENV_PANEL_BUTTON_ROW_CLASS` | 按钮行 `gap-2` | 在 gap 列内，**禁止**再加 `mt-*` |
 | `ENV_STATUS_BANNER_SHELL_CLASS` | `rounded-lg px-4 py-3` | LLM / ASR 状态条共用 |
+
+---
+
+## Portal 浮层与 v4 级联
+
+| 场景 | 约束 |
+|------|------|
+| `DialogOverlay` / `SegmentContextMenu`（挂 `body`） | 无 `.workspace` 的 `box-sizing`；`CONTROL_TEXT_*` 必须 `box-border` |
+| `.dropdown-item` | 须在 `@layer base`（`workspace.css`）；hover 用 base 规则或 utilities，**禁止**未分层 `background` 压过 `@layer utilities` |
+| 右键菜单高亮 | `dropdown-item` + `hover:bg-notion-sidebar-hover`；子菜单展开态用 `bg-notion-sidebar-hover` |
 
 ---
 

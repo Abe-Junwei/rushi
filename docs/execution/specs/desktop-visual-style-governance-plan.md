@@ -26,7 +26,13 @@
 npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs
 ```
 
-手测：环境页 LLM/ASR 表单 CTA 间距、状态条圆角、查找替换对话框、备注对话框。
+手测：环境页 LLM/ASR 表单 CTA 间距、状态条圆角、查找替换对话框、备注对话框、右键菜单 hover — ✅ 2026-06-17
+
+## 后续修复（PR #19）
+
+| Commit | 内容 |
+|--------|------|
+| `166a357` | portal 对话框 `box-border`；`.dropdown-item` 移入 `@layer base` 恢复菜单高亮 |
 
 ## 不做什么
 
