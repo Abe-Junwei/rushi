@@ -73,9 +73,11 @@ export function useProjectLifecycleEditorStack(args: UseProjectLifecycleEditorSt
     deleteSegmentIndices: mutations.deleteSegmentIndices,
   });
 
+  const getCurrentSegmentsSnapshot = useCallback(() => segmentsRef.current, [segmentsRef]);
+
   const dirty = useSegmentDirtyState({
     currentFileId,
-    segmentsRef,
+    getCurrentSegmentsSnapshot,
     flushSegmentTextDrafts: mutations.flushSegmentTextDrafts,
   });
 

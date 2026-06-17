@@ -35,14 +35,12 @@ function checkTsFile(fullPath) {
     if (hookTotal > 12) warnings.push(`${rel}: ${hookTotal} 个 hook，超过 12 个阈值`);
   }
 
-  // segmentsRef 直接赋值须仅在 editor state / ref sync 模块（结构 mutation 走 publishSegmentStructureMutation）
+  // segmentsRef 直接赋值须仅在 editor state / ref sync / publish 模块；
+  // 结构 mutation 文件只允许读 ref 并经 publishSegmentStructureMutation 发布。
   const segmentsRefAssignAllowlist = [
     "apps/desktop/src/pages/useProjectEditorState.ts",
     "apps/desktop/src/pages/segmentSegmentsRefSync.ts",
     "apps/desktop/src/pages/flushSegmentTextDrafts.ts",
-    "apps/desktop/src/pages/segmentMutationMergeDelete.ts",
-    "apps/desktop/src/pages/segmentMutationInsert.ts",
-    "apps/desktop/src/pages/useSegmentSplitController.ts",
   ];
   if (
     /segmentsRef\.current\s*=/.test(source) &&
@@ -65,6 +63,9 @@ function checkTsFile(fullPath) {
     }
     if (!/segmentsRef\.current/.test(source)) {
       errors.push(`${rel}: 结构 mutation 须读取 segmentsRef.current`);
+    }
+    if (!/publishSegmentStructureMutation/.test(source)) {
+      errors.push(`${rel}: 结构 mutation 须经由 publishSegmentStructureMutation 发布`);
     }
   }
 

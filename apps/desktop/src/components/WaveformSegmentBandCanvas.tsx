@@ -146,6 +146,11 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
       window.removeEventListener("resize", schedulePaint);
       if (paintRafId) cancelAnimationFrame(paintRafId);
     };
+  }, [tierScrollRef]);
+
+  // Data and committed scroll changes only schedule a paint; listener ownership stays stable.
+  useLayoutEffect(() => {
+    schedulePaintRef.current?.();
   }, [
     layoutHeightPx,
     segments,
@@ -159,13 +164,9 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
     selectedIndices,
     dominantSpanIndices,
     draftIdx,
-    tierScrollRef,
+    tierScrollLayout.scrollLeftPx,
+    tierScrollLayout.clientWidthPx,
   ]);
-
-  // Wheel-forward / programmatic scroll often skips `scroll` events — layout commits via onTierScroll.
-  useLayoutEffect(() => {
-    schedulePaintRef.current?.();
-  }, [tierScrollLayout.scrollLeftPx, tierScrollLayout.clientWidthPx]);
 
   return (
     <canvas

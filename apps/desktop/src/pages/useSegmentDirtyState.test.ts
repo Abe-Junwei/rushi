@@ -9,12 +9,12 @@ function seg(text: string, idx = 0): SegmentDto {
 
 describe("useSegmentDirtyState", () => {
   it("reports no dirty when snapshot matches", () => {
-    const segmentsRef = { current: [seg("a")] };
+    let currentSegments = [seg("a")];
     const flush = vi.fn();
     const { result } = renderHook(() =>
       useSegmentDirtyState({
         currentFileId: "f1",
-        segmentsRef,
+        getCurrentSegmentsSnapshot: () => currentSegments,
         flushSegmentTextDrafts: flush,
       }),
     );
@@ -24,26 +24,26 @@ describe("useSegmentDirtyState", () => {
   });
 
   it("reports dirty after text change", () => {
-    const segmentsRef = { current: [seg("a")] };
+    let currentSegments = [seg("a")];
     const { result } = renderHook(() =>
       useSegmentDirtyState({
         currentFileId: "f1",
-        segmentsRef,
+        getCurrentSegmentsSnapshot: () => currentSegments,
         flushSegmentTextDrafts: vi.fn(),
       }),
     );
     act(() => result.current.markSegmentsSaved());
-    segmentsRef.current = [seg("b")];
+    currentSegments = [seg("b")];
     expect(result.current.hasUnsavedSegmentChanges()).toBe(true);
   });
 
   it("confirmDiscard returns true when clean", () => {
     const confirmSpy = vi.spyOn(window, "confirm").mockReturnValue(true);
-    const segmentsRef = { current: [seg("x")] };
+    const currentSegments = [seg("x")];
     const { result } = renderHook(() =>
       useSegmentDirtyState({
         currentFileId: "f1",
-        segmentsRef,
+        getCurrentSegmentsSnapshot: () => currentSegments,
         flushSegmentTextDrafts: vi.fn(),
       }),
     );
