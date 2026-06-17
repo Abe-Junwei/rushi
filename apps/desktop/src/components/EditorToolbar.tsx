@@ -21,8 +21,6 @@ interface EditorToolbarProps {
   onOpenAsrSettings?: () => void;
   onOpenLlmSettings?: () => void;
   llmStatusRefreshSeq?: number;
-  workspaceSidebarCollapsed?: boolean;
-  onExpandWorkspaceSidebar?: () => void;
 }
 export const EditorToolbar = memo(function EditorToolbar({
   controller: c,
@@ -34,8 +32,6 @@ export const EditorToolbar = memo(function EditorToolbar({
   onOpenAsrSettings,
   onOpenLlmSettings,
   llmStatusRefreshSeq = 0,
-  workspaceSidebarCollapsed = false,
-  onExpandWorkspaceSidebar,
 }: EditorToolbarProps) {
   const [pendingImport, setPendingImport] = useState<null | "audio" | "text" | "bundle">(null);
   const importMenuRef = useRef<HTMLDetailsElement | null>(null);
@@ -112,8 +108,6 @@ export const EditorToolbar = memo(function EditorToolbar({
           onBack={() => c.closeFile()}
           onProjectHome={() => c.closeFile()}
           disabled={c.busy}
-          workspaceSidebarCollapsed={workspaceSidebarCollapsed}
-          onExpandWorkspaceSidebar={onExpandWorkspaceSidebar}
         />
 
         <span className="hidden shrink-0 whitespace-nowrap text-[11px] text-notion-text-muted sm:inline">

@@ -1,12 +1,13 @@
-/** 欢迎页 / 项目 Hub / 编辑页共用侧栏宽度（grid 列宽见 WORKSPACE_SHELL_GRID_CLASS） */
+/** 欢迎页 / 项目 Hub / 编辑页共用侧栏宽度 */
+export const WORKSPACE_SIDEBAR_WIDTH = "20rem";
 
 /** 固定侧栏双栏 grid（Welcome / Hub） */
 export const WORKSPACE_SHELL_GRID_CLASS =
   "grid h-full min-h-0 w-full flex-1 grid-cols-[20rem_1fr]";
 
-/** 可折叠侧栏壳层 — 列宽过渡见 workspace.css `.workspace-shell-collapsible` */
+/** 可折叠侧栏壳层 — overlay + transform，主区宽度不变，见 workspace.css */
 export const WORKSPACE_SHELL_COLLAPSIBLE_CLASS =
-  "workspace-shell-collapsible grid h-full min-h-0 w-full flex-1";
+  "workspace-shell-collapsible grid h-full min-h-0 w-full flex-1 grid-cols-1";
 
 export const WORKSPACE_SIDEBAR_PANEL_ATTR = "data-workspace-sidebar-panel";
 export const WORKSPACE_SIDEBAR_TOGGLE_ATTR = "data-workspace-sidebar-toggle";

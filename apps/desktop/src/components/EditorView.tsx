@@ -1,4 +1,4 @@
-import { useEffect } from "react";
+import { memo, useEffect } from "react";
 import { useTranscriptFooterStats } from "../hooks/useTranscriptFooterStats";
 import { clearToastBottomInset, syncToastBottomInset } from "../services/ui/toastLayout";
 import { SegmentContextMenu } from "./SegmentContextMenu";
@@ -28,11 +28,9 @@ interface EditorViewProps {
   segmentCtxMenu: SegmentContextMenuOpen | null;
   setSegmentCtxMenu: (v: SegmentContextMenuOpen | null) => void;
   onOpenSegmentContextMenu: (menu: SegmentContextMenuOpen) => void;
-  workspaceSidebarCollapsed?: boolean;
-  onExpandWorkspaceSidebar?: () => void;
 }
 
-export function EditorView({
+export const EditorView = memo(function EditorView({
   controller: c,
   tx,
   exportKey,
@@ -44,8 +42,6 @@ export function EditorView({
   segmentCtxMenu,
   setSegmentCtxMenu,
   onOpenSegmentContextMenu,
-  workspaceSidebarCollapsed = false,
-  onExpandWorkspaceSidebar,
 }: EditorViewProps) {
   const appearance = useEditorTranscriptAppearance(c.busy, Boolean(c.currentFileId));
   const transcriptFontPx = clampTranscriptFontPx(tx.transcriptFontPx);
@@ -139,8 +135,6 @@ export function EditorView({
       onOpenAsrSettings={onOpenAsrSettings}
       onOpenLlmSettings={onOpenLlmSettings}
       llmStatusRefreshSeq={llmStatusRefreshSeq}
-      workspaceSidebarCollapsed={workspaceSidebarCollapsed}
-      onExpandWorkspaceSidebar={onExpandWorkspaceSidebar}
       projectName={projectName}
       currentFileName={currentFileName}
       fallbackWaveFile={fallbackWaveFile}
@@ -154,4 +148,4 @@ export function EditorView({
       editorDialogs={editorDialogs}
     />
   );
-}
+});

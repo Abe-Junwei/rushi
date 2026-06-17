@@ -3,7 +3,7 @@
 > **基准报告**：[`full-code-review-architecture-comparison-report.md`](./full-code-review-architecture-comparison-report.md)  
 > **范围**：对照基准报告 §7.1.3–§7.5.3、§9、§10 列出的问题/建议，检查当前修复进度与已修复项是否引入新问题。  
 > **检查时间**：2026-06-16  
-> **复查时间**：2026-06-16（第四轮，代码又有所更动）  
+> **复查时间**：2026-06-16（第五轮，架构守卫已清零）  
 > **检查人**：Kimi Code CLI
 
 ---
@@ -12,21 +12,23 @@
 
 | 状态 | 数量 | 占比 |
 |------|------|------|
-| 已修复 | 21 | 66% |
+| 已修复 | 24 | 75% |
 | 部分修复 | 5 | 16% |
-| 未修复 | 6 | 19% |
-| **合计** | **32** | 100% |
+| 未修复 | 4 | 13% |
+| **合计** | **33** | 100% |
 
-> 注：基准报告 §7 与 §10.6 中 `#9`/`#30`（Rust 错误处理结构化）和 `#10`/`#31`（Windows 8741 清理）为同一问题重复出现，已合并去重。
+> 注：基准报告 §7 与 §10.6 中 `#9`/`#30`（Rust 错误处理结构化）和 `#10`/`#31`（Windows 8741 清理）为同一问题重复出现，已合并去重。`#3` 与 `#28` 已随架构守卫规则调整与实际拆分解决，分别计入已修复。
 
 ---
 
-## 一、已修复项（21 项）
+## 一、已修复项（24 项）
 
 | # | 标题 | 关键证据 | 是否引入新问题 |
 |---|------|----------|----------------|
 | 1 | `useProjectController` 巨型 facade | `useProjectController.ts` 从 322 行降至 **63 行**；字段拆到 `projectLifecycleControllerFields.ts` 与 `useProjectAsrBridgeStack.ts` | 否 |
+| 3 | 40 个文件超过 300 行 / 12 hooks 阈值 | 架构守卫当前 **0 警告**：>300 行文件与 >12 hooks 的生产代码告警已清空 | 否 |
 | 4 | `environmentCapabilityCoordinator` 模块级 singleton | 全部状态迁入 Zustand `createModuleStore`：`snapshot`、`registeredDeps`、`inflight`、`generation`、`lastFocusRefreshAt` 均在 store 中 | 否 |
+| 5 | 无 React Context，依赖 controller prop 传递 | 新增 `context/WorkspaceSidebarCollapseContext.tsx`，首个 React Context 已落地 | ⚠️ 仅在 workspace 侧边栏折叠场景使用，未替代项目级 prop drilling |
 | 6 | 同步命令直接阻塞 IO | `segment_cmd.rs`、`project_create_cmd.rs`、`export_cmd.rs` 已改为 `async fn` + `spawn_blocking` | 否 |
 | 7 | 无 WAL + 无连接池 | 新增 `db/pool.rs`，启用 `r2d2` 连接池、`journal_mode=WAL`、`busy_timeout=5000` | ⚠️ 诊断/导出等临时 DB 仍有独立 `Connection::open` |
 | 8 | 删除项目后磁盘清理失败不回滚 | `project_delete_cmd.rs` 已事务化：先 `DELETE`、再 `remove_project_storage_dir`、最后 `tx.commit()` | ⚠️ storage 删除成功但 `tx.commit()` 失败会产生反向孤儿状态 |
@@ -43,6 +45,7 @@
 | 25 | 无覆盖率收集与门禁 | `vitest.config.ts` 配置 thresholds；CI 运行 `test:coverage`；新增 `codecov.yml` patch target 80% | 否 |
 | 26 | lint-staged 对全量文件跑 `tsc --noEmit` | `lint-staged.config.mjs` 仅对 staged 文件跑 ESLint | 否 |
 | 27 | Playwright E2E 依赖真实 ASR 服务 | `test:e2e:asr` 使用 `asr-mock-server.mjs`（`PW_ASR_MOCK_WEBSERVER=1`）；CI ASR contract E2E 不再依赖真实侧车 | 否 |
+| 28 | 测试文件本身触发架构守卫警告 | `check-architecture-guard.mjs:30-36` 已豁免测试文件的 line/hook 阈值，消除噪音 | 否 |
 | 32 | 诊断包 JSON 脱敏改进 | `diagnostic_db_sanitize.rs` 扩展 redaction，新增单元测试 | 否 |
 | 33 | 移除 `services/fixtures/` 空目录或补充说明 | 目录已不存在 | 否 |
 | 34 | `pyproject.toml` 描述更新 | `pyproject.toml:8` 已更新为准确描述 | 否 |
@@ -52,6 +55,7 @@
 1. **生产路径仍有非池化 SQLite 打开**：`diagnostic_db_sanitize.rs`、`diagnostic.rs`、`export_docx.rs` 仍有独立 `Connection::open`，未统一接入 `DbPool` 的 WAL/busy_timeout 配置。
 2. **项目删除反向孤儿风险**：`project_delete_cmd.rs` 在 storage 删除成功但 `tx.commit()` 失败时，会留下 DB 记录但文件已删除。
 3. **覆盖率 global threshold 偏低**：`vitest.config.ts` 中 global threshold 为 statements 45 / branches 35 / functions 35 / lines 45，防止回归作用有限（但 `codecov.yml` patch target 80% 已补 PR diff 门禁）。
+4. **Context 使用范围有限**：首个 Context 仅解决 workspace 侧边栏折叠，未推广到项目/主题等更广的 prop drilling 场景。
 
 ---
 
@@ -74,16 +78,14 @@
 
 ---
 
-## 三、未修复项（6 项）
+## 三、未修复项（4 项）
 
 | # | 标题 | 当前状态证据 | 备注 |
 |---|------|--------------|------|
 | 2 | State/Ref 双轨制 | `useProjectEditorState.ts:40-43` 同时维护 `segments` state 与 `segmentsRef`；`useSegmentMutationController.ts:165-177` 直接读写 `segmentsRef.current` | 未迁移迹象 |
-| 3 | 40 个文件超过 300 行 / 12 hooks 阈值 | 架构守卫当前 **31 警告**：>300 行文件 28 个、>12 hooks 文件 4 个 | 较最初 40 警告已下降 |
-| 5 | 无 React Context，依赖 controller prop 传递 | 全仓库 `createContext`/`useContext` 检索为 0 | `useProjectController` 拆分后 facade 问题已缓解，但 Context 仍未引入 |
 | 17 | 参数 strip 回退隐藏模型不兼容 | `funasr_engine.py:282-332` 仍按 `strip_order` 逐个剔除参数并降级重试 | 静默质量风险 |
 | 21 | `WaveformSegmentBandCanvas` live drag 频繁重建事件监听 | `WaveformSegmentBandCanvas.tsx:81-163` `useLayoutEffect` 依赖仍包含 `segments`、`durationSec` 等；live drag 时语段变化会触发 effect 重建，scroll/wheel/resize 监听被移除再添加 | 已有 `inputRef`/`tierMetricsRef` 缓存实时值，重绘通过 RAF 批量化，但监听拆装问题仍在 |
-| 28 | 测试文件本身触发架构守卫警告 | 31 警告中仍含多个 `*.test.ts` 超过 300 行 | 警告噪音 |
+| — | ASR 推理实际并发（由 #12 部分修复衍生） | `inference_queue.py` 的 `requested_inference_workers()` 仅返回环境变量诊断值，实际 `SingleWorkerInferenceQueue` 仍为 1 | 单列在“未修复”以提示其与 #12 部分修复的区别 |
 
 ---
 
@@ -98,6 +100,7 @@
 | ASR 推理单 worker 未变 | #12 部分修复 | SKU spike 时评估并发模型；若保持单线程，UI 需提示排队 |
 | `ready_for_transcribe` 仍可能误判 | #15 部分修复 | UI 逐步切换到 `selected_model_ready` 等更精确字段 |
 | 脏检查 fast path 仍线性 | #24 部分修复 | 超大项目时考虑引入 immutable version 或 segment-level dirty flag |
+| Context 推广不足 | #5 修复 | 评估项目/主题/错误边界等场景是否值得引入更多 Context |
 
 ---
 
@@ -109,24 +112,23 @@
    - #15 `ready_for_transcribe`：彻底改为真实加载状态驱动。
 
 2. **中优先级（v1.2 或持续）**
-   - #3 文件/钩子阈值：继续拆分 mega-hook / mega-component（已从 40 警告降至 31）。
    - #17 参数 strip：为每类 SKU 明确所需参数，减少静默降级。
    - #21 WaveformSegmentBandCanvas drag：将 scroll/wheel/resize 监听提升到稳定父层，避免 drag 中语段变化触发重建。
    - #24 脏检查 O(n)：引入 version/hash 机制，替代 fingerprint 遍历。
+   - ASR 实际并发：在 Nano/Qwen spike 中决定是否真实多 worker。
 
 3. **低优先级（技术债）**
-   - #5 React Context：当前 facade 拆分后压力已小，可延后评估。
-   - #28 测试文件 guard 警告：调整 guard 规则或拆分测试文件。
+   - #5 React Context：当前仅在 workspace 侧边栏使用，可延后评估更大范围推广。
    - #29 Vitest shard/retry：CI 时间恶化时再加。
 
 ---
 
 ## 六、验证命令
 
-本次检查未修改代码，仅读取。机器守卫当前状态：
+本次检查更新了进度文件，未修改业务代码。机器守卫当前状态：
 
 ```bash
 npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs
 ```
 
-- 本次执行结果：typecheck ✅ / test **279 files / 1390 tests** ✅ / architecture guard **0 errors / 31 warnings** ⚠️
+- 本次执行结果：typecheck ✅ / test **279 files / 1390 tests** ✅ / architecture guard **0 errors / 0 warnings** ✅

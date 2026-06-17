@@ -1,19 +1,16 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import type { GlossaryWorkspaceId } from "../components/glossary/glossaryWorkspaceTypes";
 import type { WelcomePageId } from "../components/WelcomeView";
-import { useWorkspaceSidebarCollapse } from "../hooks/useWorkspaceSidebarCollapse";
 import type { useProjectController } from "./useProjectController";
 
 type ProjectController = ReturnType<typeof useProjectController>;
 
-/** Welcome / hub / editor shell routing and sidebar collapse. */
+/** Welcome / hub / editor shell routing (sidebar collapse is scoped to CollapsibleWorkspaceShell). */
 export function useProjectPanelWorkspaceNav(c: ProjectController) {
   const [welcomePage, setWelcomePage] = useState<WelcomePageId>("home");
   const [glossaryWorkspaceId, setGlossaryWorkspaceId] = useState<GlossaryWorkspaceId>("vocabulary");
   const pendingWelcomePageRef = useRef<WelcomePageId | null>(null);
   const pendingGlossaryWorkspaceRef = useRef<GlossaryWorkspaceId | null>(null);
-  const { collapsed: editorSidebarCollapsed, setCollapsed: setEditorSidebarCollapsed } =
-    useWorkspaceSidebarCollapse();
 
   const workspaceShellVariant = useMemo<"welcome" | "hub" | "editor">(() => {
     if (!c.current) return "welcome";
@@ -36,10 +33,6 @@ export function useProjectPanelWorkspaceNav(c: ProjectController) {
       }
     }
   }, [workspaceShellVariant]);
-
-  const expandEditorSidebar = useCallback(() => {
-    setEditorSidebarCollapsed(false);
-  }, [setEditorSidebarCollapsed]);
 
   const onLeaveProjectForWelcome = useCallback(
     (page: WelcomePageId, glossaryWorkspace?: GlossaryWorkspaceId) => {
@@ -72,10 +65,7 @@ export function useProjectPanelWorkspaceNav(c: ProjectController) {
     setWelcomePage,
     glossaryWorkspaceId,
     setGlossaryWorkspaceId,
-    editorSidebarCollapsed,
-    setEditorSidebarCollapsed,
     workspaceShellVariant,
-    expandEditorSidebar,
     onLeaveProjectForWelcome,
     openGlossaryFromTranscribe,
     stayAfterCloseAttempt,

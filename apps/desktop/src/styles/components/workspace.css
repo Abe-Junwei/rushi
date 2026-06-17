@@ -479,15 +479,43 @@
   padding-bottom: 2.5rem;
 }
 
-/* 编辑页可折叠 workspace 侧栏（对照解语 side-pane collapse） */
+/* 编辑页可折叠 workspace 侧栏
+ * 成熟方案（解语 app-side-pane / Chrome compositor-only）：
+ * - 主区始终满宽，不参与折叠动画 → 波形/语段零 reflow
+ * - 侧栏 absolute overlay，仅 transform 滑入/滑出（GPU）
+ * - 禁止 grid 列宽 / width / padding-left 过渡 */
 .workspace-shell-collapsible {
+  --workspace-sidebar-width: 20rem;
   position: relative;
-  grid-template-columns: 20rem minmax(0, 1fr);
-  transition: grid-template-columns 320ms cubic-bezier(0.32, 0.72, 0, 1);
+  grid-template-columns: minmax(0, 1fr);
 }
 
-.workspace-shell-sidebar-collapsed {
-  grid-template-columns: 0px minmax(0, 1fr);
+.workspace-shell-collapsible .workspace-shell-main {
+  grid-column: 1;
+  min-width: 0;
+}
+
+.workspace-shell-collapsible .workspace-shell-sidebar-column {
+  position: absolute;
+  inset-block: 0;
+  left: 0;
+  z-index: 40;
+  width: var(--workspace-sidebar-width);
+  min-width: 0;
+  overflow: hidden;
+  background: var(--notion-sidebar);
+  border-right: 0;
+  transform: translate3d(0, 0, 0);
+  contain: layout style paint;
+  transition:
+    transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1),
+    border-color 180ms ease,
+    background-color 180ms ease;
+}
+
+.workspace-shell-sidebar-collapsed .workspace-shell-sidebar-column {
+  transform: translate3d(-100%, 0, 0);
+  pointer-events: none;
 }
 
 .workspace-shell-sidebar-column {
@@ -507,10 +535,6 @@
   transition-delay: 0ms;
 }
 
-.workspace-shell-collapsible .workspace-shell-sidebar-column {
-  border-right: 0;
-}
-
 /* 整根竖向分隔线；挂耳 pill 盖住中段，上下线条连续 */
 .workspace-shell-collapsible .workspace-shell-sidebar-column::after {
   content: "";
@@ -521,10 +545,6 @@
   background: var(--notion-divider);
   pointer-events: none;
   z-index: 30;
-}
-
-.workspace-shell-sidebar-collapsed .workspace-shell-sidebar-column {
-  overflow: visible;
 }
 
 /* 编辑页侧栏内容不再自绘右边线，避免与 seam 双线 */
@@ -610,7 +630,7 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .workspace-shell-collapsible,
+  .workspace-shell-collapsible .workspace-shell-sidebar-column,
   .workspace-shell-sidebar-column,
   .workspace-shell-sidebar-content,
   .workspace-shell-sidebar-toggle {

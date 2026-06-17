@@ -9,7 +9,8 @@ import { WelcomeSidebar } from "./WelcomeSidebar";
 import { ProjectBusyOverlay, TranscribeWorkspaceBanners } from "./ProjectStatusFeedback";
 import { ProjectPanelDialogs } from "./ProjectPanelDialogs";
 import { syncOnboardingExport } from "../services/onboarding/onboardingAutoSync";
-import { WorkspaceShellLayout, WORKSPACE_EDITOR_SHELL_PURPOSE } from "./WorkspaceShellLayout";
+import { CollapsibleWorkspaceShell } from "./CollapsibleWorkspaceShell";
+import { WORKSPACE_EDITOR_SHELL_PURPOSE } from "./WorkspaceShellLayout";
 import { hasRecordedProjectMetadata } from "../services/deliveryModeChecklist";
 
 export function ProjectPanel() {
@@ -32,10 +33,7 @@ export function ProjectPanel() {
     busyElapsedSec,
     segmentCtxMenu,
     setSegmentCtxMenu,
-    editorSidebarCollapsed,
-    setEditorSidebarCollapsed,
     workspaceShellVariant,
-    expandEditorSidebar,
     openEnvironment,
     openAsrSettings,
     openLlmSettings,
@@ -183,11 +181,8 @@ export function ProjectPanel() {
             headerSlot={transcribeBanners}
           />
         ) : (
-          <WorkspaceShellLayout
+          <CollapsibleWorkspaceShell
             purpose={WORKSPACE_EDITOR_SHELL_PURPOSE}
-            collapsible
-            sidebarCollapsed={editorSidebarCollapsed}
-            onSidebarCollapsedChange={setEditorSidebarCollapsed}
             sidebar={
               <WelcomeSidebar
                 controller={c}
@@ -219,11 +214,9 @@ export function ProjectPanel() {
                 segmentCtxMenu={segmentCtxMenu}
                 setSegmentCtxMenu={setSegmentCtxMenu}
                 onOpenSegmentContextMenu={openSegmentContextMenu}
-                workspaceSidebarCollapsed={editorSidebarCollapsed}
-                onExpandWorkspaceSidebar={expandEditorSidebar}
               />
             </main>
-          </WorkspaceShellLayout>
+          </CollapsibleWorkspaceShell>
         )}
       </div>
 

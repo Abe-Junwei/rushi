@@ -23,8 +23,6 @@ export type EditorViewLayoutProps = {
   onOpenAsrSettings?: () => void;
   onOpenLlmSettings?: () => void;
   llmStatusRefreshSeq?: number;
-  workspaceSidebarCollapsed?: boolean;
-  onExpandWorkspaceSidebar?: () => void;
   projectName: string;
   currentFileName: string;
   fallbackWaveFile: { id: string } | null;
@@ -47,8 +45,6 @@ export function EditorViewLayout({
   onOpenAsrSettings,
   onOpenLlmSettings,
   llmStatusRefreshSeq = 0,
-  workspaceSidebarCollapsed = false,
-  onExpandWorkspaceSidebar,
   projectName,
   currentFileName,
   fallbackWaveFile,
@@ -73,8 +69,6 @@ export function EditorViewLayout({
         onOpenAsrSettings={onOpenAsrSettings}
         onOpenLlmSettings={onOpenLlmSettings}
         llmStatusRefreshSeq={llmStatusRefreshSeq}
-        workspaceSidebarCollapsed={workspaceSidebarCollapsed}
-        onExpandWorkspaceSidebar={onExpandWorkspaceSidebar}
       />
 
       <main className="flex h-0 min-h-0 min-w-0 flex-1 flex-col gap-0 bg-notion-bg pb-6">
