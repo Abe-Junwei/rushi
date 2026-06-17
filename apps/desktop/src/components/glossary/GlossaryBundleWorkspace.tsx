@@ -13,7 +13,7 @@ export function GlossaryBundleWorkspace({ lex, disabled, bundleStatus, bundleErr
       <div className="flex flex-col gap-1 border-b border-notion-divider bg-notion-callout-bg px-6 py-4">
         <h2 className={`m-0 ${PANEL_TYPOGRAPHY.envSectionTitle}`}>词表包</h2>
         <p className={`m-0 max-w-2xl ${PANEL_TYPOGRAPHY.meta}`}>
-          导出/导入 <code className="font-mono text-[11px]">rushi_lexicon_bundle.v1.json</code>
+          导出/导入 <code className="font-mono text-label">rushi_lexicon_bundle.v1.json</code>
           ，仅含术语表与纠错记忆，不含语段正文。适合小团队交换词表。
         </p>
       </div>

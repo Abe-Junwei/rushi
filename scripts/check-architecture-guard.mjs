@@ -106,6 +106,16 @@ function checkTsFile(fullPath) {
     warnings.push(`${rel}: 发现 ${arbitraryColors.length} 处 Tailwind arbitrary value 颜色，应收敛到 token`);
   }
 
+  // 防回归：arbitrary 字号须用 text-display/heading/title/body/label（见 tokens.css / DESIGN.md）
+  if (!isTestFile) {
+    const arbitraryFontSizes = source.match(/text-\[\d+px\]/g) ?? [];
+    if (arbitraryFontSizes.length > 0) {
+      errors.push(
+        `${rel}: 发现 ${arbitraryFontSizes.length} 处 text-[Npx] arbitrary 字号，须用 text-display/heading/title/body/label`,
+      );
+    }
+  }
+
   const usesLucide = /from\s+['"]lucide-react['"]/.test(source);
   if (usesLucide) {
     const hasIconSpecImport = /from\s+['"][./]+lucideIconSpec['"]/.test(source);
@@ -248,6 +258,16 @@ function checkCssFile(fullPath) {
 
   if (rel === 'apps/desktop/src/App.css' && lines > 100) {
     warnings.push(`${rel}: ${lines} 行，应仅保留 @import 入口`);
+  }
+
+  // 防回归：CSS 裸 font-size: Npx 须用 var(--text-*)（tokens.css 定义处与 0.85em 相对值除外）
+  if (rel !== 'apps/desktop/src/styles/tokens.css') {
+    const bareFontSizes = source.match(/font-size:\s*\d+px/g) ?? [];
+    if (bareFontSizes.length > 0) {
+      errors.push(
+        `${rel}: 发现 ${bareFontSizes.length} 处裸 font-size: Npx，须用 var(--text-display/heading/title/body/label)`,
+      );
+    }
   }
 
   // 检测硬编码颜色（排除已知合理的如 #fff, #000, #f0f0f0）

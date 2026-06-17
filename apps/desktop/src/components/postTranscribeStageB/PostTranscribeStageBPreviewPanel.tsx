@@ -105,7 +105,7 @@ export function PostTranscribeStageBPreviewPanel({
                 >
                   <div className="min-w-0 space-y-1">
                     {ch.evidenceSummary ? (
-                      <p className="truncate text-[11px] text-notion-text-muted">
+                      <p className="truncate text-label text-notion-text-muted">
                         依据：{ch.evidenceSummary}
                       </p>
                     ) : null}

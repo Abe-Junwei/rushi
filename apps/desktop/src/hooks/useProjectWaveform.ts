@@ -3,6 +3,7 @@ import { formatMediaTime } from "../utils/formatMediaTime";
 import { exportMinimapPeaksFromWaveSurfer } from "../services/waveform/minimapPeaksSource";
 import { positionWaveformScrollLayersByTierScroll } from "../services/waveform/waveformSurferProgressCoverage";
 import { createWaveformAppliedZoomState } from "../utils/waveformAppliedZoom";
+import { requestWaveformSegmentBandPaint } from "../utils/waveformSegmentBandPaint";
 import { useWaveformHeightSync } from "./useWaveformHeightSync";
 import { useWaveformPlayback } from "./useWaveformPlayback";
 import { useWaveformGlobalPlayback } from "./useWaveformGlobalPlayback";
@@ -113,6 +114,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
         scrollLeftPx,
         ws,
       );
+      requestWaveformSegmentBandPaint();
     } catch {
       /* noop */
     }

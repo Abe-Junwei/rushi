@@ -75,7 +75,7 @@ export function LocalAsrRuntimeInstallPanel({
           <div>
             <div className="mb-2 flex items-end justify-between gap-2">
               <span className={PANEL_TYPOGRAPHY.meta}>下载进度</span>
-              <span className="font-mono text-[12px] text-notion-text-muted">
+              <span className="font-mono text-body text-notion-text-muted">
                 {view.downloadProgressLabel}
               </span>
             </div>

@@ -76,10 +76,10 @@ export function EnvironmentPanelNav({
                 {ENV_NAV_ICONS[item.id]}
               </span>
               <span className="min-w-0 flex-1">
-                <span className={`block text-[13px] leading-snug ${active ? "font-bold text-notion-text" : "font-medium text-notion-text"}`}>
+                <span className={`block text-title leading-snug ${active ? "font-bold text-notion-text" : "font-medium text-notion-text"}`}>
                   {item.label}
                 </span>
-                <span className="mt-0.5 block truncate text-[11px] leading-tight text-notion-text-muted">
+                <span className="mt-0.5 block truncate text-label leading-tight text-notion-text-muted">
                   {item.description}
                 </span>
               </span>

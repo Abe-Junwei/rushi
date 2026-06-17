@@ -11,6 +11,10 @@
   --color-zen-saffron-light: var(--zen-saffron-light);
   --color-zen-saffron-mid: var(--zen-saffron-mid);
   --color-zen-saffron-deep: var(--zen-saffron-deep);
+  --color-zen-primary-action-bg: var(--zen-primary-action-bg);
+  --color-zen-primary-action-bg-hover: var(--zen-primary-action-bg-hover);
+  --color-zen-primary-action-fg: var(--zen-primary-action-fg);
+  --color-zen-primary-action-fg-hover: var(--zen-primary-action-fg-hover);
   --color-zen-ochre: var(--zen-ochre);
   --color-zen-stone: var(--zen-stone);
   --color-zen-cinnabar: var(--zen-cinnabar);
@@ -42,6 +46,13 @@
   --color-zen-wf-cursor: var(--zen-wf-cursor);
 
   --spacing-page-margin: 2rem;
+
+  /* Type scale ← tokens.css :root --text-*（值须同步）；line-height 仍由 leading-* 控制 */
+  --text-display: 28px;
+  --text-heading: 18px;
+  --text-title: 14px;
+  --text-body: 12px;
+  --text-label: 11px;
 
   --font-sans: Inter, system-ui, sans-serif;
   --font-serif: "Noto Serif SC", serif;

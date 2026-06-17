@@ -2,9 +2,9 @@ import {
   BookOpen,
   ChevronRight,
   List,
-  Mic,
   Pencil,
 } from "lucide-react";
+import { BrandMark } from "./BrandMark";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 import type { ProjectControllerApi } from "../pages/useProjectController";
 import type { GlossaryWorkspaceId } from "./glossary/glossaryWorkspaceTypes";
@@ -94,12 +94,12 @@ export function WelcomeSidebarNav({
     <div className="border-b border-notion-divider">
       <div className="px-5 pb-4 pt-6">
         <div className="flex items-center gap-3">
-          <div className="flex h-8 w-8 items-center justify-center rounded bg-zen-saffron text-notion-bg">
-            <Mic className={`${LUCIDE_ICON_SIZE_MD} shrink-0`} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+          <div className="flex h-8 w-8 items-center justify-center rounded bg-zen-primary-action-bg text-zen-primary-action-fg">
+            <BrandMark size={18} variant="onPrimary" />
           </div>
           <div>
-            <h1 className="m-0 font-serif text-[18px] font-medium leading-[1.4] text-notion-text">如是我闻</h1>
-            <p className="m-0 mt-0.5 text-[11px] font-medium leading-snug text-notion-text-muted">本地课录音转写与校对</p>
+            <h1 className="m-0 font-serif text-heading font-medium leading-[1.4] text-notion-text">如是我闻</h1>
+            <p className="m-0 mt-0.5 text-label font-medium leading-snug text-notion-text-muted">本地课录音转写与校对</p>
           </div>
         </div>
       </div>

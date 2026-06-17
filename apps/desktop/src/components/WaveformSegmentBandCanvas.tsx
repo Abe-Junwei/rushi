@@ -7,6 +7,7 @@ import {
   type TierScrollLayoutMetrics,
   type TierScrollLiveRefs,
 } from "../utils/waveformViewport";
+import { registerWaveformSegmentBandPaintScheduler } from "../utils/waveformSegmentBandPaint";
 
 export type WaveformSegmentBandCanvasProps = {
   segments: SegmentDto[];
@@ -135,20 +136,23 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
     schedulePaintRef.current = schedulePaint;
 
     schedulePaint();
+    const unregisterMirrorPaint = registerWaveformSegmentBandPaintScheduler(schedulePaint);
+
     const tier = tierScrollRef.current;
     tier?.addEventListener("scroll", schedulePaint, { passive: true });
     tier?.addEventListener("wheel", schedulePaint, { passive: true });
     window.addEventListener("resize", schedulePaint);
     return () => {
+      unregisterMirrorPaint();
       schedulePaintRef.current = null;
       tier?.removeEventListener("scroll", schedulePaint);
       tier?.removeEventListener("wheel", schedulePaint);
       window.removeEventListener("resize", schedulePaint);
       if (paintRafId) cancelAnimationFrame(paintRafId);
     };
-  }, [tierScrollRef]);
+  }, [tierScrollRef, tierScrollLayout.clientWidthPx]);
 
-  // Data and committed scroll changes only schedule a paint; listener ownership stays stable.
+  // Segment / selection data changes repaint without re-registering scroll listeners.
   useLayoutEffect(() => {
     schedulePaintRef.current?.();
   }, [
@@ -164,9 +168,12 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
     selectedIndices,
     dominantSpanIndices,
     draftIdx,
-    tierScrollLayout.scrollLeftPx,
-    tierScrollLayout.clientWidthPx,
   ]);
+
+  // Wheel-forward / programmatic scroll often skips `scroll` events — layout commits via onTierScroll.
+  useLayoutEffect(() => {
+    schedulePaintRef.current?.();
+  }, [tierScrollLayout.scrollLeftPx, tierScrollLayout.clientWidthPx]);
 
   return (
     <canvas

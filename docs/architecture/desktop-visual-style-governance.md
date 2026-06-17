@@ -11,13 +11,16 @@
 | 层 | 文件 | 职责 |
 |----|------|------|
 | 颜色 / 间距 scale | `apps/desktop/tailwind.config.js` → `tokens.css` → `@theme` | hex 与 Tailwind 主题 |
+| Primary CTA 对比度 | `tokens.css` `--zen-primary-action-*` → `bg-zen-primary-action-bg` | 实心白字按钮 / 工作条 toggle；**勿** `bg-zen-saffron` + 白字 |
+| 暗色骨架 | `tokens.css` `[data-theme="dark"]` | 覆盖 `--notion-*` / `--zen-*`；**无**自动 `prefers-color-scheme`（待 UI 切换） |
+| 字号 scale（5 级） | `tokens.css` `:root --text-*` → `@theme` → `text-display/heading/title/body/label` | display 28 / heading 18 / title 14 / body 12 / label 11 |
 | 控件外观 | `apps/desktop/src/config/controlStyles.ts` | 按钮、输入、分段 toggle |
 | 排版 | `apps/desktop/src/config/typography.ts` | 面板标题、对话框 layout token |
 | 环境页 spacing | `apps/desktop/src/utils/environmentPanelNav.ts` | 表单区 / CTA 行 / 状态条 shell |
 | 环境状态色 | `apps/desktop/src/services/llm/llmEnvStatusTokens.ts` | `ENV_STATUS_*`（LLM + ASR 共用） |
 | 浮动对话框 | `FloatingPanelDialogLayout.tsx` + `COMPACT_DIALOG_LAYOUT` | footer / body padding |
 
-**禁止**：业务组件内复制 `rounded-md border border-notion-border bg-notion-bg` 等 ad-hoc 控件串；禁止 `bg-[#...]`。
+**禁止**：业务组件内复制 `rounded-md border border-notion-border bg-notion-bg` 等 ad-hoc 控件串；禁止 `bg-[#...]`；禁止 `text-[Npx]` 与 CSS 裸 `font-size: Npx`（用 `text-*` 工具类或 `var(--text-*)`；行内 `0.85em` 相对值除外）。
 
 ---
 
@@ -59,6 +62,8 @@
 1. 字面量 `<button className="…">` / `` className={`…`} `` 缺少 `bg-*` 或 `CONTROL_BTN_*`
 2. `controlStyles.ts` 外出现 `bg-secondary-container` 或 `rounded-[5px]`（分段 toggle 漂移）
 3. Tailwind arbitrary hex 颜色（warning，逐步收敛）
+4. **`text-[Npx]` arbitrary 字号**（error → 用 `text-display/heading/title/body/label`）
+5. **CSS 裸 `font-size: Npx`**（error → 用 `var(--text-*)`；`tokens.css` 与 `0.85em` 除外）
 
 ---
 

@@ -185,7 +185,7 @@ export function WaveformMinimapStrip({
         <canvas ref={canvasRef} className="waveform-minimap-canvas" aria-hidden />
         {showPeaksPending ? (
           <div className="waveform-minimap-pending">
-            <span className="text-[10px] text-notion-text-muted">总览生成中…</span>
+            <span className="text-label text-notion-text-muted">总览生成中…</span>
           </div>
         ) : null}
         {viewport.widthPx > 0 ? (

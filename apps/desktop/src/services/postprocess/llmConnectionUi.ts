@@ -60,7 +60,7 @@ export function llmExportPolishCapabilityBadgeClass(
   status: LlmConnectionUiStatus,
   options?: { localLoopback?: boolean; ollamaTagsReady?: boolean; ollamaReachable?: boolean },
 ): string {
-  const base = "rounded px-2 py-0.5 text-[11px] font-semibold uppercase tracking-wider";
+  const base = "rounded px-2 py-0.5 text-label font-semibold uppercase tracking-wider";
   if (options?.localLoopback && options.ollamaReachable === false) {
     return `${base} bg-zen-cinnabar/10 text-zen-cinnabar`;
   }

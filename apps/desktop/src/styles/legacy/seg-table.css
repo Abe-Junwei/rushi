@@ -10,7 +10,7 @@
 .seg-table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 12px;
+  font-size: var(--text-body);
 }
 
 .seg-table th,
@@ -33,7 +33,7 @@
 
 .seg-detail {
   max-width: 14rem;
-  font-size: 12px;
+  font-size: var(--text-body);
   color: var(--notion-text-muted);
   word-break: break-word;
 }

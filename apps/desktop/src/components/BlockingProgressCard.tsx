@@ -47,13 +47,13 @@ function ProgressCardBody({
       </div>
       <div className="flex w-full flex-col gap-1">
         <h2 className="font-sans text-lg font-semibold leading-snug text-zen-ink">{title}</h2>
-        <p className="font-sans text-[12px] leading-normal text-zen-stone">{hint}</p>
+        <p className="font-sans text-body leading-normal text-zen-stone">{hint}</p>
       </div>
       <TranscribeVocabularyPreflightLines lines={vocabularyLines} />
       <div className={`relative mt-2 ${PANEL_PROGRESS_TRACK_CLASS}`}>
         <div className={PANEL_PROGRESS_INDETERMINATE_CLASS} />
       </div>
-      <p className="mt-1 font-mono text-[12px] tabular-nums text-zen-stone">已等待 {elapsedSec}s</p>
+      <p className="mt-1 font-mono text-body tabular-nums text-zen-stone">已等待 {elapsedSec}s</p>
       {onCancel ? (
         <div className="pointer-events-auto mt-1 w-full">
           <button

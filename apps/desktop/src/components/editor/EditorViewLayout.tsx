@@ -81,7 +81,7 @@ export function EditorViewLayout({
             {fallbackWaveFile ? (
               <button
                 type="button"
-                className={`mt-2 ${CONTROL_BTN_SECONDARY} text-[11px]`}
+                className={`mt-2 ${CONTROL_BTN_SECONDARY} text-label`}
                 disabled={c.busy}
                 onClick={() => void c.openFile(fallbackWaveFile.id)}
               >

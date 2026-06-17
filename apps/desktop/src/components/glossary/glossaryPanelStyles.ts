@@ -17,7 +17,7 @@ export const GLOSSARY_EMPTY_TEXT =
 /** 行内删除按钮（含二次确认态）；批量条删除按钮同款 */
 export function glossaryRowDeleteBtnClass(confirming: boolean): string {
   const base =
-    "inline-flex h-7 shrink-0 items-center gap-1 rounded-sm border px-2.5 font-sans text-[11px] font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40";
+    "inline-flex h-7 shrink-0 items-center gap-1 rounded-sm border px-2.5 font-sans text-label font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40";
   return confirming
     ? `${base} border-zen-cinnabar bg-zen-cinnabar/10 text-zen-cinnabar`
     : `${base} border-notion-border bg-notion-bg text-notion-text-muted hover:bg-notion-sidebar-hover hover:text-notion-text`;
@@ -64,7 +64,7 @@ export const GLOSSARY_LIST_ROW_INNER =
 
 /** 行尾状态 pill（热词 / 稳定等） */
 export const GLOSSARY_LIST_TRAILING_PILL =
-  "inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-[11px] font-medium";
+  "inline-flex shrink-0 items-center gap-1 rounded px-1.5 py-0.5 text-label font-medium";
 
 /** 列表底栏提示（检视器未打开时） */
 export const GLOSSARY_LIST_EDIT_HINT =

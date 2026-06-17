@@ -34,7 +34,7 @@ export function GlossaryHotwordsStickySummary({ g }: Props) {
             本表影响下次听写；纠错记忆影响当前稿改正。
           </p>
           {g.hotwordsPreview?.preview ? (
-            <pre className="m-0 max-h-20 overflow-auto whitespace-pre-wrap break-all rounded-md bg-notion-bg/80 px-2 py-1.5 font-mono text-[11px] text-notion-text-muted">
+            <pre className="m-0 max-h-20 overflow-auto whitespace-pre-wrap break-all rounded-md bg-notion-bg/80 px-2 py-1.5 font-mono text-label text-notion-text-muted">
               {g.hotwordsPreview.preview}
             </pre>
           ) : null}

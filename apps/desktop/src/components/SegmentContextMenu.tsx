@@ -142,12 +142,12 @@ function ContextMenuPanel({
                 {it.label}
               </span>
               {it.shortcutHint ? (
-                <span className="shrink-0 pl-3 font-sans text-[11px] font-normal tabular-nums text-notion-text-light">
+                <span className="shrink-0 pl-3 font-sans text-label font-normal tabular-nums text-notion-text-light">
                   {it.shortcutHint}
                 </span>
               ) : null}
               {it.checked ? (
-                <span className="shrink-0 text-[11px] font-semibold text-zen-saffron-mid" aria-hidden>
+                <span className="shrink-0 text-label font-semibold text-zen-saffron-mid" aria-hidden>
                   ✓
                 </span>
               ) : null}

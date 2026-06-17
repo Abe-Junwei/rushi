@@ -7,7 +7,7 @@ import { LUCIDE_ICON_SIZE_LG, LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } fr
 
 function UserAvatar() {
   return (
-    <div className="flex h-8 w-8 items-center justify-center rounded-full border border-notion-border bg-notion-sidebar-active text-[11px] font-semibold text-notion-text-muted">
+    <div className="flex h-8 w-8 items-center justify-center rounded-full border border-notion-border bg-notion-sidebar-active text-label font-semibold text-notion-text-muted">
       用
     </div>
   );

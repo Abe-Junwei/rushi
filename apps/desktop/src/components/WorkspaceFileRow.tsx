@@ -62,8 +62,8 @@ export function WorkspaceFileRow({
             className={[
               isSidebar
                 ? selected
-                  ? "text-[12px] font-medium text-notion-text"
-                  : "text-[12px] font-normal text-notion-text-muted group-hover:text-notion-text"
+                  ? "text-body font-medium text-notion-text"
+                  : "text-body font-normal text-notion-text-muted group-hover:text-notion-text"
                 : "text-sm font-medium text-notion-text",
             ].join(" ")}
           />
@@ -71,14 +71,14 @@ export function WorkspaceFileRow({
             className={[
               "block truncate",
               isSidebar
-                ? "text-[11px] leading-4 text-notion-text-light"
+                ? "text-label leading-4 text-notion-text-light"
                 : `${PANEL_TYPOGRAPHY.meta} text-notion-text-muted`,
             ].join(" ")}
           >
             {meta}
           </span>
         </span>
-        <span className="shrink-0 text-[11px] font-medium text-zen-saffron opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+        <span className="shrink-0 text-label font-medium text-zen-saffron opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
           打开
         </span>
       </button>

@@ -51,16 +51,16 @@ export function OnlineSttProviderPicker({ busy, providerId, onProviderChange }: 
 
       {providerDef ? (
         <div className="flex flex-col gap-2">
-          <p className="text-[12px] leading-relaxed text-notion-text-muted">{providerDef.description}</p>
+          <p className="text-body leading-relaxed text-notion-text-muted">{providerDef.description}</p>
           <div className="flex flex-wrap gap-1.5">
             {providerDef.experimental ? (
-              <span className="rounded-full bg-zen-saffron/15 px-2 py-0.5 text-[11px] font-medium text-notion-text">
+              <span className="rounded-full bg-zen-saffron/15 px-2 py-0.5 text-label font-medium text-notion-text">
                 实验
               </span>
             ) : null}
             {providerDef.freeTierNote ? (
               <span
-                className="rounded-full bg-notion-sidebar px-2 py-0.5 text-[11px] font-medium text-notion-text-muted"
+                className="rounded-full bg-notion-sidebar px-2 py-0.5 text-label font-medium text-notion-text-muted"
                 title={providerDef.freeTierNote}
               >
                 试用 / 免费额
@@ -68,7 +68,7 @@ export function OnlineSttProviderPicker({ busy, providerId, onProviderChange }: 
             ) : null}
             {providerSupportsGlossaryBias(providerDef.id) ? (
               <span
-                className="rounded-full bg-zen-saffron/15 px-2 py-0.5 text-[11px] font-medium text-notion-text"
+                className="rounded-full bg-zen-saffron/15 px-2 py-0.5 text-label font-medium text-notion-text"
                 title="转写时映射全局术语表"
               >
                 术语偏置
@@ -76,7 +76,7 @@ export function OnlineSttProviderPicker({ busy, providerId, onProviderChange }: 
             ) : null}
           </div>
           {providerDef.docsUrl && providerDef.docsUrl.startsWith("http") && !providerDef.docsUrl.includes("example.com") ? (
-            <p className="text-[11px] text-notion-text-muted">
+            <p className="text-label text-notion-text-muted">
               文档:{" "}
               <a href={providerDef.docsUrl} target="_blank" rel="noreferrer" className={ENV_EXTERNAL_LINK_CLASS}>
                 {providerDef.docsUrl.replace(/^https?:\/\//, "").split("/")[0]}

@@ -46,14 +46,14 @@ export function SegmentCorrectPopover({ state, suggestions, onClose, onApply }: 
         onClick={(e) => e.stopPropagation()}
       >
         {suggestions.length === 0 ? (
-          <p className="m-0 px-2 py-1.5 text-[11px] leading-snug text-notion-text-muted">无匹配建议</p>
+          <p className="m-0 px-2 py-1.5 text-label leading-snug text-notion-text-muted">无匹配建议</p>
         ) : (
           <ul className="m-0 max-h-40 list-none overflow-y-auto p-0" aria-label="更正建议">
             {suggestions.map((item, i) => (
               <li key={`${item.kind}-${i}`} className="list-none">
                 <button
                   type="button"
-                  className="block w-full border-0 bg-transparent px-2 py-1 text-left text-[11px] leading-snug text-notion-text transition-colors hover:bg-notion-sidebar-hover"
+                  className="block w-full border-0 bg-transparent px-2 py-1 text-left text-label leading-snug text-notion-text transition-colors hover:bg-notion-sidebar-hover"
                   title={`替换为「${suggestionLabel(item)}」`}
                   onClick={() => onApply(item)}
                 >

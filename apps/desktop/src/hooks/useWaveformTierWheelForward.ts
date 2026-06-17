@@ -1,6 +1,12 @@
 import { useEffect, type RefObject } from "react";
 
-/** Forward horizontal wheel from the waveform area to tier scroll (ADR-0005). */
+/** Resolve wheel delta for horizontal tier scroll (trackpad vertical swipe pans the timeline). */
+export function resolveWaveformTierWheelScrollDelta(e: WheelEvent): number {
+  if (Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return e.deltaX;
+  return e.deltaY;
+}
+
+/** Forward wheel from the waveform area to tier scroll (ADR-0005). */
 export function useWaveformTierWheelForward(input: {
   waveformShellRef: RefObject<HTMLElement | null>;
   tierScrollRef: RefObject<HTMLElement | null>;
@@ -15,21 +21,20 @@ export function useWaveformTierWheelForward(input: {
     if (!tier) return;
 
     const onWheel = (e: WheelEvent) => {
-      let delta = e.deltaX;
-      if (!delta && e.shiftKey) {
-        delta = e.deltaY;
-      }
+      const delta = resolveWaveformTierWheelScrollDelta(e);
       if (!delta) return;
       tier.scrollLeft += delta;
       input.onTierScroll?.();
       e.preventDefault();
+      e.stopPropagation();
     };
 
-    tier.addEventListener("wheel", onWheel, { passive: false });
-    shell?.addEventListener("wheel", onWheel, { passive: false });
+    const opts: AddEventListenerOptions = { passive: false, capture: true };
+    tier.addEventListener("wheel", onWheel, opts);
+    shell?.addEventListener("wheel", onWheel, opts);
     return () => {
-      tier.removeEventListener("wheel", onWheel);
-      shell?.removeEventListener("wheel", onWheel);
+      tier.removeEventListener("wheel", onWheel, opts);
+      shell?.removeEventListener("wheel", onWheel, opts);
     };
   }, [input.enabled, input.onTierScroll, input.tierScrollRef, input.waveformShellRef]);
 }

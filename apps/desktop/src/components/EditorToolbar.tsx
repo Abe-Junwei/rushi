@@ -10,7 +10,7 @@ import { editorShortcutMenuHint } from "../utils/editorShortcutMenuHint";
 const ghostBtn = CONTROL_BTN_TOOLBAR_GHOST;
 const saveBtn = ghostBtn;
 const menuItem =
-  "dropdown-item w-full px-3 py-2 text-left text-[12px] text-notion-text transition-colors hover:bg-notion-sidebar-hover disabled:cursor-not-allowed disabled:text-notion-text-light";
+  "dropdown-item w-full px-3 py-2 text-left text-body text-notion-text transition-colors hover:bg-notion-sidebar-hover disabled:cursor-not-allowed disabled:text-notion-text-light";
 interface EditorToolbarProps {
   controller: ProjectControllerApi;
   exportKey: string;
@@ -110,7 +110,7 @@ export const EditorToolbar = memo(function EditorToolbar({
           disabled={c.busy}
         />
 
-        <span className="hidden shrink-0 whitespace-nowrap text-[11px] text-notion-text-muted sm:inline">
+        <span className="hidden shrink-0 whitespace-nowrap text-label text-notion-text-muted sm:inline">
           {c.prepareModelBusy
             ? c.prepareModelCancelling
               ? "正在取消模型下载…"

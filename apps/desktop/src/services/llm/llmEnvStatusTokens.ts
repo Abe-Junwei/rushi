@@ -25,7 +25,7 @@ export const LLM_STATUS_BANNER_TITLE_CLASS: Record<LlmOllamaTone, string> = {
 
 /** 状态 banner 刷新/探测按钮基类（无 Preflight 时须压平 UA 灰底） */
 export const LLM_STATUS_REFRESH_BTN_BASE =
-  "inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-sm border border-transparent px-2 py-1 text-[12px] font-medium shadow-none ring-0 appearance-none transition-[color,background-color,border-color] duration-150 ease-out enabled:hover:bg-notion-bg disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-zen-saffron/35";
+  "inline-flex shrink-0 cursor-pointer items-center gap-1 rounded-sm border border-transparent px-2 py-1 text-body font-medium shadow-none ring-0 appearance-none transition-[color,background-color,border-color] duration-150 ease-out enabled:hover:bg-notion-bg disabled:cursor-not-allowed disabled:opacity-40 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-zen-saffron/35";
 
 /** 状态 banner 右侧刷新/探测按钮（与圆点/标题语义色对齐；ok 用 action 绿区分 primary 绿） */
 export const LLM_STATUS_REFRESH_BTN_CLASS: Record<LlmOllamaTone, string> = {

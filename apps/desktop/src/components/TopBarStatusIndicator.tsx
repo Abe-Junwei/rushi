@@ -10,7 +10,7 @@ type Props = {
   title?: string;
 };
 
-const labelClass = "text-[11px] font-medium text-notion-text-muted";
+const labelClass = "text-label font-medium text-notion-text-muted";
 
 const rowClass = "flex items-center gap-1.5";
 

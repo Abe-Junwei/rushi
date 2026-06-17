@@ -155,7 +155,7 @@ export function WelcomeView({
             >
               <header className="flex flex-col items-center gap-4 text-center" data-purpose="hero-content">
                 <div className="flex flex-col gap-2">
-                  <h1 className="text-[28px] font-semibold leading-[1.25] tracking-[-0.015em] text-notion-text">
+                  <h1 className="text-display font-semibold leading-[1.25] tracking-[-0.015em] text-notion-text">
                     欢迎回来
                   </h1>
                   <p className="text-sm leading-relaxed text-notion-text-muted">
@@ -186,7 +186,7 @@ export function WelcomeView({
 
               <section className="flex flex-col gap-2" aria-label="最近文件">
                 <div className="flex items-center justify-between gap-2">
-                  <h2 className="text-[13px] font-medium text-notion-text-muted">最近文件</h2>
+                  <h2 className="text-title font-medium text-notion-text-muted">最近文件</h2>
                   <span className={`${PANEL_TYPOGRAPHY.meta} tabular-nums text-notion-text-muted`}>
                     {loadingRecentFiles ? "…" : `${recentFiles.length} 个文件`}
                   </span>

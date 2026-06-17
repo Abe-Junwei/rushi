@@ -11,6 +11,11 @@ export const COLORS = {
   saffronLight: "#ffddba",
   saffronMid: "#85530f",
   saffronDeep: "#452800",
+  /** 实心 Primary CTA（WCAG AA 白字）；见 tokens.css --zen-primary-action-* */
+  primaryActionBg: "#C58A43",
+  primaryActionBgHover: "#85530f",
+  primaryActionFg: "#ffffff",
+  primaryActionFgHover: "#ffffff",
   ochre: "#EAE0C5",
   stone: "#8E8E8E",
   cinnabar: "#963530",
