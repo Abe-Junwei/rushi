@@ -5,6 +5,7 @@ import { WAVEFORM_SURFER_BAR_DISPLAY } from "../config/waveformSurferDisplay";
 import {
   quantizePxPerSecForPeaksLoad,
   clampPxPerSecForWaveSurferRender,
+  MAX_WAVESURFER_PEAK_COLUMNS,
   WAVEFORM_WS_HOST_WIDTH_PX,
 } from "../utils/pxPerSec";
 import { resolveLayoutDurationSec } from "../utils/waveformTimelineMetrics";
@@ -115,7 +116,7 @@ export function useProjectWaveformMount(
           logWaveformRenderPath(
             "peaks",
             "mount_peaks_bootstrap",
-            `load_px=${loadPx} dur=${layoutDur.toFixed(1)} cols_cap=32768`,
+            `load_px=${loadPx} dur=${layoutDur.toFixed(1)} cols_cap=${MAX_WAVESURFER_PEAK_COLUMNS}`,
           );
         } catch (err) {
           logDesktopUi(

@@ -12,7 +12,7 @@ import {
   waveformDataToWaveSurferPeaks,
 } from "../services/waveform/audiowaveformDat";
 import { drawWaveformSegmentBands } from "../services/waveform/drawWaveformSegmentBands";
-import { capWaveformPeakColumns, computeTimelineWidthPx } from "../utils/pxPerSec";
+import { capWaveformPeakColumns, computeTimelineWidthPx, MAX_WAVESURFER_PEAK_COLUMNS } from "../utils/pxPerSec";
 import type { SegmentDto } from "../tauri/projectApi";
 
 type Timed = { label: string; ms: number; detail?: string };
@@ -181,7 +181,7 @@ describe("waveform zoom frame breakdown", () => {
             segments: makeSegments(5000, durationSec),
             scrollLeftPx: 12_000,
             viewportWidthPx: 1200,
-            timelineWidthPx: 32_768,
+            timelineWidthPx: MAX_WAVESURFER_PEAK_COLUMNS,
             durationSec,
             layoutHeightPx: 96,
           });

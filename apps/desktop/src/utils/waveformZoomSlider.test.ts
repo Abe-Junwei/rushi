@@ -21,7 +21,7 @@ describe("waveformZoomSlider", () => {
 
   it("snaps zoom in/out to slider min when below manual range", () => {
     const range = resolveWaveformZoomSliderRange(800, 0.5);
-    expect(range.minPxPerSec).toBeGreaterThan(400);
+    expect(range.minPxPerSec).toBeGreaterThan(480);
     expect(computeZoomInPxPerSec(56, range)).toBe(range.minPxPerSec);
     expect(computeZoomOutPxPerSec(56, range)).toBe(range.minPxPerSec);
   });

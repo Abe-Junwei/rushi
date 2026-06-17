@@ -22,6 +22,7 @@ import {
   computeViewportFitScrollPx,
   PX_PER_SEC_FIT_MIN,
   PX_PER_SEC_FIT_SELECTION_MAX,
+  MAX_WAVESURFER_PEAK_COLUMNS,
   PX_PER_SEC_MAX,
   PX_PER_SEC_MIN,
   quantizePxPerSecForPeaksLoad,
@@ -197,7 +198,7 @@ describe("resolveViewportFitLayoutPxPerSec", () => {
     const layout = resolveViewportFitLayoutPxPerSec(raw, dur);
     expect(layout).toBeLessThanOrEqual(resolveMaxRenderablePxPerSec(dur));
     expect(layout).toBeLessThanOrEqual(resolveMaxPeaksTimelinePxPerSec(dur));
-    expect(computeTimelineWidthPx(dur, layout)).toBeLessThanOrEqual(32_768);
+    expect(computeTimelineWidthPx(dur, layout)).toBeLessThanOrEqual(MAX_WAVESURFER_PEAK_COLUMNS);
   });
 });
 
@@ -359,21 +360,23 @@ describe("capWaveformPeakColumns", () => {
   it("caps 4h audio at high zoom to a fixed column budget", () => {
     const timelineWidth = computeTimelineWidthPx(14_400, 107);
     expect(timelineWidth).toBeGreaterThan(1_000_000);
-    expect(capWaveformPeakColumns(timelineWidth)).toBe(32_768);
+    expect(capWaveformPeakColumns(timelineWidth)).toBe(MAX_WAVESURFER_PEAK_COLUMNS);
   });
 });
 
 describe("resolveMaxPeaksTimelinePxPerSec", () => {
   it("limits px/s so duration×px/s stays within peaks column budget", () => {
-    expect(resolveMaxPeaksTimelinePxPerSec(360)).toBeCloseTo(32_768 / 360, 4);
-    expect(clampPxPerSecForWaveSurferRender(100, 360)).toBeLessThanOrEqual(32_768 / 360 + 1e-6);
+    expect(resolveMaxPeaksTimelinePxPerSec(360)).toBeCloseTo(MAX_WAVESURFER_PEAK_COLUMNS / 360, 4);
+    expect(clampPxPerSecForWaveSurferRender(100, 360)).toBeLessThanOrEqual(
+      MAX_WAVESURFER_PEAK_COLUMNS / 360 + 1e-6,
+    );
   });
 });
 
 describe("computeRenderableTimelineWidthPx", () => {
   it("regression: 360s @ 100px/s must not exceed peaks column cap (DMG peaks path)", () => {
     const width = computeRenderableTimelineWidthPx(360, 100);
-    expect(width).toBeLessThanOrEqual(32_768);
+    expect(width).toBeLessThanOrEqual(MAX_WAVESURFER_PEAK_COLUMNS);
     expect(width).toBe(Math.ceil(360 * clampPxPerSecForWaveSurferRender(100, 360)));
   });
 });
@@ -381,7 +384,7 @@ describe("computeRenderableTimelineWidthPx", () => {
 describe("resolveMaxRenderablePxPerSec", () => {
   it("limits decode canvas width for very long media", () => {
     const maxPx = resolveMaxRenderablePxPerSec(14_400);
-    expect(maxPx).toBeCloseTo(262_144 / 14_400, 4);
+    expect(maxPx).toBeCloseTo(327_680 / 14_400, 4);
     expect(clampPxPerSecForWaveSurferRender(107, 14_400)).toBeLessThan(20);
   });
 });

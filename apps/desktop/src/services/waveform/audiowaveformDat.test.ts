@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from "vitest";
-import { computeTimelineWidthPx } from "../../utils/pxPerSec";
+import { computeTimelineWidthPx, MAX_WAVESURFER_PEAK_COLUMNS } from "../../utils/pxPerSec";
 import { resampleWaveformForPxPerSec } from "./audiowaveformDat";
 
 function mockWaveformData(durationSec: number, length: number) {
@@ -33,6 +33,6 @@ describe("resampleWaveformForPxPerSec", () => {
   it("caps resample width for very long timelines", () => {
     const data = mockWaveformData(14_400, 2_880_000);
     resampleWaveformForPxPerSec(data as never, 107, 14_400);
-    expect(data.resample).toHaveBeenCalledWith({ width: 32_768 });
+    expect(data.resample).toHaveBeenCalledWith({ width: MAX_WAVESURFER_PEAK_COLUMNS });
   });
 });
