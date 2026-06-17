@@ -1,6 +1,5 @@
 import { useCallback } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
-import { publishSegmentTextBulkMutation } from "./flushSegmentTextDrafts";
 import {
   applyReplaceAllToSegments,
   buildReplaceAllPreviewRows,
@@ -10,13 +9,13 @@ import {
   type FindMatch,
 } from "../services/editor/segmentFindReplace";
 import { toast } from "../services/ui/toast";
+import type { SegmentPublishApi } from "./segmentPublishApi";
 
 type Args = {
   busy: boolean;
-  segmentsRef: React.MutableRefObject<SegmentDto[]>;
+  segmentPublish: SegmentPublishApi;
   flushSegmentTextDrafts: () => void;
   updateSegmentText: (idx: number, text: string) => void;
-  setSegments: React.Dispatch<React.SetStateAction<SegmentDto[]>>;
   pushUndo: () => void;
   saveSegments: (options?: {
     quiet?: boolean;
@@ -35,10 +34,9 @@ type Args = {
 export function useFindReplaceMutations(args: Args) {
   const {
     busy,
-    segmentsRef,
+    segmentPublish,
     flushSegmentTextDrafts,
     updateSegmentText,
-    setSegments,
     pushUndo,
     saveSegments,
     findText,
@@ -50,17 +48,19 @@ export function useFindReplaceMutations(args: Args) {
     onRequestReplaceAllPreview,
   } = args;
 
+  const getCurrentSegmentsSnapshot = segmentPublish.getCurrentSegmentsSnapshot;
+
   const findReplaceCurrent = useCallback(() => {
     if (!findText || activeMatchIndex < 0) return;
     const match = matches[activeMatchIndex];
     if (!match) return;
     flushSegmentTextDrafts();
-    const row = segmentsRef.current[match.segmentIdx];
+    const row = getCurrentSegmentsSnapshot()[match.segmentIdx];
     if (!row) return;
     const nextText = replaceOnceInText(row.text, match.charStart, findText, replaceText);
     if (nextText === row.text) return;
     updateSegmentText(match.segmentIdx, nextText);
-    const projected = segmentsRef.current.map((s, i) =>
+    const projected = getCurrentSegmentsSnapshot().map((s, i) =>
       i === match.segmentIdx ? { ...s, text: nextText } : s,
     );
     const nextMatches = collectLiteralFindMatches(projected, findText);
@@ -74,9 +74,9 @@ export function useFindReplaceMutations(args: Args) {
     applySearchResults,
     findText,
     flushSegmentTextDrafts,
+    getCurrentSegmentsSnapshot,
     matches,
     replaceText,
-    segmentsRef,
     updateSegmentText,
   ]);
 
@@ -85,13 +85,13 @@ export function useFindReplaceMutations(args: Args) {
     const match = matches[activeMatchIndex];
     if (!match) return;
     flushSegmentTextDrafts();
-    const row = segmentsRef.current[match.segmentIdx];
+    const row = getCurrentSegmentsSnapshot()[match.segmentIdx];
     if (!row) return;
     const nextText = replaceOnceInText(row.text, match.charStart, findText, replaceText);
     if (nextText !== row.text) {
       updateSegmentText(match.segmentIdx, nextText);
     }
-    const projected = segmentsRef.current.map((s, i) =>
+    const projected = getCurrentSegmentsSnapshot().map((s, i) =>
       i === match.segmentIdx ? { ...s, text: nextText } : s,
     );
     const nextMatches = collectLiteralFindMatches(projected, findText);
@@ -108,24 +108,24 @@ export function useFindReplaceMutations(args: Args) {
     flushSegmentTextDrafts,
     matches,
     replaceText,
-    segmentsRef,
+    getCurrentSegmentsSnapshot,
     updateSegmentText,
   ]);
 
   const findReplaceRequestReplaceAll = useCallback(() => {
     if (!findText || !matches.length) return;
     flushSegmentTextDrafts();
-    const rows = buildReplaceAllPreviewRows(segmentsRef.current, findText, replaceText, matches);
+    const rows = buildReplaceAllPreviewRows(getCurrentSegmentsSnapshot(), findText, replaceText, matches);
     onRequestReplaceAllPreview(rows);
-  }, [findText, flushSegmentTextDrafts, matches, onRequestReplaceAllPreview, replaceText, segmentsRef]);
+  }, [findText, flushSegmentTextDrafts, getCurrentSegmentsSnapshot, matches, onRequestReplaceAllPreview, replaceText]);
 
   const findReplaceConfirmReplaceAll = useCallback(async () => {
     if (!findText || !matches.length || busy) return;
     const matchCount = matches.length;
     flushSegmentTextDrafts();
     pushUndo();
-    const next = applyReplaceAllToSegments(segmentsRef.current, findText, replaceText, matches);
-    publishSegmentTextBulkMutation(segmentsRef, setSegments, next);
+    const next = applyReplaceAllToSegments(getCurrentSegmentsSnapshot(), findText, replaceText, matches);
+    segmentPublish.publishTextBulk(next);
     const explicitPairs =
       findText.trim() !== replaceText.trim()
         ? [{ beforeText: findText.trim(), afterText: replaceText.trim() }]
@@ -149,9 +149,9 @@ export function useFindReplaceMutations(args: Args) {
     matches,
     pushUndo,
     replaceText,
+    getCurrentSegmentsSnapshot,
     saveSegments,
-    segmentsRef,
-    setSegments,
+    segmentPublish,
   ]);
 
   return {

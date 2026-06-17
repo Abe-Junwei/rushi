@@ -35,7 +35,7 @@ export interface ExportApi {
 export interface ExportDeps {
   current: ProjectDetail | null;
   currentFileId: string | null;
-  segmentsRef: React.MutableRefObject<SegmentDto[]>;
+  getCurrentSegmentsSnapshot: () => SegmentDto[];
   setError: (msg: string) => void;
   flushSegmentTextDrafts: () => void;
   beginBusy: (reason: BusyReason) => void;
@@ -48,7 +48,7 @@ export function useExportController(deps: ExportDeps): ExportApi {
   const {
     current,
     currentFileId,
-    segmentsRef,
+    getCurrentSegmentsSnapshot,
     setError,
     flushSegmentTextDrafts,
     beginBusy,
@@ -61,25 +61,25 @@ export function useExportController(deps: ExportDeps): ExportApi {
     if (!current) return;
     setError("");
     flushSegmentTextDrafts();
-    const rows: ExportSegment[] = segmentsRef.current.map((s, i) => ({ ...s, idx: i }));
+    const rows: ExportSegment[] = getCurrentSegmentsSnapshot().map((s, i) => ({ ...s, idx: i }));
     try {
       await p1.exportTextFile(safeExportBasename(current.name, "txt"), formatTxt(rows));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
-  }, [current, segmentsRef, setError, flushSegmentTextDrafts]);
+  }, [current, getCurrentSegmentsSnapshot, setError, flushSegmentTextDrafts]);
 
   const exportSrt = useCallback(async () => {
     if (!current) return;
     setError("");
     flushSegmentTextDrafts();
-    const rows: ExportSegment[] = segmentsRef.current.map((s, i) => ({ ...s, idx: i }));
+    const rows: ExportSegment[] = getCurrentSegmentsSnapshot().map((s, i) => ({ ...s, idx: i }));
     try {
       await p1.exportTextFile(safeExportBasename(current.name, "srt"), formatSrt(rows));
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
-  }, [current, segmentsRef, setError, flushSegmentTextDrafts]);
+  }, [current, getCurrentSegmentsSnapshot, setError, flushSegmentTextDrafts]);
 
   const docxExportMetaLine = useCallback(
     (includeProjectMetadata: boolean) => {
@@ -103,7 +103,7 @@ export function useExportController(deps: ExportDeps): ExportApi {
       if (!current) return;
       setError("");
       flushSegmentTextDrafts();
-      const normalized: SegmentDto[] = segmentsRef.current.map((s, i) => ({ ...s, idx: i }));
+      const normalized: SegmentDto[] = getCurrentSegmentsSnapshot().map((s, i) => ({ ...s, idx: i }));
       try {
         await exportDocxImpl(safeExportBasename(current.name, "docx"), current.name, mode, normalized, {
           exportMetaLine: docxExportMetaLine(false),
@@ -112,7 +112,7 @@ export function useExportController(deps: ExportDeps): ExportApi {
         setError(e instanceof Error ? e.message : String(e));
       }
     },
-    [current, docxExportMetaLine, segmentsRef, setError, flushSegmentTextDrafts],
+    [current, docxExportMetaLine, getCurrentSegmentsSnapshot, setError, flushSegmentTextDrafts],
   );
 
   const exportDeliveryDocx = useCallback(
@@ -120,7 +120,7 @@ export function useExportController(deps: ExportDeps): ExportApi {
       if (!current) return;
       setError("");
       flushSegmentTextDrafts();
-      const normalized: SegmentDto[] = segmentsRef.current.map((s, i) => ({ ...s, idx: i }));
+      const normalized: SegmentDto[] = getCurrentSegmentsSnapshot().map((s, i) => ({ ...s, idx: i }));
       beginBusy("export");
       try {
         let editLogRows: Awaited<ReturnType<typeof p1.projectListEditLog>> = [];
@@ -171,7 +171,7 @@ export function useExportController(deps: ExportDeps): ExportApi {
       current,
       currentFileId,
       docxExportMetaLine,
-      segmentsRef,
+      getCurrentSegmentsSnapshot,
       setError,
       flushSegmentTextDrafts,
       beginBusy,
@@ -205,7 +205,7 @@ export function useExportController(deps: ExportDeps): ExportApi {
     }
     setError("");
     flushSegmentTextDrafts();
-    const normalized: SegmentDto[] = segmentsRef.current.map((s, i) => ({ ...s, idx: i }));
+    const normalized: SegmentDto[] = getCurrentSegmentsSnapshot().map((s, i) => ({ ...s, idx: i }));
     try {
       await p1.exportProjectBundle(
         current.id,
@@ -216,7 +216,7 @@ export function useExportController(deps: ExportDeps): ExportApi {
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
-  }, [current, currentFileId, segmentsRef, setError, flushSegmentTextDrafts]);
+  }, [current, currentFileId, getCurrentSegmentsSnapshot, setError, flushSegmentTextDrafts]);
 
   const importProjectBundle = useCallback(async () => {
     setError("");

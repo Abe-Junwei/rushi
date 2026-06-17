@@ -41,6 +41,8 @@ function checkTsFile(fullPath) {
     "apps/desktop/src/pages/useProjectEditorState.ts",
     "apps/desktop/src/pages/segmentSegmentsRefSync.ts",
     "apps/desktop/src/pages/flushSegmentTextDrafts.ts",
+    "apps/desktop/src/pages/segmentPublishApi.ts",
+    "apps/desktop/src/pages/transcribeJobController.testHelpers.ts",
   ];
   if (
     /segmentsRef\.current\s*=/.test(source) &&
@@ -51,7 +53,7 @@ function checkTsFile(fullPath) {
     warnings.push(`${rel}: 直接赋值 segmentsRef.current；结构性变更应经由 publishSegmentStructureMutation`);
   }
 
-  // 结构 mutation 须读 segmentsRef，禁止 setSegments(prev => …) 做结构/正文合并
+  // 结构 mutation 须经 getCurrentSegmentsSnapshot 读当前语段，禁止 setSegments(prev => …) 做结构/正文合并
   const structureMutationFiles = [
     "apps/desktop/src/pages/segmentMutationMergeDelete.ts",
     "apps/desktop/src/pages/segmentMutationInsert.ts",
@@ -59,13 +61,50 @@ function checkTsFile(fullPath) {
   ];
   if (structureMutationFiles.some((f) => rel === f)) {
     if (/setSegments\s*\(\s*\(\s*(?:prev|p)\s*\)\s*=>/.test(source)) {
-      errors.push(`${rel}: 结构 mutation 须用 segmentsRef.current + publishSegmentStructureMutation，禁止 setSegments(prev => …)`);
+      errors.push(`${rel}: 结构 mutation 须用 getCurrentSegmentsSnapshot + publishSegmentStructureMutation，禁止 setSegments(prev => …)`);
     }
-    if (!/segmentsRef\.current/.test(source)) {
-      errors.push(`${rel}: 结构 mutation 须读取 segmentsRef.current`);
+    if (!/getCurrentSegmentsSnapshot\s*\(\)|segmentPublish\.getCurrentSegmentsSnapshot/.test(source)) {
+      errors.push(`${rel}: 结构 mutation 须通过 getCurrentSegmentsSnapshot() 读取当前语段`);
     }
-    if (!/publishSegmentStructureMutation/.test(source)) {
-      errors.push(`${rel}: 结构 mutation 须经由 publishSegmentStructureMutation 发布`);
+    if (/segmentsRef\.current/.test(source)) {
+      errors.push(`${rel}: 结构 mutation 禁止直接读取 segmentsRef.current；改用 getCurrentSegmentsSnapshot()`);
+    }
+    if (
+      !/segmentPublish\.publishStructure/.test(source) &&
+      !/publishSegmentStructureMutation/.test(source)
+    ) {
+      errors.push(`${rel}: 结构 mutation 须经由 segmentPublish.publishStructure 发布`);
+    }
+  }
+
+  // 业务 consumer 须经 snapshot 读；写路径须经 segmentPublish，禁止直接读 ref 或直接 publishSegment*。
+  const segmentPublishConsumerFiles = [
+    "apps/desktop/src/pages/useFindReplaceMutations.ts",
+    "apps/desktop/src/pages/useFindReplaceSearch.ts",
+    "apps/desktop/src/pages/usePostTranscribeStageBController.ts",
+    "apps/desktop/src/pages/usePostTranscribeStageBPreviewRun.ts",
+    "apps/desktop/src/pages/useTranscribeJobExecute.ts",
+    "apps/desktop/src/pages/transcribeLocalJobRun.ts",
+    "apps/desktop/src/pages/useExportController.ts",
+    "apps/desktop/src/pages/useCorrectionRulesController.ts",
+    "apps/desktop/src/pages/useCorrectionRulesApply.ts",
+    "apps/desktop/src/pages/useSegmentDeleteConfirmController.ts",
+    "apps/desktop/src/pages/useSegmentAnnotationController.ts",
+    "apps/desktop/src/pages/useAutoPunctuateController.ts",
+    "apps/desktop/src/pages/useEditorSegmentCorrectPopover.ts",
+    "apps/desktop/src/pages/projectLifecycleReturn.ts",
+    "apps/desktop/src/pages/projectSavePersistPipeline.ts",
+    "apps/desktop/src/pages/useProjectSaveController.ts",
+  ];
+  if (segmentPublishConsumerFiles.some((f) => rel === f)) {
+    if (!/getCurrentSegmentsSnapshot\s*\(\)|segmentPublish\.getCurrentSegmentsSnapshot/.test(source)) {
+      errors.push(`${rel}: 须通过 getCurrentSegmentsSnapshot() 读取当前语段`);
+    }
+    if (/segmentsRef/.test(source)) {
+      errors.push(`${rel}: 禁止引用 segmentsRef；改用 segmentPublish API`);
+    }
+    if (/publishSegment(?:Structure|TextBulk)Mutation/.test(source)) {
+      errors.push(`${rel}: 禁止直接调用 publishSegment*Mutation；改用 segmentPublish`);
     }
   }
 

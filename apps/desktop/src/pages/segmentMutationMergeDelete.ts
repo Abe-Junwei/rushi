@@ -1,15 +1,11 @@
 import type { SegmentDto } from "../tauri/projectApi";
 import { mergeTwoSegments, reindexSegments } from "./segmentListHelpers";
 import { mergeSegmentRangeFold, resolveSelectedIdxAfterIndexRemoval } from "../utils/segmentSelection";
-import {
-  commitSegmentTextDraftsForStructureMutation,
-  publishSegmentStructureMutation,
-  resolveLiveSegmentText,
-} from "./flushSegmentTextDrafts";
+import { resolveLiveSegmentText } from "./flushSegmentTextDrafts";
+import type { SegmentPublishApi } from "./segmentPublishApi";
 
 export type SegmentMergeDeleteDeps = {
-  segmentsRef: React.MutableRefObject<SegmentDto[]>;
-  setSegments: React.Dispatch<React.SetStateAction<SegmentDto[]>>;
+  segmentPublish: SegmentPublishApi;
   selectedIdxRef: React.MutableRefObject<number>;
   setSelectedIdx: React.Dispatch<React.SetStateAction<number>>;
   setError: (msg: string) => void;
@@ -26,8 +22,7 @@ function mergePairWithLiveText(a: SegmentDto, b: SegmentDto, idxA: number, idxB:
 
 export function createSegmentMergeDeleteActions(deps: SegmentMergeDeleteDeps) {
   const {
-    segmentsRef,
-    setSegments,
+    segmentPublish,
     selectedIdxRef,
     setSelectedIdx,
     setError,
@@ -37,9 +32,9 @@ export function createSegmentMergeDeleteActions(deps: SegmentMergeDeleteDeps) {
 
   function mergeWithPrevAt(idx: number) {
     if (idx <= 0) return;
-    commitSegmentTextDraftsForStructureMutation(segmentsRef, setSegments);
+    segmentPublish.commitTextDraftsForStructureMutation();
     pushUndo();
-    const base = segmentsRef.current;
+    const base = segmentPublish.getCurrentSegmentsSnapshot();
     if (idx <= 0 || idx >= base.length) return;
     const a = base[idx - 1];
     const b = base[idx];
@@ -47,15 +42,15 @@ export function createSegmentMergeDeleteActions(deps: SegmentMergeDeleteDeps) {
     const merged = mergePairWithLiveText(a, b, idx - 1, idx);
     const out = [...base];
     out.splice(idx - 1, 2, merged);
-    publishSegmentStructureMutation(segmentsRef, setSegments, reindexSegments(out));
+    segmentPublish.publishStructure( reindexSegments(out));
     setSelectedIdx(idx - 1);
     onSelectionCollapsed?.(idx - 1);
   }
 
   function mergeWithNextAt(idx: number) {
-    commitSegmentTextDraftsForStructureMutation(segmentsRef, setSegments);
+    segmentPublish.commitTextDraftsForStructureMutation();
     pushUndo();
-    const base = segmentsRef.current;
+    const base = segmentPublish.getCurrentSegmentsSnapshot();
     if (idx < 0 || idx >= base.length - 1) return;
     const a = base[idx];
     const b = base[idx + 1];
@@ -63,7 +58,7 @@ export function createSegmentMergeDeleteActions(deps: SegmentMergeDeleteDeps) {
     const merged = mergePairWithLiveText(a, b, idx, idx + 1);
     const out = [...base];
     out.splice(idx, 2, merged);
-    publishSegmentStructureMutation(segmentsRef, setSegments, reindexSegments(out));
+    segmentPublish.publishStructure( reindexSegments(out));
     setSelectedIdx(idx);
     onSelectionCollapsed?.(idx);
   }
@@ -77,27 +72,23 @@ export function createSegmentMergeDeleteActions(deps: SegmentMergeDeleteDeps) {
   }
 
   function mergeSegmentRange(lo: number, hi: number) {
-    commitSegmentTextDraftsForStructureMutation(segmentsRef, setSegments);
+    segmentPublish.commitTextDraftsForStructureMutation();
     pushUndo();
-    const base = segmentsRef.current;
+    const base = segmentPublish.getCurrentSegmentsSnapshot();
     if (lo < 0 || hi >= base.length || lo >= hi) return;
     const merged = mergeSegmentRangeFold(base, lo, hi);
     const out = [...base.slice(0, lo), merged, ...base.slice(hi + 1)];
-    publishSegmentStructureMutation(segmentsRef, setSegments, reindexSegments(out));
+    segmentPublish.publishStructure( reindexSegments(out));
     setSelectedIdx(lo);
     onSelectionCollapsed?.(lo);
   }
 
   function deleteSegmentAtAfterCommit(idx: number) {
-    const segs = segmentsRef.current;
+    const segs = segmentPublish.getCurrentSegmentsSnapshot();
     if (idx < 0 || idx >= segs.length) return;
     setError("");
     pushUndo();
-    publishSegmentStructureMutation(
-      segmentsRef,
-      setSegments,
-      reindexSegments(segs.filter((_, j) => j !== idx)),
-    );
+    segmentPublish.publishStructure(reindexSegments(segs.filter((_, j) => j !== idx)));
     const nextLen = segs.length - 1;
     const prevSelected = selectedIdxRef.current;
     let nextSelected = prevSelected;
@@ -112,13 +103,13 @@ export function createSegmentMergeDeleteActions(deps: SegmentMergeDeleteDeps) {
   }
 
   function deleteSegmentAt(idx: number) {
-    commitSegmentTextDraftsForStructureMutation(segmentsRef, setSegments);
+    segmentPublish.commitTextDraftsForStructureMutation();
     deleteSegmentAtAfterCommit(idx);
   }
 
   function deleteSegmentRange(lo: number, hi: number) {
-    commitSegmentTextDraftsForStructureMutation(segmentsRef, setSegments);
-    const segs = segmentsRef.current;
+    segmentPublish.commitTextDraftsForStructureMutation();
+    const segs = segmentPublish.getCurrentSegmentsSnapshot();
     if (lo < 0 || hi >= segs.length || lo > hi) return;
     setError("");
     pushUndo();
@@ -129,18 +120,14 @@ export function createSegmentMergeDeleteActions(deps: SegmentMergeDeleteDeps) {
     else if (hi < prevSelected) nextSelected = prevSelected - (hi - lo + 1);
     else if (lo <= prevSelected && prevSelected <= hi) nextSelected = Math.min(lo, nextLen - 1);
     nextSelected = Math.max(0, Math.min(nextSelected, nextLen - 1));
-    publishSegmentStructureMutation(
-      segmentsRef,
-      setSegments,
-      reindexSegments(segs.filter((_, j) => j < lo || j > hi)),
-    );
+    segmentPublish.publishStructure(reindexSegments(segs.filter((_, j) => j < lo || j > hi)));
     setSelectedIdx(nextSelected);
     onSelectionCollapsed?.(nextSelected);
   }
 
   function deleteSegmentIndices(rawIndices: number[]) {
-    commitSegmentTextDraftsForStructureMutation(segmentsRef, setSegments);
-    const segs = segmentsRef.current;
+    segmentPublish.commitTextDraftsForStructureMutation();
+    const segs = segmentPublish.getCurrentSegmentsSnapshot();
     const indices = [...new Set(rawIndices)]
       .filter((idx) => idx >= 0 && idx < segs.length)
       .sort((a, b) => b - a);
@@ -156,11 +143,7 @@ export function createSegmentMergeDeleteActions(deps: SegmentMergeDeleteDeps) {
     const prevSelected = selectedIdxRef.current;
     const nextLen = segs.length - indices.length;
     const nextSelected = resolveSelectedIdxAfterIndexRemoval(segs.length, indices, prevSelected);
-    publishSegmentStructureMutation(
-      segmentsRef,
-      setSegments,
-      reindexSegments(segs.filter((_, j) => !remove.has(j))),
-    );
+    segmentPublish.publishStructure(reindexSegments(segs.filter((_, j) => !remove.has(j))));
     setSelectedIdx(Math.max(0, Math.min(nextSelected, nextLen - 1)));
     onSelectionCollapsed?.(Math.max(0, Math.min(nextSelected, nextLen - 1)));
   }

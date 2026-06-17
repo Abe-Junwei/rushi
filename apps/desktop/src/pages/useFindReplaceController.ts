@@ -16,14 +16,15 @@ export function useFindReplaceController(args: UseFindReplaceControllerArgs): Fi
     busy,
     currentFileId,
     segments,
-    segmentsRef,
+    segmentPublish,
     flushSegmentTextDrafts,
     setSelectedIdx,
     updateSegmentText,
-    setSegments,
     pushUndo,
     saveSegments,
   } = args;
+
+  const getCurrentSegmentsSnapshot = segmentPublish.getCurrentSegmentsSnapshot;
 
   const [dialog, setDialog] = useState<FindReplaceDialogState>({ phase: "closed" });
 
@@ -48,7 +49,7 @@ export function useFindReplaceController(args: UseFindReplaceControllerArgs): Fi
 
   const search = useFindReplaceSearch({
     segments,
-    segmentsRef,
+    getCurrentSegmentsSnapshot,
     flushSegmentTextDrafts,
     setSelectedIdx,
   });
@@ -74,10 +75,9 @@ export function useFindReplaceController(args: UseFindReplaceControllerArgs): Fi
 
   const mutations = useFindReplaceMutations({
     busy,
-    segmentsRef,
+    segmentPublish,
     flushSegmentTextDrafts,
     updateSegmentText,
-    setSegments,
     pushUndo,
     saveSegments,
     findText: search.findText,

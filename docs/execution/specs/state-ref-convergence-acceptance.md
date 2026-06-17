@@ -37,6 +37,34 @@
 - [x] mutation focused tests 覆盖 `updateSegmentTime` 后 `segmentsRef` 同步。
 - [x] combined state/ref focused tests、desktop typecheck、architecture guard 通过。
 
-## 后续阶段
+## S2.5b 验收项
 
-- S2.4：state-only 发布与 guard 最终翻转。
+- [x] `createSegmentPublishApi` 在 editor stack 创建并向下游透传；下游 controller 不再接收 `segmentsRef`。
+- [x] save pipeline / restore / find-replace replace-all / stage B writeback / transcribe clear-restore / annotation 改经 `segmentPublish.publish*`。
+- [x] `projectLifecycleReturn` 输入移除 `segmentsRef`；lifecycle 对外 API 本就不暴露 ref。
+- [x] architecture guard：`segmentPublishConsumerFiles` 禁止 `segmentsRef` 与直接 `publishSegment*Mutation`。
+- [x] `segmentPublishApi.test.ts` + save / undo / transcribe / correction / annotation focused tests、architecture guard 通过。
+
+## S2.5a 验收项
+
+- [x] export / correction rules / delete confirm / annotation / auto punctuate / editor inline correct 改经 `getCurrentSegmentsSnapshot()` 读。
+- [x] `useProjectSaveController` restore 路径改 snapshot 读；`projectLifecycleReturn` merge 快捷键改 snapshot 读。
+- [x] architecture guard 扩展至上述 consumer 文件。
+- [x] export / delete confirm / annotation / correction rules focused tests、architecture guard 通过。
+
+## S2.4b 验收项
+
+- [x] find/replace（search + mutations）改经 `getCurrentSegmentsSnapshot()` 读当前语段。
+- [x] transcribe execute / local job poll delta 改经 snapshot 读；转写成功 stage sync 改 snapshot。
+- [x] stage B（offer + preview + writeback）改经 snapshot 读。
+- [x] editor stack 对外导出 `getCurrentSegmentsSnapshot`；wiring 透传至 tools / transcribe。
+- [x] architecture guard：上述 consumer 文件禁止 `segmentsRef.current` 读。
+- [x] stage B / transcribe local job focused tests、architecture guard 通过。
+
+## S2.4a 验收项
+
+- [x] `publishSegmentStructureMutation` / `publishSegmentTextBulkMutation` 支持 functional updater（基于 publish 时 ref 快照解析）。
+- [x] 结构 mutation 模块（merge/insert/split）改经 `getCurrentSegmentsSnapshot()` 读当前语段，不再直接读 `segmentsRef.current`。
+- [x] `useSegmentMutationController` 内 text/time/bounds/undo/redo 读改走 `getCurrentSegmentsSnapshot()`；publish 使用 updater 形态。
+- [x] architecture guard：结构 mutation 文件禁止 `segmentsRef.current` 读，要求 `getCurrentSegmentsSnapshot()`。
+- [x] flush / mutation focused tests、typecheck、architecture guard 通过。

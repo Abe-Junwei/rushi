@@ -8,6 +8,7 @@ import { useEditorCorrectionCatalog } from "./useEditorCorrectionCatalog";
 import { useEditorSegmentCorrectPopover } from "./useEditorSegmentCorrectPopover";
 import { segmentsWithDraftsApplied } from "../services/segmentDirtyRead";
 import { segmentCanFinalize } from "../services/segmentConfirmEligible";
+import type { SegmentPublishApi } from "./segmentPublishApi";
 
 type SegmentDirtyApi = {
   getSavedSnapshot: () => SegmentDto[];
@@ -21,8 +22,7 @@ type Args = {
   currentFileId: string | null;
   selectedIdx: number;
   segments: SegmentDto[];
-  segmentsRef: React.MutableRefObject<SegmentDto[]>;
-  setSegments: React.Dispatch<React.SetStateAction<SegmentDto[]>>;
+  segmentPublish: SegmentPublishApi;
   setSelectedIdx: React.Dispatch<React.SetStateAction<number>>;
   flushSegmentTextDrafts: () => void;
   updateSegmentText: (idx: number, text: string) => void;
@@ -46,8 +46,7 @@ export function useProjectEditorToolsController(args: Args) {
     currentFileId,
     selectedIdx,
     segments,
-    segmentsRef,
-    setSegments,
+    segmentPublish,
     setSelectedIdx,
     flushSegmentTextDrafts,
     updateSegmentText,
@@ -56,6 +55,8 @@ export function useProjectEditorToolsController(args: Args) {
     saveSegments,
     transcribeWarnings = [],
   } = args;
+
+  const getCurrentSegmentsSnapshot = segmentPublish.getCurrentSegmentsSnapshot;
 
   const [llmRuntimeEpoch, setLlmRuntimeEpoch] = useState(0);
   const llmEnvRevision = useLlmEnvRuntimeRevision();
@@ -67,12 +68,11 @@ export function useProjectEditorToolsController(args: Args) {
     busy,
     currentFileId,
     segments,
-    segmentsRef,
+    segmentPublish,
     selectedIdx,
     flushSegmentTextDrafts,
     setSelectedIdx,
     updateSegmentText,
-    setSegments,
     pushUndo,
     saveSegments,
   });
@@ -83,7 +83,7 @@ export function useProjectEditorToolsController(args: Args) {
 
   const editorSegmentCorrect = useEditorSegmentCorrectPopover({
     busy,
-    segmentsRef,
+    getCurrentSegmentsSnapshot,
     suggestionsForSurface: editorCorrectionCatalog.suggestionsForSurface,
     updateSegmentText,
   });
@@ -101,9 +101,8 @@ export function useProjectEditorToolsController(args: Args) {
     transcribePreviewActive: busyReason === "transcribe",
     currentFileId,
     segments,
-    segmentsRef,
+    segmentPublish,
     flushSegmentTextDrafts,
-    setSegments,
     setSelectedIdx,
     pushUndo,
     setError,

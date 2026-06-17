@@ -1,5 +1,6 @@
 import type { SegmentDto } from "../tauri/projectApi";
 import type { useTranscribeJobController } from "./useTranscribeJobController";
+import { createSegmentPublishApi } from "./segmentPublishApi";
 import { loopbackFetch } from "../services/asr/loopbackFetch";
 import { pushTranscribeDeliveryModeToast } from "../services/deliveryModeTranscribeToast";
 import { syncOnboardingTranscribe } from "../services/onboarding/onboardingAutoSync";
@@ -35,6 +36,14 @@ export function baseTranscribeJobDeps(
 ) {
   const segments = overrides.segments ?? [transcribeTestSeg("已有正文")];
   const segmentsRef = overrides.segmentsRef ?? { current: segments };
+  const setSegments =
+    overrides.setSegments ??
+    vi.fn((updater: SegmentDto[] | ((prev: SegmentDto[]) => SegmentDto[])) => {
+      segmentsRef.current =
+        typeof updater === "function" ? updater(segmentsRef.current) : updater;
+    });
+  const segmentPublish =
+    overrides.segmentPublish ?? createSegmentPublishApi(segmentsRef, setSegments);
   return {
     busy: false,
     beginBusy: vi.fn(),
@@ -42,9 +51,9 @@ export function baseTranscribeJobDeps(
     current: { id: "proj-1", name: "P", files: [], created_at_ms: 0, updated_at_ms: 0 },
     currentFileId: "file-1",
     segments,
-    segmentsRef,
+    segmentPublish,
+    setSegments,
     setCurrent: vi.fn(),
-    setSegments: vi.fn(),
     setError: vi.fn(),
     closeGate: { openFileWrapped: vi.fn(async () => {}) },
     mutations: { resetMutationHistory: vi.fn() },

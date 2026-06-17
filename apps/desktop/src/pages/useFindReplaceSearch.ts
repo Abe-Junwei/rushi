@@ -12,13 +12,13 @@ const FIND_SEARCH_DEBOUNCE_MS = 320;
 
 type Args = {
   segments: SegmentDto[];
-  segmentsRef: React.MutableRefObject<SegmentDto[]>;
+  getCurrentSegmentsSnapshot: () => SegmentDto[];
   flushSegmentTextDrafts: () => void;
   setSelectedIdx: React.Dispatch<React.SetStateAction<number>>;
 };
 
 export function useFindReplaceSearch(args: Args) {
-  const { segments, segmentsRef, flushSegmentTextDrafts, setSelectedIdx } = args;
+  const { segments, getCurrentSegmentsSnapshot, flushSegmentTextDrafts, setSelectedIdx } = args;
 
   const [findText, setFindText] = useState("");
   const [replaceText, setReplaceText] = useState("");
@@ -95,10 +95,10 @@ export function useFindReplaceSearch(args: Args) {
       }
       flushSegmentTextDrafts();
       setSearchCommitted(true);
-      const nextMatches = collectLiteralFindMatches(segmentsRef.current, query);
+      const nextMatches = collectLiteralFindMatches(getCurrentSegmentsSnapshot(), query);
       applySearchResults(nextMatches, preferredIndex);
     },
-    [applySearchResults, flushSegmentTextDrafts, segmentsRef],
+    [applySearchResults, flushSegmentTextDrafts, getCurrentSegmentsSnapshot],
   );
 
   const seedSearchForOpen = useCallback(

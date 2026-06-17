@@ -209,15 +209,25 @@ type SegmentListSetter =
   | React.Dispatch<React.SetStateAction<SegmentDto[]>>
   | ((next: SegmentDto[]) => void);
 
+export type SegmentListNext = SegmentDto[] | ((prev: SegmentDto[]) => SegmentDto[]);
+
+function resolveSegmentListNext(
+  segmentsRef: React.MutableRefObject<SegmentDto[]>,
+  next: SegmentListNext,
+): SegmentDto[] {
+  return typeof next === "function" ? next(segmentsRef.current) : next;
+}
+
 /** 结构变更后：同步 segmentsRef 与 React state（S1 下 ref 可能领先 state）。 */
 export function publishSegmentStructureMutation(
   segmentsRef: React.MutableRefObject<SegmentDto[]>,
   setSegments: SegmentListSetter,
-  next: SegmentDto[],
+  next: SegmentListNext,
 ): void {
-  segmentsRef.current = next;
+  const resolved = resolveSegmentListNext(segmentsRef, next);
+  segmentsRef.current = resolved;
   flushSync(() => {
-    setSegments(next);
+    setSegments(resolved);
   });
 }
 
@@ -225,19 +235,20 @@ export function publishSegmentStructureMutation(
 export function publishSegmentTextBulkMutation(
   segmentsRef: React.MutableRefObject<SegmentDto[]>,
   setSegments: SegmentListSetter,
-  next: SegmentDto[],
+  next: SegmentListNext,
 ): void {
-  segmentsRef.current = next;
+  const resolved = resolveSegmentListNext(segmentsRef, next);
+  segmentsRef.current = resolved;
   flushSync(() => {
-    setSegments(next);
+    setSegments(resolved);
   });
-  for (const [i, seg] of next.entries()) {
+  for (const [i, seg] of resolved.entries()) {
     const key = segmentDraftKey(seg, i);
     segmentDraftStore.endComposition(key);
     segmentDraftStore.clearDraft(key);
   }
-  syncDomTextareasFromSegments(next);
-  pruneDraftKeysForSegments(next);
+  syncDomTextareasFromSegments(resolved);
+  pruneDraftKeysForSegments(resolved);
 }
 
 /** 转写开始前清空语段：丢弃 draft/DOM，避免旧 uid 污染新结果。 */

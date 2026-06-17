@@ -1,9 +1,10 @@
-import type { MutableRefObject, Dispatch, SetStateAction } from "react";
+import type { Dispatch, SetStateAction } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
 import type {
   FindMatchListItem,
   ReplaceAllPreviewRow,
 } from "../services/editor/segmentFindReplace";
+import type { SegmentPublishApi } from "./segmentPublishApi";
 
 /** 与 `FindReplaceDialog` 面板根节点 id 一致 */
 export const FIND_REPLACE_PANEL_ID = "find-replace-v2";
@@ -40,12 +41,11 @@ export type UseFindReplaceControllerArgs = {
   busy: boolean;
   currentFileId: string | null;
   segments: SegmentDto[];
-  segmentsRef: MutableRefObject<SegmentDto[]>;
+  segmentPublish: SegmentPublishApi;
   selectedIdx: number;
   flushSegmentTextDrafts: () => void;
   setSelectedIdx: Dispatch<SetStateAction<number>>;
   updateSegmentText: (idx: number, text: string) => void;
-  setSegments: Dispatch<SetStateAction<SegmentDto[]>>;
   pushUndo: () => void;
   saveSegments: (options?: {
     quiet?: boolean;

@@ -8,6 +8,7 @@ import {
   flushSegmentTextDrafts,
   materializeSegmentTextDrafts,
   prepareSegmentTextDraftsForMutation,
+  publishSegmentStructureMutation,
   publishSegmentTextBulkMutation,
   publishTranscribeSegmentClear,
   publishTranscribeSegmentRestore,
@@ -284,5 +285,22 @@ describe("publishSegmentTextBulkMutation", () => {
     expect(segmentsRef.current[0]?.text).toBe("相板");
 
     row.remove();
+  });
+});
+
+describe("publishSegmentStructureMutation", () => {
+  it("resolves functional updater from segmentsRef before flushSync", () => {
+    const segmentsRef = { current: [seg("a"), seg("b")] };
+    let reactState = segmentsRef.current;
+    const setSegments = (next: SetStateAction<SegmentDto[]>) => {
+      reactState = typeof next === "function" ? next(segmentsRef.current) : next;
+      segmentsRef.current = reactState;
+    };
+
+    publishSegmentStructureMutation(segmentsRef, setSegments, (prev) => prev.slice(0, 1));
+
+    expect(segmentsRef.current).toHaveLength(1);
+    expect(segmentsRef.current[0]?.text).toBe("a");
+    expect(reactState).toHaveLength(1);
   });
 });

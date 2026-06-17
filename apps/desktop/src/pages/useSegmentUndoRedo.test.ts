@@ -3,6 +3,7 @@ import { act, renderHook } from "@testing-library/react";
 import { useRef, useState } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
 import { useSegmentUndoRedo } from "./useSegmentUndoRedo";
+import { createSegmentPublishApi } from "./segmentPublishApi";
 
 function seg(text: string): SegmentDto {
   return {
@@ -23,16 +24,18 @@ describe("useSegmentUndoRedo", () => {
       const [segments, setSegments] = useState<SegmentDto[]>([seg("hello")]);
       const segmentsRef = useRef(segments);
       segmentsRef.current = segments;
-      const undoRedo = useSegmentUndoRedo(segmentsRef, setSegments, () => segmentsRef.current);
-      return { segmentsRef, setSegments, undoRedo, segments };
+      const segmentPublish = createSegmentPublishApi(segmentsRef, setSegments);
+      const undoRedo = useSegmentUndoRedo(
+        segmentPublish.publishTextBulk,
+        segmentPublish.getCurrentSegmentsSnapshot,
+      );
+      return { segmentsRef, setSegments, undoRedo, segments, segmentPublish };
     });
 
     act(() => result.current.undoRedo.pushUndo());
 
     act(() => {
-      const next = [seg("world")];
-      result.current.segmentsRef.current = next;
-      result.current.setSegments(next);
+      result.current.segmentPublish.publishTextBulk([seg("world")]);
     });
 
     act(() => result.current.undoRedo.undo());

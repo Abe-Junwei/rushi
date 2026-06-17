@@ -1,6 +1,6 @@
 import { useCallback, useRef } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
-import { publishSegmentTextBulkMutation } from "./flushSegmentTextDrafts";
+import type { SegmentListNext } from "./flushSegmentTextDrafts";
 
 function cloneSegments(segs: SegmentDto[]): SegmentDto[] {
   return segs.map((s) => ({ ...s }));
@@ -15,8 +15,7 @@ export interface SegmentUndoRedoApi {
 }
 
 export function useSegmentUndoRedo(
-  segmentsRef: React.MutableRefObject<SegmentDto[]>,
-  setSegments: React.Dispatch<React.SetStateAction<SegmentDto[]>>,
+  publishTextBulk: (next: SegmentListNext) => void,
   getCurrentSegmentsSnapshot: () => SegmentDto[],
 ): SegmentUndoRedoApi {
   const undoStack = useRef<SegmentDto[][]>([]);
@@ -50,19 +49,15 @@ export function useSegmentUndoRedo(
     const prev = undoStack.current.pop();
     if (!prev) return;
     redoStack.current.push(cloneSegments(getCurrentSegmentsSnapshot()));
-    if (redoStack.current.length > 40) redoStack.current.shift();
-    textEditUndoRef.current = null;
-    publishSegmentTextBulkMutation(segmentsRef, setSegments, prev);
-  }, [getCurrentSegmentsSnapshot, segmentsRef, setSegments]);
+    publishTextBulk(prev);
+  }, [getCurrentSegmentsSnapshot, publishTextBulk]);
 
   const redo = useCallback(() => {
     const next = redoStack.current.pop();
     if (!next) return;
     undoStack.current.push(cloneSegments(getCurrentSegmentsSnapshot()));
-    if (undoStack.current.length > 40) undoStack.current.shift();
-    textEditUndoRef.current = null;
-    publishSegmentTextBulkMutation(segmentsRef, setSegments, next);
-  }, [getCurrentSegmentsSnapshot, segmentsRef, setSegments]);
+    publishTextBulk(next);
+  }, [getCurrentSegmentsSnapshot, publishTextBulk]);
 
   return { pushUndo, pushUndoForTextEdit, undo, redo, reset };
 }

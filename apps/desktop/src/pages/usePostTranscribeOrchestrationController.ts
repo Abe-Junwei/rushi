@@ -2,15 +2,15 @@ import type { SegmentDto } from "../tauri/projectApi";
 import type { BusyReason } from "./useProjectCrudController";
 import { useCorrectionRulesController } from "./useCorrectionRulesController";
 import { usePostTranscribeStageBController } from "./usePostTranscribeStageBController";
+import type { SegmentPublishApi } from "./segmentPublishApi";
 
 type Args = {
   busy: boolean;
   transcribePreviewActive?: boolean;
   currentFileId: string | null;
   segments: SegmentDto[];
-  segmentsRef: React.MutableRefObject<SegmentDto[]>;
+  segmentPublish: SegmentPublishApi;
   flushSegmentTextDrafts: () => void;
-  setSegments: React.Dispatch<React.SetStateAction<SegmentDto[]>>;
   setSelectedIdx: React.Dispatch<React.SetStateAction<number>>;
   pushUndo: () => void;
   setError: (msg: string) => void;
@@ -32,9 +32,8 @@ export function usePostTranscribeOrchestrationController(args: Args) {
     transcribePreviewActive: args.transcribePreviewActive,
     currentFileId: args.currentFileId,
     segments: args.segments,
-    segmentsRef: args.segmentsRef,
+    segmentPublish: args.segmentPublish,
     flushSegmentTextDrafts: args.flushSegmentTextDrafts,
-    setSegments: args.setSegments,
     setSelectedIdx: args.setSelectedIdx,
     pushUndo: args.pushUndo,
     setError: args.setError,
@@ -49,9 +48,8 @@ export function usePostTranscribeOrchestrationController(args: Args) {
     busy: args.busy,
     currentFileId: args.currentFileId,
     segments: args.segments,
-    segmentsRef: args.segmentsRef,
+    segmentPublish: args.segmentPublish,
     flushSegmentTextDrafts: args.flushSegmentTextDrafts,
-    setSegments: args.setSegments,
     pushUndo: args.pushUndo,
     setError: args.setError,
     saveSegments: args.saveSegments,

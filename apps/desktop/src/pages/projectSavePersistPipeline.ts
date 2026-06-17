@@ -13,10 +13,7 @@ import {
   applyStagePatchesBeforePersist,
   type FinalizeStageIntent,
 } from "../services/segmentStagePersist";
-import {
-  publishSegmentStructureMutation,
-  publishSegmentTextBulkMutation,
-} from "./flushSegmentTextDrafts";
+import type { SegmentPublishApi } from "./segmentPublishApi";
 
 export type SavePersistPipelineOptions = {
   quiet?: boolean;
@@ -30,13 +27,11 @@ export type SavePersistPipelineOptions = {
 export type SavePersistPipelineArgs = {
   current: ProjectDetail;
   currentFileId: string;
-  segmentsRef: MutableRefObject<SegmentDto[]>;
-  getCurrentSegmentsSnapshot: () => SegmentDto[];
+  segmentPublish: SegmentPublishApi;
   selectedIdxRef: MutableRefObject<number>;
   savedSnapshot: SegmentDto[];
   pendingAiRevisedUids: Set<string>;
   setCurrent: Dispatch<SetStateAction<ProjectDetail | null>>;
-  setSegments: Dispatch<SetStateAction<SegmentDto[]>>;
   setSelectedIdx: Dispatch<SetStateAction<number>>;
   options?: SavePersistPipelineOptions;
 };
@@ -51,17 +46,16 @@ export async function runProjectSavePersistPipeline(
   const {
     current,
     currentFileId,
-    segmentsRef,
-    getCurrentSegmentsSnapshot,
+    segmentPublish,
     selectedIdxRef,
     savedSnapshot,
     pendingAiRevisedUids,
     setCurrent,
-    setSegments,
     setSelectedIdx,
     options,
   } = args;
 
+  const getCurrentSegmentsSnapshot = segmentPublish.getCurrentSegmentsSnapshot;
   const aiRevisedUids = new Set<string>([
     ...pendingAiRevisedUids,
     ...(options?.aiRevisedUids ?? []),
@@ -72,7 +66,7 @@ export async function runProjectSavePersistPipeline(
     finalizeIntent: options?.finalizeIntent,
     aiRevisedUids: aiRevisedUids.size > 0 ? aiRevisedUids : undefined,
   });
-  publishSegmentTextBulkMutation(segmentsRef, setSegments, staged);
+  segmentPublish.publishTextBulk(staged);
   const learnBaselineTexts = countHits
     ? (options?.learnBaselineTexts ?? segmentsToLearnBaselineAligned(savedSnapshot, staged))
     : undefined;
@@ -98,7 +92,7 @@ export async function runProjectSavePersistPipeline(
     ? persistedSegments
     : segs;
   if (!segmentsEqualForPersist(segs, persistedSegments)) {
-    publishSegmentStructureMutation(segmentsRef, setSegments, segs);
+    segmentPublish.publishStructure(segs);
     const ni = findSegmentIndexByUid(segs, prevUid);
     setSelectedIdx(
       ni >= 0 ? ni : Math.min(selectedIdxRef.current, Math.max(0, segs.length - 1)),

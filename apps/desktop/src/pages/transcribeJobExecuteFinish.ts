@@ -11,16 +11,14 @@ import {
 import { pushTranscribeHintsToToast } from "../services/ui/toast";
 import { pushTranscribeDeliveryModeToast } from "../services/deliveryModeTranscribeToast";
 import { syncOnboardingTranscribe } from "../services/onboarding/onboardingAutoSync";
-import type { SegmentDto } from "../tauri/projectApi";
 import * as p1 from "../tauri/projectApi";
-import { publishSegmentTextBulkMutation } from "./flushSegmentTextDrafts";
+import type { SegmentPublishApi } from "./segmentPublishApi";
 
 type FinishTranscribeSuccessArgs = {
   fileId: string;
   out: p1.RunTranscribeOutcome;
   projectId: string;
-  segmentsRef: React.MutableRefObject<SegmentDto[]>;
-  setSegments: React.Dispatch<React.SetStateAction<SegmentDto[]>>;
+  segmentPublish: SegmentPublishApi;
   setCurrent: (detail: p1.ProjectDetail) => void;
   resetMutationHistory: () => void;
   openFileWrapped: (fileId: string) => Promise<void>;
@@ -37,8 +35,7 @@ export async function finishTranscribeSuccess(args: FinishTranscribeSuccessArgs)
     fileId,
     out,
     projectId,
-    segmentsRef,
-    setSegments,
+    segmentPublish,
     setCurrent,
     resetMutationHistory,
     openFileWrapped,
@@ -54,7 +51,7 @@ export async function finishTranscribeSuccess(args: FinishTranscribeSuccessArgs)
   const projectDetail = await p1.projectLoad(projectId);
   setCurrent(projectDetail);
   const segments = out.detail.segments;
-  publishSegmentTextBulkMutation(segmentsRef, setSegments, segments);
+  segmentPublish.publishTextBulk(segments);
   onTranscribeSuccess?.(out);
   await openFileWrapped(fileId);
   setTranscribeWarnings(out.warnings ?? []);

@@ -1,7 +1,7 @@
 import { useCallback, useRef, useState } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
 import { normalizeSegmentAnnotationInput } from "../utils/segmentAnnotation";
-import { publishSegmentStructureMutation } from "./flushSegmentTextDrafts";
+import type { SegmentPublishApi } from "./segmentPublishApi";
 
 export type SegmentAnnotationDialogState =
   | { phase: "closed" }
@@ -14,8 +14,7 @@ export type SegmentAnnotationDialogState =
 
 type Args = {
   busy: boolean;
-  segmentsRef: React.MutableRefObject<SegmentDto[]>;
-  setSegments: React.Dispatch<React.SetStateAction<SegmentDto[]>>;
+  segmentPublish: SegmentPublishApi;
   saveSegments: (options?: { quiet?: boolean; countHits?: boolean }) => Promise<boolean>;
   pushUndo: () => void;
   setError: (msg: string) => void;
@@ -23,8 +22,7 @@ type Args = {
 
 export function useSegmentAnnotationController({
   busy,
-  segmentsRef,
-  setSegments,
+  segmentPublish,
   saveSegments,
   pushUndo,
   setError,
@@ -35,7 +33,7 @@ export function useSegmentAnnotationController({
 
   const openSegmentAnnotationDialog = useCallback(
     (segmentIdx: number) => {
-      const seg = segmentsRef.current[segmentIdx];
+      const seg = segmentPublish.getCurrentSegmentsSnapshot()[segmentIdx];
       if (!seg || busy) return;
       const existing = seg.annotation?.trim() ?? "";
       setError("");
@@ -46,7 +44,7 @@ export function useSegmentAnnotationController({
         hadAnnotation: existing.length > 0,
       });
     },
-    [busy, segmentsRef, setError],
+    [busy, segmentPublish, setError],
   );
 
   const closeSegmentAnnotationDialog = useCallback(() => {
@@ -60,7 +58,7 @@ export function useSegmentAnnotationController({
   const persistAnnotation = useCallback(
     async (segmentIdx: number, raw: string) => {
       if (busy || persistInFlightRef.current) return false;
-      const row = segmentsRef.current[segmentIdx];
+      const row = segmentPublish.getCurrentSegmentsSnapshot()[segmentIdx];
       if (!row) return false;
       const prevAnnotation = row.annotation ?? null;
       const nextValue = normalizeSegmentAnnotationInput(raw);
@@ -72,19 +70,19 @@ export function useSegmentAnnotationController({
       setSaving(true);
       try {
         pushUndo();
-        const next = [...segmentsRef.current];
+        const next = [...segmentPublish.getCurrentSegmentsSnapshot()];
         next[segmentIdx] = { ...row, annotation: nextValue };
-        publishSegmentStructureMutation(segmentsRef, setSegments, next);
+        segmentPublish.publishStructure(next);
         const saved = await saveSegments({ quiet: true, countHits: false });
         if (saved) {
           closeSegmentAnnotationDialog();
           return true;
         }
-        const reverted = [...segmentsRef.current];
+        const reverted = [...segmentPublish.getCurrentSegmentsSnapshot()];
         const revertedRow = reverted[segmentIdx];
         if (revertedRow) {
           reverted[segmentIdx] = { ...revertedRow, annotation: prevAnnotation };
-          publishSegmentStructureMutation(segmentsRef, setSegments, reverted);
+          segmentPublish.publishStructure(reverted);
         }
         setError("备注保存失败，请重试");
         return false;
@@ -93,7 +91,7 @@ export function useSegmentAnnotationController({
         setSaving(false);
       }
     },
-    [busy, closeSegmentAnnotationDialog, pushUndo, saveSegments, segmentsRef, setError, setSegments],
+    [busy, closeSegmentAnnotationDialog, pushUndo, saveSegments, segmentPublish, setError],
   );
 
   const saveSegmentAnnotation = useCallback(() => {

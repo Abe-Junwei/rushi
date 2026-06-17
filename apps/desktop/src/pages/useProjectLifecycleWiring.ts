@@ -5,7 +5,6 @@ import * as p1 from "../tauri/projectApi";
 import { useExportController } from "./useExportController";
 import { useProjectBusyState } from "./useProjectBusyState";
 import { syncSegmentStagesAfterTranscribeReload } from "../services/segmentStagePersist";
-import { publishSegmentStructureMutation } from "./flushSegmentTextDrafts";
 import { useProjectListState } from "./useProjectListState";
 import { useProjectEditorState } from "./useProjectEditorState";
 import {
@@ -88,6 +87,8 @@ export function useProjectLifecycleWiring(
     segmentAnnotation,
     autoSave,
     clearScheduledAutoSave,
+    getCurrentSegmentsSnapshot,
+    segmentPublish,
   } = editorStack;
 
   const applyDetailBaseOnly = useCallback(
@@ -106,9 +107,8 @@ export function useProjectLifecycleWiring(
     current,
     currentFileId,
     segments,
-    segmentsRef,
+    segmentPublish,
     setCurrent,
-    setSegments,
     setError,
     closeGate: {
       openFileWrapped: async (fileId: string) => {
@@ -122,8 +122,8 @@ export function useProjectLifecycleWiring(
     sttOnlineRuntimeEpoch,
     clearScheduledAutoSave,
     onTranscribeSuccess: () => {
-      const synced = syncSegmentStagesAfterTranscribeReload(segmentsRef.current);
-      publishSegmentStructureMutation(segmentsRef, setSegments, synced);
+      const synced = syncSegmentStagesAfterTranscribeReload(segmentPublish.getCurrentSegmentsSnapshot());
+      segmentPublish.publishStructure(synced);
       dirty.setSavedSnapshot(synced);
     },
   });
@@ -207,8 +207,7 @@ export function useProjectLifecycleWiring(
     currentFileId,
     selectedIdx,
     segments,
-    segmentsRef,
-    setSegments,
+    segmentPublish,
     setSelectedIdx,
     flushSegmentTextDrafts: mutations.flushSegmentTextDrafts,
     updateSegmentText: mutations.updateSegmentText,
@@ -232,7 +231,7 @@ export function useProjectLifecycleWiring(
   const exports = useExportController({
     current,
     currentFileId,
-    segmentsRef,
+    getCurrentSegmentsSnapshot,
     setError,
     flushSegmentTextDrafts: mutations.flushSegmentTextDrafts,
     beginBusy,
@@ -269,7 +268,7 @@ export function useProjectLifecycleWiring(
     beginBusy,
     endBusy,
     selectedIdxRef,
-    segmentsRef,
+    getCurrentSegmentsSnapshot,
     closeGateFacade,
     exportFacade,
     transcribeJob,

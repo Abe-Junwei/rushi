@@ -1,4 +1,4 @@
-import { useCallback } from "react";
+import { useCallback, useMemo } from "react";
 import type { ProjectDetail, SegmentDto } from "../tauri/projectApi";
 import { useGlossaryLearnPromptController } from "./useGlossaryLearnPromptController";
 import { useManualCorrectionMemoryDialog } from "./useManualCorrectionMemoryDialog";
@@ -10,6 +10,7 @@ import { useSegmentMutationController } from "./useSegmentMutationController";
 import { useSegmentSelectionController } from "./useSegmentSelectionController";
 import { useAutoSaveSegments } from "./useAutoSaveSegments";
 import type { BusyReason } from "./useProjectCrudController";
+import { createSegmentPublishApi } from "./segmentPublishApi";
 
 type UseProjectLifecycleEditorStackArgs = {
   busy: boolean;
@@ -54,8 +55,15 @@ export function useProjectLifecycleEditorStack(args: UseProjectLifecycleEditorSt
     disabled: busy,
   });
 
+  const segmentPublish = useMemo(
+    () => createSegmentPublishApi(segmentsRef, setSegments),
+    [segmentsRef, setSegments],
+  );
+
+  const getCurrentSegmentsSnapshot = segmentPublish.getCurrentSegmentsSnapshot;
+
   const mutations = useSegmentMutationController({
-    segmentsRef,
+    segmentPublish,
     setSegments,
     selectedIdxRef,
     setSelectedIdx,
@@ -66,14 +74,12 @@ export function useProjectLifecycleEditorStack(args: UseProjectLifecycleEditorSt
   });
 
   const segmentDeleteConfirm = useSegmentDeleteConfirmController({
-    segmentsRef,
+    getCurrentSegmentsSnapshot: segmentPublish.getCurrentSegmentsSnapshot,
     flushSegmentTextDrafts: mutations.flushSegmentTextDrafts,
     deleteSegmentAt: mutations.deleteSegmentAt,
     deleteSegmentRange: mutations.deleteSegmentRange,
     deleteSegmentIndices: mutations.deleteSegmentIndices,
   });
-
-  const getCurrentSegmentsSnapshot = useCallback(() => segmentsRef.current, [segmentsRef]);
 
   const dirty = useSegmentDirtyState({
     currentFileId,
@@ -92,10 +98,9 @@ export function useProjectLifecycleEditorStack(args: UseProjectLifecycleEditorSt
     busy,
     current,
     currentFileId,
-    segmentsRef,
+    segmentPublish,
     selectedIdxRef,
     setCurrent,
-    setSegments,
     setSelectedIdx,
     setError,
     beginBusy,
@@ -117,8 +122,7 @@ export function useProjectLifecycleEditorStack(args: UseProjectLifecycleEditorSt
 
   const segmentAnnotation = useSegmentAnnotationController({
     busy,
-    segmentsRef,
-    setSegments,
+    segmentPublish,
     saveSegments,
     pushUndo: mutations.pushUndo,
     setError,
@@ -156,5 +160,7 @@ export function useProjectLifecycleEditorStack(args: UseProjectLifecycleEditorSt
     segmentAnnotation,
     autoSave,
     clearScheduledAutoSave,
+    getCurrentSegmentsSnapshot,
+    segmentPublish,
   };
 }

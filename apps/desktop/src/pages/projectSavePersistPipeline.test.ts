@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from "vitest";
 import { runProjectSavePersistPipeline } from "./projectSavePersistPipeline";
+import { createSegmentPublishApi } from "./segmentPublishApi";
 import type { FileDetail, ProjectDetail, SegmentDto } from "../tauri/projectApi";
 
 const mocks = vi.hoisted(() => ({
@@ -57,15 +58,18 @@ function fileDetail(segments: SegmentDto[]): FileDetail {
 }
 
 describe("runProjectSavePersistPipeline", () => {
-  it("persists the explicit current snapshot instead of stale ref contents", async () => {
+  it("persists segmentPublish snapshot (ref) as save source", async () => {
     const current = project();
-    const stale = [seg("s1", "stale")];
     const latest = [seg("s1", "latest")];
-    const segmentsRef = { current: stale };
+    const segmentsRef = { current: latest };
     const selectedIdxRef = { current: 0 };
     const setCurrent = vi.fn();
-    const setSegments = vi.fn();
     const setSelectedIdx = vi.fn();
+    const setSegments = vi.fn((updater: SegmentDto[] | ((prev: SegmentDto[]) => SegmentDto[])) => {
+      segmentsRef.current =
+        typeof updater === "function" ? updater(segmentsRef.current) : updater;
+    });
+    const segmentPublish = createSegmentPublishApi(segmentsRef, setSegments);
 
     mocks.projectLoad.mockResolvedValue(current);
     mocks.loadFile.mockResolvedValue(fileDetail(latest));
@@ -73,13 +77,11 @@ describe("runProjectSavePersistPipeline", () => {
     const outcome = await runProjectSavePersistPipeline({
       current,
       currentFileId: "f1",
-      segmentsRef,
-      getCurrentSegmentsSnapshot: () => latest,
+      segmentPublish,
       selectedIdxRef,
-      savedSnapshot: stale,
+      savedSnapshot: latest,
       pendingAiRevisedUids: new Set(),
       setCurrent,
-      setSegments,
       setSelectedIdx,
     });
 

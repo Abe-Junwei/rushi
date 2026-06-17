@@ -7,6 +7,7 @@ import { resolvePendingStageAHint } from "../services/postprocess/stageBPendingR
 import { runPostTranscribeStageBPreview } from "../services/postprocess/postTranscribeStageB";
 import { markLlmConnectionVerified, tryBuildPostprocessRuntimeBridge } from "../services/postprocess/postprocessRuntimeContract";
 import { usePostTranscribeStageBController } from "./usePostTranscribeStageBController";
+import { createSegmentPublishApi } from "./segmentPublishApi";
 
 vi.mock("../services/postprocess/stageBLlmGate", async (importOriginal) => {
   const actual = await importOriginal<typeof import("../services/postprocess/stageBLlmGate")>();
@@ -74,14 +75,17 @@ function baseArgs() {
     { uid: "s1", idx: 0, start_sec: 0, end_sec: 1, text: "测试语段" },
   ];
   const segmentsRef = { current: segments };
+  const setSegments = vi.fn((updater: SegmentDto[] | ((prev: SegmentDto[]) => SegmentDto[])) => {
+    segmentsRef.current =
+      typeof updater === "function" ? updater(segmentsRef.current) : updater;
+  });
   return {
     busy: false,
     transcribePreviewActive: false,
     currentFileId: "file-1",
     segments,
-    segmentsRef,
+    segmentPublish: createSegmentPublishApi(segmentsRef, setSegments),
     flushSegmentTextDrafts: vi.fn(),
-    setSegments: vi.fn(),
     setSelectedIdx: vi.fn(),
     pushUndo: vi.fn(),
     setError: vi.fn(),
