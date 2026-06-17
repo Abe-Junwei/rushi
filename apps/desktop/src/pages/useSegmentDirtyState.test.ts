@@ -9,7 +9,7 @@ function seg(text: string, idx = 0): SegmentDto {
 
 describe("useSegmentDirtyState", () => {
   it("reports no dirty when snapshot matches", () => {
-    let currentSegments = [seg("a")];
+    const currentSegments = [seg("a")];
     const flush = vi.fn();
     const { result } = renderHook(() =>
       useSegmentDirtyState({

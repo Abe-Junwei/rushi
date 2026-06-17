@@ -4,6 +4,7 @@ import { withAiRevisedStage } from "../services/segmentStagePersist";
 import { segmentDraftKey, segmentDraftStore } from "../hooks/useSegmentDraftStore";
 import {
   flushSegmentTextDrafts as flushSegmentTextDraftsImpl,
+  publishSegmentStructureMutation,
   publishSegmentTextBulkMutation,
   syncDomTextareasFromSegments,
 } from "./flushSegmentTextDrafts";
@@ -75,7 +76,8 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
 
   const segmentBoundsLiveGestureRef = useRef(false);
 
-  const undoRedo = useSegmentUndoRedo(segmentsRef, setSegments);
+  const getCurrentSegmentsSnapshot = useCallback(() => segmentsRef.current, [segmentsRef]);
+  const undoRedo = useSegmentUndoRedo(segmentsRef, setSegments, getCurrentSegmentsSnapshot);
 
   const { pushUndo, pushUndoForTextEdit, undo: undoStackPop, redo: redoStackPop } = undoRedo;
 
@@ -186,10 +188,17 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
 
   const updateSegmentTime = useCallback(
     (idx: number, field: "start_sec" | "end_sec", value: number) => {
+      const prev = segmentsRef.current;
+      const cur = prev[idx];
+      if (!cur || cur[field] === value) return;
       pushUndo();
-      setSegments((prev) => prev.map((s, i) => (i === idx ? { ...s, [field]: value } : s)));
+      publishSegmentStructureMutation(
+        segmentsRef,
+        setSegments,
+        prev.map((s, i) => (i === idx ? { ...s, [field]: value } : s)),
+      );
     },
-    [pushUndo, setSegments],
+    [pushUndo, segmentsRef, setSegments],
   );
 
   const updateSegmentBounds = useCallback(
@@ -229,7 +238,11 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
       const hadLiveGesture = segmentBoundsLiveGestureRef.current;
       segmentBoundsLiveGestureRef.current = false;
       if (!hadLiveGesture) pushUndo();
-      setSegments((p) => p.map((x, i) => (i === idx ? { ...x, start_sec: lo, end_sec: hi } : x)));
+      publishSegmentStructureMutation(
+        segmentsRef,
+        setSegments,
+        prev.map((x, i) => (i === idx ? { ...x, start_sec: lo, end_sec: hi } : x)),
+      );
     },
     [segmentsRef, setSegments, pushUndo],
   );

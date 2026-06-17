@@ -23,7 +23,7 @@ describe("useSegmentUndoRedo", () => {
       const [segments, setSegments] = useState<SegmentDto[]>([seg("hello")]);
       const segmentsRef = useRef(segments);
       segmentsRef.current = segments;
-      const undoRedo = useSegmentUndoRedo(segmentsRef, setSegments);
+      const undoRedo = useSegmentUndoRedo(segmentsRef, setSegments, () => segmentsRef.current);
       return { segmentsRef, setSegments, undoRedo, segments };
     });
 

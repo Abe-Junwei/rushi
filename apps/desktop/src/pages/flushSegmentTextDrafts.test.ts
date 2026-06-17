@@ -40,7 +40,7 @@ describe("flushSegmentTextDrafts undo", () => {
       const segmentsRef = useRef<SegmentDto[]>([initial]);
       const [segments, setSegments] = useState<SegmentDto[]>([initial]);
       segmentsRef.current = segments;
-      const undoRedo = useSegmentUndoRedo(segmentsRef, setSegments);
+      const undoRedo = useSegmentUndoRedo(segmentsRef, setSegments, () => segmentsRef.current);
       return { segmentsRef, setSegments, undoRedo, segments };
     });
 

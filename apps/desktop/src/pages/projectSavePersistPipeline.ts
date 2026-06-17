@@ -31,6 +31,7 @@ export type SavePersistPipelineArgs = {
   current: ProjectDetail;
   currentFileId: string;
   segmentsRef: MutableRefObject<SegmentDto[]>;
+  getCurrentSegmentsSnapshot: () => SegmentDto[];
   selectedIdxRef: MutableRefObject<number>;
   savedSnapshot: SegmentDto[];
   pendingAiRevisedUids: Set<string>;
@@ -51,6 +52,7 @@ export async function runProjectSavePersistPipeline(
     current,
     currentFileId,
     segmentsRef,
+    getCurrentSegmentsSnapshot,
     selectedIdxRef,
     savedSnapshot,
     pendingAiRevisedUids,
@@ -65,7 +67,8 @@ export async function runProjectSavePersistPipeline(
     ...(options?.aiRevisedUids ?? []),
   ]);
   const countHits = options?.countHits ?? !options?.finalizeIntent;
-  const staged = applyStagePatchesBeforePersist(segmentsRef.current, savedSnapshot, {
+  const currentSegments = getCurrentSegmentsSnapshot();
+  const staged = applyStagePatchesBeforePersist(currentSegments, savedSnapshot, {
     finalizeIntent: options?.finalizeIntent,
     aiRevisedUids: aiRevisedUids.size > 0 ? aiRevisedUids : undefined,
   });
@@ -88,12 +91,13 @@ export async function runProjectSavePersistPipeline(
       ? prev
       : projectDetail,
   );
-  const prevUid = segmentsRef.current[selectedIdxRef.current]?.uid;
+  const persistedSegments = getCurrentSegmentsSnapshot();
+  const prevUid = persistedSegments[selectedIdxRef.current]?.uid;
   const segs = normalizeSegmentList(fileDetail.segments);
-  const snapshotBase = segmentsEqualForPersist(segs, segmentsRef.current)
-    ? segmentsRef.current
+  const snapshotBase = segmentsEqualForPersist(segs, persistedSegments)
+    ? persistedSegments
     : segs;
-  if (!segmentsEqualForPersist(segs, segmentsRef.current)) {
+  if (!segmentsEqualForPersist(segs, persistedSegments)) {
     publishSegmentStructureMutation(segmentsRef, setSegments, segs);
     const ni = findSegmentIndexByUid(segs, prevUid);
     setSelectedIdx(

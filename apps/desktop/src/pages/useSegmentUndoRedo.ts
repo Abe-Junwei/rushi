@@ -17,6 +17,7 @@ export interface SegmentUndoRedoApi {
 export function useSegmentUndoRedo(
   segmentsRef: React.MutableRefObject<SegmentDto[]>,
   setSegments: React.Dispatch<React.SetStateAction<SegmentDto[]>>,
+  getCurrentSegmentsSnapshot: () => SegmentDto[],
 ): SegmentUndoRedoApi {
   const undoStack = useRef<SegmentDto[][]>([]);
   const redoStack = useRef<SegmentDto[][]>([]);
@@ -30,9 +31,9 @@ export function useSegmentUndoRedo(
 
   const pushUndo = useCallback(() => {
     redoStack.current = [];
-    undoStack.current.push(cloneSegments(segmentsRef.current));
+    undoStack.current.push(cloneSegments(getCurrentSegmentsSnapshot()));
     if (undoStack.current.length > 40) undoStack.current.shift();
-  }, [segmentsRef]);
+  }, [getCurrentSegmentsSnapshot]);
 
   const pushUndoForTextEdit = useCallback(
     (idx: number) => {
@@ -48,20 +49,20 @@ export function useSegmentUndoRedo(
   const undo = useCallback(() => {
     const prev = undoStack.current.pop();
     if (!prev) return;
-    redoStack.current.push(cloneSegments(segmentsRef.current));
+    redoStack.current.push(cloneSegments(getCurrentSegmentsSnapshot()));
     if (redoStack.current.length > 40) redoStack.current.shift();
     textEditUndoRef.current = null;
     publishSegmentTextBulkMutation(segmentsRef, setSegments, prev);
-  }, [segmentsRef, setSegments]);
+  }, [getCurrentSegmentsSnapshot, segmentsRef, setSegments]);
 
   const redo = useCallback(() => {
     const next = redoStack.current.pop();
     if (!next) return;
-    undoStack.current.push(cloneSegments(segmentsRef.current));
+    undoStack.current.push(cloneSegments(getCurrentSegmentsSnapshot()));
     if (undoStack.current.length > 40) undoStack.current.shift();
     textEditUndoRef.current = null;
     publishSegmentTextBulkMutation(segmentsRef, setSegments, next);
-  }, [segmentsRef, setSegments]);
+  }, [getCurrentSegmentsSnapshot, segmentsRef, setSegments]);
 
   return { pushUndo, pushUndoForTextEdit, undo, redo, reset };
 }

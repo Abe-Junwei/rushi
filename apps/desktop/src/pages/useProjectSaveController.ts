@@ -71,6 +71,7 @@ export function useProjectSaveController(args: Args) {
   const saveInFlightRef = useRef(false);
   const clearAutoSaveRef = useRef<() => void>(() => {});
   const notifySegmentsPersistedRef = useRef<() => void>(() => {});
+  const getCurrentSegmentsSnapshot = useCallback(() => segmentsRef.current, [segmentsRef]);
 
   const saveSegments = useCallback(
     async (options?: SavePersistPipelineOptions): Promise<boolean> => {
@@ -92,6 +93,7 @@ export function useProjectSaveController(args: Args) {
           current,
           currentFileId,
           segmentsRef,
+          getCurrentSegmentsSnapshot,
           selectedIdxRef,
           savedSnapshot: dirty.getSavedSnapshot(),
           pendingAiRevisedUids: pendingAiRevisedUidsRef.current,
@@ -120,6 +122,7 @@ export function useProjectSaveController(args: Args) {
       current,
       currentFileId,
       dirty,
+      getCurrentSegmentsSnapshot,
       mutations,
       pendingAiRevisedUidsRef,
       segmentsRef,
@@ -134,11 +137,12 @@ export function useProjectSaveController(args: Args) {
   const finalizeSegmentAt = useCallback(
     async (segmentIdx: number, advance: boolean): Promise<boolean> => {
       if (!current || !currentFileId || busy) return false;
-      if (segmentIdx < 0 || segmentIdx >= segmentsRef.current.length) return false;
-      if (!segmentCanFinalize(segmentsRef.current, segmentIdx, busy)) return false;
+      const currentSegments = getCurrentSegmentsSnapshot();
+      if (segmentIdx < 0 || segmentIdx >= currentSegments.length) return false;
+      if (!segmentCanFinalize(currentSegments, segmentIdx, busy)) return false;
       clearAutoSaveRef.current();
       const hadUnsaved = segmentHasUnsavedText(
-        segmentsRef.current,
+        currentSegments,
         dirty.getSavedSnapshot(),
         segmentIdx,
       );
@@ -166,7 +170,7 @@ export function useProjectSaveController(args: Args) {
         return false;
       }
       if (advance) {
-        const nextIdx = Math.min(segmentIdx + 1, segmentsRef.current.length - 1);
+        const nextIdx = Math.min(segmentIdx + 1, getCurrentSegmentsSnapshot().length - 1);
         if (nextIdx !== selectedIdxRef.current) {
           setSelectedIdx(nextIdx);
         }
@@ -178,8 +182,8 @@ export function useProjectSaveController(args: Args) {
       current,
       currentFileId,
       dirty,
+      getCurrentSegmentsSnapshot,
       saveSegments,
-      segmentsRef,
       selectedIdxRef,
       setSelectedIdx,
     ],

@@ -45,6 +45,7 @@ describe("useSegmentMutationController core", () => {
 
     expect(result.current.segments[0].start_sec).toBe(0.5);
     expect(result.current.segments[0].end_sec).toBe(1);
+    expect(result.current.segmentsRef.current[0]?.start_sec).toBe(0.5);
   });
 
   it("undo flushes draft then restores committed text", () => {
