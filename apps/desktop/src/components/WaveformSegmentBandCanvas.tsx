@@ -8,6 +8,7 @@ import {
   type TierScrollLiveRefs,
 } from "../utils/waveformViewport";
 import { registerWaveformSegmentBandPaintScheduler } from "../utils/waveformSegmentBandPaint";
+import { wfProfileIsActive, wfProfileTime } from "../services/waveform/waveformZoomProfile";
 
 export type WaveformSegmentBandCanvasProps = {
   segments: SegmentDto[];
@@ -115,18 +116,22 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
         draftIdx: input.draftIdx,
       });
 
-      drawWaveformSegmentBands({
-        ctx,
-        segments: input.segments,
-        dominantSpanIndices: input.dominantSpanIndices,
-        scrollLeftPx,
-        viewportWidthPx: widthPx,
-        timelineWidthPx: input.timelineWidthPx,
-        durationSec: input.durationSec,
-        layoutHeightPx: heightPx,
-        selectedIdx: input.selectedIdx,
-        skipIndices,
-      });
+      const paintBands = () => {
+        drawWaveformSegmentBands({
+          ctx,
+          segments: input.segments,
+          dominantSpanIndices: input.dominantSpanIndices,
+          scrollLeftPx,
+          viewportWidthPx: widthPx,
+          timelineWidthPx: input.timelineWidthPx,
+          durationSec: input.durationSec,
+          layoutHeightPx: heightPx,
+          selectedIdx: input.selectedIdx,
+          skipIndices,
+        });
+      };
+      if (wfProfileIsActive()) wfProfileTime("segmentBands", paintBands);
+      else paintBands();
     };
 
     const schedulePaint = () => {
