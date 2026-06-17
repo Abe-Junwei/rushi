@@ -40,6 +40,8 @@ export interface AsrHealthCapabilities {
   selected_model_ready?: boolean;
   inference_queue_pending?: number;
   inference_queue_running?: number;
+  inference_requested_workers?: number;
+  inference_max_workers?: number;
 }
 
 /** Tauri：安装包内推理侧车最近一次启动结果（供 P1 在 ASR 不可达时提示）。 */

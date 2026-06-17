@@ -45,11 +45,15 @@ export function buildAsrEnvStatusRows(input: {
   const queuePending = input.asrCaps?.inference_queue_pending ?? 0;
   const queueRunning = input.asrCaps?.inference_queue_running ?? 0;
   if (queuePending + queueRunning > 0) {
+    const queuedAhead = Math.max(0, queuePending - queueRunning);
+    const runningText = queueRunning > 0 ? `正在推理 ${queueRunning} 个任务` : "推理空闲";
+    const queueText =
+      queuedAhead > 0 ? `前方 ${queuedAhead} 个任务排队 · ${runningText}` : runningText;
     statusRows.push({
       id: "inference_queue",
       label: "推理队列",
       ok: true,
-      text: `排队 ${queuePending} · 运行 ${queueRunning}`,
+      text: queueText,
     });
   }
   return statusRows;

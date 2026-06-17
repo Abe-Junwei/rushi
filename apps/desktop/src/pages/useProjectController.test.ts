@@ -42,6 +42,8 @@ describe("parseAsrHealthJson", () => {
       selected_model_ready: undefined,
       inference_queue_pending: undefined,
       inference_queue_running: undefined,
+      inference_requested_workers: undefined,
+      inference_max_workers: undefined,
     });
   });
 
@@ -86,6 +88,8 @@ describe("parseAsrHealthJson", () => {
       selected_model_ready: undefined,
       inference_queue_pending: undefined,
       inference_queue_running: undefined,
+      inference_requested_workers: undefined,
+      inference_max_workers: undefined,
     });
   });
 

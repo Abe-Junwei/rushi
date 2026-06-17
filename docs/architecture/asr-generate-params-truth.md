@@ -1,6 +1,6 @@
-# FunASR `generate()` 参数真源（R3g-C）
+# FunASR `generate()` 参数真源（R3g-C / #17 v2）
 
-> **状态**：✅ v1（2026-05-31 手测签收）  
+> **状态**：✅ v2（2026-06-17：profile-first 参数白名单）  
 > **验收**：[`r3g-c-asr-generate-profile-acceptance.md`](../execution/specs/r3g-c-asr-generate-profile-acceptance.md)  
 > **实现**：`services/asr/rushi_asr/asr_model_profile.py`、`funasr_engine.py`
 
@@ -11,6 +11,7 @@
 | `model_id` 特征 | `profile_id` | `sku_family` |
 |-----------------|--------------|--------------|
 | 含 `sensevoice` | `sensevoice_small_v1` | `sensevoice` |
+| 含 `qwen` | `qwen3_asr_0_6b_v1` | `qwen` |
 | Paraformer + VAD+punc 管道 | `paraformer_vad_punc_v1` | `paraformer` |
 | 其他 | `generic_funasr_v1` | `generic` |
 
@@ -18,15 +19,16 @@
 
 ## 2. 各 SKU 默认 kwargs
 
-| 字段 | Paraformer | SenseVoice | generic |
-|------|------------|------------|---------|
-| `language` | 来自 `RUSHI_FUNASR_LANGUAGE`（默认 `zh`） | 同左 | 同左 |
-| `sentence_timestamp` | `true` | — | — |
-| `merge_vad` | `false` | 短音频 `true` / 长音频 `false` | 同 SenseVoice |
-| `batch_size_s` / `batch_size_threshold_s` | 长音频 `60` / `30` | 长音频同上 | 长音频同上 |
-| `use_itn` | **不传**（走 punc 管道） | 默认 **`true`** | **不传** |
-| `rich_transcription_postprocess` | — | 与 `use_itn` 同开 | — |
-| `hotword` | 有术语时传入 | 同左 | 同左 |
+| 字段 | Paraformer | SenseVoice | Qwen | generic |
+|------|------------|------------|------|---------|
+| `language` | 来自 `RUSHI_FUNASR_LANGUAGE`（默认 `zh`） | 同左 | 映射为 `Chinese` 等全称 | 同左 |
+| `sentence_timestamp` | `true` | — | — | — |
+| `merge_vad` | `false` | 短音频 `true` / 长音频 `false` | 同 SenseVoice | 同 SenseVoice |
+| `batch_size_s` / `batch_size_threshold_s` | 长音频 `60` / `30` | 长音频同上 | 长音频同上 | 长音频同上 |
+| `return_time_stamps` | — | — | 配置 forced aligner 时传入 | — |
+| `use_itn` | **不传**（走 punc 管道） | 默认 **`true`** | — | **不传** |
+| `rich_transcription_postprocess` | — | 与 `use_itn` 同开 | — | — |
+| `hotword` | 有术语时传入 | 同左 | 同左 | 同左 |
 
 ## 3. 识别语言（C4）
 
@@ -48,17 +50,23 @@
 
 v1 **不做** `RUSHI_FUNASR_GENERATE_OVERRIDES` JSON 合并。
 
-## 5. 不支持参数时的行为（C3）
+## 5. 不支持参数时的行为（#17 v2）
 
-`funasr_engine._run_generate` 按顺序尝试 `generate`，遇 `TypeError` 剥除：
+`asr_model_profile.supported_generate_param_keys()` 按 profile 定义允许参数；`funasr_engine._run_generate` 在第一次调用 FunASR 前先执行 `filter_generate_kwargs_for_model()`：
+
+- 允许参数保留；
+- profile 外参数剔除，并写入 `warnings`：`funasr_generate_param_filtered:<key>`；
+- 未知 / generic profile 使用最保守集合：`language`、`merge_vad`、`batch_size_s`、`batch_size_threshold_s`、`hotword`。
+
+运行时 `TypeError` strip 仍保留为兼容兜底，顺序为：
 
 `hotword` → `rich_transcription_postprocess` → `use_itn` → `output_timestamp` → `sentence_timestamp` → `batch_size_*` → `merge_vad`
 
-并写入 `warnings`（如 `funasr_use_itn_unsupported`、`sentence_timestamp_param_unsupported`）。
+兜底 strip 仍写入既有 `warnings`（如 `funasr_use_itn_unsupported`、`sentence_timestamp_param_unsupported`），但不再作为正常参数适配路径。
 
 ## 6. 与分段 / 长音频的关系
 
-- **kwargs 真源**：仅 `asr_model_profile.build_generate_kwargs`（`segmentation.funasr_generate_kwargs` 为薄委托）。
+- **kwargs 真源**：仅 `asr_model_profile.build_generate_kwargs` + `filter_generate_kwargs_for_model`（`segmentation.funasr_generate_kwargs` 为薄委托）。
 - **分段解析**：仍由 `segment_funasr_generate_result`（R3t-A）；Profile **不** fork 第二套 VAD。
 - **长音频分窗**：R3e-B/C 在 `transcribe_windows.py`；每窗仍用同一 Profile kwargs。
 
