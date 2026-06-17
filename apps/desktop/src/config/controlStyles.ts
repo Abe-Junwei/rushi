@@ -41,11 +41,11 @@ export const CONTROL_BTN_DANGER_COMPACT =
 
 /** `text-input`：白底 + hairline + saffron focus */
 export const CONTROL_TEXT_INPUT =
-  "block w-full h-8 min-h-[32px] rounded-sm border border-notion-border bg-notion-bg px-3 py-1.5 font-sans text-sm font-normal leading-snug text-notion-text shadow-none ring-0 outline-none transition-colors placeholder:text-notion-text-light focus:border-zen-saffron focus:shadow-none focus:ring-0 focus-visible:shadow-none focus-visible:ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-zen-saffron/25 disabled:cursor-not-allowed disabled:opacity-40";
+  "box-border block w-full h-8 min-h-[32px] rounded-sm border border-notion-border bg-notion-bg px-3 py-1.5 font-sans text-sm font-normal leading-snug text-notion-text shadow-none ring-0 outline-none transition-colors placeholder:text-notion-text-light focus:border-zen-saffron focus:shadow-none focus:ring-0 focus-visible:shadow-none focus-visible:ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-zen-saffron/25 disabled:cursor-not-allowed disabled:opacity-40";
 
 /** 与 text-input 同高，保留系统下拉箭头 */
 export const CONTROL_SELECT =
-  "h-8 min-h-[32px] w-full min-w-[11rem] cursor-pointer rounded-sm border border-notion-border bg-notion-bg py-0 pl-3 pr-9 font-sans text-sm font-medium text-notion-text-muted shadow-none ring-0 transition-colors hover:border-notion-text-light hover:bg-notion-sidebar focus:shadow-none focus:ring-0 focus-visible:shadow-none focus-visible:ring-0 disabled:opacity-40";
+  "box-border h-8 min-h-[32px] w-full min-w-[11rem] cursor-pointer rounded-sm border border-notion-border bg-notion-bg py-0 pl-3 pr-9 font-sans text-sm font-medium text-notion-text-muted shadow-none ring-0 transition-colors hover:border-notion-text-light hover:bg-notion-sidebar focus:shadow-none focus:ring-0 focus-visible:shadow-none focus-visible:ring-0 disabled:opacity-40";
 
 /** 欢迎页 / 建项 hero CTA：40px 高，仍 4px 圆角（DESIGN § Prominent controls） */
 export const CONTROL_BTN_PRIMARY_PROMINENT =
@@ -64,11 +64,11 @@ export const CONTROL_BTN_ICON_GHOST =
 
 /** 多行文本输入：与 text-input 同语义，高度自适应、允许纵向 resize */
 export const CONTROL_TEXTAREA =
-  "block w-full resize-y rounded-sm border border-notion-border bg-notion-bg px-3 py-2 font-sans text-sm font-normal leading-snug text-notion-text shadow-none ring-0 outline-none transition-colors placeholder:text-notion-text-light focus:border-zen-saffron focus:shadow-none focus:ring-0 focus-visible:shadow-none focus-visible:ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-zen-saffron/25 disabled:cursor-not-allowed disabled:opacity-40";
+  "box-border block w-full max-w-full min-w-0 resize-y rounded-sm border border-notion-border bg-notion-bg px-3 py-2 font-sans text-sm font-normal leading-snug text-notion-text shadow-none ring-0 outline-none transition-colors placeholder:text-notion-text-light focus:border-zen-saffron focus:shadow-none focus:ring-0 focus-visible:shadow-none focus-visible:ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-zen-saffron/25 disabled:cursor-not-allowed disabled:opacity-40";
 
 /** 工具栏内联 select：与 CONTROL_SELECT 同观感，宽度随内容 */
 export const CONTROL_SELECT_INLINE =
-  "h-8 min-h-[32px] cursor-pointer rounded-sm border border-notion-border bg-notion-bg py-0 pl-3 pr-9 font-sans text-sm font-medium text-notion-text-muted shadow-none ring-0 transition-colors hover:border-notion-text-light hover:bg-notion-sidebar focus:shadow-none focus:ring-0 focus-visible:shadow-none focus-visible:ring-0 disabled:opacity-40";
+  "box-border h-8 min-h-[32px] cursor-pointer rounded-sm border border-notion-border bg-notion-bg py-0 pl-3 pr-9 font-sans text-sm font-medium text-notion-text-muted shadow-none ring-0 transition-colors hover:border-notion-text-light hover:bg-notion-sidebar focus:shadow-none focus:ring-0 focus-visible:shadow-none focus-visible:ring-0 disabled:opacity-40";
 
 /** 环境页紧凑工具按钮（诊断 / 缓存 / 侧车等） */
 export const ENV_COMPACT_BTN =

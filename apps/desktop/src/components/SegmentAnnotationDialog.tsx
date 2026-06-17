@@ -76,7 +76,7 @@ export function SegmentAnnotationDialog({
             {truncatedText}
           </p>
 
-          <label className={`flex flex-col gap-1.5 ${PANEL_TYPOGRAPHY.dialogBody}`}>
+          <label className={`flex min-w-0 flex-col gap-1.5 ${PANEL_TYPOGRAPHY.dialogBody}`}>
             <span className={PANEL_TYPOGRAPHY.fieldLabel}>备注内容</span>
             <textarea
               className={`min-h-[120px] ${CONTROL_TEXTAREA} ${PANEL_CONTROL_TYPOGRAPHY.compactInput}`}

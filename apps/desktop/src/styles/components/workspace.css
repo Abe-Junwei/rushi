@@ -106,17 +106,25 @@
   box-shadow: 0 14px 30px color-mix(in srgb, var(--zen-ink) 12%, transparent);
 }
 
-.workspace .dropdown-item,
-.dropdown-item {
-  display: block;
-  width: 100%;
-  border: 0;
-  background: transparent;
-}
+@layer base {
+  .workspace .dropdown-item,
+  .dropdown-item {
+    display: block;
+    width: 100%;
+    border: 0;
+    border-style: solid;
+    background: transparent;
+  }
 
-.workspace .dropdown-item:disabled,
-.dropdown-item:disabled {
-  background: transparent !important;
+  .workspace .dropdown-item:not(:disabled):hover,
+  .dropdown-item:not(:disabled):hover {
+    background: var(--notion-sidebar-hover);
+  }
+
+  .workspace .dropdown-item:disabled,
+  .dropdown-item:disabled {
+    background: transparent !important;
+  }
 }
 
 .workspace textarea.seg-text {

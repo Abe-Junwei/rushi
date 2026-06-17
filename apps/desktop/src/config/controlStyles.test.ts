@@ -66,6 +66,12 @@ describe("controlStyles", () => {
     expect(envLlmModeToggleBtnClass(true)).toContain("bg-notion-bg");
   });
 
+  it("uses box-border on text controls (portal dialogs outside .workspace)", () => {
+    expect(CONTROL_TEXT_INPUT).toContain("box-border");
+    expect(CONTROL_TEXTAREA).toContain("box-border");
+    expect(CONTROL_SELECT).toContain("box-border");
+  });
+
   it("uses sidebar + hairline for secondary and canvas for inputs", () => {
     expect(CONTROL_BTN_SECONDARY).toContain("bg-notion-sidebar");
     expect(CONTROL_BTN_SECONDARY).toContain("border-notion-border");

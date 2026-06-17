@@ -38,8 +38,8 @@ export const PANEL_CONTROL_TYPOGRAPHY = {
 /** 居中 overlay 确认框 — 用 stack + actionRow，避免 mt-2 + mt-5 叠加 */
 export const COMPACT_DIALOG_LAYOUT = {
   card: "w-[min(420px,calc(100vw-32px))] rounded-lg border border-notion-divider bg-notion-bg p-4 font-sans antialiased shadow-2xl",
-  cardWide: "w-[min(512px,calc(100vw-32px))] rounded-lg border border-notion-divider bg-notion-bg p-4 font-sans antialiased shadow-2xl",
-  stack: "flex flex-col gap-3",
+  cardWide: "w-[min(512px,calc(100vw-32px))] max-w-full rounded-lg border border-notion-divider bg-notion-bg p-4 font-sans antialiased shadow-2xl",
+  stack: "flex min-w-0 flex-col gap-3",
   title: PANEL_TYPOGRAPHY.dialogTitle,
   actionRow: "flex flex-wrap items-center justify-end gap-2 pt-1",
   actionRowSplit: "flex flex-wrap items-center justify-between gap-2 pt-1",
