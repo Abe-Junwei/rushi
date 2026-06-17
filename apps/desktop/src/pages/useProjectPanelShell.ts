@@ -1,25 +1,20 @@
-import { useCallback, useEffect, useMemo, useState } from "react";
-import type { SegmentContextMenuOpen } from "../utils/segmentContextMenuModel";
+import { useCallback, useEffect, useMemo } from "react";
 import { useOnboardingAutoSync } from "../hooks/useOnboardingAutoSync";
 import { registerDeliveryModeTranscribeAction } from "../services/deliveryModeTranscribeToast";
 import { useDeliveryModeController } from "./useDeliveryModeController";
 import { useProjectController } from "./useProjectController";
 import { useProjectPanelWorkspaceNav } from "./useProjectPanelWorkspaceNav";
+import {
+  useProjectPanelEnvironmentShell,
+  useProjectPanelExportShell,
+} from "./useProjectPanelShellSupport";
 
 /** Shell-level UI state and routing for the project workspace (not project domain logic). */
 export function useProjectPanelShell() {
   const c = useProjectController();
   const deliveryMode = useDeliveryModeController();
   const nav = useProjectPanelWorkspaceNav(c);
-
-  const [envOpen, setEnvOpen] = useState(false);
-  const [focusLocalAsrSeq, setFocusLocalAsrSeq] = useState(0);
-  const [focusLlmSeq, setFocusLlmSeq] = useState(0);
-  const [llmUiEpoch, setLlmUiEpoch] = useState(0);
-  const [exportKey, setExportKey] = useState("");
-  const [deliveryExportOpen, setDeliveryExportOpen] = useState(false);
-  const [busyElapsedSec, setBusyElapsedSec] = useState(0);
-  const [segmentCtxMenu, setSegmentCtxMenu] = useState<SegmentContextMenuOpen | null>(null);
+  const envShell = useProjectPanelEnvironmentShell();
 
   useOnboardingAutoSync({ controller: c, asrChipOk: c.asrPresentation.chipOk });
 
@@ -28,130 +23,38 @@ export function useProjectPanelShell() {
     return () => registerDeliveryModeTranscribeAction(null);
   }, [deliveryMode.openDeliveryMode]);
 
-  useEffect(() => {
-    if (!deliveryExportOpen && !deliveryMode.deliveryModeOpen) return;
-    c.flushSegmentTextDrafts();
-  }, [deliveryExportOpen, deliveryMode.deliveryModeOpen, c.flushSegmentTextDrafts]);
-
-  useEffect(() => {
-    if (!c.busy) {
-      setBusyElapsedSec(0);
-      return;
-    }
-    const t0 = Date.now();
-    const id = window.setInterval(() => {
-      setBusyElapsedSec(Math.floor((Date.now() - t0) / 1000));
-    }, 500);
-    return () => window.clearInterval(id);
-  }, [c.busy]);
-
-  const openEnvironment = useCallback(() => {
-    setEnvOpen(true);
-  }, []);
-
-  const openAsrSettings = useCallback(() => {
-    setFocusLlmSeq(0);
-    setEnvOpen(true);
-    setFocusLocalAsrSeq((n) => n + 1);
-  }, []);
-
-  const openLlmSettings = useCallback(() => {
-    setFocusLocalAsrSeq(0);
-    setEnvOpen(true);
-    setFocusLlmSeq((n) => n + 1);
-  }, []);
-
-  useEffect(() => {
-    if (envOpen) return;
-    setFocusLocalAsrSeq(0);
-    setFocusLlmSeq(0);
-  }, [envOpen]);
+  const exportShell = useProjectPanelExportShell({
+    busy: c.busy,
+    flushSegmentTextDrafts: c.flushSegmentTextDrafts,
+    deliveryModeOpen: deliveryMode.deliveryModeOpen,
+    isIndexInSelection: c.isIndexInSelection,
+    selectSegmentAt: c.selectSegmentAt,
+    selectionCount: c.selectionCount,
+    exportTxt: c.exportTxt,
+    exportSrt: c.exportSrt,
+    exportDocx: c.exportDocx,
+    openDeliveryMode: deliveryMode.openDeliveryMode,
+    setTranscribeFailureDiag: c.setTranscribeFailureDiag,
+    setError: c.setError,
+    cancelTranscribe: c.cancelTranscribe,
+  });
 
   const notifyLlmRuntimeChanged = useCallback(() => {
-    c.bumpLlmRuntimeChanged();
-    setLlmUiEpoch((n) => n + 1);
-  }, [c]);
+    envShell.notifyLlmRuntimeChanged(c.bumpLlmRuntimeChanged);
+  }, [c.bumpLlmRuntimeChanged, envShell]);
 
   const showTranscribeGlossaryLink = useMemo(
     () => c.transcribeVocabularyPreflightLines.some((line) => line.includes("暂无纳入热词")),
     [c.transcribeVocabularyPreflightLines],
   );
 
-  const openSegmentContextMenu = useCallback(
-    (menu: SegmentContextMenuOpen) => {
-      const preserveMulti = c.isIndexInSelection(menu.segmentIdx) && c.selectionCount > 1;
-      if (!preserveMulti) {
-        c.selectSegmentAt(menu.segmentIdx);
-      }
-      setSegmentCtxMenu(menu);
-    },
-    [c.isIndexInSelection, c.selectSegmentAt, c.selectionCount],
-  );
-
-  const onExportSelect = useCallback(
-    (key: string) => {
-      setExportKey("");
-      switch (key) {
-        case "txt":
-          void c.exportTxt();
-          break;
-        case "srt":
-          void c.exportSrt();
-          break;
-        case "docx_delivery":
-          setDeliveryExportOpen(true);
-          break;
-        case "delivery_mode":
-          deliveryMode.openDeliveryMode();
-          break;
-        case "docx_verbatim":
-          void c.exportDocx("verbatim");
-          break;
-        case "docx_lecture":
-          void c.exportDocx("lecture");
-          break;
-        case "docx_clean":
-          void c.exportDocx("clean");
-          break;
-        default:
-          break;
-      }
-    },
-    [c, deliveryMode.openDeliveryMode],
-  );
-
-  const dismissTranscribeDiag = useCallback(() => {
-    c.setTranscribeFailureDiag(null);
-    c.setError("");
-  }, [c]);
-
-  const cancelTranscribe = useCallback(() => {
-    void c.cancelTranscribe();
-  }, [c]);
-
   return {
     c,
     deliveryMode,
-    envOpen,
-    setEnvOpen,
-    focusLocalAsrSeq,
-    focusLlmSeq,
-    llmUiEpoch,
-    exportKey,
-    deliveryExportOpen,
-    setDeliveryExportOpen,
-    busyElapsedSec,
-    segmentCtxMenu,
-    setSegmentCtxMenu,
-    openEnvironment,
-    openAsrSettings,
-    openLlmSettings,
+    ...envShell,
     notifyLlmRuntimeChanged,
     showTranscribeGlossaryLink,
-    openSegmentContextMenu,
-    onExportSelect,
-    dismissTranscribeDiag,
-    cancelTranscribe,
+    ...exportShell,
     ...nav,
   };
 }

@@ -1,40 +1,18 @@
-import {
-  useCallback,
-  useLayoutEffect,
-  useMemo,
-  useRef,
-  useState,
-  type MouseEvent as ReactMouseEvent,
-} from "react";
+import { useCallback, type MouseEvent as ReactMouseEvent } from "react";
 import type { SegmentContextMenuOpen } from "../../utils/segmentContextMenuModel";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
-import {
-  annotateSegmentListScrollMetrics,
-  computeSegmentListVirtualWindow,
-  maybePinSegmentListVirtualWindow,
-  scrollSegmentListIndexIntoView,
-  scrollSegmentRowIntoViewContainer,
-  SEGMENT_LIST_SCROLL_ATTR,
-  SEGMENT_LIST_VIRTUAL_OVERSCAN,
-  SEGMENT_LIST_VIRTUALIZE_MIN_COUNT,
-  segmentListItemStridePx,
-  segmentListRowMinHeightPx,
-  writeSegmentListFilterIndices,
-} from "../../utils/segmentListVirtualWindow";
-import { LIST_ADVANCE_PLAY_COALESCE_MS } from "../../utils/scheduleListAdvanceSegmentPlayback";
+import { SEGMENT_LIST_SCROLL_ATTR } from "../../utils/segmentListVirtualWindow";
 import { SegmentTextListRow } from "../SegmentTextListRow";
 import { segmentHasUnsavedText } from "../../services/segmentConfirmEligible";
 import type { SegmentListFilterNavState } from "../../utils/segmentListFilterNav";
 import { blurActiveTranscriptTextarea } from "../../utils/transcriptSelection";
 import type { useEditorTranscriptAppearance } from "./useEditorTranscriptAppearance";
+import { useEditorSegmentListScroll } from "./useEditorSegmentListScroll";
 
 type SegmentCtxMenuState = SegmentContextMenuOpen;
 
 type AppearanceApi = ReturnType<typeof useEditorTranscriptAppearance>;
-
-/** clientHeight 尚未量到时的保守视口，避免 0 导致整表挂载 */
-const SEGMENT_LIST_FALLBACK_VIEWPORT_HEIGHT_PX = 480;
 
 interface EditorSegmentListProps {
   controller: ProjectControllerApi;
@@ -47,16 +25,6 @@ interface EditorSegmentListProps {
   onOpenSegmentContextMenu: (menu: SegmentCtxMenuState) => void;
 }
 
-function readScrollMetrics(root: HTMLElement | null): { scrollTop: number; viewportHeight: number } {
-  if (!root) {
-    return { scrollTop: 0, viewportHeight: SEGMENT_LIST_FALLBACK_VIEWPORT_HEIGHT_PX };
-  }
-  return {
-    scrollTop: root.scrollTop,
-    viewportHeight: root.clientHeight > 0 ? root.clientHeight : SEGMENT_LIST_FALLBACK_VIEWPORT_HEIGHT_PX,
-  };
-}
-
 export function EditorSegmentList({
   controller: c,
   tx,
@@ -67,19 +35,7 @@ export function EditorSegmentList({
   filterActive,
   onOpenSegmentContextMenu,
 }: EditorSegmentListProps) {
-  const scrollMetricsRef = useRef(readScrollMetrics(null));
-  const [scrollEpoch, setScrollEpoch] = useState(0);
-  const scrollEpochRafRef = useRef<number | null>(null);
-  const lastSelectedScrollKeyRef = useRef<string | null>(null);
-  const pendingSelectedScrollKeyRef = useRef<string | null>(null);
-  const pendingSelectedScrollIdxRef = useRef<number>(-1);
-  const pendingSelectedDisplayIndexRef = useRef<number>(-1);
-  const selectedScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
-
-  const rowMinHeightPx = segmentListRowMinHeightPx(tx.transcriptRowHeightPx);
-  const itemStridePx = segmentListItemStridePx(rowMinHeightPx);
   const displayCount = filteredIndices.length;
-  const useVirtualList = displayCount >= SEGMENT_LIST_VIRTUALIZE_MIN_COUNT;
   const selectedDisplayIndex =
     c.selectedIdx >= 0
       ? filterActive
@@ -88,132 +44,18 @@ export function EditorSegmentList({
           ? c.selectedIdx
           : -1
       : -1;
-  const filteredIndicesScrollKey = useMemo(() => {
-    const first = filteredIndices[0] ?? -1;
-    const last = filteredIndices[filteredIndices.length - 1] ?? -1;
-    // Keep this O(1): rapid ↑↓ selection runs this path for every row change.
-    return `${filterActive ? "filtered" : "all"}:${displayCount}:${first}:${last}`;
-  }, [displayCount, filterActive, filteredIndices]);
 
-  const scheduleScrollEpochBump = useCallback(() => {
-    if (scrollEpochRafRef.current != null) return;
-    scrollEpochRafRef.current = window.requestAnimationFrame(() => {
-      scrollEpochRafRef.current = null;
-      setScrollEpoch((n) => n + 1);
-    });
-  }, []);
-
-  const syncScrollMetrics = useCallback(() => {
-    scrollMetricsRef.current = readScrollMetrics(segmentListRef.current);
-  }, [segmentListRef]);
-
-  const bumpScrollEpoch = useCallback(() => {
-    syncScrollMetrics();
-    scheduleScrollEpochBump();
-  }, [scheduleScrollEpochBump, syncScrollMetrics]);
-
-  const handleScroll = useCallback(() => {
-    syncScrollMetrics();
-    scheduleScrollEpochBump();
-  }, [scheduleScrollEpochBump, syncScrollMetrics]);
-
-  useLayoutEffect(() => {
-    const root = segmentListRef.current;
-    if (!root) return;
-    annotateSegmentListScrollMetrics(root, { rowMinHeightPx, itemStridePx });
-    bumpScrollEpoch();
-    const observer = new ResizeObserver(() => bumpScrollEpoch());
-    observer.observe(root);
-    const raf = window.requestAnimationFrame(() => bumpScrollEpoch());
-    return () => {
-      window.cancelAnimationFrame(raf);
-      if (scrollEpochRafRef.current != null) {
-        window.cancelAnimationFrame(scrollEpochRafRef.current);
-        scrollEpochRafRef.current = null;
-      }
-      observer.disconnect();
-    };
-  }, [bumpScrollEpoch, itemStridePx, rowMinHeightPx, segmentListRef, displayCount, useVirtualList]);
-
-  useLayoutEffect(() => {
-    const root = segmentListRef.current;
-    if (!root || selectedDisplayIndex < 0) return;
-
-    const scrollKey = `${c.currentFileId ?? ""}:${c.selectedIdx}:${selectedDisplayIndex}:${filteredIndicesScrollKey}`;
-    if (lastSelectedScrollKeyRef.current === scrollKey) return;
-    pendingSelectedScrollKeyRef.current = scrollKey;
-    pendingSelectedScrollIdxRef.current = c.selectedIdx;
-    pendingSelectedDisplayIndexRef.current = selectedDisplayIndex;
-    if (selectedScrollTimerRef.current != null) clearTimeout(selectedScrollTimerRef.current);
-    selectedScrollTimerRef.current = setTimeout(() => {
-      selectedScrollTimerRef.current = null;
-      const pendingKey = pendingSelectedScrollKeyRef.current;
-      pendingSelectedScrollKeyRef.current = null;
-      if (!pendingKey || lastSelectedScrollKeyRef.current === pendingKey) return;
-      lastSelectedScrollKeyRef.current = pendingKey;
-
-      const segmentIdx = pendingSelectedScrollIdxRef.current;
-      const displayIndex = pendingSelectedDisplayIndexRef.current;
-      if (segmentIdx < 0 || displayIndex < 0) return;
-
-      const maxScrollTop = Math.max(0, root.scrollHeight - root.clientHeight);
-      const nextScrollTop = scrollSegmentListIndexIntoView({
-        scrollTop: root.scrollTop,
-        viewportHeight: root.clientHeight,
-        index: displayIndex,
-        rowMinHeightPx,
-        itemStridePx,
-        align: "minimal",
-        maxScrollTop,
-      });
-      if (nextScrollTop != null) {
-        root.scrollTop = nextScrollTop;
-        bumpScrollEpoch();
-        window.requestAnimationFrame(() => {
-          const corrected = scrollSegmentRowIntoViewContainer(segmentIdx, root, { align: "minimal" });
-          if (corrected == null) return;
-          if (Math.abs(corrected - root.scrollTop) < 1) return;
-          root.scrollTop = corrected;
-          bumpScrollEpoch();
-        });
-        return;
-      }
-
-      const corrected = scrollSegmentRowIntoViewContainer(segmentIdx, root, { align: "minimal" });
-      if (corrected == null) return;
-      if (Math.abs(corrected - root.scrollTop) < 1) return;
-      root.scrollTop = corrected;
-      bumpScrollEpoch();
-    }, LIST_ADVANCE_PLAY_COALESCE_MS);
-
-    return () => {
-      if (selectedScrollTimerRef.current != null) {
-        clearTimeout(selectedScrollTimerRef.current);
-        selectedScrollTimerRef.current = null;
-      }
-    };
-  }, [
-    bumpScrollEpoch,
-    c.currentFileId,
-    c.selectedIdx,
-    displayCount,
-    filteredIndicesScrollKey,
-    itemStridePx,
-    rowMinHeightPx,
+  const { useVirtualList, handleScroll, virtualWindow } = useEditorSegmentListScroll({
     segmentListRef,
+    filterNavRef,
+    filteredIndices,
+    filterActive,
+    displayCount,
     selectedDisplayIndex,
-  ]);
-
-  useLayoutEffect(() => {
-    lastSelectedScrollKeyRef.current = null;
-  }, [c.currentFileId]);
-
-  useLayoutEffect(() => {
-    const root = segmentListRef.current;
-    filterNavRef.current = { active: filterActive, indices: filteredIndices };
-    if (!root) return;
-    writeSegmentListFilterIndices(root, filteredIndices, filterActive);
-  }, [filterActive, filteredIndices, filterNavRef, segmentListRef]);
+    selectedIdx: c.selectedIdx,
+    currentFileId: c.currentFileId,
+    transcriptRowHeightPx: tx.transcriptRowHeightPx,
+  });
 
   const onOpenRowContextMenu = useCallback(
     (
@@ -237,30 +79,6 @@ export function EditorSegmentList({
     },
     [c.busy, onOpenSegmentContextMenu],
   );
-
-  const virtualWindow = useMemo(() => {
-    if (!useVirtualList) {
-      return {
-        startIndex: 0,
-        endIndex: displayCount,
-        paddingTopPx: 0,
-        paddingBottomPx: 0,
-        totalHeightPx: 0,
-      };
-    }
-    const { scrollTop, viewportHeight } = scrollMetricsRef.current;
-    const base = computeSegmentListVirtualWindow({
-      scrollTop,
-      viewportHeight,
-      itemStridePx,
-      totalCount: displayCount,
-      overscan: SEGMENT_LIST_VIRTUAL_OVERSCAN,
-    });
-    if (selectedDisplayIndex < 0) return base;
-    return maybePinSegmentListVirtualWindow(base, selectedDisplayIndex, displayCount, itemStridePx, {
-      overscan: SEGMENT_LIST_VIRTUAL_OVERSCAN,
-    });
-  }, [scrollEpoch, useVirtualList, itemStridePx, displayCount, selectedDisplayIndex]);
 
   const savedSnapshot = c.getSavedSnapshot();
 
@@ -377,4 +195,4 @@ export function EditorSegmentList({
       )}
     </div>
   );
-};
+}

@@ -1,62 +1,19 @@
 import { useCallback, useMemo, useState } from "react";
-import { publishSegmentTextBulkMutation } from "./flushSegmentTextDrafts";
-import { findSegmentIndexByUid } from "./segmentListHelpers";
-import { correctionHighlightSpanToCharRange } from "../services/editor/correctionHighlightCharRange";
 import {
   querySegmentListScrollRoot,
   scrollSegmentRowIntoViewContainer,
 } from "../utils/segmentListVirtualWindow";
 import type { SegmentDto } from "../tauri/projectApi";
-import { correctionMemoryList, correctionStableRulesList } from "../tauri/correctionApi";
+import { correctionHighlightSpanToCharRange } from "../services/editor/correctionHighlightCharRange";
+import { formatStableRuleConflictMessage } from "../services/editor/stableCorrectionRuleConflicts";
+import { loadCorrectionRulesPreview } from "./correctionRulesPreviewLoader";
 import {
-  toRulePairs,
-  type SegmentCorrectionChange,
-} from "../services/editor/segmentCorrectionRulesApply";
-import { buildLexiconHealthReport, type LexiconHealthReport } from "../services/editor/lexiconHealthReport";
-import {
-  applySegmentTextHygiene,
-  segmentTextHygieneChanged,
-} from "../services/editor/segmentTextHygiene";
-import { buildStageAPreviewChanges } from "../services/editor/stageAPreviewPipeline";
-import {
-  filterReadOnlyCorrectionRuleHints,
-  parseCorrectionRuleHintsFromWarnings,
-  type CorrectionRuleHintPair,
-} from "../services/editor/correctionRuleHints";
-import {
-  detectStableCorrectionRuleConflicts,
-  formatStableRuleConflictMessage,
-  type StableCorrectionRuleConflict,
-} from "../services/editor/stableCorrectionRuleConflicts";
-import {
-  listLearningCorrectionHintsForSegments,
-  type LearningCorrectionHint,
-} from "../services/editor/learningCorrectionRuleHints";
+  type CorrectionRulesDialogState,
+  type CorrectionRulesDialogTrigger,
+} from "./correctionRulesPanelTypes";
+import { useCorrectionRulesApply } from "./useCorrectionRulesApply";
 
-export type CorrectionRulesDialogTrigger = "manual" | "postTranscribe";
-
-export type CorrectionRulesDialogState =
-  | { phase: "closed" }
-  | { phase: "loading"; trigger?: CorrectionRulesDialogTrigger }
-  | {
-      phase: "preview";
-      changes: SegmentCorrectionChange[];
-      ruleCount: number;
-      hygieneTouchedCount: number;
-      lexiconHealth: LexiconHealthReport;
-      selectedSegmentIdxs: number[];
-      readOnlyTranscribeHints: CorrectionRuleHintPair[];
-      readOnlyLearningHints: LearningCorrectionHint[];
-      stableConflicts: StableCorrectionRuleConflict[];
-      trigger?: CorrectionRulesDialogTrigger;
-    }
-  | {
-      phase: "empty";
-      readOnlyTranscribeHints: CorrectionRuleHintPair[];
-      readOnlyLearningHints: LearningCorrectionHint[];
-      lexiconHealth: LexiconHealthReport;
-      trigger?: CorrectionRulesDialogTrigger;
-    };
+export type { CorrectionRulesDialogTrigger, CorrectionRulesDialogState } from "./correctionRulesPanelTypes";
 
 type Args = {
   busy: boolean;
@@ -112,58 +69,13 @@ export function useCorrectionRulesController(args: Args) {
     setDialog({ phase: "closed" });
   }, []);
 
-  const loadStableRulesPreview = useCallback(async () => {
-    flushSegmentTextDrafts();
-    const [rows, memoryEntries] = await Promise.all([
-      correctionStableRulesList(),
-      correctionMemoryList(),
-    ]);
-    const pairs = toRulePairs(rows);
-    const changes = buildStageAPreviewChanges(segmentsRef.current, pairs);
-    const stableConflicts = detectStableCorrectionRuleConflicts(rows);
-    const lexiconHealth = buildLexiconHealthReport({
-      memoryEntries,
-      stableRules: rows,
-      stableConflicts,
-      segments: segmentsRef.current,
-    });
-    let hygieneTouchedCount = 0;
-    for (const seg of segmentsRef.current) {
-      const before = seg.text ?? "";
-      if (segmentTextHygieneChanged(before, applySegmentTextHygiene(before))) {
-        hygieneTouchedCount += 1;
-      }
-    }
-    const hintPairs = filterReadOnlyCorrectionRuleHints(
-      parseCorrectionRuleHintsFromWarnings(transcribeWarnings),
-      pairs,
-    );
-    const readOnlyTranscribeHints = hintPairs;
-    const transcribeKeys = new Set(
-      hintPairs.map((h) => `${h.beforeText.trim()}\u0000${h.afterText.trim()}`),
-    );
-    const readOnlyLearningHints = listLearningCorrectionHintsForSegments(
-      memoryEntries,
-      pairs,
-      segmentsRef.current,
-    ).filter((h) => !transcribeKeys.has(`${h.beforeText}\u0000${h.afterText}`));
-    return {
-      changes,
-      ruleCount: pairs.length,
-      hygieneTouchedCount,
-      lexiconHealth,
-      readOnlyTranscribeHints,
-      readOnlyLearningHints,
-      stableConflicts,
-    };
-  }, [flushSegmentTextDrafts, segmentsRef, transcribeWarnings]);
-
   const openStageA = useCallback(
     async (trigger: CorrectionRulesDialogTrigger) => {
       if (!canApplyCorrectionRules) return;
       setDialog({ phase: "loading", trigger });
       setError("");
       try {
+        flushSegmentTextDrafts();
         const {
           changes,
           ruleCount,
@@ -172,7 +84,10 @@ export function useCorrectionRulesController(args: Args) {
           readOnlyTranscribeHints,
           readOnlyLearningHints,
           stableConflicts,
-        } = await loadStableRulesPreview();
+        } = await loadCorrectionRulesPreview({
+          segments: segmentsRef.current,
+          transcribeWarnings,
+        });
         if (!changes.length) {
           setDialog({
             phase: "empty",
@@ -203,7 +118,14 @@ export function useCorrectionRulesController(args: Args) {
         setError(e instanceof Error ? e.message : String(e));
       }
     },
-    [canApplyCorrectionRules, loadStableRulesPreview, scrollToPreviewSegment, setError],
+    [
+      canApplyCorrectionRules,
+      flushSegmentTextDrafts,
+      scrollToPreviewSegment,
+      segmentsRef,
+      setError,
+      transcribeWarnings,
+    ],
   );
 
   /** 转写后编排：打开阶段 A（完成后可接阶段 B）。 */
@@ -255,35 +177,16 @@ export function useCorrectionRulesController(args: Args) {
       ? formatStableRuleConflictMessage(dialog.stableConflicts)
       : null;
 
-  const confirmCorrectionRulesWriteback = useCallback(async () => {
-    if (dialog.phase !== "preview") return;
-    if (dialog.stableConflicts.length > 0) return;
-    if (dialog.selectedSegmentIdxs.length === 0) return;
-    flushSegmentTextDrafts();
-    pushUndo();
-    const selected = new Set(dialog.selectedSegmentIdxs);
-    const next = [...segmentsRef.current];
-    let applied = 0;
-    for (const ch of dialog.changes) {
-      if (!selected.has(ch.segmentIdx)) continue;
-      const idx = ch.uid.trim() ? findSegmentIndexByUid(next, ch.uid) : ch.segmentIdx;
-      if (idx < 0) continue;
-      const row = next[idx];
-      if (!row) continue;
-      next[idx] = { ...row, text: ch.afterText };
-      applied += 1;
-    }
-    if (applied === 0) {
-      setError("所选语段已不存在或 uid 已变化，请关闭预览后重新生成候选。");
-      return;
-    }
-    publishSegmentTextBulkMutation(segmentsRef, setSegments, next);
-    closeStageA();
-    const saved = await saveSegments({ quiet: true, countHits: true });
-    if (!saved) {
-      setError("纠错规则已写回，但保存失败，请稍后手动保存。");
-    }
-  }, [closeStageA, dialog, flushSegmentTextDrafts, pushUndo, saveSegments, segmentsRef, setError, setSegments]);
+  const { confirmCorrectionRulesWriteback } = useCorrectionRulesApply({
+    dialog,
+    segmentsRef,
+    flushSegmentTextDrafts,
+    setSegments,
+    pushUndo,
+    setError,
+    saveSegments,
+    closeStageA,
+  });
 
   const cancelCorrectionRules = useCallback(() => {
     closeStageA();

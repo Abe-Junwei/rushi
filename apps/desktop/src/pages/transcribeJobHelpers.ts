@@ -4,3 +4,5 @@ import type { SegmentDto } from "../tauri/projectApi";
 export function segmentsHaveNonEmptyText(segments: readonly SegmentDto[]): boolean {
   return segments.some((s) => String(s.text ?? "").trim().length > 0);
 }
+
+export type LocalTranscribePreflight = () => string | null;

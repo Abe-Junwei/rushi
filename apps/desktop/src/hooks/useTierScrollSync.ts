@@ -1,9 +1,14 @@
-import { useEffect, useLayoutEffect, useMemo, useRef } from "react";
+import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { afterSmoothScrollEnd } from "../utils/tierScrollSmooth";
 import { clampTimelineScrollLeftPx, WAVEFORM_SCROLL_SYNC_EPSILON_PX } from "../utils/waveformScrollSync";
 import { scrollPxCenterTimeInViewport } from "../utils/waveformProjection";
 import type { useProjectWaveform } from "./useProjectWaveform";
 import { useTierScrollLayout, type TierScrollLayout } from "./useTierScrollLayout";
+import {
+  useTierScrollProgrammaticWrites,
+  type PendingProgrammaticScrollWrite,
+} from "./tierScrollProgrammaticWrites";
+import { useTierScrollResizeEffect } from "./useTierScrollResizeEffect";
 
 export type { TierScrollLayout };
 
@@ -14,10 +19,6 @@ type SetTierScrollOptions = {
   timelineWidthPx?: number;
   deferLayoutCommit?: boolean;
   immediate?: boolean;
-};
-type PendingProgrammaticScrollWrite = {
-  scrollLeftPx: number;
-  deferLayoutCommit: boolean;
 };
 
 /** Tier scroll is the sole horizontal authority (ADR-0005). */
@@ -41,13 +42,11 @@ export function useTierScrollSync(args: {
   const prevTimelineWidthPxRef = useRef(args.timelineWidthPx);
   const prevViewportWidthPxRef = useRef(0);
   const smoothScrollCleanupRef = useRef<(() => void) | null>(null);
-  const programmaticScrollUntilRef = useRef(0);
-  const deferredLayoutCommitUntilRef = useRef(0);
-  const programmaticScrollRafRef = useRef(0);
-  const pendingProgrammaticScrollRef = useRef<PendingProgrammaticScrollWrite | null>(null);
+  const programmaticWrites = useTierScrollProgrammaticWrites();
 
   const tierScrollMetrics = useTierScrollLayout(args.tierScrollRef, {
-    shouldCommitScrollLayout: () => performance.now() >= deferredLayoutCommitUntilRef.current,
+    shouldCommitScrollLayout: () =>
+      performance.now() >= programmaticWrites.deferredLayoutCommitUntilRef.current,
   });
 
   useLayoutEffect(() => {
@@ -79,82 +78,83 @@ export function useTierScrollSync(args: {
     mirrorWaveSurferScroll(sl);
   };
 
-  const commitScrollLeftPx = (
-    sl: number,
-    source: ScrollApplySource,
-    options?: Pick<SetTierScrollOptions, "deferLayoutCommit">,
-  ) => {
-    const a = argsRef.current;
-    const tier = a.tierScrollRef.current;
-    if (!tier) return;
-    const vw = tier.clientWidth;
-    if (
-      Math.abs(committedScrollLeftRef.current - sl) < WAVEFORM_SCROLL_SYNC_EPSILON_PX &&
-      Math.abs(tier.scrollLeft - sl) < WAVEFORM_SCROLL_SYNC_EPSILON_PX
-    ) {
+  const commitScrollLeftPx = useCallback(
+    (
+      sl: number,
+      source: ScrollApplySource,
+      options?: Pick<SetTierScrollOptions, "deferLayoutCommit">,
+    ) => {
+      const a = argsRef.current;
+      const tier = a.tierScrollRef.current;
+      if (!tier) return;
+      const vw = tier.clientWidth;
+      if (
+        Math.abs(committedScrollLeftRef.current - sl) < WAVEFORM_SCROLL_SYNC_EPSILON_PX &&
+        Math.abs(tier.scrollLeft - sl) < WAVEFORM_SCROLL_SYNC_EPSILON_PX
+      ) {
+        mirrorWaveSurferScroll(sl);
+        return;
+      }
+      if (Math.abs(tier.scrollLeft - sl) > WAVEFORM_SCROLL_SYNC_EPSILON_PX) {
+        if (source === "program") {
+          programmaticWrites.markProgrammaticScroll();
+        }
+        if (options?.deferLayoutCommit) {
+          programmaticWrites.markDeferredLayoutCommit();
+        }
+        tier.scrollLeft = sl;
+      }
+      committedScrollLeftRef.current = sl;
+      tierScrollMetrics.liveScrollLeftRef.current = sl;
+      tierScrollMetrics.liveClientWidthRef.current = vw;
       mirrorWaveSurferScroll(sl);
-      return;
-    }
-    if (Math.abs(tier.scrollLeft - sl) > WAVEFORM_SCROLL_SYNC_EPSILON_PX) {
-      if (source === "program") {
-        programmaticScrollUntilRef.current = performance.now() + 80;
+    },
+    [programmaticWrites, tierScrollMetrics.liveClientWidthRef, tierScrollMetrics.liveScrollLeftRef],
+  );
+
+  const commitPendingProgrammaticScroll = useCallback(
+    (pending: PendingProgrammaticScrollWrite) => {
+      commitScrollLeftPx(pending.scrollLeftPx, "program", {
+        deferLayoutCommit: pending.deferLayoutCommit,
+      });
+    },
+    [commitScrollLeftPx],
+  );
+
+  const applyScrollLeftPx = useCallback(
+    (px: number, source: ScrollApplySource, options?: SetTierScrollOptions) => {
+      const a = argsRef.current;
+      const tier = a.tierScrollRef.current;
+      if (!tier) return;
+      const vw = tier.clientWidth;
+      const timelineWidthPx = options?.timelineWidthPx ?? a.timelineWidthPx;
+      const sl = clampTimelineScrollLeftPx({
+        scrollLeftPx: px,
+        timelineWidthPx,
+        viewportWidthPx: vw,
+      });
+      if (source === "program" && !options?.immediate) {
+        programmaticWrites.queueProgrammaticScroll(
+          sl,
+          options?.deferLayoutCommit === true,
+          commitPendingProgrammaticScroll,
+        );
+        return;
       }
-      if (options?.deferLayoutCommit) {
-        deferredLayoutCommitUntilRef.current = performance.now() + 120;
-      }
-      tier.scrollLeft = sl;
-    }
-    committedScrollLeftRef.current = sl;
-    tierScrollMetrics.liveScrollLeftRef.current = sl;
-    tierScrollMetrics.liveClientWidthRef.current = vw;
-    mirrorWaveSurferScroll(sl);
-  };
-
-  const flushPendingProgrammaticScroll = () => {
-    programmaticScrollRafRef.current = 0;
-    const pending = pendingProgrammaticScrollRef.current;
-    pendingProgrammaticScrollRef.current = null;
-    if (!pending) return;
-    commitScrollLeftPx(pending.scrollLeftPx, "program", {
-      deferLayoutCommit: pending.deferLayoutCommit,
-    });
-  };
-
-  const queueProgrammaticScroll = (scrollLeftPx: number, deferLayoutCommit: boolean) => {
-    pendingProgrammaticScrollRef.current = { scrollLeftPx, deferLayoutCommit };
-    if (programmaticScrollRafRef.current) return;
-    programmaticScrollRafRef.current = requestAnimationFrame(() => {
-      flushPendingProgrammaticScroll();
-    });
-  };
-
-  const applyScrollLeftPx = (px: number, source: ScrollApplySource, options?: SetTierScrollOptions) => {
-    const a = argsRef.current;
-    const tier = a.tierScrollRef.current;
-    if (!tier) return;
-    const vw = tier.clientWidth;
-    const timelineWidthPx = options?.timelineWidthPx ?? a.timelineWidthPx;
-    const sl = clampTimelineScrollLeftPx({
-      scrollLeftPx: px,
-      timelineWidthPx,
-      viewportWidthPx: vw,
-    });
-    if (source === "program" && !options?.immediate) {
-      queueProgrammaticScroll(sl, options?.deferLayoutCommit === true);
-      return;
-    }
-    commitScrollLeftPx(sl, source, { deferLayoutCommit: options?.deferLayoutCommit });
-  };
+      commitScrollLeftPx(sl, source, { deferLayoutCommit: options?.deferLayoutCommit });
+    },
+    [commitPendingProgrammaticScroll, commitScrollLeftPx, programmaticWrites],
+  );
 
   const api = useMemo(
     () => ({
       onTierScroll: () => {
         syncScrollFromTierDom();
-        if (performance.now() >= deferredLayoutCommitUntilRef.current) {
+        if (performance.now() >= programmaticWrites.deferredLayoutCommitUntilRef.current) {
           tierScrollMetrics.refreshLayout();
         }
         const suppressRef = argsRef.current.playbackFollowSuppressUntilRef;
-        if (suppressRef && performance.now() >= programmaticScrollUntilRef.current) {
+        if (suppressRef && performance.now() >= programmaticWrites.programmaticScrollUntilRef.current) {
           suppressRef.current = performance.now() + 2500;
         }
       },
@@ -183,7 +183,7 @@ export function useTierScrollSync(args: {
         });
       },
       refreshTierScrollLayout: () => {
-        flushPendingProgrammaticScroll();
+        programmaticWrites.flushPendingProgrammaticScroll(commitPendingProgrammaticScroll);
         tierScrollMetrics.refreshLayout();
         const el = argsRef.current.tierScrollRef.current;
         if (!el) return;
@@ -216,7 +216,14 @@ export function useTierScrollSync(args: {
         applyScrollLeftPx(targetScroll, "program", { immediate: true });
       },
     }),
-    [tierScrollMetrics.refreshLayout, tierScrollMetrics.liveScrollLeftRef, tierScrollMetrics.liveClientWidthRef],
+    [
+      applyScrollLeftPx,
+      commitPendingProgrammaticScroll,
+      programmaticWrites,
+      tierScrollMetrics.liveClientWidthRef,
+      tierScrollMetrics.liveScrollLeftRef,
+      tierScrollMetrics.refreshLayout,
+    ],
   );
 
   useLayoutEffect(() => {
@@ -226,108 +233,33 @@ export function useTierScrollSync(args: {
     prevMediaUrlResetOnlyRef.current = a.mediaUrl;
     committedScrollLeftRef.current = 0;
     tierScrollMetrics.liveScrollLeftRef.current = 0;
-    pendingProgrammaticScrollRef.current = null;
-    if (programmaticScrollRafRef.current) {
-      cancelAnimationFrame(programmaticScrollRafRef.current);
-      programmaticScrollRafRef.current = 0;
-    }
-    const tier = a.tierScrollRef.current;
-    if (tier) {
-      programmaticScrollUntilRef.current = performance.now() + 80;
-      tier.scrollLeft = 0;
-    }
-  }, [args.mediaUrl, tierScrollMetrics.liveScrollLeftRef]);
+    programmaticWrites.resetOnMediaUrlChange(a.tierScrollRef.current);
+  }, [args.mediaUrl, programmaticWrites, tierScrollMetrics.liveScrollLeftRef]);
 
-  useLayoutEffect(() => {
-    const a = argsRef.current;
-    const tier = a.tierScrollRef.current;
-    if (!tier || !a.waveformReady) return;
-
-    const isMediaUrlChange = prevMediaUrlRef.current !== a.mediaUrl;
-    const prevDur = prevMediaDurationSecRef.current;
-    const dur = a.mediaDurationSec;
-    const durationExpanded =
-      prevDur > 0 &&
-      dur > prevDur + 0.5 &&
-      Math.abs(dur - prevDur) / Math.max(prevDur, 1) > 0.02;
-
-    const prevTw = prevTimelineWidthPxRef.current;
-    const newTw = a.timelineWidthPx;
-    prevMediaUrlRef.current = a.mediaUrl;
-    prevMediaDurationSecRef.current = dur;
-    prevTimelineWidthPxRef.current = newTw;
-
-    const shouldResetScroll = isMediaUrlChange || durationExpanded;
-    if (shouldResetScroll) {
-      committedScrollLeftRef.current = 0;
-      applyScrollLeftPx(0, "program", { immediate: true });
-      return;
-    }
-
-    const vw = tier.clientWidth;
-    const prevVw = prevViewportWidthPxRef.current;
-    prevViewportWidthPxRef.current = vw;
-    const liveSl = tier.scrollLeft;
-    let targetSl = committedScrollLeftRef.current;
-
-    const timelineChanged =
-      prevTw > 0 && newTw > 0 && Math.abs(prevTw - newTw) > 0.5;
-    const viewportChanged =
-      prevVw > 0 && vw > 0 && Math.abs(prevVw - vw) > 1;
-
-    if (timelineChanged && dur > 0 && vw > 0) {
-      const maxSl = Math.max(0, newTw - vw);
-      const hasPendingProgrammaticScroll = pendingProgrammaticScrollRef.current != null;
-      const recentProgrammaticScroll = performance.now() < programmaticScrollUntilRef.current;
-      if (hasPendingProgrammaticScroll || recentProgrammaticScroll) {
-        targetSl = Math.min(maxSl, Math.max(0, liveSl));
-      } else {
-        const effectivePrevVw = prevVw > 0 ? prevVw : vw;
-        const centerPx = liveSl + effectivePrevVw / 2;
-        const centerTimeSec = (centerPx / Math.max(prevTw, 1)) * dur;
-        targetSl = scrollPxCenterTimeInViewport({
-          timeSec: centerTimeSec,
-          timelineWidthPx: newTw,
-          durationSec: dur,
-          viewportWidthPx: vw,
-        });
-      }
-    } else if (viewportChanged && dur > 0 && vw > 0) {
-      const effectivePrevVw = prevVw > 0 ? prevVw : vw;
-      const centerPx = liveSl + effectivePrevVw / 2;
-      const centerTimeSec = (centerPx / Math.max(newTw, 1)) * dur;
-      targetSl = scrollPxCenterTimeInViewport({
-        timeSec: centerTimeSec,
-        timelineWidthPx: newTw,
-        durationSec: dur,
-        viewportWidthPx: vw,
-      });
-    } else {
-      const maxSl = Math.max(0, newTw - vw);
-      targetSl = Math.min(maxSl, Math.max(0, committedScrollLeftRef.current));
-    }
-
-    applyScrollLeftPx(targetSl, "program", { immediate: true });
-  }, [
-    args.mediaUrl,
-    args.timelineWidthPx,
-    args.waveformReady,
-    args.mediaDurationSec,
-    args.pxPerSec,
-    tierScrollMetrics.clientWidthPx,
-  ]);
+  useTierScrollResizeEffect({
+    mediaUrl: args.mediaUrl,
+    timelineWidthPx: args.timelineWidthPx,
+    waveformReady: args.waveformReady,
+    mediaDurationSec: args.mediaDurationSec,
+    pxPerSec: args.pxPerSec,
+    clientWidthPx: tierScrollMetrics.clientWidthPx,
+    tierScrollRef: args.tierScrollRef,
+    committedScrollLeftRef,
+    prevMediaUrlRef,
+    prevMediaDurationSecRef,
+    prevTimelineWidthPxRef,
+    prevViewportWidthPxRef,
+    programmaticWrites,
+    applyScrollLeftPx,
+  });
 
   useEffect(
     () => () => {
       smoothScrollCleanupRef.current?.();
       smoothScrollCleanupRef.current = null;
-      pendingProgrammaticScrollRef.current = null;
-      if (programmaticScrollRafRef.current) {
-        cancelAnimationFrame(programmaticScrollRafRef.current);
-        programmaticScrollRafRef.current = 0;
-      }
+      programmaticWrites.cancelPending();
     },
-    [],
+    [programmaticWrites],
   );
 
   return {

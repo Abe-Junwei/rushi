@@ -18,16 +18,20 @@ import {
   type LocalAsrCatalogStatusItem,
 } from "./localAsrModelCatalog";
 import { modelsRootMismatch } from "./asrRuntimePathsAlign";
+import {
+  bannerTitleFor,
+  buildAsrEnvStatusRows,
+  chipLabelFor,
+  effectiveTranscribeReady,
+  mapPrepareModelBusyRows,
+  mapPrepareModelCancelRows,
+  toneFor,
+  type AsrEnvStatusRow,
+} from "./asrEnvPresentationRows";
 
 type AsrEnvTone = "ok" | "warn" | "error" | "idle";
 
-export type AsrEnvStatusRow = {
-  id: "env" | "ffmpeg" | "runtime" | "transcribe" | "inference_queue";
-  label: string;
-  ok: boolean;
-  text: string;
-  warn?: boolean;
-};
+export type { AsrEnvStatusRow };
 
 /** 本机 ASR 环境状态唯一 presentation 真源：顶栏芯片 / 设置页 / 转写预检共用。 */
 export type AsrEnvPresentation = {
@@ -71,48 +75,6 @@ export type BuildAsrEnvPresentationInput = {
   prepareModelCancelling?: boolean;
   prepareModelProgress?: number;
 };
-
-/** 顶栏/转写预检：模型就绪且侧车支持 async 路由 */
-function effectiveTranscribeReady(input: {
-  transcribeReady: boolean;
-  sidecarAsyncTranscribeCapable?: boolean;
-}): boolean {
-  if (!input.transcribeReady) return false;
-  if (input.sidecarAsyncTranscribeCapable === false) return false;
-  return true;
-}
-
-function chipLabelFor(input: {
-  asrHealth: AsrHealthState;
-  transcribeReady: boolean;
-  sidecarAsyncTranscribeCapable?: boolean;
-}): string {
-  if (input.asrHealth === "checking") return "ASR 检测中";
-  if (input.asrHealth === "error") return "ASR 未连接";
-  const ready = effectiveTranscribeReady(input);
-  return ready ? "ASR 就绪" : "ASR 未就绪";
-}
-
-function toneFor(input: {
-  asrHealth: AsrHealthState;
-  transcribeReady: boolean;
-  envOk: boolean;
-  sidecarAsyncTranscribeCapable?: boolean;
-}): AsrEnvTone {
-  if (input.asrHealth === "checking") return "idle";
-  if (input.asrHealth === "error" || !input.envOk) return "error";
-  return effectiveTranscribeReady(input) ? "ok" : "warn";
-}
-
-function bannerTitleFor(input: {
-  asrHealth: AsrHealthState;
-  transcribeReady: boolean;
-  sidecarAsyncTranscribeCapable?: boolean;
-}): string {
-  if (input.asrHealth === "checking") return "本机 ASR · 检测中";
-  if (input.asrHealth === "error") return "本机 ASR · 环境异常";
-  return effectiveTranscribeReady(input) ? "本机 ASR · 可直接转写" : "本机 ASR · 已连接";
-}
 
 function bannerDetailFor(input: {
   asrHealth: AsrHealthState;
@@ -187,9 +149,7 @@ function applyPrepareModelOverlay(
       chipOk: false,
       bannerTitle: "本机 ASR · 正在取消下载",
       bannerDetail: "侧车将在当前文件传完后停止；完成后可重新点「下载当前模型」。",
-      statusRows: presentation.statusRows.map((row) =>
-        row.id === "transcribe" ? { ...row, ok: false, text: "取消中", warn: true } : row,
-      ),
+      statusRows: mapPrepareModelCancelRows(presentation.statusRows),
       blockReason: "模型下载取消中，暂不可转写。",
     };
   }
@@ -208,11 +168,7 @@ function applyPrepareModelOverlay(
       progress > 0
         ? `正在下载转写模型（${progress}%），完成后方可转写。请保持应用开启并联网。`
         : "正在下载转写模型，完成后方可转写。请保持应用开启并联网。",
-    statusRows: presentation.statusRows.map((row) => {
-      if (row.id === "runtime") return { ...row, ok: false, text: "下载中", warn: true };
-      if (row.id === "transcribe") return { ...row, ok: false, text: "下载中", warn: true };
-      return row;
-    }),
+    statusRows: mapPrepareModelBusyRows(presentation.statusRows),
     blockReason: "所选模型正在下载，完成后方可转写。",
   };
 }
@@ -252,31 +208,14 @@ export function buildAsrEnvPresentation(input: BuildAsrEnvPresentationInput): As
     sidecarAsyncTranscribeCapable: input.sidecarAsyncTranscribeCapable,
   });
 
-  const statusRows: AsrEnvStatusRow[] = [
-    { id: "env", label: "环境", ok: envOk, text: envOk ? "侧车已连接" : "连接失败" },
-    { id: "ffmpeg", label: "FFmpeg", ok: ffmpegOk, text: ffmpegOk ? "可用" : "未检测到" },
-    { id: "runtime", label: "运行时", ok: runtimeReady, text: runtimeReady ? "FunASR 就绪" : "未就绪" },
-    {
-      id: "transcribe",
-      label: "转写",
-      ok: presentationTranscribeReady,
-      text: presentationTranscribeReady
-        ? "所选模型可转写"
-        : input.sidecarAsyncTranscribeCapable === false
-          ? "侧车需升级"
-          : "不可用",
-    },
-  ];
-  const queuePending = input.asrCaps?.inference_queue_pending ?? 0;
-  const queueRunning = input.asrCaps?.inference_queue_running ?? 0;
-  if (queuePending + queueRunning > 0) {
-    statusRows.push({
-      id: "inference_queue",
-      label: "推理队列",
-      ok: true,
-      text: `排队 ${queuePending} · 运行 ${queueRunning}`,
-    });
-  }
+  const statusRows = buildAsrEnvStatusRows({
+    envOk,
+    ffmpegOk,
+    runtimeReady,
+    presentationTranscribeReady,
+    sidecarAsyncTranscribeCapable: input.sidecarAsyncTranscribeCapable,
+    asrCaps: input.asrCaps,
+  });
 
   const blockReason = blockReasonFor({
     asrHealth: input.asrHealth,
@@ -288,52 +227,52 @@ export function buildAsrEnvPresentation(input: BuildAsrEnvPresentationInput): As
 
   return applyPrepareModelOverlay(
     {
-    health: input.asrHealth,
-    transcribeReady,
-    sidecarMatchesSelection,
-    ffmpegOk,
-    envOk,
-    runtimeReady,
-    tone,
-    chipLabel,
-    chipOk: presentationTranscribeReady,
-    chipTitle: "本机 ASR 是否可转写（当前所选模型）",
-    ffmpegChipOk: ffmpegOk,
-    ffmpegChipTitle: "FFmpeg 是否可用",
-    statusRows,
-    bannerTitle: bannerTitleFor({
-      asrHealth: input.asrHealth,
+      health: input.asrHealth,
       transcribeReady,
-      sidecarAsyncTranscribeCapable: input.sidecarAsyncTranscribeCapable,
-    }),
-    bannerDetail: bannerDetailFor({
-      asrHealth: input.asrHealth,
-      asrHealthDetail: input.asrHealthDetail,
-      transcribeReady: presentationTranscribeReady,
-      runtimeReady,
+      sidecarMatchesSelection,
       ffmpegOk,
+      envOk,
+      runtimeReady,
+      tone,
+      chipLabel,
+      chipOk: presentationTranscribeReady,
+      chipTitle: "本机 ASR 是否可转写（当前所选模型）",
+      ffmpegChipOk: ffmpegOk,
+      ffmpegChipTitle: "FFmpeg 是否可用",
+      statusRows,
+      bannerTitle: bannerTitleFor({
+        asrHealth: input.asrHealth,
+        transcribeReady,
+        sidecarAsyncTranscribeCapable: input.sidecarAsyncTranscribeCapable,
+      }),
+      bannerDetail: bannerDetailFor({
+        asrHealth: input.asrHealth,
+        asrHealthDetail: input.asrHealthDetail,
+        transcribeReady: presentationTranscribeReady,
+        runtimeReady,
+        ffmpegOk,
+        connectedGuidance,
+      }),
+      blockReason,
+      errorDetail: input.asrHealth === "error" ? input.asrHealthDetail.trim() || null : null,
+      errorBannerMessage:
+        input.asrHealth === "error" && blockReason
+          ? blockReason
+          : "无法连接本机 ASR，请检查服务是否在运行。",
       connectedGuidance,
-    }),
-    blockReason,
-    errorDetail: input.asrHealth === "error" ? input.asrHealthDetail.trim() || null : null,
-    errorBannerMessage:
-      input.asrHealth === "error" && blockReason
-        ? blockReason
-        : "无法连接本机 ASR，请检查服务是否在运行。",
-    connectedGuidance,
-    ffmpegWarning:
-      envOk && input.asrCaps && !ffmpegOk
-        ? packagedOrDev(ffmpegMissingDev, ffmpegMissingPackaged)
+      ffmpegWarning:
+        envOk && input.asrCaps && !ffmpegOk
+          ? packagedOrDev(ffmpegMissingDev, ffmpegMissingPackaged)
+          : null,
+      cachePathMismatch,
+      cachePathMismatchDetail: cachePathMismatch
+        ? packagedOrDev(modelsPathMismatchDev, modelsPathMismatchPackaged)
         : null,
-    cachePathMismatch,
-    cachePathMismatchDetail: cachePathMismatch
-      ? packagedOrDev(modelsPathMismatchDev, modelsPathMismatchPackaged)
-      : null,
-    modelsOnDiskButSidecarBlind,
-    modelsOnDiskButSidecarBlindDetail: modelsOnDiskButSidecarBlind
-      ? packagedOrDev(modelsPathMismatchDev, modelsPathMismatchPackaged)
-      : null,
-  },
+      modelsOnDiskButSidecarBlind,
+      modelsOnDiskButSidecarBlindDetail: modelsOnDiskButSidecarBlind
+        ? packagedOrDev(modelsPathMismatchDev, modelsPathMismatchPackaged)
+        : null,
+    },
     input,
   );
 }

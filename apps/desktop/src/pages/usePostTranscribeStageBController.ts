@@ -3,8 +3,6 @@ import type { SegmentDto } from "../tauri/projectApi";
 import { postprocessCancelAutoPunctuate } from "../tauri/postprocessApi";
 import {
   llmConfigHint,
-  markLlmConnectionVerified,
-  tryBuildPostprocessRuntimeBridge,
 } from "../services/postprocess/postprocessRuntimeContract";
 import {
   ensureStageBLlmActionReady,
@@ -19,13 +17,11 @@ import { publishSegmentTextBulkMutation } from "./flushSegmentTextDrafts";
 import { applyAiRevisedStageToUids } from "../services/segmentStagePersist";
 import type { BusyReason } from "./useProjectCrudController";
 import { TRANSCRIBE_PREVIEW_BLOCK_REASON } from "./transcribePreviewState";
-import {
-  countStageBProofreadBatches,
-  estimateStageBProgressTotal,
-  runPostTranscribeStageBPreview,
-} from "../services/postprocess/postTranscribeStageB";
+import { countStageBProofreadBatches } from "../services/postprocess/postTranscribeStageB";
 import type { PostTranscribeStageBDialogState } from "./postTranscribeStageBTypes";
 import { STAGE_B_CONSENT_KEY } from "./postTranscribeStageBTypes";
+import { usePostTranscribeStageBPreviewRun } from "./usePostTranscribeStageBPreviewRun";
+
 export type { PostTranscribeStageBDialogState } from "./postTranscribeStageBTypes";
 
 type Args = {
@@ -104,91 +100,20 @@ export function usePostTranscribeStageBController(args: Args) {
     stageBBlockReason === null &&
     llmGate.llmCapabilityOk;
 
-  const startPreview = useCallback(async () => {
-    if (!currentFileId) return;
-    const actionBlockReason = await ensureStageBLlmActionReady({
-      currentFileId,
-      hasSegmentText,
-    });
-    if (actionBlockReason) {
-      toast.warning(actionBlockReason);
-      return;
-    }
-    const runtime = tryBuildPostprocessRuntimeBridge();
-    if (!runtime) {
-      toast.warning(llmConfigHint());
-      return;
-    }
-    flushSegmentTextDrafts();
-    setError("");
-    const seq = activeRequestSeqRef.current + 1;
-    activeRequestSeqRef.current = seq;
-    const pendingStageAHint = pendingStageAHintRef.current;
-    const total = estimateStageBProgressTotal({ segments: segmentsRef.current, runtime });
-    setPreviewFocusSegmentIdx(null);
-    setDialog({
-      phase: "loading",
-      done: 0,
-      total,
-      providerLabel: runtime.provider,
-      pendingStageAHint,
-    });
-    beginBusy("stage_b");
-    try {
-      const out = await runPostTranscribeStageBPreview({
-        segments: segmentsRef.current,
-        runtime,
-        shouldContinue: () => activeRequestSeqRef.current === seq,
-        onActiveRequestId: (requestId) => {
-          if (activeRequestSeqRef.current !== seq) return;
-          activeRequestIdRef.current = requestId;
-        },
-        onProgress: (done, progressTotal) => {
-          if (activeRequestSeqRef.current !== seq) return;
-          setDialog({
-            phase: "loading",
-            done,
-            total: progressTotal,
-            providerLabel: runtime.provider,
-            pendingStageAHint,
-          });
-        },
-      });
-      if (activeRequestSeqRef.current !== seq) return;
-      activeRequestIdRef.current = null;
-      if (out.changes.length > 0 || !out.typoStepError) {
-        markLlmConnectionVerified();
-      }
-      if (!out.changes.length) {
-        setDialog({
-          phase: "empty",
-          stepError: out.typoStepError,
-          pendingStageAHint,
-          packTruncationHint: out.packTruncationHint,
-        });
-        return;
-      }
-      setDialog({
-        phase: "preview",
-        changes: out.changes,
-        selectedSegmentIdxs: out.changes.map((c) => c.segmentIdx),
-        provider: out.provider,
-        droppedUngroundedOps: out.droppedUngroundedOps,
-        dropDetail: out.dropDetail,
-        stepError: out.typoStepError,
-        pendingStageAHint,
-        packTruncationHint: out.packTruncationHint,
-      });
-    } catch (e) {
-      if (activeRequestSeqRef.current !== seq) return;
-      setDialog({ phase: "closed" });
-      setError(e instanceof Error ? e.message : String(e));
-    } finally {
-      if (activeRequestSeqRef.current === seq) {
-        endBusy();
-      }
-    }
-  }, [beginBusy, currentFileId, endBusy, flushSegmentTextDrafts, hasSegmentText, segmentsRef, setError]);
+  const { startPreview } = usePostTranscribeStageBPreviewRun({
+    currentFileId,
+    hasSegmentText,
+    segmentsRef,
+    flushSegmentTextDrafts,
+    setError,
+    beginBusy,
+    endBusy,
+    setDialog,
+    setPreviewFocusSegmentIdx,
+    activeRequestSeqRef,
+    activeRequestIdRef,
+    pendingStageAHintRef,
+  });
 
   const offerStageB = useCallback(async () => {
     if (isStageBDialogOpen) return;

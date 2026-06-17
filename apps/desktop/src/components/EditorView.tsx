@@ -1,37 +1,20 @@
-import { useEffect, useLayoutEffect, useMemo, useCallback, useRef, useState } from "react";
+import { useEffect } from "react";
 import { useTranscriptFooterStats } from "../hooks/useTranscriptFooterStats";
 import { clearToastBottomInset, syncToastBottomInset } from "../services/ui/toastLayout";
-import { EditorToolbar } from "./EditorToolbar";
 import { SegmentContextMenu } from "./SegmentContextMenu";
 import type { ProjectControllerApi } from "../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../pages/useTranscriptionLayer";
-import {
-  type SegmentContextMenuKey,
-  type SegmentContextMenuOpen,
-} from "../utils/segmentContextMenuModel";
-import {
-  clampTranscriptFontPx,
-  TRANSCRIPT_FONT_MAX,
-  TRANSCRIPT_FONT_MIN,
-} from "../utils/waveformPrefs";
-import {
-  buildSegmentRowContextMenuItems,
-  isSegmentTextContextMenuKey,
-  parseFontFamilyFromContextMenuKey,
-  type SegmentTextContextMenuKey,
-} from "../utils/segmentTextContextMenuModel";
-import type { ContextMenuItem } from "./SegmentContextMenu";
-import { EditorStatusFooter } from "./editor/EditorStatusFooter";
-import { EditorSegmentWorkbench } from "./editor/EditorSegmentWorkbench";
+import type { SegmentContextMenuOpen } from "../utils/segmentContextMenuModel";
+import { clampTranscriptFontPx } from "../utils/waveformPrefs";
 import { SegmentCorrectPopover } from "./segmentRow/SegmentCorrectPopover";
-import { EditorWaveformPane } from "./editor/EditorWaveformPane";
-import { EditorWorkbenchToolbar } from "./editor/EditorWorkbenchToolbar";
 import { RestoreEditLogConfirmDialog } from "./editor/RestoreEditLogConfirmDialog";
 import { DeleteSegmentConfirmDialog } from "./editor/DeleteSegmentConfirmDialog";
 import { useEditorEditHistory } from "./editor/useEditorEditHistory";
 import { useEditorTranscriptAppearance } from "./editor/useEditorTranscriptAppearance";
 import { useEditorFooterShortcutHintRotation } from "../hooks/useEditorFooterShortcutHintRotation";
 import { useSegmentListFilter } from "../hooks/useSegmentListFilter";
+import { useEditorViewContextMenu } from "./editor/useEditorViewContextMenu";
+import { EditorViewLayout } from "./editor/EditorViewLayout";
 
 interface EditorViewProps {
   controller: ProjectControllerApi;
@@ -66,151 +49,15 @@ export function EditorView({
 }: EditorViewProps) {
   const appearance = useEditorTranscriptAppearance(c.busy, Boolean(c.currentFileId));
   const transcriptFontPx = clampTranscriptFontPx(tx.transcriptFontPx);
-  const segmentCtxMenuItems = useMemo(
-    () =>
-      segmentCtxMenu
-        ? buildSegmentRowContextMenuItems({
-            segmentIdx: segmentCtxMenu.segmentIdx,
-            segments: c.segments,
-            busy: c.busy,
-            pointerTimeSec: segmentCtxMenu.pointerTimeSec,
-            origin: segmentCtxMenu.origin,
-            selectionText: segmentCtxMenu.selectionText,
-            selectionLo: c.selectionLo,
-            selectionHi: c.selectionHi,
-            selectionCount: c.selectionCount,
-            isContiguousSelection: c.isContiguousSelection,
-            appearance: {
-              appearanceDisabled: appearance.transcriptFontControlDisabled,
-              transcriptFontFamily: appearance.transcriptFontFamily,
-              transcriptFontWeight: appearance.transcriptFontWeight,
-              transcriptFontItalic: appearance.transcriptFontItalic,
-              transcriptFontPx,
-              fontSizeAtMin: transcriptFontPx <= TRANSCRIPT_FONT_MIN,
-              fontSizeAtMax: transcriptFontPx >= TRANSCRIPT_FONT_MAX,
-              fontOptions: appearance.fontOptions,
-              fontDisplayLabels: appearance.fontDisplayLabels,
-            },
-          })
-        : [],
-    [
-      segmentCtxMenu,
-      c.segments,
-      c.busy,
-      c.selectionCount,
-      c.isContiguousSelection,
-      c.selectionLo,
-      c.selectionHi,
-      appearance.transcriptFontControlDisabled,
-      appearance.transcriptFontFamily,
-      appearance.transcriptFontWeight,
-      appearance.transcriptFontItalic,
-      appearance.fontOptions,
-      appearance.fontDisplayLabels,
-      transcriptFontPx,
-    ],
-  );
 
-  const segmentCtxMenuItemsRef = useRef(segmentCtxMenuItems);
-  segmentCtxMenuItemsRef.current = segmentCtxMenuItems;
+  const { segmentCtxMenuItemsForRender, onSegmentCtxMenuSelect } = useEditorViewContextMenu({
+    controller: c,
+    tx,
+    segmentCtxMenu,
+    appearance,
+    transcriptFontPx,
+  });
 
-  const ctxMenuOpenKey = segmentCtxMenu
-    ? `${segmentCtxMenu.x}:${segmentCtxMenu.y}:${segmentCtxMenu.segmentIdx}:${segmentCtxMenu.origin}`
-    : null;
-
-  const [frozenCtxMenuItems, setFrozenCtxMenuItems] = useState<ContextMenuItem[]>([]);
-
-  useLayoutEffect(() => {
-    if (!ctxMenuOpenKey) {
-      setFrozenCtxMenuItems([]);
-      return;
-    }
-    setFrozenCtxMenuItems(segmentCtxMenuItemsRef.current);
-  }, [ctxMenuOpenKey]);
-
-  const segmentCtxMenuItemsForRender = segmentCtxMenu
-    ? frozenCtxMenuItems.length > 0
-      ? frozenCtxMenuItems
-      : segmentCtxMenuItems
-    : [];
-
-  const onSegmentCtxMenuSelect = useCallback(
-    (key: string) => {
-      if (!segmentCtxMenu) return;
-
-      if (key === "editAnnotation") {
-        c.openSegmentAnnotationDialog(segmentCtxMenu.segmentIdx);
-        return;
-      }
-
-      if (isSegmentTextContextMenuKey(key)) {
-        const actionKey: SegmentTextContextMenuKey = key;
-        if (actionKey === "addCorrectionMemory") {
-          c.openManualCorrectionMemoryDialog(segmentCtxMenu.selectionText);
-          return;
-        }
-        if (actionKey === "toggleBold") {
-          appearance.setTranscriptFontWeight((weight) => (weight >= 700 ? 500 : 700));
-          return;
-        }
-        if (actionKey === "toggleItalic") {
-          appearance.setTranscriptFontItalic((italic) => !italic);
-          return;
-        }
-        if (actionKey === "fontSizeDecrease") {
-          tx.nudgeTranscriptFontPx(-1);
-          return;
-        }
-        if (actionKey === "fontSizeIncrease") {
-          tx.nudgeTranscriptFontPx(1);
-          return;
-        }
-        if (actionKey.startsWith("font:")) {
-          const family = parseFontFamilyFromContextMenuKey(actionKey);
-          if (family && family !== "__empty") {
-            appearance.setTranscriptFontFamily(appearance.normalizeFontFamily(family));
-          }
-        }
-        return;
-      }
-
-      const segmentKey = key as SegmentContextMenuKey;
-      const i = segmentCtxMenu.segmentIdx;
-      switch (segmentKey) {
-        case "delete":
-          if (c.isMultiSegmentSelection) {
-            if (c.isContiguousSelection) {
-              c.requestDeleteSelection(c.selectionLo, c.selectionHi);
-            } else {
-              c.requestDeleteSelectedIndices(c.selectedIndicesArray);
-            }
-          } else {
-            tx.deleteSegmentAt(i);
-          }
-          break;
-        case "mergePrev":
-          c.mergeWithPrevAt(i);
-          break;
-        case "mergeNext":
-          c.mergeWithNextAt(i);
-          break;
-        case "mergeRange":
-          if (c.isContiguousSelection) {
-            c.mergeSegmentRange(c.selectionLo, c.selectionHi);
-          }
-          break;
-        case "splitAtPointer":
-          tx.splitAtPlayhead(segmentCtxMenu.pointerTimeSec);
-          break;
-        case "markFinalized":
-          void c.markSegmentFinalized(i);
-          break;
-        default:
-          break;
-      }
-    },
-    [appearance, c, segmentCtxMenu, tx],
-  );
   const transcriptStats = useTranscriptFooterStats(c.segments);
   const editHistory = useEditorEditHistory({
     projectId: c.current?.id,
@@ -283,69 +130,28 @@ export function EditorView({
   }
 
   return (
-    <div className="flex min-h-0 min-w-0 flex-1 flex-col bg-notion-bg" data-purpose="editor-workspace">
-      <EditorToolbar
-        controller={c}
-        exportKey={exportKey}
-        onExportSelect={onExportSelect}
-        projectName={projectName}
-        currentFileName={currentFileName}
-        onOpenEnvironment={onOpenEnvironment}
-        onOpenAsrSettings={onOpenAsrSettings}
-        onOpenLlmSettings={onOpenLlmSettings}
-        llmStatusRefreshSeq={llmStatusRefreshSeq}
-        workspaceSidebarCollapsed={workspaceSidebarCollapsed}
-        onExpandWorkspaceSidebar={onExpandWorkspaceSidebar}
-      />
-
-      <main className="flex h-0 min-h-0 min-w-0 flex-1 flex-col gap-0 bg-notion-bg pb-6">
-        {c.audioSrc ? (
-          <EditorWaveformPane controller={c} tx={tx} />
-        ) : (
-          <div className="shrink-0 px-4 py-6 text-center text-sm text-zen-stone">
-            <p>当前文件不包含音频轨道，因此无法显示波形。</p>
-            {fallbackWaveFile ? (
-              <button
-                type="button"
-                className="mt-2 inline-flex h-8 items-center justify-center rounded-md border border-notion-border bg-notion-bg px-3 text-[11px] text-notion-text transition-colors hover:bg-notion-sidebar-hover"
-                disabled={c.busy}
-                onClick={() => void c.openFile(fallbackWaveFile.id)}
-              >
-                切换到可显示波形的文件
-              </button>
-            ) : (
-              <p className="mt-2 text-xs text-notion-text-muted">当前项目暂无可显示波形的文件。</p>
-            )}
-          </div>
-        )}
-
-        <EditorWorkbenchToolbar
-          controller={c}
-          tx={tx}
-          hasAudio={Boolean(c.audioSrc)}
-          segmentFilter={segmentFilter}
-        />
-
-        <EditorSegmentWorkbench
-          controller={c}
-          tx={tx}
-          appearance={appearance}
-          filteredIndices={segmentFilter.filteredIndices}
-          filterActive={segmentFilter.isActive}
-          onOpenSegmentContextMenu={onOpenSegmentContextMenu}
-        />
-      </main>
-
-      <EditorStatusFooter
-        controller={c}
-        editHistory={editHistory}
-        centerLabel={footerCenterLabel}
-        centerHintKind={footerCenterHintKind}
-        showCenterLabel={Boolean(footerCenterLabel)}
-        segmentCount={transcriptStats.segmentCount}
-        charCount={transcriptStats.charCount}
-      />
-      {editorDialogs}
-    </div>
+    <EditorViewLayout
+      controller={c}
+      tx={tx}
+      exportKey={exportKey}
+      onExportSelect={onExportSelect}
+      onOpenEnvironment={onOpenEnvironment}
+      onOpenAsrSettings={onOpenAsrSettings}
+      onOpenLlmSettings={onOpenLlmSettings}
+      llmStatusRefreshSeq={llmStatusRefreshSeq}
+      workspaceSidebarCollapsed={workspaceSidebarCollapsed}
+      onExpandWorkspaceSidebar={onExpandWorkspaceSidebar}
+      projectName={projectName}
+      currentFileName={currentFileName}
+      fallbackWaveFile={fallbackWaveFile}
+      appearance={appearance}
+      segmentFilter={segmentFilter}
+      editHistory={editHistory}
+      footerCenterLabel={footerCenterLabel}
+      footerCenterHintKind={footerCenterHintKind}
+      transcriptStats={transcriptStats}
+      onOpenSegmentContextMenu={onOpenSegmentContextMenu}
+      editorDialogs={editorDialogs}
+    />
   );
 }

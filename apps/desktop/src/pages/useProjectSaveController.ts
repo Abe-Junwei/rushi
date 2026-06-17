@@ -5,26 +5,20 @@ import * as fileApi from "../tauri/fileApi";
 import {
   findSegmentIndexByUid,
   normalizeSegmentList,
-  prepareSegmentsForPersist,
-  segmentsEqualForPersist,
 } from "./segmentListHelpers";
-import { segmentsToLearnBaselineAligned } from "../services/correctionLearnBaseline";
-import {
-  applyStagePatchesBeforePersist,
-  type FinalizeStageIntent,
-} from "../services/segmentStagePersist";
 import {
   segmentHasUnsavedText,
   segmentCanFinalize,
 } from "../services/segmentConfirmEligible";
 import { waitForSaveIdle } from "../services/waitForSaveIdle";
-import {
-  publishSegmentStructureMutation,
-  publishSegmentTextBulkMutation,
-} from "./flushSegmentTextDrafts";
+import { publishSegmentStructureMutation } from "./flushSegmentTextDrafts";
 import { segmentDraftStore } from "../hooks/useSegmentDraftStore";
 import { toast } from "../services/ui/toast";
 import type { BusyReason } from "./useProjectCrudController";
+import {
+  runProjectSavePersistPipeline,
+  type SavePersistPipelineOptions,
+} from "./projectSavePersistPipeline";
 
 type SegmentDirtyApi = {
   getSavedSnapshot: () => SegmentDto[];
@@ -79,14 +73,7 @@ export function useProjectSaveController(args: Args) {
   const notifySegmentsPersistedRef = useRef<() => void>(() => {});
 
   const saveSegments = useCallback(
-    async (options?: {
-      quiet?: boolean;
-      countHits?: boolean;
-      explicitPairs?: fileApi.CorrectionExplicitPair[];
-      learnBaselineTexts?: fileApi.LearnBaselineText[];
-      finalizeIntent?: FinalizeStageIntent;
-      aiRevisedUids?: ReadonlySet<string>;
-    }): Promise<boolean> => {
+    async (options?: SavePersistPipelineOptions): Promise<boolean> => {
       if (saveInFlightRef.current) return false;
       if (!current || !currentFileId) {
         setError("请先打开一个文件后再保存");
@@ -101,50 +88,19 @@ export function useProjectSaveController(args: Args) {
       setError("");
       try {
         mutations.flushSegmentTextDrafts();
-        const savedSnapshot = dirty.getSavedSnapshot();
-        const aiRevisedUids = new Set<string>([
-          ...pendingAiRevisedUidsRef.current,
-          ...(options?.aiRevisedUids ?? []),
-        ]);
-        const countHits = options?.countHits ?? !options?.finalizeIntent;
-        const staged = applyStagePatchesBeforePersist(segmentsRef.current, savedSnapshot, {
-          finalizeIntent: options?.finalizeIntent,
-          aiRevisedUids: aiRevisedUids.size > 0 ? aiRevisedUids : undefined,
+        const { snapshotBase } = await runProjectSavePersistPipeline({
+          current,
+          currentFileId,
+          segmentsRef,
+          selectedIdxRef,
+          savedSnapshot: dirty.getSavedSnapshot(),
+          pendingAiRevisedUids: pendingAiRevisedUidsRef.current,
+          setCurrent,
+          setSegments,
+          setSelectedIdx,
+          options,
         });
-        publishSegmentTextBulkMutation(segmentsRef, setSegments, staged);
-        const learnBaselineTexts = countHits
-          ? (options?.learnBaselineTexts ??
-              segmentsToLearnBaselineAligned(savedSnapshot, staged))
-          : undefined;
-        const normalized = prepareSegmentsForPersist(staged, 0);
-        await fileApi.fileSaveSegments(currentFileId, normalized, {
-          countHits,
-          explicitPairs: options?.explicitPairs,
-          learnBaselineTexts,
-        });
-        const [projectDetail, fileDetail] = await Promise.all([
-          p1.projectLoad(current.id),
-          fileApi.loadFile(currentFileId),
-        ]);
-        setCurrent((prev) =>
-          prev?.id === projectDetail.id && prev.updated_at_ms === projectDetail.updated_at_ms
-            ? prev
-            : projectDetail,
-        );
-        const prevUid = segmentsRef.current[selectedIdxRef.current]?.uid;
-        const segs = normalizeSegmentList(fileDetail.segments);
-        const snapshotBase = segmentsEqualForPersist(segs, segmentsRef.current)
-          ? segmentsRef.current
-          : segs;
-        if (!segmentsEqualForPersist(segs, segmentsRef.current)) {
-          publishSegmentStructureMutation(segmentsRef, setSegments, segs);
-          const ni = findSegmentIndexByUid(segs, prevUid);
-          setSelectedIdx(
-            ni >= 0 ? ni : Math.min(selectedIdxRef.current, Math.max(0, segs.length - 1)),
-          );
-        }
         dirty.setSavedSnapshot(snapshotBase);
-        pendingAiRevisedUidsRef.current.clear();
         notifySegmentsPersistedRef.current();
         if (!options?.quiet) {
           toast.success("保存成功");

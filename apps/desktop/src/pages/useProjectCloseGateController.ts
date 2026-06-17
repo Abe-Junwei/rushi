@@ -1,10 +1,6 @@
 import { getCurrentWindow } from "@tauri-apps/api/window";
-import { useEffect, useRef, useState } from "react";
+import { useRef, useState } from "react";
 import { segmentDraftStore } from "../hooks/useSegmentDraftStore";
-import {
-  ensureAppWindowCloseGuardRegistered,
-  setAppWindowCloseGuardBridge,
-} from "../services/appWindowCloseGuard";
 import { writeLastWorkspace } from "../services/lastWorkspace";
 import type { ProjectDetail, ProjectSummary, SegmentDto } from "../tauri/projectApi";
 import type { BusyReason } from "./ProjectLifecycleApi";
@@ -12,11 +8,10 @@ import type { SegmentDirtyStateApi } from "./useSegmentDirtyState";
 import {
   decideLoadProject,
   decideOpenFile,
-  isTranscribeBusy,
-  shouldBlockAppClose,
 } from "./closeGateDecision";
 import { createCloseGateNavigateHandlers } from "./closeGateNavigate";
 import { createCloseGateProjectLoadActions } from "./closeGateProjectLoad";
+import { useAppWindowCloseGuardEffect } from "./useAppWindowCloseGuardEffect";
 
 type Proceed = () => void | Promise<void>;
 
@@ -255,30 +250,16 @@ export function useProjectCloseGateController(
     await requestAppClose();
   }
 
-  useEffect(() => {
-    ensureAppWindowCloseGuardRegistered();
-    setAppWindowCloseGuardBridge({
-      shouldBlockClose: () => {
-        const s = bridgeStateRef.current;
-        return shouldBlockAppClose({
-          transcribeBusy: isTranscribeBusy(s.busy, s.busyReason),
-          hasUnsaved: s.hasUnsavedSegmentChanges(),
-        });
-      },
-      onBlocked: () => {
-        const s = bridgeStateRef.current;
-        if (isTranscribeBusy(s.busy, s.busyReason)) {
-          navigate.openTranscribeNavBlock(() => requestAppClose());
-          return;
-        }
-        navigateProceedRef.current = null;
-        setCloseGateIntent("app-quit");
-        setCloseGateOpen(true);
-      },
-      isClosingAfterSave: () => closeAfterSaveRef.current,
-    });
-    return () => setAppWindowCloseGuardBridge(null);
-  }, []);
+  useAppWindowCloseGuardEffect({
+    bridgeStateRef,
+    closeAfterSaveRef,
+    onBlockedTranscribe: () => navigate.openTranscribeNavBlock(() => requestAppClose()),
+    onBlockedUnsaved: () => {
+      navigateProceedRef.current = null;
+      setCloseGateIntent("app-quit");
+      setCloseGateOpen(true);
+    },
+  });
 
   return {
     closeFileWrapped,
