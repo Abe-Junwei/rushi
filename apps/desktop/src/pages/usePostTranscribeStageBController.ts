@@ -13,8 +13,8 @@ import { resolvePendingStageAHint } from "../services/postprocess/stageBPendingR
 import { toast } from "../services/ui/toast";
 import { scrollSegmentListIndexToView } from "../utils/segmentListVirtualWindow";
 import { findSegmentIndexByUid } from "./segmentListHelpers";
-import { publishSegmentTextBulkMutation } from "./flushSegmentTextDrafts";
 import { applyAiRevisedStageToUids } from "../services/segmentStagePersist";
+import type { SegmentPublishApi } from "./segmentPublishApi";
 import type { BusyReason } from "./useProjectCrudController";
 import { TRANSCRIBE_PREVIEW_BLOCK_REASON } from "./transcribePreviewState";
 import { countStageBProofreadBatches } from "../services/postprocess/postTranscribeStageB";
@@ -29,9 +29,8 @@ type Args = {
   transcribePreviewActive?: boolean;
   currentFileId: string | null;
   segments: SegmentDto[];
-  segmentsRef: React.MutableRefObject<SegmentDto[]>;
+  segmentPublish: SegmentPublishApi;
   flushSegmentTextDrafts: () => void;
-  setSegments: React.Dispatch<React.SetStateAction<SegmentDto[]>>;
   setSelectedIdx: React.Dispatch<React.SetStateAction<number>>;
   pushUndo: () => void;
   setError: (msg: string) => void;
@@ -52,9 +51,8 @@ export function usePostTranscribeStageBController(args: Args) {
     transcribePreviewActive = false,
     currentFileId,
     segments,
-    segmentsRef,
+    segmentPublish,
     flushSegmentTextDrafts,
-    setSegments,
     setSelectedIdx,
     pushUndo,
     setError,
@@ -64,6 +62,8 @@ export function usePostTranscribeStageBController(args: Args) {
     beginBusy,
     endBusy,
   } = args;
+
+  const getCurrentSegmentsSnapshot = segmentPublish.getCurrentSegmentsSnapshot;
 
   const [dialog, setDialog] = useState<PostTranscribeStageBDialogState>({ phase: "closed" });
   const [previewFocusSegmentIdx, setPreviewFocusSegmentIdx] = useState<number | null>(null);
@@ -103,7 +103,7 @@ export function usePostTranscribeStageBController(args: Args) {
   const { startPreview } = usePostTranscribeStageBPreviewRun({
     currentFileId,
     hasSegmentText,
-    segmentsRef,
+    getCurrentSegmentsSnapshot,
     flushSegmentTextDrafts,
     setError,
     beginBusy,
@@ -149,8 +149,9 @@ export function usePostTranscribeStageBController(args: Args) {
     }
 
     setError("");
-    const count = segmentsRef.current.filter((s) => (s.text ?? "").trim()).length;
-    const pendingStageAHint = await resolvePendingStageAHint(segmentsRef.current).catch(() => null);
+    const currentSegments = getCurrentSegmentsSnapshot();
+    const count = currentSegments.filter((s) => (s.text ?? "").trim()).length;
+    const pendingStageAHint = await resolvePendingStageAHint(currentSegments).catch(() => null);
     pendingStageAHintRef.current = pendingStageAHint;
     if (window.localStorage.getItem(STAGE_B_CONSENT_KEY) !== "accepted") {
       setDialog({ phase: "consent", segmentCount: count, pendingStageAHint });
@@ -162,7 +163,7 @@ export function usePostTranscribeStageBController(args: Args) {
     currentFileId,
     hasSegmentText,
     isStageBDialogOpen,
-    segmentsRef,
+    getCurrentSegmentsSnapshot,
     setError,
     startPreview,
     transcribePreviewActive,
@@ -198,7 +199,7 @@ export function usePostTranscribeStageBController(args: Args) {
     flushSegmentTextDrafts();
     pushUndo();
     const selected = new Set(dialog.selectedSegmentIdxs);
-    const next = [...segmentsRef.current];
+    const next = [...getCurrentSegmentsSnapshot()];
     const changedUids = new Set<string>();
     let applied = 0;
     for (const ch of dialog.changes) {
@@ -221,14 +222,14 @@ export function usePostTranscribeStageBController(args: Args) {
       return;
     }
     const staged = applyAiRevisedStageToUids(next, changedUids);
-    publishSegmentTextBulkMutation(segmentsRef, setSegments, staged);
+    segmentPublish.publishTextBulk(staged);
     setDialog({ phase: "closed" });
     setPreviewFocusSegmentIdx(null);
     const saved = await saveSegments({ quiet: true, aiRevisedUids: changedUids });
     if (!saved) {
       setError("改稿预览已写回，但保存失败，请稍后手动保存。");
     }
-  }, [dialog, flushSegmentTextDrafts, pushUndo, saveSegments, segmentsRef, setError, setSegments]);
+  }, [dialog, flushSegmentTextDrafts, getCurrentSegmentsSnapshot, pushUndo, saveSegments, segmentPublish, setError]);
 
   const cancelStageB = useCallback(() => {
     activeRequestSeqRef.current += 1;

@@ -70,7 +70,7 @@ export function EditorSegmentTranscribeActions({
       <div className="waveform-toolbar-subzone waveform-toolbar-transcribe" role="group" aria-label="转录与编辑">
         <button
           type="button"
-          className={[CONTROL_BTN_DANGER, "h-8 px-2.5 text-[12px]"].join(" ")}
+          className={[CONTROL_BTN_DANGER, "h-8 px-2.5 text-body"].join(" ")}
           disabled={c.transcribeCancelling}
           onClick={() => void c.cancelTranscribe()}
         >

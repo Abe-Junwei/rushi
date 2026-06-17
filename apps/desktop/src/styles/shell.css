@@ -65,21 +65,21 @@ body,
 
 .shell-title {
   margin: 0;
-  font-size: 18px;
+  font-size: var(--text-heading);
   font-weight: 650;
 }
 
 .shell-sub {
   margin: 0.25rem 0 0;
   color: var(--notion-text-muted);
-  font-size: 14px;
+  font-size: var(--text-title);
 }
 
 .shell-footer {
   flex-shrink: 0;
   margin-top: 0.5rem;
   padding: 0.65rem 0.75rem;
-  font-size: 12px;
+  font-size: var(--text-body);
   line-height: 1.45;
   color: var(--shell-footer-fg);
   background: var(--shell-footer-bg);

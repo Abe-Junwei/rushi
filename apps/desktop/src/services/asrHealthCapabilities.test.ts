@@ -18,11 +18,19 @@ describe("parseAsrHealthJson", () => {
       transcription_mode: "stub",
       funasr_model_id: "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
       rushi_models_root: "/tmp/models",
+      inference_queue_pending: 2,
+      inference_queue_running: 1,
+      inference_requested_workers: 4,
+      inference_max_workers: 1,
     });
     expect(caps).not.toBeNull();
     expect(caps!.funasr_default_model_cached).toBe(false);
     expect(caps!.funasr_required_models_cached).toBe(false);
     expect(caps!.rushi_models_root).toBe("/tmp/models");
+    expect(caps!.inference_queue_pending).toBe(2);
+    expect(caps!.inference_queue_running).toBe(1);
+    expect(caps!.inference_requested_workers).toBe(4);
+    expect(caps!.inference_max_workers).toBe(1);
   });
 
   it("parses punc model health fields", () => {

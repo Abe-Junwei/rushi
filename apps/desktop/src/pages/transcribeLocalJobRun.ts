@@ -1,10 +1,8 @@
-import type { MutableRefObject } from "react";
 import { asrBaseUrl } from "../config/env";
-import type { SegmentDto } from "../tauri/projectApi";
 import * as p1 from "../tauri/projectApi";
 import { materializeSegmentTextDrafts } from "../hooks/useSegmentDraftStore";
-import { publishSegmentStructureMutation } from "./flushSegmentTextDrafts";
 import { logFirstSegmentsVisibleMs, pollTranscribeJob, postTranscribeCancel } from "./transcribeAsyncPoll";
+import type { SegmentPublishApi } from "./segmentPublishApi";
 import {
   isTranscribeAsyncUnavailable,
   mergeTranscribeSegmentsDelta,
@@ -24,21 +22,20 @@ type LocalTranscribeJobRunRefs = {
 };
 
 type LocalTranscribeJobRunCallbacks = {
-  setSegments: (segments: SegmentDto[]) => void;
   setTranscribeProgress: (progress: TranscribeProgress | null) => void;
 };
 
 export type LocalTranscribeJobRunArgs = {
   fileId: string;
   base: string;
-  segmentsRef: MutableRefObject<SegmentDto[]>;
+  segmentPublish: SegmentPublishApi;
   refs: LocalTranscribeJobRunRefs;
   callbacks: LocalTranscribeJobRunCallbacks;
 };
 
 function onTranscribeStatusTick(
   st: TranscribeStatusPayload,
-  segmentsRef: MutableRefObject<SegmentDto[]>,
+  segmentPublish: SegmentPublishApi,
   refs: LocalTranscribeJobRunRefs,
   callbacks: LocalTranscribeJobRunCallbacks,
 ): void {
@@ -47,9 +44,9 @@ function onTranscribeStatusTick(
     logFirstSegmentsVisibleMs(Date.now() - refs.transcribeStartedAtMs.current);
   }
   if (st.segments_delta?.length) {
-    const base = materializeSegmentTextDrafts(segmentsRef.current);
+    const base = materializeSegmentTextDrafts(segmentPublish.getCurrentSegmentsSnapshot());
     const merged = mergeTranscribeSegmentsDelta(base, st.segments_delta);
-    publishSegmentStructureMutation(segmentsRef, callbacks.setSegments, merged);
+    segmentPublish.publishStructure(merged);
   }
   const progress = parseTranscribeProgress(st);
   callbacks.setTranscribeProgress(progress);
@@ -94,7 +91,7 @@ async function persistPollFailureTimeline(
 export async function runLocalTranscribeJob(
   args: LocalTranscribeJobRunArgs,
 ): Promise<{ out: p1.RunTranscribeOutcome; usedAsyncFallback: boolean }> {
-  const { fileId, base, segmentsRef, refs, callbacks } = args;
+  const { fileId, base, segmentPublish, refs, callbacks } = args;
   refs.activeJobId.current = TRANSCRIBE_PENDING_JOB_ID;
   try {
     throwIfUserCancelled(refs);
@@ -107,7 +104,7 @@ export async function runLocalTranscribeJob(
     await pollTranscribeJob(
       jobId,
       base,
-      (st) => onTranscribeStatusTick(st, segmentsRef, refs, callbacks),
+      (st) => onTranscribeStatusTick(st, segmentPublish, refs, callbacks),
       () => refs.userCancelRequested.current,
       { signal: refs.pollAbort.current?.signal },
     );

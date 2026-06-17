@@ -96,7 +96,7 @@ describe("planWaveformZoomApply", () => {
     ).toEqual({ type: "defer-resize-load", loadPeaksPx: 80, layoutDur: 120 });
   });
 
-  it("returns load-peaks when quantum bucket changes", () => {
+  it("returns finish-zoom when quantum bucket changes within the same LOD (stretch fallback)", () => {
     const appliedZoom = createWaveformAppliedZoomState(56);
     markAppliedPeaks(appliedZoom, true, 56);
     markAppliedZoomWs(appliedZoom, 56);
@@ -113,7 +113,46 @@ describe("planWaveformZoomApply", () => {
         peaksLoadInFlight: false,
         viewportResizeHold: false,
       }),
-    ).toEqual({ type: "load-peaks", loadPeaksPx: 120, layoutDur: 120 });
+    ).toEqual({ type: "finish-zoom" });
+  });
+
+  it("returns load-peaks when crossing to a finer LOD tier from manual zoom", () => {
+    const appliedZoom = createWaveformAppliedZoomState(56);
+    markAppliedPeaks(appliedZoom, true, 56);
+    markAppliedZoomWs(appliedZoom, 56);
+    expect(
+      planWaveformZoomApply({
+        intentPxPerSec: 250,
+        appliedZoom,
+        peakCache,
+        mediaUrl: "asset://a.mp3",
+        layoutDurationSec: 120,
+        peakCacheDurationSec: 120,
+        isPlaying: false,
+        hotSwitchWhilePlaying: true,
+        peaksLoadInFlight: false,
+        viewportResizeHold: false,
+      }),
+    ).toEqual({ type: "load-peaks", loadPeaksPx: 248, layoutDur: 120 });
+  });
+
+  it("returns finish-zoom while peaks load is in flight", () => {
+    const appliedZoom = createWaveformAppliedZoomState(56);
+    markAppliedPeaks(appliedZoom, true, 56);
+    expect(
+      planWaveformZoomApply({
+        intentPxPerSec: 250,
+        appliedZoom,
+        peakCache,
+        mediaUrl: "asset://a.mp3",
+        layoutDurationSec: 120,
+        peakCacheDurationSec: 120,
+        isPlaying: false,
+        hotSwitchWhilePlaying: true,
+        peaksLoadInFlight: true,
+        viewportResizeHold: false,
+      }),
+    ).toEqual({ type: "finish-zoom" });
   });
 
   it("returns load-peaks when layout duration expands after an early peaks load", () => {

@@ -86,17 +86,25 @@ describe("controlStyles", () => {
     expect(CONTROL_BTN_DANGER_COMPACT).toContain("text-zen-cinnabar");
   });
 
-  it("uses 12px semibold on standard buttons (panel rhythm)", () => {
-    expect(CONTROL_BTN_PRIMARY).toContain("text-[12px]");
+  it("uses saffron + ink at rest, white on hover (WCAG AA)", () => {
+    expect(CONTROL_BTN_PRIMARY).toContain("bg-zen-primary-action-bg");
+    expect(CONTROL_BTN_PRIMARY).toContain("text-zen-primary-action-fg");
+    expect(CONTROL_BTN_PRIMARY).toContain("hover:bg-zen-primary-action-bg-hover");
+    expect(CONTROL_BTN_PRIMARY).toContain("hover:text-zen-primary-action-fg-hover");
+    expect(CONTROL_BTN_PRIMARY_PROMINENT).toContain("bg-zen-primary-action-bg");
+  });
+
+  it("uses body (12px) semibold on standard buttons (panel rhythm)", () => {
+    expect(CONTROL_BTN_PRIMARY).toContain("text-body");
     expect(CONTROL_BTN_PRIMARY).toContain("font-semibold");
-    expect(CONTROL_BTN_SECONDARY).toContain("text-[12px]");
+    expect(CONTROL_BTN_SECONDARY).toContain("text-body");
   });
 
   it("exposes toolbar ghost and workspace import tokens", () => {
     expect(CONTROL_BTN_TOOLBAR_GHOST).toContain("rounded-sm");
-    expect(CONTROL_BTN_TOOLBAR_GHOST).toContain("text-[12px]");
+    expect(CONTROL_BTN_TOOLBAR_GHOST).toContain("text-body");
     expect(CONTROL_BTN_WORKSPACE_IMPORT).toContain("h-7");
-    expect(CONTROL_BTN_COMPACT_SECONDARY).toContain("text-[11px]");
+    expect(CONTROL_BTN_COMPACT_SECONDARY).toContain("text-label");
   });
 
   it("exposes prominent 40px hero controls", () => {

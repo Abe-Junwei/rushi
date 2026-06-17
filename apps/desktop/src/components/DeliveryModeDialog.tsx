@@ -97,17 +97,17 @@ export function DeliveryModeDialog({
       </FloatingPanelDialogHeader>
 
       <section className="mb-3 px-1" aria-label="转写后处理">
-        <h3 className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-notion-text-muted">
+        <h3 className="mb-2 text-body font-semibold uppercase tracking-wide text-notion-text-muted">
           转写后处理（可选）
         </h3>
         <ul className="flex flex-col gap-2">
           {rulesStep ? (
-            <li className="flex flex-col gap-1.5 rounded-md bg-notion-sidebar/50 px-2.5 py-2 text-[13px]">
+            <li className="flex flex-col gap-1.5 rounded-md bg-notion-sidebar/50 px-2.5 py-2 text-title">
               <p className="font-medium text-notion-text">{rulesStep.title}</p>
-              <p className="text-[12px] leading-relaxed text-notion-text-muted">{rulesStep.description}</p>
+              <p className="text-body leading-relaxed text-notion-text-muted">{rulesStep.description}</p>
               <button
                 type="button"
-                className={`${CONTROL_BTN_LINK} self-start text-[12px]`}
+                className={`${CONTROL_BTN_LINK} self-start text-body`}
                 disabled={busy || !canApplyCorrectionRules}
                 title={canApplyCorrectionRules ? undefined : (correctionRulesBlockReason ?? "不可用")}
                 onClick={onOpenPostTranscribeRules}
@@ -117,12 +117,12 @@ export function DeliveryModeDialog({
             </li>
           ) : null}
           {stageBStep ? (
-            <li className="flex flex-col gap-1.5 rounded-md bg-notion-sidebar/50 px-2.5 py-2 text-[13px]">
+            <li className="flex flex-col gap-1.5 rounded-md bg-notion-sidebar/50 px-2.5 py-2 text-title">
               <p className="font-medium text-notion-text">{stageBStep.title}</p>
-              <p className="text-[12px] leading-relaxed text-notion-text-muted">{stageBStep.description}</p>
+              <p className="text-body leading-relaxed text-notion-text-muted">{stageBStep.description}</p>
               <button
                 type="button"
-                className={`${CONTROL_BTN_LINK} self-start text-[12px]`}
+                className={`${CONTROL_BTN_LINK} self-start text-body`}
                 disabled={busy || !canOfferPostTranscribeStageB}
                 title={
                   canOfferPostTranscribeStageB ? undefined : (postTranscribeStageBBlockReason ?? "不可用")
@@ -137,13 +137,13 @@ export function DeliveryModeDialog({
       </section>
 
       <section className="px-1" aria-label="终检">
-        <h3 className="mb-2 text-[12px] font-semibold uppercase tracking-wide text-notion-text-muted">终检</h3>
+        <h3 className="mb-2 text-body font-semibold uppercase tracking-wide text-notion-text-muted">终检</h3>
         <ul className="flex flex-col gap-2 pb-2">
           {items.map((item) => (
             <li
               key={item.id}
               className={[
-                "flex items-start gap-2 rounded-md px-2.5 py-2 text-[13px]",
+                "flex items-start gap-2 rounded-md px-2.5 py-2 text-title",
                 item.ok ? "bg-notion-sidebar/50 text-notion-text" : "bg-zen-cinnabar/8 text-notion-text",
               ].join(" ")}
             >
@@ -160,7 +160,7 @@ export function DeliveryModeDialog({
               <div className="flex min-w-0 flex-col gap-0.5">
                 <p className="font-medium">{item.label}</p>
                 {item.hint ? (
-                  <p className="text-[12px] leading-relaxed text-notion-text-muted">{item.hint}</p>
+                  <p className="text-body leading-relaxed text-notion-text-muted">{item.hint}</p>
                 ) : null}
               </div>
             </li>
@@ -169,7 +169,7 @@ export function DeliveryModeDialog({
       </section>
 
       {!ready && blockReason ? (
-        <p className="px-1 text-[12px] text-zen-cinnabar" role="status">
+        <p className="px-1 text-body text-zen-cinnabar" role="status">
           {blockReason}
         </p>
       ) : null}

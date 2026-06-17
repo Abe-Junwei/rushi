@@ -1,9 +1,11 @@
 import { useCallback, useEffect } from "react";
 import WaveSurfer from "wavesurfer.js";
 import { COLORS } from "../config/tokens";
+import { WAVEFORM_SURFER_BAR_DISPLAY } from "../config/waveformSurferDisplay";
 import {
   quantizePxPerSecForPeaksLoad,
   clampPxPerSecForWaveSurferRender,
+  MAX_WAVESURFER_PEAK_COLUMNS,
   WAVEFORM_WS_HOST_WIDTH_PX,
 } from "../utils/pxPerSec";
 import { resolveLayoutDurationSec } from "../utils/waveformTimelineMetrics";
@@ -114,7 +116,7 @@ export function useProjectWaveformMount(
           logWaveformRenderPath(
             "peaks",
             "mount_peaks_bootstrap",
-            `load_px=${loadPx} dur=${layoutDur.toFixed(1)} cols_cap=32768`,
+            `load_px=${loadPx} dur=${layoutDur.toFixed(1)} cols_cap=${MAX_WAVESURFER_PEAK_COLUMNS}`,
           );
         } catch (err) {
           logDesktopUi(
@@ -154,12 +156,10 @@ export function useProjectWaveformMount(
           maxPeak: 1,
           sampleRate: peaks ? undefined : WAVEFORM_DECODE_SAMPLE_RATE,
           waveColor: COLORS.waveformWave,
-          progressColor: COLORS.waveformProgress,
-          cursorColor: COLORS.indigo,
-          cursorWidth: 1,
-          barWidth: 2,
-          barGap: 1,
-          barRadius: 2,
+          progressColor: COLORS.waveformProgressPlayed,
+          cursorColor: COLORS.waveformCursor,
+          cursorWidth: 0,
+          ...WAVEFORM_SURFER_BAR_DISPLAY,
           minPxPerSec: initialMps,
           dragToSeek: !wantDragCreate,
           interact: !optsRef.current.disabled,

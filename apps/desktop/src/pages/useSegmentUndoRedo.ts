@@ -1,6 +1,6 @@
 import { useCallback, useRef } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
-import { publishSegmentTextBulkMutation } from "./flushSegmentTextDrafts";
+import type { SegmentListNext } from "./flushSegmentTextDrafts";
 
 function cloneSegments(segs: SegmentDto[]): SegmentDto[] {
   return segs.map((s) => ({ ...s }));
@@ -15,8 +15,8 @@ export interface SegmentUndoRedoApi {
 }
 
 export function useSegmentUndoRedo(
-  segmentsRef: React.MutableRefObject<SegmentDto[]>,
-  setSegments: React.Dispatch<React.SetStateAction<SegmentDto[]>>,
+  publishTextBulk: (next: SegmentListNext) => void,
+  getCurrentSegmentsSnapshot: () => SegmentDto[],
 ): SegmentUndoRedoApi {
   const undoStack = useRef<SegmentDto[][]>([]);
   const redoStack = useRef<SegmentDto[][]>([]);
@@ -30,9 +30,9 @@ export function useSegmentUndoRedo(
 
   const pushUndo = useCallback(() => {
     redoStack.current = [];
-    undoStack.current.push(cloneSegments(segmentsRef.current));
+    undoStack.current.push(cloneSegments(getCurrentSegmentsSnapshot()));
     if (undoStack.current.length > 40) undoStack.current.shift();
-  }, [segmentsRef]);
+  }, [getCurrentSegmentsSnapshot]);
 
   const pushUndoForTextEdit = useCallback(
     (idx: number) => {
@@ -48,20 +48,16 @@ export function useSegmentUndoRedo(
   const undo = useCallback(() => {
     const prev = undoStack.current.pop();
     if (!prev) return;
-    redoStack.current.push(cloneSegments(segmentsRef.current));
-    if (redoStack.current.length > 40) redoStack.current.shift();
-    textEditUndoRef.current = null;
-    publishSegmentTextBulkMutation(segmentsRef, setSegments, prev);
-  }, [segmentsRef, setSegments]);
+    redoStack.current.push(cloneSegments(getCurrentSegmentsSnapshot()));
+    publishTextBulk(prev);
+  }, [getCurrentSegmentsSnapshot, publishTextBulk]);
 
   const redo = useCallback(() => {
     const next = redoStack.current.pop();
     if (!next) return;
-    undoStack.current.push(cloneSegments(segmentsRef.current));
-    if (undoStack.current.length > 40) undoStack.current.shift();
-    textEditUndoRef.current = null;
-    publishSegmentTextBulkMutation(segmentsRef, setSegments, next);
-  }, [segmentsRef, setSegments]);
+    undoStack.current.push(cloneSegments(getCurrentSegmentsSnapshot()));
+    publishTextBulk(next);
+  }, [getCurrentSegmentsSnapshot, publishTextBulk]);
 
   return { pushUndo, pushUndoForTextEdit, undo, redo, reset };
 }

@@ -175,6 +175,31 @@ describe("buildAsrEnvPresentation", () => {
     expect(p.statusRows.find((r) => r.id === "transcribe")?.text).toBe("下载中");
   });
 
+  it("shows user-facing inference queue depth", async () => {
+    const p = await build({
+      asrHealth: "ok",
+      asrHealthDetail: "",
+      asrCaps: {
+        ffmpeg_ok: true,
+        funasr_import_ok: true,
+        funasr_model_configured: true,
+        funasr_ready: true,
+        funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+        funasr_required_models_cached: true,
+        ready_for_transcribe: true,
+        transcription_mode: "funasr",
+        inference_queue_pending: 3,
+        inference_queue_running: 1,
+        inference_max_workers: 1,
+      },
+      selectedHubModelId: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+    });
+
+    expect(p.statusRows.find((r) => r.id === "inference_queue")?.text).toBe(
+      "前方 2 个任务排队 · 正在推理 1 个任务",
+    );
+  });
+
   it("aligns top bar and banner for error state", async () => {
     const p = await build({
       asrHealth: "error",

@@ -10,12 +10,22 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { SegmentDto } from "../tauri/projectApi";
 import { runLocalTranscribeJob } from "./transcribeLocalJobRun";
 import { TranscribeUserCancelledError } from "./transcribePreviewState";
+import { createSegmentPublishApi } from "./segmentPublishApi";
 
 const {
   projectTranscribeAsyncStart,
   projectTranscribeAsyncFinalize,
   projectRunTranscribe,
 } = transcribeJobTestApi();
+
+function makeSegmentPublish(initial: SegmentDto[] = []) {
+  const segmentsRef = { current: initial };
+  const setSegments = vi.fn((updater: SegmentDto[] | ((prev: SegmentDto[]) => SegmentDto[])) => {
+    segmentsRef.current =
+      typeof updater === "function" ? updater(segmentsRef.current) : updater;
+  });
+  return { segmentPublish: createSegmentPublishApi(segmentsRef, setSegments), segmentsRef, setSegments };
+}
 
 describe("runLocalTranscribeJob", () => {
   beforeEach(() => {
@@ -43,10 +53,7 @@ describe("runLocalTranscribeJob", () => {
       return Promise.resolve(new Response(JSON.stringify({ phase: "done" }), { status: 200 }));
     });
 
-    const segmentsRef = { current: [] as SegmentDto[] };
-    const setSegments = vi.fn((rows: SegmentDto[]) => {
-      segmentsRef.current = rows;
-    });
+    const { segmentPublish, segmentsRef, setSegments } = makeSegmentPublish([]);
     const setTranscribeProgress = vi.fn();
     const refs = {
       activeJobId: { current: null as string | null },
@@ -59,9 +66,9 @@ describe("runLocalTranscribeJob", () => {
     const out = await runLocalTranscribeJob({
       fileId: "file-1",
       base: TRANSCRIBE_TEST_ASR_BASE,
-      segmentsRef,
+      segmentPublish,
       refs,
-      callbacks: { setSegments, setTranscribeProgress },
+      callbacks: { setTranscribeProgress },
     });
 
     expect(out.usedAsyncFallback).toBe(false);
@@ -80,7 +87,7 @@ describe("runLocalTranscribeJob", () => {
       detail: { segments: [transcribeTestSeg("blocking")] },
     });
 
-    const segmentsRef = { current: [] as SegmentDto[] };
+    const { segmentPublish } = makeSegmentPublish([]);
     const refs = {
       activeJobId: { current: null as string | null },
       userCancelRequested: { current: false },
@@ -92,9 +99,9 @@ describe("runLocalTranscribeJob", () => {
     const out = await runLocalTranscribeJob({
       fileId: "file-1",
       base: TRANSCRIBE_TEST_ASR_BASE,
-      segmentsRef,
+      segmentPublish,
       refs,
-      callbacks: { setSegments: vi.fn(), setTranscribeProgress: vi.fn() },
+      callbacks: { setTranscribeProgress: vi.fn() },
     });
 
     expect(out.usedAsyncFallback).toBe(true);
@@ -115,13 +122,15 @@ describe("runLocalTranscribeJob", () => {
       pollAbort: { current: null as AbortController | null },
     };
 
+    const { segmentPublish } = makeSegmentPublish([]);
+
     await expect(
       runLocalTranscribeJob({
         fileId: "file-1",
         base: TRANSCRIBE_TEST_ASR_BASE,
-        segmentsRef: { current: [] },
+        segmentPublish,
         refs,
-        callbacks: { setSegments: vi.fn(), setTranscribeProgress: vi.fn() },
+        callbacks: { setTranscribeProgress: vi.fn() },
       }),
     ).rejects.toBeInstanceOf(TranscribeUserCancelledError);
     expect(projectRunTranscribe).not.toHaveBeenCalled();

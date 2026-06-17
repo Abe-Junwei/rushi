@@ -32,6 +32,14 @@ export function makeWs(overrides: Record<string, unknown> = {}) {
   };
 }
 
+export function makePeakCacheMock(
+  bundle: { peaks: number[][]; duration: number } = { peaks: [[0, 1]], duration: 120 },
+) {
+  return {
+    getWaveSurferPeaks: vi.fn().mockReturnValue(bundle),
+  };
+}
+
 export const hotSwitchWhilePlayingRef = { current: true };
 
 export const zoomSyncBase = {

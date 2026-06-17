@@ -51,7 +51,7 @@ export function EditorFooterHistoryActions({ controller: c, editHistory: h }: Ed
       {h.historyOpen ? (
         <div className="dropdown-surface absolute bottom-full left-0 z-[90] mb-1 w-[24rem] max-w-[calc(100vw-1rem)] p-2">
           <div className="mb-2 flex items-center justify-between border-b border-notion-divider px-1 pb-1">
-            <span className="text-[11px] font-semibold text-notion-text">编辑历史</span>
+            <span className="text-label font-semibold text-notion-text">编辑历史</span>
             <div className="flex items-center gap-1">
               <button
                 type="button"
@@ -71,11 +71,11 @@ export function EditorFooterHistoryActions({ controller: c, editHistory: h }: Ed
             </div>
           </div>
           {h.historyBusy ? (
-            <div className="px-1 py-2 text-[11px] text-notion-text-muted">正在加载...</div>
+            <div className="px-1 py-2 text-label text-notion-text-muted">正在加载...</div>
           ) : h.historyError ? (
-            <div className="px-1 py-2 text-[11px] text-zen-cinnabar">{h.historyError}</div>
+            <div className="px-1 py-2 text-label text-zen-cinnabar">{h.historyError}</div>
           ) : h.historyRows.length === 0 ? (
-            <div className="px-1 py-2 text-[11px] text-notion-text-muted">暂无记录</div>
+            <div className="px-1 py-2 text-label text-notion-text-muted">暂无记录</div>
           ) : (
             <ul className="max-h-56 space-y-1 overflow-y-auto px-1 py-1">
               {h.historyRows.map((row) => {
@@ -84,12 +84,12 @@ export function EditorFooterHistoryActions({ controller: c, editHistory: h }: Ed
                 const showRestore = h.canRestoreRow(row);
                 return (
                   <li key={row.id} className="rounded-md border border-notion-divider bg-notion-bg px-2 py-1.5">
-                    <p className="text-[10px] text-notion-text-muted">{new Date(row.at_ms).toLocaleString()}</p>
-                    <p className="mt-0.5 text-[11px] font-medium leading-snug text-notion-text">{headline}</p>
+                    <p className="text-label text-notion-text-muted">{new Date(row.at_ms).toLocaleString()}</p>
+                    <p className="mt-0.5 text-label font-medium leading-snug text-notion-text">{headline}</p>
                     {subLines.length > 0 ? (
                       <ul className="mt-1 space-y-0.5 border-t border-notion-divider/60 pt-1">
                         {subLines.map((line) => (
-                          <li key={line} className="text-[10px] leading-snug text-notion-text-muted">
+                          <li key={line} className="text-label leading-snug text-notion-text-muted">
                             {line}
                           </li>
                         ))}

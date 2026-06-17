@@ -8,7 +8,7 @@
   gap: 12px;
   padding: 0 12px;
   border-bottom: 1px solid color-mix(in srgb, var(--notion-border) 55%, transparent);
-  font-size: 11px;
+  font-size: var(--text-label);
   color: var(--notion-text-muted);
   background: color-mix(in srgb, var(--notion-sidebar) 92%, transparent);
 }
@@ -27,7 +27,7 @@
 
 .waveform-toolbar-time {
   min-width: 0;
-  font-size: 12px;
+  font-size: var(--text-body);
   font-variant-numeric: tabular-nums;
   color: var(--notion-text);
   white-space: nowrap;
@@ -43,7 +43,7 @@
   align-items: stretch;
   padding: 0 16px;
   overflow: visible;
-  font-size: 12px;
+  font-size: var(--text-body);
   color: var(--notion-text-muted);
   background: color-mix(in srgb, var(--notion-sidebar) 88%, var(--notion-bg));
   box-shadow: inset 0 1px 0 color-mix(in srgb, var(--notion-bg) 55%, transparent);
@@ -206,7 +206,7 @@
 }
 
 .editor-workbench-toolbar .waveform-toolbar-time {
-  font-size: 12px;
+  font-size: var(--text-body);
 }
 
 .editor-workbench-toolbar .waveform-scroll-follow-segment-btn {
@@ -217,7 +217,7 @@
 }
 
 .editor-workbench-toolbar .waveform-scroll-follow-segment-label {
-  font-size: 11px;
+  font-size: var(--text-label);
   font-weight: 500;
 }
 
@@ -267,7 +267,7 @@
   border: 0;
   border-radius: 6px;
   padding: 0 8px;
-  font-size: 11px;
+  font-size: var(--text-label);
   line-height: 1;
   color: var(--notion-text-muted);
   background: transparent;
@@ -308,11 +308,12 @@
   background: var(--workbench-toggle-active-bg);
   color: var(--workbench-toggle-active-text);
   cursor: pointer;
-  transition: background 120ms ease;
+  transition: background 120ms ease, color 120ms ease;
 }
 
 .waveform-playback-btn:hover:not(:disabled) {
   background: var(--workbench-toggle-active-hover-bg);
+  color: var(--workbench-toggle-active-hover-text);
 }
 
 .waveform-playback-btn:focus-visible {
@@ -328,7 +329,7 @@
 .waveform-playback-time {
   flex-shrink: 0;
   font-family: Inter, system-ui, sans-serif;
-  font-size: 12px;
+  font-size: var(--text-body);
   font-variant-numeric: tabular-nums;
   letter-spacing: 0;
   color: var(--notion-text);
@@ -364,7 +365,7 @@
   border: 1px solid var(--notion-border);
   border-radius: 6px;
   background: var(--notion-bg);
-  font-size: 11px;
+  font-size: var(--text-label);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   color: var(--notion-text-muted);
@@ -493,7 +494,7 @@
   appearance: none;
   background: transparent;
   box-shadow: none;
-  font-size: 11px;
+  font-size: var(--text-label);
   font-weight: 600;
   font-variant-numeric: tabular-nums;
   text-align: center;
@@ -534,7 +535,7 @@
   border-radius: 6px;
   background: transparent;
   color: var(--notion-text-muted);
-  font-size: 11px;
+  font-size: var(--text-label);
   cursor: pointer;
 }
 
@@ -586,7 +587,7 @@
 }
 
 .waveform-minimap-toggle-label {
-  font-size: 11px;
+  font-size: var(--text-label);
   font-weight: 600;
   line-height: 1;
   color: var(--notion-text-muted);
@@ -696,7 +697,7 @@
   top: 0;
   width: 2px;
   height: 100%;
-  background: var(--zen-indigo);
+  background: var(--zen-saffron-mid);
 }
 
 /** Sticky viewport playhead — dev/release parity (not Tailwind stroke; not WS shadow cursor). */
@@ -708,7 +709,7 @@
   left: 0;
   z-index: 9;
   width: 1px;
-  background: color-mix(in srgb, var(--zen-saffron) 58%, transparent);
+  background: color-mix(in srgb, var(--zen-saffron) 90%, transparent);
   will-change: transform;
 }
 
@@ -747,7 +748,7 @@
 }
 
 .icon-btn-label {
-  font-size: 11px;
+  font-size: var(--text-label);
   font-weight: 700;
   line-height: 1;
   letter-spacing: 0;
@@ -780,7 +781,7 @@
   background: transparent !important;
 }
 
-/** Playhead 由嵌入标尺承担；隐藏 WaveSurfer 内置 cursor，避免双重/错位。 */
+/** Playhead 由 WaveformViewportPlayhead 承担；WS cursor 在 shadow DOM 内，须 JS hide（见 waveformSurferProgressCoverage）。 */
 .waveform-peaks-stage [part="cursor"],
 .waveform-peaks-stage .cursor {
   display: none !important;
@@ -939,7 +940,7 @@
 
 .waveform-scroll-follow-segment-btn.workbench-state-btn-active:hover:not(:disabled),
 .waveform-scroll-follow-segment-btn.waveform-scroll-follow-segment-btn-active:hover:not(:disabled) {
-  color: var(--workbench-toggle-active-text);
+  color: var(--workbench-toggle-active-hover-text);
   background: var(--workbench-toggle-active-hover-bg);
   border-color: var(--workbench-toggle-active-border);
 }
@@ -951,7 +952,7 @@
 }
 
 .icon-btn.icon-btn-state-active:hover:not(:disabled) {
-  color: var(--workbench-toggle-active-text);
+  color: var(--workbench-toggle-active-hover-text);
   background: var(--workbench-toggle-active-hover-bg);
   border-color: var(--workbench-toggle-active-border);
 }
@@ -971,14 +972,14 @@
 }
 
 .waveform-playback-rate-menu-segment .waveform-playback-rate-trigger.waveform-playback-rate-trigger-state-active:hover:not(:disabled) {
-  color: var(--workbench-toggle-active-text);
+  color: var(--workbench-toggle-active-hover-text);
   background: var(--workbench-toggle-active-hover-bg);
   border-color: var(--workbench-toggle-active-border);
   opacity: 1;
 }
 
 .waveform-playback-rate-trigger.waveform-playback-rate-trigger-state-active:hover:not(:disabled) {
-  color: var(--workbench-toggle-active-text);
+  color: var(--workbench-toggle-active-hover-text);
   background: var(--workbench-toggle-active-hover-bg);
   border-color: var(--workbench-toggle-active-border);
 }
@@ -1001,7 +1002,7 @@
 }
 
 .waveform-playback-rate-option.waveform-playback-rate-option-active:hover {
-  color: var(--workbench-toggle-active-text);
+  color: var(--workbench-toggle-active-hover-text);
   background: var(--workbench-toggle-active-hover-bg);
   border-color: var(--workbench-toggle-active-border);
 }
@@ -1013,7 +1014,7 @@
 }
 
 .waveform-nav-mode-btn.waveform-nav-mode-btn-active:hover:not(:disabled) {
-  color: var(--workbench-toggle-active-text);
+  color: var(--workbench-toggle-active-hover-text);
   background: var(--workbench-toggle-active-hover-bg);
   border-color: var(--workbench-toggle-active-border);
 }
@@ -1029,7 +1030,7 @@
 .region-action-btn.region-action-btn-active:hover:not(:disabled),
 .region-action-btn.workbench-state-btn-active:hover:not(:disabled) {
   opacity: 1;
-  color: var(--workbench-toggle-active-text);
+  color: var(--workbench-toggle-active-hover-text);
   background: var(--workbench-toggle-active-hover-bg);
   border-color: var(--workbench-toggle-active-border);
 }
@@ -1075,7 +1076,7 @@
   justify-content: space-between;
   padding: 6px 10px 4px;
   font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
-  font-size: 11px;
+  font-size: var(--text-label);
   font-weight: 600;
   line-height: 1.35;
   letter-spacing: 0.02em;
@@ -1084,7 +1085,7 @@
 
 .segment-filter-menu-section-hint {
   font-weight: 500;
-  font-size: 10px;
+  font-size: var(--text-label);
   color: var(--notion-text-light);
 }
 
@@ -1105,7 +1106,7 @@
   padding: 0 8px 0 6px;
   border-radius: 4px;
   font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
-  font-size: 12px;
+  font-size: var(--text-body);
   line-height: 1.35;
   color: var(--notion-text);
   cursor: pointer;
@@ -1167,7 +1168,7 @@
   border-radius: 4px;
   background: transparent;
   font-family: var(--font-sans, ui-sans-serif, system-ui, sans-serif);
-  font-size: 11px;
+  font-size: var(--text-label);
   font-weight: 500;
   line-height: 1.35;
   color: var(--notion-text-muted);

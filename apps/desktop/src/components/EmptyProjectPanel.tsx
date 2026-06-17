@@ -173,14 +173,14 @@ export function EmptyProjectPanel({ controller: c }: { controller: ProjectContro
       data-purpose="empty-project-page"
     >
       <header>
-        <h1 className="truncate text-[28px] font-semibold leading-[1.25] tracking-[-0.015em] text-notion-text">
+        <h1 className="truncate text-display font-semibold leading-[1.25] tracking-[-0.015em] text-notion-text">
           {projectName}
         </h1>
       </header>
 
       <section className="flex flex-col gap-2" aria-label="项目文件">
         <div className="flex items-center justify-between gap-2">
-          <h2 className="text-[13px] font-medium text-notion-text-muted">项目文件</h2>
+          <h2 className="text-title font-medium text-notion-text-muted">项目文件</h2>
           <span className={`${PANEL_TYPOGRAPHY.meta} tabular-nums text-notion-text-muted`}>
             0 个文件
           </span>
@@ -234,20 +234,20 @@ export function EmptyProjectPanel({ controller: c }: { controller: ProjectContro
         >
           <FileInput className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} />
         </span>
-        <p className="text-[12px] font-medium text-notion-text sm:text-[13px]">
+        <p className="text-body font-medium text-notion-text sm:text-title">
           {isDragActive ? (
             <span className="text-zen-saffron">释放鼠标即可导入</span>
           ) : (
             "直接将文件拖放到此工作区"
           )}
         </p>
-        <p className="text-[10px] leading-4 text-notion-text-muted sm:text-[11px] sm:leading-5">
+        <p className="text-label leading-4 text-notion-text-muted sm:text-label sm:leading-5">
           音频 .mp3 · .wav · .m4a  文本 .txt · .srt · .vtt
         </p>
       </div>
 
       {statusMessage ? (
-        <p className="w-full text-center text-[11px] text-notion-text-muted" aria-live="polite">
+        <p className="w-full text-center text-label text-notion-text-muted" aria-live="polite">
           {statusMessage}
         </p>
       ) : null}

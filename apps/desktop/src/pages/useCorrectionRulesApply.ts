@@ -1,14 +1,12 @@
 import { useCallback } from "react";
-import { publishSegmentTextBulkMutation } from "./flushSegmentTextDrafts";
-import { findSegmentIndexByUid } from "./segmentListHelpers";
-import type { SegmentDto } from "../tauri/projectApi";
 import type { CorrectionRulesDialogState } from "./correctionRulesPanelTypes";
+import { findSegmentIndexByUid } from "./segmentListHelpers";
+import type { SegmentPublishApi } from "./segmentPublishApi";
 
 type Args = {
   dialog: CorrectionRulesDialogState;
-  segmentsRef: React.MutableRefObject<SegmentDto[]>;
+  segmentPublish: SegmentPublishApi;
   flushSegmentTextDrafts: () => void;
-  setSegments: React.Dispatch<React.SetStateAction<SegmentDto[]>>;
   pushUndo: () => void;
   setError: (msg: string) => void;
   saveSegments: (options?: { quiet?: boolean; countHits?: boolean }) => Promise<boolean>;
@@ -18,9 +16,8 @@ type Args = {
 export function useCorrectionRulesApply(args: Args) {
   const {
     dialog,
-    segmentsRef,
+    segmentPublish,
     flushSegmentTextDrafts,
-    setSegments,
     pushUndo,
     setError,
     saveSegments,
@@ -34,7 +31,7 @@ export function useCorrectionRulesApply(args: Args) {
     flushSegmentTextDrafts();
     pushUndo();
     const selected = new Set(dialog.selectedSegmentIdxs);
-    const next = [...segmentsRef.current];
+    const next = [...segmentPublish.getCurrentSegmentsSnapshot()];
     let applied = 0;
     for (const ch of dialog.changes) {
       if (!selected.has(ch.segmentIdx)) continue;
@@ -49,13 +46,13 @@ export function useCorrectionRulesApply(args: Args) {
       setError("所选语段已不存在或 uid 已变化，请关闭预览后重新生成候选。");
       return;
     }
-    publishSegmentTextBulkMutation(segmentsRef, setSegments, next);
+    segmentPublish.publishTextBulk(next);
     closeStageA();
     const saved = await saveSegments({ quiet: true, countHits: true });
     if (!saved) {
       setError("纠错规则已写回，但保存失败，请稍后手动保存。");
     }
-  }, [closeStageA, dialog, flushSegmentTextDrafts, pushUndo, saveSegments, segmentsRef, setError, setSegments]);
+  }, [closeStageA, dialog, flushSegmentTextDrafts, pushUndo, saveSegments, segmentPublish, setError]);
 
   return { confirmCorrectionRulesWriteback };
 }

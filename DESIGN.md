@@ -41,49 +41,28 @@ colors:
   waveform-wave: '#c4c4c8'
   waveform-progress: '#8e8e93'
   waveform-cursor: '#6a6a6f'
+# Type scale（5 级，code-ratified；落码真源 = zen-tailwind.css @theme --text-*）
+# token 仅承载 fontSize；line-height/weight/letterSpacing 由 leading-*/font-*/tracking-* 与 typography.ts 控制。
+# 禁止再用 text-[Npx] arbitrary；新增字号必须走这 5 级。
 typography:
-  display-lg:
+  display:
     fontFamily: Inter
-    fontSize: 40px
-    fontWeight: '700'
-    lineHeight: '1.2'
-    letterSpacing: -0.02em
-  display-md:
+    fontSize: 28px   # 页面 H1（欢迎 / Hub / 环境页标题）
+  heading:
     fontFamily: Inter
-    fontSize: 28px
-    fontWeight: '600'
-    lineHeight: '1.3'
-    letterSpacing: -0.01em
-  headline-sm:
+    fontSize: 18px   # 侧栏品牌、面板大标题
+  title:
     fontFamily: Inter
-    fontSize: 18px
-    fontWeight: '600'
-    lineHeight: '1.4'
-    letterSpacing: '0'
-  body-md:
+    fontSize: 14px   # 区块标题、副标题、导航标题
+  body:
     fontFamily: Inter
-    fontSize: 14px
-    fontWeight: '400'
-    lineHeight: '1.6'
-    letterSpacing: '0'
-  body-sm:
+    fontSize: 12px   # 主力正文 / 控件文字（最高频）
+  label:
     fontFamily: Inter
-    fontSize: 12px
-    fontWeight: '400'
-    lineHeight: '1.5'
-    letterSpacing: '0'
-  label-caps:
-    fontFamily: Inter
-    fontSize: 11px
-    fontWeight: '600'
-    lineHeight: '1.0'
-    letterSpacing: 0.1em
-  mono-sm:
+    fontSize: 11px   # 标签 / meta / caption / badge
+  mono:
     fontFamily: JetBrains Mono
-    fontSize: 12px
-    fontWeight: '400'
-    lineHeight: '1.4'
-    letterSpacing: '0'
+    fontSize: 12px   # 技术信息（路径 / ID）；字号同 body
 rounded:
   sm: 0.25rem   # 4px — 按钮、输入框
   DEFAULT: 0.5rem
@@ -117,7 +96,7 @@ The palette is a **Notion-neutral base + warm saffron accent**:
 - **Text (`notion-text` #37352f):** Notion's signature soft black. High legibility without the harshness of pure #000.
 - **Muted Text (`notion-text-muted` #6b6b6b):** For secondary labels, descriptions, placeholders.
 - **Dividers (`notion-divider` #e3e2e0):** Very light borders for separation. Used extensively for hairlines.
-- **Primary (Saffron #C58A43):** Reserved for the most important CTAs and active selection states. The warm accent prevents the interface from feeling sterile.
+- **Primary (Saffron #C58A43):** Accent for selection, borders, highlights. Solid primary buttons: **saffron 底 + 白字**；hover saffron-mid + 白字。
 - **Danger (Cinnabar #963530):** Used exclusively for destructive actions (delete, remove).
 - **Success:** Green for positive status indicators.
 
@@ -140,11 +119,12 @@ The palette is a **Notion-neutral base + warm saffron accent**:
 
 Single sans-serif font family (Inter) for all UI. No serif display fonts—Notion style favors clean, modern typography throughout.
 
-- **Display:** Large, bold headings for page titles (`display-lg`, `display-md`).
-- **Headings:** Semibold for section titles (`headline-sm`).
-- **Body:** Regular weight for all content and UI text (`body-md`, `body-sm`).
-- **Labels:** Uppercase with wide letter spacing for section headers and metadata (`label-caps`).
-- **Monospace:** JetBrains Mono for technical data (file paths, dates, IDs).
+- **Display (`text-display` 28px):** Page titles (Welcome / Hub / 环境页 H1).
+- **Heading (`text-heading` 18px):** Sidebar brand, panel headings.
+- **Title (`text-title` 14px):** Section titles, subtitles, nav titles.
+- **Body (`text-body` 12px):** Default content and UI text (highest frequency).
+- **Label (`text-label` 11px):** Labels, meta, captions, badges (often uppercase + wide tracking).
+- **Monospace (`font-mono`, 12px = body):** Technical data (file paths, dates, IDs).
 
 **Formatting Rules:**
 - Large display text uses tighter letter spacing for a modern feel.
@@ -194,7 +174,7 @@ Hierarchy through **background tone shifts** and **fine borders**—no drop shad
 ## Components
 
 ### Buttons
-- **Primary:** Saffron background (#C58A43) with white text. **4px radius (`rounded-sm`). Height 32px (`h-8`).** Hover darkens to `saffron-mid`.
+- **Primary:** `primary-action` — **saffron 底 + 白字**（rest ~3:1；hover saffron-mid + 白字 AA）。 **4px radius (`rounded-sm`). Height 32px (`h-8`).**
 - **Secondary:** `notion-sidebar` background with `notion-text` text. 4px radius. Hover to `notion-sidebar-hover`. 1px `notion-border`.
 - **Ghost:** No background. `notion-text-muted` text. Hover to `notion-sidebar-hover` background.
 - **Danger:** White background, cinnabar text and border. Hover fills cinnabar with white text.
@@ -202,7 +182,7 @@ Hierarchy through **background tone shifts** and **fine borders**—no drop shad
 **落码：** 环境面板 / 欢迎页等复用 `apps/desktop/src/config/controlStyles.ts` 的 `CONTROL_*` 常量（已与上表对齐）。
 
 ### Input Fields
-- White background, 1px `notion-border`, **4px radius**, **height 32px**. On focus: border shifts to saffron with a subtle ring. Use `body-md` for user input.
+- White background, 1px `notion-border`, **4px radius**, **height 32px**. On focus: border shifts to saffron with a subtle ring. Use `text-body` for user input.
 
 ### Cards
 - White background, 1px `notion-border`, **6px radius (`rounded-md`)**. No shadow unless floating. Padding 16px–20px.

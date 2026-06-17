@@ -38,7 +38,7 @@ export function SegmentRowTimestampColumn({
         <div className="flex flex-col gap-1">
           <span
             className={[
-              "font-mono text-[11px] font-medium tabular-nums tracking-[0.01em]",
+              "font-mono text-label font-medium tabular-nums tracking-[0.01em]",
               highlight ? "text-notion-text-muted" : "text-notion-text-light group-hover:text-zen-saffron-mid",
             ].join(" ")}
           >
@@ -46,7 +46,7 @@ export function SegmentRowTimestampColumn({
           </span>
           <span
             className={[
-              "font-mono text-[11px] font-medium tabular-nums tracking-[0.01em]",
+              "font-mono text-label font-medium tabular-nums tracking-[0.01em]",
               highlight ? "text-notion-text-muted" : "text-notion-text-light group-hover:text-zen-saffron-mid",
             ].join(" ")}
           >

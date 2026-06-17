@@ -129,9 +129,10 @@
 - **挂载（C0）**：后台 peaks 开启时推迟挂载直至 bootstrap；**90s 超时**降级 decode；bootstrap 后 `create({ url, peaks, duration })`。
 - **PeakCache 就绪（C1）**：`useWaveformZoomSync` 执行 `ws.load(url, peaks, layoutDuration)` 热切换；切换前保存 `currentTime`，完成后 `setTime` 恢复；播放中推迟至暂停。
 - **有 PeakCache 后**：
-  - `quantizePxPerSecForPeaksLoad(px/s)`（8 px/s 档）决定 `ws.load(peaks)` 时机；
-  - **同档内**仅 `ws.zoom(pxPerSec)`，不重复 `ws.load`；
-  - **跨档**时 `ws.load(url, peaks, layoutDuration)`，完成后 `ws.zoom` 对齐当前 px/s；
+  - `quantizePxPerSecForPeaksLoad(px/s)`（8 px/s 档）决定 **ws.load 注入哪一档 resample**；
+  - **是否 ws.load** 由 `shouldZoomOnlyWithLoadedPeaksStretch`（已加载 LOD ≥ 意图 LOD → 仅拉伸）决定；8 px/s 量子**不再**单独触发 reload；
+  - **同 LOD 内**（含跨 8 px/s 量子）：仅 `ws.zoom(pxPerSec)`；
+  - **跨 LOD**（需更细 .dat 档）时 `ws.load(url, peaks, layoutDuration)`，完成后 `ws.zoom` 对齐；
   - **viewport resize 期间**（`viewportResizeHoldRef`）：仅同步 `ws.zoom` + shell layout；**推迟** `ws.load` 至 transaction 结束（`flushDeferredPeaksLoad`）；
 - **整段可见 sub-min**（px/s &lt; 16）：视口 refit / 全屏在 **peaks 已注入后** 仅 `ws.zoom`；decode 阶段首次 fit-all **必须** `ws.load` 一次（不可因 px/s 变化而永久跳过）。
 - **视口宽读取**：生产代码统一经 [`resolveTierViewportWidthPx`](../../apps/desktop/src/utils/waveformViewport.ts)（live ref / tier DOM / committed layout 取 max）；fit-all refit 经 timeline `refitFitAllPxPerSecRef` → `resolveFitAllPxPerSecAdjustment`（`layoutIntent === 'fit-all'` 或 stale fit-all on viewport grow），**不**因手动 zoom 静默 snap。

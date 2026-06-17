@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import os
+from collections.abc import Callable
 from dataclasses import dataclass
 from typing import Any, Literal
 
@@ -13,6 +14,22 @@ from rushi_asr.funasr_pipeline import recognizer_needs_punc_pipeline
 LONG_AUDIO_SEC = 180.0
 
 SkuFamily = Literal["paraformer", "sensevoice", "qwen", "generic"]
+
+_COMMON_GENERATE_KEYS = frozenset({
+    "language",
+    "merge_vad",
+    "batch_size_s",
+    "batch_size_threshold_s",
+    "hotword",
+})
+
+_PROFILE_GENERATE_KEYS: dict[SkuFamily, frozenset[str]] = {
+    "paraformer": _COMMON_GENERATE_KEYS | frozenset({"sentence_timestamp"}),
+    "sensevoice": _COMMON_GENERATE_KEYS
+    | frozenset({"use_itn", "rich_transcription_postprocess"}),
+    "qwen": _COMMON_GENERATE_KEYS | frozenset({"return_time_stamps"}),
+    "generic": _COMMON_GENERATE_KEYS,
+}
 
 # FunASR Qwen3-ASR expects full language names (not zh/en codes).
 _QWEN_FUNASR_LANGUAGE: dict[str, str] = {
@@ -72,6 +89,33 @@ def sensevoice_use_itn_default() -> bool:
     if override is not None:
         return override
     return True
+
+
+def supported_generate_param_keys(model_id: str) -> frozenset[str]:
+    """Explicit FunASR ``generate()`` kwargs allowed for the resolved SKU profile."""
+    profile = resolve_asr_model_profile(model_id)
+    return _PROFILE_GENERATE_KEYS[profile.sku_family]
+
+
+def filter_generate_kwargs_for_model(
+    model_id: str,
+    kwargs: dict[str, Any],
+    warn: Callable[[str], None] | None = None,
+) -> dict[str, Any]:
+    """Drop params outside the SKU profile before calling FunASR.
+
+    Runtime TypeError stripping remains a compatibility fallback; this profile-first filter
+    makes expected degradation visible before the first inference attempt.
+    """
+    supported = supported_generate_param_keys(model_id)
+    out: dict[str, Any] = {}
+    for key, value in kwargs.items():
+        if key in supported:
+            out[key] = value
+            continue
+        if warn is not None:
+            warn(f"funasr_generate_param_filtered:{key}")
+    return out
 
 
 def build_generate_kwargs(

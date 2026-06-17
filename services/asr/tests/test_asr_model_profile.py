@@ -5,8 +5,10 @@ import pytest
 from rushi_asr.asr_model_profile import (
     LONG_AUDIO_SEC,
     build_generate_kwargs,
+    filter_generate_kwargs_for_model,
     resolve_asr_model_profile,
     sensevoice_use_itn_default,
+    supported_generate_param_keys,
 )
 from rushi_asr.segmentation import funasr_generate_kwargs
 
@@ -98,3 +100,31 @@ def test_paraformer_no_itn_even_with_env(monkeypatch: pytest.MonkeyPatch) -> Non
     kwargs = build_generate_kwargs(PARA, "zh", None, duration_sec=60.0)
     assert "use_itn" not in kwargs
     monkeypatch.delenv("RUSHI_FUNASR_USE_ITN", raising=False)
+
+
+def test_profile_supported_generate_keys_are_explicit() -> None:
+    assert "sentence_timestamp" in supported_generate_param_keys(PARA)
+    assert "use_itn" not in supported_generate_param_keys(PARA)
+    assert "rich_transcription_postprocess" in supported_generate_param_keys(SENSE)
+    assert "return_time_stamps" in supported_generate_param_keys(QWEN)
+    assert "sentence_timestamp" not in supported_generate_param_keys("custom/generic-model")
+
+
+def test_filter_generate_kwargs_for_model_records_filtered_params() -> None:
+    warnings: list[str] = []
+    out = filter_generate_kwargs_for_model(
+        "custom/generic-model",
+        {
+            "language": "zh",
+            "merge_vad": True,
+            "sentence_timestamp": True,
+            "return_time_stamps": True,
+        },
+        warnings.append,
+    )
+
+    assert out == {"language": "zh", "merge_vad": True}
+    assert warnings == [
+        "funasr_generate_param_filtered:sentence_timestamp",
+        "funasr_generate_param_filtered:return_time_stamps",
+    ]

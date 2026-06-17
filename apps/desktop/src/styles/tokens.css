@@ -5,6 +5,7 @@
  */
 
 :root {
+  color-scheme: light;
   --font-sans: Inter, system-ui, sans-serif;
   --zen-ink: #2C2C2C;
   --zen-paper: #F2EFE8;
@@ -12,6 +13,13 @@
   --zen-saffron-light: #ffddba;
   --zen-saffron-mid: #85530f;
   --zen-saffron-deep: #452800;
+
+  /** 实心 Primary CTA：saffron 底 + 白字（产品默认；rest ~3:1，hover 深底 AA） */
+  --zen-primary-action-bg: var(--zen-saffron);
+  --zen-primary-action-bg-hover: var(--zen-saffron-mid);
+  --zen-primary-action-fg: #ffffff;
+  --zen-primary-action-fg-hover: #ffffff;
+
   --zen-stone: #8E8E8E;
   --zen-indigo: #3D4F5D;
   --zen-cinnabar: #963530;
@@ -44,13 +52,22 @@
   --zen-wf-surface: #ffffff;
   --zen-wf-wave: #c4c4c8;
   --zen-wf-progress: #8e8e93;
+  --zen-wf-progress-played: color-mix(in srgb, var(--zen-saffron-mid) 22%, var(--zen-wf-progress));
   --zen-wf-cursor: #6a6a6f;
 
-  /** 工作条 / 波形 toggle 选中态（与 CONTROL_BTN_PRIMARY / 保存 同色） */
-  --workbench-toggle-active-bg: var(--zen-saffron);
-  --workbench-toggle-active-text: var(--notion-bg);
+  /** Type scale（5 级；@theme text-* 与 Tailwind utilities 同源） */
+  --text-display: 28px;
+  --text-heading: 18px;
+  --text-title: 14px;
+  --text-body: 12px;
+  --text-label: 11px;
+
+  /** 工作条 / 波形 toggle 选中态（与 CONTROL_BTN_PRIMARY 同色） */
+  --workbench-toggle-active-bg: var(--zen-primary-action-bg);
+  --workbench-toggle-active-text: var(--zen-primary-action-fg);
   --workbench-toggle-active-border: transparent;
-  --workbench-toggle-active-hover-bg: var(--zen-saffron-mid);
+  --workbench-toggle-active-hover-bg: var(--zen-primary-action-bg-hover);
+  --workbench-toggle-active-hover-text: var(--zen-primary-action-fg-hover);
 
   /** 欢迎页 / Hub：TopBar 下缘 → Stage Card 顶（72px = 8px 栅格 × 9） */
   --workspace-home-stage-offset-top: 4.5rem;
@@ -60,4 +77,54 @@
   --shell-footer-fg: #f3f0e9;
   --shell-footer-code-bg: #1c1c18;
   --shell-footer-code-fg: #E5E5E5;
+}
+
+/**
+ * 暗色骨架 — 在 `<html data-theme="dark">` 或根容器上启用（尚无 UI 切换；prefers-color-scheme 未自动跟随）。
+ * 组件仍引用同一套 --notion-* / --zen-* 变量名，仅值覆盖。
+ */
+[data-theme="dark"] {
+  color-scheme: dark;
+
+  --zen-paper: #2a2824;
+  --zen-ink: #ebebea;
+  --zen-saffron: #d4a055;
+  --zen-saffron-light: #3a3228;
+  --zen-saffron-mid: #c58a43;
+  --zen-saffron-deep: #85530f;
+  --zen-stone: #9b9b9b;
+  --zen-indigo: #9eb4c8;
+  --zen-ochre: #3a3630;
+
+  --zen-primary-action-bg: var(--zen-saffron);
+  --zen-primary-action-bg-hover: var(--zen-saffron-mid);
+  --zen-primary-action-fg: #ffffff;
+  --zen-primary-action-fg-hover: #ffffff;
+
+  --zen-success-surface: #1e2e28;
+  --zen-success-border: #2e4e42;
+  --zen-saffron-surface: #3a3228;
+  --zen-saffron-border: #5a4a38;
+  --zen-cinnabar-surface: #3a2828;
+  --zen-cinnabar-border: #5a3838;
+
+  --notion-divider: #3d3d3d;
+  --notion-border: #3d3d3d;
+  --notion-bg: #1f1f1f;
+  --notion-sidebar: #2a2a2a;
+  --notion-sidebar-hover: #333333;
+  --notion-sidebar-active: #3a3a3a;
+  --secondary-container: #3a3632;
+  --notion-text: #ebebea;
+  --notion-text-variant: #c9c9c8;
+  --notion-text-muted: #9b9b9b;
+  --notion-text-light: #6f6f6f;
+  --notion-callout-bg: #2a2a2a;
+  --notion-callout-border: #3d3d3d;
+
+  --zen-wf-surface: #1f1f1f;
+  --zen-wf-wave: #5a5a5f;
+  --zen-wf-progress: #8e8e93;
+  --zen-wf-progress-played: color-mix(in srgb, var(--zen-saffron-mid) 22%, var(--zen-wf-progress));
+  --zen-wf-cursor: #b0b0b5;
 }

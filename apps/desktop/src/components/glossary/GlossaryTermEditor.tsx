@@ -56,7 +56,7 @@ export function GlossaryTermEditor({
         />
         <span className="flex flex-col gap-0.5">
           <span className={PANEL_TYPOGRAPHY.fieldLabel}>纳入下次转写（热词）</span>
-          <span className="text-[11px] leading-snug text-notion-text-muted">
+          <span className="text-label leading-snug text-notion-text-muted">
             勾选后主术语与别名会进入下次 ASR 热词串。
           </span>
         </span>

@@ -140,7 +140,7 @@ export function EditorSegmentList({
 
   if (c.segments.length === 0) {
     return (
-      <div className="flex h-0 min-h-0 flex-1 items-center justify-center px-6 text-[14px] leading-relaxed text-notion-text-muted">
+      <div className="flex h-0 min-h-0 flex-1 items-center justify-center px-6 text-title leading-relaxed text-notion-text-muted">
         尚未有语段：请先点击「自动转录」。
       </div>
     );
@@ -150,7 +150,7 @@ export function EditorSegmentList({
     return (
       <div
         ref={segmentListRef}
-        className="flex h-0 min-h-0 flex-1 items-center justify-center px-6 text-[14px] leading-relaxed text-notion-text-muted"
+        className="flex h-0 min-h-0 flex-1 items-center justify-center px-6 text-title leading-relaxed text-notion-text-muted"
       >
         无匹配语段。
       </div>

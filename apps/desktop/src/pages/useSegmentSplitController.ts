@@ -1,11 +1,7 @@
 import { useCallback } from "react";
-import type { SegmentDto } from "../tauri/projectApi";
 import { resolveLiveSegmentText } from "../hooks/useSegmentDraftStore";
 import { buildSplitPair, reindexSegments } from "./segmentListHelpers";
-import {
-  commitSegmentTextDraftsForStructureMutation,
-  publishSegmentStructureMutation,
-} from "./flushSegmentTextDrafts";
+import type { SegmentPublishApi } from "./segmentPublishApi";
 
 function roundSec3(x: number): number {
   return Math.round(x * 1000) / 1000;
@@ -17,29 +13,20 @@ export interface SegmentSplitApi {
 }
 
 export interface SegmentSplitDeps {
-  segmentsRef: React.MutableRefObject<SegmentDto[]>;
-  setSegments: React.Dispatch<React.SetStateAction<SegmentDto[]>>;
+  segmentPublish: SegmentPublishApi;
   setSelectedIdx: React.Dispatch<React.SetStateAction<number>>;
   setError: (msg: string) => void;
   pushUndo: () => void;
-  flushSegmentTextDrafts: () => void;
   onSelectionCollapsed?: (idx: number) => void;
 }
 
 export function useSegmentSplitController(deps: SegmentSplitDeps): SegmentSplitApi {
-  const {
-    segmentsRef,
-    setSegments,
-    setSelectedIdx,
-    setError,
-    pushUndo,
-    onSelectionCollapsed,
-  } = deps;
+  const { segmentPublish, setSelectedIdx, setError, pushUndo, onSelectionCollapsed } = deps;
 
   const splitAtSelection = useCallback(
     (selectedIdx: number) => {
-      commitSegmentTextDraftsForStructureMutation(segmentsRef, setSegments);
-      const segs = segmentsRef.current;
+      segmentPublish.commitTextDraftsForStructureMutation();
+      const segs = segmentPublish.getCurrentSegmentsSnapshot();
       if (segs.length === 0) return;
       const i = Math.min(selectedIdx, segs.length - 1);
       const s = segs[i];
@@ -57,19 +44,19 @@ export function useSegmentSplitController(deps: SegmentSplitDeps): SegmentSplitA
       pushUndo();
       const out = [...segs];
       out.splice(i, 1, splitPair.left, splitPair.right);
-      publishSegmentStructureMutation(segmentsRef, setSegments, reindexSegments(out));
+      segmentPublish.publishStructure(reindexSegments(out));
       const nextIdx = i + 1;
       setSelectedIdx(nextIdx);
       onSelectionCollapsed?.(nextIdx);
     },
-    [onSelectionCollapsed, pushUndo, segmentsRef, setError, setSegments, setSelectedIdx],
+    [onSelectionCollapsed, pushUndo, segmentPublish, setError, setSelectedIdx],
   );
 
   const splitAtPlayhead = useCallback(
     (timeSec: number) => {
-      commitSegmentTextDraftsForStructureMutation(segmentsRef, setSegments);
+      segmentPublish.commitTextDraftsForStructureMutation();
       const t = roundSec3(timeSec);
-      const segs = segmentsRef.current;
+      const segs = segmentPublish.getCurrentSegmentsSnapshot();
       const i = segs.findIndex((s) => t > s.start_sec + 0.02 && t < s.end_sec - 0.02);
       if (i < 0) {
         setError("指针时间不在任一语段内，无法拆分。");
@@ -86,12 +73,12 @@ export function useSegmentSplitController(deps: SegmentSplitDeps): SegmentSplitA
       pushUndo();
       const out = [...segs];
       out.splice(i, 1, splitPair.left, splitPair.right);
-      publishSegmentStructureMutation(segmentsRef, setSegments, reindexSegments(out));
+      segmentPublish.publishStructure(reindexSegments(out));
       const nextIdx = i + 1;
       setSelectedIdx(nextIdx);
       onSelectionCollapsed?.(nextIdx);
     },
-    [onSelectionCollapsed, pushUndo, segmentsRef, setError, setSegments, setSelectedIdx],
+    [onSelectionCollapsed, pushUndo, segmentPublish, setError, setSelectedIdx],
   );
 
   return { splitAtSelection, splitAtPlayhead };

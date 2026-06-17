@@ -13,10 +13,7 @@ import {
   applyStagePatchesBeforePersist,
   type FinalizeStageIntent,
 } from "../services/segmentStagePersist";
-import {
-  publishSegmentStructureMutation,
-  publishSegmentTextBulkMutation,
-} from "./flushSegmentTextDrafts";
+import type { SegmentPublishApi } from "./segmentPublishApi";
 
 export type SavePersistPipelineOptions = {
   quiet?: boolean;
@@ -30,12 +27,11 @@ export type SavePersistPipelineOptions = {
 export type SavePersistPipelineArgs = {
   current: ProjectDetail;
   currentFileId: string;
-  segmentsRef: MutableRefObject<SegmentDto[]>;
+  segmentPublish: SegmentPublishApi;
   selectedIdxRef: MutableRefObject<number>;
   savedSnapshot: SegmentDto[];
   pendingAiRevisedUids: Set<string>;
   setCurrent: Dispatch<SetStateAction<ProjectDetail | null>>;
-  setSegments: Dispatch<SetStateAction<SegmentDto[]>>;
   setSelectedIdx: Dispatch<SetStateAction<number>>;
   options?: SavePersistPipelineOptions;
 };
@@ -50,26 +46,27 @@ export async function runProjectSavePersistPipeline(
   const {
     current,
     currentFileId,
-    segmentsRef,
+    segmentPublish,
     selectedIdxRef,
     savedSnapshot,
     pendingAiRevisedUids,
     setCurrent,
-    setSegments,
     setSelectedIdx,
     options,
   } = args;
 
+  const getCurrentSegmentsSnapshot = segmentPublish.getCurrentSegmentsSnapshot;
   const aiRevisedUids = new Set<string>([
     ...pendingAiRevisedUids,
     ...(options?.aiRevisedUids ?? []),
   ]);
   const countHits = options?.countHits ?? !options?.finalizeIntent;
-  const staged = applyStagePatchesBeforePersist(segmentsRef.current, savedSnapshot, {
+  const currentSegments = getCurrentSegmentsSnapshot();
+  const staged = applyStagePatchesBeforePersist(currentSegments, savedSnapshot, {
     finalizeIntent: options?.finalizeIntent,
     aiRevisedUids: aiRevisedUids.size > 0 ? aiRevisedUids : undefined,
   });
-  publishSegmentTextBulkMutation(segmentsRef, setSegments, staged);
+  segmentPublish.publishTextBulk(staged);
   const learnBaselineTexts = countHits
     ? (options?.learnBaselineTexts ?? segmentsToLearnBaselineAligned(savedSnapshot, staged))
     : undefined;
@@ -88,13 +85,14 @@ export async function runProjectSavePersistPipeline(
       ? prev
       : projectDetail,
   );
-  const prevUid = segmentsRef.current[selectedIdxRef.current]?.uid;
+  const persistedSegments = getCurrentSegmentsSnapshot();
+  const prevUid = persistedSegments[selectedIdxRef.current]?.uid;
   const segs = normalizeSegmentList(fileDetail.segments);
-  const snapshotBase = segmentsEqualForPersist(segs, segmentsRef.current)
-    ? segmentsRef.current
+  const snapshotBase = segmentsEqualForPersist(segs, persistedSegments)
+    ? persistedSegments
     : segs;
-  if (!segmentsEqualForPersist(segs, segmentsRef.current)) {
-    publishSegmentStructureMutation(segmentsRef, setSegments, segs);
+  if (!segmentsEqualForPersist(segs, persistedSegments)) {
+    segmentPublish.publishStructure(segs);
     const ni = findSegmentIndexByUid(segs, prevUid);
     setSelectedIdx(
       ni >= 0 ? ni : Math.min(selectedIdxRef.current, Math.max(0, segs.length - 1)),

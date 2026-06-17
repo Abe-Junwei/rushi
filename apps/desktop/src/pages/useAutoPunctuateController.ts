@@ -44,7 +44,7 @@ type UseAutoPunctuateControllerArgs = {
   currentFileId: string | null;
   selectedIdx: number;
   segments: SegmentDto[];
-  segmentsRef: React.MutableRefObject<SegmentDto[]>;
+  getCurrentSegmentsSnapshot: () => SegmentDto[];
   flushSegmentTextDrafts: () => void;
   updateSegmentText: SegmentTextMutator;
   setError: React.Dispatch<React.SetStateAction<string>>;
@@ -87,7 +87,7 @@ export function useAutoPunctuateController(
     currentFileId,
     selectedIdx,
     segments,
-    segmentsRef,
+    getCurrentSegmentsSnapshot,
     flushSegmentTextDrafts,
     updateSegmentText,
     setError,
@@ -140,7 +140,7 @@ export function useAutoPunctuateController(
   const buildRequest = useCallback((): PendingPayload | null => {
     if (busy || !currentFileId) return null;
     flushSegmentTextDrafts();
-    const current = segmentsRef.current[selectedIdx];
+    const current = getCurrentSegmentsSnapshot()[selectedIdx];
     if (!current || !current.uid || !current.text.trim()) {
       setError("请先选中一条有正文的语段。");
       return null;
@@ -151,7 +151,7 @@ export function useAutoPunctuateController(
       return null;
     }
     const neighbor_context: NeighborContextItem[] = collectAutoPunctuateNeighborContext(
-      segmentsRef.current,
+      getCurrentSegmentsSnapshot(),
       selectedIdx,
     );
     const contextSummary = neighborContextSummary(neighbor_context);
@@ -167,7 +167,7 @@ export function useAutoPunctuateController(
         runtime,
       },
     };
-  }, [busy, currentFileId, flushSegmentTextDrafts, llmRuntimeEpoch, segmentsRef, selectedIdx, setError]);
+  }, [busy, currentFileId, flushSegmentTextDrafts, getCurrentSegmentsSnapshot, llmRuntimeEpoch, selectedIdx, setError]);
 
   const startRequest = useCallback(
     (payload: PendingPayload) => {
@@ -232,13 +232,13 @@ export function useAutoPunctuateController(
     if (dialog.phase !== "preview") return;
     const uid = previewSegmentUidRef.current;
     if (!uid) return;
-    const idx = segmentsRef.current.findIndex((seg) => seg.uid === uid);
+    const idx = getCurrentSegmentsSnapshot().findIndex((seg) => seg.uid === uid);
     if (idx < 0) {
       setDialog({ phase: "closed" });
       setError("语段已变化，无法写回自动标点结果，请重新尝试。");
       return;
     }
-    const seg = segmentsRef.current[idx];
+    const seg = getCurrentSegmentsSnapshot()[idx];
     if (!seg) {
       setDialog({ phase: "closed" });
       return;
@@ -246,7 +246,7 @@ export function useAutoPunctuateController(
     // 自动标点写回： intentionally 不传 learn（标点不计入 correction_memory）
     applySegmentTextChange(seg, idx, dialog.candidateText, updateSegmentText, { fromLlm: true });
     setDialog({ phase: "closed" });
-  }, [dialog, segmentsRef, updateSegmentText, setError]);
+  }, [dialog, getCurrentSegmentsSnapshot, updateSegmentText, setError]);
 
   const cancelAutoPunctuate = useCallback(() => {
     activeRequestSeqRef.current += 1;

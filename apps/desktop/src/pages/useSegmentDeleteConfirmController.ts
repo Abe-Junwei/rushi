@@ -1,4 +1,4 @@
-import { useCallback, useRef, useState, type MutableRefObject } from "react";
+import { useCallback, useRef, useState } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
 import { segmentHasTextContent } from "../services/segmentConfirmEligible";
 
@@ -8,7 +8,7 @@ type PendingDelete =
   | { kind: "indices"; indices: number[] };
 
 type Args = {
-  segmentsRef: MutableRefObject<SegmentDto[]>;
+  getCurrentSegmentsSnapshot: () => SegmentDto[];
   flushSegmentTextDrafts: () => void;
   deleteSegmentAt: (idx: number) => void;
   deleteSegmentRange: (lo: number, hi: number) => void;
@@ -30,7 +30,7 @@ function indicesHaveTextContent(segments: SegmentDto[], indices: number[]): bool
 }
 
 export function useSegmentDeleteConfirmController(args: Args) {
-  const { segmentsRef, flushSegmentTextDrafts, deleteSegmentAt, deleteSegmentRange, deleteSegmentIndices } =
+  const { getCurrentSegmentsSnapshot, flushSegmentTextDrafts, deleteSegmentAt, deleteSegmentRange, deleteSegmentIndices } =
     args;
   const pendingRef = useRef<PendingDelete | null>(null);
   const [segmentDeleteConfirmOpen, setSegmentDeleteConfirmOpen] = useState(false);
@@ -53,7 +53,7 @@ export function useSegmentDeleteConfirmController(args: Args) {
   const requestDeleteSegmentAt = useCallback(
     (idx: number) => {
       flushSegmentTextDrafts();
-      const segs = segmentsRef.current;
+      const segs = getCurrentSegmentsSnapshot();
       if (idx < 0 || idx >= segs.length) return;
       if (segmentHasTextContent(segs, idx)) {
         setPending({ kind: "single", idx });
@@ -61,13 +61,13 @@ export function useSegmentDeleteConfirmController(args: Args) {
       }
       deleteSegmentAt(idx);
     },
-    [deleteSegmentAt, flushSegmentTextDrafts, segmentsRef, setPending],
+    [deleteSegmentAt, flushSegmentTextDrafts, getCurrentSegmentsSnapshot, setPending],
   );
 
   const requestDeleteSelection = useCallback(
     (lo: number, hi: number) => {
       flushSegmentTextDrafts();
-      const segs = segmentsRef.current;
+      const segs = getCurrentSegmentsSnapshot();
       if (lo < 0 || hi >= segs.length || lo > hi) return;
       if (lo === hi) {
         requestDeleteSegmentAt(lo);
@@ -79,13 +79,13 @@ export function useSegmentDeleteConfirmController(args: Args) {
       }
       deleteSegmentRange(lo, hi);
     },
-    [deleteSegmentRange, flushSegmentTextDrafts, requestDeleteSegmentAt, segmentsRef, setPending],
+    [deleteSegmentRange, flushSegmentTextDrafts, getCurrentSegmentsSnapshot, requestDeleteSegmentAt, setPending],
   );
 
   const requestDeleteSelectedIndices = useCallback(
     (indices: number[]) => {
       flushSegmentTextDrafts();
-      const segs = segmentsRef.current;
+      const segs = getCurrentSegmentsSnapshot();
       const unique = [...new Set(indices)].filter((idx) => idx >= 0 && idx < segs.length);
       if (unique.length === 0) return;
       if (unique.length === 1) {
@@ -99,7 +99,7 @@ export function useSegmentDeleteConfirmController(args: Args) {
       }
       deleteSegmentIndices(unique);
     },
-    [deleteSegmentIndices, flushSegmentTextDrafts, requestDeleteSegmentAt, segmentsRef, setPending],
+    [deleteSegmentIndices, flushSegmentTextDrafts, getCurrentSegmentsSnapshot, requestDeleteSegmentAt, setPending],
   );
 
   const confirmDeleteSegment = useCallback(() => {

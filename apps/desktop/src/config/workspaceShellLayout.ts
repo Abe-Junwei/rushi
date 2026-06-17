@@ -52,7 +52,7 @@ export function workspaceSidebarNavItemClass(opts: { active?: boolean; disabled?
 }
 
 const WORKSPACE_SIDEBAR_SUBNAV_ITEM_BASE =
-  "flex w-full min-h-9 items-center gap-2 rounded-md border-0 py-2 pl-9 pr-3 text-left text-[13px] font-medium leading-snug transition-colors";
+  "flex w-full min-h-9 items-center gap-2 rounded-md border-0 py-2 pl-9 pr-3 text-left text-title font-medium leading-snug transition-colors";
 
 /** 主功能下的子工作区（如热词与记忆三分段） */
 export function workspaceSidebarSubNavItemClass(active: boolean): string {
@@ -65,7 +65,7 @@ export function workspaceSidebarSubNavItemClass(active: boolean): string {
 export const WORKSPACE_SIDEBAR_FOOTER_GRID = "grid gap-0.5 px-3 py-2";
 
 const WORKSPACE_SIDEBAR_FOOTER_ITEM_BASE =
-  "flex min-h-[3.25rem] flex-col items-center justify-center gap-1 rounded-md border-0 px-1 py-2 text-center text-[11px] font-medium leading-tight transition-colors";
+  "flex min-h-[3.25rem] flex-col items-center justify-center gap-1 rounded-md border-0 px-1 py-2 text-center text-label font-medium leading-tight transition-colors";
 
 /** 底栏横排项：图标 + 短标签，等宽平级 */
 export function workspaceSidebarFooterItemClass(opts: { active?: boolean }): string {

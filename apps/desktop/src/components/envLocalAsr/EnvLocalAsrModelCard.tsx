@@ -104,7 +104,7 @@ export function EnvLocalAsrModelCard({
         <div className="flex flex-col gap-2">
           <div className="flex items-end justify-between gap-2">
             <span className={fieldLabel}>下载进度</span>
-            <span className={`font-mono text-[12px] ${progressToneClass}`}>{progressLabel}</span>
+            <span className={`font-mono text-body ${progressToneClass}`}>{progressLabel}</span>
           </div>
           <div
             className={PANEL_PROGRESS_TRACK_COMPACT_CLASS}

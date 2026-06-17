@@ -16,10 +16,7 @@ import {
   selectPackableSegments,
   WAVEFORM_SEGMENT_MIN_SPAN_SEC,
 } from "../utils/waveformSegmentBounds";
-import {
-  commitSegmentTextDraftsForStructureMutation,
-  publishSegmentStructureMutation,
-} from "./flushSegmentTextDrafts";
+import type { SegmentPublishApi } from "./segmentPublishApi";
 
 function roundSec3(x: number): number {
   return Math.round(x * 1000) / 1000;
@@ -27,29 +24,19 @@ function roundSec3(x: number): number {
 
 export type SegmentInsertDeps = {
   busy: boolean;
-  segmentsRef: React.MutableRefObject<SegmentDto[]>;
-  setSegments: React.Dispatch<React.SetStateAction<SegmentDto[]>>;
+  segmentPublish: SegmentPublishApi;
   setSelectedIdx: React.Dispatch<React.SetStateAction<number>>;
   setError: (msg: string) => void;
   pushUndo: () => void;
-  flushSegmentTextDrafts: () => void;
   onSelectionCollapsed?: (idx: number) => void;
 };
 
 export function createSegmentInsertActions(deps: SegmentInsertDeps) {
-  const {
-    busy,
-    segmentsRef,
-    setSegments,
-    setSelectedIdx,
-    setError,
-    pushUndo,
-    onSelectionCollapsed,
-  } = deps;
+  const { busy, segmentPublish, setSelectedIdx, setError, pushUndo, onSelectionCollapsed } = deps;
 
   function insertSegmentAfter(idx: number, mediaDurationSec = 0) {
-    commitSegmentTextDraftsForStructureMutation(segmentsRef, setSegments);
-    const segs = segmentsRef.current;
+    segmentPublish.commitTextDraftsForStructureMutation();
+    const segs = segmentPublish.getCurrentSegmentsSnapshot();
     if (idx < 0 || idx >= segs.length) return;
     const a = segs[idx];
     const b = segs[idx + 1];
@@ -82,7 +69,7 @@ export function createSegmentInsertActions(deps: SegmentInsertDeps) {
       kind: "speech",
     });
     const out = [...segs.slice(0, idx + 1), newSeg, ...segs.slice(idx + 1)];
-    publishSegmentStructureMutation(segmentsRef, setSegments, reindexSegments(out));
+    segmentPublish.publishStructure(reindexSegments(out));
     const nextIdx = idx + 1;
     setSelectedIdx(nextIdx);
     onSelectionCollapsed?.(nextIdx);
@@ -95,7 +82,7 @@ export function createSegmentInsertActions(deps: SegmentInsertDeps) {
     policy: SegmentOverlapPolicy = "trim",
   ) {
     if (busy) return;
-    commitSegmentTextDraftsForStructureMutation(segmentsRef, setSegments);
+    segmentPublish.commitTextDraftsForStructureMutation();
     let lo = roundSec3(Math.min(startSec, endSec));
     let hi = roundSec3(Math.max(startSec, endSec));
     if (mediaDurationSec > 0) {
@@ -105,7 +92,7 @@ export function createSegmentInsertActions(deps: SegmentInsertDeps) {
       setError(mediaDurationSec > 0 && hi <= lo ? "选区超出媒体时长。" : "选区过短。");
       return;
     }
-    const segs = segmentsRef.current;
+    const segs = segmentPublish.getCurrentSegmentsSnapshot();
     const overlapSegs = selectPackableSegments(segs, mediaDurationSec);
     const clamped = resolveCreateRangeForPolicy(overlapSegs, lo, hi, policy);
     if (!clamped) {
@@ -135,7 +122,7 @@ export function createSegmentInsertActions(deps: SegmentInsertDeps) {
       kind: "speech",
     });
     const out = [...segs.slice(0, insertAt), newSeg, ...segs.slice(insertAt)];
-    publishSegmentStructureMutation(segmentsRef, setSegments, reindexSegments(out));
+    segmentPublish.publishStructure(reindexSegments(out));
     setSelectedIdx(insertAt);
     onSelectionCollapsed?.(insertAt);
   }

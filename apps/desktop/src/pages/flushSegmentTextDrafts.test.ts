@@ -1,6 +1,6 @@
 import { flushSync } from "react-dom";
 import { renderHook, act } from "@testing-library/react";
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, vi } from "vitest";
 import { useRef, useState, type SetStateAction } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
 import {
@@ -8,15 +8,17 @@ import {
   flushSegmentTextDrafts,
   materializeSegmentTextDrafts,
   prepareSegmentTextDraftsForMutation,
+  publishSegmentStructureMutation,
   publishSegmentTextBulkMutation,
   publishTranscribeSegmentClear,
   publishTranscribeSegmentRestore,
   syncDomTextareaDraftsIntoStore,
   syncDomTextareasFromSegments,
-  syncFocusedDomTextIntoSegments,
+  applyFocusedDomTextToSegments,
 } from "./flushSegmentTextDrafts";
 import { segmentDraftKey, segmentDraftStore } from "../hooks/useSegmentDraftStore";
 import { useSegmentUndoRedo } from "./useSegmentUndoRedo";
+import { createSegmentPublishApi } from "./segmentPublishApi";
 
 function seg(text: string): SegmentDto {
   return {
@@ -40,15 +42,19 @@ describe("flushSegmentTextDrafts undo", () => {
       const segmentsRef = useRef<SegmentDto[]>([initial]);
       const [segments, setSegments] = useState<SegmentDto[]>([initial]);
       segmentsRef.current = segments;
-      const undoRedo = useSegmentUndoRedo(segmentsRef, setSegments);
-      return { segmentsRef, setSegments, undoRedo, segments };
+      const segmentPublish = createSegmentPublishApi(segmentsRef, setSegments);
+      const undoRedo = useSegmentUndoRedo(
+        segmentPublish.publishTextBulk,
+        segmentPublish.getCurrentSegmentsSnapshot,
+      );
+      return { segmentPublish, undoRedo, segments };
     });
 
     const key = segmentDraftKey(initial, 0);
     segmentDraftStore.setDraft(key, "typed without blur");
 
     act(() => {
-      flushSegmentTextDrafts(result.current.segmentsRef, result.current.setSegments, {
+      result.current.segmentPublish.flushSegmentTextDrafts({
         beforeApplyUpdates: (updates) => {
           for (const { idx } of updates) {
             result.current.undoRedo.pushUndoForTextEdit(idx);
@@ -87,27 +93,24 @@ describe("flushSegmentTextDrafts undo", () => {
     row.remove();
   });
 
-  it("flush applies drafts using segmentsRef when React state is stale", () => {
+  it("flush applies drafts using React state snapshot", () => {
     segmentDraftStore.resetAll();
-    const refSeg = { ...seg("ref committed"), uid: "uid-ref" };
-    const staleSeg = { ...seg("stale react"), uid: "uid-stale" };
+    const stateSeg = { ...seg("state committed"), uid: "uid-state" };
 
-    const segmentsRef: { current: SegmentDto[] } = { current: [refSeg] };
-    let reactState: SegmentDto[] = [staleSeg];
+    let reactState: SegmentDto[] = [stateSeg];
+    const getCurrentSegmentsSnapshot = () => reactState;
     const setSegments = (updater: SetStateAction<SegmentDto[]>) => {
       flushSync(() => {
         reactState = typeof updater === "function" ? updater(reactState) : updater;
-        segmentsRef.current = reactState;
       });
     };
 
-    const key = segmentDraftKey(refSeg, 0);
-    segmentDraftStore.setDraft(key, "draft on ref row");
+    const key = segmentDraftKey(stateSeg, 0);
+    segmentDraftStore.setDraft(key, "draft on state row");
 
-    flushSegmentTextDrafts(segmentsRef, setSegments);
+    flushSegmentTextDrafts(getCurrentSegmentsSnapshot, setSegments);
 
-    expect(reactState[0]?.text).toBe("draft on ref row");
-    expect(segmentsRef.current[0]?.text).toBe("draft on ref row");
+    expect(reactState[0]?.text).toBe("draft on state row");
   });
 
   it("prepareSegmentTextDraftsForMutation aligns DOM to segments without importing stale DOM to draft", () => {
@@ -158,7 +161,7 @@ describe("flushSegmentTextDrafts undo", () => {
     expect(next[1]?.text).toBe("B*");
   });
 
-  it("syncFocusedDomTextIntoSegments writes IME/partial textarea into segmentsRef", () => {
+  it("applyFocusedDomTextToSegments returns IME/partial textarea text", () => {
     segmentDraftStore.resetAll();
     const row = document.createElement("div");
     row.setAttribute("data-seg-row", "0");
@@ -168,12 +171,12 @@ describe("flushSegmentTextDrafts undo", () => {
     row.appendChild(textarea);
     document.body.appendChild(row);
 
-    const segmentsRef = { current: [seg("committed")] };
-    segmentDraftStore.beginComposition(segmentDraftKey(segmentsRef.current[0], 0));
+    const segments = [seg("committed")];
+    segmentDraftStore.beginComposition(segmentDraftKey(segments[0], 0));
     textarea.focus();
 
-    syncFocusedDomTextIntoSegments(segmentsRef);
-    expect(segmentsRef.current[0]?.text).toBe("组字未完成");
+    const next = applyFocusedDomTextToSegments(segments);
+    expect(next[0]?.text).toBe("组字未完成");
 
     row.remove();
   });
@@ -188,16 +191,15 @@ describe("flushSegmentTextDrafts undo", () => {
     row.appendChild(textarea);
     document.body.appendChild(row);
 
-    const segmentsRef = { current: [seg("old")] };
-    let reactState = segmentsRef.current;
+    let reactState = [seg("old")];
+    const getCurrentSegmentsSnapshot = () => reactState;
     const setSegments = (next: SegmentDto[] | ((p: SegmentDto[]) => SegmentDto[])) => {
       reactState = typeof next === "function" ? next(reactState) : next;
     };
     textarea.focus();
 
-    commitSegmentTextDraftsForStructureMutation(segmentsRef, setSegments);
+    commitSegmentTextDraftsForStructureMutation(getCurrentSegmentsSnapshot, setSegments);
 
-    expect(segmentsRef.current[0]?.text).toBe("live in textarea");
     expect(reactState[0]?.text).toBe("live in textarea");
 
     row.remove();
@@ -207,19 +209,18 @@ describe("flushSegmentTextDrafts undo", () => {
 describe("publishTranscribeSegmentClear / publishTranscribeSegmentRestore", () => {
   it("clear resets drafts before emptying segments", () => {
     segmentDraftStore.resetAll();
-    const segmentsRef = { current: [seg("keep ghost")] };
-    const key = segmentDraftKey(segmentsRef.current[0], 0);
+    let reactState = [seg("keep ghost")];
+    const getCurrentSegmentsSnapshot = () => reactState;
+    const key = segmentDraftKey(reactState[0], 0);
     segmentDraftStore.setDraft(key, "draft ghost");
 
-    let reactState = segmentsRef.current;
     const setSegments = (next: SetStateAction<SegmentDto[]>) => {
-      reactState = typeof next === "function" ? next(segmentsRef.current) : next;
-      segmentsRef.current = reactState;
+      reactState = typeof next === "function" ? next(reactState) : next;
     };
 
-    publishTranscribeSegmentClear(segmentsRef, setSegments);
+    publishTranscribeSegmentClear(getCurrentSegmentsSnapshot, setSegments);
 
-    expect(segmentsRef.current).toEqual([]);
+    expect(reactState).toEqual([]);
     expect(segmentDraftStore.getDraft(key)).toBeUndefined();
   });
 
@@ -234,17 +235,16 @@ describe("publishTranscribeSegmentClear / publishTranscribeSegmentRestore", () =
     document.body.appendChild(row);
 
     const restored = [seg("restored text")];
-    const segmentsRef = { current: [] as SegmentDto[] };
-    let reactState = segmentsRef.current;
+    let reactState = [] as SegmentDto[];
+    const getCurrentSegmentsSnapshot = () => reactState;
     const setSegments = (next: SetStateAction<SegmentDto[]>) => {
-      reactState = typeof next === "function" ? next(segmentsRef.current) : next;
-      segmentsRef.current = reactState;
+      reactState = typeof next === "function" ? next(reactState) : next;
     };
     segmentDraftStore.setDraft(segmentDraftKey(restored[0], 0), "stale draft");
 
-    publishTranscribeSegmentRestore(segmentsRef, setSegments, restored);
+    publishTranscribeSegmentRestore(getCurrentSegmentsSnapshot, setSegments, restored);
 
-    expect(segmentsRef.current[0]?.text).toBe("restored text");
+    expect(reactState[0]?.text).toBe("restored text");
     expect(textarea.value).toBe("restored text");
     expect(segmentDraftStore.getDraft(segmentDraftKey(restored[0], 0))).toBeUndefined();
 
@@ -267,22 +267,38 @@ describe("publishSegmentTextBulkMutation", () => {
     segmentDraftStore.setDraft(key, "箱板");
     segmentDraftStore.flushPendingEmit();
 
-    const segmentsRef = { current: [seg("箱板")] };
-    let reactState = segmentsRef.current;
+    let reactState = [seg("箱板")];
+    const getCurrentSegmentsSnapshot = () => reactState;
     const setSegments = (next: SetStateAction<SegmentDto[]>) => {
-      reactState = typeof next === "function" ? next(segmentsRef.current) : next;
-      segmentsRef.current = reactState;
+      reactState = typeof next === "function" ? next(reactState) : next;
     };
 
-    publishSegmentTextBulkMutation(segmentsRef, setSegments, [seg("相板")]);
+    publishSegmentTextBulkMutation(getCurrentSegmentsSnapshot, setSegments, [seg("相板")]);
 
-    expect(segmentsRef.current[0]?.text).toBe("相板");
+    expect(reactState[0]?.text).toBe("相板");
     expect(textarea.value).toBe("相板");
     expect(segmentDraftStore.getDraft(key)).toBeUndefined();
 
-    flushSegmentTextDrafts(segmentsRef, setSegments);
-    expect(segmentsRef.current[0]?.text).toBe("相板");
+    flushSegmentTextDrafts(getCurrentSegmentsSnapshot, setSegments);
+    expect(reactState[0]?.text).toBe("相板");
 
     row.remove();
+  });
+});
+
+describe("publishSegmentStructureMutation", () => {
+  it("resolves functional updater from React state before flushSync", () => {
+    let reactState = [seg("a"), seg("b")];
+    const getCurrentSegmentsSnapshot = () => reactState;
+    const setSegments = (next: SetStateAction<SegmentDto[]>) => {
+      reactState = typeof next === "function" ? next(reactState) : next;
+    };
+    const updater = vi.fn((prev: SegmentDto[]) => prev.slice(0, 1));
+
+    publishSegmentStructureMutation(getCurrentSegmentsSnapshot, setSegments, updater);
+
+    expect(updater).toHaveBeenCalledTimes(1);
+    expect(reactState).toHaveLength(1);
+    expect(reactState[0]?.text).toBe("a");
   });
 });

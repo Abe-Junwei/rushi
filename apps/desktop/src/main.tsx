@@ -6,9 +6,11 @@ import { isTauriRuntime } from "./config/env";
 import { ensureAppWindowCloseGuardRegistered } from "./services/appWindowCloseGuard";
 import { logRuntimeParityBootstrap } from "./services/runtimeParityBootstrap";
 import { bootstrapShellCapabilities } from "./services/shellCapabilities";
+import { installWaveformZoomProfileDevTools } from "./services/waveform/waveformZoomProfile";
 import "./zen-tailwind.css";
 
 ensureAppWindowCloseGuardRegistered();
+installWaveformZoomProfileDevTools();
 
 const rootEl = document.getElementById("root");
 if (!rootEl) {

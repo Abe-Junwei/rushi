@@ -26,16 +26,17 @@ describe("segmentDraftStore + flushSegmentTextDrafts", () => {
     segmentDraftStore.setDraft(key, "draft");
     segmentDraftStore.flushPendingEmit();
 
-    const segmentsRef: React.MutableRefObject<SegmentDto[]> = { current: [s] };
+    let reactState: SegmentDto[] = [s];
     let next: SegmentDto[] = [];
+    const getCurrentSegmentsSnapshot = () => reactState;
     const setSegments = (updater: React.SetStateAction<SegmentDto[]>) => {
       flushSync(() => {
-        next = typeof updater === "function" ? updater(segmentsRef.current) : updater;
-        segmentsRef.current = next;
+        next = typeof updater === "function" ? updater(reactState) : updater;
+        reactState = next;
       });
     };
 
-    flushSegmentTextDrafts(segmentsRef, setSegments);
+    flushSegmentTextDrafts(getCurrentSegmentsSnapshot, setSegments);
 
     expect(next[0]?.text).toBe("draft");
     expect(segmentDraftStore.getDraft(key)).toBeUndefined();
@@ -48,13 +49,14 @@ describe("segmentDraftStore + flushSegmentTextDrafts", () => {
     segmentDraftStore.setDraft(key, "same");
     segmentDraftStore.flushPendingEmit();
 
-    const segmentsRef: React.MutableRefObject<SegmentDto[]> = { current: [s] };
+    let reactState: SegmentDto[] = [s];
+    const getCurrentSegmentsSnapshot = () => reactState;
     const setSegments = () => {
       throw new Error("should not update");
     };
 
-    flushSegmentTextDrafts(segmentsRef, setSegments);
-    expect(segmentsRef.current[0]?.text).toBe("same");
+    flushSegmentTextDrafts(getCurrentSegmentsSnapshot, setSegments);
+    expect(reactState[0]?.text).toBe("same");
   });
 
   it("flushes IME composition when merge/save ends composition first", () => {
@@ -65,16 +67,17 @@ describe("segmentDraftStore + flushSegmentTextDrafts", () => {
     segmentDraftStore.setComposing(key, true);
     segmentDraftStore.flushPendingEmit();
 
-    const segmentsRef: React.MutableRefObject<SegmentDto[]> = { current: [s] };
+    let reactState: SegmentDto[] = [s];
     let next: SegmentDto[] = [];
+    const getCurrentSegmentsSnapshot = () => reactState;
     const setSegments = (updater: React.SetStateAction<SegmentDto[]>) => {
       flushSync(() => {
-        next = typeof updater === "function" ? updater(segmentsRef.current) : updater;
-        segmentsRef.current = next;
+        next = typeof updater === "function" ? updater(reactState) : updater;
+        reactState = next;
       });
     };
 
-    flushSegmentTextDrafts(segmentsRef, setSegments);
+    flushSegmentTextDrafts(getCurrentSegmentsSnapshot, setSegments);
     expect(next[0]?.text).toBe("lian");
     expect(segmentDraftStore.isComposing(key)).toBe(false);
   });

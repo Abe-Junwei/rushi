@@ -10,7 +10,7 @@ const NAV_ICON_BTN = `${CONTROL_BTN_ICON_GHOST} shadow-none focus-visible:outlin
 const NAV_SIDEBAR_EXPAND_BTN = `${NAV_ICON_BTN} -ml-2.5`;
 
 const PROJECT_LINK =
-  "min-w-0 max-w-[40%] truncate rounded-sm border-0 bg-transparent p-0 text-left text-[13px] font-medium text-notion-text-muted shadow-none transition-colors hover:bg-notion-sidebar-hover hover:text-notion-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-notion-text/20 disabled:cursor-not-allowed disabled:opacity-40";
+  "min-w-0 max-w-[40%] truncate rounded-sm border-0 bg-transparent p-0 text-left text-title font-medium text-notion-text-muted shadow-none transition-colors hover:bg-notion-sidebar-hover hover:text-notion-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-notion-text/20 disabled:cursor-not-allowed disabled:opacity-40";
 
 export type EditorWorkspaceNavProps = {
   projectName: string;
@@ -74,7 +74,7 @@ export function EditorWorkspaceNav({
       >
         {/* 窄屏：仅当前页（打开文件时）或仅项目名（项目内页） */}
         <span
-          className="min-w-0 truncate text-[13px] font-semibold text-notion-text md:hidden"
+          className="min-w-0 truncate text-title font-semibold text-notion-text md:hidden"
           title={fileOpen ? currentLabel : projectName}
         >
           {fileOpen ? currentLabel : projectName}
@@ -94,17 +94,17 @@ export function EditorWorkspaceNav({
             </button>
           ) : (
             <span
-              className="min-w-0 max-w-[40%] truncate text-[13px] font-medium text-notion-text-muted"
+              className="min-w-0 max-w-[40%] truncate text-title font-medium text-notion-text-muted"
               title={projectName}
             >
               {projectName}
             </span>
           )}
-          <span className="shrink-0 text-[12px] text-notion-text-light" aria-hidden>
+          <span className="shrink-0 text-body text-notion-text-light" aria-hidden>
             /
           </span>
           <span
-            className="min-w-0 flex-1 truncate text-[13px] font-semibold text-notion-text"
+            className="min-w-0 flex-1 truncate text-title font-semibold text-notion-text"
             title={currentLabel}
           >
             {hasUnsavedEdits ? (

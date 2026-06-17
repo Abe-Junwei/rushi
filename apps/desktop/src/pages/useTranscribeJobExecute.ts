@@ -19,10 +19,7 @@ import { postTranscribeCancel } from "./transcribeAsyncPoll";
 import { awaitEnvironmentCapabilityRefresh } from "../services/environmentCapabilityCoordinator";
 import { resolveTranscribeExecuteBlock } from "./transcribeExecuteGate";
 import { runLocalTranscribeJob } from "./transcribeLocalJobRun";
-import {
-  publishTranscribeSegmentClear,
-  publishTranscribeSegmentRestore,
-} from "./flushSegmentTextDrafts";
+import type { SegmentPublishApi } from "./segmentPublishApi";
 import {
   isOnlineTranscribeJobId,
   isSidecarCancellableTranscribeJobId,
@@ -42,7 +39,7 @@ type CloseGate = Pick<
 >;
 type Editor = Pick<
   ReturnType<typeof useProjectEditorState>,
-  "current" | "currentFileId" | "segmentsRef" | "setCurrent" | "setSegments"
+  "current" | "currentFileId" | "setCurrent"
 >;
 type Busy = Pick<ReturnType<typeof useProjectBusyState>, "busy" | "beginBusy" | "endBusy">;
 type Mutations = Pick<ReturnType<typeof useSegmentMutationController>, "resetMutationHistory">;
@@ -53,9 +50,8 @@ type Args = {
   endBusy: Busy["endBusy"];
   current: Editor["current"];
   currentFileId: Editor["currentFileId"];
-  segmentsRef: Editor["segmentsRef"];
+  segmentPublish: SegmentPublishApi;
   setCurrent: Editor["setCurrent"];
-  setSegments: Editor["setSegments"];
   setError: (msg: string) => void;
   closeGate: CloseGate;
   mutations: Mutations;
@@ -73,9 +69,8 @@ export function useTranscribeJobExecute(args: Args) {
     endBusy,
     current,
     currentFileId,
-    segmentsRef,
+    segmentPublish,
     setCurrent,
-    setSegments,
     setError,
     closeGate,
     mutations,
@@ -85,6 +80,8 @@ export function useTranscribeJobExecute(args: Args) {
     clearScheduledAutoSave,
     onTranscribeSuccess,
   } = args;
+
+  const getCurrentSegmentsSnapshot = segmentPublish.getCurrentSegmentsSnapshot;
 
   const [transcribeHints, setTranscribeHints] = useState<string[]>([]);
   const [transcribeWarnings, setTranscribeWarnings] = useState<string[]>([]);
@@ -122,8 +119,7 @@ export function useTranscribeJobExecute(args: Args) {
         fileId,
         out,
         projectId: current.id,
-        segmentsRef,
-        setSegments,
+        segmentPublish,
         setCurrent,
         resetMutationHistory: mutations.resetMutationHistory,
         openFileWrapped: closeGate.openFileWrapped,
@@ -140,10 +136,9 @@ export function useTranscribeJobExecute(args: Args) {
       current,
       mutations,
       onTranscribeSuccess,
-      segmentsRef,
+      segmentPublish,
       setCurrent,
       setError,
-      setSegments,
     ],
   );
 
@@ -180,8 +175,8 @@ export function useTranscribeJobExecute(args: Args) {
     userCancelRequestedRef.current = false;
     firstSegmentsLoggedRef.current = false;
     transcribeStartedAtRef.current = Date.now();
-    const restoreSnapshot = snapshotSegmentsForRestore(segmentsRef.current);
-    publishTranscribeSegmentClear(segmentsRef, setSegments);
+    const restoreSnapshot = snapshotSegmentsForRestore(getCurrentSegmentsSnapshot());
+    segmentPublish.publishTranscribeClear();
     try {
       const online =
         transcribeSource === "online" ? tryBuildOnlineTranscribeBridgePayload() : null;
@@ -191,9 +186,9 @@ export function useTranscribeJobExecute(args: Args) {
         const local = await runLocalTranscribeJob({
           fileId,
           base,
-          segmentsRef,
+          segmentPublish,
           refs: runRefs,
-          callbacks: { setSegments, setTranscribeProgress },
+          callbacks: { setTranscribeProgress },
         });
         out = local.out;
         if (local.usedAsyncFallback) {
@@ -206,7 +201,7 @@ export function useTranscribeJobExecute(args: Args) {
       }
       await finishTranscribeSuccessCb(fileId, out);
     } catch (e) {
-      publishTranscribeSegmentRestore(segmentsRef, setSegments, restoreSnapshot);
+      segmentPublish.publishTranscribeRestore(restoreSnapshot);
       if (isTranscribeUserCancellation(e) || isTranscribeInvokeCancelled(e)) {
         setTranscribeHints([]);
         setTranscribeWarnings([]);
@@ -234,8 +229,8 @@ export function useTranscribeJobExecute(args: Args) {
     beginBusy,
     endBusy,
     setError,
-    setSegments,
-    segmentsRef,
+    segmentPublish,
+    getCurrentSegmentsSnapshot,
     localTranscribePreflight,
     clearScheduledAutoSave,
     transcribeSource,

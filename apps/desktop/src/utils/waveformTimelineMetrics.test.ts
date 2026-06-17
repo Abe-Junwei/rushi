@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { effectiveTimelinePxPerSec } from "./waveformProjection";
-import { TIMELINE_PX_PER_SEC } from "./pxPerSec";
+import { TIMELINE_PX_PER_SEC, MAX_WAVESURFER_PEAK_COLUMNS } from "./pxPerSec";
 import {
   resolveLayoutDurationSec,
   resolveMediaDurationSec,
@@ -86,7 +86,7 @@ describe("resolveWaveformTimelineMetrics", () => {
       pxPerSec: 100,
     });
 
-    expect(m.timelineWidthPx).toBeLessThanOrEqual(32_768);
+    expect(m.timelineWidthPx).toBeLessThanOrEqual(MAX_WAVESURFER_PEAK_COLUMNS);
     expect(m.timelineWidthPx).toBeGreaterThan(32_000);
   });
 });

@@ -27,7 +27,11 @@ from rushi_asr.model_prepare_cache import (
     resolve_qwen_forced_aligner_arg,
 )
 from rushi_asr.schemas import TranscriptionSegment
-from rushi_asr.asr_model_profile import LONG_AUDIO_SEC, funasr_language_for_model
+from rushi_asr.asr_model_profile import (
+    LONG_AUDIO_SEC,
+    filter_generate_kwargs_for_model,
+    funasr_language_for_model,
+)
 from rushi_asr.segmentation import (
     funasr_generate_kwargs,
     segment_funasr_generate_result,
@@ -305,7 +309,7 @@ def generate_and_parse_funasr(
                 _warn("return_time_stamps_param_unsupported")
             return {k: v for k, v in current.items() if k != key}
 
-        current = dict(kwargs)
+        current = filter_generate_kwargs_for_model(model_id, dict(kwargs), _warn)
         with _runtime_lock:
             while True:
                 try:

@@ -44,7 +44,7 @@ function SetupStepNode({ status }: { status: AsrSetupStepStatus }) {
 }
 
 function stepLabelClass(status: AsrSetupStepStatus): string {
-  const base = "text-[11px] leading-[1.35]";
+  const base = "text-label leading-[1.35]";
   switch (status) {
     case "running":
       return `${base} font-medium text-notion-text`;

@@ -12,17 +12,10 @@ import { isPxPerSecNearFitAll, isNearEditingDefaultForMedia } from "../utils/wav
 type WaveformZoomCommandDeps = {
   setLayoutIntentState: (intent: WaveformZoomLayoutIntent) => void;
   applyLayoutAndDraw: (next: number) => void;
-  setLayoutPxPerSecState: React.Dispatch<React.SetStateAction<number>>;
-  scheduleDrawPxPerSec: (next: number) => void;
 };
 
 export function useWaveformZoomCommands(deps: WaveformZoomCommandDeps) {
-  const {
-    setLayoutIntentState,
-    applyLayoutAndDraw,
-    setLayoutPxPerSecState,
-    scheduleDrawPxPerSec,
-  } = deps;
+  const { setLayoutIntentState, applyLayoutAndDraw } = deps;
 
   const applyFitAllRefitPxPerSec = useCallback(
     (next: number) => {
@@ -53,10 +46,9 @@ export function useWaveformZoomCommands(deps: WaveformZoomCommandDeps) {
     (next: number) => {
       if (!Number.isFinite(next)) return;
       setLayoutIntentState("manual");
-      setLayoutPxPerSecState(next);
-      scheduleDrawPxPerSec(next);
+      applyLayoutAndDraw(next);
     },
-    [scheduleDrawPxPerSec, setLayoutIntentState, setLayoutPxPerSecState],
+    [applyLayoutAndDraw, setLayoutIntentState],
   );
 
   const resetZoom = useCallback(() => {

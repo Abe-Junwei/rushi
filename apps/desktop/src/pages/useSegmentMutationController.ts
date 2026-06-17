@@ -1,12 +1,8 @@
 import { useCallback, useMemo, useRef } from "react";
-import type { SegmentDto } from "../tauri/projectApi";
 import { withAiRevisedStage } from "../services/segmentStagePersist";
 import { segmentDraftKey, segmentDraftStore } from "../hooks/useSegmentDraftStore";
-import {
-  flushSegmentTextDrafts as flushSegmentTextDraftsImpl,
-  publishSegmentTextBulkMutation,
-  syncDomTextareasFromSegments,
-} from "./flushSegmentTextDrafts";
+import { syncDomTextareasFromSegments } from "./flushSegmentTextDrafts";
+import type { SegmentPublishApi } from "./segmentPublishApi";
 import {
   clampSegmentBoundsToNeighbors,
   segmentBoundsMeetMinSpan,
@@ -51,8 +47,7 @@ export interface SegmentMutationApi {
 }
 
 type SegmentMutationDeps = {
-  segmentsRef: React.MutableRefObject<SegmentDto[]>;
-  setSegments: React.Dispatch<React.SetStateAction<SegmentDto[]>>;
+  segmentPublish: SegmentPublishApi;
   selectedIdxRef: React.MutableRefObject<number>;
   setSelectedIdx: React.Dispatch<React.SetStateAction<number>>;
   setError: (msg: string) => void;
@@ -63,8 +58,7 @@ type SegmentMutationDeps = {
 
 export function useSegmentMutationController(deps: SegmentMutationDeps): SegmentMutationApi {
   const {
-    segmentsRef,
-    setSegments,
+    segmentPublish,
     selectedIdxRef,
     setSelectedIdx,
     setError,
@@ -75,39 +69,39 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
 
   const segmentBoundsLiveGestureRef = useRef(false);
 
-  const undoRedo = useSegmentUndoRedo(segmentsRef, setSegments);
+  const getCurrentSegmentsSnapshot = segmentPublish.getCurrentSegmentsSnapshot;
+  const undoRedo = useSegmentUndoRedo(segmentPublish.publishTextBulk, getCurrentSegmentsSnapshot);
 
   const { pushUndo, pushUndoForTextEdit, undo: undoStackPop, redo: redoStackPop } = undoRedo;
 
   const flushSegmentTextDrafts = useCallback(() => {
-    flushSegmentTextDraftsImpl(segmentsRef, setSegments, {
+    segmentPublish.flushSegmentTextDrafts({
       beforeApplyUpdates: (updates) => {
         for (const { idx } of updates) {
           pushUndoForTextEdit(idx);
         }
       },
     });
-  }, [segmentsRef, setSegments, pushUndoForTextEdit]);
+  }, [segmentPublish, pushUndoForTextEdit]);
 
   const undo = useCallback(() => {
     if (busy) return;
-    syncDomTextareasFromSegments(segmentsRef.current);
+    syncDomTextareasFromSegments(getCurrentSegmentsSnapshot());
     segmentDraftStore.discardEditingSession();
     undoStackPop();
-  }, [busy, segmentsRef, undoStackPop]);
+  }, [busy, getCurrentSegmentsSnapshot, undoStackPop]);
 
   const redo = useCallback(() => {
     if (busy) return;
-    syncDomTextareasFromSegments(segmentsRef.current);
+    syncDomTextareasFromSegments(getCurrentSegmentsSnapshot());
     segmentDraftStore.discardEditingSession();
     redoStackPop();
-  }, [busy, segmentsRef, redoStackPop]);
+  }, [busy, getCurrentSegmentsSnapshot, redoStackPop]);
 
   const mergeDelete = useMemo(
     () =>
       createSegmentMergeDeleteActions({
-        segmentsRef,
-        setSegments,
+        segmentPublish,
         selectedIdxRef,
         setSelectedIdx,
         setError,
@@ -115,8 +109,7 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
         onSelectionCollapsed,
       }),
     [
-      segmentsRef,
-      setSegments,
+      segmentPublish,
       selectedIdxRef,
       setSelectedIdx,
       setError,
@@ -129,40 +122,34 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
     () =>
       createSegmentInsertActions({
         busy,
-        segmentsRef,
-        setSegments,
+        segmentPublish,
         setSelectedIdx,
         setError,
         pushUndo,
-        flushSegmentTextDrafts,
         onSelectionCollapsed,
       }),
     [
       busy,
-      segmentsRef,
-      setSegments,
+      segmentPublish,
       setSelectedIdx,
       setError,
       pushUndo,
-      flushSegmentTextDrafts,
       onSelectionCollapsed,
     ],
   );
 
   const splits = useSegmentSplitController({
-    segmentsRef,
-    setSegments,
+    segmentPublish,
     setSelectedIdx,
     setError,
     pushUndo,
-    flushSegmentTextDrafts,
     onSelectionCollapsed,
   });
 
   const updateSegmentText = useCallback(
     (idx: number, text: string, options?: { fromLlm?: boolean }) => {
       if (busy) return;
-      const prev = segmentsRef.current;
+      const prev = getCurrentSegmentsSnapshot();
       const cur = prev[idx];
       if (!cur || cur.text === text) return;
       pushUndoForTextEdit(idx);
@@ -172,29 +159,36 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
       }
       const nextRow = { ...cur, text };
       const patched = options?.fromLlm ? withAiRevisedStage(nextRow) : nextRow;
-      const out = [...prev];
-      out[idx] = patched;
-      publishSegmentTextBulkMutation(segmentsRef, setSegments, out);
+      segmentPublish.publishTextBulk((base) => {
+        const out = [...base];
+        out[idx] = patched;
+        return out;
+      });
       segmentDraftStore.endComposition(segmentDraftKey(cur, idx));
       segmentDraftStore.clearDraft(segmentDraftKey(patched, idx));
       if (options?.fromLlm && uid && pendingAiRevisedUidsRef) {
         pendingAiRevisedUidsRef.current.add(uid);
       }
     },
-    [busy, segmentsRef, setSegments, pushUndoForTextEdit, pendingAiRevisedUidsRef],
+    [busy, getCurrentSegmentsSnapshot, segmentPublish, pushUndoForTextEdit, pendingAiRevisedUidsRef],
   );
 
   const updateSegmentTime = useCallback(
     (idx: number, field: "start_sec" | "end_sec", value: number) => {
+      const prev = getCurrentSegmentsSnapshot();
+      const cur = prev[idx];
+      if (!cur || cur[field] === value) return;
       pushUndo();
-      setSegments((prev) => prev.map((s, i) => (i === idx ? { ...s, [field]: value } : s)));
+      segmentPublish.publishStructure((base) =>
+        base.map((s, i) => (i === idx ? { ...s, [field]: value } : s)),
+      );
     },
-    [pushUndo, setSegments],
+    [getCurrentSegmentsSnapshot, pushUndo, segmentPublish],
   );
 
   const updateSegmentBounds = useCallback(
     (idx: number, startSec: number, endSec: number, phase: "live" | "commit" = "commit") => {
-      const prev = segmentsRef.current;
+      const prev = getCurrentSegmentsSnapshot();
       const s = prev[idx];
       if (!s) return;
       let lo = Math.min(startSec, endSec);
@@ -222,16 +216,20 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
           segmentBoundsLiveGestureRef.current = true;
           pushUndo();
         }
-        setSegments((p) => p.map((x, i) => (i === idx ? { ...x, start_sec: lo, end_sec: hi } : x)));
+        segmentPublish.publishStructureLive((p) =>
+          p.map((x, i) => (i === idx ? { ...x, start_sec: lo, end_sec: hi } : x)),
+        );
         return;
       }
 
       const hadLiveGesture = segmentBoundsLiveGestureRef.current;
       segmentBoundsLiveGestureRef.current = false;
       if (!hadLiveGesture) pushUndo();
-      setSegments((p) => p.map((x, i) => (i === idx ? { ...x, start_sec: lo, end_sec: hi } : x)));
+      segmentPublish.publishStructure((base) =>
+        base.map((x, i) => (i === idx ? { ...x, start_sec: lo, end_sec: hi } : x)),
+      );
     },
-    [segmentsRef, setSegments, pushUndo],
+    [getCurrentSegmentsSnapshot, segmentPublish, pushUndo],
   );
 
   return {

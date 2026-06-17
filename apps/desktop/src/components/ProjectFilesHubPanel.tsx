@@ -117,7 +117,7 @@ export function ProjectFilesHubPanel({ controller: c }: { controller: ProjectCon
             ) : (
               <div className="relative flex items-start">
                 <div className="min-w-0 flex flex-1 flex-col gap-1 pr-16">
-                  <h1 className="truncate text-[28px] font-semibold leading-[1.25] tracking-[-0.015em] text-notion-text">
+                  <h1 className="truncate text-display font-semibold leading-[1.25] tracking-[-0.015em] text-notion-text">
                     {projectName}
                   </h1>
                   {projectMetadataLine ? (
@@ -161,7 +161,7 @@ export function ProjectFilesHubPanel({ controller: c }: { controller: ProjectCon
 
           <section className="flex flex-col gap-2" aria-label="项目文件">
             <div className="flex items-center justify-between gap-2">
-              <h2 className="text-[13px] font-medium text-notion-text-muted">项目文件</h2>
+              <h2 className="text-title font-medium text-notion-text-muted">项目文件</h2>
               <span className={`${PANEL_TYPOGRAPHY.meta} tabular-nums text-notion-text-muted`}>
                 {files.length} 个文件
               </span>
@@ -194,14 +194,14 @@ export function ProjectFilesHubPanel({ controller: c }: { controller: ProjectCon
                         />
                         <button
                           type="submit"
-                          className={`${CONTROL_BTN_LINK} shrink-0 text-[11px] text-zen-saffron`}
+                          className={`${CONTROL_BTN_LINK} shrink-0 text-label text-zen-saffron`}
                           disabled={busy || !c.renameProjectFileDraft.trim()}
                         >
                           保存
                         </button>
                         <button
                           type="button"
-                          className={`${CONTROL_BTN_LINK} shrink-0 text-[11px] text-notion-text-muted`}
+                          className={`${CONTROL_BTN_LINK} shrink-0 text-label text-notion-text-muted`}
                           disabled={busy}
                           onClick={() => c.cancelRenameProjectFile()}
                         >

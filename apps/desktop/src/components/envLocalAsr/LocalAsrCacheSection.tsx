@@ -171,7 +171,7 @@ function InfoRow({ label, value, mono = false }: { label: string; value: string;
   return (
     <div className="flex flex-wrap items-start justify-between gap-2">
       <span className={PANEL_TYPOGRAPHY.fieldLabel}>{label}</span>
-      <span className={`${PANEL_TYPOGRAPHY.meta} ${mono ? "font-mono text-[11px] text-zen-indigo" : ""}`}>{value}</span>
+      <span className={`${PANEL_TYPOGRAPHY.meta} ${mono ? "font-mono text-label text-zen-indigo" : ""}`}>{value}</span>
     </div>
   );
 }

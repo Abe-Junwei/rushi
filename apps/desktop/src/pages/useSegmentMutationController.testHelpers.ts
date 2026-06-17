@@ -2,6 +2,7 @@ import { useRef, useState } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
 import { useSegmentMutationController } from "./useSegmentMutationController";
 import { reconcileSegmentsRefWithState } from "./segmentSegmentsRefSync";
+import { createSegmentPublishApi } from "./segmentPublishApi";
 
 export function makeSeg(props: Partial<SegmentDto> & { text: string; start_sec: number; end_sec: number }): SegmentDto {
   return {
@@ -25,10 +26,10 @@ export function useTestSegmentMutationController(
   reconcileSegmentsRefWithState(segmentsRef, segments);
   selectedIdxRef.current = selectedIdx;
   const [error, setError] = useState("");
+  const segmentPublish = createSegmentPublishApi(segmentsRef, setSegments);
 
   const mutations = useSegmentMutationController({
-    segmentsRef,
-    setSegments,
+    segmentPublish,
     selectedIdxRef,
     setSelectedIdx,
     setError,
@@ -36,5 +37,5 @@ export function useTestSegmentMutationController(
     onSelectionCollapsed,
   });
 
-  return { mutations, segments, selectedIdx, setSelectedIdx, error, segmentsRef };
+  return { mutations, segments, selectedIdx, setSelectedIdx, error, segmentsRef, segmentPublish };
 }

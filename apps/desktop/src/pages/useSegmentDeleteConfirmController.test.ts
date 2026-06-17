@@ -40,7 +40,7 @@ function useTestDeleteConfirm(initial: SegmentDto[]) {
   }, []);
 
   const gate = useSegmentDeleteConfirmController({
-    segmentsRef,
+    getCurrentSegmentsSnapshot: () => segmentsRef.current,
     flushSegmentTextDrafts: () => {},
     deleteSegmentAt,
     deleteSegmentRange,

@@ -17,7 +17,7 @@ import type { BusyReason } from "./useProjectCrudController";
 type Args = {
   currentFileId: string | null;
   hasSegmentText: boolean;
-  segmentsRef: React.MutableRefObject<SegmentDto[]>;
+  getCurrentSegmentsSnapshot: () => SegmentDto[];
   flushSegmentTextDrafts: () => void;
   setError: (msg: string) => void;
   beginBusy: (reason: BusyReason) => void;
@@ -33,7 +33,7 @@ export function usePostTranscribeStageBPreviewRun(args: Args) {
   const {
     currentFileId,
     hasSegmentText,
-    segmentsRef,
+    getCurrentSegmentsSnapshot,
     flushSegmentTextDrafts,
     setError,
     beginBusy,
@@ -65,7 +65,8 @@ export function usePostTranscribeStageBPreviewRun(args: Args) {
     const seq = activeRequestSeqRef.current + 1;
     activeRequestSeqRef.current = seq;
     const pendingStageAHint = pendingStageAHintRef.current;
-    const total = estimateStageBProgressTotal({ segments: segmentsRef.current, runtime });
+    const currentSegments = getCurrentSegmentsSnapshot();
+    const total = estimateStageBProgressTotal({ segments: currentSegments, runtime });
     setPreviewFocusSegmentIdx(null);
     setDialog({
       phase: "loading",
@@ -77,7 +78,7 @@ export function usePostTranscribeStageBPreviewRun(args: Args) {
     beginBusy("stage_b");
     try {
       const out = await runPostTranscribeStageBPreview({
-        segments: segmentsRef.current,
+        segments: currentSegments,
         runtime,
         shouldContinue: () => activeRequestSeqRef.current === seq,
         onActiveRequestId: (requestId) => {
@@ -136,9 +137,8 @@ export function usePostTranscribeStageBPreviewRun(args: Args) {
     currentFileId,
     endBusy,
     flushSegmentTextDrafts,
+    getCurrentSegmentsSnapshot,
     hasSegmentText,
-    pendingStageAHintRef,
-    segmentsRef,
     setDialog,
     setError,
     setPreviewFocusSegmentIdx,

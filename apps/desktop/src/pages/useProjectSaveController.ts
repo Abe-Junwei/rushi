@@ -1,4 +1,4 @@
-import { useCallback, useRef, type Dispatch, type MutableRefObject, type SetStateAction } from "react";
+import { useCallback, useRef } from "react";
 import type { ProjectDetail, SegmentDto } from "../tauri/projectApi";
 import * as p1 from "../tauri/projectApi";
 import * as fileApi from "../tauri/fileApi";
@@ -11,10 +11,10 @@ import {
   segmentCanFinalize,
 } from "../services/segmentConfirmEligible";
 import { waitForSaveIdle } from "../services/waitForSaveIdle";
-import { publishSegmentStructureMutation } from "./flushSegmentTextDrafts";
 import { segmentDraftStore } from "../hooks/useSegmentDraftStore";
 import { toast } from "../services/ui/toast";
 import type { BusyReason } from "./useProjectCrudController";
+import type { SegmentPublishApi } from "./segmentPublishApi";
 import {
   runProjectSavePersistPipeline,
   type SavePersistPipelineOptions,
@@ -35,17 +35,16 @@ type Args = {
   busy: boolean;
   current: ProjectDetail | null;
   currentFileId: string | null;
-  segmentsRef: MutableRefObject<SegmentDto[]>;
-  selectedIdxRef: MutableRefObject<number>;
-  setCurrent: Dispatch<SetStateAction<ProjectDetail | null>>;
-  setSegments: Dispatch<SetStateAction<SegmentDto[]>>;
-  setSelectedIdx: Dispatch<SetStateAction<number>>;
+  segmentPublish: SegmentPublishApi;
+  selectedIdxRef: React.MutableRefObject<number>;
+  setCurrent: React.Dispatch<React.SetStateAction<ProjectDetail | null>>;
+  setSelectedIdx: React.Dispatch<React.SetStateAction<number>>;
   setError: (msg: string) => void;
   beginBusy: (reason: BusyReason) => void;
   endBusy: () => void;
   mutations: MutationsApi;
   dirty: SegmentDirtyApi;
-  pendingAiRevisedUidsRef: MutableRefObject<Set<string>>;
+  pendingAiRevisedUidsRef: React.MutableRefObject<Set<string>>;
   checkGlossaryLearnAfterSave: () => void;
 };
 
@@ -54,10 +53,9 @@ export function useProjectSaveController(args: Args) {
     busy,
     current,
     currentFileId,
-    segmentsRef,
+    segmentPublish,
     selectedIdxRef,
     setCurrent,
-    setSegments,
     setSelectedIdx,
     setError,
     beginBusy,
@@ -71,6 +69,7 @@ export function useProjectSaveController(args: Args) {
   const saveInFlightRef = useRef(false);
   const clearAutoSaveRef = useRef<() => void>(() => {});
   const notifySegmentsPersistedRef = useRef<() => void>(() => {});
+  const getCurrentSegmentsSnapshot = segmentPublish.getCurrentSegmentsSnapshot;
 
   const saveSegments = useCallback(
     async (options?: SavePersistPipelineOptions): Promise<boolean> => {
@@ -91,12 +90,11 @@ export function useProjectSaveController(args: Args) {
         const { snapshotBase } = await runProjectSavePersistPipeline({
           current,
           currentFileId,
-          segmentsRef,
+          segmentPublish,
           selectedIdxRef,
           savedSnapshot: dirty.getSavedSnapshot(),
           pendingAiRevisedUids: pendingAiRevisedUidsRef.current,
           setCurrent,
-          setSegments,
           setSelectedIdx,
           options,
         });
@@ -120,13 +118,13 @@ export function useProjectSaveController(args: Args) {
       current,
       currentFileId,
       dirty,
+      getCurrentSegmentsSnapshot,
       mutations,
       pendingAiRevisedUidsRef,
-      segmentsRef,
+      segmentPublish,
       selectedIdxRef,
       setCurrent,
       setError,
-      setSegments,
       setSelectedIdx,
     ],
   );
@@ -134,11 +132,12 @@ export function useProjectSaveController(args: Args) {
   const finalizeSegmentAt = useCallback(
     async (segmentIdx: number, advance: boolean): Promise<boolean> => {
       if (!current || !currentFileId || busy) return false;
-      if (segmentIdx < 0 || segmentIdx >= segmentsRef.current.length) return false;
-      if (!segmentCanFinalize(segmentsRef.current, segmentIdx, busy)) return false;
+      const currentSegments = getCurrentSegmentsSnapshot();
+      if (segmentIdx < 0 || segmentIdx >= currentSegments.length) return false;
+      if (!segmentCanFinalize(currentSegments, segmentIdx, busy)) return false;
       clearAutoSaveRef.current();
       const hadUnsaved = segmentHasUnsavedText(
-        segmentsRef.current,
+        currentSegments,
         dirty.getSavedSnapshot(),
         segmentIdx,
       );
@@ -166,7 +165,7 @@ export function useProjectSaveController(args: Args) {
         return false;
       }
       if (advance) {
-        const nextIdx = Math.min(segmentIdx + 1, segmentsRef.current.length - 1);
+        const nextIdx = Math.min(segmentIdx + 1, getCurrentSegmentsSnapshot().length - 1);
         if (nextIdx !== selectedIdxRef.current) {
           setSelectedIdx(nextIdx);
         }
@@ -178,8 +177,8 @@ export function useProjectSaveController(args: Args) {
       current,
       currentFileId,
       dirty,
+      getCurrentSegmentsSnapshot,
       saveSegments,
-      segmentsRef,
       selectedIdxRef,
       setSelectedIdx,
     ],
@@ -219,9 +218,9 @@ export function useProjectSaveController(args: Args) {
         segmentDraftStore.resetAll();
         await p1.fileRestoreSegmentsFromEditLog(currentFileId, editLogId);
         const fd = await fileApi.loadFile(currentFileId);
-        const prevUid = segmentsRef.current[selectedIdxRef.current]?.uid;
+        const prevUid = getCurrentSegmentsSnapshot()[selectedIdxRef.current]?.uid;
         const segs = normalizeSegmentList(fd.segments);
-        publishSegmentStructureMutation(segmentsRef, setSegments, segs);
+        segmentPublish.publishStructure(segs);
         const ni = findSegmentIndexByUid(segs, prevUid);
         setSelectedIdx(
           ni >= 0 ? ni : Math.min(selectedIdxRef.current, Math.max(0, segs.length - 1)),
@@ -244,10 +243,10 @@ export function useProjectSaveController(args: Args) {
       dirty,
       endBusy,
       mutations,
-      segmentsRef,
+      getCurrentSegmentsSnapshot,
+      segmentPublish,
       selectedIdxRef,
       setError,
-      setSegments,
       setSelectedIdx,
     ],
   );

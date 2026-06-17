@@ -73,7 +73,7 @@ export function CorrectionMemoryEditor({
         />
         <span className="flex flex-col gap-0.5">
           <span className={PANEL_TYPOGRAPHY.fieldLabel}>采纳为规则</span>
-          <span className="text-[11px] leading-snug text-notion-text-muted">
+          <span className="text-label leading-snug text-notion-text-muted">
             立即用于 F1 / 转写提示，不等待命中次数
           </span>
         </span>

@@ -47,7 +47,7 @@ function makeDeps(overrides: Partial<Parameters<typeof useExportController>[0]> 
   return {
     current,
     currentFileId: "file-1",
-    segmentsRef: { current: segments },
+    getCurrentSegmentsSnapshot: () => segments,
     setError: vi.fn(),
     flushSegmentTextDrafts: vi.fn(),
     beginBusy: vi.fn(),

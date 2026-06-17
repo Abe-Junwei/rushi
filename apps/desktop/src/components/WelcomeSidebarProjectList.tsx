@@ -179,8 +179,8 @@ export function WelcomeSidebarProjectList({
           })
         ) : (
           <div className="flex flex-col items-center justify-center px-5 py-10 text-center">
-            <p className="m-0 text-[13px] text-notion-text-muted">还没有项目</p>
-            <p className="m-0 mt-1 text-[11px] text-notion-text-light">在右侧新建第一个转写项目</p>
+            <p className="m-0 text-title text-notion-text-muted">还没有项目</p>
+            <p className="m-0 mt-1 text-label text-notion-text-light">在右侧新建第一个转写项目</p>
           </div>
         )}
       </div>

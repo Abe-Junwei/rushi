@@ -34,7 +34,7 @@ const fieldLabel = PANEL_TYPOGRAPHY.envFieldLabel;
 const fieldGroup = ENV_PANEL_FORM_FIELD_CLASS;
 const monoField = `${CONTROL_TEXT_INPUT} ${ENV_MONO_FIELD}`;
 const presetEndpointDisplay =
-  "break-all rounded-sm border border-notion-border bg-notion-bg-secondary/60 px-3 py-2 font-mono text-[11px] font-normal normal-case leading-relaxed text-notion-text-muted";
+  "break-all rounded-sm border border-notion-border bg-notion-bg-secondary/60 px-3 py-2 font-mono text-label font-normal normal-case leading-relaxed text-notion-text-muted";
 
 type Props = {
   busy: boolean;

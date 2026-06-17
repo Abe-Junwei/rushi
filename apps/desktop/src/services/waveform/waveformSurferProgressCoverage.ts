@@ -176,30 +176,26 @@ function readWaveSurferWaveformLayers(ws: WaveSurfer): WaveSurferWaveformLayerNo
  * WS `renderProgress` clips the main canvas to the unplayed tail and paints the
  * played head into `progressWrapper`. In Tauri release WebViews the progress clones
  * are often missing while the clip remains — playhead-left looks blank.
- * Keep cursor/progress math but show the full waveform on the main canvas.
+ * Keep the full waveform on the main canvas (no clip) and drive played tint via
+ * `progressWrapper` width + `progressColor` instead.
  */
 export function restoreWaveSurferMainCanvasVisibility(
   layers: WaveSurferWaveformLayerNodes,
+  ratio: number,
 ): void {
   layers.canvasWrapper.style.clipPath = "none";
-  layers.progressWrapper.style.width = "0";
+  const played = Math.max(0, Math.min(1, ratio));
+  layers.progressWrapper.style.width = `${played * 100}%`;
   layers.progressWrapper.style.overflow = "hidden";
 }
 
-function updateWaveSurferPlayheadCursor(
-  renderer: WaveSurferRendererInternals,
-  ratio: number,
-): void {
+function hideWaveSurferPlayheadCursor(renderer: WaveSurferRendererInternals): void {
   if (!renderer.cursor) return;
-  const percents = ratio * 100;
-  renderer.cursor.style.left = `${percents}%`;
-  const cursorWidth = renderer.options?.cursorWidth;
-  renderer.cursor.style.transform = cursorWidth
-    ? `translateX(-${ratio * cursorWidth}px)`
-    : "";
+  renderer.cursor.style.display = "none";
+  renderer.cursor.style.visibility = "hidden";
 }
 
-/** Cursor-only progress update — never apply WS clipPath / progressWrapper width. */
+/** Progress update without main-canvas clip — played tint via progressWrapper overlay. */
 export function applyWaveSurferProgressWithoutClip(
   ws: WaveSurfer,
   ratio: number,
@@ -207,8 +203,8 @@ export function applyWaveSurferProgressWithoutClip(
   if (Number.isNaN(ratio)) return;
   const renderer = ws.getRenderer() as unknown as WaveSurferRendererInternals;
   const layers = readWaveSurferWaveformLayers(ws);
-  if (layers) restoreWaveSurferMainCanvasVisibility(layers);
-  updateWaveSurferPlayheadCursor(renderer, ratio);
+  if (layers) restoreWaveSurferMainCanvasVisibility(layers, ratio);
+  hideWaveSurferPlayheadCursor(renderer);
 }
 
 function refreshWaveSurferProgressVisual(ws: WaveSurfer): void {
@@ -220,10 +216,11 @@ function refreshWaveSurferProgressVisual(ws: WaveSurfer): void {
 
 /**
  * Patch renderer.renderProgress so every WS progress update keeps the main canvas
- * fully visible (played tint via progressWrapper is intentionally disabled).
+ * fully visible while the progress layer shows the played-region tint.
  */
 export function installWaveSurferPlayedRegionDisplayFix(ws: WaveSurfer): () => void {
   const renderer = ws.getRenderer() as unknown as WaveSurferRendererInternals;
+  hideWaveSurferPlayheadCursor(renderer);
   const original = renderer.renderProgress?.bind(renderer);
   if (!original) return () => {};
 

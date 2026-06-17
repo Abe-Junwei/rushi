@@ -77,7 +77,7 @@ export function EditorWaveformPane({
             className="waveform-center-status pointer-events-none absolute inset-0 z-30 flex items-center justify-center"
             aria-live="polite"
           >
-            <p className="rounded-md bg-notion-sidebar-active/95 px-3 py-2 text-[12px] text-notion-text-muted shadow-sm">
+            <p className="rounded-md bg-notion-sidebar-active/95 px-3 py-2 text-body text-notion-text-muted shadow-sm">
               {centerStatusLabel}
             </p>
           </div>
@@ -103,12 +103,12 @@ export function EditorWaveformPane({
             }}
           >
             {tx.loadError ? (
-              <p className="absolute inset-x-4 top-4 z-30 rounded-md bg-zen-cinnabar/10 px-3 py-2 text-center text-[12px] text-zen-cinnabar">
+              <p className="absolute inset-x-4 top-4 z-30 rounded-md bg-zen-cinnabar/10 px-3 py-2 text-center text-body text-zen-cinnabar">
                 {tx.loadError}
               </p>
             ) : null}
             {tx.peaksError && !tx.loadError ? (
-              <p className="absolute inset-x-4 top-4 z-30 rounded-md bg-zen-cinnabar/10 px-3 py-2 text-center text-[12px] text-zen-cinnabar">
+              <p className="absolute inset-x-4 top-4 z-30 rounded-md bg-zen-cinnabar/10 px-3 py-2 text-center text-body text-zen-cinnabar">
                 波形生成失败：{tx.peaksError}
               </p>
             ) : null}

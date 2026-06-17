@@ -36,7 +36,7 @@ export function LocalAsrAdvancedSection({
       description={
         <p className="m-0">
           主路径请使用上方「一键准备」。仅在开发环境或内置侧车不可用时，才需要 pip 安装 FunASR 依赖或手动启动
-          <code className="mx-1 rounded bg-notion-bg px-1 font-mono text-[11px]">python -m rushi_asr</code>。
+          <code className="mx-1 rounded bg-notion-bg px-1 font-mono text-label">python -m rushi_asr</code>。
         </p>
       }
     >
@@ -46,7 +46,7 @@ export function LocalAsrAdvancedSection({
         </EnvCompactButton>
       </EnvUtilitiesActionRow>
       {funasrInstallMessage ? (
-        <pre className="m-0 max-h-32 overflow-auto whitespace-pre-wrap font-mono text-[11px] text-zen-indigo">
+        <pre className="m-0 max-h-32 overflow-auto whitespace-pre-wrap font-mono text-label text-zen-indigo">
           {funasrInstallMessage}
         </pre>
       ) : null}
@@ -54,9 +54,9 @@ export function LocalAsrAdvancedSection({
         <div className="flex flex-col gap-2">
           <p className={`m-0 ${PANEL_TYPOGRAPHY.meta}`}>
             FunASR 未就绪（stub：中文正文常为空）。可尝试安装依赖并重启 ASR；可选{" "}
-            <code className="font-mono text-[11px]">RUSHI_FUNASR_MODEL</code>。
+            <code className="font-mono text-label">RUSHI_FUNASR_MODEL</code>。
           </p>
-          <pre className="m-0 max-h-32 overflow-auto whitespace-pre-wrap font-mono text-[11px] text-zen-indigo">
+          <pre className="m-0 max-h-32 overflow-auto whitespace-pre-wrap font-mono text-label text-zen-indigo">
             {funasrManualSetupCommands()}
           </pre>
         </div>

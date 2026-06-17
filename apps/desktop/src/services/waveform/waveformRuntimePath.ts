@@ -10,6 +10,7 @@ export type WaveformPathReason =
   | "mount_decode_background_off"
   | "peaks_load_applied"
   | "peaks_load_failed"
+  | "peaks_resample_failed"
   | "peaks_hot_switch_deferred"
   | "decode_only_zoom";
 

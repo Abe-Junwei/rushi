@@ -17,7 +17,7 @@ export const UNSAVED_NAV_DISCARD_PROMPT =
 
 export interface SegmentDirtyStateDeps {
   currentFileId: string | null;
-  segmentsRef: React.MutableRefObject<SegmentDto[]>;
+  getCurrentSegmentsSnapshot: () => SegmentDto[];
   flushSegmentTextDrafts: () => void;
 }
 
@@ -33,13 +33,13 @@ export interface SegmentDirtyStateApi {
 }
 
 export function useSegmentDirtyState(deps: SegmentDirtyStateDeps): SegmentDirtyStateApi {
-  const { currentFileId, segmentsRef, flushSegmentTextDrafts } = deps;
+  const { currentFileId, getCurrentSegmentsSnapshot, flushSegmentTextDrafts } = deps;
   const savedSegmentsRef = useRef<SegmentDto[]>([]);
 
   const markSegmentsSaved = useCallback(() => {
     flushSegmentTextDrafts();
-    savedSegmentsRef.current = snapshotSegmentsForPersist(segmentsRef.current);
-  }, [flushSegmentTextDrafts, segmentsRef]);
+    savedSegmentsRef.current = snapshotSegmentsForPersist(getCurrentSegmentsSnapshot());
+  }, [flushSegmentTextDrafts, getCurrentSegmentsSnapshot]);
 
   const setSavedSnapshot = useCallback((segments: SegmentDto[]) => {
     savedSegmentsRef.current = snapshotSegmentsForPersist(segments);
@@ -56,11 +56,11 @@ export function useSegmentDirtyState(deps: SegmentDirtyStateDeps): SegmentDirtyS
 
   const hasUnsavedSegmentChanges = useCallback(() => {
     if (!currentFileId) return false;
-    const withDrafts = segmentsWithDraftsApplied(segmentsRef.current);
+    const withDrafts = segmentsWithDraftsApplied(getCurrentSegmentsSnapshot());
     const saved = savedSegmentsRef.current;
     if (segmentsPersistSignature(withDrafts) === segmentsPersistSignature(saved)) return false;
     return !segmentsEqualForPersist(withDrafts, saved);
-  }, [currentFileId, segmentsRef]);
+  }, [currentFileId, getCurrentSegmentsSnapshot]);
 
   const confirmDiscardUnsavedIfNeeded = useCallback(() => {
     return !hasUnsavedSegmentChanges();

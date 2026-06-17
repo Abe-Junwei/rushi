@@ -15,13 +15,14 @@ import { useCorrectionRulesApply } from "./useCorrectionRulesApply";
 
 export type { CorrectionRulesDialogTrigger, CorrectionRulesDialogState } from "./correctionRulesPanelTypes";
 
+import type { SegmentPublishApi } from "./segmentPublishApi";
+
 type Args = {
   busy: boolean;
   currentFileId: string | null;
   segments: SegmentDto[];
-  segmentsRef: React.MutableRefObject<SegmentDto[]>;
+  segmentPublish: SegmentPublishApi;
   flushSegmentTextDrafts: () => void;
-  setSegments: React.Dispatch<React.SetStateAction<SegmentDto[]>>;
   pushUndo: () => void;
   setError: (msg: string) => void;
   saveSegments: (options?: { quiet?: boolean; countHits?: boolean }) => Promise<boolean>;
@@ -33,9 +34,8 @@ export function useCorrectionRulesController(args: Args) {
     busy,
     currentFileId,
     segments,
-    segmentsRef,
+    segmentPublish,
     flushSegmentTextDrafts,
-    setSegments,
     pushUndo,
     setError,
     saveSegments,
@@ -85,7 +85,7 @@ export function useCorrectionRulesController(args: Args) {
           readOnlyLearningHints,
           stableConflicts,
         } = await loadCorrectionRulesPreview({
-          segments: segmentsRef.current,
+          segments: segmentPublish.getCurrentSegmentsSnapshot(),
           transcribeWarnings,
         });
         if (!changes.length) {
@@ -121,8 +121,8 @@ export function useCorrectionRulesController(args: Args) {
     [
       canApplyCorrectionRules,
       flushSegmentTextDrafts,
+      segmentPublish,
       scrollToPreviewSegment,
-      segmentsRef,
       setError,
       transcribeWarnings,
     ],
@@ -130,15 +130,15 @@ export function useCorrectionRulesController(args: Args) {
 
   /** 转写后编排：打开阶段 A（完成后可接阶段 B）。 */
   const requestPostTranscribeProcessing = useCallback(async () => {
-    if (!currentFileId || segmentsRef.current.length === 0) return;
+    if (!currentFileId || segmentPublish.getCurrentSegmentsSnapshot().length === 0) return;
     await openStageA("postTranscribe");
-  }, [currentFileId, openStageA, segmentsRef]);
+  }, [currentFileId, openStageA, segmentPublish]);
 
   /** 工具栏「规则纠错」。 */
   const openCorrectionRulesManual = useCallback(async () => {
-    if (!currentFileId || segmentsRef.current.length === 0) return;
+    if (!currentFileId || segmentPublish.getCurrentSegmentsSnapshot().length === 0) return;
     await openStageA("manual");
-  }, [currentFileId, openStageA, segmentsRef]);
+  }, [currentFileId, openStageA, segmentPublish]);
 
   /** @deprecated 使用 `requestPostTranscribeProcessing` 或 `openCorrectionRulesManual` */
   const requestCorrectionRules = openCorrectionRulesManual;
@@ -179,9 +179,8 @@ export function useCorrectionRulesController(args: Args) {
 
   const { confirmCorrectionRulesWriteback } = useCorrectionRulesApply({
     dialog,
-    segmentsRef,
+    segmentPublish,
     flushSegmentTextDrafts,
-    setSegments,
     pushUndo,
     setError,
     saveSegments,

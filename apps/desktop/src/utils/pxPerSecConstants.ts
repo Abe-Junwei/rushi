@@ -7,7 +7,11 @@ export const TIMELINE_PX_PER_SEC = 56;
 export const PX_PER_SEC_MIN = 16;
 /** 跟随语段 fit 可低于手动滑块下限（极长语段缩进视口） */
 export const PX_PER_SEC_FIT_MIN = 0.05;
-export const PX_PER_SEC_MAX = 400;
+/**
+ * 手动 ± / 滑块名义上限（非 fit-selection）。
+ * 适度高于旧 400；刻意不对齐 L3（800px/s），避免短音频顶档后过度拉伸。
+ */
+export const PX_PER_SEC_MAX = 480;
 /** 「适配选中语段」可高于手动滑块上限，以便极短语段仍能放进视口 */
 export const PX_PER_SEC_FIT_SELECTION_MAX = 1200;
 
@@ -17,8 +21,11 @@ export const FIT_SELECTION_VIEWPORT_RATIO = 0.8;
 /** peaks resample / ws.load 分档步长：相近 px/s 共享一档，换语段更顺滑。 */
 export const PX_PER_SEC_PEAKS_QUANTUM = 8;
 
-/** WaveSurfer 单帧 peaks 列数上限；超长音频高缩放时避免百万列 resample / 主线程卡顿。 */
-const MAX_WAVESURFER_PEAK_COLUMNS = 32_768;
+/**
+ * WaveSurfer 单帧 peaks 列数上限（≈+25% vs 原 32768）。
+ * 长音频可渲染 max px/s = 此值 / duration；再大则 resample / canvas 成本明显上升。
+ */
+export const MAX_WAVESURFER_PEAK_COLUMNS = 40_960;
 
 /**
  * WaveSurfer 宿主容器固定宽度：≥ 任意缩放下的 WS 可滚宽度（`clampPxPerSecForWaveSurferRender`
@@ -28,8 +35,8 @@ const MAX_WAVESURFER_PEAK_COLUMNS = 32_768;
  */
 export const WAVEFORM_WS_HOST_WIDTH_PX = MAX_WAVESURFER_PEAK_COLUMNS + 256;
 
-/** decode 回退路径下单次 canvas 宽度上限（与 peaks 列数上限配套）。 */
-const MAX_WAVESURFER_CANVAS_WIDTH_PX = 262_144;
+/** decode 回退路径下单次 canvas 宽度上限（与 peaks 列数上限同比例 ≈+25%）。 */
+const MAX_WAVESURFER_CANVAS_WIDTH_PX = 327_680;
 
 /** ± 缩放：从默认 px/s 到 min/max 各需按键次数（对数对称步进）。 */
 export const WAVEFORM_ZOOM_STEPS_EACH_WAY = 5;

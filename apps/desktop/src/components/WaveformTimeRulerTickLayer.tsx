@@ -126,7 +126,7 @@ export function WaveformTimeRulerTickLayer({
           return (
             <span
               key={`lb-${t}`}
-              className={`absolute text-[10px] tabular-nums leading-none ${labelClassTop} ${
+              className={`absolute text-label tabular-nums leading-none ${labelClassTop} ${
                 embedded
                   ? interactionActive && isHighlightedMajor
                     ? "font-medium text-notion-text/90"

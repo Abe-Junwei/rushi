@@ -12,12 +12,12 @@
 
 .panel-title {
   margin: 0 0 0.5rem;
-  font-size: 18px;
+  font-size: var(--text-heading);
 }
 
 .panel-meta {
   margin: 0 0 0.75rem;
-  font-size: 14px;
+  font-size: var(--text-title);
   color: var(--notion-text-muted);
 }
 
@@ -31,7 +31,7 @@
 
 .panel-status {
   margin: 0.75rem 0 0.25rem;
-  font-size: 14px;
+  font-size: var(--text-title);
 }
 
 .panel-pre {
@@ -39,28 +39,28 @@
   padding: 0.65rem 0.75rem;
   border-radius: 8px;
   background: var(--notion-sidebar);
-  font-size: 12px;
+  font-size: var(--text-body);
   overflow: auto;
   max-height: 12rem;
 }
 
 .panel-hint {
   margin: 0.85rem 0 0;
-  font-size: 12px;
+  font-size: var(--text-body);
   color: var(--notion-text-muted);
 }
 
 .panel-err {
   margin: 0.6rem 0 0;
   color: var(--zen-cinnabar);
-  font-size: 14px;
+  font-size: var(--text-title);
 }
 
 .panel-warn {
   margin: 0.5rem 0 0;
   padding-left: 1.2rem;
   color: var(--zen-saffron-mid);
-  font-size: 12px;
+  font-size: var(--text-body);
 }
 
 .row-gap {
@@ -75,7 +75,7 @@
   flex-wrap: wrap;
   gap: 0.75rem 1rem;
   margin-top: 0.75rem;
-  font-size: 12px;
+  font-size: var(--text-body);
   color: var(--notion-text-muted);
 }
 

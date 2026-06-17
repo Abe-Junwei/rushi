@@ -10,6 +10,7 @@ import {
 } from "./transcribeJobHelpers";
 import { useTranscribeJobExecute } from "./useTranscribeJobExecute";
 import { useTranscribeJobPreflight } from "./useTranscribeJobPreflight";
+import type { SegmentPublishApi } from "./segmentPublishApi";
 
 export type { LocalTranscribePreflight } from "./transcribeJobHelpers";
 
@@ -19,7 +20,7 @@ type CloseGate = Pick<
 >;
 type Editor = Pick<
   ReturnType<typeof useProjectEditorState>,
-  "current" | "currentFileId" | "segments" | "segmentsRef" | "setCurrent" | "setSegments"
+  "current" | "currentFileId" | "segments" | "setCurrent"
 >;
 type Busy = Pick<ReturnType<typeof useProjectBusyState>, "busy" | "beginBusy" | "endBusy">;
 type Mutations = Pick<ReturnType<typeof useSegmentMutationController>, "resetMutationHistory">;
@@ -31,9 +32,8 @@ type Deps = {
   current: Editor["current"];
   currentFileId: Editor["currentFileId"];
   segments: Editor["segments"];
-  segmentsRef: Editor["segmentsRef"];
+  segmentPublish: SegmentPublishApi;
   setCurrent: Editor["setCurrent"];
-  setSegments: Editor["setSegments"];
   setError: (msg: string) => void;
   closeGate: CloseGate;
   mutations: Mutations;
@@ -51,9 +51,8 @@ export function useTranscribeJobController(deps: Deps) {
     current,
     currentFileId,
     segments,
-    segmentsRef,
+    segmentPublish,
     setCurrent,
-    setSegments,
     setError,
     closeGate,
     mutations,
@@ -80,9 +79,8 @@ export function useTranscribeJobController(deps: Deps) {
     endBusy,
     current,
     currentFileId,
-    segmentsRef,
+    segmentPublish,
     setCurrent,
-    setSegments,
     setError,
     closeGate,
     mutations,
@@ -95,6 +93,8 @@ export function useTranscribeJobController(deps: Deps) {
 
   executeRef.current = execute.executeTranscribe;
 
+  const getCurrentSegmentsSnapshot = segmentPublish.getCurrentSegmentsSnapshot;
+
   return {
     transcribeHints: execute.transcribeHints,
     transcribeWarnings: execute.transcribeWarnings,
@@ -105,7 +105,7 @@ export function useTranscribeJobController(deps: Deps) {
     transcribeFailureDiag: execute.transcribeFailureDiag,
     setTranscribeFailureDiag: execute.setTranscribeFailureDiag,
     transcribeStartDialogOpen: preflight.transcribeStartDialogOpen,
-    transcribeStartHasExistingText: segmentsHaveNonEmptyText(segmentsRef.current),
+    transcribeStartHasExistingText: segmentsHaveNonEmptyText(getCurrentSegmentsSnapshot()),
     overwriteSegmentCount: segments.length,
     transcribeVocabularyPreflightLines: preflight.transcribeVocabularyPreflightLines,
     transcribeSource: preflight.transcribeSource,

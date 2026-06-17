@@ -24,7 +24,7 @@ export function workbenchCompactMenuSummaryClass(engaged: boolean): string {
 
 /** 工作条 overflow 菜单项 */
 export const workbenchDropdownItem =
-  "dropdown-item flex w-full items-center gap-2 px-3 py-2 text-left text-[12px] text-notion-text transition-colors hover:bg-notion-sidebar-hover disabled:cursor-not-allowed disabled:text-notion-text-light";
+  "dropdown-item flex w-full items-center gap-2 px-3 py-2 text-left text-body text-notion-text transition-colors hover:bg-notion-sidebar-hover disabled:cursor-not-allowed disabled:text-notion-text-light";
 
 export function workbenchDropdownItemActiveClass(active: boolean): string {
   return active ? [workbenchDropdownItem, "workbench-dropdown-item-active"].join(" ") : workbenchDropdownItem;

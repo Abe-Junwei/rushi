@@ -62,7 +62,7 @@ export type ProjectLifecycleReturnInput = {
   beginBusy: (reason: BusyReason) => void;
   endBusy: () => void;
   selectedIdxRef: React.MutableRefObject<number>;
-  segmentsRef: React.MutableRefObject<SegmentDto[]>;
+  getCurrentSegmentsSnapshot: () => SegmentDto[];
   closeGateFacade: CloseGateLifecycleFacade;
   exportFacade: ExportLifecycleFacade;
   transcribeJob: TranscribeJob;
@@ -109,7 +109,7 @@ export function buildProjectLifecycleReturn(input: ProjectLifecycleReturnInput):
     beginBusy,
     endBusy,
     selectedIdxRef,
-    segmentsRef,
+    getCurrentSegmentsSnapshot,
     closeGateFacade,
     exportFacade,
     transcribeJob,
@@ -198,11 +198,11 @@ export function buildProjectLifecycleReturn(input: ProjectLifecycleReturnInput):
     splitAtSelection: () => mutations.splitAtSelection(selectedIdxRef.current),
     splitAtPlayhead: mutations.splitAtPlayhead,
     mergeWithNext: () => {
-      const focusIdx = readFocusedSegmentTextareaIdx(segmentsRef.current.length);
+      const focusIdx = readFocusedSegmentTextareaIdx(getCurrentSegmentsSnapshot().length);
       mutations.mergeWithNext(focusIdx ?? selectedIdxRef.current);
     },
     mergeWithPrev: () => {
-      const focusIdx = readFocusedSegmentTextareaIdx(segmentsRef.current.length);
+      const focusIdx = readFocusedSegmentTextareaIdx(getCurrentSegmentsSnapshot().length);
       mutations.mergeWithPrev(focusIdx ?? selectedIdxRef.current);
     },
     mergeWithNextAt: mutations.mergeWithNextAt,

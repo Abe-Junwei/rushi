@@ -3,6 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { correctionMemoryList, correctionStableRulesList } from "../tauri/correctionApi";
 import type { SegmentDto } from "../tauri/projectApi";
 import { useCorrectionRulesController } from "./useCorrectionRulesController";
+import { createSegmentPublishApi } from "./segmentPublishApi";
 
 vi.mock("../tauri/correctionApi", () => ({
   correctionStableRulesList: vi.fn(),
@@ -12,13 +13,17 @@ vi.mock("../tauri/correctionApi", () => ({
 function baseArgs() {
   const segments: SegmentDto[] = [{ uid: "s1", idx: 0, start_sec: 0, end_sec: 1, text: "智控系统" }];
   const segmentsRef = { current: segments };
+  const setSegments = vi.fn((updater: SegmentDto[] | ((prev: SegmentDto[]) => SegmentDto[])) => {
+    segmentsRef.current =
+      typeof updater === "function" ? updater(segmentsRef.current) : updater;
+  });
+  const segmentPublish = createSegmentPublishApi(segmentsRef, setSegments);
   return {
     busy: false,
     currentFileId: "file-1",
     segments,
-    segmentsRef,
+    segmentPublish,
     flushSegmentTextDrafts: vi.fn(),
-    setSegments: vi.fn(),
     pushUndo: vi.fn(),
     setError: vi.fn(),
     saveSegments: vi.fn().mockResolvedValue(true),
@@ -55,7 +60,16 @@ describe("useCorrectionRulesController F0 stage A", () => {
     const segments: SegmentDto[] = [
       { uid: "s1", idx: 0, start_sec: 0, end_sec: 1, text: "你好。。。" },
     ];
-    const args = { ...baseArgs(), segments, segmentsRef: { current: segments } };
+    const segmentsRef = { current: segments };
+    const setSegments = vi.fn((updater: SegmentDto[] | ((prev: SegmentDto[]) => SegmentDto[])) => {
+      segmentsRef.current =
+        typeof updater === "function" ? updater(segmentsRef.current) : updater;
+    });
+    const args = {
+      ...baseArgs(),
+      segments,
+      segmentPublish: createSegmentPublishApi(segmentsRef, setSegments),
+    };
     const { result } = renderHook(() => useCorrectionRulesController(args));
 
     await act(async () => {
@@ -169,14 +183,13 @@ describe("useCorrectionRulesController F0 stage A", () => {
     ];
     const segmentsRef = { current: segments };
     const setSegments = vi.fn((updater: SegmentDto[] | ((prev: SegmentDto[]) => SegmentDto[])) => {
-      const next = typeof updater === "function" ? updater(segmentsRef.current) : updater;
-      segmentsRef.current = next;
+      segmentsRef.current =
+        typeof updater === "function" ? updater(segmentsRef.current) : updater;
     });
     const args = {
       ...baseArgs(),
       segments,
-      segmentsRef,
-      setSegments,
+      segmentPublish: createSegmentPublishApi(segmentsRef, setSegments),
     };
     const { result } = renderHook(() => useCorrectionRulesController(args));
 

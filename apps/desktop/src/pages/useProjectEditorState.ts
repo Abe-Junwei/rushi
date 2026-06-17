@@ -5,7 +5,6 @@ import * as p1 from "../tauri/projectApi";
 import * as fileApi from "../tauri/fileApi";
 import { segmentDraftStore } from "../hooks/useSegmentDraftStore";
 import { findSegmentIndexByUid, normalizeSegmentList } from "./segmentListHelpers";
-import { reconcileSegmentsRefWithState } from "./segmentSegmentsRefSync";
 
 export interface ProjectEditorApi {
   current: ProjectDetail | null;
@@ -20,7 +19,6 @@ export interface ProjectEditorApi {
   /** Raw on-disk audio path (Tauri invoke → blob URL for WaveSurfer). */
   audioStoragePath: string | null;
   setAudioSrc: React.Dispatch<React.SetStateAction<string | null>>;
-  segmentsRef: React.MutableRefObject<SegmentDto[]>;
   selectedIdxRef: React.MutableRefObject<number>;
   openFile: (fileId: string) => Promise<SegmentDto[] | null>;
   closeFile: () => void;
@@ -37,8 +35,6 @@ export function useProjectEditorState(setError: (msg: string) => void): ProjectE
   const [audioSrc, setAudioSrc] = useState<string | null>(null);
   const [audioStoragePath, setAudioStoragePath] = useState<string | null>(null);
 
-  const segmentsRef = useRef(segments);
-  reconcileSegmentsRefWithState(segmentsRef, segments);
   const selectedIdxRef = useRef(selectedIdx);
   selectedIdxRef.current = selectedIdx;
 
@@ -48,7 +44,6 @@ export function useProjectEditorState(setError: (msg: string) => void): ProjectE
     try {
       const detail = await fileApi.loadFile(fileId);
       const segs = normalizeSegmentList(detail.segments);
-      segmentsRef.current = segs;
       setCurrentFileId(fileId);
       setSegments(segs);
       setSelectedIdx(0);
@@ -64,7 +59,7 @@ export function useProjectEditorState(setError: (msg: string) => void): ProjectE
       setError(e instanceof Error ? e.message : String(e));
       return null;
     }
-  }, [segmentsRef, setError]);
+  }, [setError]);
 
   const closeFile = useCallback(() => {
     segmentDraftStore.resetAll();
@@ -88,9 +83,8 @@ export function useProjectEditorState(setError: (msg: string) => void): ProjectE
       setCurrent(d);
       if (currentFileId) {
         const fd = await fileApi.loadFile(currentFileId);
-        const prevUid = segmentsRef.current[selectedIdxRef.current]?.uid;
+        const prevUid = segments[selectedIdxRef.current]?.uid;
         const segs = normalizeSegmentList(fd.segments);
-        segmentsRef.current = segs;
         setSegments(segs);
         const ni = findSegmentIndexByUid(segs, prevUid);
         setSelectedIdx(ni >= 0 ? ni : Math.min(selectedIdxRef.current, Math.max(0, segs.length - 1)));
@@ -105,7 +99,7 @@ export function useProjectEditorState(setError: (msg: string) => void): ProjectE
     } catch (e) {
       setError(e instanceof Error ? e.message : String(e));
     }
-  }, [current, currentFileId, setError]);
+  }, [current, currentFileId, segments, selectedIdxRef, setError]);
 
   const applyDetailBase = useCallback((d: ProjectDetail) => {
     setCurrent(d);
@@ -123,7 +117,6 @@ export function useProjectEditorState(setError: (msg: string) => void): ProjectE
     audioSrc,
     setAudioSrc,
     audioStoragePath,
-    segmentsRef,
     selectedIdxRef,
     openFile,
     closeFile,

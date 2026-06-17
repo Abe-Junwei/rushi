@@ -38,6 +38,10 @@ export function parseAsrHealthJson(data: unknown): AsrHealthCapabilities | null 
       typeof j.inference_queue_pending === "number" ? j.inference_queue_pending : undefined,
     inference_queue_running:
       typeof j.inference_queue_running === "number" ? j.inference_queue_running : undefined,
+    inference_requested_workers:
+      typeof j.inference_requested_workers === "number" ? j.inference_requested_workers : undefined,
+    inference_max_workers:
+      typeof j.inference_max_workers === "number" ? j.inference_max_workers : undefined,
     funasr_punc_model_id:
       typeof j.funasr_punc_model_id === "string" ? j.funasr_punc_model_id : null,
     rushi_models_root: typeof j.rushi_models_root === "string" ? j.rushi_models_root : null,

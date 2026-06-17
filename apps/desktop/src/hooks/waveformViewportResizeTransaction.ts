@@ -9,6 +9,7 @@ import {
   writeWaveformStickyShellWidth,
 } from "../utils/waveformViewportStretch";
 import type { UseWaveformViewportControllerArgs } from "./useWaveformViewportController";
+import { isWaveformZoomProfileEnabled, wfProfileTime } from "../services/waveform/waveformZoomProfile";
 
 export const WIDTH_EPSILON_PX = 1;
 export const PX_PER_SEC_EPSILON = 1e-6;
@@ -190,7 +191,13 @@ export function createWaveformViewportResizeTransaction(ctx: WaveformViewportRes
       ctx.prevWidthRef.current = viewportWidthPx;
 
       try {
-        ws.getRenderer().reRender();
+        if (isWaveformZoomProfileEnabled()) {
+          wfProfileTime("reRender", () => {
+            ws.getRenderer().reRender();
+          });
+        } else {
+          ws.getRenderer().reRender();
+        }
       } catch {
         /* noop */
       }

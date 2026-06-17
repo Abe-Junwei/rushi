@@ -14,14 +14,14 @@ export type SegmentCorrectPopoverState = {
 
 type Args = {
   busy: boolean;
-  segmentsRef: React.MutableRefObject<SegmentDto[]>;
+  getCurrentSegmentsSnapshot: () => SegmentDto[];
   suggestionsForSurface: (surface: string) => CorrectSuggestion[];
   updateSegmentText: (idx: number, text: string) => void;
 };
 
 export function useEditorSegmentCorrectPopover({
   busy,
-  segmentsRef,
+  getCurrentSegmentsSnapshot,
   suggestionsForSurface,
   updateSegmentText,
 }: Args) {
@@ -48,7 +48,7 @@ export function useEditorSegmentCorrectPopover({
     (item: CorrectSuggestion) => {
       if (!popover || busy) return;
       const idx = popover.segmentIdx;
-      const seg = segmentsRef.current[idx];
+      const seg = getCurrentSegmentsSnapshot()[idx];
       if (!seg) return;
       const key = segmentDraftKey(seg, idx);
       const draft = segmentDraftStore.getDraft(key);
@@ -59,7 +59,7 @@ export function useEditorSegmentCorrectPopover({
       segmentDraftStore.setDraft(key, next);
       setPopover(null);
     },
-    [busy, popover, segmentsRef, updateSegmentText],
+    [busy, getCurrentSegmentsSnapshot, popover, updateSegmentText],
   );
 
   return {

@@ -1,25 +1,26 @@
 import { act, renderHook, waitFor } from "@testing-library/react";
-import type { SetStateAction } from "react";
 import { describe, expect, it, vi } from "vitest";
 import type { SegmentDto } from "../tauri/projectApi";
 import { useSegmentAnnotationController } from "./useSegmentAnnotationController";
+import { createSegmentPublishApi } from "./segmentPublishApi";
 
 function baseArgs(saveSegments = vi.fn().mockResolvedValue(true)) {
   const segments: SegmentDto[] = [
     { uid: "s1", idx: 0, start_sec: 0, end_sec: 1, text: "hello", annotation: null },
   ];
   const segmentsRef = { current: segments };
-  const setSegments = vi.fn((updater: SetStateAction<SegmentDto[]>) => {
-    const next = typeof updater === "function" ? updater(segmentsRef.current) : updater;
-    segmentsRef.current = next;
+  const setSegments = vi.fn((updater: SegmentDto[] | ((prev: SegmentDto[]) => SegmentDto[])) => {
+    segmentsRef.current =
+      typeof updater === "function" ? updater(segmentsRef.current) : updater;
   });
+  const segmentPublish = createSegmentPublishApi(segmentsRef, setSegments);
   return {
     busy: false,
-    segmentsRef,
-    setSegments,
+    segmentPublish,
     saveSegments,
     pushUndo: vi.fn(),
     setError: vi.fn(),
+    segmentsRef,
   };
 }
 

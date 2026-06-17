@@ -55,6 +55,11 @@ export function resolveWaveformZoomSliderRange(
   if (maxPxPerSec <= minPxPerSec) {
     maxPxPerSec = Math.min(PX_PER_SEC_FIT_SELECTION_MAX, minPxPerSec * 1.5);
   }
+  // Align slider ceiling with WaveSurfer/peaks render cap so ± steps always change timeline width.
+  if (durationSec >= 0.5) {
+    const renderCap = clampPxPerSecForWaveSurferRender(maxPxPerSec, durationSec);
+    maxPxPerSec = Math.max(minPxPerSec, Math.min(maxPxPerSec, renderCap));
+  }
   return { minPxPerSec, maxPxPerSec };
 }
 

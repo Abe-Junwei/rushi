@@ -29,11 +29,11 @@ export function WelcomeOnboardingChecklist({
         <div className="flex flex-col gap-1">
           <h2
             id="onboarding-checklist-head"
-            className="text-[15px] font-semibold leading-snug text-notion-text"
+            className="text-title font-semibold leading-snug text-notion-text"
           >
             上手清单
           </h2>
-          <p className="text-[12px] leading-relaxed text-notion-text-muted">
+          <p className="text-body leading-relaxed text-notion-text-muted">
             5 步完成首次转写与交付（可随时关闭，侧栏可恢复）
           </p>
         </div>
@@ -63,17 +63,17 @@ export function WelcomeOnboardingChecklist({
                 )}
               </span>
               <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <p className="text-[13px] font-medium text-notion-text">
+                <p className="text-title font-medium text-notion-text">
                   {index + 1}. {step.title}
                   {step.optional ? (
                     <span className="ml-1 font-normal text-notion-text-muted">（可选）</span>
                   ) : null}
                 </p>
-                <p className="text-[12px] leading-relaxed text-notion-text-muted">{step.description}</p>
+                <p className="text-body leading-relaxed text-notion-text-muted">{step.description}</p>
                 {step.id === "asr_ready" && onOpenAsrSettings ? (
                   <button
                     type="button"
-                    className={`${CONTROL_BTN_LINK} self-start text-[12px]`}
+                    className={`${CONTROL_BTN_LINK} self-start text-body`}
                     onClick={onOpenAsrSettings}
                   >
                     打开环境 → 本机 ASR
@@ -82,7 +82,7 @@ export function WelcomeOnboardingChecklist({
                 {step.id === "project_audio" && onCreateProject ? (
                   <button
                     type="button"
-                    className={`${CONTROL_BTN_LINK} self-start text-[12px]`}
+                    className={`${CONTROL_BTN_LINK} self-start text-body`}
                     onClick={onCreateProject}
                   >
                     新建项目
@@ -91,7 +91,7 @@ export function WelcomeOnboardingChecklist({
                 {step.id === "export" && onOpenLastEditor ? (
                   <button
                     type="button"
-                    className={`${CONTROL_BTN_LINK} self-start text-[12px]`}
+                    className={`${CONTROL_BTN_LINK} self-start text-body`}
                     onClick={onOpenLastEditor}
                   >
                     打开上次编辑 → 定稿模式

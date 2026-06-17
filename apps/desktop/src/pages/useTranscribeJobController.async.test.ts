@@ -124,7 +124,7 @@ describe("useTranscribeJobController async paths", () => {
       }),
     );
     expect(deps.setError).not.toHaveBeenCalledWith(expect.stringContaining("404"));
-    expect(deps.setSegments).toHaveBeenCalledWith([
+    expect(deps.segmentPublish.getCurrentSegmentsSnapshot()).toEqual([
       expect.objectContaining({ text: "blocking" }),
     ]);
   });
@@ -163,7 +163,7 @@ describe("useTranscribeJobController async paths", () => {
       await result.current.confirmTranscribeStart();
     });
 
-    expect(setSegments).toHaveBeenCalledWith([expect.objectContaining({ text: "百炼结果" })]);
+    expect(setSegments).toHaveBeenCalled();
     expect(onTranscribeSuccess).toHaveBeenCalled();
     expect(segmentsRef.current[0]?.text).toBe("百炼结果");
   });

@@ -38,7 +38,7 @@ export function RestoreEditLogConfirmDialog({ open, busy, row, onCancel, onConfi
       <p className={PANEL_TYPOGRAPHY.dialogBody}>
         将把当前文件的语段正文恢复到所选保存点。未保存的草稿修改将丢失。
       </p>
-      <p className="rounded-lg border border-notion-divider bg-notion-callout-bg px-3 py-2 text-[12px] leading-relaxed text-notion-text">
+      <p className="rounded-lg border border-notion-divider bg-notion-callout-bg px-3 py-2 text-body leading-relaxed text-notion-text">
         {new Date(row.at_ms).toLocaleString()} — {headline}
       </p>
     </CompactConfirmDialog>

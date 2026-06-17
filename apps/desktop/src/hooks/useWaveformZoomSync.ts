@@ -10,6 +10,11 @@ import {
   type WaveformZoomSyncInFlight,
 } from "../services/waveform/waveformZoomSyncEngine";
 import {
+  wfProfileBegin,
+  wfProfileFlush,
+  wfProfileSetLabel,
+} from "../services/waveform/waveformZoomProfile";
+import {
   isPeaksLoadedIntoWs,
   markAppliedPeaks,
   readLoadedPeaksPx,
@@ -39,9 +44,9 @@ export function useWaveformZoomSync(args: {
   hotSwitchWhilePlayingRef: MutableRefObject<boolean>;
   hotSwitchWhilePlaying: boolean;
   disabled?: boolean;
-  /** Live layout px/s — ws.zoom follows immediately. */
+  /** Live layout px/s — ws.zoom follows immediately in layout effect. */
   layoutPxPerSec?: number;
-  /** Debounced peaks-load px/s — ws.load quantum follows this track. */
+  /** Peaks-load px/s — ws.load quantum follows this track (same as layout for discrete ±). */
   drawPxPerSec?: number;
   appliedZoom: WaveformAppliedZoomState;
   peakCache?: PeakCache | null;
@@ -162,6 +167,7 @@ export function useWaveformZoomSync(args: {
       const cache = peakCacheRef?.current;
       if (!currentWs || !cache || mediaUrl !== pending.url) return;
       syncPeaksHotSwitchPending(false);
+      finishZoom(currentWs);
       loadPeaksIntoWaveSurfer({
         ws: currentWs,
         cache,
@@ -187,6 +193,9 @@ export function useWaveformZoomSync(args: {
       if (!currentWs || !isReady || disabled) return;
 
       disableWaveSurferAutoScroll(currentWs);
+      wfProfileBegin(`zoom@${drawPxPerSec.toFixed(0)}px/s`);
+      // Layout px/s always drives ws.zoom immediately; peaks load may follow async.
+      finishZoom(currentWs);
 
       const cache = peakCacheRef?.current ?? peakCache ?? null;
       const action = planWaveformZoomApply({
@@ -202,12 +211,13 @@ export function useWaveformZoomSync(args: {
         peaksLoadInFlight: peaksLoadInFlightPxRef.current != null,
         viewportResizeHold: viewportResizeHoldRef?.current ?? false,
       });
+      wfProfileSetLabel(`${action.type}@${drawPxPerSec.toFixed(0)}px/s`);
 
       switch (action.type) {
         case "noop":
           syncPeaksHotSwitchPending(false);
-          finishZoom(currentWs);
           reconcilePeaksAppliedFromAppliedZoom(appliedZoom, onPeaksApplied);
+          wfProfileFlush();
           break;
         case "finish-zoom":
           syncPeaksHotSwitchPending(false);
@@ -217,11 +227,11 @@ export function useWaveformZoomSync(args: {
           } else {
             reconcilePeaksAppliedFromAppliedZoom(appliedZoom, onPeaksApplied);
           }
-          finishZoom(currentWs);
+          wfProfileFlush();
           break;
         case "defer-hot-switch":
           syncPeaksHotSwitchPending(true);
-          finishZoom(currentWs);
+          wfProfileFlush();
           break;
         case "defer-resize-load":
           pendingPeaksLoadRef.current = {
@@ -229,7 +239,7 @@ export function useWaveformZoomSync(args: {
             loadPeaksPx: action.loadPeaksPx,
             layoutDur: action.layoutDur,
           };
-          finishZoom(currentWs);
+          wfProfileFlush();
           break;
         case "load-peaks":
           syncPeaksHotSwitchPending(false);

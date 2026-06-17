@@ -148,7 +148,7 @@ export function WelcomeSidebar({
         </div>
       ) : (
         <div className="flex min-h-0 flex-1 flex-col justify-center px-5 py-8 text-center">
-          <p className="text-[13px] leading-relaxed text-notion-text-muted">
+          <p className="text-title leading-relaxed text-notion-text-muted">
             全局设置：术语表→转写热词；纠错记忆→编辑规则。
           </p>
         </div>

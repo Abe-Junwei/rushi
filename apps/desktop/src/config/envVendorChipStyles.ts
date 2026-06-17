@@ -1,6 +1,6 @@
 /** 环境页 LLM / 在线 STT 厂商 chip 共用（Stitch 描边选中态）。 */
 export const ENV_VENDOR_CHIP_BASE =
-  "shrink-0 rounded-sm border px-3 py-1.5 text-[12px] transition-colors whitespace-nowrap";
+  "shrink-0 rounded-sm border px-3 py-1.5 text-body transition-colors whitespace-nowrap";
 
 export function envVendorChipClass(active: boolean): string {
   return active

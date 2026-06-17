@@ -193,3 +193,40 @@ def test_warmup_funasr_model_delegates_to_get_model(monkeypatch) -> None:
     assert calls == ["Qwen/Qwen3-ASR-0.6B"]
     assert body["status"] == "ok"
     assert body["funasr_loaded_model_id"] == "Qwen/Qwen3-ASR-0.6B"
+
+
+def test_generate_filters_profile_unsupported_params_before_inference(
+    monkeypatch: pytest.MonkeyPatch,
+    tmp_path: Path,
+) -> None:
+    calls: list[dict[str, object]] = []
+
+    class FakeModel:
+        def generate(self, **kwargs: object) -> list[dict[str, object]]:
+            calls.append(dict(kwargs))
+            return [{"text": "短音频全文"}]
+
+    monkeypatch.setattr(funasr_engine, "effective_funasr_model_id", lambda: "custom/generic-model")
+    monkeypatch.setattr(funasr_engine, "required_models_cached_guess", lambda _model_id=None: True)
+    monkeypatch.setattr(funasr_engine, "_get_model", lambda _model_id: FakeModel())
+    monkeypatch.setattr(
+        funasr_engine,
+        "funasr_generate_kwargs",
+        lambda *_args, **_kwargs: {
+            "language": "zh",
+            "merge_vad": True,
+            "sentence_timestamp": True,
+        },
+    )
+
+    warnings: list[str] = []
+    segs, _engine, mode = funasr_engine.generate_and_parse_funasr(
+        tmp_path / "normalized.wav",
+        10.0,
+        out_warnings=warnings,
+    )
+
+    assert len(segs) == 1
+    assert mode == "whole_track_fallback"
+    assert calls == [{"input": str(tmp_path / "normalized.wav"), "language": "zh", "merge_vad": True}]
+    assert "funasr_generate_param_filtered:sentence_timestamp" in warnings
