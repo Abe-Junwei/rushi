@@ -56,6 +56,7 @@ export function useProjectLifecycleWiring(
   const [newName, setNewName] = useState("未命名项目");
   const [pickedPath, setPickedPath] = useState<string | null>(null);
   const closeGateRef = useRef<ProjectCloseGateControllerApi | null>(null);
+  const cancelBatchTranscribeRef = useRef<() => Promise<void>>(async () => {});
   const pendingAiRevisedUidsRef = useRef(new Set<string>());
 
   const editorStack = useProjectLifecycleEditorStack({
@@ -142,6 +143,7 @@ export function useProjectLifecycleWiring(
     busy,
     busyReason,
     cancelTranscribe: transcribeJob.cancelTranscribe,
+    cancelBatchTranscribe: () => cancelBatchTranscribeRef.current(),
     closeFile,
     current,
     currentFileId,
@@ -169,11 +171,13 @@ export function useProjectLifecycleWiring(
     endBusy,
     openFileWrapped: closeGate.openFileWrapped,
     executeTranscribeForBatch: transcribeJob.executeTranscribeForBatch,
+    cancelTranscribe: transcribeJob.cancelTranscribe,
     localTranscribePreflight,
     transcribeSource: transcribeJob.transcribeSource,
     setError,
     refreshProjectHub: closeGate.refreshProjectHub,
   });
+  cancelBatchTranscribeRef.current = batchTranscribe.cancelBatchTranscribe;
 
   const { importDuplicate, fileMutation, crud, projectMutation } = useProjectLifecycleHubStack({
     pickedPath,

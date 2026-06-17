@@ -219,10 +219,12 @@ export interface ProjectLifecycleApi {
   batchTranscribableCount: number;
   canStartBatchTranscribe: boolean;
   startBatchTranscribe: () => Promise<void>;
+  cancelBatchTranscribe: () => Promise<void>;
   closeBatchQueueDialog: () => void;
   transcribeNavBlockOpen: boolean;
+  transcribeNavBlockStopping: boolean;
   cancelTranscribeNavBlock: () => void;
-  confirmTranscribeNavBlock: () => void;
+  confirmTranscribeNavBlock: () => Promise<void>;
   hasUnsavedFileEdits: () => boolean;
   renamingProjectFileId: string | null;
   renameProjectFileDraft: string;

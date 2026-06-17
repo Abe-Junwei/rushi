@@ -265,6 +265,7 @@ export function buildProjectLifecycleReturn(input: ProjectLifecycleReturnInput):
     startBatchTranscribe: async () => {
       await batchTranscribe.startBatchTranscribe();
     },
+    cancelBatchTranscribe: () => batchTranscribe.cancelBatchTranscribe(),
     closeBatchQueueDialog: batchTranscribe.closeBatchQueueDialog,
     renamingProjectFileId: fileMutation.renamingProjectFileId,
     renameProjectFileDraft: fileMutation.renameProjectFileDraft,
