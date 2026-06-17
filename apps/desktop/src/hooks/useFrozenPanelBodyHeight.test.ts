@@ -24,7 +24,7 @@ describe("useFrozenPanelBodyHeight", () => {
   it("returns null when disabled", () => {
     const { result, rerender } = renderHook(
       ({ bodyHeight, layoutRev }) => useFrozenPanelBodyHeight(bodyHeight, layoutRev, false),
-      { initialProps: { bodyHeight: 200 as number | null, layoutRev: 0 } },
+      { initialProps: { bodyHeight: 200, layoutRev: 0 } },
     );
 
     expect(result.current).toBeNull();

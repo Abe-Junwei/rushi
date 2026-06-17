@@ -13,8 +13,8 @@ describe("projectBatchImport", () => {
   });
 
   it("importDroppedPathsToProject reloads once after successes", async () => {
-    const importFile = vi.fn(async (_kind, path: string) => path.endsWith("a.mp3") || path.endsWith("c.txt"));
-    const reload = vi.fn(async () => {});
+    const importFile = vi.fn((_kind, path: string) => Promise.resolve(path.endsWith("a.mp3") || path.endsWith("c.txt")));
+    const reload = vi.fn(() => Promise.resolve());
     const result = await importDroppedPathsToProject(
       importFile,
       ["/a/a.mp3", "/a/b.pdf", "/a/c.txt"],
@@ -26,8 +26,8 @@ describe("projectBatchImport", () => {
   });
 
   it("importAudioPathsToProject dedupes paths", async () => {
-    const importFile = vi.fn(async () => true);
-    const reload = vi.fn(async () => {});
+    const importFile = vi.fn(() => Promise.resolve(true));
+    const reload = vi.fn(() => Promise.resolve());
     const result = await importAudioPathsToProject(importFile, ["/a/x.mp3", "/a/x.mp3"], reload);
     expect(result).toEqual({ imported: 1, skipped: 0 });
     expect(importFile).toHaveBeenCalledTimes(1);

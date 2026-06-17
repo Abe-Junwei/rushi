@@ -67,7 +67,7 @@ export function useTranscribeJobController(deps: Deps) {
   } = deps;
 
   const executeRef = useRef<(opts?: ExecuteTranscribeOptions) => Promise<ExecuteTranscribeResult>>(
-    async () => ({ ok: true }),
+    () => Promise.resolve({ ok: true }),
   );
 
   const preflight = useTranscribeJobPreflight({

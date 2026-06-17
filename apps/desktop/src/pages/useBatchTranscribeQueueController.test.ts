@@ -93,9 +93,11 @@ describe("useBatchTranscribeQueueController", () => {
         file({ id: "f2", name: "b.wav", file_type: "paired", updated_at_ms: 1 }),
       ],
     });
-    vi.mocked(fileApi.loadFile).mockImplementation(async (id) => ({
-      segments: id === "f2" ? [{ idx: 0, start_sec: 0, end_sec: 1, text: "已有" }] : [],
-    }) as never);
+    vi.mocked(fileApi.loadFile).mockImplementation((id) =>
+      Promise.resolve({
+        segments: id === "f2" ? [{ idx: 0, start_sec: 0, end_sec: 1, text: "已有" }] : [],
+      } as never),
+    );
 
     const { result } = renderHook(() => useBatchTranscribeQueueController(deps));
 
