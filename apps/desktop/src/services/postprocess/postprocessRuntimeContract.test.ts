@@ -8,6 +8,7 @@ import {
   isLlmConnectionVerified,
   markLlmConnectionVerified,
   persistLlmRuntimeConfig,
+  persistLlmPromptOverrides,
   readLastCloudRuntimeConfig,
   readLlmRuntimeConfigFromStorage,
   setLlmApiKeyInMemory,
@@ -70,6 +71,19 @@ describe("postprocessRuntimeContract", () => {
   it("returns null bridge without api key", () => {
     persistLlmRuntimeConfig(applyLlmProviderPreset("deepseek"));
     expect(tryBuildPostprocessRuntimeBridge()).toBeNull();
+  });
+
+  it("includes prompt overrides in runtime bridge when configured", () => {
+    persistLlmRuntimeConfig({ ...applyLlmProviderPreset("deepseek"), apiKeyId: DEFAULT_LLM_API_KEY_ID });
+    persistLlmPromptOverrides({ stageBSystem: "custom system" });
+    expect(tryBuildPostprocessRuntimeBridge()).toEqual({
+      provider: "DeepSeek",
+      baseUrl: "https://api.deepseek.com/v1",
+      model: "deepseek-chat",
+      apiKeyId: DEFAULT_LLM_API_KEY_ID,
+      allowInsecureHttp: undefined,
+      promptOverrides: { stageBSystem: "custom system" },
+    });
   });
 
   it("persists api key id for keychain-backed runtime", () => {

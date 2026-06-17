@@ -39,6 +39,11 @@ export function busyOverlayCopy(
       return { title: "正在导出 Word…", hint: "大模型润色与写入文档可能需要数十秒" };
     case "stage_b":
       return { title: "智能改稿处理中…", hint: "正在请求 LLM 生成标点与改字候选，请勿切换文件或转写" };
+    case "batch_transcribe":
+      return {
+        title: "批量转写进行中…",
+        hint: "正在串行处理项目内音频；请勿切换项目或关闭应用",
+      };
     default:
       return { title: "处理中...", hint: "请稍候" };
   }

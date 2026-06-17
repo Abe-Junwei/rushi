@@ -123,6 +123,14 @@ fn extract_text_from_json_string_array_content() {
 }
 
 #[test]
+fn auto_punctuate_prompt_accepts_custom_instructions() {
+    let custom = "自定义标点任务";
+    let prompt = build_auto_punctuate_prompt("你好世界", &[], &[], Some(custom));
+    assert!(prompt.starts_with(custom));
+    assert!(prompt.contains("当前语段："));
+}
+
+#[test]
 fn prompt_includes_labeled_neighbor_context() {
     let prompt = build_auto_punctuate_prompt(
         "今天天气不错我们出发吧",
@@ -137,6 +145,7 @@ fn prompt_includes_labeled_neighbor_context() {
             },
         ],
         &[],
+        None,
     );
     assert!(prompt.contains("上一语段：上一句"));
     assert!(prompt.contains("下一语段：下一句"));
@@ -145,7 +154,7 @@ fn prompt_includes_labeled_neighbor_context() {
 
 #[test]
 fn prompt_falls_back_to_legacy_snippets() {
-    let prompt = build_auto_punctuate_prompt("今天天气不错我们出发吧", &[], &["上一句".into()]);
+    let prompt = build_auto_punctuate_prompt("今天天气不错我们出发吧", &[], &["上一句".into()], None);
     assert!(prompt.contains("片段1：上一句"));
 }
 
@@ -190,6 +199,7 @@ fn runtime_bridge_resolves_deepseek_endpoint() {
             api_key: "sk-x".into(),
             api_key_id: None,
             allow_insecure_http: false,
+            prompt_overrides: None,
         }),
     };
     let cfg = resolve_postprocess_config(&req, Path::new("/tmp/rushi-test-unused")).unwrap();
@@ -216,6 +226,7 @@ fn runtime_bridge_prefers_inline_api_key() {
             api_key: "sk-inline".into(),
             api_key_id: Some("default".into()),
             allow_insecure_http: false,
+            prompt_overrides: None,
         }),
     };
     let cfg = resolve_postprocess_config(&req, Path::new("/tmp/rushi-test-unused")).unwrap();
@@ -238,6 +249,7 @@ fn runtime_bridge_loopback_uses_placeholder_key_without_secret() {
             api_key: String::new(),
             api_key_id: None,
             allow_insecure_http: true,
+            prompt_overrides: None,
         }),
     };
     let cfg = resolve_postprocess_config(&req, Path::new("/tmp/rushi-test-unused")).unwrap();
@@ -293,6 +305,23 @@ fn probe_reports_timeout() {
     let out = run_probe(&cfg, Duration::from_millis(30));
     assert!(!out.ok);
     assert!(out.message.contains("超时"));
+}
+
+#[test]
+fn runtime_bridge_deserializes_prompt_overrides() {
+    let raw = serde_json::json!({
+        "provider": "DeepSeek",
+        "baseUrl": "https://api.deepseek.com/v1",
+        "model": "deepseek-chat",
+        "promptOverrides": {
+            "stageBSystem": "custom system",
+            "stageBInstructions": "custom instructions"
+        }
+    });
+    let rt: PostprocessRuntimeBridge = serde_json::from_value(raw).unwrap();
+    let overrides = rt.prompt_overrides.expect("prompt overrides");
+    assert_eq!(overrides.stage_b_system.as_deref(), Some("custom system"));
+    assert_eq!(overrides.stage_b_instructions.as_deref(), Some("custom instructions"));
 }
 
 #[test]

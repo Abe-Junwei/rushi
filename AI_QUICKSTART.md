@@ -19,16 +19,21 @@
 | 仓库根 `CONTEXT.md` | 领域词汇表（Agent 对话与命名真源） |
 | `.cursor/skills/` | 手动触发的 Agent 技能（见 `docs/agents/skills.md`） |
 
-## 当前热点（自动同步，2026-06-07）
+## 当前热点（自动同步，2026-06-17）
 
-**工作区尾项**：**R3h-3.5** 🟡 — [`r3h-3.5-sherpa-spike-acceptance.md`](./docs/execution/specs/r3h-3.5-sherpa-spike-acceptance.md)（Paraformer 对齐 catalog，非 SenseVoice）；**R3h-3** ✅
+**v1.1 主刀**：**§10.4 Step 10–11 BATCH-TXN**（Hub 批量导入 + 串行转写队列）→ **REL-1.1**；**Step 5–9 ✅**（Win CI · PROD-META · CSP · STT 取消 · DELIV · ONBOARD）
+
+**ASR 雷达（并行，不挡主刀）**
+
+- **R3g-C Fun-ASR-Nano PyTorch** ❌ **Defer**（2026-06-17）— 默认长音频 `<|no|>` stub；180s 窗 108 段 / 无 `sentence_info`；**不上 catalog** — [`r3g-c-funasr-nano-acceptance.md`](./docs/execution/specs/r3g-c-funasr-nano-acceptance.md)
+- **R3g-C Nano + vLLM** 📋 research ✅；CUDA spike 待 Win/Linux GPU 机 — [`r3g-c-funasr-nano-vllm-research.md`](./docs/execution/specs/r3g-c-funasr-nano-vllm-research.md)
+- **R3g-B-Align**（Qwen3 + ForcedAligner）📋 手测待跑
 
 **v1 后主序：LLM-LOC**
 
 - **4a Ollama** ✅ · **4b LRC 自管** ❌ Gate-B No-Go — [`llm-loc-gate-b-decision-2026-06.md`](./docs/execution/specs/llm-loc-gate-b-decision-2026-06.md)
-- Spike / Gate-A：[`llm-loc-spike-results-2026-06.md`](./docs/execution/specs/llm-loc-spike-results-2026-06.md) · 预检 `bash scripts/llm-loc-spike-preflight.sh`
 
-**并行（不挡主序）**：[`parallel-backlog-2026-06.md`](./docs/execution/specs/parallel-backlog-2026-06.md) — R3h-0、TRN-DIAG、ASR-WARM、R3h-2
+**并行索引**：[`parallel-backlog-2026-06.md`](./docs/execution/specs/parallel-backlog-2026-06.md)
 
 **已降温（勿再当 R0 阻塞）**
 
@@ -48,7 +53,7 @@
 | 新 UI / 整页重设计 / Stitch 对齐 | 仓库根 `DESIGN.md` → 再映射到 `tailwind.config.js` + `apps/desktop/src/config/tokens.ts` |
 | **波形区 Stitch 精修** | [`apps/desktop/docs/stitch-waveform-polish-spec.md`](./apps/desktop/docs/stitch-waveform-polish-spec.md) + [`stitch-waveform-polish-layout.html`](./apps/desktop/stitch-waveform-polish-layout.html) → `bash scripts/prepare-stitch-upload.sh` |
 | 浮动确认/表单对话框 | `FloatingPanelTemplate` + `preset="compactDialog"`；`controlStyles.ts` 按钮；见 [`docs/architecture/desktop-floating-dialog-panels.md`](./docs/architecture/desktop-floating-dialog-panels.md) |
-| **后续排期 / 下一刀** | [`rushi-execution-roadmap.md`](./docs/execution/plans/rushi-execution-roadmap.md) **§10.4**（v1.1+：Win CI · 产品元信息 · **新手引导** · CSP · STT 取消 · 定稿模式 · 批量转写） |
+| **后续排期 / 下一刀** | [`rushi-execution-roadmap.md`](./docs/execution/plans/rushi-execution-roadmap.md) **§10.4** — **BATCH-TXN** Step 10–11 → **REL-1.1** |
 | **新功能 / 路线图薄片** | 可选先 **`grill-with-docs`** → **先调研后编码**：`.cursor/rules/feature-research-gate.mdc` + `docs/execution/specs/*-research.md`；范例 [`r3-provider-configuration-research.md`](./docs/execution/specs/r3-provider-configuration-research.md) |
 | **难 bug / 侧车 / flaky** | `.cursor/skills/diagnose` 或对话中说「按 diagnose 查」 |
 | **架构 hotspot / 定期体检** | `.cursor/skills/improve-architecture`；配合 `check-architecture-guard.mjs` |

@@ -17,12 +17,31 @@ pub struct SettingsProfileV1 {
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
 #[serde(deny_unknown_fields)]
+pub struct LlmPromptProfile {
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stage_b_system: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub stage_b_instructions: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub auto_punctuate_system: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub auto_punctuate_instructions: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub export_polish_system: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub export_polish_instructions: Option<String>,
+}
+
+#[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
+#[serde(deny_unknown_fields)]
 pub struct LlmProfile {
     pub provider_id: String,
     pub base_url: String,
     pub model: String,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub api_key_id: Option<String>,
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    pub prompt: Option<LlmPromptProfile>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
@@ -98,6 +117,11 @@ fn validate_profile(profile: &SettingsProfileV1) -> Result<(), String> {
         {
             return Err("LLM profile 缺少 provider_id / base_url / model。".to_string());
         }
+        if let Some(prompt) = llm.prompt.as_ref() {
+            if let Some(template) = prompt.export_polish_instructions.as_deref() {
+                crate::postprocess_cmd::validate_export_polish_instructions_template(template)?;
+            }
+        }
     }
     if let Some(stt) = profile.online_stt.as_ref() {
         if stt.provider_id.trim().is_empty() {
@@ -123,8 +147,27 @@ fn find_forbidden_secret_field(value: &Value) -> Option<&'static str> {
             None
         }
         Value::Sequence(items) => items.iter().find_map(find_forbidden_secret_field),
+        Value::String(s) => find_forbidden_secret_value(s),
         _ => None,
     }
+}
+
+fn find_forbidden_secret_value(value: &str) -> Option<&'static str> {
+    if value.contains("Bearer ") {
+        return Some("token");
+    }
+    let mut token = String::new();
+    for ch in value.chars().chain(std::iter::once(' ')) {
+        if ch.is_ascii_alphanumeric() || ch == '-' || ch == '_' {
+            token.push(ch);
+            continue;
+        }
+        if token.starts_with("sk-") && token.len() >= 16 {
+            return Some("api_key");
+        }
+        token.clear();
+    }
+    None
 }
 
 fn normalize_forbidden_secret_key(raw: &str) -> Option<&'static str> {
@@ -140,7 +183,8 @@ fn normalize_forbidden_secret_key(raw: &str) -> Option<&'static str> {
 #[cfg(test)]
 mod tests {
     use super::{
-        parse_profile_text, serialize_profile_yaml, LlmProfile, OnlineSttProfile, SettingsProfileV1,
+        parse_profile_text, serialize_profile_yaml, LlmProfile, LlmPromptProfile, OnlineSttProfile,
+        SettingsProfileV1,
     };
 
     #[test]
@@ -152,6 +196,16 @@ mod tests {
                 base_url: "https://api.deepseek.com/v1".into(),
                 model: "deepseek-chat".into(),
                 api_key_id: Some("default".into()),
+                prompt: Some(LlmPromptProfile {
+                    stage_b_system: Some("custom system".into()),
+                    stage_b_instructions: Some("custom instructions".into()),
+                    auto_punctuate_system: Some("auto system".into()),
+                    auto_punctuate_instructions: Some("auto instructions".into()),
+                    export_polish_system: Some("export system".into()),
+                    export_polish_instructions: Some(
+                        "export template {line_count} {batch_note} {rule_hints} {body}".into(),
+                    ),
+                }),
             }),
             online_stt: Some(OnlineSttProfile {
                 enabled: true,
@@ -165,6 +219,21 @@ mod tests {
         let yaml = serialize_profile_yaml(&profile).unwrap();
         let parsed = parse_profile_text(&yaml).unwrap();
         assert_eq!(parsed, profile);
+    }
+
+    #[test]
+    fn parse_profile_without_prompt_is_backward_compatible() {
+        let parsed = parse_profile_text(
+            r#"
+version: 1
+llm:
+  provider_id: deepseek
+  base_url: https://api.deepseek.com/v1
+  model: deepseek-chat
+"#,
+        )
+        .unwrap();
+        assert!(parsed.llm.as_ref().unwrap().prompt.is_none());
     }
 
     #[test]
@@ -182,6 +251,42 @@ llm:
         .unwrap_err();
 
         assert!(err.contains("敏感字段"));
+    }
+
+    #[test]
+    fn reject_profile_with_secret_like_prompt_value() {
+        let err = parse_profile_text(
+            r#"
+version: 1
+llm:
+  provider_id: deepseek
+  base_url: https://api.deepseek.com/v1
+  model: deepseek-chat
+  prompt:
+    stage_b_system: "use sk-1234567890abcdef"
+"#,
+        )
+        .unwrap_err();
+
+        assert!(err.contains("敏感字段"));
+    }
+
+    #[test]
+    fn reject_profile_with_broken_export_polish_template() {
+        let err = parse_profile_text(
+            r#"
+version: 1
+llm:
+  provider_id: deepseek
+  base_url: https://api.deepseek.com/v1
+  model: deepseek-chat
+  prompt:
+    export_polish_instructions: "只润色 {body}"
+"#,
+        )
+        .unwrap_err();
+
+        assert!(err.contains("缺少占位符"));
     }
 
     #[test]

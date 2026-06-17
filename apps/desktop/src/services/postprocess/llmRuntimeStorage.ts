@@ -9,6 +9,20 @@ import {
   OLLAMA_LOOPBACK_PLACEHOLDER_API_KEY,
   type LlmProviderId,
 } from "./llmProviderCatalog";
+import {
+  readLlmPromptOverridesFromStorage,
+  hasLlmPromptOverrides,
+  type LlmPromptDefaults,
+  type LlmPromptOverrides,
+} from "./llmPromptStorage";
+
+export type { LlmPromptDefaults, LlmPromptOverrides };
+export {
+  clearLlmPromptOverrides,
+  persistLlmPromptOverrides,
+  readLlmPromptOverridesFromStorage,
+  resolveEffectiveLlmPromptOverrides,
+} from "./llmPromptStorage";
 
 export type LlmRuntimeConfig = {
   providerId: LlmProviderId;
@@ -25,6 +39,7 @@ export type PostprocessRuntimeBridge = {
   apiKey?: string;
   apiKeyId?: string;
   allowInsecureHttp?: boolean;
+  promptOverrides?: LlmPromptOverrides;
 };
 
 const inMemoryLlmSecrets: { apiKey?: string } = {};
@@ -234,6 +249,10 @@ export function tryBuildPostprocessRuntimeBridge(): PostprocessRuntimeBridge | n
     runtime.apiKey = apiKey;
   } else if (apiKeyId) {
     runtime.apiKeyId = apiKeyId;
+  }
+  const promptOverrides = readLlmPromptOverridesFromStorage();
+  if (hasLlmPromptOverrides(promptOverrides)) {
+    runtime.promptOverrides = promptOverrides;
   }
   return runtime;
 }

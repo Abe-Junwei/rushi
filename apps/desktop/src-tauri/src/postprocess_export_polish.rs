@@ -72,11 +72,78 @@ pub fn merge_export_polish_batches(
     }
 }
 
+pub fn default_export_polish_system_prompt() -> &'static str {
+    "你是中文讲稿 ASR 润色助手。lines 会被程序原样写入导出稿，不得增删行。须逐行改正文错字、同音误识别、口语重复字并规范标点；另给 break_after_line。禁止 paragraphs 字段与整句编造。只输出合法 JSON。"
+}
+
+pub fn default_export_polish_instructions_template() -> String {
+    r#"你是中文讲稿 ASR 润色器。输入为 {line_count} 条语段（每行一条，不得增删行）。**客户端将原样采用你返回的 lines，不会做二次删改或拒收**，因此必须在 lines 里直接写好全部修正。{batch_note}
+
+## 输出 JSON（仅此结构）
+{"lines":["行1",...,"行{line_count}"],"break_after_line":[0,3,7]}
+
+## lines（应尽量 {line_count} 行；若合并语段可少 1–2 行，客户端会自动对齐）
+对每一行在本行内完成（保持原意、人称与事实，禁止整句重写）：
+1. **错字/同音误识别**：必须改正 obvious 问题（示例：传讨→传统，辛库→辛苦，小胸小→胸腔，棵→颗，的/地/得，在/再）。
+2. **口语 ASR 噪声**：连续无义重复字应删减或合并（如 喔喔喔、啊啊啊、鹅鹅鹅、呜呜、哇哇 等）。
+3. **标点与空格**：补全句号、逗号等，规范「，」前后空格。
+无需改动的行请原样抄写。
+
+## break_after_line
+语义自然段：在哪些行**之后**另起段落（0 起下标，升序）。**尽量少分段**（建议全文不超过 12 段、相邻分段至少间隔 8 行语段）；分段仅影响 Word 版式，**不得**为分段产生修订。不要输出 paragraphs 字段。{rule_hints}
+
+输入（{line_count} 行，行间 \n）：
+{body}"#
+        .to_string()
+}
+
+pub fn resolve_export_polish_system_prompt(system_override: Option<&str>) -> String {
+    system_override
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_string)
+        .unwrap_or_else(|| default_export_polish_system_prompt().to_string())
+}
+
+pub(crate) fn validate_export_polish_instructions_template(template: &str) -> Result<(), String> {
+    let template = template.trim();
+    if template.is_empty() {
+        return Ok(());
+    }
+    let missing: Vec<&str> = ["{line_count}", "{batch_note}", "{rule_hints}", "{body}"]
+        .into_iter()
+        .filter(|placeholder| !template.contains(placeholder))
+        .collect();
+    if missing.is_empty() {
+        Ok(())
+    } else {
+        Err(format!(
+            "导出润色 User 指令缺少占位符：{}。",
+            missing.join("、")
+        ))
+    }
+}
+
+fn apply_export_polish_template(
+    template: &str,
+    line_count: usize,
+    batch_note: &str,
+    rule_hints: &str,
+    body: &str,
+) -> String {
+    template
+        .replace("{line_count}", &line_count.to_string())
+        .replace("{batch_note}", batch_note)
+        .replace("{rule_hints}", rule_hints)
+        .replace("{body}", body)
+}
+
 pub fn build_export_polish_prompt(
     body: &str,
     line_count: usize,
     rule_hints: &str,
     batch: Option<(usize, usize)>,
+    instructions_override: Option<&str>,
 ) -> String {
     let batch_note = batch
         .map(|(i, n)| {
@@ -90,25 +157,12 @@ pub fn build_export_polish_prompt(
     } else {
         format!("\n\n项目稳定纠错规则（须在对应行落实，优先级高于你的推断）：\n{rule_hints}")
     };
-    format!(
-        r#"你是中文讲稿 ASR 润色器。输入为 {line_count} 条语段（每行一条，不得增删行）。**客户端将原样采用你返回的 lines，不会做二次删改或拒收**，因此必须在 lines 里直接写好全部修正。{batch_note}
-
-## 输出 JSON（仅此结构）
-{{"lines":["行1",...,"行{line_count}"],"break_after_line":[0,3,7]}}
-
-## lines（应尽量 {line_count} 行；若合并语段可少 1–2 行，客户端会自动对齐）
-对每一行在本行内完成（保持原意、人称与事实，禁止整句重写）：
-1. **错字/同音误识别**：必须改正 obvious 问题（示例：传讨→传统，辛库→辛苦，小胸小→胸腔，棵→颗，的/地/得，在/再）。
-2. **口语 ASR 噪声**：连续无义重复字应删减或合并（如 喔喔喔、啊啊啊、鹅鹅鹅、呜呜、哇哇 等）。
-3. **标点与空格**：补全句号、逗号等，规范「，」前后空格。
-无需改动的行请原样抄写。
-
-## break_after_line
-语义自然段：在哪些行**之后**另起段落（0 起下标，升序）。**尽量少分段**（建议全文不超过 12 段、相邻分段至少间隔 8 行语段）；分段仅影响 Word 版式，**不得**为分段产生修订。不要输出 paragraphs 字段。{hints}
-
-输入（{line_count} 行，行间 \\n）：
-{body}"#
-    )
+    let template = instructions_override
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_string)
+        .unwrap_or_else(default_export_polish_instructions_template);
+    apply_export_polish_template(&template, line_count, &batch_note, &hints, body)
 }
 
 /// 由语段行 + 断段下标生成 Word 自然段（行内直接拼接，不插换行）。
@@ -343,8 +397,25 @@ mod tests {
     }
 
     #[test]
+    fn export_polish_prompt_accepts_custom_template() {
+        let custom = "润色 {line_count} 行。{batch_note}{rule_hints}\n{body}";
+        let p = build_export_polish_prompt("a\nb", 2, "规则A", None, Some(custom));
+        assert!(p.contains("润色 2 行"));
+        assert!(p.contains("a\nb"));
+        assert!(p.contains("规则A"));
+    }
+
+    #[test]
+    fn export_polish_template_reports_missing_placeholders() {
+        let err = validate_export_polish_instructions_template("只润色 {body}").unwrap_err();
+        assert!(err.contains("{line_count}"));
+        assert!(err.contains("{batch_note}"));
+        assert!(err.contains("{rule_hints}"));
+    }
+
+    #[test]
     fn prompt_mentions_break_after_only() {
-        let p = build_export_polish_prompt("a\nb", 2, "", None);
+        let p = build_export_polish_prompt("a\nb", 2, "", None, None);
         assert!(p.contains("break_after_line"));
         assert!(p.contains("原样采用"));
     }

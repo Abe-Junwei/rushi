@@ -16,6 +16,8 @@ mod postprocess_lexicon_ops;
 mod postprocess_ollama;
 #[path = "postprocess_probe.rs"]
 mod postprocess_probe;
+#[path = "postprocess_prompt_defaults_cmd.rs"]
+pub mod postprocess_prompt_defaults_cmd;
 #[path = "postprocess_refine_cmd.rs"]
 pub mod postprocess_refine_cmd;
 #[path = "postprocess_secret_store.rs"]
@@ -30,9 +32,10 @@ mod postprocess_types;
 pub(crate) use postprocess_config::{
     build_auto_punctuate_prompt, build_postprocess_models_endpoint, chat_completion_finish_reason,
     extract_chat_completion_text, extract_chat_completion_text_labeled, normalize_api_key_id,
-    resolve_postprocess_config_async, resolve_runtime_postprocess_config, PostprocessConfig,
-    DEFAULT_TIMEOUT_SECS,
+    resolve_auto_punctuate_system_prompt, resolve_postprocess_config_async,
+    resolve_runtime_postprocess_config, PostprocessConfig, DEFAULT_TIMEOUT_SECS,
 };
+pub(crate) use postprocess_export_polish::validate_export_polish_instructions_template;
 
 #[cfg(test)]
 pub(crate) use postprocess_api_key_cmd::{secret_account_for_delete, LlmSaveApiKeyRequest};

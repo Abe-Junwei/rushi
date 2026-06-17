@@ -13,7 +13,8 @@ export type BusyReason =
   | "delete"
   | "install_funasr"
   | "export"
-  | "stage_b";
+  | "stage_b"
+  | "batch_transcribe";
 
 export interface ProjectCrudApi {
   createProject: () => Promise<void>;

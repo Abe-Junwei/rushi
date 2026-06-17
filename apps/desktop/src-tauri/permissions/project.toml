@@ -5,6 +5,7 @@ identifier = "project"
 description = "Project and editor file commands for the main window."
 permissions = [
   "allow-pick-audio-path",
+  "allow-pick-audio-paths",
   "allow-project-create-from-audio",
   "allow-create-empty-project",
   "allow-create-project-from-text",

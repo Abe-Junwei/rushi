@@ -11,6 +11,14 @@ export const LLM_STORAGE_KEYS = {
   lastCloudBaseUrl: "rushi.llm.lastCloudBaseUrl",
   lastCloudModel: "rushi.llm.lastCloudModel",
   lastCloudApiKeyId: "rushi.llm.lastCloudApiKeyId",
+  /** 智能改稿 system 提示词覆盖（空则使用内置默认） */
+  promptStageBSystem: "rushi.llm.prompt.stageBSystem",
+  /** 智能改稿 user 指令块覆盖（词表/语段仍由客户端追加） */
+  promptStageBInstructions: "rushi.llm.prompt.stageBInstructions",
+  promptAutoPunctuateSystem: "rushi.llm.prompt.autoPunctuateSystem",
+  promptAutoPunctuateInstructions: "rushi.llm.prompt.autoPunctuateInstructions",
+  promptExportPolishSystem: "rushi.llm.prompt.exportPolishSystem",
+  promptExportPolishInstructions: "rushi.llm.prompt.exportPolishInstructions",
 } as const;
 
 export const LLM_CONNECTION_VERIFIED_EVENT = "rushi:llm-connection-verified";

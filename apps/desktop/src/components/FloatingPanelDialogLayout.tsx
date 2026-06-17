@@ -1,22 +1,45 @@
 import type { HTMLAttributes, ReactNode, Ref } from "react";
 
-/** compactDialog 正文区内边距：底部略大于顶部，避免页脚按钮贴底。 */
-export const FLOATING_PANEL_DIALOG_BODY_PADDING_CLASS = "px-5 pt-3 pb-6";
+/** compactDialog 正文区水平与顶边距；底边由页脚或 solo 根节点承担。 */
+export const FLOATING_PANEL_DIALOG_BODY_PADDING_CLASS = "px-5 pt-3";
 
-/** 可拖拽 compactDialog 页脚按钮行（与 CompactFloatingDialog footer 同构） */
+/** 无独立页脚时，正文区底边与左右同为 20px（Tailwind pb-5 / px-5）。 */
+export const FLOATING_PANEL_DIALOG_BODY_SOLO_BOTTOM_CLASS = "pb-5";
+
+/** 可拖拽 compactDialog 页脚：分隔线 + 与左右对齐的底边距（按钮用 CONTROL_BTN_* h-8）。 */
 export const FLOATING_PANEL_DIALOG_FOOTER_CLASS =
-  "mt-3 flex shrink-0 flex-wrap items-center gap-2 border-t border-notion-divider pt-3";
+  "mt-3 flex shrink-0 flex-wrap items-center gap-2 border-t border-notion-divider pt-3 pb-5";
 
-const ROOT_CLASS = `flex h-full min-h-0 flex-col ${FLOATING_PANEL_DIALOG_BODY_PADDING_CLASS}`;
 const SCROLL_CLASS = "floating-panel-body-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden";
 const FOOTER_BASE = FLOATING_PANEL_DIALOG_FOOTER_CLASS;
 
-type RootProps = HTMLAttributes<HTMLDivElement> & { measureRef?: Ref<HTMLDivElement> };
+type RootProps = HTMLAttributes<HTMLDivElement> & {
+  measureRef?: Ref<HTMLDivElement>;
+  /** 为 true 时底边距由 FloatingPanelDialogFooter 承担，避免与 root pb 叠加。 */
+  hasFooter?: boolean;
+  /** 含 flex-1 列表/滚动区时撑满面板正文；静态表单应 false，避免页脚下方留白。 */
+  fillHeight?: boolean;
+};
 
 /** 占满面板正文区；配合 DraggableResizablePanel 的 flex 列与 overflow-hidden。 */
-export function FloatingPanelDialogRoot({ children, className, measureRef, ...rest }: RootProps) {
+export function FloatingPanelDialogRoot({
+  children,
+  className,
+  measureRef,
+  hasFooter = false,
+  fillHeight = false,
+  ...rest
+}: RootProps) {
+  const paddingClass = hasFooter
+    ? FLOATING_PANEL_DIALOG_BODY_PADDING_CLASS
+    : `${FLOATING_PANEL_DIALOG_BODY_PADDING_CLASS} ${FLOATING_PANEL_DIALOG_BODY_SOLO_BOTTOM_CLASS}`;
+  const heightClass = fillHeight ? "h-full min-h-0" : "min-h-0";
   return (
-    <div ref={measureRef} className={[ROOT_CLASS, className].filter(Boolean).join(" ")} {...rest}>
+    <div
+      ref={measureRef}
+      className={["flex flex-col", heightClass, paddingClass, className].filter(Boolean).join(" ")}
+      {...rest}
+    >
       {children}
     </div>
   );

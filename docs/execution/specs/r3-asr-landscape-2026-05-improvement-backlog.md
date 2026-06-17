@@ -30,7 +30,9 @@
 | **P1** | **R3g-B Qwen3 spike** | 评估第三 SKU（0.6B）质量/磁盘；**须专测伪流式/G4** | 2–4d | R3h-ASR-VER 建议先 | §4.1.8、专项 research §8 | 📋 research ✅ |
 | **P1** | **R3h-CUDA-PERF** | CUDA 侧车 p95/首段 SLA（抄 Together 思路） | 3–5d spike | R3e-C SLA log | §4.1.8 | 📋 |
 | **P1** | **R3e-C.5 poll→event** | Tauri event 替代 800ms poll，降 CPU | 1–2d | R3e-C ✅ | §4.1.8 | 📋 |
-| **P2** | **R3g-B Nano+vLLM** | GPU 用户长音频提速 | spike 2–4d | Qwen3 Go/No-go | §4.1.8 | ⏳ |
+| **P2** | **R3g-C-NANO PyTorch** | Fun-ASR-Nano-2512 同栈 spike | — | research ✅ | ❌ **Defer** 2026-06-17 |
+| **P2** | **R3g-C-NANO vLLM** | GPU 第二运行时 | spike 2–4d | PyTorch Defer + CUDA 机 | 📋 research ✅ |
+| **P2** | **R3g-B Nano+vLLM** | （别名）同上 | — | 合并上行 | 📋 |
 | **P2** | **ACC-ONLINE-U3** | Realtime-Whisper / U3 Pro 在线 STT | 设计 only | ACC-STT-UNIFY | **STREAM-*** | ⏳ |
 | **P2** | **R3g-B diarization** | 说话人 id → schema/UI | 大 | R3t 段模型 | §8.1 | ⏳ |
 | **P2** | **ASR-RADAR-FireRed** | FireRedASR2-AED：中文 CER SOTA、统一 VAD+LID+Punc；**非 FunASR 生态** | 跟踪 | Sherpa Spike 结论 | §3.3 | 📋 雷达 |
@@ -95,7 +97,8 @@
 
 | 项 | 说明 |
 |----|------|
-| **Fun-ASR-Nano + vLLM** | FunASR 宣称 batch **~340× RTF**；**GPU 速度线**；与 Qwen3 **质量线** 串行 spike |
+| **Fun-ASR-Nano PyTorch** | ❌ **Defer** 2026-06-17 — 默认长音频 `<\|no\|>`；180s 窗 108 段 / 无 `sentence_info`；**不上 catalog** — [`acceptance`](./r3g-c-funasr-nano-acceptance.md) |
+| **Fun-ASR-Nano + vLLM** | research ✅；**CUDA spike 待 GPU 机** — [`vllm-research`](./r3g-c-funasr-nano-vllm-research.md)；GPU 速度线；**不挡 v1.1** |
 | **OpenAI GPT-Realtime-Whisper** | 2026-05-07 在线流式 STT；属 **STREAM-*** / 在线 Provider 扩展，**不**替换 batch `project_run_transcribe` |
 | **AssemblyAI U3 Pro / Deepgram Nova-3** | 在线 batch **专名/幻觉** 优化；在 ACC-STT-UNIFY 后 A/B |
 | **FunASR diarization (`campplus`)** | 需 schema + UI + 导出；**非** v1 薄片 |
@@ -152,7 +155,9 @@
 - [x] 已并入 [`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) §4.1.8  
 - [x] **R3e-C ✅**（2026-05-31）  
 - [ ] R3h-ASR-VER 立项（可选 acceptance 单行）  
-- [ ] Qwen3 spike 执行 + Go/No-go  
+- [x] Qwen3 spike → **No-go**（2026-06-03）  
+- [x] **R3g-C-NANO PyTorch** spike → **Defer**（2026-06-17）  
+- [ ] **R3g-C-NANO vLLM** CUDA spike（research ✅）
 
 **变更记录**
 
@@ -162,3 +167,4 @@
 | 2026-05-30 | 外部评估吸收：FireRedASR2 / Moonshine 雷达；SenseVoice 弃用；Qwen3 伪流式 → spike §8 |
 | 2026-06-02 | 路线图审查：SenseVoice 下线日期写入；Qwen3 门控 → ⑤″f-E；R3 **12～15w** |
 | 2026-05-31 | R3e-C 手测签收（制控.mp3） |
+| 2026-06-17 | **R3g-C-NANO PyTorch Defer**；vLLM research ✅；P2 表刷新 |

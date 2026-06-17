@@ -5,6 +5,7 @@ import { EnvFlatConfigStack } from "./EnvFlatConfigStack";
 import { EnvLlmCloudVendorPills } from "./EnvLlmCloudVendorPills";
 import { EnvLlmConnectionForm } from "./EnvLlmConnectionForm";
 import { EnvLlmModeSwitch } from "./EnvLlmModeSwitch";
+import { EnvLlmPromptSection } from "./EnvLlmPromptSection";
 import { EnvLlmStatusBanner } from "./EnvLlmStatusBanner";
 
 type Props = {
@@ -72,6 +73,8 @@ export function EnvLlmConfigPanel({ busy, scrollAnchorRef, onLlmRuntimeChanged }
         }
         form={<EnvLlmConnectionForm {...formProps} />}
       />
+
+      <EnvLlmPromptSection disabled={panel.formBusy} prompt={panel.promptConfig} />
     </div>
   );
 }

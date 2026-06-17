@@ -1,11 +1,9 @@
-import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../../config/typography";
 import type { PostTranscribeStageBDialogState } from "../../pages/usePostTranscribeStageBController";
 import { describeStageBPreviewSummary } from "../../services/postprocess/postTranscribeStageB";
 import { FloatingPanelSegmentList } from "../FloatingPanelSegmentList";
 import { FloatingPanelSegmentRow } from "../FloatingPanelSegmentRow";
 import {
-  FloatingPanelDialogFooter,
   FloatingPanelDialogHeader,
   FloatingPanelDialogListRegion,
 } from "../FloatingPanelDialogLayout";
@@ -20,8 +18,6 @@ type Props = {
   previewFocusSegmentIdx: number | null;
   pendingHint: string | null;
   packTruncationHint: string | null;
-  onCancel: () => void;
-  onConfirmWriteback: () => void;
   onToggleSegment: (segmentIdx: number) => void;
   onFocusSegment: (segmentIdx: number) => void;
 };
@@ -32,8 +28,6 @@ export function PostTranscribeStageBPreviewPanel({
   previewFocusSegmentIdx,
   pendingHint,
   packTruncationHint,
-  onCancel,
-  onConfirmWriteback,
   onToggleSegment,
   onFocusSegment,
 }: Props) {
@@ -129,29 +123,6 @@ export function PostTranscribeStageBPreviewPanel({
           })}
         </FloatingPanelSegmentList>
       </FloatingPanelDialogListRegion>
-      <FloatingPanelDialogFooter>
-        <p className={`${PANEL_TYPOGRAPHY.dialogBody} text-notion-text-muted`}>
-          将写回 {preview.selectedSegmentIdxs.length} / {preview.changes.length} 条语段
-        </p>
-        <div className="flex shrink-0 items-center gap-2">
-          {preview.provider ? (
-            <span className={`${PANEL_TYPOGRAPHY.meta} text-notion-text-muted`}>
-              {preview.provider}
-            </span>
-          ) : null}
-          <button type="button" className={CONTROL_BTN_SECONDARY} disabled={busy} onClick={onCancel}>
-            取消
-          </button>
-          <button
-            type="button"
-            className={CONTROL_BTN_PRIMARY}
-            disabled={busy || preview.selectedSegmentIdxs.length === 0}
-            onClick={onConfirmWriteback}
-          >
-            确认写回
-          </button>
-        </div>
-      </FloatingPanelDialogFooter>
     </>
   );
 }

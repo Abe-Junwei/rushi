@@ -30,10 +30,20 @@ fn seg(uid: &str, text: &str) -> RefineSegmentItem {
 }
 
 #[test]
+fn stage_b_prompt_accepts_custom_instructions() {
+    let pack = sample_pack();
+    let segments = vec![seg("seg-a", "安波那那很好")];
+    let custom = "自定义任务说明\n约束：\n1. 只输出 JSON。";
+    let prompt = build_stage_b_merged_proofread_prompt(&segments, &pack, Some(custom));
+    assert!(prompt.starts_with(custom));
+    assert!(prompt.contains("uid=seg-a"));
+}
+
+#[test]
 fn stage_b_prompt_includes_lexicon_segments_and_constraints() {
     let pack = sample_pack();
     let segments = vec![seg("seg-a", "安波那那很好")];
-    let prompt = build_stage_b_merged_proofread_prompt(&segments, &pack);
+    let prompt = build_stage_b_merged_proofread_prompt(&segments, &pack, None);
     assert!(prompt.contains("uid=seg-a"));
     assert!(prompt.contains("安波那那很好"));
     assert!(prompt.contains("安波那那→安那般那"));

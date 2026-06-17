@@ -4,67 +4,14 @@ import { CONTROL_BTN_WORKSPACE_IMPORT } from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { WORKSPACE_PAGE_PANEL_CLASS } from "../config/workspaceShellLayout";
 import type { ProjectControllerApi } from "../pages/useProjectController";
+import { importDroppedPathsToProject } from "../services/projectBatchImport";
 import { toast } from "../services/ui/toast";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
 const DROP_IMPORT_UNSUPPORTED_MSG =
   "拖入失败：仅支持音频（.mp3/.wav/.m4a）或转录文本（.txt/.srt/.vtt）文件。";
 
-const AUDIO_EXTENSIONS = new Set(["mp3", "wav", "m4a"]);
-const TRANSCRIPT_EXTENSIONS = new Set(["txt", "srt", "vtt"]);
-
 const IMPORT_ACTION_BTN = CONTROL_BTN_WORKSPACE_IMPORT;
-
-async function importDroppedFiles(
-  c: ProjectControllerApi,
-  paths: string[],
-): Promise<{ imported: number; skipped: number; unsupported: number }> {
-  if (!c.current) return { imported: 0, skipped: paths.length, unsupported: paths.length };
-
-  const uniquePaths = [...new Set(paths)];
-  let imported = 0;
-  let skipped = 0;
-  let unsupported = 0;
-
-  for (const srcPath of uniquePaths) {
-    const kind = resolveDroppedFileKind(srcPath);
-    if (!kind) {
-      skipped += 1;
-      unsupported += 1;
-      continue;
-    }
-
-    const importedOk = await c.importFileToProject(
-      kind === "audio" ? "audio" : "text",
-      srcPath,
-      { skipReload: true },
-    );
-    if (importedOk) {
-      imported += 1;
-    } else {
-      skipped += 1;
-    }
-  }
-
-  if (imported > 0 && c.current) {
-    await c.loadProjectAfterImport(c.current.id);
-  }
-
-  return { imported, skipped, unsupported };
-}
-
-function getFileExtension(path: string): string {
-  const dot = path.lastIndexOf(".");
-  if (dot < 0) return "";
-  return path.slice(dot + 1).toLowerCase();
-}
-
-function resolveDroppedFileKind(path: string): "audio" | "transcript" | null {
-  const ext = getFileExtension(path);
-  if (AUDIO_EXTENSIONS.has(ext)) return "audio";
-  if (TRANSCRIPT_EXTENSIONS.has(ext)) return "transcript";
-  return null;
-}
 
 export function EmptyProjectPanel({ controller: c }: { controller: ProjectControllerApi }) {
   const [pendingImport, setPendingImport] = useState<"audio" | "transcript" | "drop" | null>(null);
@@ -126,7 +73,13 @@ export function EmptyProjectPanel({ controller: c }: { controller: ProjectContro
           void (async () => {
             const controller = controllerRef.current;
             try {
-              const result = await importDroppedFiles(controller, droppedPaths);
+              const projectId = controller.current?.id;
+              if (!projectId) return;
+              const result = await importDroppedPathsToProject(
+                controller.importFileToProject,
+                droppedPaths,
+                async () => controller.loadProjectAfterImport(projectId),
+              );
               if (result.imported === 0 && result.unsupported > 0) {
                 toast.error(DROP_IMPORT_UNSUPPORTED_MSG);
               }
@@ -198,7 +151,9 @@ export function EmptyProjectPanel({ controller: c }: { controller: ProjectContro
             className={`${IMPORT_ACTION_BTN} w-full justify-start sm:w-auto`}
             disabled={isImportBusy}
             onClick={() =>
-              runImport("audio", () => c.pickAndImportFileToProject("audio").then(() => undefined))
+              runImport("audio", () =>
+                c.pickAndImportAudioPathsToProject().then(() => undefined),
+              )
             }
           >
             <FileAudio className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />

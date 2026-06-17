@@ -21,6 +21,7 @@ type UseProjectCloseGateControllerArgs = {
   busy: boolean;
   busyReason: BusyReason | null;
   cancelTranscribe: () => void | Promise<void>;
+  cancelBatchTranscribe?: () => Promise<void>;
   closeFile: () => void;
   current: ProjectDetail | null;
   currentFileId: string | null;

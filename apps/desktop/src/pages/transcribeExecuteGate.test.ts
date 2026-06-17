@@ -56,4 +56,33 @@ describe("resolveTranscribeExecuteBlock", () => {
       }),
     ).toContain("在线 STT");
   });
+
+  it("allows batch child when batch_transcribe busy", () => {
+    expect(
+      resolveTranscribeExecuteBlock({
+        busy: true,
+        busyReason: "batch_transcribe",
+        batchChild: true,
+        hasCurrent: true,
+        currentFileId: "f1",
+        localTranscribePreflight: () => null,
+        source: "local",
+      }),
+    ).toBeNull();
+  });
+
+  it("allows batch child with explicit targetFileId when currentFileId is null", () => {
+    expect(
+      resolveTranscribeExecuteBlock({
+        busy: true,
+        busyReason: "batch_transcribe",
+        batchChild: true,
+        hasCurrent: true,
+        currentFileId: null,
+        targetFileId: "f-batch",
+        localTranscribePreflight: () => null,
+        source: "local",
+      }),
+    ).toBeNull();
+  });
 });

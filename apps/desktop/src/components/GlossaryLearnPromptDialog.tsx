@@ -19,7 +19,7 @@ type Props = {
 export function GlossaryLearnPromptDialog({ state, busy, onClose, onDismiss, onConfirm }: Props) {
   const open = state.phase !== "closed";
   const rowCount = state.phase === "prompt" ? state.rows.length : 0;
-  const estimatedFitHeight = 200 + Math.min(rowCount, 4) * 88;
+  const estimatedFitHeight = 220 + Math.min(rowCount, 4) * 96;
 
   return (
     <CompactFloatingDialog
@@ -29,8 +29,10 @@ export function GlossaryLearnPromptDialog({ state, busy, onClose, onDismiss, onC
       onClose={onClose}
       fallbackHeight={FALLBACK_HEIGHT}
       estimatedFitHeight={estimatedFitHeight}
+      layoutRev={rowCount}
       defaultWidth={420}
       bounds={{ minWidth: 360, minHeight: 240, maxWidthCap: 480, maxHeightCap: 560 }}
+      fillHeight
     >
       <FloatingPanelDialogHeader>
         <p className={PANEL_TYPOGRAPHY.dialogBody}>

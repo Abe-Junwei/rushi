@@ -1,14 +1,25 @@
+const AUDIO_PICKER_EXTENSIONS: &[&str] = &[
+    "wav", "mp3", "m4a", "aac", "flac", "ogg", "mp4", "webm", "mov", "caf", "aiff",
+];
+
+fn audio_file_dialog() -> rfd::FileDialog {
+    rfd::FileDialog::new().add_filter("音视频", AUDIO_PICKER_EXTENSIONS)
+}
+
 #[tauri::command]
 pub fn pick_audio_path() -> Result<Option<String>, String> {
-    let picked = rfd::FileDialog::new()
-        .add_filter(
-            "音视频",
-            &[
-                "wav", "mp3", "m4a", "aac", "flac", "ogg", "mp4", "webm", "mov", "caf", "aiff",
-            ],
-        )
-        .pick_file();
+    let picked = audio_file_dialog().pick_file();
     Ok(picked.map(|p| p.to_string_lossy().to_string()))
+}
+
+#[tauri::command]
+pub fn pick_audio_paths() -> Result<Vec<String>, String> {
+    let picked = audio_file_dialog().pick_files();
+    Ok(picked
+        .unwrap_or_default()
+        .into_iter()
+        .map(|p| p.to_string_lossy().to_string())
+        .collect())
 }
 
 #[tauri::command]

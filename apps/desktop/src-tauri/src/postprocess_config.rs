@@ -191,18 +191,44 @@ fn load_postprocess_api_key(
     ))
 }
 
+pub(crate) fn default_auto_punctuate_system_prompt() -> &'static str {
+    "你是中文转写后处理助手。只给当前语段补充自然、克制的中文标点，不改写词语，不补充解释，不输出 markdown，不返回额外说明。"
+}
+
+pub(crate) fn default_auto_punctuate_instructions() -> String {
+    [
+        "任务：仅为“当前语段”补充自然中文标点。",
+        "约束：",
+        "1. 不改写词语，不补充省略内容。",
+        "2. 不输出解释，不加引号标题。",
+        "3. 仅返回处理后的当前语段正文。",
+    ]
+    .join("\n")
+}
+
+pub(crate) fn resolve_auto_punctuate_system_prompt(system_override: Option<&str>) -> String {
+    system_override
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_string)
+        .unwrap_or_else(|| default_auto_punctuate_system_prompt().to_string())
+}
+
+fn resolve_auto_punctuate_instructions(instructions_override: Option<&str>) -> String {
+    instructions_override
+        .map(str::trim)
+        .filter(|s| !s.is_empty())
+        .map(str::to_string)
+        .unwrap_or_else(default_auto_punctuate_instructions)
+}
+
 pub(crate) fn build_auto_punctuate_prompt(
     text: &str,
     neighbor_context: &[NeighborContextItem],
     legacy_snippets: &[String],
+    instructions_override: Option<&str>,
 ) -> String {
-    let mut lines = vec![
-        "任务：仅为“当前语段”补充自然中文标点。".to_string(),
-        "约束：".to_string(),
-        "1. 不改写词语，不补充省略内容。".to_string(),
-        "2. 不输出解释，不加引号标题。".to_string(),
-        "3. 仅返回处理后的当前语段正文。".to_string(),
-    ];
+    let mut lines = vec![resolve_auto_punctuate_instructions(instructions_override)];
     let context_lines = if !neighbor_context.is_empty() {
         neighbor_context
             .iter()

@@ -36,9 +36,25 @@ export {
   tryBuildPostprocessRuntimeBridge,
   validateLlmConnectionDraft,
   type LlmRuntimeConfig,
+  type LlmPromptDefaults,
+  type LlmPromptOverrides,
   type PersistLlmRuntimeConfigOptions,
   type PostprocessRuntimeBridge,
 } from "./llmRuntimeStorage";
+
+export {
+  buildProfilePromptSection,
+  clearLlmPromptOverrides,
+  draftFromMergedPrompt,
+  hasLlmPromptOverrides,
+  mergePromptDraftWithDefaults,
+  persistLlmPromptOverrides,
+  profilePromptSectionToOverrides,
+  readLlmPromptOverridesFromStorage,
+  resolveEffectiveLlmPromptOverrides,
+  type LlmPromptDraft,
+  type SettingsProfilePromptSection,
+} from "./llmPromptStorage";
 
 export {
   llmExportPolishCapabilityBadge,

@@ -11,6 +11,8 @@ import {
 import { useTranscribeJobExecute } from "./useTranscribeJobExecute";
 import { useTranscribeJobPreflight } from "./useTranscribeJobPreflight";
 import type { SegmentPublishApi } from "./segmentPublishApi";
+import type { BusyReason } from "./useProjectCrudController";
+import type { ExecuteTranscribeOptions, ExecuteTranscribeResult } from "./useTranscribeJobExecute";
 
 export type { LocalTranscribePreflight } from "./transcribeJobHelpers";
 
@@ -27,6 +29,7 @@ type Mutations = Pick<ReturnType<typeof useSegmentMutationController>, "resetMut
 
 type Deps = {
   busy: Busy["busy"];
+  busyReason: BusyReason | null;
   beginBusy: Busy["beginBusy"];
   endBusy: Busy["endBusy"];
   current: Editor["current"];
@@ -46,6 +49,7 @@ type Deps = {
 export function useTranscribeJobController(deps: Deps) {
   const {
     busy,
+    busyReason,
     beginBusy,
     endBusy,
     current,
@@ -62,7 +66,9 @@ export function useTranscribeJobController(deps: Deps) {
     onTranscribeSuccess,
   } = deps;
 
-  const executeRef = useRef<() => Promise<void>>(async () => {});
+  const executeRef = useRef<(opts?: ExecuteTranscribeOptions) => Promise<ExecuteTranscribeResult>>(
+    async () => ({ ok: true }),
+  );
 
   const preflight = useTranscribeJobPreflight({
     busy,
@@ -70,11 +76,14 @@ export function useTranscribeJobController(deps: Deps) {
     currentFileId,
     setError,
     sttOnlineRuntimeEpoch,
-    onConfirmStart: () => executeRef.current(),
+    onConfirmStart: async () => {
+      await executeRef.current();
+    },
   });
 
   const execute = useTranscribeJobExecute({
     busy,
+    busyReason,
     beginBusy,
     endBusy,
     current,
@@ -115,6 +124,7 @@ export function useTranscribeJobController(deps: Deps) {
     cancelTranscribe: execute.cancelTranscribe,
     cancelTranscribeStart: preflight.cancelTranscribeStart,
     confirmTranscribeStart: preflight.confirmTranscribeStart,
+    executeTranscribeForBatch: (opts?: ExecuteTranscribeOptions) => execute.executeTranscribe(opts),
     applyDetailClearTranscribe: execute.applyDetailClearTranscribe,
   };
 }

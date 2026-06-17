@@ -52,6 +52,7 @@ export function baseTranscribeJobDeps(
     overrides.segmentPublish ?? createSegmentPublishApi(segmentsRef, setSegments);
   return {
     busy: false,
+    busyReason: null,
     beginBusy: vi.fn(),
     endBusy: vi.fn(),
     current: { id: "proj-1", name: "P", files: [], created_at_ms: 0, updated_at_ms: 0 },

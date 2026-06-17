@@ -1,8 +1,13 @@
 import {
   getLlmProviderDefinition,
   persistLlmRuntimeConfig,
+  persistLlmPromptOverrides,
+  buildProfilePromptSection,
+  profilePromptSectionToOverrides,
+  readLlmPromptOverridesFromStorage,
   readLlmRuntimeConfigFromStorage,
   type LlmProviderId,
+  type SettingsProfilePromptSection,
 } from "../postprocess/postprocessRuntimeContract";
 import {
   getSttOnlineProviderDefinition,
@@ -17,6 +22,7 @@ export type SettingsProfileV1 = {
     base_url: string;
     model: string;
     api_key_id?: string;
+    prompt?: SettingsProfilePromptSection;
   };
   online_stt?: {
     enabled: boolean;
@@ -30,7 +36,9 @@ export type SettingsProfileV1 = {
 
 export function buildSettingsProfileV1(): SettingsProfileV1 {
   const llm = readLlmRuntimeConfigFromStorage();
+  const promptOverrides = readLlmPromptOverridesFromStorage();
   const stt = readExternalSttOnlineRuntimeConfigFromStorage();
+  const prompt = buildProfilePromptSection(promptOverrides);
   return {
     version: 1,
     llm: {
@@ -38,6 +46,7 @@ export function buildSettingsProfileV1(): SettingsProfileV1 {
       base_url: llm.baseUrl,
       model: llm.model,
       ...(llm.apiKeyId ? { api_key_id: llm.apiKeyId } : {}),
+      ...(prompt ? { prompt } : {}),
     },
     online_stt: {
       enabled: stt.enabled,
@@ -65,6 +74,9 @@ export function applySettingsProfileV1(profile: SettingsProfileV1): void {
       model: profile.llm.model,
       ...(profile.llm.api_key_id ? { apiKeyId: profile.llm.api_key_id } : {}),
     });
+    if (profile.llm.prompt !== undefined) {
+      persistLlmPromptOverrides(profilePromptSectionToOverrides(profile.llm.prompt));
+    }
   }
 
   if (profile.online_stt) {

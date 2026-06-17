@@ -223,6 +223,7 @@ export function ProjectPanel() {
 
       {c.busy &&
       c.busyReason !== "transcribe" &&
+      c.busyReason !== "batch_transcribe" &&
       !c.duplicateImportConfirmOpen &&
       !c.duplicateImportChecking &&
       !(c.busyReason === "stage_b" && c.postTranscribeStageBDialog.phase === "loading") ? (

@@ -20,6 +20,8 @@ import {
   FloatingPanelDialogRoot,
 } from "./FloatingPanelDialogLayout";
 import { FindReplaceDialogBody } from "./FindReplaceDialogBody";
+import { useFloatingPanelBodyMeasure } from "../hooks/useFloatingPanelBodyMeasure";
+import { mergeContentFitHeights, resolveMeasuredPanelFitHeight } from "./floatingPanelFitSections";
 
 const PANEL_ID = FIND_REPLACE_PANEL_ID;
 
@@ -74,11 +76,16 @@ export function FindReplaceDialog({
   onConfirmReplaceAll,
   onCancelReplaceAllPreview,
 }: Props) {
-  if (state.phase === "closed" || typeof document === "undefined") return null;
+  const isOpen = state.phase !== "closed" && typeof document !== "undefined";
+  const { bodyRef, bodyHeight } = useFloatingPanelBodyMeasure(isOpen);
+
+  if (!isOpen) return null;
 
   const handleClose = () => {
     if (!busy) onClose();
   };
+
+  const measuredFit = bodyHeight != null ? resolveMeasuredPanelFitHeight(bodyHeight) : null;
 
   if (state.phase === "replaceAllPreview") {
     const layout = resolveFindReplacePanelLayout();
@@ -86,6 +93,9 @@ export function FindReplaceDialog({
       FIND_REPLACE_PREVIEW_STATIC_BODY_PX,
       state.rows.length,
     );
+    const contentFitHeight = mergeContentFitHeights(previewFitHeight, measuredFit);
+    const defaultPanelHeight = Math.min(contentFitHeight ?? previewFitHeight, layout.maxHeight);
+
     return createPortal(
       <div className="workspace">
         <FloatingPanelTemplate
@@ -98,14 +108,15 @@ export function FindReplaceDialog({
           maxHeight={layout.maxHeight}
           defaultSize={{
             width: Math.min(520, layout.maxWidth),
-            height: Math.min(previewFitHeight, layout.maxHeight),
+            height: defaultPanelHeight,
           }}
-          contentFitHeight={previewFitHeight}
+          contentFitHeight={contentFitHeight}
+          layoutRev={state.rows.length}
           panelZIndex={110}
           persistState
           onClose={handleClose}
         >
-          <FloatingPanelDialogRoot>
+          <FloatingPanelDialogRoot measureRef={bodyRef} hasFooter fillHeight>
             <FloatingPanelDialogHeader>
               <p className={PANEL_TYPOGRAPHY.dialogBody}>
                 将替换 {state.matchCount} 处「{state.findText}」→「{state.replaceText || "（空）"}」。确认后将自动保存并写入纠错记忆（查找词与替换词不同时）。
@@ -154,6 +165,9 @@ export function FindReplaceDialog({
   const layout = resolveFindReplacePanelLayout();
   const matchRowCount = state.searchCommitted && state.matchCount > 0 ? state.matchCount : 0;
   const panelFitHeight = resolveFloatingPanelFitHeight(FIND_REPLACE_PANEL_STATIC_BODY_PX, matchRowCount);
+  const contentFitHeight = mergeContentFitHeights(panelFitHeight, measuredFit);
+  const defaultPanelHeight = Math.min(contentFitHeight ?? panelFitHeight, layout.maxHeight);
+  const layoutRev = matchRowCount + (state.searchCommitted ? 1000 : 0);
 
   return createPortal(
     <div className="workspace">
@@ -167,9 +181,10 @@ export function FindReplaceDialog({
         maxHeight={layout.maxHeight}
         defaultSize={{
           width: layout.defaultSize.width,
-          height: Math.min(panelFitHeight, layout.maxHeight),
+          height: defaultPanelHeight,
         }}
-        contentFitHeight={panelFitHeight}
+        contentFitHeight={contentFitHeight}
+        layoutRev={layoutRev}
         panelZIndex={110}
         persistState
         onClose={handleClose}
@@ -177,6 +192,7 @@ export function FindReplaceDialog({
         <FindReplaceDialogBody
           state={state}
           busy={busy}
+          measureRef={bodyRef}
           onFindChange={onFindChange}
           onReplaceChange={onReplaceChange}
           onRunSearch={onRunSearch}

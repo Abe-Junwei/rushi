@@ -212,6 +212,14 @@ export interface ProjectLifecycleApi {
     kind: "audio" | "text",
     options?: import("./useProjectImportDuplicateController").ImportFileToProjectOptions,
   ) => Promise<boolean>;
+  pickAndImportAudioPathsToProject: () => Promise<{ imported: number; skipped: number }>;
+  batchQueueOpen: boolean;
+  batchQueueItems: import("../services/batchTranscribeQueue").BatchQueueItem[];
+  batchTranscribeRunning: boolean;
+  batchTranscribableCount: number;
+  canStartBatchTranscribe: boolean;
+  startBatchTranscribe: () => Promise<void>;
+  closeBatchQueueDialog: () => void;
   transcribeNavBlockOpen: boolean;
   cancelTranscribeNavBlock: () => void;
   confirmTranscribeNavBlock: () => void;

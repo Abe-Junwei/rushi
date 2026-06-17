@@ -7,6 +7,7 @@ import { CorrectionRulesPreviewDialog } from "./CorrectionRulesPreviewDialog";
 import { DeliveryExportDialog } from "./DeliveryExportDialog";
 import { DeliveryModeDialog } from "./DeliveryModeDialog";
 import { DuplicateImportConfirmDialog } from "./DuplicateImportConfirmDialog";
+import { BatchTranscribeQueueDialog } from "./BatchTranscribeQueueDialog";
 import { DeleteProjectFileConfirmDialog } from "./DeleteProjectFileConfirmDialog";
 import { DeleteProjectConfirmDialog } from "./DeleteProjectConfirmDialog";
 import { ProjectMetadataDialog } from "./ProjectMetadataDialog";
@@ -189,6 +190,14 @@ export function ProjectPanelDialogs({
         onStay={onStayAfterCloseAttempt}
         onDiscardAndClose={() => void c.discardUnsavedAndClose()}
         onSaveAndClose={() => void c.saveAndClose()}
+      />
+
+      <BatchTranscribeQueueDialog
+        open={c.batchQueueOpen}
+        running={c.batchTranscribeRunning}
+        items={c.batchQueueItems}
+        transcribeProgress={c.transcribeProgress}
+        onClose={c.closeBatchQueueDialog}
       />
 
       <DuplicateImportConfirmDialog

@@ -47,15 +47,24 @@ pub async fn postprocess_stage_b_proofread(
     };
     let config = resolve_postprocess_config_async(&bridge_req, &app_root).await?;
     let api_key = config.api_key.clone();
-    let prompt =
-        super::postprocess_lexicon_ops::build_stage_b_merged_proofread_prompt(&req.segments, &pack);
+    let prompt_overrides = req.runtime.as_ref().and_then(|rt| rt.prompt_overrides.as_ref());
+    let instructions_override = prompt_overrides
+        .and_then(|o| o.stage_b_instructions.as_deref());
+    let system_prompt = super::postprocess_lexicon_ops::resolve_stage_b_system_prompt(
+        prompt_overrides.and_then(|o| o.stage_b_system.as_deref()),
+    );
+    let prompt = super::postprocess_lexicon_ops::build_stage_b_merged_proofread_prompt(
+        &req.segments,
+        &pack,
+        instructions_override,
+    );
     let body = json!({
         "model": config.model,
         "temperature": 0.2,
         "messages": [
             {
                 "role": "system",
-                "content": "你是中文转写后处理助手。只输出 JSON 对象，包含 ops 与可选 rationale；每条修改必须带 evidence。"
+                "content": system_prompt
             },
             { "role": "user", "content": prompt }
         ]

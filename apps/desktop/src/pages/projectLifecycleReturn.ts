@@ -13,6 +13,7 @@ import type { useProjectImportDuplicateController } from "./useProjectImportDupl
 import type { useProjectFileMutationController } from "./useProjectFileMutationController";
 import type { useProjectMutationController } from "./useProjectMutationController";
 import type { useSegmentAnnotationController } from "./useSegmentAnnotationController";
+import type { useBatchTranscribeQueueController } from "./useBatchTranscribeQueueController";
 import type { useProjectCrudController } from "./useProjectCrudController";
 import type { useProjectSaveController } from "./useProjectSaveController";
 import type { useAutoSaveSegments } from "./useAutoSaveSegments";
@@ -32,6 +33,7 @@ type ImportDuplicate = ReturnType<typeof useProjectImportDuplicateController>;
 type FileMutation = ReturnType<typeof useProjectFileMutationController>;
 type ProjectMutation = ReturnType<typeof useProjectMutationController>;
 type SegmentAnnotation = ReturnType<typeof useSegmentAnnotationController>;
+type BatchTranscribe = ReturnType<typeof useBatchTranscribeQueueController>;
 type Crud = ReturnType<typeof useProjectCrudController>;
 type SaveController = ReturnType<typeof useProjectSaveController>;
 type AutoSave = ReturnType<typeof useAutoSaveSegments>;
@@ -80,6 +82,7 @@ export type ProjectLifecycleReturnInput = {
   fileMutation: FileMutation;
   projectMutation: ProjectMutation;
   segmentAnnotation: SegmentAnnotation;
+  batchTranscribe: BatchTranscribe;
 };
 
 /** 将子 controller 字段组装为 ProjectLifecycleApi return。 */
@@ -127,6 +130,7 @@ export function buildProjectLifecycleReturn(input: ProjectLifecycleReturnInput):
     fileMutation,
     projectMutation,
     segmentAnnotation,
+    batchTranscribe,
   } = input;
 
   const {
@@ -252,6 +256,16 @@ export function buildProjectLifecycleReturn(input: ProjectLifecycleReturnInput):
     confirmDuplicateImportCopy: importDuplicate.confirmDuplicateImportCopy,
     importFileToProject: importDuplicate.importFileToProject,
     pickAndImportFileToProject: importDuplicate.pickAndImportFileToProject,
+    pickAndImportAudioPathsToProject: importDuplicate.pickAndImportAudioPathsToProject,
+    batchQueueOpen: batchTranscribe.batchQueueOpen,
+    batchQueueItems: batchTranscribe.batchQueueItems,
+    batchTranscribeRunning: batchTranscribe.batchTranscribeRunning,
+    batchTranscribableCount: batchTranscribe.batchTranscribableCount,
+    canStartBatchTranscribe: batchTranscribe.canStartBatchTranscribe,
+    startBatchTranscribe: async () => {
+      await batchTranscribe.startBatchTranscribe();
+    },
+    closeBatchQueueDialog: batchTranscribe.closeBatchQueueDialog,
     renamingProjectFileId: fileMutation.renamingProjectFileId,
     renameProjectFileDraft: fileMutation.renameProjectFileDraft,
     setRenameProjectFileDraft: fileMutation.setRenameProjectFileDraft,

@@ -7,6 +7,7 @@ import {
   pickDuplicateOpenExistingFileId,
   type ImportDuplicateCheck,
 } from "../utils/projectImportDuplicate";
+import { importAudioPathsToProject as importAudioPathsBatch } from "../services/projectBatchImport";
 import type { BusyReason } from "./useProjectCrudController";
 
 type DuplicateImportDecision = "cancel" | "open_existing" | "import_copy";
@@ -32,6 +33,10 @@ export type ProjectImportDuplicateControllerApi = {
     kind: "audio" | "text",
     options?: ImportFileToProjectOptions,
   ) => Promise<boolean>;
+  pickAndImportAudioPathsToProject: () => Promise<{ imported: number; skipped: number }>;
+  importAudioPathsToProject: (
+    paths: string[],
+  ) => Promise<{ imported: number; skipped: number }>;
 };
 
 type Deps = {
@@ -132,18 +137,51 @@ export function useProjectImportDuplicateController(deps: Deps): ProjectImportDu
     [askDuplicateImport, deps],
   );
 
+  const importAudioPathsToProject = useCallback(
+    async (paths: string[]): Promise<{ imported: number; skipped: number }> => {
+      const projectId = deps.currentProjectId;
+      if (!projectId || paths.length === 0) return { imported: 0, skipped: paths.length };
+      if (deps.busy || importGateActiveRef.current) {
+        toast.error("当前有任务进行中，请稍后再导入。");
+        return { imported: 0, skipped: paths.length };
+      }
+      return importAudioPathsBatch(
+        importFileToProject,
+        paths,
+        async () => deps.loadProjectAfterImport(projectId),
+      );
+    },
+    [deps, importFileToProject],
+  );
+
+  const pickAndImportAudioPathsToProject = useCallback(async (): Promise<{
+    imported: number;
+    skipped: number;
+  }> => {
+    if (deps.busy || importGateActiveRef.current) {
+      toast.error("当前有任务进行中，请稍后再导入。");
+      return { imported: 0, skipped: 0 };
+    }
+    const paths = await fileApi.pickAudioPaths();
+    if (paths.length === 0) return { imported: 0, skipped: 0 };
+    return importAudioPathsToProject(paths);
+  }, [deps.busy, importAudioPathsToProject]);
+
   const pickAndImportFileToProject = useCallback(
     async (kind: "audio" | "text", options?: ImportFileToProjectOptions): Promise<boolean> => {
+      if (kind === "audio") {
+        const result = await pickAndImportAudioPathsToProject();
+        return result.imported > 0;
+      }
       if (deps.busy || importGateActiveRef.current) {
         toast.error("当前有任务进行中，请稍后再导入。");
         return false;
       }
-      const pick = kind === "audio" ? fileApi.pickAudioPath : fileApi.pickTextPath;
-      const srcPath = await pick();
+      const srcPath = await fileApi.pickTextPath();
       if (!srcPath) return false;
       return importFileToProject(kind, srcPath, options);
     },
-    [deps.busy, importFileToProject],
+    [deps.busy, importFileToProject, pickAndImportAudioPathsToProject],
   );
 
   return {
@@ -155,5 +193,7 @@ export function useProjectImportDuplicateController(deps: Deps): ProjectImportDu
     confirmDuplicateImportCopy,
     importFileToProject,
     pickAndImportFileToProject,
+    pickAndImportAudioPathsToProject,
+    importAudioPathsToProject,
   };
 }

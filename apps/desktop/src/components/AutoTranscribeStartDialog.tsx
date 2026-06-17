@@ -1,3 +1,4 @@
+import { useMemo } from "react";
 import { CONTROL_BTN_LINK, CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import type { TranscribeSource } from "../services/stt/transcribeSource";
@@ -9,7 +10,7 @@ import { FloatingPanelDialogHeader } from "./FloatingPanelDialogLayout";
 
 const PANEL_ID = "auto-transcribe-start-v1";
 const DEFAULT_WIDTH = 420;
-const FALLBACK_HEIGHT = 268;
+const FALLBACK_HEIGHT = 300;
 
 type Props = {
   open: boolean;
@@ -55,6 +56,19 @@ export function AutoTranscribeStartDialog({
   const sourceDescription = resolveTranscribeSourceDescription(source, { onlineReady });
   const confirmDisabled = busy || (source === "online" && !onlineReady);
 
+  const estimatedFitHeight = useMemo(() => {
+    let height = FALLBACK_HEIGHT;
+    if (hasExistingSegmentText) height += 44;
+    height += vocabularyLines.length * 28;
+    if (showOpenGlossaryLink && vocabularyLines.length > 0) height += 28;
+    return height;
+  }, [hasExistingSegmentText, showOpenGlossaryLink, vocabularyLines.length]);
+
+  const layoutRev =
+    (hasExistingSegmentText ? 1 : 0) +
+    vocabularyLines.length +
+    (showOpenGlossaryLink && vocabularyLines.length > 0 ? 4 : 0);
+
   return (
     <CompactFloatingDialog
       id={PANEL_ID}
@@ -62,6 +76,8 @@ export function AutoTranscribeStartDialog({
       open={open}
       onClose={handleClose}
       fallbackHeight={FALLBACK_HEIGHT}
+      estimatedFitHeight={estimatedFitHeight}
+      layoutRev={layoutRev}
       defaultWidth={DEFAULT_WIDTH}
       bounds={{ minWidth: 320, minHeight: 180, maxWidthCap: 480 }}
       persistState

@@ -2,6 +2,24 @@ use serde::{Deserialize, Serialize};
 use std::collections::HashMap;
 use std::sync::Mutex;
 
+/// 用户可在 LLM 配置页覆盖的提示词片段（空则使用 Rust 内置默认）。
+#[derive(Debug, Clone, Deserialize, Default)]
+#[serde(rename_all = "camelCase")]
+pub struct PostprocessPromptOverrides {
+    #[serde(default, alias = "stage_b_system")]
+    pub stage_b_system: Option<String>,
+    #[serde(default, alias = "stage_b_instructions")]
+    pub stage_b_instructions: Option<String>,
+    #[serde(default, alias = "auto_punctuate_system")]
+    pub auto_punctuate_system: Option<String>,
+    #[serde(default, alias = "auto_punctuate_instructions")]
+    pub auto_punctuate_instructions: Option<String>,
+    #[serde(default, alias = "export_polish_system")]
+    pub export_polish_system: Option<String>,
+    #[serde(default, alias = "export_polish_instructions")]
+    pub export_polish_instructions: Option<String>,
+}
+
 /// 桌面 UI 传入的运行时配置（DeepSeek / Kimi 等）；优先于进程环境变量。
 /// JSON 字段与前端 `PostprocessRuntimeBridge` 一致（camelCase；兼容 snake_case alias）。
 #[derive(Debug, Clone, Deserialize)]
@@ -17,6 +35,8 @@ pub struct PostprocessRuntimeBridge {
     pub api_key_id: Option<String>,
     #[serde(default, alias = "allow_insecure_http")]
     pub allow_insecure_http: bool,
+    #[serde(default, alias = "prompt_overrides")]
+    pub prompt_overrides: Option<PostprocessPromptOverrides>,
 }
 
 #[derive(Debug, Clone, Deserialize)]

@@ -9,7 +9,12 @@ import { WaveformSegmentOverlay } from "../WaveformSegmentOverlay";
 import { WaveformMinimapStrip } from "../WaveformMinimapStrip";
 import { resolveWaveformCenterStatusLabel } from "../../services/waveform/waveformRenderStatus";
 import { clampSegmentTimeBounds } from "../../utils/waveformSegmentBounds";
-import { resolveTierViewportMetrics, resolveWaveformVerticalScalePreview, tierViewportWidthStyle } from "../../utils/waveformViewport";
+import {
+  resolveTierViewportMetrics,
+  resolveWaveformSegmentLayoutHeightPx,
+  resolveWaveformVerticalScalePreview,
+  tierViewportWidthStyle,
+} from "../../utils/waveformViewport";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
 
@@ -42,17 +47,20 @@ export function EditorWaveformPane({
   const peaksPaneHeightPx = Math.max(1, innerWaveformHeightPx);
   const innerPaintedHeightPx = tx.waveformPaintedHeightPx;
   const peaksPaintedHeightPx = Math.max(1, innerPaintedHeightPx);
-  const segmentOverlayHeightPx = peaksPaintedHeightPx;
   const {
-    scale: waveformVisualScale,
     active: waveformVerticalScaleActive,
     transform: waveformVerticalTransform,
   } = resolveWaveformVerticalScalePreview(peaksPaneHeightPx, peaksPaintedHeightPx);
-  const waveformVerticalClass = tx.waveformHeightDragging
-    ? "h-full w-full origin-top-left will-change-transform"
-    : waveformVerticalScaleActive
-      ? "h-full w-full origin-top-left will-change-transform transition-transform duration-150 ease-out motion-reduce:transition-none"
-      : "h-full w-full origin-top-left";
+  const waveformHeightPreviewActive = waveformVerticalScaleActive || tx.waveformHeightDragging;
+  const segmentLayoutHeightPx = resolveWaveformSegmentLayoutHeightPx(
+    peaksPaneHeightPx,
+    peaksPaintedHeightPx,
+    waveformHeightPreviewActive,
+  );
+  const waveSurferPreviewLayerClass =
+    waveformVerticalScaleActive && !tx.waveformHeightDragging
+      ? "w-full origin-top-left will-change-transform transition-transform duration-150 ease-out motion-reduce:transition-none"
+      : "w-full origin-top-left will-change-transform";
   const stripDisabled = c.busy || !tx.isReady;
   const [overlayDraftIdx, setOverlayDraftIdx] = useState<number | null>(null);
   const onOverlayDraftIdxChange = useCallback((idx: number | null) => {
@@ -97,8 +105,8 @@ export function EditorWaveformPane({
                 clientX: e.clientX,
                 clientY: e.clientY,
                 overlayClientTop: paneTop,
-                peaksPaintedHeightPx: segmentOverlayHeightPx,
-                layoutYScale: waveformVerticalScaleActive ? waveformVisualScale : 1,
+                peaksPaintedHeightPx: segmentLayoutHeightPx,
+                layoutYScale: 1,
               });
             }}
           >
@@ -135,8 +143,9 @@ export function EditorWaveformPane({
                         className="absolute left-0 top-0 h-full will-change-transform"
                       >
                         <div
-                          className={`absolute inset-0 ${waveformVerticalClass}`}
+                          className={waveSurferPreviewLayerClass}
                           style={{
+                            height: waveformHeightPreviewActive ? peaksPaintedHeightPx : "100%",
                             transform: waveformVerticalTransform,
                             transformOrigin: "top left",
                           }}
@@ -158,7 +167,7 @@ export function EditorWaveformPane({
                         segments={c.segments}
                         durationSec={mediaDurationSec}
                         timelineWidthPx={tx.timelineWidthPx}
-                        layoutHeightPx={segmentOverlayHeightPx}
+                        layoutHeightPx={segmentLayoutHeightPx}
                         selectedIdx={c.selectedIdx}
                         selectionLo={c.selectionLo}
                         selectionHi={c.selectionHi}
@@ -186,7 +195,7 @@ export function EditorWaveformPane({
                           isContiguousSelection={c.isContiguousSelection}
                           timelineWidthPx={tx.timelineWidthPx}
                           durationSec={mediaDurationSec}
-                          layoutHeightPx={segmentOverlayHeightPx}
+                          layoutHeightPx={segmentLayoutHeightPx}
                           laneByIndex={tx.segmentLaneLayout.laneByIndex}
                           laneCount={tx.segmentLaneLayout.laneCount}
                           dominantSpanIndices={tx.segmentLaneLayout.dominantSpanIndices}

@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { FileAudio, FileText, NotebookText, Pencil, Trash2 } from "lucide-react";
+import { FileAudio, FileText, ListOrdered, NotebookText, Pencil, Trash2 } from "lucide-react";
 import { CONTROL_BTN_LINK, CONTROL_BTN_WORKSPACE_IMPORT, CONTROL_BTN_ICON_GHOST } from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { WORKSPACE_FILE_ROW_CLASS, WORKSPACE_PAGE_PANEL_CLASS } from "../config/workspaceShellLayout";
@@ -44,10 +44,19 @@ export function ProjectFilesHubPanel({ controller: c }: { controller: ProjectCon
         : [],
     [c.isRenamingProject, c.projects, c.renameProjectDraft, projectId],
   );
-  const runImport = async (kind: "audio" | "text") => {
+  const runImportAudio = async () => {
     if (!c.current || busy) return;
     try {
-      await c.pickAndImportFileToProject(kind);
+      await c.pickAndImportAudioPathsToProject();
+    } catch (e) {
+      c.setError(e instanceof Error ? e.message : String(e));
+    }
+  };
+
+  const runImportText = async () => {
+    if (!c.current || busy) return;
+    try {
+      await c.pickAndImportFileToProject("text");
     } catch (e) {
       c.setError(e instanceof Error ? e.message : String(e));
     }
@@ -253,7 +262,7 @@ export function ProjectFilesHubPanel({ controller: c }: { controller: ProjectCon
                 type="button"
                 className={`${HUB_IMPORT_ACTION_BTN} w-full justify-start sm:w-auto`}
                 disabled={busy}
-                onClick={() => void runImport("audio")}
+                onClick={() => void runImportAudio()}
               >
                 <FileAudio className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
                 导入音频
@@ -262,10 +271,25 @@ export function ProjectFilesHubPanel({ controller: c }: { controller: ProjectCon
                 type="button"
                 className={`${HUB_IMPORT_ACTION_BTN} w-full justify-start sm:w-auto`}
                 disabled={busy}
-                onClick={() => void runImport("text")}
+                onClick={() => void runImportText()}
               >
                 <FileText className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
                 导入转录文本
+              </button>
+              <button
+                type="button"
+                className={`${HUB_IMPORT_ACTION_BTN} w-full justify-start sm:w-auto`}
+                disabled={busy || !c.canStartBatchTranscribe}
+                title={
+                  c.batchTranscribableCount === 0
+                    ? "项目中暂无可转写音频"
+                    : "按顺序转写项目内全部音频"
+                }
+                onClick={() => void c.startBatchTranscribe()}
+              >
+                <ListOrdered className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+                批量转写
+                {c.batchTranscribableCount > 0 ? ` (${c.batchTranscribableCount})` : ""}
               </button>
             </div>
           </section>

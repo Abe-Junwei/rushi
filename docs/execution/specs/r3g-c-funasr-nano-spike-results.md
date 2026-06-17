@@ -26,16 +26,19 @@
 
 ## 硬闸门实测（N1–N8）
 
-| # | 指标 | Paraformer 基准 | Nano 实测 | 结果 |
-|---|------|-----------------|-----------|------|
-| N1 | 长音频语段数 | 198 | **0**（stub fallback） | ❌ |
-| N2 | 相对 baseline | ≥ max(15, 90%×198) | 0 | ❌ |
-| N3 | segmentation_mode | sentence_info | 3min 片段为 `vad_timestamp` | ❌ |
-| N4 | term_hit_rate（制控） | 0.0 | N/A（长音频未产出） | ❌ |
-| N5 | wall clock（制控） | ~187.5s | ~207s 后失败 | — |
-| N6 | 磁盘增量 | — | ~1.97GB recognizer | ✅ |
-| N7 | prepare / health | ✅ | warmup ok | ✅ |
-| N8 | PyInstaller 打包 | ✅ | 未测 | — |
+> **主路径**：默认 blocking `transcribe_upload`（制控 ~21min 低于 1800s 窗阈值，单次 `generate()`）。  
+> **补充**：`RUSHI_FUNASR_WINDOW_THRESHOLD_SEC=1` 强制窗循环（仅 spike 证据，非产品默认）。
+
+| # | 指标 | Paraformer 基准 | Nano 实测（默认路径） | Nano 补充（180s 强制窗） | 结果 |
+|---|------|-----------------|----------------------|--------------------------|------|
+| N1 | 长音频语段数 | 198 | **0**（stub） | **108**（7 窗，无 whole_track） | ❌ / ⚠️ |
+| N2 | 相对 baseline | ≥ max(15, 90%×198)=178 | 0 | 108 | ❌ |
+| N3 | segmentation_mode | sentence_info | `vad_timestamp`（≤3min） | `transcribe_windowed` + VAD 段 | ❌ |
+| N4 | term_hit_rate（制控） | 0.0 | N/A | 0.0 | ❌ / ✅ |
+| N5 | wall clock（制控） | ~187.5s | ~207s 后失败 | **343.7s**（~1.8× Paraformer） | — / ⚠️ |
+| N6 | 磁盘增量 | — | ~1.97GB recognizer | 同左 | ✅ |
+| N7 | prepare / health | ✅ | warmup ok | 同左 | ✅ |
+| N8 | PyInstaller 打包 | ✅ | 未测 | 未测 | — |
 
 ## 样本对照摘要
 
@@ -44,8 +47,10 @@
 | S2 clear.wav 0.15s | 0 段 | 0 段（样本过短） |
 | S3 制控 ~21min + hotwords | 198 段 / 187.5s | **0 段 / stub** — `tiktoken <|no|>` |
 | Fun-ASR remote_code + 官方参数复测 | — | `batch_size_s` 改为 `batch_size=1` 后仍在全量制控触发 `<|no|>` |
-| 制控前 3min（补充） | — | **13 段 / 80.3s** — `vad_timestamp` |
-| 官方 example/zh.mp3 5.6s | — | 有文本，无 sentence_info |
+| 制控前 3min（remote_code） | — | **12 段 / 83.8s** — `vad_timestamp` |
+| 官方 example/zh.mp3 5.6s（remote_code） | — | **1 段 / 34.8s** — `vad_timestamp` |
+| 制控 120s 强制窗（11 窗） | — | **0 段 / stub** — 某一窗触发 `<\|no\|>` |
+| 制控 180s 强制窗（7 窗） | — | **108 段 / 343.7s** — `transcribe_windowed`，末段 ~1237s |
 
 ## Blockers / 备注
 
@@ -53,9 +58,11 @@
 - 同步 Fun-ASR GitHub `model.py` / `ctc.py` / `tools/` 并改为官方 `batch_size=1`、`hotwords=[...]` 后，全量制控仍触发 `<|no|>`。
 - 3min 片段可转写，但落 `vad_timestamp`；官方 README 当前不保证 `sentence_info`，timestamps / diarization 仍列 TODO。
 - 不采用 monkey patch 上游 `model.py` 的方式产品化；若需修复 CTC `tiktoken.encode()`，应作为上游 issue 或单独 spike 记录。
+- **120s 强制窗不稳定**：11 窗中某一窗仍触发 `<|no|>`，整轨 merge 失败并 fallback stub。
+- **180s 强制窗可跑通**：7 窗合并 108 段，说明问题与窗长/内容相关，但语段密度仍远低于 Paraformer（108 vs 198），且无 `sentence_info`。
 
 ## 结论
 
 | 结果 | 理由 |
 |------|------|
-| **Defer** | N1/N2/N3 未过；需 FunASR 上游修复 tiktoken 或升级栈后再测全量长音频 |
+| **Defer** | 默认 blocking 路径 N1–N3 未过；180s 强制窗仅 spike 级部分通过，N2/N3 仍不达标；不上架 catalog，待上游 tiktoken/时间轴或 vLLM 路线再评 |
