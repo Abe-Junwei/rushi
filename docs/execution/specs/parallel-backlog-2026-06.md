@@ -34,10 +34,10 @@ Step 9   DELIV-MODE A-2                                              ✅
 Step 9a  ONBOARD O-1  Welcome 首跑清单 + 进度持久化                  ✅
 Step 9b  ONBOARD O-2  能力态自动勾选 + 情境 CTA                      ✅
 
-Step 10  BATCH-TXN B-1                                               ← **当前主刀**
-Step 11  BATCH-TXN B-2
+Step 10  BATCH-TXN B-1                                               ✅ 2026-06-18
+Step 11  BATCH-TXN B-2                                               ✅ 2026-06-18
 
-Step 12  REL-1.1 signoff
+Step 12  REL-1.1 signoff                                             ← **当前主刀**
 ```
 
 | Step | Epic | 状态 | 规格（编码前） |
@@ -48,8 +48,8 @@ Step 12  REL-1.1 signoff
 | **7a–d** | STT-CANCEL | ✅ | `online-stt-cancel-v1.1-*` |
 | **8–9** | DELIV-MODE | ✅ | `delivery-mode-*` |
 | **9a–b** | ONBOARD | ✅ | `onboarding-first-run-*` |
-| **10–11** | BATCH-TXN | 📋 **当前主刀** | `batch-transcribe-queue-*` |
-| **12** | REL-1.1 | 📋 | 路线图 §10.4.1 H-* 手测集 |
+| **10–11** | BATCH-TXN | ✅ | `batch-transcribe-queue-*` · H-BATCH-1 2026-06-18 |
+| **12** | REL-1.1 | 📋 **当前主刀** | 路线图 §10.4.1 H-CSP-* 待 Release 回归 |
 
 ### 已闭合（不挡主刀）
 
@@ -89,8 +89,8 @@ Step 12  REL-1.1 signoff
 5. ~~Step 7a→7d STT 取消~~ ✅
 6. ~~Step 8→9 DELIV-MODE~~ ✅
 7. ~~Step 9a→9b ONBOARD~~ ✅
-8. Step 10→11 BATCH-TXN ← **当前主刀**
-9. Step 12 REL-1.1
+8. ~~Step 10→11 BATCH-TXN~~ ✅ 2026-06-18
+9. Step 12 REL-1.1 ← **当前主刀**
 并行：R3g-C-NANO vLLM（CUDA 机）· R3g-B-Align 手测
 ```
 
@@ -105,3 +105,4 @@ Step 12  REL-1.1 signoff
 | 2026-06-12 | **§10.4 统一后续**：DELIV-MODE · BATCH-TXN · CSP · STT-CANCEL · PROD-META · **ONBOARD** · Step 5–12 |
 | 2026-06-12 | **审查吸收**：guard 46 · v1.1 **~6.5–10w** · spec 未立项 · T-010 建议 |
 | 2026-06-17 | **Step 5–9 ✅**；主刀 → **BATCH-TXN**；**R3g-C-NANO PyTorch Defer**；vLLM research ✅ |
+| 2026-06-18 | **Step 10–11 BATCH-TXN ✅** · **H-BATCH-1 ✅**；主刀 → **REL-1.1**（H-CSP-* 待 Release 回归） |
