@@ -1,5 +1,6 @@
 import { Plus, RefreshCw, Search } from "lucide-react";
 import {
+  CONTROL_BTN_COMPACT_SECONDARY,
   CONTROL_BTN_ICON,
   CONTROL_BTN_PRIMARY,
   CONTROL_TEXT_INPUT,
@@ -146,7 +147,7 @@ export function GlossaryCorrectionMemorySection({
                   <div className="flex flex-wrap items-center gap-2 px-4 py-2">
                     <button
                       type="button"
-                      className="inline-flex h-7 items-center rounded-sm border border-notion-border bg-notion-bg px-2.5 text-[11px] font-medium text-notion-text-muted transition-colors hover:bg-notion-sidebar-hover hover:text-notion-text disabled:opacity-40"
+                      className={CONTROL_BTN_COMPACT_SECONDARY}
                       disabled={disabled}
                       onClick={mem.selectFiltered}
                     >

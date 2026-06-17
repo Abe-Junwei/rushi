@@ -2,6 +2,7 @@ import {
   CONTROL_BTN_DANGER,
   CONTROL_BTN_PRIMARY,
   CONTROL_BTN_SECONDARY,
+  CONTROL_TEXTAREA,
 } from "../config/controlStyles";
 import { COMPACT_DIALOG_LAYOUT, PANEL_CONTROL_TYPOGRAPHY, PANEL_TYPOGRAPHY } from "../config/typography";
 import type { SegmentAnnotationDialogState } from "../pages/useSegmentAnnotationController";
@@ -78,7 +79,7 @@ export function SegmentAnnotationDialog({
           <label className={`flex flex-col gap-1.5 ${PANEL_TYPOGRAPHY.dialogBody}`}>
             <span className={PANEL_TYPOGRAPHY.fieldLabel}>备注内容</span>
             <textarea
-              className={`min-h-[120px] resize-y rounded-md border border-notion-border bg-notion-bg px-3 py-2 outline-none focus-visible:ring-2 focus-visible:ring-zen-saffron/40 ${PANEL_CONTROL_TYPOGRAPHY.compactInput}`}
+              className={`min-h-[120px] ${CONTROL_TEXTAREA} ${PANEL_CONTROL_TYPOGRAPHY.compactInput}`}
               value={state.draft}
               disabled={busy}
               autoFocus
@@ -105,7 +106,7 @@ export function SegmentAnnotationDialog({
                 </button>
               ) : null}
             </div>
-            <div className="flex flex-wrap justify-end gap-2">
+            <div className={COMPACT_DIALOG_LAYOUT.actionRowEnd}>
               <button type="button" className={CONTROL_BTN_SECONDARY} disabled={busy} onClick={onClose}>
                 取消
               </button>

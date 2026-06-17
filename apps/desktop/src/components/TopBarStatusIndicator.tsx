@@ -37,7 +37,7 @@ export function TopBarStatusIndicator(props: Props) {
     return (
       <button
         type="button"
-        className={`${rowClass} rounded-md border-0 bg-transparent p-0 outline-none transition-colors hover:bg-notion-sidebar-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-saffron/30 disabled:cursor-not-allowed disabled:opacity-50`}
+        className={`${rowClass} rounded-sm border-0 bg-transparent p-0 outline-none transition-colors hover:bg-notion-sidebar-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-saffron/30 disabled:cursor-not-allowed disabled:opacity-50`}
         disabled={disabled}
         onClick={onClick}
         title={title ?? label}

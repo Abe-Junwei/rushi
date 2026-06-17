@@ -127,22 +127,57 @@ function checkTsFile(fullPath) {
 
   // Preflight 关闭：内联 button className 须显式 bg-* 或使用带背景的 CSS 组件类
   if (!rel.endsWith('.test.ts') && !rel.endsWith('.test.tsx')) {
-    const inlineButtonClassRe = /<button\b[^>]*\bclassName="([^"]+)"/g;
     const safeButtonClassMarkers = [
       'bg-',
+      'CONTROL_BTN_',
       'dropdown-item',
       'icon-btn',
       'region-action-btn',
       'waveform-playback',
       'waveform-minimap-switch',
+      'footerHistoryIconBtn',
+      'envSegmentedToggle',
+      'findBarActionClass',
     ];
-    let bm;
-    while ((bm = inlineButtonClassRe.exec(source))) {
-      const cls = bm[1];
-      if (safeButtonClassMarkers.some((m) => cls.includes(m))) continue;
-      errors.push(
-        `${rel}: <button className="…"> 须含 bg-* 或 dropdown-item/icon-btn 等组件类（Preflight 关闭；可用 CONTROL_BTN_* / CONTROL_BTN_LINK）`,
-      );
+    const templateLiteralSafeMarkers = [
+      'CONTROL_BTN_',
+      'envVendorChipClass',
+      'ENV_VENDOR_CHIP',
+      'chipBtnBase',
+      '_ICON_BTN',
+      '_ACTION_BTN',
+      'NAV_SIDEBAR_EXPAND_BTN',
+      'NAV_ICON_BTN',
+      'waveform-scroll-follow-segment-btn',
+    ];
+    const inlineButtonPatterns = [
+      /<button\b[^>]*\bclassName="([^"]+)"/g,
+      /<button\b[^>]*\bclassName=\{`([^`]+)`\}/g,
+    ];
+    for (const inlineButtonClassRe of inlineButtonPatterns) {
+      let bm;
+      while ((bm = inlineButtonClassRe.exec(source))) {
+        const cls = bm[1];
+        if (safeButtonClassMarkers.some((m) => cls.includes(m))) continue;
+        if (templateLiteralSafeMarkers.some((m) => cls.includes(m))) continue;
+        errors.push(
+          `${rel}: <button className="…"> 须含 bg-* 或 dropdown-item/icon-btn 等组件类（Preflight 关闭；可用 CONTROL_BTN_* / CONTROL_BTN_LINK）`,
+        );
+      }
+    }
+
+    const segmentedToggleAllowlist = new Set(['apps/desktop/src/config/controlStyles.ts']);
+    if (!segmentedToggleAllowlist.has(rel)) {
+      if (/bg-secondary-container/.test(source)) {
+        errors.push(
+          `${rel}: 分段 toggle 轨道须用 controlStyles.envSegmentedToggleTrackClass / ENV_*_TOGGLE_TRACK，禁止散落 bg-secondary-container`,
+        );
+      }
+      if (/rounded-\[5px\]/.test(source)) {
+        errors.push(
+          `${rel}: 紧凑分段 toggle 按钮须用 envSegmentedToggleBtnClass(..., true)，禁止散落 rounded-[5px]`,
+        );
+      }
     }
   }
 

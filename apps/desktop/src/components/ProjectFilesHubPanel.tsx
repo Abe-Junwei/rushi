@@ -1,6 +1,6 @@
 import { useMemo } from "react";
 import { FileAudio, FileText, NotebookText, Pencil, Trash2 } from "lucide-react";
-import { CONTROL_BTN_GHOST, CONTROL_BTN_LINK } from "../config/controlStyles";
+import { CONTROL_BTN_LINK, CONTROL_BTN_WORKSPACE_IMPORT, CONTROL_BTN_ICON_GHOST } from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { WORKSPACE_FILE_ROW_CLASS, WORKSPACE_PAGE_PANEL_CLASS } from "../config/workspaceShellLayout";
 import { WorkspaceFileRow } from "./WorkspaceFileRow";
@@ -10,13 +10,11 @@ import { formatProjectFileType, formatProjectHubMetadataLine, formatWorkspaceFil
 import { findDuplicateProjectNames, suggestUniqueProjectName } from "../utils/projectDuplicateName";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
-const HUB_ICON_BTN =
-  "flex h-7 w-7 shrink-0 items-center justify-center rounded-sm border-0 bg-transparent text-notion-text-light transition-[color,background-color] hover:bg-notion-sidebar-hover hover:text-notion-text disabled:cursor-not-allowed disabled:opacity-40";
+const HUB_ICON_BTN = CONTROL_BTN_ICON_GHOST;
 
-const HUB_FILE_ACTION_BTN =
-  "flex h-7 w-7 shrink-0 items-center justify-center rounded-sm border-0 bg-transparent text-notion-text-light opacity-0 transition-[color,background-color,opacity] group-hover:opacity-100 group-focus-visible:opacity-100 hover:bg-notion-sidebar-hover hover:text-notion-text disabled:opacity-40";
+const HUB_FILE_ACTION_BTN = `${CONTROL_BTN_ICON_GHOST} text-notion-text-light opacity-0 transition-[color,background-color,opacity] group-hover:opacity-100 group-focus-visible:opacity-100 hover:bg-notion-sidebar-hover hover:text-notion-text disabled:opacity-40`;
 
-const HUB_IMPORT_ACTION_BTN = `${CONTROL_BTN_GHOST} h-7 min-h-[28px] gap-1.5 px-2 text-[12px] font-medium`;
+const HUB_IMPORT_ACTION_BTN = CONTROL_BTN_WORKSPACE_IMPORT;
 
 function sortFilesNewestFirst(files: FileSummary[]): FileSummary[] {
   return [...files].sort((a, b) => b.updated_at_ms - a.updated_at_ms);

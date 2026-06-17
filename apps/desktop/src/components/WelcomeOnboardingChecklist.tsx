@@ -1,5 +1,5 @@
 import { Check, Circle, X } from "lucide-react";
-import { CONTROL_BTN_GHOST, CONTROL_BTN_LINK } from "../config/controlStyles";
+import { CONTROL_BTN_LINK, CONTROL_BTN_TOOLBAR_GHOST } from "../config/controlStyles";
 import { ONBOARDING_STEPS } from "../services/onboarding/onboardingChecklist";
 import type { OnboardingProgress } from "../services/onboarding/onboardingProgress";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
@@ -39,7 +39,7 @@ export function WelcomeOnboardingChecklist({
         </div>
         <button
           type="button"
-          className={`${CONTROL_BTN_GHOST} shrink-0 px-2 py-1`}
+          className={`${CONTROL_BTN_TOOLBAR_GHOST} shrink-0 px-2`}
           aria-label="关闭上手清单"
           onClick={onDismiss}
         >

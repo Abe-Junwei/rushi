@@ -1,8 +1,8 @@
 import { Plus, RefreshCw, Search } from "lucide-react";
 import {
+  CONTROL_BTN_COMPACT_SECONDARY,
   CONTROL_BTN_ICON,
   CONTROL_BTN_PRIMARY,
-  CONTROL_BTN_SECONDARY,
   CONTROL_SELECT_INLINE,
   CONTROL_TEXT_INPUT,
 } from "../../config/controlStyles";
@@ -168,7 +168,7 @@ export function GlossaryTermManagementSection({
                     </p>
                     <button
                       type="button"
-                      className={`${CONTROL_BTN_SECONDARY} h-7 px-2.5 text-[11px]`}
+                      className={CONTROL_BTN_COMPACT_SECONDARY}
                       disabled={disabled}
                       onClick={g.selectFiltered}
                     >

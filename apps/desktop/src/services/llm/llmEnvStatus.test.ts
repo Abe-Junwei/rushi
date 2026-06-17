@@ -47,7 +47,9 @@ describe("llmEnvStatus", () => {
 
   it("refresh button uses semantic accent for error and idle tones", () => {
     expect(LLM_STATUS_REFRESH_BTN_BASE).toContain("cursor-pointer");
+    expect(LLM_STATUS_REFRESH_BTN_BASE).toContain("rounded-sm");
     expect(LLM_STATUS_REFRESH_BTN_BASE).toContain("enabled:hover:bg-notion-bg");
+    expect(LLM_STATUS_REFRESH_BTN_BASE).not.toContain("shadow-sm");
     expect(LLM_STATUS_REFRESH_BTN_CLASS.error).toContain("text-zen-cinnabar");
     expect(LLM_STATUS_REFRESH_BTN_CLASS.error).toContain("enabled:hover:border-zen-cinnabar-border");
     expect(LLM_STATUS_REFRESH_BTN_CLASS.idle).toContain("text-zen-saffron");

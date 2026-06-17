@@ -1,4 +1,4 @@
-import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../../config/controlStyles";
+import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY, CONTROL_TEXT_INPUT } from "../../config/controlStyles";
 import { PANEL_CONTROL_TYPOGRAPHY, PANEL_TYPOGRAPHY } from "../../config/typography";
 import type { ManualCorrectionMemoryDialogState } from "../../pages/useManualCorrectionMemoryDialog";
 import { CompactFloatingDialog } from "../CompactFloatingDialog";
@@ -61,7 +61,7 @@ export function ManualCorrectionMemoryDialog({
           <span className={PANEL_TYPOGRAPHY.fieldLabel}>正确形式</span>
           <input
             type="text"
-            className={`rounded-md border border-notion-border bg-notion-bg px-3 py-2 outline-none focus-visible:ring-2 focus-visible:ring-zen-saffron/40 ${PANEL_CONTROL_TYPOGRAPHY.compactInput}`}
+            className={`${CONTROL_TEXT_INPUT} ${PANEL_CONTROL_TYPOGRAPHY.compactInput}`}
             value={state.phase === "confirm" ? state.right : ""}
             disabled={busy}
             autoFocus

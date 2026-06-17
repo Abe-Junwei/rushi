@@ -57,5 +57,17 @@ export const ENV_PANEL_BUTTON_ROW_CLASS = "flex flex-wrap items-center gap-2";
 /** 扁平配置栈（banner / middle / form / footer / trailing） */
 export const ENV_FLAT_STACK_CLASS = "flex flex-col gap-5";
 
+/** 配置页表单外壳：字段区与 CTA 分行，CTA 用 `ENV_PANEL_ACTION_ROW_CLASS`（勿与字段区共用 gap-5） */
+export const ENV_PANEL_FORM_CLASS = "flex flex-col";
+
+/** 表单字段区纵向节奏（无 py-5 / border-t） */
+export const ENV_PANEL_FORM_FIELDS_CLASS = "flex flex-col gap-5";
+
+/** 标签 + 控件 + 字段内 hint */
+export const ENV_PANEL_FORM_FIELD_CLASS = "flex flex-col gap-2";
+
 /** 配置页内多块纵向编排（如 LLM 模式切换 + flat stack） */
 export const ENV_PANEL_CONFIG_FLOW_CLASS = "mx-auto flex w-full max-w-[860px] flex-col gap-5";
+
+/** 设置页能力状态条外壳（本机 ASR / 在线 STT / LLM 共用；Stitch F1 · rounded-lg） */
+export const ENV_STATUS_BANNER_SHELL_CLASS = "rounded-lg px-4 py-3";

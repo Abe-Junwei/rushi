@@ -1,11 +1,12 @@
 import { RefreshCw } from "lucide-react";
 import { PANEL_TYPOGRAPHY } from "../../config/typography";
+import { ENV_STATUS_BANNER_SHELL_CLASS } from "../../utils/environmentPanelNav";
 import {
-  LLM_STATUS_BANNER_TITLE_CLASS,
-  LLM_STATUS_DOT_CLASS,
-  LLM_STATUS_PANEL_CLASS,
-  LLM_STATUS_REFRESH_BTN_BASE,
-  LLM_STATUS_REFRESH_BTN_CLASS,
+  ENV_STATUS_BANNER_TITLE_CLASS,
+  ENV_STATUS_DOT_CLASS,
+  ENV_STATUS_PANEL_CLASS,
+  ENV_STATUS_REFRESH_BTN_BASE,
+  ENV_STATUS_REFRESH_BTN_CLASS,
 } from "../../services/llm/llmEnvStatus";
 import type { AsrEnvPresentation } from "../../services/asr/asrEnvStatus";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";
@@ -69,7 +70,7 @@ export function EnvLocalAsrStatusSection({ presentation, busy, refreshAsrHealth 
   return (
     <section className="flex flex-col gap-4">
       <div
-        className={["flex flex-col gap-1 px-4 py-3", LLM_STATUS_PANEL_CLASS[displayTone]].join(" ")}
+        className={["flex flex-col gap-1", ENV_STATUS_BANNER_SHELL_CLASS, ENV_STATUS_PANEL_CLASS[displayTone]].join(" ")}
         role="status"
         aria-live="polite"
         aria-busy={busy || undefined}
@@ -78,13 +79,13 @@ export function EnvLocalAsrStatusSection({ presentation, busy, refreshAsrHealth 
           <div className="min-w-0 flex-1 space-y-1">
             <div className="flex items-center gap-2">
               <span
-                className={`h-2 w-2 shrink-0 rounded-full ${LLM_STATUS_DOT_CLASS[displayTone]}`}
+                className={`h-2 w-2 shrink-0 rounded-full ${ENV_STATUS_DOT_CLASS[displayTone]}`}
                 aria-hidden
               />
               <p
                 className={[
                   PANEL_TYPOGRAPHY.envStatusBannerTitle,
-                  LLM_STATUS_BANNER_TITLE_CLASS[displayTone],
+                  ENV_STATUS_BANNER_TITLE_CLASS[displayTone],
                 ].join(" ")}
               >
                 {presentation.bannerTitle}
@@ -102,7 +103,7 @@ export function EnvLocalAsrStatusSection({ presentation, busy, refreshAsrHealth 
           </div>
           <button
             type="button"
-            className={[LLM_STATUS_REFRESH_BTN_BASE, LLM_STATUS_REFRESH_BTN_CLASS[displayTone]].join(" ")}
+            className={[ENV_STATUS_REFRESH_BTN_BASE, ENV_STATUS_REFRESH_BTN_CLASS[displayTone]].join(" ")}
             disabled={busy}
             aria-busy={busy || undefined}
             onClick={() => void refreshAsrHealth()}

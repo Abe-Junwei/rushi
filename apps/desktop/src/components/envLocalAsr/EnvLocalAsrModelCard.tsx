@@ -7,7 +7,7 @@ import type { LocalAsrModelCatalogApi } from "../../pages/useLocalAsrModelCatalo
 import type { AsrHealthCapabilities } from "../../tauri/projectApi";
 import type { AsrCatalogPresentation } from "../../services/asr/asrCatalogPresentation";
 import { LOCAL_ASR_RECOGNITION_LANGUAGE_OPTIONS } from "../../services/asr/localAsrRecognitionLanguage";
-import { ENV_PANEL_BUTTON_ROW_CLASS } from "../../utils/environmentPanelNav";
+import { ENV_PANEL_BUTTON_ROW_CLASS, ENV_PANEL_FORM_FIELDS_CLASS, ENV_PANEL_FORM_FIELD_CLASS } from "../../utils/environmentPanelNav";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";
 import {
   PANEL_PROGRESS_FILL_COMPACT_CLASS,
@@ -17,6 +17,7 @@ import {
 import { EnvLocalAsrSmallButton } from "./envLocalAsrPanelUi";
 
 const fieldLabel = PANEL_TYPOGRAPHY.envFieldLabel;
+const fieldGroup = ENV_PANEL_FORM_FIELD_CLASS;
 const selectField = `${CONTROL_TEXT_INPUT} cursor-pointer pr-9`;
 
 type Props = {
@@ -63,8 +64,8 @@ export function EnvLocalAsrModelCard({
     progressTone === "success" ? "text-zen-success" : "text-notion-text-muted";
 
   return (
-    <section className="flex flex-col gap-5">
-        <label className="block space-y-2">
+    <section className={ENV_PANEL_FORM_FIELDS_CLASS}>
+        <label className={fieldGroup}>
           <span className={fieldLabel}>所选模型</span>
           <select
             className={`${selectField} ${PANEL_CONTROL_TYPOGRAPHY.compactTechnicalInput}`}
@@ -82,7 +83,7 @@ export function EnvLocalAsrModelCard({
           </select>
         </label>
 
-        <label className="block space-y-2">
+        <label className={ENV_PANEL_FORM_FIELD_CLASS}>
           <span className={fieldLabel}>识别语言</span>
           <select
             className={selectField}

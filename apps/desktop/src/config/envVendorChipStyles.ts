@@ -4,7 +4,7 @@ export const ENV_VENDOR_CHIP_BASE =
 
 export function envVendorChipClass(active: boolean): string {
   return active
-    ? "border-zen-saffron/40 bg-notion-bg font-semibold text-notion-text shadow-sm"
+    ? "border-zen-saffron/40 bg-notion-bg font-semibold text-notion-text"
     : "border-transparent bg-notion-sidebar text-notion-text-muted hover:bg-notion-sidebar-hover hover:text-notion-text";
 }
 

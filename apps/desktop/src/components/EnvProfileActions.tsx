@@ -13,9 +13,6 @@ type Props = {
   onImported?: () => void;
 };
 
-const btnPrimary = CONTROL_BTN_PRIMARY;
-const btnSecondary = CONTROL_BTN_SECONDARY;
-
 export function EnvProfileActions({ busy, onImported }: Props) {
   const [actionBusy, setActionBusy] = useState<"idle" | "export" | "import">("idle");
 
@@ -57,11 +54,11 @@ export function EnvProfileActions({ busy, onImported }: Props) {
           不含 Key 明文；导入后请逐页确认密钥与探测。
         </p>
         <div className="flex flex-wrap gap-2">
-          <button type="button" className={btnPrimary} disabled={disabled} onClick={() => void exportProfile()}>
+          <button type="button" className={CONTROL_BTN_PRIMARY} disabled={disabled} onClick={() => void exportProfile()}>
             <Download className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
             {actionBusy === "export" ? "导出中…" : "导出配置"}
           </button>
-          <button type="button" className={btnSecondary} disabled={disabled} onClick={() => void importProfile()}>
+          <button type="button" className={CONTROL_BTN_SECONDARY} disabled={disabled} onClick={() => void importProfile()}>
             <Upload className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
             {actionBusy === "import" ? "导入中…" : "导入配置"}
           </button>

@@ -1,4 +1,10 @@
 import { useState } from "react";
+import {
+  CONTROL_SELECT,
+  CONTROL_TEXT_INPUT,
+  envSegmentedToggleBtnClass,
+  envSegmentedToggleTrackClass,
+} from "../config/controlStyles";
 import { PANEL_CONTROL_TYPOGRAPHY, PANEL_TYPOGRAPHY } from "../config/typography";
 import {
   detectRecordedAtMode,
@@ -10,18 +16,8 @@ import {
   type RecordedAtInputMode,
 } from "../utils/projectRecordedAt";
 
-const MODE_TOGGLE_TRACK =
-  "inline-flex shrink-0 gap-0 rounded-md bg-secondary-container p-0.5";
-
-const modeToggleBtnClass = (selected: boolean) =>
-  [
-    "rounded-[5px] border-0 px-2.5 py-0.5 text-center font-sans text-xs font-medium leading-none whitespace-nowrap shadow-none ring-0 transition-[color,background-color,box-shadow] duration-200 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-saffron/30 disabled:cursor-not-allowed disabled:opacity-40",
-    selected
-      ? "bg-notion-bg text-zen-saffron-mid shadow-[0_1px_2px_rgba(0,0,0,0.06)]"
-      : "bg-transparent text-notion-text-variant hover:text-notion-text",
-  ].join(" ");
-
-const INPUT_CLASS = `rounded-lg border border-notion-border bg-notion-bg px-3 py-2 ${PANEL_CONTROL_TYPOGRAPHY.compactInput} shadow-none outline-none transition-colors focus:border-zen-saffron focus:ring-2 focus:ring-zen-saffron/30 disabled:opacity-40`;
+const fieldInput = `${CONTROL_TEXT_INPUT} ${PANEL_CONTROL_TYPOGRAPHY.compactInput}`;
+const fieldSelect = `${CONTROL_SELECT} min-w-0 ${PANEL_CONTROL_TYPOGRAPHY.compactInput}`;
 
 const MONTH_OPTIONS = Array.from({ length: 12 }, (_, i) => {
   const mm = String(i + 1).padStart(2, "0");
@@ -64,7 +60,7 @@ export function ProjectRecordedAtField({ value, disabled, onChange }: ProjectRec
     <div className="block">
       <div className="mb-1.5 flex flex-wrap items-center justify-between gap-2">
         <span className={PANEL_TYPOGRAPHY.fieldLabel}>时间</span>
-        <div className={MODE_TOGGLE_TRACK} role="radiogroup" aria-label="时间输入方式">
+        <div className={envSegmentedToggleTrackClass(true)} role="radiogroup" aria-label="时间输入方式">
           {(
             [
               ["month", "年月"],
@@ -76,7 +72,7 @@ export function ProjectRecordedAtField({ value, disabled, onChange }: ProjectRec
               key={id}
               type="button"
               role="radio"
-              className={modeToggleBtnClass(mode === id)}
+              className={envSegmentedToggleBtnClass(mode === id, true)}
               aria-checked={mode === id}
               disabled={disabled}
               onClick={() => setModeAndValue(id)}
@@ -94,7 +90,7 @@ export function ProjectRecordedAtField({ value, disabled, onChange }: ProjectRec
             inputMode="numeric"
             pattern="[0-9]*"
             maxLength={4}
-            className={`${INPUT_CLASS} w-[5.5rem] shrink-0 tabular-nums`}
+            className={`${fieldInput} w-[5.5rem] shrink-0 tabular-nums`}
             placeholder="2024"
             aria-label="年"
             value={monthParts.year}
@@ -105,7 +101,7 @@ export function ProjectRecordedAtField({ value, disabled, onChange }: ProjectRec
             }
           />
           <select
-            className={`${INPUT_CLASS} min-w-0 flex-1`}
+            className={`${fieldSelect} flex-1`}
             aria-label="月"
             value={monthParts.month}
             disabled={disabled}
@@ -129,7 +125,7 @@ export function ProjectRecordedAtField({ value, disabled, onChange }: ProjectRec
             inputMode="numeric"
             pattern="[0-9]*"
             maxLength={4}
-            className={`${INPUT_CLASS} w-[5.5rem] shrink-0 tabular-nums`}
+            className={`${fieldInput} w-[5.5rem] shrink-0 tabular-nums`}
             placeholder="2024"
             aria-label="年"
             value={dateParts.year}
@@ -142,7 +138,7 @@ export function ProjectRecordedAtField({ value, disabled, onChange }: ProjectRec
             }
           />
           <select
-            className={`${INPUT_CLASS} min-w-0 flex-1`}
+            className={`${fieldSelect} flex-1`}
             aria-label="月"
             value={dateParts.month}
             disabled={disabled}
@@ -160,7 +156,7 @@ export function ProjectRecordedAtField({ value, disabled, onChange }: ProjectRec
             ))}
           </select>
           <select
-            className={`${INPUT_CLASS} min-w-0 flex-1`}
+            className={`${fieldSelect} flex-1`}
             aria-label="日"
             value={dateParts.day}
             disabled={disabled}
@@ -182,7 +178,7 @@ export function ProjectRecordedAtField({ value, disabled, onChange }: ProjectRec
       {mode === "text" ? (
         <input
           type="text"
-          className={`${INPUT_CLASS} w-full`}
+          className={`${fieldInput} w-full`}
           placeholder="约 1990 年代、2024 年上旬"
           value={value}
           disabled={disabled}

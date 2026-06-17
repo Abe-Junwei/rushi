@@ -1,11 +1,12 @@
 import { RefreshCw } from "lucide-react";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
+import { ENV_STATUS_BANNER_SHELL_CLASS } from "../utils/environmentPanelNav";
 import {
-  LLM_STATUS_BANNER_TITLE_CLASS,
-  LLM_STATUS_DOT_CLASS,
-  LLM_STATUS_PANEL_CLASS,
-  LLM_STATUS_REFRESH_BTN_BASE,
-  LLM_STATUS_REFRESH_BTN_CLASS,
+  ENV_STATUS_BANNER_TITLE_CLASS,
+  ENV_STATUS_DOT_CLASS,
+  ENV_STATUS_PANEL_CLASS,
+  ENV_STATUS_REFRESH_BTN_BASE,
+  ENV_STATUS_REFRESH_BTN_CLASS,
   type LlmEnvPresentation,
 } from "../services/llm/llmEnvStatus";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
@@ -50,8 +51,9 @@ export function EnvLlmStatusBanner({ presentation, disabled, busy, onRefresh, re
   return (
     <div
       className={[
-        "flex flex-col gap-2 rounded-lg px-4 py-3 sm:flex-row sm:items-start sm:justify-between",
-        LLM_STATUS_PANEL_CLASS[displayTone],
+        "flex flex-col gap-2 sm:flex-row sm:items-start sm:justify-between",
+        ENV_STATUS_BANNER_SHELL_CLASS,
+        ENV_STATUS_PANEL_CLASS[displayTone],
       ].join(" ")}
       role="status"
       aria-live="polite"
@@ -60,13 +62,13 @@ export function EnvLlmStatusBanner({ presentation, disabled, busy, onRefresh, re
       <div className="min-w-0 flex-1 space-y-1">
         <div className="flex items-center gap-2">
           <span
-            className={`h-2 w-2 shrink-0 rounded-full ${LLM_STATUS_DOT_CLASS[displayTone]}`}
+            className={`h-2 w-2 shrink-0 rounded-full ${ENV_STATUS_DOT_CLASS[displayTone]}`}
             aria-hidden
           />
           <p
             className={[
               PANEL_TYPOGRAPHY.envStatusBannerTitle,
-              LLM_STATUS_BANNER_TITLE_CLASS[displayTone],
+              ENV_STATUS_BANNER_TITLE_CLASS[displayTone],
             ].join(" ")}
           >
             {bannerCopy.title}
@@ -77,7 +79,7 @@ export function EnvLlmStatusBanner({ presentation, disabled, busy, onRefresh, re
       {onRefresh ? (
         <button
           type="button"
-          className={[LLM_STATUS_REFRESH_BTN_BASE, LLM_STATUS_REFRESH_BTN_CLASS[displayTone]].join(" ")}
+          className={[ENV_STATUS_REFRESH_BTN_BASE, ENV_STATUS_REFRESH_BTN_CLASS[displayTone]].join(" ")}
           disabled={disabled || busy}
           aria-busy={busy || undefined}
           onClick={onRefresh}

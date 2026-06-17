@@ -17,6 +17,7 @@
 - [`../execution/specs/segment-overlay-virtualization.md`](../execution/specs/segment-overlay-virtualization.md) — 密集语段 display/interaction 分离（**禁止** scroll viewport React cull）。
 - [`desktop-floating-dialog-panels.md`](./desktop-floating-dialog-panels.md) — 可拖动浮动对话框：默认 `compactDialog` + Notion/Zen + `controlStyles` 约定。
 - [`desktop-tailwind-v4.md`](./desktop-tailwind-v4.md) — Tailwind v4 入口、token 链、级联与尺度（策略 A）；[`tailwind-v4-full-migration-plan.md`](../execution/specs/tailwind-v4-full-migration-plan.md)。
+- [`desktop-visual-style-governance.md`](./desktop-visual-style-governance.md) — 控件 token、环境页 spacing、guard 约定；[`desktop-visual-style-governance-plan.md`](../execution/specs/desktop-visual-style-governance-plan.md)。
 - [`desktop-capability-ui-state-alignment.md`](./desktop-capability-ui-state-alignment.md) — **能力字段与 UI 状态对齐**（R3-STATE 闸门、维度假设、R3 疏漏台账）。
 - [`desktop-project-file-lifecycle.md`](./desktop-project-file-lifecycle.md) — 项目/文件生命周期、Close Gate、导入去重与 Hub CRUD。
 - [`../execution/specs/project-hub-metadata-research.md`](../execution/specs/project-hub-metadata-research.md) — **Phase 10 规划门禁**：项目 Hub 导航、项目 CRUD、场次元信息（讲述人/时间/地点等）。

@@ -1,0 +1,60 @@
+# 桌面端视觉样式治理
+
+> **实施 plan**：[`desktop-visual-style-governance-plan.md`](../execution/specs/desktop-visual-style-governance-plan.md)  
+> **Tailwind v4 真源**：[`desktop-tailwind-v4.md`](./desktop-tailwind-v4.md)  
+> **产品视觉**：仓库根 [`DESIGN.md`](../../DESIGN.md)
+
+---
+
+## 真源分层
+
+| 层 | 文件 | 职责 |
+|----|------|------|
+| 颜色 / 间距 scale | `apps/desktop/tailwind.config.js` → `tokens.css` → `@theme` | hex 与 Tailwind 主题 |
+| 控件外观 | `apps/desktop/src/config/controlStyles.ts` | 按钮、输入、分段 toggle |
+| 排版 | `apps/desktop/src/config/typography.ts` | 面板标题、对话框 layout token |
+| 环境页 spacing | `apps/desktop/src/utils/environmentPanelNav.ts` | 表单区 / CTA 行 / 状态条 shell |
+| 环境状态色 | `apps/desktop/src/services/llm/llmEnvStatusTokens.ts` | `ENV_STATUS_*`（LLM + ASR 共用） |
+| 浮动对话框 | `FloatingPanelDialogLayout.tsx` + `COMPACT_DIALOG_LAYOUT` | footer / body padding |
+
+**禁止**：业务组件内复制 `rounded-md border border-notion-border bg-notion-bg` 等 ad-hoc 控件串；禁止 `bg-[#...]`。
+
+---
+
+## 控件约定（Notion Zen）
+
+- **标准按钮**：`h-8` · `rounded-sm` (4px) · `text-[12px]` semibold · `shadow-none`
+- **Prominent CTA**：`h-10` · 仍 `rounded-sm` · `text-sm`
+- **输入**：`CONTROL_TEXT_INPUT` / `CONTROL_SELECT` / `CONTROL_TEXTAREA`
+- **图标 ghost**：`CONTROL_BTN_ICON_GHOST`（28px 方块，Hub / 历史 / 顶栏）
+- **分段 toggle**：`envSegmentedToggleTrackClass` + `envSegmentedToggleBtnClass`（compact 用于对话框）
+
+---
+
+## 环境页 spacing 规则
+
+| Token | 含义 | 约束 |
+|-------|------|------|
+| `ENV_PANEL_FORM_FIELDS_CLASS` | 字段列 `gap-5` | 与 CTA 分行 |
+| `ENV_PANEL_ACTION_ROW_CLASS` | 仅 `mt-4` | 父级**不得**再有 `gap-*` |
+| `ENV_PANEL_BUTTON_ROW_CLASS` | 按钮行 `gap-2` | 在 gap 列内，**禁止**再加 `mt-*` |
+| `ENV_STATUS_BANNER_SHELL_CLASS` | `rounded-lg px-4 py-3` | LLM / ASR 状态条共用 |
+
+---
+
+## 架构守卫
+
+`scripts/check-architecture-guard.mjs` 拦截：
+
+1. 字面量 `<button className="…">` / `` className={`…`} `` 缺少 `bg-*` 或 `CONTROL_BTN_*`
+2. `controlStyles.ts` 外出现 `bg-secondary-container` 或 `rounded-[5px]`（分段 toggle 漂移）
+3. Tailwind arbitrary hex 颜色（warning，逐步收敛）
+
+---
+
+## 新增控件 checklist
+
+1. 先查 `controlStyles.ts` 是否已有 token
+2. 对话框 footer 用 `FLOATING_PANEL_DIALOG_FOOTER_CLASS` 或 `COMPACT_DIALOG_LAYOUT.actionRowEnd`
+3. 环境页表单遵循 `environmentPanelNav.ts` spacing 真源
+4. 补 `controlStyles.test.ts`；跑 `npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs`

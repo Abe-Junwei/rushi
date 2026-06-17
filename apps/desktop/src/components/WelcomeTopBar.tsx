@@ -1,3 +1,4 @@
+import { CONTROL_TEXT_INPUT } from "../config/controlStyles";
 import type { AsrEnvPresentation } from "../services/asr/asrEnvStatus";
 import { AsrTopStatusChips } from "./AsrTopStatusChips";
 import { Bell, Search } from "lucide-react";
@@ -45,7 +46,7 @@ export function WelcomeTopBar({
           </span>
           <input
             type="text"
-            className="w-64 rounded-md border border-notion-border bg-notion-bg py-1.5 pl-9 pr-4 text-sm text-notion-text placeholder:text-notion-text-light focus:border-zen-saffron focus:outline-none focus:ring-2 focus:ring-zen-saffron/30"
+            className={`w-64 pl-9 pr-4 ${CONTROL_TEXT_INPUT}`}
             placeholder="搜索转写内容..."
             readOnly
           />

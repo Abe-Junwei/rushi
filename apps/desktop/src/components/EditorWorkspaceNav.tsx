@@ -1,10 +1,10 @@
 import { ChevronLeft, PanelLeftOpen } from "lucide-react";
+import { CONTROL_BTN_ICON_GHOST } from "../config/controlStyles";
 import { useOptionalWorkspaceSidebarCollapseContext } from "../context/WorkspaceSidebarCollapseContext";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
 /** 工作区顶栏：图标后退 + 面包屑（常态无灰底，hover 才显底） */
-const NAV_ICON_BTN =
-  "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-sm border-0 bg-transparent p-0 text-notion-text-muted shadow-none transition-colors hover:bg-notion-sidebar-hover hover:text-notion-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-notion-text/20 disabled:cursor-not-allowed disabled:opacity-40";
+const NAV_ICON_BTN = `${CONTROL_BTN_ICON_GHOST} shadow-none focus-visible:outline-offset-1`;
 
 /** 侧栏折叠态：顶栏展开钮略向左贴齐主区左缘 */
 const NAV_SIDEBAR_EXPAND_BTN = `${NAV_ICON_BTN} -ml-2.5`;

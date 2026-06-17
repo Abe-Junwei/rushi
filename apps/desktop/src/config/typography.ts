@@ -43,4 +43,6 @@ export const COMPACT_DIALOG_LAYOUT = {
   title: PANEL_TYPOGRAPHY.dialogTitle,
   actionRow: "flex flex-wrap items-center justify-end gap-2 pt-1",
   actionRowSplit: "flex flex-wrap items-center justify-between gap-2 pt-1",
+  /** split 页脚右侧按钮簇（取消 + 确认） */
+  actionRowEnd: "flex flex-wrap justify-end gap-2",
 } as const;

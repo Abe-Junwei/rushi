@@ -1,7 +1,12 @@
 import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY, CONTROL_TEXT_INPUT } from "../config/controlStyles";
 import { ENV_EXTERNAL_LINK_CLASS } from "../config/envVendorChipStyles";
 import { PANEL_CONTROL_TYPOGRAPHY, PANEL_TYPOGRAPHY } from "../config/typography";
-import { ENV_PANEL_ACTION_ROW_CLASS } from "../utils/environmentPanelNav";
+import {
+  ENV_PANEL_ACTION_ROW_CLASS,
+  ENV_PANEL_FORM_CLASS,
+  ENV_PANEL_FORM_FIELDS_CLASS,
+  ENV_PANEL_FORM_FIELD_CLASS,
+} from "../utils/environmentPanelNav";
 import { llmKeychainReferenceMessage, normalizeLlmApiKeyId } from "../services/postprocess/postprocessRuntimeContract";
 import {
   isSavedApiKeyMaskDisplayed,
@@ -10,10 +15,9 @@ import {
 } from "../services/secrets/savedApiKeyInput";
 import type { useEnvLlmConfigPanel } from "../hooks/useEnvLlmConfigPanel";
 
-const btnPrimary = CONTROL_BTN_PRIMARY;
-const btnSecondary = CONTROL_BTN_SECONDARY;
 const field = CONTROL_TEXT_INPUT;
 const fieldLabel = PANEL_TYPOGRAPHY.envFieldLabel;
+const fieldGroup = ENV_PANEL_FORM_FIELD_CLASS;
 const monoField = `${field} ${PANEL_CONTROL_TYPOGRAPHY.compactTechnicalInput}`;
 
 type PanelState = ReturnType<typeof useEnvLlmConfigPanel>;
@@ -53,9 +57,9 @@ export function EnvLlmConnectionForm(props: Props) {
   });
 
   return (
-    <div className="flex flex-col gap-5 py-5">
-      <div className="space-y-5">
-        <label className="block space-y-2">
+    <div className={ENV_PANEL_FORM_CLASS}>
+      <div className={ENV_PANEL_FORM_FIELDS_CLASS}>
+        <label className={fieldGroup}>
           <span className={fieldLabel}>API 基址</span>
           <input
             className={monoField}
@@ -76,7 +80,7 @@ export function EnvLlmConnectionForm(props: Props) {
           ) : null}
         </label>
 
-        <label className="block space-y-2">
+        <label className={fieldGroup}>
           <span className={fieldLabel}>模型 ID</span>
           <input
             className={monoField}
@@ -103,7 +107,7 @@ export function EnvLlmConnectionForm(props: Props) {
           </p>
         ) : (
           <>
-            <label className="block space-y-2">
+            <label className={fieldGroup}>
               <span className={fieldLabel}>API Key</span>
               <input
                 className={monoField}
@@ -152,7 +156,7 @@ export function EnvLlmConnectionForm(props: Props) {
       <div className={ENV_PANEL_ACTION_ROW_CLASS}>
         <button
           type="button"
-          className={`${btnSecondary} mr-auto text-notion-text-muted`}
+          className={`${CONTROL_BTN_SECONDARY} mr-auto text-notion-text-muted`}
           disabled={props.formBusy}
           onClick={() => props.onProviderChange(props.providerId)}
         >
@@ -161,14 +165,14 @@ export function EnvLlmConnectionForm(props: Props) {
         {!props.localLoopback ? (
           <button
             type="button"
-            className={btnSecondary}
+            className={CONTROL_BTN_SECONDARY}
             disabled={props.formBusy || !props.savedApiKeyId}
             onClick={() => void props.clearSavedApiKey()}
           >
             清除已保存 Key
           </button>
         ) : null}
-        <button type="button" className={btnPrimary} disabled={props.formBusy} onClick={() => void props.save()}>
+        <button type="button" className={CONTROL_BTN_PRIMARY} disabled={props.formBusy} onClick={() => void props.save()}>
           保存配置
         </button>
       </div>

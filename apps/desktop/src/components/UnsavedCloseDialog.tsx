@@ -67,16 +67,18 @@ export function UnsavedCloseDialog({
               </span>
             ))}
           </p>
-          <div className={COMPACT_DIALOG_LAYOUT.actionRow}>
+          <div className={COMPACT_DIALOG_LAYOUT.actionRowSplit}>
             <button type="button" className={CONTROL_BTN_GHOST} onClick={onStay}>
               {stayLabel}
             </button>
-            <button type="button" className={CONTROL_BTN_SECONDARY} onClick={onDiscardAndClose}>
-              {discardLabel}
-            </button>
-            <button type="button" className={CONTROL_BTN_PRIMARY} disabled={busy} onClick={onSaveAndClose}>
-              {saveLabel}
-            </button>
+            <div className="flex flex-wrap justify-end gap-2">
+              <button type="button" className={CONTROL_BTN_SECONDARY} onClick={onDiscardAndClose}>
+                {discardLabel}
+              </button>
+              <button type="button" className={CONTROL_BTN_PRIMARY} disabled={busy} onClick={onSaveAndClose}>
+                {saveLabel}
+              </button>
+            </div>
           </div>
         </div>
       </div>

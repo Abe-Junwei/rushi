@@ -5,7 +5,7 @@ import type { ProjectControllerApi } from "../pages/useProjectController";
 import * as fileApi from "../tauri/fileApi";
 import { findDuplicateProjectNames, suggestUniqueProjectName } from "../utils/projectDuplicateName";
 import { FloatingPanelTemplate } from "./PanelTemplate";
-import { FLOATING_PANEL_DIALOG_BODY_PADDING_CLASS } from "./FloatingPanelDialogLayout";
+import { FLOATING_PANEL_DIALOG_BODY_PADDING_CLASS, FLOATING_PANEL_DIALOG_FOOTER_CLASS } from "./FloatingPanelDialogLayout";
 import {
   CONTROL_BTN_PRIMARY,
   CONTROL_BTN_SECONDARY,
@@ -175,7 +175,7 @@ export function CreateProjectModal({ controller: c, onClose }: CreateProjectModa
           </button>
         </div>
 
-        <div className="flex shrink-0 items-center justify-end gap-2 border-t border-notion-divider pt-3">
+        <div className={`${FLOATING_PANEL_DIALOG_FOOTER_CLASS} justify-end`}>
           <button type="button" className={CONTROL_BTN_SECONDARY} onClick={onClose} disabled={isBusy}>
             取消
           </button>

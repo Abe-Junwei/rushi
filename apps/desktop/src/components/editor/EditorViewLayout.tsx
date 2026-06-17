@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { CONTROL_BTN_SECONDARY } from "../../config/controlStyles";
 import { EditorToolbar } from "../EditorToolbar";
 import { EditorStatusFooter } from "./EditorStatusFooter";
 import { EditorSegmentWorkbench } from "./EditorSegmentWorkbench";
@@ -80,7 +81,7 @@ export function EditorViewLayout({
             {fallbackWaveFile ? (
               <button
                 type="button"
-                className="mt-2 inline-flex h-8 items-center justify-center rounded-md border border-notion-border bg-notion-bg px-3 text-[11px] text-notion-text transition-colors hover:bg-notion-sidebar-hover"
+                className={`mt-2 ${CONTROL_BTN_SECONDARY} text-[11px]`}
                 disabled={c.busy}
                 onClick={() => void c.openFile(fallbackWaveFile.id)}
               >
