@@ -3,7 +3,7 @@
 > **基准报告**：[`full-code-review-architecture-comparison-report.md`](./full-code-review-architecture-comparison-report.md)  
 > **范围**：对照基准报告 §7.1.3–§7.5.3、§9、§10 列出的问题/建议，检查当前修复进度与已修复项是否引入新问题。  
 > **检查时间**：2026-06-16  
-> **复查时间**：2026-06-17（第七轮，State/Ref S2.2b–S2.3b、#17 验收对齐、ASR 队列 UX、波形 scroll/playhead 修复）  
+> **复查时间**：2026-06-17（第十轮，State/Ref **S2.7 publish/flush state-driven**、波形 LOD zoom、playhead 样式）  
 > **检查人**：Kimi Code CLI / Cursor Agent
 
 ---
@@ -18,7 +18,7 @@
 | **合计** | **33** | 100% |
 
 > 注：基准报告 §7 与 §10.6 中 `#9`/`#30`（Rust 错误处理结构化）和 `#10`/`#31`（Windows 8741 清理）为同一问题重复出现，已合并去重。`#3` 与 `#28` 已随架构守卫规则调整与实际拆分解决，分别计入已修复。  
-> **#2** 与 **#12 吞吐** 归入「部分修复」：前者 S2.1–**S2.5a** 已收敛全部业务 consumer 至 snapshot getter；**S2.5b** state-only / 移除 public `segmentsRef` 未做；后者 C1 队列 UX 已落地，多 worker 仍单线程。
+> **#2** 与 **#12 吞吐** 归入「部分修复」：前者 **S2.7 已完成**（editor state 不再暴露 `segmentsRef`，publish/flush 基于 React state 发布，业务 consumer 已经 snapshot + publish API 收口）；后者 C1 队列 UX 已落地，多 worker 仍单线程。
 
 ---
 
@@ -66,10 +66,11 @@
 
 | # | 标题 | 已做 | 未做 / 遗留风险 |
 |---|------|------|-----------------|
-| 2 | State/Ref 双轨制 | **S2.1–S2.5a 已落地**：全部业务 consumer 改 `getCurrentSegmentsSnapshot()`；publish functional updater；guard 禁止 consumer 直接读 `segmentsRef.current`。`useProjectEditorState` 仍维护 `segments` + `segmentsRef` **并存** | **S2.5b**：从 lifecycle API 移除 `segmentsRef` 暴露；publish state-only 终态 |
+| 2 | State/Ref 双轨制 | **S2.1–S2.7 已落地**：snapshot 读 + `SegmentPublishApi` 封装 + `publishStructureLive`；`useProjectEditorState` 不再创建/返回 `segmentsRef`；`flushSegmentTextDrafts` / publish 函数基于 React state 发布，functional updater 单次解析，latest snapshot cache 不在 React updater 内写入；guard 禁止 consumer 读/写 ref 与直接 publish | **后续可选**：将 publish boundary 的 latest snapshot cache 抽成通用 `useLatestRef` |
 | 9/30 | 错误信息全部扁平化为 String / Rust 错误处理结构化 | 新增 `command_error.rs`（`thiserror` 枚举 + `error_code()` + `CommandErrorDto`）；前端 `commandError.ts` 可解析 DTO；`export_cmd.rs`、`project_metadata_cmd.rs`、`project_delete_cmd.rs` 等已迁移 | 全仓库仍有约 205 处 `Result<..., String>`，仅约 23 处引用 `CommandErrorDto`；多数 Tauri handler 仍返回 `String` |
 | 12 | ASR 单线程推理执行器 + 全局模型锁 | `inference_queue.py` 单 worker FIFO；**C1 队列 UX** 已落地（[`funasr-queue-ux-acceptance.md`](./funasr-queue-ux-acceptance.md)）：`/health` 暴露 pending/running/max_workers；桌面环境页「前方 N 个任务排队 · 正在推理 M 个任务」 | **`inference_max_workers: 1` 未变**；`funasr_engine.py` `_runtime_lock` 仍在；**吞吐未提升**（[`funasr-concurrency-research.md`](./funasr-concurrency-research.md) C2+ 未启动） |
 | 15 | `ready_for_transcribe` 基于文件探测 | `runtime_caps.py` 仍基于文件缓存探测，但新增 `model_loaded_in_memory`、`model_memory_matches_config`、`selected_model_ready` 等更精确字段 | `ready_for_transcribe` 本身仍由 `required_models_cached` + `ffmpeg_on_path` 决定，未完全改为真实加载状态 |
+| 2 | State/Ref 双轨制 | `useProjectEditorState.ts` 已移除 `segmentsRef`，state 为唯一真源；新增 `segmentPublishApi.ts` 封装 `getCurrentSegmentsSnapshot` + `setSegmentsAndRemember`，将 ref 限制在 editor stack 边界内；`useSegmentMutationController.ts` 改经 `segmentPublish` API 读写 | ⚠️ `selectedIdxRef` 仍保留用于异步闭包读取最新 selectedIdx；`segmentSegmentsRefSync.ts` 仍在边界内维护 ref 同步 |
 | 24 | 脏检查 O(n) | `useSegmentDirtyState.ts:61` 已增加 `segmentsPersistSignature` fast path：signature 相同则跳过逐条比较；新增 `corePerformance.perf.ts` 性能测试 | 最坏情况仍是 O(n) 逐条比较；未引入 version/hash 机制 |
 | 29 | Vitest 配置极简 | 主配置已扩展 coverage reporter、thresholds、include/exclude；新增独立的 `vitest.perf.config.ts` 用于性能测试 | 仍缺少 shard/retry 等高级 CI 配置 |
 
@@ -78,7 +79,7 @@
 1. **结构化错误迁移覆盖率低**：基础设施已就绪，但大部分命令文件未迁移。建议后续按模块分批替换 `Result<..., String>`。
 2. **ASR 推理吞吐未实质改善**：C1 队列 UX 已让用户可见排队；单 worker + `_runtime_lock` 仍为设计决策，多 worker 须单独 spike（见 `funasr-concurrency-research.md` C2+）。
 3. **`ready_for_transcribe` 语义仍可能误判**：虽然增加了内存状态字段，但 UI 若仍消费 `ready_for_transcribe` 全局字段，可能在模型未真实加载时误判。
-4. **State/Ref 双轨未终态**：S2.4b 后 find/replace、transcribe、stage B 已 snapshot 化；export / correction rules 等仍读 ref；state-only 发布未做。
+4. **State/Ref publish boundary 仍有 snapshot cache**：S2.7 后 publish/flush 不再 ref-first；`SegmentPublishApi` 内部仍持有 latest snapshot ref，供同事件连续 mutation 与 async 闭包读取。
 5. **脏检查 fast path 依赖字段全量 fingerprint**：`segmentsPersistSignature` 仍需遍历所有语段生成字符串，只是比逐字段比较便宜；超大项目仍可能受限。
 
 ---
@@ -98,17 +99,18 @@
 | 覆盖率 global threshold 偏低 | #25 修复 | 提升 vitest thresholds 或依赖 codecov patch 80% 门禁 |
 | 结构化错误迁移覆盖率低 | #9/30 部分修复 | 制定模块迁移计划，分批替换 `Result<..., String>` |
 | ASR 推理单 worker 未变（吞吐） | #12 部分修复 | C1 UX 已提示排队；C2 多 worker 须 research spike 后再定 |
-| State/Ref S2.5 未完成 | #2 部分修复 | export / correction rules / delete confirm snapshot 化；最终 state-only 发布 |
+| State/Ref latest snapshot cache | #2 部分修复 | 后续可选：将 publish boundary 的 snapshot ref 抽为通用 `useLatestRef`，进一步弱化命名歧义 |
 | `ready_for_transcribe` 仍可能误判 | #15 部分修复 | UI 逐步切换到 `selected_model_ready` 等更精确字段 |
 | 脏检查 fast path 仍线性 | #24 部分修复 | 超大项目时考虑引入 immutable version 或 segment-level dirty flag |
 | Context 推广不足 | #5 修复 | 评估项目/主题/错误边界等场景是否值得引入更多 Context |
+| `useWaveformZoomSync.ts` 接近 300 行 | 本轮新增 | 当前 301 行，触发架构守卫 warning；建议拆出 zoom 引擎或状态子模块 |
 
 ---
 
 ## 五、下一步建议
 
 1. **高优先级（v1.1 收尾）**
-   - #2 State/Ref **S2.5**：剩余 consumer snapshot 化 + state-only 发布（S2.1–S2.4b 已完成，见 acceptance）。
+   - #2 State/Ref **后续可选**：publish boundary latest snapshot cache 抽象化（S2.7 已完成 publish/flush state-only，见 acceptance）。
    - #9/30 结构化错误：完成剩余命令文件的迁移，释放 i18n/遥测收益。
    - #15 `ready_for_transcribe`：彻底改为真实加载状态驱动。
 
@@ -125,12 +127,12 @@
 
 ## 七、本轮代码变更摘要（2026-06-17）
 
-- **#2 State/Ref**：S2.4b find/replace + transcribe + stage B snapshot 读 + guard 扩展；acceptance S2.1–S2.4b 已勾选。此前：S2.4a publish updater、S2.2b–S2.3b save/undo/time/bounds。
+- **#2 State/Ref**：S2.7 publish/flush state-driven；S2.6 `useProjectEditorState` 去 `segmentsRef` API；S2.5c `publishStructureLive` + flush/undo 测试对齐；S2.5b publish API；S2.5a snapshot consumer。acceptance S2.1–S2.7 已勾选。
 - **#17**：profile-first 参数过滤 + acceptance；TypeError strip 保留为 documented fallback。
 - **#12 C1**：ASR 推理队列深度文案（环境页）；[`funasr-queue-ux-acceptance.md`](./funasr-queue-ux-acceptance.md) 已勾选。
 - **#21**：`WaveformSegmentBandCanvas` listener / paint effect 分离（此前轮次）；本轮补充 tier wheel-forward（触控板 deltaY→横向）与 segment band mirror paint。
 - **波形播放头**：隐藏 WS shadow DOM cursor；视口 playhead 改 saffron 90%；minimap playhead 改 `zen-saffron-mid`。
-- 测试：desktop **280 files / 1398 tests**（分支 `cursor/funasr-param-capability-queue-ux` 门禁快照）。
+- 测试：desktop **286 files / 1427 tests**；architecture guard **0 errors / 1 warning**（`useWaveformZoomSync.ts` 301 行）。
 
 ---
 
@@ -142,4 +144,4 @@
 npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs
 ```
 
-- 本次执行结果（2026-06-17）：typecheck ✅ / test **280 files / 1398 tests** ✅ / architecture guard **0 errors / 0 warnings** ✅
+- 本次执行结果（2026-06-17）：typecheck ✅ / test **286 files / 1427 tests** ✅ / architecture guard **0 errors / 1 warning** ⚠️
