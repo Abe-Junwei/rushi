@@ -1,5 +1,5 @@
 /**
- * CSS 自定义属性 — 与 tailwind.config.js / src/config/tokens.ts 同源。
+ * CSS 自定义属性 — hex 真源；@theme（zen-tailwind.css）与 src/config/tokens.ts 对账。
  * 供独立 CSS 模块引用（避免各文件中硬编码 hex 发散）。
  * 色值对齐仓库根 DESIGN.md（Notion Zen）。
  */
@@ -9,7 +9,9 @@
   --zen-ink: #2C2C2C;
   --zen-paper: #F2EFE8;
   --zen-saffron: #C58A43;
+  --zen-saffron-light: #ffddba;
   --zen-saffron-mid: #85530f;
+  --zen-saffron-deep: #452800;
   --zen-stone: #8E8E8E;
   --zen-indigo: #3D4F5D;
   --zen-cinnabar: #963530;

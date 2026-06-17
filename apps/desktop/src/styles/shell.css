@@ -96,16 +96,17 @@ body,
 
 /**
  * Tailwind Preflight 关闭时，WebKit 会给裸 <button> 默认灰底与立体 appearance。
- * :where 保持 (0,0,1)，Tailwind bg-* 与组件类（.icon-btn 等）仍可覆盖。
- * 覆盖 #root 内与 createPortal 挂到 body 的浮层/菜单。
+ * @layer base：与 utilities 同级联时仍低于 @layer utilities，避免压过 .bg-*。
  */
-:where(body) button {
-  background-color: transparent;
-  background-image: none;
-  box-shadow: none;
-  border-width: 0;
-  border-style: solid;
-  -webkit-appearance: none;
-  appearance: none;
-  -webkit-tap-highlight-color: transparent;
+@layer base {
+  :where(body) button {
+    background-color: transparent;
+    background-image: none;
+    box-shadow: none;
+    border-width: 0;
+    border-style: solid;
+    -webkit-appearance: none;
+    appearance: none;
+    -webkit-tap-highlight-color: transparent;
+  }
 }

@@ -1,5 +1,6 @@
 import { createPortal } from "react-dom";
 import { CONTROL_BTN_DANGER, CONTROL_BTN_SECONDARY } from "../../config/controlStyles";
+import { overlayScrimCentered } from "../../config/overlayStyles";
 import { useDialogEscapeClose } from "../../hooks/useDialogEscapeClose";
 import { PANEL_TYPOGRAPHY } from "../../config/typography";
 import { DELETE_SEGMENT_WITH_TEXT_CONFIRM } from "../../services/segmentConfirmEligible";
@@ -26,7 +27,7 @@ export function DeleteSegmentConfirmDialog({ open, deleteCount = 1, onCancel, on
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[100] flex items-center justify-center bg-zen-ink/10 p-6"
+      className={overlayScrimCentered("z-[100]")}
       role="presentation"
       onMouseDown={(e) => {
         if (e.target === e.currentTarget) onCancel();

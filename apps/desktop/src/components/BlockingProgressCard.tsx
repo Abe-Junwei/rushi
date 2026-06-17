@@ -1,5 +1,6 @@
 import { LoaderCircle } from "lucide-react";
 import { CONTROL_BTN_DANGER } from "../config/controlStyles";
+import { OVERLAY_SCRIM_LAYER } from "../config/overlayStyles";
 import { LUCIDE_ICON_SIZE_LG, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 import { TranscribeVocabularyPreflightLines } from "./TranscribeVocabularyPreflightLines";
 import {
@@ -110,7 +111,7 @@ export function BlockingProgressCard({
 
   return (
     <div
-      className="fixed inset-0 z-[90] flex items-center justify-center bg-notion-bg/70 px-6 backdrop-blur-[2px]"
+      className={`${OVERLAY_SCRIM_LAYER} z-[90] flex items-center justify-center px-6`}
       role="status"
       aria-live="polite"
       aria-busy="true"

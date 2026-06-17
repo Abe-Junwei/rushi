@@ -34,7 +34,7 @@
 - 目录落位见 AI_QUICKSTART §项目结构
 - 复杂度阈值：hook > 300 行 / > 12 hooks → 拆分；`.rs` > 500 行 → 考虑拆模块
 - **视觉意图**：`apps/desktop` 的版面、组件气质、间距层次以仓库根 [`DESIGN.md`](./DESIGN.md) 为准（当前为 **Notion Zen**：Notion 中性底 + saffron 暖色强调；可与 Stitch 稿对齐）。
-- **落码颜色**：样式颜色唯一来源仍为 `apps/desktop/tailwind.config.js` + `apps/desktop/src/config/tokens.ts`；将 `DESIGN.md` 中的色板映射为具名 token / Tailwind 主题扩展，禁止 `bg-[#...]` 与未入库的随意 hex。
+- **落码颜色**：样式颜色真源为 `apps/desktop/src/styles/tokens.css` → `zen-tailwind.css` `@theme` + `apps/desktop/src/config/tokens.ts`；将 `DESIGN.md` 色板映射为具名 token，禁止 `bg-[#...]` 与未入库 hex。见 [`docs/architecture/desktop-tailwind-v4.md`](./docs/architecture/desktop-tailwind-v4.md)。
 - SQLite `PRAGMA busy_timeout = 5000`；路径用 `canonicalize` + `relative_to`
 - Python async 端点同步 IO 必须 `run_in_threadpool`；上传文件流式处理
 - 禁止：setState updater 内 DOM 查询 / 硬编码 hex / mega-hook

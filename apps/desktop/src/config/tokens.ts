@@ -1,5 +1,5 @@
 /**
- * 设计 token — 与 tailwind.config.js theme.extend.colors 同源。
+ * 设计 token — hex 真源见 styles/tokens.css；Tailwind 映射见 zen-tailwind.css @theme。
  * 供 TS 侧内联样式、Rust 侧 docx 导出等引用。
  * 对齐仓库根 DESIGN.md（Notion Zen）。
  */

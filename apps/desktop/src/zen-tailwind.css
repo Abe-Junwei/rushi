@@ -1,10 +1,76 @@
-/* Tailwind v4：仅引入 theme + utilities，刻意不引 preflight（避免与 App.css 壳层 reset 冲突）。
- * 颜色/间距/字体真源仍是 tailwind.config.js，经 @config 以 legacy 方式加载。
- * utilities 故意不入 @layer：与本仓 v3 时一致，保证 .bg-* 等能压过 shell.css 中
- * 未分层的全局 button/input 重置（v4 下分层 utilities 会被未分层规则反超）。 */
+/* Tailwind v4 native entry — see docs/architecture/desktop-tailwind-v4.md
+ * Preflight 刻意不引入（与 App.css / shell.css 壳层 reset 共存）。 */
 @import "tailwindcss/theme.css" layer(theme);
-@import "tailwindcss/utilities.css";
-@config "../tailwind.config.js";
+@import "tailwindcss/utilities.css" layer(utilities);
+
+@theme {
+  /* Colors ← tokens.css (:root hex 真源)；策略 A：不 pin radius/shadow */
+  --color-zen-ink: var(--zen-ink);
+  --color-zen-paper: var(--zen-paper);
+  --color-zen-saffron: var(--zen-saffron);
+  --color-zen-saffron-light: var(--zen-saffron-light);
+  --color-zen-saffron-mid: var(--zen-saffron-mid);
+  --color-zen-saffron-deep: var(--zen-saffron-deep);
+  --color-zen-ochre: var(--zen-ochre);
+  --color-zen-stone: var(--zen-stone);
+  --color-zen-cinnabar: var(--zen-cinnabar);
+  --color-zen-indigo: var(--zen-indigo);
+  --color-zen-success: var(--zen-success);
+  --color-zen-success-action: var(--zen-success-action);
+  --color-zen-success-surface: var(--zen-success-surface);
+  --color-zen-success-border: var(--zen-success-border);
+  --color-zen-saffron-surface: var(--zen-saffron-surface);
+  --color-zen-saffron-border: var(--zen-saffron-border);
+  --color-zen-cinnabar-surface: var(--zen-cinnabar-surface);
+  --color-zen-cinnabar-border: var(--zen-cinnabar-border);
+  --color-notion-bg: var(--notion-bg);
+  --color-notion-sidebar: var(--notion-sidebar);
+  --color-notion-sidebar-hover: var(--notion-sidebar-hover);
+  --color-notion-sidebar-active: var(--notion-sidebar-active);
+  --color-secondary-container: var(--secondary-container);
+  --color-notion-divider: var(--notion-divider);
+  --color-notion-border: var(--notion-border);
+  --color-notion-text: var(--notion-text);
+  --color-notion-text-variant: var(--notion-text-variant);
+  --color-notion-text-muted: var(--notion-text-muted);
+  --color-notion-text-light: var(--notion-text-light);
+  --color-notion-callout-bg: var(--notion-callout-bg);
+  --color-notion-callout-border: var(--notion-callout-border);
+  --color-zen-wf-surface: var(--zen-wf-surface);
+  --color-zen-wf-wave: var(--zen-wf-wave);
+  --color-zen-wf-progress: var(--zen-wf-progress);
+  --color-zen-wf-cursor: var(--zen-wf-cursor);
+
+  --spacing-page-margin: 2rem;
+
+  --font-sans: Inter, system-ui, sans-serif;
+  --font-serif: "Noto Serif SC", serif;
+  --font-mono: "JetBrains Mono", ui-monospace, monospace;
+
+  --animate-rushi-indeterminate: rushi-indeterminate 1.5s linear infinite;
+  --animate-rushi-spin-slow: spin 3s linear infinite;
+  --animate-toast-in: toast-in 0.25s ease-out;
+
+  @keyframes rushi-indeterminate {
+    0% {
+      transform: translateX(-100%);
+    }
+    100% {
+      transform: translateX(300%);
+    }
+  }
+
+  @keyframes toast-in {
+    from {
+      opacity: 0;
+      transform: translateY(12px);
+    }
+    to {
+      opacity: 1;
+      transform: translateY(0);
+    }
+  }
+}
 
 /** 确认创建页：抵消 WebKit 自动填充黄底，避免看起来像配色错误 */
 .confirm-project-input:-webkit-autofill,

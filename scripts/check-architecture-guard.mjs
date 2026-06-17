@@ -219,7 +219,37 @@ function checkCssFile(fullPath) {
   const allowed = ['#fff', '#ffffff', '#000', '#000000', '#f0f0f0', '#f4f4f5'];
   const suspicious = hexColors.filter(c => !allowed.includes(c.toLowerCase()));
   if (suspicious.length > 0 && !rel.includes('tokens')) {
-    warnings.push(`${rel}: 发现 ${suspicious.length} 处硬编码颜色，应收敛到 tailwind.config.js`);
+    warnings.push(`${rel}: 发现 ${suspicious.length} 处硬编码颜色，应收敛到 styles/tokens.css`);
+  }
+}
+
+function checkTailwindV4Entry() {
+  const zenPath = path.join(ROOT, 'apps/desktop/src/zen-tailwind.css');
+  const zen = fs.readFileSync(zenPath, 'utf-8');
+  if (/@config\b/.test(zen)) {
+    errors.push('apps/desktop/src/zen-tailwind.css: 禁止 @config — 主题须在 @theme 中声明');
+  }
+  if (/@tailwind\s+utilities/.test(zen)) {
+    errors.push('apps/desktop/src/zen-tailwind.css: 禁止 @tailwind utilities — 使用 @import "tailwindcss/utilities.css" layer(utilities)');
+  }
+  if (!/layer\(utilities\)/.test(zen)) {
+    errors.push('apps/desktop/src/zen-tailwind.css: utilities 须在 layer(utilities) 中引入');
+  }
+
+  walk(path.join(ROOT, 'apps/desktop/src'), (fullPath) => {
+    if (!fullPath.endsWith('.css')) return;
+    const rel = path.relative(ROOT, fullPath).replaceAll(path.sep, '/');
+    if (rel === 'apps/desktop/src/zen-tailwind.css') return;
+    const source = fs.readFileSync(fullPath, 'utf-8');
+    if (/@tailwind\s+utilities/.test(source)) {
+      errors.push(`${rel}: 禁止 @tailwind utilities — 统一使用 zen-tailwind.css v4 入口`);
+    }
+  });
+
+  const configPath = path.join(ROOT, 'apps/desktop/tailwind.config.js');
+  const config = fs.readFileSync(configPath, 'utf-8');
+  if (/theme\s*:\s*\{/.test(config) && /extend\s*:\s*\{/.test(config) && /colors\s*:/.test(config)) {
+    errors.push('apps/desktop/tailwind.config.js: 颜色真源已迁至 tokens.css + @theme，禁止 theme.extend.colors');
   }
 }
 
@@ -491,6 +521,7 @@ function checkDevReleaseBehaviorForks() {
 
 checkDevReleaseStyleCspParity();
 checkDevReleaseBehaviorForks();
+checkTailwindV4Entry();
 checkReleaseUserCopyDrift();
 checkTauriProductionCsp();
 checkTauriStyleNonceProbe();

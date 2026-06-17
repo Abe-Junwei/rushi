@@ -1,4 +1,5 @@
 import { useDialogEscapeClose } from "../hooks/useDialogEscapeClose";
+import { OVERLAY_SCRIM_LAYER } from "../config/overlayStyles";
 import { DraggableResizablePanel } from "./DraggableResizablePanel";
 import { centerFloatingPanelPosition, readFloatingPanelViewport } from "./floatingPanelViewport";
 
@@ -28,7 +29,7 @@ const PANEL_TEMPLATE_PRESETS = {
     maxWidth: 560,
     maxHeight: 560,
     persistState: false,
-    overlayClassName: "fixed inset-0 z-50 bg-zen-ink/10",
+    overlayClassName: `${OVERLAY_SCRIM_LAYER} z-50`,
   },
   environment: {
     margin: 24,
@@ -37,7 +38,7 @@ const PANEL_TEMPLATE_PRESETS = {
     maxWidth: 920,
     maxHeight: 700,
     persistState: false,
-    overlayClassName: "fixed inset-0 z-40 bg-zen-ink/10",
+    overlayClassName: `${OVERLAY_SCRIM_LAYER} z-40`,
   },
   /** 确认/表单对话框：Notion/Zen 壳 + 可记忆拖放尺寸（上限按视口，勿再用 320×200 硬顶） */
   compactDialog: {
@@ -47,7 +48,7 @@ const PANEL_TEMPLATE_PRESETS = {
     maxWidth: 560,
     maxHeight: 720,
     persistState: true,
-    overlayClassName: "fixed inset-0 z-40 bg-zen-ink/10",
+    overlayClassName: `${OVERLAY_SCRIM_LAYER} z-40`,
   },
   /** 查找替换：内容区较高，须压在 editor 工具栏（z-90）之上 */
   findReplace: {
@@ -57,7 +58,7 @@ const PANEL_TEMPLATE_PRESETS = {
     maxWidth: 640,
     maxHeight: 720,
     persistState: true,
-    overlayClassName: "fixed inset-0 z-[100] bg-zen-ink/10",
+    overlayClassName: `${OVERLAY_SCRIM_LAYER} z-[100]`,
   },
 } satisfies Record<string, PanelTemplatePreset>;
 
