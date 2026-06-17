@@ -30,7 +30,6 @@ export function useTestSegmentMutationController(
 
   const mutations = useSegmentMutationController({
     segmentPublish,
-    setSegments,
     selectedIdxRef,
     setSelectedIdx,
     setError,

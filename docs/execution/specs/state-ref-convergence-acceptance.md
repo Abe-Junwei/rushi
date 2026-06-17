@@ -37,6 +37,35 @@
 - [x] mutation focused tests 覆盖 `updateSegmentTime` 后 `segmentsRef` 同步。
 - [x] combined state/ref focused tests、desktop typecheck、architecture guard 通过。
 
+## S2.6 验收项
+
+- [x] `useProjectEditorState` 不再创建、写入或返回 `segmentsRef`。
+- [x] `useProjectLifecycleWiring` 不再解构/透传 `segmentsRef`。
+- [x] `useProjectLifecycleEditorStack` 在 publish 边界内部维护临时 ref mirror，并继续创建 `SegmentPublishApi`。
+- [x] load / refresh 行为保持：打开文件、刷新项目后仍按 uid 恢复选中索引。
+- [x] guard：`useProjectEditorState.ts` 禁止 `segmentsRef` 回流。
+
+## S2.7 验收项
+
+- [x] `flushSegmentTextDrafts` / `commitSegmentTextDraftsForStructureMutation` / `publishSegment*` 入参改为 `getCurrentSegmentsSnapshot()` + `setSegments`。
+- [x] publish functional updater 基于 React state `prev` 解析，不再基于 `segmentsRef.current`。
+- [x] publish functional updater 只解析一次，且 latest snapshot cache 不在 React state updater 内写入。
+- [x] focused DOM text 合并改为 `applyFocusedDomTextToSegments()` 返回 next segments，不直接写 ref。
+- [x] `segmentDraftStore` / `flushSegmentTextDrafts` tests 对齐 state-only publish 入口。
+- [x] guard：`flushSegmentTextDrafts.ts` 禁止直接 `segmentsRef.current =` 写入。
+
+## S2.5c 验收项
+
+- [x] `publishStructureLive` 封装 bounds live drag；mutation controller 不再直接 `setSegments`。
+- [x] `flushSegmentTextDrafts` undo 集成测试经 `SegmentPublishApi`。
+- [x] guard：`useSegmentMutationController` 禁止 `setSegments(prev => …)` 结构变更。
+- [x] S2.5 系列（a/b/c）focused tests + architecture guard 通过。
+
+## S2.5 收口说明
+
+- **已完成**：业务 consumer snapshot 读（S2.5a）、publish API 封装（S2.5b）、mutation live preview 收拢（S2.5c）。
+- **后续可选薄片（非 S2.5）**：将 `SegmentPublishApi` 内部 latest snapshot ref 抽象为通用 `useLatestRef`，进一步弱化命名歧义。
+
 ## S2.5b 验收项
 
 - [x] `createSegmentPublishApi` 在 editor stack 创建并向下游透传；下游 controller 不再接收 `segmentsRef`。

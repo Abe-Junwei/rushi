@@ -1,4 +1,4 @@
-import { useCallback, useMemo } from "react";
+import { useCallback, useMemo, useRef } from "react";
 import type { ProjectDetail, SegmentDto } from "../tauri/projectApi";
 import { useGlossaryLearnPromptController } from "./useGlossaryLearnPromptController";
 import { useManualCorrectionMemoryDialog } from "./useManualCorrectionMemoryDialog";
@@ -11,6 +11,7 @@ import { useSegmentSelectionController } from "./useSegmentSelectionController";
 import { useAutoSaveSegments } from "./useAutoSaveSegments";
 import type { BusyReason } from "./useProjectCrudController";
 import { createSegmentPublishApi } from "./segmentPublishApi";
+import { reconcileSegmentsRefWithState } from "./segmentSegmentsRefSync";
 
 type UseProjectLifecycleEditorStackArgs = {
   busy: boolean;
@@ -20,7 +21,6 @@ type UseProjectLifecycleEditorStackArgs = {
   current: ProjectDetail | null;
   currentFileId: string | null;
   segments: SegmentDto[];
-  segmentsRef: React.MutableRefObject<SegmentDto[]>;
   selectedIdx: number;
   setSelectedIdx: React.Dispatch<React.SetStateAction<number>>;
   selectedIdxRef: React.MutableRefObject<number>;
@@ -38,7 +38,6 @@ export function useProjectLifecycleEditorStack(args: UseProjectLifecycleEditorSt
     current,
     currentFileId,
     segments,
-    segmentsRef,
     selectedIdx,
     setSelectedIdx,
     selectedIdxRef,
@@ -55,6 +54,9 @@ export function useProjectLifecycleEditorStack(args: UseProjectLifecycleEditorSt
     disabled: busy,
   });
 
+  const segmentsRef = useRef(segments);
+  reconcileSegmentsRefWithState(segmentsRef, segments);
+
   const segmentPublish = useMemo(
     () => createSegmentPublishApi(segmentsRef, setSegments),
     [segmentsRef, setSegments],
@@ -64,7 +66,6 @@ export function useProjectLifecycleEditorStack(args: UseProjectLifecycleEditorSt
 
   const mutations = useSegmentMutationController({
     segmentPublish,
-    setSegments,
     selectedIdxRef,
     setSelectedIdx,
     setError,

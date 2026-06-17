@@ -35,12 +35,9 @@ function checkTsFile(fullPath) {
     if (hookTotal > 12) warnings.push(`${rel}: ${hookTotal} 个 hook，超过 12 个阈值`);
   }
 
-  // segmentsRef 直接赋值须仅在 editor state / ref sync / publish 模块；
-  // 结构 mutation 文件只允许读 ref 并经 publishSegmentStructureMutation 发布。
+  // segmentsRef 直接赋值须仅在 ref sync / publish 模块；editor state 不再暴露 ref。
   const segmentsRefAssignAllowlist = [
-    "apps/desktop/src/pages/useProjectEditorState.ts",
     "apps/desktop/src/pages/segmentSegmentsRefSync.ts",
-    "apps/desktop/src/pages/flushSegmentTextDrafts.ts",
     "apps/desktop/src/pages/segmentPublishApi.ts",
     "apps/desktop/src/pages/transcribeJobController.testHelpers.ts",
   ];
@@ -51,6 +48,14 @@ function checkTsFile(fullPath) {
     !rel.endsWith(".test.tsx")
   ) {
     warnings.push(`${rel}: 直接赋值 segmentsRef.current；结构性变更应经由 publishSegmentStructureMutation`);
+  }
+
+  if (rel === "apps/desktop/src/pages/useProjectEditorState.ts" && /segmentsRef/.test(source)) {
+    errors.push(`${rel}: editor state 禁止重新暴露 segmentsRef；经 useProjectLifecycleEditorStack 的 SegmentPublishApi 边界`);
+  }
+
+  if (rel === "apps/desktop/src/pages/flushSegmentTextDrafts.ts" && /segmentsRef\.current\s*=/.test(source)) {
+    errors.push(`${rel}: flush/publish 已 state-only，禁止直接写 segmentsRef.current`);
   }
 
   // 结构 mutation 须经 getCurrentSegmentsSnapshot 读当前语段，禁止 setSegments(prev => …) 做结构/正文合并
@@ -105,6 +110,12 @@ function checkTsFile(fullPath) {
     }
     if (/publishSegment(?:Structure|TextBulk)Mutation/.test(source)) {
       errors.push(`${rel}: 禁止直接调用 publishSegment*Mutation；改用 segmentPublish`);
+    }
+  }
+
+  if (rel === "apps/desktop/src/pages/useSegmentMutationController.ts") {
+    if (/setSegments\s*\(\s*\(\s*(?:prev|p)\s*\)\s*=>/.test(source)) {
+      errors.push(`${rel}: 结构/bounds 变更须经 segmentPublish.publishStructure*，禁止直接 setSegments(prev => …)`);
     }
   }
 

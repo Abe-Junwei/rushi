@@ -1,5 +1,4 @@
 import { useCallback, useRef, useState } from "react";
-import type { SegmentDto } from "../tauri/projectApi";
 import { normalizeSegmentAnnotationInput } from "../utils/segmentAnnotation";
 import type { SegmentPublishApi } from "./segmentPublishApi";
 

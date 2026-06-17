@@ -1,5 +1,4 @@
 import { useRef } from "react";
-import type { SegmentDto } from "../tauri/projectApi";
 import * as p1 from "../tauri/projectApi";
 import type { useProjectCloseGateController } from "./useProjectCloseGateController";
 import type { useProjectEditorState } from "./useProjectEditorState";

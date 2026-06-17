@@ -1,5 +1,4 @@
 import { asrBaseUrl } from "../config/env";
-import type { SegmentDto } from "../tauri/projectApi";
 import * as p1 from "../tauri/projectApi";
 import { materializeSegmentTextDrafts } from "../hooks/useSegmentDraftStore";
 import { logFirstSegmentsVisibleMs, pollTranscribeJob, postTranscribeCancel } from "./transcribeAsyncPoll";

@@ -23,7 +23,7 @@ describe("createSegmentPublishApi", () => {
     expect(api.getCurrentSegmentsSnapshot()).toEqual([seg("hello")]);
   });
 
-  it("publishTextBulk updates ref and React state", () => {
+  it("publishTextBulk updates React state through setter", () => {
     const segmentsRef = { current: [seg("hello")] };
     const setSegments = vi.fn((updater: SegmentDto[] | ((prev: SegmentDto[]) => SegmentDto[])) => {
       segmentsRef.current =
@@ -35,7 +35,20 @@ describe("createSegmentPublishApi", () => {
     expect(setSegments).toHaveBeenCalled();
   });
 
-  it("publishStructure updates ref and React state", () => {
+  it("publishStructureLive updates React state without touching ref until reconcile", () => {
+    const segmentsRef = { current: [seg("a")] };
+    let reactState = segmentsRef.current;
+    const setSegments = vi.fn((updater: SegmentDto[] | ((prev: SegmentDto[]) => SegmentDto[])) => {
+      reactState = typeof updater === "function" ? updater(reactState) : updater;
+    });
+    const api = createSegmentPublishApi(segmentsRef, setSegments);
+    api.publishStructureLive((prev) => prev.map((row) => ({ ...row, text: "live" })));
+    expect(reactState[0]?.text).toBe("live");
+    expect(segmentsRef.current[0]?.text).toBe("a");
+    expect(setSegments).toHaveBeenCalled();
+  });
+
+  it("publishStructure updates React state through setter", () => {
     const segmentsRef = { current: [seg("a")] };
     const setSegments = vi.fn((updater: SegmentDto[] | ((prev: SegmentDto[]) => SegmentDto[])) => {
       segmentsRef.current =

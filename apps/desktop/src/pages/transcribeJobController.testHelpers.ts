@@ -31,8 +31,14 @@ function mockAsyncPollDone(): void {
   );
 }
 
+type TranscribeJobDeps = Parameters<typeof useTranscribeJobController>[0];
+type TranscribeJobTestOverrides = Partial<TranscribeJobDeps> & {
+  segmentsRef?: { current: SegmentDto[] };
+  setSegments?: (updater: SegmentDto[] | ((prev: SegmentDto[]) => SegmentDto[])) => void;
+};
+
 export function baseTranscribeJobDeps(
-  overrides: Partial<Parameters<typeof useTranscribeJobController>[0]> = {},
+  overrides: TranscribeJobTestOverrides = {},
 ) {
   const segments = overrides.segments ?? [transcribeTestSeg("已有正文")];
   const segmentsRef = overrides.segmentsRef ?? { current: segments };

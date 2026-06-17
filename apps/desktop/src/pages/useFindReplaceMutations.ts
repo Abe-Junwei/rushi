@@ -1,5 +1,4 @@
 import { useCallback } from "react";
-import type { SegmentDto } from "../tauri/projectApi";
 import {
   applyReplaceAllToSegments,
   buildReplaceAllPreviewRows,

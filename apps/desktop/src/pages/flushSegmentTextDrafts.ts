@@ -36,29 +36,26 @@ export function readFocusedTranscriptTextareaSelection(): string {
   return active.value.slice(Math.min(start, end), Math.max(start, end));
 }
 
-/** 结构变更前：将焦点 textarea（含 IME 组字中）正文写回 segmentsRef。 */
-export function syncFocusedDomTextIntoSegments(
-  segmentsRef: React.MutableRefObject<SegmentDto[]>,
-): void {
-  if (typeof document === "undefined") return;
+/** 结构变更前：将焦点 textarea（含 IME 组字中）正文合并进给定 segments。 */
+export function applyFocusedDomTextToSegments(segments: SegmentDto[]): SegmentDto[] {
+  if (typeof document === "undefined") return segments;
   const active = document.activeElement;
-  if (!(active instanceof HTMLTextAreaElement)) return;
-  if (!active.matches(TRANSCRIPT_TEXTAREA_SELECTOR)) return;
+  if (!(active instanceof HTMLTextAreaElement)) return segments;
+  if (!active.matches(TRANSCRIPT_TEXTAREA_SELECTOR)) return segments;
   const row = active.closest("[data-seg-row]");
-  if (!(row instanceof HTMLElement)) return;
+  if (!(row instanceof HTMLElement)) return segments;
   const idx = Number(row.getAttribute("data-seg-row"));
-  const base = segmentsRef.current;
-  if (!Number.isFinite(idx) || idx < 0 || idx >= base.length) return;
-  const seg = base[idx];
-  if (!seg) return;
+  if (!Number.isFinite(idx) || idx < 0 || idx >= segments.length) return segments;
+  const seg = segments[idx];
+  if (!seg) return segments;
   const key = segmentDraftKey(seg, idx);
   segmentDraftStore.endComposition(key);
   const liveText = normalizeSegmentDraftText(active.value);
   const committed = normalizeSegmentDraftText(seg.text ?? "");
-  if (liveText === committed) return;
-  const out = [...base];
+  if (liveText === committed) return segments;
+  const out = [...segments];
   out[idx] = { ...seg, text: liveText };
-  segmentsRef.current = out;
+  return out;
 }
 
 /** undo/redo 前：以 segments 为准刷新仍挂载的 textarea，避免 DOM 旧值被 flush 写回。 */
@@ -108,7 +105,7 @@ function endAllSegmentCompositions(segments: SegmentDto[]): void {
   }
 }
 
-/** 结构变更前：结束 IME，以 segments 刷新 DOM（S1 下行模型真源在 segmentsRef，不回写 stale DOM→draft）。 */
+/** 结构变更前：结束 IME，以当前 segments 刷新 DOM（不回写 stale DOM→draft）。 */
 export function prepareSegmentTextDraftsForMutation(segments: SegmentDto[]): void {
   endAllSegmentCompositions(segments);
   syncDomTextareasFromSegments(segments);
@@ -160,88 +157,95 @@ function applySegmentTextDraftUpdates(
 
 /** 将草稿 store 中未提交的语段正文写回 `segments`（保存/合并/导出等前调用）。 */
 export function flushSegmentTextDrafts(
-  segmentsRef: React.MutableRefObject<SegmentDto[]>,
+  getCurrentSegmentsSnapshot: () => SegmentDto[],
   setSegments: React.Dispatch<React.SetStateAction<SegmentDto[]>>,
   options?: FlushSegmentTextDraftsOptions,
-): void {
-  prepareSegmentTextDraftsForFlush(segmentsRef.current);
-  const prev = segmentsRef.current;
+): SegmentDto[] | null {
+  const prev = getCurrentSegmentsSnapshot();
+  prepareSegmentTextDraftsForFlush(prev);
   const validKeys = new Set<string>();
   prev.forEach((s, i) => {
     validKeys.add(segmentDraftKey(s, i));
   });
   const updates = collectSegmentTextDraftFlushUpdates(prev);
   segmentDraftStore.pruneMissingKeys(validKeys);
-  if (updates.length === 0) return;
+  if (updates.length === 0) return null;
   options?.beforeApplyUpdates?.(updates);
-  const next = applySegmentTextDraftUpdates(segmentsRef.current, updates);
-  segmentsRef.current = next;
-  flushSync(() => {
-    setSegments(next);
-  });
+  const next = publishResolvedSegments(getCurrentSegmentsSnapshot, setSegments, (base) =>
+    applySegmentTextDraftUpdates(base, updates),
+  );
   for (const { idx, text } of updates) {
-    const seg = segmentsRef.current[idx];
+    const seg = next[idx];
     if (!seg) continue;
     const key = segmentDraftKey(seg, idx);
     if (segmentDraftStore.getDraft(key) === text) {
       segmentDraftStore.clearDraft(key);
     }
   }
+  return next;
 }
 
 /** 结构变更（合并/拆分/删除/插入）前：物化全部草稿、写回 state，并清理 orphan draft 键。 */
 export function commitSegmentTextDraftsForStructureMutation(
-  segmentsRef: React.MutableRefObject<SegmentDto[]>,
+  getCurrentSegmentsSnapshot: () => SegmentDto[],
   setSegments: React.Dispatch<React.SetStateAction<SegmentDto[]>>,
-): void {
-  syncFocusedDomTextIntoSegments(segmentsRef);
-  prepareSegmentTextDraftsForMutation(segmentsRef.current);
-  const materialized = materializeSegmentTextDrafts(segmentsRef.current);
-  segmentsRef.current = materialized;
-  flushSync(() => {
-    setSegments(materialized);
-  });
+): SegmentDto[] {
+  const withFocusedDom = applyFocusedDomTextToSegments(getCurrentSegmentsSnapshot());
+  prepareSegmentTextDraftsForMutation(withFocusedDom);
+  const materialized = materializeSegmentTextDrafts(withFocusedDom);
+  publishResolvedSegments(getCurrentSegmentsSnapshot, setSegments, () => materialized);
   clearCommittedDraftsForSegments(materialized);
   pruneDraftKeysForSegments(materialized);
+  return materialized;
 }
 
 type SegmentListSetter =
   | React.Dispatch<React.SetStateAction<SegmentDto[]>>
-  | ((next: SegmentDto[]) => void);
+  | ((next: React.SetStateAction<SegmentDto[]>) => void);
 
 export type SegmentListNext = SegmentDto[] | ((prev: SegmentDto[]) => SegmentDto[]);
 
-function resolveSegmentListNext(
-  segmentsRef: React.MutableRefObject<SegmentDto[]>,
-  next: SegmentListNext,
-): SegmentDto[] {
-  return typeof next === "function" ? next(segmentsRef.current) : next;
+type SegmentSnapshotGetter = () => SegmentDto[];
+
+function resolveSegmentListNext(prev: SegmentDto[], next: SegmentListNext): SegmentDto[] {
+  return typeof next === "function" ? next(prev) : next;
 }
 
-/** 结构变更后：同步 segmentsRef 与 React state（S1 下 ref 可能领先 state）。 */
+function publishResolvedSegments(
+  getCurrentSegmentsSnapshot: SegmentSnapshotGetter,
+  setSegments: SegmentListSetter,
+  resolve: (prev: SegmentDto[]) => SegmentDto[],
+): SegmentDto[] {
+  let resolved: SegmentDto[] | null = null;
+  flushSync(() => {
+    setSegments((prev) => {
+      resolved = resolve(prev);
+      return resolved;
+    });
+  });
+  return resolved ?? getCurrentSegmentsSnapshot();
+}
+
+/** 结构变更后：同步 React state；当前快照由 render 后的 publish 边界维护。 */
 export function publishSegmentStructureMutation(
-  segmentsRef: React.MutableRefObject<SegmentDto[]>,
+  getCurrentSegmentsSnapshot: SegmentSnapshotGetter,
   setSegments: SegmentListSetter,
   next: SegmentListNext,
-): void {
-  const resolved = resolveSegmentListNext(segmentsRef, next);
-  segmentsRef.current = resolved;
-  flushSync(() => {
-    setSegments(resolved);
-  });
+): SegmentDto[] {
+  return publishResolvedSegments(getCurrentSegmentsSnapshot, setSegments, (prev) =>
+    resolveSegmentListNext(prev, next),
+  );
 }
 
 /** 批量写回语段正文后：刷新 state，并清除 stale draft / DOM，避免后续 flush 把旧字写回。 */
 export function publishSegmentTextBulkMutation(
-  segmentsRef: React.MutableRefObject<SegmentDto[]>,
+  getCurrentSegmentsSnapshot: SegmentSnapshotGetter,
   setSegments: SegmentListSetter,
   next: SegmentListNext,
-): void {
-  const resolved = resolveSegmentListNext(segmentsRef, next);
-  segmentsRef.current = resolved;
-  flushSync(() => {
-    setSegments(resolved);
-  });
+): SegmentDto[] {
+  const resolved = publishResolvedSegments(getCurrentSegmentsSnapshot, setSegments, (prev) =>
+    resolveSegmentListNext(prev, next),
+  );
   for (const [i, seg] of resolved.entries()) {
     const key = segmentDraftKey(seg, i);
     segmentDraftStore.endComposition(key);
@@ -249,23 +253,24 @@ export function publishSegmentTextBulkMutation(
   }
   syncDomTextareasFromSegments(resolved);
   pruneDraftKeysForSegments(resolved);
+  return resolved;
 }
 
 /** 转写开始前清空语段：丢弃 draft/DOM，避免旧 uid 污染新结果。 */
 export function publishTranscribeSegmentClear(
-  segmentsRef: React.MutableRefObject<SegmentDto[]>,
+  getCurrentSegmentsSnapshot: SegmentSnapshotGetter,
   setSegments: SegmentListSetter,
-): void {
+): SegmentDto[] {
   segmentDraftStore.resetAll();
-  publishSegmentStructureMutation(segmentsRef, setSegments, []);
+  return publishSegmentStructureMutation(getCurrentSegmentsSnapshot, setSegments, []);
 }
 
 /** 转写失败回滚：恢复语段并同步 draft/DOM。 */
 export function publishTranscribeSegmentRestore(
-  segmentsRef: React.MutableRefObject<SegmentDto[]>,
+  getCurrentSegmentsSnapshot: SegmentSnapshotGetter,
   setSegments: SegmentListSetter,
   next: SegmentDto[],
-): void {
+): SegmentDto[] {
   segmentDraftStore.resetAll();
-  publishSegmentTextBulkMutation(segmentsRef, setSegments, next);
+  return publishSegmentTextBulkMutation(getCurrentSegmentsSnapshot, setSegments, next);
 }

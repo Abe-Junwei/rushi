@@ -1,5 +1,4 @@
 import { useCallback, useMemo, useRef } from "react";
-import type { SegmentDto } from "../tauri/projectApi";
 import { withAiRevisedStage } from "../services/segmentStagePersist";
 import { segmentDraftKey, segmentDraftStore } from "../hooks/useSegmentDraftStore";
 import { syncDomTextareasFromSegments } from "./flushSegmentTextDrafts";
@@ -49,7 +48,6 @@ export interface SegmentMutationApi {
 
 type SegmentMutationDeps = {
   segmentPublish: SegmentPublishApi;
-  setSegments: React.Dispatch<React.SetStateAction<SegmentDto[]>>;
   selectedIdxRef: React.MutableRefObject<number>;
   setSelectedIdx: React.Dispatch<React.SetStateAction<number>>;
   setError: (msg: string) => void;
@@ -61,7 +59,6 @@ type SegmentMutationDeps = {
 export function useSegmentMutationController(deps: SegmentMutationDeps): SegmentMutationApi {
   const {
     segmentPublish,
-    setSegments,
     selectedIdxRef,
     setSelectedIdx,
     setError,
@@ -219,7 +216,9 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
           segmentBoundsLiveGestureRef.current = true;
           pushUndo();
         }
-        setSegments((p) => p.map((x, i) => (i === idx ? { ...x, start_sec: lo, end_sec: hi } : x)));
+        segmentPublish.publishStructureLive((p) =>
+          p.map((x, i) => (i === idx ? { ...x, start_sec: lo, end_sec: hi } : x)),
+        );
         return;
       }
 
@@ -230,7 +229,7 @@ export function useSegmentMutationController(deps: SegmentMutationDeps): Segment
         base.map((x, i) => (i === idx ? { ...x, start_sec: lo, end_sec: hi } : x)),
       );
     },
-    [getCurrentSegmentsSnapshot, segmentPublish, setSegments, pushUndo],
+    [getCurrentSegmentsSnapshot, segmentPublish, pushUndo],
   );
 
   return {
