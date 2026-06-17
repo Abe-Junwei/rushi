@@ -48,6 +48,34 @@
   --notion-callout-bg: #f1f1ef;
   --notion-callout-border: #e3e2e0;
 
+  /**
+   * 主壳层（Welcome / Project Hub / Editor chrome）— CONTEXT「Main shell surface」。
+   * 导航侧栏、顶栏、波形 tier 外壳、minimap 条等；禁止 zen-paper 进壳层。
+   */
+  --main-shell-bg: var(--notion-bg);
+  --main-shell-sidebar-bg: var(--notion-sidebar);
+  --main-shell-border: var(--notion-divider);
+  --main-shell-minimap-bg: var(--notion-sidebar);
+
+  /**
+   * 内容装饰面 — CONTEXT「Content decoration surface」；不进导航壳。
+   */
+  --content-decoration-paper: var(--zen-paper);
+  --content-decoration-card: #f5f0e0;
+
+  /** Dual accent — indigo 编辑选中 / saffron 动作·进度；见 DESIGN.md § Colors */
+  /** 动作色可由设置「外观 → 主题色」覆盖（data-accent-theme + inline --zen-saffron*） */
+  --accent-edit: var(--zen-indigo);
+  --accent-action: var(--zen-saffron);
+  --accent-action-strong: var(--zen-saffron-mid);
+
+  /** Flat shell elevation — 壳层与 body 浮层禁止 drop shadow（Round 2+ 接线） */
+  --shell-elevation-shadow: none;
+  --overlay-panel-border: var(--notion-border);
+  --overlay-panel-bg: var(--notion-bg);
+  /** 模态遮罩：压暗底层内容；浮层壳仍 flat（无 shadow） */
+  --overlay-scrim-bg: color-mix(in srgb, var(--zen-ink) 26%, transparent);
+
   /* 波形 / WaveSurfer（DESIGN.md waveform-*；与 tailwind zen-wf-* 同源） */
   --zen-wf-surface: #ffffff;
   --zen-wf-wave: #c4c4c8;
@@ -122,9 +150,86 @@
   --notion-callout-bg: #2a2a2a;
   --notion-callout-border: #3d3d3d;
 
+  --main-shell-bg: var(--notion-bg);
+  --main-shell-sidebar-bg: var(--notion-sidebar);
+  --main-shell-border: var(--notion-divider);
+  --main-shell-minimap-bg: var(--notion-sidebar);
+  --content-decoration-paper: var(--zen-paper);
+  --content-decoration-card: #3a3630;
+  --accent-edit: var(--zen-indigo);
+  --accent-action: var(--zen-saffron);
+  --accent-action-strong: var(--zen-saffron-mid);
+  --shell-elevation-shadow: none;
+  --overlay-panel-border: var(--notion-border);
+  --overlay-panel-bg: var(--notion-bg);
+  --overlay-scrim-bg: color-mix(in srgb, var(--zen-ink) 44%, transparent);
+
   --zen-wf-surface: #1f1f1f;
   --zen-wf-wave: #5a5a5f;
   --zen-wf-progress: #8e8e93;
   --zen-wf-progress-played: color-mix(in srgb, var(--zen-saffron-mid) 22%, var(--zen-wf-progress));
   --zen-wf-cursor: #b0b0b5;
+}
+
+/** 壳层主题 — 设置 → 外观（浅色） */
+[data-shell-theme="white"] {
+  --notion-bg: #ffffff;
+  --notion-sidebar: #ffffff;
+  --notion-sidebar-hover: #f5f5f5;
+  --notion-sidebar-active: #efefef;
+  --notion-callout-bg: #fafafa;
+  --main-shell-bg: var(--notion-bg);
+  --main-shell-sidebar-bg: var(--notion-sidebar);
+  --main-shell-minimap-bg: var(--notion-sidebar);
+  --zen-wf-surface: #ffffff;
+}
+
+[data-shell-theme="light-gray"] {
+  --notion-bg: #faf9f8;
+  --notion-sidebar: #f3f2f1;
+  --notion-sidebar-hover: #edebe9;
+  --notion-sidebar-active: #e1dfdd;
+  --notion-divider: #edebe9;
+  --notion-border: #edebe9;
+  --notion-callout-bg: #f3f2f1;
+  --notion-callout-border: #edebe9;
+  --main-shell-bg: var(--notion-bg);
+  --main-shell-sidebar-bg: var(--notion-sidebar);
+  --main-shell-border: var(--notion-divider);
+  --main-shell-minimap-bg: var(--notion-sidebar);
+  --zen-wf-surface: #ffffff;
+  --zen-wf-wave: #c8c6c4;
+}
+
+/** 壳层主题 — 深色（需同时 `[data-theme="dark"]`） */
+[data-theme="dark"][data-shell-theme="dark-gray"] {
+  --notion-bg: #292929;
+  --notion-sidebar: #333333;
+  --notion-sidebar-hover: #3d3d3d;
+  --notion-sidebar-active: #454545;
+  --notion-divider: #3d3d3d;
+  --notion-border: #3d3d3d;
+  --notion-callout-bg: #333333;
+  --main-shell-bg: var(--notion-bg);
+  --main-shell-sidebar-bg: var(--notion-sidebar);
+  --main-shell-minimap-bg: var(--notion-sidebar);
+  --zen-wf-surface: #292929;
+  --zen-wf-wave: #6e6e73;
+  --zen-wf-cursor: #a0a0a5;
+}
+
+[data-theme="dark"][data-shell-theme="black"] {
+  --notion-bg: #1b1a19;
+  --notion-sidebar: #252423;
+  --notion-sidebar-hover: #2f2e2d;
+  --notion-sidebar-active: #3b3a39;
+  --notion-divider: #323130;
+  --notion-border: #323130;
+  --notion-callout-bg: #252423;
+  --main-shell-bg: var(--notion-bg);
+  --main-shell-sidebar-bg: var(--notion-sidebar);
+  --main-shell-minimap-bg: var(--notion-sidebar);
+  --zen-wf-surface: #1b1a19;
+  --zen-wf-wave: #5a5958;
+  --zen-wf-cursor: #969594;
 }

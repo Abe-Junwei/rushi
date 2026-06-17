@@ -1,4 +1,5 @@
 import { useCallback, useMemo, useRef, type ReactNode } from "react";
+import { MAIN_SHELL_SURFACE_CLASS } from "../config/shellVisualTokens";
 import { List, Settings } from "lucide-react";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 import type { ProjectControllerApi } from "../pages/useProjectController";
@@ -42,7 +43,7 @@ export function WelcomeSidebar({
   onLeaveProjectForWelcome,
   editorMode = false,
   activeFileId = null,
-  embeddedInCollapsibleShell = false,
+  embeddedInCollapsibleShell: _embeddedInCollapsibleShell = false,
   glossaryWorkspaceId = "vocabulary",
   onGlossaryWorkspaceChange,
   onRestoreOnboardingChecklist,
@@ -112,10 +113,7 @@ export function WelcomeSidebar({
   return (
     <aside
       {...{ [WORKSPACE_SIDEBAR_PANEL_ATTR]: "" }}
-      className={[
-        "flex h-full min-h-0 w-full max-w-full shrink-0 flex-col bg-notion-sidebar",
-        embeddedInCollapsibleShell ? "" : "border-r border-notion-divider",
-      ].join(" ")}
+      className={`flex h-full min-h-0 w-full max-w-full shrink-0 flex-col ${MAIN_SHELL_SURFACE_CLASS.sidebarBg}`}
     >
       <WelcomeSidebarNav
         controller={c}
@@ -153,7 +151,7 @@ export function WelcomeSidebar({
           </p>
         </div>
       )}
-      <div className="mt-auto shrink-0 border-t border-notion-divider bg-notion-sidebar" aria-label="侧栏工具">
+      <div className={`mt-auto shrink-0 border-t ${MAIN_SHELL_SURFACE_CLASS.border} ${MAIN_SHELL_SURFACE_CLASS.sidebarBg}`} aria-label="侧栏工具">
         <div
           className={WORKSPACE_SIDEBAR_FOOTER_GRID}
           style={{ gridTemplateColumns: `repeat(${footerItems.length}, minmax(0, 1fr))` }}

@@ -27,6 +27,7 @@ import {
   isSavedApiKeyMaskDisplayed,
   normalizeSavedApiKeyInputChange,
   resolveSavedApiKeyInputDisplay,
+  shouldClearSavedKeyFromMaskInput,
 } from "../../services/secrets/savedApiKeyInput";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";
 
@@ -45,6 +46,7 @@ type Props = {
   appKey: string;
   apiKey: string;
   savedApiKeyId: string | null;
+  keychainChecking?: boolean;
   keychainReady?: boolean | null;
   onEndpointChange: (value: string) => void;
   onTimeoutSecChange: (value: number) => void;
@@ -63,6 +65,7 @@ export function OnlineSttRuntimeForm({
   appKey,
   apiKey,
   savedApiKeyId,
+  keychainChecking = false,
   keychainReady = null,
   onEndpointChange,
   onTimeoutSecChange,
@@ -90,11 +93,12 @@ export function OnlineSttRuntimeForm({
       : "标准 Bearer / API Key";
   const presetDisplay = resolveSttOnlinePresetEndpointDisplay(providerId);
   const showCustomEndpoint = sttOnlineProviderEndpointUserConfigurable(providerId);
-  const showSavedApiKeyMask = isSavedApiKeyMaskDisplayed(apiKey, savedApiKeyId, keychainReady);
+  const keychainResolved = keychainChecking ? null : keychainReady;
+  const showSavedApiKeyMask = isSavedApiKeyMaskDisplayed(apiKey, savedApiKeyId, keychainResolved);
   const apiKeyDisplay = resolveSavedApiKeyInputDisplay({
     typedApiKey: apiKey,
     savedApiKeyId,
-    keychainReady,
+    keychainReady: keychainResolved,
   });
 
   return (
@@ -184,9 +188,14 @@ export function OnlineSttRuntimeForm({
           onFocus={(e) => {
             if (showSavedApiKeyMask) e.currentTarget.select();
           }}
-          onChange={(e) =>
-            onApiKeyChange(normalizeSavedApiKeyInputChange(e.target.value, showSavedApiKeyMask))
-          }
+          onChange={(e) => {
+            const next = normalizeSavedApiKeyInputChange(e.target.value, showSavedApiKeyMask);
+            if (shouldClearSavedKeyFromMaskInput(showSavedApiKeyMask, next)) {
+              onClearSavedApiKey();
+              return;
+            }
+            onApiKeyChange(next);
+          }}
           placeholder={providerDef?.credentialPlaceholder ?? "sk-… 或 Token"}
           disabled={busy}
           autoComplete="off"

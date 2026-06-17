@@ -71,6 +71,7 @@ describe("localAsrModelCatalog", () => {
   it("flags paraformer SKUs as needing punc prepare", () => {
     expect(hubModelNeedsPuncPrepare(DEFAULT_LOCAL_ASR_HUB_MODEL_ID)).toBe(true);
     expect(hubModelNeedsPuncPrepare("iic/SenseVoiceSmall")).toBe(true);
+    expect(hubModelNeedsPuncPrepare("FunAudioLLM/Fun-ASR-Nano-2512")).toBe(false);
   });
 
   it("parses catalog status from health json", () => {

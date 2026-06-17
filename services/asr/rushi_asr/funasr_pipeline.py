@@ -7,6 +7,10 @@ import os
 from rushi_asr.defaults import DEFAULT_FUNASR_PUNC_MODEL_ID
 
 
+def is_funasr_nano_model(model_id: str) -> bool:
+    return "fun-asr-nano" in (model_id or "").lower()
+
+
 def recognizer_needs_punc_pipeline(model_id: str) -> bool:
     """Paraformer long-audio SKUs need ct-punc + sentence_timestamp for multi-segment output."""
     mid = (model_id or "").lower()

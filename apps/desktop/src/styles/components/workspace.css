@@ -150,7 +150,7 @@
 
 .workspace [data-seg-row].seg-row-in-selection {
   border-color: transparent;
-  background: color-mix(in srgb, var(--zen-indigo) 5%, transparent);
+  background: color-mix(in srgb, var(--zen-indigo) 8%, transparent);
 }
 
 /* 语段行：编辑阶段（Notion 式 pill · 图标 + 文案） */
@@ -310,7 +310,7 @@
 
 .workspace textarea.seg-text.text-transparent::selection {
   color: transparent;
-  background: color-mix(in srgb, var(--zen-saffron) 28%, var(--zen-paper));
+  background: color-mix(in srgb, var(--zen-saffron) 28%, var(--content-decoration-paper));
 }
 
 /* 语段行：待纳入记忆改词 diff 镜像 */
@@ -394,7 +394,7 @@
 
 .workspace textarea.seg-text::selection {
   color: var(--zen-saffron-mid);
-  background: color-mix(in srgb, var(--zen-saffron) 20%, var(--zen-paper));
+  background: color-mix(in srgb, var(--zen-saffron) 20%, var(--content-decoration-paper));
 }
 
 /** EditorView 底栏：三列 grid，居中 hint 独立列 truncate，避免 absolute 叠字 */
@@ -408,8 +408,8 @@
   height: 30px;
   flex-shrink: 0;
   padding: 0 0.625rem;
-  border-top: 1px solid var(--notion-divider);
-  background: var(--notion-bg);
+  border-top: 1px solid var(--main-shell-border);
+  background: var(--main-shell-bg);
   font-size: var(--text-label);
   color: var(--notion-text-muted);
 }
@@ -499,6 +499,9 @@
  * - 禁止 grid 列宽 / width / padding-left 过渡 */
 .workspace-shell-collapsible {
   --workspace-sidebar-width: 20rem;
+  --workspace-sidebar-toggle-width: 0.75rem;
+  --workspace-sidebar-toggle-height: 2.625rem;
+  --workspace-sidebar-toggle-slope: 10px;
   position: relative;
   grid-template-columns: minmax(0, 1fr);
 }
@@ -508,6 +511,12 @@
   min-width: 0;
 }
 
+/* 编辑页：侧栏 overlay 夹在 EditorToolbar 与 EditorStatusFooter 之间，避免主区 chrome 盖住侧栏与挂耳 */
+.workspace-shell-collapsible[data-purpose="editor-workspace-shell"] {
+  --editor-workspace-chrome-top: 3rem;
+  --editor-workspace-chrome-bottom: 30px;
+}
+
 .workspace-shell-collapsible .workspace-shell-sidebar-column {
   position: absolute;
   inset-block: 0;
@@ -515,15 +524,20 @@
   z-index: 40;
   width: var(--workspace-sidebar-width);
   min-width: 0;
-  overflow: hidden;
-  background: var(--notion-sidebar);
-  border-right: 0;
+  overflow: visible;
+  background: var(--main-shell-sidebar-bg);
+  border-right: 1px solid var(--main-shell-border);
   transform: translate3d(0, 0, 0);
-  contain: layout style paint;
+  /* omit paint containment so edge toggle can protrude into main */
+  contain: layout style;
   transition:
     transform 220ms cubic-bezier(0.22, 0.61, 0.36, 1),
     border-color 180ms ease,
     background-color 180ms ease;
+}
+
+.workspace-shell-collapsible[data-purpose="editor-workspace-shell"] .workspace-shell-sidebar-column {
+  inset-block: var(--editor-workspace-chrome-top) var(--editor-workspace-chrome-bottom);
 }
 
 .workspace-shell-collapsible.workspace-shell-sidebar-collapsed .workspace-shell-sidebar-column {
@@ -533,13 +547,17 @@
 
 .workspace-shell-sidebar-column {
   overflow: hidden;
-  background: var(--notion-sidebar);
+  background: var(--main-shell-sidebar-bg);
+  border-right: 1px solid var(--main-shell-border);
   transition:
     border-color 180ms ease,
     background-color 180ms ease;
 }
 
 .workspace-shell-sidebar-content {
+  height: 100%;
+  min-height: 0;
+  overflow: hidden;
   transition: opacity 260ms cubic-bezier(0.32, 0.72, 0, 1) 70ms;
 }
 
@@ -548,50 +566,46 @@
   transition-delay: 0ms;
 }
 
-/* 整根竖向分隔线；挂耳 pill 盖住中段，上下线条连续 */
-.workspace-shell-collapsible .workspace-shell-sidebar-column::after {
-  content: "";
-  position: absolute;
-  inset-block: 0;
-  right: 0;
-  width: 1px;
-  background: var(--notion-divider);
-  pointer-events: none;
-  z-index: 30;
-}
-
-/* 编辑页侧栏内容不再自绘右边线，避免与 seam 双线 */
+/* 编辑页侧栏内容不再自绘右边线；层次由整列 border-right + 背景差承担 */
 .workspace-shell-collapsible [data-workspace-sidebar-panel] {
   border-right-width: 0 !important;
 }
 
 /*
- * 挂耳：pill 骑在 seam 上（translate ±50%），边框与分隔线同色。
+ * 挂耳：侧栏右缘凸出梯形 tab（上下斜边向内收，左缘贴齐侧栏）。
  */
+.workspace-shell-collapsible[data-purpose="editor-workspace-shell"] .workspace-shell-sidebar-toggle {
+  z-index: 100;
+}
+
 .workspace-shell-sidebar-toggle {
   position: absolute;
   top: 50%;
-  right: 0;
+  right: calc(-1 * var(--workspace-sidebar-toggle-width));
   z-index: 31;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 18px;
-  height: 36px;
+  width: var(--workspace-sidebar-toggle-width);
+  height: var(--workspace-sidebar-toggle-height);
   margin: 0;
   padding: 0;
-  border: 1px solid var(--notion-divider);
-  border-radius: 9999px;
-  background: var(--notion-sidebar);
+  border: none;
+  border-radius: 0;
+  background: var(--main-shell-sidebar-bg);
   color: var(--notion-text-light);
   cursor: pointer;
-  transform: translate(50%, -50%);
-  box-shadow: none;
+  clip-path: polygon(
+    0 0,
+    100% var(--workspace-sidebar-toggle-slope),
+    100% calc(100% - var(--workspace-sidebar-toggle-slope)),
+    0 100%
+  );
+  transform: translateY(-50%);
   appearance: none;
   transition:
     background-color 120ms ease,
     color 120ms ease,
-    border-color 120ms ease,
     opacity 200ms cubic-bezier(0.32, 0.72, 0, 1),
     transform 200ms cubic-bezier(0.32, 0.72, 0, 1);
 }
@@ -599,31 +613,31 @@
 .workspace-shell-collapsible.workspace-shell-sidebar-collapsed .workspace-shell-sidebar-toggle {
   opacity: 0;
   pointer-events: none;
-  transform: translate(50%, -50%) scale(0.9);
+  transform: translateY(-50%) scale(0.94);
 }
 
 .workspace-shell-sidebar-toggle svg {
-  width: 13px;
-  height: 13px;
-  opacity: 0.75;
-  transition: opacity 120ms ease;
+  width: 0.6875rem;
+  height: 0.6875rem;
+  opacity: 0.72;
+  transition: opacity 120ms ease, transform 120ms ease;
 }
 
 .workspace-shell-sidebar-toggle:hover,
 .workspace-shell-sidebar-toggle:focus-visible {
   background: var(--notion-sidebar-hover);
-  border-color: color-mix(in srgb, var(--notion-divider) 55%, var(--notion-text-light));
   color: var(--notion-text-muted);
 }
 
 .workspace-shell-sidebar-toggle:hover svg,
 .workspace-shell-sidebar-toggle:focus-visible svg {
   opacity: 1;
+  transform: translateX(-1px);
 }
 
 .workspace-shell-sidebar-toggle:focus-visible {
   outline: 2px solid color-mix(in srgb, var(--zen-saffron) 45%, transparent);
-  outline-offset: 1px;
+  outline-offset: 2px;
 }
 
 @keyframes workspace-nav-sidebar-expand-in {

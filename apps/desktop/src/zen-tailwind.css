@@ -40,6 +40,10 @@
   --color-notion-text-light: var(--notion-text-light);
   --color-notion-callout-bg: var(--notion-callout-bg);
   --color-notion-callout-border: var(--notion-callout-border);
+  --color-main-shell-bg: var(--main-shell-bg);
+  --color-main-shell-sidebar-bg: var(--main-shell-sidebar-bg);
+  --color-content-decoration-paper: var(--content-decoration-paper);
+  --color-content-decoration-card: var(--content-decoration-card);
   --color-zen-wf-surface: var(--zen-wf-surface);
   --color-zen-wf-wave: var(--zen-wf-wave);
   --color-zen-wf-progress: var(--zen-wf-progress);

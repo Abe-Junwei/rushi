@@ -1,6 +1,6 @@
 import { useCallback, useEffect } from "react";
 import WaveSurfer from "wavesurfer.js";
-import { COLORS } from "../config/tokens";
+import { readWaveformSurferPalette } from "../utils/waveformThemeColors";
 import { WAVEFORM_SURFER_BAR_DISPLAY } from "../config/waveformSurferDisplay";
 import {
   quantizePxPerSecForPeaksLoad,
@@ -22,6 +22,7 @@ import {
   resetWaveformRenderPathLog,
 } from "../services/waveform/waveformRuntimePath";
 import { bindProjectWaveformWaveSurferEvents } from "./projectWaveformWaveSurferEvents";
+import { subscribeAppAppearance } from "../services/ui/appAppearance";
 import { logDesktopUi } from "../services/desktopUiLog";
 import { logRuntimeParity } from "../services/runtimeParity";
 import { probeWaveformAssetFetchParity } from "../services/waveform/waveformAssetFetchParity";
@@ -145,6 +146,7 @@ export function useProjectWaveformMount(
       mountEl.style.width = `${WAVEFORM_WS_HOST_WIDTH_PX}px`;
       mountEl.style.transform = "translateX(0px)";
 
+      const wfPalette = readWaveformSurferPalette();
       const ws = WaveSurfer.create(
         withWaveSurferCspNonce({
           container: mountEl,
@@ -155,9 +157,9 @@ export function useProjectWaveformMount(
           normalize: true,
           maxPeak: 1,
           sampleRate: peaks ? undefined : WAVEFORM_DECODE_SAMPLE_RATE,
-          waveColor: COLORS.waveformWave,
-          progressColor: COLORS.waveformProgressPlayed,
-          cursorColor: COLORS.waveformCursor,
+          waveColor: wfPalette.waveColor,
+          progressColor: wfPalette.progressColor,
+          cursorColor: wfPalette.cursorColor,
           cursorWidth: 0,
           ...WAVEFORM_SURFER_BAR_DISPLAY,
           minPxPerSec: initialMps,
@@ -240,6 +242,19 @@ export function useProjectWaveformMount(
     setDuration,
     setCurrentTime,
   ]);
+
+  useEffect(() => {
+    return subscribeAppAppearance(() => {
+      const ws = wsRef.current;
+      if (!ws) return;
+      const palette = readWaveformSurferPalette();
+      ws.setOptions({
+        waveColor: palette.waveColor,
+        progressColor: palette.progressColor,
+        cursorColor: palette.cursorColor,
+      });
+    });
+  }, [wsRef]);
 }
 
 export function useProjectWaveformDestroy(

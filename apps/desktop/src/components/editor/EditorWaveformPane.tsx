@@ -77,7 +77,7 @@ export function EditorWaveformPane({
             className="waveform-center-status pointer-events-none absolute inset-0 z-30 flex items-center justify-center"
             aria-live="polite"
           >
-            <p className="rounded-md bg-notion-sidebar-active/95 px-3 py-2 text-body text-notion-text-muted shadow-sm">
+            <p className="rounded-md border border-notion-border bg-notion-sidebar-active/95 px-3 py-2 text-body text-notion-text-muted shadow-none">
               {centerStatusLabel}
             </p>
           </div>
@@ -167,6 +167,7 @@ export function EditorWaveformPane({
                         selectedIndices={c.selectedIndices}
                         dominantSpanIndices={tx.segmentLaneLayout.dominantSpanIndices}
                         draftIdx={overlayDraftIdx}
+                        getPlayheadSec={tx.getPlayheadTime}
                         tierScrollRef={tx.tierScrollRef}
                         tierScrollLive={tx.tierScrollLive}
                         tierScrollLayout={tx.tierScrollLayout}

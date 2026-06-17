@@ -34,6 +34,22 @@ npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs
 |--------|------|
 | `166a357` | portal 对话框 `box-border`；`.dropdown-item` 移入 `@layer base` 恢复菜单高亮 |
 
+## Round 7 — 全壳层扁平 + 双 accent（2026-06）
+
+> **Grill 决策**（见 `CONTEXT.md` Main shell / Dual accent / Flat shell elevation）：Welcome→Hub→Editor→环境浮层；token 先行。
+
+| 轮 | 主题 | 状态 |
+|----|------|------|
+| **R7.1** | `tokens.css` + `shellVisualTokens.ts` + `DESIGN.md` + guard warning | ✅ |
+| R7.2 | Editor 壳接线（侧栏去 shadow、minimap→`--main-shell-minimap-bg`） | ✅ |
+| R7.3 | Welcome / Hub 壳 + 暖底收敛 | ✅ |
+| R7.4 | 浮层去 shadow（DraggableResizablePanel、菜单、Toast） | ✅ |
+
+```bash
+npm run test -- shellVisualTokens
+npm run typecheck && node scripts/check-architecture-guard.mjs
+```
+
 ## 不做什么
 
 - 不重构 glossary 卡片 `GLOSSARY_CARD`（面板级，非控件 token）

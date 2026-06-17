@@ -1,5 +1,6 @@
 import { useLayoutEffect, useMemo, useRef, useState, type RefObject } from "react";
 import type { PeakCache } from "../services/waveform/PeakCache";
+import { subscribeAppAppearance } from "../services/ui/appAppearance";
 import {
   drawWaveformMinimap,
 } from "../services/waveform/drawWaveformMinimap";
@@ -124,7 +125,9 @@ export function WaveformMinimapStrip({
     });
     ro.observe(well);
     window.addEventListener("resize", paint);
+    const unsubAppearance = subscribeAppAppearance(paint);
     return () => {
+      unsubAppearance();
       paintSeq += 1;
       ro.disconnect();
       window.removeEventListener("resize", paint);

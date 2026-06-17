@@ -1,4 +1,4 @@
-import { COLORS } from "../../config/tokens";
+import { readWaveformSurferPalette } from "../../utils/waveformThemeColors";
 
 /** 峰值绘制区相对 canvas 高度的上下留白（居中对称柱形）。 */
 const WAVEFORM_MINIMAP_PEAK_INSET_Y_RATIO = 0.22;
@@ -19,7 +19,7 @@ export function drawWaveformMinimap(
   const h = Math.max(1, Math.floor(heightPx));
   ctx.clearRect(0, 0, w, h);
   const colCount = Math.max(1, Math.floor(peaks.length / 2));
-  ctx.fillStyle = COLORS.waveformWave;
+  ctx.fillStyle = readWaveformSurferPalette().waveColor;
 
   const insetY = Math.max(1, Math.round(h * WAVEFORM_MINIMAP_PEAK_INSET_Y_RATIO));
   const drawH = Math.max(1, h - insetY * 2);

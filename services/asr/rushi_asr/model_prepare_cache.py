@@ -6,7 +6,7 @@ import os
 from pathlib import Path
 
 from rushi_asr.defaults import DEFAULT_FUNASR_MODEL_ID, effective_funasr_forced_aligner_id, effective_funasr_model_id, effective_funasr_vad_model_id
-from rushi_asr.funasr_pipeline import effective_funasr_punc_model_id
+from rushi_asr.funasr_pipeline import effective_funasr_punc_model_id, is_funasr_nano_model
 
 DEFAULT_MODEL_REQUIRED_FILES = ("model.pt", "config.yaml", "tokens.json")
 DEFAULT_VAD_REQUIRED_FILES = ("model.pt",)
@@ -23,6 +23,8 @@ def recognizer_cache_spec(model_id: str) -> tuple[tuple[str, ...], str, int]:
     mid = (model_id or "").lower()
     if "qwen" in mid:
         return (QWEN_RECOGNIZER_REQUIRED_FILES, QWEN_RECOGNIZER_WEIGHT_FILE, RECOGNIZER_MIN_WEIGHT_BYTES)
+    if is_funasr_nano_model(model_id):
+        return (("model.pt", "config.yaml"), "model.pt", RECOGNIZER_MIN_WEIGHT_BYTES)
     return (DEFAULT_MODEL_REQUIRED_FILES, "model.pt", RECOGNIZER_MIN_WEIGHT_BYTES)
 
 

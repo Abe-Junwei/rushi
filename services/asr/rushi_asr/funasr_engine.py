@@ -13,7 +13,7 @@ from pathlib import Path
 from typing import Any
 
 from rushi_asr.defaults import effective_funasr_forced_aligner_id, effective_funasr_model_id, effective_funasr_vad_model_id
-from rushi_asr.funasr_pipeline import effective_funasr_punc_model_id, recognizer_needs_punc_pipeline
+from rushi_asr.funasr_pipeline import effective_funasr_punc_model_id, is_funasr_nano_model, recognizer_needs_punc_pipeline
 from rushi_asr.funasr_load_plan import build_funasr_load_plan
 from rushi_asr.inference_queue import get_inference_queue, reset_inference_queue_after_timeout
 from rushi_asr.model_cache_env import configure_hub_env
@@ -109,11 +109,24 @@ def _funasr_hub_extra_kwargs(hub_id: str, resolved_arg: str) -> dict[str, Any]:
     """Qwen hub ids load via ModelScope (hub=ms), not HuggingFace."""
     if funasr_qwen_hub_id(hub_id) and resolved_arg == hub_id:
         return {"hub": "ms"}
+    if is_funasr_nano_model(hub_id) and resolved_arg == hub_id:
+        return {"hub": "ms"}
     if resolved_arg != hub_id:
         return {}
     if "qwen" in hub_id.lower():
         return {"hub": "ms"}
     return {}
+
+
+def _ensure_funasr_nano_registered() -> None:
+    try:
+        from funasr.models.fun_asr_nano.model import FunASRNano
+        from funasr.register import tables
+
+        if "FunASRNano" not in tables.model_classes:
+            tables.model_classes["FunASRNano"] = FunASRNano
+    except ImportError:
+        pass
 
 
 def warmup_funasr_model() -> dict[str, Any]:
@@ -187,6 +200,17 @@ def _get_model(model_id: str) -> Any:
         if forced_aligner:
             aligner_arg = resolve_qwen_forced_aligner_arg(forced_aligner)
             kwargs["forced_aligner"] = aligner_arg
+        if is_funasr_nano_model(model_id):
+            local_dir = Path(model_arg)
+            if local_dir.is_dir():
+                from rushi_asr.funasr_nano_remote_code import funasr_nano_remote_code_ready
+
+                if funasr_nano_remote_code_ready(local_dir):
+                    kwargs["remote_code"] = str(local_dir / "model.py")
+                else:
+                    _ensure_funasr_nano_registered()
+            else:
+                _ensure_funasr_nano_registered()
 
         log.info(
             "loading FunASR model %s device=%s vad=%s punc=%s forced_aligner=%s",
@@ -286,6 +310,9 @@ def generate_and_parse_funasr(
     def _run_generate(kwargs: dict[str, Any]) -> Any:
         strip_order = (
             "hotword",
+            "hotwords",
+            "batch_size_s",
+            "batch_size_threshold_s",
             "rich_transcription_postprocess",
             "use_itn",
             "output_timestamp",

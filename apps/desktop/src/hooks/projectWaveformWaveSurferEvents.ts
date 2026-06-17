@@ -1,6 +1,7 @@
 import type WaveSurfer from "wavesurfer.js";
 import type { UseProjectWaveformOptions } from "./useProjectWaveformTypes";
 import { logDesktopUi } from "../services/desktopUiLog";
+import { requestWaveformSegmentBandPaint } from "../utils/waveformSegmentBandPaint";
 import {
   logWaveSurferGeomDeferred,
   readWaveSurferChannelCoverageSec,
@@ -57,6 +58,15 @@ export function bindProjectWaveformWaveSurferEvents(
   void _pendingScrollLeftRef;
   void _scrollNotifyRafRef;
 
+  let segmentBandPaintRaf = 0;
+  const scheduleSegmentBandPaint = () => {
+    if (segmentBandPaintRaf) return;
+    segmentBandPaintRaf = requestAnimationFrame(() => {
+      segmentBandPaintRaf = 0;
+      requestWaveformSegmentBandPaint();
+    });
+  };
+
   return [
     ws.on("ready", (d) => {
       if (disposed()) return;
@@ -98,14 +108,19 @@ export function bindProjectWaveformWaveSurferEvents(
     ws.on("timeupdate", (t) => {
       if (disposed()) return;
       lastTimeUiCommitRef.current = t;
-      if (ws.isPlaying()) return;
+      if (ws.isPlaying()) {
+        scheduleSegmentBandPaint();
+        return;
+      }
       setCurrentTime(t);
+      scheduleSegmentBandPaint();
     }),
     ws.on("seeking", (t) => {
       if (disposed()) return;
       lastTimeUiCommitRef.current = t;
       lastTimeUiCommitMsRef.current = performance.now();
       setCurrentTime(t);
+      scheduleSegmentBandPaint();
       queueMicrotask(() => syncTierScrollAfterRenderRef.current());
       requestAnimationFrame(() => {
         if (disposed()) return;

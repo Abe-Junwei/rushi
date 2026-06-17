@@ -242,6 +242,42 @@ function checkTsFile(fullPath) {
     }
   }
 
+  // R7 Flat shell：壳层/浮层债务文件仍含 drop shadow（warning，R7.2–R7.4 清理）
+  const flatElevationTsDebtFiles = new Set([
+    "apps/desktop/src/components/DraggableResizablePanel.tsx",
+    "apps/desktop/src/components/SegmentContextMenu.tsx",
+    "apps/desktop/src/components/ToastHost.tsx",
+    "apps/desktop/src/components/segmentRow/SegmentCorrectPopover.tsx",
+    "apps/desktop/src/components/glossary/GlossaryBottomSheet.tsx",
+    "apps/desktop/src/components/BlockingProgressCard.tsx",
+    "apps/desktop/src/components/AppErrorBoundary.tsx",
+    "apps/desktop/src/components/ProjectStatusFeedback.tsx",
+    "apps/desktop/src/components/EnvQualityPanel.tsx",
+  ]);
+  if (flatElevationTsDebtFiles.has(rel) && !rel.endsWith(".test.ts") && !rel.endsWith(".test.tsx")) {
+    if (/\bshadow-(sm|md|lg|xl|2xl)\b/.test(source) || /\bshadow-\[/.test(source)) {
+      warnings.push(
+        `${rel}: Flat shell R7 — 须 shadow-none + border-notion-border（见 shellVisualTokens FLAT_OVERLAY_PANEL_SHELL_CLASS）`,
+      );
+    }
+  }
+
+  const mainShellWarmDebtFiles = new Set([
+    "apps/desktop/src/components/AppErrorBoundary.tsx",
+    "apps/desktop/src/components/WorkspaceShellLayout.tsx",
+    "apps/desktop/src/components/WelcomeSidebar.tsx",
+    "apps/desktop/src/components/WelcomeTopBar.tsx",
+    "apps/desktop/src/components/ProjectPanel.tsx",
+    "apps/desktop/src/config/workspaceShellLayout.ts",
+  ]);
+  if (mainShellWarmDebtFiles.has(rel) && !rel.endsWith(".test.ts") && !rel.endsWith(".test.tsx")) {
+    if (/\bbg-zen-paper\b/.test(source)) {
+      warnings.push(
+        `${rel}: Flat shell R7 — 导航壳层禁止 bg-zen-paper，改用 MAIN_SHELL_SURFACE_CLASS`,
+      );
+    }
+  }
+
   // compactDialog 成品壳：业务须用 CompactFloatingDialog（见 desktop-floating-dialog-panels.md）
   const compactDialogAllowlist = new Set([
     'apps/desktop/src/components/PanelTemplate.tsx',
@@ -326,6 +362,24 @@ function checkCssFile(fullPath) {
   const suspicious = hexColors.filter(c => !allowed.includes(c.toLowerCase()));
   if (suspicious.length > 0 && !rel.includes('tokens')) {
     warnings.push(`${rel}: 发现 ${suspicious.length} 处硬编码颜色，应收敛到 styles/tokens.css`);
+  }
+
+  // R7 Flat shell：CSS 壳层 shadow 债务（warning）
+  if (rel === "apps/desktop/src/styles/components/workspace.css") {
+    if (/--workspace-sidebar-edge-shadow/.test(source)) {
+      warnings.push(
+        `${rel}: Flat shell R7 — 侧栏须去 edge box-shadow token，改 border-right + shadow-none`,
+      );
+    }
+    if (/\.workspace-shell-collapsible \.workspace-shell-sidebar-column[\s\S]{0,400}box-shadow:/.test(source)) {
+      warnings.push(`${rel}: Flat shell R7 — 侧栏 column 禁止 box-shadow`);
+    }
+    if (/\.workspace-shell-sidebar-toggle[\s\S]{0,500}box-shadow:\s*(?!none)/.test(source)) {
+      warnings.push(`${rel}: Flat shell R7 — 挂耳须 shadow-none（扁平壳层）`);
+    }
+  }
+  if (rel === "apps/desktop/src/styles/panels.css" && /\.panel\s*\{[\s\S]*?box-shadow:/.test(source)) {
+    warnings.push(`${rel}: Flat shell R7 — .panel 须去 box-shadow，改 border-notion-border`);
   }
 }
 

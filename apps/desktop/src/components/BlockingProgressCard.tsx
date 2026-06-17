@@ -1,6 +1,6 @@
 import { LoaderCircle } from "lucide-react";
 import { CONTROL_BTN_DANGER } from "../config/controlStyles";
-import { OVERLAY_SCRIM_LAYER } from "../config/overlayStyles";
+import { FLAT_SHELL_ELEVATION_CLASS, OVERLAY_SCRIM_LAYER } from "../config/overlayStyles";
 import { LUCIDE_ICON_SIZE_LG, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 import { TranscribeVocabularyPreflightLines } from "./TranscribeVocabularyPreflightLines";
 import {
@@ -32,12 +32,12 @@ function ProgressCardBody({
     <div
       className={[
         "flex w-full max-w-[360px] flex-col items-center gap-4 rounded-lg border p-8 text-center",
-        cardClassName ?? "border-notion-divider bg-notion-bg shadow-sm",
+        cardClassName ?? `border-notion-border bg-notion-bg ${FLAT_SHELL_ELEVATION_CLASS}`,
       ].join(" ")}
     >
       <div className="relative mb-1 flex h-16 w-16 items-center justify-center">
         <div className="absolute inset-0 animate-ping rounded-full bg-zen-saffron/20 [animation-duration:2s]" />
-        <div className="relative z-10 flex h-12 w-12 items-center justify-center rounded-full border border-zen-saffron/30 bg-notion-bg shadow-sm">
+        <div className={`relative z-10 flex h-12 w-12 items-center justify-center rounded-full border border-zen-saffron/30 bg-notion-bg ${FLAT_SHELL_ELEVATION_CLASS}`}>
           <LoaderCircle
             className={`${LUCIDE_ICON_SIZE_LG} animate-rushi-spin-slow text-zen-saffron`}
             strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
@@ -81,7 +81,7 @@ export function BlockingProgressCard({
 }: Props) {
   const cardClassName =
     variant === "banner"
-      ? "border-zen-saffron/25 bg-notion-bg/95 shadow-lg backdrop-blur-xs"
+      ? `border-zen-saffron/25 bg-notion-bg/95 ${FLAT_SHELL_ELEVATION_CLASS}`
       : undefined;
 
   const shell = (

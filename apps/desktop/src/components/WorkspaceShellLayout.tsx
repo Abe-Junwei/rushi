@@ -1,5 +1,6 @@
 import { useCallback, useRef, type ReactNode } from "react";
-import { PanelLeftClose } from "lucide-react";
+import { MAIN_SHELL_SURFACE_CLASS } from "../config/shellVisualTokens";
+import { ChevronLeft } from "lucide-react";
 import { usePanelAutoCollapse } from "../hooks/usePanelAutoCollapse";
 import {
   WORKSPACE_EDITOR_SHELL_PURPOSE,
@@ -76,7 +77,7 @@ export function WorkspaceShellLayout({
           <button
             type="button"
             {...{ [WORKSPACE_SIDEBAR_TOGGLE_ATTR]: "" }}
-            className="workspace-shell-sidebar-toggle border-0 bg-notion-sidebar"
+            className={`workspace-shell-sidebar-toggle ${MAIN_SHELL_SURFACE_CLASS.sidebarBg} bg-notion-sidebar`}
             aria-expanded={!sidebarCollapsed}
             aria-hidden={sidebarCollapsed}
             tabIndex={sidebarCollapsed ? -1 : 0}
@@ -84,7 +85,7 @@ export function WorkspaceShellLayout({
             title="折叠侧栏"
             onClick={onToggleSidebar}
           >
-            <PanelLeftClose
+            <ChevronLeft
               className={LUCIDE_ICON_SIZE_SM}
               strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
               aria-hidden
@@ -92,7 +93,7 @@ export function WorkspaceShellLayout({
           </button>
         ) : null}
       </div>
-      <div className="workspace-shell-main flex min-h-0 min-w-0 flex-col bg-notion-bg">{children}</div>
+      <div className={`workspace-shell-main flex min-h-0 min-w-0 flex-col ${MAIN_SHELL_SURFACE_CLASS.pageBg}`}>{children}</div>
     </div>
   );
 }

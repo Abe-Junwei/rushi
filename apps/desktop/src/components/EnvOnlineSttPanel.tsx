@@ -54,7 +54,8 @@ export function EnvOnlineSttPanel({ busy, scrollAnchorRef, onSttOnlineRuntimeCha
             appKey={panel.olAppKey}
             apiKey={panel.olApiKey}
             savedApiKeyId={panel.savedApiKeyId}
-            keychainReady={panel.keychainChecking ? null : panel.keychainReady}
+            keychainChecking={panel.keychainChecking}
+            keychainReady={panel.keychainReady}
             onEndpointChange={panel.setOlEndpoint}
             onTimeoutSecChange={panel.setOlTimeoutSec}
             onAppKeyChange={panel.setOlAppKey}

@@ -1,5 +1,6 @@
 import { X } from "lucide-react";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
+import { FLAT_SHELL_ELEVATION_CLASS } from "../config/overlayStyles";
 import { useDraggablePanelController } from "../hooks/useDraggablePanelController";
 import { dialogCloseButtonTitle } from "../utils/dialogPanelHints";
 import { DraggablePanelResizeHandles } from "./DraggablePanelResizeHandles";
@@ -70,7 +71,7 @@ export function DraggableResizablePanel({
     >
       <DraggablePanelResizeHandles onPointerDown={startDrag} />
 
-      <div className="relative z-10 flex h-full w-full flex-col overflow-hidden rounded-lg border border-notion-divider bg-notion-bg font-sans antialiased text-notion-text shadow-2xl">
+      <div className={`relative z-10 flex h-full w-full flex-col overflow-hidden rounded-lg border border-notion-border bg-notion-bg font-sans antialiased text-notion-text ${FLAT_SHELL_ELEVATION_CLASS}`}>
         <div
           className="flex shrink-0 cursor-move items-center justify-between border-b border-notion-divider bg-notion-sidebar px-6 py-4 select-none"
           onPointerDown={(e) => startDrag("move", e)}

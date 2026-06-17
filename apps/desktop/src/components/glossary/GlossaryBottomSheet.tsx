@@ -26,12 +26,12 @@ export function GlossaryBottomSheet({ title, onClose, children }: Props) {
     <div className="fixed inset-0 z-30 flex flex-col justify-end" role="presentation">
       <button
         type="button"
-        className="min-h-0 flex-1 border-0 bg-notion-bg/60 backdrop-blur-xs"
+        className="min-h-0 flex-1 border-0 bg-[var(--overlay-scrim-bg)]"
         aria-label="关闭检视器"
         onClick={onClose}
       />
       <div
-        className="flex max-h-[85vh] min-h-[45vh] flex-col rounded-t-lg border-t border-notion-border bg-notion-sidebar shadow-[0_-4px_24px_rgba(0,0,0,0.08)]"
+        className="flex max-h-[85vh] min-h-[45vh] flex-col rounded-t-lg border border-notion-border border-b-0 bg-notion-sidebar shadow-none"
         role="dialog"
         aria-modal="true"
         aria-label={title}

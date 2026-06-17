@@ -48,7 +48,7 @@ export function EnvQualityPanel({ busy: appBusy }: Props) {
           role="status"
           aria-live="polite"
         >
-          <div className="pointer-events-auto max-w-md rounded-lg border border-notion-border bg-notion-bg px-5 py-4 shadow-sm">
+          <div className="pointer-events-auto max-w-md rounded-lg border border-notion-border bg-notion-bg px-5 py-4 shadow-none">
             <p className={`m-0 ${PANEL_TYPOGRAPHY.envSectionTitle}`}>评测进行中</p>
             <p className={`m-0 mt-2 ${PANEL_TYPOGRAPHY.meta}`}>{q.status || "请稍候…"}</p>
           </div>

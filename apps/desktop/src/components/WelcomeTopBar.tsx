@@ -1,4 +1,5 @@
 import { CONTROL_TEXT_INPUT } from "../config/controlStyles";
+import { MAIN_SHELL_SURFACE_CLASS } from "../config/shellVisualTokens";
 import type { AsrEnvPresentation } from "../services/asr/asrEnvStatus";
 import { AsrTopStatusChips } from "./AsrTopStatusChips";
 import { Bell, Search } from "lucide-react";
@@ -27,7 +28,7 @@ export function WelcomeTopBar({
   onOpenLlmSettings,
 }: WelcomeTopBarProps) {
   return (
-    <header className="flex h-12 shrink-0 items-center justify-between border-b border-notion-divider bg-notion-bg px-10">
+    <header className={`flex h-12 shrink-0 items-center justify-between border-b ${MAIN_SHELL_SURFACE_CLASS.border} ${MAIN_SHELL_SURFACE_CLASS.pageBg} px-10`}>
       <div className="flex items-center gap-6" />
       <div className="flex items-center gap-4">
         <div className="mr-2 flex items-center gap-4">

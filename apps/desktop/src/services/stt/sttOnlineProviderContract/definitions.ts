@@ -21,7 +21,9 @@ export const STT_ONLINE_PROVIDER_DEFINITIONS: SttOnlineProviderDefinition[] = [
     market: "china",
     credentialHint: "百炼 sk- Key，可与 LLM 百炼共用。",
     credentialPlaceholder: "sk-…",
-    freeTierNote: "（新用户多含试用/免费额，以控制台为准）",
+    freeTierNote: "开通后 90 天内 10 小时免费额（以控制台为准）",
+    billingNote:
+      "按模型判定的语音时长（秒）计费，静音通常不计、识别结果不计费；中国内地 fun-asr 约 0.00022 元/秒。",
   },
   {
     id: "openai",
