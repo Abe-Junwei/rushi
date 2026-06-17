@@ -43,18 +43,21 @@ export function parseMediaTimeInput(raw: string, durationSec?: number): number |
   if (parts.length < 2 || parts.length > 3) return null;
   if (parts.some((p) => p === "" || !/^\d+(\.\d+)?$/.test(p))) return null;
 
-  let sec = 0;
-  if (parts.length === 2) {
-    const [m, s] = parts.map(Number);
-    if (!Number.isFinite(m) || !Number.isFinite(s) || m < 0 || s < 0) return null;
-    sec = m * 60 + s;
-  } else {
-    const [h, m, s] = parts.map(Number);
-    if (!Number.isFinite(h) || !Number.isFinite(m) || !Number.isFinite(s) || h < 0 || m < 0 || s < 0) {
-      return null;
-    }
-    sec = h * 3600 + m * 60 + s;
-  }
+  const sec =
+    parts.length === 2
+      ? (() => {
+          const [m, s] = parts.map(Number);
+          if (!Number.isFinite(m) || !Number.isFinite(s) || m < 0 || s < 0) return null;
+          return m * 60 + s;
+        })()
+      : (() => {
+          const [h, m, s] = parts.map(Number);
+          if (!Number.isFinite(h) || !Number.isFinite(m) || !Number.isFinite(s) || h < 0 || m < 0 || s < 0) {
+            return null;
+          }
+          return h * 3600 + m * 60 + s;
+        })();
+  if (sec == null) return null;
 
   return clampParsedMediaTime(sec, durationSec);
 }

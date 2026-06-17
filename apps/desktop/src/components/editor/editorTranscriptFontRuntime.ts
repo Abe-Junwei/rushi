@@ -126,11 +126,10 @@ export async function buildTranscriptFontOptions(args: {
   const discovered = new Set<string>();
   const displayLabels: Record<string, string> = {};
   let localFontIndex = { byPostscriptKey: new Map<string, string>(), byCssFamily: new Map<string, string>() };
-  let localFonts: LocalFontFaceMetadata[] = [];
 
   try {
     if (args.queryLocalFonts) {
-      localFonts = await args.queryLocalFonts();
+      const localFonts = await args.queryLocalFonts();
       localFontIndex = buildLocalFontLabelIndex(localFonts);
       for (const font of localFonts) {
         const family = normalizeFontFamily(font.family ?? "");

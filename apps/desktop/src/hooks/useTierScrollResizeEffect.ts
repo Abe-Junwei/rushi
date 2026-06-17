@@ -59,40 +59,43 @@ export function useTierScrollResizeEffect(args: TierScrollResizeEffectArgs): voi
     const prevVw = a.prevViewportWidthPxRef.current;
     a.prevViewportWidthPxRef.current = vw;
     const liveSl = tier.scrollLeft;
-    let targetSl = a.committedScrollLeftRef.current;
 
     const timelineChanged = prevTw > 0 && newTw > 0 && Math.abs(prevTw - newTw) > 0.5;
     const viewportChanged = prevVw > 0 && vw > 0 && Math.abs(prevVw - vw) > 1;
 
-    if (timelineChanged && dur > 0 && vw > 0) {
-      const maxSl = Math.max(0, newTw - vw);
-      if (a.programmaticWrites.hasPendingProgrammaticScroll() || a.programmaticWrites.isRecentProgrammaticScroll()) {
-        targetSl = Math.min(maxSl, Math.max(0, liveSl));
-      } else {
+    const targetSl = (() => {
+      if (timelineChanged && dur > 0 && vw > 0) {
+        const maxSl = Math.max(0, newTw - vw);
+        if (
+          a.programmaticWrites.hasPendingProgrammaticScroll() ||
+          a.programmaticWrites.isRecentProgrammaticScroll()
+        ) {
+          return Math.min(maxSl, Math.max(0, liveSl));
+        }
         const effectivePrevVw = prevVw > 0 ? prevVw : vw;
         const centerPx = liveSl + effectivePrevVw / 2;
         const centerTimeSec = (centerPx / Math.max(prevTw, 1)) * dur;
-        targetSl = scrollPxCenterTimeInViewport({
+        return scrollPxCenterTimeInViewport({
           timeSec: centerTimeSec,
           timelineWidthPx: newTw,
           durationSec: dur,
           viewportWidthPx: vw,
         });
       }
-    } else if (viewportChanged && dur > 0 && vw > 0) {
-      const effectivePrevVw = prevVw > 0 ? prevVw : vw;
-      const centerPx = liveSl + effectivePrevVw / 2;
-      const centerTimeSec = (centerPx / Math.max(newTw, 1)) * dur;
-      targetSl = scrollPxCenterTimeInViewport({
-        timeSec: centerTimeSec,
-        timelineWidthPx: newTw,
-        durationSec: dur,
-        viewportWidthPx: vw,
-      });
-    } else {
+      if (viewportChanged && dur > 0 && vw > 0) {
+        const effectivePrevVw = prevVw > 0 ? prevVw : vw;
+        const centerPx = liveSl + effectivePrevVw / 2;
+        const centerTimeSec = (centerPx / Math.max(newTw, 1)) * dur;
+        return scrollPxCenterTimeInViewport({
+          timeSec: centerTimeSec,
+          timelineWidthPx: newTw,
+          durationSec: dur,
+          viewportWidthPx: vw,
+        });
+      }
       const maxSl = Math.max(0, newTw - vw);
-      targetSl = Math.min(maxSl, Math.max(0, a.committedScrollLeftRef.current));
-    }
+      return Math.min(maxSl, Math.max(0, a.committedScrollLeftRef.current));
+    })();
 
     a.applyScrollLeftPx(targetSl, "program", { immediate: true });
   }, [

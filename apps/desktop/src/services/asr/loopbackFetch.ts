@@ -161,6 +161,8 @@ export async function loopbackFetch(url: string, init?: LoopbackFetchInit): Prom
       headers: { "Content-Type": "application/json" },
     });
   } catch (e) {
-    throw new Error(formatLoopbackInvokeError(e));
+    const error = new Error(formatLoopbackInvokeError(e)) as Error & { cause?: unknown };
+    error.cause = e;
+    throw error;
   }
 }
