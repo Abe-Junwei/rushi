@@ -1258,14 +1258,14 @@ Step 12  REL-1.1  signoff  H-CSP-* + H-STT-* + 回归 R9 主路径抽检
 | **清单 5 步（P0）** | ① 本机 ASR 就绪 ② 创建项目并导入音频 ③ 自动转录 ④（可选）填写场次信息 ⑤ 导出 Word / 进入定稿模式 |
 | **不做** | Spotlight 线性 product tour；Otter 式 Help Center；首启强制 modal 阻断；与 `EnvHelpPanel` 长文重复维护；第二套 ASR 安装向导 |
 
-**BATCH-TXN**
+**BATCH-TXN** — **✅ Step 10–11 · H-BATCH-1 2026-06-18**
 
 | 层 | 路径 |
 |----|------|
 | Rust | `picker_cmd.rs` → `pick_audio_paths()` |
-| 纯函数 | `services/batchTranscribeQueue.ts`、`projectBatchImport.ts`（抽 `EmptyProjectPanel` 拖拽逻辑） |
-| Controller | `useBatchImportController.ts`、`useBatchTranscribeQueueController.ts` |
-| UI | `BatchTranscribeQueuePanel.tsx`、`ProjectFilesHubPanel.tsx` |
+| 纯函数 | `services/batchTranscribeQueue.ts`、`projectBatchImport.ts` |
+| Controller | `useProjectImportDuplicateController.ts`、`useBatchTranscribeQueueController.ts` |
+| UI | `BatchTranscribeQueueDialog.tsx`、`ProjectFilesHubPanel.tsx` |
 | busy | `useProjectBusyState` → `busyReason: "batch_transcribe"` |
 
 **CSP-HARDEN（Q-CSP-1）**
@@ -1433,6 +1433,7 @@ Step 12  REL-1.1  signoff  H-CSP-* + H-STT-* + 回归 R9 主路径抽检
 | 2026-06-12 | **§10.4 + ONBOARD**：Step **9a–b** 新手引导（Welcome 首跑清单 · 非 tour）；H-ONBOARD-*；research brief 门禁 |
 | 2026-06-12 | **审查吸收**：R3g-A **单 SKU**；guard **46**；R3h-I2/I3 **🟡**；v1.1 CSP/STT **估时缓冲**；R3s-A Phase 0 触发；spec 未立项风险 |
 | 2026-06-17 | **R3g-C Fun-ASR-Nano**：PyTorch spike **Defer**（[`acceptance`](../specs/r3g-c-funasr-nano-acceptance.md)）；dev venv 升 FunASR GitHub `main`；[`vllm-research`](../specs/r3g-c-funasr-nano-vllm-research.md) ✅；§10.4 主刀 → **BATCH-TXN** |
+| 2026-06-18 | **BATCH-TXN Step 10–11 ✅**：[`batch-transcribe-queue-acceptance`](../specs/batch-transcribe-queue-acceptance.md) · **H-BATCH-1 ✅**；主刀 → **REL-1.1**（H-CSP-* 待 Release 回归） |
 
 ---
 
