@@ -33,4 +33,12 @@ describe("waveformZoomSlider", () => {
     expect(computeZoomInPxPerSec(start, range)).toBeCloseTo(start * ratio, 6);
     expect(computeZoomOutPxPerSec(start, range)).toBeCloseTo(start / ratio, 6);
   });
+
+  it("zoom in increases px/s for long media within render cap", () => {
+    const range = resolveWaveformZoomSliderRange(960, 600);
+    const start = resolveDefaultEditingPxPerSec(960, 600);
+    const next = computeZoomInPxPerSec(start, range);
+    expect(next).toBeGreaterThan(start + 0.01);
+    expect(next).toBeLessThanOrEqual(range.maxPxPerSec + 1e-6);
+  });
 });

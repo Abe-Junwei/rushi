@@ -12,22 +12,22 @@ import {
 } from "./waveformSurferProgressCoverage";
 
 describe("restoreWaveSurferMainCanvasVisibility", () => {
-  it("removes progress clip so played region stays on the main canvas", () => {
+  it("removes progress clip and sizes progressWrapper to the played ratio", () => {
     const canvasWrapper = document.createElement("div");
     canvasWrapper.style.clipPath = "polygon(6% 0%, 100% 0%, 100% 100%, 6% 100%)";
     const progressWrapper = document.createElement("div");
     progressWrapper.style.width = "6%";
 
-    restoreWaveSurferMainCanvasVisibility({ canvasWrapper, progressWrapper });
+    restoreWaveSurferMainCanvasVisibility({ canvasWrapper, progressWrapper }, 0.25);
 
     expect(canvasWrapper.style.clipPath).toBe("none");
-    expect(progressWrapper.style.width).toBe("0px");
+    expect(progressWrapper.style.width).toBe("25%");
     expect(progressWrapper.style.overflow).toBe("hidden");
   });
 });
 
 describe("applyWaveSurferProgressWithoutClip", () => {
-  it("updates cursor without applying clipPath on the main canvas", () => {
+  it("hides WS shadow cursor without applying clipPath on the main canvas", () => {
     const canvasWrapper = document.createElement("div");
     const progressWrapper = document.createElement("div");
     const cursor = document.createElement("div");
@@ -45,14 +45,14 @@ describe("applyWaveSurferProgressWithoutClip", () => {
     applyWaveSurferProgressWithoutClip(ws, 0.25);
 
     expect(canvasWrapper.style.clipPath).toBe("none");
-    expect(progressWrapper.style.width).toBe("0px");
-    expect(cursor.style.left).toBe("25%");
-    expect(cursor.style.transform).toBe("translateX(-0.25px)");
+    expect(progressWrapper.style.width).toBe("25%");
+    expect(cursor.style.display).toBe("none");
+    expect(cursor.style.visibility).toBe("hidden");
   });
 });
 
 describe("installWaveSurferPlayedRegionDisplayFix", () => {
-  it("replaces renderProgress so clip is never applied", () => {
+  it("replaces renderProgress so clip is never applied but played tint remains", () => {
     const canvasWrapper = document.createElement("div");
     const progressWrapper = document.createElement("div");
     const cursor = document.createElement("div");
@@ -80,8 +80,8 @@ describe("installWaveSurferPlayedRegionDisplayFix", () => {
     renderer.renderProgress(0.4, false);
 
     expect(canvasWrapper.style.clipPath).toBe("none");
-    expect(progressWrapper.style.width).toBe("0px");
-    expect(cursor.style.left).toBe("40%");
+    expect(progressWrapper.style.width).toBe("40%");
+    expect(cursor.style.display).toBe("none");
 
     uninstall();
     renderer.renderProgress(0.4, false);

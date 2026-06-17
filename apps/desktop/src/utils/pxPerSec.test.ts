@@ -81,13 +81,23 @@ describe("resolveWaveformZoomSliderRange", () => {
     expect(range.minPxPerSec).toBeGreaterThan(PX_PER_SEC_MAX);
     expect(range.maxPxPerSec).toBeGreaterThanOrEqual(range.minPxPerSec);
   });
+
+  it("caps max at WaveSurfer render budget for long media", () => {
+    const dur = 600;
+    const range = resolveWaveformZoomSliderRange(960, dur);
+    const renderCap = clampPxPerSecForWaveSurferRender(PX_PER_SEC_MAX, dur);
+    expect(range.maxPxPerSec).toBeCloseTo(renderCap, 4);
+    expect(range.maxPxPerSec).toBeLessThan(PX_PER_SEC_MAX);
+  });
 });
 
 describe("resolveDefaultEditingPxPerSec", () => {
-  it("returns geometric mean near 56 px/s for ~2min media", () => {
+  it("returns geometric mean of per-file slider range", () => {
+    const range = resolveWaveformZoomSliderRange(960, 120);
     const px = resolveDefaultEditingPxPerSec(960, 120);
-    expect(px).toBeCloseTo(Math.sqrt(computeFitAllPxPerSec(960, 120) * 400), 4);
-    expect(px).toBeCloseTo(56.57, 1);
+    expect(px).toBeCloseTo(Math.sqrt(range.minPxPerSec * range.maxPxPerSec), 4);
+    expect(px).toBeGreaterThan(range.minPxPerSec);
+    expect(px).toBeLessThanOrEqual(range.maxPxPerSec);
   });
 
   it("returns fit-all when min equals max for ultra-short media", () => {

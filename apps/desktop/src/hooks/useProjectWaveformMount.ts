@@ -1,6 +1,7 @@
 import { useCallback, useEffect } from "react";
 import WaveSurfer from "wavesurfer.js";
 import { COLORS } from "../config/tokens";
+import { WAVEFORM_SURFER_BAR_DISPLAY } from "../config/waveformSurferDisplay";
 import {
   quantizePxPerSecForPeaksLoad,
   clampPxPerSecForWaveSurferRender,
@@ -154,12 +155,10 @@ export function useProjectWaveformMount(
           maxPeak: 1,
           sampleRate: peaks ? undefined : WAVEFORM_DECODE_SAMPLE_RATE,
           waveColor: COLORS.waveformWave,
-          progressColor: COLORS.waveformProgress,
-          cursorColor: COLORS.indigo,
-          cursorWidth: 1,
-          barWidth: 2,
-          barGap: 1,
-          barRadius: 2,
+          progressColor: COLORS.waveformProgressPlayed,
+          cursorColor: COLORS.waveformCursor,
+          cursorWidth: 0,
+          ...WAVEFORM_SURFER_BAR_DISPLAY,
           minPxPerSec: initialMps,
           dragToSeek: !wantDragCreate,
           interact: !optsRef.current.disabled,

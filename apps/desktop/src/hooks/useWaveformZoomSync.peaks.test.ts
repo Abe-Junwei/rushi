@@ -1,16 +1,56 @@
 import { renderHook } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
 import { useWaveformZoomSync } from "./useWaveformZoomSync";
-import { flushRaf, makeAppliedZoom, makeWs, zoomSyncBase } from "./useWaveformZoomSync.testHelpers";
+import {
+  flushRaf,
+  makeAppliedZoom,
+  makePeakCacheMock,
+  makeWs,
+  zoomSyncBase,
+} from "./useWaveformZoomSync.testHelpers";
 
 describe("useWaveformZoomSync peaks", () => {
+  it("applies ws.zoom synchronously before ws.load resolves", async () => {
+    let resolveLoad: (() => void) | undefined;
+    const ws = makeWs({
+      load: vi.fn(
+        () =>
+          new Promise<void>((resolve) => {
+            resolveLoad = resolve;
+          }),
+      ),
+    });
+    const wsRef = { current: ws as never };
+    const appliedZoom = makeAppliedZoom(56);
+    const peakCache = makePeakCacheMock();
+    const peakCacheRef = { current: peakCache as never };
+    const layoutDurationSecRef = { current: 120 };
+
+    renderHook(() =>
+      useWaveformZoomSync({
+        ...zoomSyncBase,
+        wsRef,
+        layoutPxPerSec: 80,
+        drawPxPerSec: 80,
+        appliedZoom,
+        peakCache: peakCache as never,
+        peakCacheRef,
+        layoutDurationSecRef,
+      }),
+    );
+
+    expect(ws.zoom).toHaveBeenCalledWith(80);
+    expect(ws.load).toHaveBeenCalledWith("asset://audio.mp3", [[0, 1]], 120);
+
+    resolveLoad!();
+    await Promise.resolve();
+  });
+
   it("loads peaks via ws.load when peak cache is available", async () => {
     const ws = makeWs();
     const wsRef = { current: ws as never };
     const appliedZoom = makeAppliedZoom(56);
-    const peakCache = {
-      getWaveSurferPeaksAsync: vi.fn().mockResolvedValue({ peaks: [[0, 1]], duration: 120 }),
-    };
+    const peakCache = makePeakCacheMock();
     const peakCacheRef = { current: peakCache as never };
     const layoutDurationSecRef = { current: 120 };
 
@@ -30,7 +70,7 @@ describe("useWaveformZoomSync peaks", () => {
     await Promise.resolve();
 
     expect(ws.setOptions).toHaveBeenCalledWith({ autoScroll: false });
-    expect(peakCache.getWaveSurferPeaksAsync).toHaveBeenCalledWith(80, 120);
+    expect(peakCache.getWaveSurferPeaks).toHaveBeenCalledWith(80, 120);
     expect(ws.load).toHaveBeenCalledWith("asset://audio.mp3", [[0, 1]], 120);
     expect(appliedZoom.appliedPeaksRef.current).toBe(true);
     expect(appliedZoom.appliedPeaksLoadPxPerSecRef.current).toBe(80);
@@ -41,9 +81,7 @@ describe("useWaveformZoomSync peaks", () => {
     const ws = makeWs({ isPlaying: vi.fn(() => true) });
     const wsRef = { current: ws as never };
     const appliedZoom = makeAppliedZoom(56);
-    const peakCache = {
-      getWaveSurferPeaksAsync: vi.fn().mockResolvedValue({ peaks: [[0, 1]], duration: 120 }),
-    };
+    const peakCache = makePeakCacheMock();
     const peakCacheRef = { current: peakCache as never };
     const layoutDurationSecRef = { current: 120 };
 
@@ -85,9 +123,7 @@ describe("useWaveformZoomSync peaks", () => {
     const ws = makeWs({ getCurrentTime: vi.fn(() => 42) });
     const wsRef = { current: ws as never };
     const appliedZoom = makeAppliedZoom(56);
-    const peakCache = {
-      getWaveSurferPeaksAsync: vi.fn().mockResolvedValue({ peaks: [[0, 1]], duration: 120 }),
-    };
+    const peakCache = makePeakCacheMock();
     const peakCacheRef = { current: peakCache as never };
     const layoutDurationSecRef = { current: 120 };
 
@@ -110,13 +146,11 @@ describe("useWaveformZoomSync peaks", () => {
     expect(ws.setTime).toHaveBeenCalledWith(42);
   });
 
-  it("sub-min viewport refit before peaks applied still allows ws.load", async () => {
+  it("sub-min viewport refit zooms immediately without reloading sparse peaks tier", async () => {
     const ws = makeWs();
     const wsRef = { current: ws as never };
-    const appliedZoom = makeAppliedZoom(0.083);
-    const peakCache = {
-      getWaveSurferPeaksAsync: vi.fn().mockResolvedValue({ peaks: [[0, 1]], duration: 1249 }),
-    };
+    const appliedZoom = makeAppliedZoom(0.083, { applied: true, loadPx: 0.083 });
+    const peakCache = makePeakCacheMock({ peaks: [[0, 1]], duration: 1249 });
     const peakCacheRef = { current: peakCache as never };
     const layoutDurationSecRef = { current: 1249 };
 
@@ -137,22 +171,22 @@ describe("useWaveformZoomSync peaks", () => {
     await Promise.resolve();
 
     ws.load.mockClear();
-    peakCache.getWaveSurferPeaksAsync.mockClear();
+    ws.zoom.mockClear();
+    peakCache.getWaveSurferPeaks.mockClear();
 
     rerender({ layoutPxPerSec: 0.133 });
     await Promise.resolve();
 
-    expect(peakCache.getWaveSurferPeaksAsync).toHaveBeenCalledWith(0.133, 1249);
-    expect(ws.load).toHaveBeenCalled();
+    expect(peakCache.getWaveSurferPeaks).not.toHaveBeenCalled();
+    expect(ws.load).not.toHaveBeenCalled();
+    expect(ws.zoom).toHaveBeenCalledWith(0.133);
   });
 
-  it("loads peaks when entering sub-min fit-all from manual zoom on decode", async () => {
+  it("zooms only when entering sub-min fit-all from manual zoom (stretch fallback)", async () => {
     const ws = makeWs();
     const wsRef = { current: ws as never };
     const appliedZoom = makeAppliedZoom(56);
-    const peakCache = {
-      getWaveSurferPeaksAsync: vi.fn().mockResolvedValue({ peaks: [[0, 1]], duration: 1249 }),
-    };
+    const peakCache = makePeakCacheMock({ peaks: [[0, 1]], duration: 1249 });
     const peakCacheRef = { current: peakCache as never };
     const layoutDurationSecRef = { current: 1249 };
 
@@ -173,24 +207,49 @@ describe("useWaveformZoomSync peaks", () => {
     await Promise.resolve();
 
     ws.load.mockClear();
-    peakCache.getWaveSurferPeaksAsync.mockClear();
+    peakCache.getWaveSurferPeaks.mockClear();
+    ws.zoom.mockClear();
 
     rerender({ layoutPxPerSec: 0.96 });
     await Promise.resolve();
+
+    expect(peakCache.getWaveSurferPeaks).not.toHaveBeenCalled();
+    expect(ws.load).not.toHaveBeenCalled();
+    expect(ws.zoom).toHaveBeenCalledWith(0.96);
+  });
+
+  it("loads peaks when crossing to a finer LOD tier", async () => {
+    const ws = makeWs();
+    const wsRef = { current: ws as never };
+    const appliedZoom = makeAppliedZoom(56, { applied: true, loadPx: 56 });
+    const peakCache = makePeakCacheMock();
+    const peakCacheRef = { current: peakCache as never };
+    const layoutDurationSecRef = { current: 120 };
+
+    renderHook(() =>
+      useWaveformZoomSync({
+        ...zoomSyncBase,
+        wsRef,
+        layoutPxPerSec: 250,
+        drawPxPerSec: 250,
+        appliedZoom,
+        peakCache: peakCache as never,
+        peakCacheRef,
+        layoutDurationSecRef,
+      }),
+    );
+
     await Promise.resolve();
 
-    expect(peakCache.getWaveSurferPeaksAsync).toHaveBeenCalledWith(0.96, 1249);
+    expect(peakCache.getWaveSurferPeaks).toHaveBeenCalledWith(248, 120);
     expect(ws.load).toHaveBeenCalled();
-    expect(ws.zoom).toHaveBeenCalledWith(0.96);
   });
 
   it("zooms only within sub-min fit-all without ws.load (viewport refit)", async () => {
     const ws = makeWs();
     const wsRef = { current: ws as never };
     const appliedZoom = makeAppliedZoom(0.083, { applied: true, loadPx: 0.083 });
-    const peakCache = {
-      getWaveSurferPeaksAsync: vi.fn().mockResolvedValue({ peaks: [[0, 1]], duration: 14429 }),
-    };
+    const peakCache = makePeakCacheMock({ peaks: [[0, 1]], duration: 14429 });
     const peakCacheRef = { current: peakCache as never };
     const layoutDurationSecRef = { current: 14429 };
 
@@ -213,14 +272,14 @@ describe("useWaveformZoomSync peaks", () => {
 
     ws.load.mockClear();
     ws.zoom.mockClear();
-    peakCache.getWaveSurferPeaksAsync.mockClear();
+    peakCache.getWaveSurferPeaks.mockClear();
 
     rerender({ layoutPxPerSec: 0.133 });
     await flushRaf();
     await Promise.resolve();
 
     expect(ws.load).not.toHaveBeenCalled();
-    expect(peakCache.getWaveSurferPeaksAsync).not.toHaveBeenCalled();
+    expect(peakCache.getWaveSurferPeaks).not.toHaveBeenCalled();
     expect(appliedZoom.appliedPeaksLoadPxPerSecRef.current).toBe(0.083);
   });
 
@@ -228,9 +287,7 @@ describe("useWaveformZoomSync peaks", () => {
     const ws = makeWs();
     const wsRef = { current: ws as never };
     const appliedZoom = makeAppliedZoom(56);
-    const peakCache = {
-      getWaveSurferPeaksAsync: vi.fn().mockResolvedValue({ peaks: [[0, 1]], duration: 120 }),
-    };
+    const peakCache = makePeakCacheMock();
     const peakCacheRef = { current: peakCache as never };
     const layoutDurationSecRef = { current: 120 };
 
@@ -251,14 +308,14 @@ describe("useWaveformZoomSync peaks", () => {
     await flushRaf();
     await Promise.resolve();
     ws.load.mockClear();
-    peakCache.getWaveSurferPeaksAsync.mockClear();
+    peakCache.getWaveSurferPeaks.mockClear();
 
     rerender({ layoutPxPerSec: 59 });
     await flushRaf();
     await Promise.resolve();
 
     expect(ws.load).not.toHaveBeenCalled();
-    expect(peakCache.getWaveSurferPeaksAsync).not.toHaveBeenCalled();
+    expect(peakCache.getWaveSurferPeaks).not.toHaveBeenCalled();
     expect(ws.zoom).toHaveBeenCalledWith(59);
     expect(appliedZoom.appliedPeaksLoadPxPerSecRef.current).toBe(56);
   });
@@ -269,9 +326,7 @@ describe("useWaveformZoomSync peaks", () => {
     const appliedZoom = makeAppliedZoom(56);
     const viewportResizeHoldRef = { current: true };
     const flushDeferredPeaksLoadRef = { current: undefined as (() => void) | undefined };
-    const peakCache = {
-      getWaveSurferPeaksAsync: vi.fn().mockResolvedValue({ peaks: [[0, 1]], duration: 120 }),
-    };
+    const peakCache = makePeakCacheMock();
     const peakCacheRef = { current: peakCache as never };
     const layoutDurationSecRef = { current: 120 };
 
@@ -297,7 +352,7 @@ describe("useWaveformZoomSync peaks", () => {
     flushDeferredPeaksLoadRef.current?.();
     await Promise.resolve();
 
-    expect(peakCache.getWaveSurferPeaksAsync).toHaveBeenCalledWith(80, 120);
+    expect(peakCache.getWaveSurferPeaks).toHaveBeenCalledWith(80, 120);
     expect(ws.load).toHaveBeenCalledWith("asset://audio.mp3", [[0, 1]], 120);
   });
 });

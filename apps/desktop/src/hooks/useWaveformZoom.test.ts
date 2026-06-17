@@ -7,7 +7,7 @@ import {
   resolveDefaultEditingPxPerSec,
   TIMELINE_PX_PER_SEC,
 } from "../utils/pxPerSec";
-import { DRAW_PX_PER_SEC_DEBOUNCE_MS, useWaveformZoom } from "./useWaveformZoom";
+import { useWaveformZoom } from "./useWaveformZoom";
 
 function renderZoomHook() {
   return renderHook(() => useWaveformZoom());
@@ -138,8 +138,7 @@ describe("useWaveformZoom", () => {
     expect(result.current.layoutIntent).toBe("manual");
   });
 
-  it("setPxPerSecFromSlider updates layout immediately and debounces draw px/s", () => {
-    vi.useFakeTimers();
+  it("setPxPerSecFromSlider syncs layout and draw immediately for discrete step zoom", () => {
     const { result } = renderZoomHook();
 
     act(() => {
@@ -147,14 +146,7 @@ describe("useWaveformZoom", () => {
     });
 
     expect(result.current.layoutPxPerSec).toBe(TIMELINE_PX_PER_SEC * 2);
-    expect(result.current.drawPxPerSec).toBe(TIMELINE_PX_PER_SEC);
-
-    act(() => {
-      vi.advanceTimersByTime(DRAW_PX_PER_SEC_DEBOUNCE_MS);
-    });
-
     expect(result.current.drawPxPerSec).toBe(TIMELINE_PX_PER_SEC * 2);
-    vi.useRealTimers();
   });
 
   it("setFitPxPerSec syncs layout and draw immediately", () => {
