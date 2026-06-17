@@ -31,7 +31,7 @@ r2d2_sqlite = "0.25"
 rusqlite = { version = "0.32", features = ["bundled"] }
 uuid = { version = "1", features = ["v4"] }
 url = "2"
-rfd = "0.15"
+rfd = "0.17"
 reqwest = { version = "0.12", default-features = false, features = [
   "multipart",
   "json",
