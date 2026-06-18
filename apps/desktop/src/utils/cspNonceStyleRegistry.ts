@@ -28,7 +28,7 @@ function writeScopeStyleElement(scopeId: string, cssText: string): void {
   pendingScopes.delete(scopeId);
 
   let el = document.getElementById(elementId) as HTMLStyleElement | null;
-  const hadMissingNonce = Boolean(el && nonce && !el.getAttribute("nonce"));
+  const hadMissingNonce = Boolean(el && nonce && !(el as HTMLElement).nonce && !el.getAttribute("nonce"));
 
   if (!el || hadMissingNonce) {
     el?.remove();
@@ -37,8 +37,8 @@ function writeScopeStyleElement(scopeId: string, cssText: string): void {
     document.head.appendChild(el);
   }
 
-  if (nonce && el.getAttribute("nonce") !== nonce) {
-    el.setAttribute("nonce", nonce);
+  if (nonce && (el as HTMLElement).nonce !== nonce) {
+    el.nonce = nonce;
   }
 
   if (el.textContent !== cssText) {
@@ -86,7 +86,7 @@ export function flushPendingCspScopeRules(): void {
   for (const el of document.head.querySelectorAll<HTMLStyleElement>(
     `style[id^="${SCOPE_STYLE_ID_PREFIX}"]`,
   )) {
-    if (el.getAttribute("nonce") === nonce) continue;
+    if ((el as HTMLElement).nonce === nonce) continue;
     const cssText = el.textContent ?? "";
     if (!cssText.trim()) continue;
     const scopeId = el.id.slice(SCOPE_STYLE_ID_PREFIX.length);

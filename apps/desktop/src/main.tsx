@@ -10,6 +10,7 @@ import { installWaveformZoomProfileDevTools } from "./services/waveform/waveform
 import { installSelectionLatencyProfileDevTools } from "./services/ui/selectionLatencyProfile";
 import { initOfficeShellTheme } from "./services/ui/officeShellTheme";
 import { bootstrapCspStyleNonce } from "./utils/cspNonceStyleRegistry";
+import { logReleaseFrontendProbe } from "./utils/releaseFrontendProbe";
 import "./zen-tailwind.css";
 
 initOfficeShellTheme();
@@ -26,6 +27,7 @@ if (!rootEl) {
 async function mountApp(root: HTMLElement): Promise<void> {
   if (isTauriRuntime()) {
     await bootstrapCspStyleNonce();
+    logReleaseFrontendProbe();
     await bootstrapShellCapabilities();
     await logRuntimeParityBootstrap();
   }

@@ -52,6 +52,24 @@ if [[ ! -d "${APP}/Contents/Resources/resources" ]]; then
 fi
 echo "  resource layout: OK"
 
+DIST_JS="$(ls "${ROOT}"/apps/desktop/dist/assets/index-*.js 2>/dev/null | head -1)"
+DIST_JS="$(basename "${DIST_JS}")"
+DIST_CSS="$(ls "${ROOT}"/apps/desktop/dist/assets/index-*.css 2>/dev/null | head -1)"
+DIST_CSS="$(basename "${DIST_CSS}")"
+if [[ -z "${DIST_JS}" || -z "${DIST_CSS}" ]]; then
+  echo "FAIL: apps/desktop/dist/assets missing index-* bundle — run npm run build -w @rushi/desktop first" >&2
+  exit 1
+fi
+if ! strings "${BIN}" | grep -F "/assets/${DIST_JS}" >/dev/null; then
+  echo "FAIL: app binary missing embedded frontend JS /assets/${DIST_JS}" >&2
+  exit 1
+fi
+if ! strings "${BIN}" | grep -F "/assets/${DIST_CSS}" >/dev/null; then
+  echo "FAIL: app binary missing embedded frontend CSS /assets/${DIST_CSS}" >&2
+  exit 1
+fi
+echo "  frontend bundle: ${DIST_JS} + ${DIST_CSS}"
+
 if [[ "${RUSHI_SKIP_WAVEFORM_PROBE:-0}" -eq 0 ]]; then
   bash scripts/waveform-release-probe.sh "${APP}"
 else

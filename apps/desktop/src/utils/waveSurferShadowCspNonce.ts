@@ -11,8 +11,8 @@ export function applyWaveSurferShadowCspNonce(
   const host = container.firstElementChild as HTMLElement | null;
   const shadow = host?.shadowRoot;
   const style = shadow?.querySelector("style");
-  if (!style || style.getAttribute("nonce") === nonce) return;
-  style.setAttribute("nonce", nonce);
+  if (!style || style.nonce === nonce) return;
+  style.nonce = nonce;
 }
 
 function resolveWaveSurferCspNonce(): string | undefined {

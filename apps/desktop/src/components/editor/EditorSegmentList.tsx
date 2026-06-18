@@ -1,4 +1,4 @@
-import { useCallback, useRef, type MouseEvent as ReactMouseEvent } from "react";
+import { useCallback, useLayoutEffect, useRef, type MouseEvent as ReactMouseEvent } from "react";
 import { CspLayout } from "../CspLayout";
 import type { SegmentContextMenuOpen } from "../../utils/segmentContextMenuModel";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
@@ -11,6 +11,7 @@ import { blurActiveTranscriptTextarea } from "../../utils/transcriptSelection";
 import type { useEditorTranscriptAppearance } from "./useEditorTranscriptAppearance";
 import { peekWelcomeSearchEditorHighlight } from "../../services/welcome/welcomeSearch";
 import { useEditorSegmentListScroll } from "./useEditorSegmentListScroll";
+import { logSegmentRowLayoutProbe } from "../../utils/releaseFrontendProbe";
 
 type SegmentCtxMenuState = SegmentContextMenuOpen;
 
@@ -61,6 +62,11 @@ export function EditorSegmentList({
     currentFileId: c.currentFileId,
     transcriptRowHeightPx: tx.transcriptRowHeightPx,
   });
+
+  useLayoutEffect(() => {
+    if (c.segments.length === 0) return;
+    logSegmentRowLayoutProbe();
+  }, [c.segments.length, displayCount]);
 
   const onOpenRowContextMenu = useCallback(
     (

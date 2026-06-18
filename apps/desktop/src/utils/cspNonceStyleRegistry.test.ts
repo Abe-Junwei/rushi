@@ -36,11 +36,11 @@ describe("cspNonceStyleRegistry", () => {
   it("attaches nonce when probe is present", () => {
     const probe = document.createElement("style");
     probe.id = TAURI_STYLE_CSP_NONCE_PROBE_ID;
-    probe.setAttribute("nonce", "abc123nonce");
+    probe.nonce = "abc123nonce";
     document.head.appendChild(probe);
     upsertCspScopeRules("nonce-scope", ".x { margin: 0; }");
-    const el = document.getElementById("rushi-csp-scope-nonce-scope");
-    expect(el?.getAttribute("nonce")).toBe("abc123nonce");
+    const el = document.getElementById("rushi-csp-scope-nonce-scope") as HTMLStyleElement | null;
+    expect(el?.nonce).toBe("abc123nonce");
   });
 
   it("queues scope rules until nonce is available in Tauri runtime", () => {
@@ -50,12 +50,12 @@ describe("cspNonceStyleRegistry", () => {
 
     const probe = document.createElement("style");
     probe.id = TAURI_STYLE_CSP_NONCE_PROBE_ID;
-    probe.setAttribute("nonce", "runtime-nonce");
+    probe.nonce = "runtime-nonce";
     document.head.appendChild(probe);
 
     flushPendingCspScopeRules();
-    const el = document.getElementById("rushi-csp-scope-pending-scope");
-    expect(el?.getAttribute("nonce")).toBe("runtime-nonce");
+    const el = document.getElementById("rushi-csp-scope-pending-scope") as HTMLStyleElement | null;
+    expect(el?.nonce).toBe("runtime-nonce");
     expect(el?.textContent).toBe(".pending { width: 10px; }");
   });
 
@@ -70,11 +70,11 @@ describe("cspNonceStyleRegistry", () => {
 
     const probe = document.createElement("style");
     probe.id = TAURI_STYLE_CSP_NONCE_PROBE_ID;
-    probe.setAttribute("nonce", "boot-nonce");
+    probe.nonce = "boot-nonce";
     document.head.appendChild(probe);
 
     await expect(bootstrapPromise).resolves.toBe(true);
-    const el = document.getElementById("rushi-csp-scope-boot-scope");
-    expect(el?.getAttribute("nonce")).toBe("boot-nonce");
+    const el = document.getElementById("rushi-csp-scope-boot-scope") as HTMLStyleElement | null;
+    expect(el?.nonce).toBe("boot-nonce");
   });
 });
