@@ -24,7 +24,7 @@ const AUTO_PUNCTUATE_CONSENT_KEY = "rushi:auto-punctuate-consent:v1";
 
 type SegmentTextMutator = (idx: number, text: string) => void;
 
-type AutoPunctuateDialogState =
+export type AutoPunctuateDialogState =
   | { phase: "closed" }
   | { phase: "consent"; originalText: string; neighborContextSummary: string | null }
   | { phase: "loading"; originalText: string; neighborContextSummary: string | null }
