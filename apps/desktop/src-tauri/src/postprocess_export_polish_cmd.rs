@@ -201,9 +201,14 @@ async fn run_export_polish_batch(
     let system_prompt = postprocess_export_polish::resolve_export_polish_system_prompt(
         prompt_overrides.and_then(|o| o.export_polish_system.as_deref()),
     );
-    let instructions_override = prompt_overrides.and_then(|o| o.export_polish_instructions.as_deref());
+    let instructions_override =
+        prompt_overrides.and_then(|o| o.export_polish_instructions.as_deref());
     let prompt = postprocess_export_polish::build_export_polish_prompt(
-        batch_body, line_count, rule_hints, batch_note, instructions_override,
+        batch_body,
+        line_count,
+        rule_hints,
+        batch_note,
+        instructions_override,
     );
     let char_count = batch_body.chars().count();
     let mut llm_body = json!({

@@ -23,8 +23,10 @@ fn parse_ost_json(text: &str) -> Option<Value> {
 }
 
 fn ost_api_code(j: &Value) -> Option<i64> {
-    j.get("code")
-        .and_then(|c| c.as_i64().or_else(|| c.as_str().and_then(|s| s.parse().ok())))
+    j.get("code").and_then(|c| {
+        c.as_i64()
+            .or_else(|| c.as_str().and_then(|s| s.parse().ok()))
+    })
 }
 
 fn ost_api_message(j: &Value) -> Option<&str> {
@@ -54,9 +56,7 @@ fn credentials_probe_success(
         endpoint: Some(endpoint),
         status: Some(status),
         latency_ms,
-        message: Some(
-            "讯飞 OST 可达，凭证已通过签名校验；首次转写以实际上传结果为准。".into(),
-        ),
+        message: Some("讯飞 OST 可达，凭证已通过签名校验；首次转写以实际上传结果为准。".into()),
     }
 }
 
@@ -98,7 +98,10 @@ fn interpret_probe_response(
                 endpoint: Some(endpoint),
                 status: Some(status),
                 latency_ms,
-                message: Some(format!("讯飞 OST 错误 {}：{msg}", ost_api_code(&j).unwrap_or(-1))),
+                message: Some(format!(
+                    "讯飞 OST 错误 {}：{msg}",
+                    ost_api_code(&j).unwrap_or(-1)
+                )),
             };
         }
     }

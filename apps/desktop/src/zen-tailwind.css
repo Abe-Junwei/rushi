@@ -3,6 +3,9 @@
 @import "tailwindcss/theme.css" layer(theme);
 @import "tailwindcss/utilities.css" layer(utilities);
 
+/** Release build: scan TS/TSX for utility classes (v4 does not use tailwind.config content). */
+@source "./**/*.{js,ts,jsx,tsx,html}";
+
 @theme {
   /* Colors ← tokens.css (:root hex 真源)；策略 A：不 pin radius/shadow */
   --color-zen-ink: var(--zen-ink);

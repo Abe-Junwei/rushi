@@ -50,7 +50,9 @@ fn read_keyring_secret(api_key_id: &str) -> Result<Option<String>, String> {
         return Ok(None);
     }
     let cache_key = keyring_user(api_key_id);
-    crate::secret_keyring_session::read_cached(&cache_key, || read_keyring_secret_uncached(api_key_id))
+    crate::secret_keyring_session::read_cached(&cache_key, || {
+        read_keyring_secret_uncached(api_key_id)
+    })
 }
 
 fn write_keyring_secret(api_key_id: &str, api_key: &str) -> Result<(), String> {

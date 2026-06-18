@@ -154,7 +154,8 @@ fn prompt_includes_labeled_neighbor_context() {
 
 #[test]
 fn prompt_falls_back_to_legacy_snippets() {
-    let prompt = build_auto_punctuate_prompt("今天天气不错我们出发吧", &[], &["上一句".into()], None);
+    let prompt =
+        build_auto_punctuate_prompt("今天天气不错我们出发吧", &[], &["上一句".into()], None);
     assert!(prompt.contains("片段1：上一句"));
 }
 
@@ -321,7 +322,10 @@ fn runtime_bridge_deserializes_prompt_overrides() {
     let rt: PostprocessRuntimeBridge = serde_json::from_value(raw).unwrap();
     let overrides = rt.prompt_overrides.expect("prompt overrides");
     assert_eq!(overrides.stage_b_system.as_deref(), Some("custom system"));
-    assert_eq!(overrides.stage_b_instructions.as_deref(), Some("custom instructions"));
+    assert_eq!(
+        overrides.stage_b_instructions.as_deref(),
+        Some("custom instructions")
+    );
 }
 
 #[test]

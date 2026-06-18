@@ -170,11 +170,7 @@ pub fn welcome_search_files(
     query: String,
     limit: Option<u32>,
 ) -> Result<Vec<WelcomeFileSearchHit>, String> {
-    welcome_search_files_inner(
-        state.deref(),
-        &query,
-        limit.unwrap_or(DEFAULT_FILE_LIMIT),
-    )
+    welcome_search_files_inner(state.deref(), &query, limit.unwrap_or(DEFAULT_FILE_LIMIT))
 }
 
 #[tauri::command]
@@ -244,13 +240,8 @@ mod tests {
     #[test]
     fn welcome_search_files_matches_name_and_metadata_case_insensitive() {
         let st = DbState::open_test_db(test_root("files"));
-        let (_pid, fid) = seed_project_file(
-            &st,
-            "Alpha 项目",
-            "访谈稿.txt",
-            Some("张三"),
-            "无关正文",
-        );
+        let (_pid, fid) =
+            seed_project_file(&st, "Alpha 项目", "访谈稿.txt", Some("张三"), "无关正文");
 
         let by_file = welcome_search_files_inner(&st, "访谈", 10).unwrap();
         assert_eq!(by_file.len(), 1);
@@ -267,13 +258,8 @@ mod tests {
     #[test]
     fn welcome_search_content_finds_segment_text() {
         let st = DbState::open_test_db(test_root("content"));
-        let (_pid, fid) = seed_project_file(
-            &st,
-            "Beta",
-            "audio.wav",
-            None,
-            "村里有一段抗美援朝的故事",
-        );
+        let (_pid, fid) =
+            seed_project_file(&st, "Beta", "audio.wav", None, "村里有一段抗美援朝的故事");
 
         let hits = welcome_search_content_inner(&st, "抗美援朝", 10).unwrap();
         assert_eq!(hits.len(), 1);

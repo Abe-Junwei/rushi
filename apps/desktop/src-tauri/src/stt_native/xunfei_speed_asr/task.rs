@@ -9,8 +9,8 @@ use crate::project::transcribe_cancel_cmd::{
     ensure_transcribe_not_cancelled, transcribe_poll_wait, TranscribeCancelPoll,
 };
 
-use super::auth::signed_json_headers;
 use super::super::send_stt_cloud_post;
+use super::auth::signed_json_headers;
 
 pub const XUNFEI_OST_HOST: &str = "ost-api.xfyun.cn";
 const PRO_CREATE_PATH: &str = "/v2/ost/pro_create";
@@ -18,14 +18,17 @@ pub const QUERY_PATH: &str = "/v2/ost/query";
 const POLL_INTERVAL: Duration = Duration::from_secs(2);
 
 fn api_code_ok(j: &Value) -> bool {
-    j.get("code")
-        .and_then(|c| c.as_i64().or_else(|| c.as_str().and_then(|s| s.parse().ok())))
-        == Some(0)
+    j.get("code").and_then(|c| {
+        c.as_i64()
+            .or_else(|| c.as_str().and_then(|s| s.parse().ok()))
+    }) == Some(0)
 }
 
 fn ost_api_code(j: &Value) -> Option<i64> {
-    j.get("code")
-        .and_then(|c| c.as_i64().or_else(|| c.as_str().and_then(|s| s.parse().ok())))
+    j.get("code").and_then(|c| {
+        c.as_i64()
+            .or_else(|| c.as_str().and_then(|s| s.parse().ok()))
+    })
 }
 
 fn is_query_task_not_found(j: &Value) -> bool {
@@ -82,8 +85,12 @@ async fn post_ost_json(
     .await
     .map_err(|e| format!("讯飞 OST HTTP 失败: {e}"))?;
     let status = resp.status();
-    let text = resp.text().await.map_err(|e| format!("读取 OST 响应: {e}"))?;
-    let j: Value = serde_json::from_str(&text).unwrap_or_else(|_| json!({ "code": -1, "message": text }));
+    let text = resp
+        .text()
+        .await
+        .map_err(|e| format!("读取 OST 响应: {e}"))?;
+    let j: Value =
+        serde_json::from_str(&text).unwrap_or_else(|_| json!({ "code": -1, "message": text }));
     if !status.is_success() && !api_code_ok(&j) {
         return Err(ost_friendly_error(&j, status, &text));
     }
@@ -112,8 +119,12 @@ async fn post_ost_query_json(
     .await
     .map_err(|e| format!("讯飞 OST HTTP 失败: {e}"))?;
     let status = resp.status();
-    let text = resp.text().await.map_err(|e| format!("读取 OST 响应: {e}"))?;
-    let j: Value = serde_json::from_str(&text).unwrap_or_else(|_| json!({ "code": -1, "message": text }));
+    let text = resp
+        .text()
+        .await
+        .map_err(|e| format!("读取 OST 响应: {e}"))?;
+    let j: Value =
+        serde_json::from_str(&text).unwrap_or_else(|_| json!({ "code": -1, "message": text }));
     if is_query_task_not_found(&j) {
         return Err("__xunfei_query_task_not_found__".to_string());
     }
@@ -201,7 +212,10 @@ pub async fn poll_task_result(
         let status = j
             .pointer("/data/task_status")
             .or_else(|| j.pointer("/data/status"))
-            .and_then(|s| s.as_i64().or_else(|| s.as_str().and_then(|t| t.parse().ok())))
+            .and_then(|s| {
+                s.as_i64()
+                    .or_else(|| s.as_str().and_then(|t| t.parse().ok()))
+            })
             .unwrap_or(0);
         log(&format!("INFO xunfei query task_status={status}"));
         if status == 3 || status == 4 {

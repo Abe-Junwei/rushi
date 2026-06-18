@@ -3,9 +3,9 @@ import type { SegmentDto } from "../../tauri/projectApi";
 import type { CorrectableSpan } from "../../services/editor/findCorrectableSpans";
 import { FindReplaceMatchText } from "../FindReplaceMatchText";
 import { CspLayout } from "../CspLayout";
-import type { CspLayoutRules } from "../../utils/cspElementLayout";
 import { CorrectableMatchText } from "./CorrectableMatchText";
 import { useSegmentRowTextFieldController } from "../../hooks/useSegmentRowTextFieldController";
+import { segmentTextAreaLayoutVars, type SegmentRowTextStyle } from "./useSegmentRowTextStyle";
 
 /** 正文区 DOM 标记：行级右键（删/并）应跳过此区域，统一走文本外观菜单。 */
 const SEGMENT_TEXT_BODY_ATTR = "data-seg-text-body";
@@ -16,7 +16,7 @@ interface SegmentRowTextFieldProps {
   selected: boolean;
   busy: boolean;
   segmentRowHeightPx: number;
-  textStyle: React.CSSProperties;
+  textStyle: SegmentRowTextStyle;
   focusOnSelectRef: React.MutableRefObject<boolean>;
   editorRef?: React.RefObject<{ focusEditor: () => void } | null>;
   onSegmentRowHeightPointerDown?: (e: React.PointerEvent<HTMLDivElement>) => void;
@@ -72,7 +72,7 @@ export const SegmentRowTextField = memo(function SegmentRowTextField(props: Segm
   const useTransparentText = showPanelHighlightMirror || showCorrectableMirror;
 
   return (
-    <div className="min-w-0 flex-1 overflow-hidden" {...{ [SEGMENT_TEXT_BODY_ATTR]: "" }}>
+    <div className="segment-row-text-body" {...{ [SEGMENT_TEXT_BODY_ATTR]: "" }}>
       <div className="rounded-lg bg-transparent transition-[background-color] duration-150">
         <div className="relative">
           <CspLayout
@@ -81,7 +81,7 @@ export const SegmentRowTextField = memo(function SegmentRowTextField(props: Segm
             ref={textareaRef}
             readOnly={!selected}
             className={[
-              "seg-text relative z-[1] min-h-[3.1rem] w-full resize-none border-0 bg-transparent px-4 py-2.5 font-[inherit] outline-none transition-colors duration-150 placeholder:text-notion-text-light",
+              "seg-text relative z-[1] w-full resize-none border-0 bg-transparent px-4 py-2.5 font-[inherit] outline-none transition-colors duration-150 placeholder:text-notion-text-light",
               selected
                 ? "text-notion-text"
                 : hasPanelHighlight
@@ -93,11 +93,7 @@ export const SegmentRowTextField = memo(function SegmentRowTextField(props: Segm
               "disabled:cursor-not-allowed disabled:text-notion-text-light disabled:opacity-100",
             ].join(" ")}
             rows={1}
-            layout={{
-              ...(textStyle as CspLayoutRules),
-              minHeight: textAreaMinHeight,
-              ...(selected ? {} : { maxHeight: textAreaMinHeight }),
-            }}
+            layout={segmentTextAreaLayoutVars(textStyle, textAreaMinHeight, selected)}
             defaultValue={defaultText}
             disabled={busy}
             tabIndex={selected ? 0 : -1}
@@ -128,8 +124,8 @@ export const SegmentRowTextField = memo(function SegmentRowTextField(props: Segm
           />
           {showPanelHighlightMirror && panelHighlight ? (
             <CspLayout
-              className="pointer-events-none absolute inset-0 z-[2] overflow-hidden px-4 py-2.5 font-[inherit] text-notion-text"
-              layout={textStyle as CspLayoutRules}
+              className="seg-text-layout-scope pointer-events-none absolute inset-0 z-[2] overflow-hidden px-4 py-2.5 font-[inherit] text-notion-text"
+              layout={segmentTextAreaLayoutVars(textStyle, textAreaMinHeight, selected)}
               aria-hidden
             >
               <FindReplaceMatchText

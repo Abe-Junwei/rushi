@@ -138,7 +138,9 @@ async fn project_run_transcribe_inner(
     let (mut v, vocabulary_pre_warnings) = if let Some(ref o) = online {
         let use_multipart = !matches!(
             o.native_adapter.as_deref(),
-            Some("openaiAudio" | "assemblyai" | "dashscopeAsr" | "deepgramListen" | "xunfeiSpeedAsr")
+            Some(
+                "openaiAudio" | "assemblyai" | "dashscopeAsr" | "deepgramListen" | "xunfeiSpeedAsr"
+            )
         );
         let channel = channel_for_online(o.native_adapter.as_deref(), use_multipart);
         let vocabulary_pre_warnings =

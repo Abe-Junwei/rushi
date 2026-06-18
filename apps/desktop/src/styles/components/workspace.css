@@ -129,10 +129,49 @@
 
 .workspace textarea.seg-text {
   caret-color: var(--accent-action-strong);
+  font-size: var(--seg-text-font-size, var(--text-body));
+  line-height: var(--seg-text-line-height, 1.72);
+  letter-spacing: var(--seg-text-letter-spacing, 0.005em);
+  font-weight: var(--seg-text-font-weight, 500);
+  font-style: var(--seg-text-font-style, normal);
+  font-family: var(--seg-text-font-family, inherit);
+  min-height: var(--seg-text-min-height, 3.1rem);
+  max-height: var(--seg-text-max-height, none);
 }
 
-.segment-row-meta-column-fallback {
+.workspace .seg-text-layout-scope {
+  font-size: var(--seg-text-font-size, var(--text-body));
+  line-height: var(--seg-text-line-height, 1.72);
+  letter-spacing: var(--seg-text-letter-spacing, 0.005em);
+  font-weight: var(--seg-text-font-weight, 500);
+  font-style: var(--seg-text-font-style, normal);
+  font-family: var(--seg-text-font-family, inherit);
+}
+
+/* 语段行：静态 flex 骨架 + CSS 变量（CSP nonce 失败时仍有 fallback） */
+.workspace [data-seg-row].seg-row-shell {
+  display: flex;
+  align-items: flex-start;
+  gap: 0.5rem;
+  min-height: var(--seg-row-min-height, var(--seg-row-min-height-fallback));
+}
+
+.workspace [data-seg-row] .segment-row-text-body {
+  min-width: 0;
+  flex: 1 1 0%;
+  overflow: hidden;
+}
+
+.workspace .segment-row-meta-column-fallback {
+  width: var(--seg-meta-column-width, var(--segment-meta-width-min));
   min-width: var(--segment-meta-width-min);
+  flex-shrink: 0;
+}
+
+.workspace .segment-row-meta-column-fallback .segment-row-meta-stack {
+  display: flex;
+  flex-direction: column;
+  gap: 0.25rem;
 }
 
 /* 语段行：主题 accent 选中 + 左缘指示条，无四周边框 */

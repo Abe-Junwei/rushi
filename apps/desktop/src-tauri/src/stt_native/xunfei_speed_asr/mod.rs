@@ -27,7 +27,9 @@ fn strip_bearer(raw: &str) -> &str {
         .trim()
 }
 
-fn extract_credentials(bridge: &OnlineTranscribeBridge) -> Result<(String, String, String), String> {
+fn extract_credentials(
+    bridge: &OnlineTranscribeBridge,
+) -> Result<(String, String, String), String> {
     let app_id = bridge
         .app_key
         .as_deref()
@@ -46,7 +48,11 @@ fn extract_credentials(bridge: &OnlineTranscribeBridge) -> Result<(String, Strin
         .map(str::trim)
         .filter(|s| !s.is_empty())
         .ok_or_else(|| "讯飞 APISecret 未配置".to_string())?;
-    Ok((app_id.to_string(), api_key.to_string(), api_secret.to_string()))
+    Ok((
+        app_id.to_string(),
+        api_key.to_string(),
+        api_secret.to_string(),
+    ))
 }
 
 fn resolve_accent(bridge: &OnlineTranscribeBridge) -> String {
@@ -83,15 +89,9 @@ pub async fn transcribe_xunfei_speed_asr(
         log(&format!("INFO xunfei dhw chars={}", hw.chars().count()));
     }
 
-    let audio_url = upload::upload_audio_file(
-        client,
-        &app_id,
-        &upload_path,
-        &api_key,
-        &api_secret,
-        log,
-    )
-    .await?;
+    let audio_url =
+        upload::upload_audio_file(client, &app_id, &upload_path, &api_key, &api_secret, log)
+            .await?;
 
     let task_id = task::create_transcription_task(
         client,

@@ -7,9 +7,10 @@ use std::time::Instant;
 use tauri::State;
 
 use super::{
-    build_auto_punctuate_prompt, extract_chat_completion_text, resolve_auto_punctuate_system_prompt,
-    resolve_postprocess_config_async, PostprocessAutoPunctuateRawResponse,
-    PostprocessAutoPunctuateRequest, PostprocessCancelState, DEFAULT_TIMEOUT_SECS,
+    build_auto_punctuate_prompt, extract_chat_completion_text,
+    resolve_auto_punctuate_system_prompt, resolve_postprocess_config_async,
+    PostprocessAutoPunctuateRawResponse, PostprocessAutoPunctuateRequest, PostprocessCancelState,
+    DEFAULT_TIMEOUT_SECS,
 };
 
 #[tauri::command]
@@ -32,8 +33,12 @@ pub async fn postprocess_auto_punctuate(
     let app_root = state.root.clone();
     let config = resolve_postprocess_config_async(&req, &app_root).await?;
     let api_key = config.api_key.clone();
-    let prompt_overrides = req.runtime.as_ref().and_then(|rt| rt.prompt_overrides.as_ref());
-    let instructions_override = prompt_overrides.and_then(|o| o.auto_punctuate_instructions.as_deref());
+    let prompt_overrides = req
+        .runtime
+        .as_ref()
+        .and_then(|rt| rt.prompt_overrides.as_ref());
+    let instructions_override =
+        prompt_overrides.and_then(|o| o.auto_punctuate_instructions.as_deref());
     let system_prompt = resolve_auto_punctuate_system_prompt(
         prompt_overrides.and_then(|o| o.auto_punctuate_system.as_deref()),
     );

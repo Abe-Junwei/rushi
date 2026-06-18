@@ -6,8 +6,8 @@ use reqwest::Client;
 use serde_json::Value;
 use uuid::Uuid;
 
-use super::auth::{signed_json_headers, signed_multipart_headers};
 use super::super::send_stt_cloud_post;
+use super::auth::{signed_json_headers, signed_multipart_headers};
 
 pub const XUNFEI_UPLOAD_HOST: &str = "upload-ost-api.xfyun.cn";
 
@@ -21,9 +21,10 @@ fn xunfei_slice_id(index: usize) -> usize {
 }
 
 fn api_code_ok(j: &Value) -> bool {
-    j.get("code")
-        .and_then(|c| c.as_i64().or_else(|| c.as_str().and_then(|s| s.parse().ok())))
-        == Some(0)
+    j.get("code").and_then(|c| {
+        c.as_i64()
+            .or_else(|| c.as_str().and_then(|s| s.parse().ok()))
+    }) == Some(0)
         || j.get("ok").and_then(|x| x.as_i64()) == Some(1)
 }
 
@@ -69,7 +70,8 @@ fn append_multipart_file_field(
 ) {
     body.extend_from_slice(format!("--{boundary}\r\n").as_bytes());
     body.extend_from_slice(
-        format!("Content-Disposition: form-data; name=\"data\"; filename=\"{filename}\"\r\n").as_bytes(),
+        format!("Content-Disposition: form-data; name=\"data\"; filename=\"{filename}\"\r\n")
+            .as_bytes(),
     );
     body.extend_from_slice(b"Content-Type: application/octet-stream\r\n\r\n");
     body.extend_from_slice(file_bytes);
@@ -125,7 +127,8 @@ async fn post_signed_multipart(
 ) -> Result<Value, String> {
     let url = format!("https://{host}{path}");
     let resp = send_stt_cloud_post(|c| {
-        let headers = signed_multipart_headers(host, path, &body, content_type, api_key, api_secret);
+        let headers =
+            signed_multipart_headers(host, path, &body, content_type, api_key, api_secret);
         let mut req = c.post(&url).body(body.clone());
         for (k, v) in headers {
             req = req.header(k, v);
@@ -135,7 +138,10 @@ async fn post_signed_multipart(
     .await
     .map_err(|e| format!("讯飞上传 HTTP 失败: {e}"))?;
     let status = resp.status();
-    let text = resp.text().await.map_err(|e| format!("读取上传响应: {e}"))?;
+    let text = resp
+        .text()
+        .await
+        .map_err(|e| format!("读取上传响应: {e}"))?;
     let j: Value = serde_json::from_str(&text).unwrap_or_else(|_| json_wrap_raw(&text));
     if !status.is_success() && !api_code_ok(&j) {
         return Err(format!("讯飞上传 HTTP {status}: {text}"));
@@ -309,7 +315,10 @@ mod tests {
         let text = String::from_utf8_lossy(&body);
         let data_pos = text.find("name=\"data\"").expect("data part");
         let slice_pos = text.find("name=\"slice_id\"").expect("slice_id part");
-        assert!(data_pos < slice_pos, "data must precede slice_id per Xunfei API");
+        assert!(
+            data_pos < slice_pos,
+            "data must precede slice_id per Xunfei API"
+        );
         assert!(text.contains("upload-abc"));
         assert!(text.contains("slice_id\"\r\n\r\n2\r\n") || text.contains("slice_id\"\r\n\r\n2\n"));
     }

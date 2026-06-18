@@ -778,6 +778,7 @@
 
 /** Release CSP fallback: keep tier scroll visible if nonce layout scope is blocked. */
 .waveform-tier-scroll-fallback {
+  height: var(--waveform-stage-height, var(--waveform-stage-height-fallback));
   min-height: var(--waveform-stage-height-fallback);
 }
 

@@ -6,7 +6,10 @@ pub fn force_file_store() -> bool {
 
 #[cfg(not(target_os = "macos"))]
 fn force_keyring_store() -> bool {
-    std::env::var("RUSHI_LLM_SECRET_USE_KEYRING").ok().as_deref() == Some("1")
+    std::env::var("RUSHI_LLM_SECRET_USE_KEYRING")
+        .ok()
+        .as_deref()
+        == Some("1")
 }
 
 /// Primary store for new reads/writes.

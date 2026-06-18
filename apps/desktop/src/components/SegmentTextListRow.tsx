@@ -216,9 +216,9 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
   return (
     <CspLayout
       data-seg-row={i}
-      layout={{ minHeight: rowMinHeight }}
+      layout={{ "--seg-row-min-height": `${rowMinHeight}px` }}
       className={[
-        "group relative flex cursor-text items-start gap-2 rounded-md border border-transparent px-[9px] py-[9px] transition-[background-color,border-color,box-shadow]",
+        "seg-row-shell group relative cursor-text rounded-md border border-transparent px-[9px] py-[9px] transition-[background-color,border-color,box-shadow]",
         selected
           ? "seg-row-selected"
           : inSelection

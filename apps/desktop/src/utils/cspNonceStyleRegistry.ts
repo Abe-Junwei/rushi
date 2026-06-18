@@ -95,6 +95,20 @@ export function flushPendingCspScopeRules(): void {
   }
 }
 
+function scheduleLateNonceFlush(maxWaitMs = 10_000): void {
+  if (typeof document === "undefined" || !requiresStyleNonce()) return;
+  const start = performance.now();
+  const tick = (): void => {
+    if (readTauriStyleCspNonce()) {
+      flushPendingCspScopeRules();
+      return;
+    }
+    if (performance.now() - start > maxWaitMs) return;
+    requestAnimationFrame(tick);
+  };
+  requestAnimationFrame(tick);
+}
+
 /** Wait for Tauri HTML nonce injection before React mounts dynamic layout `<style>` scopes. */
 export async function bootstrapCspStyleNonce(options?: { maxWaitMs?: number }): Promise<boolean> {
   if (typeof document === "undefined") return true;
@@ -108,6 +122,7 @@ export async function bootstrapCspStyleNonce(options?: { maxWaitMs?: number }): 
   while (!readTauriStyleCspNonce()) {
     if (performance.now() - start > maxWaitMs) {
       console.warn("[csp] style nonce unavailable after bootstrap wait; layout fallbacks may apply");
+      scheduleLateNonceFlush();
       return false;
     }
     await new Promise<void>((resolve) => {

@@ -29,14 +29,14 @@ export function SegmentRowTimestampColumn({
   return (
     <>
       <CspLayout
-        layout={{ width: metaWidth }}
+        layout={{ "--seg-meta-column-width": `${metaWidth}px` }}
         className={[
           "segment-row-meta-column-fallback shrink-0 touch-none select-none pt-2 pr-3 text-right",
           busy ? "cursor-not-allowed" : "cursor-cell",
         ].join(" ")}
         onPointerDown={(e) => onTimestampPointerDown?.(index, e)}
       >
-        <div className="flex flex-col gap-1">
+        <div className="segment-row-meta-stack flex flex-col gap-1">
           <span
             className={[
               "font-mono text-label font-medium tabular-nums tracking-[0.01em]",

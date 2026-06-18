@@ -106,6 +106,7 @@
   /** Release CSP fallback when nonce layout scopes are not yet applied */
   --waveform-stage-height-fallback: 96px;
   --segment-meta-width-min: 44px;
+  --seg-row-min-height-fallback: 62px;
 
   /** Type scale（5 级；@theme text-* 与 Tailwind utilities 同源） */
   --text-display: 28px;

@@ -27,11 +27,8 @@ pub fn authorization_header(
 ) -> String {
     let digest = digest_header(body);
     let request_line = format!("{method} {path} HTTP/1.1");
-    let signature_origin = format!(
-        "host: {host}\ndate: {date}\n{request_line}\ndigest: {digest}"
-    );
-    let mut mac =
-        HmacSha256::new_from_slice(api_secret.as_bytes()).expect("HMAC key length");
+    let signature_origin = format!("host: {host}\ndate: {date}\n{request_line}\ndigest: {digest}");
+    let mut mac = HmacSha256::new_from_slice(api_secret.as_bytes()).expect("HMAC key length");
     mac.update(signature_origin.as_bytes());
     let signature = B64.encode(mac.finalize().into_bytes());
     format!(

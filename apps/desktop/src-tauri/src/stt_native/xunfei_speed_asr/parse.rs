@@ -152,8 +152,14 @@ mod tests {
         // 仅取首候选，不应混入次候选
         assert!(!full_text.contains("时节"));
         // 时间取自 st.bg/ed（ms→sec）
-        assert_eq!(segments[0].get("start_sec").and_then(|v| v.as_f64()), Some(0.0));
-        assert_eq!(segments[1].get("end_sec").and_then(|v| v.as_f64()), Some(9.0));
+        assert_eq!(
+            segments[0].get("start_sec").and_then(|v| v.as_f64()),
+            Some(0.0)
+        );
+        assert_eq!(
+            segments[1].get("end_sec").and_then(|v| v.as_f64()),
+            Some(9.0)
+        );
         assert_eq!(duration, Some(9.0));
     }
 }

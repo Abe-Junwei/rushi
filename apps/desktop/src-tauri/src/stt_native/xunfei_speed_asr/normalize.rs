@@ -14,12 +14,8 @@ pub fn normalize_to_wav_16k_mono(source: &Path, dest: &Path) -> Result<(), Strin
         std::fs::create_dir_all(parent).map_err(|e| format!("创建临时目录失败: {e}"))?;
     }
     let ffmpeg = resolve_ffmpeg_command();
-    let source_s = source
-        .to_str()
-        .ok_or_else(|| "音频路径无效".to_string())?;
-    let dest_s = dest
-        .to_str()
-        .ok_or_else(|| "输出路径无效".to_string())?;
+    let source_s = source.to_str().ok_or_else(|| "音频路径无效".to_string())?;
+    let dest_s = dest.to_str().ok_or_else(|| "输出路径无效".to_string())?;
 
     let output = Command::new(&ffmpeg)
         .args([

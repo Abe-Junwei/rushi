@@ -6,9 +6,7 @@ use super::postprocess_config::{
 use super::postprocess_export_polish::{
     default_export_polish_instructions_template, default_export_polish_system_prompt,
 };
-use super::postprocess_lexicon_ops::{
-    default_stage_b_instructions, default_stage_b_system_prompt,
-};
+use super::postprocess_lexicon_ops::{default_stage_b_instructions, default_stage_b_system_prompt};
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
