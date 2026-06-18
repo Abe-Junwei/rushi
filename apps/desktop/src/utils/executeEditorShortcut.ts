@@ -1,3 +1,4 @@
+import { requestToggleActivityInbox } from "../services/ui/activityInboxEvents";
 import type { TranscriptionLayerInput } from "../pages/transcriptionLayerTypes";
 import type { useProjectWaveform } from "../hooks/useProjectWaveform";
 import type { SegmentSelectSource } from "../utils/waveformViewMode";
@@ -41,6 +42,11 @@ export function executeEditorShortcut(
 
   if (id === "workflow.openSettings") {
     ctx.openEnvironment();
+    return true;
+  }
+
+  if (id === "workflow.openActivityInbox") {
+    requestToggleActivityInbox();
     return true;
   }
 

@@ -128,6 +128,17 @@ describe("executeEditorShortcut", () => {
     expect(openEnvironment).toHaveBeenCalledTimes(1);
   });
 
+  it("dispatches activity inbox toggle for workflow.openActivityInbox", () => {
+    const onToggle = vi.fn();
+    window.addEventListener("rushi:activity-inbox-toggle", onToggle);
+    const ctx = makeCtx({ fileId: null });
+
+    executeEditorShortcut("workflow.openActivityInbox", makeDeps({ ctx }));
+
+    expect(onToggle).toHaveBeenCalledTimes(1);
+    window.removeEventListener("rushi:activity-inbox-toggle", onToggle);
+  });
+
   it("opens annotation dialog for focused segment", () => {
     const openSegmentAnnotationDialog = vi.fn();
     const ctx = makeCtx({ openSegmentAnnotationDialog, selectedIdx: 0 });

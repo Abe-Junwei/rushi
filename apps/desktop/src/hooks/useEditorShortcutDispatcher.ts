@@ -61,6 +61,7 @@ function shortcutAllowedInGenericEditable(shortcutId: EditorShortcutId): boolean
     shortcutId === "workflow.confirmAdvance" ||
     shortcutId === "workflow.find" ||
     shortcutId === "workflow.openSettings" ||
+    shortcutId === "workflow.openActivityInbox" ||
     shortcutId === "workflow.closeFile" ||
     shortcutId === "workflow.segmentAnnotation" ||
     shortcutId === "workflow.addCorrectionMemory" ||
@@ -101,7 +102,7 @@ export function useEditorShortcutDispatcher(args: {
 
       if (shortcutId === "waveform.clearSelection" && hasOpenDialogEscapeHandler()) return;
 
-      if (isFloatingEditorPanelOpen() && shortcutId !== "workflow.find" && shortcutId !== "workflow.openSettings") {
+      if (isFloatingEditorPanelOpen() && shortcutId !== "workflow.find" && shortcutId !== "workflow.openSettings" && shortcutId !== "workflow.openActivityInbox") {
         return;
       }
 
@@ -112,7 +113,7 @@ export function useEditorShortcutDispatcher(args: {
       const a = argsRef.current;
       const ctx = a.ctxRef.current;
       if (def.requiresOpenFile !== false && !ctx.fileId) return;
-      if (ctx.busy && shortcutId !== "workflow.openSettings") return;
+      if (ctx.busy && shortcutId !== "workflow.openSettings" && shortcutId !== "workflow.openActivityInbox") return;
 
       if (
         !inTextarea &&

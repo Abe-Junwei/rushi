@@ -162,6 +162,15 @@ export const EDITOR_SHORTCUT_DEFINITIONS: EditorShortcutDefinition[] = [
     requiresOpenFile: false,
   },
   {
+    id: "workflow.openActivityInbox",
+    bindings: [BINDING.mod("n", { shift: true })],
+    keysLabel: "⇧⌘/Ctrl+Shift + N",
+    footerAction: "活动与提醒",
+    panelAction: "打开活动与提醒收件箱",
+    allowInTextarea: true,
+    requiresOpenFile: false,
+  },
+  {
     id: "workflow.segmentAnnotation",
     bindings: [BINDING.mod("n")],
     keysLabel: "⌘/Ctrl + N",

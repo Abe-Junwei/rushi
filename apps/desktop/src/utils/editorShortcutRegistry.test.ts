@@ -102,6 +102,12 @@ describe("editorShortcutRegistry", () => {
     expect(matchEditorShortcut(keyEvent({ key: ",", metaKey: true }))).toBe("workflow.openSettings");
   });
 
+  it("matches open activity inbox on Shift+Cmd+N", () => {
+    expect(matchEditorShortcut(keyEvent({ key: "n", metaKey: true, shiftKey: true }))).toBe(
+      "workflow.openActivityInbox",
+    );
+  });
+
   it("matches segment annotation on Cmd+N", () => {
     expect(matchEditorShortcut(keyEvent({ key: "n", metaKey: true }))).toBe("workflow.segmentAnnotation");
   });

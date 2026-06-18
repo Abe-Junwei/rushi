@@ -58,6 +58,7 @@ pub mod waveform_peaks_cmd;
 pub mod waveform_peaks_ffmpeg;
 pub mod waveform_peaks_gc;
 pub mod waveform_peaks_generate;
+pub mod welcome_search_cmd;
 
 pub use app_data_paths::models_root_for_app_data_root;
 pub use transcribe_cancel_cmd::TranscribeCancelState;

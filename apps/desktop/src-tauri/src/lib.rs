@@ -197,6 +197,8 @@ pub fn run() {
             project::picker_cmd::ui_desktop_log,
             project::file_cmd::list_files,
             project::file_cmd::load_file,
+            project::welcome_search_cmd::welcome_search_files,
+            project::welcome_search_cmd::welcome_search_content,
             project::file_cmd::rename_file,
             project::file_cmd::delete_file,
             project::waveform_peaks_cmd::ensure_waveform_peaks,

@@ -123,10 +123,12 @@ export function WelcomeView({
       }
     >
         <WelcomeTopBar
+          controller={c}
           asrPresentation={c.asrPresentation}
           llmStatusRefreshSeq={llmStatusRefreshSeq}
           onOpenAsrSettings={onOpenAsrSettings ?? onOpenSettings}
           onOpenLlmSettings={onOpenLlmSettings ?? onOpenSettings}
+          onCreateProject={() => setShowCreateModal(true)}
         />
 
         {page === "glossary" ? (

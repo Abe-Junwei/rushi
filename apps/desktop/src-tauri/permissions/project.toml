@@ -33,6 +33,8 @@ permissions = [
   "allow-ui-desktop-log",
   "allow-list-files",
   "allow-load-file",
+  "allow-welcome-search-files",
+  "allow-welcome-search-content",
   "allow-rename-file",
   "allow-delete-file",
   "allow-ensure-waveform-peaks",

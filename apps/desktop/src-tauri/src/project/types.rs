@@ -39,6 +39,32 @@ pub struct ProjectDetail {
 }
 
 #[derive(Debug, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub struct WelcomeFileSearchHit {
+    pub project_id: String,
+    pub project_name: String,
+    pub file_id: String,
+    pub file_name: String,
+    pub updated_at_ms: i64,
+    pub matched_field: String,
+}
+
+#[derive(Debug, Serialize)]
+#[serde(rename_all = "snake_case")]
+pub struct WelcomeContentSearchHit {
+    pub project_id: String,
+    pub project_name: String,
+    pub file_id: String,
+    pub file_name: String,
+    pub segment_idx: i32,
+    pub start_sec: f64,
+    pub end_sec: f64,
+    pub snippet: String,
+    pub char_start: usize,
+    pub char_end: usize,
+}
+
+#[derive(Debug, Serialize)]
 pub struct FileSummary {
     pub id: String,
     pub name: String,

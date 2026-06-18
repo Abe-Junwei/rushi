@@ -58,6 +58,7 @@ export function ProjectHubView({
     >
       {headerSlot}
       <WelcomeTopBar
+        controller={c}
         asrPresentation={c.asrPresentation}
         llmStatusRefreshSeq={llmStatusRefreshSeq}
         onOpenAsrSettings={onOpenAsrSettings ?? onOpenSettings}

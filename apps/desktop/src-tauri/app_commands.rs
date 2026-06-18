@@ -39,6 +39,8 @@ pub const APP_COMMANDS: &[&str] = &[
     "ui_desktop_log",
     "list_files",
     "load_file",
+    "welcome_search_files",
+    "welcome_search_content",
     "rename_file",
     "delete_file",
     "ensure_waveform_peaks",

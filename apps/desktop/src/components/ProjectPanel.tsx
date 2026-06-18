@@ -9,6 +9,7 @@ import { WelcomeView } from "./WelcomeView";
 import { WelcomeSidebar } from "./WelcomeSidebar";
 import { ProjectBusyOverlay, TranscribeWorkspaceBanners } from "./ProjectStatusFeedback";
 import { ProjectPanelDialogs } from "./ProjectPanelDialogs";
+import { useWelcomeWorkflowShortcuts } from "../hooks/useWelcomeWorkflowShortcuts";
 import { syncOnboardingExport } from "../services/onboarding/onboardingAutoSync";
 import { CollapsibleWorkspaceShell } from "./CollapsibleWorkspaceShell";
 import { WORKSPACE_EDITOR_SHELL_PURPOSE } from "./WorkspaceShellLayout";
@@ -48,6 +49,11 @@ export function ProjectPanel() {
     dismissTranscribeDiag,
     cancelTranscribe,
   } = shell;
+
+  useWelcomeWorkflowShortcuts({
+    enabled: workspaceShellVariant !== "editor",
+    onOpenSettings: openEnvironment,
+  });
 
   const tx = useTranscriptionLayer({
     projectId: c.current?.id ?? null,

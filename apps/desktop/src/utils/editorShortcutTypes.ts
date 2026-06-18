@@ -16,6 +16,7 @@ export type EditorShortcutId =
   | "workflow.find"
   | "workflow.closeFile"
   | "workflow.openSettings"
+  | "workflow.openActivityInbox"
   | "workflow.segmentAnnotation"
   | "workflow.addCorrectionMemory"
   | "waveform.clearSelection"
