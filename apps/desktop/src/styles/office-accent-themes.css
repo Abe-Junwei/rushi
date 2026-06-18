@@ -64,6 +64,23 @@
   --workbench-toggle-active-text: #ffffff;
 }
 
+:root[data-accent-theme="indigo"] {
+  --zen-saffron: #3d4f5d;
+  --zen-saffron-mid: #2f3e4a;
+  --zen-saffron-deep: #1e2830;
+  --zen-saffron-light: #dce4e8;
+  --zen-primary-action-bg: #3d4f5d;
+  --zen-primary-action-bg-hover: #2f3e4a;
+  --zen-saffron-surface: #eef1f3;
+  --zen-saffron-border: #c5d0d6;
+  --accent-action: #3d4f5d;
+  --accent-action-strong: #2f3e4a;
+  --workbench-toggle-active-bg: #3d4f5d;
+  --workbench-toggle-active-text: #ffffff;
+  /** 低彩度 accent：12% 多选 tint 在波形白底上几乎不可见，且弱于 visited 14% strong */
+  --segment-fill-in-selection-waveform: color-mix(in srgb, var(--accent-action) 18%, transparent);
+}
+
 :root[data-accent-theme="pink"] {
   --zen-saffron: #e3008c;
   --zen-saffron-mid: #ad0069;
@@ -123,6 +140,9 @@
 }
 .accent-theme-swatch--green {
   background-color: #107c10;
+}
+.accent-theme-swatch--indigo {
+  background-color: #3d4f5d;
 }
 .accent-theme-swatch--pink {
   background-color: #e3008c;

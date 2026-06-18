@@ -1,6 +1,7 @@
 import type { ContextMenuItem } from "../components/SegmentContextMenu";
 import type { SegmentDto } from "../tauri/projectApi";
-import { transcriptFontFamilyCssStack, resolveTranscriptFontDisplayLabel } from "../components/editor/editorTranscriptAppearance";
+import { resolveTranscriptFontDisplayLabel, transcriptFontFamilyCssStack } from "../components/editor/editorTranscriptAppearance";
+import { listTranscriptFontPxOptions } from "./waveformPrefs";
 import {
   buildSegmentContextMenuItems,
   type SegmentContextMenuOrigin,
@@ -14,9 +15,8 @@ export type SegmentTextContextMenuKey =
   | "addCorrectionMemory"
   | "toggleBold"
   | "toggleItalic"
-  | "fontSizeDecrease"
-  | "fontSizeIncrease"
-  | `font:${string}`;
+  | `font:${string}`
+  | `fontSize:${number}`;
 
 export type SegmentTextAppearanceBuildArgs = {
   appearanceDisabled: boolean;
@@ -24,8 +24,6 @@ export type SegmentTextAppearanceBuildArgs = {
   transcriptFontWeight: 500 | 700;
   transcriptFontItalic: boolean;
   transcriptFontPx: number;
-  fontSizeAtMin: boolean;
-  fontSizeAtMax: boolean;
   fontOptions: readonly string[];
   fontDisplayLabels?: Readonly<Record<string, string>>;
 };
@@ -37,6 +35,14 @@ export function buildSegmentTextAppearanceMenuItem(args: SegmentTextAppearanceBu
     disabled: args.appearanceDisabled,
     checked: family === args.transcriptFontFamily,
     labelStyle: { fontFamily: transcriptFontFamilyCssStack(family) },
+  }));
+
+  const fontSizeChildren: ContextMenuItem[] = listTranscriptFontPxOptions().map((px) => ({
+    key: `fontSize:${px}`,
+    label: `${px}px`,
+    disabled: args.appearanceDisabled,
+    checked: px === Math.round(args.transcriptFontPx),
+    labelStyle: { fontSize: `${px}px` },
   }));
 
   return {
@@ -54,14 +60,10 @@ export function buildSegmentTextAppearanceMenuItem(args: SegmentTextAppearanceBu
             : [{ key: "font:__empty", label: "无可用字体", disabled: true }],
       },
       {
-        key: "fontSizeDecrease",
-        label: `减小字号 (${Math.round(args.transcriptFontPx)}px)`,
-        disabled: args.appearanceDisabled || args.fontSizeAtMin,
-      },
-      {
-        key: "fontSizeIncrease",
-        label: "增大字号",
-        disabled: args.appearanceDisabled || args.fontSizeAtMax,
+        key: "fontSizeMenu",
+        label: "字号",
+        disabled: args.appearanceDisabled,
+        children: fontSizeChildren,
       },
       {
         key: "toggleBold",
@@ -152,12 +154,18 @@ export function isSegmentTextContextMenuKey(key: string): key is SegmentTextCont
     key === "addCorrectionMemory" ||
     key === "toggleBold" ||
     key === "toggleItalic" ||
-    key === "fontSizeDecrease" ||
-    key === "fontSizeIncrease" ||
-    key.startsWith("font:")
+    key.startsWith("font:") ||
+    key.startsWith("fontSize:")
   );
 }
 
 export function parseFontFamilyFromContextMenuKey(key: `font:${string}`): string {
   return key.slice("font:".length);
+}
+
+export function parseFontSizeFromContextMenuKey(key: string): number | null {
+  if (!key.startsWith("fontSize:")) return null;
+  const px = Number(key.slice("fontSize:".length));
+  if (!Number.isFinite(px)) return null;
+  return Math.round(px);
 }

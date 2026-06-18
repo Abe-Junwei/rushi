@@ -6,13 +6,10 @@ import {
   type SegmentContextMenuOpen,
 } from "../../utils/segmentContextMenuModel";
 import {
-  TRANSCRIPT_FONT_MAX,
-  TRANSCRIPT_FONT_MIN,
-} from "../../utils/waveformPrefs";
-import {
   buildSegmentRowContextMenuItems,
   isSegmentTextContextMenuKey,
   parseFontFamilyFromContextMenuKey,
+  parseFontSizeFromContextMenuKey,
   type SegmentTextContextMenuKey,
 } from "../../utils/segmentTextContextMenuModel";
 import type { ContextMenuItem } from "../SegmentContextMenu";
@@ -55,8 +52,6 @@ export function useEditorViewContextMenu({
               transcriptFontWeight: appearance.transcriptFontWeight,
               transcriptFontItalic: appearance.transcriptFontItalic,
               transcriptFontPx,
-              fontSizeAtMin: transcriptFontPx <= TRANSCRIPT_FONT_MIN,
-              fontSizeAtMax: transcriptFontPx >= TRANSCRIPT_FONT_MAX,
               fontOptions: appearance.fontOptions,
               fontDisplayLabels: appearance.fontDisplayLabels,
             },
@@ -126,16 +121,13 @@ export function useEditorViewContextMenu({
           appearance.setTranscriptFontItalic((italic) => !italic);
           return;
         }
-        if (actionKey === "fontSizeDecrease") {
-          tx.nudgeTranscriptFontPx(-1);
-          return;
-        }
-        if (actionKey === "fontSizeIncrease") {
-          tx.nudgeTranscriptFontPx(1);
+        const fontSizePx = parseFontSizeFromContextMenuKey(actionKey);
+        if (fontSizePx != null) {
+          tx.setTranscriptFontPx(fontSizePx);
           return;
         }
         if (actionKey.startsWith("font:")) {
-          const family = parseFontFamilyFromContextMenuKey(actionKey);
+          const family = parseFontFamilyFromContextMenuKey(actionKey as `font:${string}`);
           if (family && family !== "__empty") {
             appearance.setTranscriptFontFamily(appearance.normalizeFontFamily(family));
           }

@@ -36,6 +36,15 @@ export function clampTranscriptFontPx(px: number): number {
   return Math.min(TRANSCRIPT_FONT_MAX, Math.max(TRANSCRIPT_FONT_MIN, Math.round(px)));
 }
 
+/** 语段正文字号菜单选项（11–44px，步进 1）。 */
+export function listTranscriptFontPxOptions(): number[] {
+  const options: number[] = [];
+  for (let px = TRANSCRIPT_FONT_MIN; px <= TRANSCRIPT_FONT_MAX; px += 1) {
+    options.push(px);
+  }
+  return options;
+}
+
 export function readStoredWaveformHeightPx(): number | null {
   try {
     const raw = localStorage.getItem(LS_HEIGHT);

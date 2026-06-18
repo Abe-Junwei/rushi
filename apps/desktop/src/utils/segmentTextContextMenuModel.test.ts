@@ -16,8 +16,6 @@ const appearanceArgs = {
   transcriptFontWeight: 500 as const,
   transcriptFontItalic: false,
   transcriptFontPx: 14,
-  fontSizeAtMin: false,
-  fontSizeAtMax: false,
   fontOptions: ["Inter"],
 };
 
@@ -122,22 +120,25 @@ describe("buildSegmentTextAppearanceMenuItem", () => {
     expect(item.label).toBe("文本外观");
     expect(item.children?.map((c) => c.label)).toEqual([
       "字体",
-      "减小字号 (14px)",
-      "增大字号",
+      "字号",
       "加粗",
       "斜体",
     ]);
+    expect(item.children?.[2]?.checked).toBe(true);
     expect(item.children?.[3]?.checked).toBe(true);
-    expect(item.children?.[4]?.checked).toBe(true);
     const fontMenu = item.children?.[0]?.children ?? [];
     expect(fontMenu.map((entry) => entry.label)).toEqual(["思源宋体-简", "苹方-简"]);
+    const fontSizeMenu = item.children?.[1];
+    expect(fontSizeMenu?.label).toBe("字号");
+    expect(fontSizeMenu?.children?.find((entry) => entry.key === "fontSize:14")?.checked).toBe(true);
+    expect(fontSizeMenu?.children?.find((entry) => entry.key === "fontSize:13")?.checked).toBe(false);
   });
 });
 
 describe("isSegmentTextContextMenuKey", () => {
   it("recognizes actionable keys", () => {
     expect(isSegmentTextContextMenuKey("toggleBold")).toBe(true);
-    expect(isSegmentTextContextMenuKey("fontSizeDecrease")).toBe(true);
+    expect(isSegmentTextContextMenuKey("fontSize:14")).toBe(true);
     expect(isSegmentTextContextMenuKey("font:Inter")).toBe(true);
     expect(isSegmentTextContextMenuKey("appearance")).toBe(false);
   });

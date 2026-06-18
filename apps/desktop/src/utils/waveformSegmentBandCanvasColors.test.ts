@@ -32,4 +32,10 @@ describe("segmentBandFillStyle", () => {
   it("keeps primary selected tint for single selection", () => {
     expect(segmentBandFillStyle(seg, true, 0, palette)).toBe("sel");
   });
+
+  it("uses inSelection tint when flagged without multiSelectActive", () => {
+    expect(
+      segmentBandFillStyle(seg, false, 0, palette, { inSelection: true, multiSelectActive: false }),
+    ).toBe("in-sel");
+  });
 });

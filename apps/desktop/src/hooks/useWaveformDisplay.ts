@@ -71,6 +71,10 @@ export function useWaveformDisplay(args: { busy: boolean }) {
     setTranscriptFontPxState((f) => clampTranscriptFontPx(f + delta));
   }, []);
 
+  const setTranscriptFontPx = useCallback((px: number) => {
+    setTranscriptFontPxState(clampTranscriptFontPx(px));
+  }, []);
+
   const nudgeTranscriptRowHeightPx = useCallback((delta: number) => {
     const currentRow = computeSegmentLaneRowPx(transcriptFontPxRef.current);
     const nextRow = clampSegmentLaneRowPx(currentRow + delta);
@@ -176,6 +180,7 @@ export function useWaveformDisplay(args: { busy: boolean }) {
     transcriptRowHeightPx,
     nudgeWaveformHeight,
     nudgeTranscriptFontPx,
+    setTranscriptFontPx,
     nudgeTranscriptRowHeightPx,
     markWaveformRenderHeightApplied,
     beginWaveformHeightDrag,

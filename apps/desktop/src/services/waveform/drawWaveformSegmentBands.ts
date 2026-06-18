@@ -61,6 +61,9 @@ export function drawWaveformSegmentBands(input: {
   layoutHeightPx: number;
   selectedIdx?: number;
   selectedIndices?: ReadonlySet<number>;
+  selectionLo?: number;
+  selectionHi?: number;
+  selectionCount?: number;
   playheadSec?: number;
   skipIndices?: readonly number[];
 }): void {
@@ -74,6 +77,9 @@ export function drawWaveformSegmentBands(input: {
     layoutHeightPx,
     selectedIdx = -1,
     selectedIndices,
+    selectionLo,
+    selectionHi,
+    selectionCount,
     playheadSec,
   } = input;
   const widthPx = Math.max(1, Math.floor(viewportWidthPx));
@@ -127,6 +133,9 @@ export function drawWaveformSegmentBands(input: {
       idx,
       selectedIdx,
       selectedIndices,
+      selectionLo,
+      selectionHi,
+      selectionCount,
     });
     ctx.fillStyle = segmentBandFillStyle(seg, selected, playheadSec, palette, {
       inSelection,

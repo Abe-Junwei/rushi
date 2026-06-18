@@ -229,7 +229,7 @@ export function DeliveryModeDialog({
                 <span className="mt-px shrink-0" aria-hidden>
                   {item.ok ? (
                     <Check
-                      className={`${LUCIDE_ICON_SIZE_SM} text-zen-forest`}
+                      className={`${LUCIDE_ICON_SIZE_SM} text-zen-success`}
                       strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
                     />
                   ) : (

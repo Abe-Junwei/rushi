@@ -96,7 +96,8 @@ export const WaveformSegmentOverlay = memo(function WaveformSegmentOverlay(props
     ],
   );
 
-  const multiSelectActive = (props.selectedIndices?.size ?? 0) > 1;
+  const multiSelectActive =
+    (props.selectedIndices?.size ?? 0) > 1 || (props.selectionCount ?? 0) > 1;
 
   return (
     <div
@@ -117,6 +118,9 @@ export const WaveformSegmentOverlay = memo(function WaveformSegmentOverlay(props
           idx,
           selectedIdx,
           selectedIndices: props.selectedIndices,
+          selectionLo: props.selectionLo,
+          selectionHi: props.selectionHi,
+          selectionCount: props.selectionCount,
         });
         return (
           <WaveformSegmentRegionItem

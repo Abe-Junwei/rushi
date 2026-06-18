@@ -134,7 +134,7 @@
 /* 语段行：主题 accent 选中 + 左缘指示条，无四周边框 */
 .workspace [data-seg-row].seg-row-selected {
   border-color: transparent;
-  background: var(--segment-fill-in-selection-list);
+  background: var(--segment-fill-selected-list);
 }
 
 .workspace [data-seg-row].seg-row-selected::before {
@@ -229,8 +229,8 @@
 /*
  * 语段阶段 chip 四色系（互不复用 hue 族）：
  * 自动转写 — 中性灰（机器默认）
- * AI 改稿   — accent-action（智能/LLM，随主题色）
- * 手动转写 — saffron 暖橙（人手编辑）
+ * AI 改稿   — accent-action（随 Office 主题色）
+ * 手动转写 — status-warn 暖橙（固定品牌 warn，不随主题色）
  * 定稿     — success 绿（确认完成）
  */
 
@@ -241,18 +241,18 @@
   color: var(--notion-text-muted);
 }
 
-/* AI 改稿 · 冷蓝 */
+/* AI 改稿 · accent-action（随主题色） */
 .workspace .seg-row-stage-chip--ai_revised {
   background: color-mix(in srgb, var(--accent-action) 16%, var(--notion-bg));
   border-color: color-mix(in srgb, var(--accent-action) 34%, var(--notion-divider));
   color: var(--accent-action);
 }
 
-/* 手动转写 · 暖橙 */
+/* 手动转写 · 固定暖橙（zen-status-warn，不随 Office 主题色） */
 .workspace .seg-row-stage-chip--manual_transcribe {
-  background: color-mix(in srgb, var(--accent-action) 14%, var(--notion-bg));
-  border-color: color-mix(in srgb, var(--accent-action) 28%, var(--notion-divider));
-  color: var(--accent-action-strong);
+  background: color-mix(in srgb, var(--zen-status-warn) 14%, var(--notion-bg));
+  border-color: color-mix(in srgb, var(--zen-status-warn) 28%, var(--notion-divider));
+  color: var(--zen-status-warn-action);
 }
 
 /* 定稿 · 森林绿 */
@@ -310,7 +310,7 @@
 
 .workspace textarea.seg-text.text-transparent::selection {
   color: transparent;
-  background: color-mix(in srgb, var(--accent-action) 28%, var(--content-decoration-paper));
+  background: color-mix(in srgb, var(--accent-action) 18%, var(--content-decoration-paper));
 }
 
 /* 语段行：待纳入记忆改词 diff 镜像 */
@@ -394,7 +394,7 @@
 
 .workspace textarea.seg-text::selection {
   color: var(--accent-action-strong);
-  background: color-mix(in srgb, var(--accent-action) 20%, var(--content-decoration-paper));
+  background: color-mix(in srgb, var(--accent-action) 14%, var(--content-decoration-paper));
 }
 
 /** EditorView 底栏：三列 grid，居中 hint 独立列 truncate，避免 absolute 叠字 */

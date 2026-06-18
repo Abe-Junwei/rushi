@@ -52,10 +52,14 @@ describe("officeAccentTheme", () => {
     expect(document.documentElement.dataset.accentTheme).toBeUndefined();
   });
 
-  it("migrates legacy purple/indigo accent storage to brand", () => {
+  it("migrates legacy purple accent storage to indigo", () => {
     window.localStorage.setItem(OFFICE_ACCENT_THEME_STORAGE_KEY, "purple");
-    expect(readStoredOfficeAccentThemeId()).toBe("brand");
-    window.localStorage.setItem(OFFICE_ACCENT_THEME_STORAGE_KEY, "indigo");
-    expect(readStoredOfficeAccentThemeId()).toBe("brand");
+    expect(readStoredOfficeAccentThemeId()).toBe("indigo");
+  });
+
+  it("persists indigo accent via data-accent-theme", () => {
+    applyOfficeAccentTheme("indigo");
+    expect(window.localStorage.getItem(OFFICE_ACCENT_THEME_STORAGE_KEY)).toBe("indigo");
+    expect(document.documentElement.dataset.accentTheme).toBe("indigo");
   });
 });

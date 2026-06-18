@@ -16,6 +16,7 @@ export function segmentBandFillStyle(
     return palette.inSelection;
   }
   if (selected) return palette.selected;
+  if (options?.inSelection) return palette.inSelection;
   if (seg.low_confidence) return palette.lowConfidence;
   if (segmentPlaybackVisits(seg, playheadSec) === "visited") return palette.visited;
   return palette.idle;

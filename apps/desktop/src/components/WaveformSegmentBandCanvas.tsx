@@ -131,6 +131,9 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
           layoutHeightPx: heightPx,
           selectedIdx: input.selectedIdx,
           selectedIndices: input.selectedIndices,
+          selectionLo: input.selectionLo,
+          selectionHi: input.selectionHi,
+          selectionCount: input.selectionCount,
           playheadSec: input.getPlayheadSec?.(),
           skipIndices,
         });

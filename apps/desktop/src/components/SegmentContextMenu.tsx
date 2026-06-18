@@ -119,7 +119,7 @@ function ContextMenuPanel({
       {items.map((it) => {
         const hasChildren = Boolean(it.children?.length);
         const isOpen = hasChildren && openPath[depth] === it.key;
-        const flyoutScrollable = it.key === "fontMenu";
+        const flyoutScrollable = it.key === "fontMenu" || it.key === "fontSizeMenu";
         return (
           <div key={it.key} className="relative">
             <button

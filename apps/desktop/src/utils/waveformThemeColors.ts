@@ -22,6 +22,45 @@ export function readCssColorVar(name: string, fallback: string): string {
   return value || fallback;
 }
 
+function readAccentActionHex(fallback = "#C58A43"): string {
+  return readCssColorVar("--accent-action", fallback);
+}
+
+function readAccentActionStrongHex(fallback = "#85530f"): string {
+  return readCssColorVar("--accent-action-strong", fallback);
+}
+
+/** Canvas fallback — 随当前 accent 解析，避免 Office 主题下仍回退 saffron。 */
+function accentMixFallback(actionPct: number, alphaFallback: number): string {
+  const accent = readAccentActionHex();
+  const expression = `color-mix(in srgb, ${accent} ${actionPct}%, transparent)`;
+  const [r, g, b] = hexToRgb(accent) ?? [197, 138, 67];
+  return resolveCssColorExpression(expression, `rgba(${r}, ${g}, ${b}, ${alphaFallback})`);
+}
+
+function accentStrongMixFallback(strongPct: number, alphaFallback: number): string {
+  const strong = readAccentActionStrongHex();
+  const expression = `color-mix(in srgb, ${strong} ${strongPct}%, transparent)`;
+  const [r, g, b] = hexToRgb(strong) ?? [133, 83, 15];
+  return resolveCssColorExpression(expression, `rgba(${r}, ${g}, ${b}, ${alphaFallback})`);
+}
+
+function hexToRgb(hex: string): [number, number, number] | null {
+  const normalized = hex.trim().replace(/^#/, "");
+  if (normalized.length === 3) {
+    const r = parseInt(normalized[0] + normalized[0], 16);
+    const g = parseInt(normalized[1] + normalized[1], 16);
+    const b = parseInt(normalized[2] + normalized[2], 16);
+    return [r, g, b];
+  }
+  if (normalized.length !== 6) return null;
+  const r = parseInt(normalized.slice(0, 2), 16);
+  const g = parseInt(normalized.slice(2, 4), 16);
+  const b = parseInt(normalized.slice(4, 6), 16);
+  if ([r, g, b].some((n) => Number.isNaN(n))) return null;
+  return [r, g, b];
+}
+
 /**
  * 将含 `var()` / `color-mix()` 的表达式解析为浏览器可绘制的 `rgb(a)`。
  * Canvas 2D 与 WaveSurfer 无法直接使用 color-mix 字符串。
@@ -37,7 +76,12 @@ export function resolveCssColorExpression(
   setCspLayoutRules(probe, { [property]: expression });
   const resolved = getComputedStyle(probe)[property].trim();
   clearCspLayoutRules(probe);
-  if (!resolved || (resolved === "rgba(0, 0, 0, 0)" && expression.includes("transparent") === false)) {
+  const unresolved =
+    !resolved ||
+    resolved.includes("color-mix(") ||
+    resolved.includes("var(") ||
+    (resolved === "rgba(0, 0, 0, 0)" && expression.includes("transparent") === false);
+  if (unresolved) {
     return fallback;
   }
   return resolved;
@@ -85,13 +129,13 @@ export function readWaveformSegmentBandPalette(): WaveformSegmentBandPalette {
   return {
     selected: resolveRootFillToken(
       SEGMENT_FILL_CSS_VAR.selected,
-      "color-mix(in srgb, var(--accent-action) 26%, transparent)",
-      "rgba(197, 138, 67, 0.26)",
+      "color-mix(in srgb, var(--accent-action) 18%, transparent)",
+      accentMixFallback(18, 0.18),
     ),
     inSelection: resolveRootFillToken(
       SEGMENT_FILL_CSS_VAR.inSelectionWaveform,
       "color-mix(in srgb, var(--accent-action) 12%, transparent)",
-      "rgba(197, 138, 67, 0.12)",
+      accentMixFallback(12, 0.12),
     ),
     lowConfidence: resolveRootFillToken(
       SEGMENT_FILL_CSS_VAR.lowConfidence,
@@ -100,8 +144,8 @@ export function readWaveformSegmentBandPalette(): WaveformSegmentBandPalette {
     ),
     visited: resolveRootFillToken(
       SEGMENT_FILL_CSS_VAR.visited,
-      "color-mix(in srgb, var(--accent-action-strong) 18%, transparent)",
-      "rgba(133, 83, 15, 0.18)",
+      "color-mix(in srgb, var(--accent-action-strong) 14%, transparent)",
+      accentStrongMixFallback(14, 0.14),
     ),
     idle: resolveRootFillToken(
       SEGMENT_FILL_CSS_VAR.idle,

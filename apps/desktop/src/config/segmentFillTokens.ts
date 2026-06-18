@@ -4,6 +4,7 @@
  */
 export const SEGMENT_FILL_CSS_VAR = {
   selected: "--segment-fill-selected",
+  selectedList: "--segment-fill-selected-list",
   inSelectionList: "--segment-fill-in-selection-list",
   inSelectionWaveform: "--segment-fill-in-selection-waveform",
   visited: "--segment-fill-visited",

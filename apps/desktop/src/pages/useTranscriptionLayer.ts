@@ -126,6 +126,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     transcriptRowHeightPx: display.transcriptRowHeightPx,
     nudgeWaveformHeight: display.nudgeWaveformHeight,
     nudgeTranscriptFontPx: display.nudgeTranscriptFontPx,
+    setTranscriptFontPx: display.setTranscriptFontPx,
     nudgeTranscriptRowHeightPx: display.nudgeTranscriptRowHeightPx,
     beginWaveformHeightDrag: display.beginWaveformHeightDrag,
     beginTranscriptFontDrag: display.beginTranscriptFontDrag,

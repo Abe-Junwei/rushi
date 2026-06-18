@@ -21,15 +21,35 @@ export type WaveformSegmentFillState = {
   multiSelectActive: boolean;
 };
 
-/** 波形语段选中态 — overlay DOM 与 band canvas 共用，真源为 selectedIndices。 */
+function isIndexInWaveformSelection(input: {
+  idx: number;
+  selectedIdx: number;
+  selectedIndices?: ReadonlySet<number>;
+  selectionLo?: number;
+  selectionHi?: number;
+  selectionCount?: number;
+}): boolean {
+  if (input.selectedIndices && input.selectedIndices.size > 0) {
+    return input.selectedIndices.has(input.idx);
+  }
+  const lo = Math.min(input.selectionLo ?? input.selectedIdx, input.selectionHi ?? input.selectedIdx);
+  const hi = Math.max(input.selectionLo ?? input.selectedIdx, input.selectionHi ?? input.selectedIdx);
+  return (input.selectionCount ?? 0) > 1 && input.idx >= lo && input.idx <= hi;
+}
+
+/** 波形语段选中态 — overlay DOM 与 band canvas 共用；selectedIndices 优先，范围字段作回退。 */
 export function resolveWaveformSegmentFillState(input: {
   idx: number;
   selectedIdx: number;
   selectedIndices?: ReadonlySet<number>;
+  selectionLo?: number;
+  selectionHi?: number;
+  selectionCount?: number;
 }): WaveformSegmentFillState {
   const selected = input.idx === input.selectedIdx;
-  const multiSelectActive = (input.selectedIndices?.size ?? 0) > 1;
-  const inSelection = !selected && (input.selectedIndices?.has(input.idx) ?? false);
+  const multiSelectActive =
+    (input.selectedIndices?.size ?? 0) > 1 || (input.selectionCount ?? 0) > 1;
+  const inSelection = !selected && multiSelectActive && isIndexInWaveformSelection(input);
   return { selected, inSelection, multiSelectActive };
 }
 

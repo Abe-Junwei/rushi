@@ -79,4 +79,16 @@ describe("segmentChrome", () => {
       }),
     ).toBe(`var(${SEGMENT_FILL_CSS_VAR.inSelectionWaveform})`);
   });
+
+  it("resolveWaveformSegmentFillState uses selection range when selectedIndices is empty", () => {
+    const state = resolveWaveformSegmentFillState({
+      idx: 3,
+      selectedIdx: 5,
+      selectionLo: 2,
+      selectionHi: 5,
+      selectionCount: 4,
+    });
+    expect(state.multiSelectActive).toBe(true);
+    expect(state.inSelection).toBe(true);
+  });
 });

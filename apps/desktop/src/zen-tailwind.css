@@ -21,6 +21,9 @@
   --color-accent-edit: var(--accent-edit);
   --color-accent-action: var(--accent-action);
   --color-accent-action-strong: var(--accent-action-strong);
+  --color-accent-action-mid: var(--accent-action-strong);
+  --color-accent-action-surface: var(--zen-saffron-surface);
+  --color-accent-action-border: var(--zen-saffron-border);
   --color-zen-success: var(--zen-success);
   --color-zen-success-action: var(--zen-success-action);
   --color-zen-success-surface: var(--zen-success-surface);

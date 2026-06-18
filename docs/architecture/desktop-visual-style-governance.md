@@ -19,13 +19,13 @@
 | 环境页 spacing | `apps/desktop/src/utils/environmentPanelNav.ts` | 表单区 / CTA 行 / 状态条 shell |
 | 环境状态色 | `apps/desktop/src/services/llm/llmEnvStatusTokens.ts` | `ENV_STATUS_*`（LLM + ASR 共用） |
 | 浮动对话框 | `FloatingPanelDialogLayout.tsx` + `COMPACT_DIALOG_LAYOUT` | footer / body padding |
-| **主壳层 / 扁平浮层** | `apps/desktop/src/config/shellVisualTokens.ts` + `tokens.css` `--main-shell-*` / `--overlay-panel-*` | 双 accent、无 shadow 壳层串 |
+| **主壳层 / 扁平浮层** | `apps/desktop/src/config/shellVisualTokens.ts` + `tokens.css` `--main-shell-*` / `--overlay-panel-*` | 单 accent + 固定语义色、无 shadow 壳层串 |
 
 **禁止**：业务组件内复制 `rounded-md border border-notion-border bg-notion-bg` 等 ad-hoc 控件串；禁止 `bg-[#...]`；禁止 `text-[Npx]` 与 CSS 裸 `font-size: Npx`（用 `text-*` 工具类或 `var(--text-*)`；行内 `0.85em` 相对值除外）；**禁止**在壳层/浮层壳使用 `shadow-md` 及以上（须 `shadow-none` + `border-notion-border`）。
 
 ---
 
-## 主壳层与双 accent（Round 1+）
+## 主壳层与 accent（Round 1+）
 
 | Token / 常量 | 含义 |
 |--------------|------|
@@ -33,21 +33,24 @@
 | `--main-shell-sidebar-bg` | 侧栏、波形 tier 外壳、**minimap 条（R2 接线）** |
 | `--main-shell-border` | 壳层 hairline（侧栏右边线等） |
 | `--content-decoration-paper` | 仅内容装饰；**禁止**导航壳 |
-| `--accent-action` / `--accent-action-strong` | 语段选中 / 多选、CTA、进度、播放头（随 Office 主题色 remap） |
-| `--accent-edit` | **兼容别名** = `--accent-action` |
+| `--accent-action` / `--accent-action-strong` | 语段选中 / 多选、CTA、进度、播放头（**随 Office 主题色**） |
+| `--accent-edit` | **兼容别名** = `--accent-action`（新代码用 `accent-action`） |
+| `--zen-status-warn*` | 顶栏 warn、**手动转写 stage chip** — 固定暖橙，不随主题色 |
 | `FLAT_OVERLAY_PANEL_SHELL_CLASS` | 对话框 / 菜单 / Toast 壳：`rounded-lg border … shadow-none` |
 | `--shell-elevation-shadow: none` | 全局扁平 elevation 声明 |
 
-**组件落码**：Tailwind `accent-action` / `accent-action-strong`；`accent-edit` 仍可用（等于 action）。**禁止**在 `components/`、`pages/`、`styles/components/` 直引 `zen-saffron*`（守卫 **R8 warning**）。
+**Tailwind 别名（@theme）**：`accent-action-mid` → strong；`accent-action-surface` / `accent-action-border` → `zen-saffron-surface` / `zen-saffron-border`（随主题 remap）。
+
+**组件落码**：`accent-action` / `accent-action-strong`；**禁止**直引 `zen-saffron*`（守卫 **R8 warning**）。
 
 ### 语段 / 波形 fill
 
 | CSS 变量 | 语义 | 典型 mix |
 |----------|------|----------|
-| `--segment-fill-selected` | overlay 主选 | action 26% |
+| `--segment-fill-selected` | 列表主选 / overlay 单选 | action **28%** |
 | `--segment-fill-in-selection-waveform` | overlay 多选 | action 12% |
 | `--segment-fill-in-selection-list` | 列表多选行 | action 8% |
-| `--segment-fill-visited` | band 已播放 | action-strong 18% |
+| `--segment-fill-visited` | band 已播放 | action-strong **14%** |
 | `--segment-fill-idle` | band 未播放 | ink 11% |
 | `--zen-wf-progress-played` | WS 已播 peaks | action-strong 32% × progress 基色 |
 
