@@ -41,6 +41,12 @@ with zipfile.ZipFile(zip_path, "w", compression=zipfile.ZIP_DEFLATED) as zf:
         else:
             zf.write(path, arcname)
 
+repo_root = out_dir.parent
+try:
+    zip_display = zip_path.relative_to(repo_root).as_posix()
+except ValueError:
+    zip_display = zip_path.as_posix()
+
 print(f"platform_key={platform_key}")
-print(f"zip_path={zip_path.as_posix()}")
+print(f"zip_path={zip_display}")
 PY

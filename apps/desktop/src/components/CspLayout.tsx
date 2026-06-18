@@ -13,7 +13,7 @@ export function CspLayout<T extends ElementType = "div">({
   ref: forwardedRef,
   ...props
 }: CspLayoutProps<T> & { ref?: Ref<HTMLElement> }) {
-  const Tag = (as ?? "div") as ElementType;
+  const Tag: ElementType = as ?? "div";
   const localRef = useRef<HTMLElement | null>(null);
   useCspLayout(localRef, layout);
 

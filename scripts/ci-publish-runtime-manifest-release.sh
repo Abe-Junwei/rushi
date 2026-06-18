@@ -57,8 +57,21 @@ while IFS= read -r line; do
   esac
 done < <(bash "${ROOT}/scripts/package-sidecar-ota-zip.sh")
 
+PLATFORM_KEY="${PLATFORM_KEY//$'\r'/}"
+ZIP_PATH="${ZIP_PATH//$'\r'/}"
+
+if [[ -n "${ZIP_PATH}" && "${ZIP_PATH}" != /* && ! "${ZIP_PATH}" =~ ^[A-Za-z]:/ ]]; then
+  ZIP_PATH="${ROOT}/${ZIP_PATH}"
+fi
+
 if [[ -z "${PLATFORM_KEY}" || -z "${ZIP_PATH}" ]]; then
   echo "ERROR: failed to package sidecar OTA zip." >&2
+  exit 1
+fi
+
+if [[ ! -f "${ZIP_PATH}" ]]; then
+  echo "ERROR: packaged zip missing: ${ZIP_PATH}" >&2
+  ls -la "${ROOT}/dist/" 2>&1 || true
   exit 1
 fi
 

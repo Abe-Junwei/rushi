@@ -17,7 +17,7 @@ pub fn use_keyring_store() -> bool {
     }
     #[cfg(target_os = "macos")]
     {
-        return false;
+        false
     }
     #[cfg(not(target_os = "macos"))]
     {

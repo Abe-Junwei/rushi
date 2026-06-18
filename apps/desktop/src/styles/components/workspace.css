@@ -131,6 +131,10 @@
   caret-color: var(--accent-action-strong);
 }
 
+.segment-row-meta-column-fallback {
+  min-width: var(--segment-meta-width-min);
+}
+
 /* 语段行：主题 accent 选中 + 左缘指示条，无四周边框 */
 .workspace [data-seg-row].seg-row-selected {
   border-color: transparent;

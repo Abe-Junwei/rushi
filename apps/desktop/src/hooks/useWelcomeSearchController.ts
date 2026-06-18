@@ -251,7 +251,7 @@ export function useWelcomeSearchController(controller: ProjectControllerApi) {
       }
       if (e.key === "Enter" && activeIndex >= 0 && navItems[activeIndex]) {
         e.preventDefault();
-        activateNavItem(navItems[activeIndex]!);
+        activateNavItem(navItems[activeIndex]);
       }
     },
     [activeIndex, activateNavItem, closeSearch, cycleScope, moveActiveIndex, navItems, open],

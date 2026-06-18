@@ -1,5 +1,5 @@
 import { humanizeInvokeError } from "./humanizeInvokeError";
-import { pushActivityFeedItem, type ActivityFeedVariant } from "./activityFeed";
+import { pushActivityFeedItem } from "./activityFeed";
 
 export type ToastVariant = "info" | "warning" | "error" | "success";
 
@@ -156,7 +156,7 @@ export function showToast(input: {
     (variant === "success" || variant === "warning" || variant === "error")
   ) {
     pushActivityFeedItem({
-      variant: variant as ActivityFeedVariant,
+      variant,
       message,
       at: now,
       kind: "generic",

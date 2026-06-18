@@ -31,7 +31,7 @@ export function SegmentRowTimestampColumn({
       <CspLayout
         layout={{ width: metaWidth }}
         className={[
-          "shrink-0 touch-none select-none pt-2 pr-3 text-right",
+          "segment-row-meta-column-fallback shrink-0 touch-none select-none pt-2 pr-3 text-right",
           busy ? "cursor-not-allowed" : "cursor-cell",
         ].join(" ")}
         onPointerDown={(e) => onTimestampPointerDown?.(index, e)}

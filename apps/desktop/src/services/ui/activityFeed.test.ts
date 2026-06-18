@@ -91,7 +91,9 @@ describe("activityFeed", () => {
       action: { label: "打开", onClick: second },
     });
     expect(getActivityFeedSnapshot()).toHaveLength(1);
-    runActivityFeedAction(getActivityFeedSnapshot()[0]!.id);
+    const item = getActivityFeedSnapshot()[0];
+    expect(item).toBeDefined();
+    runActivityFeedAction(item.id);
     expect(first).not.toHaveBeenCalled();
     expect(second).toHaveBeenCalledTimes(1);
   });

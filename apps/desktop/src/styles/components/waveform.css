@@ -776,6 +776,11 @@
   background: var(--zen-wf-surface);
 }
 
+/** Release CSP fallback: keep tier scroll visible if nonce layout scope is blocked. */
+.waveform-tier-scroll-fallback {
+  min-height: var(--waveform-stage-height-fallback);
+}
+
 .waveform-peaks-stage [role="img"] canvas,
 .waveform-peaks-stage [role="img"] > div {
   background: transparent !important;

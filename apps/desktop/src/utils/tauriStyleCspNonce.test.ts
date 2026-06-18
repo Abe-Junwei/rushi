@@ -37,4 +37,15 @@ describe("readTauriStyleCspNonce", () => {
     expect(readTauriStyleCspNonce()).toBe("9876543210");
     style.remove();
   });
+
+  it("reads nonce from CSP meta content", () => {
+    const meta = document.createElement("meta");
+    meta.setAttribute("http-equiv", "Content-Security-Policy");
+    meta.setAttribute(
+      "content",
+      "default-src 'self'; style-src 'self' 'nonce-meta-nonce-42'",
+    );
+    document.head.appendChild(meta);
+    expect(readTauriStyleCspNonce()).toBe("meta-nonce-42");
+  });
 });

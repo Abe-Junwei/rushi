@@ -1,16 +1,23 @@
-import { describe, expect, it, afterEach } from "vitest";
+import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  bootstrapCspStyleNonce,
   clearAllCspScopeRulesForTests,
+  flushPendingCspScopeRules,
   readCspScopeRules,
   removeCspScopeRules,
   upsertCspScopeRules,
 } from "./cspNonceStyleRegistry";
 import { TAURI_STYLE_CSP_NONCE_PROBE_ID } from "./tauriStyleCspNonce";
 
+vi.mock("../config/env", () => ({
+  isTauriRuntime: () => true,
+}));
+
 describe("cspNonceStyleRegistry", () => {
   afterEach(() => {
     clearAllCspScopeRulesForTests();
     document.getElementById(TAURI_STYLE_CSP_NONCE_PROBE_ID)?.remove();
+    document.querySelector('meta[http-equiv="Content-Security-Policy"]')?.remove();
   });
 
   it("upserts and reads scope rules", () => {
@@ -34,5 +41,40 @@ describe("cspNonceStyleRegistry", () => {
     upsertCspScopeRules("nonce-scope", ".x { margin: 0; }");
     const el = document.getElementById("rushi-csp-scope-nonce-scope");
     expect(el?.getAttribute("nonce")).toBe("abc123nonce");
+  });
+
+  it("queues scope rules until nonce is available in Tauri runtime", () => {
+    upsertCspScopeRules("pending-scope", ".pending { width: 10px; }");
+    expect(document.getElementById("rushi-csp-scope-pending-scope")).toBeNull();
+    expect(readCspScopeRules("pending-scope")).toBe(".pending { width: 10px; }");
+
+    const probe = document.createElement("style");
+    probe.id = TAURI_STYLE_CSP_NONCE_PROBE_ID;
+    probe.setAttribute("nonce", "runtime-nonce");
+    document.head.appendChild(probe);
+
+    flushPendingCspScopeRules();
+    const el = document.getElementById("rushi-csp-scope-pending-scope");
+    expect(el?.getAttribute("nonce")).toBe("runtime-nonce");
+    expect(el?.textContent).toBe(".pending { width: 10px; }");
+  });
+
+  it("bootstrap waits for nonce then flushes pending scopes", async () => {
+    upsertCspScopeRules("boot-scope", ".boot { height: 1px; }");
+    expect(document.getElementById("rushi-csp-scope-boot-scope")).toBeNull();
+
+    const bootstrapPromise = bootstrapCspStyleNonce({ maxWaitMs: 500 });
+    await new Promise<void>((resolve) => {
+      requestAnimationFrame(() => resolve());
+    });
+
+    const probe = document.createElement("style");
+    probe.id = TAURI_STYLE_CSP_NONCE_PROBE_ID;
+    probe.setAttribute("nonce", "boot-nonce");
+    document.head.appendChild(probe);
+
+    await expect(bootstrapPromise).resolves.toBe(true);
+    const el = document.getElementById("rushi-csp-scope-boot-scope");
+    expect(el?.getAttribute("nonce")).toBe("boot-nonce");
   });
 });

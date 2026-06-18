@@ -76,7 +76,7 @@ describe("runActivityFeedItemAction", () => {
     });
     const feedItem = getActivityFeedSnapshot()[0];
     expect(feedItem).toBeDefined();
-    await runActivityFeedItemAction(feedItem!, {
+    await runActivityFeedItemAction(feedItem, {
       currentProjectId: null,
       loadProject: vi.fn(() => Promise.resolve()),
       openFile: vi.fn(() => Promise.resolve()),

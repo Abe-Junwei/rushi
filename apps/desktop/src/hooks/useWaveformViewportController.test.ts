@@ -120,8 +120,8 @@ describe("useWaveformViewportController", () => {
     await triggerViewportGrow(args, fireRo, 1600);
 
     expect(args.reRender).toHaveBeenCalledTimes(1);
-    expect(readCspLayoutRulesForElement(args.stickyShellRef.current!)).toContain("width: 1600px");
-    expect(readCspLayoutRulesForElement(args.stretchShellRef.current!)).toContain("scaleX(2)");
+    expect(readCspLayoutRulesForElement(args.stickyShellRef.current)).toContain("width: 1600px");
+    expect(readCspLayoutRulesForElement(args.stretchShellRef.current)).toContain("scaleX(2)");
   });
 
   it("clears stretch transform after render complete", async () => {
@@ -130,14 +130,14 @@ describe("useWaveformViewportController", () => {
 
     await triggerViewportGrow(args, fireRo, 1600);
 
-    expect(readCspLayoutRulesForElement(args.stretchShellRef.current!)).toContain("scaleX(2)");
+    expect(readCspLayoutRulesForElement(args.stretchShellRef.current)).toContain("scaleX(2)");
 
     act(() => {
       args.afterRenderHandlers.forEach((handler) => handler());
     });
     await flushLayout();
 
-    expect(readCspLayoutRulesForElement(args.stretchShellRef.current!)).toBeUndefined();
+    expect(readCspLayoutRulesForElement(args.stretchShellRef.current)).toBeUndefined();
   });
 
   it("re-renders when tier ResizeObserver fires", async () => {
@@ -155,7 +155,7 @@ describe("useWaveformViewportController", () => {
 
     await triggerViewportGrow(args, fireRo, 1600);
 
-    expect(readCspLayoutRulesForElement(args.tierScrollRef.current!)).toContain(
+    expect(readCspLayoutRulesForElement(args.tierScrollRef.current)).toContain(
       `${WAVEFORM_TIER_VIEWPORT_WIDTH_VAR}: 1600px`,
     );
   });
@@ -191,8 +191,8 @@ describe("useWaveformViewportController", () => {
 
     expect(readCspLayoutRulesForElement(timelineShell)).toContain("width: 1680px");
     expect(readCspLayoutRulesForElement(peaksStageShell)).toContain("width: 1680px");
-    expect(readCspLayoutRulesForElement(args.stickyShellRef.current!)).toContain("width: 1280px");
-    expect(readCspLayoutRulesForElement(args.tierScrollRef.current!)).toContain(
+    expect(readCspLayoutRulesForElement(args.stickyShellRef.current)).toContain("width: 1280px");
+    expect(readCspLayoutRulesForElement(args.tierScrollRef.current)).toContain(
       `${WAVEFORM_TIER_VIEWPORT_WIDTH_VAR}: 1280px`,
     );
   });
@@ -269,7 +269,7 @@ describe("useWaveformViewportController", () => {
     expect(refitFitAllPxPerSec).toHaveBeenCalledWith(1920);
     expect((args.wsRef.current as { zoom: ReturnType<typeof vi.fn> }).zoom).toHaveBeenCalledWith(0.145);
     expect(onFitAllPxPerSecRefit).toHaveBeenCalledWith(0.145);
-    expect(readCspLayoutRulesForElement(args.stretchShellRef.current!)).toContain("scaleX(1.6)");
+    expect(readCspLayoutRulesForElement(args.stretchShellRef.current)).toContain("scaleX(1.6)");
     expect(readCspLayoutRulesForElement(timelineShell)).toBeDefined();
     expect(readCspLayoutRulesForElement(peaksStageShell)).toBeDefined();
     expect(args.reRender).not.toHaveBeenCalled();
@@ -336,7 +336,7 @@ describe("useWaveformViewportController", () => {
 
     expect(args.reRender).toHaveBeenCalledTimes(1);
     expect(readCspLayoutRulesForElement(stickyShell)).toContain("width: 1600px");
-    expect(readCspLayoutRulesForElement(args.tierScrollRef.current!)).toContain(
+    expect(readCspLayoutRulesForElement(args.tierScrollRef.current)).toContain(
       `${WAVEFORM_TIER_VIEWPORT_WIDTH_VAR}: 1600px`,
     );
   });

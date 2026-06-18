@@ -51,7 +51,7 @@ export function EditorWaveformPane({
       <CspLayout
         ref={tx.tierScrollRef}
         layout={{ height: waveformStageHeightPx }}
-        className="relative w-full shrink-0 overflow-x-auto overflow-y-hidden bg-notion-sidebar [overflow-anchor:none]"
+        className="relative w-full shrink-0 overflow-x-auto overflow-y-hidden bg-notion-sidebar waveform-tier-scroll-fallback [overflow-anchor:none]"
       >
         {centerStatusLabel ? (
           <div
