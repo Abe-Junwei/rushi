@@ -1,19 +1,26 @@
+import { TRANSCRIBE_PREFLIGHT_TYPO as T } from "./transcribePreflightTypography";
+
 type Props = {
   lines: string[];
+  tone?: "dialog" | "progress";
 };
 
 /** Shared ASR-VOC-1 vocabulary preflight copy (start dialog + in-progress banner). */
-export function TranscribeVocabularyPreflightLines({ lines }: Props) {
+export function TranscribeVocabularyPreflightLines({ lines, tone = "dialog" }: Props) {
   if (lines.length === 0) return null;
 
+  const align = tone === "progress" ? " text-center" : "";
+  const titleClass = tone === "progress" ? T.progressSectionTitle : T.sectionTitle;
+  const lineClass = T.body;
+
   return (
-    <div className="flex w-full flex-col gap-1.5 rounded-md bg-notion-sidebar/80 px-3 py-2 text-left">
-      <p className="text-xs font-medium text-notion-text">本次术语偏置</p>
-      <ul className="list-disc space-y-1 pl-4 text-xs leading-relaxed text-notion-text-muted">
-        {lines.map((line) => (
-          <li key={line}>{line}</li>
-        ))}
-      </ul>
+    <div className={[T.sectionDivider, T.captionStack, align].filter(Boolean).join(" ")}>
+      <p className={titleClass}>术语偏置</p>
+      {lines.map((line) => (
+        <p key={line} className={lineClass}>
+          {line}
+        </p>
+      ))}
     </div>
   );
 }

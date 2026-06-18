@@ -101,6 +101,7 @@ export function ProjectPanel() {
       busyReason={c.busyReason}
       busyElapsedSec={busyElapsedSec}
       transcribeProgress={c.transcribeProgress}
+      transcribeSource={c.transcribeSource}
       transcribeVocabularyPreflightLines={c.transcribeVocabularyPreflightLines}
       transcribeCancelling={c.transcribeCancelling}
       onCancelTranscribe={cancelTranscribe}

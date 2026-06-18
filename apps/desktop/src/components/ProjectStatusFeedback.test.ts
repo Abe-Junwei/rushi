@@ -6,15 +6,17 @@ import { TranscribeDiagBanner } from "./ProjectStatusFeedback";
 import { busyOverlayCopy } from "./projectStatusFeedbackCopy";
 
 describe("ProjectBusyOverlay transcribe copy (R3t-B)", () => {
-  it("shows transcribe-specific title and hint", () => {
+  it("defaults to local transcribe copy without sidecar jargon", () => {
     const copy = busyOverlayCopy("transcribe", null);
-    expect(copy.title).toContain("自动转录");
-    expect(copy.hint).toMatch(/分段处理|语段/);
+    expect(copy.title).toContain("本机转写");
+    expect(copy.lead).toMatch(/逐步出现/);
+    expect(copy.lead).not.toMatch(/侧车/);
   });
 
   it("shows save-specific copy", () => {
     const copy = busyOverlayCopy("save" satisfies BusyReason, null);
-    expect(copy.title).toContain("SQLite");
+    expect(copy.title).toBe("正在保存");
+    expect(copy.lead).toContain("SQLite");
   });
 });
 

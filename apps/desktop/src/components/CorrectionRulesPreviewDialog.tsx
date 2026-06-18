@@ -26,8 +26,32 @@ import {
   resolveCorrectionRulesDialogTitle,
 } from "./correctionRulesPreviewLayout";
 
-/** 预览区高度测算修正后 bump，丢弃偏矮的旧 phase 记忆。 */
-const CORRECTION_RULES_PANEL_LAYOUT_REV = 5;
+/** 布局 / persist 失效基线；动态项见 resolveCorrectionRulesLayoutRev。 */
+const CORRECTION_RULES_LAYOUT_REV_BASE = 6;
+
+function resolveCorrectionRulesLayoutRev(input: {
+  phase: CorrectionRulesDialogState["phase"];
+  previewTotalCount: number;
+  hintsExpanded: boolean;
+  lexiconExpanded: boolean;
+  lexiconHealthLineCount: number;
+  hasReadOnlyHints: boolean;
+  hasStableConflictMessage: boolean;
+  postTranscribe: boolean;
+  readOnlyHintCount: number;
+}): number {
+  let rev = CORRECTION_RULES_LAYOUT_REV_BASE;
+  rev +=
+    input.phase === "loading" ? 10 : input.phase === "preview" ? 20 : input.phase === "empty" ? 30 : 0;
+  rev += input.previewTotalCount;
+  if (input.hintsExpanded) rev += 100;
+  if (input.lexiconExpanded) rev += 200 + input.lexiconHealthLineCount;
+  if (input.hasReadOnlyHints) rev += 400;
+  if (input.hasStableConflictMessage) rev += 800;
+  if (input.postTranscribe) rev += 1600;
+  rev += input.readOnlyHintCount;
+  return rev;
+}
 
 type Props = {
   state: CorrectionRulesDialogState;
@@ -102,6 +126,25 @@ export function CorrectionRulesPreviewDialog({
     previewTotalCount: totalCount,
   });
 
+  const readOnlyHintCount =
+    state.phase === "empty"
+      ? state.readOnlyLearningHints.length + state.readOnlyTranscribeHints.length
+      : preview != null
+        ? preview.readOnlyLearningHints.length + preview.readOnlyTranscribeHints.length
+        : 0;
+
+  const layoutRev = resolveCorrectionRulesLayoutRev({
+    phase: state.phase,
+    previewTotalCount: totalCount,
+    hintsExpanded,
+    lexiconExpanded,
+    lexiconHealthLineCount,
+    hasReadOnlyHints,
+    hasStableConflictMessage: Boolean(stableConflictMessage),
+    postTranscribe,
+    readOnlyHintCount,
+  });
+
   const measuredFit = bodyHeight != null ? resolveMeasuredPanelFitHeight(bodyHeight) : null;
   const contentFitHeight = mergeContentFitHeights(estimatedFit, measuredFit);
 
@@ -125,7 +168,7 @@ export function CorrectionRulesPreviewDialog({
         }}
         contentFitHeight={contentFitHeight}
         persistPhaseKey={persistPhaseKey}
-        layoutRev={CORRECTION_RULES_PANEL_LAYOUT_REV}
+        layoutRev={layoutRev}
         panelZIndex={110}
         persistState
         onClose={handleClose}

@@ -1,5 +1,5 @@
 import { createPortal } from "react-dom";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../config/controlStyles";
 import type { DocxExportMode } from "../tauri/exportDocxApi";
 import type { SegmentDto } from "../tauri/projectApi";
@@ -30,6 +30,36 @@ const DEFAULT_WIDTH = 440;
 const DEFAULT_BODY_HEIGHT = 528;
 const MIN_SIZE = { width: 360, height: 420 } as const;
 const PANEL_MARGIN = 24;
+/** 布局变更基线；内容 toggles 见 resolveDeliveryExportLayoutRev。 */
+const DELIVERY_EXPORT_LAYOUT_REV_BASE = 1;
+
+function resolveDeliveryExportLayoutRev(input: {
+  mode: DocxExportMode;
+  includeProjectMetadata: boolean;
+  metadataLineCount: number;
+  polishAvailable: boolean;
+  llmPolish: boolean;
+  showPolishPreviewSection: boolean;
+  polishPreviewLoading: boolean;
+  hasPolishPreview: boolean;
+  hasPolishPreviewError: boolean;
+  hasPolishBlockReason: boolean;
+  exportBlockedByPolish: boolean;
+  includeAppendix: boolean;
+}): number {
+  let rev = DELIVERY_EXPORT_LAYOUT_REV_BASE;
+  rev += input.mode === "verbatim" ? 0 : input.mode === "lecture" ? 1 : 2;
+  if (input.includeProjectMetadata) rev += 10 + input.metadataLineCount;
+  if (input.polishAvailable && input.llmPolish) rev += 100;
+  if (input.showPolishPreviewSection) rev += 200;
+  if (input.polishPreviewLoading) rev += 400;
+  if (input.hasPolishPreview) rev += 800;
+  if (input.hasPolishPreviewError) rev += 1600;
+  if (input.hasPolishBlockReason) rev += 3200;
+  if (input.exportBlockedByPolish) rev += 6400;
+  if (input.includeAppendix) rev += 128;
+  return rev;
+}
 
 export type DeliveryExportDialogProps = {
   open: boolean;
@@ -102,6 +132,38 @@ export function DeliveryExportDialog({
     if (!polishAvailable) setLlmPolish(false);
   }, [polishAvailable]);
 
+  const layoutRev = useMemo(
+    () =>
+      resolveDeliveryExportLayoutRev({
+        mode,
+        includeProjectMetadata,
+        metadataLineCount: metadataPreviewLines.length,
+        polishAvailable,
+        llmPolish,
+        showPolishPreviewSection: polishPreview.showPreviewSection,
+        polishPreviewLoading: polishPreview.previewLoading,
+        hasPolishPreview: polishPreview.preview != null,
+        hasPolishPreviewError: Boolean(polishPreview.previewError),
+        hasPolishBlockReason: Boolean(exportPolishBlockReason),
+        exportBlockedByPolish,
+        includeAppendix,
+      }),
+    [
+      mode,
+      includeProjectMetadata,
+      metadataPreviewLines.length,
+      polishAvailable,
+      llmPolish,
+      polishPreview.showPreviewSection,
+      polishPreview.previewLoading,
+      polishPreview.preview,
+      polishPreview.previewError,
+      exportPolishBlockReason,
+      exportBlockedByPolish,
+      includeAppendix,
+    ],
+  );
+
   if (!open || typeof document === "undefined") return null;
 
   const handleClose = () => {
@@ -129,6 +191,7 @@ export function DeliveryExportDialog({
         defaultSize={{ width: DEFAULT_WIDTH, height: defaultPanelHeight }}
         contentFitHeight={contentFitHeight}
         persistPhaseKey="default"
+        layoutRev={layoutRev}
         panelZIndex={110}
         persistState
         onClose={handleClose}

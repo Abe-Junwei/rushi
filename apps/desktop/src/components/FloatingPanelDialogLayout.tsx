@@ -6,9 +6,9 @@ export const FLOATING_PANEL_DIALOG_BODY_PADDING_CLASS = "px-5 pt-3";
 /** 无独立页脚时，正文区底边与左右同为 20px（Tailwind pb-5 / px-5）。 */
 export const FLOATING_PANEL_DIALOG_BODY_SOLO_BOTTOM_CLASS = "pb-5";
 
-/** 可拖拽 compactDialog 页脚：分隔线 + 与左右对齐的底边距（按钮用 CONTROL_BTN_* h-8）。 */
+/** 可拖拽 compactDialog 页脚：负边距抵消 root px-5，分隔线与面板正文同宽。 */
 export const FLOATING_PANEL_DIALOG_FOOTER_CLASS =
-  "mt-3 flex shrink-0 flex-wrap items-center gap-2 border-t border-notion-divider pt-3 pb-5";
+  "-mx-5 mt-3 flex shrink-0 flex-wrap items-center gap-2 self-stretch border-t border-notion-divider px-5 pt-3 pb-5";
 
 const SCROLL_CLASS = "floating-panel-body-scroll min-h-0 flex-1 overflow-y-auto overflow-x-hidden";
 const FOOTER_BASE = FLOATING_PANEL_DIALOG_FOOTER_CLASS;
@@ -77,6 +77,8 @@ type FooterProps = {
   children: ReactNode;
   className?: string;
   justify?: "between" | "end" | "start";
+  /** 贴面板壳底边（无 root px-5 父级）时使用，分隔线通栏。 */
+  fullBleed?: boolean;
 };
 
 /** 底部按钮行：缩放时保持可见，不被上方内容遮挡。 */
@@ -84,10 +86,14 @@ export function FloatingPanelDialogFooter({
   children,
   className,
   justify = "between",
+  fullBleed = false,
 }: FooterProps) {
   const justifyClass =
     justify === "end" ? "justify-end" : justify === "start" ? "justify-start" : "justify-between";
+  const shellClass = fullBleed
+    ? "mt-0 flex w-full shrink-0 flex-wrap items-center gap-2 border-t border-notion-divider px-5 pt-3 pb-5"
+    : FOOTER_BASE;
   return (
-    <div className={[FOOTER_BASE, justifyClass, className].filter(Boolean).join(" ")}>{children}</div>
+    <div className={[shellClass, justifyClass, className].filter(Boolean).join(" ")}>{children}</div>
   );
 }

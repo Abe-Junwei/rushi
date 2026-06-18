@@ -1,16 +1,18 @@
-import { useMemo } from "react";
 import { CONTROL_BTN_LINK, CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../config/controlStyles";
-import { PANEL_TYPOGRAPHY } from "../config/typography";
 import type { TranscribeSource } from "../services/stt/transcribeSource";
 import { resolveTranscribeSourceDescription } from "../services/stt/transcribeSourcePresentation";
 import { TranscribeSourceSwitch } from "./editor/TranscribeSourceSwitch";
 import { CompactFloatingDialog } from "./CompactFloatingDialog";
 import { TranscribeVocabularyPreflightLines } from "./TranscribeVocabularyPreflightLines";
 import { FloatingPanelDialogHeader } from "./FloatingPanelDialogLayout";
+import { TRANSCRIBE_PREFLIGHT_TYPO as T } from "./transcribePreflightTypography";
 
 const PANEL_ID = "auto-transcribe-start-v1";
 const DEFAULT_WIDTH = 420;
-const FALLBACK_HEIGHT = 300;
+/** 首帧兜底；实测高度由 ResizeObserver 覆盖。 */
+const FALLBACK_HEIGHT = 200;
+/** 布局变更时 bump，丢弃旧 persist 高度记忆。 */
+const LAYOUT_REV_BASE = 4;
 
 type Props = {
   open: boolean;
@@ -56,18 +58,16 @@ export function AutoTranscribeStartDialog({
   const sourceDescription = resolveTranscribeSourceDescription(source, { onlineReady });
   const confirmDisabled = busy || (source === "online" && !onlineReady);
 
-  const estimatedFitHeight = useMemo(() => {
-    let height = FALLBACK_HEIGHT;
-    if (hasExistingSegmentText) height += 44;
-    height += vocabularyLines.length * 28;
-    if (showOpenGlossaryLink && vocabularyLines.length > 0) height += 28;
-    return height;
-  }, [hasExistingSegmentText, showOpenGlossaryLink, vocabularyLines.length]);
+  const primaryLead = hasExistingSegmentText
+    ? `覆盖 ${segmentCount} 条语段并重新转写`
+    : "识别当前音频并写入语段";
 
   const layoutRev =
-    (hasExistingSegmentText ? 1 : 0) +
+    LAYOUT_REV_BASE +
+    (source === "online" ? 1 : 0) +
+    (hasExistingSegmentText ? 2 : 0) +
     vocabularyLines.length +
-    (showOpenGlossaryLink && vocabularyLines.length > 0 ? 4 : 0);
+    (showOpenGlossaryLink && vocabularyLines.length > 0 ? 8 : 0);
 
   return (
     <CompactFloatingDialog
@@ -76,10 +76,9 @@ export function AutoTranscribeStartDialog({
       open={open}
       onClose={handleClose}
       fallbackHeight={FALLBACK_HEIGHT}
-      estimatedFitHeight={estimatedFitHeight}
       layoutRev={layoutRev}
       defaultWidth={DEFAULT_WIDTH}
-      bounds={{ minWidth: 320, minHeight: 180, maxWidthCap: 480 }}
+      bounds={{ minWidth: 320, minHeight: 160, maxWidthCap: 480 }}
       persistState
       footer={
         <>
@@ -93,46 +92,45 @@ export function AutoTranscribeStartDialog({
       }
       footerJustify="end"
     >
-      <FloatingPanelDialogHeader>
-        <div className="flex items-center justify-between gap-3">
-          <span className="text-xs font-medium leading-none text-notion-text">转写来源</span>
-          <TranscribeSourceSwitch
-            compact
-            source={source}
-            onlineReady={onlineReady}
-            disabled={busy}
-            onSelectLocal={onSelectLocal}
-            onSelectOnline={onSelectOnline}
-          />
+      <FloatingPanelDialogHeader className="gap-0">
+        <div className={T.dialogStack}>
+          <div className={T.sourceSwitchRow}>
+            <TranscribeSourceSwitch
+              compact
+              source={source}
+              onlineReady={onlineReady}
+              disabled={busy}
+              onSelectLocal={onSelectLocal}
+              onSelectOnline={onSelectOnline}
+            />
+          </div>
+
+          <div className={T.dialogSection}>
+            <p className={T.primary}>{primaryLead}</p>
+            <div className={T.captionStack}>
+              <p className={T.body}>{sourceDescription}</p>
+              {hasExistingSegmentText ? (
+                <p className={T.warning}>未保存的手改会丢失，建议先保存或导出。</p>
+              ) : null}
+            </div>
+          </div>
+
+          {vocabularyLines.length > 0 ? (
+            <>
+              <TranscribeVocabularyPreflightLines lines={vocabularyLines} />
+              {showOpenGlossaryLink && onOpenGlossary ? (
+                <button
+                  type="button"
+                  className={`${CONTROL_BTN_LINK} ${T.link}`}
+                  disabled={busy}
+                  onClick={onOpenGlossary}
+                >
+                  前往热词与记忆…
+                </button>
+              ) : null}
+            </>
+          ) : null}
         </div>
-        <p className={`${PANEL_TYPOGRAPHY.dialogBody} text-notion-text-muted`}>{sourceDescription}</p>
-
-        {hasExistingSegmentText ? (
-          <p className={PANEL_TYPOGRAPHY.dialogBody}>
-            已有 {segmentCount} 条语段。开始将<strong className="font-medium">覆盖</strong>
-            全部正文，未保存手改会丢失，建议先保存或导出。
-          </p>
-        ) : (
-          <p className={`${PANEL_TYPOGRAPHY.dialogBody} text-notion-text-muted`}>
-            识别当前音频并写入语段。
-          </p>
-        )}
-
-        {vocabularyLines.length > 0 ? (
-          <>
-            <TranscribeVocabularyPreflightLines lines={vocabularyLines} />
-            {showOpenGlossaryLink && onOpenGlossary ? (
-              <button
-                type="button"
-                className={`${CONTROL_BTN_LINK} text-xs font-medium text-zen-saffron`}
-                disabled={busy}
-                onClick={onOpenGlossary}
-              >
-                前往热词与记忆…
-              </button>
-            ) : null}
-          </>
-        ) : null}
       </FloatingPanelDialogHeader>
     </CompactFloatingDialog>
   );

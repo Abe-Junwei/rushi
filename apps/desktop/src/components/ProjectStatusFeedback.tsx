@@ -7,7 +7,8 @@ import { TriangleAlert } from "lucide-react";
 import { CONTROL_BTN_DANGER } from "../config/controlStyles";
 import { LUCIDE_ICON_SIZE_LG, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 import { BlockingProgressCard } from "./BlockingProgressCard";
-import { busyOverlayCopy } from "./projectStatusFeedbackCopy";
+import { busyOverlayCopy, transcribeCancelStoppingLabel } from "./projectStatusFeedbackCopy";
+import type { TranscribeSource } from "../services/stt/transcribeSource";
 
 export function ProjectBusyOverlay({
   reason,
@@ -27,7 +28,8 @@ export function ProjectBusyOverlay({
       <BlockingProgressCard
         variant="blocking"
         title={busyCopy.title}
-        hint={busyCopy.hint}
+        lead={busyCopy.lead}
+        detail={busyCopy.detail}
         elapsedSec={elapsedSec}
       />
     </div>,
@@ -39,17 +41,19 @@ export function ProjectBusyOverlay({
 function TranscribePreviewBanner({
   elapsedSec,
   transcribeProgress = null,
+  transcribeSource = "local",
   vocabularyLines = [],
   cancelling = false,
   onCancel,
 }: {
   elapsedSec: number;
   transcribeProgress?: TranscribeProgress | null;
+  transcribeSource?: TranscribeSource;
   vocabularyLines?: string[];
   cancelling?: boolean;
   onCancel?: () => void;
 }) {
-  const busyCopy = busyOverlayCopy("transcribe", transcribeProgress);
+  const busyCopy = busyOverlayCopy("transcribe", transcribeProgress, { transcribeSource });
 
   if (typeof document === "undefined") return null;
 
@@ -57,12 +61,15 @@ function TranscribePreviewBanner({
     <div className="workspace">
       <BlockingProgressCard
         variant="banner"
+        density="compact"
         title={busyCopy.title}
-        hint={busyCopy.hint}
+        lead={busyCopy.lead}
+        detail={busyCopy.detail}
         elapsedSec={elapsedSec}
         vocabularyLines={vocabularyLines}
         onCancel={onCancel}
         cancelling={cancelling}
+        cancellingLabel={transcribeCancelStoppingLabel(transcribeSource)}
       />
     </div>,
     document.body,
@@ -129,6 +136,7 @@ export function TranscribeWorkspaceBanners({
   busyReason,
   busyElapsedSec,
   transcribeProgress,
+  transcribeSource = "local",
   transcribeVocabularyPreflightLines = [],
   transcribeCancelling,
   onCancelTranscribe,
@@ -142,6 +150,7 @@ export function TranscribeWorkspaceBanners({
   busyReason: BusyReason | null;
   busyElapsedSec: number;
   transcribeProgress?: TranscribeProgress | null;
+  transcribeSource?: TranscribeSource;
   transcribeVocabularyPreflightLines?: string[];
   transcribeCancelling?: boolean;
   onCancelTranscribe: () => void;
@@ -165,6 +174,7 @@ export function TranscribeWorkspaceBanners({
         <TranscribePreviewBanner
           elapsedSec={busyElapsedSec}
           transcribeProgress={transcribeProgress}
+          transcribeSource={transcribeSource}
           vocabularyLines={transcribeVocabularyPreflightLines}
           cancelling={transcribeCancelling}
           onCancel={onCancelTranscribe}

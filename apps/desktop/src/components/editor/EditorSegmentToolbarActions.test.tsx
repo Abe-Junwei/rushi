@@ -40,7 +40,7 @@ describe("EditorSegmentTranscribeActions", () => {
     expect(container.querySelectorAll(".waveform-toolbar-transcribe > button").length).toBe(0);
   });
 
-  it("keeps stop button visible while transcribing in compact layout", () => {
+  it("keeps compact edit menu while transcribing; stop lives in progress panel", () => {
     render(
       <EditorSegmentTranscribeActions
         controller={makeController({ busy: true, busyReason: "transcribe" })}
@@ -48,8 +48,8 @@ describe("EditorSegmentTranscribeActions", () => {
       />,
     );
 
-    expect(screen.getByRole("button", { name: /停止转写/ })).toBeTruthy();
-    expect(screen.queryByLabelText("编辑菜单")).toBeNull();
+    expect(screen.getByLabelText("编辑菜单")).toBeTruthy();
+    expect(screen.queryByRole("button", { name: /停止转写/ })).toBeNull();
   });
 
   it("opens find replace from compact menu", () => {

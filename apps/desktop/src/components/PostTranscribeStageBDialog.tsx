@@ -42,6 +42,40 @@ function resolveStageBDialogTitle(state: PostTranscribeStageBDialogState): strin
   return "智能改稿";
 }
 
+/** 阶段 / hint / 预览规模变化时 bump，触发 CompactFloatingDialog 重新测高。 */
+function resolveStageBLayoutRev(state: PostTranscribeStageBDialogState): number {
+  const BASE = 2;
+  if (state.phase === "closed") return BASE;
+
+  let rev = BASE;
+  switch (state.phase) {
+    case "consent":
+      rev += 100;
+      break;
+    case "loading":
+      rev += 200;
+      break;
+    case "empty":
+      rev += 300;
+      break;
+    case "preview":
+      rev += 400 + state.changes.length;
+      if (state.provider) rev += 4;
+      break;
+    default:
+      break;
+  }
+
+  if (state.pendingStageAHint) rev += 1;
+  if (
+    (state.phase === "preview" || state.phase === "empty") &&
+    state.packTruncationHint
+  ) {
+    rev += 2;
+  }
+  return rev;
+}
+
 type Props = {
   state: PostTranscribeStageBDialogState;
   busy: boolean;
@@ -94,6 +128,7 @@ export function PostTranscribeStageBDialog({
           : undefined;
 
   const persistPhaseKey = state.phase;
+  const layoutRev = resolveStageBLayoutRev(state);
 
   const handleDismiss = () => {
     onCancel();
@@ -163,7 +198,7 @@ export function PostTranscribeStageBDialog({
       maxWidth={panelBounds.maxWidth}
       maxHeight={panelBounds.maxHeight}
       persistPhaseKey={persistPhaseKey}
-      layoutRev={preview ? preview.changes.length : pendingHint ? 1 : 0}
+      layoutRev={layoutRev}
       panelZIndex={111}
       persistState
       footer={footer}

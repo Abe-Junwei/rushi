@@ -1,8 +1,8 @@
 import { useMemo } from "react";
 import { Check, CircleAlert } from "lucide-react";
 import { CONTROL_BTN_LINK, CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../config/controlStyles";
+import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { CompactFloatingDialog } from "./CompactFloatingDialog";
-import { FloatingPanelDialogHeader } from "./FloatingPanelDialogLayout";
 import {
   buildDeliveryFinalChecklist,
   deliveryFinalChecklistBlockingReason,
@@ -13,8 +13,61 @@ import type { SegmentDto } from "../tauri/projectApi";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
 const PANEL_ID = "delivery-mode-v1";
-const DEFAULT_WIDTH = 420;
-const FALLBACK_HEIGHT = 420;
+const DEFAULT_WIDTH = 400;
+/** 首帧兜底；实测高度由 ResizeObserver 覆盖。 */
+const FALLBACK_HEIGHT = 280;
+/** 布局变更时 bump base，丢弃旧 persist 高度记忆。 */
+const LAYOUT_REV_BASE = 3;
+
+const INTRO_CLASS = `${PANEL_TYPOGRAPHY.dialogBody} m-0 leading-snug text-notion-text-muted`;
+const SECTION_LABEL_CLASS = "m-0 text-label font-medium leading-snug text-notion-text-muted";
+const CARD_CLASS = "flex flex-col gap-0.5 rounded-md bg-notion-sidebar/50 px-2.5 py-1.5";
+const CARD_TITLE_CLASS = "m-0 text-body font-medium leading-snug text-notion-text";
+const CARD_BODY_CLASS = "m-0 text-body leading-snug text-notion-text-muted";
+const ACTION_LINK_CLASS = `${CONTROL_BTN_LINK} self-start text-label leading-snug text-zen-saffron hover:text-zen-saffron-mid hover:underline`;
+const ACTION_UNAVAILABLE_LABEL_CLASS = "m-0 text-label leading-snug text-notion-text-muted";
+const ACTION_UNAVAILABLE_REASON_CLASS = "m-0 text-label leading-snug text-notion-text-light";
+
+function DeliveryPrepAction({
+  label,
+  available,
+  unavailableReason,
+  onClick,
+}: {
+  label: string;
+  available: boolean;
+  unavailableReason: string | null;
+  onClick: () => void;
+}) {
+  if (!available) {
+    return (
+      <div className="flex flex-col gap-0.5 self-start">
+        <p className={ACTION_UNAVAILABLE_LABEL_CLASS}>{label}</p>
+        {unavailableReason ? (
+          <p className={ACTION_UNAVAILABLE_REASON_CLASS} role="status">
+            {unavailableReason}
+          </p>
+        ) : null}
+      </div>
+    );
+  }
+
+  return (
+    <button type="button" className={ACTION_LINK_CLASS} onClick={onClick}>
+      {label}
+    </button>
+  );
+}
+
+function resolvePrepActionUnavailableReason(
+  available: boolean,
+  blockReason: string | null,
+  busy: boolean,
+): string | null {
+  if (available) return null;
+  if (busy) return "处理中，请稍候";
+  return blockReason ?? "暂不可用";
+}
 
 type Props = {
   open: boolean;
@@ -61,6 +114,42 @@ export function DeliveryModeDialog({
   const rulesStep = DELIVERY_MODE_PREP_STEPS.find((s) => s.id === "rules");
   const stageBStep = DELIVERY_MODE_PREP_STEPS.find((s) => s.id === "stage_b");
 
+  const rulesUnavailableReason = resolvePrepActionUnavailableReason(
+    canApplyCorrectionRules,
+    correctionRulesBlockReason,
+    busy,
+  );
+  const stageBUnavailableReason = resolvePrepActionUnavailableReason(
+    canOfferPostTranscribeStageB,
+    postTranscribeStageBBlockReason,
+    busy,
+  );
+
+  const layoutRev = useMemo(() => {
+    let rev = LAYOUT_REV_BASE;
+    rev += items.length;
+    rev += items.filter((item) => item.hint).length * 2;
+    if (!ready && blockReason) rev += 4;
+    if (!busy && !canApplyCorrectionRules) {
+      rev += 8;
+      if (rulesUnavailableReason) rev += 1;
+    }
+    if (!busy && !canOfferPostTranscribeStageB) {
+      rev += 16;
+      if (stageBUnavailableReason) rev += 1;
+    }
+    return rev;
+  }, [
+    items,
+    ready,
+    blockReason,
+    busy,
+    canApplyCorrectionRules,
+    canOfferPostTranscribeStageB,
+    rulesUnavailableReason,
+    stageBUnavailableReason,
+  ]);
+
   return (
     <CompactFloatingDialog
       id={PANEL_ID}
@@ -70,8 +159,9 @@ export function DeliveryModeDialog({
         if (!busy) onClose();
       }}
       fallbackHeight={FALLBACK_HEIGHT}
+      layoutRev={layoutRev}
       defaultWidth={DEFAULT_WIDTH}
-      bounds={{ minWidth: 320, minHeight: 320, maxWidthCap: 480 }}
+      bounds={{ minWidth: 320, minHeight: 200, maxWidthCap: 480 }}
       persistState
       footer={
         <>
@@ -90,89 +180,82 @@ export function DeliveryModeDialog({
       }
       footerJustify="end"
     >
-      <FloatingPanelDialogHeader>
-        <p className="text-sm leading-relaxed text-notion-text-muted">
+      <div className="flex flex-col gap-2.5">
+        <p className={INTRO_CLASS}>
           定稿向导 · 项目「{projectName || "未命名"}」：可选规则纠错与智能改稿 → 终检 → 交付导出 Word。
         </p>
-      </FloatingPanelDialogHeader>
 
-      <section className="mb-3 px-1" aria-label="转写后处理">
-        <h3 className="mb-2 text-body font-semibold uppercase tracking-wide text-notion-text-muted">
-          转写后处理（可选）
-        </h3>
-        <ul className="flex flex-col gap-2">
-          {rulesStep ? (
-            <li className="flex flex-col gap-1.5 rounded-md bg-notion-sidebar/50 px-2.5 py-2 text-title">
-              <p className="font-medium text-notion-text">{rulesStep.title}</p>
-              <p className="text-body leading-relaxed text-notion-text-muted">{rulesStep.description}</p>
-              <button
-                type="button"
-                className={`${CONTROL_BTN_LINK} self-start text-body`}
-                disabled={busy || !canApplyCorrectionRules}
-                title={canApplyCorrectionRules ? undefined : (correctionRulesBlockReason ?? "不可用")}
-                onClick={onOpenPostTranscribeRules}
+        <section className="flex flex-col gap-1" aria-label="转写后处理">
+          <h3 className={SECTION_LABEL_CLASS}>转写后处理（可选）</h3>
+          <ul className="m-0 flex list-none flex-col gap-1.5 p-0">
+            {rulesStep ? (
+              <li className={CARD_CLASS}>
+                <p className={CARD_TITLE_CLASS}>{rulesStep.title}</p>
+                <p className={CARD_BODY_CLASS}>{rulesStep.description}</p>
+                <DeliveryPrepAction
+                  label="打开规则纠错预览…"
+                  available={!busy && canApplyCorrectionRules}
+                  unavailableReason={rulesUnavailableReason}
+                  onClick={onOpenPostTranscribeRules}
+                />
+              </li>
+            ) : null}
+            {stageBStep ? (
+              <li className={CARD_CLASS}>
+                <p className={CARD_TITLE_CLASS}>{stageBStep.title}</p>
+                <p className={CARD_BODY_CLASS}>{stageBStep.description}</p>
+                <DeliveryPrepAction
+                  label="打开智能改稿…"
+                  available={!busy && canOfferPostTranscribeStageB}
+                  unavailableReason={stageBUnavailableReason}
+                  onClick={onOpenPostTranscribeStageB}
+                />
+              </li>
+            ) : null}
+          </ul>
+        </section>
+
+        <section className="flex flex-col gap-1" aria-label="终检">
+          <h3 className={SECTION_LABEL_CLASS}>终检</h3>
+          <ul className="m-0 flex list-none flex-col gap-1 p-0">
+            {items.map((item) => (
+              <li
+                key={item.id}
+                className={[
+                  "flex items-start gap-1.5 rounded-md px-2.5 py-1.5",
+                  item.ok ? "bg-notion-sidebar/50 text-notion-text" : "bg-zen-cinnabar/8 text-notion-text",
+                ].join(" ")}
               >
-                打开规则纠错预览…
-              </button>
-            </li>
-          ) : null}
-          {stageBStep ? (
-            <li className="flex flex-col gap-1.5 rounded-md bg-notion-sidebar/50 px-2.5 py-2 text-title">
-              <p className="font-medium text-notion-text">{stageBStep.title}</p>
-              <p className="text-body leading-relaxed text-notion-text-muted">{stageBStep.description}</p>
-              <button
-                type="button"
-                className={`${CONTROL_BTN_LINK} self-start text-body`}
-                disabled={busy || !canOfferPostTranscribeStageB}
-                title={
-                  canOfferPostTranscribeStageB ? undefined : (postTranscribeStageBBlockReason ?? "不可用")
-                }
-                onClick={onOpenPostTranscribeStageB}
-              >
-                打开智能改稿…
-              </button>
-            </li>
-          ) : null}
-        </ul>
-      </section>
+                <span className="mt-px shrink-0" aria-hidden>
+                  {item.ok ? (
+                    <Check
+                      className={`${LUCIDE_ICON_SIZE_SM} text-zen-forest`}
+                      strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
+                    />
+                  ) : (
+                    <CircleAlert
+                      className={`${LUCIDE_ICON_SIZE_SM} text-zen-cinnabar`}
+                      strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
+                    />
+                  )}
+                </span>
+                <div className="flex min-w-0 flex-col gap-0">
+                  <p className="m-0 text-body font-medium leading-snug">{item.label}</p>
+                  {item.hint ? (
+                    <p className="m-0 text-body leading-snug text-notion-text-muted">{item.hint}</p>
+                  ) : null}
+                </div>
+              </li>
+            ))}
+          </ul>
+        </section>
 
-      <section className="px-1" aria-label="终检">
-        <h3 className="mb-2 text-body font-semibold uppercase tracking-wide text-notion-text-muted">终检</h3>
-        <ul className="flex flex-col gap-2 pb-2">
-          {items.map((item) => (
-            <li
-              key={item.id}
-              className={[
-                "flex items-start gap-2 rounded-md px-2.5 py-2 text-title",
-                item.ok ? "bg-notion-sidebar/50 text-notion-text" : "bg-zen-cinnabar/8 text-notion-text",
-              ].join(" ")}
-            >
-              <span className="shrink-0" aria-hidden>
-                {item.ok ? (
-                  <Check className={`${LUCIDE_ICON_SIZE_SM} text-zen-forest`} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} />
-                ) : (
-                  <CircleAlert
-                    className={`${LUCIDE_ICON_SIZE_SM} text-zen-cinnabar`}
-                    strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
-                  />
-                )}
-              </span>
-              <div className="flex min-w-0 flex-col gap-0.5">
-                <p className="font-medium">{item.label}</p>
-                {item.hint ? (
-                  <p className="text-body leading-relaxed text-notion-text-muted">{item.hint}</p>
-                ) : null}
-              </div>
-            </li>
-          ))}
-        </ul>
-      </section>
-
-      {!ready && blockReason ? (
-        <p className="px-1 text-body text-zen-cinnabar" role="status">
-          {blockReason}
-        </p>
-      ) : null}
+        {!ready && blockReason ? (
+          <p className="m-0 text-body leading-snug text-zen-cinnabar" role="status">
+            {blockReason}
+          </p>
+        ) : null}
+      </div>
     </CompactFloatingDialog>
   );
 }

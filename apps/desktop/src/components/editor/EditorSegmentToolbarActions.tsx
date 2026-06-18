@@ -3,10 +3,8 @@ import {
   Mic,
   Replace,
   Sparkles,
-  Square,
 } from "lucide-react";
 import { useRef } from "react";
-import { CONTROL_BTN_DANGER } from "../../config/controlStyles";
 import { useWorkbenchToolbarCompact } from "../../hooks/useWorkbenchToolbarCompact";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";
@@ -64,24 +62,6 @@ export function EditorSegmentTranscribeActions({
     c.correctionRulesDialog.phase !== "closed" ||
     stageBPhase !== "closed" ||
     c.findReplaceDialog.phase !== "closed";
-
-  if (isTranscribing) {
-    return (
-      <div className="waveform-toolbar-subzone waveform-toolbar-transcribe" role="group" aria-label="转录与编辑">
-        <button
-          type="button"
-          className={[CONTROL_BTN_DANGER, "h-8 px-2.5 text-body"].join(" ")}
-          disabled={c.transcribeCancelling}
-          onClick={() => void c.cancelTranscribe()}
-        >
-          <span className="inline-flex items-center gap-1.5">
-            <Square className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-            {c.transcribeCancelling ? "正在停止…" : "停止转写"}
-          </span>
-        </button>
-      </div>
-    );
-  }
 
   if (compact) {
     return (

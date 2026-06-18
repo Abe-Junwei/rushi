@@ -14,6 +14,7 @@ import { FindReplaceMatchText } from "./FindReplaceMatchText";
 import { readFloatingPanelViewport } from "./floatingPanelViewport";
 import { FloatingPanelTemplate } from "./PanelTemplate";
 import {
+  FLOATING_PANEL_DIALOG_BODY_PADDING_CLASS,
   FloatingPanelDialogFooter,
   FloatingPanelDialogHeader,
   FloatingPanelDialogListRegion,
@@ -36,7 +37,7 @@ function resolveFindReplacePanelLayout() {
       width: Math.min(480, maxW),
       height: Math.min(400, maxH),
     },
-    minWidth: Math.min(360, maxW),
+    minWidth: Math.min(400, maxW),
     minHeight: Math.min(300, maxH),
     maxWidth: maxW,
     maxHeight: maxH,
@@ -116,7 +117,8 @@ export function FindReplaceDialog({
           persistState
           onClose={handleClose}
         >
-          <FloatingPanelDialogRoot measureRef={bodyRef} hasFooter fillHeight>
+          <FloatingPanelDialogRoot measureRef={bodyRef} hasFooter fillHeight className="gap-0 p-0">
+            <div className={`flex min-h-0 flex-1 flex-col gap-2 overflow-hidden ${FLOATING_PANEL_DIALOG_BODY_PADDING_CLASS}`}>
             <FloatingPanelDialogHeader>
               <p className={PANEL_TYPOGRAPHY.dialogBody}>
                 将替换 {state.matchCount} 处「{state.findText}」→「{state.replaceText || "（空）"}」。确认后将自动保存并写入纠错记忆（查找词与替换词不同时）。
@@ -142,7 +144,8 @@ export function FindReplaceDialog({
                 ))}
               </FloatingPanelSegmentList>
             </FloatingPanelDialogListRegion>
-            <FloatingPanelDialogFooter justify="start">
+            </div>
+            <FloatingPanelDialogFooter fullBleed justify="end">
               <button type="button" className={CONTROL_BTN_SECONDARY} disabled={busy} onClick={onCancelReplaceAllPreview}>
                 返回
               </button>
@@ -167,7 +170,7 @@ export function FindReplaceDialog({
   const panelFitHeight = resolveFloatingPanelFitHeight(FIND_REPLACE_PANEL_STATIC_BODY_PX, matchRowCount);
   const contentFitHeight = mergeContentFitHeights(panelFitHeight, measuredFit);
   const defaultPanelHeight = Math.min(contentFitHeight ?? panelFitHeight, layout.maxHeight);
-  const layoutRev = matchRowCount + (state.searchCommitted ? 1000 : 0);
+  const layoutRev = matchRowCount + (state.searchCommitted ? 2000 : 0);
 
   return createPortal(
     <div className="workspace">

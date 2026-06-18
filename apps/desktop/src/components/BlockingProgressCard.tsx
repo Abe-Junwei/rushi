@@ -1,8 +1,9 @@
 import { LoaderCircle } from "lucide-react";
 import { CONTROL_BTN_DANGER } from "../config/controlStyles";
 import { FLAT_SHELL_ELEVATION_CLASS, OVERLAY_SCRIM_LAYER } from "../config/overlayStyles";
-import { LUCIDE_ICON_SIZE_LG, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
+import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 import { TranscribeVocabularyPreflightLines } from "./TranscribeVocabularyPreflightLines";
+import { TRANSCRIBE_PREFLIGHT_TYPO as T } from "./transcribePreflightTypography";
 import {
   PANEL_PROGRESS_INDETERMINATE_CLASS,
   PANEL_PROGRESS_TRACK_CLASS,
@@ -10,88 +11,115 @@ import {
 
 type Props = {
   title: string;
-  hint: string;
+  lead: string;
+  detail?: string;
   elapsedSec: number;
-  /** banner：不挡编辑；blocking：全屏遮罩 */
   variant: "blocking" | "banner";
+  density?: "default" | "compact";
   vocabularyLines?: string[];
   onCancel?: () => void;
   cancelling?: boolean;
+  cancellingLabel?: string;
 };
 
 function ProgressCardBody({
   title,
-  hint,
+  lead,
+  detail,
   elapsedSec,
+  density = "default",
   vocabularyLines = [],
   onCancel,
   cancelling,
+  cancellingLabel,
   cardClassName,
 }: Omit<Props, "variant"> & { cardClassName?: string }) {
+  const compact = density === "compact";
+  const stopLabel = cancelling ? (cancellingLabel ?? "正在停止…") : "停止转写";
+
   return (
     <div
       className={[
-        "flex w-full max-w-[360px] flex-col items-center gap-4 rounded-lg border p-8 text-center",
+        T.progressShell,
+        compact ? T.progressShellCompact : T.progressShellDefault,
         cardClassName ?? `border-notion-border bg-notion-bg ${FLAT_SHELL_ELEVATION_CLASS}`,
       ].join(" ")}
     >
-      <div className="relative mb-1 flex h-16 w-16 items-center justify-center">
+      <div className={compact ? "relative h-9 w-9 shrink-0" : "relative h-10 w-10 shrink-0"}>
         <div className="absolute inset-0 animate-ping rounded-full bg-zen-saffron/20 [animation-duration:2s]" />
-        <div className={`relative z-10 flex h-12 w-12 items-center justify-center rounded-full border border-zen-saffron/30 bg-notion-bg ${FLAT_SHELL_ELEVATION_CLASS}`}>
+        <div
+          className={[
+            "relative z-10 flex h-full w-full items-center justify-center rounded-full border border-zen-saffron/30 bg-notion-bg",
+            FLAT_SHELL_ELEVATION_CLASS,
+          ].join(" ")}
+        >
           <LoaderCircle
-            className={`${LUCIDE_ICON_SIZE_LG} animate-rushi-spin-slow text-zen-saffron`}
+            className={`${compact ? LUCIDE_ICON_SIZE_SM : LUCIDE_ICON_SIZE_MD} animate-rushi-spin-slow text-zen-saffron`}
             strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
             aria-hidden
           />
         </div>
       </div>
-      <div className="flex w-full flex-col gap-1">
-        <h2 className="font-sans text-lg font-semibold leading-snug text-zen-ink">{title}</h2>
-        <p className="font-sans text-body leading-normal text-zen-stone">{hint}</p>
-      </div>
-      <TranscribeVocabularyPreflightLines lines={vocabularyLines} />
-      <div className={`relative mt-2 ${PANEL_PROGRESS_TRACK_CLASS}`}>
-        <div className={PANEL_PROGRESS_INDETERMINATE_CLASS} />
-      </div>
-      <p className="mt-1 font-mono text-body tabular-nums text-zen-stone">已等待 {elapsedSec}s</p>
-      {onCancel ? (
-        <div className="pointer-events-auto mt-1 w-full">
-          <button
-            type="button"
-            className={`${CONTROL_BTN_DANGER} w-full`}
-            disabled={cancelling}
-            onClick={() => void onCancel()}
-          >
-            {cancelling ? "正在停止…（当前窗完成后结束）" : "停止转写"}
-          </button>
+
+      <div className={T.progressCopy}>
+        <h2 className={T.progressPrimary}>{title}</h2>
+        <div className={T.captionStack}>
+          <p className={T.progressBody}>{lead}</p>
+          {detail ? <p className={T.progressCaption}>{detail}</p> : null}
         </div>
-      ) : null}
+        <TranscribeVocabularyPreflightLines lines={vocabularyLines} tone="progress" />
+      </div>
+
+      <div className={T.progressFooter}>
+        <div className={`relative w-full ${PANEL_PROGRESS_TRACK_CLASS}`}>
+          <div className={PANEL_PROGRESS_INDETERMINATE_CLASS} />
+        </div>
+        <p className={T.progressElapsed}>已等待 {elapsedSec}s</p>
+        {onCancel ? (
+          <div className="pointer-events-auto w-full">
+            <button
+              type="button"
+              className={`${CONTROL_BTN_DANGER} w-full`}
+              disabled={cancelling}
+              onClick={() => void onCancel()}
+            >
+              {stopLabel}
+            </button>
+          </div>
+        ) : null}
+      </div>
     </div>
   );
 }
 
 export function BlockingProgressCard({
   title,
-  hint,
+  lead,
+  detail,
   elapsedSec,
   variant,
+  density = "default",
   vocabularyLines,
   onCancel,
   cancelling,
+  cancellingLabel,
 }: Props) {
   const cardClassName =
     variant === "banner"
-      ? `border-zen-saffron/25 bg-notion-bg/95 ${FLAT_SHELL_ELEVATION_CLASS}`
+      ? `border-zen-saffron/25 bg-notion-bg ${FLAT_SHELL_ELEVATION_CLASS}`
       : undefined;
 
   const shell = (
     <ProgressCardBody
       title={title}
-      hint={hint}
+      lead={lead}
+      detail={detail}
       elapsedSec={elapsedSec}
+      density={density}
       vocabularyLines={vocabularyLines}
       onCancel={onCancel}
       cancelling={cancelling}
+      cancellingLabel={cancellingLabel}
       cardClassName={cardClassName}
     />
   );

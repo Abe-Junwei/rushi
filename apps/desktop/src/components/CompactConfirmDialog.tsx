@@ -13,6 +13,9 @@ import { FloatingPanelDialogHeader } from "./FloatingPanelDialogLayout";
 
 type ConfirmVariant = "primary" | "danger";
 
+/** 壳层/layout 变更时 bump，丢弃旧 persist 高度。 */
+export const COMPACT_CONFIRM_LAYOUT_REV_BASE = 1;
+
 export type CompactConfirmDialogProps = {
   id: string;
   title: string;
@@ -28,6 +31,7 @@ export type CompactConfirmDialogProps = {
   defaultWidth?: number;
   bounds?: CompactFloatingDialogProps["bounds"];
   persistState?: boolean;
+  layoutRev?: number;
   rootRole?: string;
   children: ReactNode;
 };
@@ -48,6 +52,7 @@ export function CompactConfirmDialog({
   defaultWidth,
   bounds,
   persistState,
+  layoutRev = COMPACT_CONFIRM_LAYOUT_REV_BASE,
   rootRole = "alertdialog",
   children,
 }: CompactConfirmDialogProps) {
@@ -67,6 +72,7 @@ export function CompactConfirmDialog({
       defaultWidth={defaultWidth}
       bounds={bounds}
       persistState={persistState}
+      layoutRev={layoutRev}
       rootRole={rootRole}
       footer={
         <>

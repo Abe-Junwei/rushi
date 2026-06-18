@@ -8,9 +8,9 @@ import { FloatingPanelSegmentList } from "./FloatingPanelSegmentList";
 import { FloatingPanelSegmentRow } from "./FloatingPanelSegmentRow";
 import { FindReplaceMatchText } from "./FindReplaceMatchText";
 import {
+  FLOATING_PANEL_DIALOG_BODY_PADDING_CLASS,
   FloatingPanelDialogFooter,
   FloatingPanelDialogListRegion,
-  FloatingPanelDialogRoot,
 } from "./FloatingPanelDialogLayout";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
@@ -119,112 +119,122 @@ export function FindReplaceDialogBody({
   };
 
   return (
-    <FloatingPanelDialogRoot className="gap-2" measureRef={measureRef} hasFooter fillHeight onKeyDown={handlePanelKeyDown}>
-      <div className="shrink-0 space-y-3">
-        <div className="grid gap-1">
-          <label htmlFor="find-replace-find-input" className="text-xs text-notion-text-muted">
-            查找
-          </label>
-          <div className="flex h-8 overflow-hidden rounded-sm border border-notion-divider bg-notion-bg focus-within:border-zen-saffron/45">
-            <input
-              id="find-replace-find-input"
-              className={`min-w-0 flex-1 border-0 bg-transparent px-2.5 outline-none ${PANEL_CONTROL_TYPOGRAPHY.compactInput}`}
-              value={state.findText}
-              disabled={busy}
-              onChange={(e) => onFindChange(e.target.value)}
-              onKeyDown={handlePanelKeyDown}
-              autoFocus
-            />
-            <button
-              type="button"
-              className={findBarActionClass}
-              title="查找"
-              aria-label="查找"
-              disabled={!canSearch}
-              onClick={onRunSearch}
-            >
-              <Search className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-            </button>
-            <button
-              type="button"
-              className={findBarActionClass}
-              title="上一处 (Shift+Enter)"
-              aria-label="上一处"
-              disabled={!canAct}
-              onClick={onPrev}
-            >
-              <ChevronUp className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-            </button>
-            <button
-              type="button"
-              className={findBarActionClass}
-              title="下一处"
-              aria-label="下一处"
-              disabled={!canAct}
-              onClick={onNext}
-            >
-              <ChevronDown className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-            </button>
+    <div ref={measureRef} className="flex h-full min-h-0 flex-col" onKeyDown={handlePanelKeyDown}>
+      <div
+        className={[
+          "flex min-h-0 flex-1 flex-col gap-2 overflow-hidden",
+          FLOATING_PANEL_DIALOG_BODY_PADDING_CLASS,
+        ].join(" ")}
+      >
+        <div className="shrink-0 space-y-3">
+          <div className="grid gap-1">
+            <label htmlFor="find-replace-find-input" className="text-xs text-notion-text-muted">
+              查找
+            </label>
+            <div className="flex h-8 overflow-hidden rounded-sm border border-notion-divider bg-notion-bg focus-within:border-zen-saffron/45">
+              <input
+                id="find-replace-find-input"
+                className={`min-w-0 flex-1 border-0 bg-transparent px-2.5 outline-none ${PANEL_CONTROL_TYPOGRAPHY.compactInput}`}
+                value={state.findText}
+                disabled={busy}
+                onChange={(e) => onFindChange(e.target.value)}
+                onKeyDown={handlePanelKeyDown}
+                autoFocus
+              />
+              <button
+                type="button"
+                className={findBarActionClass}
+                title="查找"
+                aria-label="查找"
+                disabled={!canSearch}
+                onClick={onRunSearch}
+              >
+                <Search className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+              </button>
+              <button
+                type="button"
+                className={findBarActionClass}
+                title="上一处 (Shift+Enter)"
+                aria-label="上一处"
+                disabled={!canAct}
+                onClick={onPrev}
+              >
+                <ChevronUp className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+              </button>
+              <button
+                type="button"
+                className={findBarActionClass}
+                title="下一处"
+                aria-label="下一处"
+                disabled={!canAct}
+                onClick={onNext}
+              >
+                <ChevronDown className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+              </button>
+            </div>
           </div>
+          <label className="grid gap-1 text-xs text-notion-text-muted">
+            <span>替换为（可留空）</span>
+            <input
+              id="find-replace-replace-input"
+              className={fieldClass}
+              value={state.replaceText}
+              disabled={busy}
+              onChange={(e) => onReplaceChange(e.target.value)}
+              onKeyDown={handlePanelKeyDown}
+            />
+          </label>
         </div>
-        <label className="grid gap-1 text-xs text-notion-text-muted">
-          <span>替换为（可留空）</span>
-          <input
-            id="find-replace-replace-input"
-            className={fieldClass}
-            value={state.replaceText}
-            disabled={busy}
-            onChange={(e) => onReplaceChange(e.target.value)}
-            onKeyDown={handlePanelKeyDown}
-          />
-        </label>
-      </div>
-      <p className={`shrink-0 text-xs tabular-nums text-notion-text-muted ${PANEL_TYPOGRAPHY.dialogBody}`}>
-        {position}
-        {state.searchCommitted && state.matchCount > 0 ? " · 点击行定位语段" : null}
-      </p>
-      {state.searchCommitted && state.matchCount === 0 ? (
-        <p className={`shrink-0 ${PANEL_TYPOGRAPHY.dialogBody} text-notion-text-muted`}>
-          未找到匹配「{state.findText}」的语段。
+        <p className={`shrink-0 text-xs tabular-nums text-notion-text-muted ${PANEL_TYPOGRAPHY.dialogBody}`}>
+          {position}
+          {state.searchCommitted && state.matchCount > 0 ? " · 点击行定位语段" : null}
         </p>
-      ) : null}
-      {state.searchCommitted && state.matchCount > 0 ? (
-        <FloatingPanelDialogListRegion>
-          <FindResultList
-            items={state.resultItems}
-            activeMatchIndex={state.activeMatchIndex}
-            onSelectMatch={onSelectMatch}
-          />
-        </FloatingPanelDialogListRegion>
-      ) : null}
-      <FloatingPanelDialogFooter justify="start" className="flex-wrap">
+        {state.searchCommitted && state.matchCount === 0 ? (
+          <p className={`shrink-0 ${PANEL_TYPOGRAPHY.dialogBody} text-notion-text-muted`}>
+            未找到匹配「{state.findText}」的语段。
+          </p>
+        ) : null}
+        {state.searchCommitted && state.matchCount > 0 ? (
+          <FloatingPanelDialogListRegion>
+            <FindResultList
+              items={state.resultItems}
+              activeMatchIndex={state.activeMatchIndex}
+              onSelectMatch={onSelectMatch}
+            />
+          </FloatingPanelDialogListRegion>
+        ) : null}
+      </div>
+
+      <FloatingPanelDialogFooter fullBleed>
+        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+          <button
+            type="button"
+            className={CONTROL_BTN_SECONDARY}
+            disabled={!canAct}
+            title="⌘Enter 替换当前"
+            onClick={onReplaceCurrent}
+          >
+            替换当前
+          </button>
+          <button
+            type="button"
+            className={CONTROL_BTN_SECONDARY}
+            disabled={!canAct}
+            title="Enter 替换并下一处"
+            onClick={onReplaceAndNext}
+          >
+            替换并下一处
+          </button>
+        </div>
         <button
           type="button"
-          className={CONTROL_BTN_SECONDARY}
-          disabled={!canAct}
-          title="⌘Enter 替换当前"
-          onClick={onReplaceCurrent}
-        >
-          替换当前
-        </button>
-        <button
-          type="button"
-          className={CONTROL_BTN_SECONDARY}
-          disabled={!canAct}
-          title="Enter 替换并下一处"
-          onClick={onReplaceAndNext}
-        >
-          替换并下一处
-        </button>
-        <button
-          type="button"
-          className={[CONTROL_BTN_PRIMARY, "ml-auto"].join(" ")}
+          className={[CONTROL_BTN_PRIMARY, "shrink-0"].join(" ")}
           disabled={!canAct}
           onClick={onRequestReplaceAll}
         >
           全部替换…
         </button>
       </FloatingPanelDialogFooter>
-    </FloatingPanelDialogRoot>
+    </div>
   );
 }
