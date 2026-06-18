@@ -11,9 +11,9 @@ import { useWaveformSegmentPlaybackControls } from "./useWaveformSegmentPlayback
 import { useWaveformZoomSync } from "./useWaveformZoomSync";
 import { useWaveformViewportController } from "./useWaveformViewportController";
 import {
-  useProjectWaveformDestroy,
   useProjectWaveformMount,
 } from "./useProjectWaveformMount";
+import { useProjectWaveformDestroy } from "./useProjectWaveformDestroy";
 import type { UseProjectWaveformOptions } from "./useProjectWaveformTypes";
 
 export type { UseProjectWaveformOptions } from "./useProjectWaveformTypes";

@@ -1,18 +1,16 @@
 import { useCallback, useEffect } from "react";
 import {
   clampSttOnlineTimeoutSec,
-  clearSttConnectionVerified,
   ensureSttOnlineApiKeyForSession,
   ensureSttOnlineApiSecretForSession,
-  getSttOnlineProviderDefinition,
   normalizeExternalSttOnlineRuntimeConfig,
-  persistExternalSttOnlineRuntimeConfig,
-  persistSttOnlineApiSecretId,
   readExternalSttOnlineRuntimeConfigFromStorage,
   setSttOnlineApiKeyInMemory,
   setSttOnlineApiSecretInMemory,
+  switchSttOnlineProviderActive,
 } from "../services/stt/sttOnlineProviderContract";
 import type { EnvOnlineSttFormFields } from "./envOnlineSttPanelDraft";
+import { buildOnlineSttDraftRuntimeConfig } from "./envOnlineSttPanelDraft";
 import { useEnvOnlineSttPanelCredentialActions } from "./useEnvOnlineSttPanelCredentialActions";
 
 export type { EnvOnlineSttFormFields } from "./envOnlineSttPanelDraft";
@@ -89,42 +87,34 @@ export function useEnvOnlineSttPanelPersistence(args: UseEnvOnlineSttPanelPersis
 
   const onProviderChange = useCallback(
     (id: string) => {
-      const { olProviderId, olTimeoutSec } = fields;
+      const { olProviderId } = fields;
       if (id !== olProviderId) {
-        const prevDef = getSttOnlineProviderDefinition(olProviderId);
-        const nextDef = getSttOnlineProviderDefinition(id);
         setSttOnlineApiKeyInMemory(null);
         setSttOnlineApiSecretInMemory(null);
         setOlApiKey("");
         setOlApiSecret("");
-        setOlEndpoint("");
         onInvalidateProbe();
-        clearSttConnectionVerified();
-        setSavedApiKeyId(null);
-        setSavedApiSecretId(null);
-        persistSttOnlineApiSecretId(null, { clearApiSecretId: true });
-        if (prevDef?.requiresPersistedAppKey || nextDef?.requiresPersistedAppKey) {
-          setOlAppKey("");
-        }
-        if (id !== "iflytek-speed-asr") {
-          setOlAccent("mandarin");
-        }
-        const def = nextDef;
-        if (def) {
-          setOlTimeoutSec(clampSttOnlineTimeoutSec(Math.round(def.defaultTimeoutMs / 1000)));
-        }
-        const n = normalizeExternalSttOnlineRuntimeConfig({
-          enabled: true,
-          selectedProviderId: id,
-          timeoutMs: def ? def.defaultTimeoutMs : olTimeoutSec * 1000,
-          ...(id === "iflytek-speed-asr" ? { accent: "mandarin" } : {}),
+        const outgoingDraft = normalizeExternalSttOnlineRuntimeConfig({
+          ...buildOnlineSttDraftRuntimeConfig(fields),
+          apiKeyId: fields.savedApiKeyId ?? undefined,
+          apiSecretId: fields.savedApiSecretId ?? undefined,
         });
-        persistExternalSttOnlineRuntimeConfig(n, { clearApiKeyId: true, clearApiSecretId: true });
+        const incoming = switchSttOnlineProviderActive(olProviderId, id, outgoingDraft);
+        setOlProviderId(incoming.selectedProviderId);
+        setOlEndpoint(incoming.endpoint ?? "");
+        setOlAppKey(incoming.appKey ?? "");
+        setOlAccent(incoming.accent ?? "mandarin");
+        setOlTimeoutSec(clampSttOnlineTimeoutSec(Math.round(incoming.timeoutMs / 1000)));
+        setSavedApiKeyId(incoming.apiKeyId ?? null);
+        setSavedApiSecretId(incoming.apiSecretId ?? null);
+        bumpKeychainCheck();
         onSttOnlineRuntimeChanged?.();
+      } else {
+        setOlProviderId(id);
       }
-      setOlProviderId(id);
     },
     [
+      bumpKeychainCheck,
       fields,
       onInvalidateProbe,
       onSttOnlineRuntimeChanged,

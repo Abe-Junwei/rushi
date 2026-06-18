@@ -4,8 +4,20 @@ import { notifySttOnlineRuntimeChanged } from "../sttOnlineRuntimeNotify";
 import { isAllowedSttOnlineEndpoint, assertValidEndpoint } from "./endpoint";
 import { getSttOnlineProviderDefinition } from "./definitions";
 import { sttOnlineProviderEndpointUserConfigurable } from "./presetEndpoints";
+import {
+  IFLYTEK_PROFILE_DEFAULT_KEY_ID,
+  IFLYTEK_PROFILE_DEFAULT_SECRET_ID,
+  migrateLegacySttOnlineProviderProfiles,
+  readSttOnlineProviderProfileSnapshot,
+  restoreSttConnectionVerifiedForProvider,
+  snapshotSttOnlineProviderProfile,
+  syncSttOnlineProviderProfileFromActive,
+} from "./providerProfiles";
 import { readStorage, writeStorage } from "./storage";
-import { isStaleSttApiKeyIdForProvider, normalizeSttApiKeyId } from "./sttApiKeyIds";
+import {
+  isStaleSttApiKeyIdForProvider,
+  normalizeSttApiKeyId,
+} from "./sttApiKeyIds";
 import { normalizeXunfeiSpeedAsrAccent } from "./xunfeiAccentPresets";
 import type { ExternalSttOnlineRuntimeConfig } from "./types";
 
@@ -102,6 +114,7 @@ export function normalizeExternalSttOnlineRuntimeConfig(
 }
 
 export function readExternalSttOnlineRuntimeConfigFromStorage(): ExternalSttOnlineRuntimeConfig {
+  migrateLegacySttOnlineProviderProfiles();
   const enabledRaw = readStorage(STT_ONLINE_PROVIDER_STORAGE_KEYS.enabled);
   const rawSelected = (readStorage(STT_ONLINE_PROVIDER_STORAGE_KEYS.selectedProviderId) ?? "openai").trim();
   const selected = migrateRemovedSttProviderId(rawSelected);
@@ -220,7 +233,55 @@ export function persistExternalSttOnlineRuntimeConfig(
   } else {
     notifySttOnlineRuntimeChanged();
   }
+  syncSttOnlineProviderProfileFromActive(n);
   return n;
+}
+
+function profileSnapshotToRuntimeConfig(providerId: string): ExternalSttOnlineRuntimeConfig {
+  const snapshot = readSttOnlineProviderProfileSnapshot(providerId);
+  let apiKeyId = normalizeSttApiKeyId(snapshot?.apiKeyId);
+  if (apiKeyId && isStaleSttApiKeyIdForProvider(providerId, apiKeyId)) {
+    apiKeyId = undefined;
+  }
+  if (!apiKeyId && providerId === "iflytek-speed-asr" && snapshot) {
+    apiKeyId = normalizeSttApiKeyId(IFLYTEK_PROFILE_DEFAULT_KEY_ID);
+  }
+  let apiSecretId =
+    providerId === "iflytek-speed-asr"
+      ? normalizeSttApiKeyId(snapshot?.apiSecretId)
+      : undefined;
+  if (apiSecretId && isStaleSttApiKeyIdForProvider(providerId, apiSecretId)) {
+    apiSecretId = undefined;
+  }
+  if (!apiSecretId && providerId === "iflytek-speed-asr" && snapshot) {
+    apiSecretId = normalizeSttApiKeyId(IFLYTEK_PROFILE_DEFAULT_SECRET_ID);
+  }
+  return normalizeExternalSttOnlineRuntimeConfig({
+    enabled: true,
+    selectedProviderId: providerId,
+    timeoutMs: snapshot?.timeoutMs ?? defaultTimeoutMsForProvider(providerId),
+    ...(snapshot?.endpoint ? { endpoint: snapshot.endpoint } : {}),
+    ...(snapshot?.appKey ? { appKey: snapshot.appKey } : {}),
+    ...(snapshot?.accent ? { accent: snapshot.accent } : {}),
+    ...(apiKeyId ? { apiKeyId } : {}),
+    ...(apiSecretId ? { apiSecretId } : {}),
+  });
+}
+
+/**
+ * 切换在线 STT 厂商：快照离开方草稿，激活目标方 profile 并写回 flat storage。
+ */
+export function switchSttOnlineProviderActive(
+  fromProviderId: string,
+  toProviderId: string,
+  outgoingDraft: ExternalSttOnlineRuntimeConfig,
+): ExternalSttOnlineRuntimeConfig {
+  migrateLegacySttOnlineProviderProfiles();
+  snapshotSttOnlineProviderProfile(fromProviderId, outgoingDraft);
+  const incoming = profileSnapshotToRuntimeConfig(toProviderId);
+  persistExternalSttOnlineRuntimeConfig(incoming);
+  restoreSttConnectionVerifiedForProvider(toProviderId, incoming);
+  return incoming;
 }
 
 

@@ -9,21 +9,12 @@ import {
   ensureSttOnlineApiSecretForSession,
   tryBuildOnlineTranscribeBridgePayload,
 } from "../services/stt/sttOnlineProviderContract";
-import type { TranscribeSource } from "../services/stt/transcribeSource";
 import type { ProjectDetail } from "../tauri/projectApi";
 import * as p1 from "../tauri/projectApi";
-import type { useProjectCloseGateController } from "./useProjectCloseGateController";
-import type { useProjectEditorState } from "./useProjectEditorState";
-import type { useProjectBusyState } from "./useProjectBusyState";
-import type { useSegmentMutationController } from "./useSegmentMutationController";
-import { postTranscribeCancel } from "./transcribeAsyncPoll";
 import { awaitEnvironmentCapabilityRefresh } from "../services/environmentCapabilityCoordinator";
 import { resolveTranscribeExecuteBlock } from "./transcribeExecuteGate";
 import { runLocalTranscribeJob } from "./transcribeLocalJobRun";
-import type { SegmentPublishApi } from "./segmentPublishApi";
 import {
-  isOnlineTranscribeJobId,
-  isSidecarCancellableTranscribeJobId,
   isTranscribeInvokeCancelled,
   isTranscribeUserCancellation,
   newOnlineTranscribeJobId,
@@ -32,53 +23,16 @@ import {
   transcribeAsyncFallbackHint,
   type TranscribeProgress,
 } from "./transcribePreviewState";
-import type { LocalTranscribePreflight } from "./transcribeJobHelpers";
-import type { BusyReason } from "./useProjectCrudController";
+import { cancelActiveTranscribeJob } from "./transcribeJobExecuteCancel";
+import type {
+  ExecuteTranscribeOptions,
+  ExecuteTranscribeResult,
+  TranscribeJobExecuteArgs,
+} from "./transcribeJobExecuteTypes";
 
-export type ExecuteTranscribeOptions = {
-  /** Parent holds `batch_transcribe` busy; skip inner begin/end busy. */
-  batchChild?: boolean;
-  /** Required for batch child when editor `currentFileId` may be stale. */
-  fileId?: string;
-  /** Batch queue: skip per-file delivery toasts. */
-  suppressUserToasts?: boolean;
-};
+export type { ExecuteTranscribeOptions, ExecuteTranscribeResult } from "./transcribeJobExecuteTypes";
 
-export type ExecuteTranscribeResult =
-  | { ok: true }
-  | { ok: false; message: string };
-
-type CloseGate = Pick<
-  ReturnType<typeof useProjectCloseGateController>,
-  "openFileWrapped"
->;
-type Editor = Pick<
-  ReturnType<typeof useProjectEditorState>,
-  "current" | "currentFileId" | "setCurrent"
->;
-type Busy = Pick<ReturnType<typeof useProjectBusyState>, "busy" | "beginBusy" | "endBusy">;
-type Mutations = Pick<ReturnType<typeof useSegmentMutationController>, "resetMutationHistory">;
-
-type Args = {
-  busy: Busy["busy"];
-  busyReason: BusyReason | null;
-  beginBusy: Busy["beginBusy"];
-  endBusy: Busy["endBusy"];
-  current: Editor["current"];
-  currentFileId: Editor["currentFileId"];
-  segmentPublish: SegmentPublishApi;
-  setCurrent: Editor["setCurrent"];
-  setError: (msg: string) => void;
-  closeGate: CloseGate;
-  mutations: Mutations;
-  localTranscribePreflight: LocalTranscribePreflight;
-  transcribeSource: TranscribeSource;
-  setTranscribeStartDialogOpen: (open: boolean) => void;
-  clearScheduledAutoSave?: () => void;
-  onTranscribeSuccess?: (out: p1.RunTranscribeOutcome) => void;
-};
-
-export function useTranscribeJobExecute(args: Args) {
+export function useTranscribeJobExecute(args: TranscribeJobExecuteArgs) {
   const {
     busy,
     busyReason,
@@ -283,26 +237,13 @@ export function useTranscribeJobExecute(args: Args) {
   ]);
 
   const cancelTranscribe = useCallback(async () => {
-    const jobId = activeJobIdRef.current;
-    if (!jobId || transcribeCancelling) return;
-    setTranscribeCancelling(true);
-    userCancelRequestedRef.current = true;
-    pollAbortRef.current?.abort();
-    if (isOnlineTranscribeJobId(jobId)) {
-      try {
-        await p1.projectCancelTranscribe(jobId);
-      } catch {
-        /* invoke may still reject with 转写已取消 */
-      }
-      return;
-    }
-    if (!isSidecarCancellableTranscribeJobId(jobId)) return;
-    const base = asrBaseUrl().replace(/\/+$/, "");
-    try {
-      await postTranscribeCancel(base, jobId);
-    } catch {
-      /* poll loop will surface sidecar errors or timeout */
-    }
+    await cancelActiveTranscribeJob({
+      jobId: activeJobIdRef.current,
+      transcribeCancelling,
+      setTranscribeCancelling,
+      userCancelRequestedRef,
+      pollAbortRef,
+    });
   }, [transcribeCancelling]);
 
   const applyDetail = useCallback((_d: ProjectDetail) => {

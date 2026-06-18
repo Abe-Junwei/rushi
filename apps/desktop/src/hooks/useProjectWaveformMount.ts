@@ -1,4 +1,4 @@
-import { useCallback, useEffect } from "react";
+import { useEffect } from "react";
 import WaveSurfer from "wavesurfer.js";
 import { readWaveformSurferPalette } from "../utils/waveformThemeColors";
 import { WAVEFORM_SURFER_BAR_DISPLAY } from "../config/waveformSurferDisplay";
@@ -255,52 +255,4 @@ export function useProjectWaveformMount(
       });
     });
   }, [wsRef]);
-}
-
-export function useProjectWaveformDestroy(
-  clearWsListeners: () => void,
-  refs: Pick<
-    ProjectWaveformMountRefs,
-    "wsRef" | "scrollNotifyRafRef" | "pendingAppliedWaveformHeightRef" | "appliedZoom"
-  >,
-  setters: Pick<
-    ProjectWaveformMountRefs,
-    "setIsReady" | "setIsPlaying" | "setDuration" | "setCurrentTime"
-  >,
-) {
-  const { wsRef, scrollNotifyRafRef, pendingAppliedWaveformHeightRef, appliedZoom } = refs;
-  const { setIsReady, setIsPlaying, setDuration, setCurrentTime } = setters;
-
-  return useCallback(() => {
-    clearWsListeners();
-    const ws = wsRef.current;
-    wsRef.current = null;
-    if (ws) {
-      try {
-        ws.destroy();
-      } catch {
-        /* noop */
-      }
-    }
-    setIsReady(false);
-    setIsPlaying(false);
-    setDuration(0);
-    setCurrentTime(0);
-    pendingAppliedWaveformHeightRef.current = null;
-    resetAppliedPeaks(appliedZoom);
-    if (scrollNotifyRafRef.current) {
-      cancelAnimationFrame(scrollNotifyRafRef.current);
-      scrollNotifyRafRef.current = 0;
-    }
-  }, [
-    clearWsListeners,
-    wsRef,
-    scrollNotifyRafRef,
-    pendingAppliedWaveformHeightRef,
-    appliedZoom,
-    setIsReady,
-    setIsPlaying,
-    setDuration,
-    setCurrentTime,
-  ]);
 }

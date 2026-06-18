@@ -8,6 +8,8 @@ export const STT_ONLINE_PROVIDER_STORAGE_KEYS = {
   apiSecretId: "rushi.stt.online.apiSecretId",
   accent: "rushi.stt.online.accent",
   connectionVerifiedFingerprint: "rushi.stt.online.connectionVerifiedFingerprint",
+  /** 各厂商独立配置快照（JSON）；切换 provider 时恢复，避免重填。 */
+  providerProfiles: "rushi.stt.online.providerProfiles",
 } as const;
 
 /** OpenAI Audio Transcriptions；未填 endpoint 时 Tauri 走此默认。 */

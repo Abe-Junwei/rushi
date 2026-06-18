@@ -18,48 +18,18 @@ import { mergeContentFitHeights, resolveMeasuredPanelFitHeight } from "./floatin
 import { resolveExportPolishBlockReason } from "../services/exportDocxPolish";
 import { useDeliveryExportPolishPreview } from "../hooks/useDeliveryExportPolishPreview";
 import { DeliveryExportPolishPreviewSection } from "./DeliveryExportPolishPreviewSection";
-import {
-  listDocxProjectMetadataPreviewLines,
-  type DocxProjectMetadata,
-} from "../services/exportDeliveryAppendix";
+import type { DocxProjectMetadata } from "../services/exportDeliveryAppendix";
+import { listDocxProjectMetadataPreviewLines } from "../services/exportDeliveryAppendix";
 import { DeliveryExportModeSection } from "./DeliveryExportModeSection";
+import { DeliveryExportMetadataSection } from "./DeliveryExportMetadataSection";
 import { readFloatingPanelViewport } from "./floatingPanelViewport";
+import { resolveDeliveryExportLayoutRev } from "./deliveryExportLayoutRev";
 
 const PANEL_ID = "delivery-export-word-v2";
 const DEFAULT_WIDTH = 440;
 const DEFAULT_BODY_HEIGHT = 528;
 const MIN_SIZE = { width: 360, height: 420 } as const;
 const PANEL_MARGIN = 24;
-/** 布局变更基线；内容 toggles 见 resolveDeliveryExportLayoutRev。 */
-const DELIVERY_EXPORT_LAYOUT_REV_BASE = 1;
-
-function resolveDeliveryExportLayoutRev(input: {
-  mode: DocxExportMode;
-  includeProjectMetadata: boolean;
-  metadataLineCount: number;
-  polishAvailable: boolean;
-  llmPolish: boolean;
-  showPolishPreviewSection: boolean;
-  polishPreviewLoading: boolean;
-  hasPolishPreview: boolean;
-  hasPolishPreviewError: boolean;
-  hasPolishBlockReason: boolean;
-  exportBlockedByPolish: boolean;
-  includeAppendix: boolean;
-}): number {
-  let rev = DELIVERY_EXPORT_LAYOUT_REV_BASE;
-  rev += input.mode === "verbatim" ? 0 : input.mode === "lecture" ? 1 : 2;
-  if (input.includeProjectMetadata) rev += 10 + input.metadataLineCount;
-  if (input.polishAvailable && input.llmPolish) rev += 100;
-  if (input.showPolishPreviewSection) rev += 200;
-  if (input.polishPreviewLoading) rev += 400;
-  if (input.hasPolishPreview) rev += 800;
-  if (input.hasPolishPreviewError) rev += 1600;
-  if (input.hasPolishBlockReason) rev += 3200;
-  if (input.exportBlockedByPolish) rev += 6400;
-  if (input.includeAppendix) rev += 128;
-  return rev;
-}
 
 export type DeliveryExportDialogProps = {
   open: boolean;
@@ -125,8 +95,8 @@ export function DeliveryExportDialog({
     !busy &&
     !polishPreview.previewLoading;
 
-  const metadataPreviewLines = listDocxProjectMetadataPreviewLines(projectMetadata);
   const exportTitleLine = `导出：${projectName.trim() || "未命名"} · …`;
+  const metadataPreviewLines = listDocxProjectMetadataPreviewLines(projectMetadata);
 
   useEffect(() => {
     if (!polishAvailable) setLlmPolish(false);
@@ -206,55 +176,13 @@ export function DeliveryExportDialog({
               exportBusy={polishPreview.exportBusy}
               onModeChange={setMode}
             />
-            <fieldset className="m-0 flex flex-col gap-2 border-0 p-0">
-              <legend className="text-xs font-semibold uppercase tracking-wide text-notion-text-light">
-                Word 抬头
-              </legend>
-              <p className="text-xs leading-snug text-notion-text-muted">
-                标题下方默认仅写入「{exportTitleLine}」。勾选后可追加 Hub「项目信息」中的场次字段。
-              </p>
-              <label className={`flex cursor-pointer items-start gap-2 ${PANEL_TYPOGRAPHY.dialogText}`}>
-                <input
-                  type="checkbox"
-                  className="mt-0.5"
-                  checked={includeProjectMetadata}
-                  disabled={polishPreview.exportBusy}
-                  onChange={(e) => setIncludeProjectMetadata(e.target.checked)}
-                />
-                <span>
-                  附带项目场次信息
-                  <span className="block text-xs text-notion-text-muted">
-                    写入讲述人、时间、地点、主题、转录人；未填写的项自动省略。
-                  </span>
-                </span>
-              </label>
-              {includeProjectMetadata ? (
-                <div
-                  className="flex flex-col gap-2 rounded-md bg-notion-callout-bg px-3 py-2"
-                  aria-live="polite"
-                  aria-label="Word 抬头预览"
-                >
-                  <p className="text-xs font-semibold uppercase tracking-wide text-notion-text-light">
-                    将写入 Word 标题下方
-                  </p>
-                  <p className="text-xs text-notion-text-muted">{exportTitleLine}</p>
-                  {metadataPreviewLines.length > 0 ? (
-                    <ul className="list-none space-y-1 p-0 text-xs text-notion-text">
-                      {metadataPreviewLines.map((row) => (
-                        <li key={row.label} className="leading-snug">
-                          <span className="text-notion-text-muted">{row.label}：</span>
-                          {row.value}
-                        </li>
-                      ))}
-                    </ul>
-                  ) : (
-                    <p className="text-xs text-zen-cinnabar">
-                      当前项目尚未填写场次信息；勾选后 Word 中仍只有导出行。请先在 Hub「项目信息」中填写。
-                    </p>
-                  )}
-                </div>
-              ) : null}
-            </fieldset>
+            <DeliveryExportMetadataSection
+              exportBusy={polishPreview.exportBusy}
+              exportTitleLine={exportTitleLine}
+              includeProjectMetadata={includeProjectMetadata}
+              projectMetadata={projectMetadata}
+              onIncludeProjectMetadataChange={setIncludeProjectMetadata}
+            />
             {polishAvailable ? (
               <div className="space-y-2">
                 <label

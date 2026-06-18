@@ -1,19 +1,14 @@
 //! 讯飞凭证探测：对 OST query 发签名 POST，验证三件套并测量 RTT。
 
-use std::time::{Duration, Instant};
+use std::time::Duration;
 
-use reqwest::blocking::RequestBuilder;
 use serde_json::{json, Value};
 
-use crate::blocking_http::stt_probe_blocking_client;
+use crate::blocking_http::{send_ost_credentials_probe, XunfeiOstProbeTransport};
 use crate::stt_online_probe::SttOnlineProbeResponse;
 
 use super::auth::signed_json_headers;
 use super::task::{QUERY_PATH, XUNFEI_OST_HOST};
-
-fn probe_client() -> &'static crate::blocking_http::BlockingClient {
-    stt_probe_blocking_client(true)
-}
 
 fn auth_failure_message(text: &str) -> bool {
     let lower = text.to_ascii_lowercase();
@@ -147,54 +142,48 @@ pub fn probe_credentials_blocking(
         }
     };
 
-    let t0 = Instant::now();
-    let url = endpoint.clone();
-    let mut req: RequestBuilder = probe_client()
-        .post(&url)
-        .header("accept", "application/json")
-        .timeout(timeout);
-    for (k, v) in signed_json_headers(XUNFEI_OST_HOST, QUERY_PATH, &body, api_key, api_secret) {
-        req = req.header(k, v);
+    let signed_headers =
+        signed_json_headers(XUNFEI_OST_HOST, QUERY_PATH, &body, api_key, api_secret);
+    match send_ost_credentials_probe(&endpoint, body, signed_headers, timeout) {
+        XunfeiOstProbeTransport::Ok {
+            status,
+            text,
+            latency_ms,
+        } => interpret_probe_response(endpoint, status, &text, Some(latency_ms)),
+        XunfeiOstProbeTransport::Timeout {
+            latency_ms,
+            timeout,
+        } => SttOnlineProbeResponse {
+            state: "timeout".into(),
+            available: false,
+            endpoint: Some(endpoint),
+            status: None,
+            latency_ms: Some(latency_ms),
+            message: Some(format!("探测超时（{}ms）。", timeout.as_millis())),
+        },
+        XunfeiOstProbeTransport::Connect {
+            latency_ms,
+            message,
+        } => SttOnlineProbeResponse {
+            state: "network-error".into(),
+            available: false,
+            endpoint: Some(endpoint),
+            status: None,
+            latency_ms: Some(latency_ms),
+            message: Some(message),
+        },
+        XunfeiOstProbeTransport::Other {
+            latency_ms,
+            message,
+        } => SttOnlineProbeResponse {
+            state: "network-error".into(),
+            available: false,
+            endpoint: Some(endpoint),
+            status: None,
+            latency_ms: Some(latency_ms),
+            message: Some(message),
+        },
     }
-    let resp = match req.body(body).send() {
-        Ok(r) => r,
-        Err(e) if e.is_timeout() => {
-            return SttOnlineProbeResponse {
-                state: "timeout".into(),
-                available: false,
-                endpoint: Some(endpoint),
-                status: None,
-                latency_ms: Some(t0.elapsed().as_millis() as u64),
-                message: Some(format!("探测超时（{}ms）。", timeout.as_millis())),
-            };
-        }
-        Err(e) if e.is_connect() => {
-            return SttOnlineProbeResponse {
-                state: "network-error".into(),
-                available: false,
-                endpoint: Some(endpoint),
-                status: None,
-                latency_ms: Some(t0.elapsed().as_millis() as u64),
-                message: Some(format!("无法连接讯飞 OST：{e}")),
-            };
-        }
-        Err(e) => {
-            return SttOnlineProbeResponse {
-                state: "network-error".into(),
-                available: false,
-                endpoint: Some(endpoint),
-                status: None,
-                latency_ms: Some(t0.elapsed().as_millis() as u64),
-                message: Some(e.to_string()),
-            };
-        }
-    };
-
-    let latency_ms = Some(t0.elapsed().as_millis() as u64);
-    let status = resp.status().as_u16();
-    let text = resp.text().unwrap_or_default();
-
-    interpret_probe_response(endpoint, status, &text, latency_ms)
 }
 
 #[cfg(test)]

@@ -1,7 +1,6 @@
 import { useCallback, useRef, useState } from "react";
 import { useProjectLifecycleErrorState } from "./projectLifecycleErrorState";
 import type { ProjectDetail } from "../tauri/projectApi";
-import * as p1 from "../tauri/projectApi";
 import { useExportController } from "./useExportController";
 import { useProjectBusyState } from "./useProjectBusyState";
 import { syncSegmentStagesAfterTranscribeReload } from "../services/segmentStagePersist";
@@ -24,6 +23,7 @@ import {
 } from "./projectLifecycleFacades";
 import { useBatchTranscribeQueueController } from "./useBatchTranscribeQueueController";
 import { buildProjectLifecycleReturn } from "./projectLifecycleReturn";
+import { useProjectLifecycleFileActions } from "./useProjectLifecycleFileActions";
 import type { ProjectLifecycleApi } from "./ProjectLifecycleApi";
 
 export function useProjectLifecycleWiring(
@@ -179,6 +179,15 @@ export function useProjectLifecycleWiring(
   });
   cancelBatchTranscribeRef.current = batchTranscribe.cancelBatchTranscribe;
 
+  const { refreshCurrentProject, pickAudio, clearPickedAudio, openAppDataFolder } =
+    useProjectLifecycleFileActions({
+      busy,
+      current,
+      setError,
+      setPickedPath,
+      refreshCurrentProjectBase,
+    });
+
   const { importDuplicate, fileMutation, crud, projectMutation } = useProjectLifecycleHubStack({
     pickedPath,
     newName,
@@ -198,26 +207,6 @@ export function useProjectLifecycleWiring(
     setTranscribeHints: transcribeJob.setTranscribeHints,
   });
 
-  const refreshCurrentProject = useCallback(async () => {
-    if (busy || !current) return;
-    await refreshCurrentProjectBase();
-  }, [busy, current, refreshCurrentProjectBase]);
-
-  const pickAudio = useCallback(async () => {
-    if (busy) return;
-    setError("");
-    try {
-      const p = await p1.pickAudioPath();
-      setPickedPath(p ?? null);
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    }
-  }, [busy]);
-
-  const clearPickedAudio = useCallback(() => {
-    setPickedPath(null);
-  }, []);
-
   const editorTools = useProjectEditorToolsController({
     busy,
     busyReason,
@@ -236,16 +225,6 @@ export function useProjectLifecycleWiring(
     saveSegments,
     transcribeWarnings: transcribeJob.transcribeWarnings,
   });
-
-  const openAppDataFolder = useCallback(async () => {
-    if (busy) return;
-    setError("");
-    try {
-      await p1.openAppDataFolder();
-    } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
-    }
-  }, [busy]);
 
   const exports = useExportController({
     current,

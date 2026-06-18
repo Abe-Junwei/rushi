@@ -1,40 +1,9 @@
-import { useCallback, useEffect, useLayoutEffect, useRef, useState, type MutableRefObject, type RefObject } from "react";
+import { useCallback, useEffect, useRef, useState, type MutableRefObject, type RefObject } from "react";
 import type WaveSurfer from "wavesurfer.js";
 import type { PeakCache } from "../services/waveform/PeakCache";
-import {
-  clearPeaksAppliedForDecode,
-  commitWaveSurferZoom,
-  disableWaveSurferAutoScroll,
-  loadPeaksIntoWaveSurfer,
-  planWaveformZoomApply,
-  type WaveformZoomSyncInFlight,
-} from "../services/waveform/waveformZoomSyncEngine";
-import {
-  wfProfileBegin,
-  wfProfileFlush,
-  wfProfileSetLabel,
-} from "../services/waveform/waveformZoomProfile";
-import {
-  isPeaksLoadedIntoWs,
-  markAppliedPeaks,
-  readLoadedPeaksPx,
-  type WaveformAppliedZoomState,
-} from "../utils/waveformAppliedZoom";
-
-function reconcilePeaksAppliedFromAppliedZoom(
-  appliedZoom: WaveformAppliedZoomState,
-  onPeaksApplied: (applied: boolean, loadPeaksPx: number) => void,
-): void {
-  if (isPeaksLoadedIntoWs(appliedZoom)) {
-    onPeaksApplied(true, readLoadedPeaksPx(appliedZoom));
-  }
-}
-
-type PendingPeaksLoad = {
-  url: string;
-  loadPeaksPx: number;
-  layoutDur: number;
-};
+import type { WaveformZoomSyncInFlight } from "../services/waveform/waveformZoomSyncEngine";
+import { markAppliedPeaks, type WaveformAppliedZoomState } from "../utils/waveformAppliedZoom";
+import { useWaveformZoomSyncLayoutEffect } from "./useWaveformZoomSyncLayout";
 
 /** Sync layout px/s → WaveSurfer zoom; ws.load(peaks) when draw px/s cache ready / quantum changes. */
 export function useWaveformZoomSync(args: {
@@ -95,7 +64,7 @@ export function useWaveformZoomSync(args: {
   };
 
   const pendingPeaksHotSwitchRef = useRef(false);
-  const pendingPeaksLoadRef = useRef<PendingPeaksLoad | null>(null);
+  const pendingPeaksLoadRef = useRef<{ url: string; loadPeaksPx: number; layoutDur: number } | null>(null);
   const prevDrawPxPerSecRef = useRef(drawPxPerSec);
   const prevPlayingRef = useRef(isPlaying);
   const [peaksHotSwitchPending, setPeaksHotSwitchPending] = useState(false);
@@ -144,157 +113,32 @@ export function useWaveformZoomSync(args: {
     cancelInFlightZoomRef.current = cancelInFlightZoom;
   }
 
-  useLayoutEffect(() => {
-    const ws = wsRef.current;
-    if (!ws || !isReady || disabled) return;
-
-    const finishZoom = (currentWs: WaveSurfer) => {
-      commitWaveSurferZoom({
-        ws: currentWs,
-        intentPxPerSec: layoutPxPerSec,
-        appliedZoom,
-        inFlight,
-        onZoomApplied: onZoomAppliedRef?.current ?? undefined,
-      });
-    };
-
-    const flushDeferredPeaksLoad = () => {
-      if (viewportResizeHoldRef?.current) return;
-      const pending = pendingPeaksLoadRef.current;
-      if (!pending) return;
-      pendingPeaksLoadRef.current = null;
-      const currentWs = wsRef.current;
-      const cache = peakCacheRef?.current;
-      if (!currentWs || !cache || mediaUrl !== pending.url) return;
-      syncPeaksHotSwitchPending(false);
-      finishZoom(currentWs);
-      loadPeaksIntoWaveSurfer({
-        ws: currentWs,
-        cache,
-        url: pending.url,
-        loadPeaksPx: pending.loadPeaksPx,
-        layoutDur: pending.layoutDur,
-        intentPxPerSec: drawPxPerSec,
-        mediaUrl,
-        wsRef,
-        appliedZoom,
-        inFlight,
-        onZoomApplied: onZoomAppliedRef?.current ?? undefined,
-        onPeaksApplied,
-      });
-    };
-
-    if (flushDeferredPeaksLoadRef) {
-      flushDeferredPeaksLoadRef.current = flushDeferredPeaksLoad;
-    }
-
-    const applyZoom = () => {
-      const currentWs = wsRef.current;
-      if (!currentWs || !isReady || disabled) return;
-
-      disableWaveSurferAutoScroll(currentWs);
-      wfProfileBegin(`zoom@${drawPxPerSec.toFixed(0)}px/s`);
-      // Layout px/s always drives ws.zoom immediately; peaks load may follow async.
-      finishZoom(currentWs);
-
-      const cache = peakCacheRef?.current ?? peakCache ?? null;
-      const action = planWaveformZoomApply({
-        intentPxPerSec: drawPxPerSec,
-        appliedZoom,
-        peakCache: cache,
-        mediaUrl,
-        layoutDurationSecRef: layoutDurationSecRef?.current,
-        layoutDurationSec,
-        peakCacheDurationSec: cache?.durationSec,
-        isPlaying: currentWs.isPlaying(),
-        hotSwitchWhilePlaying: hotSwitchWhilePlayingRef?.current ?? hotSwitchWhilePlaying,
-        peaksLoadInFlight: peaksLoadInFlightPxRef.current != null,
-        viewportResizeHold: viewportResizeHoldRef?.current ?? false,
-      });
-      wfProfileSetLabel(`${action.type}@${drawPxPerSec.toFixed(0)}px/s`);
-
-      switch (action.type) {
-        case "noop":
-          syncPeaksHotSwitchPending(false);
-          reconcilePeaksAppliedFromAppliedZoom(appliedZoom, onPeaksApplied);
-          wfProfileFlush();
-          break;
-        case "finish-zoom":
-          syncPeaksHotSwitchPending(false);
-          if (!cache || !mediaUrl) {
-            clearPeaksAppliedForDecode(appliedZoom);
-            onPeaksApplied(false, Number.NaN);
-          } else {
-            reconcilePeaksAppliedFromAppliedZoom(appliedZoom, onPeaksApplied);
-          }
-          wfProfileFlush();
-          break;
-        case "defer-hot-switch":
-          syncPeaksHotSwitchPending(true);
-          wfProfileFlush();
-          break;
-        case "defer-resize-load":
-          pendingPeaksLoadRef.current = {
-            url: mediaUrl!,
-            loadPeaksPx: action.loadPeaksPx,
-            layoutDur: action.layoutDur,
-          };
-          wfProfileFlush();
-          break;
-        case "load-peaks":
-          syncPeaksHotSwitchPending(false);
-          loadPeaksIntoWaveSurfer({
-            ws: currentWs,
-            cache: cache!,
-            url: mediaUrl!,
-            loadPeaksPx: action.loadPeaksPx,
-            layoutDur: action.layoutDur,
-            intentPxPerSec: drawPxPerSec,
-            mediaUrl,
-            wsRef,
-            appliedZoom,
-            inFlight,
-            onZoomApplied: onZoomAppliedRef?.current ?? undefined,
-            onPeaksApplied,
-          });
-          break;
-      }
-
-      prevDrawPxPerSecRef.current = drawPxPerSec;
-    };
-
-    applyZoom();
-
-    return () => {
-      peaksLoadSeqRef.current += 1;
-      peaksLoadInFlightPxRef.current = null;
-      zoomSyncInFlightRef.current = null;
-      if (flushDeferredPeaksLoadRef) {
-        flushDeferredPeaksLoadRef.current = undefined;
-      }
-    };
-  }, [
-    appliedZoom,
-    disabled,
-    flushDeferredPeaksLoadRef,
-    hotSwitchWhilePlaying,
-    hotSwitchWhilePlayingRef,
+  useWaveformZoomSyncLayoutEffect({
+    wsRef,
     isReady,
-    layoutDurationSec,
-    layoutDurationSecRef,
-    mediaUrl,
+    disabled,
     layoutPxPerSec,
     drawPxPerSec,
-    onPeaksApplied,
-    onZoomAppliedRef,
+    appliedZoom,
     peakCache,
     peakCacheGeneration,
     peakCacheRef,
-    peaksHotSwitchRetry,
-    syncPeaksHotSwitchPending,
+    layoutDurationSecRef,
+    layoutDurationSec,
+    mediaUrl,
+    onZoomAppliedRef,
+    cancelInFlightZoomRef,
     viewportResizeHoldRef,
-    wsRef,
-  ]);
+    flushDeferredPeaksLoadRef,
+    hotSwitchWhilePlayingRef,
+    hotSwitchWhilePlaying,
+    inFlight,
+    pendingPeaksLoadRef,
+    prevDrawPxPerSecRef,
+    peaksHotSwitchRetry,
+    onPeaksApplied,
+    syncPeaksHotSwitchPending,
+  });
 
   return { cancelInFlightZoom, peaksHotSwitchPending, peaksApplied };
 }

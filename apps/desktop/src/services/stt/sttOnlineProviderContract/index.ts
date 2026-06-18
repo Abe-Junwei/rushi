@@ -5,6 +5,7 @@ export * from "./apiKeyStorage";
 export * from "./apiSecretStorage";
 export * from "./definitions";
 export * from "./runtimeConfig";
+export * from "./providerProfiles";
 export * from "./memorySecrets";
 export * from "./endpoint";
 export * from "./health";

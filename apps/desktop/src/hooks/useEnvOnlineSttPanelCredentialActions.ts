@@ -1,6 +1,7 @@
 import { useCallback, useState } from "react";
 import { toast } from "../services/ui/toast";
 import {
+  clearSttOnlineProviderProfileCredentials,
   clearSttConnectionVerified,
   DEFAULT_STT_API_KEY_ID,
   getSttOnlineProviderDefinition,
@@ -143,6 +144,7 @@ export function useEnvOnlineSttPanelCredentialActions({
       }
       const n = buildOnlineSttDraftRuntimeConfig(fields);
       persistExternalSttOnlineRuntimeConfig(n, { clearApiKeyId: true, clearApiSecretId: true });
+      clearSttOnlineProviderProfileCredentials(olProviderId);
       persistSttOnlineApiSecretId(null, { clearApiSecretId: true });
       setSavedApiKeyId(null);
       setSavedApiSecretId(null);

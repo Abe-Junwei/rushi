@@ -19,6 +19,7 @@ import {
   resolveSttApiSecretIdForProvider,
   setSttOnlineApiKeyInMemory,
   setSttOnlineApiSecretInMemory,
+  syncSttOnlineProviderProfileFromActive,
 } from "../services/stt/sttOnlineProviderContract";
 import { sttSaveApiKey } from "../tauri/sttApi";
 import {
@@ -118,6 +119,7 @@ export function useEnvOnlineSttPanelProbe({
         };
         persistExternalSttOnlineRuntimeConfig(verifiedCfg);
         markSttConnectionVerified(verifiedCfg);
+        syncSttOnlineProviderProfileFromActive(verifiedCfg);
         setSttOnlineApiKeyInMemory(null);
         setSttOnlineApiSecretInMemory(null);
         bumpKeychainCheck();
