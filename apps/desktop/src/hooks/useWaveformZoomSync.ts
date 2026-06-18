@@ -57,11 +57,15 @@ export function useWaveformZoomSync(args: {
   const zoomSyncInFlightRef = useRef<number | null>(null);
   const peaksLoadSeqRef = useRef(0);
   const peaksLoadInFlightPxRef = useRef<number | null>(null);
-  const inFlight: WaveformZoomSyncInFlight = {
-    zoomSyncInFlightRef,
-    peaksLoadSeqRef,
-    peaksLoadInFlightPxRef,
-  };
+  const inFlightRef = useRef<WaveformZoomSyncInFlight | null>(null);
+  if (!inFlightRef.current) {
+    inFlightRef.current = {
+      zoomSyncInFlightRef,
+      peaksLoadSeqRef,
+      peaksLoadInFlightPxRef,
+    };
+  }
+  const inFlight = inFlightRef.current;
 
   const pendingPeaksHotSwitchRef = useRef(false);
   const pendingPeaksLoadRef = useRef<{ url: string; loadPeaksPx: number; layoutDur: number } | null>(null);

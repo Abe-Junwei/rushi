@@ -112,12 +112,12 @@ export function useAutoSaveSegments(args: Args): { autoSaveFooterStatus: AutoSav
       setAutoSaveFooterStatus("idle");
       return;
     }
-    if (!hasUnsavedSegmentChanges()) {
+    if (!hasUnsavedRef.current()) {
       setAutoSaveFooterStatus("saved");
       return;
     }
     scheduleAutoSave();
-  }, [busy, clearScheduledSave, currentFileId, enabled, hasUnsavedSegmentChanges, scheduleAutoSave]);
+  }, [busy, clearScheduledSave, currentFileId, enabled, scheduleAutoSave]);
 
   useEffect(() => {
     if (!enabled || !currentFileId) return;

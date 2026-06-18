@@ -32,15 +32,79 @@ export type SegmentTextListRowProps = {
     pointerTimeSec: number,
     selectionText?: string,
   ) => void;
-  onOpenTextContextMenu?: (e: MouseEvent<HTMLElement>, selectionText: string) => void;
+  onOpenTextContextMenu?: (
+    e: MouseEvent<HTMLElement>,
+    segmentIdx: number,
+    pointerTimeSec: number,
+    selectionText: string,
+  ) => void;
   onRevealSelectedSegment?: () => void;
   findReplaceHighlight?: { charStart: number; charEnd: number } | null;
   correctionRulesHighlight?: { charStart: number; charEnd: number } | null;
   spansForText: (text: string) => CorrectableSpan[];
-  onCorrectableSpanClick: (span: CorrectableSpan, event: React.MouseEvent<HTMLButtonElement>) => void;
+  onCorrectableSpanClick: (
+    segmentIdx: number,
+    span: CorrectableSpan,
+    event: React.MouseEvent<HTMLButtonElement>,
+  ) => void;
   hasUnsavedDraft?: boolean;
   onOpenAnnotation?: (segmentIdx: number) => void;
 };
+
+function highlightEqual(
+  a: { charStart: number; charEnd: number } | null | undefined,
+  b: { charStart: number; charEnd: number } | null | undefined,
+): boolean {
+  if (a === b) return true;
+  if (!a || !b) return !a && !b;
+  return a.charStart === b.charStart && a.charEnd === b.charEnd;
+}
+
+function segmentTextListRowPropsEqual(
+  prev: SegmentTextListRowProps,
+  next: SegmentTextListRowProps,
+): boolean {
+  if (prev.index !== next.index) return false;
+  if (prev.selected !== next.selected) return false;
+  if (prev.inSelection !== next.inSelection) return false;
+  if (prev.busy !== next.busy) return false;
+  if (prev.hasUnsavedDraft !== next.hasUnsavedDraft) return false;
+  if (prev.transcriptFontPx !== next.transcriptFontPx) return false;
+  if (prev.segmentRowHeightPx !== next.segmentRowHeightPx) return false;
+  if (prev.transcriptFontFamily !== next.transcriptFontFamily) return false;
+  if (prev.transcriptFontWeight !== next.transcriptFontWeight) return false;
+  if (prev.transcriptFontItalic !== next.transcriptFontItalic) return false;
+  if (prev.segmentMetaWidthPx !== next.segmentMetaWidthPx) return false;
+  if (!highlightEqual(prev.findReplaceHighlight, next.findReplaceHighlight)) return false;
+  if (!highlightEqual(prev.correctionRulesHighlight, next.correctionRulesHighlight)) return false;
+
+  const ps = prev.segment;
+  const ns = next.segment;
+  if (ps.uid !== ns.uid) return false;
+  if (ps.text !== ns.text) return false;
+  if (ps.start_sec !== ns.start_sec) return false;
+  if (ps.end_sec !== ns.end_sec) return false;
+  if (ps.kind !== ns.kind) return false;
+  if (ps.text_stage !== ns.text_stage) return false;
+  if (ps.annotation !== ns.annotation) return false;
+
+  return (
+    prev.selectSegmentAt === next.selectSegmentAt &&
+    prev.updateSegmentText === next.updateSegmentText &&
+    prev.onTextareaKeyDown === next.onTextareaKeyDown &&
+    prev.onSegmentMetaWidthPointerDown === next.onSegmentMetaWidthPointerDown &&
+    prev.onTimestampPointerDown === next.onTimestampPointerDown &&
+    prev.onRowRangePointerDown === next.onRowRangePointerDown &&
+    prev.consumeRowRangeClickSuppress === next.consumeRowRangeClickSuppress &&
+    prev.onSegmentRowHeightPointerDown === next.onSegmentRowHeightPointerDown &&
+    prev.onOpenContextMenu === next.onOpenContextMenu &&
+    prev.onOpenTextContextMenu === next.onOpenTextContextMenu &&
+    prev.onRevealSelectedSegment === next.onRevealSelectedSegment &&
+    prev.spansForText === next.spansForText &&
+    prev.onCorrectableSpanClick === next.onCorrectableSpanClick &&
+    prev.onOpenAnnotation === next.onOpenAnnotation
+  );
+}
 
 export const SegmentTextListRow = memo(function SegmentTextListRow({
   segment: s,
@@ -134,6 +198,20 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
     [i, onOpenContextMenu, pointerTimeSec],
   );
 
+  const onOpenTextContextMenuForRow = useCallback(
+    (e: MouseEvent<HTMLElement>, selectionText: string) => {
+      onOpenTextContextMenu?.(e, i, pointerTimeSec, selectionText);
+    },
+    [i, onOpenTextContextMenu, pointerTimeSec],
+  );
+
+  const onCorrectableSpanClickForRow = useCallback(
+    (span: CorrectableSpan, event: React.MouseEvent<HTMLButtonElement>) => {
+      onCorrectableSpanClick(i, span, event);
+    },
+    [i, onCorrectableSpanClick],
+  );
+
   return (
     <div
       data-seg-row={i}
@@ -178,8 +256,8 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
         findReplaceHighlight={findReplaceHighlight}
         correctionRulesHighlight={correctionRulesHighlight}
         spansForText={spansForText}
-        onCorrectableSpanClick={onCorrectableSpanClick}
-        onOpenTextContextMenu={onOpenTextContextMenu}
+        onCorrectableSpanClick={onCorrectableSpanClickForRow}
+        onOpenTextContextMenu={onOpenTextContextMenuForRow}
       />
 
       <SegmentRowStageBadge
@@ -191,4 +269,4 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
       />
     </div>
   );
-});
+}, segmentTextListRowPropsEqual);

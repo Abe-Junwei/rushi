@@ -91,6 +91,13 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
 
   wfApiRef.current = wf;
 
+  const syncShellLayoutForZoomRef = useRef(wf.syncShellLayoutForZoom);
+  syncShellLayoutForZoomRef.current = wf.syncShellLayoutForZoom;
+  const refitFitAllIfNeededRef = useRef(wf.refitFitAllIfNeeded);
+  refitFitAllIfNeededRef.current = wf.refitFitAllIfNeeded;
+  const resetZoomForMediaRef = useRef(zoom.resetZoomForMedia);
+  resetZoomForMediaRef.current = zoom.resetZoomForMedia;
+
   useWaveformTimelineDurationSync({
     setResolvedDurationSec,
     projectId: ctx.projectId,
@@ -150,12 +157,12 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
 
   useLayoutEffect(() => {
     if (timelineWidthPx <= 0) return;
-    wf.syncShellLayoutForZoom();
-  }, [timelineWidthPx, wf]);
+    syncShellLayoutForZoomRef.current();
+  }, [timelineWidthPx]);
 
   useLayoutEffect(() => {
     if (timelineMetrics.mediaDurationSec <= 0) return;
-    wf.refitFitAllIfNeeded();
+    refitFitAllIfNeededRef.current();
     const dur = timelineMetrics.mediaDurationSec;
     const renderCap = clampPxPerSecForWaveSurferRender(zoom.pxPerSec, dur);
     const renderTol = Math.max(0.001, Math.min(renderCap * 0.05, 8));
@@ -163,10 +170,10 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
       // Preserve fit-selection / fit-all / default intent — not a manual slider change.
       zoom.applyFitAllRefitPxPerSec(renderCap);
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     timelineMetrics.mediaDurationSec,
     scroll.tierScrollLayout.clientWidthPx,
+    zoom.applyFitAllRefitPxPerSec,
     zoom.layoutIntent,
     zoom.pxPerSec,
     peaks.peakCache,
@@ -247,9 +254,9 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
     });
     if (dur < 0.5 || vw <= 0) return;
     pendingMediaZoomResetRef.current = false;
-    zoom.resetZoomForMedia(vw, dur);
+    resetZoomForMediaRef.current(vw, dur);
     writeStoredWaveformPxPerSecForMedia(vw, dur);
-  }, [ctx.mediaUrl, timelineMetrics.mediaDurationSec, scroll.tierScrollLayout.clientWidthPx, scroll.tierScrollLive.clientWidthRef, zoom]);
+  }, [ctx.mediaUrl, timelineMetrics.mediaDurationSec, scroll.tierScrollLayout.clientWidthPx, scroll.tierScrollLive.clientWidthRef]);
 
   return {
     tierScrollRef,

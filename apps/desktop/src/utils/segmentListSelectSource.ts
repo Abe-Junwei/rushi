@@ -1,14 +1,12 @@
-import { LIST_ADVANCE_PLAY_COALESCE_MS } from "./scheduleListAdvanceSegmentPlayback";
 import type { SegmentSelectSource } from "./waveformViewMode";
 
 /** 列表连点间隔内用 listAdvance，避免重复 zoomToFitSegment。 */
 export const LIST_RAPID_SELECT_MS = 400;
 
-/** 列表滚入视口：仅 ↑↓ / 连点推进合并延迟；点击/波形选中立即滚动。 */
+/** 选中语段后的列表滚入视口必须即时，避免切换语段时出现可感知跳转延迟。 */
 export function segmentListScrollCoalesceMs(source: SegmentSelectSource): number {
-  return source === "listKeyboard" || source === "listAdvance"
-    ? LIST_ADVANCE_PLAY_COALESCE_MS
-    : 0;
+  void source;
+  return 0;
 }
 
 export type ListSelectSourceState = {

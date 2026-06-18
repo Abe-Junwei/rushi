@@ -551,14 +551,34 @@ function checkSegmentListRapidSelectGuard() {
       `${rel}: 未筛选长稿的 selectedDisplayIndex 必须由 selectedIdx O(1) 直达，只能在 filterActive 分支使用 filteredIndices.indexOf(...)`,
     );
   }
+  const scrollRel = 'apps/desktop/src/components/editor/useEditorSegmentListScroll.ts';
+  const scrollPath = path.join(ROOT, scrollRel);
+  if (fs.existsSync(scrollPath)) {
+    const scrollSource = fs.readFileSync(scrollPath, 'utf-8');
+    if (/selectedScrollTimerRef|segmentListScrollCoalesceMs|setTimeout\(flushSelectedScroll/.test(scrollSource)) {
+      errors.push(
+        `${scrollRel}: 选中语段后的列表滚动须与打包版本一致走同步 layout effect，禁止 timer/coalesce 延迟`,
+      );
+    }
+  }
 
   const keyboardRel = 'apps/desktop/src/hooks/useSegmentKeyboard.ts';
   const keyboardPath = path.join(ROOT, keyboardRel);
   if (!fs.existsSync(keyboardPath)) return;
   const keyboardSource = fs.readFileSync(keyboardPath, 'utf-8');
-  if (/w\.seek\(segmentStartSec\(seg\)\)/.test(keyboardSource)) {
+  if (!/advanceRafRef[\s\S]{0,260}requestAnimationFrame\(flushPendingAdvance\)/.test(keyboardSource)) {
     errors.push(
-      `${keyboardRel}: 快速 ↑↓ 切语段禁止同步 seek；应通过 list advance media scheduler 合并到最后一次`,
+      `${keyboardRel}: 快速 ↑↓ 切语段须至少在同一帧内合并到最后目标，避免按键重复触发选中链`,
+    );
+  }
+  if (/createListAdvanceCoalescedScheduler|createListAdvanceSegmentPlaybackScheduler/.test(keyboardSource)) {
+    errors.push(
+      `${keyboardRel}: ↑↓ 键盘切换禁止复用 listAdvance 的 150ms coalesce scheduler`,
+    );
+  }
+  if (/selectSegmentAtRef\.current\([^)]*"listKeyboard"/.test(keyboardSource) || /\.seek\(segmentStartSec\(seg\)\)/.test(keyboardSource)) {
+    errors.push(
+      `${keyboardRel}: ↑↓ 键盘切换须走打包版本的普通 list 选择链；seek 由 selectSegmentAt 的 rAF 负责`,
     );
   }
   if (/readStoredTabAdvanceLoopsSegment/.test(keyboardSource)) {
@@ -584,17 +604,14 @@ function checkSegmentListRapidSelectGuard() {
   const selectionPath = path.join(ROOT, selectionRel);
   if (fs.existsSync(selectionPath)) {
     const selectionSource = fs.readFileSync(selectionPath, 'utf-8');
-    const queueRevealFn = selectionSource.match(
-      /const queueListAdvanceReveal = useCallback\([\s\S]{0,320}?\}, \[\]\);/,
-    )?.[0];
-    if (queueRevealFn && /requestAnimationFrame/.test(queueRevealFn)) {
+    if (!/flushSync\s*\(\s*\(\)\s*=>\s*\{[\s\S]{0,180}setSelectedIdxUi\(/.test(selectionSource)) {
       errors.push(
-        `${selectionRel}: listAdvance 波形 reveal 禁止 RAF 直刷；须 coalesce 到最后一次（避免 [wf-geom] scroll 风暴）`,
+        `${selectionRel}: 语段切换须先 flushSync 提交 selectedIdx，再执行波形 reveal/seek 等重布局副作用`,
       );
     }
-    if (!/createListAdvanceCoalescedScheduler/.test(selectionSource)) {
+    if (/createListAdvanceCoalescedScheduler|queueListAdvanceReveal/.test(selectionSource)) {
       errors.push(
-        `${selectionRel}: listAdvance 波形 reveal 须使用 createListAdvanceCoalescedScheduler`,
+        `${selectionRel}: 语段切换后的波形 reveal 必须即时；listAdvance 只表示不重复 zoom，禁止 150ms coalesce`,
       );
     }
   }

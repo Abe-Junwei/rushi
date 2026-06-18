@@ -9,7 +9,7 @@ export function shouldEnterZoomForOverlayGesture(mode: SegmentDragMode): boolean
   return mode === "resize-start" || mode === "resize-end" || mode === "move";
 }
 
-/** 列表点击选中时缩进视口以容纳语段；↑↓ / 列表推进仅 coalesced reveal，避免连按卡死。 */
+/** 列表点击选中时缩进视口以容纳语段；↑↓ / 列表推进仅 reveal，不重复触发 zoom。 */
 export function shouldZoomViewportOnSelectSource(source: SegmentSelectSource): boolean {
   return source === "list";
 }

@@ -7,6 +7,7 @@ import { ensureAppWindowCloseGuardRegistered } from "./services/appWindowCloseGu
 import { logRuntimeParityBootstrap } from "./services/runtimeParityBootstrap";
 import { bootstrapShellCapabilities } from "./services/shellCapabilities";
 import { installWaveformZoomProfileDevTools } from "./services/waveform/waveformZoomProfile";
+import { installSelectionLatencyProfileDevTools } from "./services/ui/selectionLatencyProfile";
 import { initOfficeShellTheme } from "./services/ui/officeShellTheme";
 import "./zen-tailwind.css";
 
@@ -14,6 +15,7 @@ initOfficeShellTheme();
 
 ensureAppWindowCloseGuardRegistered();
 installWaveformZoomProfileDevTools();
+installSelectionLatencyProfileDevTools();
 
 const rootEl = document.getElementById("root");
 if (!rootEl) {

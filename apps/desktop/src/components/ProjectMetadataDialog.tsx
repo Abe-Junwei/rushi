@@ -60,12 +60,13 @@ export function ProjectMetadataDialog({
   onClose,
   onSave,
 }: ProjectMetadataDialogProps) {
-  const initial = useMemo(() => formFromProject(project), [project, open]);
+  const initial = useMemo(() => formFromProject(project), [open, project?.id]);
   const [draft, setDraft] = useState<ProjectMetadataForm>(initial);
 
   useEffect(() => {
-    if (open) setDraft(formFromProject(project));
-  }, [open, project]);
+    if (!open) return;
+    setDraft(formFromProject(project));
+  }, [open, project?.id]);
 
   const duplicateProjects = useMemo(
     () => findDuplicateProjectNames(projects, draft.name, project?.id),
@@ -94,8 +95,8 @@ export function ProjectMetadataDialog({
       fallbackHeight={FALLBACK_HEIGHT.base}
       estimatedFitHeight={estimatedFitHeight}
       layoutRev={layoutRev}
-      measureBody
-      fillHeight
+      measureBody={false}
+      fillHeight={false}
       defaultWidth={PANEL_WIDTH}
       bounds={{ minWidth: PANEL_MIN.width, minHeight: PANEL_MIN.height, maxWidthCap: 520, maxHeightCap: 720 }}
       panelZIndex={110}

@@ -16,13 +16,14 @@ export function useWelcomeSidebarProjectTree(
   const [loadingFilesById, setLoadingFilesById] = useState<Record<string, boolean>>({});
 
   const ensureProjectFilesLoaded = useCallback(async (projectId: string) => {
-    if (projectFilesById[projectId] || loadingFilesById[projectId]) return;
+    if (projectId in projectFilesById || loadingFilesById[projectId]) return;
     setLoadingFilesById((prev) => ({ ...prev, [projectId]: true }));
     try {
       const files = await fileApi.listFiles(projectId);
-      setProjectFilesById((prev) => ({ ...prev, [projectId]: files }));
+      setProjectFilesById((prev) => ({ ...prev, [projectId]: files ?? [] }));
     } catch (e) {
       c.setError(e instanceof Error ? e.message : String(e));
+      setProjectFilesById((prev) => ({ ...prev, [projectId]: [] }));
     } finally {
       setLoadingFilesById((prev) => ({ ...prev, [projectId]: false }));
     }

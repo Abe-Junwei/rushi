@@ -81,6 +81,18 @@
       ];
       return detail;
     },
+    list_files: async (args) => {
+      const projectId = args?.projectId ?? e2eProjectId;
+      if (projectId !== e2eProjectId) return [];
+      return [
+        {
+          id: e2eFileId,
+          name: "E2E 空项目",
+          file_type: "text",
+          updated_at_ms: now,
+        },
+      ];
+    },
     load_file: async (args) => ({
       id: args?.fileId ?? e2eFileId,
       project_id: e2eProjectId,
@@ -116,6 +128,9 @@
   };
 
   window.__RUSHI_E2E_INVOKES__ = invocations;
+  window.__RUSHI_E2E_SET_SEGMENTS__ = (segments) => {
+    currentSegments = Array.isArray(segments) ? segments : currentSegments;
+  };
   window.__TAURI__ = {};
   window.__TAURI_INTERNALS__ = {
     metadata: {

@@ -17,12 +17,12 @@ import {
   segmentListRowMinHeightPx,
   writeSegmentListFilterIndices,
 } from "../../utils/segmentListVirtualWindow";
-import { segmentListScrollCoalesceMs } from "../../utils/segmentListSelectSource";
-import type { SegmentSelectSource } from "../../utils/waveformViewMode";
 import type { SegmentListFilterNavState } from "../../utils/segmentListFilterNav";
+import { selectionProfileTime } from "../../services/ui/selectionLatencyProfile";
 
 /** clientHeight 尚未量到时的保守视口，避免 0 导致整表挂载 */
 const SEGMENT_LIST_FALLBACK_VIEWPORT_HEIGHT_PX = 480;
+const SCROLL_METRICS_EPSILON_PX = 0.5;
 
 function readScrollMetrics(root: HTMLElement | null): { scrollTop: number; viewportHeight: number } {
   if (!root) {
@@ -32,6 +32,16 @@ function readScrollMetrics(root: HTMLElement | null): { scrollTop: number; viewp
     scrollTop: root.scrollTop,
     viewportHeight: root.clientHeight > 0 ? root.clientHeight : SEGMENT_LIST_FALLBACK_VIEWPORT_HEIGHT_PX,
   };
+}
+
+function scrollMetricsEqual(
+  a: { scrollTop: number; viewportHeight: number },
+  b: { scrollTop: number; viewportHeight: number },
+): boolean {
+  return (
+    Math.abs(a.scrollTop - b.scrollTop) < SCROLL_METRICS_EPSILON_PX &&
+    Math.abs(a.viewportHeight - b.viewportHeight) < SCROLL_METRICS_EPSILON_PX
+  );
 }
 
 export type UseEditorSegmentListScrollArgs = {
@@ -44,7 +54,6 @@ export type UseEditorSegmentListScrollArgs = {
   selectedIdx: number;
   currentFileId: string | null;
   transcriptRowHeightPx: number;
-  lastSegmentSelectSourceRef: React.MutableRefObject<SegmentSelectSource>;
 };
 
 export function useEditorSegmentListScroll({
@@ -57,16 +66,11 @@ export function useEditorSegmentListScroll({
   selectedIdx,
   currentFileId,
   transcriptRowHeightPx,
-  lastSegmentSelectSourceRef,
 }: UseEditorSegmentListScrollArgs) {
   const scrollMetricsRef = useRef(readScrollMetrics(null));
   const [scrollEpoch, setScrollEpoch] = useState(0);
   const scrollEpochRafRef = useRef<number | null>(null);
   const lastSelectedScrollKeyRef = useRef<string | null>(null);
-  const pendingSelectedScrollKeyRef = useRef<string | null>(null);
-  const pendingSelectedScrollIdxRef = useRef<number>(-1);
-  const pendingSelectedDisplayIndexRef = useRef<number>(-1);
-  const selectedScrollTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   const rowMinHeightPx = segmentListRowMinHeightPx(transcriptRowHeightPx);
   const itemStridePx = segmentListItemStridePx(rowMinHeightPx);
@@ -79,32 +83,35 @@ export function useEditorSegmentListScroll({
   }, [displayCount, filterActive, filteredIndices]);
 
   const scheduleScrollEpochBump = useCallback(() => {
-    if (scrollEpochRafRef.current != null) return;
+    if (!useVirtualList || scrollEpochRafRef.current != null) return;
     scrollEpochRafRef.current = window.requestAnimationFrame(() => {
       scrollEpochRafRef.current = null;
       setScrollEpoch((n) => n + 1);
     });
-  }, []);
+  }, [useVirtualList]);
 
-  const syncScrollMetrics = useCallback(() => {
-    scrollMetricsRef.current = readScrollMetrics(segmentListRef.current);
-  }, [segmentListRef]);
-
-  const bumpScrollEpoch = useCallback(() => {
-    syncScrollMetrics();
-    scheduleScrollEpochBump();
-  }, [scheduleScrollEpochBump, syncScrollMetrics]);
+  const bumpScrollEpoch = useCallback(
+    (options?: { force?: boolean }) => {
+      const next = readScrollMetrics(segmentListRef.current);
+      const prev = scrollMetricsRef.current;
+      const changed = !scrollMetricsEqual(next, prev);
+      scrollMetricsRef.current = next;
+      if (!useVirtualList) return;
+      if (!options?.force && !changed) return;
+      scheduleScrollEpochBump();
+    },
+    [scheduleScrollEpochBump, segmentListRef, useVirtualList],
+  );
 
   const handleScroll = useCallback(() => {
-    syncScrollMetrics();
-    scheduleScrollEpochBump();
-  }, [scheduleScrollEpochBump, syncScrollMetrics]);
+    bumpScrollEpoch();
+  }, [bumpScrollEpoch]);
 
   useLayoutEffect(() => {
     const root = segmentListRef.current;
     if (!root) return;
     annotateSegmentListScrollMetrics(root, { rowMinHeightPx, itemStridePx });
-    bumpScrollEpoch();
+    bumpScrollEpoch({ force: useVirtualList });
     const observer = new ResizeObserver(() => bumpScrollEpoch());
     observer.observe(root);
     const raf = window.requestAnimationFrame(() => bumpScrollEpoch());
@@ -124,64 +131,42 @@ export function useEditorSegmentListScroll({
 
     const scrollKey = `${currentFileId ?? ""}:${selectedIdx}:${selectedDisplayIndex}:${filteredIndicesScrollKey}`;
     if (lastSelectedScrollKeyRef.current === scrollKey) return;
-    pendingSelectedScrollKeyRef.current = scrollKey;
-    pendingSelectedScrollIdxRef.current = selectedIdx;
-    pendingSelectedDisplayIndexRef.current = selectedDisplayIndex;
-    if (selectedScrollTimerRef.current != null) clearTimeout(selectedScrollTimerRef.current);
-    const flushSelectedScroll = () => {
-      selectedScrollTimerRef.current = null;
-      const pendingKey = pendingSelectedScrollKeyRef.current;
-      pendingSelectedScrollKeyRef.current = null;
-      if (!pendingKey || lastSelectedScrollKeyRef.current === pendingKey) return;
-      lastSelectedScrollKeyRef.current = pendingKey;
+    lastSelectedScrollKeyRef.current = scrollKey;
 
-      const segmentIdx = pendingSelectedScrollIdxRef.current;
-      const displayIndex = pendingSelectedDisplayIndexRef.current;
-      if (segmentIdx < 0 || displayIndex < 0) return;
-
+    const nextScrollTop = selectionProfileTime("listScroll", () => {
       const maxScrollTop = Math.max(0, root.scrollHeight - root.clientHeight);
-      const nextScrollTop = scrollSegmentListIndexIntoView({
+      return scrollSegmentListIndexIntoView({
         scrollTop: root.scrollTop,
         viewportHeight: root.clientHeight,
-        index: displayIndex,
+        index: selectedDisplayIndex,
         rowMinHeightPx,
         itemStridePx,
         align: "minimal",
         maxScrollTop,
       });
-      if (nextScrollTop != null) {
-        root.scrollTop = nextScrollTop;
-        bumpScrollEpoch();
-        window.requestAnimationFrame(() => {
-          const corrected = scrollSegmentRowIntoViewContainer(segmentIdx, root, { align: "minimal" });
-          if (corrected == null) return;
-          if (Math.abs(corrected - root.scrollTop) < 1) return;
-          root.scrollTop = corrected;
-          bumpScrollEpoch();
-        });
-        return;
-      }
-
-      const corrected = scrollSegmentRowIntoViewContainer(segmentIdx, root, { align: "minimal" });
-      if (corrected == null) return;
-      if (Math.abs(corrected - root.scrollTop) < 1) return;
-      root.scrollTop = corrected;
+    });
+    if (nextScrollTop != null) {
+      root.scrollTop = nextScrollTop;
       bumpScrollEpoch();
-    };
-
-    const coalesceMs = segmentListScrollCoalesceMs(lastSegmentSelectSourceRef.current);
-    if (coalesceMs <= 0) {
-      flushSelectedScroll();
+      window.requestAnimationFrame(() => {
+        const corrected = selectionProfileTime("listScrollCorrect", () =>
+          scrollSegmentRowIntoViewContainer(selectedIdx, root, { align: "minimal" }),
+        );
+        if (corrected == null) return;
+        if (Math.abs(corrected - root.scrollTop) < 1) return;
+        root.scrollTop = corrected;
+        bumpScrollEpoch();
+      });
       return;
     }
-    selectedScrollTimerRef.current = setTimeout(flushSelectedScroll, coalesceMs);
 
-    return () => {
-      if (selectedScrollTimerRef.current != null) {
-        clearTimeout(selectedScrollTimerRef.current);
-        selectedScrollTimerRef.current = null;
-      }
-    };
+    const corrected = selectionProfileTime("listScrollCorrect", () =>
+      scrollSegmentRowIntoViewContainer(selectedIdx, root, { align: "minimal" }),
+    );
+    if (corrected == null) return;
+    if (Math.abs(corrected - root.scrollTop) < 1) return;
+    root.scrollTop = corrected;
+    bumpScrollEpoch();
   }, [
     bumpScrollEpoch,
     currentFileId,
@@ -191,7 +176,6 @@ export function useEditorSegmentListScroll({
     segmentListRef,
     selectedDisplayIndex,
     selectedIdx,
-    lastSegmentSelectSourceRef,
   ]);
 
   useLayoutEffect(() => {

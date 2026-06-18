@@ -1,4 +1,4 @@
-import { memo, useLayoutEffect, useReducer, type RefObject } from "react";
+import { memo, type RefObject } from "react";
 import { Play, Repeat, Square } from "lucide-react";
 import type { SegmentDto } from "../tauri/projectApi";
 import { useTierViewportMetricsFrame } from "../hooks/useTierViewportMetricsFrame";
@@ -36,7 +36,6 @@ export const WaveformSegmentPlaybackControls = memo(function WaveformSegmentPlay
   onToggleLoop,
   onTogglePlay,
 }: WaveformSegmentPlaybackControlsProps) {
-  const [, bumpLayoutEpoch] = useReducer((n: number) => n + 1, 0);
   const { scrollLeftPx, viewportWidthPx } = useTierViewportMetricsFrame({
     tierScrollRef,
     tierScrollLive,
@@ -50,17 +49,6 @@ export const WaveformSegmentPlaybackControls = memo(function WaveformSegmentPlay
   const segmentEndSec = selectedSegment
     ? Math.max(selectedSegment.start_sec, selectedSegment.end_sec)
     : 0;
-
-  useLayoutEffect(() => {
-    bumpLayoutEpoch();
-  }, [
-    selectedSegment?.start_sec,
-    selectedSegment?.end_sec,
-    selectedSegment?.uid,
-    timelineWidthPx,
-    scrollLeftPx,
-    viewportWidthPx,
-  ]);
 
   if (!selectedSegment) return null;
 

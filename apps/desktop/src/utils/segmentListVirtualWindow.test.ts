@@ -48,8 +48,8 @@ describe("segmentListVirtualWindow", () => {
     expect(win.endIndex).toBe(12);
   });
 
-  it("uses 200 segments as virtualize threshold", () => {
-    expect(SEGMENT_LIST_VIRTUALIZE_MIN_COUNT).toBe(200);
+  it("uses 90 segments as virtualize threshold", () => {
+    expect(SEGMENT_LIST_VIRTUALIZE_MIN_COUNT).toBe(90);
   });
 
   it("scrolls selected row into view when off-screen (minimal align)", () => {

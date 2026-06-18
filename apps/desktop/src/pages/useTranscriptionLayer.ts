@@ -5,7 +5,6 @@ import { useWaveformTimelineController } from "../hooks/useWaveformTimelineContr
 import { useWaveformTierWheelForward } from "../hooks/useWaveformTierWheelForward";
 import { computeSegmentLaneRowPx } from "../utils/segmentLayout";
 import { resolveWaveformFooterStatusLabel } from "../services/waveform/waveformRenderStatus";
-import { nextListSelectSource } from "../utils/segmentListSelectSource";
 import { createEmptySegmentListFilterNavState } from "../utils/segmentListFilterNav";
 import type { TranscriptionLayerInput } from "./transcriptionLayerTypes";
 import { useTranscriptionLayerSegmentListDrag } from "./useTranscriptionLayerSegmentListDrag";
@@ -97,6 +96,13 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     onTierScroll: timeline.onTierScroll,
   });
 
+  const selectSegmentFromList = useCallback(
+    (idx: number, opts?: { shiftKey?: boolean; toggle?: boolean }) => {
+      selection.selectSegmentAt(idx, "list", opts);
+    },
+    [selection.selectSegmentAt],
+  );
+
   return {
     tierScrollRef: timeline.tierScrollRef,
     segmentListRef,
@@ -152,13 +158,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     zoomToFitAll: timeline.viewportFit.zoomToFitAll,
     setPxPerSecFromSlider: zoom.setPxPerSecFromSlider,
     selectSegmentAt: selection.selectSegmentAt,
-    selectSegmentFromList: (idx: number, opts?: { shiftKey?: boolean; toggle?: boolean }) => {
-      const source =
-        opts?.shiftKey || opts?.toggle
-          ? "list"
-          : nextListSelectSource(Date.now(), segmentListDrag.listSelectSourceStateRef.current);
-      selection.selectSegmentAt(idx, source, opts);
-    },
+    selectSegmentFromList,
     selectSegmentRange: ctx.selectSegmentRange,
     selectionLo: ctx.selectionLo,
     selectionHi: ctx.selectionHi,

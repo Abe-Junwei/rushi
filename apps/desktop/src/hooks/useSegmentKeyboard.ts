@@ -3,7 +3,6 @@ import type { TranscriptionLayerInput } from "../pages/transcriptionLayerTypes";
 import type { useProjectWaveform } from "./useProjectWaveform";
 import type { SegmentSelectSource } from "../utils/waveformViewMode";
 import { isFindReplacePanelOpen } from "../pages/findReplaceTypes";
-import { segmentStartSec } from "../utils/formatMediaTime";
 import { focusTranscriptSegmentTextarea } from "../utils/focusTranscriptSegmentTextarea";
 import {
   querySegmentListScrollRoot,
@@ -11,10 +10,6 @@ import {
 import { resolveAdjacentVisibleSegmentIdx } from "../utils/segmentListKeyboardNav";
 import type { SegmentListFilterNavState } from "../utils/segmentListFilterNav";
 import { readSegmentListFilterNavIndices } from "../utils/segmentListFilterNav";
-import {
-  createListAdvanceCoalescedScheduler,
-  createListAdvanceSegmentPlaybackScheduler,
-} from "../utils/scheduleListAdvanceSegmentPlayback";
 
 type WfApi = ReturnType<typeof useProjectWaveform>;
 
@@ -31,37 +26,15 @@ export function useSegmentKeyboard(args: {
   const argsRef = useRef(args);
   argsRef.current = args;
 
-  const loopPlaySchedulerRef = useRef(
-    createListAdvanceSegmentPlaybackScheduler(
-      (idx, options) => {
-        void argsRef.current.wfApiRef.current.playSegmentAtIndex(idx, options);
-      },
-      (timeSec) => {
-        argsRef.current.wfApiRef.current.seek(timeSec);
-      },
-    ),
-  );
-  const focusSchedulerRef = useRef(
-    createListAdvanceCoalescedScheduler<number>((segmentIdx) => {
-      focusTranscriptSegmentTextarea(argsRef.current.segmentListRef.current, segmentIdx);
-    }),
-  );
-
   const pendingAdvanceIdxRef = useRef<number | null>(null);
   const advanceRafRef = useRef(0);
 
   useEffect(
     () => () => {
-      loopPlaySchedulerRef.current.cancel();
-      focusSchedulerRef.current.cancel();
       if (advanceRafRef.current) cancelAnimationFrame(advanceRafRef.current);
     },
     [],
   );
-
-  const focusSegmentTextarea = useCallback((segmentIdx: number) => {
-    focusSchedulerRef.current.schedule(segmentIdx);
-  }, []);
 
   const focusSegmentTextareaImmediate = useCallback((segmentIdx: number) => {
     focusTranscriptSegmentTextarea(argsRef.current.segmentListRef.current, segmentIdx);
@@ -93,12 +66,12 @@ export function useSegmentKeyboard(args: {
       const seg = c.segments[targetIdx];
       if (!seg) return;
 
-      // ↑↓：选中 + coalesced 波形 reveal/seek/focus；不触发 Tab 听打 loop-play。
-      a.selectSegmentAtRef.current(targetIdx, "listKeyboard");
-      loopPlaySchedulerRef.current.scheduleSeek(segmentStartSec(seg));
-      focusSegmentTextarea(targetIdx);
+      // Match packaged behavior: keyboard navigation follows the normal list
+      // selection path; selectSegmentAt owns viewport reveal + rAF seek.
+      a.selectSegmentAtRef.current(targetIdx, "list");
+      focusSegmentTextareaImmediate(targetIdx);
     },
-    [focusSegmentTextarea],
+    [focusSegmentTextareaImmediate],
   );
 
   const flushPendingAdvance = useCallback(() => {

@@ -1,4 +1,5 @@
-import { useCallback, useEffect, useMemo, useRef, type RefObject } from "react";
+import { useCallback, useMemo, useRef, type RefObject } from "react";
+import { flushSync } from "react-dom";
 import { p1LaneBoundsSignature } from "../utils/boundsSignature";
 import { resolveWaveformSegmentContextMenuIndex } from "../utils/waveformSegmentContextMenu";
 import {
@@ -17,7 +18,13 @@ import {
   shouldZoomViewportOnSelectSource,
 } from "../utils/waveformViewMode";
 import type { useWaveformTimelineController } from "../hooks/useWaveformTimelineController";
-import { createListAdvanceCoalescedScheduler } from "../utils/scheduleListAdvanceSegmentPlayback";
+import {
+  selectionProfileBegin,
+  selectionProfileFlush,
+  selectionProfileMarkFirstPaint,
+  selectionProfileTime,
+  isSelectionLatencyProfileEnabled,
+} from "../services/ui/selectionLatencyProfile";
 import type { TranscriptionLayerInput } from "./transcriptionLayerTypes";
 
 type TimelineApi = ReturnType<typeof useWaveformTimelineController>;
@@ -73,22 +80,15 @@ export function useTranscriptionLayerSelection(opts: {
     waveformShellRef.current?.focus();
   }, [waveformShellRef]);
 
-  const listAdvanceRevealSchedulerRef = useRef(
-    createListAdvanceCoalescedScheduler<{ start_sec: number; end_sec: number }>((seg) => {
-      scrollFitRef.current.timeline.viewportFit.revealSegmentInViewport(seg);
-    }),
-  );
-
-  useEffect(
-    () => () => {
-      listAdvanceRevealSchedulerRef.current.cancel();
+  const commitSelectedIdxUi = useCallback(
+    (idx: number, opts?: { shiftKey?: boolean; toggle?: boolean }) => {
+      // Keep the visible selected row/band ahead of heavier viewport work.
+      flushSync(() => {
+        setSelectedIdxUi(idx, opts);
+      });
     },
-    [],
+    [setSelectedIdxUi],
   );
-
-  const queueListAdvanceReveal = useCallback((seg: { start_sec: number; end_sec: number }) => {
-    listAdvanceRevealSchedulerRef.current.schedule(seg);
-  }, []);
 
   const revealSelectedSegmentInViewport = useCallback(() => {
     const c = ctxRef.current;
@@ -106,46 +106,56 @@ export function useTranscriptionLayerSelection(opts: {
       if (c.busy) return;
       const s = c.segments[idx];
       if (!s) return;
+      selectionProfileBegin(`${source} idx=${idx} segments=${c.segments.length}`);
       lastSegmentSelectSourceRef.current = source;
-      setSelectedIdxUi(idx, opts);
-      const plan = resolveSelectSegmentViewportPlan(s);
-      const seg = plan.segment;
-      if (shouldZoomViewportOnSelectSource(source)) {
-        scrollFitRef.current.timeline.viewportFit.zoomToFitSegment({
-          start_sec: seg.start_sec,
-          end_sec: seg.end_sec,
-        });
-      } else if (
-        shouldFitSelectionOnWaveformSelect(
-          source,
-          scrollFitRef.current.timeline.zoom.layoutIntentRef.current,
-        )
-      ) {
-        scrollFitRef.current.timeline.viewportFit.zoomToFitSegment(
-          { start_sec: seg.start_sec, end_sec: seg.end_sec },
-          { forceFullFit: true },
-        );
-      } else if (source === "listAdvance" || source === "listKeyboard") {
-        queueListAdvanceReveal({
-          start_sec: seg.start_sec,
-          end_sec: seg.end_sec,
-        });
-      } else {
-        scrollFitRef.current.timeline.viewportFit.revealSegmentInViewport({
-          start_sec: seg.start_sec,
-          end_sec: seg.end_sec,
+      selectionProfileTime("flushSelectedIdx", () => {
+        commitSelectedIdxUi(idx, opts);
+      });
+      if (isSelectionLatencyProfileEnabled()) {
+        requestAnimationFrame(() => {
+          selectionProfileMarkFirstPaint();
         });
       }
+      const plan = selectionProfileTime("resolvePlan", () => resolveSelectSegmentViewportPlan(s));
+      const seg = plan.segment;
+      selectionProfileTime("viewport", () => {
+        if (shouldZoomViewportOnSelectSource(source)) {
+          scrollFitRef.current.timeline.viewportFit.zoomToFitSegment({
+            start_sec: seg.start_sec,
+            end_sec: seg.end_sec,
+          });
+        } else if (
+          shouldFitSelectionOnWaveformSelect(
+            source,
+            scrollFitRef.current.timeline.zoom.layoutIntentRef.current,
+          )
+        ) {
+          scrollFitRef.current.timeline.viewportFit.zoomToFitSegment(
+            { start_sec: seg.start_sec, end_sec: seg.end_sec },
+            { forceFullFit: true },
+          );
+        } else {
+          scrollFitRef.current.timeline.viewportFit.revealSegmentInViewport({
+            start_sec: seg.start_sec,
+            end_sec: seg.end_sec,
+          });
+        }
+      });
       if (source !== "listAdvance" && source !== "listKeyboard") {
         requestAnimationFrame(() => {
-          timeline.wfApiRef.current.seek(segmentStartSec(s));
+          selectionProfileTime("seek", () => {
+            timeline.wfApiRef.current.seek(segmentStartSec(s));
+          });
+          selectionProfileFlush();
         });
+      } else {
+        requestAnimationFrame(() => selectionProfileFlush());
       }
       if (shouldFocusWaveformShellForSelectSource(source)) {
-        focusWaveformShell();
+        selectionProfileTime("focus", focusWaveformShell);
       }
     },
-    [ctxRef, focusWaveformShell, queueListAdvanceReveal, setSelectedIdxUi, timeline.wfApiRef],
+    [commitSelectedIdxUi, ctxRef, focusWaveformShell, timeline.wfApiRef],
   );
 
   selectSegmentAtRef.current = selectSegmentAt;

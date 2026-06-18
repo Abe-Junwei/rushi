@@ -1,16 +1,12 @@
 import { describe, expect, it } from "vitest";
 import { LIST_RAPID_SELECT_MS, nextListSelectSource, segmentListScrollCoalesceMs } from "./segmentListSelectSource";
-import { LIST_ADVANCE_PLAY_COALESCE_MS } from "./scheduleListAdvanceSegmentPlayback";
 
 describe("segmentListScrollCoalesceMs", () => {
-  it("scrolls immediately for list click and waveform select", () => {
+  it("scrolls immediately for all segment select sources", () => {
     expect(segmentListScrollCoalesceMs("list")).toBe(0);
+    expect(segmentListScrollCoalesceMs("listAdvance")).toBe(0);
+    expect(segmentListScrollCoalesceMs("listKeyboard")).toBe(0);
     expect(segmentListScrollCoalesceMs("waveform")).toBe(0);
-  });
-
-  it("coalesces scroll for keyboard and rapid list advance", () => {
-    expect(segmentListScrollCoalesceMs("listKeyboard")).toBe(LIST_ADVANCE_PLAY_COALESCE_MS);
-    expect(segmentListScrollCoalesceMs("listAdvance")).toBe(LIST_ADVANCE_PLAY_COALESCE_MS);
   });
 });
 

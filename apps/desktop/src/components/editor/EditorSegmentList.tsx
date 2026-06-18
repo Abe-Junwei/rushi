@@ -1,4 +1,4 @@
-import { useCallback, type MouseEvent as ReactMouseEvent } from "react";
+import { useCallback, useRef, type MouseEvent as ReactMouseEvent } from "react";
 import type { SegmentContextMenuOpen } from "../../utils/segmentContextMenuModel";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
@@ -35,6 +35,9 @@ export function EditorSegmentList({
   filterActive,
   onOpenSegmentContextMenu,
 }: EditorSegmentListProps) {
+  const controllerRef = useRef(c);
+  controllerRef.current = c;
+
   const displayCount = filteredIndices.length;
   const selectedDisplayIndex =
     c.selectedIdx >= 0
@@ -55,7 +58,6 @@ export function EditorSegmentList({
     selectedIdx: c.selectedIdx,
     currentFileId: c.currentFileId,
     transcriptRowHeightPx: tx.transcriptRowHeightPx,
-    lastSegmentSelectSourceRef: tx.lastSegmentSelectSourceRef,
   });
 
   const onOpenRowContextMenu = useCallback(
@@ -79,6 +81,29 @@ export function EditorSegmentList({
       });
     },
     [c.busy, onOpenSegmentContextMenu],
+  );
+
+  const onOpenTextContextMenu = useCallback(
+    (
+      e: ReactMouseEvent<HTMLElement>,
+      segmentIdx: number,
+      pointerTimeSec: number,
+      selectionText: string,
+    ) => {
+      onOpenRowContextMenu(e, segmentIdx, pointerTimeSec, selectionText);
+    },
+    [onOpenRowContextMenu],
+  );
+
+  const onCorrectableSpanClick = useCallback(
+    (
+      segmentIdx: number,
+      span: Parameters<ProjectControllerApi["openEditorCorrectPopover"]>[1],
+      event: ReactMouseEvent<HTMLButtonElement>,
+    ) => {
+      controllerRef.current.openEditorCorrectPopover(segmentIdx, span, event.clientX, event.clientY);
+    },
+    [],
   );
 
   const savedSnapshot = c.getSavedSnapshot();
@@ -109,9 +134,7 @@ export function EditorSegmentList({
         updateSegmentText={c.updateSegmentText}
         onTextareaKeyDown={tx.onSegmentTextareaKeyDown}
         onOpenContextMenu={onOpenRowContextMenu}
-        onOpenTextContextMenu={(e, selectionText) =>
-          onOpenRowContextMenu(e, segIdx, (s.start_sec + s.end_sec) / 2, selectionText)
-        }
+        onOpenTextContextMenu={onOpenTextContextMenu}
         onRevealSelectedSegment={tx.revealSelectedSegmentInViewport}
         findReplaceHighlight={
           c.findReplaceEditorHighlight?.segmentIdx === segIdx
@@ -130,9 +153,7 @@ export function EditorSegmentList({
             : null
         }
         spansForText={c.editorSpansForText}
-        onCorrectableSpanClick={(span, event) =>
-          c.openEditorCorrectPopover(segIdx, span, event.clientX, event.clientY)
-        }
+        onCorrectableSpanClick={onCorrectableSpanClick}
         hasUnsavedDraft={segmentHasUnsavedText(c.segments, savedSnapshot, segIdx)}
         onOpenAnnotation={c.openSegmentAnnotationDialog}
       />

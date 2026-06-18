@@ -52,7 +52,7 @@ export function computeSegmentListVirtualWindow(input: {
 export type SegmentListScrollAlign = "minimal" | "center";
 
 /** 语段数达到此阈值时启用列表虚拟化（SEG-TEXT-P1）。 */
-export const SEGMENT_LIST_VIRTUALIZE_MIN_COUNT = 200;
+export const SEGMENT_LIST_VIRTUALIZE_MIN_COUNT = 90;
 
 /** 虚拟列表默认 overscan（行数）。 */
 export const SEGMENT_LIST_VIRTUAL_OVERSCAN = 12;

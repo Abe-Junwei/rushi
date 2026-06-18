@@ -129,6 +129,14 @@ export function useProjectLifecycleEditorStack(args: UseProjectLifecycleEditorSt
     setError,
   });
 
+  const registerClearScheduled = useCallback((fn: () => void) => {
+    clearAutoSaveRef.current = fn;
+  }, []);
+
+  const registerOnPersisted = useCallback((fn: () => void) => {
+    notifySegmentsPersistedRef.current = fn;
+  }, []);
+
   const autoSave = useAutoSaveSegments({
     enabled: Boolean(currentFileId),
     currentFileId,
@@ -137,12 +145,8 @@ export function useProjectLifecycleEditorStack(args: UseProjectLifecycleEditorSt
     saveInFlightRef,
     hasUnsavedSegmentChanges: dirty.hasUnsavedSegmentChanges,
     saveSegments,
-    registerClearScheduled: (fn) => {
-      clearAutoSaveRef.current = fn;
-    },
-    registerOnPersisted: (fn) => {
-      notifySegmentsPersistedRef.current = fn;
-    },
+    registerClearScheduled,
+    registerOnPersisted,
   });
 
   const clearScheduledAutoSave = useCallback(() => {

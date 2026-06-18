@@ -3,7 +3,6 @@ import { renderHook, act } from "@testing-library/react";
 import { useRef, type KeyboardEvent as ReactKeyboardEvent } from "react";
 import type { TranscriptionLayerInput } from "../pages/transcriptionLayerTypes";
 import { useSegmentKeyboard } from "./useSegmentKeyboard";
-import { LIST_ADVANCE_PLAY_COALESCE_MS } from "../utils/scheduleListAdvanceSegmentPlayback";
 import { createEmptySegmentListFilterNavState, type SegmentListFilterNavState } from "../utils/segmentListFilterNav";
 
 function makeCtx(overrides: Partial<TranscriptionLayerInput> = {}): TranscriptionLayerInput {
@@ -141,7 +140,7 @@ describe("useSegmentKeyboard", () => {
     expect(mergeWithNextAt).toHaveBeenCalledWith(0);
   });
 
-  it("advances to next segment on ArrowDown with listKeyboard (no loop play)", () => {
+  it("advances to next segment on ArrowDown through the normal list selection path", () => {
     const ctx = makeCtx({
       segments: [
         { uid: "a", idx: 0, start_sec: 0, end_sec: 1, text: "a" },
@@ -157,17 +156,13 @@ describe("useSegmentKeyboard", () => {
     });
     flushAdvanceRaf();
 
-    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(1, "listKeyboard");
+    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(1, "list");
     expect(result.current.wfApiRef.current.playSegmentAtIndex).not.toHaveBeenCalled();
     expect(result.current.wfApiRef.current.preserveLoopForNextSegmentSelect).not.toHaveBeenCalled();
-
-    act(() => {
-      vi.advanceTimersByTime(LIST_ADVANCE_PLAY_COALESCE_MS);
-    });
-    expect(result.current.wfApiRef.current.seek).toHaveBeenCalledWith(1);
+    expect(result.current.wfApiRef.current.seek).not.toHaveBeenCalled();
   });
 
-  it("coalesces ArrowDown seeks to the last selected segment", () => {
+  it("leaves seek ownership to selectSegmentAt for each flushed ArrowDown target", () => {
     const ctx = makeCtx({
       segments: [
         { uid: "a", idx: 0, start_sec: 0, end_sec: 1, text: "a" },
@@ -189,12 +184,9 @@ describe("useSegmentKeyboard", () => {
     });
     flushAdvanceRaf();
 
+    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(1, "list");
+    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(2, "list");
     expect(result.current.wfApiRef.current.seek).not.toHaveBeenCalled();
-    act(() => {
-      vi.advanceTimersByTime(LIST_ADVANCE_PLAY_COALESCE_MS);
-    });
-    expect(result.current.wfApiRef.current.seek).toHaveBeenCalledTimes(1);
-    expect(result.current.wfApiRef.current.seek).toHaveBeenCalledWith(2);
   });
 
   it("goes to previous segment on ArrowUp", () => {
@@ -213,11 +205,8 @@ describe("useSegmentKeyboard", () => {
     });
     flushAdvanceRaf();
 
-    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(0, "listKeyboard");
-    act(() => {
-      vi.advanceTimersByTime(LIST_ADVANCE_PLAY_COALESCE_MS);
-    });
-    expect(result.current.wfApiRef.current.seek).toHaveBeenCalledWith(0);
+    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(0, "list");
+    expect(result.current.wfApiRef.current.seek).not.toHaveBeenCalled();
     expect(result.current.wfApiRef.current.playSegmentAtIndex).not.toHaveBeenCalled();
   });
 
@@ -239,7 +228,8 @@ describe("useSegmentKeyboard", () => {
     flushAdvanceRaf();
 
     expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledTimes(1);
-    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(1, "listKeyboard");
+    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(1, "list");
+    expect(result.current.wfApiRef.current.seek).not.toHaveBeenCalled();
   });
 
   it("does not jump segments when Shift+ArrowDown (text selection)", () => {
@@ -300,6 +290,6 @@ describe("useSegmentKeyboard", () => {
     });
     flushAdvanceRaf();
 
-    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(2, "listKeyboard");
+    expect(result.current.selectSegmentAtRef.current).toHaveBeenCalledWith(2, "list");
   });
 });

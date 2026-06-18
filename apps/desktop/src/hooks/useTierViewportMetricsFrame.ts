@@ -27,12 +27,7 @@ export function useTierViewportMetricsFrame(input: UseTierViewportMetricsFrameIn
   const commitScrollFrameRef = useRef(commitScrollFrame);
   commitScrollFrameRef.current = commitScrollFrame;
   const [scrollFrame, bumpScrollFrame] = useReducer((n: number) => n + 1, 0);
-
-  useLayoutEffect(() => {
-    if (commitScrollFrame) {
-      bumpScrollFrame();
-    }
-  }, [commitScrollFrame]);
+  const lastCommittedClientWidthPxRef = useRef(input.tierScrollLayout.clientWidthPx);
 
   useLayoutEffect(() => {
     const el = input.tierScrollRef.current;
@@ -53,7 +48,13 @@ export function useTierViewportMetricsFrame(input: UseTierViewportMetricsFrameIn
     };
 
     syncLiveRefs();
-    if (commitScrollFrameRef.current) {
+    const clientWidthPx = inputRef.current.tierScrollLayout.clientWidthPx;
+    const clientWidthChanged =
+      Math.abs(clientWidthPx - lastCommittedClientWidthPxRef.current) > 0.5;
+    if (clientWidthChanged) {
+      lastCommittedClientWidthPxRef.current = clientWidthPx;
+    }
+    if (commitScrollFrameRef.current && clientWidthChanged) {
       bumpScrollFrame();
     }
 
