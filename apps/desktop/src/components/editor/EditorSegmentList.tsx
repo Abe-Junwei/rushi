@@ -55,6 +55,7 @@ export function EditorSegmentList({
     selectedIdx: c.selectedIdx,
     currentFileId: c.currentFileId,
     transcriptRowHeightPx: tx.transcriptRowHeightPx,
+    lastSegmentSelectSourceRef: tx.lastSegmentSelectSourceRef,
   });
 
   const onOpenRowContextMenu = useCallback(

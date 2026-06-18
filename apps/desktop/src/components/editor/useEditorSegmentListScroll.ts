@@ -17,7 +17,8 @@ import {
   segmentListRowMinHeightPx,
   writeSegmentListFilterIndices,
 } from "../../utils/segmentListVirtualWindow";
-import { LIST_ADVANCE_PLAY_COALESCE_MS } from "../../utils/scheduleListAdvanceSegmentPlayback";
+import { segmentListScrollCoalesceMs } from "../../utils/segmentListSelectSource";
+import type { SegmentSelectSource } from "../../utils/waveformViewMode";
 import type { SegmentListFilterNavState } from "../../utils/segmentListFilterNav";
 
 /** clientHeight 尚未量到时的保守视口，避免 0 导致整表挂载 */
@@ -43,6 +44,7 @@ export type UseEditorSegmentListScrollArgs = {
   selectedIdx: number;
   currentFileId: string | null;
   transcriptRowHeightPx: number;
+  lastSegmentSelectSourceRef: React.MutableRefObject<SegmentSelectSource>;
 };
 
 export function useEditorSegmentListScroll({
@@ -55,6 +57,7 @@ export function useEditorSegmentListScroll({
   selectedIdx,
   currentFileId,
   transcriptRowHeightPx,
+  lastSegmentSelectSourceRef,
 }: UseEditorSegmentListScrollArgs) {
   const scrollMetricsRef = useRef(readScrollMetrics(null));
   const [scrollEpoch, setScrollEpoch] = useState(0);
@@ -125,7 +128,7 @@ export function useEditorSegmentListScroll({
     pendingSelectedScrollIdxRef.current = selectedIdx;
     pendingSelectedDisplayIndexRef.current = selectedDisplayIndex;
     if (selectedScrollTimerRef.current != null) clearTimeout(selectedScrollTimerRef.current);
-    selectedScrollTimerRef.current = setTimeout(() => {
+    const flushSelectedScroll = () => {
       selectedScrollTimerRef.current = null;
       const pendingKey = pendingSelectedScrollKeyRef.current;
       pendingSelectedScrollKeyRef.current = null;
@@ -164,7 +167,14 @@ export function useEditorSegmentListScroll({
       if (Math.abs(corrected - root.scrollTop) < 1) return;
       root.scrollTop = corrected;
       bumpScrollEpoch();
-    }, LIST_ADVANCE_PLAY_COALESCE_MS);
+    };
+
+    const coalesceMs = segmentListScrollCoalesceMs(lastSegmentSelectSourceRef.current);
+    if (coalesceMs <= 0) {
+      flushSelectedScroll();
+      return;
+    }
+    selectedScrollTimerRef.current = setTimeout(flushSelectedScroll, coalesceMs);
 
     return () => {
       if (selectedScrollTimerRef.current != null) {
@@ -181,6 +191,7 @@ export function useEditorSegmentListScroll({
     segmentListRef,
     selectedDisplayIndex,
     selectedIdx,
+    lastSegmentSelectSourceRef,
   ]);
 
   useLayoutEffect(() => {

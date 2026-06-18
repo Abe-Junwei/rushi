@@ -57,6 +57,9 @@ export function useTranscriptionLayerSelection(opts: {
     (idx: number, source?: SegmentSelectSource, opts?: { shiftKey?: boolean; toggle?: boolean }) => void
   >(() => {});
 
+  /** 最近一次语段选中来源（供列表 scroll coalesce 分支）。 */
+  const lastSegmentSelectSourceRef = useRef<SegmentSelectSource>("waveform");
+
   const laneBoundsSig = p1LaneBoundsSignature(ctx.segments);
   const segmentLaneLayout = useMemo(() => {
     void laneBoundsSig;
@@ -103,6 +106,7 @@ export function useTranscriptionLayerSelection(opts: {
       if (c.busy) return;
       const s = c.segments[idx];
       if (!s) return;
+      lastSegmentSelectSourceRef.current = source;
       setSelectedIdxUi(idx, opts);
       const plan = resolveSelectSegmentViewportPlan(s);
       const seg = plan.segment;
@@ -188,6 +192,7 @@ export function useTranscriptionLayerSelection(opts: {
     revealSelectedSegmentInViewport,
     selectSegmentAt,
     selectSegmentAtRef,
+    lastSegmentSelectSourceRef,
     stepWaveformZoomRef,
     openSegmentContextMenuFromPointer,
   };
