@@ -1,8 +1,8 @@
 import { describe, expect, it, vi, beforeEach } from "vitest";
 import { finishTranscribeSuccess } from "./transcribeJobExecuteFinish";
 
-vi.mock("../services/ui/toast", () => ({
-  pushTranscribeHintsToToast: vi.fn(),
+vi.mock("../services/ui/pushActivity", () => ({
+  pushTranscribeOutcomeActivity: vi.fn(),
 }));
 
 vi.mock("../services/deliveryModeTranscribeToast", () => ({
@@ -18,6 +18,7 @@ vi.mock("../tauri/projectApi", () => ({
   getLastTranscribeTimeline: vi.fn(() => Promise.resolve(null)),
 }));
 
+import { pushTranscribeOutcomeActivity } from "../services/ui/pushActivity";
 import { pushTranscribeDeliveryModeToast } from "../services/deliveryModeTranscribeToast";
 import { syncOnboardingTranscribe } from "../services/onboarding/onboardingAutoSync";
 
@@ -57,6 +58,13 @@ describe("finishTranscribeSuccess", () => {
     );
     expect(ok).toBe(false);
     expect(args.setError).toHaveBeenCalledWith("转写未产出可用语段。");
+    expect(pushTranscribeOutcomeActivity).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variant: "warning",
+        projectId: "proj-1",
+        fileId: "f1",
+      }),
+    );
   });
 
   it("suppresses delivery toast when requested", async () => {

@@ -122,6 +122,10 @@ describe("useTranscribeJobController async paths", () => {
         variant: "success",
         summary: expect.stringMatching(/转写完成：用时 .+，\d+ 条语段，[\d,]+ 字/),
       }),
+      expect.objectContaining({
+        projectId: "proj-1",
+        fileId: "file-1",
+      }),
     );
     expect(deps.setError).not.toHaveBeenCalledWith(expect.stringContaining("404"));
     expect(deps.segmentPublish.getCurrentSegmentsSnapshot()).toEqual([

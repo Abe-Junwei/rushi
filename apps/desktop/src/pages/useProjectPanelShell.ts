@@ -1,5 +1,6 @@
 import { useCallback, useEffect, useMemo } from "react";
 import { useOnboardingAutoSync } from "../hooks/useOnboardingAutoSync";
+import { syncOnboardingExport } from "../services/onboarding/onboardingAutoSync";
 import { registerDeliveryModeTranscribeAction } from "../services/deliveryModeTranscribeToast";
 import { useDeliveryModeController } from "./useDeliveryModeController";
 import { useProjectController } from "./useProjectController";
@@ -19,7 +20,10 @@ export function useProjectPanelShell() {
   useOnboardingAutoSync({ controller: c, asrChipOk: c.asrPresentation.chipOk });
 
   useEffect(() => {
-    registerDeliveryModeTranscribeAction(deliveryMode.openDeliveryMode);
+    registerDeliveryModeTranscribeAction(() => {
+      syncOnboardingExport();
+      deliveryMode.openDeliveryMode();
+    });
     return () => registerDeliveryModeTranscribeAction(null);
   }, [deliveryMode.openDeliveryMode]);
 

@@ -3,16 +3,18 @@ import {
   pushTranscribeDeliveryModeToast,
   registerDeliveryModeTranscribeAction,
 } from "./deliveryModeTranscribeToast";
-import { getToasts, runToastAction } from "./ui/toast";
+import { getToasts, runToastAction, dismissToast } from "./ui/toast";
 
 describe("deliveryModeTranscribeToast", () => {
   beforeEach(() => {
     vi.useFakeTimers();
+    dismissToast();
     registerDeliveryModeTranscribeAction(null);
     vi.setSystemTime(0);
   });
 
   afterEach(() => {
+    dismissToast();
     vi.useRealTimers();
   });
 

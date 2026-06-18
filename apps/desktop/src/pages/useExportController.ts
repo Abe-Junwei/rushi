@@ -9,6 +9,8 @@ import { exportDiagnosticBundle as exportDiagnosticBundleImpl } from "../tauri/d
 import type { ExportPolishResult } from "../services/exportDocxPolish";
 import { safeExportBasename } from "../utils/safeExportBasename";
 import { toast } from "../services/ui/toast";
+import { pushExportFailureActivity } from "../services/ui/pushActivity";
+import { syncOnboardingExport } from "../services/onboarding/onboardingAutoSync";
 import type { BusyReason } from "./useProjectCrudController";
 
 export type DeliveryDocxExportRequest = {
@@ -57,6 +59,29 @@ export function useExportController(deps: ExportDeps): ExportApi {
     applyDetail,
   } = deps;
 
+  const exportContextLabel = useCallback(() => {
+    if (!current) return "";
+    if (!currentFileId) return current.name;
+    const file = current.files?.find((row) => row.id === currentFileId);
+    return file?.name?.trim() || current.name;
+  }, [current, currentFileId]);
+
+  const reportExportFailure = useCallback(
+    (formatLabel: string, e: unknown) => {
+      if (!current) return;
+      const errorMessage = e instanceof Error ? e.message : String(e);
+      setError(errorMessage);
+      pushExportFailureActivity({
+        formatLabel,
+        errorMessage,
+        projectId: current.id,
+        fileId: currentFileId,
+        fileLabel: exportContextLabel(),
+      });
+    },
+    [current, currentFileId, exportContextLabel, setError],
+  );
+
   const exportTxt = useCallback(async () => {
     if (!current) return;
     setError("");
@@ -64,10 +89,11 @@ export function useExportController(deps: ExportDeps): ExportApi {
     const rows: ExportSegment[] = getCurrentSegmentsSnapshot().map((s, i) => ({ ...s, idx: i }));
     try {
       await p1.exportTextFile(safeExportBasename(current.name, "txt"), formatTxt(rows));
+      syncOnboardingExport();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      reportExportFailure("TXT", e);
     }
-  }, [current, getCurrentSegmentsSnapshot, setError, flushSegmentTextDrafts]);
+  }, [current, getCurrentSegmentsSnapshot, reportExportFailure, flushSegmentTextDrafts]);
 
   const exportSrt = useCallback(async () => {
     if (!current) return;
@@ -76,10 +102,11 @@ export function useExportController(deps: ExportDeps): ExportApi {
     const rows: ExportSegment[] = getCurrentSegmentsSnapshot().map((s, i) => ({ ...s, idx: i }));
     try {
       await p1.exportTextFile(safeExportBasename(current.name, "srt"), formatSrt(rows));
+      syncOnboardingExport();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      reportExportFailure("SRT", e);
     }
-  }, [current, getCurrentSegmentsSnapshot, setError, flushSegmentTextDrafts]);
+  }, [current, getCurrentSegmentsSnapshot, reportExportFailure, flushSegmentTextDrafts]);
 
   const docxExportMetaLine = useCallback(
     (includeProjectMetadata: boolean) => {
@@ -108,11 +135,12 @@ export function useExportController(deps: ExportDeps): ExportApi {
         await exportDocxImpl(safeExportBasename(current.name, "docx"), current.name, mode, normalized, {
           exportMetaLine: docxExportMetaLine(false),
         });
+        syncOnboardingExport();
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
+        reportExportFailure("DOCX", e);
       }
     },
-    [current, docxExportMetaLine, getCurrentSegmentsSnapshot, setError, flushSegmentTextDrafts],
+    [current, docxExportMetaLine, getCurrentSegmentsSnapshot, reportExportFailure, flushSegmentTextDrafts],
   );
 
   const exportDeliveryDocx = useCallback(
@@ -128,7 +156,7 @@ export function useExportController(deps: ExportDeps): ExportApi {
           try {
             editLogRows = await p1.projectListEditLog(current.id, 50);
           } catch (e) {
-            setError(e instanceof Error ? e.message : String(e));
+            reportExportFailure("交付 DOCX", e);
             return;
           }
         }
@@ -141,6 +169,13 @@ export function useExportController(deps: ExportDeps): ExportApi {
         });
         if (!plan.ok) {
           setError(plan.error);
+          pushExportFailureActivity({
+            formatLabel: "交付 DOCX",
+            errorMessage: plan.error,
+            projectId: current.id,
+            fileId: currentFileId,
+            fileLabel: exportContextLabel(),
+          });
           return;
         }
         await exportDocxImpl(
@@ -161,8 +196,9 @@ export function useExportController(deps: ExportDeps): ExportApi {
             /* 审计写入失败不阻断导出 */
           }
         }
+        syncOnboardingExport();
       } catch (e) {
-        setError(e instanceof Error ? e.message : String(e));
+        reportExportFailure("交付 DOCX", e);
       } finally {
         endBusy();
       }
@@ -172,10 +208,12 @@ export function useExportController(deps: ExportDeps): ExportApi {
       currentFileId,
       docxExportMetaLine,
       getCurrentSegmentsSnapshot,
-      setError,
+      reportExportFailure,
+      exportContextLabel,
       flushSegmentTextDrafts,
       beginBusy,
       endBusy,
+      setError,
     ],
   );
 
@@ -213,10 +251,11 @@ export function useExportController(deps: ExportDeps): ExportApi {
         safeExportBasename(current.name, "zip"),
         normalized,
       );
+      syncOnboardingExport();
     } catch (e) {
-      setError(e instanceof Error ? e.message : String(e));
+      reportExportFailure("项目包", e);
     }
-  }, [current, currentFileId, getCurrentSegmentsSnapshot, setError, flushSegmentTextDrafts]);
+  }, [current, currentFileId, getCurrentSegmentsSnapshot, reportExportFailure, flushSegmentTextDrafts]);
 
   const importProjectBundle = useCallback(async () => {
     setError("");

@@ -37,7 +37,7 @@ describe("workspaceShellLayout sidebar nav", () => {
 
   it("styles subnav with smaller height and saffron active state", () => {
     expect(workspaceSidebarSubNavItemClass(false)).toContain("min-h-9");
-    expect(workspaceSidebarSubNavItemClass(true)).toContain("text-zen-saffron");
+    expect(workspaceSidebarSubNavItemClass(true)).toContain("text-accent-action");
   });
 
   it("styles footer as horizontal peer cells", () => {

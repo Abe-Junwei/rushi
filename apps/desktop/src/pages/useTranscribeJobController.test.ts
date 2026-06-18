@@ -7,9 +7,9 @@ import {
 } from "./transcribeJobController.testHelpers";
 import { act, renderHook } from "@testing-library/react";
 import { beforeEach, describe, expect, it, vi } from "vitest";
+import { pushTranscribeOutcomeActivity } from "../services/ui/pushActivity";
 import { pushTranscribeDeliveryModeToast } from "../services/deliveryModeTranscribeToast";
 import { syncOnboardingTranscribe } from "../services/onboarding/onboardingAutoSync";
-import { pushTranscribeHintsToToast } from "../services/ui/toast";
 import { useTranscribeJobController } from "./useTranscribeJobController";
 
 const { projectTranscribeAsyncStart, projectTranscribeAsyncFinalize, projectRunTranscribe } =
@@ -190,11 +190,12 @@ describe("useTranscribeJobController", () => {
 
     expect(vi.mocked(pushTranscribeDeliveryModeToast)).not.toHaveBeenCalled();
     expect(vi.mocked(syncOnboardingTranscribe)).not.toHaveBeenCalled();
-    expect(vi.mocked(pushTranscribeHintsToToast)).toHaveBeenCalledWith(
-      expect.arrayContaining([
-        expect.stringContaining("未生成语段"),
-        expect.stringContaining("未识别到可写入的文本"),
-      ]),
+    expect(vi.mocked(pushTranscribeOutcomeActivity)).toHaveBeenCalledWith(
+      expect.objectContaining({
+        variant: "warning",
+        projectId: "proj-1",
+        fileId: "file-1",
+      }),
     );
     expect(result.current.transcribeFailureDiag?.errorCode).toBe("transcribe_empty_output");
     expect(deps.setError).toHaveBeenCalledWith("转写未产出可用语段。");

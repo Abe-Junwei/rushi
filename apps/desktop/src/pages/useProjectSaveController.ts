@@ -12,6 +12,7 @@ import {
 } from "../services/segmentConfirmEligible";
 import { waitForSaveIdle } from "../services/waitForSaveIdle";
 import { segmentDraftStore } from "../hooks/useSegmentDraftStore";
+import { pushEditHistoryRestoreActivity } from "../services/ui/pushActivity";
 import { toast } from "../services/ui/toast";
 import type { BusyReason } from "./useProjectCrudController";
 import type { SegmentPublishApi } from "./segmentPublishApi";
@@ -227,7 +228,17 @@ export function useProjectSaveController(args: Args) {
         );
         dirty.setSavedSnapshot(segs);
         notifySegmentsPersistedRef.current();
-        toast.success("已恢复到所选版本");
+        if (current?.id) {
+          const fileLabel =
+            current.files?.find((file) => file.id === currentFileId)?.name?.trim() || current.name;
+          pushEditHistoryRestoreActivity({
+            projectId: current.id,
+            fileId: currentFileId,
+            fileLabel,
+          });
+        } else {
+          toast.success("已恢复到所选版本");
+        }
       } catch (e) {
         setError(e instanceof Error ? e.message : String(e));
         throw e;
@@ -239,6 +250,7 @@ export function useProjectSaveController(args: Args) {
     [
       beginBusy,
       busy,
+      current,
       currentFileId,
       dirty,
       endBusy,

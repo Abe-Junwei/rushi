@@ -29,6 +29,17 @@ export const EDITOR_WORKSPACE_TOOLBAR_HEIGHT = "3rem";
 /** `.editor-status-footer` 固定高度 — 侧栏 overlay 底 inset 须与此对齐 */
 export const EDITOR_WORKSPACE_FOOTER_HEIGHT = "30px";
 
+/** Welcome / Editor TopBar 搜索与活动铃铛下拉 — 宽度与壳层真源（须同步） */
+export const WELCOME_TOPBAR_DROPDOWN_PANEL_CLASS =
+  "absolute right-0 top-full mt-1 w-[min(28rem,calc(100vw-5rem))] overflow-hidden rounded-md border border-notion-border bg-notion-bg shadow-lg";
+
+/** 下拉面板上缘工具条（搜索 scope 行 / 活动标题行） */
+export const WELCOME_TOPBAR_DROPDOWN_HEADER_STRIP_CLASS =
+  "border-b border-notion-border bg-notion-sidebar/40";
+
+/** 上缘工具条内边距 — 与 WelcomeSearchScopeChips 一致 */
+export const WELCOME_TOPBAR_DROPDOWN_HEADER_INSET_CLASS = "px-2.5 py-1.5";
+
 /** TopBar 下方主舞台：自顶向下滚动，顶距见 workspace.css `--workspace-home-stage-offset-top` */
 export const WORKSPACE_HOME_STAGE_CLASS = `welcome-home-stage flex min-h-0 flex-1 flex-col overflow-y-auto ${MAIN_SHELL_SURFACE_CLASS.pageBg}`;
 
@@ -64,7 +75,7 @@ const WORKSPACE_SIDEBAR_SUBNAV_ITEM_BASE =
 /** 主功能下的子工作区（如热词与记忆三分段） */
 export function workspaceSidebarSubNavItemClass(active: boolean): string {
   return active
-    ? `${WORKSPACE_SIDEBAR_SUBNAV_ITEM_BASE} bg-notion-sidebar-active font-semibold text-zen-saffron`
+    ? `${WORKSPACE_SIDEBAR_SUBNAV_ITEM_BASE} bg-notion-sidebar-active font-semibold text-accent-action`
     : `${WORKSPACE_SIDEBAR_SUBNAV_ITEM_BASE} bg-transparent text-notion-text-muted hover:bg-notion-sidebar-hover hover:text-notion-text`;
 }
 

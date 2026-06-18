@@ -1,4 +1,5 @@
-import { pushTranscribeHintsToToast, pushTranscribeResultToast } from "./ui/toast";
+import { pushActivity, pushTranscribeOutcomeActivity } from "./ui/pushActivity";
+import { pushTranscribeHintsToToast } from "./ui/toast";
 import type { TranscribeResultPresentation } from "./asr/transcribeResultToast";
 
 let openDeliveryModeFromToast: (() => void) | null = null;
@@ -8,8 +9,19 @@ export function registerDeliveryModeTranscribeAction(fn: (() => void) | null): v
   openDeliveryModeFromToast = fn;
 }
 
+export function runDeliveryModeTranscribeAction(): void {
+  openDeliveryModeFromToast?.();
+}
+
+export type TranscribeDeliveryToastContext = {
+  projectId: string;
+  fileId: string;
+  fileLabel?: string;
+};
+
 export function pushTranscribeDeliveryModeToast(
   presentation: TranscribeResultPresentation,
+  context?: TranscribeDeliveryToastContext,
 ): void {
   const message = presentation.summary.trim();
   if (!message) return;
@@ -17,8 +29,29 @@ export function pushTranscribeDeliveryModeToast(
     pushTranscribeHintsToToast([message]);
     return;
   }
-  pushTranscribeResultToast(message, {
-    label: "定稿模式…",
-    onClick: () => openDeliveryModeFromToast?.(),
+  if (!context) {
+    pushActivity({
+      variant: "success",
+      kind: "transcribe",
+      message,
+      action: {
+        label: "定稿模式…",
+        kind: "delivery-mode",
+        onClick: () => runDeliveryModeTranscribeAction(),
+      },
+    });
+    return;
+  }
+  pushTranscribeOutcomeActivity({
+    variant: "success",
+    message,
+    projectId: context.projectId,
+    fileId: context.fileId,
+    fileLabel: context.fileLabel,
+    action: {
+      label: "定稿模式…",
+      kind: "delivery-mode",
+      onClick: () => runDeliveryModeTranscribeAction(),
+    },
   });
 }

@@ -4,15 +4,15 @@ import { useBatchTranscribeQueueController } from "./useBatchTranscribeQueueCont
 import type { ExecuteTranscribeResult } from "./useTranscribeJobExecute";
 import type { FileSummary } from "../tauri/projectTypes";
 
-vi.mock("../services/ui/toast", () => ({
-  toast: { error: vi.fn(), success: vi.fn() },
+vi.mock("../services/ui/pushActivity", () => ({
+  pushBatchTranscribeSummaryActivity: vi.fn(),
 }));
 
 vi.mock("../tauri/fileApi", () => ({
   loadFile: vi.fn(),
 }));
 
-import { toast } from "../services/ui/toast";
+import { pushBatchTranscribeSummaryActivity } from "../services/ui/pushActivity";
 import * as fileApi from "../tauri/fileApi";
 
 function file(partial: Partial<FileSummary> & Pick<FileSummary, "id" | "name" | "file_type">): FileSummary {
@@ -83,7 +83,12 @@ describe("useBatchTranscribeQueueController", () => {
     });
     expect(result.current.batchQueueItems[0]?.status).toBe("failed");
     expect(result.current.batchQueueItems[0]?.detail).toBe("本机 ASR 未就绪");
-    expect(toast.success).toHaveBeenCalled();
+    expect(pushBatchTranscribeSummaryActivity).toHaveBeenCalledWith(
+      expect.objectContaining({
+        projectId: "proj-1",
+        stopped: false,
+      }),
+    );
   });
 
   it("passes explicit fileId even when openFileWrapped is used", async () => {

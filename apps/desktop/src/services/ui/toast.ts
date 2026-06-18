@@ -1,4 +1,5 @@
 import { humanizeInvokeError } from "./humanizeInvokeError";
+import { pushActivityFeedItem, type ActivityFeedVariant } from "./activityFeed";
 
 export type ToastVariant = "info" | "warning" | "error" | "success";
 
@@ -115,6 +116,7 @@ export function showToast(input: {
   variant: ToastVariant;
   message: string;
   durationMs?: number;
+  skipFeedMirror?: boolean;
   action?: { label: string; onClick: () => void };
 }): string {
   const message = input.message.trim();
@@ -149,6 +151,20 @@ export function showToast(input: {
     exiting: false,
     ...(actionLabel ? { actionLabel } : {}),
   };
+  if (
+    !input.skipFeedMirror &&
+    (variant === "success" || variant === "warning" || variant === "error")
+  ) {
+    pushActivityFeedItem({
+      variant: variant as ActivityFeedVariant,
+      message,
+      at: now,
+      kind: "generic",
+      ...(input.action?.onClick && actionLabel
+        ? { action: { label: actionLabel, onClick: input.action.onClick } }
+        : {}),
+    });
+  }
   emit();
 
   if (durationMs > 0 && durationMs < Number.POSITIVE_INFINITY) {

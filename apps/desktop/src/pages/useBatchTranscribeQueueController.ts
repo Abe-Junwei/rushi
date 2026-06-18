@@ -1,5 +1,6 @@
 import { useCallback, useMemo, useRef, useState } from "react";
 import * as fileApi from "../tauri/fileApi";
+import { pushBatchTranscribeSummaryActivity } from "../services/ui/pushActivity";
 import { toast } from "../services/ui/toast";
 import {
   applyBatchQueueStop,
@@ -28,6 +29,7 @@ export type BatchTranscribeQueueControllerApi = {
 
 type Deps = {
   projectId: string | null | undefined;
+  projectName?: string | null;
   projectFiles: FileSummary[] | undefined;
   busy: boolean;
   hasUnsavedSegmentChanges: () => boolean;
@@ -181,13 +183,30 @@ export function useBatchTranscribeQueueController(deps: Deps): BatchTranscribeQu
       if (stopped) {
         workingItems = applyBatchQueueStop(workingItems);
         setBatchQueueItems([...workingItems]);
-        toast.info("批量转写已停止");
+        const summary = summarizeBatchQueue(workingItems);
+        pushBatchTranscribeSummaryActivity({
+          projectId,
+          projectLabel: deps.projectName?.trim() || projectId,
+          done: summary.done,
+          skipped: summary.skipped,
+          failed: summary.failed,
+          stopped: true,
+          failedFiles: workingItems.filter((row) => row.status === "failed"),
+          onOpenProjectHub: () => void deps.refreshProjectHub(projectId),
+        });
         await deps.refreshProjectHub(projectId);
       } else {
         const summary = summarizeBatchQueue(workingItems);
-        toast.success(
-          `批量转写完成：${summary.done} 成功，${summary.skipped} 跳过，${summary.failed} 失败`,
-        );
+        pushBatchTranscribeSummaryActivity({
+          projectId,
+          projectLabel: deps.projectName?.trim() || projectId,
+          done: summary.done,
+          skipped: summary.skipped,
+          failed: summary.failed,
+          stopped: false,
+          failedFiles: workingItems.filter((row) => row.status === "failed"),
+          onOpenProjectHub: () => void deps.refreshProjectHub(projectId),
+        });
         await deps.refreshProjectHub(projectId);
       }
     } finally {

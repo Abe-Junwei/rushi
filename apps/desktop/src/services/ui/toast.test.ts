@@ -1,4 +1,5 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
+import { clearActivityFeedForTests, getActivityFeedSnapshot } from "./activityFeed";
 import {
   dismissToast,
   getToasts,
@@ -13,11 +14,13 @@ describe("toast", () => {
   beforeEach(() => {
     vi.useFakeTimers();
     dismissToast();
+    clearActivityFeedForTests();
     vi.setSystemTime(0);
   });
 
   afterEach(() => {
     dismissToast();
+    clearActivityFeedForTests();
     vi.useRealTimers();
   });
 
@@ -76,6 +79,16 @@ describe("toast", () => {
     expect(getToasts()[0]?.message).toBe("转写完成：用时 5 秒，3 条语段，120 字");
     expect(getToasts()[0]?.variant).toBe("success");
     expect(getToasts()[0]?.actionLabel).toBeUndefined();
+  });
+
+  it("mirrors success/warning/error to activity feed", () => {
+    toast.info("忽略 info");
+    toast.success("保存成功");
+    toast.error("失败");
+    const feed = getActivityFeedSnapshot();
+    expect(feed).toHaveLength(2);
+    expect(feed.some((item) => item.message === "保存成功" && item.variant === "success")).toBe(true);
+    expect(feed.some((item) => item.message === "失败" && item.variant === "error")).toBe(true);
   });
 
   it("pushTranscribeResultToast can attach delivery mode action", () => {

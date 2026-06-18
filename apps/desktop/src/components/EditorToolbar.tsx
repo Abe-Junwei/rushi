@@ -5,6 +5,8 @@ import { CONTROL_BTN_TOOLBAR_GHOST } from "../config/controlStyles";
 import { EditorWorkspaceNav } from "./EditorWorkspaceNav";
 import { AsrTopStatusChips } from "./AsrTopStatusChips";
 import { LlmTopStatusChip } from "./LlmTopStatusChip";
+import { WelcomeActivityBell } from "./WelcomeActivityBell";
+import { runDeliveryModeTranscribeAction } from "../services/deliveryModeTranscribeToast";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 import { editorShortcutMenuHint } from "../utils/editorShortcutMenuHint";
 const ghostBtn = CONTROL_BTN_TOOLBAR_GHOST;
@@ -99,7 +101,7 @@ export const EditorToolbar = memo(function EditorToolbar({
 
   return (
     <div className="toolbar-popover-root z-[90] shrink-0 border-b border-notion-divider bg-notion-sidebar px-page-margin">
-      <div className="flex h-12 min-w-0 flex-nowrap items-center gap-2 overflow-visible">
+      <div className="flex h-12 w-full min-w-0 flex-nowrap items-center gap-2 overflow-visible">
         <EditorWorkspaceNav
           projectName={projectName}
           currentLabel={currentFileName}
@@ -118,7 +120,7 @@ export const EditorToolbar = memo(function EditorToolbar({
             : ""}
         </span>
 
-        <div className="flex shrink-0 items-center gap-2">
+        <div className="ml-auto flex shrink-0 items-center gap-2">
           {!c.asrPresentation.chipOk && onOpenAsrSettings ? (
             <AsrTopStatusChips
               presentation={c.asrPresentation}
@@ -133,20 +135,18 @@ export const EditorToolbar = memo(function EditorToolbar({
               disabled={c.busy}
             />
           ) : null}
-          <button
-            type="button"
-            className={ghostBtn}
-            onClick={onOpenEnvironment}
-            aria-label="设置"
-            title={`设置 (${editorShortcutMenuHint("workflow.openSettings")})`}
-          >
-            <span className="inline-flex items-center gap-1.5">
-              <Settings className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-              设置
-            </span>
-          </button>
+          <WelcomeActivityBell
+            controller={c}
+            disabled={c.busy}
+            onOpenAsrSettings={onOpenAsrSettings}
+            onStartTranscribe={() => void c.runTranscribe()}
+            onOpenDeliveryMode={() => runDeliveryModeTranscribeAction()}
+            inEditorFile={Boolean(c.currentFileId)}
+            panelId="editor-activity-panel"
+            variant="toolbar"
+          />
 
-          <div className="ml-1 flex items-center gap-2">
+          <div className="flex items-center gap-2">
             <details ref={importMenuRef} className="dropdown-anchor">
               <summary
                 className={`${ghostBtn} list-none cursor-pointer marker:content-none [&::-webkit-details-marker]:hidden ${
@@ -236,6 +236,19 @@ export const EditorToolbar = memo(function EditorToolbar({
               保存
             </button>
           </div>
+
+          <button
+            type="button"
+            className={ghostBtn}
+            onClick={onOpenEnvironment}
+            aria-label="设置"
+            title={`设置 (${editorShortcutMenuHint("workflow.openSettings")})`}
+          >
+            <span className="inline-flex items-center gap-1.5">
+              <Settings className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+              设置
+            </span>
+          </button>
         </div>
       </div>
 

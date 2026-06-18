@@ -164,6 +164,7 @@ export function useProjectLifecycleWiring(
 
   const batchTranscribe = useBatchTranscribeQueueController({
     projectId: current?.id,
+    projectName: current?.name,
     projectFiles: current?.files,
     busy,
     hasUnsavedSegmentChanges: dirty.hasUnsavedSegmentChanges,

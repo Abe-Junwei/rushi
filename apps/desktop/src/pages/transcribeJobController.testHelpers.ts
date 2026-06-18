@@ -2,6 +2,7 @@ import type { SegmentDto } from "../tauri/projectApi";
 import type { useTranscribeJobController } from "./useTranscribeJobController";
 import { createSegmentPublishApi } from "./segmentPublishApi";
 import { loopbackFetch } from "../services/asr/loopbackFetch";
+import { pushTranscribeOutcomeActivity } from "../services/ui/pushActivity";
 import { pushTranscribeDeliveryModeToast } from "../services/deliveryModeTranscribeToast";
 import { syncOnboardingTranscribe } from "../services/onboarding/onboardingAutoSync";
 import { pushTranscribeHintsToToast, pushTranscribeResultToast } from "../services/ui/toast";
@@ -97,6 +98,7 @@ export function resetTranscribeJobControllerTests(): void {
   vi.mocked(pushTranscribeResultToast).mockClear();
   vi.mocked(pushTranscribeDeliveryModeToast).mockClear();
   vi.mocked(syncOnboardingTranscribe).mockClear();
+  vi.mocked(pushTranscribeOutcomeActivity).mockClear();
 
   projectCancelTranscribe.mockResolvedValue(true);
   getLastTranscribeTimeline.mockResolvedValue(null);

@@ -17,6 +17,10 @@ vi.mock("../tauri/diagnosticApi", () => ({
   exportDiagnosticBundle: vi.fn(),
 }));
 
+vi.mock("../services/ui/pushActivity", () => ({
+  pushExportFailureActivity: vi.fn(),
+}));
+
 vi.mock("../services/ui/toast", () => ({
   toast: {
     success: vi.fn(),

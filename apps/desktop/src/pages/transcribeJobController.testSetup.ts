@@ -46,6 +46,10 @@ vi.mock("../services/stt/sttOnlineProviderContract", async (importOriginal) => {
   };
 });
 
+vi.mock("../services/ui/pushActivity", () => ({
+  pushTranscribeOutcomeActivity: vi.fn(),
+}));
+
 vi.mock("../services/ui/toast", () => ({
   toast: {
     info: vi.fn(),

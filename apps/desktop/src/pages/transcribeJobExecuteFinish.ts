@@ -8,7 +8,7 @@ import {
   countTranscribeCharacters,
   resolveTranscribeResultPresentation,
 } from "../services/asr/transcribeResultToast";
-import { pushTranscribeHintsToToast } from "../services/ui/toast";
+import { pushTranscribeOutcomeActivity } from "../services/ui/pushActivity";
 import { pushTranscribeDeliveryModeToast } from "../services/deliveryModeTranscribeToast";
 import { syncOnboardingTranscribe } from "../services/onboarding/onboardingAutoSync";
 import * as p1 from "../tauri/projectApi";
@@ -81,11 +81,17 @@ export async function finishTranscribeSuccess(args: FinishTranscribeSuccessArgs)
     setError("转写未产出可用语段。");
     setTranscribeHints([...userHints, ...formatTranscribeDiagSummary(failureDiag), ...diagLines]);
     if (!suppressUserToasts) {
-      if (userHints.length > 0) {
-        pushTranscribeHintsToToast([presentation.summary, userHints[0]]);
-      } else {
-        pushTranscribeHintsToToast([presentation.summary]);
-      }
+      const fileLabel = projectDetail.files?.find((file) => file.id === fileId)?.name;
+      const hint = userHints[0]?.trim();
+      const message = hint ? `${presentation.summary} · ${hint}` : presentation.summary;
+      pushTranscribeOutcomeActivity({
+        variant: "warning",
+        message,
+        projectId,
+        fileId,
+        fileLabel,
+        action: { label: "打开文件", kind: "open-file" },
+      });
     }
     return false;
   }
@@ -93,7 +99,8 @@ export async function finishTranscribeSuccess(args: FinishTranscribeSuccessArgs)
   setTranscribeFailureDiag(null);
   setTranscribeHints([...userHints, ...diagLines]);
   if (!suppressUserToasts) {
-    pushTranscribeDeliveryModeToast(presentation);
+    const fileLabel = projectDetail.files?.find((file) => file.id === fileId)?.name;
+    pushTranscribeDeliveryModeToast(presentation, { projectId, fileId, fileLabel });
     syncOnboardingTranscribe();
   }
   return true;
