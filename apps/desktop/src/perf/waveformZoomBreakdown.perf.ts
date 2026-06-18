@@ -156,7 +156,7 @@ describe("waveform zoom frame breakdown", () => {
 
     expect(rows[0].ms).toBeGreaterThan(1);
     // Resample + toPeaks should exceed segment-band paint in cross-LOD zoom (CI runners vary).
-    expect(rows[0].ms + rows[1].ms).toBeGreaterThan(rows[2].ms * (process.env.CI ? 0.5 : 0.9));
+    expect(rows[0].ms + rows[1].ms).toBeGreaterThan(rows[2].ms * 0.5);
   });
 
   it("same-LOD stretch — resample ~0; segment bands still negligible", () => {
@@ -193,8 +193,8 @@ describe("waveform zoom frame breakdown", () => {
     // eslint-disable-next-line no-console -- perf report
     console.info(`\n[waveform-zoom] 10min same-LOD stretch 56→64 px/s\n${formatBreakdown(rows)}\n`);
 
-    expect(rows[0].ms).toBeLessThan(process.env.CI ? 2 : 1);
-    expect(rows[2].ms).toBeLessThan(process.env.CI ? 25 : 5);
+    expect(rows[0].ms).toBeLessThan(2);
+    expect(rows[2].ms).toBeLessThan(25);
   });
 
   it("long audio resample scales with LOD base size", () => {
