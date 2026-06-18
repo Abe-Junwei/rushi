@@ -6,6 +6,7 @@ import { pushTranscribeHintsToToast } from "../services/ui/toast";
 import type { TranscribeTimelineSnapshot } from "../services/transcribeDiag";
 import {
   ensureSttOnlineApiKeyForSession,
+  ensureSttOnlineApiSecretForSession,
   tryBuildOnlineTranscribeBridgePayload,
 } from "../services/stt/sttOnlineProviderContract";
 import type { TranscribeSource } from "../services/stt/transcribeSource";
@@ -169,6 +170,7 @@ export function useTranscribeJobExecute(args: Args) {
     }
     if (transcribeSource === "online") {
       await ensureSttOnlineApiKeyForSession();
+      await ensureSttOnlineApiSecretForSession();
     }
     const targetFileId = opts?.fileId ?? currentFileId;
     const block = resolveTranscribeExecuteBlock({

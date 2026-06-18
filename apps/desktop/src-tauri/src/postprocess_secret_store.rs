@@ -3,6 +3,8 @@ use std::path::{Path, PathBuf};
 
 use keyring::Entry;
 
+use crate::secret_store_policy::use_keyring_store;
+
 const SECRETS_DIR: &str = "secrets/postprocess";
 const KEYRING_SERVICE: &str = "studio.lingchuang.rushi";
 const KEYRING_USER_PREFIX: &str = "llm:";
@@ -24,15 +26,6 @@ fn secrets_dir(app_data_root: &Path) -> PathBuf {
     app_data_root.join(SECRETS_DIR)
 }
 
-fn force_file_store() -> bool {
-    std::env::var("RUSHI_LLM_SECRET_FORCE_FILE").ok().as_deref() == Some("1")
-}
-
-/// macOS 开发构建签名常变时可用 `RUSHI_LLM_SECRET_FORCE_FILE=1` 回退文件存储（测试/CI）。
-fn use_keyring_store() -> bool {
-    !force_file_store()
-}
-
 fn keyring_user(api_key_id: &str) -> String {
     format!("{KEYRING_USER_PREFIX}{api_key_id}")
 }
@@ -42,20 +35,22 @@ fn keyring_entry(api_key_id: &str) -> Result<Entry, String> {
         .map_err(|e| format!("无法打开系统密钥库：{e}"))
 }
 
-fn read_keyring_secret(api_key_id: &str) -> Result<Option<String>, String> {
-    if !use_keyring_store() {
-        return Ok(None);
-    }
-    let entry = match keyring_entry(api_key_id) {
-        Ok(e) => e,
-        Err(_) => return Ok(None),
-    };
+fn read_keyring_secret_uncached(api_key_id: &str) -> Result<Option<String>, String> {
+    let entry = keyring_entry(api_key_id)?;
     match entry.get_password() {
         Ok(key) if key.trim().is_empty() => Ok(None),
         Ok(key) => Ok(Some(key)),
         Err(keyring::Error::NoEntry) => Ok(None),
         Err(e) => Err(format!("读取系统密钥库失败：{e}")),
     }
+}
+
+fn read_keyring_secret(api_key_id: &str) -> Result<Option<String>, String> {
+    if !use_keyring_store() {
+        return Ok(None);
+    }
+    let cache_key = keyring_user(api_key_id);
+    crate::secret_keyring_session::read_cached(&cache_key, || read_keyring_secret_uncached(api_key_id))
 }
 
 fn write_keyring_secret(api_key_id: &str, api_key: &str) -> Result<(), String> {
@@ -65,7 +60,9 @@ fn write_keyring_secret(api_key_id: &str, api_key: &str) -> Result<(), String> {
     let entry = keyring_entry(api_key_id)?;
     entry
         .set_password(api_key)
-        .map_err(|e| format!("写入系统密钥库失败：{e}"))
+        .map_err(|e| format!("写入系统密钥库失败：{e}"))?;
+    crate::secret_keyring_session::invalidate(&keyring_user(api_key_id));
+    Ok(())
 }
 
 fn delete_keyring_secret(api_key_id: &str) -> Result<(), String> {
@@ -76,7 +73,10 @@ fn delete_keyring_secret(api_key_id: &str) -> Result<(), String> {
         return Ok(());
     };
     match entry.delete_credential() {
-        Ok(()) | Err(keyring::Error::NoEntry) => Ok(()),
+        Ok(()) | Err(keyring::Error::NoEntry) => {
+            crate::secret_keyring_session::invalidate(&keyring_user(api_key_id));
+            Ok(())
+        }
         Err(e) => {
             // Headless Linux CI often has no org.freedesktop.secrets; file-only secrets still work.
             let msg = e.to_string();
@@ -182,7 +182,9 @@ pub fn write_llm_secret(
     }
     write_file_secret(app_data_root, api_key_id, api_key)?;
     let _ = delete_keyring_presence_marker(app_data_root, api_key_id);
-    let _ = delete_keyring_secret(api_key_id);
+    if use_keyring_store() {
+        let _ = delete_keyring_secret(api_key_id);
+    }
     Ok(())
 }
 
@@ -200,6 +202,9 @@ pub fn read_llm_secret(app_data_root: &Path, api_key_id: &str) -> Result<Option<
     if let Some(key) = read_file_secret(app_data_root, api_key_id)? {
         return Ok(Some(key));
     }
+    if !use_keyring_store() {
+        return Ok(None);
+    }
     if let Some(key) = read_keyring_secret(api_key_id)? {
         let _ = write_keyring_presence_marker(app_data_root, api_key_id);
         return Ok(Some(key));
@@ -208,7 +213,9 @@ pub fn read_llm_secret(app_data_root: &Path, api_key_id: &str) -> Result<Option<
 }
 
 pub fn delete_llm_secret(app_data_root: &Path, api_key_id: &str) -> Result<(), String> {
-    delete_keyring_secret(api_key_id)?;
+    if use_keyring_store() {
+        let _ = delete_keyring_secret(api_key_id);
+    }
     delete_file_secret(app_data_root, api_key_id)?;
     delete_keyring_presence_marker(app_data_root, api_key_id)
 }

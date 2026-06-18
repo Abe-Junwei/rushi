@@ -63,6 +63,15 @@ describe("deriveTranscribeHints", () => {
     expect(h.some((x) => x.includes("224") && x.includes("最近更新"))).toBe(true);
   });
 
+  it("flags xunfei speed-asr hotword truncation", () => {
+    const h = deriveTranscribeHints(
+      "iflytek:speed-transcription:file",
+      ["online_vocabulary_truncated_xunfei_speed_asr_hotword"],
+      [{ text: "a" }],
+    );
+    expect(h.some((x) => x.includes("讯飞") && x.includes("business.dhw"))).toBe(true);
+  });
+
   it("flags hotwords ignored", () => {
     const h = deriveTranscribeHints("funasr+x", ["hotwords_ignored_stub"], [{ text: "a" }]);
     expect(h.some((x) => x.includes("热词"))).toBe(true);

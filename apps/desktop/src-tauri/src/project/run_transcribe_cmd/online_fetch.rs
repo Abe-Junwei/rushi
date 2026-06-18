@@ -38,7 +38,7 @@ pub(crate) async fn fetch_online_transcribe_json(
                 .await
                 .map_err(|e| record_transcribe_err(tl, e))
         }
-        Some(adapter @ ("dashscopeAsr" | "deepgramListen")) => {
+        Some(adapter @ ("dashscopeAsr" | "deepgramListen" | "xunfeiSpeedAsr")) => {
             tl.begin_stage(STAGE_TRANSCRIBE);
             let client = crate::stt_native::http_client();
             let log = |line: &str| append_desktop_log_line(st, line);

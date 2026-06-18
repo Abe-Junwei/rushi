@@ -5,7 +5,8 @@ import { isAllowedSttOnlineEndpoint, assertValidEndpoint } from "./endpoint";
 import { getSttOnlineProviderDefinition } from "./definitions";
 import { sttOnlineProviderEndpointUserConfigurable } from "./presetEndpoints";
 import { readStorage, writeStorage } from "./storage";
-import { normalizeSttApiKeyId } from "./sttApiKeyIds";
+import { isStaleSttApiKeyIdForProvider, normalizeSttApiKeyId } from "./sttApiKeyIds";
+import { normalizeXunfeiSpeedAsrAccent } from "./xunfeiAccentPresets";
 import type { ExternalSttOnlineRuntimeConfig } from "./types";
 
 /** 早期调研误纳入的短窗口厂商；读取/规范化时迁移到百炼 Fun-ASR。 */
@@ -29,6 +30,7 @@ function migrateRemovedSttProviderId(id: string): string {
 
 export type PersistExternalSttOnlineRuntimeConfigOptions = {
   clearApiKeyId?: boolean;
+  clearApiSecretId?: boolean;
 };
 
 /** 未持久化 timeout 时按厂商默认（长音频 Job 需 600s 级）。 */
@@ -75,12 +77,23 @@ export function normalizeExternalSttOnlineRuntimeConfig(
   const appKeyRaw = partial?.appKey?.trim();
   const appKey = appKeyRaw && appKeyRaw.length > 0 ? appKeyRaw.slice(0, 512) : undefined;
   const apiKeyId = normalizeSttApiKeyId(partial?.apiKeyId);
+  const apiSecretId =
+    selected === "iflytek-speed-asr" ? normalizeSttApiKeyId(partial?.apiSecretId) : undefined;
+  const accentRaw = partial?.accent?.trim();
+  const accent =
+    selected === "iflytek-speed-asr" && accentRaw
+      ? normalizeXunfeiSpeedAsrAccent(accentRaw)
+      : selected === "iflytek-speed-asr"
+        ? normalizeXunfeiSpeedAsrAccent(undefined)
+        : undefined;
   return {
     enabled: Boolean(partial?.enabled),
     selectedProviderId: selected,
     ...(endpoint ? { endpoint } : {}),
     ...(appKey ? { appKey } : {}),
     ...(apiKeyId ? { apiKeyId } : {}),
+    ...(apiSecretId ? { apiSecretId } : {}),
+    ...(accent ? { accent } : {}),
     timeoutMs:
       typeof partial?.timeoutMs === "number" && Number.isFinite(partial.timeoutMs)
         ? Math.max(3_000, Math.min(600_000, Math.round(partial.timeoutMs)))
@@ -98,9 +111,10 @@ export function readExternalSttOnlineRuntimeConfigFromStorage(): ExternalSttOnli
   }
   const endpoint = (readStorage(STT_ONLINE_PROVIDER_STORAGE_KEYS.endpoint) ?? "").trim();
   const appKey = (readStorage(STT_ONLINE_PROVIDER_STORAGE_KEYS.appKey) ?? "").trim();
+  const accentStored = (readStorage(STT_ONLINE_PROVIDER_STORAGE_KEYS.accent) ?? "").trim();
   const timeoutRaw = readStorage(STT_ONLINE_PROVIDER_STORAGE_KEYS.timeoutMs);
   const rawApiKeyId = (readStorage(STT_ONLINE_PROVIDER_STORAGE_KEYS.apiKeyId) ?? "").trim();
-  const apiKeyId = normalizeSttApiKeyId(rawApiKeyId);
+  let apiKeyId = normalizeSttApiKeyId(rawApiKeyId);
   if (rawApiKeyId && apiKeyId && rawApiKeyId !== apiKeyId) {
     writeStorage(STT_ONLINE_PROVIDER_STORAGE_KEYS.apiKeyId, apiKeyId);
   } else if (rawApiKeyId && !apiKeyId) {
@@ -109,13 +123,38 @@ export function readExternalSttOnlineRuntimeConfigFromStorage(): ExternalSttOnli
     } catch {
       /* ignore */
     }
+    apiKeyId = undefined;
+  }
+  const rawApiSecretId = (readStorage(STT_ONLINE_PROVIDER_STORAGE_KEYS.apiSecretId) ?? "").trim();
+  let apiSecretId = normalizeSttApiKeyId(rawApiSecretId);
+  if (rawApiSecretId && apiSecretId && rawApiSecretId !== apiSecretId) {
+    writeStorage(STT_ONLINE_PROVIDER_STORAGE_KEYS.apiSecretId, apiSecretId);
+  } else if (rawApiSecretId && !apiSecretId) {
+    try {
+      localStorage.removeItem(STT_ONLINE_PROVIDER_STORAGE_KEYS.apiSecretId);
+    } catch {
+      /* ignore */
+    }
+    apiSecretId = undefined;
+  }
+  const resolvedSelected = getSttOnlineProviderDefinition(selected) ? selected : "openai";
+  if (apiKeyId && isStaleSttApiKeyIdForProvider(resolvedSelected, apiKeyId)) {
+    try {
+      localStorage.removeItem(STT_ONLINE_PROVIDER_STORAGE_KEYS.apiKeyId);
+    } catch {
+      /* ignore */
+    }
+    clearSttConnectionVerified();
+    apiKeyId = undefined;
   }
   return normalizeExternalSttOnlineRuntimeConfig({
     enabled: enabledRaw === "1" || enabledRaw === "true",
-    selectedProviderId: getSttOnlineProviderDefinition(selected) ? selected : "openai",
+    selectedProviderId: resolvedSelected,
     ...(endpoint ? { endpoint } : {}),
     ...(appKey ? { appKey } : {}),
+    ...(accentStored ? { accent: accentStored } : {}),
     ...(apiKeyId ? { apiKeyId } : {}),
+    ...(resolvedSelected === "iflytek-speed-asr" && apiSecretId ? { apiSecretId } : {}),
     timeoutMs: normalizeTimeoutMs(timeoutRaw, selected),
   });
 }
@@ -144,6 +183,11 @@ export function persistExternalSttOnlineRuntimeConfig(
   writeStorage(STT_ONLINE_PROVIDER_STORAGE_KEYS.selectedProviderId, n.selectedProviderId);
   writeStorage(STT_ONLINE_PROVIDER_STORAGE_KEYS.endpoint, n.endpoint ?? null);
   writeStorage(STT_ONLINE_PROVIDER_STORAGE_KEYS.appKey, n.appKey ?? null);
+  if (n.selectedProviderId === "iflytek-speed-asr") {
+    writeStorage(STT_ONLINE_PROVIDER_STORAGE_KEYS.accent, n.accent ?? normalizeXunfeiSpeedAsrAccent(undefined));
+  } else {
+    writeStorage(STT_ONLINE_PROVIDER_STORAGE_KEYS.accent, null);
+  }
   writeStorage(STT_ONLINE_PROVIDER_STORAGE_KEYS.timeoutMs, String(n.timeoutMs));
   if (options?.clearApiKeyId) {
     try {
@@ -154,6 +198,22 @@ export function persistExternalSttOnlineRuntimeConfig(
   } else if (config.apiKeyId !== undefined) {
     const normalized = normalizeSttApiKeyId(config.apiKeyId);
     if (normalized) writeStorage(STT_ONLINE_PROVIDER_STORAGE_KEYS.apiKeyId, normalized);
+  }
+  if (options?.clearApiSecretId) {
+    try {
+      localStorage.removeItem(STT_ONLINE_PROVIDER_STORAGE_KEYS.apiSecretId);
+    } catch {
+      /* ignore */
+    }
+  } else if (n.selectedProviderId === "iflytek-speed-asr" && config.apiSecretId !== undefined) {
+    const normalized = normalizeSttApiKeyId(config.apiSecretId);
+    if (normalized) writeStorage(STT_ONLINE_PROVIDER_STORAGE_KEYS.apiSecretId, normalized);
+  } else if (n.selectedProviderId !== "iflytek-speed-asr") {
+    try {
+      localStorage.removeItem(STT_ONLINE_PROVIDER_STORAGE_KEYS.apiSecretId);
+    } catch {
+      /* ignore */
+    }
   }
   if (previousFingerprint !== sttPersistedConnectionFingerprint(n)) {
     clearSttConnectionVerified();

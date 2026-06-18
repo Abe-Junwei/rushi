@@ -17,6 +17,8 @@ mod packaged_hints;
 mod postprocess_cmd;
 mod profile;
 mod project;
+mod secret_keyring_session;
+mod secret_store_policy;
 mod stt_native;
 mod stt_online_api_key_cmd;
 mod stt_online_probe;
@@ -236,6 +238,7 @@ pub fn run() {
             postprocess_cmd::postprocess_api_key_cmd::llm_probe_connection,
             postprocess_cmd::postprocess_api_key_cmd::ollama_detect_status,
             stt_online_probe::stt_probe_online_health,
+            stt_online_probe::stt_probe_xunfei_credentials,
             stt_online_api_key_cmd::stt_save_api_key,
             stt_online_api_key_cmd::stt_delete_api_key,
             stt_online_api_key_cmd::stt_has_stored_api_key,

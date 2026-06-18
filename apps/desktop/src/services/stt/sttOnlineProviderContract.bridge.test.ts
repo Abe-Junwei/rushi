@@ -4,6 +4,7 @@ import {
   STT_ONLINE_PROVIDER_STORAGE_KEYS,
   isSttOnlineEnabledButIncomplete,
   setSttOnlineApiKeyInMemory,
+  setSttOnlineApiSecretInMemory,
   tryBuildOnlineTranscribeBridgePayload,
   resolveShellNativeSttAdapterId,
 } from "./sttOnlineProviderContract";
@@ -36,11 +37,13 @@ describe("tryBuildOnlineTranscribeBridgePayload", () => {
   beforeEach(() => {
     vi.stubGlobal("localStorage", mockLocalStorage({}));
     setSttOnlineApiKeyInMemory(null);
+    setSttOnlineApiSecretInMemory(null);
   });
 
   afterEach(() => {
     vi.unstubAllGlobals();
     setSttOnlineApiKeyInMemory(null);
+    setSttOnlineApiSecretInMemory(null);
   });
 
   it("returns null when session api key is missing", () => {
@@ -129,10 +132,46 @@ describe("tryBuildOnlineTranscribeBridgePayload", () => {
     expect(p?.authorization).toBe("Bearer dg-key");
   });
 
+  it("builds iflytek-speed-asr native payload with triplet credentials", () => {
+    vi.stubGlobal(
+      "localStorage",
+      mockLocalStorage({
+        [STT_ONLINE_PROVIDER_STORAGE_KEYS.enabled]: "true",
+        [STT_ONLINE_PROVIDER_STORAGE_KEYS.selectedProviderId]: "iflytek-speed-asr",
+        [STT_ONLINE_PROVIDER_STORAGE_KEYS.appKey]: "app-id",
+        [STT_ONLINE_PROVIDER_STORAGE_KEYS.accent]: "cantonese",
+        [STT_ONLINE_PROVIDER_STORAGE_KEYS.timeoutMs]: "120000",
+      }),
+    );
+    setSttOnlineApiKeyInMemory("api-key");
+    setSttOnlineApiSecretInMemory("api-secret");
+    const p = tryBuildOnlineTranscribeBridgePayload();
+    expect(p?.nativeAdapter).toBe("xunfeiSpeedAsr");
+    expect(p?.appKey).toBe("app-id");
+    expect(p?.apiSecret).toBe("api-secret");
+    expect(p?.accent).toBe("cantonese");
+    expect(p?.authorization).toBe("api-key");
+  });
+
+  it("returns null for iflytek-speed-asr when APISecret is missing", () => {
+    vi.stubGlobal(
+      "localStorage",
+      mockLocalStorage({
+        [STT_ONLINE_PROVIDER_STORAGE_KEYS.enabled]: "true",
+        [STT_ONLINE_PROVIDER_STORAGE_KEYS.selectedProviderId]: "iflytek-speed-asr",
+        [STT_ONLINE_PROVIDER_STORAGE_KEYS.appKey]: "app-id",
+        [STT_ONLINE_PROVIDER_STORAGE_KEYS.timeoutMs]: "120000",
+      }),
+    );
+    setSttOnlineApiKeyInMemory("api-key");
+    expect(tryBuildOnlineTranscribeBridgePayload()).toBeNull();
+  });
+
   it("resolves remaining shell native adapters", () => {
     expect(resolveShellNativeSttAdapterId("openai")).toBe("openaiAudio");
     expect(resolveShellNativeSttAdapterId("assemblyai")).toBe("assemblyai");
     expect(resolveShellNativeSttAdapterId("dashscope-asr")).toBe("dashscopeAsr");
+    expect(resolveShellNativeSttAdapterId("iflytek-speed-asr")).toBe("xunfeiSpeedAsr");
     expect(resolveShellNativeSttAdapterId("deepgram")).toBe("deepgramListen");
     expect(resolveShellNativeSttAdapterId("aliyun-nls")).toBeNull();
   });

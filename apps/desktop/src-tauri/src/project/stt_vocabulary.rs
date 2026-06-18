@@ -7,6 +7,8 @@ const ASSEMBLYAI_KEYTERMS_MAX: usize = 100;
 const DEEPGRAM_KEYWORDS_MAX: usize = 50;
 const DASHSCOPE_TERM_MAX_CHARS: usize = 15;
 const DASHSCOPE_ASCII_MAX_SEGMENTS: usize = 7;
+const XUNFEI_HOTWORD_MAX_TERMS: usize = 200;
+const XUNFEI_HOTWORD_MAX_CHARS: usize = 16;
 
 fn dashscope_term_valid(term: &str) -> bool {
     let t = term.trim();
@@ -54,6 +56,7 @@ pub enum SttVocabularyChannel {
     AssemblyAiKeyterms,
     DeepgramKeywords,
     DashScopeVocabulary,
+    XunfeiSpeedAsrHotword,
     GenericMultipartHotwords,
     Unsupported,
 }
@@ -67,6 +70,7 @@ pub fn channel_for_online(
         Some("assemblyai") => SttVocabularyChannel::AssemblyAiKeyterms,
         Some("deepgramListen") => SttVocabularyChannel::DeepgramKeywords,
         Some("dashscopeAsr") => SttVocabularyChannel::DashScopeVocabulary,
+        Some("xunfeiSpeedAsr") => SttVocabularyChannel::XunfeiSpeedAsrHotword,
         _ if multipart_fallback => SttVocabularyChannel::GenericMultipartHotwords,
         _ => SttVocabularyChannel::Unsupported,
     }
@@ -120,6 +124,33 @@ pub fn append_deepgram_keywords(base_url: &str, plan: &SttVocabularyPlan) -> Str
     url
 }
 
+/// 讯飞 speedTranscription `business.dhw`：英文逗号分隔，单条 ≤16 字符，≤200 条。
+pub fn xunfei_hotword_dhw(plan: &SttVocabularyPlan) -> (Option<String>, Vec<String>) {
+    if plan.terms.is_empty() {
+        return (None, Vec::new());
+    }
+    let mut warnings = Vec::new();
+    let mut parts: Vec<String> = Vec::new();
+    for term in plan.terms.iter().take(XUNFEI_HOTWORD_MAX_TERMS) {
+        let t = term.trim();
+        if t.is_empty() {
+            continue;
+        }
+        let clipped: String = t.chars().take(XUNFEI_HOTWORD_MAX_CHARS).collect();
+        if clipped.chars().count() < t.chars().count() {
+            warnings.push("online_vocabulary_truncated_xunfei_speed_asr_hotword".to_string());
+        }
+        parts.push(clipped);
+    }
+    if plan.terms.len() > XUNFEI_HOTWORD_MAX_TERMS {
+        warnings.push("online_vocabulary_truncated_xunfei_speed_asr_hotword".to_string());
+    }
+    if parts.is_empty() {
+        return (None, warnings);
+    }
+    (Some(parts.join(",")), warnings)
+}
+
 /// Pre-flight hints when vocabulary cannot be applied or was truncated.
 pub fn vocabulary_support_warnings(
     channel: SttVocabularyChannel,
@@ -159,6 +190,16 @@ pub fn vocabulary_support_warnings(
                 .any(|term| !term.trim().is_empty() && !dashscope_term_valid(term))
             {
                 out.push("online_vocabulary_truncated_dashscope_terms".to_string());
+            }
+        }
+        SttVocabularyChannel::XunfeiSpeedAsrHotword => {
+            if plan.terms.len() > XUNFEI_HOTWORD_MAX_TERMS
+                || plan.terms.iter().any(|term| {
+                    let t = term.trim();
+                    !t.is_empty() && t.chars().count() > XUNFEI_HOTWORD_MAX_CHARS
+                })
+            {
+                out.push("online_vocabulary_truncated_xunfei_speed_asr_hotword".to_string());
             }
         }
         SttVocabularyChannel::LocalFunasrMultipart
@@ -265,6 +306,24 @@ mod tests {
             channel_for_online(Some("dashscopeAsr"), false),
             SttVocabularyChannel::DashScopeVocabulary
         );
+    }
+
+    #[test]
+    fn channel_for_xunfei_speed_asr() {
+        assert_eq!(
+            channel_for_online(Some("xunfeiSpeedAsr"), false),
+            SttVocabularyChannel::XunfeiSpeedAsrHotword
+        );
+    }
+
+    #[test]
+    fn xunfei_hotword_joins_with_comma() {
+        let plan = SttVocabularyPlan {
+            hotwords: "制控 主任".into(),
+            terms: vec!["制控".into(), "主任".into()],
+        };
+        let (dhw, _) = xunfei_hotword_dhw(&plan);
+        assert_eq!(dhw.as_deref(), Some("制控,主任"));
     }
 
     #[test]

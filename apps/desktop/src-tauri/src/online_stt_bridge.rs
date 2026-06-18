@@ -17,6 +17,12 @@ pub struct OnlineTranscribeBridge {
     /// AppKey / SecretId 等可持久化标识；网关 multipart 时作 `X-Rushi-Stt-App-Key`。
     #[serde(default)]
     pub app_key: Option<String>,
+    /// 讯飞 APISecret 等第三凭证（会话透传，不落库）。
+    #[serde(default)]
+    pub api_secret: Option<String>,
+    /// 讯飞 `business.accent`。
+    #[serde(default)]
+    pub accent: Option<String>,
 }
 
 pub fn is_allowed_stt_transcribe_url(raw: &str) -> bool {

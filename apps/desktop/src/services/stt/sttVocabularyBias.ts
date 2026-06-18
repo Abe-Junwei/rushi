@@ -11,6 +11,7 @@ export type SttOnlineVocabularyChannel =
   | "assemblyAiKeyterms"
   | "deepgramKeywords"
   | "dashScopeVocabulary"
+  | "xunfeiSpeedAsrHotword"
   | "genericMultipartHotwords"
   | "unsupported";
 
@@ -19,6 +20,7 @@ const CHANNEL_BY_PROVIDER_ID: Readonly<Record<string, SttOnlineVocabularyChannel
   assemblyai: "assemblyAiKeyterms",
   deepgram: "deepgramKeywords",
   "dashscope-asr": "dashScopeVocabulary",
+  "iflytek-speed-asr": "xunfeiSpeedAsrHotword",
   "custom-proxy": "genericMultipartHotwords",
 };
 
@@ -31,6 +33,8 @@ const FIELD_HINT: Readonly<Record<SttOnlineVocabularyChannel, string>> = {
     "Deepgram URL `keywords` 参数（≤50 个；默认无强度 boost）",
   dashScopeVocabulary:
     "百炼 `speech-biasing` 热词表（vocabulary_id；单条非 ASCII ≤15 字或 ASCII ≤7 词；target_model=fun-asr）",
+  xunfeiSpeedAsrHotword:
+    "讯飞极速大模型热词（英文逗号分隔；单条 ≤16 字；≤200 条）",
   genericMultipartHotwords: "代理 multipart `hotwords`（须兼容 Rushi 契约）",
   unsupported: "",
 };
@@ -63,6 +67,7 @@ const PREFLIGHT_BIAS_HINT: Readonly<Record<SttOnlineVocabularyChannel, string>> 
   assemblyAiKeyterms: "在线 AssemblyAI：术语作为识别偏置提交。",
   deepgramKeywords: "在线 Deepgram：术语作为 keywords 提交。",
   dashScopeVocabulary: "在线百炼：术语同步为厂商热词表。",
+  xunfeiSpeedAsrHotword: "在线讯飞极速大模型：术语将作为转写热词提交。",
   genericMultipartHotwords: "在线代理：术语随转写请求提交。",
   unsupported: "",
 };

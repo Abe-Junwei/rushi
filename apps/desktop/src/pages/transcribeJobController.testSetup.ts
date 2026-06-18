@@ -42,6 +42,7 @@ vi.mock("../services/stt/sttOnlineProviderContract", async (importOriginal) => {
     isOnlineTranscribeReady: vi.fn(() => false),
     tryBuildOnlineTranscribeBridgePayload: vi.fn(() => null),
     ensureSttOnlineApiKeyForSession: vi.fn(() => Promise.resolve(true)),
+    ensureSttOnlineApiSecretForSession: vi.fn(() => Promise.resolve(true)),
   };
 });
 

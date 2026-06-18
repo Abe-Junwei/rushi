@@ -53,13 +53,18 @@ export function EnvOnlineSttPanel({ busy, scrollAnchorRef, onSttOnlineRuntimeCha
             timeoutSec={panel.olTimeoutSec}
             appKey={panel.olAppKey}
             apiKey={panel.olApiKey}
+            apiSecret={panel.olApiSecret}
+            accent={panel.olAccent}
             savedApiKeyId={panel.savedApiKeyId}
+            savedApiSecretId={panel.savedApiSecretId}
             keychainChecking={panel.keychainChecking}
             keychainReady={panel.keychainReady}
             onEndpointChange={panel.setOlEndpoint}
             onTimeoutSecChange={panel.setOlTimeoutSec}
             onAppKeyChange={panel.setOlAppKey}
             onApiKeyChange={panel.setOlApiKey}
+            onApiSecretChange={panel.setOlApiSecret}
+            onAccentChange={panel.setOlAccent}
             onClearSavedApiKey={() => void panel.clearSavedApiKey()}
             onSave={() => void panel.saveOnlineStt()}
           />

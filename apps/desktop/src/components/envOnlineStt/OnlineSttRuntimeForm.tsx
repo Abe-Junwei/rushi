@@ -19,6 +19,9 @@ import {
   STT_ONLINE_TIMEOUT_SEC_MIN,
 } from "../../services/stt/sttOnlineProviderContract/runtimeConfig";
 import {
+  XUNFEI_SPEED_ASR_ACCENT_PRESETS,
+} from "../../services/stt/sttOnlineProviderContract/xunfeiAccentPresets";
+import {
   resolveSttOnlinePresetEndpointDisplay,
   sttOnlineProviderEndpointUserConfigurable,
   type SttOnlineProviderDefinition,
@@ -45,13 +48,18 @@ type Props = {
   timeoutSec: number;
   appKey: string;
   apiKey: string;
+  apiSecret: string;
+  accent: string;
   savedApiKeyId: string | null;
+  savedApiSecretId: string | null;
   keychainChecking?: boolean;
   keychainReady?: boolean | null;
   onEndpointChange: (value: string) => void;
   onTimeoutSecChange: (value: number) => void;
   onAppKeyChange: (value: string) => void;
   onApiKeyChange: (value: string) => void;
+  onApiSecretChange: (value: string) => void;
+  onAccentChange: (value: string) => void;
   onClearSavedApiKey: () => void;
   onSave: () => void;
 };
@@ -64,13 +72,18 @@ export function OnlineSttRuntimeForm({
   timeoutSec,
   appKey,
   apiKey,
+  apiSecret,
+  accent,
   savedApiKeyId,
+  savedApiSecretId,
   keychainChecking = false,
   keychainReady = null,
   onEndpointChange,
   onTimeoutSecChange,
   onAppKeyChange,
   onApiKeyChange,
+  onApiSecretChange,
+  onAccentChange,
   onClearSavedApiKey,
   onSave,
 }: Props) {
@@ -100,15 +113,25 @@ export function OnlineSttRuntimeForm({
     savedApiKeyId,
     keychainReady: keychainResolved,
   });
+  const showSavedApiSecretMask = isSavedApiKeyMaskDisplayed(
+    apiSecret,
+    savedApiSecretId,
+    keychainResolved,
+  );
+  const apiSecretDisplay = resolveSavedApiKeyInputDisplay({
+    typedApiKey: apiSecret,
+    savedApiKeyId: savedApiSecretId,
+    keychainReady: keychainResolved,
+  });
 
   return (
     <div className={ENV_PANEL_FORM_CLASS}>
       <div className={ENV_PANEL_FORM_FIELDS_CLASS}>
         <p className={`m-0 ${PANEL_TYPOGRAPHY.meta}`}>
-        当前厂商：<span className="font-medium text-notion-text">{providerLabel}</span>
-        {" · "}
-        鉴权：<span className="font-medium text-notion-text">{authSummary}</span>
-      </p>
+          当前厂商：<span className="font-medium text-notion-text">{providerLabel}</span>
+          {" · "}
+          鉴权：<span className="font-medium text-notion-text">{authSummary}</span>
+        </p>
 
       {showCustomEndpoint ? (
         <label className={fieldGroup}>
@@ -172,14 +195,48 @@ export function OnlineSttRuntimeForm({
             disabled={busy}
             autoComplete="off"
           />
+          {providerDef.requiresApiSecret ? (
+            <p className={PANEL_TYPOGRAPHY.meta}>
+              讯飞控制台三项须全部填写并保存：
+              <span className="font-medium text-notion-text"> AppID、APISecret、APIKey</span>
+              。
+            </p>
+          ) : null}
+        </label>
+      ) : null}
+
+      {providerDef?.requiresApiSecret ? (
+        <label className={fieldGroup}>
+          <span className={fieldLabel}>APISecret</span>
+          <input
+            type="password"
+            className={monoField}
+            value={apiSecretDisplay}
+            onFocus={(e) => {
+              if (showSavedApiSecretMask) e.currentTarget.select();
+            }}
+            onChange={(e) => {
+              const next = normalizeSavedApiKeyInputChange(e.target.value, showSavedApiSecretMask);
+              if (shouldClearSavedKeyFromMaskInput(showSavedApiSecretMask, next)) {
+                onClearSavedApiKey();
+                return;
+              }
+              onApiSecretChange(next);
+            }}
+            placeholder="控制台 APISecret"
+            disabled={busy}
+            autoComplete="off"
+          />
+          <p className={PANEL_TYPOGRAPHY.meta}>与 APIKey 配对；保存后写入本机密钥存储。</p>
         </label>
       ) : null}
 
       <label className={fieldGroup}>
         <span className={fieldLabel}>
-          {providerDef?.authStyle === "header" && providerDef.headerName
-            ? `根凭证 / Token（HTTP 头 ${providerDef.headerName}）`
-            : "根凭证 / API Key"}
+          {providerDef?.credentialFieldLabel ??
+            (providerDef?.authStyle === "header" && providerDef.headerName
+              ? `根凭证 / Token（HTTP 头 ${providerDef.headerName}）`
+              : "根凭证 / API Key")}
         </span>
         <input
           type="password"
@@ -204,13 +261,31 @@ export function OnlineSttRuntimeForm({
           <p className={PANEL_TYPOGRAPHY.meta}>{providerDef.credentialHint}</p>
         ) : null}
       </label>
+
+      {providerId === "iflytek-speed-asr" ? (
+        <label className={fieldGroup}>
+          <span className={fieldLabel}>口音 / 方言</span>
+          <select
+            className={CONTROL_TEXT_INPUT}
+            value={accent}
+            onChange={(e) => onAccentChange(e.target.value)}
+            disabled={busy}
+          >
+            {XUNFEI_SPEED_ASR_ACCENT_PRESETS.map((p) => (
+              <option key={p.value} value={p.value}>
+                {p.label}
+              </option>
+            ))}
+          </select>
+        </label>
+      ) : null}
       </div>
 
       <div className={ENV_PANEL_ACTION_ROW_CLASS}>
         <button
           type="button"
           className={`${CONTROL_BTN_SECONDARY} mr-auto text-notion-text-muted`}
-          disabled={busy || !savedApiKeyId}
+          disabled={busy || (!savedApiKeyId && !savedApiSecretId)}
           onClick={onClearSavedApiKey}
         >
           清除已保存密钥

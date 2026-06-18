@@ -6,6 +6,10 @@ import {
   sttRuntimeConnectionFingerprint,
 } from "./sttOnlineProviderContract/connectionVerified";
 import {
+  setSttOnlineApiKeyInMemory,
+  setSttOnlineApiSecretInMemory,
+} from "./sttOnlineProviderContract/memorySecrets";
+import {
   normalizeExternalSttOnlineRuntimeConfig,
   persistExternalSttOnlineRuntimeConfig,
 } from "./sttOnlineProviderContract/runtimeConfig";
@@ -74,5 +78,57 @@ describe("persistExternalSttOnlineRuntimeConfig verification fingerprint", () =>
     expect(
       localStorage.getItem(STT_ONLINE_PROVIDER_STORAGE_KEYS.connectionVerifiedFingerprint),
     ).toBeNull();
+  });
+});
+
+describe("isSttConnectionVerified with APISecret providers", () => {
+  beforeEach(() => {
+    setSttOnlineApiKeyInMemory(null);
+    setSttOnlineApiSecretInMemory(null);
+  });
+
+  it("is false for iflytek-speed-asr when APISecret reference is missing", () => {
+    const cfg = normalizeExternalSttOnlineRuntimeConfig({
+      enabled: true,
+      selectedProviderId: "iflytek-speed-asr",
+      appKey: "app-id",
+      apiKeyId: "iflytek-api-key",
+      timeoutMs: 120_000,
+    });
+    persistExternalSttOnlineRuntimeConfig(cfg);
+    setSttOnlineApiKeyInMemory("api-key");
+    markSttConnectionVerified(cfg);
+    expect(isSttConnectionVerified(cfg)).toBe(false);
+  });
+
+  it("is true for iflytek-speed-asr when APISecret reference is persisted", () => {
+    const cfg = normalizeExternalSttOnlineRuntimeConfig({
+      enabled: true,
+      selectedProviderId: "iflytek-speed-asr",
+      appKey: "app-id",
+      apiKeyId: "iflytek-api-key",
+      apiSecretId: "iflytek-api-secret",
+      timeoutMs: 120_000,
+    });
+    persistExternalSttOnlineRuntimeConfig(cfg);
+    setSttOnlineApiKeyInMemory("api-key");
+    markSttConnectionVerified(cfg);
+    expect(isSttConnectionVerified(cfg)).toBe(true);
+  });
+
+  it("is true when APISecret reference is persisted without session memory", () => {
+    const cfg = normalizeExternalSttOnlineRuntimeConfig({
+      enabled: true,
+      selectedProviderId: "iflytek-speed-asr",
+      appKey: "app-id",
+      apiKeyId: "iflytek-api-key",
+      apiSecretId: "iflytek-api-secret",
+      timeoutMs: 120_000,
+    });
+    persistExternalSttOnlineRuntimeConfig(cfg);
+    setSttOnlineApiKeyInMemory("api-key");
+    setSttOnlineApiSecretInMemory(null);
+    markSttConnectionVerified(cfg);
+    expect(isSttConnectionVerified(cfg)).toBe(true);
   });
 });

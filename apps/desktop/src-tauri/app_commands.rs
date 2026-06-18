@@ -80,6 +80,7 @@ pub const APP_COMMANDS: &[&str] = &[
     "llm_probe_connection",
     "ollama_detect_status",
     "stt_probe_online_health",
+    "stt_probe_xunfei_credentials",
     "stt_save_api_key",
     "stt_delete_api_key",
     "stt_has_stored_api_key",

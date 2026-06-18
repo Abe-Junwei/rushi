@@ -18,6 +18,19 @@ export async function sttProbeOnlineHealth(
   return await invoke<ExternalSttOnlineHealthCheckResult>("stt_probe_online_health", { req });
 }
 
+export type SttXunfeiCredentialProbeRequest = {
+  appId: string;
+  apiKey: string;
+  apiSecret: string;
+  timeoutMs: number;
+};
+
+export async function sttProbeXunfeiCredentials(
+  req: SttXunfeiCredentialProbeRequest,
+): Promise<ExternalSttOnlineHealthCheckResult> {
+  return await invoke<ExternalSttOnlineHealthCheckResult>("stt_probe_xunfei_credentials", { req });
+}
+
 export async function sttSaveApiKey(req: { apiKeyId?: string; apiKey: string }): Promise<string> {
   return await invoke<string>("stt_save_api_key", { req });
 }

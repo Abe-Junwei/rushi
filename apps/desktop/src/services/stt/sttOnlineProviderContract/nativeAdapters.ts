@@ -9,6 +9,8 @@ export function resolveShellNativeSttAdapterId(providerId: string): OnlineNative
       return "assemblyai";
     case "dashscope-asr":
       return "dashscopeAsr";
+    case "iflytek-speed-asr":
+      return "xunfeiSpeedAsr";
     case "deepgram":
       return "deepgramListen";
     default:

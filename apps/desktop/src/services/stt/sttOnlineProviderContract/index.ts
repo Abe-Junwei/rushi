@@ -2,6 +2,7 @@ export * from "./types";
 export * from "./constants";
 export * from "./sttApiKeyIds";
 export * from "./apiKeyStorage";
+export * from "./apiSecretStorage";
 export * from "./definitions";
 export * from "./runtimeConfig";
 export * from "./memorySecrets";

@@ -5,6 +5,8 @@ export const STT_ONLINE_PROVIDER_STORAGE_KEYS = {
   appKey: "rushi.stt.online.appKey",
   timeoutMs: "rushi.stt.online.timeoutMs",
   apiKeyId: "rushi.stt.online.apiKeyId",
+  apiSecretId: "rushi.stt.online.apiSecretId",
+  accent: "rushi.stt.online.accent",
   connectionVerifiedFingerprint: "rushi.stt.online.connectionVerifiedFingerprint",
 } as const;
 
@@ -24,6 +26,10 @@ export const STT_ONLINE_DASHSCOPE_DEFAULT_TRANSCRIBE_URL =
   "https://dashscope.aliyuncs.com/api/v1/services/audio/asr/transcription";
 export const STT_ONLINE_DASHSCOPE_DEFAULT_PROBE_URL =
   "https://dashscope.aliyuncs.com/compatible-mode/v1/models";
+
+/** 讯飞 OST 任务 API（探测为 credentials-only；展示用）。 */
+export const STT_ONLINE_XUNFEI_SPEED_ASR_DEFAULT_TRANSCRIBE_URL =
+  "https://ost-api.xfyun.cn/v2/ost/pro_create";
 
 export const DEFAULT_TIMEOUT_MS = 30_000;
 

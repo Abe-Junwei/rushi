@@ -80,6 +80,26 @@ _Avoid_: ready_for_transcribe（单独指用户所选时）, 全局 cached
 切换模型或写 pref 后杀旧 8741 进程并启新进程；模型切换的必经路径。
 _Avoid_: 刷新页面, reload health
 
+**Online STT provider**（在线 STT 厂商）:
+环境页「在线 STT」定义表中的一行（如 `dashscope-asr`、`iflytek-speed-asr`）；经 Rust native adapter 或 `custom-proxy` 出站；与本机 **ASR sidecar** 并列，勿称「模型」。
+_Avoid_: 在线模型, cloud ASR（未特指 provider id 时）
+
+**iflytek-speed-asr**:
+讯飞开放平台 **极速录音转写大模型**（录音文件转写极速版 / speedTranscription）的 Rushi provider id；凭证三件套 AppID + APIKey + APISecret；engine 标记 `iflytek:speed-transcription:file`。
+_Avoid_: iflytek-speech（已移除短听写）, LFASR v2（标准慢版 `raasr.xfyun.cn`, 非本 provider）, iflytek-lfasr（历史草稿 id）
+
+**Vendor credential triplet**（厂商凭证三件套）:
+在线 STT 中 AppID（可持久化 `appKey`）+ APIKey + APISecret（会话内存）；仅 `iflytek-speed-asr` 需要第三字段；百炼等仍用单 **apiKey** Bearer。
+_Avoid_: 三个 API Key, 账号密码
+
+**Credentials-only probe**（凭证探测）:
+POST-only 厂商无法在环境页做 GET 健康检查；三字段齐全即报 `available`，首次转写才验配额与签名。
+_Avoid_: 连接成功, ping 通过（未说明未发 HTTP 时）
+
+**Xunfei accent preset**（讯飞口音预设）:
+`iflytek-speed-asr` 环境页短列表（v1 共 8 项：普通话默认 + 粤语/四川/河南/东北/上海/闽南/维语）；映射 API `accent` 字段；不全量 202 方言。
+_Avoid_: 方言下拉（泛指全量）, language 自由文本（v1）
+
 ## Language — 波形与编辑
 
 **Waveform tier**:
@@ -150,3 +170,4 @@ _Avoid_: design doc（泛指）
 - 「ticket / issue」— 本仓工作真源在 `docs/execution/specs/`，不是 GitHub Issues。
 - 「选中 / highlight」— 须区分 **indigo**（编辑选中）与 **saffron**（动作 / 进度 / CTA）；禁止混为单一 accent。
 - 「编辑页 / 视角 / 层次感」— 全应用壳层精调时 scope = Welcome → Hub → Editor → 环境浮层；**Editor** 仅指已打开文件的转写工作区。
+- 「LFASR / 讯飞转写」— 须区分 **iflytek-speed-asr**（极速 OST）、标准 LFASR v2、已移除 **iflytek-speech**；文档标题含 LFASR 时以 research §3 定稿 id 为准。

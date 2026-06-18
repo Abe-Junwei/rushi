@@ -78,6 +78,10 @@ export function deriveTranscribeHints(engine: string, warnings: string[], segmen
     hints.push(
       "部分术语不符合百炼热词长度规则（非 ASCII 单条 ≤15 字；纯英文 ≤7 个词），已跳过；其余词条已同步为 vocabulary_id。",
     );
+  } else if (warnings.some((w) => w === "online_vocabulary_truncated_xunfei_speed_asr_hotword")) {
+    hints.push(
+      "部分术语超过讯飞热词长度或数量上限（单条 ≤16 字、≤200 条），已截断；其余词条已写入 business.dhw。",
+    );
   } else if (warnings.some((w) => w === "online_vocabulary_sync_failed")) {
     hints.push("百炼热词表同步失败，本次转写未携带 vocabulary_id；请检查 API Key 权限与网络。");
   } else if (warnings.some((w) => w.startsWith("online_vocabulary_truncated_"))) {

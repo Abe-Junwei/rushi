@@ -2,6 +2,7 @@ import {
   STT_ONLINE_ASSEMBLYAI_DEFAULT_BASE_URL,
   STT_ONLINE_DASHSCOPE_DEFAULT_TRANSCRIBE_URL,
   STT_ONLINE_OPENAI_DEFAULT_TRANSCRIBE_URL,
+  STT_ONLINE_XUNFEI_SPEED_ASR_DEFAULT_TRANSCRIBE_URL,
 } from "./constants";
 import { resolveShellNativeSttAdapterId } from "./nativeAdapters";
 
@@ -10,6 +11,7 @@ export const STT_ONLINE_PRESET_TRANSCRIBE_URLS: Readonly<Partial<Record<string, 
   openai: STT_ONLINE_OPENAI_DEFAULT_TRANSCRIBE_URL,
   assemblyai: STT_ONLINE_ASSEMBLYAI_DEFAULT_BASE_URL,
   "dashscope-asr": STT_ONLINE_DASHSCOPE_DEFAULT_TRANSCRIBE_URL,
+  "iflytek-speed-asr": STT_ONLINE_XUNFEI_SPEED_ASR_DEFAULT_TRANSCRIBE_URL,
   deepgram: "https://api.deepgram.com/v1/listen?model=nova-2&smart_format=true",
 };
 

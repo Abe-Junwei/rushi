@@ -20,7 +20,7 @@
 
 > **SenseVoice vs Paraformer 热词差异**：两者均通过 `hotword=` 参数统一传入。Paraformer 对热词参数的敏感度通常更高；SenseVoice 虽接受该参数，但实际热词召回效果可能弱于 Paraformer。TypeError 回退可处理「完全不支持」的情况，但无法覆盖「支持但效果不佳」的灰度场景。
 >
-> **Online STT（OpenAI、AssemblyAI、Deepgram）**：术语经 **`SttVocabularyPlan`** 分 adapter 映射（OpenAI `prompt`、AssemblyAI `keyterms_prompt`、Deepgram `keywords`）；其它 native adapter 返回 **`online_vocabulary_unsupported`** warning（ACC-STT-UNIFY U1/U2，2026-05-30）。
+> **Online STT（OpenAI、AssemblyAI、Deepgram、百炼、讯飞极速）**：术语经 **`SttVocabularyPlan`** 分 adapter 映射（OpenAI `prompt`、AssemblyAI `keyterms_prompt`、Deepgram `keywords`、百炼 `vocabulary_id`、讯飞 `business.dhw`）；其它 native adapter 返回 **`online_vocabulary_unsupported`** warning（ACC-STT-UNIFY U1/U2，2026-05-30）。
 
 ## 3. 在线 STT 能力矩阵（ACC-STT-UNIFY U2）
 
@@ -32,8 +32,9 @@
 | `assemblyai` | ✅ | `keyterms_prompt` |
 | `deepgram` | ✅ | URL `keywords` |
 | `dashscope-asr` | ✅ | 百炼 `vocabulary_id`（`speech-biasing` + `fun-asr`） |
+| `iflytek-speed-asr` | ✅ | 讯飞 `business.dhw`（英文逗号分隔；单条 ≤16 字；≤200 条） |
 | `custom-proxy` | ✅ | multipart `hotwords`（代理须兼容 Rushi） |
-| 其它壳直连（腾讯/百度/阿里/讯飞等） | ❌ | 转写前 warning：`online_vocabulary_unsupported` |
+| 其它壳直连（腾讯/百度/阿里/讯飞历史版本等） | ❌ | 转写前 warning：`online_vocabulary_unsupported` |
 
 `TranscriptionProvider.supportsHotwordBias`（`contracts/transcription.ts`）在需要时可按厂商 id 调用 `supportsHotwordBiasForProviderId`；**运行时仍以 `warnings` 为准**。
 

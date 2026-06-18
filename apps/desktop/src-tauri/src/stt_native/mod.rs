@@ -5,6 +5,7 @@ pub mod dashscope_file_asr;
 pub mod dashscope_upload;
 pub mod dashscope_vocabulary;
 pub mod deepgram;
+pub mod xunfei_speed_asr;
 
 use std::fs;
 use std::path::Path;
@@ -176,6 +177,18 @@ pub async fn dispatch_native(
         }
         "deepgramListen" => {
             deepgram::transcribe_deepgram(
+                client,
+                audio_path,
+                dispatch.bridge,
+                dispatch.vocabulary,
+                dispatch.timeout,
+                log,
+                dispatch.cancel,
+            )
+            .await
+        }
+        "xunfeiSpeedAsr" => {
+            xunfei_speed_asr::transcribe_xunfei_speed_asr(
                 client,
                 audio_path,
                 dispatch.bridge,

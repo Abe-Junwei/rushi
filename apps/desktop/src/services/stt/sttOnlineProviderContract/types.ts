@@ -31,8 +31,12 @@ export interface SttOnlineProviderDefinition {
    * 内存字段仍放 Token / Secret / API Key 等根凭证（如阿里云 NLS 的 X-NLS-Token）。
    */
   requiresPersistedAppKey?: boolean;
+  /** 讯飞等三件套凭证：除 apiKey 外须 APISecret（与 APIKey 同存 AppData 受保护文件）。 */
+  requiresApiSecret?: boolean;
   /** 持久化应用标识输入框标签 */
   persistedAppKeyFieldLabel?: string;
+  /** 根凭证输入框标签；未设时按 authStyle 生成「根凭证 / API Key」等文案。 */
+  credentialFieldLabel?: string;
   /** 根凭证输入框下的说明（避免与同类云产品混淆） */
   credentialHint?: string;
   /** 根凭证 placeholder */
@@ -61,6 +65,10 @@ export interface ExternalSttOnlineRuntimeConfig {
   appKey?: string;
   /** 本地受保护存储中的 API Key 引用（不含明文） */
   apiKeyId?: string;
+  /** 本地受保护存储中的 APISecret 引用（讯飞等三件套；不含明文） */
+  apiSecretId?: string;
+  /** 讯飞 speedTranscription accent（`iflytek-speed-asr`）；非密钥，可持久化。 */
+  accent?: string;
   timeoutMs: number;
 }
 
@@ -97,7 +105,8 @@ export type OnlineNativeAdapterId =
   | "openaiAudio"
   | "assemblyai"
   | "deepgramListen"
-  | "dashscopeAsr";
+  | "dashscopeAsr"
+  | "xunfeiSpeedAsr";
 
 /** 供 Tauri `project_run_transcribe` 的 `online` 参数；与 Rust `OnlineTranscribeBridge` 字段 camelCase 对齐。 */
 export type OnlineTranscribeBridgePayload = {
@@ -108,4 +117,8 @@ export type OnlineTranscribeBridgePayload = {
   nativeAdapter?: OnlineNativeAdapterId | null;
   /** 应用级标识（AppKey 等），由自建网关读取请求头 `X-Rushi-Stt-App-Key`（若设置）。 */
   appKey?: string | null;
+  /** 讯飞 APISecret；会话内存透传，持久化走 AppData 受保护文件。 */
+  apiSecret?: string | null;
+  /** 讯飞 `business.accent`；默认 mandarin。 */
+  accent?: string | null;
 };

@@ -3,7 +3,8 @@ import { getSttOnlineProviderDefinition } from "./definitions";
 import { isSttConnectionVerified } from "./connectionVerified";
 import { isAllowedSttOnlineEndpoint } from "./endpoint";
 import { hasSttOnlineApiKeyReference } from "./apiKeyStorage";
-import { getSttOnlineApiKeyFromMemory } from "./memorySecrets";
+import { hasSttOnlineApiSecretReference } from "./apiSecretStorage";
+import { getSttOnlineApiKeyFromMemory, getSttOnlineApiSecretFromMemory } from "./memorySecrets";
 import {
   resolveSttOnlinePresetTranscribeUrl,
   sttOnlineProviderEndpointUserConfigurable,
@@ -28,6 +29,8 @@ function sttRuntimeConfigForVerification() {
     endpoint: stored.endpoint ?? "",
     appKey: stored.appKey ?? "",
     apiKeyId: stored.apiKeyId,
+    apiSecretId: stored.apiSecretId,
+    accent: stored.accent ?? "",
     timeoutMs: stored.timeoutMs,
   });
 }
@@ -37,6 +40,7 @@ function isSttOnlineRuntimeConfigComplete(): boolean {
   const def = getSttOnlineProviderDefinition(c.selectedProviderId);
   if (!def) return false;
   if (def.requiresPersistedAppKey && !c.appKey?.trim()) return false;
+  if (def.requiresApiSecret && !hasSttOnlineApiSecretReference()) return false;
   if (sttOnlineProviderEndpointUserConfigurable(c.selectedProviderId)) {
     const url = c.endpoint?.trim() ?? "";
     if (!url || !isAllowedSttOnlineEndpoint(url)) return false;
@@ -54,7 +58,7 @@ export function isSttOnlineRuntimeConnectionVerified(): boolean {
 
 /**
  * 编辑器「在线」选项与自动转录门控：密钥引用 + 配置完整 + 连接已验证。
- * 实际转写前须 `ensureSttOnlineApiKeyForSession()` 将密钥注入内存以构建载荷。
+ * 实际转写前须 `ensureSttOnlineApiKeyForSession()` / `ensureSttOnlineApiSecretForSession()` 将密钥注入内存以构建载荷。
  */
 export function isOnlineTranscribeReady(): boolean {
   if (!hasSttOnlineApiKeyReference()) return false;
@@ -72,8 +76,14 @@ export function tryBuildOnlineTranscribeBridgePayload(): OnlineTranscribeBridgeP
   if (!key) return null;
   const def = getSttOnlineProviderDefinition(c.selectedProviderId);
   if (!def) return null;
+  if (def.requiresApiSecret && !getSttOnlineApiSecretFromMemory()?.trim()) return null;
   const timeoutSec = Math.min(600, Math.max(30, Math.round(c.timeoutMs / 1000)));
-  const authorization = def.authStyle === "bearer" ? `Bearer ${key}` : key;
+  const authorization =
+    def.requiresApiSecret || c.selectedProviderId === "iflytek-speed-asr"
+      ? key
+      : def.authStyle === "bearer"
+        ? `Bearer ${key}`
+        : key;
   const shellAdapter = resolveShellNativeSttAdapterId(c.selectedProviderId);
 
   if (shellAdapter) {
@@ -85,12 +95,15 @@ export function tryBuildOnlineTranscribeBridgePayload(): OnlineTranscribeBridgeP
       : customOverride;
     if (transcribeUrl && !isAllowedSttOnlineEndpoint(transcribeUrl)) return null;
     const appKeyTrim = c.appKey?.trim();
+    const apiSecretTrim = getSttOnlineApiSecretFromMemory()?.trim();
     return {
       transcribeUrl,
       authorization,
       timeoutSec,
       nativeAdapter: shellAdapter,
       ...(appKeyTrim ? { appKey: appKeyTrim } : {}),
+      ...(apiSecretTrim ? { apiSecret: apiSecretTrim } : {}),
+      ...(c.accent?.trim() ? { accent: c.accent.trim() } : {}),
     };
   }
 
@@ -112,6 +125,7 @@ export function isSttOnlineTranscribeIncomplete(): boolean {
   const c = readExternalSttOnlineRuntimeConfigFromStorage();
   const def = getSttOnlineProviderDefinition(c.selectedProviderId);
   if (def?.requiresPersistedAppKey && !(c.appKey?.trim())) return true;
+  if (def?.requiresApiSecret && !hasSttOnlineApiSecretReference()) return true;
   const url = c.endpoint?.trim() ?? "";
   if (sttOnlineProviderUsesPresetEndpoint(c.selectedProviderId)) {
     return false;
@@ -131,7 +145,12 @@ export function resolveOnlineTranscribeBlock(): string | null {
   if (isOnlineTranscribeReady() && tryBuildOnlineTranscribeBridgePayload()) {
     return null;
   }
+  const c = readExternalSttOnlineRuntimeConfigFromStorage();
+  const def = getSttOnlineProviderDefinition(c.selectedProviderId);
   if (!hasSttOnlineApiKeyReference()) {
+    if (def?.requiresApiSecret) {
+      return `在线 STT：请到「${ENV_NAV.onlineStt}」填写 AppID、APISecret、APIKey 并保存。`;
+    }
     return `在线 STT：请到「${ENV_NAV.onlineStt}」保存 Key。`;
   }
   if (!isSttOnlineRuntimeConnectionVerified()) {
@@ -139,6 +158,9 @@ export function resolveOnlineTranscribeBlock(): string | null {
   }
   if (!tryBuildOnlineTranscribeBridgePayload()) {
     return "在线 STT：密钥未加载，请重新保存或重启。";
+  }
+  if (def?.requiresApiSecret) {
+    return `在线 STT：请到「${ENV_NAV.onlineStt}」补全 AppID、APISecret、APIKey 并保存。`;
   }
   return `在线 STT：请到「${ENV_NAV.onlineStt}」补全配置并保存。`;
 }

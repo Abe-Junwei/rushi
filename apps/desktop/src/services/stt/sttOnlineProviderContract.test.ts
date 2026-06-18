@@ -65,14 +65,14 @@ describe("clampSttOnlineTimeoutSec", () => {
 });
 
 describe("sttOnlineProvidersByMarket", () => {
-  it("includes only dashscope-asr under china", () => {
+  it("includes dashscope-asr and iflytek-speed-asr under china", () => {
     const ids = sttOnlineProvidersByMarket("china").map((d) => d.id);
-    expect(ids).toEqual(["dashscope-asr"]);
+    expect(ids).toEqual(["dashscope-asr", "iflytek-speed-asr"]);
   });
 
   it("lists free-tier-noted providers before others within each market", () => {
     const china = sttOnlineProvidersByMarket("china").map((d) => d.id);
-    expect(china).toEqual(["dashscope-asr"]);
+    expect(china).toEqual(["dashscope-asr", "iflytek-speed-asr"]);
 
     const globalIds = sttOnlineProvidersByMarket("global").map((d) => d.id);
     expect(globalIds[globalIds.length - 1]).toBe("custom-proxy");
@@ -82,7 +82,14 @@ describe("sttOnlineProvidersByMarket", () => {
 describe("sttOnlineProviderPickerOptions", () => {
   it("returns all providers in definition order without market grouping", () => {
     const ids = sttOnlineProviderPickerOptions().map((d) => d.id);
-    expect(ids).toEqual(["dashscope-asr", "openai", "assemblyai", "deepgram", "custom-proxy"]);
+    expect(ids).toEqual([
+      "dashscope-asr",
+      "iflytek-speed-asr",
+      "openai",
+      "assemblyai",
+      "deepgram",
+      "custom-proxy",
+    ]);
   });
 });
 

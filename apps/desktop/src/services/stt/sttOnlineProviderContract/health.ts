@@ -1,5 +1,5 @@
 import { isTauriRuntime } from "../../../config/env";
-import { sttProbeOnlineHealth } from "../../../tauri/sttApi";
+import { sttProbeOnlineHealth, sttProbeXunfeiCredentials } from "../../../tauri/sttApi";
 import {
   STT_ONLINE_ASSEMBLYAI_DEFAULT_PROBE_URL,
   STT_ONLINE_DASHSCOPE_DEFAULT_PROBE_URL,
@@ -9,8 +9,9 @@ import {
 } from "./constants";
 import { getSttOnlineProviderDefinition } from "./definitions";
 import { isAllowedSttOnlineEndpoint } from "./endpoint";
-import { getSttOnlineApiKeyFromMemory } from "./memorySecrets";
+import { getSttOnlineApiKeyFromMemory, getSttOnlineApiSecretFromMemory } from "./memorySecrets";
 import { ensureSttOnlineApiKeyForSession } from "./apiKeyStorage";
+import { ensureSttOnlineApiSecretForSession } from "./apiSecretStorage";
 import {
   normalizeExternalSttOnlineRuntimeConfig,
   resolveExternalSttOnlineRuntimeConfig,
@@ -204,6 +205,7 @@ export async function probeExternalSttOnlineHealth(
   }
   const def = getSttOnlineProviderDefinition(runtime.selectedProviderId);
   await ensureSttOnlineApiKeyForSession();
+  await ensureSttOnlineApiSecretForSession();
   const apiKey = getSttOnlineApiKeyFromMemory()?.trim();
   if (!apiKey) {
     return {
@@ -222,7 +224,30 @@ export async function probeExternalSttOnlineHealth(
         message: `请填写${def.persistedAppKeyFieldLabel ?? "应用标识"}。`,
       };
     }
+    if (def?.requiresApiSecret && !getSttOnlineApiSecretFromMemory()?.trim()) {
+      return {
+        state: "unconfigured",
+        available: false,
+        message: "请填写 APISecret。",
+      };
+    }
     const preset = resolveSttOnlinePresetTranscribeUrl(runtime.selectedProviderId);
+    if (runtime.selectedProviderId === "iflytek-speed-asr") {
+      if (!isTauriRuntime()) {
+        return {
+          state: "unknown-error",
+          available: false,
+          endpoint: preset ?? undefined,
+          message: "讯飞凭证探测须在桌面环境中运行。",
+        };
+      }
+      return sttProbeXunfeiCredentials({
+        appId: runtime.appKey?.trim() ?? "",
+        apiKey,
+        apiSecret: getSttOnlineApiSecretFromMemory()?.trim() ?? "",
+        timeoutMs: capSttOnlineProbeTimeoutMs(runtime.timeoutMs),
+      });
+    }
     return {
       state: "available",
       available: true,

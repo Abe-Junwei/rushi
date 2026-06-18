@@ -6,6 +6,7 @@
 use crate::blocking_http::{stt_probe_blocking_client, BlockingClient};
 use crate::online_stt_bridge::is_allowed_stt_transcribe_url;
 use crate::project::utils::append_desktop_log_line;
+use crate::stt_native::xunfei_speed_asr::probe_credentials_blocking;
 use crate::DbState;
 use reqwest::header::{HeaderMap, HeaderName, HeaderValue};
 use serde::{Deserialize, Serialize};
@@ -205,6 +206,66 @@ fn map_http_status(status: u16, endpoint: &str, elapsed: Duration) -> SttOnlineP
         latency_ms,
         message: Some(format!("HTTP {status}")),
     }
+}
+
+#[derive(Debug, Deserialize)]
+#[serde(rename_all = "camelCase")]
+pub struct SttXunfeiCredentialProbeRequest {
+    pub app_id: String,
+    pub api_key: String,
+    pub api_secret: String,
+    pub timeout_ms: u64,
+}
+
+pub(crate) fn probe_xunfei_credentials_blocking(
+    req: &SttXunfeiCredentialProbeRequest,
+) -> SttOnlineProbeResponse {
+    let app_id = req.app_id.trim();
+    let api_key = req.api_key.trim();
+    let api_secret = req.api_secret.trim();
+    if app_id.is_empty() || api_key.is_empty() || api_secret.is_empty() {
+        return SttOnlineProbeResponse {
+            state: "unconfigured".into(),
+            available: false,
+            endpoint: Some("https://ost-api.xfyun.cn/v2/ost/query".into()),
+            status: None,
+            latency_ms: None,
+            message: Some("请填写 AppID、APISecret、APIKey。".into()),
+        };
+    }
+    probe_credentials_blocking(
+        app_id,
+        api_key,
+        api_secret,
+        clamp_timeout_ms(req.timeout_ms),
+    )
+}
+
+#[tauri::command]
+pub async fn stt_probe_xunfei_credentials(
+    state: State<'_, DbState>,
+    req: SttXunfeiCredentialProbeRequest,
+) -> Result<SttOnlineProbeResponse, String> {
+    append_desktop_log_line(&state, "INFO stt_probe_xunfei_start");
+    let out = tauri::async_runtime::spawn_blocking(move || probe_xunfei_credentials_blocking(&req))
+        .await
+        .map_err(|e| format!("探测任务被取消：{e}"))?;
+    let level = if out.available { "INFO" } else { "WARN" };
+    append_desktop_log_line(
+        &state,
+        &format!(
+            "{level} stt_probe_xunfei_done state={} status={} latency_ms={} message={}",
+            out.state,
+            out.status
+                .map(|x| x.to_string())
+                .unwrap_or_else(|| "-".to_string()),
+            out.latency_ms
+                .map(|x| x.to_string())
+                .unwrap_or_else(|| "-".to_string()),
+            out.message.as_deref().unwrap_or("-"),
+        ),
+    );
+    Ok(out)
 }
 
 #[tauri::command]
