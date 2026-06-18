@@ -1,8 +1,8 @@
 # 调研：R3g-B-Align — Qwen3-ForcedAligner 时间轴 Spike
 
-> **状态**：📋 规划门禁（2026-06-03）· **实测待跑**  
+> **状态**：❌ **废弃**（2026-06-18）· spike **Defer** 2026-06-11（CPU ~8× Paraformer）· **不再做**本机 Qwen3/ForcedAligner 第三 SKU  
 > **前置**：[R3g-B Qwen3-ASR spike](./r3g-b-qwen3-asr-sku-spike-research.md) ❌ **No-go**（[results](./r3g-b-qwen3-asr-spike-results.md)）· **R3g-A / R3e-B/C / R3g-C ✅**  
-> **关联路线图**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) §4.1.8 **R3g-B-Align**（**P2**，**不挡** ⑤‴ EXP-WORD）  
+> **关联路线图**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) §4.1.8 **R3g-B-Align**（❌ 废弃 2026-06-18）  
 > **关联 spec（仅 Align Go 后）**：`r3g-b-qwen3-asr-sku-intent.md` / `…-plan.md` / `…-acceptance.md`（重开 R3g-B 产品化）  
 > **门禁**：未完成本文 §6 签收 **不得** 改 `funasr_engine` 默认加载 ForcedAligner、**不得** 改 catalog
 

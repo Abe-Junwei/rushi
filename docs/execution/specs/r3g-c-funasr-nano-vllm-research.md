@@ -1,7 +1,7 @@
 # 调研：R3g-C — Fun-ASR-Nano-2512 + vLLM 路线
 
-> **状态**：规划门禁  
-> **关联路线图**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) §4.1.8；[`r3-asr-landscape-2026-05-improvement-backlog.md`](./r3-asr-landscape-2026-05-improvement-backlog.md)  
+> **状态**：research ✅ · **❌ Defer 2026-06-18**（无 NVIDIA CUDA 环境 · **目前不做** CUDA spike；文档保留供日后重开）  
+> **关联路线图**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) §4.1.8 · §10.5  
 > **前置专项**：[`r3g-c-funasr-nano-spike-results.md`](./r3g-c-funasr-nano-spike-results.md) — PyTorch `AutoModel` 路径 **Defer**；[`asr-landscape-top4-research-2026-06.md`](./asr-landscape-top4-research-2026-06.md) 路线 C  
 > **门禁**：未完成本文 **不得** 进入 `r3g-c-funasr-nano-vllm-intent.md` 与业务编码（见 [`AGENTS.md`](../../../AGENTS.md) · `.cursor/rules/feature-research-gate.mdc`）
 

@@ -1,6 +1,6 @@
-# 并行薄片索引（v1.1+ · 2026-06-17 刷新）
+# 并行薄片索引（v1.1+ · 2026-06-18 刷新）
 
-> **主序真源**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) **§10.4**  
+> **主序真源**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) **§10.4**（✅ 闭合）· **并行轨 §10.5**  
 > **纪律**：每轮仍 **一轮一薄片**；CSP / Release CI / 大规模 UI **勿同 PR**
 
 ## Phase A · v1 后硬化 Step 1–4（✅ 已闭合）
@@ -58,17 +58,31 @@ Step 12  REL-1.1 signoff                                             ✅ 2026-06
 | R3h-I1 / ASR-WARM dev / 语段 P0 / F8 / F2/F1/F6 | ✅ |
 | TRN-DIAG / ACC 百炼 E2E / ASR-WARM release H5 | ✅ |
 | F4-ASR / Gate-B 4b / R3t-E 独立 | ❌ or ⏸ |
+| §10.4 v1.1+ 主序 Step 5–12 | ✅ 2026-06-18 |
 
-## 并行候选（不挡 Step 10–11）
+## Phase F · 并行轨（§10.5 · §10.4 闭合后）
+
+> **下一刀（P1）**：**ACC-STT-IFLYTEK 手测签收**。编码已合 `main`（`f2e957d`）。
+
+| 优先级 | ID | 状态 | 代码 / spec | 下一动作 |
+|--------|-----|------|-------------|----------|
+| **P1** | **ACC-STT-IFLYTEK** | 🟡 编码 ✅ | `stt_native/xunfei_speed_asr/` · [`acc-stt-iflytek-*`](./acc-stt-iflytek-acceptance.md) · [`r3-china-iflytek-lfasr-research.md`](./r3-china-iflytek-lfasr-research.md) | [hand-test checklist](./acc-stt-iflytek-hand-test-checklist.md) → acceptance ✅ |
+| **P2** | **架构热点回收** | 📋 | guard **13** 警告 · `run_transcribe_cmd` · `online_segment_normalize` | T-010 薄片 |
+| **P3** | **R3h-1-R Win 资产** | 🟡 | Win CI ✅ | 下一 tag 补 **v0.1.0** release 包 |
+| — | **R3g-B-Align** | ❌ **废弃** | 2026-06-11 spike **Defer**（CPU ~8× Paraformer）；**2026-06-18 不再做** | [`align-results`](./r3g-b-align-forced-aligner-spike-results.md) · research 存档 |
+| — | **R3g-C-NANO vLLM** | ❌ **Defer** | 无 CUDA 环境 · **目前不做**（2026-06-18） | research 保留 — [`vllm-research`](./r3g-c-funasr-nano-vllm-research.md) |
+
+**桌面 UX 尾项（非 Step，`2a5e021`）**：转写 copy/排版 · 浮动 dialog 动态 `layoutRev` — 随 P1 手测回归。
+
+## 并行候选（历史索引 · 不挡 P1）
 
 | ID | 主题 | 状态 | 启动条件 |
 |----|------|------|----------|
 | **R3g-C-NANO PyTorch** | Fun-ASR-Nano-2512 spike | ❌ **Defer** 2026-06-17 | [`acceptance`](./r3g-c-funasr-nano-acceptance.md) · 不上 catalog |
-| **R3g-C-NANO vLLM** | GPU 第二运行时 | 📋 research ✅ | **CUDA 机**；[`vllm-research`](./r3g-c-funasr-nano-vllm-research.md) |
-| **R3g-B-Align** | Qwen3 + ForcedAligner | 📋 手测待跑 | 不挡 v1.1 |
+| **R3g-C-NANO vLLM** | GPU 第二运行时 | ❌ **Defer** 2026-06-18 | research ✅ 保留；**无 CUDA 环境 · 目前不做** spike — [`vllm-research`](./r3g-c-funasr-nano-vllm-research.md) |
+| **R3g-B-Align** | Qwen3 + ForcedAligner | ❌ **废弃** 2026-06-18 | spike Defer 2026-06-11（CPU ~8×）；**不再做**本机第三 SKU |
 | **R3f Win** | 安装包零终端手测 | ⏸ | 有 Win 机时补 |
 | **R3s-A Phase 0** | 金标 eval | 📋 Defer | 非编码 |
-| **架构热点回收** | 波形 / lifecycle hotspot | 📋 | 守卫达线 |
 | **F3 / F5** | R3t-F P3 | 📋 | v1.1 后按需 |
 | **OpenAI/AAI E2E** | ACC 在线手测 | P3 | 有 Key |
 
@@ -78,6 +92,7 @@ Step 12  REL-1.1 signoff                                             ✅ 2026-06
 - **勿** Release Win CI + BATCH 队列大改同 PR  
 - **勿** Gate-B 未过即改 `llm-runtime` catalog  
 - **勿** 在本轨开 STREAM-* / 协作 / CAT（§8 不做）
+- **勿** ACC-STT-IFLYTEK 手测与 **T-010 大拆** 同 PR
 
 ## 单人推荐顺序
 
@@ -91,7 +106,10 @@ Step 12  REL-1.1 signoff                                             ✅ 2026-06
 7. ~~Step 9a→9b ONBOARD~~ ✅
 8. ~~Step 10→11 BATCH-TXN~~ ✅ 2026-06-18
 9. ~~Step 12 REL-1.1~~ ✅ 2026-06-18
-并行：ACC-STT 讯飞 · R3g-C-NANO vLLM（CUDA 机）· R3g-B-Align 手测
+10. P1 ACC-STT-IFLYTEK 手测签收                    ← 现在
+11. P2 架构热点 / P3 Win 资产（并行，有资源时）
+—  R3g-B-Align                                     ❌ 废弃 2026-06-18
+—  R3g-C-NANO vLLM                                 ❌ Defer（无 CUDA · 目前不做）
 ```
 
 ## 修订
@@ -105,4 +123,6 @@ Step 12  REL-1.1 signoff                                             ✅ 2026-06
 | 2026-06-12 | **§10.4 统一后续**：DELIV-MODE · BATCH-TXN · CSP · STT-CANCEL · PROD-META · **ONBOARD** · Step 5–12 |
 | 2026-06-12 | **审查吸收**：guard 46 · v1.1 **~6.5–10w** · spec 未立项 · T-010 建议 |
 | 2026-06-17 | **Step 5–9 ✅**；主刀 → **BATCH-TXN**；**R3g-C-NANO PyTorch Defer**；vLLM research ✅ |
-| 2026-06-18 | **Step 10–12 ✅** · **§10.4 v1.1+ 主序闭合**（REL-1.1 H-CSP Release 手测） |
+| 2026-06-18 | **Phase F / §10.5**：ACC-STT-IFLYTEK 🟡 编码 ✅（`f2e957d`）；P1 手测 · guard **13** · UX 尾项 `2a5e021` |
+| 2026-06-18 | **R3g-C-NANO vLLM** ❌ Defer（无 CUDA · 目前不做） |
+| 2026-06-18 | **R3g-B-Align** ❌ **废弃**（CPU ~8× · 不再做第三 SKU）；§10.5 **P2→热点 · P3→Win** |

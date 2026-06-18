@@ -36,6 +36,10 @@
 
 **一句话**：ForcedAligner 已救活长音频语段（211 段、term_hit 1.0），加载链路与 warmup 已通；**CPU 耗时不可接受**，暂不产品化 catalog。
 
+## 产品拍板（2026-06-18）
+
+**R3g-B-Align / Qwen3 本机第三 SKU 路径废弃，不再做。** Spike 已 Defer（A8 未过）；无 GPU 性能薄片计划。本机 catalog **维持 Paraformer 单 SKU**；`RUSHI_FUNASR_FORCED_ALIGNER` env 保留为 spike 存档，**不进 catalog**。
+
 ## 代码修复摘要（本 run）
 
 | 问题 | 修复 |
