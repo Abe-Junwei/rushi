@@ -122,9 +122,21 @@ _Avoid_: 壳层使用 zen-paper, surface-card, ochre
 暖色 legacy token（`zen-paper`、`surface-card` 等）仅用于内容区装饰（Welcome hero、语段卡等），不进入导航壳层。
 _Avoid_: 侧栏/工具栏暖纸底
 
-**Dual accent**（双 accent）:
-**Indigo**（`zen-indigo`）= 编辑选中 / 焦点（语段行、波形 overlay）；**Saffron**（`zen-saffron` / `primary-action`）= CTA、进度、手动编辑提示；AI/LLM 语义 chip 沿用 indigo 族。
-_Avoid_: 语段选中改 saffron, 单一 accent 覆盖全部高亮
+**Shell accent**（壳层 accent）:
+**Accent-action** / **Accent-action-strong**（`--accent-action` → 底层 `zen-saffron*`）= 语段选中 / 多选、CTA、进度、播放头、visited 带；**随 Office 主题色 remap**。`--accent-edit` 仅为兼容别名（等于 `--accent-action`）；**已移除 zen-indigo / 靛蓝主题色预设**。
+_Avoid_: 组件直引 `--zen-saffron*` / `--zen-indigo`, purple / indigo 主题色 storage, 固定 hex 语段选中
+
+**Accent-action** / **Accent-action-strong**:
+语段选中 / 多选、动作、进度、CTA、播放头、minimap 视口、语段 visited 带的对外 token 链；随 Office accent 主题 remap。
+_Avoid_: `--zen-saffron`, `--zen-saffron-mid`（组件层）, progress color（未分 action/strong 时）
+
+**Progress chrome**（进度 chrome）:
+播放头、已播放 peaks tint、语段 band visited、minimap playhead + viewport 框；统一 **accent-action** 族（strong 用于混中性底的 tint）。
+_Avoid_: waveform-cursor, 播放头用 accent-edit
+
+**Segment in-selection fill**（语段多选底色）:
+Primary 选中外的多选态；列表 **8%**、波形 overlay **12%**，均 `--accent-action` mix（波形底需更高对比）。
+_Avoid_: 列表与波形强行同百分比, 单独 indigo/edit 链
 
 **Flat shell elevation**（扁平壳层层次）:
 壳层与挂 `body` 的浮层（对话框、菜单、Toast）均靠背景差 + `1px notion-border` 分层，不用 drop shadow。
@@ -168,6 +180,7 @@ _Avoid_: design doc（泛指）
 - 「文件 Hub」与「项目 Hub」— 统一称 **Project Hub**；`closeFile` 指 Editor → Hub，不是关项目。
 - 「ready / cached / 可转写」— 必须标明 D1–D6 中哪一维；禁止混用全局 health 与用户所选 SKU。
 - 「ticket / issue」— 本仓工作真源在 `docs/execution/specs/`，不是 GitHub Issues。
-- 「选中 / highlight」— 须区分 **indigo**（编辑选中）与 **saffron**（动作 / 进度 / CTA）；禁止混为单一 accent。
+- 「选中 / highlight」— 语段与进度统一 **accent-action** 链；`accent-edit` 仅为兼容别名；禁止直引 `zen-saffron*`。
+- 「主题色 / Office accent」— remap **accent-action** 链；success/cinnabar/status-warn、LLM chip 固定语义色不在此轮收束范围。
 - 「编辑页 / 视角 / 层次感」— 全应用壳层精调时 scope = Welcome → Hub → Editor → 环境浮层；**Editor** 仅指已打开文件的转写工作区。
 - 「LFASR / 讯飞转写」— 须区分 **iflytek-speed-asr**（极速 OST）、标准 LFASR v2、已移除 **iflytek-speech**；文档标题含 LFASR 时以 research §3 定稿 id 为准。

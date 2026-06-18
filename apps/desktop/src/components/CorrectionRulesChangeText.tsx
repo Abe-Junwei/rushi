@@ -4,7 +4,7 @@ import { splitGraphemes } from "../services/text/grapheme";
 
 const HIGHLIGHT_BEFORE =
   "rounded-sm bg-red-500/15 px-0.5 text-notion-text line-through decoration-notion-text-light/70";
-const HIGHLIGHT_AFTER = "rounded-sm bg-zen-saffron/25 px-0.5 text-notion-text";
+const HIGHLIGHT_AFTER = "rounded-sm bg-accent-action/25 px-0.5 text-notion-text";
 
 type Props = {
   beforeText: string;

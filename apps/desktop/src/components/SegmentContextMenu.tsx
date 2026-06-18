@@ -154,7 +154,7 @@ function ContextMenuPanel({
                 </span>
               ) : null}
               {it.checked ? (
-                <span className="shrink-0 text-label font-semibold text-zen-saffron-mid" aria-hidden>
+                <span className="shrink-0 text-label font-semibold text-accent-action-strong" aria-hidden>
                   ✓
                 </span>
               ) : null}

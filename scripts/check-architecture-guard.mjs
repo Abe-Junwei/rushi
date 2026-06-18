@@ -133,6 +133,34 @@ function checkTsFile(fullPath) {
     errors.push(`${rel}: 使用 resolveLayoutDurationSec / layoutDurationSecRef，勿直接 ws.getDuration()`);
   }
 
+  // Unified native scroll stage: waveform / overlay must physically scroll in timeline content.
+  // Viewport chrome (ruler/playhead/bands) may still use transforms inside its own coordinate space.
+  if (!isTestFile) {
+    const forbiddenWaveformScrollMirrorNames = [
+      "positionWaveformScrollLayersByTierScroll",
+      "positionWaveSurferHostByScroll",
+      "syncWaveSurferScrollPx",
+      "waveformScrollLayerRef",
+      "overlayScrollLayerRef",
+      "WAVEFORM_WS_HOST_WIDTH_PX",
+      "writeWaveformScrollLayerWidth",
+    ];
+    for (const name of forbiddenWaveformScrollMirrorNames) {
+      if (source.includes(name)) {
+        errors.push(`${rel}: unified scroll stage 禁止旧 waveform/overlay mirror 符号 ${name}`);
+      }
+    }
+    const viewportChromeTransformAllowlist = new Set([
+      "apps/desktop/src/hooks/useWaveformRulerScrollTrack.ts",
+    ]);
+    if (
+      !viewportChromeTransformAllowlist.has(rel) &&
+      (/translate3d\(\s*\$\{\s*-scrollLeft/.test(source) || /translate3d\(\s*-scrollLeft/.test(source))
+    ) {
+      errors.push(`${rel}: unified scroll stage 禁止 waveform/overlay scrollLeft mirror transform`);
+    }
+  }
+
   // 防回归：语段「可见性 / 重叠」判定必须经由 selectPackableSegments(单一真源)。
   // 仅 selector 本体可直接调用跨度启发式；persist sanitize 须用 isPlaceholderSegment（与 Rust 一致）。
   const dominantPredicateAllowlist = [
@@ -239,6 +267,27 @@ function checkTsFile(fullPath) {
           `${rel}: 紧凑分段 toggle 按钮须用 envSegmentedToggleBtnClass(..., true)，禁止散落 rounded-[5px]`,
         );
       }
+    }
+  }
+
+  // R8 语义 accent：组件/CSS 禁止直引 zen-saffron*（真源 tokens.css → accent-*）
+  const accentSemanticAllowlist = new Set([
+    "apps/desktop/src/config/tokens.ts",
+    "apps/desktop/src/config/officeAccentThemes.ts",
+    "apps/desktop/src/config/shellVisualTokens.test.ts",
+  ]);
+  if (
+    !rel.endsWith(".test.ts") &&
+    !rel.endsWith(".test.tsx") &&
+    !accentSemanticAllowlist.has(rel) &&
+    (rel.startsWith("apps/desktop/src/components/") ||
+      rel.startsWith("apps/desktop/src/pages/") ||
+      rel.startsWith("apps/desktop/src/styles/components/"))
+  ) {
+    if (/\bzen-saffron\b/.test(source)) {
+      warnings.push(
+        `${rel}: 语义 accent R8 — 改用 accent-action / accent-action-strong（见 shellVisualTokens SHELL_ACCENT）`,
+      );
     }
   }
 

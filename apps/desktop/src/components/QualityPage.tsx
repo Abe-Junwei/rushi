@@ -119,7 +119,7 @@ export function QualityPage({ busy: appBusy }: QualityPageProps) {
       </section>
 
       {q.status ? (
-        <p className={`${PANEL_TYPOGRAPHY.helper} text-zen-saffron-mid`}>{q.status}</p>
+        <p className={`${PANEL_TYPOGRAPHY.helper} text-accent-action-strong`}>{q.status}</p>
       ) : null}
       {q.error ? (
         <p className={`${PANEL_TYPOGRAPHY.helper} text-cinnabar`} role="alert">

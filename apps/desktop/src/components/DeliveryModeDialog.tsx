@@ -24,7 +24,7 @@ const SECTION_LABEL_CLASS = "m-0 text-label font-medium leading-snug text-notion
 const CARD_CLASS = "flex flex-col gap-0.5 rounded-md bg-notion-sidebar/50 px-2.5 py-1.5";
 const CARD_TITLE_CLASS = "m-0 text-body font-medium leading-snug text-notion-text";
 const CARD_BODY_CLASS = "m-0 text-body leading-snug text-notion-text-muted";
-const ACTION_LINK_CLASS = `${CONTROL_BTN_LINK} self-start text-label leading-snug text-zen-saffron hover:text-zen-saffron-mid hover:underline`;
+const ACTION_LINK_CLASS = `${CONTROL_BTN_LINK} self-start text-label leading-snug text-accent-action hover:text-accent-action-strong hover:underline`;
 const ACTION_UNAVAILABLE_LABEL_CLASS = "m-0 text-label leading-snug text-notion-text-muted";
 const ACTION_UNAVAILABLE_REASON_CLASS = "m-0 text-label leading-snug text-notion-text-light";
 

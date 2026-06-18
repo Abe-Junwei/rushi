@@ -43,7 +43,7 @@ export function GlossaryBatchBar({
       <div className="flex flex-wrap items-center gap-2">
         <span className={PANEL_TYPOGRAPHY.meta}>{preview}</span>
         {hiddenSelectedCount > 0 ? (
-          <span className={`${PANEL_TYPOGRAPHY.meta} text-zen-saffron`}>
+          <span className={`${PANEL_TYPOGRAPHY.meta} text-accent-action`}>
             （含 {hiddenSelectedCount} 条不在当前列表）
           </span>
         ) : null}

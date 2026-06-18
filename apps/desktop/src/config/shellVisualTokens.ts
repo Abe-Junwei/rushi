@@ -15,18 +15,20 @@ export const SHELL_VISUAL_CSS_VARS = {
   contentDecorationCard: "--content-decoration-card",
   accentEdit: "--accent-edit",
   accentAction: "--accent-action",
+  accentActionStrong: "--accent-action-strong",
   shellElevationShadow: "--shell-elevation-shadow",
   overlayPanelBorder: "--overlay-panel-border",
   overlayPanelBg: "--overlay-panel-bg",
   overlayScrimBg: "--overlay-scrim-bg",
 } as const;
 
-/** 双 accent 语义（落码仍用 zen-indigo / zen-primary-action-* utilities） */
+/** 双 accent 语义 Tailwind 前缀（`accent-edit` 为 `--accent-action` 兼容别名） */
 export const SHELL_ACCENT = {
-  /** 编辑选中 / 焦点：语段行、波形 overlay */
-  edit: "zen-indigo",
-  /** CTA / 进度 / 手动编辑提示 */
-  action: "zen-saffron",
+  /** @deprecated 等于 action；语段选中 / 波形 overlay 优先写 accent-action */
+  edit: "accent-edit",
+  /** CTA / 进度 / 语段选中 / 播放头强调 — 随 Office 主题色 */
+  action: "accent-action",
+  actionStrong: "accent-action-strong",
 } as const;
 
 /**

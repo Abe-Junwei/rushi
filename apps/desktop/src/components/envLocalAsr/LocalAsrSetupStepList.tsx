@@ -31,7 +31,7 @@ function SetupStepNode({ status }: { status: AsrSetupStepStatus }) {
     status === "ok"
       ? "bg-zen-success"
       : status === "running"
-        ? "bg-zen-saffron animate-pulse"
+        ? "bg-accent-action animate-pulse"
         : status === "error"
           ? "bg-zen-cinnabar"
           : status === "skipped"

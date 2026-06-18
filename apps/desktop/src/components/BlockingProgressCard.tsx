@@ -46,15 +46,15 @@ function ProgressCardBody({
       ].join(" ")}
     >
       <div className={compact ? "relative h-9 w-9 shrink-0" : "relative h-10 w-10 shrink-0"}>
-        <div className="absolute inset-0 animate-ping rounded-full bg-zen-saffron/20 [animation-duration:2s]" />
+        <div className="absolute inset-0 animate-ping rounded-full bg-accent-action/20 [animation-duration:2s]" />
         <div
           className={[
-            "relative z-10 flex h-full w-full items-center justify-center rounded-full border border-zen-saffron/30 bg-notion-bg",
+            "relative z-10 flex h-full w-full items-center justify-center rounded-full border border-accent-action/30 bg-notion-bg",
             FLAT_SHELL_ELEVATION_CLASS,
           ].join(" ")}
         >
           <LoaderCircle
-            className={`${compact ? LUCIDE_ICON_SIZE_SM : LUCIDE_ICON_SIZE_MD} animate-rushi-spin-slow text-zen-saffron`}
+            className={`${compact ? LUCIDE_ICON_SIZE_SM : LUCIDE_ICON_SIZE_MD} animate-rushi-spin-slow text-accent-action`}
             strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
             aria-hidden
           />
@@ -106,7 +106,7 @@ export function BlockingProgressCard({
 }: Props) {
   const cardClassName =
     variant === "banner"
-      ? `border-zen-saffron/25 bg-notion-bg ${FLAT_SHELL_ELEVATION_CLASS}`
+      ? `border-accent-action/25 bg-notion-bg ${FLAT_SHELL_ELEVATION_CLASS}`
       : undefined;
 
   const shell = (

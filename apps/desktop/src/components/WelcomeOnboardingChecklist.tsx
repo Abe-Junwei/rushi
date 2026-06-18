@@ -55,7 +55,7 @@ export function WelcomeOnboardingChecklist({
               key={step.id}
               className="flex items-start gap-2.5 rounded-md bg-notion-bg/80 px-2.5 py-2"
             >
-              <span className="shrink-0 text-zen-saffron" aria-hidden>
+              <span className="shrink-0 text-accent-action" aria-hidden>
                 {done ? (
                   <Check className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} />
                 ) : (

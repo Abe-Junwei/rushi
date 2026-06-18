@@ -54,7 +54,7 @@ export function SegmentRefinePreviewDialog({
               </button>
               <button
                 type="button"
-                className="min-h-[36px] rounded-md border-0 bg-zen-saffron px-4 text-sm font-semibold text-notion-bg hover:opacity-90"
+                className="min-h-[36px] rounded-md border-0 bg-accent-action px-4 text-sm font-semibold text-notion-bg hover:opacity-90"
                 onClick={onConfirmConsent}
               >
                 继续
@@ -96,7 +96,7 @@ export function SegmentRefinePreviewDialog({
               </button>
               <button
                 type="button"
-                className="min-h-[36px] rounded-md border-0 bg-zen-saffron px-4 text-sm font-semibold text-notion-bg hover:opacity-90 disabled:opacity-40"
+                className="min-h-[36px] rounded-md border-0 bg-accent-action px-4 text-sm font-semibold text-notion-bg hover:opacity-90 disabled:opacity-40"
                 disabled={state.opLabels.length === 0}
                 onClick={onConfirmWriteback}
               >

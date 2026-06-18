@@ -95,7 +95,7 @@ export function EnvLocalAsrUtilitiesSection({
             title="连接状态"
             description={
               <p className="m-0">
-                基址 <code className="font-mono text-zen-indigo">{asrBaseUrl()}</code>
+                基址 <code className="font-mono text-notion-text-muted">{asrBaseUrl()}</code>
               </p>
             }
           >
@@ -111,7 +111,7 @@ export function EnvLocalAsrUtilitiesSection({
 
         {presentation.cachePathMismatch || presentation.modelsOnDiskButSidecarBlind ? (
           <EnvUtilitiesSubsection title="路径告警">
-            <p className={`m-0 ${PANEL_TYPOGRAPHY.meta} text-zen-saffron`} role="status">
+            <p className={`m-0 ${PANEL_TYPOGRAPHY.meta} text-accent-action`} role="status">
               {presentation.cachePathMismatchDetail ?? presentation.modelsOnDiskButSidecarBlindDetail}
             </p>
           </EnvUtilitiesSubsection>
@@ -122,11 +122,11 @@ export function EnvLocalAsrUtilitiesSection({
             <EnvUtilitiesMetaGroup>
               <p className="m-0">
                 侧车{" "}
-                <code className="font-mono text-zen-indigo">{sidecarModelsRoot ?? "（未绑定）"}</code>
+                <code className="font-mono text-notion-text-muted">{sidecarModelsRoot ?? "（未绑定）"}</code>
               </p>
               {desktopModelsRoot ? (
                 <p className="m-0">
-                  桌面缓存 <code className="font-mono text-zen-indigo">{desktopModelsRoot}</code>
+                  桌面缓存 <code className="font-mono text-notion-text-muted">{desktopModelsRoot}</code>
                 </p>
               ) : null}
             </EnvUtilitiesMetaGroup>

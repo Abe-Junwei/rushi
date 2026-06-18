@@ -73,7 +73,7 @@ export function EditorSegmentTranscribeActions({
                 type="button"
                 className={
                   transcribePrimary
-                    ? [workbenchDropdownItem, "font-semibold text-zen-saffron-deep"].join(" ")
+                    ? [workbenchDropdownItem, "font-semibold text-accent-action-strong"].join(" ")
                     : workbenchDropdownItem
                 }
                 disabled={c.busy || c.prepareModelBusy}

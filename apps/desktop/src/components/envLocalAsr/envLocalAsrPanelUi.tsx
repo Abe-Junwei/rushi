@@ -7,7 +7,7 @@ import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec
 export const ENV_COLLAPSIBLE_DETAILS = "group";
 
 const ENV_COLLAPSIBLE_SUMMARY_BASE =
-  "flex cursor-pointer select-none list-none items-center gap-1.5 [&::-webkit-details-marker]:hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-saffron/30";
+  "flex cursor-pointer select-none list-none items-center gap-1.5 [&::-webkit-details-marker]:hidden focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-action/30";
 
 const ENV_COLLAPSIBLE_CHEVRON = `${LUCIDE_ICON_SIZE_SM} shrink-0 text-notion-text-light transition-transform duration-200 group-open:rotate-90`;
 
@@ -119,7 +119,7 @@ export function EnvLocalAsrStatusRow({
   action?: { label: string; onClick: () => void };
   last?: boolean;
 }) {
-  const dotClass = ok ? "bg-zen-success" : warn ? "bg-zen-saffron" : "bg-zen-cinnabar";
+  const dotClass = ok ? "bg-zen-success" : warn ? "bg-accent-action" : "bg-zen-cinnabar";
 
   return (
     <div
@@ -130,7 +130,7 @@ export function EnvLocalAsrStatusRow({
         {action ? (
           <button
             type="button"
-            className={`${CONTROL_BTN_LINK} ${PANEL_TYPOGRAPHY.meta} text-zen-saffron-mid hover:text-zen-saffron`}
+            className={`${CONTROL_BTN_LINK} ${PANEL_TYPOGRAPHY.meta} text-accent-action-strong hover:text-accent-action`}
             onClick={action.onClick}
           >
             {action.label}

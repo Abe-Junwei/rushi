@@ -1,4 +1,5 @@
 import { COLORS } from "../config/tokens";
+import { SEGMENT_FILL_CSS_VAR } from "../config/segmentFillTokens";
 import { clearCspLayoutRules, setCspLayoutRules } from "./cspElementLayout";
 
 let colorProbeEl: HTMLDivElement | null = null;
@@ -48,11 +49,22 @@ export type WaveformSurferPalette = {
   cursorColor: string;
 };
 
+/** 读取 tokens.css 中 color-mix 表达式并解析为 canvas 可用的 rgb(a)。 */
+function resolveRootFillToken(
+  cssVarName: string,
+  fallbackExpression: string,
+  fallbackRgb: string,
+): string {
+  const expression = readCssColorVar(cssVarName, fallbackExpression);
+  return resolveCssColorExpression(expression, fallbackRgb);
+}
+
 /** WaveSurfer peaks 配色 — 对齐 tokens.css `--zen-wf-*`。 */
 export function readWaveformSurferPalette(): WaveformSurferPalette {
   const waveColor = readCssColorVar("--zen-wf-wave", COLORS.waveformWave);
-  const progressColor = resolveCssColorExpression(
-    "color-mix(in srgb, var(--zen-saffron-mid) 22%, var(--zen-wf-progress))",
+  const progressColor = resolveRootFillToken(
+    "--zen-wf-progress-played",
+    "color-mix(in srgb, var(--accent-action-strong) 32%, var(--zen-wf-progress))",
     COLORS.waveformProgressPlayed,
   );
   const cursorColor = readCssColorVar("--zen-wf-cursor", COLORS.waveformCursor);
@@ -61,32 +73,43 @@ export function readWaveformSurferPalette(): WaveformSurferPalette {
 
 export type WaveformSegmentBandPalette = {
   selected: string;
+  inSelection: string;
   lowConfidence: string;
   visited: string;
   idle: string;
   border: string;
 };
 
-/** 语段 band canvas 配色 — 与 segmentChrome / tokens 语义对齐。 */
+/** 语段 band canvas 配色 — 与 segmentChrome / tokens.css `--segment-fill-*` 同源。 */
 export function readWaveformSegmentBandPalette(): WaveformSegmentBandPalette {
   return {
-    selected: resolveCssColorExpression(
-      "color-mix(in srgb, var(--accent-edit) 26%, transparent)",
-      "rgba(61, 79, 93, 0.26)",
+    selected: resolveRootFillToken(
+      SEGMENT_FILL_CSS_VAR.selected,
+      "color-mix(in srgb, var(--accent-action) 26%, transparent)",
+      "rgba(197, 138, 67, 0.26)",
     ),
-    lowConfidence: resolveCssColorExpression(
+    inSelection: resolveRootFillToken(
+      SEGMENT_FILL_CSS_VAR.inSelectionWaveform,
+      "color-mix(in srgb, var(--accent-action) 12%, transparent)",
+      "rgba(197, 138, 67, 0.12)",
+    ),
+    lowConfidence: resolveRootFillToken(
+      SEGMENT_FILL_CSS_VAR.lowConfidence,
       "color-mix(in srgb, var(--notion-text-light) 24%, transparent)",
       "rgba(156, 163, 175, 0.24)",
     ),
-    visited: resolveCssColorExpression(
-      "color-mix(in srgb, var(--zen-saffron-mid) 13%, transparent)",
-      "rgba(133, 83, 15, 0.13)",
+    visited: resolveRootFillToken(
+      SEGMENT_FILL_CSS_VAR.visited,
+      "color-mix(in srgb, var(--accent-action-strong) 18%, transparent)",
+      "rgba(133, 83, 15, 0.18)",
     ),
-    idle: resolveCssColorExpression(
+    idle: resolveRootFillToken(
+      SEGMENT_FILL_CSS_VAR.idle,
       "color-mix(in srgb, var(--zen-ink) 11%, transparent)",
       "rgba(44, 44, 44, 0.11)",
     ),
-    border: resolveCssColorExpression(
+    border: resolveRootFillToken(
+      SEGMENT_FILL_CSS_VAR.border,
       "color-mix(in srgb, var(--notion-text) 14%, transparent)",
       "rgba(55, 53, 47, 0.14)",
     ),

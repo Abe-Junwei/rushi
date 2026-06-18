@@ -18,18 +18,14 @@ export function readOnlineSttEnvNavTone(): OnlineSttEnvTone {
 function readOnlineSttEnvNavPresentation(): OnlineSttEnvPresentation {
   const stored = readExternalSttOnlineRuntimeConfigFromStorage();
   const draftConfig = normalizeExternalSttOnlineRuntimeConfig({
+    ...stored,
     enabled: true,
-    selectedProviderId: stored.selectedProviderId,
-    endpoint: stored.endpoint ?? "",
-    appKey: stored.appKey ?? "",
-    apiKeyId: stored.apiKeyId,
-    timeoutMs: stored.timeoutMs,
   });
   return buildOnlineSttEnvPresentation({
     enabled: true,
-    providerId: stored.selectedProviderId,
-    endpoint: stored.endpoint ?? "",
-    appKey: stored.appKey ?? "",
+    providerId: draftConfig.selectedProviderId,
+    endpoint: draftConfig.endpoint ?? "",
+    appKey: draftConfig.appKey ?? "",
     hasApiKeyReference: hasSttOnlineApiKeyReference(),
     hasTypedApiKey: false,
     keychainReady: null,

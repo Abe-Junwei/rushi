@@ -110,7 +110,7 @@ export function EditorWorkspaceNav({
             {hasUnsavedEdits ? (
               <span className="inline-flex min-w-0 items-center gap-1.5">
                 <span
-                  className="h-1.5 w-1.5 shrink-0 rounded-full bg-zen-saffron"
+                  className="h-1.5 w-1.5 shrink-0 rounded-full bg-accent-action"
                   title="有未保存修改"
                   aria-hidden
                 />

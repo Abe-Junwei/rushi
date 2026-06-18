@@ -136,7 +136,7 @@ export function ProjectMetadataDialog({
             <span className={`mb-1.5 block ${PANEL_TYPOGRAPHY.fieldLabel}`}>项目名称</span>
             <input
               type="text"
-              className={`w-full rounded-lg border border-notion-border bg-notion-bg px-3 py-2 ${PANEL_CONTROL_TYPOGRAPHY.compactInput} shadow-none outline-none transition-colors focus:border-zen-saffron focus:ring-2 focus:ring-zen-saffron/30 disabled:opacity-40`}
+              className={`w-full rounded-lg border border-notion-border bg-notion-bg px-3 py-2 ${PANEL_CONTROL_TYPOGRAPHY.compactInput} shadow-none outline-none transition-colors focus:border-accent-action focus:ring-2 focus:ring-accent-action/30 disabled:opacity-40`}
               placeholder="未命名项目"
               value={draft.name}
               disabled={busy}
@@ -145,11 +145,11 @@ export function ProjectMetadataDialog({
               onChange={(e) => setDraft((prev) => ({ ...prev, name: e.target.value }))}
             />
             {hasDuplicateWarning ? (
-              <p className={`mt-1.5 ${PANEL_TYPOGRAPHY.meta} text-zen-saffron`}>
+              <p className={`mt-1.5 ${PANEL_TYPOGRAPHY.meta} text-accent-action`}>
                 已有同名项目「{duplicateProjects[0].name}」。仍可保存，或使用建议名称：
                 <button
                   type="button"
-                  className="ml-1 border-0 bg-transparent p-0 font-semibold text-zen-saffron underline"
+                  className="ml-1 border-0 bg-transparent p-0 font-semibold text-accent-action underline"
                   disabled={busy}
                   onClick={() =>
                     setDraft((prev) => ({
@@ -176,7 +176,7 @@ export function ProjectMetadataDialog({
               <span className={`mb-1.5 block ${PANEL_TYPOGRAPHY.fieldLabel}`}>{label}</span>
               <input
                 type="text"
-                className={`w-full rounded-lg border border-notion-border bg-notion-bg px-3 py-2 ${PANEL_CONTROL_TYPOGRAPHY.compactInput} shadow-none outline-none transition-colors focus:border-zen-saffron focus:ring-2 focus:ring-zen-saffron/30 disabled:opacity-40`}
+                className={`w-full rounded-lg border border-notion-border bg-notion-bg px-3 py-2 ${PANEL_CONTROL_TYPOGRAPHY.compactInput} shadow-none outline-none transition-colors focus:border-accent-action focus:ring-2 focus:ring-accent-action/30 disabled:opacity-40`}
                 placeholder={placeholder}
                 value={draft[key] ?? ""}
                 disabled={busy}

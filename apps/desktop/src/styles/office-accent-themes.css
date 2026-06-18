@@ -1,6 +1,7 @@
 /**
  * Office accent presets — mapped from config/officeAccentThemes.ts.
  * Brand uses tokens.css :root defaults (no data-accent-theme).
+ * Does not remap --zen-success / --zen-cinnabar / --zen-status-warn* (固定语义状态色).
  */
 
 :root[data-accent-theme="blue"] {
@@ -63,21 +64,6 @@
   --workbench-toggle-active-text: #ffffff;
 }
 
-:root[data-accent-theme="purple"] {
-  --zen-saffron: #8764b8;
-  --zen-saffron-mid: #5c2d91;
-  --zen-saffron-deep: #3b1d5e;
-  --zen-saffron-light: #eae3f3;
-  --zen-primary-action-bg: #8764b8;
-  --zen-primary-action-bg-hover: #5c2d91;
-  --zen-saffron-surface: #f3eff8;
-  --zen-saffron-border: #d2c4e5;
-  --accent-action: #8764b8;
-  --accent-action-strong: #5c2d91;
-  --workbench-toggle-active-bg: #8764b8;
-  --workbench-toggle-active-text: #ffffff;
-}
-
 :root[data-accent-theme="pink"] {
   --zen-saffron: #e3008c;
   --zen-saffron-mid: #ad0069;
@@ -137,9 +123,6 @@
 }
 .accent-theme-swatch--green {
   background-color: #107c10;
-}
-.accent-theme-swatch--purple {
-  background-color: #8764b8;
 }
 .accent-theme-swatch--pink {
   background-color: #e3008c;

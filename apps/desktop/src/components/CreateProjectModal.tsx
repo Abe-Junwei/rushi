@@ -137,11 +137,11 @@ export function CreateProjectModal({ controller: c, onClose }: CreateProjectModa
         </label>
 
         {hasDuplicateWarning ? (
-          <p className={`shrink-0 ${PANEL_TYPOGRAPHY.meta} leading-snug text-zen-saffron`}>
+          <p className={`shrink-0 ${PANEL_TYPOGRAPHY.meta} leading-snug text-accent-action`}>
             已有同名项目「{duplicateProjects[0].name}」。仍可创建，或使用
             <button
               type="button"
-              className="mx-1 border-0 bg-transparent p-0 font-semibold text-zen-saffron underline"
+              className="mx-1 border-0 bg-transparent p-0 font-semibold text-accent-action underline"
               disabled={isBusy}
               onClick={() => setName(suggestedName)}
             >

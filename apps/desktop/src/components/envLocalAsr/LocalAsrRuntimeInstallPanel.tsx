@@ -110,7 +110,7 @@ export function LocalAsrRuntimeInstallPanel({
             ) : (
               <button
                 type="button"
-                className={`${CONTROL_BTN_LINK} ${PANEL_TYPOGRAPHY.button} text-zen-saffron-mid hover:text-zen-saffron`}
+                className={`${CONTROL_BTN_LINK} ${PANEL_TYPOGRAPHY.button} text-accent-action-strong hover:text-accent-action`}
                 disabled={wizardBusy}
                 onClick={openEnvManualSetupGuide}
               >

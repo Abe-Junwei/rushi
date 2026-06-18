@@ -42,7 +42,7 @@ export function EnvAppearancePanel() {
                   className={[
                     "flex w-full flex-col items-center gap-2 rounded-md border bg-notion-bg px-2 py-3 text-center shadow-none transition-colors",
                     selected
-                      ? "border-zen-saffron ring-2 ring-zen-saffron/25"
+                      ? "border-accent-action ring-2 ring-accent-action/25"
                       : "border-notion-border hover:border-notion-text-light hover:bg-notion-sidebar-hover",
                   ].join(" ")}
                   aria-pressed={selected}
@@ -84,7 +84,7 @@ export function EnvAppearancePanel() {
                   className={[
                     "flex w-full flex-col items-center gap-2 rounded-md border bg-notion-bg px-2 py-3 text-center shadow-none transition-colors",
                     selected
-                      ? "border-zen-saffron ring-2 ring-zen-saffron/25"
+                      ? "border-accent-action ring-2 ring-accent-action/25"
                       : "border-notion-border hover:border-notion-text-light hover:bg-notion-sidebar-hover",
                   ].join(" ")}
                   aria-pressed={selected}

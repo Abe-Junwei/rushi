@@ -99,7 +99,7 @@ export function GlossaryMineSection({ mine, disabled, variant = "card" }: Props)
 
   if (variant === "banner") {
     return (
-      <div className="shrink-0 border-b border-notion-divider bg-zen-saffron/10">
+      <div className="shrink-0 border-b border-notion-divider bg-accent-action/10">
         {mine.loadError ? <p className={`mx-4 mt-2 ${GLOSSARY_ERROR_TEXT}`}>{mine.loadError}</p> : null}
         {mine.rows.length > 0 ? (
           <>

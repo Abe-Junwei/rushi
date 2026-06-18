@@ -41,13 +41,13 @@ export function FindReplaceMatchText({
   return textStyle ? (
     <CspLayout as={Tag} className={bodyClass} layout={textStyle as CspLayoutRules}>
       {text.slice(0, safeStart)}
-      <mark className="rounded-sm bg-zen-saffron/30 px-0.5 text-inherit">{text.slice(safeStart, safeEnd)}</mark>
+      <mark className="rounded-sm bg-accent-action/30 px-0.5 text-inherit">{text.slice(safeStart, safeEnd)}</mark>
       {text.slice(safeEnd)}
     </CspLayout>
   ) : (
     <Tag className={bodyClass}>
       {text.slice(0, safeStart)}
-      <mark className="rounded-sm bg-zen-saffron/30 px-0.5 text-inherit">{text.slice(safeStart, safeEnd)}</mark>
+      <mark className="rounded-sm bg-accent-action/30 px-0.5 text-inherit">{text.slice(safeStart, safeEnd)}</mark>
       {text.slice(safeEnd)}
     </Tag>
   );

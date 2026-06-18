@@ -19,7 +19,7 @@ const TOAST_SHELL =
 const VARIANT_SURFACE: Record<ToastVariant, string> = {
   info: "border-notion-callout-border bg-notion-callout-bg text-notion-text",
   success: "border-zen-success-border bg-zen-success-surface text-zen-success",
-  warning: "border-zen-saffron-border bg-zen-saffron-surface text-notion-text",
+  warning: "border-accent-action-border bg-accent-action-surface text-notion-text",
   error: "border-zen-cinnabar-border bg-zen-cinnabar-surface text-zen-cinnabar",
 };
 
@@ -29,7 +29,7 @@ const VARIANT_ICON: Record<
 > = {
   info: { Icon: Info, className: "text-notion-text-muted" },
   success: { Icon: CheckCircle2, className: "text-zen-success" },
-  warning: { Icon: TriangleAlert, className: "text-zen-saffron" },
+  warning: { Icon: TriangleAlert, className: "text-accent-action" },
   error: { Icon: AlertCircle, className: "text-zen-cinnabar" },
 };
 

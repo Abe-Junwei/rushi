@@ -131,7 +131,7 @@ export function FindReplaceDialogBody({
             <label htmlFor="find-replace-find-input" className="text-xs text-notion-text-muted">
               查找
             </label>
-            <div className="flex h-8 overflow-hidden rounded-sm border border-notion-divider bg-notion-bg focus-within:border-zen-saffron/45">
+            <div className="flex h-8 overflow-hidden rounded-sm border border-notion-divider bg-notion-bg focus-within:border-accent-action/45">
               <input
                 id="find-replace-find-input"
                 className={`min-w-0 flex-1 border-0 bg-transparent px-2.5 outline-none ${PANEL_CONTROL_TYPOGRAPHY.compactInput}`}

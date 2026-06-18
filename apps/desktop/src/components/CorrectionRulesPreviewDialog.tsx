@@ -201,7 +201,7 @@ export function CorrectionRulesPreviewDialog({
                 </p>
                 {stableConflictMessage ? (
                   <p
-                    className={`rounded-md bg-zen-saffron/10 px-3 py-2 ${PANEL_TYPOGRAPHY.dialogBody} text-notion-text`}
+                    className={`rounded-md bg-accent-action/10 px-3 py-2 ${PANEL_TYPOGRAPHY.dialogBody} text-notion-text`}
                   >
                     {stableConflictMessage}
                   </p>
@@ -235,7 +235,7 @@ export function CorrectionRulesPreviewDialog({
                           trailing={
                             <input
                               type="checkbox"
-                              className="h-3.5 w-3.5 shrink-0 accent-zen-saffron"
+                              className="h-3.5 w-3.5 shrink-0 accent-accent-action"
                               checked={checked}
                               disabled={busy}
                               aria-label={`包含语段 ${ch.segmentNumber}`}

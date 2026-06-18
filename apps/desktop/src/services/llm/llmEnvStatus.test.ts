@@ -52,7 +52,7 @@ describe("llmEnvStatus", () => {
     expect(LLM_STATUS_REFRESH_BTN_BASE).not.toContain("shadow-sm");
     expect(LLM_STATUS_REFRESH_BTN_CLASS.error).toContain("text-zen-cinnabar");
     expect(LLM_STATUS_REFRESH_BTN_CLASS.error).toContain("enabled:hover:border-zen-cinnabar-border");
-    expect(LLM_STATUS_REFRESH_BTN_CLASS.idle).toContain("text-zen-saffron");
+    expect(LLM_STATUS_REFRESH_BTN_CLASS.idle).toContain("text-zen-status-warn");
     expect(LLM_STATUS_REFRESH_BTN_CLASS.error).not.toContain("text-notion-text-muted");
     expect(LLM_STATUS_REFRESH_BTN_CLASS.idle).not.toContain("text-notion-text-muted");
   });

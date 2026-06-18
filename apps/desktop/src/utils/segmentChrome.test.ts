@@ -1,6 +1,11 @@
 import { describe, expect, it } from "vitest";
 import type { SegmentDto } from "../tauri/projectApi";
-import { segmentPlaybackVisits, waveformRegionFillColor } from "./segmentChrome";
+import { SEGMENT_FILL_CSS_VAR } from "../config/segmentFillTokens";
+import {
+  resolveWaveformSegmentFillState,
+  segmentPlaybackVisits,
+  waveformRegionFillColor,
+} from "./segmentChrome";
 
 function seg(partial: Partial<SegmentDto> & Pick<SegmentDto, "start_sec" | "end_sec">): SegmentDto {
   return {
@@ -20,18 +25,58 @@ describe("segmentChrome", () => {
     expect(segmentPlaybackVisits(s, 3)).toBe("visited");
   });
 
-  it("uses saffron progress tint for visited unselected segments", () => {
+  it("uses accent-action-strong progress tint for visited unselected segments", () => {
     const s = seg({ start_sec: 0, end_sec: 2 });
     const visited = waveformRegionFillColor(s, false, false, 1);
     const idle = waveformRegionFillColor(s, false, false, 0);
-    expect(visited).toContain("--zen-saffron-mid");
-    expect(idle).toContain("--zen-ink");
+    expect(visited).toBe(`var(${SEGMENT_FILL_CSS_VAR.visited})`);
+    expect(idle).toBe(`var(${SEGMENT_FILL_CSS_VAR.idle})`);
     expect(visited).not.toBe(idle);
   });
 
-  it("keeps indigo for selected over visited", () => {
+  it("keeps theme action fill for selected over visited", () => {
     const s = seg({ start_sec: 0, end_sec: 2 });
     const fill = waveformRegionFillColor(s, true, false, 2);
-    expect(fill).toContain("--accent-edit");
+    expect(fill).toBe(`var(${SEGMENT_FILL_CSS_VAR.selected})`);
+  });
+
+  it("uses waveform in-selection fill token for secondary multi-select overlay", () => {
+    const s = seg({ start_sec: 0, end_sec: 2 });
+    const fill = waveformRegionFillColor(s, false, true, 0);
+    expect(fill).toBe(`var(${SEGMENT_FILL_CSS_VAR.inSelectionWaveform})`);
+  });
+
+  it("uses uniform waveform in-selection fill when multiSelectActive", () => {
+    const s = seg({ start_sec: 0, end_sec: 2 });
+    const fill = waveformRegionFillColor(s, true, false, 0, { multiSelectActive: true });
+    expect(fill).toBe(`var(${SEGMENT_FILL_CSS_VAR.inSelectionWaveform})`);
+  });
+
+  it("resolveWaveformSegmentFillState marks sparse multi-select secondaries as inSelection", () => {
+    const state = resolveWaveformSegmentFillState({
+      idx: 2,
+      selectedIdx: 4,
+      selectedIndices: new Set([0, 2, 4]),
+    });
+    expect(state.multiSelectActive).toBe(true);
+    expect(state.selected).toBe(false);
+    expect(state.inSelection).toBe(true);
+  });
+
+  it("resolveWaveformSegmentFillState downgrades primary to inSelection mix when multi-select", () => {
+    const state = resolveWaveformSegmentFillState({
+      idx: 4,
+      selectedIdx: 4,
+      selectedIndices: new Set([0, 2, 4]),
+    });
+    expect(state.selected).toBe(true);
+    expect(state.inSelection).toBe(false);
+    expect(state.multiSelectActive).toBe(true);
+    const s = seg({ start_sec: 0, end_sec: 2 });
+    expect(
+      waveformRegionFillColor(s, state.selected, state.inSelection, undefined, {
+        multiSelectActive: state.multiSelectActive,
+      }),
+    ).toBe(`var(${SEGMENT_FILL_CSS_VAR.inSelectionWaveform})`);
   });
 });

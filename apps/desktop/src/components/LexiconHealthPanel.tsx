@@ -22,7 +22,7 @@ export function LexiconHealthPanel({ report, expanded, onExpandedChange }: Props
       >
         词表卫生
         {report.hasActionableIssues ? (
-          <span className="ml-1 font-normal text-zen-saffron">· 有待关注项</span>
+          <span className="ml-1 font-normal text-accent-action">· 有待关注项</span>
         ) : (
           <span className="ml-1 font-normal text-notion-text-muted">· 只读</span>
         )}

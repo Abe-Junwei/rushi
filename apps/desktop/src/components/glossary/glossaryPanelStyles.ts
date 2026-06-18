@@ -25,7 +25,7 @@ export function glossaryRowDeleteBtnClass(confirming: boolean): string {
 
 /** 复选框（saffron 选中态） */
 export const GLOSSARY_CHECKBOX =
-  "h-4 w-4 rounded border-notion-border text-zen-saffron focus:ring-zen-saffron/30";
+  "h-4 w-4 rounded border-notion-border text-accent-action focus:ring-accent-action/30";
 
 /** Master–Detail 右侧检视器壳（320px 固定，不随窗口拉伸） */
 export const GLOSSARY_INSPECTOR_SHELL =
@@ -47,7 +47,7 @@ export function glossaryListRowClass(opts: { active?: boolean; checked?: boolean
   return [
     "group relative border-b border-notion-divider/60 transition-colors last:border-b-0",
     opts.active
-      ? "bg-zen-saffron/10"
+      ? "bg-accent-action/10"
       : opts.checked
         ? "bg-notion-callout-bg/80"
         : "bg-notion-bg hover:bg-notion-sidebar-hover/60",

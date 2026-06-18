@@ -19,7 +19,6 @@ export const COLORS = {
   ochre: "#EAE0C5",
   stone: "#8E8E8E",
   cinnabar: "#963530",
-  indigo: "#3D4F5D",
 
   success: "#1e463a",
   successAction: "#2e6153",
@@ -29,6 +28,11 @@ export const COLORS = {
   saffronBorder: "#eedcc7",
   cinnabarSurface: "#f5ebea",
   cinnabarBorder: "#dab8b7",
+  /** 环境状态 warn（固定品牌 saffron，不随 accent 主题变化） */
+  statusWarn: "#C58A43",
+  statusWarnAction: "#85530f",
+  statusWarnSurface: "#f9f3ec",
+  statusWarnBorder: "#eedcc7",
   danger: "#963530",
   warning: "#f59e0b",
 
@@ -56,8 +60,8 @@ export const COLORS = {
   /** 内容装饰面 — 不进导航壳 */
   contentDecorationPaper: "#F2EFE8",
   contentDecorationCard: "#f5f0e0",
-  /** Dual accent */
-  accentEdit: "#3D4F5D",
+  /** Shell accent — 对齐 tokens.css --accent-action*；--accent-edit 为兼容别名 */
+  accentEdit: "#C58A43",
   accentAction: "#C58A43",
   accentActionStrong: "#85530f",
   shellElevationShadow: "none",
@@ -68,13 +72,9 @@ export const COLORS = {
   /** 已播放 peaks 基色（progress 层未混 saffron 前） */
   waveformProgress: "#8e8e93",
   /**
-   * 已播放 peaks tint — `color-mix(in srgb, saffron-mid 22%, wf-progress)`（Stitch 原型）。
+   * 已播放 peaks tint — `color-mix(in srgb, accent-action-strong 32%, wf-progress)`。
    * CSS 真源：`--zen-wf-progress-played` in tokens.css
    */
   waveformProgressPlayed: "#8c8176",
   waveformCursor: "#6a6a6f",
-  /** 波形 region 叠色（与 segmentChrome.ts waveformRegionFillColor 一致） */
-  waveformRegionLaneLow: "#9ca3af",
-  waveformRegionLaneIdle: "#d1d5db",
-  waveformRegionVisitedMix: "#85530f",
 } as const;

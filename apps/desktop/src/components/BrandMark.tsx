@@ -11,7 +11,7 @@ export function BrandMark({ size = 18, variant = "standard", className }: BrandM
   const columnStroke =
     variant === "onPrimary" ? "var(--zen-primary-action-fg)" : "var(--zen-ink)";
   const accentStroke =
-    variant === "onPrimary" ? "var(--zen-primary-action-fg)" : "var(--zen-saffron)";
+    variant === "onPrimary" ? "var(--zen-primary-action-fg)" : "var(--accent-action)";
   const accentOpacity = variant === "onPrimary" ? 0.75 : 1;
 
   return (

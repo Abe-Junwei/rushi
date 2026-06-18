@@ -78,7 +78,7 @@ export function ManualCorrectionMemoryDialog({
         <label className="flex cursor-pointer gap-2 rounded-md border border-notion-divider bg-notion-callout-bg px-3 py-2.5">
           <input
             type="checkbox"
-            className="mt-0.5 h-4 w-4 shrink-0 rounded border-notion-border text-zen-saffron focus:ring-zen-saffron/30"
+            className="mt-0.5 h-4 w-4 shrink-0 rounded border-notion-border text-accent-action focus:ring-accent-action/30"
             checked={state.phase === "confirm" ? state.alsoAddToGlossary : false}
             disabled={busy}
             onChange={(e) => onAlsoAddToGlossaryChange(e.target.checked)}

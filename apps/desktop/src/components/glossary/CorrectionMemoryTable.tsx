@@ -33,7 +33,7 @@ function isEditingKey(selected: CorrectionMemoryKey | null, row: CorrectionMemor
 
 function stablePillClass(row: CorrectionMemoryEntryRow): string {
   return row.isStable || row.acceptedAsRule
-    ? "bg-zen-saffron/15 text-zen-saffron"
+    ? "bg-accent-action/15 text-accent-action"
     : "bg-notion-callout-bg text-notion-text-muted";
 }
 

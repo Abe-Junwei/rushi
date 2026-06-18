@@ -10,7 +10,7 @@ export type EnvNavId =
   | "help";
 
 export const ENV_NAV_BTN_BASE =
-  "mb-1 flex w-full appearance-none items-center border-0 px-4 py-3 text-left shadow-none outline-none transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-saffron/30";
+  "mb-1 flex w-full appearance-none items-center border-0 px-4 py-3 text-left shadow-none outline-none transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-action/30";
 
 export type EnvNavItemDef = {
   id: EnvNavId;

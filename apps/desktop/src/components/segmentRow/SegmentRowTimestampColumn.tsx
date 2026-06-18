@@ -40,7 +40,7 @@ export function SegmentRowTimestampColumn({
           <span
             className={[
               "font-mono text-label font-medium tabular-nums tracking-[0.01em]",
-              highlight ? "text-notion-text-muted" : "text-notion-text-light group-hover:text-zen-saffron-mid",
+              highlight ? "text-notion-text-muted" : "text-notion-text-light group-hover:text-accent-action-strong",
             ].join(" ")}
           >
             {index + 1}.
@@ -48,7 +48,7 @@ export function SegmentRowTimestampColumn({
           <span
             className={[
               "font-mono text-label font-medium tabular-nums tracking-[0.01em]",
-              highlight ? "text-notion-text-muted" : "text-notion-text-light group-hover:text-zen-saffron-mid",
+              highlight ? "text-notion-text-muted" : "text-notion-text-light group-hover:text-accent-action-strong",
             ].join(" ")}
           >
             {timestampLabel}
@@ -65,7 +65,7 @@ export function SegmentRowTimestampColumn({
           busy
             ? "cursor-not-allowed"
             : selected
-              ? "cursor-col-resize hover:bg-zen-indigo/12"
+              ? "cursor-col-resize hover:bg-accent-action/12"
               : "cursor-col-resize hover:bg-notion-sidebar-hover/70",
         ].join(" ")}
         onPointerDown={onMetaWidthPointerDown}
@@ -73,7 +73,7 @@ export function SegmentRowTimestampColumn({
         <span
           className={[
             "absolute inset-y-0 left-1/2 w-px -translate-x-1/2 bg-transparent transition-colors",
-            selected ? "group-hover/resize:bg-zen-indigo/30" : "group-hover/resize:bg-notion-divider",
+            selected ? "group-hover/resize:bg-accent-action/30" : "group-hover/resize:bg-notion-divider",
           ].join(" ")}
         />
       </div>

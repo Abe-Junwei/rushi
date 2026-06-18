@@ -1,4 +1,5 @@
 import type { SegmentDto } from "../tauri/projectApi";
+import { segmentFillCssVar } from "../config/segmentFillTokens";
 
 /** 播放头已进入语段（含部分播放）；小 epsilon 避免边界闪烁。 */
 const PLAYHEAD_EPS_SEC = 0.04;
@@ -14,26 +15,42 @@ export function segmentPlaybackVisits(
   return playheadSec > lo + PLAYHEAD_EPS_SEC ? "visited" : "unplayed";
 }
 
+export type WaveformSegmentFillState = {
+  selected: boolean;
+  inSelection: boolean;
+  multiSelectActive: boolean;
+};
+
+/** 波形语段选中态 — overlay DOM 与 band canvas 共用，真源为 selectedIndices。 */
+export function resolveWaveformSegmentFillState(input: {
+  idx: number;
+  selectedIdx: number;
+  selectedIndices?: ReadonlySet<number>;
+}): WaveformSegmentFillState {
+  const selected = input.idx === input.selectedIdx;
+  const multiSelectActive = (input.selectedIndices?.size ?? 0) > 1;
+  const inSelection = !selected && (input.selectedIndices?.has(input.idx) ?? false);
+  return { selected, inSelection, multiSelectActive };
+}
+
 /**
- * 波形语段 overlay 填充 — 引用 CSS 变量，随界面主题 / 主题色即时更新。
+ * 波形语段 overlay 填充 — 引用 tokens.css `--segment-fill-*`，随壳层 / 主题色即时更新。
  */
 export function waveformRegionFillColor(
   seg: SegmentDto,
   selected: boolean,
   inSelection = false,
   playheadSec?: number,
+  options?: { multiSelectActive?: boolean },
 ): string {
-  if (selected) {
-    return "color-mix(in srgb, var(--accent-edit) 26%, transparent)";
+  if (options?.multiSelectActive && (selected || inSelection)) {
+    return segmentFillCssVar("inSelectionWaveform");
   }
-  if (inSelection) {
-    return "color-mix(in srgb, var(--accent-edit) 20%, transparent)";
-  }
-  if (seg.low_confidence) {
-    return "color-mix(in srgb, var(--notion-text-light) 24%, transparent)";
-  }
+  if (selected) return segmentFillCssVar("selected");
+  if (inSelection) return segmentFillCssVar("inSelectionWaveform");
+  if (seg.low_confidence) return segmentFillCssVar("lowConfidence");
   if (segmentPlaybackVisits(seg, playheadSec) === "visited") {
-    return "color-mix(in srgb, var(--zen-saffron-mid) 13%, transparent)";
+    return segmentFillCssVar("visited");
   }
-  return "color-mix(in srgb, var(--zen-ink) 11%, transparent)";
+  return segmentFillCssVar("idle");
 }

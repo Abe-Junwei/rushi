@@ -50,7 +50,7 @@ export function WelcomeSidebarProjectList({
   return (
     <div className="flex min-h-0 flex-1 flex-col overflow-y-auto py-4">
       <div className="mb-2 flex items-baseline justify-between gap-2 px-5">
-        <h2 className={`m-0 ${PANEL_TYPOGRAPHY.badge} text-notion-text-muted`}>最近项目</h2>
+        <h2 className={`m-0 ${PANEL_TYPOGRAPHY.badge} text-notion-text-muted`}>项目列表</h2>
         {projects.length > 0 ? (
           <span className={`${PANEL_TYPOGRAPHY.meta} tabular-nums text-notion-text-light`}>
             {projects.length}

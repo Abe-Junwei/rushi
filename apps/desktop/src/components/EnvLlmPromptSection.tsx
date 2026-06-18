@@ -60,7 +60,7 @@ function PromptTaskBlock({
     >
       <EnvCollapsibleSectionSummary
         title={title}
-        trailing={changed ? <span className="text-zen-saffron">已修改</span> : undefined}
+        trailing={changed ? <span className="text-accent-action">已修改</span> : undefined}
       />
       <div className={ENV_UTILITIES_BODY}>
         <p className={`m-0 ${PANEL_TYPOGRAPHY.meta}`}>{hint}</p>
@@ -102,7 +102,7 @@ export function EnvLlmPromptSection({ disabled, prompt }: Props) {
           </p>
         </div>
         {prompt.isCustomized ? (
-          <span className={`${PANEL_TYPOGRAPHY.meta} text-zen-saffron`}>已自定义</span>
+          <span className={`${PANEL_TYPOGRAPHY.meta} text-accent-action`}>已自定义</span>
         ) : null}
       </div>
 

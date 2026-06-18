@@ -88,7 +88,7 @@ export function LocalAsrCacheSection({
         <EnvUtilitiesMetaGroup>
           {asrModelCacheInfo?.manifest_path ? (
             <p className="m-0">
-              manifest 路径：<code className="font-mono text-zen-indigo">{asrModelCacheInfo.manifest_path}</code>
+              manifest 路径：<code className="font-mono text-notion-text-muted">{asrModelCacheInfo.manifest_path}</code>
             </p>
           ) : null}
           {asrModelCacheInfo?.manifest_path && !asrModelCacheInfo.manifest_exists ? (
@@ -98,12 +98,12 @@ export function LocalAsrCacheSection({
             </p>
           ) : null}
           <p className="m-0">
-            占用仅统计应用数据目录下的 <code className="font-mono text-zen-indigo">models/</code>；若 ASR
+            占用仅统计应用数据目录下的 <code className="font-mono text-notion-text-muted">models/</code>；若 ASR
             在终端单独启动且未设置 RUSHI_MODELS_ROOT，权重可能在其他路径，此处清理不会生效。
           </p>
           <p className="m-0">
             manifest 状态读取自<strong className="font-medium text-notion-text">桌面应用进程</strong>的{" "}
-            <code className="font-mono text-zen-indigo">RUSHI_MODEL_VERIFY_MANIFEST</code>
+            <code className="font-mono text-notion-text-muted">RUSHI_MODEL_VERIFY_MANIFEST</code>
             （相对路径相对上方「缓存目录」解析）。
           </p>
         </EnvUtilitiesMetaGroup>
@@ -128,7 +128,7 @@ export function LocalAsrCacheSection({
         </div>
         <p className={`m-0 ${PANEL_TYPOGRAPHY.meta}`}>
           包含项目内复制的音频与预计算波形（
-          <code className="font-mono text-zen-indigo">projects/*/peaks</code>
+          <code className="font-mono text-notion-text-muted">projects/*/peaks</code>
           ）。删除项目/文件时会自动清理；此处仅补清数据库已不存在但仍留在磁盘上的副本。
         </p>
       </EnvUtilitiesSubsection>
@@ -171,7 +171,7 @@ function InfoRow({ label, value, mono = false }: { label: string; value: string;
   return (
     <div className="flex flex-wrap items-start justify-between gap-2">
       <span className={PANEL_TYPOGRAPHY.fieldLabel}>{label}</span>
-      <span className={`${PANEL_TYPOGRAPHY.meta} ${mono ? "font-mono text-label text-zen-indigo" : ""}`}>{value}</span>
+      <span className={`${PANEL_TYPOGRAPHY.meta} ${mono ? "font-mono text-label text-notion-text-muted" : ""}`}>{value}</span>
     </div>
   );
 }

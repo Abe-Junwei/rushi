@@ -46,7 +46,7 @@ export function LocalAsrAdvancedSection({
         </EnvCompactButton>
       </EnvUtilitiesActionRow>
       {funasrInstallMessage ? (
-        <pre className="m-0 max-h-32 overflow-auto whitespace-pre-wrap font-mono text-label text-zen-indigo">
+        <pre className="m-0 max-h-32 overflow-auto whitespace-pre-wrap font-mono text-label text-notion-text-muted">
           {funasrInstallMessage}
         </pre>
       ) : null}
@@ -56,7 +56,7 @@ export function LocalAsrAdvancedSection({
             FunASR 未就绪（stub：中文正文常为空）。可尝试安装依赖并重启 ASR；可选{" "}
             <code className="font-mono text-label">RUSHI_FUNASR_MODEL</code>。
           </p>
-          <pre className="m-0 max-h-32 overflow-auto whitespace-pre-wrap font-mono text-label text-zen-indigo">
+          <pre className="m-0 max-h-32 overflow-auto whitespace-pre-wrap font-mono text-label text-notion-text-muted">
             {funasrManualSetupCommands()}
           </pre>
         </div>

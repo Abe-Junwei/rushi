@@ -34,7 +34,7 @@ export function DeliveryExportModeSection({ mode, exportBusy, onModeChange }: Pr
       {DELIVERY_EXPORT_MODE_OPTIONS.map((opt) => (
         <label
           key={opt.id}
-          className="flex cursor-pointer gap-2 rounded-md border border-notion-divider bg-notion-callout-bg px-3 py-2 has-[:checked]:border-zen-saffron/40"
+          className="flex cursor-pointer gap-2 rounded-md border border-notion-divider bg-notion-callout-bg px-3 py-2 has-[:checked]:border-accent-action/40"
         >
           <input
             type="radio"

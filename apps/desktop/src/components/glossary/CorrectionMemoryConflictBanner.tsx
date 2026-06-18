@@ -12,13 +12,13 @@ export function CorrectionMemoryConflictBanner({ groups }: Props) {
 
   return (
     <div
-      className="flex flex-col gap-2 rounded-md bg-zen-saffron/10 px-4 py-3"
+      className="flex flex-col gap-2 rounded-md bg-accent-action/10 px-4 py-3"
       role="status"
       aria-live="polite"
     >
       <div className="flex items-start gap-2">
         <AlertTriangle
-          className={`mt-0.5 shrink-0 ${LUCIDE_ICON_SIZE_SM} text-zen-saffron`}
+          className={`mt-0.5 shrink-0 ${LUCIDE_ICON_SIZE_SM} text-accent-action`}
           strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
           aria-hidden
         />

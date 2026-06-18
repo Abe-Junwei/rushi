@@ -59,7 +59,7 @@ export function OnlineSttProviderPicker({ busy, providerId, onProviderChange }: 
           </div>
           <div className="flex flex-wrap gap-1.5">
             {providerDef.experimental ? (
-              <span className="rounded-full bg-zen-saffron/15 px-2 py-0.5 text-label font-medium text-notion-text">
+              <span className="rounded-full bg-accent-action/15 px-2 py-0.5 text-label font-medium text-notion-text">
                 实验
               </span>
             ) : null}
@@ -73,7 +73,7 @@ export function OnlineSttProviderPicker({ busy, providerId, onProviderChange }: 
             ) : null}
             {providerSupportsGlossaryBias(providerDef.id) ? (
               <span
-                className="rounded-full bg-zen-saffron/15 px-2 py-0.5 text-label font-medium text-notion-text"
+                className="rounded-full bg-accent-action/15 px-2 py-0.5 text-label font-medium text-notion-text"
                 title="转写时映射全局术语表"
               >
                 术语偏置

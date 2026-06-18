@@ -1,12 +1,6 @@
-/** 顶栏 / 设置导航共用的环境状态色（ok / warn / error / idle）。 */
-export type EnvStatusTone = "ok" | "warn" | "error" | "idle";
+import { ENV_STATUS_DOT_CLASS, type EnvStatusTone } from "../services/ui/envStatusTokens";
 
-export const ENV_STATUS_DOT_CLASS: Record<EnvStatusTone, string> = {
-  ok: "bg-zen-success",
-  warn: "bg-zen-saffron",
-  error: "bg-zen-cinnabar",
-  idle: "bg-notion-divider",
-};
+export { ENV_STATUS_DOT_CLASS, type EnvStatusTone };
 
 export function envStatusToneFromOk(ok: boolean, warn = false): EnvStatusTone {
   if (ok) return "ok";

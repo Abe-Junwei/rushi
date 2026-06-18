@@ -62,7 +62,7 @@ describe("controlStyles", () => {
     expect(ENV_LLM_MODE_TOGGLE_TRACK).toContain("inline-flex");
     expect(envLlmModeToggleBtnClass(false)).toContain("text-notion-text-variant");
     expect(envLlmModeToggleBtnClass(false)).toContain("bg-transparent");
-    expect(envLlmModeToggleBtnClass(true)).toContain("text-zen-saffron-mid");
+    expect(envLlmModeToggleBtnClass(true)).toContain("text-accent-action-strong");
     expect(envLlmModeToggleBtnClass(true)).toContain("bg-notion-bg");
   });
 

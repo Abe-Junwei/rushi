@@ -103,7 +103,7 @@ export function GlossaryTermTable({
                     GLOSSARY_LIST_TRAILING_PILL,
                     "mt-0.5 border-0 transition-colors disabled:opacity-40",
                     hotwordOn
-                      ? "bg-zen-saffron/15 text-zen-saffron hover:bg-zen-saffron/25"
+                      ? "bg-accent-action/15 text-accent-action hover:bg-accent-action/25"
                       : "bg-notion-callout-bg text-notion-text-light hover:bg-notion-sidebar-hover hover:text-notion-text-muted",
                   ].join(" ")}
                   disabled={disabled}

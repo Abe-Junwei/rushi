@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { FileAudio, FileText, ListOrdered, NotebookText, Pencil, Trash2 } from "lucide-react";
 import { CONTROL_BTN_LINK, CONTROL_BTN_WORKSPACE_IMPORT, CONTROL_BTN_ICON_GHOST } from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
@@ -8,6 +8,7 @@ import type { ProjectControllerApi } from "../pages/useProjectController";
 import type { FileSummary } from "../tauri/projectTypes";
 import { formatProjectFileType, formatProjectHubMetadataLine, formatWorkspaceFileTime } from "../utils/projectFileDisplay";
 import { findDuplicateProjectNames, suggestUniqueProjectName } from "../utils/projectDuplicateName";
+import { consumeWelcomeSearchHubFileTarget } from "../services/welcome/welcomeSearch";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
 const HUB_ICON_BTN = CONTROL_BTN_ICON_GHOST;
@@ -21,6 +22,7 @@ function sortFilesNewestFirst(files: FileSummary[]): FileSummary[] {
 }
 
 export function ProjectFilesHubPanel({ controller: c }: { controller: ProjectControllerApi }) {
+  const [highlightFileId, setHighlightFileId] = useState<string | null>(null);
   const files = useMemo(
     () => sortFilesNewestFirst(c.current?.files ?? []),
     [c.current?.files],
@@ -37,6 +39,20 @@ export function ProjectFilesHubPanel({ controller: c }: { controller: ProjectCon
   );
   const busy = c.busy;
   const projectId = c.current?.id;
+
+  useEffect(() => {
+    const pending = consumeWelcomeSearchHubFileTarget();
+    if (pending) setHighlightFileId(pending);
+  }, [projectId]);
+
+  useEffect(() => {
+    if (!highlightFileId) return;
+    const el = document.querySelector(`[data-hub-file-id="${highlightFileId}"]`);
+    el?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    const timer = window.setTimeout(() => setHighlightFileId(null), 2500);
+    return () => window.clearTimeout(timer);
+  }, [highlightFileId, files]);
+
   const renameDuplicates = useMemo(
     () =>
       c.isRenamingProject
@@ -89,11 +105,11 @@ export function ProjectFilesHubPanel({ controller: c }: { controller: ProjectCon
                   }}
                 />
                 {renameDuplicates.length > 0 ? (
-                  <p className={`${PANEL_TYPOGRAPHY.meta} text-zen-saffron`}>
+                  <p className={`${PANEL_TYPOGRAPHY.meta} text-accent-action`}>
                     已有同名项目「{renameDuplicates[0].name}」。仍可保存，或改用
                     <button
                       type="button"
-                      className={`${CONTROL_BTN_LINK} ml-1 text-zen-saffron`}
+                      className={`${CONTROL_BTN_LINK} ml-1 text-accent-action`}
                       disabled={busy}
                       onClick={() =>
                         c.setRenameProjectDraft(
@@ -108,7 +124,7 @@ export function ProjectFilesHubPanel({ controller: c }: { controller: ProjectCon
                 <div className="flex flex-wrap gap-3">
                   <button
                     type="submit"
-                    className={`${CONTROL_BTN_LINK} text-zen-saffron`}
+                    className={`${CONTROL_BTN_LINK} text-accent-action`}
                     disabled={busy || !c.renameProjectDraft.trim()}
                   >
                     保存名称
@@ -181,7 +197,7 @@ export function ProjectFilesHubPanel({ controller: c }: { controller: ProjectCon
                 const isRenaming = c.renamingProjectFileId === f.id;
 
                 return (
-                  <li key={f.id}>
+                  <li key={f.id} data-hub-file-id={f.id}>
                     {isRenaming ? (
                       <form
                         className={`${WORKSPACE_FILE_ROW_CLASS} gap-2 px-2.5 py-2`}
@@ -203,7 +219,7 @@ export function ProjectFilesHubPanel({ controller: c }: { controller: ProjectCon
                         />
                         <button
                           type="submit"
-                          className={`${CONTROL_BTN_LINK} shrink-0 text-label text-zen-saffron`}
+                          className={`${CONTROL_BTN_LINK} shrink-0 text-label text-accent-action`}
                           disabled={busy || !c.renameProjectFileDraft.trim()}
                         >
                           保存
@@ -222,6 +238,7 @@ export function ProjectFilesHubPanel({ controller: c }: { controller: ProjectCon
                         name={f.name}
                         meta={`${formatProjectFileType(f.file_type)} · ${formatWorkspaceFileTime(f.updated_at_ms)}`}
                         busy={busy}
+                        selected={highlightFileId === f.id}
                         onOpen={() => void c.openFile(f.id)}
                         actionSlot={
                           <>

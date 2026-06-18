@@ -67,7 +67,7 @@ export function EnvironmentPanelNav({
               type="button"
               className={`${ENV_NAV_BTN_BASE} ${item.pinBottom ? "mt-auto" : ""} ${
                 active
-                  ? "border-l-4 border-zen-saffron bg-notion-sidebar-active text-notion-text"
+                  ? "border-l-4 border-accent-action bg-notion-sidebar-active text-notion-text"
                   : "border-l-4 border-transparent bg-transparent text-notion-text-muted hover:bg-notion-sidebar-hover"
               }`}
               aria-current={active ? "true" : undefined}

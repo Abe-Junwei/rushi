@@ -10,7 +10,11 @@ export function segmentBandFillStyle(
   selected: boolean,
   playheadSec: number | undefined,
   palette: WaveformSegmentBandPalette = readWaveformSegmentBandPalette(),
+  options?: { inSelection?: boolean; multiSelectActive?: boolean },
 ): string {
+  if (options?.multiSelectActive && (selected || options.inSelection)) {
+    return palette.inSelection;
+  }
   if (selected) return palette.selected;
   if (seg.low_confidence) return palette.lowConfidence;
   if (segmentPlaybackVisits(seg, playheadSec) === "visited") return palette.visited;

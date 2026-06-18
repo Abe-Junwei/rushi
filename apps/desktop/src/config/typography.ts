@@ -24,7 +24,7 @@ export const PANEL_TYPOGRAPHY = {
   shortcutKeys: "font-sans text-body font-medium leading-snug text-notion-text",
   helper: "text-body leading-relaxed text-notion-text-muted",
   meta: "text-label leading-[1.4] text-notion-text-muted",
-  code: "font-mono text-body leading-[1.4] text-zen-indigo",
+  code: "font-mono text-body leading-[1.4] text-notion-text-muted",
   button: "text-body font-medium leading-[1.4]",
   buttonSmall: "text-label font-semibold leading-[1.4]",
   badge: "text-label font-semibold uppercase tracking-[0.1em]",

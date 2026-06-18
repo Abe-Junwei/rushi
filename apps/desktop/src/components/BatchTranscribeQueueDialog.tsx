@@ -20,7 +20,7 @@ function statusIcon(status: BatchQueueItem["status"]) {
     case "running":
       return (
         <Loader2
-          className={`${LUCIDE_ICON_SIZE_SM} animate-spin text-zen-saffron`}
+          className={`${LUCIDE_ICON_SIZE_SM} animate-spin text-accent-action`}
           strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
           aria-hidden
         />
@@ -28,7 +28,7 @@ function statusIcon(status: BatchQueueItem["status"]) {
     case "done":
       return (
         <CheckCircle2
-          className={`${LUCIDE_ICON_SIZE_SM} text-zen-saffron`}
+          className={`${LUCIDE_ICON_SIZE_SM} text-accent-action`}
           strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
           aria-hidden
         />

@@ -68,7 +68,7 @@ export function llmExportPolishCapabilityBadgeClass(
     return `${base} bg-zen-success-surface text-zen-success`;
   }
   if (status === "unverified") {
-    return `${base} border border-zen-saffron/20 bg-zen-saffron/10 text-zen-saffron`;
+    return `${base} border border-accent-action/20 bg-accent-action/10 text-accent-action`;
   }
   return `${base} bg-notion-sidebar text-notion-text-muted`;
 }

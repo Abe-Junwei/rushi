@@ -5,7 +5,7 @@
 
 /** `button-primary`：saffron 底 + 白字；hover 深 saffron */
 export const CONTROL_BTN_PRIMARY =
-  "inline-flex h-8 min-h-[32px] items-center justify-center rounded-sm border border-transparent bg-zen-primary-action-bg px-4 font-sans text-body font-semibold text-zen-primary-action-fg shadow-none ring-0 transition-colors hover:bg-zen-primary-action-bg-hover hover:text-zen-primary-action-fg-hover focus:shadow-none focus:ring-0 focus-visible:shadow-none focus-visible:ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-saffron/30 disabled:cursor-not-allowed disabled:opacity-40";
+  "inline-flex h-8 min-h-[32px] items-center justify-center rounded-sm border border-transparent bg-zen-primary-action-bg px-4 font-sans text-body font-semibold text-zen-primary-action-fg shadow-none ring-0 transition-colors hover:bg-zen-primary-action-bg-hover hover:text-zen-primary-action-fg-hover focus:shadow-none focus:ring-0 focus-visible:shadow-none focus-visible:ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-action/30 disabled:cursor-not-allowed disabled:opacity-40";
 
 /** `button-secondary`：notion-sidebar 底 + hairline */
 export const CONTROL_BTN_SECONDARY =
@@ -41,7 +41,7 @@ export const CONTROL_BTN_DANGER_COMPACT =
 
 /** `text-input`：白底 + hairline + saffron focus */
 export const CONTROL_TEXT_INPUT =
-  "box-border block w-full h-8 min-h-[32px] rounded-sm border border-notion-border bg-notion-bg px-3 py-1.5 font-sans text-sm font-normal leading-snug text-notion-text shadow-none ring-0 outline-none transition-colors placeholder:text-notion-text-light focus:border-zen-saffron focus:shadow-none focus:ring-0 focus-visible:shadow-none focus-visible:ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-zen-saffron/25 disabled:cursor-not-allowed disabled:opacity-40";
+  "box-border block w-full h-8 min-h-[32px] rounded-sm border border-notion-border bg-notion-bg px-3 py-1.5 font-sans text-sm font-normal leading-snug text-notion-text shadow-none ring-0 outline-none transition-colors placeholder:text-notion-text-light focus:border-accent-action focus:shadow-none focus:ring-0 focus-visible:shadow-none focus-visible:ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-accent-action/25 disabled:cursor-not-allowed disabled:opacity-40";
 
 /** 与 text-input 同高，保留系统下拉箭头 */
 export const CONTROL_SELECT =
@@ -49,7 +49,7 @@ export const CONTROL_SELECT =
 
 /** 欢迎页 / 建项 hero CTA：40px 高，仍 4px 圆角（DESIGN § Prominent controls） */
 export const CONTROL_BTN_PRIMARY_PROMINENT =
-  "inline-flex h-10 min-h-[40px] items-center justify-center rounded-sm border border-transparent bg-zen-primary-action-bg px-5 font-sans text-sm font-semibold text-zen-primary-action-fg shadow-none ring-0 transition-colors hover:bg-zen-primary-action-bg-hover hover:text-zen-primary-action-fg-hover focus:shadow-none focus:ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-saffron/30 disabled:cursor-not-allowed disabled:opacity-40";
+  "inline-flex h-10 min-h-[40px] items-center justify-center rounded-sm border border-transparent bg-zen-primary-action-bg px-5 font-sans text-sm font-semibold text-zen-primary-action-fg shadow-none ring-0 transition-colors hover:bg-zen-primary-action-bg-hover hover:text-zen-primary-action-fg-hover focus:shadow-none focus:ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-action/30 disabled:cursor-not-allowed disabled:opacity-40";
 
 export const CONTROL_BTN_SECONDARY_PROMINENT =
   "inline-flex h-10 min-h-[40px] items-center justify-center rounded-sm border border-notion-border bg-notion-sidebar px-5 font-sans text-sm font-semibold text-notion-text shadow-none ring-0 transition-colors hover:border-notion-text-light hover:bg-notion-sidebar-hover focus:shadow-none focus:ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-notion-text/20 disabled:cursor-not-allowed disabled:opacity-40";
@@ -64,7 +64,7 @@ export const CONTROL_BTN_ICON_GHOST =
 
 /** 多行文本输入：与 text-input 同语义，高度自适应、允许纵向 resize */
 export const CONTROL_TEXTAREA =
-  "box-border block w-full max-w-full min-w-0 resize-y rounded-sm border border-notion-border bg-notion-bg px-3 py-2 font-sans text-sm font-normal leading-snug text-notion-text shadow-none ring-0 outline-none transition-colors placeholder:text-notion-text-light focus:border-zen-saffron focus:shadow-none focus:ring-0 focus-visible:shadow-none focus-visible:ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-zen-saffron/25 disabled:cursor-not-allowed disabled:opacity-40";
+  "box-border block w-full max-w-full min-w-0 resize-y rounded-sm border border-notion-border bg-notion-bg px-3 py-2 font-sans text-sm font-normal leading-snug text-notion-text shadow-none ring-0 outline-none transition-colors placeholder:text-notion-text-light focus:border-accent-action focus:shadow-none focus:ring-0 focus-visible:shadow-none focus-visible:ring-0 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-0 focus-visible:outline-accent-action/25 disabled:cursor-not-allowed disabled:opacity-40";
 
 /** 工具栏内联 select：与 CONTROL_SELECT 同观感，宽度随内容 */
 export const CONTROL_SELECT_INLINE =
@@ -90,17 +90,17 @@ export const ENV_SEGMENTED_TOGGLE_TRACK_COMPACT =
   "inline-flex shrink-0 gap-0 rounded-md bg-secondary-container p-0.5";
 
 const ENV_LLM_MODE_TOGGLE_BTN_BASE =
-  "min-w-[7.5rem] rounded-md border-0 px-4 py-1.5 text-center font-sans text-title font-medium whitespace-nowrap shadow-none ring-0 appearance-none transition-[color,background-color,box-shadow] duration-200 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-saffron/30 disabled:cursor-not-allowed disabled:opacity-40";
+  "min-w-[7.5rem] rounded-md border-0 px-4 py-1.5 text-center font-sans text-title font-medium whitespace-nowrap shadow-none ring-0 appearance-none transition-[color,background-color,box-shadow] duration-200 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-action/30 disabled:cursor-not-allowed disabled:opacity-40";
 
 const ENV_SEGMENTED_TOGGLE_BTN_BASE_COMPACT =
-  "rounded-[5px] border-0 px-2.5 py-0.5 text-center font-sans text-xs font-medium leading-none whitespace-nowrap shadow-none ring-0 appearance-none transition-[color,background-color,box-shadow] duration-200 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-saffron/30 disabled:cursor-not-allowed disabled:opacity-40";
+  "rounded-[5px] border-0 px-2.5 py-0.5 text-center font-sans text-xs font-medium leading-none whitespace-nowrap shadow-none ring-0 appearance-none transition-[color,background-color,box-shadow] duration-200 ease-out focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-action/30 disabled:cursor-not-allowed disabled:opacity-40";
 
 export function envSegmentedToggleTrackClass(compact = false): string {
   return compact ? ENV_SEGMENTED_TOGGLE_TRACK_COMPACT : ENV_LLM_MODE_TOGGLE_TRACK;
 }
 
 function segmentedToggleBtnSelectedClass(base: string): string {
-  return `${base} bg-notion-bg text-zen-saffron-mid shadow-[0_1px_2px_rgba(0,0,0,0.06)]`;
+  return `${base} bg-notion-bg text-accent-action-strong shadow-[0_1px_2px_rgba(0,0,0,0.06)]`;
 }
 
 function segmentedToggleBtnIdleClass(base: string): string {

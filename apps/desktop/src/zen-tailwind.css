@@ -18,7 +18,9 @@
   --color-zen-ochre: var(--zen-ochre);
   --color-zen-stone: var(--zen-stone);
   --color-zen-cinnabar: var(--zen-cinnabar);
-  --color-zen-indigo: var(--zen-indigo);
+  --color-accent-edit: var(--accent-edit);
+  --color-accent-action: var(--accent-action);
+  --color-accent-action-strong: var(--accent-action-strong);
   --color-zen-success: var(--zen-success);
   --color-zen-success-action: var(--zen-success-action);
   --color-zen-success-surface: var(--zen-success-surface);
@@ -27,6 +29,10 @@
   --color-zen-saffron-border: var(--zen-saffron-border);
   --color-zen-cinnabar-surface: var(--zen-cinnabar-surface);
   --color-zen-cinnabar-border: var(--zen-cinnabar-border);
+  --color-zen-status-warn: var(--zen-status-warn);
+  --color-zen-status-warn-action: var(--zen-status-warn-action);
+  --color-zen-status-warn-surface: var(--zen-status-warn-surface);
+  --color-zen-status-warn-border: var(--zen-status-warn-border);
   --color-notion-bg: var(--notion-bg);
   --color-notion-sidebar: var(--notion-sidebar);
   --color-notion-sidebar-hover: var(--notion-sidebar-hover);

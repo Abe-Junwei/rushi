@@ -56,7 +56,7 @@ export function DuplicateImportConfirmDialog({
             </h2>
             <p id="duplicate-import-desc" className={`flex items-center gap-2 ${PANEL_TYPOGRAPHY.dialogBody}`}>
               <LoaderCircle
-                className={`${LUCIDE_ICON_SIZE_MD} shrink-0 animate-spin text-zen-saffron`}
+                className={`${LUCIDE_ICON_SIZE_MD} shrink-0 animate-spin text-accent-action`}
                 strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
                 aria-hidden
               />

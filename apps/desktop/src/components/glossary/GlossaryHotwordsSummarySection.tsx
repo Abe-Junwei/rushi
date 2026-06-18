@@ -26,7 +26,7 @@ export function GlossaryHotwordsSummarySection({ g }: Props) {
         ASR → 在线 STT」）。
       </p>
       {g.hotwordsPreview?.truncated ? (
-        <p className={`m-0 ${PANEL_TYPOGRAPHY.meta} text-zen-saffron`}>
+        <p className={`m-0 ${PANEL_TYPOGRAPHY.meta} text-accent-action`}>
           全部热词 token 拼接约 {g.hotwordsPreview.joinedCharCount.toLocaleString()} 字符，超出上限；
           实际提交 {g.hotwordsPreview.includedTermCount} 个（约 {g.hotwordsPreview.submittedCharCount.toLocaleString()}{" "}
           字符），另有 {g.hotwordsPreview.droppedTermCount} 个未纳入。

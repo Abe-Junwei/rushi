@@ -88,7 +88,7 @@ export function EnvQualityPanel({ busy: appBusy }: Props) {
         </button>
         </div>
 
-        {q.status ? <p className={`m-0 ${PANEL_TYPOGRAPHY.meta} text-zen-saffron-mid`}>{q.status}</p> : null}
+        {q.status ? <p className={`m-0 ${PANEL_TYPOGRAPHY.meta} text-accent-action-strong`}>{q.status}</p> : null}
         {q.error ? (
           <p className={`m-0 ${PANEL_TYPOGRAPHY.meta} text-cinnabar`} role="alert">
             {q.error}

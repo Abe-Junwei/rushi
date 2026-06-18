@@ -40,7 +40,7 @@ export function PanelAsyncProgress(props: PanelAsyncProgressProps) {
         ].join(" ")}
       >
         <LoaderCircle
-          className={`${LUCIDE_ICON_SIZE_MD} animate-rushi-spin-slow text-zen-saffron`}
+          className={`${LUCIDE_ICON_SIZE_MD} animate-rushi-spin-slow text-accent-action`}
           strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
           aria-hidden
         />

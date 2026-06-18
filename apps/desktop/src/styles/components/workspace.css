@@ -128,13 +128,13 @@
 }
 
 .workspace textarea.seg-text {
-  caret-color: var(--zen-saffron-mid);
+  caret-color: var(--accent-action-strong);
 }
 
-/* 语段行：Stitch 深色高亮（indigo 选中 + 左缘指示条，无四周边框） */
+/* 语段行：主题 accent 选中 + 左缘指示条，无四周边框 */
 .workspace [data-seg-row].seg-row-selected {
   border-color: transparent;
-  background: color-mix(in srgb, var(--zen-indigo) 8%, transparent);
+  background: var(--segment-fill-in-selection-list);
 }
 
 .workspace [data-seg-row].seg-row-selected::before {
@@ -145,12 +145,12 @@
   bottom: 0;
   width: 4px;
   border-radius: 0.375rem 0 0 0.375rem;
-  background: var(--zen-indigo);
+  background: var(--accent-action);
 }
 
 .workspace [data-seg-row].seg-row-in-selection {
   border-color: transparent;
-  background: color-mix(in srgb, var(--zen-indigo) 8%, transparent);
+  background: var(--segment-fill-in-selection-list);
 }
 
 /* 语段行：编辑阶段（Notion 式 pill · 图标 + 文案） */
@@ -170,8 +170,8 @@
   width: 0.375rem;
   height: 0.375rem;
   border-radius: 9999px;
-  background: var(--zen-saffron);
-  box-shadow: 0 0 0 1px color-mix(in srgb, var(--zen-saffron) 28%, var(--notion-bg));
+  background: var(--accent-action);
+  box-shadow: 0 0 0 1px color-mix(in srgb, var(--accent-action) 28%, var(--notion-bg));
 }
 
 .workspace .seg-row-stage-chip {
@@ -229,7 +229,7 @@
 /*
  * 语段阶段 chip 四色系（互不复用 hue 族）：
  * 自动转写 — 中性灰（机器默认）
- * AI 改稿   — indigo 蓝（智能/LLM）
+ * AI 改稿   — accent-action（智能/LLM，随主题色）
  * 手动转写 — saffron 暖橙（人手编辑）
  * 定稿     — success 绿（确认完成）
  */
@@ -243,16 +243,16 @@
 
 /* AI 改稿 · 冷蓝 */
 .workspace .seg-row-stage-chip--ai_revised {
-  background: color-mix(in srgb, var(--zen-indigo) 16%, var(--notion-bg));
-  border-color: color-mix(in srgb, var(--zen-indigo) 34%, var(--notion-divider));
-  color: var(--zen-indigo);
+  background: color-mix(in srgb, var(--accent-action) 16%, var(--notion-bg));
+  border-color: color-mix(in srgb, var(--accent-action) 34%, var(--notion-divider));
+  color: var(--accent-action);
 }
 
 /* 手动转写 · 暖橙 */
 .workspace .seg-row-stage-chip--manual_transcribe {
-  background: color-mix(in srgb, var(--zen-saffron) 14%, var(--notion-bg));
-  border-color: color-mix(in srgb, var(--zen-saffron) 28%, var(--notion-divider));
-  color: var(--zen-saffron-mid);
+  background: color-mix(in srgb, var(--accent-action) 14%, var(--notion-bg));
+  border-color: color-mix(in srgb, var(--accent-action) 28%, var(--notion-divider));
+  color: var(--accent-action-strong);
 }
 
 /* 定稿 · 森林绿 */
@@ -289,7 +289,7 @@
   line-height: inherit;
   color: inherit;
   text-decoration: underline;
-  text-decoration-color: color-mix(in srgb, var(--zen-saffron) 70%, transparent);
+  text-decoration-color: color-mix(in srgb, var(--accent-action) 70%, transparent);
   text-decoration-style: dotted;
   text-underline-offset: 2px;
   background: transparent;
@@ -305,12 +305,12 @@
 }
 
 .workspace button.seg-correctable-hit:hover {
-  text-decoration-color: var(--zen-saffron);
+  text-decoration-color: var(--accent-action);
 }
 
 .workspace textarea.seg-text.text-transparent::selection {
   color: transparent;
-  background: color-mix(in srgb, var(--zen-saffron) 28%, var(--content-decoration-paper));
+  background: color-mix(in srgb, var(--accent-action) 28%, var(--content-decoration-paper));
 }
 
 /* 语段行：待纳入记忆改词 diff 镜像 */
@@ -325,17 +325,17 @@
 
 .workspace .seg-learn-diff-removed {
   text-decoration: line-through;
-  text-decoration-color: var(--zen-saffron-deep);
+  text-decoration-color: var(--accent-action-strong);
   text-decoration-thickness: 2px;
-  color: color-mix(in srgb, var(--zen-saffron-deep) 82%, var(--notion-text-muted));
-  background: color-mix(in srgb, var(--zen-saffron) 14%, var(--notion-bg));
+  color: color-mix(in srgb, var(--accent-action-strong) 82%, var(--notion-text-muted));
+  background: color-mix(in srgb, var(--accent-action) 14%, var(--notion-bg));
   border-radius: 2px;
 }
 
 .workspace .seg-learn-diff-inserted {
   border-radius: 2px;
-  background: color-mix(in srgb, var(--zen-saffron) 32%, transparent);
-  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--zen-saffron-mid) 35%, transparent);
+  background: color-mix(in srgb, var(--accent-action) 32%, transparent);
+  box-shadow: inset 0 -1px 0 color-mix(in srgb, var(--accent-action-strong) 35%, transparent);
 }
 
 /* 语段行：待纳入记忆（Notion 式文字胶囊，固定高度、行内垂直居中） */
@@ -371,14 +371,14 @@
 }
 
 .workspace .seg-confirm-learn-btn:hover:not(:disabled) {
-  background: color-mix(in srgb, var(--zen-saffron) 8%, var(--notion-bg));
-  border-color: color-mix(in srgb, var(--zen-saffron) 22%, var(--notion-border));
-  color: var(--zen-saffron-deep);
+  background: color-mix(in srgb, var(--accent-action) 8%, var(--notion-bg));
+  border-color: color-mix(in srgb, var(--accent-action) 22%, var(--notion-border));
+  color: var(--accent-action-strong);
   box-shadow: 0 1px 3px color-mix(in srgb, var(--notion-text) 8%, transparent);
 }
 
 .workspace .seg-confirm-learn-btn:active:not(:disabled) {
-  background: color-mix(in srgb, var(--zen-saffron) 12%, var(--notion-bg));
+  background: color-mix(in srgb, var(--accent-action) 12%, var(--notion-bg));
   box-shadow: none;
 }
 
@@ -388,13 +388,13 @@
 }
 
 .workspace .seg-confirm-learn-btn:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--zen-saffron) 35%, transparent);
+  outline: 2px solid color-mix(in srgb, var(--accent-action) 35%, transparent);
   outline-offset: 2px;
 }
 
 .workspace textarea.seg-text::selection {
-  color: var(--zen-saffron-mid);
-  background: color-mix(in srgb, var(--zen-saffron) 20%, var(--content-decoration-paper));
+  color: var(--accent-action-strong);
+  background: color-mix(in srgb, var(--accent-action) 20%, var(--content-decoration-paper));
 }
 
 /** EditorView 底栏：三列 grid，居中 hint 独立列 truncate，避免 absolute 叠字 */
@@ -636,7 +636,7 @@
 }
 
 .workspace-shell-sidebar-toggle:focus-visible {
-  outline: 2px solid color-mix(in srgb, var(--zen-saffron) 45%, transparent);
+  outline: 2px solid color-mix(in srgb, var(--accent-action) 45%, transparent);
   outline-offset: 2px;
 }
 

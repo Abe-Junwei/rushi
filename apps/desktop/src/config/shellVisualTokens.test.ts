@@ -36,10 +36,12 @@ describe("shellVisualTokens", () => {
     expect(MAIN_SHELL_SURFACE_CLASS.sidebarBg).toBe("bg-notion-sidebar");
   });
 
-  it("aligns dual accent with tokens.ts hex families", () => {
-    expect(SHELL_ACCENT.edit).toBe("zen-indigo");
-    expect(SHELL_ACCENT.action).toBe("zen-saffron");
-    expect(COLORS.accentEdit).toBe(COLORS.indigo);
+  it("aligns dual accent semantic Tailwind prefixes with tokens.ts", () => {
+    expect(SHELL_ACCENT.edit).toBe("accent-edit");
+    expect(SHELL_ACCENT.action).toBe("accent-action");
+    expect(SHELL_ACCENT.actionStrong).toBe("accent-action-strong");
+    expect(SHELL_VISUAL_CSS_VARS.accentActionStrong).toBe("--accent-action-strong");
+    expect(COLORS.accentEdit).toBe(COLORS.accentAction);
     expect(COLORS.accentAction).toBe(COLORS.saffron);
   });
 

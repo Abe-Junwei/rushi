@@ -87,7 +87,7 @@ export function AutoPunctuatePreviewDialog({
                 {candidate?.map((part, idx) => (
                   <span
                     key={`${idx}-${part.text}`}
-                    className={part.highlight ? "rounded bg-zen-saffron/20 text-notion-text" : ""}
+                    className={part.highlight ? "rounded bg-accent-action/20 text-notion-text" : ""}
                   >
                     {part.text}
                   </span>
@@ -109,7 +109,7 @@ export function AutoPunctuatePreviewDialog({
           {state.phase === "consent" ? (
             <button
               type="button"
-              className="rounded-md border-0 bg-zen-saffron-mid px-3 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-90"
+              className="rounded-md border-0 bg-accent-action-mid px-3 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-90"
               onClick={onConfirmConsent}
             >
               我已知晓，继续
@@ -118,7 +118,7 @@ export function AutoPunctuatePreviewDialog({
           {state.phase === "preview" ? (
             <button
               type="button"
-              className="rounded-md border-0 bg-zen-saffron-mid px-3 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-90"
+              className="rounded-md border-0 bg-accent-action-mid px-3 py-1.5 text-sm font-medium text-white transition-opacity hover:opacity-90"
               onClick={onConfirmWriteback}
             >
               确认写回

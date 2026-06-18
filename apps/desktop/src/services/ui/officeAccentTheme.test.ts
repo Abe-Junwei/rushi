@@ -51,4 +51,11 @@ describe("officeAccentTheme", () => {
     applyOfficeAccentTheme("brand");
     expect(document.documentElement.dataset.accentTheme).toBeUndefined();
   });
+
+  it("migrates legacy purple/indigo accent storage to brand", () => {
+    window.localStorage.setItem(OFFICE_ACCENT_THEME_STORAGE_KEY, "purple");
+    expect(readStoredOfficeAccentThemeId()).toBe("brand");
+    window.localStorage.setItem(OFFICE_ACCENT_THEME_STORAGE_KEY, "indigo");
+    expect(readStoredOfficeAccentThemeId()).toBe("brand");
+  });
 });

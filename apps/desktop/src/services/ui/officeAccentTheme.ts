@@ -17,6 +17,7 @@ function notifyOfficeAccentThemeChanged(): void {
 export function readStoredOfficeAccentThemeId(): OfficeAccentThemeId {
   if (typeof window === "undefined") return DEFAULT_OFFICE_ACCENT_THEME_ID;
   const raw = window.localStorage.getItem(OFFICE_ACCENT_THEME_STORAGE_KEY);
+  if (raw === "purple" || raw === "indigo") return DEFAULT_OFFICE_ACCENT_THEME_ID;
   if (!raw || !isOfficeAccentThemeId(raw)) return DEFAULT_OFFICE_ACCENT_THEME_ID;
   return raw;
 }

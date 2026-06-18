@@ -46,7 +46,7 @@ export function PostTranscribeStageBPreviewPanel({
         ) : null}
         {preview.dropDetail ? (
           <p
-            className={`rounded-md bg-zen-saffron/10 px-3 py-2 ${PANEL_TYPOGRAPHY.dialogBody} text-notion-text`}
+            className={`rounded-md bg-accent-action/10 px-3 py-2 ${PANEL_TYPOGRAPHY.dialogBody} text-notion-text`}
           >
             {preview.droppedUngroundedOps > 0
               ? `已忽略 ${preview.droppedUngroundedOps} 条建议。`
@@ -56,7 +56,7 @@ export function PostTranscribeStageBPreviewPanel({
         ) : null}
         {preview.stepError ? (
           <p
-            className={`rounded-md bg-zen-saffron/10 px-3 py-2 ${PANEL_TYPOGRAPHY.dialogBody} text-notion-text`}
+            className={`rounded-md bg-accent-action/10 px-3 py-2 ${PANEL_TYPOGRAPHY.dialogBody} text-notion-text`}
           >
             {preview.stepError} 已成功批次的候选仍可确认写回。
           </p>
@@ -88,7 +88,7 @@ export function PostTranscribeStageBPreviewPanel({
                   trailing={
                     <input
                       type="checkbox"
-                      className="h-3.5 w-3.5 shrink-0 accent-zen-saffron"
+                      className="h-3.5 w-3.5 shrink-0 accent-accent-action"
                       checked={checked}
                       disabled={busy}
                       aria-label={`包含语段 ${ch.segmentNumber}`}
@@ -110,7 +110,7 @@ export function PostTranscribeStageBPreviewPanel({
                       {highlighted.map((part, idx) => (
                         <span
                           key={`${idx}-${part.text}`}
-                          className={part.highlight ? "rounded bg-zen-saffron/20" : ""}
+                          className={part.highlight ? "rounded bg-accent-action/20" : ""}
                         >
                           {part.text}
                         </span>

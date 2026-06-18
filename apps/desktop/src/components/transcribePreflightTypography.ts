@@ -26,7 +26,7 @@ export const TRANSCRIBE_PREFLIGHT_TYPO = {
   /** 11px — meta（计时等） */
   caption: `${BASE} text-label font-normal leading-[1.4] text-notion-text-muted`,
   /** 11px — 文本链接 */
-  link: `${BASE} text-label font-normal leading-[1.4] text-zen-saffron underline-offset-2 hover:underline`,
+  link: `${BASE} text-label font-normal leading-[1.4] text-accent-action underline-offset-2 hover:underline`,
 
   /** 术语等次要区块：顶部分割线 + 上内边距 12px */
   sectionDivider: "border-t border-notion-divider pt-3",

@@ -14,14 +14,13 @@
   --zen-saffron-mid: #85530f;
   --zen-saffron-deep: #452800;
 
-  /** 实心 Primary CTA：saffron 底 + 白字（产品默认；rest ~3:1，hover 深底 AA） */
-  --zen-primary-action-bg: var(--zen-saffron);
-  --zen-primary-action-bg-hover: var(--zen-saffron-mid);
+  /** 实心 Primary CTA — 走 accent-action 链（Office 主题色 remap zen-saffron* 后同步） */
+  --zen-primary-action-bg: var(--accent-action);
+  --zen-primary-action-bg-hover: var(--accent-action-strong);
   --zen-primary-action-fg: #ffffff;
   --zen-primary-action-fg-hover: #ffffff;
 
   --zen-stone: #8E8E8E;
-  --zen-indigo: #3D4F5D;
   --zen-cinnabar: #963530;
   --zen-ochre: #EAE0C5;
   --zen-success: #1e463a;
@@ -32,6 +31,12 @@
   --zen-saffron-border: #eedcc7;
   --zen-cinnabar-surface: #f5ebea;
   --zen-cinnabar-border: #dab8b7;
+
+  /** 环境/能力状态语义色（顶栏三灯、设置状态条）— 固定为品牌 saffron 暖橙，不随「外观 → 主题色」变化 */
+  --zen-status-warn: #C58A43;
+  --zen-status-warn-action: #85530f;
+  --zen-status-warn-surface: #f9f3ec;
+  --zen-status-warn-border: #eedcc7;
 
   /* Notion 风格令牌 */
   --notion-divider: #e3e2e0;
@@ -63,11 +68,26 @@
   --content-decoration-paper: var(--zen-paper);
   --content-decoration-card: #f5f0e0;
 
-  /** Dual accent — indigo 编辑选中 / saffron 动作·进度；见 DESIGN.md § Colors */
-  /** 动作色可由设置「外观 → 主题色」覆盖（data-accent-theme + inline --zen-saffron*） */
-  --accent-edit: var(--zen-indigo);
+  /** Shell accent — 随 Office 主题色 remap；语段选中 / 进度 / CTA 共用 action 链 */
   --accent-action: var(--zen-saffron);
   --accent-action-strong: var(--zen-saffron-mid);
+  /** @deprecated 兼容旧 Tailwind `accent-edit`；等于 --accent-action */
+  --accent-edit: var(--accent-action);
+
+  /** 语段 fill — accent-action / accent-action-strong；列表 vs 波形 inSelection 分层见 CONTEXT */
+  --segment-fill-selected: color-mix(in srgb, var(--accent-action) 26%, transparent);
+  --segment-fill-in-selection-list: color-mix(in srgb, var(--accent-action) 8%, transparent);
+  --segment-fill-in-selection-waveform: color-mix(in srgb, var(--accent-action) 12%, transparent);
+  --segment-fill-visited: color-mix(in srgb, var(--accent-action-strong) 18%, transparent);
+  --segment-fill-idle: color-mix(in srgb, var(--zen-ink) 11%, transparent);
+  --segment-fill-low-confidence: color-mix(in srgb, var(--notion-text-light) 24%, transparent);
+  --segment-fill-border: color-mix(in srgb, var(--notion-text) 14%, transparent);
+
+  /** Progress chrome — accent-action 族（播放头 / minimap / 已播放 peaks tint 基链） */
+  --waveform-playhead: color-mix(in srgb, var(--accent-action) 90%, transparent);
+  --waveform-minimap-playhead: var(--accent-action-strong);
+  --waveform-minimap-viewport-border: color-mix(in srgb, var(--accent-action) 30%, transparent);
+  --waveform-minimap-viewport-bg: color-mix(in srgb, var(--accent-action) 15%, transparent);
 
   /** Flat shell elevation — 壳层与 body 浮层禁止 drop shadow（Round 2+ 接线） */
   --shell-elevation-shadow: none;
@@ -80,7 +100,7 @@
   --zen-wf-surface: #ffffff;
   --zen-wf-wave: #c4c4c8;
   --zen-wf-progress: #8e8e93;
-  --zen-wf-progress-played: color-mix(in srgb, var(--zen-saffron-mid) 22%, var(--zen-wf-progress));
+  --zen-wf-progress-played: color-mix(in srgb, var(--accent-action-strong) 32%, var(--zen-wf-progress));
   --zen-wf-cursor: #6a6a6f;
 
   /** Type scale（5 级；@theme text-* 与 Tailwind utilities 同源） */
@@ -121,11 +141,10 @@
   --zen-saffron-mid: #c58a43;
   --zen-saffron-deep: #85530f;
   --zen-stone: #9b9b9b;
-  --zen-indigo: #9eb4c8;
   --zen-ochre: #3a3630;
 
-  --zen-primary-action-bg: var(--zen-saffron);
-  --zen-primary-action-bg-hover: var(--zen-saffron-mid);
+  --zen-primary-action-bg: var(--accent-action);
+  --zen-primary-action-bg-hover: var(--accent-action-strong);
   --zen-primary-action-fg: #ffffff;
   --zen-primary-action-fg-hover: #ffffff;
 
@@ -135,6 +154,11 @@
   --zen-saffron-border: #5a4a38;
   --zen-cinnabar-surface: #3a2828;
   --zen-cinnabar-border: #5a3838;
+
+  --zen-status-warn: #d4a055;
+  --zen-status-warn-action: #c58a43;
+  --zen-status-warn-surface: #3a3228;
+  --zen-status-warn-border: #5a4a38;
 
   --notion-divider: #3d3d3d;
   --notion-border: #3d3d3d;
@@ -156,9 +180,9 @@
   --main-shell-minimap-bg: var(--notion-sidebar);
   --content-decoration-paper: var(--zen-paper);
   --content-decoration-card: #3a3630;
-  --accent-edit: var(--zen-indigo);
   --accent-action: var(--zen-saffron);
   --accent-action-strong: var(--zen-saffron-mid);
+  --accent-edit: var(--accent-action);
   --shell-elevation-shadow: none;
   --overlay-panel-border: var(--notion-border);
   --overlay-panel-bg: var(--notion-bg);
@@ -167,7 +191,7 @@
   --zen-wf-surface: #1f1f1f;
   --zen-wf-wave: #5a5a5f;
   --zen-wf-progress: #8e8e93;
-  --zen-wf-progress-played: color-mix(in srgb, var(--zen-saffron-mid) 22%, var(--zen-wf-progress));
+  --zen-wf-progress-played: color-mix(in srgb, var(--accent-action-strong) 32%, var(--zen-wf-progress));
   --zen-wf-cursor: #b0b0b5;
 }
 

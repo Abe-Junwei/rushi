@@ -23,7 +23,6 @@ colors:
   ochre: '#EAE0C5'
   stone: '#8E8E8E'
   cinnabar: '#963530'
-  indigo: '#3D4F5D'
   surface: '#fcf9f2'
   surface-dim: '#dcdad3'
   surface-bright: '#fcf9f2'
@@ -97,16 +96,16 @@ The palette is a **Notion-neutral base + warm saffron accent**:
 - **Muted Text (`notion-text-muted` #6b6b6b):** For secondary labels, descriptions, placeholders.
 - **Dividers (`notion-divider` #e3e2e0):** Very light borders for separation. Used extensively for hairlines.
 - **Primary (Saffron #C58A43):** **动作 / 进度 / CTA**（Primary 按钮、工作条 toggle、手动编辑提示、播放头刻度）。
-- **Edit accent (Indigo #3D4F5D):** **编辑选中 / 焦点**（语段当前行、波形 overlay 选中语段、AI 改稿 stage chip）。
+- **Edit accent:** Removed — 语段选中 / 波形 overlay / LLM chip 与 **accent-action** 共用主题色链。
 - **Danger (Cinnabar #963530):** Used exclusively for destructive actions (delete, remove).
 - **Success:** Green for positive status indicators.
 
-**Dual accent（双 accent，全应用统一）**
+**Shell accent（全应用统一，随 Office 主题色 remap）**
 
 | 语义 | Token | 用途 |
 |------|-------|------|
-| 编辑选中 / 焦点 | `zen-indigo` / `--accent-edit` | 语段 `seg-row-selected`、波形 overlay 选中、AI/LLM chip |
-| 动作 / 进度 / CTA | `zen-saffron` / `--accent-action` | Primary 按钮、播放头、minimap 视口框、draft 点、错词下划线 |
+| 选中 / 多选 / CTA / 进度 | `--accent-action` / `--accent-action-strong` | 语段行、波形 overlay、Primary 按钮、播放头、minimap、visited 带 |
+| 兼容别名 | `--accent-edit` | 等于 `--accent-action`；旧 Tailwind `accent-edit` 仍可用 |
 
 **Main shell vs 内容装饰**
 
@@ -117,17 +116,21 @@ The palette is a **Notion-neutral base + warm saffron accent**:
 
 ### Waveform tokens
 
-波形区在 Notion 侧栏底上叠白底 peaks；语段 overlay 用 saffron / ink 语义，与下方语段卡可分层配色。
+波形区在 Notion 侧栏底上叠白底 peaks；语段 / 进度 chroming 走 `--accent-action*` 与 `--segment-fill-*`，见 `tokens.css`。
 
-| Token | Hex | Tailwind / TS | 用途 |
-|-------|-----|---------------|------|
-| `waveform-surface` | `#ffffff` | `zen-wf-surface` / `COLORS.waveformSurface` | WaveSurfer 画布底、peaks 绘制区 |
-| `waveform-wave` | `#c4c4c8` | `zen-wf-wave` / `COLORS.waveformWave` | 未播放 peaks、minimap 柱形 |
-| `waveform-progress` | `#8e8e93` | `zen-wf-progress` / `COLORS.waveformProgress` | 已播放 peaks tint |
-| `waveform-cursor` | `#6a6a6f` | `zen-wf-cursor` / `COLORS.waveformCursor` | WaveSurfer 内置 playhead |
-| — | — | `bg-notion-sidebar` | 波形 tier 外壳、minimap 条背景 |
-| — | — | `zen-indigo` | 语段列表当前行、波形 overlay **选中** |
-| — | — | `zen-saffron-mid` | 波形语段带 **已播放未选中**（进度 tint）；minimap 视口框、视口 playhead |
+| Token | 语义 | CSS 变量 | 用途 |
+|-------|------|----------|------|
+| 未播放 peaks | 中性灰 | `--zen-wf-wave` | WaveSurfer 柱形、minimap |
+| 已播放 peaks | action-strong mix | `--zen-wf-progress-played` | 已播放 tint |
+| 播放头 | action | `--waveform-playhead` | 视口全高 playhead |
+| Minimap 视口 | action | `--waveform-minimap-viewport-*` | 总览视口框 |
+| 语段选中 | action | `--segment-fill-selected` | overlay 26% |
+| 语段多选（波形） | action | `--segment-fill-in-selection-waveform` | overlay 12% |
+| 语段多选（列表） | action | `--segment-fill-in-selection-list` | 列表行 8% |
+| 语段未播放 | ink | `--segment-fill-idle` | band 11% mix |
+| 语段已播放 | action-strong | `--segment-fill-visited` | band 18% mix |
+
+落码 Tailwind：`accent-action` / `accent-action-strong`（`accent-edit` 为兼容别名；禁止组件直引 `zen-saffron*`）。
 
 ## Typography
 
@@ -143,7 +146,7 @@ Single sans-serif font family (Inter) for all UI. No serif display fonts—Notio
 **Formatting Rules:**
 - Large display text uses tighter letter spacing for a modern feel.
 - Labels and captions (11px) always use uppercase with generous letter spacing.
-- Monospace paths or technical data use a distinct background or color (`indigo`) to signify their nature.
+- Monospace paths or technical data use `notion-text-muted` + mono (neutral, not accent).
 - Timecode in toolbars uses tabular nums (`font-variant-numeric: tabular-nums`).
 
 **Serif 例外（legacy，仍允许）：**
@@ -222,9 +225,10 @@ Hierarchy through **background tone shifts** and **fine borders**—**no drop sh
 
 ### Waveform stage
 - **Tier shell:** `notion-sidebar` 背景；横向滚动；高度可拖拽。
-- **Peaks:** 白底 + 中性灰柱；WaveSurfer **中性灰 playhead**（`waveform-cursor`）；底边嵌入 22px 透明时间尺（标尺带 saffron playhead 刻度线）。
-- **语段 overlay:** 全高竖向区域，左右 hairline；选中 saffron 边线；左右 **8px 透明 handle**（`ew-resize`，无可见 grip）拖拽改边界；语段浮层仅 **播放 + 循环**（倍速统一在工作条 global menu）。
-- **Minimap（可选）:** 56px 高；`zen-paper` 底（与下方 sidebar 底栏以色块分层）；波形缩略**垂直居中**；saffron 视口框 + 细 playhead；无上下 border / 无内边距。
+- **Peaks:** 白底 + 中性灰柱（`--zen-wf-wave`）；已播放 `--zen-wf-progress-played`（`accent-action-strong` mix）。
+- **Playhead / minimap:** `--waveform-playhead`、`--waveform-minimap-*`（`accent-action` 族）；WS 内置 cursor 隐藏。
+- **语段 overlay:** `--segment-fill-*`；选中 / 多选均 `accent-action` mix（26% / 波形 12% / 列表 8%）；左右 **8px handle** 拖拽边界。
+- **Minimap（可选）:** `--main-shell-minimap-bg`；`accent-action` 视口框 + playhead。
 - **工作条（波形与语段之间）:** **40px**（`h-8` 触控）；有音频时三栏 transport / 编辑 / zoom；无音频时单行居中仅编辑。视口 `<1024px` 时中间收进「编辑 ▾」、右区保留 ±。
 - **底栏（语段列表下）:** 30px 三列 grid；无状态 hint 时每 8s 轮换快捷键提示（与设置页共用真源）。
 - **语段点击（波形 overlay）：** 首次点击未选中语段 → 选中并 seek 到语段头；已在该语段内再次点击 → seek 到点击位置（钳在语段内）；语段播放从当前 playhead 起（若在语段内）。

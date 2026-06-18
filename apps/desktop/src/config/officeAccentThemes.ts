@@ -9,7 +9,6 @@ export type OfficeAccentThemeId =
   | "red"
   | "orange"
   | "green"
-  | "purple"
   | "pink"
   | "teal"
   | "gray";
@@ -87,16 +86,6 @@ export const OFFICE_ACCENT_THEME_PRESETS: readonly OfficeAccentThemePreset[] = [
     light: "#DFF6DD",
     surface: "#EDF7ED",
     border: "#B7DEB8",
-  },
-  {
-    id: "purple",
-    label: "紫色",
-    base: "#8764B8",
-    mid: "#5C2D91",
-    deep: "#3B1D5E",
-    light: "#EAE3F3",
-    surface: "#F3EFF8",
-    border: "#D2C4E5",
   },
   {
     id: "pink",

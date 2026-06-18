@@ -78,7 +78,7 @@ export function WorkspaceFileRow({
             {meta}
           </span>
         </span>
-        <span className="shrink-0 text-label font-medium text-zen-saffron opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
+        <span className="shrink-0 text-label font-medium text-accent-action opacity-0 transition-opacity group-hover:opacity-100 group-focus-visible:opacity-100">
           打开
         </span>
       </button>

@@ -121,7 +121,7 @@ export function EmptyProjectPanel({ controller: c }: { controller: ProjectContro
   return (
     <section
       className={`${WORKSPACE_PAGE_PANEL_CLASS} gap-6 transition-colors ${
-        isDragActive ? "rounded-xl bg-zen-saffron/5" : ""
+        isDragActive ? "rounded-xl bg-accent-action/5" : ""
       }`}
       data-purpose="empty-project-page"
     >
@@ -176,14 +176,14 @@ export function EmptyProjectPanel({ controller: c }: { controller: ProjectContro
       <div
         className={`flex min-h-[4rem] flex-col items-center justify-center gap-1.5 rounded-lg px-4 py-3 transition-colors sm:min-h-[4.5rem] sm:gap-2 sm:px-5 sm:py-4 ${
           isDragActive
-            ? "border border-dashed border-zen-saffron bg-zen-saffron/10 text-zen-saffron"
+            ? "border border-dashed border-accent-action bg-accent-action/10 text-accent-action"
             : "bg-notion-sidebar/60 text-notion-text-muted"
         }`}
         aria-live="polite"
       >
         <span
           className={`flex h-9 w-9 items-center justify-center rounded-full transition-colors sm:h-10 sm:w-10 ${
-            isDragActive ? "bg-zen-saffron/15 text-zen-saffron" : "bg-notion-bg text-notion-text-muted"
+            isDragActive ? "bg-accent-action/15 text-accent-action" : "bg-notion-bg text-notion-text-muted"
           }`}
           aria-hidden
         >
@@ -191,7 +191,7 @@ export function EmptyProjectPanel({ controller: c }: { controller: ProjectContro
         </span>
         <p className="text-body font-medium text-notion-text sm:text-title">
           {isDragActive ? (
-            <span className="text-zen-saffron">释放鼠标即可导入</span>
+            <span className="text-accent-action">释放鼠标即可导入</span>
           ) : (
             "直接将文件拖放到此工作区"
           )}
