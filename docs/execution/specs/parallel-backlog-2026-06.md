@@ -62,12 +62,12 @@ Step 12  REL-1.1 signoff                                             ✅ 2026-06
 
 ## Phase F · 并行轨（§10.5 · §10.4 闭合后）
 
-> **下一刀（P1）**：**ACC-STT-IFLYTEK 手测签收**。编码已合 `main`（`f2e957d`）。
+> **下一刀（P2）**：**架构热点回收**（T-010）。**P1 ACC-STT-IFLYTEK ✅** 2026-06-18 手测签收。
 
 | 优先级 | ID | 状态 | 代码 / spec | 下一动作 |
 |--------|-----|------|-------------|----------|
-| **P1** | **ACC-STT-IFLYTEK** | 🟡 编码 ✅ | `stt_native/xunfei_speed_asr/` · [`acc-stt-iflytek-*`](./acc-stt-iflytek-acceptance.md) · [`r3-china-iflytek-lfasr-research.md`](./r3-china-iflytek-lfasr-research.md) | [hand-test checklist](./acc-stt-iflytek-hand-test-checklist.md) → acceptance ✅ |
-| **P2** | **架构热点回收** | 📋 | guard **13** 警告 · `run_transcribe_cmd` · `online_segment_normalize` | T-010 薄片 |
+| **P1** | **ACC-STT-IFLYTEK** | ✅ **2026-06-18** | `stt_native/xunfei_speed_asr/` · [`acc-stt-iflytek-*`](./acc-stt-iflytek-acceptance.md) | [`acceptance`](./acc-stt-iflytek-acceptance.md) ✅ |
+| **P2** | **架构热点回收** | 📋 ← **现在** | guard **13** 警告 · `run_transcribe_cmd` · `online_segment_normalize` | T-010 薄片 |
 | **P3** | **R3h-1-R Win 资产** | 🟡 | Win CI ✅ | 下一 tag 补 **v0.1.0** release 包 |
 | — | **R3g-B-Align** | ❌ **废弃** | 2026-06-11 spike **Defer**（CPU ~8× Paraformer）；**2026-06-18 不再做** | [`align-results`](./r3g-b-align-forced-aligner-spike-results.md) · research 存档 |
 | — | **R3g-C-NANO vLLM** | ❌ **Defer** | 无 CUDA 环境 · **目前不做**（2026-06-18） | research 保留 — [`vllm-research`](./r3g-c-funasr-nano-vllm-research.md) |
@@ -106,8 +106,8 @@ Step 12  REL-1.1 signoff                                             ✅ 2026-06
 7. ~~Step 9a→9b ONBOARD~~ ✅
 8. ~~Step 10→11 BATCH-TXN~~ ✅ 2026-06-18
 9. ~~Step 12 REL-1.1~~ ✅ 2026-06-18
-10. P1 ACC-STT-IFLYTEK 手测签收                    ← 现在
-11. P2 架构热点 / P3 Win 资产（并行，有资源时）
+10. ~~P1 ACC-STT-IFLYTEK 手测签收~~ ✅ 2026-06-18
+11. P2 架构热点 / P3 Win 资产（并行，有资源时）                    ← 现在
 —  R3g-B-Align                                     ❌ 废弃 2026-06-18
 —  R3g-C-NANO vLLM                                 ❌ Defer（无 CUDA · 目前不做）
 ```
@@ -125,4 +125,5 @@ Step 12  REL-1.1 signoff                                             ✅ 2026-06
 | 2026-06-17 | **Step 5–9 ✅**；主刀 → **BATCH-TXN**；**R3g-C-NANO PyTorch Defer**；vLLM research ✅ |
 | 2026-06-18 | **Phase F / §10.5**：ACC-STT-IFLYTEK 🟡 编码 ✅（`f2e957d`）；P1 手测 · guard **13** · UX 尾项 `2a5e021` |
 | 2026-06-18 | **R3g-C-NANO vLLM** ❌ Defer（无 CUDA · 目前不做） |
+| 2026-06-18 | **ACC-STT-IFLYTEK ✅** 手测签收；下一刀 **P2 架构热点** |
 | 2026-06-18 | **R3g-B-Align** ❌ **废弃**（CPU ~8× · 不再做第三 SKU）；§10.5 **P2→热点 · P3→Win** |

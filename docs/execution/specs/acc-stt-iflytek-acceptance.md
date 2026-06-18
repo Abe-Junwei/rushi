@@ -1,6 +1,6 @@
 # Acceptance: ACC-STT-IFLYTEK — 讯飞极速录音转写
 
-> **状态**：🟡 编码 ✅ · 机器闸门 + 静态验收 ✅（2026-06-18 `/diagnose` 一轮验收）· **真机手测 ⏳**  
+> **状态**：✅ **编码 ✅ · 手测签收 ✅**（2026-06-18）  
 > **Research**：[`r3-china-iflytek-lfasr-research.md`](./r3-china-iflytek-lfasr-research.md)  
 > **Plan**：[`acc-stt-iflytek-plan.md`](./acc-stt-iflytek-plan.md)  
 > **手测**：[`acc-stt-iflytek-hand-test-checklist.md`](./acc-stt-iflytek-hand-test-checklist.md)
@@ -37,7 +37,7 @@
 - [x] 在线 401/配额/超时：**仅错误**，无本机 fallback — `run_transcribe_cmd/sync.rs` 在线/本机分支前置互斥，在线 `Err` 经 `?` 直接上抛，无回落分支（真机 401/quota 文案映射见手测）
 - [x] 自动化：`npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs` — typecheck ✓ / test **1489 通过** / guard **0 错误**
 - [x] 自动化：`cargo test … xunfei_speed_asr`（9 通过）+ `… stt_vocabulary`（11 通过）
-- [ ] 手测：见 hand-test checklist（真机 E2E，签收行待回填）
+- [x] 手测：见 hand-test checklist — **签收 ✅ 2026-06-18**
 
 ## 能力—UI 状态矩阵
 

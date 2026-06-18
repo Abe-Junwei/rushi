@@ -46,6 +46,22 @@ fn api_error_message(j: &Value) -> String {
         .to_string()
 }
 
+/// 将讯飞 OST 平台通用错误码映射为可操作中文文案。
+/// 已知授权/流控码（11200/11201/11202/11203）给出明确处置建议；
+/// 其余有 code 的错误回退为「OST 错误 {code}：{原始 message}」，无 code 时回退原始 HTTP 文本。
+fn ost_friendly_error(j: &Value, status: reqwest::StatusCode, raw: &str) -> String {
+    match ost_api_code(j) {
+        Some(11200) => "讯飞 AppID 未开通「极速录音转写大模型」服务，或免费额度已过期/用尽（错误码 11200 licc failed）。请在讯飞控制台为该 AppID 开通该服务并领取/购买额度后重试。".to_string(),
+        Some(11201) => "讯飞当日调用量已超限（错误码 11201），请次日重试或提升额度。".to_string(),
+        Some(11202) | Some(11203) => "讯飞并发/流控超限（错误码 11202/11203），请稍后重试。".to_string(),
+        Some(code) => format!(
+            "讯飞 OST 错误 {code}：{}",
+            api_error_message(j)
+        ),
+        None => format!("讯飞 OST HTTP {status}: {raw}"),
+    }
+}
+
 async fn post_ost_json(
     _client: &Client,
     path: &str,
@@ -69,7 +85,7 @@ async fn post_ost_json(
     let text = resp.text().await.map_err(|e| format!("读取 OST 响应: {e}"))?;
     let j: Value = serde_json::from_str(&text).unwrap_or_else(|_| json!({ "code": -1, "message": text }));
     if !status.is_success() && !api_code_ok(&j) {
-        return Err(format!("讯飞 OST HTTP {status}: {text}"));
+        return Err(ost_friendly_error(&j, status, &text));
     }
     if !api_code_ok(&j) {
         return Err(api_error_message(&j));
@@ -102,13 +118,7 @@ async fn post_ost_query_json(
         return Err("__xunfei_query_task_not_found__".to_string());
     }
     if !status.is_success() && !api_code_ok(&j) {
-        if let Some(msg) = j.get("message").and_then(|m| m.as_str()) {
-            return Err(format!(
-                "讯飞 OST 错误 {}：{msg}",
-                ost_api_code(&j).unwrap_or(-1)
-            ));
-        }
-        return Err(format!("讯飞 OST HTTP {status}: {text}"));
+        return Err(ost_friendly_error(&j, status, &text));
     }
     if !api_code_ok(&j) {
         return Err(api_error_message(&j));
@@ -201,5 +211,41 @@ pub async fn poll_task_result(
             return Err(api_error_message(&j));
         }
         transcribe_poll_wait(POLL_INTERVAL, cancel).await?;
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn maps_11200_to_authorization_hint() {
+        let j = json!({ "code": 11200, "message": "licc failed" });
+        let msg = ost_friendly_error(&j, reqwest::StatusCode::INTERNAL_SERVER_ERROR, "raw");
+        assert!(msg.contains("未开通"));
+        assert!(msg.contains("11200"));
+    }
+
+    #[test]
+    fn maps_flow_control_codes() {
+        let day = json!({ "code": 11201, "message": "x" });
+        assert!(ost_friendly_error(&day, reqwest::StatusCode::OK, "r").contains("当日"));
+        let conc = json!({ "code": 11203, "message": "x" });
+        assert!(ost_friendly_error(&conc, reqwest::StatusCode::OK, "r").contains("流控"));
+    }
+
+    #[test]
+    fn unknown_code_keeps_vendor_message() {
+        let j = json!({ "code": 10303, "message": "param error" });
+        let msg = ost_friendly_error(&j, reqwest::StatusCode::OK, "r");
+        assert!(msg.contains("10303"));
+        assert!(msg.contains("param error"));
+    }
+
+    #[test]
+    fn no_code_falls_back_to_raw_http() {
+        let j = json!({ "message": "boom" });
+        let msg = ost_friendly_error(&j, reqwest::StatusCode::BAD_GATEWAY, "rawbody");
+        assert!(msg.contains("rawbody"));
     }
 }

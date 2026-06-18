@@ -10,7 +10,7 @@
 | 适用节奏 | 单人、每轮 2～4h、一轮一纵向薄片 |
 | 规划跨度 | **个人单机 v1**：约 **14～18 周（自当前）** 或 **18～22 周（自 W1）**；R3 薄片 **~12～15w**（§4.0，含发行 smoke 缓冲）；协作 **非 v1** |
 | 修订 | 每完成一个阶段更新 §2 状态表、§4 排期表与 §13 代码对照 |
-| 最近对照 | **2026-06-18**：**§10.4 v1.1+ Step 5–12 ✅** · **REL-1.1 ✅** · **ACC-STT-IFLYTEK 🟡 编码✅ 待手测**（`f2e957d`）；主序闭合 → **§10.5 并行轨** |
+| 最近对照 | **2026-06-18**：**ACC-STT-IFLYTEK ✅**（编码 + 手测签收）· **§10.4 v1.1+ ✅** · **REL-1.1 ✅**；下一刀 → **§10.5 P2 架构热点** |
 
 ### 状态标记约定（全文档统一）
 
@@ -168,7 +168,7 @@ bash scripts/p0-acceptance.sh
 | 语段 uid / 草稿 / 波形同步 | ✅ 已实现 | 见 §13.1 |
 | 校对工作台波形 UX polish | ✅ 基线 | minimap 56px、layoutIntent 缩放栏、语段 tap seek、segment 策略（2026-05-30，`00e9a9d` 等）；非 R3t 薄片 |
 | 关窗守卫 + 未保存对话框 | ✅ 已实现 | `appWindowCloseGuard` + `allow-destroy` |
-| 在线 STT 环境 UI | ✅ 主体已有 | `EnvOnlineSttPanel` + 合约测试；**百炼 / OpenAI / AAI / DG** + **`iflytek-speed-asr`**（ACC-STT-IFLYTEK 🟡 待手测） |
+| 在线 STT 环境 UI | ✅ 主体已有 | `EnvOnlineSttPanel` + 合约测试；**百炼 / OpenAI / AAI / DG** + **`iflytek-speed-asr`**（ACC-STT-IFLYTEK ✅ 2026-06-18） |
 | FunASR 模型下载 UI | ✅ 主体已有 | `usePrepareModelController` + `EnvLocalAsrPanel` |
 | 本机 ASR 一键诊断/准备（R3f） | ✅ **mac** / Win ⏳ | `asr_setup/` + `LocalAsrSetupWizard`；mac 安装包机器签收 2026-06-09 — [signoff](../specs/r3f-phase-signoff-2026-06.md) |
 | **本地运行时目录 LRC（R3h）** | 🟡 尾项硬化 | R3h-0/1/2/3 ✅ · **R3h-1-R CI 编码 ✅**；Win ⏸ |
@@ -935,7 +935,7 @@ React 预览 UI
 | **ACC-MODEL-1** | SenseVoiceSmall_hotword / contextual SKU | FunASR 官方 hotword 增强权重 | **产品 Go**；R3g-C + ACC-EVAL-1 后插入 §4.1.1 |
 | **ACC-HOT-W** | 带权热词（`词 权重`） | 对齐 FunASR Runtime SDK / 阿里百炼 weight | R3g-C；ACC-EVAL-2 |
 | **ACC-STT-ALI** | 百炼 `vocabulary_id` + `target_model` | Fun-ASR Realtime 热词 CRUD | ✅ 编码 2026-06-09；**百炼 E2E ✅** 2026-06-12（§10.2 Step 4） | [`acc-stt-ali-hand-test-checklist.md`](../specs/acc-stt-ali-hand-test-checklist.md) |
-| **ACC-STT-IFLYTEK** | 讯飞 **speedTranscription**（`iflytek-speed-asr`） | Rust `xunfei_speed_asr` + 凭证三件套 + accent 8 项 + `business.dhw` 热词 | 🟡 **编码 ✅ 2026-06-18** · **手测 ⏳** | [`acc-stt-iflytek-acceptance.md`](../specs/acc-stt-iflytek-acceptance.md) · [`r3-china-iflytek-lfasr-research.md`](../specs/r3-china-iflytek-lfasr-research.md) |
+| **ACC-STT-IFLYTEK** | 讯飞 **speedTranscription**（`iflytek-speed-asr`） | Rust `xunfei_speed_asr` + 凭证三件套 + accent mandarin + `business.dhw` 热词 | ✅ **2026-06-18** | [`acc-stt-iflytek-acceptance.md`](../specs/acc-stt-iflytek-acceptance.md) · [`r3-china-iflytek-lfasr-research.md`](../specs/r3-china-iflytek-lfasr-research.md) |
 | **ACC-TXT-0** | 稳定规则转写后字面预替换（Spike） | AssemblyAI custom_spelling | **⑤″f-C MEM-P2** |
 | **ACC-IN-2/3** | 音频增强 / 选区重转写 | 须 ACC-EVAL A/B | R4 前 |
 | **ACC-HITL-1/2** | 低置信筛选 / R3t-E 优先队列 | UX 薄片 | R3t-B/E |
@@ -1025,7 +1025,7 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | **定位** | **个人单机 v1 主序已闭合**（EXP-WORD → REV-LOC → R4 → R9 → LLM-LOC 4a）；**v1 后硬化 Step 1–4 ✅**；进入 **§10.4 v1.1+ 统一后续** |
 | **排期真源** | **§10.4**（发行尾项 · 产品元信息 · **新手引导** · 定稿 UX · v1.1 安全/取消 · 并行禁忌） |
 | **LLM** | **4a** ✅ · **4b** ❌ Gate-B No-Go（[decision](../specs/llm-loc-gate-b-decision-2026-06.md)） |
-| **当前主刀** | **§10.4 v1.1+ 已闭合**（Step 5–12 ✅ · REL-1.1 2026-06-18）；**下一刀 → ACC-STT-IFLYTEK 手测签收**（§10.5 P1） |
+| **当前主刀** | **ACC-STT-IFLYTEK ✅**（2026-06-18 手测签收）；**下一刀 → §10.5 P2 架构热点**（T-010） |
 | **并行（不挡 P1）** | **架构热点回收**；**Win v0.1.0 release 资产** |
 | **近期不做** | **R3g-B-Align / Qwen3 本机第三 SKU** ❌ 废弃 · **R3g-C-NANO vLLM** ❌ Defer · STREAM-* / 协作 / CAT 等 §8 |
 
@@ -1325,8 +1325,8 @@ Step 12  REL-1.1  signoff  H-CSP-* + H-STT-* + 回归 R9 主路径抽检        
 > **定位**：§10.4 **主序已闭合**；下列项 **不占用 Step 编号**，按资源与 Key 并行推进。索引真源：[`parallel-backlog-2026-06.md`](../specs/parallel-backlog-2026-06.md)。
 
 ```text
-P1  ACC-STT-IFLYTEK   讯飞极速录音转写 — 🟡 编码 ✅ · 手测 ⏳
-P2  架构热点回收      guard 13 警告 · T-010 拆 run_transcribe / online_normalize
+P1  ACC-STT-IFLYTEK   讯飞极速录音转写 — ✅ 2026-06-18
+P2  架构热点回收      guard 13 警告 · T-010 拆 run_transcribe / online_normalize  ← 现在
 P3  R3h-1-R Win 资产  v0.1.0 release 包补传 — 下一 tag
 —   R3g-B-Align       ❌ 废弃 2026-06-18（Qwen3+ForcedAligner；2026-06-11 CPU ~8× 慢）
 —   R3g-C-NANO vLLM   ❌ Defer 2026-06-18（无 CUDA · 目前不做）
@@ -1334,7 +1334,7 @@ P3  R3h-1-R Win 资产  v0.1.0 release 包补传 — 下一 tag
 
 | 优先级 | ID | 状态 | 代码 / spec 锚点 | 下一动作 |
 |--------|-----|------|------------------|----------|
-| **P1** | **ACC-STT-IFLYTEK** | 🟡 编码 ✅ | `stt_native/xunfei_speed_asr/` · `iflytek-speed-asr` · macOS keyring 三件套 | [`acc-stt-iflytek-hand-test-checklist.md`](../specs/acc-stt-iflytek-hand-test-checklist.md) 签收 → acceptance ✅ |
+| **P1** | **ACC-STT-IFLYTEK** | ✅ **2026-06-18** | `stt_native/xunfei_speed_asr/` · `iflytek-speed-asr` · macOS keyring 三件套 | [`acc-stt-iflytek-acceptance.md`](../specs/acc-stt-iflytek-acceptance.md) ✅ |
 | **P2** | **架构热点** | 📋 | `run_transcribe_cmd.rs` · `online_segment_normalize.rs` · `useEnvOnlineSttPanel.ts` | guard ≥13 时开 **T-010** 薄片；勿与 ACC 手测同 PR |
 | **P3** | **Win release 资产** | 🟡 | `release.yml` **tauri-windows** ✅ | 下一 tag 补传 **v0.1.0** Win 安装包 |
 | — | **R3g-B-Align** | ❌ **废弃** | 2026-06-11 spike **Defer**（制控 211 段但 wall **~8×** Paraformer）；**2026-06-18 产品拍板不再做** | [`align-results`](../specs/r3g-b-align-forced-aligner-spike-results.md) · research 存档 |
@@ -1361,7 +1361,7 @@ P3  R3h-1-R Win 资产  v0.1.0 release 包补传 — 下一 tag
 | [`docs/architecture/asr-generate-params-truth.md`](../../architecture/asr-generate-params-truth.md) | **R3g-C** FunASR `generate()` Profile 真源表（**待立项**） |
 | [`r3g-c-asr-generate-profile-acceptance.md`](../specs/r3g-c-asr-generate-profile-acceptance.md) | **R3g-C** 验收切片（**待立项**） |
 | [`acc-stt-unify-acceptance.md`](../specs/acc-stt-unify-acceptance.md) | **ACC-STT-UNIFY** 验收切片（✅ 本机 2026-05-31；百炼 E2E ✅ 2026-06-12） |
-| [`acc-stt-iflytek-acceptance.md`](../specs/acc-stt-iflytek-acceptance.md) · [`r3-china-iflytek-lfasr-research.md`](../specs/r3-china-iflytek-lfasr-research.md) | **ACC-STT-IFLYTEK** 讯飞极速（🟡 编码 ✅ 2026-06-18 · 手测 ⏳） |
+| [`acc-stt-iflytek-acceptance.md`](../specs/acc-stt-iflytek-acceptance.md) · [`r3-china-iflytek-lfasr-research.md`](../specs/r3-china-iflytek-lfasr-research.md) | **ACC-STT-IFLYTEK** 讯飞极速 ✅ **2026-06-18** |
 | [`r3g-c-funasr-nano-vllm-research.md`](../specs/r3g-c-funasr-nano-vllm-research.md) | **R3g-C-NANO vLLM** research ✅ · **❌ Defer 2026-06-18**（无 CUDA · 目前不做 spike） |
 | [`r3g-b-align-qwen3-forced-aligner-spike-research.md`](../specs/r3g-b-align-qwen3-forced-aligner-spike-research.md) | **R3g-B-Align** ❌ **废弃** 2026-06-18（spike Defer 2026-06-11）· [`results`](../specs/r3g-b-align-forced-aligner-spike-results.md) |
 | [`r3e-c-incremental-transcribe-acceptance.md`](../specs/r3e-c-incremental-transcribe-acceptance.md) | **R3e-C** 增量 preview（✅ 2026-05-31） |
@@ -1466,6 +1466,7 @@ P3  R3h-1-R Win 资产  v0.1.0 release 包补传 — 下一 tag
 | 2026-06-18 | **桌面 UX 尾项**（`2a5e021`）：转写 copy/排版 · 浮动 dialog 动态 `layoutRev` · 定稿模式链接；§13 对照刷新（test **1489** · guard **13**） |
 | 2026-06-18 | **R3g-C-NANO vLLM** ❌ **Defer**（无 NVIDIA CUDA · **目前不做** spike） |
 | 2026-06-18 | **R3g-B-Align** ❌ **废弃**（2026-06-11 CPU ~8× 慢 · 不再做本机 Qwen3/ForcedAligner 第三 SKU）；§10.5 并行轨 **P2→架构热点 · P3→Win 资产** |
+| 2026-06-18 | **ACC-STT-IFLYTEK ✅** — 手测签收；§10.5 **下一刀 → P2 架构热点** |
 
 ---
 
@@ -1536,7 +1537,7 @@ P3  R3h-1-R Win 资产  v0.1.0 release 包补传 — 下一 tag
 | **密集语段 UX** | Canvas bands + 列表虚拟化 | ✅ 2026-05-30；[`segment-overlay-virtualization.md`](../specs/segment-overlay-virtualization.md) |
 | **R3g-C** | `asr_model_profile.py` + 识别语言 UI/pref | ✅ 2026-05-31 |
 | **ACC-STT-UNIFY** | `stt_vocabulary` + `sttVocabularyBias` | ✅ 本机 2026-05-31；**百炼 E2E ✅** 2026-06-12 |
-| **ACC-STT-IFLYTEK** | `xunfei_speed_asr` + `iflytek-speed-asr` + 三件套 UI | 🟡 **编码 ✅ 2026-06-18** · **手测 ⏳** |
+| **ACC-STT-IFLYTEK** | `xunfei_speed_asr` + `iflytek-speed-asr` + 三件套 UI | ✅ **2026-06-18** 手测签收 |
 | **§10.4 v1.1+** | CSP · STT-CANCEL · DELIV · ONBOARD · BATCH · REL-1.1 | ✅ Step 5–12 · 2026-06-18 |
 | **波形 UX** | 2026-05 minimap / zoom / tap seek | ✅ |
 | **R4** | 质量 Tab + gate signoff | ✅ 2026-06-03 |
@@ -1565,7 +1566,7 @@ P3  R3h-1-R Win 资产  v0.1.0 release 包补传 — 下一 tag
 ### 13.4 排期调整摘要（2026-06-18）
 
 1. **§10.4 v1.1+ 主序闭合**（Step 5–12 ✅ · REL-1.1 2026-06-18）。  
-2. **§10.5 并行轨** 真源：P1 **ACC-STT-IFLYTEK 手测** → P2 **架构热点** → P3 **Win 资产**。  
+2. **§10.5 并行轨** 真源：**P1 ACC-STT-IFLYTEK ✅** → **P2 架构热点** → **P3 Win 资产**（← 现在）。  
 3. **本机第三 SKU**（Qwen3 / ForcedAligner / Nano / vLLM）**全部关闭** — Align **废弃** 2026-06-18。  
 4. **R3f / LRC 发行闸门**：mac/linux/Win CI ✅；**Win v0.1.0 release 资产**待下一 tag。  
 5. **guard** 自 46 → **13** 警告（热点表 §13.3）；**T-010** 仍建议在叠大功能前开薄片。

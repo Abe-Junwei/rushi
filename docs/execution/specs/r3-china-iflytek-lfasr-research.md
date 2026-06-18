@@ -1,6 +1,6 @@
 # R3 调研：讯飞开放平台长音频语音转写（LFASR）原生接入
 
-> **状态**：research ✅ · 编码 ✅（2026-06-18）· **手测 ⏳**（acceptance 签收前仍为规划门禁）  
+> **状态**：research ✅ · 编码 ✅ · **acceptance ✅ 手测签收 2026-06-18**  
 > **目的**：为国内在线 STT 补齐讯飞长音频转写原生支持，达到当前阿里云百炼 Fun-ASR（`dashscope-asr`）的同等级集成深度：Provider 定义表 + Rust Native Adapter + 异步 Job 轮询 + 归一化 `schema_version: 1` 结果。  
 > **关联**：[`stt-online-providers.md`](../../architecture/stt-online-providers.md)、[`desktop-capability-ui-state-alignment.md`](../../architecture/desktop-capability-ui-state-alignment.md)、[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) §R3、[`CONTEXT.md`](../../../CONTEXT.md)。  
 > **下游 spec**：[`acc-stt-iflytek-plan.md`](./acc-stt-iflytek-plan.md) · [`acc-stt-iflytek-acceptance.md`](./acc-stt-iflytek-acceptance.md) · [`acc-stt-iflytek-hand-test-checklist.md`](./acc-stt-iflytek-hand-test-checklist.md)

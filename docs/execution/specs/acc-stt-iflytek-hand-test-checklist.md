@@ -62,4 +62,4 @@ cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml xunfei_speed_asr
 
 | 日期 | §1 环境 | §3 E2E | §4 负例 | 备注 |
 |------|---------|--------|---------|------|
-| | | | | |
+| 2026-06-18 | ✅ | ✅ | ✅ | 产品手测签收；accent v1 只读 mandarin（非 8 项下拉） |

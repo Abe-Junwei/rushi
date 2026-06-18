@@ -14,6 +14,12 @@ pub const XUNFEI_UPLOAD_HOST: &str = "upload-ost-api.xfyun.cn";
 const CHUNK_THRESHOLD: u64 = 30 * 1024 * 1024;
 const SLICE_SIZE: usize = 10 * 1024 * 1024;
 
+/// 讯飞 speedTranscription mpupload `slice_id` 为 **从 1 起递增的整数**。
+/// 用 0-based 时首片 `slice_id="0"` 会被服务端判为空 → `sliceId must not be empty`。
+fn xunfei_slice_id(index: usize) -> usize {
+    index + 1
+}
+
 fn api_code_ok(j: &Value) -> bool {
     j.get("code")
         .and_then(|c| c.as_i64().or_else(|| c.as_str().and_then(|s| s.parse().ok())))
@@ -216,10 +222,11 @@ async fn upload_multipart_file(
         .ok_or_else(|| "分块 init 缺少 upload_id".to_string())?;
 
     let total_slices = file_bytes.len().div_ceil(SLICE_SIZE);
-    for slice_id in 0..total_slices {
-        let start = slice_id * SLICE_SIZE;
-        let end = ((slice_id + 1) * SLICE_SIZE).min(file_bytes.len());
+    for index in 0..total_slices {
+        let start = index * SLICE_SIZE;
+        let end = ((index + 1) * SLICE_SIZE).min(file_bytes.len());
         let slice = &file_bytes[start..end];
+        let slice_id = xunfei_slice_id(index);
         let request_id = Uuid::new_v4().to_string();
         let (slice_body, slice_ct) = build_multipart_slice_upload(
             app_id,
@@ -305,6 +312,14 @@ mod tests {
         assert!(data_pos < slice_pos, "data must precede slice_id per Xunfei API");
         assert!(text.contains("upload-abc"));
         assert!(text.contains("slice_id\"\r\n\r\n2\r\n") || text.contains("slice_id\"\r\n\r\n2\n"));
+    }
+
+    #[test]
+    fn slice_id_is_one_based() {
+        // 讯飞 mpupload slice_id 从 1 起；0-based 首片会触发 "sliceId must not be empty"。
+        assert_eq!(xunfei_slice_id(0), 1);
+        assert_eq!(xunfei_slice_id(1), 2);
+        assert_eq!(xunfei_slice_id(4), 5);
     }
 
     #[test]

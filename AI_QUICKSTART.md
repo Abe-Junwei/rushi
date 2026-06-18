@@ -21,12 +21,16 @@
 
 ## 当前热点（自动同步，2026-06-18）
 
-**§10.4 v1.1+ 主序 ✅**（Step 5–12 · REL-1.1 2026-06-18）。**下一刀 → ACC-STT-IFLYTEK 手测**（[`parallel-backlog-2026-06.md`](./docs/execution/specs/parallel-backlog-2026-06.md) §10.5 P1）。
+**§10.4 v1.1+ 主序 ✅**（Step 5–12 · REL-1.1 2026-06-18）。**ACC-STT-IFLYTEK ✅**（2026-06-18 手测签收）。**下一刀 → §10.5 P2 架构热点**（[`parallel-backlog-2026-06.md`](./docs/execution/specs/parallel-backlog-2026-06.md)）。
 
-**ASR 雷达（并行，不挡 P1）**
+**ASR 雷达（并行，不挡 P2）**
 
-- **ACC-STT-IFLYTEK** 🟡 **编码 ✅ · 手测 ⏳** — `iflytek-speed-asr` · [`acc-stt-iflytek-hand-test-checklist.md`](./docs/execution/specs/acc-stt-iflytek-hand-test-checklist.md)
-- **架构热点回收** 📋 — guard **13** 警告 · T-010 拆 `run_transcribe_cmd` / `online_segment_normalize`
+- **架构热点回收** 📋 ← **现在** — guard **13** 警告 · T-010 拆 `run_transcribe_cmd` / `online_segment_normalize`
+- **Win release 资产** 🟡 — 下一 tag 补 **v0.1.0** 安装包
+
+**已闭合**
+
+- **ACC-STT-IFLYTEK** ✅ **2026-06-18** — `iflytek-speed-asr` · [`acc-stt-iflytek-acceptance.md`](./docs/execution/specs/acc-stt-iflytek-acceptance.md)
 
 **暂不做 / Defer / 废弃**
 
@@ -59,7 +63,7 @@
 | 新 UI / 整页重设计 / Stitch 对齐 | 仓库根 `DESIGN.md` → 再映射到 `tailwind.config.js` + `apps/desktop/src/config/tokens.ts` |
 | **波形区 Stitch 精修** | [`apps/desktop/docs/stitch-waveform-polish-spec.md`](./apps/desktop/docs/stitch-waveform-polish-spec.md) + [`stitch-waveform-polish-layout.html`](./apps/desktop/stitch-waveform-polish-layout.html) → `bash scripts/prepare-stitch-upload.sh` |
 | 浮动确认/表单对话框 | `FloatingPanelTemplate` + `preset="compactDialog"`；`controlStyles.ts` 按钮；见 [`docs/architecture/desktop-floating-dialog-panels.md`](./docs/architecture/desktop-floating-dialog-panels.md) |
-| **后续排期 / 下一刀** | [`parallel-backlog-2026-06.md`](./docs/execution/specs/parallel-backlog-2026-06.md) — **§10.4 ✅** · **P1 ACC-STT-IFLYTEK 手测** · §10.5 并行轨 |
+| **后续排期 / 下一刀** | [`parallel-backlog-2026-06.md`](./docs/execution/specs/parallel-backlog-2026-06.md) — **§10.4 ✅** · **ACC-STT-IFLYTEK ✅** · **P2 架构热点** · §10.5 并行轨 |
 | **新功能 / 路线图薄片** | 可选先 **`grill-with-docs`** → **先调研后编码**：`.cursor/rules/feature-research-gate.mdc` + `docs/execution/specs/*-research.md`；范例 [`r3-provider-configuration-research.md`](./docs/execution/specs/r3-provider-configuration-research.md) |
 | **难 bug / 侧车 / flaky** | `.cursor/skills/diagnose` 或对话中说「按 diagnose 查」 |
 | **架构 hotspot / 定期体检** | `.cursor/skills/improve-architecture`；配合 `check-architecture-guard.mjs` |

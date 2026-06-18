@@ -1,6 +1,6 @@
 # ACC-STT-IFLYTEK — Plan：讯飞极速录音转写原生接入
 
-> **状态**：🟡 编码 ✅（2026-06-18）· **手测 ⏳**  
+> **状态**：✅ **编码 ✅ · 手测签收 ✅**（2026-06-18）
 > **Research**：[`r3-china-iflytek-lfasr-research.md`](./r3-china-iflytek-lfasr-research.md)  
 > **Acceptance**：[`acc-stt-iflytek-acceptance.md`](./acc-stt-iflytek-acceptance.md)  
 > **手测**：[`acc-stt-iflytek-hand-test-checklist.md`](./acc-stt-iflytek-hand-test-checklist.md)
