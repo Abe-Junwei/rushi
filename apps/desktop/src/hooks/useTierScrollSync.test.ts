@@ -3,6 +3,10 @@
 import { act, renderHook } from "@testing-library/react";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { useTierScrollSync } from "./useTierScrollSync";
+import {
+  resetTierScrollFrameCoordinatorForTests,
+  subscribeTierScrollFrame,
+} from "../utils/tierScrollFrameCoordinator";
 
 function createTierContainer(clientWidth = 320) {
   const el = document.createElement("div");
@@ -34,7 +38,6 @@ function createWaveformApi() {
   return {
     isReady: true,
     duration: 30,
-    syncWaveSurferScrollPx: vi.fn(),
     clientXToTimeSec: vi.fn((clientX: number) => clientX / 10),
     seek: vi.fn(),
   };
@@ -56,6 +59,7 @@ describe("useTierScrollSync", () => {
   });
 
   afterEach(() => {
+    resetTierScrollFrameCoordinatorForTests();
     vi.unstubAllGlobals();
   });
 
@@ -77,6 +81,7 @@ describe("useTierScrollSync", () => {
 
     await act(async () => {
       await new Promise((r) => setTimeout(r, 0));
+      await new Promise((r) => setTimeout(r, 0));
     });
 
     act(() => {
@@ -84,7 +89,7 @@ describe("useTierScrollSync", () => {
       result.current.onTierScroll();
     });
     await act(async () => {
-      await new Promise((r) => setTimeout(r, 0));
+      await new Promise((r) => setTimeout(r, 150));
     });
 
     expect(result.current.tierScrollLayout).toEqual({ clientWidthPx: 320, scrollLeftPx: 96 });
@@ -183,7 +188,8 @@ describe("useTierScrollSync", () => {
       await new Promise((r) => setTimeout(r, 0));
     });
 
-    wfApi.syncWaveSurferScrollPx.mockClear();
+    const onFrame = vi.fn();
+    const unsubscribe = subscribeTierScrollFrame(onFrame);
 
     act(() => {
       result.current.setTierScrollPx(100);
@@ -193,11 +199,12 @@ describe("useTierScrollSync", () => {
 
     await act(async () => {
       await new Promise((r) => setTimeout(r, 0));
+      await new Promise((r) => setTimeout(r, 0));
     });
 
     expect(tier.scrollLeft).toBe(140);
-    expect(wfApi.syncWaveSurferScrollPx).toHaveBeenCalledTimes(1);
-    expect(wfApi.syncWaveSurferScrollPx).toHaveBeenCalledWith(140);
+    expect(onFrame).toHaveBeenCalledTimes(1);
+    unsubscribe();
   });
 
   it("uses smooth DOM scrolling for setTierScrollPxSmooth", () => {

@@ -27,14 +27,6 @@ export const PX_PER_SEC_PEAKS_QUANTUM = 8;
  */
 export const MAX_WAVESURFER_PEAK_COLUMNS = 40_960;
 
-/**
- * WaveSurfer 宿主容器固定宽度：≥ 任意缩放下的 WS 可滚宽度（`clampPxPerSecForWaveSurferRender`
- * 已将 `px/s × duration` 钳制到 `MAX_WAVESURFER_PEAK_COLUMNS`）。容器恒比波形宽 → WS 永远「不可内部滚动」，
- * 一次性渲染全部 canvas tile（消除懒渲染留白尾巴）；横向定位改用宿主 `translateX`。
- * `+256` 余量吸收 `ceil` 取整，杜绝因 1px 偏差退回懒渲染。
- */
-export const WAVEFORM_WS_HOST_WIDTH_PX = MAX_WAVESURFER_PEAK_COLUMNS + 256;
-
 /** decode 回退路径下单次 canvas 宽度上限（与 peaks 列数上限同比例 ≈+25%）。 */
 const MAX_WAVESURFER_CANVAS_WIDTH_PX = 327_680;
 

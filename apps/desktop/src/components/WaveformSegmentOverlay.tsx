@@ -2,6 +2,7 @@ import { memo, useMemo } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
 import type { SegmentOverlapPolicy } from "../utils/segmentTimeRange";
 import { useWaveformSegmentOverlay } from "../hooks/useWaveformSegmentOverlay";
+import { resolveWaveformSegmentFillState } from "../utils/segmentChrome";
 import { computeCreatePreviewStyle } from "../utils/waveformSegmentOverlayGeometry";
 import { selectOverlayInteractiveSegmentIndices } from "../utils/waveformSegmentOverlayVisibility";
 import { WaveformSegmentRegionItem } from "./WaveformSegmentRegionItem";
@@ -69,7 +70,6 @@ export const WaveformSegmentOverlay = memo(function WaveformSegmentOverlay(props
     segments,
     selectedIdx,
     durationSec,
-    isIndexInSelection,
   } = props;
 
   const segmentIndices = useMemo(
@@ -96,12 +96,7 @@ export const WaveformSegmentOverlay = memo(function WaveformSegmentOverlay(props
     ],
   );
 
-  const rangeLo = props.selectionLo ?? selectedIdx;
-  const rangeHi = props.selectionHi ?? selectedIdx;
-  const contiguousMulti =
-    props.isContiguousSelection === true &&
-    (props.selectionCount ?? 1) > 1 &&
-    rangeHi > rangeLo;
+  const multiSelectActive = (props.selectedIndices?.size ?? 0) > 1;
 
   return (
     <div
@@ -118,11 +113,11 @@ export const WaveformSegmentOverlay = memo(function WaveformSegmentOverlay(props
         if (!seg) return null;
         const bounds = segmentBoundsAt(idx);
         if (!bounds) return null;
-        const selected = idx === selectedIdx;
-        const inContiguousRange = contiguousMulti && idx >= rangeLo && idx <= rangeHi;
-        const inSelection =
-          !selected &&
-          (inContiguousRange || (isIndexInSelection?.(idx) ?? false));
+        const { selected, inSelection } = resolveWaveformSegmentFillState({
+          idx,
+          selectedIdx,
+          selectedIndices: props.selectedIndices,
+        });
         return (
           <WaveformSegmentRegionItem
             key={seg.uid ? `${seg.uid}#${idx}` : `seg-${idx}`}
@@ -133,6 +128,7 @@ export const WaveformSegmentOverlay = memo(function WaveformSegmentOverlay(props
             selected={selected}
             inSelection={inSelection}
             showHandles={selected || idx === segmentDraftIdx}
+            multiSelectActive={multiSelectActive}
             timelineWidthPx={timelineWidthPx}
             durationSec={durationSec}
             lane={laneByIndex[idx] ?? 0}

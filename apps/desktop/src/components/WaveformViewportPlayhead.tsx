@@ -2,6 +2,7 @@ import { memo, useCallback, useEffect, useRef } from "react";
 import { useWaveformLiveClock } from "../hooks/useWaveformLiveClock";
 import { setCspLayoutRules } from "../utils/cspElementLayout";
 import { playheadViewportLeftPx } from "../utils/waveformProjection";
+import { subscribeTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
 import {
   resolveTierViewportMetrics,
   type TierScrollLayoutMetrics,
@@ -103,26 +104,20 @@ export const WaveformViewportPlayhead = memo(function WaveformViewportPlayhead({
     currentTimeSec,
     isPlaying,
     isReady,
-    tierScrollLayout.scrollLeftPx,
     timelineWidthPx,
     writePosition,
   ]);
 
   useEffect(() => {
-    const scrollEl = tierScrollRef?.current;
-    if (!scrollEl) return;
-    const onScroll = () => {
+    if (!isReady) return;
+    const onScrollFrame = () => {
       const args = argsRef.current;
       const timeSec = args.isPlaying ? args.getPlayheadTime() : args.currentTimeSec;
       writePosition(timeSec);
     };
-    scrollEl.addEventListener("scroll", onScroll, { passive: true });
-    window.addEventListener("resize", onScroll);
-    return () => {
-      scrollEl.removeEventListener("scroll", onScroll);
-      window.removeEventListener("resize", onScroll);
-    };
-  }, [tierScrollRef, writePosition]);
+    const unsub = subscribeTierScrollFrame(onScrollFrame);
+    return unsub;
+  }, [isReady, writePosition]);
 
   if (!isReady || durationSec <= 0 || timelineWidthPx <= 0) {
     return null;

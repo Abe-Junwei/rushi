@@ -50,7 +50,6 @@ export function EditorWaveformPane({
     <div className="relative z-10 flex w-full shrink-0 flex-col overflow-visible bg-notion-sidebar">
       <CspLayout
         ref={tx.tierScrollRef}
-        onScroll={tx.onTierScroll}
         layout={{ height: waveformStageHeightPx }}
         className="relative w-full shrink-0 overflow-x-auto overflow-y-hidden bg-notion-sidebar [overflow-anchor:none]"
       >

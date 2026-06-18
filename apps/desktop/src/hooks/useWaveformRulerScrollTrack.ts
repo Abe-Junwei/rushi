@@ -1,5 +1,6 @@
 import { useLayoutEffect, type RefObject } from "react";
 import { clearCspLayoutRules, setCspLayoutRules } from "../utils/cspElementLayout";
+import { subscribeTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
 
 type UseWaveformRulerScrollTrackArgs = {
   enabled: boolean;
@@ -52,11 +53,11 @@ export function useWaveformRulerScrollTrack({
     };
 
     applyTransform();
-    scrollEl.addEventListener("scroll", applyTransform, { passive: true });
+    const unsubFrame = subscribeTierScrollFrame(applyTransform);
     window.addEventListener("resize", applyTransform);
 
     return () => {
-      scrollEl.removeEventListener("scroll", applyTransform);
+      unsubFrame();
       window.removeEventListener("resize", applyTransform);
       if (tickRebuildRaf) cancelAnimationFrame(tickRebuildRaf);
       clearCspLayoutRules(track);

@@ -31,7 +31,7 @@ describe("useWaveformTierWheelForward", () => {
     );
 
     tier.dispatchEvent(new WheelEvent("wheel", { deltaX: 48, bubbles: true }));
-    expect(scrollLeft).toBe(48);
+    expect(scrollLeft).toBe(120);
     expect(onTierScroll).toHaveBeenCalledTimes(1);
 
     tier.remove();
@@ -62,7 +62,7 @@ describe("useWaveformTierWheelForward", () => {
     );
 
     shell.dispatchEvent(new WheelEvent("wheel", { deltaY: 64, bubbles: true, cancelable: true }));
-    expect(scrollLeft).toBe(64);
+    expect(scrollLeft).toBe(160);
     expect(onTierScroll).toHaveBeenCalledTimes(1);
 
     tier.remove();

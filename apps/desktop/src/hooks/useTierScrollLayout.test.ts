@@ -20,7 +20,7 @@ describe("useTierScrollLayout", () => {
     expect(typeof result.current.refreshLayout).toBe("function");
   });
 
-  it("updates on scroll events", () => {
+  it("updates on scroll events after scroll burst settles", async () => {
     const el = document.createElement("div");
     let scrollLeft = 0;
     Object.defineProperty(el, "scrollLeft", {
@@ -38,6 +38,12 @@ describe("useTierScrollLayout", () => {
     act(() => {
       scrollLeft = 120;
       el.dispatchEvent(new Event("scroll"));
+    });
+    expect(result.current.liveScrollLeftRef.current).toBe(120);
+    expect(result.current.scrollLeftPx).toBe(0);
+
+    await act(async () => {
+      await new Promise((resolve) => setTimeout(resolve, 150));
     });
 
     expect(result.current.scrollLeftPx).toBe(120);

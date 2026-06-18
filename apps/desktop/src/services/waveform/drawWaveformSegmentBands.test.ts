@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { drawWaveformSegmentBands } from "./drawWaveformSegmentBands";
+import {
+  drawWaveformSegmentBands,
+  findFirstSegmentIndexEndingAtOrAfter,
+  findLastSegmentIndexStartingAtOrBefore,
+} from "./drawWaveformSegmentBands";
 
 describe("drawWaveformSegmentBands", () => {
   it("draws only bands intersecting the padded viewport", () => {
@@ -68,5 +72,21 @@ describe("drawWaveformSegmentBands", () => {
     });
 
     expect(fillRectCalls).toBe(0);
+  });
+
+  it("finds visible index window on sorted segments", () => {
+    const segments = Array.from({ length: 500 }, (_, i) => ({
+      idx: i,
+      uid: `u-${i}`,
+      start_sec: i * 10,
+      end_sec: i * 10 + 8,
+      text: `s${i}`,
+    }));
+
+    const from = findFirstSegmentIndexEndingAtOrAfter(segments, 500);
+    const to = findLastSegmentIndexStartingAtOrBefore(segments, 700);
+    expect(from).toBe(50);
+    expect(to).toBe(70);
+    expect(to - from).toBeLessThan(50);
   });
 });

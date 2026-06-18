@@ -66,12 +66,14 @@ export function resolveSegmentPlaybackControlsOverlayLayout(input: {
   const coordinateSpace = input.coordinateSpace ?? "viewport";
 
   if (coordinateSpace === "timeline") {
-    const segCenterTimelinePx = (leftPx + rightPx) / 2;
-    const segMinLeft = leftPx;
-    const segMaxLeft = Math.max(segMinLeft, rightPx - overlayWidthPx);
+    const visibleLeftTimelinePx = visibleLeftVp + scrollLeftPx;
+    const visibleRightTimelinePx = visibleRightVp + scrollLeftPx;
+    const visibleCenterTimelinePx = (visibleLeftTimelinePx + visibleRightTimelinePx) / 2;
+    const segMinLeft = visibleLeftTimelinePx;
+    const segMaxLeft = Math.max(segMinLeft, visibleRightTimelinePx - overlayWidthPx);
     const overlayLeftPx = Math.max(
       segMinLeft,
-      Math.min(segMaxLeft, segCenterTimelinePx - overlayWidthPx / 2),
+      Math.min(segMaxLeft, visibleCenterTimelinePx - overlayWidthPx / 2),
     );
     return {
       visible,

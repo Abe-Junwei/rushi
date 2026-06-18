@@ -7,7 +7,6 @@ import {
   quantizePxPerSecForPeaksLoad,
   clampPxPerSecForWaveSurferRender,
   MAX_WAVESURFER_PEAK_COLUMNS,
-  WAVEFORM_WS_HOST_WIDTH_PX,
 } from "../utils/pxPerSec";
 import { resolveLayoutDurationSec } from "../utils/waveformTimelineMetrics";
 import {
@@ -17,13 +16,17 @@ import {
 } from "../utils/waveformAppliedZoom";
 import { WAVEFORM_DECODE_SAMPLE_RATE } from "../services/waveform/waveformZoomSyncEngine";
 import { installWaveSurferProgressAbortWarnFilter } from "../services/waveform/waveSurferProgressAbortWarn";
-import { installWaveSurferPlayedRegionDisplayFix } from "../services/waveform/waveformSurferProgressCoverage";
+import {
+  applyWaveSurferProgressWithoutClip,
+  installWaveSurferInternalScrollLock,
+  installWaveSurferPlayedRegionDisplayFix,
+} from "../services/waveform/waveformSurferProgressCoverage";
 import {
   logWaveformRenderPath,
   resetWaveformRenderPathLog,
 } from "../services/waveform/waveformRuntimePath";
-import { bindProjectWaveformWaveSurferEvents } from "./projectWaveformWaveSurferEvents";
 import { subscribeAppAppearance } from "../services/ui/appAppearance";
+import { bindProjectWaveformWaveSurferEvents } from "./projectWaveformWaveSurferEvents";
 import { logDesktopUi } from "../services/desktopUiLog";
 import { logRuntimeParity } from "../services/runtimeParity";
 import { probeWaveformAssetFetchParity } from "../services/waveform/waveformAssetFetchParity";
@@ -141,11 +144,8 @@ export function useProjectWaveformMount(
       const mountEl = containerRef.current;
       if (!mountEl?.isConnected) return;
 
-      // Host stays wider than any zoom's waveform width → WaveSurfer never scrolls
-      // internally, so it renders all canvas tiles eagerly (no lazy blank tail).
-      // Horizontal position is driven by `translateX` in `positionWaveSurferHostByScroll`.
       setCspLayoutRules(mountEl, {
-        width: WAVEFORM_WS_HOST_WIDTH_PX,
+        width: "100%",
         transform: "translateX(0px)",
       });
 
@@ -178,7 +178,10 @@ export function useProjectWaveformMount(
 
       wsRef.current = ws;
 
-      wsUnsubsRef.current.push(installWaveSurferPlayedRegionDisplayFix(ws));
+      wsUnsubsRef.current.push(
+        installWaveSurferInternalScrollLock(ws),
+        installWaveSurferPlayedRegionDisplayFix(ws),
+      );
       if (mediaUrl && !mediaDiskPath) {
         logRuntimeParity("waveform", "mount_parity_probe_skipped no_mediaDiskPath", "WARN");
       }
@@ -256,6 +259,10 @@ export function useProjectWaveformMount(
         progressColor: palette.progressColor,
         cursorColor: palette.cursorColor,
       });
+      const duration = ws.getDuration();
+      if (duration > 0) {
+        applyWaveSurferProgressWithoutClip(ws, ws.getCurrentTime() / duration);
+      }
     });
   }, [wsRef]);
 }

@@ -14,6 +14,7 @@ export type WaveformSegmentRegionItemProps = {
   selected: boolean;
   inSelection?: boolean;
   showHandles?: boolean;
+  multiSelectActive?: boolean;
   timelineWidthPx: number;
   durationSec: number;
   lane: number;
@@ -34,6 +35,7 @@ export const WaveformSegmentRegionItem = memo(
     selected,
     inSelection = false,
     showHandles = selected,
+    multiSelectActive = false,
     timelineWidthPx,
     durationSec,
     lane,
@@ -76,7 +78,9 @@ export const WaveformSegmentRegionItem = memo(
           width: geom.widthPx,
           top: geom.topPx,
           height: geom.heightPx,
-          background: waveformRegionFillColor(seg, selected, inSelection),
+          background: waveformRegionFillColor(seg, selected, inSelection, undefined, {
+            multiSelectActive,
+          }),
         }}
         className={[
           "waveform-segment-region",
@@ -106,6 +110,7 @@ export const WaveformSegmentRegionItem = memo(
     prev.selected === next.selected &&
     prev.inSelection === next.inSelection &&
     prev.showHandles === next.showHandles &&
+    prev.multiSelectActive === next.multiSelectActive &&
     prev.timelineWidthPx === next.timelineWidthPx &&
     prev.durationSec === next.durationSec &&
     prev.lane === next.lane &&

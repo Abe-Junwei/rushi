@@ -47,8 +47,6 @@ export function createWaveformViewportResizeTransaction(ctx: WaveformViewportRes
       peaksStageShellRef,
       stickyShellRef,
       onFitAllPxPerSecRefit,
-      waveformScrollLayerRef,
-      overlayScrollLayerRef,
     } = ctx.getArgs();
     const dur = layoutDurationSecRef?.current ?? 0;
     if (dur <= 0) return;
@@ -60,8 +58,6 @@ export function createWaveformViewportResizeTransaction(ctx: WaveformViewportRes
       timelineShell: timelineShellRef?.current,
       peaksStageShell: peaksStageShellRef?.current,
       stickyShell: stickyShellRef?.current,
-      waveformScrollLayer: waveformScrollLayerRef?.current,
-      overlayScrollLayer: overlayScrollLayerRef?.current,
       timelineWidthPx,
       viewportWidthPx: tierW,
     });
@@ -76,8 +72,6 @@ export function createWaveformViewportResizeTransaction(ctx: WaveformViewportRes
       timelineShellRef,
       peaksStageShellRef,
       stickyShellRef,
-      waveformScrollLayerRef,
-      overlayScrollLayerRef,
     } = ctx.getArgs();
     const dur = layoutDurationSecRef?.current ?? 0;
     const px = appliedZoom?.appliedZoomPxPerSecRef.current ?? 0;
@@ -90,8 +84,6 @@ export function createWaveformViewportResizeTransaction(ctx: WaveformViewportRes
       timelineShell: timelineShellRef?.current,
       peaksStageShell: peaksStageShellRef?.current,
       stickyShell: stickyShellRef?.current,
-      waveformScrollLayer: waveformScrollLayerRef?.current,
-      overlayScrollLayer: overlayScrollLayerRef?.current,
       timelineWidthPx,
       viewportWidthPx: tierW,
     });

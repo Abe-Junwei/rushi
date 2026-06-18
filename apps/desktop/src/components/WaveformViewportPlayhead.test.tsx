@@ -1,6 +1,11 @@
 import { render, act } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
 import { readCspLayoutRulesForElement } from "../utils/cspElementLayout";
+import {
+  flushTierScrollFrameForTests,
+  resetTierScrollFrameCoordinatorForTests,
+  scheduleTierScrollFrame,
+} from "../utils/tierScrollFrameCoordinator";
 import { WaveformViewportPlayhead } from "./WaveformViewportPlayhead";
 
 describe("WaveformViewportPlayhead", () => {
@@ -53,16 +58,18 @@ describe("WaveformViewportPlayhead", () => {
     const line = container.querySelector(".waveform-viewport-playhead") as HTMLDivElement;
     tierScroll.scrollLeft = 100;
     act(() => {
-      tierScroll.dispatchEvent(new Event("scroll"));
+      scheduleTierScrollFrame();
+      flushTierScrollFrameForTests();
     });
+    resetTierScrollFrameCoordinatorForTests();
     expect(readCspLayoutRulesForElement(line)).toContain("translate3d(200px, 0, 0)");
   });
 });
 
 describe("tailwind production parity — stroke opacity scale", () => {
   it("documents that /58 opacity utilities are not emitted (use waveform.css instead)", () => {
-    // Guard against regressing to stroke-zen-saffron/58 on release-only playhead paths.
-    expect("stroke-zen-saffron/58".endsWith("/58")).toBe(true);
-    expect("stroke-zen-saffron/90".endsWith("/90")).toBe(true);
+    // Guard against regressing to stroke-accent-action/58 on release-only playhead paths.
+    expect("stroke-accent-action/58".endsWith("/58")).toBe(true);
+    expect("stroke-accent-action/90".endsWith("/90")).toBe(true);
   });
 });

@@ -6,8 +6,6 @@ export type WriteWaveformShellLayoutInput = {
   timelineShell?: HTMLElement | null;
   peaksStageShell?: HTMLElement | null;
   stickyShell?: HTMLElement | null;
-  waveformScrollLayer?: HTMLElement | null;
-  overlayScrollLayer?: HTMLElement | null;
   timelineWidthPx: number;
   viewportWidthPx: number;
 };
@@ -18,8 +16,6 @@ export function writeWaveformShellLayout(input: WriteWaveformShellLayoutInput): 
     timelineShell,
     peaksStageShell,
     stickyShell,
-    waveformScrollLayer,
-    overlayScrollLayer,
     timelineWidthPx,
     viewportWidthPx,
   } = input;
@@ -28,13 +24,6 @@ export function writeWaveformShellLayout(input: WriteWaveformShellLayoutInput): 
   if (timelineShell) writeWaveformTimelineShellWidth(timelineShell, timelineWidthPx);
   if (peaksStageShell) writeWaveformPeaksStageShellWidth(peaksStageShell, stageWidthPx);
   if (stickyShell) writeWaveformStickyShellWidth(stickyShell, viewportWidthPx);
-  if (waveformScrollLayer) writeWaveformScrollLayerWidth(waveformScrollLayer, timelineWidthPx);
-  if (overlayScrollLayer) writeWaveformScrollLayerWidth(overlayScrollLayer, timelineWidthPx);
-}
-
-function writeWaveformScrollLayerWidth(scrollLayer: HTMLElement, timelineWidthPx: number): void {
-  if (timelineWidthPx <= 0) return;
-  setCspLayoutRules(scrollLayer, { width: timelineWidthPx });
 }
 
 export function writeWaveformStickyShellWidth(

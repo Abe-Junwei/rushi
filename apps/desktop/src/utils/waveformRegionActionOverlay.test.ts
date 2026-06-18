@@ -87,6 +87,21 @@ describe("waveformRegionActionOverlay", () => {
     expect(layout.overlayLeftPx + layout.overlayWidthPx).toBeLessThanOrEqual(1200);
   });
 
+  it("keeps timeline-space controls in the visible segment portion", () => {
+    const layout = resolveSegmentPlaybackControlsOverlayLayout({
+      segmentStartSec: 0,
+      segmentEndSec: 30,
+      timelineWidthPx: 3000,
+      durationSec: 30,
+      scrollLeftPx: 1200,
+      viewportWidthPx: 400,
+      coordinateSpace: "timeline",
+    });
+    expect(layout.visible).toBe(true);
+    expect(layout.overlayLeftPx).toBeGreaterThanOrEqual(1200);
+    expect(layout.overlayLeftPx + layout.overlayWidthPx).toBeLessThanOrEqual(1600);
+  });
+
   it("resolveSegmentPlaybackControlsOverlayLayout centers in sticky viewport coordinates", () => {
     const layout = resolveSegmentPlaybackControlsOverlayLayout({
       segmentStartSec: 10,

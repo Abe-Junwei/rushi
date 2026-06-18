@@ -8,7 +8,7 @@ import {
   type TierScrollLayoutMetrics,
   type TierScrollLiveRefs,
 } from "../utils/waveformViewport";
-import { registerWaveformSegmentBandPaintScheduler } from "../utils/waveformSegmentBandPaint";
+import { scheduleTierScrollFrame, subscribeTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
 import { setCspLayoutRules } from "../utils/cspElementLayout";
 import { wfProfileIsActive, wfProfileTime } from "../services/waveform/waveformZoomProfile";
 
@@ -90,9 +90,7 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
     const canvas = canvasRef.current;
     if (!canvas) return;
 
-    let paintRafId = 0;
     const paint = () => {
-      paintRafId = 0;
       const input = inputRef.current;
       const tierMetrics = tierMetricsRef.current;
       const { scrollLeftPx, viewportWidthPx } = resolveTierViewportMetrics({
@@ -132,6 +130,7 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
           durationSec: input.durationSec,
           layoutHeightPx: heightPx,
           selectedIdx: input.selectedIdx,
+          selectedIndices: input.selectedIndices,
           playheadSec: input.getPlayheadSec?.(),
           skipIndices,
         });
@@ -141,27 +140,20 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
     };
 
     const schedulePaint = () => {
-      if (paintRafId) return;
-      paintRafId = requestAnimationFrame(paint);
+      scheduleTierScrollFrame();
     };
     schedulePaintRef.current = schedulePaint;
 
-    schedulePaint();
-    const unregisterMirrorPaint = registerWaveformSegmentBandPaintScheduler(schedulePaint);
-
-    const tier = tierScrollRef.current;
-    tier?.addEventListener("scroll", schedulePaint, { passive: true });
-    tier?.addEventListener("wheel", schedulePaint, { passive: true });
-    window.addEventListener("resize", schedulePaint);
+    paint();
+    const unsubFrame = subscribeTierScrollFrame(paint);
+    const onResize = () => scheduleTierScrollFrame();
+    window.addEventListener("resize", onResize);
     const unsubAppearance = subscribeAppAppearance(schedulePaint);
     return () => {
       unsubAppearance();
-      unregisterMirrorPaint();
+      unsubFrame();
       schedulePaintRef.current = null;
-      tier?.removeEventListener("scroll", schedulePaint);
-      tier?.removeEventListener("wheel", schedulePaint);
-      window.removeEventListener("resize", schedulePaint);
-      if (paintRafId) cancelAnimationFrame(paintRafId);
+      window.removeEventListener("resize", onResize);
     };
   }, [tierScrollRef, tierScrollLayout.clientWidthPx]);
 
@@ -182,11 +174,6 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
     dominantSpanIndices,
     draftIdx,
   ]);
-
-  // Wheel-forward / programmatic scroll often skips `scroll` events — layout commits via onTierScroll.
-  useLayoutEffect(() => {
-    schedulePaintRef.current?.();
-  }, [tierScrollLayout.scrollLeftPx, tierScrollLayout.clientWidthPx]);
 
   return (
     <canvas

@@ -1,7 +1,9 @@
 import type WaveSurfer from "wavesurfer.js";
 import { setCspLayoutRules } from "../../utils/cspElementLayout";
+import { readTauriStyleCspNonce } from "../../utils/tauriStyleCspNonce";
 import { logDesktopUi } from "../desktopUiLog";
 export const WAVESURFER_MAX_CANVAS_CHUNK_PX = 8000;
+const WAVESURFER_INTERNAL_SCROLL_LOCK_STYLE_ATTR = "data-rushi-ws-internal-scroll-lock";
 
 export type WaveSurferWaveformLayerNodes = {
   canvasWrapper: HTMLElement;
@@ -69,7 +71,7 @@ function neededCanvases(scrollW: number, clientW: number): number {
 
 function readWaveSurferGeom(ws: WaveSurfer): WaveSurferGeom {
   const renderer = ws.getRenderer() as unknown as WaveSurferRendererInternals;
-  const scroll = renderer.scrollContainer ?? ws.getWrapper()?.parentElement ?? null;
+  const scroll = readWaveSurferScrollContainer(ws);
   const layers = readWaveSurferWaveformLayers(ws);
   const scrollW = scroll?.scrollWidth ?? 0;
   const clientW = scroll?.clientWidth ?? 0;
@@ -93,6 +95,54 @@ function readWaveSurferGeom(ws: WaveSurfer): WaveSurferGeom {
   };
 }
 
+function readWaveSurferScrollContainer(ws: WaveSurfer): HTMLElement | null {
+  const renderer = ws.getRenderer() as unknown as WaveSurferRendererInternals;
+  return renderer.scrollContainer ?? ws.getWrapper()?.parentElement ?? null;
+}
+
+/** Unified stage: tier scroll is the only horizontal scroll authority. */
+export function resetWaveSurferInternalScroll(ws: WaveSurfer): void {
+  const scroll = readWaveSurferScrollContainer(ws);
+  if (!scroll) return;
+  if (scroll.scrollLeft !== 0) scroll.scrollLeft = 0;
+}
+
+function installWaveSurferInternalScrollLockStyle(scroll: HTMLElement): () => void {
+  const root = scroll.getRootNode();
+  if (!(root instanceof ShadowRoot)) return () => {};
+  const existing = root.querySelector(`style[${WAVESURFER_INTERNAL_SCROLL_LOCK_STYLE_ATTR}]`);
+  if (existing) return () => {};
+  const style = document.createElement("style");
+  style.setAttribute(WAVESURFER_INTERNAL_SCROLL_LOCK_STYLE_ATTR, "true");
+  const nonce = readTauriStyleCspNonce();
+  if (nonce) style.setAttribute("nonce", nonce);
+  style.textContent = `
+    :host .scroll {
+      overflow-x: hidden !important;
+      overscroll-behavior-x: none;
+    }
+  `;
+  root.appendChild(style);
+  return () => style.remove();
+}
+
+export function installWaveSurferInternalScrollLock(ws: WaveSurfer): () => void {
+  const scroll = readWaveSurferScrollContainer(ws);
+  if (!scroll) return () => {};
+  const uninstallStyle = installWaveSurferInternalScrollLockStyle(scroll);
+  resetWaveSurferInternalScroll(ws);
+  const onScroll = () => resetWaveSurferInternalScroll(ws);
+  scroll.addEventListener("scroll", onScroll, { passive: true });
+  const unsubscribeAfterRender = subscribeWaveSurferAfterRender(ws, () => {
+    resetWaveSurferInternalScroll(ws);
+  });
+  return () => {
+    scroll.removeEventListener("scroll", onScroll);
+    unsubscribeAfterRender();
+    uninstallStyle();
+  };
+}
+
 function formatWaveSurferGeom(label: string, extra: string, g: WaveSurferGeom): string {
   return `[wf-geom] ${label} ${extra} ws_dur=${g.wsDur.toFixed(1)} decoded_dur=${g.decodedDur.toFixed(1)} channel_sec=${g.channelSec.toFixed(1)} scrollW=${g.scrollW} clientW=${g.clientW} scrollLeft=${Math.round(g.scrollLeft)} drawn=${g.drawnCanvases} needed=${g.expectedCanvases} scrollable=${g.isScrollable}`;
 }
@@ -110,19 +160,6 @@ export function logWaveSurferGeomDeferred(ws: WaveSurfer, label: string, extra: 
       /* noop */
     }
   });
-}
-
-let lastScrollGeomLogMs = 0;
-/** Throttled geom log on tier→WS scroll mirror — captures the scrolled (blank-tail) state. */
-function logWaveSurferGeomOnScroll(ws: WaveSurfer): void {
-  const now = typeof performance !== "undefined" ? performance.now() : Date.now();
-  if (now - lastScrollGeomLogMs < 700) return;
-  lastScrollGeomLogMs = now;
-  try {
-    logDesktopUi("INFO", formatWaveSurferGeom("scroll", "", readWaveSurferGeom(ws)));
-  } catch {
-    /* noop */
-  }
 }
 
 /** Canvas tile indices WS lazy-renders around `scrollLeft` (±1 neighbor). */
@@ -207,13 +244,6 @@ export function applyWaveSurferProgressWithoutClip(
   hideWaveSurferPlayheadCursor(renderer);
 }
 
-function refreshWaveSurferProgressVisual(ws: WaveSurfer): void {
-  const duration = ws.getDuration();
-  if (!(duration > 0)) return;
-  const ratio = Math.max(0, Math.min(1, ws.getCurrentTime() / duration));
-  applyWaveSurferProgressWithoutClip(ws, ratio);
-}
-
 /**
  * Patch renderer.renderProgress so every WS progress update keeps the main canvas
  * fully visible while the progress layer shows the played-region tint.
@@ -224,7 +254,8 @@ export function installWaveSurferPlayedRegionDisplayFix(ws: WaveSurfer): () => v
   const original = renderer.renderProgress?.bind(renderer);
   if (!original) return () => {};
 
-  renderer.renderProgress = (ratio: number, _isPlaying: boolean) => {
+  renderer.renderProgress = (ratio: number, isPlaying: boolean) => {
+    original(ratio, isPlaying);
     applyWaveSurferProgressWithoutClip(ws, ratio);
   };
 
@@ -233,54 +264,3 @@ export function installWaveSurferPlayedRegionDisplayFix(ws: WaveSurfer): () => v
   };
 }
 
-/** WKWebView release builds may skip scroll listeners on programmatic scrollLeft. */
-function notifyWaveSurferScrollContainer(ws: WaveSurfer): void {
-  const renderer = ws.getRenderer() as unknown as WaveSurferRendererInternals;
-  const scrollHost = renderer.scrollContainer ?? ws.getWrapper()?.parentElement;
-  if (!scrollHost) return;
-  scrollHost.dispatchEvent(new Event("scroll"));
-}
-
-/** Mirror tier scroll into WS; refresh playhead cursor + unified waveform visibility. */
-export function syncWaveSurferScrollWithProgressCoverage(
-  ws: WaveSurfer,
-  scrollLeftPx: number,
-): void {
-  ws.setScroll(scrollLeftPx);
-  notifyWaveSurferScrollContainer(ws);
-  refreshWaveSurferProgressVisual(ws);
-  logWaveSurferGeomOnScroll(ws);
-}
-
-export type WaveformScrollLayerNodes = {
-  waveform: HTMLElement | null;
-  overlay: HTMLElement | null;
-};
-
-/**
- * Drive waveform + segment overlay from tier scroll via a shared CSS transform.
- *
- * Both layers sit inside the sticky viewport at timeline width; tier scroll only
- * moves the outer stage. WaveSurfer renders all canvas tiles eagerly (host wider
- * than timeline); overlay borders share the same translate3d so they never drift
- * from the waveform during momentum scroll (native scroll vs JS mirror desync).
- */
-export function positionWaveformScrollLayersByTierScroll(
-  layers: WaveformScrollLayerNodes,
-  scrollLeftPx: number,
-  ws?: WaveSurfer | null,
-): void {
-  const tx = `translate3d(${-Math.round(scrollLeftPx)}px, 0, 0)`;
-  if (layers.waveform) setCspLayoutRules(layers.waveform, { transform: tx });
-  if (layers.overlay) setCspLayoutRules(layers.overlay, { transform: tx });
-  if (ws) logWaveSurferGeomOnScroll(ws);
-}
-
-/** @deprecated Prefer {@link positionWaveformScrollLayersByTierScroll}. */
-export function positionWaveSurferHostByScroll(
-  host: HTMLElement | null,
-  ws: WaveSurfer,
-  scrollLeftPx: number,
-): void {
-  positionWaveformScrollLayersByTierScroll({ waveform: host, overlay: null }, scrollLeftPx, ws);
-}

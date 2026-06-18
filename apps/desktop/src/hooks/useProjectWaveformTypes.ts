@@ -15,8 +15,6 @@ export type UseProjectWaveformOptions = {
   drawPxPerSec?: number;
   /** Precomputed peaks (Tauri audiowaveform `.dat`). */
   peakCache?: PeakCache | null;
-  /** Tier scrollLeft for zoom scroll preservation. */
-  getViewportScrollPx?: () => number;
   /** After peaks resample / ws.zoom; return true if viewport fit handled scroll. */
   onZoomApplied?: (pxPerSec: number) => boolean | void;
   /** Waveform stage height (px). */

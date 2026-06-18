@@ -45,9 +45,6 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
     ctx.mediaUrl,
   );
 
-  const getViewportScrollPxRef = useRef<() => number>(() => 0);
-  getViewportScrollPxRef.current = () => tierScrollRef.current?.scrollLeft ?? 0;
-
   const mountMediaDurationSec = resolvedDurationSec || peaks.status?.durationSec || 0;
 
   const refitFitAllPxPerSecRef = useRef<(viewportWidthPx: number) => number | null>(() => null);
@@ -74,7 +71,6 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
     peakCacheGeneration: peaks.peakCacheGeneration,
     deferDecodeMount,
     onAfterViewportResizeRef,
-    getViewportScrollPx: () => getViewportScrollPxRef.current(),
     waveformHeightPx: display.waveformRenderHeightPx,
     onWaveformHeightApplied: display.markWaveformRenderHeightApplied,
     onWaveformCreateRange: ctx.insertSegmentFromTimeRange,

@@ -8,6 +8,8 @@ export type TierScrollLayout = {
 export type UseTierScrollLayoutResult = TierScrollLayout & {
   /** Re-read scrollLeft/clientWidth from the tier element (e.g. after viewport resize). */
   refreshLayout: () => void;
+  /** Schedule a deferred layout commit (wheel-forward / imperative scroll without `scroll`). */
+  notifyScrollActivity: () => void;
   /** Live DOM scroll — updated synchronously on scroll / programmatic writes. */
   liveScrollLeftRef: RefObject<number>;
   liveClientWidthRef: RefObject<number>;
@@ -35,6 +37,7 @@ export function useTierScrollLayout(
     clientWidthPx: 0,
   });
   const readLayoutRef = useRef<() => void>(() => {});
+  const notifyScrollActivityRef = useRef<() => void>(() => {});
 
   useLayoutEffect(() => {
     const el = tierScrollRef.current;
@@ -81,9 +84,9 @@ export function useTierScrollLayout(
     const scheduleBurst = () => {
       activeUntil = performance.now() + burstMs;
       updateRefs();
-      commitLayout();
       if (!raf) raf = requestAnimationFrame(loop);
     };
+    notifyScrollActivityRef.current = scheduleBurst;
 
     readLayout();
     el.addEventListener("scroll", scheduleBurst, { passive: true });
@@ -99,6 +102,7 @@ export function useTierScrollLayout(
       window.removeEventListener("resize", onWindowResize);
       if (raf) cancelAnimationFrame(raf);
       readLayoutRef.current = () => {};
+      notifyScrollActivityRef.current = () => {};
     };
   }, [tierScrollRef, burstMs]);
 
@@ -106,10 +110,15 @@ export function useTierScrollLayout(
     readLayoutRef.current();
   }, []);
 
+  const notifyScrollActivity = useCallback(() => {
+    notifyScrollActivityRef.current();
+  }, []);
+
   return {
     scrollLeftPx: layout.scrollLeftPx,
     clientWidthPx: layout.clientWidthPx,
     refreshLayout,
+    notifyScrollActivity,
     liveScrollLeftRef,
     liveClientWidthRef,
   };

@@ -177,8 +177,6 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     focusWaveformShell: selection.focusWaveformShell,
     onSegmentTextareaKeyDown: keyboard.onSegmentTextareaKeyDown,
     containerRef: wf.containerRef,
-    waveformScrollLayerRef: wf.waveformScrollLayerRef,
-    overlayScrollLayerRef: wf.overlayScrollLayerRef,
     waveformStickyShellRef: wf.stickyShellRef,
     waveformStretchShellRef: wf.stretchShellRef,
     waveformTimelineShellRef: wf.timelineShellRef,

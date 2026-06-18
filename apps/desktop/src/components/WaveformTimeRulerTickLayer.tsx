@@ -102,13 +102,13 @@ export function WaveformTimeRulerTickLayer({
             y2={rulerHeightPx}
             className={
               hidePlayheadReact
-                ? "stroke-zen-saffron/90"
+                ? "stroke-accent-action/90"
                 : embedded
                   ? interactionActive
-                    ? "stroke-zen-saffron/90"
-                    : "stroke-zen-saffron/90"
+                    ? "stroke-accent-action/90"
+                    : "stroke-accent-action/90"
                   : ink
-                    ? "stroke-zen-saffron/90"
+                    ? "stroke-accent-action/90"
                     : "stroke-zen-ink"
             }
             strokeWidth={1}

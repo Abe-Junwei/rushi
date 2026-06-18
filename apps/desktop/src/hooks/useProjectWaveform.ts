@@ -1,9 +1,8 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { formatMediaTime } from "../utils/formatMediaTime";
 import { exportMinimapPeaksFromWaveSurfer } from "../services/waveform/minimapPeaksSource";
-import { positionWaveformScrollLayersByTierScroll } from "../services/waveform/waveformSurferProgressCoverage";
 import { createWaveformAppliedZoomState } from "../utils/waveformAppliedZoom";
-import { requestWaveformSegmentBandPaint } from "../utils/waveformSegmentBandPaint";
+import { requestWaveformSegmentBandPaint } from "../utils/tierScrollFrameCoordinator";
 import { useWaveformHeightSync } from "./useWaveformHeightSync";
 import { useWaveformPlayback } from "./useWaveformPlayback";
 import { useWaveformGlobalPlayback } from "./useWaveformGlobalPlayback";
@@ -39,8 +38,6 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
   optsRef.current = options;
   const onZoomAppliedRef = useRef(onZoomApplied);
   onZoomAppliedRef.current = onZoomApplied;
-  const getViewportScrollPxRef = useRef(options.getViewportScrollPx);
-  getViewportScrollPxRef.current = options.getViewportScrollPx;
   const minPxPerSecRef = useRef(layoutPxPerSec);
   minPxPerSecRef.current = layoutPxPerSec;
   const peakCacheRef = useRef(peakCache);
@@ -50,8 +47,6 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
   const appliedWaveformHeightRef = useRef(waveformHeightPx);
   const pendingAppliedWaveformHeightRef = useRef<number | null>(waveformHeightPx);
   const containerRef = useRef<HTMLDivElement | null>(null);
-  const waveformScrollLayerRef = useRef<HTMLDivElement | null>(null);
-  const overlayScrollLayerRef = useRef<HTMLDivElement | null>(null);
   const stickyShellRef = useRef<HTMLDivElement | null>(null);
   const stretchShellRef = useRef<HTMLDivElement | null>(null);
   const timelineShellRef = useRef<HTMLDivElement | null>(null);
@@ -102,18 +97,10 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     getGlobalPlaybackRate: () => globalPlayback.globalPlaybackRate,
   });
 
-  const syncWaveSurferScrollPx = useCallback((scrollLeftPx: number) => {
+  const requestViewportChromeFrame = useCallback(() => {
     const ws = wsRef.current;
     if (!ws) return;
     try {
-      positionWaveformScrollLayersByTierScroll(
-        {
-          waveform: waveformScrollLayerRef.current,
-          overlay: overlayScrollLayerRef.current,
-        },
-        scrollLeftPx,
-        ws,
-      );
       requestWaveformSegmentBandPaint();
     } catch {
       /* noop */
@@ -122,7 +109,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
 
   const syncTierScrollAfterRenderRef = useRef<() => void>(() => {});
   syncTierScrollAfterRenderRef.current = () => {
-    syncWaveSurferScrollPx(getViewportScrollPxRef.current?.() ?? 0);
+    requestViewportChromeFrame();
   };
 
   const mountRefs = useMemo(
@@ -167,14 +154,12 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     containerRef,
     stickyShellRef,
     stretchShellRef,
-    waveformScrollLayerRef,
-    overlayScrollLayerRef,
     tierScrollRef: options.tierScrollRef,
     isReady,
     deferDecodeMount,
     onAfterViewportResizeRef: options.onAfterViewportResizeRef,
     syncScrollAfterRender: () => {
-      syncWaveSurferScrollPx(getViewportScrollPxRef.current?.() ?? 0);
+      requestViewportChromeFrame();
     },
     refitFitAllPxPerSec: options.refitFitAllPxPerSec,
     appliedZoom,
@@ -245,8 +230,6 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
 
   return {
     containerRef,
-    waveformScrollLayerRef,
-    overlayScrollLayerRef,
     stickyShellRef,
     stretchShellRef,
     timelineShellRef,
@@ -256,7 +239,6 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     isPlaying,
     duration,
     currentTime,
-    syncWaveSurferScrollPx,
     refitFitAllIfNeeded,
     syncShellLayoutForZoom,
     flushDeferredPeaksLoad: () => flushDeferredPeaksLoadRef.current?.(),

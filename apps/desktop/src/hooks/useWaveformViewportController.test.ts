@@ -160,6 +160,43 @@ describe("useWaveformViewportController", () => {
     );
   });
 
+  it("syncs zoom shell layout to timeline content and viewport chrome widths", () => {
+    const args = createSyncArgs(1280);
+    const timelineShell = document.createElement("div");
+    const peaksStageShell = document.createElement("div");
+    const appliedZoom = createWaveformAppliedZoomState(56);
+    const layoutDurationSecRef = { current: 30 };
+    const layoutTimelineWidthPxRef = { current: 1680 };
+
+    const { result } = renderHook(() =>
+      useWaveformViewportController({
+        wsRef: args.wsRef,
+        containerRef: args.containerRef,
+        stickyShellRef: args.stickyShellRef,
+        stretchShellRef: args.stretchShellRef,
+        tierScrollRef: args.tierScrollRef,
+        isReady: true,
+        deferDecodeMount: false,
+        appliedZoom,
+        layoutDurationSecRef,
+        layoutTimelineWidthPxRef,
+        timelineShellRef: { current: timelineShell },
+        peaksStageShellRef: { current: peaksStageShell },
+      }),
+    );
+
+    act(() => {
+      result.current.syncShellLayoutForZoom();
+    });
+
+    expect(readCspLayoutRulesForElement(timelineShell)).toContain("width: 1680px");
+    expect(readCspLayoutRulesForElement(peaksStageShell)).toContain("width: 1680px");
+    expect(readCspLayoutRulesForElement(args.stickyShellRef.current!)).toContain("width: 1280px");
+    expect(readCspLayoutRulesForElement(args.tierScrollRef.current!)).toContain(
+      `${WAVEFORM_TIER_VIEWPORT_WIDTH_VAR}: 1280px`,
+    );
+  });
+
   it("refits fit-all when viewport width is unchanged but px/s is stale", async () => {
     const args = createSyncArgs(1200);
     const appliedZoom = createWaveformAppliedZoomState(0.07);

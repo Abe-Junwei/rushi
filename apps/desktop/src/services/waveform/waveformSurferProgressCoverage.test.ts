@@ -4,11 +4,10 @@ import { clearAllCspScopeRulesForTests } from "../../utils/cspNonceStyleRegistry
 import {
   applyWaveSurferProgressWithoutClip,
   estimateWaveSurferCanvasCount,
+  installWaveSurferInternalScrollLock,
   installWaveSurferPlayedRegionDisplayFix,
-  positionWaveformScrollLayersByTierScroll,
-  positionWaveSurferHostByScroll,
+  resetWaveSurferInternalScroll,
   restoreWaveSurferMainCanvasVisibility,
-  syncWaveSurferScrollWithProgressCoverage,
   WAVESURFER_MAX_CANVAS_CHUNK_PX,
   waveSurferLazyCanvasIndices,
 } from "./waveformSurferProgressCoverage";
@@ -96,6 +95,58 @@ describe("installWaveSurferPlayedRegionDisplayFix", () => {
   });
 });
 
+describe("installWaveSurferInternalScrollLock", () => {
+  function createScrollableWaveSurfer() {
+    const host = document.createElement("div");
+    const shadow = host.attachShadow({ mode: "open" });
+    const scrollContainer = document.createElement("div");
+    scrollContainer.className = "scroll";
+    scrollContainer.scrollLeft = 160;
+    shadow.appendChild(scrollContainer);
+    const renderedHandlers = new Set<() => void>();
+    const ws = {
+      getRenderer: () => ({ scrollContainer }),
+      getWrapper: () => null,
+      on: (event: string, handler: () => void) => {
+        if (event === "rendered" || event === "redrawcomplete") {
+          renderedHandlers.add(handler);
+        }
+        return () => renderedHandlers.delete(handler);
+      },
+    } as unknown as import("wavesurfer.js").default;
+    return { renderedHandlers, scrollContainer, shadow, ws };
+  }
+
+  it("resets WaveSurfer internal scroll to keep tier scroll as the sole authority", () => {
+    const { scrollContainer, ws } = createScrollableWaveSurfer();
+
+    resetWaveSurferInternalScroll(ws);
+
+    expect(scrollContainer.scrollLeft).toBe(0);
+  });
+
+  it("locks internal scroll during scroll and render events", () => {
+    const { scrollContainer, renderedHandlers, shadow, ws } = createScrollableWaveSurfer();
+
+    const uninstall = installWaveSurferInternalScrollLock(ws);
+
+    expect(scrollContainer.scrollLeft).toBe(0);
+    const lockStyle = shadow.querySelector("style[data-rushi-ws-internal-scroll-lock]");
+    expect(lockStyle?.textContent).toContain("overflow-x: hidden");
+
+    scrollContainer.scrollLeft = 320;
+    scrollContainer.dispatchEvent(new Event("scroll"));
+    expect(scrollContainer.scrollLeft).toBe(0);
+
+    scrollContainer.scrollLeft = 240;
+    renderedHandlers.forEach((handler) => handler());
+    expect(scrollContainer.scrollLeft).toBe(0);
+
+    uninstall();
+    expect(shadow.querySelector("style[data-rushi-ws-internal-scroll-lock]")).toBeNull();
+  });
+});
+
 describe("waveSurferLazyCanvasIndices", () => {
   it("matches WS getLazyRenderRange (center ±1)", () => {
     const scrollWidthPx = WAVESURFER_MAX_CANVAS_CHUNK_PX * 5;
@@ -117,60 +168,3 @@ describe("estimateWaveSurferCanvasCount", () => {
   });
 });
 
-describe("syncWaveSurferScrollWithProgressCoverage", () => {
-  it("dispatches scroll on the WS scroll host after programmatic setScroll", () => {
-    const events: string[] = [];
-    const scrollHost = document.createElement("div");
-    scrollHost.addEventListener("scroll", () => events.push("scroll"));
-    const ws = {
-      setScroll: (px: number) => {
-        scrollHost.scrollLeft = px;
-      },
-      getRenderer: () => ({ scrollContainer: scrollHost }),
-      getWrapper: () => null,
-      getDuration: () => 0,
-      getCurrentTime: () => 0,
-    } as unknown as import("wavesurfer.js").default;
-
-    syncWaveSurferScrollWithProgressCoverage(ws, 120);
-
-    expect(scrollHost.scrollLeft).toBe(120);
-    expect(events).toContain("scroll");
-  });
-});
-
-describe("positionWaveformScrollLayersByTierScroll", () => {
-  it("applies the same translate3d to waveform and overlay layers", () => {
-    const waveform = document.createElement("div");
-    const overlay = document.createElement("div");
-    positionWaveformScrollLayersByTierScroll({ waveform, overlay }, 8000);
-    expect(readCspLayoutRulesForElement(waveform)).toContain("translate3d(-8000px, 0, 0)");
-    expect(readCspLayoutRulesForElement(overlay)).toContain("translate3d(-8000px, 0, 0)");
-  });
-});
-
-describe("positionWaveSurferHostByScroll", () => {
-  it("offsets only the waveform host when overlay layer is omitted", () => {
-    const host = document.createElement("div");
-    const ws = {
-      getRenderer: () => ({ cursor: null }),
-      getWrapper: () => null,
-      getDuration: () => 0,
-      getCurrentTime: () => 0,
-    } as unknown as import("wavesurfer.js").default;
-
-    positionWaveSurferHostByScroll(host, ws, 8000);
-
-    expect(readCspLayoutRulesForElement(host)).toContain("translate3d(-8000px, 0, 0)");
-  });
-
-  it("tolerates a null host (WS not yet mounted)", () => {
-    const ws = {
-      getRenderer: () => ({ cursor: null }),
-      getWrapper: () => null,
-      getDuration: () => 0,
-      getCurrentTime: () => 0,
-    } as unknown as import("wavesurfer.js").default;
-    expect(() => positionWaveSurferHostByScroll(null, ws, 120)).not.toThrow();
-  });
-});

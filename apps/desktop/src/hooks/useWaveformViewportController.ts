@@ -13,8 +13,6 @@ export type UseWaveformViewportControllerArgs = {
   containerRef: RefObject<HTMLDivElement | null>;
   stickyShellRef?: RefObject<HTMLDivElement | null>;
   stretchShellRef?: RefObject<HTMLDivElement | null>;
-  waveformScrollLayerRef?: RefObject<HTMLDivElement | null>;
-  overlayScrollLayerRef?: RefObject<HTMLDivElement | null>;
   tierScrollRef?: RefObject<HTMLElement | null>;
   isReady: boolean;
   deferDecodeMount: boolean;

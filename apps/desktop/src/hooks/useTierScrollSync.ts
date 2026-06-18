@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { afterSmoothScrollEnd } from "../utils/tierScrollSmooth";
 import { clampTimelineScrollLeftPx, WAVEFORM_SCROLL_SYNC_EPSILON_PX } from "../utils/waveformScrollSync";
-import { scrollPxCenterTimeInViewport } from "../utils/waveformProjection";
+import { scheduleTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
 import type { useProjectWaveform } from "./useProjectWaveform";
 import { useTierScrollLayout, type TierScrollLayout } from "./useTierScrollLayout";
 import {
@@ -9,6 +9,7 @@ import {
   type PendingProgrammaticScrollWrite,
 } from "./tierScrollProgrammaticWrites";
 import { useTierScrollResizeEffect } from "./useTierScrollResizeEffect";
+import { pickAbsoluteTimeInTierViewport, seekFromTierClientX } from "./tierScrollSeekActions";
 
 export type { TierScrollLayout };
 
@@ -60,11 +61,15 @@ export function useTierScrollSync(args: {
     tierScrollMetrics.refreshLayout,
   ]);
 
-  const mirrorWaveSurferScroll = (scrollLeftPx: number) => {
-    const a = argsRef.current;
-    if (!a.waveformReady) return;
-    const sync = a.wfApiRef.current?.syncWaveSurferScrollPx;
-    if (typeof sync === "function") sync(scrollLeftPx);
+  const scheduleViewportChromeFrame = () => {
+    if (!argsRef.current.waveformReady) return;
+    scheduleTierScrollFrame();
+  };
+  const suppressPlaybackFollowForUserScroll = () => {
+    const suppressRef = argsRef.current.playbackFollowSuppressUntilRef;
+    if (suppressRef && performance.now() >= programmaticWrites.programmaticScrollUntilRef.current) {
+      suppressRef.current = performance.now() + 2500;
+    }
   };
 
   const syncScrollFromTierDom = () => {
@@ -74,7 +79,7 @@ export function useTierScrollSync(args: {
     committedScrollLeftRef.current = sl;
     tierScrollMetrics.liveScrollLeftRef.current = sl;
     tierScrollMetrics.liveClientWidthRef.current = tier.clientWidth;
-    mirrorWaveSurferScroll(sl);
+    scheduleViewportChromeFrame();
   };
 
   const commitScrollLeftPx = useCallback(
@@ -91,7 +96,7 @@ export function useTierScrollSync(args: {
         Math.abs(committedScrollLeftRef.current - sl) < WAVEFORM_SCROLL_SYNC_EPSILON_PX &&
         Math.abs(tier.scrollLeft - sl) < WAVEFORM_SCROLL_SYNC_EPSILON_PX
       ) {
-        mirrorWaveSurferScroll(sl);
+        scheduleViewportChromeFrame();
         return;
       }
       if (Math.abs(tier.scrollLeft - sl) > WAVEFORM_SCROLL_SYNC_EPSILON_PX) {
@@ -106,9 +111,17 @@ export function useTierScrollSync(args: {
       committedScrollLeftRef.current = sl;
       tierScrollMetrics.liveScrollLeftRef.current = sl;
       tierScrollMetrics.liveClientWidthRef.current = vw;
-      mirrorWaveSurferScroll(sl);
+      scheduleViewportChromeFrame();
+      if (source === "program" && !options?.deferLayoutCommit) {
+        tierScrollMetrics.refreshLayout();
+      }
     },
-    [programmaticWrites, tierScrollMetrics.liveClientWidthRef, tierScrollMetrics.liveScrollLeftRef],
+    [
+      programmaticWrites,
+      tierScrollMetrics.liveClientWidthRef,
+      tierScrollMetrics.liveScrollLeftRef,
+      tierScrollMetrics.refreshLayout,
+    ],
   );
 
   const commitPendingProgrammaticScroll = useCallback(
@@ -145,17 +158,36 @@ export function useTierScrollSync(args: {
     [commitPendingProgrammaticScroll, commitScrollLeftPx, programmaticWrites],
   );
 
+  const tierScrollActivityRef = useRef<{
+    syncScrollFromTierDom: () => void;
+    notifyScrollActivity: () => void;
+  }>({
+    syncScrollFromTierDom: () => {},
+    notifyScrollActivity: () => {},
+  });
+  tierScrollActivityRef.current = {
+    syncScrollFromTierDom,
+    notifyScrollActivity: tierScrollMetrics.notifyScrollActivity,
+  };
+
+  useLayoutEffect(() => {
+    const tier = args.tierScrollRef.current;
+    if (!tier) return;
+    const onScroll = () => {
+      tierScrollActivityRef.current.syncScrollFromTierDom();
+      tierScrollActivityRef.current.notifyScrollActivity();
+      suppressPlaybackFollowForUserScroll();
+    };
+    tier.addEventListener("scroll", onScroll, { passive: true });
+    return () => tier.removeEventListener("scroll", onScroll);
+  }, [args.tierScrollRef, programmaticWrites.programmaticScrollUntilRef]);
+
   const api = useMemo(
     () => ({
       onTierScroll: () => {
-        syncScrollFromTierDom();
-        if (performance.now() >= programmaticWrites.deferredLayoutCommitUntilRef.current) {
-          tierScrollMetrics.refreshLayout();
-        }
-        const suppressRef = argsRef.current.playbackFollowSuppressUntilRef;
-        if (suppressRef && performance.now() >= programmaticWrites.programmaticScrollUntilRef.current) {
-          suppressRef.current = performance.now() + 2500;
-        }
+        tierScrollActivityRef.current.syncScrollFromTierDom();
+        tierScrollActivityRef.current.notifyScrollActivity();
+        suppressPlaybackFollowForUserScroll();
       },
       setTierScrollPx: (px: number, options?: SetTierScrollOptions) => {
         applyScrollLeftPx(px, "program", options);
@@ -191,34 +223,18 @@ export function useTierScrollSync(args: {
         tierScrollMetrics.liveClientWidthRef.current = el.clientWidth;
       },
       seekFromTierClientX: (clientX: number) => {
-        const w = argsRef.current.wfApiRef.current;
-        const d = argsRef.current.mediaDurationSec;
-        if (!w.isReady || d <= 0) return;
-        w.seek(w.clientXToTimeSec(clientX));
+        seekFromTierClientX(argsRef.current, clientX);
       },
       onPickAbsoluteTime: (t: number, mode: "seek" | "seekAndCenterViewport") => {
-        const w = argsRef.current.wfApiRef.current;
-        const d = argsRef.current.mediaDurationSec;
-        if (d <= 0) return;
-        const clamped = Math.max(0, Math.min(d, t));
-        w.seek(clamped);
-        if (mode !== "seekAndCenterViewport") return;
-        const tier = argsRef.current.tierScrollRef.current;
-        if (!tier) return;
-        const tw = Math.max(argsRef.current.timelineWidthPx, 1);
-        const targetScroll = scrollPxCenterTimeInViewport({
-          timeSec: clamped,
-          timelineWidthPx: tw,
-          durationSec: d,
-          viewportWidthPx: tier.clientWidth,
+        pickAbsoluteTimeInTierViewport(argsRef.current, t, mode, (scrollLeftPx) => {
+          applyScrollLeftPx(scrollLeftPx, "program", { immediate: true });
         });
-        applyScrollLeftPx(targetScroll, "program", { immediate: true });
       },
     }),
     [
       applyScrollLeftPx,
       commitPendingProgrammaticScroll,
-      programmaticWrites,
+      programmaticWrites.programmaticScrollUntilRef,
       tierScrollMetrics.liveClientWidthRef,
       tierScrollMetrics.liveScrollLeftRef,
       tierScrollMetrics.refreshLayout,

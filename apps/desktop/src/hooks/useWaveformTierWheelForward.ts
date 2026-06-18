@@ -1,9 +1,15 @@
 import { useEffect, type RefObject } from "react";
 
+/**
+ * Fixed wheel gain (no user pref). Trackpad pixel deltas at 1:1 feel sluggish on long timelines.
+ */
+export const WAVEFORM_TIER_WHEEL_SCROLL_GAIN = 2.5;
+
 /** Resolve wheel delta for horizontal tier scroll (trackpad vertical swipe pans the timeline). */
 export function resolveWaveformTierWheelScrollDelta(e: WheelEvent): number {
-  if (Math.abs(e.deltaX) >= Math.abs(e.deltaY)) return e.deltaX;
-  return e.deltaY;
+  const raw = Math.abs(e.deltaX) >= Math.abs(e.deltaY) ? e.deltaX : e.deltaY;
+  if (!raw) return 0;
+  return Math.round(raw * WAVEFORM_TIER_WHEEL_SCROLL_GAIN);
 }
 
 /** Forward wheel from the waveform area to tier scroll (ADR-0005). */

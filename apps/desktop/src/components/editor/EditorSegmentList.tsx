@@ -9,6 +9,7 @@ import { segmentHasUnsavedText } from "../../services/segmentConfirmEligible";
 import type { SegmentListFilterNavState } from "../../utils/segmentListFilterNav";
 import { blurActiveTranscriptTextarea } from "../../utils/transcriptSelection";
 import type { useEditorTranscriptAppearance } from "./useEditorTranscriptAppearance";
+import { peekWelcomeSearchEditorHighlight } from "../../services/welcome/welcomeSearch";
 import { useEditorSegmentListScroll } from "./useEditorSegmentListScroll";
 
 type SegmentCtxMenuState = SegmentContextMenuOpen;
@@ -137,14 +138,19 @@ export function EditorSegmentList({
         onOpenContextMenu={onOpenRowContextMenu}
         onOpenTextContextMenu={onOpenTextContextMenu}
         onRevealSelectedSegment={tx.revealSelectedSegmentInViewport}
-        findReplaceHighlight={
-          c.findReplaceEditorHighlight?.segmentIdx === segIdx
-            ? {
-                charStart: c.findReplaceEditorHighlight.charStart,
-                charEnd: c.findReplaceEditorHighlight.charEnd,
-              }
-            : null
-        }
+        findReplaceHighlight={(() => {
+          if (c.findReplaceEditorHighlight?.segmentIdx === segIdx) {
+            return {
+              charStart: c.findReplaceEditorHighlight.charStart,
+              charEnd: c.findReplaceEditorHighlight.charEnd,
+            };
+          }
+          const welcome = peekWelcomeSearchEditorHighlight(segIdx);
+          if (welcome) {
+            return { charStart: welcome.charStart, charEnd: welcome.charEnd };
+          }
+          return null;
+        })()}
         correctionRulesHighlight={
           c.correctionRulesEditorHighlight?.segmentIdx === segIdx
             ? {
