@@ -71,7 +71,8 @@ pub async fn send_stt_cloud_post(
     }
 }
 
-pub(crate) fn read_audio_bytes_limited(path: &Path) -> Result<Vec<u8>, String> {
+/// 校验音频大小不超过上限，返回字节数（不读入内容，避免整文件入内存）。
+pub(crate) fn audio_size_within_limit(path: &Path) -> Result<u64, String> {
     let meta = fs::metadata(path).map_err(|e| format!("读取音频元数据: {e}"))?;
     if meta.len() > MAX_STT_AUDIO_BYTES {
         return Err(format!(
@@ -80,6 +81,11 @@ pub(crate) fn read_audio_bytes_limited(path: &Path) -> Result<Vec<u8>, String> {
             MAX_STT_AUDIO_BYTES
         ));
     }
+    Ok(meta.len())
+}
+
+pub(crate) fn read_audio_bytes_limited(path: &Path) -> Result<Vec<u8>, String> {
+    audio_size_within_limit(path)?;
     fs::read(path).map_err(|e| format!("读取音频: {e}"))
 }
 

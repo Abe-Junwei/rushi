@@ -1,5 +1,6 @@
 # ACC-STT-IFLYTEK — Plan：讯飞极速录音转写原生接入
 
+> **状态**：🟡 编码 ✅（2026-06-18）· **手测 ⏳**  
 > **Research**：[`r3-china-iflytek-lfasr-research.md`](./r3-china-iflytek-lfasr-research.md)  
 > **Acceptance**：[`acc-stt-iflytek-acceptance.md`](./acc-stt-iflytek-acceptance.md)  
 > **手测**：[`acc-stt-iflytek-hand-test-checklist.md`](./acc-stt-iflytek-hand-test-checklist.md)
@@ -38,7 +39,7 @@
 
 ### 1.1 健康探测（credentials-only）
 
-厂商端点仅 POST，**不做** GET 网络探测（与 [`presetEndpoints.ts`](../../../apps/desktop/src/services/stt/sttOnlineProviderContract/presetEndpoints.ts) 纪律一致）：
+厂商端点仅 POST。**实现已增强为「真实验签探测」**（2026-06-18）：`probe.rs` 对 `/v2/ost/query` 发一次签名 POST（假 task_id），`10401 no data found` 判为凭证通过、`401`/HMAC 报文判为 unauthorized；query 对无效 task 不消耗转写配额。下表的状态判定仍成立（仅 available 由真实验签得出，而非纯凭证存在性）：
 
 | 条件 | 探测结果 |
 |------|----------|
@@ -49,22 +50,17 @@
 
 Implement 时扩展 `health.ts`：当 `def.requiresApiSecret` 为 true 时校验 `getSttOnlineApiSecretFromMemory()`。
 
-### 1.2 Xunfei accent preset（v1 固定 8 项）
+### 1.2 Xunfei accent（v1 收敛为 `mandarin`，2026-06-18 修订）
 
-`language` 固定 **`zh_cn`**；`accent` 由环境页下拉写入 runtime（持久化 non-secret 字段，如 `rushi.stt.online.accent`）：
+`language` 固定 **`zh_cn`**；`accent` 固定 **`mandarin`**。
 
-| accent 码 | UI 标签 | 默认 |
-|-----------|---------|------|
-| `mandarin` | 普通话 | ✅ |
-| `cantonese` | 粤语 | |
-| `lmz` | 四川话 | |
-| `henanese` | 河南话 | |
-| `dongbeiese` | 东北话 | |
-| `shanghainese` | 上海话 | |
-| `minnanese` | 闽南话 | |
-| `uighur` | 维语 | |
+**修订原因**：官方 speedTranscription 文档 `business.accent` **取值范围仅 `mandarin`**；中英 + 202 种方言为「**免切识别**」（zh_cn 下自动检测，无需切 accent）。原 8 项方言码下拉（cantonese/lmz/uighur…）会触发参数错误（10303），故 v1 收敛：
 
-Implement 前 spike 核对码与控制台授权；未开通项转写失败须可读提示（**不**回落本机）。
+- `xunfeiAccentPresets.ts` 仅保留 `mandarin`；`normalizeXunfeiSpeedAsrAccent` 把任意旧持久化方言码归一为 `mandarin`。
+- `bridge.ts` 对 `iflytek-speed-asr` 强制经 `normalizeXunfeiSpeedAsrAccent`，确保只发合法码。
+- 环境页：单一 preset 时渲染只读说明「普通话（zh_cn 自动识别中英 + 202 种方言，无需手动选择）」，不再暴露下拉。
+
+未来若控制台确认支持显式方言码，再在 `XUNFEI_SPEED_ASR_ACCENT_PRESETS` 增项即可恢复下拉（接线已保留）。
 
 ---
 

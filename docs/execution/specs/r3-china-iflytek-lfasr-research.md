@@ -1,6 +1,6 @@
 # R3 调研：讯飞开放平台长音频语音转写（LFASR）原生接入
 
-> **状态**：规划门禁（2026-06-18 补全门禁章节）  
+> **状态**：research ✅ · 编码 ✅（2026-06-18）· **手测 ⏳**（acceptance 签收前仍为规划门禁）  
 > **目的**：为国内在线 STT 补齐讯飞长音频转写原生支持，达到当前阿里云百炼 Fun-ASR（`dashscope-asr`）的同等级集成深度：Provider 定义表 + Rust Native Adapter + 异步 Job 轮询 + 归一化 `schema_version: 1` 结果。  
 > **关联**：[`stt-online-providers.md`](../../architecture/stt-online-providers.md)、[`desktop-capability-ui-state-alignment.md`](../../architecture/desktop-capability-ui-state-alignment.md)、[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) §R3、[`CONTEXT.md`](../../../CONTEXT.md)。  
 > **下游 spec**：[`acc-stt-iflytek-plan.md`](./acc-stt-iflytek-plan.md) · [`acc-stt-iflytek-acceptance.md`](./acc-stt-iflytek-acceptance.md) · [`acc-stt-iflytek-hand-test-checklist.md`](./acc-stt-iflytek-hand-test-checklist.md)
@@ -157,8 +157,8 @@
 讯飞 OST 端点仅接受 POST，Implement 复用 [`sttOnlineProviderUsesCredentialsOnlyProbe`](../../../apps/desktop/src/services/stt/sttOnlineProviderContract/presetEndpoints.ts) 模式：
 
 1. `definitions.ts`：`requiresPersistedAppKey: true`（AppID）、**`requiresApiSecret: true`**
-2. `health.ts`：三字段齐全 → `state: available`；缺任一项 → `unconfigured` + 字段级文案
-3. **不** 发空任务 / 假上传做网络 probe（避免误耗配额）；首次转写失败时映射厂商 HTTP 码为用户可读错误
+2. `health.ts`：缺任一字段 → `unconfigured` + 字段级文案
+3. 三字段齐全 → **实现已增强为真实验签探测**（2026-06-18）：`probe.rs` 对 `/v2/ost/query` 发一次签名 POST（假 task_id），`10401 no data found` 判 available、`401`/HMAC 报文判 unauthorized；query 对无效 task **不消耗转写配额**。不做假上传；首次转写失败仍映射厂商 HTTP 码为用户可读错误
 
 ---
 
@@ -382,3 +382,4 @@ Body: { "common": { "appid": "..." }, "business": { "task_id": "..." } }
 | 2026-06-16 | 更新：改推荐讯飞极速录音转写大模型，补充三件套凭证与 UI 扩展方案 |
 | 2026-06-18 | 补全门禁：§1–§3、§7、probe/命名；链 acc-stt-iflytek plan/acceptance |
 | 2026-06-18 | Grill：分块+ffmpeg 入 P1；accent 8 项 preset；失败仅报错 |
+| 2026-06-18 | `/diagnose` 真机前排查修订：①除 `.pcm` 外一律 ffmpeg 归一 16k mono（避免非 16k wav 触发 20304/10043）；② accent 收敛为 `mandarin`（官方 accent 仅 mandarin，202 方言免切）；③ size guard 改 metadata，去整文件多读；④ parse 补官方 `begin/end` 字段 + 取首候选 `cw[0]` + 真实夹具；⑤ probe 文档对齐为「真实验签」。手测仍待真机 E2E |

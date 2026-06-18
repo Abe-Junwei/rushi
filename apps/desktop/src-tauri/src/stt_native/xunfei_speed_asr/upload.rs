@@ -55,6 +55,21 @@ fn append_multipart_text_field(body: &mut Vec<u8>, boundary: &str, name: &str, v
     body.extend_from_slice(b"\r\n");
 }
 
+fn append_multipart_file_field(
+    body: &mut Vec<u8>,
+    boundary: &str,
+    file_bytes: &[u8],
+    filename: &str,
+) {
+    body.extend_from_slice(format!("--{boundary}\r\n").as_bytes());
+    body.extend_from_slice(
+        format!("Content-Disposition: form-data; name=\"data\"; filename=\"{filename}\"\r\n").as_bytes(),
+    );
+    body.extend_from_slice(b"Content-Type: application/octet-stream\r\n\r\n");
+    body.extend_from_slice(file_bytes);
+    body.extend_from_slice(b"\r\n");
+}
+
 fn build_multipart_upload(
     app_id: &str,
     request_id: &str,
@@ -63,15 +78,10 @@ fn build_multipart_upload(
 ) -> (Vec<u8>, String) {
     let boundary = format!("----RushiBoundary{}", Uuid::new_v4().simple());
     let mut body = Vec::new();
+    // 讯飞官方示例：data 段必须在前，否则服务端可能读不到后续 slice_id 等字段。
+    append_multipart_file_field(&mut body, &boundary, file_bytes, filename);
     append_multipart_text_field(&mut body, &boundary, "app_id", app_id);
     append_multipart_text_field(&mut body, &boundary, "request_id", request_id);
-    body.extend_from_slice(format!("--{boundary}\r\n").as_bytes());
-    body.extend_from_slice(
-        format!("Content-Disposition: form-data; name=\"data\"; filename=\"{filename}\"\r\n").as_bytes(),
-    );
-    body.extend_from_slice(b"Content-Type: application/octet-stream\r\n\r\n");
-    body.extend_from_slice(file_bytes);
-    body.extend_from_slice(b"\r\n");
     body.extend_from_slice(format!("--{boundary}--\r\n").as_bytes());
     let content_type = format!("multipart/form-data; boundary={boundary}");
     (body, content_type)
@@ -88,17 +98,11 @@ fn build_multipart_slice_upload(
     let boundary = format!("----RushiBoundary{}", Uuid::new_v4().simple());
     let slice_id_str = slice_id.to_string();
     let mut body = Vec::new();
+    append_multipart_file_field(&mut body, &boundary, file_bytes, filename);
     append_multipart_text_field(&mut body, &boundary, "app_id", app_id);
     append_multipart_text_field(&mut body, &boundary, "request_id", request_id);
     append_multipart_text_field(&mut body, &boundary, "upload_id", upload_id);
     append_multipart_text_field(&mut body, &boundary, "slice_id", &slice_id_str);
-    body.extend_from_slice(format!("--{boundary}\r\n").as_bytes());
-    body.extend_from_slice(
-        format!("Content-Disposition: form-data; name=\"data\"; filename=\"{filename}\"\r\n").as_bytes(),
-    );
-    body.extend_from_slice(b"Content-Type: application/octet-stream\r\n\r\n");
-    body.extend_from_slice(file_bytes);
-    body.extend_from_slice(b"\r\n");
     body.extend_from_slice(format!("--{boundary}--\r\n").as_bytes());
     let content_type = format!("multipart/form-data; boundary={boundary}");
     (body, content_type)
@@ -189,15 +193,13 @@ async fn upload_multipart_file(
     client: &Client,
     app_id: &str,
     file_bytes: &[u8],
-    filename: &str,
+    _filename: &str,
     api_key: &str,
     api_secret: &str,
 ) -> Result<String, String> {
     let init_payload = serde_json::json!({
         "app_id": app_id,
         "request_id": Uuid::new_v4().to_string(),
-        "file_name": filename,
-        "file_size": file_bytes.len(),
     });
     let init_j = post_signed_json(
         client,
@@ -288,7 +290,7 @@ mod tests {
     use super::*;
 
     #[test]
-    fn slice_multipart_includes_upload_id_and_slice_id() {
+    fn slice_multipart_puts_data_before_metadata_fields() {
         let (body, _) = build_multipart_slice_upload(
             "app123",
             "req-1",
@@ -298,9 +300,19 @@ mod tests {
             "slice_2.bin",
         );
         let text = String::from_utf8_lossy(&body);
-        assert!(text.contains("name=\"upload_id\""));
+        let data_pos = text.find("name=\"data\"").expect("data part");
+        let slice_pos = text.find("name=\"slice_id\"").expect("slice_id part");
+        assert!(data_pos < slice_pos, "data must precede slice_id per Xunfei API");
         assert!(text.contains("upload-abc"));
-        assert!(text.contains("name=\"slice_id\""));
-        assert!(text.contains("\r\n2\r\n") || text.contains("slice_id\"\r\n\r\n2\r\n"));
+        assert!(text.contains("slice_id\"\r\n\r\n2\r\n") || text.contains("slice_id\"\r\n\r\n2\n"));
+    }
+
+    #[test]
+    fn small_multipart_puts_data_before_app_id() {
+        let (body, _) = build_multipart_upload("app123", "req-1", b"bytes", "audio.wav");
+        let text = String::from_utf8_lossy(&body);
+        let data_pos = text.find("name=\"data\"").expect("data part");
+        let app_pos = text.find("name=\"app_id\"").expect("app_id part");
+        assert!(data_pos < app_pos);
     }
 }

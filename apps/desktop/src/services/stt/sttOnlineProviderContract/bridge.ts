@@ -16,6 +16,7 @@ import {
 } from "./runtimeConfig";
 import type { OnlineTranscribeBridgePayload } from "./types";
 import { resolveShellNativeSttAdapterId } from "./nativeAdapters";
+import { normalizeXunfeiSpeedAsrAccent } from "./xunfeiAccentPresets";
 
 export { resolveShellNativeSttAdapterId } from "./nativeAdapters";
 
@@ -96,6 +97,11 @@ export function tryBuildOnlineTranscribeBridgePayload(): OnlineTranscribeBridgeP
     if (transcribeUrl && !isAllowedSttOnlineEndpoint(transcribeUrl)) return null;
     const appKeyTrim = c.appKey?.trim();
     const apiSecretTrim = getSttOnlineApiSecretFromMemory()?.trim();
+    // 讯飞 accent 收敛：仅发合法码（v1 = mandarin），避免旧持久化方言码触发参数错误。
+    const accentValue =
+      c.selectedProviderId === "iflytek-speed-asr"
+        ? normalizeXunfeiSpeedAsrAccent(c.accent)
+        : c.accent?.trim();
     return {
       transcribeUrl,
       authorization,
@@ -103,7 +109,7 @@ export function tryBuildOnlineTranscribeBridgePayload(): OnlineTranscribeBridgeP
       nativeAdapter: shellAdapter,
       ...(appKeyTrim ? { appKey: appKeyTrim } : {}),
       ...(apiSecretTrim ? { apiSecret: apiSecretTrim } : {}),
-      ...(c.accent?.trim() ? { accent: c.accent.trim() } : {}),
+      ...(accentValue ? { accent: accentValue } : {}),
     };
   }
 

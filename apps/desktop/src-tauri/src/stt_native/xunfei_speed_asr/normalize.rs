@@ -3,7 +3,7 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use super::super::read_audio_bytes_limited;
+use super::super::audio_size_within_limit;
 
 pub fn resolve_ffmpeg_command() -> PathBuf {
     crate::bundled_asr_assets::resolve_bundled_ffmpeg()
@@ -54,17 +54,40 @@ pub fn normalize_to_wav_16k_mono(source: &Path, dest: &Path) -> Result<(), Strin
     Ok(())
 }
 
+/// 仅 `.pcm`（无头裸流，必须由用户保证 16k/16bit/mono）可直传；
+/// 其余格式（含 `.wav`，因其采样率/声道未知）一律经 ffmpeg 归一为 16k mono s16，
+/// 避免向讯飞声明 `audio/L16;rate=16000` 与实际不符触发 20304/10043。
+fn passthrough_without_normalize(ext: &str) -> bool {
+    ext == "pcm"
+}
+
 pub fn prepare_upload_wav(source: &Path, work_dir: &Path) -> Result<PathBuf, String> {
-    let _ = read_audio_bytes_limited(source)?;
+    audio_size_within_limit(source)?;
     let ext = source
         .extension()
         .and_then(|e| e.to_str())
         .unwrap_or("")
         .to_ascii_lowercase();
-    if matches!(ext.as_str(), "wav" | "pcm") {
+    if passthrough_without_normalize(&ext) {
         return Ok(source.to_path_buf());
     }
     let dest = work_dir.join("xunfei_normalized.wav");
     normalize_to_wav_16k_mono(source, &dest)?;
     Ok(dest)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn only_pcm_passes_through() {
+        assert!(passthrough_without_normalize("pcm"));
+        // wav 采样率/声道未知，必须归一
+        assert!(!passthrough_without_normalize("wav"));
+        assert!(!passthrough_without_normalize("mp3"));
+        assert!(!passthrough_without_normalize("m4a"));
+        assert!(!passthrough_without_normalize("mp4"));
+        assert!(!passthrough_without_normalize(""));
+    }
 }

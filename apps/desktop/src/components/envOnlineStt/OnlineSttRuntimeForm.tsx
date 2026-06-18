@@ -265,18 +265,24 @@ export function OnlineSttRuntimeForm({
       {providerId === "iflytek-speed-asr" ? (
         <label className={fieldGroup}>
           <span className={fieldLabel}>口音 / 方言</span>
-          <select
-            className={CONTROL_TEXT_INPUT}
-            value={accent}
-            onChange={(e) => onAccentChange(e.target.value)}
-            disabled={busy}
-          >
-            {XUNFEI_SPEED_ASR_ACCENT_PRESETS.map((p) => (
-              <option key={p.value} value={p.value}>
-                {p.label}
-              </option>
-            ))}
-          </select>
+          {XUNFEI_SPEED_ASR_ACCENT_PRESETS.length > 1 ? (
+            <select
+              className={CONTROL_TEXT_INPUT}
+              value={accent}
+              onChange={(e) => onAccentChange(e.target.value)}
+              disabled={busy}
+            >
+              {XUNFEI_SPEED_ASR_ACCENT_PRESETS.map((p) => (
+                <option key={p.value} value={p.value}>
+                  {p.label}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <p className={PANEL_TYPOGRAPHY.meta}>
+              普通话（zh_cn 自动识别中英 + 202 种方言，无需手动选择）
+            </p>
+          )}
         </label>
       ) : null}
       </div>

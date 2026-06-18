@@ -16,7 +16,7 @@ use crate::online_stt_bridge::OnlineTranscribeBridge;
 use crate::project::stt_vocabulary::{xunfei_hotword_dhw, SttVocabularyPlan};
 use crate::project::transcribe_cancel_cmd::TranscribeCancelPoll;
 
-use super::{read_audio_bytes_limited, rushi_value};
+use super::{audio_size_within_limit, rushi_value};
 
 const ENGINE: &str = "iflytek:speed-transcription:file";
 
@@ -76,7 +76,7 @@ pub async fn transcribe_xunfei_speed_asr(
     let cleanup = WorkDirCleanup(work_dir.clone());
 
     let upload_path = normalize::prepare_upload_wav(audio_path, &work_dir)?;
-    let audio_size = read_audio_bytes_limited(&upload_path)?.len() as u64;
+    let audio_size = audio_size_within_limit(&upload_path)?;
 
     let (dhw, vocab_warnings) = xunfei_hotword_dhw(vocabulary);
     if let Some(ref hw) = dhw {

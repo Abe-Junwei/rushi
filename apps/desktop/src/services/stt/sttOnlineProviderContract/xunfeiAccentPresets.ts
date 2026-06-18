@@ -1,13 +1,12 @@
-/** 讯飞 speedTranscription `business.accent` v1 preset（Grill 2026-06-18 定稿）。 */
+/**
+ * 讯飞 speedTranscription `business.accent`。
+ *
+ * 官方文档（speedTranscription/API.html）`business.accent` 取值范围仅 `mandarin`；
+ * 中英 + 202 种方言为「免切识别」（`language=zh_cn` 下自动检测，无需切 accent）。
+ * 故 v1 收敛为单一 `mandarin`，不暴露会触发参数错误（10303）的方言码。
+ */
 export const XUNFEI_SPEED_ASR_ACCENT_PRESETS = [
   { value: "mandarin", label: "普通话" },
-  { value: "cantonese", label: "粤语" },
-  { value: "lmz", label: "四川话" },
-  { value: "henanese", label: "河南话" },
-  { value: "dongbeiese", label: "东北话" },
-  { value: "shanghainese", label: "上海话" },
-  { value: "minnanese", label: "闽南话" },
-  { value: "uighur", label: "维语" },
 ] as const;
 
 export type XunfeiSpeedAsrAccent = (typeof XUNFEI_SPEED_ASR_ACCENT_PRESETS)[number]["value"];

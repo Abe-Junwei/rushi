@@ -23,6 +23,21 @@ fn api_code_ok(j: &Value) -> bool {
         == Some(0)
 }
 
+fn ost_api_code(j: &Value) -> Option<i64> {
+    j.get("code")
+        .and_then(|c| c.as_i64().or_else(|| c.as_str().and_then(|s| s.parse().ok())))
+}
+
+fn is_query_task_not_found(j: &Value) -> bool {
+    if ost_api_code(j) == Some(10401) {
+        return true;
+    }
+    j.get("message")
+        .and_then(|m| m.as_str())
+        .map(|m| m.eq_ignore_ascii_case("no data found"))
+        .unwrap_or(false)
+}
+
 fn api_error_message(j: &Value) -> String {
     j.get("message")
         .or_else(|| j.get("desc"))
@@ -54,6 +69,45 @@ async fn post_ost_json(
     let text = resp.text().await.map_err(|e| format!("读取 OST 响应: {e}"))?;
     let j: Value = serde_json::from_str(&text).unwrap_or_else(|_| json!({ "code": -1, "message": text }));
     if !status.is_success() && !api_code_ok(&j) {
+        return Err(format!("讯飞 OST HTTP {status}: {text}"));
+    }
+    if !api_code_ok(&j) {
+        return Err(api_error_message(&j));
+    }
+    Ok(j)
+}
+
+async fn post_ost_query_json(
+    _client: &Client,
+    payload: Value,
+    api_key: &str,
+    api_secret: &str,
+) -> Result<Value, String> {
+    let body = serde_json::to_vec(&payload).map_err(|e| format!("序列化 JSON: {e}"))?;
+    let url = format!("https://{XUNFEI_OST_HOST}{QUERY_PATH}");
+    let resp = send_stt_cloud_post(|c| {
+        let headers = signed_json_headers(XUNFEI_OST_HOST, QUERY_PATH, &body, api_key, api_secret);
+        let mut req = c.post(&url).body(body.clone());
+        for (k, v) in headers {
+            req = req.header(k, v);
+        }
+        req
+    })
+    .await
+    .map_err(|e| format!("讯飞 OST HTTP 失败: {e}"))?;
+    let status = resp.status();
+    let text = resp.text().await.map_err(|e| format!("读取 OST 响应: {e}"))?;
+    let j: Value = serde_json::from_str(&text).unwrap_or_else(|_| json!({ "code": -1, "message": text }));
+    if is_query_task_not_found(&j) {
+        return Err("__xunfei_query_task_not_found__".to_string());
+    }
+    if !status.is_success() && !api_code_ok(&j) {
+        if let Some(msg) = j.get("message").and_then(|m| m.as_str()) {
+            return Err(format!(
+                "讯飞 OST 错误 {}：{msg}",
+                ost_api_code(&j).unwrap_or(-1)
+            ));
+        }
         return Err(format!("讯飞 OST HTTP {status}: {text}"));
     }
     if !api_code_ok(&j) {
@@ -125,7 +179,15 @@ pub async fn poll_task_result(
             "common": { "app_id": app_id },
             "business": { "task_id": task_id },
         });
-        let j = post_ost_json(client, QUERY_PATH, payload, api_key, api_secret).await?;
+        let j = match post_ost_query_json(client, payload, api_key, api_secret).await {
+            Ok(v) => v,
+            Err(e) if e == "__xunfei_query_task_not_found__" => {
+                log("INFO xunfei query task not yet visible, retry");
+                transcribe_poll_wait(POLL_INTERVAL, cancel).await?;
+                continue;
+            }
+            Err(e) => return Err(e),
+        };
         let status = j
             .pointer("/data/task_status")
             .or_else(|| j.pointer("/data/status"))

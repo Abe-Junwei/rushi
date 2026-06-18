@@ -139,6 +139,7 @@ describe("tryBuildOnlineTranscribeBridgePayload", () => {
         [STT_ONLINE_PROVIDER_STORAGE_KEYS.enabled]: "true",
         [STT_ONLINE_PROVIDER_STORAGE_KEYS.selectedProviderId]: "iflytek-speed-asr",
         [STT_ONLINE_PROVIDER_STORAGE_KEYS.appKey]: "app-id",
+        // 旧持久化的方言码应被收敛为 mandarin（speedTranscription 仅支持 mandarin + 免切方言）。
         [STT_ONLINE_PROVIDER_STORAGE_KEYS.accent]: "cantonese",
         [STT_ONLINE_PROVIDER_STORAGE_KEYS.timeoutMs]: "120000",
       }),
@@ -149,7 +150,7 @@ describe("tryBuildOnlineTranscribeBridgePayload", () => {
     expect(p?.nativeAdapter).toBe("xunfeiSpeedAsr");
     expect(p?.appKey).toBe("app-id");
     expect(p?.apiSecret).toBe("api-secret");
-    expect(p?.accent).toBe("cantonese");
+    expect(p?.accent).toBe("mandarin");
     expect(p?.authorization).toBe("api-key");
   });
 
