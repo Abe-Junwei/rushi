@@ -33,10 +33,25 @@
 | `--main-shell-sidebar-bg` | 侧栏、波形 tier 外壳、**minimap 条（R2 接线）** |
 | `--main-shell-border` | 壳层 hairline（侧栏右边线等） |
 | `--content-decoration-paper` | 仅内容装饰；**禁止**导航壳 |
-| `--accent-edit`（`zen-indigo`） | 语段/波形 **编辑选中** |
-| `--accent-action`（`zen-saffron`） | CTA / 进度 / 播放头强调 |
+| `--accent-action` / `--accent-action-strong` | 语段选中 / 多选、CTA、进度、播放头（随 Office 主题色 remap） |
+| `--accent-edit` | **兼容别名** = `--accent-action` |
 | `FLAT_OVERLAY_PANEL_SHELL_CLASS` | 对话框 / 菜单 / Toast 壳：`rounded-lg border … shadow-none` |
 | `--shell-elevation-shadow: none` | 全局扁平 elevation 声明 |
+
+**组件落码**：Tailwind `accent-action` / `accent-action-strong`；`accent-edit` 仍可用（等于 action）。**禁止**在 `components/`、`pages/`、`styles/components/` 直引 `zen-saffron*`（守卫 **R8 warning**）。
+
+### 语段 / 波形 fill
+
+| CSS 变量 | 语义 | 典型 mix |
+|----------|------|----------|
+| `--segment-fill-selected` | overlay 主选 | action 26% |
+| `--segment-fill-in-selection-waveform` | overlay 多选 | action 12% |
+| `--segment-fill-in-selection-list` | 列表多选行 | action 8% |
+| `--segment-fill-visited` | band 已播放 | action-strong 18% |
+| `--segment-fill-idle` | band 未播放 | ink 11% |
+| `--zen-wf-progress-played` | WS 已播 peaks | action-strong 32% × progress 基色 |
+
+真源：`tokens.css`；TS 常量：[`segmentFillTokens.ts`](../../apps/desktop/src/config/segmentFillTokens.ts)；Canvas 解析：[`waveformThemeColors.ts`](../../apps/desktop/src/utils/waveformThemeColors.ts)；DOM overlay：[`segmentChrome.ts`](../../apps/desktop/src/utils/segmentChrome.ts)。
 
 **R7 UI 债务（守卫 warning）**：已全部接线 — 见 `SHELL_SURFACE_MIGRATION_MAP` 与 `shellVisualTokens.ts`。
 
@@ -85,6 +100,7 @@
 6. **壳层/浮层 `shadow-md|lg|xl|2xl`**（warning → 改 `FLAT_OVERLAY_PANEL_SHELL_CLASS` / `shadow-none`；见 `shellVisualTokens.ts`）
 7. **壳层 CSS `box-shadow` 债务**（warning → `workspace.css` 侧栏、`panels.css` `.panel` 等）
 8. **导航壳层 `bg-zen-paper`**（warning → `MAIN_SHELL_SURFACE_CLASS`；见 `shellVisualTokens.ts`）
+9. **语义 accent R8**：`components/` / `pages/` / `styles/components/` 内 `zen-saffron`（warning → `accent-action*`）
 
 ---
 

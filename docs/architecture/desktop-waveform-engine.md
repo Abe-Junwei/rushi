@@ -22,8 +22,9 @@
 
 - **tier** `tierScrollRef.scrollLeft` 为 UI 真源（overlay、ruler、segment 控件、minimap）。
 - **读取**：overlay / minimap / ruler / playback chrome 经 [`resolveTierViewportMetrics`](../../apps/desktop/src/utils/waveformViewport.ts)（live ref + committed layout）；**写入**仅 `setTierScrollPx` / 用户 scroll / viewport fit；clamp 经 [`clampTimelineScrollLeftPx`](../../apps/desktop/src/utils/waveformScrollSync.ts)。
-- WaveSurfer `autoScroll: false`；tier 承担水平滚动，并通过 `syncWaveSurferScrollPx` **镜像** `ws.setScroll(scrollLeftPx)`（每帧 resize transaction 内单次写入，无重复 rAF）。
-- 播放跟随：`useWaveformPlaybackScrollFollow` 在波形 ready 后只写 tier scroll；tier → WS 镜像由 `useTierScrollSync` 触发。
+- WaveSurfer `autoScroll: false`；tier 承担水平滚动，WaveSurfer / overlay 位于同一 timeline 内容层，随浏览器原生 scroll 物理移动。
+- **Scroll 热路径（2026-06）**：`useTierScrollSync` 在 tier scroll / wheel-forward 时更新 live scroll refs，并调用 [`scheduleTierScrollFrame`](../../apps/desktop/src/utils/tierScrollFrameCoordinator.ts) 合并 band / playhead / ruler 的 viewport chrome imperative 更新为**单 rAF**；React `tierScrollLayout` 在 scroll burst 结束后 commit。
+- 播放跟随：`useWaveformPlaybackScrollFollow` 在波形 ready 后只写 tier scroll；viewport chrome 由 frame coordinator 同步。
 
 ## Viewport resize 编排（P0 阶段 1）
 
@@ -98,30 +99,42 @@
 
 | 层 | 职责 |
 |----|------|
-| **Canvas bands** | [`WaveformSegmentBandCanvas`](../../apps/desktop/src/components/WaveformSegmentBandCanvas.tsx) 在 sticky 壳内绘制全部 packable 色带；[`drawWaveformSegmentBands`](../../apps/desktop/src/services/waveform/drawWaveformSegmentBands.ts) 纯函数；scroll/wheel 时读 live `resolveTierViewportMetrics` 重绘 |
+| **Canvas bands** | [`WaveformSegmentBandCanvas`](../../apps/desktop/src/components/WaveformSegmentBandCanvas.tsx) 在 viewport chrome 内绘制可见窗 packable 色带；[`drawWaveformSegmentBands`](../../apps/desktop/src/services/waveform/drawWaveformSegmentBands.ts) 纯函数；scroll/wheel 时读 live `resolveTierViewportMetrics` 重绘 |
 | **DOM overlay** | [`WaveformSegmentOverlay`](../../apps/desktop/src/components/WaveformSegmentOverlay.tsx) 仅 [`selectOverlayInteractiveSegmentIndices`](../../apps/desktop/src/utils/waveformSegmentOverlayVisibility.ts)（选中 + drag draft） |
 | **语段列表** | [`EditorSegmentList`](../../apps/desktop/src/components/editor/EditorSegmentList.tsx) + [`segmentListVirtualWindow`](../../apps/desktop/src/utils/segmentListVirtualWindow.ts) |
 
 交互 hit-test（tap seek、框选新建、context menu）仍经 packable selector + 投影坐标，与 band 绘制共用真源。
+
+## 语段 / 进度 chroming（accent 语义化，2026-06）
+
+| 层 | 配色真源 | 说明 |
+|----|----------|------|
+| **WaveSurfer peaks** | `tokens.css` `--zen-wf-wave` / `--zen-wf-progress-played` | [`readWaveformSurferPalette`](../../apps/desktop/src/utils/waveformThemeColors.ts) 在 mount / 主题切换时注入；[`installWaveSurferPlayedRegionDisplayFix`](../../apps/desktop/src/services/waveform/waveformSurferProgressCoverage.ts) 保留 progress 层 tint 且主 canvas 不 clip |
+| **Band canvas** | `--segment-fill-*` → resolve rgb | [`segmentBandFillStyle`](../../apps/desktop/src/utils/waveformSegmentBandCanvasColors.ts)；`timeupdate` / seek 经 [`requestWaveformSegmentBandPaint`](../../apps/desktop/src/utils/tierScrollFrameCoordinator.ts) 重绘 visited |
+| **DOM overlay** | `var(--segment-fill-*)` | [`waveformRegionFillColor`](../../apps/desktop/src/utils/segmentChrome.ts)；多选时 `multiSelectActive` 统一 12% waveform in-selection |
+| **Playhead / minimap** | `--waveform-playhead` / `--waveform-minimap-*` | `accent-action` 链；WS 内置 cursor 隐藏 |
+
+组件禁止直引 `zen-saffron*`（守卫 R8）；语段选中 / visited 均随 `--accent-action*`（Office 主题色）。见 [`desktop-visual-style-governance.md`](./desktop-visual-style-governance.md) 与根 [`DESIGN.md`](../../DESIGN.md) Waveform tokens 表。
 
 ## 舞台 DOM
 
 ```text
 <div ref=tierScrollRef overflow-x:auto>                    ← tier 滚动容器（scroll 真源）
   <div ref=waveformPeaksStageShellRef width=max(timeline, vw)>  ← stage 宽壳（imperative 可写）
-    <div ref=waveformTimelineShellRef width=timelineWidthPx>  ← timeline 宽壳
-      <div ref=waveformStickyShellRef sticky left=0 width=vw> ← 视口宽 sticky 壳
-        <div ref=waveformStretchShellRef>                     ← resize stretch-hold（scaleX）
-          <div ref=containerRef>                              ← WaveSurfer mount（fillParent: false）
-          <WaveformSegmentBandCanvas z=2 />                   ← packable 语段色带（Canvas，sticky 壳内）
-      <WaveformSegmentOverlay z=3 />                          ← 仅选中 / drag draft DOM
+    <div ref=waveformTimelineShellRef width=timelineWidthPx>  ← timeline 内容层（原生随 tier scroll 移动）
+      <div ref=waveformStretchShellRef>                       ← resize stretch-hold（scaleX）
+        <div ref=containerRef>                                ← WaveSurfer mount（fillParent: false）
+      <WaveformSegmentOverlay z=3 />                          ← 仅选中 / drag draft DOM，timeline 坐标
       <WaveformSegmentPlaybackControls z=8 />
-  <WaveformLiveTimeRuler sticky bottom z=20 />               ← 嵌入时间尺（viewport 坐标空间）
+      <div ref=waveformStickyShellRef sticky left=0 width=vw> ← viewport chrome
+        <WaveformSegmentBandCanvas z=2 />                     ← packable 语段色带（Canvas，viewport 坐标）
+        <WaveformViewportPlayhead z=10 />
+        <WaveformLiveTimeRuler z=20 />                        ← 嵌入时间尺（viewport 坐标空间）
 </div>
 ```
 
 - `timelineWidthPx = pxPerSec × duration`；`peaksStageWidthPx = max(timelineWidthPx, tier.clientWidth)`。
-- sticky 壳宽 = tier 视口宽（CSS var `--waveform-tier-viewport-width` + imperative `width`）。
+- viewport chrome 宽 = tier 视口宽（CSS var `--waveform-tier-viewport-width` + imperative `width`）。
 
 ## Zoom 单轨（路线 A + C：decode 首帧，peaks 热切换）
 
