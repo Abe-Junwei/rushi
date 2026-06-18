@@ -10,7 +10,7 @@
 | 适用节奏 | 单人、每轮 2～4h、一轮一纵向薄片 |
 | 规划跨度 | **个人单机 v1**：约 **14～18 周（自当前）** 或 **18～22 周（自 W1）**；R3 薄片 **~12～15w**（§4.0，含发行 smoke 缓冲）；协作 **非 v1** |
 | 修订 | 每完成一个阶段更新 §2 状态表、§4 排期表与 §13 代码对照 |
-| 最近对照 | **2026-06-18**：**BATCH-TXN** Step 10–11 ✅ · **H-BATCH-1 ✅**；Step 12 REL-1.1 待 CSP 回归签收 |
+| 最近对照 | **2026-06-18**：**§10.4 v1.1+ Step 5–12 ✅** · **REL-1.1 ✅**（H-CSP-* Release 手测）；主序 → v1.2 / 并行轨 |
 
 ### 状态标记约定（全文档统一）
 
@@ -1024,7 +1024,7 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | **定位** | **个人单机 v1 主序已闭合**（EXP-WORD → REV-LOC → R4 → R9 → LLM-LOC 4a）；**v1 后硬化 Step 1–4 ✅**；进入 **§10.4 v1.1+ 统一后续** |
 | **排期真源** | **§10.4**（发行尾项 · 产品元信息 · **新手引导** · 定稿 UX · v1.1 安全/取消 · 并行禁忌） |
 | **LLM** | **4a** ✅ · **4b** ❌ Gate-B No-Go（[decision](../specs/llm-loc-gate-b-decision-2026-06.md)） |
-| **当前主刀** | **Step 12 REL-1.1**（H-CSP-* Release 回归 + 签收）；**Step 5–11 ✅**（含 **BATCH-TXN** · H-BATCH-1 2026-06-18） |
+| **当前主刀** | **§10.4 v1.1+ 已闭合**（Step 5–12 ✅ · REL-1.1 2026-06-18）；下一编码见 [`parallel-backlog-2026-06.md`](../specs/parallel-backlog-2026-06.md) |
 | **并行（不挡主刀）** | **R3g-C-NANO vLLM** CUDA spike（research ✅，待 Win/Linux GPU 机）；**R3g-B-Align**；**R3h-ASR-VER** |
 | **近期不做** | **Fun-ASR-Nano catalog**（PyTorch Defer）；实时 mic（STREAM-*）、协作/CAT/RAG、**F4-ASR**、**LLM-LOC-4b**、**R3s-A** Defer |
 
@@ -1186,7 +1186,7 @@ Step 10  BATCH-TXN B-1  pick_audio_paths + Hub 批量导入                     
 Step 11  BATCH-TXN B-2  串行转写队列 + Close Gate + 停止                    代码 ✅
 
 【Phase E · v1.1 签收】
-Step 12  REL-1.1  signoff  H-CSP-* + H-STT-* + 回归 R9 主路径抽检
+Step 12  REL-1.1  signoff  H-CSP-* + H-STT-* + 回归 R9 主路径抽检          ✅ 2026-06-18
 ```
 
 | Step | ID | 状态 | 硬验收 |
@@ -1203,14 +1203,14 @@ Step 12  REL-1.1  signoff  H-CSP-* + H-STT-* + 回归 R9 主路径抽检
 | **9a** | **ONBOARD O-1** | ✅ | 5 步清单 + dismiss/restore；**H-ONBOARD-1 ✅** 2026-06-12 |
 | **9b** | **ONBOARD O-2** | ✅ | 自动勾选 + CTA；**H-ONBOARD-2/3 ✅** 2026-06-12 |
 | **10–11** | **BATCH-TXN** | ✅ | B-1 多选导入 + B-2 串行队列/停止/Close Gate；**H-BATCH-1 ✅** 2026-06-18 |
-| **12** | **REL-1.1** | 📋 | H-CSP-* 待 Release 回归；其余 H-* 已签 |
+| **12** | **REL-1.1** | ✅ | H-CSP-1/2 Release 手测 ✅ · R9 抽检 ✅ · [`rel-1.1-hand-test-checklist`](../specs/rel-1.1-hand-test-checklist.md) 2026-06-18 |
 
 **REL-1.1 手测最小集**（Step 12）：
 
 | ID | 项 |
 |----|-----|
-| H-CSP-1 | Release 包 Editor 波形加载；Console 无 style CSP violation |
-| H-CSP-2 | 交付导出 Dialog、环境页三盏灯正常 |
+| H-CSP-1 | Release 包 Editor 波形加载；Console 无 style CSP violation | ✅ 2026-06-18 |
+| H-CSP-2 | 交付导出 Dialog、环境页三盏灯正常 | ✅ 2026-06-18 |
 | H-STT-1 | 在线 STT（≥1 已配置 adapter）转写中停止，语段恢复 | ✅ 2026-06-12 百炼 file_asr |
 | H-STT-2 | TRN-DIAG / 诊断包 outcome=`cancelled` | ✅ 2026-06-12 |
 | H-STT-3 | 本机侧车 async 停止回归 | ✅ 2026-06-12 |
@@ -1433,7 +1433,7 @@ Step 12  REL-1.1  signoff  H-CSP-* + H-STT-* + 回归 R9 主路径抽检
 | 2026-06-12 | **§10.4 + ONBOARD**：Step **9a–b** 新手引导（Welcome 首跑清单 · 非 tour）；H-ONBOARD-*；research brief 门禁 |
 | 2026-06-12 | **审查吸收**：R3g-A **单 SKU**；guard **46**；R3h-I2/I3 **🟡**；v1.1 CSP/STT **估时缓冲**；R3s-A Phase 0 触发；spec 未立项风险 |
 | 2026-06-17 | **R3g-C Fun-ASR-Nano**：PyTorch spike **Defer**（[`acceptance`](../specs/r3g-c-funasr-nano-acceptance.md)）；dev venv 升 FunASR GitHub `main`；[`vllm-research`](../specs/r3g-c-funasr-nano-vllm-research.md) ✅；§10.4 主刀 → **BATCH-TXN** |
-| 2026-06-18 | **BATCH-TXN Step 10–11 ✅**：[`batch-transcribe-queue-acceptance`](../specs/batch-transcribe-queue-acceptance.md) · **H-BATCH-1 ✅**；主刀 → **REL-1.1**（H-CSP-* 待 Release 回归） |
+| 2026-06-18 | **BATCH-TXN Step 10–11 ✅** · **REL-1.1 Step 12 ✅**（H-CSP-* Release 手测）；**§10.4 v1.1+ 主序闭合** |
 
 ---
 
@@ -1533,7 +1533,7 @@ Step 12  REL-1.1  signoff  H-CSP-* + H-STT-* + 回归 R9 主路径抽检
 
 1. **R3t-A/B/C**、**R3e-B/C ✅**（C 2026-05-31）；§4.1.1 **⑥½** 闭合。  
 2. **§4.1.8** ASR 生态 backlog；P1 可并行 R3h-ASR-VER / Qwen3 spike。  
-3. **下一编码刀**：**§10.4 Step 12 REL-1.1** 签收；并行 **R3g-C-NANO vLLM**（仅 CUDA 环境）。
+3. **下一编码刀**：**§10.4 v1.1+ 已闭合**；并行 **ACC-STT 讯飞** / **R3g-C-NANO vLLM** / **R3g-B-Align** — 见 [`parallel-backlog-2026-06.md`](../specs/parallel-backlog-2026-06.md)。
 4. **理想序 vs 实际**：R3g-C、ACC、Phase 10、R3t-D 已超前；以 §4.1.1 图 + §10.1 A 为准。  
 5. **R3f / LRC 发行闸门**：mac/linux/Win CI ✅；**Win v0.1.0 release 资产**待下一 tag 补传。  
 6. **R3 宏观**：**~12～15w**（2026-06-02 审查 +2w）；⑤″f **4–6w**（含 MEM）。  

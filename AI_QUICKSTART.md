@@ -21,7 +21,7 @@
 
 ## 当前热点（自动同步，2026-06-18）
 
-**v1.1 主刀**：**§10.4 Step 12 REL-1.1**（H-CSP-* Release 回归 + 签收）；**Step 5–11 ✅**（含 **BATCH-TXN** · H-BATCH-1 2026-06-18）
+**§10.4 v1.1+ 主序 ✅**（Step 5–12 · REL-1.1 2026-06-18）。**下一编码**见 [`parallel-backlog-2026-06.md`](./docs/execution/specs/parallel-backlog-2026-06.md)（ACC-STT 讯飞 / R3g-C vLLM / 架构 hotspot 等）。
 
 **ASR 雷达（并行，不挡主刀）**
 
@@ -53,7 +53,7 @@
 | 新 UI / 整页重设计 / Stitch 对齐 | 仓库根 `DESIGN.md` → 再映射到 `tailwind.config.js` + `apps/desktop/src/config/tokens.ts` |
 | **波形区 Stitch 精修** | [`apps/desktop/docs/stitch-waveform-polish-spec.md`](./apps/desktop/docs/stitch-waveform-polish-spec.md) + [`stitch-waveform-polish-layout.html`](./apps/desktop/stitch-waveform-polish-layout.html) → `bash scripts/prepare-stitch-upload.sh` |
 | 浮动确认/表单对话框 | `FloatingPanelTemplate` + `preset="compactDialog"`；`controlStyles.ts` 按钮；见 [`docs/architecture/desktop-floating-dialog-panels.md`](./docs/architecture/desktop-floating-dialog-panels.md) |
-| **后续排期 / 下一刀** | [`rushi-execution-roadmap.md`](./docs/execution/plans/rushi-execution-roadmap.md) **§10.4** — **REL-1.1** Step 12；runbook [`rel-1.1-release-signoff-runbook.md`](./docs/execution/specs/rel-1.1-release-signoff-runbook.md) |
+| **后续排期 / 下一刀** | [`parallel-backlog-2026-06.md`](./docs/execution/specs/parallel-backlog-2026-06.md) — **§10.4 v1.1+ ✅**；并行 ACC-STT / R3g-C vLLM |
 | **新功能 / 路线图薄片** | 可选先 **`grill-with-docs`** → **先调研后编码**：`.cursor/rules/feature-research-gate.mdc` + `docs/execution/specs/*-research.md`；范例 [`r3-provider-configuration-research.md`](./docs/execution/specs/r3-provider-configuration-research.md) |
 | **难 bug / 侧车 / flaky** | `.cursor/skills/diagnose` 或对话中说「按 diagnose 查」 |
 | **架构 hotspot / 定期体检** | `.cursor/skills/improve-architecture`；配合 `check-architecture-guard.mjs` |

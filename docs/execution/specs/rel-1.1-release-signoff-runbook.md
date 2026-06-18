@@ -100,12 +100,10 @@ GitHub → **Actions** → **Release build** → **Run workflow** → 分支 `ma
 
 | 项 | 值 |
 |----|-----|
-| H-CSP-1 / H-CSP-2 | ✅ + 日期 |
-| 签收人 | |
-| 日期 | |
-| 版本/tag | 例 `v0.1.1` |
+| H-CSP-1 / H-CSP-2 | ✅ 2026-06-18 |
+| Step 12 | **REL-1.1 ✅** |
 
-路线图 Step 12 标 ✅；`AI_QUICKSTART.md` 主刀可切至 v1.2 / 并行轨。
+路线图 Step 12 标 ✅；`AI_QUICKSTART.md` 主刀切至并行轨。
 
 ---
 

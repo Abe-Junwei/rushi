@@ -8,8 +8,8 @@
 
 | ID | 项 | 状态 |
 |----|-----|------|
-| H-CSP-1 | Release 包 Editor 波形加载；Console 无 style CSP violation | 见 [runbook §C](./rel-1.1-release-signoff-runbook.md) |
-| H-CSP-2 | 交付导出 Dialog、环境页三盏灯正常 | 见 [runbook §C](./rel-1.1-release-signoff-runbook.md) |
+| H-CSP-1 | Release 包 Editor 波形加载；Console 无 style CSP violation | ✅ 2026-06-18 |
+| H-CSP-2 | 交付导出 Dialog、环境页三盏灯正常 | ✅ 2026-06-18 |
 | H-PROD-1 | 设置 → 关于：版本与诊断 `build-info.txt` 一致 | ✅ 2026-06-12 |
 | H-PROD-2 | 关于页可打开 ffmpeg 等第三方许可全文 | ✅ 2026-06-12 |
 
@@ -44,6 +44,7 @@
 
 | 项 | 值 |
 |----|-----|
-| 签收人 | |
-| 日期 | |
-| 版本/tag | |
+| 签收人 | 单人手测 |
+| 日期 | 2026-06-18 |
+| 版本/tag | `0.1.0` Release `.app`（[`v1-release-build-evidence`](../v1-release-build-evidence.md)） |
+| Step 12 | **REL-1.1 ✅** |
