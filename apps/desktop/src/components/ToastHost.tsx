@@ -10,7 +10,6 @@ import {
   type ToastItem,
   type ToastVariant,
 } from "../services/ui/toast";
-import { toastBottomInsetCssVar } from "../services/ui/toastLayout";
 import { CONTROL_BTN_SECONDARY } from "../config/controlStyles";
 
 const TOAST_SHELL =
@@ -81,10 +80,7 @@ export function ToastHost() {
 
   return createPortal(
     <div
-      className="pointer-events-none fixed inset-x-0 z-[200] flex justify-center px-4"
-      style={{
-        bottom: toastBottomInsetCssVar(),
-      }}
+      className="toast-host-portal pointer-events-none fixed inset-x-0 z-[200] flex justify-center px-4"
       aria-label="通知"
     >
       <ToastCard item={item} />

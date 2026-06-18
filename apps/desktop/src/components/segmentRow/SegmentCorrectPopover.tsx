@@ -1,5 +1,6 @@
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
+import { CspLayout } from "../CspLayout";
 import type { CorrectSuggestion } from "../../services/editor/correctSuggestions";
 import type { SegmentCorrectPopoverState } from "../../pages/useEditorSegmentCorrectPopover";
 
@@ -38,11 +39,12 @@ export function SegmentCorrectPopover({ state, suggestions, onClose, onApply }: 
         aria-label="关闭改正建议"
         onClick={onClose}
       />
-      <div
+      <CspLayout
+        as="div"
         role="dialog"
         aria-label="改正建议"
+        layout={{ left, top }}
         className="fixed z-[91] w-max max-w-[min(200px,calc(100vw-16px))] rounded-md border border-notion-border bg-notion-bg py-0.5 shadow-none"
-        style={{ left, top }}
         onClick={(e) => e.stopPropagation()}
       >
         {suggestions.length === 0 ? (
@@ -64,7 +66,7 @@ export function SegmentCorrectPopover({ state, suggestions, onClose, onApply }: 
             ))}
           </ul>
         )}
-      </div>
+      </CspLayout>
     </>,
     document.body,
   );

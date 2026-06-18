@@ -1,4 +1,5 @@
 import type { RefObject } from "react";
+import { CspLayout } from "./CspLayout";
 
 type RulerTick = { t: number; major: boolean };
 
@@ -124,8 +125,9 @@ export function WaveformTimeRulerTickLayer({
           const isHighlightedMajor =
             embedded && highlightedMajorTickTime != null && Math.abs(t - highlightedMajorTickTime) < 1e-6;
           return (
-            <span
+            <CspLayout
               key={`lb-${t}`}
+              as="span"
               className={`absolute text-label tabular-nums leading-none ${labelClassTop} ${
                 embedded
                   ? interactionActive && isHighlightedMajor
@@ -135,13 +137,13 @@ export function WaveformTimeRulerTickLayer({
                     ? "text-notion-bg/60"
                     : "text-zen-ink/55"
               }`}
-              style={{
+              layout={{
                 left: viewportSpace ? `${displayPx}px` : `${(t / Math.max(durationSec, 1e-6)) * 100}%`,
                 transform: "translateX(2px)",
               }}
             >
               {formatMediaTime(t)}
-            </span>
+            </CspLayout>
           );
         })}
       </div>

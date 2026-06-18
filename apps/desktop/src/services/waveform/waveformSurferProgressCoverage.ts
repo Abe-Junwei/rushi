@@ -1,7 +1,6 @@
 import type WaveSurfer from "wavesurfer.js";
+import { setCspLayoutRules } from "../../utils/cspElementLayout";
 import { logDesktopUi } from "../desktopUiLog";
-
-/** WaveSurfer v7 `renderer-utils` MAX_CANVAS_WIDTH — upper bound for chunk width. */
 export const WAVESURFER_MAX_CANVAS_CHUNK_PX = 8000;
 
 export type WaveSurferWaveformLayerNodes = {
@@ -183,16 +182,17 @@ export function restoreWaveSurferMainCanvasVisibility(
   layers: WaveSurferWaveformLayerNodes,
   ratio: number,
 ): void {
-  layers.canvasWrapper.style.clipPath = "none";
+  setCspLayoutRules(layers.canvasWrapper, { clipPath: "none" });
   const played = Math.max(0, Math.min(1, ratio));
-  layers.progressWrapper.style.width = `${played * 100}%`;
-  layers.progressWrapper.style.overflow = "hidden";
+  setCspLayoutRules(layers.progressWrapper, {
+    width: `${played * 100}%`,
+    overflow: "hidden",
+  });
 }
 
 function hideWaveSurferPlayheadCursor(renderer: WaveSurferRendererInternals): void {
   if (!renderer.cursor) return;
-  renderer.cursor.style.display = "none";
-  renderer.cursor.style.visibility = "hidden";
+  setCspLayoutRules(renderer.cursor, { display: "none", visibility: "hidden" });
 }
 
 /** Progress update without main-canvas clip — played tint via progressWrapper overlay. */
@@ -271,8 +271,8 @@ export function positionWaveformScrollLayersByTierScroll(
   ws?: WaveSurfer | null,
 ): void {
   const tx = `translate3d(${-Math.round(scrollLeftPx)}px, 0, 0)`;
-  if (layers.waveform) layers.waveform.style.transform = tx;
-  if (layers.overlay) layers.overlay.style.transform = tx;
+  if (layers.waveform) setCspLayoutRules(layers.waveform, { transform: tx });
+  if (layers.overlay) setCspLayoutRules(layers.overlay, { transform: tx });
   if (ws) logWaveSurferGeomOnScroll(ws);
 }
 

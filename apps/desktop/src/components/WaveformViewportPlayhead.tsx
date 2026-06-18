@@ -1,5 +1,6 @@
 import { memo, useCallback, useEffect, useRef } from "react";
 import { useWaveformLiveClock } from "../hooks/useWaveformLiveClock";
+import { setCspLayoutRules } from "../utils/cspElementLayout";
 import { playheadViewportLeftPx } from "../utils/waveformProjection";
 import {
   resolveTierViewportMetrics,
@@ -74,7 +75,7 @@ export const WaveformViewportPlayhead = memo(function WaveformViewportPlayhead({
       args.timelineWidthPx,
       args.durationSec,
     );
-    el.style.transform = `translate3d(${Math.round(leftPx)}px, 0, 0)`;
+    setCspLayoutRules(el, { transform: `translate3d(${Math.round(leftPx)}px, 0, 0)` });
   }, []);
 
   const onPlayheadMove = useCallback(

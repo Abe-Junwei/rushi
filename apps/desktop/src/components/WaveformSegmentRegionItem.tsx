@@ -2,6 +2,7 @@ import { memo, useMemo, type MouseEvent, type PointerEvent } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
 import { waveformRegionFillColor } from "../utils/segmentChrome";
 import type { segmentOverlayGeometry } from "../utils/waveformSegmentBounds";
+import { CspLayout } from "./CspLayout";
 
 type SegmentOverlayGeometryFn = typeof segmentOverlayGeometry;
 
@@ -67,9 +68,16 @@ export const WaveformSegmentRegionItem = memo(
     );
 
     return (
-      <div
+      <CspLayout
         data-waveform-segment=""
         data-segment-idx={idx}
+        layout={{
+          left: geom.leftPx,
+          width: geom.widthPx,
+          top: geom.topPx,
+          height: geom.heightPx,
+          background: waveformRegionFillColor(seg, selected, inSelection),
+        }}
         className={[
           "waveform-segment-region",
           selected ? "waveform-segment-region-selected" : "",
@@ -77,13 +85,6 @@ export const WaveformSegmentRegionItem = memo(
         ]
           .filter(Boolean)
           .join(" ")}
-        style={{
-          left: geom.leftPx,
-          width: geom.widthPx,
-          top: geom.topPx,
-          height: geom.heightPx,
-          background: waveformRegionFillColor(seg, selected, inSelection),
-        }}
         onPointerDown={(ev) => onSegmentPointerDown(idx, ev)}
         onClick={(ev) => onSegmentClick(idx, ev)}
         onDoubleClick={(ev) => onSegmentDoubleClick(idx, ev)}
@@ -94,7 +95,7 @@ export const WaveformSegmentRegionItem = memo(
             <span className="waveform-segment-handle waveform-segment-handle-end" aria-hidden />
           </>
         ) : null}
-      </div>
+      </CspLayout>
     );
   },
   (prev, next) =>

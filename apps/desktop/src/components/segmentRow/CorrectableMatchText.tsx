@@ -1,5 +1,7 @@
 import type { CSSProperties, ReactNode } from "react";
 import type { CorrectableSpan } from "../../services/editor/findCorrectableSpans";
+import { CspLayout } from "../CspLayout";
+import type { CspLayoutRules } from "../../utils/cspElementLayout";
 
 const ROOT_CLASS = "m-0 whitespace-pre-wrap break-words leading-snug text-inherit";
 const HIT_CLASS = "seg-correctable-hit";
@@ -16,17 +18,21 @@ export function CorrectableMatchText({ text, spans, className, textStyle, onSpan
   const rootClass = className ? `${ROOT_CLASS} ${className}` : ROOT_CLASS;
 
   if (!text) {
-    return (
-      <p className={rootClass} style={textStyle}>
+    return textStyle ? (
+      <CspLayout as="p" className={rootClass} layout={textStyle as CspLayoutRules}>
         输入语段文本...
-      </p>
+      </CspLayout>
+    ) : (
+      <p className={rootClass}>输入语段文本...</p>
     );
   }
   if (!spans.length) {
-    return (
-      <p className={rootClass} style={textStyle}>
+    return textStyle ? (
+      <CspLayout as="p" className={rootClass} layout={textStyle as CspLayoutRules}>
         {text}
-      </p>
+      </CspLayout>
+    ) : (
+      <p className={rootClass}>{text}</p>
     );
   }
 
@@ -70,9 +76,11 @@ export function CorrectableMatchText({ text, spans, className, textStyle, onSpan
     nodes.push(<span key={`t-${cursor}`}>{text.slice(cursor)}</span>);
   }
 
-  return (
-    <p className={rootClass} style={textStyle}>
+  return textStyle ? (
+    <CspLayout as="p" className={rootClass} layout={textStyle as CspLayoutRules}>
       {nodes}
-    </p>
+    </CspLayout>
+  ) : (
+    <p className={rootClass}>{nodes}</p>
   );
 }

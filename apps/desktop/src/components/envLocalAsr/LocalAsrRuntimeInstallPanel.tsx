@@ -10,6 +10,7 @@ import {
   PANEL_PROGRESS_FILL_COMPACT_CLASS,
   PANEL_PROGRESS_TRACK_COMPACT_CLASS,
 } from "../panelProgressStyles";
+import { CspProgressFill } from "../CspProgressFill";
 import {
   EnvCollapsibleSectionSummary,
   ENV_COLLAPSIBLE_DETAILS,
@@ -87,9 +88,9 @@ export function LocalAsrRuntimeInstallPanel({
               aria-valuemax={100}
               aria-label="侧车组件下载进度"
             >
-              <div
+              <CspProgressFill
+                percent={view.downloadProgressPercent}
                 className={PANEL_PROGRESS_FILL_COMPACT_CLASS}
-                style={{ width: `${view.downloadProgressPercent}%` }}
               />
             </div>
           </div>

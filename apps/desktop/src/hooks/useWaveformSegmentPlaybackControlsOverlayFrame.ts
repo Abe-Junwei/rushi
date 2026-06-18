@@ -1,4 +1,5 @@
 import { useLayoutEffect, useRef, type RefObject } from "react";
+import { clearCspLayoutRules, setCspLayoutRules } from "../utils/cspElementLayout";
 import { resolveSegmentPlaybackControlsOverlayLayout } from "../utils/waveformRegionActionOverlay";
 import {
   resolveTierViewportMetrics,
@@ -25,12 +26,6 @@ export function useWaveformSegmentPlaybackControlsOverlayFrame(args: {
 
     let raf = 0;
 
-    const clearInlineLayout = (overlay: HTMLDivElement) => {
-      overlay.style.removeProperty("display");
-      overlay.style.removeProperty("left");
-      overlay.style.removeProperty("width");
-    };
-
     const paint = () => {
       raf = 0;
       const a = argsRef.current;
@@ -56,11 +51,15 @@ export function useWaveformSegmentPlaybackControlsOverlayFrame(args: {
       });
 
       if (!layout.visible) {
-        overlay.style.display = "none";
+        overlay.classList.add("hidden");
+        clearCspLayoutRules(overlay);
       } else {
-        overlay.style.display = "flex";
-        overlay.style.left = `${layout.overlayLeftPx}px`;
-        overlay.style.width = `${layout.overlayWidthPx}px`;
+        overlay.classList.remove("hidden");
+        setCspLayoutRules(overlay, {
+          display: "flex",
+          left: layout.overlayLeftPx,
+          width: layout.overlayWidthPx,
+        });
       }
 
       raf = requestAnimationFrame(paint);
@@ -71,7 +70,10 @@ export function useWaveformSegmentPlaybackControlsOverlayFrame(args: {
     return () => {
       if (raf) cancelAnimationFrame(raf);
       const overlay = argsRef.current.overlayRef.current;
-      if (overlay) clearInlineLayout(overlay);
+      if (overlay) {
+        overlay.classList.remove("hidden");
+        clearCspLayoutRules(overlay);
+      }
     };
   }, [
     args.durationSec,

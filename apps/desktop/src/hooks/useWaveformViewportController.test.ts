@@ -1,5 +1,7 @@
 import { describe, expect, it, vi, afterEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
+import { readCspLayoutRulesForElement } from "../utils/cspElementLayout";
+import { clearAllCspScopeRulesForTests } from "../utils/cspNonceStyleRegistry";
 import { createWaveformAppliedZoomState } from "../utils/waveformAppliedZoom";
 import { useWaveformViewportController } from "./useWaveformViewportController";
 import { WAVEFORM_TIER_VIEWPORT_WIDTH_VAR } from "../utils/waveformViewport";
@@ -56,6 +58,7 @@ function createSyncArgs(width: number) {
 describe("useWaveformViewportController", () => {
   afterEach(() => {
     vi.restoreAllMocks();
+    clearAllCspScopeRulesForTests();
   });
 
   function mountWithRo(args: ReturnType<typeof createSyncArgs>, extra: Record<string, unknown> = {}) {
@@ -117,8 +120,8 @@ describe("useWaveformViewportController", () => {
     await triggerViewportGrow(args, fireRo, 1600);
 
     expect(args.reRender).toHaveBeenCalledTimes(1);
-    expect(args.stickyShellRef.current.style.width).toBe("1600px");
-    expect(args.stretchShellRef.current.style.transform).toBe("scaleX(2)");
+    expect(readCspLayoutRulesForElement(args.stickyShellRef.current!)).toContain("width: 1600px");
+    expect(readCspLayoutRulesForElement(args.stretchShellRef.current!)).toContain("scaleX(2)");
   });
 
   it("clears stretch transform after render complete", async () => {
@@ -127,14 +130,14 @@ describe("useWaveformViewportController", () => {
 
     await triggerViewportGrow(args, fireRo, 1600);
 
-    expect(args.stretchShellRef.current.style.transform).toBe("scaleX(2)");
+    expect(readCspLayoutRulesForElement(args.stretchShellRef.current!)).toContain("scaleX(2)");
 
     act(() => {
       args.afterRenderHandlers.forEach((handler) => handler());
     });
     await flushLayout();
 
-    expect(args.stretchShellRef.current.style.transform).toBe("");
+    expect(readCspLayoutRulesForElement(args.stretchShellRef.current!)).toBeUndefined();
   });
 
   it("re-renders when tier ResizeObserver fires", async () => {
@@ -152,8 +155,8 @@ describe("useWaveformViewportController", () => {
 
     await triggerViewportGrow(args, fireRo, 1600);
 
-    expect(args.tierScrollRef.current.style.getPropertyValue(WAVEFORM_TIER_VIEWPORT_WIDTH_VAR)).toBe(
-      "1600px",
+    expect(readCspLayoutRulesForElement(args.tierScrollRef.current!)).toContain(
+      `${WAVEFORM_TIER_VIEWPORT_WIDTH_VAR}: 1600px`,
     );
   });
 
@@ -200,7 +203,7 @@ describe("useWaveformViewportController", () => {
     await flushLayout();
 
     expect(onFitAllPxPerSecRefit).toHaveBeenCalled();
-    expect(timelineShell.style.width).not.toBe("");
+    expect(readCspLayoutRulesForElement(timelineShell)).toBeDefined();
   });
 
   it("ws.zoom without ws.load when fit-all refit is needed on grow", async () => {
@@ -229,9 +232,9 @@ describe("useWaveformViewportController", () => {
     expect(refitFitAllPxPerSec).toHaveBeenCalledWith(1920);
     expect((args.wsRef.current as { zoom: ReturnType<typeof vi.fn> }).zoom).toHaveBeenCalledWith(0.145);
     expect(onFitAllPxPerSecRefit).toHaveBeenCalledWith(0.145);
-    expect(args.stretchShellRef.current.style.transform).toBe("scaleX(1.6)");
-    expect(timelineShell.style.width).not.toBe("");
-    expect(peaksStageShell.style.width).not.toBe("");
+    expect(readCspLayoutRulesForElement(args.stretchShellRef.current!)).toContain("scaleX(1.6)");
+    expect(readCspLayoutRulesForElement(timelineShell)).toBeDefined();
+    expect(readCspLayoutRulesForElement(peaksStageShell)).toBeDefined();
     expect(args.reRender).not.toHaveBeenCalled();
   });
 
@@ -262,8 +265,10 @@ describe("useWaveformViewportController", () => {
     const expectedPx = 1600 / durationSec;
     expect(refitFitAllPxPerSec).toHaveBeenCalledWith(1600);
     expect(onFitAllPxPerSecRefit).toHaveBeenCalledWith(expectedPx);
-    expect(timelineShell.style.width).toBe(`${Math.ceil(durationSec * expectedPx)}px`);
-    expect(peaksStageShell.style.width).toBe("1600px");
+    expect(readCspLayoutRulesForElement(timelineShell)).toContain(
+      `width: ${Math.ceil(durationSec * expectedPx)}px`,
+    );
+    expect(readCspLayoutRulesForElement(peaksStageShell)).toContain("width: 1600px");
   });
 
   it("default zoom: tier grow still re-renders when WS container width is unchanged", async () => {
@@ -293,9 +298,9 @@ describe("useWaveformViewportController", () => {
     await flushLayout();
 
     expect(args.reRender).toHaveBeenCalledTimes(1);
-    expect(stickyShell.style.width).toBe("1600px");
-    expect(args.tierScrollRef.current.style.getPropertyValue(WAVEFORM_TIER_VIEWPORT_WIDTH_VAR)).toBe(
-      "1600px",
+    expect(readCspLayoutRulesForElement(stickyShell)).toContain("width: 1600px");
+    expect(readCspLayoutRulesForElement(args.tierScrollRef.current!)).toContain(
+      `${WAVEFORM_TIER_VIEWPORT_WIDTH_VAR}: 1600px`,
     );
   });
 });

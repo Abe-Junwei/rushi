@@ -2,6 +2,7 @@ import { memo } from "react";
 import type { TierScrollLayoutMetrics, TierScrollLiveRefs } from "../utils/waveformViewport";
 import { useWaveformTimeRulerInteraction } from "../hooks/useWaveformTimeRulerInteraction";
 import { useWaveformTimeRulerMetrics } from "../hooks/useWaveformTimeRulerMetrics";
+import { CspLayout } from "./CspLayout";
 import { WaveformTimeRulerTickLayer } from "./WaveformTimeRulerTickLayer";
 
 export type WaveformTimeRulerProps = {
@@ -105,7 +106,7 @@ export const WaveformTimeRuler = memo(function WaveformTimeRuler({
   );
 
   return (
-    <div
+    <CspLayout
       className={
         metrics.embeddedOverlay
           ? "waveform-embedded-time-ruler pointer-events-none absolute inset-x-0 bottom-0 z-10 overflow-hidden bg-transparent"
@@ -115,7 +116,7 @@ export const WaveformTimeRuler = memo(function WaveformTimeRuler({
               ? "relative shrink-0 border-t border-notion-divider bg-notion-sidebar-active"
               : "relative shrink-0 border-t border-notion-divider bg-notion-sidebar"
       }
-      style={{
+      layout={{
         width: metrics.embeddedOverlay ? "100%" : metrics.renderWidthPx,
         height: RULER_H,
       }}
@@ -126,18 +127,18 @@ export const WaveformTimeRuler = memo(function WaveformTimeRuler({
       >
         {metrics.scrollClipMode ? (
           <div className="h-full w-full overflow-hidden">
-            <div
+            <CspLayout
               ref={metrics.scrollTrackRef}
               className="relative h-full will-change-transform"
-              style={{ width: timelineWidthPx }}
+              layout={{ width: timelineWidthPx }}
             >
               {tickLayer}
-            </div>
+            </CspLayout>
           </div>
         ) : (
           tickLayer
         )}
       </div>
-    </div>
+    </CspLayout>
   );
 });

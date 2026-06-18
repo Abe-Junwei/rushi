@@ -1,4 +1,5 @@
 import { useEffect } from "react";
+import { setCspLayoutRules } from "../utils/cspElementLayout";
 import WaveSurfer from "wavesurfer.js";
 import { readWaveformSurferPalette } from "../utils/waveformThemeColors";
 import { WAVEFORM_SURFER_BAR_DISPLAY } from "../config/waveformSurferDisplay";
@@ -143,8 +144,10 @@ export function useProjectWaveformMount(
       // Host stays wider than any zoom's waveform width → WaveSurfer never scrolls
       // internally, so it renders all canvas tiles eagerly (no lazy blank tail).
       // Horizontal position is driven by `translateX` in `positionWaveSurferHostByScroll`.
-      mountEl.style.width = `${WAVEFORM_WS_HOST_WIDTH_PX}px`;
-      mountEl.style.transform = "translateX(0px)";
+      setCspLayoutRules(mountEl, {
+        width: WAVEFORM_WS_HOST_WIDTH_PX,
+        transform: "translateX(0px)",
+      });
 
       const wfPalette = readWaveformSurferPalette();
       const ws = WaveSurfer.create(

@@ -2,6 +2,8 @@ import { memo, type KeyboardEvent, type MouseEvent } from "react";
 import type { SegmentDto } from "../../tauri/projectApi";
 import type { CorrectableSpan } from "../../services/editor/findCorrectableSpans";
 import { FindReplaceMatchText } from "../FindReplaceMatchText";
+import { CspLayout } from "../CspLayout";
+import type { CspLayoutRules } from "../../utils/cspElementLayout";
 import { CorrectableMatchText } from "./CorrectableMatchText";
 import { useSegmentRowTextFieldController } from "../../hooks/useSegmentRowTextFieldController";
 
@@ -73,7 +75,8 @@ export const SegmentRowTextField = memo(function SegmentRowTextField(props: Segm
     <div className="min-w-0 flex-1 overflow-hidden" {...{ [SEGMENT_TEXT_BODY_ATTR]: "" }}>
       <div className="rounded-lg bg-transparent transition-[background-color] duration-150">
         <div className="relative">
-          <textarea
+          <CspLayout
+            as="textarea"
             key={`${draftKey}@${textareaEpoch}`}
             ref={textareaRef}
             readOnly={!selected}
@@ -90,8 +93,8 @@ export const SegmentRowTextField = memo(function SegmentRowTextField(props: Segm
               "disabled:cursor-not-allowed disabled:text-notion-text-light disabled:opacity-100",
             ].join(" ")}
             rows={1}
-            style={{
-              ...textStyle,
+            layout={{
+              ...(textStyle as CspLayoutRules),
               minHeight: textAreaMinHeight,
               ...(selected ? {} : { maxHeight: textAreaMinHeight }),
             }}
@@ -124,9 +127,9 @@ export const SegmentRowTextField = memo(function SegmentRowTextField(props: Segm
             placeholder="输入语段文本..."
           />
           {showPanelHighlightMirror && panelHighlight ? (
-            <div
+            <CspLayout
               className="pointer-events-none absolute inset-0 z-[2] overflow-hidden px-4 py-2.5 font-[inherit] text-notion-text"
-              style={textStyle}
+              layout={textStyle as CspLayoutRules}
               aria-hidden
             >
               <FindReplaceMatchText
@@ -135,7 +138,7 @@ export const SegmentRowTextField = memo(function SegmentRowTextField(props: Segm
                 charEnd={panelHighlight.charEnd}
                 textStyle={textStyle}
               />
-            </div>
+            </CspLayout>
           ) : null}
           {showCorrectableMirror ? (
             <div

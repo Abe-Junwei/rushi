@@ -1,4 +1,5 @@
 import type { ReactNode } from "react";
+import { CspLayout } from "./CspLayout";
 import {
   FLOATING_PANEL_SEGMENT_LIST_MAX_HEIGHT_PX,
   resolveFloatingPanelSegmentListHeight,
@@ -38,14 +39,15 @@ export function FloatingPanelSegmentList({
   const height = resolveFloatingPanelSegmentListHeight(rowCount);
 
   return (
-    <ul
-      className={[LIST_AUTO_CLASS, className].filter(Boolean).join(" ")}
-      style={{
+    <CspLayout
+      as="ul"
+      layout={{
         height,
         maxHeight: FLOATING_PANEL_SEGMENT_LIST_MAX_HEIGHT_PX,
       }}
+      className={[LIST_AUTO_CLASS, className].filter(Boolean).join(" ")}
     >
       {children}
-    </ul>
+    </CspLayout>
   );
 }

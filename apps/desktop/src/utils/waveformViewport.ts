@@ -1,4 +1,5 @@
 import type { RefObject } from "react";
+import { setCspLayoutRules } from "./cspElementLayout";
 
 export type TierScrollLiveRefs = {
   scrollLeftRef: RefObject<number>;
@@ -13,10 +14,7 @@ export type TierScrollLayoutMetrics = {
 /** Tier scrollport width — set imperatively on the tier element for sticky waveform clip. */
 export const WAVEFORM_TIER_VIEWPORT_WIDTH_VAR = "--waveform-tier-viewport-width";
 
-export function tierViewportWidthStyle(fallbackPx: number): { width: string } {
-  const fallback = Math.max(1, fallbackPx);
-  return { width: `var(${WAVEFORM_TIER_VIEWPORT_WIDTH_VAR}, ${fallback}px)` };
-}
+export const WAVEFORM_TIER_VIEWPORT_WIDTH_CLASS = "waveform-tier-viewport-width";
 
 /** Segment chrome height during drag/preview — match visual shell, not deferred painted height. */
 export function resolveWaveformSegmentLayoutHeightPx(
@@ -50,7 +48,9 @@ export function writeWaveformTierViewportWidthVar(
   viewportWidthPx: number,
 ): void {
   if (viewportWidthPx > 0) {
-    tierEl.style.setProperty(WAVEFORM_TIER_VIEWPORT_WIDTH_VAR, `${viewportWidthPx}px`);
+    setCspLayoutRules(tierEl, {
+      [WAVEFORM_TIER_VIEWPORT_WIDTH_VAR]: `${viewportWidthPx}px`,
+    });
   }
 }
 

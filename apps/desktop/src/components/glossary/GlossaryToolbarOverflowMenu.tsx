@@ -8,6 +8,7 @@ import {
 import { createPortal } from "react-dom";
 import { Download, ListPlus, MoreHorizontal, Upload } from "lucide-react";
 import { CONTROL_BTN_ICON } from "../../config/controlStyles";
+import { CspLayout } from "../CspLayout";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";
 import { workbenchDropdownItem } from "../editor/editorSegmentToolbarStyles";
 
@@ -87,14 +88,10 @@ export function GlossaryToolbarOverflowMenu({
   const portalNode =
     open && portalStyle && typeof document !== "undefined"
       ? createPortal(
-          <div
-            ref={portalRef}
-            className="pointer-events-none fixed inset-0 z-[120]"
-            style={{ pointerEvents: "none" }}
-          >
-            <div
+          <div ref={portalRef} className="pointer-events-none fixed inset-0 z-[120]">
+            <CspLayout
               className="dropdown-surface pointer-events-auto py-1"
-              style={{
+              layout={{
                 position: "fixed",
                 top: portalStyle.top,
                 left: portalStyle.left,
@@ -142,7 +139,7 @@ export function GlossaryToolbarOverflowMenu({
                 <Download className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
                 导出 CSV
               </button>
-            </div>
+            </CspLayout>
           </div>,
           document.body,
         )

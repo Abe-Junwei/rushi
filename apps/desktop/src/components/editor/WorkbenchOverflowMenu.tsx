@@ -8,6 +8,7 @@ import {
 } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown } from "lucide-react";
+import { CspLayout } from "../CspLayout";
 import { LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";
 import { workbenchCompactMenuSummaryClass } from "./editorSegmentToolbarStyles";
 
@@ -108,19 +109,19 @@ export function WorkbenchOverflowMenu({
   const portalNode =
     open && portalStyle && typeof document !== "undefined"
       ? createPortal(
-          <div
+          <CspLayout
             ref={portalRef}
             className="workbench-compact-menu-portal-host"
-            style={{
+            layout={{
               position: "fixed",
               inset: 0,
               zIndex: 120,
               pointerEvents: "none",
             }}
           >
-            <div
+            <CspLayout
               className="dropdown-surface workbench-compact-menu-panel pointer-events-auto py-1"
-              style={{
+              layout={{
                 position: "fixed",
                 top: portalStyle.top,
                 left: portalStyle.left,
@@ -130,8 +131,8 @@ export function WorkbenchOverflowMenu({
               role="menu"
             >
               {typeof children === "function" ? children(close) : children}
-            </div>
-          </div>,
+            </CspLayout>
+          </CspLayout>,
           document.body,
         )
       : null;

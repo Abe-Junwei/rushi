@@ -1,4 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, afterEach } from "vitest";
+import { readCspLayoutRulesForElement } from "../../utils/cspElementLayout";
+import { clearAllCspScopeRulesForTests } from "../../utils/cspNonceStyleRegistry";
 import {
   applyWaveSurferProgressWithoutClip,
   estimateWaveSurferCanvasCount,
@@ -11,6 +13,10 @@ import {
   waveSurferLazyCanvasIndices,
 } from "./waveformSurferProgressCoverage";
 
+afterEach(() => {
+  clearAllCspScopeRulesForTests();
+});
+
 describe("restoreWaveSurferMainCanvasVisibility", () => {
   it("removes progress clip and sizes progressWrapper to the played ratio", () => {
     const canvasWrapper = document.createElement("div");
@@ -20,9 +26,9 @@ describe("restoreWaveSurferMainCanvasVisibility", () => {
 
     restoreWaveSurferMainCanvasVisibility({ canvasWrapper, progressWrapper }, 0.25);
 
-    expect(canvasWrapper.style.clipPath).toBe("none");
-    expect(progressWrapper.style.width).toBe("25%");
-    expect(progressWrapper.style.overflow).toBe("hidden");
+    expect(readCspLayoutRulesForElement(canvasWrapper)).toContain("clip-path: none");
+    expect(readCspLayoutRulesForElement(progressWrapper)).toContain("width: 25%");
+    expect(readCspLayoutRulesForElement(progressWrapper)).toContain("overflow: hidden");
   });
 });
 
@@ -44,10 +50,10 @@ describe("applyWaveSurferProgressWithoutClip", () => {
 
     applyWaveSurferProgressWithoutClip(ws, 0.25);
 
-    expect(canvasWrapper.style.clipPath).toBe("none");
-    expect(progressWrapper.style.width).toBe("25%");
-    expect(cursor.style.display).toBe("none");
-    expect(cursor.style.visibility).toBe("hidden");
+    expect(readCspLayoutRulesForElement(canvasWrapper)).toContain("clip-path: none");
+    expect(readCspLayoutRulesForElement(progressWrapper)).toContain("width: 25%");
+    expect(readCspLayoutRulesForElement(cursor)).toContain("display: none");
+    expect(readCspLayoutRulesForElement(cursor)).toContain("visibility: hidden");
   });
 });
 
@@ -79,9 +85,9 @@ describe("installWaveSurferPlayedRegionDisplayFix", () => {
     const uninstall = installWaveSurferPlayedRegionDisplayFix(ws);
     renderer.renderProgress(0.4, false);
 
-    expect(canvasWrapper.style.clipPath).toBe("none");
-    expect(progressWrapper.style.width).toBe("40%");
-    expect(cursor.style.display).toBe("none");
+    expect(readCspLayoutRulesForElement(canvasWrapper)).toContain("clip-path: none");
+    expect(readCspLayoutRulesForElement(progressWrapper)).toContain("width: 40%");
+    expect(readCspLayoutRulesForElement(cursor)).toContain("display: none");
 
     uninstall();
     renderer.renderProgress(0.4, false);
@@ -138,8 +144,8 @@ describe("positionWaveformScrollLayersByTierScroll", () => {
     const waveform = document.createElement("div");
     const overlay = document.createElement("div");
     positionWaveformScrollLayersByTierScroll({ waveform, overlay }, 8000);
-    expect(waveform.style.transform).toBe("translate3d(-8000px, 0, 0)");
-    expect(overlay.style.transform).toBe("translate3d(-8000px, 0, 0)");
+    expect(readCspLayoutRulesForElement(waveform)).toContain("translate3d(-8000px, 0, 0)");
+    expect(readCspLayoutRulesForElement(overlay)).toContain("translate3d(-8000px, 0, 0)");
   });
 });
 
@@ -155,7 +161,7 @@ describe("positionWaveSurferHostByScroll", () => {
 
     positionWaveSurferHostByScroll(host, ws, 8000);
 
-    expect(host.style.transform).toBe("translate3d(-8000px, 0, 0)");
+    expect(readCspLayoutRulesForElement(host)).toContain("translate3d(-8000px, 0, 0)");
   });
 
   it("tolerates a null host (WS not yet mounted)", () => {

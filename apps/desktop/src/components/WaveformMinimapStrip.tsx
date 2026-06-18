@@ -9,6 +9,8 @@ import {
   computeOverviewViewportRect,
   overviewClientXToTimeSec,
 } from "../utils/waveformOverviewGeometry";
+import { setCspLayoutRules } from "../utils/cspElementLayout";
+import { CspLayout } from "./CspLayout";
 import { scrollPxAlignTimeToViewportLeft } from "../utils/waveformProjection";
 import {
   resolveTierViewportMetrics,
@@ -77,8 +79,7 @@ export function WaveformMinimapStrip({
       const dpr = window.devicePixelRatio || 1;
       canvas.width = Math.max(1, Math.floor(widthPx * dpr));
       canvas.height = Math.max(1, Math.floor(heightPx * dpr));
-      canvas.style.width = `${widthPx}px`;
-      canvas.style.height = `${heightPx}px`;
+      setCspLayoutRules(canvas, { width: widthPx, height: heightPx });
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -192,13 +193,16 @@ export function WaveformMinimapStrip({
           </div>
         ) : null}
         {viewport.widthPx > 0 ? (
-          <div
+          <CspLayout
             className="waveform-minimap-viewport"
-            style={{ left: viewport.leftPx, width: viewport.widthPx }}
+            layout={{ left: viewport.leftPx, width: viewport.widthPx }}
           />
         ) : null}
         {durationSec > 0 ? (
-          <div className="waveform-minimap-playhead" style={{ left: playheadLeftPx }} />
+          <CspLayout
+            className="waveform-minimap-playhead"
+            layout={{ left: playheadLeftPx }}
+          />
         ) : null}
       </div>
     </div>

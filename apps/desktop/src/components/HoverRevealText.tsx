@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { CspLayout } from "./CspLayout";
 
 type HoverRevealTextProps = {
   text: string;
@@ -42,17 +43,17 @@ export function HoverRevealText({ text, className = "", revealed = false }: Hove
 
   return (
     <span ref={containerRef} className={`block min-w-0 overflow-hidden ${className}`}>
-      <span
+      <CspLayout
         ref={textRef}
         className="inline-block max-w-none whitespace-nowrap"
-        style={{
+        layout={{
           transform: active ? `translateX(-${shiftPx}px)` : "translateX(0)",
           transition:
             shiftPx > 0 ? `transform ${scrollSec}s ${active ? "linear" : "ease-out"}` : undefined,
         }}
       >
         {text}
-      </span>
+      </CspLayout>
     </span>
   );
 }

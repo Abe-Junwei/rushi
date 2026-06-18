@@ -5,6 +5,7 @@ import { useWaveformSegmentOverlay } from "../hooks/useWaveformSegmentOverlay";
 import { computeCreatePreviewStyle } from "../utils/waveformSegmentOverlayGeometry";
 import { selectOverlayInteractiveSegmentIndices } from "../utils/waveformSegmentOverlayVisibility";
 import { WaveformSegmentRegionItem } from "./WaveformSegmentRegionItem";
+import { CspLayout } from "./CspLayout";
 
 export type WaveformSegmentOverlayProps = {
   disabled: boolean;
@@ -145,9 +146,9 @@ export const WaveformSegmentOverlay = memo(function WaveformSegmentOverlay(props
         );
       })}
       {createPreview ? (
-        <div
+        <CspLayout
           className="waveform-segment-create-preview"
-          style={computeCreatePreviewStyle({
+          layout={computeCreatePreviewStyle({
             createPreview,
             timelineWidthPx,
             durationSec,

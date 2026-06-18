@@ -25,7 +25,6 @@
         "media-src": "'self' asset: http://asset.localhost https://asset.localhost blob:",
         "script-src": "'self'",
         "style-src": ["'self'", "https://fonts.googleapis.com"],
-        "style-src-attr": "'unsafe-inline'",
         "font-src": ["'self'", "data:", "https://fonts.gstatic.com"]
       },
       "devCsp": {
@@ -35,6 +34,7 @@
         "media-src": "'self' asset: http://asset.localhost https://asset.localhost blob:",
         "script-src": ["'self'", "'unsafe-inline'"],
         "style-src": ["'self'", "https://fonts.googleapis.com"],
+        "style-src-attr": "'unsafe-inline'",
         "font-src": ["'self'", "data:", "https://fonts.gstatic.com"]
       },
       "assetProtocol": {

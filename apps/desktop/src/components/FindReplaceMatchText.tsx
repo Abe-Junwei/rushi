@@ -1,4 +1,6 @@
-import type { CSSProperties } from "react";
+import type { CSSProperties, ElementType } from "react";
+import { CspLayout } from "./CspLayout";
+import type { CspLayoutRules } from "../utils/cspElementLayout";
 
 type Props = {
   text: string;
@@ -25,17 +27,25 @@ export function FindReplaceMatchText({
   const blockClass = "m-0 whitespace-pre-wrap break-words text-inherit";
   const inlineClass = "m-0 inline truncate whitespace-nowrap text-sm leading-snug text-notion-text";
   const bodyClass = [variant === "inline" ? inlineClass : blockClass, className].filter(Boolean).join(" ");
-  const Tag = variant === "inline" ? "span" : "p";
+  const Tag = (variant === "inline" ? "span" : "p") as ElementType;
 
   if (safeStart === safeEnd) {
-    return (
-      <Tag className={bodyClass} style={textStyle}>
+    return textStyle ? (
+      <CspLayout as={Tag} className={bodyClass} layout={textStyle as CspLayoutRules}>
         {display}
-      </Tag>
+      </CspLayout>
+    ) : (
+      <Tag className={bodyClass}>{display}</Tag>
     );
   }
-  return (
-    <Tag className={bodyClass} style={textStyle}>
+  return textStyle ? (
+    <CspLayout as={Tag} className={bodyClass} layout={textStyle as CspLayoutRules}>
+      {text.slice(0, safeStart)}
+      <mark className="rounded-sm bg-zen-saffron/30 px-0.5 text-inherit">{text.slice(safeStart, safeEnd)}</mark>
+      {text.slice(safeEnd)}
+    </CspLayout>
+  ) : (
+    <Tag className={bodyClass}>
       {text.slice(0, safeStart)}
       <mark className="rounded-sm bg-zen-saffron/30 px-0.5 text-inherit">{text.slice(safeStart, safeEnd)}</mark>
       {text.slice(safeEnd)}

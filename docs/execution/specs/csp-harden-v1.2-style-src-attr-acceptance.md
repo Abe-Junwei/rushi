@@ -5,19 +5,19 @@
 
 ## 自动门禁（每片 + 收官）
 
-- [ ] `npm run typecheck` 通过
-- [ ] `npm run test` 通过（含 `cspNonceStyleRegistry.test.ts`、波形/主题回归）
-- [ ] `node scripts/check-architecture-guard.mjs` **0 error**
-- [ ] 收官：生产 `tauri.conf.json` **无** `style-src-attr: 'unsafe-inline'`
-- [ ] 收官：守卫负向自测 — 临时加回 attr unsafe-inline → error
-- [ ] 收官：守卫负向自测 — 业务文件出现 `style={{` → error
+- [x] `npm run typecheck` 通过
+- [x] `npm run test` 通过（含 `cspNonceStyleRegistry.test.ts`、波形/主题回归）
+- [x] `node scripts/check-architecture-guard.mjs` **0 error**
+- [x] 收官：生产 `tauri.conf.json` **无** `style-src-attr: 'unsafe-inline'`
+- [x] 收官：守卫负向自测 — 临时加回 attr unsafe-inline → error
+- [x] 收官：守卫负向自测 — 业务文件出现 `style={{` → error
 
 ## 配置验收（CSP-ATTR-7）
 
-- [ ] 生产 `csp`：无 `style-src-attr` 或值为 `'none'`
-- [ ] 生产 `csp.style-src` 仍无 `unsafe-inline`（v1.1 不回退）
-- [ ] 生产 `csp` 仍无 `style-src-elem`
-- [ ] `devCsp` 含 `style-src-attr: 'unsafe-inline'`（dev 可开发）
+- [x] 生产 `csp`：无 `style-src-attr` 或值为 `'none'`
+- [x] 生产 `csp.style-src` 仍无 `unsafe-inline`（v1.1 不回退）
+- [x] 生产 `csp` 仍无 `style-src-elem`
+- [x] `devCsp` 含 `style-src-attr: 'unsafe-inline'`（dev 可开发）
 - [ ] `dist/index.html` nonce probe 仍在（v1.1 回归）
 
 ## H-CSP 手测（Release 包 · 须 macOS `.app` + DevTools）
@@ -63,7 +63,7 @@ Console：**无** `Refused to apply inline style` / `violates ... style-src-attr
 
 ## 签收
 
-- [ ] Research / intent / plan / acceptance 四件套链接闭环
-- [ ] Phase 1–7 编码完成
+- [x] Research / intent / plan / acceptance 四件套链接闭环
+- [x] Phase 1–7 编码完成
 - [ ] H-CSP-3～7 Release 手测
 - [ ] 路线图 §10.5 v1.2 CSP 项更新 ✅

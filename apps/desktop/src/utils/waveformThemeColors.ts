@@ -1,4 +1,5 @@
 import { COLORS } from "../config/tokens";
+import { clearCspLayoutRules, setCspLayoutRules } from "./cspElementLayout";
 
 let colorProbeEl: HTMLDivElement | null = null;
 
@@ -7,11 +8,7 @@ function getColorProbe(): HTMLDivElement | null {
   if (!colorProbeEl) {
     colorProbeEl = document.createElement("div");
     colorProbeEl.setAttribute("aria-hidden", "true");
-    colorProbeEl.style.position = "absolute";
-    colorProbeEl.style.pointerEvents = "none";
-    colorProbeEl.style.opacity = "0";
-    colorProbeEl.style.width = "0";
-    colorProbeEl.style.height = "0";
+    colorProbeEl.className = "waveform-color-probe";
     document.documentElement.appendChild(colorProbeEl);
   }
   return colorProbeEl;
@@ -36,10 +33,10 @@ export function resolveCssColorExpression(
   if (typeof document === "undefined") return fallback;
   const probe = getColorProbe();
   if (!probe) return fallback;
-  probe.style[property] = expression;
+  setCspLayoutRules(probe, { [property]: expression });
   const resolved = getComputedStyle(probe)[property].trim();
-  probe.style[property] = "";
-  if (!resolved || resolved === "rgba(0, 0, 0, 0)" && expression.includes("transparent") === false) {
+  clearCspLayoutRules(probe);
+  if (!resolved || (resolved === "rgba(0, 0, 0, 0)" && expression.includes("transparent") === false)) {
     return fallback;
   }
   return resolved;

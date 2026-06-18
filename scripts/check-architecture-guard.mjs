@@ -450,10 +450,12 @@ function checkTauriProductionCsp() {
   if (cspDirectiveHasUnsafeInline(csp['script-src'])) {
     errors.push('apps/desktop/src-tauri/tauri.conf.json: 生产 script-src 禁止 unsafe-inline（Tauri 构建时注入 hash/nonce）');
   }
-  // CSP-HARDEN (Q-CSP-1, Step 6a)：Tauri 仅向 script-src / style-src 注入 nonce + hash（见 manager/mod.rs replace_csp_nonce）。
-  // style-src 须去 unsafe-inline 改走 nonce；style-src-attr 的 unsafe-inline 保留（React 行内 style=；Tauri nonce 不覆盖 attr），故此处不检 style-src-attr。
+  // CSP-HARDEN v1.1: style-src 去 unsafe-inline；v1.2: style-src-attr 去 unsafe-inline（改走 cspNonceStyleRegistry）。
   if (cspDirectiveHasUnsafeInline(csp['style-src'])) {
     errors.push('apps/desktop/src-tauri/tauri.conf.json: 生产 style-src 禁止 unsafe-inline（CSP-HARDEN：改走 Tauri nonce + cspNonce）');
+  }
+  if (cspDirectiveHasUnsafeInline(csp['style-src-attr'])) {
+    errors.push('apps/desktop/src-tauri/tauri.conf.json: 生产 style-src-attr 禁止 unsafe-inline（CSP-HARDEN v1.2：改走 cspNonceStyleRegistry）');
   }
   // style-src-elem 不得声明：Tauri 不向该指令注入 nonce，一旦声明（无论是否含 unsafe-inline）会接管 <style>/<link>
   // 判定并拦掉 nonce'd 样式 → 生产白样式。须删除让其回退到带 nonce 的 style-src。
@@ -696,10 +698,27 @@ function checkDevReleaseBehaviorForks() {
   });
 }
 
+function checkInlineStyleDebt() {
+  const srcRoot = path.join(ROOT, 'apps/desktop/src');
+  walk(srcRoot, (fullPath) => {
+    if (!/\.(ts|tsx)$/.test(fullPath)) return;
+    const rel = path.relative(ROOT, fullPath).replaceAll(path.sep, '/');
+    if (rel.endsWith('.test.ts') || rel.endsWith('.test.tsx')) return;
+    const source = fs.readFileSync(fullPath, 'utf-8');
+    if (/style=\{\{/.test(source)) {
+      errors.push(`${rel}: 禁止 React style={{}}（CSP-HARDEN v1.2：改用 CspLayout / cspNonceStyleRegistry）`);
+    }
+    if (/\.style\./.test(source)) {
+      errors.push(`${rel}: 禁止 element.style.*（CSP-HARDEN v1.2：改用 setCspLayoutRules）`);
+    }
+  });
+}
+
 checkDevReleaseStyleCspParity();
 checkDevReleaseBehaviorForks();
 checkTailwindV4Entry();
 checkReleaseUserCopyDrift();
+checkInlineStyleDebt();
 checkTauriProductionCsp();
 checkTauriStyleNonceProbe();
 checkTauriInvokeAcl();

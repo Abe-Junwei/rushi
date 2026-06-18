@@ -9,6 +9,8 @@ import {
   type SetStateAction,
 } from "react";
 import { createPortal } from "react-dom";
+import { CspLayout } from "./CspLayout";
+import type { CspLayoutRules } from "../utils/cspElementLayout";
 import {
   clampContextMenuPosition,
   estimateContextMenuSize,
@@ -139,9 +141,13 @@ function ContextMenuPanel({
               onPointerDown={(e) => onItemPointerDown(e, it)}
               onClick={(e) => onItemClick(e, it)}
             >
-              <span className="min-w-0 flex-1 truncate" style={it.labelStyle}>
+              <CspLayout
+                as="span"
+                className="min-w-0 flex-1 truncate"
+                layout={(it.labelStyle ?? {}) as CspLayoutRules}
+              >
                 {it.label}
-              </span>
+              </CspLayout>
               {it.shortcutHint ? (
                 <span className="shrink-0 pl-3 font-sans text-label font-normal tabular-nums text-notion-text-light">
                   {it.shortcutHint}
@@ -233,10 +239,10 @@ export function SegmentContextMenu({ x, y, items, onSelect, onClose }: Props) {
         onPointerDown={dismissUnlessSuppressed}
         onMouseDown={dismissUnlessSuppressed}
       />
-      <div
+      <CspLayout
         ref={rootRef}
         className="fixed z-[150]"
-        style={{ left: pos.left, top: pos.top }}
+        layout={{ left: pos.left, top: pos.top }}
         onPointerDown={(e) => e.stopPropagation()}
         onMouseDown={(e) => e.stopPropagation()}
       >
@@ -248,7 +254,7 @@ export function SegmentContextMenu({ x, y, items, onSelect, onClose }: Props) {
           setOpenPath={setOpenPath}
           depth={0}
         />
-      </div>
+      </CspLayout>
     </>
   );
 

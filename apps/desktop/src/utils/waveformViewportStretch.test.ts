@@ -1,4 +1,6 @@
-import { describe, expect, it } from "vitest";
+import { afterEach, describe, expect, it } from "vitest";
+import { readCspLayoutRulesForElement } from "./cspElementLayout";
+import { clearAllCspScopeRulesForTests } from "./cspNonceStyleRegistry";
 import {
   applyWaveformViewportStretch,
   clearWaveformViewportStretch,
@@ -10,10 +12,14 @@ import {
 } from "./waveformViewportStretch";
 
 describe("waveformViewportStretch", () => {
+  afterEach(() => {
+    clearAllCspScopeRulesForTests();
+  });
+
   it("writes sticky shell width in pixels", () => {
     const el = document.createElement("div");
     writeWaveformStickyShellWidth(el, 1280);
-    expect(el.style.width).toBe("1280px");
+    expect(readCspLayoutRulesForElement(el)).toContain("width: 1280px");
   });
 
   it("writes timeline and stage shell widths in pixels", () => {
@@ -21,8 +27,8 @@ describe("waveformViewportStretch", () => {
     const stage = document.createElement("div");
     writeWaveformTimelineShellWidth(timeline, 1400);
     writeWaveformPeaksStageShellWidth(stage, 1600);
-    expect(timeline.style.width).toBe("1400px");
-    expect(stage.style.width).toBe("1600px");
+    expect(readCspLayoutRulesForElement(timeline)).toContain("width: 1400px");
+    expect(readCspLayoutRulesForElement(stage)).toContain("width: 1600px");
   });
 
   it("writes timeline, stage, and sticky via writeWaveformShellLayout", () => {
@@ -36,17 +42,17 @@ describe("waveformViewportStretch", () => {
       timelineWidthPx: 900,
       viewportWidthPx: 1200,
     });
-    expect(timeline.style.width).toBe("900px");
-    expect(stage.style.width).toBe("1200px");
-    expect(sticky.style.width).toBe("1200px");
+    expect(readCspLayoutRulesForElement(timeline)).toContain("width: 900px");
+    expect(readCspLayoutRulesForElement(stage)).toContain("width: 1200px");
+    expect(readCspLayoutRulesForElement(sticky)).toContain("width: 1200px");
   });
 
   it("applies and clears horizontal stretch", () => {
     const el = document.createElement("div");
     applyWaveformViewportStretch(el, 2);
-    expect(el.style.transform).toBe("scaleX(2)");
+    expect(readCspLayoutRulesForElement(el)).toContain("scaleX(2)");
     clearWaveformViewportStretch(el);
-    expect(el.style.transform).toBe("");
+    expect(readCspLayoutRulesForElement(el)).toBeUndefined();
   });
 
   it("computes stretch ratio only when width changes", () => {

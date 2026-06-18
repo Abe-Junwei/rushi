@@ -4,6 +4,7 @@ import { FLAT_SHELL_ELEVATION_CLASS } from "../config/overlayStyles";
 import { useDraggablePanelController } from "../hooks/useDraggablePanelController";
 import { dialogCloseButtonTitle } from "../utils/dialogPanelHints";
 import { DraggablePanelResizeHandles } from "./DraggablePanelResizeHandles";
+import { CspLayout } from "./CspLayout";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
 interface DraggableResizablePanelProps {
@@ -57,11 +58,11 @@ export function DraggableResizablePanel({
   });
 
   return (
-    <div
+    <CspLayout
       id={id}
       data-panel-id={id}
       className="fixed"
-      style={{
+      layout={{
         left: centerMode ? `calc(50vw - ${size.width / 2}px)` : position.x,
         top: centerMode ? `calc(50vh - ${size.height / 2}px)` : position.y,
         width: size.width,
@@ -93,6 +94,6 @@ export function DraggableResizablePanel({
 
         <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
       </div>
-    </div>
+    </CspLayout>
   );
 }

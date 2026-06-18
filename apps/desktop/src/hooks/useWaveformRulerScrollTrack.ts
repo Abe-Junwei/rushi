@@ -1,4 +1,5 @@
 import { useLayoutEffect, type RefObject } from "react";
+import { clearCspLayoutRules, setCspLayoutRules } from "../utils/cspElementLayout";
 
 type UseWaveformRulerScrollTrackArgs = {
   enabled: boolean;
@@ -38,7 +39,7 @@ export function useWaveformRulerScrollTrack({
 
     const applyTransform = () => {
       const scrollLeftPx = readTierScrollLeftPx(scrollEl, tierScrollLive);
-      track.style.transform = `translate3d(${-scrollLeftPx}px, 0, 0)`;
+      setCspLayoutRules(track, { transform: `translate3d(${-scrollLeftPx}px, 0, 0)` });
 
       if (!onTickRebuild) return;
       if (Math.abs(scrollLeftPx - lastTickBuildScrollPx) < 1) return;
@@ -58,7 +59,7 @@ export function useWaveformRulerScrollTrack({
       scrollEl.removeEventListener("scroll", applyTransform);
       window.removeEventListener("resize", applyTransform);
       if (tickRebuildRaf) cancelAnimationFrame(tickRebuildRaf);
-      track.style.removeProperty("transform");
+      clearCspLayoutRules(track);
     };
   }, [
     enabled,
@@ -77,5 +78,5 @@ export function applyWaveformRulerScrollTrackTransform(
 ): void {
   if (!scrollEl || !track) return;
   const scrollLeftPx = readTierScrollLeftPx(scrollEl, tierScrollLive);
-  track.style.transform = `translate3d(${-scrollLeftPx}px, 0, 0)`;
+  setCspLayoutRules(track, { transform: `translate3d(${-scrollLeftPx}px, 0, 0)` });
 }

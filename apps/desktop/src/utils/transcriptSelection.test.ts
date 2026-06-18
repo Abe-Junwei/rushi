@@ -50,8 +50,8 @@ describe("transcriptSelection", () => {
 
   it("suspendTranscriptTextareasForContextMenu disables pointer events", () => {
     const resume = suspendTranscriptTextareasForContextMenu();
-    expect(textarea.style.pointerEvents).toBe("none");
+    expect(textarea.classList.contains("pointer-events-none")).toBe(true);
     resume();
-    expect(textarea.style.pointerEvents).toBe("");
+    expect(textarea.classList.contains("pointer-events-none")).toBe(false);
   });
 });

@@ -68,8 +68,7 @@ export function useDraggablePanelPointerDrag({
       );
     }
     dragRef.current = null;
-    document.body.style.removeProperty("user-select");
-    document.body.style.removeProperty("-webkit-user-select");
+    document.body.classList.remove("csp-drag-session");
   }, [panelStateRef, persistSnapshot, userMovedRef, userSizedRef]);
 
   const startDrag = useCallback(
@@ -85,8 +84,7 @@ export function useDraggablePanelPointerDrag({
         startPos: { ...position },
         startSize: { ...size },
       };
-      document.body.style.userSelect = "none";
-      document.body.style.webkitUserSelect = "none";
+      document.body.classList.add("csp-drag-session");
     },
     [position, setCenterMode, size, userSizedRef],
   );
@@ -128,8 +126,7 @@ export function useDraggablePanelPointerDrag({
       window.removeEventListener("pointermove", onMove);
       window.removeEventListener("pointerup", onUp);
       window.removeEventListener("pointercancel", onUp);
-      document.body.style.removeProperty("user-select");
-      document.body.style.removeProperty("-webkit-user-select");
+      document.body.classList.remove("csp-drag-session");
     };
   }, [clampPanel, finishDragSession, maxWidth, minHeight, minWidth, setPosition, setSize, viewportMargin]);
 

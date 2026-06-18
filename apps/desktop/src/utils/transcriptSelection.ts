@@ -30,14 +30,14 @@ export function suspendTranscriptTextareasForContextMenu(): () => void {
   blurActiveTranscriptTextarea();
   const touched: HTMLTextAreaElement[] = [];
   for (const el of document.querySelectorAll<HTMLTextAreaElement>(TRANSCRIPT_TEXTAREA_SELECTOR)) {
-    if (el.style.pointerEvents !== "none") {
-      el.style.pointerEvents = "none";
+    if (!el.classList.contains("pointer-events-none")) {
+      el.classList.add("pointer-events-none");
       touched.push(el);
     }
   }
   return () => {
     for (const el of touched) {
-      el.style.pointerEvents = "";
+      el.classList.remove("pointer-events-none");
     }
   };
 }

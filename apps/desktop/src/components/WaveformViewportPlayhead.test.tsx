@@ -1,5 +1,6 @@
 import { render, act } from "@testing-library/react";
 import { describe, expect, it } from "vitest";
+import { readCspLayoutRulesForElement } from "../utils/cspElementLayout";
 import { WaveformViewportPlayhead } from "./WaveformViewportPlayhead";
 
 describe("WaveformViewportPlayhead", () => {
@@ -26,7 +27,7 @@ describe("WaveformViewportPlayhead", () => {
     const line = container.querySelector(".waveform-viewport-playhead") as HTMLDivElement;
     expect(line).toBeTruthy();
     // 50% of 1000px timeline = 500px; viewport x = 500 - 200 = 300
-    expect(line.style.transform).toBe("translate3d(300px, 0, 0)");
+    expect(readCspLayoutRulesForElement(line)).toContain("translate3d(300px, 0, 0)");
   });
 
   it("updates transform on tier scroll without React rerender", () => {
@@ -54,7 +55,7 @@ describe("WaveformViewportPlayhead", () => {
     act(() => {
       tierScroll.dispatchEvent(new Event("scroll"));
     });
-    expect(line.style.transform).toBe("translate3d(200px, 0, 0)");
+    expect(readCspLayoutRulesForElement(line)).toContain("translate3d(200px, 0, 0)");
   });
 });
 

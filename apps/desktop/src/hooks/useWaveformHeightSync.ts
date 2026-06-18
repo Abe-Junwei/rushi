@@ -24,7 +24,7 @@ export function useWaveformHeightSync({
     const el = containerRef.current;
     const h = waveformHeightPx;
     if (el) {
-      el.style.backgroundColor = "transparent";
+      el.classList.add("bg-transparent");
     }
     const ws = wsRef.current;
     if (!ws || !isReady || disabled) return;

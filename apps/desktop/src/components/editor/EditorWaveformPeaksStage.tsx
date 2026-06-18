@@ -1,4 +1,5 @@
 import { useCallback, useState } from "react";
+import { CspLayout } from "../CspLayout";
 import { WaveformLiveTimeRuler } from "../WaveformLiveTimeRuler";
 import { WaveformViewportPlayhead } from "../WaveformViewportPlayhead";
 import { WAVEFORM_EMBEDDED_TIME_RULER_H_PX } from "../WaveformTimeRuler";
@@ -9,7 +10,8 @@ import { clampSegmentTimeBounds } from "../../utils/waveformSegmentBounds";
 import {
   resolveWaveformSegmentLayoutHeightPx,
   resolveWaveformVerticalScalePreview,
-  tierViewportWidthStyle,
+  WAVEFORM_TIER_VIEWPORT_WIDTH_CLASS,
+  WAVEFORM_TIER_VIEWPORT_WIDTH_VAR,
 } from "../../utils/waveformViewport";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
@@ -56,8 +58,8 @@ export function EditorWaveformPeaksStage({
   }, []);
 
   return (
-    <div
-      style={{ height: peaksPaneHeightPx }}
+    <CspLayout
+      layout={{ height: peaksPaneHeightPx }}
       className={`relative w-full ${!tx.isReady ? "bg-notion-sidebar-active" : "waveform-peaks-stage"}`}
       onContextMenu={(e) => {
         if (c.busy) return;
@@ -89,24 +91,28 @@ export function EditorWaveformPeaksStage({
           className="relative z-0 h-full outline-none focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-zen-saffron/40"
           onClick={() => tx.focusWaveformShell()}
         >
-          <div
+          <CspLayout
             ref={tx.waveformTimelineShellRef}
             className="relative"
-            style={{ height: peaksPaneHeightPx }}
+            layout={{ height: peaksPaneHeightPx }}
           >
-            <div
+            <CspLayout
               ref={tx.waveformStickyShellRef}
-              className="sticky left-0 top-0 z-[1] h-full overflow-hidden"
-              style={{ ...tierViewportWidthStyle(viewportWidthPx), height: peaksPaneHeightPx }}
+              className={`sticky left-0 top-0 z-[1] h-full overflow-hidden ${WAVEFORM_TIER_VIEWPORT_WIDTH_CLASS}`}
+              layout={{
+                [WAVEFORM_TIER_VIEWPORT_WIDTH_VAR]:
+                  viewportWidthPx > 0 ? `${viewportWidthPx}px` : undefined,
+                height: peaksPaneHeightPx,
+              }}
             >
               <div className="relative h-full w-full">
                 <div
                   ref={tx.waveformScrollLayerRef}
                   className="absolute left-0 top-0 h-full will-change-transform"
                 >
-                  <div
+                  <CspLayout
                     className={waveSurferPreviewLayerClass}
-                    style={{
+                    layout={{
                       height: waveformHeightPreviewActive ? peaksPaintedHeightPx : "100%",
                       transform: waveformVerticalTransform,
                       transformOrigin: "top left",
@@ -120,7 +126,7 @@ export function EditorWaveformPeaksStage({
                         aria-label="转写波形与语段时间范围"
                       />
                     </div>
-                  </div>
+                  </CspLayout>
                 </div>
                 <WaveformSegmentBandCanvas
                   segments={c.segments}
@@ -215,7 +221,7 @@ export function EditorWaveformPeaksStage({
                   onSetScrollLeftPx={tx.setTierScrollPx}
                 />
               </div>
-            </div>
+            </CspLayout>
             <WaveformSegmentPlaybackControls
               disabled={stripDisabled}
               rulerBandHeightPx={rulerHeightPx}
@@ -230,10 +236,10 @@ export function EditorWaveformPeaksStage({
               onToggleLoop={() => void tx.handleToggleSelectedWaveformLoop()}
               onTogglePlay={() => void tx.handleToggleSelectedWaveformPlay()}
             />
-          </div>
+          </CspLayout>
         </div>
       </div>
-    </div>
+    </CspLayout>
   );
 }
 

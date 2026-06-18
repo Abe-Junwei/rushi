@@ -4,6 +4,7 @@ import type { SegmentDto } from "../tauri/projectApi";
 import { useTierViewportMetricsFrame } from "../hooks/useTierViewportMetricsFrame";
 import { resolveSegmentPlaybackControlsOverlayLayout } from "../utils/waveformRegionActionOverlay";
 import type { TierScrollLayoutMetrics, TierScrollLiveRefs } from "../utils/waveformViewport";
+import { CspLayout } from "./CspLayout";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
 type WaveformSegmentPlaybackControlsProps = {
@@ -65,9 +66,9 @@ export const WaveformSegmentPlaybackControls = memo(function WaveformSegmentPlay
   if (!layout.visible) return null;
 
   return (
-    <div
+    <CspLayout
       className="region-action-overlay"
-      style={{
+      layout={{
         left: layout.overlayLeftPx,
         width: layout.overlayWidthPx,
         bottom: rulerBandHeightPx + 4,
@@ -108,6 +109,6 @@ export const WaveformSegmentPlaybackControls = memo(function WaveformSegmentPlay
           <Play className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
         )}
       </button>
-    </div>
+    </CspLayout>
   );
 });

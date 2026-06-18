@@ -1,5 +1,6 @@
 import { ResizeBottomHit } from "../ResizeBottomHit";
 import { WaveformMinimapStrip } from "../WaveformMinimapStrip";
+import { CspLayout } from "../CspLayout";
 import { resolveWaveformCenterStatusLabel } from "../../services/waveform/waveformRenderStatus";
 import { resolveTierViewportMetrics } from "../../utils/waveformViewport";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
@@ -47,10 +48,10 @@ export function EditorWaveformPane({
 
   return (
     <div className="relative z-10 flex w-full shrink-0 flex-col overflow-visible bg-notion-sidebar">
-      <div
+      <CspLayout
         ref={tx.tierScrollRef}
         onScroll={tx.onTierScroll}
-        style={{ height: waveformStageHeightPx }}
+        layout={{ height: waveformStageHeightPx }}
         className="relative w-full shrink-0 overflow-x-auto overflow-y-hidden bg-notion-sidebar [overflow-anchor:none]"
       >
         {centerStatusLabel ? (
@@ -86,7 +87,7 @@ export function EditorWaveformPane({
             onPointerDown={tx.beginWaveformHeightDrag}
           />
         </div>
-      </div>
+      </CspLayout>
 
       {tx.minimapEnabled ? (
         <WaveformMinimapStrip

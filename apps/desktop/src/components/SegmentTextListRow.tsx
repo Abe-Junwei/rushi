@@ -1,5 +1,6 @@
 import { memo, useCallback, useRef, type KeyboardEvent, type MouseEvent, type PointerEvent as ReactPointerEvent } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
+import { CspLayout } from "./CspLayout";
 import { SegmentRowTextField } from "./segmentRow/SegmentRowTextField";
 import { SegmentRowStageBadge } from "./segmentRow/SegmentRowStageBadge";
 import { useSegmentRowTextStyle } from "./segmentRow/useSegmentRowTextStyle";
@@ -213,9 +214,9 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
   );
 
   return (
-    <div
+    <CspLayout
       data-seg-row={i}
-      style={{ minHeight: rowMinHeight }}
+      layout={{ minHeight: rowMinHeight }}
       className={[
         "group relative flex cursor-text items-start gap-2 rounded-md border border-transparent px-[9px] py-[9px] transition-[background-color,border-color,box-shadow]",
         selected
@@ -267,6 +268,6 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
         busy={busy}
         onOpenAnnotation={onOpenAnnotation}
       />
-    </div>
+    </CspLayout>
   );
 }, segmentTextListRowPropsEqual);

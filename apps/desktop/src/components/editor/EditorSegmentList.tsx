@@ -1,4 +1,5 @@
 import { useCallback, useRef, type MouseEvent as ReactMouseEvent } from "react";
+import { CspLayout } from "../CspLayout";
 import type { SegmentContextMenuOpen } from "../../utils/segmentContextMenuModel";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
@@ -197,21 +198,21 @@ export function EditorSegmentList({
       }}
     >
       {useVirtualList ? (
-        <div
-          style={{
+        <CspLayout
+          layout={{
             height: virtualWindow.totalHeightPx,
             position: "relative",
           }}
         >
-          <div
+          <CspLayout
             className="will-change-transform"
-            style={{
+            layout={{
               transform: `translate3d(0, ${virtualWindow.paddingTopPx}px, 0)`,
             }}
           >
             {visibleIndices.map((segIdx) => renderSegmentRow(segIdx))}
-          </div>
-        </div>
+          </CspLayout>
+        </CspLayout>
       ) : (
         <div className="space-y-2.5">{visibleIndices.map((segIdx) => renderSegmentRow(segIdx))}</div>
       )}

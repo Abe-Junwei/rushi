@@ -17,7 +17,7 @@
 
 ## 本地开发
 
-前置：**Node 20+**、**Rust（stable）+ 各 OS Tauri 前置依赖**（见 [Tauri 官方文档](https://tauri.app/start/prerequisites/)）、**Python 3.11+**。
+前置：**Node 22+**、**Rust（stable）+ 各 OS Tauri 前置依赖**（见 [Tauri 官方文档](https://tauri.app/start/prerequisites/)）、**Python 3.11+**。
 
 **Python 可安装包在 `services/asr/`**，不在仓库根。若在根目录执行 `pip install -e .`，只会装上占位元包 `rushi-repo-root`，**不会出现** `rushi_asr`。
 
@@ -77,14 +77,25 @@ npm run desktop:dev
 | `npm run typecheck` | TypeScript |
 | `npm run test` | Vitest |
 | `npm run build` | `tsc` + Vite 生产构建（不含完整 `tauri build` 安装包） |
+| `node scripts/check-architecture-guard.mjs` | 架构守卫（hook 复杂度 / 热点 ratchet；提交前建议与 typecheck、test 同跑） |
 | `npm run desktop:dev` / `npm run desktop:build` | Tauri 开发 / 打包 |
-| `npm run p4:eval-placeholders` | 生成 P4 评测用五段占位 wav（需 ffmpeg，见 `fixtures/eval/`） |
-| `npm run eval:eval-run` | 按清单批跑本机 ASR并打印 JSON 报告（需 ASR 已启动、系统有 **curl**；见 `docs/execution/stabilization.md`） |
+| `npm run desktop:test:e2e:desktop` | Playwright 桌面 UI（Vite mock + Tauri invoke stub，无需侧车） |
+| `npm run desktop:test:e2e:asr` | Playwright ASR API 契约（mock 端口 18741） |
+| `npm run eval:placeholders` | 生成 P4 评测用占位 wav（需 ffmpeg，见 `fixtures/eval/`） |
+| `npm run eval:run` | 按清单批跑本机 ASR 并打印 JSON 报告（需 ASR 已启动、系统有 **curl**；见 `docs/execution/stabilization.md`） |
+| `npm run eval:run:hotwords-on` | 同上，热词模式 ON（示例 filter-id 见 `package.json`） |
 | `npm run asr:build-sidecar-unix` | **macOS** 或 **Linux x86_64**：PyInstaller **FunASR** 侧车；其他 Linux 架构为 **stub**。产物在 `apps/desktop/src-tauri/resources/bundled-asr/` |
 | `npm run asr:build-sidecar-windows-cpu` / `asr:build-sidecar-windows-cuda` | **Windows**：分别打 **CPU** 与 **CUDA** 侧车目录（需本机 PowerShell）；`desktop:build` 时壳在 8741 空闲时**自动拉起**（探测 N 卡优先 CUDA，失败回退 CPU；`RUSHI_SKIP_BUNDLED_ASR=1` 禁用） |
 | `npm run asr:regen-sidecar-locks` | 在 `services/asr` 用 **Python 3.12** 重生成 **`requirements-sidecar-cpu-macos-arm64.lock`** 与 **`requirements-sidecar-cuda-win_amd64.lock`**（需网络；见 `services/asr/README.md`） |
 
 Python 单测（与 CI 一致，需本机 **Python 3.11+**，推荐 3.12）：**`npm run asr:test`**（脚本 `scripts/run-asr-pytest.sh` 会在 `services/asr/.venv` 安装 `.[dev]` 后跑 `pytest`）。亦可手动：`bash scripts/bootstrap-asr-venv.sh` 后 `cd services/asr && source .venv/bin/activate && python -m pytest`。
+
+**桌面端调试（开发包）**
+
+- 主路径：**欢迎页 → 新建项目 → 项目 Hub → 打开文件 → 编辑器**（语段列表 + 波形区）。
+- 语段列表在约 **90 条** 语段以上启用虚拟滚动；点击/波形选中会即时滚动列表（键盘连选仍合并滚动）。
+- 选中延迟剖析（默认关）：DevTools 控制台执行 `__rushiSelectionProfile.enable()`，点选语段后 `__rushiSelectionProfile.print()`，可查看 `flushSelectedIdx` / `firstPaint` 等 span（Tauri 下同时写入 `desktop.log`）。
+- E2E 回归示例：`cd apps/desktop && PW_DESKTOP_WEBSERVER=1 npx playwright test tests/e2e/desktop-max-depth-head.spec.ts`（Hub 侧栏 `list_files` 空响应曾触发 max-depth 循环，已加守卫）。
 
 **P0 验收（计划书 §8，本仓真源见 [`docs/execution/p0-acceptance.md`](./docs/execution/p0-acceptance.md)）**
 
@@ -98,15 +109,15 @@ Python 单测（与 CI 一致，需本机 **Python 3.11+**，推荐 3.12）：**
 **P1 手测（本地项目 / 校对 / 导出，计划书 P1）**
 
 1. 终端 A：按上文启动 ASR（默认 `http://127.0.0.1:8741`，与 `apps/desktop/.env.example` 中 `VITE_ASR_BASE_URL` 一致）。
-2. 终端 B：`npm run desktop:dev`，在壳内打开 **「本地项目与校对（P1–P4）」** 面板。打开后会 **自动请求 `GET /health`**，展示 FFmpeg / FunASR / `RUSHI_FUNASR_MODEL` 是否就绪；在 **macOS / Linux** 且本机有 Git 克隆的仓库时，可按面板提示 **一键安装 FunASR 依赖**（仍需手动设模型变量并重启 ASR）。
-3. 输入名称 → **选择音频** → **创建项目**；在 **打开** 下拉中选中该项目。
-4. **从 ASR 拉取语段**（将项目内音频副本 POST 到 `/v1/transcribe`）；在表格中改时间或文本，必要时 **拆分 / 合并**。
-5. **保存到 SQLite**（应用数据目录下的 `studio.lingchuang.rushi/rushi.sqlite3`）；**导出 TXT / SRT**会弹出系统「另存为」，内容为 UTF-8、LF。**导出 DOCX（逐字稿 / 讲稿）** 同样为「另存为」，由壳内 `docx-rs` 生成最小版式（逐字稿：每段带时间行 + 正文，低置信段黄底高亮；讲稿：连续正文）。
-6. **P4 诊断**：点 **「导出诊断包（zip）」**，内含版本/平台说明、**最近编辑流水**（`edit_log`）、**`logs/*.log` 尾部**（含 `desktop.log` 转写失败摘要）；若本地库不超过 5MiB 会附带 `rushi.sqlite3`。安装包 **Resources** 内含 **`user-guide-zh.md`** 简版说明（路径随平台在 Tauri 资源目录）；详细流程见应用内 **设置 → 使用说明**。
+2. 终端 B：`npm run desktop:dev`。壳内 **欢迎页** 可新建/打开项目；顶栏展示 FFmpeg / ASR / LLM 状态 chip，**设置** 面板内可查看 FunASR 就绪与一键准备。
+3. **新建项目**（空项目或导入音频/文本）→ 在 **项目 Hub** 打开文件进入编辑器。
+4. **自动转录** 或编辑语段文本；必要时 **拆分 / 合并**；波形区与列表联动选中。
+5. **保存到 SQLite**（应用数据目录下的 `studio.lingchuang.rushi/rushi.sqlite3`）；**导出 TXT / SRT** 会弹出系统「另存为」，内容为 UTF-8、LF。**导出 DOCX（逐字稿 / 讲稿）** 同样为「另存为」，由壳内 `docx-rs` 生成最小版式（逐字稿：每段带时间行 + 正文，低置信段黄底高亮；讲稿：连续正文）。
+6. **P4 诊断**：**设置** 内 **导出诊断包（zip）**，内含版本/平台说明、**最近编辑流水**（`edit_log`）、**`logs/*.log` 尾部**（含 `desktop.log` 转写失败摘要）；若本地库不超过 5MiB 会附带 `rushi.sqlite3`。安装包 **Resources** 内含 **`user-guide-zh.md`** / **`user-guide-zh.pdf`**（路径随平台在 Tauri 资源目录）；详细流程见 **设置 → 使用说明**。
 
 **P1 验收口径（本仓）**：计划书 §8 P1 验收 3 在 Rushi 内**放宽**为「保存批次写入 `edit_log` + 诊断包导出取证」，不要求逐键/逐拖动的持久化审计；见 [`docs/execution/acceptance.md`](./docs/execution/acceptance.md)。
 
-**P4 评测占位音频（可选）**：`bash scripts/eval-generate-placeholders.sh`（需 ffmpeg），与 [`fixtures/eval/eval_manifest.v1.json`](./fixtures/eval/eval_manifest.v1.json) 中路径对应。占位生成后可在仓库根执行 **`npm run eval:eval-run`**（需本机 ASR + curl）得到 JSON 报告。
+**P4 评测占位音频（可选）**：`npm run eval:placeholders`（或 `bash scripts/eval-generate-placeholders.sh`，需 ffmpeg），与 [`fixtures/eval/eval_manifest.v1.json`](./fixtures/eval/eval_manifest.v1.json) 中路径对应。占位生成后可在仓库根执行 **`npm run eval:run`**（需本机 ASR + curl）得到 JSON 报告。
 
 ## 与 Jieyu 的文档链接
 
@@ -130,13 +141,13 @@ Python 单测（与 CI 一致，需本机 **Python 3.11+**，推荐 3.12）：**
 - [`docs/execution/p2-acceptance.md`](./docs/execution/p2-acceptance.md) — P2 验收：术语偏置、低置信、纠错记忆与错词提示。
 - [`docs/execution/p3-acceptance.md`](./docs/execution/p3-acceptance.md) — P3 验收：TXT/SRT/DOCX 与逐字稿/讲稿导出闭环。
 - [`docs/execution/stabilization.md`](./docs/execution/stabilization.md) — P4 评测集、指标、批量检查点、安装包与诊断包说明。
+- [`AI_QUICKSTART.md`](./AI_QUICKSTART.md) — Agent / 贡献者：目录落位、当前热点、任务路由。
+- [`docs/execution/specs/csp-harden-v1.2-style-src-attr-research.md`](./docs/execution/specs/csp-harden-v1.2-style-src-attr-research.md) — CSP `style-src-attr` 加固调研（v1.2）。
 
 ## 下一步（产品 / 工程）
 
-- **P0（已完成）**：导入音视频、FFmpeg 抽轨、ASR 契约与验收脚本闭环（见 [`docs/execution/p0-acceptance.md`](./docs/execution/p0-acceptance.md)）。
-- **P1（已完成）**：桌面壳内项目 + SQLite 语段 + 编辑保存 + TXT/SRT 导出（见 [`docs/execution/acceptance.md`](./docs/execution/acceptance.md)）。
-- **P2（已完成）**：术语库 + 热词注入 + 低置信链路；补齐 **纠错记忆 / 错词规则提示**（见 [`docs/execution/p2-acceptance.md`](./docs/execution/p2-acceptance.md)）。
-- **P3（已完成）**：TXT/SRT/DOCX 三格式导出，含逐字稿/讲稿模式与低置信样式（见 [`docs/execution/p3-acceptance.md`](./docs/execution/p3-acceptance.md)）。
-- **P4（已完成）**：评测清单、指标脚本、批跑命令、CI 冒烟、诊断包与安装包资源（见 [`docs/execution/stabilization.md`](./docs/execution/stabilization.md)）。
+- **P0–P4（已完成）**：见上文各 `p*-acceptance.md` / [`stabilization.md`](./docs/execution/stabilization.md)。
+- **v1.1 主序（2026-06）**：REL-1.1、ACC-STT-IFLYTEK 等已签收；并行索引见 [`parallel-backlog-2026-06.md`](./docs/execution/specs/parallel-backlog-2026-06.md)。
+- **桌面端近期（2026-06-18）**：Hub 侧栏 `list_files` 空响应 max-depth 修复；语段选中 `flushSync` + 列表虚拟化阈值 90；`__rushiSelectionProfile` 开发剖析；环境/词表/质量页 UI 切片与 CSP spec 入仓。
 - 编排层遵守 [`../Jieyu/copilot-instructions.md`](../Jieyu/copilot-instructions.md) 节选纪律：**controller / service** 下沉，避免 mega-hook 与壳层误接。
-- CI：文档链接、前端 lint/typecheck/test/build、`cargo check`、**`tauri build`（deb）**、Python pytest、**stub ASR 上的 `eval-run.py`**；后续可加 E2E、架构 ratchet 等。
+- CI：文档链接、前端 lint/typecheck/test/build、`cargo check`、**`tauri build`（deb）**、Python pytest、**stub ASR 上的 `eval-run.py`**、Playwright 桌面 E2E（`desktop:test:e2e:desktop`）；本地提交前建议 `node scripts/check-architecture-guard.mjs`。

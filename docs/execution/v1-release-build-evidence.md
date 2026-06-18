@@ -1,6 +1,6 @@
 # v1 发版构建证据
 
-- **时间（UTC）**：2026-06-17T18:14:12Z
+- **时间（UTC）**：2026-06-18T08:15:14Z
 - **版本**：`0.1.0`
 - **门禁**：typecheck · vitest · architecture-guard · r9-rel-1 · release-sidecar-preflight
 - **bundles**：`app`
@@ -9,8 +9,8 @@
 ## 产物
 
 total 0
-drwxr-xr-x@ 5 junwei  staff   160B  6月 18 02:14 Contents
-(no .dmg — 可仅发 .app 或检查磁盘/rw.*.dmg)
+drwxr-xr-x@ 5 junwei  staff   160B  6月 18 16:15 Contents
+-rw-r--r--@ 1 junwei  staff   327M  6月 18 10:36 /Users/junwei/开发/Rushi/apps/desktop/src-tauri/target/release/bundle/dmg/如是我闻_0.1.0_aarch64.dmg
 
 ## 说明
 

@@ -1,4 +1,5 @@
 import type { PointerEvent as ReactPointerEvent } from "react";
+import { CspLayout } from "./CspLayout";
 
 const RESIZE_HIT_HEIGHT_PX = 12;
 
@@ -10,14 +11,14 @@ export function ResizeBottomHit(props: {
 }) {
   const { busy, ariaLabel, onPointerDown } = props;
   return (
-    <div
+    <CspLayout
       aria-label={ariaLabel}
       onPointerDown={onPointerDown}
+      layout={{ height: RESIZE_HIT_HEIGHT_PX }}
       className={[
         "pointer-events-auto absolute bottom-0 left-0 right-0 z-20 cursor-row-resize touch-none select-none bg-transparent",
         busy ? "pointer-events-none opacity-40" : "",
       ].join(" ")}
-      style={{ height: RESIZE_HIT_HEIGHT_PX }}
     />
   );
 }

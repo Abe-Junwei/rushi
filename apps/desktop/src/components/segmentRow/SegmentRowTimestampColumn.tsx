@@ -1,4 +1,5 @@
 import type { PointerEvent as ReactPointerEvent } from "react";
+import { CspLayout } from "../CspLayout";
 import { formatTranscriptTimestamp } from "./segmentRowFormatting";
 
 interface SegmentRowTimestampColumnProps {
@@ -27,8 +28,8 @@ export function SegmentRowTimestampColumn({
 
   return (
     <>
-      <div
-        style={{ width: metaWidth }}
+      <CspLayout
+        layout={{ width: metaWidth }}
         className={[
           "shrink-0 touch-none select-none pt-2 pr-3 text-right",
           busy ? "cursor-not-allowed" : "cursor-cell",
@@ -53,7 +54,7 @@ export function SegmentRowTimestampColumn({
             {timestampLabel}
           </span>
         </div>
-      </div>
+      </CspLayout>
 
       <div
         role="separator"

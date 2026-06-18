@@ -50,11 +50,11 @@ export function EnvAppearancePanel() {
                   onClick={() => applyOfficeShellTheme(preset.id)}
                 >
                   <span
-                    className="relative flex h-12 w-full overflow-hidden rounded-sm border border-notion-border/80"
+                    className={`shell-theme-preview shell-theme-preview--${preset.id} relative overflow-hidden rounded-sm border border-notion-border/80`}
                     aria-hidden
                   >
-                    <span className="h-3 w-full" style={{ backgroundColor: preset.previewTop }} />
-                    <span className="flex-1 w-full" style={{ backgroundColor: preset.previewBody }} />
+                    <span className="shell-theme-preview__top" />
+                    <span className="shell-theme-preview__body" />
                     {selected ? (
                       <span className="absolute inset-0 flex items-center justify-center bg-zen-ink/10">
                         <Check
@@ -92,8 +92,7 @@ export function EnvAppearancePanel() {
                   onClick={() => applyOfficeAccentTheme(preset.id)}
                 >
                   <span
-                    className="relative flex h-10 w-10 items-center justify-center rounded-full border border-notion-border/80"
-                    style={{ backgroundColor: preset.base }}
+                    className={`accent-theme-swatch--${preset.id} relative flex h-10 w-10 items-center justify-center rounded-full border border-notion-border/80`}
                     aria-hidden
                   >
                     {selected ? (

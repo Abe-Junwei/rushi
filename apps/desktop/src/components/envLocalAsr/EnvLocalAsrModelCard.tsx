@@ -14,6 +14,7 @@ import {
   PANEL_PROGRESS_FILL_SUCCESS_CLASS,
   PANEL_PROGRESS_TRACK_COMPACT_CLASS,
 } from "../panelProgressStyles";
+import { CspProgressFill } from "../CspProgressFill";
 import { EnvLocalAsrSmallButton } from "./envLocalAsrPanelUi";
 
 const fieldLabel = PANEL_TYPOGRAPHY.envFieldLabel;
@@ -113,13 +114,13 @@ export function EnvLocalAsrModelCard({
             aria-valuemin={0}
             aria-valuemax={100}
           >
-            <div
+            <CspProgressFill
+              percent={progress}
               className={
                 modelsCached && !prepareModelBusy
                   ? PANEL_PROGRESS_FILL_SUCCESS_CLASS
                   : PANEL_PROGRESS_FILL_COMPACT_CLASS
               }
-              style={{ width: `${progress}%` }}
             />
           </div>
           {(funasrInstallMessage && (prepareModelBusy || prepareModelCancelling)) ||

@@ -2,6 +2,7 @@ import { LoaderCircle } from "lucide-react";
 import { CONTROL_BTN_SECONDARY } from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
+import { CspProgressFill } from "./CspProgressFill";
 import {
   PANEL_PROGRESS_FILL_CLASS,
   PANEL_PROGRESS_TRACK_CLASS,
@@ -87,7 +88,7 @@ export function PanelAsyncProgress(props: PanelAsyncProgressProps) {
           aria-valuemax={100}
           aria-label={title}
         >
-          <div className={PANEL_PROGRESS_FILL_CLASS} style={{ width: `${percent}%` }} />
+          <CspProgressFill percent={percent} className={PANEL_PROGRESS_FILL_CLASS} />
         </div>
       </div>
       {onCancel ? (

@@ -1,3 +1,5 @@
+import { setCspLayoutRules, clearCspLayoutRules } from "./cspElementLayout";
+
 const STRETCH_EPSILON = 0.001;
 
 export type WriteWaveformShellLayoutInput = {
@@ -30,28 +32,25 @@ export function writeWaveformShellLayout(input: WriteWaveformShellLayoutInput): 
   if (overlayScrollLayer) writeWaveformScrollLayerWidth(overlayScrollLayer, timelineWidthPx);
 }
 
-/** Timeline-width layer translated by tier scroll (waveform + segment overlay). */
 function writeWaveformScrollLayerWidth(scrollLayer: HTMLElement, timelineWidthPx: number): void {
   if (timelineWidthPx <= 0) return;
-  scrollLayer.style.width = `${timelineWidthPx}px`;
+  setCspLayoutRules(scrollLayer, { width: timelineWidthPx });
 }
 
-/** Imperatively sync sticky clip shell — avoids waiting for React commit on resize. */
 export function writeWaveformStickyShellWidth(
   stickyEl: HTMLElement,
   viewportWidthPx: number,
 ): void {
   if (viewportWidthPx <= 0) return;
-  stickyEl.style.width = `${viewportWidthPx}px`;
+  setCspLayoutRules(stickyEl, { width: viewportWidthPx });
 }
 
-/** Imperatively sync timeline / stage shell width before React commits px/s. */
 export function writeWaveformTimelineShellWidth(
   shellEl: HTMLElement,
   timelineWidthPx: number,
 ): void {
   if (timelineWidthPx <= 0) return;
-  shellEl.style.width = `${timelineWidthPx}px`;
+  setCspLayoutRules(shellEl, { width: timelineWidthPx });
 }
 
 export function writeWaveformPeaksStageShellWidth(
@@ -59,23 +58,23 @@ export function writeWaveformPeaksStageShellWidth(
   stageWidthPx: number,
 ): void {
   if (stageWidthPx <= 0) return;
-  shellEl.style.width = `${stageWidthPx}px`;
+  setCspLayoutRules(shellEl, { width: stageWidthPx });
 }
 
-/** Temporarily scale existing canvas to new viewport width (Peaks.js-style resize hold). */
 export function applyWaveformViewportStretch(stretchEl: HTMLElement, ratio: number): void {
   if (!Number.isFinite(ratio) || Math.abs(ratio - 1) <= STRETCH_EPSILON) {
     clearWaveformViewportStretch(stretchEl);
     return;
   }
-  stretchEl.style.transformOrigin = "left top";
-  stretchEl.style.transform = `scaleX(${ratio})`;
+  setCspLayoutRules(stretchEl, {
+    transformOrigin: "left top",
+    transform: `scaleX(${ratio})`,
+  });
 }
 
 export function clearWaveformViewportStretch(stretchEl: HTMLElement | null | undefined): void {
   if (!stretchEl) return;
-  stretchEl.style.removeProperty("transform");
-  stretchEl.style.removeProperty("transform-origin");
+  clearCspLayoutRules(stretchEl);
 }
 
 export function computeViewportStretchRatio(

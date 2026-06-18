@@ -6,11 +6,11 @@ import {
   useLayoutEffect,
   useRef,
   useState,
-  type CSSProperties,
   type RefObject,
 } from "react";
 import { createPortal } from "react-dom";
 import { ChevronDown } from "lucide-react";
+import { CspLayout } from "./CspLayout";
 import { LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 import {
   formatWaveformPlaybackRateLabel,
@@ -72,47 +72,74 @@ function PlaybackRatePopovers({
     ? "waveform-playback-rate-popover waveform-playback-rate-popover-portal"
     : "waveform-playback-rate-popover";
 
-  const aboveStyle: CSSProperties | undefined =
+  const aboveLayout =
     portal && anchorRect
       ? {
           left: anchorRect.left,
           width: anchorRect.width,
           bottom: window.innerHeight - anchorRect.top + 1,
         }
-      : undefined;
+      : null;
 
-  const belowStyle: CSSProperties | undefined =
+  const belowLayout =
     portal && anchorRect
       ? {
           left: anchorRect.left,
           width: anchorRect.width,
           top: anchorRect.bottom - 1,
         }
-      : undefined;
+      : null;
 
   return (
     <>
-      <ul
-        id={listboxId}
-        role="listbox"
-        aria-label="播放速度（更快）"
-        className={`${popoverClass} waveform-playback-rate-popover-above`}
-        style={aboveStyle}
-      >
-        {WAVEFORM_PLAYBACK_RATE_FASTER_PRESETS.map((rate) => (
-          <RateOption key={rate} rate={rate} active={rate === activeRate} onPick={onPick} />
-        ))}
-      </ul>
-      <ul
-        role="listbox"
-        aria-label="播放速度（更慢）"
-        className={`${popoverClass} waveform-playback-rate-popover-below`}
-        style={belowStyle}
-      >
-        {[...WAVEFORM_PLAYBACK_RATE_SLOWER_PRESETS].reverse().map((rate) => (
-          <RateOption key={rate} rate={rate} active={rate === activeRate} onPick={onPick} />
-        ))}
-      </ul>
+      {aboveLayout ? (
+        <CspLayout
+          as="ul"
+          id={listboxId}
+          role="listbox"
+          aria-label="播放速度（更快）"
+          className={`${popoverClass} waveform-playback-rate-popover-above`}
+          layout={aboveLayout}
+        >
+          {WAVEFORM_PLAYBACK_RATE_FASTER_PRESETS.map((rate) => (
+            <RateOption key={rate} rate={rate} active={rate === activeRate} onPick={onPick} />
+          ))}
+        </CspLayout>
+      ) : (
+        <ul
+          id={listboxId}
+          role="listbox"
+          aria-label="播放速度（更快）"
+          className={`${popoverClass} waveform-playback-rate-popover-above`}
+        >
+          {WAVEFORM_PLAYBACK_RATE_FASTER_PRESETS.map((rate) => (
+            <RateOption key={rate} rate={rate} active={rate === activeRate} onPick={onPick} />
+          ))}
+        </ul>
+      )}
+      {belowLayout ? (
+        <CspLayout
+          as="ul"
+          role="listbox"
+          aria-label="播放速度（更慢）"
+          className={`${popoverClass} waveform-playback-rate-popover-below`}
+          layout={belowLayout}
+        >
+          {[...WAVEFORM_PLAYBACK_RATE_SLOWER_PRESETS].reverse().map((rate) => (
+            <RateOption key={rate} rate={rate} active={rate === activeRate} onPick={onPick} />
+          ))}
+        </CspLayout>
+      ) : (
+        <ul
+          role="listbox"
+          aria-label="播放速度（更慢）"
+          className={`${popoverClass} waveform-playback-rate-popover-below`}
+        >
+          {[...WAVEFORM_PLAYBACK_RATE_SLOWER_PRESETS].reverse().map((rate) => (
+            <RateOption key={rate} rate={rate} active={rate === activeRate} onPick={onPick} />
+          ))}
+        </ul>
+      )}
     </>
   );
 }

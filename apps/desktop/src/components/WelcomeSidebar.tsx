@@ -15,6 +15,7 @@ import { editorShortcutMenuHint } from "../utils/editorShortcutMenuHint";
 import { sortWelcomeProjects } from "./welcomeSidebarFormatters";
 import { WelcomeSidebarProjectList } from "./WelcomeSidebarProjectList";
 import { WelcomeSidebarNav } from "./WelcomeSidebarNav";
+import { CspLayout } from "./CspLayout";
 
 export interface WelcomeSidebarProps {
   controller: ProjectControllerApi;
@@ -152,9 +153,9 @@ export function WelcomeSidebar({
         </div>
       )}
       <div className={`mt-auto shrink-0 border-t ${MAIN_SHELL_SURFACE_CLASS.border} ${MAIN_SHELL_SURFACE_CLASS.sidebarBg}`} aria-label="侧栏工具">
-        <div
+        <CspLayout
           className={WORKSPACE_SIDEBAR_FOOTER_GRID}
-          style={{ gridTemplateColumns: `repeat(${footerItems.length}, minmax(0, 1fr))` }}
+          layout={{ gridTemplateColumns: `repeat(${footerItems.length}, minmax(0, 1fr))` }}
         >
           {footerItems.map((item) => (
             <button
@@ -170,7 +171,7 @@ export function WelcomeSidebar({
               <span className="max-w-full truncate px-0.5">{item.label}</span>
             </button>
           ))}
-        </div>
+        </CspLayout>
       </div>
     </aside>
   );

@@ -9,6 +9,7 @@ import {
   type TierScrollLiveRefs,
 } from "../utils/waveformViewport";
 import { registerWaveformSegmentBandPaintScheduler } from "../utils/waveformSegmentBandPaint";
+import { setCspLayoutRules } from "../utils/cspElementLayout";
 import { wfProfileIsActive, wfProfileTime } from "../services/waveform/waveformZoomProfile";
 
 export type WaveformSegmentBandCanvasProps = {
@@ -104,8 +105,7 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
       const dpr = window.devicePixelRatio || 1;
       canvas.width = Math.max(1, Math.floor(widthPx * dpr));
       canvas.height = Math.max(1, Math.floor(heightPx * dpr));
-      canvas.style.width = `${widthPx}px`;
-      canvas.style.height = `${heightPx}px`;
+      setCspLayoutRules(canvas, { width: widthPx, height: heightPx });
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
