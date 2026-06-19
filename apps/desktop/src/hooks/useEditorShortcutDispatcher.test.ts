@@ -205,6 +205,27 @@ describe("useEditorShortcutDispatcher", () => {
     textarea.remove();
   });
 
+  it("does not toggle play on Space inside a generic panel input", () => {
+    const togglePlay = vi.fn();
+    const input = document.createElement("input");
+    input.type = "text";
+    document.body.appendChild(input);
+    input.focus();
+    const ctx = makeCtx();
+    const { wfApiRef } = mountDispatcher(ctx);
+    wfApiRef.current.togglePlay = togglePlay;
+
+    const event = new KeyboardEvent("keydown", { key: " ", bubbles: true, cancelable: true });
+    Object.defineProperty(event, "target", { value: input, configurable: true });
+    act(() => {
+      window.dispatchEvent(event);
+    });
+
+    expect(togglePlay).not.toHaveBeenCalled();
+    expect(event.defaultPrevented).toBe(false);
+    input.remove();
+  });
+
   it("toggles play on Shift+Cmd+Space inside segment textarea", () => {
     const togglePlay = vi.fn();
     const textarea = document.createElement("textarea");
