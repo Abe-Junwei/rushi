@@ -84,11 +84,13 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
     onAfterCacheMutation: async () => refreshAsrRuntimeInfoRef.current(),
   });
 
+  /* eslint-disable react-hooks/exhaustive-deps -- cacheCtrl is a stable hook-returned controller; only its method identity matters */
   const refreshAsrRuntimeInfo = useCallback(async () => {
     await refreshAsrHealth();
     await cacheCtrl.refreshAsrModelCacheInfo();
     await refreshEnvironmentDiagnostics?.();
   }, [cacheCtrl.refreshAsrModelCacheInfo, refreshAsrHealth, refreshEnvironmentDiagnostics]);
+  /* eslint-enable react-hooks/exhaustive-deps */
   refreshAsrRuntimeInfoRef.current = refreshAsrRuntimeInfo;
 
   const localAsrModelCatalog = useLocalAsrModelCatalog(refreshAsrRuntimeInfo);
@@ -104,10 +106,12 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
     () => localAsrModelCatalog.selectedHubModelId,
   );
 
+  /* eslint-disable react-hooks/exhaustive-deps -- bridgeReady depends on global STT runtime state; epochs force refresh but are not read inside the memo */
   const sttOnlineBridgeReady = useMemo(
     () => isOnlineTranscribeReady(),
     [sttOnlineBridgeEpoch, sttRuntimeRevision],
   );
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   const bumpSttOnlineRuntimeChanged = useCallback(() => {
     setSttOnlineBridgeEpoch((n) => n + 1);

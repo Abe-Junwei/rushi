@@ -1,6 +1,6 @@
 # 代码库清理 — 候选登记表
 
-> **状态**：Wave A–D ✅ · Wave E1–E4 ✅ · Wave F (CLN-070) ✅ · Wave G (CLN-072) ✅ · Wave H (CLN-073–074) ✅  
+> **状态**：Wave A **已执行 2026-06-18** · Wave B–D ✅ · Wave E1–E4 ✅ · Wave F (CLN-070) ✅ · Wave G (CLN-072) ✅ · Wave H (CLN-073–074) ✅  
 > **基线**：[cleanup-scan-baseline.md](./cleanup-scan-baseline.md)  
 > **图例**：动作 `DELETE` / `ARCHIVE` / `MERGE` / `FIX` / `KEEP` / `DEFER` · 风险 `L0`低 `L1`中 `L2`高 `L3`禁止
 
@@ -10,20 +10,25 @@
 
 | ID | 路径 | 证据 | 风险 | 动作 | 验证 |
 |----|------|------|------|------|------|
-| CLN-001 | `components/AutoPunctuatePreviewDialog.tsx` | knip；rg 零 import | L0 | **DONE** DELETE | test |
-| CLN-002 | `components/SegmentRefinePreviewDialog.tsx` | 仅引用 CLN-003 | L0 | **DONE** DELETE | test |
-| CLN-003 | `pages/useSegmentRefineController.ts` | knip；无页面接线 | L0 | **DONE** DELETE | test |
-| CLN-004 | `components/editor/EditorSegmentToolbar.tsx` | knip；`@deprecated`；Workbench 已替代 | L0 | **DONE** DELETE | test + 更新 stitch doc |
-| CLN-005 | `components/EnvLlmCapabilitiesSection.tsx` | knip；未入 `EnvironmentPanel` | L1 | **DONE** DELETE | — |
-| CLN-006 | `components/glossary/GlossaryHotwordsSummarySection.tsx` | knip；仅 stitch spec 引用 | L1 | **DONE** DELETE | stitch doc 注记 |
-| CLN-007 | `components/glossary/GlossaryLexiconBundleSection.tsx` | 同 CLN-006 | L1 | **DONE** DELETE | stitch doc 注记 |
-| CLN-008 | `hooks/useAsrEnvStatus.ts` | knip；薄封装 `buildAsrEnvPresentation` | L0 | **DONE** DELETE | test |
-| CLN-009 | `hooks/useWaveformSegmentPlaybackControlsOverlayFrame.ts` | knip | L1 | **DONE** DELETE | — |
-| CLN-010 | `services/waveform/waveformPeaksPrewarm.ts` | knip | L1 | **DONE** DELETE | — |
-| CLN-011 | `utils/pxPerSecConstants.ts` | knip | L0 | **DONE** DELETE | pxPerSec test |
-| CLN-012 | `contracts/index.ts` | knip；零 import | L0 | **DONE** DELETE | typecheck |
+| CLN-001 | `components/AutoPunctuatePreviewDialog.tsx` | knip；rg 零 import | L0 | **DONE** DELETE | ✅ 2026-06-18 `typecheck` + `test` |
+| CLN-002 | `components/SegmentRefinePreviewDialog.tsx` | 仅引用 CLN-003 | L0 | **DONE** DELETE | ✅ 2026-06-18 `typecheck` + `test` |
+| CLN-003 | `pages/useSegmentRefineController.ts` | knip；无页面接线 | L0 | **DONE** DELETE | ✅ 2026-06-18 `typecheck` + `test` |
+| CLN-004 | `components/editor/EditorSegmentToolbar.tsx` | knip；`@deprecated`；Workbench 已替代 | L0 | **DONE** DELETE | ✅ 2026-06-18 `typecheck` + `test`；`EditorSegmentToolbarActions` 仍被 `EditorWorkbenchToolbar` 使用故保留 |
+| CLN-005 | `components/EnvLlmCapabilitiesSection.tsx` | knip；未入 `EnvironmentPanel` | L1 | **DONE** DELETE | ✅ 2026-06-18 `typecheck` + `test` |
+| CLN-006 | `components/glossary/GlossaryHotwordsSummarySection.tsx` | knip；仅 stitch spec 引用 | L1 | **DONE** DELETE | ✅ 2026-06-18 `typecheck` + `test`；stitch doc 仍保留历史注记 |
+| CLN-007 | `components/glossary/GlossaryLexiconBundleSection.tsx` | 同 CLN-006 | L1 | **DONE** DELETE | ✅ 2026-06-18 `typecheck` + `test`；stitch doc 仍保留历史注记 |
+| CLN-008 | `hooks/useAsrEnvStatus.ts` | knip；薄封装 `buildAsrEnvPresentation` | L0 | **DONE** DELETE | ✅ 2026-06-18 `typecheck` + `test` |
+| CLN-009 | `hooks/useWaveformSegmentPlaybackControlsOverlayFrame.ts` | knip | L1 | **DONE** DELETE | ✅ 2026-06-18 `typecheck` + `test` |
+| CLN-010 | `services/waveform/waveformPeaksPrewarm.ts` | knip | L1 | **DONE** DELETE | ✅ 2026-06-18 `typecheck` + `test` |
+| CLN-011 | `utils/pxPerSecConstants.ts` | knip | L0 | **DONE** DELETE | ✅ 已先于 2026-06-18 删除（本轮未复现文件） |
+| CLN-012 | `contracts/index.ts` | knip；零 import | L0 | **DONE** DELETE | ✅ 2026-06-18 `typecheck` + `test` |
 | CLN-013 | `services/waveform/PeakCache.bench.ts` | knip；bench 无 npm script | L0 | KEEP 或 加 `npm run bench:peaks` | — |
 | CLN-014 | `tests/e2e/support/tauri-mock-init.js` | knip；E2E `desktop-lifecycle-smoke` 引用 | L1 | **KEEP** | e2e |
+| CLN-015 | `components/EnvLlmConnectionCard.tsx` | knip；rg 零 import | L0 | **DONE** DELETE | ✅ 2026-06-18 `typecheck` + `test` |
+| CLN-016 | `components/envOnlineStt/EnvOnlineSttConfigCard.tsx` | knip；rg 零 import | L0 | **DONE** DELETE | ✅ 2026-06-18 `typecheck` + `test` |
+| CLN-017 | `components/QualityPage.tsx` | knip；rg 零 import | L0 | **DONE** DELETE | ✅ 2026-06-18 `typecheck` + `test` |
+| CLN-018 | `hooks/useLayoutLockedBodyMeasure.ts` | knip；rg 零 import | L0 | **DONE** DELETE | ✅ 2026-06-18 `typecheck` + `test` |
+| CLN-019 | `services/ui/activityFeedPresentation.ts` `ACTIVITY_FEED_ICON_CELL_CLASS` | `ACTIVITY_FEED_MARK_CELL_CLASS` 别名；knip duplicate export | L0 | **DONE** MERGE → `ACTIVITY_FEED_MARK_CELL_CLASS` | ✅ 2026-06-18 `typecheck` + `test`；`WelcomeActivityPanel` 已改引用 |
 
 ---
 

@@ -101,8 +101,9 @@ export function useSegmentRowTextFieldEditing({
   );
 
   useEffect(() => {
+    const textarea = textareaRef.current;
     return () => {
-      const el = textareaRef.current;
+      const el = textarea;
       if (el && (segmentDraftStore.isComposing(draftKey) || normalizeSegmentDraftText(el.value) !== committedTextRef.current)) {
         flushTextareaEdits(el);
       }

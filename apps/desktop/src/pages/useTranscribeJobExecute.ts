@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { asrBaseUrl } from "../config/env";
 import { finishTranscribeSuccess } from "./transcribeJobExecuteFinish";
 import { humanizeInvokeError } from "../services/ui/humanizeInvokeError";
@@ -67,13 +67,16 @@ export function useTranscribeJobExecute(args: TranscribeJobExecuteArgs) {
   const firstSegmentsLoggedRef = useRef(false);
   const pollAbortRef = useRef<AbortController | null>(null);
 
-  const runRefs = {
-    activeJobId: activeJobIdRef,
-    userCancelRequested: userCancelRequestedRef,
-    transcribeStartedAtMs: transcribeStartedAtRef,
-    firstSegmentsLogged: firstSegmentsLoggedRef,
-    pollAbort: pollAbortRef,
-  };
+  const runRefs = useMemo(
+    () => ({
+      activeJobId: activeJobIdRef,
+      userCancelRequested: userCancelRequestedRef,
+      transcribeStartedAtMs: transcribeStartedAtRef,
+      firstSegmentsLogged: firstSegmentsLoggedRef,
+      pollAbort: pollAbortRef,
+    }),
+    [],
+  );
 
   useEffect(() => {
     return () => {
@@ -232,6 +235,7 @@ export function useTranscribeJobExecute(args: TranscribeJobExecuteArgs) {
     getCurrentSegmentsSnapshot,
     localTranscribePreflight,
     clearScheduledAutoSave,
+    runRefs,
     transcribeSource,
     setTranscribeStartDialogOpen,
   ]);

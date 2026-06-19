@@ -1,6 +1,6 @@
 import { ChevronLeft, PanelLeftOpen } from "lucide-react";
 import { CONTROL_BTN_ICON_GHOST } from "../config/controlStyles";
-import { useOptionalWorkspaceSidebarCollapseContext } from "../context/WorkspaceSidebarCollapseContext";
+import { useOptionalWorkspaceSidebarCollapseContext } from "../hooks/useWorkspaceSidebarCollapseContext";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
 /** 工作区顶栏：图标后退 + 面包屑（常态无灰底，hover 才显底） */

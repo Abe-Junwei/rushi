@@ -1,4 +1,4 @@
-import { createContext, useContext, useMemo, type ReactNode } from "react";
+import { createContext, useMemo, type ReactNode } from "react";
 import { useWorkspaceSidebarCollapse } from "../hooks/useWorkspaceSidebarCollapse";
 
 export type WorkspaceSidebarCollapseContextValue = {
@@ -8,7 +8,8 @@ export type WorkspaceSidebarCollapseContextValue = {
   toggle: () => void;
 };
 
-const WorkspaceSidebarCollapseContext = createContext<WorkspaceSidebarCollapseContextValue | null>(
+// eslint-disable-next-line react-refresh/only-export-components -- React Context 常量与 Provider 共处是标准模式；Consumer hook 已拆至 hooks/useWorkspaceSidebarCollapseContext.ts
+export const WorkspaceSidebarCollapseContext = createContext<WorkspaceSidebarCollapseContextValue | null>(
   null,
 );
 
@@ -30,14 +31,3 @@ export function WorkspaceSidebarCollapseProvider({ children }: { children: React
   );
 }
 
-export function useWorkspaceSidebarCollapseContext(): WorkspaceSidebarCollapseContextValue {
-  const ctx = useContext(WorkspaceSidebarCollapseContext);
-  if (!ctx) {
-    throw new Error("useWorkspaceSidebarCollapseContext must be used within WorkspaceSidebarCollapseProvider");
-  }
-  return ctx;
-}
-
-export function useOptionalWorkspaceSidebarCollapseContext(): WorkspaceSidebarCollapseContextValue | null {
-  return useContext(WorkspaceSidebarCollapseContext);
-}

@@ -5,10 +5,8 @@ import { resolveWaveformCenterStatusLabel } from "../../services/waveform/wavefo
 import { resolveTierViewportMetrics } from "../../utils/waveformViewport";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
-import {
-  EditorWaveformPeaksStage,
-  resolveEditorWaveformPaneMetrics,
-} from "./EditorWaveformPeaksStage";
+import { EditorWaveformPeaksStage } from "./EditorWaveformPeaksStage";
+import { resolveEditorWaveformPaneMetrics } from "./editorWaveformPaneMetrics";
 
 interface EditorWaveformPaneProps {
   controller: ProjectControllerApi;

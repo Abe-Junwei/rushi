@@ -36,6 +36,7 @@ export function useGlossaryPageController(busy: boolean, workspaceId: GlossaryWo
   const disabled = busy || g.busy || mem.busy || mine.busy || bundleBusy;
 
   // 仅在工作区分段切换时重置；勿将 g/mem 放入 deps（对象引用每轮变化会立刻关掉编辑器/对话框）
+  /* eslint-disable react-hooks/exhaustive-deps -- g/mem/bulkAdd are stable controller objects; workspaceId is the only trigger */
   useEffect(() => {
     setTermEditorOpen(false);
     setMemEditorOpen(false);
@@ -43,6 +44,7 @@ export function useGlossaryPageController(busy: boolean, workspaceId: GlossaryWo
     g.resetEditor();
     mem.resetEditor();
   }, [workspaceId]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   const openTermEditor = useCallback(() => {
     g.resetEditor();

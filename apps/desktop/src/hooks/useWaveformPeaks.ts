@@ -123,6 +123,7 @@ export function useWaveformPeaks(
   }, [projectId, fileId, backgroundGenerationEnabled]);
 
   // Duration probe after identity load — refresh cache once when peaks/media diverge.
+  /* eslint-disable react-hooks/exhaustive-deps -- `status` state is set inside this effect; adding it would cause an infinite loop */
   useEffect(() => {
     if (!backgroundGenerationEnabledRef.current) return;
     if (!projectId || !fileId || mediaDurationSec <= 0 || !status) return;
@@ -180,6 +181,7 @@ export function useWaveformPeaks(
       cancelled = true;
     };
   }, [projectId, fileId, mediaDurationSec, backgroundGenerationEnabled]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   const clearAndReloadPeaks = useCallback(async () => {
     if (!projectId || !fileId) {

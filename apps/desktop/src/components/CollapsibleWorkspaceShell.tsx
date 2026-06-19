@@ -1,8 +1,6 @@
 import type { ReactNode } from "react";
-import {
-  WorkspaceSidebarCollapseProvider,
-  useWorkspaceSidebarCollapseContext,
-} from "../context/WorkspaceSidebarCollapseContext";
+import { WorkspaceSidebarCollapseProvider } from "../context/WorkspaceSidebarCollapseContext";
+import { useWorkspaceSidebarCollapseContext } from "../hooks/useWorkspaceSidebarCollapseContext";
 import { WorkspaceShellLayout } from "./WorkspaceShellLayout";
 
 type CollapsibleWorkspaceShellProps = {

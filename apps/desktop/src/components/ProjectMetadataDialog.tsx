@@ -60,13 +60,13 @@ export function ProjectMetadataDialog({
   onClose,
   onSave,
 }: ProjectMetadataDialogProps) {
-  const initial = useMemo(() => formFromProject(project), [open, project?.id]);
+  const initial = useMemo(() => formFromProject(project), [project]);
   const [draft, setDraft] = useState<ProjectMetadataForm>(initial);
 
   useEffect(() => {
     if (!open) return;
     setDraft(formFromProject(project));
-  }, [open, project?.id]);
+  }, [open, project]);
 
   const duplicateProjects = useMemo(
     () => findDuplicateProjectNames(projects, draft.name, project?.id),

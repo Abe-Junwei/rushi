@@ -1,134 +1,72 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import type { ProjectControllerApi } from "../pages/useProjectController";
 import {
-  welcomeSearchContent,
-  welcomeSearchFiles,
-  type WelcomeContentSearchHit,
-  type WelcomeFileSearchHit,
-} from "../tauri/welcomeSearchApi";
-import { scheduleScrollSegmentListIndexToView } from "../utils/segmentListVirtualWindow";
-import {
   clearWelcomeSearchEditorHighlight,
-  pushRecentSearchQuery,
-  readRecentSearchQueries,
   readWelcomeSearchScope,
   setWelcomeSearchEditorHighlight,
   setWelcomeSearchHubFileTarget,
   writeWelcomeSearchScope,
   type WelcomeSearchScope,
 } from "../services/welcome/welcomeSearch";
-import {
-  buildWelcomeSearchNavItems,
-  cycleWelcomeSearchScope,
-  type WelcomeSearchNavItem,
-} from "../services/welcome/welcomeSearchNav";
-
-const SEARCH_DEBOUNCE_MS = 320;
+import { cycleWelcomeSearchScope } from "../services/welcome/welcomeSearchNav";
+import { scheduleScrollSegmentListIndexToView } from "../utils/segmentListVirtualWindow";
+import { useWelcomeSearchNavigation } from "./useWelcomeSearchNavigation";
+import { useWelcomeSearchQuery } from "./useWelcomeSearchQuery";
+import { useWelcomeSearchRecentQueries } from "./useWelcomeSearchRecentQueries";
 
 export function useWelcomeSearchController(controller: ProjectControllerApi) {
   const [scope, setScopeState] = useState<WelcomeSearchScope>(() => readWelcomeSearchScope());
-  const [query, setQuery] = useState("");
-  const [debouncedQuery, setDebouncedQuery] = useState("");
   const [open, setOpen] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [fileResults, setFileResults] = useState<WelcomeFileSearchHit[]>([]);
-  const [contentResults, setContentResults] = useState<WelcomeContentSearchHit[]>([]);
-  const [recentQueries, setRecentQueries] = useState<string[]>(() => readRecentSearchQueries());
-  const [activeIndex, setActiveIndex] = useState(-1);
-  const debounceRef = useRef<ReturnType<typeof setTimeout> | null>(null);
   const searchRootRef = useRef<HTMLDivElement | null>(null);
 
-  const setScope = useCallback((next: WelcomeSearchScope) => {
-    setScopeState(next);
-    writeWelcomeSearchScope(next);
-    setActiveIndex(-1);
-  }, []);
+  const {
+    query,
+    setQuery,
+    debouncedQuery,
+    queryEmpty,
+    loading,
+    error,
+    fileResults,
+    contentResults,
+    resetQuery,
+  } = useWelcomeSearchQuery();
 
-  const cycleScope = useCallback((direction: 1 | -1) => {
-    setScopeState((current) => {
-      const next = cycleWelcomeSearchScope(current, direction);
-      writeWelcomeSearchScope(next);
-      return next;
+  const { recentQueries, rememberQuery } = useWelcomeSearchRecentQueries(open);
+
+  const { navItems, activeIndex, setActiveIndex, moveActiveIndex, resetActiveIndex } =
+    useWelcomeSearchNavigation({
+      queryEmpty,
+      recentQueries,
+      scope,
+      fileResults,
+      contentResults,
     });
-    setActiveIndex(-1);
-  }, []);
 
-  useEffect(() => {
-    if (debounceRef.current) clearTimeout(debounceRef.current);
-    debounceRef.current = setTimeout(() => {
-      setDebouncedQuery(query.trim());
-    }, SEARCH_DEBOUNCE_MS);
-    return () => {
-      if (debounceRef.current) clearTimeout(debounceRef.current);
-    };
-  }, [query]);
+  const setScope = useCallback(
+    (next: WelcomeSearchScope) => {
+      setScopeState(next);
+      writeWelcomeSearchScope(next);
+      resetActiveIndex();
+    },
+    [resetActiveIndex],
+  );
 
-  useEffect(() => {
-    setActiveIndex(-1);
-  }, [debouncedQuery, scope, fileResults, contentResults, recentQueries]);
-
-  useEffect(() => {
-    const trimmed = debouncedQuery;
-    if (!trimmed) {
-      setFileResults([]);
-      setContentResults([]);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-
-    let cancelled = false;
-    setLoading(true);
-    setError(null);
-    void (async () => {
-      try {
-        const [files, content] = await Promise.all([
-          welcomeSearchFiles(trimmed),
-          welcomeSearchContent(trimmed),
-        ]);
-        if (!cancelled) {
-          setFileResults(files);
-          setContentResults(content);
-        }
-      } catch (e) {
-        if (!cancelled) {
-          setError(e instanceof Error ? e.message : String(e));
-          setFileResults([]);
-          setContentResults([]);
-        }
-      } finally {
-        if (!cancelled) setLoading(false);
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  }, [debouncedQuery]);
-
-  useEffect(() => {
-    if (open) setRecentQueries(readRecentSearchQueries());
-  }, [open]);
-
-  const queryEmpty = debouncedQuery.length === 0;
-
-  const navItems = useMemo(
-    () =>
-      buildWelcomeSearchNavItems({
-        queryEmpty,
-        recentQueries,
-        scope,
-        fileResults,
-        contentResults,
-      }),
-    [queryEmpty, recentQueries, scope, fileResults, contentResults],
+  const cycleScope = useCallback(
+    (direction: 1 | -1) => {
+      setScopeState((current) => {
+        const next = cycleWelcomeSearchScope(current, direction);
+        writeWelcomeSearchScope(next);
+        return next;
+      });
+      resetActiveIndex();
+    },
+    [resetActiveIndex],
   );
 
   const closeSearch = useCallback(() => {
     setOpen(false);
-    setActiveIndex(-1);
-  }, []);
+    resetActiveIndex();
+  }, [resetActiveIndex]);
 
   useEffect(() => {
     if (!open) return;
@@ -142,42 +80,38 @@ export function useWelcomeSearchController(controller: ProjectControllerApi) {
     return () => document.removeEventListener("pointerdown", onPointerDown, true);
   }, [open, closeSearch]);
 
-  const rememberQuery = useCallback((q: string) => {
-    pushRecentSearchQuery(q);
-    setRecentQueries(readRecentSearchQueries());
-  }, []);
-
   const navigateToFileHub = useCallback(
-    async (hit: WelcomeFileSearchHit) => {
+    async (hit: import("../tauri/welcomeSearchApi").WelcomeFileSearchHit) => {
       closeSearch();
-      setQuery("");
-      setDebouncedQuery("");
+      resetQuery();
       rememberQuery(hit.file_name);
       setWelcomeSearchHubFileTarget(hit.file_id);
       await controller.loadProject(hit.project_id);
     },
-    [closeSearch, controller, rememberQuery],
+    [closeSearch, controller, rememberQuery, resetQuery],
   );
 
   const openFileFromSearch = useCallback(
-    async (hit: WelcomeFileSearchHit | WelcomeContentSearchHit) => {
+    async (
+      hit:
+        | import("../tauri/welcomeSearchApi").WelcomeFileSearchHit
+        | import("../tauri/welcomeSearchApi").WelcomeContentSearchHit,
+    ) => {
       closeSearch();
-      setQuery("");
-      setDebouncedQuery("");
+      resetQuery();
       rememberQuery(debouncedQuery || hit.file_name);
       if (controller.current?.id !== hit.project_id) {
         await controller.loadProject(hit.project_id);
       }
       await controller.openFile(hit.file_id);
     },
-    [closeSearch, controller, debouncedQuery, rememberQuery],
+    [closeSearch, controller, debouncedQuery, rememberQuery, resetQuery],
   );
 
   const navigateToContentHit = useCallback(
-    async (hit: WelcomeContentSearchHit) => {
+    async (hit: import("../tauri/welcomeSearchApi").WelcomeContentSearchHit) => {
       closeSearch();
-      setQuery("");
-      setDebouncedQuery("");
+      resetQuery();
       rememberQuery(debouncedQuery);
       clearWelcomeSearchEditorHighlight();
       setWelcomeSearchEditorHighlight({
@@ -193,15 +127,14 @@ export function useWelcomeSearchController(controller: ProjectControllerApi) {
       scheduleScrollSegmentListIndexToView(hit.segment_idx);
       window.setTimeout(() => clearWelcomeSearchEditorHighlight(), 6000);
     },
-    [closeSearch, controller, debouncedQuery, rememberQuery],
+    [closeSearch, controller, debouncedQuery, rememberQuery, resetQuery],
   );
 
   const activateNavItem = useCallback(
-    (item: WelcomeSearchNavItem) => {
+    (item: import("../services/welcome/welcomeSearchNav").WelcomeSearchNavItem) => {
       if (item.type === "recent-query") {
         setQuery(item.query);
-        setDebouncedQuery(item.query);
-        setActiveIndex(-1);
+        resetActiveIndex();
         return;
       }
       if (item.type === "file") {
@@ -210,21 +143,7 @@ export function useWelcomeSearchController(controller: ProjectControllerApi) {
       }
       void navigateToContentHit(item.hit);
     },
-    [navigateToContentHit, navigateToFileHub],
-  );
-
-  const moveActiveIndex = useCallback(
-    (delta: number) => {
-      if (navItems.length === 0) return;
-      setActiveIndex((prev) => {
-        if (prev < 0) return delta > 0 ? 0 : navItems.length - 1;
-        const next = prev + delta;
-        if (next < 0) return navItems.length - 1;
-        if (next >= navItems.length) return 0;
-        return next;
-      });
-    },
-    [navItems.length],
+    [navigateToContentHit, navigateToFileHub, resetActiveIndex, setQuery],
   );
 
   const handleInputKeyDown = useCallback(

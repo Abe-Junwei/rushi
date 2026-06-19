@@ -45,6 +45,7 @@ services/asr/.venv-sidecar-build/
 services/asr/.venv-sidecar-build-cuda/
 # 本地生成 lockfile / 依赖矩阵用 venv（含 torch 等，文件极多；勿提交、勿让 IDE 全量索引）
 services/asr/.venv-lockgen-cpu/
+services/asr/.venv-audit/
 services/asr/rushi-asr-sidecar.spec
 services/asr/rushi-asr-sidecar-cuda.spec
 services/asr/build/

@@ -1,7 +1,7 @@
 import { useState } from "react";
 import { ENV_VENDOR_CHIP_BASE, envVendorChipClass } from "../config/envVendorChipStyles";
 import { getLlmProviderDefinition, type LlmProviderId } from "../services/postprocess/postprocessRuntimeContract";
-import { cloudLlmProviderIds } from "./EnvLlmModeSwitch";
+import { cloudLlmProviderIds } from "../config/cloudLlmProviders";
 
 const FEATURED_CLOUD_PROVIDER_IDS: LlmProviderId[] = ["deepseek", "kimi", "qwen"];
 

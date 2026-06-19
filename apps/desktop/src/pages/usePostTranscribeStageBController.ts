@@ -72,11 +72,14 @@ export function usePostTranscribeStageBController(args: Args) {
   const pendingStageAHintRef = useRef<string | null>(null);
 
   const hasSegmentText = segments.some((s) => (s.text ?? "").trim().length > 0);
+  /* eslint-disable react-hooks/exhaustive-deps -- llmGate depends on global LLM runtime state; epochs force refresh but are not read inside the memo */
   const llmGate = useMemo(
     () => readStageBLlmGateSnapshot(),
     [llmRuntimeEpoch, llmEnvRevision],
   );
+  /* eslint-enable react-hooks/exhaustive-deps */
 
+  /* eslint-disable react-hooks/exhaustive-deps -- blockReason depends on global LLM state via llmGate; epochs force refresh but are not read inside the memo */
   const stageBBlockReason = useMemo(() => {
     if (transcribePreviewActive) return TRANSCRIBE_PREVIEW_BLOCK_REASON;
     return resolveStageBSyncBlockReason({ currentFileId, hasSegmentText });
@@ -88,6 +91,7 @@ export function usePostTranscribeStageBController(args: Args) {
     llmRuntimeEpoch,
     llmEnvRevision,
   ]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   const isStageBDialogOpen = dialog.phase !== "closed";
 

@@ -31,9 +31,11 @@ export function useLlmEnvStatus(refreshSeq = 0, settings?: LlmEnvSettingsOverlay
   const [snapshot, setSnapshot] = useState(readLlmEnvSnapshot);
   const envMode = llmEnvModeFromOverlay(settings);
 
+  /* eslint-disable react-hooks/exhaustive-deps -- we track individual configDraft fields to avoid rebuilding on every settings object mutation */
   const refreshDetect = useCallback(async () => {
     return refreshLlmOllamaDetect({ configDraft: settings?.configDraft });
-  }, [settings?.configDraft?.model, settings?.configDraft?.providerId, settings?.configDraft?.baseUrl, settings]);
+  }, [settings?.configDraft?.model, settings?.configDraft?.providerId, settings?.configDraft?.baseUrl]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   useEffect(() => {
     setSnapshot(readLlmEnvSnapshot());
@@ -51,6 +53,7 @@ export function useLlmEnvStatus(refreshSeq = 0, settings?: LlmEnvSettingsOverlay
     settings,
   ]);
 
+  /* eslint-disable react-hooks/exhaustive-deps -- connectionVerifiedSeq is an epoch that forces refresh when LLM connection verification changes; it is intentionally not read inside the memo */
   const presentation: LlmEnvPresentation = useMemo(
     () =>
       buildLlmEnvPresentation({
@@ -60,7 +63,9 @@ export function useLlmEnvStatus(refreshSeq = 0, settings?: LlmEnvSettingsOverlay
       }),
     [runtime.ollamaDetect, runtime.ollamaDetectBusy, runtime.connectionVerifiedSeq, settings, envMode],
   );
+  /* eslint-enable react-hooks/exhaustive-deps */
 
+  /* eslint-disable react-hooks/exhaustive-deps -- connectionVerifiedSeq is an epoch that forces refresh when LLM connection verification changes; it is intentionally not read inside the memo */
   const modeToggleTones = useMemo(
     () =>
       buildLlmModeToggleTones({
@@ -70,6 +75,7 @@ export function useLlmEnvStatus(refreshSeq = 0, settings?: LlmEnvSettingsOverlay
       }),
     [runtime.ollamaDetect, runtime.ollamaDetectBusy, runtime.connectionVerifiedSeq, settings],
   );
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   const polishReadiness = useMemo(
     () => ({

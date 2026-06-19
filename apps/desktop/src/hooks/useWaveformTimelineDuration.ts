@@ -14,10 +14,13 @@ type DurationSyncInput = {
 
 /** Keeps peaks media-duration aligned with WS + peaks status (timeline controller). */
 export function useWaveformTimelineDurationSync(input: DurationSyncInput) {
+  /* eslint-disable react-hooks/exhaustive-deps -- `input` is a stable args object; we list the used fields in deps */
   useEffect(() => {
     input.setResolvedDurationSec(0);
   }, [input.projectId, input.fileId, input.mediaUrl, input.setResolvedDurationSec]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
+  /* eslint-disable react-hooks/exhaustive-deps -- `input` is a stable args object; we list the used fields in deps */
   useEffect(() => {
     const d = resolveMediaDurationSec({
       wsDurationSec: input.wfDuration,
@@ -33,4 +36,5 @@ export function useWaveformTimelineDurationSync(input: DurationSyncInput) {
     input.peakCache,
     input.setResolvedDurationSec,
   ]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 }

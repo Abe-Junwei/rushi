@@ -18,6 +18,7 @@ export function useOnboardingAutoSync({ controller: c, asrChipOk }: Args) {
     syncOnboardingAsrReady(asrChipOk);
   }, [asrChipOk]);
 
+  /* eslint-disable react-hooks/exhaustive-deps -- controller `c` is a stable ref; granular dependencies cover the values used inside */
   useEffect(() => {
     const hasAudio = Boolean(c.current?.id && c.currentFileId && c.audioSrc);
     if (hasAudio) syncOnboardingProjectAudio(true);
@@ -39,4 +40,5 @@ export function useOnboardingAutoSync({ controller: c, asrChipOk }: Args) {
     c.current?.subject,
     c.current?.transcriber,
   ]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 }

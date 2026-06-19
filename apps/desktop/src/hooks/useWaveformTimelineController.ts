@@ -112,7 +112,7 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
         peaksStatusDurationSec: peaks.status?.durationSec ?? peaks.peakCache?.durationSec ?? 0,
         pxPerSec: zoom.pxPerSec,
       }),
-    [zoom.pxPerSec, peaks.status?.durationSec, peaks.peakCache, wf.duration, wf.isReady],
+    [zoom.pxPerSec, peaks.status?.durationSec, peaks.peakCache, wf.duration],
   );
 
   const { timelineWidthPx } = timelineMetrics;
@@ -156,6 +156,7 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
     syncShellLayoutForZoomRef.current();
   }, [timelineWidthPx]);
 
+  /* eslint-disable react-hooks/exhaustive-deps -- zoom is a stable waveform controller object; we list used primitive fields/methods */
   useLayoutEffect(() => {
     if (timelineMetrics.mediaDurationSec <= 0) return;
     refitFitAllIfNeededRef.current();
@@ -176,6 +177,7 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
     wf.duration,
     wf.isReady,
   ]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   useWaveformPlaybackScrollFollow({
     tierScrollRef,
@@ -190,10 +192,12 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
     userScrollSuppressUntilRef: playbackFollowSuppressUntilRef,
   });
 
+  /* eslint-disable react-hooks/exhaustive-deps -- scroll is a stable tier-scroll controller object; only refreshTierScrollLayout is used */
   useEffect(() => {
     if (wf.isPlaying) return;
     scroll.refreshTierScrollLayout();
   }, [scroll.refreshTierScrollLayout, wf.isPlaying]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   scrollApiRef.current = scroll;
 
@@ -240,6 +244,7 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
     prevMediaUrlRef.current = ctx.mediaUrl;
   }, [ctx.mediaUrl]);
 
+  /* eslint-disable react-hooks/exhaustive-deps -- scroll is a stable tier-scroll controller object; we list used primitive fields/refs */
   useEffect(() => {
     if (!pendingMediaZoomResetRef.current || !ctx.mediaUrl) return;
     const dur = timelineMetrics.mediaDurationSec;
@@ -253,6 +258,7 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
     resetZoomForMediaRef.current(vw, dur);
     writeStoredWaveformPxPerSecForMedia(vw, dur);
   }, [ctx.mediaUrl, timelineMetrics.mediaDurationSec, scroll.tierScrollLayout.clientWidthPx, scroll.tierScrollLive.clientWidthRef]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   return {
     tierScrollRef,

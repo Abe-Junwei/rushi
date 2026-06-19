@@ -119,7 +119,6 @@ export function useProjectSaveController(args: Args) {
       current,
       currentFileId,
       dirty,
-      getCurrentSegmentsSnapshot,
       mutations,
       pendingAiRevisedUidsRef,
       segmentPublish,

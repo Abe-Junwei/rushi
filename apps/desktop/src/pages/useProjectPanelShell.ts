@@ -19,6 +19,7 @@ export function useProjectPanelShell() {
 
   useOnboardingAutoSync({ controller: c, asrChipOk: c.asrPresentation.chipOk });
 
+  /* eslint-disable react-hooks/exhaustive-deps -- deliveryMode is a stable controller; only openDeliveryMode method is used */
   useEffect(() => {
     registerDeliveryModeTranscribeAction(() => {
       syncOnboardingExport();
@@ -26,6 +27,7 @@ export function useProjectPanelShell() {
     });
     return () => registerDeliveryModeTranscribeAction(null);
   }, [deliveryMode.openDeliveryMode]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   const exportShell = useProjectPanelExportShell({
     busy: c.busy,

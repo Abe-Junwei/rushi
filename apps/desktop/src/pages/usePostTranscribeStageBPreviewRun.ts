@@ -45,6 +45,7 @@ export function usePostTranscribeStageBPreviewRun(args: Args) {
     pendingStageAHintRef,
   } = args;
 
+  /* eslint-disable react-hooks/exhaustive-deps -- pendingStageAHintRef is a stable ref used only inside the callback */
   const startPreview = useCallback(async () => {
     if (!currentFileId) return;
     const actionBlockReason = await ensureStageBLlmActionReady({
@@ -143,6 +144,7 @@ export function usePostTranscribeStageBPreviewRun(args: Args) {
     setError,
     setPreviewFocusSegmentIdx,
   ]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   return { startPreview };
 }

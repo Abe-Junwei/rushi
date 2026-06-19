@@ -129,13 +129,17 @@ export function useProjectLifecycleEditorStack(args: UseProjectLifecycleEditorSt
     setError,
   });
 
+  /* eslint-disable react-hooks/exhaustive-deps -- clearAutoSaveRef is a stable ref; assigning .current does not need dep */
   const registerClearScheduled = useCallback((fn: () => void) => {
     clearAutoSaveRef.current = fn;
   }, []);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
+  /* eslint-disable react-hooks/exhaustive-deps -- notifySegmentsPersistedRef is a stable ref; assigning .current does not need dep */
   const registerOnPersisted = useCallback((fn: () => void) => {
     notifySegmentsPersistedRef.current = fn;
   }, []);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   const autoSave = useAutoSaveSegments({
     enabled: Boolean(currentFileId),
@@ -149,9 +153,11 @@ export function useProjectLifecycleEditorStack(args: UseProjectLifecycleEditorSt
     registerOnPersisted,
   });
 
+  /* eslint-disable react-hooks/exhaustive-deps -- clearAutoSaveRef is a stable ref; calling .current() does not need dep */
   const clearScheduledAutoSave = useCallback(() => {
     clearAutoSaveRef.current();
   }, []);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   return {
     segmentSelection,

@@ -42,8 +42,6 @@ export const ACTIVITY_FEED_DOT_CELL_CLASS = `${ACTIVITY_FEED_MARK_CELL_CLASS} w-
 
 export const ACTIVITY_FEED_ACTION_CELL_CLASS = `${ACTIVITY_FEED_MARK_CELL_CLASS} w-4`;
 
-export const ACTIVITY_FEED_ICON_CELL_CLASS = ACTIVITY_FEED_MARK_CELL_CLASS;
-
 /** 无 Preflight 时清零 `<p>` 默认 margin，避免侧栏 mark 与文案首行错位 */
 export const ACTIVITY_FEED_MESSAGE_CLASS = "m-0";
 

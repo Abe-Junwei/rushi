@@ -211,6 +211,7 @@ export function useEditorSegmentListScroll({
     return maybePinSegmentListVirtualWindow(base, selectedDisplayIndex, displayCount, itemStridePx, {
       overscan: SEGMENT_LIST_VIRTUAL_OVERSCAN,
     });
+  // eslint-disable-next-line react-hooks/exhaustive-deps -- scrollEpoch intentionally triggers recomputation so virtualWindow reads the latest scrollMetricsRef
   }, [scrollEpoch, useVirtualList, itemStridePx, displayCount, selectedDisplayIndex]);
 
   return {

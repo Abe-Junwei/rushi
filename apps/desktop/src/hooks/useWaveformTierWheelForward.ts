@@ -20,6 +20,7 @@ export function useWaveformTierWheelForward(input: {
   /** Imperative tier scroll writes do not always emit `scroll` — sync overlay/layout here. */
   onTierScroll?: () => void;
 }): void {
+  /* eslint-disable react-hooks/exhaustive-deps -- `input` is a stable args object; we list the used primitive/refs fields in deps */
   useEffect(() => {
     if (!input.enabled) return;
     const tier = input.tierScrollRef.current;
@@ -43,4 +44,5 @@ export function useWaveformTierWheelForward(input: {
       shell?.removeEventListener("wheel", onWheel, opts);
     };
   }, [input.enabled, input.onTierScroll, input.tierScrollRef, input.waveformShellRef]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 }

@@ -30,7 +30,9 @@ function emitProfileLine(line: string): void {
   if (recentProfileLines.length > RECENT_PROFILE_LINES_MAX) {
     recentProfileLines.shift();
   }
+  // eslint-disable-next-line no-console -- typeof console.info guard itself references console.info
   if (typeof console !== "undefined" && typeof console.info === "function") {
+    // eslint-disable-next-line no-console -- dev-only performance profile; kept for browser console ergonomics
     console.info(line);
   }
   logDesktopUi("INFO", line);
@@ -162,10 +164,14 @@ export function installSelectionLatencyProfileDevTools(): void {
     print: () => {
       if (recentProfileLines.length === 0) {
         const message = "[selection-profile] (no lines yet — run enable(), then select a segment)";
+        // eslint-disable-next-line no-console -- dev-only performance profile
         console.info(message);
         return { lines: [] as string[], message };
       }
-      for (const line of recentProfileLines) console.info(line);
+      for (const line of recentProfileLines) {
+        // eslint-disable-next-line no-console -- dev-only performance profile
+        console.info(line);
+      }
       return { lines: [...recentProfileLines] };
     },
   };

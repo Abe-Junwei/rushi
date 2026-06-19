@@ -50,6 +50,7 @@ export function useTierScrollSync(args: {
       performance.now() >= programmaticWrites.deferredLayoutCommitUntilRef.current,
   });
 
+  /* eslint-disable react-hooks/exhaustive-deps -- tierScrollMetrics is a stable hook-returned object; we list its granular callbacks/refs below */
   useLayoutEffect(() => {
     tierScrollMetrics.refreshLayout();
   }, [
@@ -60,6 +61,7 @@ export function useTierScrollSync(args: {
     args.pxPerSec,
     tierScrollMetrics.refreshLayout,
   ]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   const scheduleViewportChromeFrame = () => {
     if (!argsRef.current.waveformReady) return;
@@ -82,6 +84,7 @@ export function useTierScrollSync(args: {
     scheduleViewportChromeFrame();
   };
 
+  /* eslint-disable react-hooks/exhaustive-deps -- programmaticWrites/tierScrollMetrics are stable hook-returned objects; only their referenced callbacks/refs affect identity */
   const commitScrollLeftPx = useCallback(
     (
       sl: number,
@@ -123,6 +126,7 @@ export function useTierScrollSync(args: {
       tierScrollMetrics.refreshLayout,
     ],
   );
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   const commitPendingProgrammaticScroll = useCallback(
     (pending: PendingProgrammaticScrollWrite) => {
@@ -170,6 +174,7 @@ export function useTierScrollSync(args: {
     notifyScrollActivity: tierScrollMetrics.notifyScrollActivity,
   };
 
+  /* eslint-disable react-hooks/exhaustive-deps -- suppressPlaybackFollowForUserScroll is a stable local callback; programmaticScrollUntilRef is a stable ref */
   useLayoutEffect(() => {
     const tier = args.tierScrollRef.current;
     if (!tier) return;
@@ -181,7 +186,9 @@ export function useTierScrollSync(args: {
     tier.addEventListener("scroll", onScroll, { passive: true });
     return () => tier.removeEventListener("scroll", onScroll);
   }, [args.tierScrollRef, programmaticWrites.programmaticScrollUntilRef]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
+  /* eslint-disable react-hooks/exhaustive-deps -- programmaticWrites/tierScrollMetrics are stable hook-returned objects; suppressPlaybackFollowForUserScroll is a stable local callback */
   const api = useMemo(
     () => ({
       onTierScroll: () => {

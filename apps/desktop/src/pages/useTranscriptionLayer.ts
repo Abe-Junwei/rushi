@@ -96,12 +96,14 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     onTierScroll: timeline.onTierScroll,
   });
 
+  /* eslint-disable react-hooks/exhaustive-deps -- selection is a stable controller object; only selectSegmentAt is used */
   const selectSegmentFromList = useCallback(
     (idx: number, opts?: { shiftKey?: boolean; toggle?: boolean }) => {
       selection.selectSegmentAt(idx, "list", opts);
     },
     [selection.selectSegmentAt],
   );
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   return {
     tierScrollRef: timeline.tierScrollRef,

@@ -7,6 +7,6 @@ import {
 
 export function useActivityFeedSnapshot() {
   const feedItems = useSyncExternalStore(subscribeActivityFeed, getActivityFeedSnapshot, getActivityFeedSnapshot);
-  const unreadFeedCount = useMemo(() => getActivityFeedUnreadCount(), [feedItems]);
+  const unreadFeedCount = useMemo(() => getActivityFeedUnreadCount(), []);
   return { feedItems, unreadFeedCount };
 }

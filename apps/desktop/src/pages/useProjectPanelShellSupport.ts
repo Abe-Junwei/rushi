@@ -67,10 +67,12 @@ export function useProjectPanelExportShell(args: {
   const [busyElapsedSec, setBusyElapsedSec] = useState(0);
   const [segmentCtxMenu, setSegmentCtxMenu] = useState<SegmentContextMenuOpen | null>(null);
 
+  /* eslint-disable react-hooks/exhaustive-deps -- args is a stable controller args object; we list used fields in deps */
   useEffect(() => {
     if (!deliveryExportOpen && !args.deliveryModeOpen) return;
     args.flushSegmentTextDrafts();
   }, [deliveryExportOpen, args.deliveryModeOpen, args.flushSegmentTextDrafts]);
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   useEffect(() => {
     if (!args.busy) {
@@ -84,6 +86,7 @@ export function useProjectPanelExportShell(args: {
     return () => window.clearInterval(id);
   }, [args.busy]);
 
+  /* eslint-disable react-hooks/exhaustive-deps -- args is a stable controller args object; we list used fields in deps */
   const openSegmentContextMenu = useCallback(
     (menu: SegmentContextMenuOpen) => {
       const preserveMulti = args.isIndexInSelection(menu.segmentIdx) && args.selectionCount > 1;
@@ -94,6 +97,7 @@ export function useProjectPanelExportShell(args: {
     },
     [args.isIndexInSelection, args.selectSegmentAt, args.selectionCount],
   );
+  /* eslint-enable react-hooks/exhaustive-deps */
 
   const onExportSelect = useCallback(
     (key: string) => {

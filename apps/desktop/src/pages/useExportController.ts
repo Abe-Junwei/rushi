@@ -93,7 +93,7 @@ export function useExportController(deps: ExportDeps): ExportApi {
     } catch (e) {
       reportExportFailure("TXT", e);
     }
-  }, [current, getCurrentSegmentsSnapshot, reportExportFailure, flushSegmentTextDrafts]);
+  }, [current, getCurrentSegmentsSnapshot, reportExportFailure, flushSegmentTextDrafts, setError]);
 
   const exportSrt = useCallback(async () => {
     if (!current) return;
@@ -106,7 +106,7 @@ export function useExportController(deps: ExportDeps): ExportApi {
     } catch (e) {
       reportExportFailure("SRT", e);
     }
-  }, [current, getCurrentSegmentsSnapshot, reportExportFailure, flushSegmentTextDrafts]);
+  }, [current, getCurrentSegmentsSnapshot, reportExportFailure, flushSegmentTextDrafts, setError]);
 
   const docxExportMetaLine = useCallback(
     (includeProjectMetadata: boolean) => {
@@ -140,7 +140,7 @@ export function useExportController(deps: ExportDeps): ExportApi {
         reportExportFailure("DOCX", e);
       }
     },
-    [current, docxExportMetaLine, getCurrentSegmentsSnapshot, reportExportFailure, flushSegmentTextDrafts],
+    [current, docxExportMetaLine, getCurrentSegmentsSnapshot, reportExportFailure, flushSegmentTextDrafts, setError],
   );
 
   const exportDeliveryDocx = useCallback(
@@ -255,7 +255,7 @@ export function useExportController(deps: ExportDeps): ExportApi {
     } catch (e) {
       reportExportFailure("项目包", e);
     }
-  }, [current, currentFileId, getCurrentSegmentsSnapshot, reportExportFailure, flushSegmentTextDrafts]);
+  }, [current, currentFileId, getCurrentSegmentsSnapshot, reportExportFailure, flushSegmentTextDrafts, setError]);
 
   const importProjectBundle = useCallback(async () => {
     setError("");

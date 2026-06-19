@@ -8,7 +8,6 @@ import {
   type LlmEnvMode,
   type LlmOllamaTone,
 } from "../services/llm/llmEnvStatus";
-import type { LlmProviderId } from "../services/postprocess/postprocessRuntimeContract";
 
 const LLM_MODE_TOGGLE_TONE_LABEL: Record<LlmOllamaTone, string> = {
   ok: "连接就绪",
@@ -77,6 +76,3 @@ export function EnvLlmModeSwitch({
   );
 }
 
-export function cloudLlmProviderIds(): LlmProviderId[] {
-  return ["deepseek", "kimi", "qwen", "siliconflow", "doubao", "openai", "openrouter"];
-}

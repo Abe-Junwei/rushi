@@ -12,8 +12,6 @@ import { EnvironmentPanelNav } from "./EnvironmentPanelNav";
 import { useLlmEnvStatus } from "../hooks/useLlmEnvStatus";
 import type { AsrEnvPresentation } from "../services/asr/asrEnvStatus";
 import { readOnlineSttEnvNavTone } from "../services/stt/readOnlineSttEnvNavPresentation";
-import { STT_CONNECTION_VERIFIED_EVENT } from "../services/stt/sttOnlineProviderContract";
-import { STT_ONLINE_RUNTIME_CHANGED_EVENT } from "../services/stt/sttOnlineRuntimeNotify";
 import type { AsrHealthCapabilities, AsrModelCacheInfo, BundledAsrLaunchReport, WaveformPeaksCacheInfo } from "../tauri/projectApi";
 import type { AsrSetupControllerApi } from "../pages/useAsrSetupController";
 import type { LocalAsrModelCatalogApi } from "../pages/useLocalAsrModelCatalog";
@@ -92,7 +90,6 @@ export function EnvironmentPanel({
 }: EnvironmentPanelProps) {
   const [envSection, setEnvSection] = useState<EnvNavId>("local-asr");
   const [settingsEpoch, setSettingsEpoch] = useState(0);
-  const [sttNavRefreshSeq, setSttNavRefreshSeq] = useState(0);
   const rootRef = useRef<HTMLDivElement | null>(null);
   const onlineSttScrollRef = useRef<HTMLDivElement | null>(null);
   const llmScrollRef = useRef<HTMLDivElement | null>(null);
@@ -100,26 +97,10 @@ export function EnvironmentPanel({
   const { presentation: llmPresentation } = useLlmEnvStatus(llmStatusRefreshSeq);
 
   const bumpSttRuntimeRevision = useCallback(() => {
-    setSttNavRefreshSeq((n) => n + 1);
     onSttOnlineRuntimeChanged?.();
   }, [onSttOnlineRuntimeChanged]);
 
-  const onlineSttNavTone = useMemo(
-    () => readOnlineSttEnvNavTone(),
-    [settingsEpoch, sttNavRefreshSeq],
-  );
-
-  useEffect(() => {
-    const onConnectionVerifiedChange = () => {
-      setSttNavRefreshSeq((n) => n + 1);
-    };
-    window.addEventListener(STT_CONNECTION_VERIFIED_EVENT, onConnectionVerifiedChange);
-    window.addEventListener(STT_ONLINE_RUNTIME_CHANGED_EVENT, onConnectionVerifiedChange);
-    return () => {
-      window.removeEventListener(STT_CONNECTION_VERIFIED_EVENT, onConnectionVerifiedChange);
-      window.removeEventListener(STT_ONLINE_RUNTIME_CHANGED_EVENT, onConnectionVerifiedChange);
-    };
-  }, []);
+  const onlineSttNavTone = useMemo(() => readOnlineSttEnvNavTone(), []);
 
   useEffect(() => {
     const section = resolveEnvironmentFocusSection({

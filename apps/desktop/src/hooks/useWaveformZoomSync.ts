@@ -105,7 +105,7 @@ export function useWaveformZoomSync(args: {
 
   useEffect(() => {
     prevDrawPxPerSecRef.current = drawPxPerSec;
-  }, [mediaUrl]);
+  }, [drawPxPerSec, mediaUrl]);
 
   const cancelInFlightZoom = useCallback(() => {
     peaksLoadSeqRef.current += 1;
