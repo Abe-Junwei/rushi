@@ -122,9 +122,9 @@ export async function runAsrOneClickPrepareModelFlow(
     );
     await deps.prepareDefaultFunasrModel();
     await deps.refreshAsrRuntimeInfo();
-    const after = await refreshSetupDiagnose({ resetSteps: false, touchUi: false });
+    await refreshSetupDiagnose({ resetSteps: false, touchUi: false });
     const afterSnap = await snapshotSelectedModelPrepare(selection);
-    if (after?.readyForTranscribe && afterSnap.ready) {
+    if (afterSnap.ready && afterSnap.sidecarMatchesSelection) {
       setSetupSteps((steps) =>
         patchStep(steps, "model", {
           status: "ok",
@@ -144,12 +144,8 @@ export async function runAsrOneClickPrepareModelFlow(
   setSetupSteps((steps) => patchStep(steps, "done", { status: "ok", detail: "本机 ASR 已可用于转写" }));
 
   const finalSnap = await snapshotSelectedModelPrepare(selection);
-  const finalReport = await refreshSetupDiagnose({ resetSteps: false, touchUi: false });
-  if (
-    !finalSnap.ready ||
-    !finalSnap.sidecarMatchesSelection ||
-    !finalReport?.readyForTranscribe
-  ) {
+  await refreshSetupDiagnose({ resetSteps: false, touchUi: false });
+  if (!finalSnap.ready || !finalSnap.sidecarMatchesSelection) {
     setSetupSteps((steps) =>
       patchStep(steps, "model", { status: "error", detail: "模型尚未完全就绪" }),
     );

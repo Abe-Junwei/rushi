@@ -1,5 +1,4 @@
-import { createPortal } from "react-dom";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../config/controlStyles";
 import type { DocxExportMode } from "../tauri/exportDocxApi";
 import type { SegmentDto } from "../tauri/projectApi";
@@ -8,22 +7,18 @@ import {
   type ExportPolishResult,
 } from "../services/exportDocxPolish";
 import { assessExportPolishReadiness } from "../services/exportPolishDelivery";
-import { FloatingPanelTemplate } from "./PanelTemplate";
-import { FloatingPanelDialogFooter, FloatingPanelDialogRoot, FloatingPanelDialogScroll } from "./FloatingPanelDialogLayout";
+import { CompactFloatingDialog } from "./CompactFloatingDialog";
+import { FloatingPanelDialogScroll } from "./FloatingPanelDialogLayout";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { TopBarStatusIndicator } from "./TopBarStatusIndicator";
 import { useLlmEnvStatus } from "../hooks/useLlmEnvStatus";
-import { useFloatingPanelBodyMeasure } from "../hooks/useFloatingPanelBodyMeasure";
-import { mergeContentFitHeights, resolveMeasuredPanelFitHeight } from "./floatingPanelFitSections";
 import { resolveExportPolishBlockReason } from "../services/exportDocxPolish";
 import { useDeliveryExportPolishPreview } from "../hooks/useDeliveryExportPolishPreview";
 import { DeliveryExportPolishPreviewSection } from "./DeliveryExportPolishPreviewSection";
 import type { DocxProjectMetadata } from "../services/exportDeliveryAppendix";
-import { listDocxProjectMetadataPreviewLines } from "../services/exportDeliveryAppendix";
 import { DeliveryExportModeSection } from "./DeliveryExportModeSection";
 import { DeliveryExportMetadataSection } from "./DeliveryExportMetadataSection";
 import { readFloatingPanelViewport } from "./floatingPanelViewport";
-import { resolveDeliveryExportLayoutRev } from "./deliveryExportLayoutRev";
 
 const PANEL_ID = "delivery-export-word-v2";
 const DEFAULT_WIDTH = 440;
@@ -67,7 +62,6 @@ export function DeliveryExportDialog({
   const [includeAppendix, setIncludeAppendix] = useState(false);
   const [includeProjectMetadata, setIncludeProjectMetadata] = useState(false);
   const [llmPolish, setLlmPolish] = useState(false);
-  const { bodyRef, bodyHeight } = useFloatingPanelBodyMeasure(open);
 
   const polishAvailable = exportModeSupportsLlmPolish(mode);
   const canPreviewPolish =
@@ -96,45 +90,12 @@ export function DeliveryExportDialog({
     !polishPreview.previewLoading;
 
   const exportTitleLine = `导出：${projectName.trim() || "未命名"} · …`;
-  const metadataPreviewLines = listDocxProjectMetadataPreviewLines(projectMetadata);
 
   useEffect(() => {
     if (!polishAvailable) setLlmPolish(false);
   }, [polishAvailable]);
 
-  const layoutRev = useMemo(
-    () =>
-      resolveDeliveryExportLayoutRev({
-        mode,
-        includeProjectMetadata,
-        metadataLineCount: metadataPreviewLines.length,
-        polishAvailable,
-        llmPolish,
-        showPolishPreviewSection: polishPreview.showPreviewSection,
-        polishPreviewLoading: polishPreview.previewLoading,
-        hasPolishPreview: polishPreview.preview != null,
-        hasPolishPreviewError: Boolean(polishPreview.previewError),
-        hasPolishBlockReason: Boolean(exportPolishBlockReason),
-        exportBlockedByPolish,
-        includeAppendix,
-      }),
-    [
-      mode,
-      includeProjectMetadata,
-      metadataPreviewLines.length,
-      polishAvailable,
-      llmPolish,
-      polishPreview.showPreviewSection,
-      polishPreview.previewLoading,
-      polishPreview.preview,
-      polishPreview.previewError,
-      exportPolishBlockReason,
-      exportBlockedByPolish,
-      includeAppendix,
-    ],
-  );
-
-  if (!open || typeof document === "undefined") return null;
+  if (!open) return null;
 
   const handleClose = () => {
     if (!busy && !polishPreview.previewLoading) onClose();
@@ -144,30 +105,54 @@ export function DeliveryExportDialog({
   const panelMaxWidth = Math.min(560, Math.max(MIN_SIZE.width, viewport.width - PANEL_MARGIN * 2));
   const panelMaxHeight = Math.min(720, Math.max(MIN_SIZE.height, viewport.height - PANEL_MARGIN * 2));
 
-  const measuredFit = bodyHeight != null ? resolveMeasuredPanelFitHeight(bodyHeight) : null;
-  const contentFitHeight = mergeContentFitHeights(DEFAULT_BODY_HEIGHT, measuredFit);
-  const defaultPanelHeight = Math.min(contentFitHeight ?? DEFAULT_BODY_HEIGHT, panelMaxHeight);
-
-  return createPortal(
-    <div className="workspace">
-      <FloatingPanelTemplate
-        id={PANEL_ID}
-        title="交付导出 Word"
-        preset="findReplace"
-        minWidth={MIN_SIZE.width}
-        minHeight={MIN_SIZE.height}
-        maxWidth={panelMaxWidth}
-        maxHeight={panelMaxHeight}
-        defaultSize={{ width: DEFAULT_WIDTH, height: defaultPanelHeight }}
-        contentFitHeight={contentFitHeight}
-        persistPhaseKey="default"
-        layoutRev={layoutRev}
-        panelZIndex={110}
-        persistState
-        onClose={handleClose}
-      >
-        <FloatingPanelDialogRoot role="dialog" aria-modal={true} measureRef={bodyRef} hasFooter fillHeight>
-          <FloatingPanelDialogScroll className="flex flex-col gap-3">
+  return (
+    <CompactFloatingDialog
+      id={PANEL_ID}
+      title="交付导出 Word"
+      open={open}
+      onClose={handleClose}
+      fitKind="fill"
+      shellPreset="findReplace"
+      fallbackHeight={DEFAULT_BODY_HEIGHT}
+      defaultWidth={DEFAULT_WIDTH}
+      minWidth={MIN_SIZE.width}
+      minHeight={MIN_SIZE.height}
+      maxWidth={panelMaxWidth}
+      maxHeight={panelMaxHeight}
+      persistPhaseKey="default"
+      persistState
+      rootRole="dialog"
+      footer={
+        <>
+          <button
+            type="button"
+            className={CONTROL_BTN_SECONDARY}
+            disabled={polishPreview.exportBusy}
+            onClick={handleClose}
+          >
+            取消
+          </button>
+          <button
+            type="button"
+            className={CONTROL_BTN_PRIMARY}
+            disabled={polishPreview.exportBusy || exportBlockedByPolish}
+            onClick={() =>
+              onExport(
+                mode,
+                includeAppendix,
+                includeProjectMetadata,
+                polishAvailable && llmPolish,
+                polishAvailable && llmPolish ? polishPreview.preview : null,
+              )
+            }
+          >
+            {busy ? "导出中…" : "导出 DOCX…"}
+          </button>
+        </>
+      }
+      footerJustify="end"
+    >
+      <FloatingPanelDialogScroll className="flex flex-col gap-3">
             <p className={PANEL_TYPOGRAPHY.dialogBody}>
               导出前将自动保存编辑器中未提交的语段正文，与当前波形列表一致。
             </p>
@@ -253,35 +238,6 @@ export function DeliveryExportDialog({
               <p className="text-xs text-zen-cinnabar">{polishReadiness.blockReason}</p>
             ) : null}
           </FloatingPanelDialogScroll>
-          <FloatingPanelDialogFooter justify="end">
-            <button
-              type="button"
-              className={CONTROL_BTN_SECONDARY}
-              disabled={polishPreview.exportBusy}
-              onClick={handleClose}
-            >
-              取消
-            </button>
-            <button
-              type="button"
-              className={CONTROL_BTN_PRIMARY}
-              disabled={polishPreview.exportBusy || exportBlockedByPolish}
-              onClick={() =>
-                onExport(
-                  mode,
-                  includeAppendix,
-                  includeProjectMetadata,
-                  polishAvailable && llmPolish,
-                  polishAvailable && llmPolish ? polishPreview.preview : null,
-                )
-              }
-            >
-              {busy ? "导出中…" : "导出 DOCX…"}
-            </button>
-          </FloatingPanelDialogFooter>
-        </FloatingPanelDialogRoot>
-      </FloatingPanelTemplate>
-    </div>,
-    document.body,
+    </CompactFloatingDialog>
   );
 }

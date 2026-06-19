@@ -1,21 +1,26 @@
 import { createPortal } from "react-dom";
-import { useMemo, type ReactNode } from "react";
-import { useFloatingPanelBodyMeasure } from "../hooks/useFloatingPanelBodyMeasure";
-import { useFrozenPanelBodyHeight } from "../hooks/useFrozenPanelBodyHeight";
-import { resolveMeasuredPanelFitHeight } from "./floatingPanelFitSections";
+import type { ReactNode } from "react";
+import {
+  resolveEffectivePanelFitKind,
+  resolvePanelAutoHeight,
+  type PanelFitKind,
+} from "./floatingPanelFitKind";
 import {
   resolveCompactDialogBounds,
   type CompactDialogBoundsOptions,
 } from "./floatingPanelCompactDialogBounds";
-import { FloatingPanelTemplate } from "./PanelTemplate";
+import { FLOATING_PANEL_LAYOUT_REV } from "./floatingPanelPersist";
+import { FloatingPanelTemplate, type PanelTemplatePresetKey } from "./PanelTemplate";
 import { FloatingPanelDialogFooter, FloatingPanelDialogRoot } from "./FloatingPanelDialogLayout";
+
+export type CompactFloatingDialogShellPreset = PanelTemplatePresetKey;
 
 export type CompactFloatingDialogProps = {
   id: string;
   title: string;
   open: boolean;
   onClose: () => void;
-  /** 无实测/估算时的面板总高度兜底（含标题栏）。 */
+  /** 打开时的初始面板总高度（含标题栏）。autoFit/staticFit 由内容贴合后仅作占位；fill 为默认高度。 */
   fallbackHeight: number;
   defaultWidth?: number;
   bounds?: CompactDialogBoundsOptions;
@@ -23,27 +28,31 @@ export type CompactFloatingDialogProps = {
   minHeight?: number;
   maxWidth?: number;
   maxHeight?: number;
-  /** 列表/多阶段等事先估算的总高度，与实测 merge。 */
-  estimatedFitHeight?: number;
   persistState?: boolean;
   persistPhaseKey?: string;
   layoutRev?: number;
   panelZIndex?: number;
   onOverlayClose?: () => void;
   rootRole?: string;
+  rootClassName?: string;
   footer?: ReactNode;
   footerJustify?: "between" | "end" | "start";
+  footerFullBleed?: boolean;
+  footerClassName?: string;
   portal?: boolean;
-  /** 是否 ResizeObserver 测高；配合 layoutRev 冻结可避免输入时抖动。 */
-  measureBody?: boolean;
-  /** 含 flex-1 列表/滚动区时为 true；静态表单保持 false。 */
-  fillHeight?: boolean;
+  /** 壳层 preset；Editor 浮层用 findReplace（z≥110）。 */
+  shellPreset?: CompactFloatingDialogShellPreset;
+  preferredDefaultPosition?: (size: { width: number; height: number }) => { x: number; y: number };
+  defaultPosition?: { x: number; y: number };
+  /** 显式贴合种类（CONTEXT：Auto-fit / Fill / Static-fit dialog）。 */
+  fitKind: PanelFitKind;
   children: ReactNode;
 };
 
 /**
- * compactDialog 成品壳：内置 bounds、ResizeObserver 测量与 contentFitHeight。
- * 业务对话框应使用本组件，勿直接拼 FloatingPanelTemplate + preset="compactDialog"。
+ * compactDialog 成品壳：内置 bounds 与 CSS 自动高度。
+ * autoFit / staticFit → 壳层随内容贴合（height:auto + 视口封顶），fill → 固定 px 高度。
+ * 业务对话框应使用本组件，勿直接拼 FloatingPanelTemplate。
  */
 export function CompactFloatingDialog({
   id,
@@ -57,66 +66,74 @@ export function CompactFloatingDialog({
   minHeight,
   maxWidth,
   maxHeight,
-  estimatedFitHeight,
   persistState = false,
   persistPhaseKey = "default",
-  layoutRev = 0,
+  layoutRev = FLOATING_PANEL_LAYOUT_REV,
   panelZIndex,
   onOverlayClose,
   rootRole = "dialog",
+  rootClassName,
   footer,
   footerJustify = "end",
+  footerFullBleed = false,
+  footerClassName,
   portal = true,
-  measureBody = true,
-  fillHeight = false,
+  shellPreset = "compactDialog",
+  preferredDefaultPosition,
+  defaultPosition,
+  fitKind,
   children,
 }: CompactFloatingDialogProps) {
-  const { bodyRef, bodyHeight } = useFloatingPanelBodyMeasure(open && measureBody);
-  const frozenBodyHeight = useFrozenPanelBodyHeight(bodyHeight, layoutRev, measureBody);
-  const resolvedBounds = useMemo(
-    () => resolveCompactDialogBounds(boundsOptions ?? {}),
-    [boundsOptions],
-  );
+  const effectiveFitKind = resolveEffectivePanelFitKind(fitKind);
+  const autoHeight = resolvePanelAutoHeight(effectiveFitKind);
+
+  const resolvedBounds = resolveCompactDialogBounds(boundsOptions ?? {});
 
   const panelMinWidth = minWidth ?? resolvedBounds.minWidth;
-  const panelMinHeight = minHeight ?? resolvedBounds.minHeight;
   const panelMaxWidth = maxWidth ?? resolvedBounds.maxWidth;
   const panelMaxHeight = maxHeight ?? resolvedBounds.maxHeight;
+  const resolvedMinHeight = minHeight ?? resolvedBounds.minHeight;
+  const panelMinHeight = Math.min(resolvedMinHeight, panelMaxHeight);
+  const defaultPanelHeight = Math.min(fallbackHeight, panelMaxHeight);
 
-  const measuredFit =
-    frozenBodyHeight != null ? resolveMeasuredPanelFitHeight(frozenBodyHeight) : null;
-  const baseHeight = estimatedFitHeight ?? fallbackHeight;
-  /** 有冻结实测时以实测为准，避免估算偏高导致页脚下方留白。 */
-  const contentFitHeight = measuredFit ?? baseHeight;
-  const defaultPanelHeight = Math.min(contentFitHeight ?? fallbackHeight, panelMaxHeight);
+  const resolvedPanelZIndex = panelZIndex ?? (shellPreset === "findReplace" ? 110 : undefined);
 
   const panel = (
     <FloatingPanelTemplate
       id={id}
       title={title}
-      preset="compactDialog"
+      preset={shellPreset}
       minWidth={panelMinWidth}
       minHeight={panelMinHeight}
       maxWidth={panelMaxWidth}
       maxHeight={panelMaxHeight}
       defaultSize={{ width: defaultWidth, height: defaultPanelHeight }}
-      contentFitHeight={contentFitHeight}
+      autoHeight={autoHeight}
       persistPhaseKey={persistPhaseKey}
       layoutRev={layoutRev}
-      panelZIndex={panelZIndex}
+      panelZIndex={resolvedPanelZIndex}
       persistState={persistState}
+      preferredDefaultPosition={preferredDefaultPosition}
+      defaultPosition={defaultPosition}
       onClose={onClose}
       onOverlayClose={onOverlayClose}
     >
       <FloatingPanelDialogRoot
         role={rootRole}
         aria-modal="true"
-        measureRef={measureBody ? bodyRef : undefined}
         hasFooter={Boolean(footer)}
-        fillHeight={fillHeight}
+        className={rootClassName}
       >
         {children}
-        {footer ? <FloatingPanelDialogFooter justify={footerJustify}>{footer}</FloatingPanelDialogFooter> : null}
+        {footer ? (
+          <FloatingPanelDialogFooter
+            justify={footerJustify}
+            fullBleed={footerFullBleed}
+            className={footerClassName}
+          >
+            {footer}
+          </FloatingPanelDialogFooter>
+        ) : null}
       </FloatingPanelDialogRoot>
     </FloatingPanelTemplate>
   );

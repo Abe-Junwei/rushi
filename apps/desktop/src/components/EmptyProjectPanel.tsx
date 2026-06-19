@@ -7,6 +7,7 @@ import type { ProjectControllerApi } from "../pages/useProjectController";
 import { importDroppedPathsToProject } from "../services/projectBatchImport";
 import { toast } from "../services/ui/toast";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
+import { ProjectFilesHubHeader } from "./ProjectFilesHubHeader";
 
 const DROP_IMPORT_UNSUPPORTED_MSG =
   "拖入失败：仅支持音频（.mp3/.wav/.m4a）或转录文本（.txt/.srt/.vtt）文件。";
@@ -125,11 +126,12 @@ export function EmptyProjectPanel({ controller: c }: { controller: ProjectContro
       }`}
       data-purpose="empty-project-page"
     >
-      <header>
-        <h1 className="truncate text-display font-semibold leading-[1.25] tracking-[-0.015em] text-notion-text">
-          {projectName}
-        </h1>
-      </header>
+      <ProjectFilesHubHeader
+        controller={c}
+        projectName={projectName}
+        projectId={c.current?.id}
+        busy={c.busy}
+      />
 
       <section className="flex flex-col gap-2" aria-label="项目文件">
         <div className="flex items-center justify-between gap-2">

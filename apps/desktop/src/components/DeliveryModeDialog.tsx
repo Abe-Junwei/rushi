@@ -14,10 +14,8 @@ import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec"
 
 const PANEL_ID = "delivery-mode-v1";
 const DEFAULT_WIDTH = 400;
-/** 首帧兜底；实测高度由 ResizeObserver 覆盖。 */
+/** 首帧兜底；staticFit 下实际高度由内容 CSS 自动贴合。 */
 const FALLBACK_HEIGHT = 280;
-/** 布局变更时 bump base，丢弃旧 persist 高度记忆。 */
-const LAYOUT_REV_BASE = 3;
 
 const INTRO_CLASS = `${PANEL_TYPOGRAPHY.dialogBody} m-0 leading-snug text-notion-text-muted`;
 const SECTION_LABEL_CLASS = "m-0 text-label font-medium leading-snug text-notion-text-muted";
@@ -125,31 +123,6 @@ export function DeliveryModeDialog({
     busy,
   );
 
-  const layoutRev = useMemo(() => {
-    let rev = LAYOUT_REV_BASE;
-    rev += items.length;
-    rev += items.filter((item) => item.hint).length * 2;
-    if (!ready && blockReason) rev += 4;
-    if (!busy && !canApplyCorrectionRules) {
-      rev += 8;
-      if (rulesUnavailableReason) rev += 1;
-    }
-    if (!busy && !canOfferPostTranscribeStageB) {
-      rev += 16;
-      if (stageBUnavailableReason) rev += 1;
-    }
-    return rev;
-  }, [
-    items,
-    ready,
-    blockReason,
-    busy,
-    canApplyCorrectionRules,
-    canOfferPostTranscribeStageB,
-    rulesUnavailableReason,
-    stageBUnavailableReason,
-  ]);
-
   return (
     <CompactFloatingDialog
       id={PANEL_ID}
@@ -159,7 +132,7 @@ export function DeliveryModeDialog({
         if (!busy) onClose();
       }}
       fallbackHeight={FALLBACK_HEIGHT}
-      layoutRev={layoutRev}
+      fitKind="staticFit"
       defaultWidth={DEFAULT_WIDTH}
       bounds={{ minWidth: 320, minHeight: 200, maxWidthCap: 480 }}
       persistState

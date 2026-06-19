@@ -73,12 +73,6 @@ export function ProjectMetadataDialog({
     [draft.name, project?.id, projects],
   );
   const hasDuplicateWarning = duplicateProjects.length > 0;
-  const estimatedFitHeight = hasDuplicateWarning
-    ? FALLBACK_HEIGHT.duplicate
-    : afterCreate
-      ? FALLBACK_HEIGHT.afterCreate
-      : FALLBACK_HEIGHT.base;
-  const layoutRev = (afterCreate ? 1 : 0) + (hasDuplicateWarning ? 2 : 0);
 
   if (!open || !project) return null;
 
@@ -93,10 +87,7 @@ export function ProjectMetadataDialog({
       open={open}
       onClose={onClose}
       fallbackHeight={FALLBACK_HEIGHT.base}
-      estimatedFitHeight={estimatedFitHeight}
-      layoutRev={layoutRev}
-      measureBody={false}
-      fillHeight={false}
+      fitKind="staticFit"
       defaultWidth={PANEL_WIDTH}
       bounds={{ minWidth: PANEL_MIN.width, minHeight: PANEL_MIN.height, maxWidthCap: 520, maxHeightCap: 720 }}
       panelZIndex={110}

@@ -3,10 +3,26 @@
 use std::path::Path;
 
 use serde_json::Value;
+use url::Url;
 
 use super::{read_audio_bytes_limited, send_stt_cloud_get, send_stt_cloud_post};
 
 pub const DASHSCOPE_UPLOADS_URL: &str = "https://dashscope.aliyuncs.com/api/v1/uploads";
+
+pub(crate) fn is_allowed_dashscope_resource_url(raw: &str) -> bool {
+    let Ok(url) = Url::parse(raw.trim()) else {
+        return false;
+    };
+    if url.scheme() != "https" || url.cannot_be_a_base() {
+        return false;
+    }
+    let Some(host) = url.host_str().map(|h| h.to_ascii_lowercase()) else {
+        return false;
+    };
+    host == "dashscope.aliyuncs.com"
+        || host.ends_with(".aliyuncs.com")
+        || host.ends_with(".aliyuncs.com.cn")
+}
 
 fn build_oss_upload_form(
     policy: &Value,
@@ -97,6 +113,9 @@ pub async fn upload_dashscope_temp_oss_url(
         .get("upload_host")
         .and_then(|x| x.as_str())
         .ok_or_else(|| "百炼上传凭证缺少 upload_host".to_string())?;
+    if !is_allowed_dashscope_resource_url(upload_host) {
+        return Err("百炼上传凭证 upload_host 不在允许的 HTTPS 阿里云域名下".to_string());
+    }
     let upload_dir = policy
         .get("upload_dir")
         .and_then(|x| x.as_str())
@@ -137,4 +156,38 @@ pub async fn upload_dashscope_temp_oss_url(
     }
 
     Ok(oss_url)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::is_allowed_dashscope_resource_url;
+
+    #[test]
+    fn allows_dashscope_and_aliyun_https_resources() {
+        assert!(is_allowed_dashscope_resource_url(
+            "https://dashscope.aliyuncs.com/api/v1/uploads"
+        ));
+        assert!(is_allowed_dashscope_resource_url(
+            "https://dashscope-result.oss-cn-beijing.aliyuncs.com/result.json"
+        ));
+        assert!(is_allowed_dashscope_resource_url(
+            "https://dashscope-result.oss-cn-beijing.aliyuncs.com.cn/result.json"
+        ));
+    }
+
+    #[test]
+    fn rejects_non_aliyun_or_non_https_resources() {
+        assert!(!is_allowed_dashscope_resource_url(
+            "https://example.com/result.json"
+        ));
+        assert!(!is_allowed_dashscope_resource_url(
+            "http://dashscope.aliyuncs.com/result.json"
+        ));
+        assert!(!is_allowed_dashscope_resource_url(
+            "https://aliyuncs.com.evil.test/x"
+        ));
+        assert!(!is_allowed_dashscope_resource_url(
+            "http://127.0.0.1:8000/x"
+        ));
+    }
 }

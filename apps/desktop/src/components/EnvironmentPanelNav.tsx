@@ -1,4 +1,4 @@
-import { BarChart3, Cloud, Cpu, Download, HelpCircle, Info, Keyboard, Palette, Sparkles } from "lucide-react";
+import { BarChart3, Cloud, Cpu, Download, Info, Keyboard, Palette, Sparkles } from "lucide-react";
 import { ENV_STATUS_DOT_CLASS, type EnvStatusTone } from "./topBarStatusTone";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 import {
@@ -20,7 +20,6 @@ const ENV_NAV_ICONS: Record<EnvNavId, React.ReactNode> = {
   shortcuts: <Keyboard className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />,
   profile: <Download className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />,
   quality: <BarChart3 className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />,
-  help: <HelpCircle className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />,
   about: <Info className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />,
 };
 

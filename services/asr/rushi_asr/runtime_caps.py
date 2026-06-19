@@ -14,7 +14,7 @@ def sidecar_version() -> str:
         return "0+unknown"
 
 from rushi_asr import ffmpeg_audio
-from rushi_asr.defaults import effective_funasr_forced_aligner_id, effective_funasr_model_id, funasr_model_explicit_from_env
+from rushi_asr.defaults import effective_funasr_model_id, funasr_model_explicit_from_env
 from rushi_asr.model_catalog import get_catalog_status
 from rushi_asr.funasr_pipeline import effective_funasr_punc_model_id
 from rushi_asr.funasr_engine import effective_funasr_language, loaded_funasr_model_id
@@ -22,7 +22,6 @@ from rushi_asr.funasr_load_plan import build_funasr_load_plan
 from rushi_asr.inference_queue import inference_queue_stats
 from rushi_asr.model_prepare import (
     default_model_cached_guess,
-    forced_aligner_model_cached_guess,
     punc_model_cached_guess,
     recognizer_model_cached_guess,
     required_models_cached_guess,
@@ -50,8 +49,6 @@ def get_runtime_caps() -> dict[str, object]:
     punc_model_id = effective_funasr_punc_model_id(model) if model else None
     required_models_cached = required_models_cached_guess(model)
     active_model_cached = recognizer_model_cached_guess(model)
-    forced_aligner_id = effective_funasr_forced_aligner_id()
-    forced_aligner_cached = forced_aligner_model_cached_guess()
     load_plan = build_funasr_load_plan(model)
     loaded_id = loaded_funasr_model_id()
     loaded_str = str(loaded_id).strip() if loaded_id else ""
@@ -83,8 +80,6 @@ def get_runtime_caps() -> dict[str, object]:
         "funasr_punc_model_cached": punc_model_cached,
         "funasr_punc_model_id": punc_model_id,
         "funasr_required_models_cached": required_models_cached,
-        "funasr_forced_aligner_model_id": forced_aligner_id,
-        "funasr_forced_aligner_cached": forced_aligner_cached,
         "funasr_load_plan": load_plan,
         "local_asr_model_catalog": get_catalog_status(model),
         "funasr_ready": runtime_ready,

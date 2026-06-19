@@ -60,7 +60,11 @@ export function usePrepareModelController(
     const deadlineMs = 900_000;
     if (!options?.force) {
       const caps = await fetchAsrHealthCaps();
-      if (caps?.ready_for_transcribe === true && caps.funasr_model_id === hubModelId) {
+      if (
+        caps?.ready_for_transcribe === true &&
+        caps.funasr_model_id === hubModelId &&
+        caps.selected_model_ready !== false
+      ) {
         setPrepareModelProgress(100);
         setFunasrInstallMessage(
           `${modelLabel} 与必需辅助模型已准备（或已在缓存中）。无需重复下载。`,
@@ -147,7 +151,11 @@ export function usePrepareModelController(
             setFunasrInstallMessage("正在启动后台下载任务，请稍候…");
           } else {
             const caps = await fetchAsrHealthCaps();
-            if (caps?.ready_for_transcribe === true && caps.funasr_model_id === hubModelId) {
+            if (
+              caps?.ready_for_transcribe === true &&
+              caps.funasr_model_id === hubModelId &&
+              caps.selected_model_ready !== false
+            ) {
               setPrepareModelProgress(100);
               setFunasrInstallMessage(`${modelLabel} 与必需辅助模型已在缓存中（侧车未返回下载进度，但 /health 已就绪）。`);
               await refreshAsrHealth();

@@ -6,12 +6,11 @@ import logging
 import threading
 from typing import Any
 
-from rushi_asr.defaults import DEFAULT_FUNASR_MODEL_ID, effective_funasr_forced_aligner_id, effective_funasr_vad_model_id
+from rushi_asr.defaults import DEFAULT_FUNASR_MODEL_ID, effective_funasr_vad_model_id
 from rushi_asr.funasr_pipeline import effective_funasr_punc_model_id
 from rushi_asr.model_catalog import resolve_hub_model_id
 from rushi_asr.model_prepare_cache import (
     default_model_cached_guess,
-    forced_aligner_model_cached_guess,
     punc_model_cached_guess,
     recognizer_model_cached_guess,
     required_models_cached_guess,
@@ -107,7 +106,6 @@ def start_prepare_async(model_id: str | None = None) -> dict[str, Any]:
     reset_prepare_download_progress(
         include_vad=bool(effective_funasr_vad_model_id()),
         include_punc=bool(effective_funasr_punc_model_id(resolved_model_id)),
-        include_forced_aligner=bool(effective_funasr_forced_aligner_id()),
     )
 
     t = threading.Thread(target=_run, name="rushi-model-prepare", daemon=True)

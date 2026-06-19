@@ -1,4 +1,4 @@
-import type { HTMLAttributes, ReactNode, Ref } from "react";
+import type { HTMLAttributes, ReactNode } from "react";
 
 /** compactDialog 正文区水平与顶边距；底边由页脚或 solo 根节点承担。 */
 export const FLOATING_PANEL_DIALOG_BODY_PADDING_CLASS = "px-5 pt-3";
@@ -14,30 +14,29 @@ const SCROLL_CLASS = "floating-panel-body-scroll min-h-0 flex-1 overflow-y-auto 
 const FOOTER_BASE = FLOATING_PANEL_DIALOG_FOOTER_CLASS;
 
 type RootProps = HTMLAttributes<HTMLDivElement> & {
-  measureRef?: Ref<HTMLDivElement>;
   /** 为 true 时底边距由 FloatingPanelDialogFooter 承担，避免与 root pb 叠加。 */
   hasFooter?: boolean;
-  /** 含 flex-1 列表/滚动区时撑满面板正文；静态表单应 false，避免页脚下方留白。 */
-  fillHeight?: boolean;
 };
 
-/** 占满面板正文区；配合 DraggableResizablePanel 的 flex 列与 overflow-hidden。 */
+/**
+ * 占满面板正文区的 flex 列容器。高度真源在壳层（CSS auto + max-height 或固定 px）；
+ * 滚动交给内部唯一的滚动区（FloatingPanelDialogScroll / ListRegion，flex-1 overflow-y-auto），
+ * 固定区（Header / 页脚）shrink-0 常驻。短内容时整壳贴合，长内容时仅滚动区内滚。
+ */
 export function FloatingPanelDialogRoot({
   children,
   className,
-  measureRef,
   hasFooter = false,
-  fillHeight = false,
   ...rest
 }: RootProps) {
   const paddingClass = hasFooter
     ? FLOATING_PANEL_DIALOG_BODY_PADDING_CLASS
     : `${FLOATING_PANEL_DIALOG_BODY_PADDING_CLASS} ${FLOATING_PANEL_DIALOG_BODY_SOLO_BOTTOM_CLASS}`;
-  const heightClass = fillHeight ? "h-full min-h-0" : "min-h-0";
   return (
     <div
-      ref={measureRef}
-      className={["flex flex-col", heightClass, paddingClass, className].filter(Boolean).join(" ")}
+      className={["flex h-full min-h-0 w-full flex-col overflow-hidden", paddingClass, className]
+        .filter(Boolean)
+        .join(" ")}
       {...rest}
     >
       {children}
@@ -50,7 +49,7 @@ type RegionProps = {
   className?: string;
 };
 
-/** 固定不滚动区（说明、摘要、提示条等）。 */
+/** 固定不滚动区（说明、摘要、提示条、表单输入等）。 */
 export function FloatingPanelDialogHeader({ children, className }: RegionProps) {
   return (
     <div className={["flex shrink-0 flex-col gap-3", className].filter(Boolean).join(" ")}>
@@ -59,17 +58,15 @@ export function FloatingPanelDialogHeader({ children, className }: RegionProps) 
   );
 }
 
-/** 可滚动中间区（语段列表、长表单等）；缩放面板时仅本区滚动。 */
+/** 唯一可滚动中间区（语段列表、长表单等）：占剩余高度，缩放面板时仅本区内滚。 */
 export function FloatingPanelDialogScroll({ children, className }: RegionProps) {
   return <div className={[SCROLL_CLASS, className].filter(Boolean).join(" ")}>{children}</div>;
 }
 
-/** 列表容器：占剩余高度并在内部滚动（与 FloatingPanelSegmentList fillAvailable 配合）。 */
+/** 列表容器：占剩余高度并在内部滚动；列表（FloatingPanelSegmentList）自身 intrinsic，不再自带滚动。 */
 export function FloatingPanelDialogListRegion({ children, className }: RegionProps) {
   return (
-    <div className={["min-h-0 flex-1 overflow-hidden", className].filter(Boolean).join(" ")}>
-      {children}
-    </div>
+    <div className={[SCROLL_CLASS, className].filter(Boolean).join(" ")}>{children}</div>
   );
 }
 

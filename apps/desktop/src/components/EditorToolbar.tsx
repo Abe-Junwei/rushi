@@ -99,6 +99,13 @@ export const EditorToolbar = memo(function EditorToolbar({
     }
   };
 
+  const importBlocked = c.busy || pendingImport !== null;
+  const exportBlocked = c.busy;
+
+  useEffect(() => {
+    if (exportBlocked) exportMenuRef.current?.removeAttribute("open");
+  }, [exportBlocked]);
+
   return (
     <div className="toolbar-popover-root z-[90] shrink-0 border-b border-notion-divider bg-notion-sidebar px-page-margin">
       <div className="flex h-12 w-full min-w-0 flex-nowrap items-center gap-2 overflow-visible">
@@ -150,11 +157,11 @@ export const EditorToolbar = memo(function EditorToolbar({
             <details ref={importMenuRef} className="dropdown-anchor">
               <summary
                 className={`${ghostBtn} list-none cursor-pointer marker:content-none [&::-webkit-details-marker]:hidden ${
-                  c.busy || pendingImport !== null ? "pointer-events-none opacity-40" : ""
+                  importBlocked ? "pointer-events-none opacity-40" : ""
                 }`}
-                aria-disabled={c.busy || pendingImport !== null}
+                aria-disabled={importBlocked}
                 onClick={(e) => {
-                  if (c.busy || pendingImport !== null) {
+                  if (importBlocked) {
                     e.preventDefault();
                     return;
                   }
@@ -170,7 +177,7 @@ export const EditorToolbar = memo(function EditorToolbar({
                 <button
                   type="button"
                   className={menuItem}
-                  disabled={c.busy || pendingImport !== null}
+                  disabled={importBlocked}
                   onClick={(e) => {
                     e.currentTarget.closest("details")?.removeAttribute("open");
                     void importAudioToCurrentProject();
@@ -181,7 +188,7 @@ export const EditorToolbar = memo(function EditorToolbar({
                 <button
                   type="button"
                   className={menuItem}
-                  disabled={c.busy || pendingImport !== null}
+                  disabled={importBlocked}
                   onClick={(e) => {
                     e.currentTarget.closest("details")?.removeAttribute("open");
                     void importTextToCurrentProject();
@@ -192,7 +199,7 @@ export const EditorToolbar = memo(function EditorToolbar({
                 <button
                   type="button"
                   className={menuItem}
-                  disabled={c.busy || pendingImport !== null}
+                  disabled={importBlocked}
                   onClick={(e) => {
                     e.currentTarget.closest("details")?.removeAttribute("open");
                     void importProjectBundleToWorkspace();
@@ -205,8 +212,22 @@ export const EditorToolbar = memo(function EditorToolbar({
 
             <details ref={exportMenuRef} className="dropdown-anchor">
               <summary
-                className={`${ghostBtn} list-none cursor-pointer marker:content-none [&::-webkit-details-marker]:hidden`}
-                onClick={() => {
+                className={`${ghostBtn} list-none cursor-pointer marker:content-none [&::-webkit-details-marker]:hidden ${
+                  exportBlocked ? "pointer-events-none opacity-40" : ""
+                }`}
+                aria-disabled={exportBlocked}
+                title={
+                  exportBlocked && (c.busyReason === "transcribe" || c.busyReason === "batch_transcribe")
+                    ? "转写进行中，请稍后再导出"
+                    : exportBlocked
+                      ? "处理中，请稍后再导出"
+                      : undefined
+                }
+                onClick={(e) => {
+                  if (exportBlocked) {
+                    e.preventDefault();
+                    return;
+                  }
                   importMenuRef.current?.removeAttribute("open");
                 }}
               >
@@ -216,19 +237,19 @@ export const EditorToolbar = memo(function EditorToolbar({
                 </span>
               </summary>
               <div className="dropdown-surface absolute right-0 top-full z-[100] mt-1 min-w-[12rem] py-1">
-                <button type="button" className={menuItem} disabled={c.busy} onClick={() => onExportSelect("txt")}>导出 TXT</button>
-                <button type="button" className={menuItem} disabled={c.busy} onClick={() => onExportSelect("srt")}>导出 SRT</button>
-                <button type="button" className={menuItem} disabled={c.busy} onClick={() => onExportSelect("delivery_mode")}>
+                <button type="button" className={menuItem} disabled={exportBlocked} onClick={() => onExportSelect("txt")}>导出 TXT</button>
+                <button type="button" className={menuItem} disabled={exportBlocked} onClick={() => onExportSelect("srt")}>导出 SRT</button>
+                <button type="button" className={menuItem} disabled={exportBlocked} onClick={() => onExportSelect("delivery_mode")}>
                   定稿模式…
                 </button>
-                <button type="button" className={menuItem} disabled={c.busy} onClick={() => onExportSelect("docx_delivery")}>
+                <button type="button" className={menuItem} disabled={exportBlocked} onClick={() => onExportSelect("docx_delivery")}>
                   交付导出 Word…
                 </button>
-                <button type="button" className={menuItem} disabled={c.busy} onClick={() => onExportSelect("docx_verbatim")}>导出 DOCX 逐字稿</button>
-                <button type="button" className={menuItem} disabled={c.busy} onClick={() => onExportSelect("docx_lecture")}>导出 DOCX 讲稿</button>
-                <button type="button" className={menuItem} disabled={c.busy} onClick={() => onExportSelect("docx_clean")}>导出 DOCX 干净稿</button>
-                <button type="button" className={menuItem} disabled={c.busy} onClick={() => void c.exportProjectBundle()}>导出项目包（zip）</button>
-                <button type="button" className={menuItem} disabled={c.busy} onClick={() => void c.exportDiagnosticBundle()}>导出诊断包（zip）</button>
+                <button type="button" className={menuItem} disabled={exportBlocked} onClick={() => onExportSelect("docx_verbatim")}>导出 DOCX 逐字稿</button>
+                <button type="button" className={menuItem} disabled={exportBlocked} onClick={() => onExportSelect("docx_lecture")}>导出 DOCX 讲稿</button>
+                <button type="button" className={menuItem} disabled={exportBlocked} onClick={() => onExportSelect("docx_clean")}>导出 DOCX 干净稿</button>
+                <button type="button" className={menuItem} disabled={exportBlocked} onClick={() => void c.exportProjectBundle()}>导出项目包（zip）</button>
+                <button type="button" className={menuItem} disabled={exportBlocked} onClick={() => void c.exportDiagnosticBundle()}>导出诊断包（zip）</button>
               </div>
             </details>
 

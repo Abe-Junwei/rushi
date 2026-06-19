@@ -137,7 +137,7 @@ describe("localAsrModelCatalog", () => {
   });
 
   it("selectedModelPrepareState respects sidecar mismatch", () => {
-    const other = "Qwen/Qwen3-ASR-0.6B";
+    const other = "custom/other-asr-model";
     const view = buildLocalAsrCatalogView(
       {
         funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
@@ -213,7 +213,7 @@ describe("localAsrModelCatalog", () => {
       asrHealth: "ok",
       asrCaps: {
         funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
-        funasr_loaded_model_id: "Qwen/Qwen3-ASR-0.6B",
+        funasr_loaded_model_id: "custom/other-asr-model",
         funasr_required_models_cached: true,
         ready_for_transcribe: true,
       },

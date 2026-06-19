@@ -6,6 +6,11 @@ export function segmentListItemStridePx(rowMinHeightPx: number): number {
   return Math.max(1, Math.round(rowMinHeightPx)) + SEGMENT_LIST_ROW_GAP_PX;
 }
 
+/** 虚拟列表：按 display index 固定槽位 top，避免文档流堆叠与 stride 漂移。 */
+export function segmentListVirtualRowTopPx(displayIndex: number, itemStridePx: number): number {
+  return Math.max(0, displayIndex) * itemStridePx;
+}
+
 export function segmentListRowMinHeightPx(segmentRowHeightPx: number): number {
   return Math.max(60, Math.round(segmentRowHeightPx + 2));
 }

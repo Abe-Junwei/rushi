@@ -3,13 +3,6 @@ import type { PostTranscribeStageBDialogState } from "../pages/usePostTranscribe
 import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { CompactFloatingDialog } from "./CompactFloatingDialog";
-import {
-  FLOATING_PANEL_COMPACT_MIN_HEIGHT,
-  resolveStageBConsentFitHeight,
-  resolveStageBEmptyFitHeight,
-  resolveStageBLoadingFitHeight,
-  resolveStageBPreviewFitHeight,
-} from "./floatingPanelSegmentListLayout";
 import { readFloatingPanelViewport } from "./floatingPanelViewport";
 import { PostTranscribeStageBConsentPanel } from "./postTranscribeStageB/PostTranscribeStageBConsentPanel";
 import { PostTranscribeStageBEmptyPanel } from "./postTranscribeStageB/PostTranscribeStageBEmptyPanel";
@@ -42,40 +35,6 @@ function resolveStageBDialogTitle(state: PostTranscribeStageBDialogState): strin
   return "智能改稿";
 }
 
-/** 阶段 / hint / 预览规模变化时 bump，触发 CompactFloatingDialog 重新测高。 */
-function resolveStageBLayoutRev(state: PostTranscribeStageBDialogState): number {
-  const BASE = 2;
-  if (state.phase === "closed") return BASE;
-
-  let rev = BASE;
-  switch (state.phase) {
-    case "consent":
-      rev += 100;
-      break;
-    case "loading":
-      rev += 200;
-      break;
-    case "empty":
-      rev += 300;
-      break;
-    case "preview":
-      rev += 400 + state.changes.length;
-      if (state.provider) rev += 4;
-      break;
-    default:
-      break;
-  }
-
-  if (state.pendingStageAHint) rev += 1;
-  if (
-    (state.phase === "preview" || state.phase === "empty") &&
-    state.packTruncationHint
-  ) {
-    rev += 2;
-  }
-  return rev;
-}
-
 type Props = {
   state: PostTranscribeStageBDialogState;
   busy: boolean;
@@ -99,11 +58,8 @@ export function PostTranscribeStageBDialog({
 }: Props) {
   const open = state.phase !== "closed";
   const panelBounds = resolveStageBPanelBounds();
-  const isLoading = state.phase === "loading";
   const isConsent = state.phase === "consent";
-  const isEmpty = state.phase === "empty";
   const isPreview = state.phase === "preview";
-  const isCompactBody = isConsent || isEmpty;
   const preview = isPreview ? state : null;
   const packTruncationHint =
     state.phase === "preview" || state.phase === "empty" ? state.packTruncationHint : null;
@@ -115,20 +71,7 @@ export function PostTranscribeStageBDialog({
       ? state.pendingStageAHint
       : null;
 
-  const previewFitHeight = preview ? resolveStageBPreviewFitHeight(preview.changes.length) : undefined;
-
-  const estimatedFit = isLoading
-    ? resolveStageBLoadingFitHeight(Boolean(pendingHint))
-    : isPreview
-      ? previewFitHeight
-      : isConsent
-        ? resolveStageBConsentFitHeight(Boolean(pendingHint))
-        : isEmpty
-          ? resolveStageBEmptyFitHeight(Boolean(pendingHint), Boolean(packTruncationHint))
-          : undefined;
-
   const persistPhaseKey = state.phase;
-  const layoutRev = resolveStageBLayoutRev(state);
 
   const handleDismiss = () => {
     onCancel();
@@ -189,21 +132,17 @@ export function PostTranscribeStageBDialog({
       onClose={handleDismiss}
       onOverlayClose={() => {}}
       fallbackHeight={STAGE_B_PANEL_DEFAULT_SIZE.height}
-      estimatedFitHeight={estimatedFit ?? STAGE_B_PANEL_DEFAULT_SIZE.height}
       defaultWidth={isConsent ? STAGE_B_CONSENT_DEFAULT_WIDTH : STAGE_B_PANEL_DEFAULT_SIZE.width}
       minWidth={panelBounds.minWidth}
-      minHeight={
-        isLoading ? 240 : isCompactBody ? FLOATING_PANEL_COMPACT_MIN_HEIGHT : panelBounds.minHeight
-      }
+      minHeight={200}
       maxWidth={panelBounds.maxWidth}
       maxHeight={panelBounds.maxHeight}
       persistPhaseKey={persistPhaseKey}
-      layoutRev={layoutRev}
       panelZIndex={111}
       persistState
       footer={footer}
       footerJustify={footerJustify}
-      fillHeight={isPreview}
+      fitKind={isPreview ? "autoFit" : "staticFit"}
     >
       {state.phase === "consent" ? (
         <PostTranscribeStageBConsentPanel state={state} pendingHint={pendingHint} />

@@ -21,19 +21,19 @@ export function WelcomeOnboardingChecklist({
 }: Props) {
   return (
     <section
-      className="rounded-lg border border-notion-divider bg-notion-sidebar/40 p-4"
+      className="rounded-lg border border-notion-divider bg-notion-sidebar/40 p-3"
       aria-labelledby="onboarding-checklist-head"
       data-purpose="onboarding-checklist"
     >
-      <header className="mb-3 flex items-start justify-between gap-3">
-        <div className="flex flex-col gap-1">
+      <header className="mb-2 flex items-start justify-between gap-2">
+        <div className="flex flex-col gap-0.5">
           <h2
             id="onboarding-checklist-head"
-            className="text-title font-semibold leading-snug text-notion-text"
+            className="text-body font-semibold leading-snug text-notion-text"
           >
             上手清单
           </h2>
-          <p className="text-body leading-relaxed text-notion-text-muted">
+          <p className="text-label leading-snug text-notion-text-muted">
             5 步完成首次转写与交付（可随时关闭，侧栏可恢复）
           </p>
         </div>
@@ -47,33 +47,33 @@ export function WelcomeOnboardingChecklist({
         </button>
       </header>
 
-      <ol className="flex flex-col gap-2">
+      <ol className="flex flex-col gap-1.5">
         {ONBOARDING_STEPS.map((step, index) => {
           const done = Boolean(progress.completed[step.id]);
           return (
             <li
               key={step.id}
-              className="flex items-start gap-2.5 rounded-md bg-notion-bg/80 px-2.5 py-2"
+              className="flex items-start gap-2 rounded-md bg-notion-bg/80 px-2 py-1.5"
             >
-              <span className="shrink-0 text-accent-action" aria-hidden>
+              <span className="mt-0.5 shrink-0 text-accent-action" aria-hidden>
                 {done ? (
                   <Check className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} />
                 ) : (
                   <Circle className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} />
                 )}
               </span>
-              <div className="flex min-w-0 flex-1 flex-col gap-1">
-                <p className="text-title font-medium text-notion-text">
+              <div className="flex min-w-0 flex-1 flex-col gap-0.5">
+                <p className="text-body font-medium leading-snug text-notion-text">
                   {index + 1}. {step.title}
                   {step.optional ? (
                     <span className="ml-1 font-normal text-notion-text-muted">（可选）</span>
                   ) : null}
                 </p>
-                <p className="text-body leading-relaxed text-notion-text-muted">{step.description}</p>
+                <p className="text-label leading-snug text-notion-text-muted">{step.description}</p>
                 {step.id === "asr_ready" && onOpenAsrSettings ? (
                   <button
                     type="button"
-                    className={`${CONTROL_BTN_LINK} self-start text-body`}
+                    className={`${CONTROL_BTN_LINK} self-start text-label leading-snug`}
                     onClick={onOpenAsrSettings}
                   >
                     打开环境 → 本机 ASR
@@ -82,7 +82,7 @@ export function WelcomeOnboardingChecklist({
                 {step.id === "project_audio" && onCreateProject ? (
                   <button
                     type="button"
-                    className={`${CONTROL_BTN_LINK} self-start text-body`}
+                    className={`${CONTROL_BTN_LINK} self-start text-label leading-snug`}
                     onClick={onCreateProject}
                   >
                     新建项目
@@ -91,7 +91,7 @@ export function WelcomeOnboardingChecklist({
                 {step.id === "export" && onOpenLastEditor ? (
                   <button
                     type="button"
-                    className={`${CONTROL_BTN_LINK} self-start text-body`}
+                    className={`${CONTROL_BTN_LINK} self-start text-label leading-snug`}
                     onClick={onOpenLastEditor}
                   >
                     打开上次编辑 → 定稿模式

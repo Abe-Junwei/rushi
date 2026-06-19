@@ -37,6 +37,35 @@ export function centerFloatingPanelPosition(
 
 const VIEWPORT_RECENTER_THRESHOLD_PX = 48;
 
+/** 编辑器工作条（波形—语段缝）DOM 选择器。 */
+export const EDITOR_WORKBENCH_TOOLBAR_SELECTOR = ".editor-workbench-toolbar";
+
+const EDITOR_WORKBENCH_PANEL_GAP_PX = 8;
+
+/** 语段工具条触发的预览面板：水平居中，顶边贴工作条下方（无工作条时回退视口居中）。 */
+export function resolveEditorWorkbenchFloatingPanelPosition(
+  size: { width: number; height: number },
+  margin: number,
+  viewport: FloatingPanelViewport = readFloatingPanelViewport(),
+): { x: number; y: number } {
+  if (typeof document !== "undefined") {
+    const toolbar = document.querySelector(EDITOR_WORKBENCH_TOOLBAR_SELECTOR);
+    if (toolbar instanceof HTMLElement) {
+      const rect = toolbar.getBoundingClientRect();
+      const innerWidth = viewport.width - margin * 2;
+      const x = viewport.offsetX + margin + Math.max(0, Math.round((innerWidth - size.width) / 2));
+      const preferredY = Math.round(rect.bottom + EDITOR_WORKBENCH_PANEL_GAP_PX);
+      const minY = viewport.offsetY + margin;
+      const maxY = viewport.offsetY + viewport.height - size.height - margin;
+      return {
+        x,
+        y: Math.min(Math.max(preferredY, minY), maxY),
+      };
+    }
+  }
+  return centerFloatingPanelPosition(size, margin, viewport);
+}
+
 export function isFloatingPanelCentered(
   position: { x: number; y: number },
   size: { width: number; height: number },
@@ -107,15 +136,27 @@ export function resolveFloatingPanelInitialState(args: {
     size: { width: number; height: number },
   ) => { position: { x: number; y: number }; size: { width: number; height: number } };
   viewport?: FloatingPanelViewport;
+  /** 编辑器工作条锚点等：替代视口居中，并迁移旧版居中记忆。 */
+  preferredDefaultPosition?: (size: { width: number; height: number }) => { x: number; y: number };
 }): { position: { x: number; y: number }; size: { width: number; height: number } } {
   const viewport = args.viewport ?? readFloatingPanelViewport();
+  const pickPreferredOrCenter = (size: { width: number; height: number }) =>
+    args.preferredDefaultPosition?.(size) ??
+    centerFloatingPanelPosition(size, args.margin, viewport);
+
   if (!args.saved) {
     return args.clamp(args.defaultPosition, args.defaultSize);
   }
   const size = args.saved.size;
-  const position = shouldRecenterFloatingPanel(args.saved, viewport)
-    ? centerFloatingPanelPosition(size, args.margin, viewport)
-    : args.saved.position;
+  let position = args.saved.position;
+  if (shouldRecenterFloatingPanel(args.saved, viewport)) {
+    position = pickPreferredOrCenter(size);
+  } else if (
+    args.preferredDefaultPosition &&
+    isFloatingPanelCentered(position, size, viewport, args.margin)
+  ) {
+    position = args.preferredDefaultPosition(size);
+  }
   return args.clamp(position, size);
 }
 

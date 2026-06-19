@@ -1,6 +1,6 @@
 use super::transcribe_timeout::probe_audio_duration_sec;
 use super::types::{WaveformPeakLevelStatus, WaveformPeaksStatus};
-use super::utils::{append_desktop_log_line, open_db};
+use super::utils::{append_desktop_log_line, open_db, resolve_audio_path_under_root};
 use super::waveform_peaks::{
     all_peak_levels_exist, load_peaks_meta, peak_file_path, peaks_cache_is_stale, peaks_dir,
     peaks_generation_in_progress, remove_peaks_for_file, try_acquire_peaks_lock,
@@ -230,16 +230,16 @@ fn ensure_waveform_peaks_sync(
     };
 
     let peaks_root = peaks_dir(&project_dir(st, project_id));
-    let audio = Path::new(&audio_path);
+    let audio = resolve_audio_path_under_root(&st.root, &audio_path)?;
 
     let cache_complete = all_peak_levels_exist(&peaks_root, file_id);
     let stale_opts = if cache_complete {
-        stale_check_options_cache_fresh(&peaks_root, file_id, audio, media_duration_sec)
+        stale_check_options_cache_fresh(&peaks_root, file_id, &audio, media_duration_sec)
     } else {
-        stale_check_options(audio, media_duration_sec)
+        stale_check_options(&audio, media_duration_sec)
     };
 
-    if !invalidate_peaks_if_stale_with_options(&peaks_root, file_id, audio, force, stale_opts)?
+    if !invalidate_peaks_if_stale_with_options(&peaks_root, file_id, &audio, force, stale_opts)?
         && cache_complete
     {
         let report = load_existing_meta(&peaks_root, file_id);
@@ -249,11 +249,11 @@ fn ensure_waveform_peaks_sync(
     if let Some(_lock) = try_acquire_peaks_lock(&peaks_root, file_id)? {
         let cache_complete = all_peak_levels_exist(&peaks_root, file_id);
         let stale_opts = if cache_complete {
-            stale_check_options_cache_fresh(&peaks_root, file_id, audio, media_duration_sec)
+            stale_check_options_cache_fresh(&peaks_root, file_id, &audio, media_duration_sec)
         } else {
-            stale_check_options(audio, media_duration_sec)
+            stale_check_options(&audio, media_duration_sec)
         };
-        if !invalidate_peaks_if_stale_with_options(&peaks_root, file_id, audio, force, stale_opts)?
+        if !invalidate_peaks_if_stale_with_options(&peaks_root, file_id, &audio, force, stale_opts)?
             && cache_complete
         {
             let report = load_existing_meta(&peaks_root, file_id);
@@ -262,7 +262,7 @@ fn ensure_waveform_peaks_sync(
 
         spawn_peaks_generation(
             st.clone(),
-            audio.to_path_buf(),
+            audio.clone(),
             peaks_root.clone(),
             file_id.to_string(),
             _lock,
@@ -271,7 +271,7 @@ fn ensure_waveform_peaks_sync(
             &peaks_root,
             file_id,
             None,
-            Some(audio),
+            Some(&audio),
             media_duration_sec,
         ))
     } else {
@@ -279,8 +279,8 @@ fn ensure_waveform_peaks_sync(
         if peaks_cache_is_stale(
             &peaks_root,
             file_id,
-            audio,
-            stale_check_options(audio, media_duration_sec),
+            &audio,
+            stale_check_options(&audio, media_duration_sec),
         )? {
             return ensure_waveform_peaks_sync(st, project_id, file_id, true, media_duration_sec);
         }

@@ -40,13 +40,15 @@ type RowProps = {
   suffix?: string;
   active?: boolean;
   disabled?: boolean;
+  /** truncate：单行省略；wrap：允许多行换行展示正文 */
+  bodyLayout?: "truncate" | "wrap";
   onClick?: () => void;
   trailing?: ReactNode;
   children: ReactNode;
 };
 
 const ROW_BUTTON_CLASS =
-  "flex w-full min-w-0 items-center gap-2 border-0 px-2 py-1.5 text-left transition-colors";
+  "flex w-full min-w-0 gap-2 border-0 px-2 py-1.5 text-left transition-colors";
 
 export function FloatingPanelSegmentRow({
   segmentNumber,
@@ -54,20 +56,27 @@ export function FloatingPanelSegmentRow({
   suffix,
   active,
   disabled,
+  bodyLayout = "truncate",
   onClick,
   trailing,
   children,
 }: RowProps) {
   const interactive = typeof onClick === "function";
+  const wrapBody = bodyLayout === "wrap";
   const rowClass = [
     ROW_BUTTON_CLASS,
+    wrapBody ? "items-start" : "items-center",
     active ? "bg-notion-sidebar-active" : interactive ? "bg-transparent hover:bg-notion-sidebar-hover" : "",
   ].join(" ");
 
   const body = (
     <>
       <FloatingPanelSegmentMeta segmentNumber={segmentNumber} timeLabel={timeLabel} suffix={suffix} />
-      <div className={`min-w-0 flex-1 truncate ${PANEL_TYPOGRAPHY.dialogBody} text-notion-text`}>{children}</div>
+      <div
+        className={`min-w-0 flex-1 ${wrapBody ? "" : "truncate"} ${PANEL_TYPOGRAPHY.dialogBody} text-notion-text`}
+      >
+        {children}
+      </div>
       {trailing}
     </>
   );

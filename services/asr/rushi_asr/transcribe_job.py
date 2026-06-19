@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 import logging
+import os
 import shutil
 import threading
 import uuid
@@ -17,6 +18,7 @@ log = logging.getLogger(__name__)
 
 _lock = threading.Lock()
 _jobs: dict[str, "_JobRecord"] = {}
+_MAX_ACTIVE_JOBS = int(os.environ.get("RUSHI_MAX_TRANSCRIBE_JOBS", "1"))
 
 
 @dataclass
@@ -131,6 +133,10 @@ def _prune_terminal_jobs(max_jobs: int = 48) -> None:
                 del _jobs[job_id]
             if len(_jobs) <= max_jobs // 2:
                 break
+
+
+def _active_job_count_locked() -> int:
+    return sum(1 for job in _jobs.values() if job.phase not in _TERMINAL_PHASES)
 
 
 def _transcribe_with_progress(
@@ -275,6 +281,8 @@ def start_transcribe_async(
     job_id = str(uuid.uuid4())
     record = _JobRecord(job_id=job_id, phase="queued", message="queued")
     with _lock:
+        if _active_job_count_locked() >= _MAX_ACTIVE_JOBS:
+            raise RuntimeError("transcribe_job_limit")
         _jobs[job_id] = record
 
     t = threading.Thread(

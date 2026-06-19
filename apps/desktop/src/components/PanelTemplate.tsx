@@ -62,7 +62,7 @@ const PANEL_TEMPLATE_PRESETS = {
   },
 } satisfies Record<string, PanelTemplatePreset>;
 
-type PanelTemplatePresetKey = keyof typeof PANEL_TEMPLATE_PRESETS;
+export type PanelTemplatePresetKey = keyof typeof PANEL_TEMPLATE_PRESETS;
 
 function resolvePanelTemplateMetrics(
   preset: PanelTemplatePreset,
@@ -104,9 +104,12 @@ interface FloatingPanelTemplateProps {
   overlayClassName?: string;
   defaultSize?: { width: number; height: number };
   defaultPosition?: { x: number; y: number };
+  /** 编辑器工作条锚点等；迁移旧版视口居中记忆。 */
+  preferredDefaultPosition?: (size: { width: number; height: number }) => { x: number; y: number };
   /** Panel shell z-index; default 50. Editor modals use 110 to clear toolbar (z-90). */
   panelZIndex?: number;
-  contentFitHeight?: number;
+  /** true（autoFit / staticFit）：随内容 CSS 自动贴合；false（fill）：固定 px 高度。 */
+  autoHeight?: boolean;
   persistPhaseKey?: string;
   layoutRev?: number;
 }
@@ -128,8 +131,9 @@ export function FloatingPanelTemplate({
   overlayClassName,
   defaultSize: defaultSizeOverride,
   defaultPosition: defaultPositionOverride,
+  preferredDefaultPosition,
   panelZIndex,
-  contentFitHeight,
+  autoHeight,
   persistPhaseKey,
   layoutRev,
 }: FloatingPanelTemplateProps) {
@@ -167,9 +171,10 @@ export function FloatingPanelTemplate({
         maxHeight={mergedConfig.maxHeight}
         persistState={mergedConfig.persistState}
         zIndex={panelZIndex}
-        contentFitHeight={contentFitHeight}
+        autoHeight={autoHeight}
         persistPhaseKey={persistPhaseKey}
         layoutRev={layoutRev}
+        preferredDefaultPosition={preferredDefaultPosition}
         onClose={onClose}
       >
         {children}

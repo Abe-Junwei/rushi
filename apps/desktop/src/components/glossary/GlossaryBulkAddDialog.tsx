@@ -7,7 +7,6 @@ import {
 } from "../../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../../config/typography";
 import { splitGlossaryPasteInput } from "../../services/glossaryPasteSplit";
-import { resolveFloatingPanelSectionsFitHeight } from "../floatingPanelFitSections";
 import { CompactFloatingDialog } from "../CompactFloatingDialog";
 import { FloatingPanelDialogHeader } from "../FloatingPanelDialogLayout";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";
@@ -37,16 +36,6 @@ export function GlossaryBulkAddDialog({
   const pieceCount = useMemo(() => splitGlossaryPasteInput(bulkPaste).length, [bulkPaste]);
   const canSubmit = pieceCount > 0 && !disabled && !busy;
 
-  const estimatedFitHeight = useMemo(
-    () =>
-      resolveFloatingPanelSectionsFitHeight([
-        { kind: "mutedLine", show: true },
-        { kind: "static", px: 152 },
-        { kind: "mutedLine", show: true },
-      ]),
-    [],
-  );
-
   const handleTextareaKeyDown = (e: KeyboardEvent<HTMLTextAreaElement>) => {
     if (e.key === "Enter" && (e.metaKey || e.ctrlKey) && canSubmit) {
       e.preventDefault();
@@ -63,7 +52,7 @@ export function GlossaryBulkAddDialog({
         if (!disabled && !busy) onCancel();
       }}
       fallbackHeight={FALLBACK_HEIGHT}
-      estimatedFitHeight={estimatedFitHeight}
+      fitKind="staticFit"
       defaultWidth={480}
       bounds={{ minWidth: 400, minHeight: 280, maxWidthCap: 520, maxHeightCap: 480 }}
       footer={

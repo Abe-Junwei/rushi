@@ -9,10 +9,8 @@ import { TRANSCRIBE_PREFLIGHT_TYPO as T } from "./transcribePreflightTypography"
 
 const PANEL_ID = "auto-transcribe-start-v1";
 const DEFAULT_WIDTH = 420;
-/** 首帧兜底；实测高度由 ResizeObserver 覆盖。 */
+/** 打开时占位高度（staticFit：实际高度由内容 CSS 自动贴合）。 */
 const FALLBACK_HEIGHT = 200;
-/** 布局变更时 bump，丢弃旧 persist 高度记忆。 */
-const LAYOUT_REV_BASE = 4;
 
 type Props = {
   open: boolean;
@@ -62,13 +60,6 @@ export function AutoTranscribeStartDialog({
     ? `覆盖 ${segmentCount} 条语段并重新转写`
     : "识别当前音频并写入语段";
 
-  const layoutRev =
-    LAYOUT_REV_BASE +
-    (source === "online" ? 1 : 0) +
-    (hasExistingSegmentText ? 2 : 0) +
-    vocabularyLines.length +
-    (showOpenGlossaryLink && vocabularyLines.length > 0 ? 8 : 0);
-
   return (
     <CompactFloatingDialog
       id={PANEL_ID}
@@ -76,7 +67,7 @@ export function AutoTranscribeStartDialog({
       open={open}
       onClose={handleClose}
       fallbackHeight={FALLBACK_HEIGHT}
-      layoutRev={layoutRev}
+      fitKind="staticFit"
       defaultWidth={DEFAULT_WIDTH}
       bounds={{ minWidth: 320, minHeight: 160, maxWidthCap: 480 }}
       persistState

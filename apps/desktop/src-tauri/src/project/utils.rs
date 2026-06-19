@@ -33,7 +33,7 @@ pub fn append_desktop_log_line(st: &DbState, line: &str) {
         }
     }
     let ts = now_ms();
-    let clean = line.replace(['\n', '\r'], " ");
+    let clean = crate::utils::redact_secrets_for_log(line).replace(['\n', '\r'], " ");
     let line_bytes = format!("{ts}\t{clean}\n");
     if let Ok(mut f) = fs::OpenOptions::new().create(true).append(true).open(&path) {
         let _ = f.write_all(line_bytes.as_bytes());
@@ -237,4 +237,61 @@ pub fn canonicalize_audio_storage_path(path: &Path) -> Result<String, String> {
     let canonical = fs::canonicalize(path)
         .map_err(|e| format!("无法规范化音频路径 ({}): {e}", path.display()))?;
     Ok(canonical.to_string_lossy().to_string())
+}
+
+pub fn resolve_audio_path_under_root(root: &Path, raw_path: &str) -> Result<PathBuf, String> {
+    let trimmed = raw_path.trim();
+    if trimmed.is_empty() {
+        return Err("音频路径为空".into());
+    }
+    let pb = PathBuf::from(trimmed);
+    let sm = fs::symlink_metadata(&pb).map_err(|e| format!("无法读取音频文件元数据: {e}"))?;
+    if sm.file_type().is_symlink() {
+        return Err("拒绝读取：音频文件为符号链接。".into());
+    }
+    let root_can = fs::canonicalize(root).map_err(|e| format!("无法解析应用数据根目录: {e}"))?;
+    let file_can = fs::canonicalize(&pb).map_err(|e| format!("无法解析音频文件路径: {e}"))?;
+    if file_can.strip_prefix(&root_can).is_err() {
+        return Err("拒绝读取：音频文件不在应用数据根之下。".into());
+    }
+    if !file_can.is_file() {
+        return Err("音频文件不存在或不是普通文件".into());
+    }
+    Ok(file_can)
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use uuid::Uuid;
+
+    #[test]
+    fn resolve_audio_path_under_root_rejects_outside_file() {
+        let root = std::env::temp_dir().join(format!("rushi-audio-root-{}", Uuid::new_v4()));
+        let outside = std::env::temp_dir().join(format!("rushi-audio-out-{}", Uuid::new_v4()));
+        fs::create_dir_all(&root).unwrap();
+        fs::write(&outside, b"not project media").unwrap();
+
+        let err = resolve_audio_path_under_root(&root, outside.to_str().unwrap()).unwrap_err();
+        assert!(err.contains("应用数据根"));
+
+        let _ = fs::remove_file(outside);
+        let _ = fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn resolve_audio_path_under_root_accepts_file_under_root() {
+        let root = std::env::temp_dir().join(format!("rushi-audio-root-{}", Uuid::new_v4()));
+        fs::create_dir_all(&root).unwrap();
+        let audio = root.join("a.wav");
+        fs::write(&audio, b"wav").unwrap();
+
+        let resolved = resolve_audio_path_under_root(&root, audio.to_str().unwrap()).unwrap();
+        assert!(resolved.is_file());
+        assert!(resolved
+            .strip_prefix(fs::canonicalize(&root).unwrap())
+            .is_ok());
+
+        let _ = fs::remove_dir_all(root);
+    }
 }

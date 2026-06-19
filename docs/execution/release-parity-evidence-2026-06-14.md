@@ -69,3 +69,17 @@
 | Go / No-Go | **L2 Go · L3 No-Go（待手测）** |
 | Blockers | 7-A–7-D 动态签收未勾选 |
 | Follow-up | 1) 重编侧车确保 stamp 随 build 产出 2) [L3 勾选表](./release-parity-l3-hand-test-checklist-2026-06-14.md) 3) 更新 copy-code-drift 动态列 |
+
+## 7. 2026-06-19 Follow-up Evidence
+
+| 项 | 结果 | 证据 |
+|----|------|------|
+| `release-postbuild-verify.sh` | ✅ | 既有 macOS `.app`：app binary、bundled sidecar、ffmpeg/ffprobe、resource layout、frontend bundle、waveform release probe 均通过 |
+| bundled sidecar stamp | ✅ | `git_sha=dc9f372 built_at=2026-06-17T18:09:38Z platform=Darwin-arm64` |
+| upgrade profile machine probe | ✅ | 既有 App Data：DB audio rows + peaks sample + recent `asset_scope_ok` / waveform selection profile logs |
+| fresh profile UI signoff | ☐ | 仍需人工执行 [L3 勾选表](./release-parity-l3-hand-test-checklist-2026-06-14.md) H1–H4；未用 `--skip-download` 覆盖既有 fresh evidence |
+| L3 dynamic rows 7-A–7-D | ☐ | 仍需安装包 UI 手测；机器 probe 不能替代 ASR chip、快捷键、导出、复制文案人工观察 |
+
+**Decision unchanged**：L2/机器证据可继续视为 Go；对外分发仍是 **L3 No-Go**，直到 fresh/upgrade UI 手测签收完成。
+
+Hand-test operator doc: [release-parity-l3-hand-test-runbook-2026-06-19.md](./release-parity-l3-hand-test-runbook-2026-06-19.md).

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { EnvProfileActions } from "./EnvProfileActions";
 import { EnvLlmConfigPanel } from "./EnvLlmConfigPanel";
 import { EnvLocalAsrPanel } from "./EnvLocalAsrPanel";
@@ -6,12 +6,11 @@ import { EnvOnlineSttPanel } from "./EnvOnlineSttPanel";
 import { EnvEditorShortcutsPanel } from "./EnvEditorShortcutsPanel";
 import { EnvAboutPanel } from "./EnvAboutPanel";
 import { EnvAppearancePanel } from "./EnvAppearancePanel";
-import { EnvHelpPanel } from "./EnvHelpPanel";
 import { EnvQualityPanel } from "./EnvQualityPanel";
 import { EnvironmentPanelNav } from "./EnvironmentPanelNav";
 import { useLlmEnvStatus } from "../hooks/useLlmEnvStatus";
+import { useOnlineSttEnvNavTone } from "../hooks/useOnlineSttEnvNavTone";
 import type { AsrEnvPresentation } from "../services/asr/asrEnvStatus";
-import { readOnlineSttEnvNavTone } from "../services/stt/readOnlineSttEnvNavPresentation";
 import type { AsrHealthCapabilities, AsrModelCacheInfo, BundledAsrLaunchReport, WaveformPeaksCacheInfo } from "../tauri/projectApi";
 import type { AsrSetupControllerApi } from "../pages/useAsrSetupController";
 import type { LocalAsrModelCatalogApi } from "../pages/useLocalAsrModelCatalog";
@@ -100,7 +99,7 @@ export function EnvironmentPanel({
     onSttOnlineRuntimeChanged?.();
   }, [onSttOnlineRuntimeChanged]);
 
-  const onlineSttNavTone = useMemo(() => readOnlineSttEnvNavTone(), []);
+  const onlineSttNavTone = useOnlineSttEnvNavTone(settingsEpoch);
 
   useEffect(() => {
     const section = resolveEnvironmentFocusSection({
@@ -223,8 +222,6 @@ export function EnvironmentPanel({
             {envSection === "quality" ? <EnvQualityPanel busy={busy} /> : null}
 
             {envSection === "about" ? <EnvAboutPanel /> : null}
-
-            {envSection === "help" ? <EnvHelpPanel /> : null}
         </main>
       </div>
     </div>

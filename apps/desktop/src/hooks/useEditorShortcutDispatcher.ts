@@ -65,7 +65,6 @@ function shortcutAllowedInGenericEditable(shortcutId: EditorShortcutId): boolean
     shortcutId === "workflow.closeFile" ||
     shortcutId === "workflow.segmentAnnotation" ||
     shortcutId === "workflow.addCorrectionMemory" ||
-    shortcutId === "playback.toggle" ||
     shortcutId === "segment.delete" ||
     shortcutId === "segment.advancePrev" ||
     shortcutId === "segment.advanceNext" ||

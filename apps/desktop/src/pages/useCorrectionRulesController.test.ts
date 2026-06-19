@@ -10,6 +10,16 @@ vi.mock("../tauri/correctionApi", () => ({
   correctionMemoryList: vi.fn(),
 }));
 
+vi.mock("../utils/segmentListVirtualWindow", async (importOriginal) => {
+  const actual = await importOriginal<typeof import("../utils/segmentListVirtualWindow")>();
+  return {
+    ...actual,
+    scheduleScrollSegmentListIndexToView: vi.fn(),
+  };
+});
+
+import { scheduleScrollSegmentListIndexToView } from "../utils/segmentListVirtualWindow";
+
 function baseArgs() {
   const segments: SegmentDto[] = [{ uid: "s1", idx: 0, start_sec: 0, end_sec: 1, text: "智控系统" }];
   const segmentsRef = { current: segments };
@@ -35,6 +45,7 @@ describe("useCorrectionRulesController F0 stage A", () => {
     vi.mocked(correctionStableRulesList).mockReset();
     vi.mocked(correctionMemoryList).mockReset();
     vi.mocked(correctionMemoryList).mockResolvedValue([]);
+    vi.mocked(scheduleScrollSegmentListIndexToView).mockReset();
   });
 
   it("openPostTranscribeStageA shows preview when rules match", async () => {
@@ -209,6 +220,29 @@ describe("useCorrectionRulesController F0 stage A", () => {
 
     expect(segmentsRef.current[0]?.text).toBe("智控A");
     expect(segmentsRef.current[1]?.text).not.toBe("智控系统");
+  });
+
+  it("focusCorrectionRulesPreviewSegment scrolls segment list by absolute index", async () => {
+    vi.mocked(correctionStableRulesList).mockResolvedValue([
+      { wrong: "智控", right: "制控", hitCount: 3, acceptedAsRule: false },
+    ]);
+    const segments: SegmentDto[] = [
+      { uid: "s1", idx: 0, start_sec: 0, end_sec: 1, text: "智控A" },
+      { uid: "s2", idx: 1, start_sec: 1, end_sec: 2, text: "智控系统" },
+    ];
+    const args = { ...baseArgs(), segments };
+    const { result } = renderHook(() => useCorrectionRulesController(args));
+
+    await act(async () => {
+      await result.current.openPostTranscribeStageA();
+    });
+    vi.mocked(scheduleScrollSegmentListIndexToView).mockClear();
+
+    act(() => {
+      result.current.focusCorrectionRulesPreviewSegment(1);
+    });
+
+    expect(scheduleScrollSegmentListIndexToView).toHaveBeenCalledWith(1);
   });
 
   it("does not auto-open on missing file", async () => {

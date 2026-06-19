@@ -5,24 +5,18 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
-from rushi_asr.defaults import DEFAULT_FUNASR_MODEL_ID, effective_funasr_forced_aligner_id, effective_funasr_model_id, effective_funasr_vad_model_id
+from rushi_asr.defaults import DEFAULT_FUNASR_MODEL_ID, effective_funasr_model_id, effective_funasr_vad_model_id
 from rushi_asr.funasr_pipeline import effective_funasr_punc_model_id, is_funasr_nano_model
 
 DEFAULT_MODEL_REQUIRED_FILES = ("model.pt", "config.yaml", "tokens.json")
 DEFAULT_VAD_REQUIRED_FILES = ("model.pt",)
 DEFAULT_PUNC_REQUIRED_FILES = ("model.pt", "config.yaml")
 
-# Paraformer-style hub ids use model.pt; Qwen3-ASR uses HuggingFace-style layout.
-QWEN_RECOGNIZER_REQUIRED_FILES = ("config.json", "model.safetensors")
-QWEN_RECOGNIZER_WEIGHT_FILE = "model.safetensors"
 RECOGNIZER_MIN_WEIGHT_BYTES = 100 * 1024 * 1024
 
 
 def recognizer_cache_spec(model_id: str) -> tuple[tuple[str, ...], str, int]:
     """Required artifact names, primary weight filename, and minimum weight size."""
-    mid = (model_id or "").lower()
-    if "qwen" in mid:
-        return (QWEN_RECOGNIZER_REQUIRED_FILES, QWEN_RECOGNIZER_WEIGHT_FILE, RECOGNIZER_MIN_WEIGHT_BYTES)
     if is_funasr_nano_model(model_id):
         return (("model.pt", "config.yaml"), "model.pt", RECOGNIZER_MIN_WEIGHT_BYTES)
     return (DEFAULT_MODEL_REQUIRED_FILES, "model.pt", RECOGNIZER_MIN_WEIGHT_BYTES)
@@ -143,10 +137,6 @@ def resolve_cached_hub_arg(
     return str(cached) if cached is not None else hub_id
 
 
-def funasr_qwen_hub_id(hub_id: str) -> bool:
-    return "qwen" in (hub_id or "").lower()
-
-
 def resolve_funasr_automodel_arg(
     hub_id: str,
     *,
@@ -154,10 +144,8 @@ def resolve_funasr_automodel_arg(
     min_weight_bytes: int | None = None,
     weight_file: str | None = None,
 ) -> str:
-    """FunASR AutoModel `model=` arg: Qwen SKUs must use registered hub ids + hub=ms."""
+    """FunASR AutoModel `model=` arg, preferring local cached model paths."""
     if not hub_id:
-        return hub_id
-    if funasr_qwen_hub_id(hub_id):
         return hub_id
     return resolve_cached_hub_arg(
         hub_id,
@@ -165,13 +153,6 @@ def resolve_funasr_automodel_arg(
         min_weight_bytes=min_weight_bytes,
         weight_file=weight_file,
     )
-
-
-def resolve_qwen_forced_aligner_arg(hub_id: str) -> str:
-    """qwen-asr loads forced aligner via transformers; prefer local ModelScope path."""
-    if not hub_id:
-        return hub_id
-    return resolve_cached_hub_arg(hub_id)
 
 
 def recognizer_model_cached_guess(model_id: str | None = None) -> bool:
@@ -207,24 +188,10 @@ def punc_model_cached_guess(model_id: str | None = None) -> bool:
     return model_cached_guess(punc_id, DEFAULT_PUNC_REQUIRED_FILES, 1 * 1024 * 1024)
 
 
-def forced_aligner_model_cached_guess() -> bool:
-    aligner_id = effective_funasr_forced_aligner_id()
-    if not aligner_id:
-        return True
-    required, weight_file, min_bytes = recognizer_cache_spec(aligner_id)
-    return model_cached_guess(
-        aligner_id,
-        required,
-        min_bytes,
-        weight_file=weight_file,
-    )
-
-
 def required_models_cached_guess(model_id: str | None = None) -> bool:
     resolved = (model_id or "").strip() or effective_funasr_model_id()
     return (
         recognizer_model_cached_guess(resolved)
         and vad_model_cached_guess()
         and punc_model_cached_guess(resolved)
-        and forced_aligner_model_cached_guess()
     )

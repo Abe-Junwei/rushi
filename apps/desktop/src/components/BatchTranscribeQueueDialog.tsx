@@ -1,5 +1,4 @@
 import { CheckCircle2, Circle, CircleAlert, Loader2, MinusCircle } from "lucide-react";
-import { useMemo } from "react";
 import { CONTROL_BTN_DANGER, CONTROL_BTN_SECONDARY } from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { CompactFloatingDialog } from "./CompactFloatingDialog";
@@ -113,10 +112,6 @@ export function BatchTranscribeQueueDialog({
   onStop,
 }: Props) {
   const summary = summarizeBatchQueue(items);
-  const estimatedFitHeight = useMemo(
-    () => FALLBACK_HEIGHT + (summary.failed > 0 ? 36 : 0),
-    [summary.failed],
-  );
 
   return (
     <CompactFloatingDialog
@@ -127,8 +122,7 @@ export function BatchTranscribeQueueDialog({
         if (!running) onClose();
       }}
       fallbackHeight={FALLBACK_HEIGHT}
-      estimatedFitHeight={estimatedFitHeight}
-      layoutRev={items.length + (summary.failed > 0 ? 100 : 0)}
+      fitKind="staticFit"
       defaultWidth={DEFAULT_WIDTH}
       bounds={{ minWidth: 320, minHeight: 280, maxWidthCap: 480 }}
       persistState

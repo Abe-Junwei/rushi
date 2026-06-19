@@ -5,6 +5,7 @@ import { useDraggablePanelController } from "../hooks/useDraggablePanelControlle
 import { dialogCloseButtonTitle } from "../utils/dialogPanelHints";
 import { DraggablePanelResizeHandles } from "./DraggablePanelResizeHandles";
 import { CspLayout } from "./CspLayout";
+import { resolvePanelLayout } from "./draggablePanelGeometry";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
 interface DraggableResizablePanelProps {
@@ -20,10 +21,11 @@ interface DraggableResizablePanelProps {
   onClose: () => void;
   persistState?: boolean;
   zIndex?: number;
-  /** 随内容自动调整高度；用户手动改尺寸后跨会话保留（userSized）。 */
-  contentFitHeight?: number;
+  /** true（autoFit / staticFit）：未手拖时随内容贴合（CSS auto 高度）；false（fill）：固定 px 高度。 */
+  autoHeight?: boolean;
   persistPhaseKey?: string;
   layoutRev?: number;
+  preferredDefaultPosition?: (size: { width: number; height: number }) => { x: number; y: number };
 }
 
 export function DraggableResizablePanel({
@@ -39,11 +41,21 @@ export function DraggableResizablePanel({
   onClose,
   persistState,
   zIndex = 50,
-  contentFitHeight,
+  autoHeight = false,
   persistPhaseKey,
   layoutRev,
+  preferredDefaultPosition,
 }: DraggableResizablePanelProps) {
-  const { position, size, centerMode, startDrag, handleTitleDoubleClick } = useDraggablePanelController({
+  const {
+    position,
+    size,
+    centerMode,
+    heightMode,
+    maxHeightCap,
+    panelElementRef,
+    startDrag,
+    handleTitleDoubleClick,
+  } = useDraggablePanelController({
     id,
     defaultPosition,
     defaultSize,
@@ -52,27 +64,32 @@ export function DraggableResizablePanel({
     maxWidth,
     maxHeight,
     persistState,
-    contentFitHeight,
+    autoHeight,
     persistPhaseKey,
     layoutRev,
+    preferredDefaultPosition,
+  });
+
+  const layout = resolvePanelLayout({
+    heightMode,
+    centered: centerMode,
+    position,
+    size,
+    zIndex,
+    maxHeightCap,
   });
 
   return (
     <CspLayout
       id={id}
       data-panel-id={id}
-      className="fixed"
-      layout={{
-        left: centerMode ? `calc(50vw - ${size.width / 2}px)` : position.x,
-        top: centerMode ? `calc(50vh - ${size.height / 2}px)` : position.y,
-        width: size.width,
-        height: size.height,
-        zIndex,
-      }}
+      ref={panelElementRef}
+      className="fixed flex flex-col overflow-hidden"
+      layout={layout}
     >
       <DraggablePanelResizeHandles onPointerDown={startDrag} />
 
-      <div className={`relative z-10 flex h-full w-full flex-col overflow-hidden rounded-lg border border-notion-border bg-notion-bg font-sans antialiased text-notion-text ${FLAT_SHELL_ELEVATION_CLASS}`}>
+      <div className={`relative z-10 flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-lg border border-notion-border bg-notion-bg font-sans antialiased text-notion-text ${FLAT_SHELL_ELEVATION_CLASS}`}>
         <div
           className="flex shrink-0 cursor-move items-center justify-between border-b border-notion-divider bg-notion-sidebar px-6 py-4 select-none"
           onPointerDown={(e) => startDrag("move", e)}

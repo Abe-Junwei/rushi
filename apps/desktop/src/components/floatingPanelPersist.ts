@@ -1,6 +1,7 @@
 import type { FloatingPanelPersistedState } from "./floatingPanelViewport";
 
-export const FLOATING_PANEL_LAYOUT_REV = 3;
+/** Bump 时丢弃所有旧 persist 尺寸/位置。4 = CSS 自动高度单一真源（FLOAT-FIT）。 */
+export const FLOATING_PANEL_LAYOUT_REV = 4;
 
 type FloatingPanelPhasePersist = {
   size: { width: number; height: number };
@@ -44,7 +45,7 @@ export function resolvePhasePersistedSize(
   layoutRev: number,
 ): { size: FloatingPanelPersistedStateV2["size"]; userSized: boolean } | null {
   if (!saved) return null;
-  if (saved.layoutRev != null && saved.layoutRev !== layoutRev) return null;
+  if (saved.layoutRev !== layoutRev) return null;
 
   if (phaseKey && saved.phases?.[phaseKey]) {
     const phase = saved.phases[phaseKey];

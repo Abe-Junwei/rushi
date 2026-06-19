@@ -26,21 +26,10 @@ if [[ -n "${RUSHI_HF_ENDPOINT:-}" ]]; then
   export HF_ENDPOINT="${HF_ENDPOINT:-$RUSHI_HF_ENDPOINT}"
 fi
 
-# R3g-B-Align spike: ForcedAligner only pairs with Qwen3-ASR — skip desktop Paraformer pref.
-ALIGN_SPIKE=0
-if [[ -n "${RUSHI_FUNASR_FORCED_ALIGNER:-}" ]]; then
-  ALIGN_SPIKE=1
-  model_lc="$(printf '%s' "${RUSHI_FUNASR_MODEL:-}" | tr '[:upper:]' '[:lower:]')"
-  if [[ -z "${RUSHI_FUNASR_MODEL:-}" || "${model_lc}" != *qwen* ]]; then
-    echo "WARN: R3g-B-Align spike: using Qwen/Qwen3-ASR-0.6B (ForcedAligner requires Qwen ASR)." >&2
-    export RUSHI_FUNASR_MODEL="Qwen/Qwen3-ASR-0.6B"
-  fi
-fi
-
 # Apply saved hub preference when desktop app has written it.
 APP_DATA_ROOT="$(dirname "${RUSHI_MODELS_ROOT}")"
 PREF_FILE="${APP_DATA_ROOT}/prefs/funasr_hub_model_id.txt"
-if [[ "${ALIGN_SPIKE}" -eq 0 && -z "${RUSHI_FUNASR_MODEL:-}" && -f "${PREF_FILE}" ]]; then
+if [[ -z "${RUSHI_FUNASR_MODEL:-}" && -f "${PREF_FILE}" ]]; then
   hub="$(tr -d '\r\n' < "${PREF_FILE}" | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
   if [[ -n "${hub}" ]]; then
     export RUSHI_FUNASR_MODEL="${hub}"
@@ -88,20 +77,16 @@ except Exception:
 }
 
 sidecar_matches_want_env() {
-  local snap want_model want_aligner active_model active_aligner
+  local snap want_model active_model
   snap="$(health_sidecar_snapshot)"
   [[ -n "${snap}" ]] || return 1
   want_model="${RUSHI_FUNASR_MODEL:-}"
-  want_aligner="${RUSHI_FUNASR_FORCED_ALIGNER:-}"
-  read -r active_model active_aligner <<< "$(printf '%s' "${snap}" | python3 -c "
+  active_model="$(printf '%s' "${snap}" | python3 -c "
 import json, sys
 j = json.load(sys.stdin)
-print(j.get('funasr_model_id') or '', j.get('funasr_forced_aligner_model_id') or '')
+print(j.get('funasr_model_id') or '')
 ")"
   if [[ -n "${want_model}" && "${active_model}" != "${want_model}" && "${active_model}" != *"${want_model##*/}"* ]]; then
-    return 1
-  fi
-  if [[ -n "${want_aligner}" && "${active_aligner}" != "${want_aligner}" ]]; then
     return 1
   fi
   return 0
@@ -118,7 +103,6 @@ if curl -sf --max-time 2 "${ASR_BASE}/health" >/dev/null 2>&1; then
   echo "WARN: ${ASR_BASE} sidecar env mismatch." >&2
   echo "      loaded/configured model: ${loaded:-unknown}" >&2
   echo "      wanted model: ${want:-<unset>}" >&2
-  echo "      wanted aligner: ${RUSHI_FUNASR_FORCED_ALIGNER:-<unset>}" >&2
   if [[ "${RUSHI_ASR_DEV_RESTART:-}" == "1" ]]; then
     stop_sidecar_on_8741
   else
@@ -132,9 +116,6 @@ fi
 echo "==> RUSHI_MODELS_ROOT=${RUSHI_MODELS_ROOT}"
 if [[ -n "${RUSHI_FUNASR_MODEL:-}" ]]; then
   echo "==> RUSHI_FUNASR_MODEL=${RUSHI_FUNASR_MODEL}"
-fi
-if [[ -n "${RUSHI_FUNASR_FORCED_ALIGNER:-}" ]]; then
-  echo "==> RUSHI_FUNASR_FORCED_ALIGNER=${RUSHI_FUNASR_FORCED_ALIGNER}"
 fi
 if [[ -n "${RUSHI_HF_ENDPOINT:-}" ]]; then
   echo "==> HF_ENDPOINT=${HF_ENDPOINT:-$RUSHI_HF_ENDPOINT}"

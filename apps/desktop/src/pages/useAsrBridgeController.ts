@@ -86,7 +86,7 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
 
   /* eslint-disable react-hooks/exhaustive-deps -- cacheCtrl is a stable hook-returned controller; only its method identity matters */
   const refreshAsrRuntimeInfo = useCallback(async () => {
-    await refreshAsrHealth();
+    await refreshAsrHealth({ touchUi: false });
     await cacheCtrl.refreshAsrModelCacheInfo();
     await refreshEnvironmentDiagnostics?.();
   }, [cacheCtrl.refreshAsrModelCacheInfo, refreshAsrHealth, refreshEnvironmentDiagnostics]);

@@ -1,8 +1,5 @@
 import { useCallback, useMemo, useState } from "react";
-import {
-  querySegmentListScrollRoot,
-  scrollSegmentRowIntoViewContainer,
-} from "../utils/segmentListVirtualWindow";
+import { scheduleScrollSegmentListIndexToView } from "../utils/segmentListVirtualWindow";
 import type { SegmentDto } from "../tauri/projectApi";
 import { correctionHighlightSpanToCharRange } from "../services/editor/correctionHighlightCharRange";
 import { formatStableRuleConflictMessage } from "../services/editor/stableCorrectionRuleConflicts";
@@ -46,12 +43,7 @@ export function useCorrectionRulesController(args: Args) {
   const [previewFocusSegmentIdx, setPreviewFocusSegmentIdx] = useState<number | null>(null);
 
   const scrollToPreviewSegment = useCallback((segmentIdx: number) => {
-    window.requestAnimationFrame(() => {
-      const root = querySegmentListScrollRoot();
-      if (!root) return;
-      const next = scrollSegmentRowIntoViewContainer(segmentIdx, root, { align: "center" });
-      if (next != null) root.scrollTop = next;
-    });
+    scheduleScrollSegmentListIndexToView(segmentIdx);
   }, []);
 
   const blockReason = !currentFileId
