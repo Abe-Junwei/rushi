@@ -7,7 +7,6 @@ export const ENV_NAV = {
   shortcuts: "设置 → 快捷键",
   profile: "设置 → 配置迁移",
   quality: "设置 → 质量评测",
-  help: "设置 → 使用说明",
   about: "设置 → 关于",
 } as const;
 

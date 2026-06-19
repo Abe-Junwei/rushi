@@ -6,8 +6,7 @@ export type EnvNavId =
   | "profile"
   | "shortcuts"
   | "quality"
-  | "about"
-  | "help";
+  | "about";
 
 export const ENV_NAV_BTN_BASE =
   "mb-1 flex w-full appearance-none items-center border-0 px-4 py-3 text-left shadow-none outline-none transition-colors duration-150 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-accent-action/30";
@@ -16,11 +15,11 @@ export type EnvNavItemDef = {
   id: EnvNavId;
   label: string;
   description: string;
-  /** 与下方说明类条目贴底（在「使用说明」首项上加 mt-auto） */
+  /** 贴底（如「关于」） */
   pinBottom?: boolean;
 };
 
-/** 顺序：转写能力 → 编辑 → 数据/维护 → 说明与关于（贴底） */
+/** 顺序：转写能力 → 编辑 → 数据/维护 → 关于（贴底） */
 export const ENV_NAV_ITEM_DEFS: EnvNavItemDef[] = [
   { id: "local-asr", label: "本机 ASR", description: "侧车、模型与诊断" },
   { id: "online-stt", label: "在线 STT", description: "厂商与 API Key" },
@@ -29,8 +28,7 @@ export const ENV_NAV_ITEM_DEFS: EnvNavItemDef[] = [
   { id: "shortcuts", label: "快捷键", description: "编辑器键盘操作" },
   { id: "profile", label: "配置迁移", description: "导入 / 导出偏好" },
   { id: "quality", label: "质量评测", description: "CER / 发版门禁" },
-  { id: "help", label: "使用说明", description: "转写流程与 FAQ", pinBottom: true },
-  { id: "about", label: "关于", description: "版本与第三方许可" },
+  { id: "about", label: "关于", description: "版本与第三方许可", pinBottom: true },
 ];
 
 export function envMainPaddingClass(layoutCompact: boolean): string {
