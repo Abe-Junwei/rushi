@@ -1,8 +1,6 @@
 /** 欢迎页 / 项目 Hub / 编辑页共用侧栏宽度 */
 import { MAIN_SHELL_SURFACE_CLASS } from "./shellVisualTokens";
 
-export const WORKSPACE_SIDEBAR_WIDTH = "20rem";
-
 /** 固定侧栏双栏 grid（Welcome / Hub）— 列宽见 workspace.css `.workspace-shell-fixed` */
 export const WORKSPACE_SHELL_GRID_CLASS =
   "workspace-shell-fixed grid h-full min-h-0 w-full flex-1";

@@ -23,7 +23,6 @@ colors:
   ochre: '#EAE0C5'
   stone: '#8E8E8E'
   cinnabar: '#963530'
-  indigo: '#3D4F5D'
   surface: '#fcf9f2'
   surface-dim: '#dcdad3'
   surface-bright: '#fcf9f2'
@@ -41,49 +40,28 @@ colors:
   waveform-wave: '#c4c4c8'
   waveform-progress: '#8e8e93'
   waveform-cursor: '#6a6a6f'
+# Type scale（5 级，code-ratified；落码真源 = zen-tailwind.css @theme --text-*）
+# token 仅承载 fontSize；line-height/weight/letterSpacing 由 leading-*/font-*/tracking-* 与 typography.ts 控制。
+# 禁止再用 text-[Npx] arbitrary；新增字号必须走这 5 级。
 typography:
-  display-lg:
+  display:
     fontFamily: Inter
-    fontSize: 40px
-    fontWeight: '700'
-    lineHeight: '1.2'
-    letterSpacing: -0.02em
-  display-md:
+    fontSize: 28px   # 页面 H1（欢迎 / Hub / 环境页标题）
+  heading:
     fontFamily: Inter
-    fontSize: 28px
-    fontWeight: '600'
-    lineHeight: '1.3'
-    letterSpacing: -0.01em
-  headline-sm:
+    fontSize: 18px   # 侧栏品牌、面板大标题
+  title:
     fontFamily: Inter
-    fontSize: 18px
-    fontWeight: '600'
-    lineHeight: '1.4'
-    letterSpacing: '0'
-  body-md:
+    fontSize: 14px   # 区块标题、副标题、导航标题
+  body:
     fontFamily: Inter
-    fontSize: 14px
-    fontWeight: '400'
-    lineHeight: '1.6'
-    letterSpacing: '0'
-  body-sm:
+    fontSize: 12px   # 主力正文 / 控件文字（最高频）
+  label:
     fontFamily: Inter
-    fontSize: 12px
-    fontWeight: '400'
-    lineHeight: '1.5'
-    letterSpacing: '0'
-  label-caps:
-    fontFamily: Inter
-    fontSize: 11px
-    fontWeight: '600'
-    lineHeight: '1.0'
-    letterSpacing: 0.1em
-  mono-sm:
+    fontSize: 11px   # 标签 / meta / caption / badge
+  mono:
     fontFamily: JetBrains Mono
-    fontSize: 12px
-    fontWeight: '400'
-    lineHeight: '1.4'
-    letterSpacing: '0'
+    fontSize: 12px   # 技术信息（路径 / ID）；字号同 body
 rounded:
   sm: 0.25rem   # 4px — 按钮、输入框
   DEFAULT: 0.5rem
@@ -117,39 +95,58 @@ The palette is a **Notion-neutral base + warm saffron accent**:
 - **Text (`notion-text` #37352f):** Notion's signature soft black. High legibility without the harshness of pure #000.
 - **Muted Text (`notion-text-muted` #6b6b6b):** For secondary labels, descriptions, placeholders.
 - **Dividers (`notion-divider` #e3e2e0):** Very light borders for separation. Used extensively for hairlines.
-- **Primary (Saffron #C58A43):** Reserved for the most important CTAs and active selection states. The warm accent prevents the interface from feeling sterile.
+- **Primary (Saffron #C58A43):** **动作 / 进度 / CTA**（Primary 按钮、工作条 toggle、手动编辑提示、播放头刻度）。
+- **Edit accent:** Removed — 语段选中 / 波形 overlay / LLM chip 与 **accent-action** 共用主题色链。
 - **Danger (Cinnabar #963530):** Used exclusively for destructive actions (delete, remove).
 - **Success:** Green for positive status indicators.
 
-**Legacy warm surfaces (`paper`, `surface-card`, `ochre`):** Retained for语段卡、欢迎页 hero、部分 callout；主工作台壳层与波形区优先 `notion-*`。
+**Shell accent（全应用统一，随 Office 主题色 remap）**
+
+| 语义 | Token | 用途 |
+|------|-------|------|
+| 选中 / 多选 / CTA / 进度 | `--accent-action` / `--accent-action-strong` | 语段行、波形 overlay、Primary 按钮、播放头、minimap、visited 带 |
+| 兼容别名 | `--accent-edit` | 等于 `--accent-action`；旧 Tailwind `accent-edit` 仍可用 |
+
+**Main shell vs 内容装饰**
+
+- **主壳层**（Welcome / Project Hub / Editor chrome）：`notion-bg` · `notion-sidebar` · `notion-divider`（`tokens.css` `--main-shell-*`）。导航侧栏、顶栏、波形 tier 外壳、minimap 条 **禁止** `zen-paper`。
+- **内容装饰面**：`zen-paper` · `surface-card`（`--content-decoration-*`）仅用于 Welcome hero、语段卡等 **内容区**，不进导航壳。
+
+**Legacy warm surfaces (`paper`, `surface-card`, `ochre`):** 仅作内容装饰；主工作台壳层优先 `notion-*` / `--main-shell-*`。
 
 ### Waveform tokens
 
-波形区在 Notion 侧栏底上叠白底 peaks；语段 overlay 用 saffron / ink 语义，与下方语段卡可分层配色。
+波形区在 Notion 侧栏底上叠白底 peaks；语段 / 进度 chroming 走 `--accent-action*` 与 `--segment-fill-*`，见 `tokens.css`。
 
-| Token | Hex | Tailwind / TS | 用途 |
-|-------|-----|---------------|------|
-| `waveform-surface` | `#ffffff` | `zen-wf-surface` / `COLORS.waveformSurface` | WaveSurfer 画布底、peaks 绘制区 |
-| `waveform-wave` | `#c4c4c8` | `zen-wf-wave` / `COLORS.waveformWave` | 未播放 peaks、minimap 柱形 |
-| `waveform-progress` | `#8e8e93` | `zen-wf-progress` / `COLORS.waveformProgress` | 已播放 peaks tint |
-| `waveform-cursor` | `#6a6a6f` | `zen-wf-cursor` / `COLORS.waveformCursor` | WaveSurfer 内置 playhead |
-| — | — | `bg-notion-sidebar` | 波形 tier 外壳、minimap 条背景 |
-| — | — | `zen-saffron` | 选中语段边线、minimap 视口框、缩放 active 态 |
+| Token | 语义 | CSS 变量 | 用途 |
+|-------|------|----------|------|
+| 未播放 peaks | 中性灰 | `--zen-wf-wave` | WaveSurfer 柱形、minimap |
+| 已播放 peaks | action-strong mix | `--zen-wf-progress-played` | 已播放 tint |
+| 播放头 | action | `--waveform-playhead` | 视口全高 playhead |
+| Minimap 视口 | action | `--waveform-minimap-viewport-*` | 总览视口框 |
+| 语段选中 | action | `--segment-fill-selected` | 列表 / overlay 28% |
+| 语段多选（波形） | action | `--segment-fill-in-selection-waveform` | overlay 12% |
+| 语段多选（列表） | action | `--segment-fill-in-selection-list` | 列表行 8% |
+| 语段未播放 | ink | `--segment-fill-idle` | band 11% mix |
+| 语段已播放 | action-strong | `--segment-fill-visited` | band 14% mix |
+
+落码 Tailwind：`accent-action` / `accent-action-strong`（`accent-edit` 为兼容别名；禁止组件直引 `zen-saffron*`）。
 
 ## Typography
 
 Single sans-serif font family (Inter) for all UI. No serif display fonts—Notion style favors clean, modern typography throughout.
 
-- **Display:** Large, bold headings for page titles (`display-lg`, `display-md`).
-- **Headings:** Semibold for section titles (`headline-sm`).
-- **Body:** Regular weight for all content and UI text (`body-md`, `body-sm`).
-- **Labels:** Uppercase with wide letter spacing for section headers and metadata (`label-caps`).
-- **Monospace:** JetBrains Mono for technical data (file paths, dates, IDs).
+- **Display (`text-display` 28px):** Page titles (Welcome / Hub / 环境页 H1).
+- **Heading (`text-heading` 18px):** Sidebar brand, panel headings.
+- **Title (`text-title` 14px):** Section titles, subtitles, nav titles.
+- **Body (`text-body` 12px):** Default content and UI text (highest frequency).
+- **Label (`text-label` 11px):** Labels, meta, captions, badges (often uppercase + wide tracking).
+- **Monospace (`font-mono`, 12px = body):** Technical data (file paths, dates, IDs).
 
 **Formatting Rules:**
 - Large display text uses tighter letter spacing for a modern feel.
 - Labels and captions (11px) always use uppercase with generous letter spacing.
-- Monospace paths or technical data use a distinct background or color (`indigo`) to signify their nature.
+- Monospace paths or technical data use `notion-text-muted` + mono (neutral, not accent).
 - Timecode in toolbars uses tabular nums (`font-variant-numeric: tabular-nums`).
 
 **Serif 例外（legacy，仍允许）：**
@@ -174,13 +171,15 @@ Single sans-serif font family (Inter) for all UI. No serif display fonts—Notio
 
 ## Elevation & Depth
 
-Hierarchy through **background tone shifts** and **fine borders**—no drop shadows on most elements.
+Hierarchy through **background tone shifts** and **fine borders**—**no drop shadows** on shell chrome or body-portaled overlays (dialogs, menus, toast).
 
-- **Surfaces:** Main content is white. Cards use white with a 1px `notion-border`. Sidebar uses `#f7f7f5`.
-- **Borders:** 1px borders in `notion-divider` define boundaries. This creates a crisp, architectural look.
-- **Interactive Depth:** Only floating panels (modals, dropdowns) use subtle shadows. Hover effects use background color shifts (`notion-sidebar-hover`).
-- **The Busy Layer:** Semi-transparent white wash with light backdrop blur during processing.
+- **Surfaces:** Main content is white (`--main-shell-bg`). Sidebar uses `#f7f7f5` (`--main-shell-sidebar-bg`). Cards use white with a 1px `notion-border`.
+- **Borders:** 1px borders in `notion-divider` / `notion-border` define boundaries. Collapsible sidebar uses **border-right only**—no edge box-shadow.
+- **Interactive Depth:** Hover uses background color shifts (`notion-sidebar-hover`). Floating panels use **`border-notion-border` + `bg-notion-bg` + `shadow-none`**（见 `shellVisualTokens.ts` `FLAT_OVERLAY_PANEL_SHELL_CLASS`）。
+- **The Busy Layer:** 半透明遮罩 `--overlay-scrim-bg`（约 26% ink mix）；浮层面板仍 flat、无 drop shadow、**无 backdrop-blur**。
 - **Panel CSS:** 同一路径上最多 2 层可见容器 `border`；更深层级用背景色差与间距区分（见 Jieyu 面板规则）。
+
+**落码真源：** `apps/desktop/src/styles/tokens.css`（`--shell-elevation-shadow: none`）· `apps/desktop/src/config/shellVisualTokens.ts`
 
 ## Shapes
 
@@ -194,7 +193,7 @@ Hierarchy through **background tone shifts** and **fine borders**—no drop shad
 ## Components
 
 ### Buttons
-- **Primary:** Saffron background (#C58A43) with white text. **4px radius (`rounded-sm`). Height 32px (`h-8`).** Hover darkens to `saffron-mid`.
+- **Primary:** `primary-action` — **saffron 底 + 白字**（rest ~3:1；hover saffron-mid + 白字 AA）。 **4px radius (`rounded-sm`). Height 32px (`h-8`).**
 - **Secondary:** `notion-sidebar` background with `notion-text` text. 4px radius. Hover to `notion-sidebar-hover`. 1px `notion-border`.
 - **Ghost:** No background. `notion-text-muted` text. Hover to `notion-sidebar-hover` background.
 - **Danger:** White background, cinnabar text and border. Hover fills cinnabar with white text.
@@ -202,10 +201,10 @@ Hierarchy through **background tone shifts** and **fine borders**—no drop shad
 **落码：** 环境面板 / 欢迎页等复用 `apps/desktop/src/config/controlStyles.ts` 的 `CONTROL_*` 常量（已与上表对齐）。
 
 ### Input Fields
-- White background, 1px `notion-border`, **4px radius**, **height 32px**. On focus: border shifts to saffron with a subtle ring. Use `body-md` for user input.
+- White background, 1px `notion-border`, **4px radius**, **height 32px**. On focus: border shifts to saffron with a subtle ring. Use `text-body` for user input.
 
 ### Cards
-- White background, 1px `notion-border`, **6px radius (`rounded-md`)**. No shadow unless floating. Padding 16px–20px.
+- White background, 1px `notion-border`, **6px radius (`rounded-md`)**. **No shadow** (including floating). Padding 16px–20px.
 
 ### Navigation (Sidebar)
 - Items: 4px radius, padding `px-3 py-2`.
@@ -226,9 +225,10 @@ Hierarchy through **background tone shifts** and **fine borders**—no drop shad
 
 ### Waveform stage
 - **Tier shell:** `notion-sidebar` 背景；横向滚动；高度可拖拽。
-- **Peaks:** 白底 + 中性灰柱；WaveSurfer **中性灰 playhead**（`waveform-cursor`）；底边嵌入 22px 透明时间尺（标尺带 saffron playhead 刻度线）。
-- **语段 overlay:** 全高竖向区域，左右 hairline；选中 saffron 边线；左右 **8px 透明 handle**（`ew-resize`，无可见 grip）拖拽改边界；语段浮层仅 **播放 + 循环**（倍速统一在工作条 global menu）。
-- **Minimap（可选）:** 56px 高；`zen-paper` 底（与下方 sidebar 底栏以色块分层）；波形缩略**垂直居中**；saffron 视口框 + 细 playhead；无上下 border / 无内边距。
+- **Peaks:** 白底 + 中性灰柱（`--zen-wf-wave`）；已播放 `--zen-wf-progress-played`（`accent-action-strong` mix）。
+- **Playhead / minimap:** `--waveform-playhead`、`--waveform-minimap-*`（`accent-action` 族）；WS 内置 cursor 隐藏。
+- **语段 overlay:** `--segment-fill-*`；单选 / 列表主选 28%，多选波形 12% / 列表 8%；手动 stage chip 固定 `--zen-status-warn*`；左右 **8px handle** 拖拽边界。
+- **Minimap（可选）:** `--main-shell-minimap-bg`；`accent-action` 视口框 + playhead。
 - **工作条（波形与语段之间）:** **40px**（`h-8` 触控）；有音频时三栏 transport / 编辑 / zoom；无音频时单行居中仅编辑。视口 `<1024px` 时中间收进「编辑 ▾」、右区保留 ±。
 - **底栏（语段列表下）:** 30px 三列 grid；无状态 hint 时每 8s 轮换快捷键提示（与设置页共用真源）。
 - **语段点击（波形 overlay）：** 首次点击未选中语段 → 选中并 seek 到语段头；已在该语段内再次点击 → seek 到点击位置（钳在语段内）；语段播放从当前 playhead 起（若在语段内）。

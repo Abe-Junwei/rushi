@@ -73,13 +73,6 @@ export function llmExportPolishCapabilityBadgeClass(
   return `${base} bg-notion-sidebar text-notion-text-muted`;
 }
 
-/** 设置页「导出能力」列表项（与 llmExportPolishCapabilityBadge 对应）。 */
-export const LLM_CAPABILITIES = [
-  { id: "export_polish", label: "导出润色（Docx delivery）" },
-] as const;
-
-export type LlmCapabilityId = (typeof LLM_CAPABILITIES)[number]["id"];
-
 export function llmKeychainReferenceMessage(apiKeyId: string | null, keychainPresent: boolean | null): string {
   return localSecretStoreReferenceMessage(
     apiKeyId ? (normalizeLlmApiKeyId(apiKeyId) ?? DEFAULT_LLM_API_KEY_ID) : null,

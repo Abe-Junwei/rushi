@@ -153,12 +153,3 @@ export function readCspLayoutRulesForElement(element: HTMLElement): string | und
   if (!layoutId) return undefined;
   return readCspScopeRules(`layout-${layoutId}`);
 }
-
-export function setCspRootRules(scopeId: string, selector: string, rules: CspLayoutRules): void {
-  const declarations = formatCspLayoutDeclarations(rules);
-  if (!declarations) {
-    removeCspScopeRules(scopeId);
-    return;
-  }
-  upsertCspScopeRules(scopeId, `${selector} { ${declarations} }`);
-}

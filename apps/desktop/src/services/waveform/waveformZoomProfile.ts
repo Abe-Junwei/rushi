@@ -144,21 +144,6 @@ export function wfProfileFlush(): void {
   }
 }
 
-/** Log standalone span when profiling is on but no zoom frame is active (e.g. resize reRender). */
-export function wfProfileStandalone(span: WaveformZoomProfileSpan, ms: number, note?: string): void {
-  if (!isWaveformZoomProfileEnabled()) return;
-  if (wfProfileIsActive()) {
-    wfProfileAdd(span, ms);
-    return;
-  }
-  const suffix = note ? ` ${note}` : "";
-  emitProfileLine(`[wf-profile] ${span}=${ms.toFixed(1)}ms${suffix}`);
-}
-
-export function readRecentWaveformZoomProfileLines(): readonly string[] {
-  return recentProfileLines;
-}
-
 export function installWaveformZoomProfileDevTools(): void {
   if (typeof window === "undefined") return;
   const api = {
