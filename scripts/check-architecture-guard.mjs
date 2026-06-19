@@ -328,19 +328,61 @@ function checkTsFile(fullPath) {
   }
 
   // compactDialog 成品壳：业务须用 CompactFloatingDialog（见 desktop-floating-dialog-panels.md）
-  const compactDialogAllowlist = new Set([
+  const floatingDialogAllowlist = new Set([
     'apps/desktop/src/components/PanelTemplate.tsx',
     'apps/desktop/src/components/CompactFloatingDialog.tsx',
+    'apps/desktop/src/components/ProjectPanel.tsx',
   ]);
   if (
     !rel.endsWith('.test.ts') &&
     !rel.endsWith('.test.tsx') &&
     /preset=["']compactDialog["']/.test(source) &&
-    !compactDialogAllowlist.has(rel)
+    !floatingDialogAllowlist.has(rel)
   ) {
     errors.push(
       `${rel}: compactDialog 须经由 CompactFloatingDialog / CompactConfirmDialog，禁止业务层直接 FloatingPanelTemplate`,
     );
+  }
+  if (
+    !rel.endsWith('.test.ts') &&
+    !rel.endsWith('.test.tsx') &&
+    /preset=["']findReplace["']/.test(source) &&
+    !floatingDialogAllowlist.has(rel)
+  ) {
+    errors.push(
+      `${rel}: findReplace 须经由 CompactFloatingDialog（shellPreset="findReplace"），禁止业务层直接 FloatingPanelTemplate`,
+    );
+  }
+  const compactFloatingDialogShellAllowlist = new Set([
+    'apps/desktop/src/components/CompactFloatingDialog.tsx',
+    'apps/desktop/src/components/CompactConfirmDialog.tsx',
+  ]);
+  if (
+    !rel.endsWith('.test.ts') &&
+    !rel.endsWith('.test.tsx') &&
+    /<CompactFloatingDialog\b/.test(source) &&
+    !compactFloatingDialogShellAllowlist.has(rel) &&
+    !/\bfitKind=/.test(source)
+  ) {
+    errors.push(
+      `${rel}: CompactFloatingDialog 须显式传 fitKind（autoFit | fill | staticFit）；见 floating-dialog-fit-unification-intent.md`,
+    );
+  }
+  // FLOAT-FIT：浮层高度真源 = CSS 自动高度，禁止重新引入估算/实测机器
+  if (!rel.endsWith('.test.ts') && !rel.endsWith('.test.tsx')) {
+    const retiredFloatFitApi = [
+      'resolveCompactFloatingContentFitHeight',
+      'useFloatingPanelBodyMeasure',
+      'useFrozenPanelBodyHeight',
+      'floatingPanelFitSections',
+      'resolveContentFitTargetHeight',
+      'estimatedFitHeight',
+    ].find((api) => new RegExp(`\\b${api}\\b`).test(source));
+    if (retiredFloatFitApi) {
+      errors.push(
+        `${rel}: 禁止重新引入已退役的浮层高度估算 API（${retiredFloatFitApi}）；浮层高度真源为 CSS 自动高度，见 floating-dialog-fit-unification-intent.md`,
+      );
+    }
   }
   if (
     !rel.endsWith('.test.ts') &&

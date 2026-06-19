@@ -1,5 +1,4 @@
 import { ChevronDown, ChevronUp, Search } from "lucide-react";
-import type { Ref } from "react";
 import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY, CONTROL_TEXT_INPUT } from "../config/controlStyles";
 import { PANEL_CONTROL_TYPOGRAPHY, PANEL_TYPOGRAPHY } from "../config/typography";
 import type { FindReplaceDialogState } from "../pages/useFindReplaceController";
@@ -8,8 +7,11 @@ import { FloatingPanelSegmentList } from "./FloatingPanelSegmentList";
 import { FloatingPanelSegmentRow } from "./FloatingPanelSegmentRow";
 import { FindReplaceMatchText } from "./FindReplaceMatchText";
 import {
-  FLOATING_PANEL_DIALOG_BODY_PADDING_CLASS,
-  FloatingPanelDialogFooter,
+  FIND_REPLACE_PANEL_BODY_PADDING_CLASS,
+  FIND_REPLACE_PANEL_LIST_PADDING_CLASS,
+} from "./findReplacePanelLayout";
+import {
+  FloatingPanelDialogHeader,
   FloatingPanelDialogListRegion,
 } from "./FloatingPanelDialogLayout";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
@@ -34,7 +36,7 @@ function FindResultList({
   if (items.length === 0) return null;
 
   return (
-    <FloatingPanelSegmentList rowCount={items.length} fillAvailable>
+    <FloatingPanelSegmentList rowCount={items.length}>
       {items.map((item) => {
         const active = item.globalIndex === activeMatchIndex;
         return (
@@ -63,7 +65,6 @@ function FindResultList({
 export type FindReplaceDialogBodyProps = {
   state: PanelState;
   busy: boolean;
-  measureRef?: Ref<HTMLDivElement>;
   onFindChange: (value: string) => void;
   onReplaceChange: (value: string) => void;
   onRunSearch: () => void;
@@ -72,13 +73,56 @@ export type FindReplaceDialogBodyProps = {
   onNext: () => void;
   onReplaceCurrent: () => void;
   onReplaceAndNext: () => void;
-  onRequestReplaceAll: () => void;
 };
+
+export function FindReplaceDialogPanelFooter({
+  canAct,
+  onReplaceCurrent,
+  onReplaceAndNext,
+  onRequestReplaceAll,
+}: {
+  canAct: boolean;
+  onReplaceCurrent: () => void;
+  onReplaceAndNext: () => void;
+  onRequestReplaceAll: () => void;
+}) {
+  return (
+    <>
+      <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
+        <button
+          type="button"
+          className={CONTROL_BTN_SECONDARY}
+          disabled={!canAct}
+          title="⌘Enter 替换当前"
+          onClick={onReplaceCurrent}
+        >
+          替换当前
+        </button>
+        <button
+          type="button"
+          className={CONTROL_BTN_SECONDARY}
+          disabled={!canAct}
+          title="Enter 替换并下一处"
+          onClick={onReplaceAndNext}
+        >
+          替换并下一处
+        </button>
+      </div>
+      <button
+        type="button"
+        className={[CONTROL_BTN_PRIMARY, "shrink-0"].join(" ")}
+        disabled={!canAct}
+        onClick={onRequestReplaceAll}
+      >
+        全部替换…
+      </button>
+    </>
+  );
+}
 
 export function FindReplaceDialogBody({
   state,
   busy,
-  measureRef,
   onFindChange,
   onReplaceChange,
   onRunSearch,
@@ -87,7 +131,6 @@ export function FindReplaceDialogBody({
   onNext,
   onReplaceCurrent,
   onReplaceAndNext,
-  onRequestReplaceAll,
 }: FindReplaceDialogBodyProps) {
   const position = state.searchCommitted
     ? matchPositionLabel(state.matchCount, state.activeMatchIndex)
@@ -119,14 +162,9 @@ export function FindReplaceDialogBody({
   };
 
   return (
-    <div ref={measureRef} className="flex h-full min-h-0 flex-col" onKeyDown={handlePanelKeyDown}>
-      <div
-        className={[
-          "flex min-h-0 flex-1 flex-col gap-2 overflow-hidden",
-          FLOATING_PANEL_DIALOG_BODY_PADDING_CLASS,
-        ].join(" ")}
-      >
-        <div className="shrink-0 space-y-3">
+    <>
+      <FloatingPanelDialogHeader className={FIND_REPLACE_PANEL_BODY_PADDING_CLASS}>
+        <div className="shrink-0 space-y-3" onKeyDown={handlePanelKeyDown}>
           <div className="grid gap-1">
             <label htmlFor="find-replace-find-input" className="text-xs text-notion-text-muted">
               查找
@@ -194,47 +232,16 @@ export function FindReplaceDialogBody({
             未找到匹配「{state.findText}」的语段。
           </p>
         ) : null}
-        {state.searchCommitted && state.matchCount > 0 ? (
-          <FloatingPanelDialogListRegion>
-            <FindResultList
-              items={state.resultItems}
-              activeMatchIndex={state.activeMatchIndex}
-              onSelectMatch={onSelectMatch}
-            />
-          </FloatingPanelDialogListRegion>
-        ) : null}
-      </div>
-
-      <FloatingPanelDialogFooter fullBleed>
-        <div className="flex min-w-0 flex-1 flex-wrap items-center gap-2">
-          <button
-            type="button"
-            className={CONTROL_BTN_SECONDARY}
-            disabled={!canAct}
-            title="⌘Enter 替换当前"
-            onClick={onReplaceCurrent}
-          >
-            替换当前
-          </button>
-          <button
-            type="button"
-            className={CONTROL_BTN_SECONDARY}
-            disabled={!canAct}
-            title="Enter 替换并下一处"
-            onClick={onReplaceAndNext}
-          >
-            替换并下一处
-          </button>
-        </div>
-        <button
-          type="button"
-          className={[CONTROL_BTN_PRIMARY, "shrink-0"].join(" ")}
-          disabled={!canAct}
-          onClick={onRequestReplaceAll}
-        >
-          全部替换…
-        </button>
-      </FloatingPanelDialogFooter>
-    </div>
+      </FloatingPanelDialogHeader>
+      {state.searchCommitted && state.matchCount > 0 ? (
+        <FloatingPanelDialogListRegion className={FIND_REPLACE_PANEL_LIST_PADDING_CLASS}>
+          <FindResultList
+            items={state.resultItems}
+            activeMatchIndex={state.activeMatchIndex}
+            onSelectMatch={onSelectMatch}
+          />
+        </FloatingPanelDialogListRegion>
+      ) : null}
+    </>
   );
 }

@@ -37,7 +37,6 @@ export function CreateProjectModal({ controller: c, onClose }: CreateProjectModa
     () => suggestUniqueProjectName(c.projects, projectName),
     [c.projects, projectName],
   );
-  const estimatedFitHeight = hasDuplicateWarning ? FALLBACK_HEIGHT.duplicate : FALLBACK_HEIGHT.base;
 
   const runCreate = useCallback(async (action: () => Promise<boolean>) => {
     setBusy(true);
@@ -96,10 +95,7 @@ export function CreateProjectModal({ controller: c, onClose }: CreateProjectModa
       open
       onClose={onClose}
       fallbackHeight={FALLBACK_HEIGHT.base}
-      estimatedFitHeight={estimatedFitHeight}
-      layoutRev={hasDuplicateWarning ? 1 : 0}
-      measureBody
-      fillHeight={false}
+      fitKind="staticFit"
       defaultWidth={PANEL_WIDTH}
       bounds={{ minWidth: 340, minHeight: 260, maxWidthCap: 440, maxHeightCap: 480 }}
       footer={

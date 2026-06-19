@@ -18,8 +18,6 @@ type Props = {
 
 export function GlossaryLearnPromptDialog({ state, busy, onClose, onDismiss, onConfirm }: Props) {
   const open = state.phase !== "closed";
-  const rowCount = state.phase === "prompt" ? state.rows.length : 0;
-  const estimatedFitHeight = 220 + Math.min(rowCount, 4) * 96;
 
   return (
     <CompactFloatingDialog
@@ -28,11 +26,9 @@ export function GlossaryLearnPromptDialog({ state, busy, onClose, onDismiss, onC
       open={open}
       onClose={onClose}
       fallbackHeight={FALLBACK_HEIGHT}
-      estimatedFitHeight={estimatedFitHeight}
-      layoutRev={rowCount}
       defaultWidth={420}
       bounds={{ minWidth: 360, minHeight: 240, maxWidthCap: 480, maxHeightCap: 560 }}
-      fillHeight
+      fitKind="fill"
     >
       <FloatingPanelDialogHeader>
         <p className={PANEL_TYPOGRAPHY.dialogBody}>
@@ -40,7 +36,7 @@ export function GlossaryLearnPromptDialog({ state, busy, onClose, onDismiss, onC
         </p>
       </FloatingPanelDialogHeader>
       <FloatingPanelDialogListRegion>
-        <ul className="m-0 max-h-[280px] list-none space-y-2 overflow-y-auto p-0">
+        <ul className="m-0 list-none space-y-2 p-0">
           {state.phase === "prompt"
             ? state.rows.map((row) => (
                 <li key={row.afterText} className="flex flex-col gap-2 rounded-md bg-notion-sidebar/80 px-3 py-2.5">

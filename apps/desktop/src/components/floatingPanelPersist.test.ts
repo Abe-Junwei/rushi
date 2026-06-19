@@ -68,4 +68,16 @@ describe("floatingPanelPersist", () => {
     };
     expect(resolvePhasePersistedSize(saved, "empty", FLOATING_PANEL_LAYOUT_REV)).toBeNull();
   });
+
+  it("resolvePhasePersistedSize ignores legacy entries without layoutRev", () => {
+    const saved = {
+      position: { x: 0, y: 0 },
+      size: { width: 520, height: 640 },
+      userSized: true,
+      phases: {
+        empty: { size: { width: 520, height: 640 }, userSized: true },
+      },
+    };
+    expect(resolvePhasePersistedSize(saved, "empty", FLOATING_PANEL_LAYOUT_REV)).toBeNull();
+  });
 });

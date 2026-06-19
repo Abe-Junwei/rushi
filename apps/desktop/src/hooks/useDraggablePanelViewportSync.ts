@@ -2,9 +2,9 @@ import { useLayoutEffect, useRef, type Dispatch, type SetStateAction } from "rea
 import {
   readFloatingPanelViewport,
   reconcileFloatingPanelOnViewportResize,
+  type FloatingPanelViewport,
 } from "../components/floatingPanelViewport";
 import {
-  resolveContentFitTargetHeight,
   samePanelPosition,
   samePanelSize,
   type PanelPosition,
@@ -14,9 +14,6 @@ import {
 type UseDraggablePanelViewportSyncArgs = {
   persistState: boolean;
   viewportMargin: number;
-  contentFitHeight?: number;
-  maxHeight?: number;
-  minHeight: number;
   userSizedRef: React.MutableRefObject<boolean>;
   userMovedRef: React.MutableRefObject<boolean>;
   panelStateRef: React.MutableRefObject<{ position: PanelPosition; size: PanelSize }>;
@@ -25,53 +22,37 @@ type UseDraggablePanelViewportSyncArgs = {
     size: PanelSize;
   };
   persistSnapshot: (nextPosition: PanelPosition, nextSize: PanelSize, userSized: boolean) => void;
-  position: PanelPosition;
   setPosition: Dispatch<SetStateAction<PanelPosition>>;
   setSize: Dispatch<SetStateAction<PanelSize>>;
   setCenterMode: (centered: boolean) => void;
+  /** 视口变化时上报新视口，供壳层重算 max-height 封顶。 */
+  setViewport: (viewport: FloatingPanelViewport) => void;
 };
 
+/**
+ * 仅负责视口变化时的位置 reconcile（居中面板保持居中、已移动面板 clamp）与
+ * 上报视口尺寸供 auto 高度封顶重算。不再读取任何内容高度。
+ */
 export function useDraggablePanelViewportSync({
   persistState,
   viewportMargin,
-  contentFitHeight,
-  maxHeight,
-  minHeight,
   userSizedRef,
   userMovedRef,
   panelStateRef,
   clampPanel,
   persistSnapshot,
-  position,
   setPosition,
   setSize,
   setCenterMode,
+  setViewport,
 }: UseDraggablePanelViewportSyncArgs) {
-  useLayoutEffect(() => {
-    if (contentFitHeight == null || userSizedRef.current) return;
-
-    const targetHeight = resolveContentFitTargetHeight({
-      contentFitHeight,
-      maxHeight,
-      minHeight,
-      viewportMargin,
-    });
-    if (targetHeight == null) return;
-
-    setSize((prev: PanelSize) => {
-      if (prev.height === targetHeight) return prev;
-      const clamped = clampPanel(position, { ...prev, height: targetHeight });
-      setPosition(clamped.position);
-      persistSnapshot(clamped.position, clamped.size, false);
-      return clamped.size;
-    });
-  }, [clampPanel, contentFitHeight, maxHeight, minHeight, persistSnapshot, position, setPosition, setSize, userSizedRef, viewportMargin]);
-
   const trackedViewportRef = useRef(readFloatingPanelViewport());
   const clampPanelRef = useRef(clampPanel);
   clampPanelRef.current = clampPanel;
   const persistSnapshotRef = useRef(persistSnapshot);
   persistSnapshotRef.current = persistSnapshot;
+  const setViewportRef = useRef(setViewport);
+  setViewportRef.current = setViewport;
 
   useLayoutEffect(() => {
     const reconcile = () => {
@@ -89,6 +70,7 @@ export function useDraggablePanelViewportSync({
 
       if (viewportChanged) {
         trackedViewportRef.current = viewport;
+        setViewportRef.current(viewport);
         const reconciled = reconcileFloatingPanelOnViewportResize({
           position: pos,
           size: sz,
@@ -122,9 +104,7 @@ export function useDraggablePanelViewportSync({
     vv?.addEventListener("scroll", reconcile);
 
     const ro =
-      typeof ResizeObserver !== "undefined"
-        ? new ResizeObserver(() => reconcile())
-        : null;
+      typeof ResizeObserver !== "undefined" ? new ResizeObserver(() => reconcile()) : null;
     ro?.observe(document.documentElement);
 
     return () => {

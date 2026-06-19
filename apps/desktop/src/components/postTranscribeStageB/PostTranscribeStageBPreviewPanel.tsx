@@ -32,10 +32,19 @@ export function PostTranscribeStageBPreviewPanel({
   onFocusSegment,
 }: Props) {
   const previewSummary = describeStageBPreviewSummary(preview.changes.length);
+  const headerHintHeavy = Boolean(
+    pendingHint || packTruncationHint || preview.dropDetail || preview.stepError,
+  );
 
   return (
     <>
-      <FloatingPanelDialogHeader>
+      <FloatingPanelDialogHeader
+        className={
+          headerHintHeavy
+            ? "max-h-44 min-h-0 overflow-y-auto overflow-x-hidden floating-panel-body-scroll"
+            : undefined
+        }
+      >
         {pendingHint ? <PendingStageAHint message={pendingHint} /> : null}
         {packTruncationHint ? <PackTruncationHint message={packTruncationHint} /> : null}
         {previewSummary ? (
@@ -62,8 +71,8 @@ export function PostTranscribeStageBPreviewPanel({
           </p>
         ) : null}
       </FloatingPanelDialogHeader>
-      <FloatingPanelDialogListRegion className="mt-3">
-        <FloatingPanelSegmentList rowCount={preview.changes.length} fillAvailable>
+      <FloatingPanelDialogListRegion className="mt-3 min-h-0">
+        <FloatingPanelSegmentList rowCount={preview.changes.length}>
           {preview.changes.map((ch) => {
             const checked = preview.selectedSegmentIdxs.includes(ch.segmentIdx);
             const focused = previewFocusSegmentIdx === ch.segmentIdx;

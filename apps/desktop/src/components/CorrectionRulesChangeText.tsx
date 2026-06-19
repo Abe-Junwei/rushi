@@ -11,7 +11,7 @@ type Props = {
   afterText: string;
   beforeHighlights: CorrectionHighlightSpan[];
   afterHighlights: CorrectionHighlightSpan[];
-  variant?: "full" | "compact" | "inline";
+  variant?: "full" | "compact" | "inline" | "wrap";
 };
 
 function buildHighlightedParts(text: string, spans: CorrectionHighlightSpan[]) {
@@ -77,6 +77,28 @@ export function CorrectionRulesChangeText({
   afterHighlights,
   variant = "full",
 }: Props) {
+  if (variant === "wrap") {
+    return (
+      <div className="min-w-0 space-y-1">
+        <HighlightedLine
+          text={beforeText}
+          spans={beforeHighlights}
+          highlightClass={HIGHLIGHT_BEFORE}
+          bodyClass="m-0 whitespace-pre-wrap break-words text-sm leading-snug text-notion-text-muted"
+        />
+        <p className="m-0 text-xs leading-none text-notion-text-light" aria-hidden>
+          →
+        </p>
+        <HighlightedLine
+          text={afterText}
+          spans={afterHighlights}
+          highlightClass={HIGHLIGHT_AFTER}
+          bodyClass="m-0 whitespace-pre-wrap break-words text-sm leading-snug text-notion-text"
+        />
+      </div>
+    );
+  }
+
   if (variant === "compact" || variant === "inline") {
     const rowClass =
       variant === "inline"

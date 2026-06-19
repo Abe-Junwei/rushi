@@ -33,6 +33,7 @@ export function ManualCorrectionMemoryDialog({
       open={open}
       onClose={onClose}
       fallbackHeight={FALLBACK_HEIGHT}
+      fitKind="staticFit"
       defaultWidth={440}
       bounds={{ minWidth: 360, minHeight: 280, maxWidthCap: 520 }}
       footer={

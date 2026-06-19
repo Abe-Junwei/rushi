@@ -27,8 +27,6 @@ export function LexiconBundleImportDialog({
   onConfirm,
 }: Props) {
   const { preview } = pending;
-  const conflictCount = preview.conflicts.length;
-  const estimatedFitHeight = 240 + Math.min(conflictCount, 6) * 80;
 
   return (
     <CompactFloatingDialog
@@ -39,8 +37,7 @@ export function LexiconBundleImportDialog({
         if (!disabled) onCancel();
       }}
       fallbackHeight={FALLBACK_HEIGHT}
-      estimatedFitHeight={estimatedFitHeight}
-      layoutRev={conflictCount}
+      fitKind="fill"
       defaultWidth={520}
       bounds={{ minWidth: 400, minHeight: 280, maxWidthCap: 560, maxHeightCap: 640 }}
       footer={

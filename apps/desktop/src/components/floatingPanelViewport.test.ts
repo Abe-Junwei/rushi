@@ -1,8 +1,10 @@
-import { describe, expect, it } from "vitest";
+import { describe, expect, it, afterEach } from "vitest";
 import {
   centerFloatingPanelPosition,
+  EDITOR_WORKBENCH_TOOLBAR_SELECTOR,
   isFloatingPanelCentered,
   reconcileFloatingPanelOnViewportResize,
+  resolveEditorWorkbenchFloatingPanelPosition,
   resolveFloatingPanelInitialState,
   shouldRecenterFloatingPanel,
 } from "./floatingPanelViewport";
@@ -53,6 +55,56 @@ describe("floatingPanelViewport", () => {
       viewport: { width: 1100, height: 700, offsetX: 0, offsetY: 0 },
     });
     expect(out.position.x).toBe(16 + Math.round((1100 - 32 - 400) / 2));
+  });
+
+  it("resolveFloatingPanelInitialState uses preferredDefaultPosition for legacy centered save", () => {
+    const viewport = { width: 1200, height: 800, offsetX: 0, offsetY: 0 };
+    const size = { width: 420, height: 400 };
+    const centered = centerFloatingPanelPosition(size, 16, viewport);
+    const workbench = { x: 100, y: 520 };
+    const out = resolveFloatingPanelInitialState({
+      saved: {
+        position: centered,
+        size,
+        viewport: { width: viewport.width, height: viewport.height },
+      },
+      defaultPosition: centered,
+      defaultSize: size,
+      margin: 16,
+      clamp: (position, s) => ({ position, size: s }),
+      viewport,
+      preferredDefaultPosition: () => workbench,
+    });
+    expect(out.position).toEqual(workbench);
+  });
+
+  it("resolveEditorWorkbenchFloatingPanelPosition anchors below workbench toolbar", () => {
+    const toolbar = document.createElement("div");
+    toolbar.className = "editor-workbench-toolbar";
+    document.body.appendChild(toolbar);
+    toolbar.getBoundingClientRect = () =>
+      ({
+        bottom: 420,
+        top: 372,
+        left: 0,
+        right: 1200,
+        width: 1200,
+        height: 48,
+        x: 0,
+        y: 372,
+        toJSON: () => ({}),
+      });
+
+    const viewport = { width: 1200, height: 800, offsetX: 0, offsetY: 0 };
+    const size = { width: 520, height: 400 };
+    const pos = resolveEditorWorkbenchFloatingPanelPosition(size, 16, viewport);
+    expect(pos.y).toBe(384);
+    expect(pos.x).toBe(16 + Math.round((1200 - 32 - 520) / 2));
+    toolbar.remove();
+  });
+
+  afterEach(() => {
+    document.querySelector(EDITOR_WORKBENCH_TOOLBAR_SELECTOR)?.remove();
   });
 
   it("reconcileFloatingPanelOnViewportResize recenters centered panel on fullscreen", () => {

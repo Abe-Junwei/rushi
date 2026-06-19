@@ -1,5 +1,9 @@
 import { useCallback, useEffect, useRef } from "react";
-import type { PanelPosition, PanelSize } from "../components/draggablePanelGeometry";
+import {
+  readPanelRenderedRect,
+  type PanelPosition,
+  type PanelSize,
+} from "../components/draggablePanelGeometry";
 import {
   computeDragResizeState,
   resolveDragResizeViewportBounds,
@@ -32,6 +36,10 @@ type UseDraggablePanelPointerDragArgs = {
   panelStateRef: React.MutableRefObject<{ position: PanelPosition; size: PanelSize }>;
   userSizedRef: React.MutableRefObject<boolean>;
   userMovedRef: React.MutableRefObject<boolean>;
+  /** 壳层 DOM，用于 resize 起手读取实际渲染矩形（auto 高度 → px 基线）。 */
+  panelElementRef: React.MutableRefObject<HTMLElement | null>;
+  /** resize 起手切换到 manual 高度模式（auto → manual）。 */
+  onResizeStart: () => void;
 };
 
 export function useDraggablePanelPointerDrag({
@@ -50,6 +58,8 @@ export function useDraggablePanelPointerDrag({
   panelStateRef,
   userSizedRef,
   userMovedRef,
+  panelElementRef,
+  onResizeStart,
 }: UseDraggablePanelPointerDragArgs) {
   const dragRef = useRef<DragSession | null>(null);
   const persistStateRef = useRef(persistState);
@@ -74,19 +84,26 @@ export function useDraggablePanelPointerDrag({
   const startDrag = useCallback(
     (mode: string, e: React.PointerEvent) => {
       e.preventDefault();
+      // 从渲染矩形取实际位置/尺寸，避免 transform 居中 / auto 高度切到 px 定位时跳动。
+      const rendered = readPanelRenderedRect(panelElementRef.current, { position, size });
       setCenterMode(false);
-      if (mode !== "move") userSizedRef.current = true;
+      setPosition(rendered.position);
+      if (mode !== "move") {
+        userSizedRef.current = true;
+        onResizeStart();
+        setSize(rendered.size);
+      }
       (e.currentTarget as HTMLElement).setPointerCapture(e.pointerId);
       dragRef.current = {
         mode,
         startX: e.clientX,
         startY: e.clientY,
-        startPos: { ...position },
-        startSize: { ...size },
+        startPos: { ...rendered.position },
+        startSize: { ...rendered.size },
       };
       document.body.classList.add("csp-drag-session");
     },
-    [position, setCenterMode, size, userSizedRef],
+    [onResizeStart, panelElementRef, position, setCenterMode, setPosition, setSize, size, userSizedRef],
   );
 
   useEffect(() => {

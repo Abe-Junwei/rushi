@@ -13,8 +13,8 @@ import { FloatingPanelDialogHeader } from "./FloatingPanelDialogLayout";
 
 type ConfirmVariant = "primary" | "danger";
 
-/** 壳层/layout 变更时 bump，丢弃旧 persist 高度。 */
-export const COMPACT_CONFIRM_LAYOUT_REV_BASE = 1;
+/** 壳层/layout 变更时 bump，丢弃旧 persist 高度。2 = CSS 自动高度单一真源（FLOAT-FIT）。 */
+export const COMPACT_CONFIRM_LAYOUT_REV_BASE = 2;
 
 export type CompactConfirmDialogProps = {
   id: string;
@@ -68,6 +68,7 @@ export function CompactConfirmDialog({
       title={title}
       open={open}
       onClose={handleClose}
+      fitKind="staticFit"
       fallbackHeight={fallbackHeight}
       defaultWidth={defaultWidth}
       bounds={bounds}

@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import {
   FLOATING_PANEL_LAYOUT_REV,
   loadFloatingPanelPersistedState,
@@ -12,9 +12,11 @@ import {
   readFloatingPanelViewport,
   resolveFloatingPanelInitialState,
   snapshotFloatingPanelViewport,
+  type FloatingPanelViewport,
 } from "../components/floatingPanelViewport";
 import {
-  resolveContentFitTargetHeight,
+  resolvePanelMaxHeightCap,
+  type PanelHeightMode,
   type PanelPosition,
   type PanelSize,
 } from "../components/draggablePanelGeometry";
@@ -30,9 +32,11 @@ export type UseDraggablePanelControllerArgs = {
   maxWidth?: number;
   maxHeight?: number;
   persistState?: boolean;
-  contentFitHeight?: number;
   persistPhaseKey?: string;
   layoutRev?: number;
+  preferredDefaultPosition?: (size: PanelSize) => PanelPosition;
+  /** true（autoFit / staticFit）：未手拖时随内容贴合（CSS auto 高度）；false（fill）：固定 px 高度。 */
+  autoHeight?: boolean;
 };
 
 export function useDraggablePanelController({
@@ -44,15 +48,17 @@ export function useDraggablePanelController({
   maxWidth,
   maxHeight,
   persistState = true,
-  contentFitHeight,
   persistPhaseKey,
   layoutRev = FLOATING_PANEL_LAYOUT_REV,
+  preferredDefaultPosition,
+  autoHeight = false,
 }: UseDraggablePanelControllerArgs) {
   const storageKey = `panel-state-${id}`;
   const viewportMargin = 16;
 
   const saved = persistState ? loadFloatingPanelPersistedState(storageKey) : null;
   const phasePersist = resolvePhasePersistedSize(saved, persistPhaseKey, layoutRev);
+  const persistedUserSized = phasePersist?.userSized === true;
 
   const clampPanel = useCallback(
     (nextPosition: PanelPosition, nextSize: PanelSize) => {
@@ -85,38 +91,39 @@ export function useDraggablePanelController({
     defaultSize: resolvedDefaultSize,
     margin: viewportMargin,
     clamp: clampPanel,
+    preferredDefaultPosition,
   });
 
-  const fitTargetHeight = resolveContentFitTargetHeight({
-    contentFitHeight,
-    maxHeight,
-    minHeight,
-    viewportMargin,
-  });
-
-  const userSizedRef = useRef(phasePersist?.userSized === true);
+  const userSizedRef = useRef(persistedUserSized);
   const userMovedRef = useRef(false);
+  const panelElementRef = useRef<HTMLElement | null>(null);
 
-  const [position, setPosition] = useState<PanelPosition>(() => {
-    if (!userSizedRef.current && fitTargetHeight != null && initialState.size.height < fitTargetHeight) {
-      return clampPanel(initialState.position, { ...initialState.size, height: fitTargetHeight }).position;
-    }
-    return initialState.position;
-  });
-  const [size, setSize] = useState<PanelSize>(() => {
-    if (!userSizedRef.current && fitTargetHeight != null && initialState.size.height < fitTargetHeight) {
-      return clampPanel(initialState.position, { ...initialState.size, height: fitTargetHeight }).size;
-    }
-    return initialState.size;
-  });
+  const [position, setPosition] = useState<PanelPosition>(initialState.position);
+  const [size, setSize] = useState<PanelSize>(initialState.size);
   const [centerMode, setCenterMode] = useState(() =>
     isFloatingPanelCentered(initialState.position, initialState.size, readFloatingPanelViewport(), viewportMargin),
   );
-  const panelStateRef = useRef({ position, size });
+  const [heightMode, setHeightMode] = useState<PanelHeightMode>(() =>
+    autoHeight && !persistedUserSized ? "auto" : "manual",
+  );
+  const [viewport, setViewport] = useState<FloatingPanelViewport>(() => readFloatingPanelViewport());
 
+  const panelStateRef = useRef({ position, size });
   useEffect(() => {
     panelStateRef.current = { position, size };
   }, [position, size]);
+
+  const maxHeightCap = useMemo(
+    () =>
+      resolvePanelMaxHeightCap({
+        viewport,
+        margin: viewportMargin,
+        centered: centerMode,
+        top: position.y,
+        maxHeight,
+      }),
+    [centerMode, maxHeight, position.y, viewport],
+  );
 
   const persistSnapshot = useCallback(
     (nextPosition: PanelPosition, nextSize: PanelSize, userSized: boolean) => {
@@ -137,9 +144,15 @@ export function useDraggablePanelController({
     [layoutRev, persistPhaseKey, persistState, storageKey],
   );
 
+  // 阶段切换（persistPhaseKey 变）或新载入：同步 userSized 与高度模式真源。
   useEffect(() => {
-    userSizedRef.current = phasePersist?.userSized === true;
-  }, [persistPhaseKey, phasePersist?.userSized]);
+    userSizedRef.current = persistedUserSized;
+    setHeightMode(autoHeight && !persistedUserSized ? "auto" : "manual");
+  }, [autoHeight, persistPhaseKey, persistedUserSized]);
+
+  const handleResizeStart = useCallback(() => {
+    setHeightMode("manual");
+  }, []);
 
   const { startDrag } = useDraggablePanelPointerDrag({
     position,
@@ -157,49 +170,46 @@ export function useDraggablePanelController({
     panelStateRef,
     userSizedRef,
     userMovedRef,
+    panelElementRef,
+    onResizeStart: handleResizeStart,
   });
 
   useDraggablePanelViewportSync({
     persistState,
     viewportMargin,
-    contentFitHeight,
-    maxHeight,
-    minHeight,
     userSizedRef,
     userMovedRef,
     panelStateRef,
     clampPanel,
     persistSnapshot,
-    position,
     setPosition,
     setSize,
     setCenterMode,
+    setViewport,
   });
 
   const handleTitleDoubleClick = useCallback(() => {
     userSizedRef.current = false;
     userMovedRef.current = false;
-    const targetHeight = resolveContentFitTargetHeight({
-      contentFitHeight,
-      maxHeight,
-      minHeight,
-      viewportMargin,
-    });
-    const nextSize =
-      targetHeight != null
-        ? clampPanel(position, { ...size, height: targetHeight }).size
-        : defaultSize;
-    const clamped = clampPanel(position, nextSize);
-    setPosition(clamped.position);
-    setSize(clamped.size);
     setCenterMode(true);
+    if (autoHeight) {
+      setHeightMode("auto");
+      persistSnapshot(position, size, false);
+      return;
+    }
+    setHeightMode("manual");
+    const clamped = clampPanel(position, defaultSize);
+    setSize(clamped.size);
     persistSnapshot(clamped.position, clamped.size, false);
-  }, [clampPanel, contentFitHeight, defaultSize, maxHeight, minHeight, persistSnapshot, position, size]);
+  }, [autoHeight, clampPanel, defaultSize, persistSnapshot, position, size]);
 
   return {
     position,
     size,
     centerMode,
+    heightMode,
+    maxHeightCap,
+    panelElementRef,
     startDrag,
     handleTitleDoubleClick,
   };

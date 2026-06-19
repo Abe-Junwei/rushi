@@ -1,4 +1,3 @@
-import { useMemo } from "react";
 import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY, CONTROL_TEXT_INPUT } from "../../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../../config/typography";
 import { CORRECTION_MEMORY_STABLE_HIT } from "../../services/editor/learningCorrectionRuleHints";
@@ -7,7 +6,6 @@ import {
   formatLexiconBundleExportCleanupHints,
   formatLexiconBundleExportPreviewSummary,
 } from "../../tauri/lexiconBundleApi";
-import { resolveFloatingPanelSectionsFitHeight } from "../floatingPanelFitSections";
 import { CompactFloatingDialog } from "../CompactFloatingDialog";
 import { FloatingPanelDialogHeader, FloatingPanelDialogScroll } from "../FloatingPanelDialogLayout";
 
@@ -40,20 +38,6 @@ export function LexiconBundleExportDialog({
   const cleanupHints = preview ? formatLexiconBundleExportCleanupHints(preview, stableOnly) : [];
   const hintCount = cleanupHints.length;
 
-  const estimatedFitHeight = useMemo(
-    () =>
-      resolveFloatingPanelSectionsFitHeight([
-        { kind: "mutedLine", show: true },
-        { kind: "static", px: 112 },
-        hintCount > 0
-          ? { kind: "static", px: 56 + hintCount * 24 }
-          : { kind: "mutedLine", show: true },
-      ]),
-    [hintCount],
-  );
-
-  const layoutRev = hintCount + (stableOnly ? 100 : 0) + (previewLoading ? 1000 : 0);
-
   return (
     <CompactFloatingDialog
       id={PANEL_ID}
@@ -63,8 +47,7 @@ export function LexiconBundleExportDialog({
         if (!disabled) onCancel();
       }}
       fallbackHeight={FALLBACK_HEIGHT}
-      estimatedFitHeight={estimatedFitHeight}
-      layoutRev={layoutRev}
+      fitKind="fill"
       defaultWidth={480}
       bounds={{ minWidth: 400, minHeight: 260, maxWidthCap: 520, maxHeightCap: 560 }}
       footer={
