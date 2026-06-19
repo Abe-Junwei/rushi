@@ -2,6 +2,7 @@
 
 pub mod dashscope_asr;
 pub mod dashscope_file_asr;
+pub mod dashscope_file_asr_parse;
 pub mod dashscope_upload;
 pub mod dashscope_vocabulary;
 pub mod deepgram;
