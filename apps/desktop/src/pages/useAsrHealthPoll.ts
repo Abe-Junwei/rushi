@@ -22,6 +22,17 @@ export type AsrHealthRefreshResult = {
   rootJson: unknown;
 };
 
+/** 后台 health 失败时保留上次 ok 快照，避免侧车推理忙导致顶栏误报未就绪。 */
+export function shouldSkipAsrHealthDowngrade(
+  touchUi: boolean,
+  result: Pick<AsrHealthRefreshResult, "health">,
+  lastGood: AsrHealthRefreshResult | null,
+): boolean {
+  if (touchUi) return false;
+  if (result.health === "ok") return false;
+  return lastGood?.health === "ok" && lastGood.caps != null;
+}
+
 let lastAsrHealthRefreshResult: AsrHealthRefreshResult | undefined;
 
 export function getLastAsrHealthRefreshResult(): AsrHealthRefreshResult | undefined {
@@ -44,6 +55,7 @@ export function useAsrHealthPoll({ tauriRuntime, catalogHooksRef }: Params) {
   const [bundledAsrDiag, setBundledAsrDiag] = useState<p1.BundledAsrLaunchReport | null>(null);
   const [asrCaps, setAsrCaps] = useState<AsrHealthCapabilities | null>(null);
   const inflightRef = useRef<Promise<void> | null>(null);
+  const lastGoodRef = useRef<AsrHealthRefreshResult | null>(null);
 
   const refreshBundledAsrDiag = useCallback(async () => {
     try {
@@ -85,11 +97,17 @@ export function useAsrHealthPoll({ tauriRuntime, catalogHooksRef }: Params) {
         }
 
         const commit = async (result: AsrHealthRefreshResult, caps: AsrHealthCapabilities | null) => {
+          if (shouldSkipAsrHealthDowngrade(touchUi, result, lastGoodRef.current)) {
+            return;
+          }
           if (touchUi) await waitMinVisibleBusy(startedAt);
           setAsrHealth(result.health);
           setAsrHealthDetail(result.healthDetail);
           setAsrCaps(caps);
           lastAsrHealthRefreshResult = result;
+          if (result.health === "ok" && caps) {
+            lastGoodRef.current = result;
+          }
         };
 
         const url = asrHealthUrl();

@@ -142,13 +142,10 @@ export function useAsrSetupHealthFlow({
       }
 
       await deps.refreshAsrRuntimeInfo();
-      const afterCaps = await fetchHealthSnapshot();
       const afterSnap = await snapshotSelectedModelPrepare(selection);
       const transcribeReady =
         afterSnap.ready &&
-        afterSnap.sidecarMatchesSelection &&
-        afterCaps?.ready_for_transcribe === true &&
-        afterCaps.funasr_model_id === selection.selectedHubModelId;
+        afterSnap.sidecarMatchesSelection;
       if (transcribeReady) {
         markPortConflictAcknowledged();
         setSetupSteps((steps) =>

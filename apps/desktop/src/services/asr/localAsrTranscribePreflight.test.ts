@@ -39,7 +39,7 @@ describe("localAsrTranscribePreflightMessage", () => {
         funasr_loaded_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
         ready_for_transcribe: true,
       },
-      selectedHubModelId: "Qwen/Qwen3-ASR-0.6B",
+      selectedHubModelId: "custom/other-asr-model",
       catalogStatus: [],
     });
     expect(msg).toContain("不一致");

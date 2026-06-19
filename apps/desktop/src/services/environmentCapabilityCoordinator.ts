@@ -32,6 +32,8 @@ export type EnvironmentCapabilityRefreshDeps = {
   };
   /** 与 useAsrBridgeController.asrPresentation 对齐，避免 preflight 与设置页 banner 分叉。 */
   getAsrPresentationOverlay?: () => AsrPresentationOverlay | undefined;
+  /** 转写进行中跳过 focus/project 等后台 refresh，避免侧车忙时误降级顶栏 chip。 */
+  deferRefreshWhileTranscribing?: () => boolean;
 };
 
 export type EnvironmentCapabilitySnapshot = {
@@ -124,6 +126,9 @@ export async function runEnvironmentCapabilityRefresh(
   if (existingInflight) return existingInflight;
 
   const effectiveDeps = readStore().registeredDeps ?? deps;
+  if (effectiveDeps.deferRefreshWhileTranscribing?.()) {
+    return readStore().snapshot;
+  }
 
   const inflight = (async () => {
     try {

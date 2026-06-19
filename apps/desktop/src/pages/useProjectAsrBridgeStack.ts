@@ -38,7 +38,7 @@ export function useProjectAsrBridgeStack() {
   refreshSetupDiagnoseRef.current = asrSetup.refreshSetupDiagnose;
 
   const localTranscribePreflight = useCallback(
-    () => getEnvironmentCapabilityBlockReason() ?? asr.asrPresentation.blockReason,
+    () => asr.asrPresentation.blockReason ?? getEnvironmentCapabilityBlockReason(),
     [asr.asrPresentation],
   );
 
