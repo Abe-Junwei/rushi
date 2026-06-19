@@ -1,6 +1,6 @@
 # Release parity L3 手测勾选表
 
-> **用途**：在 **release `.app` / DMG** 上逐项勾选（勿用 `npm run desktop:dev`）。  
+> **用途**：在 **release `.app` / DMG** 上逐项勾选（勿用 `npm run desktop:dev`）。执行顺序见 [L3 手测 Runbook 2026-06-19](./release-parity-l3-hand-test-runbook-2026-06-19.md)。  
 > **关联**：[release-parity-evidence-2026-06-14.md](./release-parity-evidence-2026-06-14.md) · [copy-code-drift-register](./specs/copy-code-drift-register-2026-06-12.md) 7-A–7-D · [release-zero-terminal-hand-test.md](./release-zero-terminal-hand-test.md)
 
 ## 签收头
@@ -132,6 +132,20 @@
 
 ---
 
+## I. 浮动对话框壳层贴合（FLOAT-FIT）
+
+> Spec：[floating-dialog-fit-unification-acceptance.md](./specs/floating-dialog-fit-unification-acceptance.md) · Editor 内 **Auto-fit**；导出/批量等 **Fill**
+
+| # | 操作 | 期望 | ☐ |
+|---|------|------|---|
+| I1 | Editor → **查找替换** → 搜 2 处匹配 | 壳层贴内容；列表无内嵌大空白；底栏完整 | |
+| I2 | 查找替换 → **全部替换…** 预览（2 行） | 预览壳层紧凑；「返回 / 确认」不被裁切 | |
+| I3 | 规则纠错 preview 或 **智能改稿 preview**（若有数据） | 语段列表可见；底栏完整 | |
+| I4 | 定稿 → **交付导出 Word** → 勾选多项 | 正文区内滚；底栏「导出」始终可见 | |
+| I5 | 查找替换：手动拖高 → 改变匹配数 → **双击标题栏** | 壳高随内容重算（Restore auto height） | |
+
+---
+
 ## H. Fresh profile 加测（对外分发前）
 
 仅 **fresh** 或新 macOS 用户需勾；upgrade 可跳过本节。
@@ -156,6 +170,7 @@
 | E 7-B | /6 | |
 | F 7-C | /5 | |
 | G 7-D | /3 | |
+| I FLOAT-FIT | /5 | |
 | H Fresh（可选） | /4 | |
 
 **已知问题 / WARN**（可贴截图路径或 `desktop.log` 关键词）：

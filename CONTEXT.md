@@ -142,6 +142,28 @@ _Avoid_: 列表与波形强行同百分比, 单独 indigo/edit 链
 壳层与挂 `body` 的浮层（对话框、菜单、Toast）均靠背景差 + `1px notion-border` 分层，不用 drop shadow。
 _Avoid_: shadow-2xl, 侧栏 edge shadow, 壳层阴影分层
 
+## Language — 浮动对话框（壳层贴合）
+
+**Floating dialog**（浮动对话框）:
+可拖动、可缩放的 Notion/Zen 壳层对话框（`DraggableResizablePanel`）；挂 `document.body`，非 Editor 内嵌面板。
+_Avoid_: modal（未特指 Radix 时）, 弹窗（泛指）, 面板（与侧栏/Inspector 混淆时）
+
+**Auto-fit dialog**（自动贴合对话框）:
+壳层高度真源为 **CSS 自动高度**（`height:auto` + 视口 `max-height` 封顶；无 JS 估算/实测）；语段列表少行时整框贴合内容，超出封顶后仅单一正文滚动区内滚；首帧即正确、无闪跳。例：查找替换、规则纠错 preview、智能改稿 preview。
+_Avoid_: preview-list（代码枚举名，文档优先用本词）, 自适应弹窗（未定义行为时）, contentFitHeight / estimatedFitHeight（已退役）
+
+**Fill dialog**（填充式对话框）:
+壳层默认偏高、可手动拖大；正文或列表区在区内滚动，不随少行数把整框拉高。例：交付导出 Word、批量转写队列、术语表学习提示、Lexicon 导入导出。
+_Avoid_: long-form dialog, hybrid-list, 长表单（未特指壳层行为时）
+
+**Static-fit dialog**（静态贴合对话框）:
+短文案或简单表单，无列表或列表极短；壳层贴合内容，无 fill 列表区。例：CompactConfirm、创建项目、ClearAsrCache。
+_Avoid_: compact dialog（未特指 preset 时）, 确认框（Close Gate 专用对话框时用 UnsavedCloseDialog 等）
+
+**Restore auto height**（恢复自动高度）:
+浮动对话框标题栏双击；清 `userSized` 回到 CSS 自动高度（`heightMode: "auto"`）并重新居中。
+_Avoid_: reset size, 恢复默认大小（未特指 auto-fit 时）
+
 ## Language — 工程与 spec
 
 **Controller**:
@@ -184,3 +206,4 @@ _Avoid_: design doc（泛指）
 - 「主题色 / Office accent」— remap **accent-action** 链；success/cinnabar/status-warn、LLM chip 固定语义色不在此轮收束范围。
 - 「编辑页 / 视角 / 层次感」— 全应用壳层精调时 scope = Welcome → Hub → Editor → 环境浮层；**Editor** 仅指已打开文件的转写工作区。
 - 「LFASR / 讯飞转写」— 须区分 **iflytek-speed-asr**（极速 OST）、标准 LFASR v2、已移除 **iflytek-speech**；文档标题含 LFASR 时以 research §3 定稿 id 为准。
+- 「面板 / 对话框」— 浮动工具框（查找替换等）称 **Floating dialog** 并按 **Auto-fit / Fill / Static-fit** 分类；Editor 侧栏/Inspector 不叫 Floating dialog。
