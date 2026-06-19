@@ -1,13 +1,13 @@
 import { CONTROL_BTN_PRIMARY, CONTROL_BTN_SECONDARY } from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import type { CorrectionRulesDialogState } from "../pages/useCorrectionRulesController";
-import { CORRECTION_RULES_PANEL_ID } from "../pages/correctionRulesPanelTypes";
+import { CORRECTION_RULES_PANEL_ID, CORRECTION_RULES_LAYOUT_REV } from "../pages/correctionRulesPanelTypes";
 import { CorrectionRulesChangeText } from "./CorrectionRulesChangeText";
 import { LexiconHealthPanel } from "./LexiconHealthPanel";
 import { FloatingPanelSegmentList } from "./FloatingPanelSegmentList";
 import { useFloatingPanelDetailsExpansion } from "../hooks/useFloatingPanelDetailsExpansion";
 import { FloatingPanelSegmentRow } from "./FloatingPanelSegmentRow";
-import { readFloatingPanelViewport, resolveEditorWorkbenchFloatingPanelPosition } from "./floatingPanelViewport";
+import { readFloatingPanelViewport } from "./floatingPanelViewport";
 import { PanelAsyncProgress } from "./PanelAsyncProgress";
 import { CompactFloatingDialog } from "./CompactFloatingDialog";
 import {
@@ -79,12 +79,6 @@ export function CorrectionRulesPreviewDialog({
   const defaultPanelWidth = 520;
   const dialogFitKind = preview ? "autoFit" : "staticFit";
   const fallbackHeight = Math.min(isLoading ? 220 : isEmpty ? 280 : 420, panelMaxHeight);
-  const preferWorkbenchPosition = (size: { width: number; height: number }) =>
-    resolveEditorWorkbenchFloatingPanelPosition(size, panelMargin, viewport);
-  const defaultPosition = preferWorkbenchPosition({
-    width: defaultPanelWidth,
-    height: fallbackHeight,
-  });
   const persistPhaseKey =
     state.phase === "loading" ? "loading" : state.phase === "preview" ? "preview" : "empty";
 
@@ -125,8 +119,7 @@ export function CorrectionRulesPreviewDialog({
       shellPreset="findReplace"
       fallbackHeight={fallbackHeight}
       defaultWidth={defaultPanelWidth}
-      defaultPosition={defaultPosition}
-      preferredDefaultPosition={preferWorkbenchPosition}
+      layoutRev={CORRECTION_RULES_LAYOUT_REV}
       minWidth={400}
       maxWidth={720}
       maxHeight={panelMaxHeight}

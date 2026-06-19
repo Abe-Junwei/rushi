@@ -2,6 +2,7 @@ import { useLayoutEffect, useRef, type Dispatch, type SetStateAction } from "rea
 import {
   readFloatingPanelViewport,
   reconcileFloatingPanelOnViewportResize,
+  isFloatingPanelCentered,
   type FloatingPanelViewport,
 } from "../components/floatingPanelViewport";
 import {
@@ -27,6 +28,7 @@ type UseDraggablePanelViewportSyncArgs = {
   setCenterMode: (centered: boolean) => void;
   /** 视口变化时上报新视口，供壳层重算 max-height 封顶。 */
   setViewport: (viewport: FloatingPanelViewport) => void;
+  preferredDefaultPosition?: (size: PanelSize) => PanelPosition;
 };
 
 /**
@@ -45,6 +47,7 @@ export function useDraggablePanelViewportSync({
   setSize,
   setCenterMode,
   setViewport,
+  preferredDefaultPosition,
 }: UseDraggablePanelViewportSyncArgs) {
   const trackedViewportRef = useRef(readFloatingPanelViewport());
   const clampPanelRef = useRef(clampPanel);
@@ -53,6 +56,8 @@ export function useDraggablePanelViewportSync({
   persistSnapshotRef.current = persistSnapshot;
   const setViewportRef = useRef(setViewport);
   setViewportRef.current = setViewport;
+  const preferredDefaultPositionRef = useRef(preferredDefaultPosition);
+  preferredDefaultPositionRef.current = preferredDefaultPosition;
 
   useLayoutEffect(() => {
     const reconcile = () => {
@@ -78,11 +83,12 @@ export function useDraggablePanelViewportSync({
           nextViewport: viewport,
           margin: viewportMargin,
           userMoved: userMovedRef.current,
+          preferredDefaultPosition: preferredDefaultPositionRef.current,
         });
         if (reconciled.recentered) {
           pos = reconciled.position;
-          setCenterMode(true);
         }
+        setCenterMode(isFloatingPanelCentered(pos, sz, viewport, viewportMargin));
       }
 
       const next = clampPanelRef.current(pos, sz);
