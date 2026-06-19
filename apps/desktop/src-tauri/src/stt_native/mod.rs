@@ -90,23 +90,27 @@ pub(crate) fn read_audio_bytes_limited(path: &Path) -> Result<Vec<u8>, String> {
     fs::read(path).map_err(|e| format!("读取音频: {e}"))
 }
 
+pub(crate) async fn octet_stream_body_from_file(
+    path: &Path,
+) -> Result<(reqwest::Body, u64), String> {
+    let meta = audio_size_within_limit(path)?;
+    let f = tokio::fs::File::open(path)
+        .await
+        .map_err(|e| format!("打开音频文件失败: {e}"))?;
+    let stream = ReaderStream::new(f);
+    Ok((reqwest::Body::wrap_stream(stream), meta))
+}
+
 pub(crate) async fn multipart_part_from_file(
     path: &Path,
 ) -> Result<reqwest::multipart::Part, String> {
-    let meta = fs::metadata(path).map_err(|e| format!("读取音频元数据: {e}"))?;
-    if meta.len() > MAX_STT_AUDIO_BYTES {
-        return Err(format!(
-            "音频文件过大（{} bytes），超过 {} bytes 限制。",
-            meta.len(),
-            MAX_STT_AUDIO_BYTES
-        ));
-    }
+    let len = audio_size_within_limit(path)?;
     let f = tokio::fs::File::open(path)
         .await
         .map_err(|e| format!("打开音频文件失败: {e}"))?;
     let stream = ReaderStream::new(f);
     let body = reqwest::Body::wrap_stream(stream);
-    let mut part = reqwest::multipart::Part::stream_with_length(body, meta.len());
+    let mut part = reqwest::multipart::Part::stream_with_length(body, len);
     if let Some(name) = path.file_name() {
         part = part.file_name(name.to_string_lossy().into_owned());
     }

@@ -1,6 +1,7 @@
 import { useLayoutEffect, type RefObject } from "react";
-import { clearCspLayoutRules, setCspLayoutRules } from "../utils/cspElementLayout";
+import { clearCspLayoutRules, setCspLayoutRules, CSP_LAYOUT_OWNER_IMPERATIVE } from "../utils/cspElementLayout";
 import { subscribeTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
+import { resolveTierScrollLeftPx } from "../utils/waveformViewport";
 
 type UseWaveformRulerScrollTrackArgs = {
   enabled: boolean;
@@ -11,13 +12,16 @@ type UseWaveformRulerScrollTrackArgs = {
   onTickRebuild?: (scrollLeftPx: number) => void;
 };
 
+/** DOM-first scroll read, aligned with overlay / band / playhead (`resolveTierViewportMetrics`). */
 function readTierScrollLeftPx(
   scrollEl: HTMLElement,
   tierScrollLive?: { scrollLeftRef: RefObject<number> },
 ): number {
-  const live = tierScrollLive?.scrollLeftRef.current;
-  if (live != null && Number.isFinite(live)) return live;
-  return scrollEl.scrollLeft;
+  return resolveTierScrollLeftPx({
+    tierScrollEl: scrollEl,
+    layoutScrollLeftPx: 0,
+    liveScrollLeftRef: tierScrollLive?.scrollLeftRef,
+  });
 }
 
 /** Imperative translate3d sync — ruler track moves with tier scroll without React paint. */
@@ -60,7 +64,7 @@ export function useWaveformRulerScrollTrack({
       unsubFrame();
       window.removeEventListener("resize", applyTransform);
       if (tickRebuildRaf) cancelAnimationFrame(tickRebuildRaf);
-      clearCspLayoutRules(track);
+      clearCspLayoutRules(track, CSP_LAYOUT_OWNER_IMPERATIVE);
     };
   }, [
     enabled,

@@ -1,6 +1,6 @@
 import { ChevronRight, FolderOpen, Trash2 } from "lucide-react";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
-import { WORKSPACE_SIDEBAR_ROW_SURFACE } from "../config/workspaceShellLayout";
+import { WORKSPACE_SIDEBAR_EMPTY_HINT_BTN, WORKSPACE_SIDEBAR_ROW_SURFACE } from "../config/workspaceShellLayout";
 import type { ProjectControllerApi } from "../pages/useProjectController";
 import type { ProjectSummary } from "../tauri/projectApi";
 import * as fileApi from "../tauri/fileApi";
@@ -165,7 +165,7 @@ export function WelcomeSidebarProjectList({
                     ) : (
                       <button
                         type="button"
-                        className={`w-full appearance-none border-0 bg-transparent px-5 py-2 text-left ${PANEL_TYPOGRAPHY.meta} text-notion-text-muted transition-colors hover:bg-notion-sidebar-hover hover:text-notion-text disabled:opacity-40`}
+                        className={WORKSPACE_SIDEBAR_EMPTY_HINT_BTN}
                         disabled={c.busy}
                         onClick={() => onOpenProject(p.id)}
                       >

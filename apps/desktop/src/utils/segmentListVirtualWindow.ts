@@ -3,6 +3,7 @@
 export {
   computeSegmentListVirtualWindow,
   isEditableSegmentBodyTextarea,
+  isSegmentBodyTextarea,
   scrollSegmentListIndexIntoView,
   segmentListItemStridePx,
   segmentListRangeDragExceededSlop,

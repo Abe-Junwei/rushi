@@ -160,15 +160,15 @@
   overflow: hidden;
 }
 
-/** 左/右工具组：浅底 pill，无额外 border（遵守面板 ≤2 层 border） */
+/** 左/右工具组：透明底，按钮单独 hover（遵守面板 ≤2 层 border） */
 .workbench-toolbar-group {
   display: inline-flex;
   flex-shrink: 0;
   align-items: center;
   gap: 4px;
-  padding: 3px 6px;
-  border-radius: 10px;
-  background: color-mix(in srgb, var(--notion-bg) 78%, var(--notion-sidebar));
+  padding: 0;
+  border-radius: 0;
+  background: transparent;
 }
 
 .editor-workbench-toolbar .workbench-toolbar-group.waveform-toolbar-zone,
@@ -223,6 +223,13 @@
 
 .editor-workbench-toolbar .waveform-playback-rate-trigger {
   height: 32px;
+  border-color: transparent;
+  background: transparent;
+}
+
+.editor-workbench-toolbar .waveform-playback-rate-trigger:hover:not(:disabled):not(.waveform-playback-rate-trigger-state-active):not(.workbench-action-btn-engaged) {
+  background: var(--notion-sidebar-hover);
+  border-color: transparent;
 }
 
 .editor-workbench-toolbar .waveform-playback-rate-menu-global {
@@ -771,6 +778,10 @@
   background: transparent;
 }
 
+.waveform-time-ruler-canvas {
+  display: block;
+}
+
 /** 主波形 peaks 舞台白底；WaveSurfer 内层背景透明，避免底部出现独立色带。 */
 .waveform-peaks-stage {
   background: var(--zen-wf-surface);
@@ -804,8 +815,6 @@
 .waveform-segment-region {
   position: absolute;
   box-sizing: border-box;
-  content-visibility: auto;
-  contain-intrinsic-size: auto 96px;
   border: none;
   border-left: 1px solid color-mix(in srgb, var(--notion-text) 14%, transparent);
   border-right: 1px solid color-mix(in srgb, var(--notion-text) 14%, transparent);

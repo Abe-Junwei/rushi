@@ -5,7 +5,10 @@ use std::path::Path;
 use serde_json::Value;
 use url::Url;
 
-use super::{read_audio_bytes_limited, send_stt_cloud_get, send_stt_cloud_post};
+use super::{
+    audio_size_within_limit, is_retryable_stt_transport, multipart_part_from_file,
+    send_stt_cloud_get,
+};
 
 pub const DASHSCOPE_UPLOADS_URL: &str = "https://dashscope.aliyuncs.com/api/v1/uploads";
 
@@ -27,8 +30,7 @@ pub(crate) fn is_allowed_dashscope_resource_url(raw: &str) -> bool {
 fn build_oss_upload_form(
     policy: &Value,
     key: &str,
-    file_name: &str,
-    bytes: Vec<u8>,
+    file_part: reqwest::multipart::Part,
 ) -> reqwest::multipart::Form {
     reqwest::multipart::Form::new()
         .text(
@@ -73,10 +75,7 @@ fn build_oss_upload_form(
         )
         .text("key", key.to_string())
         .text("success_action_status", "200")
-        .part(
-            "file",
-            reqwest::multipart::Part::bytes(bytes).file_name(file_name.to_string()),
-        )
+        .part("file", file_part)
 }
 
 pub async fn upload_dashscope_temp_oss_url(
@@ -128,23 +127,39 @@ pub async fn upload_dashscope_temp_oss_url(
     let key = format!("{upload_dir}/{file_name}");
     let oss_url = format!("oss://{key}");
 
-    let bytes = read_audio_bytes_limited(audio_path)?;
+    let bytes = audio_size_within_limit(audio_path)?;
     log(&format!(
         "INFO dashscope upload_oss bytes={} key={}",
-        bytes.len(),
-        key
+        bytes, key
     ));
 
-    let upload_resp = send_stt_cloud_post(|http| {
-        http.post(upload_host).multipart(build_oss_upload_form(
-            policy,
-            &key,
-            file_name,
-            bytes.clone(),
-        ))
-    })
-    .await
-    .map_err(|e| format!("百炼 OSS 上传失败: {e}"))?;
+    let build_form = || async {
+        let part = multipart_part_from_file(audio_path)
+            .await?
+            .file_name(file_name.to_string());
+        Ok::<_, String>(build_oss_upload_form(policy, &key, part))
+    };
+    let upload_resp = {
+        let form = build_form().await?;
+        let primary = super::http_client()
+            .post(upload_host)
+            .multipart(form)
+            .send()
+            .await;
+        match primary {
+            Ok(resp) => resp,
+            Err(e) if is_retryable_stt_transport(&e) => {
+                let form = build_form().await?;
+                super::http_client_direct()
+                    .post(upload_host)
+                    .multipart(form)
+                    .send()
+                    .await
+                    .map_err(|e| format!("百炼 OSS 上传失败: {e}"))?
+            }
+            Err(e) => return Err(format!("百炼 OSS 上传失败: {e}")),
+        }
+    };
     if !upload_resp.status().is_success() {
         let status = upload_resp.status();
         let body = upload_resp.text().await.unwrap_or_default();

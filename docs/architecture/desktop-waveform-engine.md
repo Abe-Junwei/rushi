@@ -10,7 +10,7 @@
   useWaveformPeaks → PeakCache.fromLevelUrls
   useProjectWaveform + WaveSurfer v7     ← 唯一主波形渲染器（可见波形 + 内置 progress）
   useWaveformZoomSync                    ← decode 首帧 + peaks 热切换 + zoom
-  WaveformSegmentBandCanvas              ← packable 语段色带（Canvas display，全量绘制 + scroll 同步）
+  WaveformSegmentBandCanvas              ← packable 语段色带（timeline-native virtual Canvas window）
   WaveformSegmentOverlay                 ← 语段 DOM（仅选中 + drag draft；非 WS Regions）
   WaveformLiveTimeRuler                  ← 时间尺 + playhead
   EditorSegmentList                      ← 语段列表（虚拟窗口，长转写列表）
@@ -20,10 +20,13 @@
 
 ## 滚动真源
 
-- **tier** `tierScrollRef.scrollLeft` 为 UI 真源（overlay、ruler、segment 控件、minimap）。
-- **读取**：overlay / minimap / ruler / playback chrome 经 [`resolveTierViewportMetrics`](../../apps/desktop/src/utils/waveformViewport.ts)（live ref + committed layout）；**写入**仅 `setTierScrollPx` / 用户 scroll / viewport fit；clamp 经 [`clampTimelineScrollLeftPx`](../../apps/desktop/src/utils/waveformScrollSync.ts)。
+- **tier** `tierScrollRef.scrollLeft` 为 UI 真源（overlay、ruler、segment 控件、minimap），但生产代码只允许 [`useTierScrollSync`](../../apps/desktop/src/hooks/useTierScrollSync.ts) 写入普通滚动目标。
+- **读取（统一 DOM-first）**：overlay / minimap / ruler / playback chrome 一律经 [`resolveTierViewportMetrics`](../../apps/desktop/src/utils/waveformViewport.ts)（DOM `scrollLeft` / `clientWidth` → live ref → committed layout 顺序）；embedded 时间尺 [`WaveformTimeRulerCanvas`](../../apps/desktop/src/components/WaveformTimeRulerCanvas.tsx) 经 [`subscribeTierScrollFrame`](../../apps/desktop/src/utils/tierScrollFrameCoordinator.ts) 与 band / playhead 同帧读同值。**写入**经 `useTierScrollSync` 的语义入口：`revealSelectionScroll`、`playbackFollowScroll`、`minimapScrubScroll`、`userScrubScroll`、`applyWheelScrollDelta`、`setTierScrollPx`（低层/迁移保留）。clamp 经 [`clampTimelineScrollLeftPx`](../../apps/desktop/src/utils/waveformScrollSync.ts)。
 - WaveSurfer `autoScroll: false`；tier 承担水平滚动，WaveSurfer / overlay 位于同一 timeline 内容层，随浏览器原生 scroll 物理移动。
 - **Scroll 热路径（2026-06）**：`useTierScrollSync` 在 tier scroll / wheel-forward 时更新 live scroll refs，并调用 [`scheduleTierScrollFrame`](../../apps/desktop/src/utils/tierScrollFrameCoordinator.ts) 合并 band / playhead / ruler 的 viewport chrome imperative 更新为**单 rAF**；React `tierScrollLayout` 在 scroll burst 结束后 commit。
+  - `useTierScrollSync` 是唯一 scroll motion owner：wheel inertia 的 rAF、selection reveal、minimap scrub、ruler/user scrub、playback follow 与 transient motion cancel 均在此集中处理。`useWaveformTierWheelForward` 只解析 wheel delta / pointer intent，不直接写 DOM。
+  - 原生 scroll、**离散程序化跳转**（reveal / pick / resize，`commitScrollLeftPx` 非 `deferLayoutCommit` 分支）与 **播放跟随**均 `flushTierScrollFrame` 同帧落 chrome；播放跟随仍 `deferLayoutCommit`，只推迟 React layout commit，不推迟 band / ruler / playhead viewport chrome。
+  - minimap viewport 矩形经 `subscribeTierScrollFrame` 命令式跟随 live scroll（不再只读 burst-committed `tierScrollLayout`，消拖影）。
 - 播放跟随：`useWaveformPlaybackScrollFollow` 在波形 ready 后只写 tier scroll；viewport chrome 由 frame coordinator 同步。
 
 ## Viewport resize 编排（P0 阶段 1）
@@ -76,9 +79,34 @@
 - `clientXToTimeSec` 按容器实际渲染宽（= `timelineWidthPx`）比例换算。
 - ruler 用 `t/duration` 比例定位；`pxPerSec` 用于刻度密度与离散缩放命令（适配语段 / 整段可见 / ±）。
 
+## 点选 / 选择交互契约（统一矩阵）
+
+唯一全量选中内核：[`useTranscriptionLayerSelection.selectSegmentAt`](../../apps/desktop/src/pages/useTranscriptionLayerSelection.ts)——顺序固定为 **reveal（immediate 居中）→ `flushSync` 选中 → `flushTierScrollFrame`（band/overlay 同帧）→ suppress + seek → focus（仅 waveform 源）**。选中绘制与居中滚动在**同一帧**提交，避免「先暗后亮」或「先高亮再跳中央」。
+
+| 入口 | 选中 | reveal/居中 | seek | suppress 跟随 | 焦点 | 走 `selectSegmentAt`? |
+|------|------|------------|------|---------------|------|----------------------|
+| 文本行点击（未选中） | ✓ | ✓ immediate | 语段头 | ✓ | textarea | ✓（`list`/`listAdvance`） |
+| 文本行再点击（已选中） | — | ✓ immediate | — | — | textarea caret | 否（`revealSelectedSegmentInViewport`） |
+| 波形语段首点 | ✓ | ✓ immediate | 语段头 | ✓ | waveform shell | ✓（`waveform`） |
+| 波形语段再点（已选中） | — | — | 钳在语段内点击点 | ✓ | waveform shell | 否（`seek-within`） |
+| 键盘 ↑↓ / Tab advance | ✓ | ✓ immediate | 语段头 | ✓ | textarea | ✓（`list`/`listAdvance`，rAF 合并） |
+| 右键菜单（列表/波形/文本） | ✓（lifecycle setState；多选命中保留） | **不 reveal** | **不 seek** | — | — | 否（band/overlay 经 React 同 commit 同帧） |
+| 框选 lasso 多选 | ✓（多选） | **不 reveal** | — | — | shell | 否（`selectSegmentIndices`） |
+| 空白点击（无拖动） | — | — | anchor 时间 | ✓（seek-blank） | shell | 否 |
+| minimap 点击 | — | `minimapScrubScroll` 直接居中 | ✓ | ✓ | — | 否 |
+| 时间尺拖拽 | — | `userScrubScroll` 直接滚动 | — | ✓ | — | 否 |
+
+约定要点：
+
+- **右键菜单 / lasso 故意不 reveal/seek**（避免右键或批量选择时画面跳动）；其 band canvas（`useLayoutEffect` keyed on `selectedIdx` 同步重绘）与 DOM overlay 在同一 React commit 落帧，无需经选中内核也不会闪。
+- **minimap 是 scrub 控件**：经 `minimapScrubScroll` 直接跳转居中；seek 前 `suppressPlaybackFollowForSelectionSeek`，避免播放中被自动跟随回拽。
+- `listKeyboard` 源为架构守卫（`check-architecture-guard.mjs`）保留的「键盘禁用」契约位（键盘走普通 `list`，seek 由内核负责），非运行时入口。
+
 ## 语段语义真源：可见 / 可打包语段
 
 「哪些语段参与波形 UI」是与坐标分离的另一条真源。整轨占位语段（如分句前的 ASR 整段）在波形上**不渲染**，因此 render / lane / 命中测试 / 框选新建必须对它有一致判定。
+
+> **决策（2026-06 波形交互排查）**：dominant-span（整轨占位）语段 **维持不画 band / 不画 overlay**——它会铺满整条波形、无可操作语义，且单一可见集（下）已保证 render/编辑/命中一致。**不**为其引入第二套渲染或工作集。选中态同理：占位语段不进入选中链。
 
 - **是否占位**：[`isPlaceholderSegment`](../../apps/desktop/src/utils/waveformSegmentBounds.ts)（Rust 对应 `is_placeholder_segment`）。**显式 `kind` 优先**：`SegmentDto.kind === "placeholder"` 即占位、`"speech"` 即非占位（即便跨度大也不隐藏，消除短片段长单段假阳性）；缺省（旧数据 / 未标记）时回退 `span/duration ≥ WAVEFORM_DOMINANT_SPAN_RATIO`（0.85）启发式。
 - **产生点**：ASR 整轨兜底（`transcribe.rs`）显式标 `placeholder`，子句标 `speech`；`kind` 列随语段落库（DB 迁移 `migrate_segments_kind`，旧行 NULL → 缺省）。
@@ -99,7 +127,7 @@
 
 | 层 | 职责 |
 |----|------|
-| **Canvas bands** | [`WaveformSegmentBandCanvas`](../../apps/desktop/src/components/WaveformSegmentBandCanvas.tsx) 在 viewport chrome 内绘制可见窗 packable 色带；[`drawWaveformSegmentBands`](../../apps/desktop/src/services/waveform/drawWaveformSegmentBands.ts) 纯函数；scroll/wheel 时读 live `resolveTierViewportMetrics` 重绘 |
+| **Canvas bands** | [`WaveformSegmentBandCanvas`](../../apps/desktop/src/components/WaveformSegmentBandCanvas.tsx) 位于 timeline 内容层，绘制带缓冲的可见窗 packable 色带；浏览器原生 scroll 会物理移动旧 canvas，JS 只负责滚出缓冲窗后的重绘，避免主线程卡顿时 sticky viewport canvas 延迟跟随。绘制仍由 [`drawWaveformSegmentBands`](../../apps/desktop/src/services/waveform/drawWaveformSegmentBands.ts) 纯函数完成 |
 | **DOM overlay** | [`WaveformSegmentOverlay`](../../apps/desktop/src/components/WaveformSegmentOverlay.tsx) 仅 [`selectOverlayInteractiveSegmentIndices`](../../apps/desktop/src/utils/waveformSegmentOverlayVisibility.ts)（选中 + drag draft） |
 | **语段列表** | [`EditorSegmentList`](../../apps/desktop/src/components/editor/EditorSegmentList.tsx) + [`segmentListVirtualWindow`](../../apps/desktop/src/utils/segmentListVirtualWindow.ts) |
 
@@ -126,10 +154,10 @@
         <div ref=containerRef>                                ← WaveSurfer mount（fillParent: false）
       <WaveformSegmentOverlay z=3 />                          ← 仅选中 / drag draft DOM，timeline 坐标
       <WaveformSegmentPlaybackControls z=8 />
+      <WaveformSegmentBandCanvas z=2 />                       ← packable 语段色带（timeline-native virtual canvas window）
       <div ref=waveformStickyShellRef sticky left=0 width=vw> ← viewport chrome
-        <WaveformSegmentBandCanvas z=2 />                     ← packable 语段色带（Canvas，viewport 坐标）
         <WaveformViewportPlayhead z=10 />
-        <WaveformLiveTimeRuler z=20 />                        ← 嵌入时间尺（viewport 坐标空间）
+        <WaveformLiveTimeRuler z=20 />                        ← 嵌入时间尺 Canvas（viewport + subscribeTierScrollFrame）
 </div>
 ```
 
@@ -171,6 +199,17 @@
 
 `useWaveformTimelineController` 为唯一装配点。
 
+## 播放时钟与单 tick（playhead / 滚动跟随同源）
+
+调研：[`waveform-playhead-clock-unification-research.md`](../execution/specs/waveform-playhead-clock-unification-research.md)。
+
+- **单一平滑算法真源**：[`visualPlayheadClock.ts`](../../apps/desktop/src/utils/visualPlayheadClock.ts)（纯函数 `createVisualPlayheadClockState` / `readVisualPlayheadTimeSec`）。算法为**有界领先 + 单调**：从上一次发出值按 `playbackRate` 外推填补量化间隙，但**领先 raw 不超过 0.05s**（杜绝起播时媒体启动延迟下的无界过预测），且正向播放期间**绝不回退**；仅在 raw 真实回跳（>0.2s）或大幅前跳（>0.35s）时硬跳到 raw。WS `getCurrentTime()` 被 HTMLMediaElement `timeupdate` 量化（4–250ms），故播放头**线**不直接用原始时间；[`useWaveformLiveClock`](../../apps/desktop/src/hooks/useWaveformLiveClock.ts)（ruler / 播放时间标签）**消费同一纯函数**，不再自带重复平滑。
+- **单 rAF tick（发布/订阅）**：[`useWaveformVisualPlayheadClock`](../../apps/desktop/src/hooks/useWaveformVisualPlayheadClock.ts) 在播放期持有 **唯一** 时钟 rAF；每帧先推进 `visualTimeSecRef`，再 **同帧** 按优先级广播给订阅者：滚动跟随（`PLAYHEAD_FRAME_PRIORITY_SCROLL=0`）→ playhead transform（`=1`）。消除了「时钟 rAF 更新 ref、playhead 再排一帧读它」的双 rAF 延迟，保证 playhead 与滚动跟随用 **同一帧的时间**。
+  - [`useWaveformPlaybackScrollFollow`](../../apps/desktop/src/hooks/useWaveformPlaybackScrollFollow.ts) 与 [`WaveformViewportPlayhead`](../../apps/desktop/src/components/WaveformViewportPlayhead.tsx) **不再各开 rAF**，改 `subscribePlayheadFrame`；embedded 时间尺 [`WaveformTimeRulerCanvas`](../../apps/desktop/src/components/WaveformTimeRulerCanvas.tsx) 亦订阅 playhead frame 以刷新 major tick 高亮。
+  - 暂停 / seek 时 tick 停；playhead 由 `currentTimeSec` effect、ruler Canvas 由 paused 分支 + scroll frame 落位。
+- **playhead transform 写入**：经 [`setCspLayoutRules`](../../apps/desktop/src/utils/cspElementLayout.ts)（nonce `<style>` 注册表，CSP-HARDEN 禁 `el.style.*`）；`lastTransformRef` 去重，center 模式仅写一次。
+- **已播放显示边界**：已播放区域只由 WaveSurfer progress / playhead 表示；`WaveformSegmentBandCanvas` 不再按 playhead 给未选中语段渲染 visited 语段色，仅保留当前选中 / 多选 / 低置信 / idle 语段状态。
+
 ## 偏好（localStorage）
 
 | Key | 含义 |
@@ -183,7 +222,7 @@
 
 ## Viewport fit
 
-- 语段 fit / reveal：`useTranscriptionViewportFit` 写 tier scroll；需 peaks 换档时保留 `pendingViewportFitRef`，在 `onZoomApplied → applyPendingViewportFit` **单次**滚 tier（`queueViewportFit` 不在换档前预滚）。
+- 语段 fit / reveal：`useTranscriptionViewportFit` 只调用 `revealSelectionScroll`；需 peaks 换档时保留 `pendingViewportFitRef`，在 `onZoomApplied → applyPendingViewportFit` **单次**滚 tier（`queueViewportFit` 不在换档前预滚）。
 - 程序化滚动通过 `playbackFollowSuppressUntilRef` 短暂暂停播放跟随（与用户手动滚 tier 相同机制）。
 
 ## Route C2（导入预热 / 偏好 / minimap / 播放中热切换）

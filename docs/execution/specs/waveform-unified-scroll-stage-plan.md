@@ -224,7 +224,7 @@ No-Go 条件：
 测试：
 
 - 更新 `useTierScrollSync.test.ts` 或迁移为 `useWaveformTierScroll.test.ts`。
-- 保留 programmatic coalesce、deferLayoutCommit、smooth scroll tests。
+- 保留 programmatic coalesce、deferLayoutCommit、direct minimap jump tests。
 
 ### S5：删除 legacy 与架构守卫（1d）
 

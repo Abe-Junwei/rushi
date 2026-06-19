@@ -100,7 +100,7 @@ export function EditorWaveformPane({
           exportMinimapPeaks={tx.exportMinimapPeaks}
           currentTimeSec={tx.currentTime}
           onSeek={tx.seek}
-          onSetScrollLeftPx={tx.setTierScrollPx}
+          onSetScrollLeftPx={tx.minimapScrubScroll}
         />
       ) : null}
     </div>

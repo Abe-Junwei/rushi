@@ -151,6 +151,7 @@ function checkTsFile(fullPath) {
       }
     }
     const viewportChromeTransformAllowlist = new Set([
+      "apps/desktop/src/components/WaveformTimeRuler.tsx",
       "apps/desktop/src/hooks/useWaveformRulerScrollTrack.ts",
     ]);
     if (
@@ -158,6 +159,14 @@ function checkTsFile(fullPath) {
       (/translate3d\(\s*\$\{\s*-scrollLeft/.test(source) || /translate3d\(\s*-scrollLeft/.test(source))
     ) {
       errors.push(`${rel}: unified scroll stage 禁止 waveform/overlay scrollLeft mirror transform`);
+    }
+    const tierScrollWriteAllowlist = new Set([
+      "apps/desktop/src/hooks/useTierScrollSync.ts",
+      "apps/desktop/src/hooks/tierScrollProgrammaticWrites.ts",
+      "apps/desktop/src/services/waveform/waveformSurferProgressCoverage.ts",
+    ]);
+    if (/\.\s*scrollLeft\s*=/.test(source) && !tierScrollWriteAllowlist.has(rel)) {
+      errors.push(`${rel}: scrollLeft 写入必须经 useTierScrollSync 语义入口`);
     }
   }
 
@@ -195,7 +204,11 @@ function checkTsFile(fullPath) {
   }
 
   const usesLucide = /from\s+['"]lucide-react['"]/.test(source);
-  if (usesLucide) {
+  const lucideIconSpecAllowlist = new Set([
+    'apps/desktop/src/config/productIcons.ts',
+    'apps/desktop/src/config/productIcons.test.ts',
+  ]);
+  if (usesLucide && !lucideIconSpecAllowlist.has(rel)) {
     const hasIconSpecImport = /from\s+['"][./]+lucideIconSpec['"]/.test(source);
     if (!hasIconSpecImport) {
       errors.push(`${rel}: 使用 lucide-react 时必须引入 lucideIconSpec 统一尺寸与描边常量`);
@@ -237,6 +250,13 @@ function checkTsFile(fullPath) {
       '_ACTION_BTN',
       'NAV_SIDEBAR_EXPAND_BTN',
       'NAV_ICON_BTN',
+      'workbenchLabelBtn',
+      'workbenchCompactMenuSummary',
+      'HUB_FILE_ACTION_BTN',
+      'HUB_ICON_BTN',
+      'WELCOME_PROJECT_ACTION_BTN',
+      'WELCOME_PROJECT_DELETE_BTN',
+      'WORKSPACE_SIDEBAR_EMPTY_HINT_BTN',
       'waveform-scroll-follow-segment-btn',
     ];
     const inlineButtonPatterns = [
@@ -805,6 +825,103 @@ function checkInlineStyleDebt() {
   });
 }
 
+function checkControlBtnGhostDuplicates() {
+  const allowlist = new Set([
+    'apps/desktop/src/config/controlStyles.ts',
+    'apps/desktop/src/config/workspaceShellLayout.ts',
+    'apps/desktop/src/components/editor/editorSegmentToolbarStyles.ts',
+    'apps/desktop/src/components/glossary/glossaryPanelStyles.ts',
+    'apps/desktop/src/config/envVendorChipStyles.ts',
+    'apps/desktop/src/components/EnvironmentPanelNav.tsx',
+    'apps/desktop/src/components/segmentRow/SegmentCorrectPopover.tsx',
+    'apps/desktop/src/components/FindReplaceDialogBody.tsx',
+    'apps/desktop/src/components/FloatingPanelSegmentRow.tsx',
+    'apps/desktop/src/components/EditorToolbar.tsx',
+  ]);
+  const srcRoot = path.join(ROOT, 'apps/desktop/src');
+  const inlineRe = /<button\b[^>]*\bclassName(?:="([^"]+)"|\={`([^`]+)`})/g;
+  walk(srcRoot, (fullPath) => {
+    if (!/\.(ts|tsx)$/.test(fullPath)) return;
+    const rel = path.relative(ROOT, fullPath).replaceAll(path.sep, '/');
+    if (rel.endsWith('.test.ts') || rel.endsWith('.test.tsx')) return;
+    if (allowlist.has(rel)) return;
+    if (!rel.startsWith('apps/desktop/src/components/')) return;
+    const source = fs.readFileSync(fullPath, 'utf-8');
+    let m;
+    while ((m = inlineRe.exec(source))) {
+      const cls = m[1] ?? m[2] ?? '';
+      if (!cls.includes('bg-transparent') || !cls.includes('hover:bg-notion-sidebar-hover')) continue;
+      if (cls.includes('CONTROL_BTN_')) continue;
+      if (cls.includes('WORKSPACE_SIDEBAR_')) continue;
+      if (cls.includes('workspaceSidebarNavItemClass')) continue;
+      if (cls.includes('dropdown-item')) continue;
+      if (cls.includes('icon-btn')) continue;
+      warnings.push(
+        `${rel}: ghost 按钮须用 controlStyles CONTROL_BTN_* 或 workspaceShellLayout 侧栏 token（§按钮真源）`,
+      );
+    }
+  });
+}
+
+/** 已登记语义图标 — components/pages 须走 PRODUCT_ICON，禁止直接 lucide import */
+const PRODUCT_SEMANTIC_LUCIDE_NAMES = new Set([
+  'ArrowDownUp',
+  'BarChart3',
+  'BookMarked',
+  'BookOpen',
+  'Bot',
+  'Brain',
+  'CirclePlay',
+  'Cloud',
+  'Cpu',
+  'FileSpreadsheet',
+  'Keyboard',
+  'ListChecks',
+  'MessageSquare',
+  'Mic',
+  'Palette',
+  'Pause',
+  'PenLine',
+  'Play',
+  'Replace',
+  'SpellCheck2',
+  'Target',
+  'Wand2',
+  'Sparkles',
+]);
+
+function checkProductSemanticLucideImports() {
+  const allowlist = new Set([
+    'apps/desktop/src/config/productIcons.ts',
+    'apps/desktop/src/config/productIcons.test.ts',
+  ]);
+  const srcRoot = path.join(ROOT, 'apps/desktop/src');
+  const importRe = /import\s+(?:type\s+)?\{([^}]+)\}\s*from\s*['"]lucide-react['"]/g;
+  walk(srcRoot, (fullPath) => {
+    if (!/\.(ts|tsx)$/.test(fullPath)) return;
+    const rel = path.relative(ROOT, fullPath).replaceAll(path.sep, '/');
+    if (allowlist.has(rel)) return;
+    if (!rel.startsWith('apps/desktop/src/components/') && !rel.startsWith('apps/desktop/src/pages/')) {
+      return;
+    }
+    const source = fs.readFileSync(fullPath, 'utf-8');
+    let match;
+    while ((match = importRe.exec(source)) !== null) {
+      const specifiers = match[1]
+        .split(',')
+        .map((s) => s.trim().replace(/^type\s+/, '').split(/\s+as\s+/)[0].trim())
+        .filter(Boolean);
+      for (const name of specifiers) {
+        if (PRODUCT_SEMANTIC_LUCIDE_NAMES.has(name)) {
+          errors.push(
+            `${rel}: 禁止直接 import lucide ${name}（产品语义图标须用 config/productIcons PRODUCT_ICON）`,
+          );
+        }
+      }
+    }
+  });
+}
+
 checkDevReleaseStyleCspParity();
 checkDevReleaseBehaviorForks();
 checkTailwindV4Entry();
@@ -814,6 +931,8 @@ checkTauriProductionCsp();
 checkTauriStyleNonceProbe();
 checkTauriInvokeAcl();
 checkSegmentListRapidSelectGuard();
+checkControlBtnGhostDuplicates();
+checkProductSemanticLucideImports();
 
 console.log(`\n架构守卫报告：${errors.length} 错误，${warnings.length} 警告\n`);
 warnings.forEach(w => console.log(`⚠️  ${w}`));

@@ -1,5 +1,5 @@
 import { ChevronLeft, PanelLeftOpen } from "lucide-react";
-import { CONTROL_BTN_ICON_GHOST } from "../config/controlStyles";
+import { CONTROL_BTN_BREADCRUMB, CONTROL_BTN_ICON_GHOST } from "../config/controlStyles";
 import { useOptionalWorkspaceSidebarCollapseContext } from "../hooks/useWorkspaceSidebarCollapseContext";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
@@ -8,9 +8,6 @@ const NAV_ICON_BTN = `${CONTROL_BTN_ICON_GHOST} shadow-none focus-visible:outlin
 
 /** 侧栏折叠态：顶栏展开钮略向左贴齐主区左缘 */
 const NAV_SIDEBAR_EXPAND_BTN = `${NAV_ICON_BTN} -ml-2.5`;
-
-const PROJECT_LINK =
-  "min-w-0 max-w-[40%] truncate rounded-sm border-0 bg-transparent p-0 text-left text-title font-medium text-notion-text-muted shadow-none transition-colors hover:bg-notion-sidebar-hover hover:text-notion-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-notion-text/20 disabled:cursor-not-allowed disabled:opacity-40";
 
 export type EditorWorkspaceNavProps = {
   projectName: string;
@@ -85,7 +82,7 @@ export function EditorWorkspaceNav({
           {projectAction ? (
             <button
               type="button"
-              className={PROJECT_LINK}
+              className={CONTROL_BTN_BREADCRUMB}
               disabled={disabled}
               onClick={projectAction}
               title={`返回项目：${projectName}`}

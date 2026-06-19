@@ -14,7 +14,7 @@ export const GLOSSARY_ERROR_TEXT =
 export const GLOSSARY_EMPTY_TEXT =
   "m-0 rounded-md bg-notion-callout-bg px-4 py-8 text-center text-sm text-notion-text-muted";
 
-/** 行内删除按钮（含二次确认态）；批量条删除按钮同款 */
+/** 行内删除按钮（含二次确认态）；批量条删除按钮同款。语义对齐 CONTROL_BTN_DANGER，但含 confirming 双态。 */
 export function glossaryRowDeleteBtnClass(confirming: boolean): string {
   const base =
     "inline-flex h-7 shrink-0 items-center gap-1 rounded-sm border px-2.5 font-sans text-label font-medium transition-colors disabled:cursor-not-allowed disabled:opacity-40";

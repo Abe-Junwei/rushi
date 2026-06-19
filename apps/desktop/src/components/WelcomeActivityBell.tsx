@@ -1,5 +1,5 @@
 import { Bell } from "lucide-react";
-import { CONTROL_BTN_TOOLBAR_GHOST } from "../config/controlStyles";
+import { CONTROL_BTN_TOOLBAR_GHOST, CONTROL_BTN_WELCOME_ICON } from "../config/controlStyles";
 import { useWelcomeActivityController } from "../hooks/useWelcomeActivityController";
 import type { ProjectControllerApi } from "../pages/useProjectController";
 import { LUCIDE_ICON_SIZE_LG, LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
@@ -41,9 +41,7 @@ export function WelcomeActivityBell({
 
   const iconClass = variant === "welcome" ? LUCIDE_ICON_SIZE_LG : LUCIDE_ICON_SIZE_MD;
   const buttonClass =
-    variant === "welcome"
-      ? "relative rounded-full border-0 bg-transparent p-2 text-notion-text-muted outline-none transition-colors hover:bg-notion-sidebar-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-notion-text-light/40 disabled:cursor-not-allowed disabled:opacity-50"
-      : `${CONTROL_BTN_TOOLBAR_GHOST} relative`;
+    variant === "welcome" ? CONTROL_BTN_WELCOME_ICON : `${CONTROL_BTN_TOOLBAR_GHOST} relative`;
 
   const activityHint = editorShortcutMenuHint("workflow.openActivityInbox");
 

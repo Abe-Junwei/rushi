@@ -156,8 +156,17 @@ describe("executeEditorShortcut", () => {
   });
 
   it("confirmAdvance uses listAdvance after save", async () => {
+    vi.spyOn(waveformPrefs, "readStoredTabAdvanceLoopsSegment").mockReturnValue(false);
     const confirmSegmentEditAndAdvance = vi.fn(() => Promise.resolve(true));
     const ctx = makeCtx({ selectedIdx: 0, confirmSegmentEditAndAdvance });
+    const wf = {
+      togglePlay: vi.fn(),
+      getPlayheadTime: () => 0,
+      seekByDelta: vi.fn(),
+      seek: vi.fn(),
+      playSegmentAtIndex: vi.fn(),
+      preserveLoopForNextSegmentSelect: vi.fn(),
+    };
     const selectSegmentAt = vi.fn();
     const focusSegmentTextarea = vi.fn();
     document.body.innerHTML = `
@@ -169,13 +178,15 @@ describe("executeEditorShortcut", () => {
 
     executeEditorShortcut(
       "workflow.confirmAdvance",
-      makeDeps({ ctx, selectSegmentAt, focusSegmentTextarea }),
+      makeDeps({ ctx, selectSegmentAt, focusSegmentTextarea, wf: wf as never }),
     );
 
     await vi.waitFor(() => {
       expect(confirmSegmentEditAndAdvance).toHaveBeenCalledWith(0);
       expect(selectSegmentAt).toHaveBeenCalledWith(1, "listAdvance");
       expect(focusSegmentTextarea).toHaveBeenCalledWith(1);
+      expect(wf.seek).not.toHaveBeenCalled();
+      expect(wf.playSegmentAtIndex).not.toHaveBeenCalled();
     });
     document.body.innerHTML = "";
   });

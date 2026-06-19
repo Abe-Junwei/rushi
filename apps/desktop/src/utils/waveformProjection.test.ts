@@ -100,14 +100,14 @@ describe("waveformProjection — single horizontal scale", () => {
 });
 
 describe("embeddedRulerPlayheadUsesTimelineCoords", () => {
-  it("is true for embedded overlay viewport ruler (scroll-track SVG)", () => {
+  it("is false for embedded overlay viewport ruler (viewport coords + delta translate)", () => {
     expect(
       embeddedRulerPlayheadUsesTimelineCoords({
         appearance: "embedded",
         coordinateSpace: "viewport",
         overlayOnWaveform: true,
       }),
-    ).toBe(true);
+    ).toBe(false);
   });
 
   it("is false for plain viewport sticky ruler", () => {

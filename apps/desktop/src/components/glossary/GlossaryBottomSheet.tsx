@@ -1,6 +1,7 @@
 import { useEffect, type ReactNode } from "react";
 import { createPortal } from "react-dom";
 import { X } from "lucide-react";
+import { CONTROL_BTN_ICON_GHOST } from "../../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../../config/typography";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";
 
@@ -45,7 +46,7 @@ export function GlossaryBottomSheet({ title, onClose, children }: Props) {
           </h3>
           <button
             type="button"
-            className="rounded-sm border-0 bg-transparent p-1 text-notion-text-muted transition-colors hover:bg-notion-sidebar-hover hover:text-notion-text"
+            className={CONTROL_BTN_ICON_GHOST}
             aria-label="关闭检视器"
             onClick={onClose}
           >

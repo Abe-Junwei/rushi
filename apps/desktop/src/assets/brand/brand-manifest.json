@@ -1,0 +1,26 @@
+{
+  "version": "mark-v1-ru",
+  "date": "2026-06-19",
+  "character": "如",
+  "style": "calligraphy",
+  "selectedVariant": "calligraphy-ru",
+  "assetFormat": "svg-paths+png",
+  "vectorSource": "potrace trace of mark-ru-standard.png (pip3 install potracer)",
+  "colors": {
+    "ink": "#2C2C2C",
+    "saffron": "#C58A43",
+    "onPrimary": "#FFFFFF",
+    "paper": "#F2EFE8"
+  },
+  "assets": {
+    "reference": "apps/desktop/stitch-brand-logo-reference.png",
+    "standard": "apps/desktop/src/assets/brand/mark-ru-standard.png",
+    "onPrimary": "apps/desktop/src/assets/brand/mark-ru-on-primary.png",
+    "iconSource": "apps/desktop/src/assets/brand/icon-source.png",
+    "markMasterSvg": "apps/desktop/src/assets/brand/mark-master.svg",
+    "markPaths": "apps/desktop/src/assets/brand/markPaths.ts",
+    "lockupReadme": "apps/desktop/src/assets/brand/lockup-readme.png"
+  },
+  "generator": "scripts/generate-brand-mark.py",
+  "author": ""
+}

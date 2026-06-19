@@ -32,6 +32,14 @@ copy_file "apps/desktop/stitch-welcome-hub-layout.html" "24-stitch-welcome-hub-l
 copy_file "apps/desktop/docs/stitch-glossary-page-spec.md" "25-stitch-glossary-page-spec.md"
 copy_file "apps/desktop/stitch-glossary-page-layout.html" "26-stitch-glossary-page-layout.html"
 copy_file "apps/desktop/stitch-welcome-page-full.png" "05-stitch-welcome-page-full.png"
+copy_file "apps/desktop/docs/stitch-brand-logo-spec.md" "27-stitch-brand-logo-spec.md"
+copy_file "apps/desktop/stitch-brand-logo-layout.html" "28-stitch-brand-logo-layout.html"
+
+if [[ -f "$ROOT_DIR/apps/desktop/stitch-brand-logo-reference.png" ]]; then
+  cp "$ROOT_DIR/apps/desktop/stitch-brand-logo-reference.png" "$TARGET_DIR/29-stitch-brand-logo-reference.png"
+else
+  echo "[prepare-stitch-upload] skip optional: apps/desktop/stitch-brand-logo-reference.png (add 书法「如」截图后重跑)"
+fi
 
 # Fix relative links after copying docs from apps/desktop/docs into docs/stitch-upload.
 sed -i '' 's#(../src/components/ProjectPanel.tsx)#(../../apps/desktop/src/components/ProjectPanel.tsx)#g' "$TARGET_DIR/03-stitch-welcome-page-spec.md"

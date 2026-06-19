@@ -63,9 +63,10 @@ function makeCtx(segmentCount: number): TranscriptionLayerInput {
   };
 }
 
-function makeTimeline() {
+function makeTimeline(layoutIntent: "manual" | "fit-selection" | "fit-all" = "manual") {
   const revealSegmentInViewport = vi.fn();
   const zoomToFitSegment = vi.fn();
+  const suppressPlaybackFollowForSelectionSeek = vi.fn();
   return {
     timelineMetrics: { mediaDurationSec: 10 },
     tierScrollRef: { current: null },
@@ -75,8 +76,9 @@ function makeTimeline() {
         clientXToTimeSec: vi.fn(() => 0),
       },
     },
-    zoom: { layoutIntentRef: { current: "manual" as const } },
+    zoom: { layoutIntentRef: { current: layoutIntent } },
     viewportFit: { revealSegmentInViewport, zoomToFitSegment },
+    suppressPlaybackFollowForSelectionSeek,
   };
 }
 
@@ -127,13 +129,84 @@ describe("useTranscriptionLayerSelection profile", () => {
     });
 
     expect(setSelectedIdxUi).toHaveBeenCalledWith(2, undefined);
-    expect(timeline.viewportFit.zoomToFitSegment).toHaveBeenCalled();
+    expect(timeline.viewportFit.revealSegmentInViewport).toHaveBeenCalled();
+    expect(timeline.viewportFit.zoomToFitSegment).not.toHaveBeenCalled();
     expect(timeline.wfApiRef.current.seek).toHaveBeenCalled();
+    expect(timeline.suppressPlaybackFollowForSelectionSeek.mock.invocationCallOrder[0]).toBeLessThan(
+      timeline.wfApiRef.current.seek.mock.invocationCallOrder[0],
+    );
+    expect(setSelectedIdxUi.mock.invocationCallOrder[0]).toBeLessThan(
+      timeline.viewportFit.revealSegmentInViewport.mock.invocationCallOrder[0],
+    );
+    expect(timeline.wfApiRef.current.seek.mock.invocationCallOrder[0]).toBeGreaterThan(
+      timeline.viewportFit.revealSegmentInViewport.mock.invocationCallOrder[0],
+    );
 
     const lines = readRecentSelectionLatencyProfileLines();
     const dataLines = lines.filter((line) => line.includes("list idx=2") && line.includes("total="));
     expect(dataLines.length).toBeGreaterThan(0);
     expect(dataLines[0]).toMatch(/flushSelectedIdx=/);
     expect(dataLines[0]).toMatch(/viewport=/);
+  });
+
+  it("listAdvance reveals and seeks like list (Descript-style navigation)", () => {
+    const ctx = makeCtx(5);
+    const ctxRef = { current: ctx };
+    const timeline = makeTimeline();
+    const setSelectedIdxUi = vi.fn();
+
+    const { result } = renderHook(() =>
+      useTranscriptionLayerSelection({
+        ctx,
+        ctxRef,
+        timeline: timeline as never,
+        waveformShellRef: { current: null },
+        setSelectedIdxUi,
+      }),
+    );
+
+    act(() => {
+      result.current.selectSegmentAt(3, "listAdvance");
+    });
+
+    expect(timeline.viewportFit.revealSegmentInViewport).toHaveBeenCalled();
+    expect(timeline.viewportFit.zoomToFitSegment).not.toHaveBeenCalled();
+    expect(timeline.wfApiRef.current.seek).toHaveBeenCalled();
+    expect(timeline.suppressPlaybackFollowForSelectionSeek.mock.invocationCallOrder[0]).toBeLessThan(
+      timeline.wfApiRef.current.seek.mock.invocationCallOrder[0],
+    );
+  });
+
+  it("waveform selection centers without zooming even in fit-selection layout", () => {
+    const ctx = makeCtx(5);
+    const ctxRef = { current: ctx };
+    const timeline = makeTimeline("fit-selection");
+    const setSelectedIdxUi = vi.fn();
+    const waveformShell = document.createElement("div");
+    waveformShell.tabIndex = -1;
+    document.body.appendChild(waveformShell);
+
+    const { result } = renderHook(() =>
+      useTranscriptionLayerSelection({
+        ctx,
+        ctxRef,
+        timeline: timeline as never,
+        waveformShellRef: { current: waveformShell },
+        setSelectedIdxUi,
+      }),
+    );
+
+    act(() => {
+      result.current.selectSegmentAt(2, "waveform");
+    });
+
+    expect(setSelectedIdxUi).toHaveBeenCalledWith(2, undefined);
+    expect(timeline.viewportFit.revealSegmentInViewport).toHaveBeenCalledWith({
+      start_sec: 4,
+      end_sec: 5.5,
+    });
+    expect(timeline.viewportFit.zoomToFitSegment).not.toHaveBeenCalled();
+    expect(timeline.wfApiRef.current.seek).toHaveBeenCalledWith(4);
+    expect(document.activeElement).toBe(waveformShell);
   });
 });

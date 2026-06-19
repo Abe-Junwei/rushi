@@ -1,3 +1,4 @@
+import { CONTROL_BTN_STATUS_CHIP } from "../config/controlStyles";
 import { ENV_STATUS_DOT_CLASS, envStatusToneFromOk, type EnvStatusTone } from "./topBarStatusTone";
 
 type Props = {
@@ -37,7 +38,7 @@ export function TopBarStatusIndicator(props: Props) {
     return (
       <button
         type="button"
-        className={`${rowClass} rounded-sm border-0 bg-transparent p-0 outline-none transition-colors hover:bg-notion-sidebar-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-notion-text-light/40 disabled:cursor-not-allowed disabled:opacity-50`}
+        className={`${CONTROL_BTN_STATUS_CHIP} ${rowClass}`}
         disabled={disabled}
         onClick={onClick}
         title={title ?? label}

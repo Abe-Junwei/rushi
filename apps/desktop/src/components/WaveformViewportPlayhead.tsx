@@ -1,7 +1,7 @@
 import { memo, useCallback, useEffect, useRef } from "react";
-import { useWaveformLiveClock } from "../hooks/useWaveformLiveClock";
-import { setCspLayoutRules } from "../utils/cspElementLayout";
+import type { WaveformPlaybackScrollFollowMode } from "../utils/waveformPlaybackScrollFollow";
 import { playheadViewportLeftPx } from "../utils/waveformProjection";
+import { setCspLayoutRules } from "../utils/cspElementLayout";
 import { subscribeTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
 import {
   resolveTierViewportMetrics,
@@ -18,14 +18,16 @@ type WaveformViewportPlayheadProps = {
   isPlaying: boolean;
   isReady: boolean;
   currentTimeSec: number;
-  getPlayheadTime: () => number;
-  formatMediaTime: (sec: number) => string;
+  getVisualPlayheadTimeSec: () => number;
+  /** Single playback tick bus; playhead transform runs here instead of its own rAF. */
+  subscribePlayheadFrame: (cb: (timeSec: number) => void, priority?: number) => () => void;
+  playbackFollowMode: WaveformPlaybackScrollFollowMode;
 };
 
 /**
  * Full-height playhead in sticky viewport coordinates (same path dev + release).
- * Ruler SVG playhead is not used for embedded overlay — Tailwind stroke opacity /58
- * modifiers are not emitted in production builds (non-scale opacities).
+ * Center follow (Audacity pinned / Logic scroll-in-play): playhead stays fixed at
+ * viewport center while tier scroll moves the timeline underneath.
  */
 export const WaveformViewportPlayhead = memo(function WaveformViewportPlayhead({
   durationSec,
@@ -36,10 +38,12 @@ export const WaveformViewportPlayhead = memo(function WaveformViewportPlayhead({
   isPlaying,
   isReady,
   currentTimeSec,
-  getPlayheadTime,
-  formatMediaTime,
+  getVisualPlayheadTimeSec,
+  subscribePlayheadFrame,
+  playbackFollowMode,
 }: WaveformViewportPlayheadProps) {
   const playheadRef = useRef<HTMLDivElement | null>(null);
+  const lastTransformRef = useRef("");
   const argsRef = useRef({
     durationSec,
     timelineWidthPx,
@@ -48,7 +52,8 @@ export const WaveformViewportPlayhead = memo(function WaveformViewportPlayhead({
     tierScrollRef,
     isPlaying,
     currentTimeSec,
-    getPlayheadTime,
+    getVisualPlayheadTimeSec,
+    playbackFollowMode,
   });
   argsRef.current = {
     durationSec,
@@ -58,7 +63,8 @@ export const WaveformViewportPlayhead = memo(function WaveformViewportPlayhead({
     tierScrollRef,
     isPlaying,
     currentTimeSec,
-    getPlayheadTime,
+    getVisualPlayheadTimeSec,
+    playbackFollowMode,
   };
 
   const writePosition = useCallback((timeSec: number) => {
@@ -70,53 +76,40 @@ export const WaveformViewportPlayhead = memo(function WaveformViewportPlayhead({
       tierScrollLive: args.tierScrollLive,
       tierScrollLayout: args.tierScrollLayout,
     });
-    const leftPx = playheadViewportLeftPx(
-      timeSec,
-      metrics.scrollLeftPx,
-      args.timelineWidthPx,
-      args.durationSec,
-    );
-    setCspLayoutRules(el, { transform: `translate3d(${Math.round(leftPx)}px, 0, 0)` });
+    const leftPx =
+      args.isPlaying && args.playbackFollowMode === "center"
+        ? metrics.viewportWidthPx / 2
+        : playheadViewportLeftPx(
+            timeSec,
+            metrics.scrollLeftPx,
+            args.timelineWidthPx,
+            args.durationSec,
+          );
+    const transform = `translate3d(${leftPx.toFixed(3)}px, 0, 0)`;
+    if (lastTransformRef.current === transform) return;
+    lastTransformRef.current = transform;
+    setCspLayoutRules(el, { transform });
   }, []);
 
-  const onPlayheadMove = useCallback(
-    (timeSec: number) => {
-      writePosition(timeSec);
-    },
-    [writePosition],
-  );
-
-  useWaveformLiveClock({
-    isPlaying,
-    isReady,
-    currentTimeSec,
-    getPlayheadTime,
-    formatMediaTime,
-    durationSec,
-    timelineWidthPx,
-    onPlayheadMove: isPlaying ? onPlayheadMove : undefined,
-  });
+  useEffect(() => {
+    if (!isReady || !isPlaying) return;
+    writePosition(getVisualPlayheadTimeSec());
+    return subscribePlayheadFrame((timeSec) => writePosition(timeSec));
+  }, [getVisualPlayheadTimeSec, isPlaying, isReady, subscribePlayheadFrame, writePosition]);
 
   useEffect(() => {
     if (isPlaying || !isReady) return;
     writePosition(currentTimeSec);
-  }, [
-    currentTimeSec,
-    isPlaying,
-    isReady,
-    timelineWidthPx,
-    writePosition,
-  ]);
+  }, [currentTimeSec, isPlaying, isReady, writePosition]);
 
   useEffect(() => {
     if (!isReady) return;
     const onScrollFrame = () => {
       const args = argsRef.current;
-      const timeSec = args.isPlaying ? args.getPlayheadTime() : args.currentTimeSec;
+      const timeSec = args.isPlaying ? args.getVisualPlayheadTimeSec() : args.currentTimeSec;
       writePosition(timeSec);
     };
-    const unsub = subscribeTierScrollFrame(onScrollFrame);
-    return unsub;
+    return subscribeTierScrollFrame(onScrollFrame);
   }, [isReady, writePosition]);
 
   if (!isReady || durationSec <= 0 || timelineWidthPx <= 0) {

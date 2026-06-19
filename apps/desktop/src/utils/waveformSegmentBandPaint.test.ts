@@ -29,9 +29,12 @@ describe("resolveWaveformTierWheelScrollDelta", () => {
   it("maps dominant vertical trackpad delta to horizontal tier scroll", () => {
     expect(
       resolveWaveformTierWheelScrollDelta({ deltaX: 0, deltaY: 32 } as WheelEvent),
-    ).toBe(80);
+    ).toBe(32);
     expect(
       resolveWaveformTierWheelScrollDelta({ deltaX: 48, deltaY: 8 } as WheelEvent),
-    ).toBe(120);
+    ).toBe(48);
+    expect(
+      resolveWaveformTierWheelScrollDelta({ deltaX: 4000, deltaY: 0 } as WheelEvent),
+    ).toBe(240);
   });
 });

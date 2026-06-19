@@ -186,6 +186,7 @@ export function useDraggablePanelController({
     setSize,
     setCenterMode,
     setViewport,
+    preferredDefaultPosition,
   });
 
   const handleTitleDoubleClick = useCallback(() => {

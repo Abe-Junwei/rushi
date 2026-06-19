@@ -92,3 +92,7 @@ export function workspaceSidebarFooterItemClass(opts: { active?: boolean }): str
 
 /** 侧栏块级行容器（项目行等）：全宽贴边、无圆角 */
 export const WORKSPACE_SIDEBAR_ROW_SURFACE = "w-full transition-colors";
+
+/** 侧栏项目展开区「暂无文件」提示行（全宽 ghost，非 nav item 块） */
+export const WORKSPACE_SIDEBAR_EMPTY_HINT_BTN =
+  "w-full appearance-none border-0 bg-transparent px-5 py-2 text-left font-sans text-label text-notion-text-muted transition-colors hover:bg-notion-sidebar-hover hover:text-notion-text disabled:cursor-not-allowed disabled:opacity-40";

@@ -12,11 +12,7 @@ import { assignSegmentOverlapLanes } from "../utils/segmentLayout";
 import { resolveSelectSegmentViewportPlan } from "../services/waveform/selectSegmentViewportPlan";
 import { segmentStartSec } from "../utils/formatMediaTime";
 import type { SegmentSelectSource } from "../utils/waveformViewMode";
-import {
-  shouldFocusWaveformShellForSelectSource,
-  shouldFitSelectionOnWaveformSelect,
-  shouldZoomViewportOnSelectSource,
-} from "../utils/waveformViewMode";
+import { shouldFocusWaveformShellForSelectSource } from "../utils/waveformViewMode";
 import type { useWaveformTimelineController } from "../hooks/useWaveformTimelineController";
 import {
   selectionProfileBegin,
@@ -67,7 +63,7 @@ export function useTranscriptionLayerSelection(opts: {
   /** 最近一次语段选中来源（供列表 scroll coalesce 分支）。 */
   const lastSegmentSelectSourceRef = useRef<SegmentSelectSource>("waveform");
 
-  const laneBoundsSig = p1LaneBoundsSignature(ctx.segments);
+  const laneBoundsSig = useMemo(() => p1LaneBoundsSignature(ctx.segments), [ctx.segments]);
   const segmentLaneLayout = useMemo(() => {
     void laneBoundsSig;
     return assignSegmentOverlapLanes(
@@ -81,8 +77,12 @@ export function useTranscriptionLayerSelection(opts: {
   }, [waveformShellRef]);
 
   const commitSelectedIdxUi = useCallback(
-    (idx: number, opts?: { shiftKey?: boolean; toggle?: boolean }) => {
-      // Keep the visible selected row/band ahead of heavier viewport work.
+    (idx: number, opts?: { shiftKey?: boolean; toggle?: boolean }, sync = false) => {
+      if (!sync) {
+        setSelectedIdxUi(idx, opts);
+        return;
+      }
+      // Waveform-origin selection still needs the selected overlay before focus/gesture follow-up.
       flushSync(() => {
         setSelectedIdxUi(idx, opts);
       });
@@ -109,7 +109,7 @@ export function useTranscriptionLayerSelection(opts: {
       selectionProfileBegin(`${source} idx=${idx} segments=${c.segments.length}`);
       lastSegmentSelectSourceRef.current = source;
       selectionProfileTime("flushSelectedIdx", () => {
-        commitSelectedIdxUi(idx, opts);
+        commitSelectedIdxUi(idx, opts, source === "waveform");
       });
       if (isSelectionLatencyProfileEnabled()) {
         requestAnimationFrame(() => {
@@ -119,32 +119,17 @@ export function useTranscriptionLayerSelection(opts: {
       const plan = selectionProfileTime("resolvePlan", () => resolveSelectSegmentViewportPlan(s));
       const seg = plan.segment;
       selectionProfileTime("viewport", () => {
-        if (shouldZoomViewportOnSelectSource(source)) {
-          scrollFitRef.current.timeline.viewportFit.zoomToFitSegment({
-            start_sec: seg.start_sec,
-            end_sec: seg.end_sec,
-          });
-        } else if (
-          shouldFitSelectionOnWaveformSelect(
-            source,
-            scrollFitRef.current.timeline.zoom.layoutIntentRef.current,
-          )
-        ) {
-          scrollFitRef.current.timeline.viewportFit.zoomToFitSegment(
-            { start_sec: seg.start_sec, end_sec: seg.end_sec },
-            { forceFullFit: true },
-          );
-        } else {
-          scrollFitRef.current.timeline.viewportFit.revealSegmentInViewport({
-            start_sec: seg.start_sec,
-            end_sec: seg.end_sec,
-          });
-        }
+        scrollFitRef.current.timeline.viewportFit.revealSegmentInViewport({
+          start_sec: seg.start_sec,
+          end_sec: seg.end_sec,
+        });
       });
-      if (source !== "listAdvance" && source !== "listKeyboard") {
+      if (source !== "listKeyboard") {
         requestAnimationFrame(() => {
+          const tl = scrollFitRef.current.timeline;
           selectionProfileTime("seek", () => {
-            timeline.wfApiRef.current.seek(segmentStartSec(s));
+            tl.suppressPlaybackFollowForSelectionSeek();
+            tl.wfApiRef.current.seek(segmentStartSec(s));
           });
           selectionProfileFlush();
         });
@@ -155,7 +140,7 @@ export function useTranscriptionLayerSelection(opts: {
         selectionProfileTime("focus", focusWaveformShell);
       }
     },
-    [commitSelectedIdxUi, ctxRef, focusWaveformShell, timeline.wfApiRef],
+    [commitSelectedIdxUi, ctxRef, focusWaveformShell],
   );
 
   selectSegmentAtRef.current = selectSegmentAt;

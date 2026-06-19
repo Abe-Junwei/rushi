@@ -1,5 +1,6 @@
 import { useCallback, useState } from "react";
-import { Download, FileUp, Play, RefreshCw, Target } from "lucide-react";
+import { Download, FileUp, RefreshCw } from "lucide-react";
+import { PRODUCT_ICON } from "../config/productIcons";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 import {
   CONTROL_BTN_GHOST,
@@ -63,11 +64,11 @@ export function EnvQualityPanel({ busy: appBusy }: Props) {
 
         <div className="flex flex-wrap items-center gap-2">
         <button type="button" className={CONTROL_BTN_PRIMARY} disabled={disabled} onClick={() => void q.runEval()}>
-          <Play className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+          <PRODUCT_ICON.runJob className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
           运行全量 eval
         </button>
         <button type="button" className={CONTROL_BTN_SECONDARY} disabled={disabled} onClick={() => void q.runGateEval()}>
-          <Target className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+          <PRODUCT_ICON.qualityGate className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
           R4-GATE（制控专名）
         </button>
         <button type="button" className={CONTROL_BTN_SECONDARY} disabled={disabled} onClick={() => void q.importReport()}>

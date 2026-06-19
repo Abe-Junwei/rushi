@@ -1,6 +1,20 @@
 /**
  * 项目坞控件 — 对齐仓库根 DESIGN.md Notion Zen button / input 语义。
  * 标准：h-8 (32px)、rounded-sm (4px)、无常态 shadow。
+ *
+ * ## Ghost 尺寸阶梯（勿合并为单一 token）
+ * - `CONTROL_BTN_GHOST` — 对话框 / 面板标准 ghost（h-8 · px-4 · semibold）
+ * - `CONTROL_BTN_TOOLBAR_GHOST` — 顶栏 / 工作条（h-8 · px-2.5 · medium）
+ * - `CONTROL_BTN_WORKSPACE_IMPORT` — Hub 行内导入（h-7 · px-2 · medium）
+ * - `CONTROL_BTN_ICON_GHOST` — 28px 纯图标 ghost
+ *
+ * ## Compact secondary 分工
+ * - `CONTROL_BTN_COMPACT_SECONDARY` — 表格 / 列表工具（h-7 · text-label · semibold · sidebar 底）
+ * - `ENV_COMPACT_BTN` — 环境页 / 热词批量条工具行（py-1 · text-body · medium · notion-bg 底）
+ *
+ * ## 波形工作条（`waveform.css`）
+ * 40px 行内 engaged / toggle-active 态走 `.icon-btn`、`.workbench-label-btn` 等 CSS 类；
+ * 面板与对话框仍用本文件 `CONTROL_*`。见 `docs/architecture/desktop-visual-style-governance.md` §按钮真源。
  */
 
 /** `button-primary`：saffron 底 + 白字；hover 深 saffron */
@@ -61,6 +75,18 @@ export const CONTROL_BTN_ICON =
 /** 图标-only ghost：28px 方块，无边框（Hub 行操作 / 历史图标 / 顶栏 nav） */
 export const CONTROL_BTN_ICON_GHOST =
   "inline-flex h-7 w-7 shrink-0 items-center justify-center rounded-sm border-0 bg-transparent p-0 font-sans text-notion-text-muted shadow-none ring-0 transition-[color,background-color,opacity] hover:bg-notion-sidebar-hover hover:text-notion-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-notion-text/20 disabled:cursor-not-allowed disabled:opacity-40";
+
+/** 欢迎页顶栏大图标 ghost（圆形 hit area，如活动铃） */
+export const CONTROL_BTN_WELCOME_ICON =
+  "relative inline-flex shrink-0 items-center justify-center rounded-full border-0 bg-transparent p-2 font-sans text-notion-text-muted shadow-none outline-none transition-colors hover:bg-notion-sidebar-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-notion-text-light/40 disabled:cursor-not-allowed disabled:opacity-50";
+
+/** 顶栏状态芯片（FFmpeg / ASR / LLM 就绪；无固定高度，随 label 内容） */
+export const CONTROL_BTN_STATUS_CHIP =
+  "inline-flex items-center gap-1.5 rounded-sm border-0 bg-transparent p-0 font-sans shadow-none outline-none transition-colors hover:bg-notion-sidebar-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-notion-text-light/40 disabled:cursor-not-allowed disabled:opacity-50";
+
+/** 编辑页顶栏面包屑可点段（truncate + title 字号） */
+export const CONTROL_BTN_BREADCRUMB =
+  "min-w-0 max-w-[40%] truncate rounded-sm border-0 bg-transparent p-0 text-left font-sans text-title font-medium text-notion-text-muted shadow-none transition-colors hover:bg-notion-sidebar-hover hover:text-notion-text focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-notion-text/20 disabled:cursor-not-allowed disabled:opacity-40";
 
 /** 多行文本输入：与 text-input 同语义，高度自适应、允许纵向 resize */
 export const CONTROL_TEXTAREA =

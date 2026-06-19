@@ -1,10 +1,11 @@
-import { memo, type RefObject } from "react";
-import { Play, Repeat, Square } from "lucide-react";
+import { memo, useLayoutEffect, useRef, type RefObject } from "react";
+import { Repeat, Square } from "lucide-react";
+import { PRODUCT_ICON } from "../config/productIcons";
 import type { SegmentDto } from "../tauri/projectApi";
-import { useTierViewportMetricsFrame } from "../hooks/useTierViewportMetricsFrame";
 import { resolveSegmentPlaybackControlsOverlayLayout } from "../utils/waveformRegionActionOverlay";
 import type { TierScrollLayoutMetrics, TierScrollLiveRefs } from "../utils/waveformViewport";
-import { CspLayout } from "./CspLayout";
+import { subscribeTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
+import { clearCspLayoutRules, setCspLayoutRules } from "../utils/cspElementLayout";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
 type WaveformSegmentPlaybackControlsProps = {
@@ -23,6 +24,10 @@ type WaveformSegmentPlaybackControlsProps = {
   onTogglePlay: () => void;
 };
 
+/**
+ * 选中语段的播放/循环浮层。定位（left/width/可见性）随 tier 横向滚动变化，
+ * 走 imperative tierScrollFrame + CSP-safe layout 写入，滚动期间不触发 React 重渲染。
+ */
 export const WaveformSegmentPlaybackControls = memo(function WaveformSegmentPlaybackControls({
   disabled,
   rulerBandHeightPx = 0,
@@ -37,60 +42,125 @@ export const WaveformSegmentPlaybackControls = memo(function WaveformSegmentPlay
   onToggleLoop,
   onTogglePlay,
 }: WaveformSegmentPlaybackControlsProps) {
-  const { scrollLeftPx, viewportWidthPx } = useTierViewportMetricsFrame({
+  const containerRef = useRef<HTMLDivElement | null>(null);
+  const loopBtnRef = useRef<HTMLButtonElement | null>(null);
+
+  const layoutArgsRef = useRef({
+    selectedSegment,
+    timelineWidthPx,
+    durationSec,
+    rulerBandHeightPx,
     tierScrollRef,
     tierScrollLive,
     tierScrollLayout,
-    commitScrollFrame: true,
   });
+  layoutArgsRef.current = {
+    selectedSegment,
+    timelineWidthPx,
+    durationSec,
+    rulerBandHeightPx,
+    tierScrollRef,
+    tierScrollLive,
+    tierScrollLayout,
+  };
 
-  const segmentStartSec = selectedSegment
+  const segStartSec = selectedSegment
     ? Math.min(selectedSegment.start_sec, selectedSegment.end_sec)
     : 0;
-  const segmentEndSec = selectedSegment
+  const segEndSec = selectedSegment
     ? Math.max(selectedSegment.start_sec, selectedSegment.end_sec)
     : 0;
 
-  if (!selectedSegment) return null;
+  /* eslint-disable react-hooks/exhaustive-deps -- layoutArgsRef holds latest props; deps列出影响布局的标量，scroll 期由 tierScrollFrame 驱动 */
+  useLayoutEffect(() => {
+    const applyOverlayLayout = () => {
+      const a = layoutArgsRef.current;
+      const container = containerRef.current;
+      if (!container) return;
+      const seg = a.selectedSegment;
+      if (!seg) {
+        setCspLayoutRules(container, { display: "none" });
+        return;
+      }
+      const tier = a.tierScrollRef.current;
+      const liveScroll = a.tierScrollLive.scrollLeftRef.current;
+      const scrollLeftPx = Number.isFinite(liveScroll) ? liveScroll : tier?.scrollLeft ?? 0;
+      const liveWidth = a.tierScrollLive.clientWidthRef.current;
+      const viewportWidthPx =
+        liveWidth && liveWidth > 0
+          ? liveWidth
+          : tier?.clientWidth ?? a.tierScrollLayout.clientWidthPx;
 
-  const layout = resolveSegmentPlaybackControlsOverlayLayout({
-    segmentStartSec,
-    segmentEndSec,
-    timelineWidthPx,
-    durationSec,
-    scrollLeftPx,
-    viewportWidthPx,
-    coordinateSpace: "timeline",
-  });
+      const layout = resolveSegmentPlaybackControlsOverlayLayout({
+        segmentStartSec: Math.min(seg.start_sec, seg.end_sec),
+        segmentEndSec: Math.max(seg.start_sec, seg.end_sec),
+        timelineWidthPx: a.timelineWidthPx,
+        durationSec: a.durationSec,
+        scrollLeftPx,
+        viewportWidthPx,
+        coordinateSpace: "timeline",
+      });
 
-  if (!layout.visible) return null;
-
-  return (
-    <CspLayout
-      className="region-action-overlay"
-      layout={{
+      if (!layout.visible) {
+        setCspLayoutRules(container, { display: "none" });
+        return;
+      }
+      // bottom 不随滚动变，单独在 effect 体写入一次；这里每帧只更新随滚动变化的 left/width/display。
+      setCspLayoutRules(container, {
+        display: null,
         left: layout.overlayLeftPx,
         width: layout.overlayWidthPx,
-        bottom: rulerBandHeightPx + 4,
-      }}
-    >
-      {layout.showLoopBtn ? (
-        <button
-          type="button"
-          className={`region-action-btn${segmentLoopPlayback ? " region-action-btn-active workbench-state-btn-active" : ""}`}
-          disabled={disabled}
-          aria-pressed={segmentLoopPlayback}
-          aria-label={segmentLoopPlayback ? "关闭语段循环播放" : "开启语段循环播放"}
-          title={segmentLoopPlayback ? "关闭语段循环播放" : "开启语段循环播放"}
-          onPointerDown={(e) => e.stopPropagation()}
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleLoop();
-          }}
-        >
-          <Repeat className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-        </button>
-      ) : null}
+      });
+      const loopBtn = loopBtnRef.current;
+      if (loopBtn) {
+        setCspLayoutRules(loopBtn, { display: layout.showLoopBtn ? null : "none" });
+      }
+    };
+
+    const container = containerRef.current;
+    if (container) setCspLayoutRules(container, { bottom: rulerBandHeightPx + 4 });
+    applyOverlayLayout();
+    const unsub = subscribeTierScrollFrame(applyOverlayLayout);
+    return () => {
+      unsub();
+      const container = containerRef.current;
+      if (container) clearCspLayoutRules(container);
+      const loopBtn = loopBtnRef.current;
+      if (loopBtn) clearCspLayoutRules(loopBtn);
+    };
+    // tierScrollLayout.clientWidthPx 仅随视口 resize 变化（滚动 burst commit 不改），
+    // 入 deps 以在窗口缩放后重算可见性/居中——补回移除 useTierViewportMetricsFrame 的 resize 监听。
+  }, [
+    segStartSec,
+    segEndSec,
+    timelineWidthPx,
+    durationSec,
+    rulerBandHeightPx,
+    selectedSegment,
+    tierScrollLayout.clientWidthPx,
+  ]);
+  /* eslint-enable react-hooks/exhaustive-deps */
+
+  if (!selectedSegment) return null;
+
+  return (
+    <div ref={containerRef} className="region-action-overlay">
+      <button
+        ref={loopBtnRef}
+        type="button"
+        className={`region-action-btn${segmentLoopPlayback ? " region-action-btn-active workbench-state-btn-active" : ""}`}
+        disabled={disabled}
+        aria-pressed={segmentLoopPlayback}
+        aria-label={segmentLoopPlayback ? "关闭语段循环播放" : "开启语段循环播放"}
+        title={segmentLoopPlayback ? "关闭语段循环播放" : "开启语段循环播放"}
+        onPointerDown={(e) => e.stopPropagation()}
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggleLoop();
+        }}
+      >
+        <Repeat className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+      </button>
       <button
         type="button"
         className="region-action-btn"
@@ -106,9 +176,9 @@ export const WaveformSegmentPlaybackControls = memo(function WaveformSegmentPlay
         {isPlaying ? (
           <Square className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
         ) : (
-          <Play className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+          <PRODUCT_ICON.playAudio className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
         )}
       </button>
-    </CspLayout>
+    </div>
   );
 });

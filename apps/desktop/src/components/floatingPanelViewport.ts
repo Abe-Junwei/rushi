@@ -79,7 +79,7 @@ export function isFloatingPanelCentered(
   );
 }
 
-/** Runtime resize/fullscreen: keep centered panels centered; clamp user-dragged panels. */
+/** 视口尺寸变化：居中面板保持居中；工作条锚点面板重新锚定；用户拖离则保留坐标。 */
 export function reconcileFloatingPanelOnViewportResize(args: {
   position: { x: number; y: number };
   size: { width: number; height: number };
@@ -87,6 +87,7 @@ export function reconcileFloatingPanelOnViewportResize(args: {
   nextViewport: FloatingPanelViewport;
   margin: number;
   userMoved: boolean;
+  preferredDefaultPosition?: (size: { width: number; height: number }) => { x: number; y: number };
 }): { position: { x: number; y: number }; recentered: boolean } {
   const sameViewport =
     args.prevViewport.width === args.nextViewport.width &&
@@ -105,10 +106,19 @@ export function reconcileFloatingPanelOnViewportResize(args: {
   if (args.userMoved && !wasCentered) {
     return { position: args.position, recentered: false };
   }
-  return {
-    position: centerFloatingPanelPosition(args.size, args.margin, args.nextViewport),
-    recentered: true,
-  };
+  if (wasCentered) {
+    return {
+      position: centerFloatingPanelPosition(args.size, args.margin, args.nextViewport),
+      recentered: true,
+    };
+  }
+  if (!args.userMoved && args.preferredDefaultPosition) {
+    return {
+      position: args.preferredDefaultPosition(args.size),
+      recentered: true,
+    };
+  }
+  return { position: args.position, recentered: false };
 }
 
 export function shouldRecenterFloatingPanel(

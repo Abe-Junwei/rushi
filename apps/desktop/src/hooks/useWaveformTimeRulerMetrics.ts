@@ -1,10 +1,10 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useCallback, useLayoutEffect, useMemo, useReducer, useRef } from "react";
 import {
   buildVisibleRulerTicks,
   computeEmbeddedRulerLabelStride,
   findHighlightedRulerMajorTickTime,
 } from "../services/waveform/waveformRulerTicks";
-import { useWaveformRulerScrollTrack, applyWaveformRulerScrollTrackTransform } from "./useWaveformRulerScrollTrack";
+import { subscribeTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
 import {
   resolveTierViewportMetrics,
   type TierScrollLayoutMetrics,
@@ -31,6 +31,8 @@ export type UseWaveformTimeRulerMetricsArgs = {
   currentTimeSec: number;
 };
 
+const TICK_WINDOW_REBUILD_SCROLL_EPSILON_PX = 1;
+
 export function useWaveformTimeRulerMetrics({
   durationSec,
   timelineWidthPx,
@@ -52,45 +54,52 @@ export function useWaveformTimeRulerMetrics({
   });
   const viewportSpace = coordinateSpace === "viewport" && !scrollTrackPlayhead;
   const scrollClipMode = scrollTrackPlayhead;
-  const scrollTrackRef = useRef<HTMLDivElement | null>(null);
-  const [, bumpScrollFrame] = useReducer((n: number) => n + 1, 0);
-  const [tickBuildScrollLeftPx, setTickBuildScrollLeftPx] = useState(
-    () => tierScrollLayout.scrollLeftPx,
-  );
 
-  const onTickRebuild = useCallback((scrollLeftPx: number) => {
-    setTickBuildScrollLeftPx(scrollLeftPx);
-  }, []);
+  const tickWindowRef = useRef({ scrollLeftPx: 0, viewportWidthPx: 1 });
+  const [, bumpTickWindow] = useReducer((n: number) => n + 1, 0);
 
-  useWaveformRulerScrollTrack({
-    enabled: scrollClipMode,
-    tierScrollRef,
-    tierScrollLive,
-    scrollTrackRef,
-    timelineWidthPx,
-    onTickRebuild,
-  });
-
-  useEffect(() => {
-    if (scrollClipMode) return;
+  useLayoutEffect(() => {
     if (!viewportSpace) return;
     const scrollEl = tierScrollRef?.current;
     if (!scrollEl) return;
-    const scheduleBump = () => {
-      bumpScrollFrame();
-    };
-    scrollEl.addEventListener("scroll", scheduleBump, { passive: true });
-    window.addEventListener("resize", scheduleBump);
-    return () => {
-      scrollEl.removeEventListener("scroll", scheduleBump);
-      window.removeEventListener("resize", scheduleBump);
-    };
-  }, [scrollClipMode, tierScrollRef, viewportSpace]);
 
-  useEffect(() => {
-    if (!scrollClipMode) return;
-    setTickBuildScrollLeftPx(tierScrollLayout.scrollLeftPx);
-  }, [scrollClipMode, tierScrollLayout.scrollLeftPx, timelineWidthPx, durationSec]);
+    const commitTickWindow = (scrollLeftPx: number, viewportWidthPx: number) => {
+      tickWindowRef.current = { scrollLeftPx, viewportWidthPx };
+      bumpTickWindow();
+    };
+
+    commitTickWindow(scrollEl.scrollLeft, Math.max(1, scrollEl.clientWidth));
+
+    let lastRebuildScrollPx = scrollEl.scrollLeft;
+    let lastRebuildViewportWidthPx = Math.max(1, scrollEl.clientWidth);
+    let rebuildRaf = 0;
+
+    const scheduleRebuildIfNeeded = () => {
+      const scrollLeftPx = scrollEl.scrollLeft;
+      const viewportWidthPx = Math.max(1, scrollEl.clientWidth);
+      const scrollMoved = Math.abs(scrollLeftPx - lastRebuildScrollPx) >= TICK_WINDOW_REBUILD_SCROLL_EPSILON_PX;
+      const viewportResized = viewportWidthPx !== lastRebuildViewportWidthPx;
+      if (!scrollMoved && !viewportResized) return;
+      if (rebuildRaf) return;
+      rebuildRaf = requestAnimationFrame(() => {
+        rebuildRaf = 0;
+        lastRebuildScrollPx = scrollEl.scrollLeft;
+        lastRebuildViewportWidthPx = Math.max(1, scrollEl.clientWidth);
+        commitTickWindow(lastRebuildScrollPx, lastRebuildViewportWidthPx);
+      });
+    };
+
+    scrollEl.addEventListener("scroll", scheduleRebuildIfNeeded, { passive: true });
+    window.addEventListener("resize", scheduleRebuildIfNeeded);
+    const unsubscribeFrame = subscribeTierScrollFrame(scheduleRebuildIfNeeded);
+
+    return () => {
+      scrollEl.removeEventListener("scroll", scheduleRebuildIfNeeded);
+      window.removeEventListener("resize", scheduleRebuildIfNeeded);
+      unsubscribeFrame();
+      if (rebuildRaf) cancelAnimationFrame(rebuildRaf);
+    };
+  }, [viewportSpace, tierScrollRef, timelineWidthPx, durationSec]);
 
   const tierMetrics = resolveTierViewportMetrics({
     tierScrollEl: tierScrollRef?.current ?? null,
@@ -103,27 +112,36 @@ export function useWaveformTimeRulerMetrics({
   const liveViewportWidthPx =
     scrollEl != null ? Math.max(1, scrollEl.clientWidth) : tierMetrics.viewportWidthPx;
 
+  const tickWindowScrollLeftPx = tickWindowRef.current.scrollLeftPx;
+  const tickWindowViewportWidthPx = tickWindowRef.current.viewportWidthPx;
+
   const renderWidthPx = scrollClipMode
     ? timelineWidthPx
     : viewportSpace
-      ? Math.max(1, liveViewportWidthPx)
+      ? Math.max(1, tickWindowViewportWidthPx)
       : timelineWidthPx;
   const tickLayerViewportSpace = scrollClipMode ? false : viewportSpace;
 
   const visibleView = useMemo(() => {
     const base = {
-      scrollLeftPx: liveScrollLeftPx,
-      viewportWidthPx: liveViewportWidthPx,
+      scrollLeftPx: viewportSpace ? tickWindowScrollLeftPx : liveScrollLeftPx,
+      viewportWidthPx: viewportSpace ? tickWindowViewportWidthPx : liveViewportWidthPx,
       timelineWidthPx,
       durationSec,
     };
-    return scrollClipMode ? paddedVisibleTimeWindow(base) : visibleTimeWindowFromScroll(base);
+    if (scrollClipMode || viewportSpace) {
+      return paddedVisibleTimeWindow(base);
+    }
+    return visibleTimeWindowFromScroll(base);
   }, [
     durationSec,
     liveScrollLeftPx,
     liveViewportWidthPx,
     scrollClipMode,
+    tickWindowScrollLeftPx,
+    tickWindowViewportWidthPx,
     timelineWidthPx,
+    viewportSpace,
   ]);
 
   const tickPxPerSec = useMemo(
@@ -142,15 +160,6 @@ export function useWaveformTimeRulerMetrics({
     [durationSec, tickPxPerSec, visibleView.end, visibleView.start],
   );
 
-  useLayoutEffect(() => {
-    if (!scrollClipMode) return;
-    applyWaveformRulerScrollTrackTransform(
-      tierScrollRef?.current ?? null,
-      scrollTrackRef.current,
-      tierScrollLive,
-    );
-  }, [scrollClipMode, tickBuildScrollLeftPx, ticks.length, tierScrollLive, tierScrollRef, timelineWidthPx]);
-
   const majorTicks = useMemo(() => ticks.filter((tick) => tick.major), [ticks]);
   const embeddedLabelStride = useMemo(
     () => computeEmbeddedRulerLabelStride(embedded, majorStep, tickPxPerSec),
@@ -165,11 +174,11 @@ export function useWaveformTimeRulerMetrics({
     (timeSec: number) => {
       const px = timeToTimelinePx(timeSec, timelineWidthPx, durationSec);
       if (tickLayerViewportSpace) {
-        return px - Math.max(0, liveScrollLeftPx);
+        return px - Math.max(0, tickWindowScrollLeftPx);
       }
       return px;
     },
-    [durationSec, liveScrollLeftPx, tickLayerViewportSpace, timelineWidthPx],
+    [durationSec, tickLayerViewportSpace, tickWindowScrollLeftPx, timelineWidthPx],
   );
 
   const playheadLeft = useMemo(() => {
@@ -193,7 +202,6 @@ export function useWaveformTimeRulerMetrics({
     embedded,
     embeddedOverlay,
     scrollClipMode,
-    scrollTrackRef,
     renderWidthPx,
     tickLayerViewportSpace,
     ticks,
@@ -203,5 +211,7 @@ export function useWaveformTimeRulerMetrics({
     timelineToDisplayPx,
     playheadLeft,
     liveScrollLeftPx,
+    /** ScrollLeft frozen at last tick-window rebuild — imperative translate delta base. */
+    tickLayerBaseScrollLeftPx: tickLayerViewportSpace ? tickWindowScrollLeftPx : 0,
   };
 }

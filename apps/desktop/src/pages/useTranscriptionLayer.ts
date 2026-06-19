@@ -6,6 +6,7 @@ import { useWaveformTierWheelForward } from "../hooks/useWaveformTierWheelForwar
 import { computeSegmentLaneRowPx } from "../utils/segmentLayout";
 import { resolveWaveformFooterStatusLabel } from "../services/waveform/waveformRenderStatus";
 import { createEmptySegmentListFilterNavState } from "../utils/segmentListFilterNav";
+import { nextListSelectSource } from "../utils/segmentListSelectSource";
 import type { TranscriptionLayerInput } from "./transcriptionLayerTypes";
 import { useTranscriptionLayerSegmentListDrag } from "./useTranscriptionLayerSegmentListDrag";
 import { useTranscriptionLayerSelection } from "./useTranscriptionLayerSelection";
@@ -93,15 +94,19 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     waveformShellRef,
     tierScrollRef: timeline.tierScrollRef,
     enabled: Boolean(ctx.mediaUrl && wf.isReady),
-    onTierScroll: timeline.onTierScroll,
+    onWheelScrollDelta: timeline.applyWheelScrollDelta,
+    onCancelScrollMotion: () => timeline.cancelTransientScrollMotion("pointer"),
   });
 
   /* eslint-disable react-hooks/exhaustive-deps -- selection is a stable controller object; only selectSegmentAt is used */
   const selectSegmentFromList = useCallback(
     (idx: number, opts?: { shiftKey?: boolean; toggle?: boolean }) => {
-      selection.selectSegmentAt(idx, "list", opts);
+      const source = opts
+        ? "list"
+        : nextListSelectSource(Date.now(), segmentListDrag.listSelectSourceStateRef.current);
+      selection.selectSegmentAt(idx, source, opts);
     },
-    [selection.selectSegmentAt],
+    [segmentListDrag.listSelectSourceStateRef, selection.selectSegmentAt],
   );
   /* eslint-enable react-hooks/exhaustive-deps */
 
@@ -117,6 +122,8 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     tierScrollLayout: timeline.tierScrollLayout,
     seekFromTierClientX: timeline.seekFromTierClientX,
     setTierScrollPx: timeline.setTierScrollPx,
+    userScrubScroll: timeline.userScrubScroll,
+    minimapScrubScroll: timeline.minimapScrubScroll,
     segmentLaneLayout: selection.segmentLaneLayout,
     lastSegmentSelectSourceRef: selection.lastSegmentSelectSourceRef,
     segmentLaneRowPx,
@@ -172,6 +179,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     onSegmentListRangePointerDown: segmentListDrag.onSegmentListRangePointerDown,
     consumeSegmentListRangeClickSuppress: segmentListDrag.consumeSegmentListRangeClickSuppress,
     revealSelectedSegmentInViewport: selection.revealSelectedSegmentInViewport,
+    suppressPlaybackFollowForSelectionSeek: timeline.suppressPlaybackFollowForSelectionSeek,
     insertSegmentAfter: ctx.insertSegmentAfter,
     deleteSegmentAt: ctx.deleteSegmentAt,
     requestDeleteSelection: ctx.requestDeleteSelection,
@@ -190,6 +198,8 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     seek: wf.seek,
     togglePlay: wf.togglePlay,
     getPlayheadTime: wf.getPlayheadTime,
+    getVisualPlayheadTimeSec: timeline.getVisualPlayheadTimeSec,
+    subscribePlayheadFrame: timeline.subscribePlayheadFrame,
     clientXToTimeSec: wf.clientXToTimeSec,
     formatMediaTime: wf.formatMediaTime,
     globalPlaybackRate: wf.globalPlaybackRate,

@@ -34,6 +34,7 @@ function overlayPointerActions(
     onSelectTimeRange: a.onSelectTimeRange,
     onFocusWaveformShell: a.onFocusWaveformShell,
     seekToTime: a.seekToTime,
+    suppressPlaybackFollowForSelectionSeek: a.suppressPlaybackFollowForSelectionSeek,
   };
 }
 

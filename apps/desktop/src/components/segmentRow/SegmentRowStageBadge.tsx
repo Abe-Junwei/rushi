@@ -1,4 +1,4 @@
-import { FileText } from "lucide-react";
+import { PRODUCT_ICON } from "../../config/productIcons";
 import { memo } from "react";
 import type { SegmentDto } from "../../tauri/projectApi";
 import {
@@ -58,7 +58,7 @@ export const SegmentRowStageBadge = memo(function SegmentRowStageBadge({
             onOpenAnnotation?.(segmentIdx);
           }}
         >
-          <FileText className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+          <PRODUCT_ICON.segmentAnnotation className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
         </button>
       ) : null}
       <span

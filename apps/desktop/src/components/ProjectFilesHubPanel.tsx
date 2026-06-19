@@ -31,7 +31,7 @@ export function ProjectFilesHubPanel({ controller: c }: { controller: ProjectCon
   useEffect(() => {
     if (!highlightFileId) return;
     const el = document.querySelector(`[data-hub-file-id="${highlightFileId}"]`);
-    el?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+    el?.scrollIntoView({ block: "nearest" });
     const timer = window.setTimeout(() => setHighlightFileId(null), 2500);
     return () => window.clearTimeout(timer);
   }, [highlightFileId, files]);

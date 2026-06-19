@@ -5,17 +5,15 @@ import { GlossaryBundleWorkspace } from "./glossary/GlossaryBundleWorkspace";
 import { GlossaryBulkAddDialog } from "./glossary/GlossaryBulkAddDialog";
 import { GlossaryCorrectionMemorySection } from "./glossary/GlossaryCorrectionMemorySection";
 import { GlossaryTermManagementSection } from "./glossary/GlossaryTermManagementSection";
-import { GlossaryWorkspaceSegmentedNav } from "./glossary/GlossaryWorkspaceSegmentedNav";
 import { LexiconBundleExportDialog } from "./glossary/LexiconBundleExportDialog";
 import { LexiconBundleImportDialog } from "./glossary/LexiconBundleImportDialog";
 
 type GlossaryPageProps = {
   busy: boolean;
   workspaceId: GlossaryWorkspaceId;
-  onWorkspaceChange: (id: GlossaryWorkspaceId) => void;
 };
 
-export function GlossaryPage({ busy, workspaceId, onWorkspaceChange }: GlossaryPageProps) {
+export function GlossaryPage({ busy, workspaceId }: GlossaryPageProps) {
   const page = useGlossaryPageController(busy, workspaceId);
   const { rootRef, compact } = useGlossaryPageCompactFromElement();
 
@@ -25,14 +23,6 @@ export function GlossaryPage({ busy, workspaceId, onWorkspaceChange }: GlossaryP
       className="relative flex min-h-0 flex-1 flex-col overflow-hidden bg-notion-bg"
       data-purpose="hotwords-memory-page"
     >
-      {compact ? (
-        <GlossaryWorkspaceSegmentedNav
-          value={workspaceId}
-          disabled={page.disabled}
-          onChange={onWorkspaceChange}
-        />
-      ) : null}
-
       {workspaceId === "vocabulary" ? (
         <GlossaryTermManagementSection
           g={page.g}

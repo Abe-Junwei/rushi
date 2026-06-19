@@ -22,9 +22,9 @@ type WaveformZoomFitApi = {
 };
 
 type TierScrollApi = {
-  setTierScrollPx: (
+  revealSelectionScroll: (
     scrollLeftPx: number,
-    options?: { timelineWidthPx?: number; immediate?: boolean; deferLayoutCommit?: boolean },
+    options?: { timelineWidthPx?: number },
   ) => void;
 };
 
@@ -103,9 +103,8 @@ export function useTranscriptionViewportFit(args: {
 
   const writeTierScroll = useCallback(
     (targetSl: number, timelineWidthPx?: number) => {
-      scrollApiRef.current.setTierScrollPx(targetSl, {
+      scrollApiRef.current.revealSelectionScroll(targetSl, {
         ...(timelineWidthPx != null ? { timelineWidthPx } : {}),
-        immediate: true,
       });
     },
     [scrollApiRef],
@@ -178,10 +177,9 @@ export function useTranscriptionViewportFit(args: {
       if (w <= 0 || dur < 0.5) return;
 
       const pending: PendingViewportFit = { intent: { startSec: seg.start_sec, endSec: seg.end_sec }, pxPerSec };
-      const tw = computeTimelineWidthPx(dur, pxPerSec);
       const targetSl = resolveViewportFitScrollPx({ pending, durationSec: dur, viewportWidthPx: w });
       markProgrammaticScroll(undefined, Math.abs(targetSl - (tier?.scrollLeft ?? 0)));
-      writeTierScroll(targetSl, tw);
+      writeTierScroll(targetSl);
       pendingViewportFitRef.current = null;
     },
     [durationRef, markProgrammaticScroll, tierScrollRef, writeTierScroll],

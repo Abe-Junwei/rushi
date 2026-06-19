@@ -91,6 +91,15 @@
   overflow: visible;
 }
 
+/* 顶栏 import/export 等 <summary>：WebKit 默认白底，须与 ghost 按钮一致 */
+.toolbar-popover-root summary {
+  -webkit-appearance: none;
+  appearance: none;
+  background-color: transparent;
+  background-image: none;
+  box-shadow: none;
+}
+
 .workspace .dropdown-anchor,
 .dropdown-anchor {
   position: relative;

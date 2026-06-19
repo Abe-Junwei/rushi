@@ -1,4 +1,5 @@
-import { Download, FileSpreadsheet } from "lucide-react";
+import { Download } from "lucide-react";
+import { PRODUCT_ICON } from "../../config/productIcons";
 import { CONTROL_BTN_SECONDARY } from "../../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../../config/typography";
 import type { GlossaryPageController } from "../../pages/useGlossaryPageController";
@@ -35,7 +36,7 @@ export function GlossaryBundleWorkspace({ lex, disabled, bundleStatus, bundleErr
             disabled={disabled}
             onClick={() => void lex.startImportPreview()}
           >
-            <FileSpreadsheet className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+            <PRODUCT_ICON.navGlossaryBundle className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
             导入词表包…
           </button>
         </div>

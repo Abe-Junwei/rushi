@@ -49,6 +49,7 @@ export type WaveformSegmentDragArgs = {
   ) => void;
   onSelectTimeRange?: (startSec: number, endSec: number) => void;
   seekToTime: (timeSec: number) => void;
+  suppressPlaybackFollowForSelectionSeek?: () => void;
   onClearMultiSelection?: () => void;
   isMultiSegmentSelection?: () => boolean;
 };
@@ -190,6 +191,7 @@ export function useWaveformSegmentDrag(
       }
 
       a.onFocusWaveformShell?.();
+      a.suppressPlaybackFollowForSelectionSeek?.();
       a.seekToTime(timeSec);
     },
     [argsRef, onSegmentPointerDown, setCreatePreview],

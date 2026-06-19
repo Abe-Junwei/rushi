@@ -132,11 +132,7 @@ export function WelcomeView({
         />
 
         {page === "glossary" ? (
-          <GlossaryPage
-            busy={c.busy}
-            workspaceId={glossaryWorkspaceId}
-            onWorkspaceChange={onGlossaryWorkspaceChange}
-          />
+          <GlossaryPage busy={c.busy} workspaceId={glossaryWorkspaceId} />
         ) : (
           <WorkspaceHomeMainStage
             beforePage={

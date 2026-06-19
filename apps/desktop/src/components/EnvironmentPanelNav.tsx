@@ -1,4 +1,6 @@
-import { BarChart3, Cloud, Cpu, Download, Info, Keyboard, Palette, Sparkles } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
+import type { ReactNode } from "react";
+import { PRODUCT_ICON } from "../config/productIcons";
 import { ENV_STATUS_DOT_CLASS, type EnvStatusTone } from "./topBarStatusTone";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 import {
@@ -12,15 +14,19 @@ function envNavStatusDotClass(tone: EnvStatusTone): string {
   return ENV_STATUS_DOT_CLASS[tone];
 }
 
-const ENV_NAV_ICONS: Record<EnvNavId, React.ReactNode> = {
-  "local-asr": <Cpu className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />,
-  "online-stt": <Cloud className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />,
-  llm: <Sparkles className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />,
-  appearance: <Palette className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />,
-  shortcuts: <Keyboard className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />,
-  profile: <Download className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />,
-  quality: <BarChart3 className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />,
-  about: <Info className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />,
+function EnvNavIcon({ icon: Icon }: { icon: LucideIcon }) {
+  return <Icon className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />;
+}
+
+const ENV_NAV_ICONS: Record<EnvNavId, ReactNode> = {
+  "local-asr": <EnvNavIcon icon={PRODUCT_ICON.navLocalAsr} />,
+  "online-stt": <EnvNavIcon icon={PRODUCT_ICON.navOnlineStt} />,
+  llm: <EnvNavIcon icon={PRODUCT_ICON.navLlm} />,
+  appearance: <EnvNavIcon icon={PRODUCT_ICON.navAppearance} />,
+  shortcuts: <EnvNavIcon icon={PRODUCT_ICON.navShortcuts} />,
+  profile: <EnvNavIcon icon={PRODUCT_ICON.navProfileMigrate} />,
+  quality: <EnvNavIcon icon={PRODUCT_ICON.navQuality} />,
+  about: <EnvNavIcon icon={PRODUCT_ICON.navAbout} />,
 };
 
 export type EnvironmentPanelNavProps = {
@@ -79,13 +85,11 @@ export function EnvironmentPanelNav({
                 <span className={`block text-title leading-snug ${active ? "font-bold text-notion-text" : "font-medium text-notion-text"}`}>
                   {item.label}
                 </span>
-                <span className="mt-0.5 block truncate text-label leading-tight text-notion-text-muted">
-                  {item.description}
-                </span>
+                <span className="mt-0.5 block text-label leading-snug text-notion-text-muted">{item.description}</span>
               </span>
               {statusTone ? (
                 <span
-                  className={`ml-2 h-1.5 w-1.5 shrink-0 rounded-full ${envNavStatusDotClass(statusTone)}`}
+                  className={`ml-2 mt-1 h-2 w-2 shrink-0 rounded-full ${envNavStatusDotClass(statusTone)}`}
                   aria-hidden
                 />
               ) : null}

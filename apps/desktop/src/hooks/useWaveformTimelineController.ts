@@ -10,12 +10,13 @@ import { useWaveformZoom } from "./useWaveformZoom";
 import { clampPxPerSecForWaveSurferRender } from "../utils/pxPerSec";
 import { resolveFitAllPxPerSecAdjustment } from "../utils/waveformZoomBarState";
 import { resolveWaveformTimelineMetrics } from "../utils/waveformTimelineMetrics";
-import { resolveTierViewportMetrics } from "../utils/waveformViewport";
 import { useTranscriptionViewportFit } from "../pages/useTranscriptionViewportFit";
 import { useWaveformTimelineMountGate } from "./useWaveformTimelineMountGate";
 import { useWaveformTimelineDurationSync } from "./useWaveformTimelineDuration";
 import { useWaveformPeaksPhaseState } from "./useWaveformPeaksPhaseState";
-import { writeStoredWaveformPxPerSecForMedia, WAVEFORM_BACKGROUND_PEAKS_ENABLED } from "../utils/waveformPrefs";
+import { useWaveformVisualPlayheadClock } from "./useWaveformVisualPlayheadClock";
+import { WAVEFORM_BACKGROUND_PEAKS_ENABLED } from "../utils/waveformPrefs";
+import { useWaveformMediaZoomResetEffect } from "./useWaveformMediaZoomResetEffect";
 import type { TranscriptionLayerInput } from "../pages/transcriptionLayerTypes";
 
 type WfApi = ReturnType<typeof UseProjectWaveformHook>;
@@ -26,9 +27,14 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
   const durationRef = useRef(0);
   const timelineWidthPxRef = useRef(0);
   const pxPerSecRef = useRef(56);
-  const scrollApiRef = useRef({ setTierScrollPx: (_scrollLeftPx: number) => {} });
+  const scrollApiRef = useRef({
+    revealSelectionScroll: (_scrollLeftPx: number, _options?: { timelineWidthPx?: number }) => {},
+  });
   const wfApiRef = useRef<WfApi>(null!);
   const playbackFollowSuppressUntilRef = useRef(0);
+  const suppressPlaybackFollowForSelectionSeek = () => {
+    playbackFollowSuppressUntilRef.current = performance.now() + 1200;
+  };
   const applyPendingViewportFitRef = useRef<(pxPerSec: number, options?: { finalize?: boolean }) => boolean>(
     () => false,
   );
@@ -129,6 +135,15 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
 
   const pxPerSec = zoom.pxPerSec;
 
+  const visualPlayheadClock = useWaveformVisualPlayheadClock({
+    isPlaying: wf.isPlaying,
+    isReady: wf.isReady,
+    durationSec: timelineMetrics.mediaDurationSec,
+    currentTimeSec: wf.currentTime,
+    playbackRate: wf.globalPlaybackRate,
+    getPlayheadTime: wf.getPlayheadTime,
+  });
+
   const scroll = useTierScrollSync({
     tierScrollRef,
     timelineWidthPx,
@@ -187,9 +202,10 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
     isReady: wf.isReady,
     enabled: Boolean(ctx.mediaUrl && wf.isReady),
     followMode: routePrefs.playbackScrollFollowMode,
-    getPlayheadTimeSec: wf.getPlayheadTime,
-    setTierScrollPx: scroll.setTierScrollPx,
+    getPlayheadTimeSec: visualPlayheadClock.getVisualPlayheadTimeSec,
+    playbackFollowScroll: scroll.playbackFollowScroll,
     userScrollSuppressUntilRef: playbackFollowSuppressUntilRef,
+    subscribePlayheadFrame: visualPlayheadClock.subscribePlayheadFrame,
   });
 
   /* eslint-disable react-hooks/exhaustive-deps -- scroll is a stable tier-scroll controller object; only refreshTierScrollLayout is used */
@@ -229,36 +245,14 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
     mountDeferred: deferDecodeMount,
   });
 
-  const prevMediaUrlRef = useRef<string | null>(null);
-  const pendingMediaZoomResetRef = useRef(false);
-
-  useEffect(() => {
-    if (!ctx.mediaUrl) {
-      prevMediaUrlRef.current = null;
-      pendingMediaZoomResetRef.current = false;
-      return;
-    }
-    if (prevMediaUrlRef.current !== null && prevMediaUrlRef.current !== ctx.mediaUrl) {
-      pendingMediaZoomResetRef.current = true;
-    }
-    prevMediaUrlRef.current = ctx.mediaUrl;
-  }, [ctx.mediaUrl]);
-
-  /* eslint-disable react-hooks/exhaustive-deps -- scroll is a stable tier-scroll controller object; we list used primitive fields/refs */
-  useEffect(() => {
-    if (!pendingMediaZoomResetRef.current || !ctx.mediaUrl) return;
-    const dur = timelineMetrics.mediaDurationSec;
-    const { viewportWidthPx: vw } = resolveTierViewportMetrics({
-      tierScrollEl: tierScrollRef.current,
-      tierScrollLive: scroll.tierScrollLive,
-      tierScrollLayout: scroll.tierScrollLayout,
-    });
-    if (dur < 0.5 || vw <= 0) return;
-    pendingMediaZoomResetRef.current = false;
-    resetZoomForMediaRef.current(vw, dur);
-    writeStoredWaveformPxPerSecForMedia(vw, dur);
-  }, [ctx.mediaUrl, timelineMetrics.mediaDurationSec, scroll.tierScrollLayout.clientWidthPx, scroll.tierScrollLive.clientWidthRef]);
-  /* eslint-enable react-hooks/exhaustive-deps */
+  useWaveformMediaZoomResetEffect({
+    mediaUrl: ctx.mediaUrl,
+    mediaDurationSec: timelineMetrics.mediaDurationSec,
+    tierScrollRef,
+    tierScrollLive: scroll.tierScrollLive,
+    tierScrollLayout: scroll.tierScrollLayout,
+    resetZoomForMedia: (viewportWidthPx, durationSec) => resetZoomForMediaRef.current(viewportWidthPx, durationSec),
+  });
 
   return {
     tierScrollRef,
@@ -279,7 +273,14 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
     onTierScroll: scroll.onTierScroll,
     seekFromTierClientX: scroll.seekFromTierClientX,
     setTierScrollPx: scroll.setTierScrollPx,
+    userScrubScroll: scroll.userScrubScroll,
+    applyWheelScrollDelta: scroll.applyWheelScrollDelta,
+    cancelTransientScrollMotion: scroll.cancelTransientScrollMotion,
+    minimapScrubScroll: scroll.minimapScrubScroll,
     tierScrollLive: scroll.tierScrollLive,
+    suppressPlaybackFollowForSelectionSeek,
+    getVisualPlayheadTimeSec: visualPlayheadClock.getVisualPlayheadTimeSec,
+    subscribePlayheadFrame: visualPlayheadClock.subscribePlayheadFrame,
     clearWaveformPeaksCache: peaks.clearAndReloadPeaks,
     routePrefs,
     deferDecodeMount,

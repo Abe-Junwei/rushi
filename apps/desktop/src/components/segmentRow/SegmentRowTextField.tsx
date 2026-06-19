@@ -22,6 +22,7 @@ interface SegmentRowTextFieldProps {
   onSegmentRowHeightPointerDown?: (e: React.PointerEvent<HTMLDivElement>) => void;
   onRowRangePointerDown?: (index: number, e: React.PointerEvent<HTMLElement>) => void;
   selectSegmentAt: (idx: number) => void;
+  onRevealSelectedSegment?: () => void;
   updateSegmentText: (idx: number, text: string) => void;
   onTextareaKeyDown: (idx: number, e: KeyboardEvent<HTMLTextAreaElement>) => void;
   findReplaceHighlight?: { charStart: number; charEnd: number } | null;
@@ -36,6 +37,7 @@ export const SegmentRowTextField = memo(function SegmentRowTextField(props: Segm
     selected,
     busy,
     textStyle,
+    onRevealSelectedSegment,
     selectSegmentAt: _selectSegmentAt,
     ...controllerArgs
   } = props;
@@ -66,8 +68,12 @@ export const SegmentRowTextField = memo(function SegmentRowTextField(props: Segm
     onFocusText,
     canResizeRowHeight,
   } = useSegmentRowTextFieldController({ ...controllerArgs, selected, busy });
+  const onResizeHandlePointerDown = (e: React.PointerEvent<HTMLDivElement>) => {
+    e.stopPropagation();
+    onRowHeightHandlePointerDown(e);
+  };
 
-  const { onCorrectableSpanClick } = props;
+  const { index, onCorrectableSpanClick } = props;
   const panelMirrorText = selected ? liveText : committedText;
   const useTransparentText = showPanelHighlightMirror || showCorrectableMirror;
 
@@ -98,7 +104,14 @@ export const SegmentRowTextField = memo(function SegmentRowTextField(props: Segm
             disabled={busy}
             tabIndex={selected ? 0 : -1}
             onPointerDownCapture={selected ? onTextPointerDownCapture : undefined}
-            onClick={selected ? (e) => e.stopPropagation() : undefined}
+            onClick={
+              selected
+                ? (e) => {
+                    e.stopPropagation();
+                    onRevealSelectedSegment?.();
+                  }
+                : undefined
+            }
             onContextMenu={onTextContextMenu}
             onFocus={selected ? onFocusText : undefined}
             onInput={
@@ -149,7 +162,14 @@ export const SegmentRowTextField = memo(function SegmentRowTextField(props: Segm
                 spans={mirrorCorrectableSpans}
                 textStyle={textStyle}
                 className={selected ? undefined : "overflow-hidden text-ellipsis whitespace-nowrap"}
-                onSpanClick={onCorrectableSpanClick}
+                onSpanClick={
+                  selected
+                    ? onCorrectableSpanClick
+                    : (span, event) => {
+                        _selectSegmentAt(index);
+                        onCorrectableSpanClick(span, event);
+                      }
+                }
               />
             </div>
           ) : null}
@@ -166,7 +186,7 @@ export const SegmentRowTextField = memo(function SegmentRowTextField(props: Segm
                 ? "pointer-events-none cursor-row-resize group-hover:pointer-events-auto focus-within:pointer-events-auto"
                 : "pointer-events-none cursor-not-allowed",
             ].join(" ")}
-            onPointerDown={onRowHeightHandlePointerDown}
+            onPointerDown={onResizeHandlePointerDown}
           />
         ) : null}
       </div>

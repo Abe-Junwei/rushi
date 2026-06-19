@@ -1,10 +1,10 @@
 import { describe, expect, it } from "vitest";
-import { WAVEFORM_EMBEDDED_TIME_RULER_H_PX } from "../components/WaveformTimeRuler";
+import { WAVEFORM_EMBEDDED_RULER_HEIGHT_PX } from "../services/waveform/drawWaveformTimeRuler";
 import { waveformPeaksBandHeightPx } from "./waveformPeaksStageMetrics";
 
 describe("waveformPeaksBandHeightPx", () => {
   it("subtracts embedded ruler band from tier height", () => {
-    expect(waveformPeaksBandHeightPx(220)).toBe(220 - WAVEFORM_EMBEDDED_TIME_RULER_H_PX);
+    expect(waveformPeaksBandHeightPx(220)).toBe(220 - WAVEFORM_EMBEDDED_RULER_HEIGHT_PX);
   });
 
   it("clamps to at least 1px", () => {

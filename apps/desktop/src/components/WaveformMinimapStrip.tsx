@@ -9,9 +9,14 @@ import {
   computeOverviewViewportRect,
   overviewClientXToTimeSec,
 } from "../utils/waveformOverviewGeometry";
-import { setCspLayoutRules } from "../utils/cspElementLayout";
+import {
+  clearCspLayoutRules,
+  setCspLayoutRules,
+  CSP_LAYOUT_OWNER_IMPERATIVE,
+} from "../utils/cspElementLayout";
+import { subscribeTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
 import { CspLayout } from "./CspLayout";
-import { scrollPxAlignTimeToViewportLeft } from "../utils/waveformProjection";
+import { scrollPxCenterTimeInViewport } from "../utils/waveformProjection";
 import {
   resolveTierViewportMetrics,
   type TierScrollLayoutMetrics,
@@ -35,6 +40,8 @@ type WaveformMinimapStripProps = {
   currentTimeSec: number;
   onSeek: (timeSec: number) => void;
   onSetScrollLeftPx: (scrollLeftPx: number) => void;
+  /** Pause playback-follow so a scrub during playback isn't yanked back by auto-scroll. */
+  suppressPlaybackFollowForSelectionSeek?: () => void;
 };
 
 export function WaveformMinimapStrip({
@@ -53,10 +60,12 @@ export function WaveformMinimapStrip({
   currentTimeSec,
   onSeek,
   onSetScrollLeftPx,
+  suppressPlaybackFollowForSelectionSeek,
 }: WaveformMinimapStripProps) {
   void _pxPerSec;
   const wellRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const viewportRef = useRef<HTMLElement | null>(null);
   const [overviewWidthPx, setOverviewWidthPx] = useState(0);
   const [minimapPeaksReady, setMinimapPeaksReady] = useState(false);
   const exportMinimapPeaksRef = useRef(exportMinimapPeaks);
@@ -156,6 +165,34 @@ export function WaveformMinimapStrip({
         })
       : { leftPx: 0, widthPx: 0 };
 
+  // Track tier scroll per-frame imperatively (subscribeTierScrollFrame), so the viewport
+  // rect follows live scroll instead of lagging behind the burst-committed tierScrollLayout.
+  useLayoutEffect(() => {
+    const el = viewportRef.current;
+    if (!el || overviewWidthPx <= 0 || timelineWidthPx <= 0) return;
+    const apply = () => {
+      const metrics = resolveTierViewportMetrics({
+        tierScrollEl: tierScrollRef.current,
+        tierScrollLive,
+        tierScrollLayout,
+      });
+      const rect = computeOverviewViewportRect({
+        scrollLeftPx: metrics.scrollLeftPx,
+        viewportWidthPx: metrics.viewportWidthPx,
+        timelineWidthPx,
+        overviewWidthPx,
+      });
+      setCspLayoutRules(el, { left: rect.leftPx, width: rect.widthPx });
+    };
+    apply();
+    const unsub = subscribeTierScrollFrame(apply);
+    return () => {
+      unsub();
+      // Only clear the imperative slot; CspLayout's React owner keeps left/width.
+      clearCspLayoutRules(el, CSP_LAYOUT_OWNER_IMPERATIVE);
+    };
+  }, [overviewWidthPx, timelineWidthPx, tierScrollRef, tierScrollLive, tierScrollLayout]);
+
   const playheadLeftPx =
     durationSec > 0 && overviewWidthPx > 0
       ? (Math.max(0, Math.min(durationSec, currentTimeSec)) / durationSec) * overviewWidthPx
@@ -173,9 +210,10 @@ export function WaveformMinimapStrip({
           if (off || durationSec <= 0) return;
           const rect = e.currentTarget.getBoundingClientRect();
           const timeSec = overviewClientXToTimeSec(e.clientX, rect, durationSec);
+          suppressPlaybackFollowForSelectionSeek?.();
           onSeek(timeSec);
           onSetScrollLeftPx(
-            scrollPxAlignTimeToViewportLeft({
+            scrollPxCenterTimeInViewport({
               timeSec,
               timelineWidthPx,
               durationSec,
@@ -194,6 +232,7 @@ export function WaveformMinimapStrip({
         ) : null}
         {viewport.widthPx > 0 ? (
           <CspLayout
+            ref={viewportRef}
             className="waveform-minimap-viewport"
             layout={{ left: viewport.leftPx, width: viewport.widthPx }}
           />

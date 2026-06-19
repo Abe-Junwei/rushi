@@ -1,10 +1,20 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 
+const loadMock = vi.fn((path: string) =>
+  Promise.resolve({
+    sample_rate: 44100,
+    length: path.includes("l3") ? 3_000 : path.includes("l1") ? 1_000 : 600,
+    channels: 1,
+    path,
+  }),
+);
 const resampleMock = vi.fn((data: unknown) => data);
-const toPeaksMock = vi.fn((_data?: unknown) => [[0, 0.5, -0.1, 0.2]]);
+const toPeaksMock = vi.fn(
+  (_data?: unknown): Array<Float32Array | number[]> => [[0, 0.5, -0.1, 0.2]],
+);
 
 vi.mock("./audiowaveformDat", () => ({
-  loadWaveformDatFromPath: vi.fn(() => Promise.resolve({ sample_rate: 44100, length: 600 })),
+  loadWaveformDatFromPath: (path: string) => loadMock(path),
   resampleWaveformForPxPerSec: (data: unknown) => resampleMock(data),
   resampleWaveformToWidth: (data: unknown) => resampleMock(data),
   waveformDataToWaveSurferPeaks: (data: unknown) => toPeaksMock(data),
@@ -16,9 +26,11 @@ import { PeakCache } from "./PeakCache";
 
 describe("PeakCache", () => {
   beforeEach(() => {
+    loadMock.mockClear();
     resampleMock.mockClear();
     toPeaksMock.mockClear();
     resampleMock.mockImplementation((d) => d);
+    toPeaksMock.mockImplementation((_data?: unknown) => [[0, 0.5, -0.1, 0.2]]);
   });
 
   it("returns distinct instances per fromLevelUrls call", async () => {
@@ -61,25 +73,69 @@ describe("PeakCache", () => {
     expect(bundle.duration).toBe(610);
   });
 
-  it("evicts oldest resample entries beyond LRU cap", async () => {
+  it("evicts oldest resample entries beyond byte budget", async () => {
+    const cache = await PeakCache.fromLevelUrls([
+      { level: 0, pixelsPerSecond: 2, path: "asset://l0.dat" },
+    ], { resampleBudgetBytes: 128 });
+    expect(cache).not.toBeNull();
+    if (!cache) return;
+    toPeaksMock.mockImplementation(() => [new Float32Array(16)]);
+
+    for (let px = 1; px <= 3; px += 1) {
+      cache.getWaveSurferPeaks(px);
+    }
+    expect(resampleMock).toHaveBeenCalledTimes(3);
+
+    resampleMock.mockClear();
+    cache.getWaveSurferPeaks(1);
+    expect(resampleMock).toHaveBeenCalledTimes(1);
+
+    resampleMock.mockClear();
+    cache.getWaveSurferPeaks(3);
+    expect(resampleMock).toHaveBeenCalledTimes(0);
+  });
+
+  it("registers deferred LOD paths without loading them until needed", async () => {
     const cache = await PeakCache.fromLevelUrls([
       { level: 0, pixelsPerSecond: 2, path: "asset://l0.dat" },
     ]);
     expect(cache).not.toBeNull();
     if (!cache) return;
+    loadMock.mockClear();
 
-    for (let px = 1; px <= 18; px += 1) {
-      cache.getWaveSurferPeaks(px);
-    }
-    expect(resampleMock).toHaveBeenCalledTimes(18);
+    cache.registerLevels([{ level: 3, pixelsPerSecond: 800, path: "asset://l3.dat" }]);
+    expect(cache.hasLevel(3)).toBe(false);
+    await cache.getWaveSurferPeaksAsync(400);
+    expect(loadMock).toHaveBeenCalledTimes(1);
+    expect(loadMock).toHaveBeenCalledWith("asset://l3.dat");
+    expect(cache.hasLevel(3)).toBe(true);
+  });
 
-    resampleMock.mockClear();
-    cache.getWaveSurferPeaks(2);
-    expect(resampleMock).toHaveBeenCalledTimes(1);
+  it("deduplicates concurrent LOD loads", async () => {
+    const cache = await PeakCache.fromLevelUrls([
+      { level: 0, pixelsPerSecond: 2, path: "asset://l0.dat" },
+    ]);
+    expect(cache).not.toBeNull();
+    if (!cache) return;
+    cache.registerLevels([{ level: 3, pixelsPerSecond: 800, path: "asset://l3.dat" }]);
+    loadMock.mockClear();
 
-    resampleMock.mockClear();
-    cache.getWaveSurferPeaks(18);
-    expect(resampleMock).toHaveBeenCalledTimes(0);
+    await Promise.all([cache.ensureLevelForPxPerSec(400), cache.ensureLevelForPxPerSec(480)]);
+    expect(loadMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("evicts raw LODs by byte budget while keeping the requested level", async () => {
+    const cache = await PeakCache.fromLevelUrls(
+      [{ level: 0, pixelsPerSecond: 2, path: "asset://l0.dat" }],
+      { rawBudgetBytes: 5_000 },
+    );
+    expect(cache).not.toBeNull();
+    if (!cache) return;
+
+    cache.registerLevels([{ level: 3, pixelsPerSecond: 800, path: "asset://l3.dat" }]);
+    await cache.ensureLevelForPxPerSec(400);
+    expect(cache.hasLevel(3)).toBe(true);
+    expect(cache.hasLevel(0)).toBe(false);
   });
 
   it("does not reuse resample cache across px/s that map to different target widths", async () => {

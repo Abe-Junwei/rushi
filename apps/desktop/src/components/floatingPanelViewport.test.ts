@@ -159,4 +159,42 @@ describe("floatingPanelViewport", () => {
     expect(out.recentered).toBe(false);
     expect(out.position).toEqual(dragged);
   });
+
+  it("reconcileFloatingPanelOnViewportResize re-anchors workbench panel instead of viewport center", () => {
+    const size = { width: 520, height: 400 };
+    const windowed = { width: 1200, height: 800, offsetX: 0, offsetY: 0 };
+    const resized = { width: 1100, height: 760, offsetX: 0, offsetY: 0 };
+    const workbench = { x: 290, y: 384 };
+    const nextWorkbench = { x: 240, y: 360 };
+    const out = reconcileFloatingPanelOnViewportResize({
+      position: workbench,
+      size,
+      prevViewport: windowed,
+      nextViewport: resized,
+      margin: 16,
+      userMoved: false,
+      preferredDefaultPosition: () => nextWorkbench,
+    });
+    expect(out.recentered).toBe(true);
+    expect(out.position).toEqual(nextWorkbench);
+    expect(isFloatingPanelCentered(out.position, size, resized, 16)).toBe(false);
+  });
+
+  it("reconcileFloatingPanelOnViewportResize keeps non-centered default without preferred anchor", () => {
+    const size = { width: 420, height: 400 };
+    const windowed = { width: 1200, height: 800, offsetX: 0, offsetY: 0 };
+    const resized = { width: 1100, height: 760, offsetX: 0, offsetY: 0 };
+    const anchored = { x: 120, y: 520 };
+    expect(isFloatingPanelCentered(anchored, size, windowed, 16)).toBe(false);
+    const out = reconcileFloatingPanelOnViewportResize({
+      position: anchored,
+      size,
+      prevViewport: windowed,
+      nextViewport: resized,
+      margin: 16,
+      userMoved: false,
+    });
+    expect(out.recentered).toBe(false);
+    expect(out.position).toEqual(anchored);
+  });
 });

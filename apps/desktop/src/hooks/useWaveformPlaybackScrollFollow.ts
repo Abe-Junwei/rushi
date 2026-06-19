@@ -3,6 +3,7 @@ import {
   resolvePlaybackScrollFollowTargetPx,
   type WaveformPlaybackScrollFollowMode,
 } from "../utils/waveformPlaybackScrollFollow";
+import { PLAYHEAD_FRAME_PRIORITY_SCROLL } from "./useWaveformVisualPlayheadClock";
 import { WAVEFORM_SCROLL_SYNC_EPSILON_PX } from "../utils/waveformScrollSync";
 
 export type UseWaveformPlaybackScrollFollowArgs = {
@@ -14,12 +15,14 @@ export type UseWaveformPlaybackScrollFollowArgs = {
   enabled: boolean;
   followMode: WaveformPlaybackScrollFollowMode;
   getPlayheadTimeSec: () => number;
-  setTierScrollPx: (
-    scrollLeftPx: number,
-    options?: { deferLayoutCommit?: boolean; immediate?: boolean },
-  ) => void;
+  playbackFollowScroll: (scrollLeftPx: number) => void;
   /** Pause follow while user manually scrolls the tier. */
   userScrollSuppressUntilRef?: React.MutableRefObject<number>;
+  /** Single playback tick bus; follow runs here (priority 0) instead of its own rAF. */
+  subscribePlayheadFrame: (
+    cb: (timeSec: number) => void,
+    priority?: number,
+  ) => () => void;
 };
 
 function applyPlaybackScrollFollowTarget(args: {
@@ -28,7 +31,7 @@ function applyPlaybackScrollFollowTarget(args: {
   durationSec: number;
   followMode: WaveformPlaybackScrollFollowMode;
   getPlayheadTimeSec: () => number;
-  setTierScrollPx: UseWaveformPlaybackScrollFollowArgs["setTierScrollPx"];
+  playbackFollowScroll: UseWaveformPlaybackScrollFollowArgs["playbackFollowScroll"];
   userScrollSuppressUntilRef?: React.MutableRefObject<number>;
 }): void {
   if (args.userScrollSuppressUntilRef && performance.now() < args.userScrollSuppressUntilRef.current) {
@@ -50,7 +53,7 @@ function applyPlaybackScrollFollowTarget(args: {
     currentScrollLeftPx,
   });
   if (Math.abs(target - currentScrollLeftPx) > WAVEFORM_SCROLL_SYNC_EPSILON_PX) {
-    args.setTierScrollPx(target, { deferLayoutCommit: true, immediate: true });
+    args.playbackFollowScroll(target);
   }
 }
 
@@ -71,8 +74,9 @@ export function useWaveformPlaybackScrollFollow(args: UseWaveformPlaybackScrollF
     enabled,
     followMode,
     getPlayheadTimeSec,
-    setTierScrollPx,
+    playbackFollowScroll,
     userScrollSuppressUntilRef,
+    subscribePlayheadFrame,
   } = args;
 
   const followModeRef = useRef(followMode);
@@ -88,7 +92,7 @@ export function useWaveformPlaybackScrollFollow(args: UseWaveformPlaybackScrollF
       durationSec,
       followMode,
       getPlayheadTimeSec,
-      setTierScrollPx,
+      playbackFollowScroll,
       userScrollSuppressUntilRef,
     });
   }, [
@@ -97,7 +101,7 @@ export function useWaveformPlaybackScrollFollow(args: UseWaveformPlaybackScrollF
     followMode,
     getPlayheadTimeSec,
     isReady,
-    setTierScrollPx,
+    playbackFollowScroll,
     tierScrollRef,
     timelineWidthPx,
     userScrollSuppressUntilRef,
@@ -107,31 +111,19 @@ export function useWaveformPlaybackScrollFollow(args: UseWaveformPlaybackScrollF
     if (!enabled || !isPlaying || !isReady || durationSec < 0.5 || timelineWidthPx <= 0) {
       return;
     }
-
-    let raf = 0;
-
-    const tick = () => {
-      raf = 0;
-      if (userScrollSuppressUntilRef && performance.now() < userScrollSuppressUntilRef.current) {
-        raf = requestAnimationFrame(tick);
-        return;
-      }
+    // Runs inside the single playback tick (before the playhead transform) so scroll
+    // and playhead share the same frame's time — no separate follow rAF.
+    return subscribePlayheadFrame(() => {
       applyPlaybackScrollFollowTarget({
         tierScrollRef,
         timelineWidthPx,
         durationSec,
         followMode: followModeRef.current,
         getPlayheadTimeSec,
-        setTierScrollPx,
+        playbackFollowScroll,
         userScrollSuppressUntilRef,
       });
-      raf = requestAnimationFrame(tick);
-    };
-
-    raf = requestAnimationFrame(tick);
-    return () => {
-      if (raf) cancelAnimationFrame(raf);
-    };
+    }, PLAYHEAD_FRAME_PRIORITY_SCROLL);
   }, [
     durationSec,
     enabled,
@@ -139,7 +131,8 @@ export function useWaveformPlaybackScrollFollow(args: UseWaveformPlaybackScrollF
     getPlayheadTimeSec,
     isPlaying,
     isReady,
-    setTierScrollPx,
+    playbackFollowScroll,
+    subscribePlayheadFrame,
     tierScrollRef,
     timelineWidthPx,
     userScrollSuppressUntilRef,

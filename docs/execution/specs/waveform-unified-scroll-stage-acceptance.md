@@ -33,7 +33,7 @@
 ### 必须新增或更新
 
 - [ ] `EditorWaveformPeaksStage` DOM contract：timeline content 与 viewport chrome 分离。
-- [x] `useWaveformTierScroll` 或 `useTierScrollSync`：programmatic write、defer layout commit、wheel-forward sync、smooth scroll cleanup。
+- [x] `useWaveformTierScroll` 或 `useTierScrollSync`：programmatic write、defer layout commit、wheel-forward sync、direct minimap jump。
 - [x] `WaveformViewportPlayhead.test.tsx`：scroll frame 后 viewport 坐标正确。
 - [x] `useWaveformRulerScrollTrack.test.ts`：coordinator frame 后 transform/position 正确。
 - [x] `drawWaveformSegmentBands.test.ts`：可见窗 / index window 不漏绘。

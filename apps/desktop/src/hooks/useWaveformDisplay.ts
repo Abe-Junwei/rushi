@@ -17,6 +17,7 @@ import {
 import { useDeferredRendererState } from "./useDeferredRendererState";
 
 const PREF_WRITE_DEBOUNCE_MS = 180;
+const TRANSCRIPT_RESIZE_DRAG_THRESHOLD_PX = 4;
 
 const heightEquals = (a: number, b: number) => Math.abs(a - b) < 0.5;
 
@@ -120,8 +121,13 @@ export function useWaveformDisplay(args: { busy: boolean }) {
       target.setPointerCapture(e.pointerId);
       const startY = e.clientY;
       const startF = transcriptFontPxRef.current;
+      let dragging = false;
       const onMove = (ev: PointerEvent) => {
-        setTranscriptFontPxState(clampTranscriptFontPx(startF + Math.round((ev.clientY - startY) / 5)));
+        if ((ev.buttons & 1) !== 1) return;
+        const dy = ev.clientY - startY;
+        if (!dragging && Math.abs(dy) < TRANSCRIPT_RESIZE_DRAG_THRESHOLD_PX) return;
+        dragging = true;
+        setTranscriptFontPxState(clampTranscriptFontPx(startF + Math.round(dy / 5)));
       };
       const onUp = (ev: PointerEvent) => {
         try {
@@ -148,8 +154,13 @@ export function useWaveformDisplay(args: { busy: boolean }) {
       target.setPointerCapture(e.pointerId);
       const startY = e.clientY;
       const startRow = computeSegmentLaneRowPx(transcriptFontPxRef.current);
+      let dragging = false;
       const onMove = (ev: PointerEvent) => {
-        const nextRow = clampSegmentLaneRowPx(startRow + (ev.clientY - startY));
+        if ((ev.buttons & 1) !== 1) return;
+        const dy = ev.clientY - startY;
+        if (!dragging && Math.abs(dy) < TRANSCRIPT_RESIZE_DRAG_THRESHOLD_PX) return;
+        dragging = true;
+        const nextRow = clampSegmentLaneRowPx(startRow + dy);
         setTranscriptFontPxState(transcriptFontPxFromSegmentRowPx(nextRow));
       };
       const onUp = (ev: PointerEvent) => {

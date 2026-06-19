@@ -4,7 +4,6 @@ import type { useProjectWaveform } from "../hooks/useProjectWaveform";
 import type { SegmentSelectSource } from "../utils/waveformViewMode";
 import { readFocusedSegmentTextareaIdx, readFocusedTranscriptTextareaSelection } from "../pages/flushSegmentTextDrafts";
 import type { SegmentListFilterNavState } from "../utils/segmentListFilterNav";
-import { segmentStartSec } from "./formatMediaTime";
 import { resolveKeyboardAdvanceTarget } from "./segmentListKeyboardNav";
 import { readStoredTabAdvanceLoopsSegment } from "./waveformPrefs";
 import type { EditorShortcutId } from "./editorShortcutRegistry";
@@ -151,8 +150,6 @@ export function executeEditorShortcut(
           if (readStoredTabAdvanceLoopsSegment()) {
             wf.preserveLoopForNextSegmentSelect();
             void wf.playSegmentAtIndex(ni, { loop: true });
-          } else {
-            wf.seek(segmentStartSec(seg));
           }
         }
       })();

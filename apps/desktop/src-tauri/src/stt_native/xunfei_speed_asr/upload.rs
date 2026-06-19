@@ -1,5 +1,7 @@
 //! 讯飞 OST 文件上传（直传 + 分块）。
 
+use std::fs::File;
+use std::io::{Read, Seek, SeekFrom};
 use std::path::Path;
 
 use reqwest::Client;
@@ -18,6 +20,27 @@ const SLICE_SIZE: usize = 10 * 1024 * 1024;
 /// 用 0-based 时首片 `slice_id="0"` 会被服务端判为空 → `sliceId must not be empty`。
 fn xunfei_slice_id(index: usize) -> usize {
     index + 1
+}
+
+fn xunfei_slice_count(total_bytes: u64) -> usize {
+    (total_bytes as usize).div_ceil(SLICE_SIZE)
+}
+
+fn read_xunfei_slice(file: &mut File, index: usize, total_bytes: u64) -> Result<Vec<u8>, String> {
+    let start = index
+        .checked_mul(SLICE_SIZE)
+        .ok_or_else(|| "讯飞分片偏移溢出".to_string())? as u64;
+    if start >= total_bytes {
+        return Err("讯飞分片索引超出文件大小".to_string());
+    }
+    let remaining = total_bytes - start;
+    let len = remaining.min(SLICE_SIZE as u64) as usize;
+    let mut out = vec![0_u8; len];
+    file.seek(SeekFrom::Start(start))
+        .map_err(|e| format!("定位讯飞分片失败: {e}"))?;
+    file.read_exact(&mut out)
+        .map_err(|e| format!("读取讯飞分片失败: {e}"))?;
+    Ok(out)
 }
 
 fn api_code_ok(j: &Value) -> bool {
@@ -204,8 +227,8 @@ async fn upload_small_file(
 async fn upload_multipart_file(
     client: &Client,
     app_id: &str,
-    file_bytes: &[u8],
-    _filename: &str,
+    wav_path: &Path,
+    total_bytes: u64,
     api_key: &str,
     api_secret: &str,
 ) -> Result<String, String> {
@@ -227,11 +250,10 @@ async fn upload_multipart_file(
         .and_then(|x| x.as_str())
         .ok_or_else(|| "分块 init 缺少 upload_id".to_string())?;
 
-    let total_slices = file_bytes.len().div_ceil(SLICE_SIZE);
+    let mut file = File::open(wav_path).map_err(|e| format!("打开讯飞上传文件失败: {e}"))?;
+    let total_slices = xunfei_slice_count(total_bytes);
     for index in 0..total_slices {
-        let start = index * SLICE_SIZE;
-        let end = ((index + 1) * SLICE_SIZE).min(file_bytes.len());
-        let slice = &file_bytes[start..end];
+        let slice = read_xunfei_slice(&mut file, index, total_bytes)?;
         let slice_id = xunfei_slice_id(index);
         let request_id = Uuid::new_v4().to_string();
         let (slice_body, slice_ct) = build_multipart_slice_upload(
@@ -239,7 +261,7 @@ async fn upload_multipart_file(
             &request_id,
             upload_id,
             slice_id,
-            slice,
+            &slice,
             &format!("slice_{slice_id}.bin"),
         );
         let slice_j = post_signed_multipart(
@@ -281,19 +303,20 @@ pub async fn upload_audio_file(
     api_secret: &str,
     log: &impl Fn(&str),
 ) -> Result<String, String> {
-    let file_bytes = super::super::read_audio_bytes_limited(wav_path)?;
+    let total_bytes = super::super::audio_size_within_limit(wav_path)?;
     let filename = wav_path
         .file_name()
         .and_then(|n| n.to_str())
         .unwrap_or("audio.wav");
     log(&format!(
         "INFO xunfei upload bytes={} multipart={}",
-        file_bytes.len(),
-        file_bytes.len() as u64 >= CHUNK_THRESHOLD
+        total_bytes,
+        total_bytes >= CHUNK_THRESHOLD
     ));
-    if file_bytes.len() as u64 >= CHUNK_THRESHOLD {
-        upload_multipart_file(client, app_id, &file_bytes, filename, api_key, api_secret).await
+    if total_bytes >= CHUNK_THRESHOLD {
+        upload_multipart_file(client, app_id, wav_path, total_bytes, api_key, api_secret).await
     } else {
+        let file_bytes = super::super::read_audio_bytes_limited(wav_path)?;
         upload_small_file(client, app_id, &file_bytes, filename, api_key, api_secret).await
     }
 }
@@ -301,6 +324,17 @@ pub async fn upload_audio_file(
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::fs;
+    use std::io::Write;
+    use std::time::{SystemTime, UNIX_EPOCH};
+
+    fn unique_temp_path(label: &str) -> std::path::PathBuf {
+        let nanos = SystemTime::now()
+            .duration_since(UNIX_EPOCH)
+            .unwrap()
+            .as_nanos();
+        std::env::temp_dir().join(format!("rushi-xunfei-upload-{label}-{nanos}.bin"))
+    }
 
     #[test]
     fn slice_multipart_puts_data_before_metadata_fields() {
@@ -338,5 +372,32 @@ mod tests {
         let data_pos = text.find("name=\"data\"").expect("data part");
         let app_pos = text.find("name=\"app_id\"").expect("app_id part");
         assert!(data_pos < app_pos);
+    }
+
+    #[test]
+    fn xunfei_slice_count_rounds_up() {
+        assert_eq!(xunfei_slice_count(1), 1);
+        assert_eq!(xunfei_slice_count(SLICE_SIZE as u64), 1);
+        assert_eq!(xunfei_slice_count(SLICE_SIZE as u64 + 1), 2);
+        assert_eq!(xunfei_slice_count(SLICE_SIZE as u64 * 3), 3);
+    }
+
+    #[test]
+    fn read_xunfei_slice_reads_only_requested_chunk() {
+        let path = unique_temp_path("slice");
+        let mut f = File::create(&path).unwrap();
+        let total = SLICE_SIZE as u64 + 3;
+        f.set_len(total).unwrap();
+        f.seek(SeekFrom::Start(SLICE_SIZE as u64)).unwrap();
+        f.write_all(&[7, 8, 9]).unwrap();
+        drop(f);
+
+        let mut f = File::open(&path).unwrap();
+        let first = read_xunfei_slice(&mut f, 0, total).unwrap();
+        let second = read_xunfei_slice(&mut f, 1, total).unwrap();
+        assert_eq!(first.len(), SLICE_SIZE);
+        assert_eq!(second, vec![7, 8, 9]);
+
+        fs::remove_file(path).unwrap();
     }
 }
