@@ -1,74 +1,104 @@
 import { render, act } from "@testing-library/react";
+import type { ComponentProps } from "react";
 import { describe, expect, it } from "vitest";
-import { readCspLayoutRulesForElement } from "../utils/cspElementLayout";
 import {
   flushTierScrollFrameForTests,
   resetTierScrollFrameCoordinatorForTests,
   scheduleTierScrollFrame,
 } from "../utils/tierScrollFrameCoordinator";
+import { readCspLayoutRulesForElement } from "../utils/cspElementLayout";
 import { WaveformViewportPlayhead } from "./WaveformViewportPlayhead";
+
+/** Imperative playhead transform is applied via the CSP nonce style registry, not inline style. */
+function playheadTransform(line: HTMLElement): string {
+  return readCspLayoutRulesForElement(line) ?? "";
+}
+
+function makePlayheadProps(overrides: Partial<ComponentProps<typeof WaveformViewportPlayhead>> = {}) {
+  const tierScroll = document.createElement("div");
+  Object.defineProperty(tierScroll, "scrollLeft", { value: 200, writable: true, configurable: true });
+  Object.defineProperty(tierScroll, "clientWidth", { value: 800, configurable: true });
+  return {
+    durationSec: 100,
+    timelineWidthPx: 1000,
+    tierScrollRef: { current: tierScroll },
+    tierScrollLayout: { scrollLeftPx: 200, clientWidthPx: 800 },
+    isPlaying: false,
+    isReady: true,
+    currentTimeSec: 50,
+    getVisualPlayheadTimeSec: () => 50,
+    subscribePlayheadFrame: (_cb: (timeSec: number) => void) => () => {},
+    playbackFollowMode: "edge" as const,
+    ...overrides,
+  };
+}
 
 describe("WaveformViewportPlayhead", () => {
   it("positions playhead in tier viewport coordinates (timeline px − scrollLeft)", () => {
-    const tierScroll = document.createElement("div");
-    Object.defineProperty(tierScroll, "scrollLeft", { value: 200, writable: true, configurable: true });
-    Object.defineProperty(tierScroll, "clientWidth", { value: 800, configurable: true });
-    const tierScrollRef = { current: tierScroll };
-
-    const { container } = render(
-      <WaveformViewportPlayhead
-        durationSec={100}
-        timelineWidthPx={1000}
-        tierScrollRef={tierScrollRef}
-        tierScrollLayout={{ scrollLeftPx: 200, clientWidthPx: 800 }}
-        isPlaying={false}
-        isReady
-        currentTimeSec={50}
-        getPlayheadTime={() => 50}
-        formatMediaTime={(s) => `${s}`}
-      />,
-    );
+    const { container } = render(<WaveformViewportPlayhead {...makePlayheadProps()} />);
 
     const line = container.querySelector(".waveform-viewport-playhead") as HTMLDivElement;
     expect(line).toBeTruthy();
-    // 50% of 1000px timeline = 500px; viewport x = 500 - 200 = 300
-    expect(readCspLayoutRulesForElement(line)).toContain("translate3d(300px, 0, 0)");
+    expect(playheadTransform(line)).toContain("300.000px");
   });
 
   it("updates transform on tier scroll without React rerender", () => {
-    const tierScroll = document.createElement("div");
-    Object.defineProperty(tierScroll, "scrollLeft", { value: 0, writable: true, configurable: true });
-    Object.defineProperty(tierScroll, "clientWidth", { value: 800, configurable: true });
-    const tierScrollRef = { current: tierScroll };
+    const props = makePlayheadProps({
+      tierScrollLayout: { scrollLeftPx: 0, clientWidthPx: 800 },
+      currentTimeSec: 30,
+      getVisualPlayheadTimeSec: () => 30,
+    });
+    props.tierScrollRef.current!.scrollLeft = 0;
 
-    const { container } = render(
-      <WaveformViewportPlayhead
-        durationSec={100}
-        timelineWidthPx={1000}
-        tierScrollRef={tierScrollRef}
-        tierScrollLayout={{ scrollLeftPx: 0, clientWidthPx: 800 }}
-        isPlaying={false}
-        isReady
-        currentTimeSec={30}
-        getPlayheadTime={() => 30}
-        formatMediaTime={(s) => `${s}`}
-      />,
-    );
+    const { container } = render(<WaveformViewportPlayhead {...props} />);
 
     const line = container.querySelector(".waveform-viewport-playhead") as HTMLDivElement;
-    tierScroll.scrollLeft = 100;
+    props.tierScrollRef.current!.scrollLeft = 100;
     act(() => {
       scheduleTierScrollFrame();
       flushTierScrollFrameForTests();
     });
     resetTierScrollFrameCoordinatorForTests();
-    expect(readCspLayoutRulesForElement(line)).toContain("translate3d(200px, 0, 0)");
+    expect(playheadTransform(line)).toContain("200.000px");
+  });
+
+  it("preserves subpixel playhead positioning in edge mode", () => {
+    const tierScroll = document.createElement("div");
+    Object.defineProperty(tierScroll, "scrollLeft", { value: 0, writable: true, configurable: true });
+    Object.defineProperty(tierScroll, "clientWidth", { value: 800, configurable: true });
+    const { container } = render(
+      <WaveformViewportPlayhead
+        {...makePlayheadProps({
+          tierScrollRef: { current: tierScroll },
+          tierScrollLayout: { scrollLeftPx: 0, clientWidthPx: 800 },
+          currentTimeSec: 33.3333,
+          getVisualPlayheadTimeSec: () => 33.3333,
+        })}
+      />,
+    );
+
+    const line = container.querySelector(".waveform-viewport-playhead") as HTMLDivElement;
+    expect(playheadTransform(line)).toContain("333.333px");
+  });
+
+  it("pins playhead at viewport center while playing in center follow mode", () => {
+    const { container } = render(
+      <WaveformViewportPlayhead
+        {...makePlayheadProps({
+          isPlaying: true,
+          getVisualPlayheadTimeSec: () => 12.345,
+          playbackFollowMode: "center",
+        })}
+      />,
+    );
+
+    const line = container.querySelector(".waveform-viewport-playhead") as HTMLDivElement;
+    expect(playheadTransform(line)).toContain("400.000px");
   });
 });
 
 describe("tailwind production parity — stroke opacity scale", () => {
   it("documents that /58 opacity utilities are not emitted (use waveform.css instead)", () => {
-    // Guard against regressing to stroke-accent-action/58 on release-only playhead paths.
     expect("stroke-accent-action/58".endsWith("/58")).toBe(true);
     expect("stroke-accent-action/90".endsWith("/90")).toBe(true);
   });

@@ -111,13 +111,13 @@ export function EnvironmentPanel({
     setEnvSection(section);
     if (section === "online-stt") {
       const raf = window.requestAnimationFrame(() => {
-        onlineSttScrollRef.current?.scrollIntoView({ block: "nearest", behavior: "smooth" });
+        onlineSttScrollRef.current?.scrollIntoView({ block: "nearest" });
       });
       return () => window.cancelAnimationFrame(raf);
     }
     if (section === "llm") {
       const raf = window.requestAnimationFrame(() => {
-        llmScrollRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+        llmScrollRef.current?.scrollIntoView({ block: "start" });
       });
       return () => window.cancelAnimationFrame(raf);
     }

@@ -19,6 +19,8 @@ INK = (0x2C, 0x2C, 0x2C, 255)
 WHITE = (0xFF, 0xFF, 0xFF, 255)
 SAFFRON = (0xC5, 0x8A, 0x43, 255)
 ICON_SIZE = 1024
+ICON_GLYPH_RATIO = 0.78
+MACOS_SQUIRCLE_EXPONENT = 5.0
 VIEW_BOX = 32
 CONTENT_RATIO = 0.86
 GLYPH_PADDING_RATIO = 0.06
@@ -88,6 +90,33 @@ def fit_on_canvas(
     offset = ((canvas_size - target[0]) // 2, (canvas_size - target[1]) // 2)
     canvas.paste(resized, offset, resized)
     return canvas
+
+
+def macos_squircle_mask(size: int, exponent: float = MACOS_SQUIRCLE_EXPONENT) -> Image.Image:
+    """macOS / iOS app icon superellipse (squircle) alpha mask."""
+    mask = Image.new("L", (size, size), 0)
+    pixels = mask.load()
+    center = (size - 1) / 2.0
+    radius = center
+    for y in range(size):
+        ny = abs(y - center) / radius
+        ny_pow = ny**exponent
+        for x in range(size):
+            nx = abs(x - center) / radius
+            if nx**exponent + ny_pow <= 1.0:
+                pixels[x, y] = 255
+    return mask
+
+
+def write_macos_icon_source(white_glyph: Image.Image, out_path: Path) -> None:
+    """Dock / icns 源图：squircle 底 + 透明四角，适配 macOS 图标外形。"""
+    canvas = Image.new("RGBA", (ICON_SIZE, ICON_SIZE), (0, 0, 0, 0))
+    squircle = macos_squircle_mask(ICON_SIZE)
+    saffron_layer = Image.new("RGBA", (ICON_SIZE, ICON_SIZE), SAFFRON)
+    canvas.paste(saffron_layer, mask=squircle)
+    glyph_layer = fit_on_canvas(white_glyph, ICON_SIZE, None, ICON_GLYPH_RATIO)
+    canvas = Image.alpha_composite(canvas, glyph_layer)
+    canvas.save(out_path)
 
 
 def _fmt(value: float) -> str:
@@ -239,7 +268,8 @@ def main() -> int:
         SAFFRON,
         CONTENT_RATIO,
     )
-    icon_source.save(OUT_DIR / "icon-source.png")
+    icon_source.save(OUT_DIR / "icon-source-square.png")
+    write_macos_icon_source(white_glyph, OUT_DIR / "icon-source.png")
     write_lockup_readme_png(ink_glyph, OUT_DIR / "lockup-readme.png")
 
     vector_paths = trace_vector_paths(ink_glyph)

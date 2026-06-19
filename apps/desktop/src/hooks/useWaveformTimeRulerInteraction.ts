@@ -4,6 +4,8 @@ export type UseWaveformTimeRulerInteractionArgs = {
   embedded: boolean;
   currentTimeSec: number;
   liveScrollLeftPx: number;
+  /** When scroll position updates imperatively (canvas ruler), read DOM at pointer down. */
+  getLiveScrollLeftPx?: () => number;
   disabled?: boolean;
   onSeekFromTierClientX: (clientX: number) => void;
   onSetScrollLeftPx: (px: number) => void;
@@ -13,6 +15,7 @@ export function useWaveformTimeRulerInteraction({
   embedded,
   currentTimeSec,
   liveScrollLeftPx,
+  getLiveScrollLeftPx,
   disabled,
   onSeekFromTierClientX,
   onSetScrollLeftPx,
@@ -51,7 +54,7 @@ export function useWaveformTimeRulerInteraction({
       rulerDragRef.current = {
         dragging: false,
         startX: e.clientX,
-        startScroll: scrollLeftPxRef.current,
+        startScroll: getLiveScrollLeftPx?.() ?? scrollLeftPxRef.current,
       };
       const onMove = (ev: PointerEvent) => {
         const dx = ev.clientX - rulerDragRef.current.startX;
@@ -82,7 +85,7 @@ export function useWaveformTimeRulerInteraction({
       window.addEventListener("pointercancel", onUp);
       window.addEventListener("blur", onBlur);
     },
-    [disabled, onSeekFromTierClientX, onSetScrollLeftPx],
+    [disabled, getLiveScrollLeftPx, onSeekFromTierClientX, onSetScrollLeftPx],
   );
 
   return { interactionActive, onRulerPointerDown };

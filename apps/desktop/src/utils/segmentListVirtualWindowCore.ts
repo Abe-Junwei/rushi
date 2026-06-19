@@ -128,10 +128,16 @@ export function segmentListRangeDragVerticalIntentExceededSlop(
   return Math.abs(dy) >= slopPx && Math.abs(dy) > Math.abs(dx);
 }
 
-export function isEditableSegmentBodyTextarea(el: Element | null): el is HTMLTextAreaElement {
+export function isSegmentBodyTextarea(el: Element | null): el is HTMLTextAreaElement {
   return (
     el instanceof HTMLTextAreaElement &&
-    el.getAttribute("aria-label") === "语段正文" &&
+    el.getAttribute("aria-label") === "语段正文"
+  );
+}
+
+export function isEditableSegmentBodyTextarea(el: Element | null): el is HTMLTextAreaElement {
+  return (
+    isSegmentBodyTextarea(el) &&
     !el.readOnly &&
     !el.disabled
   );

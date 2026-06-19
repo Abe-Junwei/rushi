@@ -4,7 +4,7 @@ export const WAVEFORM_PROGRAMMATIC_SCROLL_SUPPRESS_MS = 400;
 /** Tier scroll writes ignore sub-pixel jitter below this threshold. */
 export const WAVEFORM_SCROLL_SYNC_EPSILON_PX = 0.5;
 
-/** Extend suppress window for long smooth-scroll animations. */
+/** Extend suppress window for larger programmatic jumps. */
 export function computeProgrammaticScrollSuppressMs(scrollDeltaPx: number): number {
   const delta = Math.abs(scrollDeltaPx);
   return Math.min(4000, Math.max(WAVEFORM_PROGRAMMATIC_SCROLL_SUPPRESS_MS, delta * 0.25 + 400));

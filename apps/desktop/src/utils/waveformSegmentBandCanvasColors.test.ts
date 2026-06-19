@@ -38,4 +38,8 @@ describe("segmentBandFillStyle", () => {
       segmentBandFillStyle(seg, false, 0, palette, { inSelection: true, multiSelectActive: false }),
     ).toBe("in-sel");
   });
+
+  it("does not tint unselected segments based on playback progress", () => {
+    expect(segmentBandFillStyle(seg, false, 1, palette)).toBe("idle");
+  });
 });

@@ -2,7 +2,7 @@ import { useCallback, useState } from "react";
 import { CspLayout } from "../CspLayout";
 import { WaveformLiveTimeRuler } from "../WaveformLiveTimeRuler";
 import { WaveformViewportPlayhead } from "../WaveformViewportPlayhead";
-import { WAVEFORM_EMBEDDED_TIME_RULER_H_PX } from "../WaveformTimeRuler";
+import { WAVEFORM_EMBEDDED_RULER_HEIGHT_PX } from "../../services/waveform/drawWaveformTimeRuler";
 import { WaveformSegmentPlaybackControls } from "../WaveformSegmentPlaybackControls";
 import { WaveformSegmentBandCanvas } from "../WaveformSegmentBandCanvas";
 import { WaveformSegmentOverlay } from "../WaveformSegmentOverlay";
@@ -49,7 +49,7 @@ export function EditorWaveformPeaksStage({
 }: Props) {
   const selectedSegment = c.segments[c.selectedIdx] ?? null;
   const mediaDurationSec = tx.mediaDurationSec;
-  const rulerHeightPx = WAVEFORM_EMBEDDED_TIME_RULER_H_PX;
+  const rulerHeightPx = WAVEFORM_EMBEDDED_RULER_HEIGHT_PX;
   const [overlayDraftIdx, setOverlayDraftIdx] = useState<number | null>(null);
   const onOverlayDraftIdxChange = useCallback((idx: number | null) => {
     setOverlayDraftIdx(idx);
@@ -116,6 +116,24 @@ export function EditorWaveformPeaksStage({
               className="waveform-timeline-overlay-layer absolute left-0 top-0 z-[3] h-full"
               layout={{ width: tx.timelineWidthPx }}
             >
+              <WaveformSegmentBandCanvas
+                segments={c.segments}
+                durationSec={mediaDurationSec}
+                timelineWidthPx={tx.timelineWidthPx}
+                layoutHeightPx={segmentLayoutHeightPx}
+                selectedIdx={c.selectedIdx}
+                selectionLo={c.selectionLo}
+                selectionHi={c.selectionHi}
+                selectionCount={c.selectionCount}
+                isContiguousSelection={c.isContiguousSelection}
+                selectedIndices={c.selectedIndices}
+                dominantSpanIndices={tx.segmentLaneLayout.dominantSpanIndices}
+                draftIdx={overlayDraftIdx}
+                getPlayheadSec={tx.getPlayheadTime}
+                tierScrollRef={tx.tierScrollRef}
+                tierScrollLive={tx.tierScrollLive}
+                tierScrollLayout={tx.tierScrollLayout}
+              />
               <WaveformSegmentOverlay
                 disabled={stripDisabled}
                 segments={c.segments}
@@ -142,7 +160,6 @@ export function EditorWaveformPeaksStage({
                 onClearMultiSelection={c.clearMultiSelection}
                 isMultiSegmentSelection={() => c.isMultiSegmentSelection}
                 onFocusWaveformShell={tx.focusWaveformShell}
-                revealSelectedSegmentInViewport={tx.revealSelectedSegmentInViewport}
                 onBoundsCommit={(idx, startSec, endSec) => {
                   const clamped =
                     mediaDurationSec > 0
@@ -155,6 +172,7 @@ export function EditorWaveformPeaksStage({
                 }
                 onPlaySegment={(idx) => void tx.playSegmentAtIndex(idx)}
                 seekToTime={tx.seek}
+                suppressPlaybackFollowForSelectionSeek={tx.suppressPlaybackFollowForSelectionSeek}
               />
             </CspLayout>
             <WaveformSegmentPlaybackControls
@@ -180,24 +198,6 @@ export function EditorWaveformPeaksStage({
               }}
             >
               <div className="relative h-full w-full">
-                <WaveformSegmentBandCanvas
-                  segments={c.segments}
-                  durationSec={mediaDurationSec}
-                  timelineWidthPx={tx.timelineWidthPx}
-                  layoutHeightPx={segmentLayoutHeightPx}
-                  selectedIdx={c.selectedIdx}
-                  selectionLo={c.selectionLo}
-                  selectionHi={c.selectionHi}
-                  selectionCount={c.selectionCount}
-                  isContiguousSelection={c.isContiguousSelection}
-                  selectedIndices={c.selectedIndices}
-                  dominantSpanIndices={tx.segmentLaneLayout.dominantSpanIndices}
-                  draftIdx={overlayDraftIdx}
-                  getPlayheadSec={tx.getPlayheadTime}
-                  tierScrollRef={tx.tierScrollRef}
-                  tierScrollLive={tx.tierScrollLive}
-                  tierScrollLayout={tx.tierScrollLayout}
-                />
                 <WaveformViewportPlayhead
                   durationSec={mediaDurationSec}
                   timelineWidthPx={tx.timelineWidthPx}
@@ -205,28 +205,25 @@ export function EditorWaveformPeaksStage({
                   isPlaying={tx.isPlaying}
                   isReady={tx.isReady}
                   currentTimeSec={tx.currentTime}
-                  getPlayheadTime={tx.getPlayheadTime}
-                  formatMediaTime={tx.formatMediaTime}
+                  getVisualPlayheadTimeSec={tx.getVisualPlayheadTimeSec}
+                  subscribePlayheadFrame={tx.subscribePlayheadFrame}
+                  playbackFollowMode={tx.playbackScrollFollowMode}
                 />
-                <div className="pointer-events-auto">
-                  <WaveformLiveTimeRuler
-                    appearance="embedded"
-                    coordinateSpace="viewport"
-                    overlayOnWaveform
+                <WaveformLiveTimeRuler
+                    viewportWidthPx={viewportWidthPx}
                     durationSec={mediaDurationSec}
                     timelineWidthPx={tx.timelineWidthPx}
                     {...tierScrollProps}
-                    pxPerSec={tx.pxPerSec}
                     isPlaying={tx.isPlaying}
                     isReady={tx.isReady}
                     currentTimeSec={tx.currentTime}
                     getPlayheadTime={tx.getPlayheadTime}
                     formatMediaTime={tx.formatMediaTime}
+                    subscribePlayheadFrame={tx.subscribePlayheadFrame}
                     disabled={stripDisabled}
                     onSeekFromTierClientX={tx.seekFromTierClientX}
-                    onSetScrollLeftPx={tx.setTierScrollPx}
-                  />
-                </div>
+                    onSetScrollLeftPx={tx.userScrubScroll}
+                />
               </div>
             </CspLayout>
           </CspLayout>

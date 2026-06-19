@@ -62,6 +62,7 @@ describe("waveformSegmentOverlayActions", () => {
   it("applySegmentOverlayTap seeks when re-tapping selected segment", () => {
     const onSelectSegmentAt = vi.fn();
     const seekToTime = vi.fn();
+    const suppressPlaybackFollowForSelectionSeek = vi.fn();
     applySegmentOverlayTap(
       {
         selectedIdx: 2,
@@ -69,10 +70,17 @@ describe("waveformSegmentOverlayActions", () => {
         pointerTimeSec: 6,
         segment: { start_sec: 4, end_sec: 10 },
       },
-      { onSelectSegmentAt, seekToTime },
+      {
+        onSelectSegmentAt,
+        seekToTime,
+        suppressPlaybackFollowForSelectionSeek,
+      },
     );
     expect(onSelectSegmentAt).not.toHaveBeenCalled();
     expect(seekToTime).toHaveBeenCalledWith(6);
+    expect(suppressPlaybackFollowForSelectionSeek.mock.invocationCallOrder[0]).toBeLessThan(
+      seekToTime.mock.invocationCallOrder[0],
+    );
   });
 
   it("applyOverlayPointerUpIntent dispatches select-segment via onSegmentPointerTap", () => {
@@ -118,5 +126,26 @@ describe("waveformSegmentOverlayActions", () => {
       vi.fn(),
     );
     expect(onCreateRange).toHaveBeenCalledWith(1, 3, { overlapPolicy: "allow" });
+  });
+
+  it("applyOverlayPointerUpIntent suppresses playback follow before blank seek", () => {
+    const seekToTime = vi.fn();
+    const suppressPlaybackFollowForSelectionSeek = vi.fn();
+    applyOverlayPointerUpIntent(
+      { kind: "seek-blank", timeSec: 8 },
+      {
+        onSegmentPointerTap: vi.fn(),
+        onBoundsCommit: vi.fn(),
+        seekToTime,
+        suppressPlaybackFollowForSelectionSeek,
+      },
+      vi.fn(),
+    );
+
+    expect(suppressPlaybackFollowForSelectionSeek).toHaveBeenCalledOnce();
+    expect(seekToTime).toHaveBeenCalledWith(8);
+    expect(suppressPlaybackFollowForSelectionSeek.mock.invocationCallOrder[0]).toBeLessThan(
+      seekToTime.mock.invocationCallOrder[0],
+    );
   });
 });

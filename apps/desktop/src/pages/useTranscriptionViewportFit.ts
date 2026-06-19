@@ -22,11 +22,10 @@ type WaveformZoomFitApi = {
 };
 
 type TierScrollApi = {
-  setTierScrollPx: (
+  revealSelectionScroll: (
     scrollLeftPx: number,
-    options?: { timelineWidthPx?: number; immediate?: boolean; deferLayoutCommit?: boolean },
+    options?: { timelineWidthPx?: number },
   ) => void;
-  setTierScrollPxSmooth: (scrollLeftPx: number) => void;
 };
 
 export type PendingViewportFit = { intent: ViewportFitScrollIntent; pxPerSec: number };
@@ -104,17 +103,12 @@ export function useTranscriptionViewportFit(args: {
 
   const writeTierScroll = useCallback(
     (targetSl: number, timelineWidthPx?: number) => {
-      scrollApiRef.current.setTierScrollPx(targetSl, {
+      scrollApiRef.current.revealSelectionScroll(targetSl, {
         ...(timelineWidthPx != null ? { timelineWidthPx } : {}),
-        immediate: true,
       });
     },
     [scrollApiRef],
   );
-
-  const writeTierScrollSmooth = (targetSl: number) => {
-    scrollApiRef.current.setTierScrollPxSmooth(targetSl);
-  };
 
   const applyPendingViewportFit = useCallback(
     (pxPerSec: number, options?: { finalize?: boolean; skipScroll?: boolean }) => {
@@ -185,10 +179,10 @@ export function useTranscriptionViewportFit(args: {
       const pending: PendingViewportFit = { intent: { startSec: seg.start_sec, endSec: seg.end_sec }, pxPerSec };
       const targetSl = resolveViewportFitScrollPx({ pending, durationSec: dur, viewportWidthPx: w });
       markProgrammaticScroll(undefined, Math.abs(targetSl - (tier?.scrollLeft ?? 0)));
-      writeTierScrollSmooth(targetSl);
+      writeTierScroll(targetSl);
       pendingViewportFitRef.current = null;
     },
-    [durationRef, markProgrammaticScroll, tierScrollRef],
+    [durationRef, markProgrammaticScroll, tierScrollRef, writeTierScroll],
   );
 
   const revealSegmentInViewport = useCallback(

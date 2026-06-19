@@ -7,7 +7,7 @@ export type AsrStatusRowAction = {
 };
 
 function scrollToEnvSection(targetId: string): void {
-  document.getElementById(targetId)?.scrollIntoView({ behavior: "smooth", block: "start" });
+  document.getElementById(targetId)?.scrollIntoView({ block: "start" });
 }
 
 /** 展开「环境与维护 → 安装向导」并滚动到位（FFmpeg / 侧车修复入口）。 */

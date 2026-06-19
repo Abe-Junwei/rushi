@@ -153,7 +153,7 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
       if (busy) return;
       if (consumeRowRangeClickSuppress?.()) return;
       const textarea = (e.target as HTMLElement).closest("textarea");
-      if (textarea && !textarea.readOnly) return;
+      if (textarea && !textarea.readOnly && selected) return;
       if (e.shiftKey) {
         focusOnSelectRef.current = false;
         selectSegmentAt(i, { shiftKey: true });
@@ -252,6 +252,7 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
         onSegmentRowHeightPointerDown={onSegmentRowHeightPointerDown}
         onRowRangePointerDown={onRowRangePointerDown}
         selectSegmentAt={selectSegmentAt}
+        onRevealSelectedSegment={onRevealSelectedSegment}
         updateSegmentText={updateSegmentText}
         onTextareaKeyDown={onTextareaKeyDown}
         findReplaceHighlight={findReplaceHighlight}

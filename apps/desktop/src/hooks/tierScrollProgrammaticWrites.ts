@@ -7,12 +7,16 @@ export type PendingProgrammaticScrollWrite = {
 
 export type TierScrollProgrammaticWrites = {
   programmaticScrollUntilRef: MutableRefObject<number>;
+  /** Playback-follow writes — block scroll-event suppress only, not user wheel/scrub. */
+  playbackFollowScrollWriteUntilRef: MutableRefObject<number>;
   deferredLayoutCommitUntilRef: MutableRefObject<number>;
   programmaticScrollRafRef: MutableRefObject<number>;
   pendingProgrammaticScrollRef: MutableRefObject<PendingProgrammaticScrollWrite | null>;
   markProgrammaticScroll: () => void;
+  markPlaybackFollowScrollWrite: () => void;
   markDeferredLayoutCommit: () => void;
   isRecentProgrammaticScroll: () => boolean;
+  isRecentPlaybackFollowScrollWrite: () => boolean;
   hasPendingProgrammaticScroll: () => boolean;
   queueProgrammaticScroll: (
     scrollLeftPx: number,
@@ -28,6 +32,7 @@ export type TierScrollProgrammaticWrites = {
 
 export function createTierScrollProgrammaticWrites(): TierScrollProgrammaticWrites {
   const programmaticScrollUntilRef = { current: 0 };
+  const playbackFollowScrollWriteUntilRef = { current: 0 };
   const deferredLayoutCommitUntilRef = { current: 0 };
   const programmaticScrollRafRef = { current: 0 };
   const pendingProgrammaticScrollRef: MutableRefObject<PendingProgrammaticScrollWrite | null> = {
@@ -38,11 +43,18 @@ export function createTierScrollProgrammaticWrites(): TierScrollProgrammaticWrit
     programmaticScrollUntilRef.current = performance.now() + 80;
   };
 
+  const markPlaybackFollowScrollWrite = () => {
+    playbackFollowScrollWriteUntilRef.current = performance.now() + 32;
+  };
+
   const markDeferredLayoutCommit = () => {
     deferredLayoutCommitUntilRef.current = performance.now() + 120;
   };
 
   const isRecentProgrammaticScroll = () => performance.now() < programmaticScrollUntilRef.current;
+
+  const isRecentPlaybackFollowScrollWrite = () =>
+    performance.now() < playbackFollowScrollWriteUntilRef.current;
 
   const hasPendingProgrammaticScroll = () => pendingProgrammaticScrollRef.current != null;
 
@@ -90,12 +102,15 @@ export function createTierScrollProgrammaticWrites(): TierScrollProgrammaticWrit
 
   return {
     programmaticScrollUntilRef,
+    playbackFollowScrollWriteUntilRef,
     deferredLayoutCommitUntilRef,
     programmaticScrollRafRef,
     pendingProgrammaticScrollRef,
     markProgrammaticScroll,
+    markPlaybackFollowScrollWrite,
     markDeferredLayoutCommit,
     isRecentProgrammaticScroll,
+    isRecentPlaybackFollowScrollWrite,
     hasPendingProgrammaticScroll,
     queueProgrammaticScroll,
     flushPendingProgrammaticScroll,

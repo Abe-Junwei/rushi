@@ -19,6 +19,20 @@ function createTier(clientWidth = 400) {
   return el;
 }
 
+/** Stand-in for the single playback tick bus; `tick()` drives subscribed follow. */
+function createFrameBus() {
+  const subs = new Set<(timeSec: number) => void>();
+  return {
+    subscribePlayheadFrame: (cb: (timeSec: number) => void) => {
+      subs.add(cb);
+      return () => subs.delete(cb);
+    },
+    tick: (timeSec = 0) => {
+      for (const cb of [...subs]) cb(timeSec);
+    },
+  };
+}
+
 describe("useWaveformPlaybackScrollFollow", () => {
   beforeEach(() => {
     vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
@@ -33,10 +47,11 @@ describe("useWaveformPlaybackScrollFollow", () => {
     vi.unstubAllGlobals();
   });
 
-  it("writes tier scroll to center playhead while playing", async () => {
+  it("writes tier scroll to center playhead while playing", () => {
     const tier = createTier(400);
     const tierScrollRef = { current: tier };
-    const setTierScrollPx = vi.fn();
+    const playbackFollowScroll = vi.fn();
+    const bus = createFrameBus();
 
     renderHook(() =>
       useWaveformPlaybackScrollFollow({
@@ -48,22 +63,24 @@ describe("useWaveformPlaybackScrollFollow", () => {
         enabled: true,
         followMode: "center",
         getPlayheadTimeSec: () => 15,
-        setTierScrollPx,
+        playbackFollowScroll,
+        subscribePlayheadFrame: bus.subscribePlayheadFrame,
       }),
     );
 
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 0));
+    act(() => {
+      bus.tick();
     });
 
     // playhead at 50% → 1500px; center in 400px viewport → 1500 - 200 = 1300
-    expect(setTierScrollPx).toHaveBeenCalledWith(1300, { deferLayoutCommit: true, immediate: true });
+    expect(playbackFollowScroll).toHaveBeenCalledWith(1300);
   });
 
-  it("follows sub-2px target changes while playing", async () => {
+  it("follows sub-2px target changes while playing", () => {
     const tier = createTier(400);
     const tierScrollRef = { current: tier };
-    const setTierScrollPx = vi.fn();
+    const playbackFollowScroll = vi.fn();
+    const bus = createFrameBus();
     let playheadTimeSec = 15;
 
     renderHook(() =>
@@ -76,27 +93,29 @@ describe("useWaveformPlaybackScrollFollow", () => {
         enabled: true,
         followMode: "center",
         getPlayheadTimeSec: () => playheadTimeSec,
-        setTierScrollPx,
+        playbackFollowScroll,
+        subscribePlayheadFrame: bus.subscribePlayheadFrame,
       }),
     );
 
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 0));
+    act(() => {
+      bus.tick();
     });
 
     playheadTimeSec = 15.006;
 
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 0));
+    act(() => {
+      bus.tick();
     });
 
-    expect(setTierScrollPx).toHaveBeenLastCalledWith(1300.6, { deferLayoutCommit: true, immediate: true });
+    expect(playbackFollowScroll).toHaveBeenLastCalledWith(1300.6);
   });
 
-  it("edge mode keeps scroll when playhead stays in the middle band", async () => {
+  it("edge mode keeps scroll when playhead stays in the middle band", () => {
     const tier = createTier(400);
     const tierScrollRef = { current: tier };
-    const setTierScrollPx = vi.fn();
+    const playbackFollowScroll = vi.fn();
+    const bus = createFrameBus();
     tier.scrollLeft = 1200;
 
     renderHook(() =>
@@ -109,20 +128,22 @@ describe("useWaveformPlaybackScrollFollow", () => {
         enabled: true,
         followMode: "edge",
         getPlayheadTimeSec: () => 15,
-        setTierScrollPx,
+        playbackFollowScroll,
+        subscribePlayheadFrame: bus.subscribePlayheadFrame,
       }),
     );
 
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 0));
+    act(() => {
+      bus.tick();
     });
 
-    expect(setTierScrollPx).not.toHaveBeenCalled();
+    expect(playbackFollowScroll).not.toHaveBeenCalled();
   });
 
   it("does nothing when disabled", () => {
     const tier = createTier();
-    const setTierScrollPx = vi.fn();
+    const playbackFollowScroll = vi.fn();
+    const bus = createFrameBus();
 
     renderHook(() =>
       useWaveformPlaybackScrollFollow({
@@ -134,18 +155,22 @@ describe("useWaveformPlaybackScrollFollow", () => {
         enabled: false,
         followMode: "center",
         getPlayheadTimeSec: () => 15,
-        setTierScrollPx,
+        playbackFollowScroll,
+        subscribePlayheadFrame: bus.subscribePlayheadFrame,
       }),
     );
 
-    act(() => {});
-    expect(setTierScrollPx).not.toHaveBeenCalled();
+    act(() => {
+      bus.tick();
+    });
+    expect(playbackFollowScroll).not.toHaveBeenCalled();
   });
 
   it("centers playhead immediately when switching to center while paused", async () => {
     const tier = createTier(400);
     const tierScrollRef = { current: tier };
-    const setTierScrollPx = vi.fn();
+    const playbackFollowScroll = vi.fn();
+    const bus = createFrameBus();
 
     const { rerender } = renderHook(
       (props: { followMode: WaveformPlaybackScrollFollowMode }) =>
@@ -158,15 +183,16 @@ describe("useWaveformPlaybackScrollFollow", () => {
           enabled: true,
           followMode: props.followMode,
           getPlayheadTimeSec: () => 15,
-          setTierScrollPx,
+          playbackFollowScroll,
+          subscribePlayheadFrame: bus.subscribePlayheadFrame,
         }),
       { initialProps: { followMode: "edge" as WaveformPlaybackScrollFollowMode } },
     );
 
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 0));
+    act(() => {
+      bus.tick();
     });
-    setTierScrollPx.mockClear();
+    playbackFollowScroll.mockClear();
 
     rerender({ followMode: "center" });
 
@@ -174,13 +200,14 @@ describe("useWaveformPlaybackScrollFollow", () => {
       await new Promise((r) => setTimeout(r, 0));
     });
 
-    expect(setTierScrollPx).toHaveBeenCalledWith(1300, { deferLayoutCommit: true, immediate: true });
+    expect(playbackFollowScroll).toHaveBeenCalledWith(1300);
   });
 
-  it("pauses follow while user tier scroll suppress is active", async () => {
+  it("pauses follow while user tier scroll suppress is active", () => {
     const tier = createTier(400);
     const tierScrollRef = { current: tier };
-    const setTierScrollPx = vi.fn();
+    const playbackFollowScroll = vi.fn();
+    const bus = createFrameBus();
     const userScrollSuppressUntilRef = { current: performance.now() + 5000 };
 
     renderHook(() =>
@@ -193,15 +220,16 @@ describe("useWaveformPlaybackScrollFollow", () => {
         enabled: true,
         followMode: "center",
         getPlayheadTimeSec: () => 15,
-        setTierScrollPx,
+        playbackFollowScroll,
         userScrollSuppressUntilRef,
+        subscribePlayheadFrame: bus.subscribePlayheadFrame,
       }),
     );
 
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 0));
+    act(() => {
+      bus.tick();
     });
 
-    expect(setTierScrollPx).not.toHaveBeenCalled();
+    expect(playbackFollowScroll).not.toHaveBeenCalled();
   });
 });

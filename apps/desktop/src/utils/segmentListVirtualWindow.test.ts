@@ -11,6 +11,7 @@ import {
   scrollSegmentRowIntoViewContainer,
   resolveSegmentListRowIndexFromPoint,
   isEditableSegmentBodyTextarea,
+  isSegmentBodyTextarea,
   segmentListRangeDragExceededSlop,
   segmentListRangeDragVerticalIntentExceededSlop,
   SEGMENT_LIST_FILTER_INDICES_ATTR,
@@ -209,10 +210,12 @@ describe("segmentListVirtualWindow", () => {
     const readOnly = document.createElement("textarea");
     readOnly.setAttribute("aria-label", "语段正文");
     readOnly.readOnly = true;
+    expect(isSegmentBodyTextarea(readOnly)).toBe(true);
     expect(isEditableSegmentBodyTextarea(readOnly)).toBe(false);
 
     const editable = document.createElement("textarea");
     editable.setAttribute("aria-label", "语段正文");
+    expect(isSegmentBodyTextarea(editable)).toBe(true);
     expect(isEditableSegmentBodyTextarea(editable)).toBe(true);
   });
 

@@ -1,5 +1,9 @@
 import { useEffect, useRef, useState } from "react";
 import { playheadTimelineLeftPct } from "../utils/waveformProjection";
+import {
+  createVisualPlayheadClockState,
+  readVisualPlayheadTimeSec,
+} from "../utils/visualPlayheadClock";
 
 /** 播放中用 rAF 读 playhead；React 状态节流到 ~250ms，playhead 线可每帧直写 DOM。 */
 export function useWaveformLiveClock(args: {
@@ -12,6 +16,7 @@ export function useWaveformLiveClock(args: {
   currentTimeSec?: number;
   /** When omitted, playhead pct falls back to time/duration (label-only consumers). */
   timelineWidthPx?: number;
+  playbackRate?: number;
   onPlayheadMove?: (timeSec: number, leftPct: number) => void;
 }) {
   const {
@@ -22,13 +27,16 @@ export function useWaveformLiveClock(args: {
     durationSec,
     currentTimeSec = 0,
     timelineWidthPx = 0,
+    playbackRate = 1,
     onPlayheadMove,
   } = args;
   const [displayTimeSec, setDisplayTimeSec] = useState(0);
   const getPlayheadTimeRef = useRef(getPlayheadTime);
   const onPlayheadMoveRef = useRef(onPlayheadMove);
+  const playbackRateRef = useRef(playbackRate);
   getPlayheadTimeRef.current = getPlayheadTime;
   onPlayheadMoveRef.current = onPlayheadMove;
+  playbackRateRef.current = playbackRate;
 
   useEffect(() => {
     if (!isReady) {
@@ -57,13 +65,24 @@ export function useWaveformLiveClock(args: {
       return;
     }
 
+    // Single smoothing source of truth (shared with the playhead/scroll visual clock).
+    const clockState = createVisualPlayheadClockState(getPlayheadTimeRef.current());
+    const readVisualTime = () =>
+      readVisualPlayheadTimeSec({
+        state: clockState,
+        nowMs: performance.now(),
+        rawTimeSec: getPlayheadTimeRef.current(),
+        durationSec,
+        playbackRate: Number.isFinite(playbackRateRef.current) ? playbackRateRef.current : 1,
+      });
+
     const tick = () => {
-      applyTime(getPlayheadTimeRef.current(), false);
+      applyTime(readVisualTime(), false);
       rafId = window.requestAnimationFrame(tick);
     };
     rafId = window.requestAnimationFrame(tick);
     return () => window.cancelAnimationFrame(rafId);
-  }, [durationSec, isPlaying, isReady, timelineWidthPx, currentTimeSec]);
+  }, [durationSec, isPlaying, isReady, timelineWidthPx, currentTimeSec, playbackRate]);
 
   return {
     displayTimeSec,

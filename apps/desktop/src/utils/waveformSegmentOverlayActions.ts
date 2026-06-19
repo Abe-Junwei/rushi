@@ -12,6 +12,7 @@ export type OverlayPointerActions = {
   onSelectTimeRange?: (startSec: number, endSec: number) => void;
   onFocusWaveformShell?: () => void;
   seekToTime: (timeSec: number) => void;
+  suppressPlaybackFollowForSelectionSeek?: () => void;
 };
 
 export type SegmentOverlayTapResolution =
@@ -46,7 +47,7 @@ export function applySegmentOverlayTap(
   actions: {
     onSelectSegmentAt: (idx: number, opts?: { shiftKey?: boolean }) => void;
     seekToTime: (timeSec: number) => void;
-    revealSelectedSegmentInViewport?: () => void;
+    suppressPlaybackFollowForSelectionSeek?: () => void;
   },
 ): void {
   const resolved = resolveSegmentOverlayTap(args);
@@ -54,7 +55,7 @@ export function applySegmentOverlayTap(
     actions.onSelectSegmentAt(resolved.segmentIdx);
     return;
   }
-  actions.revealSelectedSegmentInViewport?.();
+  actions.suppressPlaybackFollowForSelectionSeek?.();
   actions.seekToTime(resolved.timeSec);
 }
 
@@ -83,6 +84,7 @@ export function applyOverlayPointerUpIntent(
     case "seek-blank":
       suppressClick();
       actions.onFocusWaveformShell?.();
+      actions.suppressPlaybackFollowForSelectionSeek?.();
       actions.seekToTime(intent.timeSec);
       break;
     default:

@@ -38,7 +38,6 @@ export const EditorToolbar = memo(function EditorToolbar({
   const [pendingImport, setPendingImport] = useState<null | "audio" | "text" | "bundle">(null);
   const importMenuRef = useRef<HTMLDetailsElement | null>(null);
   const exportMenuRef = useRef<HTMLDetailsElement | null>(null);
-
   useEffect(() => {
     const closeMenus = () => {
       importMenuRef.current?.removeAttribute("open");
@@ -98,10 +97,8 @@ export const EditorToolbar = memo(function EditorToolbar({
       setPendingImport(null);
     }
   };
-
   const importBlocked = c.busy || pendingImport !== null;
   const exportBlocked = c.busy;
-
   useEffect(() => {
     if (exportBlocked) exportMenuRef.current?.removeAttribute("open");
   }, [exportBlocked]);
@@ -126,7 +123,6 @@ export const EditorToolbar = memo(function EditorToolbar({
               : "模型准备中，可继续编辑"
             : ""}
         </span>
-
         <div className="ml-auto flex shrink-0 items-center gap-2">
           {!c.asrPresentation.chipOk && onOpenAsrSettings ? (
             <AsrTopStatusChips
@@ -152,7 +148,6 @@ export const EditorToolbar = memo(function EditorToolbar({
             panelId="editor-activity-panel"
             variant="toolbar"
           />
-
           <div className="flex items-center gap-2">
             <details ref={importMenuRef} className="dropdown-anchor">
               <summary

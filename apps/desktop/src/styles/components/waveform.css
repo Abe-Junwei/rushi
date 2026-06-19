@@ -778,6 +778,10 @@
   background: transparent;
 }
 
+.waveform-time-ruler-canvas {
+  display: block;
+}
+
 /** 主波形 peaks 舞台白底；WaveSurfer 内层背景透明，避免底部出现独立色带。 */
 .waveform-peaks-stage {
   background: var(--zen-wf-surface);

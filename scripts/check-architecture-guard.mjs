@@ -151,6 +151,7 @@ function checkTsFile(fullPath) {
       }
     }
     const viewportChromeTransformAllowlist = new Set([
+      "apps/desktop/src/components/WaveformTimeRuler.tsx",
       "apps/desktop/src/hooks/useWaveformRulerScrollTrack.ts",
     ]);
     if (
@@ -158,6 +159,14 @@ function checkTsFile(fullPath) {
       (/translate3d\(\s*\$\{\s*-scrollLeft/.test(source) || /translate3d\(\s*-scrollLeft/.test(source))
     ) {
       errors.push(`${rel}: unified scroll stage 禁止 waveform/overlay scrollLeft mirror transform`);
+    }
+    const tierScrollWriteAllowlist = new Set([
+      "apps/desktop/src/hooks/useTierScrollSync.ts",
+      "apps/desktop/src/hooks/tierScrollProgrammaticWrites.ts",
+      "apps/desktop/src/services/waveform/waveformSurferProgressCoverage.ts",
+    ]);
+    if (/\.\s*scrollLeft\s*=/.test(source) && !tierScrollWriteAllowlist.has(rel)) {
+      errors.push(`${rel}: scrollLeft 写入必须经 useTierScrollSync 语义入口`);
     }
   }
 

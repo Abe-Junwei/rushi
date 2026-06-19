@@ -1,14 +1,13 @@
 import { useCallback, useRef, type MutableRefObject, type PointerEvent as ReactPointerEvent, type RefObject } from "react";
 import type { TranscriptionLayerInput } from "./transcriptionLayerTypes";
 import {
-  isEditableSegmentBodyTextarea,
+  isSegmentBodyTextarea,
   querySegmentListScrollRoot,
   resolveSegmentListRowIndexFromPoint,
   segmentListRangeDragExceededSlop,
   segmentListRangeDragVerticalIntentExceededSlop,
 } from "../utils/segmentListVirtualWindow";
 import { blurActiveTranscriptTextarea } from "../utils/transcriptSelection";
-import { nextListSelectSource } from "../utils/segmentListSelectSource";
 
 type SelectSegmentAtRef = MutableRefObject<
   (idx: number, source?: import("../utils/waveformViewMode").SegmentSelectSource, opts?: { shiftKey?: boolean; toggle?: boolean }) => void
@@ -25,7 +24,7 @@ export function useTranscriptionLayerSegmentListDrag(opts: {
     anchorIdx: number;
     pointerId: number;
     moved: boolean;
-    fromEditableText: boolean;
+    fromTextBody: boolean;
     startClientX: number;
     startClientY: number;
   } | null>(null);
@@ -39,7 +38,7 @@ export function useTranscriptionLayerSegmentListDrag(opts: {
       if ((e.target as HTMLElement).closest('[role="separator"]')) return;
       e.stopPropagation();
 
-      const fromEditableText = isEditableSegmentBodyTextarea(
+      const fromTextBody = isSegmentBodyTextarea(
         (e.target as HTMLElement).closest('textarea[aria-label="语段正文"]'),
       );
 
@@ -47,19 +46,16 @@ export function useTranscriptionLayerSegmentListDrag(opts: {
         anchorIdx: idx,
         pointerId: e.pointerId,
         moved: false,
-        fromEditableText,
+        fromTextBody,
         startClientX: e.clientX,
         startClientY: e.clientY,
       };
       if (e.shiftKey) {
+        suppressSegmentListRowClickRef.current = true;
         selectSegmentAtRef.current(idx, "list", { shiftKey: true });
       } else if (e.metaKey || e.ctrlKey) {
+        suppressSegmentListRowClickRef.current = true;
         selectSegmentAtRef.current(idx, "list", { toggle: true });
-      } else {
-        selectSegmentAtRef.current(
-          idx,
-          nextListSelectSource(Date.now(), listSelectSourceStateRef.current),
-        );
       }
 
       const onMove = (ev: PointerEvent) => {
@@ -67,7 +63,7 @@ export function useTranscriptionLayerSegmentListDrag(opts: {
         if (!drag || ev.pointerId !== drag.pointerId) return;
         if (
           !drag.moved &&
-          !(drag.fromEditableText
+          !(drag.fromTextBody
             ? segmentListRangeDragVerticalIntentExceededSlop(
                 drag.startClientX,
                 drag.startClientY,

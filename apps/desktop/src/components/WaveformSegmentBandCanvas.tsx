@@ -12,6 +12,8 @@ import { scheduleTierScrollFrame, subscribeTierScrollFrame } from "../utils/tier
 import { setCspLayoutRules } from "../utils/cspElementLayout";
 import { wfProfileIsActive, wfProfileTime } from "../services/waveform/waveformZoomProfile";
 
+const SEGMENT_BAND_CANVAS_BUFFER_VIEWPORTS = 1.5;
+
 export type WaveformSegmentBandCanvasProps = {
   segments: SegmentDto[];
   durationSec: number;
@@ -85,6 +87,7 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
   tierMetricsRef.current = { tierScrollRef, tierScrollLive, tierScrollLayout };
 
   const schedulePaintRef = useRef<(() => void) | null>(null);
+  const lastCanvasDimsRef = useRef({ devW: 0, devH: 0, cssW: 0, cssH: 0 });
 
   useLayoutEffect(() => {
     const canvas = canvasRef.current;
@@ -98,12 +101,32 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
         tierScrollLive: tierMetrics.tierScrollLive,
         tierScrollLayout: tierMetrics.tierScrollLayout,
       });
-      const widthPx = Math.max(1, Math.floor(viewportWidthPx));
+      const timelineWidth = Math.max(1, input.timelineWidthPx);
+      const viewportWidth = Math.max(1, viewportWidthPx);
+      const bufferPx = viewportWidth * SEGMENT_BAND_CANVAS_BUFFER_VIEWPORTS;
+      const widthPx = Math.max(1, Math.floor(Math.min(timelineWidth, viewportWidth + bufferPx * 2)));
+      const leftPx = Math.max(0, Math.min(Math.max(0, timelineWidth - widthPx), scrollLeftPx - bufferPx));
       const heightPx = Math.max(1, Math.floor(input.layoutHeightPx));
       const dpr = window.devicePixelRatio || 1;
-      canvas.width = Math.max(1, Math.floor(widthPx * dpr));
-      canvas.height = Math.max(1, Math.floor(heightPx * dpr));
-      setCspLayoutRules(canvas, { width: widthPx, height: heightPx });
+      const devW = Math.max(1, Math.floor(widthPx * dpr));
+      const devH = Math.max(1, Math.floor(heightPx * dpr));
+      // Reassigning canvas.width/height reallocates + clears the backing store — skip it
+      // when unchanged so per-frame playback paints don't thrash (drawWaveformSegmentBands
+      // clears the rect itself). Only resize on an actual viewport/height change.
+      const dims = lastCanvasDimsRef.current;
+      if (dims.devW !== devW || dims.devH !== devH) {
+        canvas.width = devW;
+        canvas.height = devH;
+        dims.devW = devW;
+        dims.devH = devH;
+      }
+      if (dims.cssW !== widthPx || dims.cssH !== heightPx) {
+        setCspLayoutRules(canvas, { left: leftPx, width: widthPx, height: heightPx });
+        dims.cssW = widthPx;
+        dims.cssH = heightPx;
+      } else {
+        setCspLayoutRules(canvas, { left: leftPx });
+      }
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
@@ -124,7 +147,7 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
           ctx,
           segments: input.segments,
           dominantSpanIndices: input.dominantSpanIndices,
-          scrollLeftPx,
+          scrollLeftPx: leftPx,
           viewportWidthPx: widthPx,
           timelineWidthPx: input.timelineWidthPx,
           durationSec: input.durationSec,
@@ -181,7 +204,7 @@ export const WaveformSegmentBandCanvas = memo(function WaveformSegmentBandCanvas
   return (
     <canvas
       ref={canvasRef}
-      className="waveform-segment-band-canvas pointer-events-none absolute inset-0 z-[2]"
+      className="waveform-segment-band-canvas pointer-events-none absolute top-0 z-[2]"
       aria-hidden
     />
   );

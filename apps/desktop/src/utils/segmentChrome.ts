@@ -63,14 +63,12 @@ export function waveformRegionFillColor(
   playheadSec?: number,
   options?: { multiSelectActive?: boolean },
 ): string {
+  void playheadSec;
   if (options?.multiSelectActive && (selected || inSelection)) {
     return segmentFillCssVar("inSelectionWaveform");
   }
   if (selected) return segmentFillCssVar("selected");
   if (inSelection) return segmentFillCssVar("inSelectionWaveform");
   if (seg.low_confidence) return segmentFillCssVar("lowConfidence");
-  if (segmentPlaybackVisits(seg, playheadSec) === "visited") {
-    return segmentFillCssVar("visited");
-  }
   return segmentFillCssVar("idle");
 }

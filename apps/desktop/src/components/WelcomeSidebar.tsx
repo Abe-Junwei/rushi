@@ -67,7 +67,7 @@ export function WelcomeSidebar({
 
   const scrollToProjectList = useCallback(() => {
     window.requestAnimationFrame(() => {
-      projectListRef.current?.scrollIntoView({ block: "start", behavior: "smooth" });
+      projectListRef.current?.scrollIntoView({ block: "start" });
     });
   }, []);
 

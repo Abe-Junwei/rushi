@@ -41,8 +41,8 @@ export function useWaveformSegmentOverlay(args: {
   onSelectTimeRange?: (startSec: number, endSec: number) => void;
   onPlaySegment?: (idx: number) => void;
   seekToTime: (timeSec: number) => void;
+  suppressPlaybackFollowForSelectionSeek?: () => void;
   onDraftIdxChange?: (idx: number | null) => void;
-  revealSelectedSegmentInViewport?: () => void;
   onClearMultiSelection?: () => void;
   isMultiSegmentSelection?: () => boolean;
 }) {
@@ -73,7 +73,11 @@ export function useWaveformSegmentOverlay(args: {
         pointerTimeSec,
         segment: seg,
       },
-      { onSelectSegmentAt: a.onSelectSegmentAt, seekToTime: a.seekToTime, revealSelectedSegmentInViewport: a.revealSelectedSegmentInViewport },
+      {
+        onSelectSegmentAt: a.onSelectSegmentAt,
+        seekToTime: a.seekToTime,
+        suppressPlaybackFollowForSelectionSeek: a.suppressPlaybackFollowForSelectionSeek,
+      },
     );
   }, []);
 

@@ -10,6 +10,13 @@ export const TRANSCRIPT_FOOTER_STATS_THROTTLE_MS = 100;
 let footerNotifySeq = 0;
 let footerThrottleTimer: ReturnType<typeof setTimeout> | null = null;
 const footerListeners = new Set<() => void>();
+let cachedFooterStats:
+  | {
+      segments: SegmentDto[];
+      notifySeq: number;
+      charCount: number;
+    }
+  | null = null;
 
 function notifyFooterListeners(): void {
   footerNotifySeq += 1;
@@ -33,6 +40,7 @@ export function resetTranscriptFooterStatsForTests(): void {
     footerThrottleTimer = null;
   }
   footerNotifySeq = 0;
+  cachedFooterStats = null;
   footerListeners.clear();
 }
 
@@ -54,13 +62,26 @@ function getFooterStatsSnapshot(): number {
   return footerNotifySeq;
 }
 
+function readCachedFooterCharCount(segments: SegmentDto[]): number {
+  if (
+    cachedFooterStats &&
+    cachedFooterStats.segments === segments &&
+    cachedFooterStats.notifySeq === footerNotifySeq
+  ) {
+    return cachedFooterStats.charCount;
+  }
+  const charCount = countTranscribeCharacters(segmentsWithDraftsApplied(segments));
+  cachedFooterStats = { segments, notifySeq: footerNotifySeq, charCount };
+  return charCount;
+}
+
 /** 页脚语段/字数：叠入未 flush 草稿；输入时节流，最终与草稿一致。 */
 export function useTranscriptFooterStats(segments: SegmentDto[]): {
   segmentCount: number;
   charCount: number;
 } {
   const getCharCount = useCallback(
-    () => countTranscribeCharacters(segmentsWithDraftsApplied(segments)),
+    () => readCachedFooterCharCount(segments),
     [segments],
   );
   const getSnapshot = useCallback(() => {

@@ -1,9 +1,11 @@
-import { memo } from "react";
+import { memo, useLayoutEffect, useRef } from "react";
 import type { TierScrollLayoutMetrics, TierScrollLiveRefs } from "../utils/waveformViewport";
 import { useWaveformTimeRulerInteraction } from "../hooks/useWaveformTimeRulerInteraction";
 import { useWaveformTimeRulerMetrics } from "../hooks/useWaveformTimeRulerMetrics";
 import { CspLayout } from "./CspLayout";
 import { WaveformTimeRulerTickLayer } from "./WaveformTimeRulerTickLayer";
+import { subscribeTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
+import { setCspLayoutRules } from "../utils/cspElementLayout";
 
 export type WaveformTimeRulerProps = {
   durationSec: number;
@@ -34,8 +36,10 @@ export type WaveformTimeRulerProps = {
   hidePlayheadReact?: boolean;
 };
 
-export const WAVEFORM_EMBEDDED_TIME_RULER_H_PX = 22;
-const RULER_H = WAVEFORM_EMBEDDED_TIME_RULER_H_PX;
+export { WAVEFORM_EMBEDDED_RULER_HEIGHT_PX as WAVEFORM_EMBEDDED_TIME_RULER_H_PX } from "../services/waveform/drawWaveformTimeRuler";
+import { WAVEFORM_EMBEDDED_RULER_HEIGHT_PX } from "../services/waveform/drawWaveformTimeRuler";
+
+const RULER_H = WAVEFORM_EMBEDDED_RULER_HEIGHT_PX;
 
 export const WaveformTimeRuler = memo(function WaveformTimeRuler({
   durationSec,
@@ -57,6 +61,7 @@ export const WaveformTimeRuler = memo(function WaveformTimeRuler({
   hidePlayheadReact = false,
   overlayOnWaveform = false,
 }: WaveformTimeRulerProps) {
+  const viewportTickLayerRef = useRef<HTMLDivElement | null>(null);
   const metrics = useWaveformTimeRulerMetrics({
     durationSec,
     timelineWidthPx,
@@ -77,6 +82,25 @@ export const WaveformTimeRuler = memo(function WaveformTimeRuler({
     onSeekFromTierClientX,
     onSetScrollLeftPx,
   });
+
+  useLayoutEffect(() => {
+    if (!metrics.tickLayerViewportSpace) return;
+    const layer = viewportTickLayerRef.current;
+    const scrollEl = tierScrollRef?.current;
+    if (!layer || !scrollEl) return;
+    const applyScrollDeltaTransform = () => {
+      const dx = metrics.tickLayerBaseScrollLeftPx - scrollEl.scrollLeft;
+      setCspLayoutRules(layer, { transform: `translate3d(${dx}px, 0, 0)` });
+    };
+    applyScrollDeltaTransform();
+    scrollEl.addEventListener("scroll", applyScrollDeltaTransform, { passive: true });
+    const unsubscribeFrame = subscribeTierScrollFrame(applyScrollDeltaTransform);
+    return () => {
+      scrollEl.removeEventListener("scroll", applyScrollDeltaTransform);
+      unsubscribeFrame();
+      setCspLayoutRules(layer, { transform: undefined });
+    };
+  }, [metrics.tickLayerBaseScrollLeftPx, metrics.tickLayerViewportSpace, tierScrollRef]);
 
   if (durationSec <= 0 || timelineWidthPx <= 0) {
     return null;
@@ -125,15 +149,9 @@ export const WaveformTimeRuler = memo(function WaveformTimeRuler({
         className={`relative z-[1] h-[22px] bg-transparent ${metrics.embeddedOverlay ? "pointer-events-auto" : ""} cursor-grab select-none active:cursor-grabbing ${disabled ? "pointer-events-none opacity-50" : ""}`}
         onPointerDown={onRulerPointerDown}
       >
-        {metrics.scrollClipMode ? (
-          <div className="h-full w-full overflow-hidden">
-            <CspLayout
-              ref={metrics.scrollTrackRef}
-              className="relative h-full will-change-transform"
-              layout={{ width: timelineWidthPx }}
-            >
-              {tickLayer}
-            </CspLayout>
+        {metrics.tickLayerViewportSpace ? (
+          <div ref={viewportTickLayerRef} className="relative h-full will-change-transform">
+            {tickLayer}
           </div>
         ) : (
           tickLayer

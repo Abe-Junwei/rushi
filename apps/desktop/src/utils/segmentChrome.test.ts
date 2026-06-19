@@ -25,13 +25,13 @@ describe("segmentChrome", () => {
     expect(segmentPlaybackVisits(s, 3)).toBe("visited");
   });
 
-  it("uses accent-action-strong progress tint for visited unselected segments", () => {
+  it("keeps unselected segments idle even when playback has passed them", () => {
     const s = seg({ start_sec: 0, end_sec: 2 });
     const visited = waveformRegionFillColor(s, false, false, 1);
     const idle = waveformRegionFillColor(s, false, false, 0);
-    expect(visited).toBe(`var(${SEGMENT_FILL_CSS_VAR.visited})`);
+    expect(visited).toBe(`var(${SEGMENT_FILL_CSS_VAR.idle})`);
     expect(idle).toBe(`var(${SEGMENT_FILL_CSS_VAR.idle})`);
-    expect(visited).not.toBe(idle);
+    expect(visited).toBe(idle);
   });
 
   it("keeps theme action fill for selected over visited", () => {

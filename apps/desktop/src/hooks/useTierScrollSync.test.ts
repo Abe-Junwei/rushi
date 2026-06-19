@@ -239,8 +239,46 @@ describe("useTierScrollSync", () => {
     unsubscribe();
   });
 
-  it("animates smooth scroll through the tier scroll authority", async () => {
-    const { el: tier, scrollToMock } = createTierContainer();
+  it("applies wheel inertia through the tier scroll authority", async () => {
+    const { el: tier } = createTierContainer();
+    const tierScrollRef = { current: tier };
+    const wfApiRef = { current: createWaveformApi() };
+
+    const { result } = renderHook(() =>
+      useTierScrollSync({
+        tierScrollRef,
+        timelineWidthPx: 1200,
+        wfApiRef: wfApiRef as never,
+        waveformReady: true,
+        mediaUrl: "/audio.wav",
+        ...tierScrollDefaults,
+      }),
+    );
+
+    const onFrame = vi.fn();
+    const unsubscribe = subscribeTierScrollFrame(onFrame);
+
+    act(() => {
+      result.current.applyWheelScrollDelta(180);
+    });
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    expect(tier.scrollLeft).toBeGreaterThan(0);
+    expect(tier.scrollLeft).toBeLessThan(180);
+    expect(onFrame).toHaveBeenCalled();
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 220));
+    });
+    expect(tier.scrollLeft).toBeGreaterThan(178);
+    expect(tier.scrollLeft).toBeLessThanOrEqual(180);
+    unsubscribe();
+  });
+
+  it("cancels wheel inertia when pointer interaction starts", async () => {
+    const { el: tier } = createTierContainer();
     const tierScrollRef = { current: tier };
     const wfApiRef = { current: createWaveformApi() };
 
@@ -256,25 +294,211 @@ describe("useTierScrollSync", () => {
     );
 
     act(() => {
-      result.current.setTierScrollPxSmooth(180);
+      result.current.applyWheelScrollDelta(180);
     });
-
-    expect(scrollToMock).not.toHaveBeenCalled();
-    const onFrame = vi.fn();
-    const unsubscribe = subscribeTierScrollFrame(onFrame);
-
     await act(async () => {
       await new Promise((r) => setTimeout(r, 0));
     });
-    expect(tier.scrollLeft).toBeGreaterThan(0);
-    expect(tier.scrollLeft).toBeLessThan(180);
-    expect(onFrame).toHaveBeenCalled();
+    const scrollAtPointer = tier.scrollLeft;
+    expect(scrollAtPointer).toBeGreaterThan(0);
+    expect(scrollAtPointer).toBeLessThan(180);
+
+    act(() => {
+      result.current.cancelTransientScrollMotion("pointer");
+    });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 220));
+    });
+
+    expect(tier.scrollLeft).toBe(scrollAtPointer);
+  });
+
+  it("native tier scroll cancels wheel inertia before syncing DOM state", async () => {
+    const { el: tier } = createTierContainer();
+    const tierScrollRef = { current: tier };
+    const wfApiRef = { current: createWaveformApi() };
+
+    const { result } = renderHook(() =>
+      useTierScrollSync({
+        tierScrollRef,
+        timelineWidthPx: 1200,
+        wfApiRef: wfApiRef as never,
+        waveformReady: true,
+        mediaUrl: "/audio.wav",
+        ...tierScrollDefaults,
+      }),
+    );
+
+    act(() => {
+      result.current.applyWheelScrollDelta(180);
+    });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    act(() => {
+      tier.scrollLeft = 24;
+      tier.dispatchEvent(new Event("scroll"));
+    });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 220));
+    });
+
+    expect(tier.scrollLeft).toBe(24);
+    expect(result.current.tierScrollLive.scrollLeftRef.current).toBe(24);
+  });
+
+  it("user scrub cancels wheel inertia and suppresses playback follow", async () => {
+    const { el: tier } = createTierContainer();
+    const tierScrollRef = { current: tier };
+    const wfApiRef = { current: createWaveformApi() };
+    const playbackFollowSuppressUntilRef = { current: 0 };
+
+    const { result } = renderHook(() =>
+      useTierScrollSync({
+        tierScrollRef,
+        timelineWidthPx: 1200,
+        wfApiRef: wfApiRef as never,
+        waveformReady: true,
+        mediaUrl: "/audio.wav",
+        playbackFollowSuppressUntilRef,
+        ...tierScrollDefaults,
+      }),
+    );
+
+    act(() => {
+      result.current.applyWheelScrollDelta(180);
+    });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    act(() => {
+      result.current.userScrubScroll(72);
+    });
+
+    expect(tier.scrollLeft).toBe(72);
+    expect(result.current.tierScrollLive.scrollLeftRef.current).toBe(72);
+    expect(playbackFollowSuppressUntilRef.current).toBeGreaterThan(0);
 
     await act(async () => {
       await new Promise((r) => setTimeout(r, 220));
     });
-    expect(tier.scrollLeft).toBeGreaterThan(179);
-    expect(tier.scrollLeft).toBeLessThanOrEqual(180);
+    expect(tier.scrollLeft).toBe(72);
+  });
+
+  it("selection reveal cancels wheel inertia and jumps immediately", async () => {
+    const { el: tier } = createTierContainer();
+    const tierScrollRef = { current: tier };
+    const wfApiRef = { current: createWaveformApi() };
+
+    const { result } = renderHook(() =>
+      useTierScrollSync({
+        tierScrollRef,
+        timelineWidthPx: 1200,
+        wfApiRef: wfApiRef as never,
+        waveformReady: true,
+        mediaUrl: "/audio.wav",
+        ...tierScrollDefaults,
+      }),
+    );
+
+    act(() => {
+      result.current.applyWheelScrollDelta(180);
+    });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    act(() => {
+      result.current.revealSelectionScroll(320);
+    });
+
+    expect(tier.scrollLeft).toBe(320);
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 220));
+    });
+    expect(tier.scrollLeft).toBe(320);
+  });
+
+  it("minimap scrub jumps directly through the tier scroll authority", () => {
+    const { el: tier } = createTierContainer();
+    const tierScrollRef = { current: tier };
+    const wfApiRef = { current: createWaveformApi() };
+
+    const { result } = renderHook(() =>
+      useTierScrollSync({
+        tierScrollRef,
+        timelineWidthPx: 1200,
+        wfApiRef: wfApiRef as never,
+        waveformReady: true,
+        mediaUrl: "/audio.wav",
+        ...tierScrollDefaults,
+      }),
+    );
+
+    act(() => {
+      result.current.minimapScrubScroll(240);
+    });
+
+    expect(tier.scrollLeft).toBe(240);
+    expect(result.current.tierScrollLive.scrollLeftRef.current).toBe(240);
+  });
+
+  it("playback follow writes scroll without committing burst layout immediately", async () => {
+    const { el: tier } = createTierContainer();
+    const tierScrollRef = { current: tier };
+    const wfApiRef = { current: createWaveformApi() };
+
+    const { result } = renderHook(() =>
+      useTierScrollSync({
+        tierScrollRef,
+        timelineWidthPx: 1200,
+        wfApiRef: wfApiRef as never,
+        waveformReady: true,
+        mediaUrl: "/audio.wav",
+        ...tierScrollDefaults,
+      }),
+    );
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    act(() => {
+      result.current.playbackFollowScroll(144);
+    });
+
+    expect(tier.scrollLeft).toBe(144);
+    expect(result.current.tierScrollLive.scrollLeftRef.current).toBe(144);
+    expect(result.current.tierScrollLayout.scrollLeftPx).toBe(0);
+  });
+
+  it("playback follow flushes viewport chrome in the same frame as the scroll write", () => {
+    const { el: tier } = createTierContainer();
+    const tierScrollRef = { current: tier };
+    const wfApiRef = { current: createWaveformApi() };
+
+    const { result } = renderHook(() =>
+      useTierScrollSync({
+        tierScrollRef,
+        timelineWidthPx: 1200,
+        wfApiRef: wfApiRef as never,
+        waveformReady: true,
+        mediaUrl: "/audio.wav",
+        ...tierScrollDefaults,
+      }),
+    );
+
+    const onFrame = vi.fn();
+    const unsubscribe = subscribeTierScrollFrame(onFrame);
+
+    act(() => {
+      result.current.playbackFollowScroll(144);
+    });
+
+    expect(tier.scrollLeft).toBe(144);
+    expect(onFrame).toHaveBeenCalledTimes(1);
     unsubscribe();
   });
 
@@ -448,6 +672,72 @@ describe("useTierScrollSync", () => {
 
     act(() => {
       result.current.setTierScrollPx(120);
+    });
+
+    expect(playbackFollowSuppressUntilRef.current).toBe(0);
+  });
+
+  it("wheel scroll extends playback-follow suppress during playback-follow writes", async () => {
+    const { el: tier } = createTierContainer();
+    const tierScrollRef = { current: tier };
+    const wfApiRef = { current: createWaveformApi() };
+    const playbackFollowSuppressUntilRef = { current: 0 };
+
+    const { result } = renderHook(() =>
+      useTierScrollSync({
+        tierScrollRef,
+        timelineWidthPx: 1200,
+        wfApiRef: wfApiRef as never,
+        waveformReady: true,
+        mediaUrl: "/audio.wav",
+        playbackFollowSuppressUntilRef,
+        ...tierScrollDefaults,
+      }),
+    );
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    act(() => {
+      result.current.playbackFollowScroll(100);
+    });
+
+    act(() => {
+      result.current.applyWheelScrollDelta(40);
+    });
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    expect(playbackFollowSuppressUntilRef.current).toBeGreaterThan(performance.now());
+  });
+
+  it("playback-follow scroll does not extend suppress from scroll events", async () => {
+    const { el: tier } = createTierContainer();
+    const tierScrollRef = { current: tier };
+    const wfApiRef = { current: createWaveformApi() };
+    const playbackFollowSuppressUntilRef = { current: 0 };
+
+    const { result } = renderHook(() =>
+      useTierScrollSync({
+        tierScrollRef,
+        timelineWidthPx: 1200,
+        wfApiRef: wfApiRef as never,
+        waveformReady: true,
+        mediaUrl: "/audio.wav",
+        playbackFollowSuppressUntilRef,
+        ...tierScrollDefaults,
+      }),
+    );
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    act(() => {
+      result.current.playbackFollowScroll(100);
+      tier.dispatchEvent(new Event("scroll"));
     });
 
     expect(playbackFollowSuppressUntilRef.current).toBe(0);
