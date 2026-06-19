@@ -117,6 +117,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     tierScrollLayout: timeline.tierScrollLayout,
     seekFromTierClientX: timeline.seekFromTierClientX,
     setTierScrollPx: timeline.setTierScrollPx,
+    setTierScrollPxSmooth: timeline.setTierScrollPxSmooth,
     segmentLaneLayout: selection.segmentLaneLayout,
     lastSegmentSelectSourceRef: selection.lastSegmentSelectSourceRef,
     segmentLaneRowPx,

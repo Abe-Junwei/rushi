@@ -11,7 +11,7 @@ import {
 } from "../utils/waveformOverviewGeometry";
 import { setCspLayoutRules } from "../utils/cspElementLayout";
 import { CspLayout } from "./CspLayout";
-import { scrollPxAlignTimeToViewportLeft } from "../utils/waveformProjection";
+import { scrollPxCenterTimeInViewport } from "../utils/waveformProjection";
 import {
   resolveTierViewportMetrics,
   type TierScrollLayoutMetrics,
@@ -175,7 +175,7 @@ export function WaveformMinimapStrip({
           const timeSec = overviewClientXToTimeSec(e.clientX, rect, durationSec);
           onSeek(timeSec);
           onSetScrollLeftPx(
-            scrollPxAlignTimeToViewportLeft({
+            scrollPxCenterTimeInViewport({
               timeSec,
               timelineWidthPx,
               durationSec,

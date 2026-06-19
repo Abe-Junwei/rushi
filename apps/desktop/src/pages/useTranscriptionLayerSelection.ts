@@ -15,7 +15,6 @@ import type { SegmentSelectSource } from "../utils/waveformViewMode";
 import {
   shouldFocusWaveformShellForSelectSource,
   shouldFitSelectionOnWaveformSelect,
-  shouldZoomViewportOnSelectSource,
 } from "../utils/waveformViewMode";
 import type { useWaveformTimelineController } from "../hooks/useWaveformTimelineController";
 import {
@@ -119,12 +118,7 @@ export function useTranscriptionLayerSelection(opts: {
       const plan = selectionProfileTime("resolvePlan", () => resolveSelectSegmentViewportPlan(s));
       const seg = plan.segment;
       selectionProfileTime("viewport", () => {
-        if (shouldZoomViewportOnSelectSource(source)) {
-          scrollFitRef.current.timeline.viewportFit.zoomToFitSegment({
-            start_sec: seg.start_sec,
-            end_sec: seg.end_sec,
-          });
-        } else if (
+        if (
           shouldFitSelectionOnWaveformSelect(
             source,
             scrollFitRef.current.timeline.zoom.layoutIntentRef.current,
@@ -141,7 +135,7 @@ export function useTranscriptionLayerSelection(opts: {
           });
         }
       });
-      if (source !== "listAdvance" && source !== "listKeyboard") {
+      if (source !== "listKeyboard") {
         requestAnimationFrame(() => {
           selectionProfileTime("seek", () => {
             timeline.wfApiRef.current.seek(segmentStartSec(s));

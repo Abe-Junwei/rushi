@@ -9,11 +9,6 @@ export function shouldEnterZoomForOverlayGesture(mode: SegmentDragMode): boolean
   return mode === "resize-start" || mode === "resize-end" || mode === "move";
 }
 
-/** 列表点击选中时缩进视口以容纳语段；↑↓ / 列表推进仅 reveal，不重复触发 zoom。 */
-export function shouldZoomViewportOnSelectSource(source: SegmentSelectSource): boolean {
-  return source === "list";
-}
-
 /** 语段适配模式（layoutIntent=fit-selection）下，波形点选换语段应继续 fit 新语段。 */
 export function shouldFitSelectionOnWaveformSelect(
   source: SegmentSelectSource,

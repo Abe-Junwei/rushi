@@ -26,7 +26,10 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
   const durationRef = useRef(0);
   const timelineWidthPxRef = useRef(0);
   const pxPerSecRef = useRef(56);
-  const scrollApiRef = useRef({ setTierScrollPx: (_scrollLeftPx: number) => {} });
+  const scrollApiRef = useRef({
+    setTierScrollPx: (_scrollLeftPx: number) => {},
+    setTierScrollPxSmooth: (_scrollLeftPx: number) => {},
+  });
   const wfApiRef = useRef<WfApi>(null!);
   const playbackFollowSuppressUntilRef = useRef(0);
   const applyPendingViewportFitRef = useRef<(pxPerSec: number, options?: { finalize?: boolean }) => boolean>(
@@ -279,6 +282,7 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
     onTierScroll: scroll.onTierScroll,
     seekFromTierClientX: scroll.seekFromTierClientX,
     setTierScrollPx: scroll.setTierScrollPx,
+    setTierScrollPxSmooth: scroll.setTierScrollPxSmooth,
     tierScrollLive: scroll.tierScrollLive,
     clearWaveformPeaksCache: peaks.clearAndReloadPeaks,
     routePrefs,

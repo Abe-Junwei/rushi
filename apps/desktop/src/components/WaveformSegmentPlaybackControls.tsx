@@ -1,5 +1,6 @@
 import { memo, useLayoutEffect, useRef, type RefObject } from "react";
-import { Play, Repeat, Square } from "lucide-react";
+import { Repeat, Square } from "lucide-react";
+import { PRODUCT_ICON } from "../config/productIcons";
 import type { SegmentDto } from "../tauri/projectApi";
 import { resolveSegmentPlaybackControlsOverlayLayout } from "../utils/waveformRegionActionOverlay";
 import type { TierScrollLayoutMetrics, TierScrollLiveRefs } from "../utils/waveformViewport";
@@ -175,7 +176,7 @@ export const WaveformSegmentPlaybackControls = memo(function WaveformSegmentPlay
         {isPlaying ? (
           <Square className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
         ) : (
-          <Play className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+          <PRODUCT_ICON.playAudio className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
         )}
       </button>
     </div>

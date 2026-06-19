@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
-import { afterSmoothScrollEnd } from "../utils/tierScrollSmooth";
+import { animateTierScrollLeft } from "../utils/tierScrollSmooth";
 import { clampTimelineScrollLeftPx, WAVEFORM_SCROLL_SYNC_EPSILON_PX } from "../utils/waveformScrollSync";
-import { scheduleTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
+import { flushTierScrollFrame, scheduleTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
 import type { useProjectWaveform } from "./useProjectWaveform";
 import { useTierScrollLayout, type TierScrollLayout } from "./useTierScrollLayout";
 import {
@@ -182,6 +182,7 @@ export function useTierScrollSync(args: {
       tierScrollActivityRef.current.syncScrollFromTierDom();
       tierScrollActivityRef.current.notifyScrollActivity();
       suppressPlaybackFollowForUserScroll();
+      flushTierScrollFrame();
     };
     tier.addEventListener("scroll", onScroll, { passive: true });
     return () => tier.removeEventListener("scroll", onScroll);
@@ -210,15 +211,15 @@ export function useTierScrollSync(args: {
         });
         smoothScrollCleanupRef.current?.();
         smoothScrollCleanupRef.current = null;
-        if (typeof tier.scrollTo !== "function") {
-          applyScrollLeftPx(sl, "program", { immediate: true });
-          return;
-        }
-        tier.scrollTo({ left: sl, behavior: "smooth" });
-        smoothScrollCleanupRef.current = afterSmoothScrollEnd(tier, (finalSl) => {
-          smoothScrollCleanupRef.current = null;
-          applyScrollLeftPx(finalSl, "program", { immediate: true });
-        });
+        smoothScrollCleanupRef.current = animateTierScrollLeft(
+          () => tier.scrollLeft,
+          sl,
+          (frameSl, done) => {
+            applyScrollLeftPx(frameSl, "program", { immediate: true, deferLayoutCommit: !done });
+            flushTierScrollFrame();
+            if (done) smoothScrollCleanupRef.current = null;
+          },
+        );
       },
       refreshTierScrollLayout: () => {
         programmaticWrites.flushPendingProgrammaticScroll(commitPendingProgrammaticScroll);

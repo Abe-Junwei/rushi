@@ -127,7 +127,8 @@ describe("useTranscriptionLayerSelection profile", () => {
     });
 
     expect(setSelectedIdxUi).toHaveBeenCalledWith(2, undefined);
-    expect(timeline.viewportFit.zoomToFitSegment).toHaveBeenCalled();
+    expect(timeline.viewportFit.revealSegmentInViewport).toHaveBeenCalled();
+    expect(timeline.viewportFit.zoomToFitSegment).not.toHaveBeenCalled();
     expect(timeline.wfApiRef.current.seek).toHaveBeenCalled();
 
     const lines = readRecentSelectionLatencyProfileLines();
@@ -135,5 +136,30 @@ describe("useTranscriptionLayerSelection profile", () => {
     expect(dataLines.length).toBeGreaterThan(0);
     expect(dataLines[0]).toMatch(/flushSelectedIdx=/);
     expect(dataLines[0]).toMatch(/viewport=/);
+  });
+
+  it("listAdvance reveals and seeks like list (Descript-style navigation)", () => {
+    const ctx = makeCtx(5);
+    const ctxRef = { current: ctx };
+    const timeline = makeTimeline();
+    const setSelectedIdxUi = vi.fn();
+
+    const { result } = renderHook(() =>
+      useTranscriptionLayerSelection({
+        ctx,
+        ctxRef,
+        timeline: timeline as never,
+        waveformShellRef: { current: null },
+        setSelectedIdxUi,
+      }),
+    );
+
+    act(() => {
+      result.current.selectSegmentAt(3, "listAdvance");
+    });
+
+    expect(timeline.viewportFit.revealSegmentInViewport).toHaveBeenCalled();
+    expect(timeline.viewportFit.zoomToFitSegment).not.toHaveBeenCalled();
+    expect(timeline.wfApiRef.current.seek).toHaveBeenCalled();
   });
 });

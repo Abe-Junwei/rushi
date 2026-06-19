@@ -207,7 +207,39 @@ describe("useTierScrollSync", () => {
     unsubscribe();
   });
 
-  it("uses smooth DOM scrolling for setTierScrollPxSmooth", () => {
+  it("flushes viewport chrome in the same turn for native scroll events", async () => {
+    const { el: tier } = createTierContainer();
+    const tierScrollRef = { current: tier };
+    const wfApiRef = { current: createWaveformApi() };
+
+    renderHook(() =>
+      useTierScrollSync({
+        tierScrollRef,
+        timelineWidthPx: 1200,
+        wfApiRef: wfApiRef as never,
+        waveformReady: true,
+        mediaUrl: "/audio.wav",
+        ...tierScrollDefaults,
+      }),
+    );
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+
+    const onFrame = vi.fn();
+    const unsubscribe = subscribeTierScrollFrame(onFrame);
+
+    act(() => {
+      tier.scrollLeft = 180;
+      tier.dispatchEvent(new Event("scroll"));
+    });
+
+    expect(onFrame).toHaveBeenCalledTimes(1);
+    unsubscribe();
+  });
+
+  it("animates smooth scroll through the tier scroll authority", async () => {
     const { el: tier, scrollToMock } = createTierContainer();
     const tierScrollRef = { current: tier };
     const wfApiRef = { current: createWaveformApi() };
@@ -227,7 +259,23 @@ describe("useTierScrollSync", () => {
       result.current.setTierScrollPxSmooth(180);
     });
 
-    expect(scrollToMock).toHaveBeenCalledWith({ left: 180, behavior: "smooth" });
+    expect(scrollToMock).not.toHaveBeenCalled();
+    const onFrame = vi.fn();
+    const unsubscribe = subscribeTierScrollFrame(onFrame);
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 0));
+    });
+    expect(tier.scrollLeft).toBeGreaterThan(0);
+    expect(tier.scrollLeft).toBeLessThan(180);
+    expect(onFrame).toHaveBeenCalled();
+
+    await act(async () => {
+      await new Promise((r) => setTimeout(r, 220));
+    });
+    expect(tier.scrollLeft).toBeGreaterThan(179);
+    expect(tier.scrollLeft).toBeLessThanOrEqual(180);
+    unsubscribe();
   });
 
   it("clamps scroll when timeline floor is narrower than native width", async () => {

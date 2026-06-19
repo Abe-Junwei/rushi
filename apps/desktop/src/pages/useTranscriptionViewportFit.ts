@@ -26,6 +26,7 @@ type TierScrollApi = {
     scrollLeftPx: number,
     options?: { timelineWidthPx?: number; immediate?: boolean; deferLayoutCommit?: boolean },
   ) => void;
+  setTierScrollPxSmooth: (scrollLeftPx: number) => void;
 };
 
 export type PendingViewportFit = { intent: ViewportFitScrollIntent; pxPerSec: number };
@@ -111,6 +112,10 @@ export function useTranscriptionViewportFit(args: {
     [scrollApiRef],
   );
 
+  const writeTierScrollSmooth = (targetSl: number) => {
+    scrollApiRef.current.setTierScrollPxSmooth(targetSl);
+  };
+
   const applyPendingViewportFit = useCallback(
     (pxPerSec: number, options?: { finalize?: boolean; skipScroll?: boolean }) => {
       const pending = pendingViewportFitRef.current;
@@ -178,13 +183,12 @@ export function useTranscriptionViewportFit(args: {
       if (w <= 0 || dur < 0.5) return;
 
       const pending: PendingViewportFit = { intent: { startSec: seg.start_sec, endSec: seg.end_sec }, pxPerSec };
-      const tw = computeTimelineWidthPx(dur, pxPerSec);
       const targetSl = resolveViewportFitScrollPx({ pending, durationSec: dur, viewportWidthPx: w });
       markProgrammaticScroll(undefined, Math.abs(targetSl - (tier?.scrollLeft ?? 0)));
-      writeTierScroll(targetSl, tw);
+      writeTierScrollSmooth(targetSl);
       pendingViewportFitRef.current = null;
     },
-    [durationRef, markProgrammaticScroll, tierScrollRef, writeTierScroll],
+    [durationRef, markProgrammaticScroll, tierScrollRef],
   );
 
   const revealSegmentInViewport = useCallback(
