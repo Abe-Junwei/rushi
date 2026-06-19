@@ -14,11 +14,12 @@ use super::super::transcribe_timeout::{
     local_transcribe_timeout_duration, long_audio_transcribe_hint, probe_audio_duration_sec,
 };
 use super::super::types::RunTranscribeOutcome;
-use super::super::utils::{append_desktop_log_line, file_detail_from_conn, open_db};
+use super::super::utils::{
+    append_desktop_log_line, file_detail_from_conn, open_db, resolve_audio_path_under_root,
+};
 use super::helpers::{apply_windowed_warning, record_transcribe_err, TranscribeInFlightGuard};
 use super::save::save_transcribe_segments;
 use crate::DbState;
-use std::path::Path;
 use std::time::Duration;
 use tauri::State;
 
@@ -50,13 +51,20 @@ pub async fn project_transcribe_async_start(
             return Err("该文件没有关联音频，无法转写".to_string());
         }
     };
-    let audio_path = Path::new(audio_path);
+    let audio_path = match resolve_audio_path_under_root(&st.root, audio_path) {
+        Ok(path) => path,
+        Err(err) => {
+            tl.fail_stage(STAGE_PREFLIGHT, "audio_scope_rejected", &err);
+            let _ = tl.persist(&st);
+            return Err(err);
+        }
+    };
     if !audio_path.is_file() {
         tl.fail_stage(STAGE_PREFLIGHT, "audio_missing", "项目音频文件缺失");
         let _ = tl.persist(&st);
         return Err("项目音频文件缺失".to_string());
     }
-    let audio_duration_sec = probe_audio_duration_sec(audio_path);
+    let audio_duration_sec = probe_audio_duration_sec(&audio_path);
     let base = asr_base_url
         .unwrap_or_else(|| "http://127.0.0.1:8741".to_string())
         .trim_end_matches('/')
@@ -73,7 +81,7 @@ pub async fn project_transcribe_async_start(
     let v = match post_transcribe_async_multipart(
         &st,
         &base,
-        audio_path,
+        &audio_path,
         hotwords,
         timeout,
         Some(&mut tl),
@@ -166,7 +174,8 @@ pub async fn project_transcribe_async_finalize(
             .audio_path
             .ok_or("该文件没有关联音频，无法转写")?
     };
-    let audio_duration_sec = probe_audio_duration_sec(Path::new(&audio_path));
+    let audio_path = resolve_audio_path_under_root(&st.root, &audio_path)?;
+    let audio_duration_sec = probe_audio_duration_sec(&audio_path);
 
     let engine = status
         .get("engine")

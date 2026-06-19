@@ -29,8 +29,3 @@ def effective_funasr_vad_model_id() -> str | None:
 def funasr_model_explicit_from_env() -> bool:
     return bool(os.environ.get("RUSHI_FUNASR_MODEL", "").strip())
 
-
-def effective_funasr_forced_aligner_id() -> str | None:
-    """Optional Qwen3-ForcedAligner hub id (R3g-B-Align spike / env-only SKU)."""
-    v = os.environ.get("RUSHI_FUNASR_FORCED_ALIGNER", "").strip()
-    return v or None

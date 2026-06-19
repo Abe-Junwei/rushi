@@ -1,10 +1,10 @@
 //! Release waveform: asset protocol scope for App Data media + peaks `.dat`.
 
-use std::path::{Path, PathBuf};
+use std::path::Path;
 
 use tauri::{AppHandle, Manager};
 
-use super::utils::{append_desktop_log_line, open_db};
+use super::utils::{append_desktop_log_line, open_db, resolve_audio_path_under_root};
 use crate::DbState;
 
 /// Register asset:// access for project audio/peaks under App Data (release WebView).
@@ -31,8 +31,7 @@ pub fn register_project_media_asset_scope(app: &AppHandle, st: &DbState) -> Resu
             .query_map([], |r| r.get::<_, String>(0))
             .map_err(|e| e.to_string())?;
         for path in rows.flatten() {
-            let pb = PathBuf::from(&path);
-            if pb.is_file() {
+            if let Ok(pb) = resolve_audio_path_under_root(&st.root, &path) {
                 let _ = app.asset_protocol_scope().allow_file(&pb);
                 media_files += 1;
             }

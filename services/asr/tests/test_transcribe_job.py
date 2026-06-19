@@ -180,3 +180,31 @@ def test_cancel_transcribe_marks_job(monkeypatch: pytest.MonkeyPatch, tmp_path: 
             break
         time.sleep(0.05)
     assert phase == "cancelled"
+
+
+def test_async_job_rejects_second_active_job(tmp_path: Path) -> None:
+    upload = tmp_path / "in.wav"
+    upload.write_bytes(b"wav")
+    first_work = tmp_path / "work-active-1"
+    second_work = tmp_path / "work-active-2"
+    first_work.mkdir()
+    second_work.mkdir()
+
+    def slow_transcribe(*_args, **_kwargs):
+        import time
+
+        time.sleep(0.5)
+        from rushi_asr.schemas import TranscriptionResult
+
+        return TranscriptionResult(
+            segments=[],
+            full_text="",
+            engine="funasr+test",
+            duration_sec=1.0,
+            warnings=[],
+        )
+
+    with patch("rushi_asr.transcribe_job._transcribe_with_progress", slow_transcribe):
+        start_transcribe_async(upload, first_work, None)
+        with pytest.raises(RuntimeError, match="transcribe_job_limit"):
+            start_transcribe_async(upload, second_work, None)

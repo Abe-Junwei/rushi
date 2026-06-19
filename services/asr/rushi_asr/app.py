@@ -205,7 +205,7 @@ def create_app() -> FastAPI:
 
     @app.post("/v1/models/warmup")
     async def warmup_model_endpoint(request: Request) -> dict[str, object]:
-        """Load FunASR AutoModel into memory (Qwen+Aligner first transcribe can take minutes)."""
+        """Load FunASR AutoModel into memory."""
         _require_local_token(request)
         _require_funasr_import()
         from rushi_asr.funasr_engine import warmup_funasr_model
@@ -248,9 +248,20 @@ def create_app() -> FastAPI:
 
         tmp = await run_in_threadpool(lambda: tempfile.mkdtemp(prefix="rushi_asr_job_"))
         tmp_path = Path(tmp)
-        in_path = await read_upload_to_temp(file, tmp_path)
-        # Job thread owns tmp_path cleanup after completion.
-        return start_transcribe_async(in_path, tmp_path, hotwords)
+        handoff_to_job = False
+        try:
+            in_path = await read_upload_to_temp(file, tmp_path)
+            # Job thread owns tmp_path cleanup after successful handoff.
+            out = start_transcribe_async(in_path, tmp_path, hotwords)
+            handoff_to_job = True
+            return out
+        except RuntimeError as e:
+            if str(e) == "transcribe_job_limit":
+                raise HTTPException(status_code=429, detail="transcribe_job_limit") from e
+            raise
+        finally:
+            if not handoff_to_job:
+                await run_in_threadpool(shutil.rmtree, str(tmp_path), True)
 
     @app.get("/v1/transcribe/status")
     def transcribe_status_endpoint(job_id: str) -> dict[str, object]:

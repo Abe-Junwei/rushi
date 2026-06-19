@@ -9,14 +9,13 @@ import socket
 from pathlib import Path
 from typing import Any
 
-from rushi_asr.defaults import effective_funasr_forced_aligner_id, effective_funasr_vad_model_id
+from rushi_asr.defaults import effective_funasr_vad_model_id
 from rushi_asr.funasr_pipeline import effective_funasr_punc_model_id
 from rushi_asr.model_prepare_cache import (
     DEFAULT_PUNC_REQUIRED_FILES,
     DEFAULT_VAD_REQUIRED_FILES,
     disk_check_path,
     find_cached_model_dir,
-    forced_aligner_model_cached_guess,
     looks_like_complete_model_dir,
     recognizer_cache_spec,
     required_models_cached_guess,
@@ -91,7 +90,6 @@ def prepare_result_from_cache(resolved_model_id: str, warnings: list[str]) -> di
         return None
     vad_model_id = effective_funasr_vad_model_id()
     punc_model_id = effective_funasr_punc_model_id(resolved_model_id)
-    forced_aligner_id = effective_funasr_forced_aligner_id()
     vad_dir = (
         cached_hub_path(vad_model_id, required_files=DEFAULT_VAD_REQUIRED_FILES, min_weight_bytes=1 * 1024 * 1024)
         if vad_model_id
@@ -102,7 +100,6 @@ def prepare_result_from_cache(resolved_model_id: str, warnings: list[str]) -> di
         if punc_model_id
         else None
     )
-    aligner_dir = cached_hub_path(forced_aligner_id) if forced_aligner_id else None
     log.info("model_prepare: all required models cached, skipping download")
     maybe_verify_manifest(model_dir)
     return {
@@ -113,9 +110,6 @@ def prepare_result_from_cache(resolved_model_id: str, warnings: list[str]) -> di
         "vad_path": str(vad_dir) if vad_dir is not None else None,
         "punc_model_id": punc_model_id,
         "punc_path": str(punc_dir) if punc_dir is not None else None,
-        "forced_aligner_model_id": forced_aligner_id,
-        "forced_aligner_path": str(aligner_dir) if aligner_dir is not None else None,
-        "forced_aligner_cached": forced_aligner_model_cached_guess(),
         "required_models_cached": True,
         "cached_only": True,
         "warnings": warnings,
@@ -171,12 +165,10 @@ def download_models(resolved_model_id: str) -> dict[str, Any]:
         log.info("model_prepare: snapshot_download %s", resolved_model_id)
         vad_model_id = effective_funasr_vad_model_id()
         punc_model_id = effective_funasr_punc_model_id(resolved_model_id)
-        forced_aligner_id = effective_funasr_forced_aligner_id()
         progress_callbacks = prepare_progress_callback_types()
         reset_prepare_download_progress(
             include_vad=bool(vad_model_id),
             include_punc=bool(punc_model_id),
-            include_forced_aligner=bool(forced_aligner_id),
         )
         raise_if_prepare_cancelled()
 
@@ -212,15 +204,6 @@ def download_models(resolved_model_id: str) -> dict[str, Any]:
                     snapshot_download=snapshot_download,
                     progress_callbacks=progress_callbacks,
                 )
-            aligner_dir: Path | None = None
-            if forced_aligner_id:
-                set_prepare_message("downloading_forced_aligner")
-                raise_if_prepare_cancelled()
-                aligner_dir = resolve_model_dir(
-                    forced_aligner_id,
-                    snapshot_download=snapshot_download,
-                    progress_callbacks=progress_callbacks,
-                )
         finally:
             socket.setdefaulttimeout(old_timeout)
         finalize_prepare_download_progress()
@@ -236,10 +219,6 @@ def download_models(resolved_model_id: str) -> dict[str, Any]:
             punc_dir, DEFAULT_PUNC_REQUIRED_FILES, 1 * 1024 * 1024
         ):
             raise RuntimeError("punc_prepare_incomplete")
-        if forced_aligner_id and aligner_dir is not None:
-            align_req, align_weight, align_min = recognizer_cache_spec(forced_aligner_id)
-            if not looks_like_complete_model_dir(aligner_dir, align_req, align_min, weight_file=align_weight):
-                raise RuntimeError("forced_aligner_prepare_incomplete")
         maybe_verify_manifest(model_dir)
         invalidate_funasr_model_cache()
         return {
@@ -250,9 +229,6 @@ def download_models(resolved_model_id: str) -> dict[str, Any]:
             "vad_path": str(vad_dir) if vad_dir is not None else None,
             "punc_model_id": punc_model_id,
             "punc_path": str(punc_dir) if punc_dir is not None else None,
-            "forced_aligner_model_id": forced_aligner_id,
-            "forced_aligner_path": str(aligner_dir) if aligner_dir is not None else None,
-            "forced_aligner_cached": forced_aligner_model_cached_guess(),
             "required_models_cached": required_models_cached_guess(resolved_model_id),
             "warnings": warnings,
         }

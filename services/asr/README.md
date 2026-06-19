@@ -10,7 +10,7 @@
 
 | 文件 | 用途 |
 |------|------|
-| `requirements-sidecar-cpu-macos-arm64.lock` | macOS arm64 真源锁（`torch==2.11.0` CPU + FunASR 传递依赖） |
+| `requirements-sidecar-cpu-macos-arm64.lock` | macOS arm64 真源锁（`torch==2.12.1` CPU + FunASR 传递依赖；不包含 `qwen-asr`） |
 | `requirements-sidecar-cpu-macos-x86_64.lock` | `-r` 引用 arm64 锁（同 pins，Intel 上解析 x86_64 轮子） |
 | `requirements-sidecar-cpu-win_amd64.lock` | `-r` 引用 arm64 锁（Windows CPU 侧车） |
 | `requirements-sidecar-cuda-win_amd64.lock` | `rushi-asr-sidecar-cuda.exe`：`torch*+cu126` + 其余与 CPU 锁一致 |
@@ -52,7 +52,7 @@ python -m rushi_asr
 ## 依赖
 
 - **ffmpeg / ffprobe**：须在 `PATH` 中，用于上传文件的解码与 **16 kHz mono WAV** 规范化。
-- **可选 FunASR**：`pip install -e ".[funasr]"` 后可选设置 `RUSHI_FUNASR_MODEL`；**未设置时使用内置默认** Paraformer 长音频（`iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch`）。默认模型与必需辅助模型建议先通过 `POST /v1/models/prepare-default` 或桌面端「下载默认模型」准备完成；未安装 FunASR 时仍走 **stub**（单段、空文本、带 `detail` 说明）。
+- **可选 FunASR**：`pip install -e ".[funasr]"` 后可选设置 `RUSHI_FUNASR_MODEL`；**未设置时使用内置默认** Paraformer 长音频（`iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch`）。默认模型与必需辅助模型建议先通过 `POST /v1/models/prepare-default` 或桌面端「下载默认模型」准备完成；未安装 FunASR 时仍走 **stub**（单段、空文本、带 `detail` 说明）。发布侧车不再安装官方 `qwen-asr` 包。
 - **模型缓存目录**：桌面与侧车约定 **`RUSHI_MODELS_ROOT=<app_data_root>/models`**（`app_data_root` 由 Tauri 解析；若存在 legacy 嵌套 `studio.lingchuang.rushi/studio.lingchuang.rushi/` 则用之，见 `project/app_data_paths.rs`）。壳启动侧车或 **`npm run asr:dev`** 时会设置 `RUSHI_MODELS_ROOT` 并映射 **`MODELSCOPE_CACHE`** / **`HF_HOME`**。**未设置时** `apply_models_root_env()` 不生效，`/health.rushi_models_root` 为 `null`，`*_cached` 探测失败——权重会落到 `~/.cache/modelscope`，环境页会显示「未缓存」。
 - **可选 manifest 校验**：`RUSHI_MODEL_VERIFY_MANIFEST` 指向 JSON 文件（相对路径则相对 `RUSHI_MODELS_ROOT`），在 `POST /v1/models/prepare-default`（及异步路径完成时）对列出的文件做 **SHA256** 校验；不匹配返回 **400**（见 `rushi_asr/model_manifest_verify.py`）。Manifest 为对象数组，每项含 `path` 或 `rel`（相对 `RUSHI_MODELS_ROOT`）、`sha256`（小写十六进制）。
 
@@ -62,7 +62,6 @@ python -m rushi_asr
 - `RUSHI_FUNASR_LANGUAGE`（默认 `zh`；allowlist：`zh` / `auto` / `en` / `ja` / `ko` / `yue`；桌面写入 `prefs/funasr_language.txt`）
 - `RUSHI_FUNASR_USE_ITN`（**R3g-C** 排障：部分 SKU 默认开 ITN；`0`/`false` 关闭）
 - `RUSHI_FUNASR_VAD_MODEL`（默认 `fsmn-vad`；设为空字符串可关闭 VAD 参数传递）
-- `RUSHI_FUNASR_FORCED_ALIGNER`（**R3g-B-Align spike / env-only**：如 `Qwen/Qwen3-ForcedAligner-0.6B`；与 `RUSHI_FUNASR_MODEL=Qwen/Qwen3-ASR-0.6B` 配对启用 `return_time_stamps`；设置后 `prepare-default` 会一并下载该权重；**不进 catalog**）
 - `RUSHI_HF_ENDPOINT`（可选：如 `https://hf-mirror.com`；侧车启动时映射为 `HF_ENDPOINT`，仅在未设置时生效）
 - **Generate Profile（R3g-C）**：`use_itn` / `merge_vad` / `batch_size_*` 等由 `rushi_asr/asr_model_profile.py` 按 SKU+时长生成，见 [`docs/architecture/asr-generate-params-truth.md`](../../docs/architecture/asr-generate-params-truth.md)
 - **R3e-B blocking 长音频分窗**（≥30min）：`RUSHI_FUNASR_WINDOW_SEC`（默认 **300**）、`RUSHI_FUNASR_WINDOW_THRESHOLD_SEC`（默认 **1800**）
@@ -70,11 +69,11 @@ python -m rushi_asr
 
 ## 接口
 
-- `GET /health` — 运行时能力：`ready_for_transcribe`、`funasr_model_id`、`funasr_loaded_model_id`、`funasr_forced_aligner_*`、`funasr_load_plan`（含 `uses_local_paths`，Align spike 应为 true）等。
+- `GET /health` — 运行时能力：`ready_for_transcribe`、`funasr_model_id`、`funasr_loaded_model_id`、`funasr_load_plan`（含 `uses_local_paths`）等。
 - `GET /` — 服务目录；桌面用 `transcribe_async` 字段检测 bundled 是否支持 R3e-C。
 - `POST /v1/models/prepare-default` — 同步触发默认 FunASR 模型准备（下载/校验）；无 FunASR 时 **503**；manifest 校验失败 **400**。
 - `POST /v1/models/prepare-default/async` — 在后台线程启动同上准备；立即返回 **202**；无 FunASR 时 **503**。
-- `POST /v1/models/warmup` — 将 FunASR `AutoModel` 预加载进内存（Qwen+ForcedAligner 首次加载可能数分钟）；权重未就绪 **503**。
+- `POST /v1/models/warmup` — 将 FunASR `AutoModel` 预加载进内存；权重未就绪 **503**。
 - `GET /v1/models/prepare-status` — 查询异步准备状态：`phase` 为 `idle` | `running` | `done` | `error`；`running` 时另含 `progress_percent`（0–99，按 ModelScope 下载回调累计字节 / 预算或已声明文件大小）、`bytes_downloaded`、`bytes_total`；`done` 时 `progress_percent` 为 100，并含 `result`（与同步成功体同形），`error` 时含 `message`。
 - **桌面一键安装（可选）**：仓库根脚本 `scripts/install-funasr-for-desktop.sh` 会在 `services/asr/.venv` 中执行 `pip install -e ".[funasr]"`；需本机已有 **Python 3**、**网络**与足够磁盘；**不会**代替用户设置 `RUSHI_FUNASR_MODEL`，也**不会**自动重启 ASR 进程。
 - `POST /v1/transcribe` — `multipart/form-data`：字段 **`file`**（必填）；可选字段 **`hotwords`**（UTF-8 文本，空格分隔热词，供 FunASR `generate(..., hotword=...)`；**stub 或未走 FunASR 时忽略**，并在 `warnings` 中加入 `hotwords_ignored_stub`）。响应为 **TranscriptionResult** JSON（`schema_version: "1"`）。

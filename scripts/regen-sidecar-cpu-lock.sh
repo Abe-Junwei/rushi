@@ -14,6 +14,7 @@ source .venv-lockgen-cpu/bin/activate
 python -m pip install -U pip setuptools wheel
 python -m pip install torch torchvision torchaudio --index-url https://download.pytorch.org/whl/cpu
 python -m pip install -e ".[funasr]"
+python -m pip install "setuptools==78.1.1"
 
 {
   cat <<'HDR'
@@ -30,7 +31,12 @@ python -m pip install -e ".[funasr]"
 --extra-index-url https://pypi.org/simple/
 
 HDR
-  pip freeze | grep -vi '^-e ' | grep -vi '^#' | grep -vi '^rushi-asr' | LC_ALL=C sort
+  pip freeze \
+    | grep -vi '^-e ' \
+    | grep -vi '^#' \
+    | grep -vi '^rushi-asr' \
+    | sed "s/^\(uvloop==.*\)$/\1; sys_platform != 'win32'/" \
+    | LC_ALL=C sort
 } > "$OUT"
 
 echo "Wrote $OUT ($(wc -l < "$OUT") lines). Next: refresh requirements-sidecar-cuda-win_amd64.lock torch lines if torch family bumped."

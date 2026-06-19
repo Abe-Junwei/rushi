@@ -32,7 +32,6 @@ def raise_if_prepare_cancelled() -> None:
 _RECOGNIZER_BUDGET_BYTES = 130 * 1024 * 1024
 _VAD_BUDGET_BYTES = 8 * 1024 * 1024
 _PUNC_BUDGET_BYTES = 50 * 1024 * 1024
-_FORCED_ALIGNER_BUDGET_BYTES = 700 * 1024 * 1024
 
 
 class ModelPrepareProgressTracker:
@@ -50,7 +49,6 @@ class ModelPrepareProgressTracker:
         *,
         include_vad: bool,
         include_punc: bool = False,
-        include_forced_aligner: bool = False,
     ) -> None:
         with self._lock:
             self._bytes_downloaded = 0
@@ -60,8 +58,6 @@ class ModelPrepareProgressTracker:
                 self._budget_total += _VAD_BUDGET_BYTES
             if include_punc:
                 self._budget_total += _PUNC_BUDGET_BYTES
-            if include_forced_aligner:
-                self._budget_total += _FORCED_ALIGNER_BUDGET_BYTES
             self._progress_percent = 0
 
     def register_file(self, _filename: str, file_size: int) -> None:
@@ -112,12 +108,10 @@ def reset_prepare_download_progress(
     *,
     include_vad: bool,
     include_punc: bool = False,
-    include_forced_aligner: bool = False,
 ) -> None:
     _tracker.reset(
         include_vad=include_vad,
         include_punc=include_punc,
-        include_forced_aligner=include_forced_aligner,
     )
 
 

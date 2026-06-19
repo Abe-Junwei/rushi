@@ -12,7 +12,7 @@ use crate::project::transcribe_cancel_cmd::{
 };
 
 use super::dashscope_file_asr_parse::parse_funasr_file_transcription;
-use super::dashscope_upload::upload_dashscope_temp_oss_url;
+use super::dashscope_upload::{is_allowed_dashscope_resource_url, upload_dashscope_temp_oss_url};
 use super::dashscope_vocabulary::{sync_dashscope_vocabulary, DASHSCOPE_FUNASR_FILE_MODEL};
 use super::{rushi_value, send_stt_cloud_get, send_stt_cloud_post};
 
@@ -153,6 +153,9 @@ pub async fn transcribe_dashscope_file_asr(
                     .pointer("/output/results/0/transcription_url")
                     .and_then(|x| x.as_str())
                     .ok_or_else(|| "百炼任务成功但缺少 transcription_url".to_string())?;
+                if !is_allowed_dashscope_resource_url(transcription_url) {
+                    return Err("百炼转写结果地址不在允许的 HTTPS 阿里云域名下".to_string());
+                }
                 log("INFO dashscope file_asr fetch_result");
                 let result_resp = send_stt_cloud_get(|http| {
                     http.get(transcription_url)

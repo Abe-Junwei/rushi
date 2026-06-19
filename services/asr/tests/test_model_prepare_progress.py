@@ -25,20 +25,16 @@ def test_tracker_percent_from_downloaded_bytes(monkeypatch) -> None:
     assert tracker.snapshot()["progress_percent"] == 100
 
 
-def test_tracker_includes_forced_aligner_budget(monkeypatch) -> None:
+def test_tracker_includes_punc_budget(monkeypatch) -> None:
     monkeypatch.setattr(
         "rushi_asr.model_prepare_progress._RECOGNIZER_BUDGET_BYTES",
         1_000,
     )
     monkeypatch.setattr("rushi_asr.model_prepare_progress._VAD_BUDGET_BYTES", 0)
-    monkeypatch.setattr("rushi_asr.model_prepare_progress._PUNC_BUDGET_BYTES", 0)
-    monkeypatch.setattr(
-        "rushi_asr.model_prepare_progress._FORCED_ALIGNER_BUDGET_BYTES",
-        700,
-    )
+    monkeypatch.setattr("rushi_asr.model_prepare_progress._PUNC_BUDGET_BYTES", 700)
 
     tracker = ModelPrepareProgressTracker()
-    tracker.reset(include_vad=False, include_forced_aligner=True)
+    tracker.reset(include_vad=False, include_punc=True)
     assert tracker.snapshot()["bytes_total"] == 1_700
 
 

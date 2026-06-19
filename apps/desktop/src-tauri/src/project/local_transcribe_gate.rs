@@ -1,6 +1,7 @@
 //! Gate local FunASR transcribe on loopback /health + hub model alignment (R3-STATE).
 
 use crate::asr_sidecar::is_rushi_asr_health_json;
+use crate::asr_sidecar::local_token::is_asr_loopback_url;
 use crate::asr_sidecar::loopback_root_declares_transcribe_async;
 use crate::packaged_hints::dev_or_packaged_str;
 use crate::DbState;
@@ -17,6 +18,13 @@ pub fn local_transcribe_gate_from_root_catalog(root: &Value) -> Result<(), Strin
         ));
     }
     Ok(())
+}
+
+fn validate_local_asr_base_url(base: &str) -> Result<(), String> {
+    if is_asr_loopback_url(base.trim_end_matches('/')) {
+        return Ok(());
+    }
+    Err("本机 ASR 地址必须是 127.0.0.1:8741 loopback，已拒绝向非本机地址发送音频。".to_string())
 }
 
 pub fn local_transcribe_gate_from_health(
@@ -93,6 +101,7 @@ pub async fn assert_local_asr_ready_for_transcribe(
     asr_base_url: &str,
 ) -> Result<(), String> {
     let base = asr_base_url.trim_end_matches('/');
+    validate_local_asr_base_url(base)?;
     let health_url = format!("{base}/health");
     let client = reqwest::Client::builder()
         .timeout(std::time::Duration::from_secs(8))
@@ -180,10 +189,11 @@ mod tests {
 
     #[test]
     fn gate_blocks_hub_mismatch() {
-        assert!(
-            local_transcribe_gate_from_health(&ok_health(PARA), Some("Qwen/Qwen3-ASR-0.6B"),)
-                .is_err()
-        );
+        assert!(local_transcribe_gate_from_health(
+            &ok_health(PARA),
+            Some("custom/other-asr-model"),
+        )
+        .is_err());
     }
 
     #[test]
@@ -196,7 +206,7 @@ mod tests {
     #[test]
     fn gate_blocks_loaded_memory_mismatch() {
         let mut health = ok_health(PARA);
-        health["funasr_loaded_model_id"] = json!("Qwen/Qwen3-ASR-0.6B");
+        health["funasr_loaded_model_id"] = json!("custom/other-asr-model");
         assert!(local_transcribe_gate_from_health(&health, Some(PARA)).is_err());
     }
 
@@ -224,5 +234,13 @@ mod tests {
             "transcribe_async": "POST /v1/transcribe/async + GET /v1/transcribe/status",
         });
         local_transcribe_gate_from_root_catalog(&root).unwrap();
+    }
+
+    #[test]
+    fn local_asr_base_url_must_be_loopback_port() {
+        validate_local_asr_base_url("http://127.0.0.1:8741").unwrap();
+        validate_local_asr_base_url("http://localhost:8741/").unwrap();
+        assert!(validate_local_asr_base_url("http://example.com:8741").is_err());
+        assert!(validate_local_asr_base_url("http://127.0.0.1:9999").is_err());
     }
 }

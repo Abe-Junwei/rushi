@@ -194,36 +194,6 @@ def test_required_models_cached_guess_requires_punc_for_paraformer(monkeypatch, 
     assert required_models_cached_guess(para) is False
 
 
-def test_required_models_cached_guess_requires_forced_aligner_when_env_set(
-    monkeypatch, tmp_path: Path,
-) -> None:
-    ms = tmp_path / "modelscope"
-    qwen = "Qwen/Qwen3-ASR-0.6B"
-    aligner = "Qwen/Qwen3-ForcedAligner-0.6B"
-    qwen_dir = ms / "models" / "Qwen" / "Qwen3-ASR-0.6B"
-    aligner_dir = ms / "models" / "Qwen" / "Qwen3-ForcedAligner-0.6B"
-    vad_dir = ms / "models" / "iic" / "speech_fsmn_vad_zh-cn-16k-common-pytorch"
-
-    for d in (qwen_dir, aligner_dir):
-        d.mkdir(parents=True)
-        (d / "config.json").write_text("{}")
-        (d / "model.safetensors").write_bytes(b"x" * (101 * 1024 * 1024))
-
-    vad_dir.mkdir(parents=True)
-    (vad_dir / "model.pt").write_bytes(b"x" * (2 * 1024 * 1024))
-
-    monkeypatch.setenv("MODELSCOPE_CACHE", str(ms))
-    monkeypatch.setenv("RUSHI_FUNASR_MODEL", qwen)
-    monkeypatch.setenv("RUSHI_FUNASR_FORCED_ALIGNER", aligner)
-
-    assert required_models_cached_guess(qwen) is True
-
-    (aligner_dir / "model.safetensors").write_bytes(b"x")
-    assert required_models_cached_guess(qwen) is False
-
-    monkeypatch.delenv("RUSHI_FUNASR_FORCED_ALIGNER", raising=False)
-
-
 def test_required_models_cached_guess_uses_explicit_model_env(monkeypatch, tmp_path: Path) -> None:
     ms = tmp_path / "modelscope"
     custom_dir = ms / "models" / "acme" / "custom-sensevoice"

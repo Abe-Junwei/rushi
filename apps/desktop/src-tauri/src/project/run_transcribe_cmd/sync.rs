@@ -20,13 +20,14 @@ use super::super::transcribe_timeout::{
     local_transcribe_timeout_duration, long_audio_transcribe_hint, probe_audio_duration_sec,
 };
 use super::super::types::RunTranscribeOutcome;
-use super::super::utils::{append_desktop_log_line, file_detail_from_conn, open_db};
+use super::super::utils::{
+    append_desktop_log_line, file_detail_from_conn, open_db, resolve_audio_path_under_root,
+};
 use super::helpers::{apply_windowed_warning, record_transcribe_err};
 use super::online_fetch::fetch_online_transcribe_json;
 use super::save::save_transcribe_segments;
 use crate::online_stt_bridge::OnlineTranscribeBridge;
 use crate::DbState;
-use std::path::Path;
 use tauri::State;
 
 #[tauri::command]
@@ -126,13 +127,20 @@ async fn project_run_transcribe_inner(
         .audio_path
         .as_ref()
         .ok_or_else(|| record_transcribe_err(tl, "该文件没有关联音频，无法转写".to_string()))?;
-    let audio_path = Path::new(audio_path);
+    let audio_path = match resolve_audio_path_under_root(&st.root, audio_path) {
+        Ok(path) => path,
+        Err(err) => {
+            append_desktop_log_line(&st, "ERROR transcribe audio_scope_rejected");
+            tl.fail_stage(STAGE_PREFLIGHT, "audio_scope_rejected", &err);
+            return Err(err);
+        }
+    };
     if !audio_path.is_file() {
         append_desktop_log_line(&st, "ERROR transcribe audio_missing");
         tl.fail_stage(STAGE_PREFLIGHT, "audio_missing", "项目音频文件缺失");
         return Err("项目音频文件缺失".to_string());
     }
-    let audio_duration_sec = probe_audio_duration_sec(audio_path);
+    let audio_duration_sec = probe_audio_duration_sec(&audio_path);
     append_desktop_log_line(&st, "INFO transcribe_stage=preflight");
 
     let (mut v, vocabulary_pre_warnings) = if let Some(ref o) = online {
@@ -156,7 +164,7 @@ async fn project_run_transcribe_inner(
             fetch_online_transcribe_json(
                 st_ref,
                 tl,
-                audio_path,
+                &audio_path,
                 &hotwords,
                 &vocabulary,
                 o,
@@ -195,15 +203,19 @@ async fn project_run_transcribe_inner(
                 timeout.as_secs()
             ),
         );
+        let cancel_poll = request_id
+            .as_deref()
+            .filter(|id| !id.trim().is_empty())
+            .map(|id| (cancel_state, id.trim()));
         let v = post_transcribe_multipart(
             &st,
             &url,
-            audio_path,
+            &audio_path,
             hotwords,
             TranscribeHttpOptions {
                 auth: TranscribeRequestAuth::default(),
                 timeout,
-                cancel: None,
+                cancel: cancel_poll,
             },
             Some(tl),
         )

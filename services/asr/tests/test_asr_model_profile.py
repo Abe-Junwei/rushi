@@ -1,7 +1,5 @@
 from __future__ import annotations
 
-import pytest
-
 from rushi_asr.asr_model_profile import (
     LONG_AUDIO_SEC,
     build_generate_kwargs,
@@ -14,32 +12,24 @@ from rushi_asr.segmentation import funasr_generate_kwargs
 
 PARA = "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch"
 SENSE = "iic/SenseVoiceSmall"
-QWEN = "Qwen/Qwen3-ASR-0.6B"
 NANO = "FunAudioLLM/Fun-ASR-Nano-2512"
 
 
 def test_resolve_profiles() -> None:
     assert resolve_asr_model_profile(SENSE).profile_id == "sensevoice_small_v1"
     assert resolve_asr_model_profile(PARA).profile_id == "paraformer_vad_punc_v1"
-    assert resolve_asr_model_profile(QWEN).sku_family == "qwen"
+    assert resolve_asr_model_profile("Qwen/Qwen3-ASR-0.6B").sku_family == "generic"
     assert resolve_asr_model_profile(NANO).profile_id == "funasr_nano_2512_v1"
     assert resolve_asr_model_profile(NANO).sku_family == "funasr_nano"
 
 
-def test_qwen_maps_zh_to_chinese(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.delenv("RUSHI_FUNASR_FORCED_ALIGNER", raising=False)
-    kwargs = build_generate_kwargs(QWEN, "zh", "制控", duration_sec=900.0)
-    assert kwargs["language"] == "Chinese"
+def test_qwen_id_uses_generic_generate_profile() -> None:
+    kwargs = build_generate_kwargs("Qwen/Qwen3-ASR-0.6B", "zh", "制控", duration_sec=900.0)
+    assert kwargs["language"] == "zh"
+    assert kwargs["merge_vad"] is False
+    assert kwargs["batch_size_s"] == 60
     assert kwargs["hotword"] == "制控"
     assert "return_time_stamps" not in kwargs
-
-
-def test_qwen_with_forced_aligner_env_requests_timestamps(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("RUSHI_FUNASR_FORCED_ALIGNER", "Qwen/Qwen3-ForcedAligner-0.6B")
-    kwargs = build_generate_kwargs(QWEN, "zh", None, duration_sec=900.0)
-    assert kwargs["return_time_stamps"] is True
-    assert kwargs["merge_vad"] is False
-    monkeypatch.delenv("RUSHI_FUNASR_FORCED_ALIGNER", raising=False)
 
 
 def test_nano_maps_zh_to_chinese_label() -> None:
@@ -126,7 +116,7 @@ def test_profile_supported_generate_keys_are_explicit() -> None:
     assert "sentence_timestamp" in supported_generate_param_keys(PARA)
     assert "use_itn" not in supported_generate_param_keys(PARA)
     assert "rich_transcription_postprocess" in supported_generate_param_keys(SENSE)
-    assert "return_time_stamps" in supported_generate_param_keys(QWEN)
+    assert "return_time_stamps" not in supported_generate_param_keys("Qwen/Qwen3-ASR-0.6B")
     assert "sentence_timestamp" not in supported_generate_param_keys("custom/generic-model")
 
 

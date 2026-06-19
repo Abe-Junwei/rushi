@@ -13,9 +13,7 @@ from rushi_asr.funasr_pipeline import effective_funasr_punc_model_id, is_funasr_
 from rushi_asr.model_prepare_cache import (
     DEFAULT_PUNC_REQUIRED_FILES,
     DEFAULT_VAD_REQUIRED_FILES,
-    funasr_qwen_hub_id,
     resolve_funasr_automodel_arg,
-    resolve_qwen_forced_aligner_arg,
 )
 
 log = logging.getLogger(__name__)
@@ -47,7 +45,6 @@ def invalidate_funasr_model_cache() -> None:
     with engine._runtime_lock:
         engine._model_singleton = None
         engine._model_loaded_id = None
-        engine._model_loaded_forced_aligner = None
     gc.collect()
     try:
         import torch
@@ -65,15 +62,11 @@ def effective_funasr_language() -> str:
 
 
 def _funasr_hub_extra_kwargs(hub_id: str, resolved_arg: str) -> dict[str, Any]:
-    """Qwen hub ids load via ModelScope (hub=ms), not HuggingFace."""
-    if funasr_qwen_hub_id(hub_id) and resolved_arg == hub_id:
-        return {"hub": "ms"}
+    """Hub ids that cannot be resolved to local paths may still need ModelScope."""
     if is_funasr_nano_model(hub_id) and resolved_arg == hub_id:
         return {"hub": "ms"}
     if resolved_arg != hub_id:
         return {}
-    if "qwen" in hub_id.lower():
-        return {"hub": "ms"}
     return {}
 
 
@@ -103,24 +96,20 @@ def warmup_funasr_model() -> dict[str, Any]:
         "status": "ok",
         "funasr_model_id": model_id,
         "funasr_loaded_model_id": engine.loaded_funasr_model_id(),
-        "funasr_forced_aligner_model_id": engine.effective_funasr_forced_aligner_id(),
         "load_plan": plan,
     }
 
 
 def _get_model(model_id: str) -> Any:
     engine = _engine()
-    forced_aligner = engine.effective_funasr_forced_aligner_id()
     with engine._runtime_lock:
         if (
             engine._model_singleton is not None
             and engine._model_loaded_id == model_id
-            and engine._model_loaded_forced_aligner == forced_aligner
         ):
             return engine._model_singleton
         engine._model_singleton = None
         engine._model_loaded_id = None
-        engine._model_loaded_forced_aligner = None
         try:
             from funasr import AutoModel
         except ImportError as e:
@@ -157,9 +146,6 @@ def _get_model(model_id: str) -> Any:
             )
             kwargs["punc_model"] = punc_arg
             kwargs.update(_funasr_hub_extra_kwargs(punc, punc_arg))
-        if forced_aligner:
-            aligner_arg = resolve_qwen_forced_aligner_arg(forced_aligner)
-            kwargs["forced_aligner"] = aligner_arg
         if is_funasr_nano_model(model_id):
             local_dir = Path(model_arg)
             if local_dir.is_dir():
@@ -173,14 +159,12 @@ def _get_model(model_id: str) -> Any:
                 _ensure_funasr_nano_registered()
 
         log.info(
-            "loading FunASR model %s device=%s vad=%s punc=%s forced_aligner=%s",
+            "loading FunASR model %s device=%s vad=%s punc=%s",
             model_arg,
             device,
             kwargs.get("vad_model") or "-",
             kwargs.get("punc_model") or "-",
-            kwargs.get("forced_aligner") or "-",
         )
         engine._model_singleton = AutoModel(**kwargs)
         engine._model_loaded_id = model_id
-        engine._model_loaded_forced_aligner = forced_aligner
         return engine._model_singleton
