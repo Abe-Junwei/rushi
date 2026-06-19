@@ -5,9 +5,6 @@ export const WELCOME_SEARCH_RECENT_STORAGE_KEY = "rushi:welcome-search-recent:v1
 
 export type WelcomeSearchScope = "all" | "file" | "content";
 
-/** @deprecated use WelcomeSearchScope */
-export type WelcomeSearchMode = "file" | "content";
-
 const RECENT_QUERY_LIMIT = 5;
 
 export function readWelcomeSearchScope(): WelcomeSearchScope {
@@ -28,17 +25,6 @@ export function writeWelcomeSearchScope(scope: WelcomeSearchScope): void {
   } catch {
     /* quota / private mode */
   }
-}
-
-/** @deprecated */
-export function readWelcomeSearchMode(): WelcomeSearchMode {
-  const scope = readWelcomeSearchScope();
-  return scope === "content" ? "content" : "file";
-}
-
-/** @deprecated */
-export function writeWelcomeSearchMode(mode: WelcomeSearchMode): void {
-  writeWelcomeSearchScope(mode);
 }
 
 export function readRecentSearchQueries(): string[] {
@@ -113,14 +99,4 @@ export function peekWelcomeSearchEditorHighlight(
 
 export function clearWelcomeSearchEditorHighlight(): void {
   pendingEditorHighlight = null;
-}
-
-export function recentFileToSearchTargets(file: {
-  projectId: string;
-  fileId: string;
-}): {
-  projectId: string;
-  fileId: string;
-} {
-  return { projectId: file.projectId, fileId: file.fileId };
 }

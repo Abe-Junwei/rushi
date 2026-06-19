@@ -1,6 +1,6 @@
 # 代码库清理 — 候选登记表
 
-> **状态**：Wave A **已执行 2026-06-18** · Wave B–D ✅ · Wave E1–E4 ✅ · Wave F (CLN-070) ✅ · Wave G (CLN-072) ✅ · Wave H (CLN-073–074) ✅  
+> **状态**：Wave A **已执行 2026-06-18** · Wave B–D ✅ · Wave E1–E5 ✅ · Wave F (CLN-070) ✅ · Wave G (CLN-072) ✅ · Wave H (CLN-073–074) ✅  
 > **基线**：[cleanup-scan-baseline.md](./cleanup-scan-baseline.md)  
 > **图例**：动作 `DELETE` / `ARCHIVE` / `MERGE` / `FIX` / `KEEP` / `DEFER` · 风险 `L0`低 `L1`中 `L2`高 `L3`禁止
 

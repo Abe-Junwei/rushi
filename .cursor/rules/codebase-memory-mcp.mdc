@@ -1,0 +1,35 @@
+---
+description: 探索/重构 Rushi 代码库时优先用 codebase-memory MCP 结构化查询，减少 grep 循环
+alwaysApply: true
+---
+
+# codebase-memory MCP（Rushi 代码图谱）
+
+MCP server：`codebase-memory`（已配置于用户 `~/.cursor/mcp.json`）。索引项目名：`Users-junwei-Rushi`（路径含中文时以此为准，勿用 repo_path 猜项目名）。
+
+## 何时必须优先用 MCP（而非先 grep/read 扫仓库）
+
+1. **调用链 / 影响面**：refactor、删函数、改 service/coordinator、跨文件追 caller/callee
+2. **架构摸底**：包划分、入口、热点、模块边界（先 `get_architecture` 或 `get_graph_schema`）
+3. **变更风险**：大 diff 前用 `detect_changes` 看 blast radius
+4. **找定义再读码**：用 `search_graph` / `trace_path` 定位 qualified name，再用 `get_code_snippet` 读片段
+
+## 工具选用（简表）
+
+| 意图 | 工具 |
+|------|------|
+| 谁调用了 X / X 调用了谁 | `trace_path`（`direction=outbound|inbound|both`，`depth` 3–5） |
+| 按名/文件/标签搜符号 | `search_graph` |
+| 改动的 symbol 影响 | `detect_changes` |
+| 仓库结构概览 | `get_architecture` |
+| 图查询 | `query_graph`（Cypher 子集） |
+
+## Rushi 读图局限（与源码对照）
+
+- **React dep 注入**：`environmentCapabilityCoordinator` 等模块的 `effectiveDeps.*` 在 outbound 图里常截断；补读 `useProjectController` 注入 + 对 Tauri API（如 `ollamaDetectStatus`、`asr_loopback_request`）做 **inbound** `trace_path`。
+- **领域真源不在图里**：能力—UI 对齐、ASR 策略、spec/ADR、`CONTEXT.md` — 仍读 `docs/architecture/` 与 `docs/execution/specs/`。
+- **小改 / 单文件 bugfix**：直接读已知路径，不必强行走 MCP。
+
+## 索引
+
+`auto_index` 已开：MCP 连接后会自动索引/同步。若图谱明显 stale，调用 `index_repository` 或 CLI：`codebase-memory-mcp cli index_repository '{"repo_path":"<仓库根>"}'`。

@@ -29,7 +29,6 @@ export {
   persistLlmRuntimeConfig,
   readLastCloudRuntimeConfig,
   readLlmRuntimeConfigFromStorage,
-  resolveAutoPunctuateBlockReason,
   resolveStageBBlockReason,
   setLlmApiKeyInMemory,
   snapshotLastCloudRuntimeFromStorage,
@@ -60,9 +59,7 @@ export {
   llmExportPolishCapabilityBadge,
   llmExportPolishCapabilityBadgeClass,
   llmKeychainReferenceMessage,
-  LLM_CAPABILITIES,
   resolveLlmConnectionUiStatus,
-  type LlmCapabilityId,
   type LlmConnectionUiStatus,
   type LlmConnectionUiStatusInput,
 } from "./llmConnectionUi";

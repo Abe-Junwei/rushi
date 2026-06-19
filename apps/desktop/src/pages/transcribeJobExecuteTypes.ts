@@ -1,5 +1,4 @@
 import type { TranscribeSource } from "../services/stt/transcribeSource";
-import type { ProjectDetail } from "../tauri/projectApi";
 import * as p1 from "../tauri/projectApi";
 import type { useProjectCloseGateController } from "./useProjectCloseGateController";
 import type { useProjectEditorState } from "./useProjectEditorState";
@@ -51,5 +50,3 @@ export type TranscribeJobExecuteArgs = {
   clearScheduledAutoSave?: () => void;
   onTranscribeSuccess?: (out: p1.RunTranscribeOutcome) => void;
 };
-
-export type TranscribeJobExecuteApplyDetail = (d: ProjectDetail) => void;

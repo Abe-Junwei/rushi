@@ -135,7 +135,3 @@ export const DEFAULT_OFFICE_ACCENT_THEME_ID: OfficeAccentThemeId = "brand";
 export function isOfficeAccentThemeId(value: string): value is OfficeAccentThemeId {
   return OFFICE_ACCENT_THEME_PRESETS.some((preset) => preset.id === value);
 }
-
-export function getOfficeAccentThemePreset(id: OfficeAccentThemeId): OfficeAccentThemePreset {
-  return OFFICE_ACCENT_THEME_PRESETS.find((preset) => preset.id === id) ?? BRAND_OFFICE_ACCENT;
-}

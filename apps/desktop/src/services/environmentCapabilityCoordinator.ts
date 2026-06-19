@@ -68,12 +68,6 @@ function patchStore(partial: Partial<EnvironmentCapabilityStoreState>): void {
   envCapabilityStore.setState(partial);
 }
 
-export function subscribeEnvironmentCapabilitySnapshot(
-  listener: (snapshot: EnvironmentCapabilitySnapshot | null) => void,
-): () => void {
-  return envCapabilityStore.subscribe((state) => listener(state.snapshot));
-}
-
 export function registerEnvironmentCapabilityRefreshDeps(
   deps: EnvironmentCapabilityRefreshDeps,
 ): () => void {

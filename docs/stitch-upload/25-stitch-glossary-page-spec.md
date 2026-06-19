@@ -18,15 +18,15 @@
 | 页面壳 | [`GlossaryPage.tsx`](../src/components/GlossaryPage.tsx) |
 | 编排 | [`useGlossaryPageController.ts`](../src/pages/useGlossaryPageController.ts) |
 | 转写词汇表 | [`GlossaryTermManagementSection.tsx`](../src/components/glossary/GlossaryTermManagementSection.tsx) · [`GlossaryTermTable.tsx`](../src/components/glossary/GlossaryTermTable.tsx) · [`GlossaryTermEditor.tsx`](../src/components/glossary/GlossaryTermEditor.tsx) |
-| 携带摘要 | （已移除独立组件；见 `GlossaryPanel`） |
+> **代码对照（2026-06）**：`GlossaryHotwordsSummarySection` / `GlossaryLexiconBundleSection` 已移除；以当前 `GlossaryPage` + workspace sections 为准。
 | 推荐采纳 | [`GlossaryMineSection.tsx`](../src/components/glossary/GlossaryMineSection.tsx) |
 | 纠错记忆 | [`GlossaryCorrectionMemorySection.tsx`](../src/components/glossary/GlossaryCorrectionMemorySection.tsx) · [`CorrectionMemoryTable.tsx`](../src/components/glossary/CorrectionMemoryTable.tsx) |
-| 词表包 | [`GlossaryLexiconBundleSection.tsx`](../src/components/glossary/GlossaryLexiconBundleSection.tsx) |
+| 词表包 | [`GlossaryBundleWorkspace.tsx`](../src/components/glossary/GlossaryBundleWorkspace.tsx) · [`LexiconBundleImportDialog.tsx`](../src/components/glossary/LexiconBundleImportDialog.tsx) · [`LexiconBundleExportDialog.tsx`](../src/components/glossary/LexiconBundleExportDialog.tsx) |
 | 共享样式 | [`glossaryPanelStyles.ts`](../src/components/glossary/glossaryPanelStyles.ts) · [`controlStyles.ts`](../src/config/controlStyles.ts) |
 | 领域纪律 | [`asr-vocabulary-bias-practices.md`](../../../docs/architecture/asr-vocabulary-bias-practices.md) · [`desktop-capability-ui-state-alignment.md`](../../../docs/architecture/desktop-capability-ui-state-alignment.md) |
 | 壳层参照 | [`EnvironmentPanel.tsx`](../src/components/EnvironmentPanel.tsx)（左 nav + 右 scroll main） |
 
-**入口上下文**：用户从 [`WelcomeSidebar`](WelcomeSidebar.tsx) 点击「热词与记忆」进入；顶栏为 [`WelcomeTopBar`](WelcomeTopBar.tsx)（ASR/LLM 芯片），**不是**浮动环境面板。
+**入口上下文**：用户从 [`WelcomeSidebar`](../src/components/WelcomeSidebar.tsx) 点击「热词与记忆」进入；顶栏为 [`WelcomeTopBar`](../src/components/WelcomeTopBar.tsx)（ASR/LLM 芯片），**不是**浮动环境面板。
 
 ---
 
@@ -247,7 +247,7 @@
 
 ### 7.4 冲突 Banner
 
-- 保留 [`CorrectionMemoryConflictBanner`](CorrectionMemoryConflictBanner.tsx) 语义
+- 保留 [`CorrectionMemoryConflictBanner`](../src/components/glossary/CorrectionMemoryConflictBanner.tsx) 语义
 - 列表上方全宽；`bg-zen-saffron/10` + Alert 图标
 - 每条冲突：错形 → 正词列表 (hit N)
 

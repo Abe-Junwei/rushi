@@ -267,4 +267,4 @@ export function llmConfigHint(): string {
   return `请在「${ENV_NAV.llm}」选择厂商并保存 API Key。`;
 }
 
-export { resolveAutoPunctuateBlockReason, resolveStageBBlockReason } from "./llmRuntimeBlockReasons";
+export { resolveStageBBlockReason } from "./llmRuntimeBlockReasons";

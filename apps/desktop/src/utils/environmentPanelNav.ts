@@ -33,10 +33,6 @@ export const ENV_NAV_ITEM_DEFS: EnvNavItemDef[] = [
   { id: "about", label: "关于", description: "版本与第三方许可" },
 ];
 
-export function envNavWidthClass(layoutCompact: boolean): string {
-  return layoutCompact ? "w-48" : "w-60";
-}
-
 export function envMainPaddingClass(layoutCompact: boolean): string {
   return layoutCompact ? "px-4 py-4" : "px-6 py-5";
 }

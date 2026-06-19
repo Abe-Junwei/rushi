@@ -18,8 +18,6 @@ export {
   OVERLAY_SCRIM_SURFACE_CLASS,
 };
 
-export const OVERLAY_SCRIM_BG = OVERLAY_SCRIM_SURFACE_CLASS.bg;
-
 /** Full-viewport scrim without flex layout */
 export const OVERLAY_SCRIM_LAYER = OVERLAY_SCRIM_LAYER_CLASS;
 

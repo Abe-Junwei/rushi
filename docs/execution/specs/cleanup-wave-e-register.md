@@ -59,6 +59,32 @@
 
 > **结果**：knip **unused exports 0 · unused types 0**（全绿）
 
+## Wave E5（已执行 2026-06-18）
+
+> **基线**：Round 3 代码变更后重新运行 knip，复现 **13 unused exports + 2 unused types**
+> **动作**：人工逐文件确认后全部 DELETE（均为内部符号或已废弃 API，非 `tauri/` / plugin 公共面）
+> **结果**：knip **unused exports 0 · unused types 0**（全绿）
+
+| ID | 项 | 文件 | 动作 | 理由 |
+|----|-----|------|------|------|
+| CLN-E51 | `getOfficeAccentThemePreset` | `config/officeAccentThemes.ts` | DELETE | `EnvAppearancePanel` 已直接消费 `OFFICE_ACCENT_THEME_PRESETS` |
+| CLN-E52 | `OVERLAY_SCRIM_BG` | `config/overlayStyles.ts` | DELETE | 未使用；`OVERLAY_SCRIM_SURFACE_CLASS.bg` 可直接消费 |
+| CLN-E53 | `WORKSPACE_SIDEBAR_WIDTH` | `config/workspaceShellLayout.ts` | DELETE | 未使用；宽度已由 CSS 真源控制 |
+| CLN-E54 | `subscribeEnvironmentCapabilitySnapshot` | `services/environmentCapabilityCoordinator.ts` | DELETE | 当前无订阅方；如未来需要可复加 |
+| CLN-E55 | `resolveAutoPunctuateBlockReason` | `services/postprocess/llmRuntimeBlockReasons.ts` | DELETE | 自动标点功能已移除（CLN-003）；同步清理 barrel re-export |
+| CLN-E56 | `getAppAppearanceSnapshot` | `services/ui/appAppearance.ts` | DELETE | 未使用；移除后清理对应 import |
+| CLN-E57 | `wfProfileStandalone` | `services/waveform/waveformZoomProfile.ts` | DELETE | dev profile 工具，当前无调用 |
+| CLN-E58 | `readRecentWaveformZoomProfileLines` | `services/waveform/waveformZoomProfile.ts` | DELETE | dev profile 工具，当前无调用 |
+| CLN-E59 | `readWelcomeSearchMode` / `writeWelcomeSearchMode` | `services/welcome/welcomeSearch.ts` | DELETE | 已标记 `@deprecated`，无调用 |
+| CLN-E60 | `recentFileToSearchTargets` | `services/welcome/welcomeSearch.ts` | DELETE | identity 函数，无调用 |
+| CLN-E61 | `setCspRootRules` | `utils/cspElementLayout.ts` | DELETE | 未使用；CSP scope 工具保留 `readCspLayoutRulesForElement` |
+| CLN-E62 | `envNavWidthClass` | `utils/environmentPanelNav.ts` | DELETE | 未使用；`envMainPaddingClass` 仍保留 |
+| CLN-E63 | `TranscribeJobExecuteApplyDetail` | `pages/transcribeJobExecuteTypes.ts` | DELETE | 类型未使用；清理 `ProjectDetail` import |
+| CLN-E64 | `LLM_CAPABILITIES` | `services/postprocess/llmConnectionUi.ts` | DELETE | 数据常量无外部消费；同步清理 barrel re-export |
+| CLN-E65 | `LlmCapabilityId` / `WelcomeSearchMode` | `llmConnectionUi.ts` / `welcomeSearch.ts` | DELETE | 依赖移除后类型变为孤立 |
+
+**验证**：`npm run typecheck && npm run test && npm run lint && node scripts/check-architecture-guard.mjs` 全绿；
+
 | ID | 项 | 动作 |
 |----|-----|------|
 | CLN-E40 | `ColorToken` | DELETE |
