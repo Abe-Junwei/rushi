@@ -27,7 +27,6 @@ export async function loadPeakCacheFromStatus(
   if (ready.length === 0) return null;
 
   const bootstrapLevels = ready.filter((l) => l.level <= 1);
-  const deferredLevels = ready.filter((l) => l.level >= 2);
   const bootstrapEntries =
     bootstrapLevels.length > 0
       ? bootstrapLevels
@@ -35,11 +34,8 @@ export async function loadPeakCacheFromStatus(
 
   const cache = await PeakCache.fromLevelUrls(bootstrapEntries.map(levelToEntry));
   if (!cache) return null;
+  cache.registerLevels(ready.map(levelToEntry));
   onBootstrap?.(cache);
-
-  if (deferredLevels.length > 0) {
-    await cache.loadLevels(deferredLevels.map(levelToEntry));
-  }
   return cache;
 }
 
@@ -98,7 +94,11 @@ export async function waitForPeaksWithPolling(input: {
       if (!input.isCancelled()) {
         input.onStatus(next);
         if (!cache || next.levels.some((l) => l.exists && !st.levels.find((o) => o.level === l.level)?.exists)) {
-          cache = await loadPeakCacheFromStatus(next, input.onBootstrap);
+          if (cache) {
+            cache.registerLevels(next.levels.filter((l) => l.exists).map(levelToEntry));
+          } else {
+            cache = await loadPeakCacheFromStatus(next, input.onBootstrap);
+          }
         }
         st = next;
       }
@@ -110,7 +110,11 @@ export async function waitForPeaksWithPolling(input: {
 
   if (!input.isCancelled()) {
     input.onStatus(st);
-    cache = await loadPeakCacheFromStatus(st, input.onBootstrap);
+    if (cache) {
+      cache.registerLevels(st.levels.filter((l) => l.exists).map(levelToEntry));
+    } else {
+      cache = await loadPeakCacheFromStatus(st, input.onBootstrap);
+    }
   }
   return { status: st, cache };
 }

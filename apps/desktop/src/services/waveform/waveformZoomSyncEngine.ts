@@ -248,47 +248,29 @@ export function loadPeaksIntoWaveSurfer(input: {
     );
   };
 
-  try {
-    const bundle = wfProfileTime("resample", () => cache.getWaveSurferPeaks(loadPeaksPx, layoutDur));
-    void applyLoadedPeaks(bundle)
-      ?.catch((err) => {
-        if (isWaveSurferAbortError(err)) return;
-        if (wsRef.current !== ws) return;
-        const msg = err instanceof Error ? err.message : String(err);
-        logDesktopUi("ERROR", `waveform peaks load: ${msg}`);
-        logWaveformRenderPath("decode", "peaks_load_failed", msg.slice(0, 120));
-        onPeaksApplied(false, Number.NaN, 0);
-        commitWaveSurferZoom({
-          ws,
-          intentPxPerSec,
-          appliedZoom,
-          inFlight,
-          onZoomApplied,
-        });
-      })
-      .finally(() => {
-        if (inFlight.peaksLoadInFlightPxRef.current === loadPeaksPx) {
-          inFlight.peaksLoadInFlightPxRef.current = null;
-        }
-        wfProfileFlush();
+  void wfProfileTimeAsync("resample", () => cache.getWaveSurferPeaksAsync(loadPeaksPx, layoutDur))
+    .then((bundle) => applyLoadedPeaks(bundle))
+    .catch((err) => {
+      if (isWaveSurferAbortError(err)) return;
+      if (wsRef.current !== ws) return;
+      const msg = err instanceof Error ? err.message : String(err);
+      logDesktopUi("ERROR", `waveform peaks load: ${msg}`);
+      logWaveformRenderPath("decode", "peaks_load_failed", msg.slice(0, 120));
+      onPeaksApplied(false, Number.NaN, 0);
+      commitWaveSurferZoom({
+        ws,
+        intentPxPerSec,
+        appliedZoom,
+        inFlight,
+        onZoomApplied,
       });
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    logDesktopUi("ERROR", `waveform peaks resample: ${msg}`);
-    logWaveformRenderPath("decode", "peaks_resample_failed", msg.slice(0, 120));
-    onPeaksApplied(false, Number.NaN, 0);
-    commitWaveSurferZoom({
-      ws,
-      intentPxPerSec,
-      appliedZoom,
-      inFlight,
-      onZoomApplied,
+    })
+    .finally(() => {
+      if (inFlight.peaksLoadInFlightPxRef.current === loadPeaksPx) {
+        inFlight.peaksLoadInFlightPxRef.current = null;
+      }
+      wfProfileFlush();
     });
-    if (inFlight.peaksLoadInFlightPxRef.current === loadPeaksPx) {
-      inFlight.peaksLoadInFlightPxRef.current = null;
-    }
-    wfProfileFlush();
-  }
 }
 
 export function clearPeaksAppliedForDecode(appliedZoom: WaveformAppliedZoomState): void {

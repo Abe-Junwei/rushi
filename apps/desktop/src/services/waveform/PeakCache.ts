@@ -8,6 +8,11 @@ import {
   waveformDataToWaveSurferPeaksAsync,
   waveformDurationSec,
 } from "./audiowaveformDat";
+import {
+  ByteBudgetLruMap,
+  estimateWaveSurferPeaksBundleBytes,
+  estimateWaveformLikeBytes,
+} from "./peakCacheByteBudget";
 import { PEAK_LOD_LEVELS, pickPeakLodLevel } from "./peakLevels";
 
 type LoadedPeakLevel = {
@@ -16,30 +21,59 @@ type LoadedPeakLevel = {
   data: WaveformData;
 };
 
+type PeakLevelEntry = {
+  level: number;
+  pixelsPerSecond: number;
+  path: string;
+};
+
 export type WaveSurferPeaksBundle = {
   peaks: Array<Float32Array | number[]>;
   duration: number;
+};
+
+export type PeakCacheOptions = {
+  rawBudgetBytes?: number;
+  resampleBudgetBytes?: number;
 };
 
 export class PeakCache {
   readonly durationSec: number;
   readonly sampleRate: number;
 
-  private static readonly RESAMPLE_CACHE_MAX = 16;
+  private static readonly DEFAULT_RAW_BUDGET_BYTES = 96 * 1024 * 1024;
+  private static readonly DEFAULT_RESAMPLE_BUDGET_BYTES = 64 * 1024 * 1024;
 
-  private readonly levels: Map<number, WaveformData>;
+  private readonly knownLevels: Map<number, PeakLevelEntry>;
+  private readonly levels: ByteBudgetLruMap<number, LoadedPeakLevel>;
   /** Key = `${lodLevel}:${targetWidthPx}` for a given peaks-load px/s bucket. */
-  private readonly resampleCache = new Map<string, WaveSurferPeaksBundle>();
-  private readonly resampleCacheOrder: string[] = [];
+  private readonly resampleCache: ByteBudgetLruMap<string, WaveSurferPeaksBundle>;
+  private readonly loadPromises = new Map<number, Promise<LoadedPeakLevel>>();
 
-  private constructor(levels: LoadedPeakLevel[], durationSec: number, sampleRate: number) {
+  private constructor(
+    entries: PeakLevelEntry[],
+    levels: LoadedPeakLevel[],
+    durationSec: number,
+    sampleRate: number,
+    options: PeakCacheOptions = {},
+  ) {
     this.durationSec = durationSec;
     this.sampleRate = sampleRate;
-    this.levels = new Map(levels.map((l) => [l.level, l.data]));
+    this.knownLevels = new Map(entries.map((entry) => [entry.level, entry]));
+    this.levels = new ByteBudgetLruMap(
+      options.rawBudgetBytes ?? PeakCache.DEFAULT_RAW_BUDGET_BYTES,
+    );
+    this.resampleCache = new ByteBudgetLruMap(
+      options.resampleBudgetBytes ?? PeakCache.DEFAULT_RESAMPLE_BUDGET_BYTES,
+    );
+    for (const level of levels) {
+      this.storeLoadedLevel(level);
+    }
   }
 
   static async fromLevelUrls(
-    entries: Array<{ level: number; pixelsPerSecond: number; path: string }>,
+    entries: PeakLevelEntry[],
+    options?: PeakCacheOptions,
   ): Promise<PeakCache | null> {
     if (entries.length === 0) return null;
     const loaded = await Promise.all(
@@ -50,45 +84,54 @@ export class PeakCache {
       })),
     );
     const finest = loaded.reduce((a, b) => (a.pixelsPerSecond >= b.pixelsPerSecond ? a : b));
-    return new PeakCache(loaded, waveformDurationSec(finest.data), finest.data.sample_rate);
+    return new PeakCache(
+      entries,
+      loaded,
+      waveformDurationSec(finest.data),
+      finest.data.sample_rate,
+      options,
+    );
+  }
+
+  registerLevels(entries: PeakLevelEntry[]): void {
+    for (const entry of entries) {
+      this.knownLevels.set(entry.level, entry);
+    }
   }
 
   /** Load additional LOD files into an existing cache (e.g. L2 after L0/L1 bootstrap). */
-  async loadLevels(
-    entries: Array<{ level: number; pixelsPerSecond: number; path: string }>,
-  ): Promise<void> {
-    const pending = entries.filter((entry) => !this.levels.has(entry.level));
-    if (pending.length === 0) return;
-    const loaded = await Promise.all(
-      pending.map(async (entry) => ({
-        level: entry.level,
-        pixelsPerSecond: entry.pixelsPerSecond,
-        data: await loadWaveformDatFromPath(entry.path),
-      })),
-    );
-    for (const entry of loaded) {
-      this.levels.set(entry.level, entry.data);
-    }
+  async loadLevels(entries: PeakLevelEntry[]): Promise<void> {
+    this.registerLevels(entries);
+    await Promise.all(entries.map((entry) => this.ensureLevel(entry.level)));
   }
 
   hasLevel(level: number): boolean {
     return this.levels.has(level);
   }
 
+  async ensureLevelForPxPerSec(pxPerSec: number): Promise<LoadedPeakLevel> {
+    return this.ensureLevel(this.resolveKnownLevelForPxPerSec(pxPerSec));
+  }
+
+  async ensureCoarsestLevel(): Promise<LoadedPeakLevel | null> {
+    const level = this.resolveCoarsestKnownLevel();
+    return level == null ? null : this.ensureLevel(level);
+  }
+
   pickBaseLevel(pxPerSec: number): LoadedPeakLevel | null {
-    const level = pickPeakLodLevel(pxPerSec);
-    let data = this.levels.get(level);
-    let pickedLevel = level;
-    if (!data) {
-      const entries = [...this.levels.entries()].sort((a, b) => b[0] - a[0]);
-      const fallback = entries[0];
+    let pickedLevel = this.resolveKnownLevelForPxPerSec(pxPerSec);
+    let entry = this.levels.get(pickedLevel);
+    if (!entry) {
+      const fallback = [...this.levels.values()].sort((a, b) => b.level - a.level)[0];
       if (!fallback) return null;
-      pickedLevel = fallback[0];
-      data = fallback[1];
+      pickedLevel = fallback.level;
+      entry = fallback;
     }
-    const meta = PEAK_LOD_LEVELS.find((l) => l.level === pickedLevel);
-    if (!meta || !data) return null;
-    return { level: meta.level, pixelsPerSecond: meta.pixelsPerSecond, data };
+    return {
+      level: pickedLevel,
+      pixelsPerSecond: entry.pixelsPerSecond,
+      data: entry.data,
+    };
   }
 
   getWaveSurferPeaks(pxPerSec: number, layoutMediaDurationSec?: number): WaveSurferPeaksBundle {
@@ -99,10 +142,7 @@ export class PeakCache {
     pxPerSec: number,
     layoutMediaDurationSec?: number,
   ): Promise<WaveSurferPeaksBundle> {
-    const base = this.pickBaseLevel(pxPerSec);
-    if (!base) {
-      throw new Error("PeakCache 无可用 LOD");
-    }
+    const base = await this.ensureLevelForPxPerSec(pxPerSec);
     const layoutDur =
       layoutMediaDurationSec != null && layoutMediaDurationSec > 0
         ? layoutMediaDurationSec
@@ -111,7 +151,6 @@ export class PeakCache {
     const key = `${base.level}:${targetWidthPx}`;
     const cached = this.resampleCache.get(key);
     if (cached) {
-      this.touchResampleKey(key);
       return cached;
     }
 
@@ -139,7 +178,6 @@ export class PeakCache {
     const key = `${base.level}:${targetWidthPx}`;
     const cached = this.resampleCache.get(key);
     if (cached) {
-      this.touchResampleKey(key);
       return cached;
     }
 
@@ -153,8 +191,10 @@ export class PeakCache {
 
   private pickCoarsestLevelData(): WaveformData | null {
     for (const lod of PEAK_LOD_LEVELS) {
-      const data = this.levels.get(lod.level);
-      if (data) return data;
+      const data = this.levels.get(lod.level)?.data;
+      if (data) {
+        return data;
+      }
     }
     return null;
   }
@@ -180,7 +220,8 @@ export class PeakCache {
     layoutMediaDurationSec?: number,
   ): Promise<WaveSurferPeaksBundle | null> {
     try {
-      const base = this.pickCoarsestLevelData();
+      const loaded = await this.ensureCoarsestLevel();
+      const base = loaded?.data ?? null;
       if (!base) return null;
       const layoutDur =
         layoutMediaDurationSec != null && layoutMediaDurationSec > 0
@@ -201,23 +242,50 @@ export class PeakCache {
   private storeResample(key: string, bundle: WaveSurferPeaksBundle): WaveSurferPeaksBundle {
     const existing = this.resampleCache.get(key);
     if (existing) {
-      this.touchResampleKey(key);
       return existing;
     }
-    this.resampleCache.set(key, bundle);
-    this.resampleCacheOrder.push(key);
-    while (this.resampleCacheOrder.length > PeakCache.RESAMPLE_CACHE_MAX) {
-      const oldest = this.resampleCacheOrder.shift();
-      if (oldest) this.resampleCache.delete(oldest);
-    }
+    const bytes = estimateWaveSurferPeaksBundleBytes(bundle.peaks);
+    this.resampleCache.set(key, bundle, bytes);
     return bundle;
   }
 
-  private touchResampleKey(key: string): void {
-    const idx = this.resampleCacheOrder.indexOf(key);
-    if (idx >= 0) {
-      this.resampleCacheOrder.splice(idx, 1);
-      this.resampleCacheOrder.push(key);
+  private resolveKnownLevelForPxPerSec(pxPerSec: number): number {
+    const target = pickPeakLodLevel(pxPerSec);
+    if (this.knownLevels.has(target)) return target;
+    const levels = [...this.knownLevels.keys()].sort((a, b) => b - a);
+    return levels[0] ?? target;
+  }
+
+  private resolveCoarsestKnownLevel(): number | null {
+    return [...this.knownLevels.keys()].sort((a, b) => a - b)[0] ?? null;
+  }
+
+  private async ensureLevel(level: number): Promise<LoadedPeakLevel> {
+    const cached = this.levels.get(level);
+    if (cached) {
+      return cached;
     }
+    const existing = this.loadPromises.get(level);
+    if (existing) return existing;
+    const entry = this.knownLevels.get(level);
+    if (!entry) {
+      throw new Error(`PeakCache 缺少 LOD ${level}`);
+    }
+    const pending = loadWaveformDatFromPath(entry.path)
+      .then((data) => {
+        const loaded = { level: entry.level, pixelsPerSecond: entry.pixelsPerSecond, data };
+        this.storeLoadedLevel(loaded);
+        return loaded;
+      })
+      .finally(() => {
+        this.loadPromises.delete(level);
+      });
+    this.loadPromises.set(level, pending);
+    return pending;
+  }
+
+  private storeLoadedLevel(level: LoadedPeakLevel): void {
+    const bytes = estimateWaveformLikeBytes(level.data);
+    this.levels.set(level.level, level, bytes);
   }
 }

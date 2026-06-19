@@ -37,6 +37,7 @@ export function makePeakCacheMock(
 ) {
   return {
     getWaveSurferPeaks: vi.fn().mockReturnValue(bundle),
+    getWaveSurferPeaksAsync: vi.fn().mockResolvedValue(bundle),
   };
 }
 

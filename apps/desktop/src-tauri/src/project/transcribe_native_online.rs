@@ -104,20 +104,40 @@ pub async fn transcribe_assemblyai_native(
         .filter(|s| !s.is_empty())
         .ok_or_else(|| "AssemblyAI 缺少 authorization / API Key".to_string())?;
     let deadline = Instant::now() + timeout;
-    let client = crate::stt_native::http_client();
-    let bytes = crate::stt_native::read_audio_bytes_limited(audio_path)
-        .map_err(|e| format!("读取音频失败: {e}"))?;
     append_desktop_log_line(st, "INFO transcribe assemblyai_upload");
     ensure_transcribe_not_cancelled(cancel)?;
-    let upload_res = client
-        .post(format!("{base}/v2/upload"))
-        .timeout(timeout)
-        .header("authorization", auth)
-        .header("Content-Type", "application/octet-stream")
-        .body(bytes)
+    let upload_url = format!("{base}/v2/upload");
+    let build_upload = |client: &reqwest::Client, body: reqwest::Body, len: u64| {
+        client
+            .post(&upload_url)
+            .timeout(timeout)
+            .header("authorization", auth)
+            .header("Content-Type", "application/octet-stream")
+            .header("Content-Length", len)
+            .body(body)
+    };
+    let (upload_body, upload_len) =
+        crate::stt_native::octet_stream_body_from_file(audio_path).await?;
+    let primary = build_upload(crate::stt_native::http_client(), upload_body, upload_len)
         .send()
-        .await
-        .map_err(|e| format!("AssemblyAI 上传失败: {e}"))?;
+        .await;
+    let upload_res = match primary {
+        Ok(resp) => resp,
+        Err(e) if crate::stt_native::is_retryable_stt_transport(&e) => {
+            ensure_transcribe_not_cancelled(cancel)?;
+            let (upload_body, upload_len) =
+                crate::stt_native::octet_stream_body_from_file(audio_path).await?;
+            build_upload(
+                crate::stt_native::http_client_direct(),
+                upload_body,
+                upload_len,
+            )
+            .send()
+            .await
+            .map_err(|e| format!("AssemblyAI 上传失败: {e}"))?
+        }
+        Err(e) => return Err(format!("AssemblyAI 上传失败: {e}")),
+    };
     if !upload_res.status().is_success() {
         let status = upload_res.status();
         let body = upload_res.text().await.unwrap_or_default();
@@ -131,6 +151,7 @@ pub async fn transcribe_assemblyai_native(
         .ok_or_else(|| "AssemblyAI 上传响应缺少 upload_url".to_string())?;
     append_desktop_log_line(st, "INFO transcribe assemblyai_create");
     ensure_transcribe_not_cancelled(cancel)?;
+    let client = crate::stt_native::http_client();
     let keyterms = assemblyai_keyterms(vocabulary);
     let mut create_body = serde_json::json!({ "audio_url": audio_url });
     if !keyterms.is_empty() {
