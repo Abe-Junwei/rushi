@@ -8,6 +8,7 @@ export {
   segmentListRangeDragExceededSlop,
   segmentListRangeDragVerticalIntentExceededSlop,
   segmentListRowMinHeightPx,
+  segmentListVirtualRowTopPx,
   SEGMENT_LIST_VIRTUAL_OVERSCAN,
   SEGMENT_LIST_VIRTUALIZE_MIN_COUNT,
   type SegmentListScrollAlign,

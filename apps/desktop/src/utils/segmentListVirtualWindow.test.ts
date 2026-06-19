@@ -17,6 +17,7 @@ import {
   SEGMENT_LIST_SCROLL_ATTR,
   SEGMENT_LIST_VIRTUALIZE_MIN_COUNT,
   segmentListItemStridePx,
+  segmentListVirtualRowTopPx,
   writeSegmentListFilterIndices,
 } from "./segmentListVirtualWindow";
 
@@ -50,6 +51,12 @@ describe("segmentListVirtualWindow", () => {
 
   it("uses 90 segments as virtualize threshold", () => {
     expect(SEGMENT_LIST_VIRTUALIZE_MIN_COUNT).toBe(90);
+  });
+
+  it("segmentListVirtualRowTopPx maps display index to fixed stride slots", () => {
+    const stride = segmentListItemStridePx(70);
+    expect(segmentListVirtualRowTopPx(0, stride)).toBe(0);
+    expect(segmentListVirtualRowTopPx(142, stride)).toBe(142 * stride);
   });
 
   it("scrolls selected row into view when off-screen (minimal align)", () => {

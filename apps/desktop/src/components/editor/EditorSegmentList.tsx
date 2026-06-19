@@ -3,7 +3,10 @@ import { CspLayout } from "../CspLayout";
 import type { SegmentContextMenuOpen } from "../../utils/segmentContextMenuModel";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../../pages/useTranscriptionLayer";
-import { SEGMENT_LIST_SCROLL_ATTR } from "../../utils/segmentListVirtualWindow";
+import {
+  SEGMENT_LIST_SCROLL_ATTR,
+  segmentListVirtualRowTopPx,
+} from "../../utils/segmentListVirtualWindow";
 import { SegmentTextListRow } from "../SegmentTextListRow";
 import { segmentHasUnsavedText } from "../../services/segmentConfirmEligible";
 import type { SegmentListFilterNavState } from "../../utils/segmentListFilterNav";
@@ -51,7 +54,7 @@ export function EditorSegmentList({
           : -1
       : -1;
 
-  const { useVirtualList, handleScroll, virtualWindow } = useEditorSegmentListScroll({
+  const { useVirtualList, itemStridePx, handleScroll, virtualWindow } = useEditorSegmentListScroll({
     segmentListRef,
     filterNavRef,
     filteredIndices,
@@ -216,14 +219,26 @@ export function EditorSegmentList({
             position: "relative",
           }}
         >
-          <CspLayout
-            className="will-change-transform"
-            layout={{
-              transform: `translate3d(0, ${virtualWindow.paddingTopPx}px, 0)`,
-            }}
-          >
-            {visibleIndices.map((segIdx) => renderSegmentRow(segIdx))}
-          </CspLayout>
+          {visibleIndices.map((segIdx, offset) => {
+            const displayIdx = virtualWindow.startIndex + offset;
+            return (
+              <CspLayout
+                key={segIdx}
+                className="segment-list-virtual-row-slot"
+                layout={{
+                  position: "absolute",
+                  top: segmentListVirtualRowTopPx(displayIdx, itemStridePx),
+                  left: 0,
+                  right: 0,
+                  height: itemStridePx,
+                  overflow: "hidden",
+                  boxSizing: "border-box",
+                }}
+              >
+                {renderSegmentRow(segIdx)}
+              </CspLayout>
+            );
+          })}
         </CspLayout>
       ) : (
         <div className="space-y-2.5">{visibleIndices.map((segIdx) => renderSegmentRow(segIdx))}</div>
