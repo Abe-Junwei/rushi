@@ -1,4 +1,8 @@
-# Rushi
+# Rushi · 如是我闻
+
+![如是我闻](apps/desktop/src/assets/brand/lockup-readme.png)
+
+**如是我闻** — 本地课录音转写与校对
 
 与 sibling 仓库 **Jieyu**（解语）**平级**，本目录路径：
 

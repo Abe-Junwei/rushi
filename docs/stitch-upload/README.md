@@ -2,6 +2,40 @@
 
 本文件夹包含上传到 Google Stitch 的素材。**设计真源：** 仓库根 [`DESIGN.md`](../../DESIGN.md)（Notion Zen）。
 
+## 品牌 Mark「如」（Logo）
+
+| 编号 | 文件名 | 类型 | 说明 |
+|------|--------|------|------|
+| 01 | `01-DESIGN.md` | 设计系统 | 由 `prepare-stitch-upload.sh` 从根 `DESIGN.md` 生成 |
+| 27 | `27-stitch-brand-logo-spec.md` | Logo spec | 书法单字「如」；5 Frame + 提示词 |
+| 28 | `28-stitch-brand-logo-layout.html` | 静态原型 | L2–L5 结构与侧栏组合对照 |
+| 29 | `29-stitch-brand-logo-reference.png` | 参考截图 | **可选**；放入 `apps/desktop/stitch-brand-logo-reference.png` 后刷新 |
+
+### 上传组合
+
+```text
+01-DESIGN.md
+27-stitch-brand-logo-spec.md
+28-stitch-brand-logo-layout.html
+29-stitch-brand-logo-reference.png   ← 你的书法「如」截图
+```
+
+### Stitch 使用方式
+
+1. 将截图保存为 `apps/desktop/stitch-brand-logo-reference.png`，运行 `bash scripts/prepare-stitch-upload.sh`。
+2. 打开 Stitch **Experimental / Thinking with Pro**，上传上述文件。
+3. 主提示词：复制 `27-stitch-brand-logo-spec.md` §6 英文块（或 §7 中文块）。
+4. 必出 **L1（1024 mark）与 L4（16/32/128 尺寸对照）**；侧栏验收看 **L3**。
+5. 定稿后运行 `python3 scripts/generate-brand-mark.py` → `BrandMark` + `npm run tauri icon`。
+
+本地预览 HTML：
+
+```bash
+open apps/desktop/stitch-brand-logo-layout.html
+```
+
+---
+
 ## 热词与记忆 Layout v2（本轮推荐）
 
 | 编号 | 文件名 | 类型 | 说明 |

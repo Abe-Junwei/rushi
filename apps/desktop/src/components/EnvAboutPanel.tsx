@@ -16,6 +16,7 @@ import {
   formatPlatformLabel,
 } from "../utils/appBuildInfoCopy";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
+import { BrandLockup } from "./BrandLockup";
 
 const APP_COPYRIGHT = "版权所有 © 沂南灵创技术服务中心";
 
@@ -119,6 +120,7 @@ export function EnvAboutPanel() {
     <div className={ENV_PANEL_PAGE_CLASS}>
       <section className={ENV_PANEL_SECTION_CLASS}>
         <h3 className={PANEL_TYPOGRAPHY.envSectionTitle}>关于</h3>
+        <BrandLockup size="about" className="mb-4" />
         {buildInfoState === "error" ? (
           <p className={`m-0 ${PANEL_TYPOGRAPHY.body} text-notion-text-muted`}>{buildInfoError}</p>
         ) : buildInfo ? (
