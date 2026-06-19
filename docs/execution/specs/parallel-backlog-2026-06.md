@@ -1,4 +1,4 @@
-# 并行薄片索引（v1.1+ · 2026-06-18 刷新）
+# 并行薄片索引（v1.1+ · 2026-06-19 刷新）
 
 > **主序真源**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) **§10.4**（✅ 闭合）· **并行轨 §10.5**  
 > **纪律**：每轮仍 **一轮一薄片**；CSP / Release CI / 大规模 UI **勿同 PR**
@@ -62,17 +62,22 @@ Step 12  REL-1.1 signoff                                             ✅ 2026-06
 
 ## Phase F · 并行轨（§10.5 · §10.4 闭合后）
 
-> **下一刀（P2）**：**架构热点回收**（T-010）。**P1 ACC-STT-IFLYTEK ✅** 2026-06-18 手测签收。
+> **下一刀（P3 / CLN-066）**：**Win 发行资产** 或 **Release parity L3 手测**。**P2 T-010 ✅**（`9612aae` · guard **0**）。
 
 | 优先级 | ID | 状态 | 代码 / spec | 下一动作 |
 |--------|-----|------|-------------|----------|
 | **P1** | **ACC-STT-IFLYTEK** | ✅ **2026-06-18** | `stt_native/xunfei_speed_asr/` · [`acc-stt-iflytek-*`](./acc-stt-iflytek-acceptance.md) | [`acceptance`](./acc-stt-iflytek-acceptance.md) ✅ |
-| **P2** | **架构热点回收** | 📋 ← **现在** | guard **13** 警告 · `run_transcribe_cmd` · `online_segment_normalize` | T-010 薄片 |
-| **P3** | **R3h-1-R Win 资产** | 🟡 | Win CI ✅ | 下一 tag 补 **v0.1.0** release 包 |
+| **P2** | **架构热点回收（T-010）** | ✅ **2026-06-19** | `run_transcribe_cmd/`（6 模块）· `online_segment_normalize/`（5 模块）· `useEnvOnlineSttPanel` 164L + 子 hook · Wave A–H 清理 | 可选尾项：`sync.rs` 327L；[`cleanup-candidate-register.md`](./cleanup-candidate-register.md) |
+| **P3** | **R3h-1-R Win 资产** | 🟡 ← **现在** | Win CI ✅ · Release **v0.1.1** 无 Win 包 | 下一 tag 补 **Windows** 安装包 + R-14 smoke |
+| **P4** | **CLN-066 Release parity** | 🟡 | L2 机器 ✅ · L3 UI ☐ | [`release-parity-evidence-2026-06-14.md`](../release-parity-evidence-2026-06-14.md) — 用 **v0.1.1** DMG 重跑 L3 |
 | — | **R3g-B-Align** | ❌ **废弃** | 2026-06-11 spike **Defer**（CPU ~8× Paraformer）；**2026-06-18 不再做** | [`align-results`](./r3g-b-align-forced-aligner-spike-results.md) · research 存档 |
 | — | **R3g-C-NANO vLLM** | ❌ **Defer** | 无 CUDA 环境 · **目前不做**（2026-06-18） | research 保留 — [`vllm-research`](./r3g-c-funasr-nano-vllm-research.md) |
 
-**桌面 UX 尾项（非 Step，`2a5e021`）**：转写 copy/排版 · 浮动 dialog 动态 `layoutRev` — 随 P1 手测回归。
+**已编码、非 Step 编号（2026-06）**：Welcome 全文检索（`3973acb`）· 活动 Inbox（`3795f53`）· CSP `style-src-attr` v1.2（`3b3c2fa`）。
+
+**工程台账（[`code-review-2026-06-remediation-plan.md`](./code-review-2026-06-remediation-plan.md) · 非阻塞 P3）**：R-01 签名发行 · R-05 DOCX 流式 · R-13 E2E 补覆盖 · R-15 删 plugin 脚手架 等。
+
+**桌面 UX 尾项**：转写 copy/排版 · 浮动 dialog 动态 `layoutRev` — 随 Release 手测回归。
 
 ## 并行候选（历史索引 · 不挡 P1）
 
@@ -92,7 +97,6 @@ Step 12  REL-1.1 signoff                                             ✅ 2026-06
 - **勿** Release Win CI + BATCH 队列大改同 PR  
 - **勿** Gate-B 未过即改 `llm-runtime` catalog  
 - **勿** 在本轨开 STREAM-* / 协作 / CAT（§8 不做）
-- **勿** ACC-STT-IFLYTEK 手测与 **T-010 大拆** 同 PR
 
 ## 单人推荐顺序
 
@@ -107,7 +111,8 @@ Step 12  REL-1.1 signoff                                             ✅ 2026-06
 8. ~~Step 10→11 BATCH-TXN~~ ✅ 2026-06-18
 9. ~~Step 12 REL-1.1~~ ✅ 2026-06-18
 10. ~~P1 ACC-STT-IFLYTEK 手测签收~~ ✅ 2026-06-18
-11. P2 架构热点 / P3 Win 资产（并行，有资源时）                    ← 现在
+11. ~~P2 架构热点 / T-010~~ ✅ 2026-06-19（`9612aae`）
+12. P3 Win 资产 / P4 CLN-066 L3 手测（并行，有资源时）     ← 现在
 —  R3g-B-Align                                     ❌ 废弃 2026-06-18
 —  R3g-C-NANO vLLM                                 ❌ Defer（无 CUDA · 目前不做）
 ```
@@ -127,3 +132,4 @@ Step 12  REL-1.1 signoff                                             ✅ 2026-06
 | 2026-06-18 | **R3g-C-NANO vLLM** ❌ Defer（无 CUDA · 目前不做） |
 | 2026-06-18 | **ACC-STT-IFLYTEK ✅** 手测签收；下一刀 **P2 架构热点** |
 | 2026-06-18 | **R3g-B-Align** ❌ **废弃**（CPU ~8× · 不再做第三 SKU）；§10.5 **P2→热点 · P3→Win** |
+| 2026-06-19 | **P2 T-010 ✅**（`9612aae`）：热点目录化 · Wave A–H 清理 · guard **0** · lint **0**；下一刀 **P3 Win / CLN-066** |

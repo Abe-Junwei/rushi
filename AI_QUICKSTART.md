@@ -19,18 +19,22 @@
 | 仓库根 `CONTEXT.md` | 领域词汇表（Agent 对话与命名真源） |
 | `.cursor/skills/` | 手动触发的 Agent 技能（见 `docs/agents/skills.md`） |
 
-## 当前热点（自动同步，2026-06-18）
+## 当前热点（自动同步，2026-06-19）
 
-**§10.4 v1.1+ 主序 ✅**（Step 5–12 · REL-1.1 2026-06-18）。**ACC-STT-IFLYTEK ✅**（2026-06-18 手测签收）。**下一刀 → §10.5 P2 架构热点**（[`parallel-backlog-2026-06.md`](./docs/execution/specs/parallel-backlog-2026-06.md)）。
+**§10.4 v1.1+ 主序 ✅**（Step 5–12 · REL-1.1 2026-06-18）。**ACC-STT-IFLYTEK ✅** · **P2 架构热点 / T-010 ✅**（`9612aae` · guard **0** 警告）。**下一刀 → §10.5 P3 Win 发行资产** 或 **CLN-066 Release parity L3 手测**（[`parallel-backlog-2026-06.md`](./docs/execution/specs/parallel-backlog-2026-06.md)）。
 
-**ASR 雷达（并行，不挡 P2）**
+**发行 / 工程雷达（并行）**
 
-- **架构热点回收** 📋 ← **现在** — guard **13** 警告 · T-010 拆 `run_transcribe_cmd` / `online_segment_normalize`
-- **Win release 资产** 🟡 — 下一 tag 补 **v0.1.0** 安装包
+- **Win release 资产** 🟡 ← **现在** — `v0.1.1` 已发 mac/linux；**无** Windows `.msi`/`.exe`；下一 tag 补 Win 包 + R-14 smoke
+- **CLN-066 Release parity L3** 🟡 — L2 机器 ✅；[`release-parity-evidence-2026-06-14.md`](./docs/execution/release-parity-evidence-2026-06-14.md) L3 UI 手测 ☐（建议用 **v0.1.1** DMG 重跑）
 
-**已闭合**
+**已闭合（2026-06-18～19）**
 
-- **ACC-STT-IFLYTEK** ✅ **2026-06-18** — `iflytek-speed-asr` · [`acc-stt-iflytek-acceptance.md`](./docs/execution/specs/acc-stt-iflytek-acceptance.md)
+- **ACC-STT-IFLYTEK** ✅ — [`acc-stt-iflytek-acceptance.md`](./docs/execution/specs/acc-stt-iflytek-acceptance.md)
+- **T-010 / 架构热点回收** ✅ — `run_transcribe_cmd/` · `online_segment_normalize/` 目录化；`useEnvOnlineSttPanel` 拆分；Wave A–H 清理（`9612aae`）；guard **0** · lint **0**
+- **Welcome 全文检索** ✅ — `3973acb` + Hub/Search 组件拆分
+- **活动 Inbox 铃铛** ✅ — `3795f53`
+- **CSP style-src-attr v1.2** ✅ — `3b3c2fa`
 
 **暂不做 / Defer / 废弃**
 
@@ -63,7 +67,7 @@
 | 新 UI / 整页重设计 / Stitch 对齐 | 仓库根 `DESIGN.md` → 再映射到 `tailwind.config.js` + `apps/desktop/src/config/tokens.ts` |
 | **波形区 Stitch 精修** | [`apps/desktop/docs/stitch-waveform-polish-spec.md`](./apps/desktop/docs/stitch-waveform-polish-spec.md) + [`stitch-waveform-polish-layout.html`](./apps/desktop/stitch-waveform-polish-layout.html) → `bash scripts/prepare-stitch-upload.sh` |
 | 浮动确认/表单对话框 | `FloatingPanelTemplate` + `preset="compactDialog"`；`controlStyles.ts` 按钮；见 [`docs/architecture/desktop-floating-dialog-panels.md`](./docs/architecture/desktop-floating-dialog-panels.md) |
-| **后续排期 / 下一刀** | [`parallel-backlog-2026-06.md`](./docs/execution/specs/parallel-backlog-2026-06.md) — **§10.4 ✅** · **ACC-STT-IFLYTEK ✅** · **P2 架构热点** · §10.5 并行轨 |
+| **后续排期 / 下一刀** | [`parallel-backlog-2026-06.md`](./docs/execution/specs/parallel-backlog-2026-06.md) — **§10.4 ✅** · **P2 T-010 ✅** · **P3 Win 资产 / CLN-066** · §10.5 并行轨 |
 | **新功能 / 路线图薄片** | 可选先 **`grill-with-docs`** → **先调研后编码**：`.cursor/rules/feature-research-gate.mdc` + `docs/execution/specs/*-research.md`；范例 [`r3-provider-configuration-research.md`](./docs/execution/specs/r3-provider-configuration-research.md) |
 | **难 bug / 侧车 / flaky** | `.cursor/skills/diagnose` 或对话中说「按 diagnose 查」 |
 | **架构 hotspot / 定期体检** | `.cursor/skills/improve-architecture`；配合 `check-architecture-guard.mjs` |

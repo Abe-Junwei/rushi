@@ -10,7 +10,7 @@
 | 适用节奏 | 单人、每轮 2～4h、一轮一纵向薄片 |
 | 规划跨度 | **个人单机 v1**：约 **14～18 周（自当前）** 或 **18～22 周（自 W1）**；R3 薄片 **~12～15w**（§4.0，含发行 smoke 缓冲）；协作 **非 v1** |
 | 修订 | 每完成一个阶段更新 §2 状态表、§4 排期表与 §13 代码对照 |
-| 最近对照 | **2026-06-18**：**ACC-STT-IFLYTEK ✅**（编码 + 手测签收）· **§10.4 v1.1+ ✅** · **REL-1.1 ✅**；下一刀 → **§10.5 P2 架构热点** |
+| 最近对照 | **2026-06-19**：**P2 T-010 ✅**（`9612aae` · guard **0**）· **§10.4 v1.1+ ✅** · **ACC-STT-IFLYTEK ✅** · Release **v0.1.1**（mac/linux）；下一刀 → **§10.5 P3 Win 资产 / CLN-066** |
 
 ### 状态标记约定（全文档统一）
 
@@ -895,7 +895,7 @@ React 预览 UI
 | T-008 | LRC / 侧车 corrupt 诊断 | **R3h-0** | `bundledAvailable` 仅 bool；见 remediation §1.3 |
 | T-009 | ~2.5GB Python 侧车技术债 | **R3h-3.5** | Sherpa-ONNX Spike；见 remediation §10.1 R1 |
 | T-005 | `useProjectLifecycleController` | **✅ 已解决** | ~261 行；原 R0 项，2026-05-27 对照 |
-| T-010 | `install_support.rs` / `asr_sidecar.rs` / `run_transcribe_cmd.rs` / `online_segment_normalize.rs` | **R3h-I2 + 热点回收** | 守卫 **46** 警告；v1.1 Step 8 前建议薄片 |
+| T-010 | `run_transcribe_cmd/` · `online_segment_normalize/` · `useEnvOnlineSttPanel` 等 | **✅ 2026-06-19** | `9612aae` 目录化 + Wave A–H 清理；guard **0**；可选尾项 `sync.rs` 327L |
 | T-006 | `architecture-split-plan` 过期 | **R9** | 与 §2 基线同步 |
 | T-007 | 本机转写 600s 超时 + 整文件 FunASR | **R3e** | 50min 手测 OOM / request failed；见 r3e spec |
 
@@ -1025,8 +1025,8 @@ R1 → R2 → R6 → R7 → R3 → R4 → R5 → R8 → R9
 | **定位** | **个人单机 v1 主序已闭合**（EXP-WORD → REV-LOC → R4 → R9 → LLM-LOC 4a）；**v1 后硬化 Step 1–4 ✅**；进入 **§10.4 v1.1+ 统一后续** |
 | **排期真源** | **§10.4**（发行尾项 · 产品元信息 · **新手引导** · 定稿 UX · v1.1 安全/取消 · 并行禁忌） |
 | **LLM** | **4a** ✅ · **4b** ❌ Gate-B No-Go（[decision](../specs/llm-loc-gate-b-decision-2026-06.md)） |
-| **当前主刀** | **ACC-STT-IFLYTEK ✅**（2026-06-18 手测签收）；**下一刀 → §10.5 P2 架构热点**（T-010） |
-| **并行（不挡 P1）** | **架构热点回收**；**Win v0.1.0 release 资产** |
+| **当前主刀** | **P3 Win 发行资产** 或 **CLN-066 Release parity L3**；**P2 T-010 ✅**（2026-06-19） |
+| **并行（不挡 P3）** | **CLN-066 L3 手测**；**code-review R-01/R-05/R-13** 工程台账 |
 | **近期不做** | **R3g-B-Align / Qwen3 本机第三 SKU** ❌ 废弃 · **R3g-C-NANO vLLM** ❌ Defer · STREAM-* / 协作 / CAT 等 §8 |
 
 ### 10.1 v1 后硬化盘点（2026-06-11 · 对照代码）
@@ -1110,7 +1110,7 @@ Step 4  ACC 在线 E2E                 ✅ 百炼 2026-06-12
 |----|------|------|
 | **R3f Win** | 安装包手测 | ⏸ 有 Win 机时补 |
 | **R3s-A Phase 0** | 金标 eval（非编码） | Defer |
-| **架构热点回收** | `run_transcribe_cmd.rs` · `online_segment_normalize.rs` · `useTranscriptionLayer.ts` 等（guard **46**） | **建议 Step 6 后、Step 8 前** 开 T-010 薄片；勿与 DELIV/BATCH 大 UI 同 PR |
+| **架构热点回收（T-010）** | `run_transcribe_cmd/` · `online_segment_normalize/` · `useEnvOnlineSttPanel` 等 | ✅ **2026-06-19**（`9612aae` · guard **0**） |
 | **文档 commit** | F4 No-go + 盘点 + 手测签收 | 随时 |
 | **编辑器快捷键调研** | [`editor-keyboard-shortcuts-research.md`](../specs/editor-keyboard-shortcuts-research.md) | 与 ONBOARD / EnvHelp 可链；非阻塞 |
 
@@ -1303,7 +1303,7 @@ Step 12  REL-1.1  signoff  H-CSP-* + H-STT-* + 回归 R9 主路径抽检        
 | **BATCH 门禁** | 串行转写；非空语段默认跳过（覆盖须 ASR-VOC-1 确认框） |
 | **v1.1 发版** | Step 12 前须 **6b + 7b** 至少一家在线 E2E 取消手测 |
 | **规格门禁** | 各 Epic **intent/plan/acceptance 立项后**方可编码（见 §10.4.0 注） |
-| **热点门禁** | guard **≥13**（2026-06-18）且持续叠功能前，优先 T-010 拆 `run_transcribe_cmd.rs` / `online_segment_normalize.rs` |
+| **热点门禁** | guard **0**（2026-06-19）；T-010 ✅；叠功能前仍守 hook/行数纪律 |
 
 #### 10.4.4 日历估算（单人 · 2–4h/片）
 
@@ -1326,21 +1326,23 @@ Step 12  REL-1.1  signoff  H-CSP-* + H-STT-* + 回归 R9 主路径抽检        
 
 ```text
 P1  ACC-STT-IFLYTEK   讯飞极速录音转写 — ✅ 2026-06-18
-P2  架构热点回收      guard 13 警告 · T-010 拆 run_transcribe / online_normalize  ← 现在
-P3  R3h-1-R Win 资产  v0.1.0 release 包补传 — 下一 tag
-—   R3g-B-Align       ❌ 废弃 2026-06-18（Qwen3+ForcedAligner；2026-06-11 CPU ~8× 慢）
+P2  架构热点回收      T-010 目录化 + guard 0 — ✅ 2026-06-19（`9612aae`）
+P3  R3h-1-R Win 资产  v0.1.1 无 Win 包 — 下一 tag 补传 ← 现在
+P4  CLN-066           Release parity L3 UI 手测 ☐
+—   R3g-B-Align       ❌ 废弃 2026-06-18
 —   R3g-C-NANO vLLM   ❌ Defer 2026-06-18（无 CUDA · 目前不做）
 ```
 
 | 优先级 | ID | 状态 | 代码 / spec 锚点 | 下一动作 |
 |--------|-----|------|------------------|----------|
 | **P1** | **ACC-STT-IFLYTEK** | ✅ **2026-06-18** | `stt_native/xunfei_speed_asr/` · `iflytek-speed-asr` · macOS keyring 三件套 | [`acc-stt-iflytek-acceptance.md`](../specs/acc-stt-iflytek-acceptance.md) ✅ |
-| **P2** | **架构热点** | 📋 | `run_transcribe_cmd.rs` · `online_segment_normalize.rs` · `useEnvOnlineSttPanel.ts` | guard ≥13 时开 **T-010** 薄片；勿与 ACC 手测同 PR |
-| **P3** | **Win release 资产** | 🟡 | `release.yml` **tauri-windows** ✅ | 下一 tag 补传 **v0.1.0** Win 安装包 |
+| **P2** | **架构热点（T-010）** | ✅ **2026-06-19** | `project/run_transcribe_cmd/` · `project/online_segment_normalize/` · `useEnvOnlineSttPanel.ts` 164L | [`cleanup-candidate-register.md`](../specs/cleanup-candidate-register.md) · 可选 `sync.rs` 327L |
+| **P3** | **Win release 资产** | 🟡 ← **现在** | `release.yml` **tauri-windows** ✅ · Release **v0.1.1** 仅 mac/linux | 下一 tag 补传 **Windows** 安装包 |
+| **P4** | **CLN-066 Release parity** | 🟡 | L2 机器 ✅ | L3 UI 手测 — [`release-parity-evidence-2026-06-14.md`](../release-parity-evidence-2026-06-14.md) |
 | — | **R3g-B-Align** | ❌ **废弃** | 2026-06-11 spike **Defer**（制控 211 段但 wall **~8×** Paraformer）；**2026-06-18 产品拍板不再做** | [`align-results`](../specs/r3g-b-align-forced-aligner-spike-results.md) · research 存档 |
 | — | **R3g-C-NANO vLLM** | ❌ **Defer** | PyTorch **Defer** + **无 CUDA 环境**（2026-06-18 产品拍板：**目前不做**） | research 保留 — [`r3g-c-funasr-nano-vllm-research.md`](../specs/r3g-c-funasr-nano-vllm-research.md) |
 
-**v1.2 候选（未立项）**：CSP `style-src-attr` 去 inline · Welcome 全文检索 · 默认引擎迁移（须 **R3s-A Phase 0** Go）。
+**v1.2 候选（部分已编码）**：~~CSP `style-src-attr`~~ ✅ `3b3c2fa` · ~~Welcome 全文检索~~ ✅ `3973acb` · 默认引擎迁移（须 **R3s-A Phase 0** Go）。
 
 **桌面 UX 尾项（2026-06-18，`2a5e021`）**：转写文案/排版 · 浮动 dialog 动态 `layoutRev`（定稿/Stage B/规则纠错/导出/确认框）— **非路线图 Step**，随 P1 手测一并回归。
 
@@ -1467,21 +1469,23 @@ P3  R3h-1-R Win 资产  v0.1.0 release 包补传 — 下一 tag
 | 2026-06-18 | **R3g-C-NANO vLLM** ❌ **Defer**（无 NVIDIA CUDA · **目前不做** spike） |
 | 2026-06-18 | **R3g-B-Align** ❌ **废弃**（2026-06-11 CPU ~8× 慢 · 不再做本机 Qwen3/ForcedAligner 第三 SKU）；§10.5 并行轨 **P2→架构热点 · P3→Win 资产** |
 | 2026-06-18 | **ACC-STT-IFLYTEK ✅** — 手测签收；§10.5 **下一刀 → P2 架构热点** |
+| 2026-06-19 | **P2 T-010 ✅**（`9612aae`）：`run_transcribe_cmd/` · `online_segment_normalize/` 目录化 · Wave A–H · guard **0** · lint **0**；§10.5 **下一刀 → P3 Win / CLN-066** |
 
 ---
 
-## 13. 代码对照评估（2026-06-18，`main`）
+## 13. 代码对照评估（2026-06-19，`main` · `9612aae`）
 
 > 对照 **已推送 `main` 或工作区等价**。发版轮末刷新本节测试数 / 守卫警告 / 热点行数。
 
-### 13.1 工程验证快照（实测 2026-06-18）
+### 13.1 工程验证快照（实测 2026-06-19）
 
 | 检查项 | 结果 |
 |--------|------|
 | `npm run typecheck` | ✅ 通过 |
-| `npm run test`（desktop） | ✅ **1489** passed（**299** files） |
-| `cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml` | ✅（含 `xunfei_speed_asr` · `stt_vocabulary`） |
-| `node scripts/check-architecture-guard.mjs` | ✅ 0 错误，**13 警告**（§13.3） |
+| `npm run test`（desktop） | ✅ **1558** passed（**319** files） |
+| `cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml` | ✅ **399** passed |
+| `npm run lint` | ✅ **0** warnings |
+| `node scripts/check-architecture-guard.mjs` | ✅ 0 错误，**0 警告** |
 | `profile.rs` / R3c 缓存 / 清缓存对话框 | ✅ 已合入 `main` |
 | `asr_setup_diagnose` / 一键准备 UI | ✅ **R3f mac 签收**（`asr_setup/`、`LocalAsrSetupWizard`） |
 | `local_runtime/` LRC | ✅ **R3h-1/2/3**；**R3h-1-R** R1/R2 手测 ✅；**Release CI mac/linux ✅ · Win 🟡** |
@@ -1544,32 +1548,31 @@ P3  R3h-1-R Win 资产  v0.1.0 release 包补传 — 下一 tag
 | **R5–R8** | MCP / collab / 非 v1 | ⏳ |
 | **R9** | v1 严格签收 + 诊断包 + R3e-B/C | ✅ 2026-06-03 |
 | **LLM-LOC 4a** | Ollama 本机路径 | ✅ 2026-06-03 |
-| **R3h-1-R CI** | `release.yml` + ci-publish script | ✅ mac/linux **v0.1.0**；**Win job 🟡** |
+| **R3h-1-R CI** | `release.yml` + ci-publish script | ✅ mac/linux **v0.1.1** 已发；**Win 安装包 🟡** |
+| **T-010 热点回收** | `run_transcribe_cmd/` · `online_segment_normalize/` · cleanup Wave A–H | ✅ **2026-06-19**（`9612aae` · guard **0**） |
 
-### 13.3 代码热点（2026-06-18 · guard **13** 警告）
+### 13.3 代码热点（2026-06-19 · guard **0** 警告）
 
-> **分布**：TS/TSX **>300 行** 若干；Rust 转写入口仍偏大。Epic 签收后刷新本表。
+> **T-010 主项已目录化**（2026-06-19 `9612aae`）。下表为仍值得观察的单文件（均 **≤400L**，guard 不报警）。
 
-| 文件 | 行数 / 备注 | 路线图 / 守卫 | 判定 |
-|------|-------------|---------------|------|
-| `online_segment_normalize.rs` | **811** 行 | 在线 STT 归一 | ⚠️ **T-010 优先拆** |
-| `run_transcribe_cmd.rs` | **675+** 行 | 转写入口（含讯飞分支） | ⚠️ **T-010 优先拆** |
-| `stt_native/xunfei_speed_asr/` | 多模块 | ACC-STT-IFLYTEK | ✅ 新模块；`probe.rs` blocking 待观察 |
-| `useEnvOnlineSttPanel.ts` | **428** 行 | 在线 STT UI | ⚠️ 建议拆分 |
-| `CorrectionRulesPreviewDialog.tsx` | **312** 行 | F1 规则纠错 | ⚠️ 接近 300 |
-| `DeliveryExportDialog.tsx` | **360** 行 | EXP-WORD | ⚠️ 接近 300 |
-| `useTranscribeJobExecute.ts` | **331** 行 | R3e-C + STT | ⚠️ 接近 300 |
-| `sttOnlineProviderContract/health.ts` | **313** 行 | 在线 probe | ⚠️ 接近 300 |
-| `model_prepare.py` | **487** 行 | R3g prepare | ⚠️ 建议拆模块 |
-| `useAsrSetupController.ts` | ~122 | R3h-I3 前端 | ✅ 已拆分；Rust Setup FSM 🟡 |
+| 路径 | 行数 / 备注 | 判定 |
+|------|-------------|------|
+| `project/run_transcribe_cmd/` | 6 文件 · **816** 合计；最大 `sync.rs` **327** | ✅ 目录化；可选再拆 `sync.rs` |
+| `project/online_segment_normalize/` | 5 文件 · **819** 合计；最大 `word_axis.rs` **229** | ✅ 目录化 |
+| `useEnvOnlineSttPanel.ts` + 子 hook | 主 **164** + probe/persistence/credential | ✅ 已拆分 |
+| `stt_native/dashscope_file_asr.rs` | **557** | 🟡 Rust 体量；非 T-010 原项 |
+| `CorrectionRulesPreviewDialog.tsx` | **285** | 🟡 接近 300 |
+| `DeliveryExportDialog.tsx` | **287** | 🟡 接近 300 |
+| `model_prepare.py` | **146** | ✅ 已缩小（原 ~487） |
+| `useAsrSetupController.ts` | ~122 | ✅ 已拆分 |
 
-### 13.4 排期调整摘要（2026-06-18）
+### 13.4 排期调整摘要（2026-06-19）
 
 1. **§10.4 v1.1+ 主序闭合**（Step 5–12 ✅ · REL-1.1 2026-06-18）。  
-2. **§10.5 并行轨** 真源：**P1 ACC-STT-IFLYTEK ✅** → **P2 架构热点** → **P3 Win 资产**（← 现在）。  
+2. **§10.5 并行轨**：**P1 ✅** → **P2 T-010 ✅**（2026-06-19）→ **P3 Win 资产 / P4 CLN-066**（← 现在）。  
 3. **本机第三 SKU**（Qwen3 / ForcedAligner / Nano / vLLM）**全部关闭** — Align **废弃** 2026-06-18。  
-4. **R3f / LRC 发行闸门**：mac/linux/Win CI ✅；**Win v0.1.0 release 资产**待下一 tag。  
-5. **guard** 自 46 → **13** 警告（热点表 §13.3）；**T-010** 仍建议在叠大功能前开薄片。
+4. **Release**：**v0.1.1** mac/linux 已发；**Windows 安装包仍缺**。  
+5. **guard** 自 46 → **0** 警告（2026-06-19）；叠大功能前仍遵守 hook/行数纪律。
 
 ### 13.5 风险（对照后）
 
@@ -1577,13 +1580,13 @@ P3  R3h-1-R Win 资产  v0.1.0 release 包补传 — 下一 tag
 |------|--------|------|
 | R3t-A 手测未签即开 R3t-B | — | ✅ 2026-05-30 已签 |
 | **R3e-C 手测滞后** | — | ✅ 2026-05-31 已签 |
-| **R3h-0 跨平台 smoke 未闭环** | **低** | mac/linux/Win CI ✅；**Win v0.1.0 release 资产**待补 |
+| **R3h-0 跨平台 smoke 未闭环** | **低** | mac/linux/Win CI ✅；**Win v0.1.1 release 资产**仍缺 |
 | R3f / R3h-0 手测滞后 | — | ✅ mac 签收；Win ⏸ 有 Win 机时补 |
 | **R3 工期低估** | 中 | §4.0 **~12～15w**（2026-06-02）；⑤″f **4–6w** 含 MEM |
 | **Qwen3 伪流式**（chunk 无跨段上下文） | 中 | **⑤″f-E** spike **G4 加严**；20min Job 手测 |
 | **SenseVoice 目录 SKU** | **低**（已收口） | UI 目录 **仅 Paraformer**；legacy hub id 迁移；百炼 SenseVoice-v1 **2026-03-09** 下线 — **Q-ASR-1** |
 | **v1.1 spec 未立项** | — | ✅ **2026-06-18 已闭合**（§10.4 六组 Epic 编码 + REL-1.1）；**§10.5 新增项**仍须 research 门禁 |
-| **guard 热点** | **中** | guard **13** 警告（2026-06-18）；叠功能前 **T-010** 拆 `run_transcribe_cmd` / `online_segment_normalize` |
+| **guard 热点** | **低** | guard **0** 警告（2026-06-19）；T-010 主项 ✅；叠功能前仍守 hook/行数纪律 |
 | **功能分支未合 main** | — | 2026-06-02 条目已过期；以 `main` + §13.1 为准 |
 | **随包 user-guide 漂移** | **中** | **PROD-META 5c** 刷新 §1–3；L2 真源仍为 `EnvHelpPanel` |
 | **~2.5GB 侧车体积** | 中 | R3h-3.5 Sherpa → **轻量模式**候选（ADR-0003 附录），非 v1 必达 |
