@@ -14,6 +14,8 @@ interface PanelTemplatePreset {
   maxHeight: number;
   persistState: boolean;
   overlayClassName: string;
+  /** Shell z-index; must exceed editor toolbar (z-90) when opened from editor. */
+  panelZIndex?: number;
 }
 
 interface PanelTemplateMetrics {
@@ -38,7 +40,9 @@ const PANEL_TEMPLATE_PRESETS = {
     maxWidth: 920,
     maxHeight: 700,
     persistState: false,
-    overlayClassName: `${OVERLAY_SCRIM_LAYER} z-40`,
+    // 编辑页工具栏 z-90；与 findReplace 一致须整体抬层。
+    overlayClassName: `${OVERLAY_SCRIM_LAYER} z-[100]`,
+    panelZIndex: 110,
   },
   /** 确认/表单对话框：Notion/Zen 壳 + 可记忆拖放尺寸（上限按视口，勿再用 320×200 硬顶） */
   compactDialog: {
@@ -59,6 +63,7 @@ const PANEL_TEMPLATE_PRESETS = {
     maxHeight: 720,
     persistState: true,
     overlayClassName: `${OVERLAY_SCRIM_LAYER} z-[100]`,
+    panelZIndex: 110,
   },
 } satisfies Record<string, PanelTemplatePreset>;
 
@@ -170,7 +175,7 @@ export function FloatingPanelTemplate({
         maxWidth={mergedConfig.maxWidth}
         maxHeight={mergedConfig.maxHeight}
         persistState={mergedConfig.persistState}
-        zIndex={panelZIndex}
+        zIndex={panelZIndex ?? mergedConfig.panelZIndex}
         autoHeight={autoHeight}
         persistPhaseKey={persistPhaseKey}
         layoutRev={layoutRev}
