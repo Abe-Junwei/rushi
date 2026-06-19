@@ -19,6 +19,8 @@ function makeScrollableTier(scrollWidth = 10_000, clientWidth = 500): HTMLDivEle
 
 function installControllableRaf(): { flushUntilSettled: (read: () => number, target: number) => void } {
   const callbacks: FrameRequestCallback[] = [];
+  let now = 0;
+  vi.spyOn(performance, "now").mockImplementation(() => now);
   vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
     callbacks.push(cb);
     return callbacks.length;
@@ -28,7 +30,8 @@ function installControllableRaf(): { flushUntilSettled: (read: () => number, tar
     for (let i = 0; i < 80 && read() !== target; i += 1) {
       const pending = callbacks.splice(0);
       if (pending.length === 0) break;
-      pending.forEach((cb) => cb(0));
+      now += 16;
+      pending.forEach((cb) => cb(now));
     }
   };
   return { flushUntilSettled };
@@ -36,6 +39,7 @@ function installControllableRaf(): { flushUntilSettled: (read: () => number, tar
 
 describe("useWaveformTierWheelForward", () => {
   afterEach(() => {
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
   });
 
@@ -56,9 +60,9 @@ describe("useWaveformTierWheelForward", () => {
     );
 
     tier.dispatchEvent(new WheelEvent("wheel", { deltaX: 48, bubbles: true, cancelable: true }));
-    flushUntilSettled(() => tier.scrollLeft, 120);
+    flushUntilSettled(() => tier.scrollLeft, 48);
 
-    expect(tier.scrollLeft).toBe(120);
+    expect(tier.scrollLeft).toBe(48);
     expect(onTierScroll).toHaveBeenCalled();
 
     tier.remove();
@@ -82,9 +86,37 @@ describe("useWaveformTierWheelForward", () => {
     );
 
     shell.dispatchEvent(new WheelEvent("wheel", { deltaY: 64, bubbles: true, cancelable: true }));
-    flushUntilSettled(() => tier.scrollLeft, 160);
+    flushUntilSettled(() => tier.scrollLeft, 64);
 
-    expect(tier.scrollLeft).toBe(160);
+    expect(tier.scrollLeft).toBe(64);
+    expect(onTierScroll).toHaveBeenCalled();
+
+    tier.remove();
+    shell.remove();
+  });
+
+  it("keeps waveform and sticky chrome synchronized during wheel easing", () => {
+    const { flushUntilSettled } = installControllableRaf();
+    const tier = makeScrollableTier();
+    const shell = document.createElement("div");
+    document.body.append(tier, shell);
+
+    const onTierScroll = vi.fn();
+    renderHook(() =>
+      useWaveformTierWheelForward({
+        tierScrollRef: { current: tier },
+        waveformShellRef: { current: shell },
+        enabled: true,
+        onTierScroll,
+      }),
+    );
+
+    shell.dispatchEvent(new WheelEvent("wheel", { deltaY: 64, bubbles: true, cancelable: true }));
+
+    expect(tier.scrollLeft).toBe(0);
+    flushUntilSettled(() => tier.scrollLeft, 64);
+
+    expect(tier.scrollLeft).toBe(64);
     expect(onTierScroll).toHaveBeenCalled();
 
     tier.remove();
@@ -110,6 +142,30 @@ describe("useWaveformTierWheelForward", () => {
     flushUntilSettled(() => tier.scrollLeft, 200);
 
     expect(tier.scrollLeft).toBe(200);
+
+    tier.remove();
+    shell.remove();
+  });
+
+  it("caps oversized pixel wheel deltas to avoid jumping across the timeline", () => {
+    const { flushUntilSettled } = installControllableRaf();
+    const tier = makeScrollableTier();
+    const shell = document.createElement("div");
+    document.body.append(tier, shell);
+
+    renderHook(() =>
+      useWaveformTierWheelForward({
+        tierScrollRef: { current: tier },
+        waveformShellRef: { current: shell },
+        enabled: true,
+        onTierScroll: vi.fn(),
+      }),
+    );
+
+    tier.dispatchEvent(new WheelEvent("wheel", { deltaX: 4000, bubbles: true, cancelable: true }));
+    flushUntilSettled(() => tier.scrollLeft, 240);
+
+    expect(tier.scrollLeft).toBe(240);
 
     tier.remove();
     shell.remove();
