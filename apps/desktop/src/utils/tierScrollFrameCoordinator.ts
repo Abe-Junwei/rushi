@@ -35,13 +35,22 @@ export function requestWaveformSegmentBandPaint(): void {
   scheduleTierScrollFrame();
 }
 
-/** Test-only: flush pending frame synchronously. */
-export function flushTierScrollFrameForTests(): void {
+/**
+ * Run subscribers synchronously now, cancelling any pending rAF.
+ * Use when an imperative scroll write must repaint sticky chrome in the SAME frame
+ * (e.g. wheel-driven scroll), so sticky layers don't trail the natively-scrolled waveform by 1 frame.
+ */
+export function flushTierScrollFrame(): void {
   if (frameRafId !== 0) {
     cancelAnimationFrame(frameRafId);
     frameRafId = 0;
   }
   runTierScrollFrame();
+}
+
+/** Test-only: flush pending frame synchronously. */
+export function flushTierScrollFrameForTests(): void {
+  flushTierScrollFrame();
 }
 
 /** Test-only: clear subscribers and pending rAF. */
