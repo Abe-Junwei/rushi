@@ -1,6 +1,6 @@
 # Rushi 代码审查 — 轮次 0 基线报告（2026-06-18）
 
-> **审查方案**：[`.kimi/plans/jay-garrick-jessica-jones-silver-surfer.md`](../.kimi/plans/jay-garrick-jessica-jones-silver-surfer.md)  
+> **审查方案**：`.kimi/plans/jay-garrick-jessica-jones-silver-surfer.md`（本地 Kimi 计划，不入库）  
 > **日期**：2026-06-18  
 > **分支**：`main` (`0bab2ac`)  
 > **执行人**：Kimi Code CLI

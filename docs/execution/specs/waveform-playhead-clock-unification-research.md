@@ -12,7 +12,7 @@
 | 项 | 内容 |
 |----|------|
 | **用户场景** | 播放长音频时，播放头（playhead）应平滑前进、跟随滚动顺滑、与 ruler 时间标签一致。当前主观抖动 / 偶发跳动。 |
-| **本仓现状** | WaveSurfer `getCurrentTime()` 被 **HTMLMediaElement timeupdate 量化（4–250ms）**。为平滑，引入了 [`visualPlayheadClock.ts`](../../apps/desktop/src/utils/visualPlayheadClock.ts)（anchor + 预测 + 12% 软校正 + 0.25s 硬跳）。但：① [`useWaveformLiveClock.ts`](../../apps/desktop/src/hooks/useWaveformLiveClock.ts) L64–92 **逐行重复**了同一平滑算法（ruler 用）；② 播放头、播放跟随、ruler、band visited 各跑独立 rAF；③ band「visited」着色用 **原始 WS 时间**（`getPlayheadTime`），与播放头的平滑时钟 **不同源**；④ 播放头存在 **双 rAF 延迟**：visual clock rAF 写 `visualTimeSecRef`，播放头组件再排一帧读它。 |
+| **本仓现状** | WaveSurfer `getCurrentTime()` 被 **HTMLMediaElement timeupdate 量化（4–250ms）**。为平滑，引入了 [`visualPlayheadClock.ts`](../../../apps/desktop/src/utils/visualPlayheadClock.ts)（anchor + 预测 + 12% 软校正 + 0.25s 硬跳）。但：① [`useWaveformLiveClock.ts`](../../../apps/desktop/src/hooks/useWaveformLiveClock.ts) L64–92 **逐行重复**了同一平滑算法（ruler 用）；② 播放头、播放跟随、ruler、band visited 各跑独立 rAF；③ band「visited」着色用 **原始 WS 时间**（`getPlayheadTime`），与播放头的平滑时钟 **不同源**；④ 播放头存在 **双 rAF 延迟**：visual clock rAF 写 `visualTimeSecRef`，播放头组件再排一帧读它。 |
 | **成功标准** | 单一时钟真源；播放头/跟随/ruler/band visited 共用 **同一帧时间**；播放头无双 rAF 延迟；center/edge 手测平滑无跳；现有 `visualPlayheadClock.test.ts` / `WaveformViewportPlayhead.test.tsx` / `useWaveformLiveClock.test.ts` 仍绿。 |
 
 ### 1.1 当前时钟/ rAF 拓扑

@@ -70,7 +70,7 @@ export type PanelFitKind = "autoFit" | "fill" | "staticFit";
 | [`FindReplaceDialog.tsx`](../../../apps/desktop/src/components/FindReplaceDialog.tsx) | 迁入 `CompactFloatingDialog`（或扩展壳）；`fitKind="autoFit"`；保留 `findReplacePanelLayout` |
 | [`FindReplaceDialogBody.tsx`](../../../apps/desktop/src/components/FindReplaceDialogBody.tsx) | 列表 intrinsic；footer 可拆至 `CompactFloatingDialog.footer` |
 | [`CorrectionRulesPreviewDialog.tsx`](../../../apps/desktop/src/components/CorrectionRulesPreviewDialog.tsx) | preview/empty 分 phase；preview `autoFit`；loading `staticFit`；workbench anchor 保留 |
-| [`correctionRulesPreviewLayout.ts`](../../../apps/desktop/src/components/correctionRulesPreviewLayout.ts) | 改为 sections API |
+| [`correctionRulesPreviewLoader.ts`](../../../apps/desktop/src/pages/correctionRulesPreviewLoader.ts) | 改为 sections API |
 | [`PostTranscribeStageBDialog.tsx`](../../../apps/desktop/src/components/PostTranscribeStageBDialog.tsx) | preview phase `fitKind="autoFit"`；consent/loading/empty `staticFit` 或 `fill` 按现有估算 |
 
 ---
