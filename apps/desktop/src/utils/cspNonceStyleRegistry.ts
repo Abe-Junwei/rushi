@@ -11,7 +11,8 @@ function scopeStyleElementId(scopeId: string): string {
 }
 
 function requiresStyleNonce(): boolean {
-  return isTauriRuntime();
+  // Tauri dev loads Vite HTML (localhost) without replace_csp_nonce — probe stays placeholder.
+  return isTauriRuntime() && import.meta.env.PROD;
 }
 
 function writeScopeStyleElement(scopeId: string, cssText: string): void {
@@ -121,7 +122,9 @@ export async function bootstrapCspStyleNonce(options?: { maxWaitMs?: number }): 
   const start = performance.now();
   while (!readTauriStyleCspNonce()) {
     if (performance.now() - start > maxWaitMs) {
-      console.warn("[csp] style nonce unavailable after bootstrap wait; layout fallbacks may apply");
+      if (import.meta.env.PROD) {
+        console.warn("[csp] style nonce unavailable after bootstrap wait; layout fallbacks may apply");
+      }
       scheduleLateNonceFlush();
       return false;
     }

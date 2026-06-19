@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it, vi } from "vitest";
+import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import {
   bootstrapCspStyleNonce,
   clearAllCspScopeRulesForTests,
@@ -14,7 +14,12 @@ vi.mock("../config/env", () => ({
 }));
 
 describe("cspNonceStyleRegistry", () => {
+  beforeEach(() => {
+    vi.stubEnv("PROD", true);
+  });
+
   afterEach(() => {
+    vi.unstubAllEnvs();
     clearAllCspScopeRulesForTests();
     document.getElementById(TAURI_STYLE_CSP_NONCE_PROBE_ID)?.remove();
     document.querySelector('meta[http-equiv="Content-Security-Policy"]')?.remove();
@@ -57,6 +62,14 @@ describe("cspNonceStyleRegistry", () => {
     const el = document.getElementById("rushi-csp-scope-pending-scope") as HTMLStyleElement | null;
     expect(el?.nonce).toBe("runtime-nonce");
     expect(el?.textContent).toBe(".pending { width: 10px; }");
+  });
+
+  it("writes scope rules without nonce in dev (Vite HTML keeps placeholder token)", () => {
+    vi.stubEnv("PROD", false);
+    upsertCspScopeRules("dev-scope", ".dev { color: red; }");
+    const el = document.getElementById("rushi-csp-scope-dev-scope");
+    expect(el?.textContent).toBe(".dev { color: red; }");
+    expect(el?.nonce).toBe("");
   });
 
   it("bootstrap waits for nonce then flushes pending scopes", async () => {
