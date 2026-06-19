@@ -1,4 +1,5 @@
 import { X } from "lucide-react";
+import { CONTROL_BTN_ICON_GHOST } from "../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { FLAT_SHELL_ELEVATION_CLASS } from "../config/overlayStyles";
 import { useDraggablePanelController } from "../hooks/useDraggablePanelController";
@@ -99,7 +100,7 @@ export function DraggableResizablePanel({
           <h2 className={`m-0 select-none ${PANEL_TYPOGRAPHY.dialogTitle}`}>{title}</h2>
           <button
             type="button"
-            className="rounded border-0 bg-transparent p-1 text-notion-text-muted transition-colors hover:bg-notion-sidebar-hover hover:text-notion-text"
+            className={CONTROL_BTN_ICON_GHOST}
             onClick={onClose}
             onPointerDown={(e) => e.stopPropagation()}
             aria-label={dialogCloseButtonTitle()}

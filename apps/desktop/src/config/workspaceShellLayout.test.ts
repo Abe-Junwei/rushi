@@ -45,4 +45,10 @@ describe("workspaceShellLayout sidebar nav", () => {
     expect(workspaceSidebarFooterItemClass({ active: false })).toContain("flex-col");
     expect(workspaceSidebarFooterItemClass({ active: true })).toContain("bg-notion-sidebar-active");
   });
+
+  it("exposes sidebar empty project hint button token", async () => {
+    const { WORKSPACE_SIDEBAR_EMPTY_HINT_BTN } = await import("./workspaceShellLayout");
+    expect(WORKSPACE_SIDEBAR_EMPTY_HINT_BTN).toContain("hover:bg-notion-sidebar-hover");
+    expect(WORKSPACE_SIDEBAR_EMPTY_HINT_BTN).toContain("px-5");
+  });
 });

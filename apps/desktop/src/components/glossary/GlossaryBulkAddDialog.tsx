@@ -1,5 +1,5 @@
 import { useMemo, type KeyboardEvent } from "react";
-import { FileSpreadsheet } from "lucide-react";
+import { PRODUCT_ICON } from "../../config/productIcons";
 import {
   CONTROL_BTN_PRIMARY,
   CONTROL_BTN_SECONDARY,
@@ -63,7 +63,7 @@ export function GlossaryBulkAddDialog({
             disabled={disabled || busy}
             onClick={onImportFromFile}
           >
-            <FileSpreadsheet className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+            <PRODUCT_ICON.navGlossaryBundle className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
             从表格导入…
           </button>
           <div className="flex items-center gap-2">

@@ -1,13 +1,14 @@
-import { Bot, Check, PenLine, Sparkles, type LucideIcon } from "lucide-react";
+import { PRODUCT_ICON } from "../../config/productIcons";
 import { LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";
 import type { SegmentTextStage } from "../../services/segmentTextStage";
 import { segmentStageChipModifier } from "../../services/segmentTextStage";
+import type { LucideIcon } from "lucide-react";
 
 const STAGE_ICONS: Record<SegmentTextStage, LucideIcon> = {
-  auto_transcribe: Bot,
-  ai_revised: Sparkles,
-  manual_transcribe: PenLine,
-  finalized: Check,
+  auto_transcribe: PRODUCT_ICON.stageAutoTranscribe,
+  ai_revised: PRODUCT_ICON.stageAiRevised,
+  manual_transcribe: PRODUCT_ICON.stageManual,
+  finalized: PRODUCT_ICON.stageFinalized,
 };
 
 type SegmentStageIconProps = {

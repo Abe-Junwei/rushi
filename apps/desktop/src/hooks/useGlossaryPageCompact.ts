@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from "react";
 import { isWorkbenchToolbarCompactWidth } from "./useWorkbenchToolbarCompact";
 
-/** 热词与记忆主舞台宽度 <1024px 时切换窄屏布局（顶部分段 + 底部抽屉）。 */
+/** 热词与记忆主舞台宽度 <1024px 时切换窄屏布局（底部抽屉检视器，侧栏子导航仍为主切换入口）。 */
 export function useGlossaryPageCompactFromElement(): {
   rootRef: (node: HTMLElement | null) => void;
   compact: boolean;

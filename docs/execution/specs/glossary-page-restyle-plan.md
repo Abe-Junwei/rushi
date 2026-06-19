@@ -50,5 +50,5 @@
 |----|------|
 | G12 批量添加对话框 | `GlossaryBulkAddDialog.tsx` + `useGlossaryBulkAddDialog.ts` |
 | G13 工具栏 ⋯ | `GlossaryToolbarOverflowMenu.tsx` |
-| G9–G11 窄屏 | `useGlossaryPageCompact.ts` + `GlossaryWorkspaceSegmentedNav.tsx` + `GlossaryBottomSheet.tsx` |
+| G9–G11 窄屏 | `useGlossaryPageCompact.ts` + `GlossaryBottomSheet.tsx`（工作区切换仅侧栏子导航） |
 | 拼音排序 | `glossaryListSort.ts` + `glossarySortSelect.tsx` |

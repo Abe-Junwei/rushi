@@ -1,4 +1,4 @@
-import { Pause, Play } from "lucide-react";
+import { PRODUCT_ICON } from "../../config/productIcons";
 import { useWorkbenchToolbarCompactFromElement } from "../../hooks/useWorkbenchToolbarCompact";
 import type { SegmentListFilterApi } from "../../hooks/useSegmentListFilter";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
@@ -82,9 +82,9 @@ export function EditorWorkbenchToolbar({
                 aria-label={tx.isPlaying ? "暂停" : "播放"}
               >
                 {tx.isPlaying ? (
-                  <Pause className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+                  <PRODUCT_ICON.pauseAudio className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
                 ) : (
-                  <Play className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+                  <PRODUCT_ICON.playAudio className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
                 )}
               </button>
               <WaveformPlaybackTime

@@ -1,9 +1,4 @@
-import {
-  ListChecks,
-  Mic,
-  Replace,
-  Sparkles,
-} from "lucide-react";
+import { PRODUCT_ICON } from "../../config/productIcons";
 import { useRef } from "react";
 import { useWorkbenchToolbarCompact } from "../../hooks/useWorkbenchToolbarCompact";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
@@ -87,7 +82,7 @@ export function EditorSegmentTranscribeActions({
                   void c.runTranscribe();
                 }}
               >
-                <Mic className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+                <PRODUCT_ICON.transcribeAction className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
                 {c.prepareModelBusy ? "模型准备中..." : "自动转录"}
               </button>
               <button
@@ -106,7 +101,7 @@ export function EditorSegmentTranscribeActions({
                   void c.openCorrectionRulesManual();
                 }}
               >
-                <ListChecks className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+                <PRODUCT_ICON.correctionRules className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
                 {c.correctionRulesDialog.phase === "loading" ? "处理中..." : "规则纠错"}
               </button>
               <button
@@ -119,7 +114,7 @@ export function EditorSegmentTranscribeActions({
                   c.openPostTranscribeStageB();
                 }}
               >
-                <Sparkles className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+                <PRODUCT_ICON.aiRefine className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
                 {stageBInFlight ? "处理中..." : "智能改稿"}
               </button>
               <button
@@ -137,7 +132,7 @@ export function EditorSegmentTranscribeActions({
                   c.openFindReplace(sel || undefined);
                 }}
               >
-                <Replace className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+                <PRODUCT_ICON.findReplace className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
                 查找替换
               </button>
             </>
@@ -161,7 +156,7 @@ export function EditorSegmentTranscribeActions({
             : "打开对话框：选择本机或在线来源并开始转录"
         }
       >
-        <Mic className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+        <PRODUCT_ICON.transcribeAction className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
         {c.prepareModelBusy ? "模型准备中..." : "自动转录"}
       </button>
       <button
@@ -178,7 +173,7 @@ export function EditorSegmentTranscribeActions({
               : (c.correctionRulesBlockReason ?? "规则纠错不可用")
         }
       >
-        <ListChecks className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+        <PRODUCT_ICON.correctionRules className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
         {c.correctionRulesDialog.phase === "loading" ? "处理中..." : "规则纠错"}
       </button>
       <button
@@ -194,7 +189,7 @@ export function EditorSegmentTranscribeActions({
         aria-label="智能改稿"
         title={stageBHint}
       >
-        <Sparkles className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+        <PRODUCT_ICON.aiRefine className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
         {stageBInFlight ? "处理中..." : "智能改稿"}
       </button>
       <button
@@ -212,7 +207,7 @@ export function EditorSegmentTranscribeActions({
         aria-label="查找替换"
         title={findReplaceTitle}
       >
-        <Replace className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+        <PRODUCT_ICON.findReplace className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
         查找替换
       </button>
     </div>

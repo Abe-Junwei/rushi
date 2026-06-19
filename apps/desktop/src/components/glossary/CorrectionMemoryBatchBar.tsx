@@ -1,4 +1,5 @@
-import { ListChecks, Trash2 } from "lucide-react";
+import { Trash2 } from "lucide-react";
+import { PRODUCT_ICON } from "../../config/productIcons";
 import { ENV_COMPACT_BTN } from "../../config/controlStyles";
 import { PANEL_TYPOGRAPHY } from "../../config/typography";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";
@@ -52,7 +53,7 @@ export function CorrectionMemoryBatchBar({
           onClick={onAcceptRules}
           title={canAcceptRules ? undefined : "所选条目均已采纳为规则"}
         >
-          <ListChecks className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+          <PRODUCT_ICON.correctionRulesAccept className={LUCIDE_ICON_SIZE_SM} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
           采纳为规则
         </button>
         <button

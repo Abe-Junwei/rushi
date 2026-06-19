@@ -65,8 +65,58 @@
 - **标准按钮**：`h-8` · `rounded-sm` (4px) · `text-[12px]` semibold · `shadow-none`
 - **Prominent CTA**：`h-10` · 仍 `rounded-sm` · `text-sm`
 - **输入**：`CONTROL_TEXT_INPUT` / `CONTROL_SELECT` / `CONTROL_TEXTAREA`（须含 `box-border`；portal 对话框不在 `.workspace` 内）
-- **图标 ghost**：`CONTROL_BTN_ICON_GHOST`（28px 方块，Hub / 历史 / 顶栏）
+- **图标 ghost**：`CONTROL_BTN_ICON_GHOST`（28px 方块，Hub / 历史 / 顶栏 / 面板关闭）
+- **顶栏专用**：`CONTROL_BTN_STATUS_CHIP`（状态点+文案）· `CONTROL_BTN_BREADCRUMB`（编辑页项目名）· `CONTROL_BTN_WELCOME_ICON`（欢迎页圆形图标 hit）
 - **分段 toggle**：`envSegmentedToggleTrackClass` + `envSegmentedToggleBtnClass`（compact 用于对话框）
+
+### 按钮真源与边界
+
+| 场景 | 真源 | 勿用 |
+|------|------|------|
+| 对话框 / 环境页 / Hub | `controlStyles.ts` `CONTROL_BTN_*` | 手写 `bg-transparent hover:bg-notion-sidebar-hover` |
+| 波形工作条 40px 行 | `waveform.css` `.icon-btn`、`.workbench-label-btn`、`.waveform-playback-btn` | 在工作条上套 `CONTROL_BTN_SECONDARY` |
+| 侧栏页面切换 | `workspaceShellLayout.ts` `workspaceSidebarNavItemClass` | `CONTROL_BTN_GHOST`（圆角/高度规范不同：`rounded-md` · `min-h-10`） |
+| 图标 | `lucide-react` + `lucideIconSpec.ts` | 混装 Tabler/Phosphor 整包；Lucide 为主，补缺仅单 SVG |
+
+**Ghost 阶梯**（尺寸有意区分，禁止合并）：`GHOST` · `TOOLBAR_GHOST` · `WORKSPACE_IMPORT` · `ICON_GHOST`。
+
+**Compact secondary 分工**：`CONTROL_BTN_COMPACT_SECONDARY` → 表格/列表（h-7 · label · sidebar 底）；`ENV_COMPACT_BTN` → 环境/热词工具行（py-1 · body · notion-bg 底）。
+
+**图标库策略**：保持 Lucide（与 shadcn / Notion stroke 气质一致）；**产品语义图标**见 `apps/desktop/src/config/productIcons.ts`（环境 nav、LLM/改稿/记忆/stage、播放/暂停、质量 eval 等须从此取用）。`components/` / `pages/` 禁止直接 import 已登记语义名（含 `Play`/`Pause`/`Sparkles`/`Mic` 等）；守卫 `checkProductSemanticLucideImports`。平台动词（Trash2、RefreshCw、Chevron*、`Check` 勾选态、`Info` 提示）仍可直接 import。若需 Fill 活跃态可局部评估 Phosphor，禁止双库并行挂载。
+
+#### `PRODUCT_ICON` 词汇表（真源：`productIcons.ts`）
+
+| Key | Lucide | 用途 |
+|-----|--------|------|
+| `navLocalAsr` | Cpu | 环境页 · 本机 ASR |
+| `navOnlineStt` | Cloud | 环境页 · 在线 STT |
+| `navLlm` | Brain | 环境页 · LLM 配置 |
+| `navAppearance` | Palette | 环境页 · 外观 |
+| `navShortcuts` | Keyboard | 环境页 · 快捷键 |
+| `navProfileMigrate` | ArrowDownUp | 环境页 · 配置迁移 |
+| `navQuality` | BarChart3 | 环境页 · 质量评测 |
+| `navAbout` | Info | 环境页 · 关于 |
+| `navGlossaryVocabulary` | BookOpen | 侧栏 · 转写词汇表 |
+| `navGlossaryMemory` | BookMarked | 侧栏 · 纠错记忆 |
+| `navGlossaryBundle` | FileSpreadsheet | 侧栏 · 词表包 |
+| `transcribeAction` | Mic | 工作条 · 自动转录（动作） |
+| `aiRefine` | Wand2 | 工作条 · 智能改稿 |
+| `correctionRules` | SpellCheck2 | 工作条 · 规则纠错 |
+| `findReplace` | Replace | 工作条 · 查找替换 |
+| `correctionRulesAccept` | ListChecks | 纠错记忆批量 · 采纳为规则 |
+| `stageAutoTranscribe` | Bot | 语段 stage · 自动转写 |
+| `stageAiRevised` | Wand2 | 语段 stage · AI 改稿后 |
+| `stageManual` | PenLine | 语段 stage · 人工转写 |
+| `stageFinalized` | Check | 语段 stage · 已定稿 |
+| `playAudio` | Play | 波形 · 播放 |
+| `pauseAudio` | Pause | 波形 · 暂停 |
+| `runJob` | CirclePlay | 非音频任务启动（eval 等） |
+| `qualityGate` | Target | 质量评测 · R4-GATE |
+| `segmentAnnotation` | MessageSquare | 语段行备注 |
+
+新增产品域图标时：**先登记 key** → 迁移调用点 → 把 Lucide 导出名加入守卫 `PRODUCT_SEMANTIC_LUCIDE_NAMES`。
+
+**机器守卫**：`check-architecture-guard.mjs` 对内联 `<button className="…">` 含 `bg-transparent` + `hover:bg-notion-sidebar-hover` 且未用 `CONTROL_BTN_*` / 侧栏 token 的组件文件发出 **warning**（见 `checkControlBtnGhostDuplicates`）。
 
 ---
 
@@ -104,6 +154,7 @@
 7. **壳层 CSS `box-shadow` 债务**（warning → `workspace.css` 侧栏、`panels.css` `.panel` 等）
 8. **导航壳层 `bg-zen-paper`**（warning → `MAIN_SHELL_SURFACE_CLASS`；见 `shellVisualTokens.ts`）
 9. **语义 accent R8**：`components/` / `pages/` / `styles/components/` 内 `zen-saffron`（warning → `accent-action*`）
+10. **产品语义 Lucide**：`components/` / `pages/` 直接 import 已登记名（见 `PRODUCT_SEMANTIC_LUCIDE_NAMES` / `productIcons.ts`）（error → `PRODUCT_ICON.*`）
 
 ---
 

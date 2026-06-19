@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
+  CONTROL_BTN_BREADCRUMB,
   CONTROL_BTN_COMPACT_SECONDARY,
   CONTROL_BTN_DANGER,
   CONTROL_BTN_DANGER_COMPACT,
@@ -7,7 +8,9 @@ import {
   CONTROL_BTN_ICON_GHOST,
   CONTROL_BTN_LINK,
   CONTROL_BTN_PRIMARY,
+  CONTROL_BTN_STATUS_CHIP,
   CONTROL_BTN_TOOLBAR_GHOST,
+  CONTROL_BTN_WELCOME_ICON,
   CONTROL_BTN_WORKSPACE_IMPORT,
   CONTROL_TEXTAREA,
   ENV_COMPACT_BTN,
@@ -122,5 +125,14 @@ describe("controlStyles", () => {
     expect(envSegmentedToggleTrackClass(true)).toBe(ENV_SEGMENTED_TOGGLE_TRACK_COMPACT);
     expect(envSegmentedToggleBtnClass(true, true)).toContain("bg-notion-bg");
     expect(envSegmentedToggleBtnClass(false, true)).toContain("bg-transparent");
+  });
+
+  it("exposes top bar and breadcrumb chip tokens", () => {
+    expect(CONTROL_BTN_STATUS_CHIP).toContain("bg-transparent");
+    expect(CONTROL_BTN_STATUS_CHIP).toContain("hover:bg-notion-sidebar-hover");
+    expect(CONTROL_BTN_BREADCRUMB).toContain("truncate");
+    expect(CONTROL_BTN_BREADCRUMB).toContain("text-title");
+    expect(CONTROL_BTN_WELCOME_ICON).toContain("rounded-full");
+    expect(CONTROL_BTN_WELCOME_ICON).toContain("bg-transparent");
   });
 });
