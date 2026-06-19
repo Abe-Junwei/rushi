@@ -49,11 +49,16 @@ export function useFindReplaceMutations(args: Args) {
 
   const getCurrentSegmentsSnapshot = segmentPublish.getCurrentSegmentsSnapshot;
 
+  const currentMatchesAfterDraftFlush = useCallback(() => {
+    flushSegmentTextDrafts();
+    return collectLiteralFindMatches(getCurrentSegmentsSnapshot(), findText);
+  }, [findText, flushSegmentTextDrafts, getCurrentSegmentsSnapshot]);
+
   const findReplaceCurrent = useCallback(() => {
     if (!findText || activeMatchIndex < 0) return;
-    const match = matches[activeMatchIndex];
+    const currentMatches = currentMatchesAfterDraftFlush();
+    const match = currentMatches[clampMatchIndex(activeMatchIndex, currentMatches.length)];
     if (!match) return;
-    flushSegmentTextDrafts();
     const row = getCurrentSegmentsSnapshot()[match.segmentIdx];
     if (!row) return;
     const nextText = replaceOnceInText(row.text, match.charStart, findText, replaceText);
@@ -71,19 +76,18 @@ export function useFindReplaceMutations(args: Args) {
   }, [
     activeMatchIndex,
     applySearchResults,
+    currentMatchesAfterDraftFlush,
     findText,
-    flushSegmentTextDrafts,
     getCurrentSegmentsSnapshot,
-    matches,
     replaceText,
     updateSegmentText,
   ]);
 
   const findReplaceReplaceAndNext = useCallback(() => {
     if (!findText || activeMatchIndex < 0) return;
-    const match = matches[activeMatchIndex];
+    const currentMatches = currentMatchesAfterDraftFlush();
+    const match = currentMatches[clampMatchIndex(activeMatchIndex, currentMatches.length)];
     if (!match) return;
-    flushSegmentTextDrafts();
     const row = getCurrentSegmentsSnapshot()[match.segmentIdx];
     if (!row) return;
     const nextText = replaceOnceInText(row.text, match.charStart, findText, replaceText);
@@ -103,9 +107,8 @@ export function useFindReplaceMutations(args: Args) {
   }, [
     activeMatchIndex,
     applySearchResults,
+    currentMatchesAfterDraftFlush,
     findText,
-    flushSegmentTextDrafts,
-    matches,
     replaceText,
     getCurrentSegmentsSnapshot,
     updateSegmentText,
@@ -113,17 +116,18 @@ export function useFindReplaceMutations(args: Args) {
 
   const findReplaceRequestReplaceAll = useCallback(() => {
     if (!findText || !matches.length) return;
-    flushSegmentTextDrafts();
-    const rows = buildReplaceAllPreviewRows(getCurrentSegmentsSnapshot(), findText, replaceText, matches);
+    const currentMatches = currentMatchesAfterDraftFlush();
+    const rows = buildReplaceAllPreviewRows(getCurrentSegmentsSnapshot(), findText, replaceText, currentMatches);
     onRequestReplaceAllPreview(rows);
-  }, [findText, flushSegmentTextDrafts, getCurrentSegmentsSnapshot, matches, onRequestReplaceAllPreview, replaceText]);
+  }, [currentMatchesAfterDraftFlush, findText, getCurrentSegmentsSnapshot, matches.length, onRequestReplaceAllPreview, replaceText]);
 
   const findReplaceConfirmReplaceAll = useCallback(async () => {
     if (!findText || !matches.length || busy) return;
-    const matchCount = matches.length;
-    flushSegmentTextDrafts();
+    const currentMatches = currentMatchesAfterDraftFlush();
+    if (!currentMatches.length) return;
+    const matchCount = currentMatches.length;
     pushUndo();
-    const next = applyReplaceAllToSegments(getCurrentSegmentsSnapshot(), findText, replaceText, matches);
+    const next = applyReplaceAllToSegments(getCurrentSegmentsSnapshot(), findText, replaceText, currentMatches);
     segmentPublish.publishTextBulk(next);
     const explicitPairs =
       findText.trim() !== replaceText.trim()
@@ -143,9 +147,9 @@ export function useFindReplaceMutations(args: Args) {
   }, [
     busy,
     closeFindReplace,
+    currentMatchesAfterDraftFlush,
     findText,
-    flushSegmentTextDrafts,
-    matches,
+    matches.length,
     pushUndo,
     replaceText,
     getCurrentSegmentsSnapshot,
