@@ -29,6 +29,7 @@ function* walkMarkdownFiles(dir) {
         ent.name === "dist" ||
         ent.name === "target" ||
         ent.name === ".venv" ||
+        ent.name === ".venv-audit" ||
         ent.name === "stitch-upload"
       ) {
         continue;
