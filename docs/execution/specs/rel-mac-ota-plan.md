@@ -12,8 +12,8 @@
 OTA-1  依赖 + tauri.conf + capabilities + 占位 pubkey     → typecheck
 OTA-2  TS：checkForUpdate + 启动 UX1 + About 手动           → 单测
 OTA-3  release.yml：createUpdaterArtifacts + latest.json    → CI dry-run 文档
-OTA-4  tag v0.1.2（用户 K1 secrets 就绪后）                 → H-OTA 手测  ← 编码 ✅ · 待 tag
-OTA-5  tag v0.1.3 验证 v0.1.2→v0.1.3 增量                  → acceptance 签收
+OTA-4  tag v0.1.2（用户 K1 secrets 就绪后）                 → H-OTA-1～2 ✅
+OTA-5  tag v0.1.3 验证 v0.1.2→v0.1.3 增量                  → acceptance 签收  ← 发版中
 ```
 
 ---
