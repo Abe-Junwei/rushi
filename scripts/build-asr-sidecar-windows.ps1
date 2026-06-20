@@ -131,4 +131,20 @@ if (Get-Command bash -ErrorAction SilentlyContinue) {
 if (Test-Path $Dest) { Remove-Item -Recurse -Force $Dest }
 New-Item -ItemType Directory -Force (Split-Path $Dest) | Out-Null
 Copy-Item -Recurse $DistOnedir $Dest
+
+$gitSha = "unknown"
+if (Get-Command git -ErrorAction SilentlyContinue) {
+  $gitResult = git -C $Root rev-parse --short HEAD 2>$null
+  if ($LASTEXITCODE -eq 0 -and -not [string]::IsNullOrWhiteSpace($gitResult)) {
+    $gitSha = $gitResult.Trim()
+  }
+}
+$builtAt = (Get-Date).ToUniversalTime().ToString("yyyy-MM-ddTHH:mm:ssZ")
+$stampPath = Join-Path $Dest "sidecar-build-stamp.txt"
+@"
+git_sha=$gitSha
+built_at=$builtAt
+platform=Windows-$Variant
+"@ | Set-Content -Encoding utf8 $stampPath
+
 Write-Host "OK ($Variant): FunASR sidecar onedir -> $Dest"

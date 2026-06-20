@@ -9,12 +9,17 @@
 #   $env:SIGN_PASS  = "********"
 #   powershell -File scripts/sign-windows-sidecar.ps1
 #
-# Without SIGNTOOL + SIGN_PFX: prints guidance and exits 0.
+# Without SIGNTOOL + SIGN_PFX: prints guidance and exits 0 (local dev) or 1 (release tag build).
 
 $ErrorActionPreference = "Stop"
 $Root = Split-Path -Parent (Split-Path -Parent $MyInvocation.MyCommand.Path)
+$ReleaseBuild = $env:RELEASE_BUILD -eq "1"
 
 if (-not $env:SIGNTOOL -or -not $env:SIGN_PFX) {
+  if ($ReleaseBuild) {
+    Write-Error "Release build requires SIGNTOOL and SIGN_PFX for Authenticode signing."
+    exit 1
+  }
   Write-Host "Skip signing: set SIGNTOOL (path to signtool.exe) and SIGN_PFX (path to .pfx)."
   Write-Host "See docs/execution/windows-release-checklist.md"
   exit 0

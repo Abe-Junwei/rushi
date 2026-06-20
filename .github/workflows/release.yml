@@ -387,13 +387,31 @@ jobs:
         run: npm run asr:build-sidecar-windows-cpu
         timeout-minutes: 120
 
+      - name: Build Windows FunASR sidecar (CUDA)
+        run: npm run asr:build-sidecar-windows-cuda
+        timeout-minutes: 120
+
       - name: Verify bundled sidecar artifacts
         shell: bash
         run: |
           EXE="apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar/rushi-asr-sidecar.exe"
+          CUDA_EXE="apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar-cuda/rushi-asr-sidecar-cuda.exe"
           test -f "$EXE"
+          test -f "$CUDA_EXE"
           test -f "apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar/_internal/funasr/version.txt"
           test -f "apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar/_internal/ffmpeg.exe"
+          test -f "apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar/sidecar-build-stamp.txt"
+          test -f "apps/desktop/src-tauri/resources/bundled-asr/rushi-asr-sidecar-cuda/sidecar-build-stamp.txt"
+
+      - name: Authenticode sign bundled sidecars (release tag)
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        shell: pwsh
+        env:
+          SIGNTOOL: ${{ secrets.WINDOWS_SIGNTOOL_PATH }}
+          SIGN_PFX: ${{ secrets.WINDOWS_SIGN_PFX_PATH }}
+          SIGN_PASS: ${{ secrets.WINDOWS_SIGN_PFX_PASSWORD }}
+          RELEASE_BUILD: "1"
+        run: pwsh scripts/sign-windows-sidecar.ps1
 
       - name: Post-build sidecar health smoke
         shell: pwsh
