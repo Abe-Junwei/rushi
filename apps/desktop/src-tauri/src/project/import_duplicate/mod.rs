@@ -9,7 +9,7 @@ mod tests;
 
 pub use backfill::backfill_files_import_provenance;
 pub use check::check_import_duplicate_inner;
-pub use path_meta::import_provenance_for_src;
+pub use path_meta::{import_file_display_name, import_provenance_for_src, ImportFileKind};
 pub use types::ImportDuplicateCheck;
 
 use crate::DbState;

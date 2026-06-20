@@ -1,5 +1,7 @@
 use super::asset_scope;
-use super::import_duplicate::import_provenance_for_src;
+use super::import_duplicate::{
+    import_file_display_name, import_provenance_for_src, ImportFileKind,
+};
 use super::import_parse::{parse_srt, parse_txt};
 use super::segment_uid::segment_uid_or_new;
 use super::types::ProjectDetail;
@@ -74,6 +76,7 @@ pub(crate) fn project_create_from_audio_inner(
         let _ = fs::remove_dir_all(&dest_dir);
     })?;
     let provenance = import_provenance_for_src(src_path)?;
+    let file_name = import_file_display_name(src_path, ImportFileKind::Audio);
     let t = now_ms();
     let mut conn = open_db(st)?;
     let tx = conn.transaction().map_err(|e| e.to_string())?;
@@ -90,7 +93,7 @@ pub(crate) fn project_create_from_audio_inner(
         params![
             &file_id,
             &project_id,
-            name,
+            &file_name,
             "paired",
             &dest_str,
             &provenance.source_path,
@@ -164,6 +167,7 @@ pub(crate) fn create_project_from_text_inner(
     let project_id = Uuid::new_v4().to_string();
     let file_id = Uuid::new_v4().to_string();
     let provenance = import_provenance_for_src(src_path)?;
+    let file_name = import_file_display_name(src_path, ImportFileKind::Text);
     let t = now_ms();
     let mut conn = open_db(st)?;
     let tx = conn.transaction().map_err(|e| e.to_string())?;
@@ -178,7 +182,7 @@ pub(crate) fn create_project_from_text_inner(
         params![
             &file_id,
             &project_id,
-            name,
+            &file_name,
             "text",
             &provenance.source_path,
             &provenance.content_sha256,
