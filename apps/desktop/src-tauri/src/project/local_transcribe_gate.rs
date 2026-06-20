@@ -51,7 +51,26 @@ pub fn local_transcribe_gate_from_health(
         )
         .to_string());
     }
-    if health.get("ready_for_transcribe").and_then(|x| x.as_bool()) != Some(true) {
+    // R3-STATE: selected_model_ready is authoritative when model is in memory.
+    if health.get("selected_model_ready").and_then(|x| x.as_bool()) == Some(true) {
+        // fall through to hub / loaded checks below
+    } else if health
+        .get("funasr_required_models_cached")
+        .and_then(|x| x.as_bool())
+        == Some(true)
+    {
+        // D4: weights on disk; first transcribe loads into memory (launch warmup may be deferred).
+        if health.get("ready_for_transcribe").and_then(|x| x.as_bool()) != Some(true) {
+            return Err(
+                "本机 ASR 模型尚未就绪：请在环境页下载当前所选模型并完成侧车准备。".to_string(),
+            );
+        }
+    } else if health.get("ready_for_transcribe").and_then(|x| x.as_bool()) == Some(true) {
+        return Err(
+            "所选模型尚未完全就绪（侧车可能仍绑定其他缓存）。请在环境页下载当前模型并「应用并重启侧车」。"
+                .to_string(),
+        );
+    } else {
         return Err(
             "本机 ASR 模型尚未就绪：请在环境页下载当前所选模型并完成侧车准备。".to_string(),
         );
@@ -60,13 +79,15 @@ pub fn local_transcribe_gate_from_health(
         .get("model_memory_matches_config")
         .and_then(|x| x.as_bool())
         == Some(false)
+        && health
+            .get("funasr_loaded_model_id")
+            .and_then(|x| x.as_str())
+            .filter(|s| !s.is_empty())
+            .is_some()
     {
         return Err(
             "侧车模型权重尚未加载到内存；请在环境页完成模型准备或等待侧车预热完成。".to_string(),
         );
-    }
-    if health.get("selected_model_ready").and_then(|x| x.as_bool()) == Some(false) {
-        return Err("侧车所选模型尚未完全就绪；请在环境页完成模型下载与预热后再试。".to_string());
     }
     let sidecar_model = health
         .get("funasr_model_id")
@@ -197,9 +218,30 @@ mod tests {
     }
 
     #[test]
+    fn gate_passes_when_global_ready_false_but_selected_ready() {
+        let mut health = ok_health(PARA);
+        health["ready_for_transcribe"] = json!(false);
+        health["selected_model_ready"] = json!(true);
+        local_transcribe_gate_from_health(&health, Some(PARA)).unwrap();
+    }
+
+    #[test]
+    fn gate_passes_when_disk_cached_but_not_loaded_in_memory() {
+        let mut health = ok_health(PARA);
+        health["selected_model_ready"] = json!(false);
+        health["ready_for_transcribe"] = json!(true);
+        health["funasr_required_models_cached"] = json!(true);
+        health["funasr_loaded_model_id"] = json!(null);
+        health["model_memory_matches_config"] = json!(false);
+        local_transcribe_gate_from_health(&health, Some(PARA)).unwrap();
+    }
+
+    #[test]
     fn gate_blocks_selected_model_not_ready() {
         let mut health = ok_health(PARA);
         health["selected_model_ready"] = json!(false);
+        health["ready_for_transcribe"] = json!(false);
+        health["funasr_required_models_cached"] = json!(false);
         assert!(local_transcribe_gate_from_health(&health, Some(PARA)).is_err());
     }
 

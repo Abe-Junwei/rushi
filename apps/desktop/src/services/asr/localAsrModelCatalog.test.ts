@@ -223,14 +223,31 @@ describe("localAsrModelCatalog", () => {
     expect(result.ready).toBe(false);
   });
 
-  it("computeLocalAsrTranscribeReady blocks when selected_model_ready is false", () => {
+  it("computeLocalAsrTranscribeReady allows disk-only when warmup deferred", () => {
+    const result = computeLocalAsrTranscribeReady({
+      asrHealth: "ok",
+      asrCaps: {
+        funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+        funasr_loaded_model_id: null,
+        funasr_required_models_cached: true,
+        ready_for_transcribe: true,
+        model_memory_matches_config: false,
+        selected_model_ready: false,
+      },
+      selectedHubModelId: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+    });
+    expect(result.sidecarMatchesSelection).toBe(true);
+    expect(result.ready).toBe(true);
+  });
+
+  it("computeLocalAsrTranscribeReady blocks when selected_model_ready false and disk incomplete", () => {
     const result = computeLocalAsrTranscribeReady({
       asrHealth: "ok",
       asrCaps: {
         funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
         funasr_loaded_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
-        funasr_required_models_cached: true,
-        ready_for_transcribe: true,
+        funasr_required_models_cached: false,
+        ready_for_transcribe: false,
         model_memory_matches_config: true,
         selected_model_ready: false,
       },
@@ -238,5 +255,85 @@ describe("localAsrModelCatalog", () => {
     });
     expect(result.sidecarMatchesSelection).toBe(true);
     expect(result.ready).toBe(false);
+  });
+
+  it("computeLocalAsrTranscribeReady trusts selected_model_ready over stale catalog", () => {
+    const result = computeLocalAsrTranscribeReady({
+      asrHealth: "ok",
+      asrCaps: {
+        funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+        funasr_required_models_cached: true,
+        selected_model_ready: true,
+        model_memory_matches_config: true,
+      },
+      catalogStatus: [
+        {
+          catalogId: "paraformer-long-vad-punc",
+          label: "Paraformer",
+          hubModelId: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+          description: "",
+          diskHint: "",
+          recommendLongAudio: true,
+          cached: false,
+          active: true,
+          readyForTranscribe: false,
+        },
+      ],
+      selectedHubModelId: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+    });
+    expect(result.ready).toBe(true);
+  });
+
+  it("buildLocalAsrCatalogView marks disk-only SKU transcribe-ready when warmup deferred", () => {
+    const view = buildLocalAsrCatalogView(
+      {
+        funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+        funasr_required_models_cached: true,
+        selected_model_ready: false,
+      },
+      null,
+      DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+    );
+    expect(view[0].cached).toBe(true);
+    expect(view[0].readyForTranscribe).toBe(true);
+  });
+
+  it("buildLocalAsrCatalogView uses selected_model_ready for active SKU", () => {
+    const notReady = buildLocalAsrCatalogView(
+      {
+        funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+        funasr_required_models_cached: false,
+        selected_model_ready: false,
+      },
+      null,
+      DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+    );
+    expect(notReady[0].cached).toBe(false);
+    expect(notReady[0].readyForTranscribe).toBe(false);
+
+    const ready = buildLocalAsrCatalogView(
+      {
+        funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+        selected_model_ready: true,
+      },
+      null,
+      DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+    );
+    expect(ready[0].cached).toBe(true);
+    expect(ready[0].readyForTranscribe).toBe(true);
+  });
+
+  it("buildLocalAsrCatalogView does not mark cached from active_model alone", () => {
+    const view = buildLocalAsrCatalogView(
+      {
+        funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+        funasr_active_model_cached: true,
+        funasr_required_models_cached: false,
+      },
+      null,
+      DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+    );
+    expect(view[0].cached).toBe(false);
+    expect(view[0].readyForTranscribe).toBe(false);
   });
 });

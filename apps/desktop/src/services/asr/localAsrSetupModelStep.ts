@@ -1,4 +1,5 @@
 import * as projectApi from "../../tauri/projectApi";
+import type { AsrHealthCapabilities } from "../../tauri/projectApi";
 import { isDefaultBundledAsrTarget } from "../../config/env";
 import {
   packagedOrDev,
@@ -8,12 +9,15 @@ import {
 import { fetchAsrHealthCaps } from "./asrHealthSnapshot";
 import {
   shouldSkipSidecarRestartForSelection,
+  isLoopbackTranscribeReadyForSelection,
   type LocalAsrSetupSelectionContext,
 } from "./localAsrSidecarGuards";
 import {
+  buildLocalAsrCatalogView,
   catalogEntryForHub,
   computeLocalAsrTranscribeReady,
   resolveLocalAsrHubModelId,
+  selectedModelPrepareState,
 } from "./localAsrModelCatalog";
 import { normalizeLocalAsrRecognitionLanguage } from "./localAsrRecognitionLanguage";
 import {
@@ -28,18 +32,37 @@ export type { LocalAsrSetupSelectionContext };
 export type SelectedModelPrepareSnapshot = {
   hub: string;
   modelLabel: string;
+  /** D5: memory-loaded + disk deps (same as transcribe-ready when warmup not deferred). */
   ready: boolean;
+  /** D4: selected SKU weights on disk + sidecar hub aligned. */
+  diskPrepared: boolean;
   sidecarMatchesSelection: boolean;
 };
 
 export type ApplyHubModelResult =
-  | { ok: true; message: string }
+  | { ok: true; message: string; transcribeReady: boolean }
   | { ok: false; message: string; needsManualSidecarRestart?: boolean };
+
+function buildApplyHubSuccessMessage(
+  label: string,
+  caps: AsrHealthCapabilities,
+  ctx: LocalAsrSetupSelectionContext,
+): { message: string; transcribeReady: boolean } {
+  const transcribeReady = isLoopbackTranscribeReadyForSelection(caps, ctx);
+  if (transcribeReady) {
+    return { message: `侧车已切换为 ${label}，可以开始转写。`, transcribeReady: true };
+  }
+  return {
+    message: `侧车已切换为 ${label}。请先点「下载当前模型」完成准备后再转写。`,
+    transcribeReady: false,
+  };
+}
 
 async function restartSidecarAndWait(
   hub: string,
   label: string,
   language: string,
+  ctx: LocalAsrSetupSelectionContext,
   progress: (message: string) => void,
 ): Promise<ApplyHubModelResult> {
   progress("正在保存模型偏好…");
@@ -58,7 +81,8 @@ async function restartSidecarAndWait(
   progress(`正在等待侧车加载 ${label}…`);
   const after = await waitForSidecarConfig({ hub, language });
   if (after && sidecarConfigMatchesHub(after, hub, language)) {
-    return { ok: true, message: `侧车已切换为 ${label}，可以开始转写。` };
+    const { message, transcribeReady } = buildApplyHubSuccessMessage(label, after, ctx);
+    return { ok: true, message, transcribeReady };
   }
   if (after && !sidecarConfigMatchesHub(after, hub, language)) {
     const running =
@@ -88,7 +112,11 @@ export async function applyHubModelToSidecar(
   const caps = await fetchAsrHealthCaps();
   if (shouldSkipSidecarRestartForSelection(caps, ctx)) {
     await writeLocalAsrPrefs(hub, language);
-    return { ok: true, message: "侧车已在运行所选模型，无需重启。" };
+    return {
+      ok: true,
+      message: "侧车已在运行所选模型，无需重启。",
+      transcribeReady: true,
+    };
   }
 
   if (!isDefaultBundledAsrTarget()) {
@@ -100,7 +128,7 @@ export async function applyHubModelToSidecar(
     };
   }
 
-  return restartSidecarAndWait(hub, label, language, progress);
+  return restartSidecarAndWait(hub, label, language, ctx, progress);
 }
 
 /** Read loopback caps + UI selection; D1=D2 aligned transcribe readiness for setup flows. */
@@ -110,13 +138,17 @@ export async function snapshotSelectedModelPrepare(
   const hub = resolveLocalAsrHubModelId(ctx.selectedHubModelId);
   const caps = await fetchAsrHealthCaps();
   const modelLabel = catalogEntryForHub(hub)?.label ?? "当前所选模型";
+  const catalogStatus = ctx.catalogStatus ?? null;
   const { ready, sidecarMatchesSelection } = computeLocalAsrTranscribeReady({
     asrHealth: caps ? "ok" : "error",
     asrCaps: caps,
     selectedHubModelId: hub,
-    catalogStatus: ctx.catalogStatus ?? null,
+    catalogStatus,
   });
-  return { hub, modelLabel, ready, sidecarMatchesSelection };
+  const view = buildLocalAsrCatalogView(caps, catalogStatus, hub);
+  const prepare = selectedModelPrepareState(view, hub, caps?.funasr_model_id);
+  const diskPrepared = prepare.cached && prepare.sidecarMatchesSelection;
+  return { hub, modelLabel, ready, diskPrepared, sidecarMatchesSelection };
 }
 
 /** Align bundled sidecar with UI-selected hub; skips restart when already warm (see guards). */

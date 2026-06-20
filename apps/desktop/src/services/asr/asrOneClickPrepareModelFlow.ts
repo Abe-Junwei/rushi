@@ -103,7 +103,7 @@ export async function runAsrOneClickPrepareModelFlow(
     touchUi: false,
     skipLocalRuntimeDiagnose: true,
   });
-  if (modelSnap.ready) {
+  if (modelSnap.ready || modelSnap.diskPrepared) {
     setSetupSteps((steps) =>
       patchStep(steps, "model", {
         status: "skipped",
@@ -129,7 +129,7 @@ export async function runAsrOneClickPrepareModelFlow(
       skipLocalRuntimeDiagnose: true,
     });
     const afterSnap = await snapshotSelectedModelPrepare(selection);
-    if (afterSnap.ready && afterSnap.sidecarMatchesSelection) {
+    if (afterSnap.ready || afterSnap.diskPrepared) {
       setSetupSteps((steps) =>
         patchStep(steps, "model", {
           status: "ok",
@@ -147,7 +147,7 @@ export async function runAsrOneClickPrepareModelFlow(
   }
 
   const finalSnap = await snapshotSelectedModelPrepare(selection);
-  if (!finalSnap.ready || !finalSnap.sidecarMatchesSelection) {
+  if (!finalSnap.ready && !finalSnap.diskPrepared || !finalSnap.sidecarMatchesSelection) {
     setSetupSteps((steps) =>
       patchStep(steps, "model", { status: "error", detail: "模型尚未完全就绪" }),
     );

@@ -46,6 +46,13 @@ def test_health_ok() -> None:
     assert isinstance(body["selected_model_ready"], bool)
     if not body["model_loaded_in_memory"]:
         assert body["selected_model_ready"] is False
+    if body["selected_model_ready"]:
+        assert body["ready_for_transcribe"] is True
+    elif body["funasr_required_models_cached"] and body["funasr_ready"] and body["ffmpeg_on_path"]:
+        assert body["ready_for_transcribe"] is True
+        assert body["transcription_mode"] == "funasr"
+    else:
+        assert body["ready_for_transcribe"] is body["selected_model_ready"]
     assert body["transcription_mode"] in ("funasr", "stub")
     assert isinstance(body.get("funasr_model_id"), str)
     assert body.get("funasr_language") in ("zh", "en", "ja", "ko", "yue", "auto")

@@ -185,7 +185,16 @@ export function computeLocalAsrTranscribeReady(input: LocalAsrTranscribeReadyInp
   if (!sidecarMemoryModelMatchesConfig(asrCaps)) {
     return { ready: false, sidecarMatchesSelection: true };
   }
-  if (asrCaps.selected_model_ready === false) {
+  // Modern sidecar: /health.selected_model_ready is authoritative (matches Rust gate).
+  if (typeof asrCaps.selected_model_ready === "boolean") {
+    if (asrCaps.selected_model_ready) {
+      return { ready: true, sidecarMatchesSelection: true };
+    }
+    // D4 on disk + sidecar aligned: allow transcribe / one-click success; model loads on first use
+    // when launch warmup is deferred (weights cached but not yet in memory).
+    if (asrCaps.funasr_required_models_cached === true) {
+      return { ready: true, sidecarMatchesSelection: true };
+    }
     return { ready: false, sidecarMatchesSelection: true };
   }
   const view = buildLocalAsrCatalogView(asrCaps, input.catalogStatus ?? null, selected);
@@ -210,10 +219,15 @@ function sidecarMemoryModelMatchesConfig(
     funasr_model_id?: string | null;
     funasr_loaded_model_id?: string | null;
     model_memory_matches_config?: boolean;
+    funasr_required_models_cached?: boolean;
   } | null,
 ): boolean {
   if (typeof asrCaps?.model_memory_matches_config === "boolean") {
-    return asrCaps.model_memory_matches_config;
+    if (asrCaps.model_memory_matches_config) return true;
+    const loaded = asrCaps?.funasr_loaded_model_id;
+    // Not loaded into memory yet (deferred warmup) — not a mismatch.
+    if (loaded == null || loaded === "") return true;
+    return false;
   }
   const configured = asrCaps?.funasr_model_id;
   if (!configured) return true;
@@ -249,6 +263,7 @@ export function buildLocalAsrCatalogView(
     funasr_default_model_cached?: boolean;
     funasr_active_model_cached?: boolean;
     funasr_required_models_cached?: boolean;
+    selected_model_ready?: boolean;
   } | null,
   serverStatus: LocalAsrCatalogStatusItem[] | null,
   selectedHubModelId: string,
@@ -260,15 +275,31 @@ export function buildLocalAsrCatalogView(
     let cached = fromServer?.cached ?? false;
     let readyForTranscribe = fromServer?.readyForTranscribe ?? false;
 
-    if (entry.hubModelId === DEFAULT_LOCAL_ASR_HUB_MODEL_ID && caps?.funasr_default_model_cached === true) {
-      cached = true;
-    }
-    if (active && caps?.funasr_active_model_cached === true) {
-      cached = true;
-    }
-    if (active && caps?.funasr_model_id && caps?.funasr_required_models_cached === true) {
+    if (active && caps?.funasr_model_id && typeof caps.selected_model_ready === "boolean") {
+      if (caps.selected_model_ready) {
+        readyForTranscribe = true;
+        cached = true;
+      } else if (caps.funasr_required_models_cached === true) {
+        cached = true;
+        readyForTranscribe = true;
+      } else if (
+        caps.funasr_active_model_cached === true ||
+        caps.funasr_default_model_cached === true
+      ) {
+        cached = false;
+        readyForTranscribe = false;
+      }
+    } else if (active && caps?.funasr_model_id && caps?.funasr_required_models_cached === true) {
+      // Legacy sidecar (no selected_model_ready): D4 required-models gate only.
       cached = true;
       readyForTranscribe = true;
+    } else if (
+      active &&
+      caps?.funasr_model_id &&
+      (caps?.funasr_active_model_cached === true || caps?.funasr_default_model_cached === true)
+    ) {
+      cached = false;
+      readyForTranscribe = false;
     }
 
     if (fromServer) {

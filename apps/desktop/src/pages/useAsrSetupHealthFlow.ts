@@ -97,7 +97,7 @@ export function useAsrSetupHealthFlow({
       );
       const selection = deps.getSetupSelection();
       const modelSnap = await snapshotSelectedModelPrepare(selection);
-      if (modelSnap.ready && modelSnap.sidecarMatchesSelection) {
+      if (modelSnap.ready || modelSnap.diskPrepared) {
         markPortConflictAcknowledged();
         setSetupSteps((steps) => {
           let next = patchStep(steps, "model", {
@@ -125,7 +125,7 @@ export function useAsrSetupHealthFlow({
         setSetupOutcome("blocked");
         return;
       }
-      if (!modelSnap.ready) {
+      if (!modelSnap.ready && !modelSnap.diskPrepared) {
         setSetupSteps((steps) =>
           patchStep(steps, "model", {
             status: "running",
@@ -145,7 +145,7 @@ export function useAsrSetupHealthFlow({
       await deps.refreshAsrRuntimeInfo();
       const afterSnap = await snapshotSelectedModelPrepare(selection);
       const transcribeReady =
-        afterSnap.ready &&
+        (afterSnap.ready || afterSnap.diskPrepared) &&
         afterSnap.sidecarMatchesSelection;
       if (transcribeReady) {
         markPortConflictAcknowledged();

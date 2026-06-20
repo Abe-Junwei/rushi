@@ -26,7 +26,17 @@ const fetchAsrHealthCaps = vi.fn<
   } | null>
 >();
 const pollLoopbackHealthUntil = vi.fn<
-  () => Promise<{ funasr_ready?: boolean; funasr_model_id?: string | null; funasr_language?: string | null } | null>
+  () => Promise<{
+    funasr_ready?: boolean;
+    ready_for_transcribe?: boolean;
+    selected_model_ready?: boolean;
+    funasr_model_id?: string | null;
+    funasr_language?: string | null;
+    funasr_required_models_cached?: boolean;
+    funasr_active_model_cached?: boolean;
+    funasr_default_model_cached?: boolean;
+    funasr_vad_model_cached?: boolean;
+  } | null>
 >();
 
 vi.mock("../../config/env", () => ({
@@ -166,5 +176,34 @@ describe("applyHubModelToSidecar", () => {
     expect(result.ok).toBe(true);
     expect(retryBundledAsrSidecar).toHaveBeenCalled();
     expect(pollLoopbackHealthUntil).toHaveBeenCalled();
+  });
+
+  it("does not claim transcribe-ready when hub matches but model is not cached", async () => {
+    fetchAsrHealthCaps.mockResolvedValue({
+      ...readyCaps,
+      ready_for_transcribe: false,
+      funasr_required_models_cached: false,
+      funasr_active_model_cached: false,
+      funasr_default_model_cached: false,
+      funasr_model_id: "iic/other",
+    });
+    pollLoopbackHealthUntil.mockResolvedValue({
+      funasr_model_id:
+        "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
+      funasr_language: "zh",
+      ready_for_transcribe: false,
+      funasr_required_models_cached: false,
+      funasr_active_model_cached: false,
+      funasr_default_model_cached: false,
+    });
+
+    const result = await applyHubModelToSidecar(selection);
+
+    expect(result.ok).toBe(true);
+    if (result.ok) {
+      expect(result.transcribeReady).toBe(false);
+      expect(result.message).toContain("下载当前模型");
+      expect(result.message).not.toContain("可以开始转写");
+    }
   });
 });

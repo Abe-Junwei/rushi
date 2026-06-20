@@ -22,7 +22,7 @@ export async function finishOneClickIfAlreadyReady(
 ): Promise<boolean> {
   const readySnap = await snapshotSelectedModelPrepare(selection);
   // Loopback + UI selection are authoritative; diagnose snapshot may lag behind /health.
-  if (!readySnap.ready || !readySnap.sidecarMatchesSelection) {
+  if ((!readySnap.ready && !readySnap.diskPrepared) || !readySnap.sidecarMatchesSelection) {
     return false;
   }
   if (isDefaultBundledAsrTarget()) {

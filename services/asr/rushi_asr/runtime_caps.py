@@ -62,8 +62,11 @@ def get_runtime_caps() -> dict[str, object]:
         and model_loaded_in_memory
         and model_memory_matches_config
     )
-    ready_for_transcribe = bool(runtime_ready and required_models_cached and ffmpeg_on_path)
-    transcription_mode: str = "funasr" if ready_for_transcribe else "stub"
+    can_transcribe = bool(
+        runtime_ready and required_models_cached and ffmpeg_on_path
+    )
+    ready_for_transcribe = can_transcribe
+    transcription_mode: str = "funasr" if can_transcribe else "stub"
     models_root = os.environ.get("RUSHI_MODELS_ROOT", "").strip() or None
     local_token_required = bool(os.environ.get("RUSHI_LOCAL_TOKEN", "").strip())
 
