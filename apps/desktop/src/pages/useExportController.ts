@@ -66,6 +66,11 @@ export function useExportController(deps: ExportDeps): ExportApi {
     return file?.name?.trim() || current.name;
   }, [current, currentFileId]);
 
+  const exportDefaultBasename = useCallback(
+    (ext: "txt" | "srt" | "docx" | "zip") => safeExportBasename(exportContextLabel(), ext),
+    [exportContextLabel],
+  );
+
   const reportExportFailure = useCallback(
     (formatLabel: string, e: unknown) => {
       if (!current) return;
@@ -88,12 +93,12 @@ export function useExportController(deps: ExportDeps): ExportApi {
     flushSegmentTextDrafts();
     const rows: ExportSegment[] = getCurrentSegmentsSnapshot().map((s, i) => ({ ...s, idx: i }));
     try {
-      await p1.exportTextFile(safeExportBasename(current.name, "txt"), formatTxt(rows));
+      await p1.exportTextFile(exportDefaultBasename("txt"), formatTxt(rows));
       syncOnboardingExport();
     } catch (e) {
       reportExportFailure("TXT", e);
     }
-  }, [current, getCurrentSegmentsSnapshot, reportExportFailure, flushSegmentTextDrafts, setError]);
+  }, [current, exportDefaultBasename, getCurrentSegmentsSnapshot, reportExportFailure, flushSegmentTextDrafts, setError]);
 
   const exportSrt = useCallback(async () => {
     if (!current) return;
@@ -101,12 +106,12 @@ export function useExportController(deps: ExportDeps): ExportApi {
     flushSegmentTextDrafts();
     const rows: ExportSegment[] = getCurrentSegmentsSnapshot().map((s, i) => ({ ...s, idx: i }));
     try {
-      await p1.exportTextFile(safeExportBasename(current.name, "srt"), formatSrt(rows));
+      await p1.exportTextFile(exportDefaultBasename("srt"), formatSrt(rows));
       syncOnboardingExport();
     } catch (e) {
       reportExportFailure("SRT", e);
     }
-  }, [current, getCurrentSegmentsSnapshot, reportExportFailure, flushSegmentTextDrafts, setError]);
+  }, [current, exportDefaultBasename, getCurrentSegmentsSnapshot, reportExportFailure, flushSegmentTextDrafts, setError]);
 
   const docxExportMetaLine = useCallback(
     (includeProjectMetadata: boolean) => {
@@ -132,7 +137,7 @@ export function useExportController(deps: ExportDeps): ExportApi {
       flushSegmentTextDrafts();
       const normalized: SegmentDto[] = getCurrentSegmentsSnapshot().map((s, i) => ({ ...s, idx: i }));
       try {
-        await exportDocxImpl(safeExportBasename(current.name, "docx"), current.name, mode, normalized, {
+        await exportDocxImpl(exportDefaultBasename("docx"), current.name, mode, normalized, {
           exportMetaLine: docxExportMetaLine(false),
         });
         syncOnboardingExport();
@@ -140,7 +145,7 @@ export function useExportController(deps: ExportDeps): ExportApi {
         reportExportFailure("DOCX", e);
       }
     },
-    [current, docxExportMetaLine, getCurrentSegmentsSnapshot, reportExportFailure, flushSegmentTextDrafts, setError],
+    [current, docxExportMetaLine, exportDefaultBasename, getCurrentSegmentsSnapshot, reportExportFailure, flushSegmentTextDrafts, setError],
   );
 
   const exportDeliveryDocx = useCallback(
@@ -179,7 +184,7 @@ export function useExportController(deps: ExportDeps): ExportApi {
           return;
         }
         await exportDocxImpl(
-          safeExportBasename(current.name, "docx"),
+          exportDefaultBasename("docx"),
           current.name,
           request.mode,
           normalized,
@@ -210,6 +215,7 @@ export function useExportController(deps: ExportDeps): ExportApi {
       getCurrentSegmentsSnapshot,
       reportExportFailure,
       exportContextLabel,
+      exportDefaultBasename,
       flushSegmentTextDrafts,
       beginBusy,
       endBusy,
@@ -248,14 +254,14 @@ export function useExportController(deps: ExportDeps): ExportApi {
       await p1.exportProjectBundle(
         current.id,
         currentFileId,
-        safeExportBasename(current.name, "zip"),
+        exportDefaultBasename("zip"),
         normalized,
       );
       syncOnboardingExport();
     } catch (e) {
       reportExportFailure("项目包", e);
     }
-  }, [current, currentFileId, getCurrentSegmentsSnapshot, reportExportFailure, flushSegmentTextDrafts, setError]);
+  }, [current, currentFileId, exportDefaultBasename, getCurrentSegmentsSnapshot, reportExportFailure, flushSegmentTextDrafts, setError]);
 
   const importProjectBundle = useCallback(async () => {
     setError("");

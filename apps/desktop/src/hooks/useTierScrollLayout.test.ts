@@ -88,4 +88,34 @@ describe("useTierScrollLayout", () => {
 
     expect(result.current.clientWidthPx).toBe(900);
   });
+
+  it("updates clientWidth when ResizeObserver reports tier growth", () => {
+    const el = document.createElement("div");
+    Object.defineProperty(el, "scrollLeft", { value: 0, writable: true, configurable: true });
+    Object.defineProperty(el, "clientWidth", { value: 0, configurable: true });
+    const tierScrollRef = { current: el };
+
+    let roCallback: (() => void) | null = null;
+    vi.stubGlobal(
+      "ResizeObserver",
+      class {
+        constructor(cb: () => void) {
+          roCallback = cb;
+        }
+        observe() {}
+        disconnect() {}
+      },
+    );
+
+    const { result } = renderHook(() => useTierScrollLayout(tierScrollRef));
+    expect(result.current.clientWidthPx).toBe(0);
+
+    act(() => {
+      Object.defineProperty(el, "clientWidth", { value: 640, configurable: true });
+      roCallback?.();
+    });
+
+    expect(result.current.clientWidthPx).toBe(640);
+    expect(result.current.liveClientWidthRef.current).toBe(640);
+  });
 });

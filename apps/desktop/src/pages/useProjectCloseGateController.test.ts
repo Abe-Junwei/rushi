@@ -211,6 +211,21 @@ describe("useProjectCloseGateController", () => {
     expect(args.openFile).toHaveBeenCalledWith("file-old");
   });
 
+  it("loadProjectAfterImport reloads same file even when segment edits are dirty", async () => {
+    const detail = makeDetail("proj-a");
+    detail.files = [{ id: "file-1", name: "a.wav", file_type: "paired", updated_at_ms: 2 }];
+    vi.mocked(projectLoad).mockResolvedValue(detail);
+    const args = baseArgs({ currentFileId: "file-1", dirty: makeDirty(true) });
+    const { result } = renderHook(() => useProjectCloseGateController(args));
+
+    await act(async () => {
+      await result.current.loadProjectAfterImport("proj-a", "file-1");
+    });
+
+    expect(args.openFile).toHaveBeenCalledWith("file-1");
+    expect(args.dirty.setSavedSnapshot).toHaveBeenCalled();
+  });
+
   it("confirmTranscribeNavBlock chains unsaved gate after stopping transcribe", async () => {
     const args = baseArgs({
       busy: true,

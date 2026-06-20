@@ -5,11 +5,21 @@ use reqwest::blocking::Client;
 use serde_json::Value;
 
 static LOOPBACK_CLIENT: OnceLock<Client> = OnceLock::new();
+static LOOPBACK_POST_CLIENT: OnceLock<Client> = OnceLock::new();
 
 fn client() -> &'static Client {
     LOOPBACK_CLIENT.get_or_init(|| {
         Client::builder()
             .timeout(Duration::from_secs(8))
+            .build()
+            .unwrap_or_else(|_| Client::new())
+    })
+}
+
+fn post_client() -> &'static Client {
+    LOOPBACK_POST_CLIENT.get_or_init(|| {
+        Client::builder()
+            .timeout(Duration::from_secs(600))
             .build()
             .unwrap_or_else(|_| Client::new())
     })
@@ -39,13 +49,11 @@ pub fn loopback_get_send(url: &str) -> Result<reqwest::blocking::Response, reqwe
 /// POST with empty body; for long-running sidecar routes (e.g. model warmup).
 pub fn loopback_post_ok(
     url: &str,
-    timeout_secs: u64,
+    _timeout_secs: u64,
     extra_headers: &[(&str, &str)],
 ) -> Result<(), String> {
-    let client = Client::builder()
-        .timeout(Duration::from_secs(timeout_secs))
-        .build()
-        .map_err(|e| e.to_string())?;
+    // Process-wide client only — never build/drop an ephemeral reqwest::blocking runtime here.
+    let client = post_client();
     let mut req = client.post(url);
     for (name, value) in extra_headers {
         req = req.header(*name, *value);

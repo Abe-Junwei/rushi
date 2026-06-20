@@ -39,6 +39,14 @@ export type WaveformTimeRulerCanvasProps = {
   onSetScrollLeftPx: (px: number) => void;
 };
 
+function rulerPaintable(input: {
+  isReady: boolean;
+  durationSec: number;
+  timelineWidthPx: number;
+}): boolean {
+  return input.isReady && input.durationSec > 0 && input.timelineWidthPx > 0;
+}
+
 export const WaveformTimeRulerCanvas = memo(function WaveformTimeRulerCanvas({
   durationSec,
   timelineWidthPx,
@@ -55,9 +63,11 @@ export const WaveformTimeRulerCanvas = memo(function WaveformTimeRulerCanvas({
   onSeekFromTierClientX,
   onSetScrollLeftPx,
 }: WaveformTimeRulerCanvasProps) {
+  const shellRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const paletteRef = useRef<WaveformRulerCanvasPalette>(defaultWaveformRulerCanvasPalette());
   const inputRef = useRef({
+    isReady,
     durationSec,
     timelineWidthPx,
     viewportWidthPx,
@@ -67,6 +77,7 @@ export const WaveformTimeRulerCanvas = memo(function WaveformTimeRulerCanvas({
     interactionActive: false,
   });
   inputRef.current = {
+    isReady,
     durationSec,
     timelineWidthPx,
     viewportWidthPx,
@@ -100,7 +111,9 @@ export const WaveformTimeRulerCanvas = memo(function WaveformTimeRulerCanvas({
   inputRef.current.interactionActive = interactionActive;
 
   const paintRef = useRef<(() => void) | null>(null);
-  const lastCanvasDimsRef = useRef({ devW: 0, devH: 0, cssW: 0, cssH: 0 });
+  const lastCanvasDimsRef = useRef({ devW: 0, devH: 0, cssW: 0, cssH: 0, dpr: 0 });
+
+  const paintable = rulerPaintable({ isReady, durationSec, timelineWidthPx });
 
   useLayoutEffect(() => {
     const canvas = canvasRef.current;
@@ -125,11 +138,12 @@ export const WaveformTimeRulerCanvas = memo(function WaveformTimeRulerCanvas({
       const devW = Math.max(1, Math.floor(widthPx * dpr));
       const devH = Math.max(1, Math.floor(heightPx * dpr));
       const dims = lastCanvasDimsRef.current;
-      if (dims.devW !== devW || dims.devH !== devH) {
+      if (dims.devW !== devW || dims.devH !== devH || dims.dpr !== dpr) {
         canvas.width = devW;
         canvas.height = devH;
         dims.devW = devW;
         dims.devH = devH;
+        dims.dpr = dpr;
       }
       if (dims.cssW !== widthPx || dims.cssH !== heightPx) {
         setCspLayoutRules(canvas, { width: widthPx, height: heightPx });
@@ -140,6 +154,11 @@ export const WaveformTimeRulerCanvas = memo(function WaveformTimeRulerCanvas({
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
       ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+
+      if (!rulerPaintable(input)) {
+        ctx.clearRect(0, 0, widthPx, heightPx);
+        return;
+      }
 
       const paintTimeSec = input.getPlayheadTimeSec?.() ?? input.currentTimeSec;
       drawWaveformTimeRuler({
@@ -161,7 +180,11 @@ export const WaveformTimeRulerCanvas = memo(function WaveformTimeRulerCanvas({
     paint();
     const layoutRaf = requestAnimationFrame(() => paint());
     const unsubFrame = subscribeTierScrollFrame(paint);
-    const onResize = () => scheduleTierScrollFrame();
+    const onResize = () => {
+      scheduleTierScrollFrame();
+      paint();
+      requestAnimationFrame(() => paint());
+    };
     window.addEventListener("resize", onResize);
     const unsubAppearance = subscribeAppAppearance(() => {
       paletteRef.current = readWaveformRulerCanvasPalette();
@@ -171,42 +194,55 @@ export const WaveformTimeRulerCanvas = memo(function WaveformTimeRulerCanvas({
       paintRef.current?.();
     });
 
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver(() => {
+        paint();
+        scheduleTierScrollFrame();
+      });
+      if (shellRef.current) ro.observe(shellRef.current);
+      const tier = tierScrollRef.current;
+      if (tier) ro.observe(tier);
+    }
+
     return () => {
       unsubAppearance();
       unsubFrame();
       unsubPlayhead?.();
       cancelAnimationFrame(layoutRaf);
+      ro?.disconnect();
       paintRef.current = null;
       window.removeEventListener("resize", onResize);
     };
   }, [
     tierScrollRef,
     tierScrollLayout.clientWidthPx,
+    tierScrollLayout.scrollLeftPx,
     viewportWidthPx,
     subscribePlayheadFrame,
   ]);
 
   useLayoutEffect(() => {
     paintRef.current?.();
-  }, [durationSec, timelineWidthPx, viewportWidthPx, currentTimeSec, formatMediaTime, interactionActive]);
-
-  if (!isReady || durationSec <= 0 || timelineWidthPx <= 0) {
-    return null;
-  }
+  }, [durationSec, timelineWidthPx, viewportWidthPx, currentTimeSec, formatMediaTime, interactionActive, isReady]);
 
   return (
     <CspLayout
-      className="waveform-embedded-time-ruler pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[22px] overflow-hidden bg-transparent"
+      ref={shellRef}
+      className={[
+        "waveform-embedded-time-ruler pointer-events-none absolute inset-x-0 bottom-0 z-10 h-[22px] overflow-hidden bg-transparent",
+        paintable ? "" : "invisible",
+      ].join(" ")}
       layout={{ width: "100%", height: WAVEFORM_EMBEDDED_RULER_HEIGHT_PX }}
     >
       <div
-        className={`relative z-[1] h-[22px] w-full bg-transparent ${disabled ? "pointer-events-none opacity-50" : "pointer-events-auto"} cursor-grab select-none active:cursor-grabbing`}
+        className={`relative z-[1] h-[22px] w-full bg-transparent ${disabled || !paintable ? "pointer-events-none opacity-50" : "pointer-events-auto"} cursor-grab select-none active:cursor-grabbing`}
         onPointerDown={onRulerPointerDown}
       >
         <canvas
           ref={canvasRef}
           className="waveform-time-ruler-canvas pointer-events-none absolute left-0 top-0 z-[1]"
-          aria-hidden
+          aria-hidden={!paintable}
         />
       </div>
     </CspLayout>

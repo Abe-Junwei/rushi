@@ -384,7 +384,13 @@ pub async fn asr_setup_diagnose(
         .and_then(|s| s.0.lock().ok().map(|g| g.clone()))
         .unwrap_or_else(SupervisorSnapshot::new_session);
     supervisor.port_status = Some(effective_port.clone());
-    enrich_supervisor_artifact_jobs(&mut supervisor, &app);
+    let app_for_enrich = app.clone();
+    supervisor = tauri::async_runtime::spawn_blocking(move || {
+        enrich_supervisor_artifact_jobs(&mut supervisor, &app_for_enrich);
+        supervisor
+    })
+    .await
+    .map_err(|e| format!("asr_setup_diagnose_enrich: {e}"))?;
     let local_runtime_info = inspect_installed_runtime(&st.root);
 
     let health = match &health_fetch {

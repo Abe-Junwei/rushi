@@ -1,4 +1,5 @@
 import { useCallback, useLayoutEffect, useRef, useState, type RefObject } from "react";
+import { scheduleTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
 
 export type TierScrollLayout = {
   scrollLeftPx: number;
@@ -22,7 +23,7 @@ export type UseTierScrollLayoutOptions = {
 
 const DEFAULT_BURST_MS = 120;
 
-/** Read tier scroll metrics: scroll burst rAF + window resize; viewport width via refreshLayout. */
+/** Read tier scroll metrics: scroll burst rAF + window/element resize; viewport width via refreshLayout. */
 export function useTierScrollLayout(
   tierScrollRef: RefObject<HTMLElement | null>,
   options?: UseTierScrollLayoutOptions,
@@ -60,9 +61,13 @@ export function useTierScrollLayout(
         scrollLeftPx: liveScrollLeftRef.current,
         clientWidthPx: liveClientWidthRef.current,
       };
-      setLayout((prev) =>
-        prev.scrollLeftPx === next.scrollLeftPx && prev.clientWidthPx === next.clientWidthPx ? prev : next,
-      );
+      setLayout((prev) => {
+        if (prev.scrollLeftPx === next.scrollLeftPx && prev.clientWidthPx === next.clientWidthPx) {
+          return prev;
+        }
+        scheduleTierScrollFrame();
+        return next;
+      });
     };
 
     const readLayout = () => {
@@ -96,10 +101,20 @@ export function useTierScrollLayout(
     };
     window.addEventListener("resize", onWindowResize);
 
+    let ro: ResizeObserver | null = null;
+    if (typeof ResizeObserver !== "undefined") {
+      ro = new ResizeObserver(() => {
+        updateRefs();
+        commitLayout({ force: true });
+      });
+      ro.observe(el);
+    }
+
     return () => {
       cancelled = true;
       el.removeEventListener("scroll", scheduleBurst);
       window.removeEventListener("resize", onWindowResize);
+      ro?.disconnect();
       if (raf) cancelAnimationFrame(raf);
       readLayoutRef.current = () => {};
       notifyScrollActivityRef.current = () => {};

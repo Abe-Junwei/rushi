@@ -133,6 +133,15 @@ export function useProjectCloseGateController(
   }
 
   const openFileWrappedRef = useRef<(fileId: string) => Promise<void>>(async () => {});
+  const openFileAfterImportRef = useRef<(fileId: string) => Promise<void>>(async () => {});
+
+  const commitOpenedFile = (loaded: SegmentDto[] | null, openedFileId: string) => {
+    if (!loaded) return;
+    dirty.setSavedSnapshot(loaded);
+    if (current?.id) {
+      writeLastWorkspace({ projectId: current.id, fileId: openedFileId });
+    }
+  };
 
   const projectLoad = createCloseGateProjectLoadActions({
     applyDetail,
@@ -145,20 +154,13 @@ export function useProjectCloseGateController(
     dirty,
     performCloseFile,
     openFileWrapped: (fileId) => openFileWrappedRef.current(fileId),
+    openFileAfterImport: (fileId) => openFileAfterImportRef.current(fileId),
     projects,
   });
 
   async function openFileWrapped(fileId: string) {
-    const afterOpen = (loaded: SegmentDto[] | null, openedFileId: string) => {
-      if (!loaded) return;
-      dirty.setSavedSnapshot(loaded);
-      if (current?.id) {
-        writeLastWorkspace({ projectId: current.id, fileId: openedFileId });
-      }
-    };
-
     const performOpen = async () => {
-      afterOpen(await openFile(fileId), fileId);
+      commitOpenedFile(await openFile(fileId), fileId);
     };
 
     const openDecision = decideOpenFile({
@@ -176,6 +178,11 @@ export function useProjectCloseGateController(
     await performOpen();
   }
   openFileWrappedRef.current = openFileWrapped;
+
+  async function openFileAfterImport(fileId: string) {
+    commitOpenedFile(await openFile(fileId), fileId);
+  }
+  openFileAfterImportRef.current = openFileAfterImport;
 
   function closeFileWrapped() {
     navigate.requestNavigateWithGuards(performCloseFile);

@@ -30,7 +30,7 @@ describe("resolveTranscriptImport", () => {
         file_id: "a2",
       });
 
-    const askAttachImportTarget = vi.fn(async () => "a2");
+    const askAttachImportTarget = vi.fn(() => Promise.resolve("a2" as const));
     const result = await resolveTranscriptImport(
       "proj-1",
       "/tmp/采访.srt",

@@ -17,6 +17,7 @@ import { useWaveformPeaksPhaseState } from "./useWaveformPeaksPhaseState";
 import { useWaveformVisualPlayheadClock } from "./useWaveformVisualPlayheadClock";
 import { WAVEFORM_BACKGROUND_PEAKS_ENABLED } from "../utils/waveformPrefs";
 import { useWaveformMediaZoomResetEffect } from "./useWaveformMediaZoomResetEffect";
+import { scheduleTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
 import type { TranscriptionLayerInput } from "../pages/transcriptionLayerTypes";
 
 type WfApi = ReturnType<typeof UseProjectWaveformHook>;
@@ -158,6 +159,7 @@ export function useWaveformTimelineController(ctx: TranscriptionLayerInput) {
   onAfterViewportResizeRef.current = () => {
     scroll.refreshTierScrollLayout();
     wf.flushDeferredPeaksLoad();
+    scheduleTierScrollFrame();
   };
 
   useLayoutEffect(() => {

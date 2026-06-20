@@ -2,7 +2,8 @@
 
 > **Research**：[audio-subtitle-attach-import-research.md](./audio-subtitle-attach-import-research.md)  
 > **Plan**：[audio-subtitle-attach-import-plan.md](./audio-subtitle-attach-import-plan.md)  
-> **Architecture**：[`desktop-project-file-lifecycle.md`](../../architecture/desktop-project-file-lifecycle.md) · [`desktop-capability-ui-state-alignment.md`](../../architecture/desktop-capability-ui-state-alignment.md)（视图维 V1–V5）
+> **Architecture**：[`desktop-project-file-lifecycle.md`](../../architecture/desktop-project-file-lifecycle.md) · [`desktop-capability-ui-state-alignment.md`](../../architecture/desktop-capability-ui-state-alignment.md)（视图维 V1–V5）  
+> **签收**：✅ 2026-06-20（手测 + 自动闸门）
 
 ---
 
@@ -36,8 +37,8 @@
 
 ### 矛盾场景手测（≥2）
 
-1. **先音频后 SRT（主路径）**：空项目 → 导入 `采访.wav` → Editor → 导入 `采访.srt` → 同屏波形 + 语段；文件列表仅一条「采访」为 paired（或 audio 升 paired）。
-2. **Hub 双音频同 stem**：项目内 `采访A.wav`、`采访B.wav`（或同名 stem）→ Hub 导入 `采访.srt` → 必须弹选 File → 仅所选 File 语段更新。
+1. **先音频后 SRT（主路径）**：空项目 → 导入 `采访.wav` → Editor → 导入 `采访.srt` → 同屏波形 + 语段；文件列表仅一条「采访」为 paired（或 audio 升 paired）。 ✅
+2. **Hub 双音频同 stem**：项目内 `采访A.wav`、`采访B.wav`（或同名 stem）→ Hub 导入 `采访.srt` → 必须弹选 File → 仅所选 File 语段更新。 ✅
 
 ---
 
@@ -63,23 +64,23 @@
 
 ### ASI-A Editor Attach（P0）
 
-- [ ] 新建项目 → 导入音频 → 进入 Editor（有波形、无语段）
-- [ ] 导入与音频同 stem 的 `.srt` → 语段出现；波形仍在；时间轴与 SRT 时间一致
-- [ ] 修改语段未保存 → 再导入 SRT → Close Gate → 放弃 → 语段以 SRT 为准
-- [ ] 转写进行中 → 「导入字幕」不可用 + toast
-- [ ] 同一 SRT 再导入一次 → 直接替换；**无**重复导入对话框
+- [x] 新建项目 → 导入音频 → 进入 Editor（有波形、无语段）
+- [x] 导入与音频同 stem 的 `.srt` → 语段出现；波形仍在；时间轴与 SRT 时间一致
+- [x] 修改语段未保存 → 再导入 SRT → Close Gate → 放弃 → 语段以 SRT 为准
+- [x] 转写进行中 → 「导入字幕」不可用 + toast
+- [x] 同一 SRT 再导入一次 → 直接替换；**无**重复导入对话框
 
 ### ASI-B Hub Sidecar（P0）
 
-- [ ] 项目仅一条 `会议.wav` → Hub 导入 `会议.srt` → 打开该 File；波形+语段
-- [ ] 项目无匹配音频 → Hub 导入 `其他.srt` → 新建 text File；无波形
-- [ ] 两条可匹配音频 → Hub 导入 → 选 File 对话框 → 仅所选 File 更新
+- [x] 项目仅一条 `会议.wav` → Hub 导入 `会议.srt` → 打开该 File；波形+语段
+- [x] 项目无匹配音频 → Hub 导入 `其他.srt` → 新建 text File；无波形
+- [x] 两条可匹配音频 → Hub 导入 → 选 File 对话框 → 仅所选 File 更新
 
 ### ASI-C 回归
 
-- [ ] 欢迎页「从文本创建项目」仍正常（纯 text）
-- [ ] 重复导入**不同** File 仍弹 DuplicateImportConfirmDialog
-- [ ] Close Gate / 换文件 / 关项目 不回归
+- [x] 欢迎页「从文本创建项目」仍正常（纯 text）
+- [x] 重复导入**不同** File 仍弹 DuplicateImportConfirmDialog
+- [x] Close Gate / 换文件 / 关项目 不回归
 
 ---
 
@@ -92,9 +93,23 @@
 
 ---
 
+## 验证记录（2026-06-20 签收）
+
+| 命令 | 结果 |
+|------|------|
+| `npm run typecheck` | ✅ |
+| `npm run test` | ✅ 340 files / 1705 tests |
+| `npm run lint` | ✅ 0 error |
+| `node scripts/check-architecture-guard.mjs` | ✅ |
+| `cargo test --lib file_import_cmd` | ✅ 8/8 |
+| `cargo clippy --all-targets -- -D warnings` | ✅（实现提交时） |
+
+---
+
 ## 变更记录
 
 | 日期 | 说明 |
 |------|------|
 | 2026-06-20 | 初版 acceptance（grill 决策落地） |
 | 2026-06-20 | 自动闸门勾选；fallbackWaveFile 收缩为 legacy text-only；Rust replace_target dedupe bypass |
+| 2026-06-20 | **签收通过**：ASI-A/B/C 手测勾选；矛盾场景 2 条确认 |

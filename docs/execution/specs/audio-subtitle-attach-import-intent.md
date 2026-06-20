@@ -3,7 +3,7 @@
 > **Research**：[audio-subtitle-attach-import-research.md](./audio-subtitle-attach-import-research.md)  
 > **Plan**：[audio-subtitle-attach-import-plan.md](./audio-subtitle-attach-import-plan.md)  
 > **Acceptance**：[audio-subtitle-attach-import-acceptance.md](./audio-subtitle-attach-import-acceptance.md)  
-> **状态**：编码完成 · 自动验收 ✅ · 手测待勾选
+> **状态**：✅ 已签收（2026-06-20 · 手测 + 自动闸门）
 
 ## 意图
 

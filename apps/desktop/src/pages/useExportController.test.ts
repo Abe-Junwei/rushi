@@ -45,7 +45,14 @@ function makeDeps(overrides: Partial<Parameters<typeof useExportController>[0]> 
     created_at_ms: 0,
     updated_at_ms: 0,
     segments: [],
-    files: [],
+    files: [
+      {
+        id: "file-1",
+        name: "访谈录音",
+        file_type: "paired",
+        updated_at_ms: 0,
+      },
+    ],
   };
 
   return {
@@ -79,10 +86,24 @@ describe("useExportController", () => {
 
     expect(deps.flushSegmentTextDrafts).toHaveBeenCalled();
     expect(exportTextFile).toHaveBeenCalledWith(
-      "示例项目.txt",
+      "访谈录音.txt",
       expect.stringContaining("第一句"),
     );
     expect(deps.setError).toHaveBeenCalledWith("");
+  });
+
+  it("exportTxt falls back to project name when no file is open", async () => {
+    const deps = makeDeps({ currentFileId: null });
+    const { result } = renderHook(() => useExportController(deps));
+
+    await act(async () => {
+      await result.current.exportTxt();
+    });
+
+    expect(exportTextFile).toHaveBeenCalledWith(
+      "示例项目.txt",
+      expect.stringContaining("第一句"),
+    );
   });
 
   it("exportProjectBundle errors when no file is open", async () => {
@@ -108,7 +129,7 @@ describe("useExportController", () => {
     expect(exportProjectBundle).toHaveBeenCalledWith(
       "proj-1",
       "file-1",
-      "示例项目.zip",
+      "访谈录音.zip",
       expect.arrayContaining([expect.objectContaining({ text: "第一句" })]),
     );
   });

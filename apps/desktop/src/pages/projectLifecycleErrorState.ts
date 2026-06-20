@@ -1,19 +1,23 @@
-import { useCallback, useState, type SetStateAction } from "react";
+import { useCallback, useEffect, useRef, useState, type SetStateAction } from "react";
 import { humanizeInvokeError } from "../services/ui/humanizeInvokeError";
 import { toast } from "../services/ui/toast";
 
 export function useProjectLifecycleErrorState() {
   const [error, setErrorState] = useState<string>("");
+  const lastToastedRef = useRef("");
+
   const setError = useCallback((value: SetStateAction<string>) => {
-    setErrorState((prev) => {
-      const next = typeof value === "function" ? value(prev) : value;
-      const trimmed = next.trim();
-      if (trimmed && trimmed !== prev.trim()) {
-        toast.error(humanizeInvokeError(trimmed));
-      }
-      return next;
-    });
+    setErrorState((prev) => (typeof value === "function" ? value(prev) : value));
   }, []);
+
+  useEffect(() => {
+    const trimmed = error.trim();
+    const prevTrimmed = lastToastedRef.current;
+    lastToastedRef.current = trimmed;
+    if (trimmed && trimmed !== prevTrimmed) {
+      toast.error(humanizeInvokeError(trimmed));
+    }
+  }, [error]);
 
   return { error, setError };
 }

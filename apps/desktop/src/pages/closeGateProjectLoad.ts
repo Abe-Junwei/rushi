@@ -14,6 +14,8 @@ export type CloseGateProjectLoadDeps = {
   dirty: SegmentDirtyStateApi;
   performCloseFile: () => void;
   openFileWrapped: (fileId: string) => Promise<void>;
+  /** Post-import reload — must bypass same-file dirty noop so DB replace is visible. */
+  openFileAfterImport: (fileId: string) => Promise<void>;
   projects: ProjectSummary[];
 };
 
@@ -69,7 +71,7 @@ export function createCloseGateProjectLoadActions(deps: CloseGateProjectLoadDeps
       const preferred =
         preferFileId != null ? detail.files.find((f) => f.id === preferFileId) : undefined;
       const target = preferred ?? [...detail.files].sort((a, b) => b.updated_at_ms - a.updated_at_ms)[0];
-      await deps.openFileWrapped(target.id);
+      await deps.openFileAfterImport(target.id);
     } catch (e) {
       deps.setCurrent(null);
       deps.performCloseFile();
