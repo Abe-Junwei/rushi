@@ -129,6 +129,10 @@ jobs:
       - name: Install npm dependencies (workspaces)
         run: npm ci
 
+      - name: Ensure Tauri CLI Windows native binding
+        if: runner.os == 'Windows'
+        run: npm install --no-save @tauri-apps/cli-win32-x64-msvc@2.11.2
+
       - uses: dtolnay/rust-toolchain@stable
 
       - name: Linux packages for Tauri (cargo test)

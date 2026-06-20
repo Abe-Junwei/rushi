@@ -1,7 +1,7 @@
 {
   "name": "@rushi/desktop",
   "private": true,
-  "version": "0.1.4",
+  "version": "0.1.5",
   "type": "module",
   "scripts": {
     "dev": "vite",
@@ -61,6 +61,7 @@
     "@rolldown/binding-linux-x64-gnu": "^1.0.3",
     "@tailwindcss/oxide-linux-x64-gnu": "^4.3.1",
     "@tauri-apps/cli-linux-x64-gnu": "^2.11.2",
+    "@tauri-apps/cli-win32-x64-msvc": "^2.11.2",
     "lightningcss-linux-x64-gnu": "^1.32.0"
   }
 }
