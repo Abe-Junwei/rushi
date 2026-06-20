@@ -9,6 +9,7 @@
     "desktop:dev": "bash scripts/desktop-dev.sh",
     "desktop:build": "bash scripts/release-cleanup-dmg-staging.sh && npm run tauri build -w @rushi/desktop && bash scripts/stage-release-artifacts.sh",
     "desktop:build-app": "bash scripts/release-sidecar-preflight.sh && bash scripts/release-cleanup-dmg-staging.sh && npm run tauri build -w @rushi/desktop -- --bundles app && bash scripts/stage-release-artifacts.sh",
+    "desktop:build-app:local": "bash scripts/build-desktop-local-hand-test.sh",
     "desktop:build-dmg": "bash scripts/release-sidecar-preflight.sh && bash scripts/release-cleanup-dmg-staging.sh && npm run tauri build -w @rushi/desktop -- --bundles dmg && bash scripts/stage-release-artifacts.sh",
     "desktop:open-release-app": "open \"apps/desktop/src-tauri/target/release/bundle/macos/如是我闻.app\"",
     "runtime:publish-manifest": "bash scripts/publish-runtime-manifest.sh",
