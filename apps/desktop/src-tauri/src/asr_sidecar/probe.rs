@@ -114,11 +114,6 @@ pub async fn probe_asr_port_and_health() -> (AsrPortProbe, AsrHealthBody) {
     }
 }
 
-/// Classify who is listening on loopback :8741.
-pub async fn probe_asr_port() -> AsrPortProbe {
-    probe_asr_port_and_health().await.0
-}
-
 /// Sync probe for diagnostic export (via `blocking_http` inside sync command path).
 pub fn probe_asr_port_sync() -> AsrPortProbe {
     let resp = match loopback_get_send(ASR_HEALTH_URL) {
@@ -256,6 +251,22 @@ pub fn loopback_model_prepare_running() -> bool {
         return false;
     };
     prepare_status_json_is_active_running(&v)
+}
+
+/// True when weights are on disk but not loaded into memory (defer auto-warmup to first transcribe).
+pub fn loopback_models_cached_not_memory_ready() -> bool {
+    let Some(v) = fetch_loopback_health_json_sync() else {
+        return false;
+    };
+    if !is_rushi_asr_health_json(&v) {
+        return false;
+    }
+    let required_cached = v
+        .get("funasr_required_models_cached")
+        .and_then(|x| x.as_bool())
+        == Some(true);
+    let selected_ready = v.get("selected_model_ready").and_then(|x| x.as_bool()) == Some(true);
+    required_cached && !selected_ready
 }
 
 pub fn fetch_loopback_prepare_status_json() -> Option<serde_json::Value> {

@@ -159,7 +159,9 @@ fn prepare_status_json_active_running_honors_stale_flag() {
     assert!(!prepare_status_json_is_active_running(
         &json!({ "phase": "running", "stale": true })
     ));
-    assert!(!prepare_status_json_is_active_running(&json!({ "phase": "idle" })));
+    assert!(!prepare_status_json_is_active_running(
+        &json!({ "phase": "idle" })
+    ));
 }
 
 #[test]
