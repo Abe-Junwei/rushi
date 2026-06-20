@@ -122,6 +122,7 @@ export function CompactFloatingDialog({
         role={rootRole}
         aria-modal="true"
         hasFooter={Boolean(footer)}
+        fitToContent={autoHeight}
         className={rootClassName}
       >
         {children}

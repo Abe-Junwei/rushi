@@ -24,7 +24,7 @@
 | L0 | `node scripts/check-architecture-guard.mjs` | ✅ 0 错误 | Wave G 后 |
 | L1 | `npm run release:postbuild-verify` | ✅ | 本文件 §3 bundle/asset |
 | L2 | `bash scripts/v1-release-installed-smoke.sh` | ✅ | [v1-release-installed-smoke-evidence.md](./v1-release-installed-smoke-evidence.md) |
-| L3 | Manual signoff checklist | ☐ | [release-zero-terminal-hand-test.md](./release-zero-terminal-hand-test.md) §2–7 · [dmg-vs-dev-parity-checklist.md](./specs/dmg-vs-dev-parity-checklist.md) |
+| L3 | Manual signoff checklist | ✅ upgrade · WARN | [checklist](./release-parity-l3-hand-test-checklist-2026-06-14.md) 2026-06-20 · v0.1.1 unsigned DMG |
 
 ## 3. Risk Domain Matrix
 
@@ -34,11 +34,11 @@
 | bundle | ✅ | `bundled_sidecar_build=present` · stamp `87418b9` | 见 §5 |
 | asr | WARN | `bundled_sidecar_health_ok` · `/health` 冷启动未就绪 | 需 UI「一键准备」或模型已缓存 |
 | asset | ✅ | `asset_scope_ok` · peaks .dat ×20 | postbuild waveform probe |
-| editor | ☐ | — | L3：波形 seek / ↑↓ / 元数据日期 |
-| project | ✅ | `db_path=present` · segments=269 | upgrade profile |
-| export | ☐ | — | L3：DOCX |
-| network | ☐ | — | L3：首装一键准备 |
-| copy | ☐ | — | L3：7-A D1–D8 · 7-B S1–S6 无 dev 文案 |
+| editor | ✅ | L3 B1–B9 · C5 ↑↓ | 2026-06-20 upgrade 手测 |
+| project | ✅ | `db_path=present` · B8 重开 | upgrade profile |
+| export | ✅ | L3 B7/G1 DOCX | 2026-06-20 |
+| network | ☐ | — | Fresh H2 一键准备 **未测** |
+| copy | ✅ | L3 D1–D8 · C4 无 dev 文案 | 2026-06-20 |
 | security | ✅ | diagnostic zip 含 `redactions.txt` | smoke 校验 7 项 |
 
 ## 4. Diagnostic Bundle
@@ -66,9 +66,9 @@
 
 | 项 | 结论 |
 |----|------|
-| Go / No-Go | **L2 Go · L3 No-Go（待手测）** |
-| Blockers | 7-A–7-D 动态签收未勾选 |
-| Follow-up | 1) 重编侧车确保 stamp 随 build 产出 2) [L3 勾选表](./release-parity-l3-hand-test-checklist-2026-06-14.md) 3) 更新 copy-code-drift 动态列 |
+| Go / No-Go | **L2 Go · L3 Go（upgrade）· WARN** — Fresh H ☐ · FLOAT-FIT I1 |
+| Blockers | 无 |
+| Follow-up | 1) Fresh profile H1–H4 2) FindReplace auto-fit 默认壳高 3) v0.1.2 OTA 链 |
 
 ## 7. 2026-06-19 Follow-up Evidence
 
@@ -77,9 +77,23 @@
 | `release-postbuild-verify.sh` | ✅ | 既有 macOS `.app`：app binary、bundled sidecar、ffmpeg/ffprobe、resource layout、frontend bundle、waveform release probe 均通过 |
 | bundled sidecar stamp | ✅ | `git_sha=dc9f372 built_at=2026-06-17T18:09:38Z platform=Darwin-arm64` |
 | upgrade profile machine probe | ✅ | 既有 App Data：DB audio rows + peaks sample + recent `asset_scope_ok` / waveform selection profile logs |
-| fresh profile UI signoff | ☐ | 仍需人工执行 [L3 勾选表](./release-parity-l3-hand-test-checklist-2026-06-14.md) H1–H4；未用 `--skip-download` 覆盖既有 fresh evidence |
-| L3 dynamic rows 7-A–7-D | ☐ | 仍需安装包 UI 手测；机器 probe 不能替代 ASR chip、快捷键、导出、复制文案人工观察 |
+| fresh profile UI signoff | ☐ | H1–H4 未测；见 §8 |
+| L3 dynamic rows 7-A–7-D | ✅ | upgrade 2026-06-20；I1 FindReplace WARN |
 
-**Decision unchanged**：L2/机器证据可继续视为 Go；对外分发仍是 **L3 No-Go**，直到 fresh/upgrade UI 手测签收完成。
+**Decision (2026-06-19)**: L2/机器证据 Go；L3 待 UI 手测。
 
 Hand-test operator doc: [release-parity-l3-hand-test-runbook-2026-06-19.md](./release-parity-l3-hand-test-runbook-2026-06-19.md).
+
+## 8. 2026-06-20 L3 Upgrade Signoff（v0.1.1 unsigned DMG）
+
+| 项 | 结果 |
+|----|------|
+| 包 | `如是我闻_0.1.1_aarch64.dmg` · stamp `dc9f372` · unsigned |
+| 测试人 | junwei · macOS 26.5.1 arm64 |
+| A–G · D 动态 | ✅ PASS |
+| I FLOAT-FIT | ⚠️ **I1**：查找替换打开时默认接近 maxHeight（非紧凑 auto-fit）；I2–I4 ✅ |
+| H Fresh | ☐ 未测 |
+| Blocker | 无 |
+| **L3 结论** | **Go（upgrade）· WARN** |
+
+**Follow-up（非 blocker）**：`FindReplaceDialog` auto-fit 默认壳高 → v0.1.2 前或 OTA 并行薄片；Fresh H 在 OTA 前或后补跑。

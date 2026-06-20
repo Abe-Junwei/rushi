@@ -90,7 +90,13 @@ export function DraggableResizablePanel({
     >
       <DraggablePanelResizeHandles onPointerDown={startDrag} />
 
-      <div className={`relative z-10 flex min-h-0 w-full flex-1 flex-col overflow-hidden rounded-lg border border-notion-border bg-notion-bg font-sans antialiased text-notion-text ${FLAT_SHELL_ELEVATION_CLASS}`}>
+      <div
+        className={[
+          "relative z-10 flex w-full flex-col overflow-hidden rounded-lg border border-notion-border bg-notion-bg font-sans antialiased text-notion-text",
+          autoHeight ? "min-h-0" : "min-h-0 flex-1",
+          FLAT_SHELL_ELEVATION_CLASS,
+        ].join(" ")}
+      >
         <div
           className="flex shrink-0 cursor-move items-center justify-between border-b border-notion-divider bg-notion-sidebar px-6 py-4 select-none"
           onPointerDown={(e) => startDrag("move", e)}
@@ -110,7 +116,15 @@ export function DraggableResizablePanel({
           </button>
         </div>
 
-        <div className="flex min-h-0 flex-1 flex-col overflow-hidden">{children}</div>
+        <div
+          className={
+            autoHeight
+              ? "flex min-h-0 flex-col overflow-hidden"
+              : "flex min-h-0 flex-1 flex-col overflow-hidden"
+          }
+        >
+          {children}
+        </div>
       </div>
     </CspLayout>
   );

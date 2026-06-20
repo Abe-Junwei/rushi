@@ -20,6 +20,9 @@ import {
   resolveFindReplacePanelBounds,
 } from "./findReplacePanelLayout";
 
+/** Bump 丢弃 flex-1 撑满 maxHeight 时代的错误 persist 高度。 */
+const FIND_REPLACE_PANEL_LAYOUT_REV = 5;
+
 const PANEL_ID = FIND_REPLACE_PANEL_ID;
 
 /** 打开时占位高度（autoFit：实际高度由内容贴合）。 */
@@ -79,6 +82,7 @@ export function FindReplaceDialog({
       shellPreset="findReplace"
       fallbackHeight={FIND_REPLACE_DEFAULT_HEIGHT}
       persistPhaseKey={isPreview ? "preview" : "panel"}
+      layoutRev={FIND_REPLACE_PANEL_LAYOUT_REV}
       persistState
       minWidth={bounds.minWidth}
       maxWidth={bounds.maxWidth}
@@ -125,7 +129,10 @@ export function FindReplaceDialog({
               将替换 {state.matchCount} 处「{state.findText}」→「{state.replaceText || "（空）"}」。确认后将自动保存并写入纠错记忆（查找词与替换词不同时）。
             </p>
           </FloatingPanelDialogHeader>
-          <FloatingPanelDialogListRegion className={FIND_REPLACE_PANEL_LIST_PADDING_CLASS}>
+          <FloatingPanelDialogListRegion
+            fitToContent
+            className={FIND_REPLACE_PANEL_LIST_PADDING_CLASS}
+          >
             <FloatingPanelSegmentList rowCount={state.rows.length}>
               {state.rows.map((row) => (
                 <li key={`${row.segmentIdx}-${row.globalIndex}`} className="list-none">

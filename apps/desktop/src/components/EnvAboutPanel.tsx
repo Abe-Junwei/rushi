@@ -1,9 +1,18 @@
-import { useCallback, useEffect, useState } from "react";
-import { Copy, ExternalLink } from "lucide-react";
+import { useCallback, useEffect, useRef, useState } from "react";
+import { Copy, ExternalLink, RefreshCw } from "lucide-react";
+import type { Update } from "@tauri-apps/plugin-updater";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { ENV_PANEL_PAGE_CLASS, ENV_PANEL_SECTION_CLASS } from "../utils/environmentPanelNav";
 import { CONTROL_BTN_SECONDARY } from "../config/controlStyles";
+import { isTauriRuntime } from "../config/env";
 import { toast } from "../services/ui/toast";
+import {
+  appUpdateUnsupportedMessage,
+  checkForAppUpdate,
+  downloadAndInstallAppUpdate,
+  isAppUpdateSupportedForVersion,
+  mapAppUpdateError,
+} from "../services/appUpdate";
 import {
   fetchAppBuildInfo,
   openBundledUserGuide,
@@ -17,10 +26,13 @@ import {
 } from "../utils/appBuildInfoCopy";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 import { BrandLockup } from "./BrandLockup";
+import { AppUpdateConfirmDialog } from "./AppUpdateConfirmDialog";
 
 const APP_COPYRIGHT = "版权所有 © 沂南灵创技术服务中心";
 
 type LoadState = "loading" | "ready" | "error";
+
+type UpdateUiState = "idle" | "checking" | "installing";
 
 const LICENSE_PROSE_CLASS = `max-h-[min(420px,45vh)] overflow-y-auto whitespace-pre-wrap rounded-md bg-notion-sidebar px-4 py-3 ${PANEL_TYPOGRAPHY.body} text-notion-text`;
 
@@ -51,6 +63,15 @@ export function EnvAboutPanel() {
   const [licensesError, setLicensesError] = useState<string | null>(null);
   const [copyBusy, setCopyBusy] = useState(false);
   const [guideBusy, setGuideBusy] = useState(false);
+  const [updateUiState, setUpdateUiState] = useState<UpdateUiState>("idle");
+  const [updateDialogOpen, setUpdateDialogOpen] = useState(false);
+  const [updateDialogVersion, setUpdateDialogVersion] = useState("");
+  const [updateDialogNotes, setUpdateDialogNotes] = useState<string | undefined>();
+  const pendingUpdateRef = useRef<Update | null>(null);
+
+  const updateSupported =
+    isTauriRuntime() && buildInfo != null && isAppUpdateSupportedForVersion(buildInfo.version);
+  const updateBusy = updateUiState !== "idle";
 
   useEffect(() => {
     let cancelled = false;
@@ -116,6 +137,56 @@ export function EnvAboutPanel() {
     }
   }, []);
 
+  const checkUpdates = useCallback(async () => {
+    if (!buildInfo || updateBusy) return;
+    if (!isAppUpdateSupportedForVersion(buildInfo.version)) {
+      toast.info(appUpdateUnsupportedMessage());
+      return;
+    }
+    setUpdateUiState("checking");
+    try {
+      const result = await checkForAppUpdate(buildInfo.version);
+      if (result.kind === "unsupported") {
+        toast.info(appUpdateUnsupportedMessage());
+        return;
+      }
+      if (result.kind === "upToDate") {
+        toast.success("当前已是最新版本");
+        return;
+      }
+      if (result.kind === "error") {
+        toast.error(result.message);
+        return;
+      }
+      pendingUpdateRef.current = result.update;
+      setUpdateDialogVersion(result.version);
+      setUpdateDialogNotes(result.notes);
+      setUpdateDialogOpen(true);
+    } catch (e) {
+      toast.error(mapAppUpdateError(e));
+    } finally {
+      setUpdateUiState("idle");
+    }
+  }, [buildInfo, updateBusy]);
+
+  const cancelUpdateDialog = useCallback(() => {
+    if (updateUiState === "installing") return;
+    setUpdateDialogOpen(false);
+    pendingUpdateRef.current = null;
+  }, [updateUiState]);
+
+  const confirmUpdateDialog = useCallback(async () => {
+    const update = pendingUpdateRef.current;
+    if (!update || updateUiState === "installing") return;
+    setUpdateUiState("installing");
+    try {
+      await downloadAndInstallAppUpdate(update);
+    } catch (e) {
+      toast.error(mapAppUpdateError(e));
+      setUpdateUiState("idle");
+    }
+  }, [updateUiState]);
+
   return (
     <div className={ENV_PANEL_PAGE_CLASS}>
       <section className={ENV_PANEL_SECTION_CLASS}>
@@ -178,7 +249,29 @@ export function EnvAboutPanel() {
             />
             {guideBusy ? "打开中…" : "打开随包说明文档"}
           </button>
+          {isTauriRuntime() ? (
+            <button
+              type="button"
+              className={CONTROL_BTN_SECONDARY}
+              disabled={!buildInfo || updateBusy}
+              onClick={() => void checkUpdates()}
+            >
+              <RefreshCw
+                className={LUCIDE_ICON_SIZE_SM}
+                strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
+                aria-hidden
+              />
+              {updateUiState === "checking"
+                ? "检查中…"
+                : updateUiState === "installing"
+                  ? "安装中…"
+                  : "检查更新"}
+            </button>
+          ) : null}
         </div>
+        {isTauriRuntime() && buildInfo && !updateSupported ? (
+          <p className={`m-0 ${PANEL_TYPOGRAPHY.meta}`}>{appUpdateUnsupportedMessage()}</p>
+        ) : null}
         <p className={`m-0 ${PANEL_TYPOGRAPHY.meta}`}>
           「复制版本信息」与诊断包内 build-info.txt 字段一致（英文键名，便于技术支持识别）。
         </p>
@@ -204,6 +297,15 @@ export function EnvAboutPanel() {
           text={licenses?.licenseTexts ?? null}
         />
       </section>
+
+      <AppUpdateConfirmDialog
+        open={updateDialogOpen}
+        busy={updateUiState === "installing"}
+        version={updateDialogVersion}
+        notes={updateDialogNotes}
+        onCancel={cancelUpdateDialog}
+        onConfirm={() => void confirmUpdateDialog()}
+      />
     </div>
   );
 }

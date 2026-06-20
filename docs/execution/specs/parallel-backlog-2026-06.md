@@ -69,7 +69,7 @@ Step 12  REL-1.1 signoff                                             ✅ 2026-06
 | **P1** | **ACC-STT-IFLYTEK** | ✅ **2026-06-18** | `stt_native/xunfei_speed_asr/` · [`acc-stt-iflytek-*`](./acc-stt-iflytek-acceptance.md) | [`acceptance`](./acc-stt-iflytek-acceptance.md) ✅ |
 | **P2** | **架构热点回收（T-010）** | ✅ **2026-06-19** | `run_transcribe_cmd/`（6 模块）· `online_segment_normalize/`（5 模块）· `useEnvOnlineSttPanel` 164L + 子 hook · Wave A–H 清理 | 可选尾项：`sync.rs` 327L；[`cleanup-candidate-register.md`](./cleanup-candidate-register.md) |
 | **P3** | **R3h-1-R Win 资产** | 🟡 ← **现在** | Win CI ✅ · Release **v0.1.1** 无 Win 包 | 下一 tag 补 **Windows** 安装包 + R-14 smoke |
-| **P4** | **CLN-066 Release parity** | 🟡 | L2 机器 ✅ · L3 UI ☐ | [`release-parity-evidence-2026-06-14.md`](../release-parity-evidence-2026-06-14.md) — 用 **v0.1.1** DMG 重跑 L3 |
+| **P4** | **CLN-066 Release parity** | 🟡 | L3 upgrade ✅ 2026-06-20 · Fresh H ☐ · I1 WARN | Fresh + FindReplace fit；见 [evidence](../release-parity-evidence-2026-06-14.md) §8 |
 | — | **R3g-B-Align** | ❌ **废弃** | 2026-06-11 spike **Defer**（CPU ~8× Paraformer）；**2026-06-18 不再做** | [`align-results`](./r3g-b-align-forced-aligner-spike-results.md) · research 存档 |
 | — | **R3g-C-NANO vLLM** | ❌ **Defer** | 无 CUDA 环境 · **目前不做**（2026-06-18） | research 保留 — [`vllm-research`](./r3g-c-funasr-nano-vllm-research.md) |
 

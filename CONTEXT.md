@@ -164,6 +164,24 @@ _Avoid_: compact dialog（未特指 preset 时）, 确认框（Close Gate 专用
 浮动对话框标题栏双击；清 `userSized` 回到 CSS 自动高度（`heightMode: "auto"`）并重新居中。
 _Avoid_: reset size, 恢复默认大小（未特指 auto-fit 时）
 
+## Language — 发行与更新
+
+**Unsigned mac release**（unsigned mac 发行包）:
+macOS 安装包未经 Apple codesign/公证；首次安装可能遇 Gatekeeper 提示；与 **In-app update** 独立。
+_Avoid_: unassigned build, 未签名（未区分 OS 签名与 updater 签名时）
+
+**In-app update**（应用内更新 / OTA）:
+`tauri-plugin-updater` + Ed25519 更新 manifest（如 Release 上 `latest.json`）；验签用 `TAURI_SIGNING_PRIVATE_KEY` 公钥，**不**依赖 Apple 证书。
+_Avoid_: 自动更新（未说明 Tauri updater 时）, App Store 更新
+
+**OTA baseline version**（OTA 链起点版本）:
+首个内置 updater 的 marketing 版本（当前规划 **v0.1.2**）；更早版本须 **手动重装一次** 该包后才能进入应用内更新链。
+_Avoid_: 首个 Release, 升级起点（未特指 OTA 时）
+
+**Release parity L3**:
+在 **unsigned** 或 signed 安装包上的 UI 手测清单（CLN-066）；验证主路径 parity，**不**等同于 OTA 或 Apple 公证签收。
+_Avoid_: 发版完成, E2E 全绿（未区分 L2/L3 时）
+
 ## Language — 工程与 spec
 
 **Controller**:
@@ -207,3 +225,4 @@ _Avoid_: design doc（泛指）
 - 「编辑页 / 视角 / 层次感」— 全应用壳层精调时 scope = Welcome → Hub → Editor → 环境浮层；**Editor** 仅指已打开文件的转写工作区。
 - 「LFASR / 讯飞转写」— 须区分 **iflytek-speed-asr**（极速 OST）、标准 LFASR v2、已移除 **iflytek-speech**；文档标题含 LFASR 时以 research §3 定稿 id 为准。
 - 「面板 / 对话框」— 浮动工具框（查找替换等）称 **Floating dialog** 并按 **Auto-fit / Fill / Static-fit** 分类；Editor 侧栏/Inspector 不叫 Floating dialog。
+- 「自动更新 / 签名」— **In-app update** = Tauri Ed25519 manifest；**Unsigned mac release** = 无 Apple codesign/公证；二者可并存，勿混为一谈。
