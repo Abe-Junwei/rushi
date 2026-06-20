@@ -1,6 +1,6 @@
 import { BrandMark } from "./BrandMark";
 
-const TOP_BAR_LABEL = "如是我闻 · 本地校对";
+const TOP_BAR_LABEL = "如是我闻";
 
 /** 欢迎 / Hub / 术语页顶栏品牌行（16px mark + caps 字标） */
 export function BrandTopBarLabel() {

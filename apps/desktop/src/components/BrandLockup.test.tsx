@@ -6,7 +6,7 @@ describe("BrandLockup", () => {
   it("renders wordmark and tagline for sidebar", () => {
     render(<BrandLockup size="sidebar" />);
     expect(screen.getByRole("heading", { level: 1, name: "如是我闻" })).toBeTruthy();
-    expect(screen.getByText("本地课录音转写与校对")).toBeTruthy();
+    expect(screen.getByText("音频转录与校对平台")).toBeTruthy();
     expect(document.querySelector(".h-8.w-8 img")?.getAttribute("width")).toBe("26");
   });
 
