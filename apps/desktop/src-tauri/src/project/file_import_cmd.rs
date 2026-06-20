@@ -6,7 +6,9 @@ use std::path::{Path, PathBuf};
 use rusqlite::params;
 use tauri::State;
 
-use super::import_duplicate::{import_file_display_name, import_provenance_for_src, ImportFileKind};
+use super::import_duplicate::{
+    import_file_display_name, import_provenance_for_src, ImportFileKind,
+};
 use super::import_parse::{parse_srt, parse_txt};
 use super::project_create_cmd::import_text_to_project_inner;
 use super::segment_uid::segment_uid_or_new;
@@ -188,8 +190,7 @@ pub(crate) fn import_transcript_to_project_inner(
     target_file_id: Option<&str>,
 ) -> Result<TranscriptImportOutcome, String> {
     if let Some(file_id) = target_file_id {
-        let summary =
-            import_transcript_to_file_inner(st, file_id, src_path, Some(project_id))?;
+        let summary = import_transcript_to_file_inner(st, file_id, src_path, Some(project_id))?;
         let conn = open_db(st)?;
         let project = project_detail_from_conn(&conn, project_id)?;
         return Ok(TranscriptImportOutcome::Attached {
@@ -204,8 +205,7 @@ pub(crate) fn import_transcript_to_project_inner(
     match candidates.len() {
         0 => {
             let name = stem.clone();
-            let (project, file_id) =
-                import_text_to_project_inner(st, project_id, &name, src_path)?;
+            let (project, file_id) = import_text_to_project_inner(st, project_id, &name, src_path)?;
             Ok(TranscriptImportOutcome::CreatedText { project, file_id })
         }
         1 => {
@@ -236,12 +236,7 @@ pub async fn import_transcript_to_project(
 ) -> Result<TranscriptImportOutcome, String> {
     let st = state.inner().clone();
     tauri::async_runtime::spawn_blocking(move || {
-        import_transcript_to_project_inner(
-            &st,
-            &project_id,
-            &src_path,
-            target_file_id.as_deref(),
-        )
+        import_transcript_to_project_inner(&st, &project_id, &src_path, target_file_id.as_deref())
     })
     .await
     .map_err(|e| format!("导入转录稿失败: {e}"))?
@@ -271,14 +266,7 @@ mod tests {
     }
 
     fn seed_project_with_audio(st: &DbState, name: &str, audio_path: &str) -> (String, String) {
-        seed_audio_file(
-            st,
-            name,
-            "paired",
-            audio_path,
-            None,
-            None,
-        )
+        seed_audio_file(st, name, "paired", audio_path, None, None)
     }
 
     fn seed_audio_file(
@@ -355,8 +343,14 @@ mod tests {
 
         let conn = open_db(&st).unwrap();
         let (stored_path, stored_hash) = file_import_provenance(&conn, &file_id);
-        assert_eq!(stored_path.as_deref(), Some(audio_provenance.source_path.as_str()));
-        assert_eq!(stored_hash.as_deref(), Some(audio_provenance.content_sha256.as_str()));
+        assert_eq!(
+            stored_path.as_deref(),
+            Some(audio_provenance.source_path.as_str())
+        );
+        assert_eq!(
+            stored_hash.as_deref(),
+            Some(audio_provenance.content_sha256.as_str())
+        );
     }
 
     #[test]
@@ -379,7 +373,10 @@ mod tests {
 
         let detail = file_detail_from_conn(&open_db(&st).unwrap(), &file_id).unwrap();
         assert_eq!(detail.file_type, "paired");
-        assert_eq!(detail.audio_path.as_deref(), Some(audio_path.to_str().unwrap()));
+        assert_eq!(
+            detail.audio_path.as_deref(),
+            Some(audio_path.to_str().unwrap())
+        );
         assert_eq!(detail.segments.len(), 1);
     }
 
@@ -406,7 +403,9 @@ mod tests {
         )
         .unwrap();
         match outcome {
-            TranscriptImportOutcome::Attached { file_id: attached, .. } => {
+            TranscriptImportOutcome::Attached {
+                file_id: attached, ..
+            } => {
                 assert_eq!(attached, file_id);
             }
             other => panic!("unexpected outcome: {other:?}"),
@@ -424,7 +423,9 @@ mod tests {
             import_transcript_to_project_inner(&st, &project_id, srt.to_str().unwrap(), None)
                 .unwrap();
         match outcome {
-            TranscriptImportOutcome::Attached { file_id: attached, .. } => {
+            TranscriptImportOutcome::Attached {
+                file_id: attached, ..
+            } => {
                 assert_eq!(attached, file_id);
             }
             other => panic!("unexpected outcome: {other:?}"),

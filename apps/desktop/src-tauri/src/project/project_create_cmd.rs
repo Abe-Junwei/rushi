@@ -401,8 +401,5 @@ pub(crate) fn import_text_to_project_inner(
     )
     .map_err(|e| e.to_string())?;
     tx.commit().map_err(|e| e.to_string())?;
-    Ok((
-        project_detail_from_conn(&conn, project_id)?,
-        file_id,
-    ))
+    Ok((project_detail_from_conn(&conn, project_id)?, file_id))
 }
