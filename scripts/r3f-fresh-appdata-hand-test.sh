@@ -1,7 +1,9 @@
 #!/usr/bin/env bash
 # R3f — 首装空 App Data「一键准备」复验（隔离 HOME，不污染主 App Data）
-# Usage: bash scripts/r3f-fresh-appdata-hand-test.sh [--with-ui] [--interactive] [--skip-download] [--wipe-ui-prefs]
-#  UI：osascript 点「设置」→「一键准备」；失败时回退 HTTP prepare（与 UI 同链路）
+# Usage: bash scripts/r3f-fresh-appdata-hand-test.sh [--interactive] [--with-ui] [--skip-download] [--wipe-ui-prefs] [--exit-after-pass]
+#  推荐 release 手测：--interactive（你在窗口里点「设置→一键准备」，无需辅助功能；通过后应用保持打开）
+#  --with-ui：osascript 自动点按钮，需 Terminal/Cursor → 系统设置 → 隐私与安全性 → 辅助功能
+#  --exit-after-pass：通过后仍关闭应用并删除隔离 HOME（CI / 全自动用；与 --interactive 联用可覆盖默认保活）
 #
 # 注意：默认仅隔离 HOME 下的 SQLite / models / logs。WebKit localStorage 与 macOS 钥匙串
 # 不在 HOME 内，会沿用本机旧配置。Fresh 手测在线 STT / LLM 状态时请加 --wipe-ui-prefs。
@@ -16,14 +18,21 @@ WITH_UI=0
 INTERACTIVE=0
 SKIP_DOWNLOAD=0
 WIPE_UI_PREFS=0
+EXIT_AFTER_PASS=0
+TEST_PASSED=0
+KEEP_APP_ON_PASS=0
 for arg in "$@"; do
   case "$arg" in
     --with-ui) WITH_UI=1 ;;
     --interactive) INTERACTIVE=1 ;;
     --skip-download) SKIP_DOWNLOAD=1 ;;
     --wipe-ui-prefs) WIPE_UI_PREFS=1 ;;
+    --exit-after-pass) EXIT_AFTER_PASS=1 ;;
   esac
 done
+if [[ "${INTERACTIVE}" -eq 1 && "${EXIT_AFTER_PASS}" -eq 0 ]]; then
+  KEEP_APP_ON_PASS=1
+fi
 
 [[ -x "${BIN}" ]] || { echo "Missing release app: ${BIN}" >&2; exit 1; }
 
@@ -45,6 +54,9 @@ stop_all() {
 }
 
 cleanup() {
+  if [[ "${KEEP_APP_ON_PASS}" -eq 1 && "${TEST_PASSED}" -eq 1 ]]; then
+    return 0
+  fi
   stop_all
   rm -rf "${FRESH_HOME}"
 }
@@ -289,12 +301,17 @@ else
       echo "  WARN: UI automation failed — see ${OUT_DIR}/ui-one-click.err"
       cat "${OUT_DIR}/ui-one-click.err" 2>/dev/null | sed 's/^/    /' || true
       if health_requires_token; then
-        echo "FAIL: bundled sidecar needs UI one-click (Accessibility). Grant Terminal/Cursor → 系统设置 → 隐私与安全性 → 辅助功能" >&2
-        exit 1
+        echo "  NOTE: release 侧车需 UI 一键准备（loopback token）；osascript 未获辅助功能权限。" >&2
+        echo "  → 改为等待你手动操作（等同 --interactive）；应用会保持打开。" >&2
+        echo "  → 全自动需：系统设置 → 隐私与安全性 → 辅助功能 → 勾选 Terminal 或 Cursor" >&2
+        UI_RESULT="failed→interactive"
+        PREPARE_VIA="ui-interactive-fallback"
+        wait_interactive_one_click || exit 1
+      else
+        echo "== Fallback: HTTP prepare (dev sidecar without token) =="
+        run_http_prepare || exit 1
+        PREPARE_VIA="http-fallback"
       fi
-      echo "== Fallback: HTTP prepare (dev sidecar without token) =="
-      run_http_prepare || exit 1
-      PREPARE_VIA="http-fallback"
     fi
   else
     echo "== HTTP one-click model step (dev sidecar only) =="
@@ -329,14 +346,31 @@ fi
 
 TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
 MACOS="$(sw_vers -productVersion 2>/dev/null || echo unknown)"
+if [[ "${SKIP_DOWNLOAD}" -eq 1 ]]; then
+  PREPARE_RESULT="⏸ skip-download"
+else
+  PREPARE_RESULT="✅"
+fi
+if [[ "${KEEP_APP_ON_PASS}" -eq 1 ]]; then
+  FRESH_HOME_NOTE="应用仍运行，关闭后可手动删除"
+else
+  FRESH_HOME_NOTE="测试结束已删除"
+fi
+CMD_FLAGS=""
+[[ "${INTERACTIVE}" -eq 1 ]] && CMD_FLAGS+=" --interactive"
+[[ "${WITH_UI}" -eq 1 ]] && CMD_FLAGS+=" --with-ui"
+[[ "${SKIP_DOWNLOAD}" -eq 1 ]] && CMD_FLAGS+=" --skip-download"
+[[ "${WIPE_UI_PREFS}" -eq 1 ]] && CMD_FLAGS+=" --wipe-ui-prefs"
+[[ "${EXIT_AFTER_PASS}" -eq 1 ]] && CMD_FLAGS+=" --exit-after-pass"
+TEST_PASSED=1
 cat > "${EVIDENCE}" <<EOF
 # R3f 首装空 App Data — 手测证据
 
 - **时间（UTC）**：${TS}
 - **macOS**：${MACOS}
-- **隔离 HOME**：\`${FRESH_HOME}\`（测试结束已删除）
+- **隔离 HOME**：\`${FRESH_HOME}\`（${FRESH_HOME_NOTE}）
 - **包**：\`${APP}\`
-- **命令**：\`bash scripts/r3f-fresh-appdata-hand-test.sh${INTERACTIVE:+ --interactive}${WITH_UI:+ --with-ui}${SKIP_DOWNLOAD:+ --skip-download}\`
+- **命令**：\`bash scripts/r3f-fresh-appdata-hand-test.sh${CMD_FLAGS}\`
 
 ## 结论
 
@@ -345,7 +379,7 @@ cat > "${EVIDENCE}" <<EOF
 | release \`.app\` + 空 App Data 启动 | ✅ |
 | bundled 侧车 \`/health\` \`funasr_import_ok\` | ✅ |
 | 首装模型未缓存（预期 \`funasr_default_model_cached=false\`） | ✅ 见 \`health-after-sidecar.json\` |
-| 一键准备（${PREPARE_VIA}）→ \`ready_for_transcribe\` | ${SKIP_DOWNLOAD:+⏸ skip-download}${SKIP_DOWNLOAD:-✅} |
+| 一键准备（${PREPARE_VIA}）→ \`ready_for_transcribe\` | ${PREPARE_RESULT} |
 | UI osascript | ${UI_RESULT} |
 | log 无 \`desktop:dev\` 文案 | ✅ |
 
@@ -356,8 +390,12 @@ cat > "${EVIDENCE}" <<EOF
 ## 说明
 
 - 隔离 \`HOME\` 等价于干净用户首装 App Data，**不修改**主 \`~/Library/Application Support/...\`。
-- release bundled 侧车须 UI「一键准备」（Tauri loopback）；请用 \`--interactive\`，勿用裸 \`curl\`。
+- release bundled 侧车须 UI「一键准备」（Tauri loopback）；手测请用 \`--interactive\`（无需辅助功能，通过后应用保持打开）。\`--with-ui\` 仅 CI/已授权辅助功能时使用；需通过后自动关应用时加 \`--exit-after-pass\`。
 EOF
 
 echo ""
 echo "OK: R3f fresh App Data hand test passed. Evidence: ${EVIDENCE}"
+if [[ "${KEEP_APP_ON_PASS}" -eq 1 ]]; then
+  echo "NOTE: 应用保持运行（隔离 HOME: ${FRESH_HOME}）"
+  echo "      关闭应用后如需清理: rm -rf \"${FRESH_HOME}\""
+fi
