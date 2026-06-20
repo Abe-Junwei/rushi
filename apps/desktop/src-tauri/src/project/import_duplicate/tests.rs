@@ -71,7 +71,7 @@ fn detects_duplicate_by_stored_source_path() {
         None,
     );
 
-    let check = check_import_duplicate_inner(&conn, "p1", src.to_str().unwrap()).unwrap();
+    let check = check_import_duplicate_inner(&conn, "p1", src.to_str().unwrap(), None).unwrap();
     assert_eq!(check.by_source_path.len(), 1);
     assert_eq!(check.by_source_path[0].file_name, "clip");
     assert!(check.by_content_hash.is_empty());
@@ -102,7 +102,8 @@ fn detects_duplicate_by_content_hash_when_paths_differ() {
         Some(existing.to_str().unwrap()),
     );
 
-    let check = check_import_duplicate_inner(&conn, "p1", incoming.to_str().unwrap()).unwrap();
+    let check =
+        check_import_duplicate_inner(&conn, "p1", incoming.to_str().unwrap(), None).unwrap();
     assert!(check.by_source_path.is_empty());
     assert_eq!(check.by_content_hash.len(), 1);
     assert_eq!(check.by_content_hash[0].file_name, "stored");
@@ -130,7 +131,8 @@ fn detects_legacy_text_duplicate_by_segment_fingerprint() {
         .unwrap();
     }
 
-    let check = check_import_duplicate_inner(&conn, "p1", incoming.to_str().unwrap()).unwrap();
+    let check =
+        check_import_duplicate_inner(&conn, "p1", incoming.to_str().unwrap(), None).unwrap();
     assert!(check.by_source_path.is_empty());
     assert_eq!(check.by_content_hash.len(), 1);
 
@@ -159,8 +161,42 @@ fn skips_audio_rehash_when_stored_hash_differs() {
         Some(stored_audio.to_str().unwrap()),
     );
 
-    let check = check_import_duplicate_inner(&conn, "p1", incoming.to_str().unwrap()).unwrap();
+    let check =
+        check_import_duplicate_inner(&conn, "p1", incoming.to_str().unwrap(), None).unwrap();
     assert!(check.by_content_hash.is_empty());
+
+    let _ = fs::remove_dir_all(&root);
+}
+
+#[test]
+fn replace_target_bypasses_same_file_source_path_match() {
+    let conn = Connection::open_in_memory().unwrap();
+    db::migrate(&conn).unwrap();
+    let root = std::env::temp_dir().join(format!("rushi-import-dup-{}", Uuid::new_v4()));
+    fs::create_dir_all(&root).unwrap();
+    let src = root.join("interview.srt");
+    fs::write(&src, b"1\n00:00:01,000 --> 00:00:02,000\nHi\n").unwrap();
+    let canonical = normalize_import_source_path(src.to_str().unwrap());
+
+    seed_project_with_file(
+        &conn,
+        "p1",
+        "f1",
+        "interview",
+        "paired",
+        Some(&canonical),
+        None,
+        Some("/tmp/interview.wav"),
+    );
+
+    let check =
+        check_import_duplicate_inner(&conn, "p1", src.to_str().unwrap(), Some("f1")).unwrap();
+    assert!(check.by_source_path.is_empty());
+    assert!(check.by_content_hash.is_empty());
+
+    let check_other =
+        check_import_duplicate_inner(&conn, "p1", src.to_str().unwrap(), None).unwrap();
+    assert_eq!(check_other.by_source_path.len(), 1);
 
     let _ = fs::remove_dir_all(&root);
 }

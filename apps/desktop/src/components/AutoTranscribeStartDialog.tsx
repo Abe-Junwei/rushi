@@ -15,6 +15,7 @@ const FALLBACK_HEIGHT = 200;
 type Props = {
   open: boolean;
   busy: boolean;
+  prepareModelBusy?: boolean;
   source: TranscribeSource;
   onlineReady: boolean;
   onSelectLocal: () => void;
@@ -31,6 +32,7 @@ type Props = {
 export function AutoTranscribeStartDialog({
   open,
   busy,
+  prepareModelBusy = false,
   source,
   onlineReady,
   onSelectLocal,
@@ -54,7 +56,10 @@ export function AutoTranscribeStartDialog({
       : "开始转录";
 
   const sourceDescription = resolveTranscribeSourceDescription(source, { onlineReady });
-  const confirmDisabled = busy || (source === "online" && !onlineReady);
+  const confirmDisabled =
+    busy ||
+    (source === "online" && !onlineReady) ||
+    (source === "local" && prepareModelBusy);
 
   const primaryLead = hasExistingSegmentText
     ? `覆盖 ${segmentCount} 条语段并重新转写`

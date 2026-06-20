@@ -14,6 +14,7 @@ pub fn check_import_duplicate_inner(
     conn: &rusqlite::Connection,
     project_id: &str,
     src_path: &str,
+    replace_target_file_id: Option<&str>,
 ) -> Result<ImportDuplicateCheck, String> {
     let src = PathBuf::from(src_path);
     if !src.is_file() {
@@ -57,10 +58,13 @@ pub fn check_import_duplicate_inner(
     }
 
     if !by_source_path.is_empty() {
-        return Ok(ImportDuplicateCheck {
-            by_source_path,
-            by_content_hash: Vec::new(),
-        });
+        return Ok(filter_replace_target_bypass(
+            ImportDuplicateCheck {
+                by_source_path,
+                by_content_hash: Vec::new(),
+            },
+            replace_target_file_id,
+        ));
     }
 
     let meta = source_file_meta(&src)?;
@@ -126,8 +130,32 @@ pub fn check_import_duplicate_inner(
         }
     }
 
-    Ok(ImportDuplicateCheck {
-        by_source_path: Vec::new(),
-        by_content_hash,
-    })
+    Ok(filter_replace_target_bypass(
+        ImportDuplicateCheck {
+            by_source_path: Vec::new(),
+            by_content_hash,
+        },
+        replace_target_file_id,
+    ))
+}
+
+fn filter_replace_target_bypass(
+    check: ImportDuplicateCheck,
+    replace_target_file_id: Option<&str>,
+) -> ImportDuplicateCheck {
+    let Some(target_id) = replace_target_file_id else {
+        return check;
+    };
+    ImportDuplicateCheck {
+        by_source_path: check
+            .by_source_path
+            .into_iter()
+            .filter(|m| m.file_id != target_id)
+            .collect(),
+        by_content_hash: check
+            .by_content_hash
+            .into_iter()
+            .filter(|m| m.file_id != target_id)
+            .collect(),
+    }
 }

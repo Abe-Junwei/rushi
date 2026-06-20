@@ -32,7 +32,7 @@ FileHub / Editor → closeProject → Welcome
 
 - **`loadProject(sameId)` + 有未保存修改**：仅 `applyDetail` 刷新 files 列表，**不重载**当前 file 语段。
 - **`loadProject(sameId)` + Hub（`currentFileId === null`）**：仅刷新项目/文件列表，**不**自动 `openFile`。
-- **`loadProjectAfterImport`**：导入完成后专用；刷新列表并打开**最新**文件（经 `openFileWrapped`，含未保存/转写闸门）。
+- **`loadProjectAfterImport`**：导入完成后专用；刷新列表并打开目标文件（经 `openFileWrapped`，含未保存/转写闸门）。默认打开 `preferFileId`（Attach 导入传入）；未指定时打开 `updated_at_ms` 最新文件。
 - **`refreshProjectHub`**：Hub 删/改名后专用；只刷新列表，**不** `openFile`。
 
 ## 重复导入
@@ -43,6 +43,15 @@ FileHub / Editor → closeProject → Welcome
 - 持久化：`import_source_size` / `import_source_modified_ms`（迁移 + 启动 backfill）
 - UI：`DuplicateImportConfirmDialog`（`modal` 层）— 取消 / 打开已有 / 仍要导入
 - 入口：`pickAndImportFileToProject`、`importFileToProject`（空项目、Hub、工具栏、拖放）
+
+## Attach 字幕导入（Replace）
+
+> Spec：[`audio-subtitle-attach-import-intent.md`](../execution/specs/audio-subtitle-attach-import-intent.md)
+
+- **Editor**（`currentFileId` 存在）：`import_transcript_to_project` 带 `target_file_id` → 整轨 **Replace** 语段；保留 `audio_path` 与**音频** import provenance；跳过重复导入检测（R1）；未保存时经 Close Gate（G1）；转写中禁用（T2）。
+- **Hub**（无当前文件）：按字幕 stem 匹配 `paired`/`audio_only` 文件名 — 0 命中新建 `text`；1 命中 Attach；2+ 命中 `AttachImportTargetDialog` 用户选目标。
+- Rust 真源：`file_import_cmd.rs` · IPC：`import_transcript_to_project`。
+- **`fallbackWaveFile`**：仅当当前 File 为 `text` 且无 `audioSrc` 时，才提示切换到项目内其它 `paired`/`audio_only` File（legacy 分裂数据）；Attach 成功后同一 `paired` File 不应再出现该按钮。
 
 ## 对话框叠层
 

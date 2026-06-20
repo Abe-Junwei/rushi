@@ -2,6 +2,7 @@ import { PRODUCT_ICON } from "../../config/productIcons";
 import { useRef } from "react";
 import { useWorkbenchToolbarCompact } from "../../hooks/useWorkbenchToolbarCompact";
 import type { ProjectControllerApi } from "../../pages/useProjectController";
+import { shouldBlockTranscribeForLocalModelPrepare } from "../../services/stt/transcribeSourcePresentation";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";
 import {
   captureTranscriptTextareaSelection,
@@ -45,8 +46,13 @@ export function EditorSegmentTranscribeActions({
           : "智能改稿不可用"));
 
   const isTranscribing = c.busy && c.busyReason === "transcribe";
+  const blockTranscribeForModelPrepare = shouldBlockTranscribeForLocalModelPrepare({
+    prepareModelBusy: c.prepareModelBusy,
+    transcribeSource: c.transcribeSource,
+    onlineReady: c.onlineTranscribeReady,
+  });
   const transcribePrimary =
-    c.segments.length === 0 && !isTranscribing && !c.prepareModelBusy && !c.busy;
+    c.segments.length === 0 && !isTranscribing && !blockTranscribeForModelPrepare && !c.busy;
 
   const findReplaceTitle =
     c.busy ? "处理中" : c.canFindReplace
@@ -71,9 +77,9 @@ export function EditorSegmentTranscribeActions({
                     ? [workbenchDropdownItem, "font-semibold text-accent-action-strong"].join(" ")
                     : workbenchDropdownItem
                 }
-                disabled={c.busy || c.prepareModelBusy}
+                disabled={c.busy || blockTranscribeForModelPrepare}
                 title={
-                  c.prepareModelBusy
+                  blockTranscribeForModelPrepare
                     ? "模型准备中，请稍候"
                     : "打开对话框：选择本机或在线来源并开始转录"
                 }
@@ -83,7 +89,7 @@ export function EditorSegmentTranscribeActions({
                 }}
               >
                 <PRODUCT_ICON.transcribeAction className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-                {c.prepareModelBusy ? "模型准备中..." : "自动转录"}
+                {blockTranscribeForModelPrepare ? "模型准备中..." : "自动转录"}
               </button>
               <button
                 type="button"
@@ -147,17 +153,17 @@ export function EditorSegmentTranscribeActions({
       <button
         type="button"
         className={transcribePrimary ? workbenchTranscribePrimaryClass() : workbenchLabelBtnClass(false)}
-        disabled={c.busy || c.prepareModelBusy}
+        disabled={c.busy || blockTranscribeForModelPrepare}
         onClick={() => void c.runTranscribe()}
         aria-label="自动转录"
         title={
-          c.prepareModelBusy
+          blockTranscribeForModelPrepare
             ? "模型准备中，请稍候"
             : "打开对话框：选择本机或在线来源并开始转录"
         }
       >
         <PRODUCT_ICON.transcribeAction className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
-        {c.prepareModelBusy ? "模型准备中..." : "自动转录"}
+        {blockTranscribeForModelPrepare ? "模型准备中..." : "自动转录"}
       </button>
       <button
         type="button"

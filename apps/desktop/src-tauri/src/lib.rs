@@ -178,6 +178,7 @@ pub fn run() {
             project::project_create_cmd::create_empty_text_file,
             project::project_create_cmd::import_audio_to_project,
             project::project_create_cmd::import_text_to_project,
+            project::file_import_cmd::import_transcript_to_project,
             project::import_duplicate::check_project_import_duplicate,
             project::project_query_cmd::project_list,
             project::project_query_cmd::project_load,

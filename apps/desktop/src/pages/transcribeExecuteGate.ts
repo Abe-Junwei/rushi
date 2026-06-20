@@ -1,4 +1,5 @@
 import { resolveOnlineTranscribeBlock } from "../services/stt/sttOnlineProviderContract";
+import { resolveEffectiveTranscribeSource } from "../services/stt/transcribeSourcePresentation";
 
 import type { TranscribeSource } from "../services/stt/transcribeSource";
 import type { BusyReason } from "./useProjectCrudController";
@@ -13,6 +14,8 @@ export type TranscribeExecuteGateInput = {
   targetFileId?: string | null;
   localTranscribePreflight: () => string | null;
   source: TranscribeSource;
+  /** 与顶栏 chip 同源；省略时由 resolveEffectiveTranscribeSource 自行探测。 */
+  onlineReady?: boolean;
 };
 
 /** Returns user-facing block message, or null when execute may proceed. */
@@ -31,7 +34,10 @@ export function resolveTranscribeExecuteBlock(input: TranscribeExecuteGateInput)
     }
     return "busy";
   }
-  if (input.source === "online") {
+  const effectiveSource = resolveEffectiveTranscribeSource(input.source, {
+    onlineReady: input.onlineReady,
+  });
+  if (effectiveSource === "online") {
     if (batchActive) return null;
     return resolveOnlineTranscribeBlock();
   }

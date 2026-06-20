@@ -10,7 +10,12 @@ export type ImportDuplicateCheck = {
 
 export function importFileDisplayName(srcPath: string, kind: "audio" | "text"): string {
   const fallback = kind === "audio" ? "未命名音频" : "未命名文本";
-  return srcPath.replace(/^.*[/\\]/, "").replace(/\.[^.]+$/, "") || fallback;
+  const fileName = srcPath.replace(/^.*[/\\]/, "");
+  const withoutExt = fileName.includes(".")
+    ? fileName.replace(/\.[^.]+$/, "")
+    : fileName;
+  const trimmed = withoutExt.trim();
+  return trimmed || fallback;
 }
 
 export function formatDuplicateFileNames(matches: Pick<ImportDuplicateFileMatch, "fileName">[]): string {
@@ -50,4 +55,15 @@ export function pickDuplicateOpenExistingFileId(check: ImportDuplicateCheck): st
 
 export function canOpenExistingDuplicate(check: ImportDuplicateCheck): boolean {
   return pickDuplicateOpenExistingFileId(check) != null;
+}
+
+/** Hub sidecar：stem 可 attach 到 paired/audio_only 的候选数（与 Rust list_stem_attach_candidates 对齐）。 */
+export function countStemAttachCandidates(
+  files: readonly { name: string; file_type: string }[] | undefined,
+  stem: string,
+): number {
+  if (!files?.length) return 0;
+  return files.filter(
+    (f) => (f.file_type === "paired" || f.file_type === "audio_only") && f.name === stem,
+  ).length;
 }

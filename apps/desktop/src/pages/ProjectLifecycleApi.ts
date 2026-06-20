@@ -47,7 +47,7 @@ export interface ProjectLifecycleApi {
   createEmptyProject: () => Promise<void>;
   createProjectFromText: () => Promise<void>;
   loadProject: (id: string) => Promise<void>;
-  loadProjectAfterImport: (id: string) => Promise<void>;
+  loadProjectAfterImport: (id: string, preferFileId?: string | null) => Promise<void>;
   openFile: (fileId: string) => Promise<void>;
   openLastEditorWorkspace: () => Promise<void>;
   closeFile: () => void;
@@ -203,6 +203,11 @@ export interface ProjectLifecycleApi {
   cancelDuplicateImport: () => void;
   openExistingDuplicateImport: () => void;
   confirmDuplicateImportCopy: () => void;
+  attachImportTargetOpen: boolean;
+  attachImportTargetCandidates: import("../tauri/projectTypes").FileSummary[];
+  attachImportTargetStem: string | null;
+  cancelAttachImportTarget: () => void;
+  confirmAttachImportTarget: (fileId: string) => void;
   importFileToProject: (
     kind: "audio" | "text",
     srcPath: string,

@@ -1,6 +1,7 @@
 import { memo, useEffect } from "react";
 import { useTranscriptFooterStats } from "../hooks/useTranscriptFooterStats";
 import { clearToastBottomInset, syncToastBottomInset } from "../services/ui/toastLayout";
+import { resolveLegacyWaveformFallbackFile } from "../utils/legacyWaveformFallback";
 import { SegmentContextMenu } from "./SegmentContextMenu";
 import type { ProjectControllerApi } from "../pages/useProjectController";
 import type { TranscriptionLayerApi } from "../pages/useTranscriptionLayer";
@@ -72,10 +73,11 @@ export const EditorView = memo(function EditorView({
     : hasProjectFiles
       ? "选择文件"
       : "未选择文件";
-  const fallbackWaveFile =
-    c.current?.files.find((f) => f.id !== c.currentFileId && f.file_type !== "text") ??
-    c.current?.files.find((f) => f.id !== c.currentFileId) ??
-    null;
+  const fallbackWaveFile = resolveLegacyWaveformFallbackFile(
+    c.currentFileId,
+    projectFiles,
+    Boolean(c.audioSrc),
+  );
 
   useEffect(() => {
     syncToastBottomInset(Boolean(c.currentFileId));

@@ -3,7 +3,10 @@ import { clampPxPerSec } from "./pxPerSec";
 import {
   migrateLegacySegmentPlaybackRateToGlobal,
   readStoredWaveformGlobalPlaybackRate,
+  readStoredWaveformHeightPx,
   readStoredWaveformPxPerSec,
+  WAVEFORM_HEIGHT_DEFAULT,
+  writeStoredWaveformHeightPx,
   writeStoredWaveformPxPerSec,
 } from "./waveformPrefs";
 
@@ -57,6 +60,16 @@ describe("waveformPrefs localStorage", () => {
   it("clamps invalid stored values on read", () => {
     localStorage.setItem("rushi.p1.waveformPxPerSec", "99999");
     expect(readStoredWaveformPxPerSec()).toBe(clampPxPerSec(99999));
+  });
+
+  it("ignores legacy default waveform height so product default applies", () => {
+    localStorage.setItem("rushi.p1.waveformHeightPx", "96");
+    expect(readStoredWaveformHeightPx()).toBeNull();
+  });
+
+  it("round-trips waveform height after clamp", () => {
+    writeStoredWaveformHeightPx(WAVEFORM_HEIGHT_DEFAULT);
+    expect(readStoredWaveformHeightPx()).toBe(WAVEFORM_HEIGHT_DEFAULT);
   });
 
   it("migrates legacy segment playback rate into global when global is default", () => {

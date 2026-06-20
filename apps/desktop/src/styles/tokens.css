@@ -104,7 +104,7 @@
   --zen-wf-progress-played: color-mix(in srgb, var(--accent-action-strong) 32%, var(--zen-wf-progress));
   --zen-wf-cursor: #6a6a6f;
   /** Release CSP fallback when nonce layout scopes are not yet applied */
-  --waveform-stage-height-fallback: 96px;
+  --waveform-stage-height-fallback: 220px;
   --segment-meta-width-min: 44px;
   --seg-row-min-height-fallback: 62px;
 

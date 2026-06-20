@@ -99,4 +99,51 @@ describe("resolveTranscribeExecuteBlock", () => {
       }),
     ).toBeNull();
   });
+
+  it("uses online gate when local source but online is effectively active", () => {
+    vi.mocked(resolveOnlineTranscribeBlock).mockReturnValue(null);
+    expect(
+      resolveTranscribeExecuteBlock({
+        busy: false,
+        hasCurrent: true,
+        currentFileId: "f1",
+        localTranscribePreflight: () => "所选模型正在下载，完成后方可转写。",
+        source: "local",
+        onlineReady: true,
+      }),
+    ).toBeNull();
+    expect(resolveOnlineTranscribeBlock).toHaveBeenCalled();
+  });
+
+  it("still uses local preflight when user locked local while online ready", () => {
+    const storage: Record<string, string> = { "rushi.transcribe.source.userOverride": "local" };
+    vi.stubGlobal("sessionStorage", {
+      getItem: (key: string) => storage[key] ?? null,
+      setItem: (key: string, value: string) => {
+        storage[key] = value;
+      },
+      removeItem: (key: string) => {
+        delete storage[key];
+      },
+      clear: () => {
+        for (const key of Object.keys(storage)) delete storage[key];
+      },
+      get length() {
+        return Object.keys(storage).length;
+      },
+      key: (index: number) => Object.keys(storage)[index] ?? null,
+    });
+    vi.mocked(resolveOnlineTranscribeBlock).mockClear();
+    expect(
+      resolveTranscribeExecuteBlock({
+        busy: false,
+        hasCurrent: true,
+        currentFileId: "f1",
+        localTranscribePreflight: () => "所选模型正在下载，完成后方可转写。",
+        source: "local",
+        onlineReady: true,
+      }),
+    ).toContain("下载");
+    expect(resolveOnlineTranscribeBlock).not.toHaveBeenCalled();
+  });
 });

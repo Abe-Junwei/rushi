@@ -50,7 +50,7 @@ export function createCloseGateProjectLoadActions(deps: CloseGateProjectLoadDeps
     }
   }
 
-  async function loadProjectAfterImport(id: string) {
+  async function loadProjectAfterImport(id: string, preferFileId?: string | null) {
     deps.setError("");
     deps.beginBusy("load");
     try {
@@ -66,8 +66,10 @@ export function createCloseGateProjectLoadActions(deps: CloseGateProjectLoadDeps
         return;
       }
 
-      const sorted = [...detail.files].sort((a, b) => b.updated_at_ms - a.updated_at_ms);
-      await deps.openFileWrapped(sorted[0].id);
+      const preferred =
+        preferFileId != null ? detail.files.find((f) => f.id === preferFileId) : undefined;
+      const target = preferred ?? [...detail.files].sort((a, b) => b.updated_at_ms - a.updated_at_ms)[0];
+      await deps.openFileWrapped(target.id);
     } catch (e) {
       deps.setCurrent(null);
       deps.performCloseFile();

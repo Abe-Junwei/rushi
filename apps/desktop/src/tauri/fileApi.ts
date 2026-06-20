@@ -52,11 +52,45 @@ export async function importTextToProject(
   return invoke<RawProjectDetail>("import_text_to_project", { projectId, name, srcPath });
 }
 
+export type TranscriptImportOutcome =
+  | {
+      outcome: "attached";
+      project: RawProjectDetail;
+      file_id: string;
+    }
+  | {
+      outcome: "created_text";
+      project: RawProjectDetail;
+      file_id: string;
+    }
+  | {
+      outcome: "need_target";
+      candidates: FileSummary[];
+      transcript_stem: string;
+    };
+
+export async function importTranscriptToProject(
+  projectId: string,
+  srcPath: string,
+  targetFileId?: string | null,
+): Promise<TranscriptImportOutcome> {
+  return invoke<TranscriptImportOutcome>("import_transcript_to_project", {
+    projectId,
+    srcPath,
+    targetFileId: targetFileId ?? null,
+  });
+}
+
 export async function checkProjectImportDuplicate(
   projectId: string,
   srcPath: string,
+  replaceTargetFileId?: string | null,
 ): Promise<ImportDuplicateCheck> {
-  return invoke<ImportDuplicateCheck>("check_project_import_duplicate", { projectId, srcPath });
+  return invoke<ImportDuplicateCheck>("check_project_import_duplicate", {
+    projectId,
+    srcPath,
+    replaceTargetFileId: replaceTargetFileId ?? null,
+  });
 }
 
 export async function pickTextPath(): Promise<string | null> {

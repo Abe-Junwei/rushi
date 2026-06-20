@@ -7,7 +7,7 @@ import {
   tryBuildOnlineTranscribeBridgePayload,
 } from "./sttOnlineProviderContract";
 import { normalizeExternalSttOnlineRuntimeConfig } from "./sttOnlineProviderContract/runtimeConfig";
-import { resolveTranscribeEnvReady, resolveEffectiveTranscribeSource, resolveTranscribeSourceDescription } from "./transcribeSourcePresentation";
+import { resolveTranscribeEnvReady, resolveEffectiveTranscribeSource, resolveTranscribeSourceDescription, shouldBlockTranscribeForLocalModelPrepare } from "./transcribeSourcePresentation";
 
 function mockLocalStorage(initial: Record<string, string>) {
   const data = { ...initial };
@@ -116,6 +116,43 @@ describe("resolveEffectiveTranscribeSource", () => {
   it("respects explicit user override to local", () => {
     vi.stubGlobal("sessionStorage", mockLocalStorage({ "rushi.transcribe.source.userOverride": "local" }));
     expect(resolveEffectiveTranscribeSource("local", { onlineReady: true })).toBe("local");
+  });
+});
+
+describe("shouldBlockTranscribeForLocalModelPrepare", () => {
+  beforeEach(() => {
+    vi.stubGlobal("sessionStorage", mockLocalStorage({}));
+  });
+
+  it("does not block when online is effectively active during model download", () => {
+    expect(
+      shouldBlockTranscribeForLocalModelPrepare({
+        prepareModelBusy: true,
+        transcribeSource: "local",
+        onlineReady: true,
+      }),
+    ).toBe(false);
+  });
+
+  it("blocks when only local path is active during model download", () => {
+    expect(
+      shouldBlockTranscribeForLocalModelPrepare({
+        prepareModelBusy: true,
+        transcribeSource: "local",
+        onlineReady: false,
+      }),
+    ).toBe(true);
+  });
+
+  it("blocks when user locked local while online is ready", () => {
+    vi.stubGlobal("sessionStorage", mockLocalStorage({ "rushi.transcribe.source.userOverride": "local" }));
+    expect(
+      shouldBlockTranscribeForLocalModelPrepare({
+        prepareModelBusy: true,
+        transcribeSource: "local",
+        onlineReady: true,
+      }),
+    ).toBe(true);
   });
 });
 

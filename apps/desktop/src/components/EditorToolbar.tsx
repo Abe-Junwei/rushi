@@ -7,12 +7,15 @@ import { TranscribeTopStatusChips } from "./TranscribeTopStatusChips";
 import { LlmTopStatusChip } from "./LlmTopStatusChip";
 import { WelcomeActivityBell } from "./WelcomeActivityBell";
 import { runDeliveryModeTranscribeAction } from "../services/deliveryModeTranscribeToast";
+import { isTranscribeBusy } from "../pages/closeGateDecision";
+import { toast } from "../services/ui/toast";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 import { editorShortcutMenuHint } from "../utils/editorShortcutMenuHint";
 const ghostBtn = CONTROL_BTN_TOOLBAR_GHOST;
 const saveBtn = ghostBtn;
 const menuItem =
   "dropdown-item w-full px-3 py-2 text-left text-body text-notion-text transition-colors hover:bg-notion-sidebar-hover disabled:cursor-not-allowed disabled:text-notion-text-light";
+const subtitleMenuItemMuted = `${menuItem} opacity-40`;
 interface EditorToolbarProps {
   controller: ProjectControllerApi;
   exportKey: string;
@@ -80,6 +83,10 @@ export const EditorToolbar = memo(function EditorToolbar({
   };
   const importTextToCurrentProject = async () => {
     if (!c.current) return;
+    if (c.currentFileId && isTranscribeBusy(c.busy, c.busyReason)) {
+      toast.error("转写进行中，请稍后再导入字幕。");
+      return;
+    }
     setPendingImport("text");
     try {
       await c.pickAndImportFileToProject("text");
@@ -100,6 +107,9 @@ export const EditorToolbar = memo(function EditorToolbar({
     }
   };
   const importBlocked = c.busy || pendingImport !== null;
+  const transcribeSubtitleBlocked =
+    Boolean(c.currentFileId) && isTranscribeBusy(c.busy, c.busyReason);
+  const subtitleImportHardBlocked = importBlocked && !transcribeSubtitleBlocked;
   const exportBlocked = c.busy;
   useEffect(() => {
     if (exportBlocked) exportMenuRef.current?.removeAttribute("open");
@@ -188,14 +198,19 @@ export const EditorToolbar = memo(function EditorToolbar({
                 </button>
                 <button
                   type="button"
-                  className={menuItem}
-                  disabled={importBlocked}
+                  className={transcribeSubtitleBlocked ? subtitleMenuItemMuted : menuItem}
+                  disabled={subtitleImportHardBlocked}
+                  title={
+                    transcribeSubtitleBlocked
+                      ? "转写进行中，请稍后再导入字幕"
+                      : undefined
+                  }
                   onClick={(e) => {
                     e.currentTarget.closest("details")?.removeAttribute("open");
                     void importTextToCurrentProject();
                   }}
                 >
-                  导入转录文本
+                  {c.currentFileId ? "导入字幕…" : "导入转录文本"}
                 </button>
                 <button
                   type="button"

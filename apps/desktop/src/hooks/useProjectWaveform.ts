@@ -13,6 +13,7 @@ import {
   useProjectWaveformMount,
 } from "./useProjectWaveformMount";
 import { useProjectWaveformDestroy } from "./useProjectWaveformDestroy";
+import { WAVEFORM_HEIGHT_DEFAULT } from "../utils/waveformPrefs";
 import type { UseProjectWaveformOptions } from "./useProjectWaveformTypes";
 
 export type { UseProjectWaveformOptions } from "./useProjectWaveformTypes";
@@ -27,7 +28,7 @@ export function useProjectWaveform(options: UseProjectWaveformOptions) {
     layoutPxPerSec = 56,
     drawPxPerSec = layoutPxPerSec,
     peakCache = null,
-    waveformHeightPx = 96,
+    waveformHeightPx = WAVEFORM_HEIGHT_DEFAULT,
     onZoomApplied,
   } = options;
   const hotSwitchWhilePlaying = options.hotSwitchWhilePlaying ?? true;

@@ -11,7 +11,9 @@ type UseProjectLifecycleHubStackArgs = {
   pickedPath: string | null;
   newName: string;
   current: ProjectDetail | null;
+  currentFileId: string | null;
   busy: boolean;
+  busyReason: BusyReason | null;
   beginBusy: (reason: BusyReason) => void;
   endBusy: () => void;
   setError: React.Dispatch<React.SetStateAction<string>>;
@@ -29,11 +31,15 @@ type UseProjectLifecycleHubStackArgs = {
 export function useProjectLifecycleHubStack(args: UseProjectLifecycleHubStackArgs) {
   const importDuplicate = useProjectImportDuplicateController({
     currentProjectId: args.current?.id,
+    currentFileId: args.currentFileId,
+    projectFiles: args.current?.files,
     busy: args.busy,
+    busyReason: args.busyReason,
     beginBusy: args.beginBusy,
     endBusy: args.endBusy,
     loadProjectAfterImport: args.closeGate.loadProjectAfterImport,
     openFile: args.closeGate.openFileWrapped,
+    runWithUnsavedNavigateGate: args.closeGate.runWithUnsavedNavigateGate,
     setError: args.setError,
   });
 

@@ -7,6 +7,7 @@ import { CorrectionRulesPreviewDialog } from "./CorrectionRulesPreviewDialog";
 import { DeliveryExportDialog } from "./DeliveryExportDialog";
 import { DeliveryModeDialog } from "./DeliveryModeDialog";
 import { DuplicateImportConfirmDialog } from "./DuplicateImportConfirmDialog";
+import { AttachImportTargetDialog } from "./AttachImportTargetDialog";
 import { BatchTranscribeQueueDialog } from "./BatchTranscribeQueueDialog";
 import { DeleteProjectFileConfirmDialog } from "./DeleteProjectFileConfirmDialog";
 import { DeleteProjectConfirmDialog } from "./DeleteProjectConfirmDialog";
@@ -127,6 +128,7 @@ export function ProjectPanelDialogs({
       <AutoTranscribeStartDialog
         open={c.transcribeStartDialogOpen && !c.busy}
         busy={c.busy}
+        prepareModelBusy={c.prepareModelBusy}
         source={c.transcribeSource}
         onlineReady={c.onlineTranscribeReady}
         onSelectLocal={() => c.setTranscribeSource("local")}
@@ -208,6 +210,14 @@ export function ProjectPanelDialogs({
         onCancel={c.cancelDuplicateImport}
         onOpenExisting={c.openExistingDuplicateImport}
         onConfirmCopy={c.confirmDuplicateImportCopy}
+      />
+
+      <AttachImportTargetDialog
+        open={c.attachImportTargetOpen}
+        candidates={c.attachImportTargetCandidates}
+        transcriptStem={c.attachImportTargetStem}
+        onCancel={c.cancelAttachImportTarget}
+        onSelect={c.confirmAttachImportTarget}
       />
 
       <TranscribeNavBlockDialog

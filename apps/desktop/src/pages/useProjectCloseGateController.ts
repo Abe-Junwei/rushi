@@ -48,7 +48,10 @@ export type ProjectCloseGateControllerApi = {
   closeProjectWrapped: () => void;
   discardUnsavedAndClose: () => Promise<void>;
   loadProject: (id: string) => Promise<void>;
-  loadProjectAfterImport: (id: string) => Promise<void>;
+  loadProjectAfterImport: (id: string, preferFileId?: string | null) => Promise<void>;
+  runWithUnsavedNavigateGate: (
+    onProceed: () => void | Promise<void>,
+  ) => Promise<boolean>;
   refreshProjectHub: (id: string) => Promise<void>;
   openFileWrapped: (fileId: string) => Promise<void>;
   openLastEditorWorkspace: () => Promise<void>;
@@ -92,6 +95,7 @@ export function useProjectCloseGateController(
 
   const closeAfterSaveRef = useRef(false);
   const navigateProceedRef = useRef<Proceed | null>(null);
+  const unsavedGateAbortRef = useRef<(() => void) | null>(null);
   const bridgeStateRef = useRef({
     busy,
     busyReason,
@@ -229,8 +233,24 @@ export function useProjectCloseGateController(
   }
 
   function stayAfterCloseAttempt() {
+    unsavedGateAbortRef.current?.();
+    unsavedGateAbortRef.current = null;
     setCloseGateOpen(false);
     navigateProceedRef.current = null;
+  }
+
+  function runWithUnsavedNavigateGate(onProceed: Proceed): Promise<boolean> {
+    if (!dirty.hasUnsavedSegmentChanges()) {
+      return Promise.resolve(onProceed()).then(() => true);
+    }
+    return new Promise((resolve) => {
+      unsavedGateAbortRef.current = () => resolve(false);
+      navigate.openUnsavedNavigateGate(async () => {
+        unsavedGateAbortRef.current = null;
+        await onProceed();
+        resolve(true);
+      });
+    });
   }
 
   async function finishNavigateAfterDiscard() {
@@ -252,7 +272,16 @@ export function useProjectCloseGateController(
 
   async function saveAndClose() {
     const saved = await saveSegments();
-    if (!saved) return;
+    if (!saved) {
+      setError("保存失败，请修正后重试或放弃修改。");
+      if (closeGateIntent === "navigate") {
+        unsavedGateAbortRef.current?.();
+        unsavedGateAbortRef.current = null;
+        setCloseGateOpen(false);
+        navigateProceedRef.current = null;
+      }
+      return;
+    }
     if (closeGateIntent === "navigate") {
       setCloseGateOpen(false);
       const proceed = navigateProceedRef.current;
@@ -283,6 +312,7 @@ export function useProjectCloseGateController(
     loadProject,
     loadProjectAfterImport: projectLoad.loadProjectAfterImport,
     refreshProjectHub: projectLoad.refreshProjectHub,
+    runWithUnsavedNavigateGate,
     openFileWrapped,
     openLastEditorWorkspace,
     saveAndClose,

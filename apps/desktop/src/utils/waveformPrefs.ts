@@ -20,7 +20,10 @@ export const WAVEFORM_HOT_SWITCH_WHILE_PLAYING = true;
 
 export const WAVEFORM_HEIGHT_MIN = 56;
 export const WAVEFORM_HEIGHT_MAX = 280;
-export const WAVEFORM_HEIGHT_DEFAULT = 96;
+/** 与 Stitch 波形区默认视觉高度一致（`19-stitch-waveform-polish-spec` §4.2）。 */
+export const WAVEFORM_HEIGHT_DEFAULT = 220;
+/** 旧默认过矮；读存储时视为未设定，以便升到 {@link WAVEFORM_HEIGHT_DEFAULT}。 */
+export const WAVEFORM_HEIGHT_LEGACY_DEFAULT = 96;
 
 export const TRANSCRIPT_FONT_MIN = 11;
 export const TRANSCRIPT_FONT_MAX = 44;
@@ -51,7 +54,9 @@ export function readStoredWaveformHeightPx(): number | null {
     if (raw == null || raw === "") return null;
     const n = Number(raw);
     if (!Number.isFinite(n)) return null;
-    return clampWaveformHeight(n);
+    const clamped = clampWaveformHeight(n);
+    if (clamped === WAVEFORM_HEIGHT_LEGACY_DEFAULT) return null;
+    return clamped;
   } catch {
     return null;
   }

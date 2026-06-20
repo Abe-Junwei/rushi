@@ -327,7 +327,7 @@ pub async fn import_text_to_project(
 ) -> Result<ProjectDetail, String> {
     let st = state.inner().clone();
     tauri::async_runtime::spawn_blocking(move || {
-        import_text_to_project_inner(&st, &project_id, &name, &src_path)
+        import_text_to_project_inner(&st, &project_id, &name, &src_path).map(|(detail, _)| detail)
     })
     .await
     .map_err(|e| format!("导入文本失败: {e}"))?
@@ -338,7 +338,7 @@ pub(crate) fn import_text_to_project_inner(
     project_id: &str,
     name: &str,
     src_path: &str,
-) -> Result<ProjectDetail, String> {
+) -> Result<(ProjectDetail, String), String> {
     let src = PathBuf::from(src_path);
     if !src.is_file() {
         return Err(format!("源文件不存在: {src_path}"));
@@ -401,5 +401,8 @@ pub(crate) fn import_text_to_project_inner(
     )
     .map_err(|e| e.to_string())?;
     tx.commit().map_err(|e| e.to_string())?;
-    project_detail_from_conn(&conn, project_id)
+    Ok((
+        project_detail_from_conn(&conn, project_id)?,
+        file_id,
+    ))
 }

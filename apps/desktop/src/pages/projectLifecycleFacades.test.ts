@@ -34,6 +34,10 @@ describe("projectLifecycleFacades contract", () => {
       transcribeNavBlockStopping: false,
       cancelTranscribeNavBlock: () => {},
       confirmTranscribeNavBlock: async () => {},
+      runWithUnsavedNavigateGate: async (onProceed) => {
+        await onProceed();
+        return true;
+      },
     } satisfies ProjectCloseGateControllerApi;
 
     const facade = pickCloseGateLifecycleFacade(source, () => true);

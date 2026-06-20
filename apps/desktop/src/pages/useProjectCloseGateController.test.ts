@@ -194,6 +194,23 @@ describe("useProjectCloseGateController", () => {
     expect(args.openFile).toHaveBeenCalledWith("file-new");
   });
 
+  it("loadProjectAfterImport opens preferred file when provided", async () => {
+    const detail = makeDetail("proj-a");
+    detail.files = [
+      { id: "file-old", name: "old.wav", file_type: "paired", updated_at_ms: 1 },
+      { id: "file-new", name: "new.wav", file_type: "paired", updated_at_ms: 99 },
+    ];
+    vi.mocked(projectLoad).mockResolvedValue(detail);
+    const args = baseArgs({ currentFileId: null });
+    const { result } = renderHook(() => useProjectCloseGateController(args));
+
+    await act(async () => {
+      await result.current.loadProjectAfterImport("proj-a", "file-old");
+    });
+
+    expect(args.openFile).toHaveBeenCalledWith("file-old");
+  });
+
   it("confirmTranscribeNavBlock chains unsaved gate after stopping transcribe", async () => {
     const args = baseArgs({
       busy: true,

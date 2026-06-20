@@ -20,6 +20,21 @@ export function resolveEffectiveTranscribeSource(
   return stored;
 }
 
+/**
+ * 本机模型下载/准备期间是否应阻断自动转录入口。
+ * 有效来源为 online 且在线 STT 已就绪时，不因本机 prepare 阻断。
+ */
+export function shouldBlockTranscribeForLocalModelPrepare(input: {
+  prepareModelBusy: boolean;
+  transcribeSource: TranscribeSource;
+  onlineReady?: boolean;
+}): boolean {
+  if (!input.prepareModelBusy) return false;
+  const onlineReady = input.onlineReady ?? isOnlineTranscribeReady();
+  const effective = resolveEffectiveTranscribeSource(input.transcribeSource, { onlineReady });
+  return effective !== "online" || !onlineReady;
+}
+
 /** 当前转写来源下的环境是否满足开始转写（与顶栏 chip / onboarding 同源）。 */
 export function resolveTranscribeEnvReady(
   source: TranscribeSource,

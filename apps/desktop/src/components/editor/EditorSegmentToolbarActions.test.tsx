@@ -9,6 +9,8 @@ function makeController(overrides: Record<string, unknown> = {}) {
     busy: false,
     busyReason: null,
     prepareModelBusy: false,
+    transcribeSource: "local" as const,
+    onlineTranscribeReady: false,
     transcribeCancelling: false,
     correctionRulesDialog: { phase: "closed" },
     postTranscribeStageBDialog: { phase: "closed" },
@@ -64,5 +66,19 @@ describe("EditorSegmentTranscribeActions", () => {
     fireEvent.click(screen.getByLabelText("编辑菜单"));
     fireEvent.click(screen.getByRole("button", { name: "查找替换" }));
     expect(openFindReplace).toHaveBeenCalledTimes(1);
+  });
+
+  it("keeps transcribe enabled during model download when online STT is ready", () => {
+    render(
+      <EditorSegmentTranscribeActions
+        controller={makeController({
+          prepareModelBusy: true,
+          transcribeSource: "online",
+          onlineTranscribeReady: true,
+        })}
+      />,
+    );
+
+    expect(screen.getByRole("button", { name: "自动转录" }).hasAttribute("disabled")).toBe(false);
   });
 });

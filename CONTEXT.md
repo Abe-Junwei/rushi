@@ -35,8 +35,28 @@ SQLite `projects` 表中的一条记录；含多个 **File** 与可选 **Project
 _Avoid_: 工程, workspace root
 
 **File**:
-项目内一条音频转写记录；内存持 `segments[]`，持久化经 `file_save_segments`。
-_Avoid_: 文档, media item
+项目内一条可编辑语段容器（可有或无 `audio_path`）；类型见 `file_type`（`text` / `paired` / `audio_only`）；内存持 `segments[]`，持久化经 `file_save_segments`。
+_Avoid_: 文档, media item；把 File 等同于「必有音频」
+
+**file_type**（文件类型）:
+持久化标签：`text` 纯语段无音频；`audio_only` 仅有音频待转写；`paired` 音频 + 语段。导入字幕挂到含 `audio_path` 的 File 后应为 `paired`。
+_Avoid_: 待转写（作 UI 开关时）, 音视频（未对应 schema 值时）
+
+**Transcript import**（转录稿导入）:
+从外部 `.srt` / `.txt` 解析语段并写入目标 **File** 的操作；含 **Attach import** 与 Hub **Sidecar stem match** 两入口。
+_Avoid_: 导入字幕（未说明挂到哪条 File 时）, import_text_to_project（实现名）
+
+**Attach import**（挂接导入）:
+在 **Editor** 中将转录稿导入到 **当前打开的 File**；整份 **Replace import** 语段，不新建 File。
+_Avoid_: 导入转录文本（未说明挂接目标时）, 新建 text File（Editor 默认路径）
+
+**Replace import**（替换导入）:
+Attach / Sidecar 成功匹配后，清空目标 File 旧语段并以新文件内容为准；同目标 re-import 不走重复导入对话框。
+_Avoid_: 合并导入, 创建新副本
+
+**Sidecar stem match**（同名 sidecar 配对）:
+在 **Project Hub**（无 `currentFileId`）导入时，用源路径 stem 匹配项目内 `paired` / `audio_only`；唯一匹配则 Attach；0 匹配新建 `text`；2+ 匹配弹窗选目标 File。
+_Avoid_: fallbackWaveFile（UI 兜底，非配对真源）, 无脑打开最新 File
 
 **Segment**（语段）:
 带起止时间与说话人标签的转写文本单元；Editor 中编辑与波形绑定的基本粒度。
@@ -223,6 +243,7 @@ _Avoid_: design doc（泛指）
 - 「选中 / highlight」— 语段与进度统一 **accent-action** 链；`accent-edit` 仅为兼容别名；禁止直引 `zen-saffron*`。
 - 「主题色 / Office accent」— remap **accent-action** 链；success/cinnabar/status-warn、LLM chip 固定语义色不在此轮收束范围。
 - 「编辑页 / 视角 / 层次感」— 全应用壳层精调时 scope = Welcome → Hub → Editor → 环境浮层；**Editor** 仅指已打开文件的转写工作区。
+- 「导入转录文本 / 导入字幕」— Editor 默认 **Attach import**（挂当前 File）；Hub 默认 **Sidecar stem match**；均 **Replace import**，非新建副本。
 - 「LFASR / 讯飞转写」— 须区分 **iflytek-speed-asr**（极速 OST）、标准 LFASR v2、已移除 **iflytek-speech**；文档标题含 LFASR 时以 research §3 定稿 id 为准。
 - 「面板 / 对话框」— 浮动工具框（查找替换等）称 **Floating dialog** 并按 **Auto-fit / Fill / Static-fit** 分类；Editor 侧栏/Inspector 不叫 Floating dialog。
 - 「自动更新 / 签名」— **In-app update** = Tauri Ed25519 manifest；**Unsigned mac release** = 无 Apple codesign/公证；二者可并存，勿混为一谈。

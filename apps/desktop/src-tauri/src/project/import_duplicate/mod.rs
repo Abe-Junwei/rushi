@@ -23,8 +23,14 @@ pub fn check_project_import_duplicate(
     state: State<DbState>,
     project_id: String,
     src_path: String,
+    replace_target_file_id: Option<String>,
 ) -> Result<ImportDuplicateCheck, String> {
     let st: &DbState = state.deref();
     let conn = open_db(st)?;
-    check_import_duplicate_inner(&conn, &project_id, &src_path)
+    check_import_duplicate_inner(
+        &conn,
+        &project_id,
+        &src_path,
+        replace_target_file_id.as_deref(),
+    )
 }

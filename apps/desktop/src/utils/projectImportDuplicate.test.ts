@@ -1,8 +1,10 @@
 import { describe, expect, it } from "vitest";
 import {
   buildDuplicateImportConfirmBody,
+  countStemAttachCandidates,
   formatDuplicateFileNames,
   hasImportDuplicate,
+  importFileDisplayName,
   pickDuplicateOpenExistingFileId,
 } from "./projectImportDuplicate";
 
@@ -37,5 +39,23 @@ describe("projectImportDuplicate", () => {
         byContentHash: [{ fileId: "hash-id", fileName: "h" }],
       }),
     ).toBe("path-id");
+  });
+
+  it("countStemAttachCandidates matches paired and audio_only by name", () => {
+    expect(
+      countStemAttachCandidates(
+        [
+          { name: "采访", file_type: "paired" },
+          { name: "采访", file_type: "text" },
+          { name: "会议", file_type: "audio_only" },
+        ],
+        "采访",
+      ),
+    ).toBe(1);
+    expect(countStemAttachCandidates(undefined, "采访")).toBe(0);
+  });
+
+  it("importFileDisplayName trims stem like Rust path_meta", () => {
+    expect(importFileDisplayName("/tmp/ 采访 .srt", "text")).toBe("采访");
   });
 });

@@ -11,6 +11,7 @@ mod edit_log_detail;
 mod edit_log_snapshot;
 pub mod export_cmd;
 pub mod file_cmd;
+pub mod file_import_cmd;
 pub mod glossary_aliases;
 pub mod glossary_bulk_parse;
 pub mod glossary_cmd;

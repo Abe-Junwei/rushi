@@ -12,6 +12,7 @@ import {
 import type { ProjectDetail } from "../tauri/projectApi";
 import * as p1 from "../tauri/projectApi";
 import { awaitEnvironmentCapabilityRefresh } from "../services/environmentCapabilityCoordinator";
+import { resolveEffectiveTranscribeSource } from "../services/stt/transcribeSourcePresentation";
 import { resolveTranscribeExecuteBlock } from "./transcribeExecuteGate";
 import { runLocalTranscribeJob } from "./transcribeLocalJobRun";
 import {
@@ -127,7 +128,8 @@ export function useTranscribeJobExecute(args: TranscribeJobExecuteArgs) {
     if (!opts?.batchChild) {
       await awaitEnvironmentCapabilityRefresh();
     }
-    if (transcribeSource === "online") {
+    const effectiveSource = resolveEffectiveTranscribeSource(transcribeSource);
+    if (effectiveSource === "online") {
       await ensureSttOnlineApiKeyForSession();
       await ensureSttOnlineApiSecretForSession();
     }
@@ -173,7 +175,7 @@ export function useTranscribeJobExecute(args: TranscribeJobExecuteArgs) {
     const suppressUserToasts = Boolean(opts?.suppressUserToasts ?? opts?.batchChild);
     try {
       const online =
-        transcribeSource === "online" ? tryBuildOnlineTranscribeBridgePayload() : null;
+        effectiveSource === "online" ? tryBuildOnlineTranscribeBridgePayload() : null;
       const base = asrBaseUrl().replace(/\/+$/, "");
       let out: p1.RunTranscribeOutcome;
       if (!online) {
