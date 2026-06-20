@@ -303,6 +303,9 @@ pub fn watchdog_tick(handle: &AppHandle) -> bool {
     let snap = snapshot(handle);
     let healthy = bundled_health_looks_like_rushi_asr();
     if snap.phase == SupervisorPhase::Ready && !healthy {
+        if super::probe::loopback_model_prepare_running() {
+            return true;
+        }
         note_degraded(handle, "health_lost");
         return false;
     }

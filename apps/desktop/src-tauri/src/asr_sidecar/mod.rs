@@ -40,8 +40,9 @@ pub fn restart_loopback_asr(handle: &AppHandle, st: &DbState) -> Result<(), Stri
 
 pub use probe::{
     is_rushi_asr_health_json, loopback_root_declares_transcribe_async, probe_asr_port,
-    probe_asr_port_sync, AsrPortStatus,
+    probe_asr_port_and_health, probe_asr_port_sync, AsrPortStatus,
 };
+pub(crate) use probe::AsrHealthBody;
 
 /// True when the desktop shell may spawn/restart the PyInstaller sidecar (false in `desktop:dev`).
 pub fn app_manages_bundled_sidecar() -> bool {

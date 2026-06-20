@@ -1,6 +1,6 @@
 use crate::asr_sidecar::{
-    probe_asr_port, AsrPortStatus, AsrSupervisorState, BundledAsrLaunchReport,
-    BundledAsrLaunchState, SupervisorSnapshot,
+    probe_asr_port_and_health, AsrHealthBody, AsrPortStatus, AsrSupervisorState,
+    BundledAsrLaunchReport, BundledAsrLaunchState, SupervisorSnapshot,
 };
 use crate::local_runtime::disk_free_bytes;
 use crate::local_runtime::integrity::{inspect_installed_runtime, InstalledRuntimeStatus};
@@ -89,34 +89,11 @@ fn health_snapshot_from_value(v: &Value) -> AsrSetupHealthSnapshot {
     }
 }
 
-async fn fetch_rushi_health() -> HealthFetch {
-    let client = match reqwest::Client::builder()
-        .timeout(std::time::Duration::from_secs(8))
-        .build()
-    {
-        Ok(c) => c,
-        Err(_) => return HealthFetch::Unreachable,
-    };
-    let resp = match client.get(crate::asr_sidecar::ASR_HEALTH_URL).send().await {
-        Ok(r) => r,
-        Err(_) => return HealthFetch::Unreachable,
-    };
-    let status = resp.status().as_u16();
-    if !resp.status().is_success() {
-        return HealthFetch::HttpError(status);
-    }
-    let text = match resp.text().await {
-        Ok(t) => t,
-        Err(_) => return HealthFetch::Unreachable,
-    };
-    let v: Value = match serde_json::from_str(&text) {
-        Ok(j) => j,
-        Err(_) => return HealthFetch::Unreachable,
-    };
-    if crate::asr_sidecar::is_rushi_asr_health_json(&v) {
-        HealthFetch::Ok(v)
-    } else {
-        HealthFetch::Unreachable
+fn health_fetch_from_probe(body: &AsrHealthBody) -> HealthFetch {
+    match body {
+        AsrHealthBody::Ok(v) => HealthFetch::Ok(v.clone()),
+        AsrHealthBody::HttpError(code) => HealthFetch::HttpError(*code),
+        AsrHealthBody::Unreachable => HealthFetch::Unreachable,
     }
 }
 
@@ -178,6 +155,14 @@ struct SummaryContext<'a> {
     disk_low: bool,
 }
 
+fn sidecar_recoverable_in_app(summary: &SummaryContext<'_>) -> bool {
+    summary.bundled_available
+        || matches!(
+            summary.local_runtime_status,
+            InstalledRuntimeStatus::Installed
+        )
+}
+
 fn build_summary(summary: SummaryContext<'_>) -> (Vec<String>, Option<String>) {
     let mut lines = Vec::new();
     let mut blocking = None;
@@ -195,7 +180,9 @@ fn build_summary(summary: SummaryContext<'_>) -> (Vec<String>, Option<String>) {
                 .clone()
                 .unwrap_or_else(|| "8741 已被其他程序占用。".into());
             lines.push(msg.clone());
-            blocking = Some(msg);
+            if !sidecar_recoverable_in_app(&summary) {
+                blocking = Some(msg);
+            }
         }
     }
 
@@ -249,7 +236,7 @@ fn build_summary(summary: SummaryContext<'_>) -> (Vec<String>, Option<String>) {
         if summary.health.ready_for_transcribe {
             lines.push("FunASR 与必需模型均已就绪，可直接转写。".into());
         } else if summary.health.funasr_ready {
-            lines.push("FunASR 运行时已就绪。".into());
+            lines.push("FunASR 运行时已加载（不含模型权重）。".into());
             if !summary.health.ffmpeg_ok {
                 lines.push("ASR 已连通，但未检测到 FFmpeg。".into());
                 if blocking.is_none() {
@@ -294,16 +281,18 @@ fn build_summary(summary: SummaryContext<'_>) -> (Vec<String>, Option<String>) {
         }
     } else if blocking.is_none() && summary.sidecar_integrity != "corrupt" {
         lines.push("尚未连通 rushi-asr /health。".into());
-        blocking = Some(
-            if matches!(
-                summary.local_runtime_status,
-                InstalledRuntimeStatus::Installed
-            ) {
-                "无法读取 ASR 能力。请先一键准备或重试应用数据侧车。".into()
-            } else {
-                "无法读取 ASR 能力。请先一键准备或重试内置侧车。".into()
-            },
-        );
+        if !sidecar_recoverable_in_app(&summary) {
+            blocking = Some(
+                if matches!(
+                    summary.local_runtime_status,
+                    InstalledRuntimeStatus::Installed
+                ) {
+                    "无法读取 ASR 能力。请先一键准备或重试应用数据侧车。".into()
+                } else {
+                    "无法读取 ASR 能力。请先一键准备或重试内置侧车。".into()
+                },
+            );
+        }
     }
 
     if summary.disk_low {
@@ -328,8 +317,15 @@ pub async fn asr_setup_diagnose(
     let models_root = crate::project::models_root_for_app_data_root(&st.root);
     let models_root_str = models_root.to_string_lossy().to_string();
 
-    let port = probe_asr_port().await;
-    let port_status = match port.status {
+    let (port, health_body) = probe_asr_port_and_health().await;
+    let health_fetch = health_fetch_from_probe(&health_body);
+    // Port probe can time out while sidecar is busy (e.g. model download); trust successful /health.
+    let effective_port = if matches!(&health_fetch, HealthFetch::Ok(_)) {
+        AsrPortStatus::RushiAsr
+    } else {
+        port.status.clone()
+    };
+    let port_status = match effective_port {
         AsrPortStatus::Free => "free",
         AsrPortStatus::RushiAsr => "rushi_asr",
         AsrPortStatus::Foreign => "foreign",
@@ -345,10 +341,9 @@ pub async fn asr_setup_diagnose(
         .try_state::<AsrSupervisorState>()
         .and_then(|s| s.0.lock().ok().map(|g| g.clone()))
         .unwrap_or_else(SupervisorSnapshot::new_session);
-    supervisor.port_status = Some(port.status.clone());
+    supervisor.port_status = Some(effective_port.clone());
     let local_runtime_info = inspect_installed_runtime(&st.root);
 
-    let health_fetch = fetch_rushi_health().await;
     let health = match &health_fetch {
         HealthFetch::Ok(v) => health_snapshot_from_value(v),
         _ => AsrSetupHealthSnapshot {
@@ -367,7 +362,7 @@ pub async fn asr_setup_diagnose(
     let sidecar_integrity = infer_sidecar_integrity(
         bundled_available,
         &local_runtime_info.status,
-        &port.status,
+        &effective_port,
         &health_fetch,
         &health,
     )
@@ -379,7 +374,7 @@ pub async fn asr_setup_diagnose(
     let ready_for_transcribe = health.health_reachable && health.ready_for_transcribe;
 
     let (summary_lines, blocking_issue) = build_summary(SummaryContext {
-        port_status: &port.status,
+        port_status: &effective_port,
         port_detail: &port.detail,
         bundled_available,
         local_runtime_status: &local_runtime_info.status,

@@ -44,11 +44,14 @@ fn required_install_bytes(size_bytes: Option<u64>) -> Option<u64> {
 }
 
 #[tauri::command]
-pub fn local_runtime_diagnose(
+pub async fn local_runtime_diagnose(
     app: AppHandle,
     state: State<'_, DbState>,
 ) -> Result<LocalRuntimeDiagnose, String> {
-    let manifest = diagnose_configured_manifest();
+    // Manifest probe may perform HTTPS I/O; keep it off the WebView main thread.
+    let manifest = tauri::async_runtime::spawn_blocking(diagnose_configured_manifest)
+        .await
+        .map_err(|e| format!("local_runtime_diagnose_join:{e}"))?;
     let installed = inspect_installed_runtime(&state.inner().root);
     let install = install_progress(&app);
     let free_disk_bytes = disk_free_bytes(&integrity::local_runtime_root(&state.inner().root));

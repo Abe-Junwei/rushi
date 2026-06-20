@@ -1,5 +1,5 @@
 use super::*;
-use crate::asr_sidecar::{AsrPortStatus, BundledAsrLaunchReport};
+use crate::asr_sidecar::{AsrHealthBody, AsrPortStatus, BundledAsrLaunchReport};
 use serde_json::json;
 
 #[test]
@@ -23,7 +23,32 @@ fn health_snapshot_reads_caps() {
 }
 
 #[test]
-fn foreign_port_sets_blocking() {
+fn health_fetch_from_probe_maps_ok() {
+    let v = json!({ "service": "rushi-asr", "status": "ok" });
+    assert!(matches!(
+        health_fetch_from_probe(&AsrHealthBody::Ok(v)),
+        HealthFetch::Ok(_)
+    ));
+}
+
+#[test]
+fn health_fetch_from_probe_maps_http_error() {
+    assert_eq!(
+        health_fetch_from_probe(&AsrHealthBody::HttpError(503)),
+        HealthFetch::HttpError(503)
+    );
+}
+
+#[test]
+fn health_fetch_from_probe_maps_unreachable() {
+    assert_eq!(
+        health_fetch_from_probe(&AsrHealthBody::Unreachable),
+        HealthFetch::Unreachable
+    );
+}
+
+#[test]
+fn foreign_port_sets_blocking_without_recovery_path() {
     let health = AsrSetupHealthSnapshot {
         health_reachable: false,
         ffmpeg_ok: false,
@@ -38,7 +63,7 @@ fn foreign_port_sets_blocking() {
     let (_lines, block) = build_summary(SummaryContext {
         port_status: &AsrPortStatus::Foreign,
         port_detail: &Some("占用".into()),
-        bundled_available: true,
+        bundled_available: false,
         local_runtime_status: &InstalledRuntimeStatus::Missing,
         sidecar_integrity: "unknown",
         bundled_launch: &BundledAsrLaunchReport::default(),
@@ -46,6 +71,58 @@ fn foreign_port_sets_blocking() {
         disk_low: false,
     });
     assert!(block.is_some());
+}
+
+#[test]
+fn foreign_port_with_bundled_does_not_block() {
+    let health = AsrSetupHealthSnapshot {
+        health_reachable: false,
+        ffmpeg_ok: false,
+        funasr_import_ok: false,
+        funasr_ready: false,
+        funasr_default_model_cached: false,
+        funasr_vad_model_cached: false,
+        funasr_required_models_cached: false,
+        ready_for_transcribe: false,
+        transcription_mode: "stub".into(),
+    };
+    let (_lines, block) = build_summary(SummaryContext {
+        port_status: &AsrPortStatus::Foreign,
+        port_detail: &Some("8741 已有服务监听，但未能按 rushi-asr /health 响应".into()),
+        bundled_available: true,
+        local_runtime_status: &InstalledRuntimeStatus::Missing,
+        sidecar_integrity: "unknown",
+        bundled_launch: &BundledAsrLaunchReport::default(),
+        health: &health,
+        disk_low: false,
+    });
+    assert!(block.is_none());
+}
+
+#[test]
+fn foreign_port_with_installed_runtime_does_not_block() {
+    let health = AsrSetupHealthSnapshot {
+        health_reachable: false,
+        ffmpeg_ok: false,
+        funasr_import_ok: false,
+        funasr_ready: false,
+        funasr_default_model_cached: false,
+        funasr_vad_model_cached: false,
+        funasr_required_models_cached: false,
+        ready_for_transcribe: false,
+        transcription_mode: "stub".into(),
+    };
+    let (_lines, block) = build_summary(SummaryContext {
+        port_status: &AsrPortStatus::Foreign,
+        port_detail: &Some("占用".into()),
+        bundled_available: false,
+        local_runtime_status: &InstalledRuntimeStatus::Installed,
+        sidecar_integrity: "unknown",
+        bundled_launch: &BundledAsrLaunchReport::default(),
+        health: &health,
+        disk_low: false,
+    });
+    assert!(block.is_none());
 }
 
 #[test]
@@ -229,8 +306,7 @@ fn installed_local_runtime_changes_missing_bundle_summary() {
     assert!(lines
         .iter()
         .any(|l| l.contains("应用数据目录已检测到已安装的侧车运行时")));
-    assert!(block.is_some());
-    assert!(block.unwrap().contains("应用数据侧车"));
+    assert!(block.is_none());
 }
 
 #[test]

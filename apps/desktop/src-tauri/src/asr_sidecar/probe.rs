@@ -7,6 +7,8 @@ use serde_json::Value;
 
 use super::ASR_HEALTH_URL;
 
+const LOOPBACK_PREPARE_STATUS_URL: &str = "http://127.0.0.1:8741/v1/models/prepare-status";
+
 const LOOPBACK_ROOT_URL: &str = "http://127.0.0.1:8741/";
 
 fn fetch_loopback_health_json_sync() -> Option<Value> {
@@ -58,19 +60,63 @@ pub struct AsrPortProbe {
     pub detail: Option<String>,
 }
 
-/// Classify who is listening on loopback :8741.
-pub async fn probe_asr_port() -> AsrPortProbe {
+#[derive(Clone, Debug, PartialEq, Eq)]
+pub(crate) enum AsrHealthBody {
+    Ok(Value),
+    HttpError(u16),
+    Unreachable,
+}
+
+/// Single GET /health for port classification + parsed rushi-asr capabilities.
+pub async fn probe_asr_port_and_health() -> (AsrPortProbe, AsrHealthBody) {
     let client = reqwest::Client::builder()
         .timeout(Duration::from_secs(8))
         .build()
         .unwrap_or_else(|_| reqwest::Client::new());
     let resp = match client.get(ASR_HEALTH_URL).send().await {
         Ok(resp) => resp,
-        Err(_) => return probe_asr_port_when_health_unreachable(),
+        Err(_) => {
+            return (
+                probe_asr_port_when_health_unreachable(),
+                AsrHealthBody::Unreachable,
+            );
+        }
     };
     let http_status = resp.status().as_u16();
+    let success = resp.status().is_success();
     let text = resp.text().await.unwrap_or_default();
-    classify_asr_port_probe(http_status, &text)
+    if !success {
+        return (
+            classify_asr_port_probe(http_status, &text),
+            AsrHealthBody::HttpError(http_status),
+        );
+    }
+    let Ok(v) = serde_json::from_str::<Value>(&text) else {
+        return (
+            classify_asr_port_probe(http_status, &text),
+            AsrHealthBody::Unreachable,
+        );
+    };
+    if is_rushi_asr_health_json(&v) {
+        (
+            AsrPortProbe {
+                status: AsrPortStatus::RushiAsr,
+                http_status: Some(http_status),
+                detail: None,
+            },
+            AsrHealthBody::Ok(v),
+        )
+    } else {
+        (
+            classify_asr_port_probe(http_status, &text),
+            AsrHealthBody::Unreachable,
+        )
+    }
+}
+
+/// Classify who is listening on loopback :8741.
+pub async fn probe_asr_port() -> AsrPortProbe {
+    probe_asr_port_and_health().await.0
 }
 
 /// Sync probe for diagnostic export (via `blocking_http` inside sync command path).
@@ -194,4 +240,20 @@ pub fn bundled_health_looks_like_rushi_asr() -> bool {
         return false;
     };
     is_rushi_asr_health_json(&v)
+}
+
+/// True when loopback prepare-status indicates an active, non-stale download.
+pub(crate) fn prepare_status_json_is_active_running(v: &serde_json::Value) -> bool {
+    if v.get("phase").and_then(|p| p.as_str()) != Some("running") {
+        return false;
+    }
+    !v.get("stale").and_then(|s| s.as_bool()).unwrap_or(false)
+}
+
+/// True when async model prefetch is in progress (watchdog should not treat slow /health as dead).
+pub fn loopback_model_prepare_running() -> bool {
+    let Some(v) = loopback_get_json(LOOPBACK_PREPARE_STATUS_URL) else {
+        return false;
+    };
+    prepare_status_json_is_active_running(&v)
 }

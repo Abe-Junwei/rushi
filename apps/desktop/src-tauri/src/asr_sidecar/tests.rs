@@ -150,6 +150,19 @@ fn loopback_root_declares_model_catalog_and_punc_prepare() {
 }
 
 #[test]
+fn prepare_status_json_active_running_honors_stale_flag() {
+    use super::probe::prepare_status_json_is_active_running;
+
+    assert!(prepare_status_json_is_active_running(
+        &json!({ "phase": "running" })
+    ));
+    assert!(!prepare_status_json_is_active_running(
+        &json!({ "phase": "running", "stale": true })
+    ));
+    assert!(!prepare_status_json_is_active_running(&json!({ "phase": "idle" })));
+}
+
+#[test]
 fn loopback_port_accepts_tcp_detects_bound_listener() {
     let listener = TcpListener::bind(("127.0.0.1", 0)).unwrap();
     let port = listener.local_addr().unwrap().port();

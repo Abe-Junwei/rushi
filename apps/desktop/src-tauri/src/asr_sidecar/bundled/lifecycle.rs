@@ -17,6 +17,44 @@ use crate::asr_sidecar::{
     ASR_LOOPBACK_PORT,
 };
 
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum BundledAutoStartPortAction {
+    Proceed,
+    SkipForeign,
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum BundledForceRestartPortAction {
+    Proceed,
+    KillListeners,
+    BlockForeign,
+}
+
+pub(crate) fn bundled_auto_start_port_policy(
+    port_accepts_tcp: bool,
+    health_is_rushi: bool,
+) -> BundledAutoStartPortAction {
+    if port_accepts_tcp && !health_is_rushi {
+        BundledAutoStartPortAction::SkipForeign
+    } else {
+        BundledAutoStartPortAction::Proceed
+    }
+}
+
+pub(crate) fn bundled_force_restart_port_policy(
+    port_accepts_tcp: bool,
+    health_is_rushi: bool,
+) -> BundledForceRestartPortAction {
+    if !port_accepts_tcp {
+        return BundledForceRestartPortAction::Proceed;
+    }
+    if health_is_rushi {
+        BundledForceRestartPortAction::KillListeners
+    } else {
+        BundledForceRestartPortAction::BlockForeign
+    }
+}
+
 fn try_start_bundled_inner(handle: &AppHandle) {
     supervisor::set_phase(handle, supervisor::SupervisorPhase::Probing);
     if std::env::var("RUSHI_SKIP_BUNDLED_ASR").ok().as_deref() == Some("1") {
@@ -42,10 +80,16 @@ fn try_start_bundled_inner(handle: &AppHandle) {
         supervisor::note_degraded(handle, "spawn_failed");
         return;
     }
-    if loopback_port_accepts_tcp(ASR_LOOPBACK_PORT) && !bundled_health_looks_like_rushi_asr() {
-        append_sidecar_log_line(handle, "INFO bundled_sidecar_port_busy_warming");
-        let _ = kill_loopback_listeners_on_port(ASR_LOOPBACK_PORT);
-        std::thread::sleep(Duration::from_millis(300));
+    match bundled_auto_start_port_policy(
+        loopback_port_accepts_tcp(ASR_LOOPBACK_PORT),
+        bundled_health_looks_like_rushi_asr(),
+    ) {
+        BundledAutoStartPortAction::SkipForeign => {
+            append_sidecar_log_line(handle, "WARN bundled_sidecar_port_foreign_skip");
+            supervisor::note_degraded(handle, "port_foreign");
+            return;
+        }
+        BundledAutoStartPortAction::Proceed => {}
     }
     if bundled_health_looks_like_rushi_asr() {
         if bundled_sidecar_is_fresh_build() {
@@ -177,9 +221,18 @@ fn force_restart_bundled_inner(handle: &AppHandle) {
         return;
     }
     supervisor::note_force_restart(handle);
+    let restart_action = bundled_force_restart_port_policy(
+        loopback_port_accepts_tcp(ASR_LOOPBACK_PORT),
+        bundled_health_looks_like_rushi_asr(),
+    );
+    if restart_action == BundledForceRestartPortAction::BlockForeign {
+        append_sidecar_log_line(handle, "WARN bundled_sidecar_port_foreign_restart_blocked");
+        supervisor::note_degraded(handle, "port_foreign");
+        return;
+    }
     with_asr_lifecycle(|| {
         stop_bundled(handle);
-        if loopback_port_accepts_tcp(ASR_LOOPBACK_PORT) {
+        if restart_action == BundledForceRestartPortAction::KillListeners {
             match kill_loopback_listeners_on_port(ASR_LOOPBACK_PORT) {
                 Ok(()) => append_sidecar_log_line(handle, "INFO bundled_sidecar_killed_listeners"),
                 Err(e) => append_sidecar_log_line(
@@ -191,4 +244,44 @@ fn force_restart_bundled_inner(handle: &AppHandle) {
         }
     });
     try_start_bundled_inner(handle);
+}
+
+#[cfg(test)]
+mod tests {
+    use super::{
+        bundled_auto_start_port_policy, bundled_force_restart_port_policy,
+        BundledAutoStartPortAction, BundledForceRestartPortAction,
+    };
+
+    #[test]
+    fn auto_start_skips_foreign_port_without_kill() {
+        assert_eq!(
+            bundled_auto_start_port_policy(true, false),
+            BundledAutoStartPortAction::SkipForeign
+        );
+        assert_eq!(
+            bundled_auto_start_port_policy(false, false),
+            BundledAutoStartPortAction::Proceed
+        );
+        assert_eq!(
+            bundled_auto_start_port_policy(true, true),
+            BundledAutoStartPortAction::Proceed
+        );
+    }
+
+    #[test]
+    fn force_restart_blocks_foreign_port() {
+        assert_eq!(
+            bundled_force_restart_port_policy(true, false),
+            BundledForceRestartPortAction::BlockForeign
+        );
+        assert_eq!(
+            bundled_force_restart_port_policy(true, true),
+            BundledForceRestartPortAction::KillListeners
+        );
+        assert_eq!(
+            bundled_force_restart_port_policy(false, false),
+            BundledForceRestartPortAction::Proceed
+        );
+    }
 }

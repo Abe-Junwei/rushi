@@ -262,7 +262,7 @@ pub fn suggested_action_for(
 ) -> Option<&'static str> {
     match failed_stage.unwrap_or(STAGE_TRANSCRIBE) {
         STAGE_PREFLIGHT => Some(
-            "请到「环境 → 本机 ASR」执行一键准备，或确认所选模型已下载并侧车已就绪。",
+            "请到「环境 → 本机 ASR」执行一键准备，或确认所选模型已下载并侧车进程已连接。",
         ),
         STAGE_UPLOAD => Some("请检查音频文件是否损坏或过长；可在外部转成较短片段后重试。"),
         STAGE_SAVE => Some("转写结果解析成功但写库失败；请重试拉取语段，必要时重启应用。"),
