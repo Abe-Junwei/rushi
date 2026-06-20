@@ -129,13 +129,10 @@ jobs:
       - name: Install npm dependencies (workspaces)
         run: npm ci
 
-      - name: Ensure Tauri CLI Windows native binding
+      - name: Ensure Windows npm native bindings
         if: runner.os == 'Windows'
-        run: npm install --no-save @tauri-apps/cli-win32-x64-msvc@2.11.2
-
-      - name: Ensure Rolldown Windows native binding
-        if: runner.os == 'Windows'
-        run: npm install --no-save @rolldown/binding-win32-x64-msvc@1.0.3
+        shell: bash
+        run: bash scripts/ci-ensure-windows-npm-native-bindings.sh
 
       - uses: dtolnay/rust-toolchain@stable
 

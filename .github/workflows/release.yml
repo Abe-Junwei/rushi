@@ -367,11 +367,9 @@ jobs:
 
       - run: npm ci
 
-      - name: Ensure Tauri CLI Windows native binding
-        run: npm install --no-save @tauri-apps/cli-win32-x64-msvc@2.11.2
-
-      - name: Ensure Rolldown Windows native binding
-        run: npm install --no-save @rolldown/binding-win32-x64-msvc@1.0.3
+      - name: Ensure Windows npm native bindings
+        shell: bash
+        run: bash scripts/ci-ensure-windows-npm-native-bindings.sh
 
       - name: Workflow context
         run: |
