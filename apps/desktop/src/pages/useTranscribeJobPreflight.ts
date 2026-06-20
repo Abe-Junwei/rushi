@@ -8,8 +8,11 @@ import {
 } from "../services/stt/sttOnlineProviderContract";
 import { STT_ONLINE_RUNTIME_CHANGED_EVENT } from "../services/stt/sttOnlineRuntimeNotify";
 import {
+  clearTranscribeSourceUserOverride,
   persistTranscribeSource,
+  persistTranscribeSourceUserOverride,
   readStoredTranscribeSource,
+  readTranscribeSourceUserOverride,
   type TranscribeSource,
 } from "../services/stt/transcribeSource";
 
@@ -72,12 +75,22 @@ export function useTranscribeJobPreflight(args: Args) {
     if (transcribeSource === "online" && !onlineTranscribeReady) {
       setTranscribeSourceState("local");
       persistTranscribeSource("local");
+      clearTranscribeSourceUserOverride();
     }
+  }, [onlineTranscribeReady, transcribeSource]);
+
+  useEffect(() => {
+    if (!onlineTranscribeReady) return;
+    if (readTranscribeSourceUserOverride() === "local") return;
+    if (transcribeSource === "online") return;
+    setTranscribeSourceState("online");
+    persistTranscribeSource("online");
   }, [onlineTranscribeReady, transcribeSource]);
 
   const setTranscribeSource = useCallback((source: TranscribeSource) => {
     setTranscribeSourceState(source);
     persistTranscribeSource(source);
+    persistTranscribeSourceUserOverride(source);
   }, []);
 
   const requestTranscribe = useCallback(async () => {

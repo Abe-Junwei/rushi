@@ -14,6 +14,7 @@ interface ProjectHubViewProps {
   controller: ProjectControllerApi;
   onOpenSettings: () => void;
   onOpenAsrSettings?: () => void;
+  onOpenOnlineSttSettings?: () => void;
   onOpenLlmSettings?: () => void;
   llmStatusRefreshSeq?: number;
   onLeaveProjectForWelcome: (page: WelcomePageId, glossaryWorkspace?: GlossaryWorkspaceId) => void;
@@ -28,6 +29,7 @@ export function ProjectHubView({
   controller: c,
   onOpenSettings,
   onOpenAsrSettings,
+  onOpenOnlineSttSettings,
   onOpenLlmSettings,
   llmStatusRefreshSeq = 0,
   onLeaveProjectForWelcome,
@@ -62,6 +64,7 @@ export function ProjectHubView({
         asrPresentation={c.asrPresentation}
         llmStatusRefreshSeq={llmStatusRefreshSeq}
         onOpenAsrSettings={onOpenAsrSettings ?? onOpenSettings}
+        onOpenOnlineSttSettings={onOpenOnlineSttSettings ?? onOpenSettings}
         onOpenLlmSettings={onOpenLlmSettings ?? onOpenSettings}
       />
 

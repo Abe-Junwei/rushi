@@ -1,13 +1,11 @@
 import { beforeEach, describe, expect, it, vi } from "vitest";
 import { buildOnlineSttEnvPresentation } from "./onlineSttEnvStatus";
+import { buildOnlineSttEnvPresentationInputFromStorage } from "./onlineSttEnvPresentationInput";
 import { readOnlineSttEnvNavTone } from "./readOnlineSttEnvNavPresentation";
 import {
-  hasSttOnlineApiKeyReference,
-  isSttConnectionVerified,
   markSttConnectionVerified,
   normalizeExternalSttOnlineRuntimeConfig,
   persistExternalSttOnlineRuntimeConfig,
-  readExternalSttOnlineRuntimeConfigFromStorage,
 } from "./sttOnlineProviderContract";
 
 function installMockLocalStorage() {
@@ -25,31 +23,27 @@ function installMockLocalStorage() {
 }
 
 function panelToneForStoredConfig(keychainReady: boolean | null = null): string {
-  const stored = readExternalSttOnlineRuntimeConfigFromStorage();
-  const draftConfig = normalizeExternalSttOnlineRuntimeConfig({
-    ...stored,
-    enabled: true,
-    apiKeyId: stored.apiKeyId,
-    apiSecretId: stored.apiSecretId,
-  });
-  return buildOnlineSttEnvPresentation({
-    enabled: stored.enabled,
-    providerId: draftConfig.selectedProviderId,
-    endpoint: draftConfig.endpoint ?? "",
-    appKey: draftConfig.appKey ?? "",
-    hasApiKeyReference: hasSttOnlineApiKeyReference(),
-    hasTypedApiKey: false,
-    keychainReady,
-    connectionVerified: isSttConnectionVerified(draftConfig),
-    lastProbeAvailable: null,
-    lastProbeMessage: null,
-  }).tone;
+  return buildOnlineSttEnvPresentation(
+    buildOnlineSttEnvPresentationInputFromStorage({ keychainReady }),
+  ).tone;
 }
 
 describe("readOnlineSttEnvNavTone", () => {
   beforeEach(() => {
     installMockLocalStorage();
     localStorage.clear();
+  });
+
+  it("matches panel tone when online STT is disabled and empty", () => {
+    persistExternalSttOnlineRuntimeConfig(
+      normalizeExternalSttOnlineRuntimeConfig({
+        enabled: false,
+        selectedProviderId: "openai",
+      }),
+    );
+
+    expect(readOnlineSttEnvNavTone()).toBe("idle");
+    expect(panelToneForStoredConfig()).toBe("idle");
   });
 
   it("matches panel tone for verified iflytek-speed-asr with apiSecret persisted", () => {
@@ -81,5 +75,6 @@ describe("readOnlineSttEnvNavTone", () => {
     persistExternalSttOnlineRuntimeConfig(cfg);
 
     expect(readOnlineSttEnvNavTone()).toBe("warn");
+    expect(panelToneForStoredConfig()).toBe("warn");
   });
 });

@@ -22,6 +22,7 @@ export type EditorViewLayoutProps = {
   onExportSelect: (key: string) => void;
   onOpenEnvironment: () => void;
   onOpenAsrSettings?: () => void;
+  onOpenOnlineSttSettings?: () => void;
   onOpenLlmSettings?: () => void;
   llmStatusRefreshSeq?: number;
   projectName: string;
@@ -44,6 +45,7 @@ export function EditorViewLayout({
   onExportSelect,
   onOpenEnvironment,
   onOpenAsrSettings,
+  onOpenOnlineSttSettings,
   onOpenLlmSettings,
   llmStatusRefreshSeq = 0,
   projectName,
@@ -68,6 +70,7 @@ export function EditorViewLayout({
         currentFileName={currentFileName}
         onOpenEnvironment={onOpenEnvironment}
         onOpenAsrSettings={onOpenAsrSettings}
+        onOpenOnlineSttSettings={onOpenOnlineSttSettings}
         onOpenLlmSettings={onOpenLlmSettings}
         llmStatusRefreshSeq={llmStatusRefreshSeq}
       />

@@ -3,7 +3,7 @@ import type { ProjectControllerApi } from "../pages/useProjectController";
 import { FileInput, FileOutput, Settings } from "lucide-react";
 import { CONTROL_BTN_TOOLBAR_GHOST } from "../config/controlStyles";
 import { EditorWorkspaceNav } from "./EditorWorkspaceNav";
-import { AsrTopStatusChips } from "./AsrTopStatusChips";
+import { TranscribeTopStatusChips } from "./TranscribeTopStatusChips";
 import { LlmTopStatusChip } from "./LlmTopStatusChip";
 import { WelcomeActivityBell } from "./WelcomeActivityBell";
 import { runDeliveryModeTranscribeAction } from "../services/deliveryModeTranscribeToast";
@@ -21,6 +21,7 @@ interface EditorToolbarProps {
   currentFileName: string;
   onOpenEnvironment: () => void;
   onOpenAsrSettings?: () => void;
+  onOpenOnlineSttSettings?: () => void;
   onOpenLlmSettings?: () => void;
   llmStatusRefreshSeq?: number;
 }
@@ -32,6 +33,7 @@ export const EditorToolbar = memo(function EditorToolbar({
   currentFileName,
   onOpenEnvironment,
   onOpenAsrSettings,
+  onOpenOnlineSttSettings,
   onOpenLlmSettings,
   llmStatusRefreshSeq = 0,
 }: EditorToolbarProps) {
@@ -124,11 +126,15 @@ export const EditorToolbar = memo(function EditorToolbar({
             : ""}
         </span>
         <div className="ml-auto flex shrink-0 items-center gap-2">
-          {!c.asrPresentation.chipOk && onOpenAsrSettings ? (
-            <AsrTopStatusChips
-              presentation={c.asrPresentation}
+          {(onOpenAsrSettings || onOpenOnlineSttSettings) ? (
+            <TranscribeTopStatusChips
+              transcribeSource={c.transcribeSource}
+              asrPresentation={c.asrPresentation}
+              sttOnlineRefreshSeq={c.sttOnlineRuntimeEpoch}
               onOpenAsrSettings={onOpenAsrSettings}
+              onOpenOnlineSttSettings={onOpenOnlineSttSettings}
               disabled={c.busy}
+              hideWhenReady
             />
           ) : null}
           {onOpenLlmSettings ? (
@@ -281,8 +287,11 @@ function areEditorToolbarPropsEqual(prev: EditorToolbarProps, next: EditorToolba
     prev.onExportSelect === next.onExportSelect &&
     prev.onOpenEnvironment === next.onOpenEnvironment &&
     prev.onOpenAsrSettings === next.onOpenAsrSettings &&
+    prev.onOpenOnlineSttSettings === next.onOpenOnlineSttSettings &&
     prev.onOpenLlmSettings === next.onOpenLlmSettings &&
     prev.llmStatusRefreshSeq === next.llmStatusRefreshSeq &&
+    prev.controller.transcribeSource === next.controller.transcribeSource &&
+    prev.controller.sttOnlineRuntimeEpoch === next.controller.sttOnlineRuntimeEpoch &&
     prev.controller.asrPresentation.chipOk === next.controller.asrPresentation.chipOk &&
     prev.controller.asrPresentation.chipLabel === next.controller.asrPresentation.chipLabel &&
     prev.controller.asrPresentation.tone === next.controller.asrPresentation.tone &&

@@ -49,6 +49,8 @@ describe("buildOnlineSttEnvPresentation", () => {
     });
     expect(p.tone).toBe("ok");
     expect(p.chipOk).toBe(true);
+    expect(p.chipLabel).toBe("OpenAI");
+    expect(p.chipTitle).toContain("服务就绪");
     expect(p.bannerDetail).toContain("120 ms");
   });
 

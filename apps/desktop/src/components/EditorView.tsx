@@ -23,6 +23,7 @@ interface EditorViewProps {
   onExportSelect: (key: string) => void;
   onOpenEnvironment: () => void;
   onOpenAsrSettings?: () => void;
+  onOpenOnlineSttSettings?: () => void;
   onOpenLlmSettings?: () => void;
   llmStatusRefreshSeq?: number;
   segmentCtxMenu: SegmentContextMenuOpen | null;
@@ -37,6 +38,7 @@ export const EditorView = memo(function EditorView({
   onExportSelect,
   onOpenEnvironment,
   onOpenAsrSettings,
+  onOpenOnlineSttSettings,
   onOpenLlmSettings,
   llmStatusRefreshSeq = 0,
   segmentCtxMenu,
@@ -133,6 +135,7 @@ export const EditorView = memo(function EditorView({
       onExportSelect={onExportSelect}
       onOpenEnvironment={onOpenEnvironment}
       onOpenAsrSettings={onOpenAsrSettings}
+      onOpenOnlineSttSettings={onOpenOnlineSttSettings}
       onOpenLlmSettings={onOpenLlmSettings}
       llmStatusRefreshSeq={llmStatusRefreshSeq}
       projectName={projectName}

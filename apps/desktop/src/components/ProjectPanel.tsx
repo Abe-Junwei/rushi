@@ -23,6 +23,7 @@ export function ProjectPanel() {
     envOpen,
     setEnvOpen,
     focusLocalAsrSeq,
+    focusOnlineSttSeq,
     focusLlmSeq,
     llmUiEpoch,
     welcomePage,
@@ -38,6 +39,7 @@ export function ProjectPanel() {
     workspaceShellVariant,
     openEnvironment,
     openAsrSettings,
+    openOnlineSttSettings,
     openLlmSettings,
     notifyLlmRuntimeChanged,
     onLeaveProjectForWelcome,
@@ -157,6 +159,7 @@ export function ProjectPanel() {
             onSttOnlineRuntimeChanged={c.bumpSttOnlineRuntimeChanged}
             onLlmRuntimeChanged={notifyLlmRuntimeChanged}
             focusLocalAsrSeq={focusLocalAsrSeq}
+            focusOnlineSttSeq={focusOnlineSttSeq}
             focusLlmSeq={focusLlmSeq}
             llmStatusRefreshSeq={llmUiEpoch}
           />
@@ -169,6 +172,7 @@ export function ProjectPanel() {
             controller={c}
             onOpenSettings={openEnvironment}
             onOpenAsrSettings={openAsrSettings}
+            onOpenOnlineSttSettings={openOnlineSttSettings}
             onOpenLlmSettings={openLlmSettings}
             llmStatusRefreshSeq={llmUiEpoch}
             page={welcomePage}
@@ -181,6 +185,7 @@ export function ProjectPanel() {
             controller={c}
             onOpenSettings={openEnvironment}
             onOpenAsrSettings={openAsrSettings}
+            onOpenOnlineSttSettings={openOnlineSttSettings}
             onOpenLlmSettings={openLlmSettings}
             llmStatusRefreshSeq={llmUiEpoch}
             onLeaveProjectForWelcome={onLeaveProjectForWelcome}
@@ -217,6 +222,7 @@ export function ProjectPanel() {
                 onExportSelect={onExportSelect}
                 onOpenEnvironment={openEnvironment}
                 onOpenAsrSettings={openAsrSettings}
+                onOpenOnlineSttSettings={openOnlineSttSettings}
                 onOpenLlmSettings={openLlmSettings}
                 llmStatusRefreshSeq={llmUiEpoch}
                 segmentCtxMenu={segmentCtxMenu}

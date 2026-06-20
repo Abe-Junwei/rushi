@@ -29,5 +29,5 @@ export const ENV_STATUS_REFRESH_BTN_CLASS: Record<EnvStatusTone, string> = {
   ok: "text-zen-success-action enabled:hover:text-zen-success enabled:hover:border-zen-success-border/80",
   warn: "text-zen-status-warn enabled:hover:text-zen-status-warn-action enabled:hover:border-zen-status-warn-border/80",
   error: "text-zen-cinnabar enabled:hover:text-zen-cinnabar enabled:hover:border-zen-cinnabar-border/80",
-  idle: "text-zen-status-warn enabled:hover:text-zen-status-warn-action enabled:hover:border-zen-status-warn-border/80",
+  idle: "text-notion-text-muted enabled:hover:text-notion-text enabled:hover:border-notion-divider/80",
 };

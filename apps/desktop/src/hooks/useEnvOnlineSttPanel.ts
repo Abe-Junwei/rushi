@@ -1,16 +1,16 @@
 import { useCallback, useMemo, useState } from "react";
 import { useSttKeychainReady } from "../hooks/useSttKeychainReady";
 import { buildOnlineSttEnvPresentation } from "../services/stt/onlineSttEnvStatus";
+import { buildOnlineSttEnvPresentationInputFromStorage } from "../services/stt/onlineSttEnvPresentationInput";
 import {
-  clampSttOnlineTimeoutSec,
   getSttOnlineProviderDefinition,
   glossaryBiasSummaryForProviderId,
-  hasSttOnlineApiKeyReference,
-  isSttConnectionVerified,
-  normalizeExternalSttOnlineRuntimeConfig,
-  readExternalSttOnlineRuntimeConfigFromStorage,
+  clampSttOnlineTimeoutSec,
 } from "../services/stt/sttOnlineProviderContract";
-import { buildOnlineSttDraftRuntimeConfig, useEnvOnlineSttPanelPersistence } from "./useEnvOnlineSttPanelPersistence";
+import {
+  readInitialOnlineSttFormFields,
+  useEnvOnlineSttPanelPersistence,
+} from "./useEnvOnlineSttPanelPersistence";
 import { useEnvOnlineSttPanelProbe } from "./useEnvOnlineSttPanelProbe";
 
 export type UseEnvOnlineSttPanelArgs = {
@@ -19,15 +19,25 @@ export type UseEnvOnlineSttPanelArgs = {
 };
 
 export function useEnvOnlineSttPanel({ busy, onSttOnlineRuntimeChanged }: UseEnvOnlineSttPanelArgs) {
-  const [olProviderId, setOlProviderId] = useState("openai");
-  const [olEndpoint, setOlEndpoint] = useState("");
-  const [olTimeoutSec, setOlTimeoutSec] = useState(30);
-  const [olAppKey, setOlAppKey] = useState("");
-  const [olApiKey, setOlApiKey] = useState("");
-  const [olApiSecret, setOlApiSecret] = useState("");
-  const [olAccent, setOlAccent] = useState("mandarin");
-  const [savedApiKeyId, setSavedApiKeyId] = useState<string | null>(null);
-  const [savedApiSecretId, setSavedApiSecretId] = useState<string | null>(null);
+  const [olProviderId, setOlProviderId] = useState(
+    () => readInitialOnlineSttFormFields().olProviderId,
+  );
+  const [olEndpoint, setOlEndpoint] = useState(() => readInitialOnlineSttFormFields().olEndpoint);
+  const [olTimeoutSec, setOlTimeoutSec] = useState(
+    () => readInitialOnlineSttFormFields().olTimeoutSec,
+  );
+  const [olAppKey, setOlAppKey] = useState(() => readInitialOnlineSttFormFields().olAppKey);
+  const [olApiKey, setOlApiKey] = useState(() => readInitialOnlineSttFormFields().olApiKey);
+  const [olApiSecret, setOlApiSecret] = useState(
+    () => readInitialOnlineSttFormFields().olApiSecret,
+  );
+  const [olAccent, setOlAccent] = useState(() => readInitialOnlineSttFormFields().olAccent);
+  const [savedApiKeyId, setSavedApiKeyId] = useState<string | null>(
+    () => readInitialOnlineSttFormFields().savedApiKeyId,
+  );
+  const [savedApiSecretId, setSavedApiSecretId] = useState<string | null>(
+    () => readInitialOnlineSttFormFields().savedApiSecretId,
+  );
   const [keychainRefreshSeq, setKeychainRefreshSeq] = useState(0);
 
   const bumpKeychainCheck = useCallback(() => {
@@ -89,44 +99,22 @@ export function useEnvOnlineSttPanel({ busy, onSttOnlineRuntimeChanged }: UseEnv
 
   const olDef = getSttOnlineProviderDefinition(olProviderId) ?? null;
 
-  const draftConfig = useMemo(
-    () =>
-      normalizeExternalSttOnlineRuntimeConfig({
-        ...buildOnlineSttDraftRuntimeConfig(fields),
-        apiKeyId: savedApiKeyId ?? undefined,
-        apiSecretId: savedApiSecretId ?? undefined,
-      }),
-    [fields, savedApiKeyId, savedApiSecretId],
-  );
-
-  const connectionVerified = isSttConnectionVerified(draftConfig);
-
-  const storedRuntime = useMemo(() => readExternalSttOnlineRuntimeConfigFromStorage(), [keychainRefreshSeq]);
-
   const presentation = useMemo(
     () =>
-      buildOnlineSttEnvPresentation({
-        enabled: storedRuntime.enabled,
-        providerId: olProviderId,
-        endpoint: olEndpoint,
-        appKey: olAppKey,
-        hasApiKeyReference: hasSttOnlineApiKeyReference(),
-        hasTypedApiKey: olApiKey.trim().length > 0,
-        keychainReady: keychainChecking ? null : keychainReady,
-        connectionVerified,
-        lastProbeAvailable: probeHook.lastProbeAvailable,
-        lastProbeMessage: null,
-      }),
+      buildOnlineSttEnvPresentation(
+        buildOnlineSttEnvPresentationInputFromStorage({
+          hasTypedApiKey: olApiKey.trim().length > 0,
+          keychainReady: keychainChecking ? null : keychainReady,
+          lastProbeAvailable: probeHook.lastProbeAvailable,
+          lastProbeMessage: null,
+        }),
+      ),
     [
       olApiKey,
-      olEndpoint,
-      olProviderId,
-      olAppKey,
-      connectionVerified,
       keychainChecking,
       keychainReady,
       probeHook.lastProbeAvailable,
-      storedRuntime.enabled,
+      keychainRefreshSeq,
     ],
   );
 

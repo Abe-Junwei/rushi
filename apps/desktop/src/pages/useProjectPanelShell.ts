@@ -17,7 +17,7 @@ export function useProjectPanelShell() {
   const nav = useProjectPanelWorkspaceNav(c);
   const envShell = useProjectPanelEnvironmentShell();
 
-  useOnboardingAutoSync({ controller: c, asrChipOk: c.asrPresentation.chipOk });
+  useOnboardingAutoSync({ controller: c });
 
   /* eslint-disable react-hooks/exhaustive-deps -- deliveryMode is a stable controller; only openDeliveryMode method is used */
   useEffect(() => {

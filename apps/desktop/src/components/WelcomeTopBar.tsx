@@ -4,7 +4,7 @@ import { useWelcomeSearchController } from "../hooks/useWelcomeSearchController"
 import { requestCloseActivityInbox } from "../services/ui/activityInboxEvents";
 import type { ProjectControllerApi } from "../pages/useProjectController";
 import type { AsrEnvPresentation } from "../services/asr/asrEnvStatus";
-import { AsrTopStatusChips } from "./AsrTopStatusChips";
+import { TranscribeTopStatusChips } from "./TranscribeTopStatusChips";
 import { Search } from "lucide-react";
 import { LlmTopStatusChip } from "./LlmTopStatusChip";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
@@ -16,6 +16,7 @@ export interface WelcomeTopBarProps {
   asrPresentation: AsrEnvPresentation;
   llmStatusRefreshSeq?: number;
   onOpenAsrSettings?: () => void;
+  onOpenOnlineSttSettings?: () => void;
   onOpenLlmSettings?: () => void;
   onCreateProject?: () => void;
 }
@@ -25,6 +26,7 @@ export function WelcomeTopBar({
   asrPresentation,
   llmStatusRefreshSeq = 0,
   onOpenAsrSettings,
+  onOpenOnlineSttSettings,
   onOpenLlmSettings,
   onCreateProject,
 }: WelcomeTopBarProps) {
@@ -35,9 +37,12 @@ export function WelcomeTopBar({
     <header className={`flex h-12 shrink-0 items-center justify-end border-b ${MAIN_SHELL_SURFACE_CLASS.border} ${MAIN_SHELL_SURFACE_CLASS.pageBg} px-10`}>
       <div className="flex items-center gap-4">
         <div className="mr-2 flex items-center gap-4">
-          <AsrTopStatusChips
-            presentation={asrPresentation}
+          <TranscribeTopStatusChips
+            transcribeSource={controller.transcribeSource}
+            asrPresentation={asrPresentation}
+            sttOnlineRefreshSeq={controller.sttOnlineRuntimeEpoch}
             onOpenAsrSettings={onOpenAsrSettings}
+            onOpenOnlineSttSettings={onOpenOnlineSttSettings}
           />
           {onOpenLlmSettings ? (
             <LlmTopStatusChip refreshSeq={llmStatusRefreshSeq} onOpenLlmSettings={onOpenLlmSettings} />

@@ -14,7 +14,10 @@ import { buildOnlineSttDraftRuntimeConfig } from "./envOnlineSttPanelDraft";
 import { useEnvOnlineSttPanelCredentialActions } from "./useEnvOnlineSttPanelCredentialActions";
 
 export type { EnvOnlineSttFormFields } from "./envOnlineSttPanelDraft";
-export { buildOnlineSttDraftRuntimeConfig } from "./envOnlineSttPanelDraft";
+export {
+  buildOnlineSttDraftRuntimeConfig,
+  readInitialOnlineSttFormFields,
+} from "./envOnlineSttPanelDraft";
 
 export type UseEnvOnlineSttPanelPersistenceArgs = {
   fields: EnvOnlineSttFormFields;

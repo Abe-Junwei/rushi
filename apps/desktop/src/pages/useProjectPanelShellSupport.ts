@@ -4,6 +4,7 @@ import type { SegmentContextMenuOpen } from "../utils/segmentContextMenuModel";
 export function useProjectPanelEnvironmentShell() {
   const [envOpen, setEnvOpen] = useState(false);
   const [focusLocalAsrSeq, setFocusLocalAsrSeq] = useState(0);
+  const [focusOnlineSttSeq, setFocusOnlineSttSeq] = useState(0);
   const [focusLlmSeq, setFocusLlmSeq] = useState(0);
   const [llmUiEpoch, setLlmUiEpoch] = useState(0);
 
@@ -13,12 +14,21 @@ export function useProjectPanelEnvironmentShell() {
 
   const openAsrSettings = useCallback(() => {
     setFocusLlmSeq(0);
+    setFocusOnlineSttSeq(0);
     setEnvOpen(true);
     setFocusLocalAsrSeq((n) => n + 1);
   }, []);
 
+  const openOnlineSttSettings = useCallback(() => {
+    setFocusLocalAsrSeq(0);
+    setFocusLlmSeq(0);
+    setEnvOpen(true);
+    setFocusOnlineSttSeq((n) => n + 1);
+  }, []);
+
   const openLlmSettings = useCallback(() => {
     setFocusLocalAsrSeq(0);
+    setFocusOnlineSttSeq(0);
     setEnvOpen(true);
     setFocusLlmSeq((n) => n + 1);
   }, []);
@@ -26,6 +36,7 @@ export function useProjectPanelEnvironmentShell() {
   useEffect(() => {
     if (envOpen) return;
     setFocusLocalAsrSeq(0);
+    setFocusOnlineSttSeq(0);
     setFocusLlmSeq(0);
   }, [envOpen]);
 
@@ -38,10 +49,12 @@ export function useProjectPanelEnvironmentShell() {
     envOpen,
     setEnvOpen,
     focusLocalAsrSeq,
+    focusOnlineSttSeq,
     focusLlmSeq,
     llmUiEpoch,
     openEnvironment,
     openAsrSettings,
+    openOnlineSttSettings,
     openLlmSettings,
     notifyLlmRuntimeChanged,
   };
