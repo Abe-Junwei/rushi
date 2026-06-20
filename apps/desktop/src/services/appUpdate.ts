@@ -21,8 +21,10 @@ export function compareSemver(a: string, b: string): number {
   const left = parse(a);
   const right = parse(b);
   for (let i = 0; i < 3; i += 1) {
-    if (left[i]! > right[i]!) return 1;
-    if (left[i]! < right[i]!) return -1;
+    const leftPart = left[i];
+    const rightPart = right[i];
+    if (leftPart > rightPart) return 1;
+    if (leftPart < rightPart) return -1;
   }
   return 0;
 }
