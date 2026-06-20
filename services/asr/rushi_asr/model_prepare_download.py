@@ -20,13 +20,14 @@ from rushi_asr.model_prepare_cache import (
     recognizer_cache_spec,
     required_models_cached_guess,
 )
+from rushi_asr.model_prepare_network import snapshot_download_with_retry
 from rushi_asr.model_prepare_progress import (
     finalize_prepare_download_progress,
     prepare_progress_callback_types,
     raise_if_prepare_cancelled,
     reset_prepare_download_progress,
 )
-from rushi_asr.model_prepare_state import set_prepare_message
+from rushi_asr.model_prepare_state import raise_if_prepare_run_stale, set_prepare_message
 
 log = logging.getLogger(__name__)
 
@@ -127,7 +128,11 @@ def resolve_model_dir(
     if cached is not None:
         log.info("model_prepare: using cached %s at %s", model_id, cached)
         return cached
-    return Path(snapshot_download(model_id, progress_callbacks=progress_callbacks))
+    return snapshot_download_with_retry(
+        model_id,
+        snapshot_download,
+        progress_callbacks,
+    )
 
 
 def resolve_aux_model_dir(
@@ -143,92 +148,101 @@ def resolve_aux_model_dir(
     if cached is not None:
         log.info("model_prepare: using cached %s at %s", model_id, cached)
         return cached
-    return Path(snapshot_download(model_id, progress_callbacks=progress_callbacks))
+    return snapshot_download_with_retry(
+        model_id,
+        snapshot_download,
+        progress_callbacks,
+    )
 
 
-def download_models(resolved_model_id: str) -> dict[str, Any]:
+def download_models(resolved_model_id: str, *, run_token: str) -> dict[str, Any]:
     from rushi_asr.funasr_engine import invalidate_funasr_model_cache, runtime_lock
 
-    with runtime_lock():
-        warnings, _check = disk_warnings()
-
-        cached_result = prepare_result_from_cache(resolved_model_id, warnings)
-        if cached_result is not None:
-            invalidate_funasr_model_cache()
-            return cached_result
-
-        try:
-            from modelscope.hub.snapshot_download import snapshot_download
-        except ImportError as e:
-            raise RuntimeError("modelscope_not_installed") from e
-
-        log.info("model_prepare: snapshot_download %s", resolved_model_id)
-        vad_model_id = effective_funasr_vad_model_id()
-        punc_model_id = effective_funasr_punc_model_id(resolved_model_id)
-        progress_callbacks = prepare_progress_callback_types()
-        reset_prepare_download_progress(
-            include_vad=bool(vad_model_id),
-            include_punc=bool(punc_model_id),
-        )
+    def _checkpoint() -> None:
         raise_if_prepare_cancelled()
+        raise_if_prepare_run_stale(run_token)
 
-        old_timeout = socket.getdefaulttimeout()
-        socket.setdefaulttimeout(600)
-        try:
-            set_prepare_message("downloading_recognizer")
-            raise_if_prepare_cancelled()
-            model_dir = resolve_model_dir(
-                resolved_model_id,
+    warnings, _check = disk_warnings()
+
+    cached_result = prepare_result_from_cache(resolved_model_id, warnings)
+    if cached_result is not None:
+        with runtime_lock():
+            invalidate_funasr_model_cache()
+        return cached_result
+
+    try:
+        from modelscope.hub.snapshot_download import snapshot_download
+    except ImportError as e:
+        raise RuntimeError("modelscope_not_installed") from e
+
+    log.info("model_prepare: snapshot_download %s", resolved_model_id)
+    vad_model_id = effective_funasr_vad_model_id()
+    punc_model_id = effective_funasr_punc_model_id(resolved_model_id)
+    progress_callbacks = prepare_progress_callback_types()
+    reset_prepare_download_progress(
+        include_vad=bool(vad_model_id),
+        include_punc=bool(punc_model_id),
+    )
+    _checkpoint()
+
+    old_timeout = socket.getdefaulttimeout()
+    socket.setdefaulttimeout(120)
+    try:
+        set_prepare_message("downloading_recognizer")
+        _checkpoint()
+        model_dir = resolve_model_dir(
+            resolved_model_id,
+            snapshot_download=snapshot_download,
+            progress_callbacks=progress_callbacks,
+        )
+        vad_dir: Path | None = None
+        if vad_model_id:
+            set_prepare_message("downloading_vad")
+            _checkpoint()
+            vad_dir = resolve_aux_model_dir(
+                vad_model_id,
+                DEFAULT_VAD_REQUIRED_FILES,
+                1 * 1024 * 1024,
                 snapshot_download=snapshot_download,
                 progress_callbacks=progress_callbacks,
             )
-            vad_dir: Path | None = None
-            if vad_model_id:
-                set_prepare_message("downloading_vad")
-                raise_if_prepare_cancelled()
-                vad_dir = resolve_aux_model_dir(
-                    vad_model_id,
-                    DEFAULT_VAD_REQUIRED_FILES,
-                    1 * 1024 * 1024,
-                    snapshot_download=snapshot_download,
-                    progress_callbacks=progress_callbacks,
-                )
-            punc_dir: Path | None = None
-            if punc_model_id:
-                set_prepare_message("downloading_punc")
-                raise_if_prepare_cancelled()
-                punc_dir = resolve_aux_model_dir(
-                    punc_model_id,
-                    DEFAULT_PUNC_REQUIRED_FILES,
-                    1 * 1024 * 1024,
-                    snapshot_download=snapshot_download,
-                    progress_callbacks=progress_callbacks,
-                )
-        finally:
-            socket.setdefaulttimeout(old_timeout)
-        finalize_prepare_download_progress()
-        raise_if_prepare_cancelled()
-        req_files, weight_file, min_weight = recognizer_cache_spec(resolved_model_id)
-        if not looks_like_complete_model_dir(model_dir, req_files, min_weight, weight_file=weight_file):
-            raise RuntimeError("model_prepare_incomplete")
-        if vad_model_id and vad_dir is not None and not looks_like_complete_model_dir(
-            vad_dir, DEFAULT_VAD_REQUIRED_FILES, 1 * 1024 * 1024
-        ):
-            raise RuntimeError("vad_prepare_incomplete")
-        if punc_model_id and punc_dir is not None and not looks_like_complete_model_dir(
-            punc_dir, DEFAULT_PUNC_REQUIRED_FILES, 1 * 1024 * 1024
-        ):
-            raise RuntimeError("punc_prepare_incomplete")
-        maybe_verify_manifest(model_dir)
+        punc_dir: Path | None = None
+        if punc_model_id:
+            set_prepare_message("downloading_punc")
+            _checkpoint()
+            punc_dir = resolve_aux_model_dir(
+                punc_model_id,
+                DEFAULT_PUNC_REQUIRED_FILES,
+                1 * 1024 * 1024,
+                snapshot_download=snapshot_download,
+                progress_callbacks=progress_callbacks,
+            )
+    finally:
+        socket.setdefaulttimeout(old_timeout)
+    finalize_prepare_download_progress()
+    _checkpoint()
+    req_files, weight_file, min_weight = recognizer_cache_spec(resolved_model_id)
+    if not looks_like_complete_model_dir(model_dir, req_files, min_weight, weight_file=weight_file):
+        raise RuntimeError("model_prepare_incomplete")
+    if vad_model_id and vad_dir is not None and not looks_like_complete_model_dir(
+        vad_dir, DEFAULT_VAD_REQUIRED_FILES, 1 * 1024 * 1024
+    ):
+        raise RuntimeError("vad_prepare_incomplete")
+    if punc_model_id and punc_dir is not None and not looks_like_complete_model_dir(
+        punc_dir, DEFAULT_PUNC_REQUIRED_FILES, 1 * 1024 * 1024
+    ):
+        raise RuntimeError("punc_prepare_incomplete")
+    maybe_verify_manifest(model_dir)
+    with runtime_lock():
         invalidate_funasr_model_cache()
-        return {
-            "status": "ok",
-            "model_id": resolved_model_id,
-            "path": str(model_dir),
-            "vad_model_id": vad_model_id,
-            "vad_path": str(vad_dir) if vad_dir is not None else None,
-            "punc_model_id": punc_model_id,
-            "punc_path": str(punc_dir) if punc_dir is not None else None,
-            "required_models_cached": required_models_cached_guess(resolved_model_id),
-            "warnings": warnings,
-        }
+    return {
+        "status": "ok",
+        "model_id": resolved_model_id,
+        "path": str(model_dir),
+        "vad_model_id": vad_model_id,
+        "vad_path": str(vad_dir) if vad_dir is not None else None,
+        "punc_model_id": punc_model_id,
+        "punc_path": str(punc_dir) if punc_dir is not None else None,
+        "required_models_cached": required_models_cached_guess(resolved_model_id),
+        "warnings": warnings,
+    }

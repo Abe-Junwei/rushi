@@ -74,20 +74,23 @@ def test_async_job_emits_window_deltas(monkeypatch: pytest.MonkeyPatch, tmp_path
     import time
 
     deadline = time.time() + 5.0
-    seen_total = 0
+    applied = 0
     all_delta_texts: list[str] = []
     while time.time() < deadline:
         st = transcribe_status(job_id)
         phase = st["phase"]
-        for row in st.get("segments_delta", []):
-            all_delta_texts.append(row["text"])
-        seen_total = max(seen_total, st.get("segments_total", 0))
+        total = int(st.get("segments_total", 0))
+        delta = st.get("segments_delta", [])
+        if total > applied:
+            for row in delta[applied:total]:
+                all_delta_texts.append(row["text"])
+            applied = total
         if phase in ("done", "error", "cancelled"):
             break
         time.sleep(0.05)
 
     assert transcribe_status(job_id)["phase"] == "done"
-    assert seen_total == 3
+    assert applied == 3
     assert all_delta_texts == ["w1", "w2", "w3"]
     final = transcribe_status(job_id)
     assert final["window_count"] == 3

@@ -29,12 +29,42 @@ from rushi_asr.model_prepare_state import (
     finish_prepare_error,
     prepare_phase,
     prepare_status_body,
+    PrepareRunStaleError,
     reset_prepare_idle_state,
     set_prepare_cancelling_message,
     try_begin_prepare_running,
 )
 
 log = logging.getLogger(__name__)
+
+_PREPARE_RUNNING_WAIT_SEC = 8.0
+
+
+def _wait_prepare_not_running(*, timeout_sec: float = _PREPARE_RUNNING_WAIT_SEC) -> bool:
+    import time
+
+    deadline = time.monotonic() + timeout_sec
+    while time.monotonic() < deadline:
+        if prepare_phase() != "running":
+            return True
+        time.sleep(0.25)
+    return prepare_phase() != "running"
+
+
+def _release_prepare_before_restart(*, force: bool) -> bool:
+    phase = prepare_phase()
+    if phase == "error":
+        reset_prepare_idle_state()
+        return True
+    if phase != "running":
+        return True
+    if not force:
+        return True
+    request_prepare_cancel()
+    if _wait_prepare_not_running():
+        return True
+    log.warning("model_prepare: force restart rejected; prior download still running")
+    return False
 
 
 def _wait_for_prepare_phase(*, poll_sec: float = 0.5, deadline_sec: float = 900.0) -> dict[str, Any]:
@@ -57,10 +87,10 @@ def _wait_for_prepare_phase(*, poll_sec: float = 0.5, deadline_sec: float = 900.
     raise RuntimeError("model_prepare_timeout")
 
 
-def prepare_model(model_id: str | None = None) -> dict[str, Any]:
+def prepare_model(model_id: str | None = None, *, force: bool = False) -> dict[str, Any]:
     """Blocking prefetch via the async coordinator (visible in prepare-status / cancellable)."""
     resolved_model_id = resolve_hub_model_id(model_id)
-    started = start_prepare_async(model_id)
+    started = start_prepare_async(model_id, force=force)
     if not started.get("started"):
         reason = started.get("reason")
         if reason == "already_running":
@@ -78,17 +108,24 @@ def prepare_status() -> dict[str, Any]:
     return prepare_status_body()
 
 
-def start_prepare_async(model_id: str | None = None) -> dict[str, Any]:
+def start_prepare_async(model_id: str | None = None, *, force: bool = False) -> dict[str, Any]:
     """Spawn background download; poll ``prepare_status()`` until ``done`` or ``error``."""
     resolved_model_id = resolve_hub_model_id(model_id)
+    phase = prepare_phase()
+    if phase == "running" and not force:
+        return {"started": False, "reason": "already_running"}
+    if not _release_prepare_before_restart(force=force or phase == "error"):
+        return {"started": False, "reason": "prepare_stuck"}
 
-    def _run() -> None:
+    def _run(run_token: str) -> None:
         try:
-            body = download_models(resolved_model_id)
-            finish_prepare_done(body)
+            body = download_models(resolved_model_id, run_token=run_token)
+            finish_prepare_done(body, run_token=run_token)
         except PrepareCancelledError:
             log.info("model_prepare async cancelled by user")
-            finish_prepare_cancelled()
+            finish_prepare_cancelled(run_token=run_token)
+        except PrepareRunStaleError:
+            log.info("model_prepare async superseded by newer run")
         except Exception as e:  # noqa: BLE001
             code = (
                 str(e)
@@ -96,11 +133,12 @@ def start_prepare_async(model_id: str | None = None) -> dict[str, Any]:
                 else "model_prepare_failed"
             )
             log.exception("model_prepare async failed")
-            finish_prepare_error(code, repr(e))
+            finish_prepare_error(code, repr(e), run_token=run_token)
         finally:
             clear_prepare_cancel()
 
-    if not try_begin_prepare_running():
+    began, run_token = try_begin_prepare_running()
+    if not began:
         return {"started": False, "reason": "already_running"}
     clear_prepare_cancel()
     reset_prepare_download_progress(
@@ -108,7 +146,7 @@ def start_prepare_async(model_id: str | None = None) -> dict[str, Any]:
         include_punc=bool(effective_funasr_punc_model_id(resolved_model_id)),
     )
 
-    t = threading.Thread(target=_run, name="rushi-model-prepare", daemon=True)
+    t = threading.Thread(target=_run, args=(run_token,), name="rushi-model-prepare", daemon=True)
     t.start()
     return {"started": True, "model_id": resolved_model_id}
 

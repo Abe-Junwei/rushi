@@ -213,3 +213,15 @@ def test_required_models_cached_guess_uses_explicit_model_env(monkeypatch, tmp_p
     assert default_model_cached_guess() is False
     assert vad_model_cached_guess() is True
     assert required_models_cached_guess() is True
+
+
+def test_start_prepare_async_rejects_force_when_prior_run_stuck(monkeypatch: pytest.MonkeyPatch) -> None:
+    from rushi_asr import model_prepare as mp
+    from rushi_asr.model_prepare_state import try_begin_prepare_running
+
+    began, _token = try_begin_prepare_running()
+    assert began is True
+    monkeypatch.setattr(mp, "_wait_prepare_not_running", lambda **kwargs: False)
+
+    out = mp.start_prepare_async(None, force=True)
+    assert out == {"started": False, "reason": "prepare_stuck"}

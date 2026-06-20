@@ -48,6 +48,10 @@ def _require_local_token(request: Request) -> None:
 
 class PrepareModelRequest(BaseModel):
     model_id: str | None = Field(default=None, description="FunASR hub model id")
+    force: bool = Field(
+        default=False,
+        description="Restart a stuck or failed prepare (keeps on-disk partial cache for ModelScope resume)",
+    )
 
 
 async def read_upload_to_temp(
@@ -128,11 +132,11 @@ def create_app() -> FastAPI:
 
         return {"items": get_catalog_status()}
 
-    async def _prepare_model_blocking(model_id: str | None) -> dict[str, object]:
+    async def _prepare_model_blocking(model_id: str | None, *, force: bool = False) -> dict[str, object]:
         from rushi_asr.model_prepare import prepare_model
 
         try:
-            return await run_in_threadpool(lambda: prepare_model(model_id))
+            return await run_in_threadpool(lambda: prepare_model(model_id, force=force))
         except (RuntimeError, ValueError, FileNotFoundError) as e:
             code = str(e)
             if code == "model_prepare_disk_full":
@@ -159,7 +163,7 @@ def create_app() -> FastAPI:
         """Prefetch a FunASR hub model into MODELSCOPE_CACHE (may take minutes; loopback-only)."""
         _require_local_token(request)
         _require_funasr_import()
-        return await _prepare_model_blocking(body.model_id)
+        return await _prepare_model_blocking(body.model_id, force=body.force)
 
     @app.post("/v1/models/prepare-default")
     async def prepare_default_model_endpoint(request: Request) -> dict[str, object]:
@@ -178,7 +182,7 @@ def create_app() -> FastAPI:
         _require_funasr_import()
         from rushi_asr.model_prepare import start_prepare_async
 
-        return start_prepare_async(body.model_id)
+        return start_prepare_async(body.model_id, force=body.force)
 
     @app.post("/v1/models/prepare-default/async")
     def prepare_default_model_async_endpoint(request: Request) -> dict[str, object]:
