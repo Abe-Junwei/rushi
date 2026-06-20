@@ -117,6 +117,17 @@ describe("environmentCapabilityCoordinator", () => {
     expect(deps.refreshAsrHealth).toHaveBeenCalledTimes(2);
   });
 
+  it("skips refresh while deferRefreshWhileTranscribing is true (e.g. model download)", async () => {
+    const deps = {
+      ...makeDeps(),
+      deferRefreshWhileTranscribing: () => true,
+    };
+    await runEnvironmentCapabilityRefresh("app-focus", deps);
+    expect(deps.refreshAsrHealth).not.toHaveBeenCalled();
+    expect(deps.refreshAsrModelCacheInfo).not.toHaveBeenCalled();
+    expect(deps.refreshSetupDiagnose).not.toHaveBeenCalled();
+  });
+
   it("stores blockReason snapshot for preflight", async () => {
     mockHealthResult = {
       health: "error",

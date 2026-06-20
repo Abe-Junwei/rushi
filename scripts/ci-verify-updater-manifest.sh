@@ -71,9 +71,15 @@ if [ "$missing" -ne 0 ]; then
   exit 1
 fi
 
-MANIFEST_URL="https://github.com/${REPO}/releases/download/${TAG}/latest.json"
+# Draft releases return 404 on public download URLs until published — fetch via gh API instead.
+VERIFY_DIR="$(mktemp -d)"
+cleanup_verify_dir() {
+  rm -rf "$VERIFY_DIR"
+}
+trap cleanup_verify_dir EXIT
 
-JSON="$(curl -fsSL "$MANIFEST_URL")"
+gh release download "$TAG" --repo "$REPO" --pattern "latest.json" --dir "$VERIFY_DIR"
+JSON="$(cat "${VERIFY_DIR}/latest.json")"
 MANIFEST_VERSION="$(echo "$JSON" | jq -r '.version')"
 TAR_URL="$(echo "$JSON" | jq -r '.platforms["darwin-aarch64"].url // empty')"
 EXPECTED_SUFFIX="/releases/download/${TAG}/app.tar.gz"

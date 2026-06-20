@@ -75,7 +75,9 @@ export function useProjectController() {
       prepareModelProgress: asr.prepareModelProgress,
     }),
     deferRefreshWhileTranscribing: () =>
-      lifecycle.busy && isTranscribeBusyReason(lifecycle.busyReason),
+      (lifecycle.busy && isTranscribeBusyReason(lifecycle.busyReason)) ||
+      asr.prepareModelBusy ||
+      asr.prepareModelCancelling,
   });
 
   return {

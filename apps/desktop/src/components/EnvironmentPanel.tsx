@@ -9,7 +9,9 @@ import { EnvAppearancePanel } from "./EnvAppearancePanel";
 import { EnvQualityPanel } from "./EnvQualityPanel";
 import { EnvironmentPanelNav } from "./EnvironmentPanelNav";
 import { useLlmEnvStatus } from "../hooks/useLlmEnvStatus";
+import { useLlmKeychainReady } from "../hooks/useLlmKeychainReady";
 import { useOnlineSttEnvNavTone } from "../hooks/useOnlineSttEnvNavTone";
+import { isLlmRuntimeReady } from "../services/postprocess/postprocessRuntimeContract";
 import type { AsrEnvPresentation } from "../services/asr/asrEnvStatus";
 import type { AsrHealthCapabilities, AsrModelCacheInfo, BundledAsrLaunchReport, WaveformPeaksCacheInfo } from "../tauri/projectApi";
 import type { AsrSetupControllerApi } from "../pages/useAsrSetupController";
@@ -93,7 +95,13 @@ export function EnvironmentPanel({
   const onlineSttScrollRef = useRef<HTMLDivElement | null>(null);
   const llmScrollRef = useRef<HTMLDivElement | null>(null);
   const [layoutCompact, setLayoutCompact] = useState(false);
-  const { presentation: llmPresentation } = useLlmEnvStatus(llmStatusRefreshSeq);
+  const { keychainReady: llmKeychainReady, checking: llmKeychainChecking } =
+    useLlmKeychainReady(llmStatusRefreshSeq);
+  const { presentation: llmPresentation } = useLlmEnvStatus(llmStatusRefreshSeq, {
+    hasLocalKeyRef: isLlmRuntimeReady(),
+    hasTypedKey: false,
+    keychainPresent: llmKeychainChecking ? null : llmKeychainReady,
+  });
 
   const bumpSttRuntimeRevision = useCallback(() => {
     onSttOnlineRuntimeChanged?.();

@@ -11,24 +11,26 @@ import {
 } from "./sttOnlineProviderContract";
 
 /** 设置侧栏在线 STT 状态点（读持久化 + 会话密钥，不含表单草稿）。 */
-export function readOnlineSttEnvNavTone(): OnlineSttEnvTone {
-  return readOnlineSttEnvNavPresentation().tone;
+export function readOnlineSttEnvNavTone(keychainReady: boolean | null = null): OnlineSttEnvTone {
+  return readOnlineSttEnvNavPresentation(keychainReady).tone;
 }
 
-function readOnlineSttEnvNavPresentation(): OnlineSttEnvPresentation {
+export function readOnlineSttEnvNavPresentation(
+  keychainReady: boolean | null = null,
+): OnlineSttEnvPresentation {
   const stored = readExternalSttOnlineRuntimeConfigFromStorage();
   const draftConfig = normalizeExternalSttOnlineRuntimeConfig({
     ...stored,
     enabled: true,
   });
   return buildOnlineSttEnvPresentation({
-    enabled: true,
+    enabled: stored.enabled,
     providerId: draftConfig.selectedProviderId,
     endpoint: draftConfig.endpoint ?? "",
     appKey: draftConfig.appKey ?? "",
     hasApiKeyReference: hasSttOnlineApiKeyReference(),
     hasTypedApiKey: false,
-    keychainReady: null,
+    keychainReady,
     connectionVerified: isSttConnectionVerified(draftConfig),
     lastProbeAvailable: null,
     lastProbeMessage: null,

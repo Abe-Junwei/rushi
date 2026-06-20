@@ -63,7 +63,18 @@ export function buildOnlineSttEnvPresentation(
   }
 
   const hasKey = input.hasTypedApiKey || input.hasApiKeyReference;
-  const ready = configComplete(input) && hasKey && input.connectionVerified;
+  const keyMaterialReady = input.hasTypedApiKey || input.keychainReady === true;
+  const ready =
+    configComplete(input) && hasKey && keyMaterialReady && input.connectionVerified;
+
+  if (input.keychainReady === false && !input.hasTypedApiKey && hasKey) {
+    return {
+      tone: "error",
+      bannerTitle: "在线 STT · 密钥异常",
+      bannerDetail: "本地密钥丢失，请重新保存。",
+      chipOk: false,
+    };
+  }
 
   if (ready) {
     return {
@@ -87,15 +98,6 @@ export function buildOnlineSttEnvPresentation(
       tone: "warn",
       bannerTitle: "在线 STT · 待验证",
       bannerDetail: "请填写 Key 并探测。",
-      chipOk: false,
-    };
-  }
-
-  if (input.keychainReady === false && !input.hasTypedApiKey) {
-    return {
-      tone: "error",
-      bannerTitle: "在线 STT · 密钥异常",
-      bannerDetail: "本地密钥丢失，请重新保存。",
       chipOk: false,
     };
   }

@@ -8,6 +8,7 @@ import {
   hasSttOnlineApiKeyReference,
   isSttConnectionVerified,
   normalizeExternalSttOnlineRuntimeConfig,
+  readExternalSttOnlineRuntimeConfigFromStorage,
 } from "../services/stt/sttOnlineProviderContract";
 import { buildOnlineSttDraftRuntimeConfig, useEnvOnlineSttPanelPersistence } from "./useEnvOnlineSttPanelPersistence";
 import { useEnvOnlineSttPanelProbe } from "./useEnvOnlineSttPanelProbe";
@@ -100,10 +101,12 @@ export function useEnvOnlineSttPanel({ busy, onSttOnlineRuntimeChanged }: UseEnv
 
   const connectionVerified = isSttConnectionVerified(draftConfig);
 
+  const storedRuntime = useMemo(() => readExternalSttOnlineRuntimeConfigFromStorage(), [keychainRefreshSeq]);
+
   const presentation = useMemo(
     () =>
       buildOnlineSttEnvPresentation({
-        enabled: true,
+        enabled: storedRuntime.enabled,
         providerId: olProviderId,
         endpoint: olEndpoint,
         appKey: olAppKey,
@@ -123,6 +126,7 @@ export function useEnvOnlineSttPanel({ busy, onSttOnlineRuntimeChanged }: UseEnv
       keychainChecking,
       keychainReady,
       probeHook.lastProbeAvailable,
+      storedRuntime.enabled,
     ],
   );
 

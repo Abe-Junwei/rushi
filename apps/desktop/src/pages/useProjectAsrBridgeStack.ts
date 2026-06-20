@@ -2,6 +2,7 @@ import { useCallback, useRef } from "react";
 import { useAsrBridgeController } from "./useAsrBridgeController";
 import { useAsrSetupController } from "./useAsrSetupController";
 import { refreshLocalAsrDiagnostics } from "./refreshLocalAsrDiagnostics";
+import type { RefreshAsrRuntimeOptions } from "./asrRuntimeRefreshOptions";
 import { getEnvironmentCapabilityBlockReason } from "../services/environmentCapabilityCoordinator";
 
 /** ASR bridge + setup + local transcribe preflight (extracted from useProjectController). */
@@ -11,7 +12,8 @@ export function useProjectAsrBridgeStack() {
   >(null);
 
   const asr = useAsrBridgeController({
-    refreshEnvironmentDiagnostics: async () => {
+    refreshEnvironmentDiagnostics: async (runtimeOptions?: RefreshAsrRuntimeOptions) => {
+      if (runtimeOptions?.skipSetupDiagnose) return;
       const refreshSetup = refreshSetupDiagnoseRef.current;
       if (!refreshSetup) return;
       await refreshSetup({ resetSteps: false, touchUi: false });

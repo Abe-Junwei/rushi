@@ -1,7 +1,10 @@
 #!/usr/bin/env bash
 # R3f — 首装空 App Data「一键准备」复验（隔离 HOME，不污染主 App Data）
-# Usage: bash scripts/r3f-fresh-appdata-hand-test.sh [--with-ui] [--skip-download]
+# Usage: bash scripts/r3f-fresh-appdata-hand-test.sh [--with-ui] [--interactive] [--skip-download] [--wipe-ui-prefs]
 #  UI：osascript 点「设置」→「一键准备」；失败时回退 HTTP prepare（与 UI 同链路）
+#
+# 注意：默认仅隔离 HOME 下的 SQLite / models / logs。WebKit localStorage 与 macOS 钥匙串
+# 不在 HOME 内，会沿用本机旧配置。Fresh 手测在线 STT / LLM 状态时请加 --wipe-ui-prefs。
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
@@ -12,11 +15,13 @@ PARAFORMER="iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8
 WITH_UI=0
 INTERACTIVE=0
 SKIP_DOWNLOAD=0
+WIPE_UI_PREFS=0
 for arg in "$@"; do
   case "$arg" in
     --with-ui) WITH_UI=1 ;;
     --interactive) INTERACTIVE=1 ;;
     --skip-download) SKIP_DOWNLOAD=1 ;;
+    --wipe-ui-prefs) WIPE_UI_PREFS=1 ;;
   esac
 done
 
@@ -45,6 +50,21 @@ cleanup() {
 }
 trap cleanup EXIT INT TERM
 
+wipe_ui_prefs_if_requested() {
+  if [[ "${WIPE_UI_PREFS}" -ne 1 ]]; then
+    echo "  NOTE: WebKit localStorage + macOS Keychain 未隔离；在线 STT/LLM 可能显示旧配置就绪"
+    echo "        Fresh 测 F1/H 在线能力时请加 --wipe-ui-prefs（钥匙串仍共享，仅清 UI 偏好）"
+    return 0
+  fi
+  local webkit_dir="${HOME}/Library/WebKit/studio.lingchuang.rushi"
+  if [[ -d "${webkit_dir}" ]]; then
+    echo "== Wipe WebKit WebsiteData for studio.lingchuang.rushi =="
+    rm -rf "${webkit_dir}"
+    echo "  OK: removed ${webkit_dir}"
+  else
+    echo "  NOTE: no WebKit dir at ${webkit_dir}"
+  fi
+}
 wait_health() {
   local tries="${1:-60}"
   local out="${OUT_DIR}/health-wait.json"
@@ -218,6 +238,8 @@ PY
 echo "== R3f fresh App Data hand test =="
 echo "Fresh HOME: ${FRESH_HOME}"
 echo "Release app: ${APP}"
+
+wipe_ui_prefs_if_requested
 
 stop_all
 echo "== Launch release app (isolated HOME) =="

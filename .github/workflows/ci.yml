@@ -133,6 +133,10 @@ jobs:
         if: runner.os == 'Windows'
         run: npm install --no-save @tauri-apps/cli-win32-x64-msvc@2.11.2
 
+      - name: Ensure Rolldown Windows native binding
+        if: runner.os == 'Windows'
+        run: npm install --no-save @rolldown/binding-win32-x64-msvc@1.0.3
+
       - uses: dtolnay/rust-toolchain@stable
 
       - name: Linux packages for Tauri (cargo test)

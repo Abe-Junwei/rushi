@@ -8,6 +8,10 @@ import {
 } from "../services/stt/sttOnlineProviderContract";
 import { STT_ONLINE_RUNTIME_CHANGED_EVENT } from "../services/stt/sttOnlineRuntimeNotify";
 
+vi.mock("./useSttKeychainReady", () => ({
+  useSttKeychainReady: () => ({ keychainReady: true, checking: false }),
+}));
+
 function installMockLocalStorage() {
   const storage = new Map<string, string>();
   vi.stubGlobal("localStorage", {
@@ -30,7 +34,7 @@ describe("useOnlineSttEnvNavTone", () => {
 
   it("updates when STT_ONLINE_RUNTIME_CHANGED_EVENT fires", () => {
     const { result } = renderHook(() => useOnlineSttEnvNavTone());
-    expect(result.current).toBe("warn");
+    expect(result.current).toBe("idle");
 
     const cfg = normalizeExternalSttOnlineRuntimeConfig({
       enabled: true,

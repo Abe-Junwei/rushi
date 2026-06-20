@@ -14,6 +14,9 @@ import {
   type AsrHealthState,
 } from "./useAsrHealthPoll";
 import { useAsrModelCacheController } from "./useAsrModelCacheController";
+import type { RefreshAsrRuntimeOptions } from "./asrRuntimeRefreshOptions";
+
+export type { RefreshAsrRuntimeOptions } from "./asrRuntimeRefreshOptions";
 
 export type { AsrHealthCapabilities } from "../tauri/projectApi";
 export type { AsrHealthState };
@@ -49,7 +52,7 @@ export interface AsrBridgeApi {
 }
 
 type AsrBridgeOptions = {
-  refreshEnvironmentDiagnostics?: () => Promise<void>;
+  refreshEnvironmentDiagnostics?: (options?: RefreshAsrRuntimeOptions) => Promise<void>;
 };
 
 export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi {
@@ -85,10 +88,14 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
   });
 
   /* eslint-disable react-hooks/exhaustive-deps -- cacheCtrl is a stable hook-returned controller; only its method identity matters */
-  const refreshAsrRuntimeInfo = useCallback(async () => {
+  const refreshAsrRuntimeInfo = useCallback(async (runtimeOptions?: RefreshAsrRuntimeOptions) => {
     await refreshAsrHealth({ touchUi: false });
-    await cacheCtrl.refreshAsrModelCacheInfo();
-    await refreshEnvironmentDiagnostics?.();
+    if (!runtimeOptions?.skipModelCacheScan) {
+      await cacheCtrl.refreshAsrModelCacheInfo();
+    }
+    if (!runtimeOptions?.skipSetupDiagnose) {
+      await refreshEnvironmentDiagnostics?.(runtimeOptions);
+    }
   }, [cacheCtrl.refreshAsrModelCacheInfo, refreshAsrHealth, refreshEnvironmentDiagnostics]);
   /* eslint-enable react-hooks/exhaustive-deps */
   refreshAsrRuntimeInfoRef.current = refreshAsrRuntimeInfo;

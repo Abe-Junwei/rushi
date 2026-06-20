@@ -24,17 +24,43 @@ describe("buildOnlineSttEnvPresentation", () => {
     expect(p.bannerTitle).toContain("未启用");
   });
 
-  it("shows ok when verified with saved key reference", () => {
+  it("does not show ok when key reference and verified fingerprint exist but keychain is missing", () => {
     const p = buildOnlineSttEnvPresentation({
       ...baseInput,
       hasApiKeyReference: true,
       connectionVerified: true,
+      keychainReady: false,
+      lastProbeAvailable: true,
+      lastProbeMessage: "可达（约 120 ms）",
+    });
+    expect(p.tone).toBe("error");
+    expect(p.chipOk).toBe(false);
+    expect(p.bannerTitle).toContain("密钥异常");
+  });
+
+  it("shows ok when verified with saved key reference and keychain present", () => {
+    const p = buildOnlineSttEnvPresentation({
+      ...baseInput,
+      hasApiKeyReference: true,
+      connectionVerified: true,
+      keychainReady: true,
       lastProbeAvailable: true,
       lastProbeMessage: "可达（约 120 ms）",
     });
     expect(p.tone).toBe("ok");
     expect(p.chipOk).toBe(true);
     expect(p.bannerDetail).toContain("120 ms");
+  });
+
+  it("warns while keychain check is pending despite verified fingerprint", () => {
+    const p = buildOnlineSttEnvPresentation({
+      ...baseInput,
+      hasApiKeyReference: true,
+      connectionVerified: true,
+      keychainReady: null,
+    });
+    expect(p.tone).toBe("warn");
+    expect(p.chipOk).toBe(false);
   });
 
   it("warns when verified but key reference missing", () => {

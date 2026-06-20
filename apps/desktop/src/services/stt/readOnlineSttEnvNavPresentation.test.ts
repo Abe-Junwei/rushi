@@ -24,7 +24,7 @@ function installMockLocalStorage() {
   });
 }
 
-function panelToneForStoredConfig(): string {
+function panelToneForStoredConfig(keychainReady: boolean | null = null): string {
   const stored = readExternalSttOnlineRuntimeConfigFromStorage();
   const draftConfig = normalizeExternalSttOnlineRuntimeConfig({
     ...stored,
@@ -33,13 +33,13 @@ function panelToneForStoredConfig(): string {
     apiSecretId: stored.apiSecretId,
   });
   return buildOnlineSttEnvPresentation({
-    enabled: true,
+    enabled: stored.enabled,
     providerId: draftConfig.selectedProviderId,
     endpoint: draftConfig.endpoint ?? "",
     appKey: draftConfig.appKey ?? "",
     hasApiKeyReference: hasSttOnlineApiKeyReference(),
     hasTypedApiKey: false,
-    keychainReady: null,
+    keychainReady,
     connectionVerified: isSttConnectionVerified(draftConfig),
     lastProbeAvailable: null,
     lastProbeMessage: null,
@@ -65,8 +65,8 @@ describe("readOnlineSttEnvNavTone", () => {
     persistExternalSttOnlineRuntimeConfig(cfg);
     markSttConnectionVerified(cfg);
 
-    expect(readOnlineSttEnvNavTone()).toBe("ok");
-    expect(panelToneForStoredConfig()).toBe("ok");
+    expect(readOnlineSttEnvNavTone(true)).toBe("ok");
+    expect(panelToneForStoredConfig(true)).toBe("ok");
   });
 
   it("warns when iflytek apiSecret is missing from persisted config", () => {
