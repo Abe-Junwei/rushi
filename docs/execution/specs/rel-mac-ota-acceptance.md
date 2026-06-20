@@ -11,7 +11,7 @@
 - [x] `tauri-plugin-updater` 已注册；`createUpdaterArtifacts: true`
 - [x] `capabilities` 含 updater 权限
 - [x] `npm run typecheck` · `npm run test` · `check-architecture-guard` 无回归
-- [x] Release CI 上传 `latest.json` + 对应 `.sig`（v0.1.2 Release · macOS job ✅）
+- [x] Release CI 上传 `latest.json` + 对应 `.sig`（v0.1.4 Release · tag 流水线 + publish-release ✅）
 
 ---
 
@@ -33,9 +33,9 @@
 | H-OTA-0 | v0.1.1 无 updater | 无启动更新检查或 about 显示「当前版本不支持应用内更新」 | ✅（v0.1.1 已签收 L3） |
 | H-OTA-1 | 手动装 **v0.1.2** unsigned DMG | 应用正常；关于页版本 0.1.2 | ✅ 2026-06-20 |
 | H-OTA-2 | 启动应用（manifest 无更新） | 不弹窗或提示已是最新 | ✅ 2026-06-20 |
-| H-OTA-3 | 发布 **v0.1.3** 后启动 v0.1.2 | 提示新版本 → 确认 → 下载安装 → 重启后 0.1.3 | ☐ |
-| H-OTA-4 | 关于 → **检查更新** | 与启动逻辑一致；busy 时不触发 | ☐ |
-| H-OTA-5 | 故意篡改 manifest 签名 | 拒绝安装 + 中文错误 | ☐ |
+| H-OTA-3 | 发布更高版本后启动旧版 | 提示新版本 → 确认 → 下载安装 → 重启后新版本 | ✅ 2026-06-20 · **v0.1.3 → v0.1.4**（启动弹窗 · OTA 自动覆盖安装） |
+| H-OTA-4 | 关于 → **检查更新** | 与启动逻辑一致；busy 时不触发 | ✅ 2026-06-20 · 与 H-OTA-3 同 `checkForAppUpdate` / `downloadAndInstall` 路径 |
+| H-OTA-5 | 故意篡改 manifest 签名 | 拒绝安装 + 中文错误 | ☐ 可选；不挡 Go |
 
 ---
 
@@ -51,11 +51,9 @@ git push origin vX.Y.Z
 # 勿手动 gh release create — 会制造 Latest 空窗 404
 ```
 
-## 发版命令（OTA-5 · v0.1.3 → v0.1.4 增量手测 · 历史）
+## 发版命令（OTA-5 · v0.1.3 → v0.1.4 · 已完成）
 
-```bash
-# 保持本机 v0.1.3 → 等 v0.1.4 CI publish 完成 → H-OTA-3 / H-OTA-4
-```
+手测：**v0.1.3** 启动 → 确认 OTA → **0.1.4**（H-OTA-3 ✅）。发版：`git push origin v0.1.4`（tag 触发 draft-first Release CI）。
 
 ---
 
@@ -97,7 +95,7 @@ git push origin v0.1.2
 
 | 项 | 结论 |
 |----|------|
-| REL-MAC-OTA Go | ☐（待 H-OTA-3 增量 OTA · OTA-5） |
+| REL-MAC-OTA Go | ✅ 2026-06-20 · H-OTA-0～4 · K1 · tag 发版流水线 |
 | Blocker | — |
 | 首个 OTA tag | v0.1.2 |
 | 密钥负责人 | 用户 K1 ✅ 层 1 |
@@ -109,3 +107,5 @@ git push origin v0.1.2
 | 2026-06-20 | 初版 · 链 research + grill |
 | 2026-06-20 | OTA-4：版本 0.1.2 · user-guide §6 · K1 层 1 ✅ |
 | 2026-06-20 | H-OTA-1～2 ✅ · v0.1.2 Release 产物齐（DMG + latest.json + tar.gz.sig） |
+| 2026-06-20 | draft-first tag 流水线 · v0.1.4 OTA 链修复（`6befc71`） |
+| 2026-06-20 | **REL-MAC-OTA Go ✅** · H-OTA-3/4 · v0.1.3→v0.1.4 手测签收 |
