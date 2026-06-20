@@ -98,6 +98,17 @@ export function describePrepareModelFailure(code: string): PrepareModelFailureCo
       ],
     };
   }
+  if (c === "model_prepare_network_error") {
+    return {
+      headline: "模型下载因网络中断失败（已保留已下载部分，可续传）。",
+      tips: [
+        "请先稳定 VPN/代理（建议全程保持同一网络），再点「下载当前模型」。",
+        "若进度长时间不动：点「取消下载」后重新点「下载当前模型」。",
+        "ModelScope 会跳过已落盘文件，不会从零开始。",
+        ...commonRetryTips(),
+      ],
+    };
+  }
   if (c === "fetch_failed") {
     return {
       headline: "无法连接本机 ASR 侧车（8741）。",

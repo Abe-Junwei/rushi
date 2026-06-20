@@ -1,11 +1,12 @@
 import type { Dispatch, SetStateAction } from "react";
+import type { RefreshAsrRuntimeOptions } from "../../pages/asrRuntimeRefreshOptions";
 import type { AsrSetupOutcome, AsrSetupReport, AsrSetupStep } from "./asrSetupContract";
 import type { LocalAsrSetupSelectionContext } from "./localAsrSetupModelStep";
 import type { LocalRuntimeDiagnose } from "../localRuntime/localRuntimeContract";
 
 export type AsrOneClickPrepareDeps = {
   refreshAsrHealth: () => Promise<void>;
-  refreshAsrRuntimeInfo: () => Promise<void>;
+  refreshAsrRuntimeInfo: (options?: RefreshAsrRuntimeOptions) => Promise<void>;
   prepareDefaultFunasrModel: (options?: import("../../pages/usePrepareModelController").PrepareDefaultModelOptions) => Promise<void>;
   getSetupSelection: () => LocalAsrSetupSelectionContext;
 };
@@ -14,6 +15,7 @@ export type AsrOneClickPrepareCallbacks = {
   refreshSetupDiagnose: (options?: {
     resetSteps?: boolean;
     touchUi?: boolean;
+    skipLocalRuntimeDiagnose?: boolean;
   }) => Promise<AsrSetupReport | null>;
   refreshLocalRuntimeDiagnose: () => Promise<LocalRuntimeDiagnose | null>;
   ensureLocalRuntimeInstalled: (reason: "missing" | "repair") => Promise<boolean>;

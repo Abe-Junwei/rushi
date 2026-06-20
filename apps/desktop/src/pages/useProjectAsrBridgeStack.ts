@@ -1,32 +1,21 @@
 import { useCallback, useRef } from "react";
 import { useAsrBridgeController } from "./useAsrBridgeController";
 import { useAsrSetupController } from "./useAsrSetupController";
-import { refreshLocalAsrDiagnostics } from "./refreshLocalAsrDiagnostics";
-import type { RefreshAsrRuntimeOptions } from "./asrRuntimeRefreshOptions";
 import { getEnvironmentCapabilityBlockReason } from "../services/environmentCapabilityCoordinator";
+import { isLocalRuntimeInstallRunning } from "../services/localRuntime/localRuntimeContract";
+import type { StepsFromReportOptions } from "./asrSetupState";
 
 /** ASR bridge + setup + local transcribe preflight (extracted from useProjectController). */
 export function useProjectAsrBridgeStack() {
   const refreshSetupDiagnoseRef = useRef<
     ((options?: { resetSteps?: boolean; touchUi?: boolean }) => Promise<unknown>) | null
   >(null);
+  const prepareOverlayRef = useRef<StepsFromReportOptions | null>(null);
 
   const asr = useAsrBridgeController({
-    refreshEnvironmentDiagnostics: async (runtimeOptions?: RefreshAsrRuntimeOptions) => {
-      if (runtimeOptions?.skipSetupDiagnose) return;
-      const refreshSetup = refreshSetupDiagnoseRef.current;
-      if (!refreshSetup) return;
-      await refreshSetup({ resetSteps: false, touchUi: false });
-    },
+    refreshSetupDiagnoseRef,
   });
-  const { refreshAsrHealth, refreshAsrModelCacheInfo } = asr;
-  const refreshAsrRuntimeInfo = useCallback(async () => {
-    await refreshLocalAsrDiagnostics({
-      refreshAsrHealth,
-      refreshAsrModelCacheInfo,
-      refreshSetupDiagnose: refreshSetupDiagnoseRef.current ?? undefined,
-    });
-  }, [refreshAsrHealth, refreshAsrModelCacheInfo]);
+  const { refreshAsrHealth, refreshAsrModelCacheInfo, refreshAsrRuntimeInfo } = asr;
 
   const asrSetup = useAsrSetupController({
     refreshAsrHealth: asr.refreshAsrHealth,
@@ -35,18 +24,33 @@ export function useProjectAsrBridgeStack() {
     getSetupSelection: () => ({
       selectedHubModelId: asr.localAsrModelCatalog.selectedHubModelId,
       catalogStatus: asr.localAsrModelCatalog.catalogStatus,
+      recognitionLanguage: asr.localAsrModelCatalog.recognitionLanguage,
+      sidecarAsyncTranscribeCapable: asr.localAsrModelCatalog.sidecarAsyncTranscribeCapable,
     }),
+    prepareOverlayRef,
   });
   refreshSetupDiagnoseRef.current = asrSetup.refreshSetupDiagnose;
 
-  const localTranscribePreflight = useCallback(
-    () => asr.asrPresentation.blockReason ?? getEnvironmentCapabilityBlockReason(),
-    [asr.asrPresentation],
+  prepareOverlayRef.current = {
+    prepareModelBusy: asr.prepareModelBusy,
+    prepareModelProgress: asr.prepareModelProgress,
+  };
+
+  const runtimeInstallRunning = isLocalRuntimeInstallRunning(
+    asrSetup.localRuntimeDiag?.install.phase,
   );
+
+  const localTranscribePreflight = useCallback(() => {
+    if (runtimeInstallRunning) {
+      return "本机 ASR 运行时安装中，暂不可转写。";
+    }
+    return asr.asrPresentation.blockReason ?? getEnvironmentCapabilityBlockReason();
+  }, [asr.asrPresentation, runtimeInstallRunning]);
 
   return {
     asr,
     asrSetup,
+    runtimeInstallRunning,
     refreshAsrHealth,
     refreshAsrModelCacheInfo,
     refreshAsrRuntimeInfo,

@@ -5,6 +5,7 @@ import * as p1 from "../tauri/projectApi";
 import { parseCatalogStatusFromHealth } from "../services/asr/localAsrModelCatalog";
 import { loopbackFetch } from "../services/asr/loopbackFetch";
 import { parseAsrHealthJson } from "../services/asr/asrHealthParse";
+import { isAsrModelPrepareActive } from "../services/asr/asrPrepareActivityGate";
 import { waitMinVisibleBusy } from "../services/ui/minVisibleBusy";
 
 export type AsrHealthState = "checking" | "ok" | "error";
@@ -22,12 +23,16 @@ export type AsrHealthRefreshResult = {
   rootJson: unknown;
 };
 
-/** 后台 health 失败时保留上次 ok 快照，避免侧车推理忙导致顶栏误报未就绪。 */
+/** 后台 health 失败时保留上次 ok 快照，避免侧车推理/下载忙导致顶栏误报未就绪。 */
 export function shouldSkipAsrHealthDowngrade(
   touchUi: boolean,
   result: Pick<AsrHealthRefreshResult, "health">,
   lastGood: AsrHealthRefreshResult | null,
+  options?: { preserveDuringModelPrepare?: boolean },
 ): boolean {
+  if (options?.preserveDuringModelPrepare && result.health !== "ok") {
+    return true;
+  }
   if (touchUi) return false;
   if (result.health === "ok") return false;
   return lastGood?.health === "ok" && lastGood.caps != null;
@@ -97,7 +102,11 @@ export function useAsrHealthPoll({ tauriRuntime, catalogHooksRef }: Params) {
         }
 
         const commit = async (result: AsrHealthRefreshResult, caps: AsrHealthCapabilities | null) => {
-          if (shouldSkipAsrHealthDowngrade(touchUi, result, lastGoodRef.current)) {
+          if (
+            shouldSkipAsrHealthDowngrade(touchUi, result, lastGoodRef.current, {
+              preserveDuringModelPrepare: isAsrModelPrepareActive(),
+            })
+          ) {
             return;
           }
           if (touchUi) await waitMinVisibleBusy(startedAt);

@@ -59,13 +59,6 @@ describe("useAsrSetupController install path", () => {
           availableVersion: "0.1.0",
         }),
       )
-      .mockResolvedValueOnce(
-        makeLocalRuntimeDiag({
-          manifestConfigured: true,
-          manifestStatus: "ok",
-          availableVersion: "0.1.0",
-        }),
-      )
       .mockResolvedValue(
         makeLocalRuntimeDiag({
           manifestConfigured: true,
@@ -81,6 +74,7 @@ describe("useAsrSetupController install path", () => {
         }),
       );
     fetchMock
+      .mockResolvedValueOnce(loopbackHealthResponse(false))
       .mockResolvedValueOnce(loopbackHealthResponse(false))
       .mockResolvedValueOnce(loopbackHealthResponse(false))
       .mockResolvedValue(loopbackHealthResponse(true));
@@ -143,6 +137,7 @@ describe("useAsrSetupController install path", () => {
         }),
       );
     fetchMock
+      .mockResolvedValueOnce(loopbackHealthResponse(false))
       .mockResolvedValueOnce(loopbackHealthResponse(false))
       .mockResolvedValueOnce(loopbackHealthResponse(false))
       .mockResolvedValue(loopbackHealthResponse(true));

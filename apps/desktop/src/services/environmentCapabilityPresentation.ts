@@ -16,6 +16,7 @@ export type AsrPresentationOverlay = Pick<
   | "prepareModelBusy"
   | "prepareModelCancelling"
   | "prepareModelProgress"
+  | "runtimeInstallRunning"
   | "selectedHubModelId"
   | "catalogStatus"
   | "sidecarAsyncTranscribeCapable"
@@ -52,5 +53,6 @@ export function buildEnvironmentCapabilityPresentation(input: {
     prepareModelBusy: asrOverlay?.prepareModelBusy,
     prepareModelCancelling: asrOverlay?.prepareModelCancelling,
     prepareModelProgress: asrOverlay?.prepareModelProgress,
+    runtimeInstallRunning: asrOverlay?.runtimeInstallRunning,
   });
 }

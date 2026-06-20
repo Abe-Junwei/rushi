@@ -67,6 +67,15 @@ export function buildOnlineSttEnvPresentation(
   const ready =
     configComplete(input) && hasKey && keyMaterialReady && input.connectionVerified;
 
+  if (input.keychainReady === null && !input.hasTypedApiKey && hasKey) {
+    return {
+      tone: "warn",
+      bannerTitle: "在线 STT · 校验密钥",
+      bannerDetail: "正在确认本地密钥…",
+      chipOk: false,
+    };
+  }
+
   if (input.keychainReady === false && !input.hasTypedApiKey && hasKey) {
     return {
       tone: "error",

@@ -5,6 +5,7 @@ import {
   snapshotSelectedModelPrepare,
   type LocalAsrSetupSelectionContext,
 } from "../services/asr/localAsrSetupModelStep";
+import { isAsrSidecarRuntimeWarm } from "../services/asr/localAsrSidecarGuards";
 import { patchStep } from "./asrSetupState";
 
 const HEALTH_POLL_MS = 1000;
@@ -47,7 +48,7 @@ export function useAsrSetupHealthFlow({
   const pollUntilHealth = useCallback(async (): Promise<boolean> => {
     for (let i = 0; i < HEALTH_POLL_MAX; i++) {
       const caps = await fetchHealthSnapshot();
-      if (caps?.funasr_ready) {
+      if (isAsrSidecarRuntimeWarm(caps)) {
         await deps.refreshAsrHealth({ touchUi: false });
         return true;
       }
@@ -55,7 +56,7 @@ export function useAsrSetupHealthFlow({
     }
     await deps.refreshAsrHealth({ touchUi: false });
     const last = await fetchHealthSnapshot();
-    return last?.funasr_ready === true;
+    return isAsrSidecarRuntimeWarm(last);
   }, [deps]);
 
   const acceptForeignPortService = useCallback(async () => {

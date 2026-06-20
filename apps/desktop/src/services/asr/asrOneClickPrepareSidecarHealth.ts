@@ -5,6 +5,7 @@ import {
   sidecarMissingHealthBlockReasonManaged,
 } from "../packagedUserHints";
 import type { AsrSetupReport } from "./asrSetupContract";
+import { isAsrSidecarRuntimeWarm } from "./localAsrSidecarGuards";
 import { fetchAsrHealthCaps } from "./asrHealthSnapshot";
 import * as projectApi from "../../tauri/projectApi";
 import { patchStep } from "../../pages/asrSetupState";
@@ -23,11 +24,16 @@ export async function runAsrOneClickPrepareSidecarHealth(
     setSetupOutcome,
   } = cb;
   const loopCaps = await fetchAsrHealthCaps();
-  const sidecarWarm = loopCaps?.funasr_ready === true;
+  const sidecarWarm = isAsrSidecarRuntimeWarm(loopCaps);
   const needSidecar =
     isDefaultBundledAsrTarget() &&
     !sidecarWarm &&
-    (!report.health.healthReachable || report.portStatus === "free");
+    (report.bundledAvailable
+      ? !report.health.healthReachable ||
+        report.portStatus === "free" ||
+        report.portStatus === "foreign" ||
+        report.sidecarIntegrity === "corrupt"
+      : !report.health.healthReachable || report.portStatus === "free");
 
   if (needSidecar) {
     setSetupSteps((steps) =>
@@ -38,7 +44,6 @@ export async function runAsrOneClickPrepareSidecarHealth(
     );
     await projectApi.retryBundledAsrSidecar();
     await oneClickPrepareSleep(1500);
-    setSetupSteps((steps) => patchStep(steps, "sidecar", { status: "ok", detail: "已请求启动侧车" }));
   } else {
     setSetupSteps((steps) =>
       patchStep(steps, "sidecar", {
@@ -72,8 +77,13 @@ export async function runAsrOneClickPrepareSidecarHealth(
     setSetupOutcome("error");
     return false;
   }
+  if (needSidecar) {
+    setSetupSteps((steps) =>
+      patchStep(steps, "sidecar", { status: "ok", detail: "内置侧车进程已连接" }),
+    );
+  }
   setSetupSteps((steps) =>
-    patchStep(steps, "health", { status: "ok", detail: "FunASR 运行时已就绪" }),
+    patchStep(steps, "health", { status: "ok", detail: "FunASR 运行时已加载（不含模型权重）" }),
   );
   return true;
 }

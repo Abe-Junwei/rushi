@@ -57,7 +57,6 @@ export function LocalAsrSetupWizard({
 
   const wizardBusy = busy || setupBusy || diagnoseBusy || prepareModelBusy;
   const refreshDisabled = setupBusy || diagnoseBusy || !isTauriRuntime();
-  const initialDiagnoseTriggeredRef = useRef(false);
   const lastSetupToastRef = useRef<string | null>(null);
   const diskMeta = buildDiskMetaLine(setupReport);
 
@@ -93,13 +92,6 @@ export function LocalAsrSetupWizard({
     prepareModelCancelling,
     transcribeBlockReason,
   ]);
-
-  useEffect(() => {
-    if (isTauriRuntime() && !initialDiagnoseTriggeredRef.current && !setupReport && !setupBusy && !diagnoseBusy) {
-      initialDiagnoseTriggeredRef.current = true;
-      void refreshSetupDiagnose({ resetSteps: false, touchUi: false });
-    }
-  }, [diagnoseBusy, refreshSetupDiagnose, setupBusy, setupReport]);
 
   return (
     <section className="flex flex-col gap-3">

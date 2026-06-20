@@ -144,5 +144,51 @@ describe("useAsrSetupController one-click prepare", () => {
     expect(result.current.setupMessage).toContain("签名校验失败");
     expect(localRuntimeDownloadSidecar).not.toHaveBeenCalled();
   });
+
+  it("retries bundled sidecar when integrity is corrupt and manifest install is blocked", async () => {
+    asrSetupDiagnose.mockResolvedValue(
+      makeReport({
+        bundledAvailable: true,
+        sidecarIntegrity: "corrupt",
+        portStatus: "rushi_asr",
+        readyForTranscribe: false,
+        blockingIssue: "内置侧车包可能损坏",
+        health: {
+          healthReachable: true,
+          ffmpegOk: true,
+          funasrImportOk: false,
+          funasrReady: false,
+          funasrDefaultModelCached: false,
+          funasrVadModelCached: false,
+          funasrRequiredModelsCached: false,
+          readyForTranscribe: false,
+          transcriptionMode: "funasr",
+        },
+      }),
+    );
+    localRuntimeDiagnose.mockResolvedValue(
+      makeLocalRuntimeDiag({
+        manifestConfigured: true,
+        manifestStatus: "signature_invalid",
+        manifestIssue: "当前 manifest 签名校验失败，已拒绝下载安装。",
+      }),
+    );
+    fetchMock
+      .mockResolvedValueOnce(loopbackHealthResponse(false))
+      .mockResolvedValueOnce(loopbackHealthResponse(false))
+      .mockResolvedValueOnce(loopbackHealthResponse(false))
+      .mockResolvedValue(loopbackHealthResponse(true));
+
+    const prepareDefaultFunasrModel = vi.fn(async () => {});
+    const { result } = renderSetupController({ prepareDefaultFunasrModel });
+
+    await act(async () => {
+      await result.current.runOneClickAsrPrepare();
+    });
+
+    expect(retryBundledAsrSidecar).toHaveBeenCalled();
+    expect(localRuntimeDownloadSidecar).not.toHaveBeenCalled();
+    expect(result.current.setupOutcome).not.toBe("blocked");
+  });
 });
 

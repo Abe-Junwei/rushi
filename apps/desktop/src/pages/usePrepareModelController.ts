@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef, useState } from "react";
+import { flushSync } from "react-dom";
 import { asrBaseUrl } from "../config/env";
 import { loopbackFetch } from "../services/asr/loopbackFetch";
 import { fetchAsrHealthCaps } from "../services/asr/asrHealthSnapshot";
@@ -13,10 +14,46 @@ import {
   type RefreshAsrRuntimeOptions,
 } from "./asrRuntimeRefreshOptions";
 import { computePrepareModelProgress, parsePrepareProgressPercent } from "./prepareModelProgress";
+import { isPrepareModelResumableError } from "./prepareModelResume";
+import {
+  setAsrModelPrepareActive,
+} from "../services/asr/asrPrepareActivityGate";
+
+const PREPARE_STATUS_POLL_MS = 1000;
+const PREPARE_STATUS_TIMEOUT_MS = 30_000;
+const PREPARE_STATUS_TRANSIENT_RETRIES = 5;
+const PREPARE_STATUS_RETRY_DELAY_MS = 2000;
+const PREPARE_STALL_FORCE_RESTART_MS = 120_000;
+
+function sleepMs(ms: number): Promise<void> {
+  return new Promise((resolve) => setTimeout(resolve, ms));
+}
+
+async function loopbackFetchWithRetries(
+  url: string,
+  init: Parameters<typeof loopbackFetch>[1] | undefined,
+  retries: number,
+): Promise<Response> {
+  let lastError: unknown;
+  for (let attempt = 0; attempt < retries; attempt++) {
+    try {
+      return await loopbackFetch(url, init);
+    } catch (error) {
+      lastError = error;
+      if (init?.signal?.aborted) throw error;
+      if (attempt < retries - 1) {
+        await sleepMs(PREPARE_STATUS_RETRY_DELAY_MS);
+      }
+    }
+  }
+  throw lastError;
+}
 
 export type PrepareDefaultModelOptions = {
   /** When true, still call sidecar prepare even if UI shows cached (re-verify / resume). */
   force?: boolean;
+  /** Internal: skip auto-resume after a network-sidecar failure. */
+  skipAutoResume?: boolean;
 };
 
 export interface PrepareModelApi {
@@ -77,6 +114,22 @@ export function usePrepareModelController(
     const urlAsync = `${base}/v1/models/prepare/async`;
     const urlStatus = `${base}/v1/models/prepare-status`;
     const deadlineMs = 900_000;
+
+    // Busy / activity gate 必须前置：从用户点击瞬间起就抑制「已就绪」类文案，
+    // 避免 health 预检窗口内 buildAsrEnvPresentation 仍用旧 caps。
+    // flushSync 确保父组件在 precheck 之前已看到 busy=true。
+    flushSync(() => {
+      setPrepareModelBusy(true);
+      setPrepareModelCancelling(false);
+      prepareCancelRequestedRef.current = false;
+      setPrepareModelFailure(null);
+      prepareStageRef.current = { message: "", startedAt: Date.now() };
+      lastUiProgressRef.current = -1;
+      lastInstallMessageAtRef.current = 0;
+      setProgressIfChanged(0);
+      setAsrModelPrepareActive(true);
+    });
+
     if (!options?.force) {
       const caps = await fetchAsrHealthCaps();
       if (
@@ -88,7 +141,9 @@ export function usePrepareModelController(
         setFunasrInstallMessage(
           `${modelLabel} 与必需辅助模型已准备（或已在缓存中）。无需重复下载。`,
         );
-        await refreshAsrRuntimeInfo();
+        await refreshAsrRuntimeInfo(REFRESH_ASR_RUNTIME_LIGHT_DURING_PREPARE);
+        setAsrModelPrepareActive(false);
+        setPrepareModelBusy(false);
         return;
       }
       setInstallMessageThrottled(
@@ -98,14 +153,6 @@ export function usePrepareModelController(
     } else {
       setFunasrInstallMessage("");
     }
-    setPrepareModelBusy(true);
-    setPrepareModelCancelling(false);
-    prepareCancelRequestedRef.current = false;
-    setPrepareModelFailure(null);
-    prepareStageRef.current = { message: "", startedAt: Date.now() };
-    lastUiProgressRef.current = -1;
-    lastInstallMessageAtRef.current = 0;
-    setProgressIfChanged(0);
     const runT0 = Date.now();
     const deadline = runT0 + deadlineMs;
     const formatWait = () => {
@@ -121,73 +168,106 @@ export function usePrepareModelController(
       const stageElapsed = Date.now() - prepareStageRef.current.startedAt;
       setProgressIfChanged(computePrepareModelProgress(message, stageElapsed));
     };
+    const allowAutoResume = options?.skipAutoResume !== true;
     try {
-      const start = await loopbackFetch(urlAsync, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ model_id: hubModelId }),
-        signal: ac.signal,
-      });
-      const sj = (await start.json().catch(() => ({}))) as Record<string, unknown>;
-      if (!start.ok) {
-        const d = sj.detail;
-        const code =
-          typeof d === "string"
-            ? d
-            : start.status === 507
-              ? "model_prepare_disk_full"
-              : `http_${start.status}`;
-        setPrepareModelFailure(describePrepareModelFailure(code));
-        return;
-      }
-      if (sj.started !== true && sj.reason === "already_running") {
-        setFunasrInstallMessage("已有模型下载任务在进行，正在同步进度…");
-      }
-      while (Date.now() < deadline) {
-        if (ac.signal.aborted) return;
-        const stRes = await loopbackFetch(urlStatus, { signal: ac.signal });
-        const st = (await stRes.json().catch(() => ({}))) as Record<string, unknown>;
-        const phase = typeof st.phase === "string" ? st.phase : "?";
-        const message = typeof st.message === "string" ? st.message : "";
-        if (phase === "running") {
-          if (prepareCancelRequestedRef.current) {
-            setInstallMessageThrottled("正在取消下载，等待侧车结束当前传输…", true);
-          } else {
-            const serverPercent = parsePrepareProgressPercent(st.progress_percent);
-            if (serverPercent != null) {
-              setProgressIfChanged(serverPercent);
-            } else {
-              bumpProgress(message);
-            }
-            const stage =
-              message === "downloading_vad"
-                ? "正在下载必需辅助模型（VAD）…"
-                : message === "downloading_punc"
-                  ? "正在下载标点模型（ct-punc）…"
-                  : `正在下载主模型（${modelLabel}）…`;
-            setInstallMessageThrottled(
-              `${stage} 已等待 ${formatWait()}。请保持应用开启并联网，尽量不要关闭当前窗口。`,
-            );
+      resumeLoop: for (let resumeAttempt = 0; resumeAttempt < 2; resumeAttempt++) {
+        try {
+        const sidecarForce = options?.force === true || resumeAttempt > 0;
+        if (resumeAttempt > 0) {
+          try {
+            await loopbackFetch(`${base}/v1/models/prepare-cancel`, { method: "POST" });
+          } catch {
+            /* ignore */
           }
-        } else if (phase === "idle") {
+          setPrepareModelFailure(null);
+          setFunasrInstallMessage("网络中断，正在从已下载部分续传…");
+          await sleepMs(1500);
+        }
+        let lastProgressBumpAt = Date.now();
+        let lastProgressValue = -1;
+        let retryForResume = false;
+
+        const start = await loopbackFetch(urlAsync, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ model_id: hubModelId, force: sidecarForce }),
+          signal: ac.signal,
+        });
+        const sj = (await start.json().catch(() => ({}))) as Record<string, unknown>;
+        if (!start.ok) {
+          const d = sj.detail;
+          const code =
+            typeof d === "string"
+              ? d
+              : start.status === 507
+                ? "model_prepare_disk_full"
+                : `http_${start.status}`;
+          setPrepareModelFailure(describePrepareModelFailure(code));
+          return;
+        }
+        if (sj.started !== true && sj.reason === "already_running") {
+          setFunasrInstallMessage("已有模型下载任务在进行，正在同步进度…");
+        }
+        if (sj.started !== true && sj.reason === "prepare_stuck") {
+          setPrepareModelFailure({
+            headline: "模型下载未能重启",
+            tips: [
+              "上一段下载仍在侧车中运行。请稍候、点「取消下载」，或重启侧车后再试。",
+              "若进度长时间不动，可取消后重新点「下载当前模型」（支持断点续传）。",
+            ],
+          });
+          return;
+        }
+        while (Date.now() < deadline) {
+          if (ac.signal.aborted) return;
+          const stRes = await loopbackFetchWithRetries(
+            urlStatus,
+            { signal: ac.signal, loopbackTimeoutMs: PREPARE_STATUS_TIMEOUT_MS },
+            PREPARE_STATUS_TRANSIENT_RETRIES,
+          );
+          const st = (await stRes.json().catch(() => ({}))) as Record<string, unknown>;
+          const phase = typeof st.phase === "string" ? st.phase : "?";
+          const message = typeof st.message === "string" ? st.message : "";
+          if (phase === "running") {
+            if (prepareCancelRequestedRef.current) {
+              setInstallMessageThrottled("正在取消下载，等待侧车结束当前传输…", true);
+            } else {
+              const serverPercent = parsePrepareProgressPercent(st.progress_percent);
+              if (serverPercent != null) {
+                setProgressIfChanged(serverPercent);
+                if (serverPercent !== lastProgressValue) {
+                  lastProgressValue = serverPercent;
+                  lastProgressBumpAt = Date.now();
+                }
+              } else {
+                bumpProgress(message);
+                lastProgressBumpAt = Date.now();
+              }
+              const stage =
+                message === "downloading_vad"
+                  ? "正在下载必需辅助模型（VAD）…"
+                  : message === "downloading_punc"
+                    ? "正在下载标点模型（ct-punc）…"
+                    : `正在下载主模型（${modelLabel}）…`;
+              setInstallMessageThrottled(
+                `${stage} 已等待 ${formatWait()}。请保持应用开启并联网，尽量不要关闭当前窗口。`,
+              );
+              if (
+                allowAutoResume &&
+                resumeAttempt === 0 &&
+                Date.now() - lastProgressBumpAt > PREPARE_STALL_FORCE_RESTART_MS
+              ) {
+                retryForResume = true;
+                break;
+              }
+            }
+          } else if (phase === "idle") {
           if (Date.now() - runT0 < 4000) {
             bumpProgress("starting");
             setInstallMessageThrottled("正在启动后台下载任务，请稍候…", true);
           } else {
-            const caps = await fetchAsrHealthCaps();
-            if (
-              caps?.ready_for_transcribe === true &&
-              caps.funasr_model_id === hubModelId &&
-              caps.selected_model_ready !== false
-            ) {
-              setProgressIfChanged(100);
-              setInstallMessageThrottled(
-                `${modelLabel} 与必需辅助模型已在缓存中（侧车未返回下载进度，但 /health 已就绪）。`,
-                true,
-              );
-              await refreshAsrRuntimeInfo();
-              return;
-            }
+            // 不再用 /health.ready_for_transcribe 跳过 prepare：防止旧缓存导致
+            // 「先就绪再下载」错觉，也避免与 prepare 线程的 idle→running 竞态。
             setInstallMessageThrottled(
               "模型准备状态仍为 idle：请重新检测 ASR 服务，或回到「一键准备本机 ASR」后再试。",
               true,
@@ -217,7 +297,7 @@ export function usePrepareModelController(
             );
           }
           setFunasrInstallMessage(lines.filter(Boolean).join("\n"));
-          await refreshAsrRuntimeInfo();
+          await refreshAsrRuntimeInfo(REFRESH_ASR_RUNTIME_LIGHT_DURING_PREPARE);
           return;
         }
         if (phase === "cancelled") {
@@ -228,17 +308,21 @@ export function usePrepareModelController(
             "已停止后台模型下载。未完成部分可在联网后重新点「下载当前模型」（支持断点续传）。",
           );
           toast.info("已取消模型下载。可稍后重新点「下载当前模型」续传。");
-          await refreshAsrRuntimeInfo();
+          await refreshAsrRuntimeInfo(REFRESH_ASR_RUNTIME_LIGHT_DURING_PREPARE);
           return;
         }
         if (phase === "error") {
-          setFunasrInstallMessage("");
           const code = typeof st.error_code === "string" ? st.error_code : "unknown";
+          if (allowAutoResume && resumeAttempt === 0 && isPrepareModelResumableError(code)) {
+            retryForResume = true;
+            break;
+          }
+          setFunasrInstallMessage("");
           setPrepareModelFailure(describePrepareModelFailure(code));
           return;
         }
         await new Promise<void>((r, rej) => {
-          const t = setTimeout(r, 1000);
+          const t = setTimeout(r, PREPARE_STATUS_POLL_MS);
           ac.signal.addEventListener(
             "abort",
             () => {
@@ -248,25 +332,42 @@ export function usePrepareModelController(
             { once: true },
           );
         });
-      }
-      setFunasrInstallMessage("");
-      setPrepareModelFailure(describePrepareModelFailure("client_timeout"));
-    } catch (e) {
-      if (e instanceof DOMException && e.name === "AbortError") {
-        if (prepareCancelRequestedRef.current) {
-          setFunasrInstallMessage("已取消等待模型下载。");
-          toast.info("已取消模型下载。");
         }
+        if (retryForResume && allowAutoResume && resumeAttempt === 0) {
+          continue resumeLoop;
+        }
+        setFunasrInstallMessage("");
+        setPrepareModelFailure(describePrepareModelFailure("client_timeout"));
         return;
+        } catch (e) {
+          if (e instanceof DOMException && e.name === "AbortError") {
+            if (prepareCancelRequestedRef.current) {
+              setFunasrInstallMessage("已取消等待模型下载。");
+              toast.info("已取消模型下载。");
+            }
+            return;
+          }
+          if (allowAutoResume && resumeAttempt === 0) {
+            try {
+              await loopbackFetch(`${base}/v1/models/prepare-cancel`, { method: "POST" });
+            } catch {
+              /* ignore */
+            }
+            setPrepareModelFailure(null);
+            setFunasrInstallMessage("连接侧车失败，正在从已下载部分续传…");
+            await sleepMs(1500);
+            continue resumeLoop;
+          }
+          setFunasrInstallMessage("");
+          setPrepareModelFailure(describePrepareModelFailure("fetch_failed"));
+          return;
+        }
       }
-      setFunasrInstallMessage("");
-      setPrepareModelFailure(describePrepareModelFailure("fetch_failed"));
     } finally {
+      setAsrModelPrepareActive(false);
       setPrepareModelBusy(false);
       setPrepareModelCancelling(false);
       prepareCancelRequestedRef.current = false;
-      setPrepareModelProgress(0);
-      lastUiProgressRef.current = -1;
       await refreshAsrRuntimeInfo(REFRESH_ASR_RUNTIME_LIGHT_DURING_PREPARE);
     }
   }, [getSelectedHubModelId, refreshAsrRuntimeInfo, setInstallMessageThrottled, setProgressIfChanged]);

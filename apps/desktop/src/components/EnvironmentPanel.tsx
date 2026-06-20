@@ -104,6 +104,7 @@ export function EnvironmentPanel({
   });
 
   const bumpSttRuntimeRevision = useCallback(() => {
+    setSettingsEpoch((n) => n + 1);
     onSttOnlineRuntimeChanged?.();
   }, [onSttOnlineRuntimeChanged]);
 

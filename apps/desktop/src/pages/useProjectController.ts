@@ -17,6 +17,7 @@ import {
   isTranscribeBusyReason,
   stabilizeAsrPresentationDuringTranscribe,
 } from "../services/asr/asrPresentationTranscribeGuard";
+import { runtimeInstallBusyPresentation } from "../services/asr/asrEnvStatus";
 
 export type { AsrHealthState, BusyReason };
 export type ProjectControllerApi = ReturnType<typeof useProjectController>;
@@ -25,6 +26,7 @@ export function useProjectController() {
   const {
     asr,
     asrSetup,
+    runtimeInstallRunning,
     refreshAsrHealth,
     refreshAsrModelCacheInfo,
     localTranscribePreflight,
@@ -38,7 +40,9 @@ export function useProjectController() {
   const lastStableAsrPresentationRef = useRef<AsrEnvPresentation | null>(null);
   const transcribeActive = lifecycle.busy && isTranscribeBusyReason(lifecycle.busyReason);
   const asrPresentation = useMemo(() => {
-    const base = asr.asrPresentation;
+    const base = runtimeInstallRunning
+      ? runtimeInstallBusyPresentation(asr.asrPresentation)
+      : asr.asrPresentation;
     if (base.chipOk) {
       lastStableAsrPresentationRef.current = base;
     }
@@ -47,7 +51,7 @@ export function useProjectController() {
       lastStableAsrPresentationRef.current,
       transcribeActive,
     );
-  }, [asr.asrPresentation, transcribeActive]);
+  }, [asr.asrPresentation, runtimeInstallRunning, transcribeActive]);
 
   useEnvironmentCapabilitySync({
     projectId: lifecycle.current?.id,
@@ -73,11 +77,15 @@ export function useProjectController() {
       prepareModelBusy: asr.prepareModelBusy,
       prepareModelCancelling: asr.prepareModelCancelling,
       prepareModelProgress: asr.prepareModelProgress,
+      runtimeInstallRunning,
     }),
     deferRefreshWhileTranscribing: () =>
       (lifecycle.busy && isTranscribeBusyReason(lifecycle.busyReason)) ||
       asr.prepareModelBusy ||
-      asr.prepareModelCancelling,
+      asr.prepareModelCancelling ||
+      runtimeInstallRunning ||
+      asrSetup.setupBusy ||
+      asrSetup.diagnoseBusy,
   });
 
   return {

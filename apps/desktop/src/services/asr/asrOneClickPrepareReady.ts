@@ -3,6 +3,7 @@ import type { AsrSetupReport } from "./asrSetupContract";
 import type { LocalAsrSetupSelectionContext } from "./localAsrSetupModelStep";
 import { snapshotSelectedModelPrepare, syncBundledSidecarToPreferredHub } from "./localAsrSetupModelStep";
 import { patchStep } from "../../pages/asrSetupState";
+import { REFRESH_ASR_RUNTIME_LIGHT_DURING_PREPARE } from "../../pages/asrRuntimeRefreshOptions";
 import type {
   AsrOneClickPrepareDeps,
   AsrOneClickPrepareUi,
@@ -31,11 +32,11 @@ export async function finishOneClickIfAlreadyReady(
   setSetupSteps((prevSteps) => {
     let next = patchStep(prevSteps, "sidecar", {
       status: "skipped",
-      detail: report.bundledAvailable ? "侧车已在运行" : "当前 ASR 服务已就绪",
+      detail: report.bundledAvailable ? "侧车进程已连接" : "当前 ASR 服务已连接",
     });
     next = patchStep(next, "health", {
       status: "ok",
-      detail: "FunASR 运行时已就绪",
+      detail: "FunASR 运行时已加载（不含模型权重）",
     });
     next = patchStep(next, "model", {
       status: "skipped",
@@ -45,7 +46,7 @@ export async function finishOneClickIfAlreadyReady(
   });
   setSetupMessage("本机 ASR 已就绪，无需重复准备；可直接开始转写。");
   setSetupOutcome("ready");
-  await deps.refreshAsrRuntimeInfo();
+  await deps.refreshAsrRuntimeInfo(REFRESH_ASR_RUNTIME_LIGHT_DURING_PREPARE);
   return true;
 }
 

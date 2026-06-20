@@ -1,4 +1,5 @@
 import { initialSetupSteps, patchStep } from "../../pages/asrSetupState";
+import { REFRESH_ASR_RUNTIME_LIGHT_DURING_PREPARE } from "../../pages/asrRuntimeRefreshOptions";
 import { runAsrOneClickPrepareDiagnose } from "./asrOneClickPrepareDiagnose";
 import { runAsrOneClickPrepareModelFlow } from "./asrOneClickPrepareModelFlow";
 import { runAsrOneClickPrepareSidecarHealth } from "./asrOneClickPrepareSidecarHealth";
@@ -32,6 +33,6 @@ export async function runAsrOneClickPrepareFlow(
     setSetupMessage(`一键准备失败：${msg}`);
     setSetupOutcome("error");
   } finally {
-    await deps.refreshAsrRuntimeInfo();
+    await deps.refreshAsrRuntimeInfo(REFRESH_ASR_RUNTIME_LIGHT_DURING_PREPARE);
   }
 }

@@ -19,6 +19,13 @@ export type LocalAsrSetupSelectionContext = {
   sidecarAsyncTranscribeCapable?: boolean;
 };
 
+/** Sidecar FunASR runtime loaded (/health funasr_ready). Not full transcribe-ready. */
+export function isAsrSidecarRuntimeWarm(
+  caps: AsrHealthCapabilities | null | undefined,
+): boolean {
+  return caps?.funasr_ready === true;
+}
+
 /** Loopback + UI selection aligned transcribe-ready (same rule as EnvLocalAsrPanel). */
 export function isLoopbackTranscribeReadyForSelection(
   caps: AsrHealthCapabilities | null | undefined,

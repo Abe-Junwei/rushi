@@ -30,4 +30,19 @@ describe("refreshLocalAsrDiagnostics", () => {
 
     expect(refreshSetupDiagnose).toHaveBeenCalledWith({ resetSteps: false, touchUi: true });
   });
+
+  it("skips model cache scan and setup diagnose when requested", async () => {
+    const refreshAsrHealth = vi.fn(async () => {});
+    const refreshAsrModelCacheInfo = vi.fn(async () => {});
+    const refreshSetupDiagnose = vi.fn(() => Promise.resolve(null));
+
+    await refreshLocalAsrDiagnostics(
+      { refreshAsrHealth, refreshAsrModelCacheInfo, refreshSetupDiagnose },
+      { skipModelCacheScan: true, skipSetupDiagnose: true },
+    );
+
+    expect(refreshAsrHealth).toHaveBeenCalledTimes(1);
+    expect(refreshAsrModelCacheInfo).not.toHaveBeenCalled();
+    expect(refreshSetupDiagnose).not.toHaveBeenCalled();
+  });
 });

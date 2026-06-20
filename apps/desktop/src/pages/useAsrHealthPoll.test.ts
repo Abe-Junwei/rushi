@@ -62,6 +62,14 @@ describe("shouldSkipAsrHealthDowngrade", () => {
     expect(shouldSkipAsrHealthDowngrade(true, { health: "error" }, lastGood)).toBe(false);
     expect(shouldSkipAsrHealthDowngrade(false, { health: "ok" }, lastGood)).toBe(false);
   });
+
+  it("preserves snapshot during model download even on foreground poll", () => {
+    expect(
+      shouldSkipAsrHealthDowngrade(true, { health: "error" }, lastGood, {
+        preserveDuringModelPrepare: true,
+      }),
+    ).toBe(true);
+  });
 });
 
 describe("useAsrHealthPoll", () => {

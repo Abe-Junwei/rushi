@@ -1,3 +1,4 @@
+import type { RefreshAsrRuntimeOptions } from "./asrRuntimeRefreshOptions";
 import type { AsrHealthRefreshOptions } from "./useAsrHealthPoll";
 import { getLastAsrHealthRefreshResult } from "./useAsrHealthPoll";
 
@@ -9,23 +10,25 @@ export async function refreshLocalAsrDiagnostics(
     refreshSetupDiagnose?: (options?: {
       resetSteps?: boolean;
       touchUi?: boolean;
+      skipLocalRuntimeDiagnose?: boolean;
     }) => Promise<unknown>;
   },
-  options?: {
+  options?: RefreshAsrRuntimeOptions & {
     touchUi?: boolean;
     setupDiagnose?: {
       resetSteps?: boolean;
       touchUi?: boolean;
+      skipLocalRuntimeDiagnose?: boolean;
     };
   },
 ): Promise<void> {
   await input.refreshAsrHealth({
     touchUi: options?.touchUi ?? false,
   });
-  if (input.refreshAsrModelCacheInfo) {
+  if (!options?.skipModelCacheScan && input.refreshAsrModelCacheInfo) {
     await input.refreshAsrModelCacheInfo();
   }
-  if (input.refreshSetupDiagnose) {
+  if (!options?.skipSetupDiagnose && input.refreshSetupDiagnose) {
     await input.refreshSetupDiagnose({
       resetSteps: false,
       touchUi: false,

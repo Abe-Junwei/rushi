@@ -6,6 +6,7 @@ import {
   syncBundledSidecarToPreferredHub,
 } from "./localAsrSetupModelStep";
 import { patchStep } from "../../pages/asrSetupState";
+import { REFRESH_ASR_RUNTIME_LIGHT_DURING_PREPARE } from "../../pages/asrRuntimeRefreshOptions";
 import { oneClickPrepareSleep } from "./asrOneClickPrepareReady";
 import type {
   AsrOneClickPrepareCallbacks,
@@ -75,7 +76,7 @@ export async function runAsrOneClickPrepareModelFlow(
       setSetupOutcome(applied.needsManualSidecarRestart ? "blocked" : "error");
       return false;
     }
-    await deps.refreshAsrRuntimeInfo();
+    await deps.refreshAsrRuntimeInfo(REFRESH_ASR_RUNTIME_LIGHT_DURING_PREPARE);
     modelSnap = await snapshotSelectedModelPrepare(selection);
     if (!modelSnap.sidecarMatchesSelection) {
       setSetupSteps((steps) =>
@@ -93,15 +94,15 @@ export async function runAsrOneClickPrepareModelFlow(
       setSetupOutcome("blocked");
       return false;
     }
-    setSetupSteps((steps) =>
-      patchStep(steps, "model", {
-        status: "ok",
-        detail: `侧车已加载 ${modelSnap.modelLabel}`,
-      }),
-    );
+    // 不提前把 model 步标为 ok：D4（权重齐备）才是 model 步的终态。
+    // 保持当前 running/skipped，交给后续 cache-ready / download 分支处理。
   }
 
-  const latest = await refreshSetupDiagnose({ resetSteps: false, touchUi: false });
+  const latest = await refreshSetupDiagnose({
+    resetSteps: false,
+    touchUi: false,
+    skipLocalRuntimeDiagnose: true,
+  });
   if (modelSnap.ready) {
     setSetupSteps((steps) =>
       patchStep(steps, "model", {
@@ -121,8 +122,12 @@ export async function runAsrOneClickPrepareModelFlow(
       patchStep(steps, "model", { status: "running", detail: `正在下载 ${modelSnap.modelLabel}…` }),
     );
     await deps.prepareDefaultFunasrModel();
-    await deps.refreshAsrRuntimeInfo();
-    await refreshSetupDiagnose({ resetSteps: false, touchUi: false });
+    await deps.refreshAsrRuntimeInfo(REFRESH_ASR_RUNTIME_LIGHT_DURING_PREPARE);
+    await refreshSetupDiagnose({
+      resetSteps: false,
+      touchUi: false,
+      skipLocalRuntimeDiagnose: true,
+    });
     const afterSnap = await snapshotSelectedModelPrepare(selection);
     if (afterSnap.ready && afterSnap.sidecarMatchesSelection) {
       setSetupSteps((steps) =>
@@ -141,10 +146,7 @@ export async function runAsrOneClickPrepareModelFlow(
     }
   }
 
-  setSetupSteps((steps) => patchStep(steps, "done", { status: "ok", detail: "本机 ASR 已可用于转写" }));
-
   const finalSnap = await snapshotSelectedModelPrepare(selection);
-  await refreshSetupDiagnose({ resetSteps: false, touchUi: false });
   if (!finalSnap.ready || !finalSnap.sidecarMatchesSelection) {
     setSetupSteps((steps) =>
       patchStep(steps, "model", { status: "error", detail: "模型尚未完全就绪" }),
@@ -154,8 +156,14 @@ export async function runAsrOneClickPrepareModelFlow(
     return false;
   }
 
+  setSetupSteps((steps) => patchStep(steps, "done", { status: "ok", detail: "本机 ASR 已可用于转写" }));
   setSetupMessage("一键准备完成，可直接开始转写。");
   setSetupOutcome("ready");
-  await deps.refreshAsrRuntimeInfo();
+  await refreshSetupDiagnose({
+    resetSteps: false,
+    touchUi: false,
+    skipLocalRuntimeDiagnose: true,
+  });
+  await deps.refreshAsrRuntimeInfo(REFRESH_ASR_RUNTIME_LIGHT_DURING_PREPARE);
   return true;
 }

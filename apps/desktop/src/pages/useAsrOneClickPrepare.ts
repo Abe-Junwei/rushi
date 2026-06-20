@@ -1,4 +1,4 @@
-import { useCallback, type Dispatch, type SetStateAction } from "react";
+import { useCallback, useRef, type Dispatch, type SetStateAction } from "react";
 import type { AsrSetupOutcome, AsrSetupStep } from "../services/asr/asrSetupContract";
 import { runAsrOneClickPrepareFlow, type AsrOneClickPrepareDeps } from "../services/asr/asrOneClickPrepareFlow";
 import type { LocalRuntimeDiagnose } from "../services/localRuntime/localRuntimeContract";
@@ -34,13 +34,17 @@ export function useAsrOneClickPrepare(args: {
     setSetupOutcome,
   } = args;
 
+  const inflightRef = useRef(false);
+
   const runOneClickAsrPrepare = useCallback(async () => {
     if (!tauriRuntime) {
       setSetupMessage("一键准备需要在 Tauri 桌面壳中运行。");
       setSetupOutcome("error");
       return;
     }
+    if (inflightRef.current) return;
 
+    inflightRef.current = true;
     setSetupBusy(true);
     setPortConflictAcknowledged(false);
     setSetupOutcome("running");
@@ -56,6 +60,7 @@ export function useAsrOneClickPrepare(args: {
         setSetupOutcome,
       });
     } finally {
+      inflightRef.current = false;
       setSetupBusy(false);
     }
   }, [

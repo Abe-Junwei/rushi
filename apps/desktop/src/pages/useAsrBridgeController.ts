@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState, type MutableRefObject } from "react";
 import { isDefaultBundledAsrTarget, isTauriRuntime } from "../config/env";
 import type { AsrHealthCapabilities, AsrModelCacheInfo, WaveformPeaksCacheInfo } from "../tauri/projectApi";
 import * as p1 from "../tauri/projectApi";
@@ -14,6 +14,7 @@ import {
   type AsrHealthState,
 } from "./useAsrHealthPoll";
 import { useAsrModelCacheController } from "./useAsrModelCacheController";
+import { refreshLocalAsrDiagnostics } from "./refreshLocalAsrDiagnostics";
 import type { RefreshAsrRuntimeOptions } from "./asrRuntimeRefreshOptions";
 
 export type { RefreshAsrRuntimeOptions } from "./asrRuntimeRefreshOptions";
@@ -37,6 +38,7 @@ export interface AsrBridgeApi {
   prepareModelProgress: number;
   prepareModelFailure: PrepareModelApi["prepareModelFailure"];
   refreshAsrHealth: (options?: AsrHealthRefreshOptions) => Promise<void>;
+  refreshAsrRuntimeInfo: (options?: RefreshAsrRuntimeOptions) => Promise<void>;
   refreshAsrModelCacheInfo: () => Promise<void>;
   clearAsrModelCache: () => Promise<void>;
   clearOrphanWaveformPeaksCache: () => Promise<void>;
@@ -52,11 +54,17 @@ export interface AsrBridgeApi {
 }
 
 type AsrBridgeOptions = {
-  refreshEnvironmentDiagnostics?: (options?: RefreshAsrRuntimeOptions) => Promise<void>;
+  refreshSetupDiagnoseRef?: MutableRefObject<
+    ((options?: {
+      resetSteps?: boolean;
+      touchUi?: boolean;
+      skipLocalRuntimeDiagnose?: boolean;
+    }) => Promise<unknown>) | null
+  >;
 };
 
 export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi {
-  const refreshEnvironmentDiagnostics = options?.refreshEnvironmentDiagnostics;
+  const refreshSetupDiagnoseRef = options?.refreshSetupDiagnoseRef;
   const tauriRuntime = isTauriRuntime();
   const [sttOnlineBridgeEpoch, setSttOnlineBridgeEpoch] = useState(0);
   const [sttRuntimeRevision, setSttRuntimeRevision] = useState(0);
@@ -89,14 +97,22 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
 
   /* eslint-disable react-hooks/exhaustive-deps -- cacheCtrl is a stable hook-returned controller; only its method identity matters */
   const refreshAsrRuntimeInfo = useCallback(async (runtimeOptions?: RefreshAsrRuntimeOptions) => {
-    await refreshAsrHealth({ touchUi: false });
-    if (!runtimeOptions?.skipModelCacheScan) {
-      await cacheCtrl.refreshAsrModelCacheInfo();
-    }
-    if (!runtimeOptions?.skipSetupDiagnose) {
-      await refreshEnvironmentDiagnostics?.(runtimeOptions);
-    }
-  }, [cacheCtrl.refreshAsrModelCacheInfo, refreshAsrHealth, refreshEnvironmentDiagnostics]);
+    await refreshLocalAsrDiagnostics(
+      {
+        refreshAsrHealth,
+        refreshAsrModelCacheInfo: cacheCtrl.refreshAsrModelCacheInfo,
+        refreshSetupDiagnose: refreshSetupDiagnoseRef?.current
+          ? async (setupOptions) => {
+              const refreshSetup = refreshSetupDiagnoseRef.current;
+              if (refreshSetup) {
+                await refreshSetup(setupOptions);
+              }
+            }
+          : undefined,
+      },
+      runtimeOptions,
+    );
+  }, [cacheCtrl.refreshAsrModelCacheInfo, refreshAsrHealth, refreshSetupDiagnoseRef]);
   /* eslint-enable react-hooks/exhaustive-deps */
   refreshAsrRuntimeInfoRef.current = refreshAsrRuntimeInfo;
 
@@ -226,6 +242,7 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
     prepareModelProgress: modelCtrl.prepareModelProgress,
     prepareModelFailure: modelCtrl.prepareModelFailure,
     refreshAsrHealth,
+    refreshAsrRuntimeInfo,
     refreshAsrModelCacheInfo: cacheCtrl.refreshAsrModelCacheInfo,
     clearAsrModelCache: cacheCtrl.clearAsrModelCache,
     clearOrphanWaveformPeaksCache: cacheCtrl.clearOrphanWaveformPeaksCache,

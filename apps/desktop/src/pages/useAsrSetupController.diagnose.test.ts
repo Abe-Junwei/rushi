@@ -100,5 +100,54 @@ describe("useAsrSetupController diagnose", () => {
     expect(refreshAsrHealth).toHaveBeenCalled();
     expect(result.current.setupMessage).toContain("FunASR 运行时尚未就绪");
   });
+
+  it("coalesces parallel refreshSetupDiagnose into one Tauri call", async () => {
+    asrSetupDiagnose.mockImplementation(
+      () =>
+        new Promise((resolve) => {
+          setTimeout(
+            () =>
+              resolve(
+                makeReport({
+                  readyForTranscribe: true,
+                  health: {
+                    healthReachable: true,
+                    ffmpegOk: true,
+                    funasrImportOk: true,
+                    funasrReady: true,
+                    funasrDefaultModelCached: true,
+                    funasrVadModelCached: true,
+                    funasrRequiredModelsCached: true,
+                    readyForTranscribe: true,
+                    transcriptionMode: "funasr",
+                  },
+                }),
+              ),
+            30,
+          );
+        }),
+    );
+
+    const { result } = renderHook(() =>
+      useAsrSetupController({
+        refreshAsrHealth: vi.fn(async () => {}),
+        refreshAsrRuntimeInfo: vi.fn(async () => {}),
+        prepareDefaultFunasrModel: vi.fn(async () => {}),
+        getSetupSelection: () => ({
+          selectedHubModelId: "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
+          catalogStatus: null,
+        }),
+      }),
+    );
+
+    await act(async () => {
+      await Promise.all([
+        result.current.refreshSetupDiagnose({ resetSteps: false, touchUi: false }),
+        result.current.refreshSetupDiagnose({ resetSteps: false, touchUi: false }),
+      ]);
+    });
+
+    expect(asrSetupDiagnose).toHaveBeenCalledTimes(1);
+  });
 });
 

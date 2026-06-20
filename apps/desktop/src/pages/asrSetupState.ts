@@ -18,7 +18,17 @@ export function initialSetupSteps(): AsrSetupStep[] {
   return ASR_SETUP_INITIAL_STEPS.map((step) => ({ ...step }));
 }
 
-export function stepsFromReport(report: AsrSetupReport): AsrSetupStep[] {
+const FUNASR_RUNTIME_LOADED_DETAIL = "FunASR 运行时已加载（不含模型权重）";
+
+export type StepsFromReportOptions = {
+  prepareModelBusy?: boolean;
+  prepareModelProgress?: number;
+};
+
+export function stepsFromReport(
+  report: AsrSetupReport,
+  options?: StepsFromReportOptions,
+): AsrSetupStep[] {
   let steps = initialSetupSteps();
   steps = patchStep(steps, "diagnose", {
     status: "ok",
@@ -28,14 +38,15 @@ export function stepsFromReport(report: AsrSetupReport): AsrSetupStep[] {
   if (report.sidecarIntegrity === "corrupt") {
     steps = patchStep(steps, "sidecar", { status: "error", detail: "内置侧车包损坏" });
   } else if (report.portStatus === "foreign") {
+    const recoverable = report.blockingIssue == null;
     steps = patchStep(steps, "sidecar", {
-      status: "error",
-      detail: report.portDetail ?? "8741 端口冲突",
+      status: recoverable ? "pending" : "error",
+      detail: report.portDetail ?? (recoverable ? "待启动或端口占用" : "8741 端口冲突"),
     });
   } else if (report.health.healthReachable) {
     steps = patchStep(steps, "sidecar", {
       status: "skipped",
-      detail: report.bundledAvailable ? "侧车已就绪" : "服务已就绪",
+      detail: report.bundledAvailable ? "侧车进程已连接" : "ASR 服务已连接",
     });
   } else if (report.bundledAvailable) {
     steps = patchStep(steps, "sidecar", { status: "pending", detail: "待启动" });
@@ -46,13 +57,24 @@ export function stepsFromReport(report: AsrSetupReport): AsrSetupStep[] {
   if (report.health.healthReachable) {
     steps = patchStep(steps, "health", {
       status: report.health.funasrReady ? "ok" : "error",
-      detail: report.health.funasrReady ? "FunASR 就绪" : "FunASR 未就绪",
+      detail: report.health.funasrReady ? FUNASR_RUNTIME_LOADED_DETAIL : "FunASR 未就绪",
     });
   } else {
     steps = patchStep(steps, "health", { status: "pending", detail: "待检测" });
   }
 
-  if (report.health.funasrRequiredModelsCached) {
+  const prepareBusy = options?.prepareModelBusy === true;
+  const prepareProgress = options?.prepareModelProgress ?? 0;
+
+  if (prepareBusy) {
+    steps = patchStep(steps, "model", {
+      status: "running",
+      detail:
+        prepareProgress > 0
+          ? `正在下载模型（${prepareProgress}%）`
+          : "正在下载模型",
+    });
+  } else if (report.health.funasrRequiredModelsCached) {
     steps = patchStep(steps, "model", {
       status: "ok",
       detail: "模型已就绪",
@@ -73,7 +95,7 @@ export function stepsFromReport(report: AsrSetupReport): AsrSetupStep[] {
     });
   }
 
-  if (report.readyForTranscribe) {
+  if (report.readyForTranscribe && !prepareBusy) {
     steps = patchStep(steps, "done", { status: "ok", detail: "可开始转写" });
   }
   return steps;

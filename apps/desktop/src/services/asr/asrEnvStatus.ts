@@ -74,6 +74,7 @@ export type BuildAsrEnvPresentationInput = {
   prepareModelBusy?: boolean;
   prepareModelCancelling?: boolean;
   prepareModelProgress?: number;
+  runtimeInstallRunning?: boolean;
 };
 
 function bannerDetailFor(input: {
@@ -140,6 +141,20 @@ function applyPrepareModelOverlay(
   presentation: AsrEnvPresentation,
   input: BuildAsrEnvPresentationInput,
 ): AsrEnvPresentation {
+  if (input.runtimeInstallRunning) {
+    return {
+      ...presentation,
+      transcribeReady: false,
+      tone: "warn",
+      chipLabel: "ASR 未就绪",
+      chipOk: false,
+      bannerTitle: "本机 ASR · 正在安装运行时",
+      bannerDetail: "正在下载或安装本机 ASR 运行时组件，完成后方可转写。请保持应用开启并联网。",
+      statusRows: mapPrepareModelBusyRows(presentation.statusRows),
+      blockReason: "本机 ASR 运行时安装中，暂不可转写。",
+    };
+  }
+
   if (input.prepareModelCancelling) {
     return {
       ...presentation,
@@ -170,6 +185,23 @@ function applyPrepareModelOverlay(
         : "正在下载转写模型，完成后方可转写。请保持应用开启并联网。",
     statusRows: mapPrepareModelBusyRows(presentation.statusRows),
     blockReason: "所选模型正在下载，完成后方可转写。",
+  };
+}
+
+/** Overlay when LRC manifest install is in flight (D7). */
+export function runtimeInstallBusyPresentation(
+  presentation: AsrEnvPresentation,
+): AsrEnvPresentation {
+  return {
+    ...presentation,
+    transcribeReady: false,
+    tone: "warn",
+    chipLabel: "ASR 未就绪",
+    chipOk: false,
+    bannerTitle: "本机 ASR · 正在安装运行时",
+    bannerDetail: "正在下载或安装本机 ASR 运行时组件，完成后方可转写。请保持应用开启并联网。",
+    statusRows: mapPrepareModelBusyRows(presentation.statusRows),
+    blockReason: "本机 ASR 运行时安装中，暂不可转写。",
   };
 }
 

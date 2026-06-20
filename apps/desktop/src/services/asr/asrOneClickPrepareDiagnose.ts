@@ -25,7 +25,11 @@ export async function runAsrOneClickPrepareDiagnose(
     }),
   );
   const selection = deps.getSetupSelection();
-  const firstReport = await refreshSetupDiagnose({ resetSteps: false, touchUi: false });
+  const firstReport = await refreshSetupDiagnose({
+    resetSteps: false,
+    touchUi: false,
+    skipLocalRuntimeDiagnose: true,
+  });
   if (!firstReport) {
     setSetupSteps((steps) => patchStep(steps, "diagnose", { status: "error", detail: "诊断失败" }));
     setSetupOutcome("error");
@@ -41,19 +45,32 @@ export async function runAsrOneClickPrepareDiagnose(
   );
 
   if (report.sidecarIntegrity === "corrupt") {
-    const repaired = await ensureLocalRuntimeInstalled("repair");
-    if (!repaired) return null;
-    const refreshed = await refreshSetupDiagnose({ resetSteps: false, touchUi: false });
-    if (!refreshed) {
-      setSetupMessage("修复侧车后刷新诊断失败，请重试。");
-      setSetupOutcome("error");
-      return null;
+    if (report.bundledAvailable) {
+      setSetupSteps((steps) =>
+        patchStep(steps, "diagnose", {
+          status: "ok",
+          detail: "将尝试重启内置侧车（不依赖应用数据 manifest）",
+        }),
+      );
+    } else {
+      const repaired = await ensureLocalRuntimeInstalled("repair");
+      if (!repaired) return null;
+      const refreshed = await refreshSetupDiagnose({ resetSteps: false, touchUi: false });
+      if (!refreshed) {
+        setSetupMessage("修复侧车后刷新诊断失败，请重试。");
+        setSetupOutcome("error");
+        return null;
+      }
+      report = refreshed;
     }
-    report = refreshed;
   }
   if (report.portStatus === "foreign") {
-    applyPortForeignBlocked(ui, report);
-    return null;
+    if (report.health.healthReachable) {
+      report = { ...report, portStatus: "rushi_asr" };
+    } else if (report.blockingIssue) {
+      applyPortForeignBlocked(ui, report);
+      return null;
+    }
   }
   if (await finishOneClickIfAlreadyReady(deps, ui, report, selection)) {
     return null;

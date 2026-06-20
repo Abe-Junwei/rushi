@@ -1,4 +1,5 @@
-import { useState } from "react";
+import { useState, type MutableRefObject } from "react";
+import type { RefreshAsrRuntimeOptions } from "./asrRuntimeRefreshOptions";
 import { isTauriRuntime } from "../config/env";
 import type { AsrSetupOutcome, AsrSetupReport, AsrSetupStep } from "../services/asr/asrSetupContract";
 import type { LocalRuntimeDiagnose } from "../services/localRuntime/localRuntimeContract";
@@ -33,9 +34,10 @@ export interface AsrSetupControllerApi {
 
 export function useAsrSetupController(deps: {
   refreshAsrHealth: () => Promise<void>;
-  refreshAsrRuntimeInfo: () => Promise<void>;
+  refreshAsrRuntimeInfo: (options?: RefreshAsrRuntimeOptions) => Promise<void>;
   prepareDefaultFunasrModel: (options?: import("./usePrepareModelController").PrepareDefaultModelOptions) => Promise<void>;
   getSetupSelection: () => import("../services/asr/localAsrSetupModelStep").LocalAsrSetupSelectionContext;
+  prepareOverlayRef?: MutableRefObject<import("./asrSetupState").StepsFromReportOptions | null>;
 }): AsrSetupControllerApi {
   const tauriRuntime = isTauriRuntime();
   const [setupReport, setSetupReport] = useState<AsrSetupReport | null>(null);
@@ -73,6 +75,7 @@ export function useAsrSetupController(deps: {
     setPortConflictAcknowledged,
     setSetupMessage,
     setSetupOutcome,
+    prepareOverlayRef: deps.prepareOverlayRef,
   });
 
   const { pollUntilHealth, acceptForeignPortService } = useAsrSetupHealthFlow({
