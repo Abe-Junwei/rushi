@@ -10,7 +10,7 @@
 
 本仓库为 **如是我闻** 产品方向的 **独立代码仓**（本地中文转写、校对、导出等，以 Jieyu 内执行计划为范围真源）。
 
-版权：见根目录 [`LICENSE`](./LICENSE)（Copyright (c) **沂南灵创技术服务中心**，商业许可 · 保留一切权利）。
+版权：见根目录 [`LICENSE`](./LICENSE)（Copyright (c) **沂南灵创技术服务中心**，专有软件许可 · 商业软件 · 保留一切权利）。
 
 ## 目录（骨架）
 
@@ -136,7 +136,7 @@ Python 单测（与 CI 一致，需本机 **Python 3.11+**，推荐 3.12）：**
 
 ## 仓库内文档
 
-- [`LICENSE`](./LICENSE) — 商业许可（专有；第三方组件许可见随包 notices）。
+- [`LICENSE`](./LICENSE) — 专有软件许可（商业软件）；第三方组件许可见随包 notices。
 - [`AGENTS.md`](./AGENTS.md) — 代理与人的工作契约骨架（链向 Jieyu 对齐策略与 `copilot-instructions.md`）。
 - [`CONTRIBUTING.md`](./CONTRIBUTING.md) — 贡献与拷贝 Jieyu 代码时的许可注意。
 - [`docs/adr/`](./docs/adr/) — ADR（如 [`0001`](./docs/adr/0001-independent-repo-default-sqlite-python-asr.md) 独立仓 / SQLite / Python ASR）。
