@@ -11,6 +11,7 @@ interface AsrSetupHealthSnapshot {
   funasrVadModelCached: boolean;
   funasrRequiredModelsCached: boolean;
   readyForTranscribe: boolean;
+  selectedModelReady: boolean;
   transcriptionMode: string;
 }
 

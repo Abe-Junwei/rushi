@@ -1,6 +1,6 @@
 //! R3h-I4 ASR-WARM: keepalive via persistent child, model warmup, idle recycle.
 
-use std::sync::atomic::{AtomicU32, AtomicU64, Ordering};
+use std::sync::atomic::{AtomicBool, AtomicU32, AtomicU64, Ordering};
 use std::time::Duration;
 
 use tauri::AppHandle;
@@ -12,6 +12,7 @@ use super::{app_manages_bundled_sidecar, stop_bundled};
 
 static GLOBAL_ACTIVITY_MS: AtomicU64 = AtomicU64::new(0);
 static TRANSCRIBE_IN_FLIGHT: AtomicU32 = AtomicU32::new(0);
+static WARMUP_IN_FLIGHT: AtomicBool = AtomicBool::new(false);
 
 const WARMUP_URL: &str = "http://127.0.0.1:8741/v1/models/warmup";
 const DEFAULT_WATCHDOG_SEC: u64 = 30;
@@ -37,6 +38,18 @@ pub fn dec_transcribe_in_flight() {
 
 pub fn transcribe_in_flight() -> bool {
     TRANSCRIBE_IN_FLIGHT.load(Ordering::Relaxed) > 0
+}
+
+pub fn warmup_in_flight() -> bool {
+    WARMUP_IN_FLIGHT.load(Ordering::Relaxed)
+}
+
+struct WarmupInFlightGuard;
+
+impl Drop for WarmupInFlightGuard {
+    fn drop(&mut self) {
+        WARMUP_IN_FLIGHT.store(false, Ordering::Relaxed);
+    }
 }
 
 fn activity_ms(handle: &AppHandle) -> u64 {
@@ -95,6 +108,15 @@ fn run_warmup_once(handle: &AppHandle) {
     if snap.warmup_completed {
         return;
     }
+    if super::probe::loopback_models_cached_not_memory_ready() {
+        super::bundled::launch::append_sidecar_log_line(
+            handle,
+            "INFO asr_warmup_deferred_until_transcribe",
+        );
+        return;
+    }
+    WARMUP_IN_FLIGHT.store(true, Ordering::Relaxed);
+    let _warmup_guard = WarmupInFlightGuard;
     match post_model_warmup_sync() {
         Ok(()) => {
             super::bundled::launch::append_sidecar_log_line(handle, "INFO asr_warmup_ok");
@@ -192,5 +214,10 @@ mod tests {
         assert!(transcribe_in_flight());
         dec_transcribe_in_flight();
         assert!(!transcribe_in_flight());
+    }
+
+    #[test]
+    fn warmup_in_flight_starts_false() {
+        assert!(!warmup_in_flight());
     }
 }

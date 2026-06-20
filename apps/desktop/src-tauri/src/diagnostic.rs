@@ -108,7 +108,10 @@ pub fn write_diagnostic_bundle_to_path(
         .and_then(|st| st.0.lock().ok().map(|g| g.clone()))
         .unwrap_or_else(crate::asr_sidecar::supervisor::SupervisorSnapshot::new_session);
     let mut supervisor_for_export = supervisor.clone();
-    crate::asr_sidecar::supervisor::enrich_supervisor_artifact_jobs(&mut supervisor_for_export, app);
+    crate::asr_sidecar::supervisor::enrich_supervisor_artifact_jobs(
+        &mut supervisor_for_export,
+        app,
+    );
     let prepare_status_json = crate::asr_sidecar::fetch_loopback_prepare_status_json();
     let asr_setup_note = format!(
         "hub_model_pref: {}\nruntime_session_id: {}\nsupervisor_phase: {:?}\nlaunch_generation: {}\nwarmup_completed: {}\nprepare_phase: {}\nprepare_job_id: {}\nlrc_install_phase: {}\nbundled_launch_attempted: {}\nbundled_launch_success: {}\nbundled_launch_detail: {}\nasr_port_status: {:?}\nasr_port_detail: {}\n",

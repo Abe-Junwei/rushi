@@ -21,6 +21,7 @@ export type AsrCatalogPresentation = {
   catalogView: LocalAsrCatalogStatusItem[];
   selectedPrepare: ReturnType<typeof selectedModelPrepareState>;
   modelsCached: boolean;
+  modelsReady: boolean;
   progress: number;
   progressLabel: string;
   progressTone: "success" | "muted";
@@ -46,6 +47,13 @@ export function buildAsrCatalogPresentation(
   const prepareModelCancelling = input.prepareModelCancelling ?? false;
   const prepareModelProgress = input.prepareModelProgress ?? 0;
   const modelsCached = selectedPrepare.cached;
+  const modelsReady =
+    selectedPrepare.readyForTranscribe && selectedPrepare.sidecarMatchesSelection;
+  const partialCache =
+    !modelsCached &&
+    selectedPrepare.sidecarMatchesSelection &&
+    (input.asrCaps?.funasr_active_model_cached === true ||
+      input.asrCaps?.funasr_default_model_cached === true);
   const selectedLabel =
     catalogEntryForHub(input.selectedHubModelId)?.label ?? input.selectedHubModelId;
 
@@ -63,23 +71,28 @@ export function buildAsrCatalogPresentation(
     ? prepareJob.progress
     : modelsCached
       ? 100
-      : 0;
+      : prepareModelProgress > 0
+        ? prepareModelProgress
+        : 0;
 
   const progressLabel = prepareJob
     ? prepareJob.progressLabel
     : modelsCached
       ? "已缓存 · 100%"
-      : selectedPrepare.cached
-        ? "主模型已缓存 · 辅助模型待补齐"
-        : "未下载";
+      : prepareModelProgress > 0
+        ? `已暂停 · ${prepareModelProgress}%（可续传）`
+        : partialCache
+          ? "主模型已缓存 · 辅助模型待补齐"
+          : "未下载";
 
   const progressTone: AsrCatalogPresentation["progressTone"] =
-    modelsCached && !prepareModelBusy && !prepareModelCancelling ? "success" : "muted";
+    modelsReady && !prepareModelBusy && !prepareModelCancelling ? "success" : "muted";
 
   return {
     catalogView,
     selectedPrepare,
     modelsCached,
+    modelsReady,
     progress,
     progressLabel,
     progressTone,

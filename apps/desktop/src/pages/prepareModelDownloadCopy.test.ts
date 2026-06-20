@@ -39,4 +39,12 @@ describe("describePrepareModelFailure", () => {
     expect(r.tips.some((t) => t.includes("一键准备"))).toBe(true);
     expect(r.tips.some((t) => t.includes("venv"))).toBe(false);
   });
+
+  it("maps raw HTTPSConnectionPool errors to network guidance", () => {
+    const r = describePrepareModelFailure(
+      "HTTPSConnectionPool(host='www.modelscope.cn', port=443): Max retries exceeded",
+    );
+    expect(r.headline).toContain("网络中断");
+    expect(r.headline).not.toContain("HTTPSConnectionPool");
+  });
 });

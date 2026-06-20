@@ -88,6 +88,25 @@ describe("buildAsrCatalogPresentation", () => {
     expect(presentation.progressTone).toBe("success");
   });
 
+  it("does not show 100% when only active_model is cached without required models", () => {
+    const selected = DEFAULT_LOCAL_ASR_HUB_MODEL_ID;
+    const presentation = buildAsrCatalogPresentation({
+      asrCaps: caps({
+        funasr_model_id: selected,
+        funasr_active_model_cached: true,
+        funasr_required_models_cached: false,
+      }),
+      catalogStatus: null,
+      selectedHubModelId: selected,
+    });
+
+    expect(presentation.modelsCached).toBe(false);
+    expect(presentation.modelsReady).toBe(false);
+    expect(presentation.progress).toBe(0);
+    expect(presentation.progressLabel).toBe("主模型已缓存 · 辅助模型待补齐");
+    expect(presentation.progressTone).toBe("muted");
+  });
+
   it("shows cancelling label while prepare cancel is in flight", () => {
     const presentation = buildAsrCatalogPresentation({
       asrCaps: caps({ funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID }),
@@ -98,6 +117,19 @@ describe("buildAsrCatalogPresentation", () => {
       prepareModelProgress: 42,
     });
 
-    expect(presentation.progressLabel).toBe("正在取消下载…");
+    expect(presentation.progress).toBe(42);
+    expect(presentation.progressLabel).toBe("正在取消… 42%");
+  });
+
+  it("shows paused label after partial download was cancelled", () => {
+    const presentation = buildAsrCatalogPresentation({
+      asrCaps: caps({ funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID }),
+      catalogStatus: null,
+      selectedHubModelId: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+      prepareModelProgress: 38,
+    });
+
+    expect(presentation.progress).toBe(38);
+    expect(presentation.progressLabel).toBe("已暂停 · 38%（可续传）");
   });
 });

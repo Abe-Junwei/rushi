@@ -1,8 +1,8 @@
+use crate::asr_sidecar::supervisor::enrich_supervisor_artifact_jobs;
 use crate::asr_sidecar::{
     probe_asr_port_and_health, AsrHealthBody, AsrPortStatus, AsrSupervisorState,
     BundledAsrLaunchReport, BundledAsrLaunchState, SupervisorSnapshot,
 };
-use crate::asr_sidecar::supervisor::enrich_supervisor_artifact_jobs;
 use crate::local_runtime::disk_free_bytes;
 use crate::local_runtime::integrity::{inspect_installed_runtime, InstalledRuntimeStatus};
 use crate::packaged_hints::dev_or_packaged_str;
@@ -25,6 +25,8 @@ pub struct AsrSetupHealthSnapshot {
     pub funasr_vad_model_cached: bool,
     pub funasr_required_models_cached: bool,
     pub ready_for_transcribe: bool,
+    /// R3-STATE: configured SKU loaded + disk deps ready (matches /health selected_model_ready).
+    pub selected_model_ready: bool,
     pub transcription_mode: String,
 }
 
@@ -77,6 +79,8 @@ fn health_snapshot_from_value(v: &Value) -> AsrSetupHealthSnapshot {
         == Some(true);
     let ready_for_transcribe =
         v.get("ready_for_transcribe").and_then(|x| x.as_bool()) == Some(true);
+    let selected_model_ready =
+        v.get("selected_model_ready").and_then(|x| x.as_bool()) == Some(true);
     AsrSetupHealthSnapshot {
         health_reachable: true,
         ffmpeg_ok,
@@ -86,6 +90,7 @@ fn health_snapshot_from_value(v: &Value) -> AsrSetupHealthSnapshot {
         funasr_vad_model_cached,
         funasr_required_models_cached,
         ready_for_transcribe,
+        selected_model_ready,
         transcription_mode: mode.to_string(),
     }
 }
@@ -178,9 +183,7 @@ fn push_artifact_job_summary_lines(
             let job = prepare_job_id
                 .map(|id| format!("，job_id={id}"))
                 .unwrap_or_default();
-            lines.push(format!(
-                "转写模型下载可能已卡住（长时间无进度{job}）。"
-            ));
+            lines.push(format!("转写模型下载可能已卡住（长时间无进度{job}）。"));
         } else {
             lines.push(format!("转写模型准备状态：{phase}。"));
         }
@@ -272,8 +275,8 @@ fn build_summary(summary: SummaryContext<'_>) -> (Vec<String>, Option<String>) {
     }
 
     if summary.health.health_reachable {
-        if summary.health.ready_for_transcribe {
-            lines.push("FunASR 与必需模型均已就绪，可直接转写。".into());
+        if summary.health.selected_model_ready {
+            lines.push("当前配置模型及必需辅助模型已齐备，可转写。".into());
         } else if summary.health.funasr_ready {
             lines.push("FunASR 运行时已加载（不含模型权重）。".into());
             if !summary.health.ffmpeg_ok {
@@ -305,8 +308,8 @@ fn build_summary(summary: SummaryContext<'_>) -> (Vec<String>, Option<String>) {
                 );
             }
         }
-        if summary.health.funasr_required_models_cached {
-            lines.push("默认转写模型及必需辅助模型已缓存。".into());
+        if summary.health.funasr_required_models_cached && !summary.health.selected_model_ready {
+            lines.push("磁盘上有模型缓存，但当前配置模型可能尚未齐备或未加载。".into());
         } else if summary.health.funasr_default_model_cached
             && !summary.health.funasr_vad_model_cached
         {
@@ -395,6 +398,7 @@ pub async fn asr_setup_diagnose(
             funasr_vad_model_cached: false,
             funasr_required_models_cached: false,
             ready_for_transcribe: false,
+            selected_model_ready: false,
             transcription_mode: "stub".into(),
         },
     };
@@ -411,7 +415,7 @@ pub async fn asr_setup_diagnose(
     let disk_free_bytes = disk_free_bytes(&models_root);
     let disk_low = disk_free_bytes.map(|b| b < DISK_LOW_BYTES).unwrap_or(false);
 
-    let ready_for_transcribe = health.health_reachable && health.ready_for_transcribe;
+    let ready_for_transcribe = health.health_reachable && health.selected_model_ready;
 
     let (summary_lines, blocking_issue) = build_summary(SummaryContext {
         port_status: &effective_port,

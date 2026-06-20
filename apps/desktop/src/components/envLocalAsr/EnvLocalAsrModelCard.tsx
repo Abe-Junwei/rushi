@@ -51,6 +51,7 @@ export function EnvLocalAsrModelCard({
     catalogView,
     selectedPrepare,
     modelsCached,
+    modelsReady,
     progress,
     progressLabel,
     progressTone,
@@ -117,7 +118,7 @@ export function EnvLocalAsrModelCard({
             <CspProgressFill
               percent={progress}
               className={
-                modelsCached && !prepareModelBusy
+                modelsReady && !prepareModelBusy
                   ? PANEL_PROGRESS_FILL_SUCCESS_CLASS
                   : PANEL_PROGRESS_FILL_COMPACT_CLASS
               }
@@ -154,7 +155,7 @@ export function EnvLocalAsrModelCard({
         ) : null}
 
         <div className={ENV_PANEL_BUTTON_ROW_CLASS}>
-          {!modelsCached || prepareModelBusy ? (
+          {!modelsReady || prepareModelBusy ? (
             <>
               <button
                 type="button"
@@ -169,6 +170,8 @@ export function EnvLocalAsrModelCard({
                     ? "正在下载…"
                     : modelsCached
                       ? "校验/刷新缓存"
+                      : progressLabel.startsWith("主模型已缓存")
+                      ? "补齐辅助模型"
                       : "下载当前模型"}
               </button>
               {downloadActive ? (
@@ -178,7 +181,7 @@ export function EnvLocalAsrModelCard({
               ) : null}
             </>
           ) : (
-            <span className={`mr-auto ${PANEL_TYPOGRAPHY.meta}`}>当前模型已缓存，可直接转写或切换其他模型。</span>
+            <span className={`mr-auto ${PANEL_TYPOGRAPHY.meta}`}>当前模型已就绪，可直接转写或切换其他模型。</span>
           )}
           <button
             type="button"

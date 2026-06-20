@@ -1,6 +1,6 @@
 import type { AsrSetupOutcome } from "./asrSetupContract";
 
-const TRANSCRIBE_READY_CLAIM = /可直接|已可用于转写|无需重复准备/;
+const TRANSCRIBE_READY_CLAIM = /可直接|已可用于转写|无需重复准备|可以开始转写/;
 
 export function setupWizardToastClaimsTranscribeReady(message: string): boolean {
   return TRANSCRIBE_READY_CLAIM.test(message);

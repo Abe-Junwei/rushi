@@ -101,6 +101,7 @@ export function EnvLocalAsrPanel({
             busy={busy}
             prepareModelBusy={prepareModelBusy}
             prepareModelCancelling={prepareModelCancelling}
+            selectedModelReady={catalogPresentation.modelsReady}
             transcribeBlockReason={asrPresentation.blockReason}
             openAppDataFolder={openAppDataFolder}
             exportDiagnosticBundle={exportDiagnosticBundle}
@@ -157,6 +158,7 @@ export function EnvLocalAsrPanel({
           exportDiagnosticBundle={exportDiagnosticBundle}
           asrSetup={asrSetup}
           hideSetupWizard={showProminentSetup}
+          selectedModelReady={catalogPresentation.modelsReady}
         />
       </section>
     </div>

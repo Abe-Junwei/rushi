@@ -1,13 +1,32 @@
-import { describe, expect, it, vi } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import type { AsrSetupReport } from "./asrSetupContract";
 import { DEFAULT_ASR_SUPERVISOR_SNAPSHOT } from "./asrSetupContract";
 import { runAsrOneClickPrepareDiagnose } from "./asrOneClickPrepareDiagnose";
 
+const fetchAsrHealthCaps = vi.fn<() => Promise<null>>();
+
+vi.mock("./asrHealthSnapshot", () => ({
+  fetchAsrHealthCaps: () => fetchAsrHealthCaps(),
+  pollLoopbackHealthUntil: vi.fn(() => Promise.resolve(null)),
+}));
+
+vi.mock("../../config/env", () => ({
+  isDefaultBundledAsrTarget: () => true,
+}));
+
+vi.mock("../../tauri/projectApi", () => ({
+  getLocalAsrHubModelPref: vi.fn(() => Promise.resolve(null)),
+  setLocalAsrHubModelPref: vi.fn(() => Promise.resolve()),
+  getLocalAsrRecognitionLanguagePref: vi.fn(() => Promise.resolve("zh")),
+  setLocalAsrRecognitionLanguagePref: vi.fn(() => Promise.resolve()),
+  retryBundledAsrSidecar: vi.fn(() => Promise.resolve()),
+}));
+
 function makeDeps() {
   return {
-    refreshAsrHealth: vi.fn(async () => {}),
-    refreshAsrRuntimeInfo: vi.fn(async () => {}),
-    prepareDefaultFunasrModel: vi.fn(async () => {}),
+    refreshAsrHealth: vi.fn(() => Promise.resolve()),
+    refreshAsrRuntimeInfo: vi.fn(() => Promise.resolve()),
+    prepareDefaultFunasrModel: vi.fn(() => Promise.resolve()),
     getSetupSelection: () => ({
       selectedHubModelId: "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
       catalogStatus: null,
@@ -31,6 +50,7 @@ function makeReport(overrides: Partial<AsrSetupReport> = {}): AsrSetupReport {
       funasrVadModelCached: false,
       funasrRequiredModelsCached: false,
       readyForTranscribe: false,
+      selectedModelReady: false,
       transcriptionMode: "funasr",
     },
     modelsRoot: "/tmp/models",
@@ -44,13 +64,20 @@ function makeReport(overrides: Partial<AsrSetupReport> = {}): AsrSetupReport {
 }
 
 describe("runAsrOneClickPrepareDiagnose", () => {
+  beforeEach(() => {
+    fetchAsrHealthCaps.mockReset();
+    fetchAsrHealthCaps.mockResolvedValue(null);
+  });
+
   it("does not block when port probe says foreign but /health is reachable", async () => {
-    const refreshSetupDiagnose = vi.fn(async () =>
+    const refreshSetupDiagnose = vi.fn(() =>
+      Promise.resolve(
       makeReport({
         portStatus: "foreign",
         portDetail: "8741 已有服务监听，但未能按 rushi-asr /health 响应",
         blockingIssue: null,
       }),
+      ),
     );
     const setSetupSteps = vi.fn((updater: unknown) =>
       typeof updater === "function" ? (updater as (steps: unknown[]) => unknown[])([]) : updater,
@@ -60,9 +87,9 @@ describe("runAsrOneClickPrepareDiagnose", () => {
 
     const ctx = await runAsrOneClickPrepareDiagnose(makeDeps(), {
       refreshSetupDiagnose,
-      refreshLocalRuntimeDiagnose: vi.fn(async () => null),
-      pollUntilHealth: vi.fn(async () => true),
-      ensureLocalRuntimeInstalled: vi.fn(async () => true),
+      refreshLocalRuntimeDiagnose: vi.fn(() => Promise.resolve(null)),
+      pollUntilHealth: vi.fn(() => Promise.resolve(true)),
+      ensureLocalRuntimeInstalled: vi.fn(() => Promise.resolve(true)),
       setSetupSteps,
       setSetupMessage,
       setSetupOutcome,
@@ -73,7 +100,8 @@ describe("runAsrOneClickPrepareDiagnose", () => {
   });
 
   it("does not block foreign port while bundled sidecar is available (startup window)", async () => {
-    const refreshSetupDiagnose = vi.fn(async () =>
+    const refreshSetupDiagnose = vi.fn(() =>
+      Promise.resolve(
       makeReport({
         bundledAvailable: true,
         portStatus: "foreign",
@@ -87,9 +115,11 @@ describe("runAsrOneClickPrepareDiagnose", () => {
           funasrVadModelCached: false,
           funasrRequiredModelsCached: false,
           readyForTranscribe: false,
+          selectedModelReady: false,
           transcriptionMode: "stub",
         },
       }),
+      ),
     );
     const setSetupSteps = vi.fn((updater: unknown) =>
       typeof updater === "function" ? (updater as (steps: unknown[]) => unknown[])([]) : updater,
@@ -97,9 +127,9 @@ describe("runAsrOneClickPrepareDiagnose", () => {
 
     const ctx = await runAsrOneClickPrepareDiagnose(makeDeps(), {
       refreshSetupDiagnose,
-      refreshLocalRuntimeDiagnose: vi.fn(async () => null),
-      pollUntilHealth: vi.fn(async () => true),
-      ensureLocalRuntimeInstalled: vi.fn(async () => true),
+      refreshLocalRuntimeDiagnose: vi.fn(() => Promise.resolve(null)),
+      pollUntilHealth: vi.fn(() => Promise.resolve(true)),
+      ensureLocalRuntimeInstalled: vi.fn(() => Promise.resolve(true)),
       setSetupSteps,
       setSetupMessage: vi.fn(),
       setSetupOutcome: vi.fn(),
@@ -109,7 +139,8 @@ describe("runAsrOneClickPrepareDiagnose", () => {
   });
 
   it("continues when foreign port is recoverable via installed app-data runtime", async () => {
-    const refreshSetupDiagnose = vi.fn(async () =>
+    const refreshSetupDiagnose = vi.fn(() =>
+      Promise.resolve(
       makeReport({
         bundledAvailable: false,
         portStatus: "foreign",
@@ -123,17 +154,19 @@ describe("runAsrOneClickPrepareDiagnose", () => {
           funasrVadModelCached: false,
           funasrRequiredModelsCached: false,
           readyForTranscribe: false,
+          selectedModelReady: false,
           transcriptionMode: "stub",
         },
       }),
+      ),
     );
     const setSetupOutcome = vi.fn();
 
     const ctx = await runAsrOneClickPrepareDiagnose(makeDeps(), {
       refreshSetupDiagnose,
-      refreshLocalRuntimeDiagnose: vi.fn(async () => null),
-      pollUntilHealth: vi.fn(async () => true),
-      ensureLocalRuntimeInstalled: vi.fn(async () => true),
+      refreshLocalRuntimeDiagnose: vi.fn(() => Promise.resolve(null)),
+      pollUntilHealth: vi.fn(() => Promise.resolve(true)),
+      ensureLocalRuntimeInstalled: vi.fn(() => Promise.resolve(true)),
       setSetupSteps: vi.fn((updater: unknown) =>
         typeof updater === "function" ? (updater as (steps: unknown[]) => unknown[])([]) : updater,
       ),
@@ -146,8 +179,9 @@ describe("runAsrOneClickPrepareDiagnose", () => {
   });
 
   it("skips manifest repair when bundled sidecar is corrupt", async () => {
-    const ensureLocalRuntimeInstalled = vi.fn(async () => true);
-    const refreshSetupDiagnose = vi.fn(async () =>
+    const ensureLocalRuntimeInstalled = vi.fn(() => Promise.resolve(true));
+    const refreshSetupDiagnose = vi.fn(() =>
+      Promise.resolve(
       makeReport({
         bundledAvailable: true,
         sidecarIntegrity: "corrupt",
@@ -160,15 +194,17 @@ describe("runAsrOneClickPrepareDiagnose", () => {
           funasrVadModelCached: false,
           funasrRequiredModelsCached: false,
           readyForTranscribe: false,
+          selectedModelReady: false,
           transcriptionMode: "stub",
         },
       }),
+      ),
     );
 
     const ctx = await runAsrOneClickPrepareDiagnose(makeDeps(), {
       refreshSetupDiagnose,
-      refreshLocalRuntimeDiagnose: vi.fn(async () => null),
-      pollUntilHealth: vi.fn(async () => true),
+      refreshLocalRuntimeDiagnose: vi.fn(() => Promise.resolve(null)),
+      pollUntilHealth: vi.fn(() => Promise.resolve(true)),
       ensureLocalRuntimeInstalled,
       setSetupSteps: vi.fn((updater: unknown) =>
         typeof updater === "function" ? (updater as (steps: unknown[]) => unknown[])([]) : updater,
@@ -182,7 +218,8 @@ describe("runAsrOneClickPrepareDiagnose", () => {
   });
 
   it("blocks when port is foreign, health unreachable, and diagnose reports blockingIssue", async () => {
-    const refreshSetupDiagnose = vi.fn(async () =>
+    const refreshSetupDiagnose = vi.fn(() =>
+      Promise.resolve(
       makeReport({
         bundledAvailable: false,
         portStatus: "foreign",
@@ -196,9 +233,11 @@ describe("runAsrOneClickPrepareDiagnose", () => {
           funasrVadModelCached: false,
           funasrRequiredModelsCached: false,
           readyForTranscribe: false,
+          selectedModelReady: false,
           transcriptionMode: "stub",
         },
       }),
+      ),
     );
     const setSetupSteps = vi.fn((updater: unknown) =>
       typeof updater === "function" ? (updater as (steps: unknown[]) => unknown[])([]) : updater,
@@ -207,9 +246,9 @@ describe("runAsrOneClickPrepareDiagnose", () => {
 
     const ctx = await runAsrOneClickPrepareDiagnose(makeDeps(), {
       refreshSetupDiagnose,
-      refreshLocalRuntimeDiagnose: vi.fn(async () => null),
-      pollUntilHealth: vi.fn(async () => true),
-      ensureLocalRuntimeInstalled: vi.fn(async () => true),
+      refreshLocalRuntimeDiagnose: vi.fn(() => Promise.resolve(null)),
+      pollUntilHealth: vi.fn(() => Promise.resolve(true)),
+      ensureLocalRuntimeInstalled: vi.fn(() => Promise.resolve(true)),
       setSetupSteps,
       setSetupMessage: vi.fn(),
       setSetupOutcome,

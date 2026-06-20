@@ -77,11 +77,14 @@ export function buildDiskMetaLine(report: AsrSetupReport | null): string | null 
 }
 
 /** bundled / 8741 已有服务已满足转写时，应用内组件区块仅 informational。 */
-export function isExternalSidecarSatisfyingSetup(report: AsrSetupReport | null | undefined): boolean {
+export function isExternalSidecarSatisfyingSetup(
+  report: AsrSetupReport | null | undefined,
+  options?: { selectedModelReady?: boolean },
+): boolean {
   if (!report?.health.healthReachable) return false;
   if (report.portStatus === "rushi_asr") return true;
   if (report.bundledAvailable && report.sidecarIntegrity === "ok") return true;
-  return report.readyForTranscribe;
+  return options?.selectedModelReady === true;
 }
 
 export type RuntimeMaintenanceActions = {

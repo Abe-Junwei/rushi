@@ -3,7 +3,7 @@ import { flushSync } from "react-dom";
 import { asrBaseUrl } from "../config/env";
 import { loopbackFetch } from "../services/asr/loopbackFetch";
 import { fetchAsrHealthCaps } from "../services/asr/asrHealthSnapshot";
-import { catalogEntryForHub, hubModelNeedsPuncPrepare } from "../services/asr/localAsrModelCatalog";
+import { catalogEntryForHub, hubModelNeedsPuncPrepare, computeLocalAsrTranscribeReady } from "../services/asr/localAsrModelCatalog";
 import { toast } from "../services/ui/toast";
 import {
   describePrepareModelFailure,
@@ -13,11 +13,16 @@ import {
   REFRESH_ASR_RUNTIME_LIGHT_DURING_PREPARE,
   type RefreshAsrRuntimeOptions,
 } from "./asrRuntimeRefreshOptions";
-import { computePrepareModelProgress } from "./prepareModelProgress";
-import { isPrepareModelResumableError } from "./prepareModelResume";
+import {
+  clampPrepareProgressPercent,
+  computePrepareModelProgress,
+  monotonicPrepareProgress,
+} from "./prepareModelProgress";
+import { isPrepareModelResumableError, normalizePrepareModelErrorCode } from "./prepareModelResume";
 import {
   buildPrepareJobPresentation,
   parseSidecarPrepareStatus,
+  resolveCancelledPrepareProgress,
 } from "../services/asr/prepareJobPresentation";
 import {
   setAsrModelPrepareActive,
@@ -86,11 +91,23 @@ export function usePrepareModelController(
   const lastUiProgressRef = useRef(-1);
   const lastInstallMessageAtRef = useRef(0);
 
-  const setProgressIfChanged = useCallback((next: number) => {
-    if (next === lastUiProgressRef.current) return;
-    lastUiProgressRef.current = next;
-    setPrepareModelProgress(next);
-  }, []);
+  const setProgressIfChanged = useCallback(
+    (next: number, options?: { allowDecrease?: boolean; monotonic?: boolean }) => {
+      const clamped = clampPrepareProgressPercent(next, "running");
+      let value = clamped;
+      if (
+        options?.monotonic !== false &&
+        !options?.allowDecrease &&
+        lastUiProgressRef.current >= 0
+      ) {
+        value = monotonicPrepareProgress(lastUiProgressRef.current, clamped);
+      }
+      if (value === lastUiProgressRef.current) return;
+      lastUiProgressRef.current = value;
+      setPrepareModelProgress(value);
+    },
+    [],
+  );
 
   const setInstallMessageThrottled = useCallback((message: string, force = false) => {
     const now = Date.now();
@@ -128,17 +145,18 @@ export function usePrepareModelController(
       prepareStageRef.current = { message: "", startedAt: Date.now() };
       lastUiProgressRef.current = -1;
       lastInstallMessageAtRef.current = 0;
-      setProgressIfChanged(0);
+      setProgressIfChanged(0, { allowDecrease: true, monotonic: false });
       setAsrModelPrepareActive(true);
     });
 
     if (!options?.force) {
       const caps = await fetchAsrHealthCaps();
-      if (
-        caps?.ready_for_transcribe === true &&
-        caps.funasr_model_id === hubModelId &&
-        caps.selected_model_ready !== false
-      ) {
+      const { ready: selectedReady, sidecarMatchesSelection } = computeLocalAsrTranscribeReady({
+        asrHealth: caps ? "ok" : "error",
+        asrCaps: caps,
+        selectedHubModelId: hubModelId,
+      });
+      if (selectedReady && sidecarMatchesSelection) {
         setPrepareModelProgress(100);
         setFunasrInstallMessage(
           `${modelLabel} 与必需辅助模型已准备（或已在缓存中）。无需重复下载。`,
@@ -162,7 +180,7 @@ export function usePrepareModelController(
         prepareStageRef.current = { message, startedAt: Date.now() };
       }
       const stageElapsed = Date.now() - prepareStageRef.current.startedAt;
-      setProgressIfChanged(computePrepareModelProgress(message, stageElapsed));
+      setProgressIfChanged(computePrepareModelProgress(message, stageElapsed), { monotonic: true });
     };
     const allowAutoResume = options?.skipAutoResume !== true;
     try {
@@ -170,6 +188,19 @@ export function usePrepareModelController(
         try {
         const sidecarForce = options?.force === true || resumeAttempt > 0;
         if (resumeAttempt > 0) {
+          if (prepareCancelRequestedRef.current) {
+            setProgressIfChanged(
+              resolveCancelledPrepareProgress(
+                undefined,
+                lastUiProgressRef.current >= 0 ? lastUiProgressRef.current : -1,
+              ),
+              { allowDecrease: true, monotonic: false },
+            );
+            setFunasrInstallMessage(
+              "已停止后台模型下载。未完成部分可在联网后重新点「下载当前模型」（支持断点续传）。",
+            );
+            break resumeLoop;
+          }
           try {
             await loopbackFetch(`${base}/v1/models/prepare-cancel`, { method: "POST" });
           } catch {
@@ -192,12 +223,9 @@ export function usePrepareModelController(
         const sj = (await start.json().catch(() => ({}))) as Record<string, unknown>;
         if (!start.ok) {
           const d = sj.detail;
-          const code =
-            typeof d === "string"
-              ? d
-              : start.status === 507
-                ? "model_prepare_disk_full"
-                : `http_${start.status}`;
+          const code = normalizePrepareModelErrorCode(
+            typeof d === "string" ? d : start.status === 507 ? "model_prepare_disk_full" : `http_${start.status}`,
+          );
           setPrepareModelFailure(describePrepareModelFailure(code));
           return;
         }
@@ -226,19 +254,30 @@ export function usePrepareModelController(
           const phase = status.phase;
           const message = status.message;
           if (phase === "running") {
+            if (prepareCancelRequestedRef.current) {
+              const presentation = buildPrepareJobPresentation({
+                status,
+                localBusy: true,
+                cancelling: true,
+                modelLabel,
+                progressOverride: lastProgressValue >= 0 ? lastProgressValue : undefined,
+              });
+              setProgressIfChanged(presentation.progress, { monotonic: false });
+              setInstallMessageThrottled(presentation.installMessage);
+            } else {
             if (message !== prepareStageRef.current.message) {
               prepareStageRef.current = { message, startedAt: Date.now() };
             }
             const presentation = buildPrepareJobPresentation({
               status,
               localBusy: true,
-              cancelling: prepareCancelRequestedRef.current,
+              cancelling: false,
               modelLabel,
               stageStartedAtMs: prepareStageRef.current.startedAt,
               lastLocalProgressAtMs: lastProgressBumpAt,
               waitElapsedMs: Date.now() - runT0,
             });
-            setProgressIfChanged(presentation.progress);
+            setProgressIfChanged(presentation.progress, { monotonic: true });
             if (presentation.progress !== lastProgressValue) {
               lastProgressValue = presentation.progress;
               lastProgressBumpAt = Date.now();
@@ -247,6 +286,7 @@ export function usePrepareModelController(
             if (allowAutoResume && resumeAttempt === 0 && presentation.shouldForceResume) {
               retryForResume = true;
               break;
+            }
             }
           } else if (phase === "idle") {
           if (Date.now() - runT0 < 4000) {
@@ -264,7 +304,7 @@ export function usePrepareModelController(
           setInstallMessageThrottled("无法读取模型准备状态，请确认 rushi-asr 已升级后重试。", true);
         }
         if (phase === "done") {
-          setProgressIfChanged(100);
+          setProgressIfChanged(100, { allowDecrease: true, monotonic: false });
           const result = st.result as Record<string, unknown> | null | undefined;
           const warns = Array.isArray(result?.warnings)
             ? (result?.warnings as string[]).join("；")
@@ -290,7 +330,10 @@ export function usePrepareModelController(
         if (phase === "cancelled") {
           prepareCancelRequestedRef.current = false;
           setPrepareModelCancelling(false);
-          setProgressIfChanged(0);
+          setProgressIfChanged(resolveCancelledPrepareProgress(status, lastProgressValue), {
+            allowDecrease: true,
+            monotonic: false,
+          });
           setFunasrInstallMessage(
             "已停止后台模型下载。未完成部分可在联网后重新点「下载当前模型」（支持断点续传）。",
           );
@@ -299,10 +342,29 @@ export function usePrepareModelController(
           return;
         }
         if (phase === "error") {
-          const code = typeof st.error_code === "string" ? st.error_code : "unknown";
-          if (allowAutoResume && resumeAttempt === 0 && isPrepareModelResumableError(code)) {
+          const code = normalizePrepareModelErrorCode(
+            typeof st.error_code === "string" ? st.error_code : "unknown",
+          );
+          if (
+            allowAutoResume &&
+            resumeAttempt === 0 &&
+            !prepareCancelRequestedRef.current &&
+            isPrepareModelResumableError(code)
+          ) {
             retryForResume = true;
             break;
+          }
+          if (prepareCancelRequestedRef.current) {
+            prepareCancelRequestedRef.current = false;
+            setPrepareModelCancelling(false);
+            setProgressIfChanged(resolveCancelledPrepareProgress(status, lastProgressValue), {
+              allowDecrease: true,
+              monotonic: false,
+            });
+            setFunasrInstallMessage(
+              "已停止后台模型下载。未完成部分可在联网后重新点「下载当前模型」（支持断点续传）。",
+            );
+            return;
           }
           setFunasrInstallMessage("");
           setPrepareModelFailure(describePrepareModelFailure(code));
@@ -320,8 +382,18 @@ export function usePrepareModelController(
           );
         });
         }
-        if (retryForResume && allowAutoResume && resumeAttempt === 0) {
+        if (retryForResume && allowAutoResume && resumeAttempt === 0 && !prepareCancelRequestedRef.current) {
           continue resumeLoop;
+        }
+        if (prepareCancelRequestedRef.current) {
+          setProgressIfChanged(resolveCancelledPrepareProgress(undefined, lastProgressValue), {
+            allowDecrease: true,
+            monotonic: false,
+          });
+          setFunasrInstallMessage(
+            "已停止后台模型下载。未完成部分可在联网后重新点「下载当前模型」（支持断点续传）。",
+          );
+          return;
         }
         setFunasrInstallMessage("");
         setPrepareModelFailure(describePrepareModelFailure("client_timeout"));
@@ -334,7 +406,7 @@ export function usePrepareModelController(
             }
             return;
           }
-          if (allowAutoResume && resumeAttempt === 0) {
+          if (allowAutoResume && resumeAttempt === 0 && !prepareCancelRequestedRef.current) {
             try {
               await loopbackFetch(`${base}/v1/models/prepare-cancel`, { method: "POST" });
             } catch {
@@ -380,7 +452,7 @@ export function usePrepareModelController(
       setPrepareModelBusy(false);
       setPrepareModelCancelling(false);
       prepareCancelRequestedRef.current = false;
-      setProgressIfChanged(0);
+      setProgressIfChanged(0, { allowDecrease: true, monotonic: false });
       await refreshAsrRuntimeInfo(REFRESH_ASR_RUNTIME_LIGHT_DURING_PREPARE);
     } catch {
       setFunasrInstallMessage(
@@ -391,7 +463,7 @@ export function usePrepareModelController(
       setPrepareModelBusy(false);
       setPrepareModelCancelling(false);
       prepareCancelRequestedRef.current = false;
-      setProgressIfChanged(0);
+      setProgressIfChanged(0, { allowDecrease: true, monotonic: false });
       await refreshAsrRuntimeInfo(REFRESH_ASR_RUNTIME_LIGHT_DURING_PREPARE);
     }
   }, [prepareModelBusy, prepareModelCancelling, refreshAsrRuntimeInfo, setProgressIfChanged]);

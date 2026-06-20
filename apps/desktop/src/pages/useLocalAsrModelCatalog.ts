@@ -8,7 +8,7 @@ import {
   writeStoredLocalAsrRecognitionLanguage,
   type LocalAsrRecognitionLanguage,
 } from "../services/asr/localAsrRecognitionLanguage";
-import { applyHubModelToSidecar } from "../services/asr/localAsrSetupModelStep";
+import { applyHubModelToSidecar, type ApplyHubModelResult } from "../services/asr/localAsrSetupModelStep";
 import { toast } from "../services/ui/toast";
 import {
   LOCAL_ASR_HUB_MODEL_STORAGE_KEY,
@@ -193,8 +193,10 @@ export function useLocalAsrModelCatalog(
         ),
       );
       setApplyMessage("");
-      if (result.ok) toast.success(result.message);
-      else toast.error(result.message);
+      if (result.ok) {
+        if (result.transcribeReady) toast.success(result.message);
+        else toast.info(result.message, 6_000);
+      } else toast.error(result.message);
       await refreshAsrRuntimeInfo();
       const root = await probeSidecarRoot();
       if (root) {
@@ -245,15 +247,15 @@ export function useLocalAsrModelCatalog(
 }
 
 async function withApplyTimeout(
-  promise: Promise<{ ok: boolean; message: string; needsManualSidecarRestart?: boolean }>,
+  promise: Promise<ApplyHubModelResult>,
   ms: number,
   timeoutMessage: string,
-): Promise<{ ok: boolean; message: string; needsManualSidecarRestart?: boolean }> {
+): Promise<ApplyHubModelResult> {
   let timer: ReturnType<typeof setTimeout> | undefined;
   try {
     return await Promise.race([
       promise,
-      new Promise<{ ok: false; message: string; needsManualSidecarRestart: true }>((resolve) => {
+      new Promise<Extract<ApplyHubModelResult, { ok: false }>>((resolve) => {
         timer = setTimeout(
           () => resolve({ ok: false, message: timeoutMessage, needsManualSidecarRestart: true }),
           ms,

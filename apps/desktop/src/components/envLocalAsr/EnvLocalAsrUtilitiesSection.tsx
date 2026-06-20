@@ -43,6 +43,7 @@ type Props = {
   asrSetup: AsrSetupControllerApi;
   /** 主路径已展示安装向导时，折叠区不再重复。 */
   hideSetupWizard?: boolean;
+  selectedModelReady?: boolean;
 };
 
 /** 安装向导 / 高级诊断 / 缓存 — 三块独立折叠，默认收起。 */
@@ -68,6 +69,7 @@ export function EnvLocalAsrUtilitiesSection({
   exportDiagnosticBundle,
   asrSetup,
   hideSetupWizard = false,
+  selectedModelReady = false,
 }: Props) {
   const sidecarModelsRoot = asrCaps?.rushi_models_root ?? null;
   const desktopModelsRoot = asrModelCacheInfo?.models_root ?? null;
@@ -81,6 +83,7 @@ export function EnvLocalAsrUtilitiesSection({
             busy={busy}
             prepareModelBusy={prepareModelBusy}
             prepareModelCancelling={prepareModelCancelling}
+            selectedModelReady={selectedModelReady}
             transcribeBlockReason={transcribeBlockReason}
             openAppDataFolder={openAppDataFolder}
             exportDiagnosticBundle={exportDiagnosticBundle}
@@ -101,7 +104,10 @@ export function EnvLocalAsrUtilitiesSection({
           >
             {isDefaultBundledAsrTarget() && bundledAsrDiag?.attempted ? (
               <EnvUtilitiesActionRow>
-                <EnvLocalAsrSmallButton disabled={busy} onClick={() => void retryBundledAsrSidecar()}>
+                <EnvLocalAsrSmallButton
+                  disabled={busy || prepareModelBusy || prepareModelCancelling}
+                  onClick={() => void retryBundledAsrSidecar()}
+                >
                   重试内置侧车
                 </EnvLocalAsrSmallButton>
               </EnvUtilitiesActionRow>
@@ -151,6 +157,7 @@ export function EnvLocalAsrUtilitiesSection({
           asrCacheMessage={asrCacheMessage}
           busy={busy}
           prepareModelBusy={prepareModelBusy}
+          prepareModelCancelling={prepareModelCancelling}
           tauriRuntime={isTauriRuntime()}
           refreshAsrModelCacheInfo={refreshAsrModelCacheInfo}
           clearAsrModelCache={clearAsrModelCache}

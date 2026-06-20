@@ -1,5 +1,15 @@
 import { describe, expect, it } from "vitest";
-import { isPrepareModelResumableError } from "./prepareModelResume";
+import { isPrepareModelResumableError, normalizePrepareModelErrorCode } from "./prepareModelResume";
+
+describe("normalizePrepareModelErrorCode", () => {
+  it("maps HTTPSConnectionPool to model_prepare_network_error", () => {
+    expect(
+      normalizePrepareModelErrorCode(
+        "HTTPSConnectionPool(host='www.modelscope.cn', port=443): Max retries exceeded",
+      ),
+    ).toBe("model_prepare_network_error");
+  });
+});
 
 describe("isPrepareModelResumableError", () => {
   it("accepts known resumable sidecar codes", () => {

@@ -4,6 +4,7 @@ import { resolveSetupWizardToast, setupWizardToastClaimsTranscribeReady } from "
 describe("setupWizardToastPolicy", () => {
   it("detects transcribe-ready claims in setup copy", () => {
     expect(setupWizardToastClaimsTranscribeReady("一键准备完成，可直接开始转写。")).toBe(true);
+    expect(setupWizardToastClaimsTranscribeReady("侧车已切换为 Paraformer，可以开始转写。")).toBe(true);
     expect(setupWizardToastClaimsTranscribeReady("正在下载模型…")).toBe(false);
   });
 

@@ -107,7 +107,7 @@ export function useAsrSetupDiagnose(args: {
           setSetupReport(report);
           if (runOptions.touchUi) {
             setSetupMessage(report.blockingIssue ?? "");
-            setSetupOutcome(outcomeFromReport(report));
+            setSetupOutcome(outcomeFromReport(report, prepareOverlayRef?.current ?? undefined));
           }
           if (runOptions.resetSteps) {
             setSetupSteps(stepsFromReport(report, prepareOverlayRef?.current ?? undefined));

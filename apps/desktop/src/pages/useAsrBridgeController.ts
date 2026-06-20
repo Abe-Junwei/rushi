@@ -8,6 +8,7 @@ import { usePrepareModelController, type PrepareModelApi } from "./usePrepareMod
 import { useLocalAsrModelCatalog, type LocalAsrModelCatalogApi } from "./useLocalAsrModelCatalog";
 import { buildAsrEnvPresentation, type AsrEnvPresentation } from "../services/asr/asrEnvStatus";
 import { funasrManualSetupCommands } from "../services/asr/asrHealthParse";
+import { toast } from "../services/ui/toast";
 import {
   useAsrHealthPoll,
   type AsrHealthRefreshOptions,
@@ -185,6 +186,10 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
   );
 
   const retryBundledAsrSidecar = useCallback(async () => {
+    if (modelCtrl.prepareModelBusy || modelCtrl.prepareModelCancelling) {
+      toast.warning("模型下载进行中，请稍候或先取消下载后再重启侧车。");
+      return;
+    }
     try {
       await p1.retryBundledAsrSidecar();
       await refreshBundledAsrDiag();
@@ -193,7 +198,20 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
     } finally {
       await refreshAsrRuntimeInfo();
     }
-  }, [refreshAsrRuntimeInfo, refreshBundledAsrDiag]);
+  }, [
+    refreshAsrRuntimeInfo,
+    refreshBundledAsrDiag,
+    modelCtrl.prepareModelBusy,
+    modelCtrl.prepareModelCancelling,
+  ]);
+
+  const clearAsrModelCache = useCallback(async () => {
+    if (modelCtrl.prepareModelBusy || modelCtrl.prepareModelCancelling) {
+      toast.warning("模型下载进行中，请先取消下载或等待完成后再清除缓存。");
+      return;
+    }
+    await cacheCtrl.clearAsrModelCache();
+  }, [cacheCtrl.clearAsrModelCache, modelCtrl.prepareModelBusy, modelCtrl.prepareModelCancelling]);
 
   const installFunasrDepsInteractive = useCallback(async () => {
     modelCtrl.setPrepareModelFailure(null);
@@ -244,7 +262,7 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
     refreshAsrHealth,
     refreshAsrRuntimeInfo,
     refreshAsrModelCacheInfo: cacheCtrl.refreshAsrModelCacheInfo,
-    clearAsrModelCache: cacheCtrl.clearAsrModelCache,
+    clearAsrModelCache,
     clearOrphanWaveformPeaksCache: cacheCtrl.clearOrphanWaveformPeaksCache,
     asrCacheMessage: cacheCtrl.asrCacheMessage,
     prepareDefaultFunasrModel: modelCtrl.prepareDefaultFunasrModel,

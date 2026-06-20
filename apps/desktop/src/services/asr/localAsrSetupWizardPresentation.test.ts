@@ -4,6 +4,7 @@ import {
   buildRuntimeInstallPresentation,
   buildRuntimeMaintenanceActions,
   computeRuntimeDownloadProgress,
+  isExternalSidecarSatisfyingSetup,
 } from "./localAsrSetupWizardPresentation";
 import type { LocalRuntimeDiagnose } from "../localRuntime/localRuntimeContract";
 import { DEFAULT_ASR_SUPERVISOR_SNAPSHOT } from "./asrSetupContract";
@@ -59,6 +60,7 @@ describe("localAsrSetupWizardPresentation", () => {
           funasrVadModelCached: true,
           funasrRequiredModelsCached: true,
           readyForTranscribe: true,
+          selectedModelReady: true,
           transcriptionMode: "funasr",
         },
         modelsRoot: "/tmp",
@@ -226,5 +228,35 @@ describe("localAsrSetupWizardPresentation", () => {
     expect(out.needsAttention).toBe(false);
     expect(out.shortStatus).toBe("使用当前侧车");
     expect(out.alertLine).toBeNull();
+  });
+
+  it("isExternalSidecarSatisfyingSetup ignores stale report.readyForTranscribe", () => {
+    const report = {
+      portStatus: "free" as const,
+      bundledAvailable: false,
+      sidecarIntegrity: "ok" as const,
+      bundledLaunch: { attempted: false, success: false },
+      supervisor: { ...DEFAULT_ASR_SUPERVISOR_SNAPSHOT },
+      health: {
+        healthReachable: true,
+        ffmpegOk: true,
+        funasrImportOk: true,
+        funasrReady: true,
+        funasrDefaultModelCached: true,
+        funasrVadModelCached: true,
+        funasrRequiredModelsCached: true,
+        readyForTranscribe: true,
+        selectedModelReady: false,
+        transcriptionMode: "funasr",
+      },
+      modelsRoot: "/tmp",
+      diskFreeBytes: null,
+      diskLow: false,
+      readyForTranscribe: true,
+      summaryLines: [],
+      blockingIssue: null,
+    };
+    expect(isExternalSidecarSatisfyingSetup(report, { selectedModelReady: false })).toBe(false);
+    expect(isExternalSidecarSatisfyingSetup(report, { selectedModelReady: true })).toBe(true);
   });
 });

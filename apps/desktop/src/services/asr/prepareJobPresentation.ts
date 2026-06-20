@@ -1,5 +1,7 @@
 import {
+  clampPrepareProgressPercent,
   computePrepareModelProgress,
+  monotonicPrepareProgress,
   parsePrepareProgressPercent,
 } from "../../pages/prepareModelProgress";
 
@@ -71,13 +73,44 @@ export function formatPrepareWaitElapsed(elapsedMs: number): string {
 
 function resolveProgress(input: PrepareJobPresentationInput): number {
   const status = input.status;
-  if (status?.progressPercent != null) return status.progressPercent;
+  if (input.cancelling) {
+    if (input.progressOverride != null) {
+      return clampPrepareProgressPercent(input.progressOverride, "running");
+    }
+    if (status?.progressPercent != null) {
+      return clampPrepareProgressPercent(status.progressPercent, status.phase);
+    }
+    return 0;
+  }
+  if (status?.progressPercent != null) {
+    return clampPrepareProgressPercent(status.progressPercent, status.phase);
+  }
   if (status?.phase === "running" && status.message) {
     const now = input.nowMs ?? Date.now();
     const startedAt = input.stageStartedAtMs ?? now;
-    return computePrepareModelProgress(status.message, now - startedAt);
+    const fallback = computePrepareModelProgress(status.message, now - startedAt);
+    if (input.progressOverride != null) {
+      return monotonicPrepareProgress(input.progressOverride, fallback);
+    }
+    return fallback;
   }
-  if (input.progressOverride != null) return input.progressOverride;
+  if (input.progressOverride != null) {
+    return clampPrepareProgressPercent(input.progressOverride);
+  }
+  return 0;
+}
+
+/** Preserve byte progress after cooperative cancel (resume-friendly, Steam/Firefox-style). */
+export function resolveCancelledPrepareProgress(
+  status: SidecarPrepareStatus | undefined,
+  lastLocalProgress: number,
+): number {
+  const fromServer = status?.progressPercent;
+  if (fromServer != null && lastLocalProgress >= 0) {
+    return Math.max(fromServer, lastLocalProgress);
+  }
+  if (fromServer != null) return fromServer;
+  if (lastLocalProgress >= 0) return lastLocalProgress;
   return 0;
 }
 
@@ -114,15 +147,17 @@ export function buildPrepareJobPresentation(
       : "";
 
   if (cancelling) {
+    const cancelLabel =
+      progress > 0 ? `正在取消… ${progress}%` : "正在取消下载…";
     return {
       active: true,
       cancelling: true,
       stalled: false,
       shouldForceResume: false,
       progress,
-      progressLabel: "正在取消下载…",
-      wizardDetail: "正在取消下载…",
-      envBannerDetail: "侧车将在当前文件传完后停止；完成后可重新点「下载当前模型」。",
+      progressLabel: cancelLabel,
+      wizardDetail: cancelLabel,
+      envBannerDetail: "侧车将在当前文件传完后停止；已完成部分保留在磁盘，可重新点「下载当前模型」续传。",
       stageTitle: "正在取消下载",
       installMessage: "正在取消下载，等待侧车结束当前传输…",
     };

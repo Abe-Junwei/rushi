@@ -21,6 +21,7 @@ function makeReport(overrides: Partial<AsrSetupReport> = {}): AsrSetupReport {
       funasrVadModelCached: false,
       funasrRequiredModelsCached: false,
       readyForTranscribe: false,
+      selectedModelReady: false,
       transcriptionMode: "stub",
     },
     modelsRoot: "/tmp/models",
@@ -48,6 +49,7 @@ describe("outcomeFromReport", () => {
             funasrVadModelCached: false,
             funasrRequiredModelsCached: false,
             readyForTranscribe: false,
+            selectedModelReady: false,
             transcriptionMode: "stub",
           },
         }),
@@ -158,6 +160,7 @@ describe("stepsFromReport", () => {
           funasrVadModelCached: false,
           funasrRequiredModelsCached: false,
           readyForTranscribe: false,
+          selectedModelReady: false,
           transcriptionMode: "funasr",
         },
       }),
@@ -179,6 +182,7 @@ describe("stepsFromReport", () => {
           funasrVadModelCached: false,
           funasrRequiredModelsCached: false,
           readyForTranscribe: false,
+          selectedModelReady: false,
           transcriptionMode: "funasr",
         },
       }),
@@ -198,6 +202,7 @@ describe("stepsFromReport", () => {
           funasrVadModelCached: true,
           funasrRequiredModelsCached: true,
           readyForTranscribe: true,
+          selectedModelReady: true,
           transcriptionMode: "funasr",
         },
         readyForTranscribe: true,
@@ -209,5 +214,38 @@ describe("stepsFromReport", () => {
       detail: "正在下载模型（42%）",
     });
     expect(steps.find((step) => step.id === "done")?.status).not.toBe("ok");
+  });
+
+  it("does not mark model/done ok from global D5 when selected SKU is not ready", () => {
+    const steps = stepsFromReport(
+      makeReport({
+        health: {
+          healthReachable: true,
+          ffmpegOk: true,
+          funasrImportOk: true,
+          funasrReady: true,
+          funasrDefaultModelCached: true,
+          funasrVadModelCached: true,
+          funasrRequiredModelsCached: true,
+          readyForTranscribe: true,
+          selectedModelReady: true,
+          transcriptionMode: "funasr",
+        },
+        readyForTranscribe: true,
+      }),
+      { selectedModelReady: false },
+    );
+    expect(steps.find((step) => step.id === "model")?.status).not.toBe("ok");
+    expect(steps.find((step) => step.id === "done")?.status).not.toBe("ok");
+    expect(outcomeFromReport(makeReport({ readyForTranscribe: true }), { selectedModelReady: false })).not.toBe(
+      "ready",
+    );
+  });
+
+  it("marks model and done ok only when selectedModelReady is true", () => {
+    const steps = stepsFromReport(makeReport(), { selectedModelReady: true });
+    expect(steps.find((step) => step.id === "model")).toMatchObject({ status: "ok" });
+    expect(steps.find((step) => step.id === "done")).toMatchObject({ status: "ok" });
+    expect(outcomeFromReport(makeReport(), { selectedModelReady: true })).toBe("ready");
   });
 });

@@ -4,7 +4,7 @@
 //! - Tauri `#[tauri::command]` handlers must **not** call `reqwest::blocking` or functions in this module directly.
 //! - Sidecar loopback reads from commands: prefer `spawn_blocking` + `loopback_get_json` / `loopback_get_text`.
 //! - Long probes (STT/LLM health): use `stt_probe_blocking_client` / `llm_probe_blocking_client` from a blocking task.
-//! - ASR port classify (`asr_sidecar::probe::probe_asr_port`) uses async `reqwest` — keep off the blocking pool.
+//! - ASR port classify (`asr_sidecar::probe::probe_asr_port_and_health`) uses async `reqwest` — keep off the blocking pool.
 //!
 //! Call sites: `stt_online_probe`, installer verify, `asr_sidecar::probe` sync helpers via loopback_* only.
 

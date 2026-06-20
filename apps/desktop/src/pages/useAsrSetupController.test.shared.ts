@@ -85,6 +85,7 @@ export function makeReport(overrides: Partial<AsrSetupReport> = {}): AsrSetupRep
       funasrVadModelCached: true,
       funasrRequiredModelsCached: true,
       readyForTranscribe: true,
+      selectedModelReady: true,
       transcriptionMode: "funasr",
     },
     modelsRoot: "/tmp/models",

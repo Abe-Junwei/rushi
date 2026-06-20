@@ -3,7 +3,7 @@ import { beforeEach, describe, expect, it, vi } from "vitest";
 import { useLocalAsrModelCatalog } from "./useLocalAsrModelCatalog";
 
 const applyHubModelToSidecar = vi.fn<
-  () => Promise<{ ok: boolean; message?: string; needsManualSidecarRestart?: boolean }>
+  () => Promise<{ ok: boolean; message?: string; transcribeReady?: boolean; needsManualSidecarRestart?: boolean }>
 >();
 
 vi.mock("../services/shellCapabilities", () => ({
@@ -47,7 +47,7 @@ vi.mock("../services/ui/toast", () => ({
 describe("useLocalAsrModelCatalog applySelectedModel", () => {
   beforeEach(() => {
     applyHubModelToSidecar.mockReset();
-    applyHubModelToSidecar.mockResolvedValue({ ok: true });
+    applyHubModelToSidecar.mockResolvedValue({ ok: true, transcribeReady: true, message: "ok" });
     toastError.mockReset();
   });
 

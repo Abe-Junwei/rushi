@@ -16,6 +16,7 @@ type Props = {
   prepareModelBusy?: boolean;
   prepareModelCancelling?: boolean;
   transcribeBlockReason?: string | null;
+  selectedModelReady?: boolean;
   openAppDataFolder: () => Promise<void>;
   exportDiagnosticBundle: () => Promise<void>;
   /** 折叠区内：外层已有「安装向导」标题 */
@@ -30,6 +31,7 @@ export function LocalAsrSetupWizard({
   prepareModelBusy = false,
   prepareModelCancelling = false,
   transcribeBlockReason = null,
+  selectedModelReady = false,
   openAppDataFolder,
   exportDiagnosticBundle,
   embedded = false,
@@ -146,7 +148,9 @@ export function LocalAsrSetupWizard({
         <LocalAsrRuntimeInstallPanel
           localRuntimeDiag={localRuntimeDiag}
           wizardBusy={wizardBusy}
-          externalSidecarReady={isExternalSidecarSatisfyingSetup(setupReport)}
+          externalSidecarReady={isExternalSidecarSatisfyingSetup(setupReport, {
+            selectedModelReady,
+          })}
           downloadLocalRuntime={downloadLocalRuntime}
           cancelLocalRuntime={cancelLocalRuntime}
           refreshLocalRuntimeDiagnose={refreshLocalRuntimeDiagnose}

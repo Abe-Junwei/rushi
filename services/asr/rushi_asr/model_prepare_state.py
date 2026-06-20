@@ -45,6 +45,8 @@ def prepare_status_body() -> dict[str, Any]:
             body["stale"] = int(time.time() * 1000) - body["updated_at_ms"] > 120_000
     elif body["phase"] == "done":
         body["progress_percent"] = 100
+    elif body["phase"] == "cancelled":
+        body.update(prepare_progress_snapshot())
     return body
 
 
@@ -100,6 +102,7 @@ def finish_prepare_cancelled(*, run_token: str) -> None:
         if _state.get("run_token") != run_token:
             return
         job_id = _state.get("job_id")
+        progress = prepare_progress_snapshot()
         _state.clear()
         _state.update(
             {
@@ -109,6 +112,7 @@ def finish_prepare_cancelled(*, run_token: str) -> None:
                 "result": None,
                 "job_id": job_id,
                 "run_token": run_token,
+                **progress,
             },
         )
         _touch_updated_at_locked()

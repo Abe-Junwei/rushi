@@ -3,6 +3,7 @@ import { useAsrBridgeController } from "./useAsrBridgeController";
 import { useAsrSetupController } from "./useAsrSetupController";
 import { getEnvironmentCapabilityBlockReason } from "../services/environmentCapabilityCoordinator";
 import { isLocalRuntimeInstallRunning } from "../services/localRuntime/localRuntimeContract";
+import { computeLocalAsrTranscribeReady } from "../services/asr/localAsrModelCatalog";
 import type { StepsFromReportOptions } from "./asrSetupState";
 
 /** ASR bridge + setup + local transcribe preflight (extracted from useProjectController). */
@@ -31,9 +32,18 @@ export function useProjectAsrBridgeStack() {
   });
   refreshSetupDiagnoseRef.current = asrSetup.refreshSetupDiagnose;
 
+  const { ready: selectedModelReady } = computeLocalAsrTranscribeReady({
+    asrHealth: asr.asrHealth,
+    asrCaps: asr.asrCaps,
+    selectedHubModelId: asr.localAsrModelCatalog.selectedHubModelId,
+    catalogStatus: asr.localAsrModelCatalog.catalogStatus,
+  });
+
   prepareOverlayRef.current = {
     prepareModelBusy: asr.prepareModelBusy,
+    prepareModelCancelling: asr.prepareModelCancelling,
     prepareModelProgress: asr.prepareModelProgress,
+    selectedModelReady,
   };
 
   const runtimeInstallRunning = isLocalRuntimeInstallRunning(
@@ -91,6 +101,7 @@ export function projectAsrControllerFields(
     installFunasrDepsInteractive: asr.installFunasrDepsInteractive,
     copyFunasrManualCommands: asr.copyFunasrManualCommands,
     bumpSttOnlineRuntimeChanged: asr.bumpSttOnlineRuntimeChanged,
+    sttOnlineRuntimeEpoch: asr.sttOnlineRuntimeEpoch,
     asrSetup,
   };
 }

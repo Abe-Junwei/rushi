@@ -20,6 +20,7 @@ fn health_snapshot_reads_caps() {
     assert!(h.health_reachable);
     assert!(h.funasr_ready);
     assert!(!h.funasr_default_model_cached);
+    assert!(!h.selected_model_ready);
 }
 
 #[test]
@@ -58,6 +59,7 @@ fn foreign_port_sets_blocking_without_recovery_path() {
         funasr_vad_model_cached: false,
         funasr_required_models_cached: false,
         ready_for_transcribe: false,
+        selected_model_ready: false,
         transcription_mode: "stub".into(),
     };
     let (_lines, block) = build_summary(SummaryContext {
@@ -87,6 +89,7 @@ fn foreign_port_with_bundled_does_not_block() {
         funasr_vad_model_cached: false,
         funasr_required_models_cached: false,
         ready_for_transcribe: false,
+        selected_model_ready: false,
         transcription_mode: "stub".into(),
     };
     let (_lines, block) = build_summary(SummaryContext {
@@ -116,6 +119,7 @@ fn foreign_port_with_installed_runtime_does_not_block() {
         funasr_vad_model_cached: false,
         funasr_required_models_cached: false,
         ready_for_transcribe: false,
+        selected_model_ready: false,
         transcription_mode: "stub".into(),
     };
     let (_lines, block) = build_summary(SummaryContext {
@@ -145,6 +149,7 @@ fn sidecar_integrity_corrupt_on_health_500() {
         funasr_vad_model_cached: false,
         funasr_required_models_cached: false,
         ready_for_transcribe: false,
+        selected_model_ready: false,
         transcription_mode: "stub".into(),
     };
     assert_eq!(
@@ -170,6 +175,7 @@ fn sidecar_integrity_keeps_foreign_http_500_as_unknown() {
         funasr_vad_model_cached: false,
         funasr_required_models_cached: false,
         ready_for_transcribe: false,
+        selected_model_ready: false,
         transcription_mode: "stub".into(),
     };
     assert_eq!(
@@ -195,6 +201,7 @@ fn sidecar_integrity_ok_when_import_ok() {
         funasr_vad_model_cached: false,
         funasr_required_models_cached: false,
         ready_for_transcribe: false,
+        selected_model_ready: false,
         transcription_mode: "funasr".into(),
     };
     let v = json!({ "service": "rushi-asr", "funasr_import_ok": true });
@@ -221,6 +228,7 @@ fn sidecar_integrity_not_installed_without_bundle() {
         funasr_vad_model_cached: false,
         funasr_required_models_cached: false,
         ready_for_transcribe: false,
+        selected_model_ready: false,
         transcription_mode: "stub".into(),
     };
     assert_eq!(
@@ -246,6 +254,7 @@ fn corrupt_bundle_adds_blocking_summary() {
         funasr_vad_model_cached: false,
         funasr_required_models_cached: false,
         ready_for_transcribe: false,
+        selected_model_ready: false,
         transcription_mode: "stub".into(),
     };
     let (lines, block) = build_summary(SummaryContext {
@@ -276,6 +285,7 @@ fn partial_aux_model_blocks_ready_summary() {
         funasr_vad_model_cached: false,
         funasr_required_models_cached: false,
         ready_for_transcribe: false,
+        selected_model_ready: false,
         transcription_mode: "stub".into(),
     };
     let (lines, block) = build_summary(SummaryContext {
@@ -306,6 +316,7 @@ fn installed_local_runtime_changes_missing_bundle_summary() {
         funasr_vad_model_cached: false,
         funasr_required_models_cached: false,
         ready_for_transcribe: false,
+        selected_model_ready: false,
         transcription_mode: "stub".into(),
     };
     let (lines, block) = build_summary(SummaryContext {
@@ -338,6 +349,7 @@ fn sidecar_integrity_corrupt_when_local_runtime_corrupt() {
         funasr_vad_model_cached: false,
         funasr_required_models_cached: false,
         ready_for_transcribe: false,
+        selected_model_ready: false,
         transcription_mode: "stub".into(),
     };
     assert_eq!(
@@ -363,6 +375,7 @@ fn corrupt_local_runtime_adds_blocking_summary() {
         funasr_vad_model_cached: false,
         funasr_required_models_cached: false,
         ready_for_transcribe: false,
+        selected_model_ready: false,
         transcription_mode: "stub".into(),
     };
     let (lines, block) = build_summary(SummaryContext {
@@ -393,6 +406,7 @@ fn ffmpeg_missing_adds_repair_blocking_summary() {
         funasr_vad_model_cached: false,
         funasr_required_models_cached: false,
         ready_for_transcribe: false,
+        selected_model_ready: false,
         transcription_mode: "funasr".into(),
     };
     let (lines, block) = build_summary(SummaryContext {
@@ -428,6 +442,7 @@ fn artifact_job_summary_lines_describe_active_downloads() {
         funasr_vad_model_cached: false,
         funasr_required_models_cached: false,
         ready_for_transcribe: false,
+        selected_model_ready: false,
         transcription_mode: "funasr".into(),
     };
     let (lines, _block) = build_summary(SummaryContext {
@@ -459,6 +474,7 @@ fn artifact_job_summary_lines_describe_stale_prepare() {
         funasr_vad_model_cached: false,
         funasr_required_models_cached: false,
         ready_for_transcribe: false,
+        selected_model_ready: false,
         transcription_mode: "funasr".into(),
     };
     let (lines, _block) = build_summary(SummaryContext {

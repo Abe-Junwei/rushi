@@ -5,6 +5,7 @@ import {
   formatPrepareWaitElapsed,
   mergeArtifactBusyState,
   parseSidecarPrepareStatus,
+  resolveCancelledPrepareProgress,
 } from "./prepareJobPresentation";
 
 describe("parseSidecarPrepareStatus", () => {
@@ -93,9 +94,25 @@ describe("buildPrepareJobPresentation", () => {
       progressOverride: 42,
     });
 
-    expect(presentation.progressLabel).toBe("正在取消下载…");
-    expect(presentation.wizardDetail).toBe("正在取消下载…");
+    expect(presentation.progress).toBe(42);
+    expect(presentation.progressLabel).toBe("正在取消… 42%");
+    expect(presentation.wizardDetail).toBe("正在取消… 42%");
     expect(presentation.shouldForceResume).toBe(false);
+  });
+
+  it("preserves cancelled progress from sidecar and local max", () => {
+    expect(
+      resolveCancelledPrepareProgress(
+        parseSidecarPrepareStatus({ phase: "cancelled", progress_percent: 38 }),
+        42,
+      ),
+    ).toBe(42);
+    expect(
+      resolveCancelledPrepareProgress(
+        parseSidecarPrepareStatus({ phase: "cancelled", progress_percent: 51 }),
+        42,
+      ),
+    ).toBe(51);
   });
 });
 

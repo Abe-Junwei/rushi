@@ -6,6 +6,7 @@ import {
   prepareModelScopeMissingTipsDev,
   prepareModelScopeMissingTipsManaged,
 } from "../services/packagedUserHints";
+import { normalizePrepareModelErrorCode } from "./prepareModelResume";
 
 export type PrepareModelFailureCopy = {
   headline: string;
@@ -24,7 +25,7 @@ function commonRetryTips(): string[] {
  * Maps rushi-asr `error_code` / HTTP `detail` strings to short Chinese guidance.
  */
 export function describePrepareModelFailure(code: string): PrepareModelFailureCopy {
-  const c = code.trim();
+  const c = normalizePrepareModelErrorCode(code);
   if (c === "funasr_not_installed") {
     return {
       headline: "当前 ASR 进程未加载 FunASR（或缺少依赖）。",

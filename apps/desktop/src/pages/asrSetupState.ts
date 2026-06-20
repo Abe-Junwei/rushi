@@ -44,7 +44,10 @@ function diagnoseStepDetail(report: AsrSetupReport): string {
 
 export type StepsFromReportOptions = {
   prepareModelBusy?: boolean;
+  prepareModelCancelling?: boolean;
   prepareModelProgress?: number;
+  /** R3-STATE：当前 UI 所选 SKU 是否可转写（非 /health 全局 T）。 */
+  selectedModelReady?: boolean;
 };
 
 export function stepsFromReport(
@@ -86,7 +89,9 @@ export function stepsFromReport(
   }
 
   const prepareBusy = options?.prepareModelBusy === true;
+  const prepareCancelling = options?.prepareModelCancelling === true;
   const prepareProgress = options?.prepareModelProgress ?? 0;
+  const selectedModelReady = options?.selectedModelReady === true;
 
   if (prepareBusy) {
     steps = patchStep(steps, "model", {
@@ -96,10 +101,15 @@ export function stepsFromReport(
         progressOverride: prepareProgress,
       }).wizardDetail,
     });
-  } else if (report.health.funasrRequiredModelsCached) {
+  } else if (prepareCancelling) {
+    steps = patchStep(steps, "model", {
+      status: "running",
+      detail: "正在取消下载…",
+    });
+  } else if (selectedModelReady) {
     steps = patchStep(steps, "model", {
       status: "ok",
-      detail: "模型已就绪",
+      detail: "当前所选模型已就绪",
     });
   } else if (report.health.funasrDefaultModelCached && !report.health.funasrVadModelCached) {
     steps = patchStep(steps, "model", {
@@ -117,14 +127,23 @@ export function stepsFromReport(
     });
   }
 
-  if (report.readyForTranscribe && !prepareBusy) {
+  if (selectedModelReady && !prepareBusy && !prepareCancelling) {
     steps = patchStep(steps, "done", { status: "ok", detail: "可开始转写" });
   }
   return steps;
 }
 
-export function outcomeFromReport(report: AsrSetupReport): AsrSetupOutcome {
-  if (report.readyForTranscribe) return "ready";
+export function outcomeFromReport(
+  report: AsrSetupReport,
+  options?: Pick<StepsFromReportOptions, "selectedModelReady" | "prepareModelBusy" | "prepareModelCancelling">,
+): AsrSetupOutcome {
+  if (
+    options?.selectedModelReady === true &&
+    options?.prepareModelBusy !== true &&
+    options?.prepareModelCancelling !== true
+  ) {
+    return "ready";
+  }
   if (report.blockingIssue) return "blocked";
   if (report.sidecarIntegrity === "corrupt") return "error";
   if (report.health.healthReachable && !report.health.funasrReady) return "error";

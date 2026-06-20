@@ -12,6 +12,7 @@ use super::bundled::launch::{write_launch_report, BundledAsrLaunchReport};
 use super::probe::{
     bundled_health_looks_like_rushi_asr, bundled_sidecar_is_fresh_build, AsrPortStatus,
 };
+use super::warm;
 use super::ASR_LOOPBACK_PORT;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq, Serialize)]
@@ -350,7 +351,7 @@ pub fn watchdog_tick(handle: &AppHandle) -> bool {
     let snap = snapshot(handle);
     let healthy = bundled_health_looks_like_rushi_asr();
     if snap.phase == SupervisorPhase::Ready && !healthy {
-        if super::probe::loopback_model_prepare_running() {
+        if super::probe::loopback_model_prepare_running() || warm::warmup_in_flight() {
             return true;
         }
         note_degraded(handle, "health_lost");

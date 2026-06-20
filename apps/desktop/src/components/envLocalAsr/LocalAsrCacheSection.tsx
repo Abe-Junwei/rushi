@@ -16,6 +16,7 @@ type Props = {
   asrCacheMessage: string;
   busy: boolean;
   prepareModelBusy?: boolean;
+  prepareModelCancelling?: boolean;
   tauriRuntime: boolean;
   refreshAsrModelCacheInfo: () => Promise<void>;
   clearAsrModelCache: () => Promise<void>;
@@ -31,6 +32,7 @@ export function LocalAsrCacheSection({
   asrCacheMessage,
   busy,
   prepareModelBusy = false,
+  prepareModelCancelling = false,
   tauriRuntime,
   refreshAsrModelCacheInfo,
   clearAsrModelCache,
@@ -48,7 +50,7 @@ export function LocalAsrCacheSection({
           ? "已配置，文件存在"
           : "已配置，但文件不存在"
         : "未配置";
-  const clearDisabled = !tauriRuntime || busy || asrModelCacheBusy || prepareModelBusy;
+  const clearDisabled = !tauriRuntime || busy || asrModelCacheBusy || prepareModelBusy || prepareModelCancelling;
   const clearDisabledReason = !tauriRuntime ? "需在桌面应用中运行（npm run desktop:dev 或安装包）" : null;
 
   const onConfirmClear = () => {
