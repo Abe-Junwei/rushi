@@ -66,6 +66,21 @@ export function mergeTranscribeSegmentsDelta(
   return out;
 }
 
+/** Idempotent merge when sidecar status retains cumulative ``segments_delta``. */
+export function mergeTranscribeStatusSegments(
+  current: readonly SegmentDto[],
+  st: TranscribeStatusPayload,
+  appliedSegmentCount: { current: number },
+): SegmentDto[] {
+  const total = typeof st.segments_total === "number" ? st.segments_total : 0;
+  const delta = st.segments_delta;
+  if (!delta?.length || total <= appliedSegmentCount.current) return [...current];
+  const slice = delta.slice(appliedSegmentCount.current, total);
+  if (slice.length === 0) return [...current];
+  appliedSegmentCount.current += slice.length;
+  return mergeTranscribeSegmentsDelta(current, slice);
+}
+
 export function parseTranscribeProgress(st: TranscribeStatusPayload): TranscribeProgress | null {
   const windowCount = typeof st.window_count === "number" ? st.window_count : 0;
   const windowIndex = typeof st.window_index === "number" ? st.window_index : 0;

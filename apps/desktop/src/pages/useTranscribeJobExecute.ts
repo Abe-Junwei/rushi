@@ -65,6 +65,7 @@ export function useTranscribeJobExecute(args: TranscribeJobExecuteArgs) {
   const userCancelRequestedRef = useRef(false);
   const transcribeStartedAtRef = useRef(0);
   const firstSegmentsLoggedRef = useRef(false);
+  const appliedSegmentCountRef = useRef(0);
   const pollAbortRef = useRef<AbortController | null>(null);
 
   const runRefs = useMemo(
@@ -74,6 +75,7 @@ export function useTranscribeJobExecute(args: TranscribeJobExecuteArgs) {
       transcribeStartedAtMs: transcribeStartedAtRef,
       firstSegmentsLogged: firstSegmentsLoggedRef,
       pollAbort: pollAbortRef,
+      appliedSegmentCount: appliedSegmentCountRef,
     }),
     [],
   );
@@ -164,6 +166,7 @@ export function useTranscribeJobExecute(args: TranscribeJobExecuteArgs) {
     setTranscribeCancelling(false);
     userCancelRequestedRef.current = false;
     firstSegmentsLoggedRef.current = false;
+    appliedSegmentCountRef.current = 0;
     transcribeStartedAtRef.current = Date.now();
     const restoreSnapshot = snapshotSegmentsForRestore(getCurrentSegmentsSnapshot());
     segmentPublish.publishTranscribeClear();

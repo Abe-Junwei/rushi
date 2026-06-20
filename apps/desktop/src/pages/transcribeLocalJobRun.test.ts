@@ -61,6 +61,7 @@ describe("runLocalTranscribeJob", () => {
       transcribeStartedAtMs: { current: Date.now() },
       firstSegmentsLogged: { current: false },
       pollAbort: { current: null as AbortController | null },
+      appliedSegmentCount: { current: 0 },
     };
 
     const out = await runLocalTranscribeJob({
@@ -94,6 +95,7 @@ describe("runLocalTranscribeJob", () => {
       transcribeStartedAtMs: { current: Date.now() },
       firstSegmentsLogged: { current: false },
       pollAbort: { current: null as AbortController | null },
+      appliedSegmentCount: { current: 0 },
     };
 
     const out = await runLocalTranscribeJob({
@@ -120,6 +122,7 @@ describe("runLocalTranscribeJob", () => {
       transcribeStartedAtMs: { current: Date.now() },
       firstSegmentsLogged: { current: false },
       pollAbort: { current: null as AbortController | null },
+      appliedSegmentCount: { current: 0 },
     };
 
     const { segmentPublish } = makeSegmentPublish([]);

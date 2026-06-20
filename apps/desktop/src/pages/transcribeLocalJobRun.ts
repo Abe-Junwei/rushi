@@ -5,7 +5,7 @@ import { logFirstSegmentsVisibleMs, pollTranscribeJob, postTranscribeCancel } fr
 import type { SegmentPublishApi } from "./segmentPublishApi";
 import {
   isTranscribeAsyncUnavailable,
-  mergeTranscribeSegmentsDelta,
+  mergeTranscribeStatusSegments,
   parseTranscribeProgress,
   TRANSCRIBE_PENDING_JOB_ID,
   TranscribeUserCancelledError,
@@ -19,6 +19,7 @@ type LocalTranscribeJobRunRefs = {
   transcribeStartedAtMs: { current: number };
   firstSegmentsLogged: { current: boolean };
   pollAbort: { current: AbortController | null };
+  appliedSegmentCount: { current: number };
 };
 
 type LocalTranscribeJobRunCallbacks = {
@@ -45,8 +46,10 @@ function onTranscribeStatusTick(
   }
   if (st.segments_delta?.length) {
     const base = materializeSegmentTextDrafts(segmentPublish.getCurrentSegmentsSnapshot());
-    const merged = mergeTranscribeSegmentsDelta(base, st.segments_delta);
-    segmentPublish.publishStructure(merged);
+    const merged = mergeTranscribeStatusSegments(base, st, refs.appliedSegmentCount);
+    if (merged.length !== base.length) {
+      segmentPublish.publishStructure(merged);
+    }
   }
   const progress = parseTranscribeProgress(st);
   callbacks.setTranscribeProgress(progress);

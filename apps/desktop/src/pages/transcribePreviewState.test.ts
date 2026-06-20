@@ -3,6 +3,7 @@ import {
   isTranscribeAsyncUnavailable,
   isTranscribeUserCancellation,
   mergeTranscribeSegmentsDelta,
+  mergeTranscribeStatusSegments,
   parseTranscribeProgress,
   resetPreviewUidCounterForTests,
   snapshotSegmentsForRestore,
@@ -46,6 +47,23 @@ describe("transcribePreviewState", () => {
     expect(merged[1].text).toBe("b");
     expect(merged[1].idx).toBe(1);
     expect(merged[2].idx).toBe(2);
+  });
+
+  it("mergeTranscribeStatusSegments is idempotent across repeated polls", () => {
+    const applied = { current: 0 };
+    const st = {
+      phase: "transcribing",
+      segments_total: 2,
+      segments_delta: [
+        { start_sec: 0, end_sec: 1, text: "a", kind: "speech" },
+        { start_sec: 1, end_sec: 2, text: "b", kind: "speech" },
+      ],
+    };
+    const first = mergeTranscribeStatusSegments([], st, applied);
+    expect(first).toHaveLength(2);
+    const second = mergeTranscribeStatusSegments(first, st, applied);
+    expect(second).toHaveLength(2);
+    expect(second.map((s) => s.text)).toEqual(["a", "b"]);
   });
 
   it("parseTranscribeProgress reads window fields", () => {
