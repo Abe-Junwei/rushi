@@ -252,8 +252,12 @@ pub(crate) fn prepare_status_json_is_active_running(v: &serde_json::Value) -> bo
 
 /// True when async model prefetch is in progress (watchdog should not treat slow /health as dead).
 pub fn loopback_model_prepare_running() -> bool {
-    let Some(v) = loopback_get_json(LOOPBACK_PREPARE_STATUS_URL) else {
+    let Some(v) = fetch_loopback_prepare_status_json() else {
         return false;
     };
     prepare_status_json_is_active_running(&v)
+}
+
+pub fn fetch_loopback_prepare_status_json() -> Option<serde_json::Value> {
+    loopback_get_json(LOOPBACK_PREPARE_STATUS_URL)
 }

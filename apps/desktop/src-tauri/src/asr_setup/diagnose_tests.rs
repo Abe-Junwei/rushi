@@ -69,6 +69,9 @@ fn foreign_port_sets_blocking_without_recovery_path() {
         bundled_launch: &BundledAsrLaunchReport::default(),
         health: &health,
         disk_low: false,
+        prepare_phase: None,
+        prepare_job_id: None,
+        lrc_install_phase: None,
     });
     assert!(block.is_some());
 }
@@ -95,6 +98,9 @@ fn foreign_port_with_bundled_does_not_block() {
         bundled_launch: &BundledAsrLaunchReport::default(),
         health: &health,
         disk_low: false,
+        prepare_phase: None,
+        prepare_job_id: None,
+        lrc_install_phase: None,
     });
     assert!(block.is_none());
 }
@@ -121,6 +127,9 @@ fn foreign_port_with_installed_runtime_does_not_block() {
         bundled_launch: &BundledAsrLaunchReport::default(),
         health: &health,
         disk_low: false,
+        prepare_phase: None,
+        prepare_job_id: None,
+        lrc_install_phase: None,
     });
     assert!(block.is_none());
 }
@@ -248,6 +257,9 @@ fn corrupt_bundle_adds_blocking_summary() {
         bundled_launch: &BundledAsrLaunchReport::default(),
         health: &health,
         disk_low: false,
+        prepare_phase: None,
+        prepare_job_id: None,
+        lrc_install_phase: None,
     });
     assert!(lines.iter().any(|l| l.contains("损坏")));
     assert!(block.is_some());
@@ -275,6 +287,9 @@ fn partial_aux_model_blocks_ready_summary() {
         bundled_launch: &BundledAsrLaunchReport::default(),
         health: &health,
         disk_low: false,
+        prepare_phase: None,
+        prepare_job_id: None,
+        lrc_install_phase: None,
     });
     assert!(lines.iter().any(|l| l.contains("VAD")));
     assert!(block.is_some());
@@ -302,6 +317,9 @@ fn installed_local_runtime_changes_missing_bundle_summary() {
         bundled_launch: &BundledAsrLaunchReport::default(),
         health: &health,
         disk_low: false,
+        prepare_phase: None,
+        prepare_job_id: None,
+        lrc_install_phase: None,
     });
     assert!(lines
         .iter()
@@ -356,6 +374,9 @@ fn corrupt_local_runtime_adds_blocking_summary() {
         bundled_launch: &BundledAsrLaunchReport::default(),
         health: &health,
         disk_low: false,
+        prepare_phase: None,
+        prepare_job_id: None,
+        lrc_install_phase: None,
     });
     assert!(lines.iter().any(|l| l.contains("已损坏或不完整")));
     assert!(block.is_some());
@@ -383,6 +404,9 @@ fn ffmpeg_missing_adds_repair_blocking_summary() {
         bundled_launch: &BundledAsrLaunchReport::default(),
         health: &health,
         disk_low: false,
+        prepare_phase: None,
+        prepare_job_id: None,
+        lrc_install_phase: None,
     });
     assert!(lines.iter().any(|l| l.contains("FFmpeg")));
     let block = block.expect("ffmpeg missing should block");
@@ -391,4 +415,65 @@ fn ffmpeg_missing_adds_repair_blocking_summary() {
     assert!(block.contains("PATH"));
     #[cfg(not(debug_assertions))]
     assert!(block.contains("一键准备"));
+}
+
+#[test]
+fn artifact_job_summary_lines_describe_active_downloads() {
+    let health = AsrSetupHealthSnapshot {
+        health_reachable: true,
+        ffmpeg_ok: true,
+        funasr_import_ok: true,
+        funasr_ready: true,
+        funasr_default_model_cached: false,
+        funasr_vad_model_cached: false,
+        funasr_required_models_cached: false,
+        ready_for_transcribe: false,
+        transcription_mode: "funasr".into(),
+    };
+    let (lines, _block) = build_summary(SummaryContext {
+        port_status: &AsrPortStatus::RushiAsr,
+        port_detail: &None,
+        bundled_available: true,
+        local_runtime_status: &InstalledRuntimeStatus::Installed,
+        sidecar_integrity: "ok",
+        bundled_launch: &BundledAsrLaunchReport::default(),
+        health: &health,
+        disk_low: false,
+        prepare_phase: Some("running"),
+        prepare_job_id: Some("job-123"),
+        lrc_install_phase: Some("downloading"),
+    });
+    assert!(lines.iter().any(|l| l.contains("运行时安装进行中")));
+    assert!(lines.iter().any(|l| l.contains("转写模型下载进行中")));
+    assert!(lines.iter().any(|l| l.contains("job-123")));
+}
+
+#[test]
+fn artifact_job_summary_lines_describe_stale_prepare() {
+    let health = AsrSetupHealthSnapshot {
+        health_reachable: true,
+        ffmpeg_ok: true,
+        funasr_import_ok: true,
+        funasr_ready: true,
+        funasr_default_model_cached: false,
+        funasr_vad_model_cached: false,
+        funasr_required_models_cached: false,
+        ready_for_transcribe: false,
+        transcription_mode: "funasr".into(),
+    };
+    let (lines, _block) = build_summary(SummaryContext {
+        port_status: &AsrPortStatus::RushiAsr,
+        port_detail: &None,
+        bundled_available: true,
+        local_runtime_status: &InstalledRuntimeStatus::Installed,
+        sidecar_integrity: "ok",
+        bundled_launch: &BundledAsrLaunchReport::default(),
+        health: &health,
+        disk_low: false,
+        prepare_phase: Some("stale"),
+        prepare_job_id: Some("job-stuck"),
+        lrc_install_phase: None,
+    });
+    assert!(lines.iter().any(|l| l.contains("可能已卡住")));
+    assert!(lines.iter().any(|l| l.contains("job-stuck")));
 }

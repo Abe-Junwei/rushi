@@ -5,6 +5,7 @@ import {
   type AsrSetupStep,
   type AsrSetupStepId,
 } from "../services/asr/asrSetupContract";
+import { buildPrepareJobPresentation } from "../services/asr/prepareJobPresentation";
 
 export function patchStep(
   steps: AsrSetupStep[],
@@ -20,6 +21,27 @@ export function initialSetupSteps(): AsrSetupStep[] {
 
 const FUNASR_RUNTIME_LOADED_DETAIL = "FunASR 运行时已加载（不含模型权重）";
 
+function diagnoseStepDetail(report: AsrSetupReport): string {
+  const sup = report.supervisor;
+  if (sup.lrcInstallPhase) {
+    return `LRC 安装中：${sup.lrcInstallPhase}`;
+  }
+  if (sup.preparePhase === "stale") {
+    return sup.prepareJobId
+      ? `模型下载可能卡住（${sup.prepareJobId}）`
+      : "模型下载可能卡住";
+  }
+  if (sup.preparePhase === "running") {
+    return sup.prepareJobId
+      ? `模型下载中（${sup.prepareJobId}）`
+      : "模型下载中";
+  }
+  if (sup.preparePhase) {
+    return `模型准备：${sup.preparePhase}`;
+  }
+  return report.summaryLines[0] ?? "诊断完成";
+}
+
 export type StepsFromReportOptions = {
   prepareModelBusy?: boolean;
   prepareModelProgress?: number;
@@ -32,7 +54,7 @@ export function stepsFromReport(
   let steps = initialSetupSteps();
   steps = patchStep(steps, "diagnose", {
     status: "ok",
-    detail: report.summaryLines[0] ?? "诊断完成",
+    detail: diagnoseStepDetail(report),
   });
 
   if (report.sidecarIntegrity === "corrupt") {
@@ -69,10 +91,10 @@ export function stepsFromReport(
   if (prepareBusy) {
     steps = patchStep(steps, "model", {
       status: "running",
-      detail:
-        prepareProgress > 0
-          ? `正在下载模型（${prepareProgress}%）`
-          : "正在下载模型",
+      detail: buildPrepareJobPresentation({
+        localBusy: true,
+        progressOverride: prepareProgress,
+      }).wizardDetail,
     });
   } else if (report.health.funasrRequiredModelsCached) {
     steps = patchStep(steps, "model", {

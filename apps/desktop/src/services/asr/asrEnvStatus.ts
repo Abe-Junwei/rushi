@@ -18,6 +18,7 @@ import {
   type LocalAsrCatalogStatusItem,
 } from "./localAsrModelCatalog";
 import { modelsRootMismatch } from "./asrRuntimePathsAlign";
+import { buildPrepareJobPresentation } from "./prepareJobPresentation";
 import {
   bannerTitleFor,
   buildAsrEnvStatusRows,
@@ -171,7 +172,10 @@ function applyPrepareModelOverlay(
 
   if (!input.prepareModelBusy) return presentation;
 
-  const progress = input.prepareModelProgress ?? 0;
+  const job = buildPrepareJobPresentation({
+    localBusy: true,
+    progressOverride: input.prepareModelProgress ?? 0,
+  });
   return {
     ...presentation,
     transcribeReady: false,
@@ -179,10 +183,7 @@ function applyPrepareModelOverlay(
     chipLabel: "ASR 未就绪",
     chipOk: false,
     bannerTitle: "本机 ASR · 正在下载模型",
-    bannerDetail:
-      progress > 0
-        ? `正在下载转写模型（${progress}%），完成后方可转写。请保持应用开启并联网。`
-        : "正在下载转写模型，完成后方可转写。请保持应用开启并联网。",
+    bannerDetail: job.envBannerDetail,
     statusRows: mapPrepareModelBusyRows(presentation.statusRows),
     blockReason: "所选模型正在下载，完成后方可转写。",
   };

@@ -57,6 +57,52 @@ describe("outcomeFromReport", () => {
 });
 
 describe("stepsFromReport", () => {
+  it("uses supervisor artifact fields for diagnose step detail", () => {
+    const steps = stepsFromReport(
+      makeReport({
+        summaryLines: ["8741 端口空闲，可启动内置推理侧车。"],
+        supervisor: {
+          ...DEFAULT_ASR_SUPERVISOR_SNAPSHOT,
+          preparePhase: "running",
+          prepareJobId: "job-abc",
+        },
+      }),
+    );
+    expect(steps.find((step) => step.id === "diagnose")).toMatchObject({
+      detail: "模型下载中（job-abc）",
+    });
+  });
+
+  it("prefers LRC install phase over prepare in diagnose detail", () => {
+    const steps = stepsFromReport(
+      makeReport({
+        supervisor: {
+          ...DEFAULT_ASR_SUPERVISOR_SNAPSHOT,
+          lrcInstallPhase: "downloading",
+          preparePhase: "running",
+        },
+      }),
+    );
+    expect(steps.find((step) => step.id === "diagnose")?.detail).toBe(
+      "LRC 安装中：downloading",
+    );
+  });
+
+  it("shows stale prepare jobs as stuck in diagnose detail", () => {
+    const steps = stepsFromReport(
+      makeReport({
+        supervisor: {
+          ...DEFAULT_ASR_SUPERVISOR_SNAPSHOT,
+          preparePhase: "stale",
+          prepareJobId: "job-stuck",
+        },
+      }),
+    );
+    expect(steps.find((step) => step.id === "diagnose")?.detail).toBe(
+      "模型下载可能卡住（job-stuck）",
+    );
+  });
+
   it("marks recoverable foreign port as pending when bundled sidecar exists", () => {
     const steps = stepsFromReport(
       makeReport({

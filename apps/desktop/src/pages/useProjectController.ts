@@ -18,6 +18,7 @@ import {
   stabilizeAsrPresentationDuringTranscribe,
 } from "../services/asr/asrPresentationTranscribeGuard";
 import { runtimeInstallBusyPresentation } from "../services/asr/asrEnvStatus";
+import { mergeArtifactBusyState } from "../services/asr/prepareJobPresentation";
 
 export type { AsrHealthState, BusyReason };
 export type ProjectControllerApi = ReturnType<typeof useProjectController>;
@@ -80,12 +81,14 @@ export function useProjectController() {
       runtimeInstallRunning,
     }),
     deferRefreshWhileTranscribing: () =>
-      (lifecycle.busy && isTranscribeBusyReason(lifecycle.busyReason)) ||
-      asr.prepareModelBusy ||
-      asr.prepareModelCancelling ||
-      runtimeInstallRunning ||
-      asrSetup.setupBusy ||
-      asrSetup.diagnoseBusy,
+      mergeArtifactBusyState({
+        transcribeBusy: lifecycle.busy && isTranscribeBusyReason(lifecycle.busyReason),
+        prepareModelBusy: asr.prepareModelBusy,
+        prepareModelCancelling: asr.prepareModelCancelling,
+        runtimeInstallRunning,
+        setupBusy: asrSetup.setupBusy,
+        diagnoseBusy: asrSetup.diagnoseBusy,
+      }).deferEnvRefresh,
   });
 
   return {

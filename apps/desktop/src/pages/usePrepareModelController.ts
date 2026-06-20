@@ -13,8 +13,12 @@ import {
   REFRESH_ASR_RUNTIME_LIGHT_DURING_PREPARE,
   type RefreshAsrRuntimeOptions,
 } from "./asrRuntimeRefreshOptions";
-import { computePrepareModelProgress, parsePrepareProgressPercent } from "./prepareModelProgress";
+import { computePrepareModelProgress } from "./prepareModelProgress";
 import { isPrepareModelResumableError } from "./prepareModelResume";
+import {
+  buildPrepareJobPresentation,
+  parseSidecarPrepareStatus,
+} from "../services/asr/prepareJobPresentation";
 import {
   setAsrModelPrepareActive,
 } from "../services/asr/asrPrepareActivityGate";
@@ -23,8 +27,6 @@ const PREPARE_STATUS_POLL_MS = 1000;
 const PREPARE_STATUS_TIMEOUT_MS = 30_000;
 const PREPARE_STATUS_TRANSIENT_RETRIES = 5;
 const PREPARE_STATUS_RETRY_DELAY_MS = 2000;
-const PREPARE_STALL_FORCE_RESTART_MS = 120_000;
-
 function sleepMs(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -155,12 +157,6 @@ export function usePrepareModelController(
     }
     const runT0 = Date.now();
     const deadline = runT0 + deadlineMs;
-    const formatWait = () => {
-      const secs = Math.floor((Date.now() - runT0) / 1000);
-      const mm = Math.floor(secs / 60);
-      const ss = secs % 60;
-      return `${mm}:${ss.toString().padStart(2, "0")}`;
-    };
     const bumpProgress = (message: string) => {
       if (message !== prepareStageRef.current.message) {
         prepareStageRef.current = { message, startedAt: Date.now() };
@@ -226,40 +222,31 @@ export function usePrepareModelController(
             PREPARE_STATUS_TRANSIENT_RETRIES,
           );
           const st = (await stRes.json().catch(() => ({}))) as Record<string, unknown>;
-          const phase = typeof st.phase === "string" ? st.phase : "?";
-          const message = typeof st.message === "string" ? st.message : "";
+          const status = parseSidecarPrepareStatus(st);
+          const phase = status.phase;
+          const message = status.message;
           if (phase === "running") {
-            if (prepareCancelRequestedRef.current) {
-              setInstallMessageThrottled("正在取消下载，等待侧车结束当前传输…", true);
-            } else {
-              const serverPercent = parsePrepareProgressPercent(st.progress_percent);
-              if (serverPercent != null) {
-                setProgressIfChanged(serverPercent);
-                if (serverPercent !== lastProgressValue) {
-                  lastProgressValue = serverPercent;
-                  lastProgressBumpAt = Date.now();
-                }
-              } else {
-                bumpProgress(message);
-                lastProgressBumpAt = Date.now();
-              }
-              const stage =
-                message === "downloading_vad"
-                  ? "正在下载必需辅助模型（VAD）…"
-                  : message === "downloading_punc"
-                    ? "正在下载标点模型（ct-punc）…"
-                    : `正在下载主模型（${modelLabel}）…`;
-              setInstallMessageThrottled(
-                `${stage} 已等待 ${formatWait()}。请保持应用开启并联网，尽量不要关闭当前窗口。`,
-              );
-              if (
-                allowAutoResume &&
-                resumeAttempt === 0 &&
-                Date.now() - lastProgressBumpAt > PREPARE_STALL_FORCE_RESTART_MS
-              ) {
-                retryForResume = true;
-                break;
-              }
+            if (message !== prepareStageRef.current.message) {
+              prepareStageRef.current = { message, startedAt: Date.now() };
+            }
+            const presentation = buildPrepareJobPresentation({
+              status,
+              localBusy: true,
+              cancelling: prepareCancelRequestedRef.current,
+              modelLabel,
+              stageStartedAtMs: prepareStageRef.current.startedAt,
+              lastLocalProgressAtMs: lastProgressBumpAt,
+              waitElapsedMs: Date.now() - runT0,
+            });
+            setProgressIfChanged(presentation.progress);
+            if (presentation.progress !== lastProgressValue) {
+              lastProgressValue = presentation.progress;
+              lastProgressBumpAt = Date.now();
+            }
+            setInstallMessageThrottled(presentation.installMessage);
+            if (allowAutoResume && resumeAttempt === 0 && presentation.shouldForceResume) {
+              retryForResume = true;
+              break;
             }
           } else if (phase === "idle") {
           if (Date.now() - runT0 < 4000) {

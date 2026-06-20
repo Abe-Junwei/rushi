@@ -42,6 +42,9 @@ export interface AsrSupervisorSnapshot {
   activeExecutable?: string | null;
   warmupCompleted: boolean;
   lastActivityMs: number;
+  preparePhase?: string | null;
+  prepareJobId?: string | null;
+  lrcInstallPhase?: string | null;
 }
 
 export const DEFAULT_ASR_SUPERVISOR_SNAPSHOT: AsrSupervisorSnapshot = {

@@ -2,6 +2,7 @@ use crate::asr_sidecar::{
     probe_asr_port_and_health, AsrHealthBody, AsrPortStatus, AsrSupervisorState,
     BundledAsrLaunchReport, BundledAsrLaunchState, SupervisorSnapshot,
 };
+use crate::asr_sidecar::supervisor::enrich_supervisor_artifact_jobs;
 use crate::local_runtime::disk_free_bytes;
 use crate::local_runtime::integrity::{inspect_installed_runtime, InstalledRuntimeStatus};
 use crate::packaged_hints::dev_or_packaged_str;
@@ -153,6 +154,37 @@ struct SummaryContext<'a> {
     bundled_launch: &'a BundledAsrLaunchReport,
     health: &'a AsrSetupHealthSnapshot,
     disk_low: bool,
+    prepare_phase: Option<&'a str>,
+    prepare_job_id: Option<&'a str>,
+    lrc_install_phase: Option<&'a str>,
+}
+
+fn push_artifact_job_summary_lines(
+    lines: &mut Vec<String>,
+    prepare_phase: Option<&str>,
+    prepare_job_id: Option<&str>,
+    lrc_install_phase: Option<&str>,
+) {
+    if let Some(phase) = lrc_install_phase {
+        lines.push(format!("本机 ASR 运行时安装进行中（阶段：{phase}）。"));
+    }
+    if let Some(phase) = prepare_phase {
+        if phase == "running" {
+            let job = prepare_job_id
+                .map(|id| format!("，job_id={id}"))
+                .unwrap_or_default();
+            lines.push(format!("转写模型下载进行中（prepare {phase}{job}）。"));
+        } else if phase == "stale" {
+            let job = prepare_job_id
+                .map(|id| format!("，job_id={id}"))
+                .unwrap_or_default();
+            lines.push(format!(
+                "转写模型下载可能已卡住（长时间无进度{job}）。"
+            ));
+        } else {
+            lines.push(format!("转写模型准备状态：{phase}。"));
+        }
+    }
 }
 
 fn sidecar_recoverable_in_app(summary: &SummaryContext<'_>) -> bool {
@@ -185,6 +217,13 @@ fn build_summary(summary: SummaryContext<'_>) -> (Vec<String>, Option<String>) {
             }
         }
     }
+
+    push_artifact_job_summary_lines(
+        &mut lines,
+        summary.prepare_phase,
+        summary.prepare_job_id,
+        summary.lrc_install_phase,
+    );
 
     if summary.bundled_available {
         lines.push("安装包内已检测到内置侧车可执行文件。".into());
@@ -342,6 +381,7 @@ pub async fn asr_setup_diagnose(
         .and_then(|s| s.0.lock().ok().map(|g| g.clone()))
         .unwrap_or_else(SupervisorSnapshot::new_session);
     supervisor.port_status = Some(effective_port.clone());
+    enrich_supervisor_artifact_jobs(&mut supervisor, &app);
     let local_runtime_info = inspect_installed_runtime(&st.root);
 
     let health = match &health_fetch {
@@ -382,6 +422,9 @@ pub async fn asr_setup_diagnose(
         bundled_launch: &bundled_launch,
         health: &health,
         disk_low,
+        prepare_phase: supervisor.prepare_phase.as_deref(),
+        prepare_job_id: supervisor.prepare_job_id.as_deref(),
+        lrc_install_phase: supervisor.lrc_install_phase.as_deref(),
     });
 
     Ok(AsrSetupReport {

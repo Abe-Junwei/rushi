@@ -107,13 +107,28 @@ pub fn write_diagnostic_bundle_to_path(
         .try_state::<crate::asr_sidecar::AsrSupervisorState>()
         .and_then(|st| st.0.lock().ok().map(|g| g.clone()))
         .unwrap_or_else(crate::asr_sidecar::supervisor::SupervisorSnapshot::new_session);
+    let mut supervisor_for_export = supervisor.clone();
+    crate::asr_sidecar::supervisor::enrich_supervisor_artifact_jobs(&mut supervisor_for_export, app);
+    let prepare_status_json = crate::asr_sidecar::fetch_loopback_prepare_status_json();
     let asr_setup_note = format!(
-        "hub_model_pref: {}\nruntime_session_id: {}\nsupervisor_phase: {:?}\nlaunch_generation: {}\nwarmup_completed: {}\nbundled_launch_attempted: {}\nbundled_launch_success: {}\nbundled_launch_detail: {}\nasr_port_status: {:?}\nasr_port_detail: {}\n",
+        "hub_model_pref: {}\nruntime_session_id: {}\nsupervisor_phase: {:?}\nlaunch_generation: {}\nwarmup_completed: {}\nprepare_phase: {}\nprepare_job_id: {}\nlrc_install_phase: {}\nbundled_launch_attempted: {}\nbundled_launch_success: {}\nbundled_launch_detail: {}\nasr_port_status: {:?}\nasr_port_detail: {}\n",
         hub_model.as_deref().unwrap_or("(none)"),
         supervisor.runtime_session_id,
         supervisor.phase,
         supervisor.launch_generation,
         supervisor.warmup_completed,
+        supervisor_for_export
+            .prepare_phase
+            .as_deref()
+            .unwrap_or("(none)"),
+        supervisor_for_export
+            .prepare_job_id
+            .as_deref()
+            .unwrap_or("(none)"),
+        supervisor_for_export
+            .lrc_install_phase
+            .as_deref()
+            .unwrap_or("(none)"),
         bundled_launch.attempted,
         bundled_launch.success,
         bundled_launch.detail.as_deref().unwrap_or("(none)"),
@@ -124,6 +139,13 @@ pub fn write_diagnostic_bundle_to_path(
         .map_err(|e| e.to_string())?;
     zip.write_all(asr_setup_note.as_bytes())
         .map_err(|e| e.to_string())?;
+
+    if let Some(prepare_json) = prepare_status_json {
+        let bytes = serde_json::to_vec_pretty(&prepare_json).map_err(|e| e.to_string())?;
+        zip.start_file("prepare-job.json", zip_opts())
+            .map_err(|e| e.to_string())?;
+        zip.write_all(&bytes).map_err(|e| e.to_string())?;
+    }
 
     let project_summary = format_project_summary(&st.db_path, &st.root);
     zip.start_file("project-summary.txt", zip_opts())
@@ -266,7 +288,8 @@ pub fn write_diagnostic_bundle_to_path(
 - build-info.txt - version, OS, identifier, app_data_root, db_path\n\
 - environment.txt - release parity environment profile\n\
 - local-runtime.txt - manifest source/status, runtime source, current/previous version, verify/install context, live installer progress\n\
-- asr-setup.txt - hub model pref, bundled launch report, loopback port probe\n\
+- asr-setup.txt - hub model pref, supervisor snapshot, prepare/LRC artifact phases, bundled launch report, loopback port probe\n\
+- prepare-job.json - optional loopback /v1/models/prepare-status snapshot\n\
 - project-summary.txt - schema/project/file/segment/peaks counts (no transcript text)\n\
 - database-readme.txt - whether rushi.sqlite3 is embedded\n\
 - rushi.sqlite3 - optional sanitized copy (segment text and names redacted)\n\

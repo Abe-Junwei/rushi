@@ -5,6 +5,7 @@ import {
   selectedModelPrepareState,
   type LocalAsrCatalogStatusItem,
 } from "./localAsrModelCatalog";
+import { buildPrepareJobPresentation } from "./prepareJobPresentation";
 
 /** D1–D6 对齐：环境页「转写模型」区唯一 catalog presentation 真源。 */
 export type BuildAsrCatalogPresentationInput = {
@@ -45,23 +46,35 @@ export function buildAsrCatalogPresentation(
   const prepareModelCancelling = input.prepareModelCancelling ?? false;
   const prepareModelProgress = input.prepareModelProgress ?? 0;
   const modelsCached = selectedPrepare.cached;
-  const progress = prepareModelBusy ? prepareModelProgress : modelsCached ? 100 : 0;
+  const selectedLabel =
+    catalogEntryForHub(input.selectedHubModelId)?.label ?? input.selectedHubModelId;
 
-  const progressLabel = prepareModelCancelling
-    ? "正在取消下载…"
-    : prepareModelBusy
-      ? `下载中… ${progress}%`
-      : modelsCached
-        ? "已缓存 · 100%"
-        : selectedPrepare.cached
-          ? "主模型已缓存 · 辅助模型待补齐"
-          : "未下载";
+  const prepareJob =
+    prepareModelBusy || prepareModelCancelling
+      ? buildPrepareJobPresentation({
+          localBusy: prepareModelBusy,
+          cancelling: prepareModelCancelling,
+          progressOverride: prepareModelProgress,
+          modelLabel: selectedLabel,
+        })
+      : null;
+
+  const progress = prepareJob?.active
+    ? prepareJob.progress
+    : modelsCached
+      ? 100
+      : 0;
+
+  const progressLabel = prepareJob
+    ? prepareJob.progressLabel
+    : modelsCached
+      ? "已缓存 · 100%"
+      : selectedPrepare.cached
+        ? "主模型已缓存 · 辅助模型待补齐"
+        : "未下载";
 
   const progressTone: AsrCatalogPresentation["progressTone"] =
     modelsCached && !prepareModelBusy && !prepareModelCancelling ? "success" : "muted";
-
-  const selectedLabel =
-    catalogEntryForHub(input.selectedHubModelId)?.label ?? input.selectedHubModelId;
 
   return {
     catalogView,

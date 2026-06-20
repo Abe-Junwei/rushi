@@ -39,8 +39,9 @@ pub fn restart_loopback_asr(handle: &AppHandle, st: &DbState) -> Result<(), Stri
 }
 
 pub use probe::{
-    is_rushi_asr_health_json, loopback_root_declares_transcribe_async, probe_asr_port,
-    probe_asr_port_and_health, probe_asr_port_sync, AsrPortStatus,
+    fetch_loopback_prepare_status_json, is_rushi_asr_health_json,
+    loopback_root_declares_transcribe_async, probe_asr_port, probe_asr_port_and_health,
+    probe_asr_port_sync, AsrPortStatus,
 };
 pub(crate) use probe::AsrHealthBody;
 

@@ -59,6 +59,14 @@ pub struct SupervisorSnapshot {
     pub active_executable: Option<String>,
     pub warmup_completed: bool,
     pub last_activity_ms: u64,
+    /// Sidecar model prepare job phase from loopback `/v1/models/prepare-status` (diagnose projection).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prepare_phase: Option<String>,
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub prepare_job_id: Option<String>,
+    /// LRC manifest install phase from in-app installer state (diagnose projection).
+    #[serde(skip_serializing_if = "Option::is_none")]
+    pub lrc_install_phase: Option<String>,
 }
 
 impl SupervisorSnapshot {
@@ -78,6 +86,9 @@ impl SupervisorSnapshot {
             active_executable: None,
             warmup_completed: false,
             last_activity_ms: now_ms(),
+            prepare_phase: None,
+            prepare_job_id: None,
+            lrc_install_phase: None,
         }
     }
 }
@@ -255,6 +266,42 @@ pub fn snapshot(handle: &AppHandle) -> SupervisorSnapshot {
         .unwrap_or_else(SupervisorSnapshot::new_session)
 }
 
+pub fn apply_lrc_install_phase(snap: &mut SupervisorSnapshot, phase: &str) {
+    if phase.is_empty() || phase == "idle" || phase == "installed" {
+        return;
+    }
+    snap.lrc_install_phase = Some(phase.to_string());
+}
+
+pub fn apply_prepare_status_json(snap: &mut SupervisorSnapshot, v: &serde_json::Value) {
+    let phase = v.get("phase").and_then(|p| p.as_str()).unwrap_or("");
+    if phase == "running" {
+        if super::probe::prepare_status_json_is_active_running(v) {
+            snap.prepare_phase = Some("running".to_string());
+        } else if v.get("stale").and_then(|s| s.as_bool()) == Some(true) {
+            snap.prepare_phase = Some("stale".to_string());
+        } else {
+            snap.prepare_phase = Some("running".to_string());
+        }
+    } else if !phase.is_empty() && phase != "idle" {
+        snap.prepare_phase = Some(phase.to_string());
+    }
+    if let Some(job_id) = v.get("job_id").and_then(|p| p.as_str()) {
+        if !job_id.is_empty() {
+            snap.prepare_job_id = Some(job_id.to_string());
+        }
+    }
+}
+
+/// Populate additive artifact-job fields for diagnose / diagnostic export (not FSM transitions).
+pub fn enrich_supervisor_artifact_jobs(snap: &mut SupervisorSnapshot, app: &AppHandle) {
+    let install = crate::local_runtime::installer::install_progress(app);
+    apply_lrc_install_phase(snap, &install.phase);
+    if let Some(v) = super::probe::fetch_loopback_prepare_status_json() {
+        apply_prepare_status_json(snap, &v);
+    }
+}
+
 pub fn classify_executable_source(exe: &Path, app_root: Option<&Path>) -> ExecutableSource {
     if let Some(root) = app_root {
         if let Some(installed) = crate::local_runtime::integrity::resolve_installed_executable(root)
@@ -358,5 +405,43 @@ mod tests {
         let r = launch_report_from_snapshot(&snap);
         assert!(r.attempted);
         assert!(r.success);
+    }
+
+    #[test]
+    fn apply_prepare_status_json_reads_phase_and_job_id() {
+        let mut snap = SupervisorSnapshot::new_session();
+        apply_prepare_status_json(
+            &mut snap,
+            &serde_json::json!({
+                "phase": "running",
+                "job_id": "job-abc",
+            }),
+        );
+        assert_eq!(snap.prepare_phase.as_deref(), Some("running"));
+        assert_eq!(snap.prepare_job_id.as_deref(), Some("job-abc"));
+    }
+
+    #[test]
+    fn apply_prepare_status_json_maps_stale_running_to_stale_phase() {
+        let mut snap = SupervisorSnapshot::new_session();
+        apply_prepare_status_json(
+            &mut snap,
+            &serde_json::json!({
+                "phase": "running",
+                "job_id": "job-stuck",
+                "stale": true,
+            }),
+        );
+        assert_eq!(snap.prepare_phase.as_deref(), Some("stale"));
+        assert_eq!(snap.prepare_job_id.as_deref(), Some("job-stuck"));
+    }
+
+    #[test]
+    fn apply_lrc_install_phase_skips_idle() {
+        let mut snap = SupervisorSnapshot::new_session();
+        apply_lrc_install_phase(&mut snap, "idle");
+        assert!(snap.lrc_install_phase.is_none());
+        apply_lrc_install_phase(&mut snap, "downloading");
+        assert_eq!(snap.lrc_install_phase.as_deref(), Some("downloading"));
     }
 }
