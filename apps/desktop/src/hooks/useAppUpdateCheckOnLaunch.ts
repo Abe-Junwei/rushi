@@ -33,6 +33,8 @@ export function useAppUpdateCheckOnLaunch() {
           setVersion(result.version);
           setNotes(result.notes);
           setOpen(true);
+        } else if (result.kind === "error") {
+          toast.error(result.message);
         }
       } catch (error) {
         console.warn("[appUpdate] launch check failed", error);

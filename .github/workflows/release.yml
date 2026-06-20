@@ -1,7 +1,8 @@
-# Full Tauri bundles — GitHub Release publish or manual dispatch.
-# Sidecar is built before Tauri bundle; artifacts upload via gh/upload-artifact.
+# Full Tauri bundles — tag push creates draft Release, CI uploads, then publishes.
+# Do NOT run `gh release create` before CI: push tag only (`git push origin vX.Y.Z`).
+# Sidecar is built before Tauri bundle; artifacts upload via gh release upload.
 # macOS signing (optional): set valid APPLE_* repository secrets (base64 .p12).
-# LRC runtime manifest (release event): repository secret RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX
+# LRC runtime manifest (tag release): repository secret RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX
 #   (Ed25519 private key hex for rushi-runtime-release-v1). Publishes per-platform
 #   rushi-asr-sidecar-<platform>.zip + rushi-runtime-manifest-<platform>.json and injects
 #   RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL into the desktop build.
@@ -12,23 +13,40 @@
 name: Release build
 
 on:
-  release:
-    types: [published]
+  push:
+    tags:
+      - "v*"
   workflow_dispatch:
 
 permissions:
   contents: write
 
 concurrency:
-  group: release-build-${{ github.event.release.id || github.sha }}
-  cancel-in-progress: false
+  group: release-build-${{ github.ref_name || github.sha }}
+  cancel-in-progress: true
 
 env:
   CI: true
   BUNDLE_ROOT: apps/desktop/src-tauri/target/release/bundle
 
 jobs:
+  prepare-release:
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Ensure draft GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          bash scripts/ci-ensure-draft-release.sh \
+            --tag "${{ github.ref_name }}" \
+            --repository "${{ github.repository }}"
+
   tauri-linux:
+    needs: prepare-release
+    if: always() && (needs.prepare-release.result == 'success' || needs.prepare-release.result == 'skipped')
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -73,14 +91,14 @@ jobs:
         timeout-minutes: 10
 
       - name: Publish signed runtime manifest (release)
-        if: github.event_name == 'release'
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         id: runtime_manifest
         env:
           RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX: ${{ secrets.RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX }}
         run: |
           bash scripts/ci-publish-runtime-manifest-release.sh \
             --repository "${{ github.repository }}" \
-            --tag "${{ github.event.release.tag_name }}"
+            --tag "${{ github.ref_name }}"
 
       - name: Tauri build (deb)
         working-directory: apps/desktop
@@ -120,7 +138,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload Linux bundles to GitHub Release
-        if: github.event_name == 'release'
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -136,9 +154,11 @@ jobs:
             upload+=( "${{ steps.runtime_manifest.outputs.zip_path }}" "${{ steps.runtime_manifest.outputs.manifest_path }}" )
           fi
           echo "Uploading Linux .deb + runtime manifest (AppImage skipped in CI)."
-          gh release upload "${{ github.event.release.tag_name }}" "${upload[@]}" --clobber
+          gh release upload "${{ github.ref_name }}" "${upload[@]}" --clobber
 
   tauri-macos:
+    needs: prepare-release
+    if: always() && (needs.prepare-release.result == 'success' || needs.prepare-release.result == 'skipped')
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v6
@@ -178,14 +198,14 @@ jobs:
         timeout-minutes: 10
 
       - name: Publish signed runtime manifest (release)
-        if: github.event_name == 'release'
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         id: runtime_manifest
         env:
           RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX: ${{ secrets.RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX }}
         run: |
           bash scripts/ci-publish-runtime-manifest-release.sh \
             --repository "${{ github.repository }}" \
-            --tag "${{ github.event.release.tag_name }}"
+            --tag "${{ github.ref_name }}"
 
       - name: Detect macOS signing secrets
         id: mac_sign
@@ -244,8 +264,16 @@ jobs:
         run: npm run tauri -- build --bundles app,dmg
         timeout-minutes: 50
 
+      - name: Normalize macOS DMG filename (ASCII)
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        run: |
+          VERSION="$(node -p "require('./apps/desktop/package.json').version")"
+          bash scripts/ci-normalize-macos-dmg-name.sh \
+            --bundle-root "${{ env.BUNDLE_ROOT }}" \
+            --version "$VERSION"
+
       - name: Generate SHA256 checksums (macOS)
-        if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
         run: |
           shopt -s nullglob
           for f in "${{ env.BUNDLE_ROOT }}/dmg/"*.dmg; do
@@ -253,14 +281,14 @@ jobs:
           done
 
       - name: Normalize macOS updater artifact names
-        if: github.event_name == 'release'
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         run: |
           MACOS_DIR="${{ env.BUNDLE_ROOT }}/macos"
           shopt -s nullglob
           tar_files=("$MACOS_DIR"/*.tar.gz)
           if [ ${#tar_files[@]} -eq 0 ]; then
-            echo "No updater .tar.gz found; skip normalize."
-            exit 0
+            echo "::error::Updater .tar.gz missing — set TAURI_SIGNING_PRIVATE_KEY and matching pubkey in tauri.conf.json"
+            exit 1
           fi
           TAR="${tar_files[0]}"
           if [ "$(basename "$TAR")" = "app.tar.gz" ]; then
@@ -274,10 +302,10 @@ jobs:
           echo "Renamed $(basename "$TAR") -> app.tar.gz"
 
       - name: Generate updater latest.json (macOS release)
-        if: github.event_name == 'release'
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         run: |
           bash scripts/ci-generate-updater-latest-json.sh \
-            --tag "${{ github.event.release.tag_name }}" \
+            --tag "${{ github.ref_name }}" \
             --repository "${{ github.repository }}" \
             --bundle-root "${{ env.BUNDLE_ROOT }}" \
             --platform darwin-aarch64
@@ -293,7 +321,7 @@ jobs:
           if-no-files-found: error
 
       - name: Upload macOS bundles to GitHub Release
-        if: github.event_name == 'release'
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         run: |
@@ -304,20 +332,24 @@ jobs:
           tar_sig_files=("${{ env.BUNDLE_ROOT }}/macos/"*.tar.gz.sig)
           latest_json="${{ env.BUNDLE_ROOT }}/macos/latest.json"
           upload=( "${dmg_files[@]}" "${sha_files[@]}" )
-          if [ ${#tar_files[@]} -gt 0 ]; then
-            upload+=( "${tar_files[@]}" "${tar_sig_files[@]}" )
-          else
-            echo "::warning::Updater .tar.gz missing — set TAURI_SIGNING_PRIVATE_KEY and matching pubkey in tauri.conf.json"
+          if [ ${#tar_files[@]} -eq 0 ]; then
+            echo "::error::Updater .tar.gz missing — set TAURI_SIGNING_PRIVATE_KEY and matching pubkey in tauri.conf.json"
+            exit 1
           fi
-          if [ -f "$latest_json" ]; then
-            upload+=( "$latest_json" )
+          upload+=( "${tar_files[@]}" "${tar_sig_files[@]}" )
+          if [ ! -f "$latest_json" ]; then
+            echo "::error::latest.json missing after generate step"
+            exit 1
           fi
+          upload+=( "$latest_json" )
           if [ -n "${{ steps.runtime_manifest.outputs.zip_path }}" ]; then
             upload+=( "${{ steps.runtime_manifest.outputs.zip_path }}" "${{ steps.runtime_manifest.outputs.manifest_path }}" )
           fi
-          gh release upload "${{ github.event.release.tag_name }}" "${upload[@]}" --clobber
+          gh release upload "${{ github.ref_name }}" "${upload[@]}" --clobber
 
   tauri-windows:
+    needs: prepare-release
+    if: always() && (needs.prepare-release.result == 'success' || needs.prepare-release.result == 'skipped')
     runs-on: windows-latest
     steps:
       - uses: actions/checkout@v6
@@ -363,7 +395,7 @@ jobs:
         timeout-minutes: 10
 
       - name: Publish signed runtime manifest (release)
-        if: github.event_name == 'release'
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         id: runtime_manifest
         shell: bash
         env:
@@ -371,7 +403,7 @@ jobs:
         run: |
           bash scripts/ci-publish-runtime-manifest-release.sh \
             --repository "${{ github.repository }}" \
-            --tag "${{ github.event.release.tag_name }}"
+            --tag "${{ github.ref_name }}"
 
       - name: Tauri build binary (Windows)
         working-directory: apps/desktop
@@ -437,7 +469,7 @@ jobs:
           Write-Host "Signed $exe"
 
       - name: Generate SHA256 checksums (Windows)
-        if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') || github.event_name == 'workflow_dispatch'
         shell: bash
         run: |
           set -euo pipefail
@@ -461,7 +493,7 @@ jobs:
           if-no-files-found: warn
 
       - name: Upload Windows bundles to GitHub Release
-        if: github.event_name == 'release'
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
         shell: bash
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
@@ -482,4 +514,25 @@ jobs:
           if [ -n "${{ steps.runtime_manifest.outputs.zip_path }}" ]; then
             upload+=( "${{ steps.runtime_manifest.outputs.zip_path }}" "${{ steps.runtime_manifest.outputs.manifest_path }}" )
           fi
-          gh release upload "${{ github.event.release.tag_name }}" "${upload[@]}" --clobber
+          gh release upload "${{ github.ref_name }}" "${upload[@]}" --clobber
+
+  publish-release:
+    needs: [prepare-release, tauri-linux, tauri-macos, tauri-windows]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - name: Verify OTA manifest on GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          bash scripts/ci-verify-updater-manifest.sh \
+            --tag "${{ github.ref_name }}" \
+            --repository "${{ github.repository }}"
+
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          bash scripts/ci-publish-github-release.sh --tag "${{ github.ref_name }}"

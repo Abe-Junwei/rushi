@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Generate Tauri static updater manifest (latest.json) for GitHub Release.
-# Requires: jq, macOS .app.tar.gz + .sig from createUpdaterArtifacts build.
+# Requires: jq, macOS app.tar.gz + app.tar.gz.sig (normalized name).
 set -euo pipefail
 
 usage() {
@@ -12,6 +12,7 @@ TAG=""
 REPO=""
 BUNDLE_ROOT="apps/desktop/src-tauri/target/release/bundle"
 PLATFORM="darwin-aarch64"
+UPDATER_BUNDLE_NAME="app.tar.gz"
 
 while [ $# -gt 0 ]; do
   case "$1" in
@@ -46,22 +47,19 @@ if [ -z "$TAG" ] || [ -z "$REPO" ]; then
 fi
 
 MACOS_DIR="${BUNDLE_ROOT}/macos"
-shopt -s nullglob
-tar_files=("$MACOS_DIR"/*.tar.gz)
-sig_files=("$MACOS_DIR"/*.tar.gz.sig)
+TAR_GZ="${MACOS_DIR}/${UPDATER_BUNDLE_NAME}"
+SIG_FILE="${TAR_GZ}.sig"
 
-if [ ${#tar_files[@]} -eq 0 ] || [ ${#sig_files[@]} -eq 0 ]; then
-  echo "Missing updater bundle under ${MACOS_DIR} (*.tar.gz + *.tar.gz.sig)" >&2
-  echo "Ensure createUpdaterArtifacts=true and TAURI_SIGNING_PRIVATE_KEY is set." >&2
+if [ ! -f "$TAR_GZ" ] || [ ! -f "$SIG_FILE" ]; then
+  echo "Missing normalized updater bundle:" >&2
+  echo "  expected: ${TAR_GZ}" >&2
+  echo "  expected: ${SIG_FILE}" >&2
   ls -la "$MACOS_DIR" 2>/dev/null || true
   exit 1
 fi
 
-TAR_GZ="${tar_files[0]}"
-SIG_FILE="${sig_files[0]}"
-TAR_NAME="$(basename "$TAR_GZ")"
 VERSION="${TAG#v}"
-URL="https://github.com/${REPO}/releases/download/${TAG}/${TAR_NAME}"
+URL="https://github.com/${REPO}/releases/download/${TAG}/${UPDATER_BUNDLE_NAME}"
 PUB_DATE="$(date -u +"%Y-%m-%dT%H:%M:%SZ")"
 SIGNATURE="$(tr -d '\n' < "$SIG_FILE")"
 OUT="${MACOS_DIR}/latest.json"
@@ -87,4 +85,4 @@ jq -n \
 
 echo "Wrote ${OUT}"
 echo "Updater bundle: ${TAR_GZ}"
-echo "Signature: ${SIG_FILE}"
+echo "Manifest URL target: ${URL}"

@@ -54,8 +54,14 @@ OTA-5  tag v0.1.3 验证 v0.1.2→v0.1.3 增量                  → acceptance 
 
 | 文件 | 变更 |
 |------|------|
-| `.github/workflows/release.yml` | `TAURI_SIGNING_PRIVATE_KEY` env；上传 `latest.json` + `.sig` + dmg |
-| `scripts/stage-release-artifacts.sh` | 可选：校验 updater 产物存在 |
+| `.github/workflows/release.yml` | **tag push `v*`** 触发；draft Release → 上传 → `publish-release` 验证 manifest 后 publish |
+| `scripts/ci-ensure-draft-release.sh` | 创建 draft；空 published Release 回退 draft |
+| `scripts/ci-generate-updater-latest-json.sh` | URL 固定 `app.tar.gz` |
+| `scripts/ci-normalize-macos-dmg-name.sh` | DMG 统一 `rushi-desktop_X.Y.Z_aarch64.dmg` |
+| `scripts/ci-verify-updater-manifest.sh` | publish 前校验 `latest.json` + `app.tar.gz` |
+| `scripts/ci-publish-github-release.sh` | 全部 job 绿后 `gh release edit --draft=false` |
+
+**禁止**：`gh release create` 先于 CI（会导致 `/releases/latest/download/latest.json` 404 空窗）。
 
 **platform key**：`darwin-aarch64`（与 Tauri v2 一致）。
 
