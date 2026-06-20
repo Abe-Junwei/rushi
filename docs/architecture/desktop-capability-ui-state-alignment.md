@@ -28,6 +28,7 @@
 | **D4 按 SKU 缓存** | 某一 hub 模型是否完整落盘 | `/v1/models/catalog` 或 `buildLocalAsrCatalogView` |
 | **D5 侧车全局就绪** | ffmpeg + funasr 导入 + **当前 D2** 所需权重 | `/health.ready_for_transcribe` |
 | **D6 默认 SKU 缓存** | 仅 SenseVoice 默认包 | `/health.funasr_default_model_cached` |
+| **D7 制品忙态 overlay** | 模型下载 / LRC 安装进行中，须压制 D5「可转写」与 wizard 完成态 | `prepareModelBusy` / `runtimeInstallRunning` → `buildAsrEnvPresentation` overlay |
 
 **硬规则**
 
