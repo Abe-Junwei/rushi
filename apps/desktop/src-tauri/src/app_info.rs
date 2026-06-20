@@ -232,7 +232,7 @@ mod tests {
         let licenses = load_third_party_licenses();
         assert!(licenses.notices.contains("Third-Party Notices"));
         assert!(licenses.notices.contains("FFmpeg / ffprobe"));
-        assert!(licenses.license_texts.contains("ISC License"));
+        assert!(licenses.license_texts.contains("商业许可"));
         assert!(licenses
             .license_texts
             .contains("GNU GENERAL PUBLIC LICENSE"));

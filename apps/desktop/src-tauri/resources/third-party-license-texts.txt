@@ -3,24 +3,29 @@
 下列许可类型被本应用或随包组件使用。同一许可类型只列一次。
 
 ------------------------------------------------------------------------
-ISC License — 如是我闻（Rushi Desktop）本软件
+商业许可 — 如是我闻（Rushi Desktop）本软件
 ------------------------------------------------------------------------
 
-ISC License
+如是我闻（Rushi）软件商业许可
 
-Copyright (c) 沂南灵创技术服务中心
+版权所有 (c) 沂南灵创技术服务中心。保留一切权利。
 
-Permission to use, copy, modify, and/or distribute this software for any
-purpose with or without fee is hereby granted, provided that the above
-copyright notice and this permission notice appear in all copies.
+本软件及其随附文档受著作权法及 applicable 知识产权法保护。除著作权人
+书面授权外，任何单位或个人不得：
 
-THE SOFTWARE IS PROVIDED "AS IS" AND THE AUTHOR DISCLAIMS ALL WARRANTIES
-WITH REGARD TO THIS SOFTWARE INCLUDING ALL IMPLIED WARRANTIES OF
-MERCHANTABILITY AND FITNESS. IN NO EVENT SHALL THE AUTHOR BE LIABLE FOR
-ANY SPECIAL, DIRECT, INDIRECT, OR CONSEQUENTIAL DAMAGES OR ANY DAMAGES
-WHATSOEVER RESULTING FROM LOSS OF USE, DATA OR PROFITS, WHETHER IN AN
-ACTION OF CONTRACT, NEGLIGENCE OR OTHER TORTIOUS ACTION, ARISING OUT OF
-OR IN CONNECTION WITH THE USE OR PERFORMANCE OF THIS SOFTWARE.
+1. 复制、修改、适配、翻译、反向工程、反编译、反汇编本软件，或试图
+   以其他方式取得本软件源代码；
+2. 出租、出借、销售、再许可、公开传播或向第三方分发本软件或其任何部分；
+3. 移除或篡改本软件中的版权声明、商标或许可标识。
+
+在合法获得授权的前提下，被许可人可在授权范围内安装和使用本软件，用于
+著作权人许可之目的。未经授权的商业使用、批量部署或 OEM 集成须另行取得
+书面许可。
+
+本软件按「现状」提供。在适用法律允许的最大范围内，著作权人不对本软件作
+任何明示或默示的担保；对因使用或无法使用本软件而产生的任何损害不承担责任。
+
+如需商业授权、企业部署或定制合作，请联系著作权人：沂南灵创技术服务中心。
 
 ------------------------------------------------------------------------
 GNU General Public License Version 2 — FFmpeg / ffprobe（本机 ASR 侧车）

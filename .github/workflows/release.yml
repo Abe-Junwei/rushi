@@ -252,6 +252,27 @@ jobs:
             sha256sum "$f" > "$f.sha256"
           done
 
+      - name: Normalize macOS updater artifact names
+        if: github.event_name == 'release'
+        run: |
+          MACOS_DIR="${{ env.BUNDLE_ROOT }}/macos"
+          shopt -s nullglob
+          tar_files=("$MACOS_DIR"/*.tar.gz)
+          if [ ${#tar_files[@]} -eq 0 ]; then
+            echo "No updater .tar.gz found; skip normalize."
+            exit 0
+          fi
+          TAR="${tar_files[0]}"
+          if [ "$(basename "$TAR")" = "app.tar.gz" ]; then
+            echo "Updater artifact already normalized."
+            exit 0
+          fi
+          mv "$TAR" "$MACOS_DIR/app.tar.gz"
+          if [ -f "${TAR}.sig" ]; then
+            mv "${TAR}.sig" "$MACOS_DIR/app.tar.gz.sig"
+          fi
+          echo "Renamed $(basename "$TAR") -> app.tar.gz"
+
       - name: Generate updater latest.json (macOS release)
         if: github.event_name == 'release'
         run: |

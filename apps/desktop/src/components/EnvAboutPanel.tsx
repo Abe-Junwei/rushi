@@ -202,7 +202,7 @@ export function EnvAboutPanel() {
             </p>
             <p className="m-0 text-notion-text-muted">{APP_COPYRIGHT}</p>
             <p className="m-0 text-notion-text-muted">
-              本软件许可：ISC License（全文见下方「许可正文」）
+              本软件许可：商业许可（专有；全文见下方「许可正文」）
             </p>
             <p className="m-0 text-notion-text-muted">应用标识：{buildInfo.identifier}</p>
             <p className="m-0 text-notion-text-muted">
