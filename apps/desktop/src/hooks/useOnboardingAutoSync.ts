@@ -1,6 +1,7 @@
 import { useEffect } from "react";
 import type { ProjectControllerApi } from "../pages/useProjectController";
 import { hasRecordedProjectMetadata } from "../services/deliveryModeChecklist";
+import { resolveTranscribeEnvReady } from "../services/stt/transcribeSourcePresentation";
 import {
   syncOnboardingAsrReady,
   syncOnboardingMetadata,
@@ -9,14 +10,17 @@ import {
 
 type Args = {
   controller: ProjectControllerApi;
-  asrChipOk: boolean;
 };
 
 /** O-2：能力态自动勾选 onboarding 步骤（非 blocking）。 */
-export function useOnboardingAutoSync({ controller: c, asrChipOk }: Args) {
+export function useOnboardingAutoSync({ controller: c }: Args) {
+  const transcribeEnvReady = resolveTranscribeEnvReady(c.transcribeSource, {
+    asrChipOk: c.asrPresentation.chipOk,
+  });
+
   useEffect(() => {
-    syncOnboardingAsrReady(asrChipOk);
-  }, [asrChipOk]);
+    syncOnboardingAsrReady(transcribeEnvReady);
+  }, [transcribeEnvReady]);
 
   /* eslint-disable react-hooks/exhaustive-deps -- controller `c` is a stable ref; granular dependencies cover the values used inside */
   useEffect(() => {

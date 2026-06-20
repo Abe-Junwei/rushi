@@ -7,7 +7,9 @@ import {
   WORKSPACE_PAGE_PANEL_CLASS,
 } from "../config/workspaceShellLayout";
 import type { ProjectControllerApi } from "../pages/useProjectController";
-import { AsrErrorBanner } from "./ProjectStatusFeedback";
+import { AsrErrorBanner, OnlineSttEnvBanner } from "./ProjectStatusFeedback";
+import { useOnlineSttTopBarPresentation } from "../hooks/useOnlineSttTopBarPresentation";
+import { resolveEffectiveTranscribeSource } from "../services/stt/transcribeSourcePresentation";
 import { WorkspaceFileRow } from "./WorkspaceFileRow";
 import { CreateProjectModal } from "./CreateProjectModal";
 import { GlossaryPage } from "./GlossaryPage";
@@ -35,6 +37,7 @@ interface WelcomeViewProps {
   controller: ProjectControllerApi;
   onOpenSettings: () => void;
   onOpenAsrSettings?: () => void;
+  onOpenOnlineSttSettings?: () => void;
   onOpenLlmSettings?: () => void;
   llmStatusRefreshSeq?: number;
   page: WelcomePageId;
@@ -48,6 +51,7 @@ export function WelcomeView({
   controller: c,
   onOpenSettings,
   onOpenAsrSettings,
+  onOpenOnlineSttSettings,
   onOpenLlmSettings,
   llmStatusRefreshSeq = 0,
   page,
@@ -59,6 +63,35 @@ export function WelcomeView({
   const [recentFiles, setRecentFiles] = useState<RecentWorkspaceFile[]>([]);
   const [loadingRecentFiles, setLoadingRecentFiles] = useState(false);
   const onboarding = useOnboardingChecklistController();
+  const onlineSttPresentation = useOnlineSttTopBarPresentation(c.sttOnlineRuntimeEpoch);
+  const effectiveTranscribeSource = resolveEffectiveTranscribeSource(c.transcribeSource);
+
+  const welcomeEnvBanner = (() => {
+    if (effectiveTranscribeSource === "online") {
+      if (onlineSttPresentation.chipOk || onlineSttPresentation.tone === "idle") return null;
+      if (onlineSttPresentation.tone !== "warn" && onlineSttPresentation.tone !== "error") return null;
+      return (
+        <div className="shrink-0 px-8 pt-4 sm:px-10">
+          <OnlineSttEnvBanner
+            title={onlineSttPresentation.bannerTitle}
+            detail={onlineSttPresentation.bannerDetail}
+            tone={onlineSttPresentation.tone}
+            onOpenOnlineSttSettings={onOpenOnlineSttSettings ?? onOpenSettings}
+          />
+        </div>
+      );
+    }
+    if (c.asrPresentation.health !== "error") return null;
+    return (
+      <div className="shrink-0 px-8 pt-4 sm:px-10">
+        <AsrErrorBanner
+          message={c.asrPresentation.errorBannerMessage}
+          detail={c.asrPresentation.errorDetail}
+          onOpenEnvironment={onOpenAsrSettings ?? onOpenSettings}
+        />
+      </div>
+    );
+  })();
 
   const recentProjectIds = useMemo(() => recentProjectIdsForScan(c.projects), [c.projects]);
 
@@ -127,6 +160,7 @@ export function WelcomeView({
           asrPresentation={c.asrPresentation}
           llmStatusRefreshSeq={llmStatusRefreshSeq}
           onOpenAsrSettings={onOpenAsrSettings ?? onOpenSettings}
+          onOpenOnlineSttSettings={onOpenOnlineSttSettings ?? onOpenSettings}
           onOpenLlmSettings={onOpenLlmSettings ?? onOpenSettings}
           onCreateProject={() => setShowCreateModal(true)}
         />
@@ -134,19 +168,7 @@ export function WelcomeView({
         {page === "glossary" ? (
           <GlossaryPage busy={c.busy} workspaceId={glossaryWorkspaceId} />
         ) : (
-          <WorkspaceHomeMainStage
-            beforePage={
-              c.asrPresentation.health === "error" ? (
-                <div className="shrink-0 px-8 pt-4 sm:px-10">
-                  <AsrErrorBanner
-                    message={c.asrPresentation.errorBannerMessage}
-                    detail={c.asrPresentation.errorDetail}
-                    onOpenEnvironment={onOpenSettings}
-                  />
-                </div>
-              ) : null
-            }
-          >
+          <WorkspaceHomeMainStage beforePage={welcomeEnvBanner}>
             <section
               className={`${WORKSPACE_PAGE_PANEL_CLASS} gap-6`}
               data-purpose="welcome-home-page"
@@ -176,7 +198,9 @@ export function WelcomeView({
                 <WelcomeOnboardingChecklist
                   progress={onboarding.progress}
                   onDismiss={onboarding.dismiss}
+                  transcribeSource={effectiveTranscribeSource}
                   onOpenAsrSettings={onOpenAsrSettings ?? onOpenSettings}
+                  onOpenOnlineSttSettings={onOpenOnlineSttSettings ?? onOpenSettings}
                   onCreateProject={() => setShowCreateModal(true)}
                   onOpenLastEditor={() => void c.openLastEditorWorkspace()}
                 />

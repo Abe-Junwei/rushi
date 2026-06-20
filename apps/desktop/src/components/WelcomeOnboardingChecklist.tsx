@@ -1,13 +1,19 @@
 import { Check, Circle, X } from "lucide-react";
 import { CONTROL_BTN_LINK, CONTROL_BTN_TOOLBAR_GHOST } from "../config/controlStyles";
-import { ONBOARDING_STEPS } from "../services/onboarding/onboardingChecklist";
+import {
+  ONBOARDING_STEPS,
+  resolveOnboardingTranscribeEnvStep,
+} from "../services/onboarding/onboardingChecklist";
 import type { OnboardingProgress } from "../services/onboarding/onboardingProgress";
+import type { TranscribeSource } from "../services/stt/transcribeSource";
 import { LUCIDE_ICON_SIZE_SM, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 
 type Props = {
   progress: OnboardingProgress;
   onDismiss: () => void;
+  transcribeSource: TranscribeSource;
   onOpenAsrSettings?: () => void;
+  onOpenOnlineSttSettings?: () => void;
   onCreateProject?: () => void;
   onOpenLastEditor?: () => void;
 };
@@ -15,10 +21,13 @@ type Props = {
 export function WelcomeOnboardingChecklist({
   progress,
   onDismiss,
+  transcribeSource,
   onOpenAsrSettings,
+  onOpenOnlineSttSettings,
   onCreateProject,
   onOpenLastEditor,
 }: Props) {
+  const transcribeEnvStep = resolveOnboardingTranscribeEnvStep(transcribeSource);
   return (
     <section
       className="rounded-lg border border-notion-divider bg-notion-sidebar/40 p-3"
@@ -50,6 +59,10 @@ export function WelcomeOnboardingChecklist({
       <ol className="flex flex-col gap-1.5">
         {ONBOARDING_STEPS.map((step, index) => {
           const done = Boolean(progress.completed[step.id]);
+          const title =
+            step.id === "asr_ready" ? transcribeEnvStep.title : step.title;
+          const description =
+            step.id === "asr_ready" ? transcribeEnvStep.description : step.description;
           return (
             <li
               key={step.id}
@@ -64,13 +77,22 @@ export function WelcomeOnboardingChecklist({
               </span>
               <div className="flex min-w-0 flex-1 flex-col gap-0.5">
                 <p className="text-body font-medium leading-snug text-notion-text">
-                  {index + 1}. {step.title}
+                  {index + 1}. {title}
                   {step.optional ? (
                     <span className="ml-1 font-normal text-notion-text-muted">（可选）</span>
                   ) : null}
                 </p>
-                <p className="text-label leading-snug text-notion-text-muted">{step.description}</p>
-                {step.id === "asr_ready" && onOpenAsrSettings ? (
+                <p className="text-label leading-snug text-notion-text-muted">{description}</p>
+                {step.id === "asr_ready" && transcribeSource === "online" && onOpenOnlineSttSettings ? (
+                  <button
+                    type="button"
+                    className={`${CONTROL_BTN_LINK} self-start text-label leading-snug`}
+                    onClick={onOpenOnlineSttSettings}
+                  >
+                    打开环境 → 在线 STT
+                  </button>
+                ) : null}
+                {step.id === "asr_ready" && transcribeSource !== "online" && onOpenAsrSettings ? (
                   <button
                     type="button"
                     className={`${CONTROL_BTN_LINK} self-start text-label leading-snug`}

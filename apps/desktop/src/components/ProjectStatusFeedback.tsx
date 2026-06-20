@@ -4,7 +4,7 @@ import type { TranscribeTimelineSnapshot } from "../services/transcribeDiag";
 import { formatTranscribeDiagSummary, shouldShowTranscribeEnvAction, transcribeFailureBannerTitle } from "../services/transcribeDiag";
 import { createPortal } from "react-dom";
 import { TriangleAlert } from "lucide-react";
-import { CONTROL_BTN_DANGER } from "../config/controlStyles";
+import { CONTROL_BTN_DANGER, CONTROL_BTN_PRIMARY } from "../config/controlStyles";
 import { LUCIDE_ICON_SIZE_LG, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 import { BlockingProgressCard } from "./BlockingProgressCard";
 import { busyOverlayCopy, transcribeCancelStoppingLabel } from "./projectStatusFeedbackCopy";
@@ -208,6 +208,46 @@ export function AsrErrorBanner({
       </div>
       <button type="button" className={CONTROL_BTN_DANGER} onClick={onOpenEnvironment}>
         打开环境 → 本机 ASR
+      </button>
+    </div>
+  );
+}
+
+export function OnlineSttEnvBanner({
+  title,
+  detail,
+  tone,
+  onOpenOnlineSttSettings,
+}: {
+  title: string;
+  detail: string;
+  tone: "warn" | "error";
+  onOpenOnlineSttSettings: () => void;
+}) {
+  const isError = tone === "error";
+  const surface = isError
+    ? "border-zen-cinnabar/20 bg-zen-cinnabar/10 text-zen-cinnabar"
+    : "border-accent-action/20 bg-accent-action/10 text-accent-action";
+  const iconClass = isError ? "text-zen-cinnabar" : "text-accent-action";
+  const buttonClass = isError ? CONTROL_BTN_DANGER : CONTROL_BTN_PRIMARY;
+
+  return (
+    <div
+      className={`flex flex-col items-start justify-between gap-4 rounded-lg border px-4 py-4 sm:flex-row sm:items-center ${surface}`}
+    >
+      <div className="flex items-start gap-3 sm:items-center">
+        <TriangleAlert
+          className={`${LUCIDE_ICON_SIZE_LG} shrink-0 ${iconClass}`}
+          strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
+          aria-hidden
+        />
+        <div className="space-y-1">
+          <p className="font-sans text-sm font-semibold leading-relaxed">{title}</p>
+          <p className="font-sans text-xs leading-relaxed opacity-90">{detail}</p>
+        </div>
+      </div>
+      <button type="button" className={buttonClass} onClick={onOpenOnlineSttSettings}>
+        打开环境 → 在线 STT
       </button>
     </div>
   );

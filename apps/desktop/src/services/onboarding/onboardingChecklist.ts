@@ -1,3 +1,5 @@
+import type { TranscribeSource } from "../../services/stt/transcribeSource";
+
 export type OnboardingStepId =
   | "asr_ready"
   | "project_audio"
@@ -40,3 +42,20 @@ export const ONBOARDING_STEPS: OnboardingStepDef[] = [
     description: "终检后导出讲稿或逐字稿，或进入定稿模式。",
   },
 ];
+
+/** 上手清单第 1 步：随转写来源切换文案（步骤 id 仍为 asr_ready 以兼容进度）。 */
+export function resolveOnboardingTranscribeEnvStep(source: TranscribeSource): Pick<
+  OnboardingStepDef,
+  "title" | "description"
+> {
+  if (source === "online") {
+    return {
+      title: "配置在线 STT",
+      description: "在环境页选择服务商、保存 Key 并探测连接。",
+    };
+  }
+  return {
+    title: ONBOARDING_STEPS[0].title,
+    description: ONBOARDING_STEPS[0].description,
+  };
+}
