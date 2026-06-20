@@ -216,25 +216,19 @@ def test_required_models_cached_guess_uses_explicit_model_env(monkeypatch, tmp_p
 
 
 def test_cancelled_status_preserves_byte_progress(monkeypatch: pytest.MonkeyPatch) -> None:
-    from rushi_asr.model_prepare_progress import (
-        prepare_progress_callback_types,
-        reset_prepare_download_progress,
-    )
+    from rushi_asr import model_prepare_progress as mpp
     from rushi_asr.model_prepare_state import (
         finish_prepare_cancelled,
         prepare_status_body,
         try_begin_prepare_running,
     )
 
-    monkeypatch.setattr(
-        "rushi_asr.model_prepare_progress._RECOGNIZER_BUDGET_BYTES",
-        1_000,
-    )
-    monkeypatch.setattr("rushi_asr.model_prepare_progress._VAD_BUDGET_BYTES", 0)
-    reset_prepare_download_progress(include_vad=False)
-    callback_cls = prepare_progress_callback_types()[0]
-    callback = callback_cls("model.pt", 1_000)
-    callback.update(430)
+    monkeypatch.setattr(mpp, "_RECOGNIZER_BUDGET_BYTES", 1_000)
+    monkeypatch.setattr(mpp, "_VAD_BUDGET_BYTES", 0)
+    mpp.reset_prepare_download_progress(include_vad=False)
+    # Drive the tracker directly so CI does not require modelscope ProgressCallback.
+    mpp._tracker.register_file("model.pt", 1_000)
+    mpp._tracker.add_bytes(430)
 
     began, token = try_begin_prepare_running()
     assert began is True
