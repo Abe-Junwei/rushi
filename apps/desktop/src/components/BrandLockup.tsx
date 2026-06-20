@@ -23,7 +23,7 @@ const LOCKUP_BY_SIZE = {
 } as const;
 
 const WORDMARK = "如是我闻";
-const TAGLINE = "本地课录音转写与校对";
+const TAGLINE = "音频转录与校对平台";
 
 export function BrandLockup({ size = "sidebar", className }: BrandLockupProps) {
   const config = LOCKUP_BY_SIZE[size];

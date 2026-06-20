@@ -10,7 +10,6 @@ import { LlmTopStatusChip } from "./LlmTopStatusChip";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "./lucideIconSpec";
 import { WelcomeActivityBell } from "./WelcomeActivityBell";
 import { WelcomeSearchResults } from "./WelcomeSearchResults";
-import { BrandTopBarLabel } from "./BrandTopBarLabel";
 
 export interface WelcomeTopBarProps {
   controller: ProjectControllerApi;
@@ -33,10 +32,7 @@ export function WelcomeTopBar({
   const searchDisabled = controller.busy;
 
   return (
-    <header className={`flex h-12 shrink-0 items-center justify-between border-b ${MAIN_SHELL_SURFACE_CLASS.border} ${MAIN_SHELL_SURFACE_CLASS.pageBg} px-10`}>
-      <div className="flex min-w-0 items-center gap-6">
-        <BrandTopBarLabel />
-      </div>
+    <header className={`flex h-12 shrink-0 items-center justify-end border-b ${MAIN_SHELL_SURFACE_CLASS.border} ${MAIN_SHELL_SURFACE_CLASS.pageBg} px-10`}>
       <div className="flex items-center gap-4">
         <div className="mr-2 flex items-center gap-4">
           <AsrTopStatusChips
