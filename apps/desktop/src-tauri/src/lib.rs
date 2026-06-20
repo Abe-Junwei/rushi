@@ -67,6 +67,8 @@ impl DbState {
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     let app = tauri::Builder::default()
+        .plugin(tauri_plugin_process::init())
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
             bundled_asr_assets::init_from_app(app.handle());
             let st = project::setup_db(app.handle())?;

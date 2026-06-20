@@ -234,7 +234,7 @@ export function FindReplaceDialogBody({
         ) : null}
       </FloatingPanelDialogHeader>
       {state.searchCommitted && state.matchCount > 0 ? (
-        <FloatingPanelDialogListRegion className={FIND_REPLACE_PANEL_LIST_PADDING_CLASS}>
+        <FloatingPanelDialogListRegion fitToContent className={FIND_REPLACE_PANEL_LIST_PADDING_CLASS}>
           <FindResultList
             items={state.resultItems}
             activeMatchIndex={state.activeMatchIndex}

@@ -223,6 +223,8 @@ jobs:
         working-directory: apps/desktop
         env:
           RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL: ${{ steps.runtime_manifest.outputs.manifest_url }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: npm run tauri -- build --bundles app,dmg
         timeout-minutes: 50
 
@@ -250,6 +252,15 @@ jobs:
             sha256sum "$f" > "$f.sha256"
           done
 
+      - name: Generate updater latest.json (macOS release)
+        if: github.event_name == 'release'
+        run: |
+          bash scripts/ci-generate-updater-latest-json.sh \
+            --tag "${{ github.event.release.tag_name }}" \
+            --repository "${{ github.repository }}" \
+            --bundle-root "${{ env.BUNDLE_ROOT }}" \
+            --platform darwin-aarch64
+
       - name: Upload macOS workflow artifacts
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v7
@@ -268,7 +279,18 @@ jobs:
           shopt -s nullglob
           dmg_files=("${{ env.BUNDLE_ROOT }}/dmg/"*.dmg)
           sha_files=("${{ env.BUNDLE_ROOT }}/dmg/"*.sha256)
+          tar_files=("${{ env.BUNDLE_ROOT }}/macos/"*.tar.gz)
+          tar_sig_files=("${{ env.BUNDLE_ROOT }}/macos/"*.tar.gz.sig)
+          latest_json="${{ env.BUNDLE_ROOT }}/macos/latest.json"
           upload=( "${dmg_files[@]}" "${sha_files[@]}" )
+          if [ ${#tar_files[@]} -gt 0 ]; then
+            upload+=( "${tar_files[@]}" "${tar_sig_files[@]}" )
+          else
+            echo "::warning::Updater .tar.gz missing — set TAURI_SIGNING_PRIVATE_KEY and matching pubkey in tauri.conf.json"
+          fi
+          if [ -f "$latest_json" ]; then
+            upload+=( "$latest_json" )
+          fi
           if [ -n "${{ steps.runtime_manifest.outputs.zip_path }}" ]; then
             upload+=( "${{ steps.runtime_manifest.outputs.zip_path }}" "${{ steps.runtime_manifest.outputs.manifest_path }}" )
           fi

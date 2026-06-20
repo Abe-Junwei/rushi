@@ -65,10 +65,10 @@
 
 | 子轮 | 静态 | 动态 |
 |------|------|------|
-| 7-A 快捷键 | ✅ | ☐ release D1–D8 |
-| 7-B ASR 能力 | ✅ | ☐ S1–S6 |
-| 7-C STT/LLM | ✅ | ☐ D1–D5 |
-| 7-D 导出/质量 | ✅ | ☐ EXP-WORD / eval 抽检 |
+| 7-A 快捷键 | ✅ | ✅ release D1–D8（2026-06-20 v0.1.1 upgrade） |
+| 7-B ASR 能力 | ✅ | ✅ S3 · 余 N/A upgrade |
+| 7-C STT/LLM | ✅ | ✅ F1/F3/F4 · F2/F5 N/A |
+| 7-D 导出/质量 | ✅ | ✅ G1–G3（2026-06-20） |
 | 7-E 文档 | ✅ | N/A |
 
 ### L2 机器门禁（2026-06-14 · git `87418b9`）
@@ -78,7 +78,7 @@
 | `release:postbuild-verify` | ✅ | [release-parity-evidence-2026-06-14.md](../release-parity-evidence-2026-06-14.md) |
 | `v1-release-installed-smoke` | ✅ | [v1-release-installed-smoke-evidence.md](../v1-release-installed-smoke-evidence.md) |
 
-> **L3 仍开放**：上表 7-A–7-D 动态列须在安装包 UI 手测后勾选；清单见 [release-zero-terminal-hand-test.md](../release-zero-terminal-hand-test.md) · [dmg-vs-dev-parity-checklist.md](./dmg-vs-dev-parity-checklist.md) · **[L3 勾选表](../release-parity-l3-hand-test-checklist-2026-06-14.md)**。
+> **L3 upgrade ✅（2026-06-20）**：7-A–7-D 动态列已在 v0.1.1 unsigned DMG 签收；**Fresh H ☐** · **FLOAT-FIT I1 WARN**（FindReplace 默认壳高）。清单：[L3 勾选表](../release-parity-l3-hand-test-checklist-2026-06-14.md)。
 
 ---
 
