@@ -158,9 +158,49 @@ jobs:
           echo "Uploading Linux .deb + runtime manifest (AppImage skipped in CI)."
           gh release upload "${{ github.ref_name }}" "${upload[@]}" --clobber
 
+  offline-asr-models-pack:
+    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v6
+
+      - uses: actions/setup-node@v6
+        with:
+          node-version: "22"
+          cache: npm
+
+      - uses: actions/setup-python@v6
+        with:
+          python-version: "3.12"
+
+      - run: npm ci
+
+      - name: Bootstrap ASR venv (offline models pack)
+        run: bash scripts/bootstrap-asr-venv.sh
+
+      - name: Build offline ASR models pack (Route E)
+        run: npm run asr:build-offline-models-pack
+        timeout-minutes: 120
+
+      - name: Upload offline pack (workflow_dispatch)
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@v7
+        with:
+          name: offline-asr-models-pack
+          path: dist/offline-asr-models-pack/*
+          if-no-files-found: error
+
+      - name: Upload offline pack (release)
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        uses: actions/upload-artifact@v7
+        with:
+          name: offline-asr-models-pack-release
+          path: dist/offline-asr-models-pack/*
+          if-no-files-found: error
+
   tauri-macos:
-    needs: prepare-release
-    if: always() && (needs.prepare-release.result == 'success' || needs.prepare-release.result == 'skipped')
+    needs: [prepare-release, offline-asr-models-pack]
+    if: always() && (needs.prepare-release.result == 'success' || needs.prepare-release.result == 'skipped') && (needs.offline-asr-models-pack.result == 'success' || needs.offline-asr-models-pack.result == 'skipped')
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v6
@@ -312,14 +352,12 @@ jobs:
             --bundle-root "${{ env.BUNDLE_ROOT }}" \
             --platform darwin-aarch64
 
-      - name: Bootstrap ASR venv (offline models pack)
+      - name: Download offline ASR models pack
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-        run: bash scripts/bootstrap-asr-venv.sh
-
-      - name: Build offline ASR models pack (Route E)
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-        run: npm run asr:build-offline-models-pack
-        timeout-minutes: 120
+        uses: actions/download-artifact@v6
+        with:
+          name: offline-asr-models-pack-release
+          path: dist/offline-asr-models-pack
 
       - name: Upload macOS workflow artifacts
         if: github.event_name == 'workflow_dispatch'

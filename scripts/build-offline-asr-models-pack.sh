@@ -98,13 +98,14 @@ manifest["rushi_version"] = version
 
 notice = """Rushi offline ASR models pack (default Paraformer triplet)
 
-Source: ModelScope (Alibaba / FunASR)
-License: Apache License 2.0 — see LICENSE-APACHE-2.0.txt
+Upstream: ModelScope / FunASR (Apache License 2.0 — see LICENSE-APACHE-2.0.txt)
 
-Models:
+Included model repositories:
 - iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch
 - iic/speech_fsmn_vad_zh-cn-16k-common-pytorch
 - iic/punc_ct-transformer_zh-cn-common-vocab272727-pytorch
+
+Copyright notices and license terms for upstream weights remain with their respective publishers.
 """
 (staging / "NOTICE.txt").write_text(notice, encoding="utf-8")
 apache = ROOT / "docs" / "legal" / "apache-2.0.txt"
@@ -130,7 +131,20 @@ echo "==> ${ZIP_PATH}"
 ls -lh "${ZIP_PATH}"
 (
   cd "${OUT_DIR}"
-  shasum -a 256 "$(basename "${ZIP_PATH}")" > "$(basename "${ZIP_PATH}").sha256"
+  ZIP_BASENAME="$(basename "${ZIP_PATH}")"
+  if command -v sha256sum >/dev/null 2>&1; then
+    sha256sum "${ZIP_BASENAME}" > "${ZIP_BASENAME}.sha256"
+  elif command -v shasum >/dev/null 2>&1; then
+    shasum -a 256 "${ZIP_BASENAME}" > "${ZIP_BASENAME}.sha256"
+  else
+    "${ROOT}/services/asr/.venv/bin/python" - <<PY
+import hashlib
+from pathlib import Path
+p = Path("${OUT_DIR}") / "${ZIP_BASENAME}"
+digest = hashlib.sha256(p.read_bytes()).hexdigest()
+Path("${OUT_DIR}/${ZIP_BASENAME}.sha256").write_text(f"{digest}  {p.name}\n", encoding="utf-8")
+PY
+  fi
 )
 ls -lh "${ZIP_PATH}.sha256"
 bash "${ROOT}/scripts/preflight-offline-asr-models-pack.sh" "${ZIP_PATH}"

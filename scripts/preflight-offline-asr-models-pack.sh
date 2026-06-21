@@ -14,6 +14,30 @@ if [[ ! -e "${TARGET}" ]]; then
   exit 1
 fi
 
+if [[ -f "${TARGET}" ]]; then
+  SIZE_BYTES=$(stat -f%z "${TARGET}" 2>/dev/null || stat -c%s "${TARGET}" 2>/dev/null || echo 0)
+  if [[ "${SIZE_BYTES}" -lt 1048576 ]]; then
+    echo "FAIL: zip too small (${SIZE_BYTES} bytes)" >&2
+    exit 1
+  fi
+  SHA_FILE="${TARGET}.sha256"
+  if [[ -f "${SHA_FILE}" ]]; then
+    EXPECTED_SHA="$(awk '{print $1}' "${SHA_FILE}")"
+    if command -v sha256sum >/dev/null 2>&1; then
+      ACTUAL_SHA="$(sha256sum "${TARGET}" | awk '{print $1}')"
+    elif command -v shasum >/dev/null 2>&1; then
+      ACTUAL_SHA="$(shasum -a 256 "${TARGET}" | awk '{print $1}')"
+    else
+      ACTUAL_SHA="$("${ASR_VENV}" -c "import hashlib,sys; print(hashlib.sha256(open(sys.argv[1],'rb').read()).hexdigest())" "${TARGET}")"
+    fi
+    if [[ "${ACTUAL_SHA}" != "${EXPECTED_SHA}" ]]; then
+      echo "FAIL: sha256 mismatch for ${TARGET}" >&2
+      exit 1
+    fi
+    echo "  ok sha256 ${ACTUAL_SHA}"
+  fi
+fi
+
 if [[ ! -x "${ASR_VENV}" ]]; then
   echo "FAIL: ASR venv missing" >&2
   exit 1

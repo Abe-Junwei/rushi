@@ -18,7 +18,7 @@ python3 -m venv .venv
 # shellcheck source=/dev/null
 source .venv/bin/activate
 python -m pip install -U pip
-python -m pip install -e ".[dev]"
+python -m pip install -e ".[funasr,dev]"
 
 echo ""
 echo "Done (includes dev: pytest / httpx). Run tests: python -m pytest"
