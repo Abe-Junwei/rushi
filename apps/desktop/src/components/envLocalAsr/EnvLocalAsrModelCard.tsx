@@ -1,5 +1,5 @@
-import { Download } from "lucide-react";
-import { CONTROL_BTN_SECONDARY, CONTROL_TEXT_INPUT } from "../../config/controlStyles";
+import { Download, PackageOpen } from "lucide-react";
+import { CONTROL_BTN_SECONDARY, CONTROL_BTN_LINK, CONTROL_TEXT_INPUT } from "../../config/controlStyles";
 import { PANEL_CONTROL_TYPOGRAPHY, PANEL_TYPOGRAPHY } from "../../config/typography";
 import type { PrepareModelFailureCopy } from "../../pages/prepareModelDownloadCopy";
 import type { PrepareDefaultModelOptions } from "../../pages/usePrepareModelController";
@@ -32,6 +32,9 @@ type Props = {
   busy: boolean;
   prepareDefaultFunasrModel: (options?: PrepareDefaultModelOptions) => Promise<void>;
   cancelPrepareModel: () => void;
+  offlinePackImportBusy?: boolean;
+  importOfflineAsrModelsPack?: () => Promise<void>;
+  openOfflineAsrModelsPackReleasePage?: () => Promise<void>;
 };
 
 export function EnvLocalAsrModelCard({
@@ -45,6 +48,9 @@ export function EnvLocalAsrModelCard({
   busy,
   prepareDefaultFunasrModel,
   cancelPrepareModel,
+  offlinePackImportBusy = false,
+  importOfflineAsrModelsPack,
+  openOfflineAsrModelsPackReleasePage,
 }: Props) {
   const catalog = localAsrModelCatalog;
   const {
@@ -58,7 +64,7 @@ export function EnvLocalAsrModelCard({
     sidecarMatchesSelection,
     selectedLabel,
   } = catalogPresentation;
-  const panelBusy = busy || prepareModelBusy || prepareModelCancelling || catalog.applyBusy;
+  const panelBusy = busy || prepareModelBusy || prepareModelCancelling || catalog.applyBusy || offlinePackImportBusy;
   const downloadActive = prepareModelBusy && !prepareModelCancelling;
   const sidecarHub = asrCaps?.funasr_model_id ?? null;
 
@@ -105,7 +111,9 @@ export function EnvLocalAsrModelCard({
 
         <div className="flex flex-col gap-2">
           <div className="flex items-end justify-between gap-2">
-            <span className={fieldLabel}>下载进度</span>
+            <span className={fieldLabel}>
+              {offlinePackImportBusy ? "导入进度" : "准备进度"}
+            </span>
             <span className={`font-mono text-body ${progressToneClass}`}>{progressLabel}</span>
           </div>
           <div
@@ -124,10 +132,10 @@ export function EnvLocalAsrModelCard({
               }
             />
           </div>
-          {(funasrInstallMessage && (prepareModelBusy || prepareModelCancelling)) ||
+          {(funasrInstallMessage && (prepareModelBusy || prepareModelCancelling || offlinePackImportBusy)) ||
           !sidecarMatchesSelection ? (
             <div className="flex flex-col gap-2">
-              {funasrInstallMessage && (prepareModelBusy || prepareModelCancelling) ? (
+              {funasrInstallMessage && (prepareModelBusy || prepareModelCancelling || offlinePackImportBusy) ? (
                 <p className={PANEL_TYPOGRAPHY.meta} role="status" aria-live="polite">
                   {funasrInstallMessage}
                 </p>
@@ -155,12 +163,12 @@ export function EnvLocalAsrModelCard({
         ) : null}
 
         <div className={ENV_PANEL_BUTTON_ROW_CLASS}>
-          {!modelsReady || prepareModelBusy ? (
+          {!modelsReady || prepareModelBusy || offlinePackImportBusy ? (
             <>
               <button
                 type="button"
                 className={`mr-auto flex items-center gap-2 ${CONTROL_BTN_SECONDARY}`}
-                disabled={panelBusy || !selectedPrepare.sidecarMatchesSelection}
+                disabled={panelBusy || offlinePackImportBusy || !selectedPrepare.sidecarMatchesSelection}
                 onClick={() => void prepareDefaultFunasrModel(modelsCached ? { force: true } : undefined)}
               >
                 <Download className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
@@ -171,9 +179,20 @@ export function EnvLocalAsrModelCard({
                     : modelsCached
                       ? "校验/刷新缓存"
                       : progressLabel.startsWith("主模型已缓存")
-                      ? "补齐辅助模型"
-                      : "下载当前模型"}
+                        ? "补齐辅助模型"
+                        : "准备当前模型"}
               </button>
+              {importOfflineAsrModelsPack ? (
+                <button
+                  type="button"
+                  className={`flex items-center gap-2 ${CONTROL_BTN_SECONDARY}`}
+                  disabled={panelBusy}
+                  onClick={() => void importOfflineAsrModelsPack()}
+                >
+                  <PackageOpen className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+                  {offlinePackImportBusy ? "正在导入…" : "导入离线模型包"}
+                </button>
+              ) : null}
               {downloadActive ? (
                 <EnvLocalAsrSmallButton disabled={busy} onClick={cancelPrepareModel}>
                   取消下载
@@ -181,7 +200,20 @@ export function EnvLocalAsrModelCard({
               ) : null}
             </>
           ) : (
-            <span className={`mr-auto ${PANEL_TYPOGRAPHY.meta}`}>当前模型已就绪，可直接转写或切换其他模型。</span>
+            <>
+              <span className={`mr-auto ${PANEL_TYPOGRAPHY.meta}`}>当前模型已就绪，可直接转写或切换其他模型。</span>
+              {importOfflineAsrModelsPack ? (
+                <button
+                  type="button"
+                  className={`flex items-center gap-2 ${CONTROL_BTN_SECONDARY}`}
+                  disabled={panelBusy}
+                  onClick={() => void importOfflineAsrModelsPack()}
+                >
+                  <PackageOpen className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
+                  重新导入离线包
+                </button>
+              ) : null}
+            </>
           )}
           <button
             type="button"
@@ -192,6 +224,27 @@ export function EnvLocalAsrModelCard({
             {catalog.applyBusy ? "正在应用…" : "应用并重启侧车"}
           </button>
         </div>
+
+        {importOfflineAsrModelsPack ? (
+          <p className={`m-0 ${PANEL_TYPOGRAPHY.meta}`}>
+            默认 Paraformer 可
+            {openOfflineAsrModelsPackReleasePage ? (
+              <>
+                {" "}
+                <button
+                  type="button"
+                  className={`${CONTROL_BTN_LINK} text-accent-action`}
+                  disabled={panelBusy}
+                  onClick={() => void openOfflineAsrModelsPackReleasePage()}
+                >
+                  从 Release 下载离线模型包（约 1.2 GB）
+                </button>
+                {" "}
+              </>
+            ) : null}
+            或使用 U 盘等方式获取 rushi-offline-asr-models_版本.zip 后点「导入离线模型包」。导入后无需联网即可转写。
+          </p>
+        ) : null}
     </section>
   );
 }

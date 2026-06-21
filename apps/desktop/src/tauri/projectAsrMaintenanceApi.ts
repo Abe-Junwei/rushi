@@ -69,6 +69,16 @@ export interface WaveformPeaksCacheInfo {
   orphan_project_dirs: number;
 }
 
+export interface OfflineAsrModelsPackImportResult {
+  imported_bytes: number;
+  models_root: string;
+  modelscope_cache: string;
+  pack_version: number;
+  bundle_id: string;
+  seeded_at: string;
+  skipped_reseed?: boolean;
+}
+
 export interface ClearOrphanWaveformPeaksResult {
   cache: WaveformPeaksCacheInfo;
   gc: {
@@ -124,6 +134,18 @@ export async function asrModelCacheInfo(): Promise<AsrModelCacheInfo> {
 
 export async function clearAsrModelCache(): Promise<AsrModelCacheInfo> {
   return invoke<AsrModelCacheInfo>("clear_asr_model_cache");
+}
+
+export async function pickAndImportOfflineAsrModelsPack(): Promise<OfflineAsrModelsPackImportResult | null> {
+  return invoke<OfflineAsrModelsPackImportResult | null>("pick_and_import_offline_asr_models_pack");
+}
+
+export async function importOfflineAsrModelsPack(sourcePath: string): Promise<OfflineAsrModelsPackImportResult> {
+  return invoke<OfflineAsrModelsPackImportResult>("import_offline_asr_models_pack", { sourcePath });
+}
+
+export async function openOfflineAsrModelsPackReleasePage(appVersion: string): Promise<void> {
+  return invoke<void>("open_offline_asr_models_pack_release_page", { appVersion });
 }
 
 export async function waveformPeaksCacheInfo(): Promise<WaveformPeaksCacheInfo> {

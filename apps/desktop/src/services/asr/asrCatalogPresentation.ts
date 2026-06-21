@@ -15,6 +15,8 @@ export type BuildAsrCatalogPresentationInput = {
   prepareModelBusy?: boolean;
   prepareModelCancelling?: boolean;
   prepareModelProgress?: number;
+  offlinePackImportBusy?: boolean;
+  offlinePackImportProgress?: number;
 };
 
 export type AsrCatalogPresentation = {
@@ -46,6 +48,8 @@ export function buildAsrCatalogPresentation(
   const prepareModelBusy = input.prepareModelBusy ?? false;
   const prepareModelCancelling = input.prepareModelCancelling ?? false;
   const prepareModelProgress = input.prepareModelProgress ?? 0;
+  const offlinePackImportBusy = input.offlinePackImportBusy ?? false;
+  const offlinePackImportProgress = input.offlinePackImportProgress ?? 0;
   const modelsCached = selectedPrepare.cached;
   const modelsReady =
     selectedPrepare.readyForTranscribe && selectedPrepare.sidecarMatchesSelection;
@@ -67,26 +71,32 @@ export function buildAsrCatalogPresentation(
         })
       : null;
 
-  const progress = prepareJob?.active
-    ? prepareJob.progress
-    : modelsCached
-      ? 100
-      : prepareModelProgress > 0
-        ? prepareModelProgress
-        : 0;
+  const progress = offlinePackImportBusy
+    ? offlinePackImportProgress
+    : prepareJob?.active
+      ? prepareJob.progress
+      : modelsCached
+        ? 100
+        : prepareModelProgress > 0
+          ? prepareModelProgress
+          : 0;
 
-  const progressLabel = prepareJob
-    ? prepareJob.progressLabel
-    : modelsCached
-      ? "已缓存 · 100%"
-      : prepareModelProgress > 0
-        ? `已暂停 · ${prepareModelProgress}%（可续传）`
-        : partialCache
-          ? "主模型已缓存 · 辅助模型待补齐"
-          : "未下载";
+  const progressLabel = offlinePackImportBusy
+    ? `正在导入离线包… ${offlinePackImportProgress}%`
+    : prepareJob
+      ? prepareJob.progressLabel
+      : modelsCached
+        ? "已缓存 · 100%"
+        : prepareModelProgress > 0
+          ? `已暂停 · ${prepareModelProgress}%（可续传）`
+          : partialCache
+            ? "主模型已缓存 · 辅助模型待补齐"
+            : "未准备";
 
   const progressTone: AsrCatalogPresentation["progressTone"] =
-    modelsReady && !prepareModelBusy && !prepareModelCancelling ? "success" : "muted";
+    modelsReady && !prepareModelBusy && !prepareModelCancelling && !offlinePackImportBusy
+      ? "success"
+      : "muted";
 
   return {
     catalogView,

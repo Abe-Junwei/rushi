@@ -35,6 +35,10 @@ type Props = {
   copyFunasrManualCommands: () => Promise<void>;
   prepareDefaultFunasrModel: (options?: PrepareDefaultModelOptions) => Promise<void>;
   cancelPrepareModel: () => void;
+  offlinePackImportBusy?: boolean;
+  offlinePackImportProgress?: number;
+  importOfflineAsrModelsPack?: () => Promise<void>;
+  openOfflineAsrModelsPackReleasePage?: () => Promise<void>;
   refreshAsrModelCacheInfo: () => Promise<void>;
   clearAsrModelCache: () => Promise<void>;
   clearOrphanWaveformPeaksCache: () => Promise<void>;
@@ -63,6 +67,10 @@ export function EnvLocalAsrPanel({
   copyFunasrManualCommands,
   prepareDefaultFunasrModel,
   cancelPrepareModel,
+  offlinePackImportBusy,
+  offlinePackImportProgress,
+  importOfflineAsrModelsPack,
+  openOfflineAsrModelsPackReleasePage,
   refreshAsrModelCacheInfo,
   clearAsrModelCache,
   clearOrphanWaveformPeaksCache,
@@ -79,6 +87,8 @@ export function EnvLocalAsrPanel({
     prepareModelBusy,
     prepareModelCancelling,
     prepareModelProgress,
+    offlinePackImportBusy,
+    offlinePackImportProgress,
   });
 
   const showProminentSetup = !asrPresentation.chipOk;
@@ -101,6 +111,7 @@ export function EnvLocalAsrPanel({
             busy={busy}
             prepareModelBusy={prepareModelBusy}
             prepareModelCancelling={prepareModelCancelling}
+            offlinePackImportBusy={offlinePackImportBusy}
             selectedModelReady={catalogPresentation.modelsReady}
             transcribeBlockReason={asrPresentation.blockReason}
             openAppDataFolder={openAppDataFolder}
@@ -124,6 +135,9 @@ export function EnvLocalAsrPanel({
           busy={busy}
           prepareDefaultFunasrModel={prepareDefaultFunasrModel}
           cancelPrepareModel={cancelPrepareModel}
+          offlinePackImportBusy={offlinePackImportBusy}
+          importOfflineAsrModelsPack={importOfflineAsrModelsPack}
+          openOfflineAsrModelsPackReleasePage={openOfflineAsrModelsPackReleasePage}
         />
       </section>
 
@@ -146,6 +160,7 @@ export function EnvLocalAsrPanel({
           funasrInstallMessage={funasrInstallMessage}
           prepareModelBusy={prepareModelBusy}
           prepareModelCancelling={prepareModelCancelling}
+          offlinePackImportBusy={offlinePackImportBusy}
           transcribeBlockReason={asrPresentation.blockReason}
           busy={busy}
           refreshAsrHealth={refreshAsrHealth}

@@ -1,5 +1,6 @@
 import { useCallback, useRef, type Dispatch, type SetStateAction } from "react";
 import type { AsrSetupOutcome, AsrSetupStep } from "../services/asr/asrSetupContract";
+import { isOfflineAsrModelsPackImportActive } from "../services/asr/asrPrepareActivityGate";
 import { runAsrOneClickPrepareFlow, type AsrOneClickPrepareDeps } from "../services/asr/asrOneClickPrepareFlow";
 import type { LocalRuntimeDiagnose } from "../services/localRuntime/localRuntimeContract";
 import type { AsrSetupReport } from "../services/asr/asrSetupContract";
@@ -43,6 +44,11 @@ export function useAsrOneClickPrepare(args: {
       return;
     }
     if (inflightRef.current) return;
+    if (isOfflineAsrModelsPackImportActive()) {
+      setSetupMessage("离线模型包导入进行中，请等待完成后再一键准备。");
+      setSetupOutcome("blocked");
+      return;
+    }
 
     inflightRef.current = true;
     setSetupBusy(true);

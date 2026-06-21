@@ -70,6 +70,14 @@ describe("shouldSkipAsrHealthDowngrade", () => {
       }),
     ).toBe(true);
   });
+
+  it("preserves snapshot during offline import even on foreground poll", () => {
+    expect(
+      shouldSkipAsrHealthDowngrade(true, { health: "error" }, lastGood, {
+        preserveDuringOfflineImport: true,
+      }),
+    ).toBe(true);
+  });
 });
 
 describe("useAsrHealthPoll", () => {

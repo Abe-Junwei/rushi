@@ -5,7 +5,7 @@ import * as p1 from "../tauri/projectApi";
 import { parseCatalogStatusFromHealth } from "../services/asr/localAsrModelCatalog";
 import { loopbackFetch } from "../services/asr/loopbackFetch";
 import { parseAsrHealthJson } from "../services/asr/asrHealthParse";
-import { isAsrModelPrepareActive } from "../services/asr/asrPrepareActivityGate";
+import { isAsrModelPrepareActive, isOfflineAsrModelsPackImportActive } from "../services/asr/asrPrepareActivityGate";
 import { waitMinVisibleBusy } from "../services/ui/minVisibleBusy";
 
 export type AsrHealthState = "checking" | "ok" | "error";
@@ -28,9 +28,15 @@ export function shouldSkipAsrHealthDowngrade(
   touchUi: boolean,
   result: Pick<AsrHealthRefreshResult, "health">,
   lastGood: AsrHealthRefreshResult | null,
-  options?: { preserveDuringModelPrepare?: boolean },
+  options?: {
+    preserveDuringModelPrepare?: boolean;
+    preserveDuringOfflineImport?: boolean;
+  },
 ): boolean {
   if (options?.preserveDuringModelPrepare && result.health !== "ok") {
+    return true;
+  }
+  if (options?.preserveDuringOfflineImport && result.health !== "ok") {
     return true;
   }
   if (touchUi) return false;
@@ -105,6 +111,7 @@ export function useAsrHealthPoll({ tauriRuntime, catalogHooksRef }: Params) {
           if (
             shouldSkipAsrHealthDowngrade(touchUi, result, lastGoodRef.current, {
               preserveDuringModelPrepare: isAsrModelPrepareActive(),
+              preserveDuringOfflineImport: isOfflineAsrModelsPackImportActive(),
             })
           ) {
             return;

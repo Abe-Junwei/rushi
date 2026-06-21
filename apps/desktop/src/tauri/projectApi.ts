@@ -53,6 +53,7 @@ export type {
   AsrRuntimePaths,
   BundledAsrLaunchReport,
   ClearOrphanWaveformPeaksResult,
+  OfflineAsrModelsPackImportResult,
   WaveformPeaksCacheInfo,
 } from "./projectAsrMaintenanceApi";
 export {
@@ -64,9 +65,12 @@ export {
   getAsrRuntimePaths,
   getLocalAsrHubModelPref,
   getLocalAsrRecognitionLanguagePref,
+  importOfflineAsrModelsPack,
   installFunasrDepsInteractive,
   killLoopbackAsrListeners,
   openAppDataFolder,
+  openOfflineAsrModelsPackReleasePage,
+  pickAndImportOfflineAsrModelsPack,
   retryBundledAsrSidecar,
   setLocalAsrHubModelPref,
   setLocalAsrRecognitionLanguagePref,

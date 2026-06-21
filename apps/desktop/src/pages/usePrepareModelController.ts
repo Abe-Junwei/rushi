@@ -26,6 +26,7 @@ import {
 } from "../services/asr/prepareJobPresentation";
 import {
   setAsrModelPrepareActive,
+  isOfflineAsrModelsPackImportActive,
 } from "../services/asr/asrPrepareActivityGate";
 
 const PREPARE_STATUS_POLL_MS = 1000;
@@ -123,6 +124,10 @@ export function usePrepareModelController(
   }, []);
 
   const prepareDefaultFunasrModel = useCallback(async (options?: PrepareDefaultModelOptions) => {
+    if (isOfflineAsrModelsPackImportActive()) {
+      toast.warning("离线模型包导入进行中，请等待完成后再下载。");
+      return;
+    }
     prepareModelAbortRef.current?.abort();
     const ac = new AbortController();
     prepareModelAbortRef.current = ac;

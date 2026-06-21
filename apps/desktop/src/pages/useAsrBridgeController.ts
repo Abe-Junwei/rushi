@@ -8,7 +8,10 @@ import { usePrepareModelController, type PrepareModelApi } from "./usePrepareMod
 import { useLocalAsrModelCatalog, type LocalAsrModelCatalogApi } from "./useLocalAsrModelCatalog";
 import { buildAsrEnvPresentation, type AsrEnvPresentation } from "../services/asr/asrEnvStatus";
 import { funasrManualSetupCommands } from "../services/asr/asrHealthParse";
+import { fetchAppVersion } from "../tauri/appInfoApi";
 import { toast } from "../services/ui/toast";
+import { runOfflineAsrModelsPackImportFlow } from "../services/asr/offlineAsrModelsPackFlow";
+import { isOfflineAsrModelsPackImportActive } from "../services/asr/asrPrepareActivityGate";
 import {
   useAsrHealthPoll,
   type AsrHealthRefreshOptions,
@@ -46,6 +49,10 @@ export interface AsrBridgeApi {
   asrCacheMessage: string;
   prepareDefaultFunasrModel: PrepareModelApi["prepareDefaultFunasrModel"];
   cancelPrepareModel: () => void;
+  offlinePackImportBusy: boolean;
+  offlinePackImportProgress: number;
+  importOfflineAsrModelsPack: () => Promise<void>;
+  openOfflineAsrModelsPackReleasePage: () => Promise<void>;
   localAsrModelCatalog: LocalAsrModelCatalogApi;
   retryBundledAsrSidecar: () => Promise<void>;
   installFunasrDepsInteractive: () => Promise<void>;
@@ -69,6 +76,8 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
   const tauriRuntime = isTauriRuntime();
   const [sttOnlineBridgeEpoch, setSttOnlineBridgeEpoch] = useState(0);
   const [sttRuntimeRevision, setSttRuntimeRevision] = useState(0);
+  const [offlinePackImportBusy, setOfflinePackImportBusy] = useState(false);
+  const [offlinePackImportProgress, setOfflinePackImportProgress] = useState(0);
   const refreshAsrRuntimeInfoRef = useRef<() => Promise<void>>(async () => {});
 
   useEffect(() => {
@@ -169,6 +178,8 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
         prepareModelBusy: modelCtrl.prepareModelBusy,
         prepareModelCancelling: modelCtrl.prepareModelCancelling,
         prepareModelProgress: modelCtrl.prepareModelProgress,
+        offlinePackImportBusy,
+        offlinePackImportProgress,
       }),
     [
       asrHealth,
@@ -182,10 +193,27 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
       modelCtrl.prepareModelBusy,
       modelCtrl.prepareModelCancelling,
       modelCtrl.prepareModelProgress,
+      offlinePackImportBusy,
+      offlinePackImportProgress,
     ],
   );
 
+  const restartSidecarAfterOfflineImport = useCallback(async () => {
+    try {
+      await p1.retryBundledAsrSidecar();
+      await refreshBundledAsrDiag();
+    } catch {
+      /* ignore */
+    } finally {
+      await refreshAsrRuntimeInfo();
+    }
+  }, [refreshAsrRuntimeInfo, refreshBundledAsrDiag]);
+
   const retryBundledAsrSidecar = useCallback(async () => {
+    if (isOfflineAsrModelsPackImportActive()) {
+      toast.warning("离线模型包导入进行中，请等待完成后再重启侧车。");
+      return;
+    }
     if (modelCtrl.prepareModelBusy || modelCtrl.prepareModelCancelling) {
       toast.warning("模型下载进行中，请稍候或先取消下载后再重启侧车。");
       return;
@@ -206,6 +234,10 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
   ]);
 
   const clearAsrModelCache = useCallback(async () => {
+    if (isOfflineAsrModelsPackImportActive()) {
+      toast.warning("离线模型包导入进行中，请等待完成后再清除缓存。");
+      return;
+    }
     if (modelCtrl.prepareModelBusy || modelCtrl.prepareModelCancelling) {
       toast.warning("模型下载进行中，请先取消下载或等待完成后再清除缓存。");
       return;
@@ -244,6 +276,72 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
     }
   }, [modelCtrl]);
 
+  const importOfflineAsrModelsPack = useCallback(async () => {
+    if (!tauriRuntime) {
+      toast.info("导入离线模型包需在桌面应用中使用。");
+      return;
+    }
+    setOfflinePackImportBusy(true);
+    setOfflinePackImportProgress(0);
+    modelCtrl.setPrepareModelFailure(null);
+    try {
+      const outcome = await runOfflineAsrModelsPackImportFlow({
+        selectedHubModelId: localAsrModelCatalog.selectedHubModelId,
+        catalogStatus: localAsrModelCatalog.catalogStatus,
+        prepareModelBusy: modelCtrl.prepareModelBusy,
+        prepareModelCancelling: modelCtrl.prepareModelCancelling,
+        onProgressMessage: (message) => modelCtrl.setFunasrInstallMessage(message),
+        onImportProgress: (percent) => setOfflinePackImportProgress(percent),
+        onClearProgress: () => {
+          modelCtrl.setFunasrInstallMessage("");
+          setOfflinePackImportProgress(0);
+        },
+        refreshAsrRuntimeInfo,
+        refreshAsrModelCacheInfo: cacheCtrl.refreshAsrModelCacheInfo,
+        retryBundledAsrSidecar: restartSidecarAfterOfflineImport,
+      });
+      if (outcome.kind === "cancelled") return;
+      if (outcome.kind === "blocked") {
+        toast.warning(outcome.message);
+        return;
+      }
+      if (outcome.kind === "error") {
+        toast.error(outcome.message || "导入离线模型包失败。");
+        return;
+      }
+      if (outcome.skippedReseed) {
+        toast.success("离线模型包已在缓存中，无需重复导入。");
+        return;
+      }
+      toast.success("离线模型包已导入，本机转写已就绪。");
+    } finally {
+      setOfflinePackImportBusy(false);
+      setOfflinePackImportProgress(0);
+    }
+  }, [
+    cacheCtrl.refreshAsrModelCacheInfo,
+    localAsrModelCatalog.catalogStatus,
+    localAsrModelCatalog.selectedHubModelId,
+    modelCtrl,
+    refreshAsrRuntimeInfo,
+    restartSidecarAfterOfflineImport,
+    tauriRuntime,
+  ]);
+
+  const openOfflineAsrModelsPackReleasePage = useCallback(async () => {
+    if (!tauriRuntime) {
+      toast.info("请在桌面应用中打开 Release 页面。");
+      return;
+    }
+    try {
+      const version = await fetchAppVersion();
+      await p1.openOfflineAsrModelsPackReleasePage(version);
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      toast.error(message || "无法打开 Release 页面。");
+    }
+  }, [tauriRuntime]);
+
   return {
     asrHealth,
     asrHealthDetail: asrHealthDetailDisplay,
@@ -267,6 +365,10 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
     asrCacheMessage: cacheCtrl.asrCacheMessage,
     prepareDefaultFunasrModel: modelCtrl.prepareDefaultFunasrModel,
     cancelPrepareModel: () => void modelCtrl.cancelPrepareModel(),
+    offlinePackImportBusy,
+    offlinePackImportProgress,
+    importOfflineAsrModelsPack,
+    openOfflineAsrModelsPackReleasePage,
     localAsrModelCatalog,
     retryBundledAsrSidecar,
     installFunasrDepsInteractive,

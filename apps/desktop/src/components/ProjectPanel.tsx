@@ -148,6 +148,10 @@ export function ProjectPanel() {
             copyFunasrManualCommands={c.copyFunasrManualCommands}
             prepareDefaultFunasrModel={c.prepareDefaultFunasrModel}
             cancelPrepareModel={c.cancelPrepareModel}
+            offlinePackImportBusy={c.offlinePackImportBusy}
+            offlinePackImportProgress={c.offlinePackImportProgress}
+            importOfflineAsrModelsPack={c.importOfflineAsrModelsPack}
+            openOfflineAsrModelsPackReleasePage={c.openOfflineAsrModelsPackReleasePage}
             refreshAsrModelCacheInfo={c.refreshAsrModelCacheInfo}
             clearAsrModelCache={c.clearAsrModelCache}
             clearOrphanWaveformPeaksCache={c.clearOrphanWaveformPeaksCache}

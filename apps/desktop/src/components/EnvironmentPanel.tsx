@@ -40,6 +40,10 @@ export type EnvironmentPanelProps = {
   copyFunasrManualCommands: () => Promise<void>;
   prepareDefaultFunasrModel: PrepareModelApi["prepareDefaultFunasrModel"];
   cancelPrepareModel: () => void;
+  offlinePackImportBusy?: boolean;
+  offlinePackImportProgress?: number;
+  importOfflineAsrModelsPack?: () => Promise<void>;
+  openOfflineAsrModelsPackReleasePage?: () => Promise<void>;
   refreshAsrModelCacheInfo: () => Promise<void>;
   clearAsrModelCache: () => Promise<void>;
   clearOrphanWaveformPeaksCache: () => Promise<void>;
@@ -74,6 +78,10 @@ export function EnvironmentPanel({
   copyFunasrManualCommands,
   prepareDefaultFunasrModel,
   cancelPrepareModel,
+  offlinePackImportBusy,
+  offlinePackImportProgress,
+  importOfflineAsrModelsPack,
+  openOfflineAsrModelsPackReleasePage,
   refreshAsrModelCacheInfo,
   clearAsrModelCache,
   clearOrphanWaveformPeaksCache,
@@ -184,6 +192,10 @@ export function EnvironmentPanel({
                 copyFunasrManualCommands={copyFunasrManualCommands}
                 prepareDefaultFunasrModel={prepareDefaultFunasrModel}
                 cancelPrepareModel={cancelPrepareModel}
+                offlinePackImportBusy={offlinePackImportBusy}
+                offlinePackImportProgress={offlinePackImportProgress}
+                importOfflineAsrModelsPack={importOfflineAsrModelsPack}
+                openOfflineAsrModelsPackReleasePage={openOfflineAsrModelsPackReleasePage}
                 refreshAsrModelCacheInfo={refreshAsrModelCacheInfo}
                 clearAsrModelCache={clearAsrModelCache}
                 clearOrphanWaveformPeaksCache={clearOrphanWaveformPeaksCache}

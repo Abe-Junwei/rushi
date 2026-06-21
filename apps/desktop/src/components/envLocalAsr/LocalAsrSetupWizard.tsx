@@ -15,6 +15,7 @@ type Props = {
   busy: boolean;
   prepareModelBusy?: boolean;
   prepareModelCancelling?: boolean;
+  offlinePackImportBusy?: boolean;
   transcribeBlockReason?: string | null;
   selectedModelReady?: boolean;
   openAppDataFolder: () => Promise<void>;
@@ -30,6 +31,7 @@ export function LocalAsrSetupWizard({
   busy,
   prepareModelBusy = false,
   prepareModelCancelling = false,
+  offlinePackImportBusy = false,
   transcribeBlockReason = null,
   selectedModelReady = false,
   openAppDataFolder,
@@ -57,7 +59,7 @@ export function LocalAsrSetupWizard({
     acceptForeignPortService,
   } = setup;
 
-  const wizardBusy = busy || setupBusy || diagnoseBusy || prepareModelBusy;
+  const wizardBusy = busy || setupBusy || diagnoseBusy || prepareModelBusy || offlinePackImportBusy;
   const refreshDisabled = setupBusy || diagnoseBusy || !isTauriRuntime();
   const lastSetupToastRef = useRef<string | null>(null);
   const diskMeta = buildDiskMetaLine(setupReport);
@@ -98,7 +100,10 @@ export function LocalAsrSetupWizard({
   return (
     <section className="flex flex-col gap-3">
       {embedded ? (
-        <p className={`m-0 ${PANEL_TYPOGRAPHY.meta}`}>自动完成侧车、能力检测与模型下载。</p>
+        <p className={`m-0 ${PANEL_TYPOGRAPHY.meta}`}>
+          自动完成侧车、能力检测与模型准备；无法联网时可在下方「转写模型」导入离线包（约 1.2 GB，Release 资产名
+          rushi-offline-asr-models_版本.zip）。
+        </p>
       ) : null}
 
       <EnvUtilitiesActionRow>
