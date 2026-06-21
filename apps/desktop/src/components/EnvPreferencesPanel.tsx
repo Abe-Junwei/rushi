@@ -1,4 +1,4 @@
-import { useCallback, useMemo, useSyncExternalStore } from "react";
+import { useCallback, useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { ChevronsLeftRight, Crosshair, type LucideIcon } from "lucide-react";
 import {
   CONTROL_BTN_SECONDARY,
@@ -18,7 +18,6 @@ import {
 } from "../utils/waveformPlaybackRate";
 import type { WaveformPlaybackScrollFollowMode } from "../utils/waveformPlaybackScrollFollow";
 import {
-  clampWaveformHeight,
   clampTranscriptFontPx,
   listTranscriptFontPxOptions,
   readStoredTabAdvanceLoopsSegment,
@@ -120,6 +119,21 @@ export function EnvPreferencesPanel() {
     [],
   );
   const snappedPlaybackRate = String(snapWaveformPlaybackRate(globalPlaybackRate));
+  const [waveformHeightDraft, setWaveformHeightDraft] = useState<string | null>(null);
+  const waveformHeightInputValue = waveformHeightDraft ?? String(waveformHeightPx);
+
+  useEffect(() => {
+    setWaveformHeightDraft(null);
+  }, [waveformHeightPx]);
+
+  const commitWaveformHeightInput = useCallback((raw: string) => {
+    setWaveformHeightDraft(null);
+    const trimmed = raw.trim();
+    if (trimmed === "") return;
+    const n = Number(trimmed);
+    if (!Number.isFinite(n)) return;
+    writeStoredWaveformHeightPx(n);
+  }, []);
 
   const setTabAdvanceLoops = useCallback((enabled: boolean) => {
     writeStoredTabAdvanceLoopsSegment(enabled);
@@ -140,10 +154,6 @@ export function EnvPreferencesPanel() {
 
   const setTranscriptFontPx = useCallback((raw: string) => {
     writeStoredP1TranscriptFontPx(clampTranscriptFontPx(Number(raw)));
-  }, []);
-
-  const setWaveformHeightPx = useCallback((raw: string) => {
-    writeStoredWaveformHeightPx(clampWaveformHeight(Number(raw)));
   }, []);
 
   return (
@@ -241,11 +251,18 @@ export function EnvPreferencesPanel() {
               id="pref-waveform-height"
               className={`${CONTROL_TEXT_INPUT} max-w-[12rem]`}
               type="number"
+              inputMode="numeric"
               min={WAVEFORM_HEIGHT_MIN}
               max={WAVEFORM_HEIGHT_MAX}
               step={1}
-              value={waveformHeightPx}
-              onChange={(e) => setWaveformHeightPx(e.target.value)}
+              value={waveformHeightInputValue}
+              onChange={(e) => setWaveformHeightDraft(e.target.value)}
+              onBlur={(e) => commitWaveformHeightInput(e.target.value)}
+              onKeyDown={(e) => {
+                if (e.key !== "Enter") return;
+                commitWaveformHeightInput(e.currentTarget.value);
+                e.currentTarget.blur();
+              }}
             />
             <span className={PANEL_TYPOGRAPHY.meta}>
               {WAVEFORM_HEIGHT_MIN}–{WAVEFORM_HEIGHT_MAX}px；默认 {WAVEFORM_HEIGHT_DEFAULT}px

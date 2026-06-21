@@ -59,4 +59,17 @@ describe("EnvPreferencesPanel", () => {
     fireEvent.click(within(listbox).getByRole("option", { name: "1.5x" }));
     expect(localStorage.getItem("rushi.p1.waveformGlobalPlaybackRate")).toBe("1.5");
   });
+
+  it("commits waveform height after blur without clamping each keystroke", () => {
+    render(<EnvPreferencesPanel />);
+    const input = screen.getByDisplayValue("220") as HTMLInputElement;
+    fireEvent.change(input, { target: { value: "18" } });
+    expect(input.value).toBe("18");
+    expect(localStorage.getItem("rushi.p1.waveformHeightPx")).toBeNull();
+    fireEvent.blur(input);
+    expect(localStorage.getItem("rushi.p1.waveformHeightPx")).toBe("56");
+    fireEvent.change(input, { target: { value: "180" } });
+    fireEvent.blur(input);
+    expect(localStorage.getItem("rushi.p1.waveformHeightPx")).toBe("180");
+  });
 });
