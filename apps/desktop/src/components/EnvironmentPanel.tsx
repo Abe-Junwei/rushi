@@ -16,7 +16,6 @@ import type { AsrEnvPresentation } from "../services/asr/asrEnvStatus";
 import type { AsrHealthCapabilities, AsrModelCacheInfo, BundledAsrLaunchReport, WaveformPeaksCacheInfo } from "../tauri/projectApi";
 import type { AsrSetupControllerApi } from "../pages/useAsrSetupController";
 import type { LocalAsrModelCatalogApi } from "../pages/useLocalAsrModelCatalog";
-import type { PrepareModelApi } from "../pages/usePrepareModelController";
 import type { PrepareModelFailureCopy } from "../pages/prepareModelDownloadCopy";
 import { resolveEnvironmentFocusSection } from "../utils/environmentPanelFocus";
 import { envMainPaddingClass, type EnvNavId } from "../utils/environmentPanelNav";
@@ -38,14 +37,7 @@ export type EnvironmentPanelProps = {
   busy: boolean;
   refreshAsrHealth: () => Promise<void>;
   copyFunasrManualCommands: () => Promise<void>;
-  prepareDefaultFunasrModel: PrepareModelApi["prepareDefaultFunasrModel"];
   cancelPrepareModel: () => void;
-  offlinePackImportBusy?: boolean;
-  offlinePackImportProgress?: number;
-  offlinePackImportFailure?: string | null;
-  importOfflineAsrModelsPack?: () => Promise<void>;
-  cancelOfflineAsrModelsPackImport?: () => Promise<void>;
-  openOfflineAsrModelsPackReleasePage?: () => Promise<void>;
   refreshAsrModelCacheInfo: () => Promise<void>;
   clearAsrModelCache: () => Promise<void>;
   clearOrphanWaveformPeaksCache: () => Promise<void>;
@@ -78,14 +70,7 @@ export function EnvironmentPanel({
   busy,
   refreshAsrHealth,
   copyFunasrManualCommands,
-  prepareDefaultFunasrModel,
   cancelPrepareModel,
-  offlinePackImportBusy,
-  offlinePackImportProgress,
-  offlinePackImportFailure,
-  importOfflineAsrModelsPack,
-  cancelOfflineAsrModelsPackImport,
-  openOfflineAsrModelsPackReleasePage,
   refreshAsrModelCacheInfo,
   clearAsrModelCache,
   clearOrphanWaveformPeaksCache,
@@ -194,14 +179,7 @@ export function EnvironmentPanel({
                 busy={busy}
                 refreshAsrHealth={refreshAsrHealth}
                 copyFunasrManualCommands={copyFunasrManualCommands}
-                prepareDefaultFunasrModel={prepareDefaultFunasrModel}
                 cancelPrepareModel={cancelPrepareModel}
-                offlinePackImportBusy={offlinePackImportBusy}
-                offlinePackImportProgress={offlinePackImportProgress}
-                offlinePackImportFailure={offlinePackImportFailure}
-                importOfflineAsrModelsPack={importOfflineAsrModelsPack}
-                cancelOfflineAsrModelsPackImport={cancelOfflineAsrModelsPackImport}
-                openOfflineAsrModelsPackReleasePage={openOfflineAsrModelsPackReleasePage}
                 refreshAsrModelCacheInfo={refreshAsrModelCacheInfo}
                 clearAsrModelCache={clearAsrModelCache}
                 clearOrphanWaveformPeaksCache={clearOrphanWaveformPeaksCache}

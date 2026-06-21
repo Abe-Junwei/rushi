@@ -82,3 +82,13 @@ export const loopbackInvokeMissingCommandDev =
 
 export const asrStatusFfmpegActionLabelManaged = "一键准备";
 export const asrStatusFfmpegActionLabelDev = "修复侧车";
+
+export const bundledModelsMissingTipsManaged = [
+  "请确认使用 v0.1.8 Release DMG / Windows 安装包装载，且安装包体积约 1.4 GB。",
+  "若仍出现此错误，请完全退出应用后重新打开，或重新安装最新版本。",
+];
+
+export const bundledModelsMissingTipsDev = [
+  "请确认使用 v0.1.8 Release DMG 安装，且安装包体积约 1.4 GB。",
+  "开发构建需先运行 npm run asr:stage-bundled-models。",
+];

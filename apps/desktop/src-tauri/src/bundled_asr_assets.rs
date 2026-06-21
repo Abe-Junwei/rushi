@@ -47,6 +47,19 @@ pub fn candidate_resource_roots_from_parts(
     unique
 }
 
+pub const BUNDLED_ASR_MODELS_DIR: &str = "bundled-asr-models";
+
+/// Resolve bundled Paraformer pack root inside Tauri resource roots.
+pub fn resolve_bundled_asr_models_pack_root() -> Option<PathBuf> {
+    for root in resource_roots_for_lookup() {
+        let candidate = root.join(BUNDLED_ASR_MODELS_DIR);
+        if candidate.join("manifest.json").is_file() && candidate.join("modelscope").is_dir() {
+            return Some(candidate);
+        }
+    }
+    None
+}
+
 fn resource_roots_for_lookup() -> Vec<PathBuf> {
     if let Some(cached) = RESOURCE_ROOTS.get() {
         return cached.clone();

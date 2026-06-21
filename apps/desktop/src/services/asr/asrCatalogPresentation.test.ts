@@ -121,20 +121,6 @@ describe("buildAsrCatalogPresentation", () => {
     expect(presentation.progressLabel).toBe("正在取消… 42%");
   });
 
-  it("shows offline import progress while pack import is in flight", () => {
-    const presentation = buildAsrCatalogPresentation({
-      asrCaps: caps({ funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID }),
-      catalogStatus: null,
-      selectedHubModelId: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
-      offlinePackImportBusy: true,
-      offlinePackImportProgress: 64,
-    });
-
-    expect(presentation.progress).toBe(64);
-    expect(presentation.progressLabel).toBe("正在导入离线包… 64%");
-    expect(presentation.progressTone).toBe("muted");
-  });
-
   it("shows paused label after partial download was cancelled", () => {
     const presentation = buildAsrCatalogPresentation({
       asrCaps: caps({ funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID }),

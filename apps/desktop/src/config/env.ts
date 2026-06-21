@@ -42,3 +42,4 @@ export function isTauriRuntime(): boolean {
 export function isDefaultBundledAsrTarget(): boolean {
   return asrBaseUrl() === DEFAULT_ASR_BASE_URL;
 }
+

@@ -26,7 +26,6 @@ import {
   effectiveTranscribeReady,
   mapPrepareModelBusyRows,
   mapPrepareModelCancelRows,
-  mapOfflinePackImportBusyRows,
   toneFor,
   type AsrEnvStatusRow,
 } from "./asrEnvPresentationRows";
@@ -76,8 +75,6 @@ export type BuildAsrEnvPresentationInput = {
   prepareModelBusy?: boolean;
   prepareModelCancelling?: boolean;
   prepareModelProgress?: number;
-  offlinePackImportBusy?: boolean;
-  offlinePackImportProgress?: number;
   runtimeInstallRunning?: boolean;
 };
 
@@ -209,26 +206,6 @@ export function runtimeInstallBusyPresentation(
   };
 }
 
-function applyOfflinePackImportOverlay(
-  presentation: AsrEnvPresentation,
-  input: BuildAsrEnvPresentationInput,
-): AsrEnvPresentation {
-  if (!input.offlinePackImportBusy) return presentation;
-
-  const progress = input.offlinePackImportProgress ?? 0;
-  return {
-    ...presentation,
-    transcribeReady: false,
-    tone: "warn",
-    chipLabel: "ASR 未就绪",
-    chipOk: false,
-    bannerTitle: "本机 ASR · 正在导入离线模型包",
-    bannerDetail: `正在将离线包写入本机缓存（约 1.2 GB）… ${progress}%`,
-    statusRows: mapOfflinePackImportBusyRows(presentation.statusRows),
-    blockReason: "离线模型包导入中，完成后方可转写。",
-  };
-}
-
 export function buildAsrEnvPresentation(input: BuildAsrEnvPresentationInput): AsrEnvPresentation {
   const envOk = input.asrHealth === "ok";
   const ffmpegOk = input.asrCaps?.ffmpeg_ok === true;
@@ -281,8 +258,7 @@ export function buildAsrEnvPresentation(input: BuildAsrEnvPresentationInput): As
     sidecarAsyncTranscribeCapable: input.sidecarAsyncTranscribeCapable,
   });
 
-  return applyOfflinePackImportOverlay(
-    applyPrepareModelOverlay(
+  return applyPrepareModelOverlay(
       {
         health: input.asrHealth,
         transcribeReady,
@@ -331,7 +307,5 @@ export function buildAsrEnvPresentation(input: BuildAsrEnvPresentationInput): As
           : null,
       },
       input,
-    ),
-    input,
-  );
+    );
 }

@@ -9,7 +9,6 @@ import type {
   BundledAsrLaunchReport,
   WaveformPeaksCacheInfo,
 } from "../tauri/projectApi";
-import type { PrepareDefaultModelOptions } from "../pages/usePrepareModelController";
 import type { AsrSetupControllerApi } from "../pages/useAsrSetupController";
 import type { LocalAsrModelCatalogApi } from "../pages/useLocalAsrModelCatalog";
 import { EnvLocalAsrModelCard } from "./envLocalAsr/EnvLocalAsrModelCard";
@@ -33,14 +32,7 @@ type Props = {
   busy: boolean;
   refreshAsrHealth: () => Promise<void>;
   copyFunasrManualCommands: () => Promise<void>;
-  prepareDefaultFunasrModel: (options?: PrepareDefaultModelOptions) => Promise<void>;
   cancelPrepareModel: () => void;
-  offlinePackImportBusy?: boolean;
-  offlinePackImportProgress?: number;
-  offlinePackImportFailure?: string | null;
-  importOfflineAsrModelsPack?: () => Promise<void>;
-  cancelOfflineAsrModelsPackImport?: () => Promise<void>;
-  openOfflineAsrModelsPackReleasePage?: () => Promise<void>;
   refreshAsrModelCacheInfo: () => Promise<void>;
   clearAsrModelCache: () => Promise<void>;
   clearOrphanWaveformPeaksCache: () => Promise<void>;
@@ -67,14 +59,7 @@ export function EnvLocalAsrPanel({
   busy,
   refreshAsrHealth,
   copyFunasrManualCommands,
-  prepareDefaultFunasrModel,
   cancelPrepareModel,
-  offlinePackImportBusy,
-  offlinePackImportProgress,
-  offlinePackImportFailure,
-  importOfflineAsrModelsPack,
-  cancelOfflineAsrModelsPackImport,
-  openOfflineAsrModelsPackReleasePage,
   refreshAsrModelCacheInfo,
   clearAsrModelCache,
   clearOrphanWaveformPeaksCache,
@@ -91,8 +76,6 @@ export function EnvLocalAsrPanel({
     prepareModelBusy,
     prepareModelCancelling,
     prepareModelProgress,
-    offlinePackImportBusy,
-    offlinePackImportProgress,
   });
 
   const showProminentSetup = !asrPresentation.chipOk;
@@ -115,7 +98,6 @@ export function EnvLocalAsrPanel({
             busy={busy}
             prepareModelBusy={prepareModelBusy}
             prepareModelCancelling={prepareModelCancelling}
-            offlinePackImportBusy={offlinePackImportBusy}
             selectedModelReady={catalogPresentation.modelsReady}
             transcribeBlockReason={asrPresentation.blockReason}
             openAppDataFolder={openAppDataFolder}
@@ -137,13 +119,7 @@ export function EnvLocalAsrPanel({
           prepareModelFailure={prepareModelFailure}
           funasrInstallMessage={funasrInstallMessage}
           busy={busy}
-          prepareDefaultFunasrModel={prepareDefaultFunasrModel}
           cancelPrepareModel={cancelPrepareModel}
-          offlinePackImportBusy={offlinePackImportBusy}
-          offlinePackImportFailure={offlinePackImportFailure}
-          importOfflineAsrModelsPack={importOfflineAsrModelsPack}
-          cancelOfflineAsrModelsPackImport={cancelOfflineAsrModelsPackImport}
-          openOfflineAsrModelsPackReleasePage={openOfflineAsrModelsPackReleasePage}
         />
       </section>
 
@@ -166,7 +142,6 @@ export function EnvLocalAsrPanel({
           funasrInstallMessage={funasrInstallMessage}
           prepareModelBusy={prepareModelBusy}
           prepareModelCancelling={prepareModelCancelling}
-          offlinePackImportBusy={offlinePackImportBusy}
           transcribeBlockReason={asrPresentation.blockReason}
           busy={busy}
           refreshAsrHealth={refreshAsrHealth}

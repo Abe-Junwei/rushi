@@ -21,6 +21,6 @@
     "noUnusedParameters": true,
     "noFallthroughCasesInSwitch": true
   },
-  "include": ["src", "../../resources/github-release.json"],
+  "include": ["src"],
   "references": [{ "path": "./tsconfig.node.json" }]
 }

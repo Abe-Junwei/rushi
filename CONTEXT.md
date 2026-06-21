@@ -88,6 +88,14 @@ _Avoid_: 引擎, model（未特指 hub SKU 时）
 本机 FunASR 模型目录中的可选模型标识（如 Paraformer、SenseVoice）；用户所选与侧车运行中可能不一致。
 _Avoid_: 模型名（未带 hub 语境时）
 
+**Bundled default weights**（随包默认权重）:
+安装包内嵌的默认 Paraformer 三件套（ASR+VAD+PUNC）权重，非 ModelScope 在线拉取；v0.1.8 起 macOS/Windows 安装介质均含此布局。
+_Avoid_: 离线模型包, Route E zip, 打进侧车
+
+**First-launch seed**（首启 seed）:
+首次启动时将随包 `modelscope/` 树复制到 App Data 模型缓存；完成前不可本机转写；文案「正在准备内置语音模型…」。
+_Avoid_: 导入离线包, prepare 下载（默认 SKU v0.1.8+）
+
 **Capability—UI alignment**（能力—UI 对齐）:
 同一面板内控件必须引用同一状态维度；见 `docs/architecture/desktop-capability-ui-state-alignment.md`。
 _Avoid_: 健康检查对齐, ready 字段对齐

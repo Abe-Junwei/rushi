@@ -6,12 +6,12 @@
 
 ## 0. 总形态（已定）
 
-采用 **B. 推理侧车**：**torch + FunASR 打进侧车**；**模型权重外置**（首次联网下载到本机缓存，许可允许再分发或按许可要求从官方源拉取）。
+采用 **B. 推理侧车**：**torch + FunASR 打进侧车**；**默认 Paraformer 三件套随安装包**（v0.1.8+），**首启 seed** 到 App Data 缓存；**不**再默认 ModelScope 在线下载。
 
 | 维度 | 决策 |
 |------|------|
 | 目标用户 | **纯小白**：尽量不依赖终端；关键步骤有界面引导与可恢复错误提示。 |
-| 网络 | **允许首次联网**：以下载模型为主；需进度、断点续传与校验（哈希或签名）。 |
+| 网络 | **v0.1.8 默认 SKU 不要求联网**：首启本地 seed；**在线 STT** 仍可能需要网络。SenseVoice / ModelScope prepare **v0.1.8 不提供**。 |
 | 磁盘预算 | 用户侧 **总计约 5GB** 可接受（安装包 + 侧车 + 已下载模型缓存）；超额时 **硬提示**，并允许用户选择是否继续（见历史讨论）。 |
 | 算力 | **CPU 必须可用**（兜底）；**Apple Silicon 用 MPS**；**NVIDIA 用 CUDA**（见 §3）。 |
 | Windows CUDA 侧车 | **默认同包附带** `rushi-asr-sidecar-cuda.exe`（与 CPU 包一并安装，运行时二选一；见 §10）。 |
@@ -58,7 +58,8 @@
 ## 5. 模型缓存目录与卸载（已定）
 
 - **统一缓存根**：`{app_data_dir}/studio.lingchuang.rushi/models/`（与现有 SQLite 同应用数据根，便于备份与诊断 zip 说明）。侧车仅可再设 **临时工作目录**（如系统 temp 或 `…/models/_work`），**不以 temp 为长期模型存放处**。
-- **默认获取路径**：主安装包 **不含** 模型权重；首次可通过 **ModelScope 在线 prepare** 或 **导入可选离线模型包**（Release 第二 asset `rushi-offline-asr-models_{version}.zip`）seed 到上述缓存根。见 [`asr-bundled-models-plan.md`](../execution/specs/asr-bundled-models-plan.md)（路线 E）。
+- **默认获取路径（v0.1.8+）**：**macOS DMG / Windows 安装包** 内嵌 **默认 Paraformer 三件套**（`bundled-asr-models/`）；**首次打开应用** 自动 **首启 seed** 到上述缓存根。Plan：[`asr-bundled-models-plan-v2.md`](../execution/specs/asr-bundled-models-plan-v2.md)。**不含** SenseVoice；**不含** ModelScope prepare 主路径；**不含** 路线 E 离线 zip（已撤回）。
+- **发布**：安装包单文件 **< 2 GB** → GitHub Release；**≥ 2 GB** → 该平台改站外下载 + checksum。**v0.1.8 不做 OTA**（无 `app.tar.gz` updater）。
 - **卸载行为**：**默认卸载安装包不删除** `…/models/`（避免误删大文件与用户曾手动缓存）；卸载向导提供 **可选勾选**：「同时删除已下载的语音识别模型（约显示占用空间）」。应用内 **设置** 提供 **「清除模型缓存」** 独立入口。
 
 ---

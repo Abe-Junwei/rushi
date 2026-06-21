@@ -1,4 +1,4 @@
-use crate::project::offline_asr_models_pack::is_offline_asr_models_pack_import_in_progress;
+use crate::project::bundled_asr_models_seed::is_bundled_asr_models_seed_in_progress;
 use crate::project::app_data_paths::{
     huggingface_cache_for_models_root, models_root_for_app_data_root,
     modelscope_cache_for_models_root,
@@ -62,8 +62,8 @@ fn inspect_asr_model_cache(st: &DbState) -> Result<AsrModelCacheInfo, String> {
 }
 
 fn clear_asr_model_cache_for_state(st: &DbState) -> Result<(), String> {
-    if is_offline_asr_models_pack_import_in_progress() {
-        return Err("离线包导入进行中，请等待完成后再清除缓存。".to_string());
+    if is_bundled_asr_models_seed_in_progress() {
+        return Err("内置语音模型正在准备中，请等待完成后再清除缓存。".to_string());
     }
     let root = models_root(st);
     fs::create_dir_all(&root).map_err(|e| format!("创建模型缓存目录失败: {e}"))?;

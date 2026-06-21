@@ -1,0 +1,31 @@
+{
+  "pack_version": 1,
+  "bundle_id": "default-paraformer-v1",
+  "models": [
+    {
+      "hub_id": "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
+      "required_files": [
+        "model.pt",
+        "config.yaml",
+        "tokens.json"
+      ],
+      "min_weight_bytes": 104857600
+    },
+    {
+      "hub_id": "iic/speech_fsmn_vad_zh-cn-16k-common-pytorch",
+      "required_files": [
+        "model.pt"
+      ],
+      "min_weight_bytes": 1048576
+    },
+    {
+      "hub_id": "iic/punc_ct-transformer_zh-cn-common-vocab272727-pytorch",
+      "required_files": [
+        "model.pt",
+        "config.yaml"
+      ],
+      "min_weight_bytes": 1048576
+    }
+  ],
+  "rushi_version": "0.1.8"
+}

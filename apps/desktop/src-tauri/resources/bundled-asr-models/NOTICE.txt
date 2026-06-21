@@ -1,0 +1,8 @@
+Rushi bundled ASR models (default Paraformer triplet)
+
+Upstream: ModelScope / FunASR (Apache License 2.0 — see LICENSE-APACHE-2.0.txt)
+
+Included model repositories:
+- iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch
+- iic/speech_fsmn_vad_zh-cn-16k-common-pytorch
+- iic/punc_ct-transformer_zh-cn-common-vocab272727-pytorch

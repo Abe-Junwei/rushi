@@ -18,17 +18,6 @@ describe("setupWizardToastPolicy", () => {
     ).toEqual({ emit: false });
   });
 
-  it("suppresses toast while offline pack import is active", () => {
-    expect(
-      resolveSetupWizardToast({
-        setupMessage: "一键准备完成，可直接开始转写。",
-        setupOutcome: "ready",
-        prepareModelBusy: false,
-        offlinePackImportBusy: true,
-      }),
-    ).toEqual({ emit: false });
-  });
-
   it("downgrades ready toast when blockReason exists", () => {
     expect(
       resolveSetupWizardToast({

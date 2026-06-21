@@ -44,163 +44,9 @@ jobs:
             --tag "${{ github.ref_name }}" \
             --repository "${{ github.repository }}"
 
-  tauri-linux:
-    needs: prepare-release
-    if: always() && (needs.prepare-release.result == 'success' || needs.prepare-release.result == 'skipped')
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - uses: actions/setup-node@v6
-        with:
-          node-version: "22"
-          cache: npm
-
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-
-      - run: npm ci
-
-      - name: Workflow context
-        run: |
-          echo "Commit: ${{ github.sha }}"
-          echo "Ref: ${{ github.ref }}"
-          echo "Event: ${{ github.event_name }}"
-
-      - uses: dtolnay/rust-toolchain@stable
-
-      - uses: swatinem/rust-cache@v2
-        with:
-          workspaces: apps/desktop/src-tauri
-
-      - name: Linux packages for Tauri
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y libgtk-3-dev libwebkit2gtk-4.1-dev libappindicator3-dev librsvg2-dev patchelf libssl-dev libfuse2
-
-      - name: Install ffmpeg (sidecar bundle)
-        run: sudo apt-get install -y ffmpeg
-
-      - name: Build Linux x86_64 FunASR sidecar (PyInstaller)
-        run: bash scripts/build-asr-sidecar-unix.sh
-        timeout-minutes: 120
-
-      - name: Post-build sidecar health smoke
-        run: bash scripts/smoke-asr-sidecar-health.sh
-        timeout-minutes: 10
-
-      - name: Publish signed runtime manifest (release)
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-        id: runtime_manifest
-        env:
-          RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX: ${{ secrets.RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX }}
-        run: |
-          bash scripts/ci-publish-runtime-manifest-release.sh \
-            --repository "${{ github.repository }}" \
-            --tag "${{ github.ref_name }}"
-
-      - name: Tauri build (deb)
-        working-directory: apps/desktop
-        env:
-          RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL: ${{ steps.runtime_manifest.outputs.manifest_url }}
-          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
-          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
-        run: npm run tauri -- build --bundles deb
-        timeout-minutes: 60
-
-      # AppImage linuxdeploy fails on CI with the bundled FunASR sidecar; ship .deb only.
-      # Re-enable when linuxdeploy/AppImage path is validated on ubuntu-latest.
-
-      - name: Verify Linux deb bundle
-        run: |
-          shopt -s nullglob
-          deb_files=("${{ env.BUNDLE_ROOT }}/deb/"*.deb)
-          if [ ${#deb_files[@]} -eq 0 ]; then
-            echo "No .deb bundle found" >&2
-            exit 1
-          fi
-          ls -lh "${deb_files[@]}"
-
-      - name: Generate SHA256 checksums (Linux)
-        run: |
-          shopt -s nullglob
-          for f in "${{ env.BUNDLE_ROOT }}/deb/"*.deb; do
-            sha256sum "$f" > "$f.sha256"
-          done
-
-      - name: Upload Linux workflow artifacts
-        if: github.event_name == 'workflow_dispatch'
-        uses: actions/upload-artifact@v7
-        with:
-          name: linux-release-bundles
-          path: |
-            ${{ env.BUNDLE_ROOT }}/deb/*.deb
-            ${{ env.BUNDLE_ROOT }}/deb/*.sha256
-          if-no-files-found: error
-
-      - name: Upload Linux bundles to GitHub Release
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          shopt -s nullglob
-          deb_files=("${{ env.BUNDLE_ROOT }}/deb/"*.deb)
-          sha_files=("${{ env.BUNDLE_ROOT }}/deb/"*.sha256)
-          if [ ${#deb_files[@]} -eq 0 ]; then
-            echo "No .deb bundle found" >&2
-            exit 1
-          fi
-          upload=( "${deb_files[@]}" "${sha_files[@]}" )
-          if [ -n "${{ steps.runtime_manifest.outputs.zip_path }}" ]; then
-            upload+=( "${{ steps.runtime_manifest.outputs.zip_path }}" "${{ steps.runtime_manifest.outputs.manifest_path }}" )
-          fi
-          echo "Uploading Linux .deb + runtime manifest (AppImage skipped in CI)."
-          gh release upload "${{ github.ref_name }}" "${upload[@]}" --clobber
-
-  offline-asr-models-pack:
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v'))
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v6
-
-      - uses: actions/setup-node@v6
-        with:
-          node-version: "22"
-          cache: npm
-
-      - uses: actions/setup-python@v6
-        with:
-          python-version: "3.12"
-
-      - run: npm ci
-
-      - name: Bootstrap ASR venv (offline models pack)
-        run: bash scripts/bootstrap-asr-venv.sh
-
-      - name: Build offline ASR models pack (Route E)
-        run: npm run asr:build-offline-models-pack
-        timeout-minutes: 120
-
-      - name: Upload offline pack (workflow_dispatch)
-        if: github.event_name == 'workflow_dispatch'
-        uses: actions/upload-artifact@v7
-        with:
-          name: offline-asr-models-pack
-          path: dist/offline-asr-models-pack/*
-          if-no-files-found: error
-
-      - name: Upload offline pack (release)
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-        uses: actions/upload-artifact@v7
-        with:
-          name: offline-asr-models-pack-release
-          path: dist/offline-asr-models-pack/*
-          if-no-files-found: error
-
   tauri-macos:
-    needs: [prepare-release, offline-asr-models-pack]
-    if: always() && (needs.prepare-release.result == 'success' || needs.prepare-release.result == 'skipped') && (needs.offline-asr-models-pack.result == 'success' || needs.offline-asr-models-pack.result == 'skipped')
+    needs: [prepare-release]
+    if: always() && (needs.prepare-release.result == 'success' || needs.prepare-release.result == 'skipped')
     runs-on: macos-latest
     steps:
       - uses: actions/checkout@v6
@@ -238,6 +84,13 @@ jobs:
       - name: Post-build sidecar health smoke
         run: bash scripts/smoke-asr-sidecar-health.sh
         timeout-minutes: 10
+
+      - name: Bootstrap ASR venv (bundled models)
+        run: bash scripts/bootstrap-asr-venv.sh
+
+      - name: Stage bundled ASR models (Plan B)
+        run: npm run asr:stage-bundled-models
+        timeout-minutes: 120
 
       - name: Publish signed runtime manifest (release)
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
@@ -322,43 +175,6 @@ jobs:
             sha256sum "$f" > "$f.sha256"
           done
 
-      - name: Normalize macOS updater artifact names
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-        run: |
-          MACOS_DIR="${{ env.BUNDLE_ROOT }}/macos"
-          shopt -s nullglob
-          tar_files=("$MACOS_DIR"/*.tar.gz)
-          if [ ${#tar_files[@]} -eq 0 ]; then
-            echo "::error::Updater .tar.gz missing — set TAURI_SIGNING_PRIVATE_KEY and matching pubkey in tauri.conf.json"
-            exit 1
-          fi
-          TAR="${tar_files[0]}"
-          if [ "$(basename "$TAR")" = "app.tar.gz" ]; then
-            echo "Updater artifact already normalized."
-            exit 0
-          fi
-          mv "$TAR" "$MACOS_DIR/app.tar.gz"
-          if [ -f "${TAR}.sig" ]; then
-            mv "${TAR}.sig" "$MACOS_DIR/app.tar.gz.sig"
-          fi
-          echo "Renamed $(basename "$TAR") -> app.tar.gz"
-
-      - name: Generate updater latest.json (macOS release)
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-        run: |
-          bash scripts/ci-generate-updater-latest-json.sh \
-            --tag "${{ github.ref_name }}" \
-            --repository "${{ github.repository }}" \
-            --bundle-root "${{ env.BUNDLE_ROOT }}" \
-            --platform darwin-aarch64
-
-      - name: Download offline ASR models pack
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-        uses: actions/download-artifact@v6
-        with:
-          name: offline-asr-models-pack-release
-          path: dist/offline-asr-models-pack
-
       - name: Upload macOS workflow artifacts
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v7
@@ -377,34 +193,9 @@ jobs:
           shopt -s nullglob
           dmg_files=("${{ env.BUNDLE_ROOT }}/dmg/"*.dmg)
           sha_files=("${{ env.BUNDLE_ROOT }}/dmg/"*.sha256)
-          tar_files=("${{ env.BUNDLE_ROOT }}/macos/"*.tar.gz)
-          tar_sig_files=("${{ env.BUNDLE_ROOT }}/macos/"*.tar.gz.sig)
-          latest_json="${{ env.BUNDLE_ROOT }}/macos/latest.json"
           upload=( "${dmg_files[@]}" "${sha_files[@]}" )
-          if [ ${#tar_files[@]} -eq 0 ]; then
-            echo "::error::Updater .tar.gz missing — set TAURI_SIGNING_PRIVATE_KEY and matching pubkey in tauri.conf.json"
-            exit 1
-          fi
-          upload+=( "${tar_files[@]}" "${tar_sig_files[@]}" )
-          if [ ! -f "$latest_json" ]; then
-            echo "::error::latest.json missing after generate step"
-            exit 1
-          fi
-          upload+=( "$latest_json" )
           if [ -n "${{ steps.runtime_manifest.outputs.zip_path }}" ]; then
             upload+=( "${{ steps.runtime_manifest.outputs.zip_path }}" "${{ steps.runtime_manifest.outputs.manifest_path }}" )
-          fi
-          VERSION="$(node -p "require('./apps/desktop/package.json').version")"
-          OFFLINE_PACK="${{ github.workspace }}/dist/offline-asr-models-pack/rushi-offline-asr-models_${VERSION}.zip"
-          OFFLINE_SHA="${OFFLINE_PACK}.sha256"
-          if [ -f "$OFFLINE_PACK" ]; then
-            upload+=( "$OFFLINE_PACK" )
-            if [ -f "$OFFLINE_SHA" ]; then
-              upload+=( "$OFFLINE_SHA" )
-            fi
-          else
-            echo "::error::Offline ASR models pack missing (Route E): ${OFFLINE_PACK}"
-            exit 1
           fi
           gh release upload "${{ github.ref_name }}" "${upload[@]}" --clobber
 
@@ -476,6 +267,15 @@ jobs:
         shell: pwsh
         run: pwsh scripts/smoke-asr-sidecar-health.ps1
         timeout-minutes: 10
+
+      - name: Bootstrap ASR venv (bundled models)
+        shell: bash
+        run: bash scripts/bootstrap-asr-venv.sh
+
+      - name: Stage bundled ASR models (Plan B)
+        shell: bash
+        run: npm run asr:stage-bundled-models
+        timeout-minutes: 120
 
       - name: Publish signed runtime manifest (release)
         if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
@@ -602,19 +402,11 @@ jobs:
           gh release upload "${{ github.ref_name }}" "${upload[@]}" --clobber
 
   publish-release:
-    needs: [prepare-release, tauri-macos]
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && needs.tauri-macos.result == 'success'
+    needs: [prepare-release, tauri-macos, tauri-windows]
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v') && needs.tauri-macos.result == 'success' && needs.tauri-windows.result == 'success'
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-
-      - name: Verify OTA manifest on GitHub Release
-        env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          bash scripts/ci-verify-updater-manifest.sh \
-            --tag "${{ github.ref_name }}" \
-            --repository "${{ github.repository }}"
 
       - name: Publish GitHub Release
         env:

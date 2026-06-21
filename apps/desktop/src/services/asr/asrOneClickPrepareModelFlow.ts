@@ -1,5 +1,6 @@
 import { isDefaultBundledAsrTarget } from "../../config/env";
 import { packagedOrDev } from "../packagedUserHints";
+import { ensureBundledAsrModelsSeededForPrepare } from "./bundledAsrModelsSeedPrepare";
 import {
   applyHubModelToSidecar,
   snapshotSelectedModelPrepare,
@@ -118,10 +119,25 @@ export async function runAsrOneClickPrepareModelFlow(
     setSetupOutcome("blocked");
     return false;
   } else {
+    const modelDetail = isDefaultBundledAsrTarget()
+      ? "正在从安装包复制内置语音模型…"
+      : `正在下载 ${modelSnap.modelLabel}…`;
     setSetupSteps((steps) =>
-      patchStep(steps, "model", { status: "running", detail: `正在下载 ${modelSnap.modelLabel}…` }),
+      patchStep(steps, "model", { status: "running", detail: modelDetail }),
     );
-    await deps.prepareDefaultFunasrModel();
+    if (isDefaultBundledAsrTarget()) {
+      const outcome = await ensureBundledAsrModelsSeededForPrepare();
+      if (!outcome.ok) {
+        setSetupSteps((steps) =>
+          patchStep(steps, "model", { status: "error", detail: outcome.message }),
+        );
+        setSetupMessage(outcome.message);
+        setSetupOutcome(outcome.noBundle ? "blocked" : "error");
+        return false;
+      }
+    } else {
+      await deps.prepareDefaultFunasrModel();
+    }
     await deps.refreshAsrRuntimeInfo(REFRESH_ASR_RUNTIME_LIGHT_DURING_PREPARE);
     await refreshSetupDiagnose({
       resetSteps: false,

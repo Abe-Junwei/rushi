@@ -2,6 +2,14 @@ import { describe, expect, it, vi, beforeEach } from "vitest";
 import { renderHook, act } from "@testing-library/react";
 import { usePrepareModelController } from "./usePrepareModelController";
 
+vi.mock("../config/env", async (importOriginal) => {
+  const mod = await importOriginal<typeof import("../config/env")>();
+  return {
+    ...mod,
+    isDefaultBundledAsrTarget: () => false,
+  };
+});
+
 const SELECTED_HUB =
   "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch";
 

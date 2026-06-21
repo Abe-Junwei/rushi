@@ -144,6 +144,58 @@ sys.exit(0 if ok else 1)
 PY
 }
 
+resolve_bundled_models_in_app() {
+  local candidates=(
+    "${APP}/Contents/Resources/resources/bundled-asr-models"
+    "${APP}/Contents/Resources/bundled-asr-models"
+  )
+  local candidate
+  for candidate in "${candidates[@]}"; do
+    if [[ -f "${candidate}/manifest.json" && -d "${candidate}/modelscope" ]]; then
+      echo "${candidate}"
+      return 0
+    fi
+  done
+  return 1
+}
+
+wait_bundled_seed_and_ready() {
+  local deadline_sec="${1:-1800}"
+  local marker="${FRESH_APP_BASE}/models/.rushi-bundled-seed.json"
+  local start now out
+  start="$(date +%s)"
+  echo "== Plan B: wait bundled seed + ready_for_transcribe (max ${deadline_sec}s) =="
+  while true; do
+    now="$(date +%s)"
+    if (( now - start > deadline_sec )); then
+      echo "  FAIL: bundled seed / ready timeout (${deadline_sec}s)" >&2
+      return 1
+    fi
+    if [[ -f "${marker}" ]]; then
+      echo "  OK: seed marker at ${marker}"
+    fi
+    out="${OUT_DIR}/health-ready-poll.json"
+    if curl -sf --max-time 8 "${BASE}/health" -o "${out}" 2>/dev/null; then
+      if health_ready_now; then
+        cp "${out}" "${OUT_DIR}/health-ready-final.json"
+        echo "  OK: ready_for_transcribe after bundled seed"
+        return 0
+      fi
+      python3 - "${out}" <<'PY' || true
+import json, sys
+h = json.load(open(sys.argv[1], encoding="utf-8"))
+print(
+    f"  poll: service={h.get('service')!r} import_ok={h.get('funasr_import_ok')!r} "
+    f"cached={h.get('funasr_default_model_cached')!r} ready={h.get('ready_for_transcribe')!r}"
+)
+PY
+    else
+      echo "  poll: /health unreachable (seed may still be running)"
+    fi
+    sleep 5
+  done
+}
+
 wait_interactive_one_click() {
   echo ""
   echo ">>> 请在 release 应用窗口操作：左下「设置」→「本机 ASR」→「一键准备」"
@@ -263,12 +315,34 @@ if ! pgrep -f "${BIN}" >/dev/null; then
 fi
 echo "  OK: rushi-desktop running"
 
-echo "== Wait bundled sidecar /health =="
-if ! wait_health 90; then
-  echo "FAIL: sidecar /health not ready in 180s" >&2
-  exit 1
+BUNDLED_MODELS_DIR=""
+USE_BUNDLED_SEED=0
+if BUNDLED_MODELS_DIR="$(resolve_bundled_models_in_app)"; then
+  echo "  Plan B: bundled-asr-models in app (${BUNDLED_MODELS_DIR})"
+  USE_BUNDLED_SEED=1
+else
+  echo "  NOTE: no bundled-asr-models in app — legacy one-click / HTTP prepare path"
 fi
-python3 - "${OUT_DIR}/health-after-sidecar.json" <<'PY'
+
+if [[ "${USE_BUNDLED_SEED}" -eq 1 && "${SKIP_DOWNLOAD}" -eq 0 ]]; then
+  wait_bundled_seed_and_ready 1800 || exit 1
+  PREPARE_VIA="bundled-seed-auto"
+  UI_RESULT="n/a"
+elif [[ "${USE_BUNDLED_SEED}" -eq 1 && "${SKIP_DOWNLOAD}" -eq 1 ]]; then
+  echo "== --skip-download: bundled app, sidecar gate only =="
+  if ! wait_health 90; then
+    echo "FAIL: sidecar /health not ready in 180s" >&2
+    exit 1
+  fi
+  UI_RESULT="n/a"
+  PREPARE_VIA="none"
+else
+  echo "== Wait bundled sidecar /health =="
+  if ! wait_health 90; then
+    echo "FAIL: sidecar /health not ready in 180s" >&2
+    exit 1
+  fi
+  python3 - "${OUT_DIR}/health-after-sidecar.json" <<'PY'
 import json, sys
 h = json.load(open(sys.argv[1], encoding="utf-8"))
 cached = h.get("funasr_default_model_cached")
@@ -280,11 +354,11 @@ elif cached is not False:
     print("  NOTE: expected funasr_default_model_cached=false on first launch")
 PY
 
-if [[ "${SKIP_DOWNLOAD}" -eq 1 ]]; then
-  echo "== --skip-download: sidecar gate only =="
-  UI_RESULT="n/a"
-  PREPARE_VIA="none"
-else
+  if [[ "${SKIP_DOWNLOAD}" -eq 1 ]]; then
+    echo "== --skip-download: sidecar gate only =="
+    UI_RESULT="n/a"
+    PREPARE_VIA="none"
+  else
   if [[ "${INTERACTIVE}" -eq 1 ]]; then
     echo "== Interactive: UI 一键准备（轮询 /health） =="
     UI_RESULT="interactive"
@@ -328,6 +402,7 @@ else
     wait_ready_for_transcribe 900
   else
     cp "${OUT_DIR}/health-ready-poll.json" "${OUT_DIR}/health-ready-final.json"
+  fi
   fi
 fi
 
@@ -379,7 +454,7 @@ cat > "${EVIDENCE}" <<EOF
 | release \`.app\` + 空 App Data 启动 | ✅ |
 | bundled 侧车 \`/health\` \`funasr_import_ok\` | ✅ |
 | 首装模型未缓存（预期 \`funasr_default_model_cached=false\`） | ✅ 见 \`health-after-sidecar.json\` |
-| 一键准备（${PREPARE_VIA}）→ \`ready_for_transcribe\` | ${PREPARE_RESULT} |
+| 一键准备 / bundled seed（${PREPARE_VIA}）→ \`ready_for_transcribe\` | ${PREPARE_RESULT} |
 | UI osascript | ${UI_RESULT} |
 | log 无 \`desktop:dev\` 文案 | ✅ |
 
@@ -390,7 +465,7 @@ cat > "${EVIDENCE}" <<EOF
 ## 说明
 
 - 隔离 \`HOME\` 等价于干净用户首装 App Data，**不修改**主 \`~/Library/Application Support/...\`。
-- release bundled 侧车须 UI「一键准备」（Tauri loopback）；手测请用 \`--interactive\`（无需辅助功能，通过后应用保持打开）。\`--with-ui\` 仅 CI/已授权辅助功能时使用；需通过后自动关应用时加 \`--exit-after-pass\`。
+- Plan B release 包首启自动 bundled seed（全屏遮罩）；脚本轮询 marker + \`/health\`，无需 UI 一键准备。Legacy 无随包模型时仍用 \`--interactive\` 或 \`--with-ui\`。
 EOF
 
 echo ""

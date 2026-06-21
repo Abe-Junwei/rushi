@@ -1,8 +1,8 @@
 # Plan：方案 E — 可选离线 ASR 模型包
 
 > **Research**：[`asr-bundled-models-research.md`](./asr-bundled-models-research.md)  
-> **状态**：已落地核心闭环（2026-06-21）；复查 P0/P1 已修；Release 手测 §2 P8–P10 待签  
-> **路线**：**E** — 主 DMG 不带模型；Release 额外产出 `rushi-offline-asr-models_{version}.zip`；用户导入后 seed 到 App Data。
+> **状态**：**已由 v0.1.8 方案 B 取代** — 见 [`asr-bundled-models-plan-v2.md`](./asr-bundled-models-plan-v2.md)；路线 E 代码 **待拆除**；**暂停** P8–P10 zip 手测  
+> **路线**：~~**E**~~ — ~~主 DMG 不带模型；Release 额外产出 zip~~ **（撤回）**
 
 ---
 
@@ -97,3 +97,4 @@ npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs
 | 日期 | 说明 |
 |------|------|
 | 2026-06-21 | 路线 E Plan 初版 |
+| 2026-06-21 | **取代**：v0.1.8 改方案 B（[`asr-bundled-models-plan-v2.md`](./asr-bundled-models-plan-v2.md)）；E 待拆除 |

@@ -1,4 +1,6 @@
 import { useCallback, type Dispatch, type SetStateAction } from "react";
+import { isDefaultBundledAsrTarget } from "../config/env";
+import { ensureBundledAsrModelsSeededForPrepare } from "../services/asr/bundledAsrModelsSeedPrepare";
 import type { AsrSetupOutcome, AsrSetupStep } from "../services/asr/asrSetupContract";
 import { fetchAsrHealthCaps } from "../services/asr/asrHealthSnapshot";
 import {
@@ -129,10 +131,21 @@ export function useAsrSetupHealthFlow({
         setSetupSteps((steps) =>
           patchStep(steps, "model", {
             status: "running",
-            detail: `正在补齐 ${modelSnap.modelLabel} 与辅助模型…`,
+            detail: isDefaultBundledAsrTarget()
+              ? "正在从安装包复制内置语音模型…"
+              : `正在补齐 ${modelSnap.modelLabel} 与辅助模型…`,
           }),
         );
-        await deps.prepareDefaultFunasrModel();
+        if (isDefaultBundledAsrTarget()) {
+          const outcome = await ensureBundledAsrModelsSeededForPrepare();
+          if (!outcome.ok) {
+            setSetupMessage(outcome.message);
+            setSetupOutcome(outcome.noBundle ? "blocked" : "error");
+            return;
+          }
+        } else {
+          await deps.prepareDefaultFunasrModel();
+        }
       } else {
         setSetupSteps((steps) =>
           patchStep(steps, "model", {

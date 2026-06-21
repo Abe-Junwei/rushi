@@ -69,7 +69,8 @@ export interface WaveformPeaksCacheInfo {
   orphan_project_dirs: number;
 }
 
-export interface OfflineAsrModelsPackImportResult {
+export interface BundledAsrModelsSeedResult {
+  status: string;
   imported_bytes: number;
   models_root: string;
   modelscope_cache: string;
@@ -136,20 +137,8 @@ export async function clearAsrModelCache(): Promise<AsrModelCacheInfo> {
   return invoke<AsrModelCacheInfo>("clear_asr_model_cache");
 }
 
-export async function cancelOfflineAsrModelsPackImport(): Promise<void> {
-  return invoke<void>("cancel_offline_asr_models_pack_import");
-}
-
-export async function pickAndImportOfflineAsrModelsPack(): Promise<OfflineAsrModelsPackImportResult | null> {
-  return invoke<OfflineAsrModelsPackImportResult | null>("pick_and_import_offline_asr_models_pack");
-}
-
-export async function importOfflineAsrModelsPack(sourcePath: string): Promise<OfflineAsrModelsPackImportResult> {
-  return invoke<OfflineAsrModelsPackImportResult>("import_offline_asr_models_pack", { sourcePath });
-}
-
-export async function openOfflineAsrModelsPackReleasePage(appVersion: string): Promise<void> {
-  return invoke<void>("open_offline_asr_models_pack_release_page", { appVersion });
+export async function seedBundledAsrModelsIfNeeded(): Promise<BundledAsrModelsSeedResult> {
+  return invoke<BundledAsrModelsSeedResult>("seed_bundled_asr_models_if_needed");
 }
 
 export async function waveformPeaksCacheInfo(): Promise<WaveformPeaksCacheInfo> {

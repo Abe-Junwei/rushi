@@ -3,7 +3,7 @@
 
 pub mod app_data_paths;
 pub mod asr_cache_cmd;
-pub mod offline_asr_models_pack;
+pub mod bundled_asr_models_seed;
 pub mod offline_asr_models_pack_manifest;
 pub mod asr_runtime_paths_cmd;
 pub mod asset_scope;

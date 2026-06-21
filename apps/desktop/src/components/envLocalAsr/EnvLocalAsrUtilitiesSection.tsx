@@ -30,7 +30,6 @@ type Props = {
   funasrInstallMessage: string;
   prepareModelBusy: boolean;
   prepareModelCancelling?: boolean;
-  offlinePackImportBusy?: boolean;
   transcribeBlockReason?: string | null;
   busy: boolean;
   refreshAsrHealth: () => Promise<void>;
@@ -59,7 +58,6 @@ export function EnvLocalAsrUtilitiesSection({
   funasrInstallMessage,
   prepareModelBusy,
   prepareModelCancelling = false,
-  offlinePackImportBusy = false,
   transcribeBlockReason = null,
   busy,
   copyFunasrManualCommands,
@@ -85,7 +83,6 @@ export function EnvLocalAsrUtilitiesSection({
             busy={busy}
             prepareModelBusy={prepareModelBusy}
             prepareModelCancelling={prepareModelCancelling}
-            offlinePackImportBusy={offlinePackImportBusy}
             selectedModelReady={selectedModelReady}
             transcribeBlockReason={transcribeBlockReason}
             openAppDataFolder={openAppDataFolder}
@@ -108,7 +105,7 @@ export function EnvLocalAsrUtilitiesSection({
             {isDefaultBundledAsrTarget() && bundledAsrDiag?.attempted ? (
               <EnvUtilitiesActionRow>
                 <EnvLocalAsrSmallButton
-                  disabled={busy || prepareModelBusy || prepareModelCancelling || offlinePackImportBusy}
+                  disabled={busy || prepareModelBusy || prepareModelCancelling}
                   onClick={() => void retryBundledAsrSidecar()}
                 >
                   重试内置侧车
@@ -161,7 +158,6 @@ export function EnvLocalAsrUtilitiesSection({
           busy={busy}
           prepareModelBusy={prepareModelBusy}
           prepareModelCancelling={prepareModelCancelling}
-          offlinePackImportBusy={offlinePackImportBusy}
           tauriRuntime={isTauriRuntime()}
           refreshAsrModelCacheInfo={refreshAsrModelCacheInfo}
           clearAsrModelCache={clearAsrModelCache}

@@ -175,30 +175,6 @@ describe("buildAsrEnvPresentation", () => {
     expect(p.statusRows.find((r) => r.id === "transcribe")?.text).toBe("下载中");
   });
 
-  it("shows offline import banner while pack import is in flight", async () => {
-    const p = await build({
-      asrHealth: "ok",
-      asrHealthDetail: "",
-      asrCaps: {
-        ffmpeg_ok: true,
-        funasr_import_ok: true,
-        funasr_model_configured: true,
-        funasr_ready: true,
-        funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
-        ready_for_transcribe: false,
-        transcription_mode: "funasr",
-      },
-      selectedHubModelId: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
-      offlinePackImportBusy: true,
-      offlinePackImportProgress: 42,
-    });
-    expect(p.bannerTitle).toBe("本机 ASR · 正在导入离线模型包");
-    expect(p.bannerDetail).toContain("42%");
-    expect(p.chipOk).toBe(false);
-    expect(p.blockReason).toContain("离线模型包导入中");
-    expect(p.statusRows.find((r) => r.id === "transcribe")?.text).toBe("导入中");
-  });
-
   it("shows user-facing inference queue depth", async () => {
     const p = await build({
       asrHealth: "ok",

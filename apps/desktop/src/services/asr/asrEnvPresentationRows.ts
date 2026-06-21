@@ -105,10 +105,3 @@ export function mapPrepareModelBusyRows(rows: AsrEnvStatusRow[]): AsrEnvStatusRo
   });
 }
 
-export function mapOfflinePackImportBusyRows(rows: AsrEnvStatusRow[]): AsrEnvStatusRow[] {
-  return rows.map((row) => {
-    if (row.id === "runtime") return { ...row, ok: false, text: "导入中", warn: true };
-    if (row.id === "transcribe") return { ...row, ok: false, text: "导入中", warn: true };
-    return row;
-  });
-}

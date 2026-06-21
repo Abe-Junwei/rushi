@@ -1,28 +1,26 @@
 import { ProjectPanel } from "./components/ProjectPanel";
 import { ToastHost } from "./components/ToastHost";
-import { AppUpdateConfirmDialog } from "./components/AppUpdateConfirmDialog";
-import { useAppUpdateCheckOnLaunch } from "./hooks/useAppUpdateCheckOnLaunch";
+import { BundledAsrModelsSeedOverlay } from "./components/BundledAsrModelsSeedOverlay";
+import { useBundledAsrModelsSeed } from "./hooks/useBundledAsrModelsSeed";
 import "./App.css";
 
 export default function App() {
-  const launchUpdate = useAppUpdateCheckOnLaunch();
+  const bundledSeed = useBundledAsrModelsSeed();
 
   return (
     <>
-      <main className="shell">
-        <div className="shell-body">
-          <ProjectPanel />
-        </div>
-      </main>
-      <ToastHost />
-      <AppUpdateConfirmDialog
-        open={launchUpdate.dialogOpen}
-        busy={launchUpdate.dialogBusy}
-        version={launchUpdate.dialogVersion}
-        notes={launchUpdate.dialogNotes}
-        onCancel={launchUpdate.onDialogCancel}
-        onConfirm={() => void launchUpdate.onDialogConfirm()}
+      {!bundledSeed.blocking ? (
+        <main className="shell">
+          <div className="shell-body">
+            <ProjectPanel />
+          </div>
+        </main>
+      ) : null}
+      <BundledAsrModelsSeedOverlay
+        gate={bundledSeed.gate}
+        onRetry={() => void bundledSeed.retrySeed()}
       />
+      <ToastHost />
     </>
   );
 }

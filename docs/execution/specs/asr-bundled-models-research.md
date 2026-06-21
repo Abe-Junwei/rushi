@@ -157,5 +157,17 @@
 
 - [x] 当前架构与模型体积已核实
 - [x] 许可证与策略冲突已识别
-- [x] 产品/决策层确认路线（**E — 可选离线包**）
-- [ ] 进入 Plan 阶段 → 见 [`asr-bundled-models-plan.md`](./asr-bundled-models-plan.md)
+- [x] 2026-06-21：路线 **E** 实施并完成 zip 闭环（**已撤回**）
+- [x] 2026-06-21 **Grill 定稿**：**方案 B** 取代 E — 见 [`asr-bundled-models-plan-v2.md`](./asr-bundled-models-plan-v2.md)；[`asr-sidecar-funasr-policy.md`](../../architecture/asr-sidecar-funasr-policy.md) §0/§5 已修订
+- [ ] B 实现 + P8′–P10′ 手测 **Go** 后再 tag `v0.1.8`
+
+### 5.4 决策修订（2026-06-21 · 取代 §5.2 推荐 E）
+
+| 项 | 定稿 |
+|----|------|
+| 模型交付 | **随 macOS/Windows 安装包** bundle 默认 Paraformer 三件套 |
+| 首启 | **S1**：自动 seed 到 App Data；文案「正在准备内置语音模型…」 |
+| 撤回 | **路线 E** zip / 导入 UI / Release 第二 asset |
+| 撤回 | **ModelScope prepare**（M3）；**SenseVoice** 目录 |
+| 发布 | **无 OTA** v0.1.8；GitHub 单文件 **< 2 GB** 否则站外 |
+| 兼容 | **无** v0.1.7 / 路线 E 迁移 |

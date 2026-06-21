@@ -68,7 +68,6 @@ impl DbState {
 pub fn run() {
     let app = tauri::Builder::default()
         .plugin(tauri_plugin_process::init())
-        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
             bundled_asr_assets::init_from_app(app.handle());
             let st = project::setup_db(app.handle())?;
@@ -213,10 +212,7 @@ pub fn run() {
             project::asr_runtime_paths_cmd::get_asr_runtime_paths,
             project::asr_cache_cmd::asr_model_cache_info,
             project::asr_cache_cmd::clear_asr_model_cache,
-            project::offline_asr_models_pack::import_offline_asr_models_pack,
-            project::offline_asr_models_pack::pick_and_import_offline_asr_models_pack,
-            project::offline_asr_models_pack::cancel_offline_asr_models_pack_import,
-            project::offline_asr_models_pack::open_offline_asr_models_pack_release_page,
+            project::bundled_asr_models_seed::seed_bundled_asr_models_if_needed,
             project::waveform_peaks_cache_cmd::waveform_peaks_cache_info,
             project::waveform_peaks_cache_cmd::clear_orphan_waveform_peaks_cache,
             project::waveform_peaks_cache_cmd::clear_waveform_peaks_for_file,

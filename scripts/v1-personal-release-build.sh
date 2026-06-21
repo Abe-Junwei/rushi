@@ -22,6 +22,14 @@ else
   echo "  SKIP: RUSHI_SKIP_SIDECAR_CHECK=1"
 fi
 
+if [[ "${RUSHI_SKIP_BUNDLED_MODELS_STAGE:-0}" -eq 0 ]]; then
+  echo "== stage bundled ASR models (Plan B) =="
+  npm run asr:stage-bundled-models
+  bash scripts/preflight-bundled-asr-models.sh
+else
+  echo "  SKIP: RUSHI_SKIP_BUNDLED_MODELS_STAGE=1"
+fi
+
 AVAIL_GB="$(df -g . | awk 'NR==2 {print $4}')"
 if [[ "${AVAIL_GB}" -lt 5 ]]; then
   echo "WARN: free disk ${AVAIL_GB}GB — DMG 打包建议 ≥5GB 可用空间" >&2
@@ -52,16 +60,28 @@ TS="$(date -u +%Y-%m-%dT%H:%M:%SZ)"
   echo ""
   ls -lh ${APP_GLOB} 2>/dev/null || echo "(no .app — check bundle path)"
   ls -lh ${DMG_GLOB} 2>/dev/null || echo "(no .dmg — 可仅发 .app 或检查磁盘/rw.*.dmg)"
+  for app_path in ${APP_GLOB}; do
+    [[ -d "${app_path}" ]] || continue
+    bundled="${app_path}/Contents/Resources/resources/bundled-asr-models"
+    if [[ -d "${bundled}" ]]; then
+      echo ""
+      echo "**bundled-asr-models in .app**: $(du -sh "${bundled}" | awk '{print $1}')"
+    fi
+  done
+  for dmg_path in ${DMG_GLOB}; do
+    [[ -f "${dmg_path}" ]] || continue
+    echo "**DMG size**: $(du -sh "${dmg_path}" | awk '{print $1}') ($(stat -f%z "${dmg_path}" 2>/dev/null || stat -c%s "${dmg_path}" 2>/dev/null) bytes)"
+  done
   echo ""
   echo "## 说明"
   echo ""
-  echo "- **侧车**在 \`.app/Contents/Resources/resources/bundled-asr/\`；**语音模型**在 App Data \`models/\`，不在安装包内。"
+  echo "- **侧车**在 \`.app/Contents/Resources/resources/bundled-asr/\`；**默认语音模型**随包在 \`resources/bundled-asr-models/\`，首启 seed 至 App Data \`models/\`。"
   echo "- **Runtime manifest（可选）**：发 OTA / 瘦包前设置 \`RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL\` 再 build；见 [\`r3h-1-r-release-checklist.md\`](./specs/r3h-1-r-release-checklist.md)"
   echo "- 发版后机器冒烟：\`bash scripts/v1-release-installed-smoke.sh\`"
   echo ""
   echo "## 发版后手测（安装包）"
   echo ""
-  echo "1. 安装/打开 \`.app\`，环境页「一键准备本机 ASR」（无 shell）。"
+  echo "1. Fresh App Data 首启：全屏「正在准备内置语音模型…」→ seed 完成 → 断网可转写。"
   echo "2. 导入音频 → 确认 \`projects/*/peaks/*.dat\` 生成 → 波形可见。"
   echo "3. 拉取语段 → 导出 Word。"
 } > "${OUT_NOTE}"

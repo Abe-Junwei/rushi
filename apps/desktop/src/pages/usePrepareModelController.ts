@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { flushSync } from "react-dom";
-import { asrBaseUrl } from "../config/env";
+import { asrBaseUrl, isDefaultBundledAsrTarget } from "../config/env";
 import { loopbackFetch } from "../services/asr/loopbackFetch";
 import { fetchAsrHealthCaps } from "../services/asr/asrHealthSnapshot";
 import { catalogEntryForHub, hubModelNeedsPuncPrepare, computeLocalAsrTranscribeReady } from "../services/asr/localAsrModelCatalog";
@@ -26,8 +26,14 @@ import {
 } from "../services/asr/prepareJobPresentation";
 import {
   setAsrModelPrepareActive,
-  isOfflineAsrModelsPackImportActive,
+  isBundledAsrModelsSeedActive,
 } from "../services/asr/asrPrepareActivityGate";
+import { ensureBundledAsrModelsSeededForPrepare } from "../services/asr/bundledAsrModelsSeedPrepare";
+import {
+  bundledModelsMissingTipsDev,
+  bundledModelsMissingTipsManaged,
+  packagedOrDevArray,
+} from "../services/packagedUserHints";
 
 const PREPARE_STATUS_POLL_MS = 1000;
 const PREPARE_STATUS_TIMEOUT_MS = 30_000;
@@ -124,8 +130,8 @@ export function usePrepareModelController(
   }, []);
 
   const prepareDefaultFunasrModel = useCallback(async (options?: PrepareDefaultModelOptions) => {
-    if (isOfflineAsrModelsPackImportActive()) {
-      toast.warning("离线模型包导入进行中，请等待完成后再下载。");
+    if (isBundledAsrModelsSeedActive()) {
+      toast.warning("内置语音模型正在准备中，请等待完成。");
       return;
     }
     prepareModelAbortRef.current?.abort();
@@ -171,12 +177,40 @@ export function usePrepareModelController(
         setPrepareModelBusy(false);
         return;
       }
+    } else {
+      setFunasrInstallMessage("");
+    }
+
+    if (isDefaultBundledAsrTarget()) {
+      setInstallMessageThrottled("正在从安装包复制内置语音模型…", true);
+      const outcome = await ensureBundledAsrModelsSeededForPrepare({
+        onProgress: (percent, message) => {
+          setProgressIfChanged(percent, { monotonic: true });
+          setInstallMessageThrottled(message, true);
+        },
+      });
+      if (outcome.ok) {
+        setProgressIfChanged(100, { allowDecrease: true, monotonic: false });
+        setFunasrInstallMessage(outcome.message);
+        await refreshAsrRuntimeInfo(REFRESH_ASR_RUNTIME_LIGHT_DURING_PREPARE);
+      } else {
+        setPrepareModelFailure({
+          headline: outcome.message,
+          tips: outcome.noBundle
+            ? packagedOrDevArray(bundledModelsMissingTipsDev, bundledModelsMissingTipsManaged)
+            : ["可尝试重启应用，或环境页点「重试内置侧车」。", "若仍失败，请清除模型缓存后重启（会重新从安装包复制）。"],
+        });
+      }
+      setAsrModelPrepareActive(false);
+      setPrepareModelBusy(false);
+      return;
+    }
+
+    if (!options?.force) {
       setInstallMessageThrottled(
         "将校验并拉取当前所选模型（若已在磁盘缓存，侧车会快速完成，不会重复下载大文件）。",
         true,
       );
-    } else {
-      setFunasrInstallMessage("");
     }
     const runT0 = Date.now();
     const deadline = runT0 + deadlineMs;
