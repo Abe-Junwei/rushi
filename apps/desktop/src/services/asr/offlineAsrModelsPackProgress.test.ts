@@ -16,4 +16,8 @@ describe("offlineAsrModelsPackProgress", () => {
     expect(offlineImportProgressLabel("merge", 72)).toBe("正在写入本机缓存… 72%");
     expect(offlineImportProgressLabel("validate", 100)).toBe("正在校验模型完整性…");
   });
+
+  it("keeps previous weighted percent for unknown phases", () => {
+    expect(computeOfflineImportWeightedPercent("unknown", 80, 42)).toBe(42);
+  });
 });

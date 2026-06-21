@@ -196,7 +196,7 @@ describe("buildAsrEnvPresentation", () => {
     expect(p.bannerDetail).toContain("42%");
     expect(p.chipOk).toBe(false);
     expect(p.blockReason).toContain("离线模型包导入中");
-    expect(p.statusRows.find((r) => r.id === "transcribe")?.text).toBe("下载中");
+    expect(p.statusRows.find((r) => r.id === "transcribe")?.text).toBe("导入中");
   });
 
   it("shows user-facing inference queue depth", async () => {

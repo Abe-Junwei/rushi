@@ -12,13 +12,16 @@ export function resolveSetupWizardToast(input: {
   setupOutcome: AsrSetupOutcome;
   prepareModelBusy: boolean;
   prepareModelCancelling?: boolean;
+  offlinePackImportBusy?: boolean;
   transcribeBlockReason?: string | null;
 }):
   | { emit: false }
   | { emit: true; variant: "success" | "error" | "info" | "warning"; message: string } {
   const message = input.setupMessage.trim();
   if (!message) return { emit: false };
-  if (input.prepareModelBusy || input.prepareModelCancelling) return { emit: false };
+  if (input.prepareModelBusy || input.prepareModelCancelling || input.offlinePackImportBusy) {
+    return { emit: false };
+  }
 
   if (input.setupOutcome === "ready" && input.transcribeBlockReason) {
     return {

@@ -136,6 +136,10 @@ export async function clearAsrModelCache(): Promise<AsrModelCacheInfo> {
   return invoke<AsrModelCacheInfo>("clear_asr_model_cache");
 }
 
+export async function cancelOfflineAsrModelsPackImport(): Promise<void> {
+  return invoke<void>("cancel_offline_asr_models_pack_import");
+}
+
 export async function pickAndImportOfflineAsrModelsPack(): Promise<OfflineAsrModelsPackImportResult | null> {
   return invoke<OfflineAsrModelsPackImportResult | null>("pick_and_import_offline_asr_models_pack");
 }

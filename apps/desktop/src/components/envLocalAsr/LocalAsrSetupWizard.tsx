@@ -71,6 +71,7 @@ export function LocalAsrSetupWizard({
       setupOutcome,
       prepareModelBusy,
       prepareModelCancelling,
+      offlinePackImportBusy,
       transcribeBlockReason,
     });
     if (!resolved.emit) return;
@@ -94,6 +95,7 @@ export function LocalAsrSetupWizard({
     setupOutcome,
     prepareModelBusy,
     prepareModelCancelling,
+    offlinePackImportBusy,
     transcribeBlockReason,
   ]);
 

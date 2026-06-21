@@ -10,7 +10,11 @@ export type OfflineAsrModelsPackProgress = {
 export const OFFLINE_ASR_MODELS_PACK_PROGRESS_EVENT = "offline-asr-models-pack-progress";
 
 /** Map phase-local 0–100% to a monotonic overall import percent. */
-export function computeOfflineImportWeightedPercent(phase: string, phasePercent: number): number {
+export function computeOfflineImportWeightedPercent(
+  phase: string,
+  phasePercent: number,
+  previousWeighted = 0,
+): number {
   const p = Math.min(100, Math.max(0, phasePercent));
   switch (phase) {
     case "extract":
@@ -22,7 +26,7 @@ export function computeOfflineImportWeightedPercent(phase: string, phasePercent:
     case "validate":
       return 95 + Math.round(p * 0.05);
     default:
-      return p;
+      return previousWeighted;
   }
 }
 

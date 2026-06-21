@@ -42,7 +42,9 @@ export type EnvironmentPanelProps = {
   cancelPrepareModel: () => void;
   offlinePackImportBusy?: boolean;
   offlinePackImportProgress?: number;
+  offlinePackImportFailure?: string | null;
   importOfflineAsrModelsPack?: () => Promise<void>;
+  cancelOfflineAsrModelsPackImport?: () => Promise<void>;
   openOfflineAsrModelsPackReleasePage?: () => Promise<void>;
   refreshAsrModelCacheInfo: () => Promise<void>;
   clearAsrModelCache: () => Promise<void>;
@@ -80,7 +82,9 @@ export function EnvironmentPanel({
   cancelPrepareModel,
   offlinePackImportBusy,
   offlinePackImportProgress,
+  offlinePackImportFailure,
   importOfflineAsrModelsPack,
+  cancelOfflineAsrModelsPackImport,
   openOfflineAsrModelsPackReleasePage,
   refreshAsrModelCacheInfo,
   clearAsrModelCache,
@@ -194,7 +198,9 @@ export function EnvironmentPanel({
                 cancelPrepareModel={cancelPrepareModel}
                 offlinePackImportBusy={offlinePackImportBusy}
                 offlinePackImportProgress={offlinePackImportProgress}
+                offlinePackImportFailure={offlinePackImportFailure}
                 importOfflineAsrModelsPack={importOfflineAsrModelsPack}
+                cancelOfflineAsrModelsPackImport={cancelOfflineAsrModelsPackImport}
                 openOfflineAsrModelsPackReleasePage={openOfflineAsrModelsPackReleasePage}
                 refreshAsrModelCacheInfo={refreshAsrModelCacheInfo}
                 clearAsrModelCache={clearAsrModelCache}

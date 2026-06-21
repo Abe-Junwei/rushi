@@ -145,7 +145,10 @@ export function LocalAsrCacheSection({
       ) : null}
 
       <EnvUtilitiesActionRow>
-        <ActionButton disabled={busy || asrModelCacheBusy} onClick={() => void refreshAsrModelCacheInfo()}>
+        <ActionButton
+          disabled={busy || asrModelCacheBusy || offlinePackImportBusy}
+          onClick={() => void refreshAsrModelCacheInfo()}
+        >
           {asrModelCacheBusy ? "处理中…" : "刷新缓存信息"}
         </ActionButton>
         <ActionButton

@@ -37,7 +37,9 @@ type Props = {
   cancelPrepareModel: () => void;
   offlinePackImportBusy?: boolean;
   offlinePackImportProgress?: number;
+  offlinePackImportFailure?: string | null;
   importOfflineAsrModelsPack?: () => Promise<void>;
+  cancelOfflineAsrModelsPackImport?: () => Promise<void>;
   openOfflineAsrModelsPackReleasePage?: () => Promise<void>;
   refreshAsrModelCacheInfo: () => Promise<void>;
   clearAsrModelCache: () => Promise<void>;
@@ -69,7 +71,9 @@ export function EnvLocalAsrPanel({
   cancelPrepareModel,
   offlinePackImportBusy,
   offlinePackImportProgress,
+  offlinePackImportFailure,
   importOfflineAsrModelsPack,
+  cancelOfflineAsrModelsPackImport,
   openOfflineAsrModelsPackReleasePage,
   refreshAsrModelCacheInfo,
   clearAsrModelCache,
@@ -136,7 +140,9 @@ export function EnvLocalAsrPanel({
           prepareDefaultFunasrModel={prepareDefaultFunasrModel}
           cancelPrepareModel={cancelPrepareModel}
           offlinePackImportBusy={offlinePackImportBusy}
+          offlinePackImportFailure={offlinePackImportFailure}
           importOfflineAsrModelsPack={importOfflineAsrModelsPack}
+          cancelOfflineAsrModelsPackImport={cancelOfflineAsrModelsPackImport}
           openOfflineAsrModelsPackReleasePage={openOfflineAsrModelsPackReleasePage}
         />
       </section>

@@ -6,6 +6,10 @@ import type { PrepareDefaultModelOptions } from "../../pages/usePrepareModelCont
 import type { LocalAsrModelCatalogApi } from "../../pages/useLocalAsrModelCatalog";
 import type { AsrHealthCapabilities } from "../../tauri/projectApi";
 import type { AsrCatalogPresentation } from "../../services/asr/asrCatalogPresentation";
+import {
+  DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+  migrateDeprecatedHubModelId,
+} from "../../services/asr/localAsrModelCatalog";
 import { LOCAL_ASR_RECOGNITION_LANGUAGE_OPTIONS } from "../../services/asr/localAsrRecognitionLanguage";
 import { ENV_PANEL_BUTTON_ROW_CLASS, ENV_PANEL_FORM_FIELDS_CLASS, ENV_PANEL_FORM_FIELD_CLASS } from "../../utils/environmentPanelNav";
 import { LUCIDE_ICON_SIZE_MD, LUCIDE_ICON_STROKE_WIDTH } from "../lucideIconSpec";
@@ -33,7 +37,9 @@ type Props = {
   prepareDefaultFunasrModel: (options?: PrepareDefaultModelOptions) => Promise<void>;
   cancelPrepareModel: () => void;
   offlinePackImportBusy?: boolean;
+  offlinePackImportFailure?: string | null;
   importOfflineAsrModelsPack?: () => Promise<void>;
+  cancelOfflineAsrModelsPackImport?: () => Promise<void>;
   openOfflineAsrModelsPackReleasePage?: () => Promise<void>;
 };
 
@@ -49,7 +55,9 @@ export function EnvLocalAsrModelCard({
   prepareDefaultFunasrModel,
   cancelPrepareModel,
   offlinePackImportBusy = false,
+  offlinePackImportFailure = null,
   importOfflineAsrModelsPack,
+  cancelOfflineAsrModelsPackImport,
   openOfflineAsrModelsPackReleasePage,
 }: Props) {
   const catalog = localAsrModelCatalog;
@@ -67,6 +75,8 @@ export function EnvLocalAsrModelCard({
   const panelBusy = busy || prepareModelBusy || prepareModelCancelling || catalog.applyBusy || offlinePackImportBusy;
   const downloadActive = prepareModelBusy && !prepareModelCancelling;
   const sidecarHub = asrCaps?.funasr_model_id ?? null;
+  const offlineImportAllowed =
+    migrateDeprecatedHubModelId(catalog.selectedHubModelId) === DEFAULT_LOCAL_ASR_HUB_MODEL_ID;
 
   const progressToneClass =
     progressTone === "success" ? "text-zen-success" : "text-notion-text-muted";
@@ -126,7 +136,7 @@ export function EnvLocalAsrModelCard({
             <CspProgressFill
               percent={progress}
               className={
-                modelsReady && !prepareModelBusy
+                progressTone === "success"
                   ? PANEL_PROGRESS_FILL_SUCCESS_CLASS
                   : PANEL_PROGRESS_FILL_COMPACT_CLASS
               }
@@ -162,6 +172,12 @@ export function EnvLocalAsrModelCard({
           </div>
         ) : null}
 
+        {offlinePackImportFailure ? (
+          <p className={`${PANEL_TYPOGRAPHY.meta} text-zen-cinnabar`} role="alert">
+            {offlinePackImportFailure}
+          </p>
+        ) : null}
+
         <div className={ENV_PANEL_BUTTON_ROW_CLASS}>
           {!modelsReady || prepareModelBusy || offlinePackImportBusy ? (
             <>
@@ -186,12 +202,22 @@ export function EnvLocalAsrModelCard({
                 <button
                   type="button"
                   className={`flex items-center gap-2 ${CONTROL_BTN_SECONDARY}`}
-                  disabled={panelBusy}
+                  disabled={panelBusy || !offlineImportAllowed}
+                  title={
+                    offlineImportAllowed
+                      ? undefined
+                      : "离线包仅含默认 Paraformer 模型，请先切回该 SKU。"
+                  }
                   onClick={() => void importOfflineAsrModelsPack()}
                 >
                   <PackageOpen className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />
                   {offlinePackImportBusy ? "正在导入…" : "导入离线模型包"}
                 </button>
+              ) : null}
+              {offlinePackImportBusy && cancelOfflineAsrModelsPackImport ? (
+                <EnvLocalAsrSmallButton disabled={busy} onClick={() => void cancelOfflineAsrModelsPackImport()}>
+                  取消导入
+                </EnvLocalAsrSmallButton>
               ) : null}
               {downloadActive ? (
                 <EnvLocalAsrSmallButton disabled={busy} onClick={cancelPrepareModel}>
@@ -206,7 +232,12 @@ export function EnvLocalAsrModelCard({
                 <button
                   type="button"
                   className={`flex items-center gap-2 ${CONTROL_BTN_SECONDARY}`}
-                  disabled={panelBusy}
+                  disabled={panelBusy || !offlineImportAllowed}
+                  title={
+                    offlineImportAllowed
+                      ? undefined
+                      : "离线包仅含默认 Paraformer 模型，请先切回该 SKU。"
+                  }
                   onClick={() => void importOfflineAsrModelsPack()}
                 >
                   <PackageOpen className={LUCIDE_ICON_SIZE_MD} strokeWidth={LUCIDE_ICON_STROKE_WIDTH} aria-hidden />

@@ -1,3 +1,4 @@
+import type { UnlistenFn } from "@tauri-apps/api/event";
 import * as projectApi from "../../tauri/projectApi";
 import {
   normalizeReleaseVersion,
@@ -19,6 +20,8 @@ import {
   offlineImportProgressLabel,
 } from "./offlineAsrModelsPackProgress";
 
+export const OFFLINE_IMPORT_CANCELLED_MESSAGE = "离线包导入已取消。";
+
 export function offlineAsrModelsPackAssetName(version: string): string {
   return `rushi-offline-asr-models_${normalizeReleaseVersion(version)}.zip`;
 }
@@ -33,7 +36,8 @@ export type OfflineAsrModelsPackImportFlowInput = {
   prepareModelBusy: boolean;
   prepareModelCancelling: boolean;
   onProgressMessage: (message: string) => void;
-  onImportProgress?: (percent: number, phase: string) => void;
+  onImportProgress: (percent: number, phase: string) => void;
+  registerProgressUnlisten?: (unlisten: UnlistenFn) => void;
   onClearProgress: () => void;
   refreshAsrRuntimeInfo: () => Promise<void>;
   refreshAsrModelCacheInfo: () => Promise<void>;
@@ -59,6 +63,10 @@ function transcribeReadyFromCaps(
   }).ready;
 }
 
+function isImportCancelledMessage(message: string): boolean {
+  return message.includes(OFFLINE_IMPORT_CANCELLED_MESSAGE) || message.includes("已取消");
+}
+
 export async function runOfflineAsrModelsPackImportFlow(
   input: OfflineAsrModelsPackImportFlowInput,
 ): Promise<OfflineAsrModelsPackImportFlowResult> {
@@ -79,13 +87,18 @@ export async function runOfflineAsrModelsPackImportFlow(
   }
 
   input.onProgressMessage("正在准备导入离线模型包…");
-  const unlisten = input.onImportProgress
-    ? await listenOfflineAsrModelsPackProgress((progress) => {
-        const weighted = computeOfflineImportWeightedPercent(progress.phase, progress.percent);
-        input.onImportProgress?.(weighted, progress.phase);
-        input.onProgressMessage(offlineImportProgressLabel(progress.phase, weighted));
-      })
-    : null;
+  let lastWeighted = 0;
+  const unlisten = await listenOfflineAsrModelsPackProgress((progress) => {
+    const weighted = computeOfflineImportWeightedPercent(
+      progress.phase,
+      progress.percent,
+      lastWeighted,
+    );
+    lastWeighted = weighted;
+    input.onImportProgress(weighted, progress.phase);
+    input.onProgressMessage(offlineImportProgressLabel(progress.phase, weighted));
+  });
+  input.registerProgressUnlisten?.(unlisten);
 
   setOfflineAsrModelsPackImportActive(true);
   let result: projectApi.OfflineAsrModelsPackImportResult | null;
@@ -94,12 +107,13 @@ export async function runOfflineAsrModelsPackImportFlow(
   } catch (error) {
     setOfflineAsrModelsPackImportActive(false);
     input.onClearProgress();
-    return {
-      kind: "error",
-      message: error instanceof Error ? error.message : String(error),
-    };
+    const message = error instanceof Error ? error.message : String(error);
+    if (isImportCancelledMessage(message)) {
+      return { kind: "cancelled" };
+    }
+    return { kind: "error", message };
   } finally {
-    if (unlisten) unlisten();
+    unlisten();
   }
 
   if (!result) {
@@ -122,10 +136,11 @@ export async function runOfflineAsrModelsPackImportFlow(
   } catch (error) {
     setOfflineAsrModelsPackImportActive(false);
     input.onClearProgress();
-    return {
-      kind: "error",
-      message: error instanceof Error ? error.message : String(error),
-    };
+    const message = error instanceof Error ? error.message : String(error);
+    if (isImportCancelledMessage(message)) {
+      return { kind: "cancelled" };
+    }
+    return { kind: "error", message };
   }
 
   const caps = await pollLoopbackHealthUntil({

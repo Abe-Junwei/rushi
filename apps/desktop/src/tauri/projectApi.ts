@@ -60,6 +60,7 @@ export {
   asrAppManagesBundledSidecar,
   asrModelCacheInfo,
   bundledAsrLaunchReport,
+  cancelOfflineAsrModelsPackImport,
   clearAsrModelCache,
   clearOrphanWaveformPeaksCache,
   getAsrRuntimePaths,
