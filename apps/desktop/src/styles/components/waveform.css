@@ -769,7 +769,8 @@
  *   z-3  waveform-segment-overlay（语段交互 DOM：选中 / 拖拽 draft）
  *   z-8  region-action-overlay（语段播放控制，sticky 视口坐标）
  *   z-9  .waveform-viewport-playhead（全高播放头，sticky 视口坐标）
- *   z-10 .waveform-embedded-time-ruler（透明叠在 sticky 视口底边）
+ *   z-10 .waveform-embedded-time-ruler（timeline overlay 底边，随 tier 原生 scroll）
+ *   z-10 sticky 壳：.waveform-viewport-playhead（全高播放头，视口坐标）
  *   z-30 loadError banner / peaks loading badge（EditorWaveformPane）
  */
 

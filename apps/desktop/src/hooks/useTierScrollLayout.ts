@@ -1,5 +1,6 @@
 import { useCallback, useLayoutEffect, useRef, useState, type RefObject } from "react";
 import { scheduleTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
+import { waveformScrollProfileMaybeFlushBurst } from "../services/waveform/waveformScrollProfile";
 
 export type TierScrollLayout = {
   scrollLeftPx: number;
@@ -83,6 +84,7 @@ export function useTierScrollLayout(
         raf = requestAnimationFrame(loop);
         return;
       }
+      waveformScrollProfileMaybeFlushBurst();
       commitLayout();
     };
 

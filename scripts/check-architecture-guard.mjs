@@ -735,9 +735,14 @@ function checkSegmentListRapidSelectGuard() {
   const selectionPath = path.join(ROOT, selectionRel);
   if (fs.existsSync(selectionPath)) {
     const selectionSource = fs.readFileSync(selectionPath, 'utf-8');
-    if (!/flushSync\s*\(\s*\(\)\s*=>\s*\{[\s\S]{0,180}setSelectedIdxUi\(/.test(selectionSource)) {
+    if (!/publishSelectionChrome(?:ForInput)?\s*\(/.test(selectionSource)) {
       errors.push(
-        `${selectionRel}: 语段切换须先 flushSync 提交 selectedIdx，再执行波形 reveal/seek 等重布局副作用`,
+        `${selectionRel}: 语段切换须先 publishSelectionChrome（SC2），再 startTransition 提交 SC1`,
+      );
+    }
+    if (/flushSync\s*\(\s*\(\)\s*=>\s*\{[\s\S]{0,180}setSelectedIdxUi\(/.test(selectionSource)) {
+      errors.push(
+        `${selectionRel}: 禁止 flushSync 提交 selectedIdx（Selection Chrome Bus 已替代）`,
       );
     }
     if (/createListAdvanceCoalescedScheduler|queueListAdvanceReveal/.test(selectionSource)) {

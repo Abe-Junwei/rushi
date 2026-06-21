@@ -23,6 +23,8 @@ export type OverlayDragState = {
   initialStartSec: number;
   initialEndSec: number;
   moved: boolean;
+  /** Blank overlay shell lasso — user intent is create unless Shift extends selection. */
+  blankLasso?: boolean;
   baseIndices?: Set<number>;
   lastFinalizedBounds?: { startSec: number; endSec: number };
 };

@@ -11,6 +11,40 @@ import {
 } from "../utils/waveformSegmentOverlayGeometry";
 import { useWaveformSegmentDrag } from "./useWaveformSegmentDrag";
 
+function overlayRootFromCreatePreview(createPreviewRef: RefObject<HTMLElement | null>): ParentNode | null {
+  return createPreviewRef.current?.closest(".waveform-segment-overlay") ?? null;
+}
+
+function applySegmentDraftOverlayImperative(
+  draft: SegmentOverlayDraft,
+  args: {
+    timelineWidthPx: number;
+    durationSec: number;
+    layoutHeightPx: number;
+    laneByIndex: number[];
+    laneCount: number;
+  },
+  overlayRoot: ParentNode | null,
+): void {
+  const el = overlayRoot?.querySelector(`[data-segment-idx="${draft.idx}"]`) as HTMLElement | null;
+  if (!el) return;
+  const geom = segmentOverlayGeometry({
+    startSec: draft.startSec,
+    endSec: draft.endSec,
+    timelineWidthPx: args.timelineWidthPx,
+    durationSec: args.durationSec,
+    lane: args.laneByIndex[draft.idx] ?? 0,
+    laneCount: args.laneCount,
+    containerHeightPx: args.layoutHeightPx,
+  });
+  setCspLayoutRules(el, {
+    left: geom.leftPx,
+    width: geom.widthPx,
+    top: geom.topPx,
+    height: geom.heightPx,
+  });
+}
+
 export type { CreateRangePreview, SegmentOverlayDraft } from "../utils/waveformSegmentOverlayGeometry";
 
 import type { SegmentOverlapPolicy } from "../utils/segmentTimeRange";
@@ -57,6 +91,18 @@ export function useWaveformSegmentOverlay(
   const [segmentDraft, setSegmentDraft] = useState<SegmentOverlayDraft | null>(null);
 
   const segmentDraftIdx = segmentDraft?.idx ?? null;
+  const createPreviewInitializedRef = useRef(false);
+
+  const bindCreatePreviewRef = useCallback(
+    (el: HTMLElement | null) => {
+      createPreviewRef.current = el;
+      if (el && !createPreviewInitializedRef.current) {
+        createPreviewInitializedRef.current = true;
+        setCspLayoutRules(el, { display: "none" });
+      }
+    },
+    [createPreviewRef],
+  );
 
   const updateCreatePreview = useCallback(
     (preview: CreateRangePreview | null) => {
@@ -85,9 +131,21 @@ export function useWaveformSegmentOverlay(
     argsRef.current.onDraftIdxChange?.(segmentDraftIdx);
   }, [segmentDraftIdx]);
 
-  const applySegmentDraft = useCallback((draft: SegmentOverlayDraft | null) => {
-    setSegmentDraft(draft);
-  }, []);
+  const applySegmentDraft = useCallback(
+    (draft: SegmentOverlayDraft | null) => {
+      if (draft) {
+        applySegmentDraftOverlayImperative(
+          draft,
+          argsRef.current,
+          overlayRootFromCreatePreview(createPreviewRef),
+        );
+        setSegmentDraft(draft);
+      } else {
+        setSegmentDraft(null);
+      }
+    },
+    [createPreviewRef],
+  );
 
   const onSegmentPointerTap = useCallback((idx: number, pointerTimeSec: number) => {
     const a = argsRef.current;
@@ -161,5 +219,6 @@ export function useWaveformSegmentOverlay(
     onPointerUp: drag.onPointerUp,
     onPointerCancel: drag.onPointerCancel,
     segmentOverlayGeometry,
+    bindCreatePreviewRef,
   };
 }

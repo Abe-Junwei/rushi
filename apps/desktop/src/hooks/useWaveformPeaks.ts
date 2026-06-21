@@ -38,6 +38,7 @@ export function useWaveformPeaks(
     runIdRef.current += 1;
     identityRef.current = null;
     mismatchRetryKeyRef.current = null;
+    peakCache?.dispose();
     setPeakCache(null);
     setStatus(null);
     setError(null);
@@ -53,6 +54,7 @@ export function useWaveformPeaks(
     mismatchRetryKeyRef.current = null;
 
     if (!projectId || !fileId) {
+      peakCache?.dispose();
       setStatus(null);
       setPeakCache(null);
       setLoading(false);
@@ -61,6 +63,7 @@ export function useWaveformPeaks(
     }
 
     if (!backgroundGenerationEnabledRef.current) {
+      peakCache?.dispose();
       setStatus(null);
       setPeakCache(null);
       setLoading(false);
@@ -70,6 +73,7 @@ export function useWaveformPeaks(
 
     let cancelled = false;
     if (identityChanged) {
+      peakCache?.dispose();
       setPeakCache(null);
       setStatus(null);
     }
@@ -109,6 +113,7 @@ export function useWaveformPeaks(
         const msg = e instanceof Error ? e.message : String(e);
         logDesktopUi("ERROR", `waveform peaks: ${msg}`);
         setError(msg);
+        peakCache?.dispose();
         setPeakCache(null);
       } finally {
         if (!cancelled && runId === runIdRef.current) {
@@ -170,6 +175,8 @@ export function useWaveformPeaks(
         const msg = e instanceof Error ? e.message : String(e);
         logDesktopUi("ERROR", `waveform peaks: ${msg}`);
         setError(msg);
+        peakCache?.dispose();
+        setPeakCache(null);
       } finally {
         if (!cancelled && runId === runIdRef.current) {
           setLoading(false);
@@ -183,6 +190,15 @@ export function useWaveformPeaks(
   }, [projectId, fileId, mediaDurationSec, backgroundGenerationEnabled]);
   /* eslint-enable react-hooks/exhaustive-deps */
 
+  const peakCacheRef = useRef(peakCache);
+  peakCacheRef.current = peakCache;
+
+  useEffect(() => {
+    return () => {
+      peakCacheRef.current?.dispose();
+    };
+  }, []);
+
   const clearAndReloadPeaks = useCallback(async () => {
     if (!projectId || !fileId) {
       throw new Error("未打开音频文件");
@@ -190,6 +206,7 @@ export function useWaveformPeaks(
 
     const runId = ++runIdRef.current;
     mismatchRetryKeyRef.current = null;
+    peakCache?.dispose();
     setPeakCache(null);
     setStatus(null);
     setLoading(true);

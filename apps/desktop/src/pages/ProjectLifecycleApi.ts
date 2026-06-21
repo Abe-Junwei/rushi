@@ -121,6 +121,7 @@ export interface ProjectLifecycleApi {
   cancelDeleteSegment: () => void;
   selectionLo: number;
   selectionHi: number;
+  selectionRangeAnchorIdx: number;
   selectionCount: number;
   isMultiSegmentSelection: boolean;
   isContiguousSelection: boolean;
@@ -138,7 +139,7 @@ export interface ProjectLifecycleApi {
     endSec: number,
     mediaDurationSec?: number,
     policy?: SegmentOverlapPolicy,
-  ) => void;
+  ) => number | null;
   flushSegmentTextDrafts: () => void;
   canFindReplace: boolean;
   findReplaceBlockReason: string | null;

@@ -29,6 +29,7 @@ function makeCtx(segmentCount: number): TranscriptionLayerInput {
     busy: false,
     selectionLo: 0,
     selectionHi: 0,
+    selectionRangeAnchorIdx: 0,
     selectionCount: 1,
     isMultiSegmentSelection: false,
     isContiguousSelection: true,
@@ -114,12 +115,14 @@ describe("useTranscriptionLayerSelection profile", () => {
     const timeline = makeTimeline();
     const setSelectedIdxUi = vi.fn();
 
+    const segmentListRef = { current: null as HTMLDivElement | null };
     const { result } = renderHook(() =>
       useTranscriptionLayerSelection({
         ctx,
         ctxRef,
         timeline: timeline as never,
         waveformShellRef: { current: null },
+        segmentListRef,
         setSelectedIdxUi,
       }),
     );
@@ -149,12 +152,14 @@ describe("useTranscriptionLayerSelection profile", () => {
     const timeline = makeTimeline();
     const setSelectedIdxUi = vi.fn();
 
+    const segmentListRef = { current: null as HTMLDivElement | null };
     const { result } = renderHook(() =>
       useTranscriptionLayerSelection({
         ctx,
         ctxRef,
         timeline: timeline as never,
         waveformShellRef: { current: null },
+        segmentListRef,
         setSelectedIdxUi,
       }),
     );
@@ -180,12 +185,14 @@ describe("useTranscriptionLayerSelection profile", () => {
     `;
     document.querySelector("textarea")!.focus();
 
+    const segmentListRef = { current: null as HTMLDivElement | null };
     const { result } = renderHook(() =>
       useTranscriptionLayerSelection({
         ctx,
         ctxRef,
         timeline: timeline as never,
         waveformShellRef: { current: null },
+        segmentListRef,
         setSelectedIdxUi,
       }),
     );
@@ -207,12 +214,14 @@ describe("useTranscriptionLayerSelection profile", () => {
     document.body.innerHTML = `<button type="button">hub</button>`;
     document.querySelector("button")!.focus();
 
+    const segmentListRef = { current: null as HTMLDivElement | null };
     const { result } = renderHook(() =>
       useTranscriptionLayerSelection({
         ctx,
         ctxRef,
         timeline: timeline as never,
         waveformShellRef: { current: null },
+        segmentListRef,
         setSelectedIdxUi,
       }),
     );
@@ -234,6 +243,7 @@ describe("useTranscriptionLayerSelection profile", () => {
     const waveformShell = document.createElement("div");
     waveformShell.tabIndex = -1;
     document.body.appendChild(waveformShell);
+    const segmentListRef = { current: null as HTMLDivElement | null };
 
     const { result } = renderHook(() =>
       useTranscriptionLayerSelection({
@@ -241,6 +251,7 @@ describe("useTranscriptionLayerSelection profile", () => {
         ctxRef,
         timeline: timeline as never,
         waveformShellRef: { current: waveformShell },
+        segmentListRef,
         setSelectedIdxUi,
       }),
     );
@@ -259,6 +270,12 @@ describe("useTranscriptionLayerSelection profile", () => {
     });
     expect(timeline.viewportFit.zoomToFitSegment).not.toHaveBeenCalled();
     expect(timeline.wfApiRef.current.seek).toHaveBeenCalledWith(4);
+    expect(timeline.wfApiRef.current.seek.mock.invocationCallOrder[0]).toBeLessThan(
+      timeline.viewportFit.revealSegmentInViewport.mock.invocationCallOrder[0],
+    );
+    expect(timeline.viewportFit.revealSegmentInViewport.mock.invocationCallOrder[0]).toBeLessThan(
+      setSelectedIdxUi.mock.invocationCallOrder[0],
+    );
     expect(document.activeElement).toBe(waveformShell);
   });
 });

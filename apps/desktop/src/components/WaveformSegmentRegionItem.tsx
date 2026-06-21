@@ -1,5 +1,6 @@
 import { memo, useMemo, type MouseEvent, type PointerEvent } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
+import { useSegmentRowSelection } from "../hooks/useSegmentRowSelection";
 import { waveformRegionFillColor } from "../utils/segmentChrome";
 import type { segmentOverlayGeometry } from "../utils/waveformSegmentBounds";
 import { CspLayout } from "./CspLayout";
@@ -11,8 +12,6 @@ export type WaveformSegmentRegionItemProps = {
   seg: SegmentDto;
   startSec: number;
   endSec: number;
-  selected: boolean;
-  inSelection?: boolean;
   showHandles?: boolean;
   multiSelectActive?: boolean;
   timelineWidthPx: number;
@@ -32,9 +31,7 @@ export const WaveformSegmentRegionItem = memo(
     seg,
     startSec,
     endSec,
-    selected,
-    inSelection = false,
-    showHandles = selected,
+    showHandles = false,
     multiSelectActive = false,
     timelineWidthPx,
     durationSec,
@@ -46,6 +43,8 @@ export const WaveformSegmentRegionItem = memo(
     onSegmentClick,
     onSegmentDoubleClick,
   }: WaveformSegmentRegionItemProps) {
+    const { selected, inSelection } = useSegmentRowSelection(idx);
+
     const geom = useMemo(
       () =>
         segmentOverlayGeometry({
@@ -93,7 +92,7 @@ export const WaveformSegmentRegionItem = memo(
         onClick={(ev) => onSegmentClick(idx, ev)}
         onDoubleClick={(ev) => onSegmentDoubleClick(idx, ev)}
       >
-        {showHandles ? (
+        {showHandles || selected ? (
           <>
             <span className="waveform-segment-handle waveform-segment-handle-start" aria-hidden />
             <span className="waveform-segment-handle waveform-segment-handle-end" aria-hidden />
@@ -107,8 +106,6 @@ export const WaveformSegmentRegionItem = memo(
     prev.seg === next.seg &&
     prev.startSec === next.startSec &&
     prev.endSec === next.endSec &&
-    prev.selected === next.selected &&
-    prev.inSelection === next.inSelection &&
     prev.showHandles === next.showHandles &&
     prev.multiSelectActive === next.multiSelectActive &&
     prev.timelineWidthPx === next.timelineWidthPx &&

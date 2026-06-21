@@ -50,6 +50,8 @@
 
 ## 3. 手测验收矩阵
 
+> **Release 抽测表**（含 RSS 分列）：[`v0.1.8-mac-release-hand-test-checklist.md`](./v0.1.8-mac-release-hand-test-checklist.md) **§9.4**（UST-1–UST-4）。全矩阵如下：
+
 | 场景 | 素材 | 期望 |
 |------|------|------|
 | 基础打开 | 1–5min 音频 | 波形可见、播放/暂停/seek 正常 |
@@ -105,7 +107,7 @@ npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs
 - [x] S3 WS 宽度 / resize / zoom 收敛完成自动验证。
 - [x] S4 scroll hook 瘦身完成自动验证。
 - [x] S5 legacy 删除与 guard 完成自动验证。
-- [ ] 手测矩阵完成。
+- [ ] 手测矩阵完成（Release：[`v0.1.8-mac-release-hand-test-checklist.md`](./v0.1.8-mac-release-hand-test-checklist.md) §9.4 UST-1–UST-4）。
 - [x] 文档与架构守卫完成自动验证。
 - [x] 项目级自动闸门完成：`npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs`。
 

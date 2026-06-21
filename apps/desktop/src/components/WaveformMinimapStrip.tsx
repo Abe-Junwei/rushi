@@ -15,6 +15,13 @@ import {
   CSP_LAYOUT_OWNER_IMPERATIVE,
 } from "../utils/cspElementLayout";
 import { subscribeTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
+import {
+  blitScaledMinimapRaster,
+  canScaleMinimapRasterCache,
+  createMinimapRasterCacheEntry,
+  type MinimapRasterCacheEntry,
+} from "../services/waveform/waveformMinimapRasterCache";
+import { waveformScrollProfileMinimapViewportWrite } from "../services/waveform/waveformScrollProfile";
 import { CspLayout } from "./CspLayout";
 import { scrollPxCenterTimeInViewport } from "../utils/waveformProjection";
 import {
@@ -66,10 +73,14 @@ export function WaveformMinimapStrip({
   const wellRef = useRef<HTMLDivElement | null>(null);
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const viewportRef = useRef<HTMLElement | null>(null);
+  const lastMinimapViewportRectRef = useRef<{ left: number; width: number } | null>(null);
   const [overviewWidthPx, setOverviewWidthPx] = useState(0);
   const [minimapPeaksReady, setMinimapPeaksReady] = useState(false);
   const exportMinimapPeaksRef = useRef(exportMinimapPeaks);
   exportMinimapPeaksRef.current = exportMinimapPeaks;
+  const rasterCacheRef = useRef<MinimapRasterCacheEntry | null>(null);
+
+  const MINIMAP_RESIZE_DEBOUNCE_MS = 100;
 
   useLayoutEffect(() => {
     const well = wellRef.current;
@@ -77,17 +88,22 @@ export function WaveformMinimapStrip({
     if (!well || !canvas) return;
 
     let roRafId = 0;
+    let resizeDebounceId = 0;
     let paintSeq = 0;
 
-    const paint = () => {
+    const paintNow = () => {
       const seq = ++paintSeq;
       roRafId = 0;
       const widthPx = Math.max(1, Math.floor(well.clientWidth));
       const heightPx = Math.max(1, Math.floor(well.clientHeight));
       setOverviewWidthPx(widthPx);
       const dpr = window.devicePixelRatio || 1;
-      canvas.width = Math.max(1, Math.floor(widthPx * dpr));
-      canvas.height = Math.max(1, Math.floor(heightPx * dpr));
+      const devW = Math.max(1, Math.floor(widthPx * dpr));
+      const devH = Math.max(1, Math.floor(heightPx * dpr));
+      if (canvas.width !== devW || canvas.height !== devH) {
+        canvas.width = devW;
+        canvas.height = devH;
+      }
       setCspLayoutRules(canvas, { width: widthPx, height: heightPx });
       const ctx = canvas.getContext("2d");
       if (!ctx) return;
@@ -95,6 +111,7 @@ export function WaveformMinimapStrip({
 
       if (durationSec <= 0) {
         setMinimapPeaksReady(false);
+        rasterCacheRef.current = null;
         ctx.clearRect(0, 0, widthPx, heightPx);
         return;
       }
@@ -110,38 +127,71 @@ export function WaveformMinimapStrip({
           if (seq !== paintSeq) return;
           if (!peaks || peaks.length < 2) {
             setMinimapPeaksReady(false);
+            rasterCacheRef.current = null;
             ctx.clearRect(0, 0, widthPx, heightPx);
             return;
           }
           try {
+            const cache = rasterCacheRef.current;
+            if (canScaleMinimapRasterCache(cache, peaks, heightPx) && cache.widthPx !== widthPx) {
+              blitScaledMinimapRaster(ctx, cache, widthPx, heightPx);
+              setMinimapPeaksReady(true);
+              return;
+            }
+            if (
+              canScaleMinimapRasterCache(cache, peaks, heightPx) &&
+              cache.widthPx === widthPx
+            ) {
+              ctx.clearRect(0, 0, widthPx, heightPx);
+              ctx.drawImage(cache.canvas, 0, 0, widthPx, heightPx);
+              setMinimapPeaksReady(true);
+              return;
+            }
             drawWaveformMinimap(ctx, peaks, widthPx, heightPx);
+            rasterCacheRef.current = createMinimapRasterCacheEntry(peaks, widthPx, heightPx, canvas);
             setMinimapPeaksReady(true);
           } catch {
             setMinimapPeaksReady(false);
+            rasterCacheRef.current = null;
             ctx.clearRect(0, 0, widthPx, heightPx);
           }
         })
         .catch(() => {
           if (seq !== paintSeq) return;
           setMinimapPeaksReady(false);
+          rasterCacheRef.current = null;
           ctx.clearRect(0, 0, widthPx, heightPx);
         });
     };
 
-    paint();
+    const schedulePaint = () => {
+      if (resizeDebounceId) window.clearTimeout(resizeDebounceId);
+      resizeDebounceId = window.setTimeout(() => {
+        resizeDebounceId = 0;
+        paintNow();
+      }, MINIMAP_RESIZE_DEBOUNCE_MS);
+    };
+
+    rasterCacheRef.current = null;
+    paintNow();
     const ro = new ResizeObserver(() => {
       if (roRafId) return;
-      roRafId = requestAnimationFrame(paint);
+      roRafId = requestAnimationFrame(() => {
+        roRafId = 0;
+        schedulePaint();
+      });
     });
     ro.observe(well);
-    window.addEventListener("resize", paint);
-    const unsubAppearance = subscribeAppAppearance(paint);
+    window.addEventListener("resize", schedulePaint);
+    const unsubAppearance = subscribeAppAppearance(schedulePaint);
     return () => {
       unsubAppearance();
       paintSeq += 1;
+      rasterCacheRef.current = null;
       ro.disconnect();
-      window.removeEventListener("resize", paint);
+      window.removeEventListener("resize", schedulePaint);
       if (roRafId) cancelAnimationFrame(roRafId);
+      if (resizeDebounceId) window.clearTimeout(resizeDebounceId);
     };
   }, [durationSec, peakCache, peakCacheGeneration, isReady]);
 
@@ -170,6 +220,7 @@ export function WaveformMinimapStrip({
   useLayoutEffect(() => {
     const el = viewportRef.current;
     if (!el || overviewWidthPx <= 0 || timelineWidthPx <= 0) return;
+    const lastRectRef = lastMinimapViewportRectRef;
     const apply = () => {
       const metrics = resolveTierViewportMetrics({
         tierScrollEl: tierScrollRef.current,
@@ -182,12 +233,19 @@ export function WaveformMinimapStrip({
         timelineWidthPx,
         overviewWidthPx,
       });
+      const roundedLeft = Math.round(rect.leftPx * 1000) / 1000;
+      const roundedWidth = Math.round(rect.widthPx * 1000) / 1000;
+      const prev = lastRectRef.current;
+      if (prev && prev.left === roundedLeft && prev.width === roundedWidth) return;
+      lastRectRef.current = { left: roundedLeft, width: roundedWidth };
       setCspLayoutRules(el, { left: rect.leftPx, width: rect.widthPx });
+      waveformScrollProfileMinimapViewportWrite();
     };
     apply();
     const unsub = subscribeTierScrollFrame(apply);
     return () => {
       unsub();
+      lastMinimapViewportRectRef.current = null;
       // Only clear the imperative slot; CspLayout's React owner keeps left/width.
       clearCspLayoutRules(el, CSP_LAYOUT_OWNER_IMPERATIVE);
     };

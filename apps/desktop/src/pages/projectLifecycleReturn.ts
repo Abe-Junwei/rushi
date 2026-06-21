@@ -138,6 +138,7 @@ export function buildProjectLifecycleReturn(input: ProjectLifecycleReturnInput):
     cancelDeleteSegment: segmentDeleteConfirm.cancelDeleteSegment,
     selectionLo: segmentSelection.selectionLo,
     selectionHi: segmentSelection.selectionHi,
+    selectionRangeAnchorIdx: segmentSelection.selectionRangeAnchorIdx,
     selectionCount: segmentSelection.selectionCount,
     isMultiSegmentSelection: segmentSelection.isMultiSegmentSelection,
     isContiguousSelection: segmentSelection.isContiguousSelection,

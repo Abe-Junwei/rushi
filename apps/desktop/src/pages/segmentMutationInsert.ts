@@ -80,8 +80,8 @@ export function createSegmentInsertActions(deps: SegmentInsertDeps) {
     endSec: number,
     mediaDurationSec = 0,
     policy: SegmentOverlapPolicy = "trim",
-  ) {
-    if (busy) return;
+  ): number | null {
+    if (busy) return null;
     segmentPublish.commitTextDraftsForStructureMutation();
     let lo = roundSec3(Math.min(startSec, endSec));
     let hi = roundSec3(Math.max(startSec, endSec));
@@ -90,21 +90,21 @@ export function createSegmentInsertActions(deps: SegmentInsertDeps) {
     }
     if (hi - lo < WAVEFORM_SEGMENT_MIN_SPAN_SEC) {
       setError(mediaDurationSec > 0 && hi <= lo ? "选区超出媒体时长。" : "选区过短。");
-      return;
+      return null;
     }
     const segs = segmentPublish.getCurrentSegmentsSnapshot();
     const overlapSegs = selectPackableSegments(segs, mediaDurationSec);
     const clamped = resolveCreateRangeForPolicy(overlapSegs, lo, hi, policy);
     if (!clamped) {
       setError(describeCreateRangePolicyFailure(policy, lo, hi, overlapSegs));
-      return;
+      return null;
     }
     let { startSec: fitLo, endSec: fitHi } = clamped;
     if (mediaDurationSec > 0) {
       ({ startSec: fitLo, endSec: fitHi } = clampSegmentTimeBounds(fitLo, fitHi, mediaDurationSec));
       if (fitHi - fitLo < WAVEFORM_SEGMENT_MIN_SPAN_SEC) {
         setError("选区超出媒体时长。");
-        return;
+        return null;
       }
     }
     setError("");
@@ -125,6 +125,7 @@ export function createSegmentInsertActions(deps: SegmentInsertDeps) {
     segmentPublish.publishStructure(reindexSegments(out));
     setSelectedIdx(insertAt);
     onSelectionCollapsed?.(insertAt);
+    return insertAt;
   }
 
   return { insertSegmentAfter, insertSegmentFromTimeRange };

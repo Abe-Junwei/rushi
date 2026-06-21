@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useLayoutEffect, useMemo, useRef } from "react";
 import { clampTimelineScrollLeftPx, WAVEFORM_SCROLL_SYNC_EPSILON_PX } from "../utils/waveformScrollSync";
-import { flushTierScrollFrame, registerTierScrollFrameMetricsSupplier, scheduleTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
+import { registerTierScrollFrameMetricsSupplier, scheduleTierScrollFrame } from "../utils/tierScrollFrameCoordinator";
 import { resolveTierViewportMetrics } from "../utils/waveformViewport";
 import type { useProjectWaveform } from "./useProjectWaveform";
 import { useTierScrollLayout, type TierScrollLayout } from "./useTierScrollLayout";
@@ -156,7 +156,6 @@ export function useTierScrollSync(args: {
       applyScrollLeftPx(scrollLeftPx, "tier", { immediate: true });
       tierScrollActivityRef.current.notifyScrollActivity();
       extendPlaybackFollowSuppressForUserIntent();
-      flushTierScrollFrame();
     },
   });
 
@@ -190,7 +189,6 @@ export function useTierScrollSync(args: {
       applyScrollLeftPx(px, "tier", { immediate: true });
       tierScrollActivityRef.current.notifyScrollActivity();
       extendPlaybackFollowSuppressForUserIntent();
-      flushTierScrollFrame();
     },
     [applyScrollLeftPx, cancelTransientScrollMotion, extendPlaybackFollowSuppressForUserIntent, tierScrollActivityRef],
   );
@@ -212,16 +210,13 @@ export function useTierScrollSync(args: {
           ...(options?.timelineWidthPx != null ? { timelineWidthPx: options.timelineWidthPx } : {}),
           immediate: true,
         });
-        flushTierScrollFrame();
       },
       minimapScrubScroll: (px: number) => {
         cancelTransientScrollMotion("minimap");
         applyScrollLeftPx(px, "program", { immediate: true });
-        flushTierScrollFrame();
       },
       playbackFollowScroll: (px: number) => {
         applyScrollLeftPx(px, "program", { deferLayoutCommit: true, immediate: true });
-        flushTierScrollFrame();
       },
       userScrubScroll: commitUserScrubScroll,
       applyWheelScrollDelta,
@@ -244,7 +239,6 @@ export function useTierScrollSync(args: {
           applyScrollLeftPx(scrollLeftPx, "program", { immediate: true });
           tierScrollActivityRef.current.notifyScrollActivity();
           extendPlaybackFollowSuppressForUserIntent();
-          flushTierScrollFrame();
         });
       },
       onPickAbsoluteTime: (t: number, mode: "seek" | "seekAndCenterViewport") => {

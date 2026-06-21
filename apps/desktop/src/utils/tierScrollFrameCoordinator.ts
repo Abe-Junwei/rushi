@@ -4,6 +4,9 @@ type TierScrollFrameSubscriber = () => void;
 
 const subscribers = new Set<TierScrollFrameSubscriber>();
 let frameRafId = 0;
+let coalescedScrollLeftPx: number | null = null;
+let coalescedAtMs = 0;
+let forceNextTierScrollFrame = false;
 
 export type TierViewportMetricsSnapshot = {
   scrollLeftPx: number;
@@ -36,12 +39,36 @@ export function clearTierViewportMetricsDuringScrollFrameForTests(): void {
   scrollFrameMetricsSnapshot = null;
   scrollFrameActive = false;
   metricsSupplier = null;
+  coalescedScrollLeftPx = null;
+  coalescedAtMs = 0;
+  forceNextTierScrollFrame = false;
 }
+
+import {
+  waveformScrollProfileBeginBurst,
+} from "../services/waveform/waveformScrollProfile";
 
 function runTierScrollFrame(): void {
   frameRafId = 0;
   scrollFrameActive = true;
   scrollFrameMetricsSnapshot = metricsSupplier?.() ?? null;
+  const scrollLeftPx = scrollFrameMetricsSnapshot?.scrollLeftPx ?? null;
+  const now = performance.now();
+  const force = forceNextTierScrollFrame;
+  forceNextTierScrollFrame = false;
+  if (
+    !force &&
+    scrollLeftPx != null &&
+    scrollLeftPx === coalescedScrollLeftPx &&
+    now - coalescedAtMs < 12
+  ) {
+    scrollFrameActive = false;
+    scrollFrameMetricsSnapshot = null;
+    return;
+  }
+  coalescedScrollLeftPx = scrollLeftPx;
+  coalescedAtMs = now;
+  waveformScrollProfileBeginBurst();
   for (const fn of subscribers) {
     fn();
   }
@@ -67,8 +94,14 @@ export function registerWaveformSegmentBandPaintScheduler(fn: TierScrollFrameSub
   return subscribeTierScrollFrame(fn);
 }
 
+export type WaveformSegmentBandPaintOptions = {
+  /** Bypass 12ms scroll-left coalesce (selection chrome, same-frame flush). */
+  force?: boolean;
+};
+
 /** Request segment-band / scroll-chrome repaint (coalesced). */
-export function requestWaveformSegmentBandPaint(): void {
+export function requestWaveformSegmentBandPaint(options?: WaveformSegmentBandPaintOptions): void {
+  if (options?.force) forceNextTierScrollFrame = true;
   scheduleTierScrollFrame();
 }
 
@@ -77,7 +110,8 @@ export function requestWaveformSegmentBandPaint(): void {
  * Use when an imperative scroll write must repaint sticky chrome in the SAME frame
  * (e.g. wheel-driven scroll), so sticky layers don't trail the natively-scrolled waveform by 1 frame.
  */
-export function flushTierScrollFrame(): void {
+export function flushTierScrollFrame(options?: WaveformSegmentBandPaintOptions): void {
+  if (options?.force) forceNextTierScrollFrame = true;
   if (frameRafId !== 0) {
     cancelAnimationFrame(frameRafId);
     frameRafId = 0;
@@ -99,4 +133,7 @@ export function resetTierScrollFrameCoordinatorForTests(): void {
   subscribers.clear();
   scrollFrameMetricsSnapshot = null;
   metricsSupplier = null;
+  coalescedScrollLeftPx = null;
+  coalescedAtMs = 0;
+  forceNextTierScrollFrame = false;
 }

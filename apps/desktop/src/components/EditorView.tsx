@@ -3,8 +3,9 @@ import { useTranscriptFooterStats } from "../hooks/useTranscriptFooterStats";
 import { clearToastBottomInset, syncToastBottomInset } from "../services/ui/toastLayout";
 import { resolveLegacyWaveformFallbackFile } from "../utils/legacyWaveformFallback";
 import { SegmentContextMenu } from "./SegmentContextMenu";
+import { useTranscriptionLayer } from "../pages/useTranscriptionLayer";
 import type { ProjectControllerApi } from "../pages/useProjectController";
-import type { TranscriptionLayerApi } from "../pages/useTranscriptionLayer";
+import type { TranscriptionLayerInput } from "../pages/transcriptionLayerTypes";
 import type { SegmentContextMenuOpen } from "../utils/segmentContextMenuModel";
 import { clampTranscriptFontPx } from "../utils/waveformPrefs";
 import { SegmentCorrectPopover } from "./segmentRow/SegmentCorrectPopover";
@@ -19,7 +20,7 @@ import { EditorViewLayout } from "./editor/EditorViewLayout";
 
 interface EditorViewProps {
   controller: ProjectControllerApi;
-  tx: TranscriptionLayerApi;
+  txInput: TranscriptionLayerInput;
   exportKey: string;
   onExportSelect: (key: string) => void;
   onOpenEnvironment: () => void;
@@ -34,7 +35,7 @@ interface EditorViewProps {
 
 export const EditorView = memo(function EditorView({
   controller: c,
-  tx,
+  txInput,
   exportKey,
   onExportSelect,
   onOpenEnvironment,
@@ -46,6 +47,7 @@ export const EditorView = memo(function EditorView({
   setSegmentCtxMenu,
   onOpenSegmentContextMenu,
 }: EditorViewProps) {
+  const tx = useTranscriptionLayer(txInput);
   const appearance = useEditorTranscriptAppearance(c.busy, Boolean(c.currentFileId));
   const transcriptFontPx = clampTranscriptFontPx(tx.transcriptFontPx);
 

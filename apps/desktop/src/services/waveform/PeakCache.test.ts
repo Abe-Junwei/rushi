@@ -226,4 +226,37 @@ describe("PeakCache", () => {
     expect(bundle).not.toBeNull();
     expect(bundle?.peaks[0]?.length).toBeGreaterThan(0);
   });
+
+  it("dispose releases loaded levels and resample caches", async () => {
+    const cache = await PeakCache.fromLevelUrls([
+      { level: 0, pixelsPerSecond: 2, path: "asset://l0.dat" },
+    ]);
+    expect(cache).not.toBeNull();
+    if (!cache) return;
+
+    cache.getWaveSurferPeaks(56);
+    expect(cache.hasLevel(0)).toBe(true);
+
+    cache.dispose();
+    expect(cache.hasLevel(0)).toBe(false);
+
+    // After disposal, async load re-fetches the level from disk.
+    loadMock.mockClear();
+    resampleMock.mockClear();
+    await cache.getWaveSurferPeaksAsync(56);
+    expect(loadMock).toHaveBeenCalledTimes(1);
+    expect(resampleMock).toHaveBeenCalledTimes(1);
+  });
+
+  it("dispose is idempotent", async () => {
+    const cache = await PeakCache.fromLevelUrls([
+      { level: 0, pixelsPerSecond: 2, path: "asset://l0.dat" },
+    ]);
+    expect(cache).not.toBeNull();
+    if (!cache) return;
+
+    cache.dispose();
+    expect(() => cache.dispose()).not.toThrow();
+    expect(cache.hasLevel(0)).toBe(false);
+  });
 });

@@ -16,6 +16,8 @@ import { peekWelcomeSearchEditorHighlight } from "../../services/welcome/welcome
 import { useEditorSegmentListScroll } from "./useEditorSegmentListScroll";
 import { logSegmentRowLayoutProbe } from "../../utils/releaseFrontendProbe";
 import { CONTROL_BTN_LINK } from "../../config/controlStyles";
+import { useSelectionChromePrimaryIdx } from "../../hooks/useSegmentRowSelection";
+import { useSelectionChromeReconcile } from "../../hooks/useSelectionChromeReconcile";
 
 type SegmentCtxMenuState = SegmentContextMenuOpen;
 
@@ -67,6 +69,18 @@ export function EditorSegmentList({
     selectedIdx: c.selectedIdx,
     currentFileId: c.currentFileId,
     transcriptRowHeightPx: tx.transcriptRowHeightPx,
+    lastSegmentSelectSourceRef: tx.lastSegmentSelectSourceRef,
+  });
+
+  const chromePrimaryIdx = useSelectionChromePrimaryIdx();
+
+  useSelectionChromeReconcile({
+    fileId: c.currentFileId,
+    primaryIdx: c.selectedIdx,
+    selectedIndicesArray: c.selectedIndicesArray,
+    segments: c.segments,
+    segmentListRef,
+    tierScrollRef: tx.tierScrollRef,
   });
 
   useLayoutEffect(() => {
@@ -130,8 +144,6 @@ export function EditorSegmentList({
         key={s.uid ? `${s.uid}#${segIdx}` : `seg-${segIdx}`}
         segment={s}
         index={segIdx}
-        selected={segIdx === c.selectedIdx}
-        inSelection={tx.isIndexInSelection(segIdx) && segIdx !== c.selectedIdx}
         busy={c.busy}
         transcriptFontPx={tx.transcriptFontPx}
         segmentRowHeightPx={tx.transcriptRowHeightPx}
@@ -250,8 +262,8 @@ export function EditorSegmentList({
                   left: 0,
                   right: 0,
                   height: itemStridePx,
-                  overflow: segIdx === c.selectedIdx ? "visible" : "hidden",
-                  zIndex: segIdx === c.selectedIdx ? 1 : undefined,
+                  overflow: segIdx === chromePrimaryIdx ? "visible" : "hidden",
+                  zIndex: segIdx === chromePrimaryIdx ? 1 : undefined,
                   boxSizing: "border-box",
                 }}
               >

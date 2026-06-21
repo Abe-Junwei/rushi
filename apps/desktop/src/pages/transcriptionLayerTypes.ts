@@ -13,6 +13,7 @@ export type TranscriptionLayerInput = {
   busy: boolean;
   selectionLo: number;
   selectionHi: number;
+  selectionRangeAnchorIdx: number;
   selectionCount: number;
   isMultiSegmentSelection: boolean;
   isContiguousSelection: boolean;
@@ -31,7 +32,7 @@ export type TranscriptionLayerInput = {
     endSec: number,
     mediaDurationSec?: number,
     policy?: SegmentOverlapPolicy,
-  ) => void;
+  ) => number | null;
   splitAtSelection: () => void;
   splitAtPlayhead: (timeSec: number) => void;
   mergeWithNext: () => void;

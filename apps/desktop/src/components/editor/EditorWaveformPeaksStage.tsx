@@ -117,6 +117,7 @@ export function EditorWaveformPeaksStage({
               layout={{ width: tx.timelineWidthPx }}
             >
               <WaveformSegmentBandCanvas
+                fileId={c.currentFileId}
                 segments={c.segments}
                 durationSec={mediaDurationSec}
                 timelineWidthPx={tx.timelineWidthPx}
@@ -135,6 +136,7 @@ export function EditorWaveformPeaksStage({
                 tierScrollLayout={tx.tierScrollLayout}
               />
               <WaveformSegmentOverlay
+                fileId={c.currentFileId}
                 disabled={stripDisabled}
                 segments={c.segments}
                 selectedIdx={c.selectedIdx}
@@ -153,7 +155,7 @@ export function EditorWaveformPeaksStage({
                 enableCreateRange
                 clientXToTimeSec={tx.clientXToTimeSec}
                 onSelectSegmentAt={(idx, opts) => tx.selectSegmentAt(idx, "waveform", opts)}
-                onSelectSegmentIndices={(indices, primaryIdx) => c.selectSegmentIndices(indices, primaryIdx)}
+                onSelectSegmentIndices={(indices, primaryIdx) => tx.selectSegmentIndices(indices, primaryIdx)}
                 getSelectedIndices={() => c.selectedIndices}
                 isIndexInSelection={c.isIndexInSelection}
                 selectedIndices={c.selectedIndices}
@@ -167,12 +169,38 @@ export function EditorWaveformPeaksStage({
                       : { startSec, endSec };
                   c.updateSegmentBounds(idx, clamped.startSec, clamped.endSec, "commit");
                 }}
-                onCreateRange={(lo, hi, options) =>
-                  c.insertSegmentFromTimeRange(lo, hi, mediaDurationSec, options?.overlapPolicy)
-                }
+                onCreateRange={(lo, hi, options) => {
+                  const idx = c.insertSegmentFromTimeRange(
+                    lo,
+                    hi,
+                    mediaDurationSec,
+                    options?.overlapPolicy,
+                  );
+                  if (idx == null || idx < 0) return;
+                  requestAnimationFrame(() => {
+                    tx.selectSegmentAt(idx, "waveform");
+                    requestAnimationFrame(() => tx.focusSegmentTextarea(idx));
+                  });
+                }}
                 onPlaySegment={(idx) => void tx.playSegmentAtIndex(idx)}
                 seekToTime={tx.seek}
                 suppressPlaybackFollowForSelectionSeek={tx.suppressPlaybackFollowForSelectionSeek}
+              />
+              <WaveformLiveTimeRuler
+                viewportWidthPx={viewportWidthPx}
+                durationSec={mediaDurationSec}
+                timelineWidthPx={tx.timelineWidthPx}
+                {...tierScrollProps}
+                isPlaying={tx.isPlaying}
+                isReady={tx.isReady}
+                currentTimeSec={tx.currentTime}
+                getPlayheadTime={tx.getPlayheadTime}
+                getVisualPlayheadTimeSec={tx.getVisualPlayheadTimeSec}
+                formatMediaTime={tx.formatMediaTime}
+                subscribePlayheadFrame={tx.subscribePlayheadFrame}
+                disabled={stripDisabled}
+                onCenterTierAtClientX={tx.centerTierAtClientX}
+                onSetScrollLeftPx={tx.userScrubScroll}
               />
             </CspLayout>
             <WaveformSegmentPlaybackControls
@@ -208,22 +236,6 @@ export function EditorWaveformPeaksStage({
                   getVisualPlayheadTimeSec={tx.getVisualPlayheadTimeSec}
                   subscribePlayheadFrame={tx.subscribePlayheadFrame}
                   playbackFollowMode={tx.playbackScrollFollowMode}
-                />
-                <WaveformLiveTimeRuler
-                    viewportWidthPx={viewportWidthPx}
-                    durationSec={mediaDurationSec}
-                    timelineWidthPx={tx.timelineWidthPx}
-                    {...tierScrollProps}
-                    isPlaying={tx.isPlaying}
-                    isReady={tx.isReady}
-                    currentTimeSec={tx.currentTime}
-                    getPlayheadTime={tx.getPlayheadTime}
-                    getVisualPlayheadTimeSec={tx.getVisualPlayheadTimeSec}
-                    formatMediaTime={tx.formatMediaTime}
-                    subscribePlayheadFrame={tx.subscribePlayheadFrame}
-                    disabled={stripDisabled}
-                    onCenterTierAtClientX={tx.centerTierAtClientX}
-                    onSetScrollLeftPx={tx.userScrubScroll}
                 />
               </div>
             </CspLayout>

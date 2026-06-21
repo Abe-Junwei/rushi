@@ -293,4 +293,12 @@ export class PeakCache {
     const bytes = estimateWaveformLikeBytes(level.data);
     this.levels.set(level.level, level, bytes);
   }
+
+  /** Explicitly release in-memory peaks and resample caches; safe to call multiple times. */
+  dispose(): void {
+    this.levels.clear();
+    this.resampleCache.clear();
+    this.loadPromises.clear();
+    // Keep knownLevels so the cache can be re-loaded on demand after disposal.
+  }
 }

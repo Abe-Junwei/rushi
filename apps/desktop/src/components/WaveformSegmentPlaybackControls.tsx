@@ -44,6 +44,12 @@ export const WaveformSegmentPlaybackControls = memo(function WaveformSegmentPlay
 }: WaveformSegmentPlaybackControlsProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const loopBtnRef = useRef<HTMLButtonElement | null>(null);
+  const lastOverlayLayoutRef = useRef<{
+    left: number;
+    width: number;
+    display: string | null;
+    loopDisplay: string | null;
+  } | null>(null);
 
   const layoutArgsRef = useRef({
     selectedSegment,
@@ -102,9 +108,32 @@ export const WaveformSegmentPlaybackControls = memo(function WaveformSegmentPlay
       });
 
       if (!layout.visible) {
-        setCspLayoutRules(container, { display: "none" });
+        const nextDisplay = "none";
+        const prev = lastOverlayLayoutRef.current;
+        if (prev?.display === nextDisplay) return;
+        lastOverlayLayoutRef.current = { left: 0, width: 0, display: nextDisplay, loopDisplay: null };
+        setCspLayoutRules(container, { display: nextDisplay });
         return;
       }
+      const roundedLeft = Math.round(layout.overlayLeftPx * 1000) / 1000;
+      const roundedWidth = Math.round(layout.overlayWidthPx * 1000) / 1000;
+      const loopDisplay = layout.showLoopBtn ? null : "none";
+      const prev = lastOverlayLayoutRef.current;
+      if (
+        prev &&
+        prev.display === null &&
+        prev.left === roundedLeft &&
+        prev.width === roundedWidth &&
+        prev.loopDisplay === loopDisplay
+      ) {
+        return;
+      }
+      lastOverlayLayoutRef.current = {
+        left: roundedLeft,
+        width: roundedWidth,
+        display: null,
+        loopDisplay,
+      };
       // bottom 不随滚动变，单独在 effect 体写入一次；这里每帧只更新随滚动变化的 left/width/display。
       setCspLayoutRules(container, {
         display: null,
@@ -113,12 +142,13 @@ export const WaveformSegmentPlaybackControls = memo(function WaveformSegmentPlay
       });
       const loopBtn = loopBtnRef.current;
       if (loopBtn) {
-        setCspLayoutRules(loopBtn, { display: layout.showLoopBtn ? null : "none" });
+        setCspLayoutRules(loopBtn, { display: loopDisplay });
       }
     };
 
     const container = containerRef.current;
     if (container) setCspLayoutRules(container, { bottom: rulerBandHeightPx + 4 });
+    lastOverlayLayoutRef.current = null;
     applyOverlayLayout();
     const unsub = subscribeTierScrollFrame(applyOverlayLayout);
     return () => {

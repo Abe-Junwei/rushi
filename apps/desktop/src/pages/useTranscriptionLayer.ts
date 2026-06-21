@@ -7,6 +7,8 @@ import { computeSegmentLaneRowPx } from "../utils/segmentLayout";
 import { resolveWaveformFooterStatusLabel } from "../services/waveform/waveformRenderStatus";
 import { createEmptySegmentListFilterNavState } from "../utils/segmentListFilterNav";
 import { nextListSelectSource } from "../utils/segmentListSelectSource";
+import { normalizeSegmentIndexRange, rangeIndices } from "../utils/segmentSelection";
+import { publishSelectionChromeForIndices } from "../services/selection/publishSelectionChromeForInput";
 import type { TranscriptionLayerInput } from "./transcriptionLayerTypes";
 import { useTranscriptionLayerSegmentListDrag } from "./useTranscriptionLayerSegmentListDrag";
 import { useTranscriptionLayerSelection } from "./useTranscriptionLayerSelection";
@@ -44,6 +46,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     ctxRef,
     timeline,
     waveformShellRef,
+    segmentListRef,
     setSelectedIdxUi,
   });
 
@@ -110,6 +113,44 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
   );
   /* eslint-enable react-hooks/exhaustive-deps */
 
+  const resolveSelectionChromeRoots = useCallback(() => {
+    const tier = timeline.tierScrollRef.current;
+    return {
+      listRoot: segmentListRef.current,
+      overlayRoot: tier?.querySelector(".waveform-timeline-overlay-layer") ?? null,
+    };
+  }, [segmentListRef, timeline.tierScrollRef]);
+
+  const selectSegmentIndicesWithChrome = useCallback(
+    (indices: number[], primaryIdx: number) => {
+      publishSelectionChromeForIndices(
+        ctxRef.current,
+        indices,
+        primaryIdx,
+        resolveSelectionChromeRoots(),
+      );
+      ctxRef.current.selectSegmentIndices(indices, primaryIdx);
+    },
+    [resolveSelectionChromeRoots],
+  );
+
+  const selectSegmentRangeWithChrome = useCallback(
+    (lo: number, hi: number) => {
+      const c = ctxRef.current;
+      const normalized = normalizeSegmentIndexRange(lo, hi, c.segments.length);
+      if (normalized) {
+        publishSelectionChromeForIndices(
+          c,
+          [...rangeIndices(normalized.lo, normalized.hi)],
+          normalized.hi,
+          resolveSelectionChromeRoots(),
+        );
+      }
+      c.selectSegmentRange(lo, hi);
+    },
+    [resolveSelectionChromeRoots],
+  );
+
   return {
     tierScrollRef: timeline.tierScrollRef,
     segmentListRef,
@@ -170,7 +211,8 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     setPxPerSecFromSlider: zoom.setPxPerSecFromSlider,
     selectSegmentAt: selection.selectSegmentAt,
     selectSegmentFromList,
-    selectSegmentRange: ctx.selectSegmentRange,
+    selectSegmentRange: selectSegmentRangeWithChrome,
+    selectSegmentIndices: selectSegmentIndicesWithChrome,
     selectionLo: ctx.selectionLo,
     selectionHi: ctx.selectionHi,
     selectionCount: ctx.selectionCount,
@@ -188,6 +230,7 @@ export function useTranscriptionLayer(ctx: TranscriptionLayerInput) {
     splitAtPlayhead: ctx.splitAtPlayhead,
     focusWaveformShell: selection.focusWaveformShell,
     onSegmentTextareaKeyDown: keyboard.onSegmentTextareaKeyDown,
+    focusSegmentTextarea: keyboard.focusSegmentTextarea,
     containerRef: wf.containerRef,
     waveformStickyShellRef: wf.stickyShellRef,
     waveformStretchShellRef: wf.stretchShellRef,

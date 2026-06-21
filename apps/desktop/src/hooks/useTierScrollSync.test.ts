@@ -239,7 +239,7 @@ describe("useTierScrollSync", () => {
     unsubscribe();
   });
 
-  it("applies wheel inertia through the tier scroll authority", async () => {
+  it("applies wheel delta immediately through the tier scroll authority", async () => {
     const { el: tier } = createTierContainer();
     const tierScrollRef = { current: tier };
     const wfApiRef = { current: createWaveformApi() };
@@ -260,24 +260,15 @@ describe("useTierScrollSync", () => {
 
     act(() => {
       result.current.applyWheelScrollDelta(180);
+      tier.dispatchEvent(new Event("scroll"));
     });
 
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 0));
-    });
-    expect(tier.scrollLeft).toBeGreaterThan(0);
-    expect(tier.scrollLeft).toBeLessThan(180);
+    expect(tier.scrollLeft).toBe(180);
     expect(onFrame).toHaveBeenCalled();
-
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 220));
-    });
-    expect(tier.scrollLeft).toBeGreaterThan(178);
-    expect(tier.scrollLeft).toBeLessThanOrEqual(180);
     unsubscribe();
   });
 
-  it("cancels wheel inertia when pointer interaction starts", async () => {
+  it("cancels wheel motion when pointer interaction starts", async () => {
     const { el: tier } = createTierContainer();
     const tierScrollRef = { current: tier };
     const wfApiRef = { current: createWaveformApi() };
@@ -296,24 +287,20 @@ describe("useTierScrollSync", () => {
     act(() => {
       result.current.applyWheelScrollDelta(180);
     });
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 0));
-    });
     const scrollAtPointer = tier.scrollLeft;
-    expect(scrollAtPointer).toBeGreaterThan(0);
-    expect(scrollAtPointer).toBeLessThan(180);
+    expect(scrollAtPointer).toBe(180);
 
     act(() => {
       result.current.cancelTransientScrollMotion("pointer");
     });
     await act(async () => {
-      await new Promise((r) => setTimeout(r, 220));
+      await new Promise((r) => setTimeout(r, 50));
     });
 
     expect(tier.scrollLeft).toBe(scrollAtPointer);
   });
 
-  it("native tier scroll cancels wheel inertia before syncing DOM state", async () => {
+  it("native tier scroll cancels wheel motion before syncing DOM state", async () => {
     const { el: tier } = createTierContainer();
     const tierScrollRef = { current: tier };
     const wfApiRef = { current: createWaveformApi() };
@@ -339,9 +326,6 @@ describe("useTierScrollSync", () => {
     act(() => {
       tier.scrollLeft = 24;
       tier.dispatchEvent(new Event("scroll"));
-    });
-    await act(async () => {
-      await new Promise((r) => setTimeout(r, 220));
     });
 
     expect(tier.scrollLeft).toBe(24);
@@ -495,6 +479,7 @@ describe("useTierScrollSync", () => {
 
     act(() => {
       result.current.playbackFollowScroll(144);
+      tier.dispatchEvent(new Event("scroll"));
     });
 
     expect(tier.scrollLeft).toBe(144);

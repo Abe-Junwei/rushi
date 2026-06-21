@@ -78,24 +78,14 @@ describe("waveformZoomProfile", () => {
   it("exposes dev console helpers", () => {
     installWaveformZoomProfileDevTools();
     expect(window.__rushiWfProfile).toBeDefined();
-    window.__rushiWfProfile?.enable();
+    const on = window.__rushiWfProfile?.enable();
+    expect(on?.enabled).toBe(true);
     expect(window.localStorage.getItem(WAVEFORM_ZOOM_PROFILE_STORAGE_KEY)).toBe("1");
     expect(window.__rushiWfProfile?.recent().length).toBeGreaterThan(0);
-    window.__rushiWfProfile?.disable();
+    const off = window.__rushiWfProfile?.disable();
+    expect(off?.enabled).toBe(false);
     expect(isWaveformZoomProfileEnabled()).toBe(false);
   });
 });
-
-declare global {
-  interface Window {
-    __rushiWfProfile?: {
-      enable: () => void;
-      disable: () => void;
-      enabled: () => boolean;
-      recent: () => string[];
-      print: () => void;
-    };
-  }
-}
 
 export {};

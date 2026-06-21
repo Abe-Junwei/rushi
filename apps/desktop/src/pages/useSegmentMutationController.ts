@@ -41,7 +41,7 @@ export interface SegmentMutationApi {
     endSec: number,
     mediaDurationSec?: number,
     policy?: import("../utils/segmentTimeRange").SegmentOverlapPolicy,
-  ) => void;
+  ) => number | null;
   flushSegmentTextDrafts: () => void;
   resetMutationHistory: () => void;
 }

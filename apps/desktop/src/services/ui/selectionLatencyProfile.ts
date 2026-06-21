@@ -13,6 +13,8 @@ export type SelectionLatencyProfileSpan =
   | "focus"
   | "listScroll"
   | "listScrollCorrect"
+  | "listCommit"
+  | "listChrome"
   | "seek";
 
 type ActiveSelectionProfile = {
@@ -23,6 +25,7 @@ type ActiveSelectionProfile = {
 
 let activeProfile: ActiveSelectionProfile | null = null;
 let profileSeq = 0;
+let waveformProfileFlushTimer = 0;
 const recentProfileLines: string[] = [];
 
 function emitProfileLine(line: string): void {
@@ -99,9 +102,11 @@ function formatSpanParts(spans: ActiveSelectionProfile["spans"]): string {
   const order: SelectionLatencyProfileSpan[] = [
     "flushSelectedIdx",
     "firstPaint",
+    "listChrome",
     "resolvePlan",
     "listScroll",
     "listScrollCorrect",
+    "listCommit",
     "viewport",
     "seek",
     "focus",
@@ -114,6 +119,8 @@ function formatSpanParts(spans: ActiveSelectionProfile["spans"]): string {
 
 export function selectionProfileFlush(): void {
   if (!activeProfile || !isSelectionLatencyProfileEnabled()) return;
+  window.clearTimeout(waveformProfileFlushTimer);
+  waveformProfileFlushTimer = 0;
   const frame = activeProfile;
   activeProfile = null;
   const totalMs = performance.now() - frame.startedAt;
@@ -136,6 +143,28 @@ export function selectionProfileFlush(): void {
       }
     }
   }
+}
+
+/** Waveform：等列表 layout commit 后再 flush，使 total/listCommit 反映 transition 成本。 */
+export function selectionProfileMarkListCommit(): void {
+  if (!activeProfile || !isSelectionLatencyProfileEnabled()) return;
+  if (activeProfile.spans.listCommit != null) return;
+  selectionProfileAdd("listCommit", performance.now() - activeProfile.startedAt);
+  selectionProfileFlush();
+}
+
+/** List：rAF 后 flush（含 firstPaint）。Waveform：defer 至 listCommit 或超时。 */
+export function selectionProfileScheduleFlush(source: "list" | "waveform"): void {
+  if (!isSelectionLatencyProfileEnabled()) return;
+  window.clearTimeout(waveformProfileFlushTimer);
+  if (source === "list") {
+    requestAnimationFrame(() => selectionProfileFlush());
+    return;
+  }
+  waveformProfileFlushTimer = window.setTimeout(() => {
+    waveformProfileFlushTimer = 0;
+    selectionProfileFlush();
+  }, 3000);
 }
 
 export function readRecentSelectionLatencyProfileLines(): readonly string[] {
@@ -185,6 +214,8 @@ export function installSelectionLatencyProfileDevTools(): void {
 export function resetSelectionLatencyProfileForTests(): void {
   activeProfile = null;
   profileSeq = 0;
+  window.clearTimeout(waveformProfileFlushTimer);
+  waveformProfileFlushTimer = 0;
   recentProfileLines.length = 0;
 }
 

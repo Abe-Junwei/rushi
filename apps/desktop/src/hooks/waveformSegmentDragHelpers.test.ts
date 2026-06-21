@@ -80,4 +80,33 @@ describe("finishWaveformLassoDrag", () => {
     });
     expect(seekToTime).toHaveBeenCalledWith(12.5);
   });
+
+  it("blank lasso prefers create when range fits a gap even if it grazes a segment", () => {
+    const onCreateRange = vi.fn();
+    const onSelectSegmentIndices = vi.fn();
+    const args = makeArgs({
+      durationSec: 20,
+      segments: [
+        { uid: "a", idx: 0, start_sec: 0, end_sec: 5, text: "A" },
+        { uid: "b", idx: 1, start_sec: 10, end_sec: 15, text: "B" },
+      ],
+      onCreateRange,
+      onSelectSegmentIndices,
+    });
+    finishWaveformLassoDrag({
+      drag: makeLassoDrag({
+        moved: true,
+        blankLasso: true,
+        initialStartSec: 5.2,
+        initialEndSec: 5.2,
+      }),
+      timeSec: 9.5,
+      args,
+      snapEnabled: false,
+      modifiers: { shiftKey: false, toggleKey: false, altKey: false },
+      suppressClickAfterPointer: vi.fn(),
+    });
+    expect(onCreateRange).toHaveBeenCalled();
+    expect(onSelectSegmentIndices).not.toHaveBeenCalled();
+  });
 });

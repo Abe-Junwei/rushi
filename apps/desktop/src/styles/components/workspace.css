@@ -189,6 +189,7 @@
   z-index: 1;
   border-color: transparent;
   background: var(--segment-fill-selected-list);
+  transition: none;
 }
 
 .workspace [data-seg-row].seg-row-selected .segment-row-text-body {
@@ -209,6 +210,7 @@
 .workspace [data-seg-row].seg-row-in-selection {
   border-color: transparent;
   background: var(--segment-fill-in-selection-list);
+  transition: none;
 }
 
 /* 语段行：编辑阶段（Notion 式 pill · 图标 + 文案） */

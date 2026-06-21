@@ -62,6 +62,12 @@ export class ByteBudgetLruMap<K, V> {
       this.order.splice(idx, 1);
     }
   }
+
+  clear(): void {
+    this.cache.clear();
+    this.order.length = 0;
+    this.totalBytes = 0;
+  }
 }
 
 export function estimateWaveformLikeBytes(data: { length: number; channels?: unknown }): number {

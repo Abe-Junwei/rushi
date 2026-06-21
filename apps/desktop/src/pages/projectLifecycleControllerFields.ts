@@ -91,6 +91,7 @@ export function projectLifecycleControllerFields(lifecycle: ProjectLifecycleCont
     pendingDeleteCount: lifecycle.pendingDeleteCount,
     selectionLo: lifecycle.selectionLo,
     selectionHi: lifecycle.selectionHi,
+    selectionRangeAnchorIdx: lifecycle.selectionRangeAnchorIdx,
     selectionCount: lifecycle.selectionCount,
     isMultiSegmentSelection: lifecycle.isMultiSegmentSelection,
     isContiguousSelection: lifecycle.isContiguousSelection,

@@ -2,13 +2,14 @@ import { memo, useMemo, useRef } from "react";
 import type { SegmentDto } from "../tauri/projectApi";
 import type { SegmentOverlapPolicy } from "../utils/segmentTimeRange";
 import { useWaveformSegmentOverlay } from "../hooks/useWaveformSegmentOverlay";
+import { useWaveformSelectionChromeView } from "../hooks/useWaveformSelectionChromeView";
 import { resolveWaveformSegmentFillState } from "../utils/segmentChrome";
 import { selectOverlayInteractiveSegmentIndices } from "../utils/waveformSegmentOverlayVisibility";
 import { WaveformSegmentRegionItem } from "./WaveformSegmentRegionItem";
 import { CspLayout } from "./CspLayout";
-import { setCspLayoutRules } from "../utils/cspElementLayout";
 
 export type WaveformSegmentOverlayProps = {
+  fileId: string | null;
   disabled: boolean;
   segments: SegmentDto[];
   selectedIdx: number;
@@ -61,6 +62,7 @@ export const WaveformSegmentOverlay = memo(function WaveformSegmentOverlay(props
     onPointerUp,
     onPointerCancel,
     segmentOverlayGeometry,
+    bindCreatePreviewRef,
   } = useWaveformSegmentOverlay(props, createPreviewRef);
 
   const {
@@ -69,36 +71,47 @@ export const WaveformSegmentOverlay = memo(function WaveformSegmentOverlay(props
     laneCount,
     layoutHeightPx,
     segments,
-    selectedIdx,
     durationSec,
+    fileId,
   } = props;
+
+  const selectionView = useWaveformSelectionChromeView({
+    fileId,
+    selectedIdx: props.selectedIdx,
+    selectedIndices: props.selectedIndices,
+    selectionLo: props.selectionLo,
+    selectionHi: props.selectionHi,
+    selectionCount: props.selectionCount,
+    isContiguousSelection: props.isContiguousSelection,
+    segmentCount: segments.length,
+  });
 
   const segmentIndices = useMemo(
     () =>
       selectOverlayInteractiveSegmentIndices({
         segmentCount: segments.length,
-        selectedIdx,
-        selectedIndices: props.selectedIndices,
-        selectionLo: props.selectionLo,
-        selectionHi: props.selectionHi,
-        selectionCount: props.selectionCount,
-        isContiguousSelection: props.isContiguousSelection,
+        selectedIdx: selectionView.selectedIdx,
+        selectedIndices: selectionView.selectedIndices,
+        selectionLo: selectionView.selectionLo,
+        selectionHi: selectionView.selectionHi,
+        selectionCount: selectionView.selectionCount,
+        isContiguousSelection: selectionView.isContiguousSelection,
         draftIdx: segmentDraftIdx,
       }),
     [
       segments.length,
-      selectedIdx,
-      props.selectedIndices,
-      props.selectionLo,
-      props.selectionHi,
-      props.selectionCount,
-      props.isContiguousSelection,
+      selectionView.selectedIdx,
+      selectionView.selectedIndices,
+      selectionView.selectionLo,
+      selectionView.selectionHi,
+      selectionView.selectionCount,
+      selectionView.isContiguousSelection,
       segmentDraftIdx,
     ],
   );
 
   const multiSelectActive =
-    (props.selectedIndices?.size ?? 0) > 1 || (props.selectionCount ?? 0) > 1;
+    (selectionView.selectedIndices?.size ?? 0) > 1 || selectionView.selectionCount > 1;
 
   return (
     <div
@@ -114,13 +127,13 @@ export const WaveformSegmentOverlay = memo(function WaveformSegmentOverlay(props
         if (!seg) return null;
         const bounds = segmentBoundsAt(idx);
         if (!bounds) return null;
-        const { selected, inSelection } = resolveWaveformSegmentFillState({
+        const { selected } = resolveWaveformSegmentFillState({
           idx,
-          selectedIdx,
-          selectedIndices: props.selectedIndices,
-          selectionLo: props.selectionLo,
-          selectionHi: props.selectionHi,
-          selectionCount: props.selectionCount,
+          selectedIdx: selectionView.selectedIdx,
+          selectedIndices: selectionView.selectedIndices,
+          selectionLo: selectionView.selectionLo,
+          selectionHi: selectionView.selectionHi,
+          selectionCount: selectionView.selectionCount,
         });
         return (
           <WaveformSegmentRegionItem
@@ -129,8 +142,6 @@ export const WaveformSegmentOverlay = memo(function WaveformSegmentOverlay(props
             seg={seg}
             startSec={bounds.startSec}
             endSec={bounds.endSec}
-            selected={selected}
-            inSelection={inSelection}
             showHandles={selected || idx === segmentDraftIdx}
             multiSelectActive={multiSelectActive}
             timelineWidthPx={timelineWidthPx}
@@ -146,12 +157,9 @@ export const WaveformSegmentOverlay = memo(function WaveformSegmentOverlay(props
         );
       })}
       <CspLayout
-        ref={(el) => {
-          createPreviewRef.current = el;
-          if (el) setCspLayoutRules(el, { display: "none" });
-        }}
+        ref={bindCreatePreviewRef}
         className="waveform-segment-create-preview pointer-events-none absolute top-0 z-[4] h-full bg-accent-action/20"
-        layout={{ display: "none" }}
+        layout={{}}
         aria-hidden
       />
     </div>

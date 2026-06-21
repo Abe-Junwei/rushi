@@ -20,7 +20,31 @@ function makeTierScrollRef(input: { scrollLeft: number; clientWidth: number }) {
     },
   });
   Object.defineProperty(el, "clientWidth", { configurable: true, value: input.clientWidth });
-  return { current: el };
+  return { current: el, setScrollLeft: (value: number) => {
+    scrollLeft = value;
+  } };
+}
+
+function mockCanvasContext() {
+  const stroke = vi.fn();
+  const fillText = vi.fn();
+  const clearRect = vi.fn();
+  const getContext = vi.spyOn(HTMLCanvasElement.prototype, "getContext");
+  getContext.mockReturnValue({
+    setTransform: vi.fn(),
+    clearRect,
+    beginPath: vi.fn(),
+    moveTo: vi.fn(),
+    lineTo: vi.fn(),
+    stroke,
+    fillText,
+    strokeStyle: "",
+    fillStyle: "",
+    lineWidth: 1,
+    font: "",
+    textBaseline: "",
+  } as unknown as CanvasRenderingContext2D);
+  return { getContext, stroke, fillText, clearRect };
 }
 
 describe("WaveformTimeRulerCanvas", () => {
@@ -29,25 +53,9 @@ describe("WaveformTimeRulerCanvas", () => {
     cleanup();
   });
 
-  it("paints embedded viewport ticks on canvas without DOM tick labels", () => {
+  it("paints embedded viewport ticks on a buffered canvas window", () => {
     const tierScrollRef = makeTierScrollRef({ scrollLeft: 1000, clientWidth: 500 });
-    const getContext = vi.spyOn(HTMLCanvasElement.prototype, "getContext");
-    const stroke = vi.fn();
-    const fillText = vi.fn();
-    getContext.mockReturnValue({
-      setTransform: vi.fn(),
-      clearRect: vi.fn(),
-      beginPath: vi.fn(),
-      moveTo: vi.fn(),
-      lineTo: vi.fn(),
-      stroke,
-      fillText,
-      strokeStyle: "",
-      fillStyle: "",
-      lineWidth: 1,
-      font: "",
-      textBaseline: "",
-    } as unknown as CanvasRenderingContext2D);
+    const { stroke, fillText, clearRect, getContext } = mockCanvasContext();
 
     const { container } = render(
       <WaveformTimeRulerCanvas
@@ -70,27 +78,13 @@ describe("WaveformTimeRulerCanvas", () => {
     expect(canvas).toBeTruthy();
     expect(stroke).toHaveBeenCalled();
     expect(fillText).toHaveBeenCalled();
+    expect(clearRect).toHaveBeenCalledWith(0, 0, 2000, 22);
     getContext.mockRestore();
   });
 
-  it("repaints on tier scroll frame without React rerender", () => {
+  it("skips canvas repaint on small tier scroll within painted buffer", () => {
     const tierScrollRef = makeTierScrollRef({ scrollLeft: 1000, clientWidth: 500 });
-    const getContext = vi.spyOn(HTMLCanvasElement.prototype, "getContext");
-    const clearRect = vi.fn();
-    getContext.mockReturnValue({
-      setTransform: vi.fn(),
-      clearRect,
-      beginPath: vi.fn(),
-      moveTo: vi.fn(),
-      lineTo: vi.fn(),
-      stroke: vi.fn(),
-      fillText: vi.fn(),
-      strokeStyle: "",
-      fillStyle: "",
-      lineWidth: 1,
-      font: "",
-      textBaseline: "",
-    } as unknown as CanvasRenderingContext2D);
+    const { clearRect, getContext } = mockCanvasContext();
 
     render(
       <WaveformTimeRulerCanvas
@@ -115,30 +109,44 @@ describe("WaveformTimeRulerCanvas", () => {
       scheduleTierScrollFrame();
       flushTierScrollFrameForTests();
     });
+    expect(clearRect).not.toHaveBeenCalled();
+    getContext.mockRestore();
+  });
+
+  it("repaints when tier scroll exits the painted buffer", () => {
+    const tierScrollRef = makeTierScrollRef({ scrollLeft: 1000, clientWidth: 500 });
+    const { clearRect, getContext } = mockCanvasContext();
+
+    render(
+      <WaveformTimeRulerCanvas
+        durationSec={100}
+        timelineWidthPx={20_000}
+        tierScrollRef={tierScrollRef}
+        tierScrollLive={{
+          scrollLeftRef: { current: 1000 },
+          clientWidthRef: { current: 500 },
+        }}
+        tierScrollLayout={{ scrollLeftPx: 1000, clientWidthPx: 500 }}
+        currentTimeSec={50}
+        formatMediaTime={(sec) => `${sec}`}
+        onCenterTierAtClientX={vi.fn()}
+        onSetScrollLeftPx={vi.fn()}
+      />,
+    );
+
+    clearRect.mockClear();
+    tierScrollRef.current.scrollLeft = 3600;
+    act(() => {
+      scheduleTierScrollFrame();
+      flushTierScrollFrameForTests();
+    });
     expect(clearRect).toHaveBeenCalled();
     getContext.mockRestore();
   });
 
   it("uses viewportWidthPx fallback when tier metrics are not ready", () => {
     const tierScrollRef = makeTierScrollRef({ scrollLeft: 0, clientWidth: 0 });
-    const getContext = vi.spyOn(HTMLCanvasElement.prototype, "getContext");
-    let canvasWidth = 0;
-    getContext.mockReturnValue({
-      setTransform: vi.fn(),
-      clearRect: (_x: number, _y: number, w: number) => {
-        canvasWidth = w;
-      },
-      beginPath: vi.fn(),
-      moveTo: vi.fn(),
-      lineTo: vi.fn(),
-      stroke: vi.fn(),
-      fillText: vi.fn(),
-      strokeStyle: "",
-      fillStyle: "",
-      lineWidth: 1,
-      font: "",
-      textBaseline: "",
-    } as unknown as CanvasRenderingContext2D);
+    const { clearRect, getContext } = mockCanvasContext();
 
     render(
       <WaveformTimeRulerCanvas
@@ -158,7 +166,7 @@ describe("WaveformTimeRulerCanvas", () => {
       />,
     );
 
-    expect(canvasWidth).toBe(640);
+    expect(clearRect).toHaveBeenCalledWith(0, 0, 2000, 22);
     getContext.mockRestore();
   });
 });

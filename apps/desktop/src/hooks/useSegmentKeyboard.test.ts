@@ -15,6 +15,7 @@ function makeCtx(overrides: Partial<TranscriptionLayerInput> = {}): Transcriptio
     busy: false,
     selectionLo: 0,
     selectionHi: 0,
+    selectionRangeAnchorIdx: 0,
     selectionCount: 1,
     isMultiSegmentSelection: false,
     isContiguousSelection: true,

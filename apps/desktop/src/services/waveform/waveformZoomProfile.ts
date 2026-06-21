@@ -147,29 +147,44 @@ export function wfProfileFlush(): void {
 export function installWaveformZoomProfileDevTools(): void {
   if (typeof window === "undefined") return;
   const api = {
+    help: () => {
+      const message = [
+        "1. __rushiWfProfile.enable()",
+        "2. 拖动 zoom ± 或切换 fit-all",
+        "3. __rushiWfProfile.print() 或 __rushiWfProfile.recent()",
+      ].join("\n");
+      // eslint-disable-next-line no-console -- dev-only
+      console.info(message);
+      return { message };
+    },
     enable: () => {
       setWaveformZoomProfileEnabled(true);
-      emitProfileLine(
-        "[wf-profile] enabled — zoom the waveform; lines appear here (also desktop.log in Tauri)",
-      );
+      const message =
+        "[wf-profile] enabled — zoom the waveform; lines appear here (also desktop.log in Tauri)";
+      emitProfileLine(message);
+      return { enabled: true, message, next: "zoom then __rushiWfProfile.print()" };
     },
     disable: () => {
       setWaveformZoomProfileEnabled(false);
       activeProfile = null;
-      emitProfileLine("[wf-profile] disabled");
+      const message = "[wf-profile] disabled";
+      emitProfileLine(message);
+      return { enabled: false, message };
     },
     enabled: () => isWaveformZoomProfileEnabled(),
     recent: () => [...recentProfileLines],
     print: () => {
       if (recentProfileLines.length === 0) {
+        const message = "[wf-profile] (no lines yet — run enable(), then zoom)";
         // eslint-disable-next-line no-console -- dev-only performance profile
-        console.info("[wf-profile] (no lines yet — run enable(), then zoom)");
-        return;
+        console.info(message);
+        return { lines: [] as string[], message };
       }
       for (const line of recentProfileLines) {
         // eslint-disable-next-line no-console -- dev-only performance profile
         console.info(line);
       }
+      return { lines: [...recentProfileLines] };
     },
   };
   Object.defineProperty(window, "__rushiWfProfile", {
@@ -177,6 +192,19 @@ export function installWaveformZoomProfileDevTools(): void {
     configurable: true,
     writable: true,
   });
+}
+
+declare global {
+  interface Window {
+    __rushiWfProfile?: {
+      help: () => { message: string };
+      enable: () => { enabled: true; message: string; next: string };
+      disable: () => { enabled: false; message: string };
+      enabled: () => boolean;
+      recent: () => string[];
+      print: () => { lines: string[]; message?: string };
+    };
+  }
 }
 
 export function resetWaveformZoomProfileForTests(): void {

@@ -19,7 +19,8 @@ import {
   writeSegmentListFilterIndices,
 } from "../../utils/segmentListVirtualWindow";
 import type { SegmentListFilterNavState } from "../../utils/segmentListFilterNav";
-import { selectionProfileTime } from "../../services/ui/selectionLatencyProfile";
+import { selectionProfileTime, selectionProfileMarkListCommit } from "../../services/ui/selectionLatencyProfile";
+import type { SegmentSelectSource } from "../../utils/waveformViewMode";
 
 /** clientHeight 尚未量到时的保守视口，避免 0 导致整表挂载 */
 const SEGMENT_LIST_FALLBACK_VIEWPORT_HEIGHT_PX = 480;
@@ -55,6 +56,7 @@ export type UseEditorSegmentListScrollArgs = {
   selectedIdx: number;
   currentFileId: string | null;
   transcriptRowHeightPx: number;
+  lastSegmentSelectSourceRef?: React.MutableRefObject<SegmentSelectSource>;
 };
 
 export function useEditorSegmentListScroll({
@@ -67,6 +69,7 @@ export function useEditorSegmentListScroll({
   selectedIdx,
   currentFileId,
   transcriptRowHeightPx,
+  lastSegmentSelectSourceRef,
 }: UseEditorSegmentListScrollArgs) {
   const scrollMetricsRef = useRef(readScrollMetrics(null));
   const [scrollEpoch, setScrollEpoch] = useState(0);
@@ -127,10 +130,15 @@ export function useEditorSegmentListScroll({
   }, [bumpScrollEpoch]);
 
   if (prevSelectedDisplayIndexRef.current !== selectedDisplayIndex) {
-    selectionScrollProjectionRef.current = true;
     prevSelectedDisplayIndexRef.current = selectedDisplayIndex;
-    if (useVirtualList) {
-      scrollMetricsRef.current = readScrollMetrics(segmentListRef.current);
+    const fromWaveform = lastSegmentSelectSourceRef?.current === "waveform";
+    if (!fromWaveform) {
+      selectionScrollProjectionRef.current = true;
+      if (useVirtualList) {
+        scrollMetricsRef.current = readScrollMetrics(segmentListRef.current);
+      }
+    } else {
+      selectionScrollProjectionRef.current = false;
     }
   }
 
@@ -159,6 +167,10 @@ export function useEditorSegmentListScroll({
     const scrollKey = `${currentFileId ?? ""}:${selectedIdx}:${selectedDisplayIndex}:${filteredIndicesScrollKey}`;
     if (lastSelectedScrollKeyRef.current === scrollKey) return;
     lastSelectedScrollKeyRef.current = scrollKey;
+
+    if (lastSegmentSelectSourceRef?.current === "waveform") {
+      selectionProfileMarkListCommit();
+    }
 
     const nextScrollTop = selectionProfileTime("listScroll", () => {
       const maxScrollTop = Math.max(0, root.scrollHeight - root.clientHeight);
@@ -199,6 +211,11 @@ export function useEditorSegmentListScroll({
       return;
     }
 
+    if (lastSegmentSelectSourceRef?.current === "waveform") {
+      selectionScrollProjectionRef.current = false;
+      return;
+    }
+
     const corrected = selectionProfileTime("listScrollCorrect", () =>
       scrollSegmentRowIntoViewContainer(selectedIdx, root, { align: "minimal" }),
     );
@@ -223,6 +240,7 @@ export function useEditorSegmentListScroll({
     selectedDisplayIndex,
     selectedIdx,
     writeScrollTop,
+    lastSegmentSelectSourceRef,
   ]);
 
   useLayoutEffect(() => {
@@ -267,6 +285,12 @@ export function useEditorSegmentListScroll({
       overscan: SEGMENT_LIST_VIRTUAL_OVERSCAN,
     });
     if (selectedDisplayIndex < 0) return base;
+    if (
+      lastSegmentSelectSourceRef?.current === "waveform" &&
+      !selectionScrollProjectionRef.current
+    ) {
+      return base;
+    }
     return maybePinSegmentListVirtualWindow(base, selectedDisplayIndex, displayCount, itemStridePx, {
       overscan: SEGMENT_LIST_VIRTUAL_OVERSCAN + 1,
     });

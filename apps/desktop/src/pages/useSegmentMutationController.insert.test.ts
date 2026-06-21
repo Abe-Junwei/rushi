@@ -42,7 +42,12 @@ describe("useSegmentMutationController insert", () => {
       ]),
     );
 
-    act(() => result.current.mutations.insertSegmentFromTimeRange(1.5, 2.5));
+    let createdIdx = -1;
+    act(() => {
+      createdIdx = result.current.mutations.insertSegmentFromTimeRange(1.5, 2.5) ?? -1;
+    });
+
+    expect(createdIdx).toBe(1);
 
     expect(result.current.segments).toHaveLength(3);
     expect(result.current.segments[1].start_sec).toBe(1.5);

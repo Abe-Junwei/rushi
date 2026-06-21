@@ -1,6 +1,8 @@
 import { afterEach, describe, expect, it, vi } from "vitest";
 import {
+  flushTierScrollFrame,
   flushTierScrollFrameForTests,
+  registerTierScrollFrameMetricsSupplier,
   resetTierScrollFrameCoordinatorForTests,
   scheduleTierScrollFrame,
   subscribeTierScrollFrame,
@@ -47,5 +49,27 @@ describe("tierScrollFrameCoordinator", () => {
     flushTierScrollFrameForTests();
     expect(paint).toHaveBeenCalledTimes(1);
     expect(rafCb).not.toBeNull();
+  });
+
+  it("flushTierScrollFrame force bypasses 12ms scroll coalesce", () => {
+    vi.stubGlobal("requestAnimationFrame", (cb: FrameRequestCallback) => {
+      cb(0);
+      return 1;
+    });
+    registerTierScrollFrameMetricsSupplier(() => ({
+      scrollLeftPx: 100,
+      viewportWidthPx: 800,
+    }));
+
+    const paint = vi.fn();
+    subscribeTierScrollFrame(paint);
+    scheduleTierScrollFrame();
+    expect(paint).toHaveBeenCalledTimes(1);
+
+    scheduleTierScrollFrame();
+    expect(paint).toHaveBeenCalledTimes(1);
+
+    flushTierScrollFrame({ force: true });
+    expect(paint).toHaveBeenCalledTimes(2);
   });
 });

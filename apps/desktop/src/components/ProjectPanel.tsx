@@ -1,4 +1,3 @@
-import { useTranscriptionLayer } from "../pages/useTranscriptionLayer";
 import { useProjectPanelShell } from "../pages/useProjectPanelShell";
 import { MAIN_SHELL_SURFACE_CLASS } from "../config/shellVisualTokens";
 import { EnvironmentPanel } from "./EnvironmentPanel";
@@ -57,7 +56,7 @@ export function ProjectPanel() {
     onOpenSettings: openEnvironment,
   });
 
-  const tx = useTranscriptionLayer({
+  const txInput = {
     projectId: c.current?.id ?? null,
     fileId: c.currentFileId,
     mediaUrl: c.audioSrc,
@@ -67,6 +66,7 @@ export function ProjectPanel() {
     busy: c.busy,
     selectionLo: c.selectionLo,
     selectionHi: c.selectionHi,
+    selectionRangeAnchorIdx: c.selectionRangeAnchorIdx,
     selectionCount: c.selectionCount,
     isMultiSegmentSelection: c.isMultiSegmentSelection,
     isContiguousSelection: c.isContiguousSelection,
@@ -75,6 +75,8 @@ export function ProjectPanel() {
     selectSegmentAt: c.selectSegmentAt,
     selectSegmentRange: c.selectSegmentRange,
     selectSegmentIndices: c.selectSegmentIndices,
+    clearMultiSelection: c.clearMultiSelection,
+    requestDeleteSelectedIndices: c.requestDeleteSelectedIndices,
     undo: c.undo,
     redo: c.redo,
     updateSegmentBounds: c.updateSegmentBounds,
@@ -89,7 +91,6 @@ export function ProjectPanel() {
     insertSegmentAfter: c.insertSegmentAfter,
     deleteSegmentAt: c.deleteSegmentAt,
     requestDeleteSelection: c.requestDeleteSelection,
-    requestDeleteSelectedIndices: c.requestDeleteSelectedIndices,
     confirmSegmentEditAndAdvance: c.confirmSegmentEditAndAdvance,
     saveSegments: c.saveSegments,
     triggerFindReplaceShortcut: c.triggerFindReplaceShortcut,
@@ -97,9 +98,8 @@ export function ProjectPanel() {
     openEnvironment,
     openSegmentAnnotationDialog: c.openSegmentAnnotationDialog,
     openManualCorrectionMemoryDialog: c.openManualCorrectionMemoryDialog,
-    clearMultiSelection: c.clearMultiSelection,
     onOpenSegmentContextMenu: openSegmentContextMenu,
-  });
+  };
 
   const transcribeBanners = (
     <TranscribeWorkspaceBanners
@@ -215,7 +215,7 @@ export function ProjectPanel() {
               {transcribeBanners}
               <EditorView
                 controller={c}
-                tx={tx}
+                txInput={txInput}
                 exportKey={exportKey}
                 onExportSelect={onExportSelect}
                 onOpenEnvironment={openEnvironment}

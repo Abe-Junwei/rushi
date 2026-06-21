@@ -158,6 +158,7 @@ export function useSegmentSelectionController(args: Args) {
     selectedIndices,
     selectedIndicesArray,
     isIndexInSelection,
+    selectionRangeAnchorIdx: rangeAnchorIdx,
     selectSegmentAt,
     selectSegmentRange,
     selectSegmentIndices,

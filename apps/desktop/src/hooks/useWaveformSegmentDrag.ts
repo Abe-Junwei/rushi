@@ -184,6 +184,7 @@ export function useWaveformSegmentDrag(
           initialStartSec: timeSec,
           initialEndSec: timeSec,
           moved: false,
+          blankLasso: true,
           baseIndices,
         };
         if (!modifiers.shiftKey && !modifiers.toggleKey) {

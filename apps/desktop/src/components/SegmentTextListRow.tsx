@@ -6,12 +6,11 @@ import { SegmentRowStageBadge } from "./segmentRow/SegmentRowStageBadge";
 import { useSegmentRowTextStyle } from "./segmentRow/useSegmentRowTextStyle";
 import { SegmentRowTimestampColumn } from "./segmentRow/SegmentRowTimestampColumn";
 import type { CorrectableSpan } from "../services/editor/findCorrectableSpans";
+import { useSegmentRowSelection } from "../hooks/useSegmentRowSelection";
 
 export type SegmentTextListRowProps = {
   segment: SegmentDto;
   index: number;
-  selected: boolean;
-  inSelection?: boolean;
   busy: boolean;
   transcriptFontPx: number;
   segmentRowHeightPx: number;
@@ -65,8 +64,6 @@ function segmentTextListRowPropsEqual(
   next: SegmentTextListRowProps,
 ): boolean {
   if (prev.index !== next.index) return false;
-  if (prev.selected !== next.selected) return false;
-  if (prev.inSelection !== next.inSelection) return false;
   if (prev.busy !== next.busy) return false;
   if (prev.hasUnsavedDraft !== next.hasUnsavedDraft) return false;
   if (prev.transcriptFontPx !== next.transcriptFontPx) return false;
@@ -108,8 +105,6 @@ function segmentTextListRowPropsEqual(
 export const SegmentTextListRow = memo(function SegmentTextListRow({
   segment: s,
   index: i,
-  selected,
-  inSelection = false,
   busy,
   transcriptFontPx,
   segmentRowHeightPx,
@@ -134,6 +129,7 @@ export const SegmentTextListRow = memo(function SegmentTextListRow({
   hasUnsavedDraft = false,
   onOpenAnnotation,
 }: SegmentTextListRowProps) {
+  const { selected, inSelection } = useSegmentRowSelection(i);
   const focusOnSelectRef = useRef(false);
   const editorRef = useRef<{ focusEditor: () => void } | null>(null);
   const textStyle = useSegmentRowTextStyle(
