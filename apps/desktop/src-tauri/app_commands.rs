@@ -55,6 +55,7 @@ pub const APP_COMMANDS: &[&str] = &[
     "clear_asr_model_cache",
     "import_offline_asr_models_pack",
     "pick_and_import_offline_asr_models_pack",
+    "cancel_offline_asr_models_pack_import",
     "open_offline_asr_models_pack_release_page",
     "waveform_peaks_cache_info",
     "clear_orphan_waveform_peaks_cache",

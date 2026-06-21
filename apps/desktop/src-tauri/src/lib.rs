@@ -215,6 +215,7 @@ pub fn run() {
             project::asr_cache_cmd::clear_asr_model_cache,
             project::offline_asr_models_pack::import_offline_asr_models_pack,
             project::offline_asr_models_pack::pick_and_import_offline_asr_models_pack,
+            project::offline_asr_models_pack::cancel_offline_asr_models_pack_import,
             project::offline_asr_models_pack::open_offline_asr_models_pack_release_page,
             project::waveform_peaks_cache_cmd::waveform_peaks_cache_info,
             project::waveform_peaks_cache_cmd::clear_orphan_waveform_peaks_cache,

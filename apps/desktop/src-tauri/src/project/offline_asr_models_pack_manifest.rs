@@ -1,5 +1,7 @@
 //! Shared offline ASR models pack manifest (Route E) — template is build + import truth.
 
+use std::path::{Component, Path};
+
 use serde::{Deserialize, Serialize};
 
 use crate::local_asr_model::{
@@ -57,6 +59,23 @@ pub fn default_offline_asr_models_pack_manifest(rushi_version: &str) -> OfflineA
     embedded_offline_asr_models_pack_manifest(Some(rushi_version))
 }
 
+/// Reject manifest-relative paths that could escape a model directory (`../`, absolute, etc.).
+pub fn sanitize_manifest_rel_path(raw: &str) -> Result<String, String> {
+    let trimmed = raw.trim();
+    if trimmed.is_empty() {
+        return Err("离线包 manifest 含空文件路径。".to_string());
+    }
+    for component in Path::new(trimmed).components() {
+        match component {
+            Component::Normal(_) | Component::CurDir => {}
+            Component::ParentDir | Component::RootDir | Component::Prefix(_) => {
+                return Err(format!("离线包 manifest 含非法路径: {trimmed}"));
+            }
+        }
+    }
+    Ok(trimmed.to_string())
+}
+
 pub fn resolve_model_specs(manifest: &OfflineAsrModelsPackManifest) -> Result<Vec<ResolvedPackModelSpec>, String> {
     if manifest.pack_version != OFFLINE_ASR_MODELS_PACK_VERSION {
         return Err(format!(
@@ -87,7 +106,11 @@ pub fn resolve_model_specs(manifest: &OfflineAsrModelsPackManifest) -> Result<Ve
             let required_files = if entry.required_files.is_empty() {
                 default_required_files(hub_id)
             } else {
-                entry.required_files.clone()
+                entry
+                    .required_files
+                    .iter()
+                    .map(|rel| sanitize_manifest_rel_path(rel))
+                    .collect::<Result<Vec<_>, _>>()?
             };
             if required_files.is_empty() {
                 return Err(format!("离线包 manifest 无法推断 {hub_id} 的 required_files。"));
@@ -100,6 +123,7 @@ pub fn resolve_model_specs(manifest: &OfflineAsrModelsPackManifest) -> Result<Ve
                 .find(|name| name.ends_with(".pt") || name.ends_with(".onnx"))
                 .cloned()
                 .unwrap_or_else(|| "model.pt".to_string());
+            sanitize_manifest_rel_path(&weight_file)?;
             Ok(ResolvedPackModelSpec {
                 hub_id: hub_id.to_string(),
                 required_files,
@@ -129,5 +153,17 @@ fn default_min_weight_bytes(hub_id: &str) -> u64 {
         RECOGNIZER_MIN_WEIGHT_BYTES
     } else {
         AUX_MIN_WEIGHT_BYTES
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn sanitize_manifest_rel_path_rejects_traversal() {
+        assert!(sanitize_manifest_rel_path("../model.pt").is_err());
+        assert!(sanitize_manifest_rel_path("").is_err());
+        assert_eq!(sanitize_manifest_rel_path("model.pt").unwrap(), "model.pt");
     }
 }

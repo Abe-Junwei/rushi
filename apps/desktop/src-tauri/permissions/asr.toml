@@ -18,6 +18,7 @@ permissions = [
   "allow-clear-asr-model-cache",
   "allow-import-offline-asr-models-pack",
   "allow-pick-and-import-offline-asr-models-pack",
+  "allow-cancel-offline-asr-models-pack-import",
   "allow-open-offline-asr-models-pack-release-page",
   "allow-waveform-peaks-cache-info",
   "allow-clear-orphan-waveform-peaks-cache",

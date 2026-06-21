@@ -1,8 +1,9 @@
 //! Import optional offline FunASR model packs (Route E) into App Data ModelScope cache.
 
 use std::fs::{self, File};
-use std::io::copy;
+use std::io::{copy, Read, Write};
 use std::path::{Component, Path, PathBuf};
+use std::sync::atomic::{AtomicBool, Ordering};
 use std::sync::{Mutex, OnceLock, TryLockError};
 
 use serde::{Deserialize, Serialize};
@@ -12,9 +13,9 @@ use zip::ZipArchive;
 
 #[allow(unused_imports)]
 pub use super::offline_asr_models_pack_manifest::{
-    default_offline_asr_models_pack_manifest, resolve_model_specs, OfflineAsrModelsPackManifest,
-    OfflineAsrModelsPackModelSpec, ResolvedPackModelSpec, DEFAULT_OFFLINE_ASR_BUNDLE_ID,
-    OFFLINE_ASR_MODELS_PACK_VERSION,
+    default_offline_asr_models_pack_manifest, resolve_model_specs, sanitize_manifest_rel_path,
+    OfflineAsrModelsPackManifest, OfflineAsrModelsPackModelSpec, ResolvedPackModelSpec,
+    DEFAULT_OFFLINE_ASR_BUNDLE_ID, OFFLINE_ASR_MODELS_PACK_VERSION,
 };
 use crate::project::app_data_paths::{modelscope_cache_for_models_root, models_root_for_app_data_root};
 use crate::DbState;
@@ -24,8 +25,12 @@ const SEED_MARKER_FILE: &str = ".rushi-offline-seed.json";
 const IMPORT_STAGING_DIR: &str = ".rushi-offline-import-staging";
 const MAX_ZIP_ENTRIES: usize = 50_000;
 const MAX_UNCOMPRESSED_BYTES: u64 = 3 * 1024 * 1024 * 1024;
+const COPY_PROGRESS_CHUNK_BYTES: u64 = 8 * 1024 * 1024;
+const COPY_IO_BUFFER_BYTES: usize = 1024 * 1024;
+pub const OFFLINE_IMPORT_CANCELLED_MSG: &str = "离线包导入已取消。";
 
 static IMPORT_LOCK: OnceLock<Mutex<()>> = OnceLock::new();
+static IMPORT_CANCEL_REQUESTED: AtomicBool = AtomicBool::new(false);
 
 /// True while another thread holds the offline pack import lock.
 pub fn is_offline_asr_models_pack_import_in_progress() -> bool {
@@ -58,6 +63,7 @@ struct SeedMarker {
     pack_version: u32,
     bundle_id: String,
     #[serde(default)]
+    /// Recorded for diagnostics; skip/reseed compares `pack_version` + `bundle_id` only.
     rushi_version: Option<String>,
     seeded_at: String,
 }
@@ -86,6 +92,105 @@ fn acquire_import_lock() -> Result<std::sync::MutexGuard<'static, ()>, String> {
     }
 }
 
+fn reset_import_cancel_flag() {
+    IMPORT_CANCEL_REQUESTED.store(false, Ordering::SeqCst);
+}
+
+fn request_import_cancel() {
+    IMPORT_CANCEL_REQUESTED.store(true, Ordering::SeqCst);
+}
+
+fn check_import_cancelled() -> Result<(), String> {
+    if IMPORT_CANCEL_REQUESTED.load(Ordering::SeqCst) {
+        Err(OFFLINE_IMPORT_CANCELLED_MSG.to_string())
+    } else {
+        Ok(())
+    }
+}
+
+struct TempDirGuard(PathBuf);
+
+impl TempDirGuard {
+    fn new(path: PathBuf) -> Self {
+        Self(path)
+    }
+
+    fn path(&self) -> &Path {
+        &self.0
+    }
+
+    fn into_path(mut self) -> PathBuf {
+        let path = std::mem::take(&mut self.0);
+        std::mem::forget(self);
+        path
+    }
+}
+
+impl Drop for TempDirGuard {
+    fn drop(&mut self) {
+        if !self.0.as_os_str().is_empty() {
+            let _ = fs::remove_dir_all(&self.0);
+        }
+    }
+}
+
+fn cleanup_stale_extract_temp_dirs() {
+    let Ok(temp_root) = std::env::temp_dir().read_dir() else {
+        return;
+    };
+    for entry in temp_root.flatten() {
+        let name = entry.file_name();
+        let name = name.to_string_lossy();
+        if name.starts_with("rushi-offline-asr-pack-") {
+            let _ = fs::remove_dir_all(entry.path());
+        }
+    }
+}
+
+fn safe_rel_path_under(base: &Path, rel: &str) -> Result<PathBuf, String> {
+    let mut out = base.to_path_buf();
+    for component in Path::new(rel).components() {
+        match component {
+            Component::Normal(part) => out.push(part),
+            Component::CurDir => {}
+            Component::ParentDir | Component::RootDir | Component::Prefix(_) => {
+                return Err("模型路径无效。".to_string());
+            }
+        }
+    }
+    Ok(out)
+}
+
+fn ensure_safe_copy_destination(dest: &Path) -> Result<(), String> {
+    if dest.exists() {
+        let meta = fs::symlink_metadata(dest).map_err(|e| e.to_string())?;
+        if meta.file_type().is_symlink() {
+            return Err("目标路径为符号链接，拒绝写入。".to_string());
+        }
+    }
+    Ok(())
+}
+
+#[cfg(unix)]
+fn zip_entry_is_symlink(entry: &zip::read::ZipFile<'_>) -> bool {
+    entry
+        .unix_mode()
+        .map(|mode| mode & 0o170_000 == 0o120_000)
+        .unwrap_or(false)
+}
+
+#[cfg(not(unix))]
+fn zip_entry_is_symlink(_entry: &zip::read::ZipFile<'_>) -> bool {
+    false
+}
+
+fn log_import_detail(app: Option<&AppHandle>, detail: &str) {
+    let Some(app) = app else {
+        return;
+    };
+    let _ = app.emit("offline-asr-models-pack-log", detail.to_string());
+}
+
 fn cleanup_stale_import_staging(models_root: &Path) {
     let staging_root = models_root.join(IMPORT_STAGING_DIR);
     if staging_root.is_dir() {
@@ -93,10 +198,28 @@ fn cleanup_stale_import_staging(models_root: &Path) {
     }
 }
 
-fn rollback_new_files(paths: &[PathBuf]) {
+fn rollback_new_files(paths: &[PathBuf], boundary: &Path) {
     for path in paths.iter().rev() {
         if path.is_file() {
             let _ = fs::remove_file(path);
+        }
+    }
+    let mut dirs: Vec<PathBuf> = paths
+        .iter()
+        .filter_map(|path| path.parent().map(|parent| parent.to_path_buf()))
+        .collect();
+    dirs.sort_by_key(|dir| std::cmp::Reverse(dir.components().count()));
+    dirs.dedup();
+    for dir in dirs {
+        if !dir.starts_with(boundary) {
+            continue;
+        }
+        let is_empty = dir
+            .read_dir()
+            .map(|mut entries| entries.next().is_none())
+            .unwrap_or(false);
+        if is_empty {
+            let _ = fs::remove_dir(&dir);
         }
     }
 }
@@ -151,11 +274,18 @@ fn looks_like_complete_model_dir(
         return false;
     }
     for rel in required_files {
-        if !model_dir.join(rel).is_file() {
+        let file_path = match safe_rel_path_under(model_dir, rel) {
+            Ok(path) => path,
+            Err(_) => return false,
+        };
+        if !file_path.is_file() {
             return false;
         }
     }
-    let weight_path = model_dir.join(weight_file);
+    let weight_path = match safe_rel_path_under(model_dir, weight_file) {
+        Ok(path) => path,
+        Err(_) => return false,
+    };
     match fs::metadata(&weight_path) {
         Ok(meta) if meta.is_file() => meta.len() > min_weight_bytes,
         _ => false,
@@ -267,17 +397,16 @@ fn dir_file_bytes(root: &Path) -> Result<u64, String> {
 }
 
 fn extract_zip_to_temp(zip_path: &Path, app: Option<&AppHandle>) -> Result<PathBuf, String> {
-    let file = File::open(zip_path)
-        .map_err(|e| format!("打开离线包失败（{}）: {e}", zip_path.display()))?;
+    let file = File::open(zip_path).map_err(|e| format!("打开离线包失败: {e}"))?;
     let mut archive = ZipArchive::new(file).map_err(|e| format!("离线包不是有效 zip: {e}"))?;
-    let temp = std::env::temp_dir().join(format!(
+    let temp_guard = TempDirGuard::new(std::env::temp_dir().join(format!(
         "rushi-offline-asr-pack-{}",
         uuid::Uuid::new_v4()
-    ));
-    fs::create_dir_all(&temp).map_err(|e| format!("创建临时目录失败: {e}"))?;
+    )));
+    let temp = temp_guard.path();
+    fs::create_dir_all(temp).map_err(|e| format!("创建临时目录失败: {e}"))?;
     let total_entries = archive.len();
     if total_entries > MAX_ZIP_ENTRIES {
-        let _ = fs::remove_dir_all(&temp);
         return Err(format!(
             "离线包条目过多（{}，上限 {}）。",
             total_entries, MAX_ZIP_ENTRIES
@@ -286,18 +415,20 @@ fn extract_zip_to_temp(zip_path: &Path, app: Option<&AppHandle>) -> Result<PathB
     let mut uncompressed_total = 0_u64;
     let total_entries_u64 = total_entries as u64;
     for i in 0..archive.len() {
+        check_import_cancelled()?;
         let mut entry = archive
             .by_index(i)
             .map_err(|e| format!("读取 zip 条目失败: {e}"))?;
+        if zip_entry_is_symlink(&entry) {
+            return Err(format!("离线包含符号链接: {}", entry.name()));
+        }
         if !entry.is_dir() {
             uncompressed_total = uncompressed_total.saturating_add(entry.size());
             if uncompressed_total > MAX_UNCOMPRESSED_BYTES {
-                let _ = fs::remove_dir_all(&temp);
                 return Err("离线包解压体积超过安全上限（3 GB）。".to_string());
             }
         }
         let Some(safe_rel) = sanitize_zip_entry_path(entry.name()) else {
-            let _ = fs::remove_dir_all(&temp);
             return Err(format!("离线包含非法路径: {}", entry.name()));
         };
         let out_path = temp.join(&safe_rel);
@@ -317,7 +448,7 @@ fn extract_zip_to_temp(zip_path: &Path, app: Option<&AppHandle>) -> Result<PathB
             total_entries_u64.max(1),
         );
     }
-    Ok(temp)
+    Ok(temp_guard.into_path())
 }
 
 fn sanitize_zip_entry_path(raw: &str) -> Option<PathBuf> {
@@ -363,6 +494,43 @@ impl CopyProgress<'_> {
     }
 }
 
+fn copy_file_with_progress(
+    src: &Path,
+    dest: &Path,
+    file_size: u64,
+    progress: &mut CopyProgress<'_>,
+) -> Result<(), String> {
+    check_import_cancelled()?;
+    ensure_safe_copy_destination(dest)?;
+    let mut src_file = File::open(src).map_err(|e| format!("打开源文件失败: {e}"))?;
+    let mut dest_file = File::create(dest).map_err(|e| format!("创建目标文件失败: {e}"))?;
+    let mut buf = vec![0_u8; COPY_IO_BUFFER_BYTES];
+    let mut copied_in_file = 0_u64;
+    let mut since_last_emit = 0_u64;
+    loop {
+        check_import_cancelled()?;
+        let read = src_file
+            .read(&mut buf)
+            .map_err(|e| format!("读取源文件失败: {e}"))?;
+        if read == 0 {
+            break;
+        }
+        dest_file
+            .write_all(&buf[..read])
+            .map_err(|e| format!("写入目标文件失败: {e}"))?;
+        copied_in_file = copied_in_file.saturating_add(read as u64);
+        since_last_emit = since_last_emit.saturating_add(read as u64);
+        if since_last_emit >= COPY_PROGRESS_CHUNK_BYTES || copied_in_file >= file_size {
+            progress.bump(since_last_emit)?;
+            since_last_emit = 0;
+        }
+    }
+    if since_last_emit > 0 {
+        progress.bump(since_last_emit)?;
+    }
+    Ok(())
+}
+
 fn copy_dir_recursive(
     src: &Path,
     dest: &Path,
@@ -372,17 +540,21 @@ fn copy_dir_recursive(
     if !src.is_dir() {
         return Err(format!("离线包缺少目录: {}", src.display()));
     }
-    fs::create_dir_all(dest).map_err(|e| format!("创建目录失败（{}）: {e}", dest.display()))?;
+    if dest.exists() {
+        let meta = fs::symlink_metadata(dest).map_err(|e| e.to_string())?;
+        if meta.file_type().is_symlink() {
+            return Err("目标路径为符号链接，拒绝写入。".to_string());
+        }
+    }
+    fs::create_dir_all(dest).map_err(|e| format!("创建目录失败: {e}"))?;
     for entry in fs::read_dir(src).map_err(|e| format!("读取目录失败: {e}"))? {
+        check_import_cancelled()?;
         let entry = entry.map_err(|e| e.to_string())?;
         let src_path = entry.path();
         let dest_path = dest.join(entry.file_name());
         let meta = fs::symlink_metadata(&src_path).map_err(|e| e.to_string())?;
         if meta.file_type().is_symlink() {
-            return Err(format!(
-                "离线包含符号链接（{}），请使用不含 symlink 的标准离线包。",
-                src_path.display()
-            ));
+            return Err("离线包含符号链接，请使用不含 symlink 的标准离线包。".to_string());
         }
         if meta.is_dir() {
             copy_dir_recursive(&src_path, &dest_path, progress, rollback)?;
@@ -390,13 +562,15 @@ fn copy_dir_recursive(
             if let Some(parent) = dest_path.parent() {
                 fs::create_dir_all(parent).map_err(|e| e.to_string())?;
             }
-            let existed = dest_path.exists();
-            fs::copy(&src_path, &dest_path)
-                .map_err(|e| format!("复制文件失败（{}）: {e}", src_path.display()))?;
+            let existed = dest_path
+                .exists()
+                && fs::symlink_metadata(&dest_path)
+                    .map(|m| !m.file_type().is_symlink())
+                    .unwrap_or(false);
+            copy_file_with_progress(&src_path, &dest_path, meta.len(), progress)?;
             if !existed {
                 rollback.push(dest_path);
             }
-            progress.bump(meta.len())?;
         }
     }
     Ok(())
@@ -454,6 +628,8 @@ pub fn import_offline_asr_models_pack_at(
     app: Option<&AppHandle>,
 ) -> Result<OfflineAsrModelsPackImportResult, String> {
     let _guard = acquire_import_lock()?;
+    reset_import_cancel_flag();
+    cleanup_stale_extract_temp_dirs();
     let (pack_root, temp_cleanup) = resolve_pack_root(source_path, app)?;
     let staging_dir = models_root
         .join(IMPORT_STAGING_DIR)
@@ -493,12 +669,14 @@ pub fn import_offline_asr_models_pack_at(
             &mut merge_rollback,
         );
         if let Err(err) = merge_result {
-            rollback_new_files(&merge_rollback);
+            rollback_new_files(&merge_rollback, &modelscope_cache);
+            log_import_detail(app, &format!("ERROR offline_pack merge rollback: {err}"));
             return Err(err);
         }
         let merged_bytes = merge_result.unwrap_or(0);
         if let Err(err) = validate_manifest_models_cached(&modelscope_cache, &specs) {
-            rollback_new_files(&merge_rollback);
+            rollback_new_files(&merge_rollback, &modelscope_cache);
+            log_import_detail(app, &format!("ERROR offline_pack validate rollback: {err}"));
             return Err(err);
         }
         write_seed_marker(models_root, &manifest)?;
@@ -564,6 +742,15 @@ pub async fn pick_and_import_offline_asr_models_pack(
     .await
     .map_err(|e| format!("导入任务失败: {e}"))?
     .map(Some)
+}
+
+#[tauri::command]
+pub fn cancel_offline_asr_models_pack_import() -> Result<(), String> {
+    if !is_offline_asr_models_pack_import_in_progress() {
+        return Err("当前没有进行中的离线包导入。".to_string());
+    }
+    request_import_cancel();
+    Ok(())
 }
 
 #[tauri::command]
@@ -798,6 +985,54 @@ mod tests {
             write_fake_model(&pack, DEFAULT_FUNASR_HUB_MODEL_ID, 4);
             let err = import_offline_asr_models_pack_at(&dest_root, &pack, None).unwrap_err();
             assert!(err.contains("导入任务进行中"));
+            let _ = fs::remove_dir_all(pack);
+            let _ = fs::remove_dir_all(dest_root);
+        });
+    }
+
+    #[test]
+    fn rejects_manifest_path_traversal_in_required_files() {
+        run_serial(|| {
+            let pack = temp_dir("offline-pack-bad-rel");
+            let dest_root = temp_dir("offline-pack-bad-rel-dest");
+            let mut manifest = triplet_manifest();
+            manifest.models[0].required_files = vec!["../escape.pt".to_string()];
+            write_manifest(&pack, &manifest);
+            write_fake_model(&pack, DEFAULT_FUNASR_HUB_MODEL_ID, 16);
+            let err = import_offline_asr_models_pack_at(&dest_root, &pack, None).unwrap_err();
+            assert!(err.contains("非法路径") || err.contains("无效"));
+            let _ = fs::remove_dir_all(pack);
+            let _ = fs::remove_dir_all(dest_root);
+        });
+    }
+
+    #[test]
+    fn rejects_preexisting_symlink_destination() {
+        run_serial(|| {
+            let pack = temp_dir("offline-pack-symlink-dest");
+            let dest_root = temp_dir("offline-pack-symlink-dest-root");
+            let manifest = triplet_manifest();
+            write_manifest(&pack, &manifest);
+            write_fake_model(&pack, DEFAULT_FUNASR_HUB_MODEL_ID, 16);
+            write_fake_model(&pack, DEFAULT_FUNASR_VAD_MODEL_ID, 4);
+            write_fake_model(&pack, DEFAULT_FUNASR_PUNC_MODEL_ID, 4);
+
+            let ms = modelscope_cache_for_models_root(&dest_root);
+            let hub_parts: Vec<_> = DEFAULT_FUNASR_HUB_MODEL_ID.split('/').collect();
+            let target_dir = ms
+                .join("models")
+                .join(hub_parts[0])
+                .join(hub_parts[1]);
+            fs::create_dir_all(target_dir.parent().unwrap()).unwrap();
+            let trap = dest_root.join("trap.txt");
+            fs::write(&trap, b"trap").unwrap();
+            #[cfg(unix)]
+            {
+                std::os::unix::fs::symlink(&trap, &target_dir).unwrap();
+                let err = import_offline_asr_models_pack_at(&dest_root, &pack, None).unwrap_err();
+                assert!(err.contains("符号链接"));
+            }
+
             let _ = fs::remove_dir_all(pack);
             let _ = fs::remove_dir_all(dest_root);
         });
