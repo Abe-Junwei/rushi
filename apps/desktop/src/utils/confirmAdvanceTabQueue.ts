@@ -87,9 +87,7 @@ export async function drainConfirmAdvanceTabQueue(
     queue.inFlight = false;
     if (queue.pendingSteps > 0) {
       void drainConfirmAdvanceTabQueue(queue, deps);
-      return;
-    }
-    if (lastAdvancedIdx != null && readStoredTabAdvanceLoopsSegment()) {
+    } else if (lastAdvancedIdx != null && readStoredTabAdvanceLoopsSegment()) {
       deps.wf.preserveLoopForNextSegmentSelect();
       void deps.wf.playSegmentAtIndex(lastAdvancedIdx, { loop: true });
     }

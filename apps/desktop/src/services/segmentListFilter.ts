@@ -80,6 +80,51 @@ export function resetSegmentListFilter(): SegmentListFilterState {
   };
 }
 
+export const SEGMENT_LIST_FILTER_STORAGE_KEY = "rushi.editor.segmentListFilter.v1";
+
+function isSegmentStageFilterMap(value: unknown): value is SegmentStageFilterMap {
+  if (!value || typeof value !== "object") return false;
+  return SEGMENT_TEXT_STAGES.every(
+    (stage) => typeof (value as SegmentStageFilterMap)[stage] === "boolean",
+  );
+}
+
+export function parseStoredSegmentListFilter(raw: string | null): SegmentListFilterState | null {
+  if (!raw) return null;
+  try {
+    const parsed = JSON.parse(raw) as Partial<SegmentListFilterState>;
+    if (!isSegmentStageFilterMap(parsed.stages)) return null;
+    const annotation = parsed.annotation;
+    if (annotation !== "all" && annotation !== "with" && annotation !== "without") return null;
+    return { stages: parsed.stages, annotation };
+  } catch {
+    return null;
+  }
+}
+
+export function readStoredSegmentListFilter(): SegmentListFilterState {
+  if (typeof window === "undefined") return DEFAULT_SEGMENT_LIST_FILTER;
+  try {
+    return parseStoredSegmentListFilter(localStorage.getItem(SEGMENT_LIST_FILTER_STORAGE_KEY))
+      ?? DEFAULT_SEGMENT_LIST_FILTER;
+  } catch {
+    return DEFAULT_SEGMENT_LIST_FILTER;
+  }
+}
+
+export function writeStoredSegmentListFilter(filter: SegmentListFilterState): void {
+  if (typeof window === "undefined") return;
+  try {
+    if (isDefaultSegmentListFilter(filter)) {
+      localStorage.removeItem(SEGMENT_LIST_FILTER_STORAGE_KEY);
+      return;
+    }
+    localStorage.setItem(SEGMENT_LIST_FILTER_STORAGE_KEY, JSON.stringify(filter));
+  } catch {
+    /* noop */
+  }
+}
+
 const ANNOTATION_FILTER_LABELS: Record<SegmentAnnotationFilter, string> = {
   all: "全部",
   with: "有备注",

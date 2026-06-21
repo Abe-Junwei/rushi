@@ -2,7 +2,7 @@ export type EnvNavId =
   | "local-asr"
   | "online-stt"
   | "llm"
-  | "appearance"
+  | "preferences"
   | "profile"
   | "shortcuts"
   | "quality"
@@ -24,7 +24,7 @@ export const ENV_NAV_ITEM_DEFS: EnvNavItemDef[] = [
   { id: "local-asr", label: "本机 ASR", description: "侧车、模型与诊断" },
   { id: "online-stt", label: "在线 STT", description: "厂商与 API Key" },
   { id: "llm", label: "LLM 配置", description: "云端或本机 Ollama" },
-  { id: "appearance", label: "外观", description: "界面主题与主题色" },
+  { id: "preferences", label: "偏好设置", description: "外观与转写编辑体验" },
   { id: "shortcuts", label: "快捷键", description: "编辑器键盘操作" },
   { id: "profile", label: "配置迁移", description: "导入 / 导出偏好" },
   { id: "quality", label: "质量评测", description: "CER / 发版门禁" },
@@ -67,3 +67,6 @@ export const ENV_PANEL_CONFIG_FLOW_CLASS = "mx-auto flex w-full max-w-[860px] fl
 
 /** 设置页能力状态条外壳（本机 ASR / 在线 STT / LLM 共用；Stitch F1 · rounded-lg） */
 export const ENV_STATUS_BANNER_SHELL_CLASS = "rounded-lg px-4 py-3";
+
+/** 偏好页等内容区：sidebar 底圆角块（无 border；与主内容区形成第 2 层视觉容器） */
+export const ENV_PANEL_REGION_CLASS = "rounded-lg bg-notion-sidebar px-4 py-4 sm:px-5 sm:py-5";

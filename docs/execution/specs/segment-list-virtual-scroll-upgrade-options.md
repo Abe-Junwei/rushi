@@ -1,8 +1,9 @@
 # 列表虚拟滚动：三项体验债升级选项
 
 > **关联 Plan**：[`waveform-selection-reveal-seek-plan.md`](./waveform-selection-reveal-seek-plan.md) §S8 / §B  
-> **状态**：决策用附录（**不阻塞** S0–S7、S9–S11）  
-> **真源代码**：[`segmentListVirtualWindowCore.ts`](../../apps/desktop/src/utils/segmentListVirtualWindowCore.ts)、[`segmentListScrollIntoView.ts`](../../apps/desktop/src/utils/segmentListScrollIntoView.ts)、[`useEditorSegmentListScroll.ts`](../../apps/desktop/src/components/editor/useEditorSegmentListScroll.ts)、[`useTranscriptionLayerSegmentListDrag.ts`](../../apps/desktop/src/pages/useTranscriptionLayerSegmentListDrag.ts)
+> **关联调研**：[`waveform-list-ux-boundaries-research.md`](./waveform-list-ux-boundaries-research.md) §4  
+> **状态**：决策用附录；**Phase 0（S8 基线）已编码 + 手测 Go**（2026-06-20）；Phase 1 待 G1–G4 触发  
+> **真源代码**：[`segmentListVirtualWindowCore.ts`](../../../apps/desktop/src/utils/segmentListVirtualWindowCore.ts)、[`segmentListScrollIntoView.ts`](../../../apps/desktop/src/utils/segmentListScrollIntoView.ts)、[`useEditorSegmentListScroll.ts`](../../../apps/desktop/src/components/editor/useEditorSegmentListScroll.ts)、[`useTranscriptionLayerSegmentListDrag.ts`](../../../apps/desktop/src/pages/useTranscriptionLayerSegmentListDrag.ts)
 
 ---
 
@@ -125,11 +126,11 @@
 ## 4. 推荐路线图（三轨并行）
 
 ```text
-Phase 0（当前 plan，~5d）
+Phase 0（✅ 2026-06-20 完成）
   S0–S11 含 S8 = L1-A + L2-A + L3-A + L3c-1
-  手测 H10–H14 定 baseline 失败率
+  手测 H10–H14 baseline：Go（G1–G4 未触发）
 
-Phase 1（列表体验 v2 薄片，~2–3d）— 仅当 Phase 0 手测未过
+Phase 1（列表体验 v2 薄片，~2–3d）— 仅当后续手测或产线反馈触发 G1–G4
   Track 长文：L1-B
   Track drag：L2-B
   Track 虚拟窗：L3-B + L3-C（可同 PR，同 touch scroll hook）

@@ -55,6 +55,8 @@ describe("profileContract", () => {
     );
 
     const profile = buildSettingsProfileV1();
+    expect(profile.version).toBe(2);
+    expect(profile.editor?.tab_advance_loops_segment).toBe(true);
     const dumped = JSON.stringify(profile);
     expect(profile.llm?.api_key_id).toBe(DEFAULT_LLM_API_KEY_ID);
     expect(dumped).not.toContain("sk-secret-should-not-export");
@@ -138,5 +140,26 @@ describe("profileContract", () => {
         },
       }),
     ).toThrow("不支持的 LLM provider");
+  });
+
+  it("roundtrips editor preferences on v2 import", () => {
+    applySettingsProfileV1({
+      version: 2,
+      editor: {
+        tab_advance_loops_segment: false,
+        waveform_minimap: false,
+        playback_scroll_follow: "edge",
+        global_playback_rate: 1.5,
+        transcript_font_px: 16,
+        waveform_height_px: 180,
+      },
+    });
+
+    expect(localStorage.getItem("rushi.p1.tabAdvanceLoopsSegment")).toBe("0");
+    expect(localStorage.getItem("rushi.p1.waveformMinimap")).toBe("0");
+    expect(localStorage.getItem("rushi.p1.waveformPlaybackScrollFollow")).toBe("edge");
+    expect(localStorage.getItem("rushi.p1.waveformGlobalPlaybackRate")).toBe("1.5");
+    expect(localStorage.getItem("rushi.p1.transcriptFontPx")).toBe("16");
+    expect(localStorage.getItem("rushi.p1.waveformHeightPx")).toBe("180");
   });
 });

@@ -38,8 +38,8 @@ export const PRODUCT_ICON = {
   navOnlineStt: Cloud,
   /** 环境页 · LLM 配置 */
   navLlm: Brain,
-  /** 环境页 · 外观 */
-  navAppearance: Palette,
+  /** 环境页 · 偏好设置（外观 + 转写编辑） */
+  navPreferences: Palette,
   /** 环境页 · 快捷键 */
   navShortcuts: Keyboard,
   /** 环境页 · 配置迁移（导入/导出偏好） */

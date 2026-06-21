@@ -7,6 +7,7 @@ import {
 import {
   migrateLegacySegmentPlaybackRateToGlobal,
   readStoredWaveformGlobalPlaybackRate,
+  subscribeWaveformPrefs,
   writeStoredWaveformGlobalPlaybackRate,
 } from "../utils/waveformPrefs";
 
@@ -23,6 +24,14 @@ export function useWaveformGlobalPlayback(
   const [globalPlaybackRate, setGlobalPlaybackRateState] = useState(readInitialGlobalPlaybackRate);
   const globalPlaybackRateRef = useRef(globalPlaybackRate);
   globalPlaybackRateRef.current = globalPlaybackRate;
+
+  useEffect(() => {
+    return subscribeWaveformPrefs(() => {
+      const next = readStoredWaveformGlobalPlaybackRate();
+      setGlobalPlaybackRateState(next);
+      wsRef.current?.setPlaybackRate(next);
+    });
+  }, [wsRef]);
 
   useEffect(() => {
     const ws = wsRef.current;

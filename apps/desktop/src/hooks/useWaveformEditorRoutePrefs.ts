@@ -1,7 +1,8 @@
-import { useCallback, useState } from "react";
+import { useCallback, useSyncExternalStore } from "react";
 import {
   readStoredWaveformMinimapEnabled,
   readStoredWaveformPlaybackScrollFollowMode,
+  subscribeWaveformPrefs,
   WAVEFORM_HOT_SWITCH_WHILE_PLAYING,
   writeStoredWaveformMinimapEnabled,
   writeStoredWaveformPlaybackScrollFollowMode,
@@ -9,18 +10,22 @@ import {
 import type { WaveformPlaybackScrollFollowMode } from "../utils/waveformPlaybackScrollFollow";
 
 export function useWaveformEditorRoutePrefs() {
-  const [minimapEnabled, setMinimapEnabledState] = useState(() => readStoredWaveformMinimapEnabled());
-  const [playbackScrollFollowMode, setPlaybackScrollFollowModeState] = useState(
-    () => readStoredWaveformPlaybackScrollFollowMode(),
+  const minimapEnabled = useSyncExternalStore(
+    subscribeWaveformPrefs,
+    readStoredWaveformMinimapEnabled,
+    readStoredWaveformMinimapEnabled,
+  );
+  const playbackScrollFollowMode = useSyncExternalStore(
+    subscribeWaveformPrefs,
+    readStoredWaveformPlaybackScrollFollowMode,
+    readStoredWaveformPlaybackScrollFollowMode,
   );
 
   const setMinimapEnabled = useCallback((enabled: boolean) => {
-    setMinimapEnabledState(enabled);
     writeStoredWaveformMinimapEnabled(enabled);
   }, []);
 
   const setPlaybackScrollFollowMode = useCallback((mode: WaveformPlaybackScrollFollowMode) => {
-    setPlaybackScrollFollowModeState(mode);
     writeStoredWaveformPlaybackScrollFollowMode(mode);
   }, []);
 

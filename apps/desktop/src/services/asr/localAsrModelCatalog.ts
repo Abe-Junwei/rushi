@@ -148,6 +148,14 @@ export function readStoredLocalAsrHubModelId(): string {
   }
 }
 
+export function writeStoredLocalAsrHubModelId(hubModelId: string): void {
+  try {
+    localStorage.setItem(LOCAL_ASR_HUB_MODEL_STORAGE_KEY, resolveLocalAsrHubModelId(hubModelId));
+  } catch {
+    /* noop */
+  }
+}
+
 export type LocalAsrTranscribeReadyInput = {
   asrHealth: "checking" | "ok" | "error";
   asrCaps: {

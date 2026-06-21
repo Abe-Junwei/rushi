@@ -216,13 +216,19 @@
 
 ## 偏好（localStorage）
 
-| Key | 含义 |
-|-----|------|
-| `rushi.p1.waveformPxPerSec` | 横向缩放 |
-| `rushi.p1.waveformHeightPx` | 主波形高度 |
-| `rushi.p1.autoFitSelectionToViewport` | 跟随语段模式 |
-| `rushi.p1.waveformGlobalPlaybackRate` | 全局播放速度 |
-| `rushi.p1.tabAdvanceLoopsSegment` | Tab 切段并播放时自动语段循环 |
+| Key | 含义 | 设置入口 |
+|-----|------|----------|
+| `rushi.p1.waveformPxPerSec` | 横向缩放 | 转写页 Zoom 条（换媒体时自动写入 fit） |
+| `rushi.p1.waveformHeightPx` | 主波形高度 | **设置 → 偏好设置**；波形底缘拖拽 |
+| `rushi.p1.transcriptFontPx` | 语段正文字号 | **设置 → 偏好设置**；行高拖拽 / 右键 |
+| `rushi.p1.waveformGlobalPlaybackRate` | 全局播放速度 | **设置 → 偏好设置**；工具条 |
+| `rushi.p1.tabAdvanceLoopsSegment` | Tab 切段并 loop 播放 | **设置 → 偏好设置**（默认开） |
+| `rushi.p1.waveformMinimap` | L0 总览条 | **设置 → 偏好设置**；Zoom 条 |
+| `rushi.p1.waveformPlaybackScrollFollow` | 播放滚屏 center/edge | **设置 → 偏好设置**；工具条 |
+| `rushi.editor.segmentListFilter.v1` | 语段列表筛选 | 工具条筛选（跨文件记忆） |
+| `rushi.office-shell-theme.v1` / `rushi.office-accent-theme.v1` | 界面主题 / 主题色 | **设置 → 偏好设置** |
+
+编译期常量（非用户 pref）：`WAVEFORM_BACKGROUND_PEAKS_ENABLED`、`WAVEFORM_HOT_SWITCH_WHILE_PLAYING`（见 `waveformPrefs.ts`）。
 
 ## Viewport fit
 
@@ -232,10 +238,8 @@
 ## Route C2（导入预热 / 偏好 / minimap / 播放中热切换）
 
 - **导入预热**：`scheduleWaveformPeaksPrewarm` 仍可用于显式预热；打开文件时由 `useWaveformPeaks` 统一 `ensure`（避免重复 invoke）。
-- **偏好**（`waveformPrefs.ts`，工具栏「波形」菜单）：
-  - `rushi.p1.waveformBackgroundPeaks` — 后台生成 peaks（默认开）
+- **偏好**（`waveformPrefs.ts`；**设置 → 偏好设置** + 工具条/拖拽）：
   - `rushi.p1.waveformMinimap` — L0 总览条（默认开）
-  - `rushi.p1.peaksHotSwitchWhilePlaying` — 播放中立即热切换（默认开）
 - **Minimap**：`WaveformMinimapStrip`（56px，`zen-paper` 底，peaks 垂直居中）+ `PeakCache` / WaveSurfer export；点击 seek 并滚 tier；`WAVEFORM_MINIMAP_HEIGHT_PX = 56`。
 - **播放中热切换**：`hotSwitchWhilePlaying` 为真时不推迟；仍 `setTime` 恢复 playhead，必要时 `play()` 续播。
 

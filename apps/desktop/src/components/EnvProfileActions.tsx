@@ -51,7 +51,7 @@ export function EnvProfileActions({ busy, onImported }: Props) {
       <section className={ENV_PANEL_SECTION_TOOLS_CLASS}>
         <h3 className={PANEL_TYPOGRAPHY.envSectionTitle}>导出与导入</h3>
         <p className={PANEL_TYPOGRAPHY.meta}>
-          不含已保存 Key 明文；含 LLM 连接与三类提示词（若已自定义）。请勿在提示词中粘贴 Key，导入后请逐页确认密钥与探测。
+          不含已保存 Key 明文；含 LLM / 在线 STT、转写编辑偏好与本机 ASR 模型选择。请勿在提示词中粘贴 Key，导入后请逐页确认密钥与探测。
         </p>
         <div className="flex flex-wrap gap-2">
           <button type="button" className={CONTROL_BTN_PRIMARY} disabled={disabled} onClick={() => void exportProfile()}>

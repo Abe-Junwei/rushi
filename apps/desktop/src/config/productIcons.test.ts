@@ -49,7 +49,7 @@ describe("productIcons", () => {
   it("maps environment panel nav icons", () => {
     expect(PRODUCT_ICON.navLocalAsr).toBe(Cpu);
     expect(PRODUCT_ICON.navOnlineStt).toBe(Cloud);
-    expect(PRODUCT_ICON.navAppearance).toBe(Palette);
+    expect(PRODUCT_ICON.navPreferences).toBe(Palette);
     expect(PRODUCT_ICON.navShortcuts).toBe(Keyboard);
     expect(PRODUCT_ICON.navQuality).toBe(BarChart3);
     expect(PRODUCT_ICON.navAbout).toBe(Info);

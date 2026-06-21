@@ -1,4 +1,6 @@
-import { describe, expect, it } from "vitest";
+// @vitest-environment jsdom
+
+import { beforeEach, describe, expect, it } from "vitest";
 import type { SegmentDto } from "../tauri/projectApi";
 import {
   computeFilteredSegmentIndices,
@@ -7,7 +9,25 @@ import {
   isDefaultSegmentListFilter,
   resetSegmentListFilter,
   toggleSegmentStageFilter,
+  parseStoredSegmentListFilter,
+  readStoredSegmentListFilter,
+  writeStoredSegmentListFilter,
 } from "./segmentListFilter";
+
+function installMockLocalStorage() {
+  const data = new Map<string, string>();
+  const storage = {
+    getItem: (key: string) => data.get(key) ?? null,
+    setItem: (key: string, value: string) => {
+      data.set(key, String(value));
+    },
+    removeItem: (key: string) => {
+      data.delete(key);
+    },
+    clear: () => data.clear(),
+  };
+  Object.defineProperty(window, "localStorage", { configurable: true, value: storage });
+}
 
 function seg(partial: Partial<SegmentDto> & Pick<SegmentDto, "idx">): SegmentDto {
   return {
@@ -22,6 +42,11 @@ function seg(partial: Partial<SegmentDto> & Pick<SegmentDto, "idx">): SegmentDto
 }
 
 describe("segmentListFilter", () => {
+  beforeEach(() => {
+    installMockLocalStorage();
+    localStorage.clear();
+  });
+
   it("defaults pass all segments", () => {
     const segments = [
       seg({ idx: 0, text_stage: "finalized", annotation: "note" }),
@@ -79,5 +104,16 @@ describe("segmentListFilter", () => {
         totalCount: 40,
       }),
     ).toBe("筛选 · 12/40");
+  });
+
+  it("persists and restores non-default filter", () => {
+    const filter = {
+      ...DEFAULT_SEGMENT_LIST_FILTER,
+      stages: toggleSegmentStageFilter(DEFAULT_SEGMENT_LIST_FILTER.stages, "finalized"),
+      annotation: "with" as const,
+    };
+    writeStoredSegmentListFilter(filter);
+    expect(readStoredSegmentListFilter()).toEqual(filter);
+    expect(parseStoredSegmentListFilter(JSON.stringify(filter))).toEqual(filter);
   });
 });

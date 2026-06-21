@@ -14,9 +14,54 @@ import {
   persistExternalSttOnlineRuntimeConfig,
   readExternalSttOnlineRuntimeConfigFromStorage,
 } from "../stt/sttOnlineProviderContract";
+import { readStoredLocalAsrHubModelId, resolveLocalAsrHubModelId, writeStoredLocalAsrHubModelId } from "../asr/localAsrModelCatalog";
+import {
+  readStoredLocalAsrRecognitionLanguage,
+  writeStoredLocalAsrRecognitionLanguage,
+  normalizeLocalAsrRecognitionLanguage,
+} from "../asr/localAsrRecognitionLanguage";
+import { applyOfficeAccentTheme, readStoredOfficeAccentThemeId } from "../ui/officeAccentTheme";
+import { applyOfficeShellTheme, readStoredOfficeShellThemeId } from "../ui/officeShellTheme";
+import { isOfficeAccentThemeId, type OfficeAccentThemeId } from "../../config/officeAccentThemes";
+import { isOfficeShellThemeId, type OfficeShellThemeId } from "../../config/officeShellThemes";
+import type { WaveformPlaybackScrollFollowMode } from "../../utils/waveformPlaybackScrollFollow";
+import {
+  clampTranscriptFontPx,
+  clampWaveformHeight,
+  notifyWaveformPrefsChanged,
+  readStoredTabAdvanceLoopsSegment,
+  readStoredWaveformGlobalPlaybackRate,
+  readStoredWaveformMinimapEnabled,
+  readStoredWaveformPlaybackScrollFollowMode,
+  resolveStoredTranscriptFontPx,
+  resolveStoredWaveformHeightPx,
+  writeStoredP1TranscriptFontPx,
+  writeStoredTabAdvanceLoopsSegment,
+  writeStoredWaveformGlobalPlaybackRate,
+  writeStoredWaveformHeightPx,
+  writeStoredWaveformMinimapEnabled,
+  writeStoredWaveformPlaybackScrollFollowMode,
+} from "../../utils/waveformPrefs";
 
+export type SettingsProfileEditorSection = {
+  tab_advance_loops_segment?: boolean;
+  waveform_minimap?: boolean;
+  playback_scroll_follow?: WaveformPlaybackScrollFollowMode;
+  global_playback_rate?: number;
+  transcript_font_px?: number;
+  waveform_height_px?: number;
+  shell_theme?: OfficeShellThemeId;
+  accent_theme?: OfficeAccentThemeId;
+};
+
+export type SettingsProfileLocalAsrSection = {
+  hub_model_id?: string;
+  recognition_language?: string;
+};
+
+/** @deprecated 使用 {@link SettingsProfile} version 2 */
 export type SettingsProfileV1 = {
-  version: number;
+  version: 1;
   llm?: {
     provider_id: LlmProviderId;
     base_url: string;
@@ -34,13 +79,42 @@ export type SettingsProfileV1 = {
   };
 };
 
-export function buildSettingsProfileV1(): SettingsProfileV1 {
+export type SettingsProfile = {
+  version: 2;
+  llm?: SettingsProfileV1["llm"];
+  online_stt?: SettingsProfileV1["online_stt"];
+  editor?: SettingsProfileEditorSection;
+  local_asr?: SettingsProfileLocalAsrSection;
+};
+
+function buildProfileEditorSection(): SettingsProfileEditorSection {
+  return {
+    tab_advance_loops_segment: readStoredTabAdvanceLoopsSegment(),
+    waveform_minimap: readStoredWaveformMinimapEnabled(),
+    playback_scroll_follow: readStoredWaveformPlaybackScrollFollowMode(),
+    global_playback_rate: readStoredWaveformGlobalPlaybackRate(),
+    transcript_font_px: resolveStoredTranscriptFontPx(),
+    waveform_height_px: resolveStoredWaveformHeightPx(),
+    shell_theme: readStoredOfficeShellThemeId(),
+    accent_theme: readStoredOfficeAccentThemeId(),
+  };
+}
+
+function buildProfileLocalAsrSection(): SettingsProfileLocalAsrSection {
+  return {
+    hub_model_id: readStoredLocalAsrHubModelId(),
+    recognition_language: readStoredLocalAsrRecognitionLanguage(),
+  };
+}
+
+/** @deprecated 别名；导出为 version 2 profile */
+export function buildSettingsProfileV1(): SettingsProfile {
   const llm = readLlmRuntimeConfigFromStorage();
   const promptOverrides = readLlmPromptOverridesFromStorage();
   const stt = readExternalSttOnlineRuntimeConfigFromStorage();
   const prompt = buildProfilePromptSection(promptOverrides);
   return {
-    version: 1,
+    version: 2,
     llm: {
       provider_id: llm.providerId,
       base_url: llm.baseUrl,
@@ -56,14 +130,53 @@ export function buildSettingsProfileV1(): SettingsProfileV1 {
       ...(stt.apiKeyId ? { api_key_id: stt.apiKeyId } : {}),
       timeout_ms: stt.timeoutMs,
     },
+    editor: buildProfileEditorSection(),
+    local_asr: buildProfileLocalAsrSection(),
   };
 }
 
-export function applySettingsProfileV1(profile: SettingsProfileV1): void {
-  if (profile.version !== 1) {
-    throw new Error(`仅支持导入 version=1 的 profile，当前为 ${profile.version}。`);
+function applyProfileEditorSection(editor: SettingsProfileEditorSection | undefined): void {
+  if (!editor) return;
+  if (editor.tab_advance_loops_segment != null) {
+    writeStoredTabAdvanceLoopsSegment(editor.tab_advance_loops_segment);
   }
+  if (editor.waveform_minimap != null) {
+    writeStoredWaveformMinimapEnabled(editor.waveform_minimap);
+  }
+  if (editor.playback_scroll_follow != null) {
+    writeStoredWaveformPlaybackScrollFollowMode(editor.playback_scroll_follow);
+  }
+  if (editor.global_playback_rate != null) {
+    writeStoredWaveformGlobalPlaybackRate(editor.global_playback_rate);
+  }
+  if (editor.transcript_font_px != null) {
+    writeStoredP1TranscriptFontPx(clampTranscriptFontPx(editor.transcript_font_px));
+  }
+  if (editor.waveform_height_px != null) {
+    writeStoredWaveformHeightPx(clampWaveformHeight(editor.waveform_height_px));
+  }
+  if (editor.shell_theme && isOfficeShellThemeId(editor.shell_theme)) {
+    applyOfficeShellTheme(editor.shell_theme);
+  }
+  if (editor.accent_theme && isOfficeAccentThemeId(editor.accent_theme)) {
+    applyOfficeAccentTheme(editor.accent_theme);
+  }
+  notifyWaveformPrefsChanged();
+}
 
+function applyProfileLocalAsrSection(localAsr: SettingsProfileLocalAsrSection | undefined): void {
+  if (!localAsr) return;
+  if (localAsr.hub_model_id) {
+    writeStoredLocalAsrHubModelId(resolveLocalAsrHubModelId(localAsr.hub_model_id));
+  }
+  if (localAsr.recognition_language) {
+    writeStoredLocalAsrRecognitionLanguage(
+      normalizeLocalAsrRecognitionLanguage(localAsr.recognition_language),
+    );
+  }
+}
+
+function applyProfileV1Sections(profile: SettingsProfileV1 | SettingsProfile): void {
   if (profile.llm) {
     if (!getLlmProviderDefinition(profile.llm.provider_id)) {
       throw new Error(`不支持的 LLM provider：${profile.llm.provider_id}`);
@@ -91,5 +204,19 @@ export function applySettingsProfileV1(profile: SettingsProfileV1): void {
       timeoutMs: profile.online_stt.timeout_ms,
       ...(profile.online_stt.api_key_id ? { apiKeyId: profile.online_stt.api_key_id } : {}),
     });
+  }
+}
+
+export function applySettingsProfileV1(profile: SettingsProfileV1 | SettingsProfile): void {
+  const { version } = profile;
+  if (version !== 1 && version !== 2) {
+    throw new Error(`仅支持导入 version=1 或 2 的 profile，当前为 ${String(version)}。`);
+  }
+
+  applyProfileV1Sections(profile);
+
+  if (version === 2) {
+    applyProfileEditorSection(profile.editor);
+    applyProfileLocalAsrSection(profile.local_asr);
   }
 }

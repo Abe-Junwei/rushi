@@ -4,6 +4,7 @@ export const ENV_NAV = {
   localAsr: "设置 → 本机 ASR",
   onlineStt: "设置 → 在线 STT",
   llm: "设置 → LLM 配置",
+  preferences: "设置 → 偏好设置",
   shortcuts: "设置 → 快捷键",
   profile: "设置 → 配置迁移",
   quality: "设置 → 质量评测",

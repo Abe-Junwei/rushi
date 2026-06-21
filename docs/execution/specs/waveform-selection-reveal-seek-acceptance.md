@@ -29,7 +29,7 @@
 ### 2.0 Pre-grill 基线回归（P0–P3，任意切片后仍须绿）
 
 - [x] `segmentListVirtualWindow.test.ts` — projection / virtual window（P0/P2）
-- [ ] `useTranscriptionLayerSelection.profile.test.ts` — reveal 先于 `setSelectedIdxUi`（P1）
+- [x] `useTranscriptionLayerSelection.profile.test.ts` — reveal 先于 `setSelectedIdxUi`（P1）
 - [x] `waveformSelectionSeekChrome.test.ts` — suppress 窗口（P3）
 
 ### 2.1 新增（按 plan 切片）
@@ -44,7 +44,7 @@
 
 ### 2.2 更新
 
-- [ ] `useTranscriptionLayerSelection.profile.test.ts`（S1）
+- [x] `useTranscriptionLayerSelection.profile.test.ts`（S1）
 - [x] `executeEditorShortcut.test.ts` — focus=selected（S2′，已落地）
 - [x] `executeEditorShortcut.test.ts` — Tab → `listKeyboard`（S2）
 - [x] `SegmentTextListRow` — T2 无 reveal（S3）
@@ -97,7 +97,7 @@
 ## 4. 文档
 
 - [x] `desktop-waveform-engine.md` §点选矩阵 + scroll frame / live clock 说明
-- [ ] `CONTEXT.md` 与实现一致
+- [x] `CONTEXT.md` 与实现一致（Selection reveal、Editor focus gate、Focus–selection lock、Waveform scrub seek）
 
 ---
 

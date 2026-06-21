@@ -2,10 +2,13 @@ import { useCallback, useEffect, useRef, useState } from "react";
 import {
   clampTranscriptFontPx,
   clampWaveformHeight,
-  TRANSCRIPT_FONT_DEFAULT,
-  WAVEFORM_HEIGHT_DEFAULT,
   readStoredP1TranscriptFontPx,
   readStoredWaveformHeightPx,
+  resolveStoredTranscriptFontPx,
+  resolveStoredWaveformHeightPx,
+  subscribeWaveformPrefs,
+  TRANSCRIPT_FONT_DEFAULT,
+  WAVEFORM_HEIGHT_DEFAULT,
   writeStoredP1TranscriptFontPx,
   writeStoredWaveformHeightPx,
 } from "../utils/waveformPrefs";
@@ -53,6 +56,14 @@ export function useWaveformDisplay(args: { busy: boolean }) {
     }, PREF_WRITE_DEBOUNCE_MS);
     return () => window.clearTimeout(timer);
   }, [transcriptFontPx]);
+
+  useEffect(() => {
+    return subscribeWaveformPrefs(() => {
+      setTranscriptFontPxState(resolveStoredTranscriptFontPx());
+      height.setVisual(resolveStoredWaveformHeightPx());
+      height.flushRender();
+    });
+  }, [height]);
 
   const nudgeWaveformHeight = useCallback(
     (delta: number) => {

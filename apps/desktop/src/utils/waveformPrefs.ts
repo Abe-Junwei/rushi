@@ -12,6 +12,26 @@ const LS_TAB_ADVANCE_LOOP = "rushi.p1.tabAdvanceLoopsSegment";
 const LS_MINIMAP = "rushi.p1.waveformMinimap";
 const LS_PLAYBACK_SCROLL_FOLLOW = "rushi.p1.waveformPlaybackScrollFollow";
 
+const waveformPrefListeners = new Set<() => void>();
+
+/** 设置页与工具条共用 storage；写入后通知转写页 hooks 刷新。 */
+export function subscribeWaveformPrefs(listener: () => void): () => void {
+  waveformPrefListeners.add(listener);
+  return () => {
+    waveformPrefListeners.delete(listener);
+  };
+}
+
+export function notifyWaveformPrefsChanged(): void {
+  for (const listener of waveformPrefListeners) {
+    listener();
+  }
+}
+
+function notifyAfterWaveformPrefWrite(): void {
+  notifyWaveformPrefsChanged();
+}
+
 /** 程序内设定：后台预热/生成 peaks（Route C2）。 */
 export const WAVEFORM_BACKGROUND_PEAKS_ENABLED = true;
 
@@ -65,6 +85,7 @@ export function readStoredWaveformHeightPx(): number | null {
 export function writeStoredWaveformHeightPx(px: number): void {
   try {
     localStorage.setItem(LS_HEIGHT, String(clampWaveformHeight(px)));
+    notifyAfterWaveformPrefWrite();
   } catch {
     /* noop */
   }
@@ -85,9 +106,18 @@ export function readStoredP1TranscriptFontPx(): number | null {
 export function writeStoredP1TranscriptFontPx(px: number): void {
   try {
     localStorage.setItem(LS_FONT, String(clampTranscriptFontPx(px)));
+    notifyAfterWaveformPrefWrite();
   } catch {
     /* noop */
   }
+}
+
+export function resolveStoredTranscriptFontPx(): number {
+  return readStoredP1TranscriptFontPx() ?? TRANSCRIPT_FONT_DEFAULT;
+}
+
+export function resolveStoredWaveformHeightPx(): number {
+  return readStoredWaveformHeightPx() ?? WAVEFORM_HEIGHT_DEFAULT;
 }
 
 /** 上次波形横向缩放（px/s），供下次打开项目时恢复手感。 */
@@ -125,6 +155,7 @@ export function readStoredWaveformGlobalPlaybackRate(): number {
 export function writeStoredWaveformGlobalPlaybackRate(rate: number): void {
   try {
     localStorage.setItem(LS_GLOBAL_PLAYBACK_RATE, String(clampWaveformPlaybackRate(rate)));
+    notifyAfterWaveformPrefWrite();
   } catch {
     /* noop */
   }
@@ -170,6 +201,7 @@ export function readStoredTabAdvanceLoopsSegment(): boolean {
 export function writeStoredTabAdvanceLoopsSegment(enabled: boolean): void {
   try {
     localStorage.setItem(LS_TAB_ADVANCE_LOOP, enabled ? "1" : "0");
+    notifyAfterWaveformPrefWrite();
   } catch {
     /* noop */
   }
@@ -190,6 +222,7 @@ export function readStoredWaveformMinimapEnabled(): boolean {
 export function writeStoredWaveformMinimapEnabled(enabled: boolean): void {
   try {
     localStorage.setItem(LS_MINIMAP, enabled ? "1" : "0");
+    notifyAfterWaveformPrefWrite();
   } catch {
     /* noop */
   }
@@ -212,9 +245,16 @@ export function writeStoredWaveformPlaybackScrollFollowMode(
 ): void {
   try {
     localStorage.setItem(LS_PLAYBACK_SCROLL_FOLLOW, mode);
+    notifyAfterWaveformPrefWrite();
   } catch {
     /* noop */
   }
+}
+
+/** 恢复语段字号与波形高度为产品默认（不影响 Tab loop / minimap 等工作流开关）。 */
+export function resetStoredEditorLayoutDefaults(): void {
+  writeStoredP1TranscriptFontPx(TRANSCRIPT_FONT_DEFAULT);
+  writeStoredWaveformHeightPx(WAVEFORM_HEIGHT_DEFAULT);
 }
 
 /** 换音频文件时写入该媒体的 per-file 默认 px/s。 */

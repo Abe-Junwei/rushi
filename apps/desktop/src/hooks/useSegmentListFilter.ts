@@ -3,20 +3,21 @@ import type { SegmentDto } from "../tauri/projectApi";
 import type { SegmentTextStage } from "../services/segmentTextStage";
 import {
   computeFilteredSegmentIndices,
-  DEFAULT_SEGMENT_LIST_FILTER,
   isDefaultSegmentListFilter,
+  readStoredSegmentListFilter,
   resetSegmentListFilter,
   toggleSegmentStageFilter,
+  writeStoredSegmentListFilter,
   type SegmentAnnotationFilter,
   type SegmentListFilterState,
 } from "../services/segmentListFilter";
 
-export function useSegmentListFilter(currentFileId: string | null, segments: SegmentDto[]) {
-  const [filter, setFilter] = useState<SegmentListFilterState>(DEFAULT_SEGMENT_LIST_FILTER);
+export function useSegmentListFilter(_currentFileId: string | null, segments: SegmentDto[]) {
+  const [filter, setFilter] = useState<SegmentListFilterState>(readStoredSegmentListFilter);
 
   useEffect(() => {
-    setFilter(DEFAULT_SEGMENT_LIST_FILTER);
-  }, [currentFileId]);
+    writeStoredSegmentListFilter(filter);
+  }, [filter]);
 
   const filteredIndices = useMemo(
     () => computeFilteredSegmentIndices(segments, filter),

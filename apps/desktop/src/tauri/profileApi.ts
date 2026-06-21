@@ -1,10 +1,10 @@
 import { invoke } from "@tauri-apps/api/core";
-import type { SettingsProfileV1 } from "../services/profile/profileContract";
+import type { SettingsProfile } from "../services/profile/profileContract";
 
-export async function exportSettingsProfile(profile: SettingsProfileV1): Promise<string | null> {
+export async function exportSettingsProfile(profile: SettingsProfile): Promise<string | null> {
   return await invoke<string | null>("export_settings_profile", { profile });
 }
 
-export async function importSettingsProfile(): Promise<SettingsProfileV1 | null> {
-  return await invoke<SettingsProfileV1 | null>("import_settings_profile");
+export async function importSettingsProfile(): Promise<SettingsProfile | null> {
+  return await invoke<SettingsProfile | null>("import_settings_profile");
 }

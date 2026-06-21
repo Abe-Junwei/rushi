@@ -8,6 +8,8 @@ import {
   WAVEFORM_HEIGHT_DEFAULT,
   writeStoredWaveformHeightPx,
   writeStoredWaveformPxPerSec,
+  subscribeWaveformPrefs,
+  writeStoredTabAdvanceLoopsSegment,
 } from "./waveformPrefs";
 
 describe("waveformPrefs localStorage", () => {
@@ -70,6 +72,16 @@ describe("waveformPrefs localStorage", () => {
   it("round-trips waveform height after clamp", () => {
     writeStoredWaveformHeightPx(WAVEFORM_HEIGHT_DEFAULT);
     expect(readStoredWaveformHeightPx()).toBe(WAVEFORM_HEIGHT_DEFAULT);
+  });
+
+  it("notifies subscribers when editor prefs change", () => {
+    let calls = 0;
+    const unsub = subscribeWaveformPrefs(() => {
+      calls += 1;
+    });
+    writeStoredTabAdvanceLoopsSegment(false);
+    expect(calls).toBe(1);
+    unsub();
   });
 
   it("migrates legacy segment playback rate into global when global is default", () => {

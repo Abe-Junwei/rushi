@@ -1,11 +1,11 @@
 # 调研：波形 + 列表交互边界（超长多行、range drag auto-scroll、远距跳转/快连点/筛选）
 
-> **状态**：已完成（grill 2026-06-20）  
+> **状态**：已完成（grill 2026-06-20）；**S8 已编码**；手测 H12–H14 **Go**  
 > **关联 Plan**：[`waveform-selection-reveal-seek-plan.md`](./waveform-selection-reveal-seek-plan.md) §S8  
 > **关联 Acceptance**：[`waveform-selection-reveal-seek-acceptance.md`](./waveform-selection-reveal-seek-acceptance.md) H12–H14  
 > **关联附录**：[`segment-list-virtual-scroll-upgrade-options.md`](./segment-list-virtual-scroll-upgrade-options.md) L1–L3  
 > **关联架构**：[`desktop-waveform-engine.md`](../../architecture/desktop-waveform-engine.md) · [`segment-overlay-virtualization.md`](./segment-overlay-virtualization.md)  
-> **门禁**：本文结论已写入 S8 / 升级选项；**未批准不得进入 S8 业务编码**
+> **门禁**：S8 基线（L1-A + L2-A + L3-A + L3c-1）**已编码**；手测 H12–H14 **Go**（2026-06-20）。**Phase 1**（L1-B/L2-B/L3-B）仅在手测 G1–G4 失败时进入 — 当前未触发。
 
 ---
 
@@ -14,7 +14,7 @@
 | 项 | 内容 |
 |----|------|
 | **用户场景** | 千段级转写项目中：① 长文本语段在虚拟列表里被裁切；② 列表 Shift/拖拽多选无法拖到视口外；③ 极快连点、远距跳转、筛选时偶发空白或选中不可见。 |
-| **本仓现状** | 固定 `itemStridePx` 虚拟列表（`segmentListVirtualWindowCore.ts`）；`maybePin` 160 行 cap；range drag 无 edge scroll；filter 隐藏选中行仅计划 banner。 |
+| **本仓现状（2026-06-20 编码后）** | 固定 `itemStridePx` 虚拟列表（`segmentListVirtualWindowCore.ts`）；160 行 pin cap 保留；**S8 已落地**：选中行 `overflow:visible` + pin +1 overscan（`EditorSegmentList.tsx`）；`segmentListDragAutoScroll.ts`（48 px / 4–24 px/frame）；filter banner +「清除过滤并定位」。P0/S5 projection 与 scroll generation 在 `useEditorSegmentListScroll.ts`。 |
 | **成功标准** | 明确每项边界的「业内最佳做法」「Rushi 可承受代价」「S8 该做到什么程度」；输出可落地的设计决策。 |
 
 ---
@@ -64,6 +64,13 @@
 | C 行高限制/展开 | 与现有 `transcriptRowHeightPx` 设置、行高拖拽把手语义一致 | 低 | **采用**（选中行溢出可见） |
 | D edge auto-scroll | 纯函数 + rAF 循环，可与现有 drag hook 集成 | 中低 | **采用** |
 | E skeleton/placeholder | 固定 stride 下 offset 已知，无需 skeleton；保留 160 pin cap | 低 | **保留现状** |
+
+**本仓已有可复用模块**（S8 在其上扩展，未 fork 第二套列表）：
+
+- `segmentListVirtualWindowCore.ts` / `segmentListScrollIntoView.ts` — 虚拟窗、pin cap、scroll-into-view
+- `useEditorSegmentListScroll.ts` — P0 projection、scroll generation（L3b 由 S5 覆盖）
+- `useTranscriptionLayerSegmentListDrag.ts` — range drag 选区扩展（L2 集成 auto-scroll）
+- `useSegmentListFilter.ts` + `EditorSegmentList` — 筛选与 banner 接线
 
 ---
 
@@ -129,3 +136,4 @@
 | 2026-06-20 | 初版框架，开始实地调研 |
 | 2026-06-20 | 完成调研：填充路线、评估、决策、落位 |
 | 2026-06-20 | 互链 Acceptance；grill 签收 S8 编码门禁 |
+| 2026-06-20 | §1/门禁同步：S8 已编码、手测 Go；Phase 1 未触发 |

@@ -5,7 +5,7 @@ import { EnvLocalAsrPanel } from "./EnvLocalAsrPanel";
 import { EnvOnlineSttPanel } from "./EnvOnlineSttPanel";
 import { EnvEditorShortcutsPanel } from "./EnvEditorShortcutsPanel";
 import { EnvAboutPanel } from "./EnvAboutPanel";
-import { EnvAppearancePanel } from "./EnvAppearancePanel";
+import { EnvPreferencesPanel } from "./EnvPreferencesPanel";
 import { EnvQualityPanel } from "./EnvQualityPanel";
 import { EnvironmentPanelNav } from "./EnvironmentPanelNav";
 import { useLlmEnvStatus } from "../hooks/useLlmEnvStatus";
@@ -213,7 +213,7 @@ export function EnvironmentPanel({
               />
             ) : null}
 
-            {envSection === "appearance" ? <EnvAppearancePanel /> : null}
+            {envSection === "preferences" ? <EnvPreferencesPanel /> : null}
 
             {envSection === "profile" ? (
               <EnvProfileActions
