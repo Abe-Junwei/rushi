@@ -201,6 +201,28 @@ describe("buildAsrEnvPresentation", () => {
     );
   });
 
+  it("shows runtime install busy rows as 安装中", async () => {
+    const base = await build({
+      asrHealth: "ok",
+      asrHealthDetail: "",
+      asrCaps: {
+        ffmpeg_ok: true,
+        funasr_import_ok: true,
+        funasr_model_configured: true,
+        funasr_ready: false,
+        funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+        ready_for_transcribe: false,
+        transcription_mode: "stub",
+      },
+      selectedHubModelId: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+    });
+    const { runtimeInstallBusyPresentation } = await import("./asrEnvStatus");
+    const p = runtimeInstallBusyPresentation(base);
+    expect(p.bannerTitle).toBe("本机 ASR · 正在安装运行时");
+    expect(p.statusRows.find((r) => r.id === "runtime")?.text).toBe("安装中");
+    expect(p.statusRows.find((r) => r.id === "transcribe")?.text).toBe("等待运行时");
+  });
+
   it("aligns top bar and banner for error state", async () => {
     const p = await build({
       asrHealth: "error",

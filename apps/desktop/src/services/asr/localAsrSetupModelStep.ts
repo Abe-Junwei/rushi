@@ -56,7 +56,7 @@ function buildApplyHubSuccessMessage(
   return {
     message: usesBundledAsrModelStack()
       ? `侧车已切换为 ${label}。若尚未就绪，请重启应用以重新复制内置模型。`
-      : `侧车已切换为 ${label}。请先点「下载当前模型」完成准备后再转写。`,
+      : `侧车已切换为 ${label}。请先点「一键准备」完成模型准备后再转写。`,
     transcribeReady: false,
   };
 }

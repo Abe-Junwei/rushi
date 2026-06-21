@@ -1,4 +1,4 @@
-//! Shared offline ASR models pack manifest (Route E) — template is build + import truth.
+//! Shared bundled ASR models manifest (Plan B) — template is build + seed truth.
 
 use std::path::{Component, Path};
 
@@ -8,26 +8,23 @@ use crate::local_asr_model::{
     DEFAULT_FUNASR_HUB_MODEL_ID, DEFAULT_FUNASR_PUNC_MODEL_ID, DEFAULT_FUNASR_VAD_MODEL_ID,
 };
 
-const MANIFEST_TEMPLATE: &str =
-    include_str!("../../../../../resources/offline-asr-models-pack-manifest.template.json");
-
-pub const OFFLINE_ASR_MODELS_PACK_VERSION: u32 = 1;
-pub const DEFAULT_OFFLINE_ASR_BUNDLE_ID: &str = "default-paraformer-v1";
+pub const BUNDLED_ASR_MODELS_PACK_VERSION: u32 = 1;
+pub const DEFAULT_BUNDLED_ASR_BUNDLE_ID: &str = "default-paraformer-v1";
 
 const RECOGNIZER_MIN_WEIGHT_BYTES: u64 = 100 * 1024 * 1024;
 const AUX_MIN_WEIGHT_BYTES: u64 = 1024 * 1024;
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct OfflineAsrModelsPackManifest {
+pub struct BundledAsrModelsManifest {
     pub pack_version: u32,
     pub bundle_id: String,
-    pub models: Vec<OfflineAsrModelsPackModelSpec>,
+    pub models: Vec<BundledAsrModelSpec>,
     #[serde(default, skip_serializing_if = "Option::is_none")]
     pub rushi_version: Option<String>,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize, PartialEq, Eq)]
-pub struct OfflineAsrModelsPackModelSpec {
+pub struct BundledAsrModelSpec {
     pub hub_id: String,
     #[serde(default)]
     pub required_files: Vec<String>,
@@ -36,42 +33,25 @@ pub struct OfflineAsrModelsPackModelSpec {
 }
 
 #[derive(Debug, Clone, PartialEq, Eq)]
-pub struct ResolvedPackModelSpec {
+pub struct ResolvedBundledAsrModelSpec {
     pub hub_id: String,
     pub required_files: Vec<String>,
     pub min_weight_bytes: u64,
     pub weight_file: String,
 }
 
-pub fn embedded_offline_asr_models_pack_manifest(
-    rushi_version: Option<&str>,
-) -> OfflineAsrModelsPackManifest {
-    let mut manifest: OfflineAsrModelsPackManifest =
-        serde_json::from_str(MANIFEST_TEMPLATE).expect("offline pack manifest template must parse");
-    if let Some(version) = rushi_version {
-        manifest.rushi_version = Some(version.to_string());
-    }
-    manifest
-}
-
-#[allow(dead_code)]
-pub fn default_offline_asr_models_pack_manifest(
-    rushi_version: &str,
-) -> OfflineAsrModelsPackManifest {
-    embedded_offline_asr_models_pack_manifest(Some(rushi_version))
-}
 
 /// Reject manifest-relative paths that could escape a model directory (`../`, absolute, etc.).
 pub fn sanitize_manifest_rel_path(raw: &str) -> Result<String, String> {
     let trimmed = raw.trim();
     if trimmed.is_empty() {
-        return Err("离线包 manifest 含空文件路径。".to_string());
+        return Err("内置语音模型包 manifest 含空文件路径。".to_string());
     }
     for component in Path::new(trimmed).components() {
         match component {
             Component::Normal(_) | Component::CurDir => {}
             Component::ParentDir | Component::RootDir | Component::Prefix(_) => {
-                return Err(format!("离线包 manifest 含非法路径: {trimmed}"));
+                return Err(format!("内置语音模型包 manifest 含非法路径: {trimmed}"));
             }
         }
     }
@@ -79,25 +59,25 @@ pub fn sanitize_manifest_rel_path(raw: &str) -> Result<String, String> {
 }
 
 pub fn resolve_model_specs(
-    manifest: &OfflineAsrModelsPackManifest,
-) -> Result<Vec<ResolvedPackModelSpec>, String> {
-    if manifest.pack_version != OFFLINE_ASR_MODELS_PACK_VERSION {
+    manifest: &BundledAsrModelsManifest,
+) -> Result<Vec<ResolvedBundledAsrModelSpec>, String> {
+    if manifest.pack_version != BUNDLED_ASR_MODELS_PACK_VERSION {
         return Err(format!(
-            "不支持的离线包版本 {}（期望 {}）。",
-            manifest.pack_version, OFFLINE_ASR_MODELS_PACK_VERSION
+            "不支持的模型包版本 {}（期望 {}）。",
+            manifest.pack_version, BUNDLED_ASR_MODELS_PACK_VERSION
         ));
     }
     if manifest.bundle_id.trim().is_empty() {
-        return Err("离线包 manifest 缺少 bundle_id。".to_string());
+        return Err("内置语音模型包 manifest 缺少 bundle_id。".to_string());
     }
-    if manifest.bundle_id != DEFAULT_OFFLINE_ASR_BUNDLE_ID {
+    if manifest.bundle_id != DEFAULT_BUNDLED_ASR_BUNDLE_ID {
         return Err(format!(
-            "不支持的离线包 bundle_id「{}」（期望 {}）。",
-            manifest.bundle_id, DEFAULT_OFFLINE_ASR_BUNDLE_ID
+            "不支持的模型包 bundle_id「{}」（期望 {}）。",
+            manifest.bundle_id, DEFAULT_BUNDLED_ASR_BUNDLE_ID
         ));
     }
     if manifest.models.is_empty() {
-        return Err("离线包 manifest 未列出任何模型。".to_string());
+        return Err("内置语音模型包 manifest 未列出任何模型。".to_string());
     }
     manifest
         .models
@@ -105,7 +85,7 @@ pub fn resolve_model_specs(
         .map(|entry| {
             let hub_id = entry.hub_id.trim();
             if hub_id.is_empty() {
-                return Err("离线包 manifest 含空 hub_id。".to_string());
+                return Err("内置语音模型包 manifest 含空 hub_id。".to_string());
             }
             let required_files = if entry.required_files.is_empty() {
                 default_required_files(hub_id)
@@ -118,7 +98,7 @@ pub fn resolve_model_specs(
             };
             if required_files.is_empty() {
                 return Err(format!(
-                    "离线包 manifest 无法推断 {hub_id} 的 required_files。"
+                    "内置语音模型包 manifest 无法推断 {hub_id} 的 required_files。"
                 ));
             }
             let min_weight_bytes = entry
@@ -130,7 +110,7 @@ pub fn resolve_model_specs(
                 .cloned()
                 .unwrap_or_else(|| "model.pt".to_string());
             sanitize_manifest_rel_path(&weight_file)?;
-            Ok(ResolvedPackModelSpec {
+            Ok(ResolvedBundledAsrModelSpec {
                 hub_id: hub_id.to_string(),
                 required_files,
                 min_weight_bytes,

@@ -3,11 +3,13 @@ import type { RefreshAsrRuntimeOptions } from "../../pages/asrRuntimeRefreshOpti
 import type { AsrSetupOutcome, AsrSetupReport, AsrSetupStep } from "./asrSetupContract";
 import type { LocalAsrSetupSelectionContext } from "./localAsrSetupModelStep";
 import type { LocalRuntimeDiagnose } from "../localRuntime/localRuntimeContract";
+import type { BundledCopyPresentationSync } from "./bundledAsrModelsSeedPrepare";
 
 export type AsrOneClickPrepareDeps = {
   refreshAsrHealth: () => Promise<void>;
   refreshAsrRuntimeInfo: (options?: RefreshAsrRuntimeOptions) => Promise<void>;
   prepareDefaultFunasrModel: (options?: import("../../pages/usePrepareModelController").PrepareDefaultModelOptions) => Promise<void>;
+  bundledCopyPresentationSync: BundledCopyPresentationSync;
   getSetupSelection: () => LocalAsrSetupSelectionContext;
 };
 

@@ -113,3 +113,11 @@ export function mapBundledModelBusyRows(rows: AsrEnvStatusRow[]): AsrEnvStatusRo
   });
 }
 
+export function mapRuntimeInstallBusyRows(rows: AsrEnvStatusRow[]): AsrEnvStatusRow[] {
+  return rows.map((row) => {
+    if (row.id === "runtime") return { ...row, ok: false, text: "安装中", warn: true };
+    if (row.id === "transcribe") return { ...row, ok: false, text: "等待运行时", warn: true };
+    return row;
+  });
+}
+

@@ -1,14 +1,9 @@
 #!/usr/bin/env bash
-# Local .app build for hand-test without TAURI_SIGNING_PRIVATE_KEY (skips updater artifacts).
-# Release / OTA builds must use npm run desktop:build-app with signing secrets set.
+# Local .app build for hand-test (Plan B bundled models; skips updater artifacts).
 set -euo pipefail
 
 ROOT="$(cd "$(dirname "$0")/.." && pwd)"
 cd "${ROOT}"
-
-if [[ -n "${TAURI_SIGNING_PRIVATE_KEY:-}" ]]; then
-  echo "NOTE: TAURI_SIGNING_PRIVATE_KEY is set — use npm run desktop:build-app for signed updater artifacts."
-fi
 
 bash scripts/release-sidecar-preflight.sh
 bash scripts/release-cleanup-dmg-staging.sh

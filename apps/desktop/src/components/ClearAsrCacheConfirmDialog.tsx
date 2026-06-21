@@ -19,7 +19,7 @@ export function ClearAsrCacheConfirmDialog({ open, busy, totalBytes, onCancel, o
     totalBytes != null && totalBytes > 0
       ? usesBundledAsrModelStack()
         ? `当前缓存约 ${formatBytes(totalBytes)}。清除后下次启动会从安装包重新复制内置模型。`
-        : `当前缓存约 ${formatBytes(totalBytes)}。清除后需重新「下载当前模型」。`
+        : `当前缓存约 ${formatBytes(totalBytes)}。清除后需重新「一键准备」。`
       : usesBundledAsrModelStack()
         ? "当前未检测到已复制的模型；清除后下次启动会从安装包重新复制。"
         : "当前未检测到已下载的模型权重；将仅整理应用数据目录下的 models/ 结构。";

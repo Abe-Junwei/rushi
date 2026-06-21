@@ -1,5 +1,7 @@
 # R3h-1-R — 发行清单（Runtime Manifest）
 
+> **历史状态**：v0.1.8 起已停止 runtime manifest / 侧车 OTA zip；当前为 Plan B（随包模型）。本文档仅保留历史记录。
+
 > **前置**：Phase R0 本地 fixture 手测 ✅  
 > **签收**：R1 + R2 手测 ✅（2026-06-10 · [`r3h-1-r-phase-signoff-2026-06.md`](./r3h-1-r-phase-signoff-2026-06.md)）  
 > **路线图**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) §4.1.2 **②-R**

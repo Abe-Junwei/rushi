@@ -23,7 +23,7 @@ function commonRetryTips(): string[] {
     ];
   }
   return [
-    "再次点击「下载当前模型」重试（ModelScope 下载支持断点续传，可多试几次）。",
+    "在「环境 → 本机 ASR」点「一键准备」重试。",
     "点「重新检测 ASR」确认服务仍在本机运行。",
     "若多次失败：检查网络/代理/VPN，或更换网络后再试。",
   ];
@@ -82,7 +82,7 @@ export function describePrepareModelFailure(code: string): PrepareModelFailureCo
       : {
           headline: "模型下载未完整落盘，缓存目录里仍是半成品。",
           tips: [
-            "先结束当前转写/下载，再删除对应模型缓存目录后重新点「下载当前模型」。",
+            "先结束当前转写，再删除对应模型缓存目录后重新点「一键准备」。",
             "若仍复现：检查网络/VPN，避免在下载过程中中断 rushi-asr 进程。",
             ...commonRetryTips(),
           ],
@@ -100,7 +100,7 @@ export function describePrepareModelFailure(code: string): PrepareModelFailureCo
       : {
           headline: "辅助 VAD 模型未完整落盘，当前仍不能稳定转写。",
           tips: [
-            "删除对应 VAD 缓存目录后重新点「下载当前模型」，让主模型与辅助模型一起补齐。",
+            "删除对应 VAD 缓存目录后重新点「一键准备」，让主模型与辅助模型一起补齐。",
             "若多次复现：检查网络/VPN，避免在下载过程中中断 rushi-asr 进程。",
             ...commonRetryTips(),
           ],
@@ -151,8 +151,8 @@ export function describePrepareModelFailure(code: string): PrepareModelFailureCo
       : {
           headline: "模型下载因网络中断失败（已保留已下载部分，可续传）。",
           tips: [
-            "请先稳定 VPN/代理（建议全程保持同一网络），再点「下载当前模型」。",
-            "若进度长时间不动：点「取消下载」后重新点「下载当前模型」。",
+            "请先稳定 VPN/代理（建议全程保持同一网络），再点「一键准备」。",
+            "若进度长时间不动：稍候后重新点「一键准备」。",
             "ModelScope 会跳过已落盘文件，不会从零开始。",
             ...commonRetryTips(),
           ],

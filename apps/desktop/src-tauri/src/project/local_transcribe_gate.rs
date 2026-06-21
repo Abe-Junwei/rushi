@@ -62,18 +62,25 @@ pub fn local_transcribe_gate_from_health(
         // D4: weights on disk; first transcribe loads into memory (launch warmup may be deferred).
         if health.get("ready_for_transcribe").and_then(|x| x.as_bool()) != Some(true) {
             return Err(
-                "本机 ASR 模型尚未就绪：请在环境页下载当前所选模型并完成侧车准备。".to_string(),
+                dev_or_packaged_str(
+                    "本机 ASR 模型尚未就绪：请在环境页点「一键准备」完成侧车与模型准备。",
+                    "本机 ASR 模型尚未就绪：请在「环境 → 本机 ASR」点「一键准备本机 ASR」，或重启应用以重新复制内置模型。",
+                )
+                .to_string(),
             );
         }
     } else if health.get("ready_for_transcribe").and_then(|x| x.as_bool()) == Some(true) {
-        return Err(
-            "所选模型尚未完全就绪（侧车可能仍绑定其他缓存）。请在环境页下载当前模型并「应用并重启侧车」。"
-                .to_string(),
-        );
+        return Err(dev_or_packaged_str(
+            "所选模型尚未完全就绪（侧车可能仍绑定其他缓存）。请在环境页点「一键准备」，必要时「应用并重启侧车」。",
+            "所选模型尚未完全就绪。请在「环境 → 本机 ASR」点「一键准备本机 ASR」，必要时「应用并重启侧车」。",
+        )
+        .to_string());
     } else {
-        return Err(
-            "本机 ASR 模型尚未就绪：请在环境页下载当前所选模型并完成侧车准备。".to_string(),
-        );
+        return Err(dev_or_packaged_str(
+            "本机 ASR 模型尚未就绪：请在环境页点「一键准备」完成侧车与模型准备。",
+            "本机 ASR 模型尚未就绪：请在「环境 → 本机 ASR」点「一键准备本机 ASR」，或重启应用以重新复制内置模型。",
+        )
+        .to_string());
     }
     if health
         .get("model_memory_matches_config")

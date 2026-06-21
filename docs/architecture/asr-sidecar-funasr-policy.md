@@ -112,7 +112,7 @@
 |------|----------|
 | 终端 `curl http://localhost:8741/health` 成功，环境页报「无 rushi-asr 在监听」 | **侧车只 bind `127.0.0.1`**（`ASR_HOST` 默认）；`curl` 常走 IPv4，而桌面 **loopback 代理** 若连 `http://localhost` 在 macOS 上 **reqwest 可能先试 `::1`** → 连接拒绝。修复：代理 **固定连 `127.0.0.1`**（`asr_sidecar/loopback.rs`），与 `asr_setup/diagnose` 一致。 |
 | `Load failed`（无 HTTP 状态码） | 开发态页面 `http://localhost:1421` 用 WebView **`fetch` 跨域访问 loopback**（PNA / 跨 host）；应用内应走 **`asr_loopback_request`**，勿依赖 WebView 直连。 |
-| `ready: false` / `mode: stub` 但 `/health` 可达 | **模型未缓存**（`required_models_cached` 为 false），非连接问题；需在环境页 **下载当前模型**。 |
+| `ready: false` / `mode: stub` 但 `/health` 可达 | **模型未缓存**（`required_models_cached` 为 false），非连接问题；请 **一键准备** 或重启应用以重新复制内置模型。 |
 | 连接失败且 `lsof -i :8741` 为空 | **侧车进程未运行**；`npm run asr:dev` 或 `npm run desktop:dev`。 |
 | 磁盘有 GB 级 `models/`，`/health` 仍 `cached: false` | 侧车未设 **`RUSHI_MODELS_ROOT`**；用 `npm run asr:dev` 或 `scripts/resolve-asr-models-root.sh`。 |
 | 路径真源 | Rust `app_data_paths.rs` + `scripts/resolve-asr-models-root.sh`（须与 bundle id 同步）。 |

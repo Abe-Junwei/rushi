@@ -13,4 +13,4 @@ cargo test --manifest-path apps/desktop/src-tauri/Cargo.toml \
   c_class_auto_rollback_revalidate_restores_previous -- --nocapture
 
 echo "OK: C-class auto rollback integration test passed"
-echo "Optional: bash scripts/prepare-local-runtime-fixtures.sh for 0.2.0 corrupt upgrade manifest (UI hand test)"
+echo "Optional: runtime manifest / 0.2.0 corrupt upgrade UI hand test no longer applies (v0.1.8 Plan B)"

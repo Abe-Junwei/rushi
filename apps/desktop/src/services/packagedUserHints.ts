@@ -62,7 +62,7 @@ export const prepareModelFunasrMissingTipsManaged = [
 
 export const prepareModelFunasrMissingTipsDev = [
   '在 services/asr 的 venv 中执行 pip install -e ".[funasr]"，然后重启 python -m rushi_asr。',
-  "也可用本页「一键安装 FunASR 依赖」后重启 ASR，再点「下载当前模型」。",
+  "也可用本页「一键安装 FunASR 依赖」后重启 ASR，再点「一键准备」。",
 ];
 
 export const prepareModelScopeMissingTipsManaged = [

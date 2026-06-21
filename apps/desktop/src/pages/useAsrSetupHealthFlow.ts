@@ -26,6 +26,7 @@ type Params = {
     refreshAsrHealth: (options?: { touchUi?: boolean }) => Promise<void>;
     refreshAsrRuntimeInfo: () => Promise<void>;
     prepareDefaultFunasrModel: (options?: import("./usePrepareModelController").PrepareDefaultModelOptions) => Promise<void>;
+    bundledCopyPresentationSync: import("../services/asr/bundledAsrModelsSeedPrepare").BundledCopyPresentationSync;
     getSetupSelection: () => LocalAsrSetupSelectionContext;
   };
   refreshSetupDiagnose?: (options?: {
@@ -137,7 +138,9 @@ export function useAsrSetupHealthFlow({
           }),
         );
         if (isDefaultBundledAsrTarget()) {
-          const outcome = await ensureBundledAsrModelsSeededForPrepare();
+          const outcome = await ensureBundledAsrModelsSeededForPrepare({
+            presentationSync: deps.bundledCopyPresentationSync,
+          });
           if (!outcome.ok) {
             setSetupMessage(outcome.message);
             setSetupOutcome(outcome.noBundle ? "blocked" : "error");

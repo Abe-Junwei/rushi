@@ -4,9 +4,9 @@ use std::fs;
 use std::path::{Path, PathBuf};
 
 use super::safe_rel_path_under;
-use super::{OfflineAsrModelsPackManifest, ResolvedPackModelSpec};
+use super::{BundledAsrModelsManifest, ResolvedBundledAsrModelSpec};
 
-pub fn read_manifest_from_dir(root: &Path) -> Result<OfflineAsrModelsPackManifest, String> {
+pub fn read_manifest_from_dir(root: &Path) -> Result<BundledAsrModelsManifest, String> {
     let path = root.join("manifest.json");
     let body = fs::read_to_string(&path)
         .map_err(|e| format!("读取 manifest 失败（{}）: {e}", path.display()))?;
@@ -77,7 +77,7 @@ pub fn find_cached_model_dir(
 
 pub fn validate_manifest_models_cached(
     modelscope_cache: &Path,
-    specs: &[ResolvedPackModelSpec],
+    specs: &[ResolvedBundledAsrModelSpec],
 ) -> Result<(), String> {
     for spec in specs {
         if find_cached_model_dir(

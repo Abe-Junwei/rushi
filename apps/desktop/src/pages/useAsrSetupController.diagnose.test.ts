@@ -6,6 +6,7 @@ import {
   asrSetupDiagnose,
   fetchMock,
   makeReport,
+  mockBundledCopyPresentationSync,
   resetAsrSetupControllerTestMocks,
 } from "./useAsrSetupController.test.shared";
 
@@ -39,6 +40,7 @@ describe("useAsrSetupController diagnose", () => {
         refreshAsrHealth: vi.fn(async () => {}),
         refreshAsrRuntimeInfo: vi.fn(async () => {}),
         prepareDefaultFunasrModel: vi.fn(async () => {}),
+        bundledCopyPresentationSync: mockBundledCopyPresentationSync(),
         getSetupSelection: () => ({
           selectedHubModelId: "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
           catalogStatus: null,
@@ -84,6 +86,7 @@ describe("useAsrSetupController diagnose", () => {
         refreshAsrHealth,
         refreshAsrRuntimeInfo: vi.fn(async () => {}),
         prepareDefaultFunasrModel: vi.fn(async () => {}),
+        bundledCopyPresentationSync: mockBundledCopyPresentationSync(),
         getSetupSelection: () => ({
           selectedHubModelId: "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
           catalogStatus: null,
@@ -135,6 +138,7 @@ describe("useAsrSetupController diagnose", () => {
         refreshAsrHealth: vi.fn(async () => {}),
         refreshAsrRuntimeInfo: vi.fn(async () => {}),
         prepareDefaultFunasrModel: vi.fn(async () => {}),
+        bundledCopyPresentationSync: mockBundledCopyPresentationSync(),
         getSetupSelection: () => ({
           selectedHubModelId: "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
           catalogStatus: null,

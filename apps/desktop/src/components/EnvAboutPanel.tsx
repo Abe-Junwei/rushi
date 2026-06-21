@@ -1,9 +1,17 @@
 import { useCallback, useEffect, useState } from "react";
-import { Copy, ExternalLink } from "lucide-react";
+import { Copy, ExternalLink, RefreshCw } from "lucide-react";
 import { PANEL_TYPOGRAPHY } from "../config/typography";
 import { ENV_PANEL_PAGE_CLASS, ENV_PANEL_SECTION_CLASS } from "../utils/environmentPanelNav";
 import { CONTROL_BTN_SECONDARY } from "../config/controlStyles";
+import { isTauriRuntime } from "../config/env";
 import { toast } from "../services/ui/toast";
+import {
+  appUpdateUnsupportedMessage,
+  checkForAppUpdate,
+  downloadAndInstallAppUpdate,
+  isAppUpdateSupportedForVersion,
+  mapAppUpdateError,
+} from "../services/appUpdate";
 import {
   fetchAppBuildInfo,
   openBundledUserGuide,
@@ -51,6 +59,8 @@ export function EnvAboutPanel() {
   const [licensesError, setLicensesError] = useState<string | null>(null);
   const [copyBusy, setCopyBusy] = useState(false);
   const [guideBusy, setGuideBusy] = useState(false);
+  const [updateUiState, setUpdateUiState] = useState<"idle" | "checking" | "installing">("idle");
+  const updateSupported = !!buildInfo && isAppUpdateSupportedForVersion(buildInfo.version);
 
   useEffect(() => {
     let cancelled = false;
@@ -116,6 +126,40 @@ export function EnvAboutPanel() {
     }
   }, []);
 
+  const updateBusy = updateUiState === "checking" || updateUiState === "installing";
+
+  const checkUpdates = useCallback(async () => {
+    if (!buildInfo || updateBusy) return;
+    if (!isAppUpdateSupportedForVersion(buildInfo.version)) {
+      toast.info(appUpdateUnsupportedMessage());
+      return;
+    }
+    setUpdateUiState("checking");
+    try {
+      const result = await checkForAppUpdate(buildInfo.version);
+      if (result.kind === "unsupported") {
+        toast.info(appUpdateUnsupportedMessage());
+        return;
+      }
+      if (result.kind === "upToDate") {
+        toast.success("当前已是最新版本");
+        return;
+      }
+      if (result.kind === "error") {
+        toast.error(result.message);
+        return;
+      }
+      setUpdateUiState("installing");
+      try {
+        await downloadAndInstallAppUpdate(result.update);
+      } catch (e) {
+        toast.error(mapAppUpdateError(e));
+      }
+    } finally {
+      setUpdateUiState("idle");
+    }
+  }, [buildInfo, updateBusy]);
+
   return (
     <div className={ENV_PANEL_PAGE_CLASS}>
       <section className={ENV_PANEL_SECTION_CLASS}>
@@ -178,7 +222,29 @@ export function EnvAboutPanel() {
             />
             {guideBusy ? "打开中…" : "打开随包说明文档"}
           </button>
+          {isTauriRuntime() && buildInfo ? (
+            <button
+              type="button"
+              className={CONTROL_BTN_SECONDARY}
+              disabled={updateBusy}
+              onClick={() => void checkUpdates()}
+            >
+              <RefreshCw
+                className={`${LUCIDE_ICON_SIZE_SM} ${updateBusy ? "animate-spin" : ""}`}
+                strokeWidth={LUCIDE_ICON_STROKE_WIDTH}
+                aria-hidden
+              />
+              {updateUiState === "checking"
+                ? "检查中…"
+                : updateUiState === "installing"
+                  ? "安装中…"
+                  : "检查更新"}
+            </button>
+          ) : null}
         </div>
+        {isTauriRuntime() && buildInfo && !updateSupported ? (
+          <p className={`m-0 ${PANEL_TYPOGRAPHY.meta}`}>{appUpdateUnsupportedMessage()}</p>
+        ) : null}
         <p className={`m-0 ${PANEL_TYPOGRAPHY.meta}`}>
           「复制版本信息」与诊断包内 build-info.txt 字段一致（英文键名，便于技术支持识别）。
         </p>

@@ -22,6 +22,7 @@ export function useProjectAsrBridgeStack() {
     refreshAsrHealth: asr.refreshAsrHealth,
     refreshAsrRuntimeInfo,
     prepareDefaultFunasrModel: asr.prepareDefaultFunasrModel,
+    bundledCopyPresentationSync: asr.bundledCopyPresentationSync,
     getSetupSelection: () => ({
       selectedHubModelId: asr.localAsrModelCatalog.selectedHubModelId,
       catalogStatus: asr.localAsrModelCatalog.catalogStatus,

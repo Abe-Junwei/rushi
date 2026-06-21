@@ -11,6 +11,7 @@ import {
   loopbackHealthResponse,
   makeLocalRuntimeDiag,
   makeReport,
+  mockBundledCopyPresentationSync,
   renderSetupController,
   resetAsrSetupControllerTestMocks,
   retryBundledAsrSidecar,
@@ -128,6 +129,7 @@ describe("useAsrSetupController one-click prepare", () => {
         refreshAsrHealth: vi.fn(async () => {}),
         refreshAsrRuntimeInfo: vi.fn(async () => {}),
         prepareDefaultFunasrModel: vi.fn(async () => {}),
+        bundledCopyPresentationSync: mockBundledCopyPresentationSync(),
         getSetupSelection: () => ({
           selectedHubModelId: "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
           catalogStatus: null,

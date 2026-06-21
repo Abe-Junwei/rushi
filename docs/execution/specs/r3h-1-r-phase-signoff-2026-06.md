@@ -1,5 +1,7 @@
 # R3h-1-R 阶段签收（2026-06）
 
+> **历史状态**：v0.1.8 起已停止 runtime manifest / 侧车 OTA zip；当前为 Plan B（随包模型）。本文档仅保留历史记录。
+
 **状态** ✅ **R0 / R1 / R2 手测签收** — Release CI **macOS + Linux 跑通**（`v0.1.0` · 2026-06-11）；Windows 侧车 smoke 失败（与 manifest 无关，待修）
 
 > **Plan**：[`r3h-1-r-runtime-manifest-release-activation-plan.md`](./r3h-1-r-runtime-manifest-release-activation-plan.md)  

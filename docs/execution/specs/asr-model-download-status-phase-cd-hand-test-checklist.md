@@ -1,5 +1,7 @@
 # Phase C/D 手测清单 — Prepare 展示统一 + Diagnose 投影
 
+> **历史状态**：v0.1.8 起默认模型改走随包 seed，prepare UI 已非主路径。本文档保留历史手测记录，当前实现以 `asr-bundled-models-plan-v2.md` 为准。
+
 > **Plan**：[asr-model-download-status-remediation-plan.md](./asr-model-download-status-remediation-plan.md)  
 > **Acceptance**：[asr-model-download-status-remediation-acceptance.md](./asr-model-download-status-remediation-acceptance.md)（M1–M4 仍适用）  
 > **机器闸门**：`bash scripts/asr-model-download-phase-cd-hand-test.sh`

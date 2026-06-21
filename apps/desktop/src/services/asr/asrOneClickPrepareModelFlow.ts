@@ -126,7 +126,9 @@ export async function runAsrOneClickPrepareModelFlow(
       patchStep(steps, "model", { status: "running", detail: modelDetail }),
     );
     if (isDefaultBundledAsrTarget()) {
-      const outcome = await ensureBundledAsrModelsSeededForPrepare();
+      const outcome = await ensureBundledAsrModelsSeededForPrepare({
+        presentationSync: deps.bundledCopyPresentationSync,
+      });
       if (!outcome.ok) {
         setSetupSteps((steps) =>
           patchStep(steps, "model", { status: "error", detail: outcome.message }),

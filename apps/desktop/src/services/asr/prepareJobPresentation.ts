@@ -184,7 +184,7 @@ export function buildPrepareJobPresentation(
       progress,
       progressLabel: cancelLabel,
       wizardDetail: cancelLabel,
-      envBannerDetail: "侧车将在当前文件传完后停止；已完成部分保留在磁盘，可重新点「下载当前模型」续传。",
+      envBannerDetail: "侧车将在当前文件传完后停止；已完成部分保留在磁盘，可重新点「一键准备」续传。",
       stageTitle: "正在取消下载",
       installMessage: "正在取消下载，等待侧车结束当前传输…",
     };

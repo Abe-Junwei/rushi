@@ -7,8 +7,8 @@ use std::sync::{Mutex, OnceLock, TryLockError};
 use serde::Serialize;
 use tauri::{AppHandle, State};
 
-pub use super::offline_asr_models_pack_manifest::{
-    resolve_model_specs, OfflineAsrModelsPackManifest, ResolvedPackModelSpec,
+pub use super::bundled_asr_models_manifest::{
+    resolve_model_specs, BundledAsrModelsManifest, ResolvedBundledAsrModelSpec,
 };
 use crate::bundled_asr_assets;
 use crate::project::app_data_paths::{

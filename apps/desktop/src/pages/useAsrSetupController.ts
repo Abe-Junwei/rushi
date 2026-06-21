@@ -36,6 +36,7 @@ export function useAsrSetupController(deps: {
   refreshAsrHealth: () => Promise<void>;
   refreshAsrRuntimeInfo: (options?: RefreshAsrRuntimeOptions) => Promise<void>;
   prepareDefaultFunasrModel: (options?: import("./usePrepareModelController").PrepareDefaultModelOptions) => Promise<void>;
+  bundledCopyPresentationSync: import("../services/asr/bundledAsrModelsSeedPrepare").BundledCopyPresentationSync;
   getSetupSelection: () => import("../services/asr/localAsrSetupModelStep").LocalAsrSetupSelectionContext;
   prepareOverlayRef?: MutableRefObject<import("./asrSetupState").StepsFromReportOptions | null>;
 }): AsrSetupControllerApi {

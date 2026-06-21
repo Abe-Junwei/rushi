@@ -6,7 +6,7 @@ use std::path::Path;
 use serde::Deserialize;
 use serde_json::json;
 
-use super::{BundledAsrModelsSeedResult, OfflineAsrModelsPackManifest, ResolvedPackModelSpec};
+use super::{BundledAsrModelsManifest, BundledAsrModelsSeedResult, ResolvedBundledAsrModelSpec};
 
 pub(crate) const SEED_MARKER_FILE: &str = ".rushi-bundled-seed.json";
 
@@ -32,7 +32,7 @@ pub fn read_seed_marker(models_root: &Path) -> Result<Option<SeedMarker>, String
 
 pub fn write_seed_marker(
     models_root: &Path,
-    manifest: &OfflineAsrModelsPackManifest,
+    manifest: &BundledAsrModelsManifest,
 ) -> Result<(), String> {
     let marker = models_root.join(SEED_MARKER_FILE);
     let body = json!({
@@ -51,8 +51,8 @@ pub fn write_seed_marker(
 pub fn try_skip_reseed(
     models_root: &Path,
     modelscope_cache: &Path,
-    manifest: &OfflineAsrModelsPackManifest,
-    specs: &[ResolvedPackModelSpec],
+    manifest: &BundledAsrModelsManifest,
+    specs: &[ResolvedBundledAsrModelSpec],
 ) -> Result<Option<BundledAsrModelsSeedResult>, String> {
     let Some(marker) = read_seed_marker(models_root)? else {
         return Ok(None);

@@ -6,9 +6,9 @@ use super::{marker::SEED_MARKER_FILE, seed_bundled_asr_models_at};
 use crate::local_asr_model::{
     DEFAULT_FUNASR_HUB_MODEL_ID, DEFAULT_FUNASR_PUNC_MODEL_ID, DEFAULT_FUNASR_VAD_MODEL_ID,
 };
-use crate::project::offline_asr_models_pack_manifest::{
-    OfflineAsrModelsPackManifest, OfflineAsrModelsPackModelSpec, DEFAULT_OFFLINE_ASR_BUNDLE_ID,
-    OFFLINE_ASR_MODELS_PACK_VERSION,
+use crate::project::bundled_asr_models_manifest::{
+    BundledAsrModelsManifest, BundledAsrModelSpec, DEFAULT_BUNDLED_ASR_BUNDLE_ID,
+    BUNDLED_ASR_MODELS_PACK_VERSION,
 };
 
 static TEST_SERIAL: TestSerialMutex<()> = TestSerialMutex::new(());
@@ -24,7 +24,7 @@ fn temp_dir(prefix: &str) -> PathBuf {
     dir
 }
 
-fn write_manifest(root: &std::path::Path, manifest: &OfflineAsrModelsPackManifest) {
+fn write_manifest(root: &std::path::Path, manifest: &BundledAsrModelsManifest) {
     fs::write(
         root.join("manifest.json"),
         serde_json::to_string_pretty(manifest).unwrap(),
@@ -47,13 +47,13 @@ fn write_fake_model(root: &std::path::Path, hub_id: &str, weight_bytes: u64) {
     fs::write(dir.join("model.pt"), weight).unwrap();
 }
 
-fn triplet_manifest() -> OfflineAsrModelsPackManifest {
-    OfflineAsrModelsPackManifest {
-        pack_version: OFFLINE_ASR_MODELS_PACK_VERSION,
-        bundle_id: DEFAULT_OFFLINE_ASR_BUNDLE_ID.to_string(),
+fn triplet_manifest() -> BundledAsrModelsManifest {
+    BundledAsrModelsManifest {
+        pack_version: BUNDLED_ASR_MODELS_PACK_VERSION,
+        bundle_id: DEFAULT_BUNDLED_ASR_BUNDLE_ID.to_string(),
         rushi_version: Some("0.0.0".to_string()),
         models: vec![
-            OfflineAsrModelsPackModelSpec {
+            BundledAsrModelSpec {
                 hub_id: DEFAULT_FUNASR_HUB_MODEL_ID.to_string(),
                 required_files: vec![
                     "model.pt".to_string(),
@@ -62,12 +62,12 @@ fn triplet_manifest() -> OfflineAsrModelsPackManifest {
                 ],
                 min_weight_bytes: Some(8),
             },
-            OfflineAsrModelsPackModelSpec {
+            BundledAsrModelSpec {
                 hub_id: DEFAULT_FUNASR_VAD_MODEL_ID.to_string(),
                 required_files: vec!["model.pt".to_string()],
                 min_weight_bytes: Some(1),
             },
-            OfflineAsrModelsPackModelSpec {
+            BundledAsrModelSpec {
                 hub_id: DEFAULT_FUNASR_PUNC_MODEL_ID.to_string(),
                 required_files: vec!["model.pt".to_string(), "config.yaml".to_string()],
                 min_weight_bytes: Some(1),
@@ -88,7 +88,7 @@ fn seed_from_directory_populates_modelscope_cache() {
         write_fake_model(&pack, DEFAULT_FUNASR_PUNC_MODEL_ID, 4);
 
         let result = seed_bundled_asr_models_at(&dest_root, &pack, None).unwrap();
-        assert_eq!(result.bundle_id, DEFAULT_OFFLINE_ASR_BUNDLE_ID);
+        assert_eq!(result.bundle_id, DEFAULT_BUNDLED_ASR_BUNDLE_ID);
         assert!(result.imported_bytes > 0);
         assert!(!result.skipped_reseed);
         assert!(dest_root.join(SEED_MARKER_FILE).is_file());

@@ -49,10 +49,17 @@
       }
     }
   },
-  "plugins": {},
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IDdDQjdDNzUyNkU4RDhENzYKUldSMmpZMXVVc2UzZkZzOC9PdUxyRVpJRVYvL2lWdysyeXhTNVVtUUFnQXkzZ2dLQlkyTXlrNk0K",
+      "endpoints": [
+        "https://github.com/Abe-Junwei/rushi/releases/latest/download/latest.json"
+      ]
+    }
+  },
   "bundle": {
     "active": true,
-    "createUpdaterArtifacts": false,
+    "createUpdaterArtifacts": true,
     "targets": ["app", "dmg"],
     "resources": [
       "resources/user-guide-zh.md",

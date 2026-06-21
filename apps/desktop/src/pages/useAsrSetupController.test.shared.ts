@@ -146,6 +146,14 @@ export function makeLocalRuntimeDiag(overrides: Partial<LocalRuntimeDiagnose> = 
   };
 }
 
+export function mockBundledCopyPresentationSync() {
+  return {
+    begin: vi.fn(),
+    setProgress: vi.fn(),
+    end: vi.fn(),
+  };
+}
+
 export function renderSetupController(overrides?: {
   prepareDefaultFunasrModel?: () => Promise<void>;
   selectedHubModelId?: string;
@@ -155,6 +163,7 @@ export function renderSetupController(overrides?: {
       refreshAsrHealth: vi.fn(async () => {}),
       refreshAsrRuntimeInfo: vi.fn(async () => {}),
       prepareDefaultFunasrModel: overrides?.prepareDefaultFunasrModel ?? vi.fn(async () => {}),
+      bundledCopyPresentationSync: mockBundledCopyPresentationSync(),
       getSetupSelection: () => ({
         selectedHubModelId: overrides?.selectedHubModelId ?? "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
         catalogStatus: null,

@@ -25,7 +25,7 @@ fn sidecar_exe_path(resource_root: &Path, onedir: &str, stem: &str) -> Option<Pa
     validate_bundled_exe(&exe)
 }
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(target_os = "macos")]
 fn sidecar_exe_path(resource_root: &Path, onedir: &str, stem: &str) -> Option<PathBuf> {
     let exe = resource_root.join("bundled-asr").join(onedir).join(stem);
     validate_bundled_exe(&exe)
@@ -83,7 +83,7 @@ fn bundled_sidecar_try_order(resource_root: &Path) -> Vec<PathBuf> {
     out
 }
 
-#[cfg(not(target_os = "windows"))]
+#[cfg(target_os = "macos")]
 fn bundled_sidecar_try_order(resource_root: &Path) -> Vec<PathBuf> {
     bundled_cpu_executable(resource_root).into_iter().collect()
 }

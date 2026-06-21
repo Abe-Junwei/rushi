@@ -1,5 +1,7 @@
 # R3h-1-R：侧车 Runtime Manifest 发行激活
 
+> **历史状态**：v0.1.8 起已停止 runtime manifest / 侧车 OTA zip；当前为 Plan B（随包模型）。本文档仅保留历史记录。
+
 > **状态**：✅ R0 / R1 / R2 手测签收（2026-06-10）· Release CI 编码 ✅（2026-06-11）  
 > **签收**：[`r3h-1-r-phase-signoff-2026-06.md`](./r3h-1-r-phase-signoff-2026-06.md)  
 > **路线图索引**：[`rushi-execution-roadmap.md`](../plans/rushi-execution-roadmap.md) §4.1.2 **②-R**、§4.1.5.2  

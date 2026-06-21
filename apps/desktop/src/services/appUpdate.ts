@@ -1,10 +1,14 @@
+import { check, type Update } from "@tauri-apps/plugin-updater";
+import { relaunch } from "@tauri-apps/plugin-process";
+import { isTauriRuntime } from "../config/env";
+
 /** OTA 链起点：v0.1.1 须手动首装 v0.1.2（见 rel-mac-ota-intent）。 */
 export const APP_UPDATE_OTA_BASELINE_VERSION = "0.1.2";
 
 export type AppUpdateCheckResult =
   | { kind: "unsupported" }
   | { kind: "upToDate" }
-  | { kind: "available"; update: unknown; version: string; notes?: string }
+  | { kind: "available"; update: Update; version: string; notes?: string }
   | { kind: "error"; message: string };
 
 export function compareSemver(a: string, b: string): number {
@@ -49,16 +53,26 @@ export function mapAppUpdateError(error: unknown): string {
   return raw.trim() || "检查更新失败，请稍后再试。";
 }
 
-export function checkForAppUpdate(_appVersion: string): Promise<AppUpdateCheckResult> {
-  // v0.1.8: OTA disabled; DMG-only release.
-  return Promise.resolve({ kind: "unsupported" });
+export async function checkForAppUpdate(appVersion: string): Promise<AppUpdateCheckResult> {
+  if (!isTauriRuntime()) return { kind: "unsupported" };
+  if (!isAppUpdateSupportedForVersion(appVersion)) return { kind: "unsupported" };
+  try {
+    const update = await check({ timeout: 30_000 });
+    if (!update) return { kind: "upToDate" };
+    return {
+      kind: "available",
+      update,
+      version: update.version,
+      notes: update.body ?? undefined,
+    };
+  } catch (error) {
+    return { kind: "error", message: mapAppUpdateError(error) };
+  }
 }
 
-export function downloadAndInstallAppUpdate(_update: unknown): Promise<void> {
-  // v0.1.8: OTA disabled; should never be called.
-  return Promise.reject(
-    new Error("应用内更新已禁用（v0.1.8）。请从 GitHub Release 手动下载安装包。"),
-  );
+export async function downloadAndInstallAppUpdate(update: Update): Promise<void> {
+  await update.downloadAndInstall();
+  await relaunch();
 }
 
 export function appUpdateUnsupportedMessage(): string {

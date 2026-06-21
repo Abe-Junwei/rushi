@@ -2,10 +2,10 @@
 # Do NOT run `gh release create` before CI: push tag only (`git push origin vX.Y.Z`).
 # Sidecar is built before Tauri bundle; artifacts upload via gh release upload.
 # macOS signing (optional): set valid APPLE_* repository secrets (base64 .p12).
-# LRC runtime manifest (tag release): repository secret RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX
-#   (Ed25519 private key hex for rushi-runtime-release-v1). Publishes per-platform
-#   rushi-asr-sidecar-<platform>.zip + rushi-runtime-manifest-<platform>.json and injects
-#   RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL into the desktop build.
+# App OTA: set TAURI_SIGNING_PRIVATE_KEY / TAURI_SIGNING_PRIVATE_KEY_PASSWORD.
+#   Tauri generates .app.tar.gz + .sig; CI produces macOS latest.json.
+# Plan B (v0.1.8+): default Paraformer models are bundled into the installer.
+# No runtime manifest / OTA sidecar artifacts are produced.
 #
 # IMPORTANT: To test workflow changes, use Actions → Release build → Run workflow
 # on branch `main`. Do NOT use "Re-run failed jobs" on an old run — that reuses
@@ -92,15 +92,6 @@ jobs:
         run: npm run asr:stage-bundled-models
         timeout-minutes: 120
 
-      - name: Publish signed runtime manifest (release)
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-        id: runtime_manifest
-        env:
-          RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX: ${{ secrets.RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX }}
-        run: |
-          bash scripts/ci-publish-runtime-manifest-release.sh \
-            --repository "${{ github.repository }}" \
-            --tag "${{ github.ref_name }}"
 
       - name: Detect macOS signing secrets
         id: mac_sign
@@ -137,7 +128,6 @@ jobs:
         if: steps.mac_sign.outputs.enabled != 'true'
         working-directory: apps/desktop
         env:
-          RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL: ${{ steps.runtime_manifest.outputs.manifest_url }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: npm run tauri -- build --bundles app,dmg
@@ -147,7 +137,6 @@ jobs:
         if: steps.mac_sign.outputs.enabled == 'true'
         working-directory: apps/desktop
         env:
-          RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL: ${{ steps.runtime_manifest.outputs.manifest_url }}
           APPLE_CERTIFICATE: ${{ secrets.APPLE_CERTIFICATE }}
           APPLE_CERTIFICATE_PASSWORD: ${{ secrets.APPLE_CERTIFICATE_PASSWORD }}
           APPLE_SIGNING_IDENTITY: ${{ secrets.APPLE_SIGNING_IDENTITY }}
@@ -175,6 +164,36 @@ jobs:
             sha256sum "$f" > "$f.sha256"
           done
 
+      - name: Normalize macOS updater artifact names
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        run: |
+          MACOS_DIR="${{ env.BUNDLE_ROOT }}/macos"
+          shopt -s nullglob
+          tar_files=("$MACOS_DIR"/*.tar.gz)
+          if [ ${#tar_files[@]} -eq 0 ]; then
+            echo "::error::Updater .tar.gz missing — set TAURI_SIGNING_PRIVATE_KEY and matching pubkey in tauri.conf.json"
+            exit 1
+          fi
+          TAR="${tar_files[0]}"
+          if [ "$(basename "$TAR")" = "app.tar.gz" ]; then
+            echo "Updater artifact already normalized."
+            exit 0
+          fi
+          mv "$TAR" "$MACOS_DIR/app.tar.gz"
+          if [ -f "${TAR}.sig" ]; then
+            mv "${TAR}.sig" "$MACOS_DIR/app.tar.gz.sig"
+          fi
+          echo "Renamed $(basename "$TAR") -> app.tar.gz"
+
+      - name: Generate updater latest.json (macOS release)
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        run: |
+          bash scripts/ci-generate-updater-latest-json.sh \
+            --tag "${{ github.ref_name }}" \
+            --repository "${{ github.repository }}" \
+            --bundle-root "${{ env.BUNDLE_ROOT }}" \
+            --platform darwin-aarch64
+
       - name: Upload macOS workflow artifacts
         if: github.event_name == 'workflow_dispatch'
         uses: actions/upload-artifact@v7
@@ -193,10 +212,20 @@ jobs:
           shopt -s nullglob
           dmg_files=("${{ env.BUNDLE_ROOT }}/dmg/"*.dmg)
           sha_files=("${{ env.BUNDLE_ROOT }}/dmg/"*.sha256)
+          tar_files=("${{ env.BUNDLE_ROOT }}/macos/"*.tar.gz)
+          tar_sig_files=("${{ env.BUNDLE_ROOT }}/macos/"*.tar.gz.sig)
+          latest_json="${{ env.BUNDLE_ROOT }}/macos/latest.json"
           upload=( "${dmg_files[@]}" "${sha_files[@]}" )
-          if [ -n "${{ steps.runtime_manifest.outputs.zip_path }}" ]; then
-            upload+=( "${{ steps.runtime_manifest.outputs.zip_path }}" "${{ steps.runtime_manifest.outputs.manifest_path }}" )
+          if [ ${#tar_files[@]} -eq 0 ]; then
+            echo "::error::Updater .tar.gz missing — set TAURI_SIGNING_PRIVATE_KEY and matching pubkey in tauri.conf.json"
+            exit 1
           fi
+          upload+=( "${tar_files[@]}" "${tar_sig_files[@]}" )
+          if [ ! -f "$latest_json" ]; then
+            echo "::error::latest.json missing after generate step"
+            exit 1
+          fi
+          upload+=( "$latest_json" )
           gh release upload "${{ github.ref_name }}" "${upload[@]}" --clobber
 
   tauri-windows:
@@ -277,21 +306,10 @@ jobs:
         run: npm run asr:stage-bundled-models
         timeout-minutes: 120
 
-      - name: Publish signed runtime manifest (release)
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
-        id: runtime_manifest
-        shell: bash
-        env:
-          RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX: ${{ secrets.RUSHI_RUNTIME_MANIFEST_SIGNING_KEY_HEX }}
-        run: |
-          bash scripts/ci-publish-runtime-manifest-release.sh \
-            --repository "${{ github.repository }}" \
-            --tag "${{ github.ref_name }}"
 
       - name: Tauri build binary (Windows)
         working-directory: apps/desktop
         env:
-          RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL: ${{ steps.runtime_manifest.outputs.manifest_url }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: npm run tauri -- build --no-bundle
@@ -302,7 +320,6 @@ jobs:
         continue-on-error: true
         working-directory: apps/desktop
         env:
-          RUSHI_DEFAULT_LOCAL_RUNTIME_MANIFEST_URL: ${{ steps.runtime_manifest.outputs.manifest_url }}
           TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
           TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
         run: npm run tauri -- build --bundles nsis
@@ -396,9 +413,6 @@ jobs:
           else
             echo "::warning::NSIS installer missing; uploading portable zip only."
           fi
-          if [ -n "${{ steps.runtime_manifest.outputs.zip_path }}" ]; then
-            upload+=( "${{ steps.runtime_manifest.outputs.zip_path }}" "${{ steps.runtime_manifest.outputs.manifest_path }}" )
-          fi
           gh release upload "${{ github.ref_name }}" "${upload[@]}" --clobber
 
   publish-release:
@@ -407,6 +421,14 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
+
+      - name: Verify OTA manifest on GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          bash scripts/ci-verify-updater-manifest.sh \
+            --tag "${{ github.ref_name }}" \
+            --repository "${{ github.repository }}"
 
       - name: Publish GitHub Release
         env:

@@ -55,7 +55,7 @@ PY
 rm -rf "${STAGING:?}"/*
 mkdir -p "${STAGING}"
 
-MANIFEST_TEMPLATE="${ROOT}/resources/offline-asr-models-pack-manifest.template.json"
+MANIFEST_TEMPLATE="${ROOT}/resources/bundled-asr-models-manifest.template.json"
 if [[ ! -f "${MANIFEST_TEMPLATE}" ]]; then
   echo "FAIL: manifest template missing: ${MANIFEST_TEMPLATE}" >&2
   exit 1

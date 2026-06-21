@@ -32,6 +32,7 @@ import {
   mapBundledModelBusyRows,
   mapPrepareModelBusyRows,
   mapPrepareModelCancelRows,
+  mapRuntimeInstallBusyRows,
   toneFor,
   type AsrEnvStatusRow,
 } from "./asrEnvPresentationRows";
@@ -186,7 +187,7 @@ function applyPrepareModelOverlay(
       chipOk: false,
       bannerTitle: "本机 ASR · 正在安装运行时",
       bannerDetail: "正在下载或安装本机 ASR 运行时组件，完成后方可转写。请保持应用开启并联网。",
-      statusRows: mapBusyRows(presentation.statusRows),
+      statusRows: mapRuntimeInstallBusyRows(presentation.statusRows),
       blockReason: "本机 ASR 运行时安装中，暂不可转写。",
     };
   }
@@ -215,7 +216,7 @@ function applyPrepareModelOverlay(
       chipLabel: "ASR 未就绪",
       chipOk: false,
       bannerTitle: "本机 ASR · 正在取消下载",
-      bannerDetail: "侧车将在当前文件传完后停止；完成后可重新点「下载当前模型」。",
+      bannerDetail: "侧车将在当前文件传完后停止；完成后可重新点「一键准备」。",
       statusRows: mapPrepareModelCancelRows(presentation.statusRows),
       blockReason: "模型下载取消中，暂不可转写。",
     };
@@ -266,7 +267,7 @@ export function runtimeInstallBusyPresentation(
     chipOk: false,
     bannerTitle: "本机 ASR · 正在安装运行时",
     bannerDetail: "正在下载或安装本机 ASR 运行时组件，完成后方可转写。请保持应用开启并联网。",
-    statusRows: mapPrepareModelBusyRows(presentation.statusRows),
+    statusRows: mapRuntimeInstallBusyRows(presentation.statusRows),
     blockReason: "本机 ASR 运行时安装中，暂不可转写。",
   };
 }

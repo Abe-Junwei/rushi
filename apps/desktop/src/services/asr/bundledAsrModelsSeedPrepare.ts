@@ -20,6 +20,13 @@ export type BundledSeedPrepareOutcome =
   | { ok: true; message: string }
   | { ok: false; message: string; noBundle: boolean };
 
+/** D7：一键准备 / 8741 外来路径复制时同步顶栏 chip 与 env 四灯（不经模型卡按钮）。 */
+export type BundledCopyPresentationSync = {
+  begin: () => void;
+  setProgress: (percent: number) => void;
+  end: () => void;
+};
+
 function sleep(ms: number): Promise<void> {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
@@ -53,6 +60,7 @@ async function pollUntilSelectedModelDiskReady(
 /** Plan B: copy bundled Paraformer triplet into App Data — never ModelScope download. */
 export async function ensureBundledAsrModelsSeededForPrepare(options?: {
   onProgress?: (percent: number, message: string) => void;
+  presentationSync?: BundledCopyPresentationSync;
 }): Promise<BundledSeedPrepareOutcome> {
   if (!isTauriRuntime()) {
     return {
@@ -69,6 +77,7 @@ export async function ensureBundledAsrModelsSeededForPrepare(options?: {
     };
   }
 
+  let presentationStarted = false;
   let lastWeighted = 0;
   const unlisten = await listenBundledAsrModelsSeedProgress((progress) => {
     const weighted = computeBundledSeedWeightedPercent(
@@ -77,6 +86,7 @@ export async function ensureBundledAsrModelsSeededForPrepare(options?: {
       lastWeighted,
     );
     lastWeighted = weighted;
+    options?.presentationSync?.setProgress(weighted);
     options?.onProgress?.(
       weighted,
       bundledSeedProgressLabel(progress.phase, weighted),
@@ -84,6 +94,8 @@ export async function ensureBundledAsrModelsSeededForPrepare(options?: {
   });
 
   try {
+    options?.presentationSync?.begin();
+    presentationStarted = true;
     const result = await seedBundledAsrModelsIfNeeded();
     if (result.status === "skipped_no_bundle") {
       return {
@@ -113,5 +125,8 @@ export async function ensureBundledAsrModelsSeededForPrepare(options?: {
     };
   } finally {
     unlisten();
+    if (presentationStarted) {
+      options?.presentationSync?.end();
+    }
   }
 }

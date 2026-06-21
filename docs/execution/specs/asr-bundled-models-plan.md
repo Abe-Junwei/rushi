@@ -1,5 +1,7 @@
 # Plan：方案 E — 可选离线 ASR 模型包
 
+> **历史状态**：v0.1.8 起已停止离线模型包（Route E）；当前为 Plan B（随包模型）。本文档及关联脚本仅保留历史记录，实现以 [`asr-bundled-models-plan-v2.md`](./asr-bundled-models-plan-v2.md) 及当前代码为准。
+
 > **Research**：[`asr-bundled-models-research.md`](./asr-bundled-models-research.md)  
 > **状态**：**已由 v0.1.8 方案 B 取代** — 见 [`asr-bundled-models-plan-v2.md`](./asr-bundled-models-plan-v2.md)；路线 E 代码 **待拆除**；**暂停** P8–P10 zip 手测  
 > **路线**：~~**E**~~ — ~~主 DMG 不带模型；Release 额外产出 zip~~ **（撤回）**

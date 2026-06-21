@@ -196,7 +196,7 @@ describe("usePrepareModelController", () => {
 
     expect(prepareAsyncCalls).toBe(1);
     expect(result.current.prepareModelFailure).toBeNull();
-    expect(result.current.funasrInstallMessage).toContain("已停止后台模型下载");
+    expect(result.current.funasrInstallMessage).toContain("已停止后台模型准备");
     expect(result.current.funasrInstallMessage).not.toContain("正在从已下载部分续传");
   });
 });

@@ -6,7 +6,6 @@
 node_modules/
 dist/
 # Offline ASR model pack build cache (~1.2 GB; Route E — deprecated)
-dist/offline-asr-models-pack/
 # Bundled ASR models staged for Tauri release (~1.2 GB; Plan B)
 dist/bundled-asr-models/
 apps/desktop/src-tauri/resources/bundled-asr-models/modelscope/
@@ -37,7 +36,7 @@ fixtures/sherpa-vad/
 # Spike 评估 JSON 输出（手测生成，勿提交）
 docs/execution/spike-output/
 
-# 本机 LRC 手测 fixture（`npm run asr:prepare-local-runtime-fixtures` 生成，含侧车 zip，勿提交）
+# 本机 LRC / runtime manifest 历史 fixture（v0.1.8 前脚本生成，含侧车 zip，勿提交）
 fixtures/local-runtime/**/*.zip
 fixtures/local-runtime/**/rushi-runtime-manifest*.json
 

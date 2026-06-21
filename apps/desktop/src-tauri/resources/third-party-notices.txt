@@ -29,13 +29,13 @@ FFmpeg / ffprobe
   许可正文：见「许可正文 — GNU General Public License Version 2」
 
 ------------------------------------------------------------------------
-可选离线 ASR 模型包（Route E，非主安装包内容）
+默认内置 ASR 模型包（Plan B，随主安装包分发）
 ------------------------------------------------------------------------
 
 默认 Paraformer 长音频 + VAD + 标点（FunASR / ModelScope）
-  用途：用户从 GitHub Release 另行下载 zip 后导入，用于无法联网下载时的本机转写
+  用途：随 macOS / Windows 主安装包分发，首启时自动 seed 到用户 App Data 的 models/ 目录
   著作权：Alibaba / 通义实验室（ModelScope 模型仓库）
   许可：Apache License 2.0
-  来源：https://modelscope.cn （构建时 snapshot_download；随包 zip 内附 NOTICE 与 LICENSE）
-  说明：该 zip 不包含在 DMG/OTA 主安装包内；导入后写入用户 App Data 的 models/ 目录。
+  来源：https://modelscope.cn （构建时 snapshot_download；随包资源内附 NOTICE 与 LICENSE）
+  说明：该模型包是 v0.1.8 Plan B 安装包的一部分，不再通过 GitHub Release 单独分发 zip。
   许可正文：见「许可正文 — Apache License Version 2.0」

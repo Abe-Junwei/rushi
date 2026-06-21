@@ -18,15 +18,13 @@
 | `release:waveform-probe` | `waveform-release-probe.sh` | 波形 release 探针 |
 | `release:postbuild-verify` | `release-postbuild-verify.sh` | 构建后校验 |
 | `release:mac` | `v1-personal-release-build.sh` | 个人 macOS 发版流水线 |
-| `runtime:publish-manifest` | `publish-runtime-manifest.sh` | 发布 runtime manifest |
 | `p0:acceptance` | `p0-acceptance.sh` | P0 验收 |
 | `eval:placeholders` | `eval-generate-placeholders.sh` | 评测占位 wav |
 | `eval:run` / `eval:run:*` | `eval-run.py` | ASR 评测矩阵 |
 | `asr:dev` | `run-asr-dev.sh` | 侧车开发 |
 | `asr:test` | `run-asr-pytest.sh` | Python ASR pytest |
-| `asr:build-sidecar-unix` | `build-asr-sidecar-unix.sh` | macOS/Linux 侧车构建 |
+| `asr:build-sidecar-unix` | `build-asr-sidecar-unix.sh` | macOS 侧车构建 |
 | `asr:smoke-sidecar` | `smoke-asr-sidecar-health.sh` | 侧车健康冒烟 |
-| `asr:prepare-local-runtime-fixtures` | `prepare-local-runtime-fixtures.sh` | 本地 runtime fixture |
 | `asr:regen-sidecar-locks` | `regen-sidecar-cpu-lock.sh` + `regen-sidecar-cuda-win-lock.sh` | 侧车 lock 再生 |
 | `check:doc-links` | `check-internal-doc-links.mjs` | 内部文档链接检查 |
 | `build:user-guide-pdf`（desktop workspace） | `build-user-guide-pdf.sh` | 用户指南 PDF |
@@ -51,8 +49,8 @@
 | `stage-release-artifacts.sh` | 构建后复制 DMG、根目录 `.app` symlink |
 | `resolve-bundled-sidecar-stamp-in-app.sh` | 解析已安装包内 sidecar stamp |
 | `resolve-bundled-tool-in-app.sh` | 解析包内 bundled 工具路径 |
-| `ci-publish-runtime-manifest-release.sh` | CI 发 manifest |
-| `package-sidecar-ota-zip.sh` | 侧车 OTA zip |
+| `ci-generate-updater-latest-json.sh` | Release CI 生成 macOS OTA `latest.json` |
+| `ci-verify-updater-manifest.sh` | Release CI 校验 OTA manifest / 签名包 |
 | `sign-windows-sidecar.ps1` | Windows 侧车签名 |
 
 ### ASR 侧车 / runtime

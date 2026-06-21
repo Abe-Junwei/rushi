@@ -1,4 +1,4 @@
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { flushSync } from "react-dom";
 import { asrBaseUrl, isDefaultBundledAsrTarget } from "../config/env";
 import { loopbackFetch } from "../services/asr/loopbackFetch";
@@ -28,7 +28,7 @@ import {
   setAsrModelPrepareActive,
   isBundledAsrModelsSeedActive,
 } from "../services/asr/asrPrepareActivityGate";
-import { ensureBundledAsrModelsSeededForPrepare } from "../services/asr/bundledAsrModelsSeedPrepare";
+import { ensureBundledAsrModelsSeededForPrepare, type BundledCopyPresentationSync } from "../services/asr/bundledAsrModelsSeedPrepare";
 import {
   bundledModelsMissingTipsDev,
   bundledModelsMissingTipsManaged,
@@ -78,6 +78,7 @@ export interface PrepareModelApi {
   funasrInstallMessage: string;
   prepareDefaultFunasrModel: (options?: PrepareDefaultModelOptions) => Promise<void>;
   cancelPrepareModel: () => Promise<void>;
+  bundledCopyPresentationSync: BundledCopyPresentationSync;
   setPrepareModelFailure: (v: PrepareModelFailureCopy | null) => void;
   setFunasrInstallMessage: (v: string) => void;
 }
@@ -236,7 +237,7 @@ export function usePrepareModelController(
               { allowDecrease: true, monotonic: false },
             );
             setFunasrInstallMessage(
-              "已停止后台模型下载。未完成部分可在联网后重新点「下载当前模型」（支持断点续传）。",
+              "已停止后台模型准备。未完成部分可在联网后重新点「一键准备」（支持断点续传）。",
             );
             break resumeLoop;
           }
@@ -276,7 +277,7 @@ export function usePrepareModelController(
             headline: "模型下载未能重启",
             tips: [
               "上一段下载仍在侧车中运行。请稍候、点「取消下载」，或重启侧车后再试。",
-              "若进度长时间不动，可取消后重新点「下载当前模型」（支持断点续传）。",
+              "若进度长时间不动，可取消后重新点「一键准备」（支持断点续传）。",
             ],
           });
           return;
@@ -374,9 +375,9 @@ export function usePrepareModelController(
             monotonic: false,
           });
           setFunasrInstallMessage(
-            "已停止后台模型下载。未完成部分可在联网后重新点「下载当前模型」（支持断点续传）。",
+            "已停止后台模型准备。未完成部分可在联网后重新点「一键准备」（支持断点续传）。",
           );
-          toast.info("已取消模型下载。可稍后重新点「下载当前模型」续传。");
+          toast.info("已取消模型准备。可稍后重新点「一键准备」续传。");
           await refreshAsrRuntimeInfo(REFRESH_ASR_RUNTIME_LIGHT_DURING_PREPARE);
           return;
         }
@@ -401,7 +402,7 @@ export function usePrepareModelController(
               monotonic: false,
             });
             setFunasrInstallMessage(
-              "已停止后台模型下载。未完成部分可在联网后重新点「下载当前模型」（支持断点续传）。",
+              "已停止后台模型准备。未完成部分可在联网后重新点「一键准备」（支持断点续传）。",
             );
             return;
           }
@@ -430,7 +431,7 @@ export function usePrepareModelController(
             monotonic: false,
           });
           setFunasrInstallMessage(
-            "已停止后台模型下载。未完成部分可在联网后重新点「下载当前模型」（支持断点续传）。",
+            "已停止后台模型准备。未完成部分可在联网后重新点「一键准备」（支持断点续传）。",
           );
           return;
         }
@@ -511,6 +512,39 @@ export function usePrepareModelController(
     }
   }, [prepareModelBusy, prepareModelCancelling, refreshAsrRuntimeInfo, setProgressIfChanged]);
 
+  const beginBundledCopyPresentation = useCallback(() => {
+    flushSync(() => {
+      setPrepareModelBusy(true);
+      setPrepareModelCancelling(false);
+      prepareCancelRequestedRef.current = false;
+      setPrepareModelFailure(null);
+      lastUiProgressRef.current = -1;
+      setProgressIfChanged(0, { allowDecrease: true, monotonic: false });
+      setAsrModelPrepareActive(true);
+    });
+  }, [setProgressIfChanged]);
+
+  const setBundledCopyPresentationProgress = useCallback(
+    (percent: number) => {
+      setProgressIfChanged(percent, { monotonic: true });
+    },
+    [setProgressIfChanged],
+  );
+
+  const endBundledCopyPresentation = useCallback(() => {
+    setAsrModelPrepareActive(false);
+    setPrepareModelBusy(false);
+  }, []);
+
+  const bundledCopyPresentationSync = useMemo<BundledCopyPresentationSync>(
+    () => ({
+      begin: beginBundledCopyPresentation,
+      setProgress: setBundledCopyPresentationProgress,
+      end: endBundledCopyPresentation,
+    }),
+    [beginBundledCopyPresentation, endBundledCopyPresentation, setBundledCopyPresentationProgress],
+  );
+
   return {
     prepareModelBusy,
     prepareModelCancelling,
@@ -519,6 +553,7 @@ export function usePrepareModelController(
     funasrInstallMessage,
     prepareDefaultFunasrModel,
     cancelPrepareModel,
+    bundledCopyPresentationSync,
     setPrepareModelFailure,
     setFunasrInstallMessage,
   };

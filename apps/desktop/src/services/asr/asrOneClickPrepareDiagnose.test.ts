@@ -27,6 +27,11 @@ function makeDeps() {
     refreshAsrHealth: vi.fn(() => Promise.resolve()),
     refreshAsrRuntimeInfo: vi.fn(() => Promise.resolve()),
     prepareDefaultFunasrModel: vi.fn(() => Promise.resolve()),
+    bundledCopyPresentationSync: {
+      begin: vi.fn(),
+      setProgress: vi.fn(),
+      end: vi.fn(),
+    },
     getSetupSelection: () => ({
       selectedHubModelId: "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch",
       catalogStatus: null,

@@ -109,7 +109,7 @@ describe("EnvLocalAsrStatusSection", () => {
         presentation={makePresentation({
           tone: "warn",
           bannerTitle: "本机 ASR · 正在取消下载",
-          bannerDetail: "侧车将在当前文件传完后停止；完成后可重新点「下载当前模型」。",
+          bannerDetail: "侧车将在当前文件传完后停止；完成后可重新点「一键准备」。",
           statusRows: [
             { id: "env", label: "环境", ok: true, text: "侧车已连接" },
             { id: "ffmpeg", label: "FFmpeg", ok: true, text: "可用" },

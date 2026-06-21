@@ -3,7 +3,7 @@ Bundled ASR sidecar (optional)
 
 If this folder contains a PyInstaller onedir named:
 
-  rushi-asr-sidecar/rushi-asr-sidecar       (macOS / Linux)
+  rushi-asr-sidecar/rushi-asr-sidecar       (macOS)
   rushi-asr-sidecar/rushi-asr-sidecar.exe   (Windows CPU)
 
 and on Windows optionally a second onedir:
@@ -25,7 +25,6 @@ Layout (onedir):
 Build from the repo root:
 
   macOS:   bash scripts/build-asr-sidecar-unix.sh   (arm64 / x86_64 FunASR + CPU torch + lockfile)
-  Linux:   same script — currently builds a **small stub** only (no FunASR lock for Linux yet)
   Windows: powershell -File scripts/build-asr-sidecar-windows.ps1
            powershell -File scripts/build-asr-sidecar-windows.ps1 -Variant Cuda
 
@@ -35,4 +34,6 @@ Prerequisites: **Python 3.12**, network for pip. Regenerate Python locks:
 Then run a normal Tauri build. Set RUSHI_SKIP_BUNDLED_ASR=1 to force-disable.
 
 The desktop shell sets RUSHI_MODELS_ROOT (under app data …/studio.lingchuang.rushi/models/)
-and hub cache env vars for the sidecar so FunASR weights download there on first use.
+and hub cache env vars for the sidecar. Under Plan B (v0.1.8+), default Paraformer weights are
+seeded from resources/bundled-asr-models/ on first launch; non-default models may still download
+from ModelScope when explicitly selected.
