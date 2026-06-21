@@ -29,6 +29,7 @@
 | **D5 侧车全局就绪** | ffmpeg + funasr 导入 + **当前 D2** 所需权重 | `/health.ready_for_transcribe` |
 | **D6 默认 SKU 缓存** | 仅 SenseVoice 默认包 | `/health.funasr_default_model_cached` |
 | **D7 制品忙态 overlay** | 模型下载 / LRC 安装进行中，须压制 D5「可转写」与 wizard 完成态 | `prepareModelBusy` / `runtimeInstallRunning` → `buildAsrEnvPresentation` overlay |
+| **D8 侧车权重内存** | 当前 **D2** SKU 的 FunASR 权重是否在 **侧车进程 RAM**（非磁盘） | `/health.funasr_loaded_model_id` · `selected_model_ready`；与 **D4 落盘** 正交 |
 
 **硬规则**
 
@@ -36,6 +37,7 @@
 2. **D4 按 hub 展示**：禁止用 D5/D6 驱动「当前所选模型」的进度条/百分比。
 3. **D3 过期**：禁止静默隐藏；须提示 stale 侧车或引导 force-restart（见 `asr_sidecar::force_restart_bundled`）。
 4. **同一 section 内** 所有行（下拉、列表、进度、按钮文案）必须同一 D1 或明确标注 D2（「侧车运行中」）。
+5. **D8 ≠ D4**：禁止用「已缓存 / 100% / 已就绪」单文案同时表示磁盘齐 **且** RAM 已加载；RAM 卸载后 D4 仍真时 chip 可绿但 D8 须为 **disk**。
 
 ### 2.1 多引擎扩展（R3s-A，Phase 2 实现 UI）
 

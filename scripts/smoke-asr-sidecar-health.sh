@@ -99,7 +99,10 @@ if not body.get("prepare_model_async"):
 warmup_model = str(body.get("warmup_model", ""))
 if "warmup" not in warmup_model:
     sys.exit(f"missing warmup_model on root: {body!r}")
-print("smoke root OK: catalog + warmup endpoints present")
+unload_model = str(body.get("unload_model", ""))
+if "unload" not in unload_model:
+    sys.exit(f"missing unload_model on root: {body!r}")
+print("smoke root OK: catalog + warmup + unload endpoints present")
 PY2
 
 WARMUP_URL="http://127.0.0.1:${PORT}/v1/models/warmup"
@@ -115,3 +118,48 @@ if [[ "$WARMUP_CODE" != "200" && "$WARMUP_CODE" != "503" ]]; then
   exit 1
 fi
 echo "smoke warmup OK: HTTP $WARMUP_CODE"
+
+WARMUP_RSS=""
+if [[ "$WARMUP_CODE" == "200" ]]; then
+  WARMUP_RSS="$(ps -o rss= -p "$PID" | tr -d ' ')"
+fi
+
+UNLOAD_URL="http://127.0.0.1:${PORT}/v1/models/unload"
+UNLOAD_CODE="$(curl -s -o /tmp/rushi-sidecar-smoke-unload.json -w '%{http_code}' -X POST "$UNLOAD_URL")"
+if [[ "$UNLOAD_CODE" == "404" ]]; then
+  echo "smoke: POST /v1/models/unload returned 404 — rebuild sidecar from current services/asr" >&2
+  cat /tmp/rushi-sidecar-smoke-unload.json >&2 || true
+  exit 1
+fi
+if [[ "$UNLOAD_CODE" != "200" && "$UNLOAD_CODE" != "409" ]]; then
+  echo "smoke: unexpected unload HTTP $UNLOAD_CODE" >&2
+  cat /tmp/rushi-sidecar-smoke-unload.json >&2 || true
+  exit 1
+fi
+if [[ "$UNLOAD_CODE" == "200" ]]; then
+  curl -sf "$HEALTH_URL" >/tmp/rushi-sidecar-smoke-health-after-unload.json
+  python3 - <<'PY3'
+import json
+import sys
+with open("/tmp/rushi-sidecar-smoke-health-after-unload.json", encoding="utf-8") as f:
+    body = json.load(f)
+loaded = body.get("funasr_loaded_model_id")
+if loaded not in (None, ""):
+    sys.exit(f"expected funasr_loaded_model_id empty after unload, got {loaded!r}")
+print("smoke unload OK: funasr_loaded_model_id cleared")
+PY3
+fi
+echo "smoke unload OK: HTTP $UNLOAD_CODE"
+
+# RSS hint: macOS often retains process RSS after gc; health.loaded is the hard gate (D8).
+if [[ "$WARMUP_CODE" == "200" && "$UNLOAD_CODE" == "200" && -n "$WARMUP_RSS" ]]; then
+  sleep 2
+  UNLOAD_RSS="$(ps -o rss= -p "$PID" | tr -d ' ')"
+  MAX_RSS="${RUSHI_SMOKE_UNLOAD_MAX_RSS_KB:-819200}"
+  THRESHOLD=$((WARMUP_RSS * 35 / 100))
+  if (( UNLOAD_RSS > THRESHOLD && UNLOAD_RSS > MAX_RSS )); then
+    echo "smoke WARN: loaded_model_id cleared but RSS still high: ${UNLOAD_RSS}KB vs warmup ${WARMUP_RSS}KB (see hand-test H3)" >&2
+  else
+    echo "smoke RSS OK: unload ${UNLOAD_RSS}KB vs warmup ${WARMUP_RSS}KB"
+  fi
+fi

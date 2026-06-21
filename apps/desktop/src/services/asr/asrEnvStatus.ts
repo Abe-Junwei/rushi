@@ -1,5 +1,6 @@
 import type { AsrHealthCapabilities } from "../../tauri/projectApi";
 import type { AsrHealthState } from "../../pages/useAsrHealthPoll";
+import type { ModelMemoryState } from "./asrModelMemoryState";
 import {
   ffmpegBannerDetailDev,
   ffmpegBannerDetailPackaged,
@@ -83,6 +84,7 @@ export type BuildAsrEnvPresentationInput = {
   prepareModelCancelling?: boolean;
   prepareModelProgress?: number;
   runtimeInstallRunning?: boolean;
+  modelMemoryState?: ModelMemoryState;
 };
 
 function bannerDetailFor(input: {
@@ -314,6 +316,7 @@ export function buildAsrEnvPresentation(input: BuildAsrEnvPresentationInput): As
     presentationTranscribeReady,
     sidecarAsyncTranscribeCapable: input.sidecarAsyncTranscribeCapable,
     asrCaps: input.asrCaps,
+    modelMemoryState: input.modelMemoryState ?? "disk",
   });
 
   const blockReason = blockReasonFor({

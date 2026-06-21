@@ -115,6 +115,7 @@ def create_app() -> FastAPI:
             "prepare_model_async": "POST /v1/models/prepare/async + GET /v1/models/prepare-status",
             "prepare_cancel": "POST /v1/models/prepare-cancel",
             "warmup_model": "POST /v1/models/warmup",
+            "unload_model": "POST /v1/models/unload",
             "transcribe_async": "POST /v1/transcribe/async + GET /v1/transcribe/status",
             "transcribe_cancel": "POST /v1/transcribe/cancel",
             "model_catalog": "GET /v1/models/catalog",
@@ -223,6 +224,25 @@ def create_app() -> FastAPI:
             if code in ("funasr_model_not_configured", "funasr_models_not_ready"):
                 raise HTTPException(status_code=503, detail=code) from e
             raise HTTPException(status_code=500, detail=code) from e
+
+    @app.post("/v1/models/unload")
+    async def unload_model_endpoint(request: Request) -> dict[str, object]:
+        """Drop FunASR AutoModel from RAM (disk cache unchanged)."""
+        _require_local_token(request)
+        from rushi_asr.funasr_engine import effective_funasr_model_id, invalidate_funasr_model_cache
+        from rushi_asr.funasr_engine_load import runtime_lock
+        from rushi_asr.transcribe_job import active_transcribe_job_count
+
+        if active_transcribe_job_count() > 0:
+            raise HTTPException(status_code=409, detail="model_unload_transcribe_busy")
+        with runtime_lock():
+            invalidate_funasr_model_cache()
+        model_id = effective_funasr_model_id()
+        return {
+            "status": "ok",
+            "funasr_loaded_model_id": None,
+            "funasr_model_id": model_id,
+        }
 
     @app.post("/v1/transcribe")
     async def transcribe(

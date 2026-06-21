@@ -7,6 +7,7 @@ import { STT_ONLINE_RUNTIME_CHANGED_EVENT } from "../services/stt/sttOnlineRunti
 import { usePrepareModelController, type PrepareModelApi } from "./usePrepareModelController";
 import { useLocalAsrModelCatalog, type LocalAsrModelCatalogApi } from "./useLocalAsrModelCatalog";
 import { buildAsrEnvPresentation, type AsrEnvPresentation } from "../services/asr/asrEnvStatus";
+import { deriveModelMemoryState } from "../services/asr/asrModelMemoryState";
 import { funasrManualSetupCommands } from "../services/asr/asrHealthParse";
 import { toast } from "../services/ui/toast";
 import {
@@ -154,6 +155,8 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
     return asrHealthDetail;
   }, [asrHealth, asrHealthDetail, bundledAsrDiag]);
 
+  const modelMemoryState = useMemo(() => deriveModelMemoryState(asrCaps), [asrCaps]);
+
   const asrPresentation = useMemo(
     () =>
       buildAsrEnvPresentation({
@@ -169,6 +172,7 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
         prepareModelBusy: modelCtrl.prepareModelBusy,
         prepareModelCancelling: modelCtrl.prepareModelCancelling,
         prepareModelProgress: modelCtrl.prepareModelProgress,
+        modelMemoryState,
       }),
     [
       asrHealth,
@@ -182,6 +186,7 @@ export function useAsrBridgeController(options?: AsrBridgeOptions): AsrBridgeApi
       modelCtrl.prepareModelBusy,
       modelCtrl.prepareModelCancelling,
       modelCtrl.prepareModelProgress,
+      modelMemoryState,
     ],
   );
 

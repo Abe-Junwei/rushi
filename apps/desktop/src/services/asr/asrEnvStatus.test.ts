@@ -234,4 +234,45 @@ describe("buildAsrEnvPresentation", () => {
     expect(p.bannerDetail).toContain("127.0.0.1:8741");
     expect(p.blockReason).toContain("未就绪");
   });
+
+  it("shows D8 model_memory row only when weights are loaded in RAM", async () => {
+    const loaded = await build({
+      asrHealth: "ok",
+      asrHealthDetail: "",
+      asrCaps: {
+        ffmpeg_ok: true,
+        funasr_import_ok: true,
+        funasr_model_configured: true,
+        funasr_ready: true,
+        funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+        funasr_loaded_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+        ready_for_transcribe: true,
+        transcription_mode: "funasr",
+      },
+      selectedHubModelId: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+      modelMemoryState: "loaded",
+    });
+    expect(loaded.statusRows.find((r) => r.id === "model_memory")?.text).toBe("已加载 · 占 RAM");
+
+    const disk = await build({
+      asrHealth: "ok",
+      asrHealthDetail: "",
+      asrCaps: {
+        ffmpeg_ok: true,
+        funasr_import_ok: true,
+        funasr_model_configured: true,
+        funasr_ready: true,
+        funasr_model_id: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+        funasr_loaded_model_id: null,
+        funasr_required_models_cached: true,
+        ready_for_transcribe: true,
+        selected_model_ready: false,
+        transcription_mode: "funasr",
+      },
+      selectedHubModelId: DEFAULT_LOCAL_ASR_HUB_MODEL_ID,
+      modelMemoryState: "disk",
+    });
+    expect(disk.chipOk).toBe(true);
+    expect(disk.statusRows.find((r) => r.id === "model_memory")).toBeUndefined();
+  });
 });

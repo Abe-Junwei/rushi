@@ -2,7 +2,7 @@ import type { AsrHealthCapabilities } from "../../tauri/projectApi";
 import type { AsrHealthState } from "../../pages/useAsrHealthPoll";
 
 export type AsrEnvStatusRow = {
-  id: "env" | "ffmpeg" | "runtime" | "transcribe" | "inference_queue";
+  id: "env" | "ffmpeg" | "runtime" | "transcribe" | "inference_queue" | "model_memory";
   label: string;
   ok: boolean;
   text: string;
@@ -26,6 +26,7 @@ export function buildAsrEnvStatusRows(input: {
   presentationTranscribeReady: boolean;
   sidecarAsyncTranscribeCapable?: boolean;
   asrCaps: AsrHealthCapabilities | null;
+  modelMemoryState?: "disk" | "loaded" | "unloading";
 }): AsrEnvStatusRow[] {
   const statusRows: AsrEnvStatusRow[] = [
     { id: "env", label: "环境", ok: input.envOk, text: input.envOk ? "侧车已连接" : "连接失败" },
@@ -54,6 +55,15 @@ export function buildAsrEnvStatusRows(input: {
       label: "推理队列",
       ok: true,
       text: queueText,
+    });
+  }
+  if (input.envOk && input.runtimeReady && input.modelMemoryState === "loaded") {
+    statusRows.push({
+      id: "model_memory",
+      label: "权重内存",
+      ok: true,
+      text: "已加载 · 占 RAM",
+      warn: true,
     });
   }
   return statusRows;

@@ -271,6 +271,12 @@ def _transcribe_with_progress(
     )
 
 
+def active_transcribe_job_count() -> int:
+    """Non-terminal async transcribe jobs (for unload / capacity guards)."""
+    with _lock:
+        return _active_job_count_locked()
+
+
 def start_transcribe_async(
     upload_path: Path,
     work_dir: Path,

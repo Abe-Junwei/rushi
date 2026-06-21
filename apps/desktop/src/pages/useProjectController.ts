@@ -19,6 +19,7 @@ import {
 } from "../services/asr/asrPresentationTranscribeGuard";
 import { runtimeInstallBusyPresentation } from "../services/asr/asrEnvStatus";
 import { mergeArtifactBusyState } from "../services/asr/prepareJobPresentation";
+import { useAsrModelUnloadOnFileSwitch } from "./useAsrModelUnloadOnFileSwitch";
 
 export type { AsrHealthState, BusyReason };
 export type ProjectControllerApi = ReturnType<typeof useProjectController>;
@@ -37,6 +38,15 @@ export function useProjectController() {
     localTranscribePreflight,
     asr.sttOnlineRuntimeEpoch,
   );
+
+  useAsrModelUnloadOnFileSwitch({
+    currentFileId: lifecycle.currentFileId,
+    busy: lifecycle.busy,
+    batchTranscribeRunning: lifecycle.batchTranscribeRunning,
+    prepareModelBusy: asr.prepareModelBusy,
+    prepareModelCancelling: asr.prepareModelCancelling,
+    refreshAsrHealth: asr.refreshAsrHealth,
+  });
 
   const lastStableAsrPresentationRef = useRef<AsrEnvPresentation | null>(null);
   const transcribeActive = lifecycle.busy && isTranscribeBusyReason(lifecycle.busyReason);

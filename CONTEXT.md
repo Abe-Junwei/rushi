@@ -104,6 +104,18 @@ _Avoid_: 健康检查对齐, ready 字段对齐
 能力状态的命名维度；禁止用 D5/D6 表示「当前所选 SKU 已下载或可转写」。
 _Avoid_: ready_for_transcribe（单独指用户所选时）, 全局 cached
 
+**D8 侧车权重内存**（model memory）:
+当前 **D2** 所用 hub SKU 的 FunASR 权重是否已加载进 **ASR sidecar 进程 RAM**（`/health.funasr_loaded_model_id` / `selected_model_ready`）；与 **D4 落盘** 正交——D4 真仅表示磁盘缓存，不表示 ~3GB RAM 占用。
+_Avoid_: 就绪（未说明 disk 或 RAM）, cached 表示内存已加载, warmup 与转写就绪混称
+
+**Model unload**（侧车权重卸载）:
+调用侧车 unload 路由，释放 FunASR 权重 RAM、保留 sidecar 进程与 **D4 磁盘缓存**；非 **Force restart**，非清除 App Data 模型目录。
+_Avoid_: 杀侧车（未说明时）, 清除模型缓存, idle stop（进程级）
+
+**Unload on idle file switch**（空闲换 File 卸载）:
+**Editor** 内 `currentFileId` 变化或回到 **Project Hub** 时，若 transcribe/prepare **非 busy**，触发 **Model unload**；transcribe/prepare busy 时沿用 **Close Gate**，不换 File、不 unload。
+_Avoid_: 离开应用, 每次转写结束立即 unload（v0.1.8.1 第一刀未选）
+
 **Force restart**（侧车）:
 切换模型或写 pref 后杀旧 8741 进程并启新进程；模型切换的必经路径。
 _Avoid_: 刷新页面, reload health
