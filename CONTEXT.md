@@ -166,6 +166,26 @@ _Avoid_: 选中即 seek, 时间尺 seek（v0.1.8+ 产品矩阵）
 Canvas 语段色带（display）与 DOM 交互层（选中、拖拽）；非 WaveSurfer Regions。
 _Avoid_: region, marker（WS 语境）
 
+**SC1**（逻辑选中）:
+Editor 内 **selectedIdx** + 多选集合等业务真源；驱动 footer/toolbar、filter banner、Close Gate 锚点、**Focus–selection lock**；经 `startTransition` 写入 React 可慢于视觉。
+_Avoid_: highlight, 选中态（未区分 SC1/SC2 时）, chrome 真源
+
+**SC2**（选中 chrome / 视觉层）:
+列表行与波形条带的 **即时** 高亮（`.seg-row-selected`、overlay/band 色）；真源 **`selectionChromeStore`** + 波形 imperative；**不得**驱动 persist/undo 或替代 SC1。
+_Avoid_: selectedIdx（指视觉时）, decoration（未特指 SC2 时）
+
+**SC3**（多选集合）:
+非 primary 的 **in-selection** 集合（Shift range、lasso）；与 SC1 primary、SC2 样式联动；`.seg-row-in-selection`。
+_Avoid_: 多选 highlight（未特指 SC3 时）
+
+**SC4**（列表 scroll 投影）:
+语段列表 **虚拟窗** 与 tier scroll 解耦维度；选中变更 **不得** 无故 bump 虚拟窗 epoch / pin 全列表。
+_Avoid_: 虚拟滚动（泛指实现时）
+
+**Selection chrome publish**（选中 chrome 发布）:
+点选 / 结构突变时 **显式** 写 `selectionChromeStore` + 波形 imperative；v0.1.9 **R-DROP**：无 reconcile 安全网，结构路径（merge/delete/undo/filter）须各自 publish。
+_Avoid_: reconcile, 双写后对齐, flushSync 换 perf
+
 **Vertical slice**（纵向薄片）:
 一次交付一个可验收端到端路径；spec 与 TDD 均按此粒度拆分。
 _Avoid_: 横向批次, big bang
@@ -282,4 +302,5 @@ _Avoid_: design doc（泛指）
 - 「导入转录文本 / 导入字幕」— Editor 默认 **Attach import**（挂当前 File）；Hub 默认 **Sidecar stem match**；均 **Replace import**，非新建副本。
 - 「LFASR / 讯飞转写」— 须区分 **iflytek-speed-asr**（极速 OST）、标准 LFASR v2、已移除 **iflytek-speech**；文档标题含 LFASR 时以 research §3 定稿 id 为准。
 - 「面板 / 对话框」— 浮动工具框（查找替换等）称 **Floating dialog** 并按 **Auto-fit / Fill / Static-fit** 分类；Editor 侧栏/Inspector 不叫 Floating dialog。
+- 「选中 / highlight」— 须区分 **SC1**（逻辑 `selectedIdx`）与 **SC2**（视觉 chrome）；多选 in-selection 为 **SC3**；禁止用 SC2 表示 toolbar/footer 业务真源。
 - 「自动更新 / 签名」— **In-app update** = Tauri Ed25519 manifest；**Unsigned mac release** = 无 Apple codesign/公证；二者可并存，勿混为一谈。

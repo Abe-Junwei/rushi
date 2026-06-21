@@ -35,35 +35,43 @@
 
 ### 机器闸门
 
-- [ ] `cd services/asr && pytest tests/test_model_unload.py -q`
-- [ ] `npm run typecheck && npm run test && npm run lint`
-- [ ] `node scripts/check-architecture-guard.mjs`
-- [ ] `bash scripts/smoke-asr-sidecar-health.sh`（含 unload 断言）
+- [x] `cd services/asr && pytest tests/test_model_unload.py -q`（2026-06-21 · 5 passed）
+- [x] `npm run typecheck && npm run test && npm run lint`（定向：asrModelUnload / asrModelMemoryState / asrEnvStatus / useAsrModelUnloadOnFileSwitch）
+- [x] `node scripts/check-architecture-guard.mjs`
+- [ ] `bash scripts/smoke-asr-sidecar-health.sh`（含 unload + RSS 断言；须 **当前 SHA 重建 sidecar** 后跑）
 - [ ] `npm run asr:build-sidecar-unix` 后 preflight 通过
 
 ### 行为
 
-- [ ] `POST /v1/models/unload` 在 warmup 后使 `funasr_loaded_model_id=null`
-- [ ] 重复 unload **200 幂等**
-- [ ] transcribe 进行中 unload 返回 **409**（或 sidecar 等价拒绝）
-- [ ] 空闲 `currentFileId` A→B 触发 unload（单测 + 手测）
-- [ ] transcribe busy 时 **无法**换 File（现有 Close Gate，回归）
-- [ ] unload **不**删除 App Data `models/` 目录（D4 仍真）
+- [x] `POST /v1/models/unload` 在 warmup 后使 `funasr_loaded_model_id=null`（pytest）
+- [x] 重复 unload **200 幂等**（pytest）
+- [x] transcribe 进行中 unload 返回 **409**（pytest）
+- [x] 空闲 `currentFileId` A→B 触发 unload（hook 单测 + **3s idle delay**）
+- [x] transcribe busy 时 **无法**换 File（Close Gate · 现有回归）
+- [x] 批量转写队列期间 skip unload（`batchTranscribeRunning` + `busy=batch_transcribe`）
+- [ ] unload **不**删除 App Data `models/` 目录（D4 仍真 · **手测 MU-D8-3**）
 
 ### 性能（手测 · release .app）
 
-| # | 步骤 | 通过标准 |
-|---|------|----------|
-| H1 | 转写 2min 音频 → 记 sidecar RSS | ≥2GB |
-| H2 | 同 File 内滚 waveform + 列表 10s | 主观记录（baseline 卡顿） |
-| H3 | 空闲切到 Project Hub 或另一 File | ≤3s 内 RSS **<600MB**；health `loaded=null` |
-| H4 | 再滚 waveform + 列表 10s | 主观 **优于 H2** |
-| H5 | 回到原 File 再转写 | wall time 较 H1 **≤+8s**（reload 可接受） |
+> **手测表**：[`v0.1.8-mac-release-hand-test-checklist.md`](./v0.1.8-mac-release-hand-test-checklist.md) **§9.1**（MU-H1–H5 · sidecar/App RSS 分列）  
+> **采样脚本**：`bash scripts/sample-rushi-memory-rss.sh <label>`
+
+| # | 步骤 | 通过标准 | checklist ID |
+|---|------|----------|--------------|
+| H1 | 转写 2min 音频 → 记 sidecar RSS | ≥2GB | MU-H1 |
+| H2 | 同 File 内滚 waveform + 列表 10s | 主观记录（baseline 卡顿） | MU-H2 |
+| H3 | 空闲切 Hub 或另一 File；**≥3s** | RSS **<600MB**；health `loaded=null` | MU-H3 |
+| H4 | 再滚 waveform + 列表 10s | 主观 **优于 H2** | MU-H4 |
+| H5 | 回到原 File 再转写 | wall time 较 H1 **≤+8s** | MU-H5 |
+
+### WebView 分列（同会话 · 可选 Blocker for v0.1.8.1）
+
+见 checklist **§9.2** W1–W4。
 
 ### 文档
 
-- [ ] `CONTEXT.md` 含 D8 / Model unload / Unload on idle file switch
-- [ ] v0.1.8 checklist §WARN 或 signoff 引用本 acceptance
+- [x] `CONTEXT.md` 含 D8 / Model unload / Unload on idle file switch
+- [x] v0.1.8 checklist **§9** 引用本 acceptance
 
 ---
 
@@ -93,6 +101,9 @@
 |----|------|
 | 日期 | |
 | 版本 | v0.1.8.1 |
-| H1–H5 | ☐ |
-| 机器闸门 | ☐ |
+| MU-H1–H5（§9.1） | ☐ |
+| W1–W4（§9.2 · WebView） | ☐ |
+| 机器闸门（smoke + sidecar rebuild） | ☐ |
 | 结论 | ☐ Go ☐ No-Go |
+
+**手测入口**：[`v0.1.8-mac-release-hand-test-checklist.md`](./v0.1.8-mac-release-hand-test-checklist.md) §9

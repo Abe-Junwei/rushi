@@ -69,8 +69,9 @@
 
 ### Step 5 — Smoke + 文档
 
-1. [`scripts/smoke-asr-sidecar-health.sh`](../../../scripts/smoke-asr-sidecar-health.sh)：warmup OK 后 unload OK，`funasr_loaded_model_id` empty。
-2. v0.1.8 checklist §WARN 一条（转写后换 File 可恢复 scroll；同 File 再转写 +reload）。
+1. [`scripts/smoke-asr-sidecar-health.sh`](../../../scripts/smoke-asr-sidecar-health.sh)：warmup OK 后 unload OK，`funasr_loaded_model_id` empty；可选 RSS 回归。
+2. Release 手测：[`v0.1.8-mac-release-hand-test-checklist.md`](./v0.1.8-mac-release-hand-test-checklist.md) **§9**；采样 `bash scripts/sample-rushi-memory-rss.sh <label>`。
+3. v0.1.8 checklist §WARN 一条（转写后换 File 可恢复 scroll；同 File 再转写 +reload）。
 3. 重建 sidecar + `npm run asr:build-sidecar-unix`（release 手测前）。
 
 **验证**：`bash scripts/smoke-asr-sidecar-health.sh` · 全仓 `npm run typecheck && npm run test && node scripts/check-architecture-guard.mjs`

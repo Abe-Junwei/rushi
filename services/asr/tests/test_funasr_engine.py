@@ -162,6 +162,43 @@ def test_invalidate_funasr_model_cache_clears_singleton(monkeypatch) -> None:
     assert funasr_engine._model_loaded_id is None
 
 
+def test_invalidate_funasr_model_cache_calls_mps_empty_cache(monkeypatch) -> None:
+    import sys
+
+    calls: list[str] = []
+
+    class FakeMps:
+        @staticmethod
+        def is_available() -> bool:
+            return True
+
+        @staticmethod
+        def empty_cache() -> None:
+            calls.append("mps")
+
+    class FakeCuda:
+        @staticmethod
+        def is_available() -> bool:
+            return False
+
+        @staticmethod
+        def empty_cache() -> None:
+            calls.append("cuda")
+
+    class FakeBackends:
+        mps = FakeMps()
+
+    fake_torch = type(
+        "torch",
+        (),
+        {"cuda": FakeCuda, "backends": FakeBackends, "mps": FakeMps},
+    )()
+    monkeypatch.setitem(sys.modules, "torch", fake_torch)
+
+    invalidate_funasr_model_cache()
+    assert calls == ["mps"]
+
+
 def test_transcribe_with_funasr_blocks_hidden_model_downloads(monkeypatch, tmp_path: Path) -> None:
     monkeypatch.setattr(funasr_engine, "effective_funasr_model_id", lambda: "iic/SenseVoiceSmall")
     monkeypatch.setattr(funasr_engine, "required_models_cached_guess", lambda _model_id=None: False)
