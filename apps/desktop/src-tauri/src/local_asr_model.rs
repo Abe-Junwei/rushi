@@ -10,6 +10,11 @@ const PREF_REL: &str = "prefs/funasr_hub_model_id.txt";
 pub const DEFAULT_FUNASR_HUB_MODEL_ID: &str =
     "iic/speech_paraformer-large-vad-punc_asr_nat-zh-cn-16k-common-vocab8404-pytorch";
 
+/// Keep in sync with `services/asr/rushi_asr/defaults.py`.
+pub const DEFAULT_FUNASR_VAD_MODEL_ID: &str = "iic/speech_fsmn_vad_zh-cn-16k-common-pytorch";
+pub const DEFAULT_FUNASR_PUNC_MODEL_ID: &str =
+    "iic/punc_ct-transformer_zh-cn-common-vocab272727-pytorch";
+
 const DEPRECATED_FUNASR_HUB_MODEL_IDS: &[&str] = &["iic/SenseVoiceSmall"];
 
 pub fn normalize_hub_model_id(hub_model_id: &str) -> String {
