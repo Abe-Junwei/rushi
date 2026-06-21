@@ -62,14 +62,14 @@ describe("EnvPreferencesPanel", () => {
 
   it("commits waveform height after blur without clamping each keystroke", () => {
     render(<EnvPreferencesPanel />);
-    const input = screen.getByDisplayValue("220") as HTMLInputElement;
+    const input = screen.getByDisplayValue("220");
     fireEvent.change(input, { target: { value: "18" } });
-    expect(input.value).toBe("18");
+    expect(screen.getByDisplayValue("18")).toBeTruthy();
     expect(localStorage.getItem("rushi.p1.waveformHeightPx")).toBeNull();
     fireEvent.blur(input);
     expect(localStorage.getItem("rushi.p1.waveformHeightPx")).toBe("56");
-    fireEvent.change(input, { target: { value: "180" } });
-    fireEvent.blur(input);
+    fireEvent.change(screen.getByDisplayValue("56"), { target: { value: "180" } });
+    fireEvent.blur(screen.getByDisplayValue("180"));
     expect(localStorage.getItem("rushi.p1.waveformHeightPx")).toBe("180");
   });
 });
