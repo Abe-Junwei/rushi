@@ -13,7 +13,7 @@
 |----|------|
 | 日期 | 2026-06-20 |
 | 测试人 | （手测完成） |
-| Git SHA | `ec8192f` |
+| Git SHA | `aba1a15` |
 | 运行方式 | ☑ Release `.app`（`apps/desktop/src-tauri/target/release/bundle/macos/如是我闻.app`） |
 | macOS / 引擎 | arm64 · WebKit |
 | 测试项目 | 转写页主路径 + H10 长稿（≥500 段） |
